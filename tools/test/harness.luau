@@ -655,6 +655,14 @@ roblox.implementMethod("TweenService", "Create", function(self, inst, info, prop
 	end
 	local tw = { Completed = newSignal("Tween.Completed"), PlaybackState = Enum.PlaybackState.Begin, Instance = inst }
 	function tw.Play()
+		if H.tweenLerp then   -- 要中间过程的（导出宣传图）：每一步按时间插值；默认只在结束时一下设好
+			local from = {}
+			for k in pairs(props) do
+				local okG, cur = pcall(function() return inst[k] end)
+				if okG then from[k] = cur end
+			end
+			table.insert(H.liveTweens, { inst = inst, from = from, to = props, t0 = H.now, dur = math.max(0.01, info.Time or 1) })
+		end
 		task.delay(info.Time or 1, function()
 			local ok = pcall(function() return inst.Parent end)
 			if not ok then return end
@@ -1131,10 +1139,32 @@ local function scanChildren()
 	end
 end
 
+H.liveTweens = {}
+local function lerpTweens()
+	local keep = {}
+	for _, tw in H.liveTweens do
+		local k = math.clamp((H.now - tw.t0) / tw.dur, 0, 1)
+		local e = 1 - (1 - k) * (1 - k)   -- 先快后慢（Quad Out）
+		for prop, b in pairs(tw.to) do
+			local a = tw.from[prop]
+			if a ~= nil then
+				pcall(function()
+					local t = typeof(a)
+					if t == "number" then tw.inst[prop] = a + (b - a) * e
+					elseif t == "Vector3" or t == "CFrame" or t == "Color3" then tw.inst[prop] = a:Lerp(b, e) end
+				end)
+			end
+		end
+		if k < 1 then table.insert(keep, tw) end
+	end
+	H.liveTweens = keep
+end
+
 function H.step(dt)
 	dt = dt or 1 / 60
 	H.now += dt
 	H.frame += 1
+	if H.tweenLerp then lerpTweens() end
 	local rs = H.RunService
 	for _, pl in PlayersSvc:GetChildren() do
 		if pl:IsA("Player") then
