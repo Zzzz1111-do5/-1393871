@@ -344,13 +344,29 @@ roblox.implementMethod("BindableEvent", "Fire", function(self, ...) ev(self, "Ev
 
 ---------------------------------------------------------------- 服务
 local Services = {}
+-- 地形：记下每一次填充（预览渲染用）；参数类型照 Roblox 检查
+H.terrainOps = {}
+local function terrOp(op) if #H.terrainOps < 20000 then table.insert(H.terrainOps, op) end end
 roblox.implementMethod("Terrain", "FillBlock", function(self, cf, size, mat)
 	if typeof(cf) ~= "CFrame" or typeof(size) ~= "Vector3" or typeof(mat) ~= "EnumItem" then error("FillBlock 参数不对", 2) end
 	H.terrainFills += 1
+	terrOp({ k = "block", cf = cf, size = size, m = mat.Name })
 end)
-roblox.implementMethod("Terrain", "FillBall", function(self) H.terrainFills += 1 end)
-roblox.implementMethod("Terrain", "FillCylinder", function(self) H.terrainFills += 1 end)
-roblox.implementMethod("Terrain", "FillWedge", function(self) H.terrainFills += 1 end)
+roblox.implementMethod("Terrain", "FillBall", function(self, center, radius, mat)
+	if typeof(center) ~= "Vector3" or type(radius) ~= "number" or typeof(mat) ~= "EnumItem" then error("FillBall 参数不对", 2) end
+	H.terrainFills += 1
+	terrOp({ k = "ball", cf = CF.new(center), r = radius, m = mat.Name })
+end)
+roblox.implementMethod("Terrain", "FillCylinder", function(self, cf, height, radius, mat)
+	if typeof(cf) ~= "CFrame" or type(height) ~= "number" or type(radius) ~= "number" or typeof(mat) ~= "EnumItem" then error("FillCylinder 参数不对", 2) end
+	H.terrainFills += 1
+	terrOp({ k = "cyl", cf = cf, h = height, r = radius, m = mat.Name })
+end)
+roblox.implementMethod("Terrain", "FillWedge", function(self, cf, size, mat)
+	if typeof(cf) ~= "CFrame" or typeof(size) ~= "Vector3" or typeof(mat) ~= "EnumItem" then error("FillWedge 参数不对", 2) end
+	H.terrainFills += 1
+	terrOp({ k = "wedge", cf = cf, size = size, m = mat.Name })
+end)
 roblox.implementMethod("Terrain", "Clear", function(self) end)
 
 -- 射线：零件按长方体（球按外接盒）算，地面是 y = 0 的地形
@@ -386,7 +402,7 @@ function H.raycast(o, d, params)
 	local ws = H.workspace
 	local best, bt = nil, math.huge
 	for _, p in ws:GetDescendants() do
-		if p:IsA("BasePart") and p.CanQuery then
+		if p:IsA("BasePart") and p.ClassName ~= "Terrain" and p.CanQuery then   -- 地形单独按 y = 0 的平面算
 			local ok = true
 			if #list > 0 or include then
 				local hit = inList(p, list)

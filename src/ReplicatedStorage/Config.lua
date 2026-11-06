@@ -15,7 +15,7 @@ Config.BaseSize = 260                  -- 基地边长
 Config.Field = { center = 570, width = 520, length = 820, deploy = { 170, 330 }, enemy = { 810, 970 } }
 -- 约战竞技场：和战场一样大小，摆在所有基地的战场后面（原点 z = Arena.z），挑战方在南边（部署区），应战方在北边（敌军区）
 Config.Arena = { z = 1300, xs = { -450, 450 } }
-Config.Spawn = { x = 0, z = -120 }     -- 出生点（基地里，相对基地中心）
+Config.Spawn = { x = -10, z = -118 }   -- 出生点（基地里，相对基地中心）：在中轴大道南头，面朝大门和战场
 Config.BattleTime = 240                -- 一场最多几秒，到时算没打赢（活着的照样回来）
 Config.Tick = 0.05                     -- 战斗推演步长（秒）
 Config.MaxEnemy = 40                   -- 敌军最多几个单位；预算再多就加强属性
@@ -274,10 +274,25 @@ end
 function Config.IsBoss(level)
   return level % 10 == 0
 end
+-- 战区：每 10 关换一个（打掉首领就进下一个），地面、两边的地形、道具都换；奖励加成 reward，speed 地面部队速度倍数，range 射程倍数，quake 每几秒一次火山弹
+Config.Theaters = {
+  { id = "grass", lv = 1, name = "绿野战区", reward = 0, desc = "开阔的田野和农舍废墟" },
+  { id = "desert", lv = 11, name = "沙漠战区", reward = 0.2, speed = 0.9, desc = "沙地难走：地面部队慢一成；奖励 +20%" },
+  { id = "snow", lv = 21, name = "雪原战区", reward = 0.4, speed = 0.85, desc = "积雪很深：地面部队慢一成半；奖励 +40%" },
+  { id = "urban", lv = 31, name = "城市废墟", reward = 0.6, range = 0.88, desc = "巷战：大家射程短一成；奖励 +60%" },
+  { id = "volcano", lv = 41, name = "火山战区", reward = 0.8, quake = 14, desc = "每隔十几秒有火山弹砸下来，敌我都伤；奖励 +80%" },
+}
+function Config.TheaterOf(level)
+  local t = Config.Theaters[1]
+  for _, th in ipairs(Config.Theaters) do
+    if level >= th.lv then t = th end
+  end
+  return t
+end
 function Config.Reward(level)
   local r = math.floor(Config.EnemyBudget(level) * 0.9 + 100 * level)
   if Config.IsBoss(level) then r = r * 2 end
-  return r
+  return math.floor(r * (1 + (Config.TheaterOf(level).reward or 0)))
 end
 
 -- 查表：建筑 id → 建筑；兵种 → 生产它的建筑 id

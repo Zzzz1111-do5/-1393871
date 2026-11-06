@@ -121,12 +121,17 @@ local function battlefield(f, origin, colorA, colorB, rng, labels)
   field.Name = "Field"
   local dz = ghostly(block(f, base, V(Fd.width - 6, 0.1, D[2] - D[1]), CF(0, 1.06, (D[1] + D[2]) / 2), colorA, MAT.SmoothPlastic))
   dz.Name = "DeployZone"
-  dz.Transparency = 0.72
+  dz.Transparency = 0.86
   local ez = ghostly(block(f, base, V(Fd.width - 6, 0.1, E[2] - E[1]), CF(0, 1.06, (E[1] + E[2]) / 2), colorB, MAT.SmoothPlastic))
   ez.Name = "EnemyZone"
-  ez.Transparency = 0.75
-  ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, D[2]), colorA, MAT.Neon))
-  ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, E[1]), colorB, MAT.Neon))
+  ez.Transparency = 0.88
+  -- 两个区的四条边：发光的边框
+  for _, zone in ipairs({ { D, colorA }, { E, colorB } }) do
+    local z0, z1, col = zone[1][1], zone[1][2], zone[2]
+    ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, z0), col, MAT.Neon))
+    ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, z1), col, MAT.Neon))
+    for _, sx in ipairs({ -1, 1 }) do ghostly(block(f, base, V(0.8, 0.12, z1 - z0), CF(sx * (Fd.width / 2 - 3), 1.08, (z0 + z1) / 2), col, MAT.Neon)) end
+  end
   if labels then
     zoneLabel(f, base, CF(0, 16, (D[1] + D[2]) / 2), labels[1], colorA:Lerp(Color3.new(1, 1, 1), 0.45))
     zoneLabel(f, base, CF(0, 16, (E[1] + E[2]) / 2), labels[2], RGB(255, 150, 140))
@@ -155,15 +160,16 @@ function Models.plot(f, origin, color, index)
   local Fd = Config.Field
   local rng = Random.new(index * 97 + 13)
 
+  local S0 = Config.Spawn
   local slab = block(f, base, V(B, 1, B), CF(0, 0.5, 0), RGB(146, 148, 146), MAT.Concrete)
   slab.Name = "Base"
+  -- 中轴大道：出生点往北一直通到横路（出生就能顺着它看到大门、战场）
+  ghostly(block(f, base, V(22, 0.08, 60 - 14 - (S0.z - 6)), CF(S0.x, 1.04, (60 - 14 + S0.z - 6) / 2), RGB(92, 94, 96), MAT.Asphalt))
+  for k = 0, 9 do ghostly(block(f, base, V(0.6, 0.06, 6), CF(S0.x, 1.09, S0.z + 12 + k * 16), C.white, MAT.SmoothPlastic)) end
   -- 部队开出去的通道（深色）：横穿 z = 60，再从中间往前到路上
   ghostly(block(f, base, V(B - 12, 0.08, 28), CF(0, 1.04, 60), RGB(92, 94, 96), MAT.Asphalt))
   ghostly(block(f, base, V(120, 0.08, hs - 60), CF(-10, 1.04, (hs + 60) / 2), RGB(92, 94, 96), MAT.Asphalt))
-  -- 围墙：后面和两边，前面敞开对着战场
-  block(f, base, V(B, 4, 1.5), CF(0, 3, -hs + 0.75), RGB(120, 122, 118), MAT.Concrete)
-  block(f, base, V(1.5, 4, B), CF(-hs + 0.75, 3, 0), RGB(120, 122, 118), MAT.Concrete)
-  block(f, base, V(1.5, 4, B), CF(hs - 0.75, 3, 0), RGB(120, 122, 118), MAT.Concrete)
+  -- 围墙、哨塔、大门在 Scenery.base 里
   -- 出生点
   local S = Config.Spawn
   cyl(f, base, 0.3, 12, CF(S.x, 1.15, S.z), color, MAT.SmoothPlastic)
@@ -197,16 +203,7 @@ function Models.plot(f, origin, color, index)
     t.Text = "↑ 战场、部署区（往前走过马路）\n← 空军基地（左边围墙外）\n踩亮绿色的圆按钮盖楼"
     t.Parent = sg
   end
-  -- 树：基地右边的空地（空军基地再往右；第一块基地左边也种）
-  local sides = { 1 }
-  if index == 1 then sides = { 1, -1 } end
-  for _, sd in ipairs(sides) do
-    for _ = 1, 34 do
-      local x = sd * rng:NextNumber(hs + 140, Config.PlotSpacing - Fd.width / 2 - 20)
-      local z = rng:NextNumber(-hs + 5, Fd.center + Fd.length / 2)
-      tree(f, origin + V(x, 0, z), rng)
-    end
-  end
+  -- 树林在 Scenery.nature 里（长在基地之间的山丘上）
   -- 头顶的名字
   local anchor = ghostly(block(f, base, V(1, 1, 1), CF(0, 2, -20), C.white))
   anchor.Transparency = 1
@@ -214,6 +211,10 @@ function Models.plot(f, origin, color, index)
   -- 排行榜牌子（出生点后面的墙上，朝出生点）
   local board = block(f, base, V(54, 22, 1), CF(0, 14, -hs + 2), RGB(24, 28, 34), MAT.SmoothPlastic)
   board.Name = "Board"
+  block(f, base, V(57, 1.4, 1.6), CF(0, 25.7, -hs + 2), RGB(60, 64, 70), MAT.Metal)
+  block(f, base, V(57, 1.4, 1.6), CF(0, 2.3, -hs + 2), RGB(60, 64, 70), MAT.Metal)
+  for _, sx in ipairs({ -1, 1 }) do block(f, base, V(1.6, 25, 1.6), CF(sx * 28, 13.5, -hs + 2), RGB(60, 64, 70), MAT.Metal) end
+  ghostly(block(f, base, V(54, 0.4, 0.5), CF(0, 26.6, -hs + 1.6), color, MAT.Neon))
   local sg = Instance.new("SurfaceGui")
   sg.Face = Enum.NormalId.Back
   sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -276,6 +277,36 @@ local function slabUnder(m, base, w, d, color, mat)
   block(m, base, V(w + 3, 0.6, d + 3), CF(0, 0.3, 0), color or C.concrete, mat or MAT.Concrete)
 end
 
+-- 楼面上的招牌：一块板子 + 发光的字（face 是板子哪一面朝外）
+local function facadeSign(m, base, cf, w, h, text, color, face)
+  local board = block(m, base, V(w, h, 0.3), cf, RGB(28, 32, 38), MAT.SmoothPlastic)
+  board.CastShadow = false
+  local sg = Instance.new("SurfaceGui")
+  sg.Face = face or Enum.NormalId.Front
+  sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  sg.PixelsPerStud = 30
+  sg.LightInfluence = 0
+  sg.Parent = board
+  local t = Instance.new("TextLabel")
+  t.Size = UDim2.fromScale(1, 1)
+  t.BackgroundTransparency = 1
+  t.Font = Enum.Font.GothamBlack
+  t.TextScaled = true
+  t.TextColor3 = color or RGB(255, 214, 90)
+  t.Text = text
+  t.Parent = sg
+  return board
+end
+-- 屋顶的空调外机、通风口
+local function roofStuff(m, base, w, d, y, n)
+  for i = 1, n do
+    local x = (i - (n + 1) / 2) * (w / (n + 1)) + ((i % 2 == 0) and 1.2 or -1.2)
+    local z = ((i % 2 == 0) and 1 or -1) * d * 0.22
+    block(m, base, V(2.4, 1.4, 1.8), CF(x, y + 0.7, z), RGB(190, 192, 190), MAT.Metal)
+    ghostly(cyl(m, base, 0.1, 1.2, CF(x, y + 1.42, z), RGB(60, 60, 62), MAT.Metal))
+  end
+end
+
 local function flag(m, base, at, color)
   cyl(m, base, 18, 0.4, at * CF(0, 0.6 + 9, 0), C.metal, MAT.Metal)
   block(m, base, V(0.15, 3, 5), at * CF(0, 0.6 + 16.4, 2.6), color, MAT.Fabric)
@@ -293,6 +324,27 @@ local function house(m, base, b)
   block(m, base, V(w * 0.3, 1.8, d * 0.3), CF(w * 0.2, 0.6 + h + 1.6, d * 0.15), C.metal, MAT.Metal)
   block(m, base, V(3.2, 4.4, 0.6), CF(0, 0.6 + 2.2, -d / 2 - 0.2), C.dark)
   block(m, base, V(w * 0.5, 0.4, 2.4), CF(0, 0.6 + 4.7, -d / 2 - 1.2), C.roof)
+  for k = 1, math.floor(h / 4) - 1 do   -- 东边一层一个阳台
+    local y = 0.6 + k * 4
+    block(m, base, V(2.2, 0.35, d * 0.5), CF(w / 2 + 1.1, y, 0), RGB(200, 200, 196), MAT.Concrete)
+    local rail = block(m, base, V(0.2, 1.1, d * 0.5), CF(w / 2 + 2.1, y + 0.7, 0), RGB(150, 190, 210), MAT.Glass)
+    rail.Transparency = 0.4
+  end
+  for _, sx in ipairs({ -1, 1 }) do   -- 四角的竖线条
+    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(0.8, h, 0.8), CF(sx * (w / 2 + 0.1), 0.6 + h / 2, sz * (d / 2 + 0.1)), (HOUSE[b.id] or C.white):Lerp(C.dark, 0.25), MAT.SmoothPlastic) end
+  end
+  local roofY = 0.6 + h + 0.7
+  for _, sx in ipairs({ -1, 1 }) do   -- 屋顶水箱（四条腿）
+    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(0.3, 2.2, 0.3), CF(-w * 0.22 + sx * 1.3, roofY + 1.1, -d * 0.18 + sz * 1.3), C.metal, MAT.Metal) end
+  end
+  cyl(m, base, 3, 3.6, CF(-w * 0.22, roofY + 3.7, -d * 0.18), RGB(120, 128, 132), MAT.Metal)
+  roofStuff(m, base, w, d, roofY, 2)
+  cyl(m, base, 6, 0.2, CF(w * 0.3, roofY + 3, -d * 0.3), C.metal, MAT.Metal)
+  block(m, base, V(5, 0.5, 1.6), CF(0, 0.85, -d / 2 - 2.6), RGB(170, 170, 166), MAT.Concrete)
+  for _, sx in ipairs({ -1, 1 }) do
+    block(m, base, V(2.2, 1, 2.2), CF(sx * 3.6, 1.1, -d / 2 - 1.6), RGB(130, 110, 90), MAT.Brick)
+    ghostly(block(m, base, V(1.8, 1.4, 1.8), CF(sx * 3.6, 2, -d / 2 - 1.6), RGB(70, 130, 60), MAT.Grass, BALL))
+  end
   return body
 end
 
@@ -321,6 +373,16 @@ local function factory(m, base, b)
     s.Parent = tip
   end
   block(m, base, V(3, 3, 3), CF(-w / 2 + 2, 0.6 + 1.5, -d / 2 - 3), C.olive, MAT.WoodPlanks)
+  for k = 0, 3 do   -- 卷帘门上方的黄黑警示条
+    block(m, base, V(w * 0.38 / 4, 0.5, 0.3), CF(-w * 0.15 - w * 0.19 + (k + 0.5) * w * 0.095, 0.6 + hh * 0.62 + 0.3, -d / 2 - 0.5), (k % 2 == 0) and C.yellow or C.dark)
+  end
+  for _, y in ipairs({ hh * 0.55, hh * 0.75 }) do   -- 东墙上的两根管道
+    cyl(m, base, d * 0.9, 0.7, CF(w / 2 + 0.5, 0.6 + y, 0) * CFrame.Angles(math.pi / 2, 0, 0), RGB(150, 152, 150), MAT.Metal)
+  end
+  block(m, base, V(w * 0.3, 1.2, 4), CF(w * 0.25, 0.6 + 0.6, -d / 2 - 2), RGB(120, 120, 116), MAT.Concrete)   -- 装卸台
+  for i = 1, 3 do block(m, base, V(1.8, 1.6, 1.8), CF(w * 0.25 + (i - 2) * 2.1, 0.6 + 2.0, -d / 2 - 1.8), RGB(150, 116, 74), MAT.WoodPlanks) end
+  roofStuff(m, base, w, d, 0.6 + hh + 0.6, 3)
+  facadeSign(m, base, CF(-w * 0.15, 0.6 + hh * 0.82, -d / 2 - 0.35), w * 0.36, 1.6, b.name, RGB(255, 214, 90))
   return body
 end
 
@@ -341,6 +403,19 @@ local function power(m, base, b)
   block(m, base, V(8, 8, d - 2), CF(w / 2 - 4.5, 0.6 + 4, 0), RGB(110, 120, 130), MAT.Metal)
   for k = -1, 1 do block(m, base, V(2, 2.4, 2), CF(w / 2 - 4.5, 0.6 + 9.2, k * 4), C.yellow, MAT.Metal) end
   anim(block(m, base, V(0.8, 0.8, 0.8), CF(w / 2 - 4.5, 0.6 + 11, 0), RGB(255, 220, 90), MAT.Neon), "blink", 2)
+  for _, sz in ipairs({ -1, 1 }) do   -- 变电站围栏
+    block(m, base, V(10, 2.4, 0.15), CF(w / 2 - 4.5, 0.6 + 1.2, sz * (d / 2 - 0.5)), RGB(120, 124, 126), MAT.DiamondPlate)
+  end
+  for _, px in ipairs({ -w / 2 - 6, w / 2 + 6 }) do   -- 高压电塔（两根斜腿 + 横担）
+    local c = CF(px, 0, -d / 2 - 4)
+    for _, s2 in ipairs({ -1, 1 }) do block(m, base, V(0.5, 20, 0.5), c * CF(s2 * 1.6, 0.6 + 10, 0) * CFrame.Angles(0, 0, s2 * -0.08), RGB(150, 150, 154), MAT.Metal) end
+    block(m, base, V(8, 0.5, 0.5), c * CF(0, 0.6 + 18, 0), RGB(150, 150, 154), MAT.Metal)
+    block(m, base, V(5, 0.4, 0.4), c * CF(0, 0.6 + 14, 0), RGB(150, 150, 154), MAT.Metal)
+  end
+  for _, dz in ipairs({ -0.4, 0, 0.4 }) do   -- 电线
+    ghostly(block(m, base, V(w + 12, 0.1, 0.1), CF(0, 0.6 + 17.8, -d / 2 - 4 + dz), RGB(40, 40, 40), MAT.Metal))
+  end
+  facadeSign(m, base, CF(w / 2 - 4.5, 0.6 + 5, -d / 2 + 0.85), 7, 1.4, "发电厂", RGB(255, 230, 120))
   return body
 end
 
@@ -355,6 +430,8 @@ local function bank(m, base, b)
   block(m, base, V(w, 2.4, d), CF(0, 1.2 + hb + 1.2, 0), RGB(225, 222, 212), MAT.Marble)
   block(m, base, V(w * 0.6, 3, d * 0.6), CF(0, 1.2 + hb + 3.9, 0), RGB(212, 175, 55), MAT.Metal)
   block(m, base, V(4, 6, 0.5), CF(0, 1.2 + 3, -d / 2 + 4.6), C.dark)
+  for k = 0, 2 do block(m, base, V(w * 0.6 - k * 1.2, 0.4, 1.4), CF(0, 0.2 + k * 0.4, -d / 2 - 1.8 + k * 0.7), RGB(226, 224, 216), MAT.Marble) end
+  facadeSign(m, base, CF(0, 1.2 + hb + 1.2, -d / 2 - 0.2), w * 0.55, 2, "银  行", RGB(255, 210, 90))
   return body
 end
 
@@ -368,6 +445,10 @@ local function barracks(m, base, b, team)
   flag(m, base, CF(w / 2 + 2, 0, d / 2 + 2), team)
   block(m, base, V(7, 1.8, 1.4), CF(-6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
   block(m, base, V(7, 1.8, 1.4), CF(6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
+  roofStuff(m, base, w, d, 0.6 + h + 0.8, 3)
+  ghostly(block(m, base, V(w, 0.06, 10), CF(0, 0.66, d / 2 + 11), RGB(110, 112, 104), MAT.SmoothPlastic))   -- 门前的小操场
+  for k = -2, 2 do ghostly(block(m, base, V(0.5, 0.08, 8), CF(k * 4, 0.7, d / 2 + 11), C.white, MAT.SmoothPlastic)) end
+  facadeSign(m, base, CF(0, 0.6 + h - 1.6, d / 2 + 0.35), 9, 1.6, "兵  营", RGB(255, 226, 140), Enum.NormalId.Back)
   return body
 end
 
@@ -383,6 +464,12 @@ local function hangar(m, base, b)
   for k = 0, 5 do
     block(m, base, V(seg, 0.8, 0.7), CF(-w * 0.31 + (k + 0.5) * seg, 0.6 + wall * 0.92 + 0.4, d / 2 + 0.2), (k % 2 == 0) and C.yellow or C.dark)
   end
+  for _, sx in ipairs({ -1, 1 }) do block(m, base, V(0.4, 4, 3), CF(sx * (w / 2 + 0.1), 0.6 + 2, -d * 0.2), C.dark, MAT.DiamondPlate) end
+  for k = -1, 1 do
+    local sky = block(m, base, V(2, 0.3, d * 0.7), CF(k * w * 0.2, 0.6 + wall + r * 0.52, 0) * CFrame.Angles(0, 0, -k * 0.35), C.glass, MAT.Glass)
+    sky.CastShadow = false
+  end
+  facadeSign(m, base, CF(0, 0.6 + wall + 2.2, d / 2 + 0.5), 12, 1.8, "装甲车厂", RGB(255, 214, 90), Enum.NormalId.Back)
   return body
 end
 
@@ -398,6 +485,9 @@ local function aaShop(m, base, b)
   for _, s in ipairs({ -1, 1 }) do
     block(m, base, V(0.3, 0.3, 4), CF(w / 4 + s * 0.7, 0.6 + hh + 2.4, 1.4) * CFrame.Angles(math.rad(-35), 0, 0), C.gun, MAT.Metal)
   end
+  block(m, base, V(3, 1, 3), CF(w / 2 + 4, 0.6 + 0.5, d * 0.2), C.oliveDark, MAT.Metal)   -- 门外的发射架
+  block(m, base, V(2.4, 2.2, 6), CF(w / 2 + 4, 0.6 + 3.2, d * 0.2) * CFrame.Angles(math.rad(-40), 0, 0), C.olive, MAT.Metal)
+  facadeSign(m, base, CF(0, 0.6 + hh - 1.2, d / 2 + 0.35), 10, 1.5, "防空车间", RGB(255, 214, 90), Enum.NormalId.Back)
   return body
 end
 
@@ -476,6 +566,13 @@ local function hq(m, base, b, team)
   anim(block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal), "spin", 0.25)
   flag(m, base, CF(-w / 2 - 2, 0, d / 2 + 2), team)
   block(m, base, V(5, 5, 0.6), CF(0, 0.6 + 2.5, d / 2 + 0.15), C.dark)
+  local top = 0.6 + h1 + h2
+  cyl(m, base, 2, 0.8, CF(-w * 0.12, top + 1, -d * 0.12), C.metal, MAT.Metal)
+  anim(block(m, base, V(0.6, 6, 6), CF(-w * 0.12, top + 4, -d * 0.12) * CFrame.Angles(0, 0, math.rad(55)), RGB(232, 232, 228), MAT.SmoothPlastic, CYL), "spin", 0.08)
+  for k = 0, 2 do cyl(m, base, 6 + k * 2, 0.15, CF(-w * 0.32 + k * 1.4, top + 3 + k, d * 0.18), C.metal, MAT.Metal) end
+  for _, sx in ipairs({ -1, 1 }) do cyl(m, base, 5, 0.9, CF(sx * 3.4, 0.6 + 2.5, d / 2 + 2.2), RGB(200, 200, 192), MAT.Concrete) end
+  block(m, base, V(9, 0.6, 3.4), CF(0, 0.6 + 5.2, d / 2 + 1.7), RGB(84, 92, 76), MAT.Concrete)
+  facadeSign(m, base, CF(0, 0.6 + h1 - 1.4, d / 2 + 0.35), 10, 1.6, "指 挥 部", RGB(255, 226, 140), Enum.NormalId.Back)
   return body
 end
 

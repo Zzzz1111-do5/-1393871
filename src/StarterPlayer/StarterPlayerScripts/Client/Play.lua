@@ -595,6 +595,9 @@ function Play.init(G)
       G.hitMarker(ev.k)
       G.playSound(ev.k and "kill" or "hit")
       if ev.k then onKill(ev) end
+    elseif ev.phase == "theater" then
+      G.announce("进入新战区：" .. tostring(ev.name), RGB(120, 220, 255), ev.desc, 3.2)
+      G.jingle("win")
     elseif ev.phase == "skill" then
       G.skillReady[ev.id] = os.clock() + (ev.cd or 0)
       G.playSound("buy")

@@ -374,6 +374,7 @@ end
 
 local function act(B, u, dt)
   local d = u.def
+  local range = d.range * (B.rangeK or 1)   -- 战区：巷战射程短
   u.cd = u.cd - dt
   salvoStep(B, u)
   if d.heal then healStep(B, u, dt) end
@@ -395,10 +396,10 @@ local function act(B, u, dt)
       if u.y <= 7 then dropTroops(B, u) end
     elseif tooClose then
       mx, mz = -dx, -dz            -- 火炮被贴近：往后退
-    elseif dist > d.range * 0.92 and not (u.hold and dist > d.range * 1.6) then
+    elseif dist > range * 0.92 and not (u.hold and dist > range * 1.6) then
       mx, mz = dx, dz              -- 够不着：往前走（守方等敌人走近了才出击）
     end
-    if dist <= d.range and not tooClose then
+    if dist <= range and not tooClose then
       inRange = true
       local err = 0
       if d.turret then
@@ -428,7 +429,7 @@ local function act(B, u, dt)
   u.vx, u.vz = 0, 0
   if mx ~= 0 or mz ~= 0 then
     local l = math.sqrt(mx * mx + mz * mz)
-    local sp = d.speed * dt
+    local sp = d.speed * dt * (d.air and 1 or (B.speedK or 1))   -- 战区：沙地、雪地走得慢
     local nx, nz = mx / l * sp, mz / l * sp
     u.x = u.x + nx
     u.z = u.z + nz
@@ -487,7 +488,7 @@ local function actJet(B, u, dt)
       fire(B, u, t, dist)
       u.cd = d.rate
     end
-  elseif dist <= d.range and err <= d.cone then
+  elseif dist <= d.range * (B.rangeK or 1) and err <= d.cone then
     fire(B, u, t, dist)
     u.cd = d.rate * (0.85 + math.random() * 0.3)
   end

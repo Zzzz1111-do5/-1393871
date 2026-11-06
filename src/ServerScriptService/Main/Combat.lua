@@ -371,6 +371,21 @@ function Combat.init(G)
     end
   end
 
+  -- 火山战区：隔一会儿在战场上随机一处先亮出红圈预警，再砸下几颗火山弹（敌我都伤）
+  local LAVA = { dmg = 110, splash = 22, vsArmor = 0.7, vsInf = 1.2, vsAir = 0, fxu = "lava" }
+  local function quakeStep(B, dt)
+    B.quakeT = (B.quakeT or B.quake * 0.6) - dt
+    if B.quakeT > 0 then return end
+    B.quakeT = B.quake * (0.8 + math.random() * 0.4)
+    local x = (math.random() - 0.5) * (F.width - 60)
+    local z = F.deploy[2] + math.random() * (F.enemy[1] - F.deploy[2])
+    local dm = 1 + (B.level or 41) * 0.05
+    G.fx({ k = "quake", p = B.origin + V(x, 1, z), s = 30 })
+    for i = 1, 3 do
+      Battle.strike(B, 0, LAVA, dm, x, z, 24, 1.6 + i * 0.35, "bomb", nil, B.origin + V(x + math.random(-120, 120), 300, z + math.random(-120, 120)))
+    end
+  end
+
   local finish, forceEnd
   local function begin(B, sides, title)
     for team, st in pairs(sides) do
@@ -398,6 +413,7 @@ function Combat.init(G)
           res = (bad > 40) and "timeout" or nil   -- 偶尔一步出错就跳过这一步；一直出错才收场
         end
         G.try("战斗：摆模型", placeAll, B)
+        if B.quake then G.try("战斗：火山弹", quakeStep, B, dt) end
         tickT = tickT + dt
         if tickT >= 0.5 then
           tickT = 0
@@ -588,6 +604,14 @@ function Combat.init(G)
         d.level = d.level + 1
         d.best = math.max(d.best, d.level)
         d.wins = (d.wins or 0) + 1
+        -- 打进新战区：战场整个换样子，过一会儿大字播报
+        local th = Config.TheaterOf(d.level)
+        if G.setTheater and G.setTheater(st, th) then
+          text = (text and (text .. "\n") or "") .. "解锁新战区：" .. th.name .. "！" .. th.desc
+          task.delay(3.5, function()
+            if G.states[st.pl] == st then RB:FireClient(st.pl, { phase = "theater", name = th.name, desc = th.desc }) end
+          end)
+        end
       end
     else   -- 突袭
       local opp = B.raid
@@ -674,6 +698,13 @@ function Combat.init(G)
     local B = newBattle("pve", st.plot.origin)
     B.level = st.data.level
     B.boss = Config.IsBoss(st.data.level)
+    -- 战区：速度、射程倍数，火山弹
+    local th = Config.TheaterOf(st.data.level)
+    if G.setTheater then G.setTheater(st, th) end
+    B.theater = th
+    B.speedK = th.speed or 1
+    B.rangeK = th.range or 1
+    B.quake = th.quake
     enlist(B, st, 1, false)
     local list = {}
     for _, e in ipairs(st.enemy) do table.insert(list, { t = e.t, x = e.x, z = e.z, model = e.model, root = e.root }) end

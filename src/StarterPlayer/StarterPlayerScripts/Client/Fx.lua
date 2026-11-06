@@ -182,6 +182,13 @@ function Fx.init(G)
       p = part(BALL, V(s, s, s), CFrame.new(a), RGB(255, 200, 120), Enum.Material.Neon, 0)
     elseif kind == "bomb" then
       p = part(nil, V(1.1, 1.1, 3.4), CFrame.new(a), RGB(62, 64, 60), Enum.Material.Metal, 0)
+    elseif kind == "lava" then   -- 火山弹：发光的熔岩块
+      p = part(BALL, V(3.4, 3.4, 3.4), CFrame.new(a), RGB(255, 110, 30), Enum.Material.Neon, 0)
+      local glow = Instance.new("PointLight")
+      glow.Color = RGB(255, 120, 40)
+      glow.Range = 22
+      glow.Brightness = 3
+      glow.Parent = p
     elseif kind == "missile" then
       p = part(nil, V(0.5, 0.5, 3), CFrame.new(a), RGB(236, 236, 230), Enum.Material.SmoothPlastic, 0)
       local glow = Instance.new("PointLight")
@@ -209,7 +216,7 @@ function Fx.init(G)
         f.track = nil
       end
     end
-    if f.kind == "bomb" then
+    if f.kind == "bomb" or f.kind == "lava" then
       local p = f.a:Lerp(b, k)
       return V(p.X, f.a.Y + (b.Y - f.a.Y) * k * k, p.Z)
     end
@@ -232,7 +239,7 @@ function Fx.init(G)
         local ahead = arcPos(f, math.min(1, k + 0.02))
         if (ahead - pos).Magnitude > 0.001 then f.p.CFrame = CFrame.lookAt(pos, ahead) else f.p.CFrame = CFrame.new(pos) end
         f.puff = f.puff + 1
-        if f.kind ~= "bomb" and f.puff % 2 == 0 then   -- 尾烟
+        if f.kind ~= "bomb" and f.puff % 2 == 0 then   -- 尾烟（火山弹拖着黑烟）
           local s = part(BALL, V(1.6, 1.6, 1.6), CFrame.new(pos), RGB(160, 156, 150), Enum.Material.SmoothPlastic, 0.4)
           tween(s, 1, { Size = V(5, 5, 5), Transparency = 1 })
           Debris:AddItem(s, 1.05)
@@ -474,7 +481,17 @@ function Fx.init(G)
           flash(e.a, 3)
           G.playSound("rocket", e.a)
         elseif e.k == "bomb" then
-          launch(e.a, e.b, e.t or 2, 0, "bomb", e.id)
+          launch(e.a, e.b, e.t or 2, 0, (e.u == "lava") and "lava" or "bomb", e.id)
+        elseif e.k == "quake" then   -- 火山弹预警：地上一圈红光闪几下
+          for i = 0, 2 do
+            task.delay(i * 0.45, function()
+              local r = part(CYL, V(0.3, (e.s or 30) * 2, (e.s or 30) * 2), CFrame.new(e.p.X, e.p.Y + 0.5, e.p.Z) * FLAT, RGB(255, 60, 30), Enum.Material.Neon, 0.35)
+              tween(r, 0.4, { Transparency = 1 })
+              Debris:AddItem(r, 0.45)
+            end)
+          end
+          G.playSound("alarm", e.p, 0.5)
+          G.shake(0.25)
         elseif e.k == "missile" then
           local f = launch(e.a, e.b, e.t or 1, (e.b - e.a).Magnitude * 0.06, "missile")
           local tr = e.bid and G.visByBid and G.visByBid(e.bid)

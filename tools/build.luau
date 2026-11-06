@@ -75,6 +75,14 @@ if not rs:FindFirstChild("UnitModels") then
 end
 local ws = game:GetService("Workspace")
 ws.StreamingEnabled = false
+-- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
+local L = game:GetService("Lighting")
+L.Technology = roblox.Enum.Technology.Future
+L.ClockTime = 14.6
+L.Brightness = 3
+L.GlobalShadows = true
+L.EnvironmentDiffuseScale = 1
+L.EnvironmentSpecularScale = 1
 
 -- Lune 把 Source 写成 <string>，Studio 认的是 <ProtectedString>：逐个改过来（CDATA 里的内容不动）
 local xml = roblox.serializePlace(game, true)

@@ -199,6 +199,7 @@ local function onPlayer(pl)
     G.econSetup(st)
     G.armySetup(st)
     G.makeEnemy(st)
+    if G.setTheater then G.setTheater(st, Config.TheaterOf(d.level)) end   -- 战场换成这个关卡所在的战区
   end)
   if not okSetup then bootError("给 " .. pl.Name .. " 准备基地", errSetup) end
   -- 离线收益：按在线的 OfflineRate 成，最多算 OfflineHours 小时

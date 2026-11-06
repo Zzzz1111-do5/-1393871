@@ -731,7 +731,8 @@ function UI.init(G)
     updateGoal()
     cashL.Text = "$" .. Config.Fmt(S.cash)
     incL.Text = "+" .. Config.Fmt(S.income) .. " / 秒"
-    lvL.Text = "第 " .. tostring(S.level) .. " 关" .. ((S.rebirth or 0) > 0 and ("   ★" .. S.rebirth) or "")
+    local th = Config.TheaterOf and Config.TheaterOf(S.level or 1)
+    lvL.Text = "第 " .. tostring(S.level) .. " 关" .. (th and ("  · " .. th.name) or "") .. ((S.rebirth or 0) > 0 and ("   ★" .. S.rebirth) or "")
     armyL.Text = "部队 " .. tostring(S.n) .. " / " .. tostring(S.cap) .. "    战力 ×" .. string.format("%.1f", S.power or 1)
     local parts = {}
     if S.enemy and S.enemy.boss then table.insert(parts, "首领×" .. S.enemy.boss) end
