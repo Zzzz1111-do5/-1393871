@@ -37,6 +37,27 @@
 - 屏幕上方出现红条，就是脚本出错了。把红条截图发给开发者。
 - 一出错的那一步会被跳过，游戏不会整个卡死。
 
+## 0.5 版新内容（地图大翻新）
+
+- 地形世界：
+  - 基地之间是起伏的山丘和树林，四周是带雪顶的大山。
+  - 基地后面一片湖，战场北边一条河，每个基地正北有一座木桥。
+- 光影：Future 光照、大气、体积云、泛光、调色、太阳光束。
+- 基地外围：
+  - 带铁丝网的围墙、四角哨塔（探照灯会扫）、北边大门（岗亭、栏杆、门楣）。
+  - 路灯、沙袋、物资堆、军用卡车、伪装网。
+  - 出生点挪到中轴大道上，一出生就面朝大门和战场。
+  - 自己基地里有巡逻兵和来回开的吉普车。
+- 楼房细节：阳台、屋顶水箱和空调、管道、装卸台、高压电塔，楼上有招牌（兵营、装甲车厂、指挥部……）。
+- 五个战区，每 10 关换一个，打掉首领就进下一个：
+  - 绿野。
+  - 沙漠：地面部队慢一成，奖励 +20%。
+  - 雪原：慢一成半，奖励 +40%。
+  - 城市废墟：射程短一成，奖励 +60%。
+  - 火山：隔十几秒有火山弹砸下来，敌我都伤，奖励 +80%。
+  - 每个战区的地面、两边地形、道具都不一样（战壕、铁丝网、拒马、残骸、机枪巢、废墟、棕榈、雪松、熔岩池……）。
+  - 进新战区有大字播报。两个约战竞技场分别是城市废墟和沙漠。
+
 ## 0.4 版新内容
 
 - 修卡死：
@@ -89,6 +110,7 @@ lune run units.luau ../../MilitaryTycoon.rbxlx
 lune run visual.luau ../../MilitaryTycoon.rbxlx
 lune run import_sim.luau ../../MilitaryTycoon.rbxlx ../../models/all_units.glb
 lune run import_sim.luau ../../MilitaryTycoon.rbxlx ../../models/all_units.glb flat
+lune run theaters.luau ../../MilitaryTycoon.rbxlx
 ```
 
 - `flow_old`：老功能走一遍（盖楼、造兵、开战、开枪、开车、突袭、约战、重生）。
@@ -96,5 +118,7 @@ lune run import_sim.luau ../../MilitaryTycoon.rbxlx ../../models/all_units.glb f
 - `units`：新兵种的机制。
 - `visual`：地图指引、建筑动画。
 - `import_sim`：模拟导入模型包。
+- `theaters`：战区（换战区、播报、速度射程倍数、火山弹、竞技场）。
+- `export_scene.luau <rbxlx> <输出.json>`：把场景导出成 JSON（零件、地形填充），可以用来做预览图。
 
 渲染、物理、Roblox 自带的镜头和角色控制模拟不了。上线前还是要在 Studio 里实际玩一遍。

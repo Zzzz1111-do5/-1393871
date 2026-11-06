@@ -121,8 +121,95 @@ function Anim.init(G)
     for _, p in ipairs(plots:GetChildren()) do task.spawn(onPlot, p) end
   end)
 
+  ---------------------------------------------------------------- 自己基地里的「人气」：两个巡逻兵沿大道、横路来回走，一辆吉普在横路上来回开（只在本地画）
+  local life = nil
+  local ROUTE = { { -10, -104 }, { -10, 50 }, { 42, 60 }, { 42, 118 }, { -62, 118 }, { -62, 60 }, { -10, 50 } }
+  local function soldierModel()
+    local parts = {}
+    local function add(size, off, color, shape)
+      local p = G.fxPart(shape, size, CFrame.new(), color, Enum.Material.SmoothPlastic, 0)
+      p.CastShadow = true
+      table.insert(parts, { p = p, off = off })
+      return p
+    end
+    add(V(1.0, 1.9, 0.6), CFrame.new(0, 0.95, 0), RGB(66, 74, 50))
+    add(V(1.3, 1.7, 0.75), CFrame.new(0, 2.7, 0), RGB(86, 96, 64))
+    add(V(0.8, 0.8, 0.8), CFrame.new(0, 3.95, 0), RGB(230, 188, 150))
+    add(V(1.05, 0.45, 1.05), CFrame.new(0, 4.45, 0), RGB(70, 80, 52))
+    add(V(0.18, 0.25, 2.0), CFrame.new(0.5, 2.8, -0.6), RGB(40, 40, 40))
+    return parts
+  end
+  local function jeepModel()
+    local parts = {}
+    local function add(size, off, color, mat)
+      local p = G.fxPart(nil, size, CFrame.new(), color, mat or Enum.Material.Metal, 0)
+      p.CastShadow = true
+      table.insert(parts, { p = p, off = off })
+    end
+    add(V(3.8, 1.6, 7.6), CFrame.new(0, 1.9, 0), RGB(86, 98, 66))
+    add(V(3.4, 1.4, 3.4), CFrame.new(0, 3.3, 0.6), RGB(76, 88, 58))
+    add(V(3.2, 0.8, 0.2), CFrame.new(0, 3.4, -1.2), RGB(80, 110, 130), Enum.Material.Glass)
+    for _, sx in ipairs({ -1.9, 1.9 }) do
+      for _, sz in ipairs({ -2.4, 2.4 }) do add(V(0.7, 1.8, 1.8), CFrame.new(sx, 0.9, sz), RGB(30, 30, 32), Enum.Material.SmoothPlastic) end
+    end
+    return parts
+  end
+  local function routeLen()
+    local L = 0
+    for i = 1, #ROUTE - 1 do
+      local a, b = ROUTE[i], ROUTE[i + 1]
+      L = L + math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+    end
+    return L
+  end
+  local RL = routeLen()
+  local function along(s)   -- 来回走：0..RL 再走回去
+    s = s % (RL * 2)
+    local back = s > RL
+    if back then s = RL * 2 - s end
+    for i = 1, #ROUTE - 1 do
+      local a, b = ROUTE[i], ROUTE[i + 1]
+      local l = math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+      if s <= l then
+        local k = s / l
+        local dx, dz = b[1] - a[1], b[2] - a[2]
+        if back then dx, dz = -dx, -dz end
+        return a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, dx, dz
+      end
+      s = s - l
+    end
+    local e = ROUTE[#ROUTE]
+    return e[1], e[2], 0, 1
+  end
+  local function place(parts, cf)
+    for _, q in ipairs(parts) do q.p.CFrame = cf * q.off end
+  end
+  local function stepLife(dt, now)
+    local S = G.S
+    if not (S and S.origin) then return end
+    if not life then
+      life = { soldiers = { soldierModel(), soldierModel() }, jeep = jeepModel(), t = 0 }
+    end
+    life.t = life.t + dt
+    local o = S.origin
+    for i, sm in ipairs(life.soldiers) do
+      local x, z, dx, dz = along(life.t * 5 + i * RL * 0.6)
+      local bob = math.abs(math.sin((life.t + i) * 9)) * 0.25
+      local p = o + V(x + (i == 1 and -1.5 or 1.5), 1 + bob, z)
+      place(sm, CFrame.lookAt(p, p + V(dx, 0, dz)))
+    end
+    -- 吉普：横路上从西到东再开回来
+    local span = 230
+    local s = (life.t * 14) % (span * 2)
+    local jx = (s < span) and (-115 + s) or (-115 + span * 2 - s)
+    local dir = (s < span) and 1 or -1
+    local jp = o + V(jx, 1, 60 + dir * 5)
+    place(life.jeep, CFrame.lookAt(jp, jp + V(dir, 0, 0)))
+  end
+
   local t, ringT = 0, 0
   function G.stepAnim(dt)
+    stepLife(dt)
     t = t + dt
     ringT = ringT + dt
     local cp = cam.CFrame.Position

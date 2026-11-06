@@ -209,7 +209,7 @@ function Models.plot(f, origin, color, index)
   anchor.Transparency = 1
   local _, label = Models.sign(anchor, "空基地", 70, 100, 13, color, 1600)
   -- 排行榜牌子（出生点后面的墙上，朝出生点）
-  local board = block(f, base, V(54, 22, 1), CF(0, 14, -hs + 2), RGB(24, 28, 34), MAT.SmoothPlastic)
+  local board = block(f, base, V(54, 22, 1), CF(0, 14, -hs + 2), RGB(36, 42, 52), MAT.SmoothPlastic)
   board.Name = "Board"
   block(f, base, V(57, 1.4, 1.6), CF(0, 25.7, -hs + 2), RGB(60, 64, 70), MAT.Metal)
   block(f, base, V(57, 1.4, 1.6), CF(0, 2.3, -hs + 2), RGB(60, 64, 70), MAT.Metal)

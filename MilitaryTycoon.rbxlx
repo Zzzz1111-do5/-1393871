@@ -10,7 +10,7 @@
 -- 数值都在这里调：建筑、兵种、关卡敌军、武器、军衔、重生、每日奖励与任务、突袭与约战、战场支援、老兵、补给空投
 local Config = {}
 
-Config.Version = "0.4"
+Config.Version = "0.5"
 Config.SaveKey = "MilitaryTycoon_v1"   -- DataStore 名字（改了就是新存档）
 Config.StartCash = 300
 Config.BaseCap = 4                     -- 没有指挥部时最多几个单位
@@ -23,7 +23,7 @@ Config.BaseSize = 260                  -- 基地边长
 Config.Field = { center = 570, width = 520, length = 820, deploy = { 170, 330 }, enemy = { 810, 970 } }
 -- 约战竞技场：和战场一样大小，摆在所有基地的战场后面（原点 z = Arena.z），挑战方在南边（部署区），应战方在北边（敌军区）
 Config.Arena = { z = 1300, xs = { -450, 450 } }
-Config.Spawn = { x = 0, z = -120 }     -- 出生点（基地里，相对基地中心）
+Config.Spawn = { x = -10, z = -118 }   -- 出生点（基地里，相对基地中心）：在中轴大道南头，面朝大门和战场
 Config.BattleTime = 240                -- 一场最多几秒，到时算没打赢（活着的照样回来）
 Config.Tick = 0.05                     -- 战斗推演步长（秒）
 Config.MaxEnemy = 40                   -- 敌军最多几个单位；预算再多就加强属性
@@ -282,10 +282,25 @@ end
 function Config.IsBoss(level)
   return level % 10 == 0
 end
+-- 战区：每 10 关换一个（打掉首领就进下一个），地面、两边的地形、道具都换；奖励加成 reward，speed 地面部队速度倍数，range 射程倍数，quake 每几秒一次火山弹
+Config.Theaters = {
+  { id = "grass", lv = 1, name = "绿野战区", reward = 0, desc = "开阔的田野和农舍废墟" },
+  { id = "desert", lv = 11, name = "沙漠战区", reward = 0.2, speed = 0.9, desc = "沙地难走：地面部队慢一成；奖励 +20%" },
+  { id = "snow", lv = 21, name = "雪原战区", reward = 0.4, speed = 0.85, desc = "积雪很深：地面部队慢一成半；奖励 +40%" },
+  { id = "urban", lv = 31, name = "城市废墟", reward = 0.6, range = 0.88, desc = "巷战：大家射程短一成；奖励 +60%" },
+  { id = "volcano", lv = 41, name = "火山战区", reward = 0.8, quake = 14, desc = "每隔十几秒有火山弹砸下来，敌我都伤；奖励 +80%" },
+}
+function Config.TheaterOf(level)
+  local t = Config.Theaters[1]
+  for _, th in ipairs(Config.Theaters) do
+    if level >= th.lv then t = th end
+  end
+  return t
+end
 function Config.Reward(level)
   local r = math.floor(Config.EnemyBudget(level) * 0.9 + 100 * level)
   if Config.IsBoss(level) then r = r * 2 end
-  return r
+  return math.floor(r * (1 + (Config.TheaterOf(level).reward or 0)))
 end
 
 -- 查表：建筑 id → 建筑；兵种 → 生产它的建筑 id
@@ -542,6 +557,7 @@ local function onPlayer(pl)
     G.econSetup(st)
     G.armySetup(st)
     G.makeEnemy(st)
+    if G.setTheater then G.setTheater(st, Config.TheaterOf(d.level)) end   -- 战场换成这个关卡所在的战区
   end)
   if not okSetup then bootError("给 " .. pl.Name .. " 准备基地", errSetup) end
   -- 离线收益：按在线的 OfflineRate 成，最多算 OfflineHours 小时
@@ -1436,6 +1452,7 @@ end
 
 local function act(B, u, dt)
   local d = u.def
+  local range = d.range * (B.rangeK or 1)   -- 战区：巷战射程短
   u.cd = u.cd - dt
   salvoStep(B, u)
   if d.heal then healStep(B, u, dt) end
@@ -1457,10 +1474,10 @@ local function act(B, u, dt)
       if u.y <= 7 then dropTroops(B, u) end
     elseif tooClose then
       mx, mz = -dx, -dz            -- 火炮被贴近：往后退
-    elseif dist > d.range * 0.92 and not (u.hold and dist > d.range * 1.6) then
+    elseif dist > range * 0.92 and not (u.hold and dist > range * 1.6) then
       mx, mz = dx, dz              -- 够不着：往前走（守方等敌人走近了才出击）
     end
-    if dist <= d.range and not tooClose then
+    if dist <= range and not tooClose then
       inRange = true
       local err = 0
       if d.turret then
@@ -1490,7 +1507,7 @@ local function act(B, u, dt)
   u.vx, u.vz = 0, 0
   if mx ~= 0 or mz ~= 0 then
     local l = math.sqrt(mx * mx + mz * mz)
-    local sp = d.speed * dt
+    local sp = d.speed * dt * (d.air and 1 or (B.speedK or 1))   -- 战区：沙地、雪地走得慢
     local nx, nz = mx / l * sp, mz / l * sp
     u.x = u.x + nx
     u.z = u.z + nz
@@ -1549,7 +1566,7 @@ local function actJet(B, u, dt)
       fire(B, u, t, dist)
       u.cd = d.rate
     end
-  elseif dist <= d.range and err <= d.cone then
+  elseif dist <= d.range * (B.rangeK or 1) and err <= d.cone then
     fire(B, u, t, dist)
     u.cd = d.rate * (0.85 + math.random() * 0.3)
   end
@@ -2155,6 +2172,21 @@ function Combat.init(G)
     end
   end
 
+  -- 火山战区：隔一会儿在战场上随机一处先亮出红圈预警，再砸下几颗火山弹（敌我都伤）
+  local LAVA = { dmg = 110, splash = 22, vsArmor = 0.7, vsInf = 1.2, vsAir = 0, fxu = "lava" }
+  local function quakeStep(B, dt)
+    B.quakeT = (B.quakeT or B.quake * 0.6) - dt
+    if B.quakeT > 0 then return end
+    B.quakeT = B.quake * (0.8 + math.random() * 0.4)
+    local x = (math.random() - 0.5) * (F.width - 60)
+    local z = F.deploy[2] + math.random() * (F.enemy[1] - F.deploy[2])
+    local dm = 1 + (B.level or 41) * 0.05
+    G.fx({ k = "quake", p = B.origin + V(x, 1, z), s = 30 })
+    for i = 1, 3 do
+      Battle.strike(B, 0, LAVA, dm, x, z, 24, 1.6 + i * 0.35, "bomb", nil, B.origin + V(x + math.random(-120, 120), 300, z + math.random(-120, 120)))
+    end
+  end
+
   local finish, forceEnd
   local function begin(B, sides, title)
     for team, st in pairs(sides) do
@@ -2182,6 +2214,7 @@ function Combat.init(G)
           res = (bad > 40) and "timeout" or nil   -- 偶尔一步出错就跳过这一步；一直出错才收场
         end
         G.try("战斗：摆模型", placeAll, B)
+        if B.quake then G.try("战斗：火山弹", quakeStep, B, dt) end
         tickT = tickT + dt
         if tickT >= 0.5 then
           tickT = 0
@@ -2372,6 +2405,14 @@ function Combat.init(G)
         d.level = d.level + 1
         d.best = math.max(d.best, d.level)
         d.wins = (d.wins or 0) + 1
+        -- 打进新战区：战场整个换样子，过一会儿大字播报
+        local th = Config.TheaterOf(d.level)
+        if G.setTheater and G.setTheater(st, th) then
+          text = (text and (text .. "\n") or "") .. "解锁新战区：" .. th.name .. "！" .. th.desc
+          task.delay(3.5, function()
+            if G.states[st.pl] == st then RB:FireClient(st.pl, { phase = "theater", name = th.name, desc = th.desc }) end
+          end)
+        end
       end
     else   -- 突袭
       local opp = B.raid
@@ -2458,6 +2499,13 @@ function Combat.init(G)
     local B = newBattle("pve", st.plot.origin)
     B.level = st.data.level
     B.boss = Config.IsBoss(st.data.level)
+    -- 战区：速度、射程倍数，火山弹
+    local th = Config.TheaterOf(st.data.level)
+    if G.setTheater then G.setTheater(st, th) end
+    B.theater = th
+    B.speedK = th.speed or 1
+    B.rangeK = th.range or 1
+    B.quake = th.quake
     enlist(B, st, 1, false)
     local list = {}
     for _, e in ipairs(st.enemy) do table.insert(list, { t = e.t, x = e.x, z = e.z, model = e.model, root = e.root }) end
@@ -3584,12 +3632,17 @@ local function battlefield(f, origin, colorA, colorB, rng, labels)
   field.Name = "Field"
   local dz = ghostly(block(f, base, V(Fd.width - 6, 0.1, D[2] - D[1]), CF(0, 1.06, (D[1] + D[2]) / 2), colorA, MAT.SmoothPlastic))
   dz.Name = "DeployZone"
-  dz.Transparency = 0.72
+  dz.Transparency = 0.86
   local ez = ghostly(block(f, base, V(Fd.width - 6, 0.1, E[2] - E[1]), CF(0, 1.06, (E[1] + E[2]) / 2), colorB, MAT.SmoothPlastic))
   ez.Name = "EnemyZone"
-  ez.Transparency = 0.75
-  ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, D[2]), colorA, MAT.Neon))
-  ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, E[1]), colorB, MAT.Neon))
+  ez.Transparency = 0.88
+  -- 两个区的四条边：发光的边框
+  for _, zone in ipairs({ { D, colorA }, { E, colorB } }) do
+    local z0, z1, col = zone[1][1], zone[1][2], zone[2]
+    ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, z0), col, MAT.Neon))
+    ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, z1), col, MAT.Neon))
+    for _, sx in ipairs({ -1, 1 }) do ghostly(block(f, base, V(0.8, 0.12, z1 - z0), CF(sx * (Fd.width / 2 - 3), 1.08, (z0 + z1) / 2), col, MAT.Neon)) end
+  end
   if labels then
     zoneLabel(f, base, CF(0, 16, (D[1] + D[2]) / 2), labels[1], colorA:Lerp(Color3.new(1, 1, 1), 0.45))
     zoneLabel(f, base, CF(0, 16, (E[1] + E[2]) / 2), labels[2], RGB(255, 150, 140))
@@ -3618,15 +3671,16 @@ function Models.plot(f, origin, color, index)
   local Fd = Config.Field
   local rng = Random.new(index * 97 + 13)
 
+  local S0 = Config.Spawn
   local slab = block(f, base, V(B, 1, B), CF(0, 0.5, 0), RGB(146, 148, 146), MAT.Concrete)
   slab.Name = "Base"
+  -- 中轴大道：出生点往北一直通到横路（出生就能顺着它看到大门、战场）
+  ghostly(block(f, base, V(22, 0.08, 60 - 14 - (S0.z - 6)), CF(S0.x, 1.04, (60 - 14 + S0.z - 6) / 2), RGB(92, 94, 96), MAT.Asphalt))
+  for k = 0, 9 do ghostly(block(f, base, V(0.6, 0.06, 6), CF(S0.x, 1.09, S0.z + 12 + k * 16), C.white, MAT.SmoothPlastic)) end
   -- 部队开出去的通道（深色）：横穿 z = 60，再从中间往前到路上
   ghostly(block(f, base, V(B - 12, 0.08, 28), CF(0, 1.04, 60), RGB(92, 94, 96), MAT.Asphalt))
   ghostly(block(f, base, V(120, 0.08, hs - 60), CF(-10, 1.04, (hs + 60) / 2), RGB(92, 94, 96), MAT.Asphalt))
-  -- 围墙：后面和两边，前面敞开对着战场
-  block(f, base, V(B, 4, 1.5), CF(0, 3, -hs + 0.75), RGB(120, 122, 118), MAT.Concrete)
-  block(f, base, V(1.5, 4, B), CF(-hs + 0.75, 3, 0), RGB(120, 122, 118), MAT.Concrete)
-  block(f, base, V(1.5, 4, B), CF(hs - 0.75, 3, 0), RGB(120, 122, 118), MAT.Concrete)
+  -- 围墙、哨塔、大门在 Scenery.base 里
   -- 出生点
   local S = Config.Spawn
   cyl(f, base, 0.3, 12, CF(S.x, 1.15, S.z), color, MAT.SmoothPlastic)
@@ -3660,23 +3714,18 @@ function Models.plot(f, origin, color, index)
     t.Text = "↑ 战场、部署区（往前走过马路）\n← 空军基地（左边围墙外）\n踩亮绿色的圆按钮盖楼"
     t.Parent = sg
   end
-  -- 树：基地右边的空地（空军基地再往右；第一块基地左边也种）
-  local sides = { 1 }
-  if index == 1 then sides = { 1, -1 } end
-  for _, sd in ipairs(sides) do
-    for _ = 1, 34 do
-      local x = sd * rng:NextNumber(hs + 140, Config.PlotSpacing - Fd.width / 2 - 20)
-      local z = rng:NextNumber(-hs + 5, Fd.center + Fd.length / 2)
-      tree(f, origin + V(x, 0, z), rng)
-    end
-  end
+  -- 树林在 Scenery.nature 里（长在基地之间的山丘上）
   -- 头顶的名字
   local anchor = ghostly(block(f, base, V(1, 1, 1), CF(0, 2, -20), C.white))
   anchor.Transparency = 1
   local _, label = Models.sign(anchor, "空基地", 70, 100, 13, color, 1600)
   -- 排行榜牌子（出生点后面的墙上，朝出生点）
-  local board = block(f, base, V(54, 22, 1), CF(0, 14, -hs + 2), RGB(24, 28, 34), MAT.SmoothPlastic)
+  local board = block(f, base, V(54, 22, 1), CF(0, 14, -hs + 2), RGB(36, 42, 52), MAT.SmoothPlastic)
   board.Name = "Board"
+  block(f, base, V(57, 1.4, 1.6), CF(0, 25.7, -hs + 2), RGB(60, 64, 70), MAT.Metal)
+  block(f, base, V(57, 1.4, 1.6), CF(0, 2.3, -hs + 2), RGB(60, 64, 70), MAT.Metal)
+  for _, sx in ipairs({ -1, 1 }) do block(f, base, V(1.6, 25, 1.6), CF(sx * 28, 13.5, -hs + 2), RGB(60, 64, 70), MAT.Metal) end
+  ghostly(block(f, base, V(54, 0.4, 0.5), CF(0, 26.6, -hs + 1.6), color, MAT.Neon))
   local sg = Instance.new("SurfaceGui")
   sg.Face = Enum.NormalId.Back
   sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -3739,6 +3788,36 @@ local function slabUnder(m, base, w, d, color, mat)
   block(m, base, V(w + 3, 0.6, d + 3), CF(0, 0.3, 0), color or C.concrete, mat or MAT.Concrete)
 end
 
+-- 楼面上的招牌：一块板子 + 发光的字（face 是板子哪一面朝外）
+local function facadeSign(m, base, cf, w, h, text, color, face)
+  local board = block(m, base, V(w, h, 0.3), cf, RGB(28, 32, 38), MAT.SmoothPlastic)
+  board.CastShadow = false
+  local sg = Instance.new("SurfaceGui")
+  sg.Face = face or Enum.NormalId.Front
+  sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  sg.PixelsPerStud = 30
+  sg.LightInfluence = 0
+  sg.Parent = board
+  local t = Instance.new("TextLabel")
+  t.Size = UDim2.fromScale(1, 1)
+  t.BackgroundTransparency = 1
+  t.Font = Enum.Font.GothamBlack
+  t.TextScaled = true
+  t.TextColor3 = color or RGB(255, 214, 90)
+  t.Text = text
+  t.Parent = sg
+  return board
+end
+-- 屋顶的空调外机、通风口
+local function roofStuff(m, base, w, d, y, n)
+  for i = 1, n do
+    local x = (i - (n + 1) / 2) * (w / (n + 1)) + ((i % 2 == 0) and 1.2 or -1.2)
+    local z = ((i % 2 == 0) and 1 or -1) * d * 0.22
+    block(m, base, V(2.4, 1.4, 1.8), CF(x, y + 0.7, z), RGB(190, 192, 190), MAT.Metal)
+    ghostly(cyl(m, base, 0.1, 1.2, CF(x, y + 1.42, z), RGB(60, 60, 62), MAT.Metal))
+  end
+end
+
 local function flag(m, base, at, color)
   cyl(m, base, 18, 0.4, at * CF(0, 0.6 + 9, 0), C.metal, MAT.Metal)
   block(m, base, V(0.15, 3, 5), at * CF(0, 0.6 + 16.4, 2.6), color, MAT.Fabric)
@@ -3756,6 +3835,27 @@ local function house(m, base, b)
   block(m, base, V(w * 0.3, 1.8, d * 0.3), CF(w * 0.2, 0.6 + h + 1.6, d * 0.15), C.metal, MAT.Metal)
   block(m, base, V(3.2, 4.4, 0.6), CF(0, 0.6 + 2.2, -d / 2 - 0.2), C.dark)
   block(m, base, V(w * 0.5, 0.4, 2.4), CF(0, 0.6 + 4.7, -d / 2 - 1.2), C.roof)
+  for k = 1, math.floor(h / 4) - 1 do   -- 东边一层一个阳台
+    local y = 0.6 + k * 4
+    block(m, base, V(2.2, 0.35, d * 0.5), CF(w / 2 + 1.1, y, 0), RGB(200, 200, 196), MAT.Concrete)
+    local rail = block(m, base, V(0.2, 1.1, d * 0.5), CF(w / 2 + 2.1, y + 0.7, 0), RGB(150, 190, 210), MAT.Glass)
+    rail.Transparency = 0.4
+  end
+  for _, sx in ipairs({ -1, 1 }) do   -- 四角的竖线条
+    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(0.8, h, 0.8), CF(sx * (w / 2 + 0.1), 0.6 + h / 2, sz * (d / 2 + 0.1)), (HOUSE[b.id] or C.white):Lerp(C.dark, 0.25), MAT.SmoothPlastic) end
+  end
+  local roofY = 0.6 + h + 0.7
+  for _, sx in ipairs({ -1, 1 }) do   -- 屋顶水箱（四条腿）
+    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(0.3, 2.2, 0.3), CF(-w * 0.22 + sx * 1.3, roofY + 1.1, -d * 0.18 + sz * 1.3), C.metal, MAT.Metal) end
+  end
+  cyl(m, base, 3, 3.6, CF(-w * 0.22, roofY + 3.7, -d * 0.18), RGB(120, 128, 132), MAT.Metal)
+  roofStuff(m, base, w, d, roofY, 2)
+  cyl(m, base, 6, 0.2, CF(w * 0.3, roofY + 3, -d * 0.3), C.metal, MAT.Metal)
+  block(m, base, V(5, 0.5, 1.6), CF(0, 0.85, -d / 2 - 2.6), RGB(170, 170, 166), MAT.Concrete)
+  for _, sx in ipairs({ -1, 1 }) do
+    block(m, base, V(2.2, 1, 2.2), CF(sx * 3.6, 1.1, -d / 2 - 1.6), RGB(130, 110, 90), MAT.Brick)
+    ghostly(block(m, base, V(1.8, 1.4, 1.8), CF(sx * 3.6, 2, -d / 2 - 1.6), RGB(70, 130, 60), MAT.Grass, BALL))
+  end
   return body
 end
 
@@ -3784,6 +3884,16 @@ local function factory(m, base, b)
     s.Parent = tip
   end
   block(m, base, V(3, 3, 3), CF(-w / 2 + 2, 0.6 + 1.5, -d / 2 - 3), C.olive, MAT.WoodPlanks)
+  for k = 0, 3 do   -- 卷帘门上方的黄黑警示条
+    block(m, base, V(w * 0.38 / 4, 0.5, 0.3), CF(-w * 0.15 - w * 0.19 + (k + 0.5) * w * 0.095, 0.6 + hh * 0.62 + 0.3, -d / 2 - 0.5), (k % 2 == 0) and C.yellow or C.dark)
+  end
+  for _, y in ipairs({ hh * 0.55, hh * 0.75 }) do   -- 东墙上的两根管道
+    cyl(m, base, d * 0.9, 0.7, CF(w / 2 + 0.5, 0.6 + y, 0) * CFrame.Angles(math.pi / 2, 0, 0), RGB(150, 152, 150), MAT.Metal)
+  end
+  block(m, base, V(w * 0.3, 1.2, 4), CF(w * 0.25, 0.6 + 0.6, -d / 2 - 2), RGB(120, 120, 116), MAT.Concrete)   -- 装卸台
+  for i = 1, 3 do block(m, base, V(1.8, 1.6, 1.8), CF(w * 0.25 + (i - 2) * 2.1, 0.6 + 2.0, -d / 2 - 1.8), RGB(150, 116, 74), MAT.WoodPlanks) end
+  roofStuff(m, base, w, d, 0.6 + hh + 0.6, 3)
+  facadeSign(m, base, CF(-w * 0.15, 0.6 + hh * 0.82, -d / 2 - 0.35), w * 0.36, 1.6, b.name, RGB(255, 214, 90))
   return body
 end
 
@@ -3804,6 +3914,19 @@ local function power(m, base, b)
   block(m, base, V(8, 8, d - 2), CF(w / 2 - 4.5, 0.6 + 4, 0), RGB(110, 120, 130), MAT.Metal)
   for k = -1, 1 do block(m, base, V(2, 2.4, 2), CF(w / 2 - 4.5, 0.6 + 9.2, k * 4), C.yellow, MAT.Metal) end
   anim(block(m, base, V(0.8, 0.8, 0.8), CF(w / 2 - 4.5, 0.6 + 11, 0), RGB(255, 220, 90), MAT.Neon), "blink", 2)
+  for _, sz in ipairs({ -1, 1 }) do   -- 变电站围栏
+    block(m, base, V(10, 2.4, 0.15), CF(w / 2 - 4.5, 0.6 + 1.2, sz * (d / 2 - 0.5)), RGB(120, 124, 126), MAT.DiamondPlate)
+  end
+  for _, px in ipairs({ -w / 2 - 6, w / 2 + 6 }) do   -- 高压电塔（两根斜腿 + 横担）
+    local c = CF(px, 0, -d / 2 - 4)
+    for _, s2 in ipairs({ -1, 1 }) do block(m, base, V(0.5, 20, 0.5), c * CF(s2 * 1.6, 0.6 + 10, 0) * CFrame.Angles(0, 0, s2 * -0.08), RGB(150, 150, 154), MAT.Metal) end
+    block(m, base, V(8, 0.5, 0.5), c * CF(0, 0.6 + 18, 0), RGB(150, 150, 154), MAT.Metal)
+    block(m, base, V(5, 0.4, 0.4), c * CF(0, 0.6 + 14, 0), RGB(150, 150, 154), MAT.Metal)
+  end
+  for _, dz in ipairs({ -0.4, 0, 0.4 }) do   -- 电线
+    ghostly(block(m, base, V(w + 12, 0.1, 0.1), CF(0, 0.6 + 17.8, -d / 2 - 4 + dz), RGB(40, 40, 40), MAT.Metal))
+  end
+  facadeSign(m, base, CF(w / 2 - 4.5, 0.6 + 5, -d / 2 + 0.85), 7, 1.4, "发电厂", RGB(255, 230, 120))
   return body
 end
 
@@ -3818,6 +3941,8 @@ local function bank(m, base, b)
   block(m, base, V(w, 2.4, d), CF(0, 1.2 + hb + 1.2, 0), RGB(225, 222, 212), MAT.Marble)
   block(m, base, V(w * 0.6, 3, d * 0.6), CF(0, 1.2 + hb + 3.9, 0), RGB(212, 175, 55), MAT.Metal)
   block(m, base, V(4, 6, 0.5), CF(0, 1.2 + 3, -d / 2 + 4.6), C.dark)
+  for k = 0, 2 do block(m, base, V(w * 0.6 - k * 1.2, 0.4, 1.4), CF(0, 0.2 + k * 0.4, -d / 2 - 1.8 + k * 0.7), RGB(226, 224, 216), MAT.Marble) end
+  facadeSign(m, base, CF(0, 1.2 + hb + 1.2, -d / 2 - 0.2), w * 0.55, 2, "银  行", RGB(255, 210, 90))
   return body
 end
 
@@ -3831,6 +3956,10 @@ local function barracks(m, base, b, team)
   flag(m, base, CF(w / 2 + 2, 0, d / 2 + 2), team)
   block(m, base, V(7, 1.8, 1.4), CF(-6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
   block(m, base, V(7, 1.8, 1.4), CF(6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
+  roofStuff(m, base, w, d, 0.6 + h + 0.8, 3)
+  ghostly(block(m, base, V(w, 0.06, 10), CF(0, 0.66, d / 2 + 11), RGB(110, 112, 104), MAT.SmoothPlastic))   -- 门前的小操场
+  for k = -2, 2 do ghostly(block(m, base, V(0.5, 0.08, 8), CF(k * 4, 0.7, d / 2 + 11), C.white, MAT.SmoothPlastic)) end
+  facadeSign(m, base, CF(0, 0.6 + h - 1.6, d / 2 + 0.35), 9, 1.6, "兵  营", RGB(255, 226, 140), Enum.NormalId.Back)
   return body
 end
 
@@ -3846,6 +3975,12 @@ local function hangar(m, base, b)
   for k = 0, 5 do
     block(m, base, V(seg, 0.8, 0.7), CF(-w * 0.31 + (k + 0.5) * seg, 0.6 + wall * 0.92 + 0.4, d / 2 + 0.2), (k % 2 == 0) and C.yellow or C.dark)
   end
+  for _, sx in ipairs({ -1, 1 }) do block(m, base, V(0.4, 4, 3), CF(sx * (w / 2 + 0.1), 0.6 + 2, -d * 0.2), C.dark, MAT.DiamondPlate) end
+  for k = -1, 1 do
+    local sky = block(m, base, V(2, 0.3, d * 0.7), CF(k * w * 0.2, 0.6 + wall + r * 0.52, 0) * CFrame.Angles(0, 0, -k * 0.35), C.glass, MAT.Glass)
+    sky.CastShadow = false
+  end
+  facadeSign(m, base, CF(0, 0.6 + wall + 2.2, d / 2 + 0.5), 12, 1.8, "装甲车厂", RGB(255, 214, 90), Enum.NormalId.Back)
   return body
 end
 
@@ -3861,6 +3996,9 @@ local function aaShop(m, base, b)
   for _, s in ipairs({ -1, 1 }) do
     block(m, base, V(0.3, 0.3, 4), CF(w / 4 + s * 0.7, 0.6 + hh + 2.4, 1.4) * CFrame.Angles(math.rad(-35), 0, 0), C.gun, MAT.Metal)
   end
+  block(m, base, V(3, 1, 3), CF(w / 2 + 4, 0.6 + 0.5, d * 0.2), C.oliveDark, MAT.Metal)   -- 门外的发射架
+  block(m, base, V(2.4, 2.2, 6), CF(w / 2 + 4, 0.6 + 3.2, d * 0.2) * CFrame.Angles(math.rad(-40), 0, 0), C.olive, MAT.Metal)
+  facadeSign(m, base, CF(0, 0.6 + hh - 1.2, d / 2 + 0.35), 10, 1.5, "防空车间", RGB(255, 214, 90), Enum.NormalId.Back)
   return body
 end
 
@@ -3939,6 +4077,13 @@ local function hq(m, base, b, team)
   anim(block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal), "spin", 0.25)
   flag(m, base, CF(-w / 2 - 2, 0, d / 2 + 2), team)
   block(m, base, V(5, 5, 0.6), CF(0, 0.6 + 2.5, d / 2 + 0.15), C.dark)
+  local top = 0.6 + h1 + h2
+  cyl(m, base, 2, 0.8, CF(-w * 0.12, top + 1, -d * 0.12), C.metal, MAT.Metal)
+  anim(block(m, base, V(0.6, 6, 6), CF(-w * 0.12, top + 4, -d * 0.12) * CFrame.Angles(0, 0, math.rad(55)), RGB(232, 232, 228), MAT.SmoothPlastic, CYL), "spin", 0.08)
+  for k = 0, 2 do cyl(m, base, 6 + k * 2, 0.15, CF(-w * 0.32 + k * 1.4, top + 3 + k, d * 0.18), C.metal, MAT.Metal) end
+  for _, sx in ipairs({ -1, 1 }) do cyl(m, base, 5, 0.9, CF(sx * 3.4, 0.6 + 2.5, d / 2 + 2.2), RGB(200, 200, 192), MAT.Concrete) end
+  block(m, base, V(9, 0.6, 3.4), CF(0, 0.6 + 5.2, d / 2 + 1.7), RGB(84, 92, 76), MAT.Concrete)
+  facadeSign(m, base, CF(0, 0.6 + h1 - 1.4, d / 2 + 0.35), 10, 1.6, "指 挥 部", RGB(255, 226, 140), Enum.NormalId.Back)
   return body
 end
 
@@ -4785,6 +4930,745 @@ return Models
       </Item>
       <Item class="ModuleScript" referent="12">
         <Properties>
+          <string name="Name">Scenery</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：场景——光影、地形世界（起伏的山丘和树林、四周的雪山、基地后面的湖、战场北边的河和桥）、
+-- 基地外围（带立柱和铁丝网的围墙、四角哨塔和探照灯、北门岗亭和栏杆、路灯、沙袋、物资堆、停着的卡车）、
+-- 战场战区（绿野、沙漠、雪原、城市废墟、火山：地面材质、两边地形、主题道具，换战区时整个重摆）
+-- 都是锚定的静态零件和地形；小装饰不挡人、不挡射线、不投影，省性能
+local Lighting = game:GetService("Lighting")
+
+local Scenery = {}
+
+local V = Vector3.new
+local CF = CFrame.new
+local RGB = Color3.fromRGB
+local MAT = Enum.Material
+local CYL = Enum.PartType.Cylinder
+local BALL = Enum.PartType.Ball
+local UP = CFrame.Angles(0, 0, math.pi / 2)   -- Roblox 圆柱的轴在 X：转 90° 立起来
+
+-- 零件：solid 挡人（墙、塔、楼），否则是装饰（不挡人、不挡射线、小的不投影）
+local function part(parent, size, cf, color, mat, shape, solid)
+  local p = Instance.new("Part")
+  if shape then p.Shape = shape end
+  p.Anchored = true
+  p.Size = size
+  p.CFrame = cf
+  p.Color = color
+  p.Material = mat or MAT.SmoothPlastic
+  p.TopSurface = Enum.SurfaceType.Smooth
+  p.BottomSurface = Enum.SurfaceType.Smooth
+  if not solid then
+    p.CanCollide = false
+    p.CanQuery = false
+    p.CanTouch = false
+    if size.Magnitude < 6 then p.CastShadow = false end
+  end
+  p.Parent = parent
+  return p
+end
+Scenery.part = part
+local function cyl(parent, h, dia, cf, color, mat, solid)   -- 竖直圆柱：cf 是中心
+  return part(parent, V(h, dia, dia), cf * UP, color, mat, CYL, solid)
+end
+local function ball(parent, d, cf, color, mat)
+  return part(parent, V(d, d, d), cf, color, mat, BALL, false)
+end
+
+---------------------------------------------------------------- 光影
+
+function Scenery.lighting()
+  pcall(function()
+    Lighting.ClockTime = 14.6
+    Lighting.GeographicLatitude = 32
+    Lighting.Brightness = 3
+    Lighting.GlobalShadows = true
+    Lighting.Ambient = RGB(64, 66, 74)
+    Lighting.OutdoorAmbient = RGB(128, 132, 140)
+    Lighting.ColorShift_Top = RGB(255, 242, 222)
+    Lighting.EnvironmentDiffuseScale = 1
+    Lighting.EnvironmentSpecularScale = 1
+    Lighting.ShadowSoftness = 0.22
+    Lighting.ExposureCompensation = 0.1
+  end)
+  local function ensure(cls, props)
+    local o = Lighting:FindFirstChildOfClass(cls)
+    if not o then
+      o = Instance.new(cls)
+      for k, v in pairs(props) do pcall(function() o[k] = v end) end
+      o.Parent = Lighting
+    end
+    return o
+  end
+  ensure("Atmosphere", { Density = 0.3, Offset = 0.22, Haze = 1.5, Glare = 0.35, Color = RGB(200, 214, 232), Decay = RGB(104, 112, 128) })
+  ensure("Sky", { SunAngularSize = 12, MoonAngularSize = 9, StarCount = 3000, CelestialBodiesShown = true })
+  ensure("BloomEffect", { Intensity = 0.55, Size = 26, Threshold = 1.35 })
+  ensure("ColorCorrectionEffect", { Contrast = 0.08, Saturation = 0.12, Brightness = 0.02, TintColor = RGB(255, 250, 242) })
+  ensure("SunRaysEffect", { Intensity = 0.06, Spread = 0.55 })
+  -- 体积云
+  pcall(function()
+    local T = workspace.Terrain
+    if not T:FindFirstChildOfClass("Clouds") then
+      local c = Instance.new("Clouds")
+      c.Cover = 0.52
+      c.Density = 0.55
+      c.Color = RGB(250, 250, 252)
+      c.Parent = T
+    end
+    T.Decoration = true   -- 草地上长草
+    T.WaterColor = RGB(38, 92, 112)
+    T.WaterTransparency = 0.6
+    T.WaterReflectance = 0.6
+    T.WaterWaveSize = 0.12
+    T.WaterWaveSpeed = 9
+  end)
+end
+
+---------------------------------------------------------------- 地形世界
+
+-- 地形要避开的地方：基地、路、战场、空军基地跑道、竞技场（返回 true 表示这里不能起伏）
+local function reserved(Config, x, z, margin)
+  local F = Config.Field
+  margin = margin or 0
+  local hs = Config.BaseSize / 2
+  for i = 1, Config.PlotCount do
+    local cx = (i - (Config.PlotCount + 1) / 2) * Config.PlotSpacing
+    local dx = x - cx
+    if math.abs(dx) < hs + 30 + margin and z > -hs - 30 - margin and z < hs + 40 + margin then return true end              -- 基地
+    if math.abs(dx) < F.width / 2 + 30 + margin and z > hs - margin and z < F.center + F.length / 2 + 40 + margin then return true end   -- 路 + 战场
+    if dx > 150 - margin and dx < 262 + margin and z > -hs - 20 - margin and z < hs + margin then return true end           -- 空军基地
+  end
+  for _, ax in ipairs(Config.Arena.xs) do
+    if math.abs(x - ax) < F.width / 2 + 40 + margin and z > Config.Arena.z + F.center - F.length / 2 - 40 - margin and z < Config.Arena.z + F.center + F.length / 2 + 40 + margin then return true end
+  end
+  return false
+end
+Scenery.reserved = reserved
+
+-- 铺地形；返回 groundY(x, z)（山丘表面的高度，种树用）和河、湖的范围
+function Scenery.terrain(Config)
+  local T = workspace.Terrain
+  local F = Config.Field
+  local rng = Random.new(20241106)
+  local W = Config.PlotCount * Config.PlotSpacing / 2
+  local X0, X1 = -W - 700, W + 700
+  local Z0, Z1 = -1050, Config.Arena.z + F.center + F.length / 2 + 650
+  -- 1) 底：一整层草地，顶面 y = 0（分块填）
+  local x = X0
+  while x < X1 do
+    local w = math.min(512, X1 - x)
+    local z = Z0
+    while z < Z1 do
+      local d = math.min(512, Z1 - z)
+      T:FillBlock(CFrame.new(x + w / 2, -8, z + d / 2), V(w, 16, d), MAT.Grass)
+      z = z + d
+    end
+    x = x + w
+  end
+  local hills = {}
+  local function hill(cx, cz, r, mat, k)
+    local cy = -r * (k or 0.55)
+    T:FillBall(V(cx, cy, cz), r, mat or MAT.Grass)
+    table.insert(hills, { x = cx, y = cy, z = cz, r = r })
+  end
+  -- 2) 湖：基地后面一长条（先挖空、再灌水、两边沙滩）
+  local lakeZ0, lakeZ1 = -330, -470
+  T:FillBlock(CFrame.new(0, -1, (lakeZ0 + lakeZ1) / 2), V(X1 - X0, 2, lakeZ0 - lakeZ1 + 50), MAT.Sand)
+  T:FillBlock(CFrame.new(0, -6, (lakeZ0 + lakeZ1) / 2), V(X1 - X0 - 40, 12, lakeZ0 - lakeZ1), MAT.Air)
+  T:FillBlock(CFrame.new(0, -7.5, (lakeZ0 + lakeZ1) / 2), V(X1 - X0 - 40, 9, lakeZ0 - lakeZ1), MAT.Water)
+  -- 3) 河：战场北边、竞技场南边
+  local rz0 = F.center + F.length / 2 + 120
+  local rz1 = rz0 + 90
+  T:FillBlock(CFrame.new(0, -1, (rz0 + rz1) / 2), V(X1 - X0, 2, rz1 - rz0 + 40), MAT.Sand)
+  T:FillBlock(CFrame.new(0, -6, (rz0 + rz1) / 2), V(X1 - X0, 12, rz1 - rz0), MAT.Air)
+  T:FillBlock(CFrame.new(0, -7.5, (rz0 + rz1) / 2), V(X1 - X0, 9, rz1 - rz0), MAT.Water)
+  -- 4) 起伏的山丘：基地之间、战场之间的空地（避开基地、路、战场、跑道），草地上点缀林地、泥土、岩石
+  local tries = 0
+  local placed = 0
+  while placed < 150 and tries < 3000 do
+    tries = tries + 1
+    local hx = rng:NextNumber(X0 + 200, X1 - 200)
+    local hz = rng:NextNumber(-300, Config.Arena.z + F.center + F.length / 2 + 200)
+    local r = rng:NextNumber(55, 130)
+    local inRiver = hz + r > rz0 - 30 and hz - r < rz1 + 30
+    if not inRiver and not reserved(Config, hx, hz, r * 0.75) then
+      local m = MAT.Grass
+      local roll = rng:NextNumber()
+      if roll < 0.3 then m = MAT.LeafyGrass elseif roll < 0.4 then m = MAT.Ground end
+      hill(hx, hz, r, m, rng:NextNumber(0.5, 0.7))
+      if rng:NextNumber() < 0.25 then T:FillBall(V(hx + rng:NextNumber(-r, r) * 0.4, -r * 0.2, hz + rng:NextNumber(-r, r) * 0.4), r * 0.35, MAT.Rock) end
+      placed = placed + 1
+    end
+  end
+  -- 5) 四周的大山（顶上积雪）：南边湖后面、北边竞技场后面、东西两头
+  local function mountain(mx, mz, r)
+    local cy = -r * 0.25
+    T:FillBall(V(mx, cy, mz), r, MAT.Rock)
+    T:FillBall(V(mx, cy - r * 0.15, mz), r * 1.08, MAT.Grass)
+    T:FillBall(V(mx, cy + r * 0.62, mz), r * 0.42, MAT.Snow)
+    T:FillBall(V(mx + r * 0.25, cy + r * 0.45, mz - r * 0.1), r * 0.3, MAT.Slate)
+  end
+  for mx = X0 + 100, X1 - 100, 380 do
+    mountain(mx + rng:NextNumber(-80, 80), lakeZ1 - 330 + rng:NextNumber(-60, 60), rng:NextNumber(230, 360))
+    mountain(mx + rng:NextNumber(-80, 80), Z1 - 120 + rng:NextNumber(-60, 60), rng:NextNumber(250, 380))
+  end
+  for mz = -300, Z1 - 300, 420 do
+    mountain(X0 + 40 + rng:NextNumber(-40, 40), mz + rng:NextNumber(-80, 80), rng:NextNumber(220, 340))
+    mountain(X1 - 40 + rng:NextNumber(-40, 40), mz + rng:NextNumber(-80, 80), rng:NextNumber(220, 340))
+  end
+  local function groundY(px, pz)
+    local y = 0
+    for _, h in ipairs(hills) do
+      local dx, dz = px - h.x, pz - h.z
+      local d2 = dx * dx + dz * dz
+      if d2 < h.r * h.r then y = math.max(y, h.y + math.sqrt(h.r * h.r - d2)) end
+    end
+    return y
+  end
+  return groundY, { rz0 = rz0, rz1 = rz1, lakeZ0 = lakeZ0, lakeZ1 = lakeZ1, X0 = X0, X1 = X1, hills = hills }
+end
+
+---------------------------------------------------------------- 植物、石头
+
+-- 阔叶树：树干 + 几团树冠；针叶树：树干 + 一层层往上收的「圆盘」；snow 给针叶树顶上积雪
+local function broadleaf(f, pos, rng, s)
+  s = s or 1
+  local h = rng:NextNumber(7, 12) * s
+  cyl(f, h, 1.6 * s, CF(pos + V(0, h / 2, 0)), RGB(98, 74, 52), MAT.Wood)
+  local g = RGB(52 + rng:NextInteger(0, 26), 108 + rng:NextInteger(0, 40), 44)
+  for i = 1, 3 do
+    local d = rng:NextNumber(7, 12) * s
+    local o = V(rng:NextNumber(-2.5, 2.5) * s, h + rng:NextNumber(-1, 3) * s, rng:NextNumber(-2.5, 2.5) * s)
+    if i == 1 then o = V(0, h + 2 * s, 0) end
+    ball(f, d, CF(pos + o), g:Lerp(RGB(30, 60, 20), rng:NextNumber() * 0.25), MAT.Grass)
+  end
+end
+local function pine(f, pos, rng, s, snow)
+  s = s or 1
+  local h = rng:NextNumber(14, 22) * s
+  cyl(f, h * 0.45, 1.1 * s, CF(pos + V(0, h * 0.22, 0)), RGB(84, 62, 44), MAT.Wood)
+  local g = snow and RGB(46, 78, 58) or RGB(38 + rng:NextInteger(0, 18), 82 + rng:NextInteger(0, 26), 46)
+  local n = 5
+  for i = 1, n do
+    local k = (i - 1) / (n - 1)
+    local dia = (10 - 7.5 * k) * s
+    local y = h * (0.22 + 0.66 * k)
+    cyl(f, 2.6 * s, dia, CF(pos + V(0, y, 0)), g, MAT.Grass)
+    if snow then cyl(f, 0.5 * s, dia * 0.86, CF(pos + V(0, y + 1.4 * s, 0)), RGB(240, 244, 250), MAT.Snow) end
+  end
+end
+local function rock(f, pos, rng, s)
+  local d = rng:NextNumber(3, 8) * (s or 1)
+  local p = part(f, V(d, d * rng:NextNumber(0.5, 0.8), d * rng:NextNumber(0.7, 1.1)), CF(pos + V(0, d * 0.2, 0)) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 6), rng:NextNumber(-0.3, 0.3)),
+    RGB(118, 116, 110):Lerp(RGB(80, 80, 76), rng:NextNumber()), MAT.Slate, BALL)
+  return p
+end
+local function bush(f, pos, rng)
+  for _ = 1, 3 do
+    local d = rng:NextNumber(3, 5.5)
+    ball(f, d, CF(pos + V(rng:NextNumber(-1.5, 1.5), d * 0.3, rng:NextNumber(-1.5, 1.5))), RGB(58, 100 + rng:NextInteger(0, 30), 46), MAT.Grass)
+  end
+end
+Scenery.broadleaf, Scenery.pine, Scenery.rock, Scenery.bush = broadleaf, pine, rock, bush
+
+-- 地图上的树林（长在山丘上、湖边、河边）、石头、灌木，河上的桥
+function Scenery.nature(parent, Config, groundY, info)
+  local f = Instance.new("Folder")
+  f.Name = "Nature"
+  local rng = Random.new(77001)
+  local F = Config.Field
+  local n, tries = 0, 0
+  while n < 460 and tries < 9000 do
+    tries = tries + 1
+    local x = rng:NextNumber(info.X0 + 250, info.X1 - 250)
+    local z = rng:NextNumber(-300, Config.Arena.z + F.center + F.length / 2 + 220)
+    local inRiver = z > info.rz0 - 25 and z < info.rz1 + 25
+    if not inRiver and not reserved(Config, x, z, 6) then
+      local y = groundY(x, z)
+      local pos = V(x, y - 0.5, z)
+      local r = rng:NextNumber()
+      -- 山丘上（高处）多针叶，平地多阔叶
+      if r < 0.45 then
+        pine(f, pos, rng, rng:NextNumber(0.8, 1.3), false)
+      elseif r < 0.8 then
+        broadleaf(f, pos, rng, rng:NextNumber(0.8, 1.25))
+      elseif r < 0.92 then
+        bush(f, pos, rng)
+      else
+        rock(f, pos, rng, rng:NextNumber(0.8, 2))
+      end
+      n = n + 1
+    end
+  end
+  -- 湖边一排树
+  for x = info.X0 + 300, info.X1 - 300, 34 do
+    if rng:NextNumber() < 0.6 then
+      local z = info.lakeZ0 + rng:NextNumber(10, 40)
+      if not reserved(Config, x, z, 4) then
+        if rng:NextNumber() < 0.5 then pine(f, V(x, -0.5, z), rng, 1) else broadleaf(f, V(x, -0.5, z), rng, 1) end
+      end
+    end
+  end
+  -- 河上的桥：每个基地正北一座（木桥面、石墩、栏杆）
+  for i = 1, Config.PlotCount do
+    local cx = (i - (Config.PlotCount + 1) / 2) * Config.PlotSpacing
+    local len = info.rz1 - info.rz0 + 60
+    local zc = (info.rz0 + info.rz1) / 2
+    part(f, V(24, 1.6, len), CF(cx, 1.6, zc), RGB(122, 92, 62), MAT.WoodPlanks, nil, true)
+    for _, s in ipairs({ -1, 1 }) do
+      part(f, V(1, 3.4, len), CF(cx + s * 11.5, 4.1, zc), RGB(104, 78, 54), MAT.Wood, nil, true)
+      for k = -2, 2 do part(f, V(4, 12, 4), CF(cx + s * 9, -4, zc + k * len / 5), RGB(128, 126, 120), MAT.Cobblestone) end
+    end
+  end
+  f.Parent = parent
+  return f
+end
+
+---------------------------------------------------------------- 基地外围
+
+-- 一块基地的围墙、哨塔、大门、路灯、沙袋、物资堆、停着的卡车（origin 是基地中心地面，color 是队伍色）
+function Scenery.base(f, origin, color, Config)
+  local base = CF(origin)
+  local hs = Config.BaseSize / 2
+  local g = Instance.new("Folder")
+  g.Name = "Perimeter"
+  local WALL = RGB(150, 150, 142)
+  local DARK = RGB(48, 50, 52)
+  local rng = Random.new(math.floor(origin.X) + 5)
+  -- 围墙：墙身 + 每 26 格一根立柱 + 顶上两道铁丝 + 斜撑
+  local function wall(x0, z0, x1, z1, h)
+    local a, b = V(x0, 0, z0), V(x1, 0, z1)
+    local len = (b - a).Magnitude
+    local mid = (a + b) / 2
+    local rot = CFrame.lookAt(mid, b)
+    part(g, V(1.6, h, len), base * CF(mid + V(0, 1 + h / 2, 0)) * (rot - rot.Position), WALL, MAT.Concrete, nil, true)
+    part(g, V(2.2, 0.5, len), base * CF(mid + V(0, 1 + h + 0.25, 0)) * (rot - rot.Position), RGB(120, 120, 114), MAT.Concrete)
+    local n = math.max(1, math.floor(len / 26))
+    for k = 0, n do
+      local p = a:Lerp(b, k / n)
+      part(g, V(2.8, h + 1.2, 2.8), base * CF(p + V(0, 1 + (h + 1.2) / 2, 0)) * (rot - rot.Position), RGB(132, 132, 126), MAT.Concrete, nil, true)
+      part(g, V(0.25, 2.6, 0.25), base * CF(p + V(0, 1 + h + 1.8, 0)), DARK, MAT.Metal)
+    end
+    for _, dy in ipairs({ 1.4, 2.6 }) do
+      part(g, V(0.12, 0.12, len), base * CF(mid + V(0, 1 + h + dy, 0)) * (rot - rot.Position), RGB(70, 70, 72), MAT.Metal)
+    end
+  end
+  wall(-hs, -hs, hs, -hs, 8)           -- 后墙
+  wall(-hs, -hs, -hs, hs, 8)           -- 左墙
+  wall(hs, -hs, hs, hs, 8)             -- 右墙
+  -- 前面（朝战场）：两段矮墙，中间是大门（和中间那条路对齐）
+  local g0, g1 = -72, 52
+  wall(-hs, hs, g0 - 6, hs, 4)
+  wall(g1 + 6, hs, hs, hs, 4)
+  for _, gx in ipairs({ g0 - 3, g1 + 3 }) do
+    part(g, V(5, 12, 5), base * CF(gx, 7, hs), RGB(124, 124, 118), MAT.Concrete, nil, true)
+    part(g, V(5.6, 0.8, 5.6), base * CF(gx, 13.4, hs), RGB(100, 100, 96), MAT.Concrete)
+    part(g, V(1, 1, 1), base * CF(gx, 14.3, hs), RGB(255, 170, 60), MAT.Neon):SetAttribute("Anim", "blink")
+  end
+  -- 门楣横幅（队伍色）
+  part(g, V(g1 - g0 + 6, 2.2, 1), base * CF((g0 + g1) / 2, 14, hs), color, MAT.SmoothPlastic)
+  -- 抬起的栏杆 + 岗亭
+  for _, side in ipairs({ { g0 + 4, 1 }, { g1 - 4, -1 } }) do
+    local bx, dir = side[1], side[2]
+    part(g, V(1.4, 3, 1.4), base * CF(bx, 2.5, hs + 4), RGB(220, 200, 60), MAT.SmoothPlastic)
+    part(g, V(26, 0.5, 0.5), base * CF(bx + dir * 6, 3.8 + 6, hs + 4) * CFrame.Angles(0, 0, dir * math.rad(62)), RGB(236, 70, 60), MAT.SmoothPlastic)
+  end
+  local function booth(x, z)
+    part(g, V(7, 0.6, 7), base * CF(x, 1.3, z), RGB(120, 120, 114), MAT.Concrete)
+    part(g, V(6, 6, 6), base * CF(x, 4.6, z), RGB(214, 210, 196), MAT.SmoothPlastic, nil, true)
+    part(g, V(6.2, 1.6, 6.2), base * CF(x, 5.4, z), RGB(70, 110, 140), MAT.Glass)
+    part(g, V(7.4, 0.6, 7.4), base * CF(x, 7.9, z), DARK, MAT.Metal)
+  end
+  booth(g0 - 12, hs + 8)
+  booth(g1 + 12, hs + 8)
+  -- 四角的哨塔：四条腿、平台、岗楼、屋顶、探照灯
+  local function tower(x, z, faceX, faceZ)
+    local c = base * CF(x, 0, z)
+    for _, o in ipairs({ { -2.6, -2.6 }, { 2.6, -2.6 }, { -2.6, 2.6 }, { 2.6, 2.6 } }) do
+      part(g, V(0.8, 16, 0.8), c * CF(o[1], 9, o[2]), RGB(86, 82, 74), MAT.Metal, nil, true)
+    end
+    part(g, V(8, 0.6, 8), c * CF(0, 17, 0), RGB(96, 92, 84), MAT.WoodPlanks, nil, true)
+    part(g, V(7, 1.4, 7), c * CF(0, 18, 0), RGB(84, 96, 70), MAT.Concrete)
+    part(g, V(6.6, 2.2, 6.6), c * CF(0, 19.8, 0), RGB(70, 104, 130), MAT.Glass)
+    part(g, V(8.4, 0.6, 8.4), c * CF(0, 21.2, 0), DARK, MAT.Metal)
+    local lamp = cyl(g, 1.2, 1.6, c * CF(0, 22.2, 0), RGB(40, 40, 42), MAT.Metal)
+    local head = part(g, V(1.4, 1.4, 1.8), CFrame.lookAt((c * CF(0, 22.6, 0)).Position, (base * CF(faceX, 0, faceZ)).Position), RGB(230, 230, 220), MAT.Neon)
+    local sl = Instance.new("SpotLight")
+    sl.Brightness = 3
+    sl.Range = 70
+    sl.Angle = 40
+    sl.Face = Enum.NormalId.Front
+    sl.Color = RGB(255, 246, 220)
+    sl.Parent = head
+    head:SetAttribute("Anim", "spin")
+    head:SetAttribute("Spd", 0.05)
+    lamp.CastShadow = false
+  end
+  tower(-hs + 4, -hs + 4, 0, 0)
+  tower(hs - 4, -hs + 4, 0, 0)
+  tower(-hs + 4, hs - 4, 0, hs + 200)
+  tower(hs - 4, hs - 4, 0, hs + 200)
+  -- 路灯：横路两边、中间那条路两边
+  local function lamp(x, z)
+    cyl(g, 10, 0.5, base * CF(x, 6, z), RGB(70, 72, 76), MAT.Metal)
+    part(g, V(3, 0.4, 0.9), base * CF(x + 1.2, 11, z), RGB(70, 72, 76), MAT.Metal)
+    local bulb = part(g, V(1.2, 0.4, 0.8), base * CF(x + 2.2, 10.7, z), RGB(255, 236, 190), MAT.Neon)
+    local pl = Instance.new("PointLight")
+    pl.Brightness = 1.2
+    pl.Range = 26
+    pl.Color = RGB(255, 228, 180)
+    pl.Parent = bulb
+  end
+  for _, x in ipairs({ -120, -70, 50, 100 }) do lamp(x, 76) end
+  for _, z in ipairs({ 96, 118 }) do
+    lamp(-74, z)
+    lamp(54, z)
+  end
+  -- 沙袋掩体（大门里面两侧）
+  local function sandbags(x, z, w, rot)
+    local c = base * CF(x, 0, z) * CFrame.Angles(0, rot or 0, 0)
+    for row = 0, 2 do
+      for k = -math.floor(w / 2), math.floor(w / 2) do
+        part(g, V(1.9, 0.9, 1.1), c * CF(k * 1.95 + (row % 2) * 0.95, 1.45 + row * 0.85, 0), RGB(176, 158, 112), MAT.Fabric)
+      end
+    end
+  end
+  sandbags(g0 + 14, hs - 12, 6, 0)
+  sandbags(g1 - 14, hs - 12, 6, 0)
+  -- 物资堆：沿左墙内侧一排（木箱、绿色弹药箱、油桶），右墙内侧几堆
+  local function crates(x, z)
+    local c = base * CF(x, 0, z) * CFrame.Angles(0, rng:NextNumber(-0.3, 0.3), 0)
+    for i = 1, rng:NextInteger(3, 6) do
+      local s = rng:NextNumber(2.2, 3.4)
+      local col = (rng:NextNumber() < 0.5) and RGB(150, 116, 74) or RGB(84, 98, 62)
+      part(g, V(s, s * 0.8, s), c * CF(rng:NextNumber(-3, 3), 1 + s * 0.4 + ((i > 3) and s * 0.8 or 0), rng:NextNumber(-3, 3)), col, (col.R > 0.5) and MAT.WoodPlanks or MAT.Metal)
+    end
+  end
+  local function drums(x, z)
+    for i = 1, rng:NextInteger(3, 7) do
+      local col = (rng:NextNumber() < 0.6) and RGB(60, 84, 60) or RGB(160, 50, 40)
+      cyl(g, 2.6, 1.8, base * CF(x + (i % 3) * 2 - 2, 2.3, z + math.floor(i / 3) * 2 - 2), col, MAT.Metal)
+    end
+  end
+  for z = -110, 110, 44 do
+    if rng:NextNumber() < 0.5 then crates(-121, z) else drums(-121, z) end
+  end
+  crates(120, 40)
+  drums(120, 64)
+  crates(121, -60)
+  -- 停着的军用卡车（右墙内侧，车头朝北）
+  local function truck(x, z, col)
+    local c = base * CF(x, 0, z)
+    for _, sx in ipairs({ -1.4, 1.4 }) do
+      for _, sz in ipairs({ -3.2, 0.6, 3.0 }) do part(g, V(0.8, 2.2, 2.2), c * CF(sx, 2.1, sz), RGB(30, 30, 32), MAT.SmoothPlastic, CYL) end
+    end
+    part(g, V(3.4, 0.8, 10), c * CF(0, 2.6, 0), RGB(50, 52, 50), MAT.Metal)
+    part(g, V(3.2, 2.6, 2.8), c * CF(0, 4.3, -3.6), col, MAT.Metal, nil, true)
+    part(g, V(3.0, 1.0, 0.2), c * CF(0, 4.9, -5.05), RGB(60, 90, 110), MAT.Glass)
+    part(g, V(3.4, 3.2, 6.2), c * CF(0, 4.6, 1.6), col:Lerp(RGB(40, 40, 40), 0.15), MAT.Fabric, nil, true)
+  end
+  truck(-113, 64, RGB(86, 98, 66))
+  truck(-113, -12, RGB(86, 98, 66))
+  -- 伪装网棚（左后角）
+  for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do cyl(g, 7, 0.4, base * CF(-108 + o[1] * 9, 4.5, -118 + o[2] * 5), RGB(90, 74, 50), MAT.Wood) end
+  local net = part(g, V(22, 0.3, 14), base * CF(-108, 8.2, -118), RGB(80, 98, 58), MAT.Fabric)
+  net.Transparency = 0.1
+  g.Parent = f
+  return g
+end
+
+---------------------------------------------------------------- 战场战区
+
+local TH_TINT = { grass = RGB(150, 140, 100), desert = RGB(214, 190, 140), snow = RGB(236, 240, 246), urban = RGB(140, 138, 132), volcano = RGB(70, 62, 58) }
+local THEME = {
+  grass = { field = RGB(104, 122, 72), fmat = MAT.Grass, road = RGB(128, 104, 72), flank = MAT.Grass, crater = RGB(84, 74, 54), ground = RGB(116, 96, 70) },
+  desert = { field = RGB(214, 190, 138), fmat = MAT.Sand, road = RGB(180, 150, 104), flank = MAT.Sand, crater = RGB(164, 136, 96), ground = RGB(200, 172, 120) },
+  snow = { field = RGB(232, 238, 246), fmat = MAT.Snow, road = RGB(170, 160, 150), flank = MAT.Snow, crater = RGB(150, 146, 140), ground = RGB(220, 226, 236) },
+  urban = { field = RGB(118, 118, 120), fmat = MAT.Concrete, road = RGB(62, 62, 66), flank = MAT.Concrete, crater = RGB(70, 68, 66), ground = RGB(130, 128, 124) },
+  volcano = { field = RGB(62, 56, 54), fmat = MAT.Basalt, road = RGB(44, 40, 40), flank = MAT.Basalt, crater = RGB(40, 34, 32), ground = RGB(70, 62, 58) },
+}
+Scenery.THEME = THEME
+
+-- 一辆打坏的车（坦克或卡车的残骸，焦黑），可以冒烟
+local function wreck(g, cf, rng, smoke)
+  local c = RGB(44, 40, 36)
+  if rng:NextNumber() < 0.5 then
+    part(g, V(7, 2, 11), cf * CF(0, 1.6, 0), c, MAT.CorrodedMetal)
+    part(g, V(5, 1.6, 5), cf * CF(0.5, 3.4, 0.6) * CFrame.Angles(0, 0.5, 0.15), c, MAT.CorrodedMetal)
+    part(g, V(0.6, 0.6, 7), cf * CF(1.5, 3.6, -3) * CFrame.Angles(0.3, 0.6, 0), RGB(30, 30, 30), MAT.Metal)
+  else
+    part(g, V(4, 2.6, 9), cf * CF(0, 2, 0) * CFrame.Angles(0, 0, 0.3), c, MAT.CorrodedMetal)
+    part(g, V(3.6, 2.4, 3), cf * CF(0.6, 3.6, -3) * CFrame.Angles(0, 0, 0.3), c, MAT.CorrodedMetal)
+  end
+  if smoke then
+    local s = Instance.new("Smoke")
+    s.Color = RGB(52, 50, 48)
+    s.Opacity = 0.18
+    s.RiseVelocity = 7
+    s.Size = 6
+    local holder = part(g, V(1, 1, 1), cf * CF(0, 4, 0), c, MAT.SmoothPlastic)
+    holder.Transparency = 1
+    s.Parent = holder
+    if rng:NextNumber() < 0.5 then
+      local fire = Instance.new("Fire")
+      fire.Size = 5
+      fire.Heat = 9
+      fire.Parent = holder
+    end
+  end
+end
+
+-- 战壕（一段一段，中间留口子给部队过）：深色壕沟 + 朝敌人那边一溜沙袋
+local function trench(g, base, z, facing, half, gap, rng, colTrench, colBag)
+  local x = -half
+  while x < half do
+    local len = rng:NextNumber(40, 70)
+    local x1 = math.min(half, x + len)
+    local mid, w = (x + x1) / 2, x1 - x
+    part(g, V(w, 0.12, 5), base * CF(mid, 1.07, z), colTrench, MAT.Mud)
+    part(g, V(w, 1.2, 1.8), base * CF(mid, 1.6, z + facing * 3.3), colBag, MAT.Fabric)
+    part(g, V(w - 2, 0.9, 1.2), base * CF(mid, 2.6, z + facing * 3.4), colBag:Lerp(RGB(120, 108, 80), 0.2), MAT.Fabric)
+    x = x1 + gap
+  end
+end
+
+-- 铁丝网：一排 X 形木桩 + 两道铁丝
+local function wire(g, base, z, x0, x1)
+  local len = x1 - x0
+  for k = 0, math.floor(len / 12) do
+    local x = x0 + k * 12
+    part(g, V(0.3, 3.6, 0.3), base * CF(x, 2.4, z) * CFrame.Angles(0, 0, 0.5), RGB(92, 74, 52), MAT.Wood)
+    part(g, V(0.3, 3.6, 0.3), base * CF(x, 2.4, z) * CFrame.Angles(0, 0, -0.5), RGB(92, 74, 52), MAT.Wood)
+  end
+  for _, y in ipairs({ 2.2, 3.4 }) do part(g, V(len, 0.1, 0.1), base * CF((x0 + x1) / 2, y, z), RGB(70, 70, 70), MAT.Metal) end
+end
+
+-- 反坦克拒马（三根交叉的钢梁）
+local function hedgehog(g, cf)
+  local c = RGB(70, 66, 60)
+  part(g, V(0.6, 0.6, 6), cf * CF(0, 1.9, 0) * CFrame.Angles(0.7, 0, 0), c, MAT.Metal)
+  part(g, V(0.6, 0.6, 6), cf * CF(0, 1.9, 0) * CFrame.Angles(-0.7, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), c, MAT.Metal)
+  part(g, V(6, 0.6, 0.6), cf * CF(0, 1.9, 0) * CFrame.Angles(0, 0.4, 0.7), c, MAT.Metal)
+end
+
+-- 一栋打坏的房子（墙、窗洞、塌掉的屋顶）：style = brick / adobe / cabin / concrete
+local function ruin(g, cf, rng, style)
+  local col, mat = RGB(150, 84, 64), MAT.Brick
+  if style == "adobe" then col, mat = RGB(196, 160, 112), MAT.Sandstone
+  elseif style == "cabin" then col, mat = RGB(110, 80, 56), MAT.WoodPlanks
+  elseif style == "concrete" then col, mat = RGB(150, 148, 142), MAT.Concrete end
+  local w, d = rng:NextNumber(14, 24), rng:NextNumber(12, 20)
+  local floors = (style == "concrete") and rng:NextInteger(2, 4) or 1
+  local h = 7 * floors
+  -- 四面墙各自有高有低（塌了一部分），留窗洞
+  local sides = { { V(w, 0, 0), V(0, 0, -d / 2), 0 }, { V(w, 0, 0), V(0, 0, d / 2), 0 }, { V(d, 0, 0), V(-w / 2, 0, 0), math.pi / 2 }, { V(d, 0, 0), V(w / 2, 0, 0), math.pi / 2 } }
+  for _, sd in ipairs(sides) do
+    local len = sd[1].X
+    local hh = h * rng:NextNumber(0.45, 1)
+    local segs = math.max(2, math.floor(len / 5))
+    for k = 0, segs - 1 do
+      local sh = hh * rng:NextNumber(0.6, 1)
+      if rng:NextNumber() > 0.12 then
+        local x = -len / 2 + (k + 0.5) * len / segs
+        part(g, V(len / segs - ((k % 2 == 1) and 1.6 or 0), sh, 1.2), cf * CF(sd[2]) * CFrame.Angles(0, sd[3], 0) * CF(x, 1 + sh / 2, 0), col:Lerp(RGB(60, 56, 52), rng:NextNumber() * 0.25), mat, nil, true)
+      end
+    end
+  end
+  for f2 = 1, floors - 1 do   -- 楼板（塌了一角）
+    part(g, V(w * 0.8, 0.8, d * 0.7), cf * CF(-w * 0.08, 1 + f2 * 7, d * 0.1) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.1, 0.1)), RGB(140, 138, 132), MAT.Concrete, nil, true)
+  end
+  for _ = 1, rng:NextInteger(5, 10) do   -- 瓦砾
+    local s = rng:NextNumber(1, 3)
+    part(g, V(s, s * 0.6, s), cf * CF(rng:NextNumber(-w / 2, w / 2), 1.2, rng:NextNumber(-d / 2 - 3, d / 2 + 3)) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), 0), col, mat)
+  end
+end
+
+local function palm(g, pos, rng)
+  local h = rng:NextNumber(12, 18)
+  local lean = rng:NextNumber(-0.25, 0.25)
+  for k = 0, 5 do
+    local y = k * h / 6
+    part(g, V(1.3 - k * 0.1, h / 6 + 0.3, 1.3 - k * 0.1), CF(pos + V(lean * y, y + h / 12, 0)) * CFrame.Angles(0, 0, -lean), RGB(130, 100, 64), MAT.Wood)
+  end
+  local top = pos + V(lean * h, h, 0)
+  for i = 1, 7 do
+    local a = i / 7 * math.pi * 2
+    part(g, V(1.6, 0.2, 9), CF(top) * CFrame.Angles(0, a, 0) * CFrame.Angles(-0.45, 0, 0) * CF(0, -1.2, -4), RGB(70, 130, 50), MAT.Grass)
+  end
+end
+
+-- 战区：地面材质、两边的地形、道具（g 是这一块战场的装饰文件夹，清空重摆）
+function Scenery.theater(plot, theater, Config)
+  local F = Config.Field
+  local th = THEME[theater] or THEME.grass
+  local base = CF(plot.origin)
+  local T = workspace.Terrain
+  -- 地面零件换材质、颜色
+  if plot.field then
+    plot.field.Material = th.fmat
+    plot.field.Color = th.field
+  end
+  -- 战场两边的地形换成这个战区的（草地 / 沙地 / 雪地 / 水泥 / 玄武岩）
+  local z0, z1 = F.center - F.length / 2, F.center + F.length / 2
+  for _, s in ipairs({ -1, 1 }) do
+    T:FillBlock(CFrame.new(plot.origin + V(s * (F.width / 2 + 75), -1.5, F.center)), V(150, 3, F.length + 40), th.flank)
+  end
+  T:FillBlock(CFrame.new(plot.origin + V(0, -1.5, z1 + 40)), V(F.width + 300, 3, 70), th.flank)
+  -- 装饰重摆
+  local old = plot.folder:FindFirstChild("Decor")
+  if old then old:Destroy() end
+  local g = Instance.new("Folder")
+  g.Name = "Decor"
+  local rng = Random.new(plot.index * 1000 + #theater * 17)
+  -- 中间的土路
+  part(g, V(26, 0.1, F.length - 8), base * CF(0, 1.05, F.center), th.road, (theater == "urban") and MAT.Asphalt or MAT.Ground)
+  if theater == "urban" then
+    for k = 0, math.floor((F.length - 20) / 18) do part(g, V(0.8, 0.12, 8), base * CF(0, 1.1, z0 + 14 + k * 18), RGB(230, 220, 120), MAT.SmoothPlastic) end
+  end
+  -- 弹坑
+  for _ = 1, 22 do
+    local d = rng:NextNumber(8, 22)
+    local x, z = rng:NextNumber(-F.width / 2 + 20, F.width / 2 - 20), rng:NextNumber(F.deploy[2] + 20, F.enemy[1] - 20)
+    part(g, V(0.12, d, d), base * CF(x, 1.06, z) * UP, th.crater, MAT.Ground, CYL)
+    part(g, V(0.4, d + 3, d + 3), base * CF(x, 1.02, z) * UP, th.ground, MAT.Ground, CYL)
+  end
+  -- 两条战壕（我方部署区前面、敌军区前面）、两道铁丝网、拒马
+  local half = F.width / 2 - 12
+  trench(g, base, F.deploy[2] + 14, 1, half, 18, rng, RGB(70, 58, 44):Lerp(th.crater, 0.4), RGB(176, 158, 112))
+  trench(g, base, F.enemy[1] - 14, -1, half, 18, rng, RGB(70, 58, 44):Lerp(th.crater, 0.4), RGB(150, 136, 100))
+  for _, z in ipairs({ F.deploy[2] + 110, F.enemy[1] - 110 }) do
+    local x = -half
+    while x < half do
+      local x1 = math.min(half, x + rng:NextNumber(50, 90))
+      wire(g, base, z, x, x1)
+      x = x1 + rng:NextNumber(30, 50)
+    end
+  end
+  for _ = 1, 14 do
+    local x = rng:NextNumber(-half, half)
+    local z = (rng:NextNumber() < 0.5) and (F.deploy[2] + rng:NextNumber(30, 60)) or (F.enemy[1] - rng:NextNumber(30, 60))
+    hedgehog(g, base * CF(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0))
+  end
+  -- 中间地带的残骸（几辆冒烟）、沙袋机枪巢
+  for i = 1, 9 do
+    local x, z = rng:NextNumber(-half + 20, half - 20), rng:NextNumber(F.deploy[2] + 80, F.enemy[1] - 80)
+    wreck(g, base * CF(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng, i <= 4)
+  end
+  for _ = 1, 6 do
+    local x, z = rng:NextNumber(-half + 30, half - 30), rng:NextNumber(F.deploy[2] + 60, F.enemy[1] - 60)
+    local c = base * CF(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0)
+    for k = 1, 7 do   -- 一圈沙袋（缺一个口）
+      local a = k / 8 * math.pi * 2
+      part(g, V(3.6, 1.6, 1.4), c * CFrame.Angles(0, a, 0) * CF(0, 1.8, -4.4), RGB(176, 158, 112):Lerp(TH_TINT[theater] or RGB(176, 158, 112), 0.3), MAT.Fabric)
+    end
+    part(g, V(0.25, 0.25, 3), c * CF(0, 3, -4.6), RGB(40, 40, 40), MAT.Metal)
+  end
+  -- 两边（|x| > 190）的主题道具：废墟、树、主题特色
+  local function flankPos()
+    local s = (rng:NextNumber() < 0.5) and -1 or 1
+    return s * rng:NextNumber(F.width / 2 - 62, F.width / 2 - 16), rng:NextNumber(z0 + 30, z1 - 30)
+  end
+  local style = ({ grass = "brick", desert = "adobe", snow = "cabin", urban = "concrete", volcano = "concrete" })[theater]
+  for _ = 1, (theater == "urban") and 15 or 5 do
+    local x, z = flankPos()
+    ruin(g, base * CF(x, 0, z) * CFrame.Angles(0, rng:NextInteger(0, 3) * math.pi / 2, 0), rng, style)
+  end
+  for _ = 1, 26 do
+    local x, z = flankPos()
+    local p = (base * CF(x, 0.5, z)).Position
+    if theater == "grass" then
+      if rng:NextNumber() < 0.6 then broadleaf(g, p, rng, 0.9) else bush(g, p, rng) end
+    elseif theater == "desert" then
+      if rng:NextNumber() < 0.45 then palm(g, p, rng) else rock(g, p, rng, 1.4) end
+    elseif theater == "snow" then
+      if rng:NextNumber() < 0.7 then pine(g, p, rng, 1, true) else part(g, V(rng:NextNumber(6, 12), 3, rng:NextNumber(6, 12)), CF(p + V(0, 1, 0)), RGB(240, 244, 250), MAT.Snow, BALL) end
+    elseif theater == "urban" then
+      if rng:NextNumber() < 0.5 then   -- 路灯杆、水泥隔离墩
+        cyl(g, 12, 0.5, CF(p + V(0, 6, 0)), RGB(80, 82, 86), MAT.Metal)
+      else
+        part(g, V(8, 2.6, 1.6), CF(p + V(0, 1.3, 0)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), RGB(170, 168, 160), MAT.Concrete, nil, true)
+      end
+    elseif theater == "volcano" then   -- 玄武岩柱、烧焦的树
+      if rng:NextNumber() < 0.6 then
+        local h = rng:NextNumber(8, 26)
+        part(g, V(rng:NextNumber(4, 8), h, rng:NextNumber(4, 8)), CF(p + V(0, h / 2, 0)) * CFrame.Angles(0, rng:NextNumber(0, 3), rng:NextNumber(-0.08, 0.08)), RGB(46, 42, 42), MAT.Basalt, nil, true)
+      else
+        cyl(g, 9, 0.9, CF(p + V(0, 4.5, 0)) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), 0, 0), RGB(28, 24, 22), MAT.Wood)
+      end
+    end
+  end
+  -- 主题特色
+  if theater == "grass" then   -- 草垛、木栅栏
+    for _ = 1, 8 do
+      local x, z = flankPos()
+      part(g, V(4, 5, 5), base * CF(x, 3.5, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), RGB(214, 180, 90), MAT.Fabric, CYL)
+    end
+    for _ = 1, 5 do
+      local x, z = flankPos()
+      for k = 0, 5 do part(g, V(0.4, 3, 0.4), base * CF(x + k * 3, 2.5, z), RGB(120, 92, 60), MAT.Wood) end
+      part(g, V(15, 0.4, 0.3), base * CF(x + 7.5, 3, z), RGB(120, 92, 60), MAT.Wood)
+    end
+  elseif theater == "desert" then   -- 帐篷、油桶
+    for _ = 1, 5 do
+      local x, z = flankPos()
+      part(g, V(8, 4, 8), base * CF(x, 3, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), RGB(196, 176, 130), MAT.Fabric)
+    end
+  elseif theater == "urban" then   -- 烧毁的汽车
+    for _ = 1, 10 do
+      local x, z = flankPos()
+      local c = base * CF(x * 0.85, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(-0.1, 0.1))
+      part(g, V(4.6, 1.6, 9), c * CF(0, 1.9, 0), RGB(48, 44, 40), MAT.CorrodedMetal)
+      part(g, V(4.2, 1.4, 4.5), c * CF(0, 3.3, 0.5), RGB(40, 38, 36), MAT.CorrodedMetal)
+    end
+  elseif theater == "volcano" then   -- 熔岩池、熔岩裂缝（发光、有热光）、冒烟的地缝
+    for _ = 1, 4 do
+      local x, z = flankPos()
+      local pool = part(g, V(0.3, rng:NextNumber(18, 30), rng:NextNumber(18, 30)), base * CF(x, 1.1, z) * UP, RGB(255, 100, 20), MAT.Neon, CYL)
+      local pl = Instance.new("PointLight")
+      pl.Color = RGB(255, 110, 30)
+      pl.Brightness = 3
+      pl.Range = 40
+      pl.Parent = pool
+      part(g, V(0.5, pool.Size.Y + 4, pool.Size.Z + 4), base * CF(x, 1.0, z) * UP, RGB(40, 34, 32), MAT.Basalt, CYL)
+    end
+    for _ = 1, 24 do
+      local x, z = rng:NextNumber(-half, half), rng:NextNumber(z0 + 30, z1 - 30)
+      if math.abs(x) > 40 then
+        local crack = part(g, V(rng:NextNumber(1.2, 2.4), 0.16, rng:NextNumber(14, 34)), base * CF(x, 1.08, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), RGB(255, 110, 30), MAT.Neon)
+        if rng:NextNumber() < 0.35 then
+          local pl = Instance.new("PointLight")
+          pl.Color = RGB(255, 120, 40)
+          pl.Brightness = 2
+          pl.Range = 24
+          pl.Parent = crack
+          local s = Instance.new("Smoke")
+          s.Color = RGB(60, 56, 54)
+          s.Opacity = 0.15
+          s.RiseVelocity = 5
+          s.Size = 4
+          s.Parent = crack
+        end
+      end
+    end
+  end
+  -- 部署区四角的旗子（队伍色）、敌军区四角红旗
+  for _, e in ipairs({ { F.deploy[1], plot.color }, { F.deploy[2], plot.color }, { F.enemy[1], RGB(200, 50, 45) }, { F.enemy[2], RGB(200, 50, 45) } }) do
+    for _, s in ipairs({ -1, 1 }) do
+      cyl(g, 14, 0.4, base * CF(s * (F.width / 2 - 4), 8, e[1]), RGB(170, 170, 170), MAT.Metal)
+      part(g, V(0.15, 3, 5), base * CF(s * (F.width / 2 - 4), 13.4, e[1] + 2.6), e[2], MAT.Fabric)
+    end
+  end
+  g.Parent = plot.folder
+  plot.theater = theater
+  return g
+end
+
+return Scenery
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
           <string name="Name">Skills</string>
           <ProtectedString name="Source"><![CDATA[-- 军事大亨：战场支援技能（打仗时玩家自己放的：迫击炮急袭、战地急救、炮火覆盖、空投援军、空袭）
 -- 客户端点技能键、再点战场上的位置 → Action "skill"（id，x，z：相对战场原点）；服务器检查盖没盖那栋楼、冷却、在不在打仗，再放；
@@ -4908,7 +5792,7 @@ return Skills
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="13">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- 军事大亨：存档（DataStore）、突袭用的防线快照、积分匹配、排行榜（最高关卡、突袭积分、对战积分）、被突袭记录
@@ -5151,7 +6035,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- 军事大亨：玩家本人的武器（背包里的枪）：发枪、开枪（服务器校验射速、弹匣、射程，射线判定打中谁）、
@@ -5299,54 +6183,23 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">World</string>
-          <ProtectedString name="Source"><![CDATA[-- 军事大亨：地图（光照、地形、六块基地、约战竞技场）
-local Lighting = game:GetService("Lighting")
-
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：地图（光影、地形世界、六块基地、约战竞技场；场景细节在 Scenery 里）
 local World = {}
 
 function World.init(G)
   local Config, Models = G.Config, G.Models
+  local Scenery = require(script.Parent:WaitForChild("Scenery"))
+  G.Scenery = Scenery
   local V = Vector3.new
-  local F = Config.Field
 
-  Lighting.ClockTime = 14.3
-  Lighting.Brightness = 2.4
-  Lighting.GlobalShadows = true
-  Lighting.OutdoorAmbient = Color3.fromRGB(125, 128, 135)
-  Lighting.EnvironmentDiffuseScale = 0.6
-  Lighting.EnvironmentSpecularScale = 0.6
-  if not Lighting:FindFirstChildOfClass("Atmosphere") then
-    local atm = Instance.new("Atmosphere")
-    atm.Density = 0.26
-    atm.Offset = 0.15
-    atm.Haze = 1.2
-    atm.Glare = 0.2
-    atm.Color = Color3.fromRGB(198, 210, 226)
-    atm.Decay = Color3.fromRGB(106, 118, 140)
-    atm.Parent = Lighting
-  end
-
-  -- 地面：地形草地，顶面在 y = 0（分块填，单次别太大）；盖住基地、战场和后面的竞技场
-  do
-    local T = workspace.Terrain
-    local half = Config.PlotCount * Config.PlotSpacing / 2 + 200
-    local z0 = -Config.BaseSize / 2 - 200
-    local z1 = Config.Arena.z + F.center + F.length / 2 + 200
-    local x = -half
-    while x < half do
-      local w = math.min(512, half - x)
-      local z = z0
-      while z < z1 do
-        local d = math.min(512, z1 - z)
-        T:FillBlock(CFrame.new(x + w / 2, -6, z + d / 2), V(w, 12, d), Enum.Material.Grass)
-        z = z + d
-      end
-      x = x + w
-    end
-  end
+  Scenery.lighting()
+  -- 地形：一整层草地（顶面 y = 0），基地之间的山丘、四周的雪山、湖、河；树林、桥
+  local groundY, info = Scenery.terrain(Config)
+  G.mapInfo = info
+  G.try("种树", Scenery.nature, workspace, Config, groundY, info)
 
   local PlotsF = Instance.new("Folder")
   PlotsF.Name = "Plots"
@@ -5367,6 +6220,8 @@ function World.init(G)
       sub.Parent = f
       plot[name] = sub
     end
+    G.try("基地外围", Scenery.base, f, plot.origin, plot.color, Config)
+    G.try("战区", Scenery.theater, plot, "grass", Config)
     f.Parent = PlotsF
     G.plots[i] = plot
   end
@@ -5383,8 +6238,17 @@ function World.init(G)
     local units = Instance.new("Folder")
     units.Name = "Units"
     units.Parent = f
+    -- 竞技场也有战区样子：1 号城市废墟、2 号沙漠
+    G.try("竞技场战区", Scenery.theater, { origin = origin, folder = f, field = info.field, index = 20 + i, color = Color3.fromRGB(60, 140, 230) }, (i == 1) and "urban" or "desert", Config)
     f.Parent = ArenasF
     G.arenas[i] = { index = i, origin = origin, folder = f, field = info.field, Units = units, busy = false }
+  end
+
+  -- 换战区：这块战场的地面、两边地形、道具全换（打掉首领、进新战区时；进服按关卡）
+  function G.setTheater(st, th)
+    if st.plot.theater == th.id then return false end
+    G.try("换战区", Scenery.theater, st.plot, th.id, Config)
+    return true
   end
 
   -- 单位的位置：战场原点 + (x, 1 + y, z)，朝向 h
@@ -5399,15 +6263,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="16">
+  <Item class="StarterPlayer" referent="17">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="17">
+    <Item class="StarterPlayerScripts" referent="18">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="18">
+      <Item class="LocalScript" referent="19">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- 军事大亨：客户端（StarterPlayerScripts.Client）
@@ -5471,7 +6335,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="19">
+        <Item class="ModuleScript" referent="20">
           <Properties>
             <string name="Name">Anim</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：建筑动画（都在本地播，不占网络）——
@@ -5597,8 +6461,95 @@ function Anim.init(G)
     for _, p in ipairs(plots:GetChildren()) do task.spawn(onPlot, p) end
   end)
 
+  ---------------------------------------------------------------- 自己基地里的「人气」：两个巡逻兵沿大道、横路来回走，一辆吉普在横路上来回开（只在本地画）
+  local life = nil
+  local ROUTE = { { -10, -104 }, { -10, 50 }, { 42, 60 }, { 42, 118 }, { -62, 118 }, { -62, 60 }, { -10, 50 } }
+  local function soldierModel()
+    local parts = {}
+    local function add(size, off, color, shape)
+      local p = G.fxPart(shape, size, CFrame.new(), color, Enum.Material.SmoothPlastic, 0)
+      p.CastShadow = true
+      table.insert(parts, { p = p, off = off })
+      return p
+    end
+    add(V(1.0, 1.9, 0.6), CFrame.new(0, 0.95, 0), RGB(66, 74, 50))
+    add(V(1.3, 1.7, 0.75), CFrame.new(0, 2.7, 0), RGB(86, 96, 64))
+    add(V(0.8, 0.8, 0.8), CFrame.new(0, 3.95, 0), RGB(230, 188, 150))
+    add(V(1.05, 0.45, 1.05), CFrame.new(0, 4.45, 0), RGB(70, 80, 52))
+    add(V(0.18, 0.25, 2.0), CFrame.new(0.5, 2.8, -0.6), RGB(40, 40, 40))
+    return parts
+  end
+  local function jeepModel()
+    local parts = {}
+    local function add(size, off, color, mat)
+      local p = G.fxPart(nil, size, CFrame.new(), color, mat or Enum.Material.Metal, 0)
+      p.CastShadow = true
+      table.insert(parts, { p = p, off = off })
+    end
+    add(V(3.8, 1.6, 7.6), CFrame.new(0, 1.9, 0), RGB(86, 98, 66))
+    add(V(3.4, 1.4, 3.4), CFrame.new(0, 3.3, 0.6), RGB(76, 88, 58))
+    add(V(3.2, 0.8, 0.2), CFrame.new(0, 3.4, -1.2), RGB(80, 110, 130), Enum.Material.Glass)
+    for _, sx in ipairs({ -1.9, 1.9 }) do
+      for _, sz in ipairs({ -2.4, 2.4 }) do add(V(0.7, 1.8, 1.8), CFrame.new(sx, 0.9, sz), RGB(30, 30, 32), Enum.Material.SmoothPlastic) end
+    end
+    return parts
+  end
+  local function routeLen()
+    local L = 0
+    for i = 1, #ROUTE - 1 do
+      local a, b = ROUTE[i], ROUTE[i + 1]
+      L = L + math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+    end
+    return L
+  end
+  local RL = routeLen()
+  local function along(s)   -- 来回走：0..RL 再走回去
+    s = s % (RL * 2)
+    local back = s > RL
+    if back then s = RL * 2 - s end
+    for i = 1, #ROUTE - 1 do
+      local a, b = ROUTE[i], ROUTE[i + 1]
+      local l = math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+      if s <= l then
+        local k = s / l
+        local dx, dz = b[1] - a[1], b[2] - a[2]
+        if back then dx, dz = -dx, -dz end
+        return a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, dx, dz
+      end
+      s = s - l
+    end
+    local e = ROUTE[#ROUTE]
+    return e[1], e[2], 0, 1
+  end
+  local function place(parts, cf)
+    for _, q in ipairs(parts) do q.p.CFrame = cf * q.off end
+  end
+  local function stepLife(dt, now)
+    local S = G.S
+    if not (S and S.origin) then return end
+    if not life then
+      life = { soldiers = { soldierModel(), soldierModel() }, jeep = jeepModel(), t = 0 }
+    end
+    life.t = life.t + dt
+    local o = S.origin
+    for i, sm in ipairs(life.soldiers) do
+      local x, z, dx, dz = along(life.t * 5 + i * RL * 0.6)
+      local bob = math.abs(math.sin((life.t + i) * 9)) * 0.25
+      local p = o + V(x + (i == 1 and -1.5 or 1.5), 1 + bob, z)
+      place(sm, CFrame.lookAt(p, p + V(dx, 0, dz)))
+    end
+    -- 吉普：横路上从西到东再开回来
+    local span = 230
+    local s = (life.t * 14) % (span * 2)
+    local jx = (s < span) and (-115 + s) or (-115 + span * 2 - s)
+    local dir = (s < span) and 1 or -1
+    local jp = o + V(jx, 1, 60 + dir * 5)
+    place(life.jeep, CFrame.lookAt(jp, jp + V(dir, 0, 0)))
+  end
+
   local t, ringT = 0, 0
   function G.stepAnim(dt)
+    stepLife(dt)
     t = t + dt
     ringT = ringT + dt
     local cp = cam.CFrame.Position
@@ -5642,7 +6593,7 @@ return Anim
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：特效——开火曳光、炮口火光、炮弹 / 火箭弹弧线、导弹（跟着目标飞）、炸弹、拦截炮把炮弹打爆在半空、爆炸、建成、楼顶冒钱；
@@ -5829,6 +6780,13 @@ function Fx.init(G)
       p = part(BALL, V(s, s, s), CFrame.new(a), RGB(255, 200, 120), Enum.Material.Neon, 0)
     elseif kind == "bomb" then
       p = part(nil, V(1.1, 1.1, 3.4), CFrame.new(a), RGB(62, 64, 60), Enum.Material.Metal, 0)
+    elseif kind == "lava" then   -- 火山弹：发光的熔岩块
+      p = part(BALL, V(3.4, 3.4, 3.4), CFrame.new(a), RGB(255, 110, 30), Enum.Material.Neon, 0)
+      local glow = Instance.new("PointLight")
+      glow.Color = RGB(255, 120, 40)
+      glow.Range = 22
+      glow.Brightness = 3
+      glow.Parent = p
     elseif kind == "missile" then
       p = part(nil, V(0.5, 0.5, 3), CFrame.new(a), RGB(236, 236, 230), Enum.Material.SmoothPlastic, 0)
       local glow = Instance.new("PointLight")
@@ -5856,7 +6814,7 @@ function Fx.init(G)
         f.track = nil
       end
     end
-    if f.kind == "bomb" then
+    if f.kind == "bomb" or f.kind == "lava" then
       local p = f.a:Lerp(b, k)
       return V(p.X, f.a.Y + (b.Y - f.a.Y) * k * k, p.Z)
     end
@@ -5879,7 +6837,7 @@ function Fx.init(G)
         local ahead = arcPos(f, math.min(1, k + 0.02))
         if (ahead - pos).Magnitude > 0.001 then f.p.CFrame = CFrame.lookAt(pos, ahead) else f.p.CFrame = CFrame.new(pos) end
         f.puff = f.puff + 1
-        if f.kind ~= "bomb" and f.puff % 2 == 0 then   -- 尾烟
+        if f.kind ~= "bomb" and f.puff % 2 == 0 then   -- 尾烟（火山弹拖着黑烟）
           local s = part(BALL, V(1.6, 1.6, 1.6), CFrame.new(pos), RGB(160, 156, 150), Enum.Material.SmoothPlastic, 0.4)
           tween(s, 1, { Size = V(5, 5, 5), Transparency = 1 })
           Debris:AddItem(s, 1.05)
@@ -6121,7 +7079,17 @@ function Fx.init(G)
           flash(e.a, 3)
           G.playSound("rocket", e.a)
         elseif e.k == "bomb" then
-          launch(e.a, e.b, e.t or 2, 0, "bomb", e.id)
+          launch(e.a, e.b, e.t or 2, 0, (e.u == "lava") and "lava" or "bomb", e.id)
+        elseif e.k == "quake" then   -- 火山弹预警：地上一圈红光闪几下
+          for i = 0, 2 do
+            task.delay(i * 0.45, function()
+              local r = part(CYL, V(0.3, (e.s or 30) * 2, (e.s or 30) * 2), CFrame.new(e.p.X, e.p.Y + 0.5, e.p.Z) * FLAT, RGB(255, 60, 30), Enum.Material.Neon, 0.35)
+              tween(r, 0.4, { Transparency = 1 })
+              Debris:AddItem(r, 0.45)
+            end)
+          end
+          G.playSound("alarm", e.p, 0.5)
+          G.shake(0.25)
         elseif e.k == "missile" then
           local f = launch(e.a, e.b, e.t or 1, (e.b - e.a).Magnitude * 0.06, "missile")
           local tr = e.bid and G.visByBid and G.visByBid(e.bid)
@@ -6161,7 +7129,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="21">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">Guide</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：地图指引——
@@ -6347,7 +7315,7 @@ return Guide
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="22">
+        <Item class="ModuleScript" referent="23">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：操作和镜头——
@@ -6947,6 +7915,9 @@ function Play.init(G)
       G.hitMarker(ev.k)
       G.playSound(ev.k and "kill" or "hit")
       if ev.k then onKill(ev) end
+    elseif ev.phase == "theater" then
+      G.announce("进入新战区：" .. tostring(ev.name), RGB(120, 220, 255), ev.desc, 3.2)
+      G.jingle("win")
     elseif ev.phase == "skill" then
       G.skillReady[ev.id] = os.clock() + (ev.cd or 0)
       G.playSound("buy")
@@ -7183,7 +8154,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="23">
+        <Item class="ModuleScript" referent="24">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：界面——钱、关卡、兵工厂、按钮、提示；任务、武器、排行榜、真人对战（排位匹配、同服约战）、重生、致谢；
@@ -7919,7 +8890,8 @@ function UI.init(G)
     updateGoal()
     cashL.Text = "$" .. Config.Fmt(S.cash)
     incL.Text = "+" .. Config.Fmt(S.income) .. " / 秒"
-    lvL.Text = "第 " .. tostring(S.level) .. " 关" .. ((S.rebirth or 0) > 0 and ("   ★" .. S.rebirth) or "")
+    local th = Config.TheaterOf and Config.TheaterOf(S.level or 1)
+    lvL.Text = "第 " .. tostring(S.level) .. " 关" .. (th and ("  · " .. th.name) or "") .. ((S.rebirth or 0) > 0 and ("   ★" .. S.rebirth) or "")
     armyL.Text = "部队 " .. tostring(S.n) .. " / " .. tostring(S.cap) .. "    战力 ×" .. string.format("%.1f", S.power or 1)
     local parts = {}
     if S.enemy and S.enemy.boss then table.insert(parts, "首领×" .. S.enemy.boss) end
@@ -8032,7 +9004,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="24">
+        <Item class="ModuleScript" referent="25">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：部队的显示
@@ -8188,10 +9160,21 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="25">
+  <Item class="Workspace" referent="26">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
+    </Properties>
+  </Item>
+  <Item class="Lighting" referent="27">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <float name="Brightness">3</float>
+      <float name="ClockTime">14.6</float>
+      <float name="EnvironmentDiffuseScale">1</float>
+      <float name="EnvironmentSpecularScale">1</float>
+      <bool name="GlobalShadows">true</bool>
+      <token name="Technology">4</token>
     </Properties>
   </Item>
 </roblox>

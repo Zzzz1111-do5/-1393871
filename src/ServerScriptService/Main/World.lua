@@ -50,6 +50,8 @@ function World.init(G)
     local units = Instance.new("Folder")
     units.Name = "Units"
     units.Parent = f
+    -- 竞技场也有战区样子：1 号城市废墟、2 号沙漠
+    G.try("竞技场战区", Scenery.theater, { origin = origin, folder = f, field = info.field, index = 20 + i, color = Color3.fromRGB(60, 140, 230) }, (i == 1) and "urban" or "desert", Config)
     f.Parent = ArenasF
     G.arenas[i] = { index = i, origin = origin, folder = f, field = info.field, Units = units, busy = false }
   end
