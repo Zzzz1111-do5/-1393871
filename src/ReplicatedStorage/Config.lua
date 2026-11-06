@@ -48,8 +48,39 @@ Config.Buildings = {
   { id = "airbase", name = "空军基地", kind = "mil", units = { "attacker", "fighter", "bomber", "stealth" }, price = 40000, req = "helipad", x = 205, z = -10, size = { 60, 12, 240 }, pad = { -90, 0 } },
   { id = "factory3", name = "军工联合体", kind = "factory", price = 45000, income = 150, req = "factory2", x = 80, z = -45, size = { 30, 20, 26 } },
   { id = "bank", name = "银行", kind = "bank", price = 120000, income = 350, req = "factory3", x = 80, z = -95, size = { 22, 28, 22 } },
+  -- 西边工业区（围墙外；西墙南段有工业区大门）：油井（炼油厂加成）、弹药厂、钢铁厂、矿场（算工厂，发电厂、核电站加成）、核电站
+  { id = "oil1", name = "油井 A", kind = "oil", price = 1500, income = 15, req = "house2", x = -185, z = -100, size = { 18, 12, 22 } },
+  { id = "oil2", name = "油井 B", kind = "oil", price = 5000, income = 30, req = "oil1", x = -215, z = -100, size = { 18, 12, 22 } },
+  { id = "oil3", name = "油井 C", kind = "oil", price = 15000, income = 60, req = "oil2", x = -245, z = -100, size = { 18, 12, 22 } },
+  { id = "refinery", name = "炼油厂", kind = "refinery", price = 30000, income = 100, req = "oil2", x = -330, z = -100, size = { 52, 26, 34 } },
+  { id = "ammo", name = "弹药厂", kind = "factory", price = 60000, income = 200, req = "factory2", x = -205, z = -30, size = { 46, 14, 30 } },
+  { id = "steel", name = "钢铁厂", kind = "factory", price = 160000, income = 450, req = "ammo", x = -320, z = -30, size = { 46, 22, 34 } },
+  { id = "mine", name = "矿场", kind = "factory", price = 300000, income = 800, req = "steel", x = -205, z = 45, size = { 46, 18, 34 } },
+  { id = "nuclear", name = "核电站", kind = "nuclear", price = 800000, income = 1500, req = "mine", x = -320, z = 40, size = { 60, 40, 48 } },
 }
-Config.PowerBoost = 1.5   -- 有发电厂时工厂收入乘几
+Config.PowerBoost = 1.5     -- 有发电厂时工厂收入乘几
+Config.RefineryBoost = 1.5  -- 有炼油厂时油井收入乘几
+Config.NuclearBoost = 1.3   -- 有核电站时工厂收入再乘几
+-- 工业区的范围（相对基地中心，在西墙外）、西墙上大门的 z 范围、工业区里那条南北向主路的 x
+Config.Industry = { x0 = -392, x1 = -138, z0 = -132, z1 = 84, gate = { -98, -80 }, roadX = -152 }
+
+-- 建筑升级：有收入的建筑能升到 max 级；每升一级收入多原来的 inc 倍（5 级是 3 倍），升级价 = 原价 × cost ^ 现在的级数
+Config.Upgrade = { max = 5, inc = 0.5, cost = 1.7 }
+function Config.UpgradeCost(b, lv)
+  return math.floor(b.price * Config.Upgrade.cost ^ (lv or 1))
+end
+-- 一栋楼现在每秒挣多少（算上级数和加成；owned 是已经盖了的建筑表，lv 是这栋的级数）
+function Config.BuildingIncome(b, owned, lv)
+  if not b.income then return 0 end
+  local v = b.income * (1 + Config.Upgrade.inc * ((lv or 1) - 1))
+  if b.kind == "factory" then
+    if owned.power then v = v * Config.PowerBoost end
+    if owned.nuclear then v = v * Config.NuclearBoost end
+  elseif b.kind == "oil" and owned.refinery then
+    v = v * Config.RefineryBoost
+  end
+  return v
+end
 
 -- 军工科技：花钱升级，每级全军（我方）血量、伤害各 +bonus；后期的钱主要花在这里，高关卡靠它
 Config.Tech = { base = 2500, growth = 1.5, bonus = 0.1, max = 40 }

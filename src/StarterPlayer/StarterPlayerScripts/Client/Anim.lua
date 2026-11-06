@@ -1,7 +1,8 @@
 -- 军事大亨（客户端）：建筑动画（都在本地播，不占网络）——
 --   新盖的楼（模型属性 BuiltAt 是刚才）：零件从地下按高度一层层升上来，四角搭着脚手架、落地扬尘；
 --   零件属性 Anim = "spin" 的绕竖轴转（雷达；有 Ax 就绕这根轴转，比如抽油机的曲柄），"blink" 的一闪一闪（指示灯、跑道灯），
---   "nod" 的绕 Piv 点、Ax 轴来回摆 Amp 度（做俯卧撑的兵、抽油机的驴头）；
+--   "nod" 的绕 Piv 点、Ax 轴来回摆 Amp 度（做俯卧撑的兵、抽油机的驴头）；spin 有 Piv 的绕那个点转（抽油机的配重）；
+--   "belt" 的零件当传送带 / 铁轨：本地摆 N 个弹药箱 / 矿车，沿零件的 X 方向以 Spd 格每秒一直往前走（弹药厂、矿场）；
 --   买得起的绿色购买按钮一呼一吸，隔一会儿冒一圈光；
 --   机场跑道头停着的战斗机隔一会儿滑跑起飞、飞向战场，过一阵从南边进场降落、滑回停机位；直升机场的直升机起飞绕一圈落回来
 --   （建筑里叫 Show 的模型，服务器上一直停着，只在本地动）
@@ -17,9 +18,28 @@ function Anim.init(G)
   local spinning = {}   -- [part] = { cf0, spd, model }
   local blinking = {}   -- [part] = { spd, tr0 }
   local nodding = {}    -- [part] = { cf0, piv, ax, amp, spd, ph, model }
+  local belts = {}      -- [part] = { cf0, len, h, spd, n, item, model, items }
   local pads = {}       -- [pad] = true
   local busy = {}       -- [model] = 升起动画放完的时刻（这之前不转）
   local GREEN = RGB(70, 220, 100)
+
+  local function beltItem(kind)
+    local parts = {}
+    local function add(size, off, color, mat, shape)
+      local p = G.fxPart(shape, size, CFrame.new(), color, mat, 0)
+      p.CastShadow = true
+      table.insert(parts, { p = p, off = off })
+    end
+    if kind == "cart" then
+      add(V(2.8, 1.4, 2.0), CFrame.new(0, 1.0, 0), RGB(70, 72, 78), Enum.Material.Metal)
+      add(V(2.4, 0.5, 1.6), CFrame.new(0, 1.9, 0), RGB(96, 80, 64), Enum.Material.Pebble)
+      for _, sx in ipairs({ -0.9, 0.9 }) do add(V(2.2, 0.7, 0.7), CFrame.new(sx, 0.35, 0) * CFrame.Angles(0, math.pi / 2, 0), RGB(36, 36, 38), Enum.Material.Metal, Enum.PartType.Cylinder) end
+    else
+      add(V(1.6, 1.1, 1.5), CFrame.new(0, 0.55, 0), RGB(78, 92, 58), Enum.Material.Metal)
+      add(V(1.62, 0.22, 1.52), CFrame.new(0, 0.75, 0), RGB(236, 196, 50), Enum.Material.SmoothPlastic)
+    end
+    return parts
+  end
 
   ---------------------------------------------------------------- 起降表演
   local shows = {}   -- [Show 模型] = { kind, root, cf0 停放位置, bm 所在建筑, t, rot 旋翼转角, rotor, tail, axis, parts, hidden }
@@ -41,9 +61,11 @@ function Anim.init(G)
       if d:IsA("BasePart") then
         local a = d:GetAttribute("Anim")
         if a == "spin" then
-          spinning[d] = { cf0 = d.CFrame, spd = d:GetAttribute("Spd") or 0.3, model = m, ax = d:GetAttribute("Ax") }
+          spinning[d] = { cf0 = d.CFrame, spd = d:GetAttribute("Spd") or 0.3, model = m, ax = d:GetAttribute("Ax"), piv = d:GetAttribute("Piv") }
         elseif a == "blink" then
           blinking[d] = { spd = d:GetAttribute("Spd") or 1, tr0 = d.Transparency, ph = math.random() * 6 }
+        elseif a == "belt" then
+          belts[d] = { cf0 = d.CFrame, len = d.Size.X, h = d.Size.Y, spd = d:GetAttribute("Spd") or 3, n = d:GetAttribute("N") or 4, item = d:GetAttribute("Item") or "crate", model = m }
         elseif a == "nod" then
           local piv, ax = d:GetAttribute("Piv"), d:GetAttribute("Ax")
           if typeof(piv) == "Vector3" and typeof(ax) == "Vector3" then
@@ -358,7 +380,30 @@ function Anim.init(G)
         spinning[p] = nil
       elseif not (busy[s.model] and now < busy[s.model]) and (s.cf0.Position - cp).Magnitude < 600 then
         local a = t * s.spd * math.pi * 2
-        p.CFrame = CFrame.new(s.cf0.Position) * (s.ax and CFrame.fromAxisAngle(s.ax, a) or CFrame.Angles(0, a, 0)) * (s.cf0 - s.cf0.Position)
+        local r = s.ax and CFrame.fromAxisAngle(s.ax, a) or CFrame.Angles(0, a, 0)
+        if s.piv then
+          p.CFrame = CFrame.new(s.piv) * r * CFrame.new(-s.piv) * s.cf0
+        else
+          p.CFrame = CFrame.new(s.cf0.Position) * r * (s.cf0 - s.cf0.Position)
+        end
+      end
+    end
+    for p, s in pairs(belts) do
+      if not p.Parent then
+        for _, it in ipairs(s.items or {}) do
+          for _, q in ipairs(it) do q.p:Destroy() end
+        end
+        belts[p] = nil
+      elseif not (busy[s.model] and now < busy[s.model]) and (s.cf0.Position - cp).Magnitude < 450 then
+        if not s.items then
+          s.items = {}
+          for i = 1, s.n do s.items[i] = beltItem(s.item) end
+        end
+        for i, it in ipairs(s.items) do
+          local x = ((t * s.spd + (i - 1) * s.len / s.n) % s.len) - s.len / 2
+          local cf = s.cf0 * CFrame.new(x, s.h / 2, 0)
+          for _, q in ipairs(it) do q.p.CFrame = cf * q.off end
+        end
       end
     end
     for p, s in pairs(nodding) do

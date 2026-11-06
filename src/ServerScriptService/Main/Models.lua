@@ -900,6 +900,365 @@ local function hq(m, base, b, team)
   return body
 end
 
+---------------------------------------------------------------- 西边工业区的建筑
+
+-- 看不见、不挡人的整块主体（挂牌子、提示、升起动画的脚手架用它的大小）
+local function hiddenBody(m, base, w, h, d)
+  local body = ghostly(block(m, base, V(w, h, d), CF(0, 0.6 + h / 2, 0), C.concrete, MAT.Concrete))
+  body.Transparency = 1
+  body.CastShadow = false
+  return body
+end
+
+-- 两点之间的一根杆（size 是粗细，沿杆方向自动拉长）
+local function rod(m, base, a, b, t, color, mat)
+  local mid, len = (a + b) / 2, (b - a).Magnitude
+  return block(m, base, V(t, t, len), CFrame.lookAt(mid, b), color, mat or MAT.Metal)
+end
+
+-- 客户端动画的属性：绕 piv 点、ax 轴转 / 来回摆
+local function spinAbout(p, piv, ax, spd)
+  anim(p, "spin", spd)
+  p:SetAttribute("Piv", piv)
+  p:SetAttribute("Ax", ax)
+  return p
+end
+local function nodAbout(p, piv, ax, amp, spd, ph)
+  p:SetAttribute("Anim", "nod")
+  p:SetAttribute("Piv", piv)
+  p:SetAttribute("Ax", ax)
+  p:SetAttribute("Amp", amp)
+  p:SetAttribute("Spd", spd)
+  p:SetAttribute("Ph", ph or 0)
+  return p
+end
+
+-- 冒烟（服务器上放的粒子，客户端自己放，不占网络）：color 烟色、size 从多大长到多大、rate 每秒几团
+local function smoke(p, color, s0, s1, rate, life, speed)
+  local e = Instance.new("ParticleEmitter")
+  e.Texture = "rbxasset://textures/particles/smoke_main.dds"
+  e.Color = ColorSequence.new(color)
+  e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, s0), NumberSequenceKeypoint.new(1, s1) })
+  e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.12, 0.45), NumberSequenceKeypoint.new(1, 1) })
+  e.Lifetime = NumberRange.new(life * 0.8, life * 1.2)
+  e.Speed = NumberRange.new(speed * 0.7, speed * 1.2)
+  e.Rate = rate
+  e.EmissionDirection = Enum.NormalId.Top
+  e.SpreadAngle = Vector2.new(12, 12)
+  e.Acceleration = V(1.2, 0.4, 0.4)
+  e.Rotation = NumberRange.new(0, 360)
+  e.RotSpeed = NumberRange.new(-15, 15)
+  e.LightInfluence = 1
+  e.Parent = p
+  return e
+end
+
+-- 一盏灯（PointLight）挂在零件上
+local function glow(p, range, bright, color)
+  local l = Instance.new("PointLight")
+  l.Range, l.Brightness, l.Color, l.Shadows = range, bright, color, false
+  l.Parent = p
+  return l
+end
+
+-- 油井：一台抽油机（游梁带着驴头绕支架顶上下点头、后面的曲柄和配重一圈圈转、电机）、井口采油树、小储油罐和管子、地上一摊油
+local function oilWell(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(146, 142, 132), MAT.Concrete)
+  local Y = 0.6
+  local ph = (#b.id + string.byte(b.id, -1)) % 7   -- 几口井别一起点头
+  local W = base   -- 世界坐标换算
+  local DARK, BODY, HEAD = RGB(58, 60, 64), RGB(214, 170, 40), RGB(40, 42, 46)
+  block(m, base, V(3.4, 0.8, 15), CF(0, Y + 0.4, 0.5), DARK, MAT.Metal)
+  -- 支架：四条斜腿撑到顶上的轴
+  local top = V(0, Y + 7.4, 0)
+  for _, sx in ipairs({ -1.2, 1.2 }) do
+    for _, sz in ipairs({ -2.6, 2.6 }) do rod(m, base, V(sx, Y + 0.8, sz), V(sx * 0.45, top.Y - 0.2, 0), 0.4, BODY) end
+  end
+  block(m, base, V(2.2, 0.6, 0.8), CF(0, top.Y, 0), DARK, MAT.Metal)
+  -- 游梁和驴头：绕轴点头
+  local piv, ax = (W * CF(top)).Position, V(1, 0, 0)
+  nodAbout(block(m, base, V(0.9, 1.1, 14), CF(0, top.Y + 0.75, -1), BODY, MAT.Metal), piv, ax, 13, 0.32, ph)
+  nodAbout(block(m, base, V(1.3, 4.6, 1.4), CF(0, top.Y - 0.5, -8.4), HEAD, MAT.Metal), piv, ax, 13, 0.32, ph)
+  nodAbout(block(m, base, V(1.3, 1.6, 1.6), CF(0, top.Y + 1.4, -7.6), HEAD, MAT.Metal), piv, ax, 13, 0.32, ph)
+  -- 曲柄、配重：绕横轴转（和点头一个周期）
+  local cpiv = (W * CF(0, Y + 3.2, 5.6)).Position
+  for _, sx in ipairs({ -1.6, 1.6 }) do
+    spinAbout(block(m, base, V(0.45, 6.4, 1.2), CF(sx, Y + 3.2, 5.6), BODY, MAT.Metal), cpiv, ax, 0.32)
+    spinAbout(block(m, base, V(0.9, 1.8, 2.8), CF(sx, Y + 3.2 - 2.4, 5.6), RGB(170, 40, 34), MAT.Metal), cpiv, ax, 0.32)
+  end
+  block(m, base, V(2.4, 1.2, 1.2), CF(0, Y + 3.2, 5.6), DARK, MAT.Metal, CYL)
+  -- 电机和皮带罩
+  block(m, base, V(1.8, 1.8, 2.6), CF(0, Y + 1.7, 8.6), RGB(70, 110, 150), MAT.Metal)
+  block(m, base, V(0.5, 2.6, 3.6), CF(1.3, Y + 2.4, 7.2), DARK, MAT.Metal)
+  -- 井口采油树、阀门、通到储罐的管子；储罐、爬梯
+  cyl(m, base, 3.0, 1.0, CF(0, Y + 1.5, -8.4), RGB(150, 150, 150), MAT.Metal)
+  block(m, base, V(2.6, 0.5, 0.5), CF(0, Y + 2.2, -8.4), RGB(150, 150, 150), MAT.Metal)
+  for _, sx in ipairs({ -1.4, 1.4 }) do block(m, base, V(0.15, 1.0, 1.0), CF(sx, Y + 2.2, -8.4), C.red, MAT.Metal, CYL) end
+  block(m, base, V(5.2, 0.45, 0.45), CF(2.9, Y + 0.6, -8.4), DARK, MAT.Metal, CYL)
+  cyl(m, base, 6, 4.6, CF(6.0, Y + 3.0, -7.0), RGB(226, 226, 220), MAT.Metal)
+  cyl(m, base, 0.3, 4.9, CF(6.0, Y + 6.15, -7.0), RGB(180, 60, 50), MAT.Metal)
+  block(m, base, V(0.6, 6, 0.15), CF(6.0, Y + 3.0, -4.6), DARK, MAT.Metal)
+  local puddle = ghostly(block(m, base, V(4, 0.06, 3), CF(-1.6, Y + 0.03, -6.5), RGB(18, 18, 20), MAT.Glass))
+  puddle.CastShadow = false
+  return body
+end
+
+-- 炼油厂：两个大储罐、两座蒸馏塔（黄色平台圈）、管廊上红黄蓝三根管子、火炬顶上烧着火、控制室
+local function refinery(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(150, 148, 140), MAT.Concrete)
+  local Y = 0.6
+  local GREY = RGB(96, 98, 102)
+  for _, x in ipairs({ -15, -1 }) do
+    cyl(m, base, 11, 12, CF(x, Y + 5.5, -7), RGB(234, 234, 228), MAT.Metal)
+    cyl(m, base, 0.7, 12.6, CF(x, Y + 11.2, -7), RGB(196, 196, 192), MAT.Metal)
+    block(m, base, V(1.2, 0.25, 13), CF(x + 6.4, Y + 5.6, -7) * CFrame.Angles(math.rad(-52), 0, 0), GREY, MAT.Metal)
+    ghostly(block(m, base, V(6, 1.2, 0.1), CF(x, Y + 6, -0.95), RGB(40, 90, 160), MAT.SmoothPlastic))   -- 罐身上的蓝色条
+  end
+  for i, x in ipairs({ 11, 17.5 }) do
+    local th = 20 + i * 3
+    cyl(m, base, th, 3.4, CF(x, Y + th / 2, -6), RGB(196, 198, 194), MAT.Metal)
+    for k = 1, 3 do cyl(m, base, 0.3, 5.2, CF(x, Y + k * 6.5, -6), RGB(236, 190, 40), MAT.Metal) end
+    cyl(m, base, 1.2, 2.2, CF(x, Y + th + 0.6, -6), GREY, MAT.Metal)
+  end
+  -- 管廊
+  for k = -2, 2 do block(m, base, V(0.7, 6.4, 0.7), CF(k * 9.5, Y + 3.2, 9), GREY, MAT.Metal) end
+  block(m, base, V(42, 0.5, 2.8), CF(0, Y + 6.6, 9), GREY, MAT.Metal)
+  for k, col in ipairs({ RGB(196, 62, 50), RGB(230, 196, 60), RGB(70, 116, 176) }) do
+    block(m, base, V(42, 0.75, 0.75), CF(0, Y + 7.3, 9 + (k - 2) * 0.9), col, MAT.Metal, CYL)
+  end
+  -- 火炬：细高的烟囱，顶上烧着火、亮光一闪一闪
+  local fx, fz = 22.5, -13
+  cyl(m, base, 30, 1.1, CF(fx, Y + 15, fz), RGB(160, 160, 158), MAT.Metal)
+  for k = 1, 3 do rod(m, base, V(fx, Y + k * 8, fz), V(fx - 4, Y, fz + 3 - k * 0.5), 0.3, GREY) end
+  local flame = ghostly(block(m, base, V(1.4, 2.2, 1.4), CF(fx, Y + 31.2, fz), RGB(255, 160, 50), MAT.Neon))
+  anim(flame, "blink", 5)
+  local fire = Instance.new("Fire")
+  fire.Size, fire.Heat = 7, 14
+  fire.Color, fire.SecondaryColor = RGB(255, 150, 40), RGB(255, 60, 20)
+  fire.Parent = flame
+  glow(flame, 32, 2.2, RGB(255, 170, 90))
+  -- 控制室
+  block(m, base, V(11, 5, 7), CF(-17, Y + 2.5, 10), RGB(214, 210, 196), MAT.SmoothPlastic)
+  block(m, base, V(11.2, 1.3, 7.2), CF(-17, Y + 3.3, 10), C.glass, MAT.Glass)
+  block(m, base, V(11.6, 0.4, 7.6), CF(-17, Y + 5.2, 10), C.roof, MAT.Metal)
+  facadeSign(m, base, CF(-17, Y + 6.4, 13.6), 9, 1.6, "炼 油 厂", RGB(255, 226, 140), Enum.NormalId.Back)
+  return body
+end
+
+-- 弹药厂：锯齿屋顶的车间，侧门出来一条传送带（客户端在上面跑弹药箱），尽头停着装货的卡车；成垛的弹药箱、叉车、屋顶通风帽
+local function ammoPlant(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(150, 148, 140), MAT.Concrete)
+  local Y = 0.6
+  local hx, hw, hd = -7, 30, 24
+  block(m, base, V(hw, 10, hd), CF(hx, Y + 5, 0), RGB(126, 96, 74), MAT.Brick)
+  block(m, base, V(hw + 0.4, 1.2, hd + 0.4), CF(hx, Y + 6.8, 0), C.glass, MAT.Glass)
+  for k = 0, 3 do   -- 锯齿屋顶：四道斜面（玻璃那面朝北）
+    local x = hx - hw / 2 + 3.75 + k * 7.5
+    local wd = Instance.new("WedgePart")
+    wd.Anchored = true
+    wd.Size = V(hd, 3.2, 7.5)
+    wd.CFrame = base * CF(x, Y + 10 + 1.6, 0) * CFrame.Angles(0, math.rad(90), 0)
+    wd.Color = RGB(96, 100, 104)
+    wd.Material = MAT.Metal
+    wd.Parent = m
+    block(m, base, V(0.3, 3.0, hd), CF(x + 3.6, Y + 10 + 1.5, 0), C.glass, MAT.Glass)
+  end
+  -- 侧门、传送带（皮带 + 支腿 + 滚筒），皮带上 Anim = belt：客户端让一个个弹药箱从门里出来往卡车走
+  block(m, base, V(0.4, 6, 5), CF(hx + hw / 2 + 0.1, Y + 3, -6), C.dark, MAT.Metal)
+  local belt = block(m, base, V(11, 0.4, 2.4), CF(hx + hw / 2 + 5.6, Y + 2.2, -6), RGB(34, 34, 36), MAT.Fabric)
+  belt:SetAttribute("Anim", "belt")
+  belt:SetAttribute("Spd", 3.2)
+  belt:SetAttribute("N", 4)
+  belt:SetAttribute("Item", "crate")
+  for k = 0, 3 do
+    for _, sz in ipairs({ -1.1, 1.1 }) do block(m, base, V(0.3, 2.0, 0.3), CF(hx + hw / 2 + 1.2 + k * 3.0, Y + 1.0, -6 + sz), RGB(230, 190, 40), MAT.Metal) end
+  end
+  block(m, base, V(11, 0.3, 0.3), CF(hx + hw / 2 + 5.6, Y + 2.5, -7.3), RGB(230, 190, 40), MAT.Metal)
+  block(m, base, V(11, 0.3, 0.3), CF(hx + hw / 2 + 5.6, Y + 2.5, -4.7), RGB(230, 190, 40), MAT.Metal)
+  -- 卡车（车尾对着传送带）
+  local tx, tz = hx + hw / 2 + 14, -6
+  for _, sz in ipairs({ -1.5, 1.5 }) do
+    for _, sx in ipairs({ -2.4, 1.6, 3.6 }) do block(m, base, V(0.8, 2.2, 2.2), CF(tx + sx, Y + 1.1, tz + sz) * CFrame.Angles(0, math.rad(90), 0), RGB(30, 30, 32), MAT.SmoothPlastic, CYL) end
+  end
+  block(m, base, V(9.6, 0.8, 3.4), CF(tx + 0.8, Y + 1.9, tz), RGB(52, 54, 52), MAT.Metal)
+  block(m, base, V(6.2, 3.4, 3.4), CF(tx - 0.6, Y + 4.0, tz), RGB(84, 96, 64), MAT.Fabric)
+  block(m, base, V(2.8, 2.8, 3.2), CF(tx + 4.2, Y + 3.7, tz), RGB(84, 96, 64), MAT.Metal)
+  block(m, base, V(0.2, 1.1, 2.8), CF(tx + 5.62, Y + 4.4, tz), RGB(60, 90, 110), MAT.Glass)
+  -- 成垛的弹药箱（托盘 + 一垛箱子 + 黄色标记）
+  for i, p in ipairs({ { 12, 7 }, { 17, 7 }, { 12, 11.5 }, { -20, 13.5 } }) do
+    block(m, base, V(4, 0.4, 3.6), CF(p[1], Y + 0.2, p[2]), RGB(140, 104, 66), MAT.WoodPlanks)
+    local hh = (i % 2 == 0) and 2.6 or 3.6
+    block(m, base, V(3.6, hh, 3.2), CF(p[1], Y + 0.4 + hh / 2, p[2]), RGB(78, 92, 58), MAT.Metal)
+    ghostly(block(m, base, V(3.65, 0.3, 3.25), CF(p[1], Y + 0.4 + hh * 0.7, p[2]), RGB(236, 196, 50), MAT.SmoothPlastic))
+  end
+  -- 叉车
+  local kx, kz = 18, 1.5
+  block(m, base, V(2.2, 1.6, 3.2), CF(kx, Y + 1.3, kz), RGB(236, 190, 40), MAT.Metal)
+  block(m, base, V(1.8, 1.4, 1.4), CF(kx, Y + 2.8, kz + 0.6), C.dark, MAT.Metal)
+  block(m, base, V(0.3, 4.4, 0.3), CF(kx - 0.7, Y + 2.2, kz - 1.8), C.dark, MAT.Metal)
+  block(m, base, V(0.3, 4.4, 0.3), CF(kx + 0.7, Y + 2.2, kz - 1.8), C.dark, MAT.Metal)
+  block(m, base, V(1.8, 0.2, 2.2), CF(kx, Y + 0.6, kz - 3.0), C.dark, MAT.Metal)
+  for _, sx in ipairs({ -1.15, 1.15 }) do block(m, base, V(0.5, 1.2, 1.2), CF(kx + sx, Y + 0.6, kz + 0.9) * CFrame.Angles(0, 0, math.pi / 2), RGB(30, 30, 32), MAT.SmoothPlastic, CYL) end
+  -- 屋顶通风帽
+  for _, x in ipairs({ hx - 9, hx + 2 }) do cyl(m, base, 2.4, 1.6, CF(x, Y + 14.4, 6), RGB(150, 150, 150), MAT.Metal) end
+  facadeSign(m, base, CF(hx, Y + 8.8, hd / 2 + 0.25), 10, 1.6, "弹 药 厂", RGB(255, 226, 140), Enum.NormalId.Back)
+  return body
+end
+
+-- 钢铁厂：人字屋顶的厂房、高炉（炉口发光、出铁沟里流着铁水）、三座热风炉、两根冒烟的大烟囱、钢梁和钢卷
+local function steelMill(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(120, 118, 112), MAT.Concrete)
+  local Y = 0.6
+  local RUST, DARK = RGB(120, 70, 50), RGB(54, 56, 60)
+  -- 厂房
+  block(m, base, V(24, 13, 22), CF(-9, Y + 6.5, 4), RGB(84, 90, 96), MAT.CorrodedMetal)
+  for _, s in ipairs({ -1, 1 }) do
+    block(m, base, V(24.6, 0.6, 12.4), CF(-9, Y + 13 + 2.2, 4 + s * 5.4) * CFrame.Angles(s * math.rad(21), 0, 0), RGB(70, 74, 80), MAT.Metal)
+  end
+  block(m, base, V(24.4, 1.4, 22.4), CF(-9, Y + 9.6, 4), C.glass, MAT.Glass)
+  -- 高炉：一节节往上收的炉身、炉顶、下降管
+  local fx, fz = 10, -6
+  cyl(m, base, 6, 10, CF(fx, Y + 3, fz), RUST, MAT.Metal)
+  cyl(m, base, 9, 8.6, CF(fx, Y + 10.5, fz), RGB(130, 80, 58), MAT.Metal)
+  cyl(m, base, 4, 6, CF(fx, Y + 17, fz), RUST, MAT.Metal)
+  cyl(m, base, 3, 3.4, CF(fx, Y + 20.5, fz), DARK, MAT.Metal)
+  rod(m, base, V(fx + 1.4, Y + 21.5, fz), V(fx + 7, Y + 14, fz + 6), 1.0, DARK)
+  for k = 1, 3 do cyl(m, base, 0.3, 11, CF(fx, Y + k * 4.5, fz), RGB(230, 190, 40), MAT.Metal) end
+  -- 炉口发光、出铁沟里的铁水
+  local mouth = ghostly(block(m, base, V(3.2, 2.4, 0.4), CF(fx, Y + 1.6, fz + 5.05), RGB(255, 120, 30), MAT.Neon))
+  anim(mouth, "blink", 2)
+  glow(mouth, 22, 2, RGB(255, 140, 60))
+  block(m, base, V(1.8, 0.3, 8), CF(fx, Y + 0.25, fz + 9), RGB(70, 66, 62), MAT.Slate)
+  ghostly(block(m, base, V(1.0, 0.1, 7.6), CF(fx, Y + 0.45, fz + 9), RGB(255, 110, 20), MAT.Neon))
+  -- 热风炉
+  for i = 0, 2 do cyl(m, base, 18, 4, CF(17 + (i % 2) * 3, Y + 9, -14 + i * 4.2), RGB(150, 96, 74), MAT.Metal) end
+  -- 烟囱（冒烟）
+  for i, p in ipairs({ { -18, -10 }, { -12.5, -12 } }) do
+    cyl(m, base, 26, 2.6, CF(p[1], Y + 13, p[2]), RGB(176, 74, 60), MAT.Brick)
+    cyl(m, base, 2.4, 2.9, CF(p[1], Y + 21, p[2]), RGB(236, 236, 230), MAT.SmoothPlastic)
+    local top = ghostly(block(m, base, V(2, 0.2, 2), CF(p[1], Y + 26.2, p[2]), DARK, MAT.Metal))
+    smoke(top, RGB(110, 108, 106), 3, 11, 3 + i, 7, 6)
+  end
+  -- 钢梁、钢卷
+  for k = 0, 2 do block(m, base, V(12, 0.9, 0.9), CF(-8, Y + 0.45 + k * 0.9, -14 + (k % 2) * 0.4), RGB(120, 124, 130), MAT.DiamondPlate) end
+  for k = 0, 2 do block(m, base, V(2.4, 3.2, 3.2), CF(6 + k * 3, Y + 1.6, 14), RGB(150, 154, 160), MAT.Metal, CYL) end
+  facadeSign(m, base, CF(-9, Y + 11.5, 15.3), 10, 1.6, "钢 铁 厂", RGB(255, 226, 140), Enum.NormalId.Back)
+  return body
+end
+
+-- 矿场：一座石头山，山脚的坑道口（木支架），铁轨从坑道一直铺到矿仓（客户端让矿车来回跑），井架顶上的天轮在转，几堆矿石
+local function mine(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(138, 122, 98), MAT.Ground)
+  local Y = 0.6
+  local ROCK, WOOD = RGB(118, 112, 104), RGB(112, 84, 56)
+  -- 石头山（几个大球叠起来，埋一半在地里）
+  for _, r in ipairs({ { -12, -4, 24 }, { -2, -9, 18 }, { -17, 7, 16 }, { 5, -11, 12 } }) do
+    block(m, base, V(r[3], r[3], r[3]), CF(r[1], Y - r[3] * 0.18, r[2]), ROCK, MAT.Slate, BALL)
+  end
+  -- 坑道口：黑洞 + 木框
+  local ex, ez = -4, 0.5
+  ghostly(block(m, base, V(5.2, 6, 0.6), CF(ex, Y + 3, ez), RGB(12, 12, 14), MAT.SmoothPlastic))
+  for _, sx in ipairs({ -2.9, 2.9 }) do block(m, base, V(0.8, 6.8, 0.8), CF(ex + sx, Y + 3.4, ez + 0.6), WOOD, MAT.Wood) end
+  block(m, base, V(7.4, 0.9, 0.9), CF(ex, Y + 7.1, ez + 0.6), WOOD, MAT.Wood)
+  -- 铁轨（两根轨 + 枕木），从坑道口往东铺到矿仓；皮带式动画让矿车沿着跑
+  local rx0, rx1, rz = ex, 20, ez + 6
+  local len = rx1 - rx0
+  for k = 0, math.floor(len / 2.2) do ghostly(block(m, base, V(0.6, 0.2, 3.6), CF(rx0 + 1 + k * 2.2, Y + 0.1, rz), WOOD, MAT.Wood)) end
+  for _, sz in ipairs({ -1.1, 1.1 }) do ghostly(block(m, base, V(len, 0.25, 0.25), CF((rx0 + rx1) / 2, Y + 0.32, rz + sz), RGB(90, 90, 94), MAT.Metal)) end
+  local track = ghostly(block(m, base, V(len, 0.1, 2.6), CF((rx0 + rx1) / 2, Y + 0.3, rz), RGB(90, 90, 94), MAT.Metal))
+  track.Transparency = 1
+  track:SetAttribute("Anim", "belt")
+  track:SetAttribute("Spd", 2.6)
+  track:SetAttribute("N", 3)
+  track:SetAttribute("Item", "cart")
+  -- 坑道口和矿车之间：铁轨先从山里出来（-Z 那边转过来）
+  ghostly(block(m, base, V(2.6, 0.2, 5.4), CF(ex, Y + 0.12, ez + 3.2), WOOD, MAT.Wood))
+  -- 矿仓（高架的漏斗仓，下面能过矿车）
+  local bx = rx1 + 1
+  for _, o in ipairs({ { -2.6, -2.6 }, { 2.6, -2.6 }, { -2.6, 2.6 }, { 2.6, 2.6 } }) do block(m, base, V(0.7, 7, 0.7), CF(bx + o[1], Y + 3.5, rz + o[2]), WOOD, MAT.Wood) end
+  block(m, base, V(6.6, 4, 6.6), CF(bx, Y + 9, rz), RGB(96, 84, 70), MAT.WoodPlanks)
+  -- 井架和天轮
+  local hx, hz = 13, -8
+  for _, o in ipairs({ { -2.4, -2.4 }, { 2.4, -2.4 }, { -2.4, 2.4 }, { 2.4, 2.4 } }) do rod(m, base, V(hx + o[1] * 1.6, Y, hz + o[2] * 1.6), V(hx + o[1] * 0.5, Y + 16, hz + o[2] * 0.5), 0.6, RGB(150, 60, 44)) end
+  for k = 1, 3 do block(m, base, V(6.4 - k * 1.1, 0.4, 6.4 - k * 1.1), CF(hx, Y + k * 4.4, hz), RGB(150, 60, 44), MAT.Metal) end
+  local wheelC = CF(hx, Y + 17.6, hz)
+  spinAbout(block(m, base, V(0.5, 5.4, 5.4), wheelC, RGB(70, 72, 78), MAT.Metal, CYL), (base * wheelC).Position, V(1, 0, 0), 0.25)
+  for _, a in ipairs({ 0, 60, 120 }) do spinAbout(block(m, base, V(0.6, 5.0, 0.35), wheelC * CFrame.Angles(math.rad(a), 0, 0), RGB(200, 170, 50), MAT.Metal), (base * wheelC).Position, V(1, 0, 0), 0.25) end
+  ghostly(block(m, base, V(0.15, 0.15, 14), CF(hx, Y + 17.6 - 2.6, hz + 6.5) * CFrame.Angles(math.rad(-48), 0, 0), C.dark, MAT.Metal))
+  -- 矿石堆
+  for _, p in ipairs({ { 18, 13, 7 }, { 13, 14.5, 5 }, { 22, 6, 5 } }) do
+    block(m, base, V(p[3], p[3], p[3]), CF(p[1], Y - p[3] * 0.25, p[2]), RGB(74, 62, 52), MAT.Pebble, BALL)
+  end
+  facadeSign(m, base, CF(bx, Y + 11.6, rz + 3.35), 7, 1.4, "矿  场", RGB(255, 226, 140), Enum.NormalId.Back)
+  return body
+end
+
+-- 核电站：两座冷却塔（一节节收腰的塔身，顶上冒白汽、塔顶红色航空障碍灯）、圆顶反应堆、汽轮机厂房、变压器和电线杆、辐射警告牌
+local function nuclear(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(156, 156, 150), MAT.Concrete)
+  local Y = 0.6
+  local CON = RGB(222, 222, 216)
+  for _, tx in ipairs({ -17, 5 }) do
+    local tz = 7
+    local y = Y
+    for _, sec in ipairs({ { 21, 7 }, { 18.5, 7 }, { 16.5, 7 }, { 16.8, 6 }, { 18, 6 } }) do
+      cyl(m, base, sec[2], sec[1], CF(tx, y + sec[2] / 2, tz), CON, MAT.Concrete)
+      y = y + sec[2]
+    end
+    cyl(m, base, 0.6, 18.4, CF(tx, y + 0.3, tz), RGB(170, 170, 166), MAT.Concrete)
+    local hole = ghostly(cyl(m, base, 0.2, 15.6, CF(tx, y + 0.65, tz), RGB(40, 42, 44), MAT.SmoothPlastic))
+    -- 白汽：大团、慢慢往上飘、被风吹歪
+    local e = smoke(hole, RGB(250, 250, 252), 10, 26, 4, 11, 5)
+    e.SpreadAngle = Vector2.new(8, 8)
+    e.Acceleration = V(1.6, 0.5, 0.6)
+    e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.2, 0.25), NumberSequenceKeypoint.new(1, 1) })
+    for _, sx in ipairs({ -1, 1 }) do anim(ghostly(block(m, base, V(0.8, 0.8, 0.8), CF(tx + sx * 9.1, y + 0.9, tz), RGB(255, 40, 30), MAT.Neon)), "blink", 0.7) end
+  end
+  -- 反应堆：圆柱 + 圆顶
+  local rx, rz = 21, -12
+  cyl(m, base, 14, 15, CF(rx, Y + 7, rz), RGB(206, 206, 200), MAT.Concrete)
+  block(m, base, V(15, 15, 15), CF(rx, Y + 14, rz), RGB(214, 214, 208), MAT.Concrete, BALL)
+  for _, a in ipairs({ 0, 120, 240 }) do ghostly(block(m, base, V(15.2, 0.6, 0.6), CF(rx, Y + 9 + a / 60, rz) * CFrame.Angles(0, math.rad(a), 0), RGB(170, 170, 166), MAT.Concrete)) end
+  -- 汽轮机厂房、连廊
+  block(m, base, V(22, 11, 11), CF(-1, Y + 5.5, -16), RGB(96, 120, 150), MAT.Metal)
+  block(m, base, V(22.4, 1.2, 11.4), CF(-1, Y + 8.4, -16), C.glass, MAT.Glass)
+  block(m, base, V(6, 4, 4), CF(12.5, Y + 6, -14), RGB(170, 170, 166), MAT.Concrete)
+  -- 变压器、电线杆
+  for k = 0, 2 do
+    block(m, base, V(3, 3.4, 2.4), CF(-26 + k * 4.2, Y + 1.7, -18), RGB(110, 116, 110), MAT.Metal)
+    for j = 0, 2 do cyl(m, base, 1.4, 0.35, CF(-26.8 + k * 4.2 + j * 0.8, Y + 4.1, -18), RGB(140, 100, 70), MAT.Glass) end
+  end
+  for _, px in ipairs({ -27, -15 }) do
+    block(m, base, V(0.8, 16, 0.8), CF(px, Y + 8, -22.5), RGB(120, 124, 130), MAT.Metal)
+    block(m, base, V(7, 0.5, 0.6), CF(px, Y + 15.4, -22.5), RGB(120, 124, 130), MAT.Metal)
+  end
+  for _, sz in ipairs({ -2.8, 0, 2.8 }) do ghostly(block(m, base, V(12, 0.1, 0.1), CF(-21, Y + 15.9, -22.5 + sz * 0.1), C.dark, MAT.Metal)) end
+  -- 辐射警告牌（黄底黑圈）
+  for _, sx in ipairs({ -8, 8 }) do
+    block(m, base, V(0.3, 4, 0.3), CF(rx + sx, Y + 2, rz + 9.5), RGB(90, 90, 94), MAT.Metal)
+    local sign = block(m, base, V(3, 3, 0.2), CF(rx + sx, Y + 4.5, rz + 9.5), RGB(240, 200, 30), MAT.SmoothPlastic)
+    ghostly(cyl(m, base, 0.22, 1.6, CF(rx + sx, Y + 4.5, rz + 9.6) * CFrame.Angles(math.rad(90), 0, 0), RGB(30, 30, 30), MAT.SmoothPlastic))
+    sign.CastShadow = false
+  end
+  facadeSign(m, base, CF(-1, Y + 12.2, -10.35), 12, 1.8, "核 电 站", RGB(255, 226, 140), Enum.NormalId.Back)
+  return body
+end
+
+local IND = { oil1 = oilWell, oil2 = oilWell, oil3 = oilWell, refinery = refinery, ammo = ammoPlant, steel = steelMill, mine = mine, nuclear = nuclear }
+Models.IND = IND
+
 local KIND = { house = house, factory = factory, power = power, bank = bank, hq = hq }
 local MIL = { barracks = barracks, tankfac = hangar, aafac = aaShop, artyfac = artyPos, helipad = helipad, airbase = airbase }
 
@@ -907,8 +1266,9 @@ local MIL = { barracks = barracks, tankfac = hangar, aafac = aaShop, artyfac = a
 function Models.building(parent, b, pos, team, builtAt)
   local m = Instance.new("Model")
   m.Name = b.id
-  local f = KIND[b.kind]
+  local f = IND[b.id] or KIND[b.kind]
   if b.kind == "mil" then f = MIL[b.id] or barracks end
+  if not f then f = house end
   local body = f(m, CF(pos), b, team)
   body.Name = "Body"
   m.PrimaryPart = body
@@ -935,6 +1295,8 @@ function Models.pad(parent, b, pos, team)
   elseif b.kind == "hq" then desc = "部队上限 " .. b.cap[1]
   elseif b.kind == "power" then desc = "工厂收入 ×" .. Config.PowerBoost
   end
+  if b.kind == "refinery" then desc = desc .. "\n油井收入 ×" .. Config.RefineryBoost
+  elseif b.kind == "nuclear" then desc = desc .. "\n工厂收入再 ×" .. Config.NuclearBoost end
   local _, label = Models.sign(pad, "<b>" .. b.name .. "</b>\n$" .. Config.Fmt(b.price) .. "  " .. desc, 5.5, 17, 4.2, nil, 220)
   local pp = Instance.new("ProximityPrompt")
   pp.ActionText = "建造"

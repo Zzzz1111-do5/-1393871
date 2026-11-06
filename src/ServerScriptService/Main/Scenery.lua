@@ -104,6 +104,8 @@ local function reserved(Config, x, z, margin)
     if math.abs(dx) < hs + 30 + margin and z > -hs - 30 - margin and z < hs + 40 + margin then return true end              -- 基地
     if math.abs(dx) < F.width / 2 + 30 + margin and z > hs - margin and z < F.center + F.length / 2 + 40 + margin then return true end   -- 路 + 战场
     if dx > 150 - margin and dx < 262 + margin and z > -hs - 20 - margin and z < hs + margin then return true end           -- 空军基地
+    local I = Config.Industry
+    if dx > I.x0 - 12 - margin and dx < I.x1 + margin and z > I.z0 - 12 - margin and z < I.z1 + 12 + margin then return true end   -- 西边工业区
   end
   for _, ax in ipairs(Config.Arena.xs) do
     if math.abs(x - ax) < F.width / 2 + 40 + margin and z > Config.Arena.z + F.center - F.length / 2 - 40 - margin and z < Config.Arena.z + F.center + F.length / 2 + 40 + margin then return true end
@@ -321,7 +323,32 @@ function Scenery.base(f, origin, color, Config)
     end
   end
   wall(-hs, -hs, hs, -hs, 8)           -- 后墙
-  wall(-hs, -hs, -hs, hs, 8)           -- 左墙
+  -- 左墙（西）：南段开一个工业区大门（门柱、门楣上写「工业区」）
+  local gz0, gz1 = Config.Industry.gate[1], Config.Industry.gate[2]
+  wall(-hs, -hs, -hs, gz0 - 3, 8)
+  wall(-hs, gz1 + 3, -hs, hs, 8)
+  for _, gz in ipairs({ gz0 - 2.5, gz1 + 2.5 }) do
+    part(g, V(5, 12, 5), base * CF(-hs, 7, gz), RGB(124, 124, 118), MAT.Concrete, nil, true)
+    part(g, V(5.6, 0.8, 5.6), base * CF(-hs, 13.4, gz), RGB(100, 100, 96), MAT.Concrete)
+    part(g, V(1, 1, 1), base * CF(-hs, 14.3, gz), RGB(255, 170, 60), MAT.Neon):SetAttribute("Anim", "blink")
+  end
+  local lintel = part(g, V(1, 2.4, gz1 - gz0 + 6), base * CF(-hs, 14, (gz0 + gz1) / 2), RGB(214, 170, 40), MAT.SmoothPlastic)
+  for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = face
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 24
+    sg.LightInfluence = 0
+    local t = Instance.new("TextLabel")
+    t.Size = UDim2.fromScale(1, 1)
+    t.BackgroundTransparency = 1
+    t.Font = Enum.Font.GothamBlack
+    t.TextScaled = true
+    t.TextColor3 = RGB(40, 36, 30)
+    t.Text = (face == Enum.NormalId.Right) and "工业区 →" or "← 回基地"
+    t.Parent = sg
+    sg.Parent = lintel
+  end
   wall(hs, -hs, hs, hs, 8)             -- 右墙
   -- 前面（朝战场）：两段矮墙，中间是大门（和中间那条路对齐）
   local g0, g1 = -72, 52
@@ -565,6 +592,78 @@ local function palm(g, pos, rng)
 end
 
 -- 战区：地面材质、两边的地形、道具（g 是这一块战场的装饰文件夹，清空重摆）
+---------------------------------------------------------------- 西边工业区的场地（围墙外，从西墙南段的大门出去）
+
+-- 硬化地面（一直铺到围墙）、从大门过来的路、南北主路和两条支路、三面围栏、路灯、门口的指示牌、几堆管子和油桶
+function Scenery.industry(f, origin, Config)
+  local I = Config.Industry
+  local hs = Config.BaseSize / 2
+  local base = CF(origin)
+  local g = Instance.new("Folder")
+  g.Name = "Industry"
+  local x0, x1, z0, z1 = I.x0, -hs - 1, I.z0, I.z1
+  local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+  part(g, V(x1 - x0, 1, z1 - z0), base * CF(cx, 0.5, cz), RGB(158, 152, 136), MAT.Concrete, nil, true)
+  local ROAD, LINE = RGB(62, 64, 68), RGB(236, 232, 210)
+  local gz = (I.gate[1] + I.gate[2]) / 2
+  local rx = I.roadX
+  part(g, V(x1 - rx + 7, 0.1, 16), base * CF((x1 + rx - 7) / 2, 1.05, gz), ROAD, MAT.Asphalt)
+  part(g, V(14, 0.1, z1 - z0 - 10), base * CF(rx, 1.05, cz), ROAD, MAT.Asphalt)
+  for z = z0 + 12, z1 - 12, 14 do part(g, V(0.5, 0.06, 6), base * CF(rx, 1.12, z), LINE, MAT.SmoothPlastic) end
+  for _, az in ipairs({ -64, 4 }) do
+    part(g, V(rx - x0 - 14, 0.1, 10), base * CF((rx + x0 + 14) / 2, 1.05, az), ROAD, MAT.Asphalt)
+    for x = rx - 14, x0 + 22, -14 do part(g, V(6, 0.06, 0.5), base * CF(x, 1.12, az), LINE, MAT.SmoothPlastic) end
+  end
+  -- 围栏：北、西、南三面（立柱、铁丝网、顶上一道铁丝）
+  local function fence(ax, az, bx, bz)
+    local a, b = V(ax, 0, az), V(bx, 0, bz)
+    local len = (b - a).Magnitude
+    local mid = (a + b) / 2
+    local rot = CFrame.lookAt(mid, b)
+    rot = rot - rot.Position
+    local mesh = part(g, V(0.15, 5.2, len), base * CF(mid + V(0, 3.6, 0)) * rot, RGB(150, 156, 160), MAT.SmoothPlastic, nil, true)
+    mesh.Transparency = 0.82
+    part(g, V(0.2, 0.2, len), base * CF(mid + V(0, 6.3, 0)) * rot, RGB(70, 72, 76), MAT.Metal)
+    local n = math.max(1, math.floor(len / 18))
+    for k = 0, n do cyl(g, 6.4, 0.45, base * CF(a:Lerp(b, k / n) + V(0, 4.2, 0)), RGB(84, 86, 90), MAT.Metal, true) end
+  end
+  fence(x0, z1, x1, z1)
+  fence(x0, z0, x0, z1)
+  fence(x0, z0, x1, z0)
+  -- 路灯（主路东边）
+  for _, z in ipairs({ z0 + 18, -40, 20, z1 - 16 }) do
+    local x = rx + 9.5
+    cyl(g, 11, 0.5, base * CF(x, 6.5, z), RGB(70, 72, 76), MAT.Metal, true)
+    part(g, V(3.2, 0.4, 0.9), base * CF(x - 1.3, 11.8, z), RGB(70, 72, 76), MAT.Metal)
+    local bulb = part(g, V(1.2, 0.4, 0.8), base * CF(x - 2.4, 11.5, z), RGB(255, 236, 190), MAT.Neon)
+    local pl = Instance.new("PointLight")
+    pl.Brightness, pl.Range, pl.Color = 1.2, 28, RGB(255, 228, 180)
+    pl.Parent = bulb
+  end
+  -- 门口的指示牌：工业区里能盖什么
+  local board = part(g, V(0.6, 7, 14), base * CF(rx + 12, 6.5, gz + 16), RGB(36, 52, 40), MAT.SmoothPlastic, nil, true)
+  for _, sx in ipairs({ -5.5, 5.5 }) do cyl(g, 6, 0.5, base * CF(rx + 12, 3, gz + 16 + sx), RGB(80, 82, 86), MAT.Metal, true) end
+  local sg = Instance.new("SurfaceGui")
+  sg.Face = Enum.NormalId.Right
+  sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  sg.PixelsPerStud = 24
+  sg.LightInfluence = 0
+  local t = Instance.new("TextLabel")
+  t.Size = UDim2.fromScale(1, 1)
+  t.BackgroundTransparency = 1
+  t.Font = Enum.Font.GothamBold
+  t.TextScaled = true
+  t.TextColor3 = RGB(255, 236, 170)
+  t.Text = "西 · 工业区\n油井 → 炼油厂（油井 ×1.5）\n弹药厂 → 钢铁厂 → 矿场\n核电站（工厂再 ×1.3）"
+  t.Parent = sg
+  sg.Parent = board
+  -- 几堆管子、油桶
+  for k = 0, 2 do part(g, V(16, 1.2, 1.2), base * CF(x0 + 30, 1.6 + k * 1.1, z1 - 14 + (k % 2) * 0.6), RGB(120, 124, 128), MAT.Metal, CYL, true) end
+  for i = 0, 5 do cyl(g, 2.6, 1.8, base * CF(x0 + 52 + (i % 3) * 2.1, 2.3, z1 - 16 + math.floor(i / 3) * 2.1), (i % 2 == 0) and RGB(60, 84, 60) or RGB(160, 50, 40), MAT.Metal) end
+  g.Parent = f
+  return g
+end
+
 function Scenery.theater(plot, theater, Config)
   local F = Config.Field
   local th = THEME[theater] or THEME.grass

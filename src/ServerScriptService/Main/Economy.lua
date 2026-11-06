@@ -13,11 +13,7 @@ function Economy.init(G)
     local inc = 0
     for id in pairs(d.owned) do
       local b = BDEF[id]
-      if b and b.income then
-        local v = b.income
-        if b.kind == "factory" and d.owned.power then v = v * Config.PowerBoost end
-        inc = inc + v
-      end
+      if b and b.income then inc = inc + Config.BuildingIncome(b, d.owned, d.lv and d.lv[id]) end
     end
     return inc * (1 + Config.Rebirth.income * (d.rebirth or 0))
   end
@@ -115,6 +111,10 @@ function Economy.init(G)
           if who == st.pl then G.tryBuild(st, id, false) end
         end)
         st.pads[id] = { pad = pad, b = b }
+        if id == "oil1" and not st.indHint then   -- 工业区在西墙外，第一次解锁时说一声
+          st.indHint = true
+          G.toast(st, "西边工业区开放了：从基地西墙南段的「工业区大门」出去，先盖油井 A；跟着地上的箭头走", "info")
+        end
         if id == "airbase" and not st.airHint then   -- 空军基地盖在围墙外面，按钮在围墙里靠右
           st.airHint = true
           G.toast(st, "空军基地解锁了：购买按钮在基地里靠空军那边的围墙旁（面朝战场时的左手边），盖好后跑道在围墙外面；跟着地上的箭头走", "info")

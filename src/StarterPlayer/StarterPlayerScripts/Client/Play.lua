@@ -835,8 +835,7 @@ function Play.init(G)
       for id in pairs(S.owned) do
         local b = Config.BuildingById[id]
         if b and b.income then
-          local v = b.income * mul
-          if b.kind == "factory" and S.owned.power then v = v * Config.PowerBoost end
+          local v = Config.BuildingIncome(b, S.owned, S.lv and S.lv[id]) * mul
           local p = S.origin + V(b.x, 1 + b.size[2] + 2, b.z)
           if (p - cam.CFrame.Position).Magnitude < 260 then G.popText(p, "+$" .. Config.Fmt(v * 3), RGB(130, 235, 140)) end
         end

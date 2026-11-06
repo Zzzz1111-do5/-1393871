@@ -33,6 +33,7 @@ function World.init(G)
       plot[name] = sub
     end
     G.try("基地外围", Scenery.base, f, plot.origin, plot.color, Config)
+    G.try("工业区", Scenery.industry, f, plot.origin, Config)
     G.try("战区", Scenery.theater, plot, "grass", Config)
     f.Parent = PlotsF
     G.plots[i] = plot
