@@ -1,25 +1,16 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Meta name="ExplicitAutoJoints">true</Meta>
-<External>null</External>
-<External>nil</External>
-<Item class="Workspace" referent="RBX00000000000000000000000000000001">
-<Properties>
-<string name="Name">Workspace</string>
-<bool name="StreamingEnabled">false</bool>
-</Properties>
-</Item>
-<Item class="ReplicatedStorage" referent="RBX00000000000000000000000000000004">
-<Properties>
-<string name="Name">ReplicatedStorage</string>
-</Properties>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000002">
-<Properties>
-<string name="Name">Config</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：共享配置（ReplicatedStorage.Config，服务器和客户端都 require）
--- 数值都在这里调：建筑、兵种、关卡敌军、武器、军衔、重生、每日奖励与任务、突袭与约战
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">Config</string>
+        <ProtectedString name="Source"><![CDATA[-- 军事大亨：共享配置（ReplicatedStorage.Config，服务器和客户端都 require）
+-- 数值都在这里调：建筑、兵种、关卡敌军、武器、军衔、重生、每日奖励与任务、突袭与约战、战场支援、老兵、补给空投
 local Config = {}
 
-Config.Version = "0.3"
+Config.Version = "0.4"
 Config.SaveKey = "MilitaryTycoon_v1"   -- DataStore 名字（改了就是新存档）
 Config.StartCash = 300
 Config.BaseCap = 4                     -- 没有指挥部时最多几个单位
@@ -50,19 +41,19 @@ Config.EnemyColor = Color3.fromRGB(200, 50, 45)
 --   pad：购买按钮的位置（相对建筑中心，默认在建筑 −Z 那边）
 Config.Buildings = {
   { id = "house1", name = "居民楼 A", kind = "house", price = 60, income = 5, x = -95, z = -95, size = { 18, 16, 18 } },
-  { id = "barracks", name = "兵营", kind = "mil", units = { "inf", "mg", "mortar", "sniper", "at", "manpad" }, price = 300, req = "house1", x = -95, z = 30, size = { 26, 10, 18 } },
+  { id = "barracks", name = "兵营", kind = "mil", units = { "inf", "mg", "mortar", "sniper", "at", "manpad", "medic", "flamer", "commando" }, price = 300, req = "house1", x = -95, z = 30, size = { 26, 10, 18 } },
   { id = "house2", name = "居民楼 B", kind = "house", price = 300, income = 10, req = "house1", x = -40, z = -95, size = { 18, 22, 18 } },
   { id = "hq", name = "指挥部", kind = "hq", price = 800, req = "barracks", x = -95, z = 100, size = { 30, 14, 24 }, cap = { 10, 18, 30, 40 }, up = { 3000, 15000, 60000 } },
   { id = "factory1", name = "轻工厂", kind = "factory", price = 900, income = 20, req = "house2", x = -95, z = -45, size = { 26, 13, 22 } },
-  { id = "tankfac", name = "装甲车厂", kind = "mil", units = { "jeep", "ifv", "td", "tank", "breacher" }, price = 2500, req = "factory1", x = -40, z = 30, size = { 36, 18, 30 } },
+  { id = "tankfac", name = "装甲车厂", kind = "mil", units = { "jeep", "ifv", "td", "tank", "breacher", "repair", "heavytank" }, price = 2500, req = "factory1", x = -40, z = 30, size = { 36, 18, 30 } },
   { id = "house3", name = "居民楼 C", kind = "house", price = 2000, income = 30, req = "factory1", x = 15, z = -95, size = { 18, 30, 18 } },
   { id = "power", name = "发电厂", kind = "power", price = 4000, req = "factory1", x = 15, z = -45, size = { 22, 20, 22 } },
-  { id = "aafac", name = "防空车间", kind = "mil", units = { "aa", "spaag", "cram", "sam" }, price = 6000, req = "tankfac", x = 15, z = 30, size = { 30, 14, 24 } },
+  { id = "aafac", name = "防空车间", kind = "mil", units = { "aa", "spaag", "cram", "sam", "ew" }, price = 6000, req = "tankfac", x = 15, z = 30, size = { 30, 14, 24 } },
   { id = "artyfac", name = "炮兵阵地", kind = "mil", units = { "howitzer", "arty", "heavyarty", "mlrs" }, price = 9000, req = "tankfac", x = 80, z = 30, size = { 32, 9, 32 } },
   { id = "factory2", name = "重工厂", kind = "factory", price = 12000, income = 60, req = "power", x = -40, z = -45, size = { 28, 16, 24 } },
-  { id = "helipad", name = "直升机场", kind = "mil", units = { "heli", "transport", "drone" }, price = 20000, req = "factory2", x = 85, z = 100, size = { 48, 3, 48 } },
+  { id = "helipad", name = "直升机场", kind = "mil", units = { "heli", "transport", "drone", "loiter" }, price = 20000, req = "factory2", x = 85, z = 100, size = { 48, 3, 48 } },
   -- 空军基地在围墙外面（基地右边），购买按钮在围墙里面靠右（pad 是按钮相对建筑中心的位置）
-  { id = "airbase", name = "空军基地", kind = "mil", units = { "attacker", "fighter", "bomber" }, price = 40000, req = "helipad", x = 205, z = -10, size = { 60, 12, 240 }, pad = { -90, 0 } },
+  { id = "airbase", name = "空军基地", kind = "mil", units = { "attacker", "fighter", "bomber", "stealth" }, price = 40000, req = "helipad", x = 205, z = -10, size = { 60, 12, 240 }, pad = { -90, 0 } },
   { id = "factory3", name = "军工联合体", kind = "factory", price = 45000, income = 150, req = "factory2", x = 80, z = -45, size = { 30, 20, 26 } },
   { id = "bank", name = "银行", kind = "bank", price = 120000, income = 350, req = "factory3", x = 80, z = -95, size = { 22, 28, 22 } },
 }
@@ -81,7 +72,10 @@ end
 --   reach 打得到多高的飞机（没有就只能打地面）；airOnly 只打飞机；vsArmor / vsAir / vsInf 打装甲 / 飞机 / 步兵的伤害倍数；hit 命中率（狙击）；
 --   splash 溅射半径；minRange 最近射程；salvo 一轮几发；side 侧面朝敌开火（M270 的发射箱朝右）；homing 导弹（数值是弹速）；bombs 一串几颗炸弹；
 --   cargo 运几个步兵班（drop 离目标多远放下）；decoy 敌人优先打它；intercept 拦截炮弹（range 范围、rate 几秒拦一发、p 拦截成功率）；
---   prefer 优先打的目标（inf / armor / air）；model 用哪个导入模型（没导入就用零件拼的）；needHQ 指挥部几级才能造
+--   prefer 优先打的目标（inf / armor / air）；model 用哪个导入模型（没导入就用零件拼的）；needHQ 指挥部几级才能造；
+--   heal 给附近的友军回血（r 半径、hps 每秒回多少、foot / armor 给步兵还是车辆）；flame 喷火（画成火焰）；camo 伪装（敌人不爱打它）；
+--   kamikaze 一次性：飞到跟前一头撞上（打完不回来，不算损失）；jam 电子干扰（半径 r 里的友军被导弹打中的几率 × p）；
+--   stealth 隐身：只有带导弹、够得着 400 格高的（爱国者、战斗机）才打得到
 -- 克制：坦克克步兵，直升机、攻击机、反坦克导弹克坦克，防空车、弹炮、单兵防空、爱国者、战斗机克飞机，火炮、迫击炮、轰炸机打扎堆的步兵，拦截炮挡炮弹
 Config.Units = {
   -- 步兵（兵营）
@@ -101,6 +95,15 @@ Config.Units = {
   manpad = { name = "单兵防空组", short = "单防", cat = "foot", row = 1, lv = 11, ew = 0.7, price = 280, hp = 90, dmg = 140, rate = 4.5, range = 300, speed = 12, size = 8,
     foot = true, squad = 2, prop = "prop_stinger", homing = 320, reach = 200, airOnly = true, vsAir = 2.4, prefer = "air", needHQ = 2, model = "soldier",
     desc = "毒刺导弹，专打飞机（直升机、无人机、攻击机、轰炸机）；打不了地面" },
+  medic = { name = "医疗兵", short = "医疗", cat = "foot", row = 2, lv = 9, ew = 0.6, price = 160, hp = 100, dmg = 5, rate = 0.8, range = 110, speed = 14, size = 8,
+    foot = true, squad = 2, heal = { r = 70, hps = 14, foot = true }, vsArmor = 0.05, vsAir = 0.2, vsInf = 1, prefer = "inf", model = "soldier",
+    desc = "跟着部队走，附近受伤的步兵（还有你本人）慢慢回血" },
+  flamer = { name = "火焰喷射组", short = "火焰", cat = "foot", row = 1, lv = 10, ew = 0.7, price = 220, hp = 150, dmg = 13, rate = 0.25, range = 75, speed = 14, size = 8,
+    foot = true, squad = 2, flame = true, splash = 10, vsArmor = 0.25, vsAir = 0, vsInf = 1.6, prefer = "inf", model = "soldier",
+    desc = "冲到跟前喷火，一片步兵都烧着；打车不太行，怕被远处的机枪点名" },
+  commando = { name = "特种小队", short = "特种", cat = "foot", row = 1, lv = 15, ew = 0.5, price = 520, hp = 280, dmg = 26, rate = 0.3, range = 210, speed = 18, size = 8,
+    foot = true, squad = 3, camo = true, reach = 90, vsArmor = 0.35, vsAir = 0.45, vsInf = 1.4, prefer = "inf", needHQ = 3, model = "soldier",
+    desc = "跑得快、枪法准，穿着伪装敌人不爱打它；贵" },
   -- 装甲（装甲车厂）
   jeep = { name = "机枪车", short = "机枪车", cat = "armor", row = 2, lv = 5, ew = 1.2, price = 200, hp = 260, dmg = 9, rate = 0.15, range = 170, speed = 40, size = 14, len = 13,
     armor = true, turret = true, reach = 90, vsArmor = 0.15, vsAir = 0.35, vsInf = 1.1, prefer = "inf", model = "jeep", desc = "M-ATV 装甲车：跑得最快，车顶机枪扫步兵" },
@@ -112,6 +115,12 @@ Config.Units = {
     armor = true, turret = true, vsArmor = 1, vsInf = 1.25, splash = 14, prefer = "armor", model = "tank", desc = "又硬又狠，克步兵、克装甲；怕直升机、反坦克导弹" },
   breacher = { name = "破障车", short = "破障", cat = "armor", row = 2, lv = 13, ew = 0.6, price = 650, hp = 1800, dmg = 20, rate = 1, range = 140, speed = 20, size = 22, len = 23,
     armor = true, decoy = true, vsArmor = 0.2, vsInf = 1, prefer = "inf", needHQ = 2, model = "breacher", desc = "M1150 突击破障车：皮最厚，开在最前面吸引敌人火力；自己几乎不打" },
+  repair = { name = "抢修车", short = "抢修", cat = "armor", row = 4, lv = 12, ew = 0.5, price = 480, hp = 460, dmg = 7, rate = 0.5, range = 110, speed = 26, size = 14, len = 13,
+    armor = true, turret = true, heal = { r = 80, hps = 32, armor = true }, vsArmor = 0.05, vsAir = 0.2, vsInf = 0.7, prefer = "inf", model = "jeep",
+    desc = "跟在车队后面，附近的坦克、装甲车、火炮慢慢修好" },
+  heavytank = { name = "重型坦克", short = "重坦", cat = "armor", row = 4, lv = 19, ew = 0.5, price = 1800, hp = 2400, dmg = 170, rate = 2.8, range = 240, speed = 17, size = 26, len = 27,
+    armor = true, turret = true, splash = 18, vsArmor = 1.15, vsInf = 1.2, prefer = "armor", needHQ = 4, model = "tank",
+    desc = "又大又硬：血是主战坦克的三倍多，炮也更狠；走得慢，怕攻击机和反坦克导弹" },
   -- 防空（防空车间）
   aa = { name = "防空车", short = "防空", cat = "aa", row = 5, lv = 8, ew = 1, price = 500, hp = 340, dmg = 28, rate = 0.5, range = 280, speed = 26, size = 14, len = 12,
     armor = true, turret = true, reach = 180, vsAir = 3.2, vsArmor = 0.35, vsInf = 0.5, prefer = "air", model = "aa", desc = "加特林高炮，专打飞机；打地面很弱" },
@@ -122,7 +131,10 @@ Config.Units = {
     armor = true, turret = true, reach = 130, airOnly = true, vsAir = 2.2, intercept = { range = 280, rate = 0.35, p = 0.65 }, prefer = "air", needHQ = 2, model = "cram",
     desc = "C-RAM 陆基密集阵：把飞来的炮弹、火箭弹打爆在半空（附近 280 格）；顺手打低空的直升机" },
   sam = { name = "爱国者", short = "爱国者", cat = "aa", row = 5, lv = 18, ew = 0.4, price = 1600, hp = 380, dmg = 520, rate = 7, range = 700, speed = 12, size = 22, len = 22,
-    armor = true, homing = 420, reach = 1000, airOnly = true, vsAir = 1, prefer = "air", needHQ = 3, model = "sam", desc = "爱国者防空导弹：射程最远，一发打掉一架直升机；只打飞机" },
+    armor = true, homing = 420, reach = 1000, airOnly = true, vsAir = 1, prefer = "air", needHQ = 3, model = "sam", desc = "爱国者防空导弹：射程最远，一发打掉一架直升机；只打飞机（也只有它和战斗机打得到隐身轰炸机）" },
+  ew = { name = "电子战车", short = "电战", cat = "aa", row = 5, lv = 17, ew = 0.4, price = 950, hp = 400, dmg = 8, rate = 0.4, range = 150, speed = 22, size = 20, len = 20,
+    armor = true, jam = { r = 230, p = 0.45 }, vsArmor = 0.1, vsAir = 0.6, vsInf = 0.8, reach = 120, prefer = "inf", needHQ = 2, model = "sam",
+    desc = "干扰敌人的导弹：附近的友军被反坦克导弹、防空导弹打中的几率少一半多" },
   -- 炮兵（炮兵阵地）
   howitzer = { name = "牵引榴弹炮", short = "榴弹炮", cat = "arty", row = 8, lv = 11, ew = 1, price = 480, hp = 220, dmg = 80, rate = 5, range = 620, minRange = 100, splash = 30,
     speed = 7, size = 18, len = 20, vsArmor = 0.8, vsInf = 1.4, prefer = "inf", model = "howitzer", desc = "M777 155 毫米榴弹炮：便宜、射程远；挪得慢，没装甲" },
@@ -143,6 +155,9 @@ Config.Units = {
   drone = { name = "察打无人机", short = "无人机", cat = "air", row = 6, lv = 14, ew = 0.6, price = 1300, hp = 300, dmg = 220, rate = 6, range = 420, speed = 45, size = 22, len = 18,
     air = true, alt = 160, jet = true, turn = 0.9, orbit = true, cone = 4, homing = 240, vsArmor = 1.3, vsInf = 0.8, prefer = "armor", needHQ = 3, model = "drone",
     desc = "MQ-9：在高空绕圈，远远地打导弹；只有防空车、弹炮、单兵防空、爱国者、战斗机够得着" },
+  loiter = { name = "巡飞弹", short = "巡飞弹", cat = "air", row = 6, lv = 16, ew = 0.6, price = 380, hp = 90, dmg = 420, rate = 1, range = 14, speed = 72, size = 10, len = 7,
+    air = true, alt = 40, kamikaze = true, splash = 16, vsArmor = 1.5, vsInf = 1, vsAir = 0, prefer = "armor", model = "drone",
+    desc = "一次性的自杀式无人机：飞过去一头撞上，专炸坦克（撞了就没了，不算损失）；路上会被防空打下来" },
   attacker = { name = "攻击机", short = "攻击机", cat = "air", row = 10, lv = 16, ew = 0.6, price = 2200, hp = 1100, dmg = 160, rate = 1.6, range = 200, speed = 110, size = 26, len = 24,
     air = true, alt = 75, jet = true, turn = 1.1, cone = 0.35, splash = 12, vsArmor = 1.4, vsInf = 1.1, prefer = "armor", model = "attacker",
     desc = "A-10 雷电：低空俯冲，30 毫米机炮扫车队；皮很厚" },
@@ -152,13 +167,16 @@ Config.Units = {
   bomber = { name = "轰炸机", short = "轰炸机", cat = "air", row = 10, lv = 22, ew = 0.4, price = 4500, hp = 2200, dmg = 180, rate = 14, bombs = 8, splash = 34, range = 260, speed = 90,
     size = 44, len = 46, air = true, alt = 170, jet = true, turn = 0.6, cone = 0.25, vsArmor = 0.9, vsInf = 1.5, prefer = "inf", needHQ = 4, model = "bomber",
     desc = "轰-6K：飞到敌人头顶扔一串八颗炸弹，炸平一大片；转弯慢" },
+  stealth = { name = "隐身轰炸机", short = "隐轰", cat = "air", row = 10, lv = 25, ew = 0.3, price = 6500, hp = 1700, dmg = 260, rate = 16, bombs = 6, splash = 40, range = 260, speed = 110,
+    size = 40, len = 34, air = true, alt = 210, jet = true, turn = 0.7, cone = 0.25, stealth = true, vsArmor = 1.1, vsInf = 1.5, prefer = "armor", needHQ = 4, model = "stealth",
+    desc = "飞翼隐身轰炸机：雷达看不见，只有爱国者和战斗机打得到；扔六颗重磅炸弹" },
   boss = { name = "猛犸重坦", short = "首领", row = 4, price = 0, hp = 9000, dmg = 220, rate = 3, range = 260, speed = 14, size = 32, len = 30, armor = true, turret = true,
     vsArmor = 1.2, vsInf = 1.2, splash = 22, prefer = "armor", model = "tank", boss = true, desc = "每十关的首领：血极厚" },
 }
 -- 兵工厂的页签和兵种顺序
 Config.Tabs = { { id = "foot", name = "步兵" }, { id = "armor", name = "装甲" }, { id = "aa", name = "防空" }, { id = "arty", name = "炮兵" }, { id = "air", name = "空中" } }
-Config.UnitOrder = { "inf", "mg", "mortar", "sniper", "at", "manpad", "jeep", "ifv", "td", "tank", "breacher", "aa", "spaag", "cram", "sam",
-  "howitzer", "arty", "heavyarty", "mlrs", "heli", "transport", "drone", "attacker", "fighter", "bomber" }
+Config.UnitOrder = { "inf", "mg", "mortar", "sniper", "at", "manpad", "medic", "flamer", "commando", "jeep", "ifv", "td", "tank", "breacher", "repair", "heavytank",
+  "aa", "spaag", "cram", "sam", "ew", "howitzer", "arty", "heavyarty", "mlrs", "heli", "transport", "drone", "loiter", "attacker", "fighter", "bomber", "stealth" }
 -- 玩家本人上阵（小人）：在推演里算一个步兵大小的目标，血量用角色的 Humanoid
 Config.Hero = { hp = 200, size = 3, regen = 6, regenDelay = 5, respawn = 3 }
 
@@ -189,6 +207,38 @@ end
 -- 重生：打到 level 关、盖了银行就能重生——建筑、现金、关卡、部队、科技清零，换永久加成（每次收入 +income、部队血量伤害 +power）
 Config.Rebirth = { level = 20, income = 0.5, power = 0.1 }
 
+-- 战场支援（打仗时屏幕下方的技能键：点一下技能，再点战场上的位置；电脑上也能按 Z X V B N）：
+--   need 盖了哪栋楼才有；cd 冷却秒数（每一仗开打时全部就绪）；伤害、援军强度跟着全军战力（军工科技 × 重生）走
+--   kind：barrage 炮弹覆盖（n 发落在半径 r 里，每发 dmg、溅射 splash，flight 秒后陆续落地；拦截炮挡得住）/ heal 治疗（半径 r 内我方回 pct 成血）/
+--         drop 空投援军（squads 个步兵班，这一仗打完就撤）/ strike 空袭（沿进攻方向 len 格长扔 n 颗炸弹；拦截炮挡不住）
+Config.Skills = {
+  { id = "mortar", name = "迫击炮急袭", key = "Z", need = "barracks", cd = 25, kind = "barrage", n = 6, r = 20, dmg = 55, splash = 16, flight = 2.2,
+    vsArmor = 0.35, vsInf = 1.5, desc = "6 发迫击炮弹砸向一片，专炸扎堆的步兵" },
+  { id = "heal", name = "战地急救", key = "X", need = "hq", cd = 40, kind = "heal", r = 70, pct = 0.4, desc = "范围里的我方部队和你本人回四成血" },
+  { id = "barrage", name = "炮火覆盖", key = "V", need = "artyfac", cd = 40, kind = "barrage", n = 12, r = 36, dmg = 95, splash = 26, flight = 3,
+    vsArmor = 0.9, vsInf = 1.4, desc = "12 发 155 毫米炮弹覆盖一大片（敌方拦截炮挡得住）" },
+  { id = "drop", name = "空投援军", key = "B", need = "helipad", cd = 60, kind = "drop", squads = 3, desc = "把 3 个步兵班空投到指定位置，这一仗打完就撤" },
+  { id = "strike", name = "空袭", key = "N", need = "airbase", cd = 55, kind = "strike", n = 12, len = 150, dmg = 140, splash = 24,
+    vsArmor = 1.1, vsInf = 1.4, desc = "轰炸机沿进攻方向扔下一串 12 颗炸弹（拦截炮挡不住）" },
+}
+Config.SkillById = {}
+for _, sk in ipairs(Config.Skills) do Config.SkillById[sk.id] = sk end
+
+-- 老兵：打完一仗活下来的部队攒经验（活下来 +1，每亲手击毁一个敌人再 +1），够 need 里的数就升一星（最多 3 星），每星血量、伤害 +bonus；星级跟着存档
+Config.Vet = { need = { 3, 8, 16 }, bonus = 0.15 }
+function Config.StarsOf(v)
+  local s = 0
+  for i, n in ipairs(Config.Vet.need) do
+    if (v or 0) >= n then s = i end
+  end
+  return s
+end
+
+-- 补给空投：不打仗的时候每隔 every 秒（± jitter）往基地里空投一个补给箱，走过去碰一下就拿钱（= sec 秒的收入，至少 min），life 秒没捡就收走
+Config.Crate = { every = 80, jitter = 25, sec = 45, min = 150, life = 120 }
+-- 里程碑：打赢第 5、10、15……关时额外奖励（= 这一关的奖励 × k）
+Config.Milestone = { every = 5, k = 1.5 }
+
 -- 每日奖励（连续登录，最多叠到 7 天）和每日任务（每天三个，按日期换）
 Config.Daily = { base = 500, incomeSec = 90, step = 0.25, max = 7 }
 Config.Missions = {
@@ -201,6 +251,8 @@ Config.Missions = {
   { id = "tech1", text = "升级 1 次军工科技", kind = "tech", goal = 1 },
   { id = "boss1", text = "打赢一场首领关", kind = "boss", goal = 1 },
   { id = "build2", text = "盖 2 栋建筑", kind = "build", goal = 2 },
+  { id = "skill5", text = "打仗时放 5 次战场支援", kind = "skill", goal = 5 },
+  { id = "crate3", text = "捡 3 个补给空投箱", kind = "crate", goal = 3 },
 }
 Config.MissionRewardSec = 120   -- 任务奖励 = 这么多秒的收入（至少 400）
 
@@ -213,8 +265,8 @@ Config.Duel = { invite = 20, reward = 300, share = 0.2 }
 Config.Match = { start = 1000, k = 32, window = 120, widen = 12, maxWindow = 900, tick = 3, expire = 60, refresh = 10, waitMax = 75, countdown = 5, back = 8,
   reward = 600, share = 0.25, lose = 150 }
 
--- 音效：填 "rbxassetid://数字"（Studio 工具箱 → 音频里搜，复制 ID）；留空就不放
-Config.Sounds = { rifle = "", cannon = "", aa = "", rocket = "", boom = "", build = "", buy = "", win = "", lose = "", gun = "" }
+-- 音效：留空就用 Roblox 自带的声音（爆炸声变调当枪炮声）；想换成自己的就填 "rbxassetid://数字"（Studio 工具箱 → 音频里搜，复制 ID）
+Config.Sounds = { rifle = "", cannon = "", aa = "", rocket = "", boom = "", build = "", buy = "", win = "", lose = "", gun = "", hit = "", kill = "", coin = "", click = "", hurt = "", alarm = "" }
 
 -- 关卡敌军：预算按关卡往上涨，兵种逐渐解锁；每十关多一辆首领（同一关的敌军每次都一样，开打前就能看到）
 function Config.EnemyBudget(level)
@@ -274,25 +326,26 @@ end
 
 return Config
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="Folder" referent="RBX00000000000000000000000000000003">
-<Properties>
-<string name="Name">UnitModels</string>
-</Properties>
-</Item>
-</Item>
-<Item class="ServerScriptService" referent="RBX0000000000000000000000000000000F">
-<Properties>
-<string name="Name">ServerScriptService</string>
-</Properties>
-<Item class="Script" referent="RBX0000000000000000000000000000000E">
-<Properties>
-<string name="Name">Main</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：服务器主脚本（ServerScriptService.Main）
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">UnitModels</string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="3">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="4">
+      <Properties>
+        <string name="Name">Main</string>
+        <ProtectedString name="Source"><![CDATA[-- 军事大亨：服务器主脚本（ServerScriptService.Main）
 -- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
 --   World 地图 · Store 存档 / 排行榜 / 突袭匹配 · Economy 经济与成长 · Army 平时的部队 · Combat 战斗 · Weapons 玩家的枪 · Match 真人对战匹配
---   Models 模型 · Battle 推演
+--   Skills 战场支援技能 · Crates 补给空投 · Models 模型 · Battle 推演
+-- 循环里每个玩家、每一步都包在 pcall 里：一个人、一步出错只跳过那一下，不会把整个服务器的收入、战斗卡死（出错原文发到所有人屏幕上的红条）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -313,7 +366,7 @@ Players.CharacterAutoLoads = false   -- 分到基地以后再生成角色，出�
 local Remotes = Instance.new("Folder")
 Remotes.Name = "Remotes"
 G.R = {}
-for _, name in ipairs({ "State", "Toast", "Action", "Fx", "Battle", "Shoot", "Drive", "Duel", "Board" }) do
+for _, name in ipairs({ "State", "Toast", "Action", "Fx", "Battle", "Shoot", "Drive", "Duel", "Board", "Err" }) do
   local r = Instance.new("RemoteEvent")
   r.Name = name
   r.Parent = Remotes
@@ -336,6 +389,25 @@ local function bootError(what, err)
   warn(msg)
   table.insert(G.bootErrors, msg)
 end
+-- 运行中接住的错：Output 里留一条，所有玩家屏幕上方红条显示（同一个错只发一次，免得刷屏）
+local errSeen, errN = {}, 0
+function G.reportError(where, err)
+  local full = tostring(err)
+  local first = string.match(full, "^[^\n]*") or full
+  local key = tostring(where) .. first
+  if errSeen[key] then return end
+  errSeen[key] = true
+  errN = errN + 1
+  warn("[军事大亨] " .. tostring(where) .. " 出错：" .. full)
+  if errN <= 8 then pcall(function() G.R.Err:FireAllClients(string.sub(tostring(where) .. "：" .. first, 1, 300)) end) end
+end
+-- 安全地调：出错就上报（带出错位置的调用栈）、返回 false
+local function tb(e) return debug.traceback(tostring(e), 2) end
+function G.try(where, f, ...)
+  local ok, err = xpcall(f, tb, ...)
+  if not ok then G.reportError(where, err) end
+  return ok, err
+end
 
 -- 先收导入的原模型（在铺地形、建地图之前：没锚定的模型别掉下去砸在地上散开）
 local okImp, imported = pcall(G.Models.loadImported)
@@ -345,7 +417,7 @@ elseif #imported > 0 then
   print("[军事大亨] 用上了导入的原模型：" .. table.concat(imported, "、"))
 end
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络，要等的放 task.spawn）
-for _, name in ipairs({ "World", "Store", "Economy", "Army", "Combat", "Weapons", "Match" }) do
+for _, name in ipairs({ "World", "Store", "Economy", "Army", "Combat", "Weapons", "Match", "Skills", "Crates" }) do
   local ok, err = pcall(function() require(script:WaitForChild(name)).init(G) end)
   if not ok then bootError("模块 " .. name .. " ", err) end
 end
@@ -385,6 +457,8 @@ function G.push(st)
     weapons = weapons, daily = { ok = dOK, amount = dAmt, streak = dStreak }, missions = ms, missionReward = G.missionReward(st),
     raidCD = math.max(0, math.ceil((st.raidCD or 0) - os.clock())), power = G.powerOf(d),
     pvp = d.pvp, pvpWins = d.pvpWins, pvpGames = d.pvpGames, match = G.matchInfo and G.matchInfo(st) or nil, matchServer = G.matchServer, teleporting = st.teleporting == true,
+    skills = G.skillInfo and G.skillInfo(st) or nil, vets = G.vetCount and G.vetCount(st) or 0, wins = d.wins or 0,
+    crate = st.crate and st.crate.landed and st.crate.pos or nil,
   })
   if st.ls then
     st.ls.cash.Value = math.floor(d.cash)
@@ -526,7 +600,8 @@ Players.PlayerRemoving:Connect(function(pl)
   if st.ready and not st.teleporting then G.save(st) end   -- 传送走的人传送前已经存过（别拿这里的旧数据盖掉对战服务器存的）
   G.states[pl] = nil
   local plot = st.plot
-  for _, name in ipairs({ "Buildings", "Pads", "Units", "Enemies" }) do plot[name]:ClearAllChildren() end
+  for _, name in ipairs({ "Buildings", "Pads", "Units", "Enemies", "Drops" }) do plot[name]:ClearAllChildren() end
+  st.crate = nil
   plot.owner = nil
   plot.sign.Text = "空基地"
 end)
@@ -564,6 +639,7 @@ local ACT = {
   home = function(st) G.sendHome(st) end,
   match = function(st) if G.matchJoin then G.matchJoin(st) end end,
   matchCancel = function(st) if G.matchCancel then G.matchCancel(st) end end,
+  skill = function(st, a, b, c) if G.useSkill then G.useSkill(st, a, b, c) end end,
 }
 -- 对战服务器里只打那一场排位赛
 local MATCHBLOCK = { battle = true, raid = true, duel = true, duelYes = true, match = true, rebirth = true }
@@ -581,19 +657,21 @@ G.R.Action.OnServerEvent:Connect(function(pl, op, a, b, c)
     return
   end
   local f = ACT[op]
-  if f then f(st, a, b, c) end
+  if f then G.try("操作 " .. op, f, st, a, b, c) end
 end)
 
 G.R.Shoot.OnServerEvent:Connect(function(pl, id, aim)
   local st = G.states[pl]
-  if st and type(id) == "string" then G.shoot(st, id, aim) end
+  if st and st.ready and type(id) == "string" then G.try("开枪", G.shoot, st, id, aim) end
 end)
 
 G.R.Drive.OnServerEvent:Connect(function(pl, d)
   local st = G.states[pl]
-  if not st or type(d) ~= "table" then return end
-  G.driveInput(st, d)
-  if d.fire ~= nil then G.driveFire(st, d.fire) end
+  if not st or not st.ready or type(d) ~= "table" then return end
+  G.try("开车", function()
+    G.driveInput(st, d)
+    if d.fire ~= nil then G.driveFire(st, d.fire) end
+  end)
 end)
 
 ---------------------------------------------------------------- 循环
@@ -604,8 +682,8 @@ task.spawn(function()
     task.wait(1)
     for _, st in pairs(G.states) do
       if st.ready and st.data then
-        G.econTick(st)
-        G.push(st)
+        G.try("收入", G.econTick, st)
+        G.try("发状态", G.push, st)
       end
     end
   end
@@ -618,7 +696,7 @@ task.spawn(function()
     local list = {}
     for _, st in pairs(G.states) do table.insert(list, st) end
     for _, st in ipairs(list) do
-      if G.states[st.pl] == st and st.ready and not st.teleporting then G.save(st) end
+      if G.states[st.pl] == st and st.ready and not st.teleporting then G.try("自动存档", G.save, st) end
     end
   end
 end)
@@ -627,7 +705,8 @@ end)
 task.spawn(function()
   task.wait(8)
   while true do
-    local lv, rt, pv = G.readBoards()
+    local okB, lv, rt, pv = pcall(G.readBoards)
+    if not okB then lv, rt, pv = {}, {}, {} end
     local function lines(title, list)
       local out = { title }
       for i, e in ipairs(list) do table.insert(out, i .. ". " .. e.name .. "  " .. Config.Fmt(e.value)) end
@@ -647,20 +726,21 @@ end)
 
 -- 每帧：平时的部队开来开去；特效攒一帧发一次
 RunService.Heartbeat:Connect(function(dt)
-  G.armyStep(dt)
+  if G.armyStep then G.try("部队移动", G.armyStep, dt) end
   if #fxq > 0 then
-    G.R.Fx:FireAllClients(fxq)
+    local list = fxq
     fxq = {}
+    G.R.Fx:FireAllClients(list)
   end
 end)
 
 print("[军事大亨] " .. Config.Version .. " 服务器启动好了" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
-</Properties>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000005">
-<Properties>
-<string name="Name">Army</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：部队（平时）：生产（从工厂开出来停到部署区）、阵位、挪位置、排阵、解散、关卡敌军预览
+      </Properties>
+      <Item class="ModuleScript" referent="5">
+        <Properties>
+          <string name="Name">Army</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：部队（平时）：生产（从工厂开出来停到部署区）、阵位、挪位置、排阵、解散、关卡敌军预览；老兵星级（头顶的星）
 local Army = {}
 
 function Army.init(G)
@@ -681,6 +761,30 @@ function Army.init(G)
   end
   G.setFly = setFly
 
+  -- 老兵：头顶的金星（模型属性 Stars 也记一份，客户端布阵时能看）
+  function G.vetTag(st, u)
+    local n = Config.StarsOf(u.v)
+    if not (u.root and u.root.Parent) then return end
+    u.model:SetAttribute("Stars", n)
+    local tag = u.root:FindFirstChild("Vet")
+    if n <= 0 then
+      if tag then tag:Destroy() end
+      return
+    end
+    if not tag then
+      tag = Models.sign(u.root, "", Models.heightOf(u.t) + 6, 6, 1.6, Color3.fromRGB(255, 214, 80), 260)
+      tag.Name = "Vet"
+    end
+    tag:FindFirstChildOfClass("TextLabel").Text = string.rep("★", n)
+  end
+  function G.vetCount(st)
+    local n = 0
+    for _, u in pairs(st.units) do
+      if Config.StarsOf(u.v) > 0 then n = n + 1 end
+    end
+    return n
+  end
+
   local function newModel(st, u)
     local model, root = Models.unit(u.t, st.plot.color)
     model.Name = "U" .. u.uid
@@ -691,11 +795,12 @@ function Army.init(G)
     model.Parent = st.plot.Units
     u.model, u.root, u.bar, u.fill = model, root, nil, nil
     root.CFrame = G.unitCF(st.plot.origin, u.x, u.y, u.z, u.h)
+    if (u.v or 0) > 0 then G.vetTag(st, u) end
   end
 
-  function G.spawnUnit(st, t, x, z, y, h)
+  function G.spawnUnit(st, t, x, z, y, h, v)
     st.nextUid = st.nextUid + 1
-    local u = { uid = st.nextUid, t = t, x = x, y = y or 0, z = z, h = h or math.pi, sx = x, sz = z }
+    local u = { uid = st.nextUid, t = t, x = x, y = y or 0, z = z, h = h or math.pi, sx = x, sz = z, v = v or 0 }
     newModel(st, u)
     st.units[u.uid] = u
     return u
@@ -885,7 +990,8 @@ function Army.init(G)
     st.data.cash = st.data.cash + refund
     if u.model then u.model:Destroy() end
     st.units[uid] = nil
-    G.toast(st, "解散" .. UNITS[u.t].name .. "，退回 $" .. Config.Fmt(refund), "info")
+    local stars = Config.StarsOf(u.v)
+    G.toast(st, "解散" .. UNITS[u.t].name .. ((stars > 0) and ("（" .. string.rep("★", stars) .. " 老兵）") or "") .. "，退回 $" .. Config.Fmt(refund), "info")
     G.push(st)
   end
 
@@ -940,7 +1046,7 @@ function Army.init(G)
         if math.abs(x) > xmax or z < z1 or z > z2 or not spotFree(st, x, z, size) then
           x, z = freeSpot(st, a.t)
         end
-        G.spawnUnit(st, a.t, x, z, 0, math.pi)
+        G.spawnUnit(st, a.t, x, z, 0, math.pi, a.v)
       end
     end
     st.data.army = {}
@@ -949,13 +1055,15 @@ end
 
 return Army
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000006">
-<Properties>
-<string name="Name">Battle</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：战斗推演（服务器）。只管数字：位置、血量、选目标、开火、溅射、炮弹 / 火箭弹 / 炸弹落地、导弹飞行、拦截、机降；
--- 模型、特效、玩家角色的血交给调用方传进来的回调 B.cb（world / muzzle / aim / fx / hurt / die / heroHurt / kill / spawn）。
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">Battle</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：战斗推演（服务器）。只管数字：位置、血量、选目标、开火、溅射、炮弹 / 火箭弹 / 炸弹落地、导弹飞行、拦截、机降；
+-- 模型、特效、玩家角色的血交给调用方传进来的回调 B.cb（world / muzzle / aim / fx / hurt / die / heroHurt / kill / hit / spawn）。
+-- 伤害来源 src = { team, player（玩家亲手：开枪、开车、支援技能）, drive, unit（哪个单位打的：记老兵战功）}；
+-- 打死的单位记进 B.deaths（战报滚动条用，Combat 每半秒发一次）。
 -- 坐标都是相对战场原点的 (x, z)；y 是离地高度（飞机）；h 是车身朝向（CFrame.Angles(0, h, 0)，模型正前方 −Z），ty 是炮塔相对车身的转角。
 -- 单位：u = { t, def, team, x, y, z, h, ty, hp, max, dm（伤害倍数）, cd, rt, alive, tgt, hero（玩家本人）, driver（玩家在开）, hold（守着不出击）, temp（机降的步兵）}
 local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Config"))
@@ -978,6 +1086,7 @@ Battle.HERO = { name = "玩家", hp = Config.Hero.hp, size = Config.Hero.size, s
 
 -- 打得到吗：飞机看飞多高（reach 是能打多高；还在地上的飞机谁都能打），只打飞机的打不了地面
 local function canHit(ad, e)
+  if e.def.stealth and not (ad.homing and (ad.reach or 0) >= 400) then return false end   -- 隐身：只有爱国者、战斗机够得着
   if e.def.air then return (ad.reach or 0) >= (e.y or 0) - 3 end
   return not ad.airOnly
 end
@@ -1015,6 +1124,7 @@ local function pick(U, u)
       if d.minRange and s < d.minRange then s = s + 400 end
       if prefers(d, e.def) then s = s * 0.6 end
       if e.def.decoy then s = s * 0.45 end
+      if e.def.camo then s = s * 1.6 end   -- 伪装：不显眼，排得靠后
       if e.hero then s = s * 0.8 end
       if e == u.tgt then s = s * 0.85 end
       if s < bs then
@@ -1028,19 +1138,28 @@ end
 local function hurt(B, u, dmg, src)
   if not u.alive or dmg <= 0 then return false end
   if u.hero then
-    B.cb.heroHurt(u, dmg)
+    B.cb.heroHurt(u, dmg, src)
     return false
   end
   u.hp = u.hp - dmg
+  local killed = false
   if u.hp <= 0 then
     u.hp = 0
     u.alive = false
+    killed = true
     B.cb.die(u)
-    if src and B.cb.kill then B.cb.kill(u, src) end
-    return true
+    if src then
+      if src.unit and src.unit.team ~= u.team then src.unit.kills = (src.unit.kills or 0) + 1 end
+      if B.cb.kill then B.cb.kill(u, src) end
+    end
+    if B.deaths then
+      table.insert(B.deaths, { t = u.t, team = u.team, by = src and src.player and src.player.UserId or nil, uid = u.uid, owner = u.owner and u.owner.pl.UserId or nil })
+    end
+  else
+    B.cb.hurt(u)
   end
-  B.cb.hurt(u)
-  return false
+  if src and src.player and B.cb.hit then B.cb.hit(u, dmg, killed, src) end
+  return killed
 end
 
 -- 外部伤害（玩家开枪、开的车开火）：src = { team, player, drive }；返回打没打死
@@ -1064,8 +1183,10 @@ local function splash(B, team, ad, x, z, r, dmg, skip, src)
 end
 Battle.splash = splash
 
+-- 这一发算谁的：玩家在开的车算玩家的（亲手击毁），其余算这个单位的（老兵战功）
 local function srcOf(u)
-  return u.driver and { team = u.team, player = u.driver, drive = true } or nil
+  if u.driver then return { team = u.team, player = u.driver, drive = true, unit = u } end
+  return { team = u.team, unit = u }
 end
 
 -- 抛射弹（炮弹、火箭炮火箭弹、炸弹）：飞一会儿才落地；拦截炮能在半空打掉炮弹、火箭弹（炸弹不行）
@@ -1078,6 +1199,20 @@ local function lob(B, u, x, z, scatter, flight, kind, src)
   B.cb.fx({ k = kind, id = nextShell, u = u.t, a = B.cb.muzzle(u), b = B.cb.world(sx, 0, sz), t = flight })
 end
 
+-- 支援火力（迫击炮急袭、炮火覆盖、空袭）：从 from（世界坐标）打一发到 (x, z) 附近（scatter 散布），flight 秒后落地；
+-- def 给伤害、溅射、各类目标的倍数（同兵种表），dm 是战力倍数；kind：shell 炮弹（拦截炮能打）/ bomb 炸弹（打不了）
+function Battle.strike(B, team, def, dm, x, z, scatter, flight, kind, src, from)
+  local a = math.random() * math.pi * 2
+  local r = math.sqrt(math.random()) * scatter
+  local sx = math.clamp(x + math.cos(a) * r, -XMAX, XMAX)
+  local sz = math.clamp(z + math.sin(a) * r, ZMIN, ZMAX)
+  nextShell = nextShell + 1
+  table.insert(B.shells, { id = nextShell, t0 = B.t, at = B.t + flight, x = sx, z = sz, team = team, def = def, dm = dm, src = src, kind = kind })
+  B.cb.fx({ k = kind, id = nextShell, u = def.fxu or "skill", a = from, b = B.cb.world(sx, 0, sz), t = flight })
+end
+Battle.XMAX, Battle.ZMIN, Battle.ZMAX = XMAX, ZMIN, ZMAX
+Battle.hurt = hurt
+
 -- 导弹：飞到目标（客户端跟着目标画），到了才算伤害；没有目标（玩家对着地面打）就打那个点
 local function missile(B, u, t, dmg, dist, src, px, py, pz)
   local d = u.def
@@ -1088,6 +1223,18 @@ end
 
 local function fire(B, u, t, dist)
   local d = u.def
+  if d.kamikaze then   -- 巡飞弹：一头撞上去，连自己一起炸了
+    local src = srcOf(u)
+    local dmg = d.dmg * u.dm
+    hurt(B, t, dmg * mult(d, t.def), src)
+    splash(B, u.team, d, t.x, t.z, d.splash or 12, dmg * 0.5, t, src)
+    B.cb.fx({ k = "boom", p = B.cb.world(t.x, (t.y or 0) + 2, t.z), s = 1.5 })
+    u.hp = 0
+    u.alive = false
+    u.spent = true
+    B.cb.die(u)
+    return
+  end
   if d.salvo then   -- 火箭炮：一轮几发，陆续发射
     u.salvoLeft = d.salvo
     u.salvoAt = B.t
@@ -1101,12 +1248,12 @@ local function fire(B, u, t, dist)
   end
   if d.minRange and d.splash then   -- 火炮、迫击炮：抛物线炮弹，落点有散布，打移动目标往前估一点
     local fl = 1.2 + dist / 170
-    lob(B, u, t.x + (t.vx or 0) * fl * 0.5, t.z + (t.vz or 0) * fl * 0.5, d.foot and 10 or 14, fl, "shell")
+    lob(B, u, t.x + (t.vx or 0) * fl * 0.5, t.z + (t.vz or 0) * fl * 0.5, d.foot and 10 or 14, fl, "shell", srcOf(u))
     return
   end
   local dmg = d.dmg * u.dm
   if d.homing then
-    missile(B, u, t, dmg, dist)
+    missile(B, u, t, dmg, dist, srcOf(u))
     return
   end
   local hitP = d.hit or 0.92
@@ -1116,8 +1263,9 @@ local function fire(B, u, t, dist)
   end
   if t.hero then hitP = hitP * 0.7 end
   local hit = math.random() < hitP
-  if hit then hurt(B, t, dmg * mult(d, t.def)) end
-  if d.splash and not t.def.air then splash(B, u.team, d, t.x, t.z, d.splash, dmg * 0.5, t) end
+  local src = srcOf(u)
+  if hit then hurt(B, t, dmg * mult(d, t.def), src) end
+  if d.splash and not t.def.air then splash(B, u.team, d, t.x, t.z, d.splash, dmg * 0.5, t, src) end
   B.cb.fx({ k = "shot", u = u.t, a = B.cb.muzzle(u), b = B.cb.aim(t, hit) })
 end
 
@@ -1167,7 +1315,22 @@ local function missiles(B)
       if t then
         local p = 0.9
         if t.def.jet then p = 0.75 end   -- 喷气机放热诱弹、机动
-        if t.alive and math.random() < p then hurt(B, t, m.dmg * mult(m.def, t.def), m.src) end
+        local jammed = false
+        for _, e in ipairs(B.units) do   -- 目标附近有对方的电子战车：干扰
+          if e.alive and e.def.jam and e.team ~= m.team then
+            local dx, dz = e.x - t.x, e.z - t.z
+            if dx * dx + dz * dz <= e.def.jam.r * e.def.jam.r then
+              p = p * e.def.jam.p
+              jammed = true
+              break
+            end
+          end
+        end
+        if t.alive and math.random() < p then
+          hurt(B, t, m.dmg * mult(m.def, t.def), m.src)
+        elseif jammed and t.alive then
+          B.cb.fx({ k = "jam", p = B.cb.world(t.x, (t.y or 0) + 6, t.z) })   -- 被干扰偏掉了
+        end
       elseif m.x then
         splash(B, m.team, m.def, m.x, m.z, m.def.splash or 10, m.dmg, nil, m.src)
       end
@@ -1237,10 +1400,45 @@ local function dropTroops(B, u)
   B.cb.fx({ k = "boom", p = B.cb.world(u.x, 0, u.z), s = 0.5 })
 end
 
+-- 医疗兵、抢修车：半径里受伤的友军（步兵 / 车辆）每秒回 hps（跟着战力倍数）；玩家本人也算步兵；隔一会儿冒一圈绿光
+local function healStep(B, u, dt)
+  local h = u.def.heal
+  local r2 = h.r * h.r
+  local amt = h.hps * dt * (u.dm or 1)
+  local any = false
+  for _, e in ipairs(B.units) do
+    if e.alive and e.team == u.team and e ~= u then
+      local kind = e.def.foot or e.hero
+      if (h.foot and kind) or (h.armor and not kind and not e.def.air) then
+        local dx, dz = e.x - u.x, e.z - u.z
+        if dx * dx + dz * dz <= r2 then
+          if e.hero then
+            local hum = e.model and e.model:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+              hum.Health = math.min(hum.MaxHealth, hum.Health + amt * 0.6)
+              any = true
+            end
+          elseif e.hp < e.max then
+            e.hp = math.min(e.max, e.hp + amt)
+            B.cb.hurt(e)
+            any = true
+          end
+        end
+      end
+    end
+  end
+  u.healT = (u.healT or 0) - dt
+  if any and u.healT <= 0 then
+    u.healT = 2.5
+    B.cb.fx({ k = "heal", p = B.cb.world(u.x, 0, u.z), s = h.r * 0.5 })
+  end
+end
+
 local function act(B, u, dt)
   local d = u.def
   u.cd = u.cd - dt
   salvoStep(B, u)
+  if d.heal then healStep(B, u, dt) end
   if d.cargo and u.cargo == nil then u.cargo = d.cargo end
   local t = u.tgt
   if t and not (t.alive and canHit(d, t)) then
@@ -1390,7 +1588,7 @@ end
 function Battle.driveFire(B, u, ax, az, ay)
   local d = u.def
   if not u.alive or u.cd > 0.2 then return false end   -- 客户端按服务器给的装填时间算，留一点网络误差
-  local src = { team = u.team, player = u.driver, drive = true }
+  local src = { team = u.team, player = u.driver, drive = true, unit = u }
   if d.bombs then
     u.cd = d.rate * 0.5
     u.bombLeft = d.bombs
@@ -1446,6 +1644,7 @@ end
 function Battle.step(B, dt)
   B.t = B.t + dt
   B.missiles = B.missiles or {}
+  B.deaths = B.deaths or {}
   B.pending = {}
   local U = B.units
   for _, u in ipairs(U) do
@@ -1578,12 +1777,12 @@ end
 
 return Battle
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000007">
-<Properties>
-<string name="Name">Combat</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：战斗编排——打 AI 关卡（pve）、突袭别人的防线（raid）、和真人对战（duel：同服点名约战是友谊赛，匹配来的是排位赛 ranked）；
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Combat</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：战斗编排——打 AI 关卡（pve）、突袭别人的防线（raid）、和真人对战（duel：同服点名约战是友谊赛，匹配来的是排位赛 ranked）；
 -- 玩家本人上阵（小人：开战时传送到己方后方，敌人会打你，死了在基地复活、可以重返战场）、亲自驾驶自己的车 / 直升机
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
@@ -1635,13 +1834,24 @@ function Combat.init(G)
     function cb.hurt(u)
       if u.fill then u.fill.Size = UDim2.fromScale(math.clamp(u.hp / u.max, 0, 1), 1) end
     end
-    function cb.heroHurt(u, dmg)
+    function cb.heroHurt(u, dmg, src)
       local hum = u.model and u.model:FindFirstChildOfClass("Humanoid")
-      if hum and hum.Health > 0 then hum:TakeDamage(dmg * 0.5) end
+      if hum and hum.Health > 0 then
+        hum:TakeDamage(dmg * 0.5)
+        if src and src.player and src.player ~= u.hero then cb.hit(u, dmg * 0.5, hum.Health <= 0, src) end
+      end
+    end
+    -- 玩家亲手打中的（开枪、开车、支援技能）：告诉他——准星上的命中标记、飘出来的伤害数字、击毁提示
+    function cb.hit(u, dmg, killed, src)
+      local pl = src.player
+      if not (pl and pl.Parent) then return end
+      RB:FireClient(pl, { phase = "hit", p = B.origin + V(u.x, 1 + (u.y or 0) + (u.h3 or 2.5), u.z), d = math.floor(dmg + 0.5), k = killed, t = u.t, hero = u.hero ~= nil })
     end
     function cb.kill(u, src)
       local st = src.player and G.states[src.player]
       if not st or not st.data then return end
+      B.pk = B.pk or {}
+      B.pk[st] = (B.pk[st] or 0) + 1
       st.data.kills = st.data.kills + 1
       G.addXP(st, u.def.boss and 25 or 2)
       G.progress(st, "kill", 1)
@@ -1707,7 +1917,7 @@ function Combat.init(G)
   end
 
   local function newBattle(mode, origin)
-    local B = { mode = mode, origin = origin, units = {}, shells = {}, missiles = {}, pending = {}, t = 0, alive1 = 0, alive2 = 0, byId = {}, teamOf = {}, sts = {}, over = false }
+    local B = { mode = mode, origin = origin, units = {}, shells = {}, missiles = {}, pending = {}, deaths = {}, t = 0, alive1 = 0, alive2 = 0, byId = {}, teamOf = {}, sts = {}, over = false }
     B.cb = callbacks(B)
     return B
   end
@@ -1717,6 +1927,8 @@ function Combat.init(G)
     local tm = G.powerOf(st.data)
     for _, u in pairs(st.units) do
       local def = UNITS[u.t]
+      local stars = Config.StarsOf(u.v)
+      local um = tm * (1 + Config.Vet.bonus * stars)   -- 老兵每星再加成
       u.path = nil
       local x, z, h = u.sx, u.sz, math.pi
       if mirror then x, z, h = -u.sx, F.enemy[1] + (F.deploy[2] - u.sz), 0 end
@@ -1726,8 +1938,8 @@ function Combat.init(G)
       u.fill.Size = UDim2.fromScale(1, 1)
       if def.air then G.setFly(u, true) end
       addUnit(B, {
-        uid = u.uid, owner = st, t = u.t, def = def, team = team, x = x, y = 0, z = z, h = h, ty = 0,
-        hp = def.hp * tm, max = def.hp * tm, dm = tm, cd = math.random() * math.min(def.rate, 3), rt = 0, alive = true,
+        uid = u.uid, owner = st, t = u.t, def = def, team = team, x = x, y = 0, z = z, h = h, ty = 0, stars = stars, kills = 0,
+        hp = def.hp * um, max = def.hp * um, dm = um, cd = math.random() * math.min(def.rate, 3), rt = 0, alive = true,
         model = u.model, root = u.root, bar = u.bar, fill = u.fill, h3 = Models.heightOf(u.t) * 0.45,
       })
     end
@@ -1749,8 +1961,9 @@ function Combat.init(G)
       local bar, fill = Models.hpBar(root, Models.heightOf(a.t) + 3, Config.EnemyColor)
       bar.Enabled = true
       if def.air then model:SetAttribute("Fly", true) end
+      local vm = 1 + Config.Vet.bonus * Config.StarsOf(a.v)   -- 突袭别人的防线：他的老兵也有加成
       addUnit(B, {
-        t = a.t, def = def, team = 2, x = a.x, y = 0, z = a.z, h = 0, ty = 0, hp = def.hp * hm, max = def.hp * hm, dm = dm,
+        t = a.t, def = def, team = 2, x = a.x, y = 0, z = a.z, h = 0, ty = 0, hp = def.hp * hm * vm, max = def.hp * hm * vm, dm = dm * vm,
         cd = math.random() * math.min(def.rate, 3), rt = 0, alive = true, hold = hold, model = model, root = root, bar = bar, fill = fill,
         h3 = Models.heightOf(a.t) * 0.45,
       })
@@ -1923,48 +2136,59 @@ function Combat.init(G)
     Battle.driveFire(B, bu, a.X, a.Z, a.Y - 1)
   end
 
+  -- 每半秒：双方还剩多少、这半秒里谁被打掉了（战报滚动条：en 是不是敌方的、me 是不是你亲手打的、mine 是不是你的部队）
   local function tick(B)
+    local deaths = B.deaths or {}
+    B.deaths = {}
     for st, team in pairs(B.sts) do
       if G.states[st.pl] == st then
         local a, e = B.alive1, B.alive2
         if team == 2 then a, e = e, a end
-        RB:FireClient(st.pl, { phase = "tick", t = B.t, a = a, e = e })
+        local feed = nil
+        for _, dd in ipairs(deaths) do
+          feed = feed or {}
+          if #feed >= 8 then break end
+          table.insert(feed, { t = dd.t, en = dd.team ~= team, me = dd.by == st.pl.UserId, mine = dd.owner == st.pl.UserId })
+        end
+        RB:FireClient(st.pl, { phase = "tick", t = B.t, a = a, e = e, feed = feed })
       end
     end
   end
 
-  local finish
+  local finish, forceEnd
   local function begin(B, sides, title)
     for team, st in pairs(sides) do
       st.battle = B
       B.teamOf[st.pl] = team
       B.sts[st] = team
+      if G.skillsReset then G.skillsReset(st) end
     end
     placeAll(B)
     for st, team in pairs(B.sts) do
-      RB:FireClient(st.pl, { phase = "start", mode = B.mode, title = title, level = st.data.level, team = team, time = Config.BattleTime, origin = B.origin })
+      RB:FireClient(st.pl, { phase = "start", mode = B.mode, title = title, level = st.data.level, team = team, time = Config.BattleTime, origin = B.origin, boss = B.boss == true })
       G.push(st)
       G.heroJoin(st)
     end
     task.spawn(function()
-      local tickT = 0
+      local tickT, bad = 0, 0
       while not B.over do
         local dt = task.wait(Config.Tick)
         if B.over then break end
-        syncHeroes(B)
-        local ok, res = pcall(Battle.step, B, math.min(dt, 0.2))
+        G.try("战斗：玩家本人", syncHeroes, B)
+        local ok, res = xpcall(Battle.step, debug.traceback, B, math.min(dt, 0.2))
         if not ok then
-          warn("[军事大亨] 战斗推演出错：" .. tostring(res))
-          res = "timeout"
+          G.reportError("战斗推演", res)
+          bad = bad + 1
+          res = (bad > 40) and "timeout" or nil   -- 偶尔一步出错就跳过这一步；一直出错才收场
         end
-        placeAll(B)
+        G.try("战斗：摆模型", placeAll, B)
         tickT = tickT + dt
         if tickT >= 0.5 then
           tickT = 0
-          tick(B)
+          G.try("战斗：战报", tick, B)
         end
         if res then
-          finish(B, res)
+          if not G.try("战斗结算", finish, B, res) then forceEnd(B) end
           break
         end
       end
@@ -1983,6 +2207,24 @@ function Combat.init(G)
     local v = 0
     for _, u in pairs(st.units) do v = v + UNITS[u.t].price end
     return v
+  end
+
+  -- 老兵：活下来的 +1 经验，每击毁一个敌人再 +1；升星了记下来（打完一起提示）
+  local function vetGain(st, u, bu, promos)
+    local old = Config.StarsOf(u.v)
+    u.v = (u.v or 0) + 1 + (bu.kills or 0)
+    local new = Config.StarsOf(u.v)
+    if new > old then
+      table.insert(promos, UNITS[u.t].name .. " " .. string.rep("★", new))
+      if G.vetTag then G.vetTag(st, u) end
+    end
+  end
+  local function promoToast(st, promos)
+    if #promos == 0 then return end
+    local list = {}
+    for i = 1, math.min(4, #promos) do list[i] = promos[i] end
+    G.toast(st, "老兵晋升：" .. table.concat(list, "、") .. ((#promos > 4) and ("等 " .. #promos .. " 个") or "") ..
+      "（每颗星血量、伤害 +" .. math.floor(Config.Vet.bonus * 100 + 0.5) .. "%）", "good")
   end
 
   -- 打完：清理、按模式算奖励；res 是第 1 队的结果
@@ -2050,14 +2292,16 @@ function Combat.init(G)
           st.data.cash = st.data.cash + reward
           if won then st.data.duelWins = st.data.duelWins + 1 end
           G.progress(st, "duel", 1)
-          -- 约战不损失部队：打没了的换新模型，全部放回阵位
+          -- 约战不损失部队：打没了的换新模型，全部放回阵位；活下来的照样攒老兵经验
+          local promos = {}
           for _, bu in ipairs(B.units) do
-            if bu.owner == st and not bu.hero then
+            if bu.owner == st and not bu.hero and not bu.temp then
               local u = st.units[bu.uid]
-              if u and not bu.alive then G.respawnModel(st, u) end
+              if u and not bu.alive then G.respawnModel(st, u) elseif u then vetGain(st, u, bu, promos) end
             end
           end
           G.homeSnap(st)
+          promoToast(st, promos)
           st.battle = nil
           local oname = other and other.pl.DisplayName or "对手"
           local text = won and ("你赢了 " .. oname .. "！") or ("输给了 " .. oname .. "，部队没有损失")
@@ -2065,7 +2309,8 @@ function Combat.init(G)
             text = text .. "\n对战积分 " .. (won and "+" or "-") .. delta .. "（现在 " .. st.data.pvp .. "）"
             if G.matchServer then text = text .. "\n" .. MC.back .. " 秒后送你回普通服务器" end
           end
-          RB:FireClient(st.pl, { phase = "end", mode = "duel", ranked = B.ranked, result = won and "win" or "lose", reward = reward, lost = {}, lostN = 0, level = st.data.level, text = text })
+          RB:FireClient(st.pl, { phase = "end", mode = "duel", ranked = B.ranked, result = won and "win" or "lose", reward = reward, lost = {}, lostN = 0, level = st.data.level, text = text,
+            pk = (B.pk and B.pk[st]) or 0 })
           G.push(st)
           task.spawn(G.save, st)
         end
@@ -2078,14 +2323,20 @@ function Combat.init(G)
     for s in pairs(B.sts) do st = s end
     if not st or G.states[st.pl] ~= st then return end
     local d = st.data
-    local lost, lostN = {}, 0
+    local lost, lostN, total = {}, 0, 0
+    local promos = {}
     for _, bu in ipairs(B.units) do
       if bu.owner == st and not bu.hero and not bu.temp then
         local u = st.units[bu.uid]
+        total = total + 1
         if u then
-          if bu.alive then   -- 活着的开回战前的阵位，下一仗满血
+          if bu.alive then   -- 活着的开回战前的阵位，下一仗满血；攒老兵经验
             u.x, u.y, u.z, u.h = bu.x, bu.y, bu.z, bu.h
             G.goTo(u, u.sx, u.sz)
+            vetGain(st, u, bu, promos)
+          elseif bu.spent then   -- 巡飞弹撞上去了：用掉了，不算损失
+            st.units[bu.uid] = nil
+            total = total - 1
           else
             st.units[bu.uid] = nil
             lost[u.t] = (lost[u.t] or 0) + 1
@@ -2096,14 +2347,25 @@ function Combat.init(G)
         bu.model:SetAttribute("Fly", false)
       end
     end
-    local reward, text = 0, nil
+    local reward, text, stars = 0, nil, nil
+    local oldBest = d.best
     if B.mode == "pve" then
       if res == "win" then
-        reward = Config.Reward(d.level)
+        local beaten = d.level
+        reward = Config.Reward(beaten)
         d.cash = d.cash + reward
-        if Config.IsBoss(d.level) then
+        if Config.IsBoss(beaten) then
           G.progress(st, "boss", 1)
           text = "打掉了首领！奖励翻倍"
+        end
+        -- 评星：一个没丢三星，丢的不超过三成两星，其余一星
+        stars = (lostN == 0) and 3 or ((lostN <= total * 0.3) and 2 or 1)
+        local M = Config.Milestone
+        if M and beaten % M.every == 0 then
+          local bonus = math.floor(Config.Reward(beaten) * M.k)
+          d.cash = d.cash + bonus
+          reward = reward + bonus
+          text = (text and (text .. "\n") or "") .. "里程碑：打通第 " .. beaten .. " 关，额外奖励 $" .. Config.Fmt(bonus)
         end
         G.addXP(st, 10 + d.level * 2)
         G.progress(st, "win", 1)
@@ -2129,7 +2391,9 @@ function Combat.init(G)
     end
     st.enemy = {}
     st.battle = nil
-    RB:FireClient(st.pl, { phase = "end", mode = B.mode, result = res, reward = reward, lost = lost, lostN = lostN, level = d.level, text = text })
+    RB:FireClient(st.pl, { phase = "end", mode = B.mode, result = res, reward = reward, lost = lost, lostN = lostN, level = d.level, text = text,
+      stars = stars, record = d.best > oldBest and d.best > 2, pk = (B.pk and B.pk[st]) or 0, total = total })
+    promoToast(st, promos)
     G.push(st)
     task.spawn(G.save, st)
     task.delay((res == "win") and 3 or 2, function()
@@ -2140,13 +2404,39 @@ function Combat.init(G)
     end)
   end
 
+  -- 结算出错时的保底收尾：至少让人退出「打仗中」、部队回到阵位，不然什么都点不了
+  function forceEnd(B)
+    B.over = true
+    if B.arena then B.arena.busy = false end
+    for st in pairs(B.sts) do
+      pcall(function()
+        if st.driving then G.driveStop(st) end
+        st.hero = nil
+        st.battle = nil
+        for _, bu in ipairs(B.units) do
+          if bu.temp and bu.model then pcall(function() bu.model:Destroy() end) end
+          if bu.owner == st and not bu.hero and not bu.temp then
+            local u = st.units[bu.uid]
+            if u and not bu.alive then
+              if B.mode == "duel" then G.respawnModel(st, u) else st.units[bu.uid] = nil end
+            end
+          end
+        end
+        G.homeSnap(st)
+        RB:FireClient(st.pl, { phase = "end", mode = B.mode, result = "timeout", reward = 0, lost = {}, lostN = 0, level = st.data.level,
+          text = "这一仗结算的时候出错了，已经强制结束，部队放回了阵位（出错信息在屏幕上方的红条里）" })
+        G.push(st)
+      end)
+    end
+  end
+
   -- 人走了：约战算他输；关卡、突袭直接结束（不算输赢、不扣兵）
   function G.abandon(st)
     local B = st.battle
     if not B or B.over then return end
     if B.mode == "duel" then
       B.sts[st] = nil
-      finish(B, (B.teamOf[st.pl] == 1) and "lose" or "win")
+      if not G.try("约战结算", finish, B, (B.teamOf[st.pl] == 1) and "lose" or "win") then forceEnd(B) end
     else
       B.over = true
     end
@@ -2167,6 +2457,7 @@ function Combat.init(G)
     if #st.enemy == 0 then G.makeEnemy(st) end
     local B = newBattle("pve", st.plot.origin)
     B.level = st.data.level
+    B.boss = Config.IsBoss(st.data.level)
     enlist(B, st, 1, false)
     local list = {}
     for _, e in ipairs(st.enemy) do table.insert(list, { t = e.t, x = e.x, z = e.z, model = e.model, root = e.root }) end
@@ -2221,7 +2512,7 @@ function Combat.init(G)
     local list = {}
     for _, a in ipairs(opp.army) do
       local z = math.clamp(F.enemy[1] + (F.deploy[2] - a.z), F.enemy[1] + 4, F.enemy[2] - 4)
-      table.insert(list, { t = a.t, x = math.clamp(-a.x, -XMAX, XMAX), z = z })
+      table.insert(list, { t = a.t, x = math.clamp(-a.x, -XMAX, XMAX), z = z, v = a.v })
     end
     enlistAI(B, list, tm, tm, true, st.plot.Enemies)
     begin(B, { [1] = st }, "突袭：" .. opp.name .. " 的防线（第 " .. opp.level .. " 关水平）")
@@ -2307,12 +2598,131 @@ end
 
 return Combat
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000008">
-<Properties>
-<string name="Name">Economy</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：经济与成长（建筑、购买按钮、收入、指挥部、军工科技、重生、经验与军衔、每日奖励、每日任务、武器商店）
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Crates</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：补给空投——不打仗的时候，隔一会儿往自己基地里空投一个补给箱（挂着降落伞慢慢落下，头顶有绿色信标），
+-- 走过去碰一下（或按 E）就拿钱：这么多秒的收入，至少 Config.Crate.min；一直没人捡就收走
+local Players = game:GetService("Players")
+
+local Crates = {}
+
+function Crates.init(G)
+  local Config, Models = G.Config, G.Models
+  local V = Vector3.new
+  local C = Config.Crate
+  local hs = Config.BaseSize / 2
+
+  -- 落点：基地里空着的地方（离建筑、按钮远一点）；找不到就落在出生点旁边
+  local function spot(st)
+    local o = st.plot.origin
+    for _ = 1, 40 do
+      local x = math.random(-hs + 18, hs - 18)
+      local z = math.random(-hs + 18, hs - 18)
+      local ok = true
+      for _, b in ipairs(Config.Buildings) do
+        if math.abs(x - b.x) < b.size[1] / 2 + 14 and math.abs(z - b.z) < b.size[3] / 2 + 16 then
+          ok = false
+          break
+        end
+      end
+      if ok and math.abs(x - Config.Spawn.x) < 10 and math.abs(z - Config.Spawn.z) < 10 then ok = false end
+      if ok then return o + V(x, 1, z) end
+    end
+    return o + V(Config.Spawn.x + 22, 1, Config.Spawn.z + 18)
+  end
+
+  local function amountOf(st)
+    return math.max(C.min, math.floor(st.income * C.sec))
+  end
+
+  local function give(st, crate)
+    if st.crate ~= crate or crate.taken then return end
+    crate.taken = true
+    st.crate = nil
+    local amt = amountOf(st)
+    st.data.cash = st.data.cash + amt
+    G.fx({ k = "coins", p = crate.pos + V(0, 3, 0), s = 1 })
+    G.toast(st, "捡到补给箱：+$" .. Config.Fmt(amt), "good")
+    G.progress(st, "crate", 1)
+    crate.model:Destroy()
+    G.push(st)
+  end
+
+  local function drop(st)
+    local pos = spot(st)
+    local amt = amountOf(st)
+    local m, box, chute, label = Models.crate(st.plot.Drops, pos, "补给箱 +$" .. Config.Fmt(amt))
+    local crate = { model = m, box = box, pos = pos, expire = os.clock() + C.life, taken = false }
+    st.crate = crate
+    box.Touched:Connect(function(hit)
+      local who = Players:GetPlayerFromCharacter(hit.Parent)
+      if who == st.pl and crate.landed then give(st, crate) end
+    end)
+    local pp = Instance.new("ProximityPrompt")
+    pp.ActionText = "打开补给箱"
+    pp.ObjectText = "+$" .. Config.Fmt(amt)
+    pp.HoldDuration = 0
+    pp.MaxActivationDistance = 14
+    pp.RequiresLineOfSight = false
+    pp.Parent = box
+    pp.Triggered:Connect(function(who)
+      if who == st.pl and crate.landed then give(st, crate) end
+    end)
+    G.toast(st, "补给空投来了！去基地里找绿色信标下面的箱子", "info")
+    -- 挂着伞从天上慢慢落下来（服务器挪根零件，每秒 20 次）
+    task.spawn(function()
+      local h0, dur = 70, 3.2
+      local t = 0
+      while t < dur and m.Parent do
+        local dt = task.wait(0.05)
+        t = t + dt
+        local k = math.min(1, t / dur)
+        box.CFrame = CFrame.new(pos + V(0, 1.5 + h0 * (1 - k), 0)) * CFrame.Angles(0, t * 0.6, 0)
+      end
+      if not m.Parent then return end
+      crate.landed = true
+      if chute and chute.Parent then chute:Destroy() end
+      if label then label.Enabled = true end
+      G.fx({ k = "boom", p = pos + V(0, 1, 0), s = 0.45 })
+    end)
+  end
+
+  task.spawn(function()
+    while true do
+      task.wait(2)
+      local now = os.clock()
+      for _, st in pairs(G.states) do
+        G.try("补给空投", function()
+          if not (st.ready and st.data) or G.matchServer then return end
+          if st.crate then
+            if now > st.crate.expire then
+              st.crate.model:Destroy()
+              st.crate = nil
+            end
+            return
+          end
+          st.nextCrate = st.nextCrate or (now + 35)   -- 进服 35 秒后先来一个
+          if now >= st.nextCrate and not st.battle then
+            st.nextCrate = now + C.every + math.random(-C.jitter, C.jitter)
+            drop(st)
+          end
+        end)
+      end
+    end
+  end)
+end
+
+return Crates
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">Economy</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：经济与成长（建筑、购买按钮、收入、指挥部、军工科技、重生、经验与军衔、每日奖励、每日任务、武器商店）
 local Players = game:GetService("Players")
 
 local Economy = {}
@@ -2365,7 +2775,7 @@ function Economy.init(G)
   G.buildingPos = buildingPos
 
   function G.placeBuilding(st, b, fresh)
-    local m, body = Models.building(st.plot.Buildings, b, buildingPos(st.plot, b), st.plot.color)
+    local m, body = Models.building(st.plot.Buildings, b, buildingPos(st.plot, b), st.plot.color, fresh and workspace:GetServerTimeNow() or nil)
     local top = b.size[2] / 2 + 5   -- 牌子的偏移是从主体零件中心算的：大约在楼顶上方
     if b.income then
       Models.sign(body, b.name .. "  <font color=\"#7CFC8A\">+" .. Config.Fmt(b.income) .. "/秒</font>", top, 20, 2.8, nil, 200)
@@ -2431,7 +2841,7 @@ function Economy.init(G)
         st.pads[id] = { pad = pad, b = b }
         if id == "airbase" and not st.airHint then   -- 空军基地盖在围墙外面，按钮在围墙里靠右
           st.airHint = true
-          G.toast(st, "空军基地解锁了：购买按钮在基地里靠右边的围墙旁，盖好后跑道在围墙外面", "info")
+          G.toast(st, "空军基地解锁了：购买按钮在基地里靠空军那边的围墙旁（面朝战场时的左手边），盖好后跑道在围墙外面；跟着地上的箭头走", "info")
         end
       end
     end
@@ -2692,12 +3102,12 @@ end
 
 return Economy
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000009">
-<Properties>
-<string name="Name">Match</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：真人对战（排位）
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
+          <string name="Name">Match</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：真人对战（排位）
 --   服内快速匹配：同一个服务器里两个人都在排队，直接在本服的竞技场开打；
 --   跨服匹配：排队的人写进 MemoryStore 的有序映射（每 10 秒刷新，60 秒过期），每个服务器每 3 秒看一遍：
 --     积分差在窗口内（等得越久窗口越大）、在别的服务器、还没被认领的，userId 小的一方发起——先认领自己、再认领对方（UpdateAsync，谁先改到算谁的），
@@ -3046,12 +3456,12 @@ end
 
 return Match
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX0000000000000000000000000000000A">
-<Properties>
-<string name="Name">Models</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：模型（地图、竞技场、建筑、购买按钮、兵种、武器、排行榜牌子、血条）
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">Models</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：模型（地图、竞技场、建筑、购买按钮、兵种、武器、排行榜牌子、血条）
 -- 兵种：优先用玩家在 Studio 里「导入 3D」进来的原模型（roblox/models/*.glb，名字 = 槽位：soldier、tank、heli、fighter……和 prop_* 道具），
 --   没导入就用零件拼的。模型结构都一样：锚定的隐形 Root（原点在车底中心、正前方 −Z），其余零件焊在 Root 上；
 --   炮塔、旋翼、尾桨各挂在一个用 Motor6D 接到 Root 的「毂」上（TurretMotor / RotorMotor / TailMotor），客户端转它们的 Transform。
@@ -3105,6 +3515,13 @@ local function cyl(parent, base, height, dia, off, color, mat)
   return block(parent, base, V(height, dia, dia), off * UP, color, mat, CYL)
 end
 
+-- 客户端播的小动画：零件属性 Anim = "spin"（绕竖轴转，Spd 每秒几圈）/ "blink"（一闪一闪，Spd 每秒几次）
+local function anim(p, kind, spd)
+  p:SetAttribute("Anim", kind)
+  p:SetAttribute("Spd", spd)
+  return p
+end
+
 -- 不挡人、不挡射线的装饰零件
 local function ghostly(p)
   p.CanCollide = false
@@ -3150,7 +3567,16 @@ local function tree(f, pos, rng)
 end
 
 -- 战场（基地前面的，或者竞技场）：地面、部署区、敌军区、沙袋、弹坑；colorA / colorB 是两边区域的颜色
-local function battlefield(f, origin, colorA, colorB, rng)
+-- 地上一块区域头顶的大字（总是面朝镜头，远处也看得见）
+local function zoneLabel(f, base, at, text, color)
+  local a = ghostly(block(f, base, V(1, 1, 1), at, C.white))
+  a.Transparency = 1
+  local bb = Models.sign(a, text, 0, 60, 7, color, 1400)
+  bb.AlwaysOnTop = false
+  return bb
+end
+
+local function battlefield(f, origin, colorA, colorB, rng, labels)
   local base = CF(origin)
   local Fd = Config.Field
   local D, E = Fd.deploy, Fd.enemy
@@ -3164,6 +3590,10 @@ local function battlefield(f, origin, colorA, colorB, rng)
   ez.Transparency = 0.75
   ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, D[2]), colorA, MAT.Neon))
   ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, E[1]), colorB, MAT.Neon))
+  if labels then
+    zoneLabel(f, base, CF(0, 16, (D[1] + D[2]) / 2), labels[1], colorA:Lerp(Color3.new(1, 1, 1), 0.45))
+    zoneLabel(f, base, CF(0, 16, (E[1] + E[2]) / 2), labels[2], RGB(255, 150, 140))
+  end
   local z0, z1 = Fd.center - Fd.length / 2, Fd.center + Fd.length / 2
   block(f, base, V(3, 3, Fd.length), CF(-Fd.width / 2 - 1.5, 2.5, Fd.center), C.sand, MAT.Fabric)
   block(f, base, V(3, 3, Fd.length), CF(Fd.width / 2 + 1.5, 2.5, Fd.center), C.sand, MAT.Fabric)
@@ -3208,7 +3638,28 @@ function Models.plot(f, origin, color, index)
   for k = -8, 8 do
     ghostly(block(f, base, V(8, 0.06, 0.8), CF(k * 15, 1.03, roadZ), C.white, MAT.SmoothPlastic))
   end
-  local field = battlefield(f, origin, color, RGB(190, 50, 40), rng)
+  local field = battlefield(f, origin, color, RGB(190, 50, 40), rng, { "我方部署区 · 布阵时把部队摆在这里", "敌军区 · 这一关的敌人在这" })
+  -- 路牌：出生点北边，牌面朝出生点（面朝战场站着的时候正好看见）
+  do
+    local at = CF(S.x + 16, 0, S.z + 16)
+    cyl(f, base, 9, 0.5, at * CF(0, 1 + 4.5, 0), C.metal, MAT.Metal)
+    local board = block(f, base, V(13, 6.2, 0.4), at * CF(0, 1 + 8.6, 0), RGB(28, 70, 40), MAT.SmoothPlastic)
+    board.Name = "Signpost"
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Front
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 24
+    sg.LightInfluence = 0
+    sg.Parent = board
+    local t = Instance.new("TextLabel")
+    t.Size = UDim2.fromScale(1, 1)
+    t.BackgroundTransparency = 1
+    t.Font = Enum.Font.GothamBold
+    t.TextScaled = true
+    t.TextColor3 = C.white
+    t.Text = "↑ 战场、部署区（往前走过马路）\n← 空军基地（左边围墙外）\n踩亮绿色的圆按钮盖楼"
+    t.Parent = sg
+  end
   -- 树：基地右边的空地（空军基地再往右；第一块基地左边也种）
   local sides = { 1 }
   if index == 1 then sides = { 1, -1 } end
@@ -3253,7 +3704,7 @@ end
 -- 约战竞技场：只有战场，南北两边的出发区，看台边上一圈旗子
 function Models.arena(f, origin, index)
   local rng = Random.new(index * 53 + 991)
-  local field = battlefield(f, origin, RGB(60, 140, 230), RGB(230, 70, 60), rng)
+  local field = battlefield(f, origin, RGB(60, 140, 230), RGB(230, 70, 60), rng, { "挑战方出发区", "应战方出发区" })
   local Fd = Config.Field
   local base = CF(origin)
   local anchor = ghostly(block(f, base, V(1, 1, 1), CF(0, 2, Fd.center), C.white))
@@ -3352,6 +3803,7 @@ local function power(m, base, b)
   s.Parent = tip
   block(m, base, V(8, 8, d - 2), CF(w / 2 - 4.5, 0.6 + 4, 0), RGB(110, 120, 130), MAT.Metal)
   for k = -1, 1 do block(m, base, V(2, 2.4, 2), CF(w / 2 - 4.5, 0.6 + 9.2, k * 4), C.yellow, MAT.Metal) end
+  anim(block(m, base, V(0.8, 0.8, 0.8), CF(w / 2 - 4.5, 0.6 + 11, 0), RGB(255, 220, 90), MAT.Neon), "blink", 2)
   return body
 end
 
@@ -3404,7 +3856,7 @@ local function aaShop(m, base, b)
   local body = block(m, base, V(w, hh, d), CF(0, 0.6 + hh / 2, 0), RGB(118, 126, 112), MAT.Concrete)
   block(m, base, V(w * 0.55, hh * 0.8, 0.6), CF(0, 0.6 + hh * 0.4, d / 2 + 0.15), C.dark, MAT.DiamondPlate)
   cyl(m, base, 7, 0.6, CF(-w / 2 + 3, 0.6 + hh + 3.5, -d / 2 + 3), C.metal, MAT.Metal)
-  block(m, base, V(6, 3, 0.4), CF(-w / 2 + 3, 0.6 + hh + 7.5, -d / 2 + 3) * CFrame.Angles(math.rad(-20), math.rad(30), 0), C.white, MAT.Metal)
+  anim(block(m, base, V(6, 3, 0.4), CF(-w / 2 + 3, 0.6 + hh + 7.5, -d / 2 + 3) * CFrame.Angles(math.rad(-20), math.rad(30), 0), C.white, MAT.Metal), "spin", 0.4)
   block(m, base, V(3, 1.6, 3), CF(w / 4, 0.6 + hh + 0.8, 0), C.olive, MAT.Metal)
   for _, s in ipairs({ -1, 1 }) do
     block(m, base, V(0.3, 0.3, 4), CF(w / 4 + s * 0.7, 0.6 + hh + 2.4, 1.4) * CFrame.Angles(math.rad(-35), 0, 0), C.gun, MAT.Metal)
@@ -3442,7 +3894,7 @@ local function helipad(m, base, b)
   ghostly(block(m, base, V(2, 0.1, 14), CF(4.5, 0.95, 0), C.white))
   ghostly(block(m, base, V(9, 0.1, 2), CF(0, 0.95, 0), C.white))
   for _, sx in ipairs({ -1, 1 }) do
-    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(1, 1, 1), CF(sx * (w / 2 - 1), 1.2, sz * (d / 2 - 1)), RGB(80, 255, 120), MAT.Neon) end
+    for _, sz in ipairs({ -1, 1 }) do anim(block(m, base, V(1, 1, 1), CF(sx * (w / 2 - 1), 1.2, sz * (d / 2 - 1)), RGB(80, 255, 120), MAT.Neon), "blink", 0.8) end
   end
   cyl(m, base, 9, 0.3, CF(w / 2 + 2, 4.5, -d / 2 + 2), C.metal, MAT.Metal)
   block(m, base, V(0.9, 0.9, 3), CF(w / 2 + 2, 8.5, -d / 2 + 3.5), RGB(240, 120, 30), MAT.Fabric)
@@ -3457,7 +3909,7 @@ local function airbase(m, base, b)
   for k = -7, 7 do ghostly(block(m, base, V(0.8, 0.06, 8), CF(0, 0.32, k * 15), C.white)) end
   for _, sx in ipairs({ -1, 1 }) do ghostly(block(m, base, V(0.5, 0.06, d - 10), CF(sx * 10, 0.32, 0), C.white)) end
   for _, sz in ipairs({ -1, 1 }) do
-    for k = -4, 4 do block(m, base, V(0.6, 0.4, 0.6), CF(k * 2.4, 0.4, sz * (d / 2 - 2)), (sz < 0) and RGB(80, 255, 120) or RGB(255, 80, 70), MAT.Neon) end
+    for k = -4, 4 do anim(block(m, base, V(0.6, 0.4, 0.6), CF(k * 2.4, 0.4, sz * (d / 2 - 2)), (sz < 0) and RGB(80, 255, 120) or RGB(255, 80, 70), MAT.Neon), "blink", 1.2) end
   end
   for _, hz in ipairs({ -60, 20 }) do   -- 机库：门朝跑道
     local hb = CF(21, 0.2, hz)
@@ -3483,8 +3935,8 @@ local function hq(m, base, b, team)
   block(m, base, V(w * 0.55, h2, d * 0.55), CF(-w * 0.12, 0.6 + h1 + h2 / 2, 0), RGB(84, 92, 76), MAT.Concrete)
   block(m, base, V(w * 0.55 + 0.3, 1, d * 0.55 + 0.3), CF(-w * 0.12, 0.6 + h1 + h2 * 0.55, 0), C.glass, MAT.Glass)
   cyl(m, base, 14, 0.4, CF(w * 0.3, 0.6 + h1 + 7, -d * 0.25), C.metal, MAT.Metal)
-  block(m, base, V(0.7, 0.7, 0.7), CF(w * 0.3, 0.6 + h1 + 14.2, -d * 0.25), C.red, MAT.Neon)
-  block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal)
+  anim(block(m, base, V(0.7, 0.7, 0.7), CF(w * 0.3, 0.6 + h1 + 14.2, -d * 0.25), C.red, MAT.Neon), "blink", 1)
+  anim(block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal), "spin", 0.25)
   flag(m, base, CF(-w / 2 - 2, 0, d / 2 + 2), team)
   block(m, base, V(5, 5, 0.6), CF(0, 0.6 + 2.5, d / 2 + 0.15), C.dark)
   return body
@@ -3494,7 +3946,7 @@ local KIND = { house = house, factory = factory, power = power, bank = bank, hq 
 local MIL = { barracks = barracks, tankfac = hangar, aafac = aaShop, artyfac = artyPos, helipad = helipad, airbase = airbase }
 
 -- 建筑：pos 是地面中心（基地地面顶上）；返回 model、主体零件（挂牌子、提示用）
-function Models.building(parent, b, pos, team)
+function Models.building(parent, b, pos, team, builtAt)
   local m = Instance.new("Model")
   m.Name = b.id
   local f = KIND[b.kind]
@@ -3502,6 +3954,7 @@ function Models.building(parent, b, pos, team)
   local body = f(m, CF(pos), b, team)
   body.Name = "Body"
   m.PrimaryPart = body
+  if builtAt then m:SetAttribute("BuiltAt", builtAt) end   -- 刚盖的：客户端播「从地里升起来」（属性在放进场景前设好，和模型一起到客户端）
   m.Parent = parent
   return m, body
 end
@@ -3836,6 +4289,67 @@ PART.drone = plane({ len = 11, h = 3, dia = 1.2, y = 1.6, span = 20, chord = 1.4
 PART.spaag = PART.aa
 PART.heavyarty = PART.arty
 PART.transport = PART.heli
+PART.heavytank = PART.tank
+-- 医疗兵：背上白色急救包、红十字
+PART.medic = footPart(function(K)
+  for _, x in ipairs({ -1.4, 1.4 }) do
+    K.add(V(0.9, 0.8, 0.5), CF(x, 2.5, 1.0), C.white, MAT.SmoothPlastic)
+    K.add(V(0.5, 0.15, 0.52), CF(x, 2.5, 1.02), C.red, MAT.Neon)
+    K.add(V(0.15, 0.5, 0.52), CF(x, 2.5, 1.02), C.red, MAT.Neon)
+  end
+end)
+-- 火焰兵：背两个燃料罐、手里喷管
+PART.flamer = footPart(function(K)
+  for _, x in ipairs({ -1.4, 1.4 }) do
+    for _, dx in ipairs({ -0.25, 0.25 }) do K.add(V(1.3, 0.42, 0.42), CF(x + dx, 2.4, 1.0) * UP, RGB(150, 60, 40), MAT.Metal, CYL) end
+    K.add(V(0.22, 0.22, 1.6), CF(x + 0.42, 2.2, -0.9), C.gun, MAT.Metal)
+  end
+end)
+-- 特种小队：三个人，夜视仪、短天线
+PART.commando = footPart(function(K)
+  for _, o in ipairs({ { -1.8, 1 }, { 1.8, 1 }, { 0, -1.3 } }) do
+    K.add(V(0.5, 0.25, 0.3), CF(o[1], 3.75, o[2] - 0.4), RGB(30, 32, 30), MAT.Metal)
+    K.add(V(0.06, 1.2, 0.06), CF(o[1] - 0.3, 4.4, o[2] + 0.4), RGB(30, 32, 30), MAT.Metal)
+  end
+end)
+-- 抢修车：车身 + 后面的吊臂
+PART.repair = { len = 6.5, build = function(K, col)
+  for _, sx in ipairs({ -1, 1 }) do
+    for _, sz in ipairs({ -1, 1 }) do K.add(V(0.7, 1.6, 1.6), CF(sx * 1.35, 0.8, sz * 2.0), C.track, MAT.Metal, CYL) end
+  end
+  K.add(V(2.6, 1.3, 6.2), CF(0, 1.55, 0), col, MAT.Metal)
+  K.add(V(2.4, 1.1, 2.4), CF(0, 2.75, -1.6), col, MAT.Metal)
+  K.add(V(2.0, 0.4, 1.0), CF(0, 2.4, -2.9), C.glass, MAT.Glass)
+  K.turret(V(0, 2.3, 1.6))
+  K.addT(V(0.9, 0.9, 0.9), CF(0, 2.75, 1.6), C.yellow, MAT.Metal)
+  K.addT(V(0.35, 0.35, 3.2), CF(0, 3.6, 0.4) * CFrame.Angles(math.rad(30), 0, 0), C.yellow, MAT.Metal)
+  K.addT(V(0.08, 1.4, 0.08), CF(0, 3.6, -1.0), C.gun, MAT.Metal)
+  K.add(V(0.5, 0.25, 0.5), CF(0.8, 3.4, -1.6), RGB(255, 140, 40), MAT.Neon)
+end }
+-- 电子战车：卡车 + 后面的方舱、碟形天线、几根鞭状天线
+PART.ew = { len = 9, build = function(K, col)
+  for _, sz in ipairs({ -3.0, 1.0, 3.0 }) do
+    for _, sx in ipairs({ -1, 1 }) do K.add(V(0.6, 1.4, 1.4), CF(sx * 1.3, 0.7, sz), C.track, MAT.Metal, CYL) end
+  end
+  K.add(V(2.6, 0.6, 8.6), CF(0, 1.5, 0), darker(col, 0.3), MAT.Metal)
+  K.add(V(2.6, 2.0, 2.2), CF(0, 2.6, -3.2), col, MAT.Metal)
+  K.add(V(2.8, 2.6, 5.0), CF(0, 3.1, 1.4), col:Lerp(C.olive, 0.3), MAT.Metal)
+  K.add(V(0.3, 2.4, 2.4), CF(0, 5.2, 0.6) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(math.rad(25), 0, 0), C.white, MAT.SmoothPlastic, CYL)
+  for _, x in ipairs({ -1.1, 1.1 }) do K.add(V(0.06, 3, 0.06), CF(x, 5.8, 3.4), C.gun, MAT.Metal) end
+end }
+-- 巡飞弹：小无人机
+PART.loiter = plane({ len = 6, h = 1.6, dia = 0.7, y = 1.0, span = 5.5, chord = 1.0, wingY = 0, wingZ = 0.4, fins = { 0 }, fin = 0.8 })
+-- 隐身轰炸机：飞翼（中间机身 + 两边后掠翼，锯齿后缘）
+PART.stealth = { len = 20, h = 3, build = function(K, col)
+  local dark = RGB(44, 46, 52)
+  K.add(V(4.5, 1.6, 12), CF(0, 2.2, 0), dark, MAT.SmoothPlastic)
+  K.add(V(2.2, 0.6, 3), CF(0, 3.1, -3.2), RGB(30, 34, 40), MAT.Glass)
+  for _, sx in ipairs({ -1, 1 }) do
+    K.add(V(14, 0.5, 6), CF(sx * 7.5, 2.0, 2.2) * CFrame.Angles(0, sx * math.rad(-33), 0), dark, MAT.SmoothPlastic)
+    K.add(V(3, 0.4, 3), CF(sx * 13.6, 2.0, 7.2) * CFrame.Angles(0, math.rad(45), 0), dark, MAT.SmoothPlastic)
+  end
+  K.add(V(0.6, 0.2, 0.6), CF(0, 3.05, 4), col, MAT.Neon)
+end }
 
 ---------------------------------------------------------------- 兵种：导入的原模型
 
@@ -3872,12 +4386,21 @@ local function bounds(parts)
   return mn, mx
 end
 
+-- 合并包 all_units.glb 里零件名带兵种前缀（tank__Turret_1、heli___PivotRotor）：拆成 兵种、原名
+local function splitName(n)
+  local slot, rest = string.match(n, "^(.-)__(.+)$")
+  if slot and SLOTS[slot] then return slot, rest end
+  return nil, n
+end
+
 -- 把导入的模型整理成模板：用 _Front / _Top 标记摆正（不管导入时坐标怎么换的），缩放到长度 len（士兵按身高 5.2），底面中心放到原点，读转轴标记
 local function prepare(slot, model)
   local parts, marks = {}, {}
   for _, d in ipairs(model:GetDescendants()) do
     if d:IsA("BasePart") then
       d.Anchored = true   -- 导入时没锚定的话，一开始游戏就会往下掉、散开
+      local s2, rest = splitName(d.Name)
+      if s2 == slot then d.Name = rest end
       if MARKS[d.Name] then marks[d.Name] = d else table.insert(parts, d) end
     end
   end
@@ -3890,8 +4413,8 @@ local function prepare(slot, model)
   -- 1）摆正：前 = 指向 _Front，上 = 指向 _Top
   local cur = CF(c)
   if marks._Front and marks._Top then
-    local up = (marks._Top.Position - c).Unit
-    local f = marks._Front.Position - c
+    local up = (marks._Top.CFrame.Position - c).Unit
+    local f = marks._Front.CFrame.Position - c
     local fwd = (f - up * f:Dot(up)).Unit
     local right = fwd:Cross(up)
     cur = CFrame.fromMatrix(c, right, up, -fwd)
@@ -3907,7 +4430,7 @@ local function prepare(slot, model)
   elseif PROPLEN[slot] then k = PROPLEN[slot] / math.max(0.01, size.Z)
   else k = (def and def.len or 15) / math.max(0.01, size.Z) end
   for _, p in ipairs(all) do
-    local pos = p.Position * k
+    local pos = p.CFrame.Position * k
     p.Size = p.Size * k
     p.CFrame = CF(pos) * rotOnly(p.CFrame)
   end
@@ -3916,8 +4439,8 @@ local function prepare(slot, model)
   local shift = V((mn.X + mx.X) / 2, mn.Y, (mn.Z + mx.Z) / 2)
   for _, p in ipairs(all) do p.CFrame = p.CFrame - shift end
   mn, mx = bounds(parts)
-  local T = { parts = {}, pivots = {}, h = mx.Y - mn.Y }
-  for name, p in pairs(marks) do T.pivots[name] = p.Position end
+  local T = { parts = {}, pivots = {}, h = mx.Y - mn.Y, len = mx.Z - mn.Z }
+  for name, p in pairs(marks) do T.pivots[name] = p.CFrame.Position end
   for _, p in ipairs(parts) do
     local role = "Body"
     local n = p.Name
@@ -3933,7 +4456,9 @@ local function prepare(slot, model)
   return T
 end
 
--- 开服时找导入的模型（ReplicatedStorage.UnitModels、ServerStorage、Workspace、ReplicatedStorage 里叫这些名字的 Model），整理成模板收进 ServerStorage
+-- 开服时找导入的模型，整理成模板收进 ServerStorage：
+--   ① 叫兵种名的 Model（一个一个导入的 tank.glb……；放在 ReplicatedStorage.UnitModels、ServerStorage、Workspace、ReplicatedStorage 里，套几层都行）
+--   ② 合并包 all_units.glb 导进来的：零件名带「兵种名__」前缀，不管 Studio 保没保留层级，都按前缀分回各个兵种
 function Models.loadImported()
   local store = Instance.new("Folder")
   store.Name = "UnitTemplates"
@@ -3942,32 +4467,80 @@ function Models.loadImported()
   local um = RS:FindFirstChild("UnitModels")
   if um then table.insert(places, 1, um) end
   local found = {}
+  local function take(slot, model)
+    local ok, T = pcall(prepare, slot, model)
+    if ok and T then
+      TEMPLATES[slot] = T
+      model.Name = slot
+      model.Parent = store
+      table.insert(found, slot)
+    elseif not ok then
+      warn("[军事大亨] 导入的模型 " .. slot .. " 整理失败：" .. tostring(T))
+    end
+  end
+  -- ①
   for _, place in ipairs(places) do
-    for _, ch in ipairs(place:GetChildren()) do
-      if ch:IsA("Model") and SLOTS[ch.Name] and not TEMPLATES[ch.Name] then
-        local ok, T = pcall(prepare, ch.Name, ch)
-        if ok and T then
-          TEMPLATES[ch.Name] = T
-          ch.Parent = store
-          table.insert(found, ch.Name)
-        elseif not ok then
-          warn("[军事大亨] 导入的模型 " .. ch.Name .. " 整理失败：" .. tostring(T))
+    for _, ch in ipairs(place:GetDescendants()) do
+      if ch:IsA("Model") and SLOTS[ch.Name] and not TEMPLATES[ch.Name] and not ch:IsDescendantOf(store) then take(ch.Name, ch) end
+    end
+  end
+  -- ②
+  local groups = {}
+  for _, place in ipairs(places) do
+    for _, d in ipairs(place:GetDescendants()) do
+      if d:IsA("BasePart") and not d:IsDescendantOf(store) then
+        local slot = splitName(d.Name)
+        if slot and not TEMPLATES[slot] then
+          groups[slot] = groups[slot] or {}
+          table.insert(groups[slot], d)
         end
       end
     end
   end
+  local emptied = {}
+  for slot, list in pairs(groups) do
+    local m = Instance.new("Model")
+    m.Name = slot
+    for _, p in ipairs(list) do
+      if p.Parent then emptied[p.Parent] = true end
+      p.Parent = m
+    end
+    take(slot, m)
+  end
+  -- 合并包导进来剩下的空壳（Model / 文件夹）收掉，免得留在地图里
+  for holder in pairs(emptied) do
+    local top = holder
+    while top.Parent and top.Parent ~= workspace and top.Parent ~= RS and top.Parent ~= ServerStorage and top.Parent ~= um do top = top.Parent end
+    if top ~= workspace and top ~= RS and top ~= ServerStorage and top ~= um and top.Parent then
+      local anyPart = false
+      for _, d in ipairs(top:GetDescendants()) do
+        if d:IsA("BasePart") then
+          anyPart = true
+          break
+        end
+      end
+      if not anyPart then top:Destroy() end
+    end
+  end
+  table.sort(found)
   return found
 end
 
 ---------------------------------------------------------------- 兵种：生成
 
 -- 兵种的高度（血条、瞄准点）：导入模型按模板，零件模型按设计
+-- 几个兵种共用一个导入模型（重型坦克用坦克的、巡飞弹用无人机的……）：按各自的长度缩放
+local function tplK(def, T)
+  if T and T.len and T.len > 0.01 and def.len then return def.len / T.len end
+  return def.boss and 1.36 or 1
+end
+
 local function heightOf(t)
   local def = Config.Units[t]
   if def.foot then return 5.2 end
   local T = TEMPLATES[def.model]
+  if T then return T.h * tplK(def, T) end
   local k = def.boss and 1.36 or 1
-  if T then return T.h * k end
   local P = PART[t] or PART.tank
   local base = P.h or (def.air and 5 or 4.6)
   return base * ((def.len or 4) / P.len) * k
@@ -4036,7 +4609,7 @@ local function addTemplate(m, root, T, k, offs, flat)
       p.CanTouch = false
       p.Massless = true
       p.Size = p.Size * k
-      local cf = off * CF(p.Position * k) * rotOnly(p.CFrame)
+      local cf = off * CF(p.CFrame.Position * k) * rotOnly(p.CFrame)
       p.CFrame = cf
       p.Parent = m
       if e.role == "Body" or flat then
@@ -4069,7 +4642,7 @@ function Models.unit(t, color)
     if P then addTemplate(m, root, P, 1, { PROPAT[def.prop] }, true) end
   elseif T then
     m, root = newRoot()
-    addTemplate(m, root, T, k, { CF() }, false)
+    addTemplate(m, root, T, tplK(def, T), { CF() }, false)
   else
     local P = PART[t] or PART.tank
     local K
@@ -4107,6 +4680,53 @@ function Models.hpBar(root, height, color)
   fill.Parent = bg
   bb.Parent = root
   return bb, fill
+end
+
+---------------------------------------------------------------- 补给空投箱
+
+-- 根零件是箱子（锚定，服务器挪它落下来），捆带、伞（子模型 Chute，落地后拆掉）、绿色信标焊在上面；返回 模型、箱子、伞、头顶的字
+function Models.crate(parent, pos, text)
+  local m = Instance.new("Model")
+  m.Name = "SupplyCrate"
+  local box = Instance.new("Part")
+  box.Name = "Box"
+  box.Size = V(4.2, 3.2, 4.2)
+  box.Color = RGB(104, 116, 74)
+  box.Material = MAT.WoodPlanks
+  box.Anchored = true
+  box.CanCollide = false
+  box.TopSurface = Enum.SurfaceType.Smooth
+  box.BottomSurface = Enum.SurfaceType.Smooth
+  box.CFrame = CF(pos + V(0, 71.5, 0))
+  box.Parent = m
+  m.PrimaryPart = box
+  local function deco(holder, size, off, color, mat, shape, tr)
+    local p = newPart(holder, size, box.CFrame * off, color, mat, shape)
+    p.CanQuery = false
+    if tr then p.Transparency = tr end
+    weld(box, p, off)
+    return p
+  end
+  deco(m, V(4.35, 0.18, 0.7), CF(0, 1.62, 0), RGB(40, 40, 36), MAT.Metal)
+  deco(m, V(0.7, 0.18, 4.35), CF(0, 1.62, 0), RGB(40, 40, 36), MAT.Metal)
+  deco(m, V(4.35, 0.7, 0.18), CF(0, 0, 2.12), RGB(236, 236, 230), MAT.SmoothPlastic)
+  local beacon = deco(m, V(70, 1.1, 1.1), CF(0, 36.6, 0) * UP, RGB(90, 255, 130), MAT.Neon, CYL, 0.45)
+  beacon.CastShadow = false
+  local chute = Instance.new("Model")
+  chute.Name = "Chute"
+  chute.Parent = m
+  local canopy = deco(chute, V(16, 5, 16), CF(0, 13, 0), RGB(232, 120, 40), MAT.Fabric, BALL)
+  canopy.CastShadow = false
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+    local a = V(c[1] * 1.9, 1.6, c[2] * 1.9)
+    local b = V(c[1] * 6.5, 11.5, c[2] * 6.5)
+    local mid = (a + b) / 2
+    deco(chute, V(0.08, 0.08, (b - a).Magnitude), CFrame.lookAt(mid, b), RGB(220, 220, 210), MAT.SmoothPlastic)
+  end
+  local bb = Models.sign(box, text, 4.2, 12, 2.2, RGB(150, 255, 170), 400)
+  bb.AlwaysOnTop = true
+  m.Parent = parent
+  return m, box, chute, bb
 end
 
 ---------------------------------------------------------------- 武器（玩家背包里的工具）
@@ -4161,12 +4781,137 @@ end
 
 return Models
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX0000000000000000000000000000000B">
-<Properties>
-<string name="Name">Store</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：存档（DataStore）、突袭用的防线快照、积分匹配、排行榜（最高关卡、突袭积分、对战积分）、被突袭记录
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">Skills</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：战场支援技能（打仗时玩家自己放的：迫击炮急袭、战地急救、炮火覆盖、空投援军、空袭）
+-- 客户端点技能键、再点战场上的位置 → Action "skill"（id，x，z：相对战场原点）；服务器检查盖没盖那栋楼、冷却、在不在打仗，再放；
+-- 伤害、援军强度跟着全军战力（军工科技 × 重生）走；冷却每一仗开打时清零
+local Skills = {}
+
+function Skills.init(G)
+  local Config, Battle = G.Config, G.Battle
+  local V = Vector3.new
+  local F = Config.Field
+  local RB = G.R.Battle
+
+  -- 这个玩家有哪些技能、各还要冷却几秒（跟着状态发给客户端画技能栏）
+  function G.skillInfo(st)
+    local d = st.data
+    local out = {}
+    local now = os.clock()
+    st.skillCD = st.skillCD or {}
+    for _, sk in ipairs(Config.Skills) do
+      if d.owned[sk.need] then
+        table.insert(out, { id = sk.id, left = math.max(0, math.ceil((st.skillCD[sk.id] or 0) - now)) })
+      end
+    end
+    return out
+  end
+  function G.skillsReset(st)
+    st.skillCD = {}
+  end
+
+  -- 支援炮弹从己方后方远处打过来（客户端画弧线）；空袭从己方一侧飞过来
+  local function rear(B, team, x)
+    local z = (team == 1) and (F.deploy[1] - 160) or (F.enemy[2] + 160)
+    return B.origin + V(x + math.random(-80, 80), 60, z)
+  end
+
+  function G.useSkill(st, id, x, z)
+    local B = st.battle
+    local sk = type(id) == "string" and Config.SkillById[id]
+    if not sk or not B or B.over then return end
+    if type(x) ~= "number" or type(z) ~= "number" or x ~= x or z ~= z then return end
+    if not st.data.owned[sk.need] then
+      G.toast(st, "先盖「" .. Config.BuildingById[sk.need].name .. "」才有「" .. sk.name .. "」", "bad")
+      return
+    end
+    st.skillCD = st.skillCD or {}
+    local now = os.clock()
+    if now < (st.skillCD[id] or 0) then return end
+    st.skillCD[id] = now + sk.cd
+    local team = B.teamOf[st.pl] or 1
+    x = math.clamp(x, -Battle.XMAX, Battle.XMAX)
+    z = math.clamp(z, Battle.ZMIN, Battle.ZMAX)
+    local power = G.powerOf(st.data)
+    local src = { team = team, player = st.pl, skill = id }
+    local dir = (team == 1) and 1 or -1   -- 进攻方向：第 1 队往 +Z 打
+    if sk.kind == "barrage" then
+      local def = { dmg = sk.dmg, splash = sk.splash, vsArmor = sk.vsArmor, vsInf = sk.vsInf, vsAir = 0, fxu = (id == "mortar") and "mortar" or "heavyarty" }
+      local gap = (id == "mortar") and 0.18 or 0.22
+      for i = 1, sk.n do
+        task.delay((i - 1) * gap, function()
+          if B.over then return end
+          Battle.strike(B, team, def, power, x, z, sk.r, sk.flight + math.random() * 0.5, "shell", src, rear(B, team, x))
+        end)
+      end
+    elseif sk.kind == "strike" then
+      local def = { dmg = sk.dmg, splash = sk.splash, vsArmor = sk.vsArmor, vsInf = sk.vsInf, vsAir = 0, fxu = "bomber" }
+      local z0 = z - dir * sk.len / 2
+      G.fx({ k = "flyover", a = B.origin + V(x, 95, z0 - dir * 420), b = B.origin + V(x, 95, z0 + dir * (sk.len + 420)), t = 4.2, jet = true })
+      for i = 1, sk.n do
+        local bz = z0 + dir * (i - 1) * sk.len / math.max(1, sk.n - 1)
+        task.delay(1.55 + (i - 1) * 0.11, function()
+          if B.over then return end
+          Battle.strike(B, team, def, power, x + math.random(-6, 6), bz, 4, 1.1, "bomb", src, B.origin + V(x, 92, bz - dir * 30))
+        end)
+      end
+    elseif sk.kind == "heal" then
+      local r2 = sk.r * sk.r
+      local n = 0
+      for _, u in ipairs(B.units) do
+        if u.alive and u.team == team then
+          local dx, dz = u.x - x, u.z - z
+          if dx * dx + dz * dz <= r2 then
+            if u.hero then
+              local hum = u.model and u.model:FindFirstChildOfClass("Humanoid")
+              if hum and hum.Health > 0 then hum.Health = math.min(hum.MaxHealth, hum.Health + hum.MaxHealth * sk.pct) end
+            else
+              u.hp = math.min(u.max, u.hp + u.max * sk.pct)
+              B.cb.hurt(u)
+            end
+            n = n + 1
+          end
+        end
+      end
+      G.fx({ k = "heal", p = B.origin + V(x, 1, z), s = sk.r })
+      G.toast(st, "战地急救：" .. n .. " 个单位回了血", (n > 0) and "good" or "info")
+    elseif sk.kind == "drop" then
+      local folder = st.plot and st.plot.Units
+      local h = (team == 1) and math.pi or 0
+      G.fx({ k = "flyover", a = B.origin + V(x - 60, 70, z - dir * 380), b = B.origin + V(x + 60, 70, z + dir * 380), t = 3.2, heli = true })
+      local spawnSrc = { owner = st, team = team, h = h, dm = power, model = { Parent = folder } }
+      for i = 1, sk.squads do
+        task.delay(1.4 + i * 0.25, function()
+          if B.over or not B.cb.spawn then return end
+          local a = (i / sk.squads) * math.pi * 2
+          local px = math.clamp(x + math.cos(a) * 12, -Battle.XMAX, Battle.XMAX)
+          local pz = math.clamp(z + math.sin(a) * 12, Battle.ZMIN, Battle.ZMAX)
+          local bu = B.cb.spawn(spawnSrc, "inf", px, pz)
+          if bu then
+            bu.owner = st
+            table.insert(B.units, bu)   -- 不在推演那一步里：直接加
+            G.fx({ k = "drop", p = B.origin + V(px, 1, pz), s = 1 })
+          end
+        end)
+      end
+    end
+    RB:FireClient(st.pl, { phase = "skill", id = id, cd = sk.cd })
+    G.progress(st, "skill", 1)
+  end
+end
+
+return Skills
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">Store</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：存档（DataStore）、突袭用的防线快照、积分匹配、排行榜（最高关卡、突袭积分、对战积分）、被突袭记录
 -- 读档失败的玩家不存档（别拿新档盖掉老进度）；所有 DataStore 调用都包在 pcall 里（Studio 没开 API 访问时整个存档功能关掉，照样能玩）
 local DSS = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -4237,7 +4982,7 @@ function Store.init(G)
     if type(raw.army) == "table" then
       for _, a in ipairs(raw.army) do
         if type(a) == "table" and UNITS[a.t] and not UNITS[a.t].boss and type(a.x) == "number" and type(a.z) == "number" then
-          table.insert(d.army, { t = a.t, x = a.x, z = a.z })
+          table.insert(d.army, { t = a.t, x = a.x, z = a.z, v = math.floor(num(a.v, 0, 1000, 0)) })
         end
       end
     end
@@ -4265,7 +5010,7 @@ function Store.init(G)
   local function armyList(st)
     local army = {}
     for _, u in pairs(st.units) do
-      table.insert(army, { t = u.t, x = math.floor(u.sx * 10 + 0.5) / 10, z = math.floor(u.sz * 10 + 0.5) / 10 })
+      table.insert(army, { t = u.t, x = math.floor(u.sx * 10 + 0.5) / 10, z = math.floor(u.sz * 10 + 0.5) / 10, v = u.v or 0 })
     end
     return army
   end
@@ -4334,7 +5079,7 @@ function Store.init(G)
         local army = {}
         for _, a in ipairs(snap.army) do
           if type(a) == "table" and UNITS[a.t] and not UNITS[a.t].boss and type(a.x) == "number" and type(a.z) == "number" then
-            table.insert(army, { t = a.t, x = a.x, z = a.z })
+            table.insert(army, { t = a.t, x = a.x, z = a.z, v = math.floor(num(a.v, 0, 1000, 0)) })
           end
           if #army >= Config.MaxEnemy then break end
         end
@@ -4404,12 +5149,12 @@ end
 
 return Store
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX0000000000000000000000000000000C">
-<Properties>
-<string name="Name">Weapons</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：玩家本人的武器（背包里的枪）：发枪、开枪（服务器校验射速、弹匣、射程，射线判定打中谁）、
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">Weapons</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：玩家本人的武器（背包里的枪）：发枪、开枪（服务器校验射速、弹匣、射程，射线判定打中谁）、
 -- 火箭筒弹道和溅射；打仗时打敌方单位，约战时也能打对面的玩家本人；不在打仗时开枪只有特效
 local Weapons = {}
 
@@ -4552,12 +5297,12 @@ end
 
 return Weapons
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX0000000000000000000000000000000D">
-<Properties>
-<string name="Name">World</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：地图（光照、地形、六块基地、约战竞技场）
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">World</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：地图（光照、地形、六块基地、约战竞技场）
 local Lighting = game:GetService("Lighting")
 
 local World = {}
@@ -4616,7 +5361,7 @@ function World.init(G)
     plot.field = info.field
     plot.sign = info.sign
     plot.board = info.board
-    for _, name in ipairs({ "Buildings", "Pads", "Units", "Enemies" }) do
+    for _, name in ipairs({ "Buildings", "Pads", "Units", "Enemies", "Drops" }) do
       local sub = Instance.new("Folder")
       sub.Name = name
       sub.Parent = f
@@ -4650,33 +5395,33 @@ end
 
 return World
 ]]></ProtectedString>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="StarterPlayer" referent="RBX00000000000000000000000000000016">
-<Properties>
-<string name="Name">StarterPlayer</string>
-</Properties>
-<Item class="StarterPlayerScripts" referent="RBX00000000000000000000000000000015">
-<Properties>
-<string name="Name">StarterPlayerScripts</string>
-</Properties>
-<Item class="LocalScript" referent="RBX00000000000000000000000000000014">
-<Properties>
-<string name="Name">Client</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨：客户端（StarterPlayerScripts.Client）
--- 各模块共用一个上下文 G：Fx 特效 · View 部队平滑显示 · UI 界面 · Play 操作和镜头
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="16">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="17">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="18">
+        <Properties>
+          <string name="Name">Client</string>
+          <ProtectedString name="Source"><![CDATA[-- 军事大亨：客户端（StarterPlayerScripts.Client）
+-- 各模块共用一个上下文 G：Fx 特效与音效 · View 部队平滑显示 · UI 界面 · Guide 地图指引 · Anim 建筑动画 · Play 操作和镜头
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local G = { Config = require(RS:WaitForChild("Config")), R = {}, S = nil }
 local Remotes = RS:WaitForChild("Remotes")
-for _, name in ipairs({ "State", "Toast", "Action", "Fx", "Battle", "Shoot", "Drive", "Duel", "Board" }) do
+for _, name in ipairs({ "State", "Toast", "Action", "Fx", "Battle", "Shoot", "Drive", "Duel", "Board", "Err" }) do
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "View", "UI", "Play" }) do
+for _, name in ipairs({ "Fx", "View", "UI", "Guide", "Anim", "Play" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -4687,32 +5432,226 @@ task.delay(20, function()
   end
 end)
 
-G.R.State.OnClientEvent:Connect(function(s)
+-- 出错都写在屏幕上方的红条里：服务器接住的错、本地脚本的错
+G.R.Err.OnClientEvent:Connect(function(msg) G.showError("服务器 " .. tostring(msg)) end)
+pcall(function()
+  game:GetService("ScriptContext").Error:Connect(function(msg, trace, scr)
+    local where = scr and scr:GetFullName() or ""
+    local line = trace and string.match(trace, "[^\n]+") or ""
+    G.showError("本地 " .. tostring(msg) .. ((line ~= "") and ("  @ " .. line) or (where ~= "" and ("  @ " .. where) or "")))
+  end)
+end)
+
+-- 远程事件的处理：一个出错不影响别的（错误照样会上红条）
+local function safe(f)
+  return function(...)
+    local ok, err = pcall(f, ...)
+    if not ok then G.showError("本地 " .. tostring(err)) end
+  end
+end
+G.R.State.OnClientEvent:Connect(safe(function(s)
   if type(s) ~= "table" then return end
   G.S = s
   G.refresh()
-end)
-G.R.Toast.OnClientEvent:Connect(function(msg, kind) G.toast(msg, kind) end)
-G.R.Fx.OnClientEvent:Connect(function(list) G.onFx(list) end)
-G.R.Battle.OnClientEvent:Connect(function(ev) G.onBattle(ev) end)
-G.R.Duel.OnClientEvent:Connect(function(ev) G.onDuelInvite(ev) end)
-G.R.Board.OnClientEvent:Connect(function(d) G.onBoard(d) end)
+end))
+G.R.Toast.OnClientEvent:Connect(safe(function(msg, kind) G.toast(msg, kind) end))
+G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
+G.R.Battle.OnClientEvent:Connect(safe(function(ev) G.onBattle(ev) end))
+G.R.Duel.OnClientEvent:Connect(safe(function(ev) G.onDuelInvite(ev) end))
+G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
+-- 每帧：各步分开接住错误（一步出错只报一次，别的照常跑，不会整个画面卡住）
+local steps = { { "部队显示", function(dt) G.stepView(dt) end }, { "操作镜头", function(dt) G.stepPlay(dt) end }, { "特效", function() G.stepFx() end },
+  { "界面", function(dt) G.stepUI(dt) end }, { "地图指引", function(dt) G.stepGuide(dt) end }, { "建筑动画", function(dt) G.stepAnim(dt) end } }
 RunService.RenderStepped:Connect(function(dt)
-  G.stepView(dt)
-  G.stepPlay(dt)
-  G.stepFx()
+  for _, s in ipairs(steps) do
+    local ok, err = pcall(s[2], dt)
+    if not ok then G.showError("本地 " .. s[1] .. "：" .. tostring(err)) end
+  end
 end)
 ]]></ProtectedString>
-</Properties>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000010">
-<Properties>
-<string name="Name">Fx</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：特效——开火曳光、炮口火光、炮弹 / 火箭弹弧线、导弹（跟着目标飞）、炸弹、拦截炮把炮弹打爆在半空、爆炸、建成、楼顶冒钱；
--- 都在本地画，不占网络
+        </Properties>
+        <Item class="ModuleScript" referent="19">
+          <Properties>
+            <string name="Name">Anim</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：建筑动画（都在本地播，不占网络）——
+--   新盖的楼（模型属性 BuiltAt 是刚才）：零件从地下按高度一层层升上来，四角搭着脚手架、落地扬尘；
+--   零件属性 Anim = "spin" 的绕竖轴转（雷达），"blink" 的一闪一闪（指示灯、跑道灯）；
+--   买得起的绿色购买按钮一呼一吸，隔一会儿冒一圈光
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Anim = {}
+
+function Anim.init(G)
+  local V = Vector3.new
+  local RGB = Color3.fromRGB
+  local cam = workspace.CurrentCamera
+  local spinning = {}   -- [part] = { cf0, spd, model }
+  local blinking = {}   -- [part] = { spd, tr0 }
+  local pads = {}       -- [pad] = true
+  local busy = {}       -- [model] = 升起动画放完的时刻（这之前不转）
+  local GREEN = RGB(70, 220, 100)
+
+  local function register(m)
+    for _, d in ipairs(m:GetDescendants()) do
+      if d:IsA("BasePart") then
+        local a = d:GetAttribute("Anim")
+        if a == "spin" then
+          spinning[d] = { cf0 = d.CFrame, spd = d:GetAttribute("Spd") or 0.3, model = m }
+        elseif a == "blink" then
+          blinking[d] = { spd = d:GetAttribute("Spd") or 1, tr0 = d.Transparency, ph = math.random() * 6 }
+        end
+      end
+    end
+  end
+
+  -- 从地里升起来：每个零件先沉到地下，按离地高度依次升回原位
+  local function rise(m)
+    local parts = {}
+    local y0, y1 = math.huge, -math.huge
+    for _, d in ipairs(m:GetDescendants()) do
+      if d:IsA("BasePart") then
+        table.insert(parts, d)
+        local p = d.CFrame.Position
+        y0 = math.min(y0, p.Y - d.Size.Y / 2)
+        y1 = math.max(y1, p.Y + d.Size.Y / 2)
+      end
+    end
+    if #parts == 0 then return end
+    local h = math.max(4, y1 - y0)
+    local total = 1.6
+    busy[m] = os.clock() + total + 0.3
+    for _, p in ipairs(parts) do
+      local cf = p.CFrame
+      local k = math.clamp((cf.Position.Y - y0) / h, 0, 1)
+      p.CFrame = cf - V(0, h + 2, 0)
+      task.delay(k * total * 0.55, function()
+        if p.Parent then TweenService:Create(p, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = cf }):Play() end
+      end)
+    end
+    -- 脚手架：四角的黄色立杆 + 顶上一圈，盖完淡掉
+    local body = m.PrimaryPart
+    if body and G.fxPart then
+      local c = body.CFrame.Position
+      local sx, sz = body.Size.X / 2 + 1.5, body.Size.Z / 2 + 1.5
+      local poles = {}
+      for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+        local pole = G.fxPart(nil, V(0.5, h, 0.5), CFrame.new(c.X + o[1] * sx, y0 + h / 2, c.Z + o[2] * sz), RGB(240, 190, 40), Enum.Material.Metal, 0)
+        table.insert(poles, pole)
+      end
+      for _, o in ipairs({ { 0, -1, 2 * sx, 0.4 }, { 0, 1, 2 * sx, 0.4 }, { -1, 0, 0.4, 2 * sz }, { 1, 0, 0.4, 2 * sz } }) do
+        local bar = G.fxPart(nil, V(o[3], 0.4, o[4]), CFrame.new(c.X + o[1] * sx, y0 + h, c.Z + o[2] * sz), RGB(240, 190, 40), Enum.Material.Metal, 0)
+        table.insert(poles, bar)
+      end
+      task.delay(total, function()
+        for _, q in ipairs(poles) do
+          if q.Parent then
+            TweenService:Create(q, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+            Debris:AddItem(q, 0.55)
+          end
+        end
+      end)
+      -- 扬尘
+      for i = 1, 10 do
+        local a = i / 10 * math.pi * 2
+        local q = V(c.X + math.cos(a) * sx, y0 + 1, c.Z + math.sin(a) * sz)
+        local sm = G.fxPart(Enum.PartType.Ball, V(3, 3, 3), CFrame.new(q), RGB(196, 186, 160), Enum.Material.SmoothPlastic, 0.3)
+        TweenService:Create(sm, TweenInfo.new(1.4), { Size = V(9, 9, 9), Transparency = 1, CFrame = CFrame.new(q + V(0, 4, 0)) }):Play()
+        Debris:AddItem(sm, 1.5)
+      end
+      task.delay(total * 0.9, function()
+        if G.playSound then G.playSound("build", c) end
+      end)
+    end
+  end
+
+  local function onBuilding(m)
+    if not m:IsA("Model") then return end
+    local at = m:GetAttribute("BuiltAt")
+    local fresh = type(at) == "number" and (workspace:GetServerTimeNow() - at) < 4
+    register(m)   -- 先记下原位（升起动画会先把零件沉到地下）
+    if fresh then rise(m) end
+  end
+  local function onPad(m)
+    local pad = m:FindFirstChild("Pad")
+    if pad then pads[pad] = true end
+  end
+
+  local function watch(folder, fn)
+    folder.ChildAdded:Connect(function(c)
+      task.wait()
+      if c.Parent then fn(c) end
+    end)
+    for _, c in ipairs(folder:GetChildren()) do fn(c) end
+  end
+  task.spawn(function()
+    local plots = workspace:WaitForChild("Plots")
+    local function onPlot(p)
+      local b = p:WaitForChild("Buildings", 30)
+      if b then watch(b, onBuilding) end
+      local pd = p:WaitForChild("Pads", 30)
+      if pd then watch(pd, onPad) end
+    end
+    plots.ChildAdded:Connect(onPlot)
+    for _, p in ipairs(plots:GetChildren()) do task.spawn(onPlot, p) end
+  end)
+
+  local t, ringT = 0, 0
+  function G.stepAnim(dt)
+    t = t + dt
+    ringT = ringT + dt
+    local cp = cam.CFrame.Position
+    local now = os.clock()
+    for p, s in pairs(spinning) do
+      if not p.Parent then
+        spinning[p] = nil
+      elseif not (busy[s.model] and now < busy[s.model]) and (s.cf0.Position - cp).Magnitude < 600 then
+        p.CFrame = CFrame.new(s.cf0.Position) * CFrame.Angles(0, t * s.spd * math.pi * 2, 0) * (s.cf0 - s.cf0.Position)
+      end
+    end
+    for p, b in pairs(blinking) do
+      if not p.Parent then
+        blinking[p] = nil
+      else
+        local on = math.sin((t + b.ph) * b.spd * math.pi * 2) > -0.2
+        p.Transparency = on and b.tr0 or 0.85
+      end
+    end
+    local ring = ringT > 2.2
+    if ring then ringT = 0 end
+    for pad in pairs(pads) do
+      if not pad.Parent then
+        pads[pad] = nil
+      elseif pad.Color == GREEN and (pad.CFrame.Position - cp).Magnitude < 400 then
+        pad.Transparency = 0.25 * (0.5 + 0.5 * math.sin(t * 4))
+        if ring and G.fxPart then   -- 买得起：冒一圈往外扩的光
+          local c = pad.CFrame.Position
+          local r = G.fxPart(Enum.PartType.Cylinder, V(0.2, 7, 7), CFrame.new(c.X, c.Y + 0.4, c.Z) * CFrame.Angles(0, 0, math.pi / 2), GREEN, Enum.Material.Neon, 0.35)
+          TweenService:Create(r, TweenInfo.new(1), { Size = V(0.2, 16, 16), Transparency = 1 }):Play()
+          Debris:AddItem(r, 1.05)
+        end
+      else
+        pad.Transparency = 0
+      end
+    end
+  end
+end
+
+return Anim
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="20">
+          <Properties>
+            <string name="Name">Fx</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：特效——开火曳光、炮口火光、炮弹 / 火箭弹弧线、导弹（跟着目标飞）、炸弹、拦截炮把炮弹打爆在半空、爆炸、建成、楼顶冒钱；
+-- 支援技能（飞机掠过、治疗光圈、空投）、补给箱金币、震屏、音效（默认用 Roblox 自带的声音变调）；都在本地画，不占网络
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 
 local Fx = {}
 
@@ -4755,27 +5694,80 @@ function Fx.init(G)
   end
   G.tween = tween
 
-  -- 音效（Config.Sounds 里填了 ID 才放；同一时间别放太多）
+  -- 音效：Config.Sounds 里填了 ID 就用自己的；没填用 Roblox 自带的（rbxasset://sounds/ 里现在只有爆炸、落地、滑块、哎哟这几个，
+  -- 爆炸声调快了就是枪声、炮声）：{ 声音, 音量, 最慢, 最快 }；同一时间别放太多
+  local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
+  local TICK = "rbxasset://sounds/volume_slider.ogg"
+  local SND = {
+    boom = { EXP, 0.8, 0.85, 1.05 }, cannon = { EXP, 0.5, 1.3, 1.5 }, rocket = { EXP, 0.36, 1.7, 2.0 },
+    aa = { EXP, 0.16, 2.6, 3.0 }, rifle = { EXP, 0.12, 2.9, 3.3 }, gun = { EXP, 0.22, 2.6, 3.0 },
+    build = { "rbxasset://sounds/action_jump_land.mp3", 1, 0.55, 0.65 }, click = { TICK, 0.5, 1.15, 1.15 },
+    buy = { TICK, 0.7, 1.5, 1.5 }, coin = { TICK, 0.8, 2.0, 2.2 }, hit = { TICK, 0.55, 2.5, 2.7 }, kill = { EXP, 0.45, 2.1, 2.3 },
+    hurt = { "rbxasset://sounds/ouch.ogg", 0.45, 1, 1.1 }, win = { TICK, 0.8, 1.6, 1.6 }, lose = { TICK, 0.8, 0.8, 0.8 }, alarm = { TICK, 0.9, 0.6, 0.6 },
+  }
   local soundT, soundN = 0, 0
-  function G.playSound(name, pos)
-    local id = Config.Sounds and Config.Sounds[name]
-    if not id or id == "" then return end
+  function G.playSound(name, pos, speed)
+    local custom = Config.Sounds and Config.Sounds[name]
+    local def = SND[name]
+    if (not custom or custom == "") and not def then return end
     local now = os.clock()
     if now - soundT > 0.1 then
       soundT = now
       soundN = 0
     end
     soundN = soundN + 1
-    if soundN > 6 then return end
-    local p = part(nil, V(0.2, 0.2, 0.2), CFrame.new(pos or cam.CFrame.Position), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    if soundN > 7 then return end
     local snd = Instance.new("Sound")
-    snd.SoundId = id
-    snd.Volume = 0.6
+    if custom and custom ~= "" then
+      snd.SoundId = custom
+      snd.Volume = 0.6
+    else
+      snd.SoundId = def[1]
+      snd.Volume = def[2]
+      snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    end
+    snd.RollOffMinDistance = 30
     snd.RollOffMaxDistance = 1500
-    snd.Parent = p
-    snd:Play()
-    Debris:AddItem(p, 5)
+    if pos then
+      if (pos - cam.CFrame.Position).Magnitude > 1500 then
+        snd:Destroy()
+        return
+      end
+      local p = part(nil, V(0.2, 0.2, 0.2), CFrame.new(pos), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      snd.Parent = p
+      snd:Play()
+      Debris:AddItem(p, 5)
+    else
+      snd.Parent = SoundService   -- 界面音效：不分远近
+      snd:Play()
+      Debris:AddItem(snd, 5)
+    end
   end
+  -- 一串音：胜利升调、失败降调、警报
+  function G.jingle(kind)
+    local seq = (kind == "win") and { 1.2, 1.5, 1.9, 2.4 } or (kind == "lose") and { 1.0, 0.8, 0.62 } or { 0.6, 0.9, 0.6, 0.9 }
+    task.spawn(function()
+      for _, sp in ipairs(seq) do
+        G.playSound((kind == "win" or kind == "lose") and kind or "alarm", nil, sp)
+        task.wait(0.13)
+      end
+    end)
+  end
+
+  -- 震屏：附近的爆炸、开炮叠一点「震动量」，每帧按它晃视线（排在镜头脚本之后）
+  local trauma = 0
+  function G.shake(a)
+    trauma = math.min(1, trauma + a)
+  end
+  pcall(function()
+    RunService:BindToRenderStep("MTShake", Enum.RenderPriority.Last.Value, function(dt)
+      if trauma <= 0.002 then return end
+      local s = trauma * trauma
+      local t = os.clock() * 26
+      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t, 1.7) * 0.06 * s, math.noise(t, 5.3) * 0.06 * s, math.noise(t, 9.1) * 0.035 * s)
+      trauma = math.max(0, trauma - dt * 1.5)
+    end)
+  end)
 
   local function flash(p, s)
     local f = part(BALL, V(s, s, s), CFrame.new(p), RGB(255, 222, 140), Enum.Material.Neon, 0)
@@ -4794,6 +5786,8 @@ function Fx.init(G)
   G.beam = beam
 
   local function boom(p, s)
+    local dist = (p - cam.CFrame.Position).Magnitude
+    if dist < 160 then G.shake(math.clamp((160 - dist) / 160, 0, 1) * 0.45 * math.min(2, s)) end
     local fb = part(BALL, V(5, 5, 5) * s, CFrame.new(p), RGB(255, 175, 70), Enum.Material.Neon, 0.05)
     local light = Instance.new("PointLight")
     light.Color = RGB(255, 170, 90)
@@ -4927,13 +5921,39 @@ function Fx.init(G)
     cram = { w = 0.24, c = RGB(255, 236, 160), life = 0.06, fl = 1.6, n = 4, snd = "aa" },
     transport = { w = 0.16, c = RGB(255, 232, 130), life = 0.05, fl = 1, n = 2, snd = "rifle" },
     attacker = { w = 0.45, c = RGB(255, 200, 90), life = 0.1, fl = 3, n = 5, hit = 0.55, spread = 9, snd = "aa" },
+    medic = { w = 0.12, c = RGB(255, 236, 150), life = 0.05, fl = 1, snd = "rifle" },
+    commando = { w = 0.16, c = RGB(255, 236, 160), life = 0.06, fl = 1.2, n = 2, snd = "rifle" },
+    repair = { w = 0.16, c = RGB(255, 232, 130), life = 0.05, fl = 1, n = 2, snd = "rifle" },
+    ew = { w = 0.18, c = RGB(255, 226, 120), life = 0.05, fl = 1.2, n = 2, snd = "rifle" },
+    heavytank = { w = 0.9, c = RGB(255, 170, 80), life = 0.14, fl = 6.5, hit = 1.1, snd = "cannon" },
   }
   local GUN = {
     rifle = { w = 0.12, c = RGB(255, 236, 150), life = 0.05 },
     smg = { w = 0.1, c = RGB(255, 236, 150), life = 0.04 },
     sniper = { w = 0.22, c = RGB(200, 230, 255), life = 0.18 },
   }
+  -- 喷火：一串由大变小的火团从喷口冲到目标，落点冒一团火
+  local function flame(a, b)
+    local n = 7
+    for i = 1, n do
+      local k = i / n
+      local q = a:Lerp(b, k) + V((math.random() - 0.5) * 2 * k, (math.random() - 0.5) * 2 * k, (math.random() - 0.5) * 2 * k)
+      local sz = 1 + 3 * k
+      local f = part(BALL, V(sz, sz, sz), CFrame.new(a), (k < 0.4) and RGB(255, 230, 140) or RGB(255, 120 + math.random(0, 50), 30), Enum.Material.Neon, 0.15)
+      tween(f, 0.12 + 0.18 * k, { CFrame = CFrame.new(q), Size = V(sz, sz, sz) * 1.5, Transparency = 0.9 })
+      Debris:AddItem(f, 0.35)
+    end
+    local fb = part(BALL, V(4, 4, 4), CFrame.new(b), RGB(255, 140, 40), Enum.Material.Neon, 0.3)
+    tween(fb, 0.4, { Size = V(7, 7, 7), Transparency = 1, CFrame = CFrame.new(b + V(0, 3, 0)) })
+    Debris:AddItem(fb, 0.45)
+  end
+
   local function shot(e)
+    if e.u == "flamer" then
+      flame(e.a, e.b)
+      if math.random() < 0.3 then G.playSound("rocket", e.a, 0.7) end
+      return
+    end
     if e.u == "heli" then
       launch(e.a, e.b, 0.45, 0, "rocket")
       flash(e.a, 2)
@@ -5009,6 +6029,78 @@ function Fx.init(G)
     Debris:AddItem(anchor, 1.7)
   end
 
+  -- 支援：飞机从 a 直线飞到 b（t 秒），jet 是三角翼喷气机、heli 是直升机；身后一串烟
+  local function flyover(e)
+    local base0 = CFrame.lookAt(e.a, e.b)
+    local base1 = CFrame.lookAt(e.b, e.b + (e.b - e.a).Unit)
+    local parts = {}
+    local function add(size, rel, color, mat, shape, tr)
+      local p = part(shape, size, base0 * rel, color, mat or Enum.Material.Metal, tr or 0)
+      table.insert(parts, { p = p, rel = rel })
+      return p
+    end
+    if e.heli then
+      add(V(3.4, 3.2, 11), CFrame.new(), RGB(66, 74, 56))
+      add(V(1, 1, 9), CFrame.new(0, 0.6, 9), RGB(66, 74, 56))
+      add(V(0.2, 26, 26), CFrame.new(0, 2.2, 0) * FLAT, RGB(30, 30, 30), Enum.Material.SmoothPlastic, CYL, 0.55)
+    else
+      add(V(3.2, 2.4, 30), CFrame.new(), RGB(72, 78, 88))
+      add(V(34, 0.6, 10), CFrame.new(0, -0.2, 3), RGB(64, 70, 80))
+      add(V(12, 0.5, 4), CFrame.new(0, 0.2, 13), RGB(64, 70, 80))
+      add(V(0.5, 5, 5), CFrame.new(0, 2.6, 12), RGB(64, 70, 80))
+      add(V(1.6, 1.6, 1.2), CFrame.new(0, 0, 15.4), RGB(255, 170, 80), Enum.Material.Neon, BALL)
+    end
+    local dur = e.t or 4
+    for _, q in ipairs(parts) do
+      tween(q.p, dur, { CFrame = base1 * q.rel }, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+      Debris:AddItem(q.p, dur + 0.1)
+    end
+    G.playSound(e.heli and "aa" or "rocket", e.a:Lerp(e.b, 0.5), e.heli and 0.5 or 0.6)
+    task.spawn(function()
+      local t0 = os.clock()
+      while os.clock() - t0 < dur do
+        local k = (os.clock() - t0) / dur
+        local q = e.a:Lerp(e.b, k)
+        local sm = part(BALL, V(3, 3, 3), CFrame.new(q), RGB(200, 200, 196), Enum.Material.SmoothPlastic, 0.45)
+        tween(sm, 1.4, { Size = V(9, 9, 9), Transparency = 1 })
+        Debris:AddItem(sm, 1.5)
+        task.wait(0.12)
+      end
+    end)
+  end
+  -- 战地急救：绿色光圈扩开、几颗绿光往上飘
+  local function healFx(p, r)
+    local ring = part(CYL, V(0.4, 6, 6), CFrame.new(p.X, p.Y + 0.6, p.Z) * FLAT, RGB(90, 255, 140), Enum.Material.Neon, 0.25)
+    tween(ring, 0.8, { Size = V(0.4, r * 2, r * 2), Transparency = 1 })
+    Debris:AddItem(ring, 0.85)
+    for _ = 1, 14 do
+      local q = p + V((math.random() - 0.5) * r * 1.4, 1, (math.random() - 0.5) * r * 1.4)
+      local g = part(BALL, V(1.4, 1.4, 1.4), CFrame.new(q), RGB(120, 255, 160), Enum.Material.Neon, 0.1)
+      tween(g, 1.2, { CFrame = CFrame.new(q + V(0, 14, 0)), Transparency = 1 })
+      Debris:AddItem(g, 1.25)
+    end
+    G.playSound("coin", p, 1.6)
+  end
+  -- 空投：尘土圈、白色降落伞缩小消失
+  local function dropFx(p)
+    local chute = part(BALL, V(10, 4, 10), CFrame.new(p + V(0, 16, 0)), RGB(236, 236, 230), Enum.Material.Fabric, 0.1)
+    tween(chute, 1.2, { CFrame = CFrame.new(p + V(0, 3, 0)), Size = V(2, 1, 2), Transparency = 1 })
+    Debris:AddItem(chute, 1.25)
+    local ring = part(CYL, V(0.3, 4, 4), CFrame.new(p.X, p.Y + 0.4, p.Z) * FLAT, RGB(196, 180, 140), Enum.Material.SmoothPlastic, 0.3)
+    tween(ring, 0.7, { Size = V(0.3, 22, 22), Transparency = 1 })
+    Debris:AddItem(ring, 0.75)
+  end
+  -- 金币：一把金色硬币往上蹦、转着消失
+  local function coinsFx(p)
+    for _ = 1, 10 do
+      local d = V(math.random() - 0.5, 0, math.random() - 0.5)
+      local c = part(CYL, V(0.25, 1.3, 1.3), CFrame.new(p) * CFrame.Angles(0, math.random() * 6, math.pi / 2), RGB(255, 210, 60), Enum.Material.Neon, 0)
+      tween(c, 0.9, { CFrame = CFrame.new(p + d * 10 + V(0, 8 + math.random() * 6, 0)) * CFrame.Angles(math.random() * 6, math.random() * 6, 0), Transparency = 1 })
+      Debris:AddItem(c, 0.95)
+    end
+    G.playSound("coin", p)
+  end
+
   function G.onFx(list)
     if type(list) ~= "table" then return end
     local cp = cam.CFrame.Position
@@ -5046,6 +6138,19 @@ function Fx.init(G)
           G.playSound("boom", e.p)
         elseif e.k == "build" then
           buildFx(e.p, e.s or 20)
+        elseif e.k == "flyover" and typeof(e.b) == "Vector3" then
+          flyover(e)
+        elseif e.k == "heal" then
+          healFx(e.p, e.s or 60)
+        elseif e.k == "drop" then
+          dropFx(e.p)
+        elseif e.k == "coins" then
+          coinsFx(e.p)
+        elseif e.k == "jam" then   -- 电子干扰：导弹偏掉，冒一圈紫光
+          local ring = part(CYL, V(0.2, 3, 3), CFrame.new(e.p) * FLAT, RGB(170, 110, 255), Enum.Material.Neon, 0.2)
+          tween(ring, 0.5, { Size = V(0.2, 18, 18), Transparency = 1 })
+          Debris:AddItem(ring, 0.55)
+          G.popText(e.p, "干扰", RGB(190, 140, 255))
         end
       end
     end
@@ -5054,15 +6159,203 @@ end
 
 return Fx
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000011">
-<Properties>
-<string name="Name">Play</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：操作和镜头——
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="21">
+          <Properties>
+            <string name="Name">Guide</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：地图指引——
+--   ① 地上一串往前流动的绿色箭头，从你脚下指到下一个要去的地方（补给箱优先，其次是左上角「当前目标」说的那个按钮）；
+--   ② 左边的小地图（上面是战场）：自己的基地、盖好的楼、能买的按钮（绿点）、补给箱（金点）、你（白箭头）、你的部队（蓝点）
+local Players = game:GetService("Players")
+
+local Guide = {}
+
+function Guide.init(G)
+  local Config = G.Config
+  local V = Vector3.new
+  local RGB = Color3.fromRGB
+  local V2 = Vector2.new
+  local player = Players.LocalPlayer
+  local ui = G.ui
+  local mk, text, round = G.mk, G.text, G.round
+
+  ---------------------------------------------------------------- ① 地上的箭头
+
+  -- 一个箭头 = 两根斜着的发光细条拼成的「V」（尖朝前）；一池子反复用
+  local N, GAP, SPEED = 24, 7, 11
+  local pool = {}
+  for i = 1, N do
+    local a = G.fxPart(nil, V(0.55, 0.14, 3.2), CFrame.new(), RGB(120, 255, 150), Enum.Material.Neon, 1)
+    local b = G.fxPart(nil, V(0.55, 0.14, 3.2), CFrame.new(), RGB(120, 255, 150), Enum.Material.Neon, 1)
+    pool[i] = { a, b }
+  end
+  local LA = CFrame.new(-0.92, 0, 1.31) * CFrame.Angles(0, math.rad(-35), 0)
+  local LB = CFrame.new(0.92, 0, 1.31) * CFrame.Angles(0, math.rad(35), 0)
+  local phase = 0
+  local function hideAll(from)
+    for i = from, N do
+      pool[i][1].Transparency = 1
+      pool[i][2].Transparency = 1
+    end
+  end
+  -- 现在要去哪：补给箱 > 目标按钮；打仗、布阵、开车时不指
+  local function target()
+    local S = G.S
+    if not S or G.battle or G.mode ~= "free" then return nil, nil end
+    if typeof(S.crate) == "Vector3" then return S.crate, RGB(255, 214, 80) end
+    local pad = G.goalPadPart and G.goalPadPart()
+    if pad and pad.Parent then return pad.CFrame.Position, RGB(120, 255, 150) end
+    return nil, nil
+  end
+
+  ---------------------------------------------------------------- ② 小地图
+
+  local MAP = { x0 = -150, x1 = 250, z0 = -145, z1 = 345 }   -- 相对基地原点的范围（含路和部署区）
+  local MW, MH = 128, 156
+  local mm = mk("Frame", { BackgroundColor3 = RGB(14, 18, 24), BackgroundTransparency = 0.2, BorderSizePixel = 0, Position = UDim2.fromOffset(158, 276), Size = UDim2.fromOffset(MW + 12, MH + 30) }, ui.root)
+  round(mm, 10)
+  text(mm, { Position = UDim2.fromOffset(8, 2), Size = UDim2.new(1, -16, 0, 22), TextSize = 13, Font = Enum.Font.GothamBold, TextColor3 = RGB(255, 214, 90), Text = "地图（上面是战场）" })
+  local area = mk("Frame", { BackgroundColor3 = RGB(70, 96, 58), BorderSizePixel = 0, Position = UDim2.fromOffset(6, 24), Size = UDim2.fromOffset(MW, MH), ClipsDescendants = true }, mm)
+  round(area, 6)
+  ui.minimap = mm
+  -- 世界（相对原点的 x、z）→ 小地图上的位置：北（+Z）朝上，从上往下看时 +X 在左边
+  local function at(x, z)
+    return UDim2.fromScale(1 - (x - MAP.x0) / (MAP.x1 - MAP.x0), 1 - (z - MAP.z0) / (MAP.z1 - MAP.z0))
+  end
+  local function sizeOf(w, d)
+    return UDim2.fromScale(w / (MAP.x1 - MAP.x0), d / (MAP.z1 - MAP.z0))
+  end
+  local function rect(x, z, w, d, color, tr, z0)
+    return mk("Frame", { AnchorPoint = V2(0.5, 0.5), Position = at(x, z), Size = sizeOf(w, d), BackgroundColor3 = color, BackgroundTransparency = tr or 0, BorderSizePixel = 0, ZIndex = z0 or 1 }, area)
+  end
+  local hs = Config.BaseSize / 2
+  local F = Config.Field
+  rect(0, 0, Config.BaseSize, Config.BaseSize, RGB(150, 152, 150), 0, 1)                            -- 基地地面
+  rect(0, (hs + F.center - F.length / 2) / 2, Config.BaseSize, F.center - F.length / 2 - hs, RGB(52, 54, 58), 0, 1)   -- 路
+  local dep = rect(0, (F.deploy[1] + F.deploy[2]) / 2, F.width, F.deploy[2] - F.deploy[1], RGB(60, 120, 220), 0.45, 1)   -- 部署区
+  text(dep, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 11, Font = Enum.Font.GothamBold, Text = "部署区", ZIndex = 2 })
+  local dyn = mk("Frame", { Name = "Dynamic", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, area)
+  local me = text(area, { AnchorPoint = V2(0.5, 0.5), Size = UDim2.fromOffset(16, 16), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 15, Font = Enum.Font.GothamBold,
+    TextColor3 = RGB(255, 255, 255), TextStrokeTransparency = 0.2, Text = "▲", ZIndex = 6 })
+  local ring = mk("Frame", { AnchorPoint = V2(0.5, 0.5), Size = UDim2.fromOffset(14, 14), BackgroundTransparency = 1, ZIndex = 5, Visible = false }, area)
+  mk("UIStroke", { Color = RGB(120, 255, 150), Thickness = 2 }, ring)
+  round(ring, 7)
+
+  local function dot(x, z, size, color, zi)
+    local f = mk("Frame", { AnchorPoint = V2(0.5, 0.5), Position = at(x, z), Size = UDim2.fromOffset(size, size), BackgroundColor3 = color, BorderSizePixel = 0, ZIndex = zi or 3 }, dyn)
+    round(f, size)
+    return f
+  end
+  -- 楼、按钮、补给箱、部队：状态变了或隔半秒重画
+  local function redraw()
+    local S = G.S
+    if not S then return end
+    for _, c in ipairs(dyn:GetChildren()) do c:Destroy() end
+    local owned = S.owned or {}
+    for _, b in ipairs(Config.Buildings) do
+      if owned[b.id] then
+        local r = rect(b.x, b.z, b.size[1], b.size[3], RGB(84, 92, 100), 0, 2)
+        r.Parent = dyn
+      elseif not b.req or owned[b.req] then
+        local px, pz = b.x, b.z - b.size[3] / 2 - 6
+        if b.pad then px, pz = b.x + b.pad[1], b.z + b.pad[2] end
+        dot(px, pz, 7, (S.cash >= b.price) and RGB(90, 255, 120) or RGB(230, 90, 70), 3)
+      end
+    end
+    local o = S.origin
+    for m in pairs(G.vis or {}) do
+      if m.Parent and m:GetAttribute("Owner") == player.UserId and not m:GetAttribute("Dead") then
+        local r = m:FindFirstChild("Root")
+        if r and o then
+          local p = r.CFrame.Position - o
+          dot(p.X, p.Z, 4, RGB(110, 170, 255), 3)
+        end
+      end
+    end
+    if typeof(S.crate) == "Vector3" and o then
+      local p = S.crate - o
+      dot(p.X, p.Z, 9, RGB(255, 214, 80), 4)
+    end
+  end
+
+  ---------------------------------------------------------------- 每帧
+
+  local t = 0
+  function G.stepGuide(dt)
+    phase = (phase + dt * SPEED) % GAP
+    t = t + dt
+    local S = G.S
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    -- 地上的箭头
+    local goal, color = target()
+    local used = 0
+    if goal and root and S and S.origin then
+      local from = root.CFrame.Position
+      local y = S.origin.Y + 1.15
+      local a = V(from.X, y, from.Z)
+      local b = V(goal.X, y, goal.Z)
+      local d = b - a
+      local len = d.Magnitude
+      if len > 12 then
+        local dir = d / len
+        local base0 = CFrame.lookAt(a, a + dir)
+        for i = 1, N do
+          local s = phase + (i - 1) * GAP + 4
+          if s > len - 5 then break end
+          local cf = base0 * CFrame.new(0, 0, -s)
+          local p = pool[i]
+          p[1].CFrame = cf * LA
+          p[2].CFrame = cf * LB
+          local fade = math.clamp(math.min(s - 4, len - 5 - s) / 6, 0, 1)
+          local tr = 1 - 0.75 * fade
+          p[1].Transparency, p[2].Transparency = tr, tr
+          p[1].Color, p[2].Color = color, color
+          used = i
+        end
+      end
+    end
+    hideAll(used + 1)
+    -- 小地图
+    local show = S ~= nil and not G.battle and G.mode ~= "drive"
+    mm.Visible = show
+    if not show then return end
+    if t > 0.5 then
+      t = 0
+      redraw()
+    end
+    if root and S.origin then
+      local p = root.CFrame.Position - S.origin
+      me.Position = at(p.X, p.Z)
+      local lv = root.CFrame.LookVector
+      me.Rotation = math.deg(math.atan2(-lv.X, lv.Z))
+    end
+    if goal and S.origin then
+      local p = goal - S.origin
+      ring.Visible = true
+      ring.Position = at(p.X, p.Z)
+      local k = 1 + 0.35 * math.sin(os.clock() * 5)
+      ring.Size = UDim2.fromOffset(14 * k, 14 * k)
+    else
+      ring.Visible = false
+    end
+  end
+end
+
+return Guide
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="22">
+          <Properties>
+            <string name="Name">Play</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：操作和镜头——
 --   free 在基地里走 / 战场上自己当兵（Roblox 默认镜头）；deploy 布阵（俯瞰自己的部署区，点部队、点位置）；
 --   battle 俯瞰战场；drive 开车 / 开直升机 / 开喷气机（追尾镜头，本地算位置，20 次 / 秒发给服务器）。
 --   拿枪：按住左键连发（狙击枪、火箭筒一下一发），R 换弹；手机点屏幕开火
+--   支援技能：点技能键（或按 Z X V B N），地上出现范围圈跟着鼠标，左键放下（手机点一下战场），右键 / Esc 取消
+--   战斗事件：命中标记、飘伤害数字、连杀播报、战报滚动条、首领来袭、结算评星
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local PPS = game:GetService("ProximityPromptService")
@@ -5291,7 +6584,11 @@ function Play.init(G)
     for sm in pairs(G.vis or {}) do
       if sm.Parent and sm:GetAttribute("BU") == ev.bid then m = sm end
     end
-    if not m then return end
+    if not m then   -- 本地还没这辆车的模型：别让服务器以为在开（角色会一直藏着），直接下车
+      RA:FireServer("exit")
+      G.toast("这辆车还没加载出来，过一秒再试", "info")
+      return
+    end
     local root = m:FindFirstChild("Root")
     local o = ev.origin or (G.battle and G.battle.origin) or V(0, 0, 0)
     local p = root.CFrame.Position - o
@@ -5446,6 +6743,18 @@ function Play.init(G)
     RA:FireServer("reload", id)
   end
   local function onChar(char)
+    task.spawn(function()
+      local hum = char:WaitForChild("Humanoid", 10)
+      if not hum then return end
+      local last, lastT = hum.Health, 0
+      hum.HealthChanged:Connect(function(h)
+        if h < last - 4 and G.battle and os.clock() - lastT > 0.35 then
+          lastT = os.clock()
+          G.playSound("hurt")
+        end
+        last = h
+      end)
+    end)
     char.ChildAdded:Connect(function(c)
       if c:IsA("Tool") and c:GetAttribute("Weapon") then
         gun.id, gun.tool = c:GetAttribute("Weapon"), c
@@ -5491,7 +6800,91 @@ function Play.init(G)
     end
   end
 
+  ---------------------------------------------------------------- 支援技能
+
+  G.aim = nil
+  local aimRing, aimStrip = nil, nil
+  local aimTipShown = false
+  -- 屏幕上一点对应的战场地面（战场顶面 y = 原点 + 1 的平面）
+  local function groundPoint(x, y, viewport)
+    local B = G.battle
+    if not B or not B.origin then return nil end
+    local ray = viewport and cam:ViewportPointToRay(x, y) or cam:ScreenPointToRay(x, y)
+    if math.abs(ray.Direction.Y) < 1e-4 then return nil end
+    local t = (B.origin.Y + 1 - ray.Origin.Y) / ray.Direction.Y
+    if t <= 0 or t > 6000 then return nil end
+    return ray.Origin + ray.Direction * t
+  end
+  function G.toggleAim(id)
+    if G.aim == id then
+      G.aim = nil
+      return
+    end
+    local sk = Config.SkillById[id]
+    if not sk or not G.battle or not (G.skillHave and G.skillHave[id]) then return end
+    local left = (G.skillReady[id] or 0) - os.clock()
+    if left > 0 then
+      G.toast("「" .. sk.name .. "」还要冷却 " .. math.ceil(left) .. " 秒", "info")
+      return
+    end
+    G.aim = id
+    if not aimTipShown then
+      aimTipShown = true
+      G.toast(G.mobile and "点战场上的位置放下「" .. sk.name .. "」（再点一次技能键取消）" or "左键点战场放下「" .. sk.name .. "」，右键或 Esc 取消（俯瞰战场更好瞄）", "info")
+    end
+  end
+  local function castAt(x, y, viewport)
+    local id = G.aim
+    if not id then return false end
+    local p = groundPoint(x, y, viewport)
+    if not p then return true end
+    local rel = p - G.battle.origin
+    RA:FireServer("skill", id, rel.X, rel.Z)
+    G.skillReady[id] = os.clock() + Config.SkillById[id].cd   -- 先在本地进入冷却，服务器放了会再确认
+    G.aim = nil
+    return true
+  end
+  local function aimUpdate()
+    local sk = G.aim and Config.SkillById[G.aim]
+    if sk and not G.battle then G.aim, sk = nil, nil end
+    if not aimRing then
+      aimRing = G.fxPart(Enum.PartType.Cylinder, V(0.3, 10, 10), CFrame.new(), RGB(255, 200, 70), Enum.Material.Neon, 1)
+      aimStrip = G.fxPart(nil, V(20, 0.3, 100), CFrame.new(), RGB(255, 120, 60), Enum.Material.Neon, 1)
+    end
+    aimRing.Transparency, aimStrip.Transparency = 1, 1
+    if not sk then return end
+    local mp = G.mobile and (cam.ViewportSize / 2) or UIS:GetMouseLocation()
+    local p = groundPoint(mp.X, mp.Y, true)
+    if not p then return end
+    if sk.kind == "strike" then
+      local dir = (G.battle.team == 2) and -1 or 1
+      aimStrip.Size = V(22, 0.3, sk.len)
+      aimStrip.CFrame = CFrame.new(p.X, p.Y + 0.4, p.Z) * CFrame.Angles(0, (dir < 0) and math.pi or 0, 0)
+      aimStrip.Transparency = 0.5
+    else
+      local r = sk.r or 14
+      aimRing.Size = V(0.3, r * 2, r * 2)
+      aimRing.Color = (sk.kind == "heal") and RGB(90, 255, 140) or ((sk.kind == "drop") and RGB(120, 190, 255) or RGB(255, 200, 70))
+      aimRing.CFrame = CFrame.new(p.X, p.Y + 0.4, p.Z) * CFrame.Angles(0, 0, math.pi / 2)
+      aimRing.Transparency = 0.5
+    end
+  end
+  local KEYSK = {}
+  for _, sk in ipairs(Config.Skills) do KEYSK[Enum.KeyCode[sk.key]] = sk.id end
+
   ---------------------------------------------------------------- 战斗事件
+
+  -- 连杀：4 秒内接着亲手击毁算连杀
+  local streak, lastKill = 0, 0
+  local STREAK = { [2] = "双杀！", [3] = "三杀！", [4] = "四杀！", [5] = "五杀！" }
+  local function onKill(ev)
+    local now = os.clock()
+    streak = (now - lastKill < 4) and (streak + 1) or 1
+    lastKill = now
+    if streak >= 2 then G.announce(STREAK[streak] or "超神！", RGB(255, 120, 70), nil, 1.2) end
+    local def = UNITS[ev.t]
+    G.feedLine("你击毁了 <font color=\"#FF8A80\">敌方" .. (def and def.name or (ev.hero and "玩家" or "单位")) .. "</font>", RGB(255, 226, 120))
+  end
 
   G.battle = nil
   local function counterTip(enemy)
@@ -5501,7 +6894,11 @@ function Play.init(G)
       for _, t in ipairs({ ... }) do s = s + (enemy[t] or 0) end
       return s
     end
+    if n("stealth") > 0 then return "敌方有隐身轰炸机：只有爱国者和战斗机打得到它" end
     if n("drone", "fighter", "bomber") > 0 then return "敌方有高空的飞机（无人机 / 战斗机 / 轰炸机）：带弹炮防空车、爱国者、单兵防空组，或者自己的战斗机" end
+    if n("loiter") > 0 then return "敌方有巡飞弹：一头撞上来专炸坦克，带防空车、步战车早点把它打下来" end
+    if n("ew") > 0 then return "敌方有电子战车：导弹容易被干扰偏掉，多用坦克炮、火炮，或者先端掉它" end
+    if n("heavytank") > 0 then return "敌方有重型坦克：反坦克导弹组、武装直升机、攻击机、巡飞弹专克它" end
     if n("heli", "transport", "attacker") > 0 then return "敌方有直升机 / 攻击机：带上防空车、步战车、单兵防空组，或者多带步兵" end
     if n("tank", "boss", "td", "breacher") >= 2 then return "敌方装甲多：武装直升机、反坦克导弹组、突击炮、攻击机专克装甲，火箭筒也行" end
     if n("cram") > 0 then return "敌方有拦截炮：炮弹、火箭弹会被打下来，用坦克、攻击机去端掉它" end
@@ -5518,11 +6915,41 @@ function Play.init(G)
       G.battle = { origin = ev.origin, team = ev.team or 1, mode = ev.mode, title = ev.title or "", t0 = os.clock(), len = ev.time or Config.BattleTime,
         enemy = G.S and G.S.enemy }
       ui.bInfo.Text = ""
+      G.skillReady = {}
+      G.aim = nil
+      streak = 0
       G.setMode("free")
-      G.toast("开战！你本人也在战场上：拿起枪（物品栏 1），或者点「开车 / 开飞机」", "info")
+      if ev.boss then
+        G.announce("首领来袭！", RGB(255, 90, 70), "第 " .. tostring(ev.level) .. " 关 · 猛犸重坦——血极厚，集中火力、用支援技能", 2.6)
+        G.jingle("alarm")
+        G.shake(0.5)
+      else
+        G.announce("开战！", RGB(255, 214, 90), ev.title, 1.4)
+      end
+      G.toast("你本人也在战场上：拿起枪（物品栏 1）、点「开车 / 开飞机」，下面的支援技能点一下再点战场就放", "info")
     elseif ev.phase == "tick" then
       if G.battle then G.battle.t0 = os.clock() - (ev.t or 0) end
       ui.bInfo.Text = "<font color=\"#7CFC8A\">我方 " .. tostring(ev.a) .. "</font>      <font color=\"#FF8A80\">敌方 " .. tostring(ev.e) .. "</font>"
+      for _, f in ipairs(ev.feed or {}) do
+        local def = UNITS[f.t]
+        local nm = def and def.name or "单位"
+        if f.en and not f.me then
+          G.feedLine("击毁 <font color=\"#FF8A80\">敌方" .. nm .. "</font>", RGB(220, 230, 240))
+          if f.t == "boss" then G.announce("首领被击毁！", RGB(255, 214, 90), nil, 1.8) end
+        elseif not f.en and f.mine then
+          G.feedLine("<font color=\"#FF8A80\">我方" .. nm .. " 被击毁</font>", RGB(255, 140, 130))
+        end
+      end
+    elseif ev.phase == "hit" then
+      if typeof(ev.p) == "Vector3" then
+        G.popText(ev.p, (ev.k and "击毁 " or "") .. "-" .. tostring(ev.d), ev.k and RGB(255, 200, 60) or RGB(255, 255, 255))
+      end
+      G.hitMarker(ev.k)
+      G.playSound(ev.k and "kill" or "hit")
+      if ev.k then onKill(ev) end
+    elseif ev.phase == "skill" then
+      G.skillReady[ev.id] = os.clock() + (ev.cd or 0)
+      G.playSound("buy")
     elseif ev.phase == "hero" then
       ui.rejoinBtn.Visible = (not ev.alive) and G.battle ~= nil and G.drive == nil
     elseif ev.phase == "drive" then
@@ -5532,19 +6959,25 @@ function Play.init(G)
     elseif ev.phase == "end" then
       local enemy = G.battle and G.battle.enemy
       G.battle = nil
+      G.aim = nil
       stopDrive()
       ui.rejoinBtn.Visible = false
       if G.mode == "battle" then G.setMode("free") end
       local win = ev.result == "win"
       ui.resTitle.Text = win and "胜利！" or ((ev.result == "timeout") and "时间到" or "失败")
       ui.resTitle.TextColor3 = win and RGB(255, 214, 90) or RGB(240, 110, 100)
+      ui.resStars.Text = ev.stars and (string.rep("★", ev.stars) .. string.rep("☆", 3 - ev.stars)) or ""
       local lines = {}
+      if ev.record then table.insert(lines, "新纪录！最高打到第 " .. tostring(ev.level) .. " 关") end
       if ev.text then table.insert(lines, ev.text) end
+      local rewardLine = nil
       if win and (ev.reward or 0) > 0 then
-        table.insert(lines, "奖励 $" .. Config.Fmt(ev.reward) .. ((ev.mode == "pve") and ("，下一关：第 " .. tostring(ev.level) .. " 关") or ""))
+        table.insert(lines, "")
+        rewardLine = #lines
       elseif not win and ev.mode == "pve" then
         table.insert(lines, counterTip(enemy))
       end
+      if (ev.pk or 0) > 0 then table.insert(lines, "你亲手击毁 " .. tostring(ev.pk) .. " 个敌方单位") end
       if (ev.lostN or 0) > 0 then
         local parts = {}
         for _, t in ipairs(Config.UnitOrder) do
@@ -5555,9 +6988,27 @@ function Play.init(G)
       elseif ev.mode ~= "duel" then
         table.insert(lines, "一个都没损失！")
       end
+      local function rewardText(v)
+        return "奖励 $" .. Config.Fmt(v) .. ((ev.mode == "pve") and ("，下一关：第 " .. tostring(ev.level) .. " 关") or "")
+      end
+      if rewardLine then lines[rewardLine] = rewardText(0) end
       ui.resBody.Text = table.concat(lines, "\n")
       ui.result.Visible = true
-      G.playSound(win and "win" or "lose")
+      G.jingle(win and "win" or "lose")
+      if win then G.announce("胜利！", RGB(255, 214, 90), ev.stars and (string.rep("★", ev.stars) .. string.rep("☆", 3 - ev.stars)) or nil, 1.6) end
+      -- 奖励数字滚上去
+      if rewardLine then
+        task.spawn(function()
+          local t0 = os.clock()
+          while ui.result.Visible do
+            local k = math.min(1, (os.clock() - t0) / 0.9)
+            lines[rewardLine] = rewardText(math.floor(ev.reward * k * (2 - k)))
+            ui.resBody.Text = table.concat(lines, "\n")
+            if k >= 1 then break end
+            task.wait(0.03)
+          end
+        end)
+      end
     end
     G.updateButtons()
   end
@@ -5565,13 +7016,28 @@ function Play.init(G)
   ---------------------------------------------------------------- 输入
 
   UIS.InputBegan:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and G.aim then
+      G.aim = nil   -- 右键取消技能瞄准
+      return
+    end
     if input.UserInputType == Enum.UserInputType.MouseButton2 and G.mode ~= "free" then
       rotating = true
       UIS.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
     end
     if gp then return end
+    if input.KeyCode == Enum.KeyCode.Escape and G.aim then
+      G.aim = nil
+      return
+    end
+    local skk = KEYSK[input.KeyCode]
+    if skk and G.battle then
+      G.toggleAim(skk)
+      return
+    end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-      if G.mode == "deploy" then
+      if G.aim and G.battle then
+        castAt(input.Position.X, input.Position.Y, false)
+      elseif G.mode == "deploy" then
         clickAt(input.Position.X, input.Position.Y)
       elseif G.drive then
         G.drive.firing = true
@@ -5611,7 +7077,12 @@ function Play.init(G)
   UIS.TouchTap:Connect(function(positions, gp)
     if gp then return end
     local p = positions[1]
-    if p then clickAt(p.X, p.Y) end
+    if not p then return end
+    if G.aim and G.battle then
+      castAt(p.X, p.Y, false)
+    else
+      clickAt(p.X, p.Y)
+    end
   end)
   local pan0 = nil
   UIS.TouchPan:Connect(function(positions, total, velocity, state, gp)
@@ -5681,9 +7152,10 @@ function Play.init(G)
       camCF = camCF and camCF:Lerp(want, 1 - math.exp(-dt * 7)) or want
       cam.CFrame = camCF
     end
-    if gun.firing and gun.id and Config.Weapons[gun.id].auto then tryFire() end
+    if gun.firing and gun.id and Config.Weapons[gun.id].auto and not G.aim then tryFire() end
     ammoHud()
     ghostUpdate()
+    aimUpdate()
     if G.battle then
       local left = math.max(0, G.battle.len - (os.clock() - G.battle.t0))
       ui.bTitle.Text = string.format("%s   %d:%02d", G.battle.title, math.floor(left / 60), math.floor(left % 60))
@@ -5709,13 +7181,14 @@ end
 
 return Play
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000012">
-<Properties>
-<string name="Name">UI</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：界面——钱、关卡、兵工厂、按钮、提示；任务、武器、排行榜、真人对战（排位匹配、同服约战）、重生、致谢；
--- 每日奖励、约战邀请、匹配中的状态条；战斗中的面板、结果
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="23">
+          <Properties>
+            <string name="Name">UI</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：界面——钱、关卡、兵工厂、按钮、提示；任务、武器、排行榜、真人对战（排位匹配、同服约战）、重生、致谢；
+-- 每日奖励、约战邀请、匹配中的状态条；战斗中的面板、支援技能栏、战报滚动条、命中标记、大字播报、结果（评星）；
+-- 新手目标（左上角 + 指着下一个按钮的箭头）、低血量红边、出错红条
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -5790,7 +7263,12 @@ function UI.init(G)
     round(b, 8)
     for k, v in pairs(props or {}) do b[k] = v end
     b.Parent = parent
-    if onClick then b.Activated:Connect(onClick) end
+    if onClick then
+      b.Activated:Connect(function(...)
+        if G.playSound then G.playSound("click") end
+        onClick(...)
+      end)
+    end
     return b
   end
   local function panel(parent, props)
@@ -5963,10 +7441,11 @@ function UI.init(G)
   ui.reloadBar = mk("Frame", { BackgroundColor3 = RGB(255, 214, 90), BorderSizePixel = 0, AnchorPoint = V2(1, 1), Position = UDim2.new(1, -20, 1, -14), Size = UDim2.fromOffset(0, 4), Visible = false }, root)
 
   -- 结果
-  local result = panel(root, { AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(460, 280), Visible = false, ZIndex = 5 })
+  local result = panel(root, { AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(480, 310), Visible = false, ZIndex = 5 })
   ui.result = result
-  ui.resTitle = text(result, { Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 52), Font = FONT, TextSize = 44, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
-  ui.resBody = text(result, { Position = UDim2.fromOffset(24, 80), Size = UDim2.new(1, -48, 0, 120), TextSize = 17, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 5 })
+  ui.resTitle = text(result, { Position = UDim2.fromOffset(0, 12), Size = UDim2.new(1, 0, 0, 50), Font = FONT, TextSize = 44, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
+  ui.resStars = text(result, { Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 0, 34), Font = FONT, TextSize = 32, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(255, 210, 70), ZIndex = 5 })
+  ui.resBody = text(result, { Position = UDim2.fromOffset(24, 98), Size = UDim2.new(1, -48, 0, 130), TextSize = 17, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 5 })
   button(result, "布阵再打", RGB(45, 95, 165), { AnchorPoint = V2(1, 1), Position = UDim2.new(0.5, -8, 1, -18), Size = UDim2.fromOffset(170, 48), ZIndex = 5 }, function()
     result.Visible = false
     RA:FireServer("home")
@@ -6203,11 +7682,241 @@ function UI.init(G)
     end)
   end
 
+  ---------------------------------------------------------------- 新手目标：左上角一行字 + 基地里指着下一个按钮的箭头
+
+  -- 宽度让开正中间的现金条（窄屏上现金条左边大约在 380 处）
+  local goal = panel(root, { Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(360, 60) })
+  text(goal, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, Font = FONT, TextColor3 = RGB(255, 214, 90), Text = "当前目标" })
+  local goalL = text(goal, { Position = UDim2.fromOffset(12, 20), Size = UDim2.new(1, -24, 0, 38), TextSize = 14, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top })
+  local arrow = mk("BillboardGui", { Name = "GoalArrow", Size = UDim2.fromOffset(140, 90), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 600, Enabled = false, ResetOnSpawn = false })
+  arrow.Parent = player:WaitForChild("PlayerGui")
+  local arrowT = text(arrow, { Size = UDim2.new(1, 0, 0, 30), Font = FONT, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(140, 255, 160), TextStrokeTransparency = 0.2, Text = "下一步" })
+  text(arrow, { Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 60), Font = FONT, TextSize = 52, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(140, 255, 160), TextStrokeTransparency = 0.2, Text = "▼" })
+  local goalPad = nil
+  -- 现在该干什么：没盖第一栋楼 → 没兵营 → 没兵 → 没打过仗 → 没指挥部 → 之后提示下一栋楼 / 下一关
+  local function objective(S)
+    local o = S.owned or {}
+    local B = Config.BuildingById
+    if not o.house1 then return "踩亮绿色的圆按钮，盖第一栋「居民楼 A」（$" .. B.house1.price .. "）：楼会一直给你赚钱", "house1" end
+    if not o.barracks then return "攒到 $" .. B.barracks.price .. " 盖「兵营」：有兵营才能造兵（现在 $" .. Config.Fmt(S.cash) .. "）", "barracks" end
+    if (S.n or 0) == 0 then return "在右边「兵工厂」造 2～3 个步兵班（$" .. Config.Units.inf.price .. " 一个）", nil end
+    if (S.wins or 0) == 0 and (S.level or 1) <= 1 then return "点下面的「开战！」打第 1 关——你本人也会上战场，打仗时下面有支援技能", nil end
+    if not o.hq then return "盖「指挥部」：部队上限 4 → 10，还多一个「战地急救」技能", "hq" end
+    local best = nil
+    for _, b in ipairs(Config.Buildings) do
+      if not o[b.id] and (not b.req or o[b.req]) and (not best or b.price < best.price) then best = b end
+    end
+    if best and S.cash >= best.price * 0.6 then
+      return "下一栋：「" .. best.name .. "」$" .. Config.Fmt(best.price) .. "（现在 $" .. Config.Fmt(S.cash) .. "）", best.id
+    end
+    local tip = "打第 " .. tostring(S.level) .. " 关拿 $" .. Config.Fmt(S.reward or 0)
+    if (S.vets or 0) > 0 then tip = tip .. "；活下来的部队会升星变强" end
+    if best then tip = tip .. "；攒钱盖「" .. best.name .. "」$" .. Config.Fmt(best.price) end
+    return tip, nil
+  end
+  local function padPart(id)
+    local S = G.S
+    local plots = workspace:FindFirstChild("Plots")
+    local p = S and plots and plots:FindFirstChild("Plot" .. tostring(S.plot))
+    local m = p and p:FindFirstChild("Pads") and p.Pads:FindFirstChild("Pad_" .. id)
+    return m and m:FindFirstChild("Pad")
+  end
+  local function updateGoal()
+    local S = G.S
+    if not S then return end
+    local txt, padId = objective(S)
+    goalL.Text = txt
+    goalPad = padId and padPart(padId) or nil
+    if padId then arrowT.Text = "下一步：" .. Config.BuildingById[padId].name end
+  end
+  ui.goal = goal
+  function G.goalPadPart() return goalPad end
+  local bob = 0
+  function G.stepUI(dt)
+    bob = bob + dt * 4
+    local show = goalPad ~= nil and goalPad.Parent ~= nil and G.mode == "free" and not G.battle
+    arrow.Enabled = show
+    if show then
+      arrow.Adornee = goalPad
+      arrow.StudsOffsetWorldSpace = Vector3.new(0, 9 + math.sin(bob) * 1.2, 0)
+    end
+    if G.stepSkills then G.stepSkills() end
+    if G.stepVignette then G.stepVignette(dt) end
+  end
+
+  ---------------------------------------------------------------- 打仗时：支援技能栏（点一下，再点战场上的位置；电脑上按 Z X V B N）
+
+  local sbar = mk("Frame", { BackgroundTransparency = 1, AnchorPoint = V2(0.5, 1), Position = UDim2.new(0.5, 0, 1, -138), Size = UDim2.fromOffset(700, 64), Visible = false }, root)
+  mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, sbar)
+  ui.sbar = sbar
+  G.skillReady = {}   -- [id] = 什么时候冷却好（os.clock）
+  local sbtn = {}
+  for i, sk in ipairs(Config.Skills) do
+    local b = button(sbar, "", RGB(40, 64, 96), { Size = UDim2.fromOffset(128, 60), LayoutOrder = i, Visible = false, TextSize = 14 }, function()
+      if G.toggleAim then G.toggleAim(sk.id) end
+    end)
+    local nm = text(b, { Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0, 20), Font = FONT, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, Text = sk.name })
+    local sub = text(b, { Position = UDim2.fromOffset(6, 26), Size = UDim2.new(1, -12, 0, 16), TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(190, 205, 220),
+      Text = (mobile and "" or ("[" .. sk.key .. "]  ")) .. "冷却 " .. sk.cd .. " 秒" })
+    local cdF = mk("Frame", { BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, AnchorPoint = V2(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), ZIndex = 2 }, b)
+    round(cdF, 8)
+    local cdT = text(b, { Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 0, 18), Font = FONT, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(255, 214, 90), ZIndex = 3 })
+    sbtn[sk.id] = { b = b, cd = cdF, cdT = cdT, sk = sk, nm = nm, sub = sub }
+  end
+  -- 有哪些技能跟着状态走（盖了对应的楼才有）
+  local function refreshSkills(S)
+    local have = {}
+    for _, e in ipairs(S.skills or {}) do
+      have[e.id] = true
+      if G.skillReady[e.id] == nil then G.skillReady[e.id] = os.clock() + (e.left or 0) end
+    end
+    for id, e in pairs(sbtn) do e.b.Visible = have[id] == true end
+    G.skillHave = have
+  end
+  function G.stepSkills()
+    if not sbar.Visible then return end
+    local now = os.clock()
+    for id, e in pairs(sbtn) do
+      if e.b.Visible then
+        local left = (G.skillReady[id] or 0) - now
+        if left > 0 then
+          e.cd.Size = UDim2.fromScale(1, math.clamp(left / e.sk.cd, 0, 1))
+          e.cdT.Text = string.format("%d", math.ceil(left))
+        else
+          e.cd.Size = UDim2.fromScale(1, 0)
+          e.cdT.Text = (G.aim == id) and "点战场放下" or "就绪"
+        end
+        e.b.BackgroundColor3 = (G.aim == id) and RGB(190, 140, 40) or ((left > 0) and RGB(34, 42, 54) or RGB(40, 92, 140))
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 打仗时：战报滚动条（右上）、命中标记、大字播报、低血量红边
+
+  local feed = mk("Frame", { BackgroundTransparency = 1, AnchorPoint = V2(1, 0), Position = UDim2.new(1, -10, 0, 150), Size = UDim2.fromOffset(330, 240), Visible = false }, root)
+  mk("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, feed)
+  ui.feed = feed
+  local feedN = 0
+  function G.feedLine(msg, color)
+    feedN = feedN + 1
+    local t = mk("TextLabel", { Text = msg, Font = FONT2, TextSize = 15, TextColor3 = color or RGB(240, 240, 240), RichText = true, BackgroundColor3 = RGB(10, 14, 20),
+      BackgroundTransparency = 0.35, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = feedN, TextXAlignment = Enum.TextXAlignment.Right }, feed)
+    round(t, 6)
+    mk("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, t)
+    local kids = {}
+    for _, c in ipairs(feed:GetChildren()) do
+      if c:IsA("TextLabel") then table.insert(kids, c) end
+    end
+    table.sort(kids, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
+    for i = 1, #kids - 7 do kids[i]:Destroy() end
+    task.delay(6, function()
+      if t.Parent then
+        TweenService:Create(t, TweenInfo.new(0.5), { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+        task.wait(0.55)
+        t:Destroy()
+      end
+    end)
+  end
+
+  -- 命中标记：准星（鼠标）位置一个小叉，打死变红、大一点
+  local hm = mk("Frame", { BackgroundTransparency = 1, AnchorPoint = V2(0.5, 0.5), Size = UDim2.fromOffset(34, 34), Visible = false, ZIndex = 8 }, gui)
+  local hmBars = {}
+  for i, a in ipairs({ 45, -45, 135, -135 }) do
+    local r = math.rad(a)
+    hmBars[i] = mk("Frame", { BackgroundColor3 = RGB(255, 255, 255), BorderSizePixel = 0, AnchorPoint = V2(0.5, 0.5), Size = UDim2.fromOffset(11, 3), Rotation = a,
+      Position = UDim2.new(0.5, math.cos(r) * 10, 0.5, -math.sin(r) * 10), ZIndex = 8 }, hm)
+  end
+  local hmT = 0
+  function G.hitMarker(kill)
+    local GuiService = game:GetService("GuiService")
+    local mp = (G.mobile or G.drive) and (cam.ViewportSize / 2) or UIS:GetMouseLocation()
+    local inset = GuiService:GetGuiInset()
+    hm.Position = UDim2.fromOffset(mp.X, mp.Y - inset.Y)
+    hm.Size = kill and UDim2.fromOffset(44, 44) or UDim2.fromOffset(32, 32)
+    for _, b in ipairs(hmBars) do b.BackgroundColor3 = kill and RGB(255, 70, 60) or RGB(255, 255, 255) end
+    hm.Visible = true
+    hmT = os.clock()
+    task.delay(kill and 0.35 or 0.16, function()
+      if os.clock() - hmT >= (kill and 0.34 or 0.15) then hm.Visible = false end
+    end)
+  end
+
+  -- 大字播报（首领来袭、连杀、胜利）
+  local ann = text(root, { AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.3), Size = UDim2.fromOffset(900, 70), Font = FONT, TextSize = 46,
+    TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.25, Visible = false, ZIndex = 7 })
+  local annSub = text(ann, { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 26), TextSize = 20, TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.3, ZIndex = 7 })
+  local annN = 0
+  function G.announce(msg, color, sub, dur)
+    annN = annN + 1
+    local my = annN
+    ann.Text = msg
+    ann.TextColor3 = color or RGB(255, 214, 90)
+    annSub.Text = sub or ""
+    ann.TextTransparency, ann.TextStrokeTransparency = 0, 0.25
+    annSub.TextTransparency = 0
+    ann.Visible = true
+    local sc = mk("UIScale", { Scale = 1.5 }, ann)
+    TweenService:Create(sc, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+    task.delay(dur or 1.6, function()
+      if annN ~= my then
+        sc:Destroy()
+        return
+      end
+      TweenService:Create(ann, TweenInfo.new(0.4), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+      TweenService:Create(annSub, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+      task.wait(0.45)
+      if annN == my then ann.Visible = false end
+      sc:Destroy()
+    end)
+  end
+
+  -- 低血量：屏幕四边泛红（越少越红）
+  local vig = {}
+  for i, e in ipairs({ { V2(0, 0), UDim2.new(0, 120, 1, 0), 0 }, { V2(1, 0), UDim2.new(0, 120, 1, 0), 180 }, { V2(0, 0), UDim2.new(1, 0, 0, 90), 90 }, { V2(0, 1), UDim2.new(1, 0, 0, 90), -90 } }) do
+    local f = mk("Frame", { BackgroundColor3 = RGB(200, 20, 20), BorderSizePixel = 0, AnchorPoint = e[1], Position = UDim2.fromScale(e[1].X, e[1].Y), Size = e[2], BackgroundTransparency = 1, ZIndex = 0 }, gui)
+    mk("UIGradient", { Rotation = e[3], Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }) }, f)
+    vig[i] = f
+  end
+  local vigLevel = 0
+  function G.stepVignette(dt)
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    local want = 0
+    if hum and hum.Health > 0 and hum.MaxHealth > 0 then
+      local k = hum.Health / hum.MaxHealth
+      if k < 0.4 then want = (0.4 - k) / 0.4 end
+    end
+    vigLevel = vigLevel + (want - vigLevel) * math.min(1, dt * 5)
+    for _, f in ipairs(vig) do f.BackgroundTransparency = 1 - vigLevel * 0.85 end
+  end
+
+  ---------------------------------------------------------------- 出错红条（服务器、本地脚本出的错都写在这里，方便截图）
+
+  local errBox = nil
+  local errSeen = {}
+  function G.showError(msg)
+    msg = tostring(msg)
+    if errSeen[msg] then return end
+    errSeen[msg] = true
+    if not errBox then
+      errBox = button(gui, "", RGB(130, 24, 24), { AnchorPoint = V2(0.5, 0), Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.fromOffset(760, 0), AutomaticSize = Enum.AutomaticSize.Y,
+        TextSize = 13, Font = FONT2, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20, AutoButtonColor = false })
+      mk("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, errBox)
+      errBox.Text = "游戏出错了（截图发给开发者；点这里关掉）："
+      errBox.Activated:Connect(function()
+        errBox:Destroy()
+        errBox = nil
+      end)
+    end
+    errBox.Text = errBox.Text .. "\n· " .. string.sub(msg, 1, 260)
+  end
+
   ---------------------------------------------------------------- 刷新
 
   function G.refresh()
     local S = G.S
     if not S then return end
+    refreshSkills(S)
+    updateGoal()
     cashL.Text = "$" .. Config.Fmt(S.cash)
     incL.Text = "+" .. Config.Fmt(S.income) .. " / 秒"
     lvL.Text = "第 " .. tostring(S.level) .. " 关" .. ((S.rebirth or 0) > 0 and ("   ★" .. S.rebirth) or "")
@@ -6310,6 +8019,9 @@ function UI.init(G)
     ui.hint.Visible = mode == "deploy"
     bpanel.Visible = fighting
     bbar.Visible = fighting
+    sbar.Visible = fighting and S ~= nil and S.skills ~= nil and #S.skills > 0
+    feed.Visible = fighting
+    goal.Visible = not fighting and mode ~= "drive"
     ui.driveBtn.Visible = fighting and G.drive == nil
     ui.exitBtn.Visible = G.drive ~= nil
     ui.viewBtn.Text = (mode == "battle") and "跟随自己" or "俯瞰战场"
@@ -6318,12 +8030,12 @@ end
 
 return UI
 ]]></ProtectedString>
-</Properties>
-</Item>
-<Item class="ModuleScript" referent="RBX00000000000000000000000000000013">
-<Properties>
-<string name="Name">View</string>
-<ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：部队的显示
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="24">
+          <Properties>
+            <string name="Name">View</string>
+            <ProtectedString name="Source"><![CDATA[-- 军事大亨（客户端）：部队的显示
 -- 服务器上的单位模型每秒只更新 20 次位置，直接看会一顿一顿的：这里每个单位本地复制一份（服务器那份在本地藏起来），
 -- 每帧平滑地追服务器的位置；炮塔按模型的 TY 属性转，旋翼飞的时候转，喷气机转弯时压坡度（按转向的快慢），打掉的涂黑；
 -- 自己正在开的车直接用本地算的位置（开起来不卡）
@@ -6471,9 +8183,15 @@ end
 
 return View
 ]]></ProtectedString>
-</Properties>
-</Item>
-</Item>
-</Item>
-</Item>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="25">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
+  </Item>
 </roblox>
