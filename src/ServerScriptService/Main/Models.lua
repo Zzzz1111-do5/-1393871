@@ -512,7 +512,26 @@ local function artyPos(m, base, b)
   return body
 end
 
-local function helipad(m, base, b)
+-- 停在直升机场 / 机场上的展示飞机：客户端（Anim.lua）按属性 Show 隔一会儿让它起飞、飞一圈、落回来（服务器上一直停着）
+local function showPlane(m, base, t, cf, team)
+  local ok, um, root = pcall(function() return Models.unit(t, team or C.olive) end)
+  if not ok or not um then return end
+  local r = um:FindFirstChild("TeamRing")
+  if r then r:Destroy() end
+  for _, d in ipairs(um:GetDescendants()) do
+    if d:IsA("BasePart") then
+      d.CanQuery = false
+      d.CanTouch = false
+      d.CanCollide = false
+    end
+  end
+  root.CFrame = base * cf
+  um.Name = "Show"
+  um:SetAttribute("Show", t)
+  um.Parent = m
+end
+
+local function helipad(m, base, b, team)
   local w, d = b.size[1], b.size[3]
   local body = block(m, base, V(w, 0.8, d), CF(0, 0.4, 0), C.asphalt, MAT.Asphalt)
   ghostly(cyl(m, base, 0.1, w * 0.78, CF(0, 0.85, 0), C.yellow))
@@ -525,11 +544,12 @@ local function helipad(m, base, b)
   end
   cyl(m, base, 9, 0.3, CF(w / 2 + 2, 4.5, -d / 2 + 2), C.metal, MAT.Metal)
   block(m, base, V(0.9, 0.9, 3), CF(w / 2 + 2, 8.5, -d / 2 + 3.5), RGB(240, 120, 30), MAT.Fabric)
+  showPlane(m, base, "heli", CF(0, 0.9, 0), team)
   return body
 end
 
 -- 空军基地：在围墙外的草地上（底板从地面铺起），跑道沿 Z（喷气机从 −Z 那头滑跑，往战场方向起飞），右边两座机库，左边塔台
-local function airbase(m, base, b)
+local function airbase(m, base, b, team)
   local w, d = b.size[1], b.size[3]
   local body = block(m, base, V(w, 1.2, d), CF(0, -0.4, 0), RGB(150, 152, 148), MAT.Concrete)
   ghostly(block(m, base, V(22, 0.1, d - 8), CF(0, 0.25, 0), C.asphalt, MAT.Asphalt))
@@ -549,6 +569,7 @@ local function airbase(m, base, b)
   block(m, base, V(6.6, 0.6, 6.6), CF(-22, 15.5, -90), C.roof, MAT.Metal)
   cyl(m, base, 8, 0.3, CF(-22, 4.2, 40), C.metal, MAT.Metal)   -- 风向袋
   block(m, base, V(0.9, 0.9, 3), CF(-22, 8, 41.5), RGB(240, 120, 30), MAT.Fabric)
+  showPlane(m, base, "fighter", CF(0, 0.3, -d / 2 + 20) * CFrame.Angles(0, math.pi, 0), team)   -- 跑道南头，机头朝北
   return body
 end
 

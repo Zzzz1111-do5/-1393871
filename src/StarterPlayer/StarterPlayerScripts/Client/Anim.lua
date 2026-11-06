@@ -1,7 +1,9 @@
 -- 军事大亨（客户端）：建筑动画（都在本地播，不占网络）——
 --   新盖的楼（模型属性 BuiltAt 是刚才）：零件从地下按高度一层层升上来，四角搭着脚手架、落地扬尘；
 --   零件属性 Anim = "spin" 的绕竖轴转（雷达），"blink" 的一闪一闪（指示灯、跑道灯）；
---   买得起的绿色购买按钮一呼一吸，隔一会儿冒一圈光
+--   买得起的绿色购买按钮一呼一吸，隔一会儿冒一圈光；
+--   机场跑道头停着的战斗机隔一会儿滑跑起飞、飞向战场，过一阵从南边进场降落、滑回停机位；直升机场的直升机起飞绕一圈落回来
+--   （建筑里叫 Show 的模型，服务器上一直停着，只在本地动）
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
@@ -17,6 +19,21 @@ function Anim.init(G)
   local busy = {}       -- [model] = 升起动画放完的时刻（这之前不转）
   local GREEN = RGB(70, 220, 100)
 
+  ---------------------------------------------------------------- 起降表演
+  local shows = {}   -- [Show 模型] = { kind, root, cf0 停放位置, bm 所在建筑, t, rot 旋翼转角, rotor, tail, axis, parts, hidden }
+  local function addShow(sm, bm)
+    if shows[sm] then return end
+    local root = sm:FindFirstChild("Root")
+    if not root then return end
+    local parts = {}
+    for _, d in ipairs(sm:GetDescendants()) do
+      if d:IsA("BasePart") then table.insert(parts, d) end
+    end
+    local tail = sm:FindFirstChild("TailMotor", true)
+    shows[sm] = { kind = sm:GetAttribute("Show"), root = root, cf0 = root.CFrame, bm = bm, t = math.random() * 15, rot = 0,
+      rotor = sm:FindFirstChild("RotorMotor", true), tail = tail, axis = tail and tail:GetAttribute("Axis") or V(1, 0, 0), parts = parts, hidden = false }
+  end
+
   local function register(m)
     for _, d in ipairs(m:GetDescendants()) do
       if d:IsA("BasePart") then
@@ -28,6 +45,8 @@ function Anim.init(G)
         end
       end
     end
+    local sm = m:FindFirstChild("Show")
+    if sm then addShow(sm, m) end
   end
 
   -- 从地里升起来：每个零件先沉到地下，按离地高度依次升回原位
@@ -35,7 +54,8 @@ function Anim.init(G)
     local parts = {}
     local y0, y1 = math.huge, -math.huge
     for _, d in ipairs(m:GetDescendants()) do
-      if d:IsA("BasePart") then
+      -- 展示飞机是焊在一起的一整架：只挪它的 Root，别的零件跟着走
+      if d:IsA("BasePart") and (not d:FindFirstAncestor("Show") or (d.Name == "Root" and d.Parent and d.Parent.Name == "Show")) then
         table.insert(parts, d)
         local p = d.CFrame.Position
         y0 = math.min(y0, p.Y - d.Size.Y / 2)
@@ -184,6 +204,117 @@ function Anim.init(G)
   local function place(parts, cf)
     for _, q in ipairs(parts) do q.p.CFrame = cf * q.off end
   end
+  -- 战斗机一圈（秒）：停 18 → 滑跑 7 → 爬升飞走 20 → 看不见 15 → 从战场那边反向进场 24 → 落地减速 6 → 滑到停机位 2 → 掉头 3 → 停
+  --   （南边湖后面是雪山，不从那边进场）
+  local UP = V(0, 1, 0)
+  local ROLL_A = (62 - 4) / 6
+  local ROLL_END = 205 - (62 * 6 - 0.5 * ROLL_A * 36)   -- 落地滑跑停在离停机位多远
+  local JET_T = 18 + 7 + 20 + 15 + 24 + 6 + 2 + 3 + 6
+  local function jetPose(s, t)
+    local cf0 = s.cf0
+    local P0, F = cf0.Position, cf0.LookVector
+    local function at(d, h, pitch, back)
+      local pos = P0 + F * d + UP * h
+      return CFrame.lookAt(pos, pos + (back and -F or F)) * CFrame.Angles(pitch or 0, 0, 0)
+    end
+    if t < 18 then return at(0, 0) end
+    t = t - 18
+    if t < 7 then   -- 滑跑：加速，最后两秒抬头离地
+      local lift = (t > 5.4) and (t - 5.4) ^ 2 * 2.6 or 0
+      return at(0.5 * 8.6 * t * t, lift, math.rad(10) * math.clamp((t - 5) / 2, 0, 1))
+    end
+    t = t - 7
+    if t < 20 then   -- 爬升，越飞越快，飞向战场那边
+      return at(210 + 60 * t + 1.5 * t * t, 6.7 + 170 * (1 - math.exp(-t / 6)), math.rad(12) * math.exp(-t / 5))
+    end
+    t = t - 20
+    if t < 15 then return nil end   -- 飞远了
+    t = t - 15
+    if t < 24 then   -- 从战场那边下滑进场，机头朝南对准跑道北头
+      local k = t / 24
+      return at(1800 - 1595 * k, 260 * (1 - k) ^ 1.3, math.rad(3), true)
+    end
+    t = t - 24
+    if t < 6 then   -- 落地，减速
+      return at(205 - (62 * t - 0.5 * ROLL_A * t * t), 0, math.rad(4) * math.max(0, 1 - t / 1.5), true)
+    end
+    t = t - 6
+    if t < 2 then return at(ROLL_END * (1 - t / 2), 0, 0, true) end   -- 慢慢滑到停机位
+    t = t - 2
+    if t < 3 then return CFrame.lookAt(P0, P0 - F) * CFrame.Angles(0, math.pi * t / 3, 0) end   -- 原地掉头，机头朝跑道
+    return at(0, 0)
+  end
+
+  -- 直升机一圈（秒）：停 24 → 旋翼转起来 4 → 升起 5 → 绕一圈 22 → 悬停转回原来的朝向 4 → 落下 5 → 旋翼停 5 → 停
+  local HELI_T = 24 + 4 + 5 + 22 + 4 + 5 + 5 + 6
+  local function heliPose(s, t)
+    local cf0 = s.cf0
+    local P0 = cf0.Position
+    local rot0 = cf0 - P0
+    if t < 24 then return cf0, 0 end
+    t = t - 24
+    if t < 4 then return cf0, 24 * t / 4 end
+    t = t - 4
+    if t < 5 then
+      local k = t / 5
+      return cf0 + UP * (35 * k * k * (3 - 2 * k)), 24
+    end
+    t = t - 5
+    if t < 22 then   -- 绕停机坪北边一个半径 120 的圈，压坡度、低头
+      local k = t / 22
+      local C = P0 + V(0, 0, 120)
+      local phi = math.pi + 2 * math.pi * k
+      local pos = C + V(math.sin(phi), 0, math.cos(phi)) * 120 + UP * (35 + 20 * math.sin(math.pi * k))
+      local look = CFrame.lookAt(pos, pos + V(math.cos(phi), 0, -math.sin(phi)))
+      local side = (look.RightVector:Dot(C - pos) > 0) and -1 or 1
+      local cf = look * CFrame.Angles(math.rad(-6), 0, side * math.rad(16) * math.min(1, k * 6, (1 - k) * 6))
+      local blend = math.min(1, t / 2, (22 - t) / 2)   -- 头尾两秒从停放的朝向转过去、转回来
+      if blend < 1 then cf = (CFrame.new(pos) * rot0):Lerp(cf, math.max(0, blend)) end
+      return cf, 24
+    end
+    t = t - 22
+    if t < 4 then return cf0 + UP * 35, 24 end
+    t = t - 4
+    if t < 5 then
+      local k = t / 5
+      return cf0 + UP * (35 * (1 - k * k * (3 - 2 * k))), 24
+    end
+    t = t - 5
+    if t < 5 then return cf0, 24 * (1 - t / 5) end
+    return cf0, 0
+  end
+
+  local function setHidden(s, hide)
+    if s.hidden == hide then return end
+    s.hidden = hide
+    for _, p in ipairs(s.parts) do p.LocalTransparencyModifier = hide and 1 or 0 end
+  end
+  local function stepShows(dt)
+    local now = os.clock()
+    local cp = cam.CFrame.Position
+    for sm, s in pairs(shows) do
+      if not sm.Parent or not s.root.Parent then
+        shows[sm] = nil
+      elseif not (busy[s.bm] and now < busy[s.bm]) and (s.cf0.Position - cp).Magnitude < 3000 then
+        s.t = s.t + dt
+        if s.kind == "heli" then
+          s.t = s.t % HELI_T
+          local cf, spin = heliPose(s, s.t)
+          s.root.CFrame = cf
+          s.rot = s.rot + spin * dt
+          if s.rotor then s.rotor.Transform = CFrame.Angles(0, s.rot, 0) end
+          if s.tail then s.tail.Transform = CFrame.fromAxisAngle(s.axis, s.rot * 1.7) end
+        else
+          s.t = s.t % JET_T
+          local cf = jetPose(s, s.t)
+          setHidden(s, cf == nil)
+          if cf then s.root.CFrame = cf end
+        end
+      end
+    end
+  end
+  G.shows = shows
+
   local function stepLife(dt, now)
     local S = G.S
     if not (S and S.origin) then return end
@@ -210,6 +341,7 @@ function Anim.init(G)
   local t, ringT = 0, 0
   function G.stepAnim(dt)
     stepLife(dt)
+    stepShows(dt)
     t = t + dt
     ringT = ringT + dt
     local cp = cam.CFrame.Position

@@ -727,6 +727,7 @@ function Scenery.theater(plot, theater, Config)
   end
   g.Parent = plot.folder
   plot.theater = theater
+  plot.folder:SetAttribute("Theater", theater)   -- 客户端按它下天气、换天色
   return g
 end
 

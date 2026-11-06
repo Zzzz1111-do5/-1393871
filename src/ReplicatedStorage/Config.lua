@@ -2,7 +2,7 @@
 -- 数值都在这里调：建筑、兵种、关卡敌军、武器、军衔、重生、每日奖励与任务、突袭与约战、战场支援、老兵、补给空投
 local Config = {}
 
-Config.Version = "0.5"
+Config.Version = "0.6"
 Config.SaveKey = "MilitaryTycoon_v1"   -- DataStore 名字（改了就是新存档）
 Config.StartCash = 300
 Config.BaseCap = 4                     -- 没有指挥部时最多几个单位

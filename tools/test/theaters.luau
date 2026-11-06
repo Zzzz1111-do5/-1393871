@@ -4,6 +4,7 @@
 local process = require("@lune/process")
 local H = require("./harness")
 H.quietWarn = true
+H.followCam = true   -- 自由模式下镜头跟着人走（Roblox 自带的镜头脚本模拟不了，测试台近似一下）：天气按镜头在哪
 H.boot(process.args[1], { ds = "mock" })
 H.run(2)
 local fails = 0
@@ -66,11 +67,36 @@ check(#H.texts(p1, "沙漠战区") > 0, "界面上写着沙漠战区")
 print("③ 沙漠、城市的倍数")
 act(p1, "home")
 H.run(4)
+local atm = H.game.Lighting:FindFirstChildOfClass("Atmosphere")
+local atm0 = atm and atm.Color   -- 在基地里：原来的天色
 act(p1, "battle")
 H.run(1)
 check(st.battle and st.battle.speedK == 0.9, "沙漠：地面速度 × 0.9")
-H.runUntil(function() return st.battle == nil end, 260)
+-- 天气：打仗时镜头对着沙漠战场 → 起风沙、天色发黄
+local C1 = H.Gs.P1
 H.run(4)
+local wth, wk = C1.weatherNow()
+check(wth == "desert" and wk > 0.9, string.format("镜头在沙漠战场上：天气 %s，强度 %.2f", tostring(wth), wk))
+local function emitting()
+	local n = 0
+	local wf = H.workspace:FindFirstChild("ClientWeather")
+	if wf then
+		for _, d in wf:GetDescendants() do
+			if d:IsA("ParticleEmitter") and d.Enabled and d.Rate > 0 then n += 1 end
+		end
+	end
+	return n
+end
+check(emitting() >= 2, "风沙粒子开着（" .. emitting() .. " 个）")
+check(atm ~= nil and atm.Color.R > atm.Color.B + 0.15, "天色发黄")
+H.runUntil(function() return st.battle == nil end, 260)
+H.run(3)
+local back = H.findButton(p1, "^回基地$")
+if back then H.press(p1, back) end
+H.run(5)
+wth, wk = C1.weatherNow()
+check(wk < 0.05 and emitting() == 0, string.format("回基地：风沙停了（强度 %.2f）", wk))
+check(atm ~= nil and atm0 ~= nil and math.abs(atm.Color.R - atm0.R) < 0.01 and math.abs(atm.Color.B - atm0.B) < 0.01, "天色变回来了")
 st.data.level = 31
 G.makeEnemy(st)
 H.run(1)

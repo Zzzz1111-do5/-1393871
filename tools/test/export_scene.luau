@@ -51,6 +51,14 @@ if mode == "battle" then
 	act("battle")
 	H.run(tonumber(process.args[5]) or 9)
 end
+-- 机场、直升机场的展示飞机在客户端里会起飞绕圈：导出前让它们回到停放的状态（看得清停在哪）
+do
+	local C1 = H.Gs.P1
+	if C1 and C1.shows then
+		for _, sh in pairs(C1.shows) do sh.t = 1 end
+		H.run(0.05)
+	end
+end
 local function rot(cf)
 	local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
 	return { r00, r01, r02, r10, r11, r12, r20, r21, r22 }
