@@ -274,13 +274,39 @@ function Fx.init(G)
     cram = { w = 0.24, c = RGB(255, 236, 160), life = 0.06, fl = 1.6, n = 4, snd = "aa" },
     transport = { w = 0.16, c = RGB(255, 232, 130), life = 0.05, fl = 1, n = 2, snd = "rifle" },
     attacker = { w = 0.45, c = RGB(255, 200, 90), life = 0.1, fl = 3, n = 5, hit = 0.55, spread = 9, snd = "aa" },
+    medic = { w = 0.12, c = RGB(255, 236, 150), life = 0.05, fl = 1, snd = "rifle" },
+    commando = { w = 0.16, c = RGB(255, 236, 160), life = 0.06, fl = 1.2, n = 2, snd = "rifle" },
+    repair = { w = 0.16, c = RGB(255, 232, 130), life = 0.05, fl = 1, n = 2, snd = "rifle" },
+    ew = { w = 0.18, c = RGB(255, 226, 120), life = 0.05, fl = 1.2, n = 2, snd = "rifle" },
+    heavytank = { w = 0.9, c = RGB(255, 170, 80), life = 0.14, fl = 6.5, hit = 1.1, snd = "cannon" },
   }
   local GUN = {
     rifle = { w = 0.12, c = RGB(255, 236, 150), life = 0.05 },
     smg = { w = 0.1, c = RGB(255, 236, 150), life = 0.04 },
     sniper = { w = 0.22, c = RGB(200, 230, 255), life = 0.18 },
   }
+  -- 喷火：一串由大变小的火团从喷口冲到目标，落点冒一团火
+  local function flame(a, b)
+    local n = 7
+    for i = 1, n do
+      local k = i / n
+      local q = a:Lerp(b, k) + V((math.random() - 0.5) * 2 * k, (math.random() - 0.5) * 2 * k, (math.random() - 0.5) * 2 * k)
+      local sz = 1 + 3 * k
+      local f = part(BALL, V(sz, sz, sz), CFrame.new(a), (k < 0.4) and RGB(255, 230, 140) or RGB(255, 120 + math.random(0, 50), 30), Enum.Material.Neon, 0.15)
+      tween(f, 0.12 + 0.18 * k, { CFrame = CFrame.new(q), Size = V(sz, sz, sz) * 1.5, Transparency = 0.9 })
+      Debris:AddItem(f, 0.35)
+    end
+    local fb = part(BALL, V(4, 4, 4), CFrame.new(b), RGB(255, 140, 40), Enum.Material.Neon, 0.3)
+    tween(fb, 0.4, { Size = V(7, 7, 7), Transparency = 1, CFrame = CFrame.new(b + V(0, 3, 0)) })
+    Debris:AddItem(fb, 0.45)
+  end
+
   local function shot(e)
+    if e.u == "flamer" then
+      flame(e.a, e.b)
+      if math.random() < 0.3 then G.playSound("rocket", e.a, 0.7) end
+      return
+    end
     if e.u == "heli" then
       launch(e.a, e.b, 0.45, 0, "rocket")
       flash(e.a, 2)
@@ -473,6 +499,11 @@ function Fx.init(G)
           dropFx(e.p)
         elseif e.k == "coins" then
           coinsFx(e.p)
+        elseif e.k == "jam" then   -- 电子干扰：导弹偏掉，冒一圈紫光
+          local ring = part(CYL, V(0.2, 3, 3), CFrame.new(e.p) * FLAT, RGB(170, 110, 255), Enum.Material.Neon, 0.2)
+          tween(ring, 0.5, { Size = V(0.2, 18, 18), Transparency = 1 })
+          Debris:AddItem(ring, 0.55)
+          G.popText(e.p, "干扰", RGB(190, 140, 255))
         end
       end
     end

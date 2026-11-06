@@ -550,6 +550,9 @@ function Combat.init(G)
             u.x, u.y, u.z, u.h = bu.x, bu.y, bu.z, bu.h
             G.goTo(u, u.sx, u.sz)
             vetGain(st, u, bu, promos)
+          elseif bu.spent then   -- 巡飞弹撞上去了：用掉了，不算损失
+            st.units[bu.uid] = nil
+            total = total - 1
           else
             st.units[bu.uid] = nil
             lost[u.t] = (lost[u.t] or 0) + 1

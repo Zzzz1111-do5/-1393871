@@ -783,6 +783,67 @@ PART.drone = plane({ len = 11, h = 3, dia = 1.2, y = 1.6, span = 20, chord = 1.4
 PART.spaag = PART.aa
 PART.heavyarty = PART.arty
 PART.transport = PART.heli
+PART.heavytank = PART.tank
+-- 医疗兵：背上白色急救包、红十字
+PART.medic = footPart(function(K)
+  for _, x in ipairs({ -1.4, 1.4 }) do
+    K.add(V(0.9, 0.8, 0.5), CF(x, 2.5, 1.0), C.white, MAT.SmoothPlastic)
+    K.add(V(0.5, 0.15, 0.52), CF(x, 2.5, 1.02), C.red, MAT.Neon)
+    K.add(V(0.15, 0.5, 0.52), CF(x, 2.5, 1.02), C.red, MAT.Neon)
+  end
+end)
+-- 火焰兵：背两个燃料罐、手里喷管
+PART.flamer = footPart(function(K)
+  for _, x in ipairs({ -1.4, 1.4 }) do
+    for _, dx in ipairs({ -0.25, 0.25 }) do K.add(V(1.3, 0.42, 0.42), CF(x + dx, 2.4, 1.0) * UP, RGB(150, 60, 40), MAT.Metal, CYL) end
+    K.add(V(0.22, 0.22, 1.6), CF(x + 0.42, 2.2, -0.9), C.gun, MAT.Metal)
+  end
+end)
+-- 特种小队：三个人，夜视仪、短天线
+PART.commando = footPart(function(K)
+  for _, o in ipairs({ { -1.8, 1 }, { 1.8, 1 }, { 0, -1.3 } }) do
+    K.add(V(0.5, 0.25, 0.3), CF(o[1], 3.75, o[2] - 0.4), RGB(30, 32, 30), MAT.Metal)
+    K.add(V(0.06, 1.2, 0.06), CF(o[1] - 0.3, 4.4, o[2] + 0.4), RGB(30, 32, 30), MAT.Metal)
+  end
+end)
+-- 抢修车：车身 + 后面的吊臂
+PART.repair = { len = 6.5, build = function(K, col)
+  for _, sx in ipairs({ -1, 1 }) do
+    for _, sz in ipairs({ -1, 1 }) do K.add(V(0.7, 1.6, 1.6), CF(sx * 1.35, 0.8, sz * 2.0), C.track, MAT.Metal, CYL) end
+  end
+  K.add(V(2.6, 1.3, 6.2), CF(0, 1.55, 0), col, MAT.Metal)
+  K.add(V(2.4, 1.1, 2.4), CF(0, 2.75, -1.6), col, MAT.Metal)
+  K.add(V(2.0, 0.4, 1.0), CF(0, 2.4, -2.9), C.glass, MAT.Glass)
+  K.turret(V(0, 2.3, 1.6))
+  K.addT(V(0.9, 0.9, 0.9), CF(0, 2.75, 1.6), C.yellow, MAT.Metal)
+  K.addT(V(0.35, 0.35, 3.2), CF(0, 3.6, 0.4) * CFrame.Angles(math.rad(30), 0, 0), C.yellow, MAT.Metal)
+  K.addT(V(0.08, 1.4, 0.08), CF(0, 3.6, -1.0), C.gun, MAT.Metal)
+  K.add(V(0.5, 0.25, 0.5), CF(0.8, 3.4, -1.6), RGB(255, 140, 40), MAT.Neon)
+end }
+-- 电子战车：卡车 + 后面的方舱、碟形天线、几根鞭状天线
+PART.ew = { len = 9, build = function(K, col)
+  for _, sz in ipairs({ -3.0, 1.0, 3.0 }) do
+    for _, sx in ipairs({ -1, 1 }) do K.add(V(0.6, 1.4, 1.4), CF(sx * 1.3, 0.7, sz), C.track, MAT.Metal, CYL) end
+  end
+  K.add(V(2.6, 0.6, 8.6), CF(0, 1.5, 0), darker(col, 0.3), MAT.Metal)
+  K.add(V(2.6, 2.0, 2.2), CF(0, 2.6, -3.2), col, MAT.Metal)
+  K.add(V(2.8, 2.6, 5.0), CF(0, 3.1, 1.4), col:Lerp(C.olive, 0.3), MAT.Metal)
+  K.add(V(0.3, 2.4, 2.4), CF(0, 5.2, 0.6) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(math.rad(25), 0, 0), C.white, MAT.SmoothPlastic, CYL)
+  for _, x in ipairs({ -1.1, 1.1 }) do K.add(V(0.06, 3, 0.06), CF(x, 5.8, 3.4), C.gun, MAT.Metal) end
+end }
+-- 巡飞弹：小无人机
+PART.loiter = plane({ len = 6, h = 1.6, dia = 0.7, y = 1.0, span = 5.5, chord = 1.0, wingY = 0, wingZ = 0.4, fins = { 0 }, fin = 0.8 })
+-- 隐身轰炸机：飞翼（中间机身 + 两边后掠翼，锯齿后缘）
+PART.stealth = { len = 20, h = 3, build = function(K, col)
+  local dark = RGB(44, 46, 52)
+  K.add(V(4.5, 1.6, 12), CF(0, 2.2, 0), dark, MAT.SmoothPlastic)
+  K.add(V(2.2, 0.6, 3), CF(0, 3.1, -3.2), RGB(30, 34, 40), MAT.Glass)
+  for _, sx in ipairs({ -1, 1 }) do
+    K.add(V(14, 0.5, 6), CF(sx * 7.5, 2.0, 2.2) * CFrame.Angles(0, sx * math.rad(-33), 0), dark, MAT.SmoothPlastic)
+    K.add(V(3, 0.4, 3), CF(sx * 13.6, 2.0, 7.2) * CFrame.Angles(0, math.rad(45), 0), dark, MAT.SmoothPlastic)
+  end
+  K.add(V(0.6, 0.2, 0.6), CF(0, 3.05, 4), col, MAT.Neon)
+end }
 
 ---------------------------------------------------------------- 兵种：导入的原模型
 
@@ -872,7 +933,7 @@ local function prepare(slot, model)
   local shift = V((mn.X + mx.X) / 2, mn.Y, (mn.Z + mx.Z) / 2)
   for _, p in ipairs(all) do p.CFrame = p.CFrame - shift end
   mn, mx = bounds(parts)
-  local T = { parts = {}, pivots = {}, h = mx.Y - mn.Y }
+  local T = { parts = {}, pivots = {}, h = mx.Y - mn.Y, len = mx.Z - mn.Z }
   for name, p in pairs(marks) do T.pivots[name] = p.CFrame.Position end
   for _, p in ipairs(parts) do
     local role = "Body"
@@ -962,12 +1023,18 @@ end
 ---------------------------------------------------------------- 兵种：生成
 
 -- 兵种的高度（血条、瞄准点）：导入模型按模板，零件模型按设计
+-- 几个兵种共用一个导入模型（重型坦克用坦克的、巡飞弹用无人机的……）：按各自的长度缩放
+local function tplK(def, T)
+  if T and T.len and T.len > 0.01 and def.len then return def.len / T.len end
+  return def.boss and 1.36 or 1
+end
+
 local function heightOf(t)
   local def = Config.Units[t]
   if def.foot then return 5.2 end
   local T = TEMPLATES[def.model]
+  if T then return T.h * tplK(def, T) end
   local k = def.boss and 1.36 or 1
-  if T then return T.h * k end
   local P = PART[t] or PART.tank
   local base = P.h or (def.air and 5 or 4.6)
   return base * ((def.len or 4) / P.len) * k
@@ -1069,7 +1136,7 @@ function Models.unit(t, color)
     if P then addTemplate(m, root, P, 1, { PROPAT[def.prop] }, true) end
   elseif T then
     m, root = newRoot()
-    addTemplate(m, root, T, k, { CF() }, false)
+    addTemplate(m, root, T, tplK(def, T), { CF() }, false)
   else
     local P = PART[t] or PART.tank
     local K

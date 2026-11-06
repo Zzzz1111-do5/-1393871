@@ -542,7 +542,11 @@ function Play.init(G)
       for _, t in ipairs({ ... }) do s = s + (enemy[t] or 0) end
       return s
     end
+    if n("stealth") > 0 then return "敌方有隐身轰炸机：只有爱国者和战斗机打得到它" end
     if n("drone", "fighter", "bomber") > 0 then return "敌方有高空的飞机（无人机 / 战斗机 / 轰炸机）：带弹炮防空车、爱国者、单兵防空组，或者自己的战斗机" end
+    if n("loiter") > 0 then return "敌方有巡飞弹：一头撞上来专炸坦克，带防空车、步战车早点把它打下来" end
+    if n("ew") > 0 then return "敌方有电子战车：导弹容易被干扰偏掉，多用坦克炮、火炮，或者先端掉它" end
+    if n("heavytank") > 0 then return "敌方有重型坦克：反坦克导弹组、武装直升机、攻击机、巡飞弹专克它" end
     if n("heli", "transport", "attacker") > 0 then return "敌方有直升机 / 攻击机：带上防空车、步战车、单兵防空组，或者多带步兵" end
     if n("tank", "boss", "td", "breacher") >= 2 then return "敌方装甲多：武装直升机、反坦克导弹组、突击炮、攻击机专克装甲，火箭筒也行" end
     if n("cram") > 0 then return "敌方有拦截炮：炮弹、火箭弹会被打下来，用坦克、攻击机去端掉它" end

@@ -24,6 +24,7 @@ Battle.HERO = { name = "玩家", hp = Config.Hero.hp, size = Config.Hero.size, s
 
 -- 打得到吗：飞机看飞多高（reach 是能打多高；还在地上的飞机谁都能打），只打飞机的打不了地面
 local function canHit(ad, e)
+  if e.def.stealth and not (ad.homing and (ad.reach or 0) >= 400) then return false end   -- 隐身：只有爱国者、战斗机够得着
   if e.def.air then return (ad.reach or 0) >= (e.y or 0) - 3 end
   return not ad.airOnly
 end
@@ -61,6 +62,7 @@ local function pick(U, u)
       if d.minRange and s < d.minRange then s = s + 400 end
       if prefers(d, e.def) then s = s * 0.6 end
       if e.def.decoy then s = s * 0.45 end
+      if e.def.camo then s = s * 1.6 end   -- 伪装：不显眼，排得靠后
       if e.hero then s = s * 0.8 end
       if e == u.tgt then s = s * 0.85 end
       if s < bs then
@@ -159,6 +161,18 @@ end
 
 local function fire(B, u, t, dist)
   local d = u.def
+  if d.kamikaze then   -- 巡飞弹：一头撞上去，连自己一起炸了
+    local src = srcOf(u)
+    local dmg = d.dmg * u.dm
+    hurt(B, t, dmg * mult(d, t.def), src)
+    splash(B, u.team, d, t.x, t.z, d.splash or 12, dmg * 0.5, t, src)
+    B.cb.fx({ k = "boom", p = B.cb.world(t.x, (t.y or 0) + 2, t.z), s = 1.5 })
+    u.hp = 0
+    u.alive = false
+    u.spent = true
+    B.cb.die(u)
+    return
+  end
   if d.salvo then   -- 火箭炮：一轮几发，陆续发射
     u.salvoLeft = d.salvo
     u.salvoAt = B.t
@@ -239,7 +253,22 @@ local function missiles(B)
       if t then
         local p = 0.9
         if t.def.jet then p = 0.75 end   -- 喷气机放热诱弹、机动
-        if t.alive and math.random() < p then hurt(B, t, m.dmg * mult(m.def, t.def), m.src) end
+        local jammed = false
+        for _, e in ipairs(B.units) do   -- 目标附近有对方的电子战车：干扰
+          if e.alive and e.def.jam and e.team ~= m.team then
+            local dx, dz = e.x - t.x, e.z - t.z
+            if dx * dx + dz * dz <= e.def.jam.r * e.def.jam.r then
+              p = p * e.def.jam.p
+              jammed = true
+              break
+            end
+          end
+        end
+        if t.alive and math.random() < p then
+          hurt(B, t, m.dmg * mult(m.def, t.def), m.src)
+        elseif jammed and t.alive then
+          B.cb.fx({ k = "jam", p = B.cb.world(t.x, (t.y or 0) + 6, t.z) })   -- 被干扰偏掉了
+        end
       elseif m.x then
         splash(B, m.team, m.def, m.x, m.z, m.def.splash or 10, m.dmg, nil, m.src)
       end
@@ -309,10 +338,45 @@ local function dropTroops(B, u)
   B.cb.fx({ k = "boom", p = B.cb.world(u.x, 0, u.z), s = 0.5 })
 end
 
+-- 医疗兵、抢修车：半径里受伤的友军（步兵 / 车辆）每秒回 hps（跟着战力倍数）；玩家本人也算步兵；隔一会儿冒一圈绿光
+local function healStep(B, u, dt)
+  local h = u.def.heal
+  local r2 = h.r * h.r
+  local amt = h.hps * dt * (u.dm or 1)
+  local any = false
+  for _, e in ipairs(B.units) do
+    if e.alive and e.team == u.team and e ~= u then
+      local kind = e.def.foot or e.hero
+      if (h.foot and kind) or (h.armor and not kind and not e.def.air) then
+        local dx, dz = e.x - u.x, e.z - u.z
+        if dx * dx + dz * dz <= r2 then
+          if e.hero then
+            local hum = e.model and e.model:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+              hum.Health = math.min(hum.MaxHealth, hum.Health + amt * 0.6)
+              any = true
+            end
+          elseif e.hp < e.max then
+            e.hp = math.min(e.max, e.hp + amt)
+            B.cb.hurt(e)
+            any = true
+          end
+        end
+      end
+    end
+  end
+  u.healT = (u.healT or 0) - dt
+  if any and u.healT <= 0 then
+    u.healT = 2.5
+    B.cb.fx({ k = "heal", p = B.cb.world(u.x, 0, u.z), s = h.r * 0.5 })
+  end
+end
+
 local function act(B, u, dt)
   local d = u.def
   u.cd = u.cd - dt
   salvoStep(B, u)
+  if d.heal then healStep(B, u, dt) end
   if d.cargo and u.cargo == nil then u.cargo = d.cargo end
   local t = u.tgt
   if t and not (t.alive and canHit(d, t)) then
