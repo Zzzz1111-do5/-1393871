@@ -108,7 +108,7 @@ function G.push(st)
   local B = st.battle
   G.R.State:FireClient(st.pl, {
     cash = d.cash, income = st.income, level = d.level, best = d.best, cap = G.capOf(d), n = G.count(st), counts = counts,
-    owned = d.owned, hq = d.hq, hqNext = hqNext, tech = d.tech, techNext = techNext, plot = st.plot.index, origin = st.plot.origin,
+    owned = d.owned, lv = d.lv, hq = d.hq, hqNext = hqNext, tech = d.tech, techNext = techNext, plot = st.plot.index, origin = st.plot.origin,
     battle = B ~= nil, mode = B and B.mode or nil, enemy = enemy, reward = Config.Reward(d.level), save = st.canSave,
     rebirth = d.rebirth, canRebirth = G.canRebirth(d), xp = d.xp, rank = rank, nextXp = nextXp, rating = d.rating, kills = d.kills,
     weapons = weapons, daily = { ok = dOK, amount = dAmt, streak = dStreak }, missions = ms, missionReward = G.missionReward(st),
@@ -286,6 +286,7 @@ local ACT = {
   duelNo = function(st, a) G.duelAnswer(st, a, false) end,
   hq = function(st) G.upgradeHQ(st) end,
   tech = function(st) G.upgradeTech(st) end,
+  upgrade = function(st, a) G.upgradeBuilding(st, a) end,
   rebirth = function(st) G.rebirth(st) end,
   daily = function(st) G.claimDaily(st) end,
   mission = function(st, a) G.claimMission(st, a) end,

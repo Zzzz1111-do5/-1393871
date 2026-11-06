@@ -69,6 +69,12 @@ Config.Upgrade = { max = 5, inc = 0.5, cost = 1.7 }
 function Config.UpgradeCost(b, lv)
   return math.floor(b.price * Config.Upgrade.cost ^ (lv or 1))
 end
+-- 升级后长高：每升一级，这几类楼的高度多原来的几成（工业区那些按固定外形画，只是牌子挂高一点）
+Config.UpgradeHeight = { house = 0.25, factory = 0.12, bank = 0.2 }
+function Config.SizeAt(b, lv)
+  local k = 1 + (Config.UpgradeHeight[b.kind] or 0) * ((lv or 1) - 1)
+  return { b.size[1], b.size[2] * k, b.size[3] }
+end
 -- 一栋楼现在每秒挣多少（算上级数和加成；owned 是已经盖了的建筑表，lv 是这栋的级数）
 function Config.BuildingIncome(b, owned, lv)
   if not b.income then return 0 end
@@ -276,6 +282,7 @@ Config.Missions = {
   { id = "build2", text = "盖 2 栋建筑", kind = "build", goal = 2 },
   { id = "skill5", text = "打仗时放 5 次战场支援", kind = "skill", goal = 5 },
   { id = "crate3", text = "捡 3 个补给空投箱", kind = "crate", goal = 3 },
+  { id = "up3", text = "升级 3 次建筑", kind = "upgrade", goal = 3 },
 }
 Config.MissionRewardSec = 120   -- 任务奖励 = 这么多秒的收入（至少 400）
 

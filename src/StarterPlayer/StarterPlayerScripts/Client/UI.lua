@@ -165,12 +165,13 @@ function UI.init(G)
   end
   ui.fill = {}
   local btnMission = button(menu, "任务", RGB(52, 84, 120), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 1, TextSize = 16 }, function() open("missions") end)
-  local btnWeapon = button(menu, "武器", RGB(60, 74, 60), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 2, TextSize = 16 }, function() open("weapons") end)
-  local btnBoard = button(menu, "排行榜", RGB(84, 70, 40), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 3, TextSize = 16 }, function() open("board") end)
-  local btnDuel = button(menu, "真人对战", RGB(150, 50, 46), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 4, TextSize = 16 }, function() open("duel") end)
-  local btnRebirth = button(menu, "重生", RGB(150, 110, 30), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 5, TextSize = 16, Visible = false }, function() open("rebirth") end)
-  local btnCredits = button(menu, "致谢", RGB(54, 58, 66), { Size = UDim2.fromOffset(140, 34), LayoutOrder = 6, TextSize = 14 }, function() open("credits") end)
-  local menuBtns = { btnMission, btnWeapon, btnBoard, btnDuel, btnRebirth, btnCredits }
+  local btnBuild = button(menu, "建筑", RGB(64, 112, 70), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 2, TextSize = 16 }, function() open("build") end)
+  local btnWeapon = button(menu, "武器", RGB(60, 74, 60), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 3, TextSize = 16 }, function() open("weapons") end)
+  local btnBoard = button(menu, "排行榜", RGB(84, 70, 40), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 4, TextSize = 16 }, function() open("board") end)
+  local btnDuel = button(menu, "真人对战", RGB(150, 50, 46), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 5, TextSize = 16 }, function() open("duel") end)
+  local btnRebirth = button(menu, "重生", RGB(150, 110, 30), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 6, TextSize = 16, Visible = false }, function() open("rebirth") end)
+  local btnCredits = button(menu, "致谢", RGB(54, 58, 66), { Size = UDim2.fromOffset(140, 34), LayoutOrder = 7, TextSize = 14 }, function() open("credits") end)
+  local menuBtns = { btnMission, btnBuild, btnWeapon, btnBoard, btnDuel, btnRebirth, btnCredits }
 
   -- 右边：兵工厂（按页签分类：步兵 / 装甲 / 防空 / 炮兵 / 空中，可以滚动；最下面一行是军工科技）
   local ROWH = 62
@@ -385,6 +386,53 @@ function UI.init(G)
     mBody.CanvasSize = UDim2.fromOffset(0, 3 * 76)
   end
 
+  -- 建筑升级：盖了的、有收入的楼一栋一行（级数、现在每秒挣多少、升级后多少、升级价）；数据没变就不重画
+  local _, uBody = modal("build", "建筑升级（走到楼旁边按住 E 也能升）", 600, 420)
+  local upSig = nil
+  ui.fill.build = function()
+    local S = G.S
+    if not S then return end
+    local MAX = Config.Upgrade.max
+    local sig = {}
+    for _, b in ipairs(Config.Buildings) do
+      if b.income and S.owned and S.owned[b.id] then
+        local lv = (S.lv and S.lv[b.id]) or 1
+        table.insert(sig, b.id .. lv .. ((lv < MAX and S.cash >= Config.UpgradeCost(b, lv)) and "+" or "-"))
+      end
+    end
+    sig = table.concat(sig, ",") .. "|" .. tostring(S.rebirth) .. tostring(S.owned and S.owned.power) .. tostring(S.owned and S.owned.refinery) .. tostring(S.owned and S.owned.nuclear)
+    if sig == upSig and #uBody:GetChildren() > 0 then return end
+    upSig = sig
+    clear(uBody)
+    local mul = 1 + Config.Rebirth.income * (S.rebirth or 0)
+    local y = 0
+    for _, b in ipairs(Config.Buildings) do
+      if b.income and S.owned and S.owned[b.id] then
+        local lv = (S.lv and S.lv[b.id]) or 1
+        local now = Config.BuildingIncome(b, S.owned, lv) * mul
+        line(uBody, y, 24, { Text = b.name .. "   Lv." .. lv .. "  " .. string.rep("★", lv) .. string.rep("☆", MAX - lv), TextColor3 = RGB(255, 222, 130) })
+        local nextTxt = (lv < MAX) and ("   →   升级后 +" .. Config.Fmt(Config.BuildingIncome(b, S.owned, lv + 1) * mul) .. "/秒") or "   （满级）"
+        line(uBody, y + 24, 20, { Text = "现在 +" .. Config.Fmt(now) .. "/秒" .. nextTxt, TextColor3 = RGB(170, 205, 175) })
+        local id = b.id
+        if lv < MAX then
+          local cost = Config.UpgradeCost(b, lv)
+          button(uBody, "升级 $" .. Config.Fmt(cost), (S.cash >= cost) and RGB(60, 150, 80) or RGB(96, 72, 62),
+            { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -4, 0, y + 4), Size = UDim2.fromOffset(104, 38), TextSize = 13, ZIndex = 4 }, function()
+              RA:FireServer("upgrade", id)
+            end)
+        else
+          button(uBody, "满级", RGB(70, 74, 80), { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -4, 0, y + 4), Size = UDim2.fromOffset(104, 38), TextSize = 14, ZIndex = 4, AutoButtonColor = false })
+        end
+        y = y + 52
+      end
+    end
+    if y == 0 then
+      line(uBody, 0, 60, { Text = "还没有能升级的楼：先盖居民楼、工厂、油井……盖好以后在这里一级一级升（每级收入多一半，5 级是 3 倍）" })
+      y = 60
+    end
+    uBody.CanvasSize = UDim2.fromOffset(0, y)
+  end
+
   -- 武器
   local _, wBody = modal("weapons", "武器（买了永久有，复活自动带上）", 560, 380)
   ui.fill.weapons = function()
@@ -565,6 +613,18 @@ function UI.init(G)
     end
     if best and S.cash >= best.price * 0.6 then
       return "下一栋：「" .. best.name .. "」$" .. Config.Fmt(best.price) .. "（现在 $" .. Config.Fmt(S.cash) .. "）", best.id
+    end
+    -- 钱够升级一栋楼了：提示去升级（最便宜的那个）
+    local up, upCost = nil, nil
+    for _, b in ipairs(Config.Buildings) do
+      local lv = (S.lv and S.lv[b.id]) or 1
+      if b.income and o[b.id] and lv < Config.Upgrade.max then
+        local c = Config.UpgradeCost(b, lv)
+        if not upCost or c < upCost then up, upCost = b, c end
+      end
+    end
+    if up and S.cash >= upCost and (not best or S.cash < best.price * 0.6) then
+      return "升级「" .. up.name .. "」到 Lv." .. (((S.lv and S.lv[up.id]) or 1) + 1) .. "：$" .. Config.Fmt(upCost) .. "（左边「建筑」，或走到楼旁边按住 E）", nil
     end
     local tip = "打第 " .. tostring(S.level) .. " 关拿 $" .. Config.Fmt(S.reward or 0)
     if (S.vets or 0) > 0 then tip = tip .. "；活下来的部队会升星变强" end
@@ -796,7 +856,7 @@ function UI.init(G)
       armyL.Position, armyL.Size, armyL.TextSize = O(10, 27), N(1, -20, 0, 18), 14
       enemyL.Position, enemyL.Size = O(10, 46), N(1, -20, 0, 20)
       rewardL.Position, rewardL.Size, rewardL.TextSize = O(10, 68), N(1, -20, 0, 18), 14
-      place(menu, V2(0, 0), O(6, 164), O(240, 80))
+      place(menu, V2(0, 0), O(6, 164), O(240, 116))
       menuList.Parent, menuGrid.Parent = nil, menu
       for _, b in ipairs(menuBtns) do b.TextSize = 14 end
       place(shop, V2(1, 0), N(1, -6, 0, 4), N(0, 296, 1, -118))

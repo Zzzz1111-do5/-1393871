@@ -1263,9 +1263,13 @@ local KIND = { house = house, factory = factory, power = power, bank = bank, hq 
 local MIL = { barracks = barracks, tankfac = hangar, aafac = aaShop, artyfac = artyPos, helipad = helipad, airbase = airbase }
 
 -- 建筑：pos 是地面中心（基地地面顶上）；返回 model、主体零件（挂牌子、提示用）
-function Models.building(parent, b, pos, team, builtAt)
+function Models.building(parent, b, pos, team, builtAt, lv)
   local m = Instance.new("Model")
   m.Name = b.id
+  if lv and lv > 1 then   -- 升过级的：照升级后的大小画（居民楼、工厂、银行更高）
+    b = table.clone(b)
+    b.size = Config.SizeAt(b, lv)
+  end
   local f = IND[b.id] or KIND[b.kind]
   if b.kind == "mil" then f = MIL[b.id] or barracks end
   if not f then f = house end
