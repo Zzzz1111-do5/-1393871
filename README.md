@@ -52,6 +52,7 @@
 `promo/` 里有现成的：
 - `图标_512.png`：512 × 512，在「Experience Settings → 基本信息」或网页上体验的图标那里上传。
 - `宣传图_1.png` ～ `宣传图_5.png`：1920 × 1080，在缩略图（Thumbnails）那里按顺序上传，第一张是封面。
+- 英文版在 `promo/en/`（英文名 Army Base Tycoon）：`icon_512.png`、`thumb_1.png` ～ `thumb_5.png`。
 
 画面是从游戏里真实的场景导出、用预览工具渲染的（`tools/test/promo_export.luau` 导出场景），和 Roblox 里的样子有点区别：Roblox 里有贴图、灯光和粒子。以后可以换成游戏里的真截图。
 
