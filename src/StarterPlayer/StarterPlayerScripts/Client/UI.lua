@@ -542,6 +542,7 @@ function UI.init(G)
     if padId then arrowT.Text = "下一步：" .. Config.BuildingById[padId].name end
   end
   ui.goal = goal
+  function G.goalPadPart() return goalPad end
   local bob = 0
   function G.stepUI(dt)
     bob = bob + dt * 4

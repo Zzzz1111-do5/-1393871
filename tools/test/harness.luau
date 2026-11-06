@@ -1147,6 +1147,15 @@ function H.step(dt)
 		end
 	end
 	scanChildren()
+	-- 想要的话模拟默认镜头：跟在角色身后（Roblox 自带的镜头脚本测试台里没有）
+	if H.followCam and H.lastLocal and H.workspace.CurrentCamera.CameraType == Enum.CameraType.Custom then
+		local ch = H.lastLocal.Character
+		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local p = hrp.CFrame.Position
+			H.workspace.CurrentCamera.CFrame = CF.lookAt(p + V3.new(0, 14, -26), p)
+		end
+	end
 	for _, pl in PlayersSvc:GetChildren() do
 		local ch = pl:IsA("Player") and pl.Character
 		if ch and ch.Parent and ch.PrimaryPart then
@@ -1241,6 +1250,7 @@ function H.boot(placePath, opts)
 	end
 	cam.ViewportSize = V2.new(1280, 720)
 	cam.CFrame = CF.new(0, 50, 0)
+	cam.CameraType = Enum.CameraType.Custom   -- Roblox 里默认就是 Custom
 	game.PlaceId = 0
 	game.GameId = 0
 	game.JobId = "studio-job-1"

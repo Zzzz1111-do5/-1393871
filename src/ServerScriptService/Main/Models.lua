@@ -52,6 +52,13 @@ local function cyl(parent, base, height, dia, off, color, mat)
   return block(parent, base, V(height, dia, dia), off * UP, color, mat, CYL)
 end
 
+-- 客户端播的小动画：零件属性 Anim = "spin"（绕竖轴转，Spd 每秒几圈）/ "blink"（一闪一闪，Spd 每秒几次）
+local function anim(p, kind, spd)
+  p:SetAttribute("Anim", kind)
+  p:SetAttribute("Spd", spd)
+  return p
+end
+
 -- 不挡人、不挡射线的装饰零件
 local function ghostly(p)
   p.CanCollide = false
@@ -97,7 +104,16 @@ local function tree(f, pos, rng)
 end
 
 -- 战场（基地前面的，或者竞技场）：地面、部署区、敌军区、沙袋、弹坑；colorA / colorB 是两边区域的颜色
-local function battlefield(f, origin, colorA, colorB, rng)
+-- 地上一块区域头顶的大字（总是面朝镜头，远处也看得见）
+local function zoneLabel(f, base, at, text, color)
+  local a = ghostly(block(f, base, V(1, 1, 1), at, C.white))
+  a.Transparency = 1
+  local bb = Models.sign(a, text, 0, 60, 7, color, 1400)
+  bb.AlwaysOnTop = false
+  return bb
+end
+
+local function battlefield(f, origin, colorA, colorB, rng, labels)
   local base = CF(origin)
   local Fd = Config.Field
   local D, E = Fd.deploy, Fd.enemy
@@ -111,6 +127,10 @@ local function battlefield(f, origin, colorA, colorB, rng)
   ez.Transparency = 0.75
   ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, D[2]), colorA, MAT.Neon))
   ghostly(block(f, base, V(Fd.width - 6, 0.12, 0.8), CF(0, 1.08, E[1]), colorB, MAT.Neon))
+  if labels then
+    zoneLabel(f, base, CF(0, 16, (D[1] + D[2]) / 2), labels[1], colorA:Lerp(Color3.new(1, 1, 1), 0.45))
+    zoneLabel(f, base, CF(0, 16, (E[1] + E[2]) / 2), labels[2], RGB(255, 150, 140))
+  end
   local z0, z1 = Fd.center - Fd.length / 2, Fd.center + Fd.length / 2
   block(f, base, V(3, 3, Fd.length), CF(-Fd.width / 2 - 1.5, 2.5, Fd.center), C.sand, MAT.Fabric)
   block(f, base, V(3, 3, Fd.length), CF(Fd.width / 2 + 1.5, 2.5, Fd.center), C.sand, MAT.Fabric)
@@ -155,7 +175,28 @@ function Models.plot(f, origin, color, index)
   for k = -8, 8 do
     ghostly(block(f, base, V(8, 0.06, 0.8), CF(k * 15, 1.03, roadZ), C.white, MAT.SmoothPlastic))
   end
-  local field = battlefield(f, origin, color, RGB(190, 50, 40), rng)
+  local field = battlefield(f, origin, color, RGB(190, 50, 40), rng, { "我方部署区 · 布阵时把部队摆在这里", "敌军区 · 这一关的敌人在这" })
+  -- 路牌：出生点北边，牌面朝出生点（面朝战场站着的时候正好看见）
+  do
+    local at = CF(S.x + 16, 0, S.z + 16)
+    cyl(f, base, 9, 0.5, at * CF(0, 1 + 4.5, 0), C.metal, MAT.Metal)
+    local board = block(f, base, V(13, 6.2, 0.4), at * CF(0, 1 + 8.6, 0), RGB(28, 70, 40), MAT.SmoothPlastic)
+    board.Name = "Signpost"
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Front
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 24
+    sg.LightInfluence = 0
+    sg.Parent = board
+    local t = Instance.new("TextLabel")
+    t.Size = UDim2.fromScale(1, 1)
+    t.BackgroundTransparency = 1
+    t.Font = Enum.Font.GothamBold
+    t.TextScaled = true
+    t.TextColor3 = C.white
+    t.Text = "↑ 战场、部署区（往前走过马路）\n← 空军基地（左边围墙外）\n踩亮绿色的圆按钮盖楼"
+    t.Parent = sg
+  end
   -- 树：基地右边的空地（空军基地再往右；第一块基地左边也种）
   local sides = { 1 }
   if index == 1 then sides = { 1, -1 } end
@@ -200,7 +241,7 @@ end
 -- 约战竞技场：只有战场，南北两边的出发区，看台边上一圈旗子
 function Models.arena(f, origin, index)
   local rng = Random.new(index * 53 + 991)
-  local field = battlefield(f, origin, RGB(60, 140, 230), RGB(230, 70, 60), rng)
+  local field = battlefield(f, origin, RGB(60, 140, 230), RGB(230, 70, 60), rng, { "挑战方出发区", "应战方出发区" })
   local Fd = Config.Field
   local base = CF(origin)
   local anchor = ghostly(block(f, base, V(1, 1, 1), CF(0, 2, Fd.center), C.white))
@@ -299,6 +340,7 @@ local function power(m, base, b)
   s.Parent = tip
   block(m, base, V(8, 8, d - 2), CF(w / 2 - 4.5, 0.6 + 4, 0), RGB(110, 120, 130), MAT.Metal)
   for k = -1, 1 do block(m, base, V(2, 2.4, 2), CF(w / 2 - 4.5, 0.6 + 9.2, k * 4), C.yellow, MAT.Metal) end
+  anim(block(m, base, V(0.8, 0.8, 0.8), CF(w / 2 - 4.5, 0.6 + 11, 0), RGB(255, 220, 90), MAT.Neon), "blink", 2)
   return body
 end
 
@@ -351,7 +393,7 @@ local function aaShop(m, base, b)
   local body = block(m, base, V(w, hh, d), CF(0, 0.6 + hh / 2, 0), RGB(118, 126, 112), MAT.Concrete)
   block(m, base, V(w * 0.55, hh * 0.8, 0.6), CF(0, 0.6 + hh * 0.4, d / 2 + 0.15), C.dark, MAT.DiamondPlate)
   cyl(m, base, 7, 0.6, CF(-w / 2 + 3, 0.6 + hh + 3.5, -d / 2 + 3), C.metal, MAT.Metal)
-  block(m, base, V(6, 3, 0.4), CF(-w / 2 + 3, 0.6 + hh + 7.5, -d / 2 + 3) * CFrame.Angles(math.rad(-20), math.rad(30), 0), C.white, MAT.Metal)
+  anim(block(m, base, V(6, 3, 0.4), CF(-w / 2 + 3, 0.6 + hh + 7.5, -d / 2 + 3) * CFrame.Angles(math.rad(-20), math.rad(30), 0), C.white, MAT.Metal), "spin", 0.4)
   block(m, base, V(3, 1.6, 3), CF(w / 4, 0.6 + hh + 0.8, 0), C.olive, MAT.Metal)
   for _, s in ipairs({ -1, 1 }) do
     block(m, base, V(0.3, 0.3, 4), CF(w / 4 + s * 0.7, 0.6 + hh + 2.4, 1.4) * CFrame.Angles(math.rad(-35), 0, 0), C.gun, MAT.Metal)
@@ -389,7 +431,7 @@ local function helipad(m, base, b)
   ghostly(block(m, base, V(2, 0.1, 14), CF(4.5, 0.95, 0), C.white))
   ghostly(block(m, base, V(9, 0.1, 2), CF(0, 0.95, 0), C.white))
   for _, sx in ipairs({ -1, 1 }) do
-    for _, sz in ipairs({ -1, 1 }) do block(m, base, V(1, 1, 1), CF(sx * (w / 2 - 1), 1.2, sz * (d / 2 - 1)), RGB(80, 255, 120), MAT.Neon) end
+    for _, sz in ipairs({ -1, 1 }) do anim(block(m, base, V(1, 1, 1), CF(sx * (w / 2 - 1), 1.2, sz * (d / 2 - 1)), RGB(80, 255, 120), MAT.Neon), "blink", 0.8) end
   end
   cyl(m, base, 9, 0.3, CF(w / 2 + 2, 4.5, -d / 2 + 2), C.metal, MAT.Metal)
   block(m, base, V(0.9, 0.9, 3), CF(w / 2 + 2, 8.5, -d / 2 + 3.5), RGB(240, 120, 30), MAT.Fabric)
@@ -404,7 +446,7 @@ local function airbase(m, base, b)
   for k = -7, 7 do ghostly(block(m, base, V(0.8, 0.06, 8), CF(0, 0.32, k * 15), C.white)) end
   for _, sx in ipairs({ -1, 1 }) do ghostly(block(m, base, V(0.5, 0.06, d - 10), CF(sx * 10, 0.32, 0), C.white)) end
   for _, sz in ipairs({ -1, 1 }) do
-    for k = -4, 4 do block(m, base, V(0.6, 0.4, 0.6), CF(k * 2.4, 0.4, sz * (d / 2 - 2)), (sz < 0) and RGB(80, 255, 120) or RGB(255, 80, 70), MAT.Neon) end
+    for k = -4, 4 do anim(block(m, base, V(0.6, 0.4, 0.6), CF(k * 2.4, 0.4, sz * (d / 2 - 2)), (sz < 0) and RGB(80, 255, 120) or RGB(255, 80, 70), MAT.Neon), "blink", 1.2) end
   end
   for _, hz in ipairs({ -60, 20 }) do   -- 机库：门朝跑道
     local hb = CF(21, 0.2, hz)
@@ -430,8 +472,8 @@ local function hq(m, base, b, team)
   block(m, base, V(w * 0.55, h2, d * 0.55), CF(-w * 0.12, 0.6 + h1 + h2 / 2, 0), RGB(84, 92, 76), MAT.Concrete)
   block(m, base, V(w * 0.55 + 0.3, 1, d * 0.55 + 0.3), CF(-w * 0.12, 0.6 + h1 + h2 * 0.55, 0), C.glass, MAT.Glass)
   cyl(m, base, 14, 0.4, CF(w * 0.3, 0.6 + h1 + 7, -d * 0.25), C.metal, MAT.Metal)
-  block(m, base, V(0.7, 0.7, 0.7), CF(w * 0.3, 0.6 + h1 + 14.2, -d * 0.25), C.red, MAT.Neon)
-  block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal)
+  anim(block(m, base, V(0.7, 0.7, 0.7), CF(w * 0.3, 0.6 + h1 + 14.2, -d * 0.25), C.red, MAT.Neon), "blink", 1)
+  anim(block(m, base, V(5, 2.4, 0.4), CF(w * 0.25, 0.6 + h1 + 2, d * 0.2) * CFrame.Angles(math.rad(-15), math.rad(-25), 0), C.white, MAT.Metal), "spin", 0.25)
   flag(m, base, CF(-w / 2 - 2, 0, d / 2 + 2), team)
   block(m, base, V(5, 5, 0.6), CF(0, 0.6 + 2.5, d / 2 + 0.15), C.dark)
   return body
@@ -441,7 +483,7 @@ local KIND = { house = house, factory = factory, power = power, bank = bank, hq 
 local MIL = { barracks = barracks, tankfac = hangar, aafac = aaShop, artyfac = artyPos, helipad = helipad, airbase = airbase }
 
 -- 建筑：pos 是地面中心（基地地面顶上）；返回 model、主体零件（挂牌子、提示用）
-function Models.building(parent, b, pos, team)
+function Models.building(parent, b, pos, team, builtAt)
   local m = Instance.new("Model")
   m.Name = b.id
   local f = KIND[b.kind]
@@ -449,6 +491,7 @@ function Models.building(parent, b, pos, team)
   local body = f(m, CF(pos), b, team)
   body.Name = "Body"
   m.PrimaryPart = body
+  if builtAt then m:SetAttribute("BuiltAt", builtAt) end   -- 刚盖的：客户端播「从地里升起来」（属性在放进场景前设好，和模型一起到客户端）
   m.Parent = parent
   return m, body
 end

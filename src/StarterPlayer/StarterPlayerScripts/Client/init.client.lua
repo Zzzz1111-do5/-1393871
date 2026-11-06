@@ -1,5 +1,5 @@
 -- 军事大亨：客户端（StarterPlayerScripts.Client）
--- 各模块共用一个上下文 G：Fx 特效与音效 · View 部队平滑显示 · UI 界面 · Play 操作和镜头
+-- 各模块共用一个上下文 G：Fx 特效与音效 · View 部队平滑显示 · UI 界面 · Guide 地图指引 · Anim 建筑动画 · Play 操作和镜头
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -9,7 +9,7 @@ for _, name in ipairs({ "State", "Toast", "Action", "Fx", "Battle", "Shoot", "Dr
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "View", "UI", "Play" }) do
+for _, name in ipairs({ "Fx", "View", "UI", "Guide", "Anim", "Play" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -50,7 +50,7 @@ G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
 -- 每帧：各步分开接住错误（一步出错只报一次，别的照常跑，不会整个画面卡住）
 local steps = { { "部队显示", function(dt) G.stepView(dt) end }, { "操作镜头", function(dt) G.stepPlay(dt) end }, { "特效", function() G.stepFx() end },
-  { "界面", function(dt) G.stepUI(dt) end } }
+  { "界面", function(dt) G.stepUI(dt) end }, { "地图指引", function(dt) G.stepGuide(dt) end }, { "建筑动画", function(dt) G.stepAnim(dt) end } }
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)

@@ -115,6 +115,7 @@ function G.push(st)
     raidCD = math.max(0, math.ceil((st.raidCD or 0) - os.clock())), power = G.powerOf(d),
     pvp = d.pvp, pvpWins = d.pvpWins, pvpGames = d.pvpGames, match = G.matchInfo and G.matchInfo(st) or nil, matchServer = G.matchServer, teleporting = st.teleporting == true,
     skills = G.skillInfo and G.skillInfo(st) or nil, vets = G.vetCount and G.vetCount(st) or 0, wins = d.wins or 0,
+    crate = st.crate and st.crate.landed and st.crate.pos or nil,
   })
   if st.ls then
     st.ls.cash.Value = math.floor(d.cash)

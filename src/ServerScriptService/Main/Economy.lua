@@ -51,7 +51,7 @@ function Economy.init(G)
   G.buildingPos = buildingPos
 
   function G.placeBuilding(st, b, fresh)
-    local m, body = Models.building(st.plot.Buildings, b, buildingPos(st.plot, b), st.plot.color)
+    local m, body = Models.building(st.plot.Buildings, b, buildingPos(st.plot, b), st.plot.color, fresh and workspace:GetServerTimeNow() or nil)
     local top = b.size[2] / 2 + 5   -- 牌子的偏移是从主体零件中心算的：大约在楼顶上方
     if b.income then
       Models.sign(body, b.name .. "  <font color=\"#7CFC8A\">+" .. Config.Fmt(b.income) .. "/秒</font>", top, 20, 2.8, nil, 200)
@@ -117,7 +117,7 @@ function Economy.init(G)
         st.pads[id] = { pad = pad, b = b }
         if id == "airbase" and not st.airHint then   -- 空军基地盖在围墙外面，按钮在围墙里靠右
           st.airHint = true
-          G.toast(st, "空军基地解锁了：购买按钮在基地里靠右边的围墙旁，盖好后跑道在围墙外面", "info")
+          G.toast(st, "空军基地解锁了：购买按钮在基地里靠空军那边的围墙旁（面朝战场时的左手边），盖好后跑道在围墙外面；跟着地上的箭头走", "info")
         end
       end
     end
