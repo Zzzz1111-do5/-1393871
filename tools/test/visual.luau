@@ -5,6 +5,7 @@ local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local H = require("./harness")
 local V3 = roblox.Vector3
+local Enum = roblox.Enum
 H.quietWarn = true
 H.followCam = true
 H.boot(process.args[1])
@@ -79,6 +80,39 @@ for _, id in { "barracks", "hq" } do
 	if pm then H.ev(pm.Pad, "Touched"):Fire(p1.Character.HumanoidRootPart) end
 end
 H.run(4)
+do   -- 兵营：能从门走进去，墙挡人；屋里有床、灯、人；门口的人在做俯卧撑
+	local bk = plotF.Buildings:FindFirstChild("barracks")
+	local bd = G.Config.BuildingById.barracks
+	local c = G.buildingPos(st.plot, bd)
+	local only = { FilterType = Enum.RaycastFilterType.Include, FilterDescendantsInstances = { bk } }
+	local function hit(x)
+		local o = c + V3.new(x, 3, bd.size[3] / 2 + 4)
+		return H.raycast(o, V3.new(0, 0, -9), only)
+	end
+	check(bk ~= nil and hit(0) == nil and hit(-9) ~= nil, "兵营的门洞走得进去，旁边的墙挡着")
+	local lights, nod, beds = 0, 0, 0
+	for _, d in bk:GetDescendants() do
+		if d:IsA("PointLight") then lights += 1 end
+		if d:IsA("BasePart") and d:GetAttribute("Anim") == "nod" then nod += 1 end
+		if d:IsA("BasePart") and d.Material == Enum.Material.Fabric and d.Size.X > 2.9 and d.Size.Z > 6 then beds += 1 end
+	end
+	check(lights >= 3 and beds >= 8, string.format("屋里有灯（%d 盏）、床铺（%d 张床垫）", lights, beds))
+	check(nod >= 16, "门口操场上有人做俯卧撑（" .. nod .. " 个零件跟着动）")
+	local one
+	for _, d in bk:GetDescendants() do
+		if d:IsA("BasePart") and d:GetAttribute("Anim") == "nod" then one = d break end
+	end
+	if one then
+		local seen = {}
+		for _ = 1, 10 do
+			H.run(0.15)
+			seen[math.floor(one.CFrame.Position.Y * 20)] = true
+		end
+		local k = 0
+		for _ in pairs(seen) do k += 1 end
+		check(k >= 3, "俯卧撑一上一下")
+	end
+end
 local hq = plotF.Buildings:FindFirstChild("hq")
 local dish, light
 for _, d in hq:GetDescendants() do

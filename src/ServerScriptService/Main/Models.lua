@@ -435,20 +435,323 @@ local function bank(m, base, b)
   return body
 end
 
+-- 兵营里、操场上的小人（不挡人、不挡射线）：cf 是脚底中心，面朝 −Z；pose = stand 站 / sit 坐（cf 在椅子前沿的地面上）/
+--   lie 躺（cf 是床面中心，头朝 −Z）/ plank 俯卧撑（脚在 cf，头朝 −Z）。nod 给了的话，整个人绕脚尖一起点头（客户端 Anim = "nod"）
+local function figure(m, base, cf, pose, nod)
+  local U, P, S, H = C.uniform, darker(C.uniform, 0.25), C.skin, C.oliveDark
+  local parts = {}
+  local function add(size, off, color)
+    local p = ghostly(block(m, base, size, cf * off, color, MAT.SmoothPlastic))
+    table.insert(parts, p)
+    return p
+  end
+  if pose == "stand" then
+    add(V(1.0, 2.1, 0.6), CF(0, 1.05, 0), P)
+    add(V(1.3, 1.8, 0.75), CF(0, 3.0, 0), U)
+    add(V(0.4, 1.7, 0.45), CF(-0.86, 2.95, 0), U)
+    add(V(0.4, 1.7, 0.45), CF(0.86, 2.95, 0), U)
+    add(V(0.8, 0.8, 0.8), CF(0, 4.3, 0), S)
+    add(V(1.0, 0.4, 1.0), CF(0, 4.8, 0), H)
+  elseif pose == "sit" then
+    add(V(1.0, 1.9, 0.5), CF(0, 0.95, -0.25), P)          -- 小腿
+    add(V(1.0, 0.5, 1.7), CF(0, 2.05, 0.6), P)            -- 大腿（坐在 1.8 高的椅面上）
+    add(V(1.3, 1.8, 0.75), CF(0, 3.2, 1.3), U)
+    add(V(0.4, 0.45, 1.5), CF(-0.86, 3.05, 0.6), U)       -- 胳膊往前搭在桌上
+    add(V(0.4, 0.45, 1.5), CF(0.86, 3.05, 0.6), U)
+    add(V(0.8, 0.8, 0.8), CF(0, 4.5, 1.25), S)
+    add(V(1.0, 0.36, 1.0), CF(0, 4.98, 1.25), H)
+  elseif pose == "lie" then
+    add(V(1.0, 0.6, 2.2), CF(0, 0.3, 1.1), P)
+    add(V(1.3, 0.75, 1.8), CF(0, 0.38, -0.9), U)
+    add(V(0.8, 0.8, 0.8), CF(0, 0.42, -2.3), S)
+  elseif pose == "plank" then
+    local a = math.rad(17)
+    local ax = CF(0, 0.35, 0) * CFrame.Angles(a, 0, 0)    -- 身子从脚尖斜着往前上方
+    add(V(1.0, 0.6, 2.3), ax * CF(0, 0, -1.15), P)
+    add(V(1.3, 0.75, 1.9), ax * CF(0, 0, -3.2), U)
+    add(V(0.8, 0.8, 0.8), ax * CF(0, 0.1, -4.6), S)
+    local sh = (ax * CF(0, 0, -3.9)).Position
+    add(V(0.4, sh.Y, 0.45), CF(-0.86, sh.Y / 2, sh.Z), U)
+    add(V(0.4, sh.Y, 0.45), CF(0.86, sh.Y / 2, sh.Z), U)
+  end
+  if nod then
+    local w = base * cf
+    for _, p in ipairs(parts) do
+      p:SetAttribute("Anim", "nod")
+      p:SetAttribute("Piv", (w * CF(0, 0.3, 0)).Position)
+      p:SetAttribute("Ax", w.RightVector)
+      p:SetAttribute("Amp", nod.amp or 6)
+      p:SetAttribute("Spd", nod.spd or 0.6)
+      p:SetAttribute("Ph", nod.ph or 0)
+    end
+  end
+  return parts
+end
+
+-- 一面墙：沿 X（along = "x"）或 Z 的一段，中心 (cx, cz)、长 L、厚 T；底下一段实墙（门洞挖掉）、中间一圈高窗（窗洞装玻璃、窗台）、顶上一段实墙
+--   holes：门洞在这面墙上的区间（沿墙方向的坐标）；wins：窗户中心位置（沿墙方向）；y0 地面高、h 墙高；out = 墙外侧的法线方向（±1）
+local function wallRun(m, base, along, cx, cz, L, T, y0, h, holes, wins, out, color)
+  local yA, yB = y0 + 7.0, y0 + 10.0   -- 下段顶、窗带顶
+  local function seg(a, b, ylo, yhi, col, mat)
+    if b - a < 0.05 then return end
+    local c = (a + b) / 2
+    local size = (along == "x") and V(b - a, yhi - ylo, T) or V(T, yhi - ylo, b - a)
+    local off = (along == "x") and CF(cx + c, (ylo + yhi) / 2, cz) or CF(cx, (ylo + yhi) / 2, cz + c)
+    return block(m, base, size, off, col or color, mat or MAT.Concrete)
+  end
+  local function solids(a, b, cut)
+    local out2, x = {}, a
+    table.sort(cut, function(p, q) return p[1] < q[1] end)
+    for _, hseg in ipairs(cut) do
+      if hseg[1] > x then table.insert(out2, { x, hseg[1] }) end
+      x = math.max(x, hseg[2])
+    end
+    if x < b then table.insert(out2, { x, b }) end
+    return out2
+  end
+  for _, s in ipairs(solids(-L / 2, L / 2, holes or {})) do seg(s[1], s[2], y0, yA) end
+  local wcut = {}
+  for _, wx in ipairs(wins or {}) do table.insert(wcut, { wx - 1.9, wx + 1.9 }) end
+  for _, s in ipairs(solids(-L / 2, L / 2, wcut)) do seg(s[1], s[2], yA, yB) end
+  seg(-L / 2, L / 2, yB, y0 + h)
+  for _, wx in ipairs(wins or {}) do
+    local g = seg(wx - 1.9, wx + 1.9, yA, yB, C.glass, MAT.Glass)
+    g.Size = (along == "x") and V(3.8, 3.0, 0.2) or V(0.2, 3.0, 3.8)
+    g.Transparency = 0.45
+    local sill = (along == "x") and V(4.4, 0.3, T + 0.8) or V(T + 0.8, 0.3, 4.4)
+    local so = (along == "x") and CF(cx + wx, yA - 0.15, cz + out * 0.2) or CF(cx + out * 0.2, yA - 0.15, cz + wx)
+    block(m, base, sill, so, RGB(196, 196, 186), MAT.Concrete)
+  end
+end
+
+-- 兵营：能走进去。前面（+Z）正中一扇门，四面高窗；左边宿舍（双层床、床头箱、储物柜、有人在睡觉），右边作战室（作战桌和地图、椅子、
+--   枪架、公告栏、电台、饮水机）；天花板三条日光灯；门口操场上一排人做俯卧撑、教官看着，旁边单杠和轮胎
 local function barracks(m, base, b, team)
   local w, h, d = b.size[1], b.size[2], b.size[3]
+  local T, y0 = 0.8, 0.6
+  local WALL, INNER, DADO = RGB(116, 126, 96), RGB(212, 208, 190), RGB(94, 106, 78)
+  local METAL, WOOD = RGB(70, 82, 64), RGB(132, 98, 64)
   slabUnder(m, base, w, d)
-  local body = block(m, base, V(w, h, d), CF(0, 0.6 + h / 2, 0), C.olive, MAT.Concrete)
-  block(m, base, V(w + 1.2, 0.8, d + 1.2), CF(0, 0.6 + h + 0.4, 0), C.oliveDark, MAT.Concrete)
-  block(m, base, V(w + 0.2, 1.2, d + 0.2), CF(0, 0.6 + h * 0.6, 0), C.glass, MAT.Glass)
-  block(m, base, V(5, 6, 0.6), CF(0, 0.6 + 3, d / 2 + 0.15), C.dark)
+  -- 主体：看不见、不挡人的整块（挂牌子、提示、升起动画的脚手架用它的大小）
+  local body = ghostly(block(m, base, V(w, h, d), CF(0, y0 + h / 2, 0), WALL, MAT.Concrete))
+  body.Transparency = 1
+  body.CastShadow = false
+  -- 墙、门洞、窗、屋顶
+  local ix, iz = w / 2 - T, d / 2 - T   -- 屋里的半宽、半深
+  wallRun(m, base, "x", 0, -d / 2 + T / 2, w, T, y0, h, nil, { -11, -4, 4, 11 }, -1, WALL)
+  wallRun(m, base, "x", 0, d / 2 - T / 2, w, T, y0, h, { { -2.6, 2.6 } }, { -10, 10 }, 1, WALL)
+  wallRun(m, base, "z", -w / 2 + T / 2, 0, d - 2 * T, T, y0, h, nil, { -5, 5 }, -1, WALL)
+  wallRun(m, base, "z", w / 2 - T / 2, 0, d - 2 * T, T, y0, h, nil, { -5, 5 }, 1, WALL)
+  block(m, base, V(w + 1.2, 0.8, d + 1.2), CF(0, y0 + h + 0.4, 0), C.oliveDark, MAT.Concrete)
+  roofStuff(m, base, w, d, y0 + h + 0.8, 3)
+  -- 屋里墙面：下半截墙裙、上半截浅色（门洞那段不贴）
+  local function clad(along, cx, cz, a, bb)
+    for _, band in ipairs({ { y0, y0 + 3.2, DADO }, { y0 + 3.2, y0 + 7.0, INNER } }) do
+      local len, c = bb - a, (a + bb) / 2
+      local size = (along == "x") and V(len, band[2] - band[1], 0.1) or V(0.1, band[2] - band[1], len)
+      local off = (along == "x") and CF(c, (band[1] + band[2]) / 2, cz) or CF(cx, (band[1] + band[2]) / 2, c)
+      ghostly(block(m, base, size, off, band[3], MAT.SmoothPlastic))
+    end
+  end
+  clad("x", 0, -iz - 0.05 + 0.1, -ix, ix)
+  clad("x", 0, iz - 0.05, -ix, -2.6)
+  clad("x", 0, iz - 0.05, 2.6, ix)
+  clad("z", -ix + 0.05, 0, -iz, iz)
+  clad("z", ix - 0.05, 0, -iz, iz)
+  -- 地面：水磨石地、中间一条走道地胶
+  ghostly(block(m, base, V(2 * ix, 0.08, 2 * iz), CF(0, y0 + 0.04, 0), RGB(156, 152, 140), MAT.Slate))
+  ghostly(block(m, base, V(2 * ix - 2, 0.06, 3.2), CF(0, y0 + 0.1, 0), RGB(64, 84, 62), MAT.Fabric))
+  -- 门：门框、开着的门板、门口台阶、门上的灯
+  block(m, base, V(0.5, 7.2, T + 0.4), CF(-2.85, y0 + 3.6, d / 2 - T / 2), C.dark, MAT.Metal)
+  block(m, base, V(0.5, 7.2, T + 0.4), CF(2.85, y0 + 3.6, d / 2 - T / 2), C.dark, MAT.Metal)
+  block(m, base, V(6.2, 0.5, T + 0.4), CF(0, y0 + 7.25, d / 2 - T / 2), C.dark, MAT.Metal)
+  ghostly(block(m, base, V(2.6, 6.9, 0.25), CF(-2.6, y0 + 3.45, d / 2 + 0.1) * CFrame.Angles(0, math.rad(-80), 0) * CF(1.3, 0, 0), METAL, MAT.Metal))
+  ghostly(block(m, base, V(2.6, 6.9, 0.25), CF(2.6, y0 + 3.45, d / 2 + 0.1) * CFrame.Angles(0, math.rad(80), 0) * CF(-1.3, 0, 0), METAL, MAT.Metal))
+  block(m, base, V(7, 0.3, 2.2), CF(0, y0 + 0.15, d / 2 + 1.1), RGB(150, 150, 142), MAT.Concrete)
+  local lampO = ghostly(block(m, base, V(1.6, 0.5, 0.6), CF(0, y0 + 8.1, d / 2 + 0.3), RGB(255, 240, 200), MAT.Neon))
+  local pl0 = Instance.new("PointLight")
+  pl0.Range, pl0.Brightness, pl0.Color = 14, 0.9, RGB(255, 226, 170)
+  pl0.Parent = lampO
+  -- 天花板日光灯（三条，带灯光）
+  for _, lx in ipairs({ -9.5, 0, 9.5 }) do
+    block(m, base, V(6.4, 0.25, 1.1), CF(lx, y0 + h - 0.35, 0), RGB(200, 200, 196), MAT.Metal)
+    local tube = ghostly(block(m, base, V(6, 0.18, 0.7), CF(lx, y0 + h - 0.55, 0), RGB(250, 248, 236), MAT.Neon))
+    local pl = Instance.new("PointLight")
+    pl.Range, pl.Brightness, pl.Color, pl.Shadows = 22, 1.25, RGB(255, 246, 228), false
+    pl.Parent = tube
+  end
+
+  ---------------- 左边宿舍
+  -- 双层床：四根柱子、上下两层床板和床垫、枕头、叠好的军被；爬梯在床尾
+  local function bunk(x, z, headSign)   -- headSign：床头朝 −Z（-1）还是 +Z（+1）
+    local L = 7.2
+    for _, ox in ipairs({ -1.6, 1.6 }) do
+      for _, oz in ipairs({ -L / 2 + 0.15, L / 2 - 0.15 }) do block(m, base, V(0.25, 6.6, 0.25), CF(x + ox, y0 + 3.3, z + oz), METAL, MAT.Metal) end
+    end
+    for _, ly in ipairs({ 1.5, 4.7 }) do
+      block(m, base, V(3.4, 0.3, L), CF(x, y0 + ly, z), METAL, MAT.Metal)
+      ghostly(block(m, base, V(3.0, 0.5, L - 0.4), CF(x, y0 + ly + 0.4, z), RGB(214, 210, 196), MAT.Fabric))
+      ghostly(block(m, base, V(2.2, 0.35, 1.0), CF(x, y0 + ly + 0.82, z + headSign * (L / 2 - 0.9)), RGB(236, 236, 230), MAT.Fabric))
+      ghostly(block(m, base, V(2.6, 0.32, 1.6), CF(x, y0 + ly + 0.8, z - headSign * (L / 2 - 1.3)), RGB(84, 98, 66), MAT.Fabric))   -- 叠成豆腐块的被子
+    end
+    local fz = z - headSign * (L / 2 - 0.05)
+    for _, ox in ipairs({ 0.6, 1.4 }) do ghostly(block(m, base, V(0.14, 4.6, 0.14), CF(x + ox, y0 + 2.9, fz - headSign * 0.12), METAL, MAT.Metal)) end
+    for _, ly in ipairs({ 2.6, 3.6 }) do ghostly(block(m, base, V(0.95, 0.12, 0.14), CF(x + 1.0, y0 + ly, fz - headSign * 0.12), METAL, MAT.Metal)) end
+    -- 床尾的床头箱
+    block(m, base, V(2.6, 1.3, 1.2), CF(x, y0 + 0.65, z - headSign * (L / 2 + 0.75)), RGB(70, 80, 56), MAT.WoodPlanks)
+  end
+  local bz = -iz + 3.7
+  for i, bx in ipairs({ -12.4, -8.0, -3.6 }) do
+    bunk(bx, bz, -1)
+    if i == 2 then ghostly(block(m, base, V(1.0, 0.5, 1.1), CF(bx, y0 + 1.55, bz + 3.6 + 0.75), C.oliveDark, MAT.SmoothPlastic)) end   -- 箱子上的头盔
+  end
+  for _, bx in ipairs({ -12.4, -8.0 }) do bunk(bx, iz - 3.7, 1) end
+  figure(m, base, CF(-8.0, y0 + 2.15, bz), "lie")   -- 下铺有人在睡觉
+  -- 储物柜：左墙，一排三个（门缝、通风口、把手）
+  for k, lz in ipairs({ -1.95, 0, 1.95 }) do
+    local lx = -ix + 0.75
+    block(m, base, V(1.5, 6.4, 1.9), CF(lx, y0 + 3.2, lz), RGB(104, 116, 92), MAT.Metal)
+    for v = 0, 2 do ghostly(block(m, base, V(0.06, 0.12, 1.2), CF(lx + 0.76, y0 + 5.6 + v * 0.3, lz), C.dark, MAT.Metal)) end
+    ghostly(block(m, base, V(0.1, 0.7, 0.14), CF(lx + 0.78, y0 + 3.4, lz + 0.6), RGB(200, 200, 196), MAT.Metal))
+    if k < 3 then ghostly(block(m, base, V(0.06, 6.2, 0.08), CF(lx + 0.76, y0 + 3.2, lz + 0.97), C.dark, MAT.Metal)) end
+  end
+  figure(m, base, CF(-11.2, y0, 0) * CFrame.Angles(0, math.rad(90), 0), "stand")   -- 在储物柜前
+
+  ---------------- 右边作战室
+  -- 作战桌：桌面上一张地图（SurfaceGui 画的：地块、河、路、红蓝两方的标记和箭头）、四把椅子
+  local tx, tz = 8.0, -4.6
+  block(m, base, V(6.4, 0.3, 4.0), CF(tx, y0 + 3.0, tz), WOOD, MAT.Wood)
+  for _, o in ipairs({ { -2.9, -1.7 }, { 2.9, -1.7 }, { -2.9, 1.7 }, { 2.9, 1.7 } }) do block(m, base, V(0.3, 2.85, 0.3), CF(tx + o[1], y0 + 1.43, tz + o[2]), RGB(70, 60, 48), MAT.Wood) end
+  local map = ghostly(block(m, base, V(5.6, 0.06, 3.4), CF(tx, y0 + 3.18, tz), RGB(120, 140, 96), MAT.SmoothPlastic))
+  do
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Top
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 40
+    sg.LightInfluence = 1
+    sg.Parent = map
+    local function fr(x, y, ww, hh, col, rot)
+      local f = Instance.new("Frame")
+      f.Position = UDim2.fromScale(x, y)
+      f.Size = UDim2.fromScale(ww, hh)
+      f.AnchorPoint = Vector2.new(0.5, 0.5)
+      f.BackgroundColor3 = col
+      f.BorderSizePixel = 0
+      f.Rotation = rot or 0
+      f.Parent = sg
+      return f
+    end
+    fr(0.5, 0.5, 1, 1, RGB(206, 196, 160))
+    fr(0.25, 0.35, 0.4, 0.45, RGB(150, 172, 112))
+    fr(0.75, 0.62, 0.38, 0.5, RGB(162, 182, 120))
+    fr(0.5, 0.5, 1.1, 0.07, RGB(80, 130, 190), 12)        -- 河
+    fr(0.45, 0.5, 0.05, 1.1, RGB(120, 100, 80))           -- 路
+    for _, e in ipairs({ { 0.2, 0.75, RGB(60, 110, 210) }, { 0.32, 0.8, RGB(60, 110, 210) }, { 0.7, 0.22, RGB(210, 50, 45) }, { 0.82, 0.3, RGB(210, 50, 45) }, { 0.6, 0.15, RGB(210, 50, 45) } }) do
+      fr(e[1], e[2], 0.07, 0.11, e[3])
+    end
+    fr(0.4, 0.52, 0.32, 0.03, RGB(60, 110, 210), -35)     -- 进攻箭头
+    local t = Instance.new("TextLabel")
+    t.BackgroundTransparency = 1
+    t.Position = UDim2.fromScale(0.02, 0.02)
+    t.Size = UDim2.fromScale(0.5, 0.14)
+    t.Font = Enum.Font.GothamBold
+    t.TextScaled = true
+    t.TextXAlignment = Enum.TextXAlignment.Left
+    t.TextColor3 = RGB(60, 50, 40)
+    t.Text = "作战地图"
+    t.Parent = sg
+  end
+  local function chair(x, z, yaw)
+    local c = CF(x, 0, z) * CFrame.Angles(0, yaw, 0)
+    block(m, base, V(1.2, 1.6, 1.2), c * CF(0, y0 + 0.8, 0), C.dark, MAT.Metal)
+    block(m, base, V(1.6, 0.25, 1.6), c * CF(0, y0 + 1.75, 0), RGB(60, 70, 52), MAT.Fabric)
+    block(m, base, V(1.6, 1.9, 0.22), c * CF(0, y0 + 2.8, 0.75), RGB(60, 70, 52), MAT.Fabric)
+  end
+  chair(tx - 1.6, tz + 3.0, 0)
+  chair(tx + 1.6, tz + 3.0, 0)
+  chair(tx - 1.6, tz - 3.0, math.pi)
+  chair(tx + 4.6, tz, math.rad(90))
+  figure(m, base, CF(tx - 1.6, y0, tz + 2.2), "sit")                                   -- 坐着看地图
+  figure(m, base, CF(tx + 1.6, y0, tz - 2.9) * CFrame.Angles(0, math.pi, 0), "stand")  -- 对面站着讲解的军官
+  -- 枪架：右墙，一排六支步枪（枪托、枪身、弹匣）
+  local rx = ix - 0.6
+  block(m, base, V(0.4, 4.6, 7.2), CF(rx + 0.25, y0 + 2.3, 3.6), WOOD, MAT.Wood)
+  block(m, base, V(1.6, 0.3, 7.2), CF(rx - 0.3, y0 + 0.45, 3.6), WOOD, MAT.Wood)
+  block(m, base, V(1.2, 0.25, 7.2), CF(rx - 0.15, y0 + 3.6, 3.6), WOOD, MAT.Wood)
+  for k = 0, 5 do
+    local gz = 1.0 + k * 1.05
+    ghostly(block(m, base, V(0.35, 1.0, 0.3), CF(rx - 0.45, y0 + 1.1, gz), RGB(96, 72, 48), MAT.Wood))
+    ghostly(block(m, base, V(0.22, 3.4, 0.22), CF(rx - 0.45, y0 + 3.2, gz), RGB(40, 42, 44), MAT.Metal))
+    ghostly(block(m, base, V(0.26, 0.7, 0.2), CF(rx - 0.75, y0 + 2.4, gz), RGB(40, 42, 44), MAT.Metal))
+  end
+  figure(m, base, CF(rx - 2.4, y0, 2.4) * CFrame.Angles(0, math.rad(-90), 0), "stand")   -- 在枪架前
+  -- 公告栏（后墙，SurfaceGui：标题和几张贴着的纸）
+  local board = block(m, base, V(5.2, 3.2, 0.15), CF(tx, y0 + 4.8, -iz + 0.08), RGB(150, 112, 70), MAT.Wood)
+  do
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Back
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 40
+    sg.Parent = board
+    local t = Instance.new("TextLabel")
+    t.BackgroundTransparency = 1
+    t.Size = UDim2.fromScale(1, 0.24)
+    t.Font = Enum.Font.GothamBlack
+    t.TextScaled = true
+    t.TextColor3 = RGB(255, 240, 200)
+    t.Text = "公 告 栏"
+    t.Parent = sg
+    for k, txt in ipairs({ "值班表", "训练计划", "作战命令", "内务条令" }) do
+      local p = Instance.new("TextLabel")
+      p.Position = UDim2.fromScale(0.04 + (k - 1) * 0.24, 0.3 + (k % 2) * 0.08)
+      p.Size = UDim2.fromScale(0.2, 0.55)
+      p.BackgroundColor3 = RGB(244, 242, 232)
+      p.BorderSizePixel = 0
+      p.Rotation = (k % 2 == 0) and 3 or -2
+      p.Font = Enum.Font.GothamBold
+      p.TextScaled = true
+      p.TextYAlignment = Enum.TextYAlignment.Top
+      p.TextColor3 = RGB(50, 50, 60)
+      p.Text = txt
+      p.Parent = sg
+    end
+  end
+  -- 电台桌（右前角）、坐着值班的通信兵；饮水机、灭火器；墙上的队旗和钟
+  local dx, dz = ix - 2.2, iz - 1.3
+  block(m, base, V(3.6, 0.25, 1.8), CF(dx, y0 + 2.8, dz), WOOD, MAT.Wood)
+  block(m, base, V(3.4, 2.7, 0.2), CF(dx, y0 + 1.35, dz + 0.75), RGB(70, 60, 48), MAT.Wood)
+  block(m, base, V(1.8, 1.1, 1.0), CF(dx - 0.5, y0 + 3.5, dz + 0.2), RGB(64, 78, 58), MAT.Metal)
+  anim(ghostly(block(m, base, V(0.2, 0.2, 0.06), CF(dx - 0.9, y0 + 3.6, dz - 0.31), RGB(90, 255, 120), MAT.Neon)), "blink", 1.5)
+  ghostly(cyl(m, base, 2.6, 0.08, CF(dx + 0.2, y0 + 5.3, dz + 0.4), C.dark, MAT.Metal))
+  chair(dx, dz - 2.2, math.pi)
+  figure(m, base, CF(dx, y0, dz - 1.4) * CFrame.Angles(0, math.pi, 0), "sit")
+  block(m, base, V(1.3, 2.8, 1.3), CF(3.8, y0 + 1.4, iz - 1.0), RGB(226, 226, 222), MAT.SmoothPlastic)
+  local jug = ghostly(cyl(m, base, 1.6, 1.0, CF(3.8, y0 + 3.6, iz - 1.0), RGB(140, 190, 230), MAT.Glass))
+  jug.Transparency = 0.35
+  ghostly(cyl(m, base, 1.4, 0.55, CF(-3.4, y0 + 0.9, iz - 0.6), RGB(200, 40, 36), MAT.SmoothPlastic))
+  ghostly(block(m, base, V(0.1, 2.6, 3.6), CF(ix - 0.06, y0 + 8.5, 0), team or C.red, MAT.Fabric))
+  local clock = ghostly(cyl(m, base, 0.15, 1.6, CF(0, y0 + 8.6, iz - 0.1) * CFrame.Angles(math.rad(90), 0, 0), RGB(240, 240, 236), MAT.SmoothPlastic))
+  clock.CastShadow = false
+  ghostly(block(m, base, V(0.12, 0.6, 0.06), CF(0, y0 + 8.85, iz - 0.2), C.dark, MAT.SmoothPlastic))
+  ghostly(block(m, base, V(0.45, 0.12, 0.06), CF(0.18, y0 + 8.6, iz - 0.2), C.dark, MAT.SmoothPlastic))
+
+  ---------------- 外面
   flag(m, base, CF(w / 2 + 2, 0, d / 2 + 2), team)
-  block(m, base, V(7, 1.8, 1.4), CF(-6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
-  block(m, base, V(7, 1.8, 1.4), CF(6, 0.6 + 0.9, d / 2 + 4), C.sand, MAT.Fabric)
-  roofStuff(m, base, w, d, 0.6 + h + 0.8, 3)
-  ghostly(block(m, base, V(w, 0.06, 10), CF(0, 0.66, d / 2 + 11), RGB(110, 112, 104), MAT.SmoothPlastic))   -- 门前的小操场
-  for k = -2, 2 do ghostly(block(m, base, V(0.5, 0.08, 8), CF(k * 4, 0.7, d / 2 + 11), C.white, MAT.SmoothPlastic)) end
-  facadeSign(m, base, CF(0, 0.6 + h - 1.6, d / 2 + 0.35), 9, 1.6, "兵  营", RGB(255, 226, 140), Enum.NormalId.Back)
+  for _, sx in ipairs({ -6.5, 6.5 }) do block(m, base, V(5, 1.8, 1.4), CF(sx, y0 + 0.9, d / 2 + 4.2), C.sand, MAT.Fabric) end
+  facadeSign(m, base, CF(0, y0 + h - 1.3, d / 2 + 0.35), 9, 1.6, "兵  营", RGB(255, 226, 140), Enum.NormalId.Back)
+  -- 门前操场：一排人做俯卧撑（客户端让他们一起一上一下），教官在旁边看着；西头单杠、轮胎
+  local pz = d / 2 + 8.5   -- 操场靠着兵营（再往北是部队开出去的横通道，吉普车在那上面跑）
+  ghostly(block(m, base, V(w, 0.06, 8), CF(0, 0.66, pz), RGB(110, 112, 104), MAT.SmoothPlastic))
+  for k = -2, 2 do ghostly(block(m, base, V(0.5, 0.08, 6.4), CF(k * 4 + 2, 0.7, pz), C.white, MAT.SmoothPlastic)) end
+  for _, fx in ipairs({ -5, -1.5, 2, 5.5 }) do figure(m, base, CF(fx, 0.7, pz + 3.2), "plank", { amp = 6, spd = 0.55 }) end
+  figure(m, base, CF(10.5, 0.7, pz + 0.5) * CFrame.Angles(0, math.rad(90), 0), "stand")
+  for _, sx in ipairs({ -15.4, -10.6 }) do cyl(m, base, 7.4, 0.35, CF(sx, 0.7 + 3.7, pz - 2.4), C.metal, MAT.Metal) end
+  cyl(m, base, 5.0, 0.25, CF(-13, 0.7 + 7.0, pz - 2.4) * CFrame.Angles(0, 0, math.pi / 2), C.metal, MAT.Metal)
+  for r = 0, 1 do
+    for k = 0, 2 do
+      block(m, base, V(0.8, 2.4, 2.4), CF(-14.6 + k * 2.6 + r * 1.3, 0.7 + 0.4, pz + 0.6 + r * 2.4) * UP, RGB(32, 32, 34), MAT.SmoothPlastic, CYL)
+    end
+  end
   return body
 end
 

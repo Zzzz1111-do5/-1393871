@@ -1,6 +1,7 @@
 -- 军事大亨（客户端）：建筑动画（都在本地播，不占网络）——
 --   新盖的楼（模型属性 BuiltAt 是刚才）：零件从地下按高度一层层升上来，四角搭着脚手架、落地扬尘；
---   零件属性 Anim = "spin" 的绕竖轴转（雷达），"blink" 的一闪一闪（指示灯、跑道灯）；
+--   零件属性 Anim = "spin" 的绕竖轴转（雷达；有 Ax 就绕这根轴转，比如抽油机的曲柄），"blink" 的一闪一闪（指示灯、跑道灯），
+--   "nod" 的绕 Piv 点、Ax 轴来回摆 Amp 度（做俯卧撑的兵、抽油机的驴头）；
 --   买得起的绿色购买按钮一呼一吸，隔一会儿冒一圈光；
 --   机场跑道头停着的战斗机隔一会儿滑跑起飞、飞向战场，过一阵从南边进场降落、滑回停机位；直升机场的直升机起飞绕一圈落回来
 --   （建筑里叫 Show 的模型，服务器上一直停着，只在本地动）
@@ -15,6 +16,7 @@ function Anim.init(G)
   local cam = workspace.CurrentCamera
   local spinning = {}   -- [part] = { cf0, spd, model }
   local blinking = {}   -- [part] = { spd, tr0 }
+  local nodding = {}    -- [part] = { cf0, piv, ax, amp, spd, ph, model }
   local pads = {}       -- [pad] = true
   local busy = {}       -- [model] = 升起动画放完的时刻（这之前不转）
   local GREEN = RGB(70, 220, 100)
@@ -39,9 +41,14 @@ function Anim.init(G)
       if d:IsA("BasePart") then
         local a = d:GetAttribute("Anim")
         if a == "spin" then
-          spinning[d] = { cf0 = d.CFrame, spd = d:GetAttribute("Spd") or 0.3, model = m }
+          spinning[d] = { cf0 = d.CFrame, spd = d:GetAttribute("Spd") or 0.3, model = m, ax = d:GetAttribute("Ax") }
         elseif a == "blink" then
           blinking[d] = { spd = d:GetAttribute("Spd") or 1, tr0 = d.Transparency, ph = math.random() * 6 }
+        elseif a == "nod" then
+          local piv, ax = d:GetAttribute("Piv"), d:GetAttribute("Ax")
+          if typeof(piv) == "Vector3" and typeof(ax) == "Vector3" then
+            nodding[d] = { cf0 = d.CFrame, piv = piv, ax = ax.Unit, amp = math.rad(d:GetAttribute("Amp") or 8), spd = d:GetAttribute("Spd") or 0.5, ph = d:GetAttribute("Ph") or 0, model = m }
+          end
         end
       end
     end
@@ -334,7 +341,7 @@ function Anim.init(G)
     local s = (life.t * 14) % (span * 2)
     local jx = (s < span) and (-115 + s) or (-115 + span * 2 - s)
     local dir = (s < span) and 1 or -1
-    local jp = o + V(jx, 1, 60 + dir * 5)
+    local jp = o + V(jx, 1, 64 + dir * 4)   -- 两条车道 z = 60、68（兵营门口操场到 z = 55 为止）
     place(life.jeep, CFrame.lookAt(jp, jp + V(dir, 0, 0)))
   end
 
@@ -350,7 +357,16 @@ function Anim.init(G)
       if not p.Parent then
         spinning[p] = nil
       elseif not (busy[s.model] and now < busy[s.model]) and (s.cf0.Position - cp).Magnitude < 600 then
-        p.CFrame = CFrame.new(s.cf0.Position) * CFrame.Angles(0, t * s.spd * math.pi * 2, 0) * (s.cf0 - s.cf0.Position)
+        local a = t * s.spd * math.pi * 2
+        p.CFrame = CFrame.new(s.cf0.Position) * (s.ax and CFrame.fromAxisAngle(s.ax, a) or CFrame.Angles(0, a, 0)) * (s.cf0 - s.cf0.Position)
+      end
+    end
+    for p, s in pairs(nodding) do
+      if not p.Parent then
+        nodding[p] = nil
+      elseif not (busy[s.model] and now < busy[s.model]) and (s.piv - cp).Magnitude < 450 then
+        local a = math.sin(t * s.spd * math.pi * 2 + s.ph) * s.amp
+        p.CFrame = CFrame.new(s.piv) * CFrame.fromAxisAngle(s.ax, a) * CFrame.new(-s.piv) * s.cf0
       end
     end
     for p, b in pairs(blinking) do

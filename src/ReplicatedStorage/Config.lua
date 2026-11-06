@@ -33,7 +33,7 @@ Config.EnemyColor = Color3.fromRGB(200, 50, 45)
 --   pad：购买按钮的位置（相对建筑中心，默认在建筑 −Z 那边）
 Config.Buildings = {
   { id = "house1", name = "居民楼 A", kind = "house", price = 60, income = 5, x = -95, z = -95, size = { 18, 16, 18 } },
-  { id = "barracks", name = "兵营", kind = "mil", units = { "inf", "mg", "mortar", "sniper", "at", "manpad", "medic", "flamer", "commando" }, price = 300, req = "house1", x = -95, z = 30, size = { 26, 10, 18 } },
+  { id = "barracks", name = "兵营", kind = "mil", units = { "inf", "mg", "mortar", "sniper", "at", "manpad", "medic", "flamer", "commando" }, price = 300, req = "house1", x = -95, z = 30, size = { 32, 12, 24 } },
   { id = "house2", name = "居民楼 B", kind = "house", price = 300, income = 10, req = "house1", x = -40, z = -95, size = { 18, 22, 18 } },
   { id = "hq", name = "指挥部", kind = "hq", price = 800, req = "barracks", x = -95, z = 100, size = { 30, 14, 24 }, cap = { 10, 18, 30, 40 }, up = { 3000, 15000, 60000 } },
   { id = "factory1", name = "轻工厂", kind = "factory", price = 900, income = 20, req = "house2", x = -95, z = -45, size = { 26, 13, 22 } },
