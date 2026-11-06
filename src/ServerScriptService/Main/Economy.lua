@@ -125,6 +125,10 @@ function Economy.init(G)
       end)
     elseif b.kind == "power" then
       Models.sign(body, "发电厂 · 工厂收入 ×" .. Config.PowerBoost, top + 2, 20, 2.8, nil, 200)
+    elseif b.kind == "radar" then
+      Models.sign(body, "雷达站 · 支援技能冷却 -" .. math.floor((1 - Config.RadarCD) * 100 + 0.5) .. "%", top + 2, 22, 2.8, nil, 220)
+    elseif b.kind == "silo" then
+      Models.sign(body, "导弹发射井 · 支援技能「巡航导弹」", top + 4, 24, 2.8, nil, 220)
     end
     if fresh then G.fx({ k = "build", p = buildingPos(st.plot, b), s = math.max(b.size[1], b.size[3]) }) end
     return m
@@ -201,6 +205,10 @@ function Economy.init(G)
       G.toast(st, "可以生产" .. table.concat(names, "、") .. "了：右边「兵工厂」，或者走到建筑旁按 E", "info")
     elseif b.kind == "hq" then
       G.toast(st, "部队上限 " .. G.capOf(d) .. "；以后可以升级指挥部带更多兵", "info")
+    elseif b.kind == "radar" then
+      G.toast(st, "打仗时所有支援技能冷却快 " .. math.floor((1 - Config.RadarCD) * 100 + 0.5) .. "%", "info")
+    elseif b.kind == "silo" then
+      G.toast(st, "打仗时多一个支援技能「巡航导弹」（电脑按 M）：导弹从这口井里升空，炸平一大片", "info")
     end
     G.push(st)
   end

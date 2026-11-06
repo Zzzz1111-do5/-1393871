@@ -2,7 +2,7 @@
 -- 数值都在这里调：建筑、兵种、关卡敌军、武器、军衔、重生、每日奖励与任务、突袭与约战、战场支援、老兵、补给空投
 local Config = {}
 
-Config.Version = "0.6"
+Config.Version = "0.7"
 Config.SaveKey = "MilitaryTycoon_v1"   -- DataStore 名字（改了就是新存档）
 Config.StartCash = 300
 Config.BaseCap = 4                     -- 没有指挥部时最多几个单位
@@ -57,10 +57,14 @@ Config.Buildings = {
   { id = "steel", name = "钢铁厂", kind = "factory", price = 160000, income = 450, req = "ammo", x = -320, z = -30, size = { 46, 22, 34 } },
   { id = "mine", name = "矿场", kind = "factory", price = 300000, income = 800, req = "steel", x = -205, z = 45, size = { 46, 18, 34 } },
   { id = "nuclear", name = "核电站", kind = "nuclear", price = 800000, income = 1500, req = "mine", x = -320, z = 40, size = { 60, 40, 48 } },
+  -- 工业区里的两座战略设施：雷达站（打仗时所有支援技能冷却快两成）、导弹发射井（多一个支援技能「巡航导弹」）
+  { id = "radar", name = "雷达站", kind = "radar", price = 25000, req = "hq", x = -280, z = -100, size = { 26, 22, 26 } },
+  { id = "silo", name = "导弹发射井", kind = "silo", price = 150000, req = "radar", x = -258, z = 45, size = { 26, 10, 26 } },
 }
 Config.PowerBoost = 1.5     -- 有发电厂时工厂收入乘几
 Config.RefineryBoost = 1.5  -- 有炼油厂时油井收入乘几
 Config.NuclearBoost = 1.3   -- 有核电站时工厂收入再乘几
+Config.RadarCD = 0.8        -- 有雷达站时支援技能冷却乘几
 -- 工业区的范围（相对基地中心，在西墙外）、西墙上大门的 z 范围、工业区里那条南北向主路的 x
 Config.Industry = { x0 = -392, x1 = -138, z0 = -132, z1 = 84, gate = { -98, -80 }, roadX = -152 }
 
@@ -249,7 +253,13 @@ Config.Skills = {
   { id = "drop", name = "空投援军", key = "B", need = "helipad", cd = 60, kind = "drop", squads = 3, desc = "把 3 个步兵班空投到指定位置，这一仗打完就撤" },
   { id = "strike", name = "空袭", key = "N", need = "airbase", cd = 55, kind = "strike", n = 12, len = 150, dmg = 140, splash = 24,
     vsArmor = 1.1, vsInf = 1.4, desc = "轰炸机沿进攻方向扔下一串 12 颗炸弹（拦截炮挡不住）" },
+  { id = "cruise", name = "巡航导弹", key = "M", need = "silo", cd = 90, kind = "missile", dmg = 1100, splash = 46, flight = 5,
+    vsArmor = 1.5, vsInf = 1.3, desc = "从工业区的导弹发射井打出一枚巡航导弹，炸平一大片（拦截炮挡不住）" },
 }
+-- 这个玩家的技能冷却（有雷达站快两成）
+function Config.SkillCD(sk, owned)
+  return sk.cd * ((owned and owned.radar) and Config.RadarCD or 1)
+end
 Config.SkillById = {}
 for _, sk in ipairs(Config.Skills) do Config.SkillById[sk.id] = sk end
 

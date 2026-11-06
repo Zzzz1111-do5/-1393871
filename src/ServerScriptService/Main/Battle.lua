@@ -236,7 +236,11 @@ local function shells(B)
       splash(B, s.team, s.def, s.x, s.z, s.def.splash or 10, s.def.dmg * s.dm, nil, s.src)
       local size = 1.3
       if s.kind == "bomb" then size = 1.9 elseif s.def.salvo then size = 1.5 elseif s.def.foot then size = 0.9 end
-      B.cb.fx({ k = "boom", p = B.cb.world(s.x, 0, s.z), s = size })
+      if s.kind == "cruise" then
+        B.cb.fx({ k = "bigboom", p = B.cb.world(s.x, 0, s.z), s = 3.6 })   -- 巡航导弹：大火球、冲击波、震屏
+      else
+        B.cb.fx({ k = "boom", p = B.cb.world(s.x, 0, s.z), s = size })
+      end
     else
       i = i + 1
     end
@@ -286,7 +290,7 @@ local function interceptStep(B, u, dt)
   local best, bt = nil, math.huge
   local r2 = ic.range * ic.range
   for _, s in ipairs(B.shells) do
-    if not s.dead and s.team ~= u.team and s.kind ~= "bomb" and not (s.tried and s.tried[u]) and B.t >= s.t0 + (s.at - s.t0) * 0.3 then
+    if not s.dead and s.team ~= u.team and s.kind ~= "bomb" and s.kind ~= "cruise" and not (s.tried and s.tried[u]) and B.t >= s.t0 + (s.at - s.t0) * 0.3 then
       local dx, dz = s.x - u.x, s.z - u.z
       if dx * dx + dz * dz < r2 and s.at < bt then best, bt = s, s.at end
     end

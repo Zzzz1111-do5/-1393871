@@ -189,6 +189,13 @@ function Fx.init(G)
       glow.Range = 22
       glow.Brightness = 3
       glow.Parent = p
+    elseif kind == "cruise" then   -- 巡航导弹：粗大的白弹体，尾焰发光
+      p = part(nil, V(1.4, 1.4, 7.5), CFrame.new(a), RGB(238, 238, 232), Enum.Material.SmoothPlastic, 0)
+      local glow = Instance.new("PointLight")
+      glow.Color = RGB(255, 170, 80)
+      glow.Range = 40
+      glow.Brightness = 4
+      glow.Parent = p
     elseif kind == "missile" then
       p = part(nil, V(0.5, 0.5, 3), CFrame.new(a), RGB(236, 236, 230), Enum.Material.SmoothPlastic, 0)
       local glow = Instance.new("PointLight")
@@ -239,7 +246,11 @@ function Fx.init(G)
         local ahead = arcPos(f, math.min(1, k + 0.02))
         if (ahead - pos).Magnitude > 0.001 then f.p.CFrame = CFrame.lookAt(pos, ahead) else f.p.CFrame = CFrame.new(pos) end
         f.puff = f.puff + 1
-        if f.kind ~= "bomb" and f.puff % 2 == 0 then   -- 尾烟（火山弹拖着黑烟）
+        if f.kind == "cruise" and f.puff % 2 == 0 then   -- 巡航导弹：一道粗白烟，留得久
+          local s = part(BALL, V(2.8, 2.8, 2.8), CFrame.new(pos), RGB(220, 216, 210), Enum.Material.SmoothPlastic, 0.25)
+          tween(s, 2.8, { Size = V(11, 11, 11), Transparency = 1 })
+          Debris:AddItem(s, 2.85)
+        elseif f.kind ~= "bomb" and f.kind ~= "cruise" and f.puff % 2 == 0 then   -- 尾烟（火山弹拖着黑烟）
           local s = part(BALL, V(1.6, 1.6, 1.6), CFrame.new(pos), RGB(160, 156, 150), Enum.Material.SmoothPlastic, 0.4)
           tween(s, 1, { Size = V(5, 5, 5), Transparency = 1 })
           Debris:AddItem(s, 1.05)
@@ -247,6 +258,61 @@ function Fx.init(G)
       end
     end
   end
+
+  -- 导弹发射井：两扇井盖往两边滑开、井口喷一大团白烟，几秒后合上（找离 p 最近的那口井）
+  local function siloOpen(p)
+    local plots = workspace:FindFirstChild("Plots")
+    local silo = nil
+    for _, pf in ipairs(plots and plots:GetChildren() or {}) do
+      local bf = pf:FindFirstChild("Buildings")
+      local s = bf and bf:FindFirstChild("silo")
+      local body = s and s:FindFirstChild("Body")
+      if body and (V(body.CFrame.Position.X, 0, body.CFrame.Position.Z) - V(p.X, 0, p.Z)).Magnitude < 8 then silo = s end
+    end
+    if silo then
+      for _, d in ipairs(silo:GetChildren()) do
+        if d:IsA("BasePart") and (d.Name == "DoorL" or d.Name == "DoorR") then
+          local cf0 = d.CFrame
+          local dx = (d.Name == "DoorL") and -5.6 or 5.6
+          tween(d, 0.7, { CFrame = cf0 + V(dx, 0, 0) })
+          task.delay(4.2, function()
+            if d.Parent then tween(d, 1.0, { CFrame = cf0 }) end
+          end)
+        end
+      end
+    end
+    local hole = p + V(-2, 1.4, -3)
+    task.delay(0.6, function()
+      flash(hole, 5)
+      for i = 1, 8 do
+        local o = V(math.random() - 0.5, 0, math.random() - 0.5) * 10
+        local sm = part(BALL, V(7, 7, 7), CFrame.new(hole + o), RGB(226, 222, 216), Enum.Material.SmoothPlastic, 0.2)
+        tween(sm, 2.2 + i * 0.15, { Size = V(24, 24, 24), Transparency = 1, CFrame = CFrame.new(hole + o * 2 + V(0, 10 + i * 3, 0)) })
+        Debris:AddItem(sm, 2.5 + i * 0.15)
+      end
+    end)
+    G.playSound("alarm", p, 0.6)
+  end
+
+  -- 巡航导弹炸了：大火球、贴地往外扩的冲击波、往上翻滚的火柱和黑烟顶，离得近的震得厉害
+  local function bigBoom(p, s)
+    boom(p, s)
+    local dist = (p - cam.CFrame.Position).Magnitude
+    if dist < 900 then G.shake(math.clamp((900 - dist) / 900, 0, 1) * 1.3) end
+    local ring = part(CYL, V(0.4, 24, 24), CFrame.new(p.X, p.Y + 0.6, p.Z) * FLAT, RGB(255, 236, 200), Enum.Material.Neon, 0.3)
+    tween(ring, 0.9, { Size = V(0.4, 280, 280), Transparency = 1 })
+    Debris:AddItem(ring, 0.95)
+    for i = 1, 4 do
+      local q = p + V(0, i * 7, 0)
+      local fb = part(BALL, V(16, 16, 16), CFrame.new(q), RGB(255, 160 - i * 18, 60), Enum.Material.Neon, 0.15)
+      tween(fb, 1.6 + i * 0.25, { Size = V(38, 38, 38), Transparency = 1, CFrame = CFrame.new(q + V(0, 34 + i * 12, 0)) })
+      Debris:AddItem(fb, 1.9 + i * 0.25)
+    end
+    local cap = part(BALL, V(30, 30, 30), CFrame.new(p + V(0, 30, 0)), RGB(60, 56, 52), Enum.Material.SmoothPlastic, 0.2)
+    tween(cap, 4.5, { Size = V(110, 110, 110), Transparency = 1, CFrame = CFrame.new(p + V(0, 110, 0)) })
+    Debris:AddItem(cap, 4.6)
+  end
+  G.bigBoom = bigBoom
 
   -- 拦截炮打掉一发炮弹：几道曳光打过去，炮弹在半空炸开
   local function intercept(e)
@@ -506,6 +572,15 @@ function Fx.init(G)
         elseif e.k == "boom" then
           boom(e.p, e.s or 1)
           G.playSound("boom", e.p)
+        elseif e.k == "bigboom" then
+          bigBoom(e.p, e.s or 3.6)
+          G.playSound("boom", e.p, 0.6)
+        elseif e.k == "silo" then
+          siloOpen(e.p)
+        elseif e.k == "cruise" then
+          launch(e.a, e.b, e.t or 5, (e.b - e.a).Magnitude * 0.45, "cruise", e.id)
+          flash(e.a, 6)
+          G.playSound("rocket", e.a, 0.7)
         elseif e.k == "build" then
           buildFx(e.p, e.s or 20)
         elseif e.k == "flyover" and typeof(e.b) == "Vector3" then

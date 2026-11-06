@@ -687,7 +687,10 @@ function UI.init(G)
       have[e.id] = true
       if G.skillReady[e.id] == nil then G.skillReady[e.id] = os.clock() + (e.left or 0) end
     end
-    for id, e in pairs(sbtn) do e.b.Visible = have[id] == true end
+    for id, e in pairs(sbtn) do
+      e.b.Visible = have[id] == true
+      e.sub.Text = (mobile and "" or ("[" .. e.sk.key .. "]  ")) .. "冷却 " .. math.floor(Config.SkillCD(e.sk, S.owned) + 0.5) .. " 秒"
+    end
     G.skillHave = have
   end
   function G.stepSkills()
@@ -880,13 +883,13 @@ function UI.init(G)
       place(bbar, V2(0.5, 1), N(0.5, 0, 1, -68), O(700, 44))
       sizes({ { ui.driveBtn, 150, 44, 16 }, { ui.viewBtn, 120, 44, 16 }, { ui.rejoinBtn, 120, 44, 16 }, { ui.exitBtn, 110, 44, 16 } })
       -- 技能：右边一竖列，右手拇指够得着
-      place(sbar, V2(1, 0), N(1, -6, 0, 4), O(112, 288))
-      sbarList.FillDirection, sbarList.HorizontalAlignment, sbarList.Padding = Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Right, UDim.new(0, 6)
-      for _, e in pairs(sbtn) do
-        e.b.Size = O(112, 52)
-        e.nm.Position, e.nm.Size = O(4, 3), N(1, -8, 0, 18)
-        e.sub.Position, e.sub.Size = O(4, 22), N(1, -8, 0, 14)
-        e.cdT.Position, e.cdT.Size, e.cdT.TextSize = O(0, 36), N(1, 0, 0, 14), 13
+      place(sbar, V2(1, 0), N(1, -6, 0, 4), O(112, 300))
+      sbarList.FillDirection, sbarList.HorizontalAlignment, sbarList.Padding = Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Right, UDim.new(0, 5)
+      for _, e in pairs(sbtn) do   -- 六个技能一竖列：每个 44 高，到不了右下角的跳跃键
+        e.b.Size = O(112, 44)
+        e.nm.Position, e.nm.Size, e.nm.TextSize = O(4, 3), N(1, -8, 0, 18), 14
+        e.sub.Visible = false
+        e.cdT.Position, e.cdT.Size, e.cdT.TextSize = O(0, 23), N(1, 0, 0, 16), 13
       end
       -- 战报：打仗时左上角是空的
       place(feed, V2(0, 0), O(6, 4), O(300, 150))
@@ -932,11 +935,12 @@ function UI.init(G)
       ui.bInfo.Position, ui.bInfo.Size, ui.bInfo.TextSize = O(0, 33), N(1, 0, 0, 22), 16
       place(bbar, V2(0.5, 1), N(0.5, 0, 1, -78), O(820, 52))
       sizes({ { ui.driveBtn, 170, 48, 18 }, { ui.viewBtn, 140, 48, 18 }, { ui.rejoinBtn, 150, 48, 18 }, { ui.exitBtn, 140, 48, 18 } })
-      place(sbar, V2(0.5, 1), N(0.5, 0, 1, -138), O(700, 64))
+      place(sbar, V2(0.5, 1), N(0.5, 0, 1, -138), O(820, 64))
       sbarList.FillDirection, sbarList.HorizontalAlignment, sbarList.Padding = Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, UDim.new(0, 8)
       for _, e in pairs(sbtn) do
-        e.b.Size = O(128, 60)
-        e.nm.Position, e.nm.Size = O(6, 4), N(1, -12, 0, 20)
+        e.b.Size = O(124, 60)
+        e.nm.Position, e.nm.Size, e.nm.TextSize = O(6, 4), N(1, -12, 0, 20), 15
+        e.sub.Visible = true
         e.sub.Position, e.sub.Size = O(6, 26), N(1, -12, 0, 16)
         e.cdT.Position, e.cdT.Size, e.cdT.TextSize = O(0, 40), N(1, 0, 0, 18), 14
       end

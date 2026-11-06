@@ -12,7 +12,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) { opt[args[i].slice(2)] = args[i + 1]; i++; } else pos.push(args[i]);
 }
 const [dataDir, outDir, ...names] = pos;
-const ALL = ['join', 'base', 'missions', 'deploy', 'battle', 'drive', 'result'];
+const ALL = ['join', 'base', 'missions', 'build', 'deploy', 'battle', 'drive', 'result'];
 const list = names.length ? names : ['pc', 'phone'].flatMap(d => ALL.map(s => d + '_' + s));
 const fileUrl = p => 'file://' + path.resolve(p);
 

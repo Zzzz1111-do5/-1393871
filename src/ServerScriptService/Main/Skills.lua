@@ -1,4 +1,4 @@
--- 军事大亨：战场支援技能（打仗时玩家自己放的：迫击炮急袭、战地急救、炮火覆盖、空投援军、空袭）
+-- 军事大亨：战场支援技能（打仗时玩家自己放的：迫击炮急袭、战地急救、炮火覆盖、空投援军、空袭、巡航导弹；盖了雷达站冷却快两成）
 -- 客户端点技能键、再点战场上的位置 → Action "skill"（id，x，z：相对战场原点）；服务器检查盖没盖那栋楼、冷却、在不在打仗，再放；
 -- 伤害、援军强度跟着全军战力（军工科技 × 重生）走；冷却每一仗开打时清零
 local Skills = {}
@@ -44,7 +44,8 @@ function Skills.init(G)
     st.skillCD = st.skillCD or {}
     local now = os.clock()
     if now < (st.skillCD[id] or 0) then return end
-    st.skillCD[id] = now + sk.cd
+    local cd = Config.SkillCD(sk, st.data.owned)
+    st.skillCD[id] = now + cd
     local team = B.teamOf[st.pl] or 1
     x = math.clamp(x, -Battle.XMAX, Battle.XMAX)
     z = math.clamp(z, Battle.ZMIN, Battle.ZMAX)
@@ -71,6 +72,15 @@ function Skills.init(G)
           Battle.strike(B, team, def, power, x + math.random(-6, 6), bz, 4, 1.1, "bomb", src, B.origin + V(x, 92, bz - dir * 30))
         end)
       end
+    elseif sk.kind == "missile" then   -- 巡航导弹：发射井的井盖拉开、冒烟，导弹从工业区升空，划一道高弧线落到目标
+      local def = { dmg = sk.dmg, splash = sk.splash, vsArmor = sk.vsArmor, vsInf = sk.vsInf, vsAir = 0, fxu = "cruise" }
+      local sb = Config.BuildingById.silo
+      local pad = st.plot.origin + V(sb.x, 1, sb.z)
+      G.fx({ k = "silo", p = pad })
+      task.delay(1.0, function()
+        if B.over then return end
+        Battle.strike(B, team, def, power, x, z, 0, sk.flight, "cruise", src, pad + V(0, 6, 0))
+      end)
     elseif sk.kind == "heal" then
       local r2 = sk.r * sk.r
       local n = 0
@@ -111,7 +121,7 @@ function Skills.init(G)
         end)
       end
     end
-    RB:FireClient(st.pl, { phase = "skill", id = id, cd = sk.cd })
+    RB:FireClient(st.pl, { phase = "skill", id = id, cd = cd })
     G.progress(st, "skill", 1)
   end
 end

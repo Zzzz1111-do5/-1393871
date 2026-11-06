@@ -1,6 +1,6 @@
 --!nocheck
 -- 界面导出：开服、进一个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
---   场合：刚进服（每日奖励）、基地（钱多了、盖了楼）、任务面板、布阵、打仗、开车选单、结算
+--   场合：刚进服（每日奖励）、基地（钱多了、盖了楼）、任务面板、建筑升级面板、布阵、打仗、开车选单、结算
 -- 用法：lune run ui_export.luau <rbxlx> <输出.js> [pc|phone]
 --   phone：触屏、没有键盘，屏幕 844 × 390（iPhone 横屏的逻辑像素）
 local process = require("@lune/process")
@@ -135,6 +135,11 @@ snap("base")
 tryClick("^任务$")
 H.run(0.5)
 snap("missions")
+tryClick("^×$")
+H.run(0.5)
+tryClick("^建筑$")
+H.run(0.5)
+snap("build")
 tryClick("^×$")
 H.run(0.5)
 

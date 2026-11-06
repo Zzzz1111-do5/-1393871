@@ -1256,7 +1256,99 @@ local function nuclear(m, base, b)
   return body
 end
 
-local IND = { oil1 = oilWell, oil2 = oilWell, oil3 = oilWell, refinery = refinery, ammo = ammoPlant, steel = steelMill, mine = mine, nuclear = nuclear }
+-- 雷达站：钢架塔顶上一面大雷达天线一直转（天线板、底框、馈源支臂绕塔的竖轴一起转）；白色球形雷达罩、两个设备方舱、带红灯的天线杆
+local function radarStation(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 0.6, d), CF(0, 0.3, 0), RGB(150, 150, 144), MAT.Concrete)
+  local Y = 0.6
+  local STEEL, WHITE = RGB(120, 124, 130), RGB(232, 232, 226)
+  local tz = -3
+  for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do rod(m, base, V(o[1] * 4.4, Y, tz + o[2] * 4.4), V(o[1] * 1.5, Y + 14, tz + o[2] * 1.5), 0.5, STEEL) end
+  for k = 1, 3 do block(m, base, V(8.8 - k * 1.8, 0.35, 8.8 - k * 1.8), CF(0, Y + k * 3.6, tz), STEEL, MAT.Metal) end
+  block(m, base, V(4.6, 1.0, 4.6), CF(0, Y + 14.4, tz), RGB(90, 92, 96), MAT.Metal)
+  local dc = CF(0, Y + 18.2, tz)
+  local piv, up = (base * dc).Position, V(0, 1, 0)
+  anim(block(m, base, V(1.8, 1.6, 1.8), CF(0, Y + 15.7, tz), RGB(70, 72, 76), MAT.Metal), "spin", 0.18)
+  spinAbout(block(m, base, V(11, 4.6, 0.5), dc * CF(0, 0, -0.9) * CFrame.Angles(math.rad(-14), 0, 0), WHITE, MAT.SmoothPlastic), piv, up, 0.18)
+  spinAbout(block(m, base, V(11.4, 0.45, 0.9), dc * CF(0, -2.4, -0.5), STEEL, MAT.Metal), piv, up, 0.18)
+  spinAbout(block(m, base, V(0.6, 2.6, 0.6), dc * CF(0, -1.3, 0.2), STEEL, MAT.Metal), piv, up, 0.18)
+  spinAbout(block(m, base, V(0.3, 0.3, 4.2), dc * CF(0, 0.3, -3.2), STEEL, MAT.Metal), piv, up, 0.18)
+  spinAbout(block(m, base, V(1.0, 1.0, 1.0), dc * CF(0, 0.3, -5.3), RGB(60, 62, 66), MAT.Metal), piv, up, 0.18)
+  -- 球形雷达罩
+  cyl(m, base, 2.4, 8, CF(8, Y + 1.2, 7), RGB(170, 170, 166), MAT.Concrete)
+  block(m, base, V(9, 9, 9), CF(8, Y + 6.2, 7), WHITE, MAT.SmoothPlastic, BALL)
+  -- 设备方舱（门、空调外机）
+  for i, sz in ipairs({ 8, 2 }) do
+    block(m, base, V(6.4, 3.4, 4.2), CF(-7.5, Y + 1.7, sz), RGB(92, 104, 74), MAT.Metal)
+    block(m, base, V(1.4, 2.4, 0.15), CF(-7.5 + 1.6, Y + 1.2, sz + 2.15), C.dark, MAT.Metal)
+    block(m, base, V(1.4, 1.0, 0.9), CF(-7.5 - 1.8, Y + 0.5, sz + 2.6), RGB(190, 192, 190), MAT.Metal)
+    if i == 1 then facadeSign(m, base, CF(-7.5, Y + 2.6, sz + 2.2), 5.6, 1.1, "雷 达 站", RGB(255, 226, 140), Enum.NormalId.Back) end
+  end
+  -- 天线杆和顶上的红灯
+  cyl(m, base, 19, 0.45, CF(10, Y + 9.5, -9), STEEL, MAT.Metal)
+  anim(ghostly(block(m, base, V(0.8, 0.8, 0.8), CF(10, Y + 19.3, -9), RGB(255, 40, 30), MAT.Neon)), "blink", 0.8)
+  for _, a in ipairs({ 0, 120, 240 }) do
+    local r = math.rad(a)
+    ghostly(rod(m, base, V(10, Y + 17, -9), V(10 + math.cos(r) * 6, Y, -9 + math.sin(r) * 6), 0.08, C.dark))
+  end
+  return body
+end
+
+-- 导弹发射井：带黄黑警示圈的混凝土台子，中间井口上两扇井盖（DoorL / DoorR：放「巡航导弹」时客户端把它们滑开、冒烟，导弹从井里升空），
+--   井里白色的弹头，控制地堡（门、潜望镜、天线、状态灯），四角的警示灯，旁边停着一辆导弹运输车
+local function missileSilo(m, base, b)
+  local w, h, d = b.size[1], b.size[2], b.size[3]
+  local body = hiddenBody(m, base, w, h, d)
+  block(m, base, V(w, 1.2, d), CF(0, 0.6, 0), RGB(140, 140, 134), MAT.Concrete)
+  local Y = 1.2
+  local sx, sz = -2, -3   -- 井口中心
+  ghostly(cyl(m, base, 0.06, 15, CF(sx, Y + 0.03, sz), RGB(236, 196, 40), MAT.SmoothPlastic))
+  for k = 0, 7 do   -- 警示圈上的黑条
+    local a = k * math.pi / 4
+    ghostly(block(m, base, V(1.2, 0.08, 3.4), CF(sx + math.cos(a) * 6.6, Y + 0.05, sz + math.sin(a) * 6.6) * CFrame.Angles(0, -a, 0), RGB(30, 30, 30), MAT.SmoothPlastic))
+  end
+  ghostly(cyl(m, base, 0.1, 10, CF(sx, Y + 0.08, sz), RGB(16, 16, 18), MAT.SmoothPlastic))
+  block(m, base, V(2.8, 2.8, 2.8), CF(sx, Y - 0.8, sz), RGB(240, 240, 236), MAT.SmoothPlastic, BALL)
+  ghostly(block(m, base, V(1.0, 1.0, 1.0), CF(sx, Y + 0.3, sz), RGB(200, 50, 40), MAT.SmoothPlastic, BALL))
+  for _, side in ipairs({ { "DoorL", -1 }, { "DoorR", 1 } }) do
+    local x = sx + side[2] * 2.6
+    local door = block(m, base, V(5.2, 0.6, 11), CF(x, Y + 0.45, sz), RGB(96, 102, 92), MAT.DiamondPlate)
+    door.Name = side[1]
+    for _, oz in ipairs({ -3, 0, 3 }) do
+      local st = ghostly(block(m, base, V(4.6, 0.06, 1.0), CF(x, Y + 0.78, sz + oz) * CFrame.Angles(0, math.rad(35), 0), RGB(236, 196, 40), MAT.SmoothPlastic))
+      st.Name = side[1]
+    end
+  end
+  -- 控制地堡
+  local bx, bz = -7, 8.5
+  block(m, base, V(9, 4.2, 6.5), CF(bx, Y + 2.1, bz), RGB(120, 124, 112), MAT.Concrete)
+  block(m, base, V(9.6, 0.6, 7.1), CF(bx, Y + 4.5, bz), RGB(100, 104, 94), MAT.Concrete)
+  block(m, base, V(1.8, 2.8, 0.2), CF(bx + 2.2, Y + 1.4, bz - 3.3), C.dark, MAT.Metal)
+  cyl(m, base, 2.6, 0.4, CF(bx - 2.5, Y + 6.1, bz), C.dark, MAT.Metal)
+  ghostly(cyl(m, base, 5, 0.12, CF(bx + 3.4, Y + 7.3, bz + 2), C.dark, MAT.Metal))
+  anim(ghostly(block(m, base, V(0.6, 0.4, 0.12), CF(bx - 1.2, Y + 2.9, bz - 3.3), RGB(90, 255, 120), MAT.Neon)), "blink", 1.2)
+  facadeSign(m, base, CF(bx, Y + 3.3, bz - 3.35), 7, 1.1, "导弹发射井", RGB(255, 226, 140), Enum.NormalId.Front)
+  -- 四角警示灯
+  for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+    cyl(m, base, 1.4, 0.6, CF(o[1] * (w / 2 - 1.2), Y + 0.7, o[2] * (d / 2 - 1.2)), RGB(80, 80, 84), MAT.Metal)
+    anim(ghostly(block(m, base, V(0.7, 0.7, 0.7), CF(o[1] * (w / 2 - 1.2), Y + 1.7, o[2] * (d / 2 - 1.2)), RGB(255, 120, 30), MAT.Neon)), "blink", 1.4)
+  end
+  -- 导弹运输车（车头朝 −Z，车上一根发射筒）
+  local tx, tz = 8.5, 4
+  for _, ox in ipairs({ -1.6, 1.6 }) do
+    for _, oz in ipairs({ -4.2, -1.6, 1.6, 4.2 }) do block(m, base, V(0.8, 2.0, 2.0), CF(tx + ox, Y + 1.0, tz + oz), RGB(30, 30, 32), MAT.SmoothPlastic, CYL) end
+  end
+  block(m, base, V(3.6, 0.8, 12), CF(tx, Y + 1.9, tz), RGB(60, 66, 52), MAT.Metal)
+  block(m, base, V(3.4, 2.6, 2.8), CF(tx, Y + 3.6, tz - 5.2), RGB(84, 96, 64), MAT.Metal)
+  block(m, base, V(3.0, 1.0, 0.2), CF(tx, Y + 4.2, tz - 6.65), RGB(60, 90, 110), MAT.Glass)
+  block(m, base, V(9.6, 2.2, 2.2), CF(tx, Y + 3.6, tz + 1.2) * CFrame.Angles(0, math.pi / 2, 0), RGB(84, 96, 64), MAT.Metal, CYL)
+  block(m, base, V(0.3, 2.3, 2.3), CF(tx, Y + 3.6, tz + 6.0) * CFrame.Angles(0, math.pi / 2, 0), RGB(60, 62, 56), MAT.Metal, CYL)
+  return body
+end
+
+local IND = { oil1 = oilWell, oil2 = oilWell, oil3 = oilWell, refinery = refinery, ammo = ammoPlant, steel = steelMill, mine = mine, nuclear = nuclear,
+  radar = radarStation, silo = missileSilo }
 Models.IND = IND
 
 local KIND = { house = house, factory = factory, power = power, bank = bank, hq = hq }
@@ -1299,6 +1391,8 @@ function Models.pad(parent, b, pos, team)
   elseif b.kind == "hq" then desc = "部队上限 " .. b.cap[1]
   elseif b.kind == "power" then desc = "工厂收入 ×" .. Config.PowerBoost
   end
+  if b.kind == "radar" then desc = "支援技能冷却 -" .. math.floor((1 - Config.RadarCD) * 100 + 0.5) .. "%"
+  elseif b.kind == "silo" then desc = "支援技能「巡航导弹」" end
   if b.kind == "refinery" then desc = desc .. "\n油井收入 ×" .. Config.RefineryBoost
   elseif b.kind == "nuclear" then desc = desc .. "\n工厂收入再 ×" .. Config.NuclearBoost end
   local _, label = Models.sign(pad, "<b>" .. b.name .. "</b>\n$" .. Config.Fmt(b.price) .. "  " .. desc, 5.5, 17, 4.2, nil, 220)

@@ -143,7 +143,72 @@ if fx then
 end
 check(crates >= 4, "弹药厂传送带上有弹药箱（" .. crates .. " 个）")
 
-print("④ 存档读回级数，重生清掉")
+print("④ 雷达站、导弹发射井、巡航导弹")
+check(st.data.owned.radar and st.data.owned.silo, "雷达站、导弹发射井盖好了（在工业区里）")
+local siloM = plotF.Buildings:FindFirstChild("silo")
+local door = siloM and siloM:FindFirstChild("DoorL")
+st.data.cash = 1e9
+for _, t in { "tank", "tank", "ifv", "inf" } do
+	act(p1, "buy", t)
+	H.run(0.2)
+end
+H.run(20)
+st.data.level = 15
+G.makeEnemy(st)
+H.run(1)
+act(p1, "battle")
+H.run(3)
+local B = st.battle
+check(B ~= nil and C1.skillHave and C1.skillHave.cruise, "开打，技能栏里有「巡航导弹」")
+if B then
+	B.speedK = 0   -- 地面部队先停住，好瞄
+	local tx, tz, n = 0, 0, 0
+	for _, u in B.units do
+		if u.team == 2 and u.alive and not u.def.air then tx, tz, n = tx + u.x, tz + u.z, n + 1 end
+	end
+	tx, tz = tx / math.max(1, n), tz / math.max(1, n)
+	local before = {}
+	for _, u in B.units do
+		if u.team == 2 and u.alive then
+			u.hp *= 3
+			u.max *= 3
+			before[u] = u.hp
+		end
+	end
+	local seen = {}
+	H.ev(H.game.ReplicatedStorage.Remotes.Fx, "OnClientEvent@P1"):Connect(function(list)
+		for _, e in list do seen[e.k] = (seen[e.k] or 0) + 1 end
+	end)
+	local x0 = door and door.CFrame.Position.X
+	act(p1, "skill", "cruise", tx, tz)
+	H.run(1.6)
+	check((seen.silo or 0) == 1 and door ~= nil and math.abs(door.CFrame.Position.X - x0) > 3, "发射井的井盖滑开了")
+	local flying = false
+	for _, sh in B.shells do
+		if sh.kind == "cruise" then flying = true end
+	end
+	check(flying and (seen.cruise or 0) == 1, "导弹从发射井飞出去了")
+	local left = 0
+	for _, e in G.skillInfo(st) do
+		if e.id == "cruise" then left = e.left end
+	end
+	local want = Config.SkillById.cruise.cd * Config.RadarCD
+	check(math.abs(left - want) <= 2.5, string.format("有雷达站：冷却 %d 秒（原来 %d 秒）", left, Config.SkillById.cruise.cd))
+	H.run(5.5)
+	check((seen.bigboom or 0) == 1, "落地一个大爆炸")
+	local hit = 0
+	for u, hp in pairs(before) do
+		if not u.alive or u.hp < hp then hit += 1 end
+	end
+	check(hit >= 1, "炸到了敌人（" .. hit .. " 个挂彩或被打掉）")
+	H.run(5)
+	check(door ~= nil and math.abs(door.CFrame.Position.X - x0) < 0.5, "井盖又合上了")
+	B.speedK = 1
+end
+H.runUntil(function() return st.battle == nil end, 260)
+H.run(3)
+
+print("⑤ 存档读回级数，重生清掉")
 act(p1, "upgrade", "oil1")
 H.run(2.5)
 local lvOil = st.data.lv.oil1
