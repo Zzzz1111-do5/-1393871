@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>界面预览</title>
+<!--
+  画 ui_export.luau 导出的界面（近似：字体、文字换行和 Roblox 不完全一样）。
+  用法：ui_view.html?data=ui_pc.js&s=pc_base[&bg=背景图.png][&core=0]
+    data：ui_export.luau 写出的 JS 文件（和本页同一目录或相对路径）；s：哪一个场合；
+    bg：背景图（比如场景预览图）；core=0：不画 Roblox 自带界面（顶栏、背包栏、手机摇杆和跳跃键）的占位框；
+    tools：背包里几把枪（默认 4）；plist=1：画右上角的玩家列表（游戏里关掉了）。
+  页面画完后 window.REPORT 里是检查结果：顶层面板互相压住、被 Roblox 自带界面挡住、字溢出框、字太小。
+-->
+<style>
+  html, body { margin: 0; background: #0b0d10; }
+  body { font-family: "WenQuanYi Zen Hei", "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", sans-serif; }
+  #screen { position: relative; overflow: hidden; background: linear-gradient(#5b7fa3, #9fb7c9 45%, #6c7d55 46%, #4a5a3a); background-size: cover; background-position: center; }
+  .g { position: absolute; box-sizing: border-box; }
+  .flow { position: relative !important; flex: 0 0 auto; }
+  .tw { position: absolute; inset: 0; display: flex; pointer-events: none; }
+  .tw > span { display: block; max-width: none; }
+  .core { position: absolute; border: 2px dashed rgba(255, 70, 70, 0.95); background: rgba(255, 60, 60, 0.18); color: #fff; font: 12px sans-serif; z-index: 100000; box-sizing: border-box; padding: 2px 4px; text-shadow: 0 0 2px #000; }
+  .core.round { border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="screen"></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const FONT_W = { GothamBold: 700, GothamBlack: 900, GothamMedium: 500, GothamSemibold: 600, SourceSansBold: 700, SourceSansSemibold: 600, ArialBold: 700, Bangers: 700, FredokaOne: 700, LuckiestGuy: 700 };
+const COMP = new Set(['UICorner', 'UIStroke', 'UIGradient', 'UIListLayout', 'UIGridLayout', 'UIPadding', 'UIScale', 'UITextSizeConstraint', 'UISizeConstraint', 'UIAspectRatioConstraint']);
+const TEXT = new Set(['TextLabel', 'TextButton', 'TextBox']);
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a === undefined ? 1 : a})`;
+const ud = (s, o) => (s === 0 ? `${o}px` : `calc(${s * 100}% + ${o}px)`);
+const comp = (n, cls) => n.k.find(k => k.c === cls && k.p.Enabled !== false);
+const textNodes = [];   // 要事后量的文字（TextScaled、溢出检查）
+const tops = [];        // 顶层面板（查互相压住）
+
+// RichText 只认常用的几个标签
+function rich(s) {
+  const esc = s.replace(/&(?![a-z]+;|#\d+;)/g, '&amp;');
+  return esc
+    .replace(/<font\s+([^>]*)>/gi, (m, a) => {
+      let st = '';
+      const col = a.match(/color\s*=\s*["']([^"']+)["']/i);
+      if (col) {
+        const v = col[1].trim();
+        const r = v.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+        st += 'color:' + (r ? `rgb(${r[1]},${r[2]},${r[3]})` : v) + ';';
+      }
+      const sz = a.match(/size\s*=\s*["'](\d+)["']/i);
+      if (sz) st += `font-size:${sz[1]}px;`;
+      return `<span style="${st}">`;
+    })
+    .replace(/<\/font>/gi, '</span>')
+    .replace(/<br\s*\/?>/gi, '<br>')
+    .replace(/<stroke[^>]*>|<\/stroke>/gi, '')
+    .replace(/<uppercase>|<\/uppercase>|<smallcaps>|<\/smallcaps>/gi, '');
+}
+
+function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
+  const p = n.p;
+  if (p.Visible === false) return null;
+  const d = document.createElement('div');
+  d.className = 'g' + (inFlow ? ' flow' : '');
+  d.dataset.name = n.n;
+  const S = p.Size || [0, 0, 0, 0], Pn = p.Position || [0, 0, 0, 0], A = p.AnchorPoint || [0, 0];
+  const auto = p.AutomaticSize || 'None';
+  const sc = comp(n, 'UIScale');
+  const s = sc ? sc.p.Scale : 1;
+  const acc = scaleAcc * s;
+  if (auto === 'X' || auto === 'XY') { d.style.width = 'max-content'; d.style.minWidth = ud(S[0], S[1]); } else d.style.width = ud(S[0], S[1]);
+  if (auto === 'Y' || auto === 'XY') { d.style.height = 'auto'; d.style.minHeight = ud(S[2], S[3]); } else d.style.height = ud(S[2], S[3]);
+  const tf = [];
+  if (!inFlow) {
+    d.style.left = ud(Pn[0], Pn[1]);
+    d.style.top = ud(Pn[2], Pn[3]);
+    if (A[0] || A[1]) tf.push(`translate(${-A[0] * 100}%, ${-A[1] * 100}%)`);
+  }
+  if (s !== 1) tf.push(`scale(${s})`);
+  if (p.Rotation) tf.push(`rotate(${p.Rotation}deg)`);
+  if (tf.length) { d.style.transform = tf.join(' '); d.style.transformOrigin = `${A[0] * 100}% ${A[1] * 100}%`; }
+  if (p.ZIndex !== undefined) d.style.zIndex = p.ZIndex;
+  const bt = p.BackgroundTransparency === undefined ? 1 : p.BackgroundTransparency;
+  if (bt < 1 && p.BackgroundColor3) {
+    const gr = comp(n, 'UIGradient');
+    if (gr && gr.p.Color) {
+      const base = p.BackgroundColor3;
+      const tr = gr.p.Transparency || [[0, 0], [1, 0]];
+      const trAt = t => { for (let i = 0; i < tr.length - 1; i++) if (t <= tr[i + 1][0]) { const f = (t - tr[i][0]) / Math.max(1e-6, tr[i + 1][0] - tr[i][0]); return tr[i][1] + (tr[i + 1][1] - tr[i][1]) * f; } return tr[tr.length - 1][1]; };
+      const stops = gr.p.Color.map(k => `${rgba([base[0] * k[1] / 255, base[1] * k[2] / 255, base[2] * k[3] / 255].map(Math.round), (1 - bt) * (1 - trAt(k[0])))} ${k[0] * 100}%`);
+      d.style.background = `linear-gradient(${90 + (gr.p.Rotation || 0)}deg, ${stops.join(', ')})`;
+    } else d.style.background = rgba(p.BackgroundColor3, 1 - bt);
+  }
+  const cor = comp(n, 'UICorner');
+  if (cor) d.style.borderRadius = cor.p.CornerRadius[0] >= 0.5 ? '50%' : (cor.p.CornerRadius[0] > 0 ? `${cor.p.CornerRadius[0] * 100}%` : `${cor.p.CornerRadius[1]}px`);
+  const stroke = comp(n, 'UIStroke');
+  const isText = TEXT.has(n.c);
+  if (stroke && (stroke.p.ApplyStrokeMode === 'Border' || !isText)) {
+    d.style.boxShadow = `0 0 0 ${stroke.p.Thickness}px ${rgba(stroke.p.Color, 1 - stroke.p.Transparency)}`;
+  }
+  if (p.ClipsDescendants || n.c === 'ScrollingFrame') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }
+  const szc = comp(n, 'UISizeConstraint');
+  if (szc) {
+    if (szc.p.MaxSize) { if (szc.p.MaxSize[0] < 1e7) d.style.maxWidth = szc.p.MaxSize[0] + 'px'; if (szc.p.MaxSize[1] < 1e7) d.style.maxHeight = szc.p.MaxSize[1] + 'px'; }
+    if (szc.p.MinSize) { if (szc.p.MinSize[0] > 0) d.style.minWidth = szc.p.MinSize[0] + 'px'; if (szc.p.MinSize[1] > 0) d.style.minHeight = szc.p.MinSize[1] + 'px'; }
+  }
+  if (n.c === 'ImageLabel' || n.c === 'ImageButton') {
+    if (p.Image) { d.style.outline = '1px dotted rgba(255,255,255,0.5)'; d.title = p.Image; }
+  }
+  // 文字
+  if (isText && p.Text !== undefined && p.Text !== '') {
+    const tw = document.createElement('div');
+    tw.className = 'tw';
+    const xa = p.TextXAlignment || 'Center', ya = p.TextYAlignment || 'Center';
+    tw.style.justifyContent = xa === 'Left' ? 'flex-start' : xa === 'Right' ? 'flex-end' : 'center';
+    tw.style.alignItems = ya === 'Top' ? 'flex-start' : ya === 'Bottom' ? 'flex-end' : 'center';
+    tw.style.textAlign = xa === 'Left' ? 'left' : xa === 'Right' ? 'right' : 'center';
+    if (auto !== 'None') { tw.style.position = 'relative'; tw.style.inset = 'auto'; }
+    const sp = document.createElement('span');
+    sp.style.fontSize = (p.TextSize || 14) + 'px';
+    sp.style.fontWeight = FONT_W[p.Font] || 400;
+    sp.style.lineHeight = (p.LineHeight || 1) * 1.2;
+    sp.style.color = rgba(p.TextColor3 || [0, 0, 0], 1 - (p.TextTransparency || 0));
+    sp.style.whiteSpace = p.TextWrapped ? 'pre-wrap' : 'pre';
+    if (p.TextWrapped) { sp.style.wordBreak = 'break-word'; sp.style.lineBreak = 'anywhere'; sp.style.maxWidth = '100%'; }
+    const sst = p.TextStrokeTransparency === undefined ? 1 : p.TextStrokeTransparency;
+    if (sst < 1) {
+      const c = rgba(p.TextStrokeColor3 || [0, 0, 0], 1 - sst);
+      sp.style.textShadow = `1px 0 ${c}, -1px 0 ${c}, 0 1px ${c}, 0 -1px ${c}`;
+    }
+    if (stroke && stroke.p.ApplyStrokeMode !== 'Border') {
+      sp.style.webkitTextStroke = `${stroke.p.Thickness}px ${rgba(stroke.p.Color, 1 - stroke.p.Transparency)}`;
+      sp.style.paintOrder = 'stroke fill';
+    }
+    if (p.RichText) sp.innerHTML = rich(p.Text); else sp.textContent = p.Text;
+    tw.appendChild(sp);
+    d.appendChild(tw);
+    const tc = comp(n, 'UITextSizeConstraint');
+    textNodes.push({ n, d, sp, acc, scaled: !!p.TextScaled, wrapped: !!p.TextWrapped, max: tc ? tc.p.MaxTextSize : 100, min: tc ? tc.p.MinTextSize : 1, auto });
+  }
+  // 内容区（UIPadding）
+  let inner = d;
+  const pad = comp(n, 'UIPadding');
+  const isScroll = n.c === 'ScrollingFrame';
+  if (pad || isScroll) {
+    inner = document.createElement('div');
+    inner.className = 'g';
+    const pl = pad ? pad.p.PaddingLeft : [0, 0], pr = pad ? pad.p.PaddingRight : [0, 0], pt = pad ? pad.p.PaddingTop : [0, 0], pb = pad ? pad.p.PaddingBottom : [0, 0];
+    if (isScroll) {
+      // 画布：CanvasSize 按滚动框的大小算，从 CanvasPosition 处开始显示
+      const cs = p.CanvasSize || [0, 0, 0, 0], cp = p.CanvasPosition || [0, 0];
+      inner.style.left = (-cp[0]) + 'px';
+      inner.style.top = (-cp[1]) + 'px';
+      inner.style.width = cs[0] === 0 && cs[1] === 0 ? '100%' : ud(cs[0], cs[1]);
+      inner.style.height = cs[2] === 0 && cs[3] === 0 ? '100%' : ud(cs[2], cs[3]);
+      inner.dataset.canvas = '1';
+      inner.dataset.auto = p.AutomaticCanvasSize || 'None';
+      inner.style.paddingLeft = ud(pl[0], pl[1]);
+      inner.style.paddingTop = ud(pt[0], pt[1]);
+      d.dataset.sbar = p.ScrollBarThickness || 12;
+    } else {
+      inner.style.left = ud(pl[0], pl[1]);
+      inner.style.right = ud(pr[0], pr[1]);
+      inner.style.top = ud(pt[0], pt[1]);
+      inner.style.bottom = ud(pb[0], pb[1]);
+    }
+    d.appendChild(inner);
+  }
+  const list = comp(n, 'UIListLayout');
+  const grid = comp(n, 'UIGridLayout');
+  let kids = n.k.filter(k => !COMP.has(k.c));
+  if (grid) {
+    // 格子：每格 CellSize，按 LayoutOrder 从左到右、从上到下排
+    const box = document.createElement('div');
+    box.className = 'g';
+    box.style.inset = '0';
+    box.style.display = 'grid';
+    const cs = grid.p.CellSize || [0, 100, 0, 100], cp = grid.p.CellPadding || [0, 5, 0, 5];
+    box.style.gridTemplateColumns = `repeat(auto-fill, ${ud(cs[0], cs[1])})`;
+    box.style.gridAutoRows = ud(cs[2], cs[3]);
+    box.style.columnGap = ud(cp[0], cp[1]);
+    box.style.rowGap = ud(cp[2], cp[3]);
+    inner.appendChild(box);
+    kids = kids.slice().sort((a, b) => grid.p.SortOrder === 'Name' ? (a.n < b.n ? -1 : a.n > b.n ? 1 : 0) : ((a.p.LayoutOrder || 0) - (b.p.LayoutOrder || 0)));
+    for (const k of kids) {
+      const el = build(k, box, true, acc, depth + 1, topInfo);
+      if (el) { el.style.width = '100%'; el.style.height = '100%'; }
+    }
+  } else if (list) {
+    const vert = list.p.FillDirection !== 'Horizontal';
+    const box = document.createElement('div');
+    box.className = 'g';
+    box.style.inset = '0';
+    box.style.display = 'flex';
+    box.style.flexDirection = vert ? 'column' : 'row';
+    const gp = list.p.Padding || [0, 0];
+    box.style.gap = ud(gp[0], gp[1]);
+    const ha = list.p.HorizontalAlignment || 'Left', va = list.p.VerticalAlignment || 'Top';
+    const H = ha === 'Center' ? 'center' : ha === 'Right' ? 'flex-end' : 'flex-start';
+    const V = va === 'Center' ? 'center' : va === 'Bottom' ? 'flex-end' : 'flex-start';
+    box.style.alignItems = vert ? H : V;
+    box.style.justifyContent = vert ? V : H;
+    inner.appendChild(box);
+    kids = kids.slice().sort((a, b) => list.p.SortOrder === 'Name' ? (a.n < b.n ? -1 : a.n > b.n ? 1 : 0) : ((a.p.LayoutOrder || 0) - (b.p.LayoutOrder || 0)));
+    for (const k of kids) build(k, box, true, acc, depth + 1, topInfo);
+  } else {
+    for (const k of kids) build(k, inner, false, acc, depth + 1, topInfo);
+  }
+  parentEl.appendChild(d);
+  if (topInfo && (depth === topInfo.depth || p.__top)) tops.push({ name: n.n, d, n });
+  return d;
+}
+
+// 文字：TextScaled 找最大能放下的字号；查溢出、太小
+function fitTexts(report) {
+  for (const t of textNodes) {
+    const box = t.d;
+    if (!box.offsetParent && getComputedStyle(box).display === 'none') continue;
+    if (t.scaled) {
+      let lo = Math.max(1, t.min), hi = Math.min(100, t.max), best = lo;
+      while (lo <= hi) {
+        const m = (lo + hi) >> 1;
+        t.sp.style.fontSize = m + 'px';
+        if (t.sp.scrollWidth <= box.clientWidth + 0.5 && t.sp.scrollHeight <= box.clientHeight + 0.5) { best = m; lo = m + 1; } else hi = m - 1;
+      }
+      t.sp.style.fontSize = best + 'px';
+    }
+    const fs = parseFloat(t.sp.style.fontSize);
+    const eff = fs * t.acc;
+    const bw = box.clientWidth, bh = box.clientHeight;
+    const over = t.auto === 'None' && (t.sp.scrollWidth > bw + 2 || t.sp.offsetHeight > bh + 4);
+    const txt = (t.n.p.Text || '').replace(/<[^>]+>/g, '').slice(0, 40);
+    if (over) report.push({ kind: '字溢出框', name: t.n.n, text: txt, box: [bw, bh].map(Math.round), need: [t.sp.scrollWidth, t.sp.offsetHeight] });
+    if (eff < 11) report.push({ kind: '字太小', name: t.n.n, text: txt, px: Math.round(eff * 10) / 10 });
+  }
+}
+
+// 滚动画布：AutomaticCanvasSize 按内容撑开；画个滚动条
+function fixCanvas() {
+  for (const c of document.querySelectorAll('[data-canvas]')) {
+    if (c.dataset.auto !== 'None') {
+      let maxB = 0;
+      for (const ch of c.children) maxB = Math.max(maxB, ch.offsetTop + ch.offsetHeight);
+      if (c.dataset.auto.includes('Y') && maxB > c.offsetHeight) c.style.height = maxB + 'px';
+    }
+    const f = c.parentElement;
+    if (c.offsetHeight > f.clientHeight + 1) {
+      const bar = document.createElement('div');
+      bar.className = 'g';
+      const th = +f.dataset.sbar;
+      bar.style.cssText += `right:0;top:0;width:${th}px;height:${Math.max(20, f.clientHeight * f.clientHeight / c.offsetHeight)}px;background:rgba(255,255,255,0.35);border-radius:${th}px;z-index:9999`;
+      f.appendChild(bar);
+    }
+  }
+}
+
+function rectOf(el) {
+  const r = el.getBoundingClientRect();
+  const s = document.getElementById('screen').getBoundingClientRect();
+  return { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height };
+}
+function overlap(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return (w > 2 && h > 2) ? Math.round(w * h) : 0;
+}
+// 看得见的东西（有底色、有字、或者里面有看得见的东西）的外框
+function visRect(el) {
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none') return null;
+  let r = null;
+  const solid = (cs.backgroundColor && !/rgba\(\d+,\s*\d+,\s*\d+,\s*0\)/.test(cs.backgroundColor) && cs.backgroundColor !== 'transparent') || cs.backgroundImage !== 'none';
+  const hasText = el.querySelector(':scope > .tw > span');
+  if (solid || hasText) {
+    r = rectOf(hasText && !solid ? hasText : el);
+  }
+  const own = rectOf(el);
+  for (const ch of el.children) {
+    if (!ch.classList.contains('g')) continue;
+    let cr = visRect(ch);
+    // 被裁剪（ClipsDescendants、滚动框）的部分看不见
+    if (cr && el.dataset.clip) {
+      const x0 = Math.max(cr.x, own.x), y0 = Math.max(cr.y, own.y), x1 = Math.min(cr.x + cr.w, own.x + own.w), y1 = Math.min(cr.y + cr.h, own.y + own.h);
+      cr = (x1 > x0 && y1 > y0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+    }
+    if (cr) {
+      if (!r) r = cr;
+      else {
+        const x0 = Math.min(r.x, cr.x), y0 = Math.min(r.y, cr.y);
+        r = { x: x0, y: y0, w: Math.max(r.x + r.w, cr.x + cr.w) - x0, h: Math.max(r.y + r.h, cr.y + cr.h) - y0 };
+      }
+    }
+  }
+  return r;
+}
+
+function render(snap) {
+  const scr = document.getElementById('screen');
+  scr.style.width = snap.vw + 'px';
+  scr.style.height = snap.vh + 'px';
+  if (Q.get('bg')) scr.style.backgroundImage = `url(${Q.get('bg')})`;
+  const phone = snap.dev === 'phone';
+  // Roblox 自带界面占的地方（近似）：顶栏；手机两边的刘海安全区、底下的横条
+  const inset = phone ? { t: 44, l: 47, r: 47, b: 21 } : { t: 58, l: 0, r: 0, b: 0 };
+  const report = [];
+  const guis = snap.guis.slice().sort((a, b) => (a.p.DisplayOrder || 0) - (b.p.DisplayOrder || 0));
+  let topInfo = null;
+  for (const g of guis) {
+    if (g.p.Enabled === false) continue;
+    const sg = document.createElement('div');
+    sg.className = 'g';
+    sg.dataset.name = g.n;
+    const ign = !!g.p.IgnoreGuiInset;
+    sg.style.left = (ign ? 0 : inset.l) + 'px';
+    sg.style.top = (ign ? 0 : inset.t) + 'px';
+    sg.style.width = (snap.vw - (ign ? 0 : inset.l + inset.r)) + 'px';
+    sg.style.height = (snap.vh - (ign ? 0 : inset.t + inset.b)) + 'px';
+    sg.style.zIndex = g.p.DisplayOrder || 0;
+    scr.appendChild(sg);
+    // 顶层面板：只有一个铺满的根框架时，取根框架的孩子
+    const kids = g.k.filter(k => !COMP.has(k.c));
+    const roots = kids.filter(k => k.p.BackgroundTransparency === 1 && (k.p.Size || [])[0] >= 0.5 && (k.p.Size || [])[2] >= 0.5);
+    const single = roots.length === 1;
+    if (single) for (const k of kids) if (k !== roots[0]) k.p.__top = 1;
+    topInfo = { depth: single ? 1 : 0 };
+    for (const k of kids) build(k, sg, false, 1, 0, topInfo);
+  }
+  fixCanvas();
+  fitTexts(report);
+  // Roblox 自带界面
+  const cores = [];
+  const core = (label, x, y, w, h, round) => {
+    cores.push({ label, x, y, w, h });
+    if (Q.get('core') === '0') return;
+    const c = document.createElement('div');
+    c.className = 'core' + (round ? ' round' : '');
+    Object.assign(c.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+    c.textContent = label;
+    scr.appendChild(c);
+  };
+  core('Roblox 菜单 / 聊天', 8, phone ? 4 : 8, phone ? 100 : 120, phone ? 36 : 44);
+  // 背包栏（枪）：底部正中，一格一把枪
+  const nTools = +(Q.get('tools') || 4);
+  const slot = phone ? 50 : 60, gap = 5, wB = nTools * slot + (nTools - 1) * gap;
+  core(`背包栏（${nTools} 把枪）`, (snap.vw - wB) / 2, snap.vh - inset.b - slot - 4, wB, slot);
+  if (phone) {
+    core('摇杆', inset.l + 40, snap.vh - 170, 130, 130, true);
+    core('跳', snap.vw - 95, snap.vh - 90, 70, 70, true);
+  } else if (Q.get('plist') === '1') {
+    const n = +(Q.get('players') || 6);
+    core(`玩家列表（${n} 人，leaderstats 3 列）`, snap.vw - 10 - 380, inset.t + 4, 380, 26 + n * 36);
+  }
+  // 顶层面板互相压住、被 Roblox 自带界面挡住
+  const rs = tops.map(t => ({ name: t.name, r: visRect(t.d), z: +(t.d.style.zIndex || 1) })).filter(t => t.r && t.r.w > 0 && t.r.h > 0);
+  for (let i = 0; i < rs.length; i++) {
+    for (let j = i + 1; j < rs.length; j++) {
+      const o = overlap(rs[i].r, rs[j].r);
+      if (o) report.push({ kind: '面板压住', a: rs[i].name, b: rs[j].name, area: o });
+    }
+    for (const c of cores) {
+      const o = overlap(rs[i].r, c);
+      if (o) report.push({ kind: '被 Roblox 界面挡住', a: rs[i].name, b: c.label, area: o });
+    }
+    if (rs[i].r.x < -1 || rs[i].r.y < -1 || rs[i].r.x + rs[i].r.w > snap.vw + 1 || rs[i].r.y + rs[i].r.h > snap.vh + 1) report.push({ kind: '出了屏幕', a: rs[i].name, r: [rs[i].r.x, rs[i].r.y, rs[i].r.w, rs[i].r.h].map(Math.round) });
+  }
+  window.TOPS = rs.map(t => ({ name: t.name, r: [t.r.x, t.r.y, t.r.w, t.r.h].map(Math.round) }));
+  window.REPORT = report;
+  document.title = 'ok';
+}
+
+const sc = document.createElement('script');
+sc.src = Q.get('data') || 'ui_pc.js';
+sc.onload = () => {
+  const snap = (window.UI_SNAPS || {})[Q.get('s')];
+  // Lua 的空表编码成 JSON 时可能是 {} 也可能是 []：统一成孩子是数组、属性是对象
+  const norm = n => { n.k = Array.isArray(n.k) ? n.k : []; if (!n.p || Array.isArray(n.p)) n.p = {}; n.k.forEach(norm); };
+  if (snap) (Array.isArray(snap.guis) ? snap.guis : (snap.guis = [])).forEach(norm);
+  if (!snap) { document.body.textContent = '没有这个场合：' + Q.get('s') + '（有：' + Object.keys(window.UI_SNAPS || {}).join('、') + '）'; document.title = 'ok'; return; }
+  document.fonts.ready.then(() => render(snap));
+};
+document.head.appendChild(sc);
+</script>
+</body>
+</html>

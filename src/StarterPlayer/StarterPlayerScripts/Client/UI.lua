@@ -46,6 +46,14 @@ function UI.init(G)
   local FONT, FONT2 = Enum.Font.GothamBold, Enum.Font.GothamMedium
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
   G.mobile = mobile
+  -- 手机（触屏、屏幕窄边不到 600）：界面放大一些，换一套紧凑排版（ui.layout）；平板照电脑的排
+  local function isCompact()
+    local vs = cam.ViewportSize
+    return mobile and math.min(vs.X, vs.Y) < 600
+  end
+  G.compact = isCompact()
+  -- Roblox 自带的玩家列表在右上角，会盖住兵工厂和战报；同服务器的玩家在「真人对战」里能看到
+  pcall(function() game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
   local RA = G.R.Action
   local ui = {}
   G.ui = ui
@@ -99,9 +107,16 @@ function UI.init(G)
   local uiScale = mk("UIScale", {}, root)
   local function rescale()
     local vs = cam.ViewportSize
-    local s = math.clamp(math.min(vs.X / 1280, vs.Y / 720) * 1.08, 0.5, 1.3)
+    G.compact = isCompact()
+    local s
+    if G.compact then
+      s = math.clamp(vs.Y / 470, 0.62, 0.92)   -- 手机横屏 390 高：约 0.83，画布约 900 × 390
+    else
+      s = math.clamp(math.min(vs.X / 1280, vs.Y / 720) * 1.08, 0.5, 1.3)
+    end
     uiScale.Scale = s
     root.Size = UDim2.fromScale(1 / s, 1 / s)
+    if ui.layout then ui.layout() end
   end
   rescale()
   cam:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
@@ -134,8 +149,10 @@ function UI.init(G)
 
   -- 左边一列菜单按钮
   local menu = mk("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 276), Size = UDim2.fromOffset(140, 300) }, root)
-  mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, menu)
+  local menuList = mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, menu)
+  local menuGrid = mk("UIGridLayout", { CellSize = UDim2.fromOffset(76, 34), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, FillDirection = Enum.FillDirection.Horizontal })
   local modals = {}
+  local modalSize = {}
   local function closeModals()
     for _, m in pairs(modals) do m.Visible = false end
   end
@@ -148,26 +165,40 @@ function UI.init(G)
   end
   ui.fill = {}
   local btnMission = button(menu, "任务", RGB(52, 84, 120), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 1, TextSize = 16 }, function() open("missions") end)
-  button(menu, "武器", RGB(60, 74, 60), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 2, TextSize = 16 }, function() open("weapons") end)
-  button(menu, "排行榜", RGB(84, 70, 40), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 3, TextSize = 16 }, function() open("board") end)
+  local btnWeapon = button(menu, "武器", RGB(60, 74, 60), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 2, TextSize = 16 }, function() open("weapons") end)
+  local btnBoard = button(menu, "排行榜", RGB(84, 70, 40), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 3, TextSize = 16 }, function() open("board") end)
   local btnDuel = button(menu, "真人对战", RGB(150, 50, 46), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 4, TextSize = 16 }, function() open("duel") end)
   local btnRebirth = button(menu, "重生", RGB(150, 110, 30), { Size = UDim2.fromOffset(140, 40), LayoutOrder = 5, TextSize = 16, Visible = false }, function() open("rebirth") end)
-  button(menu, "致谢", RGB(54, 58, 66), { Size = UDim2.fromOffset(140, 34), LayoutOrder = 6, TextSize = 14 }, function() open("credits") end)
+  local btnCredits = button(menu, "致谢", RGB(54, 58, 66), { Size = UDim2.fromOffset(140, 34), LayoutOrder = 6, TextSize = 14 }, function() open("credits") end)
+  local menuBtns = { btnMission, btnWeapon, btnBoard, btnDuel, btnRebirth, btnCredits }
 
   -- 右边：兵工厂（按页签分类：步兵 / 装甲 / 防空 / 炮兵 / 空中，可以滚动；最下面一行是军工科技）
   local ROWH = 62
-  local shop = panel(root, { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -10, 0, 72), Size = UDim2.fromOffset(330, 500) })
-  text(shop, { Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 0, 28), Font = FONT, TextSize = 20, Text = "兵工厂" })
+  local shop = panel(root, { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -10, 0, 72), Size = UDim2.new(0, 330, 1, -212) })
+  local shopTitle = text(shop, { Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 0, 28), Font = FONT, TextSize = 20, Text = "兵工厂" })
+  -- 手机上兵工厂占的地方大：能收起，收起后右上角一个按钮再打开；布阵时自动收起
+  local shopOpen = true
+  local shopClose = button(shop, "收起", RGB(60, 66, 76), { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -8, 0, 5), Size = UDim2.fromOffset(60, 24), TextSize = 13, Visible = false }, function()
+    shopOpen = false
+    G.updateButtons()
+  end)
+  local shopToggle = button(root, "打开兵工厂", RGB(45, 95, 165), { AnchorPoint = V2(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.fromOffset(124, 40), TextSize = 15, Visible = false }, function()
+    shopOpen = true
+    G.updateButtons()
+  end)
   local tabBar = mk("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 38), Size = UDim2.new(1, -20, 0, 30) }, shop)
   mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tabBar)
   local list = mk("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 74), Size = UDim2.new(1, -12, 1, -80),
     CanvasSize = UDim2.fromOffset(0, 0), ScrollBarThickness = 5 }, shop)
   local rows = {}
+  local rowParts = {}   -- 每一行（含科技行）的框、名字、说明、按钮：排版时一起改大小
   local function row(color)
     local r = mk("Frame", { BackgroundColor3 = color or RGB(255, 255, 255), BackgroundTransparency = color and 0.9 or 0.94, BorderSizePixel = 0, Size = UDim2.new(1, -10, 0, ROWH - 6) }, list)
     round(r, 8)
     local n = text(r, { Position = UDim2.fromOffset(10, 4), Size = UDim2.new(1, -112, 0, 22), Font = FONT, TextSize = 16 })
-    local d = text(r, { Position = UDim2.fromOffset(10, 26), Size = UDim2.new(1, -112, 0, 28), TextSize = 11, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, TextColor3 = RGB(170, 180, 192) })
+    local d = text(r, { Position = UDim2.fromOffset(10, 26), Size = UDim2.new(1, -112, 0, 28), TextSize = 11, TextWrapped = true, TextScaled = true, TextYAlignment = Enum.TextYAlignment.Top, TextColor3 = RGB(170, 180, 192) })
+    local dc = mk("UITextSizeConstraint", { MaxTextSize = 11, MinTextSize = 8 }, d)   -- 说明长的自动缩小，两行放得下
+    table.insert(rowParts, { r = r, n = n, d = d, dc = dc })
     return r, n, d
   end
   for _, t in ipairs(Config.UnitOrder) do
@@ -178,10 +209,12 @@ function UI.init(G)
     local b = button(r, "$" .. Config.Fmt(def.price), RGB(60, 150, 80), { AnchorPoint = V2(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(94, 40), TextSize = 15 },
       function() RA:FireServer("buy", t) end)
     rows[t] = { frame = r, name = n, btn = b }
+    rowParts[#rowParts].b = b
   end
   local techRow, techName, techDesc = row(RGB(255, 214, 90))
   local techBtn = button(techRow, "", RGB(150, 120, 40), { AnchorPoint = V2(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(94, 40), TextSize = 15 },
     function() RA:FireServer("tech") end)
+  rowParts[#rowParts].b = techBtn
   techName.TextColor3 = RGB(255, 222, 130)
   local tabBtns = {}
   local function showTab(id)
@@ -205,7 +238,14 @@ function UI.init(G)
     tabBtns[tab.id] = button(tabBar, tab.name, RGB(44, 50, 60), { Size = UDim2.fromOffset(58, 28), LayoutOrder = i, TextSize = 14 }, function() showTab(tab.id) end)
   end
   showTab("foot")
-  G.shopTab = showTab
+  -- 走到军工建筑旁按 E：打开兵工厂、翻到这个建筑的页签
+  G.shopTab = function(id)
+    showTab(id)
+    if not shopOpen then
+      shopOpen = true
+      G.updateButtons()
+    end
+  end
   ui.shop = shop
 
   -- 下面一排按钮（抬高一点，让开 Roblox 的物品栏）
@@ -241,13 +281,16 @@ function UI.init(G)
   ui.driveBtn = button(bbar, "开车 / 开飞机", RGB(45, 95, 165), { Size = UDim2.fromOffset(170, 48), LayoutOrder = 1 }, function() open("drive") end)
   ui.viewBtn = button(bbar, "俯瞰战场", RGB(70, 80, 92), { Size = UDim2.fromOffset(140, 48), LayoutOrder = 2 }, function() G.toggleOverview() end)
   ui.rejoinBtn = button(bbar, "重返战场", RGB(60, 150, 80), { Size = UDim2.fromOffset(150, 48), LayoutOrder = 3, Visible = false }, function() RA:FireServer("rejoin") end)
-  ui.exitBtn = button(bbar, "下车（F）", RGB(150, 70, 30), { Size = UDim2.fromOffset(140, 48), LayoutOrder = 4, Visible = false }, function() RA:FireServer("exit") end)
+  ui.exitBtn = button(bbar, mobile and "下车" or "下车（F）", RGB(150, 70, 30), { Size = UDim2.fromOffset(140, 48), LayoutOrder = 4, Visible = false }, function() RA:FireServer("exit") end)
 
   -- 准星（开车、手机上拿枪时）、手机的开火键、弹药
   ui.cross = text(root, { AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(40, 40), Text = "+", Font = FONT, TextSize = 34,
     TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.3, Visible = false })
   ui.fireBtn = button(root, "开火", RGB(190, 50, 45), { AnchorPoint = V2(1, 1), Position = UDim2.new(1, -150, 1, -150), Size = UDim2.fromOffset(110, 110), TextSize = 24, Visible = false })
   round(ui.fireBtn, 55)
+  -- 手机开直升机、飞机时没有空格 / C：按住这两个键升降（运输直升机降到最低才放兵）
+  ui.upBtn = button(root, "升高 ▲", RGB(45, 95, 165), { AnchorPoint = V2(1, 1), Position = UDim2.new(1, -272, 1, -205), Size = UDim2.fromOffset(96, 50), TextSize = 17, Visible = false })
+  ui.downBtn = button(root, "降低 ▼", RGB(45, 95, 165), { AnchorPoint = V2(1, 1), Position = UDim2.new(1, -272, 1, -150), Size = UDim2.fromOffset(96, 50), TextSize = 17, Visible = false })
   ui.ammo = text(root, { AnchorPoint = V2(1, 1), Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(260, 30), Font = FONT, TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Right, TextStrokeTransparency = 0.4, Visible = false })
   ui.reloadBar = mk("Frame", { BackgroundColor3 = RGB(255, 214, 90), BorderSizePixel = 0, AnchorPoint = V2(1, 1), Position = UDim2.new(1, -20, 1, -14), Size = UDim2.fromOffset(0, 4), Visible = false }, root)
@@ -307,6 +350,7 @@ function UI.init(G)
     local body = mk("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 50), Size = UDim2.new(1, -28, 1, -62),
       CanvasSize = UDim2.fromOffset(0, 0), ScrollBarThickness = 5, ZIndex = 4 }, m)
     modals[name] = m
+    modalSize[name] = { w, h }
     return m, body
   end
   local function clear(body)
@@ -331,7 +375,7 @@ function UI.init(G)
       local bg = mk("Frame", { BackgroundColor3 = RGB(40, 44, 50), BorderSizePixel = 0, Position = UDim2.fromOffset(0, y + 44), Size = UDim2.new(1, -120, 0, 10), ZIndex = 4 }, mBody)
       round(bg, 4)
       round(mk("Frame", { BackgroundColor3 = RGB(90, 200, 110), BorderSizePixel = 0, Size = UDim2.fromScale(p / m.goal, 1), ZIndex = 4 }, bg), 4)
-      text(mBody, { Position = UDim2.new(1, -116, 0, y + 38), Size = UDim2.fromOffset(0, 20), Text = p .. " / " .. m.goal, ZIndex = 4, TextSize = 13 })
+      text(mBody, { Position = UDim2.new(1, -116, 0, y + 38), Size = UDim2.fromOffset(110, 20), Text = p .. " / " .. m.goal, ZIndex = 4, TextSize = 13 })
       local done = p >= m.goal
       button(mBody, m.claimed and "已领" or (done and ("领 $" .. Config.Fmt(S.missionReward or 0)) or "进行中"), m.claimed and RGB(60, 64, 70) or (done and RGB(60, 150, 80) or RGB(70, 74, 80)),
         { AnchorPoint = V2(1, 0), Position = UDim2.new(1, 0, 0, y + 6), Size = UDim2.fromOffset(104, 40), TextSize = 14, ZIndex = 4 }, function()
@@ -498,8 +542,9 @@ function UI.init(G)
 
   -- 宽度让开正中间的现金条（窄屏上现金条左边大约在 380 处）
   local goal = panel(root, { Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(360, 60) })
-  text(goal, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, Font = FONT, TextColor3 = RGB(255, 214, 90), Text = "当前目标" })
-  local goalL = text(goal, { Position = UDim2.fromOffset(12, 20), Size = UDim2.new(1, -24, 0, 38), TextSize = 14, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top })
+  local goalT = text(goal, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, Font = FONT, TextColor3 = RGB(255, 214, 90), Text = "当前目标" })
+  local goalL = text(goal, { Position = UDim2.fromOffset(12, 20), Size = UDim2.new(1, -24, 0, 38), TextSize = 14, TextWrapped = true, TextScaled = true, TextYAlignment = Enum.TextYAlignment.Top })
+  mk("UITextSizeConstraint", { MaxTextSize = 14, MinTextSize = 9 }, goalL)
   local arrow = mk("BillboardGui", { Name = "GoalArrow", Size = UDim2.fromOffset(140, 90), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 600, Enabled = false, ResetOnSpawn = false })
   arrow.Parent = player:WaitForChild("PlayerGui")
   local arrowT = text(arrow, { Size = UDim2.new(1, 0, 0, 30), Font = FONT, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = RGB(140, 255, 160), TextStrokeTransparency = 0.2, Text = "下一步" })
@@ -559,7 +604,7 @@ function UI.init(G)
   ---------------------------------------------------------------- 打仗时：支援技能栏（点一下，再点战场上的位置；电脑上按 Z X V B N）
 
   local sbar = mk("Frame", { BackgroundTransparency = 1, AnchorPoint = V2(0.5, 1), Position = UDim2.new(0.5, 0, 1, -138), Size = UDim2.fromOffset(700, 64), Visible = false }, root)
-  mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, sbar)
+  local sbarList = mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, sbar)
   ui.sbar = sbar
   G.skillReady = {}   -- [id] = 什么时候冷却好（os.clock）
   local sbtn = {}
@@ -606,7 +651,7 @@ function UI.init(G)
   ---------------------------------------------------------------- 打仗时：战报滚动条（右上）、命中标记、大字播报、低血量红边
 
   local feed = mk("Frame", { BackgroundTransparency = 1, AnchorPoint = V2(1, 0), Position = UDim2.new(1, -10, 0, 150), Size = UDim2.fromOffset(330, 240), Visible = false }, root)
-  mk("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, feed)
+  local feedList = mk("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, feed)
   ui.feed = feed
   local feedN = 0
   function G.feedLine(msg, color)
@@ -710,8 +755,9 @@ function UI.init(G)
     if errSeen[msg] then return end
     errSeen[msg] = true
     if not errBox then
-      errBox = button(gui, "", RGB(130, 24, 24), { AnchorPoint = V2(0.5, 0), Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.fromOffset(760, 0), AutomaticSize = Enum.AutomaticSize.Y,
+      errBox = button(gui, "", RGB(130, 24, 24), { AnchorPoint = V2(0.5, 0), Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.new(0.94, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
         TextSize = 13, Font = FONT2, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20, AutoButtonColor = false })
+      mk("UISizeConstraint", { MaxSize = Vector2.new(760, 2000) }, errBox)
       mk("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, errBox)
       errBox.Text = "游戏出错了（截图发给开发者；点这里关掉）："
       errBox.Activated:Connect(function()
@@ -721,6 +767,137 @@ function UI.init(G)
     end
     errBox.Text = errBox.Text .. "\n· " .. string.sub(msg, 1, 260)
   end
+
+  ---------------------------------------------------------------- 排版：电脑、平板一套；手机（G.compact）一套紧凑的
+  -- 手机画布约 900 × 390：左下角留给摇杆，右下角留给跳跃键，底部中间留给背包栏（枪）；兵工厂能收起
+  local function place(o, anchor, pos, size)
+    o.AnchorPoint = anchor
+    o.Position = pos
+    if size then o.Size = size end
+  end
+  local function sizes(list)
+    for _, e in ipairs(list) do
+      e[1].Size = UDim2.fromOffset(e[2], e[3])
+      if e[4] then e[1].TextSize = e[4] end
+    end
+  end
+  function ui.layout()
+    local c = G.compact
+    local O, N = UDim2.fromOffset, UDim2.new
+    if c then
+      place(top, V2(0.5, 0), N(0.5, 0, 0, 4), O(280, 44))
+      cashL.TextSize, incL.TextSize = 24, 15
+      place(mbar, V2(0.5, 0), N(0.5, 0, 0, 52), O(400, 36))
+      place(goal, V2(0, 0), O(6, 4), O(290, 54))
+      goalT.Position, goalT.Size, goalT.TextSize = O(10, 2), N(1, -20, 0, 14), 12
+      goalL.Position, goalL.Size = O(10, 16), N(1, -20, 0, 36)
+      place(info, V2(0, 0), O(6, 64), O(236, 94))
+      lvL.Position, lvL.Size, lvL.TextSize = O(10, 3), N(1, -20, 0, 24), 18
+      armyL.Position, armyL.Size, armyL.TextSize = O(10, 27), N(1, -20, 0, 18), 14
+      enemyL.Position, enemyL.Size = O(10, 46), N(1, -20, 0, 20)
+      rewardL.Position, rewardL.Size, rewardL.TextSize = O(10, 68), N(1, -20, 0, 18), 14
+      place(menu, V2(0, 0), O(6, 164), O(240, 80))
+      menuList.Parent, menuGrid.Parent = nil, menu
+      for _, b in ipairs(menuBtns) do b.TextSize = 14 end
+      place(shop, V2(1, 0), N(1, -6, 0, 4), N(0, 296, 1, -118))
+      shopTitle.Position, shopTitle.Size, shopTitle.TextSize = O(12, 4), N(1, -80, 0, 24), 18
+      tabBar.Position, tabBar.Size = O(8, 32), N(1, -16, 0, 26)
+      for _, b in pairs(tabBtns) do b.Size = O(52, 26) end
+      list.Position, list.Size = O(4, 62), N(1, -8, 1, -66)
+      ROWH = 56
+      for _, e in ipairs(rowParts) do
+        e.r.Size = N(1, -10, 0, ROWH - 6)
+        e.n.Position, e.n.Size, e.n.TextSize = O(10, 3), N(1, -102, 0, 20), 15
+        e.d.Position, e.d.Size, e.dc.MaxTextSize = O(10, 23), N(1, -102, 0, 28), 12
+        e.b.Size = O(84, 36)
+      end
+      place(bar, V2(0.5, 1), N(0.5, 0, 1, -68), O(700, 44))
+      sizes({ { ui.deployBtn, 96, 44, 17 }, { ui.arrangeBtn, 110, 44, 16 }, { ui.sellBtn, 96, 44, 16 }, { ui.fightBtn, 110, 44, 20 }, { ui.raidBtn, 96, 44, 17 }, { ui.hqBtn, 170, 44, 14 } })
+      place(ui.hint, V2(0.5, 1), N(0.5, 0, 1, -116), O(820, 22))
+      place(bpanel, V2(0.5, 0), N(0.5, 0, 0, 4), O(300, 50))
+      ui.bTitle.Position, ui.bTitle.Size, ui.bTitle.TextSize = O(0, 2), N(1, 0, 0, 24), 18
+      ui.bInfo.Position, ui.bInfo.Size, ui.bInfo.TextSize = O(0, 26), N(1, 0, 0, 20), 15
+      place(bbar, V2(0.5, 1), N(0.5, 0, 1, -68), O(700, 44))
+      sizes({ { ui.driveBtn, 150, 44, 16 }, { ui.viewBtn, 120, 44, 16 }, { ui.rejoinBtn, 120, 44, 16 }, { ui.exitBtn, 110, 44, 16 } })
+      -- 技能：右边一竖列，右手拇指够得着
+      place(sbar, V2(1, 0), N(1, -6, 0, 4), O(112, 288))
+      sbarList.FillDirection, sbarList.HorizontalAlignment, sbarList.Padding = Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Right, UDim.new(0, 6)
+      for _, e in pairs(sbtn) do
+        e.b.Size = O(112, 52)
+        e.nm.Position, e.nm.Size = O(4, 3), N(1, -8, 0, 18)
+        e.sub.Position, e.sub.Size = O(4, 22), N(1, -8, 0, 14)
+        e.cdT.Position, e.cdT.Size, e.cdT.TextSize = O(0, 36), N(1, 0, 0, 14), 13
+      end
+      -- 战报：打仗时左上角是空的
+      place(feed, V2(0, 0), O(6, 4), O(300, 150))
+      feedList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+      place(ui.ammo, V2(0.5, 0), N(0.5, 0, 0, 56), O(300, 26))
+      ui.ammo.TextSize, ui.ammo.TextXAlignment = 18, Enum.TextXAlignment.Center
+      place(ui.reloadBar, V2(0, 0), N(0.5, -130, 0, 84))
+      place(toastBox, V2(0.5, 0), N(0.5, 0, 0, 60), O(600, 220))
+      place(invite, V2(0.5, 0), N(0.5, 0, 0, 40))
+    else
+      place(top, V2(0.5, 0), N(0.5, 0, 0, 8), O(420, 56))
+      cashL.TextSize, incL.TextSize = 30, 18
+      place(mbar, V2(0.5, 0), N(0.5, 0, 0, 70), O(460, 40))
+      place(goal, V2(0, 0), O(10, 6), O(360, 60))
+      goalT.Position, goalT.Size, goalT.TextSize = O(12, 3), N(1, -24, 0, 16), 13
+      goalL.Position, goalL.Size = O(12, 20), N(1, -24, 0, 38)
+      place(info, V2(0, 0), O(10, 72), O(280, 196))
+      lvL.Position, lvL.Size, lvL.TextSize = O(14, 8), N(1, -28, 0, 28), 22
+      armyL.Position, armyL.Size, armyL.TextSize = O(14, 38), N(1, -28, 0, 20), 16
+      enemyL.Position, enemyL.Size = O(14, 60), N(1, -28, 0, 52)
+      rewardL.Position, rewardL.Size, rewardL.TextSize = O(14, 112), N(1, -28, 0, 20), 14
+      place(menu, V2(0, 0), O(10, 276), O(140, 300))
+      menuGrid.Parent, menuList.Parent = nil, menu
+      for _, b in ipairs(menuBtns) do b.TextSize = (b == btnCredits) and 14 or 16 end
+      -- 兵工厂从上面一直到下面那排按钮的上方
+      place(shop, V2(1, 0), N(1, -10, 0, 72), N(0, 330, 1, -212))
+      shopTitle.Position, shopTitle.Size, shopTitle.TextSize = O(14, 6), N(1, -28, 0, 28), 20
+      tabBar.Position, tabBar.Size = O(10, 38), N(1, -20, 0, 30)
+      for _, b in pairs(tabBtns) do b.Size = O(58, 28) end
+      list.Position, list.Size = O(6, 74), N(1, -12, 1, -80)
+      ROWH = 62
+      for _, e in ipairs(rowParts) do
+        e.r.Size = N(1, -10, 0, ROWH - 6)
+        e.n.Position, e.n.Size, e.n.TextSize = O(10, 4), N(1, -112, 0, 22), 16
+        e.d.Position, e.d.Size, e.dc.MaxTextSize = O(10, 26), N(1, -112, 0, 28), 11
+        e.b.Size = O(94, 40)
+      end
+      place(bar, V2(0.5, 1), N(0.5, 0, 1, -78), O(900, 52))
+      sizes({ { ui.deployBtn, 120, 48, 18 }, { ui.arrangeBtn, 120, 48, 18 }, { ui.sellBtn, 150, 48, 18 }, { ui.fightBtn, 140, 48, 22 }, { ui.raidBtn, 120, 48, 18 }, { ui.hqBtn, 200, 48, 15 } })
+      place(ui.hint, V2(0.5, 1), N(0.5, 0, 1, -136), O(820, 24))
+      place(bpanel, V2(0.5, 0), N(0.5, 0, 0, 72), O(420, 62))
+      ui.bTitle.Position, ui.bTitle.Size, ui.bTitle.TextSize = O(0, 4), N(1, 0, 0, 28), 21
+      ui.bInfo.Position, ui.bInfo.Size, ui.bInfo.TextSize = O(0, 33), N(1, 0, 0, 22), 16
+      place(bbar, V2(0.5, 1), N(0.5, 0, 1, -78), O(820, 52))
+      sizes({ { ui.driveBtn, 170, 48, 18 }, { ui.viewBtn, 140, 48, 18 }, { ui.rejoinBtn, 150, 48, 18 }, { ui.exitBtn, 140, 48, 18 } })
+      place(sbar, V2(0.5, 1), N(0.5, 0, 1, -138), O(700, 64))
+      sbarList.FillDirection, sbarList.HorizontalAlignment, sbarList.Padding = Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, UDim.new(0, 8)
+      for _, e in pairs(sbtn) do
+        e.b.Size = O(128, 60)
+        e.nm.Position, e.nm.Size = O(6, 4), N(1, -12, 0, 20)
+        e.sub.Position, e.sub.Size = O(6, 26), N(1, -12, 0, 16)
+        e.cdT.Position, e.cdT.Size, e.cdT.TextSize = O(0, 40), N(1, 0, 0, 18), 14
+      end
+      place(feed, V2(1, 0), N(1, -10, 0, 150), O(330, 240))
+      feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+      place(ui.ammo, V2(1, 1), N(1, -20, 1, -20), O(260, 30))
+      ui.ammo.TextSize, ui.ammo.TextXAlignment = 22, Enum.TextXAlignment.Right
+      place(ui.reloadBar, V2(1, 1), N(1, -20, 1, -14))
+      place(toastBox, V2(0.5, 0), N(0.5, 0, 0, 144), O(600, 220))
+      place(invite, V2(0.5, 0), N(0.5, 0, 0, 200))
+    end
+    rankL.Visible, xpBg.Visible, ratingL.Visible = not c, not c, not c
+    -- 弹出面板：手机上太高的按屏幕高度来
+    for name, m in pairs(modals) do
+      local wh = modalSize[name]
+      m.Size = (c and wh[2] > 360) and N(0, wh[1], 1, -16) or O(wh[1], wh[2])
+    end
+    showTab(ui.tab or "foot")
+    if G.updateButtons and G.S then G.updateButtons() end
+  end
+  ui.layout()
 
   ---------------------------------------------------------------- 刷新
 
@@ -814,6 +991,7 @@ function UI.init(G)
     G.updateButtons()
   end
 
+  local lastMode = nil
   function G.updateButtons()
     local S = G.S
     local mode = G.mode
@@ -826,9 +1004,19 @@ function UI.init(G)
     ui.sellBtn.Visible = mode == "deploy" and G.sel ~= nil and not fighting
     ui.hqBtn.Visible = mode == "free" and not fighting and S ~= nil and S.hqNext ~= nil
     if S ~= nil and S.hqNext ~= nil then ui.hqBtn.Text = "升级指挥部 $" .. Config.Fmt(S.hqNext) end
-    shop.Visible = not fighting and mode ~= "drive"
+    -- 手机：布阵时兵工厂自动收起（看得到部署区），回基地再打开；打仗时不显示钱和关卡信息（地方留给战场）
+    local c = G.compact
+    if c and mode ~= lastMode then
+      if mode == "deploy" then shopOpen = false elseif mode == "free" then shopOpen = true end
+    end
+    lastMode = mode
+    local shopOk = not fighting and mode ~= "drive"
+    shop.Visible = shopOk and (shopOpen or not c)
+    shopToggle.Visible = shopOk and c and not shopOpen
+    shopClose.Visible = c
+    top.Visible = not (c and fighting)
     menu.Visible = not fighting
-    info.Visible = mode ~= "drive"
+    info.Visible = mode ~= "drive" and not (c and fighting)
     ui.hint.Visible = mode == "deploy"
     bpanel.Visible = fighting
     bbar.Visible = fighting

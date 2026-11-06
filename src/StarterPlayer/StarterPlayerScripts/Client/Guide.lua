@@ -152,7 +152,7 @@ function Guide.init(G)
     end
     hideAll(used + 1)
     -- 小地图
-    local show = S ~= nil and not G.battle and G.mode ~= "drive"
+    local show = S ~= nil and not G.battle and G.mode ~= "drive" and not G.compact   -- 手机屏幕小，不放小地图（地上的箭头照样指路）
     mm.Visible = show
     if not show then return end
     if t > 0.5 then

@@ -249,22 +249,26 @@ function Play.init(G)
     G.setMode("drive")
     ui.cross.Visible = true
     ui.fireBtn.Visible = G.mobile
+    ui.upBtn.Visible = G.mobile and def.air == true
+    ui.downBtn.Visible = G.mobile and def.air == true
     local tip
     if def.jet then
-      tip = G.mobile and "摇杆左右转弯、上下加减速，转镜头瞄准，按「开火」" or "W / S 加减速，A / D 转弯，空格升高、C 降低，鼠标瞄准、按住左键开火"
+      tip = G.mobile and "摇杆左右转弯、上下加减速，按住「升高」「降低」调高度，转镜头瞄准，按「开火」" or "W / S 加减速，A / D 转弯，空格升高、C 降低，鼠标瞄准、按住左键开火"
       if def.bombs then tip = tip .. "；轰炸机按一下扔一串炸弹（落在飞机前方）" end
     else
       tip = (G.mobile and "摇杆开车，转镜头瞄准，按「开火」" or "WASD 开车，鼠标瞄准，按住左键开火，右键拖动转镜头") ..
-        (def.air and (G.mobile and "" or "，空格升高、C 降低") or "")
-      if def.cargo then tip = tip .. "；降到最低（按住 C）自动放下步兵" end
+        (def.air and (G.mobile and "，按住「升高」「降低」调高度" or "，空格升高、C 降低") or "")
+      if def.cargo then tip = tip .. (G.mobile and "；降到最低（按住「降低」）自动放下步兵" or "；降到最低（按住 C）自动放下步兵") end
     end
-    G.toast(tip .. "；下车按 F", "info")
+    G.toast(tip .. (G.mobile and "；下车点「下车」" or "；下车按 F"), "info")
   end
 
   local function stopDrive()
     G.drive = nil
     ui.cross.Visible = false
     ui.fireBtn.Visible = false
+    ui.upBtn.Visible = false
+    ui.downBtn.Visible = false
     if G.mode == "drive" then G.setMode("free") end
   end
 
@@ -280,8 +284,8 @@ function Play.init(G)
       dr.roll = dr.roll + (-mv.X * 0.8 - dr.roll) * math.min(1, dt * 4)
       dr.x = dr.x - math.sin(dr.h) * dr.spd * dt
       dr.z = dr.z - math.cos(dr.h) * dr.spd * dt
-      if UIS:IsKeyDown(Enum.KeyCode.Space) then dr.y = math.min(220, dr.y + 40 * dt) end
-      if UIS:IsKeyDown(Enum.KeyCode.C) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dr.y = math.max(40, dr.y - 40 * dt) end
+      if UIS:IsKeyDown(Enum.KeyCode.Space) or dr.climb == 1 then dr.y = math.min(220, dr.y + 40 * dt) end
+      if UIS:IsKeyDown(Enum.KeyCode.C) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) or dr.climb == -1 then dr.y = math.max(40, dr.y - 40 * dt) end
     elseif def.air then
       local yaw = dr.camYaw
       local fwd, right = V(-math.sin(yaw), 0, -math.cos(yaw)), V(math.cos(yaw), 0, -math.sin(yaw))
@@ -289,8 +293,8 @@ function Play.init(G)
       if move.Magnitude > 1 then move = move.Unit end
       dr.x = dr.x + move.X * def.speed * dt
       dr.z = dr.z + move.Z * def.speed * dt
-      if UIS:IsKeyDown(Enum.KeyCode.Space) then dr.y = math.min(150, dr.y + 30 * dt) end
-      if UIS:IsKeyDown(Enum.KeyCode.C) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dr.y = math.max(def.cargo and 6 or 15, dr.y - 30 * dt) end
+      if UIS:IsKeyDown(Enum.KeyCode.Space) or dr.climb == 1 then dr.y = math.min(150, dr.y + 30 * dt) end
+      if UIS:IsKeyDown(Enum.KeyCode.C) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) or dr.climb == -1 then dr.y = math.max(def.cargo and 6 or 15, dr.y - 30 * dt) end
       dr.h = dr.h + wrap(yaw - dr.h) * math.min(1, dt * 3)
     else
       local throttle = -mv.Z
@@ -772,6 +776,17 @@ function Play.init(G)
   ui.fireBtn.MouseButton1Up:Connect(function()
     if G.drive then G.drive.firing = false end
   end)
+  -- 手机：按住「升高」「降低」（松手或手指滑出按钮都停）
+  for _, e in ipairs({ { ui.upBtn, 1 }, { ui.downBtn, -1 } }) do
+    e[1].MouseButton1Down:Connect(function()
+      if G.drive then G.drive.climb = e[2] end
+    end)
+    local function stop()
+      if G.drive and G.drive.climb == e[2] then G.drive.climb = 0 end
+    end
+    e[1].MouseButton1Up:Connect(stop)
+    e[1].MouseLeave:Connect(stop)
+  end
 
   ---------------------------------------------------------------- 每帧
 
