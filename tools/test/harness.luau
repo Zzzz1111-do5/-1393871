@@ -1232,6 +1232,7 @@ function H.boot(placePath, opts)
 		t.Parent = ws
 	end
 	pcall(function() ws.Terrain = ws:FindFirstChildOfClass("Terrain") end)
+	if opts.before then opts.before(game) end   -- 开服前往场景里加东西（比如模拟 Studio 里导入的模型）
 	local cam = ws.CurrentCamera
 	if not cam then
 		cam = Inst.new("Camera")

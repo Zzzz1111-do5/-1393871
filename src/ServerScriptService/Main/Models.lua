@@ -819,12 +819,21 @@ local function bounds(parts)
   return mn, mx
 end
 
+-- 合并包 all_units.glb 里零件名带兵种前缀（tank__Turret_1、heli___PivotRotor）：拆成 兵种、原名
+local function splitName(n)
+  local slot, rest = string.match(n, "^(.-)__(.+)$")
+  if slot and SLOTS[slot] then return slot, rest end
+  return nil, n
+end
+
 -- 把导入的模型整理成模板：用 _Front / _Top 标记摆正（不管导入时坐标怎么换的），缩放到长度 len（士兵按身高 5.2），底面中心放到原点，读转轴标记
 local function prepare(slot, model)
   local parts, marks = {}, {}
   for _, d in ipairs(model:GetDescendants()) do
     if d:IsA("BasePart") then
       d.Anchored = true   -- 导入时没锚定的话，一开始游戏就会往下掉、散开
+      local s2, rest = splitName(d.Name)
+      if s2 == slot then d.Name = rest end
       if MARKS[d.Name] then marks[d.Name] = d else table.insert(parts, d) end
     end
   end
@@ -837,8 +846,8 @@ local function prepare(slot, model)
   -- 1）摆正：前 = 指向 _Front，上 = 指向 _Top
   local cur = CF(c)
   if marks._Front and marks._Top then
-    local up = (marks._Top.Position - c).Unit
-    local f = marks._Front.Position - c
+    local up = (marks._Top.CFrame.Position - c).Unit
+    local f = marks._Front.CFrame.Position - c
     local fwd = (f - up * f:Dot(up)).Unit
     local right = fwd:Cross(up)
     cur = CFrame.fromMatrix(c, right, up, -fwd)
@@ -854,7 +863,7 @@ local function prepare(slot, model)
   elseif PROPLEN[slot] then k = PROPLEN[slot] / math.max(0.01, size.Z)
   else k = (def and def.len or 15) / math.max(0.01, size.Z) end
   for _, p in ipairs(all) do
-    local pos = p.Position * k
+    local pos = p.CFrame.Position * k
     p.Size = p.Size * k
     p.CFrame = CF(pos) * rotOnly(p.CFrame)
   end
@@ -864,7 +873,7 @@ local function prepare(slot, model)
   for _, p in ipairs(all) do p.CFrame = p.CFrame - shift end
   mn, mx = bounds(parts)
   local T = { parts = {}, pivots = {}, h = mx.Y - mn.Y }
-  for name, p in pairs(marks) do T.pivots[name] = p.Position end
+  for name, p in pairs(marks) do T.pivots[name] = p.CFrame.Position end
   for _, p in ipairs(parts) do
     local role = "Body"
     local n = p.Name
@@ -880,7 +889,9 @@ local function prepare(slot, model)
   return T
 end
 
--- 开服时找导入的模型（ReplicatedStorage.UnitModels、ServerStorage、Workspace、ReplicatedStorage 里叫这些名字的 Model），整理成模板收进 ServerStorage
+-- 开服时找导入的模型，整理成模板收进 ServerStorage：
+--   ① 叫兵种名的 Model（一个一个导入的 tank.glb……；放在 ReplicatedStorage.UnitModels、ServerStorage、Workspace、ReplicatedStorage 里，套几层都行）
+--   ② 合并包 all_units.glb 导进来的：零件名带「兵种名__」前缀，不管 Studio 保没保留层级，都按前缀分回各个兵种
 function Models.loadImported()
   local store = Instance.new("Folder")
   store.Name = "UnitTemplates"
@@ -889,20 +900,62 @@ function Models.loadImported()
   local um = RS:FindFirstChild("UnitModels")
   if um then table.insert(places, 1, um) end
   local found = {}
+  local function take(slot, model)
+    local ok, T = pcall(prepare, slot, model)
+    if ok and T then
+      TEMPLATES[slot] = T
+      model.Name = slot
+      model.Parent = store
+      table.insert(found, slot)
+    elseif not ok then
+      warn("[军事大亨] 导入的模型 " .. slot .. " 整理失败：" .. tostring(T))
+    end
+  end
+  -- ①
   for _, place in ipairs(places) do
-    for _, ch in ipairs(place:GetChildren()) do
-      if ch:IsA("Model") and SLOTS[ch.Name] and not TEMPLATES[ch.Name] then
-        local ok, T = pcall(prepare, ch.Name, ch)
-        if ok and T then
-          TEMPLATES[ch.Name] = T
-          ch.Parent = store
-          table.insert(found, ch.Name)
-        elseif not ok then
-          warn("[军事大亨] 导入的模型 " .. ch.Name .. " 整理失败：" .. tostring(T))
+    for _, ch in ipairs(place:GetDescendants()) do
+      if ch:IsA("Model") and SLOTS[ch.Name] and not TEMPLATES[ch.Name] and not ch:IsDescendantOf(store) then take(ch.Name, ch) end
+    end
+  end
+  -- ②
+  local groups = {}
+  for _, place in ipairs(places) do
+    for _, d in ipairs(place:GetDescendants()) do
+      if d:IsA("BasePart") and not d:IsDescendantOf(store) then
+        local slot = splitName(d.Name)
+        if slot and not TEMPLATES[slot] then
+          groups[slot] = groups[slot] or {}
+          table.insert(groups[slot], d)
         end
       end
     end
   end
+  local emptied = {}
+  for slot, list in pairs(groups) do
+    local m = Instance.new("Model")
+    m.Name = slot
+    for _, p in ipairs(list) do
+      if p.Parent then emptied[p.Parent] = true end
+      p.Parent = m
+    end
+    take(slot, m)
+  end
+  -- 合并包导进来剩下的空壳（Model / 文件夹）收掉，免得留在地图里
+  for holder in pairs(emptied) do
+    local top = holder
+    while top.Parent and top.Parent ~= workspace and top.Parent ~= RS and top.Parent ~= ServerStorage and top.Parent ~= um do top = top.Parent end
+    if top ~= workspace and top ~= RS and top ~= ServerStorage and top ~= um and top.Parent then
+      local anyPart = false
+      for _, d in ipairs(top:GetDescendants()) do
+        if d:IsA("BasePart") then
+          anyPart = true
+          break
+        end
+      end
+      if not anyPart then top:Destroy() end
+    end
+  end
+  table.sort(found)
   return found
 end
 
@@ -983,7 +1036,7 @@ local function addTemplate(m, root, T, k, offs, flat)
       p.CanTouch = false
       p.Massless = true
       p.Size = p.Size * k
-      local cf = off * CF(p.Position * k) * rotOnly(p.CFrame)
+      local cf = off * CF(p.CFrame.Position * k) * rotOnly(p.CFrame)
       p.CFrame = cf
       p.Parent = m
       if e.role == "Body" or flat then
