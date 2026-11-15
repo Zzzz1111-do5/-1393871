@@ -214,7 +214,7 @@ function Weapons.init(G)
     local res = workspace:Raycast(origin, dir * w.range, params)
     local hit = res and res.Position or (origin + dir * w.range)
     G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head) end
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
 
   KIND.proj = function(P, id, w, char, head, tool, aim)
@@ -243,8 +243,8 @@ function Weapons.init(G)
     local m = muzzleOf(tool, head)
     local e = (type(tgtId) == "string") and G.entById[tgtId] or nil
     local dir
-    if e and e.alive and e.air and e.team ~= P.team and (e.root.Position - m).Magnitude <= w.range then
-      local to = (e.root.Position - m).Unit
+    if e and e.alive and e.air and e.team ~= P.team and (e.root.CFrame.Position - m).Magnitude <= w.range then
+      local to = (e.root.CFrame.Position - m).Unit
       local look = (typeof(aim) == "Vector3") and (aim - head.Position).Unit or to
       if look:Dot(to) < math.cos(math.rad(14)) then e = nil end   -- 锁定要对准（客户端判断过，这里再看一眼）
       dir = to
@@ -302,7 +302,7 @@ function Weapons.init(G)
     local e = (type(entId) == "string") and G.entById[entId] or nil
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not e or not e.alive or e.team ~= P.team or not hrp or e.cat == "inf" then return end
-    if (e.root.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
+    if (e.root.CFrame.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
     local t = now()
     local dt = math.min(0.5, t - (P.cd.repair or 0))
     P.cd.repair = t
@@ -315,7 +315,7 @@ function Weapons.init(G)
       P.repairAcc -= 100
       G.addScore(P, Config.Score.repair)
     end
-    G.fx({ k = "repair", p = e.root.Position })
+    G.fx({ k = "repair", p = e.root.CFrame.Position })
   end
 
   -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
@@ -325,7 +325,7 @@ function Weapons.init(G)
     if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
       for _, e in ipairs(list) do
         if e.alive then
-          G.explode(e.root.Position, w, src(P))
+          G.explode(e.root.CFrame.Position, w, src(P))
           G.removeEnt(e)
         end
       end
@@ -345,8 +345,8 @@ function Weapons.init(G)
       e.step = function(self)
         for _, x in ipairs(G.ents) do
           if x.alive and x.team ~= self.team and (x.cat == "light" or x.cat == "armor") and not x.air and not x.sea then
-            if (x.root.Position - self.root.Position).Magnitude < 7 + x.root.Size.X / 2 then
-              G.explode(self.root.Position, w, src(P))
+            if (x.root.CFrame.Position - self.root.CFrame.Position).Magnitude < 7 + x.root.Size.X / 2 then
+              G.explode(self.root.CFrame.Position, w, src(P))
               G.removeEnt(self)
               return
             end
@@ -403,7 +403,7 @@ function Weapons.init(G)
       end
     end
     for _, e in ipairs(G.ents) do
-      if e.alive and e.team ~= P.team and e.team then consider(e.root.Position, e.id) end
+      if e.alive and e.team ~= P.team and e.team then consider(e.root.CFrame.Position, e.id) end
     end
     if #list > 0 then
       G.addScore(P, Config.Score.spot * #list)
@@ -429,7 +429,7 @@ function Weapons.init(G)
               end
             else
               local e = G.entById[key]
-              if e and e.alive then pos = e.root.Position end
+              if e and e.alive then pos = e.root.CFrame.Position end
             end
             if pos then table.insert(out, pos) else S[key] = nil end
           end
@@ -459,7 +459,8 @@ function Weapons.init(G)
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
     local hit = res and res.Position or (from + dir * (w.range or 500))
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, 1) end
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
+    return res and res.Instance or nil   -- 打中了什么（机器人用来判断是不是被墙挡着）
   end
 end
 

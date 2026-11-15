@@ -413,24 +413,126 @@ local function inList(inst, list)
 	end
 	return false
 end
+local destroyed = {}   -- 被 Destroy 的实例（softDestroy 记的；射线跳过）
+-- 射线加速：workspace.Map 下面锚定的零件（开服建好的地图，不会动）按 XZ 网格建索引，零件数变了才重建；
+--   其余零件（角色、实体、特效）每帧收集一次名单，位置现读
+local RC_CELL = 128
+local rc = { staticN = -1, grid = {}, all = {}, frame = -1, dyn = {} }
+local function aabbOf(cf, size)
+	local h = size / 2
+	local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
+	local ex = math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z
+	local ey = math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z
+	local ez = math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z
+	local c = cf.Position
+	return c.X - ex, c.Y - ey, c.Z - ez, c.X + ex, c.Y + ey, c.Z + ez
+end
+local function rcRefresh()
+	local ws = H.workspace
+	local mapF = ws:FindFirstChild("Map")
+	if mapF then
+		local desc = mapF:GetDescendants()
+		if #desc ~= rc.staticN then
+			rc.staticN = #desc
+			local grid, all = {}, {}
+			for _, p in desc do
+				if p:IsA("BasePart") and p.CanQuery and p.Anchored then
+					local cf, size = p.CFrame, p.Size
+					local x0, y0, z0, x1, y1, z1 = aabbOf(cf, size)
+					local e = { p = p, cf = cf, size = size, x0 = x0, y0 = y0, z0 = z0, x1 = x1, y1 = y1, z1 = z1 }
+					table.insert(all, e)
+					for cx = math.floor(x0 / RC_CELL), math.floor(x1 / RC_CELL) do
+						for cz = math.floor(z0 / RC_CELL), math.floor(z1 / RC_CELL) do
+							local k = cx * 65536 + cz
+							local cell = grid[k]
+							if not cell then cell = {} grid[k] = cell end
+							table.insert(cell, e)
+						end
+					end
+				end
+			end
+			rc.grid, rc.all = grid, all
+		end
+	end
+	if rc.frame ~= H.frame then
+		rc.frame = H.frame
+		local dyn = {}
+		for _, c in ws:GetChildren() do
+			if c ~= mapF then
+				if c:IsA("BasePart") then
+					if c.ClassName ~= "Terrain" and c.CanQuery then table.insert(dyn, c) end
+				else
+					for _, p in c:GetDescendants() do
+						if p:IsA("BasePart") and p.CanQuery then table.insert(dyn, p) end
+					end
+				end
+			end
+		end
+		rc.dyn = dyn
+	end
+end
+-- 线段和 AABB：有交点返回进入的 t（0～1）
+local function segBox(ox, oy, oz, dx, dy, dz, e)
+	local tmin, tmax = 0, 1
+	local function axis(o, d, a, b)
+		if math.abs(d) < 1e-9 then return o >= a and o <= b end
+		local t1, t2 = (a - o) / d, (b - o) / d
+		if t1 > t2 then t1, t2 = t2, t1 end
+		if t1 > tmin then tmin = t1 end
+		if t2 < tmax then tmax = t2 end
+		return tmin <= tmax
+	end
+	if not axis(ox, dx, e.x0, e.x1) then return false end
+	if not axis(oy, dy, e.y0, e.y1) then return false end
+	if not axis(oz, dz, e.z0, e.z1) then return false end
+	return true
+end
+
 function H.raycast(o, d, params)
 	if typeof(o) ~= "Vector3" or typeof(d) ~= "Vector3" then error("Raycast 参数要是 Vector3", 3) end
 	local include = params and params.FilterType == Enum.RaycastFilterType.Include
 	local list = params and params.FilterDescendantsInstances or {}
 	local ws = H.workspace
 	local best, bt = nil, math.huge
-	for _, p in ws:GetDescendants() do
-		if p:IsA("BasePart") and p.ClassName ~= "Terrain" and p.CanQuery then   -- 地形单独按 y = 0 的平面算
-			local ok = true
-			if #list > 0 or include then
-				local hit = inList(p, list)
-				if include then ok = hit else ok = not hit end
-			end
-			if ok then
-				local t = rayBox(o, d, worldCF(p), p.Size)
-				if t and t < bt then bt, best = t, p end
+	local function consider(p, cf, size)
+		local ok = true
+		if #list > 0 or include then
+			local hit = inList(p, list)
+			if include then ok = hit else ok = not hit end
+		end
+		if ok then
+			local t = rayBox(o, d, cf, size)
+			if t and t < bt then bt, best = t, p end
+		end
+	end
+	rcRefresh()
+	-- 静态零件：线段扫过的网格
+	local ox, oy, oz, dx, dy, dz = o.X, o.Y, o.Z, d.X, d.Y, d.Z
+	local ax0, ax1 = math.floor(math.min(ox, ox + dx) / RC_CELL), math.floor(math.max(ox, ox + dx) / RC_CELL)
+	local az0, az1 = math.floor(math.min(oz, oz + dz) / RC_CELL), math.floor(math.max(oz, oz + dz) / RC_CELL)
+	if (ax1 - ax0 + 1) * (az1 - az0 + 1) > 600 then
+		for _, e in rc.all do
+			if not destroyed[e.p] and segBox(ox, oy, oz, dx, dy, dz, e) then consider(e.p, e.cf, e.size) end
+		end
+	else
+		local seen = {}
+		for cx = ax0, ax1 do
+			for cz = az0, az1 do
+				local cell = rc.grid[cx * 65536 + cz]
+				if cell then
+					for _, e in cell do
+						if not seen[e] then
+							seen[e] = true
+							if not destroyed[e.p] and segBox(ox, oy, oz, dx, dy, dz, e) then consider(e.p, e.cf, e.size) end
+						end
+					end
+				end
 			end
 		end
+	end
+	-- 会动的零件：现读位置
+	for _, p in rc.dyn do
+		if not destroyed[p] and p.Parent then consider(p, worldCF(p), p.Size) end
 	end
 	local terrain = ws:FindFirstChildOfClass("Terrain")
 	local terrainOK = true
@@ -960,7 +1062,6 @@ local function hrequire(m)
 end
 genv.require = hrequire
 
-local destroyed = {}
 H.destroyed = destroyed
 function softDestroy(x)
 	if destroyed[x] then return end

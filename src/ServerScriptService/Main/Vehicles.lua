@@ -1,4 +1,4 @@
--- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生）、伞降；开载具的操作在后面的版本里接
+-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
 --   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
 --     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
 --   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
@@ -14,10 +14,7 @@ function Vehicles.init(G)
   local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
   local running = {}
 
-  local function beachOf(id)
-    for _, b in ipairs(Map.BEACHES) do if b.id == id then return b end end
-    return nil
-  end
+  local beachOf = Map.landingOf
 
   -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
   local function boatCF(b, d)
@@ -38,7 +35,8 @@ function Vehicles.init(G)
     e.dist = BOAT.start
     e.state = "loading"
     e.leaveAt = now() + BOAT.wait
-    e.pass = {}
+    e.pass = {}   -- 坐着的玩家
+    e.bots = {}   -- 坐着的机器人
     e.onDeath = function(self, src)
       for _, P in ipairs(self.pass) do
         if P.alive and P.char then
@@ -47,7 +45,12 @@ function Vehicles.init(G)
           G.msg(P.pl, "bad", "ui.boatSunk")
         end
       end
-      self.pass = {}
+      local bots = self.bots
+      self.pass, self.bots = {}, {}
+      for _, B in ipairs(bots) do
+        B.boat = nil
+        if B.e and B.e.alive then G.damageEnt(B.e, 1e5, src) end
+      end
       if boats[b.id] == self then boats[b.id] = nil end
       self.state = "sunk"
       task.delay(3, function() G.removeEnt(self) end)
@@ -55,19 +58,49 @@ function Vehicles.init(G)
     return e
   end
 
-  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
-  function G.boardBoat(P, beachId)
-    local b = beachOf(beachId)
-    if not b then return CF(0, 50, 0), nil end
+  -- 这处海滩正在装人、还有座位的艇（没有就新开一条）
+  local function boatFor(b)
     local e = boats[b.id]
-    if not e or not e.alive or e.state ~= "loading" or #e.pass >= BOAT.seats then
+    if not e or not e.alive or e.state ~= "loading" or #e.pass + #e.bots >= BOAT.seats then
       e = newBoat(b)
       boats[b.id] = e
       table.insert(running, e)
     end
+    return e
+  end
+  local function seatOf(e, who)
+    local i = 0
+    for _, x in ipairs(e.pass) do i += 1 if x == who then return i end end
+    for _, x in ipairs(e.bots) do i += 1 if x == who then return i end end
+    return 1
+  end
+
+  -- 机器人上艇：返回艇（Bots 按艇的位置建实体；之后每帧跟着艇挪，靠岸时 G.botLanded）
+  function G.boatBot(B, beachId)
+    local b = beachOf(beachId)
+    if not b then return nil end
+    local e = boatFor(b)
+    table.insert(e.bots, B)
+    B.boat = e
+    return e, e.root.CFrame * seatOffset(#e.pass + #e.bots) * CF(0, -1.6, 0)
+  end
+  function G.botOffBoat(B)
+    local e = B.boat
+    if not e then return end
+    for i, x in ipairs(e.bots) do
+      if x == B then table.remove(e.bots, i) break end
+    end
+    B.boat = nil
+  end
+
+  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
+  function G.boardBoat(P, beachId)
+    local b = beachOf(beachId)
+    if not b then return CF(0, 50, 0), nil end
+    local e = boatFor(b)
     table.insert(e.pass, P)
     P.boat = e
-    local seat = seatOffset(#e.pass)
+    local seat = seatOffset(#e.pass + #e.bots)
     P.seat = seat
     G.msg(P.pl, "info", "ui.landing")
     return e.root.CFrame * seat, function(Q, char)
@@ -90,7 +123,17 @@ function Vehicles.init(G)
       end
       P.boat, P.seat = nil, nil
     end
-    e.pass = {}
+    local n = #e.pass
+    for i, B in ipairs(e.bots) do
+      B.boat = nil
+      if B.e and B.e.alive then
+        local k = n + i
+        local x = b.cx + ((k - 1) % 4 - 1.5) * 5
+        local z = b.z - b.dir * (18 + math.floor((k - 1) / 4) * 5)
+        if G.botLanded then G.try("机器人上岸", G.botLanded, B, x, z) end
+      end
+    end
+    e.pass, e.bots = {}, {}
   end
 
   -- 每帧：艇往岸边开，乘客跟着
@@ -127,6 +170,12 @@ function Vehicles.init(G)
               hrp.Anchored = true
               P.char:PivotTo(e.root.CFrame * (P.seat or CF()))
             end
+          end
+        end
+        if e.state ~= "landed" then
+          local n = #e.pass
+          for i, B in ipairs(e.bots) do
+            if B.e and B.e.alive then G.moveEnt(B.e, e.root.CFrame * seatOffset(n + i) * CF(0, -1.6, 0)) end
           end
         end
       end

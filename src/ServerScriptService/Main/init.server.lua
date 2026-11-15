@@ -79,7 +79,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -117,6 +117,7 @@ end)
 task.spawn(function()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[登岛战] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
 end)

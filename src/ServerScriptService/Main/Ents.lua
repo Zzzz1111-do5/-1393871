@@ -89,7 +89,7 @@ function Ents.init(G)
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
-      G.fx({ k = "boom", p = e.root.Position, s = (e.cat == "inf") and 0.6 or ((e.cat == "ship") and 3 or 2) })
+      if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2 }) end   -- 步兵倒下不炸（客户端画倒地）
       if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
     end
@@ -99,11 +99,13 @@ function Ents.init(G)
   local function mult(w, cat) return (w.vs and w.vs[cat]) or 1 end
   G.mult = mult
 
-  -- 一个零件的伤害类别：玩家角色是 inf；实体按 cat
-  local function hitThing(inst, w, dmg, src, headMul)
+  -- 一个零件的伤害类别：玩家角色是 inf；实体按 cat；hitPos 打中的点（机器人上半截 headTop 格算爆头）
+  local function hitThing(inst, w, dmg, src, headMul, hitPos)
     local e = G.entOf(inst)
     if e then
-      G.damageEnt(e, dmg * mult(w, e.cat), src)
+      local k = 1
+      if e.headTop and hitPos and hitPos.Y > e.root.CFrame.Position.Y + e.root.Size.Y / 2 - e.headTop then k = headMul or 1 end
+      G.damageEnt(e, dmg * mult(w, e.cat) * k, src)
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")
@@ -130,7 +132,7 @@ function Ents.init(G)
     end
     for _, e in ipairs(table.clone(ents)) do
       if e.alive then
-        local d = (e.root.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
+        local d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
         if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
       end
     end
@@ -145,9 +147,11 @@ function Ents.init(G)
   params.FilterType = Enum.RaycastFilterType.Exclude
   params.IgnoreWater = false
 
+  local shotN = 0
   function G.launch(s)
     s.t = 0
-    s.id = (s.id or 0) + #shots + math.random(1, 1e6)
+    shotN += 1
+    s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, tg = s.target and s.target.id or nil })
     return s
@@ -167,9 +171,9 @@ function Ents.init(G)
       if s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
         if tg.alive then
-          local want = (tg.root.Position - s.pos).Unit * s.vel.Magnitude
+          local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude
           s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
-          if (tg.root.Position - s.pos).Magnitude < 12 then
+          if (tg.root.CFrame.Position - s.pos).Magnitude < 12 then
             G.explode(s.pos, s.w, s.src)
             done = true
           end
@@ -219,7 +223,7 @@ function Ents.init(G)
     local r2 = r * r
     for _, e in ipairs(ents) do
       if e.alive and e.counts and not e.air and not e.sea then
-        local p = e.root.Position
+        local p = e.root.CFrame.Position
         local dx, dz = p.X - x, p.Z - z
         if dx * dx + dz * dz < r2 and math.abs(p.Y - y) < 45 then
           if e.team == "atk" then a += (e.counts or 1) else d += (e.counts or 1) end

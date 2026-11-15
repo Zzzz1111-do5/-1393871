@@ -149,13 +149,17 @@ end
 Config.Bots = {
   minPerTeam = 18,       -- 每队保底人数：真人不够用 AI 补
   maxTotal = 40,         -- 全服最多几个机器人
-  hp = 100, speed = 14, -- 步兵机器人
-  weapon = "rifle", accuracy = 0.32, reaction = 0.8, sight = 520,
+  hp = 100, speed = 14,  -- 步兵机器人：血量、走路速度（格 / 秒）
+  weapon = "rifle",      -- 用哪种枪的伤害、射程
+  sight = 520,           -- 看多远
+  reaction = 0.8,        -- 发现新目标后多久开第一枪（秒，随机 ±40%）
+  fireGap = 0.36,        -- 两枪之间（秒）
+  spread = 0.8, spreadPer = 0.004,   -- 散布：基础几度 + 每格距离多几度（100 格约 1.2°、300 格约 2°）
 }
 
 ---------------------------------------------------------------- 得分、经验、军衔
 
-Config.Score = { kill = 100, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
+Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1
@@ -241,6 +245,9 @@ add("beach.white", "白滩", "White Beach")
 add("beach.blue", "蓝滩", "Blue Beach")
 add("beach.gold", "金滩", "Gold Beach")
 add("beach.flank", "东北滩（侧翼）", "NE Beach (flank)")
+add("beach.outpost", "前哨岛南岸", "Outpost Isle (south)")
+add("beach.lighthouse", "灯塔岛南岸", "Lighthouse Isle (south)")
+add("beach.port", "港湾（直冲港口）", "Harbor (port assault)")
 add("spawn.camp", "后方营地", "Rear Camp")
 add("spawn.fleet", "舰队（两栖攻击舰）", "Fleet (assault ship)")
 add("spawn.para", "伞降", "Paradrop")
@@ -516,6 +523,28 @@ Map.POINTS = {
 }
 Map.POINT_R = 70   -- 据点半径
 
+-- 登陆点：主岛的 5 处海滩 + 前哨岛、灯塔岛的南岸（登陆艇从南边冲上去）；攻方选「抢滩」出生、机器人坐艇都按它
+Map.LANDINGS = {}
+for _, b in ipairs(Map.BEACHES) do table.insert(Map.LANDINGS, b) end
+for _, id in ipairs({ "outpost", "lighthouse" }) do
+  local I = Map[string.upper(id)]
+  table.insert(Map.LANDINGS, { id = id, cx = I.x, z = I.z + isleRad(I, math.pi / 2), dir = 1, isle = id, color = Color3.fromRGB(240, 240, 200) })
+end
+-- 港湾里：从湾口一直冲到湾底的港口码头
+table.insert(Map.LANDINGS, { id = "port", cx = BAY.x, z = Map.coastS(BAY.x), dir = 1, color = Color3.fromRGB(200, 200, 210) })
+function Map.landingOf(id)
+  for _, b in ipairs(Map.LANDINGS) do if b.id == id then return b end end
+  return nil
+end
+-- 这一点在哪块陆地上：小岛编号，或者 "main"（主岛；海里也算主岛）
+function Map.landOf(x, z)
+  for _, I in ipairs(ISLES) do
+    if (isleD(I, x, z)) > -80 then return I.id end
+  end
+  return "main"
+end
+for _, p in ipairs(Map.POINTS) do p.land = p.isle or "main" end
+
 -- 攻方舰队（固定平台，打不掉）、机场岛跑道
 Map.FLEET = {
   { kind = "carrier", x = -420, z = 2250, rot = 0 },   -- 航母（福建舰）
@@ -789,7 +818,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -827,6 +856,7 @@ end)
 task.spawn(function()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[登岛战] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
 end)
@@ -865,6 +895,653 @@ print("[登岛战] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors 
 ]]></ProtectedString>
       </Properties>
       <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Bots</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
+--   攻方：开战后成班坐登陆艇（按要打的据点挑海滩 / 小岛南岸），上岸朝据点推进，见敌就打；拿下一个往同一块陆地上的下一个推，
+--     这块陆地上没有要打的了就「回船」（不算阵亡，重新坐艇去别处）；有拿下的据点时也可能直接在那里出生
+--   守方：准备阶段就出生，分到各个还在手里的据点（哪边攻方多往哪边多分），在圈里找位置站着；据点丢了换一个
+--   打人：看得见（地形不挡）、sight 格以内最近的敌人（玩家、敌方机器人），反应一下再开火，散布随距离变大
+--   机器人是实体（Ents）：一个锚定的命中盒，客户端画成小兵（View.lua）；上半截打中算爆头
+local Bots = {}
+
+function Bots.init(G)
+  local Config, Map = G.Config, G.Map
+  local BC = Config.Bots
+  local V = Vector3.new
+  local now = os.clock
+  local W = Config.Weapons[BC.weapon] or Config.Weapons.rifle
+  local SIZE = V(2.2, 5.6, 1.6)   -- 命中盒（脚底到头顶）
+  local HALF = SIZE.Y / 2
+
+  local NAMES = { "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November",
+    "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu" }
+  local list = {}   -- 全部机器人记录（活着的、等复活的）
+  local serial = { atk = 0, def = 0 }
+
+  ---------------------------------------------------------------- 人数
+
+  local function realCount(team)
+    local n = 0
+    for _, P in pairs(G.P) do if P.team == team then n += 1 end end
+    return n
+  end
+  function G.botCount(team)
+    local n = 0
+    for _, B in ipairs(list) do if B.team == team and not B.leaving then n += 1 end end
+    return n
+  end
+  -- 战况表里的机器人行
+  function G.botBoard()
+    local out = {}
+    for i, B in ipairs(list) do
+      if not B.leaving then table.insert(out, { n = B.name, id = -i, t = B.team, k = B.k, d = B.d, s = B.s, c = B.c, r = "rifle", bot = true }) end
+    end
+    return out
+  end
+
+  local function newRecord(team)
+    serial[team] += 1
+    local n = serial[team]
+    local nm = NAMES[(n - 1) % #NAMES + 1] .. "-" .. ((team == "atk") and "1" or "2") .. string.format("%02d", n)
+    local B = { team = team, name = nm, k = 0, d = 0, s = 0, c = 0, e = nil, state = "wait", respawnAt = now() + math.random() * 2, ammo = 30 }
+    table.insert(list, B)
+    return B
+  end
+  local function dropRecord(B)
+    for i, x in ipairs(list) do
+      if x == B then table.remove(list, i) break end
+    end
+  end
+
+  -- 每队要几个机器人：保底人数减真人，两队加起来不超过 maxTotal
+  local function wanted()
+    local a = math.max(0, BC.minPerTeam - realCount("atk"))
+    local d = math.max(0, BC.minPerTeam - realCount("def"))
+    if a + d > BC.maxTotal then
+      local k = BC.maxTotal / (a + d)
+      a, d = math.floor(a * k + 0.5), math.floor(d * k + 0.5)
+    end
+    return { atk = a, def = d }
+  end
+
+  local function despawn(B)
+    if B.boat and G.botOffBoat then G.botOffBoat(B) end
+    if B.e then
+      local e = B.e
+      B.e = nil
+      e.onDeath = nil
+      if e.alive then G.removeEnt(e) end
+    end
+  end
+
+  local function balance()
+    local want = wanted()
+    for _, team in ipairs({ "atk", "def" }) do
+      local have = G.botCount(team)
+      if have < want[team] then
+        -- 先把标了要走的叫回来，不够再新建
+        for _, B in ipairs(list) do
+          if have >= want[team] then break end
+          if B.team == team and B.leaving then B.leaving = nil have += 1 end
+        end
+        for _ = have + 1, want[team] do newRecord(team) end
+      elseif have > want[team] then
+        local extra = have - want[team]
+        -- 没出生的直接删；出生了的标上「要走」，阵亡后不再复活
+        for i = #list, 1, -1 do
+          local B = list[i]
+          if extra <= 0 then break end
+          if B.team == team and not B.leaving and not B.e then
+            dropRecord(B)
+            extra -= 1
+          end
+        end
+        for i = #list, 1, -1 do
+          local B = list[i]
+          if extra <= 0 then break end
+          if B.team == team and not B.leaving then
+            B.leaving = true
+            extra -= 1
+          end
+        end
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 据点挑选
+
+  local function pointList() return Map.POINTS end
+  local function pointState(id) return G.points and G.points[id] end
+  local function assigned(team, field, id)
+    local n = 0
+    for _, B in ipairs(list) do if B.team == team and B[field] == id and B.e then n += 1 end end
+    return n
+  end
+
+  -- 攻方要打的据点：集中兵力——七成打「主攻」据点（每 20 秒重选：离舰队近的、进度高的、守的人少的优先），
+  --   三成分到别的据点牵制（派去的人最少的）
+  local WEIGHT = { A = 1.3, B = 0.7, C = 1.1, D = 1.0, E = 0.8 }
+  local focus, focusAt = nil, 0
+  local function defNear(p)
+    local n = 0
+    for _, B in ipairs(list) do
+      local e = B.e
+      if B.team == "def" and e and e.alive then
+        local q = e.root.CFrame.Position
+        if (q.X - p.x) ^ 2 + (q.Z - p.z) ^ 2 < 150 * 150 then n += 1 end
+      end
+    end
+    return n
+  end
+  local function pickFocus()
+    local best, bs = nil, -1e9
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and not s.locked then
+        local sc = (WEIGHT[p.id] or 1) + 2.5 * (s.prog or 0) - 0.12 * defNear(p) + math.random() * 0.1
+        if p.id == focus then sc += 0.4 end   -- 别来回换
+        if sc > bs then best, bs = p, sc end
+      end
+    end
+    focus = best and best.id or nil
+    focusAt = now() + 20
+  end
+  local function pickAtkTarget(land)
+    if now() >= focusAt or (focus and pointState(focus) and pointState(focus).locked) then pickFocus() end
+    if focus and math.random() < 0.7 then
+      for _, p in ipairs(pointList()) do
+        if p.id == focus and (not land or p.land == land) then return p end
+      end
+    end
+    local best, bs = nil, -1e9
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and not s.locked and (not land or p.land == land) then
+        local sc = (WEIGHT[p.id] or 1) / (1 + assigned("atk", "target", p.id)) + math.random() * 0.05
+        if sc > bs then best, bs = p, sc end
+      end
+    end
+    return best
+  end
+  -- 守方去守的据点：攻方在附近的多派（need = 圈附近的攻方 + 1）/（已派 + 1）
+  local function pickDefPoint(land)
+    local best, bs = nil, -1e9
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and not s.locked and s.owner == "def" and (not land or p.land == land) then
+        local press = (s.atk or 0) + (s.prog or 0) * 3
+        local sc = (1 + press) / (1 + assigned("def", "guard", p.id)) + math.random() * 0.05
+        if sc > bs then best, bs = p, sc end
+      end
+    end
+    return best
+  end
+  -- 据点圈里随便一处能站人的地方
+  local function spotNear(x, z, r0, r1)
+    for _ = 1, 10 do
+      local a, r = math.random() * math.pi * 2, r0 + math.random() * (r1 - r0)
+      local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
+      if Map.isLand(px, pz) and Map.slope(px, pz) < 1 then return V(px, 0, pz) end
+    end
+    return V(x, 0, z)
+  end
+  -- 离 (x, z) 最近的登陆点（同一块陆地）
+  local function landingFor(p)
+    local best, bd = nil, 1e18
+    for _, b in ipairs(Map.LANDINGS) do
+      local land = b.isle or "main"
+      if land == p.land then
+        local d = (b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2
+        if d < bd then best, bd = b, d end
+      end
+    end
+    return best
+  end
+
+  ---------------------------------------------------------------- 出生、阵亡
+
+  local function rootCF(x, z, face)
+    local y = Map.ground(x, z) + HALF
+    local p = V(x, y, z)
+    face = face or V(0, 0, -1)
+    return CFrame.lookAt(p, p + V(face.X, 0, face.Z))
+  end
+
+  local onDeath
+  local function makeEnt(B, cf)
+    local e = G.newEnt({ kind = "bot", team = B.team, cat = "inf", hp = BC.hp, size = SIZE, cf = cf, extra = { counts = 1, bot = B, headTop = 1.4 } })
+    e.model:SetAttribute("Name", B.name)
+    e.onDeath = onDeath
+    B.e = e
+    B.tgt, B.tgtPos, B.goal, B.detour, B.wp, B.navKey = nil, nil, nil, nil, nil, nil
+    local ja = math.random() * math.pi * 2
+    B.jit = V(math.cos(ja), 0, math.sin(ja)) * (4 + math.random() * 14)
+    B.blocked, B.miss = nil, 0
+    B.thinkAt = now() + math.random() * 0.5
+    B.fireAt = 0
+    B.ammo = 30
+    B.lastPos, B.lastPosT = cf.Position, now()
+    return e
+  end
+
+  local function credit(src, B)
+    local kname = nil
+    if src and src.P and G.P[src.P.pl] == src.P then
+      local K = src.P
+      if K.team ~= B.team then
+        K.kills += 1
+        G.addScore(K, Config.Score.botKill)
+        G.msg(K.pl, "kill", "ui.youKilled", B.name)
+      end
+      kname = K.pl.DisplayName
+    elseif src and src.bot then
+      src.bot.k += 1
+      src.bot.s += Config.Score.kill
+      kname = src.bot.name
+    elseif src and src.name then
+      kname = src.name
+    end
+    if kname then G.msgAll("feed", "ui.killed", kname, B.name) end
+  end
+
+  onDeath = function(e, src)
+    local B = e.bot
+    if B then
+      B.d += 1
+      if B.boat and G.botOffBoat then G.botOffBoat(B) end
+      B.e = nil
+      B.state = "wait"
+      B.respawnAt = now() + Config.RespawnDelay + 2 + math.random() * 4
+      B.target, B.guard = nil, nil
+      G.try("机器人记功", credit, src, B)
+      if B.leaving then dropRecord(B) end
+    end
+    task.delay(0.05, function() G.removeEnt(e) end)
+  end
+
+  -- 靠岸：从艇上下来，朝据点走
+  function G.botLanded(B, x, z)
+    local e = B.e
+    if not e or not e.alive then return end
+    G.moveEnt(e, rootCF(x, z, V(0, 0, -1)))
+    B.state = "move"
+    local p = B.target and Map.POINTS[B.targetI or 0]
+    B.goal = nil
+  end
+
+  local function spawnAtk(B)
+    -- 有拿下的据点、同一块陆地上还有要打的：四成在那里出生
+    local caps = {}
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and s.owner == "atk" and pickAtkTarget(p.land) then table.insert(caps, p) end
+    end
+    if #caps > 0 and math.random() < 0.4 then
+      local p = caps[math.random(#caps)]
+      local tg = pickAtkTarget(p.land)
+      local sp = spotNear(p.x, p.z, 10, 40)
+      makeEnt(B, rootCF(sp.X, sp.Z, V(tg.x - sp.X, 0, tg.z - sp.Z)))
+      B.target = tg.id
+      B.state = "move"
+      return true
+    end
+    local tg = pickAtkTarget(nil)
+    if not tg then return false end
+    local b = landingFor(tg)
+    if not b or not G.boatBot then return false end
+    local boat, cf = G.boatBot(B, b.id)
+    if not boat then return false end
+    makeEnt(B, cf)
+    B.target = tg.id
+    B.state = "boat"
+    return true
+  end
+
+  local function spawnDef(B)
+    local p = pickDefPoint(nil)
+    if not p then
+      local sp = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60)
+      makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
+      B.guard = nil
+      B.state = "guard"
+      return true
+    end
+    local s = pointState(p.id)
+    if s and s.pressed then
+      -- 圈里有攻方：不能直接出生在那里——主岛上的据点从营地走过去，小岛上的换一个
+      if p.land ~= "main" then
+        p = pickDefPoint("main")
+        if not p then return false end
+      end
+      if pointState(p.id).pressed then
+        local sp = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60)
+        makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
+        B.guard = p.id
+        B.state = "guard"
+        return true
+      end
+    end
+    local sp = spotNear(p.x, p.z, 15, Map.POINT_R * 0.8)
+    makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
+    B.guard = p.id
+    B.state = "guard"
+    return true
+  end
+
+  ---------------------------------------------------------------- 看、打
+
+  local function headOf(e) return e.root.CFrame.Position + V(0, HALF - 0.7, 0) end
+
+  -- 找目标：sight 格以内、地形不挡的最近的敌人（玩家或机器人），最多验 3 个视线
+  local function findTarget(B)
+    local e = B.e
+    local h = headOf(e)
+    local cands = {}
+    local sight = BC.sight
+    for _, P in pairs(G.P) do
+      if P.team ~= B.team and P.alive and P.char then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        local hum = P.char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum and hum.Health > 0 then
+          local d = (hrp.Position - h).Magnitude
+          if d < sight then table.insert(cands, { d = d, P = P, part = hrp }) end
+        end
+      end
+    end
+    for _, C in ipairs(list) do
+      local ce = C.e
+      if C.team ~= B.team and ce and ce.alive and C.state ~= "boat" then
+        local d = (ce.root.CFrame.Position - h).Magnitude
+        if d < sight then table.insert(cands, { d = d, bot = C }) end
+      end
+    end
+    -- 刚才连着打不中（被房子、墙挡着）的目标先不打
+    local bl = B.blocked
+    if bl then
+      local t = now()
+      for i = #cands, 1, -1 do
+        local who = cands[i].P or cands[i].bot
+        if bl[who] and bl[who] > t then table.remove(cands, i) end
+      end
+    end
+    if #cands == 0 then return nil end
+    table.sort(cands, function(a, b) return a.d < b.d end)
+    for i = 1, math.min(3, #cands) do
+      local c = cands[i]
+      local tp = c.part and (c.part.Position + V(0, 1, 0)) or headOf(c.bot.e)
+      if Map.lineClear(h, tp, 10) and (not G.smokeBlocks or not G.smokeBlocks(h, tp)) then return c end
+    end
+    return nil
+  end
+
+  local function targetPos(c)
+    if c.P then
+      local P = c.P
+      if not P.alive or not P.char or not c.part.Parent then return nil end
+      local hum = P.char:FindFirstChildOfClass("Humanoid")
+      if not hum or hum.Health <= 0 then return nil end
+      return c.part.Position + V(0, 0.8, 0)
+    elseif c.bot then
+      local ce = c.bot.e
+      if not ce or not ce.alive then return nil end
+      return ce.root.CFrame.Position + V(0, 0.6, 0)
+    end
+    return nil
+  end
+
+  -- 打中的是不是目标本身（玩家角色 / 目标机器人）
+  local function hitIsTarget(inst, c)
+    if not inst then return false end
+    if c.P then return c.P.char ~= nil and inst:IsDescendantOf(c.P.char) end
+    if c.bot and c.bot.e then return inst:IsDescendantOf(c.bot.e.model) end
+    return false
+  end
+  local function fire(B, tp)
+    local e = B.e
+    local from = headOf(e)
+    local d = (tp - from).Magnitude
+    local deg = BC.spread + d * BC.spreadPer
+    local hit = G.botShot(from, tp, W, { bot = B, team = B.team, name = B.name }, { e.model }, deg)
+    -- 连着 6 枪都打在别的东西上（不是打偏到天上）：多半被挡着，这个目标 10 秒内不打了
+    if hit and B.tgt and not hitIsTarget(hit, B.tgt) and not G.entOf(hit) then
+      B.miss = (B.miss or 0) + 1
+      if B.miss >= 6 then
+        B.miss = 0
+        B.blocked = B.blocked or {}
+        B.blocked[B.tgt.P or B.tgt.bot] = now() + 10
+        B.tgt, B.tgtPos = nil, nil
+      end
+    elseif hit then
+      B.miss = 0
+    end
+    B.ammo -= 1
+    if B.ammo <= 0 then
+      B.ammo = 30
+      B.fireAt = now() + W.reload + 0.5
+    else
+      B.fireAt = now() + BC.fireGap * (0.8 + math.random() * 0.5)
+    end
+  end
+
+  ---------------------------------------------------------------- 走
+
+  local TRY = { 0, 35, -35, 70, -70, 110, -110 }
+  local function t0wp(B) return now() - (B.wpT or 0) > 1.5 end   -- 路点每 1.5 秒重取一次
+  local function rotY(v, deg)
+    local a = math.rad(deg)
+    local c, s = math.cos(a), math.sin(a)
+    return V(v.X * c - v.Z * s, 0, v.X * s + v.Z * c)
+  end
+
+  local function walk(B, dt, slow)
+    local e = B.e
+    local goal = B.detour or B.goal
+    if not goal then return end
+    local p = e.root.CFrame.Position
+    -- 离目的地还远：顺着寻路的流场走（绕开陡坡、海）
+    if not B.detour and B.navKey and G.navNext and (V(goal.X - p.X, 0, goal.Z - p.Z)).Magnitude > 70 then
+      if not B.wp or t0wp(B) then
+        B.wp = G.navNext(p, B.navKey)
+        B.wpT = now()
+        if B.wp then B.wp += B.jit end   -- 每人偏一点，不排成一条线、不挤在一处
+      end
+      if B.wp then goal = B.wp end
+    end
+    local d = V(goal.X - p.X, 0, goal.Z - p.Z)
+    local dist = d.Magnitude
+    if dist < 2.5 then
+      if goal == B.wp then B.wp = nil return end
+      if B.detour then B.detour = nil else B.goal = nil B.arrived = now() end
+      return
+    end
+    local speed = BC.speed * (slow or 1)
+    local step = math.min(dist, speed * dt)
+    local dir = d / dist
+    local np, nd = nil, nil
+    for _, a in ipairs(TRY) do
+      local dd = (a == 0) and dir or rotY(dir, a)
+      local x, z = p.X + dd.X * step, p.Z + dd.Z * step
+      local h = Map.height(x, z)
+      if h > 0.3 and (h - (p.Y - HALF)) < step * 1.25 + 0.6 then   -- 不下水、不爬太陡的坡
+        np, nd = V(x, h + HALF, z), dd
+        break
+      end
+    end
+    if not np then return end
+    local look = nd
+    if B.tgtPos then look = V(B.tgtPos.X - np.X, 0, B.tgtPos.Z - np.Z) end
+    if look.Magnitude < 0.01 then look = nd end
+    G.moveEnt(e, CFrame.lookAt(np, np + look))
+  end
+
+  -- 卡住了（10 秒没走出 6 格）：往旁边绕一下
+  local function unstick(B)
+    local e = B.e
+    local t = now()
+    if B.tgtPos then B.lastPos, B.lastPosT = e.root.CFrame.Position, t return end   -- 交火时站着不算卡住
+    if t - B.lastPosT < 10 then return end
+    local p = e.root.CFrame.Position
+    if (B.goal or B.detour) and (p - B.lastPos).Magnitude < 6 then
+      local a = math.random() * math.pi * 2
+      local r = 40 + math.random() * 50
+      B.detour = V(p.X + math.cos(a) * r, 0, p.Z + math.sin(a) * r)
+    end
+    B.lastPos, B.lastPosT = p, t
+  end
+
+  ---------------------------------------------------------------- 想（每半秒一次，错开）
+
+  local function thinkAtk(B)
+    local e = B.e
+    local p = e.root.CFrame.Position
+    local s = B.target and pointState(B.target)
+    if not s or s.locked then
+      local land = Map.landOf(p.X, p.Z)
+      local tg = pickAtkTarget(land)
+      if tg then
+        B.target = tg.id
+        B.goal = nil
+      else
+        -- 这块陆地上没有要打的了：过一会儿回船（不算阵亡）
+        B.target = nil
+        B.recycleAt = B.recycleAt or (now() + 12 + math.random() * 10)
+        if now() >= B.recycleAt then
+          B.recycleAt = nil
+          despawn(B)
+          B.state = "wait"
+          B.respawnAt = now() + 1
+        end
+        return
+      end
+    end
+    local pt = nil
+    for _, q in ipairs(Map.POINTS) do if q.id == B.target then pt = q end end
+    if not pt then return end
+    local dx, dz = p.X - pt.x, p.Z - pt.z
+    local inside = dx * dx + dz * dz < (Map.POINT_R * 0.8) ^ 2
+    B.navKey = pt.id
+    if not B.goal and not B.detour then
+      if inside then
+        if not B.arrived or now() - B.arrived > 8 + math.random() * 10 then B.goal = spotNear(pt.x, pt.z, 5, Map.POINT_R * 0.7) end
+      else
+        B.goal = spotNear(pt.x, pt.z, 5, 40)
+      end
+    end
+  end
+
+  local function thinkDef(B)
+    local e = B.e
+    local p = e.root.CFrame.Position
+    local s = B.guard and pointState(B.guard)
+    if not s or s.locked or s.owner ~= "def" or (B.reassignAt and now() >= B.reassignAt) then
+      local land = Map.landOf(p.X, p.Z)
+      local q = pickDefPoint(land)
+      B.reassignAt = now() + 20 + math.random() * 20
+      if q and q.id ~= B.guard then
+        B.guard = q.id
+        B.goal = nil
+      elseif not q then
+        B.guard = nil
+      end
+    end
+    local pt = nil
+    for _, q in ipairs(Map.POINTS) do if q.id == B.guard then pt = q end end
+    if not pt then
+      B.navKey = "camp"
+      if not B.goal and Map.landOf(p.X, p.Z) == "main" then B.goal = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60) end
+      return
+    end
+    B.navKey = pt.id
+    if not B.goal and not B.detour then
+      local dx, dz = p.X - pt.x, p.Z - pt.z
+      local inside = dx * dx + dz * dz < (Map.POINT_R * 0.9) ^ 2
+      if not inside or not B.arrived or now() - B.arrived > 20 + math.random() * 25 then
+        B.goal = spotNear(pt.x, pt.z, 12, Map.POINT_R * 0.85)
+      end
+    end
+  end
+
+  local function think(B)
+    local battle = G.round and G.round.phase == "battle"
+    if battle then
+      local c = findTarget(B)
+      if c and (not B.tgt or B.tgt.P ~= c.P or B.tgt.bot ~= c.bot) then
+        B.fireAt = math.max(B.fireAt, now() + BC.reaction * (0.6 + math.random() * 0.8))   -- 新目标：反应一下
+      end
+      B.tgt = c
+    else
+      B.tgt = nil
+    end
+    if B.team == "atk" then thinkAtk(B) else thinkDef(B) end
+    if B.e then unstick(B) end
+  end
+
+  ---------------------------------------------------------------- 每步
+
+  local balanceT = 0
+  function G.botsStep(dt)
+    local t = now()
+    local phase = G.round and G.round.phase
+    balanceT -= dt
+    if balanceT <= 0 then
+      balanceT = 2
+      if phase == "prep" or phase == "battle" then balance() end
+    end
+    for _, B in ipairs(table.clone(list)) do
+      if B.e and not B.e.alive then B.e = nil end
+      if not B.e then
+        if B.state ~= "boat" and not B.leaving and t >= (B.respawnAt or 0) then
+          local ok = false
+          if B.team == "def" and (phase == "prep" or phase == "battle") then ok = spawnDef(B)
+          elseif B.team == "atk" and phase == "battle" then ok = spawnAtk(B) end
+          if not ok then B.respawnAt = t + 2 end
+        elseif B.leaving and not B.e then
+          dropRecord(B)
+        end
+      elseif B.state ~= "boat" then
+        if t >= (B.thinkAt or 0) then
+          B.thinkAt = t + 0.5
+          G.try("机器人想", think, B)
+        end
+        if B.e then
+          B.tgtPos = B.tgt and targetPos(B.tgt) or nil
+          if not B.tgtPos then B.tgt = nil end
+          -- 交火：150 格以内站住打（守方一直站住打），300 格以内边走边打（走慢点），再远照常走、偶尔打几枪
+          local td = B.tgtPos and (B.tgtPos - B.e.root.CFrame.Position).Magnitude or 1e9
+          if B.tgtPos and phase == "battle" and t >= B.fireAt then
+            fire(B, B.tgtPos)
+            if td > 300 then B.fireAt += BC.fireGap * 2 end
+          end
+          local hold = B.tgtPos and (B.team == "def" or td < 150)
+          if not hold then walk(B, dt, (td < 300) and 0.5 or 1) elseif B.tgtPos then
+            local p = B.e.root.CFrame.Position
+            local look = V(B.tgtPos.X - p.X, 0, B.tgtPos.Z - p.Z)
+            if look.Magnitude > 0.1 then G.moveEnt(B.e, CFrame.lookAt(p, p + look)) end
+          end
+        end
+      end
+    end
+  end
+
+  -- 新一局：机器人全清掉，记录（战绩）清零，重新按人数补
+  G.on("roundStart", function()
+    for _, B in ipairs(list) do despawn(B) end
+    list = {}
+    focus, focusAt = nil, 0
+    serial = { atk = 0, def = 0 }
+    balance()
+  end)
+  G.on("roundEnd", function()
+    for _, B in ipairs(list) do B.tgt = nil end
+  end)
+end
+
+return Bots
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——实体与伤害
@@ -958,7 +1635,7 @@ function Ents.init(G)
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
-      G.fx({ k = "boom", p = e.root.Position, s = (e.cat == "inf") and 0.6 or ((e.cat == "ship") and 3 or 2) })
+      if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2 }) end   -- 步兵倒下不炸（客户端画倒地）
       if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
     end
@@ -968,11 +1645,13 @@ function Ents.init(G)
   local function mult(w, cat) return (w.vs and w.vs[cat]) or 1 end
   G.mult = mult
 
-  -- 一个零件的伤害类别：玩家角色是 inf；实体按 cat
-  local function hitThing(inst, w, dmg, src, headMul)
+  -- 一个零件的伤害类别：玩家角色是 inf；实体按 cat；hitPos 打中的点（机器人上半截 headTop 格算爆头）
+  local function hitThing(inst, w, dmg, src, headMul, hitPos)
     local e = G.entOf(inst)
     if e then
-      G.damageEnt(e, dmg * mult(w, e.cat), src)
+      local k = 1
+      if e.headTop and hitPos and hitPos.Y > e.root.CFrame.Position.Y + e.root.Size.Y / 2 - e.headTop then k = headMul or 1 end
+      G.damageEnt(e, dmg * mult(w, e.cat) * k, src)
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")
@@ -999,7 +1678,7 @@ function Ents.init(G)
     end
     for _, e in ipairs(table.clone(ents)) do
       if e.alive then
-        local d = (e.root.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
+        local d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
         if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
       end
     end
@@ -1014,9 +1693,11 @@ function Ents.init(G)
   params.FilterType = Enum.RaycastFilterType.Exclude
   params.IgnoreWater = false
 
+  local shotN = 0
   function G.launch(s)
     s.t = 0
-    s.id = (s.id or 0) + #shots + math.random(1, 1e6)
+    shotN += 1
+    s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, tg = s.target and s.target.id or nil })
     return s
@@ -1036,9 +1717,9 @@ function Ents.init(G)
       if s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
         if tg.alive then
-          local want = (tg.root.Position - s.pos).Unit * s.vel.Magnitude
+          local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude
           s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
-          if (tg.root.Position - s.pos).Magnitude < 12 then
+          if (tg.root.CFrame.Position - s.pos).Magnitude < 12 then
             G.explode(s.pos, s.w, s.src)
             done = true
           end
@@ -1088,7 +1769,7 @@ function Ents.init(G)
     local r2 = r * r
     for _, e in ipairs(ents) do
       if e.alive and e.counts and not e.air and not e.sea then
-        local p = e.root.Position
+        local p = e.root.CFrame.Position
         local dx, dz = p.X - x, p.Z - z
         if dx * dx + dz * dz < r2 and math.abs(p.Y - y) < 45 then
           if e.team == "atk" then a += (e.counts or 1) else d += (e.counts or 1) end
@@ -1103,7 +1784,200 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="8">
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">Nav</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
+--   从目的地往外做 Dijkstra（八方向，边的代价 = 长度 ×（1 + 坡度 × 3），坡太陡、中间下水的边不通），
+--   每格记「下一步去哪格」；走的时候看前面几格（顺一点、少拐）。开服地图生成完后在后台慢慢算（每算一批让出一帧）
+local Nav = {}
+
+function Nav.init(G)
+  local Map = G.Map
+  local V = Vector3.new
+  local CELL = 40
+  local X0, Z0, X1, Z1 = -3200, -3000, 3200, 1200   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
+  local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
+  local MAXSLOPE = 0.9   -- 比这陡（约 42°）走不了
+  local H = {}           -- [格号] = 高度（只记陆地）
+  local flows = {}       -- [目的地] = { nxt = {}, dist = {} }
+  local ready = false
+  G.navCell = CELL
+
+  local function id(i, k) return k * NX + i end
+  local function ik(c) return c % NX, c // NX end
+  local function center(c)
+    local i, k = ik(c)
+    return X0 + (i + 0.5) * CELL, Z0 + (k + 0.5) * CELL
+  end
+  local function cellOf(x, z)
+    local i, k = math.floor((x - X0) / CELL), math.floor((z - Z0) / CELL)
+    if i < 0 or k < 0 or i >= NX or k >= NZ then return nil end
+    return id(i, k)
+  end
+
+  local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }
+  local edge = {}   -- [格号 * 8 + 方向] = 代价（false 不通）
+  local function edgeCost(c, dIdx)
+    local key = c * 8 + dIdx
+    local v = edge[key]
+    if v ~= nil then return v end
+    local i, k = ik(c)
+    local d = DIRS[dIdx]
+    local j, l = i + d[1], k + d[2]
+    local res = false
+    if j >= 0 and l >= 0 and j < NX and l < NZ and H[id(j, l)] then
+      local x0, z0 = center(c)
+      local x1, z1 = center(id(j, l))
+      local L = math.sqrt((x1 - x0) ^ 2 + (z1 - z0) ^ 2)
+      local prev = H[c]
+      local worst, sum = 0, 0
+      for q = 1, 4 do
+        local t = q / 4
+        local h = (q == 4) and H[id(j, l)] or Map.height(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t)
+        if h < 0.4 then worst = 99 break end   -- 中间下水
+        local sl = math.abs(h - prev) / (L / 4)
+        if sl > worst then worst = sl end
+        sum += sl
+        prev = h
+      end
+      if worst <= MAXSLOPE then res = L * (1 + 3 * sum / 4) end
+    end
+    edge[key] = res
+    -- 反方向一样
+    local rev = { [1] = 2, [2] = 1, [3] = 4, [4] = 3, [5] = 8, [6] = 7, [7] = 6, [8] = 5 }
+    if j and l and j >= 0 and l >= 0 and j < NX and l < NZ then edge[id(j, l) * 8 + rev[dIdx]] = res end
+    return res
+  end
+
+  -- 最小堆
+  local function push(hp, c, d)
+    local n = #hp + 1
+    hp[n] = { c, d }
+    while n > 1 do
+      local p = n // 2
+      if hp[p][2] <= hp[n][2] then break end
+      hp[p], hp[n] = hp[n], hp[p]
+      n = p
+    end
+  end
+  local function pop(hp)
+    local top = hp[1]
+    local last = table.remove(hp)
+    if #hp > 0 then
+      hp[1] = last
+      local n, m = 1, #hp
+      while true do
+        local l, r = n * 2, n * 2 + 1
+        local s = n
+        if l <= m and hp[l][2] < hp[s][2] then s = l end
+        if r <= m and hp[r][2] < hp[s][2] then s = r end
+        if s == n then break end
+        hp[s], hp[n] = hp[n], hp[s]
+        n = s
+      end
+    end
+    return top
+  end
+
+  -- 离 (x, z) 最近的陆地格（自己那格不是陆地就往外找两圈）
+  local function landCellNear(x, z)
+    local c = cellOf(x, z)
+    if c and H[c] then return c end
+    local i0, k0 = math.floor((x - X0) / CELL), math.floor((z - Z0) / CELL)
+    for r = 1, 3 do
+      for di = -r, r do
+        for dk = -r, r do
+          local i, k = i0 + di, k0 + dk
+          if i >= 0 and k >= 0 and i < NX and k < NZ and H[id(i, k)] then return id(i, k) end
+        end
+      end
+    end
+    return nil
+  end
+
+  local function buildFlow(key, x, z)
+    local src = landCellNear(x, z)
+    if not src then return end
+    local dist, nxt = { [src] = 0 }, {}
+    local hp = {}
+    push(hp, src, 0)
+    local n = 0
+    while #hp > 0 do
+      local top = pop(hp)
+      local c, d = top[1], top[2]
+      if d <= (dist[c] or math.huge) then
+        local i, k = ik(c)
+        for dIdx = 1, 8 do
+          local w = edgeCost(c, dIdx)
+          if w then
+            local dd = DIRS[dIdx]
+            local o = id(i + dd[1], k + dd[2])
+            local nd = d + w
+            if nd < (dist[o] or math.huge) then
+              dist[o] = nd
+              nxt[o] = c
+              push(hp, o, nd)
+            end
+          end
+        end
+        n += 1
+        if n % 1500 == 0 then task.wait() end
+      end
+    end
+    flows[key] = { dist = dist, nxt = nxt }
+  end
+
+  -- 地图好了以后在后台算：先记陆地格的高度，再挨个目的地算流场
+  function G.navBuild()
+    task.spawn(function()
+      local n = 0
+      for k = 0, NZ - 1 do
+        for i = 0, NX - 1 do
+          local x, z = X0 + (i + 0.5) * CELL, Z0 + (k + 0.5) * CELL
+          local h = Map.height(x, z)
+          if h > 0.4 then H[id(i, k)] = h end
+        end
+        n += 1
+        if n % 20 == 0 then task.wait() end
+      end
+      for _, p in ipairs(Map.POINTS) do buildFlow(p.id, p.x, p.z) end
+      buildFlow("camp", Map.CAMP.x, Map.CAMP.z)
+      ready = true
+      G.navReady = true
+    end)
+  end
+
+  -- 往 key（据点编号 / "camp"）去：返回下一个要走到的点（看前面 3 格），到不了（不在同一块陆地、还没算好）返回 nil
+  function G.navNext(pos, key)
+    local F = flows[key]
+    if not F then return nil end
+    local c = landCellNear(pos.X, pos.Z)
+    if not c or not F.dist[c] then return nil end
+    local n = c
+    for _ = 1, 3 do
+      local m = F.nxt[n]
+      if not m then break end
+      n = m
+    end
+    if n == c then return nil end   -- 已经在目的地那格
+    local x, z = center(n)
+    return V(x, 0, z)
+  end
+  -- 从 pos 到 key 的路程（格），到不了返回 nil
+  function G.navDist(pos, key)
+    local F = flows[key]
+    if not F then return nil end
+    local c = landCellNear(pos.X, pos.Z)
+    return c and F.dist[c] or nil
+  end
+end
+
+return Nav
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
@@ -1182,7 +2056,7 @@ function Round.init(G)
     local out = {}
     if team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })
-      for _, b in ipairs(Map.BEACHES) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
+      for _, b in ipairs(Map.LANDINGS) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
       for _, p in ipairs(Map.POINTS) do
         local s = points[p.id]
         if s and s.owner == "atk" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = true }) end
@@ -1282,7 +2156,7 @@ function Round.init(G)
     for i = #log, 1, -1 do
       local e = log[i]
       if t - e.t < 15 then
-        if not killer and e.by then killer = e end
+        if not killer and (e.by or e.bot) then killer = e end
       end
     end
     local sum = {}
@@ -1302,6 +2176,10 @@ function Round.init(G)
     end
     for _, A in ipairs(assists) do
       if G.P[A.pl] == A and A.team ~= P.team then G.addScore(A, Config.Score.assist) end
+    end
+    if killer and killer.bot and killer.bot.team ~= P.team then   -- 机器人打死的
+      killer.bot.k += 1
+      killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
@@ -1376,7 +2254,7 @@ function Round.init(G)
     if victim and R.phase ~= "battle" then return false end
     if victim then
       victim.dmgLog = victim.dmgLog or {}
-      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
+      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
     hum:TakeDamage(amt)
@@ -1655,7 +2533,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="9">
+      <Item class="ModuleScript" referent="11">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -1726,10 +2604,10 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Vehicles</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生）、伞降；开载具的操作在后面的版本里接
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
 --   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
 --     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
 --   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
@@ -1745,10 +2623,7 @@ function Vehicles.init(G)
   local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
   local running = {}
 
-  local function beachOf(id)
-    for _, b in ipairs(Map.BEACHES) do if b.id == id then return b end end
-    return nil
-  end
+  local beachOf = Map.landingOf
 
   -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
   local function boatCF(b, d)
@@ -1769,7 +2644,8 @@ function Vehicles.init(G)
     e.dist = BOAT.start
     e.state = "loading"
     e.leaveAt = now() + BOAT.wait
-    e.pass = {}
+    e.pass = {}   -- 坐着的玩家
+    e.bots = {}   -- 坐着的机器人
     e.onDeath = function(self, src)
       for _, P in ipairs(self.pass) do
         if P.alive and P.char then
@@ -1778,7 +2654,12 @@ function Vehicles.init(G)
           G.msg(P.pl, "bad", "ui.boatSunk")
         end
       end
-      self.pass = {}
+      local bots = self.bots
+      self.pass, self.bots = {}, {}
+      for _, B in ipairs(bots) do
+        B.boat = nil
+        if B.e and B.e.alive then G.damageEnt(B.e, 1e5, src) end
+      end
       if boats[b.id] == self then boats[b.id] = nil end
       self.state = "sunk"
       task.delay(3, function() G.removeEnt(self) end)
@@ -1786,19 +2667,49 @@ function Vehicles.init(G)
     return e
   end
 
-  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
-  function G.boardBoat(P, beachId)
-    local b = beachOf(beachId)
-    if not b then return CF(0, 50, 0), nil end
+  -- 这处海滩正在装人、还有座位的艇（没有就新开一条）
+  local function boatFor(b)
     local e = boats[b.id]
-    if not e or not e.alive or e.state ~= "loading" or #e.pass >= BOAT.seats then
+    if not e or not e.alive or e.state ~= "loading" or #e.pass + #e.bots >= BOAT.seats then
       e = newBoat(b)
       boats[b.id] = e
       table.insert(running, e)
     end
+    return e
+  end
+  local function seatOf(e, who)
+    local i = 0
+    for _, x in ipairs(e.pass) do i += 1 if x == who then return i end end
+    for _, x in ipairs(e.bots) do i += 1 if x == who then return i end end
+    return 1
+  end
+
+  -- 机器人上艇：返回艇（Bots 按艇的位置建实体；之后每帧跟着艇挪，靠岸时 G.botLanded）
+  function G.boatBot(B, beachId)
+    local b = beachOf(beachId)
+    if not b then return nil end
+    local e = boatFor(b)
+    table.insert(e.bots, B)
+    B.boat = e
+    return e, e.root.CFrame * seatOffset(#e.pass + #e.bots) * CF(0, -1.6, 0)
+  end
+  function G.botOffBoat(B)
+    local e = B.boat
+    if not e then return end
+    for i, x in ipairs(e.bots) do
+      if x == B then table.remove(e.bots, i) break end
+    end
+    B.boat = nil
+  end
+
+  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
+  function G.boardBoat(P, beachId)
+    local b = beachOf(beachId)
+    if not b then return CF(0, 50, 0), nil end
+    local e = boatFor(b)
     table.insert(e.pass, P)
     P.boat = e
-    local seat = seatOffset(#e.pass)
+    local seat = seatOffset(#e.pass + #e.bots)
     P.seat = seat
     G.msg(P.pl, "info", "ui.landing")
     return e.root.CFrame * seat, function(Q, char)
@@ -1821,7 +2732,17 @@ function Vehicles.init(G)
       end
       P.boat, P.seat = nil, nil
     end
-    e.pass = {}
+    local n = #e.pass
+    for i, B in ipairs(e.bots) do
+      B.boat = nil
+      if B.e and B.e.alive then
+        local k = n + i
+        local x = b.cx + ((k - 1) % 4 - 1.5) * 5
+        local z = b.z - b.dir * (18 + math.floor((k - 1) / 4) * 5)
+        if G.botLanded then G.try("机器人上岸", G.botLanded, B, x, z) end
+      end
+    end
+    e.pass, e.bots = {}, {}
   end
 
   -- 每帧：艇往岸边开，乘客跟着
@@ -1858,6 +2779,12 @@ function Vehicles.init(G)
               hrp.Anchored = true
               P.char:PivotTo(e.root.CFrame * (P.seat or CF()))
             end
+          end
+        end
+        if e.state ~= "landed" then
+          local n = #e.pass
+          for i, B in ipairs(e.bots) do
+            if B.e and B.e.alive then G.moveEnt(B.e, e.root.CFrame * seatOffset(n + i) * CF(0, -1.6, 0)) end
           end
         end
       end
@@ -1924,7 +2851,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -2143,7 +3070,7 @@ function Weapons.init(G)
     local res = workspace:Raycast(origin, dir * w.range, params)
     local hit = res and res.Position or (origin + dir * w.range)
     G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head) end
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
 
   KIND.proj = function(P, id, w, char, head, tool, aim)
@@ -2172,8 +3099,8 @@ function Weapons.init(G)
     local m = muzzleOf(tool, head)
     local e = (type(tgtId) == "string") and G.entById[tgtId] or nil
     local dir
-    if e and e.alive and e.air and e.team ~= P.team and (e.root.Position - m).Magnitude <= w.range then
-      local to = (e.root.Position - m).Unit
+    if e and e.alive and e.air and e.team ~= P.team and (e.root.CFrame.Position - m).Magnitude <= w.range then
+      local to = (e.root.CFrame.Position - m).Unit
       local look = (typeof(aim) == "Vector3") and (aim - head.Position).Unit or to
       if look:Dot(to) < math.cos(math.rad(14)) then e = nil end   -- 锁定要对准（客户端判断过，这里再看一眼）
       dir = to
@@ -2231,7 +3158,7 @@ function Weapons.init(G)
     local e = (type(entId) == "string") and G.entById[entId] or nil
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not e or not e.alive or e.team ~= P.team or not hrp or e.cat == "inf" then return end
-    if (e.root.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
+    if (e.root.CFrame.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
     local t = now()
     local dt = math.min(0.5, t - (P.cd.repair or 0))
     P.cd.repair = t
@@ -2244,7 +3171,7 @@ function Weapons.init(G)
       P.repairAcc -= 100
       G.addScore(P, Config.Score.repair)
     end
-    G.fx({ k = "repair", p = e.root.Position })
+    G.fx({ k = "repair", p = e.root.CFrame.Position })
   end
 
   -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
@@ -2254,7 +3181,7 @@ function Weapons.init(G)
     if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
       for _, e in ipairs(list) do
         if e.alive then
-          G.explode(e.root.Position, w, src(P))
+          G.explode(e.root.CFrame.Position, w, src(P))
           G.removeEnt(e)
         end
       end
@@ -2274,8 +3201,8 @@ function Weapons.init(G)
       e.step = function(self)
         for _, x in ipairs(G.ents) do
           if x.alive and x.team ~= self.team and (x.cat == "light" or x.cat == "armor") and not x.air and not x.sea then
-            if (x.root.Position - self.root.Position).Magnitude < 7 + x.root.Size.X / 2 then
-              G.explode(self.root.Position, w, src(P))
+            if (x.root.CFrame.Position - self.root.CFrame.Position).Magnitude < 7 + x.root.Size.X / 2 then
+              G.explode(self.root.CFrame.Position, w, src(P))
               G.removeEnt(self)
               return
             end
@@ -2332,7 +3259,7 @@ function Weapons.init(G)
       end
     end
     for _, e in ipairs(G.ents) do
-      if e.alive and e.team ~= P.team and e.team then consider(e.root.Position, e.id) end
+      if e.alive and e.team ~= P.team and e.team then consider(e.root.CFrame.Position, e.id) end
     end
     if #list > 0 then
       G.addScore(P, Config.Score.spot * #list)
@@ -2358,7 +3285,7 @@ function Weapons.init(G)
               end
             else
               local e = G.entById[key]
-              if e and e.alive then pos = e.root.Position end
+              if e and e.alive then pos = e.root.CFrame.Position end
             end
             if pos then table.insert(out, pos) else S[key] = nil end
           end
@@ -2388,7 +3315,8 @@ function Weapons.init(G)
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
     local hit = res and res.Position or (from + dir * (w.range or 500))
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, 1) end
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
+    return res and res.Instance or nil   -- 打中了什么（机器人用来判断是不是被墙挡着）
   end
 end
 
@@ -2396,7 +3324,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 登岛战：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -2854,15 +3782,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="13">
+  <Item class="StarterPlayer" referent="15">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="14">
+    <Item class="StarterPlayerScripts" referent="16">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="15">
+      <Item class="LocalScript" referent="17">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——客户端（StarterPlayerScripts.Client）
@@ -2923,7 +3851,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="16">
+        <Item class="ModuleScript" referent="18">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -3190,7 +4118,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="17">
+        <Item class="ModuleScript" referent="19">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -3380,7 +4308,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="20">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——操作：武器栏（1–4、点选）、肩后视角（拿着武器时鼠标锁在屏幕中间、人跟着镜头转，准星打哪儿就是哪儿）、
@@ -3790,7 +4718,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="19">
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -4333,7 +5261,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量），
@@ -4369,18 +5297,20 @@ function View.init(G)
   -- 每种实体：build 拼零件（相对 Root 的偏移记在 parts 里），animate 每帧额外动（腿、跳板）
   local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }
   local KINDS = {}
+  -- 机器人：服务器的命中盒高 5.6 格、中心在脚底上 2.8 格
   KINDS.bot = function(m, team)
     local U = UNIFORM[team] or UNIFORM.atk
     local L = {}
-    L.torso = { p(m, V(2, 2, 1), CF(), U[1]), CF(0, 0.6, 0) }
-    L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.2, 0) }
-    L.helmet = { p(m, V(1.4, 0.6, 1.4), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.75, 0) }
-    L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.4, 0), "leg", 1 }
-    L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.4, 0), "leg", -1 }
-    L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
-    L.rarm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
-    L.gun = { p(m, V(0.4, 0.5, 3), CF(), RGB(45, 47, 50)), CF(0.4, 0.9, -1.6) }
-    L.band = { p(m, V(0.85, 0.35, 0.85), CF(), Config.Teams[team or "atk"].color, Enum.Material.Neon), CF(1.4, 1.2, -0.4) }
+    L.torso = { p(m, V(2, 2, 1), CF(), U[1]), CF(0, 0.4, 0) }
+    L.vest = { p(m, V(2.15, 1.3, 1.25), CF(), U[2]), CF(0, 0.55, 0) }
+    L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.0, 0) }
+    L.helmet = { p(m, V(1.45, 0.65, 1.45), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.55, 0) }
+    L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.6, 0), "leg", 1 }
+    L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.6, 0), "leg", -1 }
+    L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.2, 0.5, -0.5) * CFrame.Angles(-1.2, 0.35, 0) }
+    L.rarm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(1.3, 0.5, -0.4) * CFrame.Angles(-1.2, 0, 0) }
+    L.gun = { p(m, V(0.35, 0.45, 3.2), CF(), RGB(45, 47, 50), Enum.Material.Metal), CF(0.35, 0.75, -1.7) }
+    L.band = { p(m, V(0.85, 0.35, 0.85), CF(), Config.Teams[team or "atk"].color, Enum.Material.Neon), CF(1.3, 1.0, -0.3) }
     return L
   end
   KINDS.lcm = function(m, team)
@@ -4432,11 +5362,39 @@ function View.init(G)
     fill.BackgroundColor3 = Config.Teams[team or "atk"].color
     views[em] = { model = m, parts = parts, cf = root.CFrame, root = root, kind = kind, t = 0, bb = bb, fill = fill, team = team }
   end
+  -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
+  local dying = {}
   local function remove(em)
     local v = views[em]
-    if v then
+    if not v then return end
+    views[em] = nil
+    local hp = em:GetAttribute("Hp") or 1
+    if hp <= 0 then
+      v.t0 = os.clock()
+      if v.bb then v.bb:Destroy() end
+      table.insert(dying, v)
+    else
       v.model:Destroy()
-      views[em] = nil
+    end
+  end
+  local function stepDying()
+    local t = os.clock()
+    for i = #dying, 1, -1 do
+      local v = dying[i]
+      local a = t - v.t0
+      if a > ((v.kind == "bot") and 6 or 5) then
+        v.model:Destroy()
+        table.remove(dying, i)
+      else
+        local cf
+        if v.kind == "bot" then   -- 绕脚底往后倒
+          local k = math.clamp(a / 0.45, 0, 1)
+          cf = v.cf * CF(0, -2.8, 0) * CFrame.Angles(k * k * 1.45, 0, 0) * CF(0, 2.8 - 0.4 * k, 0)
+        else
+          cf = v.cf * CF(0, -a * 2.2, 0) * CFrame.Angles(0, 0, a * 0.12)
+        end
+        for _, L in pairs(v.parts) do L[1].CFrame = cf * L[2] end
+      end
     end
   end
 
@@ -4451,6 +5409,7 @@ function View.init(G)
   end)
 
   function G.stepView(dt)
+    stepDying()
     local myTeam = me:GetAttribute("Side")
     for em, v in pairs(views) do
       if not em.Parent then
@@ -4481,13 +5440,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="21">
+  <Item class="Workspace" referent="23">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="22">
+  <Item class="Lighting" referent="24">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">3</float>

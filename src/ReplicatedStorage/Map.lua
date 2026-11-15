@@ -139,6 +139,28 @@ Map.POINTS = {
 }
 Map.POINT_R = 70   -- 据点半径
 
+-- 登陆点：主岛的 5 处海滩 + 前哨岛、灯塔岛的南岸（登陆艇从南边冲上去）；攻方选「抢滩」出生、机器人坐艇都按它
+Map.LANDINGS = {}
+for _, b in ipairs(Map.BEACHES) do table.insert(Map.LANDINGS, b) end
+for _, id in ipairs({ "outpost", "lighthouse" }) do
+  local I = Map[string.upper(id)]
+  table.insert(Map.LANDINGS, { id = id, cx = I.x, z = I.z + isleRad(I, math.pi / 2), dir = 1, isle = id, color = Color3.fromRGB(240, 240, 200) })
+end
+-- 港湾里：从湾口一直冲到湾底的港口码头
+table.insert(Map.LANDINGS, { id = "port", cx = BAY.x, z = Map.coastS(BAY.x), dir = 1, color = Color3.fromRGB(200, 200, 210) })
+function Map.landingOf(id)
+  for _, b in ipairs(Map.LANDINGS) do if b.id == id then return b end end
+  return nil
+end
+-- 这一点在哪块陆地上：小岛编号，或者 "main"（主岛；海里也算主岛）
+function Map.landOf(x, z)
+  for _, I in ipairs(ISLES) do
+    if (isleD(I, x, z)) > -80 then return I.id end
+  end
+  return "main"
+end
+for _, p in ipairs(Map.POINTS) do p.land = p.isle or "main" end
+
 -- 攻方舰队（固定平台，打不掉）、机场岛跑道
 Map.FLEET = {
   { kind = "carrier", x = -420, z = 2250, rot = 0 },   -- 航母（福建舰）

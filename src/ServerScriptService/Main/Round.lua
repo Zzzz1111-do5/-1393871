@@ -74,7 +74,7 @@ function Round.init(G)
     local out = {}
     if team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })
-      for _, b in ipairs(Map.BEACHES) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
+      for _, b in ipairs(Map.LANDINGS) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
       for _, p in ipairs(Map.POINTS) do
         local s = points[p.id]
         if s and s.owner == "atk" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = true }) end
@@ -174,7 +174,7 @@ function Round.init(G)
     for i = #log, 1, -1 do
       local e = log[i]
       if t - e.t < 15 then
-        if not killer and e.by then killer = e end
+        if not killer and (e.by or e.bot) then killer = e end
       end
     end
     local sum = {}
@@ -194,6 +194,10 @@ function Round.init(G)
     end
     for _, A in ipairs(assists) do
       if G.P[A.pl] == A and A.team ~= P.team then G.addScore(A, Config.Score.assist) end
+    end
+    if killer and killer.bot and killer.bot.team ~= P.team then   -- 机器人打死的
+      killer.bot.k += 1
+      killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
@@ -268,7 +272,7 @@ function Round.init(G)
     if victim and R.phase ~= "battle" then return false end
     if victim then
       victim.dmgLog = victim.dmgLog or {}
-      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
+      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
     hum:TakeDamage(amt)

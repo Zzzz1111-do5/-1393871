@@ -141,13 +141,17 @@ end
 Config.Bots = {
   minPerTeam = 18,       -- 每队保底人数：真人不够用 AI 补
   maxTotal = 40,         -- 全服最多几个机器人
-  hp = 100, speed = 14, -- 步兵机器人
-  weapon = "rifle", accuracy = 0.32, reaction = 0.8, sight = 520,
+  hp = 100, speed = 14,  -- 步兵机器人：血量、走路速度（格 / 秒）
+  weapon = "rifle",      -- 用哪种枪的伤害、射程
+  sight = 520,           -- 看多远
+  reaction = 0.8,        -- 发现新目标后多久开第一枪（秒，随机 ±40%）
+  fireGap = 0.36,        -- 两枪之间（秒）
+  spread = 0.8, spreadPer = 0.004,   -- 散布：基础几度 + 每格距离多几度（100 格约 1.2°、300 格约 2°）
 }
 
 ---------------------------------------------------------------- 得分、经验、军衔
 
-Config.Score = { kill = 100, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
+Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1

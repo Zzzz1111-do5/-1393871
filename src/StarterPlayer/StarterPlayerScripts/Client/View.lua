@@ -31,18 +31,20 @@ function View.init(G)
   -- 每种实体：build 拼零件（相对 Root 的偏移记在 parts 里），animate 每帧额外动（腿、跳板）
   local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }
   local KINDS = {}
+  -- 机器人：服务器的命中盒高 5.6 格、中心在脚底上 2.8 格
   KINDS.bot = function(m, team)
     local U = UNIFORM[team] or UNIFORM.atk
     local L = {}
-    L.torso = { p(m, V(2, 2, 1), CF(), U[1]), CF(0, 0.6, 0) }
-    L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.2, 0) }
-    L.helmet = { p(m, V(1.4, 0.6, 1.4), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.75, 0) }
-    L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.4, 0), "leg", 1 }
-    L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.4, 0), "leg", -1 }
-    L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
-    L.rarm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
-    L.gun = { p(m, V(0.4, 0.5, 3), CF(), RGB(45, 47, 50)), CF(0.4, 0.9, -1.6) }
-    L.band = { p(m, V(0.85, 0.35, 0.85), CF(), Config.Teams[team or "atk"].color, Enum.Material.Neon), CF(1.4, 1.2, -0.4) }
+    L.torso = { p(m, V(2, 2, 1), CF(), U[1]), CF(0, 0.4, 0) }
+    L.vest = { p(m, V(2.15, 1.3, 1.25), CF(), U[2]), CF(0, 0.55, 0) }
+    L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.0, 0) }
+    L.helmet = { p(m, V(1.45, 0.65, 1.45), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.55, 0) }
+    L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.6, 0), "leg", 1 }
+    L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.6, 0), "leg", -1 }
+    L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.2, 0.5, -0.5) * CFrame.Angles(-1.2, 0.35, 0) }
+    L.rarm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(1.3, 0.5, -0.4) * CFrame.Angles(-1.2, 0, 0) }
+    L.gun = { p(m, V(0.35, 0.45, 3.2), CF(), RGB(45, 47, 50), Enum.Material.Metal), CF(0.35, 0.75, -1.7) }
+    L.band = { p(m, V(0.85, 0.35, 0.85), CF(), Config.Teams[team or "atk"].color, Enum.Material.Neon), CF(1.3, 1.0, -0.3) }
     return L
   end
   KINDS.lcm = function(m, team)
@@ -94,11 +96,39 @@ function View.init(G)
     fill.BackgroundColor3 = Config.Teams[team or "atk"].color
     views[em] = { model = m, parts = parts, cf = root.CFrame, root = root, kind = kind, t = 0, bb = bb, fill = fill, team = team }
   end
+  -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
+  local dying = {}
   local function remove(em)
     local v = views[em]
-    if v then
+    if not v then return end
+    views[em] = nil
+    local hp = em:GetAttribute("Hp") or 1
+    if hp <= 0 then
+      v.t0 = os.clock()
+      if v.bb then v.bb:Destroy() end
+      table.insert(dying, v)
+    else
       v.model:Destroy()
-      views[em] = nil
+    end
+  end
+  local function stepDying()
+    local t = os.clock()
+    for i = #dying, 1, -1 do
+      local v = dying[i]
+      local a = t - v.t0
+      if a > ((v.kind == "bot") and 6 or 5) then
+        v.model:Destroy()
+        table.remove(dying, i)
+      else
+        local cf
+        if v.kind == "bot" then   -- 绕脚底往后倒
+          local k = math.clamp(a / 0.45, 0, 1)
+          cf = v.cf * CF(0, -2.8, 0) * CFrame.Angles(k * k * 1.45, 0, 0) * CF(0, 2.8 - 0.4 * k, 0)
+        else
+          cf = v.cf * CF(0, -a * 2.2, 0) * CFrame.Angles(0, 0, a * 0.12)
+        end
+        for _, L in pairs(v.parts) do L[1].CFrame = cf * L[2] end
+      end
     end
   end
 
@@ -113,6 +143,7 @@ function View.init(G)
   end)
 
   function G.stepView(dt)
+    stepDying()
     local myTeam = me:GetAttribute("Side")
     for em, v in pairs(views) do
       if not em.Parent then

@@ -36,6 +36,7 @@ print("① 开服：生成地图")
 H.run(0.5)
 local G = H.Gs.server
 check(G ~= nil, "服务器模块起来了")
+G.Config.Bots.minPerTeam = 0   -- 这个测试不要机器人（机器人另有 ia_bots）
 local ok = H.runUntil(function() return G.worldReady end, 900)
 check(ok, string.format("地图生成完（模拟 %.0f 秒，实际 %.1f 秒）：%s 个地形块、%s 个体素", H.now, os.clock() - clock0, tostring(G.terrainChunks), tostring(G.terrainVoxels)))
 check(#G.bootErrors == 0, "开服没有报错：" .. table.concat(G.bootErrors, " | "))

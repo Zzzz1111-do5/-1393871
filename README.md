@@ -9,7 +9,7 @@ Darksword: Island Assault —— 百人同服的攻防登岛战。原来的「�
 - 攻方从舰队甲板出生，或者坐登陆艇抢滩、伞降、在拿下的据点出生；守方在北岸营地或还没被压住的据点出生。
 - 中英双语，按系统语言自动选，部署界面右上角能切。
 
-方案、规则细节和进度：[docs/island_assault_plan.md](docs/island_assault_plan.md)。现在是 1.0-alpha：回合、分队、部署、步兵武器、登陆艇、据点、胜负、界面已经能玩；机器人、载具、导入模型还在做。
+方案、规则细节和进度：[docs/island_assault_plan.md](docs/island_assault_plan.md)。现在是 1.0-alpha：回合、分队、部署、步兵武器、登陆艇、据点、胜负、界面、机器人（人不够时每队补到 18 人）已经能玩；载具、实景地图、导入模型还在做。
 
 ## 直接玩
 
@@ -33,7 +33,7 @@ Darksword: Island Assault —— 百人同服的攻防登岛战。原来的「�
 
 - 脚本都在 `src/`，目录和 Rojo 的约定一样：
   - `src/ReplicatedStorage/`：`Config.lua`（数值：回合、占领、兵种、武器、载具名额、机器人、得分、军衔）、`Lang.lua`（中英文字）、`Map.lua`（地形高度、岛、据点、海滩、舰队位置，服务器和客户端算出来一样）。
-  - `src/ServerScriptService/Main/`：服务器（`World` 生成地图、`Round` 回合与据点、`Weapons` 步兵武器、`Ents` 实体与伤害、`Vehicles` 登陆艇与伞降、`Store` 存档）。
+  - `src/ServerScriptService/Main/`：服务器（`World` 生成地图、`Round` 回合与据点、`Weapons` 步兵武器、`Ents` 实体与伤害、`Vehicles` 登陆艇与伞降、`Bots` 机器人、`Nav` 寻路、`Store` 存档）。
   - `src/StarterPlayer/StarterPlayerScripts/Client/`：客户端（`UI` 界面、`MapUI` 地图、`Play` 操作与镜头、`View` 实体的样子、`Fx` 特效与音效）。
 - 生成 rbxlx：装 [Lune](https://github.com/lune-org/lune) **0.11 或更新**，在仓库根目录运行 `lune run tools/build.luau`（默认写 `IslandAssault.rbxlx`）。
 - 也可以直接在 Studio 里改脚本；改完之后这里的 `src/` 就不是最新的了。
@@ -48,6 +48,7 @@ Darksword: Island Assault —— 百人同服的攻防登岛战。原来的「�
 lune run tools/build.luau
 lune run tools/test/check.luau                        # 语法检查
 lune run tools/test/ia_flow.luau IslandAssault.rbxlx  # 流程：开服 → 分队 → 部署 → 开枪击杀 → 复活 → 抢滩 → 占领 → 结算 → 下一局
+lune run tools/test/ia_bots.luau IslandAssault.rbxlx 8  # 机器人：一个真人 + 机器人打 8 分钟（补人数、抢滩、交火、占领、耗时）
 lune run tools/test/ia_boot.luau IslandAssault.rbxlx  # 开服计时（地形生成）
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图
 ```
