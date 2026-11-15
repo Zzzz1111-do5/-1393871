@@ -503,6 +503,7 @@ function Round.init(G)
       C.vehModels = G.vehModels(P.team)
       C.vehSpawns = {}
       for _, s in ipairs(G.vehSpawns(P)) do C.vehSpawns[s.id] = s.ok end
+      if G.airSpawnState then C.airSpawns = G.airSpawnState(P) end
     end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
     return C

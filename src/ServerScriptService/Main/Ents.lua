@@ -153,8 +153,8 @@ function Ents.init(G)
     shotN += 1
     s.id = shotN
     table.insert(shots, s)
-    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.target and s.target.id or nil,
-      f = s.w and s.w.fx or nil })
+    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt })
     return s
   end
 
@@ -169,7 +169,10 @@ function Ents.init(G)
       local s = shots[i]
       s.t += dt
       local done = false
-      if s.target then   -- 追踪：导弹朝目标拐（过载有限）
+      if s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+        local ok, r = pcall(s.step, s, dt)
+        if not ok then G.reportError("导引", r) done = true elseif r then done = true end
+      elseif s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
         if tg.alive then
           local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude

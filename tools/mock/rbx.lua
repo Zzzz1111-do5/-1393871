@@ -387,6 +387,7 @@ local ENUMS = {
   TextTruncate = "None AtEnd SplitWord",
   Material = "Plastic SmoothPlastic Neon Wood WoodPlanks Marble Slate Concrete Granite Brick Pebble Cobblestone Rock Sandstone Basalt CrackedLava Asphalt LeafyGrass Salt Limestone Pavement Grass Ground Sand Fabric Glass ForceField Ice Metal DiamondPlate CorrodedMetal Foil Snow Mud Water Air Glacier Cardboard Carpet CeramicTiles ClayRoofTiles RoofShingles Leather Plaster Rubber",
   PartType = "Ball Block Cylinder Wedge CornerWedge",
+  MeshType = "Brick Cylinder FileMesh Head Sphere Torso Wedge",
   SurfaceType = "Smooth Studs Inlet Universal Glue Weld SmoothNoOutlines Hinge Motor SteppingMotor",
   Font = "Legacy Arial ArialBold SourceSans SourceSansBold SourceSansSemibold SourceSansLight SourceSansItalic Bodoni Garamond Cartoon Code Highway SciFi Arcade Fantasy Antique Gotham GothamMedium GothamBold GothamBlack AmaticSC Bangers Creepster DenkOne Fondamento FredokaOne GrenzeGotisch IndieFlower JosefinSans Jura Kalam LuckiestGuy Merriweather Michroma Nunito Oswald PatrickHand PermanentMarker Roboto RobotoCondensed RobotoMono Sarpanch SpecialElite TitilliumWeb Ubuntu BuilderSans BuilderSansMedium BuilderSansBold BuilderSansExtraBold Montserrat",
   EasingStyle = "Linear Sine Back Quad Quart Quint Bounce Elastic Exponential Circular Cubic",
@@ -1027,6 +1028,13 @@ def("Beam", "Instance", {
   Width0 = { T.number, 1 }, Width1 = { T.number, 1 }, LightEmission = { T.number, 0 }, FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Segments = { T.number, 10 },
   CurveSize0 = { T.number, 0 }, CurveSize1 = { T.number, 0 }, Texture = { T.string, "" }, TextureSpeed = { T.number, 1 }, TextureLength = { T.number, 1 }, ZOffset = { T.number, 0 },
 })
+def("SpecialMesh", "Instance", { MeshType = { E("MeshType"), Enum.MeshType.Head }, Scale = { T.Vector3, v3(1, 1, 1) }, Offset = { T.Vector3, v3() },
+  MeshId = { T.string, "" }, TextureId = { T.string, "" }, VertexColor = { T.Vector3, v3(1, 1, 1) } })
+def("Trail", "Instance", {
+  Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
+  Lifetime = { T.number, 2 }, MinLength = { T.number, 0.1 }, MaxLength = { T.number, 0 }, WidthScale = { T.NumberSequence, NumberSequence.new(1) }, LightEmission = { T.number, 0 },
+  FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 },
+}, { methods = { Clear = function() end } })
 def("PointLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 8 }, Color = { T.Color3, newC3(1, 1, 1) }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
 def("Highlight", "Instance", {
   Adornee = { T.Instance, nil }, FillColor = { T.Color3, newC3(1, 0, 0) }, OutlineColor = { T.Color3, newC3(1, 1, 1) }, FillTransparency = { T.number, 0.5 },

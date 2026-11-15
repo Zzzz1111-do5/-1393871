@@ -193,7 +193,9 @@ function UI.init(G)
     for _, c in pairs(vehCards) do c.b:Destroy() end
     vehCards = {}
     local VD = require(RS:WaitForChild("VehDefs"))
-    for i, id in ipairs(S.vehModels or {}) do
+    local ids = {}
+    for _, id in ipairs(S.vehModels or {}) do if VD.get(id) then table.insert(ids, id) end end   -- 飞机：驾驶和部署界面还在做，先不显示
+    for i, id in ipairs(ids) do
       local d = VD.get(id)
       local b = Instance.new("TextButton")
       b.Text = ""
