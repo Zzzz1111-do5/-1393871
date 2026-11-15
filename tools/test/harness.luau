@@ -368,6 +368,24 @@ roblox.implementMethod("Terrain", "FillWedge", function(self, cf, size, mat)
 	terrOp({ k = "wedge", cf = cf, size = size, m = mat.Name })
 end)
 roblox.implementMethod("Terrain", "Clear", function(self) end)
+-- 写体素：按 Roblox 的规矩检查（分辨率只能是 4、一次最多 4,194,304 个、三维数组的尺寸要和区域对上），记下写了多少
+H.voxelWrites, H.voxelCount = 0, 0
+roblox.implementMethod("Terrain", "WriteVoxels", function(self, region, res, mats, occ)
+	if typeof(region) ~= "Region3" then error("WriteVoxels 第 1 个参数要是 Region3", 2) end
+	if res ~= 4 then error("WriteVoxels 的分辨率只能是 4", 2) end
+	if type(mats) ~= "table" or type(occ) ~= "table" then error("WriteVoxels 材质、占比要是三维数组", 2) end
+	local sz = region.Size
+	local nx, ny, nz = math.round(sz.X / 4), math.round(sz.Y / 4), math.round(sz.Z / 4)
+	if nx * ny * nz > 4194304 then error("WriteVoxels 一次写太多：" .. nx * ny * nz, 2) end
+	if #mats ~= nx or #occ ~= nx or #mats[1] ~= ny or #mats[1][1] ~= nz or #occ[1][1] ~= nz then
+		error(string.format("WriteVoxels 数组尺寸 %d×%d×%d 和区域 %d×%d×%d 对不上", #mats, #mats[1], #mats[1][1], nx, ny, nz), 2)
+	end
+	local m = mats[1][1][1]
+	if typeof(m) ~= "EnumItem" then error("WriteVoxels 材质要是 Enum.Material", 2) end
+	H.voxelWrites += 1
+	H.voxelCount += nx * ny * nz
+end)
+roblox.implementMethod("Terrain", "SetMaterialColor", function(self, mat, color) end)
 
 -- 射线：零件按长方体（球按外接盒）算，地面是 y = 0 的地形
 local function rayBox(o, d, cf, size)
@@ -417,13 +435,41 @@ function H.raycast(o, d, params)
 	local terrain = ws:FindFirstChildOfClass("Terrain")
 	local terrainOK = true
 	if include then terrainOK = terrain ~= nil and inList(terrain, list) elseif terrain and inList(terrain, list) then terrainOK = false end
-	if terrainOK and d.Y < 0 then
+	local normal = V3.new(0, 1, 0)
+	if terrainOK and H.terrainHeight then   -- 有地图高度（ReplicatedStorage.Map）：沿射线一步步找打到地面 / 水面的地方
+		local hf, water = H.terrainHeight, not (params and params.IgnoreWater)
+		local function surf(x, z) local y = hf(x, z) if water and y < 0 then y = 0 end return y end
+		local L = d.Magnitude
+		local n = math.clamp(math.ceil(L / 3), 1, 400)
+		local prev = 0
+		for i = 1, n do
+			local t = i / n
+			if t >= bt then break end
+			local p = o + d * t
+			if p.Y <= surf(p.X, p.Z) then
+				local a, b = prev, t
+				for _ = 1, 12 do
+					local m = (a + b) / 2
+					local q = o + d * m
+					if q.Y <= surf(q.X, q.Z) then b = m else a = m end
+				end
+				bt, best = b, terrain
+				local q = o + d * b
+				local e = 1
+				local gx = (surf(q.X + e, q.Z) - surf(q.X - e, q.Z)) / (2 * e)
+				local gz = (surf(q.X, q.Z + e) - surf(q.X, q.Z - e)) / (2 * e)
+				normal = V3.new(-gx, 1, -gz).Unit
+				break
+			end
+			prev = t
+		end
+	elseif terrainOK and d.Y < 0 then
 		local t = -o.Y / d.Y
 		if t >= 0 and t <= 1 and t < bt then bt, best = t, terrain end
 	end
 	if not best then return nil end
 	local pos = o + d * bt
-	return { Instance = best, Position = pos, Normal = V3.new(0, 1, 0), Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
+	return { Instance = best, Position = pos, Normal = (best == terrain) and normal or V3.new(0, 1, 0), Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
 end
 
 local function camRay(cam, x, y)
@@ -1316,6 +1362,12 @@ function H.boot(placePath, opts)
 		pcall(function() game:GetService(s) end)
 	end
 	local ok = pcall(function() return game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts") end)
+	-- 有地图模块（ReplicatedStorage.Map，登岛战）：射线按它的高度打地形
+	local mapMod = game:GetService("ReplicatedStorage"):FindFirstChild("Map")
+	if mapMod and mapMod:IsA("ModuleScript") then
+		local okM, M = pcall(hrequire, mapMod)
+		if okM and type(M) == "table" and M.height then H.terrainHeight, H.map = function(x, z) return (M.height(x, z)) end, M end
+	end
 	-- 跑服务器脚本（ServerScriptService、Workspace 里的 Script）
 	for _, root in { game:GetService("ServerScriptService"), ws } do
 		for _, s in root:GetDescendants() do

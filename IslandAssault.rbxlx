@@ -1,0 +1,4501 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">Config</string>
+        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——数值（服务器、客户端共用）
+-- 文字都在 Lang.lua（中英双语），这里只放编号和数
+local Config = {}
+
+Config.Version = "1.0-alpha"
+Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档）
+Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
+
+---------------------------------------------------------------- 回合
+
+-- 准备 → 战斗（攻方每拿下一个据点加时间）→ 结算 → 重新随机分队
+Config.Round = {
+  prep = 30,            -- 准备（选兵种、等人）
+  battle = 20 * 60,     -- 战斗时长
+  perCapture = 180,     -- 攻方每拿下一个据点加多少秒
+  overtime = 90,        -- 时间到时有据点正在被占：最多加时多久
+  results = 20,         -- 结算画面
+}
+Config.RespawnDelay = 6   -- 阵亡后几秒回到部署界面
+Config.MinPlayersToStart = 1
+
+-- 占领：圈里数双方的人（步兵、地面载具；飞机、舰艇不算；机器人也算）
+Config.Capture = {
+  r = 70,          -- 据点半径（和 Map.POINT_R 一样）
+  slow = 45,       -- 攻方多 1 人：几秒占完
+  fast = 15,       -- 攻方多 3 人以上：几秒占完
+  decay = 90,      -- 守方人不少于攻方：进度从满退到零要几秒
+}
+
+Config.Teams = {
+  atk = { color = Color3.fromRGB(220, 70, 55), brick = "Bright red" },
+  def = { color = Color3.fromRGB(60, 120, 230), brick = "Bright blue" },
+}
+
+---------------------------------------------------------------- 步兵兵种（10 种，无限复活）
+
+-- hp 血量、speed 走路速度；weapons 带的武器（按顺序进背包：1、2、3…）
+Config.Roles = {
+  { id = "rifle", hp = 100, speed = 16, weapons = { "rifle", "pistol", "grenade" } },
+  { id = "mg", hp = 115, speed = 14.5, weapons = { "lmg", "pistol" } },
+  { id = "sniper", hp = 90, speed = 16, weapons = { "sniper", "pistol" } },
+  { id = "at", hp = 100, speed = 15, weapons = { "carbine", "rpg" } },
+  { id = "aa", hp = 100, speed = 15, weapons = { "carbine", "manpads" } },
+  { id = "medic", hp = 100, speed = 16.5, weapons = { "smg", "medkit" } },
+  { id = "engineer", hp = 105, speed = 15.5, weapons = { "carbine", "repair", "mine" } },
+  { id = "mortar", hp = 100, speed = 15, weapons = { "carbine", "mortar" } },
+  { id = "spec", hp = 110, speed = 18, weapons = { "smgsd", "c4", "grenade" } },
+  { id = "spotter", hp = 95, speed = 16, weapons = { "carbine", "binoc" } },
+}
+Config.RoleById = {}
+for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
+
+---------------------------------------------------------------- 武器
+
+-- 目标类别：inf 步兵、light 轻型车、armor 装甲、air 飞机直升机、ship 舰艇、fort 工事
+-- kind：gun 直射（服务器射线判定）；proj 有弹道的弹（speed 弹速、splash 溅射、drop 是否下坠）；throw 投掷（fuse 引信秒数）；
+--   lock 锁定导弹（打 air，lockTime 锁定要几秒）；mortar 曲射（点地图上 / 准星下的地面，minR maxR 射程）；
+--   heal 治疗（r 范围、amt 每次、cd 冷却）；repair 修车（每秒 rate）；place 放置（c4、地雷）；spot 望远镜标记敌人、呼叫炮击
+-- dmg 每发、rate 几秒一发、mag 弹匣、reserve 备弹（不算弹匣里的；没写就是无限）、reload 换弹秒数、range 射程、spread 散布（度）；
+-- vs 对各类目标的伤害倍数
+local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }
+Config.Weapons = {
+  rifle = { kind = "gun", dmg = 26, rate = 0.11, mag = 30, reload = 2.2, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6 },
+  carbine = { kind = "gun", dmg = 23, rate = 0.1, mag = 30, reload = 2.0, range = 480, spread = 0.75, auto = true, vs = G_VS, head = 1.6 },
+  lmg = { kind = "gun", dmg = 24, rate = 0.075, mag = 100, reload = 4.6, range = 700, spread = 1.15, auto = true, vs = { inf = 1, light = 0.3, armor = 0.02, air = 0.15, ship = 0, fort = 0.05 }, head = 1.5 },
+  sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 0.03, vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
+  smg = { kind = "gun", dmg = 19, rate = 0.07, mag = 32, reload = 1.8, range = 280, spread = 1.4, auto = true, vs = G_VS, head = 1.5 },
+  smgsd = { kind = "gun", dmg = 21, rate = 0.075, mag = 30, reload = 1.8, range = 320, spread = 1.1, auto = true, vs = G_VS, head = 1.6, quiet = true },
+  pistol = { kind = "gun", dmg = 28, rate = 0.22, mag = 12, reload = 1.4, range = 220, spread = 0.9, vs = G_VS, head = 1.6 },
+  rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
+    vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },
+  manpads = { kind = "lock", dmg = 120, rate = 0.5, mag = 1, reserve = 1, reload = 3.5, range = 1400, speed = 320, splash = 9, lockTime = 1.6,
+    vs = { inf = 0.3, light = 0.5, armor = 0.3, air = 6, ship = 0.5, fort = 0.2 } },
+  grenade = { kind = "throw", dmg = 115, rate = 1.0, mag = 1, reserve = 1, reload = 0.8, range = 90, fuse = 2.8, splash = 14, speed = 70,
+    vs = { inf = 1, light = 0.8, armor = 0.15, air = 0, ship = 0.1, fort = 0.6 } },
+  mortar = { kind = "mortar", dmg = 95, rate = 1.6, mag = 1, reserve = 11, reload = 2.6, minR = 90, maxR = 950, splash = 17, flight = 5,
+    vs = { inf = 1, light = 0.8, armor = 0.3, air = 0, ship = 0.25, fort = 0.8 } },
+  medkit = { kind = "heal", amt = 35, r = 14, cd = 6, mag = 1, rate = 0.5, reload = 0 },
+  repair = { kind = "repair", rate = 90, range = 16, mag = 1, reload = 0 },
+  mine = { kind = "place", dmg = 260, splash = 9, mag = 1, reserve = 1, reload = 0.6, rate = 0.8, trigger = "vehicle",
+    vs = { inf = 0.6, light = 4, armor = 4.5, air = 0, ship = 0, fort = 0 } },
+  c4 = { kind = "place", dmg = 260, splash = 13, mag = 1, reserve = 1, reload = 0.6, rate = 0.8, trigger = "remote",
+    vs = { inf = 1, light = 4, armor = 5, air = 0, ship = 2, fort = 5 } },
+  binoc = { kind = "spot", range = 1600, spotTime = 12, cd = 4, strikeCd = 75, strike = { n = 8, r = 26, dmg = 120, splash = 20, flight = 6,
+    vs = { inf = 1, light = 1, armor = 0.45, air = 0, ship = 0.3, fort = 1 } }, mag = 1, reload = 0 },
+}
+
+---------------------------------------------------------------- 载具（按名额；每队每种同时在场有上限，按队伍人数算）
+
+-- cat 类别：tank 坦克、apc 装甲车、aa 防空、arty 火炮、heli 直升机、jet 固定翼、ship 舰艇
+-- 每类按队给几个型号（Lang 里有名字）；hp、speed（格 / 秒）、tgt 中弹按什么类别算伤害
+Config.VehicleCats = {
+  tank = { tgt = "armor", hp = 1600, speed = 34, perN = 8, min = 1, max = 4, cd = 60 },
+  apc = { tgt = "light", hp = 800, speed = 46, perN = 6, min = 1, max = 5, cd = 45, seats = 5 },
+  aa = { tgt = "light", hp = 700, speed = 36, perN = 12, min = 1, max = 2, cd = 60 },
+  arty = { tgt = "light", hp = 650, speed = 30, perN = 14, min = 0, max = 2, cd = 70 },
+  heli = { tgt = "air", hp = 900, speed = 85, perN = 12, min = 1, max = 3, cd = 75, seats = 4 },
+  jet = { tgt = "air", hp = 700, speed = 260, perN = 12, min = 1, max = 3, cd = 90 },
+  ship = { tgt = "ship", hp = 3000, speed = 45, perN = 16, min = 0, max = 2, cd = 120 },
+}
+Config.VehicleOrder = { "tank", "apc", "aa", "arty", "heli", "jet", "ship" }
+-- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
+Config.Vehicles = {
+  atk = {
+    tank = { "ztq15", "ztz96", "ztz99a" },
+    apc = { "ztd05", "zbd05", "zsl92b", "ptl02" },
+    aa = { "pgz07", "pgl625", "ld2000" },
+    arty = { "plz07" },
+    heli = { "z10", "z20" },
+    jet = { "j15t", "j35", "j20", "j16", "j50", "h6k", "gj11", "gj2" },
+    ship = { "t055", "t054a", "t022" },
+  },
+  def = {
+    tank = { "m10", "m1a1", "m1a2" },
+    apc = { "m1117", "hmmwv", "jltv", "m2a3", "stryker", "m1150" },
+    aa = { "m163", "mshorad", "cram", "patriot" },
+    arty = { "m109a7", "m270", "m777" },
+    heli = { "ah64e", "uh60", "ch47" },
+    jet = { "a10c", "f35", "f22", "mq9", "b2" },
+    ship = { "ddg125", "cg47", "lcs2", "pbr" },
+  },
+}
+Config.VehicleMod = {
+  ztq15 = { hp = 0.75, speed = 1.15, gun = 0.8 }, m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
+  ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
+  zbd05 = { amphib = true }, ztd05 = { amphib = true, gun = 1.6 }, hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
+  m1150 = { hp = 1.4, speed = 0.8 }, m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
+  z20 = { transport = true }, uh60 = { transport = true }, ch47 = { transport = true, hp = 1.3 },
+  h6k = { bomber = true, hp = 1.6, speed = 0.75 }, b2 = { bomber = true, hp = 1.5, speed = 0.8 }, a10c = { hp = 1.4, speed = 0.7 },
+  gj11 = { drone = true, hp = 0.6 }, gj2 = { drone = true, hp = 0.6 }, mq9 = { drone = true, hp = 0.6, speed = 0.55 },
+  t022 = { hp = 0.4, speed = 1.3 }, pbr = { hp = 0.25, speed = 1.4 }, lcs2 = { hp = 0.6, speed = 1.3 },
+}
+-- 这一队这一类最多同时在场几辆（按队伍人数，真人 + 机器人）
+function Config.VehicleCap(cat, teamN)
+  local c = Config.VehicleCats[cat]
+  return math.clamp(math.floor(teamN / c.perN) + c.min, c.min, c.max)
+end
+
+---------------------------------------------------------------- 机器人
+
+Config.Bots = {
+  minPerTeam = 18,       -- 每队保底人数：真人不够用 AI 补
+  maxTotal = 40,         -- 全服最多几个机器人
+  hp = 100, speed = 14, -- 步兵机器人
+  weapon = "rifle", accuracy = 0.32, reaction = 0.8, sight = 520,
+}
+
+---------------------------------------------------------------- 得分、经验、军衔
+
+Config.Score = { kill = 100, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
+Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
+function Config.RankOf(xp)
+  local i = 1
+  for k, v in ipairs(Config.Ranks) do
+    if xp >= v then i = k end
+  end
+  return i
+end
+
+return Config
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="2">
+      <Properties>
+        <string name="Name">Lang</string>
+        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
+--   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
+--   Lang.t(lang, key, ...)：{1} {2} … 换成参数；参数是表 { k = "编号", … } 时先翻译它（服务器发「据点 A」「步枪兵」这种）
+local Lang = {}
+
+local ZH, EN = {}, {}
+Lang.zh, Lang.en = ZH, EN
+
+local function add(key, zh, en)
+  ZH[key] = zh
+  EN[key] = en
+end
+
+---------------------------------------------------------------- 名字
+
+add("game.title", "暗剑：登岛战", "Darksword: Island Assault")
+add("team.atk", "进攻方", "Attackers")
+add("team.def", "防守方", "Defenders")
+add("team.atk.short", "攻", "ATK")
+add("team.def.short", "守", "DEF")
+
+add("role.rifle", "步枪兵", "Rifleman")
+add("role.mg", "机枪手", "Machine Gunner")
+add("role.sniper", "狙击手", "Sniper")
+add("role.at", "反坦克兵", "Anti-Tank")
+add("role.aa", "防空兵", "Anti-Air")
+add("role.medic", "医疗兵", "Medic")
+add("role.engineer", "工兵", "Engineer")
+add("role.mortar", "迫击炮手", "Mortarman")
+add("role.spec", "特种兵", "Special Forces")
+add("role.spotter", "观察员", "Spotter")
+add("role.rifle.desc", "步枪 + 手枪 + 手雷，什么都能打", "Rifle, pistol and a grenade. Good at everything")
+add("role.mg.desc", "百发弹链的机枪，压制冲上来的人", "100-round machine gun to pin down attackers")
+add("role.sniper.desc", "远距离一枪一个，爆头双倍", "One shot from far away. Headshots deal double")
+add("role.at.desc", "火箭筒打坦克、装甲车、碉堡", "Rocket launcher against tanks, APCs and bunkers")
+add("role.aa.desc", "单兵防空导弹，锁定直升机、飞机", "Shoulder SAM that locks onto helicopters and jets")
+add("role.medic.desc", "冲锋枪 + 急救包，给身边的队友回血", "SMG and a medkit that heals nearby teammates")
+add("role.engineer.desc", "修车、埋反坦克地雷", "Repairs vehicles and lays anti-tank mines")
+add("role.mortar.desc", "迫击炮：点准星下的地面，炮弹几秒后落下", "Mortar: shells land where you aim a few seconds later")
+add("role.spec.desc", "跑得快的消音冲锋枪 + 炸药包", "Fast, suppressed SMG and C4 charges")
+add("role.spotter.desc", "望远镜标记敌人，呼叫炮火覆盖", "Binoculars to mark enemies and call artillery")
+
+add("weapon.rifle", "步枪", "Rifle")
+add("weapon.carbine", "卡宾枪", "Carbine")
+add("weapon.lmg", "机枪", "LMG")
+add("weapon.sniper", "狙击枪", "Sniper Rifle")
+add("weapon.smg", "冲锋枪", "SMG")
+add("weapon.smgsd", "消音冲锋枪", "Suppressed SMG")
+add("weapon.pistol", "手枪", "Pistol")
+add("weapon.rpg", "火箭筒", "Rocket Launcher")
+add("weapon.manpads", "防空导弹", "MANPADS")
+add("weapon.grenade", "手雷", "Grenade")
+add("weapon.mortar", "迫击炮", "Mortar")
+add("weapon.medkit", "急救包", "Medkit")
+add("weapon.repair", "扳手", "Repair Tool")
+add("weapon.mine", "反坦克地雷", "AT Mine")
+add("weapon.c4", "炸药包", "C4")
+add("weapon.binoc", "望远镜", "Binoculars")
+
+add("point.A", "A 前哨岛", "A Outpost Isle")
+add("point.B", "B 灯塔岛", "B Lighthouse Isle")
+add("point.C", "C 港口镇", "C Harbor Town")
+add("point.D", "D 机场", "D Airfield")
+add("point.E", "E 指挥所", "E Command Post")
+add("beach.red", "红滩", "Red Beach")
+add("beach.white", "白滩", "White Beach")
+add("beach.blue", "蓝滩", "Blue Beach")
+add("beach.gold", "金滩", "Gold Beach")
+add("beach.flank", "东北滩（侧翼）", "NE Beach (flank)")
+add("spawn.camp", "后方营地", "Rear Camp")
+add("spawn.fleet", "舰队（两栖攻击舰）", "Fleet (assault ship)")
+add("spawn.para", "伞降", "Paradrop")
+
+add("vcat.tank", "坦克", "Tanks")
+add("vcat.apc", "装甲车", "APCs")
+add("vcat.aa", "防空", "Anti-Air")
+add("vcat.arty", "火炮", "Artillery")
+add("vcat.heli", "直升机", "Helicopters")
+add("vcat.jet", "固定翼", "Jets")
+add("vcat.ship", "舰艇", "Ships")
+local VEH = {
+  ztq15 = { "ZTQ-15 轻型坦克", "ZTQ-15 Light Tank" }, ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" },
+  m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv3", "M1A2 SEPv3" },
+  ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
+  zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
+  m1117 = { "M1117 装甲警卫车", "M1117 Guardian" }, hmmwv = { "悍马", "Humvee" }, jltv = { "JLTV 联合轻型战术车", "JLTV" },
+  m2a3 = { "M2A3 布雷德利", "M2A3 Bradley" }, stryker = { "斯特赖克", "Stryker" }, m1150 = { "M1150 突击破障车", "M1150 ABV" },
+  pgz07 = { "PGZ-07 自行高炮", "PGZ-07 SPAAG" }, pgl625 = { "PGL-625 弹炮结合防空车", "PGL-625 Gun-Missile AA" }, ld2000 = { "LD-2000 近防炮", "LD-2000 CIWS" },
+  m163 = { "M163 火神高炮", "M163 VADS" }, mshorad = { "M-SHORAD", "M-SHORAD" }, cram = { "C-RAM 陆基密集阵", "C-RAM" }, patriot = { "爱国者", "Patriot" },
+  plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
+  z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
+  ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j50 = { "歼-50", "J-50" },
+  h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
+  a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
+  t055 = { "055 型驱逐舰", "Type 055 Destroyer" }, t054a = { "054A 型护卫舰", "Type 054A Frigate" }, t022 = { "022 型导弹艇", "Type 022 Missile Boat" },
+  ddg125 = { "DDG-125 驱逐舰", "DDG-125 Destroyer" }, cg47 = { "CG-47 巡洋舰", "CG-47 Cruiser" }, lcs2 = { "LCS-2 濒海战斗舰", "LCS-2 Littoral Combat Ship" }, pbr = { "PBR 巡逻艇", "PBR Patrol Boat" },
+  lcm = { "登陆艇", "Landing Craft" }, lcac = { "726 型气垫艇", "Type 726 LCAC" },
+}
+for k, v in pairs(VEH) do add("veh." .. k, v[1], v[2]) end
+
+local RANKS = {
+  { "列兵", "Private" }, { "上等兵", "Private First Class" }, { "下士", "Corporal" }, { "中士", "Sergeant" }, { "上士", "Staff Sergeant" },
+  { "少尉", "Second Lieutenant" }, { "中尉", "First Lieutenant" }, { "上尉", "Captain" }, { "少校", "Major" }, { "中校", "Lieutenant Colonel" },
+  { "上校", "Colonel" }, { "大校", "Senior Colonel" }, { "少将", "Major General" }, { "中将", "Lieutenant General" }, { "上将", "General" },
+}
+for i, v in ipairs(RANKS) do add("rank." .. i, v[1], v[2]) end
+
+---------------------------------------------------------------- 界面
+
+add("ui.deploy", "部署", "Deploy")
+add("ui.chooseRole", "选择兵种", "Choose your role")
+add("ui.chooseSpawn", "选择出生点", "Choose a spawn point")
+add("ui.deployBtn", "出击", "DEPLOY")
+add("ui.waitRespawn", "{1} 秒后可以重新部署", "Redeploy in {1}s")
+add("ui.prep", "准备阶段：{1} 秒后开战", "Get ready: battle starts in {1}s")
+add("ui.youAre", "你在{1}", "You are on the {1}")
+add("ui.goalAtk", "拿下全部 5 个据点（每拿下一个，时间 +3 分钟）", "Capture all 5 points (each capture adds 3 minutes)")
+add("ui.goalDef", "守住任何一个据点直到时间结束", "Hold at least one point until time runs out")
+add("ui.timeLeft", "剩余", "Time")
+add("ui.overtime", "加时", "Overtime")
+add("ui.capturing", "正在占领 {1}", "Capturing {1}")
+add("ui.losing", "{1} 正在被攻方占领！", "{1} is being captured!")
+add("ui.contested", "{1} 争夺中", "{1} contested")
+add("ui.captured", "{1} 被攻方拿下了", "{1} has fallen to the Attackers")
+add("ui.capturedYou", "拿下 {1}！时间 +3 分钟", "{1} captured! +3 minutes")
+add("ui.scoreboard", "战况", "Scoreboard")
+add("ui.kills", "击杀", "Kills")
+add("ui.deaths", "阵亡", "Deaths")
+add("ui.score", "得分", "Score")
+add("ui.captures", "占领", "Caps")
+add("ui.bot", "（AI）", "(AI)")
+add("ui.win.atk", "进攻方胜利：5 个据点全部拿下", "ATTACKERS WIN: all 5 points captured")
+add("ui.win.def", "防守方胜利：守住了据点", "DEFENDERS WIN: held the line")
+add("ui.youWon", "你们赢了！", "Victory!")
+add("ui.youLost", "你们输了", "Defeat")
+add("ui.nextRound", "{1} 秒后开下一局，重新分队", "Next round in {1}s with new teams")
+add("ui.xp", "经验 +{1}", "+{1} XP")
+add("ui.rankUp", "晋升：{1}", "Promoted: {1}")
+add("ui.killed", "{1} 击毙了 {2}", "{1} killed {2}")
+add("ui.youKilled", "击毙 {1}", "Killed {1}")
+add("ui.killedBy", "你被 {1} 击毙", "Killed by {1}")
+add("ui.died", "你阵亡了", "You died")
+add("ui.lang", "中文 / EN", "EN / 中文")
+add("ui.ammo", "{1}  {2} / {3}", "{1}  {2} / {3}")
+add("ui.reloading", "{1}  换弹中…", "{1}  reloading…")
+add("ui.reloadKey", "R 换弹", "R to reload")
+add("ui.healed", "治疗 +{1}", "Healed +{1}")
+add("ui.spotted", "标记了 {1} 个敌人", "Spotted {1} enemies")
+add("ui.strikeCalled", "炮火覆盖：{1} 秒后落下", "Artillery inbound in {1}s")
+add("ui.strikeCd", "炮击还要 {1} 秒才能再叫", "Artillery ready in {1}s")
+add("ui.mortarRange", "超出射程（{1}～{2}）", "Out of range ({1}-{2})")
+add("ui.locking", "锁定中…", "Locking…")
+add("ui.locked", "已锁定", "LOCKED")
+add("ui.noTarget", "没有空中目标", "No air target")
+add("ui.c4placed", "放好了炸药包（再按一次引爆）", "C4 placed (use again to detonate)")
+add("ui.minePlaced", "埋好了反坦克地雷", "AT mine placed")
+add("ui.outOfAmmo", "没有弹药了", "Out of ammo")
+add("ui.landing", "登陆艇正在冲滩……", "Landing craft heading for the beach…")
+add("ui.boatSunk", "登陆艇被击沉了", "Your landing craft was sunk")
+add("ui.joinBalance", "人数不平衡，你被分到{1}", "Teams were unbalanced: you joined the {1}")
+add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured points stay with the Attackers")
+add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
+add("ui.needPick", "先选兵种和出生点", "Pick a role and a spawn point first")
+add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
+add("ui.help", "WASD 移动 · 鼠标左键开火 · 右键瞄准 · R 换弹 · 1–4 切武器 · Tab 战况 · M 地图", "WASD move · LMB fire · RMB aim · R reload · 1-4 weapons · Tab scoreboard · M map")
+add("ui.credits", "致谢", "Credits")
+add("ui.close", "关闭", "Close")
+add("ui.map", "地图", "Map")
+
+---------------------------------------------------------------- 翻译
+
+function Lang.pick(localeId)
+  if type(localeId) == "string" and string.sub(string.lower(localeId), 1, 2) == "zh" then return "zh" end
+  return "en"
+end
+
+local function tr(lang, key)
+  local T = (lang == "zh") and ZH or EN
+  return T[key] or ZH[key] or EN[key] or tostring(key)
+end
+
+function Lang.t(lang, key, ...)
+  local s = tr(lang, key)
+  local args = table.pack(...)
+  if args.n == 0 then return s end
+  return (string.gsub(s, "{(%d)}", function(i)
+    local v = args[tonumber(i)]
+    if type(v) == "table" and v.k then return tr(lang, v.k) end
+    return tostring(v)
+  end))
+end
+
+-- 军衔名（第几级）
+function Lang.rank(lang, i) return tr(lang, "rank." .. i) end
+
+return Lang
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="3">
+      <Properties>
+        <string name="Name">Map</string>
+        <ProtectedString name="Source"><![CDATA[-- 登岛战地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
+--   坐标：X 东西（东为正），Z 南北（北是 −Z），海平面 Y = 0；地形范围 ±4096 格，再往外是一块平面当远海
+--   主岛「棕榈岛」照网页版《暗剑》js/isle.js 的虚构热带岛：南岸宽而平缓（四处海滩）、东西两个岬角、西南向南开口的 U 形港湾（湾底港口镇）、
+--   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
+--   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
+local Map = {}
+local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
+local noise = math.noise
+
+local function clamp(v, a, b) return v < a and a or (v > b and b or v) end
+local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
+local function lerp(a, b, t) return a + (b - a) * t end
+Map.clamp, Map.smooth, Map.lerp = clamp, smooth, lerp
+
+Map.R = 4096           -- 地形范围 ±R
+Map.SEA_DEPTH = 12     -- 远海水深（格）
+Map.MAXH = 290         -- 高度系数 1 对应多少格（主峰约 250）
+Map.RES = 4            -- 地形体素边长
+
+---------------------------------------------------------------- 主岛
+
+local MI = { x = 0, z = -1500, hs = 1500, S = 800, N = 760 }   -- 中心、东西半宽、南岸 / 北岸离中线最远多少
+Map.MAIN = MI
+local PH = { 0.7, 2.1, 4.0, 1.3, 5.2, 3.3, 0.4, 2.8, 4.6, 1.9, 3.7, 5.9 }   -- 起伏的相位（网页版按种子随机，这里定死：每局一样）
+local BAY = { x = -495, w = 120, d = 320 }   -- 港湾：中心、半宽、伸进岛里多深
+local CAPES = { { x = -1110, ext = 150, w = 105 }, { x = 1200, ext = 130, w = 95 } }   -- 南岸东西两个岬角：伸出多远、半宽
+Map.BAY = BAY
+
+local function southRaw(x)
+  local u = (x - MI.x) / MI.hs
+  if abs(u) >= 1 then return nil end
+  local f = (1 - abs(u) ^ 3.5) ^ 0.45   -- 南岸正面宽而平缓（能登陆的岸段长），东西两头陡收
+  local c = MI.S * f + f * (35 * sin(x / 155 + PH[1]) + 14 * sin(x / 48 + PH[2]) + 6 * sin(x / 21 + PH[3]))
+  for _, k in ipairs(CAPES) do c += k.ext * f * exp(-((x - k.x) / k.w) ^ 2) end
+  local q = (x - BAY.x) / BAY.w
+  c -= BAY.d * exp(-((q * q) ^ 1.6))   -- U 形湾：湾底平、湾口不收窄
+  return MI.z + c
+end
+local function northRaw(x)
+  local u = (x - MI.x) / MI.hs
+  if abs(u) >= 1 then return nil end
+  local g = (1 - abs(u) ^ 3) ^ 0.5
+  local c = MI.N * g + g * (30 * sin(x / 140 + PH[4]) + 16 * sin(x / 53 + PH[5]) + 7 * sin(x / 19 + PH[6]))
+  return MI.z - c
+end
+
+-- 岸线先算好存表（每 2 格一个），查的时候线性插值
+local CX0, CSTEP = -MI.hs, 2
+local CN = floor(2 * MI.hs / CSTEP)
+local cS, cN = table.create(CN + 1), table.create(CN + 1)
+for i = 0, CN do
+  local x = CX0 + i * CSTEP
+  cS[i + 1] = southRaw(x) or MI.z
+  cN[i + 1] = northRaw(x) or MI.z
+end
+local function coastLookup(t, x)
+  local f = (x - CX0) / CSTEP
+  if f <= 0 or f >= CN then return nil end
+  local i = floor(f)
+  local a = f - i
+  return t[i + 1] * (1 - a) + t[i + 2] * a
+end
+function Map.coastS(x) return coastLookup(cS, x) end   -- 主岛南岸线在 x 处的 z（岛外返回 nil）
+function Map.coastN(x) return coastLookup(cN, x) end   -- 北岸线
+
+---------------------------------------------------------------- 海滩、据点、营地
+
+-- 南岸四处海滩（避开港湾、岬角）；东北岸一处侧翼海滩
+Map.BEACHES = {
+  { id = "red", x0 = -980, x1 = -820, color = Color3.fromRGB(215, 70, 60) },
+  { id = "white", x0 = -200, x1 = -40, color = Color3.fromRGB(235, 235, 235) },
+  { id = "blue", x0 = 250, x1 = 410, color = Color3.fromRGB(70, 130, 230) },
+  { id = "gold", x0 = 690, x1 = 850, color = Color3.fromRGB(235, 190, 60) },
+  { id = "flank", x0 = 820, x1 = 960, north = true, color = Color3.fromRGB(150, 110, 220) },
+}
+for _, b in ipairs(Map.BEACHES) do
+  b.cx = (b.x0 + b.x1) / 2
+  b.z = (b.north and Map.coastN or Map.coastS)(b.cx)
+  b.dir = b.north and -1 or 1   -- 朝海的方向（Z）：南岸的海在南（+Z），北岸的海在北
+end
+local function beachAt(x, north)
+  for _, b in ipairs(Map.BEACHES) do
+    if (b.north == true) == (north == true) and x >= b.x0 - 25 and x <= b.x1 + 25 then return b end
+  end
+  return nil
+end
+Map.beachAt = beachAt
+
+local function ridgeZ(x) return MI.z - 230 + 65 * sin(x / 260 + PH[7]) + 30 * sin(x / 85 + PH[8]) end
+Map.ridgeZ = ridgeZ
+local HILLS = {
+  { x = -420, z = MI.z - 450, r = 300, h = 0.95 },   -- 西北主峰
+  { x = -760, z = MI.z - 90, r = 250, h = 0.5 },
+  { x = 470, z = MI.z - 200, r = 270, h = 0.5 },
+  { x = 1060, z = MI.z - 330, r = 190, h = 0.4 },
+}
+
+-- 机场（守方，东部沿海平原，跑道东西向）、指挥所（山脊北面）、后方营地（北岸，不能占）、港口镇（湾底）
+local afX = 780
+Map.AIRFIELD = { x = afX, z = (Map.coastS(afX) or 0) - 470, len = 560, wid = 44, rot = 0 }
+local AFP = { x = afX, z = Map.AIRFIELD.z - 40 }   -- 机场一带是一片低平的沿海平原（mainNatural 里压低）
+Map.COMMAND = { x = 260, z = ridgeZ(260) - 230 }
+Map.CAMP = { x = 140, z = (Map.coastN(140) or 0) + 120 }
+Map.PORT = { x = BAY.x, z = (Map.coastS(BAY.x) or 0) - 70 }
+
+---------------------------------------------------------------- 小岛
+
+local ISLES = {
+  { id = "outpost", x = 150, z = 500, a = 230, b = 170, h = 34, ph = 1.1 },   -- 前哨岛：离攻方舰队最近
+  { id = "lighthouse", x = 2500, z = -300, a = 300, b = 230, h = 62, ph = 2.7 },   -- 灯塔岛（东）
+  { id = "westreef", x = -2500, z = -200, a = 270, b = 220, h = 46, ph = 4.2 },   -- 西礁岛：岸防炮台
+  { id = "afield", x = 0, z = 3200, a = 620, b = 230, h = 6, ph = 0.3, flat = true },   -- 攻方机场岛：平的
+}
+Map.ISLES = ISLES
+for _, I in ipairs(ISLES) do Map[string.upper(I.id)] = I end
+
+local function isleRad(I, th)   -- 椭圆半径按方位起伏
+  local c, s = cos(th), sin(th)
+  local r = I.a * I.b / sqrt((I.b * c) ^ 2 + (I.a * s) ^ 2)
+  return r * (1 + 0.07 * sin(3 * th + I.ph) + 0.04 * sin(5 * th + 2 * I.ph) + 0.02 * sin(9 * th + 3 * I.ph))
+end
+Map.isleRad = isleRad
+-- 离这个小岛的岸多远（正 = 岛上，负 = 海里）
+local function isleD(I, x, z)
+  local dx, dz = x - I.x, z - I.z
+  local rho = sqrt(dx * dx + dz * dz)
+  if rho > I.a * 1.3 + 400 then return -1e9, 1, rho end
+  local R = isleRad(I, math.atan2(dz, dx))
+  return R - rho, R, rho
+end
+
+-- 5 个据点：A 前哨岛、B 灯塔岛、C 港口镇、D 机场、E 指挥所（开局都归守方）
+Map.POINTS = {
+  { id = "A", x = 150, z = 500, isle = "outpost" },
+  { id = "B", x = 2480, z = -320, isle = "lighthouse" },
+  { id = "C", x = Map.PORT.x, z = Map.PORT.z },
+  { id = "D", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z - 80 },   -- 机场北面的停机坪、塔台一带
+  { id = "E", x = Map.COMMAND.x, z = Map.COMMAND.z },
+}
+Map.POINT_R = 70   -- 据点半径
+
+-- 攻方舰队（固定平台，打不掉）、机场岛跑道
+Map.FLEET = {
+  { kind = "carrier", x = -420, z = 2250, rot = 0 },   -- 航母（福建舰）
+  { kind = "lhd", x = 330, z = 2150, rot = 0 },   -- 两栖攻击舰（075）
+  { kind = "lst", x = -1000, z = 2050, rot = 0 },   -- 登陆舰（072A）
+  { kind = "lst", x = 950, z = 2050, rot = 0 },
+}
+Map.AFIELD2 = { x = 0, z = 3200, len = 900, wid = 50, rot = 0 }
+
+---------------------------------------------------------------- 压平的场地
+
+-- 据点、机场、营地、港口：在自然高度上压平一块（圆：r 以内完全压平，r2 以外不变；矩形：hx × hz 以内压平，往外 m 格过渡）；只压陆地，不把海抬起来
+local FLAT = {}
+local function addFlat(x, z, r, r2, y) table.insert(FLAT, { x = x, z = z, r = r, r2 = r2, y = y }) end
+local function addRect(x, z, hx, hz, m, y) table.insert(FLAT, { x = x, z = z, hx = hx, hz = hz, m = m, y = y, rect = true }) end
+Map.FLAT = FLAT
+
+---------------------------------------------------------------- 高度
+
+local function mainNatural(x, z)
+  local zs, zn = Map.coastS(x), Map.coastN(x)
+  if not zs then return nil, -1e9 end
+  local dS, dN = zs - z, z - zn
+  local d = min(dS, dN)   -- 离岸（南北方向量；岛东西两头偏小一点，没关系）
+  if d <= 0 then return nil, d, dS, dN end
+  local u = (x - MI.x) / MI.hs
+  local e = 0.06 + min(0.18, d / 1500)
+  e += 0.3 * exp(-((z - ridgeZ(x)) ^ 2) / 22500) * smooth(0, 0.5, 1 - abs(u)) * (1 - 0.75 * exp(-((x - 180) / 110) ^ 2))   -- 中央山脊，偏东一个山口
+  for _, h in ipairs(HILLS) do e += h.h * exp(-((x - h.x) ^ 2 + (z - h.z) ^ 2) / (2 * h.r * h.r)) end
+  local bS = beachAt(x, false)
+  local headland = not bS and not (abs(x - BAY.x) < BAY.w + 60) and (abs(x - CAPES[1].x) < CAPES[1].w * 1.2 or abs(x - CAPES[2].x) < CAPES[2].w * 1.2)
+  if headland then e += 0.14 * exp(-((dS - 35) ^ 2) / 2250) end   -- 岬角：岸边陡起的崖顶
+  e += noise(x / 300, z / 300, 1.37) * 0.16 + noise(x / 110, z / 110, 7.1) * 0.06   -- 起伏
+  e *= lerp(0.4, 1, smooth(20, 325, d))   -- 沿海平原
+  do   -- 东部沿海平原（机场）：一大片低平地（往一个平的高度抹），往外慢慢抬起来
+    local qx, qz = max(0, abs(x - AFP.x) - 330), max(0, abs(z - AFP.z) - 160)
+    e = lerp(0.075, e, smooth(40, 520, sqrt(qx * qx + qz * qz)))
+  end
+  if bS and dS < 160 then e *= lerp(0.35, 1, smooth(15, 120, dS)) end   -- 海滩后方平缓
+  local bN = beachAt(x, true)
+  if bN and dN < 160 then e *= lerp(0.35, 1, smooth(15, 120, dN)) end
+  e = clamp(1 - exp(-1.35 * max(0, e)), 0, 1)   -- 软压缩：高处越来越缓，不会削成平顶台地
+  local y = e * Map.MAXH
+  local edge = ((bS and dS < dN) or (bN and dN <= dS)) and 70 or (headland and dS < dN and 18 or 45)
+  return y * smooth(0, edge, d) + 0.6, d, dS, dN
+end
+
+local function isleNatural(I, x, z)
+  local d, R, rho = isleD(I, x, z)
+  if d <= 0 then return nil, d end
+  local y
+  if I.flat then
+    y = I.h * smooth(0, 60, d)
+  else
+    local k = clamp(rho / R, 0, 1)
+    y = I.h * (1 - k * k) ^ 0.8 + (noise(x / 90, z / 90, I.ph * 3) * 0.5) * I.h * 0.25 * smooth(0, 80, d)
+    y *= smooth(0, 40, d)
+  end
+  return max(y, 0) + 0.6, d
+end
+
+-- 自然高度（压平之前）；海里返回负数（海底）
+local function natural(x, z)
+  local y, d, dS, dN = mainNatural(x, z)
+  if y then return y, d end
+  local off, k = 1e9, 0.16
+  if d and d > -1e8 then   -- 主岛南北两岸外：海滩外是缓坡浅滩
+    off = -d
+    local b = (dS and dN and dS < dN) and beachAt(x, false) or beachAt(x, true)
+    if b and ((b.north and dN and dN < 0) or (not b.north and dS and dS < 0)) then k = 0.06 end
+  end
+  for _, I in ipairs(ISLES) do
+    local yi, di = isleNatural(I, x, z)
+    if yi then return yi, di end
+    if -di < off then off, k = -di, 0.12 end
+  end
+  return -min(Map.SEA_DEPTH, 1.2 + off * k), -off
+end
+
+function Map.height(x, z)
+  local y, d = natural(x, z)
+  if y <= 0.3 then return y, d end
+  for _, F in ipairs(FLAT) do
+    local dx, dz = x - F.x, z - F.z
+    local w = 0
+    if F.rect then
+      local qx, qz = max(0, abs(dx) - F.hx), max(0, abs(dz) - F.hz)
+      if qx < F.m and qz < F.m then w = 1 - smooth(0, F.m, sqrt(qx * qx + qz * qz)) end
+    else
+      local q = dx * dx + dz * dz
+      if q < F.r2 * F.r2 then w = 1 - smooth(F.r, F.r2, sqrt(q)) end
+    end
+    if w > 0 then y = lerp(y, max(F.y, 0.8), w * smooth(0, 25, d)) end   -- 岸边那一点不压（不改岸线）
+  end
+  return y, d
+end
+-- 地面（站人、放车）：海上是海面
+function Map.ground(x, z)
+  local y = Map.height(x, z)
+  return max(y, 0)
+end
+function Map.isLand(x, z) return (Map.height(x, z)) > 0.3 end
+function Map.slope(x, z)
+  local e = 4
+  local a, b = Map.height(x + e, z), Map.height(x - e, z)
+  local c, d = Map.height(x, z + e), Map.height(x, z - e)
+  return sqrt(((a - b) / (2 * e)) ^ 2 + ((c - d) / (2 * e)) ^ 2)
+end
+
+-- 压平的场地：高度取这一圈自然高度的平均（一半挖一半填，四周不会是一圈陡壁；不低于 3 格）
+local function avgNatural(x, z, r)
+  local sum, n = natural(x, z), 1
+  for k = 0, 11 do
+    local a = k * math.pi / 6
+    for _, rr in ipairs({ r * 0.5, r }) do
+      local y = natural(x + cos(a) * rr, z + sin(a) * rr)
+      if y > 0 then sum += y; n += 1 end
+    end
+  end
+  return sum / n
+end
+local function flatHere(x, z, r, r2, yMin)
+  addFlat(x, z, r, r2, max(yMin or 3, avgNatural(x, z, r)))
+end
+for _, p in ipairs(Map.POINTS) do flatHere(p.x, p.z, 55, 110) end
+do local A = Map.AIRFIELD addRect(A.x, A.z - 40, A.len / 2 + 50, 120, 170, max(4, avgNatural(A.x, A.z - 40, 200))) end   -- 跑道 + 北面停机坪
+flatHere(Map.CAMP.x, Map.CAMP.z, 70, 170)
+flatHere(Map.PORT.x, Map.PORT.z, 80, 190)
+addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70, 60, 6)
+for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
+for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "PORT", "AFIELD2" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
+
+---------------------------------------------------------------- 材质
+
+function Map.material(x, z, y, slope)
+  if y <= 0.4 then
+    return (y > -3.5) and Enum.Material.Sand or Enum.Material.Sand
+  end
+  local zs, zn = Map.coastS(x), Map.coastN(x)
+  local nearBeach = y < 8 and zs and ((beachAt(x, false) and zs - z > -10 and zs - z < 90) or (beachAt(x, true) and z - zn > -10 and z - zn < 90))
+  if nearBeach or y < 2.2 then return Enum.Material.Sand end
+  if slope > 1.15 then return (y > 120) and Enum.Material.Slate or Enum.Material.Rock end
+  if y > 232 then return Enum.Material.Rock end
+  if slope > 0.75 then return Enum.Material.Ground end
+  local n = noise(x / 85, z / 85, 11.3)
+  if y < 9 and n > 0.15 then return Enum.Material.Ground end
+  return (n > -0.1) and Enum.Material.LeafyGrass or Enum.Material.Grass
+end
+
+---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）
+
+-- 返回 { x0, z0, x1, z1 } 若干个：主岛、各小岛，外扩一圈浅滩
+function Map.landBoxes()
+  local pad = 120
+  local boxes = { { MI.x - MI.hs - pad, MI.z - MI.N - 140 - pad, MI.x + MI.hs + pad, MI.z + MI.S + 200 + pad } }
+  for _, I in ipairs(ISLES) do
+    local r = max(I.a, I.b) * 1.15 + pad
+    table.insert(boxes, { I.x - r, I.z - r, I.x + r, I.z + r })
+  end
+  return boxes
+end
+
+-- 两点之间的直线有没有被地形挡住（AI 视线用；每 step 格取一点）
+function Map.lineClear(a, b, step)
+  step = step or 12
+  local d = b - a
+  local L = d.Magnitude
+  local n = max(1, floor(L / step))
+  for i = 1, n - 1 do
+    local p = a + d * (i / n)
+    if Map.height(p.X, p.Z) > p.Y then return false end
+  end
+  return true
+end
+
+return Map
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="4">
+      <Properties>
+        <string name="Name">UnitModels</string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="5">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="6">
+      <Properties>
+        <string name="Name">Main</string>
+        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——服务器主脚本（ServerScriptService.Main）
+-- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
+--   World 地图 · Store 存档 · Round 回合、分队、部署、据点、胜负 · Weapons 步兵武器 · Ents 实体（机器人、载具、舰艇、工事）与伤害、爆炸、飞行中的弹 ·
+--   Vehicles 开载具、登陆艇 · Bots 机器人
+-- 循环里每一步都包在 pcall 里：一处出错只跳过那一下，不会把整个服务器卡死（出错原文发到所有人屏幕上的红条）
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(RS:WaitForChild("Config"))
+local Map = require(RS:WaitForChild("Map"))
+local G = { Config = Config, Map = Map, P = {} }   -- P[player] = 这个玩家这一局的状态
+
+Players.CharacterAutoLoads = false   -- 先看部署界面：选好兵种和出生点才生成角色
+
+---------------------------------------------------------------- 远程事件
+
+local Remotes = Instance.new("Folder")
+Remotes.Name = "Remotes"
+G.R = {}
+for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "Board" }) do
+  local r = Instance.new("RemoteEvent")
+  r.Name = name
+  r.Parent = Remotes
+  G.R[name] = r
+end
+Remotes.Parent = RS
+
+local fxq = {}
+function G.fx(e) fxq[#fxq + 1] = e end
+-- 发一条文字（编号 + 参数，客户端按自己的语言翻译）；kind：info / good / bad / kill / center
+function G.msg(pl, kind, key, ...)
+  if pl then G.R.Msg:FireClient(pl, kind, key, ...) end
+end
+function G.msgAll(kind, key, ...) G.R.Msg:FireAllClients(kind, key, ...) end
+function G.msgTeam(team, kind, key, ...)
+  for pl, P in pairs(G.P) do
+    if P.team == team then G.R.Msg:FireClient(pl, kind, key, ...) end
+  end
+end
+
+-- 开服时出的错记下来；运行中接住的错 Output 里留一条、所有玩家屏幕上方红条显示（同一个错只发一次）
+G.bootErrors = {}
+local function bootError(what, err)
+  local msg = "[登岛战] " .. what .. "出错：" .. tostring(err)
+  warn(msg)
+  table.insert(G.bootErrors, msg)
+end
+local errSeen, errN = {}, 0
+function G.reportError(where, err)
+  local full = tostring(err)
+  local first = string.match(full, "^[^\n]*") or full
+  local key = tostring(where) .. first
+  if errSeen[key] then return end
+  errSeen[key] = true
+  errN += 1
+  warn("[登岛战] " .. tostring(where) .. " 出错：" .. full)
+  if errN <= 8 then pcall(function() G.R.Err:FireAllClients(string.sub(tostring(where) .. "：" .. first, 1, 300)) end) end
+end
+local function tb(e) return debug.traceback(tostring(e), 2) end
+function G.try(where, f, ...)
+  local ok, err = xpcall(f, tb, ...)
+  if not ok then G.reportError(where, err) end
+  return ok, err
+end
+
+-- 事件：模块之间互相通知（开局、阵亡、走人、据点易手、结算）——G.on 登记、G.emit 挨个调（一个出错不影响别的）
+local hooks = {}
+function G.on(ev, f)
+  hooks[ev] = hooks[ev] or {}
+  table.insert(hooks[ev], f)
+end
+function G.emit(ev, ...)
+  for _, f in ipairs(hooks[ev] or {}) do G.try(ev, f, ...) end
+end
+
+local ACT = {}
+G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy = function(P, ...) … end
+
+-- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
+G.World = require(script:WaitForChild("World"))
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Bots" }) do
+  local mod = script:FindFirstChild(name)
+  if mod then
+    local ok, err = pcall(function() require(mod).init(G) end)
+    if not ok then bootError("模块 " .. name .. " ", err) end
+  end
+end
+
+---------------------------------------------------------------- 客户端发来的操作
+
+G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c)
+  local P = G.P[pl]
+  if not P or type(op) ~= "string" then return end
+  -- 限流：每秒十几次
+  local now = os.clock()
+  P.tokens = math.min(20, (P.tokens or 20) + (now - (P.tokT or now)) * 14)
+  P.tokT = now
+  if P.tokens < 1 then return end
+  P.tokens -= 1
+  local f = ACT[op]
+  if f then G.try("操作 " .. op, f, P, a, b, c) end
+end)
+
+G.R.Shoot.OnServerEvent:Connect(function(pl, id, a, b)
+  local P = G.P[pl]
+  if P and type(id) == "string" and G.shoot then G.try("开火", G.shoot, P, id, a, b) end
+end)
+
+G.R.Drive.OnServerEvent:Connect(function(pl, d)
+  local P = G.P[pl]
+  if P and type(d) == "table" and G.driveInput then G.try("开载具", G.driveInput, P, d) end
+end)
+
+---------------------------------------------------------------- 开服：先生成地图，再开局
+
+task.spawn(function()
+  local ok, err = xpcall(function() G.World.build(G) end, tb)
+  if not ok then bootError("生成地图", err) G.worldReady = true end
+  if G.roundStart then G.try("开局", G.roundStart) end
+  print("[登岛战] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
+end)
+
+---------------------------------------------------------------- 循环
+
+-- 推演：每 Config.Tick 秒一步（占领、AI、炮弹、导弹、登陆艇）
+local acc = 0
+RunService.Heartbeat:Connect(function(dt)
+  acc += dt
+  local n = 0
+  while acc >= Config.Tick and n < 3 do
+    acc -= Config.Tick
+    n += 1
+    if G.worldReady then
+      if G.roundStep then G.try("回合", G.roundStep, Config.Tick) end
+      if G.entsStep then G.try("实体", G.entsStep, Config.Tick) end
+      if G.botsStep then G.try("机器人", G.botsStep, Config.Tick) end
+      if G.vehStep then G.try("载具", G.vehStep, Config.Tick) end
+    end
+  end
+  if acc > Config.Tick * 3 then acc = 0 end
+  if G.frameStep then G.try("逐帧", G.frameStep, dt) end   -- 登陆艇、开着的载具：每帧挪一次（看着平滑）
+  if #fxq > 0 then
+    local list = fxq
+    fxq = {}
+    G.R.Fx:FireAllClients(list)
+  end
+end)
+
+game:BindToClose(function()
+  if G.saveAll then G.saveAll() end
+end)
+
+print("[登岛战] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
+]]></ProtectedString>
+      </Properties>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Ents</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——实体与伤害
+--   实体（机器人、载具、舰艇、工事、登陆艇）：服务器上一个 Model + 锚定的隐形命中盒 Root，类型、队伍、血量写在属性里；
+--     客户端按属性克隆模板、平滑地跟着 Root 走（View.lua）；伤害按目标类别（inf 步兵、light 轻型车、armor 装甲、air 飞机、ship 舰艇、fort 工事）乘武器的倍数
+--   飞行中的弹：火箭弹、手雷、防空导弹（追踪）、迫击炮弹、炮弹——每一步射线检测，落地 / 打中就爆炸
+--   爆炸：半径内按距离衰减，打实体和玩家角色（不伤自己人）
+local Ents = {}
+
+function Ents.init(G)
+  local Config, Map = G.Config, G.Map
+  local V = Vector3.new
+  local GRAV = V(0, -workspace.Gravity * 0.55, 0)   -- 弹道用的重力（比角色的轻一点，火箭弹、手雷飞得远一点）
+
+  local folder = Instance.new("Folder")
+  folder.Name = "Ents"
+  folder.Parent = workspace
+  G.entFolder = folder
+
+  local ents, byId, nextId = {}, {}, 0
+  G.ents, G.entById = ents, byId
+
+  -- 新实体：def = { kind（编号，客户端按它挑模板）, team, cat（伤害类别）, hp, size（命中盒）, cf, owner（开的人）, air, sea }
+  function G.newEnt(def)
+    nextId += 1
+    local id = "e" .. nextId
+    local m = Instance.new("Model")
+    m.Name = id
+    local root = Instance.new("Part")
+    root.Name = "Root"
+    root.Anchored = true
+    root.CanCollide = def.solid == true
+    root.CanTouch = false
+    root.CanQuery = true
+    root.Transparency = 1
+    root.Size = def.size or V(4, 5, 4)
+    root.CFrame = def.cf or CFrame.new()
+    root.Parent = m
+    m.PrimaryPart = root
+    m:SetAttribute("EntId", id)
+    m:SetAttribute("Kind", def.kind)
+    m:SetAttribute("Team", def.team)
+    m:SetAttribute("Cat", def.cat)
+    m:SetAttribute("Hp", def.hp)
+    m:SetAttribute("MaxHp", def.hp)
+    local e = { id = id, model = m, root = root, kind = def.kind, team = def.team, cat = def.cat or "light", hp = def.hp or 100, maxHp = def.hp or 100,
+      air = def.air, sea = def.sea, alive = true, born = os.clock(), data = def.data or {} }
+    for k, v in pairs(def.extra or {}) do e[k] = v end
+    m.Parent = folder
+    table.insert(ents, e)
+    byId[id] = e
+    return e
+  end
+
+  function G.moveEnt(e, cf)
+    e.root.CFrame = cf
+  end
+
+  function G.removeEnt(e)
+    if not byId[e.id] then return end
+    byId[e.id] = nil
+    for i, x in ipairs(ents) do
+      if x == e then table.remove(ents, i) break end
+    end
+    e.alive = false
+    if e.model then e.model:Destroy() end
+  end
+
+  -- 打中的零件属于哪个实体（往上找带 EntId 的 Model）
+  function G.entOf(inst)
+    local m = inst
+    while m and m ~= workspace do
+      if m:IsA("Model") then
+        local id = m:GetAttribute("EntId")
+        if id then return byId[id] end
+      end
+      m = m.Parent
+    end
+    return nil
+  end
+
+  -- 打实体：amt 已经乘过倍数；src = { P, name, team }
+  function G.damageEnt(e, amt, src)
+    if not e or not e.alive or amt <= 0 then return end
+    if src and src.team == e.team then return end
+    if e.invuln then return end
+    e.hp -= amt
+    e.lastHitBy = src
+    e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (e.hp <= 0) and "kill" or "hit") end
+    if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
+    if e.hp <= 0 then
+      e.alive = false
+      G.fx({ k = "boom", p = e.root.Position, s = (e.cat == "inf") and 0.6 or ((e.cat == "ship") and 3 or 2) })
+      if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
+      if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
+    end
+  end
+
+  -- 武器对某类目标的倍数
+  local function mult(w, cat) return (w.vs and w.vs[cat]) or 1 end
+  G.mult = mult
+
+  -- 一个零件的伤害类别：玩家角色是 inf；实体按 cat
+  local function hitThing(inst, w, dmg, src, headMul)
+    local e = G.entOf(inst)
+    if e then
+      G.damageEnt(e, dmg * mult(w, e.cat), src)
+      return true
+    end
+    local char = inst:FindFirstAncestorOfClass("Model")
+    while char and not char:FindFirstChildOfClass("Humanoid") do char = char:FindFirstAncestorOfClass("Model") end
+    if char then
+      local k = (inst.Name == "Head") and (headMul or 1) or 1
+      return G.hurtChar(char, dmg * mult(w, "inf") * k, src, inst)
+    end
+    return false
+  end
+  G.hitThing = hitThing
+
+  -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
+  function G.explode(pos, w, src, scale)
+    local r = w.splash or 8
+    G.fx({ k = "boom", p = pos, s = scale or (r / 12) })
+    for _, P in pairs(G.P) do
+      local char = P.char
+      local hrp = char and char:FindFirstChild("HumanoidRootPart")
+      if hrp and P.alive then
+        local d = (hrp.Position - pos).Magnitude
+        if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
+      end
+    end
+    for _, e in ipairs(table.clone(ents)) do
+      if e.alive then
+        local d = (e.root.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
+        if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
+      end
+    end
+    if G.onExplode then G.onExplode(pos, w, src) end
+  end
+
+  ---------------------------------------------------------------- 飞行中的弹
+
+  local shots = {}   -- { pos, vel, w, src, grav, fuse, target, t, ignore, kind }
+  G.shots = shots
+  local params = RaycastParams.new()
+  params.FilterType = Enum.RaycastFilterType.Exclude
+  params.IgnoreWater = false
+
+  function G.launch(s)
+    s.t = 0
+    s.id = (s.id or 0) + #shots + math.random(1, 1e6)
+    table.insert(shots, s)
+    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, tg = s.target and s.target.id or nil })
+    return s
+  end
+
+  -- 迫击炮弹、炮弹：flight 秒后落在 pos（落点已经算好散布）
+  function G.shell(pos, w, src, flight, from)
+    G.fx({ k = "shell", p = pos, t = flight, a = from })
+    task.delay(flight, function() G.explode(pos, w, src) end)
+  end
+
+  local function stepShots(dt)
+    for i = #shots, 1, -1 do
+      local s = shots[i]
+      s.t += dt
+      local done = false
+      if s.target then   -- 追踪：导弹朝目标拐（过载有限）
+        local tg = s.target
+        if tg.alive then
+          local want = (tg.root.Position - s.pos).Unit * s.vel.Magnitude
+          s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
+          if (tg.root.Position - s.pos).Magnitude < 12 then
+            G.explode(s.pos, s.w, s.src)
+            done = true
+          end
+        end
+      end
+      if not done then
+        if s.grav then s.vel += GRAV * dt end
+        local step = s.vel * dt
+        params.FilterDescendantsInstances = s.ignore or {}
+        local res = workspace:Raycast(s.pos, step, params)
+        if res and s.kind ~= "grenade" then
+          G.explode(res.Position, s.w, s.src)
+          if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
+          done = true
+        elseif res and s.kind == "grenade" then   -- 手雷：落地弹一下、滚一点，等引信
+          s.pos = res.Position + res.Normal * 0.6
+          s.vel = (s.vel - 1.6 * s.vel:Dot(res.Normal) * res.Normal) * 0.35
+        else
+          s.pos += step
+        end
+        if not done and s.fuse and s.t >= s.fuse then
+          G.explode(s.pos, s.w, s.src)
+          done = true
+        end
+        if not done and (s.t > (s.life or 8) or s.pos.Y < -Map.SEA_DEPTH) then
+          if s.kind ~= "grenade" then G.fx({ k = "splash", p = V(s.pos.X, 0, s.pos.Z) }) end
+          done = true
+        end
+      end
+      if done then
+        table.remove(shots, i)
+        G.fx({ k = "shotEnd", id = s.id })
+      end
+    end
+  end
+
+  function G.entsStep(dt)
+    stepShots(dt)
+    for _, e in ipairs(table.clone(ents)) do
+      if e.alive and e.step then G.try("实体 " .. e.kind, e.step, e, dt) end
+    end
+  end
+
+  -- 圈里的机器人、地面载具（占领用）：返回攻方数、守方数
+  function G.countAt(x, z, y, r)
+    local a, d = 0, 0
+    local r2 = r * r
+    for _, e in ipairs(ents) do
+      if e.alive and e.counts and not e.air and not e.sea then
+        local p = e.root.Position
+        local dx, dz = p.X - x, p.Z - z
+        if dx * dx + dz * dz < r2 and math.abs(p.Y - y) < 45 then
+          if e.team == "atk" then a += (e.counts or 1) else d += (e.counts or 1) end
+        end
+      end
+    end
+    return a, d
+  end
+end
+
+return Ents
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Round</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
+--   一局：准备（Config.Round.prep 秒，所有人随机分成人数相当的两队）→ 战斗（20 分钟，攻方每拿下一个据点 +3 分钟）→ 结算 → 重新分队开下一局
+--   胜负：攻方拿下全部 5 个 → 攻方赢；时间到守方手里还有任何一个 → 守方赢（到点时有据点正在被占：加时到占领中断或成功，最多 90 秒）
+--   据点被攻方拿下后锁定，守方夺不回去
+local Players = game:GetService("Players")
+local Teams = game:GetService("Teams")
+
+local Round = {}
+
+function Round.init(G)
+  local Config, Map = G.Config, G.Map
+  local V = Vector3.new
+  local RC, CC = Config.Round, Config.Capture
+
+  -- 两支队（Roblox 自带的队伍：聊天里名字带颜色、头顶名字只给队友看）
+  local TEAM = {}
+  for _, id in ipairs({ "atk", "def" }) do
+    local t = Teams:FindFirstChild(id) or Instance.new("Team")
+    t.Name = (id == "atk") and "Attackers" or "Defenders"
+    t.TeamColor = BrickColor.new(Config.Teams[id].brick)
+    t.AutoAssignable = false
+    t:SetAttribute("Side", id)
+    t.Parent = Teams
+    TEAM[id] = t
+  end
+  G.TEAM = TEAM
+
+  local R = { phase = "boot", t0 = 0, endsAt = 0, over = nil, winner = nil, n = 0 }
+  G.round = R
+  local points = {}   -- [id] = { id, x, z, y, owner, prog, locked, atk, def, pressed }
+  G.points = points
+  local now = os.clock
+
+  ---------------------------------------------------------------- 队伍人数、分队
+
+  local function teamCount(team, realOnly)
+    local n = 0
+    for _, P in pairs(G.P) do if P.team == team then n += 1 end end
+    if not realOnly and G.botCount then n += G.botCount(team) end
+    return n
+  end
+  G.teamCount = teamCount
+
+  local function setTeam(P, team)
+    P.team = team
+    P.pl.Team = TEAM[team]
+    P.pl.Neutral = false
+    P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
+  end
+
+  -- 新来的人：补到真人少的一方，一样多就随机
+  local function pickTeam()
+    local a, d = teamCount("atk", true), teamCount("def", true)
+    if a < d then return "atk" elseif d < a then return "def" end
+    return (math.random() < 0.5) and "atk" or "def"
+  end
+
+  -- 开局：所有人打乱，一半一半
+  local function shuffleTeams()
+    local list = {}
+    for _, P in pairs(G.P) do table.insert(list, P) end
+    for i = #list, 2, -1 do
+      local j = math.random(i)
+      list[i], list[j] = list[j], list[i]
+    end
+    local first = (math.random() < 0.5) and "atk" or "def"
+    for i, P in ipairs(list) do setTeam(P, (i % 2 == 1) and first or ((first == "atk") and "def" or "atk")) end
+  end
+
+  ---------------------------------------------------------------- 出生点
+
+  -- 出生点：{ id, kind, x, z, ok }；每队能选哪些、现在能不能用
+  local function spawnList(team, P)
+    local out = {}
+    if team == "atk" then
+      table.insert(out, { id = "fleet", kind = "fleet", ok = true })
+      for _, b in ipairs(Map.BEACHES) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
+      for _, p in ipairs(Map.POINTS) do
+        local s = points[p.id]
+        if s and s.owner == "atk" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = true }) end
+      end
+      table.insert(out, { id = "para", kind = "para", ok = R.phase == "battle" and now() >= ((P and P.paraCd) or 0) })
+    else
+      table.insert(out, { id = "camp", kind = "camp", x = Map.CAMP.x, z = Map.CAMP.z, ok = true })
+      for _, p in ipairs(Map.POINTS) do
+        local s = points[p.id]
+        if s and s.owner == "def" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = not s.pressed }) end
+      end
+    end
+    return out
+  end
+  G.spawnList = spawnList
+
+  -- 在 (x, z) 附近找一块能站人的地（陆地、不太陡），避开别人
+  local function standAt(x, z, spread)
+    for _ = 1, 12 do
+      local a, r = math.random() * math.pi * 2, math.random() * (spread or 12)
+      local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
+      if Map.isLand(px, pz) and Map.slope(px, pz) < 0.9 then return V(px, Map.ground(px, pz) + 3.5, pz) end
+    end
+    return V(x, Map.ground(x, z) + 3.5, z)
+  end
+  G.standAt = standAt
+
+  local function spawnCF(P, sp)
+    local face = (P.team == "atk") and V(0, 0, -1) or V(0, 0, 1)   -- 攻方朝北（岛），守方朝南（海）
+    if sp.kind == "fleet" then
+      local d = G.decks and G.decks[2] or (G.decks and G.decks[1])
+      if d then
+        local off = V((math.random() - 0.5) * d.W * 0.6, 3, (math.random() - 0.5) * d.L * 0.5)
+        return CFrame.lookAt(d.cf.Position + off, d.cf.Position + off + face)
+      end
+      return CFrame.new(0, 40, 2150)
+    elseif sp.kind == "point" then
+      local p = standAt(sp.x, sp.z, 30)
+      return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "camp" then
+      local p = standAt(sp.x, sp.z, 40)
+      return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "beach" then   -- 没有登陆艇模块时直接站在滩上
+      local p = standAt(sp.x, sp.z - 40, 40)
+      return CFrame.lookAt(p, p + face)
+    end
+    return CFrame.new(0, 60, 0)
+  end
+
+  ---------------------------------------------------------------- 角色
+
+  -- 角色的样子：两队不同色的迷彩上衣、队伍色臂章；名字只给队友看
+  local UNIFORM = { atk = { Color3.fromRGB(150, 128, 92), Color3.fromRGB(110, 96, 70) }, def = { Color3.fromRGB(84, 104, 70), Color3.fromRGB(64, 78, 54) } }
+  local function dress(P, char)
+    local bc = char:FindFirstChildOfClass("BodyColors") or Instance.new("BodyColors")
+    local U = UNIFORM[P.team]
+    bc.TorsoColor3 = U[1]
+    bc.LeftArmColor3, bc.RightArmColor3 = U[1], U[1]
+    bc.LeftLegColor3, bc.RightLegColor3 = U[2], U[2]
+    bc.Parent = char
+    for _, c in ipairs(char:GetChildren()) do
+      if c:IsA("Shirt") or c:IsA("Pants") or c:IsA("ShirtGraphic") then c:Destroy() end
+    end
+    local arm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")
+    if arm then
+      local band = Instance.new("Part")
+      band.Name = "Armband"
+      band.Size = V(1.05, 0.35, 1.05)
+      band.Color = Config.Teams[P.team].color
+      band.Material = Enum.Material.Neon
+      band.CanCollide, band.CanQuery, band.CanTouch, band.Massless = false, false, false, true
+      band.CFrame = arm.CFrame * CFrame.new(0, 0.3, 0)
+      local w = Instance.new("WeldConstraint")
+      w.Part0, w.Part1 = arm, band
+      w.Parent = band
+      band.Parent = char
+    end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+      hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+      hum.NameOcclusion = Enum.NameOcclusion.EnemyOcclusion
+      hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
+    end
+  end
+
+  local function onDied(P, char)
+    if P.char ~= char then return end
+    P.alive = false
+    P.deaths += 1
+    P.deadAt = now()
+    P.canDeployAt = now() + Config.RespawnDelay
+    P.vehicle = nil
+    G.emit("died", P)
+    -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻
+    local log, t = P.dmgLog or {}, now()
+    local killer, assists = nil, {}
+    for i = #log, 1, -1 do
+      local e = log[i]
+      if t - e.t < 15 then
+        if not killer and e.by then killer = e end
+      end
+    end
+    local sum = {}
+    for _, e in ipairs(log) do
+      if t - e.t < 15 and e.by and e.by ~= (killer and killer.by) then sum[e.by] = (sum[e.by] or 0) + e.amt end
+    end
+    for by, amt in pairs(sum) do if amt >= 30 then table.insert(assists, by) end end
+    P.dmgLog = {}
+    local kname = killer and killer.name or nil
+    if killer and killer.by and killer.by ~= P and killer.by.team ~= P.team then
+      local K = killer.by
+      if G.P[K.pl] == K then
+        K.kills += 1
+        G.addScore(K, Config.Score.kill)
+        G.msg(K.pl, "kill", "ui.youKilled", P.pl.DisplayName)
+      end
+    end
+    for _, A in ipairs(assists) do
+      if G.P[A.pl] == A and A.team ~= P.team then G.addScore(A, Config.Score.assist) end
+    end
+    G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
+    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    G.pushOne(P)
+  end
+
+  local function onCharacter(P, char)
+    P.char = char
+    local hum = char:WaitForChild("Humanoid", 10)
+    local hrp = char:WaitForChild("HumanoidRootPart", 10)
+    if not hum or not hrp or G.P[P.pl] ~= P then return end
+    local role = Config.RoleById[P.role] or Config.Roles[1]
+    hum.MaxHealth = role.hp
+    hum.Health = role.hp
+    hum.WalkSpeed = role.speed
+    hum.BreakJointsOnDeath = false
+    G.try("换衣服", dress, P, char)
+    hum.Died:Connect(function() G.try("阵亡", onDied, P, char) end)
+    char:SetAttribute("Team", P.team)
+    char:SetAttribute("Role", P.role)
+    if G.giveLoadout then G.try("发武器", G.giveLoadout, P) end
+    local cf = P.spawnCF
+    if cf then
+      task.wait()
+      if char.Parent then char:PivotTo(cf) end
+    end
+    P.alive = true
+    P.spawnedAt = now()
+    if P.after then
+      local f = P.after
+      P.after = nil
+      G.try("出生后", f, P, char)
+    end
+    G.pushOne(P)
+  end
+
+  -- 部署：选好兵种和出生点
+  function G.ACT.deploy(P, role, spawnId)
+    if R.phase ~= "battle" and R.phase ~= "prep" then return end
+    if P.alive or now() < (P.canDeployAt or 0) then return end
+    if not Config.RoleById[role] then return end
+    local sp = nil
+    for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
+    if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    if R.phase == "prep" and sp.kind ~= "fleet" and sp.kind ~= "camp" and sp.kind ~= "point" then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    P.role = role
+    P.spawnId = spawnId
+    P.spawnCF = spawnCF(P, sp)
+    P.after = nil
+    if sp.kind == "beach" and G.boardBoat then
+      P.spawnCF, P.after = G.boardBoat(P, sp.beach)
+    elseif sp.kind == "para" and G.paraDrop then
+      P.spawnCF, P.after = G.paraDrop(P)
+    end
+    P.canDeployAt = now() + 2
+    P.pl:LoadCharacter()
+  end
+
+  ---------------------------------------------------------------- 得分
+
+  function G.addScore(P, n)
+    P.score += n
+    P.roundXp = (P.roundXp or 0) + n
+  end
+  -- 打伤一个玩家的角色（武器、爆炸、机器人都走这里）：src = { P 打人的玩家 / name 名字（机器人）, team }
+  function G.hurtChar(char, amt, src, part)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 or amt <= 0 then return false end
+    local victim = nil
+    for _, P in pairs(G.P) do if P.char == char then victim = P end end
+    if victim and src and src.team == victim.team then return false end   -- 不打自己人
+    if victim and R.phase ~= "battle" then return false end
+    if victim then
+      victim.dmgLog = victim.dmgLog or {}
+      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
+      if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
+    end
+    hum:TakeDamage(amt)
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and "kill" or ((part and part.Name == "Head") and "head" or "hit")) end
+    return true
+  end
+
+  ---------------------------------------------------------------- 据点
+
+  local function resetPoints()
+    for _, p in ipairs(Map.POINTS) do
+      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = "def", prog = 0, locked = false, atk = 0, def = 0, pressed = false }
+      local m = G.pointModels and G.pointModels[p.id]
+      if m then m:SetAttribute("Owner", "def") m:SetAttribute("Prog", 0) end
+    end
+  end
+  resetPoints()
+
+  local function paint(s)
+    local m = G.pointModels and G.pointModels[s.id]
+    if not m then return end
+    m:SetAttribute("Owner", s.owner)
+    m:SetAttribute("Prog", s.prog)
+    local col = Config.Teams[s.owner].color
+    if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+    for _, n in ipairs({ "Ring", "Flag" }) do
+      local p = m:FindFirstChild(n)
+      if p then p.Color = col end
+    end
+  end
+
+  -- 数圈里的人：活着的玩家（不在飞机、舰艇上）、机器人、地面载具
+  local function countIn(s)
+    local a, d = 0, 0
+    local who = {}
+    local r2 = CC.r * CC.r
+    for _, P in pairs(G.P) do
+      if P.alive and P.char then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        local hum = P.char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum and hum.Health > 0 and not (P.vehicle and (P.vehicle.air or P.vehicle.sea)) then
+          local p = hrp.Position
+          local dx, dz = p.X - s.x, p.Z - s.z
+          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < 45 then
+            if P.team == "atk" then a += 1 else d += 1 end
+            table.insert(who, P)
+          end
+        end
+      end
+    end
+    if G.countAt then
+      local ba, bd = G.countAt(s.x, s.z, s.y, CC.r)
+      a += ba
+      d += bd
+    end
+    return a, d, who
+  end
+
+  local function capRate(diff)
+    if diff <= 0 then return 0 end
+    if diff >= 3 then return 1 / CC.fast end
+    local mid = 2 / (CC.slow + CC.fast)   -- 多 2 人：两头之间
+    return (diff == 1) and (1 / CC.slow) or mid
+  end
+
+  local function captured(s, who)
+    s.owner, s.prog, s.locked = "atk", 1, true
+    paint(s)
+    R.endsAt += RC.perCapture
+    for _, P in ipairs(who) do
+      if P.team == "atk" then
+        P.caps += 1
+        G.addScore(P, Config.Score.capture)
+        G.msg(P.pl, "good", "ui.capturedYou", { k = "point." .. s.id })
+      end
+    end
+    G.msgAll("center", "ui.captured", { k = "point." .. s.id })
+    G.fx({ k = "capture", id = s.id })
+    G.emit("captured", s)
+  end
+
+  local function capStep(dt)
+    for _, p in ipairs(Map.POINTS) do
+      local s = points[p.id]
+      if not s.locked then
+        local a, d, who = countIn(s)
+        s.atk, s.def = a, d
+        s.pressed = a > 0
+        local old = s.prog
+        if a > d then
+          s.prog = math.min(1, s.prog + capRate(a - d) * dt)
+        else
+          s.prog = math.max(0, s.prog - dt / CC.decay)
+        end
+        if s.prog >= 1 then
+          captured(s, who)
+        elseif math.abs(s.prog - old) > 1e-6 then
+          if s.prog > 0 and old == 0 then G.msgTeam("def", "bad", "ui.losing", { k = "point." .. s.id }) end
+          paint(s)
+        end
+      else
+        s.atk, s.def, s.pressed = 0, 0, false
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 回合
+
+  local function clearChars()
+    for _, P in pairs(G.P) do
+      if P.char and P.char.Parent then P.char:Destroy() end
+      P.char, P.alive, P.vehicle = nil, false, nil
+      P.canDeployAt = 0
+      pcall(function() P.pl.Character = nil end)   -- 测试台（Lune）不能把引用属性设成 nil
+    end
+  end
+
+  function G.roundStart()
+    R.n += 1
+    R.phase = "prep"
+    R.t0 = now()
+    R.prepEnds = now() + RC.prep
+    R.winner = nil
+    resetPoints()
+    clearChars()
+    shuffleTeams()
+    for _, P in pairs(G.P) do
+      P.kills, P.deaths, P.score, P.caps, P.roundXp = 0, 0, 0, 0, 0
+    end
+    G.emit("roundStart")
+    G.pushAll()
+  end
+
+  local function startBattle()
+    R.phase = "battle"
+    R.endsAt = now() + RC.battle
+    R.overtimeEnds = nil
+    G.msgAll("center", "ui.goalAtk")
+    G.pushAll()
+  end
+
+  local function finish(winner)
+    if R.phase == "end" then return end
+    R.phase = "end"
+    R.winner = winner
+    R.nextAt = now() + RC.results
+    local best = nil
+    for _, P in pairs(G.P) do
+      G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
+      if not best or P.score > best.score then best = P end
+      if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
+    end
+    R.mvp = best and best.pl.DisplayName or nil
+    G.msgAll("center", (winner == "atk") and "ui.win.atk" or "ui.win.def")
+    G.emit("roundEnd", winner)
+    G.pushAll()
+  end
+
+  function G.roundStep(dt)
+    local t = now()
+    if R.phase == "prep" then
+      if t >= R.prepEnds then startBattle() end
+    elseif R.phase == "battle" then
+      capStep(dt)
+      local allAtk = true
+      for _, s in pairs(points) do if s.owner ~= "atk" then allAtk = false end end
+      if allAtk then
+        finish("atk")
+      elseif t >= R.endsAt then
+        local active = false   -- 有据点正在被占（攻方人多、进度在涨）：加时
+        for _, s in pairs(points) do if not s.locked and s.prog > 0 and s.atk > s.def then active = true end end
+        if active then
+          R.overtimeEnds = R.overtimeEnds or (t + RC.overtime)
+          if t >= R.overtimeEnds then finish("def") end
+        else
+          finish("def")
+        end
+      end
+    elseif R.phase == "end" then
+      if t >= R.nextAt then G.roundStart() end
+    end
+    -- 每半秒发一次战况
+    R.pushT = (R.pushT or 0) + dt
+    if R.pushT >= 0.5 then
+      R.pushT = 0
+      G.pushAll()
+    end
+  end
+
+  ---------------------------------------------------------------- 发给客户端的状态
+
+  local function pointsState()
+    local out = {}
+    for _, p in ipairs(Map.POINTS) do
+      local s = points[p.id]
+      table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked })
+    end
+    return out
+  end
+  local function boardState()
+    local list = {}
+    for _, P in pairs(G.P) do
+      table.insert(list, { n = P.pl.DisplayName, id = P.pl.UserId, t = P.team, k = P.kills, d = P.deaths, s = P.score, c = P.caps, r = P.role, rk = P.rank or 1 })
+    end
+    if G.botBoard then for _, b in ipairs(G.botBoard()) do table.insert(list, b) end end
+    return list
+  end
+  local function common()
+    local t = now()
+    local left = 0
+    if R.phase == "prep" then left = R.prepEnds - t elseif R.phase == "battle" then left = R.endsAt - t elseif R.phase == "end" then left = R.nextAt - t end
+    return {
+      phase = R.phase, left = math.max(0, math.floor(left + 0.5)), ot = R.overtimeEnds and math.max(0, math.floor(R.overtimeEnds - t + 0.5)) or nil,
+      points = pointsState(), nAtk = teamCount("atk"), nDef = teamCount("def"), winner = R.winner, mvp = R.mvp, round = R.n,
+      progress = G.worldReady and 1 or (G.worldProgress or 0),
+    }
+  end
+  local function personal(P, C)
+    local t = now()
+    C.team = P.team
+    C.role = P.role
+    C.alive = P.alive
+    C.wait = math.max(0, math.ceil((P.canDeployAt or 0) - t))
+    C.spawns = spawnList(P.team, P)
+    C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
+    return C
+  end
+  function G.pushOne(P)
+    if G.P[P.pl] ~= P then return end
+    G.R.State:FireClient(P.pl, personal(P, common()))
+  end
+  function G.pushAll()
+    local C = common()
+    local board = nil
+    R.boardT = (R.boardT or 0) + 1
+    if R.boardT >= 4 or R.phase == "end" then   -- 战况表两秒一次
+      R.boardT = 0
+      board = boardState()
+    end
+    for _, P in pairs(G.P) do
+      local c = table.clone(C)
+      G.R.State:FireClient(P.pl, personal(P, c))
+    end
+    if board then G.R.Board:FireAllClients(board) end
+  end
+
+  ---------------------------------------------------------------- 进出
+
+  local function onPlayer(pl)
+    if G.P[pl] then return end
+    local P = { pl = pl, kills = 0, deaths = 0, score = 0, caps = 0, roundXp = 0, alive = false, canDeployAt = 0, dmgLog = {} }
+    G.P[pl] = P
+    setTeam(P, pickTeam())
+    pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
+    if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end
+    G.pushOne(P)
+    task.delay(1, function()
+      if G.P[pl] == P then
+        G.msg(pl, "center", "ui.youAre", { k = "team." .. P.team })
+        for _, m in ipairs(G.bootErrors) do G.msg(pl, "bad", m) end
+      end
+    end)
+  end
+  Players.PlayerAdded:Connect(onPlayer)
+  for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
+  Players.PlayerRemoving:Connect(function(pl)
+    local P = G.P[pl]
+    if not P then return end
+    G.emit("left", P)
+    if G.saveData then G.try("存档", G.saveData, P) end
+    G.P[pl] = nil
+  end)
+end
+
+return Round
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">Store</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
+local DataStoreService = game:GetService("DataStoreService")
+
+local Store = {}
+
+function Store.init(G)
+  local Config = G.Config
+  local store = nil
+  pcall(function() store = DataStoreService:GetDataStore(Config.SaveKey) end)
+
+  local function key(P) return "u" .. P.pl.UserId end
+
+  function G.loadData(P)
+    local raw, ok = nil, false
+    if store then
+      for _ = 1, 3 do
+        ok, raw = pcall(function() return store:GetAsync(key(P)) end)
+        if ok then break end
+        task.wait(1)
+      end
+    end
+    if G.P[P.pl] ~= P then return end
+    local d = (ok and type(raw) == "table") and raw or {}
+    P.data = {
+      xp = math.max(0, tonumber(d.xp) or 0), kills = tonumber(d.kills) or 0, deaths = tonumber(d.deaths) or 0,
+      wins = tonumber(d.wins) or 0, games = tonumber(d.games) or 0, caps = tonumber(d.caps) or 0,
+    }
+    P.canSave = ok and store ~= nil
+    P.xp = P.data.xp
+    P.rank = Config.RankOf(P.xp)
+    G.pushOne(P)
+  end
+
+  function G.saveData(P)
+    if not store or not P.canSave or not P.data then return end
+    local d = P.data
+    pcall(function() store:SetAsync(key(P), d) end)
+  end
+
+  -- 一局结束：得分记成经验，战绩累计，升军衔提示，存档
+  function G.awardXp(P, won)
+    local d = P.data
+    if not d then return end
+    local gain = math.max(0, math.floor(P.roundXp or 0))
+    d.xp += gain
+    d.kills += P.kills
+    d.deaths += P.deaths
+    d.caps += P.caps
+    d.games += 1
+    if won then d.wins += 1 end
+    local old = P.rank or 1
+    P.xp = d.xp
+    P.rank = Config.RankOf(d.xp)
+    G.msg(P.pl, "good", "ui.xp", gain)
+    if P.rank > old then G.msg(P.pl, "good", "ui.rankUp", { k = "rank." .. P.rank }) end
+    task.spawn(G.saveData, P)
+  end
+
+  function G.saveAll()
+    for _, P in pairs(G.P) do task.spawn(G.saveData, P) end
+    task.wait(2)
+  end
+end
+
+return Store
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
+          <string name="Name">Vehicles</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生）、伞降；开载具的操作在后面的版本里接
+--   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
+--     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
+--   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
+local Vehicles = {}
+
+function Vehicles.init(G)
+  local Config, Map = G.Config, G.Map
+  local V = Vector3.new
+  local CF = CFrame.new
+  local now = os.clock
+
+  local BOAT = { start = 620, speed = 48, wait = 4, hp = 650, size = V(16, 7, 34), seats = 12 }
+  local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
+  local running = {}
+
+  local function beachOf(id)
+    for _, b in ipairs(Map.BEACHES) do if b.id == id then return b end end
+    return nil
+  end
+
+  -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
+  local function boatCF(b, d)
+    local z = b.z + b.dir * d
+    local face = V(0, 0, -b.dir)
+    local p = V(b.cx, 1.2, z)
+    return CFrame.lookAt(p, p + face)
+  end
+
+  local function seatOffset(i)
+    local row, col = math.floor((i - 1) / 3), (i - 1) % 3
+    return CF((col - 1) * 4, 3.4, -8 + row * 4.5)
+  end
+
+  local function newBoat(b)
+    local e = G.newEnt({ kind = "lcm", team = "atk", cat = "ship", hp = BOAT.hp, size = BOAT.size, cf = boatCF(b, BOAT.start), extra = { sea = true } })
+    e.beach = b
+    e.dist = BOAT.start
+    e.state = "loading"
+    e.leaveAt = now() + BOAT.wait
+    e.pass = {}
+    e.onDeath = function(self, src)
+      for _, P in ipairs(self.pass) do
+        if P.alive and P.char then
+          local hum = P.char:FindFirstChildOfClass("Humanoid")
+          if hum then G.hurtChar(P.char, 1000, src) end
+          G.msg(P.pl, "bad", "ui.boatSunk")
+        end
+      end
+      self.pass = {}
+      if boats[b.id] == self then boats[b.id] = nil end
+      self.state = "sunk"
+      task.delay(3, function() G.removeEnt(self) end)
+    end
+    return e
+  end
+
+  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
+  function G.boardBoat(P, beachId)
+    local b = beachOf(beachId)
+    if not b then return CF(0, 50, 0), nil end
+    local e = boats[b.id]
+    if not e or not e.alive or e.state ~= "loading" or #e.pass >= BOAT.seats then
+      e = newBoat(b)
+      boats[b.id] = e
+      table.insert(running, e)
+    end
+    table.insert(e.pass, P)
+    P.boat = e
+    local seat = seatOffset(#e.pass)
+    P.seat = seat
+    G.msg(P.pl, "info", "ui.landing")
+    return e.root.CFrame * seat, function(Q, char)
+      local hrp = char:FindFirstChild("HumanoidRootPart")
+      if hrp then hrp.Anchored = true end
+    end
+  end
+
+  local function release(e)
+    local b = e.beach
+    for i, P in ipairs(e.pass) do
+      if P.alive and P.char and P.boat == e then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        local x = b.cx + ((i - 1) % 4 - 1.5) * 5
+        local z = b.z - b.dir * (18 + math.floor((i - 1) / 4) * 5)
+        if hrp then
+          hrp.Anchored = false
+          P.char:PivotTo(CFrame.lookAt(V(x, Map.ground(x, z) + 3.5, z), V(x, Map.ground(x, z) + 3.5, z - b.dir * 10)))
+        end
+      end
+      P.boat, P.seat = nil, nil
+    end
+    e.pass = {}
+  end
+
+  -- 每帧：艇往岸边开，乘客跟着
+  function G.frameStep(dt)
+    for i = #running, 1, -1 do
+      local e = running[i]
+      if not e.alive then
+        table.remove(running, i)
+      else
+        local t = now()
+        if e.state == "loading" and t >= e.leaveAt then
+          e.state = "run"
+          if boats[e.beach.id] == e then boats[e.beach.id] = nil end
+        end
+        if e.state == "run" then
+          e.dist = math.max(0, e.dist - BOAT.speed * dt)
+          local cf = boatCF(e.beach, e.dist)
+          local bow = cf.Position + cf.LookVector * BOAT.size.Z * 0.5
+          if Map.height(bow.X, bow.Z) > -1.2 or e.dist <= 0 then   -- 冲上滩
+            e.state = "landed"
+            e.backAt = t + 6
+            G.fx({ k = "ramp", id = e.id })
+            release(e)
+          end
+          G.moveEnt(e, cf)
+        elseif e.state == "landed" and t >= (e.backAt or 0) then
+          e.state = "gone"
+          G.removeEnt(e)
+        end
+        for _, P in ipairs(e.pass) do
+          if P.alive and P.char and P.boat == e then
+            local hrp = P.char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+              hrp.Anchored = true
+              P.char:PivotTo(e.root.CFrame * (P.seat or CF()))
+            end
+          end
+        end
+      end
+    end
+    -- 伞降：下落速度压到每秒 18 格
+    for _, P in pairs(G.P) do
+      if P.chute and P.alive and P.char then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+          local v = hrp.AssemblyLinearVelocity
+          if v.Y < -18 then hrp.AssemblyLinearVelocity = V(v.X, -18, v.Z) end
+          local gy = Map.ground(hrp.Position.X, hrp.Position.Z)
+          if hrp.Position.Y - gy < 6 or now() - P.chute > 40 then
+            P.chute = nil
+            P.char:SetAttribute("Chute", false)
+          end
+        end
+      end
+    end
+  end
+
+  -- 伞降：落在离最近一个还没拿下的据点 220～320 格、靠攻方一侧的地方（不能直接落进据点）
+  function G.paraDrop(P)
+    local t = now()
+    local target = nil
+    for _, p in ipairs(Map.POINTS) do
+      local s = G.points[p.id]
+      if s and s.owner == "def" then
+        if not target or p.z > target.z then target = p end   -- 最靠南（离攻方最近）的
+      end
+    end
+    target = target or Map.POINTS[1]
+    local a = math.rad(60 + math.random() * 60)   -- 南边的扇面
+    local r = 220 + math.random() * 100
+    local x, z = target.x + math.cos(a) * r, target.z + math.sin(a) * r
+    if not Map.isLand(x, z) then x, z = target.x, target.z + 200 end
+    local y = Map.ground(x, z) + 320
+    return CFrame.lookAt(V(x, y, z), V(target.x, y, target.z)), function(Q, char)
+      Q.chute = now()
+      char:SetAttribute("Chute", true)
+      Q.paraCd = t + 60
+    end
+  end
+
+  local function offBoat(P)
+    if P.boat then
+      for i, Q in ipairs(P.boat.pass) do
+        if Q == P then table.remove(P.boat.pass, i) break end
+      end
+      P.boat, P.seat = nil, nil
+    end
+    P.chute = nil
+  end
+  G.on("died", offBoat)
+  G.on("left", offBoat)
+  G.on("roundStart", function()
+    for _, e in ipairs(running) do if e.alive then G.removeEnt(e) end end
+    running = {}
+    boats = {}
+  end)
+end
+
+return Vehicles
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">Weapons</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
+--   枪：射线判定，爆头加成；火箭筒 / 手雷 / 防空导弹：飞行中的弹（Ents）；迫击炮：点地面，几秒后落下；急救包；扳手修车；
+--   炸药包（放下、再用一次引爆）、反坦克地雷；望远镜：标记敌人给全队看，呼叫炮火覆盖
+local Weapons = {}
+
+function Weapons.init(G)
+  local Config, Map = G.Config, G.Map
+  local V = Vector3.new
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local W = Config.Weapons
+  local now = os.clock
+
+  ---------------------------------------------------------------- 工具的样子（零件拼的；把手 Handle 在握把处，枪口 Muzzle）
+
+  local function p(parent, size, cf, color, mat, shape)
+    local x = Instance.new("Part")
+    if shape then x.Shape = shape end
+    x.Size, x.CFrame, x.Color = size, cf, color
+    x.Material = mat or Enum.Material.SmoothPlastic
+    x.CanCollide, x.CanQuery, x.CanTouch, x.Massless = false, false, false, true
+    x.TopSurface, x.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    x.Parent = parent
+    return x
+  end
+  local function weld(a, b)
+    local w = Instance.new("WeldConstraint")
+    w.Part0, w.Part1 = a, b
+    w.Parent = a
+  end
+  local GUN, DARK, OLIVE, TAN = RGB(48, 50, 52), RGB(30, 31, 33), RGB(86, 96, 64), RGB(176, 156, 112)
+  -- 每把武器：枪身长 L、枪管长、枪托、弹匣……；返回把手和枪口
+  local SHAPE = {
+    rifle = { L = 3.2, barrel = 1.4, stock = true, mag = 0.9, color = GUN },
+    carbine = { L = 2.8, barrel = 1.0, stock = true, mag = 0.9, color = OLIVE },
+    lmg = { L = 3.6, barrel = 1.8, stock = true, box = true, color = GUN },
+    sniper = { L = 4.0, barrel = 2.2, stock = true, scope = true, mag = 0.6, color = RGB(70, 66, 52) },
+    smg = { L = 2.1, barrel = 0.5, mag = 1.0, color = DARK },
+    smgsd = { L = 2.1, barrel = 1.2, mag = 1.0, color = DARK, thick = true },
+    pistol = { L = 1.0, barrel = 0.2, color = DARK, small = true },
+    rpg = { tube = 4.6, dia = 0.7, color = OLIVE, warhead = true },
+    manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
+    mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
+  }
+  local function makeTool(id)
+    local tool = Instance.new("Tool")
+    tool.Name = id
+    tool.CanBeDropped = false
+    tool.RequiresHandle = true
+    tool:SetAttribute("Weapon", id)
+    local h = p(tool, V(0.4, 0.9, 0.5), CF(), GUN)
+    h.Name = "Handle"
+    h.Transparency = 1
+    local S = SHAPE[id]
+    local muzzle = V(0, 0.3, -1)
+    if S and S.L then   -- 枪：沿 −Z 朝前
+      local th = S.small and 0.35 or 0.45
+      local body = p(tool, V(th, 0.5, S.L), CF(0, 0.3, -S.L / 2 + 0.6), S.color)
+      weld(h, body)
+      local br = p(tool, V(S.thick and 0.32 or 0.18, S.thick and 0.32 or 0.18, S.barrel), CF(0, 0.38, -S.L + 0.6 - S.barrel / 2), DARK, Enum.Material.Metal)
+      weld(h, br)
+      muzzle = V(0, 0.38, -S.L + 0.6 - S.barrel)
+      if S.stock then weld(h, p(tool, V(0.35, 0.55, 1.1), CF(0, 0.2, 1.1), S.color)) end
+      if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
+      if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
+      if S.scope then weld(h, p(tool, V(0.28, 0.28, 1.3), CF(0, 0.75, -0.6), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+    elseif S and S.tube then   -- 发射筒：扛在肩上
+      local t = p(tool, V(S.tube, S.dia, S.dia), CF(0, 0.6, -0.4) * CFrame.Angles(0, math.pi / 2, 0), S.color, Enum.Material.Metal, Enum.PartType.Cylinder)
+      weld(h, t)
+      muzzle = V(0, 0.6, -0.4 - S.tube / 2)
+      if S.warhead then weld(h, p(tool, V(0.9, 0.9, 1.2), CF(0, 0.6, muzzle.Z - 0.3), OLIVE, Enum.Material.Metal)) end
+      if S.sight then weld(h, p(tool, V(0.3, 0.6, 0.8), CF(-0.5, 1.0, -0.6), DARK)) end
+      if S.plate then weld(h, p(tool, V(1.4, 0.15, 1.4), CF(0, -0.1, 1.2), DARK)) end
+    elseif id == "grenade" then
+      weld(h, p(tool, V(0.7, 0.7, 0.7), CF(0, 0.2, -0.3), OLIVE, Enum.Material.Metal, Enum.PartType.Ball))
+    elseif id == "medkit" then
+      local b = p(tool, V(1.2, 0.9, 0.5), CF(0, 0.2, -0.4), RGB(230, 230, 225))
+      weld(h, b)
+      weld(h, p(tool, V(0.6, 0.18, 0.52), CF(0, 0.2, -0.4), RGB(210, 40, 40), Enum.Material.Neon))
+      weld(h, p(tool, V(0.18, 0.6, 0.52), CF(0, 0.2, -0.4), RGB(210, 40, 40), Enum.Material.Neon))
+    elseif id == "repair" then
+      weld(h, p(tool, V(0.2, 0.2, 2.0), CF(0, 0.3, -0.9), RGB(150, 150, 155), Enum.Material.Metal))
+      weld(h, p(tool, V(0.6, 0.25, 0.5), CF(0, 0.3, -1.9), RGB(150, 150, 155), Enum.Material.Metal))
+    elseif id == "c4" or id == "mine" then
+      local isMine = id == "mine"
+      weld(h, p(tool, isMine and V(1.2, 0.35, 1.2) or V(1.1, 0.5, 0.7), CF(0, 0.2, -0.5), isMine and OLIVE or TAN, Enum.Material.Plastic, isMine and Enum.PartType.Cylinder or nil))
+    elseif id == "binoc" then
+      for s = -1, 1, 2 do weld(h, p(tool, V(0.9, 0.35, 0.35), CF(s * 0.22, 0.4, -0.4) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+    end
+    local a = Instance.new("Attachment")
+    a.Name = "Muzzle"
+    a.Position = muzzle
+    a.Parent = h
+    tool.GripPos = V(0, -0.1, 0.3)
+    return tool
+  end
+  local TOOLS = {}
+  for id in pairs(W) do TOOLS[id] = makeTool(id) end
+  G.TOOLS = TOOLS
+
+  ---------------------------------------------------------------- 弹药
+
+  local function ammoOf(P, id)
+    P.ammo = P.ammo or {}
+    local a = P.ammo[id]
+    local w = W[id]
+    if not a then
+      a = { n = w.mag or 1, res = w.reserve, r = 0 }
+      P.ammo[id] = a
+    end
+    if a.r > 0 and now() >= a.r then   -- 换弹好了：从备弹里补
+      local need = (w.mag or 1) - a.n
+      if a.res then
+        local k = math.min(need, a.res)
+        a.n += k
+        a.res -= k
+      else
+        a.n += need
+      end
+      a.r = 0
+    end
+    return a
+  end
+  G.ammoOf = ammoOf
+
+  local function startReload(P, id)
+    local w = W[id]
+    local a = ammoOf(P, id)
+    if a.r > 0 or a.n >= (w.mag or 1) then return end
+    if a.res and a.res <= 0 then return end
+    a.r = now() + (w.reload or 1)
+  end
+  G.ACT.reload = function(P, id) if W[id] then startReload(P, id) end end
+
+  -- 按兵种发武器（每次出生都重发、弹药补满）
+  function G.giveLoadout(P)
+    local pl = P.pl
+    local role = Config.RoleById[P.role] or Config.Roles[1]
+    local bp = pl:FindFirstChildOfClass("Backpack") or pl:WaitForChild("Backpack", 5)
+    if not bp then return end
+    for _, c in ipairs(bp:GetChildren()) do if c:IsA("Tool") then c:Destroy() end end
+    P.ammo = {}
+    P.placed = {}
+    P.cd = {}
+    for i, id in ipairs(role.weapons) do
+      local t = TOOLS[id]:Clone()
+      t:SetAttribute("Slot", i)
+      t.Parent = bp
+    end
+  end
+
+  ---------------------------------------------------------------- 开火
+
+  local params = RaycastParams.new()
+  params.FilterType = Enum.RaycastFilterType.Exclude
+
+  local function src(P) return { P = P, team = P.team, name = P.pl.DisplayName } end
+
+  -- 能不能开火：活着、拿着这把、这个兵种带的、打仗阶段
+  local function holding(P, id)
+    if not P.alive or not G.round or G.round.phase ~= "battle" then return nil end
+    local char = P.char
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local head = char and char:FindFirstChild("Head")
+    if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
+    local role = Config.RoleById[P.role]
+    if not role or not table.find(role.weapons, id) then return nil end
+    return char, head, tool
+  end
+
+  local function muzzleOf(tool, head)
+    local h = tool:FindFirstChild("Handle")
+    local m = h and h:FindFirstChild("Muzzle")
+    return m and m.WorldPosition or head.Position
+  end
+
+  -- 用掉一发：射速、弹匣；打空了自动换弹
+  local function spend(P, id)
+    local w = W[id]
+    local a = ammoOf(P, id)
+    local t = now()
+    P.lastShot = P.lastShot or {}
+    if t - (P.lastShot[id] or 0) < (w.rate or 0.1) * 0.75 then return false end
+    if a.r > 0 then return false end
+    if a.n <= 0 then
+      startReload(P, id)
+      if a.res and a.res <= 0 then G.msg(P.pl, "bad", "ui.outOfAmmo") end
+      return false
+    end
+    P.lastShot[id] = t
+    a.n -= 1
+    if a.n <= 0 then startReload(P, id) end
+    return true
+  end
+
+  local function spreadDir(dir, deg)
+    if not deg or deg <= 0 then return dir end
+    local s = math.rad(deg)
+    return (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
+  end
+
+  local KIND = {}
+
+  KIND.gun = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local origin = head.Position
+    local dir = aim - origin
+    if dir.Magnitude < 0.5 then return end
+    if not spend(P, id) then return end
+    dir = spreadDir(dir.Unit, w.spread)
+    params.FilterDescendantsInstances = { char }
+    local res = workspace:Raycast(origin, dir * w.range, params)
+    local hit = res and res.Position or (origin + dir * w.range)
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head) end
+  end
+
+  KIND.proj = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local m = muzzleOf(tool, head)
+    local dir = aim - m
+    if dir.Magnitude < 1 then return end
+    if not spend(P, id) then return end
+    dir = spreadDir(dir.Unit, w.spread)
+    G.launch({ kind = "rocket", pos = m, vel = dir * w.speed, grav = w.drop, w = w, src = src(P), ignore = { char }, life = w.range / w.speed + 1 })
+  end
+
+  KIND.throw = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    if not spend(P, id) then return end
+    local m = head.Position + V(0, 0.5, 0)
+    local flat = V(aim.X - m.X, 0, aim.Z - m.Z)
+    local d = math.min(flat.Magnitude, w.range)
+    local dir = (flat.Magnitude > 0.1) and flat.Unit or head.CFrame.LookVector
+    local sp = math.clamp(math.sqrt(math.max(1, d) * workspace.Gravity * 0.55), 20, w.speed)   -- 45° 抛出去落在准星附近
+    local vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0)
+    G.launch({ kind = "grenade", pos = m, vel = vel, grav = true, fuse = w.fuse, w = w, src = src(P), ignore = { char }, life = w.fuse + 0.5 })
+  end
+
+  KIND.lock = function(P, id, w, char, head, tool, tgtId, aim)
+    local m = muzzleOf(tool, head)
+    local e = (type(tgtId) == "string") and G.entById[tgtId] or nil
+    local dir
+    if e and e.alive and e.air and e.team ~= P.team and (e.root.Position - m).Magnitude <= w.range then
+      local to = (e.root.Position - m).Unit
+      local look = (typeof(aim) == "Vector3") and (aim - head.Position).Unit or to
+      if look:Dot(to) < math.cos(math.rad(14)) then e = nil end   -- 锁定要对准（客户端判断过，这里再看一眼）
+      dir = to
+    else
+      e = nil
+    end
+    if not dir then
+      if typeof(aim) ~= "Vector3" then return end
+      dir = (aim - m).Unit
+    end
+    if not spend(P, id) then return end
+    G.launch({ kind = "missile", pos = m, vel = dir * w.speed, w = w, src = src(P), ignore = { char }, target = e, life = w.range / w.speed + 2 })
+  end
+
+  KIND.mortar = function(P, id, w, char, head, tool, pt)
+    if typeof(pt) ~= "Vector3" or pt.X ~= pt.X then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local d = (V(pt.X, 0, pt.Z) - V(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
+    if d < w.minR or d > w.maxR then G.msg(P.pl, "bad", "ui.mortarRange", w.minR, w.maxR) return end
+    if not spend(P, id) then return end
+    local sc = d * 0.025   -- 散布：射程的 2.5%
+    local a = math.random() * math.pi * 2
+    local x, z = pt.X + math.cos(a) * sc * math.random(), pt.Z + math.sin(a) * sc * math.random()
+    G.fx({ k = "mortarFire", p = muzzleOf(tool, head) })
+    G.shell(V(x, Map.ground(x, z), z), w, src(P), w.flight + d / 400, hrp.Position)
+  end
+
+  KIND.heal = function(P, id, w, char)
+    local t = now()
+    if t < (P.cd.heal or 0) then return end
+    P.cd.heal = t + w.cd
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local healed = 0
+    for _, Q in pairs(G.P) do
+      if Q.team == P.team and Q.alive and Q.char then
+        local h2 = Q.char:FindFirstChild("HumanoidRootPart")
+        local hum = Q.char:FindFirstChildOfClass("Humanoid")
+        if h2 and hum and hum.Health > 0 and (h2.Position - hrp.Position).Magnitude <= w.r then
+          local add = math.min(w.amt, hum.MaxHealth - hum.Health)
+          if add > 0 then
+            hum.Health += add
+            if Q ~= P then healed += add end
+            G.msg(Q.pl, "good", "ui.healed", math.floor(add))
+          end
+        end
+      end
+    end
+    if healed > 0 then G.addScore(P, Config.Score.heal * math.ceil(healed / 25)) end
+    G.fx({ k = "heal", p = hrp.Position })
+  end
+
+  KIND.repair = function(P, id, w, char, head, tool, entId)
+    local e = (type(entId) == "string") and G.entById[entId] or nil
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not e or not e.alive or e.team ~= P.team or not hrp or e.cat == "inf" then return end
+    if (e.root.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
+    local t = now()
+    local dt = math.min(0.5, t - (P.cd.repair or 0))
+    P.cd.repair = t
+    if dt <= 0.05 or e.hp >= e.maxHp then return end
+    local add = math.min(w.rate * dt, e.maxHp - e.hp)
+    e.hp += add
+    e.model:SetAttribute("Hp", math.floor(e.hp))
+    P.repairAcc = (P.repairAcc or 0) + add
+    if P.repairAcc >= 100 then
+      P.repairAcc -= 100
+      G.addScore(P, Config.Score.repair)
+    end
+    G.fx({ k = "repair", p = e.root.Position })
+  end
+
+  -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
+  KIND.place = function(P, id, w, char, head, tool, pos)
+    P.placed[id] = P.placed[id] or {}
+    local list = P.placed[id]
+    if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
+      for _, e in ipairs(list) do
+        if e.alive then
+          G.explode(e.root.Position, w, src(P))
+          G.removeEnt(e)
+        end
+      end
+      P.placed[id] = {}
+      return
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if typeof(pos) ~= "Vector3" or not hrp or (pos - hrp.Position).Magnitude > 12 then
+      pos = hrp and (hrp.Position + hrp.CFrame.LookVector * 3) or nil
+      if not pos then return end
+    end
+    if not spend(P, id) then return end
+    local y = Map.ground(pos.X, pos.Z)
+    local e = G.newEnt({ kind = id, team = P.team, cat = "fort", hp = 30, size = V(1.2, 0.5, 1.2), cf = CF(pos.X, y + 0.25, pos.Z) })
+    e.owner = P
+    if id == "mine" then
+      e.step = function(self)
+        for _, x in ipairs(G.ents) do
+          if x.alive and x.team ~= self.team and (x.cat == "light" or x.cat == "armor") and not x.air and not x.sea then
+            if (x.root.Position - self.root.Position).Magnitude < 7 + x.root.Size.X / 2 then
+              G.explode(self.root.Position, w, src(P))
+              G.removeEnt(self)
+              return
+            end
+          end
+        end
+      end
+      G.msg(P.pl, "info", "ui.minePlaced")
+    else
+      G.msg(P.pl, "info", "ui.c4placed")
+    end
+    table.insert(list, e)
+  end
+
+  -- 望远镜：准星附近 4° 以内、看得见的敌人标记 12 秒给全队看；b = "strike" 时呼叫炮火覆盖准星下的地面
+  local spotted = { atk = {}, def = {} }
+  G.spotted = spotted
+  KIND.spot = function(P, id, w, char, head, tool, aim, mode)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local t = now()
+    if mode == "strike" then
+      if t < (P.cd.strike or 0) then G.msg(P.pl, "bad", "ui.strikeCd", math.ceil(P.cd.strike - t)) return end
+      P.cd.strike = t + w.strikeCd
+      local S = w.strike
+      local x0, z0 = aim.X, aim.Z
+      for i = 1, S.n do
+        task.delay((i - 1) * 0.45, function()
+          local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * S.r
+          local x, z = x0 + math.cos(a) * r, z0 + math.sin(a) * r
+          G.shell(V(x, Map.ground(x, z), z), S, src(P), S.flight)
+        end)
+      end
+      G.msgTeam(P.team, "info", "ui.strikeCalled", S.flight)
+      return
+    end
+    if t < (P.cd.spot or 0) then return end
+    P.cd.spot = t + w.cd
+    local o = head.Position
+    local look = (aim - o).Unit
+    local list = {}
+    local function consider(pos, key)
+      local to = pos - o
+      local d = to.Magnitude
+      if d < 4 or d > w.range or to.Unit:Dot(look) < math.cos(math.rad(4)) then return end
+      params.FilterDescendantsInstances = { char }
+      local res = workspace:Raycast(o, to * 0.98, params)
+      if res and (res.Position - pos).Magnitude > 6 then return end
+      spotted[P.team][key] = t + w.spotTime
+      table.insert(list, key)
+    end
+    for _, Q in pairs(G.P) do
+      if Q.team ~= P.team and Q.alive and Q.char then
+        local h2 = Q.char:FindFirstChild("HumanoidRootPart")
+        if h2 then consider(h2.Position, "p" .. Q.pl.UserId) end
+      end
+    end
+    for _, e in ipairs(G.ents) do
+      if e.alive and e.team ~= P.team and e.team then consider(e.root.Position, e.id) end
+    end
+    if #list > 0 then
+      G.addScore(P, Config.Score.spot * #list)
+      G.msg(P.pl, "good", "ui.spotted", #list)
+    end
+  end
+
+  -- 每半秒把还在标记期里的敌人位置发给那一队
+  task.spawn(function()
+    while true do
+      task.wait(0.5)
+      local t = now()
+      for team, S in pairs(spotted) do
+        local out = {}
+        for key, till in pairs(S) do
+          if till < t then
+            S[key] = nil
+          else
+            local pos = nil
+            if string.sub(key, 1, 1) == "p" then
+              for _, Q in pairs(G.P) do
+                if "p" .. Q.pl.UserId == key and Q.alive and Q.char and Q.char:FindFirstChild("HumanoidRootPart") then pos = Q.char.HumanoidRootPart.Position end
+              end
+            else
+              local e = G.entById[key]
+              if e and e.alive then pos = e.root.Position end
+            end
+            if pos then table.insert(out, pos) else S[key] = nil end
+          end
+        end
+        for pl, Q in pairs(G.P) do
+          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out } }) end
+        end
+      end
+    end
+  end)
+
+  function G.shoot(P, id, a, b)
+    local w = W[id]
+    if not w then return end
+    local char, head, tool = holding(P, id)
+    if not char then return end
+    local f = KIND[w.kind]
+    if f then f(P, id, w, char, head, tool, a, b) end
+  end
+
+  -- 机器人、工事用的「开一枪」：从 from 打向 to（散布 deg），打中玩家或实体
+  function G.botShot(from, to, w, srcInfo, ignore, deg)
+    local dir = to - from
+    if dir.Magnitude < 1 then return end
+    dir = spreadDir(dir.Unit, deg or w.spread)
+    params.FilterDescendantsInstances = ignore or {}
+    local res = workspace:Raycast(from, dir * (w.range or 500), params)
+    local hit = res and res.Position or (from + dir * (w.range or 500))
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, 1) end
+  end
+end
+
+return Weapons
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">World</string>
+          <ProtectedString name="Source"><![CDATA[-- 登岛战：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
+--   5 个据点（旗杆、旗、地上的圈、沙袋）、守方机场、港口镇、指挥所、北岸营地、灯塔、西礁岛岸防炮台、攻方机场岛、攻方舰队（固定平台，打不掉）
+--   都是锚定的静态零件；小装饰不挡人、不挡射线、不投影，省性能
+local RS = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local Map = require(RS:WaitForChild("Map"))
+
+local World = {}
+
+local V, CF, RGB, MAT = Vector3.new, CFrame.new, Color3.fromRGB, Enum.Material
+local CYL, BALL, WEDGE = Enum.PartType.Cylinder, Enum.PartType.Ball, nil
+local UP = CFrame.Angles(0, 0, math.pi / 2)   -- Roblox 圆柱的轴在 X：转 90° 立起来
+
+local C = {
+  concrete = RGB(168, 168, 162), asphalt = RGB(52, 54, 58), dark = RGB(38, 40, 44), glass = RGB(66, 104, 134),
+  white = RGB(236, 236, 230), red = RGB(200, 50, 45), yellow = RGB(236, 190, 40), sandbag = RGB(176, 160, 116),
+  wood = RGB(120, 88, 58), metal = RGB(122, 126, 130), roof = RGB(150, 70, 52), wall = RGB(214, 204, 178),
+  hull = RGB(118, 124, 128), deck = RGB(70, 74, 78), olive = RGB(92, 104, 70), tent = RGB(110, 118, 84),
+}
+World.C = C
+
+-- 零件：solid 挡人（墙、楼、船体），否则是装饰（不挡人、不挡射线、小的不投影）
+local function part(parent, size, cf, color, mat, shape, solid)
+  local p = Instance.new("Part")
+  if shape then p.Shape = shape end
+  p.Anchored = true
+  p.Size = size
+  p.CFrame = cf
+  p.Color = color
+  p.Material = mat or MAT.SmoothPlastic
+  p.TopSurface = Enum.SurfaceType.Smooth
+  p.BottomSurface = Enum.SurfaceType.Smooth
+  if not solid then
+    p.CanCollide = false
+    p.CanQuery = false
+    p.CanTouch = false
+    if size.Magnitude < 8 then p.CastShadow = false end
+  end
+  p.Parent = parent
+  return p
+end
+World.part = part
+local function cyl(parent, h, dia, cf, color, mat, solid) return part(parent, V(h, dia, dia), cf * UP, color, mat, CYL, solid) end
+World.cyl = cyl
+local function wedge(parent, size, cf, color, mat, solid)
+  local w = Instance.new("WedgePart")
+  w.Anchored, w.Size, w.CFrame, w.Color, w.Material = true, size, cf, color, mat or MAT.SmoothPlastic
+  if not solid then w.CanCollide, w.CanQuery, w.CanTouch = false, false, false end
+  w.Parent = parent
+  return w
+end
+local function folder(name, parent)
+  local f = Instance.new("Folder")
+  f.Name = name
+  f.Parent = parent or workspace
+  return f
+end
+-- 地面高度上的一点（海上是海面）
+local function at(x, z, dy) return V(x, Map.ground(x, z) + (dy or 0), z) end
+
+-- 头顶的字（离远了跟着变小）
+local function sign(p, text, height, w, h, color, maxDist)
+  local bb = Instance.new("BillboardGui")
+  bb.Size = UDim2.new(w or 16, 0, h or 3, 0)
+  bb.StudsOffsetWorldSpace = V(0, height, 0)
+  bb.LightInfluence = 0
+  bb.MaxDistance = maxDist or 400
+  bb.AlwaysOnTop = false
+  bb.Parent = p
+  local t = Instance.new("TextLabel")
+  t.Size = UDim2.fromScale(1, 1)
+  t.BackgroundTransparency = 1
+  t.Font = Enum.Font.GothamBlack
+  t.TextScaled = true
+  t.TextColor3 = color or Color3.new(1, 1, 1)
+  t.TextStrokeTransparency = 0.3
+  t.Text = text
+  t.Parent = bb
+  return bb, t
+end
+World.sign = sign
+
+---------------------------------------------------------------- 光影
+
+function World.lighting()
+  pcall(function()
+    Lighting.ClockTime = 14.2
+    Lighting.GeographicLatitude = 12
+    Lighting.Brightness = 3
+    Lighting.GlobalShadows = true
+    Lighting.Ambient = RGB(70, 72, 80)
+    Lighting.OutdoorAmbient = RGB(132, 136, 146)
+    Lighting.ColorShift_Top = RGB(255, 244, 226)
+    Lighting.EnvironmentDiffuseScale = 1
+    Lighting.EnvironmentSpecularScale = 1
+    Lighting.ShadowSoftness = 0.2
+    Lighting.ExposureCompensation = 0.1
+    Lighting.FogColor = RGB(176, 196, 212)
+    Lighting.FogStart = 2500
+    Lighting.FogEnd = 9000
+  end)
+  pcall(function()
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+    atm.Density = 0.28
+    atm.Offset = 0.12
+    atm.Color = RGB(199, 214, 228)
+    atm.Decay = RGB(106, 128, 150)
+    atm.Glare = 0.25
+    atm.Haze = 1.4
+    atm.Parent = Lighting
+  end)
+end
+
+---------------------------------------------------------------- 地形
+
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70) }
+
+-- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水
+local function writeChunk(T, x0, z0)
+  local RES, N, D = Map.RES, 64, Map.SEA_DEPTH
+  local hs = table.create(N * N)
+  local ymin, ymax = 1e9, -1e9
+  for i = 0, N - 1 do
+    local x = x0 + (i + 0.5) * RES
+    for k = 0, N - 1 do
+      local h = Map.height(x, z0 + (k + 0.5) * RES)
+      hs[i * N + k + 1] = h
+      if h < ymin then ymin = h end
+      if h > ymax then ymax = h end
+    end
+  end
+  if ymax <= -D + 0.5 then return 0 end   -- 整块都是远海（海水、海底已经铺了）
+  local yb0 = math.floor((math.max(ymin, -D) - RES) / RES)
+  local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
+  local NY = yb1 - yb0
+  local M, O = table.create(N), table.create(N)
+  for i = 1, N do
+    local Mi, Oi = table.create(NY), table.create(NY)
+    for j = 1, NY do Mi[j], Oi[j] = table.create(N), table.create(N) end
+    M[i], O[i] = Mi, Oi
+  end
+  local Water, Air, Sand, Ground, Rock = MAT.Water, MAT.Air, MAT.Sand, MAT.Ground, MAT.Rock
+  for i = 0, N - 1 do
+    local x = x0 + (i + 0.5) * RES
+    for k = 0, N - 1 do
+      local z = z0 + (k + 0.5) * RES
+      local h = hs[i * N + k + 1]
+      local top = Sand
+      if h > 0.3 then
+        local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
+        local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
+        top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+      end
+      local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
+      for j = 0, NY - 1 do
+        local yb = (yb0 + j) * RES
+        local m, o
+        if yb + RES <= h then
+          m, o = (yb + RES > h - 5) and top or under, 1
+        elseif yb < h then
+          m, o = top, math.clamp((h - yb) / RES, 0.05, 1)
+        elseif yb + RES <= 0 then
+          m, o = Water, 1
+        else
+          m, o = Air, 0
+        end
+        M[i + 1][j + 1][k + 1] = m
+        O[i + 1][j + 1][k + 1] = o
+      end
+    end
+  end
+  local region = Region3.new(V(x0, yb0 * RES, z0), V(x0 + N * RES, yb1 * RES, z0 + N * RES))
+  T:WriteVoxels(region, RES, M, O)
+  return N * N * NY
+end
+
+-- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素
+function World.terrain(onProgress)
+  local T = workspace.Terrain
+  local R, D = Map.R, Map.SEA_DEPTH
+  pcall(function()
+    T.WaterColor = RGB(30, 112, 136)
+    T.WaterTransparency = 0.5
+    T.WaterReflectance = 0.5
+    T.WaterWaveSize = 0.15
+    T.WaterWaveSpeed = 8
+    T.Decoration = false
+  end)
+  for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
+  local TILE = 2048
+  for x = -R, R - TILE, TILE do
+    for z = -R, R - TILE, TILE do
+      T:FillBlock(CF(x + TILE / 2, -D - 2, z + TILE / 2), V(TILE, 4, TILE), MAT.Sand)
+      T:FillBlock(CF(x + TILE / 2, -D / 2, z + TILE / 2), V(TILE, D, TILE), MAT.Water)
+    end
+    task.wait()
+  end
+  local CH = 64 * Map.RES
+  local seen, list = {}, {}
+  for _, b in ipairs(Map.landBoxes()) do
+    for cz = math.floor(b[2] / CH), math.floor(b[4] / CH) do
+      for cx = math.floor(b[1] / CH), math.floor(b[3] / CH) do
+        local key = cx .. "," .. cz
+        if not seen[key] then
+          seen[key] = true
+          table.insert(list, { cx * CH, cz * CH })
+        end
+      end
+    end
+  end
+  local total = 0
+  for n, c in ipairs(list) do
+    total += writeChunk(T, c[1], c[2])
+    if onProgress then onProgress(n / #list) end
+    task.wait()
+  end
+  return total, #list
+end
+
+-- 地形范围外的远海：一圈平面（从岸上、飞机上看得到海一直铺到天边）
+local function farSea(f)
+  local R, S = Map.R, 2048
+  for x = -R - 2 * S, R + S, S do
+    for z = -R - 2 * S, R + S, S do
+      if not (x >= -R and x < R and z >= -R and z < R) then
+        local p = part(f, V(S, 1, S), CF(x + S / 2, -0.6, z + S / 2), RGB(30, 104, 128), MAT.Glass, nil, false)
+        p.Transparency = 0.05
+        p.Reflectance = 0.25
+        p.CastShadow = false
+      end
+    end
+  end
+end
+
+---------------------------------------------------------------- 小建筑
+
+local function sandbags(f, c, r, a0, a1, h)   -- 一圈 / 一段沙袋墙（圆心 c、半径 r、从角 a0 到 a1）
+  local n = math.max(2, math.floor((a1 - a0) * r / 5))
+  for i = 0, n - 1 do
+    local a = a0 + (a1 - a0) * (i + 0.5) / n
+    local p = c + V(math.cos(a) * r, 0, math.sin(a) * r)
+    local y = Map.ground(p.X, p.Z)
+    part(f, V(5.2, h or 3, 2.2), CF(p.X, y + (h or 3) / 2 - 0.2, p.Z) * CFrame.Angles(0, -a + math.pi / 2, 0), C.sandbag, MAT.Fabric, nil, true)
+  end
+end
+World.sandbags = sandbags
+
+local function house(f, x, z, w, d, h, rot, wall, roof)
+  local y = Map.ground(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot or 0, 0)
+  part(f, V(w, h, d), base * CF(0, h / 2, 0), wall or C.wall, MAT.Concrete, nil, true)
+  part(f, V(w + 1.5, 1, d + 1.5), base * CF(0, h + 0.5, 0), roof or C.roof, MAT.Slate, nil, true)
+  for s = -1, 1, 2 do   -- 窗
+    for i = 1, math.max(1, math.floor(w / 9)) do
+      local wx = -w / 2 + (i - 0.5) * w / math.max(1, math.floor(w / 9))
+      part(f, V(3, 3, 0.4), base * CF(wx, h * 0.6, s * (d / 2 + 0.15)), C.glass, MAT.Glass)
+    end
+  end
+  part(f, V(4, 7, 0.4), base * CF(0, 3.5, d / 2 + 0.2), C.wood, MAT.Wood)   -- 门
+  return base
+end
+World.house = house
+
+local function tent(f, x, z, rot, color)
+  local y = Map.ground(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot or 0, 0)
+  wedge(f, V(14, 7, 6), base * CF(0, 3.5, -3), color or C.tent, MAT.Fabric, true)
+  wedge(f, V(14, 7, 6), base * CF(0, 3.5, 3) * CFrame.Angles(0, math.pi, 0), color or C.tent, MAT.Fabric, true)
+end
+
+local function mast(f, x, z, h)   -- 天线杆：顶上红灯一闪一闪
+  local y = Map.ground(x, z)
+  cyl(f, h, 0.8, CF(x, y + h / 2, z), C.metal, MAT.Metal, true)
+  local l = part(f, V(1.4, 1.4, 1.4), CF(x, y + h + 0.7, z), RGB(255, 40, 40), MAT.Neon, BALL)
+  l:SetAttribute("Anim", "blink")
+  l:SetAttribute("Spd", 0.8)
+end
+
+---------------------------------------------------------------- 据点
+
+-- 据点：地上一圈（颜色跟着归属变）、旗杆和旗、一圈断续的沙袋、远处也看得到的字母牌；Round 按属性 Owner 改颜色
+function World.points(f)
+  local list = {}
+  for _, p in ipairs(Map.POINTS) do
+    local m = Instance.new("Model")
+    m.Name = "Point_" .. p.id
+    local y = Map.ground(p.x, p.z)
+    local ring = part(m, V(0.3, Map.POINT_R * 2, Map.POINT_R * 2), CF(p.x, y + 0.2, p.z) * UP, RGB(60, 120, 230), MAT.Neon, CYL)
+    ring.Name = "Ring"
+    ring.Transparency = 0.82
+    local pole = cyl(m, 34, 0.9, CF(p.x, y + 17, p.z), C.white, MAT.Metal, true)
+    pole.Name = "Pole"
+    local flag = part(m, V(10, 6, 0.3), CF(p.x + 5.4, y + 30, p.z), RGB(60, 120, 230), MAT.Fabric)
+    flag.Name = "Flag"
+    local _, lbl = sign(pole, p.id, 24, 9, 9, Color3.new(1, 1, 1), 9000)
+    lbl.Name = "Letter"
+    sandbags(m, V(p.x, 0, p.z), 16, 0.3, 2.4, 3)
+    sandbags(m, V(p.x, 0, p.z), 16, 3.5, 5.6, 3)
+    m:SetAttribute("Id", p.id)
+    m:SetAttribute("Owner", "def")
+    m.Parent = f
+    list[p.id] = m
+  end
+  return list
+end
+
+---------------------------------------------------------------- 场景
+
+local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机库、塔台
+  local y = A.y or Map.ground(A.x, A.z)
+  local base = CF(A.x, y, A.z)
+  part(f, V(A.len, 1, A.wid), base * CF(0, 0.45, 0), C.asphalt, MAT.Asphalt, nil, true)
+  for i = -A.len / 2 + 20, A.len / 2 - 20, 30 do part(f, V(14, 0.1, 1.2), base * CF(i, 1, 0), C.white, MAT.SmoothPlastic) end
+  for s = -1, 1, 2 do part(f, V(6, 0.1, A.wid - 8), base * CF(s * (A.len / 2 - 8), 1, 0), C.white, MAT.SmoothPlastic) end
+  part(f, V(A.len * 0.6, 1, 70), base * CF(0, 0.45, -A.wid / 2 - 45), C.concrete, MAT.Concrete, nil, true)   -- 停机坪
+  for i = -1, 1 do   -- 机库
+    local hb = base * CF(i * 110, 0, -A.wid / 2 - 120)
+    part(f, V(60, 18, 44), hb * CF(0, 9, 0), RGB(120, 126, 120), MAT.Metal, nil, true)
+    part(f, V(60, 30, 30), hb * CF(0, 18, 0), RGB(110, 116, 110), MAT.Metal, CYL, true)   -- 半圆拱顶（圆柱一半埋在库房里）
+  end
+  local tb = base * CF(A.len / 2 - 40, 0, -A.wid / 2 - 110)   -- 塔台
+  part(f, V(10, 26, 10), tb * CF(0, 13, 0), C.concrete, MAT.Concrete, nil, true)
+  part(f, V(15, 7, 15), tb * CF(0, 29.5, 0), C.glass, MAT.Glass, nil, true)
+  part(f, V(16, 1, 16), tb * CF(0, 33.5, 0), C.dark, MAT.Metal, nil, true)
+  local _ = team
+end
+
+local function portTown(f)
+  local P = Map.PORT
+  -- 码头：从湾底伸进湾里
+  local zs = Map.coastS(P.x) or P.z
+  for i = -1, 1 do part(f, V(14, 2, 90), CF(P.x + i * 70, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true) end
+  local spots = { { -60, -40, 22, 18, 14 }, { -20, -55, 18, 16, 20 }, { 25, -45, 26, 18, 12 }, { 65, -30, 20, 16, 16 }, { -70, 10, 18, 22, 10 },
+    { 70, 15, 22, 18, 12 }, { -30, 40, 16, 14, 9 }, { 35, 45, 18, 14, 9 }, { -95, -75, 16, 16, 12 }, { 100, -70, 18, 16, 14 } }
+  for k, s in ipairs(spots) do
+    local x, z = P.x + s[1], P.z + s[2]
+    if Map.isLand(x, z) then house(f, x, z, s[3], s[4], s[5], (k % 3) * 0.08, nil, (k % 2 == 0) and RGB(160, 80, 60) or RGB(70, 90, 110)) end
+  end
+  -- 吊车
+  local cx, cz = P.x + 70, zs + 20
+  local y = Map.ground(cx, cz)
+  part(f, V(3, 40, 3), CF(cx, y + 20, cz), C.yellow, MAT.Metal, nil, true)
+  part(f, V(3, 3, 40), CF(cx, y + 40, cz + 14), C.yellow, MAT.Metal, nil, true)
+end
+
+local function commandPost(f)
+  local P = Map.COMMAND
+  local y = Map.ground(P.x, P.z)
+  part(f, V(36, 10, 26), CF(P.x - 30, y + 4, P.z - 25), C.concrete, MAT.Concrete, nil, true)   -- 半埋的掩体
+  part(f, V(40, 2, 30), CF(P.x - 30, y + 9.5, P.z - 25), RGB(110, 112, 100), MAT.Concrete, nil, true)
+  mast(f, P.x + 30, P.z - 30, 46)
+  tent(f, P.x + 32, P.z + 22, 0.3)
+  sandbags(f, V(P.x - 30, 0, P.z - 25), 30, 0, math.pi * 2, 3)
+end
+
+local function camp(f)
+  local P = Map.CAMP
+  for i = -2, 2 do tent(f, P.x + i * 24, P.z - 20, 0, C.tent) end
+  house(f, P.x - 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
+  house(f, P.x + 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
+  local y = Map.ground(P.x, P.z)
+  cyl(f, 30, 0.8, CF(P.x, y + 15, P.z + 40), C.white, MAT.Metal, true)
+end
+
+local function lighthouse(f)
+  local I = Map.LIGHTHOUSE
+  local x, z = I.x + I.a * 0.55, I.z + 30   -- 东岸崖顶
+  local y = Map.ground(x, z)
+  for i = 0, 5 do cyl(f, 8, 12 - i * 0.6, CF(x, y + 4 + i * 8, z), (i % 2 == 0) and C.white or C.red, MAT.Concrete, true) end
+  local lamp = part(f, V(6, 6, 6), CF(x, y + 51, z), RGB(255, 236, 160), MAT.Neon, BALL)
+  lamp:SetAttribute("Anim", "blink")
+  lamp:SetAttribute("Spd", 0.25)
+  part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
+  house(f, x - 26, z + 10, 16, 12, 8, 0.2)
+end
+
+local function battery(f)   -- 西礁岛岸防炮台（摆设；能开火的岸防炮由 AI 实体管）
+  local I = Map.WESTREEF
+  local x, z = I.x + 40, I.z + 60
+  local y = Map.ground(x, z)
+  cyl(f, 4, 26, CF(x, y + 2, z), C.concrete, MAT.Concrete, true)
+  part(f, V(10, 5, 12), CF(x, y + 6.5, z), RGB(96, 104, 92), MAT.Metal, nil, true)
+  cyl(f, 22, 1.6, CF(x, y + 7.5, z + 14) * CFrame.Angles(math.pi / 2, 0, 0), C.dark, MAT.Metal, true)
+  house(f, I.x - 50, I.z - 20, 20, 14, 8, 0.5, RGB(150, 150, 130), RGB(90, 96, 80))
+end
+
+-- 攻方舰队：固定的大平台（航母、两栖攻击舰、登陆舰），甲板离水面约 30 格；出生点在甲板上
+local SHIPS = {
+  carrier = { L = 620, W = 116, H = 34, deck = 30, island = { 0.18, 0.42 }, color = C.hull },
+  lhd = { L = 480, W = 90, H = 30, deck = 26, island = { 0.2, 0.4 }, color = C.hull },
+  lst = { L = 300, W = 56, H = 22, deck = 18, island = { -0.3, 0.3 }, color = C.hull },
+}
+function World.fleet(f)
+  local decks = {}
+  for i, s in ipairs(Map.FLEET) do
+    local D = SHIPS[s.kind]
+    local m = Instance.new("Model")
+    m.Name = "Ship_" .. s.kind .. i
+    local base = CF(s.x, 0, s.z) * CFrame.Angles(0, s.rot or 0, 0)
+    part(m, V(D.W, D.H, D.L), base * CF(0, D.deck - D.H / 2 - 1, 0), D.color, MAT.Metal, nil, true)   -- 船体（往下伸进水里）
+    wedge(m, V(D.W, D.H, 40), base * CF(0, D.deck - D.H / 2 - 1, -D.L / 2 - 20) * CFrame.Angles(0, math.pi, 0), D.color, MAT.Metal, true)   -- 船头
+    local deck = part(m, V(D.W + 4, 1.5, D.L), base * CF(0, D.deck - 0.25, 0), C.deck, MAT.Asphalt, nil, true)
+    deck.Name = "Deck"
+    for k = -D.L / 2 + 30, D.L / 2 - 30, 40 do part(m, V(1, 0.1, 16), base * CF(0, D.deck + 0.6, k), C.yellow) end
+    local ix = D.W / 2 - 16
+    part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, D.L * (D.island[1] - 0.5) + D.L * 0.3), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
+    m:SetAttribute("Kind", s.kind)
+    m.Parent = f
+    table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
+  end
+  return decks
+end
+
+local function attackerAirfield(f)
+  local A = Map.AFIELD2
+  airfield(f, { x = A.x, z = A.z, y = A.y, len = A.len, wid = A.wid }, "atk")
+end
+
+-- 海滩：每处海滩中间一根带颜色的标杆（从海上看得到往哪儿冲），守方在滩上摆钢刺猬
+function World.beaches(f)
+  for _, b in ipairs(Map.BEACHES) do
+    local z = b.z - b.dir * 30
+    local y = Map.ground(b.cx, z)
+    cyl(f, 20, 0.8, CF(b.cx, y + 10, z), C.white, MAT.Metal)
+    part(f, V(8, 5, 0.3), CF(b.cx + 4.3, y + 17, z), b.color, MAT.Fabric)
+  end
+end
+
+-- 开服时建整张地图；地形分块写（要好几秒），写完才让人出生
+function World.build(G)
+  World.lighting()
+  local root = folder("Map")
+  local deco = folder("Scenery", root)
+  local n, chunks = World.terrain(function(p) G.worldProgress = p end)
+  G.terrainVoxels, G.terrainChunks = n, chunks
+  G.try("远海", farSea, folder("FarSea", root))
+  G.try("机场", airfield, deco, Map.AIRFIELD, "def")
+  G.try("港口镇", portTown, deco)
+  G.try("指挥所", commandPost, deco)
+  G.try("营地", camp, deco)
+  G.try("灯塔", lighthouse, deco)
+  G.try("岸防炮台", battery, deco)
+  G.try("攻方机场岛", attackerAirfield, deco)
+  G.try("海滩标杆", World.beaches, deco)
+  G.pointModels = World.points(folder("Points", root))
+  G.decks = World.fleet(folder("Fleet", root))
+  G.worldReady = true
+end
+
+return World
+]]></ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="13">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="14">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="15">
+        <Properties>
+          <string name="Name">Client</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——客户端（StarterPlayerScripts.Client）
+-- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 操作 · View 实体的样子
+local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalizationService = game:GetService("LocalizationService")
+
+local Lang = require(RS:WaitForChild("Lang"))
+local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, R = {}, S = nil }
+do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
+  local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
+  G.lang = Lang.pick(ok and id or "en")
+end
+local Remotes = RS:WaitForChild("Remotes")
+for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "Board" }) do
+  G.R[name] = Remotes:WaitForChild(name)
+end
+
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View" }) do
+  require(script:WaitForChild(name)).init(G)
+end
+
+task.delay(25, function()
+  if not G.S then G.toast("Server data has not arrived after 25 s — the server script may have stopped. Check the Output window.", "bad") end
+end)
+
+G.R.Err.OnClientEvent:Connect(function(msg) G.showError("server " .. tostring(msg)) end)
+pcall(function()
+  game:GetService("ScriptContext").Error:Connect(function(msg, trace)
+    local line = trace and string.match(trace, "[^\n]+") or ""
+    G.showError("local " .. tostring(msg) .. ((line ~= "") and ("  @ " .. line) or ""))
+  end)
+end)
+
+local function safe(f)
+  return function(...)
+    local ok, err = pcall(f, ...)
+    if not ok then G.showError("local " .. tostring(err)) end
+  end
+end
+G.R.State.OnClientEvent:Connect(safe(function(s)
+  if type(s) ~= "table" then return end
+  G.S = s
+  G.refresh()
+end))
+G.R.Msg.OnClientEvent:Connect(safe(function(kind, key, ...) G.onMsg(kind, key, ...) end))
+G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
+G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
+
+local steps = { { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end }, { "fx", function(dt) G.stepFx(dt) end },
+  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end } }
+RunService.RenderStepped:Connect(function(dt)
+  for _, s in ipairs(steps) do
+    local ok, err = pcall(s[2], dt)
+    if not ok then G.showError("local " .. s[1] .. ": " .. tostring(err)) end
+  end
+end)
+]]></ProtectedString>
+        </Properties>
+        <Item class="ModuleScript" referent="16">
+          <Properties>
+            <string name="Name">Fx</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
+--   治疗光圈、修车火花、据点易手、被标记的敌人（头顶红菱形 + 地图红点）、震屏；音效用 Roblox 自带的声音变调（不用上传素材）
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+
+local Fx = {}
+
+function Fx.init(G)
+  local Config = G.Config
+  local V = Vector3.new
+  local RGB = Color3.fromRGB
+  local cam = workspace.CurrentCamera
+  local BALL, CYL = Enum.PartType.Ball, Enum.PartType.Cylinder
+  local me = Players.LocalPlayer
+
+  local FXF = Instance.new("Folder")
+  FXF.Name = "ClientFx"
+  FXF.Parent = workspace
+  G.fxFolder = FXF
+
+  local function part(shape, size, cf, color, mat, tr)
+    local p = Instance.new("Part")
+    if shape then p.Shape = shape end
+    p.Size, p.CFrame, p.Color = size, cf, color
+    p.Material = mat or Enum.Material.Neon
+    p.Transparency = tr or 0
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = FXF
+    return p
+  end
+  local function tween(o, t, props, style)
+    local tw = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+    tw:Play()
+    return tw
+  end
+  G.tween = tween
+
+  ---------------------------------------------------------------- 音效
+
+  local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
+  local TICK = "rbxasset://sounds/volume_slider.ogg"
+  local SND = {
+    boom = { EXP, 0.9, 0.8, 1.0 }, rocket = { EXP, 0.35, 1.7, 2.0 }, rifle = { EXP, 0.16, 2.9, 3.3 }, lmg = { EXP, 0.18, 2.7, 3.0 },
+    sniper = { EXP, 0.4, 1.9, 2.1 }, pistol = { EXP, 0.14, 3.3, 3.6 }, quiet = { TICK, 0.25, 0.7, 0.8 }, mortar = { EXP, 0.4, 1.2, 1.4 },
+    hit = { TICK, 0.5, 2.5, 2.7 }, killding = { TICK, 0.7, 1.7, 1.8 }, heal = { TICK, 0.5, 1.6, 1.7 }, capture = { TICK, 0.9, 1.3, 1.3 },
+    hurt = { "rbxasset://sounds/ouch.ogg", 0.45, 1, 1.1 }, splash = { "rbxasset://sounds/action_jump_land.mp3", 0.6, 0.5, 0.6 },
+  }
+  local soundT, soundN = 0, 0
+  function G.playSound(name, pos, speed)
+    local def = SND[name]
+    if not def then return end
+    local t = os.clock()
+    if t - soundT > 0.1 then soundT, soundN = t, 0 end
+    soundN += 1
+    if soundN > 8 then return end
+    if pos and (pos - cam.CFrame.Position).Magnitude > 1800 then return end
+    local snd = Instance.new("Sound")
+    snd.SoundId = def[1]
+    snd.Volume = def[2]
+    snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    snd.RollOffMinDistance = 30
+    snd.RollOffMaxDistance = 1600
+    if pos then
+      local p = part(nil, V(0.2, 0.2, 0.2), CFrame.new(pos), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      snd.Parent = p
+      snd:Play()
+      Debris:AddItem(p, 5)
+    else
+      snd.Parent = SoundService
+      snd:Play()
+      Debris:AddItem(snd, 5)
+    end
+  end
+
+  -- 震屏
+  local trauma = 0
+  function G.shake(a) trauma = math.min(1, trauma + a) end
+  pcall(function()
+    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Last.Value, function(dt)
+      if trauma <= 0.002 then return end
+      local s = trauma * trauma
+      local t = os.clock() * 26
+      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t, 1.7) * 0.05 * s, math.noise(t, 5.3) * 0.05 * s, math.noise(t, 9.1) * 0.03 * s)
+      trauma = math.max(0, trauma - dt * 1.6)
+    end)
+  end)
+  -- 开枪的后坐：视线往上一跳
+  function G.kick(w)
+    local k = (w.dmg or 20) / 600
+    cam.CFrame = cam.CFrame * CFrame.Angles(k * (0.6 + math.random() * 0.4), (math.random() - 0.5) * k * 0.6, 0)
+  end
+
+  ---------------------------------------------------------------- 曳光、枪口火光
+
+  local TRACER = { rifle = RGB(255, 220, 140), carbine = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210), smg = RGB(255, 225, 160),
+    smgsd = RGB(200, 200, 200), pistol = RGB(255, 225, 160) }
+  function G.gunFx(id, a, b, mine)
+    local d = b - a
+    local L = d.Magnitude
+    if L < 0.5 then return end
+    local col = TRACER[id] or RGB(255, 220, 140)
+    local len = math.min(L, 14)
+    local tr = part(nil, V(0.12, 0.12, len), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, 0.1)
+    local speed = 900
+    local tw = tween(tr, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len / 2, b + d.Unit) }, Enum.EasingStyle.Linear)
+    Debris:AddItem(tr, L / speed + 0.05)
+    local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
+    tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
+    Debris:AddItem(fl, 0.08)
+    -- 弹着点一小团灰
+    task.delay(L / speed, function()
+      local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
+      tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
+      Debris:AddItem(puff, 0.45)
+    end)
+    local snd = (id == "smgsd") and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")
+    G.playSound(snd, a)
+  end
+
+  ---------------------------------------------------------------- 爆炸
+
+  local function boom(p, s)
+    s = s or 1
+    local f = part(BALL, V(2, 2, 2) * s, CFrame.new(p), RGB(255, 170, 60), Enum.Material.Neon, 0)
+    tween(f, 0.35, { Size = V(16, 16, 16) * s, Transparency = 1 })
+    Debris:AddItem(f, 0.4)
+    for i = 1, 5 do
+      local off = V(math.random() - 0.5, math.random() * 0.8, math.random() - 0.5) * 8 * s
+      local sm = part(BALL, V(4, 4, 4) * s, CFrame.new(p + off), RGB(70, 66, 62), Enum.Material.SmoothPlastic, 0.15)
+      tween(sm, 2 + math.random(), { Size = V(14, 14, 14) * s, Transparency = 1, CFrame = CFrame.new(p + off + V(0, 10 * s, 0)) })
+      Debris:AddItem(sm, 3.2)
+    end
+    G.playSound("boom", p)
+    local d = (p - cam.CFrame.Position).Magnitude
+    if d < 160 * s then G.shake(0.5 * s * (1 - d / (160 * s))) end
+  end
+  G.boom = boom
+
+  local function splash(p)
+    local w = part(CYL, V(1, 3, 3), CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2), RGB(230, 240, 245), Enum.Material.SmoothPlastic, 0.2)
+    tween(w, 0.8, { Size = V(14, 7, 7), Transparency = 1 })
+    Debris:AddItem(w, 0.9)
+    G.playSound("splash", p)
+  end
+
+  ---------------------------------------------------------------- 飞行中的弹（照服务器给的初速本地算，收到结束就删）
+
+  local GRAV = V(0, -workspace.Gravity * 0.55, 0)
+  local flying = {}
+  local function newShot(e)
+    local kind = e.kind
+    local body
+    if kind == "grenade" then
+      body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
+    else
+      body = part(CYL, V(2.2, 0.5, 0.5), CFrame.new(e.p), RGB(80, 86, 70), Enum.Material.Metal, 0)
+      local glow = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
+      glow.Name = "Glow"
+      glow.Parent = body
+    end
+    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0 }
+    if kind == "rocket" or kind == "missile" then G.playSound("rocket", e.p) end
+  end
+  local function endShot(id)
+    local s = flying[id]
+    if s then
+      s.body:Destroy()
+      flying[id] = nil
+    end
+  end
+  local function stepShots(dt)
+    for id, s in pairs(flying) do
+      s.t += dt
+      if s.g then s.v += GRAV * dt end
+      s.p += s.v * dt
+      if s.kind == "grenade" then
+        s.body.CFrame = CFrame.new(s.p)
+      else
+        local cf = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+        s.body.CFrame = cf
+        local g = s.body:FindFirstChild("Glow")
+        if g then g.CFrame = CFrame.new(s.p - s.v.Unit * 1.2) end
+        s.trailT += dt
+        if s.trailT > 0.04 then   -- 尾烟
+          s.trailT = 0
+          local sm = part(BALL, V(1, 1, 1), CFrame.new(s.p - s.v.Unit * 1.5), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
+          tween(sm, 1.2, { Size = V(3.5, 3.5, 3.5), Transparency = 1 })
+          Debris:AddItem(sm, 1.25)
+        end
+      end
+      if s.t > 15 then endShot(id) end
+    end
+  end
+
+  -- 炮弹：落地前一秒多传来呼啸声
+  local function shell(e)
+    local t = e.t or 3
+    task.delay(math.max(0, t - 1.3), function() G.playSound("rocket", e.p, 0.6) end)
+  end
+
+  ---------------------------------------------------------------- 被标记的敌人
+
+  local spotMarks = {}
+  local function spots(list)
+    for _, m in ipairs(spotMarks) do m:Destroy() end
+    spotMarks = {}
+    for _, p in ipairs(list or {}) do
+      local a = part(nil, V(0.2, 0.2, 0.2), CFrame.new(p + V(0, 6, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      local bb = Instance.new("BillboardGui")
+      bb.Size = UDim2.fromOffset(18, 18)
+      bb.AlwaysOnTop = true
+      bb.MaxDistance = 2500
+      bb.Parent = a
+      local l = Instance.new("TextLabel")
+      l.Size = UDim2.fromScale(1, 1)
+      l.BackgroundTransparency = 1
+      l.Text = "◆"
+      l.TextScaled = true
+      l.TextColor3 = RGB(255, 60, 50)
+      l.Parent = bb
+      table.insert(spotMarks, a)
+    end
+    if G.mapSpots then G.mapSpots(list) end
+  end
+
+  ---------------------------------------------------------------- 服务器发来的特效
+
+  function G.onFx(list)
+    for _, e in ipairs(list) do
+      local k = e.k
+      if k == "gun" then
+        if e.by ~= me.UserId then G.gunFx(e.w, e.a, e.b, false) end
+      elseif k == "boom" then boom(e.p, e.s)
+      elseif k == "shot" then newShot(e)
+      elseif k == "shotEnd" then endShot(e.id)
+      elseif k == "shell" then shell(e)
+      elseif k == "splash" then splash(e.p)
+      elseif k == "mortarFire" then G.playSound("mortar", e.p)
+      elseif k == "heal" then
+        local r = part(CYL, V(0.3, 4, 4), CFrame.new(e.p - V(0, 2.5, 0)) * CFrame.Angles(0, 0, math.pi / 2), RGB(90, 255, 120), Enum.Material.Neon, 0.3)
+        tween(r, 0.8, { Size = V(0.3, 28, 28), Transparency = 1 })
+        Debris:AddItem(r, 0.85)
+        G.playSound("heal", e.p)
+      elseif k == "repair" then
+        local sp = part(BALL, V(0.6, 0.6, 0.6), CFrame.new(e.p + V(math.random() - 0.5, 2, math.random() - 0.5) * 3), RGB(255, 220, 120), Enum.Material.Neon, 0)
+        tween(sp, 0.3, { Size = V(0.1, 0.1, 0.1), Transparency = 1 })
+        Debris:AddItem(sp, 0.35)
+      elseif k == "capture" then G.playSound("capture")
+      elseif k == "spots" then spots(e.list)
+      elseif k == "ramp" then G.playSound("splash")
+      end
+    end
+  end
+
+  function G.stepFx(dt) stepShots(dt or 1 / 60) end
+end
+
+return Fx
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="17">
+          <Properties>
+            <string name="Name">MapUI</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
+--   部署界面的大地图和右下角的小地图是同一张图：换父级、改大小（里面都按比例摆）
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local MapUI = {}
+
+function MapUI.init(G)
+  local Map = require(RS:WaitForChild("Map"))
+  local Config = G.Config
+  local player = Players.LocalPlayer
+  local RGB = Color3.fromRGB
+
+  -- 地图范围（世界坐标）：所有岛和舰队都在里面
+  local X0, X1, Z0, Z1 = -3000, 3000, -2500, 3600
+  local SPAN = math.max(X1 - X0, Z1 - Z0)
+  local function toUV(x, z) return (x - X0) / SPAN, (z - Z0) / SPAN end
+  G.mapUV = toUV
+
+  local root = Instance.new("Frame")
+  root.Name = "IslandMap"
+  root.BackgroundColor3 = RGB(28, 86, 118)
+  root.BorderSizePixel = 0
+  root.ClipsDescendants = true
+  root.SizeConstraint = Enum.SizeConstraint.RelativeYY
+  local corner = Instance.new("UICorner")
+  corner.CornerRadius = UDim.new(0, 8)
+  corner.Parent = root
+  local land = Instance.new("Frame")
+  land.Name = "Land"
+  land.BackgroundTransparency = 1
+  land.Size = UDim2.fromScale(1, 1)
+  land.Parent = root
+  local marks = Instance.new("Frame")
+  marks.Name = "Marks"
+  marks.BackgroundTransparency = 1
+  marks.Size = UDim2.fromScale(1, 1)
+  marks.ZIndex = 3
+  marks.Parent = root
+
+  -- 陆地：按高度分几档颜色
+  local function band(y)
+    if y <= 0.3 then return nil end
+    if y < 4 then return 1 end
+    if y < 40 then return 2 end
+    if y < 110 then return 3 end
+    if y < 200 then return 4 end
+    return 5
+  end
+  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128) }
+  local N = 110
+  local cell = SPAN / N
+  task.spawn(function()
+    for j = 0, N - 1 do
+      local z = Z0 + (j + 0.5) * cell
+      local runB, runI = nil, 0
+      for i = 0, N do
+        local b = nil
+        if i < N then b = band(Map.height(X0 + (i + 0.5) * cell, z)) end
+        if b ~= runB then
+          if runB then
+            local f = Instance.new("Frame")
+            f.BorderSizePixel = 0
+            f.BackgroundColor3 = BAND[runB]
+            f.Position = UDim2.fromScale(runI / N, j / N)
+            f.Size = UDim2.fromScale((i - runI) / N, 1 / N + 0.0008)
+            f.Parent = land
+          end
+          runB, runI = b, i
+        end
+      end
+      if j % 12 == 0 then task.wait() end
+    end
+  end)
+
+  local function dot(parent, u, v, size, color, text, z)
+    local f = Instance.new("TextLabel")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position = UDim2.fromScale(u, v)
+    f.Size = UDim2.fromOffset(size, size)
+    f.BackgroundColor3 = color
+    f.BorderSizePixel = 0
+    f.Text = text or ""
+    f.TextColor3 = Color3.new(1, 1, 1)
+    f.TextScaled = true
+    f.Font = Enum.Font.GothamBlack
+    f.ZIndex = z or 4
+    f.Parent = parent
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = f
+    local s = Instance.new("UIStroke")
+    s.Thickness = 1.5
+    s.Color = Color3.new(0, 0, 0)
+    s.Transparency = 0.3
+    s.Parent = f
+    return f
+  end
+  G.mapDot = dot
+
+  -- 据点
+  local pointDots = {}
+  for _, p in ipairs(Map.POINTS) do
+    local u, v = toUV(p.x, p.z)
+    pointDots[p.id] = dot(marks, u, v, 22, Config.Teams.def.color, p.id, 5)
+  end
+  -- 舰队、机场岛（小灰块）
+  for _, s in ipairs(Map.FLEET) do
+    local u, v = toUV(s.x, s.z)
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position = UDim2.fromScale(u, v)
+    f.Size = UDim2.fromScale((s.kind == "lst") and 0.006 or 0.009, (s.kind == "carrier") and 0.1 or 0.07)
+    f.Size = UDim2.fromScale(0.012, (s.kind == "carrier") and 0.09 or ((s.kind == "lhd") and 0.07 or 0.045))
+    f.BackgroundColor3 = RGB(70, 76, 82)
+    f.BorderSizePixel = 0
+    f.ZIndex = 2
+    f.Parent = marks
+  end
+  -- 海滩：彩色短线
+  for _, b in ipairs(Map.BEACHES) do
+    local u0, v = toUV(b.x0, b.z)
+    local u1 = toUV(b.x1, b.z)
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0, 0.5)
+    f.Position = UDim2.fromScale(u0, v)
+    f.Size = UDim2.new(u1 - u0, 0, 0, 4)
+    f.BackgroundColor3 = b.color
+    f.BorderSizePixel = 0
+    f.ZIndex = 2
+    f.Parent = marks
+  end
+
+  -- 自己（箭头）、被标记的敌人（红点）
+  local me = dot(marks, 0.5, 0.5, 10, RGB(255, 255, 255), "", 7)
+  me.Visible = false
+  local spotDots = {}
+
+  function G.mapRefresh(S)
+    if S and S.points then
+      for _, s in ipairs(S.points) do
+        local d = pointDots[s.id]
+        if d then
+          local col = Config.Teams[s.owner].color
+          if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+          d.BackgroundColor3 = col
+        end
+      end
+    end
+  end
+
+  function G.mapSpots(list)
+    for _, d in ipairs(spotDots) do d:Destroy() end
+    spotDots = {}
+    for _, p in ipairs(list or {}) do
+      local u, v = toUV(p.X, p.Z)
+      table.insert(spotDots, dot(marks, u, v, 8, RGB(255, 50, 40), "", 6))
+    end
+  end
+
+  function G.stepMap()
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp and root.Parent then
+      local u, v = toUV(hrp.Position.X, hrp.Position.Z)
+      me.Position = UDim2.fromScale(u, v)
+      me.Visible = true
+    else
+      me.Visible = false
+    end
+  end
+
+  -- 放到某个界面里：size 是 UDim2，pos 位置
+  function G.mapMount(parent, size, pos, anchor)
+    root.Parent = parent
+    root.Size = size
+    root.Position = pos or UDim2.new()
+    root.AnchorPoint = anchor or Vector2.new()
+    return root, marks
+  end
+  G.mapRoot = root
+end
+
+return MapUI
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="18">
+          <Properties>
+            <string name="Name">Play</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——操作：武器栏（1–4、点选）、肩后视角（拿着武器时鼠标锁在屏幕中间、人跟着镜头转，准星打哪儿就是哪儿）、
+--   开火（连发 / 单发）、右键瞄准（狙击镜）、R 换弹、各种装备（火箭筒、防空导弹右键锁定、手雷、迫击炮、急救包、扳手按住修车、
+--   炸药包左键放右键引爆、地雷、望远镜左键标记 F 呼叫炮击）、命中标记、弹药显示；手机上屏幕按钮
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+
+local Play = {}
+
+function Play.init(G)
+  local Config = G.Config
+  local W = Config.Weapons
+  local player = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local V = Vector3.new
+  local RGB = Color3.fromRGB
+  local ui = G.ui
+  local T = G.T
+  local now = os.clock
+  local RShoot, RAct = G.R.Shoot, G.R.Act
+  G.mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+
+  ---------------------------------------------------------------- 界面：武器栏、准星、弹药、命中标记
+
+  local hud = G.gui:WaitForChild("Hud")
+  local bar = ui.frame(hud, UDim2.fromOffset(420, 52), UDim2.new(0.5, 0, 1, -70), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  local barList = Instance.new("UIListLayout")
+  barList.FillDirection = Enum.FillDirection.Horizontal
+  barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+  barList.Padding = UDim.new(0, 6)
+  barList.Parent = bar
+  local slots = {}
+  local cross = ui.label(G.gui, "+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 30, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  cross.TextStrokeTransparency = 0.4
+  cross.Visible = false
+  cross.ZIndex = 15
+  local hitX = ui.label(G.gui, "✕", UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 28, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  hitX.TextTransparency = 1
+  hitX.ZIndex = 16
+  local hitT = 0
+  local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  ammoText.TextStrokeTransparency = 0.4
+  local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.GothamBold, Vector2.new(0.5, 0))
+  tipText.TextStrokeTransparency = 0.4
+  tipText.ZIndex = 15
+  local scope = ui.frame(G.gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  scope.ZIndex = 12
+  scope.Visible = false
+  do   -- 狙击镜：四周黑、中间十字
+    for _, s in ipairs({ { UDim2.new(1, 0, 0.5, -170), UDim2.new() }, { UDim2.new(1, 0, 0.5, -170), UDim2.new(0, 0, 0.5, 170) }, { UDim2.new(0.5, -170, 0, 340), UDim2.new(0, 0, 0.5, -170) }, { UDim2.new(0.5, -170, 0, 340), UDim2.new(0.5, 170, 0.5, -170) } }) do
+      local f = ui.frame(scope, s[1], s[2], RGB(0, 0, 0), 0)
+      f.ZIndex = 12
+    end
+    local h = ui.frame(scope, UDim2.fromOffset(340, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 0, Vector2.new(0.5, 0.5))
+    local v = ui.frame(scope, UDim2.fromOffset(1, 340), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 0, Vector2.new(0.5, 0.5))
+    h.ZIndex, v.ZIndex = 13, 13
+  end
+
+  function G.hitMarker(kind)
+    hitX.TextColor3 = (kind == "kill") and RGB(255, 70, 60) or ((kind == "head") and RGB(255, 220, 80) or Color3.new(1, 1, 1))
+    hitX.TextTransparency = 0
+    hitT = now()
+    if G.playSound then G.playSound((kind == "kill") and "killding" or "hit") end
+  end
+
+  ---------------------------------------------------------------- 武器栏
+
+  local cur = { tool = nil, id = nil, nextShot = 0, firing = false, aiming = false, lockT = 0, lockId = nil }
+  local ammo = {}
+  local function ammoOf(id)
+    local w = W[id]
+    local a = ammo[id]
+    if not a then
+      a = { n = w.mag or 1, res = w.reserve, r = 0 }
+      ammo[id] = a
+    end
+    if a.r > 0 and now() >= a.r then
+      local need = (w.mag or 1) - a.n
+      if a.res then
+        local k = math.min(need, a.res)
+        a.n += k
+        a.res -= k
+      else
+        a.n += need
+      end
+      a.r = 0
+    end
+    return a
+  end
+  local function reload()
+    local id = cur.id
+    if not id then return end
+    local w = W[id]
+    local a = ammoOf(id)
+    if a.r > 0 or a.n >= (w.mag or 1) or (a.res and a.res <= 0) or (w.reload or 0) <= 0 then return end
+    a.r = now() + w.reload
+    RAct:FireServer("reload", id)
+  end
+
+  local function tools()
+    local list = {}
+    local bp = player:FindFirstChildOfClass("Backpack")
+    for _, holder in ipairs({ bp, player.Character }) do
+      if holder then
+        for _, t in ipairs(holder:GetChildren()) do
+          if t:IsA("Tool") and t:GetAttribute("Slot") then list[t:GetAttribute("Slot")] = t end
+        end
+      end
+    end
+    return list
+  end
+  local function equip(i)
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 or G.drive then return end
+    local t = tools()[i]
+    if not t then return end
+    if t.Parent == char then hum:UnequipTools() else hum:EquipTool(t) end
+  end
+  G.equipSlot = equip
+
+  local function drawBar()
+    for _, s in ipairs(slots) do s:Destroy() end
+    slots = {}
+    for i, t in pairs(tools()) do
+      local id = t:GetAttribute("Weapon")
+      local on = t.Parent == player.Character
+      local b = ui.button(bar, i .. "  " .. T("weapon." .. id), UDim2.fromOffset(130, 44), nil, on and RGB(70, 90, 60) or RGB(30, 36, 42))
+      b.LayoutOrder = i
+      b.TextSize = 14
+      b.Activated:Connect(function() equip(i) end)
+      table.insert(slots, b)
+    end
+  end
+
+  local function onChar(char)
+    ammo = {}
+    cur.tool, cur.id = nil, nil
+    char.ChildAdded:Connect(function(c)
+      if c:IsA("Tool") and c:GetAttribute("Weapon") then
+        cur.tool, cur.id = c, c:GetAttribute("Weapon")
+        cur.lockT, cur.lockId = 0, nil
+        drawBar()
+      end
+    end)
+    char.ChildRemoved:Connect(function(c)
+      if c == cur.tool then
+        cur.tool, cur.id, cur.firing, cur.aiming = nil, nil, false, false
+        drawBar()
+      end
+    end)
+    task.delay(0.6, drawBar)
+    local bp = player:WaitForChild("Backpack", 5)
+    if bp then
+      bp.ChildAdded:Connect(function() task.defer(drawBar) end)
+    end
+    task.delay(0.8, function() if char.Parent and not cur.tool then equip(1) end end)   -- 出生拿第一把
+  end
+  player.CharacterAdded:Connect(onChar)
+  if player.Character then onChar(player.Character) end
+
+  ---------------------------------------------------------------- 瞄准
+
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
+  -- 屏幕中间（准星）对着的点；ground 只要地面（迫击炮、放东西）
+  local function aimPoint(range, ground)
+    local vp = cam.ViewportSize
+    local ray = cam:ViewportPointToRay(vp.X / 2, vp.Y / 2)
+    rayP.FilterDescendantsInstances = { player.Character, G.fxFolder, G.viewFolder }
+    if ground then rayP.FilterDescendantsInstances = { player.Character, G.fxFolder, G.viewFolder, workspace:FindFirstChild("Ents") } end
+    local res = workspace:Raycast(ray.Origin, ray.Direction * (range or 1500), rayP)
+    if res then return res.Position, res.Instance end
+    return ray.Origin + ray.Direction * (range or 1500), nil
+  end
+  G.aimPoint = aimPoint
+
+  -- 防空导弹锁定：准星 12° 以内、射程内最近的敌方飞机直升机
+  local function lockCandidate(w)
+    local look = cam.CFrame.LookVector
+    local best, bd = nil, math.huge
+    local ents = workspace:FindFirstChild("Ents")
+    if not ents then return nil end
+    for _, m in ipairs(ents:GetChildren()) do
+      if m:GetAttribute("Cat") == "air" and m:GetAttribute("Team") ~= player:GetAttribute("Side") then
+        local r = m:FindFirstChild("Root")
+        if r then
+          local to = r.Position - cam.CFrame.Position
+          local d = to.Magnitude
+          if d < w.range and to.Unit:Dot(look) > math.cos(math.rad(12)) and d < bd then best, bd = m, d end
+        end
+      end
+    end
+    return best
+  end
+
+  local function nearestFriendlyEnt(range)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local ents = workspace:FindFirstChild("Ents")
+    if not hrp or not ents then return nil end
+    local best, bd = nil, math.huge
+    for _, m in ipairs(ents:GetChildren()) do
+      local r = m:FindFirstChild("Root")
+      if r and m:GetAttribute("Team") == player:GetAttribute("Side") and m:GetAttribute("Cat") ~= "inf" and m:GetAttribute("Cat") ~= "fort" then
+        local d = (r.Position - hrp.Position).Magnitude - math.max(r.Size.X, r.Size.Z) / 2
+        if d < range and d < bd then best, bd = m, d end
+      end
+    end
+    return best
+  end
+
+  ---------------------------------------------------------------- 开火
+
+  local function tryFire(alt)
+    local id = cur.id
+    local char = player.Character
+    if not id or not char or G.drive then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    local S = G.S
+    if not S or S.phase ~= "battle" then return end
+    local w = W[id]
+    local t = now()
+    if t < cur.nextShot then return end
+    if w.kind == "heal" then
+      cur.nextShot = t + w.cd
+      RShoot:FireServer(id)
+      return
+    end
+    if w.kind == "spot" then
+      cur.nextShot = t + (alt and 0.5 or w.cd)
+      local p = aimPoint(w.range, alt)
+      RShoot:FireServer(id, p, alt and "strike" or nil)
+      return
+    end
+    if w.kind == "repair" then
+      cur.nextShot = t + 0.25
+      local m = nearestFriendlyEnt(w.range)
+      if m then RShoot:FireServer(id, m:GetAttribute("EntId")) end
+      return
+    end
+    if w.kind == "place" and id == "c4" and alt then
+      cur.nextShot = t + 0.4
+      RShoot:FireServer(id, "det")
+      return
+    end
+    local a = ammoOf(id)
+    if a.r > 0 then return end
+    if a.n <= 0 then reload() return end
+    cur.nextShot = t + (w.rate or 0.2)
+    a.n -= 1
+    if a.n <= 0 then reload() end
+    if w.kind == "gun" then
+      local p = aimPoint(w.range)
+      local handle = cur.tool and cur.tool:FindFirstChild("Handle")
+      local mz = handle and handle:FindFirstChild("Muzzle")
+      if G.gunFx and mz then G.gunFx(id, mz.WorldPosition, p, true) end
+      RShoot:FireServer(id, p)
+      if G.kick then G.kick(w) end
+    elseif w.kind == "lock" then
+      RShoot:FireServer(id, cur.lockId, aimPoint(w.range))
+      cur.lockT, cur.lockId = 0, nil
+    elseif w.kind == "mortar" or w.kind == "place" then
+      RShoot:FireServer(id, (aimPoint(w.maxR or 60, true)))
+    else
+      RShoot:FireServer(id, (aimPoint(w.range or 800)))
+    end
+  end
+
+  ---------------------------------------------------------------- 输入
+
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp then return end
+    local k = io.KeyCode
+    if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      cur.firing = true
+      tryFire(false)
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
+      cur.aiming = true
+      if cur.id and (W[cur.id].kind == "place") then tryFire(true) end
+    elseif k == Enum.KeyCode.R then reload()
+    elseif k == Enum.KeyCode.F then
+      if cur.id and W[cur.id].kind == "spot" then tryFire(true) end
+    elseif k == Enum.KeyCode.One then equip(1)
+    elseif k == Enum.KeyCode.Two then equip(2)
+    elseif k == Enum.KeyCode.Three then equip(3)
+    elseif k == Enum.KeyCode.Four then equip(4)
+    end
+  end)
+  UIS.InputEnded:Connect(function(io)
+    if io.UserInputType == Enum.UserInputType.MouseButton1 then cur.firing = false
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 then cur.aiming = false end
+  end)
+
+  -- 手机：开火（按住）、瞄准、换弹、换武器、F
+  if UIS.TouchEnabled then
+    local function tbtn(text, pos, size)
+      local b = ui.button(hud, text, UDim2.fromOffset(size or 70, size or 70), pos, RGB(30, 36, 42))
+      b.BackgroundTransparency = 0.35
+      b.TextSize = 15
+      return b
+    end
+    local fire = tbtn("●", UDim2.new(1, -110, 1, -300), 90)
+    fire.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = true tryFire(false) end end)
+    fire.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = false end end)
+    local aim = tbtn("◎", UDim2.new(1, -200, 1, -250))
+    aim.Activated:Connect(function() cur.aiming = not cur.aiming end)
+    local rl = tbtn("R", UDim2.new(1, -200, 1, -330), 56)
+    rl.Activated:Connect(reload)
+    local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
+    sw.Activated:Connect(function()
+      local list = tools()
+      local i = cur.tool and cur.tool:GetAttribute("Slot") or 0
+      for k = 1, 4 do
+        local j = (i + k - 1) % 4 + 1
+        if list[j] then equip(j) return end
+      end
+    end)
+    local fbtn = tbtn("F", UDim2.new(1, -280, 1, -300), 56)
+    fbtn.Activated:Connect(function() tryFire(true) end)
+  end
+
+  ---------------------------------------------------------------- 每帧
+
+  local function weaponHud()
+    local id = cur.id
+    if not id then
+      ammoText.Text = ""
+      tipText.Text = ""
+      return
+    end
+    local w = W[id]
+    local a = ammoOf(id)
+    local name = T("weapon." .. id)
+    if w.kind == "heal" or w.kind == "repair" or w.kind == "spot" then
+      ammoText.Text = name
+    elseif a.r > 0 then
+      ammoText.Text = T("ui.reloading", name)
+    else
+      ammoText.Text = T("ui.ammo", name, a.n, a.res and tostring(a.res) or "∞") .. (G.mobile and "" or ("   " .. T("ui.reloadKey")))
+    end
+    tipText.Text = ""
+    if w.kind == "lock" then
+      if cur.lockId then tipText.Text = T("ui.locked")
+      elseif cur.lockT > 0 then tipText.Text = T("ui.locking") end
+    elseif w.kind == "mortar" then
+      local p = aimPoint(w.maxR + 200, true)
+      local char = player.Character
+      local hrp = char and char:FindFirstChild("HumanoidRootPart")
+      if hrp then
+        local d = (V(p.X, 0, p.Z) - V(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
+        tipText.Text = math.floor(d) .. (G.lang == "zh" and " 格" or " studs") .. ((d < w.minR or d > w.maxR) and ("  " .. T("ui.mortarRange", w.minR, w.maxR)) or "")
+      end
+    end
+  end
+
+  local baseFov = 70
+  function G.stepPlay(dt)
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local armed = cur.id ~= nil and hum and hum.Health > 0 and not G.drive and not (hrp and hrp.Anchored)
+    -- 肩后视角：鼠标锁在中间、人跟着镜头转
+    if armed and not G.mobile then
+      UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+      hum.AutoRotate = false
+      hum.CameraOffset = hum.CameraOffset:Lerp(V(1.9, 0.5, 0), math.min(1, dt * 10))
+      local look = cam.CFrame.LookVector
+      local yaw = math.atan2(-look.X, -look.Z)
+      hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, yaw, 0)
+    elseif hum then
+      if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
+      hum.AutoRotate = true
+      hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
+    end
+    cross.Visible = armed == true
+    -- 瞄准：拉近；狙击镜、望远镜放大得多
+    local w = cur.id and W[cur.id]
+    local zoom = 1
+    if armed and cur.aiming and w then
+      if w.scope or w.kind == "spot" then zoom = (w.scope or 5) else zoom = 1.35 end
+    end
+    scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
+    -- 连发
+    if cur.firing and armed and w and (w.auto or w.kind == "repair") then tryFire(false) end
+    -- 防空导弹锁定：右键按住对准
+    if armed and w and w.kind == "lock" then
+      local m = cur.aiming and lockCandidate(w) or nil
+      if m then
+        cur.lockT += dt
+        if cur.lockT >= w.lockTime then cur.lockId = m:GetAttribute("EntId") end
+      else
+        cur.lockT, cur.lockId = 0, nil
+      end
+    end
+    weaponHud()
+    local a = now() - hitT
+    hitX.TextTransparency = math.clamp(a / 0.25, 0, 1)
+  end
+end
+
+return Play
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="19">
+          <Properties>
+            <string name="Name">UI</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
+--   击杀信息、屏幕中间的大字、底部提示、战况表（Tab）、结算画面、出错红条；所有文字按 G.lang 中英切换
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+
+local UI = {}
+
+function UI.init(G)
+  local Config, Lang = G.Config, G.Lang
+  local Map = require(RS:WaitForChild("Map"))
+  local player = Players.LocalPlayer
+  local RGB = Color3.fromRGB
+  local function T(key, ...) return Lang.t(G.lang, key, ...) end
+  G.T = T
+
+  pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false) end)   -- 武器栏自己画（中英文）
+  pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)   -- 战况表自己画（Tab）
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Main"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+  gui.Parent = player:WaitForChild("PlayerGui")
+  G.gui = gui
+
+  ---------------------------------------------------------------- 小工具
+
+  local PANEL, LINE, TEXT, MUTE = RGB(16, 20, 24), RGB(255, 255, 255), RGB(236, 240, 236), RGB(160, 170, 166)
+  local function frame(parent, size, pos, color, alpha, anchor)
+    local f = Instance.new("Frame")
+    f.Size = size
+    f.Position = pos or UDim2.new()
+    f.AnchorPoint = anchor or Vector2.new()
+    f.BackgroundColor3 = color or PANEL
+    f.BackgroundTransparency = alpha or 0.25
+    f.BorderSizePixel = 0
+    f.Parent = parent
+    return f
+  end
+  local function round(f, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 8)
+    c.Parent = f
+    return f
+  end
+  local function stroke(f, color, t, alpha)
+    local s = Instance.new("UIStroke")
+    s.Color = color or LINE
+    s.Thickness = t or 1
+    s.Transparency = alpha or 0.85
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = f
+    return s
+  end
+  local function label(parent, text, size, pos, ts, color, font, anchor, align)
+    local l = Instance.new("TextLabel")
+    l.Size = size
+    l.Position = pos or UDim2.new()
+    l.AnchorPoint = anchor or Vector2.new()
+    l.BackgroundTransparency = 1
+    l.Text = text or ""
+    l.TextSize = ts or 16
+    l.TextColor3 = color or TEXT
+    l.Font = font or Enum.Font.GothamMedium
+    l.TextXAlignment = align or Enum.TextXAlignment.Center
+    l.TextWrapped = true
+    l.Parent = parent
+    return l
+  end
+  local function button(parent, text, size, pos, color, anchor)
+    local b = Instance.new("TextButton")
+    b.Size = size
+    b.Position = pos or UDim2.new()
+    b.AnchorPoint = anchor or Vector2.new()
+    b.BackgroundColor3 = color or RGB(40, 46, 52)
+    b.BackgroundTransparency = 0.1
+    b.BorderSizePixel = 0
+    b.Text = text or ""
+    b.TextColor3 = TEXT
+    b.TextSize = 16
+    b.Font = Enum.Font.GothamBold
+    b.AutoButtonColor = true
+    b.Parent = parent
+    round(b, 8)
+    return b
+  end
+  G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button }
+
+  local function teamColor(t) return Config.Teams[t or "atk"].color end
+  local function fmtTime(s)
+    s = math.max(0, math.floor(s or 0))
+    return string.format("%d:%02d", s // 60, s % 60)
+  end
+
+  ---------------------------------------------------------------- 出错红条、开服进度
+
+  local errBar = label(gui, "", UDim2.new(1, -40, 0, 0), UDim2.new(0.5, 0, 0, 6), 14, RGB(255, 220, 220), Enum.Font.GothamMedium, Vector2.new(0.5, 0))
+  errBar.AutomaticSize = Enum.AutomaticSize.Y
+  errBar.BackgroundColor3 = RGB(150, 30, 30)
+  errBar.BackgroundTransparency = 0.15
+  errBar.Visible = false
+  errBar.ZIndex = 50
+  local errs = {}
+  function G.showError(msg)
+    table.insert(errs, 1, tostring(msg))
+    while #errs > 3 do table.remove(errs) end
+    errBar.Text = table.concat(errs, "\n")
+    errBar.Visible = true
+  end
+
+  local loading = frame(gui, UDim2.fromScale(1, 1), nil, RGB(10, 14, 18), 0)
+  loading.ZIndex = 40
+  local loadText = label(loading, "", UDim2.new(1, 0, 0, 40), UDim2.fromScale(0, 0.5), 22, TEXT, Enum.Font.GothamBold)
+  loadText.ZIndex = 41
+
+  ---------------------------------------------------------------- 部署界面
+
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(8, 12, 16), 0.12)
+  deploy.Name = "Deploy"
+  deploy.Visible = false
+  deploy.ZIndex = 10
+  local top = frame(deploy, UDim2.new(1, 0, 0, 64), nil, RGB(12, 16, 20), 0.2)
+  local title = label(top, "", UDim2.new(0, 360, 1, 0), UDim2.fromOffset(18, 0), 22, TEXT, Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Left)
+  local teamTag = label(top, "", UDim2.new(0, 260, 0, 34), UDim2.new(0.5, 0, 0.5, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
+  teamTag.BackgroundTransparency = 0.1
+  round(teamTag, 6)
+  local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -150, 0, 0), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Right)
+  local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
+  local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+
+  -- 左边：兵种卡片
+  local roles = Instance.new("ScrollingFrame")
+  roles.Size = UDim2.new(0.36, -30, 1, -190)
+  roles.Position = UDim2.fromOffset(20, 104)
+  roles.BackgroundTransparency = 1
+  roles.BorderSizePixel = 0
+  roles.ScrollBarThickness = 6
+  roles.CanvasSize = UDim2.new()
+  roles.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  roles.Parent = deploy
+  local grid = Instance.new("UIGridLayout")
+  grid.CellSize = UDim2.new(0.5, -6, 0, 92)
+  grid.CellPadding = UDim2.fromOffset(8, 8)
+  grid.SortOrder = Enum.SortOrder.LayoutOrder
+  grid.Parent = roles
+  local roleCards = {}
+  local sel = { role = nil, spawn = nil }
+  G.deploySel = sel
+  for i, r in ipairs(Config.Roles) do
+    local b = Instance.new("TextButton")
+    b.Text = ""
+    b.LayoutOrder = i
+    b.BackgroundColor3 = RGB(28, 34, 40)
+    b.BackgroundTransparency = 0.1
+    b.AutoButtonColor = true
+    b.Parent = roles
+    round(b, 8)
+    local st = stroke(b, LINE, 2, 1)
+    local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 17, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
+    ds.TextYAlignment = Enum.TextYAlignment.Top
+    local ws = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    roleCards[r.id] = { b = b, st = st, nm = nm, ds = ds, ws = ws, r = r }
+    b.Activated:Connect(function()
+      sel.role = r.id
+      G.refreshDeploy()
+    end)
+  end
+
+  -- 右边：地图 + 出生点
+  local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
+  local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  local aspect = Instance.new("UIAspectRatioConstraint")
+  aspect.AspectRatio = 1
+  aspect.Parent = mapHolder
+  local spawnLayer = nil
+  local spawnBtns = {}
+  local extraSpawns = frame(deploy, UDim2.new(0.64, -40, 0, 40), UDim2.new(0.36, 10, 1, -80), RGB(0, 0, 0), 1)
+  local extraList = Instance.new("UIListLayout")
+  extraList.FillDirection = Enum.FillDirection.Horizontal
+  extraList.Padding = UDim.new(0, 8)
+  extraList.Parent = extraSpawns
+
+  local deployBtn = button(deploy, "", UDim2.new(0.36, -30, 0, 52), UDim2.new(0, 20, 1, -76), RGB(60, 150, 80))
+  deployBtn.TextSize = 22
+  deployBtn.Activated:Connect(function()
+    local S = G.S
+    if not S or S.alive or (S.wait or 0) > 0 then return end
+    if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+    G.R.Act:FireServer("deploy", sel.role, sel.spawn)
+  end)
+
+  local function spawnName(s)
+    if s.kind == "beach" then return T("beach." .. s.beach) end
+    if s.kind == "point" then return T("point." .. s.point) end
+    if s.kind == "camp" then return T("spawn.camp") end
+    if s.kind == "fleet" then return T("spawn.fleet") end
+    if s.kind == "para" then return T("spawn.para") end
+    return s.id
+  end
+
+  local function buildSpawns(S)
+    for _, b in ipairs(spawnBtns) do b:Destroy() end
+    spawnBtns = {}
+    if not spawnLayer then return end
+    local ids = {}
+    for _, s in ipairs(S.spawns or {}) do
+      ids[s.id] = s
+      local chosen = sel.spawn == s.id
+      local b
+      if s.x then
+        local u, v = G.mapUV(s.x, s.z)
+        b = Instance.new("TextButton")
+        b.AnchorPoint = Vector2.new(0.5, 0.5)
+        b.Position = UDim2.fromScale(u, v)
+        b.Size = UDim2.fromOffset(chosen and 34 or 26, chosen and 34 or 26)
+        b.BackgroundColor3 = s.ok and (chosen and RGB(255, 210, 60) or RGB(255, 255, 255)) or RGB(90, 90, 90)
+        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or "▲")
+        b.TextColor3 = RGB(20, 20, 20)
+        b.TextScaled = true
+        b.Font = Enum.Font.GothamBlack
+        b.ZIndex = 8
+        b.Parent = spawnLayer
+        round(b, 20)
+        stroke(b, RGB(0, 0, 0), 2, 0.2)
+        local tip = label(b, spawnName(s), UDim2.fromOffset(150, 18), UDim2.new(0.5, 0, 1, 2), 12, TEXT, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+        tip.ZIndex = 8
+        tip.TextStrokeTransparency = 0.3
+      else
+        b = button(extraSpawns, spawnName(s), UDim2.fromOffset(210, 40), nil, s.ok and (chosen and RGB(200, 160, 40) or RGB(50, 58, 66)) or RGB(40, 40, 40))
+        b.TextSize = 15
+      end
+      b.Active = s.ok
+      b.Activated:Connect(function()
+        if not s.ok then G.toast(T("ui.spawnBlocked"), "bad") return end
+        sel.spawn = s.id
+        G.refreshDeploy()
+      end)
+      table.insert(spawnBtns, b)
+    end
+    if sel.spawn and (not ids[sel.spawn] or not ids[sel.spawn].ok) then sel.spawn = nil end
+  end
+
+  function G.refreshDeploy()
+    local S = G.S
+    if not S then return end
+    title.Text = T("game.title")
+    teamTag.Text = T("team." .. (S.team or "atk"))
+    teamTag.BackgroundColor3 = teamColor(S.team)
+    goal.Text = T((S.team == "def") and "ui.goalDef" or "ui.goalAtk")
+    langBtn.Text = T("ui.lang")
+    for id, c in pairs(roleCards) do
+      local w = {}
+      for _, wid in ipairs(c.r.weapons) do table.insert(w, T("weapon." .. wid)) end
+      c.nm.Text = T("role." .. id)
+      c.ds.Text = T("role." .. id .. ".desc")
+      c.ws.Text = table.concat(w, " · ")
+      local on = sel.role == id
+      c.st.Transparency = on and 0 or 1
+      c.st.Color = RGB(255, 210, 60)
+      c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
+    end
+    buildSpawns(S)
+    if (S.wait or 0) > 0 then
+      deployBtn.Text = T("ui.waitRespawn", S.wait)
+      deployBtn.BackgroundColor3 = RGB(70, 70, 70)
+    else
+      deployBtn.Text = T("ui.deployBtn")
+      deployBtn.BackgroundColor3 = (sel.role and sel.spawn) and RGB(60, 150, 80) or RGB(70, 90, 76)
+    end
+  end
+
+  langBtn.Activated:Connect(function()
+    G.lang = (G.lang == "zh") and "en" or "zh"
+    G.refresh()
+  end)
+
+  ---------------------------------------------------------------- 顶栏：时间、据点
+
+  local hud = frame(gui, UDim2.fromScale(1, 1), nil, PANEL, 1)
+  hud.Name = "Hud"
+  local topBar = frame(hud, UDim2.fromOffset(460, 74), UDim2.new(0.5, 0, 0, 8), PANEL, 0.35, Vector2.new(0.5, 0))
+  round(topBar, 10)
+  local timer = label(topBar, "", UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 20, TEXT, Enum.Font.GothamBlack)
+  local chips = {}
+  for i, p in ipairs(Map.POINTS) do
+    local c = frame(topBar, UDim2.fromOffset(80, 38), UDim2.fromOffset(10 + (i - 1) * 89, 30), RGB(30, 40, 60), 0.05)
+    round(c, 6)
+    local l = label(c, p.id, UDim2.new(0, 26, 1, 0), UDim2.fromOffset(4, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack)
+    local n = label(c, "", UDim2.new(1, -32, 0, 18), UDim2.fromOffset(30, 3), 12, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local barBg = frame(c, UDim2.new(1, -36, 0, 5), UDim2.new(0, 30, 1, -10), RGB(0, 0, 0), 0.5)
+    local bar = frame(barBg, UDim2.fromScale(0, 1), nil, Config.Teams.atk.color, 0)
+    chips[p.id] = { f = c, l = l, n = n, bar = bar }
+  end
+  local counts = label(hud, "", UDim2.fromOffset(240, 20), UDim2.new(0.5, 0, 0, 84), 14, TEXT, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+  counts.TextStrokeTransparency = 0.5
+
+  -- 血条
+  local hpBg = frame(hud, UDim2.fromOffset(260, 14), UDim2.new(0, 20, 1, -40), RGB(0, 0, 0), 0.45)
+  round(hpBg, 4)
+  local hpBar = frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
+  round(hpBar, 4)
+  local hpText = label(hpBg, "", UDim2.fromScale(1, 1), nil, 12, Color3.new(1, 1, 1), Enum.Font.GothamBold)
+  local roleText = label(hud, "", UDim2.fromOffset(260, 18), UDim2.new(0, 20, 1, -62), 14, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  roleText.TextStrokeTransparency = 0.5
+  local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  help.TextStrokeTransparency = 0.6
+
+  -- 小地图容器（右下）
+  local miniBox = frame(hud, UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), PANEL, 1, Vector2.new(1, 1))
+
+  ---------------------------------------------------------------- 消息
+
+  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.3, 0), 28, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
+  center.TextStrokeTransparency = 0.3
+  center.ZIndex = 30
+  local centerT = 0
+  local feed = frame(gui, UDim2.fromOffset(340, 160), UDim2.new(1, -16, 0, 120), PANEL, 1, Vector2.new(1, 0))
+  local feedList = Instance.new("UIListLayout")
+  feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+  feedList.SortOrder = Enum.SortOrder.LayoutOrder
+  feedList.Parent = feed
+  local toasts = frame(gui, UDim2.fromOffset(520, 200), UDim2.new(0.5, 0, 1, -110), PANEL, 1, Vector2.new(0.5, 1))
+  local toastList = Instance.new("UIListLayout")
+  toastList.VerticalAlignment = Enum.VerticalAlignment.Bottom
+  toastList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+  toastList.Padding = UDim.new(0, 4)
+  toastList.SortOrder = Enum.SortOrder.LayoutOrder
+  toastList.Parent = toasts
+  local order = 0
+  local KIND_COL = { good = RGB(60, 150, 80), bad = RGB(170, 50, 45), info = RGB(40, 50, 60), kill = RGB(150, 110, 30) }
+  function G.toast(text, kind)
+    order += 1
+    local l = label(toasts, text, UDim2.fromOffset(500, 26), nil, 15, Color3.new(1, 1, 1), Enum.Font.GothamBold)
+    l.BackgroundColor3 = KIND_COL[kind or "info"] or KIND_COL.info
+    l.BackgroundTransparency = 0.2
+    l.LayoutOrder = order
+    round(l, 6)
+    task.delay(4, function() l:Destroy() end)
+  end
+  function G.centerMsg(text)
+    center.Text = text
+    center.TextTransparency = 0
+    centerT = os.clock()
+  end
+  local function feedAdd(text)
+    order += 1
+    local l = label(feed, text, UDim2.fromOffset(340, 22), nil, 14, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Right)
+    l.TextStrokeTransparency = 0.4
+    l.LayoutOrder = order
+    local kids = {}
+    for _, c in ipairs(feed:GetChildren()) do if c:IsA("TextLabel") then table.insert(kids, c) end end
+    if #kids > 6 then table.sort(kids, function(a, b) return a.LayoutOrder < b.LayoutOrder end) kids[1]:Destroy() end
+    task.delay(8, function() l:Destroy() end)
+  end
+
+  -- 服务器发来的文字：kind、编号、参数（参数里的 { k = 编号 } 也翻译）
+  function G.onMsg(kind, key, ...)
+    if kind == "hit" then
+      if G.hitMarker then G.hitMarker(key) end
+      return
+    end
+    local text = T(key, ...)
+    if kind == "center" then G.centerMsg(text)
+    elseif kind == "feed" then feedAdd(text)
+    else G.toast(text, kind) end
+  end
+
+  ---------------------------------------------------------------- 战况表（按住 Tab）
+
+  local board = frame(gui, UDim2.fromOffset(760, 520), UDim2.fromScale(0.5, 0.5), PANEL, 0.12, Vector2.new(0.5, 0.5))
+  board.Visible = false
+  board.ZIndex = 20
+  round(board, 10)
+  local boardTitle = label(board, "", UDim2.new(1, 0, 0, 36), nil, 20, TEXT, Enum.Font.GothamBlack)
+  boardTitle.ZIndex = 21
+  local cols = {}
+  for i, t in ipairs({ "atk", "def" }) do
+    local c = frame(board, UDim2.new(0.5, -18, 1, -50), UDim2.new((i - 1) * 0.5, 12, 0, 42), RGB(0, 0, 0), 0.6)
+    c.ZIndex = 21
+    round(c, 8)
+    local h = label(c, "", UDim2.new(1, 0, 0, 26), nil, 16, teamColor(t), Enum.Font.GothamBlack)
+    h.ZIndex = 22
+    local list = Instance.new("Frame")
+    list.BackgroundTransparency = 1
+    list.Size = UDim2.new(1, -8, 1, -32)
+    list.Position = UDim2.fromOffset(4, 30)
+    list.ZIndex = 22
+    list.Parent = c
+    local ll = Instance.new("UIListLayout")
+    ll.SortOrder = Enum.SortOrder.LayoutOrder
+    ll.Parent = list
+    cols[t] = { head = h, list = list }
+  end
+  local boardData = {}
+  function G.onBoard(d) boardData = d or {} if board.Visible then G.drawBoard() end end
+  function G.drawBoard()
+    boardTitle.Text = T("ui.scoreboard")
+    for t, c in pairs(cols) do
+      for _, k in ipairs(c.list:GetChildren()) do if k:IsA("Frame") then k:Destroy() end end
+      local rows = {}
+      for _, e in ipairs(boardData) do if e.t == t then table.insert(rows, e) end end
+      table.sort(rows, function(a, b) return (a.s or 0) > (b.s or 0) end)
+      c.head.Text = T("team." .. t) .. "  (" .. #rows .. ")"
+      local hdr = frame(c.list, UDim2.new(1, 0, 0, 18), nil, PANEL, 1)
+      hdr.LayoutOrder = 0
+      hdr.ZIndex = 22
+      for k, txt in ipairs({ "", T("ui.kills"), T("ui.deaths"), T("ui.captures"), T("ui.score") }) do
+        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 11, MUTE, Enum.Font.GothamBold)
+        l.ZIndex = 23
+      end
+      for i, e in ipairs(rows) do
+        if i > 22 then break end
+        local r = frame(c.list, UDim2.new(1, 0, 0, 18), nil, (e.id == player.UserId) and RGB(80, 70, 30) or PANEL, (e.id == player.UserId) and 0.3 or 1)
+        r.LayoutOrder = i
+        r.ZIndex = 22
+        local nm = e.n .. (e.bot and (" " .. T("ui.bot")) or "")
+        for k, txt in ipairs({ nm, tostring(e.k or 0), tostring(e.d or 0), tostring(e.c or 0), tostring(e.s or 0) }) do
+          local l = label(r, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 12, TEXT,
+            Enum.Font.GothamMedium, nil, k == 1 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
+          l.ZIndex = 23
+          l.TextTruncate = Enum.TextTruncate.AtEnd
+        end
+      end
+    end
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if io.KeyCode == Enum.KeyCode.Tab then
+      board.Visible = true
+      G.drawBoard()
+    end
+  end)
+  UIS.InputEnded:Connect(function(io)
+    if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
+  end)
+  local boardBtn = button(hud, "≡", UDim2.fromOffset(40, 40), UDim2.new(0, 16, 0, 16), RGB(40, 46, 52))
+  boardBtn.TextSize = 22
+  boardBtn.Activated:Connect(function()
+    board.Visible = not board.Visible
+    if board.Visible then G.drawBoard() end
+  end)
+
+  ---------------------------------------------------------------- 结算
+
+  local results = frame(gui, UDim2.fromOffset(620, 300), UDim2.fromScale(0.5, 0.45), PANEL, 0.1, Vector2.new(0.5, 0.5))
+  results.Visible = false
+  results.ZIndex = 25
+  round(results, 12)
+  local resTitle = label(results, "", UDim2.new(1, -20, 0, 50), UDim2.fromOffset(10, 16), 30, TEXT, Enum.Font.GothamBlack)
+  local resSub = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.fromOffset(10, 70), 18, MUTE, Enum.Font.GothamBold)
+  local resStats = label(results, "", UDim2.new(1, -20, 0, 90), UDim2.fromOffset(10, 110), 18, TEXT, Enum.Font.GothamMedium)
+  local resNext = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 1, -46), 16, MUTE, Enum.Font.GothamMedium)
+  for _, x in ipairs({ resTitle, resSub, resStats, resNext }) do x.ZIndex = 26 end
+
+  ---------------------------------------------------------------- 刷新（收到服务器状态时）
+
+  local mapMountedIn = nil
+  function G.refresh()
+    local S = G.S
+    if not S then return end
+    if (S.progress or 1) < 1 then
+      loading.Visible = true
+      loadText.Text = T("ui.serverStarting", math.floor((S.progress or 0) * 100))
+      return
+    end
+    loading.Visible = false
+    local showDeploy = not S.alive and S.phase ~= "end"
+    deploy.Visible = showDeploy
+    hud.Visible = not showDeploy
+    results.Visible = S.phase == "end"
+    -- 地图放在部署界面或小地图里
+    local want = showDeploy and mapHolder or miniBox
+    if mapMountedIn ~= want then
+      mapMountedIn = want
+      local _, marks = G.mapMount(want, UDim2.fromScale(1, 1))
+      spawnLayer = marks
+    end
+    if G.mapRefresh then G.mapRefresh(S) end
+    if showDeploy then
+      if not sel.role then sel.role = S.role or "rifle" end
+      G.refreshDeploy()
+      if S.phase == "prep" then phaseText.Text = T("ui.prep", S.left) else phaseText.Text = T("ui.timeLeft") .. "  " .. fmtTime(S.left) end
+    else
+      for _, b in ipairs(spawnBtns) do b:Destroy() end
+      spawnBtns = {}
+    end
+    -- 顶栏
+    if S.phase == "prep" then
+      timer.Text = T("ui.prep", S.left)
+    elseif S.ot then
+      timer.Text = T("ui.overtime") .. "  " .. fmtTime(S.ot)
+    else
+      timer.Text = fmtTime(S.left)
+    end
+    for _, s in ipairs(S.points or {}) do
+      local c = chips[s.id]
+      if c then
+        c.f.BackgroundColor3 = teamColor(s.owner):Lerp(Color3.new(0, 0, 0), 0.25)
+        c.bar.Size = UDim2.fromScale(s.locked and 1 or s.prog, 1)
+        c.n.Text = s.locked and "" or ((s.atk > 0 or s.def > 0) and (T("team.atk.short") .. s.atk .. " " .. T("team.def.short") .. s.def) or "")
+      end
+    end
+    counts.Text = T("team.atk") .. " " .. (S.nAtk or 0) .. "   ·   " .. T("team.def") .. " " .. (S.nDef or 0)
+    roleText.Text = (S.role and T("role." .. S.role) or "") .. "  ·  " .. T("team." .. (S.team or "atk"))
+    roleText.TextColor3 = teamColor(S.team)
+    help.Text = T("ui.help")
+    if S.phase == "end" then
+      local won = S.winner == S.team
+      resTitle.Text = T(won and "ui.youWon" or "ui.youLost")
+      resTitle.TextColor3 = won and RGB(120, 230, 140) or RGB(240, 110, 100)
+      resSub.Text = T((S.winner == "atk") and "ui.win.atk" or "ui.win.def") .. (S.mvp and ("   MVP: " .. S.mvp) or "")
+      local me = S.me or {}
+      resStats.Text = T("ui.kills") .. " " .. (me.k or 0) .. "    " .. T("ui.deaths") .. " " .. (me.d or 0) .. "    " .. T("ui.captures") .. " " .. (me.c or 0) .. "    " .. T("ui.score") .. " " .. (me.s or 0)
+        .. "\n" .. T("ui.xp", me.gain or 0) .. "    " .. Lang.rank(G.lang, me.rank or 1)
+      resNext.Text = T("ui.nextRound", S.left)
+    end
+  end
+
+  function G.stepUI(dt)
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+      local k = math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1)
+      hpBar.Size = UDim2.fromScale(k, 1)
+      hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), k)
+      hpText.Text = math.ceil(hum.Health) .. " / " .. math.ceil(hum.MaxHealth)
+    end
+    local a = os.clock() - centerT
+    center.TextTransparency = math.clamp((a - 3) / 1, 0, 1)
+    center.TextStrokeTransparency = 0.3 + 0.7 * math.clamp((a - 3) / 1, 0, 1)
+  end
+end
+
+return UI
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="20">
+          <Properties>
+            <string name="Name">View</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量），
+--   这里按种类拼一个本地模型，每帧平滑地跟着 Root 走（服务器 10 次 / 秒地挪，直接跟会一顿一顿的）；头顶血条
+--   机器人步兵（摆腿走路）、登陆艇（放跳板）、炸药包、地雷；载具、舰艇、工事在后面的版本里接
+local Players = game:GetService("Players")
+
+local View = {}
+
+function View.init(G)
+  local Config = G.Config
+  local V = Vector3.new
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local me = Players.LocalPlayer
+
+  local VF = Instance.new("Folder")
+  VF.Name = "EntView"
+  VF.Parent = workspace
+  G.viewFolder = VF
+
+  local function p(m, size, cf, color, mat, shape)
+    local x = Instance.new("Part")
+    if shape then x.Shape = shape end
+    x.Size, x.CFrame, x.Color = size, cf, color
+    x.Material = mat or Enum.Material.SmoothPlastic
+    x.Anchored, x.CanCollide, x.CanQuery, x.CanTouch = true, false, false, false
+    x.TopSurface, x.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    x.Parent = m
+    return x
+  end
+
+  -- 每种实体：build 拼零件（相对 Root 的偏移记在 parts 里），animate 每帧额外动（腿、跳板）
+  local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }
+  local KINDS = {}
+  KINDS.bot = function(m, team)
+    local U = UNIFORM[team] or UNIFORM.atk
+    local L = {}
+    L.torso = { p(m, V(2, 2, 1), CF(), U[1]), CF(0, 0.6, 0) }
+    L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.2, 0) }
+    L.helmet = { p(m, V(1.4, 0.6, 1.4), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.75, 0) }
+    L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.4, 0), "leg", 1 }
+    L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.4, 0), "leg", -1 }
+    L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
+    L.rarm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(1.4, 0.6, -0.4) * CFrame.Angles(-1.2, 0, 0) }
+    L.gun = { p(m, V(0.4, 0.5, 3), CF(), RGB(45, 47, 50)), CF(0.4, 0.9, -1.6) }
+    L.band = { p(m, V(0.85, 0.35, 0.85), CF(), Config.Teams[team or "atk"].color, Enum.Material.Neon), CF(1.4, 1.2, -0.4) }
+    return L
+  end
+  KINDS.lcm = function(m, team)
+    local L = {}
+    local hull = RGB(96, 104, 98)
+    L.bottom = { p(m, V(16, 2, 34), CF(), hull, Enum.Material.Metal), CF(0, -2, 0) }
+    L.lwall = { p(m, V(1, 6, 34), CF(), hull, Enum.Material.Metal), CF(-7.5, 1, 0) }
+    L.rwall = { p(m, V(1, 6, 34), CF(), hull, Enum.Material.Metal), CF(7.5, 1, 0) }
+    L.back = { p(m, V(16, 7, 1), CF(), hull, Enum.Material.Metal), CF(0, 1.5, 16.5) }
+    L.cab = { p(m, V(6, 4, 4), CF(), RGB(120, 128, 120), Enum.Material.Metal), CF(0, 5, 14) }
+    L.ramp = { p(m, V(15, 6, 0.8), CF(), hull, Enum.Material.Metal), CF(0, 1, -17), "ramp" }
+    return L
+  end
+  KINDS.c4 = function(m) return { b = { p(m, V(1.1, 0.5, 0.7), CF(), RGB(176, 156, 112)), CF() }, l = { p(m, V(0.2, 0.2, 0.2), CF(), RGB(255, 40, 40), Enum.Material.Neon), CF(0, 0.3, 0) } } end
+  KINDS.mine = function(m) return { b = { p(m, V(0.4, 1.4, 1.4), CF(), RGB(86, 96, 64), Enum.Material.Metal, Enum.PartType.Cylinder), CFrame.Angles(0, 0, math.pi / 2) } } end
+
+  local views = {}   -- [entModel] = { model, parts, cf, kind, t }
+  local function bar(m, root)
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(46, 6)
+    bb.StudsOffsetWorldSpace = V(0, 5, 0)
+    bb.MaxDistance = 260
+    bb.Adornee = root
+    bb.Parent = m
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.fromScale(1, 1)
+    bg.BackgroundColor3 = RGB(0, 0, 0)
+    bg.BackgroundTransparency = 0.4
+    bg.BorderSizePixel = 0
+    bg.Parent = bb
+    local f = Instance.new("Frame")
+    f.Size = UDim2.fromScale(1, 1)
+    f.BorderSizePixel = 0
+    f.Parent = bg
+    return bb, f
+  end
+
+  local function add(em)
+    local kind = em:GetAttribute("Kind")
+    local mk = KINDS[kind]
+    local root = em:FindFirstChild("Root")
+    if not mk or not root then return end
+    local m = Instance.new("Model")
+    m.Name = kind
+    local team = em:GetAttribute("Team")
+    local parts = mk(m, team)
+    m.Parent = VF
+    local bb, fill = bar(m, parts[next(parts)][1])
+    fill.BackgroundColor3 = Config.Teams[team or "atk"].color
+    views[em] = { model = m, parts = parts, cf = root.CFrame, root = root, kind = kind, t = 0, bb = bb, fill = fill, team = team }
+  end
+  local function remove(em)
+    local v = views[em]
+    if v then
+      v.model:Destroy()
+      views[em] = nil
+    end
+  end
+
+  local function watch(folder)
+    for _, em in ipairs(folder:GetChildren()) do task.defer(add, em) end
+    folder.ChildAdded:Connect(function(em) task.defer(add, em) end)
+    folder.ChildRemoved:Connect(remove)
+  end
+  task.spawn(function()
+    local f = workspace:WaitForChild("Ents", 60)
+    if f then watch(f) end
+  end)
+
+  function G.stepView(dt)
+    local myTeam = me:GetAttribute("Side")
+    for em, v in pairs(views) do
+      if not em.Parent then
+        remove(em)
+      else
+        local target = v.root.CFrame
+        local moved = (target.Position - v.cf.Position).Magnitude
+        v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+        v.t += dt * math.clamp(moved * 2, 0, 12)
+        local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
+        v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
+        v.bb.Enabled = hp < mx and (myTeam == v.team or hp < mx)
+        for _, L in pairs(v.parts) do
+          local off = L[2]
+          if L[3] == "leg" then off = off * CFrame.Angles(math.sin(v.t * 1.2) * 0.7 * L[4], 0, 0)
+          elseif L[3] == "ramp" and em:GetAttribute("Ramp") then off = off * CFrame.Angles(-1.3, 0, 0) end
+          L[1].CFrame = v.cf * off
+        end
+      end
+    end
+  end
+end
+
+return View
+]]></ProtectedString>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="21">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
+  </Item>
+  <Item class="Lighting" referent="22">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <float name="Brightness">3</float>
+      <float name="ClockTime">14.6</float>
+      <float name="EnvironmentDiffuseScale">1</float>
+      <float name="EnvironmentSpecularScale">1</float>
+      <bool name="GlobalShadows">true</bool>
+      <token name="Technology">4</token>
+    </Properties>
+  </Item>
+</roblox>

@@ -1,141 +1,465 @@
--- 军事大亨：玩家本人的武器（背包里的枪）：发枪、开枪（服务器校验射速、弹匣、射程，射线判定打中谁）、
--- 火箭筒弹道和溅射；打仗时打敌方单位，约战时也能打对面的玩家本人；不在打仗时开枪只有特效
+-- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
+--   枪：射线判定，爆头加成；火箭筒 / 手雷 / 防空导弹：飞行中的弹（Ents）；迫击炮：点地面，几秒后落下；急救包；扳手修车；
+--   炸药包（放下、再用一次引爆）、反坦克地雷；望远镜：标记敌人给全队看，呼叫炮火覆盖
 local Weapons = {}
 
 function Weapons.init(G)
-  local Config, Models, Battle = G.Config, G.Models, G.Battle
+  local Config, Map = G.Config, G.Map
   local V = Vector3.new
-  local TOOLS = {}
-  for _, id in ipairs(Config.WeaponOrder) do TOOLS[id] = Models.tool(id) end
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local W = Config.Weapons
+  local now = os.clock
 
-  -- 背包里补上买了的枪（每次复活都要发）
-  function G.giveTools(st)
-    local pl = st.pl
-    local bp = pl:FindFirstChild("Backpack")
-    if not bp or not st.data then return end
-    local have = {}
-    local char = pl.Character
-    for _, holder in ipairs({ bp, char }) do
-      if holder then
-        for _, c in ipairs(holder:GetChildren()) do
-          if c:IsA("Tool") then have[c:GetAttribute("Weapon") or ""] = true end
-        end
-      end
-    end
-    for _, id in ipairs(Config.WeaponOrder) do
-      if st.data.weapons[id] and not have[id] then TOOLS[id]:Clone().Parent = bp end
-    end
+  ---------------------------------------------------------------- 工具的样子（零件拼的；把手 Handle 在握把处，枪口 Muzzle）
+
+  local function p(parent, size, cf, color, mat, shape)
+    local x = Instance.new("Part")
+    if shape then x.Shape = shape end
+    x.Size, x.CFrame, x.Color = size, cf, color
+    x.Material = mat or Enum.Material.SmoothPlastic
+    x.CanCollide, x.CanQuery, x.CanTouch, x.Massless = false, false, false, true
+    x.TopSurface, x.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    x.Parent = parent
+    return x
   end
-
-  local function ammoOf(st, id)
-    st.ammo = st.ammo or {}
-    local a = st.ammo[id]
-    if not a then
-      a = { n = Config.Weapons[id].mag, r = 0 }
-      st.ammo[id] = a
+  local function weld(a, b)
+    local w = Instance.new("WeldConstraint")
+    w.Part0, w.Part1 = a, b
+    w.Parent = a
+  end
+  local GUN, DARK, OLIVE, TAN = RGB(48, 50, 52), RGB(30, 31, 33), RGB(86, 96, 64), RGB(176, 156, 112)
+  -- 每把武器：枪身长 L、枪管长、枪托、弹匣……；返回把手和枪口
+  local SHAPE = {
+    rifle = { L = 3.2, barrel = 1.4, stock = true, mag = 0.9, color = GUN },
+    carbine = { L = 2.8, barrel = 1.0, stock = true, mag = 0.9, color = OLIVE },
+    lmg = { L = 3.6, barrel = 1.8, stock = true, box = true, color = GUN },
+    sniper = { L = 4.0, barrel = 2.2, stock = true, scope = true, mag = 0.6, color = RGB(70, 66, 52) },
+    smg = { L = 2.1, barrel = 0.5, mag = 1.0, color = DARK },
+    smgsd = { L = 2.1, barrel = 1.2, mag = 1.0, color = DARK, thick = true },
+    pistol = { L = 1.0, barrel = 0.2, color = DARK, small = true },
+    rpg = { tube = 4.6, dia = 0.7, color = OLIVE, warhead = true },
+    manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
+    mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
+  }
+  local function makeTool(id)
+    local tool = Instance.new("Tool")
+    tool.Name = id
+    tool.CanBeDropped = false
+    tool.RequiresHandle = true
+    tool:SetAttribute("Weapon", id)
+    local h = p(tool, V(0.4, 0.9, 0.5), CF(), GUN)
+    h.Name = "Handle"
+    h.Transparency = 1
+    local S = SHAPE[id]
+    local muzzle = V(0, 0.3, -1)
+    if S and S.L then   -- 枪：沿 −Z 朝前
+      local th = S.small and 0.35 or 0.45
+      local body = p(tool, V(th, 0.5, S.L), CF(0, 0.3, -S.L / 2 + 0.6), S.color)
+      weld(h, body)
+      local br = p(tool, V(S.thick and 0.32 or 0.18, S.thick and 0.32 or 0.18, S.barrel), CF(0, 0.38, -S.L + 0.6 - S.barrel / 2), DARK, Enum.Material.Metal)
+      weld(h, br)
+      muzzle = V(0, 0.38, -S.L + 0.6 - S.barrel)
+      if S.stock then weld(h, p(tool, V(0.35, 0.55, 1.1), CF(0, 0.2, 1.1), S.color)) end
+      if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
+      if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
+      if S.scope then weld(h, p(tool, V(0.28, 0.28, 1.3), CF(0, 0.75, -0.6), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+    elseif S and S.tube then   -- 发射筒：扛在肩上
+      local t = p(tool, V(S.tube, S.dia, S.dia), CF(0, 0.6, -0.4) * CFrame.Angles(0, math.pi / 2, 0), S.color, Enum.Material.Metal, Enum.PartType.Cylinder)
+      weld(h, t)
+      muzzle = V(0, 0.6, -0.4 - S.tube / 2)
+      if S.warhead then weld(h, p(tool, V(0.9, 0.9, 1.2), CF(0, 0.6, muzzle.Z - 0.3), OLIVE, Enum.Material.Metal)) end
+      if S.sight then weld(h, p(tool, V(0.3, 0.6, 0.8), CF(-0.5, 1.0, -0.6), DARK)) end
+      if S.plate then weld(h, p(tool, V(1.4, 0.15, 1.4), CF(0, -0.1, 1.2), DARK)) end
+    elseif id == "grenade" then
+      weld(h, p(tool, V(0.7, 0.7, 0.7), CF(0, 0.2, -0.3), OLIVE, Enum.Material.Metal, Enum.PartType.Ball))
+    elseif id == "medkit" then
+      local b = p(tool, V(1.2, 0.9, 0.5), CF(0, 0.2, -0.4), RGB(230, 230, 225))
+      weld(h, b)
+      weld(h, p(tool, V(0.6, 0.18, 0.52), CF(0, 0.2, -0.4), RGB(210, 40, 40), Enum.Material.Neon))
+      weld(h, p(tool, V(0.18, 0.6, 0.52), CF(0, 0.2, -0.4), RGB(210, 40, 40), Enum.Material.Neon))
+    elseif id == "repair" then
+      weld(h, p(tool, V(0.2, 0.2, 2.0), CF(0, 0.3, -0.9), RGB(150, 150, 155), Enum.Material.Metal))
+      weld(h, p(tool, V(0.6, 0.25, 0.5), CF(0, 0.3, -1.9), RGB(150, 150, 155), Enum.Material.Metal))
+    elseif id == "c4" or id == "mine" then
+      local isMine = id == "mine"
+      weld(h, p(tool, isMine and V(1.2, 0.35, 1.2) or V(1.1, 0.5, 0.7), CF(0, 0.2, -0.5), isMine and OLIVE or TAN, Enum.Material.Plastic, isMine and Enum.PartType.Cylinder or nil))
+    elseif id == "binoc" then
+      for s = -1, 1, 2 do weld(h, p(tool, V(0.9, 0.35, 0.35), CF(s * 0.22, 0.4, -0.4) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
     end
-    if a.r > 0 and os.clock() >= a.r then
-      a.n = Config.Weapons[id].mag
+    local a = Instance.new("Attachment")
+    a.Name = "Muzzle"
+    a.Position = muzzle
+    a.Parent = h
+    tool.GripPos = V(0, -0.1, 0.3)
+    return tool
+  end
+  local TOOLS = {}
+  for id in pairs(W) do TOOLS[id] = makeTool(id) end
+  G.TOOLS = TOOLS
+
+  ---------------------------------------------------------------- 弹药
+
+  local function ammoOf(P, id)
+    P.ammo = P.ammo or {}
+    local a = P.ammo[id]
+    local w = W[id]
+    if not a then
+      a = { n = w.mag or 1, res = w.reserve, r = 0 }
+      P.ammo[id] = a
+    end
+    if a.r > 0 and now() >= a.r then   -- 换弹好了：从备弹里补
+      local need = (w.mag or 1) - a.n
+      if a.res then
+        local k = math.min(need, a.res)
+        a.n += k
+        a.res -= k
+      else
+        a.n += need
+      end
       a.r = 0
     end
     return a
   end
+  G.ammoOf = ammoOf
 
-  function G.reload(st, id)
-    local w = Config.Weapons[id]
-    if not w then return end
-    local a = ammoOf(st, id)
-    if a.r > 0 or a.n >= w.mag then return end
-    a.r = os.clock() + w.reload
+  local function startReload(P, id)
+    local w = W[id]
+    local a = ammoOf(P, id)
+    if a.r > 0 or a.n >= (w.mag or 1) then return end
+    if a.res and a.res <= 0 then return end
+    a.r = now() + (w.reload or 1)
   end
+  G.ACT.reload = function(P, id) if W[id] then startReload(P, id) end end
 
-  -- 打中的零件属于哪个战斗单位（单位模型、玩家角色上都有 BU 属性）
-  local function unitOf(B, inst)
-    local m = inst
-    while m and m ~= workspace do
-      if m:IsA("Model") then
-        local bid = m:GetAttribute("BU")
-        if bid then return B.byId[bid] end
-      end
-      m = m.Parent
+  -- 按兵种发武器（每次出生都重发、弹药补满）
+  function G.giveLoadout(P)
+    local pl = P.pl
+    local role = Config.RoleById[P.role] or Config.Roles[1]
+    local bp = pl:FindFirstChildOfClass("Backpack") or pl:WaitForChild("Backpack", 5)
+    if not bp then return end
+    for _, c in ipairs(bp:GetChildren()) do if c:IsA("Tool") then c:Destroy() end end
+    P.ammo = {}
+    P.placed = {}
+    P.cd = {}
+    for i, id in ipairs(role.weapons) do
+      local t = TOOLS[id]:Clone()
+      t:SetAttribute("Slot", i)
+      t.Parent = bp
     end
-    return nil
   end
 
-  local function hitUnit(B, st, team, w, inst)
-    local bu = unitOf(B, inst)
-    if not bu or not bu.alive or bu.team == team then return end
-    if bu.hero then   -- 约战：打到对面的玩家本人
-      local hum = bu.model and bu.model:FindFirstChildOfClass("Humanoid")
-      if hum and hum.Health > 0 then
-        hum:TakeDamage(w.dmg * (w.pvp or 1))
-        if hum.Health <= 0 then G.addXP(st, 10) end
-      end
-      return
-    end
-    Battle.damage(B, bu, w.dmg * Battle.mult(w, bu.def), { team = team, player = st.pl })
-  end
-
-  -- 火箭弹落地：地面单位（和玩家本人）按溅射，直升机要打得够近
-  local function explode(B, st, team, w, pos)
-    if B.over then return end
-    local rel = pos - B.origin
-    local src = { team = team, player = st.pl }
-    Battle.splash(B, team, w, rel.X, rel.Z, w.splash, w.dmg, nil, src)
-    for _, bu in ipairs(B.units) do
-      if bu.alive and bu.team ~= team and bu.def.air then
-        local p = B.origin + V(bu.x, 1 + bu.y + 3, bu.z)
-        if (p - pos).Magnitude < bu.def.size * 0.6 + 4 then Battle.damage(B, bu, w.dmg * Battle.mult(w, bu.def), src) end
-      end
-    end
-    G.fx({ k = "boom", p = pos, s = 1.2 })
-  end
+  ---------------------------------------------------------------- 开火
 
   local params = RaycastParams.new()
   params.FilterType = Enum.RaycastFilterType.Exclude
 
-  function G.shoot(st, id, aim)
-    local w = Config.Weapons[id]
-    if not w or not st.ready or not st.data.weapons[id] or typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
-    local char = st.pl.Character
+  local function src(P) return { P = P, team = P.team, name = P.pl.DisplayName } end
+
+  -- 能不能开火：活着、拿着这把、这个兵种带的、打仗阶段
+  local function holding(P, id)
+    if not P.alive or not G.round or G.round.phase ~= "battle" then return nil end
+    local char = P.char
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local head = char and char:FindFirstChild("Head")
-    if not hum or hum.Health <= 0 or not head or st.driving then return end
+    if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
     local tool = char:FindFirstChildOfClass("Tool")
-    if not tool or tool:GetAttribute("Weapon") ~= id then return end
-    local now = os.clock()
-    st.lastShot = st.lastShot or {}
-    if now - (st.lastShot[id] or 0) < w.rate * 0.8 then return end
-    local a = ammoOf(st, id)
-    if a.r > 0 or a.n <= 0 then return end
-    st.lastShot[id] = now
-    a.n = a.n - 1
-    if a.n <= 0 then a.r = now + w.reload end
+    if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
+    local role = Config.RoleById[P.role]
+    if not role or not table.find(role.weapons, id) then return nil end
+    return char, head, tool
+  end
+
+  local function muzzleOf(tool, head)
+    local h = tool:FindFirstChild("Handle")
+    local m = h and h:FindFirstChild("Muzzle")
+    return m and m.WorldPosition or head.Position
+  end
+
+  -- 用掉一发：射速、弹匣；打空了自动换弹
+  local function spend(P, id)
+    local w = W[id]
+    local a = ammoOf(P, id)
+    local t = now()
+    P.lastShot = P.lastShot or {}
+    if t - (P.lastShot[id] or 0) < (w.rate or 0.1) * 0.75 then return false end
+    if a.r > 0 then return false end
+    if a.n <= 0 then
+      startReload(P, id)
+      if a.res and a.res <= 0 then G.msg(P.pl, "bad", "ui.outOfAmmo") end
+      return false
+    end
+    P.lastShot[id] = t
+    a.n -= 1
+    if a.n <= 0 then startReload(P, id) end
+    return true
+  end
+
+  local function spreadDir(dir, deg)
+    if not deg or deg <= 0 then return dir end
+    local s = math.rad(deg)
+    return (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
+  end
+
+  local KIND = {}
+
+  KIND.gun = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
     local origin = head.Position
     local dir = aim - origin
     if dir.Magnitude < 0.5 then return end
-    dir = dir.Unit
-    if w.spread > 0 then
-      local s = math.rad(w.spread)
-      dir = (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
-    end
+    if not spend(P, id) then return end
+    dir = spreadDir(dir.Unit, w.spread)
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
-    local hitPos = res and res.Position or (origin + dir * w.range)
-    local handle = tool:FindFirstChild("Handle")
-    local mz = handle and handle:FindFirstChild("Muzzle")
-    local muzzle = mz and mz.WorldPosition or origin
-    local flight = nil
-    if w.proj then flight = (hitPos - muzzle).Magnitude / w.speed end
-    G.fx({ k = "gun", w = id, a = muzzle, b = hitPos, by = st.pl.UserId, t = flight })
-    local B = st.battle
-    if not B or B.over then return end
-    local team = B.teamOf[st.pl]
-    if w.proj then
-      task.delay(flight, function() explode(B, st, team, w, hitPos) end)
-    elseif res then
-      hitUnit(B, st, team, w, res.Instance)
+    local hit = res and res.Position or (origin + dir * w.range)
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head) end
+  end
+
+  KIND.proj = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local m = muzzleOf(tool, head)
+    local dir = aim - m
+    if dir.Magnitude < 1 then return end
+    if not spend(P, id) then return end
+    dir = spreadDir(dir.Unit, w.spread)
+    G.launch({ kind = "rocket", pos = m, vel = dir * w.speed, grav = w.drop, w = w, src = src(P), ignore = { char }, life = w.range / w.speed + 1 })
+  end
+
+  KIND.throw = function(P, id, w, char, head, tool, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    if not spend(P, id) then return end
+    local m = head.Position + V(0, 0.5, 0)
+    local flat = V(aim.X - m.X, 0, aim.Z - m.Z)
+    local d = math.min(flat.Magnitude, w.range)
+    local dir = (flat.Magnitude > 0.1) and flat.Unit or head.CFrame.LookVector
+    local sp = math.clamp(math.sqrt(math.max(1, d) * workspace.Gravity * 0.55), 20, w.speed)   -- 45° 抛出去落在准星附近
+    local vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0)
+    G.launch({ kind = "grenade", pos = m, vel = vel, grav = true, fuse = w.fuse, w = w, src = src(P), ignore = { char }, life = w.fuse + 0.5 })
+  end
+
+  KIND.lock = function(P, id, w, char, head, tool, tgtId, aim)
+    local m = muzzleOf(tool, head)
+    local e = (type(tgtId) == "string") and G.entById[tgtId] or nil
+    local dir
+    if e and e.alive and e.air and e.team ~= P.team and (e.root.Position - m).Magnitude <= w.range then
+      local to = (e.root.Position - m).Unit
+      local look = (typeof(aim) == "Vector3") and (aim - head.Position).Unit or to
+      if look:Dot(to) < math.cos(math.rad(14)) then e = nil end   -- 锁定要对准（客户端判断过，这里再看一眼）
+      dir = to
+    else
+      e = nil
     end
+    if not dir then
+      if typeof(aim) ~= "Vector3" then return end
+      dir = (aim - m).Unit
+    end
+    if not spend(P, id) then return end
+    G.launch({ kind = "missile", pos = m, vel = dir * w.speed, w = w, src = src(P), ignore = { char }, target = e, life = w.range / w.speed + 2 })
+  end
+
+  KIND.mortar = function(P, id, w, char, head, tool, pt)
+    if typeof(pt) ~= "Vector3" or pt.X ~= pt.X then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local d = (V(pt.X, 0, pt.Z) - V(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
+    if d < w.minR or d > w.maxR then G.msg(P.pl, "bad", "ui.mortarRange", w.minR, w.maxR) return end
+    if not spend(P, id) then return end
+    local sc = d * 0.025   -- 散布：射程的 2.5%
+    local a = math.random() * math.pi * 2
+    local x, z = pt.X + math.cos(a) * sc * math.random(), pt.Z + math.sin(a) * sc * math.random()
+    G.fx({ k = "mortarFire", p = muzzleOf(tool, head) })
+    G.shell(V(x, Map.ground(x, z), z), w, src(P), w.flight + d / 400, hrp.Position)
+  end
+
+  KIND.heal = function(P, id, w, char)
+    local t = now()
+    if t < (P.cd.heal or 0) then return end
+    P.cd.heal = t + w.cd
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local healed = 0
+    for _, Q in pairs(G.P) do
+      if Q.team == P.team and Q.alive and Q.char then
+        local h2 = Q.char:FindFirstChild("HumanoidRootPart")
+        local hum = Q.char:FindFirstChildOfClass("Humanoid")
+        if h2 and hum and hum.Health > 0 and (h2.Position - hrp.Position).Magnitude <= w.r then
+          local add = math.min(w.amt, hum.MaxHealth - hum.Health)
+          if add > 0 then
+            hum.Health += add
+            if Q ~= P then healed += add end
+            G.msg(Q.pl, "good", "ui.healed", math.floor(add))
+          end
+        end
+      end
+    end
+    if healed > 0 then G.addScore(P, Config.Score.heal * math.ceil(healed / 25)) end
+    G.fx({ k = "heal", p = hrp.Position })
+  end
+
+  KIND.repair = function(P, id, w, char, head, tool, entId)
+    local e = (type(entId) == "string") and G.entById[entId] or nil
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not e or not e.alive or e.team ~= P.team or not hrp or e.cat == "inf" then return end
+    if (e.root.Position - hrp.Position).Magnitude > w.range + math.max(e.root.Size.X, e.root.Size.Z) / 2 then return end
+    local t = now()
+    local dt = math.min(0.5, t - (P.cd.repair or 0))
+    P.cd.repair = t
+    if dt <= 0.05 or e.hp >= e.maxHp then return end
+    local add = math.min(w.rate * dt, e.maxHp - e.hp)
+    e.hp += add
+    e.model:SetAttribute("Hp", math.floor(e.hp))
+    P.repairAcc = (P.repairAcc or 0) + add
+    if P.repairAcc >= 100 then
+      P.repairAcc -= 100
+      G.addScore(P, Config.Score.repair)
+    end
+    G.fx({ k = "repair", p = e.root.Position })
+  end
+
+  -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
+  KIND.place = function(P, id, w, char, head, tool, pos)
+    P.placed[id] = P.placed[id] or {}
+    local list = P.placed[id]
+    if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
+      for _, e in ipairs(list) do
+        if e.alive then
+          G.explode(e.root.Position, w, src(P))
+          G.removeEnt(e)
+        end
+      end
+      P.placed[id] = {}
+      return
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if typeof(pos) ~= "Vector3" or not hrp or (pos - hrp.Position).Magnitude > 12 then
+      pos = hrp and (hrp.Position + hrp.CFrame.LookVector * 3) or nil
+      if not pos then return end
+    end
+    if not spend(P, id) then return end
+    local y = Map.ground(pos.X, pos.Z)
+    local e = G.newEnt({ kind = id, team = P.team, cat = "fort", hp = 30, size = V(1.2, 0.5, 1.2), cf = CF(pos.X, y + 0.25, pos.Z) })
+    e.owner = P
+    if id == "mine" then
+      e.step = function(self)
+        for _, x in ipairs(G.ents) do
+          if x.alive and x.team ~= self.team and (x.cat == "light" or x.cat == "armor") and not x.air and not x.sea then
+            if (x.root.Position - self.root.Position).Magnitude < 7 + x.root.Size.X / 2 then
+              G.explode(self.root.Position, w, src(P))
+              G.removeEnt(self)
+              return
+            end
+          end
+        end
+      end
+      G.msg(P.pl, "info", "ui.minePlaced")
+    else
+      G.msg(P.pl, "info", "ui.c4placed")
+    end
+    table.insert(list, e)
+  end
+
+  -- 望远镜：准星附近 4° 以内、看得见的敌人标记 12 秒给全队看；b = "strike" 时呼叫炮火覆盖准星下的地面
+  local spotted = { atk = {}, def = {} }
+  G.spotted = spotted
+  KIND.spot = function(P, id, w, char, head, tool, aim, mode)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local t = now()
+    if mode == "strike" then
+      if t < (P.cd.strike or 0) then G.msg(P.pl, "bad", "ui.strikeCd", math.ceil(P.cd.strike - t)) return end
+      P.cd.strike = t + w.strikeCd
+      local S = w.strike
+      local x0, z0 = aim.X, aim.Z
+      for i = 1, S.n do
+        task.delay((i - 1) * 0.45, function()
+          local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * S.r
+          local x, z = x0 + math.cos(a) * r, z0 + math.sin(a) * r
+          G.shell(V(x, Map.ground(x, z), z), S, src(P), S.flight)
+        end)
+      end
+      G.msgTeam(P.team, "info", "ui.strikeCalled", S.flight)
+      return
+    end
+    if t < (P.cd.spot or 0) then return end
+    P.cd.spot = t + w.cd
+    local o = head.Position
+    local look = (aim - o).Unit
+    local list = {}
+    local function consider(pos, key)
+      local to = pos - o
+      local d = to.Magnitude
+      if d < 4 or d > w.range or to.Unit:Dot(look) < math.cos(math.rad(4)) then return end
+      params.FilterDescendantsInstances = { char }
+      local res = workspace:Raycast(o, to * 0.98, params)
+      if res and (res.Position - pos).Magnitude > 6 then return end
+      spotted[P.team][key] = t + w.spotTime
+      table.insert(list, key)
+    end
+    for _, Q in pairs(G.P) do
+      if Q.team ~= P.team and Q.alive and Q.char then
+        local h2 = Q.char:FindFirstChild("HumanoidRootPart")
+        if h2 then consider(h2.Position, "p" .. Q.pl.UserId) end
+      end
+    end
+    for _, e in ipairs(G.ents) do
+      if e.alive and e.team ~= P.team and e.team then consider(e.root.Position, e.id) end
+    end
+    if #list > 0 then
+      G.addScore(P, Config.Score.spot * #list)
+      G.msg(P.pl, "good", "ui.spotted", #list)
+    end
+  end
+
+  -- 每半秒把还在标记期里的敌人位置发给那一队
+  task.spawn(function()
+    while true do
+      task.wait(0.5)
+      local t = now()
+      for team, S in pairs(spotted) do
+        local out = {}
+        for key, till in pairs(S) do
+          if till < t then
+            S[key] = nil
+          else
+            local pos = nil
+            if string.sub(key, 1, 1) == "p" then
+              for _, Q in pairs(G.P) do
+                if "p" .. Q.pl.UserId == key and Q.alive and Q.char and Q.char:FindFirstChild("HumanoidRootPart") then pos = Q.char.HumanoidRootPart.Position end
+              end
+            else
+              local e = G.entById[key]
+              if e and e.alive then pos = e.root.Position end
+            end
+            if pos then table.insert(out, pos) else S[key] = nil end
+          end
+        end
+        for pl, Q in pairs(G.P) do
+          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out } }) end
+        end
+      end
+    end
+  end)
+
+  function G.shoot(P, id, a, b)
+    local w = W[id]
+    if not w then return end
+    local char, head, tool = holding(P, id)
+    if not char then return end
+    local f = KIND[w.kind]
+    if f then f(P, id, w, char, head, tool, a, b) end
+  end
+
+  -- 机器人、工事用的「开一枪」：从 from 打向 to（散布 deg），打中玩家或实体
+  function G.botShot(from, to, w, srcInfo, ignore, deg)
+    local dir = to - from
+    if dir.Magnitude < 1 then return end
+    dir = spreadDir(dir.Unit, deg or w.spread)
+    params.FilterDescendantsInstances = ignore or {}
+    local res = workspace:Raycast(from, dir * (w.range or 500), params)
+    local hit = res and res.Position or (from + dir * (w.range or 500))
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
+    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, 1) end
   end
 end
 

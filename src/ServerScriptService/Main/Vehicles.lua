@@ -1,0 +1,192 @@
+-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生）、伞降；开载具的操作在后面的版本里接
+--   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
+--     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
+--   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
+local Vehicles = {}
+
+function Vehicles.init(G)
+  local Config, Map = G.Config, G.Map
+  local V = Vector3.new
+  local CF = CFrame.new
+  local now = os.clock
+
+  local BOAT = { start = 620, speed = 48, wait = 4, hp = 650, size = V(16, 7, 34), seats = 12 }
+  local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
+  local running = {}
+
+  local function beachOf(id)
+    for _, b in ipairs(Map.BEACHES) do if b.id == id then return b end end
+    return nil
+  end
+
+  -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
+  local function boatCF(b, d)
+    local z = b.z + b.dir * d
+    local face = V(0, 0, -b.dir)
+    local p = V(b.cx, 1.2, z)
+    return CFrame.lookAt(p, p + face)
+  end
+
+  local function seatOffset(i)
+    local row, col = math.floor((i - 1) / 3), (i - 1) % 3
+    return CF((col - 1) * 4, 3.4, -8 + row * 4.5)
+  end
+
+  local function newBoat(b)
+    local e = G.newEnt({ kind = "lcm", team = "atk", cat = "ship", hp = BOAT.hp, size = BOAT.size, cf = boatCF(b, BOAT.start), extra = { sea = true } })
+    e.beach = b
+    e.dist = BOAT.start
+    e.state = "loading"
+    e.leaveAt = now() + BOAT.wait
+    e.pass = {}
+    e.onDeath = function(self, src)
+      for _, P in ipairs(self.pass) do
+        if P.alive and P.char then
+          local hum = P.char:FindFirstChildOfClass("Humanoid")
+          if hum then G.hurtChar(P.char, 1000, src) end
+          G.msg(P.pl, "bad", "ui.boatSunk")
+        end
+      end
+      self.pass = {}
+      if boats[b.id] == self then boats[b.id] = nil end
+      self.state = "sunk"
+      task.delay(3, function() G.removeEnt(self) end)
+    end
+    return e
+  end
+
+  -- 上艇：返回出生位置（艇上的座位）和出生后要做的事（把角色挂到艇上）
+  function G.boardBoat(P, beachId)
+    local b = beachOf(beachId)
+    if not b then return CF(0, 50, 0), nil end
+    local e = boats[b.id]
+    if not e or not e.alive or e.state ~= "loading" or #e.pass >= BOAT.seats then
+      e = newBoat(b)
+      boats[b.id] = e
+      table.insert(running, e)
+    end
+    table.insert(e.pass, P)
+    P.boat = e
+    local seat = seatOffset(#e.pass)
+    P.seat = seat
+    G.msg(P.pl, "info", "ui.landing")
+    return e.root.CFrame * seat, function(Q, char)
+      local hrp = char:FindFirstChild("HumanoidRootPart")
+      if hrp then hrp.Anchored = true end
+    end
+  end
+
+  local function release(e)
+    local b = e.beach
+    for i, P in ipairs(e.pass) do
+      if P.alive and P.char and P.boat == e then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        local x = b.cx + ((i - 1) % 4 - 1.5) * 5
+        local z = b.z - b.dir * (18 + math.floor((i - 1) / 4) * 5)
+        if hrp then
+          hrp.Anchored = false
+          P.char:PivotTo(CFrame.lookAt(V(x, Map.ground(x, z) + 3.5, z), V(x, Map.ground(x, z) + 3.5, z - b.dir * 10)))
+        end
+      end
+      P.boat, P.seat = nil, nil
+    end
+    e.pass = {}
+  end
+
+  -- 每帧：艇往岸边开，乘客跟着
+  function G.frameStep(dt)
+    for i = #running, 1, -1 do
+      local e = running[i]
+      if not e.alive then
+        table.remove(running, i)
+      else
+        local t = now()
+        if e.state == "loading" and t >= e.leaveAt then
+          e.state = "run"
+          if boats[e.beach.id] == e then boats[e.beach.id] = nil end
+        end
+        if e.state == "run" then
+          e.dist = math.max(0, e.dist - BOAT.speed * dt)
+          local cf = boatCF(e.beach, e.dist)
+          local bow = cf.Position + cf.LookVector * BOAT.size.Z * 0.5
+          if Map.height(bow.X, bow.Z) > -1.2 or e.dist <= 0 then   -- 冲上滩
+            e.state = "landed"
+            e.backAt = t + 6
+            G.fx({ k = "ramp", id = e.id })
+            release(e)
+          end
+          G.moveEnt(e, cf)
+        elseif e.state == "landed" and t >= (e.backAt or 0) then
+          e.state = "gone"
+          G.removeEnt(e)
+        end
+        for _, P in ipairs(e.pass) do
+          if P.alive and P.char and P.boat == e then
+            local hrp = P.char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+              hrp.Anchored = true
+              P.char:PivotTo(e.root.CFrame * (P.seat or CF()))
+            end
+          end
+        end
+      end
+    end
+    -- 伞降：下落速度压到每秒 18 格
+    for _, P in pairs(G.P) do
+      if P.chute and P.alive and P.char then
+        local hrp = P.char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+          local v = hrp.AssemblyLinearVelocity
+          if v.Y < -18 then hrp.AssemblyLinearVelocity = V(v.X, -18, v.Z) end
+          local gy = Map.ground(hrp.Position.X, hrp.Position.Z)
+          if hrp.Position.Y - gy < 6 or now() - P.chute > 40 then
+            P.chute = nil
+            P.char:SetAttribute("Chute", false)
+          end
+        end
+      end
+    end
+  end
+
+  -- 伞降：落在离最近一个还没拿下的据点 220～320 格、靠攻方一侧的地方（不能直接落进据点）
+  function G.paraDrop(P)
+    local t = now()
+    local target = nil
+    for _, p in ipairs(Map.POINTS) do
+      local s = G.points[p.id]
+      if s and s.owner == "def" then
+        if not target or p.z > target.z then target = p end   -- 最靠南（离攻方最近）的
+      end
+    end
+    target = target or Map.POINTS[1]
+    local a = math.rad(60 + math.random() * 60)   -- 南边的扇面
+    local r = 220 + math.random() * 100
+    local x, z = target.x + math.cos(a) * r, target.z + math.sin(a) * r
+    if not Map.isLand(x, z) then x, z = target.x, target.z + 200 end
+    local y = Map.ground(x, z) + 320
+    return CFrame.lookAt(V(x, y, z), V(target.x, y, target.z)), function(Q, char)
+      Q.chute = now()
+      char:SetAttribute("Chute", true)
+      Q.paraCd = t + 60
+    end
+  end
+
+  local function offBoat(P)
+    if P.boat then
+      for i, Q in ipairs(P.boat.pass) do
+        if Q == P then table.remove(P.boat.pass, i) break end
+      end
+      P.boat, P.seat = nil, nil
+    end
+    P.chute = nil
+  end
+  G.on("died", offBoat)
+  G.on("left", offBoat)
+  G.on("roundStart", function()
+    for _, e in ipairs(running) do if e.alive then G.removeEnt(e) end end
+    running = {}
+    boats = {}
+  end)
+end
+
+return Vehicles
