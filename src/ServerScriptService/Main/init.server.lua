@@ -64,6 +64,10 @@ function G.try(where, f, ...)
   return ok, err
 end
 
+-- 每帧要做的（登陆艇、开着的车、车组跟车）：G.onFrame 登记
+local frameFns = {}
+function G.onFrame(f) table.insert(frameFns, f) end
+
 -- 事件：模块之间互相通知（开局、阵亡、走人、据点易手、结算）——G.on 登记、G.emit 挨个调（一个出错不影响别的）
 local hooks = {}
 function G.on(ev, f)
@@ -79,7 +83,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Nav", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -140,7 +144,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
   end
   if acc > Config.Tick * 3 then acc = 0 end
-  if G.frameStep then G.try("逐帧", G.frameStep, dt) end   -- 登陆艇、开着的载具：每帧挪一次（看着平滑）
+  for _, f in ipairs(frameFns) do G.try("逐帧", f, dt) end   -- 登陆艇、开着的载具：每帧挪一次（看着平滑）
   if #fxq > 0 then
     local list = fxq
     fxq = {}

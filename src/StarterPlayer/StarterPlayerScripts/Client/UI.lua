@@ -131,10 +131,15 @@ function UI.init(G)
   local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
   local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
 
-  -- 左边：兵种卡片
+  -- 左边：步兵 / 载具 两个页签，下面是卡片
+  local sel = { role = nil, spawn = nil, mode = "inf", veh = nil }
+  G.deploySel = sel
+  local tabInf = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.fromOffset(20, 100), RGB(48, 56, 40))
+  local tabVeh = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.new(0.18, 9, 0, 100), RGB(28, 34, 40))
+  tabInf.TextSize, tabVeh.TextSize = 15, 15
   local roles = Instance.new("ScrollingFrame")
-  roles.Size = UDim2.new(0.36, -30, 1, -190)
-  roles.Position = UDim2.fromOffset(20, 104)
+  roles.Size = UDim2.new(0.36, -30, 1, -226)
+  roles.Position = UDim2.fromOffset(20, 140)
   roles.BackgroundTransparency = 1
   roles.BorderSizePixel = 0
   roles.ScrollBarThickness = 6
@@ -147,8 +152,6 @@ function UI.init(G)
   grid.SortOrder = Enum.SortOrder.LayoutOrder
   grid.Parent = roles
   local roleCards = {}
-  local sel = { role = nil, spawn = nil }
-  G.deploySel = sel
   for i, r in ipairs(Config.Roles) do
     local b = Instance.new("TextButton")
     b.Text = ""
@@ -170,6 +173,55 @@ function UI.init(G)
     end)
   end
 
+  -- 载具卡片（这一队能开的型号；分队变了重建）
+  local vehs = Instance.new("ScrollingFrame")
+  vehs.Size, vehs.Position = roles.Size, roles.Position
+  vehs.BackgroundTransparency = 1
+  vehs.BorderSizePixel = 0
+  vehs.ScrollBarThickness = 6
+  vehs.CanvasSize = UDim2.new()
+  vehs.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  vehs.Visible = false
+  vehs.Parent = deploy
+  local vgrid = grid:Clone()
+  vgrid.Parent = vehs
+  local vehCards, vehKey = {}, nil
+  local function buildVehCards(S)
+    local key = (S.team or "") .. ":" .. table.concat(S.vehModels or {}, ",")
+    if key == vehKey then return end
+    vehKey = key
+    for _, c in pairs(vehCards) do c.b:Destroy() end
+    vehCards = {}
+    local VD = require(RS:WaitForChild("VehDefs"))
+    for i, id in ipairs(S.vehModels or {}) do
+      local d = VD.get(id)
+      local b = Instance.new("TextButton")
+      b.Text = ""
+      b.LayoutOrder = i
+      b.BackgroundColor3 = RGB(28, 34, 40)
+      b.BackgroundTransparency = 0.1
+      b.AutoButtonColor = true
+      b.Parent = vehs
+      round(b, 8)
+      local st = stroke(b, LINE, 2, 1)
+      local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 15, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+      local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
+      ds.TextYAlignment = Enum.TextYAlignment.Top
+      local av = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      vehCards[id] = { b = b, st = st, nm = nm, ds = ds, av = av, d = d }
+      b.Activated:Connect(function()
+        sel.veh = id
+        G.refreshDeploy()
+      end)
+    end
+  end
+  local function setMode(m)
+    sel.mode = m
+    G.refreshDeploy()
+  end
+  tabInf.Activated:Connect(function() setMode("inf") end)
+  tabVeh.Activated:Connect(function() setMode("veh") end)
+
   -- 右边：地图 + 出生点
   local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
   local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
@@ -189,6 +241,12 @@ function UI.init(G)
   deployBtn.Activated:Connect(function()
     local S = G.S
     if not S or S.alive or (S.wait or 0) > 0 then return end
+    if sel.mode == "veh" then
+      if not sel.veh or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+      if not (S.vehSpawns and S.vehSpawns[sel.spawn]) then G.toast(T("ui.needSpawnVeh"), "bad") return end
+      G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role)
+      return
+    end
     if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
     G.R.Act:FireServer("deploy", sel.role, sel.spawn)
   end)
@@ -207,7 +265,13 @@ function UI.init(G)
     spawnBtns = {}
     if not spawnLayer then return end
     local ids = {}
-    for _, s in ipairs(S.spawns or {}) do
+    for _, s0 in ipairs(S.spawns or {}) do
+      local s = s0
+      if sel.mode == "veh" then   -- 载具：只有海滩、据点、营地能出
+        local ok = S.vehSpawns and S.vehSpawns[s0.id]
+        s = table.clone(s0)
+        s.ok = ok == true
+      end
       ids[s.id] = s
       local chosen = sel.spawn == s.id
       local b
@@ -263,13 +327,39 @@ function UI.init(G)
       c.st.Color = RGB(255, 210, 60)
       c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
     end
+    tabInf.Text, tabVeh.Text = T("ui.tabInf"), T("ui.tabVeh")
+    tabInf.BackgroundColor3 = (sel.mode == "inf") and RGB(48, 56, 40) or RGB(28, 34, 40)
+    tabVeh.BackgroundColor3 = (sel.mode == "veh") and RGB(48, 56, 40) or RGB(28, 34, 40)
+    roles.Visible = sel.mode == "inf"
+    vehs.Visible = sel.mode == "veh"
+    if sel.mode == "veh" then
+      buildVehCards(S)
+      local VD = require(RS:WaitForChild("VehDefs"))
+      for id, c in pairs(vehCards) do
+        local d = c.d
+        local av = S.vehAvail and S.vehAvail[d.cat] or { u = 0, cap = 0, cd = 0 }
+        local ws = {}
+        for _, wid in ipairs(d.weapons) do table.insert(ws, T("vw." .. wid)) end
+        c.nm.Text = T("veh." .. id)
+        c.ds.Text = T("vcat." .. d.cat) .. " · " .. table.concat(ws, " / ")
+        local full = av.u >= av.cap
+        c.av.Text = T("ui.vehCap", av.u, av.cap) .. ((full and av.cd > 0) and ("   " .. T("ui.vehCd", av.cd)) or "")
+        c.av.TextColor3 = full and RGB(230, 110, 100) or RGB(160, 220, 150)
+        local on = sel.veh == id
+        c.st.Transparency = on and 0 or 1
+        c.st.Color = RGB(255, 210, 60)
+        c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
+      end
+      if sel.veh and not vehCards[sel.veh] then sel.veh = nil end
+    end
     buildSpawns(S)
     if (S.wait or 0) > 0 then
       deployBtn.Text = T("ui.waitRespawn", S.wait)
       deployBtn.BackgroundColor3 = RGB(70, 70, 70)
     else
       deployBtn.Text = T("ui.deployBtn")
-      deployBtn.BackgroundColor3 = (sel.role and sel.spawn) and RGB(60, 150, 80) or RGB(70, 90, 76)
+      local ready = (sel.mode == "veh") and (sel.veh and sel.spawn) or (sel.role and sel.spawn)
+      deployBtn.BackgroundColor3 = ready and RGB(60, 150, 80) or RGB(70, 90, 76)
     end
   end
 

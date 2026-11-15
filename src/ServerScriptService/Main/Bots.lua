@@ -341,7 +341,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char then
+      if P.team ~= B.team and P.alive and P.char and not P.vehicle then   -- 车里的人打不着（步枪打不动车）
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then

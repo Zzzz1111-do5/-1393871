@@ -153,7 +153,12 @@ function Fx.init(G)
   local function newShot(e)
     local kind = e.kind
     local body
-    if kind == "grenade" then
+    if kind == "shell" then   -- 炮弹：一道亮的曳光
+      local big = e.f == "tank"
+      body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
+      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, t = 0, kind = kind, trailT = 0 }
+      return
+    elseif kind == "grenade" then
       body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
     else
       body = part(CYL, V(2.2, 0.5, 0.5), CFrame.new(e.p), RGB(80, 86, 70), Enum.Material.Metal, 0)
@@ -174,10 +179,22 @@ function Fx.init(G)
   local function stepShots(dt)
     for id, s in pairs(flying) do
       s.t += dt
-      if s.g then s.v += GRAV * dt end
+      if s.g then s.v += GRAV * (s.gs or 1) * dt end
       s.p += s.v * dt
       if s.kind == "grenade" then
         s.body.CFrame = CFrame.new(s.p)
+      elseif s.kind == "shell" then
+        s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+      elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
+        s.body.CFrame = CFrame.new(s.p)
+        s.trailT += dt
+        if s.trailT > 0.05 then
+          s.trailT = 0
+          local sm = part(BALL, V(0.6, 0.6, 0.6), CFrame.new(s.p), RGB(230, 230, 225), Enum.Material.SmoothPlastic, 0.4)
+          tween(sm, 0.8, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
+          Debris:AddItem(sm, 0.85)
+        end
+        if s.t > (s.life or 1) then endShot(id) end
       else
         local cf = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
         s.body.CFrame = cf
@@ -193,6 +210,81 @@ function Fx.init(G)
       end
       if s.t > 15 then endShot(id) end
     end
+  end
+
+  -- 车炮开火：炮口火光、一团烟、坦克炮还有一圈扬尘；离得近震屏
+  local SMOKE_TEX = "rbxasset://textures/particles/smoke_main.dds"
+  local function vfire(e)
+    local big = e.f == "tank" or e.f == "arty"
+    local dir = (typeof(e.d) == "Vector3") and e.d or V(0, 0, -1)
+    local fl = part(BALL, big and V(4, 4, 4) or V(1.6, 1.6, 1.6), CFrame.new(e.p + dir * (big and 2 or 0.6)), RGB(255, 210, 120), Enum.Material.Neon, 0)
+    tween(fl, big and 0.12 or 0.06, { Transparency = 1, Size = (big and V(9, 9, 9) or V(3, 3, 3)) })
+    Debris:AddItem(fl, 0.15)
+    if big then
+      local holder = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(e.p, e.p + dir), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = SMOKE_TEX
+      pe.Rate = 0
+      pe.Lifetime = NumberRange.new(1.5, 3)
+      pe.Speed = NumberRange.new(10, 26)
+      pe.SpreadAngle = Vector2.new(25, 25)
+      pe.Drag = 3
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 12) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new(RGB(200, 196, 186))
+      pe.EmissionDirection = Enum.NormalId.Front
+      pe.Parent = holder
+      pe:Emit(14)
+      Debris:AddItem(holder, 4)
+      -- 地上一圈扬尘（炮口暴风）
+      local gy = G.Map and G.Map.ground and G.Map.ground(e.p.X, e.p.Z) or e.p.Y - 4
+      local ring = part(CYL, V(0.5, 6, 6), CFrame.new(e.p.X, gy + 0.6, e.p.Z) * CFrame.Angles(0, 0, math.pi / 2), RGB(190, 170, 130), Enum.Material.SmoothPlastic, 0.45)
+      tween(ring, 0.7, { Size = V(0.5, 34, 34), Transparency = 1 })
+      Debris:AddItem(ring, 0.75)
+      G.playSound("boom", e.p, 0.75)
+    else
+      G.playSound("lmg", e.p)
+    end
+    if G.vehRecoil and e.id then G.vehRecoil(e.id) end
+    local dd = (e.p - cam.CFrame.Position).Magnitude
+    if big and dd < 140 then G.shake(0.3 * (1 - dd / 140)) end
+  end
+
+  -- 烟幕弹：从每根发射筒飞出去（小抛物线），0.9 秒后落地起一大团烟（持续 life 秒）
+  local smokeN = 0
+  local function smokeLaunch(e)
+    for _, it in ipairs(e.list or {}) do
+      local a, b = it.a, it.b
+      local T0 = 0.9
+      local v = (b - a) / T0 - GRAV * 0.5 * T0
+      smokeN += 1
+      local body = part(CYL, V(0.7, 0.32, 0.32), CFrame.new(a), RGB(70, 80, 64), Enum.Material.Metal, 0)
+      flying["sm" .. smokeN] = { body = body, p = a, v = v, g = true, gs = 1, t = 0, kind = "smoke", trailT = 0, life = T0 }
+    end
+    G.playSound("rocket", e.list and e.list[1] and e.list[1].a or nil, 2.4)
+  end
+  local function smokeCloud(e)
+    local holder = part(nil, V(0.2, 0.2, 0.2), CFrame.new(e.p), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local life = e.life or 30
+    for i = 1, 2 do
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = SMOKE_TEX
+      pe.Rate = (i == 1) and 8 or 4
+      pe.Lifetime = NumberRange.new(6, 10)
+      pe.Speed = NumberRange.new(1, 4)
+      pe.SpreadAngle = Vector2.new(180, 180)
+      pe.Acceleration = V(0, 0.6, 0)
+      pe.Drag = 1.2
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 8), NumberSequenceKeypoint.new(0.3, (e.r or 20) * 1.1), NumberSequenceKeypoint.new(1, (e.r or 20) * 1.5) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.7, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new((i == 1) and RGB(226, 228, 226) or RGB(190, 194, 192))
+      pe.LightInfluence = 0.8
+      pe.Parent = holder
+      pe:Emit(18)
+      task.delay(math.max(1, life - 8), function() pe.Rate = 0 end)
+    end
+    G.playSound("splash", e.p, 1.6)
+    Debris:AddItem(holder, life + 12)
   end
 
   -- 炮弹：落地前一秒多传来呼啸声
@@ -251,6 +343,9 @@ function Fx.init(G)
       elseif k == "capture" then G.playSound("capture")
       elseif k == "spots" then spots(e.list)
       elseif k == "ramp" then G.playSound("splash")
+      elseif k == "vfire" then vfire(e)
+      elseif k == "smokeLaunch" then smokeLaunch(e)
+      elseif k == "smokeCloud" then smokeCloud(e)
       end
     end
   end

@@ -497,6 +497,13 @@ function Round.init(G)
     C.alive = P.alive
     C.wait = math.max(0, math.ceil((P.canDeployAt or 0) - t))
     C.spawns = spawnList(P.team, P)
+    if G.vehState then
+      C.veh = G.vehState(P)
+      C.vehAvail = G.vehAvail(P.team)
+      C.vehModels = G.vehModels(P.team)
+      C.vehSpawns = {}
+      for _, s in ipairs(G.vehSpawns(P)) do C.vehSpawns[s.id] = s.ok end
+    end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
     return C
   end

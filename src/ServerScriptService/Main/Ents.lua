@@ -125,7 +125,7 @@ function Ents.init(G)
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
-      if hrp and P.alive then
+      if hrp and P.alive and not P.vehicle then   -- 在车里的人由车挨炸
         local d = (hrp.Position - pos).Magnitude
         if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
       end
@@ -153,7 +153,8 @@ function Ents.init(G)
     shotN += 1
     s.id = shotN
     table.insert(shots, s)
-    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, tg = s.target and s.target.id or nil })
+    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.target and s.target.id or nil,
+      f = s.w and s.w.fx or nil })
     return s
   end
 
@@ -180,11 +181,16 @@ function Ents.init(G)
         end
       end
       if not done then
-        if s.grav then s.vel += GRAV * dt end
+        if s.grav then s.vel += GRAV * (s.gscale or 1) * dt end
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
-        if res and s.kind ~= "grenade" then
+        if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+          if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs }
+          G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          done = true
+        elseif res and s.kind ~= "grenade" then
           G.explode(res.Position, s.w, s.src)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           done = true

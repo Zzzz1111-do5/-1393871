@@ -1,11 +1,11 @@
 -- 暗剑：登岛战——客户端（StarterPlayerScripts.Client）
--- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 操作 · View 实体的样子
+-- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 步兵操作 · View 实体的样子 · Drive 开载具（VehModels 拼车）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
 
 local Lang = require(RS:WaitForChild("Lang"))
-local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, R = {}, S = nil }
+local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, Map = require(RS:WaitForChild("Map")), R = {}, S = nil }
 do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
   local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
   G.lang = Lang.pick(ok and id or "en")
@@ -15,7 +15,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View", "Drive" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -46,7 +46,8 @@ G.R.Msg.OnClientEvent:Connect(safe(function(kind, key, ...) G.onMsg(kind, key, .
 G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
 G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
-local steps = { { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end }, { "fx", function(dt) G.stepFx(dt) end },
+local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
+  { "fx", function(dt) G.stepFx(dt) end },
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end } }
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do

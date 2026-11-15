@@ -345,6 +345,38 @@ add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1
 add("ui.needPick", "先选兵种和出生点", "Pick a role and a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
 add("ui.help", "WASD 移动 · 鼠标左键开火 · 右键瞄准 · R 换弹 · 1–4 切武器 · Tab 战况 · M 地图", "WASD move · LMB fire · RMB aim · R reload · 1-4 weapons · Tab scoreboard · M map")
+-- 载具
+add("ui.tabInf", "步兵", "Infantry")
+add("ui.tabVeh", "载具", "Vehicles")
+add("ui.vehCap", "在场 {1} / {2}", "{1} / {2} in use")
+add("ui.vehCd", "冷却 {1} 秒", "Cooldown {1}s")
+add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
+add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")
+add("ui.vehKilled", "击毁 {1}", "Destroyed {1}")
+add("ui.outOfRange", "超出射程", "Out of range")
+add("ui.needSpawnVeh", "载具只能在海滩、据点或营地出生", "Vehicles spawn at beaches, held points or the camp")
+add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bringing your vehicle ashore...")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · X 烟幕弹 · 右键 / V 瞄准镜 · N 夜视 / 热成像 · F 下车",
+  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · X smoke · RMB / V gunner sight · N night vision / thermal · F exit")
+add("ui.enterVeh", "按 F 上车", "Press F to enter")
+add("ui.smokeLeft", "烟幕弹 ×{1}", "Smoke ×{1}")
+add("ui.reloading", "装填中", "Reloading")
+add("ui.speed", "{1} 公里/时", "{1} km/h")
+add("ui.range", "{1} 米", "{1} m")
+add("sight.day", "昼光", "DAY")
+add("sight.nv", "夜视", "NV")
+add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
+add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
+add("vw.gun125", "125 毫米炮", "125 mm gun")
+add("vw.gun120", "120 毫米炮", "120 mm gun")
+add("vw.gun105", "105 毫米炮", "105 mm gun")
+add("vw.ac30", "30 毫米机关炮", "30 mm autocannon")
+add("vw.ac35", "35 毫米高炮", "35 mm AA gun")
+add("vw.vulcan", "20 毫米加特林", "20 mm Gatling")
+add("vw.coax", "并列机枪", "Coaxial MG")
+add("vw.hmg", "12.7 毫米机枪", "12.7 mm HMG")
+add("vw.how155", "155 毫米榴弹炮", "155 mm howitzer")
+add("vw.mlrs", "火箭炮", "Rocket launcher")
 add("ui.credits", "致谢", "Credits")
 add("ui.close", "关闭", "Close")
 add("ui.map", "地图", "Map")
@@ -724,17 +756,302 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="4">
+    <Item class="ModuleScript" referent="4">
+      <Properties>
+        <string name="Name">VehDefs</string>
+        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
+--   单位：格（1 米约 2.8 格，和 Roblox 的人一样比例）。车的坐标系：原点在车底中心（着地），X 右、Y 上、−Z 朝前
+--   服务器的命中盒是 W × H × L 的方块，中心在原点上 H/2；客户端按 arch（tracked 履带 / wheeled 轮式）和各项参数拼零件模型
+--   炮塔：pivot 是转轴（相对车底），trav 每秒转几度，elev 俯仰范围（度）；炮：gun.pivot 是耳轴（相对炮塔转轴），len 长、cal 粗
+--   烟幕弹：smoke.banks 每组一个发射架（相对炮塔转轴的位置、朝向角 yaw 度——0 朝前、正数往右），n 管，各管在架上扇形张开、仰 35°
+local VehDefs = {}
+local V = Vector3.new
+
+-- 武器（载具用）：kind shell 有弹道的炮弹（打到就炸）、gun 机枪（直射判定）、arty 曲射（准星下的地面）、
+--   rate 两发间隔（秒）、mag 一个弹匣 / 弹舱、reload 换弹、reserve 备弹（不算弹匣里的）；speed 弹速（格 / 秒）、drop 下坠（重力倍数）
+VehDefs.W = {
+  gun125 = { kind = "shell", dmg = 640, speed = 1500, drop = 0.12, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 30, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  gun120 = { kind = "shell", dmg = 640, speed = 1550, drop = 0.12, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 30, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  gun105 = { kind = "shell", dmg = 480, speed = 1400, drop = 0.14, splash = 6, rate = 5.0, mag = 1, reload = 0, reserve = 36, range = 2600,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },
+  ac30 = { kind = "shell", dmg = 60, speed = 1150, drop = 0.2, splash = 4, rate = 0.19, mag = 50, reload = 4.5, reserve = 400, range = 2000,
+    vs = { inf = 1, light = 1, armor = 0.22, air = 1.4, ship = 0.35, fort = 0.6 }, fx = "ac", cal = 0.2 },
+  ac35 = { kind = "shell", dmg = 46, speed = 1300, drop = 0.15, splash = 5, rate = 0.07, mag = 120, reload = 5, reserve = 600, range = 2400,
+    vs = { inf = 0.8, light = 0.8, armor = 0.1, air = 2.4, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
+  vulcan = { kind = "shell", dmg = 26, speed = 1200, drop = 0.2, splash = 2.5, rate = 0.035, mag = 300, reload = 6, reserve = 1200, range = 1600,
+    vs = { inf = 1, light = 0.6, armor = 0.05, air = 2.0, ship = 0.15, fort = 0.25 }, fx = "ac", cal = 0.14 },
+  coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
+    vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
+  hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
+    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg" },
+  how155 = { kind = "arty", dmg = 340, splash = 26, rate = 7, mag = 1, reload = 0, reserve = 40, minR = 300, maxR = 3600, flight = 6,
+    vs = { inf = 1, light = 1, armor = 0.6, air = 0, ship = 0.5, fort = 1.2 } },
+  mlrs = { kind = "arty", dmg = 180, splash = 22, rate = 0.45, mag = 12, reload = 25, reserve = 24, minR = 500, maxR = 4000, flight = 7, scatter = 40,
+    vs = { inf = 1, light = 1, armor = 0.45, air = 0, ship = 0.4, fort = 1 } },
+}
+-- 烟幕弹：每次齐射一组，落点约 30 格外，烟团半径 ~20 格、持续 30 秒
+VehDefs.SMOKE = { range = 32, r = 20, life = 30, salvos = 2, reload = 12 }
+
+local D = {}
+VehDefs.D = D
+
+-- 履带车的公共部分（负重轮、履带）；轮式车的车轴
+local function tracked(t)
+  t.arch = "tracked"
+  t.wheels = nil
+  return t
+end
+local function wheeled(t)
+  t.arch = "wheeled"
+  return t
+end
+
+---------------------------------------------------------------- 坦克
+
+D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.3, speed = 34, accel = 10, turn = 36,
+  rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
+  turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
+  gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
+  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),
+  smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
+  weapons = { "gun125", "coax" } })
+D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
+  rw = { n = 6, r = 1.1, x = 3.85, z0 = -7.0, z1 = 6.7 }, era = true, skirt = true,
+  turret = { pivot = V(0, 4.0, 0.4), size = V(6.8, 2.2, 7.0), style = "round", trav = 38, elev = { -6, 16 }, bustle = 1.2 },
+  gun = { pivot = V(0, 0.9, -3.0), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.2),
+  sight = V(-1.7, 2.0, -2.2), cupola = V(1.6, 2.2, 0.4),
+  smoke = { banks = { { at = V(3.1, 1.4, -1.2), yaw = 40 }, { at = V(-3.1, 1.4, -1.2), yaw = -40 } }, n = 4 },
+  weapons = { "gun125", "coax" } })
+D.ztq15 = tracked({ cat = "tank", L = 19, W = 9.0, H = 6.8, hullH = 3.9, clear = 1.3, speed = 40, accel = 12, turn = 42,
+  rw = { n = 6, r = 1.0, x = 3.6, z0 = -6.6, z1 = 6.2 }, era = false, skirt = true,
+  turret = { pivot = V(0, 3.9, 0.2), size = V(6.2, 2.1, 6.6), style = "wedge", trav = 45, elev = { -6, 18 }, bustle = 1.6 },
+  gun = { pivot = V(0, 0.85, -3.0), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.0, 0.85, -3.1),
+  sight = V(-1.6, 2.0, -2.2), cupola = V(1.5, 2.1, 0.2),
+  smoke = { banks = { { at = V(2.9, 1.4, -1.4), yaw = 40 }, { at = V(-2.9, 1.4, -1.4), yaw = -40 } }, n = 4 },
+  weapons = { "gun105", "coax" } })
+D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+  rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
+  turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
+  gun = { pivot = V(0, 0.95, -4.0), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.1),
+  sight = V(-2.0, 2.2, -2.8), cupola = V(1.8, 2.4, 0.8), citv = V(-1.4, 2.6, -0.4),
+  smoke = { banks = { { at = V(3.5, 1.6, -2.4), yaw = 35 }, { at = V(-3.5, 1.6, -2.4), yaw = -35 } }, n = 6 },
+  weapons = { "gun120", "coax" } })
+D.m1a1 = tracked({ cat = "tank", L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+  rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
+  turret = { pivot = V(0, 4.2, 0.9), size = V(7.6, 2.3, 9.0), style = "abrams", trav = 40, elev = { -9, 20 }, bustle = 2.6 },
+  gun = { pivot = V(0, 0.95, -3.9), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.0),
+  sight = V(-2.0, 2.1, -2.7), cupola = V(1.8, 2.3, 0.8),
+  smoke = { banks = { { at = V(3.4, 1.5, -2.3), yaw = 35 }, { at = V(-3.4, 1.5, -2.3), yaw = -35 } }, n = 6 },
+  weapons = { "gun120", "coax" } })
+D.m10 = tracked({ cat = "tank", L = 22, W = 9.6, H = 7.4, hullH = 4.3, clear = 1.4, speed = 37, accel = 11, turn = 40,
+  rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.2, z1 = 7.0 }, skirt = true,
+  turret = { pivot = V(0, 4.3, 0.6), size = V(7.0, 2.3, 7.6), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 2.0 },
+  gun = { pivot = V(0, 0.9, -3.4), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.1, 0.9, -3.5),
+  sight = V(-1.8, 2.1, -2.4), cupola = V(1.7, 2.3, 0.6),
+  smoke = { banks = { { at = V(3.2, 1.5, -1.8), yaw = 35 }, { at = V(-3.2, 1.5, -1.8), yaw = -35 } }, n = 4 },
+  weapons = { "gun105", "coax" } })
+
+---------------------------------------------------------------- 装甲车（履带）
+
+D.zbd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.0, hullH = 4.6, clear = 1.2, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
+  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 }, skirt = false,
+  turret = { pivot = V(0, 4.6, -1.6), size = V(4.6, 1.6, 4.8), style = "ifv", trav = 60, elev = { -8, 50 } },
+  gun = { pivot = V(0, 0.6, -2.2), len = 7.5, cal = 0.24, brake = true }, coax = V(0.8, 0.6, -2.3),
+  sight = V(-1.4, 1.5, -1.8),
+  smoke = { banks = { { at = V(2.2, 0.9, -1.6), yaw = 30 }, { at = V(-2.2, 0.9, -1.6), yaw = -30 } }, n = 4 },
+  weapons = { "ac30", "coax" }, seats = 6 })
+D.ztd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.2, hullH = 4.6, clear = 1.2, speed = 38, accel = 10, turn = 38, amphib = true, boat = true,
+  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 },
+  turret = { pivot = V(0, 4.6, -0.6), size = V(6.0, 2.0, 6.0), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.2 },
+  gun = { pivot = V(0, 0.8, -2.8), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.8, -2.9),
+  sight = V(-1.6, 1.8, -2.0),
+  smoke = { banks = { { at = V(2.8, 1.2, -1.6), yaw = 35 }, { at = V(-2.8, 1.2, -1.6), yaw = -35 } }, n = 4 },
+  weapons = { "gun105", "coax" } })
+D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 36, accel = 10, turn = 40,
+  rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
+  turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
+  gun = { pivot = V(0, 0.7, -2.4), len = 6.5, cal = 0.24 }, coax = V(0.9, 0.7, -2.5),
+  sight = V(-1.5, 1.7, -1.8),
+  smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
+  weapons = { "ac30", "coax" }, seats = 6 })
+D.m1150 = tracked({ cat = "apc", L = 24, W = 10.2, H = 6.6, hullH = 4.4, clear = 1.4, speed = 32, accel = 9, turn = 34, plow = true,
+  rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, skirt = true,
+  turret = { pivot = V(0, 4.4, 1.6), size = V(2.2, 1.0, 2.2), style = "rws", trav = 70, elev = { -10, 50 } },
+  gun = { pivot = V(0, 0.6, -0.6), len = 4.6, cal = 0.2 }, sight = V(0, 1.4, -0.8),
+  smoke = { banks = { { at = V(1.4, 0.4, -0.6), yaw = 35 }, { at = V(-1.4, 0.4, -0.6), yaw = -35 } }, n = 4 },
+  weapons = { "hmg" } })
+
+---------------------------------------------------------------- 装甲车（轮式）
+
+D.zsl92b = wheeled({ cat = "apc", L = 21, W = 8.4, H = 7.6, hullH = 5.2, clear = 1.7, speed = 46, accel = 12, turn = 48, amphib = true, boat = true,
+  axles = { -6.0, -1.6, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.5,
+  turret = { pivot = V(0, 5.2, -0.6), size = V(4.2, 1.5, 4.2), style = "ifv", trav = 60, elev = { -8, 55 } },
+  gun = { pivot = V(0, 0.6, -2.0), len = 7.0, cal = 0.22, brake = true }, coax = V(0.8, 0.6, -2.1),
+  sight = V(-1.3, 1.4, -1.6),
+  smoke = { banks = { { at = V(2.1, 0.9, -1.2), yaw = 35 }, { at = V(-2.1, 0.9, -1.2), yaw = -35 } }, n = 4 },
+  weapons = { "ac30", "coax" }, seats = 6 })
+D.ptl02 = wheeled({ cat = "apc", L = 22, W = 8.6, H = 7.4, hullH = 5.0, clear = 1.7, speed = 46, accel = 12, turn = 46,
+  axles = { -6.4, -2.0, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.6,
+  turret = { pivot = V(0, 5.0, 0.4), size = V(5.6, 1.8, 5.8), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.0 },
+  gun = { pivot = V(0, 0.7, -2.6), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.7, -2.7),
+  sight = V(-1.5, 1.6, -2.0),
+  smoke = { banks = { { at = V(2.7, 1.0, -1.6), yaw = 35 }, { at = V(-2.7, 1.0, -1.6), yaw = -35 } }, n = 4 },
+  weapons = { "gun105", "coax" } })
+D.stryker = wheeled({ cat = "apc", L = 22, W = 8.4, H = 7.8, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
+  axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
+  turret = { pivot = V(0, 5.8, 0.4), size = V(2.4, 1.1, 2.4), style = "rws", trav = 70, elev = { -12, 55 } },
+  gun = { pivot = V(0, 0.6, -0.6), len = 5.0, cal = 0.2 }, sight = V(0, 1.4, -0.9),
+  smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
+  weapons = { "hmg" }, seats = 8 })
+D.m1117 = wheeled({ cat = "apc", L = 17, W = 7.6, H = 7.4, hullH = 5.4, clear = 1.6, speed = 50, accel = 13, turn = 52,
+  axles = { -4.8, 4.6 }, steer = 1, wr = 1.6, ww = 1.0, wx = 3.1,
+  turret = { pivot = V(0, 5.4, 0.6), size = V(3.2, 1.4, 3.2), style = "ifv", trav = 70, elev = { -8, 45 } },
+  gun = { pivot = V(0, 0.6, -1.4), len = 4.6, cal = 0.2 }, sight = V(-1.0, 1.3, -1.2),
+  smoke = { banks = { { at = V(1.6, 0.7, -1.4), yaw = 35 }, { at = V(-1.6, 0.7, -1.4), yaw = -35 } }, n = 4 },
+  weapons = { "hmg" }, seats = 4 })
+D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 58, accel = 15, turn = 60, light = true,
+  axles = { -4.0, 4.2 }, steer = 1, wr = 1.3, ww = 0.9, wx = 2.6,
+  turret = { pivot = V(0, 4.6, 0.6), size = V(2.4, 0.9, 2.4), style = "ring", trav = 90, elev = { -10, 40 } },
+  gun = { pivot = V(0, 0.9, -0.6), len = 4.2, cal = 0.18 }, sight = V(0, 1.7, 0.4),
+  smoke = { banks = { { at = V(1.9, 0.3, -2.4), yaw = 35, hull = true }, { at = V(-1.9, 0.3, -2.4), yaw = -35, hull = true } }, n = 2 },
+  weapons = { "hmg" }, seats = 4 })
+D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1.6, speed = 56, accel = 14, turn = 56, light = true,
+  axles = { -4.8, 4.8 }, steer = 1, wr = 1.45, ww = 1.0, wx = 2.9,
+  turret = { pivot = V(0, 5.2, 0.4), size = V(2.2, 1.0, 2.2), style = "rws", trav = 80, elev = { -10, 50 } },
+  gun = { pivot = V(0, 0.6, -0.6), len = 4.4, cal = 0.18 }, sight = V(0, 1.4, -0.8),
+  smoke = { banks = { { at = V(1.4, 0.4, -0.6), yaw = 35 }, { at = V(-1.4, 0.4, -0.6), yaw = -35 } }, n = 2 },
+  weapons = { "hmg" }, seats = 4 })
+
+---------------------------------------------------------------- 防空
+
+D.pgz07 = tracked({ cat = "aa", L = 22, W = 9.6, H = 9.6, hullH = 4.4, clear = 1.3, speed = 34, accel = 9, turn = 36,
+  rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.4, z1 = 7.2 }, skirt = true,
+  turret = { pivot = V(0, 4.4, 0.8), size = V(5.6, 2.6, 6.2), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 3.4 },
+  gun = { pivot = V(0, 1.3, -1.4), len = 9.5, cal = 0.24 }, sight = V(0, 2.2, -2.6),
+  smoke = { banks = { { at = V(2.7, 0.8, -2.8), yaw = 35 }, { at = V(-2.7, 0.8, -2.8), yaw = -35 } }, n = 4 },
+  weapons = { "ac35" } })
+D.m163 = tracked({ cat = "aa", L = 15, W = 8.2, H = 8.0, hullH = 5.4, clear = 1.2, speed = 36, accel = 10, turn = 42,
+  rw = { n = 5, r = 0.95, x = 3.4, z0 = -5.6, z1 = 5.6 },
+  turret = { pivot = V(0, 5.4, 1.4), size = V(3.4, 1.4, 3.4), style = "vulcan", trav = 80, elev = { -5, 80 } },
+  gun = { pivot = V(0, 0.9, -1.0), len = 5.4, cal = 0.3, gatling = true }, sight = V(-1.0, 1.8, -0.4),
+  smoke = { banks = { { at = V(3.2, -1.4, -6.4), yaw = 30, hull = true }, { at = V(-3.2, -1.4, -6.4), yaw = -30, hull = true } }, n = 4 },
+  weapons = { "vulcan" } })
+D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 1.8, speed = 44, accel = 11, turn = 40, truck = true,
+  axles = { -7.6, -3.8, 5.6 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.4,
+  turret = { pivot = V(0, 5.6, 2.4), size = V(4.6, 2.2, 4.6), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 2.8 },
+  gun = { pivot = V(0, 1.1, -1.2), len = 7.4, cal = 0.22 }, sight = V(0, 2.0, -2.0),
+  smoke = { banks = { { at = V(2.3, 0.6, -2.4), yaw = 35 }, { at = V(-2.3, 0.6, -2.4), yaw = -35 } }, n = 4 },
+  weapons = { "ac35" } })
+D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 40, accel = 9, turn = 34, truck = true,
+  axles = { -10.6, -6.6, 3.4, 7.2 }, steer = 2, wr = 1.65, ww = 1.15, wx = 3.5,
+  turret = { pivot = V(0, 5.8, 4.6), size = V(4.0, 2.6, 4.0), style = "vulcan", trav = 90, elev = { -5, 85 }, radar = true },
+  gun = { pivot = V(0, 1.3, -1.2), len = 6.0, cal = 0.36, gatling = true }, sight = V(-1.2, 2.2, -1.0),
+  smoke = { banks = { { at = V(3.6, -1.6, -11.4), yaw = 30, hull = true }, { at = V(-3.6, -1.6, -11.4), yaw = -30, hull = true } }, n = 4 },
+  weapons = { "vulcan" } })
+D.mshorad = wheeled({ cat = "aa", L = 22, W = 8.4, H = 9.0, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
+  axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
+  turret = { pivot = V(0, 5.8, 0.6), size = V(4.0, 1.8, 4.2), style = "ifv", trav = 80, elev = { -8, 70 }, pods = true },
+  gun = { pivot = V(0, 0.7, -2.0), len = 6.4, cal = 0.22 }, sight = V(-1.3, 1.6, -1.6),
+  smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
+  weapons = { "ac30" } })
+D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.6, speed = 30, accel = 7, turn = 30, truck = true,
+  axles = { -5.4, -2.0, 5.4 }, steer = 1, wr = 1.5, ww = 1.0, wx = 3.2,
+  turret = { pivot = V(0, 4.4, 3.0), size = V(3.6, 2.4, 3.6), style = "vulcan", trav = 100, elev = { -5, 85 }, dome = true },
+  gun = { pivot = V(0, 1.2, -1.2), len = 6.0, cal = 0.3, gatling = true }, sight = V(-1.0, 2.0, -0.6),
+  smoke = { banks = { { at = V(3.4, -0.8, -7.4), yaw = 30, hull = true }, { at = V(-3.4, -0.8, -7.4), yaw = -30, hull = true } }, n = 2 },
+  weapons = { "vulcan" } })
+
+---------------------------------------------------------------- 火炮
+
+D.plz07 = tracked({ cat = "arty", L = 22, W = 9.6, H = 9.0, hullH = 4.4, clear = 1.3, speed = 32, accel = 8, turn = 34,
+  rw = { n = 6, r = 1.0, x = 3.8, z0 = -7.4, z1 = 7.2 },
+  turret = { pivot = V(0, 4.4, 2.2), size = V(7.2, 3.0, 8.4), style = "sph", trav = 25, elev = { -3, 65 } },
+  gun = { pivot = V(0, 1.4, -4.0), len = 15, cal = 0.42, brake = true, fume = true }, sight = V(-2.4, 2.8, -3.0),
+  smoke = { banks = { { at = V(3.4, 1.4, -3.4), yaw = 35 }, { at = V(-3.4, 1.4, -3.4), yaw = -35 } }, n = 4 },
+  weapons = { "how155" } })
+D.m109a7 = tracked({ cat = "arty", L = 24, W = 10.2, H = 9.4, hullH = 4.2, clear = 1.4, speed = 30, accel = 8, turn = 32,
+  rw = { n = 7, r = 1.0, x = 4.0, z0 = -7.8, z1 = 7.6 },
+  turret = { pivot = V(0, 4.2, 2.8), size = V(8.4, 3.4, 10.4), style = "sph", trav = 22, elev = { -3, 70 } },
+  gun = { pivot = V(0, 1.6, -5.0), len = 17, cal = 0.44, brake = true, fume = true }, sight = V(-2.8, 3.0, -3.6),
+  smoke = { banks = { { at = V(4.0, 1.6, -4.4), yaw = 35 }, { at = V(-4.0, 1.6, -4.4), yaw = -35 } }, n = 4 },
+  weapons = { "how155" } })
+D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 1.4, speed = 32, accel = 8, turn = 34,
+  rw = { n = 6, r = 1.0, x = 3.7, z0 = -6.8, z1 = 6.8 }, cab = true,
+  turret = { pivot = V(0, 4.4, 2.6), size = V(5.8, 2.6, 9.0), style = "launcher", trav = 30, elev = { 0, 60 } },
+  gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.6, -8.6),
+  smoke = { banks = { { at = V(3.4, -1.4, -8.6), yaw = 30, hull = true }, { at = V(-3.4, -1.4, -8.6), yaw = -30, hull = true } }, n = 4 },
+  weapons = { "mlrs" } })
+
+-- 爱国者（只打飞机；在有飞机之前不给选）
+D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 1.8, speed = 34, accel = 8, turn = 32, truck = true, needsAir = true,
+  axles = { -9.6, -5.8, 6.2, 9.6 }, steer = 1, wr = 1.6, ww = 1.1, wx = 3.4,
+  turret = { pivot = V(0, 4.4, 3.0), size = V(6.0, 3.0, 11), style = "launcher", trav = 30, elev = { 0, 38 } },
+  gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.4, -12),
+  smoke = { banks = { { at = V(3.4, -0.4, -13), yaw = 30, hull = true }, { at = V(-3.4, -0.4, -13), yaw = -30, hull = true } }, n = 2 },
+  weapons = {} })
+
+-- 每个型号补上默认值、名字
+for id, d in pairs(D) do
+  d.id = id
+  d.seats = d.seats or 1
+  d.travel = d.travel or ((d.arch == "wheeled") and 0.75 or 0.55)   -- 悬架行程（上下各多少格）
+  d.rev = d.rev or d.speed * 0.4
+  if d.arch == "tracked" then d.rw.y = d.rw.y or d.rw.r end
+end
+
+function VehDefs.get(id) return D[id] end
+
+-- 炮塔、炮的坐标系：base 是车底（着地中心）的 CFrame
+function VehDefs.turretCF(d, base, yaw)
+  return base * CFrame.new(d.turret.pivot) * CFrame.Angles(0, -math.rad(yaw or 0), 0)
+end
+function VehDefs.gunCF(d, base, yaw, pitch)
+  return VehDefs.turretCF(d, base, yaw) * CFrame.new(d.gun.pivot) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
+end
+-- 炮口（主炮）；coax 并列机枪口
+function VehDefs.muzzle(d, base, yaw, pitch, which)
+  if which == "coax" and d.coax then
+    local t = VehDefs.turretCF(d, base, yaw) * CFrame.new(d.coax) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
+    return t * CFrame.new(0, 0, -1.2)
+  end
+  return VehDefs.gunCF(d, base, yaw, pitch) * CFrame.new(0, 0, -(d.gun.len > 0 and d.gun.len or 2))
+end
+-- 烟幕弹发射筒：返回 { { pos, dir }, … }（世界坐标）；装在炮塔上的随炮塔转，hull 的装在车体上
+function VehDefs.smokeTubes(d, base, yaw)
+  local out = {}
+  local S = d.smoke
+  if not S then return out end
+  local tcf = VehDefs.turretCF(d, base, yaw)
+  for _, b in ipairs(S.banks) do
+    local frame = (b.hull and (base * CFrame.new(0, d.hullH, 0)) or tcf) * CFrame.new(b.at)
+    for i = 1, S.n do
+      local fan = (S.n > 1) and ((i - 1) / (S.n - 1) - 0.5) or 0
+      local yaw2 = math.rad(b.yaw + fan * 40 * (b.yaw >= 0 and 1 or -1))
+      local local_ = CFrame.Angles(0, -yaw2, 0) * CFrame.Angles(math.rad(35), 0, 0)
+      local cf = frame * CFrame.new(fan * 0.9, (i % 2) * 0.35, 0) * local_
+      table.insert(out, { pos = cf.Position, dir = cf.LookVector })
+    end
+  end
+  return out
+end
+
+return VehDefs
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="5">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="5">
+  <Item class="ServerScriptService" referent="6">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="6">
+    <Item class="Script" referent="7">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——服务器主脚本（ServerScriptService.Main）
@@ -803,6 +1120,10 @@ function G.try(where, f, ...)
   return ok, err
 end
 
+-- 每帧要做的（登陆艇、开着的车、车组跟车）：G.onFrame 登记
+local frameFns = {}
+function G.onFrame(f) table.insert(frameFns, f) end
+
 -- 事件：模块之间互相通知（开局、阵亡、走人、据点易手、结算）——G.on 登记、G.emit 挨个调（一个出错不影响别的）
 local hooks = {}
 function G.on(ev, f)
@@ -818,7 +1139,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Nav", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -879,7 +1200,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
   end
   if acc > Config.Tick * 3 then acc = 0 end
-  if G.frameStep then G.try("逐帧", G.frameStep, dt) end   -- 登陆艇、开着的载具：每帧挪一次（看着平滑）
+  for _, f in ipairs(frameFns) do G.try("逐帧", f, dt) end   -- 登陆艇、开着的载具：每帧挪一次（看着平滑）
   if #fxq > 0 then
     local list = fxq
     fxq = {}
@@ -894,7 +1215,539 @@ end)
 print("[登岛战] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="7">
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Armor</string>
+          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
+--   开火（主炮炮弹有弹道、并列机枪直射、榴弹炮 / 火箭炮曲射）、烟幕弹（从型号规定的发射筒打出去，落地起烟团，挡住机器人的视线）、
+--   下车 / 上车、被毁（车组阵亡、残骸烧一会儿、这个名额冷却）
+--   攻方的车从海上来：不会游的坐 726 气垫艇冲上选定的海滩，两栖的自己从海里开上来；守方的车在还在手里的据点车场、或后方营地
+local RS = game:GetService("ReplicatedStorage")
+
+local Armor = {}
+
+function Armor.init(G)
+  local Config, Map = G.Config, G.Map
+  local VD = require(RS:WaitForChild("VehDefs"))
+  local V = Vector3.new
+  local CF = CFrame.new
+  local now = os.clock
+  local CATS = Config.VehicleCats
+  local SM = VD.SMOKE
+  local GROUND = { tank = true, apc = true, aa = true, arty = true }
+
+  local vehicles = {}   -- 活着的载具实体
+  local pending = { atk = {}, def = {} }   -- [cat] = { 冷却到什么时候, … }（被毁的车占着名额）
+  G.vehicles = vehicles
+
+  ---------------------------------------------------------------- 名额
+
+  local function used(team, cat)
+    local n = 0
+    for _, e in ipairs(vehicles) do
+      if e.alive and e.team == team and e.vcat == cat then n += 1 end
+    end
+    local t = now()
+    local list = pending[team][cat] or {}
+    for i = #list, 1, -1 do
+      if list[i] <= t then table.remove(list, i) else n += 1 end
+    end
+    pending[team][cat] = list
+    return n
+  end
+  -- 每类：在用、上限、要等多久（满了而且有在冷却的）
+  function G.vehAvail(team)
+    local out = {}
+    local tn = G.teamCount(team)
+    for cat in pairs(GROUND) do
+      local cap = Config.VehicleCap(cat, tn)
+      local u = used(team, cat)
+      local cd = 0
+      if u >= cap then
+        local t, soon = now(), math.huge
+        for _, x in ipairs(pending[team][cat] or {}) do soon = math.min(soon, x) end
+        if soon < math.huge then cd = math.ceil(soon - t) end
+      end
+      out[cat] = { u = u, cap = cap, cd = cd }
+    end
+    return out
+  end
+
+  -- 这一队能开的型号（爱国者要等有飞机）
+  function G.vehModels(team)
+    local out = {}
+    for _, cat in ipairs(Config.VehicleOrder) do
+      if GROUND[cat] then
+        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+          local d = VD.get(id)
+          if d and not d.needsAir then table.insert(out, id) end
+        end
+      end
+    end
+    return out
+  end
+
+  ---------------------------------------------------------------- 摆车
+
+  -- (x, z) 附近一块够平、够大的地（四个角高度差小）
+  local function parkAt(x, z, r0, r1, d)
+    for _ = 1, 30 do
+      local a, r = math.random() * math.pi * 2, r0 + math.random() * (r1 - r0)
+      local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
+      local ok = true
+      local hs = {}
+      for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+        local h = Map.height(px + o[1] * d.W * 0.5, pz + o[2] * d.L * 0.5)
+        if h < 0.6 then ok = false break end
+        table.insert(hs, h)
+      end
+      if ok then
+        local lo, hi = math.min(table.unpack(hs)), math.max(table.unpack(hs))
+        if hi - lo < d.L * 0.18 then return px, pz end
+      end
+    end
+    return x, z
+  end
+  -- 车底在 (x, z)、朝向 face 时的车底 CFrame（按四个角的地面高度定俯仰、侧倾）
+  local function baseAt(d, x, z, face)
+    face = V(face.X, 0, face.Z)
+    if face.Magnitude < 0.01 then face = V(0, 0, -1) end
+    face = face.Unit
+    local right = V(-face.Z, 0, face.X)
+    local function gh(p) return Map.ground(p.X, p.Z) end
+    local c = V(x, 0, z)
+    local f, b = c + face * d.L * 0.4, c - face * d.L * 0.4
+    local l, r = c - right * d.W * 0.4, c + right * d.W * 0.4
+    local yf, yb, yl, yr = gh(f), gh(b), gh(l), gh(r)
+    local y = (yf + yb + yl + yr) / 4
+    local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
+    local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
+    local up = side:Cross(fwd).Unit
+    return CFrame.fromMatrix(V(x, y, z), side, up, -fwd)
+  end
+  G.vehBaseAt = baseAt
+  local function rootFromBase(d, base) return base * CF(0, d.H / 2, 0) end
+  local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end
+  G.vehBaseOf = baseOf
+
+  ---------------------------------------------------------------- 车组（开车的人）
+
+  local function hideChar(char, on)
+    for _, p in ipairs(char:GetDescendants()) do
+      if p:IsA("BasePart") or p:IsA("Decal") then
+        if on then
+          if p:GetAttribute("T0") == nil then p:SetAttribute("T0", p.Transparency) end
+          p.Transparency = 1
+        else
+          local t0 = p:GetAttribute("T0")
+          if t0 ~= nil then p.Transparency = t0 p:SetAttribute("T0", nil) end
+        end
+      end
+    end
+  end
+
+  local function seat(P, e)
+    local char = P.char
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.Anchored = true end
+    hideChar(char, true)
+    P.vehicle = e
+    e.driver = P
+    e.emptyAt = nil
+    e.model:SetAttribute("Driver", P.pl.UserId)
+    char:PivotTo(e.root.CFrame)
+    G.pushOne(P)
+  end
+
+  local function unseat(P, e, place)
+    if P.vehicle == e then P.vehicle = nil end
+    if e.driver == P then
+      e.driver = nil
+      e.emptyAt = now()
+      e.model:SetAttribute("Driver", 0)
+    end
+    local char = P.char
+    if char and char.Parent and place then
+      hideChar(char, false)
+      local hrp = char:FindFirstChild("HumanoidRootPart")
+      local base = baseOf(e)
+      local side = base * CF(-(e.def.W / 2 + 4), 0, 0)
+      local x, z = side.Position.X, side.Position.Z
+      if hrp then hrp.Anchored = false end
+      char:PivotTo(CFrame.lookAt(V(x, Map.ground(x, z) + 3.5, z), V(x, Map.ground(x, z) + 3.5, z) + base.LookVector))
+    end
+    G.pushOne(P)
+  end
+
+  ---------------------------------------------------------------- 新车、被毁
+
+  local function newVehicle(team, id, base, P)
+    local d = VD.get(id)
+    local c = CATS[d.cat]
+    local mod = Config.VehicleMod[id] or {}
+    local hp = math.floor(c.hp * (mod.hp or 1))
+    local e = G.newEnt({ kind = "veh", team = team, cat = c.tgt, hp = hp, size = V(d.W, d.H, d.L), cf = rootFromBase(d, base), solid = false,
+      extra = { def = d, vcat = d.cat } })   -- 占领时不单算车：开车的人照常算一个
+    e.model:SetAttribute("Model", id)
+    e.model:SetAttribute("Ty", 0)
+    e.model:SetAttribute("Gp", 0)
+    e.model:SetAttribute("Driver", 0)
+    e.ty, e.gp = 0, 0
+    e.smokeLeft = SM.salvos
+    e.smokeNext = 0
+    e.wst = {}
+    for _, wid in ipairs(d.weapons) do
+      local w = VD.W[wid]
+      e.wst[wid] = { mag = w.mag, reserve = w.reserve or 0, next = 0 }
+    end
+    e.lastSync = now()
+    e.onDeath = function(self, src)
+      G.try("载具被毁", function()
+        self.alive = false
+        self.wreck = true
+        self.model:SetAttribute("Wreck", true)
+        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4 })
+        G.fx({ k = "wreck", id = self.id, p = self.root.CFrame.Position, life = 25 })
+        local list = pending[self.team][self.vcat] or {}
+        table.insert(list, now() + (CATS[self.vcat].cd or 60))
+        pending[self.team][self.vcat] = list
+        local D = self.driver
+        if D then
+          self.driver = nil
+          D.vehicle = nil
+          if D.char then
+            hideChar(D.char, false)
+            G.hurtChar(D.char, 1e5, src)
+          end
+          G.msg(D.pl, "bad", "ui.vehLost")
+        end
+        if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = "veh." .. self.def.id }) end
+        for i, x in ipairs(vehicles) do
+          if x == self then table.remove(vehicles, i) break end
+        end
+      end)
+      task.delay(25, function() G.removeEnt(self) end)
+    end
+    table.insert(vehicles, e)
+    return e
+  end
+
+  ---------------------------------------------------------------- 气垫艇（攻方不会游的车从海上送上滩）
+
+  local lcacs = {}
+  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 900 }
+  local function lcacCF(b, dist)
+    local p = V(b.cx, 2.2, b.z + b.dir * dist)
+    return CFrame.lookAt(p, p + V(0, 0, -b.dir))
+  end
+  local function sendLcac(b, veh)
+    local boat = G.newEnt({ kind = "lcac", team = "atk", cat = "ship", hp = LCAC.hp, size = LCAC.size, cf = lcacCF(b, LCAC.start), extra = { sea = true } })
+    boat.beach, boat.dist, boat.veh, boat.state = b, LCAC.start, veh, "run"
+    veh.locked = true
+    veh.model:SetAttribute("Locked", true)
+    boat.onDeath = function(self, src)
+      if self.veh and self.veh.alive then G.damageEnt(self.veh, 1e6, src) end
+      self.state = "sunk"
+      task.delay(3, function() G.removeEnt(self) end)
+    end
+    table.insert(lcacs, boat)
+  end
+  local function stepLcacs(dt)
+    for i = #lcacs, 1, -1 do
+      local boat = lcacs[i]
+      if not boat.alive then
+        table.remove(lcacs, i)
+      elseif boat.state == "run" then
+        boat.dist = math.max(-30, boat.dist - LCAC.speed * dt)
+        local cf = lcacCF(boat.beach, boat.dist)
+        local bow = cf.Position + cf.LookVector * LCAC.size.Z * 0.5
+        local veh = boat.veh
+        if Map.height(bow.X, bow.Z) > 2.5 or boat.dist <= -30 then   -- 冲上滩：把车放下来
+          boat.state = "landed"
+          boat.backAt = now() + 8
+          if veh and veh.alive then
+            local d = veh.def
+            local p = cf.Position + cf.LookVector * (LCAC.size.Z * 0.5 + d.L * 0.5 + 2)
+            G.moveEnt(veh, rootFromBase(d, baseAt(d, p.X, p.Z, cf.LookVector)))
+            veh.locked = false
+            veh.model:SetAttribute("Locked", false)
+            if veh.driver then G.R.Drive:FireClient(veh.driver.pl, { op = "fix", cf = veh.root.CFrame }) G.pushOne(veh.driver) end
+          end
+        elseif veh and veh.alive then
+          G.moveEnt(veh, cf * CF(0, LCAC.size.Y / 2 + veh.def.H / 2 - 2.2, 2))
+        end
+        G.moveEnt(boat, cf)
+      elseif boat.state == "landed" and now() >= boat.backAt then
+        G.removeEnt(boat)
+        table.remove(lcacs, i)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 部署
+
+  -- 载具能在哪出生：攻方——抢滩（战斗阶段）、拿下的据点；守方——营地、还在手里没被压住的据点
+  local function vehSpawns(P)
+    local out = {}
+    for _, s in ipairs(G.spawnList(P.team, P)) do
+      if s.kind == "beach" or s.kind == "point" or s.kind == "camp" then table.insert(out, s) end
+    end
+    return out
+  end
+  G.vehSpawns = vehSpawns
+
+  function G.ACT.deployVeh(P, id, spawnId, role)
+    local R = G.round
+    if not R or (R.phase ~= "battle" and R.phase ~= "prep") then return end
+    if P.alive or now() < (P.canDeployAt or 0) then return end
+    local d = VD.get(type(id) == "string" and id or "")
+    if not d or d.needsAir or not table.find(Config.Vehicles[P.team][d.cat] or {}, id) then return end
+    local av = G.vehAvail(P.team)[d.cat]
+    if av.u >= av.cap then G.msg(P.pl, "bad", "ui.vehFull") return end
+    local sp = nil
+    for _, s in ipairs(vehSpawns(P)) do if s.id == spawnId then sp = s end end
+    if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    if Config.RoleById[role] then P.role = role end
+    P.role = P.role or "rifle"
+    local e
+    if sp.kind == "beach" then
+      local b = Map.landingOf(sp.beach)
+      if not b then return end
+      if d.amphib then   -- 两栖：从离岸 300 格的海里自己开上来
+        local z = b.z + b.dir * 300
+        local face = V(0, 0, -b.dir)
+        local base = CFrame.lookAt(V(b.cx + (math.random() - 0.5) * 60, -d.H * 0.35, z), V(b.cx, -d.H * 0.35, z) + face * 10)
+        e = newVehicle(P.team, id, base, P)
+      else
+        local z = b.z + b.dir * LCAC.start
+        e = newVehicle(P.team, id, CFrame.new(b.cx, 4, z), P)
+        sendLcac(b, e)
+      end
+    else
+      local x, z = sp.x, sp.z
+      local face = (P.team == "def") and V(0, 0, 1) or V(0, 0, -1)
+      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d)
+      e = newVehicle(P.team, id, baseAt(d, px, pz, face), P)
+    end
+    P.spawnCF = e.root.CFrame
+    P.after = function(Q, char) seat(Q, e) end
+    P.canDeployAt = now() + 2
+    P.spawnId = spawnId
+    P.pl:LoadCharacter()
+  end
+
+  -- 上自己队的空车（离车 18 格以内）
+  function G.ACT.enterVeh(P, entId)
+    local e = type(entId) == "string" and G.entById[entId] or nil
+    if not e or not e.alive or not e.def or e.driver or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
+    local hrp = P.char:FindFirstChild("HumanoidRootPart")
+    if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
+    seat(P, e)
+  end
+
+  ---------------------------------------------------------------- 开车、开火、烟幕弹（客户端发来的）
+
+  local function src(P) return { P = P, team = P.team, name = P.pl.DisplayName } end
+  local function spreadDir(dir, deg)
+    if not deg or deg <= 0 then return dir end
+    local s = math.rad(deg)
+    return (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
+  end
+
+  local function sync(P, e, d)
+    if e.locked then return end
+    local cf = d.cf
+    if typeof(cf) ~= "CFrame" then return end
+    local t = now()
+    local dt = math.max(0.02, t - (e.lastSync or t))
+    local p0, p1 = e.root.CFrame.Position, cf.Position
+    local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
+    local maxD = e.def.speed * 1.5 * dt + 6
+    local h = Map.height(p1.X, p1.Z)
+    local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
+    if not e.def.amphib and h < -3 then bad = true end
+    if math.abs(p1.X) > Map.R or math.abs(p1.Z) > Map.R then bad = true end
+    e.lastSync = t
+    if bad then
+      e.bad = (e.bad or 0) + 1
+      G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame })
+      return
+    end
+    G.moveEnt(e, cf)
+    local d0 = e.def
+    if type(d.ty) == "number" and d.ty == d.ty then e.ty = d.ty % 360 end
+    if type(d.gp) == "number" and d.gp == d.gp then e.gp = math.clamp(d.gp, d0.turret.elev[1], d0.turret.elev[2]) end
+    e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
+    e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
+    if type(d.sp) == "number" then e.model:SetAttribute("Sp", math.floor(math.clamp(d.sp, -99, 99) + 0.5)) end
+  end
+
+  local function fire(P, e, wid, dir, aim)
+    if G.round.phase ~= "battle" or e.locked then return end
+    local d = e.def
+    if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
+    local w = VD.W[wid]
+    local st = e.wst[wid]
+    local t = now()
+    if t < st.next then return end
+    if st.mag <= 0 then
+      if st.reserve <= 0 then return end
+      local n = math.min(w.mag, st.reserve)
+      st.mag, st.reserve = n, st.reserve - n
+    end
+    local base = baseOf(e)
+    local mz = VD.muzzle(d, base, e.ty, e.gp, (w.kind == "gun" and d.coax) and "coax" or nil)
+    local gdir = mz.LookVector
+    if typeof(dir) == "Vector3" and dir.Magnitude > 0.5 and dir.Unit:Dot(gdir) > math.cos(math.rad(8)) then gdir = dir.Unit end
+    local S = src(P)
+    if w.kind == "shell" then
+      G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
+        life = w.range / w.speed + 0.5 })
+      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
+    elseif w.kind == "gun" then
+      G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
+    elseif w.kind == "arty" then
+      if typeof(aim) ~= "Vector3" then return end
+      local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)
+      local dist = flat.Magnitude
+      if dist < w.minR or dist > w.maxR then G.msg(P.pl, "bad", "ui.outOfRange") return end
+      local sc = (w.scatter or 10) + dist * 0.01
+      local a, r = math.random() * math.pi * 2, math.random() * sc
+      local x, z = aim.X + math.cos(a) * r, aim.Z + math.sin(a) * r
+      G.shell(V(x, Map.ground(x, z), z), w, S, w.flight + dist / 700, mz.Position)
+      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = "arty", id = e.id })
+    end
+    st.mag -= 1
+    st.next = t + w.rate
+    if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
+      local n = math.min(w.mag, st.reserve)
+      st.mag, st.reserve = n, st.reserve - n
+      st.next = t + math.max(w.rate, w.reload or 0)
+    end
+  end
+
+  -- 烟幕：G.smokes = { { p, r, t0, t1 } }
+  local smokes = {}
+  G.smokes = smokes
+  local function smokeR(s, t)
+    if t >= s.t1 or t < s.t0 then return 0 end
+    local grow = math.clamp((t - s.t0) / 2.5, 0.25, 1)
+    local fade = math.clamp((s.t1 - t) / 6, 0, 1)
+    return s.r * grow * (0.4 + 0.6 * fade)
+  end
+  -- 线段 a→b 有没有穿过烟团
+  function G.smokeBlocks(a, b)
+    if #smokes == 0 then return false end
+    local t = now()
+    local ab = b - a
+    local L2 = ab:Dot(ab)
+    for i = #smokes, 1, -1 do
+      local s = smokes[i]
+      if t >= s.t1 then
+        table.remove(smokes, i)
+      else
+        local r = smokeR(s, t)
+        if r > 0 then
+          local k = (L2 > 0) and math.clamp((s.p - a):Dot(ab) / L2, 0, 1) or 0
+          if (a + ab * k - s.p).Magnitude < r * 0.85 then return true end
+        end
+      end
+    end
+    return false
+  end
+
+  local function smoke(P, e)
+    local t = now()
+    if e.locked or e.smokeLeft <= 0 or t < e.smokeNext then return end
+    e.smokeLeft -= 1
+    e.smokeNext = t + SM.reload
+    local tubes = VD.smokeTubes(e.def, baseOf(e), e.ty)
+    local list = {}
+    for _, tb in ipairs(tubes) do
+      local flat = V(tb.dir.X, 0, tb.dir.Z)
+      flat = (flat.Magnitude > 0.01) and flat.Unit or V(0, 0, -1)
+      local L = SM.range * (0.85 + math.random() * 0.3)
+      local x, z = tb.pos.X + flat.X * L, tb.pos.Z + flat.Z * L
+      local y = math.max(Map.ground(x, z), 0) + 2.5
+      table.insert(list, { a = tb.pos, b = V(x, y, z) })
+    end
+    G.fx({ k = "smokeLaunch", id = e.id, list = list })
+    task.delay(0.9, function()
+      for _, it in ipairs(list) do
+        table.insert(smokes, { p = it.b, r = SM.r, t0 = now(), t1 = now() + SM.life })
+        G.fx({ k = "smokeCloud", p = it.b, r = SM.r, life = SM.life })
+      end
+    end)
+    G.pushOne(P)
+  end
+
+  function G.driveInput(P, d)
+    local e = P.vehicle
+    if not e or not e.alive or e.driver ~= P or type(d) ~= "table" then return end
+    if d.op == "state" then sync(P, e, d)
+    elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim)
+    elseif d.op == "smoke" then smoke(P, e)
+    elseif d.op == "exit" then unseat(P, e, true) end
+  end
+
+  ---------------------------------------------------------------- 每帧：车组跟着车走；空车放久了收走
+
+  G.onFrame(function(dt)
+    stepLcacs(dt)
+    local t = now()
+    for _, e in ipairs(table.clone(vehicles)) do
+      local D = e.driver
+      if D then
+        if not D.alive or not D.char or not D.char.Parent or G.P[D.pl] ~= D then
+          e.driver = nil
+          e.emptyAt = t
+          e.model:SetAttribute("Driver", 0)
+        else
+          D.char:PivotTo(e.root.CFrame)
+        end
+      elseif e.alive and e.emptyAt and t - e.emptyAt > 90 then   -- 没人开 90 秒：收走（不算冷却）
+        for i, x in ipairs(vehicles) do
+          if x == e then table.remove(vehicles, i) break end
+        end
+        G.removeEnt(e)
+      end
+    end
+  end)
+
+  -- 给客户端的：自己的车（弹药、烟幕弹）、名额
+  function G.vehState(P)
+    local e = P.vehicle
+    if not e or not e.alive then return nil end
+    local ammo = {}
+    for wid, st in pairs(e.wst) do ammo[wid] = { st.mag, st.reserve } end
+    return { id = e.id, m = e.def.id, locked = e.locked or false, smoke = e.smokeLeft, ammo = ammo }
+  end
+
+  G.on("died", function(P)
+    local e = P.vehicle
+    if e then unseat(P, e, false) end
+  end)
+  G.on("left", function(P)
+    local e = P.vehicle
+    if e then unseat(P, e, false) end
+  end)
+  G.on("roundStart", function()
+    for _, e in ipairs(vehicles) do G.removeEnt(e) end
+    for _, b in ipairs(lcacs) do G.removeEnt(b) end
+    vehicles, lcacs = {}, {}
+    G.vehicles = vehicles
+    pending = { atk = {}, def = {} }
+    table.clear(smokes)
+    for _, P in pairs(G.P) do P.vehicle = nil end
+  end)
+end
+
+return Armor
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -1240,7 +2093,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char then
+      if P.team ~= B.team and P.alive and P.char and not P.vehicle then   -- 车里的人打不着（步枪打不动车）
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then
@@ -1541,7 +2394,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="8">
+      <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——实体与伤害
@@ -1671,7 +2524,7 @@ function Ents.init(G)
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
-      if hrp and P.alive then
+      if hrp and P.alive and not P.vehicle then   -- 在车里的人由车挨炸
         local d = (hrp.Position - pos).Magnitude
         if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
       end
@@ -1699,7 +2552,8 @@ function Ents.init(G)
     shotN += 1
     s.id = shotN
     table.insert(shots, s)
-    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, tg = s.target and s.target.id or nil })
+    G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.target and s.target.id or nil,
+      f = s.w and s.w.fx or nil })
     return s
   end
 
@@ -1726,11 +2580,16 @@ function Ents.init(G)
         end
       end
       if not done then
-        if s.grav then s.vel += GRAV * dt end
+        if s.grav then s.vel += GRAV * (s.gscale or 1) * dt end
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
-        if res and s.kind ~= "grenade" then
+        if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+          if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs }
+          G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          done = true
+        elseif res and s.kind ~= "grenade" then
           G.explode(res.Position, s.w, s.src)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           done = true
@@ -1784,7 +2643,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="9">
+      <Item class="ModuleScript" referent="11">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -1977,7 +2836,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
@@ -2479,6 +3338,13 @@ function Round.init(G)
     C.alive = P.alive
     C.wait = math.max(0, math.ceil((P.canDeployAt or 0) - t))
     C.spawns = spawnList(P.team, P)
+    if G.vehState then
+      C.veh = G.vehState(P)
+      C.vehAvail = G.vehAvail(P.team)
+      C.vehModels = G.vehModels(P.team)
+      C.vehSpawns = {}
+      for _, s in ipairs(G.vehSpawns(P)) do C.vehSpawns[s.id] = s.ok end
+    end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
     return C
   end
@@ -2533,7 +3399,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -2604,7 +3470,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -2746,7 +3612,7 @@ function Vehicles.init(G)
   end
 
   -- 每帧：艇往岸边开，乘客跟着
-  function G.frameStep(dt)
+  G.onFrame(function(dt)
     for i = #running, 1, -1 do
       local e = running[i]
       if not e.alive then
@@ -2804,7 +3670,7 @@ function Vehicles.init(G)
         end
       end
     end
-  end
+  end)
 
   -- 伞降：落在离最近一个还没拿下的据点 220～320 格、靠攻方一侧的地方（不能直接落进据点）
   function G.paraDrop(P)
@@ -2851,7 +3717,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="13">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -3324,7 +4190,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 登岛战：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -3782,25 +4648,25 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="15">
+  <Item class="StarterPlayer" referent="17">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="16">
+    <Item class="StarterPlayerScripts" referent="18">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="17">
+      <Item class="LocalScript" referent="19">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——客户端（StarterPlayerScripts.Client）
--- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 操作 · View 实体的样子
+-- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 步兵操作 · View 实体的样子 · Drive 开载具（VehModels 拼车）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
 
 local Lang = require(RS:WaitForChild("Lang"))
-local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, R = {}, S = nil }
+local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, Map = require(RS:WaitForChild("Map")), R = {}, S = nil }
 do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
   local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
   G.lang = Lang.pick(ok and id or "en")
@@ -3810,7 +4676,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View", "Drive" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -3841,7 +4707,8 @@ G.R.Msg.OnClientEvent:Connect(safe(function(kind, key, ...) G.onMsg(kind, key, .
 G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
 G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
-local steps = { { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end }, { "fx", function(dt) G.stepFx(dt) end },
+local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
+  { "fx", function(dt) G.stepFx(dt) end },
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end } }
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
@@ -3851,7 +4718,636 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="20">
+          <Properties>
+            <string name="Name">Drive</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
+--   镜头：追尾（鼠标绕着车转），右键 / V 进炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
+--   瞄准镜四种模式（N 切换）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
+--   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、X 烟幕弹、F 下车
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+
+local Drive = {}
+
+function Drive.init(G)
+  local Map = require(RS:WaitForChild("Map"))
+  local VD = require(RS:WaitForChild("VehDefs"))
+  local V = Vector3.new
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local ui = G.ui
+  local function T(k, ...) return G.T(k, ...) end
+
+  local st = nil   -- 正在开的车
+  G.drive, G.myVeh = nil, nil
+
+  ---------------------------------------------------------------- 界面：车的仪表、瞄准镜
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Drive"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 5
+  gui.Parent = me:WaitForChild("PlayerGui")
+
+  local panel = ui.frame(gui, UDim2.fromOffset(420, 92), UDim2.new(0.5, 0, 1, -14), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))
+  ui.round(panel, 10)
+  panel.Visible = false
+  local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
+  local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
+  local vInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 42), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 63), RGB(0, 0, 0), 0.5)
+  local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
+  local vHelp = ui.label(panel, "", UDim2.new(1, -20, 0, 16), UDim2.fromOffset(10, 70), 11, RGB(170, 180, 176), Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
+  vHelp.TextTruncate = Enum.TextTruncate.AtEnd
+
+  local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  cross.TextStrokeTransparency = 0.4
+  cross.Visible = false
+  local gunMark = ui.label(gui, "+", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 26, RGB(255, 210, 80), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  gunMark.TextStrokeTransparency = 0.3
+  gunMark.Visible = false
+
+  -- 瞄准镜：圆形目镜（昼光、夜视）或者长方形屏幕（热成像）；分划、测距、模式、倍率；夜视 / 热成像的颗粒
+  local sight = Instance.new("Frame")
+  sight.Size = UDim2.fromScale(1, 1)
+  sight.BackgroundTransparency = 1
+  sight.Visible = false
+  sight.Parent = gui
+  local eyepiece = Instance.new("Frame")   -- 圆：里面透明，外面一圈很粗的黑描边把四角盖住
+  eyepiece.AnchorPoint = Vector2.new(0.5, 0.5)
+  eyepiece.Position = UDim2.fromScale(0.5, 0.5)
+  eyepiece.Size = UDim2.fromScale(0.9, 0.9)
+  eyepiece.BackgroundTransparency = 1
+  eyepiece.Parent = sight
+  local asp = Instance.new("UIAspectRatioConstraint")
+  asp.AspectRatio = 1
+  asp.Parent = eyepiece
+  local ec = Instance.new("UICorner")
+  ec.CornerRadius = UDim.new(0.5, 0)
+  ec.Parent = eyepiece
+  local es = Instance.new("UIStroke")
+  es.Thickness = 900
+  es.Color = Color3.new(0, 0, 0)
+  es.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+  es.Parent = eyepiece
+  local screenBox = Instance.new("Frame")   -- 热成像：屏幕的黑边框
+  screenBox.AnchorPoint = Vector2.new(0.5, 0.5)
+  screenBox.Position = UDim2.fromScale(0.5, 0.5)
+  screenBox.Size = UDim2.fromScale(0.86, 0.8)
+  screenBox.BackgroundTransparency = 1
+  screenBox.Parent = sight
+  local ss = Instance.new("UIStroke")
+  ss.Thickness = 600
+  ss.Color = RGB(8, 8, 8)
+  ss.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+  ss.Parent = screenBox
+  -- 分划：中心十字、两边的横线、测距刻度（照截图的样子）
+  local RET = RGB(235, 235, 235)
+  local reticle = Instance.new("Frame")
+  reticle.Size = UDim2.fromOffset(300, 120)
+  reticle.AnchorPoint = Vector2.new(0.5, 0.5)
+  reticle.Position = UDim2.fromScale(0.5, 0.5)
+  reticle.BackgroundTransparency = 1
+  reticle.Parent = sight
+  local retParts = {}
+  local function rl(size, pos) local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5)) table.insert(retParts, f) return f end
+  rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, -110, 0.5, 0))
+  rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, 110, 0.5, 0))
+  rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, -56, 0.5, -10))
+  rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, 56, 0.5, -10))
+  rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, -56, 0.5, 10))
+  rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, 56, 0.5, 10))
+  rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, -26))
+  rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, 26))
+  local dot = rl(UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5))
+  dot.BackgroundTransparency = 1
+  local dotStroke = Instance.new("UIStroke")
+  dotStroke.Color = RET
+  dotStroke.Thickness = 1.5
+  dotStroke.Parent = dot
+  local dc = Instance.new("UICorner")
+  dc.CornerRadius = UDim.new(0.5, 0)
+  dc.Parent = dot
+  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local grain = Instance.new("Frame")
+  grain.Size = UDim2.fromScale(1, 1)
+  grain.BackgroundTransparency = 1
+  grain.Parent = sight
+  local dots = {}
+  for i = 1, 90 do
+    local g = ui.frame(grain, UDim2.fromOffset(2, 2), UDim2.new(), RGB(255, 255, 255), 0.7)
+    dots[i] = g
+  end
+
+  -- 画面效果
+  local cc = Instance.new("ColorCorrectionEffect")
+  cc.Name = "SightCC"
+  cc.Enabled = false
+  cc.Parent = Lighting
+  G.sightCC = cc
+  local MODES = { "day", "nv", "whot", "bhot" }
+  local hl = {}   -- 热成像的高亮
+  local function clearHl()
+    for _, h in ipairs(hl) do h:Destroy() end
+    hl = {}
+  end
+  local function newHl(adornee, color)
+    local h = Instance.new("Highlight")
+    h.Adornee = adornee
+    h.FillColor = color
+    h.FillTransparency = 0.08
+    h.OutlineColor = color
+    h.OutlineTransparency = 0.5
+    h.DepthMode = Enum.HighlightDepthMode.Occluded
+    h.Parent = cam   -- 镜头下面的东西只在本机
+    table.insert(hl, h)
+    return h
+  end
+  -- 热的东西：所有实体（一个 Model）+ 最近的 24 个别的玩家
+  local function refreshHl(color)
+    clearHl()
+    if G.viewFolder then newHl(G.viewFolder, color) end
+    local list = {}
+    local cp = cam.CFrame.Position
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      if pl ~= me and hrp then table.insert(list, { ch, (hrp.Position - cp).Magnitude }) end
+    end
+    table.sort(list, function(a, b) return a[2] < b[2] end)
+    for i = 1, math.min(24, #list) do newHl(list[i][1], color) end
+  end
+
+  local function applyMode()
+    if not st or not st.sight then
+      cc.Enabled = false
+      clearHl()
+      sight.Visible = false
+      return
+    end
+    sight.Visible = true
+    local m = MODES[st.mode]
+    local thermal = m == "whot" or m == "bhot"
+    eyepiece.Visible = not thermal
+    screenBox.Visible = thermal
+    grain.Visible = m ~= "day"
+    cc.Enabled = true
+    local retCol = RET
+    if m == "day" then
+      cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.1, 0.08, 0, Color3.new(1, 1, 1)
+      clearHl()
+    elseif m == "nv" then
+      cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.35, 0.06, RGB(120, 255, 140)
+      retCol = RGB(190, 255, 190)
+      clearHl()
+    elseif m == "whot" then
+      cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
+      refreshHl(Color3.new(1, 1, 1))
+    else
+      cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
+      retCol = RGB(20, 20, 20)
+      refreshHl(Color3.new(0, 0, 0))
+    end
+    for _, f in ipairs(retParts) do f.BackgroundColor3 = retCol end
+    dotStroke.Color = retCol
+    rangeText.TextColor3, modeText.TextColor3, zoomText.TextColor3 = retCol, retCol, retCol
+    modeText.Text = T("sight." .. m)
+    for _, g in ipairs(dots) do g.BackgroundColor3 = (m == "nv") and RGB(200, 255, 200) or Color3.new(1, 1, 1) end
+  end
+
+  -- 自己的车的样子不放在实体的大 Model 里（热成像整个高亮时会把镜头所在的车也涂白）
+  local ownBox = Instance.new("Model")
+  ownBox.Name = "OwnVeh"
+  ownBox.Parent = workspace
+  local function ownModel()
+    local v = st and G.views and G.views[st.em]
+    return v and v.model
+  end
+  -- 自己的车：坐进瞄准镜时藏起来（镜头在车里）
+  local function ownVisible(on)
+    local v = st and G.views and G.views[st.em]
+    if not v or not v.M then return end
+    for _, it in ipairs(v.M.parts) do
+      local p = it[1]
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 0 or 1 end
+    end
+  end
+
+  ---------------------------------------------------------------- 开车
+
+  local function findEnt(id)
+    local f = workspace:FindFirstChild("Ents")
+    if not f then return nil end
+    for _, em in ipairs(f:GetChildren()) do
+      if em:GetAttribute("EntId") == id then return em end
+    end
+    return nil
+  end
+
+  -- 车底 CFrame：按四个角的地面高度定俯仰、侧倾；在水里（两栖）浮着
+  local function baseAt(d, pos, yaw)
+    local face = V(-math.sin(yaw), 0, -math.cos(yaw))
+    local right = V(-face.Z, 0, face.X)
+    local function gh(p) return Map.ground(p.X, p.Z) end
+    local c = V(pos.X, 0, pos.Z)
+    local f, b = c + face * d.L * 0.4, c - face * d.L * 0.4
+    local l, r = c - right * d.W * 0.4, c + right * d.W * 0.4
+    local h0 = Map.height(c.X, c.Z)
+    if h0 < -1.5 and d.amphib then   -- 浮在水面：吃水大半个车体，随浪轻轻晃
+      local t = os.clock()
+      local cf = CFrame.lookAt(V(c.X, -d.hullH * 0.55 + math.sin(t * 1.3) * 0.15, c.Z), V(c.X, -d.hullH * 0.55, c.Z) + face)
+      return cf * CFrame.Angles(math.sin(t * 0.9) * 0.012, 0, math.sin(t * 1.1) * 0.02)
+    end
+    local yf, yb, yl, yr = gh(f), gh(b), gh(l), gh(r)
+    local y = (yf + yb + yl + yr) / 4
+    local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
+    local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
+    local up = side:Cross(fwd).Unit
+    return CFrame.fromMatrix(V(c.X, y, c.Z), side, up, -fwd)
+  end
+
+  local mapParams = RaycastParams.new()
+  mapParams.FilterType = Enum.RaycastFilterType.Include
+  local aimParams = RaycastParams.new()
+  aimParams.FilterType = Enum.RaycastFilterType.Exclude
+
+  local function begin(vs)
+    local em = findEnt(vs.id)
+    if not em then return end
+    local d = VD.get(vs.m)
+    if not d then return end
+    local root = em.Root.CFrame
+    local base = root * CF(0, -d.H / 2, 0)
+    local look = base.LookVector
+    local yaw = math.atan2(-look.X, -look.Z)
+    st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
+      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 1, zoom = 1,
+      wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
+    G.drive, G.myVeh = st, st
+    cam.CameraType = Enum.CameraType.Scriptable
+    panel.Visible = true
+    cross.Visible = true
+    gunMark.Visible = true
+    if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = true end end
+    local m = workspace:FindFirstChild("Map")
+    mapParams.FilterDescendantsInstances = m and { m } or {}
+    if G.playSound then G.playSound("capture") end
+  end
+
+  local function stop()
+    if st then
+      ownVisible(true)
+      st.sight = false
+      applyMode()
+      local m = ownModel()
+      if m and m.Parent == ownBox and G.viewFolder then m.Parent = G.viewFolder end
+    end
+    st = nil
+    G.drive, G.myVeh = nil, nil
+    cam.CameraType = Enum.CameraType.Custom
+    cam.FieldOfView = 70
+    if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
+    panel.Visible, cross.Visible, gunMark.Visible = false, false, false
+    if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = false end end
+  end
+
+  local function approach(a, b, s)
+    if a < b then return math.min(b, a + s) end
+    return math.max(b, a - s)
+  end
+  local function angDiff(a, b) return (b - a + 180) % 360 - 180 end
+
+  local function physics(dt)
+    local d = st.d
+    local key = function(k) return UIS:IsKeyDown(k) end
+    local thr = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
+    local str = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
+    if G.touchDrive then
+      if G.touchDrive.thr ~= 0 then thr = G.touchDrive.thr end
+      if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
+    end
+    local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
+    local maxF, maxR = d.speed, d.rev
+    if inWater then maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
+    local target = (thr > 0) and maxF or ((thr < 0) and -maxR or 0)
+    local a = d.accel
+    if target == 0 then a = d.accel * 0.8
+    elseif (target > 0) ~= (st.speed > 0) and math.abs(st.speed) > 1 then a = d.accel * 2.4 end   -- 反向：先刹车
+    local old = st.speed
+    st.speed = approach(st.speed, target, a * dt)
+    st.accel = (st.speed - old) / math.max(dt, 1e-3)
+    -- 转向：履带车能原地转；轮式车要走起来才转得动，倒车反着打
+    local k = (d.arch == "wheeled") and math.clamp(math.abs(st.speed) / 10, 0, 1) or 1
+    local dir = (d.arch == "wheeled" and st.speed < -0.5) and -1 or 1
+    st.yaw -= str * math.rad(d.turn) * k * dir * dt
+    st.steer = approach(st.steer, str, dt * 4)
+    -- 往前挪：坡太陡、不会游的下水、撞到房子都走不动
+    local fwd = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+    local step = st.speed * dt
+    if math.abs(step) > 1e-4 then
+      local np = st.pos + fwd * step
+      local h0 = Map.height(st.pos.X, st.pos.Z)
+      local h1 = Map.height(np.X, np.Z)
+      local blocked = false
+      if h1 < -2.5 and not d.amphib then blocked = true end
+      -- 坡度按地面（海里按水面）算：比约 40° 陡上不去
+      if not blocked and h1 > 0.5 and (h1 - math.max(h0, -0.5)) / math.abs(step) > 0.85 then blocked = true end
+      if not blocked then
+        local o = st.pos + V(0, Map.ground(st.pos.X, st.pos.Z) - st.pos.Y + d.hullH * 0.55, 0)
+        local res = workspace:Raycast(o, fwd * math.sign(step) * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
+        if res then blocked = true end
+      end
+      if blocked then
+        if math.abs(st.speed) > 12 and G.shake then G.shake(0.25) end
+        st.speed = 0
+      else
+        st.pos = np
+      end
+    end
+    local base = baseAt(d, st.pos, st.yaw)
+    st.pos = base.Position
+    st.root = base * CF(0, d.H / 2, 0)
+  end
+
+  -- 准星打到哪：从镜头往前打一条射线（不算自己的车、实体的样子）
+  local function aimPoint()
+    local o, dir = cam.CFrame.Position, cam.CFrame.LookVector
+    local ex = { G.viewFolder, ownBox }
+    if me.Character then table.insert(ex, me.Character) end
+    if st.em then table.insert(ex, st.em) end
+    aimParams.FilterDescendantsInstances = ex
+    local res = workspace:Raycast(o, dir * 4000, aimParams)
+    return res and res.Position or (o + dir * 4000), res ~= nil
+  end
+
+  local function aimTurret(dt)
+    local d = st.d
+    local w = VD.W[d.weapons[st.wi] or ""]
+    local base = st.root * CF(0, -d.H / 2, 0)
+    local piv = (base * CF(d.turret.pivot) * CF(d.gun.pivot)).Position
+    local ap = st.aimPt or (piv + base.LookVector * 100)
+    local rel = base:VectorToObjectSpace(ap - piv)
+    local horiz = math.sqrt(rel.X * rel.X + rel.Z * rel.Z)
+    local wantYaw = math.deg(math.atan2(rel.X, -rel.Z))
+    local wantPitch = math.deg(math.atan2(rel.Y, math.max(horiz, 1)))
+    if w and w.kind == "shell" then   -- 炮弹下坠：按飞行时间抬一点
+      local tFly = horiz / w.speed
+      local drop = 0.5 * workspace.Gravity * 0.55 * (w.drop / 0.55) * tFly * tFly
+      wantPitch += math.deg(math.atan2(drop, math.max(horiz, 1)))
+    elseif w and w.kind == "arty" then   -- 曲射：炮管抬到大约 45°（只是好看，落点按准星算）
+      wantPitch = math.clamp(25 + horiz / 120, 25, 60)
+    end
+    st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -d.turret.trav * dt, d.turret.trav * dt)) % 360
+    st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), 35 * dt)
+  end
+
+  local function weaponId() return st.d.weapons[st.wi] end
+
+  local function tryFire()
+    local wid = weaponId()
+    local w = wid and VD.W[wid]
+    if not w or st.locked then return end
+    local t = os.clock()
+    if t < (st.next[wid] or 0) then return end
+    local ammo = G.S and G.S.veh and G.S.veh.ammo and G.S.veh.ammo[wid]
+    if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
+    st.next[wid] = t + w.rate
+    local base = st.root * CF(0, -st.d.H / 2, 0)
+    local mz = VD.muzzle(st.d, base, st.ty, st.gp, (w.kind == "gun" and st.d.coax) and "coax" or nil)
+    G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt })
+    if w.kind == "shell" or w.kind == "arty" then
+      if G.vehRecoil then G.vehRecoil(st.id) end
+      if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+    end
+    if ammo then   -- 本地先扣（服务器的数半秒后来校正）
+      ammo[1] -= 1
+      if ammo[1] <= 0 and ammo[2] > 0 then
+        local n = math.min(w.mag, ammo[2])
+        ammo[1], ammo[2] = n, ammo[2] - n
+        st.next[wid] = t + math.max(w.rate, w.reload or 0)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 手机：方向键、开火、烟幕、瞄准镜、模式、下车
+
+  if UIS.TouchEnabled then
+    local touch = { thr = 0, str = 0 }
+    local tb = ui.frame(gui, UDim2.fromOffset(250, 170), UDim2.new(0, 20, 1, -190), RGB(0, 0, 0), 1)
+    tb.Visible = false
+    local function hold(text, pos, onDown, onUp)
+      local b = ui.button(tb, text, UDim2.fromOffset(64, 64), pos, RGB(30, 36, 42))
+      b.BackgroundTransparency = 0.35
+      b.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then onDown() end end)
+      b.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then onUp() end end)
+      return b
+    end
+    hold("▲", UDim2.fromOffset(93, 0), function() touch.thr = 1 end, function() touch.thr = 0 end)
+    hold("▼", UDim2.fromOffset(93, 104), function() touch.thr = -1 end, function() touch.thr = 0 end)
+    hold("◀", UDim2.fromOffset(20, 52), function() touch.str = -1 end, function() touch.str = 0 end)
+    hold("▶", UDim2.fromOffset(166, 52), function() touch.str = 1 end, function() touch.str = 0 end)
+    local rb = ui.frame(gui, UDim2.fromOffset(240, 220), UDim2.new(1, -250, 1, -330), RGB(0, 0, 0), 1)
+    rb.Visible = false
+    local function tap(text, pos, f)
+      local b = ui.button(rb, text, UDim2.fromOffset(64, 64), pos, RGB(30, 36, 42))
+      b.BackgroundTransparency = 0.35
+      b.TextSize = 14
+      b.Activated:Connect(f)
+      return b
+    end
+    local fb = hold("●", UDim2.fromOffset(0, 0), function() end, function() end)
+    fb.Parent = rb
+    fb.Size = UDim2.fromOffset(90, 90)
+    fb.Position = UDim2.fromOffset(140, 120)
+    fb.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = true tryFire() end end)
+    fb.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = false end end)
+    tap("◎", UDim2.fromOffset(60, 140), function() if st then st.sight = not st.sight ownVisible(not st.sight) applyMode() end end)
+    tap("N", UDim2.fromOffset(60, 66), function() if st then st.mode = st.mode % #MODES + 1 applyMode() end end)
+    tap("X", UDim2.fromOffset(140, 40), function() G.R.Drive:FireServer({ op = "smoke" }) end)
+    tap("F", UDim2.fromOffset(0, 0), function() G.R.Drive:FireServer({ op = "exit" }) end)
+    tap("1/2", UDim2.fromOffset(170, -30), function() if st then st.wi = (st.wi % #st.d.weapons) + 1 end end)
+    G.touchDrive = touch
+    G.touchDriveUI = { tb, rb }
+  end
+
+  ---------------------------------------------------------------- 输入
+
+  local ZOOMS = { 20, 7 }   -- 瞄准镜视场（度）：约 3.5×、10×
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not st then return end
+    local k = io.KeyCode
+    if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      st.firing = true
+      tryFire()
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 or k == Enum.KeyCode.V then
+      st.sight = not st.sight
+      ownVisible(not st.sight)
+      applyMode()
+    elseif k == Enum.KeyCode.N then
+      st.mode = st.mode % #MODES + 1
+      applyMode()
+    elseif k == Enum.KeyCode.Z then
+      st.zoom = st.zoom % #ZOOMS + 1
+    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
+      local i = (k == Enum.KeyCode.One) and 1 or 2
+      if st.d.weapons[i] then st.wi = i end
+    elseif k == Enum.KeyCode.X then
+      G.R.Drive:FireServer({ op = "smoke" })
+    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E then
+      G.R.Drive:FireServer({ op = "exit" })
+    end
+  end)
+  UIS.InputEnded:Connect(function(io)
+    if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
+  end)
+  UIS.InputChanged:Connect(function(io)
+    if st and st.sight and io.UserInputType == Enum.UserInputType.MouseWheel then
+      st.zoom = math.clamp(st.zoom + ((io.Position.Z > 0) and 1 or -1), 1, #ZOOMS)
+    end
+  end)
+
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) ~= "table" or not st then return end
+    if m.op == "fix" and typeof(m.cf) == "CFrame" then   -- 服务器不认：拉回去
+      local base = m.cf * CF(0, -st.d.H / 2, 0)
+      local look = base.LookVector
+      st.pos, st.yaw, st.speed = base.Position, math.atan2(-look.X, -look.Z), 0
+      st.root = m.cf
+    end
+  end)
+
+  ---------------------------------------------------------------- 每帧
+
+  local SENS = 0.0042
+  function G.stepDrive(dt)
+    local S = G.S
+    local vs = S and S.alive and S.veh or nil
+    if vs and (not st or st.id ~= vs.id) then
+      if st then stop() end
+      begin(vs)
+    elseif not vs and st then
+      stop()
+    end
+    if not st then return end
+    if not st.em.Parent then stop() return end
+    local d = st.d
+    local om = ownModel()
+    if om and om.Parent ~= ownBox then om.Parent = ownBox end
+    st.locked = vs.locked
+    -- 镜头转动
+    UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+    local md = UIS:GetMouseDelta()
+    local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or 1)
+    st.camYaw -= md.X * sens
+    st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
+    -- 车
+    if st.locked then   -- 在气垫艇上：跟着服务器
+      st.root = st.em.Root.CFrame
+      local base = st.root * CF(0, -d.H / 2, 0)
+      st.pos = base.Position
+      local look = base.LookVector
+      st.yaw = math.atan2(-look.X, -look.Z)
+      st.speed = 0
+    else
+      physics(dt)
+    end
+    -- 镜头
+    local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
+    if st.sight then
+      local base = st.root * CF(0, -d.H / 2, 0)
+      local gcf = VD.gunCF(d, base, st.ty, st.gp)
+      local tcf = VD.turretCF(d, base, st.ty)
+      local eye = (tcf * CF(d.sight)).Position
+      cam.CFrame = CFrame.lookAt(eye, eye + gcf.LookVector)
+      cam.FieldOfView = cam.FieldOfView + (ZOOMS[st.zoom] - cam.FieldOfView) * math.min(1, dt * 10)
+      -- 瞄准镜里的准星就是炮的指向；鼠标给的是想去的方向
+      local o = eye
+      local want = dirCam.LookVector
+      aimParams.FilterDescendantsInstances = { G.viewFolder, ownBox, st.em, me.Character }
+      local res = workspace:Raycast(o, want * 4000, aimParams)
+      st.aimPt = res and res.Position or (o + want * 4000)
+    else
+      local center = st.root.Position + V(0, d.H * 0.4, 0)
+      local dist = d.L * 1.25 + 14
+      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, d.H * 0.6, 0)
+      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
+      cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * math.min(1, dt * 10)
+      st.aimPt = aimPoint()
+    end
+    aimTurret(dt)
+    -- 连发
+    local w = VD.W[weaponId() or ""]
+    if st.firing and w and w.rate < 0.5 then tryFire() end
+    -- 报给服务器（每秒 15 次）
+    st.sendT -= dt
+    if st.sendT <= 0 and not st.locked then
+      st.sendT = 1 / 15
+      G.R.Drive:FireServer({ op = "state", cf = st.root, ty = st.ty, gp = st.gp, sp = st.speed })
+    end
+    -- 炮现在指着哪（追尾镜头里画一个黄十字）
+    local base = st.root * CF(0, -d.H / 2, 0)
+    local gcf = VD.gunCF(d, base, st.ty, st.gp)
+    local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
+    local sp, on = cam:WorldToViewportPoint(gp)
+    gunMark.Visible = on and not st.sight
+    gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
+    cross.Visible = not st.sight
+    -- 仪表
+    local em = st.em
+    local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
+    hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
+    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), math.clamp(hp / mx, 0, 1))
+    vName.Text = T("veh." .. d.id) .. (st.locked and ("   " .. T("ui.lcac")) or "")
+    local wid = weaponId()
+    local ammo = vs.ammo and wid and vs.ammo[wid]
+    local kmh = math.floor(math.abs(st.speed) / 2.8 * 3.6 + 0.5)
+    local rel = 1
+    if wid and w then
+      local left = (st.next[wid] or 0) - os.clock()
+      local full = (ammo and ammo[1] == w.mag and left > w.rate) and (w.reload or w.rate) or w.rate
+      rel = 1 - math.clamp(left / math.max(full, 0.01), 0, 1)
+    end
+    relBar.Size = UDim2.fromScale(rel, 1)
+    vInfo.Text = T("ui.speed", kmh) .. "    " .. (wid and T("vw." .. wid) or "") .. (ammo and ("  " .. ammo[1] .. " / " .. ammo[2]) or "")
+      .. "    " .. T("ui.smokeLeft", vs.smoke or 0) .. "    " .. T("sight." .. MODES[st.mode])
+    vHelp.Text = T("ui.vehHelp")
+    -- 瞄准镜：测距、倍率、颗粒；热成像的高亮隔一会儿重挑一次
+    if st.sight then
+      local dist = (st.aimPt - cam.CFrame.Position).Magnitude
+      rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
+      zoomText.Text = string.format("×%.1f", 70 / ZOOMS[st.zoom])
+      if grain.Visible then
+        local vs2 = cam.ViewportSize
+        for _, g in ipairs(dots) do
+          g.Position = UDim2.fromOffset(math.random() * vs2.X, math.random() * vs2.Y)
+          g.BackgroundTransparency = 0.45 + math.random() * 0.5
+        end
+      end
+      st.hlT -= dt
+      local m = MODES[st.mode]
+      if st.hlT <= 0 and (m == "whot" or m == "bhot") then
+        st.hlT = 0.5
+        refreshHl((m == "whot") and Color3.new(1, 1, 1) or Color3.new(0, 0, 0))
+      end
+    end
+  end
+end
+
+return Drive
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -4009,7 +5505,12 @@ function Fx.init(G)
   local function newShot(e)
     local kind = e.kind
     local body
-    if kind == "grenade" then
+    if kind == "shell" then   -- 炮弹：一道亮的曳光
+      local big = e.f == "tank"
+      body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
+      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, t = 0, kind = kind, trailT = 0 }
+      return
+    elseif kind == "grenade" then
       body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
     else
       body = part(CYL, V(2.2, 0.5, 0.5), CFrame.new(e.p), RGB(80, 86, 70), Enum.Material.Metal, 0)
@@ -4030,10 +5531,22 @@ function Fx.init(G)
   local function stepShots(dt)
     for id, s in pairs(flying) do
       s.t += dt
-      if s.g then s.v += GRAV * dt end
+      if s.g then s.v += GRAV * (s.gs or 1) * dt end
       s.p += s.v * dt
       if s.kind == "grenade" then
         s.body.CFrame = CFrame.new(s.p)
+      elseif s.kind == "shell" then
+        s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+      elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
+        s.body.CFrame = CFrame.new(s.p)
+        s.trailT += dt
+        if s.trailT > 0.05 then
+          s.trailT = 0
+          local sm = part(BALL, V(0.6, 0.6, 0.6), CFrame.new(s.p), RGB(230, 230, 225), Enum.Material.SmoothPlastic, 0.4)
+          tween(sm, 0.8, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
+          Debris:AddItem(sm, 0.85)
+        end
+        if s.t > (s.life or 1) then endShot(id) end
       else
         local cf = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
         s.body.CFrame = cf
@@ -4049,6 +5562,81 @@ function Fx.init(G)
       end
       if s.t > 15 then endShot(id) end
     end
+  end
+
+  -- 车炮开火：炮口火光、一团烟、坦克炮还有一圈扬尘；离得近震屏
+  local SMOKE_TEX = "rbxasset://textures/particles/smoke_main.dds"
+  local function vfire(e)
+    local big = e.f == "tank" or e.f == "arty"
+    local dir = (typeof(e.d) == "Vector3") and e.d or V(0, 0, -1)
+    local fl = part(BALL, big and V(4, 4, 4) or V(1.6, 1.6, 1.6), CFrame.new(e.p + dir * (big and 2 or 0.6)), RGB(255, 210, 120), Enum.Material.Neon, 0)
+    tween(fl, big and 0.12 or 0.06, { Transparency = 1, Size = (big and V(9, 9, 9) or V(3, 3, 3)) })
+    Debris:AddItem(fl, 0.15)
+    if big then
+      local holder = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(e.p, e.p + dir), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = SMOKE_TEX
+      pe.Rate = 0
+      pe.Lifetime = NumberRange.new(1.5, 3)
+      pe.Speed = NumberRange.new(10, 26)
+      pe.SpreadAngle = Vector2.new(25, 25)
+      pe.Drag = 3
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 12) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new(RGB(200, 196, 186))
+      pe.EmissionDirection = Enum.NormalId.Front
+      pe.Parent = holder
+      pe:Emit(14)
+      Debris:AddItem(holder, 4)
+      -- 地上一圈扬尘（炮口暴风）
+      local gy = G.Map and G.Map.ground and G.Map.ground(e.p.X, e.p.Z) or e.p.Y - 4
+      local ring = part(CYL, V(0.5, 6, 6), CFrame.new(e.p.X, gy + 0.6, e.p.Z) * CFrame.Angles(0, 0, math.pi / 2), RGB(190, 170, 130), Enum.Material.SmoothPlastic, 0.45)
+      tween(ring, 0.7, { Size = V(0.5, 34, 34), Transparency = 1 })
+      Debris:AddItem(ring, 0.75)
+      G.playSound("boom", e.p, 0.75)
+    else
+      G.playSound("lmg", e.p)
+    end
+    if G.vehRecoil and e.id then G.vehRecoil(e.id) end
+    local dd = (e.p - cam.CFrame.Position).Magnitude
+    if big and dd < 140 then G.shake(0.3 * (1 - dd / 140)) end
+  end
+
+  -- 烟幕弹：从每根发射筒飞出去（小抛物线），0.9 秒后落地起一大团烟（持续 life 秒）
+  local smokeN = 0
+  local function smokeLaunch(e)
+    for _, it in ipairs(e.list or {}) do
+      local a, b = it.a, it.b
+      local T0 = 0.9
+      local v = (b - a) / T0 - GRAV * 0.5 * T0
+      smokeN += 1
+      local body = part(CYL, V(0.7, 0.32, 0.32), CFrame.new(a), RGB(70, 80, 64), Enum.Material.Metal, 0)
+      flying["sm" .. smokeN] = { body = body, p = a, v = v, g = true, gs = 1, t = 0, kind = "smoke", trailT = 0, life = T0 }
+    end
+    G.playSound("rocket", e.list and e.list[1] and e.list[1].a or nil, 2.4)
+  end
+  local function smokeCloud(e)
+    local holder = part(nil, V(0.2, 0.2, 0.2), CFrame.new(e.p), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local life = e.life or 30
+    for i = 1, 2 do
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = SMOKE_TEX
+      pe.Rate = (i == 1) and 8 or 4
+      pe.Lifetime = NumberRange.new(6, 10)
+      pe.Speed = NumberRange.new(1, 4)
+      pe.SpreadAngle = Vector2.new(180, 180)
+      pe.Acceleration = V(0, 0.6, 0)
+      pe.Drag = 1.2
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 8), NumberSequenceKeypoint.new(0.3, (e.r or 20) * 1.1), NumberSequenceKeypoint.new(1, (e.r or 20) * 1.5) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.7, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new((i == 1) and RGB(226, 228, 226) or RGB(190, 194, 192))
+      pe.LightInfluence = 0.8
+      pe.Parent = holder
+      pe:Emit(18)
+      task.delay(math.max(1, life - 8), function() pe.Rate = 0 end)
+    end
+    G.playSound("splash", e.p, 1.6)
+    Debris:AddItem(holder, life + 12)
   end
 
   -- 炮弹：落地前一秒多传来呼啸声
@@ -4107,6 +5695,9 @@ function Fx.init(G)
       elseif k == "capture" then G.playSound("capture")
       elseif k == "spots" then spots(e.list)
       elseif k == "ramp" then G.playSound("splash")
+      elseif k == "vfire" then vfire(e)
+      elseif k == "smokeLaunch" then smokeLaunch(e)
+      elseif k == "smokeCloud" then smokeCloud(e)
       end
     end
   end
@@ -4118,7 +5709,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="19">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -4308,7 +5899,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="23">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——操作：武器栏（1–4、点选）、肩后视角（拿着武器时鼠标锁在屏幕中间、人跟着镜头转，准星打哪儿就是哪儿）、
@@ -4584,7 +6175,7 @@ function Play.init(G)
   ---------------------------------------------------------------- 输入
 
   UIS.InputBegan:Connect(function(io, gp)
-    if gp then return end
+    if gp or G.drive then return end
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
@@ -4670,6 +6261,11 @@ function Play.init(G)
 
   local baseFov = 70
   function G.stepPlay(dt)
+    if G.drive then   -- 开着车：镜头、开火归 Drive 管
+      cross.Visible, scope.Visible = false, false
+      cur.firing = false
+      return
+    end
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -4718,7 +6314,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="21">
+        <Item class="ModuleScript" referent="24">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -4854,10 +6450,15 @@ function UI.init(G)
   local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
   local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
 
-  -- 左边：兵种卡片
+  -- 左边：步兵 / 载具 两个页签，下面是卡片
+  local sel = { role = nil, spawn = nil, mode = "inf", veh = nil }
+  G.deploySel = sel
+  local tabInf = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.fromOffset(20, 100), RGB(48, 56, 40))
+  local tabVeh = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.new(0.18, 9, 0, 100), RGB(28, 34, 40))
+  tabInf.TextSize, tabVeh.TextSize = 15, 15
   local roles = Instance.new("ScrollingFrame")
-  roles.Size = UDim2.new(0.36, -30, 1, -190)
-  roles.Position = UDim2.fromOffset(20, 104)
+  roles.Size = UDim2.new(0.36, -30, 1, -226)
+  roles.Position = UDim2.fromOffset(20, 140)
   roles.BackgroundTransparency = 1
   roles.BorderSizePixel = 0
   roles.ScrollBarThickness = 6
@@ -4870,8 +6471,6 @@ function UI.init(G)
   grid.SortOrder = Enum.SortOrder.LayoutOrder
   grid.Parent = roles
   local roleCards = {}
-  local sel = { role = nil, spawn = nil }
-  G.deploySel = sel
   for i, r in ipairs(Config.Roles) do
     local b = Instance.new("TextButton")
     b.Text = ""
@@ -4893,6 +6492,55 @@ function UI.init(G)
     end)
   end
 
+  -- 载具卡片（这一队能开的型号；分队变了重建）
+  local vehs = Instance.new("ScrollingFrame")
+  vehs.Size, vehs.Position = roles.Size, roles.Position
+  vehs.BackgroundTransparency = 1
+  vehs.BorderSizePixel = 0
+  vehs.ScrollBarThickness = 6
+  vehs.CanvasSize = UDim2.new()
+  vehs.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  vehs.Visible = false
+  vehs.Parent = deploy
+  local vgrid = grid:Clone()
+  vgrid.Parent = vehs
+  local vehCards, vehKey = {}, nil
+  local function buildVehCards(S)
+    local key = (S.team or "") .. ":" .. table.concat(S.vehModels or {}, ",")
+    if key == vehKey then return end
+    vehKey = key
+    for _, c in pairs(vehCards) do c.b:Destroy() end
+    vehCards = {}
+    local VD = require(RS:WaitForChild("VehDefs"))
+    for i, id in ipairs(S.vehModels or {}) do
+      local d = VD.get(id)
+      local b = Instance.new("TextButton")
+      b.Text = ""
+      b.LayoutOrder = i
+      b.BackgroundColor3 = RGB(28, 34, 40)
+      b.BackgroundTransparency = 0.1
+      b.AutoButtonColor = true
+      b.Parent = vehs
+      round(b, 8)
+      local st = stroke(b, LINE, 2, 1)
+      local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 15, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+      local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
+      ds.TextYAlignment = Enum.TextYAlignment.Top
+      local av = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      vehCards[id] = { b = b, st = st, nm = nm, ds = ds, av = av, d = d }
+      b.Activated:Connect(function()
+        sel.veh = id
+        G.refreshDeploy()
+      end)
+    end
+  end
+  local function setMode(m)
+    sel.mode = m
+    G.refreshDeploy()
+  end
+  tabInf.Activated:Connect(function() setMode("inf") end)
+  tabVeh.Activated:Connect(function() setMode("veh") end)
+
   -- 右边：地图 + 出生点
   local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
   local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
@@ -4912,6 +6560,12 @@ function UI.init(G)
   deployBtn.Activated:Connect(function()
     local S = G.S
     if not S or S.alive or (S.wait or 0) > 0 then return end
+    if sel.mode == "veh" then
+      if not sel.veh or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+      if not (S.vehSpawns and S.vehSpawns[sel.spawn]) then G.toast(T("ui.needSpawnVeh"), "bad") return end
+      G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role)
+      return
+    end
     if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
     G.R.Act:FireServer("deploy", sel.role, sel.spawn)
   end)
@@ -4930,7 +6584,13 @@ function UI.init(G)
     spawnBtns = {}
     if not spawnLayer then return end
     local ids = {}
-    for _, s in ipairs(S.spawns or {}) do
+    for _, s0 in ipairs(S.spawns or {}) do
+      local s = s0
+      if sel.mode == "veh" then   -- 载具：只有海滩、据点、营地能出
+        local ok = S.vehSpawns and S.vehSpawns[s0.id]
+        s = table.clone(s0)
+        s.ok = ok == true
+      end
       ids[s.id] = s
       local chosen = sel.spawn == s.id
       local b
@@ -4986,13 +6646,39 @@ function UI.init(G)
       c.st.Color = RGB(255, 210, 60)
       c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
     end
+    tabInf.Text, tabVeh.Text = T("ui.tabInf"), T("ui.tabVeh")
+    tabInf.BackgroundColor3 = (sel.mode == "inf") and RGB(48, 56, 40) or RGB(28, 34, 40)
+    tabVeh.BackgroundColor3 = (sel.mode == "veh") and RGB(48, 56, 40) or RGB(28, 34, 40)
+    roles.Visible = sel.mode == "inf"
+    vehs.Visible = sel.mode == "veh"
+    if sel.mode == "veh" then
+      buildVehCards(S)
+      local VD = require(RS:WaitForChild("VehDefs"))
+      for id, c in pairs(vehCards) do
+        local d = c.d
+        local av = S.vehAvail and S.vehAvail[d.cat] or { u = 0, cap = 0, cd = 0 }
+        local ws = {}
+        for _, wid in ipairs(d.weapons) do table.insert(ws, T("vw." .. wid)) end
+        c.nm.Text = T("veh." .. id)
+        c.ds.Text = T("vcat." .. d.cat) .. " · " .. table.concat(ws, " / ")
+        local full = av.u >= av.cap
+        c.av.Text = T("ui.vehCap", av.u, av.cap) .. ((full and av.cd > 0) and ("   " .. T("ui.vehCd", av.cd)) or "")
+        c.av.TextColor3 = full and RGB(230, 110, 100) or RGB(160, 220, 150)
+        local on = sel.veh == id
+        c.st.Transparency = on and 0 or 1
+        c.st.Color = RGB(255, 210, 60)
+        c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
+      end
+      if sel.veh and not vehCards[sel.veh] then sel.veh = nil end
+    end
     buildSpawns(S)
     if (S.wait or 0) > 0 then
       deployBtn.Text = T("ui.waitRespawn", S.wait)
       deployBtn.BackgroundColor3 = RGB(70, 70, 70)
     else
       deployBtn.Text = T("ui.deployBtn")
-      deployBtn.BackgroundColor3 = (sel.role and sel.spawn) and RGB(60, 150, 80) or RGB(70, 90, 76)
+      local ready = (sel.mode == "veh") and (sel.veh and sel.spawn) or (sel.role and sel.spawn)
+      deployBtn.BackgroundColor3 = ready and RGB(60, 150, 80) or RGB(70, 90, 76)
     end
   end
 
@@ -5261,24 +6947,399 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="22">
+        <Item class="ModuleScript" referent="25">
+          <Properties>
+            <string name="Name">VehModels</string>
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——地面载具的零件模型：按 VehDefs 的尺寸拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
+--   履带车的负重轮 / 主动轮 / 诱导轮 / 履带（下面一段段跟着负重轮上下）、轮式车的车轮（带轮毂、挡泥板，前轴转向）、
+--   各式炮塔（楔形、圆形、艾布拉姆斯、步战车、遥控武器站、自行高炮、火神炮、自行榴弹炮、发射箱）、炮管（抽烟装置、炮口制退器）、
+--   烟幕弹发射筒（就装在 VehDefs 规定的位置、朝规定的方向）
+--   返回 { model, parts = { { 零件, 组, 相对位置 } }, wheels = { … } }：组是 hull（车体）/ turret / gun / wheel（第几个轮）/ seg（履带段）
+--   每帧由 View 按车体、炮塔、炮、各轮的姿态算出零件位置（BulkMoveTo）
+local VehModels = {}
+
+local V = Vector3.new
+local CF = CFrame.new
+local RGB = Color3.fromRGB
+local MAT = Enum.Material
+local CYL, BALL = Enum.PartType.Cylinder, Enum.PartType.Ball
+local ALONG_Z = CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）转到 Z（炮管、烟幕弹管）
+local UPRIGHT = CFrame.Angles(0, 0, math.pi / 2)  -- 圆柱的轴转到 Y（竖着的圆盘、舱盖）
+
+local CAMO = {
+  atk = { base = RGB(86, 100, 68), dark = RGB(60, 70, 48), light = RGB(118, 126, 90) },   -- 解放军：林地绿
+  def = { base = RGB(176, 158, 116), dark = RGB(128, 114, 84), light = RGB(198, 184, 146) },   -- 美军：沙色
+}
+local TRACK, RUBBER, STEEL, GLASS = RGB(44, 44, 46), RGB(28, 28, 30), RGB(70, 72, 74), RGB(40, 54, 62)
+
+function VehModels.build(d, team)
+  local C = CAMO[team] or CAMO.atk
+  local m = Instance.new("Model")
+  m.Name = d.id
+  local parts, wheels = {}, {}
+  local rng = Random.new(#d.id * 7919 + (team == "def" and 1 or 0))
+
+  local function add(group, size, off, color, mat, shape, idx)
+    local p = Instance.new((shape == "wedge") and "WedgePart" or "Part")
+    if shape and shape ~= "wedge" then p.Shape = shape end
+    p.Size = size
+    p.Color = color
+    p.Material = mat or MAT.SmoothPlastic
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    p.CFrame = off
+    p.Parent = m
+    table.insert(parts, { p, group, off, idx })
+    return p
+  end
+  local function hull(size, off, color, mat, shape) return add("hull", size, off, color or C.base, mat or MAT.Metal, shape) end
+  local function tur(size, off, color, mat, shape) return add("turret", size, off, color or C.base, mat or MAT.Metal, shape) end
+  local function gun(size, off, color, mat, shape) return add("gun", size, off, color or C.base, mat or MAT.Metal, shape) end
+  -- 一根沿 −Z 的圆管：从 z0 到 z1（z1 更靠前），直径 dia
+  local function tube(fn, x, y, z0, z1, dia, color, mat)
+    local L = math.abs(z1 - z0)
+    return fn(V(L, dia, dia), CF(x, y, (z0 + z1) / 2) * ALONG_Z, color, mat, CYL)
+  end
+  -- 一组迷彩斑块（贴在一个面上的薄片）
+  local function blotches(fn, cx, cy, cz, w, h, axis, n)
+    for _ = 1, n do
+      local u, v = (rng:NextNumber() - 0.5) * w, (rng:NextNumber() - 0.5) * h
+      local sw, sh = rng:NextNumber(1.2, 3.2), rng:NextNumber(0.6, 1.6)
+      if axis == "x" then fn(V(0.06, sh, sw), CF(cx, cy + v, cz + u), C.dark, MAT.SmoothPlastic)
+      elseif axis == "y" then fn(V(sw, 0.06, sh), CF(cx + u, cy, cz + v), C.dark, MAT.SmoothPlastic) end
+    end
+  end
+
+  local W, L, H, hh, clear = d.W, d.L, d.H, d.hullH, d.clear
+
+  ---------------------------------------------------------------- 行走部分
+
+  if d.arch == "tracked" then
+    local R = d.rw
+    local tw = math.max(1.2, W * 0.16)   -- 履带宽
+    local spacing = (R.z1 - R.z0) / (R.n - 1)
+    for s = -1, 1, 2 do
+      local x = s * R.x
+      for i = 1, R.n do
+        local z = R.z0 + (i - 1) * spacing
+        local wi = #wheels + 1
+        wheels[wi] = { x = x, z = z, r = R.r, side = s, dy = 0, vy = 0, spin = 0, steer = false }
+        add("wheel", V(tw * 0.8, R.r * 2, R.r * 2), CF(), RUBBER, MAT.SmoothPlastic, CYL, wi)
+        add("wheel", V(tw * 0.84, R.r * 1.2, R.r * 1.2), CF(), C.dark, MAT.Metal, CYL, wi)
+        add("wheel", V(tw * 0.86, R.r * 1.5, 0.25), CF(), STEEL, MAT.Metal, nil, wi)   -- 辐条（看得出在转）
+        add("seg", V(tw, 0.32, spacing * 1.04), CF(x, 0.16, z), TRACK, MAT.DiamondPlate, nil, wi)   -- 下面这一段履带跟着轮
+      end
+      -- 上面一段履带、主动轮（前）、诱导轮（后）、前后斜着的两段
+      local ytop = R.r * 2 + 0.18
+      local zf, zb = R.z0 - R.r * 1.35, R.z1 + R.r * 1.25
+      hull(V(tw, 0.32, R.z1 - R.z0 + R.r * 1.6), CF(x, ytop, (R.z0 + R.z1) / 2), TRACK, MAT.DiamondPlate)
+      hull(V(tw * 0.9, R.r * 1.7, R.r * 1.7), CF(x, R.r * 1.35, zf), STEEL, MAT.Metal, CYL)
+      hull(V(tw * 0.9, R.r * 1.6, R.r * 1.6), CF(x, R.r * 1.3, zb), STEEL, MAT.Metal, CYL)
+      for _, e in ipairs({ { R.z0, zf, -1 }, { R.z1, zb, 1 } }) do
+        local a = V(x, 0.2, e[1] + e[3] * R.r * 0.3)
+        local b = V(x, ytop, e[2] + e[3] * R.r * 0.2)
+        local mid, len = (a + b) / 2, (b - a).Magnitude
+        hull(V(tw, 0.32, len), CFrame.lookAt(mid, b), TRACK, MAT.DiamondPlate)
+      end
+      if d.skirt then   -- 侧裙板：盖住负重轮上半截
+        hull(V(0.3, R.r * 1.25, R.z1 - R.z0 + R.r * 2.4), CF(s * (W / 2 - 0.15), R.r * 1.75, (R.z0 + R.z1) / 2 - R.r * 0.3), C.base, MAT.Metal)
+        blotches(hull, s * (W / 2), R.r * 1.75, (R.z0 + R.z1) / 2, R.z1 - R.z0, R.r, "x", 3)
+      end
+    end
+  else
+    local wx, wr, ww = d.wx, d.wr, d.ww
+    for ai, z in ipairs(d.axles) do
+      for s = -1, 1, 2 do
+        local wi = #wheels + 1
+        wheels[wi] = { x = s * wx, z = z, r = wr, side = s, dy = 0, vy = 0, spin = 0, steer = ai <= (d.steer or 1) }
+        add("wheel", V(ww, wr * 2, wr * 2), CF(), RUBBER, MAT.SmoothPlastic, CYL, wi)
+        add("wheel", V(ww + 0.06, wr * 1.1, wr * 1.1), CF(), C.dark, MAT.Metal, CYL, wi)
+        add("wheel", V(ww + 0.1, wr * 0.45, wr * 0.45), CF(), STEEL, MAT.Metal, CYL, wi)
+        add("wheel", V(ww + 0.08, wr * 1.6, 0.22), CF(), RUBBER, MAT.SmoothPlastic, nil, wi)   -- 胎面花纹（看得出在转）
+        -- 挡泥板（跟车体）
+        hull(V(ww + 0.5, 0.25, wr * 2.3), CF(s * wx, wr * 2 + 0.55, z), C.dark, MAT.Metal)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 车体
+
+  if d.arch == "tracked" then
+    local tw = math.max(1.2, W * 0.16)
+    local inner = W - 2 * tw - 0.3
+    hull(V(inner, hh - clear - 0.7, L * 0.94), CF(0, clear + (hh - clear - 0.7) / 2, 0), C.base)   -- 下车体
+    hull(V(W, 0.75, L * 0.9), CF(0, hh - 0.375, L * 0.03), C.base)   -- 上车体（翼子板一直伸到履带上面）
+    -- 首上（斜面朝前上）、首下（斜面朝前下）
+    hull(V(W * 0.96, 1.5, 3.2), CF(0, hh - 0.75 - 0.75 + 0.75, -L / 2 + 1.0), C.base, MAT.Metal, "wedge")
+    hull(V(inner, hh - clear - 1.2, 2.0), CF(0, clear + (hh - clear - 1.2) / 2, -L / 2 + 0.2) * CFrame.Angles(0, 0, math.pi), C.dark, MAT.Metal, "wedge")
+    -- 发动机舱：散热格栅、排气口
+    for i = 0, 3 do hull(V(W * 0.62, 0.12, 0.5), CF(0, hh + 0.06, L * 0.18 + i * 1.1), C.dark, MAT.DiamondPlate) end
+    hull(V(W * 0.7, 0.9, 0.35), CF(0, hh - 0.9, L / 2 - 0.1), C.dark)
+    hull(V(1.2, 0.5, 0.4), CF(W * 0.28, hh - 0.6, L / 2 + 0.1), RGB(36, 36, 36))
+    -- 车灯、牵引钩、工具箱
+    for s = -1, 1, 2 do
+      hull(V(0.5, 0.35, 0.3), CF(s * W * 0.36, hh - 0.5, -L / 2 + 0.3), RGB(220, 220, 200), MAT.Glass)
+      hull(V(0.5, 0.5, 0.6), CF(s * W * 0.22, clear + 0.5, -L / 2 - 0.1), STEEL)
+      hull(V(0.9, 0.7, 3.2), CF(s * (W / 2 - 0.5), hh + 0.35, L * 0.22), C.dark)
+    end
+    if d.era then   -- 首上的反应装甲块
+      for i = -3, 3 do
+        for j = 0, 1 do hull(V(0.95, 0.35, 0.9), CF(i * 1.05, hh - 0.35 + j * 0.15, -L / 2 + 1.9 + j * 1.0), C.light, MAT.Metal) end
+      end
+    end
+    if d.plow then   -- 扫雷犁
+      hull(V(W * 0.92, 1.4, 0.4), CF(0, 0.9, -L / 2 - 1.6) * CFrame.Angles(math.rad(-25), 0, 0), STEEL, MAT.DiamondPlate)
+      for i = -3, 3 do hull(V(0.28, 1.0, 1.2), CF(i * 1.3, 0.45, -L / 2 - 2.1), STEEL) end
+    end
+    if d.boat then   -- 两栖车：前面的防浪板
+      hull(V(W * 0.9, 1.8, 0.3), CF(0, hh - 0.3, -L / 2 - 0.3) * CFrame.Angles(math.rad(35), 0, 0), C.dark)
+    end
+    if d.cab then   -- M270：前面的驾驶室
+      hull(V(W * 0.86, 2.6, 5.6), CF(0, hh + 1.3, -L / 2 + 3.2), C.base)
+      hull(V(W * 0.8, 1.0, 0.1), CF(0, hh + 1.9, -L / 2 + 0.38), GLASS, MAT.Glass)
+    end
+    blotches(hull, 0, hh + 0.01, 0, W * 0.8, L * 0.6, "y", 4)
+  else
+    local bw = W * 0.9
+    if d.light then   -- 悍马、JLTV：低车身 + 发动机罩 + 乘员舱
+      hull(V(bw, hh * 0.38, L * 0.96), CF(0, clear + hh * 0.19 + 0.3, 0), C.base)
+      hull(V(bw * 0.96, 1.2, L * 0.36), CF(0, clear + hh * 0.38 + 0.9, -L * 0.3), C.base, MAT.Metal, "wedge")
+      hull(V(bw, hh * 0.42, L * 0.56), CF(0, clear + hh * 0.38 + hh * 0.21 + 0.3, L * 0.14), C.base)
+      for s = -1, 1, 2 do
+        hull(V(0.08, hh * 0.24, L * 0.36), CF(s * (bw / 2 + 0.02), clear + hh * 0.66, L * 0.12), GLASS, MAT.Glass)
+      end
+      hull(V(bw * 0.86, hh * 0.24, 0.1), CF(0, clear + hh * 0.66, -L * 0.15), GLASS, MAT.Glass)
+    elseif d.truck then   -- 卡车底盘：驾驶室在前、后面平板上装家伙
+      hull(V(bw, 0.9, L * 0.96), CF(0, clear + 0.45, 0), C.dark)
+      hull(V(bw, 3.4, 5.4), CF(0, clear + 0.9 + 1.7, -L / 2 + 2.8), C.base)
+      hull(V(bw * 0.9, 1.2, 0.1), CF(0, clear + 3.0, -L / 2 + 0.06), GLASS, MAT.Glass)
+      hull(V(bw, 0.5, L - 6), CF(0, hh - 0.25, 3.0), C.base)
+      for s = -1, 1, 2 do hull(V(0.6, 0.35, 0.25), CF(s * bw * 0.36, clear + 1.4, -L / 2 + 0.05), RGB(220, 220, 200), MAT.Glass) end
+    else   -- 装甲车：车身 + 前面的斜板 + 车顶
+      hull(V(bw, hh - clear - 0.9, L * 0.94), CF(0, clear + (hh - clear - 0.9) / 2, 0.2), C.base)
+      hull(V(bw, 1.8, 3.4), CF(0, hh - 0.9 - 0.9 + 0.9, -L / 2 + 1.5), C.base, MAT.Metal, "wedge")
+      hull(V(bw, hh - clear - 2.6, 1.6), CF(0, clear + (hh - clear - 2.6) / 2, -L / 2 + 0.7) * CFrame.Angles(0, 0, math.pi), C.dark, MAT.Metal, "wedge")
+      hull(V(bw * 0.96, 0.9, L * 0.78), CF(0, hh - 0.45, L * 0.08), C.base)
+      hull(V(bw * 0.5, hh - clear - 1.4, 0.3), CF(0, clear + (hh - clear - 1.4) / 2 + 0.3, L / 2 + 0.05), C.dark)   -- 后门
+      for s = -1, 1, 2 do
+        hull(V(0.5, 0.3, 0.25), CF(s * bw * 0.34, hh - 1.4, -L / 2 + 0.25), RGB(220, 220, 200), MAT.Glass)
+        hull(V(0.9, 0.8, 3.0), CF(s * (bw / 2 + 0.2), hh - 1.3, L * 0.2), C.dark)
+      end
+      if d.boat then hull(V(bw, 1.6, 0.3), CF(0, hh - 0.6, -L / 2 - 0.4) * CFrame.Angles(math.rad(35), 0, 0), C.dark) end
+    end
+    blotches(hull, 0, hh + 0.01, 0, bw * 0.7, L * 0.5, "y", 3)
+  end
+
+  ---------------------------------------------------------------- 炮塔（坐标系：转轴在原点，−Z 朝前）
+
+  local T = d.turret
+  local s = T.size
+  local st = T.style
+  if st == "wedge" or st == "round" or st == "abrams" then
+    if st == "round" then
+      tur(V(s.Y, s.X * 0.95, s.X * 0.95), CF(0, s.Y / 2, s.Z * 0.02) * UPRIGHT, C.base, MAT.Metal, CYL)
+    else
+      tur(V(s.X * 0.86, s.Y, s.Z * 0.66), CF(0, s.Y / 2, s.Z * 0.1), C.base)
+    end
+    -- 前面两块斜的（楔形装甲 / 反应装甲）
+    for sx = -1, 1, 2 do
+      local blk = tur(V(s.X * 0.36, s.Y * 0.92, s.Z * 0.42), CF(sx * s.X * 0.24, s.Y * 0.47, -s.Z * 0.33) * CFrame.Angles(0, sx * math.rad(st == "abrams" and 12 or 26), 0),
+        (d.era and C.light) or C.base)
+      if d.era then
+        for i = 0, 2 do tur(V(s.X * 0.37, 0.12, 0.9), CF(sx * s.X * 0.24, s.Y * 0.95, -s.Z * 0.2 - i * 1.0), C.dark, MAT.SmoothPlastic) end
+      end
+    end
+    if T.bustle then tur(V(s.X * 0.72, s.Y * 0.78, T.bustle), CF(0, s.Y * 0.45, s.Z / 2 + T.bustle / 2 - 0.4), C.base) end
+    -- 舱盖、观瞄、天线
+    tur(V(0.25, 1.4, 1.4), CF(d.cupola and d.cupola.X or 1.4, s.Y + 0.12, d.cupola and d.cupola.Z or 0.2) * UPRIGHT, C.dark, MAT.Metal, CYL)
+    tur(V(0.25, 1.2, 1.2), CF(-1.2, s.Y + 0.12, 0.6) * UPRIGHT, C.dark, MAT.Metal, CYL)
+    tur(V(0.9, 0.8, 1.1), CF(d.sight.X, s.Y + 0.4, d.sight.Z), C.dark)   -- 炮长镜
+    tur(V(0.15, 0.15, 1.4), CF(d.sight.X, s.Y + 0.4, d.sight.Z - 0.6) * CFrame.Angles(0, 0, 0), GLASS, MAT.Glass)
+    if d.citv then tur(V(1.0, 1.2, 1.0), CF(d.citv.X, s.Y + 0.6, d.citv.Z), C.dark) end
+    tur(V(0.6, 0.6, 1.4), CF((d.cupola and d.cupola.X or 1.4), s.Y + 0.6, (d.cupola and d.cupola.Z or 0.2) - 0.6), RGB(40, 42, 44))   -- 车长机枪
+    for sx = -1, 1, 2 do tur(V(0.1, 7, 0.1), CF(sx * s.X * 0.32, s.Y + 3.5, s.Z * 0.42), RGB(30, 30, 30), MAT.Metal, CYL) end
+    blotches(tur, 0, s.Y + 0.01, 0, s.X * 0.6, s.Z * 0.6, "y", 3)
+  elseif st == "ifv" then
+    tur(V(s.X, s.Y, s.Z * 0.8), CF(0, s.Y / 2, s.Z * 0.1), C.base)
+    tur(V(s.X * 0.9, s.Y * 0.9, s.Z * 0.3), CF(0, s.Y * 0.45, -s.Z * 0.45), C.base, MAT.Metal, "wedge")
+    tur(V(0.8, 0.7, 0.9), CF(d.sight.X, s.Y + 0.35, d.sight.Z), C.dark)
+    tur(V(0.25, 1.1, 1.1), CF(0.9, s.Y + 0.12, 0.6) * UPRIGHT, C.dark, MAT.Metal, CYL)
+    if T.tow then tur(V(1.2, 1.4, 3.0), CF(s.X / 2 + 0.6, s.Y * 0.6, 0.4), C.dark) end   -- 布雷德利的陶式发射箱
+    if T.pods then
+      for sx = -1, 1, 2 do tur(V(1.0, 1.4, 2.4), CF(sx * (s.X / 2 + 0.55), s.Y * 0.6, 0.2), C.dark) end
+    end
+    tur(V(0.1, 6, 0.1), CF(-s.X * 0.35, s.Y + 3, s.Z * 0.4), RGB(30, 30, 30), MAT.Metal, CYL)
+  elseif st == "rws" or st == "ring" then
+    if st == "ring" then
+      tur(V(0.4, s.X, s.X), CF(0, 0.2, 0) * UPRIGHT, C.dark, MAT.Metal, CYL)
+      tur(V(1.8, 1.2, 0.15), CF(0, 1.0, -0.9), C.base)   -- 枪盾
+      for sx = -1, 1, 2 do tur(V(0.15, 1.0, 1.0), CF(sx * 0.95, 0.9, -0.5) * CFrame.Angles(0, sx * 0.5, 0), C.base) end
+    else
+      tur(V(1.3, 0.7, 1.3), CF(0, 0.35, 0), C.dark)
+      tur(V(0.7, 0.6, 0.7), CF(0.75, 1.0, -0.2), C.dark)   -- 光电
+    end
+  elseif st == "spaag" then
+    tur(V(s.X * 0.7, s.Y, s.Z), CF(0, s.Y / 2, 0), C.base)
+    tur(V(s.X * 0.66, s.Y * 0.7, s.Z * 0.3), CF(0, s.Y * 0.35, -s.Z * 0.55), C.base, MAT.Metal, "wedge")
+    -- 后上方的搜索雷达（一直转：标记 Radar）、前面的跟踪雷达
+    local rd = tur(V(0.25, 3.4, 1.4), CF(0, s.Y + 1.6, s.Z * 0.3), STEEL, MAT.Metal)
+    rd:SetAttribute("Radar", true)
+    tur(V(0.3, 0.3, 1.4), CF(0, s.Y + 0.7, s.Z * 0.3), STEEL, MAT.Metal, CYL)
+    tur(V(0.6, 1.1, 1.1), CF(0, s.Y + 0.5, -s.Z * 0.3) * ALONG_Z, C.dark, MAT.Metal, CYL)
+  elseif st == "vulcan" then
+    tur(V(s.X, s.Y * 0.7, s.Z), CF(0, s.Y * 0.35, 0), C.base)
+    if T.dome then   -- C-RAM：白色雷达罩
+      tur(V(1.8, 1.8, 1.8), CF(0, s.Y + 0.6, 0.8), RGB(230, 230, 225), MAT.SmoothPlastic, BALL)
+      tur(V(1.0, 1.8, 1.8), CF(0, s.Y - 0.1, 0.8) * UPRIGHT, RGB(230, 230, 225), MAT.SmoothPlastic, CYL)
+    elseif T.radar then
+      local rd = tur(V(0.2, 2.4, 1.2), CF(0, s.Y + 1.2, s.Z * 0.35), STEEL)
+      rd:SetAttribute("Radar", true)
+    else
+      tur(V(1.2, 1.0, 0.8), CF(s.X * 0.35, s.Y * 0.85, s.Z * 0.2), C.dark)   -- 测距雷达
+    end
+  elseif st == "sph" then
+    tur(V(s.X, s.Y, s.Z), CF(0, s.Y / 2, 0), C.base)
+    tur(V(s.X * 0.96, s.Y * 0.5, 1.6), CF(0, s.Y * 0.75, -s.Z / 2 - 0.4), C.base, MAT.Metal, "wedge")
+    for sx = -1, 1, 2 do tur(V(0.1, s.Y * 0.6, 2.2), CF(sx * (s.X / 2 + 0.03), s.Y * 0.45, 0.6), C.dark) end   -- 侧门
+    tur(V(0.25, 1.4, 1.4), CF(s.X * 0.28, s.Y + 0.12, s.Z * 0.15) * UPRIGHT, C.dark, MAT.Metal, CYL)
+    tur(V(0.6, 0.6, 1.4), CF(s.X * 0.28, s.Y + 0.6, s.Z * 0.15 - 0.6), RGB(40, 42, 44))
+    blotches(tur, 0, s.Y + 0.01, 0, s.X * 0.6, s.Z * 0.6, "y", 3)
+  elseif st == "launcher" then
+    tur(V(s.X * 0.8, 0.8, s.Z * 0.5), CF(0, 0.4, 0), C.dark)
+  end
+
+  ---------------------------------------------------------------- 炮（坐标系：耳轴在原点，−Z 朝前，跟着俯仰）
+
+  local Gd = d.gun
+  if st == "launcher" then   -- 发射箱整个跟着起竖：前端一格格的管口
+    gun(V(s.X, s.Y, s.Z), CF(0, s.Y / 2 + 0.4, 0), C.base)
+    local nx, ny = 3, 2
+    for i = 0, nx - 1 do
+      for j = 0, ny - 1 do
+        gun(V(s.X / nx * 0.8, s.Y / ny * 0.8, 0.1), CF((i - (nx - 1) / 2) * s.X / nx, 0.4 + (j + 0.5) * s.Y / ny, -s.Z / 2 - 0.02), RGB(26, 26, 28))
+      end
+    end
+  elseif Gd.len > 0 then
+    if st ~= "rws" and st ~= "ring" then gun(V(math.min(s.X * 0.4, 3.0), Gd.cal * 3.6 + 0.6, 1.6), CF(0, 0, -0.4), C.base) end   -- 防盾
+    if Gd.gatling then
+      for k = 0, 5 do
+        local a = k * math.pi / 3
+        tube(gun, math.cos(a) * Gd.cal * 0.55, math.sin(a) * Gd.cal * 0.55, -0.6, -Gd.len, Gd.cal * 0.32, RGB(40, 40, 42))
+      end
+      tube(gun, 0, 0, -0.6, -1.6, Gd.cal * 1.7, RGB(50, 50, 52))
+    elseif T.twin then   -- 双管高炮：炮塔两侧各一门
+      for sx = -1, 1, 2 do
+        gun(V(1.1, 1.3, 3.0), CF(sx * T.twin / 2, 0, -0.6), C.dark)
+        tube(gun, sx * T.twin / 2, 0, -2.0, -Gd.len, Gd.cal, RGB(46, 48, 50))
+        tube(gun, sx * T.twin / 2, 0, -Gd.len + 0.6, -Gd.len, Gd.cal * 1.6, RGB(46, 48, 50))
+      end
+    else
+      tube(gun, 0, 0, -0.6, -Gd.len, Gd.cal, RGB(52, 54, 52))
+      tube(gun, 0, 0, -0.9, -Gd.len * 0.5, Gd.cal * 1.18, C.base)   -- 热护套
+      if Gd.fume then tube(gun, 0, 0, -Gd.len * 0.42, -Gd.len * 0.55, Gd.cal * 1.7, C.base) end
+      if Gd.brake then gun(V(Gd.cal * 2.4, Gd.cal * 1.5, Gd.cal * 2.8), CF(0, 0, -Gd.len), RGB(48, 50, 50)) end
+    end
+    if d.coax then   -- 并列机枪口
+      local c = d.coax - Gd.pivot
+      tube(gun, c.X, c.Y, -0.2, -1.4, 0.2, RGB(30, 30, 30))
+    end
+  end
+
+  ---------------------------------------------------------------- 烟幕弹发射筒（和 VehDefs.smokeTubes 一样的位置、朝向）
+
+  local S = d.smoke
+  if S then
+    for _, b in ipairs(S.banks) do
+      local fn = b.hull and hull or tur
+      local frame = b.hull and (CF(0, hh, 0) * CF(b.at)) or CF(b.at)
+      fn(V(1.1, 0.5, 0.9), frame * CF(0, -0.3, 0.1), C.dark)   -- 发射架
+      for i = 1, S.n do
+        local fan = (S.n > 1) and ((i - 1) / (S.n - 1) - 0.5) or 0
+        local yaw2 = math.rad(b.yaw + fan * 40 * (b.yaw >= 0 and 1 or -1))
+        local cf = frame * CF(fan * 0.9, (i % 2) * 0.35, 0) * CFrame.Angles(0, -yaw2, 0) * CFrame.Angles(math.rad(35), 0, 0)
+        fn(V(0.85, 0.34, 0.34), cf * CF(0, 0, -0.3) * ALONG_Z, RGB(54, 58, 50), MAT.Metal, CYL)
+        fn(V(0.05, 0.26, 0.26), cf * CF(0, 0, -0.74) * ALONG_Z, RGB(20, 20, 20), MAT.SmoothPlastic, CYL)   -- 管口
+      end
+    end
+  end
+
+  -- 扬尘：后轮那里两个隐形发射点
+  local dust = {}
+  for _, s2 in ipairs({ -1, 1 }) do
+    local p = hull(V(0.2, 0.2, 0.2), CF(s2 * W * 0.4, 0.4, L * 0.45), C.base)
+    p.Transparency = 1
+    local pe = Instance.new("ParticleEmitter")
+    pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    pe.Rate = 0
+    pe.Lifetime = NumberRange.new(1.4, 2.6)
+    pe.Speed = NumberRange.new(2, 6)
+    pe.SpreadAngle = Vector2.new(35, 35)
+    pe.Acceleration = V(0, 2.5, 0)
+    pe.Drag = 1.5
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(1, 11) })
+    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1) })
+    pe.Color = ColorSequence.new(RGB(190, 170, 130))
+    pe.EmissionDirection = Enum.NormalId.Back
+    pe.LightInfluence = 1
+    pe.Parent = p
+    table.insert(dust, pe)
+  end
+
+  -- 被毁后的火、黑烟（平时关着）
+  local fireP = hull(V(0.2, 0.2, 0.2), CF(0, hh + 0.5, 0), C.base)
+  fireP.Transparency = 1
+  local fire = Instance.new("ParticleEmitter")
+  fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+  fire.Rate = 0
+  fire.Lifetime = NumberRange.new(0.6, 1.2)
+  fire.Speed = NumberRange.new(4, 8)
+  fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 1) })
+  fire.Color = ColorSequence.new(RGB(255, 170, 60), RGB(255, 80, 30))
+  fire.LightEmission = 1
+  fire.Parent = fireP
+  local black = Instance.new("ParticleEmitter")
+  black.Texture = "rbxasset://textures/particles/smoke_main.dds"
+  black.Rate = 0
+  black.Lifetime = NumberRange.new(4, 7)
+  black.Speed = NumberRange.new(6, 10)
+  black.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 18) })
+  black.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+  black.Color = ColorSequence.new(RGB(30, 30, 30))
+  black.Parent = fireP
+
+  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d }
+end
+
+return VehModels
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="26">
           <Properties>
             <string name="Name">View</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量），
---   这里按种类拼一个本地模型，每帧平滑地跟着 Root 走（服务器 10 次 / 秒地挪，直接跟会一顿一顿的）；头顶血条
---   机器人步兵（摆腿走路）、登陆艇（放跳板）、炸药包、地雷；载具、舰艇、工事在后面的版本里接
+            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
+--   这里按种类拼一个本地模型，每帧平滑地跟着 Root 走（服务器 10～15 次 / 秒地挪，直接跟会一顿一顿的）；头顶血条
+--   机器人步兵（摆腿走路、倒地）、登陆艇（放跳板、被打沉往下沉）、气垫艇、炸药包、地雷
+--   地面载具（VehModels 拼的）：每个车轮 / 负重轮各自一个弹簧阻尼（按脚下的地面高度 + 细碎的颠簸，过坡上下抖），
+--     车体跟着轮子上下、前后俯仰、左右侧倾（也带弹簧，刹车点头、起步抬头）；炮塔、炮按属性 Ty / Gp 转（自己开的车用本地的），
+--     开炮后坐、车轮按走的路转、前轮转向、雷达转、扬尘、被毁冒火冒黑烟；零件一次 BulkMoveTo
 local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
 
 local View = {}
 
 function View.init(G)
   local Config = G.Config
+  local Map = require(RS:WaitForChild("Map"))
+  local VD = require(RS:WaitForChild("VehDefs"))
+  local VM = require(script.Parent:WaitForChild("VehModels"))
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
 
-  local VF = Instance.new("Folder")
+  -- 一个 Model 装所有实体的样子：热成像时整个打一个高亮（Highlight 有数量上限）
+  local VF = Instance.new("Model")
   VF.Name = "EntView"
   VF.Parent = workspace
   G.viewFolder = VF
@@ -5294,7 +7355,7 @@ function View.init(G)
     return x
   end
 
-  -- 每种实体：build 拼零件（相对 Root 的偏移记在 parts 里），animate 每帧额外动（腿、跳板）
+  -- 每种实体：拼零件（相对 Root 的偏移记在 parts 里），每帧额外动（腿、跳板）
   local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }
   local KINDS = {}
   -- 机器人：服务器的命中盒高 5.6 格、中心在脚底上 2.8 格
@@ -5324,16 +7385,32 @@ function View.init(G)
     L.ramp = { p(m, V(15, 6, 0.8), CF(), hull, Enum.Material.Metal), CF(0, 1, -17), "ramp" }
     return L
   end
+  -- 726 型气垫艇：黑色气垫围裙、甲板、两侧上层建筑、尾部两个大风扇
+  KINDS.lcac = function(m)
+    local L = {}
+    local grey = RGB(112, 120, 116)
+    L.skirt = { p(m, V(28, 3, 48), CF(), RGB(30, 30, 32), Enum.Material.Fabric), CF(0, -1.6, 0) }
+    L.deck = { p(m, V(24, 1, 44), CF(), grey, Enum.Material.DiamondPlate), CF(0, 0.2, 0) }
+    for s = -1, 1, 2 do
+      L["side" .. s] = { p(m, V(3, 4, 40), CF(), grey, Enum.Material.Metal), CF(s * 12.5, 2.3, 0) }
+      L["fan" .. s] = { p(m, V(2, 9, 9), CF(), RGB(70, 74, 72), Enum.Material.Metal, Enum.PartType.Cylinder), CF(s * 6, 6, 20) * CFrame.Angles(0, math.pi / 2, 0) }
+      L["fin" .. s] = { p(m, V(0.4, 6, 3), CF(), grey, Enum.Material.Metal), CF(s * 6, 6, 23.5) }
+    end
+    L.bridge = { p(m, V(4, 4, 6), CF(), grey, Enum.Material.Metal), CF(10.5, 6.2, -14) }
+    return L
+  end
   KINDS.c4 = function(m) return { b = { p(m, V(1.1, 0.5, 0.7), CF(), RGB(176, 156, 112)), CF() }, l = { p(m, V(0.2, 0.2, 0.2), CF(), RGB(255, 40, 40), Enum.Material.Neon), CF(0, 0.3, 0) } } end
   KINDS.mine = function(m) return { b = { p(m, V(0.4, 1.4, 1.4), CF(), RGB(86, 96, 64), Enum.Material.Metal, Enum.PartType.Cylinder), CFrame.Angles(0, 0, math.pi / 2) } } end
 
-  local views = {}   -- [entModel] = { model, parts, cf, kind, t }
-  local function bar(m, root)
+  local views = {}   -- [entModel] = { model, parts, cf, kind, t, … }
+  G.views = views
+  local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
+  local function bar(m, adornee, h)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(46, 6)
-    bb.StudsOffsetWorldSpace = V(0, 5, 0)
+    bb.StudsOffsetWorldSpace = V(0, h or 5, 0)
     bb.MaxDistance = 260
-    bb.Adornee = root
+    bb.Adornee = adornee
     bb.Parent = m
     local bg = Instance.new("Frame")
     bg.Size = UDim2.fromScale(1, 1)
@@ -5349,27 +7426,54 @@ function View.init(G)
   end
 
   local function add(em)
+    if views[em] then return end
     local kind = em:GetAttribute("Kind")
-    local mk = KINDS[kind]
     local root = em:FindFirstChild("Root")
-    if not mk or not root then return end
-    local m = Instance.new("Model")
-    m.Name = kind
+    if not root then return end
     local team = em:GetAttribute("Team")
-    local parts = mk(m, team)
-    m.Parent = VF
-    local bb, fill = bar(m, parts[next(parts)][1])
-    fill.BackgroundColor3 = Config.Teams[team or "atk"].color
-    views[em] = { model = m, parts = parts, cf = root.CFrame, root = root, kind = kind, t = 0, bb = bb, fill = fill, team = team }
+    local v = { cf = root.CFrame, root = root, kind = kind, t = 0, team = team, id = em:GetAttribute("EntId"), em = em }
+    if kind == "veh" then
+      local d = VD.get(em:GetAttribute("Model") or "")
+      if not d then return end
+      local M = VM.build(d, team)
+      M.model.Parent = VF
+      v.M, v.def, v.model = M, d, M.model
+      v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
+      v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
+      v.speed, v.steer, v.lastPos, v.lastYaw = 0, 0, root.CFrame.Position, 0
+      v.plist, v.clist = {}, {}
+      for i, it in ipairs(M.parts) do v.plist[i] = it[1] end
+      local anchor = Instance.new("Part")   -- 血条挂的点（在车顶上）
+      anchor.Size, anchor.Transparency, anchor.Anchored = V(0.2, 0.2, 0.2), 1, true
+      anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = false, false, false
+      anchor.Parent = M.model
+      v.anchor = anchor
+      v.bb, v.fill = bar(M.model, anchor, 2)
+      v.bb.MaxDistance = 600
+    else
+      local mk = KINDS[kind]
+      if not mk then return end
+      local m = Instance.new("Model")
+      m.Name = kind
+      v.parts = mk(m, team)
+      v.model = m
+      m.Parent = VF
+      v.bb, v.fill = bar(m, v.parts[next(v.parts)][1])
+    end
+    v.fill.BackgroundColor3 = Config.Teams[team or "atk"].color
+    views[em] = v
+    if v.id then byId[v.id] = v end
   end
+
   -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
   local dying = {}
   local function remove(em)
     local v = views[em]
     if not v then return end
     views[em] = nil
+    if v.id then byId[v.id] = nil end
     local hp = em:GetAttribute("Hp") or 1
-    if hp <= 0 then
+    if hp <= 0 and v.kind ~= "veh" then
       v.t0 = os.clock()
       if v.bb then v.bb:Destroy() end
       table.insert(dying, v)
@@ -5398,6 +7502,132 @@ function View.init(G)
     end
   end
 
+  -- 开炮：这辆车的炮往后坐一下
+  function G.vehRecoil(id)
+    local v = byId[id]
+    if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35 end
+  end
+
+  ---------------------------------------------------------------- 载具：悬架
+
+  -- 细碎的颠簸（土路、草地上轮子一跳一跳）：两层噪声，约 ±0.35 格
+  local function bump(x, z)
+    return 0.22 * math.noise(x / 5.3, z / 5.3, 0.37) + 0.12 * math.noise(x / 2.1, z / 2.1, 4.1)
+  end
+  local function angDiff(a, b) return (b - a + 180) % 360 - 180 end
+
+  local function stepVeh(v, dt, camPos)
+    local em, d, M = v.em, v.def, v.M
+    local own = G.myVeh and G.myVeh.em == em and G.myVeh
+    local target = own and own.root or v.root.CFrame
+    -- 位置：自己开的直接用本地算的；别人的平滑跟
+    if own then v.cf = target else v.cf = v.cf:Lerp(target, math.min(1, dt * 12)) end
+    local base = v.cf * CF(0, -d.H / 2, 0)
+    -- 速度、转弯（别人的车按位置变化估）
+    local pos = base.Position
+    if own then
+      v.speed, v.steer, v.accel = own.speed, own.steer, own.accel or 0
+    else
+      local delta = pos - v.lastPos
+      local sp = delta:Dot(base.LookVector) / math.max(dt, 1e-3)
+      v.accel = (sp - v.speed) / math.max(dt, 1e-3)
+      v.speed = v.speed + (sp - v.speed) * math.min(1, dt * 6)
+      local _, yaw = base:ToEulerAnglesYXZ()
+      local yr = angDiff(math.deg(v.lastYaw), math.deg(yaw)) / math.max(dt, 1e-3)
+      v.steer = v.steer + (math.clamp(-yr / math.max(d.turn, 1), -1, 1) - v.steer) * math.min(1, dt * 6)
+      v.lastYaw = yaw
+    end
+    v.lastPos = pos
+    -- 炮塔、炮
+    local ty, gp = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0
+    if own then ty, gp = own.ty, own.gp end
+    if own then v.ty, v.gp = ty, gp else
+      v.ty = v.ty + angDiff(v.ty, ty) * math.min(1, dt * 10)
+      v.gp = v.gp + (gp - v.gp) * math.min(1, dt * 10)
+    end
+    v.recoil = math.max(0, v.recoil - dt * 2.6)
+    local far = (pos - camPos).Magnitude > 420
+    -- 轮子：每个一个弹簧阻尼；远了不算（省事）
+    local W = M.wheels
+    local rough = 1
+    local onWater = Map.height(pos.X, pos.Z) < -1.5
+    local sF, nF, sB, nB, sL, nL, sR, nR, sum = 0, 0, 0, 0, 0, 0, 0, 0, 0
+    if not far then
+      for _, w in ipairs(W) do
+        local wp = (base * CF(w.x, 0, w.z)).Position
+        local gy = Map.height(wp.X, wp.Z)
+        local tgt
+        if gy < -0.5 and onWater then tgt = -d.travel   -- 在水里：轮子垂下去
+        else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -d.travel, d.travel) end
+        local a = (tgt - w.dy) * 420 - w.vy * 26
+        w.vy += a * dt
+        w.dy = math.clamp(w.dy + w.vy * dt, -d.travel * 1.2, d.travel * 1.2)
+        w.spin -= v.speed * dt / w.r
+        sum += w.dy
+        if w.z < 0 then sF += w.dy nF += 1 else sB += w.dy nB += 1 end
+        if w.x < 0 then sL += w.dy nL += 1 else sR += w.dy nR += 1 end
+      end
+    end
+    local n = math.max(1, #W)
+    local wb = math.max(4, (W[#W] and math.abs(W[#W].z - W[1].z)) or d.L * 0.7)
+    local trk = math.max(3, d.W * 0.8)
+    -- 车体：跟着轮子上下、俯仰、侧倾（弹簧）；起步抬头、刹车点头
+    local tBob = sum / n * 0.55
+    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0016, -0.035, 0.035)
+    local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
+    v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
+    v.bob += v.bobV * dt
+    v.pitchV += ((tPitch - v.pitch) * 120 - v.pitchV * 12) * dt
+    v.pitch += v.pitchV * dt
+    v.rollV += ((tRoll - v.roll) * 120 - v.rollV * 12) * dt
+    v.roll += v.rollV * dt
+    local hh = d.hullH
+    local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
+    local tF = hullF * CF(d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
+    local gF = tF * CF(d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
+    v.hullF, v.tF, v.gF = hullF, tF, gF
+    local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
+    local now = os.clock()
+    local plist, clist = v.plist, v.clist
+    for i, it in ipairs(M.parts) do
+      local grp, off = it[2], it[3]
+      local cf
+      if grp == "hull" then cf = hullF * off
+      elseif grp == "turret" then
+        cf = tF * off
+        if it[1]:GetAttribute("Radar") then cf = cf * CFrame.Angles(0, now * 3, 0) end
+      elseif grp == "gun" then cf = gF * off
+      elseif grp == "wheel" then
+        local w = W[it[4]]
+        local wcf = base * CF(w.x, w.r + w.dy, w.z)
+        if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
+        cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
+      elseif grp == "seg" then
+        local w = W[it[4]]
+        cf = base * CF(0, w.dy, 0) * off
+      else cf = hullF * off end
+      clist[i] = cf
+    end
+    workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+    v.anchor.CFrame = hullF * CF(0, d.H + 1, 0)
+    -- 扬尘：在陆地上开得快才有
+    local land = not onWater
+    local rate = land and math.clamp((math.abs(v.speed) - 6) * 1.3, 0, 45) or 0
+    for _, pe in ipairs(M.dust) do pe.Rate = rate end
+    -- 被毁：烧
+    if em:GetAttribute("Wreck") and not v.wrecked then
+      v.wrecked = true
+      M.fire.Rate, M.black.Rate = 30, 12
+      for _, it in ipairs(M.parts) do
+        local part = it[1]
+        if part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
+      end
+      for _, pe in ipairs(M.dust) do pe.Enabled = false end
+    end
+  end
+
+  ---------------------------------------------------------------- 跟着实体文件夹
+
   local function watch(folder)
     for _, em in ipairs(folder:GetChildren()) do task.defer(add, em) end
     folder.ChildAdded:Connect(function(em) task.defer(add, em) end)
@@ -5408,28 +7638,39 @@ function View.init(G)
     if f then watch(f) end
   end)
 
+  local cam = workspace.CurrentCamera
   function G.stepView(dt)
     stepDying()
     local myTeam = me:GetAttribute("Side")
+    local camPos = cam.CFrame.Position
     for em, v in pairs(views) do
       if not em.Parent then
         remove(em)
       else
-        local target = v.root.CFrame
-        local moved = (target.Position - v.cf.Position).Magnitude
-        v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
-        v.t += dt * math.clamp(moved * 2, 0, 12)
         local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
         v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
-        v.bb.Enabled = hp < mx and (myTeam == v.team or hp < mx)
-        for _, L in pairs(v.parts) do
-          local off = L[2]
-          if L[3] == "leg" then off = off * CFrame.Angles(math.sin(v.t * 1.2) * 0.7 * L[4], 0, 0)
-          elseif L[3] == "ramp" and em:GetAttribute("Ramp") then off = off * CFrame.Angles(-1.3, 0, 0) end
-          L[1].CFrame = v.cf * off
+        v.bb.Enabled = hp < mx and hp > 0
+        if v.kind == "veh" then
+          G.try_(stepVeh, v, dt, camPos)
+        else
+          local target = v.root.CFrame
+          local moved = (target.Position - v.cf.Position).Magnitude
+          v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+          v.t += dt * math.clamp(moved * 2, 0, 12)
+          for _, L in pairs(v.parts) do
+            local off = L[2]
+            if L[3] == "leg" then off = off * CFrame.Angles(math.sin(v.t * 1.2) * 0.7 * L[4], 0, 0)
+            elseif L[3] == "ramp" and em:GetAttribute("Ramp") then off = off * CFrame.Angles(-1.3, 0, 0) end
+            L[1].CFrame = v.cf * off
+          end
         end
       end
     end
+  end
+  -- 一辆车出错不影响别的
+  function G.try_(f, ...)
+    local ok, err = pcall(f, ...)
+    if not ok and G.showError then G.showError("local view: " .. tostring(err)) end
   end
 end
 
@@ -5440,13 +7681,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="23">
+  <Item class="Workspace" referent="27">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="24">
+  <Item class="Lighting" referent="28">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">3</float>

@@ -137,7 +137,7 @@ function Vehicles.init(G)
   end
 
   -- 每帧：艇往岸边开，乘客跟着
-  function G.frameStep(dt)
+  G.onFrame(function(dt)
     for i = #running, 1, -1 do
       local e = running[i]
       if not e.alive then
@@ -195,7 +195,7 @@ function Vehicles.init(G)
         end
       end
     end
-  end
+  end)
 
   -- 伞降：落在离最近一个还没拿下的据点 220～320 格、靠攻方一侧的地方（不能直接落进据点）
   function G.paraDrop(P)

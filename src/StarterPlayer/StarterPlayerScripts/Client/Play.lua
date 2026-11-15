@@ -271,7 +271,7 @@ function Play.init(G)
   ---------------------------------------------------------------- 输入
 
   UIS.InputBegan:Connect(function(io, gp)
-    if gp then return end
+    if gp or G.drive then return end
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
@@ -357,6 +357,11 @@ function Play.init(G)
 
   local baseFov = 70
   function G.stepPlay(dt)
+    if G.drive then   -- 开着车：镜头、开火归 Drive 管
+      cross.Visible, scope.Visible = false, false
+      cur.firing = false
+      return
+    end
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")

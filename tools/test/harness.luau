@@ -880,6 +880,12 @@ roblox.implementMethod("UserInputService", "IsKeyDown", function(self, key)
 	local s = H.input[H.ctx]
 	return s ~= nil and s.keys[key] == true
 end)
+roblox.implementMethod("UserInputService", "GetMouseDelta", function(self)
+	local s = H.input[H.ctx]
+	local d = s and s.mdelta or V2.new()
+	if s then s.mdelta = V2.new() end
+	return d
+end)
 roblox.implementMethod("UserInputService", "IsMouseButtonPressed", function(self, b)
 	local s = H.input[H.ctx]
 	return s ~= nil and s.keys[b] == true
@@ -896,6 +902,14 @@ roblox.implementMethod("GuiService", "GetGuiInset", function(self) return V2.new
 roblox.implementMethod("DataModel", "BindToClose", function(self, f) table.insert(H.closeFns, f) end)
 roblox.implementMethod("Workspace", "Raycast", function(self, o, d, params) return H.raycast(o, d, params) end)
 roblox.implementMethod("Workspace", "GetServerTimeNow", function(self) return H.epoch + H.now end)
+roblox.implementMethod("Workspace", "BulkMoveTo", function(self, parts, cfs, mode)
+	if type(parts) ~= "table" or type(cfs) ~= "table" or #parts ~= #cfs then error("BulkMoveTo 零件和 CFrame 的个数要一样", 2) end
+	for i, p in parts do
+		if typeof(cfs[i]) ~= "CFrame" then error("BulkMoveTo 第 " .. i .. " 个不是 CFrame", 2) end
+		movePart(p, cfs[i])
+	end
+	H.bulkMoves = (H.bulkMoves or 0) + #parts
+end)
 roblox.implementMethod("Workspace", "GetPartBoundsInRadius", function(self) return {} end)
 roblox.implementMethod("Workspace", "GetPartBoundsInBox", function(self) return {} end)
 
