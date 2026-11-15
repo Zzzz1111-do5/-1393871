@@ -70,7 +70,7 @@ local CA, CD = H.Gs[a1.Name], H.Gs[d1.Name]
 CA.deploySel.role, CA.deploySel.spawn = "rifle", "fleet"
 CA.refreshDeploy()
 H.click(a1, "^" .. CA.T("ui.deployBtn") .. "$")
-CD.deploySel.role, CD.deploySel.spawn = "mg", "camp"
+CD.deploySel.role, CD.deploySel.spawn = "engineer", "camp"
 CD.refreshDeploy()
 H.click(d1, "^" .. CD.T("ui.deployBtn") .. "$")
 H.run(2)
@@ -83,12 +83,12 @@ if a1.Character then
 	local tools = {}
 	for _, t in ipairs(a1.Backpack:GetChildren()) do table.insert(tools, t.Name) end
 	for _, t in ipairs(a1.Character:GetChildren()) do if t:IsA("Tool") then table.insert(tools, t.Name .. "（手里）") end end
-	check(#tools == 3, "攻方步枪兵发了 3 件武器：" .. table.concat(tools, "、"))
+	check(#tools == 2, "攻方步枪兵发了 2 件武器（M4、手雷）：" .. table.concat(tools, "、"))
 end
 if d1.Character then
 	local p = d1.Character.HumanoidRootPart.Position
 	check(p.Z < -1500, string.format("守方出生在北边营地（z = %.0f）", p.Z))
-	check(math.abs(d1.Character.Humanoid.MaxHealth - G.Config.RoleById.mg.hp) < 0.01, "机枪手血量按兵种")
+	check(math.abs(d1.Character.Humanoid.MaxHealth - G.Config.RoleById.engineer.hp) < 0.01, "工兵血量按兵种")
 end
 -- 其余人：攻方抢滩不能在准备阶段选
 act(atk[2], "deploy", "rifle", "beach.red")
@@ -110,10 +110,10 @@ H.run(0.2)
 local hum = d1.Character.Humanoid
 local hp0 = hum.Health
 -- 客户端开枪（只发准星点）：手里拿着步枪（客户端出生时自动拿起第一件）
-local tool = a1.Character:FindFirstChildOfClass("Tool") or a1.Backpack:FindFirstChild("rifle")
+local tool = a1.Character:FindFirstChildOfClass("Tool") or a1.Backpack:FindFirstChild("m4")
 if tool and tool.Parent ~= a1.Character then tool.Parent = a1.Character end
-local wid = tool and tool:GetAttribute("Weapon") or "rifle"
-check(wid == "rifle", "手里是步枪：" .. tostring(wid))
+local wid = tool and tool:GetAttribute("Weapon") or "m4"
+check(wid == "m4", "手里是 M4：" .. tostring(wid))
 local shots = 0
 for i = 1, 60 do
 	if hum.Health <= 0 then break end
@@ -126,7 +126,7 @@ H.run(0.5)
 check(not PD.alive, "守方阵亡")
 check(PA.kills == 1, "攻方记一次击杀（" .. PA.kills .. "）")
 check(PD.deaths == 1, "守方记一次阵亡")
-act(d1, "deploy", "mg", "camp")
+act(d1, "deploy", "engineer", "camp")
 H.run(0.5)
 check(not PD.alive, "复活要等 " .. G.Config.RespawnDelay .. " 秒")
 H.run(G.Config.RespawnDelay + 0.5)

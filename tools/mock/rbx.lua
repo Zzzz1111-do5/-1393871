@@ -909,7 +909,8 @@ def("Terrain", "BasePart", {
 } })
 def("WedgePart", "BasePart", {})
 def("Clouds", "Instance", { Cover = { T.number, 0.5 }, Density = { T.number, 0.7 }, Color = { T.Color3, newC3(1, 1, 1) }, Enabled = { T.bool, true } })
-def("MeshPart", "BasePart", { TextureID = { T.string, "" }, MeshId = { T.string, "" }, DoubleSided = { T.bool, false } })
+def("MeshPart", "BasePart", { TextureID = { T.string, "" }, MeshId = { T.string, "" }, DoubleSided = { T.bool, false },
+  TextureContent = { function(v) return v == nil or (type(v) == "table" and v.__content) end, nil } })
 def("SurfaceAppearance", "Instance", {})
 def("Attachment", "Instance", { Position = { T.Vector3, v3() }, CFrame = { T.CFrame, CFrame.new() } }, { ro = {
   WorldPosition = function(o)
@@ -1049,8 +1050,26 @@ def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
   UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false } }, { events = { Died = true, HealthChanged = true }, methods = {
-  EquipTool = function(o, t) if t then t.Parent = o.Parent end end,
-  UnequipTools = function(o) end,
+  -- 跟真机一样：拿起一件之前，手里原来的放回背包；UnequipTools 把手里的都放回背包
+  EquipTool = function(o, t)
+    if not t then return end
+    local ch = o.Parent
+    local bp = t.Parent
+    if ch and bp and bp ~= ch then
+      for _, c in ipairs(base.GetChildren(ch)) do if c._cls == "Tool" and c ~= t then c.Parent = bp end end
+    end
+    t.Parent = ch
+  end,
+  UnequipTools = function(o)
+    local ch = o.Parent
+    if not ch then return end
+    local bp
+    for _, pl in ipairs(base.GetChildren(R.services.Players)) do
+      if pl._cls == "Player" and pl._p.Character == ch then bp = base.FindFirstChildOfClass(pl, "Backpack") end
+    end
+    if not bp then return end
+    for _, c in ipairs(base.GetChildren(ch)) do if c._cls == "Tool" then c.Parent = bp end end
+  end,
   TakeDamage = function(o, n)
     if type(n) ~= "number" then error("TakeDamage 要数字", 2) end
     o.Health = math.max(0, (o._p.Health or 100) - n)
@@ -1327,6 +1346,76 @@ R.services.StarterGui = service("StarterGui", {}, { methods = {
 R.services.GuiService = service("GuiService", {}, { methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
 R.services.ScriptContext = service("ScriptContext", {}, { events = { Error = true } })
 R.services.ProximityPromptService = service("ProximityPromptService", { Enabled = { T.bool, true } }, { events = { PromptTriggered = true } })
+-- EditableMesh / EditableImage（只模拟接口和参数检查；R.noEditable = true 时当成用不了）
+R.Content = { fromObject = function(o)
+  if type(o) ~= "table" or not o.__editable then error("Content.fromObject 要 EditableMesh / EditableImage", 2) end
+  return { __content = true, obj = o }
+end }
+R.buffer = {
+  create = function(n) if type(n) ~= "number" or n < 0 then error("buffer.create 要非负整数", 2) end return { __buf = true, n = n, d = {} } end,
+  len = function(b) return b.n end,
+  writeu8 = function(b, o, v)
+    if type(b) ~= "table" or not b.__buf then error("buffer.writeu8 第一个参数要 buffer", 2) end
+    if o < 0 or o >= b.n then error("buffer.writeu8 越界：" .. tostring(o), 2) end
+    b.d[o] = v % 256
+  end,
+  readu8 = function(b, o) return b.d[o] or 0 end,
+}
+R.editStats = { meshes = 0, verts = 0, tris = 0, images = 0 }
+local function editableMesh()
+  local m = { __editable = "mesh", nv = 0, nn = 0, nu = 0, nf = 0, lo = v3(1e9, 1e9, 1e9), hi = v3(-1e9, -1e9, -1e9) }
+  function m.AddVertex(self, p)
+    if self ~= m or not isV3(p) then error("EditableMesh:AddVertex(Vector3)", 2) end
+    m.nv = m.nv + 1
+    m.lo = v3(math.min(m.lo._x, p._x), math.min(m.lo._y, p._y), math.min(m.lo._z, p._z))
+    m.hi = v3(math.max(m.hi._x, p._x), math.max(m.hi._y, p._y), math.max(m.hi._z, p._z))
+    return m.nv
+  end
+  function m.AddNormal(self, n) if self ~= m or (n ~= nil and not isV3(n)) then error("EditableMesh:AddNormal(Vector3)", 2) end m.nn = m.nn + 1 return m.nn end
+  function m.AddUV(self, uv) if self ~= m or typeof(uv) ~= "Vector2" then error("EditableMesh:AddUV(Vector2)", 2) end m.nu = m.nu + 1 return m.nu end
+  function m.AddTriangle(self, a, b, c)
+    for _, v in ipairs({ a, b, c }) do if type(v) ~= "number" or v < 1 or v > m.nv then error("EditableMesh:AddTriangle 顶点编号不对：" .. tostring(v), 2) end end
+    m.nf = m.nf + 1
+    return m.nf
+  end
+  local function faceSet(kind, max)
+    return function(self, f, ids)
+      if type(f) ~= "number" or f < 1 or f > m.nf or type(ids) ~= "table" or #ids ~= 3 then error("EditableMesh:SetFace" .. kind .. "(面, { 3 个编号 })", 2) end
+      for _, i in ipairs(ids) do if i < 1 or i > m[max] then error("EditableMesh:SetFace" .. kind .. " 编号越界", 2) end end
+    end
+  end
+  m.SetFaceNormals = faceSet("Normals", "nn")
+  m.SetFaceUVs = faceSet("UVs", "nu")
+  return m
+end
+R.services.AssetService = service("AssetService", {}, { methods = {
+  CreateEditableMesh = function()
+    if R.noEditable then error("EditableMesh 用不了（模拟）", 2) end
+    R.editStats.meshes = R.editStats.meshes + 1
+    return editableMesh()
+  end,
+  CreateEditableImage = function(_, opt)
+    if R.noEditable then error("EditableImage 用不了（模拟）", 2) end
+    if type(opt) ~= "table" or typeof(opt.Size) ~= "Vector2" then error("CreateEditableImage({ Size = Vector2 })", 2) end
+    R.editStats.images = R.editStats.images + 1
+    local img = { __editable = "image", size = opt.Size }
+    function img.WritePixelsBuffer(self, pos, size, buf)
+      if self ~= img or typeof(pos) ~= "Vector2" or typeof(size) ~= "Vector2" or type(buf) ~= "table" or not buf.__buf then error("EditableImage:WritePixelsBuffer(Vector2, Vector2, buffer)", 2) end
+      if buf.n ~= size.X * size.Y * 4 then error("WritePixelsBuffer：buffer 长度要 宽×高×4", 2) end
+    end
+    return img
+  end,
+  CreateMeshPartAsync = function(_, content)
+    if type(content) ~= "table" or not content.__content or content.obj.__editable ~= "mesh" then error("CreateMeshPartAsync(Content)", 2) end
+    local mo = content.obj
+    if mo.nf == 0 then error("CreateMeshPartAsync：网格没有三角形", 2) end
+    R.editStats.verts = R.editStats.verts + mo.nv
+    R.editStats.tris = R.editStats.tris + mo.nf
+    local mp = make("MeshPart")
+    mp._p.Size = mo.hi - mo.lo
+    return mp
+  end,
+} })
 R.Heartbeat = newSig()
 R.RenderStepped = newSig()
 R.services.RunService = service("RunService", {}, { ro = {
@@ -1766,7 +1855,7 @@ local function envFor(scriptInst, sd)
   local env = {
     game = game, workspace = ws, script = scriptInst, Instance = Instance, Vector3 = Vector3, Vector2 = Vector2, CFrame = CFrame,
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
-    ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange,
+    ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
     task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end },
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,

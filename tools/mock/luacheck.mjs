@@ -9,7 +9,7 @@ const KW = new Set(['and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for
 // Roblox 里的全局变量
 const GLOBALS = new Set(('game workspace script plugin shared _G _VERSION Instance Vector3 Vector2 CFrame Color3 BrickColor UDim UDim2 Rect Ray ' +
   'RaycastParams OverlapParams TweenInfo NumberRange NumberSequence NumberSequenceKeypoint ColorSequence ColorSequenceKeypoint ' +
-  'PhysicalProperties Region3 Region3int16 Vector3int16 Vector2int16 Faces Axes Font Random DateTime Enum PathWaypoint CatalogSearchParams ' +
+  'PhysicalProperties Region3 Region3int16 Vector3int16 Vector2int16 Faces Axes Font Random DateTime Enum PathWaypoint CatalogSearchParams Content ' +
   'task math string table coroutine os debug utf8 bit32 buffer pairs ipairs next select type typeof tostring tonumber print warn error ' +
   'assert pcall xpcall require setmetatable getmetatable rawget rawset rawequal rawlen unpack tick time elapsedTime settings ' +
   'UserSettings version gcinfo newproxy collectgarbage').split(/\s+/));

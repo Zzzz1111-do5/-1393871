@@ -31,13 +31,8 @@ function Weapons.init(G)
   local GUN, DARK, OLIVE, TAN = RGB(48, 50, 52), RGB(30, 31, 33), RGB(86, 96, 64), RGB(176, 156, 112)
   -- 每把武器：枪身长 L、枪管长、枪托、弹匣……；返回把手和枪口
   local SHAPE = {
-    rifle = { L = 3.2, barrel = 1.4, stock = true, mag = 0.9, color = GUN },
-    carbine = { L = 2.8, barrel = 1.0, stock = true, mag = 0.9, color = OLIVE },
-    lmg = { L = 3.6, barrel = 1.8, stock = true, box = true, color = GUN },
+    m4 = { L = 2.9, barrel = 1.3, stock = true, mag = 0.95, color = RGB(40, 40, 42), rail = true },
     sniper = { L = 4.0, barrel = 2.2, stock = true, scope = true, mag = 0.6, color = RGB(70, 66, 52) },
-    smg = { L = 2.1, barrel = 0.5, mag = 1.0, color = DARK },
-    smgsd = { L = 2.1, barrel = 1.2, mag = 1.0, color = DARK, thick = true },
-    pistol = { L = 1.0, barrel = 0.2, color = DARK, small = true },
     rpg = { tube = 4.6, dia = 0.7, color = OLIVE, warhead = true },
     manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
     mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
@@ -65,6 +60,7 @@ function Weapons.init(G)
       if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
       if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
       if S.scope then weld(h, p(tool, V(0.28, 0.28, 1.3), CF(0, 0.75, -0.6), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+      if S.rail then weld(h, p(tool, V(0.22, 0.1, S.L * 0.55), CF(0, 0.6, -S.L * 0.3), DARK, Enum.Material.Metal)) end
     elseif S and S.tube then   -- 发射筒：扛在肩上
       local t = p(tool, V(S.tube, S.dia, S.dia), CF(0, 0.6, -0.4) * CFrame.Angles(0, math.pi / 2, 0), S.color, Enum.Material.Metal, Enum.PartType.Cylinder)
       weld(h, t)

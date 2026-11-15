@@ -95,8 +95,7 @@ function Fx.init(G)
 
   ---------------------------------------------------------------- 曳光、枪口火光
 
-  local TRACER = { rifle = RGB(255, 220, 140), carbine = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210), smg = RGB(255, 225, 160),
-    smgsd = RGB(200, 200, 200), pistol = RGB(255, 225, 160) }
+  local TRACER = { m4 = RGB(255, 220, 140), rifle = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210) }
   function G.gunFx(id, a, b, mine)
     local d = b - a
     local L = d.Magnitude

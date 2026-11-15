@@ -11,7 +11,7 @@ function Bots.init(G)
   local BC = Config.Bots
   local V = Vector3.new
   local now = os.clock
-  local W = Config.Weapons[BC.weapon] or Config.Weapons.rifle
+  local W = Config.Weapons[BC.weapon] or Config.Weapons.m4
   local SIZE = V(2.2, 5.6, 1.6)   -- 命中盒（脚底到头顶）
   local HALF = SIZE.Y / 2
 

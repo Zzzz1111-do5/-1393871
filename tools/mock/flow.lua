@@ -54,7 +54,7 @@ local function deployUI(pl, role, spawn)
   end
 end
 deployUI(a1, "rifle", "fleet")
-deployUI(d1, "mg", "camp")
+deployUI(d1, "engineer", "camp")
 R.run(2)
 local PA, PD = G.P[a1], G.P[d1]
 check(PA.alive and a1.Character ~= nil, "攻方 " .. a1.Name .. " 在舰上出生")
@@ -65,12 +65,12 @@ if a1.Character then
   local tools = {}
   for _, t in ipairs(a1.Backpack:GetChildren()) do table.insert(tools, t.Name) end
   for _, t in ipairs(a1.Character:GetChildren()) do if t:IsA("Tool") then table.insert(tools, t.Name .. "（手里）") end end
-  check(#tools == 3, "攻方步枪兵发了 3 件武器：" .. table.concat(tools, "、"))
+  check(#tools == 2, "攻方步枪兵发了 2 件武器（M4、手雷）：" .. table.concat(tools, "、"))
 end
 if d1.Character then
   local p = d1.Character.HumanoidRootPart.Position
   check(p.Z < -1500, string.format("守方出生在北边营地（z = %.0f）", p.Z))
-  check(math.abs(d1.Character.Humanoid.MaxHealth - G.Config.RoleById.mg.hp) < 0.01, "机枪手血量按兵种")
+  check(math.abs(d1.Character.Humanoid.MaxHealth - G.Config.RoleById.engineer.hp) < 0.01, "工兵血量按兵种")
 end
 T.actAsRemote(atk[2], "deploy", "rifle", "beach.red")
 R.run(0.5)
@@ -89,10 +89,10 @@ d1.Character:PivotTo(CF(pd.X, pd.Y, pd.Z))
 R.run(0.2)
 local hum = d1.Character.Humanoid
 local hp0 = hum.Health
-local tool = a1.Character:FindFirstChildOfClass("Tool") or a1.Backpack:FindFirstChild("rifle")
+local tool = a1.Character:FindFirstChildOfClass("Tool") or a1.Backpack:FindFirstChild("m4")
 if tool and tool.Parent ~= a1.Character then tool.Parent = a1.Character end
-local wid = tool and tool:GetAttribute("Weapon") or "rifle"
-check(wid == "rifle", "手里是步枪：" .. tostring(wid))
+local wid = tool and tool:GetAttribute("Weapon") or "m4"
+check(wid == "m4", "手里是 M4：" .. tostring(wid))
 local shots = 0
 for _ = 1, 60 do
   if hum.Health <= 0 then break end
@@ -105,7 +105,7 @@ R.run(0.5)
 check(not PD.alive, "守方阵亡")
 check(PA.kills == 1, "攻方记一次击杀（" .. PA.kills .. "）")
 check(PD.deaths == 1, "守方记一次阵亡")
-T.actAsRemote(d1, "deploy", "mg", "camp")
+T.actAsRemote(d1, "deploy", "engineer", "camp")
 R.run(0.5)
 check(not PD.alive, "复活要等 " .. G.Config.RespawnDelay .. " 秒")
 R.run(G.Config.RespawnDelay + 0.5)

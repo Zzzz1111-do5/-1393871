@@ -1,4 +1,4 @@
--- 暗剑：登岛战——操作：武器栏（1–4、点选）、肩后视角（拿着武器时鼠标锁在屏幕中间、人跟着镜头转，准星打哪儿就是哪儿）、
+-- 暗剑：登岛战——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
 --   开火（连发 / 单发）、右键瞄准（狙击镜）、R 换弹、各种装备（火箭筒、防空导弹右键锁定、手雷、迫击炮、急救包、扳手按住修车、
 --   炸药包左键放右键引爆、破障器材按住排雷剪铁丝网、望远镜左键标记 F 呼叫炮击）、命中标记、弹药显示；手机上屏幕按钮
 local Players = game:GetService("Players")
@@ -95,6 +95,7 @@ function Play.init(G)
     if a.r > 0 or a.n >= (w.mag or 1) or (a.res and a.res <= 0) or (w.reload or 0) <= 0 then return end
     a.r = now() + w.reload
     RAct:FireServer("reload", id)
+    if G.fpsReload then G.fpsReload(id, w.reload, a.n <= 0) end   -- 第一人称：播换弹（打空了是空仓换弹）
   end
 
   local function tools()
@@ -253,11 +254,13 @@ function Play.init(G)
     cur.nextShot = t + (w.rate or 0.2)
     a.n -= 1
     if a.n <= 0 then reload() end
+    if G.fpsFire then G.fpsFire(id) end   -- 第一人称：后坐、枪口火光
     if w.kind == "gun" then
       local p = aimPoint(w.range)
       local handle = cur.tool and cur.tool:FindFirstChild("Handle")
       local mz = handle and handle:FindFirstChild("Muzzle")
-      if G.gunFx and mz then G.gunFx(id, mz.WorldPosition, p, true) end
+      local from = (G.fpsMuzzle and G.fpsMuzzle()) or (mz and mz.WorldPosition)   -- 第一人称时曳光从镜头前那支枪的枪口出去
+      if G.gunFx and from then G.gunFx(id, from, p, true) end
       RShoot:FireServer(id, p)
       if G.kick then G.kick(w) end
     elseif w.kind == "lock" then
@@ -282,6 +285,7 @@ function Play.init(G)
       cur.aiming = true
       if cur.id and (W[cur.id].kind == "place") then tryFire(true) end
     elseif k == Enum.KeyCode.R then reload()
+    elseif k == Enum.KeyCode.V then G.firstPerson = not (G.firstPerson ~= false)   -- 第一 / 第三人称
     elseif k == Enum.KeyCode.F then
       if cur.id and W[cur.id].kind == "spot" then tryFire(true) end
     elseif k == Enum.KeyCode.One then equip(1)
@@ -358,18 +362,36 @@ function Play.init(G)
   end
 
   local baseFov = 70
+  local fpMode = nil
+  -- 第一人称：镜头最近、最远都设 0.5（Roblox 就进第一人称，鼠标锁在中间、人跟着镜头转）；第三人称：拉开到肩后
+  local function setFirstPerson(on)
+    if fpMode == on then return end
+    fpMode = on
+    if on then
+      player.CameraMinZoomDistance, player.CameraMaxZoomDistance = 0.5, 0.5
+    else
+      player.CameraMaxZoomDistance = 40
+      player.CameraMinZoomDistance = 8
+    end
+  end
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管
       cross.Visible, scope.Visible = false, false
       cur.firing = false
+      if G.fpsOff then G.fpsOff() end
       return
     end
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local armed = cur.id ~= nil and hum and hum.Health > 0 and not G.drive and not (hrp and hrp.Anchored)
-    -- 肩后视角：鼠标锁在中间、人跟着镜头转
-    if armed and not G.mobile then
+    local fp = G.firstPerson ~= false and hum ~= nil and hum.Health > 0 and not (hrp and hrp.Anchored)
+    if hum and hum.Health > 0 then setFirstPerson(fp) end
+    baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
+    if fp then
+      hum.AutoRotate = true
+      hum.CameraOffset = V()
+    elseif armed and not G.mobile then   -- 第三人称：肩后视角，鼠标锁在中间、人跟着镜头转
       UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
       hum.AutoRotate = false
       hum.CameraOffset = hum.CameraOffset:Lerp(V(1.9, 0.5, 0), math.min(1, dt * 10))
@@ -381,7 +403,7 @@ function Play.init(G)
       hum.AutoRotate = true
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
-    cross.Visible = armed == true
+    cross.Visible = armed == true and not (fp and cur.aiming)
     -- 瞄准：拉近；狙击镜、望远镜放大得多
     local w = cur.id and W[cur.id]
     local zoom = 1
@@ -403,6 +425,10 @@ function Play.init(G)
       end
     end
     weaponHud()
+    -- 第一人称：镜头前的枪和方块手臂（狙击镜、望远镜放大时藏起来）
+    if G.stepFPS then
+      if fp and armed then G.stepFPS(dt, true, cur.aiming, scope.Visible, cur.tool) elseif G.fpsOff then G.fpsOff() end
+    end
     if G.breachStep then   -- 破障器材：探雷标记、按住排雷 / 剪铁丝网的进度
       local tip = G.breachStep(dt, armed and w and w.kind == "breach" or false, cur.firing)
       if tip then tipText.Text = tip end

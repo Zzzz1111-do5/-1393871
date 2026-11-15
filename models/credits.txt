@@ -24,3 +24,6 @@
 毒刺（道具）（prop_stinger.glb）：FIM-92 毒刺便携防空导弹，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/3d-models/fim-92-stinger-low-poly-c97e321bae1249a78ac4eed43a932ed7
 迫击炮（道具）（prop_mortar.glb）：M224A1 60 毫米迫击炮，作者 jcherry3d，CC-BY-4.0 https://sketchfab.com/3d-models/mortar-m224-c86a73e40d994431bcdb57dc741cf8be
 机枪（道具）（prop_mg.glb）：M240B 7.62 毫米通用机枪，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-m240b-657a3b8ce0194aae9c7c9036c18c54b9
+
+登岛战第一人称 M4（fps_m4.glb；游戏里 src/ReplicatedStorage/FPSMesh.lua 的网格和贴图、FPSAnim.lua 的动作）：「M4 - FPS Weapon Animations Pack (v.1)」，作者 BarcodeGames，CC-BY-4.0 https://sketchfab.com/3d-models/m4-fps-weapon-animations-pack-v1-662fc74dda2646cfb48fc610705768ef
+  改动：原模型的手臂没用（游戏里画成 Roblox 方块手臂）；枪按零件分开、单位换成格、补上 FBX 里弹匣骨骼的缩放；贴图缩小（GLB 1024、游戏内嵌 512 / 128）；动作抽成相对相机的关键帧（长的隔帧）

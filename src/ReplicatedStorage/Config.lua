@@ -32,20 +32,19 @@ Config.Teams = {
   def = { color = Color3.fromRGB(60, 120, 230), brick = "Bright blue" },
 }
 
----------------------------------------------------------------- 步兵兵种（10 种，无限复活）
+---------------------------------------------------------------- 步兵兵种（9 种，无限复活）：主枪统一是 M4（狙击手另有狙击枪），机枪手并进了步枪兵
 
 -- hp 血量、speed 走路速度；weapons 带的武器（按顺序进背包：1、2、3…）
 Config.Roles = {
-  { id = "rifle", hp = 100, speed = 16, weapons = { "rifle", "pistol", "grenade" } },
-  { id = "mg", hp = 115, speed = 14.5, weapons = { "lmg", "pistol" } },
-  { id = "sniper", hp = 90, speed = 16, weapons = { "sniper", "pistol" } },
-  { id = "at", hp = 100, speed = 15, weapons = { "carbine", "rpg" } },
-  { id = "aa", hp = 100, speed = 15, weapons = { "carbine", "manpads" } },
-  { id = "medic", hp = 100, speed = 16.5, weapons = { "smg", "medkit" } },
-  { id = "engineer", hp = 105, speed = 15.5, weapons = { "carbine", "repair", "breach" } },
-  { id = "mortar", hp = 100, speed = 15, weapons = { "carbine", "mortar" } },
-  { id = "spec", hp = 110, speed = 18, weapons = { "smgsd", "c4", "grenade" } },
-  { id = "spotter", hp = 95, speed = 16, weapons = { "carbine", "binoc" } },
+  { id = "rifle", hp = 100, speed = 16, weapons = { "m4", "grenade" } },
+  { id = "sniper", hp = 90, speed = 16, weapons = { "sniper", "m4" } },
+  { id = "at", hp = 100, speed = 15, weapons = { "m4", "rpg" } },
+  { id = "aa", hp = 100, speed = 15, weapons = { "m4", "manpads" } },
+  { id = "medic", hp = 100, speed = 16.5, weapons = { "m4", "medkit" } },
+  { id = "engineer", hp = 105, speed = 15.5, weapons = { "m4", "repair", "breach" } },
+  { id = "mortar", hp = 100, speed = 15, weapons = { "m4", "mortar" } },
+  { id = "spec", hp = 110, speed = 18, weapons = { "m4", "c4", "grenade" } },
+  { id = "spotter", hp = 95, speed = 16, weapons = { "m4", "binoc" } },
 }
 Config.RoleById = {}
 for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
@@ -61,13 +60,8 @@ for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 -- vs 对各类目标的伤害倍数
 local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }
 Config.Weapons = {
-  rifle = { kind = "gun", dmg = 26, rate = 0.11, mag = 30, reload = 2.2, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6 },
-  carbine = { kind = "gun", dmg = 23, rate = 0.1, mag = 30, reload = 2.0, range = 480, spread = 0.75, auto = true, vs = G_VS, head = 1.6 },
-  lmg = { kind = "gun", dmg = 24, rate = 0.075, mag = 100, reload = 4.6, range = 700, spread = 1.15, auto = true, vs = { inf = 1, light = 0.3, armor = 0.02, air = 0.15, ship = 0, fort = 0.05 }, head = 1.5 },
+  m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6 },   -- 两队都用这一种（第一人称动作照 M4 动作包）
   sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 0.03, vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
-  smg = { kind = "gun", dmg = 19, rate = 0.07, mag = 32, reload = 1.8, range = 280, spread = 1.4, auto = true, vs = G_VS, head = 1.5 },
-  smgsd = { kind = "gun", dmg = 21, rate = 0.075, mag = 30, reload = 1.8, range = 320, spread = 1.1, auto = true, vs = G_VS, head = 1.6, quiet = true },
-  pistol = { kind = "gun", dmg = 28, rate = 0.22, mag = 12, reload = 1.4, range = 220, spread = 0.9, vs = G_VS, head = 1.6 },
   rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
     vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },
   manpads = { kind = "lock", dmg = 120, rate = 0.5, mag = 1, reserve = 1, reload = 3.5, range = 1400, speed = 320, splash = 9, lockTime = 1.6,
@@ -142,7 +136,7 @@ Config.Bots = {
   minPerTeam = 18,       -- 每队保底人数：真人不够用 AI 补
   maxTotal = 40,         -- 全服最多几个机器人
   hp = 100, speed = 14,  -- 步兵机器人：血量、走路速度（格 / 秒）
-  weapon = "rifle",      -- 用哪种枪的伤害、射程
+  weapon = "m4",         -- 用哪种枪的伤害、射程
   sight = 520,           -- 看多远
   reaction = 0.8,        -- 发现新目标后多久开第一枪（秒，随机 ±40%）
   fireGap = 0.36,        -- 两枪之间（秒）
