@@ -7,6 +7,7 @@ local check = T.check
 local side = TEST_ARGS:match("def") and "def" or "atk"
 
 local G = T.boot()
+G.fortsHold = true   -- 这里测的不是工事：工事不开火
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
 local me = T.join("P1", 5001, true)

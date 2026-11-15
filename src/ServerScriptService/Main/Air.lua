@@ -162,7 +162,7 @@ function Air.init(G)
     for _ = 1, 40 do
       local a, r = math.random() * math.pi * 2, 50 + math.random() * 80
       local x, z = cx + math.cos(a) * r, cz + math.sin(a) * r
-      if Map.isLand(x, z) and Map.slope(x, z) < 0.18 then
+      if Map.isLand(x, z) and Map.slope(x, z) < 0.18 and (not G.spotClear or G.spotClear(x, z, d.W * 0.5 + 3, d.L * 0.5 + 3, d.H)) then
         local clear = true
         for _, e in ipairs(aircraft) do
           if e.alive and (e.root.CFrame.Position - V(x, e.root.CFrame.Position.Y, z)).Magnitude < 45 then clear = false break end

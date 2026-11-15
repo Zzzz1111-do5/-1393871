@@ -7,6 +7,7 @@ local check = T.check
 local side = TEST_ARGS:match("atk") and "atk" or "def"
 
 local G = T.boot()
+G.fortsHold = true   -- 这里测的不是工事：工事不开火
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
 check(G.worldReady, "地图生成好了（地形体素 " .. tostring(R.voxelsWritten) .. "）")

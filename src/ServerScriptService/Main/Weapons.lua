@@ -1,6 +1,6 @@
 -- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
 --   枪：射线判定，爆头加成；火箭筒 / 手雷 / 防空导弹：飞行中的弹（Ents）；迫击炮：点地面，几秒后落下；急救包；扳手修车；
---   炸药包（放下、再用一次引爆）、反坦克地雷；望远镜：标记敌人给全队看，呼叫炮火覆盖
+--   炸药包（放下、再用一次引爆）；破障器材（探雷、排雷、剪铁丝网，逻辑在 Forts）；望远镜：标记敌人给全队看，呼叫炮火覆盖
 local Weapons = {}
 
 function Weapons.init(G)
@@ -42,6 +42,7 @@ function Weapons.init(G)
     manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
     mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
   }
+  -- 破障器材：探雷器（杆子 + 探头圆盘）
   local function makeTool(id)
     local tool = Instance.new("Tool")
     tool.Name = id
@@ -84,6 +85,10 @@ function Weapons.init(G)
     elseif id == "c4" or id == "mine" then
       local isMine = id == "mine"
       weld(h, p(tool, isMine and V(1.2, 0.35, 1.2) or V(1.1, 0.5, 0.7), CF(0, 0.2, -0.5), isMine and OLIVE or TAN, Enum.Material.Plastic, isMine and Enum.PartType.Cylinder or nil))
+    elseif id == "breach" then
+      weld(h, p(tool, V(0.18, 0.18, 3.6), CF(0, -0.2, -1.8) * CFrame.Angles(-0.5, 0, 0), RGB(60, 62, 58), Enum.Material.Metal))
+      weld(h, p(tool, V(0.15, 1.3, 1.3), CF(0, -1.25, -3.4) * CFrame.Angles(0, 0, math.pi / 2), RGB(40, 44, 40), Enum.Material.Plastic, Enum.PartType.Cylinder))
+      weld(h, p(tool, V(0.5, 0.4, 0.7), CF(0, 0.15, -0.3), RGB(200, 170, 60), Enum.Material.Plastic))
     elseif id == "binoc" then
       for s = -1, 1, 2 do weld(h, p(tool, V(0.9, 0.35, 0.35), CF(s * 0.22, 0.4, -0.4) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
     end
@@ -446,7 +451,7 @@ function Weapons.init(G)
     if not w then return end
     local char, head, tool = holding(P, id)
     if not char then return end
-    local f = KIND[w.kind]
+    local f = KIND[w.kind] or (G.toolKind and G.toolKind[w.kind])   -- 别的模块登记的（破障器材在 Forts）
     if f then f(P, id, w, char, head, tool, a, b) end
   end
 

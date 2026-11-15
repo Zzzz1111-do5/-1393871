@@ -4,6 +4,7 @@
 --   地面载具（VehModels 拼的）：每个车轮 / 负重轮各自一个弹簧阻尼（按脚下的地面高度 + 细碎的颠簸，过坡上下抖），
 --     车体跟着轮子上下、前后俯仰、左右侧倾（也带弹簧，刹车点头、起步抬头）；炮塔、炮按属性 Ty / Gp 转（自己开的车用本地的），
 --     开炮后坐、车轮按走的路转、前轮转向、雷达转、扬尘、被毁冒火冒黑烟；零件一次 BulkMoveTo
+--   别的模块能登记自己的样子：G.viewKind[种类] = { build(v, em, team), step(v, dt, camPos), recoil(v), remove(v) }（工事在 FortView）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 
@@ -113,6 +114,7 @@ function View.init(G)
     if not root then return end
     local team = em:GetAttribute("Team")
     local v = { cf = root.CFrame, root = root, kind = kind, t = 0, team = team, id = em:GetAttribute("EntId"), em = em }
+    local ext = G.viewKind and G.viewKind[kind]   -- 别的模块登记的样子（工事 FortView……）：build 设好 v.model、v.anchor（血条挂点）
     if kind == "veh" then
       local d = VD.get(em:GetAttribute("Model") or "")
       if not d then return end
@@ -130,6 +132,12 @@ function View.init(G)
       anchor.Parent = M.model
       v.anchor = anchor
       v.bb, v.fill = bar(M.model, anchor, 2)
+      v.bb.MaxDistance = 600
+    elseif ext then
+      if not ext.build(v, em, team) or not v.model then return end
+      v.ext = ext
+      v.model.Parent = VF
+      v.bb, v.fill = bar(v.model, v.anchor, 2)
       v.bb.MaxDistance = 600
     else
       local mk = KINDS[kind]
@@ -154,7 +162,8 @@ function View.init(G)
     views[em] = nil
     if v.id then byId[v.id] = nil end
     local hp = em:GetAttribute("Hp") or 1
-    if hp <= 0 and v.kind ~= "veh" then
+    if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
+    if hp <= 0 and v.kind ~= "veh" and not v.ext then
       v.t0 = os.clock()
       if v.bb then v.bb:Destroy() end
       table.insert(dying, v)
@@ -186,7 +195,8 @@ function View.init(G)
   -- 开炮：这辆车的炮往后坐一下
   function G.vehRecoil(id)
     local v = byId[id]
-    if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35 end
+    if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35
+    elseif v and v.ext and v.ext.recoil then v.ext.recoil(v) end
   end
 
   ---------------------------------------------------------------- 载具：悬架
@@ -333,6 +343,8 @@ function View.init(G)
         v.bb.Enabled = hp < mx and hp > 0
         if v.kind == "veh" then
           G.try_(stepVeh, v, dt, camPos)
+        elseif v.ext then
+          G.try_(v.ext.step, v, dt, camPos)
         else
           local target = v.root.CFrame
           local moved = (target.Position - v.cf.Position).Magnitude

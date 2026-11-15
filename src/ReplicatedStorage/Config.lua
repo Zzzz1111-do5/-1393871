@@ -42,7 +42,7 @@ Config.Roles = {
   { id = "at", hp = 100, speed = 15, weapons = { "carbine", "rpg" } },
   { id = "aa", hp = 100, speed = 15, weapons = { "carbine", "manpads" } },
   { id = "medic", hp = 100, speed = 16.5, weapons = { "smg", "medkit" } },
-  { id = "engineer", hp = 105, speed = 15.5, weapons = { "carbine", "repair", "mine" } },
+  { id = "engineer", hp = 105, speed = 15.5, weapons = { "carbine", "repair", "breach" } },
   { id = "mortar", hp = 100, speed = 15, weapons = { "carbine", "mortar" } },
   { id = "spec", hp = 110, speed = 18, weapons = { "smgsd", "c4", "grenade" } },
   { id = "spotter", hp = 95, speed = 16, weapons = { "carbine", "binoc" } },
@@ -55,7 +55,8 @@ for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 -- 目标类别：inf 步兵、light 轻型车、armor 装甲、air 飞机直升机、ship 舰艇、fort 工事
 -- kind：gun 直射（服务器射线判定）；proj 有弹道的弹（speed 弹速、splash 溅射、drop 是否下坠）；throw 投掷（fuse 引信秒数）；
 --   lock 锁定导弹（打 air，lockTime 锁定要几秒）；mortar 曲射（点地图上 / 准星下的地面，minR maxR 射程）；
---   heal 治疗（r 范围、amt 每次、cd 冷却）；repair 修车（每秒 rate）；place 放置（c4、地雷）；spot 望远镜标记敌人、呼叫炮击
+--   heal 治疗（r 范围、amt 每次、cd 冷却）；repair 修车、修工事（每秒 rate）；place 放置（炸药包）；breach 破障器材；spot 望远镜标记敌人、呼叫炮击
+--   （雷区、铁丝网、炮都是地图自带的，玩家不能自己布雷、架炮）
 -- dmg 每发、rate 几秒一发、mag 弹匣、reserve 备弹（不算弹匣里的；没写就是无限）、reload 换弹秒数、range 射程、spread 散布（度）；
 -- vs 对各类目标的伤害倍数
 local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }
@@ -77,8 +78,7 @@ Config.Weapons = {
     vs = { inf = 1, light = 0.8, armor = 0.3, air = 0, ship = 0.25, fort = 0.8 } },
   medkit = { kind = "heal", amt = 35, r = 14, cd = 6, mag = 1, rate = 0.5, reload = 0 },
   repair = { kind = "repair", rate = 90, range = 16, mag = 1, reload = 0 },
-  mine = { kind = "place", dmg = 260, splash = 9, mag = 1, reserve = 1, reload = 0.6, rate = 0.8, trigger = "vehicle",
-    vs = { inf = 0.6, light = 4, armor = 4.5, air = 0, ship = 0, fort = 0 } },
+  breach = { kind = "breach", range = 6, detect = 34, time = 1.6, mag = 1, reload = 0 },   -- 破障器材：探雷（detect 格以内）、排雷 / 剪铁丝网（离得 range 格以内按住 time 秒）
   c4 = { kind = "place", dmg = 260, splash = 13, mag = 1, reserve = 1, reload = 0.6, rate = 0.8, trigger = "remote",
     vs = { inf = 1, light = 4, armor = 5, air = 0, ship = 2, fort = 5 } },
   binoc = { kind = "spot", range = 1600, spotTime = 12, cd = 4, strikeCd = 75, strike = { n = 8, r = 26, dmg = 120, splash = 20, flight = 6,
@@ -114,7 +114,7 @@ Config.Vehicles = {
     tank = { "m10", "m1a1", "m1a2" },
     apc = { "m1117", "hmmwv", "jltv", "m2a3", "stryker", "m1150" },
     aa = { "m163", "mshorad", "cram", "patriot" },
-    arty = { "m109a7", "m270", "m777" },
+    arty = { "m109a7", "m270" },   -- M777 是地图自带的炮位（Forts），走过去就能用
     heli = { "ah64e", "uh60", "ch47" },
     jet = { "a10c", "f35", "f22", "mq9", "b2" },
     ship = { "ddg125", "cg47", "lcs2", "pbr" },
@@ -151,7 +151,8 @@ Config.Bots = {
 
 ---------------------------------------------------------------- 得分、经验、军衔
 
-Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200 }
+Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200,
+  fortKill = 250, defuse = 30, wireCut = 15 }
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1

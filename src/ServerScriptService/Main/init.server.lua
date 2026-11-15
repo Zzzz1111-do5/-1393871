@@ -1,7 +1,7 @@
 -- 暗剑：登岛战——服务器主脚本（ServerScriptService.Main）
 -- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
 --   World 地图 · Store 存档 · Round 回合、分队、部署、据点、胜负 · Weapons 步兵武器 · Ents 实体（机器人、载具、舰艇、工事）与伤害、爆炸、飞行中的弹 ·
---   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Bots 机器人
+--   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Forts 地图自带的工事和障碍（玩家走过去能操作） · Bots 机器人
 -- 循环里每一步都包在 pcall 里：一处出错只跳过那一下，不会把整个服务器卡死（出错原文发到所有人屏幕上的红条）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -83,7 +83,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Air", "Nav", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Air", "Forts", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -141,6 +141,7 @@ RunService.Heartbeat:Connect(function(dt)
       if G.entsStep then G.try("实体", G.entsStep, Config.Tick) end
       if G.botsStep then G.try("机器人", G.botsStep, Config.Tick) end
       if G.vehStep then G.try("载具", G.vehStep, Config.Tick) end
+      if G.fortsStep then G.try("工事", G.fortsStep, Config.Tick) end
     end
   end
   if acc > Config.Tick * 3 then acc = 0 end

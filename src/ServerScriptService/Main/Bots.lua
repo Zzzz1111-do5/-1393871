@@ -456,7 +456,7 @@ function Bots.init(G)
       if B.detour then B.detour = nil else B.goal = nil B.arrived = now() end
       return
     end
-    local speed = BC.speed * (slow or 1)
+    local speed = BC.speed * (slow or 1) * (G.wireSlow and G.wireSlow(p.X, p.Z) or 1)   -- 铁丝网里走不快
     local step = math.min(dist, speed * dt)
     local dir = d / dist
     local np, nd = nil, nil

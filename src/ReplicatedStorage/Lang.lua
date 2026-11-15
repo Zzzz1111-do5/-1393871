@@ -35,7 +35,7 @@ add("role.sniper.desc", "远距离一枪一个，爆头双倍", "One shot from f
 add("role.at.desc", "火箭筒打坦克、装甲车、碉堡", "Rocket launcher against tanks, APCs and bunkers")
 add("role.aa.desc", "单兵防空导弹，锁定直升机、飞机", "Shoulder SAM that locks onto helicopters and jets")
 add("role.medic.desc", "冲锋枪 + 急救包，给身边的队友回血", "SMG and a medkit that heals nearby teammates")
-add("role.engineer.desc", "修车、埋反坦克地雷", "Repairs vehicles and lays anti-tank mines")
+add("role.engineer.desc", "修车、修工事；探雷、排雷、剪铁丝网", "Repairs vehicles and forts; finds and clears mines, cuts wire")
 add("role.mortar.desc", "迫击炮：点准星下的地面，炮弹几秒后落下", "Mortar: shells land where you aim a few seconds later")
 add("role.spec.desc", "跑得快的消音冲锋枪 + 炸药包", "Fast, suppressed SMG and C4 charges")
 add("role.spotter.desc", "望远镜标记敌人，呼叫炮火覆盖", "Binoculars to mark enemies and call artillery")
@@ -53,7 +53,7 @@ add("weapon.grenade", "手雷", "Grenade")
 add("weapon.mortar", "迫击炮", "Mortar")
 add("weapon.medkit", "急救包", "Medkit")
 add("weapon.repair", "扳手", "Repair Tool")
-add("weapon.mine", "反坦克地雷", "AT Mine")
+add("weapon.breach", "破障器材", "Breaching Kit")
 add("weapon.c4", "炸药包", "C4")
 add("weapon.binoc", "望远镜", "Binoculars")
 
@@ -101,6 +101,36 @@ local VEH = {
   lcm = { "登陆艇", "Landing Craft" }, lcac = { "726 型气垫艇", "Type 726 LCAC" },
 }
 for k, v in pairs(VEH) do add("veh." .. k, v[1], v[2]) end
+
+-- 地图自带的工事、障碍
+add("fort.bunker", "机枪碉堡", "MG Bunker")
+add("fort.coastal", "岸防炮", "Coastal Gun")
+add("fort.aaa", "高炮", "AA Gun")
+add("fort.howitzer", "M777 榴弹炮", "M777 Howitzer")
+add("fort.mine", "地雷", "Mine")
+add("fort.strike", "炮火支援", "Artillery")
+add("fw.hmg", "12.7 毫米机枪", "12.7 mm MG")
+add("fw.naval127", "127 毫米炮", "127 mm gun")
+add("fw.flak35", "双联 35 毫米高炮", "Twin 35 mm AA")
+add("fw.how155", "155 毫米榴弹炮", "155 mm howitzer")
+add("ui.man", "操作", "Man")
+add("ui.board", "上车", "Enter")
+add("ui.manned", "你在操作{1}", "You are manning the {1}")
+add("ui.fortKilled", "摧毁 {1}", "Destroyed {1}")
+add("ui.fortDown", "{1} 摧毁了 {2}", "{1} destroyed {2}")
+add("ui.fortLost", "你操作的工事被摧毁了", "The emplacement you were manning was destroyed")
+add("ui.fortHelp", "鼠标 瞄准 · 左键 开火 · 右键 / V 瞄准镜 · 滚轮 倍率 · F 离开", "Mouse aim · LMB fire · RMB / V sight · Wheel zoom · F leave")
+add("ui.howHelp", "鼠标指向落点 · 左键 开炮 · 右键 放大 · F 离开", "Point at the target · LMB fire · RMB zoom · F leave")
+add("ui.howRange", "{1} 米（射程 {2}～{3}）", "{1} m (range {2}-{3})")
+add("ui.reloadIn", "装填 {1} 秒", "Reloading {1}s")
+add("ui.inWire", "铁丝网：走不快", "Barbed wire slows you down")
+add("ui.defusing", "排雷中… {1}%", "Clearing mine… {1}%")
+add("ui.cutting", "剪铁丝网… {1}%", "Cutting wire… {1}%")
+add("ui.defused", "排除了一颗地雷", "Mine cleared")
+add("ui.wireCut", "剪开了一段铁丝网", "Wire cut")
+add("ui.mineNear", "附近有地雷 ×{1}（按住左键排雷）", "Mines nearby ×{1} (hold LMB to clear)")
+add("ui.wireNear", "按住左键剪铁丝网", "Hold LMB to cut the wire")
+add("ui.noMines", "附近没探到地雷", "No mines detected nearby")
 
 local RANKS = {
   { "列兵", "Private" }, { "上等兵", "Private First Class" }, { "下士", "Corporal" }, { "中士", "Sergeant" }, { "上士", "Staff Sergeant" },

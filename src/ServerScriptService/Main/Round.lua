@@ -96,7 +96,7 @@ function Round.init(G)
     for _ = 1, 12 do
       local a, r = math.random() * math.pi * 2, math.random() * (spread or 12)
       local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
-      if Map.isLand(px, pz) and Map.slope(px, pz) < 0.9 then return V(px, Map.ground(px, pz) + 3.5, pz) end
+      if Map.isLand(px, pz) and Map.slope(px, pz) < 0.9 and (not G.spotClear or G.spotClear(px, pz, 1.5, 1.5, 5)) then return V(px, Map.ground(px, pz) + 3.5, pz) end
     end
     return V(x, Map.ground(x, z) + 3.5, z)
   end

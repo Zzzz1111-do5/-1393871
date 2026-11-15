@@ -374,13 +374,8 @@ local function lighthouse(f)
   house(f, x - 26, z + 10, 16, 12, 8, 0.2)
 end
 
-local function battery(f)   -- 西礁岛岸防炮台（摆设；能开火的岸防炮由 AI 实体管）
+local function battery(f)   -- 西礁岛岸防炮台：营房（炮本身是 Forts 管的工事实体，能开火、能被打掉、玩家能操作）
   local I = Map.WESTREEF
-  local x, z = I.x + 40, I.z + 60
-  local y = Map.ground(x, z)
-  cyl(f, 4, 26, CF(x, y + 2, z), C.concrete, MAT.Concrete, true)
-  part(f, V(10, 5, 12), CF(x, y + 6.5, z), RGB(96, 104, 92), MAT.Metal, nil, true)
-  cyl(f, 22, 1.6, CF(x, y + 7.5, z + 14) * CFrame.Angles(math.pi / 2, 0, 0), C.dark, MAT.Metal, true)
   house(f, I.x - 50, I.z - 20, 20, 14, 8, 0.5, RGB(150, 150, 130), RGB(90, 96, 80))
 end
 
@@ -416,7 +411,7 @@ local function attackerAirfield(f)
   airfield(f, { x = A.x, z = A.z, y = A.y, len = A.len, wid = A.wid }, "atk")
 end
 
--- 海滩：每处海滩中间一根带颜色的标杆（从海上看得到往哪儿冲），守方在滩上摆钢刺猬
+-- 海滩：每处海滩中间一根带颜色的标杆（从海上看得到往哪儿冲）；钢刺猬、铁丝网、雷区在 Forts 里摆
 function World.beaches(f)
   for _, b in ipairs(Map.BEACHES) do
     local z = b.z - b.dir * 30

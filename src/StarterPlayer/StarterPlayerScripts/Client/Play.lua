@@ -1,6 +1,6 @@
 -- 暗剑：登岛战——操作：武器栏（1–4、点选）、肩后视角（拿着武器时鼠标锁在屏幕中间、人跟着镜头转，准星打哪儿就是哪儿）、
 --   开火（连发 / 单发）、右键瞄准（狙击镜）、R 换弹、各种装备（火箭筒、防空导弹右键锁定、手雷、迫击炮、急救包、扳手按住修车、
---   炸药包左键放右键引爆、地雷、望远镜左键标记 F 呼叫炮击）、命中标记、弹药显示；手机上屏幕按钮
+--   炸药包左键放右键引爆、破障器材按住排雷剪铁丝网、望远镜左键标记 F 呼叫炮击）、命中标记、弹药显示；手机上屏幕按钮
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("ReplicatedStorage")
@@ -202,7 +202,8 @@ function Play.init(G)
     local best, bd = nil, math.huge
     for _, m in ipairs(ents:GetChildren()) do
       local r = m:FindFirstChild("Root")
-      if r and m:GetAttribute("Team") == player:GetAttribute("Side") and m:GetAttribute("Cat") ~= "inf" and m:GetAttribute("Cat") ~= "fort" then
+      local kd = m:GetAttribute("Kind")
+      if r and m:GetAttribute("Team") == player:GetAttribute("Side") and m:GetAttribute("Cat") ~= "inf" and kd ~= "c4" and kd ~= "mine" and not m:GetAttribute("Wreck") then
         local d = (r.Position - hrp.Position).Magnitude - math.max(r.Size.X, r.Size.Z) / 2
         if d < range and d < bd then best, bd = m, d end
       end
@@ -240,6 +241,7 @@ function Play.init(G)
       if m then RShoot:FireServer(id, m:GetAttribute("EntId")) end
       return
     end
+    if w.kind == "breach" then return end   -- 破障器材：按住左键排雷 / 剪铁丝网，在 Gunner 的 G.breachStep 里
     if w.kind == "place" and id == "c4" and alt then
       cur.nextShot = t + 0.4
       RShoot:FireServer(id, "det")
@@ -333,7 +335,7 @@ function Play.init(G)
     local w = W[id]
     local a = ammoOf(id)
     local name = T("weapon." .. id)
-    if w.kind == "heal" or w.kind == "repair" or w.kind == "spot" then
+    if w.kind == "heal" or w.kind == "repair" or w.kind == "spot" or w.kind == "breach" then
       ammoText.Text = name
     elseif a.r > 0 then
       ammoText.Text = T("ui.reloading", name)
@@ -401,6 +403,10 @@ function Play.init(G)
       end
     end
     weaponHud()
+    if G.breachStep then   -- 破障器材：探雷标记、按住排雷 / 剪铁丝网的进度
+      local tip = G.breachStep(dt, armed and w and w.kind == "breach" or false, cur.firing)
+      if tip then tipText.Text = tip end
+    end
     local a = now() - hitT
     hitX.TextTransparency = math.clamp(a / 0.25, 0, 1)
   end

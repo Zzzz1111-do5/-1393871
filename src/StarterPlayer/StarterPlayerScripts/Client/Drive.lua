@@ -353,6 +353,11 @@ function Drive.init(G)
         local res = workspace:Raycast(o, fwd * math.sign(step) * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
         if res then blocked = true end
       end
+      -- 工事、钢刺猬（FortView 给的）：往里开就停（已经卡在里面的让它开出来）
+      if not blocked and G.solidAt then
+        local ahead = st.pos + fwd * math.sign(step) * (d.L * 0.45 + math.abs(step))
+        if G.solidAt(ahead, d.W * 0.4) and not G.solidAt(st.pos, d.W * 0.4) then blocked = true end
+      end
       if blocked then
         if math.abs(st.speed) > 12 and G.shake then G.shake(0.25) end
         st.speed = 0
@@ -518,6 +523,7 @@ function Drive.init(G)
   function G.stepDrive(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
+    if vs and vs.fort then vs = nil end   -- 操作工事归 Gunner 管
     if vs and (not st or st.id ~= vs.id) then
       if st then stop() end
       begin(vs)

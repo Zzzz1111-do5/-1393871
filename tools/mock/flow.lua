@@ -9,6 +9,7 @@ local check = T.check
 
 print("① 开服：生成地图")
 local G = T.boot()
+G.fortsHold = true   -- 这里测的不是工事：工事不开火
 check(G ~= nil, "服务器模块起来了")
 G.Config.Bots.minPerTeam = 0
 local ok = T.runUntil(function() return G.worldReady end, 900)

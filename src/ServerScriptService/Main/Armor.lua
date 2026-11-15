@@ -9,6 +9,7 @@ local Armor = {}
 function Armor.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
+  local FD = require(RS:WaitForChild("FortDefs"))
   local V = Vector3.new
   local CF = CFrame.new
   local now = os.clock
@@ -83,7 +84,8 @@ function Armor.init(G)
       end
       if ok then
         local lo, hi = math.min(table.unpack(hs)), math.max(table.unpack(hs))
-        if hi - lo < d.L * 0.18 then return px, pz end
+        -- 还要空着：不压在房子、帐篷、工事、钢刺猬上（Forts 的 G.spotClear）
+        if hi - lo < d.L * 0.18 and (not G.spotClear or G.spotClear(px, pz, d.W * 0.5 + 1, d.L * 0.5 + 1, d.H)) then return px, pz end
       end
     end
     return x, z
@@ -298,7 +300,9 @@ function Armor.init(G)
         -- 车头正对岸：目标点要从车自己的位置往前取（原来取滩头中心往前 10 格，横向随机偏 ±30 格时车头会歪到七十度，一直斜着开上不了岸）
         local z = b.z + b.dir * 300
         local face = V(0, 0, -b.dir)
-        local p0 = V(b.cx + (math.random() - 0.5) * 60, -d.H * 0.35, z)
+        -- 正对滩头的通道或钢刺猬缺口（FortDefs.lanes），别一出来就顶在钢刺猬上
+        local xs = FD.lanes(b)
+        local p0 = V(xs[math.random(#xs)] + (math.random() - 0.5) * 6, -d.H * 0.35, z)
         local base = CFrame.lookAt(p0, p0 + face * 10)
         e = newVehicle(P.team, id, base, P)
       else
