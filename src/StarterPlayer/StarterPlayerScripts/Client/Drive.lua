@@ -235,17 +235,22 @@ function Drive.init(G)
   local function baseAt(d, pos, yaw)
     local face = V(-math.sin(yaw), 0, -math.cos(yaw))
     local right = V(-face.Z, 0, face.X)
-    local function gh(p) return Map.ground(p.X, p.Z) end
+    -- 两栖车：浮着时车底在吃水线（海面下大半个车体）；水浅到履带碰着海底，就踩着海底往上爬（车底取海底和吃水线高的那个），
+    --   不会在水深 1.5 格那一下从吃水线弹到海面上
+    local draft = d.amphib and d.hullH * 0.55 or nil
+    local function gh(p)
+      if draft then return math.max(Map.height(p.X, p.Z), -draft) end
+      return Map.ground(p.X, p.Z)
+    end
     local c = V(pos.X, 0, pos.Z)
     local f, b = c + face * d.L * 0.4, c - face * d.L * 0.4
     local l, r = c - right * d.W * 0.4, c + right * d.W * 0.4
-    local h0 = Map.height(c.X, c.Z)
-    if h0 < -1.5 and d.amphib then   -- 浮在水面：吃水大半个车体，随浪轻轻晃
+    local yf, yb, yl, yr = gh(f), gh(b), gh(l), gh(r)
+    if draft and math.max(yf, yb, yl, yr) <= -draft + 1e-3 then   -- 四个角都够不着海底：浮着，随浪轻轻晃
       local t = os.clock()
-      local cf = CFrame.lookAt(V(c.X, -d.hullH * 0.55 + math.sin(t * 1.3) * 0.15, c.Z), V(c.X, -d.hullH * 0.55, c.Z) + face)
+      local cf = CFrame.lookAt(V(c.X, -draft + math.sin(t * 1.3) * 0.15, c.Z), V(c.X, -draft, c.Z) + face)
       return cf * CFrame.Angles(math.sin(t * 0.9) * 0.012, 0, math.sin(t * 1.1) * 0.02)
     end
-    local yf, yb, yl, yr = gh(f), gh(b), gh(l), gh(r)
     local y = (yf + yb + yl + yr) / 4
     local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
     local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
@@ -337,8 +342,12 @@ function Drive.init(G)
       local h1 = Map.height(np.X, np.Z)
       local blocked = false
       if h1 < -2.5 and not d.amphib then blocked = true end
-      -- 坡度按地面（海里按水面）算：比约 40° 陡上不去
-      if not blocked and h1 > 0.5 and (h1 - math.max(h0, -0.5)) / math.abs(step) > 0.85 then blocked = true end
+      -- 坡度按地面（海里按水面）算：比约 40° 陡上不去。按前方 4 格取样——原来按这一帧走的距离算（每帧零点几格），
+      --   岸边零点几格的小坎就算成陡坡，两栖车卡在水线上不去；帧率越高越容易卡
+      local probe = math.max(4, math.abs(step))
+      local pa = st.pos + fwd * math.sign(step) * probe
+      local ha = Map.height(pa.X, pa.Z)
+      if not blocked and ha > 0.5 and (ha - math.max(h0, -0.5)) / probe > 0.85 then blocked = true end
       if not blocked then
         local o = st.pos + V(0, Map.ground(st.pos.X, st.pos.Z) - st.pos.Y + d.hullH * 0.55, 0)
         local res = workspace:Raycast(o, fwd * math.sign(step) * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)

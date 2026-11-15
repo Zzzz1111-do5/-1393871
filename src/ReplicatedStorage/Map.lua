@@ -237,7 +237,9 @@ local function natural(x, z)
     if yi then return yi, di end
     if -di < off then off, k = -di, 0.12 end
   end
-  return -min(Map.SEA_DEPTH, 1.2 + off * k), -off
+  -- 岸线外头几格从陆地边上的 +0.6 平滑降到 −1.2（原来在岸线上直接断开 1.8 格：车开到水线就是一道坎）；海滩的缓些
+  local lip = 1.8 * smooth(0, (k < 0.1) and 10 or 6, off)
+  return -min(Map.SEA_DEPTH, lip - 0.6 + off * k), -off
 end
 
 function Map.height(x, z)

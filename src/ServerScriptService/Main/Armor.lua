@@ -295,9 +295,11 @@ function Armor.init(G)
       local b = Map.landingOf(sp.beach)
       if not b then return end
       if d.amphib then   -- 两栖：从离岸 300 格的海里自己开上来
+        -- 车头正对岸：目标点要从车自己的位置往前取（原来取滩头中心往前 10 格，横向随机偏 ±30 格时车头会歪到七十度，一直斜着开上不了岸）
         local z = b.z + b.dir * 300
         local face = V(0, 0, -b.dir)
-        local base = CFrame.lookAt(V(b.cx + (math.random() - 0.5) * 60, -d.H * 0.35, z), V(b.cx, -d.H * 0.35, z) + face * 10)
+        local p0 = V(b.cx + (math.random() - 0.5) * 60, -d.H * 0.35, z)
+        local base = CFrame.lookAt(p0, p0 + face * 10)
         e = newVehicle(P.team, id, base, P)
       else
         local z = b.z + b.dir * LCAC.start
