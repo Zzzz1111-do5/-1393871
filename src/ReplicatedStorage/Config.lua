@@ -1,9 +1,9 @@
--- 暗剑：登岛战——数值（服务器、客户端共用）
+-- Roblox全面大战场——数值（服务器、客户端共用）
 -- 文字都在 Lang.lua（中英双语），这里只放编号和数
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档）
+Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改名成「Roblox全面大战场」后照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 
 ---------------------------------------------------------------- 回合

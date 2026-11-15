@@ -6,7 +6,7 @@
     <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">AirDefs</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
 --   单位：格（1 米约 2.8 格，和地面载具一样）。机体坐标：原点在机身中心（命中盒中心），X 右、Y 上、−Z 朝前（机头）
 --   gearH：放下起落架停在地上时，原点离地多高；直升机是起落架 / 机轮着地时的高度
 --   速度（格 / 秒）：stall 失速、vMil 不开加力的最大平飞速度、vAB 开加力；accel 军用推力的加速度；pitch / roll / yaw 每秒最多转几度；
@@ -443,12 +443,12 @@ return AirDefs
     <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">Config</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——数值（服务器、客户端共用）
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
 -- 文字都在 Lang.lua（中英双语），这里只放编号和数
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档）
+Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改名成「Roblox全面大战场」后照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 
 ---------------------------------------------------------------- 回合
@@ -776,7 +776,7 @@ return {
     <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">FortDefs</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
 --   工事：机枪碉堡（12.7 毫米机枪，从射孔里打，左右各 60°）、岸防炮（127 毫米舰炮改的岸炮，打登陆艇、舰艇，也打滩上的车）、
 --     高炮（双联 35 毫米，近炸引信，只打飞机）、M777 榴弹炮阵地（155 毫米，山脊后面，曲射）；
 --     没人操作时 AI 打，自己队的玩家走过去按 E 就能接手操作（F 离开）；能被打掉（伤害类别 fort：步枪几乎打不动，要火箭筒、炸药包、坦克炮、炮击、炸弹）；
@@ -1019,7 +1019,7 @@ return FortDefs
     <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">Lang</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
 --   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
 --   Lang.t(lang, key, ...)：{1} {2} … 换成参数；参数是表 { k = "编号", … } 时先翻译它（服务器发「据点 A」「步枪兵」这种）
 local Lang = {}
@@ -1034,7 +1034,7 @@ end
 
 ---------------------------------------------------------------- 名字
 
-add("game.title", "暗剑：登岛战", "Darksword: Island Assault")
+add("game.title", "Roblox全面大战场", "Roblox Total Battlefield")
 add("team.atk", "进攻方", "Attackers")
 add("team.def", "防守方", "Defenders")
 add("team.atk.short", "攻", "ATK")
@@ -1288,7 +1288,7 @@ return Lang
     <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">Map</string>
-        <ProtectedString name="Source"><![CDATA[-- 登岛战地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
+        <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
 --   坐标：X 东西（东为正），Z 南北（北是 −Z），海平面 Y = 0；地形范围 ±4096 格，再往外是一块平面当远海
 --   主岛「棕榈岛」照网页版《暗剑》js/isle.js 的虚构热带岛：南岸宽而平缓（四处海滩）、东西两个岬角、西南向南开口的 U 形港湾（湾底港口镇）、
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
@@ -1635,7 +1635,7 @@ return Map
     <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">VehDefs</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
 --   单位：格（1 米约 2.8 格，和 Roblox 的人一样比例）。车的坐标系：原点在车底中心（着地），X 右、Y 上、−Z 朝前
 --   服务器的命中盒是 W × H × L 的方块，中心在原点上 H/2；客户端按 arch（tracked 履带 / wheeled 轮式）和各项参数拼零件模型
 --   炮塔：pivot 是转轴（相对车底），trav 每秒转几度，elev 俯仰范围（度）；炮：gun.pivot 是耳轴（相对炮塔转轴），len 长、cal 粗
@@ -1935,7 +1935,7 @@ return VehDefs
     <Item class="Script" referent="13">
       <Properties>
         <string name="Name">Main</string>
-        <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——服务器主脚本（ServerScriptService.Main）
+        <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
 -- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
 --   World 地图 · Store 存档 · Round 回合、分队、部署、据点、胜负 · Weapons 步兵武器 · Ents 实体（机器人、载具、舰艇、工事）与伤害、爆炸、飞行中的弹 ·
 --   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Forts 地图自带的工事和障碍（玩家走过去能操作） · Bots 机器人
@@ -1979,7 +1979,7 @@ end
 -- 开服时出的错记下来；运行中接住的错 Output 里留一条、所有玩家屏幕上方红条显示（同一个错只发一次）
 G.bootErrors = {}
 local function bootError(what, err)
-  local msg = "[登岛战] " .. what .. "出错：" .. tostring(err)
+  local msg = "[全面大战场] " .. what .. "出错：" .. tostring(err)
   warn(msg)
   table.insert(G.bootErrors, msg)
 end
@@ -1991,7 +1991,7 @@ function G.reportError(where, err)
   if errSeen[key] then return end
   errSeen[key] = true
   errN += 1
-  warn("[登岛战] " .. tostring(where) .. " 出错：" .. full)
+  warn("[全面大战场] " .. tostring(where) .. " 出错：" .. full)
   if errN <= 8 then pcall(function() G.R.Err:FireAllClients(string.sub(tostring(where) .. "：" .. first, 1, 300)) end) end
 end
 local function tb(e) return debug.traceback(tostring(e), 2) end
@@ -2060,7 +2060,7 @@ task.spawn(function()
   if not ok then bootError("生成地图", err) G.worldReady = true end
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
-  print("[登岛战] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
+  print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
 end)
 
 ---------------------------------------------------------------- 循环
@@ -2094,13 +2094,13 @@ game:BindToClose(function()
   if G.saveAll then G.saveAll() end
 end)
 
-print("[登岛战] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
+print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
       <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Air</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——飞机、直升机（服务器）：部署（名额、挂载、出生点）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：部署（名额、挂载、出生点）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
 --   航炮（扣着扳机按射速连发）、空空 / 空地导弹（比例导引、过载有限、近炸引信；热诱弹骗走红外弹）、炸弹（制导的往目标滑）、火箭巢、
 --   跳伞（固定翼弹射、直升机高处跳伞）、没人开的飞机掉下来、撞地 / 坠海、落在自己的机场 / 甲板上补弹修理、运输直升机载人
 --   出生点：攻方直升机在两栖攻击舰甲板、拿下的据点；攻方固定翼在航母（舰载机）、机场岛、或空中出发（从南边）；
@@ -2917,7 +2917,7 @@ return Air
       <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">Armor</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
 --   开火（主炮炮弹有弹道、并列机枪直射、榴弹炮 / 火箭炮曲射）、烟幕弹（从型号规定的发射筒打出去，落地起烟团，挡住机器人的视线）、
 --   下车 / 上车、被毁（车组阵亡、残骸烧一会儿、这个名额冷却）
 --   攻方的车从海上来：不会游的坐 726 气垫艇冲上选定的海滩，两栖的自己从海里开上来；守方的车在还在手里的据点车场、或后方营地
@@ -3455,7 +3455,7 @@ return Armor
       <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">Bots</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
 --   攻方：开战后成班坐登陆艇（按要打的据点挑海滩 / 小岛南岸），上岸朝据点推进，见敌就打；拿下一个往同一块陆地上的下一个推，
 --     这块陆地上没有要打的了就「回船」（不算阵亡，重新坐艇去别处）；有拿下的据点时也可能直接在那里出生
 --   守方：准备阶段就出生，分到各个还在手里的据点（哪边攻方多往哪边多分），在圈里找位置站着；据点丢了换一个
@@ -4102,7 +4102,7 @@ return Bots
       <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">Ents</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——实体与伤害
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
 --   实体（机器人、载具、舰艇、工事、登陆艇）：服务器上一个 Model + 锚定的隐形命中盒 Root，类型、队伍、血量写在属性里；
 --     客户端按属性克隆模板、平滑地跟着 Root 走（View.lua）；伤害按目标类别（inf 步兵、light 轻型车、armor 装甲、air 飞机、ship 舰艇、fort 工事）乘武器的倍数
 --   飞行中的弹：火箭弹、手雷、防空导弹（追踪）、迫击炮弹、炮弹——每一步射线检测，落地 / 打中就爆炸
@@ -4354,7 +4354,7 @@ return Ents
       <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">Forts</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
 --   工事（实体，能被打掉）：机枪碉堡、岸防炮、高炮、M777 榴弹炮阵地。没人操作时 AI 打：找目标（看得见、在射界里）、转炮塔（有回转速度）、
 --     开火（机枪点射；岸防炮按弹道带提前量，头一发试射、之后一发比一发准；高炮近炸引信；榴弹炮打攻方扎堆、正在占据点、被观察员标记的地方）
 --   自己队的玩家走过去按 E 接手（AI 让出来）：鼠标瞄准、左键开火、F 离开；工事被打掉时操作的人阵亡
@@ -5545,7 +5545,7 @@ return Forts
       <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">Nav</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
 --   从目的地往外做 Dijkstra（八方向，边的代价 = 长度 ×（1 + 坡度 × 3），坡太陡、中间下水的边不通），
 --   每格记「下一步去哪格」；走的时候看前面几格（顺一点、少拐）。开服地图生成完后在后台慢慢算（每算一批让出一帧）
 local Nav = {}
@@ -5738,7 +5738,7 @@ return Nav
       <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">Round</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
 --   一局：准备（Config.Round.prep 秒，所有人随机分成人数相当的两队）→ 战斗（20 分钟，攻方每拿下一个据点 +3 分钟）→ 结算 → 重新分队开下一局
 --   胜负：攻方拿下全部 5 个 → 攻方赢；时间到守方手里还有任何一个 → 守方赢（到点时有据点正在被占：加时到占领中断或成功，最多 90 秒）
 --   据点被攻方拿下后锁定，守方夺不回去
@@ -6302,7 +6302,7 @@ return Round
       <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">Store</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
 local DataStoreService = game:GetService("DataStoreService")
 
 local Store = {}
@@ -6373,7 +6373,7 @@ return Store
       <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">Vehicles</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
 --   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
 --     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
 --   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
@@ -6620,7 +6620,7 @@ return Vehicles
       <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">Weapons</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
 --   枪：射线判定，爆头加成；火箭筒 / 手雷 / 防空导弹：飞行中的弹（Ents）；迫击炮：点地面，几秒后落下；急救包；扳手修车；
 --   炸药包（放下、再用一次引爆）；破障器材（探雷、排雷、剪铁丝网，逻辑在 Forts）；望远镜：标记敌人给全队看，呼叫炮火覆盖
 local Weapons = {}
@@ -7094,7 +7094,7 @@ return Weapons
       <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">World</string>
-          <ProtectedString name="Source"><![CDATA[-- 登岛战：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
+          <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
 --   5 个据点（旗杆、旗、地上的圈、沙袋）、守方机场、港口镇、指挥所、北岸营地、灯塔、西礁岛岸防炮台、攻方机场岛、攻方舰队（固定平台，打不掉）
 --   都是锚定的静态零件；小装饰不挡人、不挡射线、不投影，省性能
 local RS = game:GetService("ReplicatedStorage")
@@ -7555,7 +7555,7 @@ return World
       <Item class="LocalScript" referent="27">
         <Properties>
           <string name="Name">Client</string>
-          <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——客户端（StarterPlayerScripts.Client）
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
 -- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 步兵操作 · View 实体的样子 · Drive 开载具（VehModels 拼车）·
 --   FortView 地图自带工事的样子、走过去的「E 操作 / 上车」提示 · Gunner 操作工事（机枪、岸防炮、高炮、榴弹炮）、工兵的破障器材 ·
 --   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂
@@ -7620,7 +7620,7 @@ end)
         <Item class="ModuleScript" referent="28">
           <Properties>
             <string name="Name">AirModels</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
 --   固定翼：机身（椭球拼的前机身、中机身、尾锥、雷达罩）、座舱盖（玻璃，停机时打开）和飞行员、进气道、发动机舱、尾喷口（调节片随加力张开）
 --     和加力火焰（长度跟油门、带马赫环）、机翼（梯形，三角形楔块拼）、鸭翼 / 平尾（全动）、垂尾（全动或方向舵）、副翼、襟翼、升降副翼、
 --     起落架（支柱、机轮、舱门，收放有动画）、尾钩、弹舱门（两扇向下打开）、侧弹舱（挂架连弹推出舱外）、折叠机翼（舰载机停在甲板上折起）、
@@ -8486,7 +8486,7 @@ return AM
         <Item class="ModuleScript" referent="29">
           <Properties>
             <string name="Name">Drive</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
 --   镜头：追尾（鼠标绕着车转），右键 / V 进炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
 --   瞄准镜四种模式（N 切换）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
@@ -9130,7 +9130,7 @@ return Drive
         <Item class="ModuleScript" referent="30">
           <Properties>
             <string name="Name">FPSView</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
 --   M4：动作照 FPSAnim（从「M4 - FPS Weapon Animations Pack (v.1)」抽的：拔枪、换弹、空仓换弹），再叠上待机呼吸、走路晃、
 --     转镜头时枪滞后一点、每发后坐（枪机往后一下）、开镜（照门、准星对到屏幕正中）、枪口火光
 --   别的装备（狙击枪、火箭筒、防空导弹、手雷、急救包、扳手、破障器材、炸药包、望远镜、迫击炮）：同一双方块手臂端着它（工具的零件按比例缩小装上去），
@@ -9302,7 +9302,7 @@ function FPSView.init(G)
       genStale = true
     end)
     if not ok then
-      warn("[登岛战] 第一人称 M4 的网格生成不了（用零件拼的代替；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API，或者导入 models/fps_m4.glb）：" .. tostring(err))
+      warn("[全面大战场] 第一人称 M4 的网格生成不了（用零件拼的代替；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API，或者导入 models/fps_m4.glb）：" .. tostring(err))
       G.fpsGenError = tostring(err)
     end
   end
@@ -9627,7 +9627,7 @@ return FPSView
         <Item class="ModuleScript" referent="31">
           <Properties>
             <string name="Name">FortView</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
 --   炮塔、炮管按属性 Ty / Gp 平滑地转（自己在操作的用本地的），开炮后坐，被毁时顶板塌下来、发黑、冒火冒烟；队伍色小旗（据点被拿下换颜色）
 --   走到自己队的工事旁出现「E 操作」提示、走到自己队的空车旁出现「E 上车」（ProximityPrompt：手机点一下、手柄按键也行）
 --   G.solidAt(点, 半径)：开车时撞上工事、钢刺猬就停（Drive.lua 调）
@@ -9942,7 +9942,7 @@ return FortView
         <Item class="ModuleScript" referent="32">
           <Properties>
             <string name="Name">Fx</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
 --   治疗光圈、修车火花、据点易手、被标记的敌人（头顶红菱形 + 地图红点）、震屏；音效用 Roblox 自带的声音变调（不用上传素材）
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
@@ -10303,7 +10303,7 @@ return Fx
         <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">Gunner</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
 --   机枪碉堡：坐在机枪后面从射孔往外看，鼠标转枪（左右各 60°），按住左键连发；
 --   高炮：炮后面的追尾镜头，按住左键连发（近炸引信），准星旁边给最近的敌机画提前量菱形；
 --   岸防炮：炮塔后面的镜头，右键 / V 进瞄准镜（滚轮换倍率），准星指哪儿炮按弹道自己抬到哪儿，左键一发；
@@ -10843,7 +10843,7 @@ return Gunner
         <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">MapUI</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
 --   部署界面的大地图和右下角的小地图是同一张图：换父级、改大小（里面都按比例摆）
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -11033,7 +11033,7 @@ return MapUI
         <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">Play</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
 --   开火（连发 / 单发）、右键瞄准（狙击镜）、R 换弹、各种装备（火箭筒、防空导弹右键锁定、手雷、迫击炮、急救包、扳手按住修车、
 --   炸药包左键放右键引爆、破障器材按住排雷剪铁丝网、望远镜左键标记 F 呼叫炮击）、命中标记、弹药显示；手机上屏幕按钮
 local Players = game:GetService("Players")
@@ -11480,7 +11480,7 @@ return Play
         <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">UI</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
 --   击杀信息、屏幕中间的大字、底部提示、战况表（Tab）、结算画面、出错红条；所有文字按 G.lang 中英切换
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -12115,7 +12115,7 @@ return UI
         <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">VehModels</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——地面载具的零件模型：按 VehDefs 的尺寸拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的零件模型：按 VehDefs 的尺寸拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
 --   履带车的负重轮 / 主动轮 / 诱导轮 / 履带（下面一段段跟着负重轮上下）、轮式车的车轮（带轮毂、挡泥板，前轴转向）、
 --   各式炮塔（楔形、圆形、艾布拉姆斯、步战车、遥控武器站、自行高炮、火神炮、自行榴弹炮、发射箱）、炮管（抽烟装置、炮口制退器）、
 --   烟幕弹发射筒（就装在 VehDefs 规定的位置、朝规定的方向）
@@ -12482,7 +12482,7 @@ return VehModels
         <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">View</string>
-            <ProtectedString name="Source"><![CDATA[-- 暗剑：登岛战（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
 --   这里按种类拼一个本地模型，每帧平滑地跟着 Root 走（服务器 10～15 次 / 秒地挪，直接跟会一顿一顿的）；头顶血条
 --   机器人步兵（摆腿走路、倒地）、登陆艇（放跳板、被打沉往下沉）、气垫艇、炸药包、地雷
 --   地面载具（VehModels 拼的）：每个车轮 / 负重轮各自一个弹簧阻尼（按脚下的地面高度 + 细碎的颠簸，过坡上下抖），

@@ -1,14 +1,14 @@
 --!nocheck
--- 把 src/ 下的脚本拼成一个能直接用 Roblox Studio 打开的 IslandAssault.rbxlx（和 Rojo 的目录约定一样）：
+-- 把 src/ 下的脚本拼成一个能直接用 Roblox Studio 打开的 RobloxTotalBattlefield.rbxlx（和 Rojo 的目录约定一样）：
 --   src/<服务名>/... ；目录 = Folder；X.lua = ModuleScript；X.server.lua = Script；X.client.lua = LocalScript；
 --   目录里有 init.server.lua / init.client.lua / init.lua 时，这个目录本身就是那个脚本，其余文件是它的子模块
--- 用法（仓库根目录）：lune run tools/build.luau [输出文件，默认 IslandAssault.rbxlx]
+-- 用法（仓库根目录）：lune run tools/build.luau [输出文件，默认 RobloxTotalBattlefield.rbxlx]
 local roblox = require("@lune/roblox")
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 
 local Instance = roblox.Instance
-local out = process.args[1] or "IslandAssault.rbxlx"
+local out = process.args[1] or "RobloxTotalBattlefield.rbxlx"
 
 local game = Instance.new("DataModel")
 local count = { Script = 0, LocalScript = 0, ModuleScript = 0, Folder = 0 }

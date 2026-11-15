@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# 把 src/ 拼成 IslandAssault.rbxlx（和 tools/build.luau 一样的结果，不用装 Lune）：
+# 把 src/ 拼成 RobloxTotalBattlefield.rbxlx（和 tools/build.luau 一样的结果，不用装 Lune）：
 #   目录 = Folder；X.lua = ModuleScript；X.server.lua = Script；X.client.lua = LocalScript；
 #   目录里有 init.server.lua / init.client.lua / init.lua 时，这个目录本身就是那个脚本，其余文件是它的子模块
-# 用法（仓库根目录）：python3 tools/build_rbxlx.py [输出文件，默认 IslandAssault.rbxlx]
+# 用法（仓库根目录）：python3 tools/build_rbxlx.py [输出文件，默认 RobloxTotalBattlefield.rbxlx]
 import os
 import sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'IslandAssault.rbxlx')
+out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'RobloxTotalBattlefield.rbxlx')
 SRC = os.path.join(ROOT, 'src')
 count = {'Script': 0, 'LocalScript': 0, 'ModuleScript': 0, 'Folder': 0}
 ref = [0]

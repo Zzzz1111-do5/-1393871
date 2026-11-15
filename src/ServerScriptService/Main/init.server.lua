@@ -1,4 +1,4 @@
--- 暗剑：登岛战——服务器主脚本（ServerScriptService.Main）
+-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
 -- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
 --   World 地图 · Store 存档 · Round 回合、分队、部署、据点、胜负 · Weapons 步兵武器 · Ents 实体（机器人、载具、舰艇、工事）与伤害、爆炸、飞行中的弹 ·
 --   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Forts 地图自带的工事和障碍（玩家走过去能操作） · Bots 机器人
@@ -42,7 +42,7 @@ end
 -- 开服时出的错记下来；运行中接住的错 Output 里留一条、所有玩家屏幕上方红条显示（同一个错只发一次）
 G.bootErrors = {}
 local function bootError(what, err)
-  local msg = "[登岛战] " .. what .. "出错：" .. tostring(err)
+  local msg = "[全面大战场] " .. what .. "出错：" .. tostring(err)
   warn(msg)
   table.insert(G.bootErrors, msg)
 end
@@ -54,7 +54,7 @@ function G.reportError(where, err)
   if errSeen[key] then return end
   errSeen[key] = true
   errN += 1
-  warn("[登岛战] " .. tostring(where) .. " 出错：" .. full)
+  warn("[全面大战场] " .. tostring(where) .. " 出错：" .. full)
   if errN <= 8 then pcall(function() G.R.Err:FireAllClients(string.sub(tostring(where) .. "：" .. first, 1, 300)) end) end
 end
 local function tb(e) return debug.traceback(tostring(e), 2) end
@@ -123,7 +123,7 @@ task.spawn(function()
   if not ok then bootError("生成地图", err) G.worldReady = true end
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
-  print("[登岛战] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
+  print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
 end)
 
 ---------------------------------------------------------------- 循环
@@ -157,4 +157,4 @@ game:BindToClose(function()
   if G.saveAll then G.saveAll() end
 end)
 
-print("[登岛战] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
+print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))

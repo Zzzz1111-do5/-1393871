@@ -1,4 +1,4 @@
--- 暗剑：登岛战（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
+-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
 --   M4：动作照 FPSAnim（从「M4 - FPS Weapon Animations Pack (v.1)」抽的：拔枪、换弹、空仓换弹），再叠上待机呼吸、走路晃、
 --     转镜头时枪滞后一点、每发后坐（枪机往后一下）、开镜（照门、准星对到屏幕正中）、枪口火光
 --   别的装备（狙击枪、火箭筒、防空导弹、手雷、急救包、扳手、破障器材、炸药包、望远镜、迫击炮）：同一双方块手臂端着它（工具的零件按比例缩小装上去），
@@ -170,7 +170,7 @@ function FPSView.init(G)
       genStale = true
     end)
     if not ok then
-      warn("[登岛战] 第一人称 M4 的网格生成不了（用零件拼的代替；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API，或者导入 models/fps_m4.glb）：" .. tostring(err))
+      warn("[全面大战场] 第一人称 M4 的网格生成不了（用零件拼的代替；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API，或者导入 models/fps_m4.glb）：" .. tostring(err))
       G.fpsGenError = tostring(err)
     end
   end

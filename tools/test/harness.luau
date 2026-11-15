@@ -1477,7 +1477,7 @@ function H.boot(placePath, opts)
 		pcall(function() game:GetService(s) end)
 	end
 	local ok = pcall(function() return game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts") end)
-	-- 有地图模块（ReplicatedStorage.Map，登岛战）：射线按它的高度打地形
+	-- 有地图模块（ReplicatedStorage.Map，全面大战场）：射线按它的高度打地形
 	local mapMod = game:GetService("ReplicatedStorage"):FindFirstChild("Map")
 	if mapMod and mapMod:IsA("ModuleScript") then
 		local okM, M = pcall(hrequire, mapMod)

@@ -1,4 +1,4 @@
--- 暗剑：登岛战——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
+-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
 --   击杀信息、屏幕中间的大字、底部提示、战况表（Tab）、结算画面、出错红条；所有文字按 G.lang 中英切换
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")

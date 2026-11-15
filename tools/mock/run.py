@@ -1,4 +1,4 @@
-# 用系统自带的 Lua 5.4 运行库（liblua5.4）跑登岛战的模拟测试（这台机器没有 Lune 时用）：
+# 用系统自带的 Lua 5.4 运行库（liblua5.4）跑全面大战场的模拟测试（这台机器没有 Lune 时用）：
 #   python3 tools/mock/run.py tools/mock/<测试>.lua [参数……]
 # 脚本加载时用 luau.lua 把 Luau 的复合赋值转成 Lua 5.4；测试脚本把结果写在全局 TEST_CODE（0 通过、1 有检查没通过、2 脚本出错）。
 import ctypes, ctypes.util, os, sys

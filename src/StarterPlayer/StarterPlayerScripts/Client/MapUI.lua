@@ -1,4 +1,4 @@
--- 暗剑：登岛战——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
+-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
 --   部署界面的大地图和右下角的小地图是同一张图：换父级、改大小（里面都按比例摆）
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")

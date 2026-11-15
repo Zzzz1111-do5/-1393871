@@ -1,4 +1,4 @@
-# 登岛战大改方案
+# Roblox全面大战场：方案（原「登岛战」大改）
 
 把「军事大亨」改成百人同服的攻防登岛战。这份文档记录需求、定下来的方案和进度，后面照着它写。
 
@@ -48,7 +48,7 @@
 - [ ] 模型包转换。
 - [ ] 新图标和宣传图。
 
-`src/` 已经整个换成登岛战，`IslandAssault.rbxlx` 是它生成的；大亨版的代码和测试删掉了（要看去翻 git 历史，最后一版是提交 8809346）。
+`src/` 已经整个换成这个游戏，`RobloxTotalBattlefield.rbxlx` 是它生成的；大亨版的代码和测试删掉了（要看去翻 git 历史，最后一版是提交 8809346）。
 
 ## 玩法
 
@@ -223,5 +223,7 @@
 
 ## 名字
 
-- 「军事大亨 / Army Base Tycoon」不再贴切。暂定「暗剑：登岛战 / Darksword: Island Assault」，发布时可以改。
+- 「军事大亨 / Army Base Tycoon」不再贴切。先叫过「暗剑：登岛战 / Darksword: Island Assault」，现在定名「Roblox全面大战场 / Roblox Total Battlefield」
+  （代码、界面标题、生成的 `RobloxTotalBattlefield.rbxlx` 都改了；存档键 `IslandAssault_v1` 没改，玩家的军衔、经验不丢）。
+  - 注意：Roblox 的规则不让体验名冒充官方，发布时如果标题里的「Roblox」过不了审，商店里的名字可以换个说法，代码不用动。
 - 现有的图标和宣传图是大亨版的，新玩法做完后要重做。

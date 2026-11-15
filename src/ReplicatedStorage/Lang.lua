@@ -1,4 +1,4 @@
--- 暗剑：登岛战——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
+-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
 --   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
 --   Lang.t(lang, key, ...)：{1} {2} … 换成参数；参数是表 { k = "编号", … } 时先翻译它（服务器发「据点 A」「步枪兵」这种）
 local Lang = {}
@@ -13,7 +13,7 @@ end
 
 ---------------------------------------------------------------- 名字
 
-add("game.title", "暗剑：登岛战", "Darksword: Island Assault")
+add("game.title", "Roblox全面大战场", "Roblox Total Battlefield")
 add("team.atk", "进攻方", "Attackers")
 add("team.def", "防守方", "Defenders")
 add("team.atk.short", "攻", "ATK")
