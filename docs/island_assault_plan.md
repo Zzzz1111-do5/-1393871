@@ -93,6 +93,9 @@
   - keen-heisenberg 在它认领之前已经按用户的话（「模型你去 Sketchfab 上找」）找好、下好了两边各五把主武器和配件的 CC-BY 模型（清单、模型号、作者、方向、比例在
     `tools/weapons/weapons.json`），校准到第一人称 M4 枪身骨骼的工具 `tools/weapons/build.mjs`（侧视对比图、量截面）做到一半，没接进游戏，认领的会话可以接着用；
     瞄准镜那一块（真模型、目镜里的像）已经做完，见上面「瞄准镜」。
+- [ ] 实景地图（用户给了 Arma 那种截图：土路、草地花丛、成片针叶林、起伏山丘、车后扬尘；缺的模型去 Sketchfab 找 CC-BY 的）——**session_01UJLfFEixacgxgs7dCsgNkA 在做**（`darksword-air-map`）：
+  路网（按坡度找路、路面压平、土路材质，开服前离线算好）、地形草（Decoration）、客户端按距离摆的树林 / 灌木 / 花丛 / 草丛 / 石头
+  （Sketchfab 模型做成 Studio 导入一次的模型包 `models/scenery/`，没导入用零件拼的）、车后扬尘。
 - [ ] 界面按参考截图重做（暗色、扁平、有高级感；驾驶画面照参考的空战游戏）。
 - [x] 机器人填充：每队补到 18 人（全服最多 40 个），攻方集中兵力打「主攻」据点、成班坐登陆艇抢滩，守方按压力分到各据点；寻路用流场（`Nav.lua`）。
 - [x] 守方工事：地图自带、每局系统摆好，玩家不用（也不能）自己部署（`FortDefs.lua`、服务器 `Forts.lua`、客户端 `FortView.lua` / `Gunner.lua`，测试 `tools/mock/forts.lua`）。
@@ -158,7 +161,7 @@
 | 分支 | 会话 | 做了什么 |
 | --- | --- | --- |
 | `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具；装备原模型（地面载具、飞机直升机、舰艇） |
-| `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机（进行中） |
+| `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机的型号表和服务器；接着做实景地图（从 affectionate-pasteur 的 ac9a2c6 开始） |
 | `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」、舰艇；接着做枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
 | `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果） |
 
