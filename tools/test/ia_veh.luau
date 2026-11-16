@@ -31,6 +31,7 @@ local function drive(pl, msg) as(pl, function() H.Gs[pl.Name].R.Drive:FireServer
 H.run(0.5)
 local G = H.Gs.server
 G.fortsHold = true   -- 这里测的不是工事：工事不开火（同 tools/mock/*.lua；不然岸防炮会把测试里的登陆艇打沉）
+G.navyNoAI = true   -- 也不要 AI 舰艇（守方 PBR 打登陆艇、攻方 054A 炮击岸上；同 tools/mock/veh.lua、forts.lua）
 G.Config.Bots.minPerTeam = 0
 H.runUntil(function() return G.worldReady end, 120)
 local p1, p2 = H.addPlayer("P1", 5001), H.addPlayer("P2", 5002)

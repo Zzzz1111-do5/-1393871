@@ -8,6 +8,7 @@ local check = T.check
 
 local G = T.boot()
 G.Config.Bots.minPerTeam = 0
+G.navyNoAI = true   -- 不要 AI 舰艇：攻方 054A 一开战就炮击岸防炮（76 毫米每秒一发），等不到⑤接手就打掉了
 T.runUntil(function() return G.worldReady end, 900)
 local me = T.join("P1", 6001, true)
 local foe = T.join("P2", 6002, false)
