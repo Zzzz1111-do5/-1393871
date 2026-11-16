@@ -146,6 +146,39 @@ print("④ 开战")
 local okB = H.runUntil(function() return G.round.phase == "battle" end, G.Config.Round.prep + 5)
 check(okB, "准备 " .. G.Config.Round.prep .. " 秒后开战")
 check(math.abs((G.round.endsAt - H.now) - G.Config.Round.battle) < 5, "战斗时间 " .. G.Config.Round.battle .. " 秒")
+-- 狙击镜（Scope.lua）：换成狙击手的武器、拿狙击枪、按住右键开镜 → 圆形目镜；服务器记下开着镜、朝哪看（对面画镜片闪光）；滚轮变倍；松开收镜
+if a1.Character and PA.alive then
+	local ch = a1.Character
+	local bp = a1:FindFirstChildOfClass("Backpack")
+	local function regive(role)
+		for _, c in ipairs(ch:GetChildren()) do if c:IsA("Tool") then c.Parent = bp end end
+		H.run(0.3)
+		PA.role = role
+		G.giveLoadout(PA)
+		H.run(0.3)
+	end
+	regive("sniper")
+	H.key(a1, Enum.KeyCode.One, true) H.key(a1, Enum.KeyCode.One, false)
+	H.run(0.5)
+	H.mouseDown(a1, 640, 360, Enum.UserInputType.MouseButton2)
+	H.run(0.8)
+	local sg = a1.PlayerGui:FindFirstChild("Scope")
+	check(sg ~= nil and sg.Enabled and CA.scopeOn == true, "狙击枪按住右键：开镜（圆形目镜）")
+	check(ch:GetAttribute("Scoped") == true and typeof(ch:GetAttribute("ScopeDir")) == "Vector3", "服务器记下开着镜、朝哪看")
+	local z0 = CA.scopeZoom(G.Config.Weapons.sniper)
+	H.wheel(a1, 1) H.wheel(a1, 1)
+	H.run(0.3)
+	local z1 = CA.scopeZoom(G.Config.Weapons.sniper)
+	check(z1 > z0, string.format("滚轮变倍：%s 倍 → %s 倍", tostring(z0), tostring(z1)))
+	local head = ch:FindFirstChild("Head")
+	check(head ~= nil and head:FindFirstChild("ScopeGlint") ~= nil, "对面（守方）那边攻方的镜片上挂了闪光")
+	H.mouseUp(a1, 640, 360, Enum.UserInputType.MouseButton2)
+	H.run(0.6)
+	check(sg ~= nil and not sg.Enabled and not CA.scopeOn and ch:GetAttribute("Scoped") == false, "松开右键：收镜，服务器那边也取消")
+	H.run(0.6)
+	check(head == nil or head:FindFirstChild("ScopeGlint") == nil, "收镜后闪光也去掉了")
+	regive("rifle")
+end
 
 print("⑤ 开枪：攻方打死守方，守方等几秒复活")
 -- 把两人摆到一处：守方站在攻方正前方 30 格

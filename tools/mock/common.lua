@@ -140,12 +140,12 @@ function T.pad(vid)
 end
 function T.usePad(pl, p)
   local G = T.G
-  local y = p.sea and G.Map.BARGE.top or G.airSurface(p.term.X, p.term.Z)
+  local y = p.ty or (p.sea and G.Map.BARGE.top) or G.airSurface(p.term.X, p.term.Z)   -- ty：舰艇生成点的终端柱站在码头面上
   pl.Character:PivotTo(T.CF(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
   R.run(0.2)
   R.as("server", function() p.prompt.Triggered:Fire(pl) end)
   R.run(0.6)
-  for _, list in ipairs({ G.vehicles or {}, G.aircraft or {} }) do
+  for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
     for _, e in ipairs(list) do
       if e.padId == p.id and e.alive then return e end
     end

@@ -6,6 +6,8 @@
 --   枪用动作包里的真 M4：ReplicatedStorage.Imported.FPS_M4 里有导入的 MeshPart（models/fps_m4.glb）就用它们；没有就用 FPSMesh 里嵌的网格和贴图
 --     开局在后台用 EditableMesh / EditableImage 生成（不用手动导入）；这两样都用不了（比如没在游戏设置里打开 Mesh / Image API）时才退回零件拼的 M4
 --   手臂：袖子是自己角色的身体颜色（队伍迷彩），手掌是手套色；方块形，跟 Roblox 的胳膊一样
+--   狙击枪、望远镜换上 Sketchfab 的真模型（Optics.lua：狙击镜是 Nightforce ATACR、望远镜原样）：开镜时整个举到眼前，镜子的光轴对正屏幕中心、
+--     目镜越来越近；眼睛贴上目镜（ads > 0.9）以后才把模型藏起来，屏幕上换成 Scope.lua 画的目镜里的像（G.fpsOpticPending 告诉它还在举）
 --   Play 调：G.fpsFire(武器) 开了一枪、G.fpsReload(武器, 秒数, 空仓) 换弹；G.fpsMuzzle() 枪口在哪（曳光从这儿出去）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -86,6 +88,12 @@ function FPSView.init(G)
   local MUZZLE = V(0.005, 0.05, 1.5)                                           -- 枪口（枪身骨骼里）
   local SIGHT_R, SIGHT_F = V(0.005, 0.215, -0.14), V(0.005, 0.215, 0.975)      -- 照门、准星（开镜时连成一条线对准屏幕正中）
   local GRIP = V(0.005, -0.16, -0.22)                                          -- 别的装备装在握把这儿
+  -- 真模型的器材（Optics.lua）装在枪身骨骼的哪儿：狙击镜的镜座底面贴在零件拼的枪身顶面（工具里 y 0.55 × 0.75），目镜在握把上方；
+  --   望远镜原点在两个目镜中间，右手拿着；skip 不要工具里哪些零件（零件拼的镜子 / 望远镜）
+  local OPTIC = {
+    sniper = { key = "atacr", at = CF(0.005, 0.2525, 0.35), skip = "^Scope" },
+    binoc = { key = "binoc", at = CF(GRIP + V(0, 0.18, 0.06)), skip = "." },
+  }
 
   ---------------------------------------------------------------- 嵌在游戏里的真 M4：后台用 EditableMesh 生成（FPSMesh 是 base64 的顶点、三角形、贴图）
 
@@ -224,6 +232,7 @@ function FPSView.init(G)
 
   local function buildVM(id, tool)
     destroyVM()
+    local opticInfo, vm0Wait = nil, nil
     local model = Instance.new("Model")
     model.Name = "FPSViewModel"
     local items = {}
@@ -263,9 +272,12 @@ function FPSView.init(G)
       -- 工具的零件（焊在把手上的）按 0.75 缩小、装到握把那里（工具的枪口朝 −Z，M4 的枪身骨骼朝 +Z：转 180°）
       local h = tool:FindFirstChild("Handle")
       local K = 0.75
+      local OD = OPTIC[id]
+      local op = OD and G.opticParts and G.opticParts(OD.key)   -- 真模型（还没生成好时是 nil，先用零件拼的，生成好了下一帧重建）
+      if OD and not op then vm0Wait = id end
       if h then
         for _, src in ipairs(tool:GetDescendants()) do
-          if src:IsA("BasePart") and src ~= h and src.Transparency < 1 then
+          if src:IsA("BasePart") and src ~= h and src.Transparency < 1 and not (op and string.match(src.Name, OD.skip)) then
             local p = src:Clone()
             for _, c in ipairs(p:GetChildren()) do c:Destroy() end
             p.Size = src.Size * K
@@ -279,6 +291,21 @@ function FPSView.init(G)
         local mz = h:FindFirstChild("Muzzle")
         model:SetAttribute("Muzzle", true)
         model:SetAttribute("MuzzleOff", mz and mz.Position or V(0, 0.3, -1))
+      end
+      if op then
+        local M = G.opticMeta and G.opticMeta[OD.key]
+        for _, x in ipairs(op) do
+          x.part.Parent = model
+          table.insert(items, { x.part, "gun", OD.at * CF(x.c), optic = x.name })
+        end
+        local eye = M and M.eye
+        local obj = M and M.obj
+        opticInfo = {
+          kind = (id == "binoc") and "binoc" or "scope",
+          eyeG = OD.at * (eye and V(eye.c[1], eye.c[2], eye.c[3]) or V()),
+          objG = OD.at * (obj and V(obj.c[1], obj.c[2], obj.c[3]) or V(0, 0, 0.5)),
+          r = eye and eye.r or 0.03,
+        }
       end
     end
     -- 方块手臂
@@ -304,7 +331,7 @@ function FPSView.init(G)
       mzOff = CF(GRIP) * CFrame.Angles(0, math.pi, 0) * CF(mo * 0.75)
     end
     vm = { id = id, model = model, items = items, arms = arms, flash = flash, light = light, m4 = isM4, mzOff = mzOff or CF(GRIP),
-      plist = {}, clist = {}, act = nil, t0 = now(), draw = now(), flashT = 0, bolt = 0 }
+      plist = {}, clist = {}, act = nil, t0 = now(), draw = now(), flashT = 0, bolt = 0, optic = opticInfo, wait = vm0Wait }
     for _, it in ipairs(items) do table.insert(vm.plist, it[1]) end
     for _, it in ipairs(arms) do table.insert(vm.plist, it[1]) end
     table.insert(vm.plist, flash)
@@ -326,6 +353,21 @@ function FPSView.init(G)
     local target = V(0, 0, -0.34)
     local rr = rot * r
     ADS_CF = CF(target - rr) * rot
+  end
+
+  -- 真模型器材的开镜位置：目镜中心、物镜中心连线（光轴）转到镜头正前方，目镜放在 d 处——
+  --   瞄准镜：d 让目镜在屏幕上占高度的 86%（视角越小推得越远，放大时看起来一样大）；望远镜：两个目镜贴到眼前
+  local function opticAds(O)
+    local g = CLIP.Idle.t.gun[1]
+    local r, f = g * O.eyeG, g * O.objG
+    local dir = (f - r).Unit
+    local want = V(0, 0, -1)
+    local axis = dir:Cross(want)
+    local rot = CFrame.new()
+    if axis.Magnitude > 1e-6 then rot = CFrame.fromAxisAngle(axis.Unit, math.acos(math.clamp(dir:Dot(want), -1, 1))) end
+    local d = 0.22
+    if O.kind == "scope" then d = math.max(0.14, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * 0.86)) end
+    return CF(V(0, 0, -d) - rot * r) * rot
   end
 
   ---------------------------------------------------------------- 事件（Play 调）
@@ -357,6 +399,10 @@ function FPSView.init(G)
   ---------------------------------------------------------------- 每帧
 
   local ads, swayX, swayY, swayVX, swayVY = 0, 0, 0, 0, 0
+  -- 还在把镜子举到眼前（Scope.lua 开着镜时问；等举到了才画目镜里的像。Play 每帧先调 Scope、后调 stepFPS，所以不看这一帧按没按右键）
+  function G.fpsOpticPending()
+    return vm ~= nil and vm.optic ~= nil and ads < 0.88
+  end
   local lastCam, lastPos, bobPhase, speedS = nil, nil, 0, 0
   local hiddenTool = nil
 
@@ -377,7 +423,8 @@ function FPSView.init(G)
       if vm then destroyVM() end
       return
     end
-    if not vm or vm.id ~= id or vm.tool ~= tool or (genStale and vm.m4) then
+    local opticNow = vm and vm.wait and G.opticReady and G.opticReady(OPTIC[vm.wait].key)   -- 真瞄准镜、望远镜刚生成好
+    if not vm or vm.id ~= id or vm.tool ~= tool or (genStale and vm.m4) or opticNow then
       genStale = false
       buildVM(id, tool)
       if not vm then return end
@@ -444,7 +491,9 @@ function FPSView.init(G)
         end
       end
     end
-    local adsCF = CF():Lerp(ADS_CF, ads)
+    local adsT = ADS_CF
+    if vm.optic then adsT = opticAds(vm.optic) end
+    local adsCF = CF():Lerp(adsT, ads)
     local base = cc * P * kick * extra * adsCF
     -- 枪的零件
     local clist = vm.clist
@@ -472,9 +521,19 @@ function FPSView.init(G)
     vm.light.Enabled = fl
     for i = n + 1, #clist do clist[i] = nil end
     workspace:BulkMoveTo(vm.plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
-    -- 狙击镜、望远镜放大时整个藏起来
+    -- 狙击镜、望远镜放大时整个藏起来；真模型的：举镜过程中只留镜子本身（视角收窄了，枪身、手臂会大得出奇），眼睛贴上目镜才整个藏
     local hideAll = hide == true
-    if vm.hidden ~= hideAll then
+    vm.aimNow = aiming == true
+    if vm.optic then
+      hideAll = hide == true and aiming == true and ads > 0.9
+      local only = aiming == true and ads > 0.35
+      if vm.onlyOptic ~= only or vm.hidden ~= hideAll then
+        vm.onlyOptic, vm.hidden = only, hideAll
+        local keep = {}
+        for _, it in ipairs(vm.items) do if it.optic and it.optic ~= "Reticle" then keep[it[1]] = true end end
+        for _, p in ipairs(vm.plist) do p.LocalTransparencyModifier = (hideAll or (only and not keep[p])) and 1 or 0 end
+      end
+    elseif vm.hidden ~= hideAll then
       vm.hidden = hideAll
       for _, p in ipairs(vm.plist) do p.LocalTransparencyModifier = hideAll and 1 or 0 end
     end

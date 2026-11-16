@@ -588,6 +588,14 @@ roblox.implementMethod("Camera", "ScreenPointToRay", function(self, x, y) return
 roblox.implementMethod("Camera", "ViewportPointToRay", function(self, x, y) return camRay(self, x, y) end)
 roblox.implementMethod("Camera", "WorldToViewportPoint", function(self, p)
 	local lp = self.CFrame:PointToObjectSpace(p)
+	if H.realProjection then   -- 界面截图要看画在投影点上的东西（瞄准镜的眩光等）：真的透视投影
+		local vs = self.ViewportSize
+		local z = -lp.Z
+		if z <= 1e-3 then return V3.new(vs.X / 2, vs.Y / 2, z), false end
+		local k = (vs.Y / 2) / math.tan(math.rad(self.FieldOfView) / 2)
+		local x, y = vs.X / 2 + lp.X / z * k, vs.Y / 2 - lp.Y / z * k
+		return V3.new(x, y, z), x >= 0 and x <= vs.X and y >= 0 and y <= vs.Y
+	end
 	return V3.new(640, 360, -lp.Z), lp.Z < 0
 end)
 roblox.implementMethod("Camera", "WorldToScreenPoint", function(self, p)
@@ -1253,7 +1261,7 @@ function H.pad(G, vid)
 	return nil
 end
 function H.goPad(G, pl, p)
-	local y = p.sea and G.Map.BARGE.top or G.airSurface(p.term.X, p.term.Z)
+	local y = p.ty or (p.sea and G.Map.BARGE.top) or G.airSurface(p.term.X, p.term.Z)   -- ty：舰艇生成点的终端柱站在码头面上
 	pl.Character:PivotTo(CF.new(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
 	H.run(0.2)
 end
@@ -1264,7 +1272,7 @@ function H.usePad(G, pl, p)
 	ev(p.prompt, "Triggered"):Fire(pl)
 	H.ctx = prev
 	H.run(0.6)
-	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {} }) do
+	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
 		for _, e in ipairs(list) do
 			if e.padId == p.id and e.alive then return e end
 		end

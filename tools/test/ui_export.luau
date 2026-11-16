@@ -1,7 +1,7 @@
 --!nocheck
 -- 界面导出：开服、进两个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
 --   场合：faction 选阵营 · deploy 部署 · hangar 挂载编辑器全景（航母甲板上的生成点按 E 弹出）· hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
---   fly_air 空中 · heli 直升机 · battle 步兵 · board 计分板 · result 结算
+--   fly_air 空中 · heli 直升机 · battle 步兵 · board 计分板 · scope 狙击镜开镜 · scope_kick 开枪那一下（镜内阴影） · scope_moon 狙击镜里有月亮（眩光） · binoc 望远镜 · result 结算
 --   挂载编辑器的 ViewportFrame 里的零件按镜头投影存下来（ui_view.html 按面画成 3D，看白圈是不是对在挂点上）
 -- 用法：lune run ui_export.luau <rbxlx> <输出.js> [pc|phone]
 --   phone：触屏、没有键盘，屏幕 844 × 390（iPhone 横屏的逻辑像素）
@@ -12,6 +12,9 @@ local roblox = require("@lune/roblox")
 local H = require("./harness")
 local V3, CF, Enum = roblox.Vector3, roblox.CFrame, roblox.Enum
 H.quietWarn = true
+local MOON = V3.new(0.35, 0.42, -0.84).Unit
+pcall(function() roblox.implementMethod("Lighting", "GetMoonDirection", function() return MOON end) end)
+H.realProjection = true   -- 截图要看画在投影点上的东西（瞄准镜的眩光等）：测试台换成真的透视投影
 
 local dev = process.args[3] or "pc"
 local VW, VH = 1280, 720
@@ -286,6 +289,62 @@ H.run(0.5)
 snap("board")
 tryClick(atk, "^≡$")
 H.run(0.3)
+
+-- 狙击镜、望远镜：开镜后的圆形目镜和光学效果（换成狙击手发武器、按 1 拿狙击枪、按住右键）
+--   测试台里两个客户端共用一个镜头：守方那边（还在直升机里）每帧也在改视角，先让它停一下，不然视角、分划（第一焦平面按视角摆）都不对
+do
+	local P = G.P[atk]
+	local sp, sf = CD.stepPlay, CD.stepFly
+	CD.stepPlay, CD.stepFly = function() end, function() end
+	if P.alive and not P.vehicle then
+		local cam = H.workspace.CurrentCamera
+		local function aimAt(dir)
+			local o = cam.CFrame.Position
+			cam.CFrame = CF.lookAt(o, o + dir)
+		end
+		local function regive(role)   -- 手上拿着的那把先放回背包（客户端放下它），再按新兵种发（giveLoadout 只清背包）
+			local bp = atk:FindFirstChildOfClass("Backpack")
+			for _, c in ipairs(P.char:GetChildren()) do if c:IsA("Tool") then c.Parent = bp end end
+			H.run(0.3)
+			P.role = role
+			G.giveLoadout(P)
+		end
+		regive("sniper")
+		H.run(0.3)
+		H.key(atk, Enum.KeyCode.One, true)
+		H.key(atk, Enum.KeyCode.One, false)
+		H.run(0.8)
+		aimAt(V3.new(0.2, -0.05, -1).Unit)
+		H.mouseDown(atk, 640, 360, Enum.UserInputType.MouseButton2)
+		H.run(1.2)
+		snap("scope")
+		-- 开一枪：后坐把出瞳甩开，边上出现镜内阴影
+		H.mouseDown(atk, 640, 360, Enum.UserInputType.MouseButton1)
+		H.run(0.07)
+		snap("scope_kick")
+		H.mouseUp(atk, 640, 360, Enum.UserInputType.MouseButton1)
+		H.run(0.8)
+		-- 镜头偏一点对着月亮：眩光、鬼影
+		local side = MOON:Cross(V3.new(0, 1, 0)).Unit
+		aimAt((MOON + side * 0.09 - V3.new(0, 0.05, 0)).Unit)
+		H.run(0.4)
+		snap("scope_moon")
+		H.mouseUp(atk, 640, 360, Enum.UserInputType.MouseButton2)
+		H.run(0.3)
+		regive("spotter")
+		H.run(0.3)
+		H.key(atk, Enum.KeyCode.Two, true)
+		H.key(atk, Enum.KeyCode.Two, false)
+		H.run(0.8)
+		aimAt(V3.new(0.25, -0.12, -1).Unit)
+		H.mouseDown(atk, 640, 360, Enum.UserInputType.MouseButton2)
+		H.run(1.2)
+		snap("binoc")
+		H.mouseUp(atk, 640, 360, Enum.UserInputType.MouseButton2)
+		H.run(0.3)
+	end
+	CD.stepPlay, CD.stepFly = sp, sf
+end
 
 -- 结算：时间到（没人在占点）
 if R then

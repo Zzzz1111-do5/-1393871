@@ -132,7 +132,15 @@ function Ents.init(G)
     end
     for _, e in ipairs(table.clone(ents)) do
       if e.alive then
-        local d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
+        local d
+        if e.ship then   -- 长条的舰艇：按到船体方块的距离（按中心减四成长度算的话，船头外一百多格的落点也算炸着）
+          local l = e.root.CFrame:PointToObjectSpace(pos)
+          local hs = e.root.Size / 2
+          local dx, dy, dz = math.max(0, math.abs(l.X) - hs.X), math.max(0, math.abs(l.Y) - hs.Y), math.max(0, math.abs(l.Z) - hs.Z)
+          d = math.sqrt(dx * dx + dy * dy + dz * dz)
+        else
+          d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
+        end
         if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
       end
     end

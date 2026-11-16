@@ -29,3 +29,19 @@
   改动：原模型的手臂没用（游戏里画成 Roblox 方块手臂）；枪按零件分开、单位换成格、补上 FBX 里弹匣骨骼的缩放；贴图缩小（GLB 1024、游戏内嵌 512 / 128）；动作抽成相对相机的关键帧（长的隔帧）
 
 全面大战场的地面载具原模型（models/veh/*.glb）的署名见 models/veh/credits.txt。
+
+第一人称的瞄准镜、望远镜（models/optics/*.glb；游戏里 src/ReplicatedStorage/OpticMesh、OpticsMeta）：
+  狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）（atacr.glb）：「Nightforce ATACR 7-35x56 F1」，作者 suspensy，CC-BY-4.0 https://sketchfab.com/3d-models/nightforce-atacr-7-35x56-f1-881b1a99ac1c4e3d89c45b4467e738f2
+  望远镜（binoc.glb）：「binoculars」，作者 TORI106，CC-BY-4.0 https://sketchfab.com/3d-models/binoculars-b38216dc4d5248428060d4b854c3d9e5
+  美军狙击枪（USMC M40A5）（m40a5.glb）：「USMC M40A5 Sniper」，作者 Urpo，CC-BY-4.0 https://sketchfab.com/3d-models/usmc-m40a5-sniper-f724d89f40db46b0afce2b57ac6d4823
+  解放军狙击枪（QBU-88）（qbu88.glb）：「Low-Poly QBU-88」，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-qbu-88-123f78f80f16461d97920e84135c0550
+  美军火箭筒（AT4）（at4.glb）：「Anti-Tank Grenade Launcher | AT4 | GameReady」，作者 Pan_Ar4ik，CC-BY-4.0 https://sketchfab.com/3d-models/anti-tank-grenade-launcher-at4-gameready-7ef6e4f3f0af4db8a7d3ccbaf506fd38
+  解放军火箭筒（RPG-7 / 69 式）（rpg7.glb）：「RPG-7」，作者 Tactical_Beard，CC-BY-4.0 https://sketchfab.com/3d-models/rpg-7-01c0fa7bb9e0439cac27264b3119a3fd
+  美军单兵防空导弹（FIM-92 毒刺）（stinger.glb）：「FIM-92 Stinger」，作者 Mortavex，CC-BY-4.0 https://sketchfab.com/3d-models/fim-92-stinger-d9de43d3b00a4381b991c35369b5e183
+  解放军单兵防空导弹（前卫-2）（qw2.glb）：「QW-2」，作者 会飞的购物清单，CC-BY-4.0 https://sketchfab.com/3d-models/qw-2-b3fce788240740a4b15ab1e2011158ce
+  手雷（M67）（m67.glb）：「M67」，作者 Firewarden3D，CC-BY-4.0 https://sketchfab.com/3d-models/m67-52dc34ff97984927b0322326e3171467
+  急救包（ifak.glb）：「Tactical FIRST AID KIT」，作者 Ruslan Koschey，CC-BY-4.0 https://sketchfab.com/3d-models/tactical-first-aid-kit-011c33c121284bc88bb765a85511dae1
+  扳手（管钳）（wrench.glb）：「Weathered Wrench (Game Model)」，作者 Michael Makivic，CC-BY-4.0 https://sketchfab.com/3d-models/weathered-wrench-game-model-66b29c557ce04bb0b14bdde2cc204a2f
+  炸药包（C4）（c4.glb）：「Simple Old C4」，作者 Blender3D，CC-BY-4.0 https://sketchfab.com/3d-models/simple-old-c4-43d3b6a933b04aea8006d790627f9555
+  迫击炮（M224）（m224.glb）：「Mortar - M224」，作者 Jan Češnjevar，CC-BY-4.0 https://sketchfab.com/3d-models/mortar-m224-c86a73e40d994431bcdb57dc741cf8be
+  改动：几何、材质、贴图都没改，只换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；游戏内嵌的版本贴图缩小并压成 256 色

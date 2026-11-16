@@ -238,6 +238,34 @@ add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武�
   "WASD drive · Mouse aim · LMB fire · 1/2 weapon · X smoke · RMB / V gunner sight · N night vision / thermal · F exit")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
+-- 舰艇
+add("pad.needC", "港口失守", "Port lost")
+add("ui.shipRearmed", "靠上码头：导弹补满了，正在修理", "Alongside the pier: missiles reloaded, repairing")
+add("ui.boardShip", "上船", "Board")
+add("ship.help", "W/S 车钟 · A/D 转舵 · 鼠标 瞄准 · 左键 开火 · 1 舰炮 · 2 反舰导弹 · R 锁定 · 右键 / V 望远镜 · N 夜视 · F 下船",
+  "W/S engine order · A/D rudder · Mouse aim · LMB fire · 1 guns · 2 anti-ship missiles · R lock · RMB / V binoculars · N night vision · F leave ship")
+local ORD = { [-2] = { "后退二", "Full astern" }, [-1] = { "后退一", "Slow astern" }, [0] = { "停车", "Stop" }, [1] = { "前进一", "Dead slow ahead" },
+  [2] = { "前进二", "Slow ahead" }, [3] = { "前进三", "Half ahead" }, [4] = { "前进四", "Full ahead" }, [5] = { "全速前进", "Flank speed" } }
+for k, v in pairs(ORD) do add("ship.order." .. k, v[1], v[2]) end
+add("ship.kn", "{1} 节", "{1} kn")
+add("ship.hdg", "航向 {1}°", "HDG {1}°")
+add("ship.left", "左舵 {1}°", "Port {1}°")
+add("ship.right", "右舵 {1}°", "Stbd {1}°")
+add("ship.mid", "正舵", "Midships")
+add("ship.sam", "防空导弹 {1}（自动）", "SAM {1} (auto)")
+add("ship.ciws", "近防炮（自动）", "CIWS (auto)")
+add("ship.lock", "锁定：{1}", "Locked: {1}")
+add("ship.noLock", "没有锁定：打准星下那一点", "No lock: fires at the crosshair")
+add("ship.shallow", "水太浅！", "Shallow water!")
+add("ship.rest", "停靠补给中……", "Resupplying alongside...")
+local SW = {
+  g130 = { "130 毫米主炮", "130 mm main gun" }, g127 = { "Mk 45 127 毫米舰炮", "Mk 45 5-inch gun" }, g76 = { "76 毫米舰炮", "76 mm gun" },
+  g57 = { "Mk 110 57 毫米舰炮", "Mk 110 57 mm gun" }, g30 = { "30 毫米加特林", "30 mm Gatling" }, m2x2 = { "双联 12.7 毫米机枪", "Twin .50 cal" },
+  yj18 = { "鹰击-18 反舰导弹", "YJ-18 anti-ship missiles" }, yj83 = { "鹰击-83 反舰导弹", "YJ-83 anti-ship missiles" },
+  tlam = { "战斧（海上打击型）", "Tomahawk Maritime Strike" }, harpoon = { "鱼叉反舰导弹", "Harpoon anti-ship missiles" }, nsm = { "NSM 海军打击导弹", "Naval Strike Missiles" },
+}
+for k, v in pairs(SW) do add("sw." .. k, v[1], v[2]) end
+
 -- 飞机、直升机
 add("ui.rearmed", "补满了弹药和热诱弹", "Rearmed and resupplied with flares")
 local PRESET = {
@@ -331,6 +359,16 @@ add("ui.close", "关闭", "Close")
 add("ui.map", "地图", "Map")
 
 ---------------------------------------------------------------- 翻译
+
+-- 方位（望远镜的读数；北是地图的 −Z）
+add("dir.0", "北", "N")
+add("dir.1", "东北", "NE")
+add("dir.2", "东", "E")
+add("dir.3", "东南", "SE")
+add("dir.4", "南", "S")
+add("dir.5", "西南", "SW")
+add("dir.6", "西", "W")
+add("dir.7", "西北", "NW")
 
 function Lang.pick(localeId)
   if type(localeId) == "string" and string.sub(string.lower(localeId), 1, 2) == "zh" then return "zh" end

@@ -5,6 +5,7 @@
 --   每种型号一个生成点：一根终端柱（ProximityPrompt「生成」，文字、牌子由客户端 Depot.lua 按语言写）+ 地上画出停放的位置；
 --   走过去按住 E：地面载具直接停在地台上；有挂点的飞机先在客户端弹出 3D 挂载界面，选好再发 padSpawn 生成；生成后自己走过去按 E 坐上
 --   刚生成的 30 秒只有生成的人能上（别人抢不走）；90 秒没人上就收走（不算冷却，Armor / Air 里原有的空车回收）
+--   舰艇的生成点、码头在 Navy.lua（用这里的 G.depotAddPad / G.depotBuildPad 加进来；kind "ship"，生成后直接坐上舰桥）
 local RS = game:GetService("ReplicatedStorage")
 
 local Depots = {}
@@ -13,6 +14,7 @@ function Depots.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
   local AD = require(RS:WaitForChild("AirDefs"))
+  local SD = require(RS:WaitForChild("ShipDefs"))
   local V, CF, RGB, MAT = Vector3.new, CFrame.new, Color3.fromRGB, Enum.Material
   local now = os.clock
 
@@ -21,7 +23,7 @@ function Depots.init(G)
   local SOUTH, NORTH = V(0, 0, 1), V(0, 0, -1)
   local USE_R = 14   -- 离终端柱多近才能生成（按键的距离 9 格，服务器宽一点）
 
-  local function defOf(id) return VD.get(id) or AD.get(id) end
+  local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
   local function models(team, cat)
     local out = {}
     for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
@@ -44,6 +46,7 @@ function Depots.init(G)
     byId[p.id] = p
     return p
   end
+  G.depotAddPad = addPad
 
   ---------------------------------------------------------------- 布局
 
@@ -195,7 +198,7 @@ function Depots.init(G)
   local function buildPad(f, p)
     local m = Instance.new("Model")
     m.Name = p.id
-    local ty = p.sea and Map.BARGE.top or surface(p.term.X, p.term.Z)
+    local ty = p.ty or (p.sea and Map.BARGE.top) or surface(p.term.X, p.term.Z)   -- ty：终端柱站在多高（码头面）
     local post = part(m, V(0.7, 4.4, 0.7), CF(p.term.X, ty + 2.2, p.term.Z), RGB(46, 48, 52), MAT.Metal, true)
     post.Name = "Post"
     local face = p.base.Position - p.term
@@ -238,6 +241,7 @@ function Depots.init(G)
     m.Parent = f
     p.model, p.prompt = m, pr
   end
+  G.depotBuildPad = buildPad
 
   -- 开服：地图（舰队甲板）好了以后摆生成点（init.server.lua 在 World.build 之后调）
   function G.depotsBuild()
@@ -253,11 +257,11 @@ function Depots.init(G)
   ---------------------------------------------------------------- 生成
 
   local function flat(v) return V(v.X, 0, v.Z) end
-  -- 这个生成点现在能不能用（据点 D 的机场要在本队手里）
+  -- 这个生成点现在能不能用（need：据点 D 的机场、据点 C 的港口要在本队手里）
   local function padOpen(p, team)
     if p.team ~= team then return false end
-    if p.need == "D" then
-      local s = G.points and G.points.D
+    if p.need then
+      local s = G.points and G.points[p.need]
       return s ~= nil and s.owner == team
     end
     return true
@@ -270,6 +274,9 @@ function Depots.init(G)
       if e.alive and (flat(e.root.CFrame.Position) - c).Magnitude < (p.r or 14) then return true end
     end
     for _, e in ipairs(G.aircraft or {}) do
+      if e.alive and (flat(e.root.CFrame.Position) - c).Magnitude < (p.r or 14) then return true end
+    end
+    for _, e in ipairs(G.ships or {}) do
       if e.alive and (flat(e.root.CFrame.Position) - c).Magnitude < (p.r or 14) then return true end
     end
     return false
@@ -304,6 +311,8 @@ function Depots.init(G)
       local c = p.base.Position
       local pos = V(c.X, surface(c.X, c.Z) + d.gearH, c.Z)
       e = G.spawnAircraft and G.spawnAircraft(P.team, p.vid, CFrame.lookAt(pos, pos + p.base.LookVector), load, P)
+    elseif p.kind == "ship" then
+      e = G.spawnShip and G.spawnShip(P.team, p.vid, p.base, P)
     else
       e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, p.vid, p.base, p.sea, P)
     end

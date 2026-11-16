@@ -1,6 +1,6 @@
--- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）以后，
---   MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……），
---   不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，开服时按名字收进 ReplicatedStorage.Imported.Veh / Air.<模型键>，
+-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
+--   models/optics/<键>.glb（瞄准镜、手持装备）以后，MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/
+--   O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Optics.<模型键>，
 --   客户端（VehModels.lua、AirModels.lua）拼的时候看这里有没有，有就换上原模型；导入时自带的空 Model / 文件夹顺手删掉
 local RS = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -19,14 +19,21 @@ function Imports.init(G)
   end
 
   local imported = folder(RS, "Imported")
-  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air") }
+  -- V 地面载具、A 飞机直升机、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）
+  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), O = folder(imported, "Optics") }
   local n, keys, airKeys = 0, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VA])_(%w+)__[%w_]+$")
-        if key then
+        local kind, key = string.match(d.Name, "^([VAO])_(%w+)__[%w_]+$")
+        if kind == "O" then   -- 瞄准镜：只收好，不算进装备模型
+          local parent = d.Parent
+          d.Anchored = true
+          d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
+          d.Parent = folder(dest.O, key)
+          if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
+        elseif key then
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false

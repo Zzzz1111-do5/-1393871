@@ -69,7 +69,10 @@ local genOk = T.runUntil(function()
   return v ~= nil and itemOf(v, "gun") ~= nil and itemOf(v, "gun")[1].ClassName == "MeshPart"
 end, 30)
 check(genOk, string.format("枪换成了动作包里的真 M4（EditableMesh 生成 %d 块网格、%d 个三角形、%d 张贴图）", R.editStats.meshes, R.editStats.tris, R.editStats.images))
-check(R.editStats.tris > 9000 and R.editStats.images == 2, "网格、贴图都齐")
+check(R.editStats.tris > 9000 and R.editStats.images >= 2, "网格、贴图都齐")
+-- 瞄准镜、望远镜的真模型（Optics.lua，开局后台用 EditableMesh / EditableImage 生成：狙击镜 4 块、望远镜 1 块）
+local opOk = T.runUntil(function() return C.opticReady and C.opticReady("atacr") and C.opticReady("binoc") end, 30)
+check(opOk, string.format("瞄准镜、望远镜的真模型也生成好了（这时一共 %d 块网格、%d 张贴图）", R.editStats.meshes, R.editStats.images))
 vm = C.fps
 local idleGun = vm and itemOf(vm, "gun")[1].CFrame
 local shots0 = 0

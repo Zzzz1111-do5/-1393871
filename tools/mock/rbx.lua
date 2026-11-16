@@ -1493,6 +1493,20 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
   },
 })
 
+-- 按键绑定（瞄准镜的屏息键等）：只记下来，R.binds[名字] = 函数
+R.binds = {}
+R.services.ContextActionService = service("ContextActionService", {}, { methods = {
+  BindAction = function(_, name, f)
+    if type(name) ~= "string" or type(f) ~= "function" then error("BindAction(名字, 函数, 要不要按钮, 按键…)", 2) end
+    R.binds[name] = f
+  end,
+  BindActionAtPriority = function(_, name, f, _, prio)
+    if type(name) ~= "string" or type(f) ~= "function" or type(prio) ~= "number" then error("BindActionAtPriority(名字, 函数, 要不要按钮, 优先级数字, 按键…)", 2) end
+    R.binds[name] = f
+  end,
+  UnbindAction = function(_, name) R.binds[name] = nil end,
+} })
+
 -- 存档：一张表；R.dsFail 为真时读写都报错（模拟 Studio 没开 API）
 R.store = {}
 R.services.DataStoreService = service("DataStoreService", {}, { methods = { GetDataStore = function(_, name)
