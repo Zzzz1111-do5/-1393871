@@ -169,6 +169,8 @@ Map.FLEET = {
   { kind = "lst", x = 950, z = 2050, rot = 0 },
 }
 Map.AFIELD2 = { x = 0, z = 3200, len = 900, wid = 50, rot = 0 }
+-- 登陆平台：舰队前面一块浮在海上的大平台（攻方地面载具的生成点在两侧水面：车站在气垫艇上，自己开去哪个海滩都行，冲上岸艇自己回去）
+Map.BARGE = { x = -40, z = 1800, W = 120, L = 360, top = 3.5 }
 
 ---------------------------------------------------------------- 压平的场地
 
@@ -289,7 +291,7 @@ local function flatHere(x, z, r, r2, yMin)
 end
 for _, p in ipairs(Map.POINTS) do flatHere(p.x, p.z, 55, 110) end
 do local A = Map.AIRFIELD addRect(A.x, A.z - 40, A.len / 2 + 50, 120, 170, max(4, avgNatural(A.x, A.z - 40, 200))) end   -- 跑道 + 北面停机坪
-flatHere(Map.CAMP.x, Map.CAMP.z, 70, 170)
+do local C = Map.CAMP addRect(C.x, C.z + 15, 200, 85, 120, max(3, avgNatural(C.x, C.z, 70))) end   -- 营地：帐篷、营房，南面一排车场、北面直升机停机坪（Depots.lua）
 flatHere(Map.PORT.x, Map.PORT.z, 80, 190)
 addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70, 60, 6)
 for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end

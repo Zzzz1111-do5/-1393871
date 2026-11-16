@@ -1244,6 +1244,32 @@ local function visible(g)
 	return x ~= nil
 end
 H.visible = visible
+-- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E（触发服务器那边的 ProximityPrompt）；生成出来的那一辆
+function H.pad(G, vid)
+	for _, p in ipairs(G.pads or {}) do
+		if p.vid == vid then return p end
+	end
+	return nil
+end
+function H.goPad(G, pl, p)
+	local y = p.sea and G.Map.BARGE.top or G.airSurface(p.term.X, p.term.Z)
+	pl.Character:PivotTo(CF.new(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
+	H.run(0.2)
+end
+function H.usePad(G, pl, p)
+	H.goPad(G, pl, p)
+	local prev = H.ctx
+	H.ctx = nil
+	ev(p.prompt, "Triggered"):Fire(pl)
+	H.ctx = prev
+	H.run(0.6)
+	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {} }) do
+		for _, e in ipairs(list) do
+			if e.padId == p.id and e.alive then return e end
+		end
+	end
+	return nil
+end
 function H.findButton(pl, pattern, all)
 	local pg = pl:FindFirstChildOfClass("PlayerGui")
 	local out = {}

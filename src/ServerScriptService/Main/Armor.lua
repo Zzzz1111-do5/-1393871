@@ -1,7 +1,7 @@
 -- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
 --   开火（主炮炮弹有弹道、并列机枪直射、榴弹炮 / 火箭炮曲射）、烟幕弹（从型号规定的发射筒打出去，落地起烟团，挡住机器人的视线）、
 --   下车 / 上车、被毁（车组阵亡、残骸烧一会儿、这个名额冷却）
---   攻方的车从海上来：不会游的坐 726 气垫艇冲上选定的海滩，两栖的自己从海里开上来；守方的车在还在手里的据点车场、或后方营地
+--   车都在地图里的生成点生成（Depots.lua）：守方营地车场；攻方登陆平台旁的水面——两栖的自己游，不会游的站在 726 气垫艇上连艇一起开，冲上岸放下车
 local RS = game:GetService("ReplicatedStorage")
 
 local Armor = {}
@@ -229,51 +229,48 @@ function Armor.init(G)
     return e
   end
 
-  ---------------------------------------------------------------- 气垫艇（攻方不会游的车从海上送上滩）
+  ---------------------------------------------------------------- 气垫艇（攻方不会游的车：登陆平台旁边站在气垫艇上生成，开车的人连艇一起开，冲上岸放下车、艇自己回去）
 
   local lcacs = {}
-  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 1800 }   -- 同登陆艇：岸防炮要中 3 发才沉
-  local function lcacCF(b, dist)
-    local p = V(b.cx, 2.2, b.z + b.dir * dist)
-    return CFrame.lookAt(p, p + V(0, 0, -b.dir))
+  local LCAC = VD.LCAC   -- 同登陆艇：岸防炮要中 3 发才沉；deck 是车底的高度
+  G.LCAC = LCAC
+  -- 车底在 base 时气垫艇的 CFrame：车停在艇的后半（往后 2 格），艇和车同一朝向
+  local function lcacUnder(base)
+    local look = V(base.LookVector.X, 0, base.LookVector.Z)
+    look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
+    local p = V(base.Position.X, LCAC.y, base.Position.Z) + look * 2
+    return CFrame.lookAt(p, p + look)
   end
-  local function sendLcac(b, veh)
-    local boat = G.newEnt({ kind = "lcac", team = "atk", cat = "ship", hp = LCAC.hp, size = LCAC.size, cf = lcacCF(b, LCAC.start), extra = { sea = true } })
-    boat.beach, boat.dist, boat.veh, boat.state = b, LCAC.start, veh, "run"
-    veh.locked = true
-    veh.model:SetAttribute("Locked", true)
+  local function carryOn(veh, base)
+    local boat = G.newEnt({ kind = "lcac", team = veh.team, cat = "ship", hp = LCAC.hp, size = LCAC.size, cf = lcacUnder(base), extra = { sea = true } })
+    boat.veh, boat.state = veh, "carry"
+    veh.lcac = boat
+    veh.model:SetAttribute("Lcac", true)
     boat.onDeath = function(self, src)
-      if self.veh and self.veh.alive then G.damageEnt(self.veh, 1e6, src) end
+      if self.veh and self.veh.alive and self.veh.lcac == self then G.damageEnt(self.veh, 1e6, src) end   -- 艇沉了，车也没了
       self.state = "sunk"
       task.delay(3, function() G.removeEnt(self) end)
     end
     table.insert(lcacs, boat)
+  end
+  -- 车开上岸了：气垫艇放下车，停一会儿自己回去（收走）
+  local function dropOff(veh)
+    local boat = veh.lcac
+    veh.lcac = nil
+    veh.model:SetAttribute("Lcac", false)
+    if boat and boat.alive then boat.veh, boat.state, boat.backAt = nil, "landed", now() + 8 end
   end
   local function stepLcacs(dt)
     for i = #lcacs, 1, -1 do
       local boat = lcacs[i]
       if not boat.alive then
         table.remove(lcacs, i)
-      elseif boat.state == "run" then
-        boat.dist = math.max(-30, boat.dist - LCAC.speed * dt)
-        local cf = lcacCF(boat.beach, boat.dist)
-        local bow = cf.Position + cf.LookVector * LCAC.size.Z * 0.5
+      elseif boat.state == "carry" then
         local veh = boat.veh
-        if Map.height(bow.X, bow.Z) > 2.5 or boat.dist <= -30 then   -- 冲上滩：把车放下来
-          boat.state = "landed"
-          boat.backAt = now() + 8
-          if veh and veh.alive then
-            local d = veh.def
-            local p = cf.Position + cf.LookVector * (LCAC.size.Z * 0.5 + d.L * 0.5 + 2)
-            G.moveEnt(veh, rootFromBase(d, baseAt(d, p.X, p.Z, cf.LookVector)))
-            veh.locked = false
-            veh.model:SetAttribute("Locked", false)
-            if veh.driver then G.R.Drive:FireClient(veh.driver.pl, { op = "fix", cf = veh.root.CFrame }) G.pushOne(veh.driver) end
-          end
-        elseif veh and veh.alive then
-          G.moveEnt(veh, cf * CF(0, LCAC.size.Y / 2 + veh.def.H / 2 - 2.2, 2))
+        if not veh or not veh.alive or veh.lcac ~= boat then   -- 车被打爆、没人开收走了：艇也收走
+          G.removeEnt(boat)
+          table.remove(lcacs, i)
         end
-        G.moveEnt(boat, cf)
       elseif boat.state == "landed" and now() >= boat.backAt then
         G.removeEnt(boat)
         table.remove(lcacs, i)
@@ -281,68 +278,48 @@ function Armor.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 部署
+  ---------------------------------------------------------------- 生成点（Depots.lua）摆一辆空车
 
-  -- 载具能在哪出生：攻方——抢滩（战斗阶段）、拿下的据点；守方——营地、还在手里没被压住的据点
-  local function vehSpawns(P)
-    local out = {}
-    for _, s in ipairs(G.spawnList(P.team, P)) do
-      if s.kind == "beach" or s.kind == "point" or s.kind == "camp" then table.insert(out, s) end
-    end
-    return out
-  end
-  G.vehSpawns = vehSpawns
-
-  function G.ACT.deployVeh(P, id, spawnId, role)
-    local R = G.round
-    if not R or (R.phase ~= "battle" and R.phase ~= "prep") then return end
-    if P.alive or now() < (P.canDeployAt or 0) then return end
-    local d = VD.get(type(id) == "string" and id or "")
-    if not d or d.needsAir or not table.find(Config.Vehicles[P.team][d.cat] or {}, id) then return end
-    local av = G.vehAvail(P.team)[d.cat]
-    if av.u >= av.cap then G.msg(P.pl, "bad", "ui.vehFull") return end
-    local sp = nil
-    for _, s in ipairs(vehSpawns(P)) do if s.id == spawnId then sp = s end end
-    if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    if Config.RoleById[role] then P.role = role end
-    P.role = P.role or "rifle"
+  -- 陆地上停在地台上；登陆平台外的水面上站在气垫艇上（两栖车也坐艇：自己游太慢，三千多格要好几分钟）
+  --   生成的人 30 秒内独占（别人上不去）；没人上 90 秒收走（不算冷却）
+  function G.spawnGroundVeh(team, id, base, sea, P)
+    local d = VD.get(id)
+    if not d then return nil end
+    local face = V(base.LookVector.X, 0, base.LookVector.Z)
+    if face.Magnitude < 0.01 then face = V(0, 0, -1) end
+    face = face.Unit
+    local p = base.Position
     local e
-    if sp.kind == "beach" then
-      local b = Map.landingOf(sp.beach)
-      if not b then return end
-      if d.amphib then   -- 两栖：从离岸 300 格的海里自己开上来
-        -- 车头正对岸：目标点要从车自己的位置往前取（原来取滩头中心往前 10 格，横向随机偏 ±30 格时车头会歪到七十度，一直斜着开上不了岸）
-        local z = b.z + b.dir * 300
-        local face = V(0, 0, -b.dir)
-        -- 正对滩头的通道或钢刺猬缺口（FortDefs.lanes），别一出来就顶在钢刺猬上
-        local xs = FD.lanes(b)
-        local p0 = V(xs[math.random(#xs)] + (math.random() - 0.5) * 6, -d.H * 0.35, z)
-        local base = CFrame.lookAt(p0, p0 + face * 10)
-        e = newVehicle(P.team, id, base, P)
-      else
-        local z = b.z + b.dir * LCAC.start
-        e = newVehicle(P.team, id, CFrame.new(b.cx, 4, z), P)
-        sendLcac(b, e)
-      end
+    if sea then
+      local b = CFrame.lookAt(V(p.X, LCAC.deck, p.Z), V(p.X, LCAC.deck, p.Z) + face)
+      e = newVehicle(team, id, b)
+      carryOn(e, b)
     else
-      local x, z = sp.x, sp.z
-      local face = (P.team == "def") and V(0, 0, 1) or V(0, 0, -1)
-      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d, face)
-      e = newVehicle(P.team, id, baseAt(d, px, pz, face), P)
+      e = newVehicle(team, id, baseAt(d, p.X, p.Z, face))
     end
-    P.spawnCF = e.root.CFrame
-    P.after = function(Q, char) seat(Q, e) end
-    P.canDeployAt = now() + 2
-    P.spawnId = spawnId
-    P.pl:LoadCharacter()
+    e.emptyAt = now()
+    e.resP, e.resUntil = P, now() + 30
+    return e
+  end
+
+  -- 刚生成的车 / 飞机 30 秒内只给生成的人（他还活着、还在服务器里）；别人上就说一声
+  function G.reservedFor(e, P)
+    local R = e.resP
+    if R and R ~= P and now() < (e.resUntil or 0) and R.alive and G.P[R.pl] == R then
+      G.msg(P.pl, "bad", "ui.reserved")
+      return true
+    end
+    return false
   end
 
   -- 上自己队的空车（离车 18 格以内）
   function G.ACT.enterVeh(P, entId)
     local e = type(entId) == "string" and G.entById[entId] or nil
     if not e or not e.alive or not e.def or e.driver or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
+    if G.reservedFor(e, P) then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
+    e.resP = nil
     seat(P, e)
   end
 
@@ -363,10 +340,10 @@ function Armor.init(G)
     local dt = math.max(0.02, t - (e.lastSync or t))
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
-    local maxD = e.def.speed * 1.5 * dt + 6
+    local maxD = math.max(e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
-    if not e.def.amphib and h < -3 then bad = true end
+    if not e.def.amphib and h < -3 and not e.lcac then bad = true end
     if math.abs(p1.X) > Map.R or math.abs(p1.Z) > Map.R then bad = true end
     e.lastSync = t
     if bad then
@@ -375,6 +352,10 @@ function Armor.init(G)
       return
     end
     G.moveEnt(e, cf)
+    if e.lcac then   -- 站在气垫艇上：艇跟着车走；开上岸了把车放下
+      if e.lcac.alive then G.moveEnt(e.lcac, lcacUnder(cf * CF(0, -e.def.H / 2, 0))) end
+      if h > 0.8 then dropOff(e) end
+    end
     local d0 = e.def
     if type(d.ty) == "number" and d.ty == d.ty then e.ty = d.ty % 360 end
     if type(d.gp) == "number" and d.gp == d.gp then e.gp = math.clamp(d.gp, d0.turret.elev[1], d0.turret.elev[2]) end
@@ -510,6 +491,7 @@ function Armor.init(G)
         for i, x in ipairs(vehicles) do
           if x == e then table.remove(vehicles, i) break end
         end
+        if e.lcac then G.removeEnt(e.lcac) end
         G.removeEnt(e)
       end
     end

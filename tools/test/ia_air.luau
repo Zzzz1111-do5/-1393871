@@ -65,12 +65,16 @@ local function teleport(pl, cf, spd, ground)
 	end
 end
 
-print("① 挂载编辑器：点挂点、换弹、保存")
-local saved = nil
-as(atk, function() CA.openHangar("j35", nil, function(load, key) saved = { load = load, key = key } end, "aa") end)
-H.run(0.5)
+print("① 航母甲板上出生，走到歼-35 的生成点按 E：弹出挂载编辑器，点挂点、换弹、生成")
+act(atk, "deploy", "rifle", "cv")
+H.run(2)
+local hrpA = atk.Character and atk.Character:FindFirstChild("HumanoidRootPart")
+check(PA.alive and hrpA and math.abs(hrpA.Position.Y - 30.5 - 3) < 2, string.format("步兵在航母甲板上出生（高 %.1f）", hrpA and hrpA.Position.Y or -1))
+local jp = H.pad(G, "j35")
+check(jp ~= nil and jp.kind == "air", "航母甲板上有歼-35 的生成点")
+H.usePad(G, atk, jp)
 local hg = atk.PlayerGui:FindFirstChild("Hangar")
-check(hg and hg.Enabled, "编辑器打开了")
+check(hg and hg.Enabled, "按 E 弹出了挂载编辑器")
 local HS = CA.hangarState and CA.hangarState()
 local nParts = 0
 if HS and HS.M then for _ in pairs(HS.M.items) do nParts += 1 end end
@@ -108,17 +112,19 @@ check(HS.load[idx] == "lt2" and HS.load[mate] == "lt2", "左右对称换成了�
 local lt2Parts = 0
 for _, it in ipairs(HS.M.stores[idx] or {}) do lt2Parts += 1 end
 check(lt2Parts >= 10, "挂架上的雷霆-2 按型号拼了 " .. lt2Parts .. " 个零件")
-local save = H.findButton(atk, "^" .. CA.T("hangar.save") .. "$")
+local save = H.findButton(atk, "^" .. CA.T("pad.spawn") .. "$")
+check(save ~= nil, "编辑器右下的按钮是「生成」")
 if save then H.press(atk, save) end
-H.run(0.3)
-check(saved and saved.load[idx] == "lt2", "保存后拿到了新挂载")
+H.run(1)
 check(not hg.Enabled, "编辑器关了")
+local e = nil
+for _, x in ipairs(G.aircraft) do if x.padId == jp.id and x.alive then e = x end end
+check(e ~= nil and e.def.id == "j35" and e.driver == nil, "歼-35 停在甲板的停机位上（空着）")
 
-print("② 航母甲板上部署歼-35（挂载照编辑器保存的）")
-act(atk, "deployVeh", "j35", "air.cv", "rifle", saved and saved.load)
-H.run(2)
-local e = PA.vehicle
-check(e ~= nil and e.air and e.def.id == "j35", "坐进了 " .. tostring(e and e.def.id))
+print("② 走过去按 E 坐进歼-35（挂载照编辑器选的）")
+act(atk, "enterVeh", e and e.id)
+H.run(1.5)
+check(e ~= nil and PA.vehicle == e, "坐进了 " .. tostring(e and e.def.id))
 check(e and e.load[idx] == "lt2", "服务器按保存的挂载挂弹：" .. tostring(e and e.model:GetAttribute("Load")))
 local st = CA.fly
 check(st ~= nil and st.pilot and st.ground, "客户端接管驾驶、在甲板上")
@@ -156,11 +162,29 @@ H.run(3.5)
 check((e.model:GetAttribute("Gear") or 1) < 0.1, "起落架收起来了（服务器属性 Gear " .. tostring(e.model:GetAttribute("Gear")) .. "）")
 check(e.alive, "飞机还好好的")
 
-print("⑤ 开战后：守方空中出发一架 F-22，攻方锁定、打霹雳-15")
+print("⑤ 开战后：守方在机场（据点 D）出生、生成一架 F-22 坐上去（摆到天上当靶子），攻方锁定、打霹雳-15")
 H.runUntil(function() return G.round.phase == "battle" end, 60)
-act(def, "deployVeh", "f22", "air.in", "rifle")
+act(def, "deploy", "rifle", "point.D")
 H.run(2)
-local eD = PD.vehicle
+local fp = H.pad(G, "f22")
+check(fp ~= nil and fp.need == "D", "机场停机坪有 F-22 的生成点（据点 D 在守方手里才能用）")
+H.usePad(G, def, fp)
+local hgD = def.PlayerGui:FindFirstChild("Hangar")
+check(hgD and hgD.Enabled, "守方也弹出了挂载编辑器")
+local goD = H.findButton(def, "^" .. CD.T("pad.spawn") .. "$")
+if goD then H.press(def, goD) end
+H.run(1)
+local eD = nil
+for _, x in ipairs(G.aircraft) do if x.padId == fp.id and x.alive then eD = x end end
+check(eD ~= nil and eD.onGround, "F-22 停在机场停机坪上")
+act(def, "enterVeh", eD and eD.id)
+H.run(1)
+check(eD and PD.vehicle == eD, "守方坐进了 F-22")
+if eD then
+	local sky = V3.new(0, 900, -900)
+	teleport(def, CF.lookAt(sky, sky + V3.new(1, 0, 0)), 300, false)
+	H.run(0.5)
+end
 check(eD ~= nil and eD.air and not eD.onGround, "F-22 在天上：" .. tostring(eD and eD.def.id))
 -- 把歼-35 摆到 F-22 后面 1800 格、同一高度，机头对着它
 local tp = eD.root.CFrame.Position
@@ -267,9 +291,19 @@ print("⑪ 直升机：营地停机坪，旋翼转起来、起飞、火箭")
 -- 守方 F-22 先坠了换直升机（直接让它阵亡）
 if PD.vehicle then G.damageEnt(PD.vehicle, 1e6, { team = "atk" }) end
 H.run(G.Config.RespawnDelay + 1)
-act(def, "deployVeh", "ah64e", "air.camp", "rifle", AirDefs.presetLoad(AirDefs.get("ah64e"), "mix"))   -- 地狱火 + 火箭
+act(def, "deploy", "rifle", "camp")
 H.run(2)
-local eH = PD.vehicle
+local hp = H.pad(G, "ah64e")
+check(hp ~= nil, "营地有阿帕奇的停机坪")
+H.usePad(G, def, hp)
+local back = H.findButton(def, "^" .. CD.T("hangar.back") .. "$")   -- 挂载界面先关掉，直接按「地狱火 + 火箭」那套生成
+if back then H.press(def, back) end
+act(def, "padSpawn", hp.id, AirDefs.presetLoad(AirDefs.get("ah64e"), "mix"))
+H.run(1)
+local eH = nil
+for _, x in ipairs(G.aircraft) do if x.padId == hp.id and x.alive then eH = x end end
+act(def, "enterVeh", eH and eH.id)
+H.run(1.5)
 local sh = CD.fly
 check(eH ~= nil and eH.def.id == "ah64e" and sh ~= nil, "坐进了阿帕奇")
 check(sh and sh.rpm < 50, "旋翼刚开始转")

@@ -258,22 +258,25 @@ function FortView.init(G)
           and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 0) > 0) and true or false
       end
     end
-    -- 地面载具：自己队的、没人开的、没被锁在气垫艇上的
+    -- 地面载具、飞机：自己队的、没人开的（运输直升机有人开也能坐后面）
     for em, v in pairs(G.views or {}) do
-      if v.kind == "veh" and v.anchor then
+      if (v.kind == "veh" or v.kind == "air") and v.anchor then
         if not v.prompt then
           local pr = Instance.new("ProximityPrompt")
           pr.ActionText = T("ui.board")
           pr.ObjectText = T("veh." .. (v.def and v.def.id or ""))
           pr.KeyboardKeyCode = Enum.KeyCode.E
           pr.HoldDuration = 0
-          pr.MaxActivationDistance = math.max(12, (v.def and v.def.L or 10) * 0.6 + 6)
+          local d = v.def
+          pr.MaxActivationDistance = (v.kind == "air") and math.max(14, math.max(d and d.L or 10, d and d.W or 10) * 0.5 + 8)
+            or math.max(12, (d and d.L or 10) * 0.6 + 6)
           pr.RequiresLineOfSight = false
           pr.Parent = v.anchor
           pr.Triggered:Connect(function() G.R.Act:FireServer("enterVeh", v.id) end)
           v.prompt = pr
         end
-        v.prompt.Enabled = (ok and em:GetAttribute("Team") == side and (em:GetAttribute("Driver") or 0) == 0 and not em:GetAttribute("Wreck")
+        local free = (em:GetAttribute("Driver") or 0) == 0 or (v.kind == "air" and v.def and v.def.transport)
+        v.prompt.Enabled = (ok and em:GetAttribute("Team") == side and free and not em:GetAttribute("Wreck")
           and not em:GetAttribute("Locked")) and true or false
       end
     end

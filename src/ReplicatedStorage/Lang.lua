@@ -71,7 +71,19 @@ add("beach.outpost", "前哨岛南岸", "Outpost Isle (south)")
 add("beach.lighthouse", "灯塔岛南岸", "Lighthouse Isle (south)")
 add("beach.port", "港湾（直冲港口）", "Harbor (port assault)")
 add("spawn.camp", "后方营地", "Rear Camp")
-add("spawn.fleet", "舰队（两栖攻击舰）", "Fleet (assault ship)")
+add("spawn.fleet", "两栖攻击舰", "Assault ship")
+add("spawn.cv", "航母甲板", "Carrier deck")
+add("spawn.barge", "登陆平台", "Landing platform")
+add("spawn.af2", "攻方机场岛", "Island airbase")
+add("pad.spawn", "生成", "Spawn")
+add("pad.ready", "在场 {1}/{2}", "Deployed {1}/{2}")
+add("pad.full", "已满 {1}/{2}", "Full {1}/{2}")
+add("pad.cd", "冷却 {1} 秒", "Ready in {1}s")
+add("pad.needD", "机场失守", "Airfield lost")
+add("ui.padLocked", "这个生成点现在用不了", "This spawn point is unavailable")
+add("ui.padBusy", "生成点上还停着一辆", "The spawn spot is occupied")
+add("ui.vehCdMsg", "这一类还要等 {1} 秒", "Available in {1}s")
+add("ui.reserved", "这辆是别人刚生成的", "Reserved for the player who spawned it")
 add("spawn.para", "伞降", "Paradrop")
 
 add("vcat.tank", "坦克", "Tanks")
@@ -199,31 +211,17 @@ add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is no
 add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–4 切武器 · V 第一 / 第三人称 · E 上车 / 操作 · Tab 战况 · M 地图",
   "WASD move · LMB fire · RMB aim · R reload · 1-4 weapons · V 1st / 3rd person · E enter / man · Tab scoreboard · M map")
 -- 载具
-add("ui.tabInf", "步兵", "Infantry")
-add("ui.tabVeh", "载具", "Vehicles")
-add("ui.vehCap", "在场 {1} / {2}", "{1} / {2} in use")
-add("ui.vehCd", "冷却 {1} 秒", "Cooldown {1}s")
 add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
 add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")
 add("ui.vehKilled", "击毁 {1}", "Destroyed {1}")
 add("ui.outOfRange", "超出射程", "Out of range")
-add("ui.needSpawnVeh", "载具只能在海滩、据点或营地出生", "Vehicles spawn at beaches, held points or the camp")
 add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bringing your vehicle ashore...")
 add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · X 烟幕弹 · 右键 / V 瞄准镜 · N 夜视 / 热成像 · F 下车",
   "WASD drive · Mouse aim · LMB fire · 1/2 weapon · X smoke · RMB / V gunner sight · N night vision / thermal · F exit")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
 -- 飞机、直升机
-add("spawn.air.lhd", "075 两栖攻击舰甲板", "Type 075 flight deck")
-add("spawn.air.cv", "航母甲板（舰载机）", "Carrier deck (naval jets)")
-add("spawn.air.af2", "攻方机场岛", "Island airstrip")
-add("spawn.air.af", "主岛机场", "Main island airfield")
-add("spawn.air.in", "空中出发", "Air start")
-add("spawn.air.camp", "营地停机坪", "Camp helipad")
-add("spawn.air.pt", "据点 {1} 停机坪", "Helipad at {1}")
-add("ui.loadout", "挂载：{1}", "Loadout: {1}")
 add("ui.rearmed", "补满了弹药和热诱弹", "Rearmed and resupplied with flares")
-add("ui.notCarrier", "这型飞机上不了航母", "This aircraft can't operate from the carrier")
 local PRESET = {
   aa = { "空战", "Air superiority" }, ag = { "对地", "Ground attack" }, beast = { "满挂", "Full load" }, at = { "反坦克", "Anti-tank" },
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
@@ -244,7 +242,6 @@ local AW = {
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
 add("preset.sead", "防空压制", "SEAD")
-add("preset.custom", "自定义", "Custom")
 add("hangar.empty", "不挂", "Empty")
 add("hangar.pick", "点白圈选一个挂点", "Pick a hardpoint")
 add("hangar.guide", "导引方式", "Guidance")

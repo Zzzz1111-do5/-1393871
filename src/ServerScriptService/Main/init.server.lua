@@ -1,7 +1,7 @@
 -- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
 -- 各模块共用一个上下文 G：每个模块的 init(G) 把自己的函数挂到 G 上，模块之间通过 G 互相调用（不互相 require，免得循环引用）
 --   World 地图 · Store 存档 · Round 回合、分队、部署、据点、胜负 · Weapons 步兵武器 · Ents 实体（机器人、载具、舰艇、工事）与伤害、爆炸、飞行中的弹 ·
---   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Forts 地图自带的工事和障碍（玩家走过去能操作） · Bots 机器人
+--   Vehicles 开载具、登陆艇 · Armor 地面载具 · Air 飞机、直升机 · Depots 地图里的载具生成点 · Forts 地图自带的工事和障碍（玩家走过去能操作） · Bots 机器人
 -- 循环里每一步都包在 pcall 里：一处出错只跳过那一下，不会把整个服务器卡死（出错原文发到所有人屏幕上的红条）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -83,7 +83,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Air", "Forts", "Nav", "Bots" }) do
+for _, name in ipairs({ "Store", "Ents", "Round", "Weapons", "Vehicles", "Armor", "Air", "Depots", "Forts", "Nav", "Bots" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -121,6 +121,7 @@ end)
 task.spawn(function()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")

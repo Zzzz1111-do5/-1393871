@@ -73,7 +73,10 @@ function Round.init(G)
   local function spawnList(team, P)
     local out = {}
     if team == "atk" then
-      table.insert(out, { id = "fleet", kind = "fleet", ok = true })
+      table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
+      table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
+      table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
+      table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
       for _, b in ipairs(Map.LANDINGS) do table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" }) end
       for _, p in ipairs(Map.POINTS) do
         local s = points[p.id]
@@ -111,6 +114,21 @@ function Round.init(G)
         return CFrame.lookAt(d.cf.Position + off, d.cf.Position + off + face)
       end
       return CFrame.new(0, 40, 2150)
+    elseif sp.kind == "cv" then   -- 航母：舰岛后面（右舷停机位旁边），别站在弹射器、着舰区上
+      for _, d in ipairs(G.decks or {}) do
+        if d.kind == "carrier" then
+          local p = (d.cf * CFrame.new(44 + (math.random() - 0.5) * 6, 2, 46 + (math.random() - 0.5) * 14)).Position
+          return CFrame.lookAt(p, p + V(0, 0, 1))
+        end
+      end
+    elseif sp.kind == "barge" then   -- 登陆平台中间
+      local B = Map.BARGE
+      local p = V(B.x + (math.random() - 0.5) * B.W * 0.5, B.top + 3, B.z + (math.random() - 0.5) * B.L * 0.6)
+      return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
+      local A = Map.AFIELD2
+      local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
+      return CFrame.lookAt(p, p + V(0, 0, 1))
     elseif sp.kind == "point" then
       local p = standAt(sp.x, sp.z, 30)
       return CFrame.lookAt(p, p + face)
@@ -242,7 +260,8 @@ function Round.init(G)
     local sp = nil
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    if R.phase == "prep" and sp.kind ~= "fleet" and sp.kind ~= "camp" and sp.kind ~= "point" then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true }   -- 准备阶段只能在自己的后方出生（不能先上滩、先跳伞）
+    if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     P.role = role
     P.spawnId = spawnId
     P.spawnCF = spawnCF(P, sp)
@@ -500,10 +519,7 @@ function Round.init(G)
     if G.vehState then
       C.veh = G.vehState(P)
       C.vehAvail = G.vehAvail(P.team)
-      C.vehModels = G.vehModels(P.team)
-      C.vehSpawns = {}
-      for _, s in ipairs(G.vehSpawns(P)) do C.vehSpawns[s.id] = s.ok end
-      if G.airSpawnState then C.airSpawns = G.airSpawnState(P) end
+      C.vehModels = G.vehModels(P.team)   -- 生成点牌子上写的名额、冷却（Depot.lua）
     end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
     return C

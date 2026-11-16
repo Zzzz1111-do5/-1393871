@@ -131,6 +131,28 @@ function T.remoteAs(pl, name, ...)
 end
 function T.actAsRemote(pl, ...) T.remoteAs(pl, "Act", ...) end
 
+-- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E；返回生成出来的那一辆
+function T.pad(vid)
+  for _, p in ipairs(T.G.pads or {}) do
+    if p.vid == vid then return p end
+  end
+  return nil
+end
+function T.usePad(pl, p)
+  local G = T.G
+  local y = p.sea and G.Map.BARGE.top or G.airSurface(p.term.X, p.term.Z)
+  pl.Character:PivotTo(T.CF(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
+  R.run(0.2)
+  R.as("server", function() p.prompt.Triggered:Fire(pl) end)
+  R.run(0.6)
+  for _, list in ipairs({ G.vehicles or {}, G.aircraft or {} }) do
+    for _, e in ipairs(list) do
+      if e.padId == p.id and e.alive then return e end
+    end
+  end
+  return nil
+end
+
 function T.summary()
   print(string.format("脚本报错 %d 条，警告 %d 条", #R.errors, #R.warns))
   -- 同一条（每帧都报的）只列一次，后面写重复了几次

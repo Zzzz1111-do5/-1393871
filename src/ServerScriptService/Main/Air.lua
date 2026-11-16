@@ -1,8 +1,8 @@
--- Roblox全面大战场——飞机、直升机（服务器）：部署（名额、挂载、出生点）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
+-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
 --   航炮（扣着扳机按射速连发）、空空 / 空地导弹（比例导引、过载有限、近炸引信；热诱弹骗走红外弹）、炸弹（制导的往目标滑）、火箭巢、
 --   跳伞（固定翼弹射、直升机高处跳伞）、没人开的飞机掉下来、撞地 / 坠海、落在自己的机场 / 甲板上补弹修理、运输直升机载人
---   出生点：攻方直升机在两栖攻击舰甲板、拿下的据点；攻方固定翼在航母（舰载机）、机场岛、或空中出发（从南边）；
---     守方直升机在营地、还在手里的据点；守方固定翼在主岛机场（据点 D 还在手里时）、或空中出发（从北边）
+--   生成点在地图里（Depots.lua）：攻方直升机在两栖攻击舰甲板、固定翼在航母（舰载机）和攻方机场岛；
+--     守方直升机在营地、固定翼在主岛机场（据点 D 还在手里时）；生成后停在那里，自己走过去按 E 坐上
 local RS = game:GetService("ReplicatedStorage")
 
 local Air = {}
@@ -81,102 +81,6 @@ function Air.init(G)
     local s = G.points and G.points[id]
     return s and s.owner == team and not (team == "def" and s.pressed)
   end
-  -- 这一类飞机能在哪出生：{ id, kind, x, z, ok }
-  local function airSpawns(P, cat)
-    local out = {}
-    local battle = G.round and G.round.phase == "battle"
-    local prepOk = G.round and (G.round.phase == "battle" or G.round.phase == "prep")
-    if P.team == "atk" then
-      if cat == "heli" then
-        local dk = deckOf("lhd")
-        if dk then table.insert(out, { id = "air.lhd", kind = "lhd", x = dk.cf.Position.X, z = dk.cf.Position.Z, ok = prepOk }) end
-        for _, p in ipairs(Map.POINTS) do
-          if pointOk("atk", p.id) then table.insert(out, { id = "air.pt." .. p.id, kind = "pad", point = p.id, x = p.x, z = p.z, ok = true }) end
-        end
-      else
-        local dk = deckOf("carrier")
-        if dk then table.insert(out, { id = "air.cv", kind = "cv", x = dk.cf.Position.X, z = dk.cf.Position.Z, ok = prepOk, carrierOnly = true }) end
-        table.insert(out, { id = "air.af2", kind = "runway", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = prepOk })
-        table.insert(out, { id = "air.in", kind = "airstart", x = 0, z = Map.R - 300, ok = battle })
-        if pointOk("atk", "D") then table.insert(out, { id = "air.af", kind = "runway", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z, ok = true }) end
-      end
-    else
-      if cat == "heli" then
-        table.insert(out, { id = "air.camp", kind = "pad", x = Map.CAMP.x, z = Map.CAMP.z, ok = prepOk })
-        for _, p in ipairs(Map.POINTS) do
-          if pointOk("def", p.id) then table.insert(out, { id = "air.pt." .. p.id, kind = "pad", point = p.id, x = p.x, z = p.z, ok = true }) end
-        end
-      else
-        table.insert(out, { id = "air.af", kind = "runway", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z, ok = pointOk("def", "D") and prepOk })
-        table.insert(out, { id = "air.in", kind = "airstart", x = 0, z = -Map.R + 300, ok = battle })
-      end
-    end
-    return out
-  end
-  G.airSpawns = airSpawns
-
-  -- 空着的停机位：离别的飞机够远
-  local function freeSpot(list, r)
-    for _, p in ipairs(list) do
-      local ok = true
-      for _, e in ipairs(aircraft) do
-        if e.alive and (e.root.CFrame.Position - p).Magnitude < r then ok = false break end
-      end
-      if ok then return p end
-    end
-    return list[math.random(1, #list)]
-  end
-  -- 出生的 CFrame（机身中心）和初速度、是否在地上
-  local function spawnCF(P, d, sp)
-    local yaw = (P.team == "def") and V(0, 0, 1) or V(0, 0, -1)
-    if sp.kind == "airstart" then
-      local x = (math.random() - 0.5) * 2400
-      local z = (P.team == "def") and (-Map.R + 350) or (Map.R - 350)
-      local y = math.max(surface(x, z), 0) + ((d.kind == "heli") and 260 or 700)
-      local p = V(x, y, z)
-      return CFrame.lookAt(p, p + yaw), yaw * ((d.kind == "heli") and d.vMax * 0.6 or d.vMil * 0.8), false
-    end
-    if sp.kind == "lhd" or sp.kind == "cv" then
-      local dk = deckOf(sp.kind == "lhd" and "lhd" or "carrier")
-      local spots = {}
-      if sp.kind == "lhd" then
-        for k = -2, 2 do table.insert(spots, (dk.cf * CF(-dk.W * 0.18, 0, k * 70)).Position) end
-      else   -- 航母：右舷后部的停机位（舰岛后面），自己滑到弹射器去
-        for k = 0, 3 do table.insert(spots, (dk.cf * CF(26, 0, 90 + k * 42)).Position) end
-      end
-      local p = freeSpot(spots, d.kind == "heli" and 40 or 30)
-      p = V(p.X, surface(p.X, p.Z) + d.gearH, p.Z)
-      return CFrame.lookAt(p, p + V(0, 0, -1)), V(), true
-    end
-    if sp.kind == "runway" then
-      local A = (sp.id == "air.af2") and Map.AFIELD2 or Map.AIRFIELD
-      local dir = (A == Map.AFIELD2) and 1 or -1   -- 机场岛往东起飞，主岛机场往西
-      local spots = {}
-      for k = 0, 3 do table.insert(spots, V(A.x - dir * (A.len / 2 - 30 - k * 0), 0, A.z + (k - 1.5) * 10)) end
-      local p = freeSpot(spots, 18)
-      p = V(p.X, surface(p.X, p.Z) + d.gearH, p.Z)
-      return CFrame.lookAt(p, p + V(dir, 0, 0)), V(), true
-    end
-    -- 直升机停机坪：营地 / 据点附近找一块平地
-    local cx, cz = sp.x, sp.z
-    for _ = 1, 40 do
-      local a, r = math.random() * math.pi * 2, 50 + math.random() * 80
-      local x, z = cx + math.cos(a) * r, cz + math.sin(a) * r
-      if Map.isLand(x, z) and Map.slope(x, z) < 0.18 and (not G.spotClear or G.spotClear(x, z, d.W * 0.5 + 3, d.L * 0.5 + 3, d.H)) then
-        local clear = true
-        for _, e in ipairs(aircraft) do
-          if e.alive and (e.root.CFrame.Position - V(x, e.root.CFrame.Position.Y, z)).Magnitude < 45 then clear = false break end
-        end
-        if clear then
-          local p = V(x, surface(x, z) + d.gearH, z)
-          return CFrame.lookAt(p, p + yaw), V(), true
-        end
-      end
-    end
-    local p = V(cx, surface(cx, cz) + d.gearH + 1, cz + 60)
-    return CFrame.lookAt(p, p + yaw), V(), true
-  end
-
   ---------------------------------------------------------------- 挂载（每个挂点剩几枚）
 
   local function storesStr(e)
@@ -326,35 +230,18 @@ function Air.init(G)
     return e
   end
 
-  ---------------------------------------------------------------- 部署
+  ---------------------------------------------------------------- 生成点（Depots.lua）摆一架空飞机
 
-  local deployVeh0 = G.ACT.deployVeh
-  G.ACT.deployVeh = function(P, id, spawnId, role, load)
-    local d = AD.get(type(id) == "string" and id or "")
-    if not d then
-      if deployVeh0 then return deployVeh0(P, id, spawnId, role) end
-      return
-    end
-    local R = G.round
-    if not R or (R.phase ~= "battle" and R.phase ~= "prep") then return end
-    if P.alive or now() < (P.canDeployAt or 0) then return end
-    if not table.find(Config.Vehicles[P.team][d.cat] or {}, id) then return end
-    local av = avail(P.team)[d.cat]
-    if av.u >= av.cap then G.msg(P.pl, "bad", "ui.vehFull") return end
-    local sp
-    for _, s in ipairs(airSpawns(P, d.cat)) do if s.id == spawnId then sp = s end end
-    if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    if sp.carrierOnly and not d.carrier then G.msg(P.pl, "bad", "ui.notCarrier") return end
-    if Config.RoleById[role] then P.role = role end
-    P.role = P.role or "rifle"
-    local cf, vel, ground = spawnCF(P, d, sp)
-    local e = newAircraft(P.team, id, cf, P, (type(load) == "table") and load or AD.presetLoad(d), vel, ground)
-    e.home = sp.kind
-    P.spawnCF = cf
-    P.after = function(Q) seat(Q, e) end
-    P.canDeployAt = now() + 2
-    P.spawnId = spawnId
-    P.pl:LoadCharacter()
+  -- 停在停机位上（cf 是机身中心：地面 / 甲板 + 起落架高），挂载照挂载界面选的（没给就按第一套预设）；
+  --   生成的人 30 秒内独占；没人上 90 秒收走（不算冷却）
+  function G.spawnAircraft(team, id, cf, load, P)
+    local d = AD.get(id)
+    if not d then return nil end
+    local e = newAircraft(team, id, cf, nil, (type(load) == "table") and load or AD.presetLoad(d), V(), true)
+    e.home = "pad"
+    e.emptyAt = now()
+    e.resP, e.resUntil = P, now() + 30
+    return e
   end
 
   -- 上飞机：自己队的、离机身够近；有人开的运输直升机还有空座就坐后面
@@ -366,9 +253,10 @@ function Air.init(G)
       return
     end
     if not e.alive or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
+    if not e.driver and G.reservedFor and G.reservedFor(e, P) then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > math.max(e.def.L, e.def.W) * 0.5 + 18 then return end
-    if not e.driver then seat(P, e) return end
+    if not e.driver then e.resP = nil seat(P, e) return end
     if e.def.transport and #e.pass < (e.def.seats or 1) then seat(P, e, true) end
   end
 
@@ -722,12 +610,6 @@ function Air.init(G)
     end
     if vehState0 then return vehState0(P) end
     return nil
-  end
-  -- 部署界面：各类飞机的出生点
-  G.airSpawnState = function(P)
-    local out = {}
-    for cat in pairs(AIRCATS) do out[cat] = airSpawns(P, cat) end
-    return out
   end
 
   ---------------------------------------------------------------- 每帧：机组跟着飞机走；没人开的飞机掉下来；落地补弹

@@ -32,6 +32,9 @@ VehDefs.W = {
 }
 -- 烟幕弹：每次齐射一组，落点约 30 格外，烟团半径 ~20 格、持续 30 秒
 VehDefs.SMOKE = { range = 32, r = 20, life = 30, salvos = 2, reload = 12 }
+-- 726 气垫艇：攻方不会游的车在登陆平台旁站在艇上生成，开车的人连艇一起开（服务器 Armor、客户端 Drive 共用）：
+--   y 艇身中心高、deck 车底的高度、speed 水上最快（格 / 秒）、size 艇身、hp
+VehDefs.LCAC = { y = 2.2, deck = 3.0, speed = 75, size = Vector3.new(28, 6, 48), hp = 1800 }   -- 75 格 / 秒：从登陆平台到海滩四十来秒
 
 local D = {}
 VehDefs.D = D

@@ -1,6 +1,6 @@
 --!nocheck
 -- 界面导出：开服、进两个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
---   场合：deploy 部署（步兵）· vehs 部署（载具 / 飞机）· hangar 挂载编辑器全景 · hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
+--   场合：deploy 部署 · hangar 挂载编辑器全景（航母甲板上的生成点按 E 弹出）· hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
 --   fly_air 空中 · heli 直升机 · battle 步兵 · board 计分板 · result 结算
 --   挂载编辑器的 ViewportFrame 里的零件按镜头投影存下来（ui_view.html 按面画成 3D，看白圈是不是对在挂点上）
 -- 用法：lune run ui_export.luau <rbxlx> <输出.js> [pc|phone]
@@ -174,21 +174,11 @@ C.refreshDeploy()
 H.run(0.5)
 snap("deploy")
 
--- 部署：载具 / 飞机
-tryClick(atk, "^" .. T("ui.tabVeh") .. "$")
-C.deploySel.veh, C.deploySel.spawn = "j35", "air.cv"
-C.refreshDeploy()
-H.run(0.5)
-snap("vehs")
-
--- 挂载编辑器：全景、选中挂点换弹
-local saved = nil
-local _, los = H.findButton(atk, "^✎ ")
-for _, b in ipairs(los) do
-	for _, l in ipairs(b.Parent:GetChildren()) do
-		if l:IsA("TextLabel") and l.Text == T("veh.j35") then H.press(atk, b) end
-	end
-end
+-- 航母甲板出生，走到歼-35 的生成点按 E：弹出挂载编辑器
+act(atk, "deploy", "rifle", "cv")
+H.run(2)
+local jp = H.pad(G, "j35")
+if jp then H.usePad(G, atk, jp) end
 H.run(1.2)
 local HS = C.hangarState and C.hangarState()
 snap("hangar")
@@ -210,12 +200,14 @@ if HS and HS.d then
 	end
 	H.run(0.6)
 	snap("hangar_sel")
-	tryClick(atk, "^" .. T("hangar.save") .. "$")
-	H.run(0.5)
+	tryClick(atk, "^" .. T("pad.spawn") .. "$")
+	H.run(1)
 end
 
--- 甲板上的歼-35
-tryClick(atk, "^" .. T("ui.deployBtn") .. "$")
+-- 甲板上的歼-35：走过去坐上
+for _, x in ipairs(G.aircraft) do
+	if jp and x.padId == jp.id and x.alive then act(atk, "enterVeh", x.id) end
+end
 H.run(2.5)
 snap("fly")
 
@@ -246,11 +238,19 @@ if e and st then
 	H.run(1)
 end
 
--- 直升机（守方营地的停机坪）
+-- 直升机（守方营地出生，停机坪生成、坐上）
 pl = def
-CD.deploySel.mode = "veh"
-CD.refreshDeploy()
-act(def, "deployVeh", "ah64e", "air.camp", "rifle", nil)
+act(def, "deploy", "rifle", "camp")
+H.run(2)
+local hp = H.pad(G, "ah64e")
+if hp then
+	H.usePad(G, def, hp)
+	tryClick(def, "^" .. CD.T("pad.spawn") .. "$")
+	H.run(1)
+	for _, x in ipairs(G.aircraft) do
+		if x.padId == hp.id and x.alive then act(def, "enterVeh", x.id) end
+	end
+end
 H.run(3)
 snap("heli")
 H.key(def, Enum.KeyCode.F, true)

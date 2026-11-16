@@ -220,7 +220,7 @@ function Hangar.init(G)
     title.Text = T("veh." .. H.d.id)
     symBtn.Text = T(H.sym and "hangar.symOn" or "hangar.symOff")
     backBtn.Text = T("hangar.back")
-    saveBtn.Text = T("hangar.save")
+    saveBtn.Text = T(H.confirm or "hangar.save")
     -- 总共挂了什么
     local count, order = {}, {}
     for i, s in ipairs(H.d.st or {}) do
@@ -245,12 +245,14 @@ function Hangar.init(G)
     gui.Enabled = false
   end
 
-  function G.openHangar(id, load, onSave, presetKey)
+  -- opts.confirm：右下按钮的文字键（生成点打开时是「生成」）
+  function G.openHangar(id, load, onSave, presetKey, opts)
     local d = AD.get(id)
     if not d then return end
     if H then close() end
     local size = math.max(d.L, d.W)
     H = { d = d, load = table.clone(load or AD.presetLoad(d)), team = me:GetAttribute("Side") or "atk", onSave = onSave, sym = true, presetKey = presetKey,
+      confirm = opts and opts.confirm,
       yaw = rad(-150), pitch = rad(8), dist = size * 1.5, focus = V(0, -1, 0), shift = 0 }   -- 全景从左前稍下方看：挂点都在机腹、翼下，从上面看会挤成一团
     H.tYaw, H.tPitch, H.tDist, H.tFocus = H.yaw, H.pitch, H.dist, H.focus
     H.home = { yaw = H.yaw, pitch = H.pitch, dist = H.dist, focus = H.focus }

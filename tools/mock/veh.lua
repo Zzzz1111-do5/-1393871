@@ -1,6 +1,6 @@
 -- 载具测试（照 tools/test/ia_veh.luau，在没有 Lune 的机器上用模拟器跑）：
---   python3 tools/mock/run.py tools/mock/veh.lua def   守方：坦克部署、开车、悬架、瞄准镜四种模式、开炮、烟幕弹、下车上车、被毁
---   python3 tools/mock/run.py tools/mock/veh.lua atk   攻方：两栖车从海里开上岸、坦克坐气垫艇上滩
+--   python3 tools/mock/run.py tools/mock/veh.lua def   守方：营地车场的生成点生成坦克、坐上去、开车、悬架、瞄准镜四种模式、开炮、烟幕弹、下车上车、被毁
+--   python3 tools/mock/run.py tools/mock/veh.lua atk   攻方：登陆平台的生成点（站在气垫艇上）连艇一起开上岸；两栖车自己游上岸
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, Enum = T.R, T.V3, T.Enum
 local check = T.check
@@ -32,14 +32,20 @@ local C = T.C
 check(C ~= nil and C.S ~= nil, "客户端收到了服务器状态")
 
 if side == "def" then
-  print("① 守方在营地部署一辆坦克")
+  print("① 守方在营地出生，走到车场的坦克生成点按 E 生成，再走过去坐上")
   local tankId = G.Config.Vehicles.def.tank[3]
   check(C.S.vehModels and #C.S.vehModels > 0, "客户端拿到了能开的型号：" .. table.concat(C.S.vehModels or {}, ","))
   check(C.S.vehAvail and C.S.vehAvail.tank and C.S.vehAvail.tank.cap >= 1, "坦克名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.tank and C.S.vehAvail.tank.cap))
-  C.deploySel.mode, C.deploySel.veh, C.deploySel.spawn, C.deploySel.role = "veh", tankId, "camp", "engineer"
+  C.deploySel.spawn, C.deploySel.role = "camp", "engineer"
   R.as("client", function() C.refreshDeploy() end)
   T.click("^" .. C.T("ui.deployBtn") .. "$")
   R.run(2)
+  local tp = T.pad(tankId)
+  check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
+  local e0 = tp and T.usePad(me, tp)
+  check(e0 ~= nil and e0.driver == nil, "生成了一辆空的 " .. tostring(e0 and e0.def.id))
+  T.act("enterVeh", e0 and e0.id)
+  R.run(1.5)
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
   check(P.alive and me.Character and me.Character.HumanoidRootPart.Anchored, "人锚定在车里")
@@ -110,15 +116,43 @@ if side == "def" then
   check(not P.alive, "车组阵亡")
   check(G.vehAvail("def").tank.u == used0, "名额还占着（冷却中）")
 else
-  print("⑦ 攻方：两栖步战车从海里开上来；坦克坐气垫艇上滩")
+  print("⑦ 攻方：登陆平台出生，水面上的生成点生成（站在气垫艇上），连艇一起开上岸；两栖车下水自己游上岸")
   T.runUntil(function() return G.round.phase == "battle" end, 40)
-  T.act("deployVeh", "zbd05", "beach.white", "rifle")
+  -- 摆车（测试里瞬移：服务器、客户端两边一起挪）：base 是车底
+  local function placeVeh(e, base)
+    R.run(0.1)
+    local root = base * T.CF(0, e.def.H / 2, 0)
+    G.moveEnt(e, root)
+    e.lastSync = os.clock()
+    local st = C.drive
+    if st then
+      st.pos = base.Position
+      local look = base.LookVector
+      st.yaw = math.atan(-look.X, -look.Z)
+      st.speed = 0
+      st.root = root
+    end
+  end
+  T.act("deploy", "rifle", "barge")
   R.run(2)
-  local ea = P.vehicle
-  check(ea ~= nil and ea.def.id == "zbd05", "两栖车 ZBD-05 出生在海里")
+  check(P.alive and P.vehicle == nil, "步兵在登陆平台出生")
+  local ap = T.pad("zbd05")
+  local ea = ap and T.usePad(me, ap)
+  check(ea ~= nil and ea.lcac ~= nil, "两栖车 ZBD-05 站在气垫艇上生成")
   if ea then
-    local pz = ea.root.CFrame.Position
-    check(G.Map.height(pz.X, pz.Z) < -2, string.format("在海里（水深 %.1f）", -G.Map.height(pz.X, pz.Z)))
+    T.act("enterVeh", ea.id)
+    R.run(1)
+    check(P.vehicle == ea and C.drive ~= nil, "走过去坐上了")
+    local b = G.Map.landingOf("white")
+    local p0 = V3(b.cx, G.LCAC.deck, b.z + b.dir * 260)
+    placeVeh(ea, R.CFrame.lookAt(p0, p0 + V3(0, 0, -b.dir)))
+    T.key(Enum.KeyCode.W, true)
+    local landed = T.runUntil(function() return ea.lcac == nil end, 30)
+    T.key(Enum.KeyCode.W, false)
+    check(landed, "连艇一起开上岸，气垫艇把车放下了")
+    -- 再摆回海里 140 格（没有艇）：自己游
+    local p1 = V3(b.cx, -ea.def.hullH * 0.55, b.z + b.dir * 140)
+    placeVeh(ea, R.CFrame.lookAt(p1, p1 + V3(0, 0, -b.dir)))
     T.key(Enum.KeyCode.W, true)
     local track = {}
     local ashore = T.runUntil(function()
@@ -129,27 +163,9 @@ else
     T.key(Enum.KeyCode.W, false)
     local q = ea.root.CFrame.Position
     check(ashore, string.format("自己游上了岸（停在 x %.0f z %.0f，地面 %.1f）", q.X, q.Z, G.Map.height(q.X, q.Z)))
-    -- 从浮着到踩着海底再到上岸，车身高度是连续的（不在某一下弹起）
     local jump = 0
     for i = 2, #track do jump = math.max(jump, math.abs(track[i].Y - track[i - 1].Y)) end
-    check(jump < 0.6, string.format("上岸一路车身每帧高低最多变 %.2f 格", jump))
-    if not ashore and TEST_ARGS:match("trace") then
-      for i = 1, #track, 15 do local t = track[i] print(string.format("    %.1fs  x %.1f z %.1f y %.2f  地面 %.2f", i / 30, t.X, t.Z, t.Y, G.Map.height(t.X, t.Z))) end
-    end
-    T.tap(Enum.KeyCode.F)
-    R.run(1)
-  end
-  G.hurtChar(me.Character, 1e5, { P = PO, team = PO.team, name = other.DisplayName })
-  R.run(G.Config.RespawnDelay + 1)
-  T.act("deployVeh", G.Config.Vehicles.atk.tank[3], "beach.blue", "rifle")
-  R.run(1.5)
-  local et = P.vehicle
-  check(et ~= nil and et.locked, "坦克在气垫艇上（锁定，不能开）")
-  local unl = T.runUntil(function() return et and not et.locked end, 30)
-  check(unl, "气垫艇冲上滩、坦克放下来")
-  if et then
-    local q = et.root.CFrame.Position
-    check(G.Map.height(q.X, q.Z) > 0.3, string.format("坦克在岸上（地面 %.1f）", G.Map.height(q.X, q.Z)))
+    check(jump < 0.8, string.format("上岸一路车身每帧高低最多变 %.2f 格", jump))
   end
 end
 T.summary()

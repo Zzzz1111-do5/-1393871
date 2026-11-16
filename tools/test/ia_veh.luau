@@ -40,16 +40,30 @@ local atk = (def == p1) and p2 or p1
 local PD, PA = G.P[def], G.P[atk]
 local CD = H.Gs[def.Name]
 
-print("① 守方在营地部署一辆坦克")
+print("① 守方在营地出生，走到车场的坦克生成点按 E 生成，再走过去坐上")
 local tankId = G.Config.Vehicles.def.tank[3]
 check(CD.S.vehModels and #CD.S.vehModels > 0, "客户端拿到了能开的型号：" .. table.concat(CD.S.vehModels or {}, ","))
 check(CD.S.vehAvail and CD.S.vehAvail.tank and CD.S.vehAvail.tank.cap >= 1, "坦克名额 " .. tostring(CD.S.vehAvail and CD.S.vehAvail.tank and CD.S.vehAvail.tank.cap))
-CD.deploySel.mode, CD.deploySel.veh, CD.deploySel.spawn, CD.deploySel.role = "veh", tankId, "camp", "engineer"
+check(#(G.pads or {}) >= 20, "地图里摆了 " .. #(G.pads or {}) .. " 个载具生成点")
+CD.deploySel.spawn, CD.deploySel.role = "camp", "engineer"
 CD.refreshDeploy()
 H.click(def, "^" .. CD.T("ui.deployBtn") .. "$")
 H.run(2)
-local e = PD.vehicle
-check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
+check(PD.alive and PD.vehicle == nil, "步兵在营地出生")
+local tp = H.pad(G, tankId)
+check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
+check(tp.prompt.ObjectText == CD.T("veh." .. tankId) and tp.prompt.ActionText == CD.T("pad.spawn"), "按键文字照客户端的语言：" .. tp.prompt.ActionText .. " " .. tp.prompt.ObjectText)
+local e = H.usePad(G, def, tp)
+check(e ~= nil and e.alive and e.def.id == tankId and e.driver == nil, "生成了一辆空的 " .. tostring(e and e.def.id) .. "，停在地台上")
+local again = H.usePad(G, def, tp)
+check(#G.vehicles == 1, "地台上停着车：不能再生成（在场 " .. #G.vehicles .. " 辆）")
+-- 别人 30 秒内上不去
+act(atk, "enterVeh", e.id)
+H.run(0.5)
+check(e.driver == nil, "刚生成的车别人上不去")
+act(def, "enterVeh", e.id)
+H.run(1.5)
+check(PD.vehicle == e, "走过去按 E 坐上了")
 check(PD.alive and def.Character and def.Character.HumanoidRootPart.Anchored, "人锚定在车里")
 check(def.Character and def.Character.Head.Transparency == 1, "人藏起来了")
 check(CD.drive ~= nil and CD.drive.id == (e and e.id), "客户端接管驾驶")
@@ -143,36 +157,87 @@ check(not e.alive and e.wreck, "车被打爆、变成残骸")
 check(not PD.alive, "车组阵亡")
 check(G.vehAvail("def").tank.u == used0, "名额还占着（冷却中）：" .. G.vehAvail("def").tank.u .. "，要等 " .. G.vehAvail("def").tank.cd .. " 秒")
 
-print("⑦ 攻方：两栖步战车从海里开上来；坦克坐气垫艇上滩")
-act(atk, "deployVeh", "zbd05", "beach.white", "rifle")
+print("⑦ 攻方：登陆平台出生，水面上的生成点生成坦克（站在气垫艇上），连艇一起开到海滩，冲上岸艇放下车；两栖车下水自己游上岸")
+local CA = H.Gs[atk.Name]
+-- 摆车（测试里瞬移：服务器、客户端两边一起挪，不然服务器当成作弊拉回去）：base 是车底
+local function placeVeh(pl, e, base)
+	H.run(0.1)
+	local root = base * CF.new(0, e.def.H / 2, 0)
+	G.moveEnt(e, root)
+	e.lastSync = os.clock()
+	local st = H.Gs[pl.Name].drive
+	if st then
+		st.pos = base.Position
+		local look = base.LookVector
+		st.yaw = math.atan2(-look.X, -look.Z)
+		st.speed = 0
+		st.root = root
+	end
+end
+act(atk, "deploy", "rifle", "barge")
 H.run(2)
-local ea = PA.vehicle
-check(ea ~= nil and ea.def.id == "zbd05", "两栖车 ZBD-05 出生在海里")
-if ea then
-	local pz = ea.root.CFrame.Position
-	check(G.Map.height(pz.X, pz.Z) < -2, string.format("在海里（水深 %.1f）", -G.Map.height(pz.X, pz.Z)))
+local hrpA = atk.Character and atk.Character:FindFirstChild("HumanoidRootPart")
+check(PA.alive and hrpA and math.abs(hrpA.Position.Z - G.Map.BARGE.z) < G.Map.BARGE.L / 2 + 5 and hrpA.Position.Y > G.Map.BARGE.top, "步兵在登陆平台上出生")
+local tkId = G.Config.Vehicles.atk.tank[3]
+local tpA = H.pad(G, tkId)
+check(tpA ~= nil and tpA.sea and tpA.team == "atk", "登陆平台边上有 " .. tkId .. " 的生成点（车在水面上）")
+local et = H.usePad(G, atk, tpA)
+check(et ~= nil and et.lcac ~= nil and et.model:GetAttribute("Lcac") == true, "坦克生成在气垫艇上")
+act(atk, "enterVeh", et and et.id)
+H.run(1)
+check(et and PA.vehicle == et and CA.drive ~= nil, "从平台边上走过去坐上了")
+if et and CA.drive then
+	-- 往前开一段：连艇一起在海上走（不会游的车原来下不了水），艇跟着车
+	local z0 = et.root.CFrame.Position.Z
 	H.key(atk, Enum.KeyCode.W, true)
-	local ashore = H.runUntil(function()
-		local q = ea.root.CFrame.Position
-		return G.Map.height(q.X, q.Z) > 1
-	end, 40)
+	H.run(4)
+	local z1 = et.root.CFrame.Position.Z
+	check(z0 - z1 > 100, string.format("站在气垫艇上往岛那边开了 %.0f 格", z0 - z1))
+	local lp = et.lcac and et.lcac.root.CFrame.Position
+	check(lp and math.abs(lp.Z - et.root.CFrame.Position.Z) < 8, "气垫艇跟着车走")
+	-- 一路开到海滩要四十来秒：直接摆到蓝滩外 300 格（滩头通道正对着），接着往前开
+	local b = G.Map.landingOf("blue")
+	local p0 = V3.new(b.cx, G.LCAC.deck, b.z + b.dir * 300)
+	placeVeh(atk, et, CF.lookAt(p0, p0 + V3.new(0, 0, -b.dir)))
+	local landed = H.runUntil(function() return et.lcac == nil end, 30)
+	H.run(1.5)
 	H.key(atk, Enum.KeyCode.W, false)
-	check(ashore, "自己游上了岸")
+	check(landed and et.model:GetAttribute("Lcac") == false, "冲上岸，气垫艇把车放下了")
+	local q = et.root.CFrame.Position
+	check(G.Map.height(q.X, q.Z) > 0.3, string.format("坦克在岸上（地面 %.1f）", G.Map.height(q.X, q.Z)))
 	H.key(atk, Enum.KeyCode.F, true) H.key(atk, Enum.KeyCode.F, false)
 	H.run(1)
 end
--- 先阵亡、再等复活
-G.hurtChar(atk.Character, 1e5, { P = PD, team = PD.team, name = def.DisplayName })
-H.run(G.Config.RespawnDelay + 1)
-act(atk, "deployVeh", G.Config.Vehicles.atk.tank[3], "beach.blue", "rifle")
-H.run(1.5)
-local et = PA.vehicle
-check(et ~= nil and et.locked, "坦克在气垫艇上（锁定，不能开）")
-local unl = H.runUntil(function() return et and not et.locked end, 30)
-check(unl, "气垫艇冲上滩、坦克放下来")
-if et then
-	local q = et.root.CFrame.Position
-	check(G.Map.height(q.X, q.Z) > 0.3, string.format("坦克在岸上（地面 %.1f）", G.Map.height(q.X, q.Z)))
+-- 两栖车：在登陆平台生成（也坐气垫艇），上岸后从海里自己游回来（浮着 → 踩着海底 → 上岸，车身高度连续）
+local ea = nil
+local ap = H.pad(G, "zbd05")
+if ap then ea = H.usePad(G, atk, ap) end
+check(ea ~= nil and ea.lcac ~= nil, "两栖车 ZBD-05 也站在气垫艇上生成")
+if ea then
+	act(atk, "enterVeh", ea.id)
+	H.run(1)
+	local b = G.Map.landingOf("white")
+	local p0 = V3.new(b.cx, G.LCAC.deck, b.z + b.dir * 260)
+	placeVeh(atk, ea, CF.lookAt(p0, p0 + V3.new(0, 0, -b.dir)))
+	H.key(atk, Enum.KeyCode.W, true)
+	local landed = H.runUntil(function() return ea.lcac == nil end, 30)
+	H.key(atk, Enum.KeyCode.W, false)
+	check(landed, "两栖车随气垫艇上了岸")
+	-- 再摆回海里 140 格（没有艇）：自己游
+	local p1 = V3.new(b.cx, -ea.def.hullH * 0.55, b.z + b.dir * 140)
+	placeVeh(atk, ea, CF.lookAt(p1, p1 + V3.new(0, 0, -b.dir)))
+	H.key(atk, Enum.KeyCode.W, true)
+	local track = {}
+	local ashore = H.runUntil(function()
+		local q = ea.root.CFrame.Position
+		table.insert(track, q.Y)
+		return G.Map.height(q.X, q.Z) > 1
+	end, 40)
+	H.key(atk, Enum.KeyCode.W, false)
+	check(ashore, "两栖车自己游上了岸")
+	local jump = 0
+	for i = 2, #track do jump = math.max(jump, math.abs(track[i] - track[i - 1])) end
+	check(jump < 0.8, string.format("上岸一路车身每帧高低最多变 %.2f 格", jump))
 end
 
 H.summary()

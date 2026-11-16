@@ -131,15 +131,12 @@ function UI.init(G)
   local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
   local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
 
-  -- 左边：步兵 / 载具 两个页签，下面是卡片
-  local sel = { role = nil, spawn = nil, mode = "inf", veh = nil }
+  -- 左边：兵种卡片（载具不在这里选：到地图里的生成点去生成，Depot.lua）
+  local sel = { role = nil, spawn = nil }
   G.deploySel = sel
-  local tabInf = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.fromOffset(20, 100), RGB(48, 56, 40))
-  local tabVeh = button(deploy, "", UDim2.new(0.18, -19, 0, 32), UDim2.new(0.18, 9, 0, 100), RGB(28, 34, 40))
-  tabInf.TextSize, tabVeh.TextSize = 15, 15
   local roles = Instance.new("ScrollingFrame")
-  roles.Size = UDim2.new(0.36, -30, 1, -226)
-  roles.Position = UDim2.fromOffset(20, 140)
+  roles.Size = UDim2.new(0.36, -30, 1, -186)
+  roles.Position = UDim2.fromOffset(20, 100)
   roles.BackgroundTransparency = 1
   roles.BorderSizePixel = 0
   roles.ScrollBarThickness = 6
@@ -173,93 +170,6 @@ function UI.init(G)
     end)
   end
 
-  -- 载具卡片（这一队能开的型号；分队变了重建）
-  local vehs = Instance.new("ScrollingFrame")
-  vehs.Size, vehs.Position = roles.Size, roles.Position
-  vehs.BackgroundTransparency = 1
-  vehs.BorderSizePixel = 0
-  vehs.ScrollBarThickness = 6
-  vehs.CanvasSize = UDim2.new()
-  vehs.AutomaticCanvasSize = Enum.AutomaticSize.Y
-  vehs.Visible = false
-  vehs.Parent = deploy
-  local vgrid = grid:Clone()
-  vgrid.Parent = vehs
-  local vehCards, vehKey = {}, nil
-  local AD = require(RS:WaitForChild("AirDefs"))
-  sel.preset = {}   -- 飞机：每个型号选的挂载方案（预设的编号）
-  sel.load = {}     -- 飞机：挂载编辑器里保存的挂载（每个挂点一种弹）
-  local function vdef(id)
-    local VD = require(RS:WaitForChild("VehDefs"))
-    return VD.get(id) or AD.get(id)
-  end
-  local function presetOf(d)
-    local key = sel.preset[d.id]
-    for _, p in ipairs(d.presets or {}) do if p.key == key then return p end end
-    return (not sel.load[d.id]) and d.presets and d.presets[1] or nil
-  end
-  -- 这架飞机现在的挂载：编辑器里保存过的，或者选的预设
-  local function loadOf(d)
-    if sel.load[d.id] then return sel.load[d.id] end
-    local p = presetOf(d)
-    return AD.presetLoad(d, p and p.key)
-  end
-  local function buildVehCards(S)
-    local key = (S.team or "") .. ":" .. table.concat(S.vehModels or {}, ",")
-    if key == vehKey then return end
-    vehKey = key
-    for _, c in pairs(vehCards) do c.b:Destroy() end
-    vehCards = {}
-    local ids = {}
-    for _, id in ipairs(S.vehModels or {}) do if vdef(id) then table.insert(ids, id) end end
-    for i, id in ipairs(ids) do
-      local d = vdef(id)
-      local b = Instance.new("TextButton")
-      b.Text = ""
-      b.LayoutOrder = i
-      b.BackgroundColor3 = RGB(28, 34, 40)
-      b.BackgroundTransparency = 0.1
-      b.AutoButtonColor = true
-      b.Parent = vehs
-      round(b, 8)
-      local st = stroke(b, LINE, 2, 1)
-      local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 15, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-      local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-      ds.TextYAlignment = Enum.TextYAlignment.Top
-      local av = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-      local lo = nil
-      if d.air and d.st and #d.st > 0 then   -- 改挂载：打开全屏的挂载编辑器（3D 飞机、点挂点换弹）
-        lo = button(b, "", UDim2.fromOffset(118, 22), UDim2.new(1, -8, 1, -6), RGB(56, 66, 80), Vector2.new(1, 1))
-        lo.TextSize = 12
-        lo.ZIndex = 3
-        lo.Activated:Connect(function()
-          sel.veh = id
-          local p = presetOf(d)
-          if G.openHangar then
-            G.openHangar(id, loadOf(d), function(load, key)
-              sel.load[id] = load
-              sel.preset[id] = key
-              if key then sel.load[id] = nil end   -- 选的就是某个预设：照预设记
-              G.refreshDeploy()
-            end, p and p.key)
-          end
-          G.refreshDeploy()
-        end)
-      end
-      vehCards[id] = { b = b, st = st, nm = nm, ds = ds, av = av, d = d, lo = lo }
-      b.Activated:Connect(function()
-        sel.veh = id
-        G.refreshDeploy()
-      end)
-    end
-  end
-  local function setMode(m)
-    sel.mode = m
-    G.refreshDeploy()
-  end
-  tabInf.Activated:Connect(function() setMode("inf") end)
-  tabVeh.Activated:Connect(function() setMode("veh") end)
-
   -- 右边：地图 + 出生点
   local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
   local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
@@ -279,20 +189,6 @@ function UI.init(G)
   deployBtn.Activated:Connect(function()
     local S = G.S
     if not S or S.alive or (S.wait or 0) > 0 then return end
-    if sel.mode == "veh" then
-      if not sel.veh or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
-      local d = vdef(sel.veh)
-      if d and d.air then
-        local ok = false
-        for _, s in ipairs((S.airSpawns and S.airSpawns[d.cat]) or {}) do if s.id == sel.spawn and s.ok then ok = true end end
-        if not ok then G.toast(T("ui.spawnBlocked"), "bad") return end
-        G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role, loadOf(d))
-        return
-      end
-      if not (S.vehSpawns and S.vehSpawns[sel.spawn]) then G.toast(T("ui.needSpawnVeh"), "bad") return end
-      G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role)
-      return
-    end
     if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
     G.R.Act:FireServer("deploy", sel.role, sel.spawn)
   end)
@@ -303,11 +199,9 @@ function UI.init(G)
     if s.kind == "camp" then return T("spawn.camp") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
-    if s.kind == "lhd" then return T("spawn.air.lhd") end
-    if s.kind == "cv" then return T("spawn.air.cv") end
-    if s.kind == "airstart" then return T("spawn.air.in") end
-    if s.kind == "runway" then return T((s.id == "air.af2") and "spawn.air.af2" or "spawn.air.af") end
-    if s.kind == "pad" then return s.point and T("spawn.air.pt", s.point) or T("spawn.air.camp") end
+    if s.kind == "cv" then return T("spawn.cv") end
+    if s.kind == "barge" then return T("spawn.barge") end
+    if s.kind == "af2" then return T("spawn.af2") end
     return s.id
   end
 
@@ -316,16 +210,7 @@ function UI.init(G)
     spawnBtns = {}
     if not spawnLayer then return end
     local ids = {}
-    local list = S.spawns or {}
-    local vd = (sel.mode == "veh" and sel.veh) and vdef(sel.veh) or nil
-    if vd and vd.air then list = (S.airSpawns and S.airSpawns[vd.cat]) or {} end   -- 飞机：甲板、机场、空中出发、停机坪
-    for _, s0 in ipairs(list) do
-      local s = s0
-      if sel.mode == "veh" and not (vd and vd.air) then   -- 载具：只有海滩、据点、营地能出
-        local ok = S.vehSpawns and S.vehSpawns[s0.id]
-        s = table.clone(s0)
-        s.ok = ok == true
-      end
+    for _, s in ipairs(S.spawns or {}) do
       ids[s.id] = s
       local chosen = sel.spawn == s.id
       local b
@@ -336,7 +221,7 @@ function UI.init(G)
         b.Position = UDim2.fromScale(u, v)
         b.Size = UDim2.fromOffset(chosen and 34 or 26, chosen and 34 or 26)
         b.BackgroundColor3 = s.ok and (chosen and RGB(255, 210, 60) or RGB(255, 255, 255)) or RGB(90, 90, 90)
-        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or (s.point or ((s.kind == "runway" or s.kind == "cv" or s.kind == "lhd") and "✈" or "▲")))
+        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or ((s.kind == "af2") and "✈" or "▲"))
         b.TextColor3 = RGB(20, 20, 20)
         b.TextScaled = true
         b.Font = Enum.Font.GothamBlack
@@ -348,7 +233,7 @@ function UI.init(G)
         tip.ZIndex = 8
         tip.TextStrokeTransparency = 0.3
       else
-        b = button(extraSpawns, spawnName(s), UDim2.fromOffset(210, 40), nil, s.ok and (chosen and RGB(200, 160, 40) or RGB(50, 58, 66)) or RGB(40, 40, 40))
+        b = button(extraSpawns, spawnName(s), UDim2.new(0.25, -6, 0, 40), nil, s.ok and (chosen and RGB(200, 160, 40) or RGB(50, 58, 66)) or RGB(40, 40, 40))   -- 一排四个（舰、航母、登陆平台、伞降）
         b.TextSize = 15
       end
       b.Active = s.ok
@@ -381,43 +266,13 @@ function UI.init(G)
       c.st.Color = RGB(255, 210, 60)
       c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
     end
-    tabInf.Text, tabVeh.Text = T("ui.tabInf"), T("ui.tabVeh")
-    tabInf.BackgroundColor3 = (sel.mode == "inf") and RGB(48, 56, 40) or RGB(28, 34, 40)
-    tabVeh.BackgroundColor3 = (sel.mode == "veh") and RGB(48, 56, 40) or RGB(28, 34, 40)
-    roles.Visible = sel.mode == "inf"
-    vehs.Visible = sel.mode == "veh"
-    if sel.mode == "veh" then
-      buildVehCards(S)
-      for id, c in pairs(vehCards) do
-        local d = c.d
-        local av = S.vehAvail and S.vehAvail[d.cat] or { u = 0, cap = 0, cd = 0 }
-        local ws = {}
-        if d.air then   -- 飞机：航炮 + 现在的挂载里的弹
-          local p = presetOf(d)
-          for _, wid in ipairs(AD.groups(d, loadOf(d))) do table.insert(ws, T("aw." .. wid)) end
-          if c.lo then c.lo.Text = "✎ " .. T("ui.loadout", sel.load[id] and T("preset.custom") or T("preset." .. (p and p.key or "none"))) end
-        else
-          for _, wid in ipairs(d.weapons) do table.insert(ws, T("vw." .. wid)) end
-        end
-        c.nm.Text = T("veh." .. id)
-        c.ds.Text = T("vcat." .. d.cat) .. " · " .. ((#ws > 0) and table.concat(ws, " / ") or T("air.noWeapon"))
-        local full = av.u >= av.cap
-        c.av.Text = T("ui.vehCap", av.u, av.cap) .. ((full and av.cd > 0) and ("   " .. T("ui.vehCd", av.cd)) or "")
-        c.av.TextColor3 = full and RGB(230, 110, 100) or RGB(160, 220, 150)
-        local on = sel.veh == id
-        c.st.Transparency = on and 0 or 1
-        c.st.Color = RGB(255, 210, 60)
-        c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
-      end
-      if sel.veh and not vehCards[sel.veh] then sel.veh = nil end
-    end
     buildSpawns(S)
     if (S.wait or 0) > 0 then
       deployBtn.Text = T("ui.waitRespawn", S.wait)
       deployBtn.BackgroundColor3 = RGB(70, 70, 70)
     else
       deployBtn.Text = T("ui.deployBtn")
-      local ready = (sel.mode == "veh") and (sel.veh and sel.spawn) or (sel.role and sel.spawn)
+      local ready = sel.role and sel.spawn
       deployBtn.BackgroundColor3 = ready and RGB(60, 150, 80) or RGB(70, 90, 76)
     end
   end

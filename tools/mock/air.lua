@@ -1,5 +1,5 @@
 -- 飞机、直升机测试（模拟器）：python3 tools/mock/run.py tools/mock/air.lua [atk|def] [v]
---   部署界面选型号、出生点、挂载 → 坐进座舱 → 起飞（油门、抬头、收起落架）→ 飞行（鼠标瞄准、加力、失速）→ 航炮 → 锁定发射导弹 → 热诱弹 →
+--   生成点（停机位按 E、挂载界面按「生成」）→ 走过去坐进座舱 → 起飞（油门、抬头、收起落架）→ 飞行（鼠标瞄准、加力、失速）→ 航炮 → 锁定发射导弹 → 热诱弹 →
 --   炸弹 → 弹舱门 → 落地补弹 → 跳伞；直升机：起飞悬停、旋翼转速、机头炮塔、火箭巢；模型：舵面、起落架、旋翼动画
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, Enum = T.R, T.V3, T.Enum
@@ -30,17 +30,28 @@ local AD = require and nil
 AD = R.requireModule and R.requireModule("AirDefs") or nil
 local C = T.C
 
-print("① 部署界面：飞机型号、出生点、挂载")
+print("① 生成点：飞机型号、名额；走到停机位按 E，挂载界面按「生成」，再走过去坐上")
 local jets = G.Config.Vehicles[side].jet
 local jetId = (side == "atk") and "j20" or "f22"
 local has = false
 for _, id in ipairs(C.S.vehModels or {}) do if id == jetId then has = true end end
-check(has, "能选的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
+check(has, "能用的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
 check(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap >= 1, "固定翼名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap))
-check(C.S.airSpawns and C.S.airSpawns.jet and #C.S.airSpawns.jet > 0, "固定翼出生点 " .. tostring(C.S.airSpawns and C.S.airSpawns.jet and #C.S.airSpawns.jet))
-local spawnId = (side == "atk") and "air.af2" or "air.af"
-T.actAs(me, "deployVeh", jetId, spawnId, "rifle", nil)
+T.act("deploy", "rifle", (side == "atk") and "af2" or "point.D")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
 R.run(2)
+check(P.alive and P.vehicle == nil, "步兵出生了")
+local jp = T.pad(jetId)
+check(jp ~= nil and jp.kind == "air", "有 " .. jetId .. " 的停机位生成点")
+if jp then T.usePad(me, jp) end
+local go = T.findButton("^" .. C.T("pad.spawn") .. "$")
+check(go ~= nil, "弹出了挂载界面（按钮是「生成」）")
+if go then T.press(go) end
+R.run(1)
+local e0 = nil
+for _, x in ipairs(G.aircraft or {}) do if jp and x.padId == jp.id and x.alive then e0 = x end end
+check(e0 ~= nil and e0.driver == nil, "飞机停在停机位上（空着）")
+T.act("enterVeh", e0 and e0.id)
+R.run(1.5)
 local e = P.vehicle
 check(e ~= nil and e.air and e.def.id == jetId, "坐进了 " .. tostring(e and e.def.id))
 if e then

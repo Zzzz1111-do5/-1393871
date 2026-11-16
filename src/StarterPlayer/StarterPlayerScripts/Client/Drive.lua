@@ -230,9 +230,14 @@ function Drive.init(G)
   end
 
   -- 车底 CFrame：按四个角的地面高度定俯仰、侧倾；在水里（两栖）浮着
-  local function baseAt(d, pos, yaw)
+  local function baseAt(d, pos, yaw, carried)
     local face = V(-math.sin(yaw), 0, -math.cos(yaw))
     local right = V(-face.Z, 0, face.X)
+    if carried and Map.height(pos.X, pos.Z) < 0.6 then   -- 站在气垫艇上、还在水上：车底就是艇的甲板，跟着艇轻轻晃
+      local t = os.clock()
+      local p = V(pos.X, VD.LCAC.deck + math.sin(t * 1.4) * 0.12, pos.Z)
+      return CFrame.lookAt(p, p + face) * CFrame.Angles(math.sin(t * 0.8) * 0.01, 0, math.sin(t * 1.0) * 0.015)
+    end
     -- 两栖车：浮着时车底在吃水线（海面下大半个车体）；水浅到履带碰着海底，就踩着海底往上爬（车底取海底和吃水线高的那个），
     --   不会在水深 1.5 格那一下从吃水线弹到海面上
     local draft = d.amphib and d.hullH * 0.55 or nil
@@ -317,10 +322,13 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
+    local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：连艇一起开
     local maxF, maxR = d.speed, d.rev
-    if inWater then maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
+    if inWater then
+      if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
+    end
     local target = (thr > 0) and maxF or ((thr < 0) and -maxR or 0)
-    local a = d.accel
+    local a = (carried and inWater) and math.max(d.accel, 18) or d.accel   -- 气垫艇起步比坦克快
     if target == 0 then a = d.accel * 0.8
     elseif (target > 0) ~= (st.speed > 0) and math.abs(st.speed) > 1 then a = d.accel * 2.4 end   -- 反向：先刹车
     local old = st.speed
@@ -339,7 +347,7 @@ function Drive.init(G)
       local h0 = Map.height(st.pos.X, st.pos.Z)
       local h1 = Map.height(np.X, np.Z)
       local blocked = false
-      if h1 < -2.5 and not d.amphib then blocked = true end
+      if h1 < -2.5 and not d.amphib and not carried then blocked = true end
       -- 坡度按地面（海里按水面）算：比约 40° 陡上不去。按前方 4 格取样——原来按这一帧走的距离算（每帧零点几格），
       --   岸边零点几格的小坎就算成陡坡，两栖车卡在水线上不去；帧率越高越容易卡
       local probe = math.max(4, math.abs(step))
@@ -363,7 +371,7 @@ function Drive.init(G)
         st.pos = np
       end
     end
-    local base = baseAt(d, st.pos, st.yaw)
+    local base = baseAt(d, st.pos, st.yaw, carried)
     st.pos = base.Position
     st.root = base * CF(0, d.H / 2, 0)
   end
