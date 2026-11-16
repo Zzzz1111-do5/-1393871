@@ -35,13 +35,23 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
 3. 以后更新：再「发布到 Roblox」覆盖线上版本；开着的服务器要到 create.roblox.com → 地点 →「⋯」→ 重启服务器。
 4. `promo/` 里的图标和宣传图还是大亨版的，新玩法做完后重做。
 
+## 换上装备的原模型（`models/veh/`）
+
+不导入的话车是零件拼的。`models/veh/<模型键>.glb` 是网页版的装备模型原样转的：最精细的网格（不减面）、原贴图和法线 / 金属粗糙度贴图、真实尺寸（1 米 = 2.8 格），每个模型一个文件，20 个覆盖全部地面载具。
+
+1. Studio「主页 → 导入 3D」，选 `models/veh/` 里的 GLB（一次选一个或几个都行），导入设置用默认的（别勾「合并网格」），导进 Workspace 就行。
+2. 开服时自动收进 `ReplicatedStorage/Imported/Veh/<模型键>`（输出里有一行「用上了导入的装备模型：…」）；想先整理好也可以自己拖进去，名字别改（`V_<模型键>__<块>`）。
+3. 导入了的型号游戏里自动换上：炮塔、炮管按原模型的转轴转，车轮各自有悬架、跟着转，打爆后烧黑。哪个型号用哪个模型见 `src/ReplicatedStorage/ImportedMeta.lua` 的 `alias`。
+
+重新转换（要网页版仓库）：`python3 -I tools/models/mdl2glb.py <网页版仓库目录>`。模型都是 CC-BY，署名在 `models/veh/credits.txt`（发布时放进游戏简介或游戏里的致谢）。
+
 ## 改代码
 
 - 脚本都在 `src/`，目录和 Rojo 的约定一样：
   - `src/ReplicatedStorage/`：`Config.lua`（数值：回合、占领、兵种、武器、载具名额、机器人、得分、军衔）、`Lang.lua`（中英文字）、`Map.lua`（地形高度、岛、据点、海滩、舰队位置，服务器和客户端算出来一样）。
-  - `src/ReplicatedStorage/VehDefs.lua`：地面载具的型号数据（尺寸、速度、炮塔、武器、负重轮 / 车轮、烟幕弹发射筒、瞄准镜位置）。
-  - `src/ServerScriptService/Main/`：服务器（`World` 生成地图、`Round` 回合与据点、`Weapons` 步兵武器、`Ents` 实体与伤害、`Vehicles` 登陆艇与伞降、`Armor` 地面载具、`Bots` 机器人、`Nav` 寻路、`Store` 存档）。
-  - `src/StarterPlayer/StarterPlayerScripts/Client/`：客户端（`UI` 界面、`MapUI` 地图、`Play` 步兵操作与镜头、`Drive` 开载具与瞄准镜、`View` 实体的样子和悬架、`VehModels` 零件拼的车、`Fx` 特效与音效）。
+  - `src/ReplicatedStorage/VehDefs.lua`：地面载具的型号数据（尺寸、速度、炮塔、武器、负重轮 / 车轮、烟幕弹发射筒、瞄准镜位置）；`ImportedMeta.lua`：原模型各块的位置、转轴（转换脚本生成，别手改）。
+  - `src/ServerScriptService/Main/`：服务器（`World` 生成地图、`Round` 回合与据点、`Weapons` 步兵武器、`Ents` 实体与伤害、`Vehicles` 登陆艇与伞降、`Armor` 地面载具、`Bots` 机器人、`Nav` 寻路、`Store` 存档、`Imports` 收导入的模型）。
+  - `src/StarterPlayer/StarterPlayerScripts/Client/`：客户端（`UI` 界面、`MapUI` 地图、`Play` 步兵操作与镜头、`Drive` 开载具与瞄准镜、`View` 实体的样子和悬架、`VehModels` 车的样子（原模型或零件拼的）、`Fx` 特效与音效）。
 - 生成 rbxlx：装 [Lune](https://github.com/lune-org/lune) **0.11 或更新**，在仓库根目录运行 `lune run tools/build.luau`（默认写 `RobloxTotalBattlefield.rbxlx`）；没有 Lune 用 `python3 tools/build_rbxlx.py`。
 - 也可以直接在 Studio 里改脚本；改完之后这里的 `src/` 就不是最新的了。
 
@@ -57,6 +67,7 @@ lune run tools/test/check.luau                        # 语法检查
 lune run tools/test/ia_flow.luau RobloxTotalBattlefield.rbxlx  # 流程：开服 → 分队 → 部署 → 开枪击杀 → 复活 → 抢滩 → 占领 → 结算 → 下一局
 lune run tools/test/ia_bots.luau RobloxTotalBattlefield.rbxlx 8  # 机器人：一个真人 + 机器人打 8 分钟（补人数、抢滩、交火、占领、耗时）
 lune run tools/test/ia_veh.luau RobloxTotalBattlefield.rbxlx     # 载具：部署、开车、悬架、开炮、烟幕弹、瞄准镜四种模式、下车上车、被毁、气垫艇
+lune run tools/test/ia_import.luau RobloxTotalBattlefield.rbxlx  # 原模型：假装导入了 M1A2、JLTV，看收模型、拼车、炮塔炮管转轴、车轮悬架、炮口、烧黑
 lune run tools/test/ia_boot.luau RobloxTotalBattlefield.rbxlx  # 开服计时（地形生成）
 lune run tools/test/ia_balance.luau RobloxTotalBattlefield.rbxlx 6  # 平衡统计：机器人对打几分钟，攻方的兵、登陆艇死在什么上面
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图

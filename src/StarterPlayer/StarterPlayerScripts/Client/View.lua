@@ -263,12 +263,13 @@ function View.init(G)
         local wp = (base * CF(w.x, 0, w.z)).Position
         local gy = Map.height(wp.X, wp.Z)
         local tgt
-        if gy < -0.5 and onWater then tgt = -d.travel   -- 在水里：轮子垂下去
-        else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -d.travel, d.travel) end
+        local trv = M.travel or d.travel   -- 原模型的履带车：履带是死的，负重轮只能动一点
+        if gy < -0.5 and onWater then tgt = -trv   -- 在水里：轮子垂下去
+        else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -trv, trv) end
         local a = (tgt - w.dy) * 420 - w.vy * 26
         w.vy += a * dt
-        w.dy = math.clamp(w.dy + w.vy * dt, -d.travel * 1.2, d.travel * 1.2)
-        w.spin -= v.speed * dt / w.r
+        w.dy = math.clamp(w.dy + w.vy * dt, -trv * 1.2, trv * 1.2)
+        w.spin -= v.speed * dt / (w.rad or w.r)
         sum += w.dy
         if w.z < 0 then sF += w.dy nF += 1 else sB += w.dy nB += 1 end
         if w.x < 0 then sL += w.dy nL += 1 else sR += w.dy nR += 1 end
@@ -289,8 +290,8 @@ function View.init(G)
     v.roll += v.rollV * dt
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
-    local tF = hullF * CF(d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
-    local gF = tF * CF(d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
+    local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
+    local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
     v.hullF, v.tF, v.gF = hullF, tF, gF
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
@@ -333,7 +334,11 @@ function View.init(G)
       end
       for _, it in ipairs(M.parts) do
         local part = it[1]
-        if part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
+        if part:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+          for _, sa in ipairs(part:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() part.TextureID = "" end)
+          part.Color = Color3.fromRGB(40, 38, 36)
+        elseif part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
     end

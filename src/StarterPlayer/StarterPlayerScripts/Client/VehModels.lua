@@ -1,10 +1,31 @@
--- Roblox全面大战场（客户端）——地面载具的零件模型：按 VehDefs 的尺寸拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
+-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
 --   履带车的负重轮 / 主动轮 / 诱导轮 / 履带（下面一段段跟着负重轮上下）、轮式车的车轮（带轮毂、挡泥板，前轴转向）、
 --   各式炮塔（楔形、圆形、艾布拉姆斯、步战车、遥控武器站、自行高炮、火神炮、自行榴弹炮、发射箱）、炮管（抽烟装置、炮口制退器）、
 --   烟幕弹发射筒（就装在 VehDefs 规定的位置、朝规定的方向）
 --   返回 { model, parts = { { 零件, 组, 相对位置 } }, wheels = { … } }：组是 hull（车体）/ turret / gun / wheel（第几个轮）/ seg（履带段）
 --   每帧由 View 按车体、炮塔、炮、各轮的姿态算出零件位置（BulkMoveTo）
 local VehModels = {}
+
+-- 原模型（网页版装备模型原样转的 models/veh/<模型键>.glb，Studio 里导入后由 Imports.lua 收进 ReplicatedStorage.Imported.Veh.<模型键>）：
+--   有就整辆换成它（真实尺寸，不缩放；车体、炮塔、炮、各个车轮照元数据 ImportedMeta 摆、按各自的转轴动），没有就用下面零件拼的
+local RS = game:GetService("ReplicatedStorage")
+local IM = nil
+do
+  local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
+  if ok and type(r) == "table" then IM = r end
+end
+local function importedFor(d)
+  if not IM then return nil end
+  local key = IM.alias and IM.alias[d.id]
+  local info = key and IM.m[key]
+  if not info then return nil end
+  local imp = RS:FindFirstChild("Imported")
+  local veh = imp and imp:FindFirstChild("Veh")
+  local f = veh and veh:FindFirstChild(key)
+  if not f then return nil end
+  return key, info, f
+end
+VehModels.importedFor = importedFor
 
 local V = Vector3.new
 local CF = CFrame.new
@@ -59,7 +80,84 @@ function VehModels.build(d, team)
   end
 
   local W, L, H, hh, clear = d.W, d.L, d.H, d.hullH, d.clear
+  local extra = {}   -- 原模型的炮塔 / 炮转轴、悬架行程（View 用）
 
+  ---------------------------------------------------------------- 原模型
+  local ikey, info, folder = importedFor(d)
+  if ikey then
+    local function v3(t) return V(t[1], t[2], t[3]) end
+    local tpiv = info.tur and v3(info.tur) or d.turret.pivot
+    local gpiv = info.gun and v3(info.gun) or (tpiv + d.gun.pivot)
+    -- 车轮：每个轮一个弹簧（中心、半径照原模型）；轮式车最前面 d.steer 排转向
+    local wix, names = {}, {}
+    for g in pairs(info.wheels or {}) do table.insert(names, g) end
+    table.sort(names)
+    local zs = {}
+    for _, g in ipairs(names) do
+      local w = info.wheels[g]
+      local c = v3(w.c)
+      local wi = #wheels + 1
+      wheels[wi] = { x = c.X, z = c.Z, r = c.Y, rad = math.max(w.r, 0.3), side = (c.X < 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false }
+      wix[g] = wi
+      table.insert(zs, c.Z)
+    end
+    if #wheels == 0 then
+      -- 原模型的车轮和车身是一整块（JLTV、M270、M1150、M1A1、96 式……）：照型号表的轮位（按原模型的长宽缩放）放几个看不见的弹簧，
+      --   车身照样随地面起伏、俯仰、侧倾
+      local hb = info.hull or { info.w, info.h, info.len }   -- 车身的宽、高、长
+      local kz, kx = hb[3] / math.max(d.L, 1), hb[1] / math.max(d.W, 1)
+      local function spring(x, z, r) wheels[#wheels + 1] = { x = x * kx, z = z * kz, r = r, rad = r, side = (x < 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false } end
+      if d.arch == "tracked" and d.rw then
+        local R = d.rw
+        for s = -1, 1, 2 do
+          for i = 1, R.n do spring(s * R.x, R.z0 + (i - 1) * (R.z1 - R.z0) / math.max(R.n - 1, 1), R.r) end
+        end
+      elseif d.axles then
+        for _, z in ipairs(d.axles) do
+          for s = -1, 1, 2 do spring(s * d.wx, z, d.wr) end
+        end
+      end
+    end
+    if d.arch == "wheeled" and #zs > 0 then
+      table.sort(zs)
+      local axles = {}
+      for _, z in ipairs(zs) do
+        if #axles == 0 or z - axles[#axles] > 1.5 then table.insert(axles, z) end
+      end
+      local lim = axles[math.min(#axles, d.steer or 1)] + 0.75
+      for _, w in ipairs(wheels) do w.steer = w.z <= lim end
+    end
+    for name, p in pairs(info.parts) do
+      local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
+      if src and src:IsA("BasePart") then
+        local mp = src:Clone()
+        mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
+        mp.Size = v3(p.s)
+        -- 原模型里这块本来就没贴图（JLTV、M270 整车都是）：照原材质的颜色上色——Studio 导入时不一定把材质颜色带过来
+        local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性
+        if p.col and not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then
+          mp.Color = Color3.fromRGB(p.col[1], p.col[2], p.col[3])
+          mp.Material = p.met and Enum.Material.Metal or Enum.Material.SmoothPlastic
+          if p.a then mp.Transparency = 1 - p.a end
+        end
+        local c = v3(p.c)
+        local grp, off, wi = "hull", CF(c), nil
+        if p.g == "Turret" then grp, off = "turret", CF(c - tpiv)
+        elseif p.g == "Gun" then grp, off = "gun", CF(c - gpiv)
+        elseif wix[p.g] then
+          wi = wix[p.g]
+          local w = wheels[wi]
+          grp, off = "wheel", CF(c - V(w.x, w.r, w.z))
+        end
+        mp.CFrame = off
+        mp.Parent = m
+        table.insert(parts, { mp, grp, off, wi })
+      end
+    end
+    extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel }
+  end
+
+  if not ikey then
   ---------------------------------------------------------------- 行走部分
 
   if d.arch == "tracked" then
@@ -311,6 +409,8 @@ function VehModels.build(d, team)
     end
   end
 
+  end   -- 零件拼的（没有原模型时）
+
   -- 扬尘：后轮那里两个隐形发射点
   local dust = {}
   for _, s2 in ipairs({ -1, 1 }) do
@@ -377,7 +477,8 @@ function VehModels.build(d, team)
     pl.Parent = tl
   end
 
-  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps }
+  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps,
+    imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel }
 end
 
 return VehModels

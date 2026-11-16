@@ -243,6 +243,30 @@ for id, d in pairs(D) do
   if d.arch == "tracked" then d.rw.y = d.rw.y or d.rw.r end
 end
 
+-- 有原模型的型号（ImportedMeta：网页版装备模型原样转的，真实尺寸）：炮塔转轴、炮耳轴、炮口位置照原模型——
+--   炮弹从看得见的炮口出去、炮长瞄准镜跟着真炮塔；不管导没导入都一样（服务器和客户端算出来一致）
+do
+  local ok, IM = pcall(function()
+    local m = script and script.Parent and script.Parent:FindFirstChild("ImportedMeta")
+    return m and require(m) or nil
+  end)
+  if ok and type(IM) == "table" and IM.alias and IM.m then
+    for id, key in pairs(IM.alias) do
+      local d, info = D[id], IM.m[key]
+      if d and info and (info.tur or info.gun) then
+        -- 原模型没有单独的炮塔（爱国者只有会俯仰的发射架）：转轴照型号表，耳轴照原模型（客户端 VehModels 也是这么摆的）
+        local tur = info.tur and V(info.tur[1], info.tur[2], info.tur[3]) or d.turret.pivot
+        d.turret.pivot = tur   -- 瞄准镜、烟幕弹发射架都是相对炮塔转轴的，跟着挪
+        if info.gun then
+          d.gun.pivot = V(info.gun[1], info.gun[2], info.gun[3]) - tur
+          if info.muz and info.muz > 1 then d.gun.len = info.muz end
+        end
+        d.model = key
+      end
+    end
+  end
+end
+
 function VehDefs.get(id) return D[id] end
 
 -- 炮塔、炮的坐标系：base 是车底（着地中心）的 CFrame

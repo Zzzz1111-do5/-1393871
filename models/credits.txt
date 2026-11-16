@@ -27,3 +27,5 @@
 
 登岛战第一人称 M4（fps_m4.glb；游戏里 src/ReplicatedStorage/FPSMesh.lua 的网格和贴图、FPSAnim.lua 的动作）：「M4 - FPS Weapon Animations Pack (v.1)」，作者 BarcodeGames，CC-BY-4.0 https://sketchfab.com/3d-models/m4-fps-weapon-animations-pack-v1-662fc74dda2646cfb48fc610705768ef
   改动：原模型的手臂没用（游戏里画成 Roblox 方块手臂）；枪按零件分开、单位换成格、补上 FBX 里弹匣骨骼的缩放；贴图缩小（GLB 1024、游戏内嵌 512 / 128）；动作抽成相对相机的关键帧（长的隔帧）
+
+全面大战场的地面载具原模型（models/veh/*.glb）的署名见 models/veh/credits.txt。
