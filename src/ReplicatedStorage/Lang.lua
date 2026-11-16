@@ -212,6 +212,102 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · X 烟幕弹 · 右键 / V 瞄准镜 · N 夜视 / 热成像 · F 下车",
   "WASD drive · Mouse aim · LMB fire · 1/2 weapon · X smoke · RMB / V gunner sight · N night vision / thermal · F exit")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
+
+-- 飞机、直升机
+add("spawn.air.lhd", "075 两栖攻击舰甲板", "Type 075 flight deck")
+add("spawn.air.cv", "航母甲板（舰载机）", "Carrier deck (naval jets)")
+add("spawn.air.af2", "攻方机场岛", "Island airstrip")
+add("spawn.air.af", "主岛机场", "Main island airfield")
+add("spawn.air.in", "空中出发", "Air start")
+add("spawn.air.camp", "营地停机坪", "Camp helipad")
+add("spawn.air.pt", "据点 {1} 停机坪", "Helipad at {1}")
+add("ui.loadout", "挂载：{1}", "Loadout: {1}")
+add("ui.rearmed", "补满了弹药和热诱弹", "Rearmed and resupplied with flares")
+add("ui.notCarrier", "这型飞机上不了航母", "This aircraft can't operate from the carrier")
+local PRESET = {
+  aa = { "空战", "Air superiority" }, ag = { "对地", "Ground attack" }, beast = { "满挂", "Full load" }, at = { "反坦克", "Anti-tank" },
+  mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
+  bomb = { "炸弹", "Bombs" }, kd88 = { "KD-88 远程打击", "KD-88 standoff" }, cas = { "近距支援", "Close air support" }, hk = { "猎杀", "Hunter-killer" },
+  jdam = { "联合直接攻击弹药", "JDAM" }, mk82 = { "Mk 82 炸弹", "Mk 82 bombs" },
+}
+for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
+local AW = {
+  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
+  m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
+  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" },
+  ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
+  kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
+  pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
+  gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
+  gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
+}
+for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
+add("preset.sead", "防空压制", "SEAD")
+add("preset.custom", "自定义", "Custom")
+add("hangar.empty", "不挂", "Empty")
+add("hangar.pick", "点白圈选一个挂点", "Pick a hardpoint")
+add("hangar.hint", "点白圈换弹 · 拖动转视角 · 滚轮缩放", "Click a circle to change stores · Drag to rotate · Wheel to zoom")
+add("hangar.guide", "导引方式", "Guidance")
+add("hangar.range", "射程", "Range")
+add("hangar.km", "{1} 公里", "{1} km")
+add("hangar.count", "数量", "Quantity")
+add("hangar.lock", "锁定时间", "Lock time")
+add("hangar.sec", "{1} 秒", "{1} s")
+add("hangar.symOn", "左右对称：开", "Symmetric: ON")
+add("hangar.symOff", "左右对称：关", "Symmetric: OFF")
+add("hangar.back", "返回", "BACK")
+add("hangar.save", "保存", "SAVE")
+add("preset.sdb", "小直径炸弹", "Small Diameter Bombs")
+add("wcat.gun", "航炮", "Cannon")
+add("wcat.aam", "空空导弹", "Air-to-Air Missile")
+add("wcat.agm", "空地导弹", "Air-to-Ground Missile")
+add("wcat.bomb", "炸弹", "Bomb")
+add("wcat.gbomb", "制导炸弹", "Guided Bomb")
+add("wcat.rkt", "火箭弹", "Rocket Pod")
+add("wcat.arm", "反辐射导弹", "Anti-Radiation Missile")
+add("guide.ir", "红外", "Infrared")
+add("guide.radar", "主动雷达", "Active radar")
+add("guide.laser", "激光", "Laser")
+add("guide.gps", "卫星 / 惯性", "GPS / INS")
+add("guide.tv", "电视 / 红外成像", "TV / imaging IR")
+add("guide.arm", "被动雷达（打防空雷达）", "Passive radar (hunts air defenses)")
+add("guide.none", "无制导", "Unguided")
+add("guide.gun", "—", "—")
+add("air.alt", "高度 {1} 米", "Alt {1} m")
+add("air.flares", "热诱弹 {1}", "Flares {1}")
+add("air.gearState.down", "起落架 放下", "Gear down")
+add("air.gearState.up", "起落架 收起", "Gear up")
+add("air.noWeapon", "没有武器", "Unarmed")
+add("air.passenger", "（乘客）", "(passenger)")
+add("air.ab", "加力", "AFTERBURNER")
+add("air.missile", "导弹来袭！放热诱弹（X）", "MISSILE! Pop flares (X)")
+add("air.oob", "飞出作战区域，自动掉头", "Leaving the battle area, turning back")
+add("air.stall", "失速！推油门、低头", "STALL! Throttle up, nose down")
+add("air.pullup", "拉起！", "PULL UP!")
+add("air.takeoff", "推油门（W）加速", "Throttle up (W) to roll")
+add("air.rotate", "速度够了，鼠标往上抬起飞", "Rotate: lift the mouse to take off")
+add("air.spool", "旋翼加速中…", "Rotor spooling up…")
+add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
+add("air.locked", "已锁定", "LOCKED")
+add("air.landed", "落地了：停在自己的机场 / 甲板上 5 秒补弹修理", "Landed: hold still at a friendly base for 5 s to rearm and repair")
+add("air.deckHint", "滑到弹射器（甲板上黄线的起点），机头对正就会卡上", "Taxi onto a catapult (start of a yellow track) and line up to hook on")
+add("air.catHooked", "挂上弹射器了", "Hooked to the catapult")
+add("air.catLaunch", "油门推满（W）后按空格弹射", "Full throttle (W), then Space to launch")
+add("air.catLaunchMobile", "油门推满（▲）等一下就弹射", "Full throttle (▲) and hold to launch")
+add("air.catGone", "弹射起飞！", "Catapult launch!")
+add("air.trapped", "挂上拦阻索，停住了", "Trapped by the arresting wire")
+add("air.landAt", "降落点 {1} 米", "Touchdown {1} m")
+add("air.glideHigh", "偏高", "HIGH")
+add("air.glideOk", "下滑道正好", "ON GLIDEPATH")
+add("air.glideLow", "偏低", "LOW")
+add("air.notYet", "开战以后才能开火", "Weapons are cold until the battle starts")
+add("air.needLock", "空空导弹要先锁定目标（R 换目标）", "Air-to-air missiles need a lock (R to switch target)")
+add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · G 起落架 · F 跳伞",
+  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · X flares · G gear · F eject")
+add("air.helpHeli", "鼠标 瞄准 · W/S 前后 · A/D 转向 · Q/E 平移 · 空格 / Ctrl 升降 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · F 下飞机",
+  "Mouse aim · W/S forward/back · A/D turn · Q/E strafe · Space / Ctrl up/down · LMB fire · 1-6 weapons · R target · X flares · F exit")
+add("air.helpPass", "你坐在后面 · 鼠标 看四周 · F 下飞机（在天上就跳伞）", "You're a passenger · Mouse look · F jump out (parachute if airborne)")
 add("ui.smokeLeft", "烟幕弹 ×{1}", "Smoke ×{1}")
 add("ui.reloading", "装填中", "Reloading")
 add("ui.speed", "{1} 公里/时", "{1} km/h")

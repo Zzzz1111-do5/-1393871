@@ -385,6 +385,34 @@ local SHIPS = {
   lhd = { L = 480, W = 90, H = 30, deck = 26, island = { 0.2, 0.4 }, color = C.hull },
   lst = { L = 300, W = 56, H = 22, deck = 18, island = { -0.3, 0.3 }, color = C.hull },
 }
+-- 航母甲板：弹射轨道（深色槽 + 黄色中线 + 起点的滑块）、偏流板（起点后面放平的一块）、斜角甲板的白线、拦阻索
+--   位置照 AirDefs.CATS / WIRES（飞机端按同一套数判断卡没卡上弹射器、落没落在拦阻索区）
+function World.carrierDeck(m, top)
+  local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
+  for i, c in ipairs(AD.CATS) do
+    local start = top * CF(c.x, 0, c.z) * CFrame.Angles(0, c.a, 0)
+    part(m, V(2.6, 0.12, c.len), start * CF(0, 0.06, -c.len / 2), RGB(40, 42, 46), MAT.Metal)
+    for k = 0, c.len - 10, 20 do part(m, V(0.5, 0.14, 10), start * CF(0, 0.08, -k - 5), C.yellow) end
+    local shuttle = part(m, V(1.6, 0.6, 3), start * CF(0, 0.3, 0), RGB(70, 72, 76), MAT.Metal)
+    shuttle.Name = "Shuttle" .. i
+    local jbd = part(m, V(16, 0.4, 9), start * CF(0, 0.2, 22), RGB(96, 100, 104), MAT.DiamondPlate)   -- 偏流板（放平）
+    jbd.Name = "JBD" .. i
+    part(m, V(0.4, 0.15, 30), start * CF(-6, 0.08, 8), C.white)
+    part(m, V(0.4, 0.15, 30), start * CF(6, 0.08, 8), C.white)
+  end
+  local Wd = AD.WIRES
+  local deckA = top * CF(Wd.x, 0, (Wd.z0 + Wd.z1) / 2) * CFrame.Angles(0, Wd.a, 0)
+  for k = 0, Wd.n - 1 do   -- 拦阻索：横跨斜角甲板的四根钢索
+    local z = -((Wd.z1 - Wd.z0) / 2) + (k + 0.5) * (Wd.z1 - Wd.z0) / Wd.n
+    part(m, V(70, 0.35, 0.35), deckA * CF(0, 0.25, z), RGB(30, 30, 32), MAT.Metal)
+  end
+  for s = -1, 1, 2 do   -- 斜角甲板两边的白色虚线
+    local edge = top * CF(Wd.x + s * 34, 0, 60) * CFrame.Angles(0, Wd.a, 0)
+    for k = -240, 240, 24 do part(m, V(0.6, 0.12, 12), edge * CF(0, 0.07, k), C.white) end
+  end
+  part(m, V(1.2, 0.12, 470), top * CF(Wd.x, 0.07, 60) * CFrame.Angles(0, Wd.a, 0), C.yellow)   -- 着舰中线
+end
+
 function World.fleet(f)
   local decks = {}
   for i, s in ipairs(Map.FLEET) do
@@ -399,6 +427,10 @@ function World.fleet(f)
     for k = -D.L / 2 + 30, D.L / 2 - 30, 40 do part(m, V(1, 0.1, 16), base * CF(0, D.deck + 0.6, k), C.yellow) end
     local ix = D.W / 2 - 16
     part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, D.L * (D.island[1] - 0.5) + D.L * 0.3), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
+    if s.kind == "carrier" then
+      local ok, err = pcall(World.carrierDeck, m, base * CF(0, D.deck + 0.5, 0))
+      if not ok then warn("[全面大战场] 航母甲板出错：" .. tostring(err)) end
+    end
     m:SetAttribute("Kind", s.kind)
     m.Parent = f
     table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })

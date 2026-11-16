@@ -1,7 +1,7 @@
 -- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
 -- 各模块共用一个上下文 G：Fx 特效与音效 · MapUI 地图 · UI 界面 · Play 步兵操作 · View 实体的样子 · Drive 开载具（VehModels 拼车）·
 --   FortView 地图自带工事的样子、走过去的「E 操作 / 上车」提示 · Gunner 操作工事（机枪、岸防炮、高炮、榴弹炮）、工兵的破障器材 ·
---   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂
+--   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂 · Fly 飞机、直升机的样子和驾驶（AirModels 拼零件）· Hangar 挂载编辑器
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -17,7 +17,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View", "Drive", "FortView", "Gunner", "FPSView" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Play", "View", "Drive", "Fly", "Hangar", "FortView", "Gunner", "FPSView" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -48,7 +48,7 @@ G.R.Msg.OnClientEvent:Connect(safe(function(kind, key, ...) G.onMsg(kind, key, .
 G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
 G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
-local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
+local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function(dt) if G.stepFly then G.stepFly(dt) end end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end } }

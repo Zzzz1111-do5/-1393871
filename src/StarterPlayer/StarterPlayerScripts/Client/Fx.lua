@@ -31,6 +31,7 @@ function Fx.init(G)
     p.Parent = FXF
     return p
   end
+  G.fxPart = part
   local function tween(o, t, props, style)
     local tw = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
     tw:Play()
@@ -149,8 +150,23 @@ function Fx.init(G)
 
   local GRAV = V(0, -workspace.Gravity * 0.55, 0)
   local flying = {}
+  local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
+  local WM = require(game:GetService("ReplicatedStorage"):WaitForChild("WeaponModels"))
   local function newShot(e)
     local kind = e.kind
+    local aw = e.w and AD.W[e.w]
+    if aw and (kind == "missile" or kind == "bomb") and typeof(e.v) == "Vector3" and e.v.Magnitude > 0.1 then   -- 机载导弹、炸弹：按型号的外形（折叠翼展开）
+      local cf = CFrame.lookAt(e.p, e.p + e.v)
+      local mdl = WM.make(FXF, aw, cf, true)
+      local glow = nil
+      if kind == "missile" then
+        glow = part(BALL, V(1.1, 1.1, 1.1) * math.max(1, aw.shape and aw.shape.d * 1.6 or 1), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
+        G.playSound("rocket", e.p)
+      end
+      flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
+        burn = aw.burn or 4, cfs = table.create(#mdl.parts) }
+      return
+    end
     local body
     if kind == "shell" then   -- 炮弹：一道亮的曳光
       local big = e.f == "tank"
@@ -159,6 +175,10 @@ function Fx.init(G)
       return
     elseif kind == "grenade" then
       body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
+    elseif kind == "bomb" then   -- 机载炸弹：粗短的弹体，真实重力往下掉（服务器隔一会儿校一下）
+      body = part(CYL, V(3.6, 1, 1), CFrame.new(e.p), RGB(70, 76, 66), Enum.Material.Metal, 0)
+      flying[e.id] = { body = body, p = e.p, v = e.v, gb = true, t = 0, kind = kind, trailT = 0 }
+      return
     else
       body = part(CYL, V(2.2, 0.5, 0.5), CFrame.new(e.p), RGB(80, 86, 70), Enum.Material.Metal, 0)
       local glow = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
@@ -171,7 +191,9 @@ function Fx.init(G)
   local function endShot(id)
     local s = flying[id]
     if s then
-      s.body:Destroy()
+      if s.body then s.body:Destroy() end
+      if s.wm then for _, p in ipairs(s.wm.parts) do p:Destroy() end end
+      if s.glow then s.glow:Destroy() end
       flying[id] = nil
     end
   end
@@ -179,10 +201,29 @@ function Fx.init(G)
     for id, s in pairs(flying) do
       s.t += dt
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
+      if s.gb then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹：AirDefs.GRAV
       s.p += s.v * dt
-      if s.kind == "grenade" then
+      if s.wm then   -- 按型号拼的弹：整枚一起挪，导弹尾焰烧完就灭、尾烟跟着淡
+        local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
+        for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
+        workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
+        local burning = s.t < s.burn
+        if s.glow then
+          s.glow.CFrame = cf * CFrame.new(0, 0, s.half + 0.5)
+          s.glow.Transparency = burning and 0 or 1
+        end
+        if s.kind == "missile" then
+          s.trailT += dt
+          if s.trailT > (burning and 0.035 or 0.12) then
+            s.trailT = 0
+            local sm = part(BALL, V(1.3, 1.3, 1.3), cf * CFrame.new(0, 0, s.half + 1), RGB(222, 222, 218), Enum.Material.SmoothPlastic, burning and 0.25 or 0.6)
+            tween(sm, burning and 2.2 or 1.2, { Size = V(5, 5, 5), Transparency = 1 })
+            Debris:AddItem(sm, 2.3)
+          end
+        end
+      elseif s.kind == "grenade" then
         s.body.CFrame = CFrame.new(s.p)
-      elseif s.kind == "shell" then
+      elseif s.kind == "shell" or s.kind == "bomb" then
         s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
       elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
         s.body.CFrame = CFrame.new(s.p)
@@ -207,8 +248,45 @@ function Fx.init(G)
           Debris:AddItem(sm, 1.25)
         end
       end
-      if s.t > 15 then endShot(id) end
+      if s.t > ((s.kind == "bomb") and 40 or 15) then endShot(id) end
     end
+  end
+  -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
+  local function fixShot(e)
+    local s = flying[e.id]
+    if not s or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
+    if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
+    s.v = e.v
+  end
+  -- 热诱弹：一串亮点往后下方撒开，拖着白烟
+  local function flares(e)
+    local v0 = (typeof(e.v) == "Vector3") and e.v or V()
+    for i = 1, 4 do
+      local dir = (-v0.Unit * 0.4 + V((math.random() - 0.5) * 1.6, -0.4 - math.random() * 0.4, (math.random() - 0.5) * 1.6)).Unit
+      local f = part(BALL, V(1.4, 1.4, 1.4), CFrame.new(e.p), RGB(255, 236, 170), Enum.Material.Neon, 0)
+      local p1 = e.p + v0 * 0.35 + dir * (40 + i * 8)
+      tween(f, 1.8, { CFrame = CFrame.new(p1 - V(0, 30, 0)), Transparency = 1, Size = V(0.6, 0.6, 0.6) })
+      Debris:AddItem(f, 1.85)
+      for k = 1, 4 do
+        task.delay(k * 0.25, function()
+          local q = e.p:Lerp(p1, k / 4) - V(0, 30 * (k / 4) ^ 2, 0)
+          local sm = part(BALL, V(1.5, 1.5, 1.5), CFrame.new(q), RGB(235, 235, 230), Enum.Material.SmoothPlastic, 0.35)
+          tween(sm, 1.6, { Size = V(5, 5, 5), Transparency = 1 })
+          Debris:AddItem(sm, 1.65)
+        end)
+      end
+    end
+    G.playSound("quiet", e.p, 1.6)
+  end
+  -- 弹射座椅：座舱盖飞走、座椅带着一道火冲上去
+  local function eject(e)
+    local cap = part(nil, V(3, 1.2, 6), CFrame.new(e.p), RGB(40, 56, 66), Enum.Material.Glass, 0.3)
+    tween(cap, 1.2, { CFrame = CFrame.new(e.p + V(math.random() * 20 - 10, 25, 30)) * CFrame.Angles(2, 1, 0.5), Transparency = 1 })
+    Debris:AddItem(cap, 1.25)
+    local fl = part(BALL, V(2, 2, 2), CFrame.new(e.p), RGB(255, 190, 90), Enum.Material.Neon, 0)
+    tween(fl, 0.5, { CFrame = CFrame.new(e.p + V(0, 30, 0)), Transparency = 1, Size = V(4, 4, 4) })
+    Debris:AddItem(fl, 0.55)
+    G.playSound("rocket", e.p, 1.2)
   end
 
   -- 车炮开火：炮口火光、一团烟、坦克炮还有一圈扬尘；离得近震屏
@@ -327,6 +405,9 @@ function Fx.init(G)
       elseif k == "boom" then boom(e.p, e.s)
       elseif k == "shot" then newShot(e)
       elseif k == "shotEnd" then endShot(e.id)
+      elseif k == "shotFix" then fixShot(e)
+      elseif k == "flares" then flares(e)
+      elseif k == "eject" then eject(e)
       elseif k == "shell" then shell(e)
       elseif k == "splash" then splash(e.p)
       elseif k == "mortarFire" then G.playSound("mortar", e.p)

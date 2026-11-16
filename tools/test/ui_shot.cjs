@@ -12,7 +12,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) { opt[args[i].slice(2)] = args[i + 1]; i++; } else pos.push(args[i]);
 }
 const [dataDir, outDir, ...names] = pos;
-const ALL = ['join', 'base', 'missions', 'build', 'deploy', 'battle', 'drive', 'result'];
+const ALL = ['deploy', 'vehs', 'hangar', 'hangar_sel', 'fly', 'fly_air', 'heli', 'battle', 'board', 'result'];
 const list = names.length ? names : ['pc', 'phone'].flatMap(d => ALL.map(s => d + '_' + s));
 const fileUrl = p => 'file://' + path.resolve(p);
 
@@ -28,7 +28,7 @@ const fileUrl = p => 'file://' + path.resolve(p);
     const scene = s.slice(dev.length + 1);
     const vw = dev === 'phone' ? 844 : 1280, vh = dev === 'phone' ? 390 : 720;
     await page.setViewportSize({ width: vw, height: vh });
-    const bg = ['battle', 'drive', 'result'].includes(scene) ? opt.bg2 : opt.bg;
+    const bg = ['fly', 'fly_air', 'heli', 'battle', 'board', 'result'].includes(scene) ? opt.bg2 : opt.bg;
     const url = fileUrl(path.join(__dirname, 'ui_view.html')) + '?data=' + encodeURIComponent(fileUrl(path.join(dataDir, `ui_${dev}.js`))) +
       '&s=' + encodeURIComponent(s) + (bg ? '&bg=' + encodeURIComponent(fileUrl(bg)) : '') + (opt.core ? '&core=' + opt.core : '');
     await page.goto(url);

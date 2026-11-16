@@ -232,6 +232,7 @@ evPropSide("RunService", "RenderStepped")
 for _, n in { "Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up", "MouseButton2Click", "MouseEnter", "MouseLeave", "InputBegan", "InputEnded" } do
 	evProp("GuiButton", n)
 end
+for _, n in { "InputBegan", "InputEnded", "InputChanged", "MouseEnter", "MouseLeave" } do evProp("GuiObject", n) end   -- 所有界面元素都有（ViewportFrame 拖动转视角）
 for _, n in { "FocusLost", "Focused" } do evProp("TextBox", n) end
 for _, n in { "Activated", "Deactivated", "Equipped", "Unequipped" } do evProp("Tool", n) end
 for _, n in { "InputBegan", "InputEnded", "InputChanged", "TouchTap", "TouchPan", "TouchPinch", "TouchStarted", "TouchEnded", "TouchMoved", "TouchLongPress", "TouchSwipe", "TouchRotate", "JumpRequest", "LastInputTypeChanged", "WindowFocused", "WindowFocusReleased" } do
@@ -902,14 +903,16 @@ roblox.implementMethod("GuiService", "GetGuiInset", function(self) return V2.new
 roblox.implementMethod("DataModel", "BindToClose", function(self, f) table.insert(H.closeFns, f) end)
 roblox.implementMethod("Workspace", "Raycast", function(self, o, d, params) return H.raycast(o, d, params) end)
 roblox.implementMethod("Workspace", "GetServerTimeNow", function(self) return H.epoch + H.now end)
-roblox.implementMethod("Workspace", "BulkMoveTo", function(self, parts, cfs, mode)
+local function bulkMoveTo(self, parts, cfs, mode)
 	if type(parts) ~= "table" or type(cfs) ~= "table" or #parts ~= #cfs then error("BulkMoveTo 零件和 CFrame 的个数要一样", 2) end
 	for i, p in parts do
 		if typeof(cfs[i]) ~= "CFrame" then error("BulkMoveTo 第 " .. i .. " 个不是 CFrame", 2) end
 		movePart(p, cfs[i])
 	end
 	H.bulkMoves = (H.bulkMoves or 0) + #parts
-end)
+end
+roblox.implementMethod("Workspace", "BulkMoveTo", bulkMoveTo)
+roblox.implementMethod("WorldModel", "BulkMoveTo", bulkMoveTo)   -- ViewportFrame 里的 WorldModel（挂载编辑器）
 roblox.implementMethod("Workspace", "GetPartBoundsInRadius", function(self) return {} end)
 roblox.implementMethod("Workspace", "GetPartBoundsInBox", function(self) return {} end)
 

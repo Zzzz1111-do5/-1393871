@@ -123,11 +123,11 @@ function UI.init(G)
   deploy.Visible = false
   deploy.ZIndex = 10
   local top = frame(deploy, UDim2.new(1, 0, 0, 64), nil, RGB(12, 16, 20), 0.2)
-  local title = label(top, "", UDim2.new(0, 360, 1, 0), UDim2.fromOffset(18, 0), 22, TEXT, Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Left)
+  local title = label(top, "", UDim2.new(0, 330, 1, 0), UDim2.fromOffset(140, 0), 22, TEXT, Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Left)   -- 让开左上角 Roblox 的菜单、聊天按钮
   local teamTag = label(top, "", UDim2.new(0, 260, 0, 34), UDim2.new(0.5, 0, 0.5, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
   teamTag.BackgroundTransparency = 0.1
   round(teamTag, 6)
-  local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -150, 0, 0), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Right)
+  local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -140, 0, 0), 16, MUTE, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)   -- 语言按钮左边
   local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
   local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
 
@@ -186,17 +186,34 @@ function UI.init(G)
   local vgrid = grid:Clone()
   vgrid.Parent = vehs
   local vehCards, vehKey = {}, nil
+  local AD = require(RS:WaitForChild("AirDefs"))
+  sel.preset = {}   -- 飞机：每个型号选的挂载方案（预设的编号）
+  sel.load = {}     -- 飞机：挂载编辑器里保存的挂载（每个挂点一种弹）
+  local function vdef(id)
+    local VD = require(RS:WaitForChild("VehDefs"))
+    return VD.get(id) or AD.get(id)
+  end
+  local function presetOf(d)
+    local key = sel.preset[d.id]
+    for _, p in ipairs(d.presets or {}) do if p.key == key then return p end end
+    return (not sel.load[d.id]) and d.presets and d.presets[1] or nil
+  end
+  -- 这架飞机现在的挂载：编辑器里保存过的，或者选的预设
+  local function loadOf(d)
+    if sel.load[d.id] then return sel.load[d.id] end
+    local p = presetOf(d)
+    return AD.presetLoad(d, p and p.key)
+  end
   local function buildVehCards(S)
     local key = (S.team or "") .. ":" .. table.concat(S.vehModels or {}, ",")
     if key == vehKey then return end
     vehKey = key
     for _, c in pairs(vehCards) do c.b:Destroy() end
     vehCards = {}
-    local VD = require(RS:WaitForChild("VehDefs"))
     local ids = {}
-    for _, id in ipairs(S.vehModels or {}) do if VD.get(id) then table.insert(ids, id) end end   -- 飞机：驾驶和部署界面还在做，先不显示
+    for _, id in ipairs(S.vehModels or {}) do if vdef(id) then table.insert(ids, id) end end
     for i, id in ipairs(ids) do
-      local d = VD.get(id)
+      local d = vdef(id)
       local b = Instance.new("TextButton")
       b.Text = ""
       b.LayoutOrder = i
@@ -210,7 +227,26 @@ function UI.init(G)
       local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
       ds.TextYAlignment = Enum.TextYAlignment.Top
       local av = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-      vehCards[id] = { b = b, st = st, nm = nm, ds = ds, av = av, d = d }
+      local lo = nil
+      if d.air and d.st and #d.st > 0 then   -- 改挂载：打开全屏的挂载编辑器（3D 飞机、点挂点换弹）
+        lo = button(b, "", UDim2.fromOffset(118, 22), UDim2.new(1, -8, 1, -6), RGB(56, 66, 80), Vector2.new(1, 1))
+        lo.TextSize = 12
+        lo.ZIndex = 3
+        lo.Activated:Connect(function()
+          sel.veh = id
+          local p = presetOf(d)
+          if G.openHangar then
+            G.openHangar(id, loadOf(d), function(load, key)
+              sel.load[id] = load
+              sel.preset[id] = key
+              if key then sel.load[id] = nil end   -- 选的就是某个预设：照预设记
+              G.refreshDeploy()
+            end, p and p.key)
+          end
+          G.refreshDeploy()
+        end)
+      end
+      vehCards[id] = { b = b, st = st, nm = nm, ds = ds, av = av, d = d, lo = lo }
       b.Activated:Connect(function()
         sel.veh = id
         G.refreshDeploy()
@@ -245,6 +281,14 @@ function UI.init(G)
     if not S or S.alive or (S.wait or 0) > 0 then return end
     if sel.mode == "veh" then
       if not sel.veh or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+      local d = vdef(sel.veh)
+      if d and d.air then
+        local ok = false
+        for _, s in ipairs((S.airSpawns and S.airSpawns[d.cat]) or {}) do if s.id == sel.spawn and s.ok then ok = true end end
+        if not ok then G.toast(T("ui.spawnBlocked"), "bad") return end
+        G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role, loadOf(d))
+        return
+      end
       if not (S.vehSpawns and S.vehSpawns[sel.spawn]) then G.toast(T("ui.needSpawnVeh"), "bad") return end
       G.R.Act:FireServer("deployVeh", sel.veh, sel.spawn, sel.role)
       return
@@ -259,6 +303,11 @@ function UI.init(G)
     if s.kind == "camp" then return T("spawn.camp") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
+    if s.kind == "lhd" then return T("spawn.air.lhd") end
+    if s.kind == "cv" then return T("spawn.air.cv") end
+    if s.kind == "airstart" then return T("spawn.air.in") end
+    if s.kind == "runway" then return T((s.id == "air.af2") and "spawn.air.af2" or "spawn.air.af") end
+    if s.kind == "pad" then return s.point and T("spawn.air.pt", s.point) or T("spawn.air.camp") end
     return s.id
   end
 
@@ -267,9 +316,12 @@ function UI.init(G)
     spawnBtns = {}
     if not spawnLayer then return end
     local ids = {}
-    for _, s0 in ipairs(S.spawns or {}) do
+    local list = S.spawns or {}
+    local vd = (sel.mode == "veh" and sel.veh) and vdef(sel.veh) or nil
+    if vd and vd.air then list = (S.airSpawns and S.airSpawns[vd.cat]) or {} end   -- 飞机：甲板、机场、空中出发、停机坪
+    for _, s0 in ipairs(list) do
       local s = s0
-      if sel.mode == "veh" then   -- 载具：只有海滩、据点、营地能出
+      if sel.mode == "veh" and not (vd and vd.air) then   -- 载具：只有海滩、据点、营地能出
         local ok = S.vehSpawns and S.vehSpawns[s0.id]
         s = table.clone(s0)
         s.ok = ok == true
@@ -284,7 +336,7 @@ function UI.init(G)
         b.Position = UDim2.fromScale(u, v)
         b.Size = UDim2.fromOffset(chosen and 34 or 26, chosen and 34 or 26)
         b.BackgroundColor3 = s.ok and (chosen and RGB(255, 210, 60) or RGB(255, 255, 255)) or RGB(90, 90, 90)
-        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or "▲")
+        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or (s.point or ((s.kind == "runway" or s.kind == "cv" or s.kind == "lhd") and "✈" or "▲")))
         b.TextColor3 = RGB(20, 20, 20)
         b.TextScaled = true
         b.Font = Enum.Font.GothamBlack
@@ -336,14 +388,19 @@ function UI.init(G)
     vehs.Visible = sel.mode == "veh"
     if sel.mode == "veh" then
       buildVehCards(S)
-      local VD = require(RS:WaitForChild("VehDefs"))
       for id, c in pairs(vehCards) do
         local d = c.d
         local av = S.vehAvail and S.vehAvail[d.cat] or { u = 0, cap = 0, cd = 0 }
         local ws = {}
-        for _, wid in ipairs(d.weapons) do table.insert(ws, T("vw." .. wid)) end
+        if d.air then   -- 飞机：航炮 + 现在的挂载里的弹
+          local p = presetOf(d)
+          for _, wid in ipairs(AD.groups(d, loadOf(d))) do table.insert(ws, T("aw." .. wid)) end
+          if c.lo then c.lo.Text = "✎ " .. T("ui.loadout", sel.load[id] and T("preset.custom") or T("preset." .. (p and p.key or "none"))) end
+        else
+          for _, wid in ipairs(d.weapons) do table.insert(ws, T("vw." .. wid)) end
+        end
         c.nm.Text = T("veh." .. id)
-        c.ds.Text = T("vcat." .. d.cat) .. " · " .. table.concat(ws, " / ")
+        c.ds.Text = T("vcat." .. d.cat) .. " · " .. ((#ws > 0) and table.concat(ws, " / ") or T("air.noWeapon"))
         local full = av.u >= av.cap
         c.av.Text = T("ui.vehCap", av.u, av.cap) .. ((full and av.cd > 0) and ("   " .. T("ui.vehCd", av.cd)) or "")
         c.av.TextColor3 = full and RGB(230, 110, 100) or RGB(160, 220, 150)
@@ -528,7 +585,7 @@ function UI.init(G)
   UIS.InputEnded:Connect(function(io)
     if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
   end)
-  local boardBtn = button(hud, "≡", UDim2.fromOffset(40, 40), UDim2.new(0, 16, 0, 16), RGB(40, 46, 52))
+  local boardBtn = button(hud, "≡", UDim2.fromOffset(40, 40), UDim2.new(0, 16, 0, 70), RGB(40, 46, 52))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
   boardBtn.TextSize = 22
   boardBtn.Activated:Connect(function()
     board.Visible = not board.Visible
@@ -598,7 +655,6 @@ function UI.init(G)
     counts.Text = T("team.atk") .. " " .. (S.nAtk or 0) .. "   ·   " .. T("team.def") .. " " .. (S.nDef or 0)
     roleText.Text = (S.role and T("role." .. S.role) or "") .. "  ·  " .. T("team." .. (S.team or "atk"))
     roleText.TextColor3 = teamColor(S.team)
-    help.Text = T("ui.help")
     if S.phase == "end" then
       local won = S.winner == S.team
       resTitle.Text = T(won and "ui.youWon" or "ui.youLost")
@@ -612,6 +668,11 @@ function UI.init(G)
   end
 
   function G.stepUI(dt)
+    -- 开着载具 / 飞机 / 火炮：血条、兵种看载具面板；最下面一行换成载具的操作说明（面板里放不下一整行）
+    local drv = G.drive
+    hpBg.Visible, roleText.Visible = not drv, not drv
+    help.Text = T(drv and (drv.help or "ui.vehHelp") or "ui.help")
+    help.Visible = not G.mobile   -- 手机上是触屏按钮，不显示键盘说明
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then

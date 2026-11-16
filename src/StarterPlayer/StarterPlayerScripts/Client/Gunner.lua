@@ -34,7 +34,7 @@ function Gunner.init(G)
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
 
-  local panel = ui.frame(gui, UDim2.fromOffset(420, 86), UDim2.new(0.5, 0, 1, -14), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))
+  local panel = ui.frame(gui, UDim2.fromOffset(420, 70), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，gs.help）
   ui.round(panel, 10)
   panel.Visible = false
   local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
@@ -43,8 +43,6 @@ function Gunner.init(G)
   local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 58), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(1, 1), nil, RGB(240, 200, 80), 0)
-  local fHelp = ui.label(panel, "", UDim2.new(1, -20, 0, 16), UDim2.fromOffset(10, 65), 11, RGB(170, 180, 176), Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-  fHelp.TextTruncate = Enum.TextTruncate.AtEnd
   local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
@@ -406,7 +404,7 @@ function Gunner.init(G)
     end
     relBar.Size = UDim2.fromScale(rel, 1)
     fInfo.Text = info
-    fHelp.Text = T((w.kind == "arty") and "ui.howHelp" or "ui.fortHelp")
+    gs.help = (w.kind == "arty") and "ui.howHelp" or "ui.fortHelp"
   end
 
   ---------------------------------------------------------------- 工兵的破障器材

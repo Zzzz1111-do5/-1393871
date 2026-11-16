@@ -139,38 +139,12 @@ function AM.build(d, team, load)
   ---------------------------------------------------------------- 挂的弹
 
   -- 一枚弹的零件：沿 −Z，cf 是弹体中心
+  -- 挂的弹：按型号的外形（WeaponModels，和飞出去的弹、挂载编辑器里的一样）
+  local WM = require(game:GetService("ReplicatedStorage"):WaitForChild("WeaponModels"))
   local function storeParts(w, cf, kind, extra)
-    local S = w.shape or { L = 5, d = 0.6 }
-    local L, dd = S.L, S.d
     local list = {}
-    local function put(it) table.insert(list, it) end
-    if w.kind == "rkt" then
-      put(cylZ(L, dd, cf, RGB(96, 102, 92), MAT.Metal, kind, extra and table.clone(extra)))
-      put(cylZ(0.2, dd * 0.92, cf * CF(0, 0, -L / 2), DARK, MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-      put(cylZ(0.25, dd * 1.04, cf * CF(0, 0, L * 0.2), RGB(70, 74, 68), MAT.Metal, kind, extra and table.clone(extra)))
-      return list
-    end
-    local bomb = w.kind == "bomb"
-    local col = bomb and RGB(84, 92, 80) or RGB(226, 228, 224)
-    if w.id == "kd88" or w.id == "agm65" or w.id == "akd10" or w.id == "agm114" then col = RGB(200, 204, 196) end
-    if w.id == "ls6" then col = RGB(150, 160, 150) end
-    local bodyL = L * (bomb and 0.72 or 0.86)
-    put(cylZ(bodyL, dd, cf * CF(0, 0, bomb and L * 0.05 or L * 0.04), col, MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-    put(ball(V(dd, dd, bomb and L * 0.45 or L * 0.24), cf * CF(0, 0, -L / 2 + (bomb and L * 0.2 or L * 0.11)), bomb and col or RGB(240, 240, 236), MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-    if not bomb then put(cylZ(0.12, dd * 1.02, cf * CF(0, 0, -L * 0.25), RGB(220, 170, 40), MAT.SmoothPlastic, kind, extra and table.clone(extra))) end   -- 战斗部黄环
-    local fin = S.fin or 0.8
-    for k = 0, 3 do   -- 十字尾翼
-      local a = k * math.pi / 2 + math.pi / 4
-      local fcf = cf * CF(0, 0, L / 2 - fin * 0.55) * CFrame.Angles(0, 0, a) * CF(0, dd / 2 + fin * 0.35, 0)
-      put(box(V(0.08, fin * 0.7, fin * 1.1), fcf, col, MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-    end
-    if S.wing then   -- 弹翼 / 滑翔翼
-      put(box(V(S.wing, 0.07, L * 0.22), cf * CF(0, dd * 0.5, -L * 0.05), col:Lerp(Color3.new(0, 0, 0), 0.1), MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-    elseif not bomb then
-      for k = 0, 3 do
-        local a = k * math.pi / 2 + math.pi / 4
-        put(box(V(0.06, fin * 0.45, fin * 0.9), cf * CF(0, 0, -L * 0.12) * CFrame.Angles(0, 0, a) * CF(0, dd / 2 + fin * 0.22, 0), col, MAT.SmoothPlastic, kind, extra and table.clone(extra)))
-      end
+    for _, e in ipairs(WM.spec(w, false)) do
+      table.insert(list, add(WM.part(e, m), cf * WM.offset(e), kind, extra and table.clone(extra)))
     end
     return list
   end
@@ -785,7 +759,7 @@ local function foldCF(M, side, c)
   return CF(hx, y, 0) * CFrame.Angles(0, 0, side * (c.fold or 0) * rad(100)) * CF(-hx, -y, 0)
 end
 
-function AM.pose(M, cf, c, now)
+function AM.pose(M, cf, c, now, world)
   local plist, clist = M.plist, M.clist
   local fold = { [1] = nil, [-1] = nil }
   if M.def.fold then fold[1], fold[-1] = foldCF(M, 1, c), foldCF(M, -1, c) end
@@ -839,7 +813,7 @@ function AM.pose(M, cf, c, now)
       it.p.Transparency = hide and 1 or it.tr0
     end
   end
-  workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+  (world or workspace):BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
   -- 旋翼：转快了桨叶变虚、桨盘出现
   local rpm = c.rpm or 0
   local blur = (rpm > 55) and 1 or 0

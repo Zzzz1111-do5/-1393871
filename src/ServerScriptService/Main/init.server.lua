@@ -93,7 +93,7 @@ end
 
 ---------------------------------------------------------------- 客户端发来的操作
 
-G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c)
+G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c, d)   -- d：飞机部署时的挂载
   local P = G.P[pl]
   if not P or type(op) ~= "string" then return end
   -- 限流：每秒十几次
@@ -103,7 +103,7 @@ G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c)
   if P.tokens < 1 then return end
   P.tokens -= 1
   local f = ACT[op]
-  if f then G.try("操作 " .. op, f, P, a, b, c) end
+  if f then G.try("操作 " .. op, f, P, a, b, c, d) end
 end)
 
 G.R.Shoot.OnServerEvent:Connect(function(pl, id, a, b)

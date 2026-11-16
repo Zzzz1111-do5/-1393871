@@ -375,12 +375,14 @@ function Play.init(G)
     end
   end
   function G.stepPlay(dt)
-    if G.drive then   -- 开着车：镜头、开火归 Drive 管
-      cross.Visible, scope.Visible = false, false
+    if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
+      cross.Visible, scope.Visible, bar.Visible = false, false, false
+      ammoText.Text, tipText.Text = "", ""
       cur.firing = false
       if G.fpsOff then G.fpsOff() end
       return
     end
+    bar.Visible = true
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")

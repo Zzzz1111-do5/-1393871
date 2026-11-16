@@ -1,6 +1,8 @@
 --!nocheck
--- 界面导出：开服、进一个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
---   场合：刚进服（每日奖励）、基地（钱多了、盖了楼）、任务面板、建筑升级面板、布阵、打仗、开车选单、结算
+-- 界面导出：开服、进两个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
+--   场合：deploy 部署（步兵）· vehs 部署（载具 / 飞机）· hangar 挂载编辑器全景 · hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
+--   fly_air 空中 · heli 直升机 · battle 步兵 · board 计分板 · result 结算
+--   挂载编辑器的 ViewportFrame 里的零件按镜头投影存下来（ui_view.html 按面画成 3D，看白圈是不是对在挂点上）
 -- 用法：lune run ui_export.luau <rbxlx> <输出.js> [pc|phone]
 --   phone：触屏、没有键盘，屏幕 844 × 390（iPhone 横屏的逻辑像素）
 local process = require("@lune/process")
@@ -8,6 +10,7 @@ local fs = require("@lune/fs")
 local serde = require("@lune/serde")
 local roblox = require("@lune/roblox")
 local H = require("./harness")
+local V3, CF, Enum = roblox.Vector3, roblox.CFrame, roblox.Enum
 H.quietWarn = true
 
 local dev = process.args[3] or "pc"
@@ -20,7 +23,6 @@ if dev == "phone" then
 	H.UIS.KeyboardEnabled = false
 	H.UIS.MouseEnabled = false
 end
-H.run(2)
 
 ---------------------------------------------------------------- 存 GUI 树
 
@@ -41,7 +43,7 @@ local PROPS = {
 local KEEP = {
 	ScreenGui = true, Frame = true, TextLabel = true, TextButton = true, TextBox = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true,
 	CanvasGroup = true, UICorner = true, UIStroke = true, UIGradient = true, UIListLayout = true, UIGridLayout = true, UIPadding = true, UIScale = true,
-	UITextSizeConstraint = true, UISizeConstraint = true, UIAspectRatioConstraint = true,
+	UITextSizeConstraint = true, UISizeConstraint = true, UIAspectRatioConstraint = true, ViewportFrame = true,
 }
 
 local function ser(v)
@@ -70,6 +72,35 @@ local function ser(v)
 	return nil
 end
 
+local function r3(x) return math.floor(x * 1000 + 0.5) / 1000 end
+-- ViewportFrame：零件换到镜头坐标（镜头朝 −Z），再除以 tan(半视角)——网页端按框的高度一半放大就是屏幕坐标
+local function viewport(vp)
+	-- 测试台（Lune）里读 ViewportFrame.CurrentCamera 会出错：挂载编辑器把镜头放在框里，直接找
+	local okC, cam = pcall(function() return vp.CurrentCamera end)
+	if not okC or not cam then cam = vp:FindFirstChildOfClass("Camera") end
+	if not cam then return nil end
+	local cinv = cam.CFrame:Inverse()
+	local t = math.tan(math.rad(cam.FieldOfView) / 2)
+	local parts = {}
+	for _, p in vp:GetDescendants() do
+		if p:IsA("BasePart") and p.Transparency < 0.98 then
+			local c = cinv * p.CFrame
+			local kind = "box"
+			if p.ClassName == "WedgePart" then kind = "wedge"
+			elseif p:FindFirstChildOfClass("SpecialMesh") then kind = "ell"
+			elseif p.Shape == Enum.PartType.Cylinder then kind = "cyl"
+			elseif p.Shape == Enum.PartType.Ball then kind = "ball" end
+			local _, _, _, a, b, cc, d, e, f, g, h, i = c:GetComponents()
+			table.insert(parts, {
+				k = kind, p = { r3(c.X), r3(c.Y), r3(c.Z) }, r = { r3(a), r3(b), r3(cc), r3(d), r3(e), r3(f), r3(g), r3(h), r3(i) },
+				s = { r3(p.Size.X), r3(p.Size.Y), r3(p.Size.Z) }, c = ser(p.Color), t = r3(p.Transparency), n = (p.Material == Enum.Material.Neon) and 1 or nil,
+			})
+		end
+	end
+	local L = cinv:VectorToWorldSpace(vp.LightDirection.Unit)
+	return { t = t, parts = parts, light = { r3(L.X), r3(L.Y), r3(L.Z) }, amb = ser(vp.Ambient), lc = ser(vp.LightColor) }
+end
+
 local function node(inst)
 	local n = { c = inst.ClassName, n = inst.Name, p = {}, k = {} }
 	for _, prop in PROPS do
@@ -79,6 +110,7 @@ local function node(inst)
 			if s ~= nil then n.p[prop] = s end
 		end
 	end
+	if inst.ClassName == "ViewportFrame" then n.vp = viewport(inst) end
 	for _, ch in inst:GetChildren() do
 		if KEEP[ch.ClassName] then table.insert(n.k, node(ch)) end
 	end
@@ -97,75 +129,167 @@ local function snap(name)
 	print("  存了 " .. dev .. "_" .. name)
 end
 
-local function act(...)
-	local a = table.pack(...)
-	local co = coroutine.create(function() H.Gs[pl.Name].R.Action:FireServer(table.unpack(a, 1, a.n)) end)
-	H.ctx = pl
+local function as(who, f)
+	local prev = H.ctx
+	H.ctx = who
+	local co = coroutine.create(f)
 	coroutine.resume(co)
-	H.ctx = nil
+	H.ctx = prev
 end
-local function tryClick(pattern)
-	local b = H.findButton(pl, pattern)
-	if b then H.press(pl, b) end
+local function act(who, ...)
+	local a = table.pack(...)
+	as(who, function() H.Gs[who.Name].R.Act:FireServer(table.unpack(a, 1, a.n)) end)
+end
+local function tryClick(who, pattern)
+	local b = H.findButton(who, pattern)
+	if b then H.press(who, b) end
 	return b ~= nil
 end
 
 ---------------------------------------------------------------- 场合
 
-pl = H.addPlayer("P1", 8001)
-H.run(8)
-snap("join")
-tryClick("^领取")
-H.run(2)
-
+H.run(0.5)
 local G = H.Gs.server
-local st = G.states[pl]
-st.data.cash = 2e6
-local plotF = H.workspace.Plots["Plot" .. st.plot.index]
-for _ = 1, 8 do
-	for _, b in G.Config.Buildings do
-		local m = plotF.Pads:FindFirstChild("Pad_" .. b.id)
-		if m and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then H.ev(m.Pad, "Touched"):Fire(pl.Character.HumanoidRootPart) end
-	end
-	H.run(1.3)
+G.fortsHold = true
+G.Config.Bots.minPerTeam = 0
+H.runUntil(function() return G.worldReady end, 120)
+local p1, p2 = H.addPlayer("P1", 8001), H.addPlayer("P2", 8002)
+H.run(3)
+local atk = (G.P[p1].team == "atk") and p1 or p2
+local def = (atk == p1) and p2 or p1
+pl = atk
+local C = H.Gs[atk.Name]
+local CD = H.Gs[def.Name]
+local T = C.T
+-- 电脑版看中文、手机版看英文（两种语言的排版都看到）
+for _, X in ipairs({ C, CD }) do
+	X.lang = (dev == "pc") and "zh" or "en"
+	if X.refresh then X.refresh() end
 end
-H.run(4)
-snap("base")
+H.run(0.3)
 
-tryClick("^任务$")
+-- 部署：步兵
+C.deploySel.role, C.deploySel.spawn = "rifle", "fleet"
+C.refreshDeploy()
 H.run(0.5)
-snap("missions")
-tryClick("^×$")
-H.run(0.5)
-tryClick("^建筑$")
-H.run(0.5)
-snap("build")
-tryClick("^×$")
-H.run(0.5)
-
-for _, t in { "tank", "tank", "ifv", "aa", "inf", "inf", "medic", "arty", "heli" } do
-	act("buy", t)
-	H.run(0.3)
-end
-H.run(15)
-tryClick("^布阵$")
-H.run(2)
 snap("deploy")
 
-tryClick("开战")
-H.run(8)
-snap("battle")
-tryClick("开车")
+-- 部署：载具 / 飞机
+tryClick(atk, "^" .. T("ui.tabVeh") .. "$")
+C.deploySel.veh, C.deploySel.spawn = "j35", "air.cv"
+C.refreshDeploy()
 H.run(0.5)
-snap("drive")
-tryClick("^×$")
-H.run(0.5)
+snap("vehs")
 
-H.runUntil(function() return st.battle == nil end, 260)
-H.run(4)
+-- 挂载编辑器：全景、选中挂点换弹
+local saved = nil
+local _, los = H.findButton(atk, "^✎ ")
+for _, b in ipairs(los) do
+	for _, l in ipairs(b.Parent:GetChildren()) do
+		if l:IsA("TextLabel") and l.Text == T("veh.j35") then H.press(atk, b) end
+	end
+end
+H.run(1.2)
+local HS = C.hangarState and C.hangarState()
+snap("hangar")
+if HS and HS.d then
+	local hg = atk.PlayerGui:FindFirstChild("Hangar")
+	local spot = nil
+	for i, s in ipairs(HS.d.st) do
+		local b = hg and hg:FindFirstChild("Spot" .. i, true)
+		if s.name == "wingI" and b and b.Visible then spot = b end
+	end
+	if spot then H.press(atk, spot) end
+	H.run(1.0)
+	for _, b in ipairs(hg:GetDescendants()) do
+		if b:IsA("TextButton") and H.visible(b) then
+			for _, l in ipairs(b:GetChildren()) do
+				if l:IsA("TextLabel") and l.Text == T("aw.lt2") then H.press(atk, b) end
+			end
+		end
+	end
+	H.run(0.6)
+	snap("hangar_sel")
+	tryClick(atk, "^" .. T("hangar.save") .. "$")
+	H.run(0.5)
+end
+
+-- 甲板上的歼-35
+tryClick(atk, "^" .. T("ui.deployBtn") .. "$")
+H.run(2.5)
+snap("fly")
+
+-- 空中：直接摆到 600 格高、200 格 / 秒（两边一起挪，不然服务器当成作弊拉回去）
+local P = G.P[atk]
+local e = P.vehicle
+local st = C.fly
+if e and st then
+	H.run(0.1)
+	local cf = CF.lookAt(V3.new(0, 600, 2600), V3.new(0, 600, 0))
+	e.root.CFrame = cf
+	e.lastSync = os.clock()
+	e.vel = cf.LookVector * 200
+	e.onGround = false
+	st.cf = cf
+	local look = cf.LookVector
+	st.yaw = math.atan2(-look.X, -look.Z)
+	st.spd, st.vel, st.hv = 200, look * 200, V3.new(look.X * 200, 0, look.Z * 200)
+	st.ground, st.cat, st.trap, st.crashed = false, nil, nil, false
+	st.aimYaw, st.aimPitch = st.yaw, 0
+	st.gearWant = 0
+	st.thr = 85
+	H.run(1.5)
+	snap("fly_air")
+	H.key(atk, Enum.KeyCode.F, true)
+	H.run(0.1)
+	H.key(atk, Enum.KeyCode.F, false)
+	H.run(1)
+end
+
+-- 直升机（守方营地的停机坪）
+pl = def
+CD.deploySel.mode = "veh"
+CD.refreshDeploy()
+act(def, "deployVeh", "ah64e", "air.camp", "rifle", nil)
+H.run(3)
+snap("heli")
+H.key(def, Enum.KeyCode.F, true)
+H.run(0.1)
+H.key(def, Enum.KeyCode.F, false)
+H.run(1)
+
+-- 步兵（开战后）
+local R = G.round
+if R and R.phase == "prep" then R.prepEnds = 0 end
+H.run(1)
+pl = atk
+if G.P[atk].alive and G.P[atk].vehicle == nil then
+	-- 跳伞落海之后还活着就先这样
+else
+	H.runUntil(function() return (C.S and (C.S.wait or 0) <= 0 and not C.S.alive) end, 30)
+	C.deploySel.mode = "inf"
+	C.deploySel.role, C.deploySel.spawn = "rifle", "fleet"
+	C.refreshDeploy()
+	tryClick(atk, "^" .. T("ui.deployBtn") .. "$")
+end
+H.run(3)
+snap("battle")
+tryClick(atk, "^≡$")
+H.run(0.5)
+snap("board")
+tryClick(atk, "^≡$")
+H.run(0.3)
+
+-- 结算：时间到（没人在占点）
+if R then
+	R.endsAt = 0
+	R.overtimeEnds = 0
+end
+H.run(2)
 snap("result")
 
 local js = "window.UI_SNAPS = Object.assign(window.UI_SNAPS || {}, " .. serde.encode("json", snaps) .. ");\n"
 fs.writeFile(process.args[2], js)
 H.summary()
+for _, w in ipairs(H.warns) do print(string.format("  警告 %.1f %s：%s", w.t, w.side, string.sub(w.msg, 1, 300))) end
 print("写好了 " .. process.args[2])

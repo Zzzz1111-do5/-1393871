@@ -8,7 +8,7 @@
   用法：ui_view.html?data=ui_pc.js&s=pc_base[&bg=背景图.png][&core=0]
     data：ui_export.luau 写出的 JS 文件（和本页同一目录或相对路径）；s：哪一个场合；
     bg：背景图（比如场景预览图）；core=0：不画 Roblox 自带界面（顶栏、背包栏、手机摇杆和跳跃键）的占位框；
-    tools：背包里几把枪（默认 4）；plist=1：画右上角的玩家列表（游戏里关掉了）。
+    tools：Roblox 自带背包栏里几把枪（默认 0：游戏把自带背包栏关了，武器栏自己画）；plist=1：画右上角的玩家列表（游戏里关掉了）。
   页面画完后 window.REPORT 里是检查结果：顶层面板互相压住、被 Roblox 自带界面挡住、字溢出框、字太小。
 -->
 <style>
@@ -35,6 +35,7 @@ const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a === undefined ? 1 : a})
 const ud = (s, o) => (s === 0 ? `${o}px` : `calc(${s * 100}% + ${o}px)`);
 const comp = (n, cls) => n.k.find(k => k.c === cls && k.p.Enabled !== false);
 const textNodes = [];   // 要事后量的文字（TextScaled、溢出检查）
+const vps = [];         // ViewportFrame：排好版后按框的大小画 3D
 const tops = [];        // 顶层面板（查互相压住）
 
 // RichText 只认常用的几个标签
@@ -105,6 +106,13 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
   if (szc) {
     if (szc.p.MaxSize) { if (szc.p.MaxSize[0] < 1e7) d.style.maxWidth = szc.p.MaxSize[0] + 'px'; if (szc.p.MaxSize[1] < 1e7) d.style.maxHeight = szc.p.MaxSize[1] + 'px'; }
     if (szc.p.MinSize) { if (szc.p.MinSize[0] > 0) d.style.minWidth = szc.p.MinSize[0] + 'px'; if (szc.p.MinSize[1] > 0) d.style.minHeight = szc.p.MinSize[1] + 'px'; }
+  }
+  if (n.c === 'ViewportFrame' && n.vp) {
+    const cv = document.createElement('canvas');
+    cv.className = 'g';
+    cv.style.cssText += 'left:0;top:0;width:100%;height:100%';
+    d.appendChild(cv);
+    vps.push({ cv, d, vp: n.vp });
   }
   if (n.c === 'ImageLabel' || n.c === 'ImageButton') {
     if (p.Image) { d.style.outline = '1px dotted rgba(255,255,255,0.5)'; d.title = p.Image; }
@@ -211,6 +219,88 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
   parentEl.appendChild(d);
   if (topInfo && (depth === topInfo.depth || p.__top)) tops.push({ name: n.n, d, n });
   return d;
+}
+
+// ViewportFrame 里的零件：ui_export.luau 存的是镜头坐标（镜头朝 −Z，已除以 tan(半视角)）；按面拆开、背面剔除、
+//   按 LightDirection 打平行光、从远到近画（零件都是凸的：方块、楔子、圆柱、椭球）
+function vpGeom(P) {
+  const hx = P.s[0] / 2, hy = P.s[1] / 2, hz = P.s[2] / 2;
+  const F = [];
+  if (P.k === 'box') {
+    const c = (i, j, k) => [i * hx, j * hy, k * hz];
+    F.push([c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), c(1, -1, 1)], [c(-1, -1, -1), c(-1, 1, -1), c(-1, 1, 1), c(-1, -1, 1)],
+      [c(-1, 1, -1), c(1, 1, -1), c(1, 1, 1), c(-1, 1, 1)], [c(-1, -1, -1), c(1, -1, -1), c(1, -1, 1), c(-1, -1, 1)],
+      [c(-1, -1, 1), c(1, -1, 1), c(1, 1, 1), c(-1, 1, 1)], [c(-1, -1, -1), c(1, -1, -1), c(1, 1, -1), c(-1, 1, -1)]);
+  } else if (P.k === 'wedge') {
+    // Roblox 楔子：底面、后面（+Z）是矩形，斜面从后上棱斜到前下棱
+    const A = [-hx, -hy, -hz], B = [hx, -hy, -hz], C = [-hx, -hy, hz], D = [hx, -hy, hz], E = [-hx, hy, hz], G = [hx, hy, hz];
+    F.push([A, B, D, C], [C, D, G, E], [A, B, G, E], [A, C, E], [B, D, G]);
+  } else if (P.k === 'cyl') {
+    const r = Math.min(hy, hz), n = 14, a = [], b = [];
+    for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2; a.push([-hx, r * Math.cos(t), r * Math.sin(t)]); b.push([hx, r * Math.cos(t), r * Math.sin(t)]); }
+    for (let i = 0; i < n; i++) F.push([a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]]);
+    F.push(a, b);
+  } else {
+    const rx = P.k === 'ball' ? Math.min(hx, hy, hz) : hx, ry = P.k === 'ball' ? rx : hy, rz = P.k === 'ball' ? rx : hz;
+    const nl = 7, nm = 12, pt = (i, j) => { const la = -Math.PI / 2 + i * Math.PI / nl, lo = j * Math.PI * 2 / nm; return [rx * Math.cos(la) * Math.cos(lo), ry * Math.sin(la), rz * Math.cos(la) * Math.sin(lo)]; };
+    for (let i = 0; i < nl; i++) for (let j = 0; j < nm; j++) F.push([pt(i, j), pt(i, j + 1), pt(i + 1, j + 1), pt(i + 1, j)]);
+  }
+  return F;
+}
+function drawVp(o) {
+  const w = o.d.clientWidth, h = o.d.clientHeight;
+  if (w < 2 || h < 2) return;
+  const dpr = window.devicePixelRatio || 1;
+  o.cv.width = Math.round(w * dpr); o.cv.height = Math.round(h * dpr);
+  const g = o.cv.getContext('2d');
+  g.scale(dpr, dpr);
+  const V = o.vp, t = V.t, L = V.light, amb = V.amb || [128, 128, 128], lc = V.lc || [255, 255, 255];
+  const faces = [];
+  for (const P of V.parts) {
+    const R = P.r, p = P.p;
+    const tf = v => [p[0] + R[0] * v[0] + R[1] * v[1] + R[2] * v[2], p[1] + R[3] * v[0] + R[4] * v[1] + R[5] * v[2], p[2] + R[6] * v[0] + R[7] * v[1] + R[8] * v[2]];
+    for (const f of vpGeom(P)) {
+      const q = f.map(tf);
+      let cx = 0, cy = 0, cz = 0;
+      for (const v of q) { cx += v[0]; cy += v[1]; cz += v[2]; }
+      cx /= q.length; cy /= q.length; cz /= q.length;
+      if (cz > -0.2) continue;
+      // 法线：Newell 法（极点处退化成三角形的四边形也能算），朝外（零件是凸的：背离零件中心）
+      let nx = 0, ny = 0, nz = 0;
+      for (let i = 0; i < q.length; i++) {
+        const a = q[i], b = q[(i + 1) % q.length];
+        nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1]);
+      }
+      const nl = Math.hypot(nx, ny, nz);
+      if (nl < 1e-9) continue;
+      nx /= nl; ny /= nl; nz /= nl;
+      if (nx * (cx - p[0]) + ny * (cy - p[1]) + nz * (cz - p[2]) < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      if (nx * cx + ny * cy + nz * cz > 0) continue;   // 背面
+      faces.push({ q, z: cz, n: [nx, ny, nz], P });
+    }
+  }
+  faces.sort((a, b) => a.z - b.z);
+  for (const F of faces) {
+    const P = F.P;
+    let col;
+    if (P.n) col = P.c.map(x => Math.min(255, x * 1.15 + 30));
+    else {
+      const dif = Math.max(0, -(F.n[0] * L[0] + F.n[1] * L[1] + F.n[2] * L[2]));
+      col = P.c.map((x, i) => Math.min(255, x * (amb[i] / 255 * 0.55 + lc[i] / 255 * dif * 0.75)));
+    }
+    g.globalAlpha = 1 - (P.t || 0);
+    g.fillStyle = g.strokeStyle = `rgb(${col.map(Math.round).join(',')})`;
+    g.lineWidth = 0.6;
+    g.beginPath();
+    F.q.forEach((v, i) => {
+      const x = w / 2 + v[0] / (-v[2] * t) * h / 2, y = h / 2 - v[1] / (-v[2] * t) * h / 2;
+      if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    });
+    g.closePath();
+    g.fill();
+    g.stroke();
+  }
+  g.globalAlpha = 1;
 }
 
 // 文字：TextScaled 找最大能放下的字号；查溢出、太小
@@ -328,6 +418,7 @@ function render(snap) {
     for (const k of kids) build(k, sg, false, 1, 0, topInfo);
   }
   fixCanvas();
+  for (const o of vps) drawVp(o);
   fitTexts(report);
   // Roblox 自带界面
   const cores = [];
@@ -342,9 +433,9 @@ function render(snap) {
   };
   core('Roblox 菜单 / 聊天', 8, phone ? 4 : 8, phone ? 100 : 120, phone ? 36 : 44);
   // 背包栏（枪）：底部正中，一格一把枪
-  const nTools = +(Q.get('tools') || 4);
+  const nTools = +(Q.get('tools') || 0);
   const slot = phone ? 50 : 60, gap = 5, wB = nTools * slot + (nTools - 1) * gap;
-  core(`背包栏（${nTools} 把枪）`, (snap.vw - wB) / 2, snap.vh - inset.b - slot - 4, wB, slot);
+  if (nTools > 0) core(`背包栏（${nTools} 把枪）`, (snap.vw - wB) / 2, snap.vh - inset.b - slot - 4, wB, slot);
   if (phone) {
     core('摇杆', inset.l + 40, snap.vh - 170, 130, 130, true);
     core('跳', snap.vw - 95, snap.vh - 90, 70, 70, true);

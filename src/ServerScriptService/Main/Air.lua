@@ -141,8 +141,8 @@ function Air.init(G)
       local spots = {}
       if sp.kind == "lhd" then
         for k = -2, 2 do table.insert(spots, (dk.cf * CF(-dk.W * 0.18, 0, k * 70)).Position) end
-      else
-        for k = 0, 3 do table.insert(spots, (dk.cf * CF(-dk.W * 0.22 + k * 9, 0, dk.L * 0.38 - k * 4)).Position) end
+      else   -- 航母：右舷后部的停机位（舰岛后面），自己滑到弹射器去
+        for k = 0, 3 do table.insert(spots, (dk.cf * CF(26, 0, 90 + k * 42)).Position) end
       end
       local p = freeSpot(spots, d.kind == "heli" and 40 or 30)
       p = V(p.X, surface(p.X, p.Z) + d.gearH, p.Z)
@@ -498,7 +498,7 @@ function Air.init(G)
     if not t or not t.alive or t.team == e.team then return nil end
     local p0 = e.root.CFrame.Position
     local to = t.root.CFrame.Position - p0
-    if to.Magnitude > w.range * 1.25 then return nil end
+    if to.Magnitude > (w.range or 3200) * 1.25 then return nil end   -- 炸弹没写射程
     if w.kind == "aam" and not t.air then return nil end
     if (w.kind == "agm" or w.kind == "bomb") and t.air then return nil end
     local fwd = e.root.CFrame.LookVector
@@ -622,7 +622,7 @@ function Air.init(G)
     local dist = (p1 - p0).Magnitude
     local def = e.def
     local maxD = def.vMax * 1.5 * dt + 25
-    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.R + 600 or math.abs(p1.Z) > Map.R + 600 or p1.Y > 4000
+    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.R + 1500 or math.abs(p1.Z) > Map.R + 1500 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
     e.lastSync = t
     if bad then
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame, v = e.vel })
@@ -651,6 +651,7 @@ function Air.init(G)
     q("Rol", d.cr, 20)
     q("Yaw", d.cy, 20)
     q("Bay", d.bay, 10)         -- 弹舱门 0～1
+    q("BayS", d.bays, 10)       -- 侧弹舱门
     q("Rpm", d.rpm, 1)          -- 旋翼转速 %
     q("Col", d.col, 20)         -- 总距
     q("Can", d.can, 10)         -- 座舱盖
@@ -765,6 +766,12 @@ function Air.init(G)
           local look = e.vel.Magnitude > 5 and e.vel.Unit or e.root.CFrame.LookVector
           G.moveEnt(e, CFrame.lookAt(np, np + look) * CFrame.Angles(0, 0, math.sin(t * 1.3) * 0.4))
           if np.Y < math.max(surface(np.X, np.Z), -1) + 2 then crash(e, "ground") end
+        elseif not e.onGround then   -- 掉到地面 / 海面上：海里、或者还很快，就是摔了（原来停在离地 3 格的地方漂着不炸）；慢慢落在陆地 / 甲板上才算停住
+          if (g <= 0.5 and not AD.onDeck(Map, p.X, p.Z)) or (e.vel and e.vel.Magnitude > 25) then
+            crash(e, "ground")
+          else
+            e.onGround, e.vel = true, V()
+          end
         elseif e.emptyAt and t - e.emptyAt > 90 then   -- 停着没人开 90 秒：收走（不算冷却）
           for i, x in ipairs(aircraft) do if x == e then table.remove(aircraft, i) break end end
           G.removeEnt(e)

@@ -33,7 +33,7 @@ function Drive.init(G)
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
 
-  local panel = ui.frame(gui, UDim2.fromOffset(420, 92), UDim2.new(0.5, 0, 1, -14), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))
+  local panel = ui.frame(gui, UDim2.fromOffset(420, 76), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 下面让出操作说明那一行（UI.lua）
   ui.round(panel, 10)
   panel.Visible = false
   local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
@@ -42,8 +42,6 @@ function Drive.init(G)
   local vInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 42), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 63), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
-  local vHelp = ui.label(panel, "", UDim2.new(1, -20, 0, 16), UDim2.fromOffset(10, 70), 11, RGB(170, 180, 176), Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-  vHelp.TextTruncate = Enum.TextTruncate.AtEnd
 
   local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
@@ -523,7 +521,7 @@ function Drive.init(G)
   function G.stepDrive(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
-    if vs and vs.fort then vs = nil end   -- 操作工事归 Gunner 管
+    if vs and (vs.fort or vs.air) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管
     if vs and (not st or st.id ~= vs.id) then
       if st then stop() end
       begin(vs)
@@ -612,7 +610,6 @@ function Drive.init(G)
     relBar.Size = UDim2.fromScale(rel, 1)
     vInfo.Text = T("ui.speed", kmh) .. "    " .. (wid and T("vw." .. wid) or "") .. (ammo and ("  " .. ammo[1] .. " / " .. ammo[2]) or "")
       .. "    " .. T("ui.smokeLeft", vs.smoke or 0) .. "    " .. T("sight." .. MODES[st.mode])
-    vHelp.Text = T("ui.vehHelp")
     -- 瞄准镜：测距、倍率、颗粒；热成像的高亮隔一会儿重挑一次
     if st.sight then
       local dist = (st.aimPt - cam.CFrame.Position).Magnitude

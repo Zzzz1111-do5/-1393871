@@ -957,6 +957,9 @@ local guiObj = {
 }
 def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true } })
 def("Frame", "GuiObject", {})
+-- 挂载编辑器：ViewportFrame 里放一个 WorldModel（BulkMoveTo 同 Workspace）
+def("ViewportFrame", "GuiObject", { Ambient = { T.Color3, newC3(0.78, 0.78, 0.78) }, LightColor = { T.Color3, newC3(0.55, 0.55, 0.55) },
+  LightDirection = { T.Vector3, v3(-1, -1, -1) }, CurrentCamera = { T.Instance, nil }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 } })
 def("ScrollingFrame", "GuiObject", { CanvasSize = { T.UDim2, newUDim2(0, 0, 0, 0) }, ScrollBarThickness = { T.number, 12 }, CanvasPosition = { T.Vector2, newV2(0, 0) },
   AutomaticCanvasSize = { E("AutomaticSize"), Enum.AutomaticSize.None }, ScrollingDirection = { E("ScrollingDirection"), Enum.ScrollingDirection.XY }, ScrollBarImageColor3 = { T.Color3, newC3(0, 0, 0) },
   ScrollBarImageTransparency = { T.number, 0 }, ScrollingEnabled = { T.bool, true }, ElasticBehavior = { E("ElasticBehavior"), Enum.ElasticBehavior.WhenScrollable }, VerticalScrollBarInset = { E("ScrollBarInset"), Enum.ScrollBarInset.None } })
@@ -1169,7 +1172,7 @@ R.services = {}
 local camera = make("Camera")
 def("Camera", "Instance", {
   CFrame = { T.CFrame, CFrame.new(0, 20, 20) }, CameraType = { E("CameraType"), Enum.CameraType.Custom }, CameraSubject = { T.Instance, nil }, FieldOfView = { T.number, 70 },
-}, { noCreate = true, ro = { ViewportSize = newV2(1280, 720) }, methods = {
+}, { ro = { ViewportSize = newV2(1280, 720) }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）
   ScreenPointToRay = function(o, x, y)
     if type(x) ~= "number" or type(y) ~= "number" then error("ScreenPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y + 58)
@@ -1198,6 +1201,16 @@ function R.pixelRay(o, x, y)
   local d = cf.RightVector * ((x - 640) / (f * 360)) + cf.UpVector * (-(y - 360) / (f * 360)) + cf.LookVector
   return setmetatable({ Origin = cf.Position, Direction = d.Unit }, { __type = "Ray" })
 end
+def("WorldModel", "Model", {}, { methods = {
+  BulkMoveTo = function(_, parts, cfs, mode)
+    if type(parts) ~= "table" or type(cfs) ~= "table" or #parts ~= #cfs then error("BulkMoveTo(零件表, CFrame 表) 两个表要一样长", 2) end
+    for i, p in ipairs(parts) do
+      if typeof(p) ~= "Instance" or not isA(p._cls, "BasePart") then error("BulkMoveTo 第 " .. i .. " 个不是零件", 2) end
+      if typeof(cfs[i]) ~= "CFrame" then error("BulkMoveTo 第 " .. i .. " 个不是 CFrame", 2) end
+      p.CFrame = cfs[i]
+    end
+  end,
+} })
 local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity = { T.number, 196.2 }, CurrentCamera = { T.Instance, nil } }, { parent = "Model", methods = {
   GetServerTimeNow = function() return (R.osTime or os.time()) + clock % 1 end,
   BulkMoveTo = function(_, parts, cfs, mode)

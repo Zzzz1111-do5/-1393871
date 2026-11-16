@@ -65,9 +65,26 @@ AirDefs.W = {
   b250 = { kind = "bomb", dmg = 1150, splash = 30, vs = VS_BOMB, shape = { L = 5.6, d = 0.95, fin = 1.0 } },
 
   hydra = { kind = "rkt", dmg = 230, splash = 12, speed = 760, range = 1800, rate = 0.11, tubes = 19, vs = VS_RKT, shape = { L = 4.6, d = 1.1 } },
+
+  pl12 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 720, range = 2800, lockTime = 1.6, cone = 25, turn = 50, burn = 4.5, life = 7.5, vs = VS_AAM,
+    shape = { L = 10.4, d = 0.57, fin = 1.0 } },
+  yj91 = { kind = "agm", arm = true, dmg = 1000, splash = 14, speed = 560, range = 3800, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
+    vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 13.2, d = 1.0, fin = 1.6 } },
+  agm88 = { kind = "agm", arm = true, dmg = 950, splash = 13, speed = 580, range = 3600, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
+    vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 11.6, d = 0.71, fin = 1.3 } },
+  gbu32 = { kind = "bomb", guided = true, dmg = 1700, splash = 36, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 8.5, d = 1.0, fin = 1.3 } },
+  gbu38 = { kind = "bomb", guided = true, dmg = 1100, splash = 28, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 6.6, d = 0.76, fin = 1.0 } },
+  gbu39 = { kind = "bomb", guided = true, dmg = 700, splash = 18, lockTime = 0.8, cone = 70, vs = VS_BOMB, shape = { L = 5.0, d = 0.53, fin = 0.6, wing = 4.0 } },
+  lt2 = { kind = "bomb", guided = true, dmg = 1350, splash = 30, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 11, d = 1.04, fin = 1.2 } },
   fl90 = { kind = "rkt", dmg = 260, splash = 13, speed = 720, range = 1800, rate = 0.13, tubes = 12, vs = VS_RKT, shape = { L = 5.0, d = 1.2 } },
 }
-for id, w in pairs(AirDefs.W) do w.id = id end
+-- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
+local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", akd10 = "laser", agm114 = "laser",
+  kd88 = "tv", agm65 = "tv", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
+for id, w in pairs(AirDefs.W) do
+  w.id = id
+  w.guide = GUIDE[id] or ((w.kind == "gun") and "gun" or "none")
+end
 -- 每个挂点每种武器挂几枚（多联挂架）：没写就是 1；火箭巢是一个巢（弹数在 tubes）
 local function N(t) return t end
 
@@ -160,7 +177,7 @@ D.j20 = { kind = "jet", cat = "jet", L = 57, W = 36, H = 12.5, gearH = 6.4, hp =
     { name = "bayM1", pos = V(1.0, -2.2, 3.5), bay = "main", opts = { "pl15", "ls6" } },
     { name = "bayM2", pos = V(2.8, -1.9, 3.5), bay = "main", opts = { "pl15", "ls6" } },
     { name = "bayS", pos = V(3.9, -1.6, -5.5), bay = "sideR", opts = { "pl10" } },
-    { name = "wing", pos = V(9.5, -1.0, 7.5), opts = { "pl15", "pl10", "kd88", "ls6" } },
+    { name = "wing", pos = V(9.5, -1.0, 7.5), opts = { "pl15", "pl10", "kd88", "ls6", "lt2" } },
   }),
   presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
     preset("beast", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10", wing = "kd88" }) } }
@@ -177,8 +194,8 @@ D.j35 = { kind = "jet", cat = "jet", L = 48, W = 32, H = 13, gearH = 6.6, hp = 6
   st = mirror({
     { name = "bay1", pos = V(1.1, -2.2, 1.5), bay = "main", opts = { "pl15", "pl10", "ls6" } },
     { name = "bay2", pos = V(2.9, -1.9, 1.5), bay = "main", opts = { "pl15", "pl10", "ls6" } },
-    { name = "wingI", pos = V(7.2, -1.1, 5.5), opts = { "pl15", "kd88", "ls6" } },
-    { name = "wingO", pos = V(11.5, -0.9, 8.0), opts = { "pl10", "pl15" } },
+    { name = "wingI", pos = V(7.2, -1.1, 5.5), opts = { "pl15", "kd88", "ls6", "lt2" } },
+    { name = "wingO", pos = V(11.5, -0.9, 8.0), opts = { "pl10", "pl15", "pl12" } },
   }),
   presets = { preset("aa", { bay1 = "pl15", bay2 = "pl15" }), preset("ag", { bay1 = "ls6", bay2 = "pl15" }),
     preset("beast", { bay1 = "pl15", bay2 = "pl15", wingI = "kd88", wingO = "pl10" }) } }
@@ -194,14 +211,15 @@ D.j15t = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp 
   gear = { nose = { z = -14, len = 6.0 }, main = { x = 3.6, z = 3.5, len = 5.6 }, r = 1.25, hook = 24 },
   st = mirror({
     { name = "tip", pos = V(20.6, -0.1, 11.5), opts = { "pl10" } },
-    { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15" } },
-    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "kd88", "ls6", "b250" }, n = N({ b250 = 2 }) },
-    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "kd88", "ls6", "b250" }, n = N({ b250 = 2 }) },
-    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "ls6" } },
+    { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15", "pl12" } },
+    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6" } },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl15", inner = "pl15", duct = "pl15" }),
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "ls6", duct = "ls6" }),
-    preset("strike", { tip = "pl10", mid = "b250", inner = "b250", duct = "ls6" }) } }
+    preset("strike", { tip = "pl10", mid = "b250", inner = "b250", duct = "ls6" }),
+    preset("sead", { tip = "pl10", outer = "pl12", mid = "yj91", inner = "lt2", duct = "pl15" }) } }
 D.j16 = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp = 780, stall = 100, vMil = 335, vAB = 450, accel = 46, abAccel = 36,
   pitch = 44, roll = 190, yaw = 18, g = 8.5, flares = 48, gun = "gsh30", gunAmmo = 150, gunPos = V(3.0, 1.2, -16), ab = true,
   fus = { len = 58, w = 5.2, h = 4.6, y = 0 }, nose = 11, canopy = { z = -16.5, len = 10.5, w = 2.8, h = 2.5, y = 2.6 }, twoSeat = true,
@@ -213,14 +231,15 @@ D.j16 = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp =
   gear = { nose = { z = -14, len = 6.0 }, main = { x = 3.6, z = 3.5, len = 5.6 }, r = 1.25 },
   st = mirror({
     { name = "tip", pos = V(20.6, -0.1, 11.5), opts = { "pl10" } },
-    { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15" } },
-    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "kd88", "ls6", "b250" }, n = N({ b250 = 2 }) },
-    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "kd88", "ls6", "b250" }, n = N({ b250 = 2 }) },
-    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "ls6", "kd88" } },
+    { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15", "pl12" } },
+    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6", "kd88" } },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl15", inner = "pl15", duct = "pl15" }),
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "kd88", duct = "ls6" }),
-    preset("strike", { tip = "pl10", outer = "pl15", mid = "b250", inner = "b250", duct = "ls6" }) } }
+    preset("strike", { tip = "pl10", outer = "pl15", mid = "b250", inner = "b250", duct = "ls6" }),
+    preset("sead", { tip = "pl10", outer = "pl12", mid = "yj91", inner = "yj91", duct = "pl15" }) } }
 D.j50 = { kind = "jet", cat = "jet", L = 62, W = 36, H = 9.5, gearH = 6.2, hp = 720, stall = 110, vMil = 370, vAB = 480, accel = 54, abAccel = 34,
   pitch = 44, roll = 200, yaw = 14, g = 8.5, flares = 32, ab = true, stealth = true, tailless = true,
   fus = { len = 58, w = 7.6, h = 4.2, y = 0 }, nose = 12, canopy = { z = -16, len = 9.5, w = 3.0, h = 2.2, y = 2.2 },
@@ -258,7 +277,7 @@ D.gj11 = { kind = "jet", cat = "jet", L = 28, W = 39, H = 6.0, gearH = 4.8, hp =
   eng = { { x = 0, y = 0.8, z = 12.5, r = 1.2, flat = true } },
   gear = { nose = { z = -6, len = 3.6 }, main = { x = 3.4, z = 2.0, len = 3.6 }, r = 0.8 },
   bays = { main = { z0 = -6, z1 = 3, w = 4.4 } },
-  st = mirror({ { name = "bay", pos = V(1.2, -1.2, -1.5), bay = "main", opts = { "ls6", "pl10" } } }),
+  st = mirror({ { name = "bay", pos = V(1.2, -1.2, -1.5), bay = "main", opts = { "ls6", "lt2", "pl10" } } }),
   presets = { preset("ag", { bay = "ls6" }) } }
 D.gj2 = { kind = "jet", cat = "jet", L = 31, W = 57, H = 11, gearH = 5.8, hp = 380, stall = 50, vMil = 130, accel = 20, pitch = 26, roll = 70, yaw = 12, g = 4,
   flares = 12, drone = true, prop = true,
@@ -283,11 +302,12 @@ D.a10c = { kind = "jet", cat = "jet", L = 46, W = 49, H = 12.5, gearH = 6.0, hp 
   gear = { nose = { z = -17, len = 4.5 }, main = { x = 8.5, z = -2.5, len = 4.5, pod = true }, r = 1.25 },
   st = mirror({
     { name = "tip", pos = V(22, -2.3, -0.2), opts = { "aim9x" }, n = N({ aim9x = 2 }) },
-    { name = "outer", pos = V(17.5, -2.3, -0.4), opts = { "agm65", "hydra", "mk82" }, n = N({ agm65 = 1, mk82 = 1 }) },
-    { name = "mid", pos = V(13, -2.3, -0.6), opts = { "agm65", "gbu12", "mk82", "hydra" }, n = N({ agm65 = 3 }) },
-    { name = "inner", pos = V(8.6, -2.6, -0.8), opts = { "gbu12", "mk82", "gbu31" } },
+    { name = "outer", pos = V(17.5, -2.3, -0.4), opts = { "agm65", "hydra", "mk82", "gbu38" }, n = N({ agm65 = 1, mk82 = 1 }) },
+    { name = "mid", pos = V(13, -2.3, -0.6), opts = { "agm65", "gbu12", "mk82", "gbu38", "hydra" }, n = N({ agm65 = 3 }) },
+    { name = "inner", pos = V(8.6, -2.6, -0.8), opts = { "gbu12", "mk82", "gbu31", "gbu32", "gbu38" } },
   }),
-  presets = { preset("cas", { tip = "aim9x", outer = "hydra", mid = "agm65", inner = "gbu12" }), preset("bomb", { tip = "aim9x", outer = "mk82", mid = "mk82", inner = "gbu31" }) } }
+  presets = { preset("cas", { tip = "aim9x", outer = "hydra", mid = "agm65", inner = "gbu12" }), preset("bomb", { tip = "aim9x", outer = "mk82", mid = "mk82", inner = "gbu31" }),
+    preset("jdam", { tip = "aim9x", outer = "gbu38", mid = "gbu38", inner = "gbu32" }) } }
 D.f35 = { kind = "jet", cat = "jet", L = 44, W = 30, H = 12.3, gearH = 6.2, hp = 650, stall = 98, vMil = 340, vAB = 445, accel = 48, abAccel = 32,
   pitch = 48, roll = 210, yaw = 18, g = 9, flares = 30, gun = "gau22", gunAmmo = 180, gunPos = V(-2.4, 1.6, -6), ab = true, stealth = true,
   fus = { len = 42, w = 6.6, h = 5.0, y = 0 }, nose = 9, canopy = { z = -11.5, len = 8, w = 3.0, h = 2.4, y = 2.6 },
@@ -299,12 +319,13 @@ D.f35 = { kind = "jet", cat = "jet", L = 44, W = 30, H = 12.3, gearH = 6.2, hp =
   gear = { nose = { z = -11, len = 5.4 }, main = { x = 3.3, z = 4.0, len = 5.0 }, r = 1.1 },
   bays = { main = { z0 = -4, z1 = 6, w = 5.2, split = true } },
   st = mirror({
-    { name = "bayO", pos = V(2.4, -2.3, 1.0), bay = "main", opts = { "gbu31", "gbu12", "aim120" } },
+    { name = "bayO", pos = V(2.4, -2.3, 1.0), bay = "main", opts = { "gbu31", "gbu32", "gbu38", "gbu12", "gbu39", "aim120" }, n = N({ gbu39 = 4 }) },
     { name = "bayI", pos = V(1.0, -1.9, 1.0), bay = "main", opts = { "aim120" } },
-    { name = "wingI", pos = V(7.0, -1.2, 5.0), opts = { "aim120", "gbu31", "gbu12" } },
+    { name = "wingI", pos = V(7.0, -1.2, 5.0), opts = { "aim120", "gbu31", "gbu32", "gbu38", "gbu12", "agm88" } },
     { name = "wingO", pos = V(11.5, -1.0, 7.5), opts = { "aim9x", "aim120" } },
   }),
   presets = { preset("aa", { bayO = "aim120", bayI = "aim120" }), preset("ag", { bayO = "gbu31", bayI = "aim120" }),
+    preset("sdb", { bayO = "gbu39", bayI = "aim120" }), preset("sead", { bayO = "aim120", bayI = "aim120", wingI = "agm88", wingO = "aim9x" }),
     preset("beast", { bayO = "gbu31", bayI = "aim120", wingI = "gbu12", wingO = "aim9x" }) } }
 D.f22 = { kind = "jet", cat = "jet", L = 53, W = 38, H = 14, gearH = 6.6, hp = 700, stall = 100, vMil = 380, vAB = 480, accel = 56, abAccel = 34,
   pitch = 52, roll = 220, yaw = 20, g = 9, flares = 32, gun = "m61", gunAmmo = 480, gunPos = V(4.6, 1.6, -7), ab = true, stealth = true, tvc = true,
@@ -317,13 +338,14 @@ D.f22 = { kind = "jet", cat = "jet", L = 53, W = 38, H = 14, gearH = 6.6, hp = 7
   gear = { nose = { z = -14, len = 5.4 }, main = { x = 3.6, z = 4.0, len = 5.2 }, r = 1.15 },
   bays = { main = { z0 = -4, z1 = 8, w = 5.2 }, sideR = { x = 4.5, z0 = -8, z1 = -3, w = 1.3 } },
   st = mirror({
-    { name = "bayM1", pos = V(0.9, -2.2, 2.0), bay = "main", opts = { "aim120", "gbu31" } },
+    { name = "bayM1", pos = V(0.9, -2.2, 2.0), bay = "main", opts = { "aim120", "gbu31", "gbu32", "gbu39" }, n = N({ gbu39 = 4 }) },
     { name = "bayM2", pos = V(2.0, -2.0, 2.0), bay = "main", opts = { "aim120" } },
     { name = "bayM3", pos = V(3.1, -1.8, 2.0), bay = "main", opts = { "aim120" } },
     { name = "bayS", pos = V(4.5, -1.5, -5.5), bay = "sideR", opts = { "aim9x" } },
   }),
   presets = { preset("aa", { bayM1 = "aim120", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }),
-    preset("ag", { bayM1 = "gbu31", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }) } }
+    preset("ag", { bayM1 = "gbu31", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }),
+    preset("sdb", { bayM1 = "gbu39", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }) } }
 D.mq9 = { kind = "jet", cat = "jet", L = 31, W = 56, H = 10.6, gearH = 5.4, hp = 360, stall = 48, vMil = 125, accel = 18, pitch = 24, roll = 65, yaw = 12, g = 3.5,
   flares = 0, drone = true, prop = true,
   fus = { len = 30, w = 3.4, h = 3.6, y = 0 }, nose = 5, sat = true,
@@ -332,8 +354,8 @@ D.mq9 = { kind = "jet", cat = "jet", L = 31, W = 56, H = 10.6, gearH = 5.4, hp =
   eng = { { x = 0, y = 0, z = 15.2, r = 0.5, prop = 3.0 } },
   gear = { nose = { z = -10, len = 3.4 }, main = { x = 3.2, z = 1.0, len = 4.0 }, r = 0.8 },
   st = mirror({
-    { name = "inner", pos = V(5.5, 0.0, 0.6), opts = { "gbu12", "agm114" }, n = N({ agm114 = 2 }) },
-    { name = "outer", pos = V(10.5, 0.2, 0.6), opts = { "agm114", "gbu12" }, n = N({ agm114 = 2 }) },
+    { name = "inner", pos = V(5.5, 0.0, 0.6), opts = { "gbu12", "gbu38", "agm114" }, n = N({ agm114 = 2 }) },
+    { name = "outer", pos = V(10.5, 0.2, 0.6), opts = { "agm114", "gbu12", "gbu38" }, n = N({ agm114 = 2 }) },
   }),
   presets = { preset("hk", { inner = "gbu12", outer = "agm114" }), preset("at", { inner = "agm114", outer = "agm114" }) } }
 D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp = 1400, stall = 85, vMil = 250, accel = 22, pitch = 14, roll = 40, yaw = 6, g = 2.5,
@@ -376,6 +398,31 @@ function AirDefs.ground(Map, x, z)
     if K and math.abs(x - s.x) < K.W / 2 and math.abs(z - s.z) < K.L / 2 then g = math.max(g, K.top) end
   end
   return g
+end
+-- 航母：三条弹射器（舰艏两条、斜角甲板一条）、拦阻索区；坐标相对航母甲板中心（舰艏朝 −Z），a 是往左舷偏的角度
+--   停机位在右舷后部（Air.lua）：自己滑到弹射器起点，对正了就卡上，油门推满按空格弹射；着舰放尾钩，落在拦阻索区就被拉停
+AirDefs.CATS = { { x = 18, z = -50, len = 240, a = 0 }, { x = -6, z = -50, len = 240, a = 0 }, { x = -30, z = 70, len = 220, a = math.rad(8) } }
+AirDefs.WIRES = { z0 = 150, z1 = 245, x = -20, a = math.rad(8), n = 4 }
+AirDefs.TAXI = 28   -- 甲板上没上弹射器时最快滑多快（格 / 秒）
+function AirDefs.carrierCF(Map)
+  for _, s in ipairs(Map.FLEET or {}) do
+    if s.kind == "carrier" then return CFrame.new(s.x, AirDefs.DECKS.carrier.top, s.z) * CFrame.Angles(0, s.rot or 0, 0) end
+  end
+  return nil
+end
+-- 第 i 条弹射器：起点（甲板面上）、方向、长度
+function AirDefs.cat(Map, i)
+  local base = AirDefs.carrierCF(Map)
+  local c = AirDefs.CATS[i]
+  if not base or not c then return nil end
+  return (base * CFrame.new(c.x, 0, c.z)).Position, base:VectorToWorldSpace(Vector3.new(-math.sin(c.a), 0, -math.cos(c.a))), c.len
+end
+-- (x, z) 在不在拦阻索区（斜角甲板后半段）
+function AirDefs.inWires(Map, x, z)
+  local base = AirDefs.carrierCF(Map)
+  if not base then return false end
+  local l = base:PointToObjectSpace(Vector3.new(x, base.Position.Y, z))
+  return l.Z > AirDefs.WIRES.z0 and l.Z < AirDefs.WIRES.z1 and l.X > -55 and l.X < 20
 end
 -- 在不在甲板上
 function AirDefs.onDeck(Map, x, z)
