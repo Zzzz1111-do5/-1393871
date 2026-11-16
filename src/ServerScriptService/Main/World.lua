@@ -80,34 +80,95 @@ local function sign(p, text, height, w, h, color, maxDist)
 end
 World.sign = sign
 
+-- 夜里的灯：霓虹小块 + 光晕（BillboardGui：远处也看得见一个亮点）+ 可选的点光源 / 射灯（spot = { face, angle }，照向那一面）
+--   光源都不投影（几十盏投影的灯太费）；小装饰不挡人、不挡射线
+local function light(parent, pos, color, size, range, bright, spot, px)
+  local p = part(parent, V(size, size * 0.6, size), CF(pos), color, MAT.Neon)
+  p.CastShadow = false
+  local bb = Instance.new("BillboardGui")
+  bb.Name = "Glow"
+  bb.Size = UDim2.new(size * 4, px or 4, size * 4, px or 4)
+  bb.LightInfluence = 0
+  bb.MaxDistance = 6000
+  bb.Parent = p
+  local halo = Instance.new("Frame")
+  halo.AnchorPoint, halo.Position, halo.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
+  halo.BackgroundColor3, halo.BackgroundTransparency, halo.BorderSizePixel = color, 0.76, 0
+  halo.Parent = bb
+  local core = Instance.new("Frame")
+  core.AnchorPoint, core.Position, core.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.36, 0.36)
+  core.BackgroundColor3, core.BackgroundTransparency, core.BorderSizePixel = color:Lerp(Color3.new(1, 1, 1), 0.5), 0.02, 0
+  core.Parent = bb
+  for _, fr in ipairs({ halo, core }) do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = fr
+  end
+  if range then
+    local L = spot and Instance.new("SpotLight") or Instance.new("PointLight")
+    L.Color, L.Range, L.Brightness, L.Shadows = color, range, bright or 1.5, false
+    if spot then L.Face, L.Angle = spot.face or Enum.NormalId.Bottom, spot.angle or 70 end
+    L.Parent = p
+  end
+  return p
+end
+World.light = light
+-- 探照灯杆：一根杆子、顶上一盏往下照的大灯（营地、停机坪、登陆平台）
+local function floodPole(parent, x, y, z, h, color, range)
+  part(parent, V(0.7, h, 0.7), CF(x, y + h / 2, z), RGB(60, 62, 66), MAT.Metal, nil, true)
+  part(parent, V(3.2, 0.5, 1.6), CF(x, y + h, z), RGB(40, 42, 46), MAT.Metal)
+  light(parent, V(x, y + h - 0.4, z), color or RGB(255, 226, 178), 1.4, range or 110, 2.4, { face = Enum.NormalId.Bottom, angle = 95 }, 3)
+end
+World.floodPole = floodPole
+
 ---------------------------------------------------------------- 光影
 
+-- 夜战（用户：交战全部设成夜晚——夜晚弥补画质，做出 3A 的质感）：凌晨两点多，月亮偏西、冷蓝的月光，环境光压得很低，远处深蓝灰的雾；
+--   主要的光是枪口焰、爆炸、热诱弹、航行灯、跑道灯、甲板灯、营地探照灯（Future 光照：地图文件里设好了，脚本改不了）；夜视仪在客户端 Night.lua
 function World.lighting()
   pcall(function()
-    Lighting.ClockTime = 14.2
-    Lighting.GeographicLatitude = 12
-    Lighting.Brightness = 3
+    Lighting.ClockTime = 2.3
+    Lighting.GeographicLatitude = 23
+    Lighting.Brightness = 2.2
     Lighting.GlobalShadows = true
-    Lighting.Ambient = RGB(70, 72, 80)
-    Lighting.OutdoorAmbient = RGB(132, 136, 146)
-    Lighting.ColorShift_Top = RGB(255, 244, 226)
-    Lighting.EnvironmentDiffuseScale = 1
-    Lighting.EnvironmentSpecularScale = 1
-    Lighting.ShadowSoftness = 0.2
-    Lighting.ExposureCompensation = 0.1
-    Lighting.FogColor = RGB(176, 196, 212)
-    Lighting.FogStart = 2500
-    Lighting.FogEnd = 9000
+    Lighting.Ambient = RGB(14, 17, 24)
+    Lighting.OutdoorAmbient = RGB(38, 45, 62)
+    Lighting.ColorShift_Top = RGB(140, 160, 210)
+    Lighting.ColorShift_Bottom = RGB(8, 10, 16)
+    Lighting.EnvironmentDiffuseScale = 0.35
+    Lighting.EnvironmentSpecularScale = 0.9
+    Lighting.ShadowSoftness = 0.3
+    Lighting.ExposureCompensation = 0.55
+    Lighting.FogColor = RGB(16, 20, 30)
+    Lighting.FogStart = 600
+    Lighting.FogEnd = 5200
   end)
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.28
-    atm.Offset = 0.12
-    atm.Color = RGB(199, 214, 228)
-    atm.Decay = RGB(106, 128, 150)
-    atm.Glare = 0.25
-    atm.Haze = 1.4
+    atm.Density = 0.36
+    atm.Offset = 0.06
+    atm.Color = RGB(44, 54, 76)
+    atm.Decay = RGB(12, 15, 24)
+    atm.Glare = 0.15
+    atm.Haze = 1.6
     atm.Parent = Lighting
+  end)
+  pcall(function()   -- 星空、大一点的月亮
+    local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+    sky.StarCount = 6000
+    sky.MoonAngularSize = 13
+    sky.CelestialBodiesShown = true
+    sky.Parent = Lighting
+  end)
+  pcall(function()   -- 后期：亮的东西（灯、火、曳光）泛光；整体冷一点、对比高一点
+    local bloom = Lighting:FindFirstChild("NightBloom") or Instance.new("BloomEffect")
+    bloom.Name = "NightBloom"
+    bloom.Intensity, bloom.Size, bloom.Threshold = 1.1, 36, 1.05
+    bloom.Parent = Lighting
+    local cc = Lighting:FindFirstChild("NightGrade") or Instance.new("ColorCorrectionEffect")
+    cc.Name = "NightGrade"
+    cc.Brightness, cc.Contrast, cc.Saturation, cc.TintColor = 0.02, 0.14, -0.12, RGB(222, 232, 255)
+    cc.Parent = Lighting
   end)
 end
 
@@ -271,8 +332,8 @@ end
 local function mast(f, x, z, h)   -- 天线杆：顶上红灯一闪一闪
   local y = Map.ground(x, z)
   cyl(f, h, 0.8, CF(x, y + h / 2, z), C.metal, MAT.Metal, true)
-  local l = part(f, V(1.4, 1.4, 1.4), CF(x, y + h + 0.7, z), RGB(255, 40, 40), MAT.Neon, BALL)
-  l:SetAttribute("Anim", "blink")
+  local l = light(f, V(x, y + h + 0.7, z), RGB(255, 40, 40), 1.2, 16, 1.6)
+  l:SetAttribute("Anim", "blink")   -- 客户端 Night.lua 让它一闪一闪
   l:SetAttribute("Spd", 0.8)
 end
 
@@ -322,6 +383,20 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
   part(f, V(10, 26, 10), tb * CF(0, 13, 0), C.concrete, MAT.Concrete, nil, true)
   part(f, V(15, 7, 15), tb * CF(0, 29.5, 0), C.glass, MAT.Glass, nil, true)
   part(f, V(16, 1, 16), tb * CF(0, 33.5, 0), C.dark, MAT.Metal, nil, true)
+  light(f, (tb * CF(0, 34.4, 0)).Position, RGB(255, 40, 40), 1, 14, 1.2).Name = "TowerBeacon"
+  -- 夜里的跑道灯：两边白色边灯每 40 格一盏，两头入口绿灯、末端红灯（两头都能起降：一头绿一头红）；停机坪南边一排蓝色滑行道灯
+  local lights = Instance.new("Folder")
+  lights.Name = "RunwayLights"
+  lights.Parent = f
+  for xx = -A.len / 2 + 10, A.len / 2 - 10, 40 do
+    for sd = -1, 1, 2 do light(lights, (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) end
+  end
+  for zz = -A.wid / 2 + 3, A.wid / 2 - 3, 8 do
+    light(lights, (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
+    light(lights, (base * CF(A.len / 2 + 2, 1.2, zz)).Position, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
+  end
+  for xx = -A.len * 0.3, A.len * 0.3, 36 do light(lights, (base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5, nil, nil, nil, 3) end
+  for i = -1, 1 do floodPole(lights, A.x + i * A.len * 0.24, y, A.z - A.wid / 2 - 84, 22, RGB(255, 222, 170), 120) end
   local _ = team
 end
 
@@ -360,6 +435,10 @@ local function camp(f)
   house(f, P.x + 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
   local y = Map.ground(P.x, P.z)
   cyl(f, 30, 0.8, CF(P.x, y + 15, P.z + 40), C.white, MAT.Metal, true)
+  -- 夜里：车场一排探照灯（车场在南面 z + 70）、北面直升机停机坪两盏、帐篷门口小灯
+  for i = -2, 2 do floodPole(f, P.x + i * 72, Map.ground(P.x + i * 72, P.z + 44), P.z + 44, 18, RGB(255, 220, 168), 90) end
+  for _, dx in ipairs({ -140, 146 }) do floodPole(f, P.x + dx, Map.ground(P.x + dx, P.z - 62), P.z - 62, 18, RGB(255, 226, 180), 90) end
+  for i = -2, 2 do light(f, V(P.x + i * 24, y + 6.5, P.z - 16.5), RGB(255, 200, 140), 0.4, 12, 0.9) end
 end
 
 local function lighthouse(f)
@@ -368,8 +447,19 @@ local function lighthouse(f)
   local y = Map.ground(x, z)
   for i = 0, 5 do cyl(f, 8, 12 - i * 0.6, CF(x, y + 4 + i * 8, z), (i % 2 == 0) and C.white or C.red, MAT.Concrete, true) end
   local lamp = part(f, V(6, 6, 6), CF(x, y + 51, z), RGB(255, 236, 160), MAT.Neon, BALL)
-  lamp:SetAttribute("Anim", "blink")
-  lamp:SetAttribute("Spd", 0.25)
+  -- 灯塔的光柱：一根长长的半透明光束 + 射灯，客户端（Night.lua）让它绕着转
+  local beam = part(f, V(4, 4, 260), CF(x, y + 51, z) * CF(0, 0, -130), RGB(255, 240, 200), MAT.Neon)
+  beam.Transparency = 0.86
+  beam.CastShadow = false
+  beam:SetAttribute("Anim", "spin")
+  beam:SetAttribute("Spd", 0.08)
+  beam:SetAttribute("Pivot", V(x, y + 51, z))
+  local sl = Instance.new("SpotLight")
+  sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color = Enum.NormalId.Front, 18, 60, 6, RGB(255, 240, 200)
+  sl.Parent = beam
+  local pl = Instance.new("PointLight")
+  pl.Range, pl.Brightness, pl.Color = 40, 2, RGB(255, 236, 170)
+  pl.Parent = lamp
   part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
   house(f, x - 26, z + 10, 16, 12, 8, 0.2)
 end
@@ -411,6 +501,27 @@ function World.carrierDeck(m, top)
     for k = -240, 240, 24 do part(m, V(0.6, 0.12, 12), edge * CF(0, 0.07, k), C.white) end
   end
   part(m, V(1.2, 0.12, 470), top * CF(Wd.x, 0.07, 60) * CFrame.Angles(0, Wd.a, 0), C.yellow)   -- 着舰中线
+  -- 夜间着舰的灯（位置照真航母）：中线嵌入式白灯、斜角甲板两边的边灯、舰尾往下一列琥珀色下降灯（对准中线）、
+  --   左舷着舰区旁边的光学着舰指示器（中间琥珀色「肉球」、两边一排绿色基准灯）、弹射器轨道两侧蓝灯
+  local landLine = top * CF(Wd.x, 0, 60) * CFrame.Angles(0, Wd.a, 0)
+  for k = -230, 230, 26 do light(m, (landLine * CF(0, 0.2, k)).Position, RGB(255, 250, 236), 0.5, nil, nil, nil, 3) end
+  for sd = -1, 1, 2 do
+    for k = -230, 230, 40 do light(m, (landLine * CF(sd * 33, 0.2, k)).Position, RGB(90, 150, 255), 0.5, nil, nil, nil, 3) end
+  end
+  local stern = (landLine * CF(0, 0, 240)).Position
+  for k = 1, 5 do light(m, stern + V(0, -k * 2.4, 3), RGB(255, 170, 60), 0.6, (k == 1) and 12 or nil, 1, nil, 3) end
+  local fl = top * CF(-58, 0, 150)   -- 光学着舰指示器：左舷边上
+  part(m, V(2, 6, 3), fl * CF(0, 3, 0), RGB(40, 42, 46), MAT.Metal)
+  light(m, (fl * CF(0, 6.4, -1.6)).Position, RGB(255, 170, 40), 0.9, 10, 2, nil, 5)
+  for k = -3, 3 do
+    if k ~= 0 then light(m, (fl * CF(0, 6.4, -1.6 + k * 1.4)).Position, RGB(60, 255, 110), 0.55, nil, nil, nil, 3) end
+  end
+  for _, c in ipairs(AD.CATS) do
+    local start = top * CF(c.x, 0, c.z) * CFrame.Angles(0, c.a, 0)
+    for k = 0, c.len, 40 do
+      for sd = -1, 1, 2 do light(m, (start * CF(sd * 2.2, 0.15, -k)).Position, RGB(80, 140, 255), 0.35, nil, nil, nil, 2) end
+    end
+  end
 end
 
 function World.fleet(f)
@@ -426,7 +537,17 @@ function World.fleet(f)
     deck.Name = "Deck"
     for k = -D.L / 2 + 30, D.L / 2 - 30, 40 do part(m, V(1, 0.1, 16), base * CF(0, D.deck + 0.6, k), C.yellow) end
     local ix = D.W / 2 - 16
-    part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, D.L * (D.island[1] - 0.5) + D.L * 0.3), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
+    local iz = D.L * (D.island[1] - 0.5) + D.L * 0.3
+    part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, iz), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
+    -- 航行灯（照船舶避碰规则的位置）：桅杆顶白灯、舰岛左右两侧红 / 绿舷灯、舰尾白灯；舰岛上往甲板照的探照灯
+    part(m, V(1, 14, 1), base * CF(ix, D.deck + 43, iz), RGB(90, 94, 98), MAT.Metal)
+    light(m, (base * CF(ix, D.deck + 50.5, iz)).Position, RGB(255, 250, 236), 0.9, 18, 1.4, nil, 4)
+    light(m, (base * CF(ix - 9.4, D.deck + 30, iz - 6)).Position, RGB(255, 50, 40), 0.8, 14, 1.4, nil, 4)
+    light(m, (base * CF(ix + 9.4, D.deck + 30, iz - 6)).Position, RGB(60, 255, 120), 0.8, 14, 1.4, nil, 4)
+    light(m, (base * CF(0, D.deck - 2, D.L / 2 + 0.6)).Position, RGB(255, 250, 236), 0.8, 14, 1.2, nil, 4)
+    for _, dz in ipairs({ -D.L * 0.12, D.L * 0.12 }) do
+      light(m, (base * CF(ix - 9.6, D.deck + 22, iz + dz)).Position, RGB(255, 214, 160), 1.1, 140, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
+    end
     if s.kind == "carrier" then
       local ok, err = pcall(World.carrierDeck, m, base * CF(0, D.deck + 0.5, 0))
       if not ok then warn("[全面大战场] 航母甲板出错：" .. tostring(err)) end

@@ -91,6 +91,31 @@ if d1.Character then
 	check(p.Z < -1500, string.format("守方出生在北边营地（z = %.0f）", p.Z))
 	check(math.abs(d1.Character.Humanoid.MaxHealth - G.Config.RoleById.engineer.hp) < 0.01, "工兵血量按兵种")
 end
+-- 夜战：夜晚的光照；头盔、夜视仪、红外频闪；按 N 开夜视（画面调色、镜筒框、服务器那边镜筒翻下来），再按关掉、恢复
+local Lighting = H.game:GetService("Lighting")
+local Enum = roblox.Enum
+check(Lighting.ClockTime < 5 or Lighting.ClockTime > 21, string.format("交战在夜里（%.1f 点）", Lighting.ClockTime))
+check(Lighting:FindFirstChild("NightBloom") ~= nil and Lighting:FindFirstChildOfClass("Sky") ~= nil, "夜里的泛光、星空")
+if a1.Character then
+	local ch = a1.Character
+	check(ch:FindFirstChild("Helmet") and ch:FindFirstChild("NVG") and ch:FindFirstChild("IRStrobe"), "戴着头盔、夜视仪，头盔后面有红外频闪")
+	local hinge = ch.NVG:FindFirstChild("NVGHinge")
+	local c0 = hinge and hinge.C0
+	local exp0 = Lighting.ExposureCompensation
+	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
+	H.run(0.5)
+	local nv = a1.PlayerGui:FindFirstChild("NVG")
+	check(CA.nvgOn and CA.nvgOn() and Lighting:FindFirstChild("NVGrade") and nv and nv.Enabled, "按 N 开夜视：画面调色、镜筒框")
+	check(Lighting.ExposureCompensation > exp0 + 1, string.format("夜视增亮（曝光 %.2f → %.2f）", exp0, Lighting.ExposureCompensation))
+	check(ch:GetAttribute("NVG") == true and hinge and hinge.C0 ~= c0, "镜筒翻下来了（别人也看得到）")
+	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
+	H.run(0.5)
+	check(not CA.nvgOn() and Lighting:FindFirstChild("NVGrade") == nil and math.abs(Lighting.ExposureCompensation - exp0) < 1e-3 and not nv.Enabled, "再按 N 关掉，恢复原样")
+end
+local cv = H.workspace.Map.Fleet:FindFirstChild("Ship_carrier1")
+local nLights = 0
+if cv then for _, x in ipairs(cv:GetDescendants()) do if x:IsA("BillboardGui") and x.Name == "Glow" then nLights += 1 end end end
+check(nLights > 60, "航母甲板上的夜灯 " .. nLights .. " 盏（着舰中线、边灯、下降灯、着舰指示器、弹射器、航行灯）")
 -- 其余人：攻方抢滩不能在准备阶段选
 act(atk[2], "deploy", "rifle", "beach.red")
 H.run(0.5)

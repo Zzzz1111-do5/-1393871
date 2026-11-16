@@ -78,8 +78,8 @@ ws.StreamingEnabled = false
 -- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
 local L = game:GetService("Lighting")
 L.Technology = roblox.Enum.Technology.Future
-L.ClockTime = 14.6
-L.Brightness = 3
+L.ClockTime = 2.3   -- 夜战（开服时 World.lighting 还会再设一遍）
+L.Brightness = 2.2
 L.GlobalShadows = true
 L.EnvironmentDiffuseScale = 1
 L.EnvironmentSpecularScale = 1

@@ -81,6 +81,7 @@ function Fly.init(G)
       if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下
         if not v.wreck then
           v.wreck = { vel = (own and own.vel) or v.vel, spin = (math.random() - 0.5) * 3, t = 0 }
+          if v.M then v.M.dark = true end   -- 被击毁：灯全灭
           for _, it in ipairs(M.items) do
             local p = it.p
             if p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end

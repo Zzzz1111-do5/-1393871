@@ -355,7 +355,29 @@ function VehModels.build(d, team)
   black.Color = ColorSequence.new(RGB(30, 30, 30))
   black.Parent = fireP
 
-  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d }
+  -- 夜里的车灯：前面两盏（轮式车是大灯，射灯照前面的路；履带车是暗的灯火管制灯）、后面两盏红尾灯；有人开才亮（View.lua）
+  local lamps = {}
+  local function lampPart(off, color, size)
+    local p = add("hull", V(size, size * 0.7, 0.15), off, color, MAT.Neon)
+    p.CastShadow = false
+    table.insert(lamps, p)
+    return p
+  end
+  local wheeled = d.arch == "wheeled"
+  for sd = -1, 1, 2 do
+    local fl = lampPart(CF(sd * d.W * 0.36, d.hullH * 0.62, -d.L / 2 - 0.05), wheeled and RGB(255, 244, 214) or RGB(255, 186, 120), wheeled and 0.55 or 0.3)
+    if wheeled then
+      local sl = Instance.new("SpotLight")
+      sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color, sl.Shadows = Enum.NormalId.Front, 55, 70, 3.2, RGB(255, 240, 210), true
+      sl.Parent = fl
+    end
+    local tl = lampPart(CF(sd * d.W * 0.4, d.hullH * 0.55, d.L / 2 + 0.05), RGB(255, 40, 30), 0.32)
+    local pl = Instance.new("PointLight")
+    pl.Range, pl.Brightness, pl.Color, pl.Shadows = 6, 0.8, RGB(255, 40, 30), false
+    pl.Parent = tl
+  end
+
+  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps }
 end
 
 return VehModels

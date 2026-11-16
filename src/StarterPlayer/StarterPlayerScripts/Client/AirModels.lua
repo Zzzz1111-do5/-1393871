@@ -45,7 +45,7 @@ function AM.build(d, team, load)
   local m = Instance.new("Model")
   m.Name = d.id
   local items = {}
-  local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, team = team }
+  local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, team = team }
   local skin = SKIN_ID[d.id] or ((SKIN[team] or SKIN.atk)[(d.kind == "heli") and "heli" or (d.drone and "drone") or (d.stealth and "stealth") or "jet"])
   local skinD = skin:Lerp(Color3.new(0, 0, 0), 0.18)
   local skinL = skin:Lerp(Color3.new(1, 1, 1), 0.12)
@@ -284,12 +284,65 @@ function AM.build(d, team, load)
 
   ---------------------------------------------------------------- 灯
 
-  local function lights(xTip, yTip, zTip, tailZ, tailY)
-    neon(V(0.45, 0.45, 0.45), CF(xTip, yTip, zTip), RGB(80, 255, 110))    -- 右翼尖绿
-    neon(V(0.45, 0.45, 0.45), CF(-xTip, yTip, zTip), RGB(255, 60, 50))    -- 左翼尖红
-    neon(V(0.4, 0.4, 0.4), CF(0, tailY, tailZ), RGB(255, 255, 240))
-    local st = neon(V(0.5, 0.5, 0.5), CF(0, -d.H * 0.32, 0), RGB(255, 40, 40))   -- 防撞灯（闪）
-    table.insert(M.strobes, st)
+  -- 夜战的灯（位置照真飞机）：一盏灯 = 霓虹小球 + 光晕（BillboardGui：远处看是一个亮点、近处一团光）+ 小范围的点光源（照亮旁边的蒙皮）
+  --   mode：nav 航行灯常亮、beacon 红色防撞灯一秒闪一下（phase 错开）、strobe 白色频闪双闪、land 着陆灯（随起落架，射灯）
+  local NAV_R, NAV_G, NAV_W, BEACON, STROBE = RGB(255, 46, 36), RGB(60, 255, 120), RGB(255, 250, 236), RGB(255, 40, 30), RGB(236, 244, 255)
+  local function lamp(pos, color, mode, size, range, kind, extra, phase)
+    local it = neon(V(size, size, size), CF(pos), color, kind, extra)
+    it.p.CastShadow = false
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "Glow"
+    bb.Size = UDim2.new(size * 6, 5, size * 6, 5)   -- 尺寸一半按格（近处大）一半按像素（远处也看得见一个点）
+    bb.LightInfluence = 0
+    bb.MaxDistance = 6000
+    bb.Adornee = it.p
+    bb.Parent = it.p
+    local halo = Instance.new("Frame")
+    halo.AnchorPoint, halo.Position, halo.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
+    halo.BackgroundColor3, halo.BackgroundTransparency, halo.BorderSizePixel = color, 0.78, 0
+    halo.Parent = bb
+    local core = Instance.new("Frame")
+    core.AnchorPoint, core.Position, core.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.34, 0.34)
+    core.BackgroundColor3, core.BackgroundTransparency, core.BorderSizePixel = color:Lerp(Color3.new(1, 1, 1), 0.55), 0.02, 0
+    core.Parent = bb
+    for _, f in ipairs({ halo, core }) do
+      local c = Instance.new("UICorner")
+      c.CornerRadius = UDim.new(0.5, 0)
+      c.Parent = f
+    end
+    local pl
+    if mode == "land" then
+      pl = Instance.new("SpotLight")
+      pl.Face, pl.Angle, pl.Range, pl.Brightness = Enum.NormalId.Front, 38, 160, 6
+      bb.Enabled = false
+    else
+      pl = Instance.new("PointLight")
+      pl.Range = range
+      pl.Brightness = (mode == "strobe") and 5 or ((mode == "beacon") and 2.5 or 1.4)
+    end
+    pl.Color, pl.Shadows = color, false
+    pl.Parent = it.p
+    it.lamp, it.bb, it.pl, it.phase = mode, bb, pl, phase or 0
+    table.insert(M.lamps, it)
+    return it
+  end
+  -- 一架飞机的整套灯：tip 右翼尖航行灯（左边对称是红的）、strobe 右翼尖频闪、tails 尾部白灯、top / bottom 防撞灯、land 着陆灯
+  --   fold：翼尖的灯跟着折叠的外翼走（舰载机停在甲板上折翼）
+  local function navLights(L0)
+    local fk = L0.fold and "f" or nil
+    lamp(L0.tip, NAV_G, "nav", 0.42, 9, fk, fk and { fold = 1 } or nil)
+    lamp(V(-L0.tip.X, L0.tip.Y, L0.tip.Z), NAV_R, "nav", 0.42, 9, fk, fk and { fold = -1 } or nil)
+    if L0.strobe then
+      lamp(L0.strobe, STROBE, "strobe", 0.36, 22, fk, fk and { fold = 1 } or nil)
+      lamp(V(-L0.strobe.X, L0.strobe.Y, L0.strobe.Z), STROBE, "strobe", 0.36, 22, fk, fk and { fold = -1 } or nil)
+    end
+    for _, t in ipairs(L0.tails or {}) do lamp(t, NAV_W, "nav", 0.36, 7) end
+    if L0.top then lamp(L0.top, BEACON, "beacon", 0.48, 14, nil, nil, 0) end
+    if L0.bottom then lamp(L0.bottom, BEACON, "beacon", 0.48, 14, nil, nil, 0.5) end
+    if L0.land then
+      local it = lamp(L0.land, NAV_W, "land", 0.5, 0)
+      it.cf0 = CFrame.lookAt(L0.land, L0.land + V(0, -0.12, -1))   -- 射灯朝前、稍微往下
+    end
   end
   local function roundel(cf, r)
     local red, yel, blue, white = RGB(200, 30, 30), RGB(240, 200, 40), RGB(40, 60, 120), RGB(230, 230, 230)
@@ -317,6 +370,7 @@ function AM.build(d, team, load)
     local F = d.fus
     local L, w, h = F.len, F.w, F.h
     local y0 = F.y or 0
+    local NL = { tails = {}, fold = d.fold ~= nil }   -- 夜航灯光的位置（下面一边建一边记，最后一起摆）
     local noseZ = -L / 2
     if d.flyingWing then
       ball(V(w, h, L), CF(0, y0, 0), skin)
@@ -449,10 +503,10 @@ function AM.build(d, team, load)
           tri(P(0.45, 0), V(s * Wg.lambda.x, Wg.y, Wg.lambda.z - 6), P(0.75, 0.3), th, skin)
         end
       end
-      -- 翼尖灯、国籍标志
+      -- 翼尖灯（航行灯在翼尖前段、频闪在后段，稍微探出翼尖）、国籍标志
       local P = trapPt(Wg, 1)
-      local tip = P(1, 0.5)
-      lights(tip.X, tip.Y, tip.Z, L / 2 + 0.5, y0)
+      NL.tip = P(1, 0.28) + V(0.25, 0, 0)
+      NL.strobe = P(1, 0.82) + V(0.2, 0, 0)
       local pu = P(0.68, 0.45)
       roundel(CF(pu.X, pu.Y + th / 2 + 0.05, pu.Z), math.min(2.6, (Wg.xt - Wg.xr) * 0.1))
       roundel(CF(-pu.X, pu.Y + th / 2 + 0.05, pu.Z), math.min(2.6, (Wg.xt - Wg.xr) * 0.1))
@@ -499,6 +553,7 @@ function AM.build(d, team, load)
         end
         local top = pt(1, 0.6)
         if Vt.endplate then box(V(1.2, 0.6, 3), CF(top), skinD) end
+        table.insert(NL.tails, pt(1, 0.94) + V(0, 0.2, 0))   -- 尾部白灯：垂尾顶端后缘
         if team == "atk" and not d.stealth then box(V(0.06, Vt.h * 0.22, 2.4), CF(pt(0.6, 0.45)) * CF(s * 0.25, 0, 0), RGB(200, 30, 30), MAT.SmoothPlastic) end   -- 尾翼上的八一标志
       end
     end
@@ -516,8 +571,20 @@ function AM.build(d, team, load)
         quad(pt(0, 0), pt(0, 0.7), pt(1, 0.7), pt(1, 0), 0.35, skin)
         local a, b = pt(0.05, 0.7), pt(1, 0.7)
         quad(a, pt(0.05, 1), pt(1, 1), b, 0.3, skinD, MAT.Metal, "h", { hp = a, ax = (b - a).Unit, f = function(c) return ((c.yaw or 0) * s * -1 - (c.pit or 0)) * rad(18) end })
+        table.insert(NL.tails, pt(1, 0.92))
       end
       if VT.ventral then box(V(0.3, 3.2, 3.5), CF(0, (F.y or 0) - 2.6, VT.z0 + 2.5), skin) end
+    end
+    -- 夜航灯光：没有垂尾的（飞翼）尾灯在后缘中间；防撞灯在机背（座舱后面）、机腹；着陆灯在前起落架舱前面
+    if #NL.tails == 0 then table.insert(NL.tails, V(0, y0, L / 2 + 0.3)) end
+    if NL.tip then
+      if d.flyingWing then
+        NL.top, NL.bottom = V(0, y0 + h * 0.66, -L * 0.04), V(0, y0 - h * 0.52, L * 0.04)
+      else
+        NL.top, NL.bottom = V(0, y0 + h * 0.52 + 0.25, L * 0.06), V(0, y0 - h * 0.43 - 0.25, L * 0.12)
+      end
+      if d.gear then NL.land = V(0, y0 - h * 0.46, d.gear.nose.z - 1.2) end
+      navLights(NL)
     end
     -- 起落架、舱门
     local G = d.gear
@@ -640,7 +707,8 @@ function AM.build(d, team, load)
       box(V(0.3, 1.6, 0.3), CF(0, 0.6, T.hub.Z - 2.5), STEEL, MAT.Metal)
       wheel(CF(0, -0.4, T.hub.Z - 2.5), 0.6, 0.35)
       if d.longbow then cylY(1.4, 3.0, CF(R.hub + V(0, 1.6, 0)), skinD, MAT.SmoothPlastic, "r", { hub = CF(R.hub), f = function() return 0 end }) end
-      lights(S.x + S.span, S.y, S.z, T.hub.Z + 1.5, T.hub.Y + 3.4)
+      navLights({ tip = V(S.x + S.span + 0.2, S.y + 0.1, S.z - 0.6), tails = { V(0, T.hub.Y + 3.5, T.hub.Z + 1.3) },
+        top = V(0, 4.45, 3.8), bottom = V(0, -2.75, -1.5), land = V(0, -2.4, -12.2) })   -- 短翼翼尖航行灯、垂尾顶白灯、主减速器后面 / 机腹防撞灯、机头下着陆灯
       cylY(R.hub.Y - 3.5, 0.9, CF(R.hub.X, (R.hub.Y + 3.5) / 2, R.hub.Z), STEEL, MAT.Metal)   -- 旋翼轴
       rotor(R, "r", "spin1", "y")
     elseif style == "utility" then
@@ -690,7 +758,8 @@ function AM.build(d, team, load)
           table.insert(M.pylons, p)
         end
       end
-      lights(cw / 2, 0, 0, T.hub.Z + 1.4, T.hub.Y + 2.6)
+      navLights({ tip = V(cw / 2 + 0.15, ch * 0.42, -3), tails = { V(0, T.hub.Y + 2.9, T.hub.Z + 1.2) },
+        top = V(0, ch * 0.5 + 1.25, 4.5), bottom = V(0, -ch / 2 - 0.2, -2), land = V(0, -ch / 2 - 0.15, -cl * 0.38) })   -- 座舱两侧航行灯、垂尾顶白灯、发动机后面 / 机腹防撞灯
       cylY(R.hub.Y - ch * 0.6, 0.9, CF(R.hub.X, (R.hub.Y + ch * 0.6) / 2, R.hub.Z), STEEL, MAT.Metal)
       rotor(R, "r", "spin1", "y")
     elseif style == "chinook" then
@@ -715,7 +784,8 @@ function AM.build(d, team, load)
       -- 后跳板：落地放下
       local hp = V(0, -ch / 2 + 0.3, 19.2)
       box(V(cw * 0.86, 5.6, 0.45), CF(0, -ch / 2 + 0.3 + 2.8, 19.2), skinD, MAT.Metal, "h", { hp = hp, ax = V(1, 0, 0), f = function(c) return (c.ramp or 0) * rad(78) end })
-      lights(cw / 2 + 1.5, -ch * 0.34, -1, 21, ch * 0.5 + 5.5)
+      navLights({ tip = V(cw / 2 + 1.6, -ch * 0.3, -1), tails = { V(0, ch * 0.5 + 5.9, 21.2) },
+        top = V(0, ch * 0.5 + 6.1, 13), bottom = V(0, -ch / 2 - 0.2, 0), land = V(0, -ch / 2 - 0.15, -18) })   -- 侧面油箱整流罩航行灯、后塔顶白灯和防撞灯、机腹防撞灯
       rotor(R, "r", "spin1", "y")
       rotor(d.rotor2, "r", "spin2", "y")
     end
@@ -822,11 +892,21 @@ function AM.pose(M, cf, c, now, world)
     for _, it in ipairs(M.blades) do it.p.Transparency = (blur == 1) and 0.72 or 0 end
     for _, it in ipairs(M.discs) do it.p.Transparency = (blur == 1) and 0.86 or 1 end
   end
-  -- 防撞灯一秒闪一下
-  local on = (now % 1.1) < 0.12
-  for _, it in ipairs(M.strobes) do
-    local tr = on and 0 or 0.85
-    if it.p.Transparency ~= tr then it.p.Transparency = tr end
+  -- 灯：航行灯常亮；防撞灯一秒闪一下（机背、机腹错开半拍）；翼尖频闪双闪；着陆灯随起落架；被击毁 / 关灯（M.dark）全灭
+  local gearDown = (c.gear or 0) > 0.6
+  for _, it in ipairs(M.lamps) do
+    local on = not M.dark
+    if on then
+      if it.lamp == "beacon" then on = ((now + it.phase) % 1.0) < 0.12
+      elseif it.lamp == "strobe" then local u = now % 1.3 on = u < 0.05 or (u > 0.16 and u < 0.21)
+      elseif it.lamp == "land" then on = gearDown end
+    end
+    if it.on ~= on then
+      it.on = on
+      it.p.Transparency = on and 0 or 0.92
+      if it.lamp ~= "land" then it.bb.Enabled = on end
+      it.pl.Enabled = on
+    end
   end
   M.anchor.CFrame = cf * CF(0, M.def.H * 0.7 + 2, 0)
 end

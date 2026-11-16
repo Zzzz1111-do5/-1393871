@@ -37,6 +37,24 @@ function Fx.init(G)
     tw:Play()
     return tw
   end
+  -- 夜战：一闪的光（枪口焰、炮口、爆炸）——看不见的锚定小零件挂一个点光源，亮度很快降到 0（Future 光照下会照亮四周的地面、墙、车）
+  local function flash(p, color, range, bright, t)
+    local h = part(nil, V(0.2, 0.2, 0.2), CFrame.new(p), color, Enum.Material.SmoothPlastic, 1)
+    local pl = Instance.new("PointLight")
+    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, range > 20
+    pl.Parent = h
+    tween(pl, t, { Brightness = 0 })
+    Debris:AddItem(h, t + 0.05)
+    return pl
+  end
+  G.flash = flash
+  -- 跟着一个零件走的光（导弹尾焰、热诱弹）
+  local function glowOn(p, color, range, bright)
+    local pl = Instance.new("PointLight")
+    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, false
+    pl.Parent = p
+    return pl
+  end
   G.tween = tween
 
   ---------------------------------------------------------------- 音效
@@ -110,6 +128,7 @@ function Fx.init(G)
     local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
     tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
     Debris:AddItem(fl, 0.08)
+    if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
     -- 弹着点一小团灰
     task.delay(L / speed, function()
       local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
@@ -127,6 +146,7 @@ function Fx.init(G)
     local f = part(BALL, V(2, 2, 2) * s, CFrame.new(p), RGB(255, 170, 60), Enum.Material.Neon, 0)
     tween(f, 0.35, { Size = V(16, 16, 16) * s, Transparency = 1 })
     Debris:AddItem(f, 0.4)
+    flash(p + V(0, 3, 0), RGB(255, 150, 70), math.min(60, 34 * s), 10, 0.9)   -- 爆炸把周围照亮一下
     for i = 1, 5 do
       local off = V(math.random() - 0.5, math.random() * 0.8, math.random() - 0.5) * 8 * s
       local sm = part(BALL, V(4, 4, 4) * s, CFrame.new(p + off), RGB(70, 66, 62), Enum.Material.SmoothPlastic, 0.15)
@@ -161,6 +181,7 @@ function Fx.init(G)
       local glow = nil
       if kind == "missile" then
         glow = part(BALL, V(1.1, 1.1, 1.1) * math.max(1, aw.shape and aw.shape.d * 1.6 or 1), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
+        glowOn(glow, RGB(255, 180, 100), 22, 4)   -- 尾焰照亮弹体和周围
         G.playSound("rocket", e.p)
       end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
@@ -171,6 +192,7 @@ function Fx.init(G)
     if kind == "shell" then   -- 炮弹：一道亮的曳光
       local big = e.f == "tank"
       body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
+      if big then glowOn(body, RGB(255, 220, 170), 10, 2) end
       flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, t = 0, kind = kind, trailT = 0 }
       return
     elseif kind == "grenade" then
@@ -266,6 +288,7 @@ function Fx.init(G)
       local f = part(BALL, V(1.4, 1.4, 1.4), CFrame.new(e.p), RGB(255, 236, 170), Enum.Material.Neon, 0)
       local p1 = e.p + v0 * 0.35 + dir * (40 + i * 8)
       tween(f, 1.8, { CFrame = CFrame.new(p1 - V(0, 30, 0)), Transparency = 1, Size = V(0.6, 0.6, 0.6) })
+      if i <= 2 then tween(glowOn(f, RGB(255, 222, 160), 34, 5), 1.8, { Brightness = 0 }) end   -- 夜里热诱弹把飞机照亮
       Debris:AddItem(f, 1.85)
       for k = 1, 4 do
         task.delay(k * 0.25, function()
@@ -297,6 +320,7 @@ function Fx.init(G)
     local fl = part(BALL, big and V(4, 4, 4) or V(1.6, 1.6, 1.6), CFrame.new(e.p + dir * (big and 2 or 0.6)), RGB(255, 210, 120), Enum.Material.Neon, 0)
     tween(fl, big and 0.12 or 0.06, { Transparency = 1, Size = (big and V(9, 9, 9) or V(3, 3, 3)) })
     Debris:AddItem(fl, 0.15)
+    flash(e.p + dir * (big and 3 or 1), RGB(255, 190, 110), big and 46 or 16, big and 9 or 4, big and 0.28 or 0.1)
     if big then
       local holder = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(e.p, e.p + dir), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
       local pe = Instance.new("ParticleEmitter")

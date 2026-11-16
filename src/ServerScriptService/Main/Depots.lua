@@ -179,6 +179,14 @@ function Depots.init(G)
     for k = -1, 1 do   -- 中线和几处集装箱、器材（站人的地方不挡）
       part(m, V(1, 0.08, B.L * 0.8), CF(B.x + k * 30, B.top + 0.04, B.z), RGB(200, 170, 60))
     end
+    -- 夜里：中间一列探照灯、四角红灯、两边每个生成格一盏琥珀色边灯
+    local W = G.World
+    if W and W.floodPole then
+      for k = -1, 1 do W.floodPole(m, B.x, B.top, B.z + k * B.L * 0.32, 16, Color3.fromRGB(255, 222, 172), 100) end
+      for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+        W.light(m, V(B.x + c[1] * (B.W / 2 - 1), B.top + 3, B.z + c[2] * (B.L / 2 - 1)), Color3.fromRGB(255, 50, 40), 0.6, 10, 1.2, nil, 3)
+      end
+    end
     m.Parent = f
     return m
   end

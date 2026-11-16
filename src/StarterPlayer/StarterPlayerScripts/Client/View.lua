@@ -48,6 +48,12 @@ function View.init(G)
     L.vest = { p(m, V(2.15, 1.3, 1.25), CF(), U[2]), CF(0, 0.55, 0) }
     L.head = { p(m, V(1.2, 1.2, 1.2), CF(), RGB(230, 190, 150)), CF(0, 2.0, 0) }
     L.helmet = { p(m, V(1.45, 0.65, 1.45), CF(), U[2], Enum.Material.SmoothPlastic), CF(0, 2.55, 0) }
+    -- 夜视仪：头盔前面的支架和双筒（机器人夜里一直戴着、翻下来）
+    L.nvg = { p(m, V(0.62, 0.24, 0.3), CF(), RGB(28, 30, 32), Enum.Material.Metal), CF(0, 2.22, -0.78) }
+    for sx = -1, 1, 2 do
+      L["nvgTube" .. sx] = { p(m, V(0.42, 0.24, 0.24), CF(), RGB(22, 24, 26), Enum.Material.Metal, Enum.PartType.Cylinder),
+        CF(sx * 0.17, 2.12, -1.0) * CFrame.Angles(0, math.pi / 2, 0) }
+    end
     L.lleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(-0.5, -1.6, 0), "leg", 1 }
     L.rleg = { p(m, V(0.9, 2, 0.9), CF(), U[2]), CF(0.5, -1.6, 0), "leg", -1 }
     L.larm = { p(m, V(0.8, 1.9, 0.8), CF(), U[1]), CF(-1.2, 0.5, -0.5) * CFrame.Angles(-1.2, 0.35, 0) }
@@ -209,6 +215,15 @@ function View.init(G)
 
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
+    -- 车灯：有人开、没被打爆才亮
+    local lit = (em:GetAttribute("Driver") or 0) ~= 0 and not v.wrecked
+    if v.lit ~= lit and M.lamps then
+      v.lit = lit
+      for _, p in ipairs(M.lamps) do
+        p.Transparency = lit and 0 or 0.75
+        for _, L in ipairs(p:GetChildren()) do if L:IsA("Light") then L.Enabled = lit end end
+      end
+    end
     local own = G.myVeh and G.myVeh.em == em and G.myVeh
     local target = own and own.root or v.root.CFrame
     -- 位置：自己开的直接用本地算的；别人的平滑跟
@@ -303,12 +318,19 @@ function View.init(G)
     v.anchor.CFrame = hullF * CF(0, d.H + 1, 0)
     -- 扬尘：在陆地上开得快才有
     local land = not onWater
+    if v.fireLight then v.fireLight.Brightness = 2.2 + math.random() * 1.8 end
     local rate = land and math.clamp((math.abs(v.speed) - 6) * 1.3, 0, 45) or 0
     for _, pe in ipairs(M.dust) do pe.Rate = rate end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
       M.fire.Rate, M.black.Rate = 30, 12
+      if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
+        local pl = Instance.new("PointLight")
+        pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, true
+        pl.Parent = M.fire.Parent
+        v.fireLight = pl
+      end
       for _, it in ipairs(M.parts) do
         local part = it[1]
         if part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end

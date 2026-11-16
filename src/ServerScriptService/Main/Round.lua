@@ -176,6 +176,94 @@ function Round.init(G)
       hum.NameOcclusion = Enum.NameOcclusion.EnemyOcclusion
       hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
     end
+    G.try("头盔夜视仪", G.helmetGear, P, char)
+  end
+
+  -- 夜战装具：头盔（两队不同色）、头盔前面的夜视仪支架和双筒夜视仪（不用时翻上去，开了翻下来，别人看得到）、
+  --   头盔后面的红外频闪（平时看不见，队友开着夜视才看得见，Night.lua）
+  local HELMET = { atk = Color3.fromRGB(96, 104, 72), def = Color3.fromRGB(146, 128, 96) }
+  local NVG_UP, NVG_DOWN = CFrame.Angles(math.rad(-80), 0, 0), CFrame.Angles(0, 0, 0)
+  function G.helmetGear(P, char)
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+    for _, a in ipairs(char:GetChildren()) do   -- 帽子类饰品摘掉（头发留着），戴头盔
+      if a:IsA("Accessory") and a.AccessoryType == Enum.AccessoryType.Hat then a:Destroy() end
+    end
+    local hs = head.Size
+    local k = math.max(hs.X, hs.Z) / 1.2   -- 按头的大小缩放（R15 头大约 1.2 格）
+    local function piece(name, size, off, color, mat, shape)
+      local p = Instance.new("Part")
+      p.Name = name
+      p.Size = size * k
+      if shape then p.Shape = shape end
+      p.Color = color
+      p.Material = mat or Enum.Material.SmoothPlastic
+      p.CanCollide, p.CanQuery, p.CanTouch, p.Massless, p.CastShadow = false, false, false, true, true
+      p.CFrame = head.CFrame * off
+      local w = Instance.new("WeldConstraint")
+      w.Part0, w.Part1 = head, p
+      w.Parent = p
+      p.Parent = char
+      return p
+    end
+    local col = HELMET[P.team] or HELMET.def
+    local shell = piece("Helmet", Vector3.new(1.42, 0.86, 1.5), CFrame.new(0, 0.42 * k, 0.04 * k), col, Enum.Material.Fabric)
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.Sphere
+    mesh.Parent = shell
+    piece("HelmetRim", Vector3.new(1.46, 0.14, 1.54), CFrame.new(0, 0.08 * k, 0.04 * k), col:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.Fabric)
+    local mount = piece("NVGMount", Vector3.new(0.34, 0.26, 0.16), CFrame.new(0, 0.42 * k, -0.74 * k), Color3.fromRGB(34, 36, 38), Enum.Material.Metal)
+    -- 夜视仪：支架上一个铰链，两个镜筒（翻上 / 翻下靠改焊接的 C0）
+    local body = Instance.new("Part")
+    body.Name = "NVG"
+    body.Size = Vector3.new(0.62, 0.2, 0.22) * k
+    body.Color, body.Material = Color3.fromRGB(28, 30, 32), Enum.Material.Metal
+    body.CanCollide, body.CanQuery, body.CanTouch, body.Massless = false, false, false, true
+    body.CFrame = mount.CFrame * CFrame.new(0, -0.16 * k, -0.14 * k)
+    body.Parent = char
+    local hinge = Instance.new("Weld")
+    hinge.Name = "NVGHinge"
+    hinge.Part0, hinge.Part1 = mount, body
+    hinge.C1 = CFrame.new(0, 0.16 * k, 0.1 * k)   -- 铰链在镜筒上沿后面
+    hinge.C0 = NVG_UP
+    hinge.Parent = body
+    for _, sx in ipairs({ -1, 1 }) do
+      local tube = Instance.new("Part")
+      tube.Name = "NVGTube"
+      tube.Shape = Enum.PartType.Cylinder
+      tube.Size = Vector3.new(0.42, 0.24, 0.24) * k
+      tube.Color, tube.Material = Color3.fromRGB(22, 24, 26), Enum.Material.Metal
+      tube.CanCollide, tube.CanQuery, tube.CanTouch, tube.Massless = false, false, false, true
+      tube.CFrame = body.CFrame * CFrame.new(sx * 0.17 * k, -0.06 * k, -0.12 * k) * CFrame.Angles(0, math.pi / 2, 0)
+      local w = Instance.new("WeldConstraint")
+      w.Part0, w.Part1 = body, tube
+      w.Parent = tube
+      tube.Parent = char
+      local lens = Instance.new("Part")   -- 物镜：一点暗绿的反光
+      lens.Name = "NVGLens"
+      lens.Shape = Enum.PartType.Cylinder
+      lens.Size = Vector3.new(0.03, 0.2, 0.2) * k
+      lens.Color, lens.Material = Color3.fromRGB(40, 70, 52), Enum.Material.Glass
+      lens.CanCollide, lens.CanQuery, lens.CanTouch, lens.Massless = false, false, false, true
+      lens.CFrame = tube.CFrame * CFrame.new(-0.215 * k, 0, 0)
+      local w2 = Instance.new("WeldConstraint")
+      w2.Part0, w2.Part1 = tube, lens
+      w2.Parent = lens
+      lens.Parent = char
+    end
+    local ir = piece("IRStrobe", Vector3.new(0.16, 0.16, 0.16), CFrame.new(0, 0.62 * k, 0.62 * k), Color3.fromRGB(255, 255, 255), Enum.Material.Neon)
+    ir.Transparency = 1
+    ir.CastShadow = false
+    char:SetAttribute("NVG", false)
+  end
+  -- 开关夜视仪：别人看到镜筒翻下来 / 翻上去
+  function G.ACT.nvg(P, on)
+    local char = P.char
+    local body = char and char:FindFirstChild("NVG")
+    local hinge = body and body:FindFirstChild("NVGHinge")
+    if not hinge then return end
+    hinge.C0 = (on == true) and NVG_DOWN or NVG_UP
+    char:SetAttribute("NVG", on == true)
   end
 
   local function onDied(P, char)

@@ -131,6 +131,37 @@ check(st ~= nil and st.pilot and st.ground, "客户端接管驾驶、在甲板�
 local p0 = e and e.root.CFrame.Position
 check(p0 and G.Map and math.abs(p0.Y - 30.5 - e.def.gearH) < 1, string.format("停在航母甲板上（高 %.1f）", p0 and p0.Y or -1))
 
+-- 夜航灯光（位置照真飞机）：右翼尖绿、左翼尖红、尾部白；机背 / 机腹红色防撞灯；翼尖频闪；着陆灯（起落架放着时亮）；防撞灯会闪
+do
+	local v = CA.views and e and CA.views[e.model]
+	local M = v and v.M
+	local lamps = M and M.lamps or {}
+	local cnt, green, red, top, bottom = {}, nil, nil, nil, nil
+	local cf = e.root.CFrame
+	for _, it in ipairs(lamps) do
+		cnt[it.lamp] = (cnt[it.lamp] or 0) + 1
+		local lp = cf:PointToObjectSpace(it.p.CFrame.Position)
+		local col = it.p.Color
+		if it.lamp == "nav" and col.G > 0.8 and col.R < 0.5 then green = lp end
+		if it.lamp == "nav" and col.R > 0.8 and col.G < 0.4 then red = lp end
+		if it.lamp == "beacon" then if lp.Y > 0 then top = lp else bottom = lp end end
+	end
+	local half = e.def.W / 2
+	check(cnt.nav and cnt.nav >= 3 and cnt.strobe == 2 and cnt.beacon == 2 and cnt.land == 1,
+		string.format("歼-35 的灯：航行灯 %d、频闪 %d、防撞灯 %d、着陆灯 %d", cnt.nav or 0, cnt.strobe or 0, cnt.beacon or 0, cnt.land or 0))
+	check(green and red and green.X > half * 0.4 and red.X < -half * 0.4, string.format("右翼尖绿灯（x %.1f）、左翼尖红灯（x %.1f）", green and green.X or 0, red and red.X or 0))
+	check(top and bottom and top.Y > 0 and bottom.Y < 0, "防撞灯一个在机背、一个在机腹")
+	local landOn = false
+	for _, it in ipairs(lamps) do if it.lamp == "land" then landOn = it.on == true end end
+	check(landOn, "起落架放着：着陆灯亮着")
+	local seen = {}
+	for _ = 1, 30 do
+		H.run(0.05)
+		for _, it in ipairs(lamps) do if it.lamp == "beacon" then seen[it.on and "on" or "off"] = true end end
+	end
+	check(seen.on and seen.off, "防撞灯一闪一闪")
+end
+
 print("③ 滑到弹射器：甲板上滑不快，到起点对正就卡上")
 H.key(atk, Enum.KeyCode.W, true)
 H.run(3)
