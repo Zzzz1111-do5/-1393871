@@ -1134,6 +1134,28 @@ return {
     </Item>
     <Item class="ModuleScript" referent="8">
       <Properties>
+        <string name="Name">ImportedShip</string>
+        <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py），别手改：网页版舰艇模型原样转成的 Roblox 模型（models/ship/<型号>.glb）的元数据
+--   m[型号] = { len 长 / w 宽 / h 水线以上高 / draft 吃水（格，游戏里舰艇的比例：1 米 = 1.68 格）, parts[块名] = { g 部件（Hull / T1 / T2…）, c 中心, s 大小, col 没贴图的块的颜色 },
+--     guns[第几座炮] = { g 部件, piv 炮塔转轴（在甲板上）, tip 炮口离转轴多远, n 三角形数 }（没挑出来的是 false；ShipDefs 的炮位、炮管长照这个改）,
+--     top 最高点（桅顶）, stern 船尾甲板, side 舰桥一侧的航行灯 { x, y, z }, credit 署名 }
+--   坐标：X 右、Y 上、−Z 船头，原点在水线、船长和船宽的中间（ShipView 的船体坐标）；导入后 MeshPart 叫 S_<型号>__<块名>
+return {
+  m = {
+    cg47 = { credit = "提康德罗加级巡洋舰：Ticonderoga Missile Cruiser，作者 waelXcm（https://sketchfab.com/3d-models/ticonderoga-missile-cruiser-397bd2b7bcd946e4b508869f4ca1e1cf），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", draft = 17.301, guns = { { g = "T1", n = 340, piv = { 0, 13.079, -90.1 }, tip = 11.93 }, { g = "T2", n = 371, piv = { 0, 7.01, 120.2 }, tip = 17.028 } }, h = 78.817, len = 289.605, parts = { Hull_1 = { c = { 0.045, 11.57, 0 }, g = "Hull", s = { 30.95, 57.743, 289.605 } }, Hull_2 = { c = { 0, 43.419, -13.664 }, g = "Hull", s = { 28.928, 70.796, 244.813 } }, Hull_3 = { c = { 0, 16.651, 18.808 }, g = "Hull", s = { 32.569, 58.313, 218.396 } }, Hull_4 = { c = { -0.071, 21.092, 24.879 }, g = "Hull", s = { 24.71, 30.483, 235.48 } }, Hull_5 = { c = { 0.486, 16.088, 12.232 }, g = "Hull", s = { 20.737, 9.742, 14.11 } }, T1_1 = { c = { 0, 15.895, -94.288 }, g = "T1", s = { 5.489, 7.115, 15.484 } }, T2_1 = { c = { 0, 10.092, 126.757 }, g = "T2", s = { 5.489, 6.163, 20.942 } } }, side = { 14.577, 13.198, 4.987 }, stern = { 0, 13.173, 142.619 }, top = { 0.372, 78.817, 4.227 }, w = 32.569 },
+    ddg125 = { credit = "阿利·伯克级驱逐舰（Flight III）：USS Jack H. Lucas DDG-125，作者 SB-129（https://sketchfab.com/3d-models/uss-jack-h-lucas-ddg-125-1c9229b49915454c8ff22605f8cc7b66），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", draft = 15.618, guns = { { g = "T1", n = 365, piv = { -0.623, 11.436, -78.1 }, tip = 12.23 } }, h = 71.254, len = 260.904, parts = { Hull_1 = { c = { 0.742, 20.574, 47.553 }, g = "Hull", s = { 3.438, 5.945, 5.773 } }, Hull_10 = { c = { -0.429, 10.236, 4.401 }, g = "Hull", s = { 35.185, 2.923, 4.785 } }, Hull_11 = { c = { -3.094, 7.978, 114.354 }, g = "Hull", s = { 14.437, 6.357, 24.647 } }, Hull_2 = { c = { 2.83, 6.842, 113.771 }, g = "Hull", s = { 1.697, 1.791, 18.91 } }, Hull_3 = { c = { 1.666, 7.29, 113.94 }, g = "Hull", s = { 6.629, 3.94, 23.819 } }, Hull_4 = { c = { 2.095, 10.748, 125.39 }, g = "Hull", s = { 0.448, 0.518, 0.545 } }, Hull_5 = { c = { 0, 27.818, 0 }, g = "Hull", s = { 36.758, 86.872, 260.904 } }, Hull_6 = { c = { -6.566, 19.793, 50.572 }, g = "Hull", s = { 15.294, 10.843, 30.85 } }, Hull_7 = { c = { 2.066, 10.755, 125.362 }, g = "Hull", s = { 0.623, 3.158, 3.117 } }, Hull_8 = { c = { 1.622, 9.904, 73.488 }, g = "Hull", s = { 22.033, 43.94, 90.551 } }, Hull_9 = { c = { 0.543, 17.21, 55.726 }, g = "Hull", s = { 29.408, 6.828, 21.092 } }, T1_1 = { c = { -0.623, 15.349, -77.977 }, g = "T1", s = { 5.037, 4.598, 6.37 } }, T1_2 = { c = { -0.629, 14.929, -83.108 }, g = "T1", s = { 4.244, 6.583, 14.444 } } }, side = { 18.379, 18.995, -33.229 }, stern = { 0, 12.334, 126.921 }, top = { 0.322, 71.254, -18.486 }, w = 36.758 },
+    lcs2 = { credit = "独立级濒海战斗舰：USS INDEPENDENCE  LCS-2，作者 Muhamad Mirza Arrafi（https://sketchfab.com/3d-models/uss-independence-lcs-2-7db04398d9524a36a6e08bead0050b76），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", draft = 7.233, guns = { { g = "T1", n = 542, piv = { 0, 16.635, -47.4 }, tip = 5.542 } }, h = 44.431, len = 214.032, parts = { Hull_1 = { c = { 0.007, 23.202, 4.509 }, g = "Hull", s = { 7.211, 13.076, 110.133 } }, Hull_2 = { c = { 0.055, 21.23, 82.767 }, g = "Hull", s = { 5.681, 9.164, 12.299 } }, Hull_3 = { c = { 0, 18.599, 0 }, g = "Hull", s = { 47.986, 51.664, 214.032 } }, T1_1 = { c = { -0.021, 24.358, -48.174 }, g = "T1", s = { 7.153, 10.668, 9.536 } } }, side = { 19.125, 16.658, -18.817 }, stern = { 0, 17.918, 107.006 }, top = { 0.13, 44.431, -21.658 }, w = 47.986 },
+    pbr = { credit = "内河巡逻艇（代海上抢修艇）：Patrol Boat PBR MK2，作者 Savy（https://sketchfab.com/3d-models/patrol-boat-pbr-mk2-dbd87172b2934063aa93ffd0c6f85750），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", draft = 1, guns = { { g = "T1", n = 2560, piv = { 0.016, 2.4, -6.226 }, tip = 1.102 } }, h = 6.336, len = 15.96, parts = { Hull_1 = { c = { 0, 2.668, 0 }, g = "Hull", s = { 6.192, 7.336, 15.96 } }, Hull_2 = { c = { 0.02, 3.366, 2.016 }, g = "Hull", s = { 5.464, 5.941, 11.762 } }, T1_1 = { c = { 0.016, 1.839, -6.226 }, g = "T1", s = { 2.115, 0.881, 2.204 } } }, stern = { 0, 6.336, 7.98 }, top = { 0.046, 6.336, 1.931 }, w = 6.192 },
+    t022 = { credit = "022 型导弹艇（代火箭 / 火力支援艇）：Type 22 missile boat，作者 dannzjs（https://sketchfab.com/3d-models/type-22-missile-boat-623de3c8e01c411d8764a779d12f1622），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", draft = 3, guns = { false }, h = 25.649, len = 71.568, parts = { Hull_1 = { c = { -0, 10.407, -2.057 }, g = "Hull", s = { 15.358, 12.604, 54.232 } }, Hull_10 = { c = { -0, 6.203, 26.786 }, col = { 255, 209, 192 }, g = "Hull", s = { 7.727, 1.526, 1.58 } }, Hull_11 = { c = { 0, 9.347, 11.206 }, g = "Hull", s = { 14.532, 1.486, 5.086 } }, Hull_12 = { c = { 0.001, 6.768, 11.447 }, g = "Hull", s = { 13.58, 0.021, 8.657 } }, Hull_2 = { c = { 0, 8.306, 0 }, g = "Hull", s = { 18.558, 14.942, 71.568 } }, Hull_3 = { c = { 1.017, 6.567, 0 }, g = "Hull", s = { 17.002, 14.018, 71.568 } }, Hull_4 = { c = { -3.003, 6.567, 0 }, g = "Hull", s = { 13.03, 14.018, 71.568 } }, Hull_5 = { c = { 0, 8.812, -18.33 }, g = "Hull", s = { 17.976, 9.421, 17.51 } }, Hull_6 = { c = { 0.236, 9.532, -3.119 }, g = "Hull", s = { 14.523, 13.442, 61.394 } }, Hull_7 = { c = { -0, 11.325, -0.72 }, g = "Hull", s = { 18.966, 28.649, 70.091 } }, Hull_8 = { c = { -0.001, 6.297, -19.027 }, g = "Hull", s = { 17.718, 6.972, 29.579 } }, Hull_9 = { c = { 0, 14.315, 4.333 }, g = "Hull", s = { 15.462, 22.669, 60.695 } } }, side = { 8.111, 7.898, -25.966 }, stern = { 0, 9.705, 35.784 }, top = { -5.205, 25.649, 0.019 }, w = 19.035 },
+    t054a = { credit = "054A 型护卫舰：Type-054A Class Frigate，作者 Muhamad Mirza Arrafi（https://sketchfab.com/3d-models/type-054a-class-frigate-948cca64a5274644a35e4600e023d61d），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", draft = 8.046, guns = { { g = "T1", n = 435, piv = { 0, 8.787, -69.2 }, tip = 7.576 } }, h = 48.835, len = 225.12, parts = { Hull_1 = { c = { 0, 28.92, -26.026 }, g = "Hull", s = { 18.924, 21.439, 32.558 } }, Hull_2 = { c = { 0, 21.234, -1.128 }, g = "Hull", s = { 26.607, 55.202, 83.961 } }, Hull_3 = { c = { 0, 5.934, -75.019 }, g = "Hull", s = { 26.607, 27.149, 75.081 } }, Hull_4 = { c = { 0, -4.631, 42.58 }, g = "Hull", s = { 21.653, 6.83, 128.006 } }, Hull_5 = { c = { 0, 11.749, 76.706 }, g = "Hull", s = { 29.485, 36.231, 71.708 } }, Hull_6 = { c = { -0.085, 8.443, 6.056 }, g = "Hull", s = { 14.817, 4.064, 204.633 } }, T1_1 = { c = { 0, 11.851, -71.083 }, g = "T1", s = { 7.268, 6.089, 11.387 } } }, side = { 12.51, 12.252, -5.196 }, stern = { 0, 13.313, 112.56 }, top = { -0.079, 48.835, -3.179 }, w = 29.485 },
+    t055 = { credit = "055 型驱逐舰：CN TYPE 055 Nanchang v3.0，作者 FeriseCAT（https://sketchfab.com/3d-models/cn-type-055-nanchang-v30-8850f8cf1eee409abe08519fd54809cd），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", draft = 12.482, guns = { { g = "T1", n = 279, piv = { 0, 10.26, -92.7 }, tip = 10.86 } }, h = 65.385, len = 298.802, parts = { Hull_1 = { c = { -0.069, 37.607, -1.872 }, g = "Hull", s = { 30.226, 54.694, 295.058 } }, Hull_10 = { c = { 1.996, 3.25, -70.024 }, g = "Hull", s = { 3.555, 5.845, 4.664 } }, Hull_11 = { c = { 1.998, 3.415, -70.024 }, col = { 255, 255, 255 }, g = "Hull", s = { 3.265, 6.491, 4.372 } }, Hull_12 = { c = { -2.135, 3.877, -70.024 }, g = "Hull", s = { 3.793, 7.961, 4.901 } }, Hull_13 = { c = { -2.135, 4.889, -70.024 }, g = "Hull", s = { 3.381, 6.712, 4.491 } }, Hull_14 = { c = { -2.135, 2.971, -70.021 }, g = "Hull", s = { 3.513, 5.688, 4.623 } }, Hull_15 = { c = { -2.135, 6.212, -70.024 }, g = "Hull", s = { 3.54, 0.943, 4.646 } }, Hull_16 = { c = { -2.135, 3.437, -70.021 }, g = "Hull", s = { 3.267, 6.736, 4.377 } }, Hull_17 = { c = { -0.069, 10.331, -93.268 }, g = "Hull", s = { 3.455, 0.72, 3.451 } }, Hull_18 = { c = { 0.143, -9.887, 143.957 }, g = "Hull", s = { 12.85, 4.286, 1.55 } }, Hull_19 = { c = { -0.069, 17.384, -1.564 }, g = "Hull", s = { 30.009, 14.537, 294.233 } }, Hull_2 = { c = { -0.069, 13.076, -25.97 }, g = "Hull", s = { 29.808, 29.526, 245.384 } }, Hull_20 = { c = { -0.073, 16.017, -1.874 }, g = "Hull", s = { 29.061, 11.515, 293.905 } }, Hull_21 = { c = { -0.07, 20.335, 0.431 }, g = "Hull", s = { 28.786, 2.879, 297.94 } }, Hull_22 = { c = { -0.07, 20.587, 1.112 }, g = "Hull", s = { 28.737, 14.503, 43.739 } }, Hull_23 = { c = { -0.069, 40.635, 23.305 }, g = "Hull", s = { 29.404, 49.5, 143.294 } }, Hull_24 = { c = { -0.069, 30.994, -44.828 }, g = "Hull", s = { 24.764, 2.018, 6.57 } }, Hull_25 = { c = { -0.069, 22.637, 78.484 }, g = "Hull", s = { 2.302, 6.333, 16.633 } }, Hull_26 = { c = { 0.111, 22.961, 78.012 }, g = "Hull", s = { 1.223, 5.542, 13.929 } }, Hull_27 = { c = { -0.069, 23.071, 81.422 }, g = "Hull", s = { 0.071, 3.812, 12.379 } }, Hull_28 = { c = { -0.069, 19.566, 8.816 }, g = "Hull", s = { 26.915, 7.674, 135.798 } }, Hull_29 = { c = { -0.069, 20.424, 7.628 }, g = "Hull", s = { 31.089, 5.434, 137.599 } }, Hull_3 = { c = { -0.069, -3.019, 3.885 }, g = "Hull", s = { 27.203, 0.648, 283.546 } }, Hull_30 = { c = { -0.069, 21.275, 10.701 }, g = "Hull", s = { 19.373, 4.738, 132.027 } }, Hull_31 = { c = { -0.069, 21.365, 10.541 }, g = "Hull", s = { 18.946, 3.868, 131.279 } }, Hull_32 = { c = { -0.069, 23.969, 45.052 }, col = { 255, 255, 255 }, g = "Hull", s = { 5.757, 16.513, 37.136 } }, Hull_33 = { c = { -0.069, 23.789, -18.568 }, g = "Hull", s = { 27.304, 1.109, 8.088 } }, Hull_34 = { c = { -0.069, 10.619, 4.578 }, g = "Hull", s = { 29.362, 0.719, 252.514 } }, Hull_4 = { c = { -0.069, -7.912, 3.994 }, g = "Hull", s = { 26.523, 9.139, 283.327 } }, Hull_5 = { c = { -0.069, 10.26, 121.085 }, g = "Hull", s = { 29.808, 0.02, 48.727 } }, Hull_6 = { c = { 0.216, 3.783, -1.872 }, g = "Hull", s = { 30.796, 12.955, 295.058 } }, Hull_7 = { c = { -0.069, 4.79, -14.825 }, g = "Hull", s = { 10.795, 12.955, 131.84 } }, Hull_8 = { c = { -0.069, 4.934, -14.825 }, g = "Hull", s = { 8.57, 11.802, 129.451 } }, Hull_9 = { c = { 1.996, 4.732, -70.024 }, g = "Hull", s = { 3.793, 9.671, 4.901 } }, T1_1 = { c = { -0.069, 12.915, -96.908 }, g = "T1", s = { 3.388, 5.311, 12.721 } }, T1_2 = { c = { -0.069, 13.21, -96.614 }, g = "T1", s = { 3.742, 5.038, 13.893 } } }, side = { 14.492, 20.058, -34.216 }, stern = { 0, 11.699, 145.553 }, top = { -1.102, 65.385, -27.464 }, w = 31.228 },
+  },
+}
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="9">
+      <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
 --   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
@@ -1535,7 +1557,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -1884,11 +1906,11 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="10">
+    <Item class="Folder" referent="11">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -1908,7 +1930,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -1949,7 +1971,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="13">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -1969,7 +1991,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -1989,7 +2011,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -2009,7 +2031,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -2036,7 +2058,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -2070,7 +2092,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -2090,7 +2112,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -2138,7 +2160,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -2200,7 +2222,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -2220,7 +2242,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -2254,7 +2276,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -2275,7 +2297,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="24">
+    <Item class="ModuleScript" referent="25">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -2411,7 +2433,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="25">
+    <Item class="ModuleScript" referent="26">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -2497,6 +2519,27 @@ for id, d in pairs(D) do
   d.size = V(d.W, d.H, d.L)
 end
 
+-- 有原模型的舰艇（ImportedShip：网页版的舰艇模型原样转的，游戏比例）：主炮的炮塔转轴、炮管长照原模型——炮弹从看得见的炮口出去、
+--   炮塔转起来不跑偏；不管导没导入都一样（服务器和客户端算出来一致）。原模型上的炮位比上面零件拼的船靠后十几二十格
+do
+  local ok, IS = pcall(function()
+    local m = script and script.Parent and script.Parent:FindFirstChild("ImportedShip")
+    return m and require(m) or nil
+  end)
+  if ok and type(IS) == "table" and IS.m then
+    for id, d in pairs(D) do
+      local info = IS.m[id]
+      for gi, g in ipairs(d.guns or {}) do
+        local G = info and info.guns and info.guns[gi]
+        if G then
+          g.pos = V(G.piv[1], G.piv[2], G.piv[3])
+          if G.tip and G.tip > 1 then g.len = math.max(1, G.tip - g.size.Z * 0.35) end   -- 炮口：耳轴（转轴往前 0.35 个炮塔长）再往前 len
+        end
+      end
+    end
+  end
+end
+
 function ShipDefs.get(id) return D[id] end
 
 -- 炮塔、炮口的世界坐标：cf 是船（水线中心）的 CFrame；ty 方位（度，相对正前方，正数往右；船尾的炮相对正后方）、gp 俯仰
@@ -2521,7 +2564,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="26">
+    <Item class="ModuleScript" referent="27">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -2833,7 +2876,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="27">
+    <Item class="ModuleScript" referent="28">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -3072,17 +3115,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="28">
+    <Item class="Folder" referent="29">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="29">
+  <Item class="ServerScriptService" referent="30">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="30">
+    <Item class="Script" referent="31">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -3248,7 +3291,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -3959,7 +4002,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -4493,7 +4536,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -5140,7 +5183,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -5494,7 +5537,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -5754,7 +5797,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -6945,12 +6988,13 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
---   models/optics/<键>.glb（瞄准镜、手持装备）以后，MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/
---   O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Optics.<模型键>，
+--   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）以后，MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/
+--   A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/ S_<型号>__<块>（Hull_1、T1_1……）/ O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，
+--   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>，
 --   客户端（VehModels.lua、AirModels.lua）拼的时候看这里有没有，有就换上原模型；导入时自带的空 Model / 文件夹顺手删掉
 local RS = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -6969,14 +7013,14 @@ function Imports.init(G)
   end
 
   local imported = folder(RS, "Imported")
-  -- V 地面载具、A 飞机直升机、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）
-  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), O = folder(imported, "Optics") }
-  local n, keys, airKeys = 0, {}, {}
+  -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）
+  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics") }
+  local n, keys, airKeys, shipKeys = 0, {}, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VAO])_(%w+)__[%w_]+$")
+        local kind, key = string.match(d.Name, "^([VASO])_(%w+)__[%w_]+$")
         if kind == "O" then   -- 瞄准镜：只收好，不算进装备模型
           local parent = d.Parent
           d.Anchored = true
@@ -6989,7 +7033,7 @@ function Imports.init(G)
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
           d.Parent = folder(dest[kind], key)
           n += 1
-          if kind == "V" then keys[key] = true else airKeys[key] = true end
+          if kind == "V" then keys[key] = true elseif kind == "A" then airKeys[key] = true else shipKeys[key] = true end
           if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
         end
       end
@@ -7010,10 +7054,10 @@ function Imports.init(G)
     table.sort(list)
     return list
   end
-  G.importedVeh, G.importedAir = sorted(keys), sorted(airKeys)
+  G.importedVeh, G.importedAir, G.importedShip = sorted(keys), sorted(airKeys), sorted(shipKeys)
   if n > 0 then
     print("[全面大战场] 用上了导入的装备模型：" .. table.concat(G.importedVeh, "、") .. ((#G.importedAir > 0) and ("；飞机直升机：" .. table.concat(G.importedAir, "、")) or "")
-      .. "（" .. n .. " 块）")
+      .. ((#G.importedShip > 0) and ("；舰艇：" .. table.concat(G.importedShip, "、")) or "") .. "（" .. n .. " 块）")
   end
 end
 
@@ -7021,7 +7065,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -7214,7 +7258,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -8175,7 +8219,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
@@ -8866,7 +8910,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -8937,7 +8981,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -9186,7 +9230,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -9687,7 +9731,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -10293,15 +10337,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="45">
+  <Item class="StarterPlayer" referent="46">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="46">
+    <Item class="StarterPlayerScripts" referent="47">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="47">
+      <Item class="LocalScript" referent="48">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -10370,7 +10414,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -11466,7 +11510,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -11607,7 +11651,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -12256,7 +12300,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -12812,7 +12856,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -13016,7 +13060,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -14013,7 +14057,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -14331,7 +14375,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -14820,7 +14864,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -15358,7 +15402,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -15760,7 +15804,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -15950,7 +15994,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -16155,7 +16199,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -16322,7 +16366,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -16764,7 +16808,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -17296,7 +17340,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -18027,7 +18071,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -18036,6 +18080,9 @@ return Scope
 --   舰炮（炮塔按 Ty / Gp 转，开炮炮管后坐）、近防炮、舷号、航行灯（桅顶白、左红右绿、艉白）、舰旗；
 --   随浪起伏、转弯外倾；船头浪花、尾迹、烟囱排烟；挨打冒烟着火；击沉后慢慢倾覆、下沉
 --   自己开的船用本地算的位置和炮塔角（Sail.lua 的 G.sail），别人的平滑跟着服务器；船尾一个「上船」提示（码头上走过去按 E）
+--   原模型（网页版的舰艇模型原样转的 models/ship/<型号>.glb，Studio 导入后 Imports.lua 收进 ReplicatedStorage.Imported.Ship.<型号>，元数据 ImportedShip）：
+--     有就只换「蒙皮」——船体、上层建筑、桅杆、烟囱、垂发、近防炮、舷号换成原模型；主炮用原模型上的（炮塔连炮管跟着炮塔角转，不俯仰）；
+--     航行灯、舰旗挪到原模型上，浪花、尾迹、烟囱排烟、着火照旧
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 
@@ -18051,6 +18098,21 @@ function ShipView.init(G)
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local RED_LOW, BOOT, GLASS = RGB(118, 44, 40), RGB(30, 32, 34), RGB(28, 36, 44)
   local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 96, 190) }
+  local IS = nil   -- 原模型的元数据（tools/models/ship2glb.py 生成）
+  do
+    local ok, r = pcall(function() return require(RS:WaitForChild("ImportedShip", 3)) end)
+    if ok and type(r) == "table" then IS = r end
+  end
+  local function importedFor(d)
+    local info = IS and IS.m and IS.m[d.id]
+    local imp = RS:FindFirstChild("Imported")
+    local sh = imp and imp:FindFirstChild("Ship")
+    local f = sh and sh:FindFirstChild(d.id)
+    if info and f then return info, f end
+    return nil
+  end
+  -- 正在拼哪一类零件（有原模型时只留下 lamp 灯、fx 粒子、flag 舰旗，其余是蒙皮）
+  local TAG = nil
 
   ---------------------------------------------------------------- 拼零件
 
@@ -18065,7 +18127,7 @@ function ShipView.init(G)
     p.CastShadow = size.Magnitude > 3
     p.CFrame = off
     p.Parent = M.model
-    table.insert(M.items, { p = p, g = grp or "hull", off = off, i = gi })
+    table.insert(M.items, { p = p, g = grp or "hull", off = off, i = gi, tag = TAG })
     return p
   end
 
@@ -18094,7 +18156,10 @@ function ShipView.init(G)
 
   -- 夜里的灯：霓虹小块 + 远处也看得见的光晕（BillboardGui）+ 小点光源
   local function lamp(M, off, color, size, range)
+    local t0 = TAG
+    TAG = "lamp"
     local p = mk(M, "Part", V(size, size, size), off, color, MAT.Neon)
+    TAG = t0
     p.CastShadow = false
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.new(size * 5, 4, size * 5, 4)
@@ -18145,7 +18210,10 @@ function ShipView.init(G)
 
   -- 粒子：挂在一个看不见的小零件上（跟着船走）
   local function emitter(M, off, props)
+    local t0 = TAG
+    TAG = "fx"
     local h = mk(M, "Part", V(0.2, 0.2, 0.2), off, RGB(0, 0, 0), MAT.SmoothPlastic)
+    TAG = t0
     h.Transparency = 1
     h.CastShadow = false
     local pe = Instance.new("ParticleEmitter")
@@ -18282,7 +18350,9 @@ function ShipView.init(G)
       end
       mastTop = mast + V(0, mh + 0.8, 0)
       mk(M, "Part", V(0.4, 3, 0.4), CF(mastTop + V(0, 0.7, 0)), RGB(60, 62, 64), MAT.Metal)
+      TAG = "flag"
       local flag = mk(M, "Part", V(0.08, 1.6, 2.6), CF(mastTop + V(0, 0.4, 1.4)), TEAMC[team] or RGB(200, 200, 200), MAT.Fabric)
+      TAG = nil
       flag.CastShadow = false
       M.flag = flag
     end
@@ -18373,6 +18443,67 @@ function ShipView.init(G)
     M.fireLight = Instance.new("PointLight")
     M.fireLight.Color, M.fireLight.Range, M.fireLight.Brightness, M.fireLight.Enabled = RGB(255, 140, 60), 40, 3, false
     M.fireLight.Parent = M.fire.Parent
+    local info, folder = importedFor(d)
+    if info then
+      -- 蒙皮换成原模型：零件拼的只留灯、粒子、舰旗（主炮也不要：原模型上的炮跟着转；挑不出来的那门就不转）
+      local n = 0
+      for i = 1, #M.items do
+        local it = M.items[i]
+        if it.tag == "lamp" or it.tag == "fx" or it.tag == "flag" then
+          n += 1
+          M.items[n] = it
+        else
+          it.p:Destroy()
+        end
+      end
+      for i = #M.items, n + 1, -1 do M.items[i] = nil end
+      for name, p in pairs(info.parts) do
+        local src = folder:FindFirstChild("S_" .. d.id .. "__" .. name)
+        if src and src:IsA("BasePart") then
+          local mp = src:Clone()
+          mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
+          mp.Size = V(p.s[1], p.s[2], p.s[3])
+          local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性
+          if p.col and not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then
+            mp.Color = RGB(p.col[1], p.col[2], p.col[3])   -- 原模型这块本来就没贴图：照原材质颜色（Studio 导入不一定带过来）
+            if p.a then mp.Transparency = 1 - p.a end
+          end
+          mp.Parent = M.model
+          local c = CF(p.c[1], p.c[2], p.c[3])
+          local gi = tonumber(string.match(p.g, "^T(%d+)$"))
+          local gd = gi and info.guns and info.guns[gi]
+          if gd then   -- 主炮：绕原模型的炮塔转轴转
+            local piv = CF(gd.piv[1], gd.piv[2], gd.piv[3])
+            table.insert(M.items, { p = mp, g = "ti", i = gi, piv = piv, off = piv:Inverse() * c })
+          else
+            table.insert(M.items, { p = mp, g = "hull", off = c })
+          end
+        end
+      end
+      -- 航行灯、舰旗挪到原模型上：最高的白灯 → 桅顶，左红右绿 → 舰桥两侧贴着原模型的外侧，最靠后的白灯 → 船尾甲板
+      local top = info.top and V(info.top[1], info.top[2], info.top[3])
+      local whites, mast, stern = {}, nil, nil
+      for _, it in ipairs(M.items) do
+        if it.tag == "lamp" then
+          local c = it.p.Color
+          if c.R > 0.9 and c.G > 0.9 then table.insert(whites, it)
+          elseif info.side then
+            local sx = (c.R > c.G) and -1 or 1   -- 红灯在左舷
+            it.off = CF(sx * (info.side[1] + 0.4), info.side[2], info.side[3])
+          end
+        end
+      end
+      for _, it in ipairs(whites) do if not mast or it.off.Position.Y > mast.off.Position.Y then mast = it end end
+      for _, it in ipairs(whites) do if it ~= mast and (not stern or it.off.Position.Z > stern.off.Position.Z) then stern = it end end
+      if top and mast then mast.off = CF(top + V(0, 1.2, 0)) end
+      if info.stern and stern then stern.off = CF(info.stern[1], info.stern[2] + 0.8, info.stern[3] + 0.3) end
+      if top and M.flag then
+        for _, it in ipairs(M.items) do
+          if it.p == M.flag then it.off = CF(top + V(0, -1.6, 1.4)) end
+        end
+      end
+      M.imported = d.id
+    end
     return M
   end
   G.buildShipModel = build
@@ -18476,6 +18607,7 @@ function ShipView.init(G)
     for i, it in ipairs(M.items) do
       if it.g == "t" then clist[i] = tcf[it.i] * it.off
       elseif it.g == "g" then clist[i] = gcf[it.i] * it.off
+      elseif it.g == "ti" then clist[i] = cf * it.piv * CFrame.Angles(0, -math.rad(v.ty[it.i] or 0), 0) * it.off   -- 原模型的主炮（船尾的炮原模型里本来就朝后）
       else clist[i] = cf * it.off end
     end
     workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
@@ -18505,7 +18637,11 @@ function ShipView.init(G)
         for _, c in ipairs(p:GetChildren()) do
           if c:IsA("BillboardGui") or (c:IsA("PointLight") and c ~= M.fireLight) then c.Enabled = false end
         end
-        if p.Transparency < 1 then p.Color = p.Color:Lerp(RGB(18, 18, 18), 0.5) end
+        if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+          for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() p.TextureID = "" end)
+          if p.Transparency < 1 then p.Color = RGB(34, 33, 32) end
+        elseif p.Transparency < 1 then p.Color = p.Color:Lerp(RGB(18, 18, 18), 0.5) end
       end
     end
     -- 上船提示：自己队的、没人开、不是 AI、没沉；自己活着、没在开别的
@@ -18533,7 +18669,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -19089,7 +19225,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -19579,7 +19715,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -19985,13 +20121,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="68">
+  <Item class="Workspace" referent="69">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="69">
+  <Item class="Lighting" referent="70">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

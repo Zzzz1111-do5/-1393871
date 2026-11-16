@@ -4,6 +4,9 @@
 --   舰炮（炮塔按 Ty / Gp 转，开炮炮管后坐）、近防炮、舷号、航行灯（桅顶白、左红右绿、艉白）、舰旗；
 --   随浪起伏、转弯外倾；船头浪花、尾迹、烟囱排烟；挨打冒烟着火；击沉后慢慢倾覆、下沉
 --   自己开的船用本地算的位置和炮塔角（Sail.lua 的 G.sail），别人的平滑跟着服务器；船尾一个「上船」提示（码头上走过去按 E）
+--   原模型（网页版的舰艇模型原样转的 models/ship/<型号>.glb，Studio 导入后 Imports.lua 收进 ReplicatedStorage.Imported.Ship.<型号>，元数据 ImportedShip）：
+--     有就只换「蒙皮」——船体、上层建筑、桅杆、烟囱、垂发、近防炮、舷号换成原模型；主炮用原模型上的（炮塔连炮管跟着炮塔角转，不俯仰）；
+--     航行灯、舰旗挪到原模型上，浪花、尾迹、烟囱排烟、着火照旧
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 
@@ -19,6 +22,21 @@ function ShipView.init(G)
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local RED_LOW, BOOT, GLASS = RGB(118, 44, 40), RGB(30, 32, 34), RGB(28, 36, 44)
   local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 96, 190) }
+  local IS = nil   -- 原模型的元数据（tools/models/ship2glb.py 生成）
+  do
+    local ok, r = pcall(function() return require(RS:WaitForChild("ImportedShip", 3)) end)
+    if ok and type(r) == "table" then IS = r end
+  end
+  local function importedFor(d)
+    local info = IS and IS.m and IS.m[d.id]
+    local imp = RS:FindFirstChild("Imported")
+    local sh = imp and imp:FindFirstChild("Ship")
+    local f = sh and sh:FindFirstChild(d.id)
+    if info and f then return info, f end
+    return nil
+  end
+  -- 正在拼哪一类零件（有原模型时只留下 lamp 灯、fx 粒子、flag 舰旗，其余是蒙皮）
+  local TAG = nil
 
   ---------------------------------------------------------------- 拼零件
 
@@ -33,7 +51,7 @@ function ShipView.init(G)
     p.CastShadow = size.Magnitude > 3
     p.CFrame = off
     p.Parent = M.model
-    table.insert(M.items, { p = p, g = grp or "hull", off = off, i = gi })
+    table.insert(M.items, { p = p, g = grp or "hull", off = off, i = gi, tag = TAG })
     return p
   end
 
@@ -62,7 +80,10 @@ function ShipView.init(G)
 
   -- 夜里的灯：霓虹小块 + 远处也看得见的光晕（BillboardGui）+ 小点光源
   local function lamp(M, off, color, size, range)
+    local t0 = TAG
+    TAG = "lamp"
     local p = mk(M, "Part", V(size, size, size), off, color, MAT.Neon)
+    TAG = t0
     p.CastShadow = false
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.new(size * 5, 4, size * 5, 4)
@@ -113,7 +134,10 @@ function ShipView.init(G)
 
   -- 粒子：挂在一个看不见的小零件上（跟着船走）
   local function emitter(M, off, props)
+    local t0 = TAG
+    TAG = "fx"
     local h = mk(M, "Part", V(0.2, 0.2, 0.2), off, RGB(0, 0, 0), MAT.SmoothPlastic)
+    TAG = t0
     h.Transparency = 1
     h.CastShadow = false
     local pe = Instance.new("ParticleEmitter")
@@ -250,7 +274,9 @@ function ShipView.init(G)
       end
       mastTop = mast + V(0, mh + 0.8, 0)
       mk(M, "Part", V(0.4, 3, 0.4), CF(mastTop + V(0, 0.7, 0)), RGB(60, 62, 64), MAT.Metal)
+      TAG = "flag"
       local flag = mk(M, "Part", V(0.08, 1.6, 2.6), CF(mastTop + V(0, 0.4, 1.4)), TEAMC[team] or RGB(200, 200, 200), MAT.Fabric)
+      TAG = nil
       flag.CastShadow = false
       M.flag = flag
     end
@@ -341,6 +367,67 @@ function ShipView.init(G)
     M.fireLight = Instance.new("PointLight")
     M.fireLight.Color, M.fireLight.Range, M.fireLight.Brightness, M.fireLight.Enabled = RGB(255, 140, 60), 40, 3, false
     M.fireLight.Parent = M.fire.Parent
+    local info, folder = importedFor(d)
+    if info then
+      -- 蒙皮换成原模型：零件拼的只留灯、粒子、舰旗（主炮也不要：原模型上的炮跟着转；挑不出来的那门就不转）
+      local n = 0
+      for i = 1, #M.items do
+        local it = M.items[i]
+        if it.tag == "lamp" or it.tag == "fx" or it.tag == "flag" then
+          n += 1
+          M.items[n] = it
+        else
+          it.p:Destroy()
+        end
+      end
+      for i = #M.items, n + 1, -1 do M.items[i] = nil end
+      for name, p in pairs(info.parts) do
+        local src = folder:FindFirstChild("S_" .. d.id .. "__" .. name)
+        if src and src:IsA("BasePart") then
+          local mp = src:Clone()
+          mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
+          mp.Size = V(p.s[1], p.s[2], p.s[3])
+          local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性
+          if p.col and not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then
+            mp.Color = RGB(p.col[1], p.col[2], p.col[3])   -- 原模型这块本来就没贴图：照原材质颜色（Studio 导入不一定带过来）
+            if p.a then mp.Transparency = 1 - p.a end
+          end
+          mp.Parent = M.model
+          local c = CF(p.c[1], p.c[2], p.c[3])
+          local gi = tonumber(string.match(p.g, "^T(%d+)$"))
+          local gd = gi and info.guns and info.guns[gi]
+          if gd then   -- 主炮：绕原模型的炮塔转轴转
+            local piv = CF(gd.piv[1], gd.piv[2], gd.piv[3])
+            table.insert(M.items, { p = mp, g = "ti", i = gi, piv = piv, off = piv:Inverse() * c })
+          else
+            table.insert(M.items, { p = mp, g = "hull", off = c })
+          end
+        end
+      end
+      -- 航行灯、舰旗挪到原模型上：最高的白灯 → 桅顶，左红右绿 → 舰桥两侧贴着原模型的外侧，最靠后的白灯 → 船尾甲板
+      local top = info.top and V(info.top[1], info.top[2], info.top[3])
+      local whites, mast, stern = {}, nil, nil
+      for _, it in ipairs(M.items) do
+        if it.tag == "lamp" then
+          local c = it.p.Color
+          if c.R > 0.9 and c.G > 0.9 then table.insert(whites, it)
+          elseif info.side then
+            local sx = (c.R > c.G) and -1 or 1   -- 红灯在左舷
+            it.off = CF(sx * (info.side[1] + 0.4), info.side[2], info.side[3])
+          end
+        end
+      end
+      for _, it in ipairs(whites) do if not mast or it.off.Position.Y > mast.off.Position.Y then mast = it end end
+      for _, it in ipairs(whites) do if it ~= mast and (not stern or it.off.Position.Z > stern.off.Position.Z) then stern = it end end
+      if top and mast then mast.off = CF(top + V(0, 1.2, 0)) end
+      if info.stern and stern then stern.off = CF(info.stern[1], info.stern[2] + 0.8, info.stern[3] + 0.3) end
+      if top and M.flag then
+        for _, it in ipairs(M.items) do
+          if it.p == M.flag then it.off = CF(top + V(0, -1.6, 1.4)) end
+        end
+      end
+      M.imported = d.id
+    end
     return M
   end
   G.buildShipModel = build
@@ -444,6 +531,7 @@ function ShipView.init(G)
     for i, it in ipairs(M.items) do
       if it.g == "t" then clist[i] = tcf[it.i] * it.off
       elseif it.g == "g" then clist[i] = gcf[it.i] * it.off
+      elseif it.g == "ti" then clist[i] = cf * it.piv * CFrame.Angles(0, -math.rad(v.ty[it.i] or 0), 0) * it.off   -- 原模型的主炮（船尾的炮原模型里本来就朝后）
       else clist[i] = cf * it.off end
     end
     workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
@@ -473,7 +561,11 @@ function ShipView.init(G)
         for _, c in ipairs(p:GetChildren()) do
           if c:IsA("BillboardGui") or (c:IsA("PointLight") and c ~= M.fireLight) then c.Enabled = false end
         end
-        if p.Transparency < 1 then p.Color = p.Color:Lerp(RGB(18, 18, 18), 0.5) end
+        if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+          for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() p.TextureID = "" end)
+          if p.Transparency < 1 then p.Color = RGB(34, 33, 32) end
+        elseif p.Transparency < 1 then p.Color = p.Color:Lerp(RGB(18, 18, 18), 0.5) end
       end
     end
     -- 上船提示：自己队的、没人开、不是 AI、没沉；自己活着、没在开别的

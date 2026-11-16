@@ -81,6 +81,27 @@ for id, d in pairs(D) do
   d.size = V(d.W, d.H, d.L)
 end
 
+-- 有原模型的舰艇（ImportedShip：网页版的舰艇模型原样转的，游戏比例）：主炮的炮塔转轴、炮管长照原模型——炮弹从看得见的炮口出去、
+--   炮塔转起来不跑偏；不管导没导入都一样（服务器和客户端算出来一致）。原模型上的炮位比上面零件拼的船靠后十几二十格
+do
+  local ok, IS = pcall(function()
+    local m = script and script.Parent and script.Parent:FindFirstChild("ImportedShip")
+    return m and require(m) or nil
+  end)
+  if ok and type(IS) == "table" and IS.m then
+    for id, d in pairs(D) do
+      local info = IS.m[id]
+      for gi, g in ipairs(d.guns or {}) do
+        local G = info and info.guns and info.guns[gi]
+        if G then
+          g.pos = V(G.piv[1], G.piv[2], G.piv[3])
+          if G.tip and G.tip > 1 then g.len = math.max(1, G.tip - g.size.Z * 0.35) end   -- 炮口：耳轴（转轴往前 0.35 个炮塔长）再往前 len
+        end
+      end
+    end
+  end
+end
+
 function ShipDefs.get(id) return D[id] end
 
 -- 炮塔、炮口的世界坐标：cf 是船（水线中心）的 CFrame；ty 方位（度，相对正前方，正数往右；船尾的炮相对正后方）、gp 俯仰

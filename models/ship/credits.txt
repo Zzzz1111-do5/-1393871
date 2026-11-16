@@ -1,0 +1,10 @@
+Roblox全面大战场的舰艇模型（models/ship/<型号>.glb）：从网页版《暗剑》的舰艇模型原样转换
+  这里的改动：坐标换成 Roblox 的轴向、按游戏里舰艇的比例缩放（真船的 0.6 倍：1 米 = 1.68 格）、原点挪到水线中心；主炮从船体上分出来（游戏里跟着炮塔转）；按材质切成几块，每块不超过 19500 个三角形；超过 1024 像素的贴图缩到 1024；不减面
+
+- 提康德罗加级巡洋舰（cg47.glb）：This work is based on "Ticonderoga Missile Cruiser" (https://sketchfab.com/3d-models/ticonderoga-missile-cruiser-397bd2b7bcd946e4b508869f4ca1e1cf) by waelXcm licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+- 阿利·伯克级驱逐舰（Flight III）（ddg125.glb）：This work is based on "USS Jack H. Lucas DDG-125" (https://sketchfab.com/3d-models/uss-jack-h-lucas-ddg-125-1c9229b49915454c8ff22605f8cc7b66) by SB-129 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+- 独立级濒海战斗舰（lcs2.glb）：This work is based on "USS INDEPENDENCE  LCS-2" (https://sketchfab.com/3d-models/uss-independence-lcs-2-7db04398d9524a36a6e08bead0050b76) by Muhamad Mirza Arrafi licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+- PBR Mk II 内河巡逻艇（pbr.glb）：This work is based on "Patrol Boat PBR MK2" (https://sketchfab.com/3d-models/patrol-boat-pbr-mk2-dbd87172b2934063aa93ffd0c6f85750) by Savy licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)（网页版的改动：贴图缩到最长边 1024 像素）
+- 022 型导弹艇（t022.glb）：This work is based on "Type 22 missile boat" (https://sketchfab.com/3d-models/type-22-missile-boat-623de3c8e01c411d8764a779d12f1622) by dannzjs licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)（网页版的改动：贴图缩到最长边 1024 像素）
+- 054A 型护卫舰（t054a.glb）：This work is based on "Type-054A Class Frigate" (https://sketchfab.com/3d-models/type-054a-class-frigate-948cca64a5274644a35e4600e023d61d) by Muhamad Mirza Arrafi licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+- 055 型驱逐舰（t055.glb）：This work is based on "CN TYPE 055 Nanchang v3.0" (https://sketchfab.com/3d-models/cn-type-055-nanchang-v30-8850f8cf1eee409abe08519fd54809cd) by FeriseCAT licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

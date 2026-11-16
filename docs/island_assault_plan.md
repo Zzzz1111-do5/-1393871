@@ -122,9 +122,14 @@
     网页版的加工照搬：轰-6K、X-47B 掉头，直-10 旋翼按连通块拆开、材质改不透明；阿帕奇、直-10 自带的外挂去掉（游戏里按选的挂载画、打掉一枚少一枚）。
     直-21 是 CC-BY-NC（不许商用）不用；直-20 用黑鹰、攻击-11 用 X-47B、攻击-2 用 MQ-9，去掉原机涂装按我方涂色。
     还差的：舵面、弹舱门、座舱盖不会动（原模型是一整块）；歼-20 / 16 / 50、F-22 的模型没放起落架，用零件拼的；飞行员没画（零件拼的位置对不上原模型的座舱）。
-  - [ ] 舰艇——**session_01LjuH3fMZAmBoHts4cMHdAX 在做**：网页版有全部 7 型的 CC-BY 模型（055、054A、DDG-125、CG-47、LCS-2 在 `assets/models`，022、PBR 在 `js/mdl`），
-    照飞机的办法转、只换蒙皮（会改 `ShipView.lua`：武器、灯、尾迹照旧）。
-  - [ ] 没有模型的 5 型地面载具（ZTQ-15、ZTD-05、PGZ-07、LD-2000、M10 布克）：去 Sketchfab 找 CC-BY 的。
+  - [x] 舰艇：7 型都有原模型（网页版的 CC-BY 模型：055、054A、DDG-125、CG-47、LCS-2 是 `assets/models` 的 DSM2 格式，022、PBR 是 `js/mdl`）。
+    文件 `models/ship/<型号>.glb`、署名 `models/ship/credits.txt`，转换 `tools/models/ship2glb.py`（要先 `lune run tools/models/shipdefs.luau > shipdefs.json`），
+    元数据 `ImportedShip.lua`，测试 `tools/test/ia_import_ship.luau`。按游戏里舰艇的比例转（真船的 0.6 倍、1 米 = 1.68 格，ShipDefs 的比例；长度和型号表对上），原点在水线中心。
+    游戏里（`ShipView.lua`）原模型只替换蒙皮：船体、上层建筑、桅杆、烟囱、垂发、近防炮、舷号去掉；主炮用原模型上的——炮塔连炮管按炮塔角绕原模型的转轴转（不俯仰、没后坐）；
+    航行灯挪到原模型上（桅顶、舰桥翼、船尾），舰旗挂在桅顶下；浪花、尾迹、排烟、着火照旧；击沉后去贴图烧黑。
+    原模型上的炮位比零件拼的船靠后十几二十格（DDG-125 −78 对 −96），`ShipDefs.lua` 的炮位、炮管长照原模型改了（导没导入都一样，炮弹从看得见的炮口出去）。
+    还差的：022 的 30 毫米炮和船体连在一起分不出来（原模型上的不转）；近防炮、雷达不转；炮管不俯仰。
+  - [ ] 没有模型的 5 型地面载具（ZTQ-15、ZTD-05、PGZ-07、LD-2000、M10 布克）——**session_01LjuH3fMZAmBoHts4cMHdAX 在做**：去 Sketchfab 找 CC-BY 的。
 - [ ] 新图标和宣传图。
 - [x] 平衡：岸防炮原来一发就打沉登陆艇（520 × 打船 1.4 = 728，艇 650 血），机器人对打 6 分钟被打沉 53 条，攻方只拿下 A。
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
@@ -137,7 +142,7 @@
 
 | 分支 | 会话 | 做了什么 |
 | --- | --- | --- |
-| `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具 |
+| `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具；装备原模型（地面载具、飞机直升机、舰艇） |
 | `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机（进行中） |
 | `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」、舰艇；接着做枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
 | `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果） |

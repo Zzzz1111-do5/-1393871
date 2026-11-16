@@ -6,3 +6,6 @@
 /tools/weapons/node_modules
 /tools/weapons/cache/
 /tools/weapons/preview/
+
+# Python 缓存
+__pycache__/
