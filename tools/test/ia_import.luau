@@ -16,7 +16,7 @@ local KEY = "m1a2v3"
 local info = IM.m[KEY]
 local nParts = 0
 for _ in pairs(info.parts) do nParts += 1 end
-local KEYS = { KEY, "jltv" }   -- JLTV 原模型没有贴图（只有材质颜色）：看游戏里有没有照原色上色
+local KEYS = { KEY, "jltv", "ztq15" }   -- JLTV 原模型没有贴图（只有材质颜色）：看游戏里有没有照原色上色；ZTQ-15 是 Sketchfab 上的扫描模型（tools/models/sfveh.py）
 
 H.boot(process.args[1], { ds = "mock", before = function(game)
 	-- Studio「导入 3D」的样子：一个 Model 里一堆 MeshPart（导入时放在 Workspace，位置随便；不带材质颜色、没有贴图）
@@ -60,7 +60,7 @@ local RS = H.game:GetService("ReplicatedStorage")
 local folder = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Veh") and RS.Imported.Veh:FindFirstChild(KEY)
 check(folder ~= nil and #folder:GetChildren() == nParts, string.format("ReplicatedStorage.Imported.Veh.%s 里 %d 块（元数据 %d 块）", KEY, folder and #folder:GetChildren() or 0, nParts))
 check(H.workspace:FindFirstChild("V_" .. KEY) == nil, "Workspace 里导入时的空 Model 删掉了")
-check(G.importedVeh and table.find(G.importedVeh, KEY) ~= nil and table.find(G.importedVeh, "jltv") ~= nil, "服务器记下了：" .. table.concat(G.importedVeh or {}, ","))
+check(G.importedVeh and table.find(G.importedVeh, KEY) ~= nil and table.find(G.importedVeh, "jltv") ~= nil and table.find(G.importedVeh, "ztq15") ~= nil, "服务器记下了：" .. table.concat(G.importedVeh or {}, ","))
 
 print("② 守方生成 M1A2、坐进去")
 local p1, p2 = H.addPlayer("P1", 6001), H.addPlayer("P2", 6002)
@@ -91,6 +91,47 @@ if vj then
 end
 check(okCol and nCol > 40, string.format("JLTV 用原模型、没贴图的 %d 块照原材质颜色上了色（生成点 %s，车 %s，样子 %s）", nCol, tostring(tj and tj.id), tostring(ej and ej.id), tostring(vj and vj.M.imported)))
 check(vj and #vj.M.wheels >= 4, "JLTV 原模型车轮和车身是一整块：照型号表的轮位放了 " .. (vj and #vj.M.wheels or 0) .. " 个看不见的弹簧（车身照样随地面起伏）")
+-- ZTQ-15（Sketchfab 上的手机扫描模型）：客户端直接拼一辆看——车体、炮塔、炮管拆开了，炮塔转轴、炮口照原模型
+do
+	local prev = H.ctx
+	H.ctx = def
+	local VM = H.require(def.PlayerScripts.Client.VehModels)
+	local VD = H.require(RS.VehDefs)
+	H.ctx = prev
+	local d15, i15 = VD.get("ztq15"), IM.m.ztq15
+	local Mz = VM.build(d15, "atk")
+	local n15, nT, nG, front = 0, 0, 0, 1e9
+	for _ in pairs(i15.parts) do n15 += 1 end
+	local cnt = 0
+	for _, it in ipairs(Mz.parts) do
+		if it[1]:IsA("MeshPart") then
+			cnt += 1
+			if it[2] == "turret" then nT += 1 end
+			if it[2] == "gun" then   -- 贴图分了块，炮管也按贴图分成几块：取最前面的
+				nG += 1
+				front = math.min(front, it[3].Position.Z - it[1].Size.Z / 2)
+			end
+		end
+	end
+	check(Mz.imported == "ztq15" and cnt == n15 and nT >= 1 and nG >= 1, string.format("ZTQ-15 用 Sketchfab 的扫描模型：%d / %d 块，炮塔 %d、炮 %d", cnt, n15, nT, nG))
+	check(#Mz.wheels == 2 * d15.rw.n, string.format("扫描的车轮和车身是一整块：照型号表放了 %d 个看不见的弹簧", #Mz.wheels))
+	check((d15.turret.pivot - V3.new(i15.tur[1], i15.tur[2], i15.tur[3])).Magnitude < 1e-3 and math.abs(d15.gun.len - i15.muz) < 1e-3,
+		string.format("型号表的炮塔转轴、炮口照扫描模型（转轴高 %.1f 格，炮口离耳轴 %.1f 格）", d15.turret.pivot.Y, d15.gun.len))
+	-- 炮管的最前端就是炮口（相对炮耳轴往前 muz 格）
+	check(nG >= 1 and math.abs(front + i15.muz) < 0.05, string.format("炮管最前端在耳轴前 %.2f 格（元数据 %.2f）", -front, i15.muz))
+	Mz.model:Destroy()
+	-- 没导入原模型的型号（这里没假装导入斯特赖克）：零件拼的炮塔按型号表原来的转轴摆，坐在车体顶上——
+	--   型号表的转轴照原模型改过（高 2 格），零件拼的要是也按它摆，炮塔就悬在车体上面
+	local ds = VD.get("stryker")
+	local Ms = VM.build(ds, "def")
+	local lowT = 1e9
+	for _, it in ipairs(Ms.parts) do
+		if it[2] == "turret" then lowT = math.min(lowT, (Ms.tpiv or ds.turret.pivot).Y + it[3].Position.Y - it[1].Size.Y / 2) end
+	end
+	check(Ms.imported == nil and Ms.tpiv == ds.turret.pivot0 and ds.turret.pivot0 ~= ds.turret.pivot and math.abs(lowT - ds.hullH) < 0.4,
+		string.format("没导入的斯特赖克：零件拼的炮塔底在 %.2f 格（车体顶 %.2f；型号表转轴照原模型是 %.2f 格高）", lowT, ds.hullH, ds.turret.pivot.Y))
+	Ms.model:Destroy()
+end
 H.run(2.2)   -- 一个人两次生成之间要隔 2 秒
 local tp = H.pad(G, "m1a2")
 local e = tp and H.usePad(G, def, tp)

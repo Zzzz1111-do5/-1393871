@@ -158,6 +158,8 @@ function VehModels.build(d, team)
   end
 
   if not ikey then
+  -- 零件拼的：炮塔、炮按型号表原来的转轴摆（VehDefs 的转轴照原模型改过，给导入了原模型的用；服务器的炮口照原模型，差一两格）
+  extra.tpiv, extra.gpiv = d.turret and d.turret.pivot0, d.gun and d.gun.pivot0
   ---------------------------------------------------------------- 行走部分
 
   if d.arch == "tracked" then
@@ -356,7 +358,7 @@ function VehModels.build(d, team)
 
   ---------------------------------------------------------------- 炮（坐标系：耳轴在原点，−Z 朝前，跟着俯仰）
 
-  local Gd = d.gun
+  local Gd = setmetatable({ len = d.gun.len0 or d.gun.len, pivot = d.gun.pivot0 or d.gun.pivot }, { __index = d.gun })   -- 炮管长、耳轴也照型号表原来的
   if st == "launcher" then   -- 发射箱整个跟着起竖：前端一格格的管口
     gun(V(s.X, s.Y, s.Z), CF(0, s.Y / 2 + 0.4, 0), C.base)
     local nx, ny = 3, 2

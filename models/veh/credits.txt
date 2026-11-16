@@ -21,3 +21,6 @@ Roblox全面大战场的地面载具模型（models/veh/<模型键>.glb）：从
 - ZBD-04 步兵战车（原称 97 式）（zbd97.glb）：This work is based on "ZBD-97" (https://sketchfab.com/3d-models/zbd-97-b36e44ca383e4ab296e28321167e5ba4) by 42manako licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)（网页版的改动：贴图缩到最长边 2048 像素）
 - 96 式主战坦克（ztz96.glb）：This work is based on "ZTZ96" (https://sketchfab.com/3d-models/ztz96-b0da178e50dc423983445841615d9e80) by jzmhhhhh licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 - ZTZ-99A 主战坦克（ztz99.glb）：This work is based on "Type 99 MBT" (https://sketchfab.com/3d-models/type-99-mbt-7075c92c5ef1408497f1530703ff2942) by philano licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+网页版没有、直接从 Sketchfab 下载的（tools/models/sfveh.py）：
+- ZTQ-15 轻型坦克（ztq15.glb）：This work is based on "PLA LIGHT MAIN BATTLE TANK TYPE 15 HEAVY" (https://sketchfab.com/3d-models/pla-light-main-battle-tank-type-15-heavy-e9863d7b5a474eb0800fc59e82f9ebd4) by lhc526 (https://sketchfab.com/lhc526) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)（改动：去掉扫描带的木桌面；按车体轴线摆正，炮塔转回正前方，拆成车体、炮塔、炮管；炮塔座圈补一块底板；按真车大小放大（车体长 6.8 米）；贴图按图集分成 4 块，各自裁剪、缩到 1024 像素）

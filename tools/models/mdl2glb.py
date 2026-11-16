@@ -1,5 +1,7 @@
 # 网页版《暗剑》烘焙的装备模型（js/mdl/<键>.js）→ Roblox Studio「导入 3D」用的 GLB（每个模型一个）+ 游戏用的元数据
-#   python3 -I tools/models/mdl2glb.py <网页版仓库目录> [输出目录，默认 models/veh] [元数据，默认 src/ReplicatedStorage/ImportedMeta.lua] [模型键 …]
+#   python3 -I tools/models/mdl2glb.py <网页版仓库目录> [--sf <Sketchfab 下载目录>] [输出目录，默认 models/veh] [元数据，默认 src/ReplicatedStorage/ImportedMeta.lua] [模型键 …]
+#   网页版没有的型号直接从 Sketchfab 下载（tools/models/sfveh.py 的 SF：来源、署名、加工方法）：--sf 给出放 <模型键>.zip 的目录才转，
+#   不给就照旧用元数据里原来那一行（GLB 也不动）；只转几个模型键时，其余的元数据同样照旧
 # 原样转（用户：每个载具都是要驾驶的，原 size 导入）：
 #   - 网格用最精细的那档（不减面）；Roblox 一块网格最多约 2 万个三角形，超了就切成几块
 #   - 每个材质照原样：底色贴图、法线贴图、金属度 / 粗糙度贴图（Studio 导入时做成 SurfaceAppearance）、底色、透明方式、双面；
@@ -83,8 +85,9 @@ def image_bytes(meta, binb, ii, alpha):
     return buf.getvalue(), 'image/jpeg', im.size
 
 
-def convert(key):
-    meta, binb, credit = load(key)
+def convert(key, src=None):
+    """src：(meta, binb, credit)，不给就读网页版的 js/mdl/<键>.js（Sketchfab 直接下载的模型由 sfveh.py 做成同样的数据）"""
+    meta, binb, credit = src or load(key)
     st = meta.get('st', 8)
     vb0, vbn = meta['vb']
     VB = np.frombuffer(binb, dtype='<f4', count=vbn // 4, offset=vb0).reshape(-1, st)
@@ -275,19 +278,22 @@ def web_credits(keys):
     return out
 
 
-def write_credits(path, keys, meta_out, head):
-    """署名（CC-BY 要写作者、出处、授权、改了什么）：照网页版 docs/credits.md 那一条（含网页版的改动），前面 head 写这里的改动"""
+def write_credits(path, keys, meta_out, head, extra=None):
+    """署名（CC-BY 要写作者、出处、授权、改了什么）：照网页版 docs/credits.md 那一条（含网页版的改动），前面 head 写这里的改动；
+    extra：[(名字, 模型键, 署名)]，网页版以外来的模型（Sketchfab 直接下载的）接在后面"""
     wc = web_credits(keys)
     with open(path, 'w', encoding='utf-8') as f:
         f.write(head)
         for key in keys:
-            if key not in meta_out:
-                continue
             if key in wc:
                 name, line = wc[key]
                 f.write('- %s（%s.glb）：%s\n' % (name, key, line.replace('（改动：', '（网页版的改动：')))
-            else:
+            elif key in meta_out:
                 f.write('- %s.glb：%s\n' % (key, meta_out[key]['credit']))
+        if extra:
+            f.write('\n网页版没有、直接从 Sketchfab 下载的（tools/models/sfveh.py）：\n')
+            for name, key, line in extra:
+                f.write('- %s（%s.glb）：%s\n' % (name, key, line))
 
 
 def lua(v):
@@ -308,40 +314,86 @@ def lua(v):
     return str(v)
 
 
+def old_lines(path):
+    """原来元数据里每个模型那一行（'    键 = { … },'）：没转的模型照旧"""
+    out = {}
+    try:
+        inm = False
+        for ln in open(path, encoding='utf-8'):
+            if ln.startswith('  m = {'):
+                inm = True
+            elif inm and ln.startswith('  },'):
+                inm = False
+            elif inm and ln.startswith('    ') and ' = { ' in ln:
+                out[ln.split(' = ', 1)[0].strip()] = ln
+    except OSError:
+        pass
+    return out
+
+
 if __name__ == '__main__':
-    WEB = sys.argv[1]
-    OUTDIR = sys.argv[2] if len(sys.argv) > 2 else OUTDIR
-    META = sys.argv[3] if len(sys.argv) > 3 else META
-    ONLY = sys.argv[4:]
-    keys = sorted(set(ALIAS.values()))
+    argv = sys.argv[1:]
+    SFDIR = None
+    if '--sf' in argv:
+        j = argv.index('--sf')
+        SFDIR = argv[j + 1]
+        del argv[j:j + 2]
+    WEB = argv[0]
+    OUTDIR = argv[1] if len(argv) > 1 else OUTDIR
+    META = argv[2] if len(argv) > 2 else META
+    ONLY = argv[3:]
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import sfveh
+    alias = dict(ALIAS)
+    for key, c in sfveh.SF.items():
+        for a in c['alias']:
+            alias[a] = key
+    webkeys = sorted(set(ALIAS.values()))
+    keys = sorted(set(webkeys) | set(sfveh.SF))
     os.makedirs(OUTDIR, exist_ok=True)
     meta_out = {}
     for key in keys:
         if ONLY and key not in ONLY:
             continue
-        meta, binb, info, out = convert(key)
+        if key in sfveh.SF:
+            zp = SFDIR and os.path.join(SFDIR, key + '.zip')
+            if not (zp and os.path.exists(zp)):
+                continue
+            meta, binb, credit, rep = sfveh.load(key, zp)
+            print('%-8s 扫描：放大 %.1f 倍，炮塔转回 %.1f°，三角形 车体 %d / 炮塔 %d / 炮 %d / 底板 %d' % ((key, rep['k'], -rep['yaw']) + rep['tris']))
+            meta, binb, info, out = convert(key, (meta, binb, credit))
+        else:
+            meta, binb, info, out = convert(key)
         path = os.path.join(OUTDIR, key + '.glb')
         write_glb(key, meta, binb, info, out, path)
         meta_out[key] = info
         tris = sum(len(o[6]) for o in out)
         print('%-8s %7d 个三角形  %2d 块  %5.1f × %4.1f × %4.1f 格  %5.1f MB  炮塔 %-5s 炮 %-5s 车轮 %d' % (
             key, tris, len(out), info['len'], info['w'], info['h'], os.path.getsize(path) / 1e6, 'tur' in info, 'gun' in info, len(info['wheels'])))
-    if ONLY and os.path.exists(META):   # 只转了几个：其余的元数据留着（读回旧文件太麻烦，只转几个时不改元数据）
-        print('只转了 %s，元数据没改' % ', '.join(ONLY))
-        sys.exit(0)
+    old = old_lines(META)
+    rows, have = [], set()
+    for key in keys:
+        if key in meta_out:
+            rows.append('    %s = %s,\n' % (key, lua(meta_out[key])))
+        elif key in old:
+            rows.append(old[key])
+            print('%-8s 没转，元数据照旧' % key)
+        else:
+            print('%-8s 没转、原来也没有：游戏里用零件拼的' % key)
+            continue
+        have.add(key)
     with open(META, 'w', encoding='utf-8') as f:
-        f.write('-- 自动生成（tools/models/mdl2glb.py），别手改：网页版装备模型原样转成的 Roblox 模型（models/veh/<模型键>.glb）的元数据\n')
+        f.write('-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）\n')
         f.write('--   alias：游戏里的型号 → 模型键；m[模型键] = { len 长 / w 宽 / h 高（格，真实尺寸：1 米 = 2.8 格；含炮管、天线）, hull 车身的宽高长（不含炮塔、炮）,\n')
         f.write('--     parts[块名] = { g 部件（Body / Turret / Gun / W01…）, c 中心, s 大小,\n')
         f.write('--       col 没有底色贴图的块的颜色（sRGB 0–255）, a 不透明度（半透明的才有）, met 金属 }（原点在车底中心，−Z 朝前）,\n')
         f.write('--     tur 炮塔转轴, gun 炮耳轴, muz 炮口在耳轴前多远, wheels[部件] = { c 中心, r 半径 }, credit 署名 }；导入后 MeshPart 叫 V_<模型键>__<块名>\n')
-        f.write('return {\n  alias = ' + lua(ALIAS) + ',\n  m = {\n')
-        for key in keys:
-            if key in meta_out:
-                f.write('    %s = %s,\n' % (key, lua(meta_out[key])))
+        f.write('return {\n  alias = ' + lua({a: k for a, k in alias.items() if k in have}) + ',\n  m = {\n')
+        f.writelines(rows)
         f.write('  },\n}\n')
-    write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
+    extra = [(c['name'], key, sfveh.credit(key)) for key, c in sorted(sfveh.SF.items()) if key in have]
+    write_credits(os.path.join(OUTDIR, 'credits.txt'), [k for k in webkeys if k in have], meta_out,
                   'Roblox全面大战场的地面载具模型（models/veh/<模型键>.glb）：从网页版《暗剑》烘焙的装备模型原样转换（js/mdl/<模型键>.js）\n'
                   '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到车底中心；按部件（车体 / 炮塔 / 炮 / 每个车轮）和材质切成几块，'
-                  '每块不超过 %d 个三角形；超过 %d 像素的贴图缩到 %d；不减面\n\n' % (CHUNK, TEXMAX, TEXMAX))
+                  '每块不超过 %d 个三角形；超过 %d 像素的贴图缩到 %d；不减面\n\n' % (CHUNK, TEXMAX, TEXMAX), extra)
     print('写好了 %s/*.glb、%s/credits.txt 和 %s' % (OUTDIR, OUTDIR, META))

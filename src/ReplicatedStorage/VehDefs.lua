@@ -254,6 +254,9 @@ do
     for id, key in pairs(IM.alias) do
       local d, info = D[id], IM.m[key]
       if d and info and (info.tur or info.gun) then
+        -- 型号表原来的转轴、炮长留着：没导入原模型时零件拼的炮塔、炮还按它摆（不然炮塔离开车体顶，C-RAM、斯特赖克高出 2 格）
+        d.turret.pivot0 = d.turret.pivot
+        if d.gun then d.gun.pivot0, d.gun.len0 = d.gun.pivot, d.gun.len end
         -- 原模型没有单独的炮塔（爱国者只有会俯仰的发射架）：转轴照型号表，耳轴照原模型（客户端 VehModels 也是这么摆的）
         local tur = info.tur and V(info.tur[1], info.tur[2], info.tur[3]) or d.turret.pivot
         d.turret.pivot = tur   -- 瞄准镜、烟幕弹发射架都是相对炮塔转轴的，跟着挪

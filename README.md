@@ -37,8 +37,8 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
 
 ## 换上装备的原模型（`models/veh/`）
 
-不导入的话车、飞机、船是零件拼的。`models/veh/<模型键>.glb`（地面载具，20 个）、`models/air/<模型键>.glb`（飞机直升机，16 个）、`models/ship/<型号>.glb`（舰艇，7 艘）
-是网页版的装备模型原样转的：最精细的网格（不减面）、原贴图和法线 / 金属粗糙度贴图；车、飞机是真实尺寸（1 米 = 2.8 格），舰艇照游戏里舰艇的比例（真船的 0.6 倍），每个模型一个文件。
+不导入的话车、飞机、船是零件拼的。`models/veh/<模型键>.glb`（地面载具，21 个）、`models/air/<模型键>.glb`（飞机直升机，16 个）、`models/ship/<型号>.glb`（舰艇，7 艘）
+是网页版的装备模型原样转的（ZTQ-15 网页版没有，是 Sketchfab 上的扫描模型）：最精细的网格（不减面）、原贴图和法线 / 金属粗糙度贴图；车、飞机是真实尺寸（1 米 = 2.8 格），舰艇照游戏里舰艇的比例（真船的 0.6 倍），每个模型一个文件。
 
 1. Studio「主页 → 导入 3D」，选 `models/veh/`、`models/air/`、`models/ship/` 里的 GLB（一次选一个或几个都行），导入设置用默认的（别勾「合并网格」），导进 Workspace 就行。
 2. 开服时自动收进 `ReplicatedStorage/Imported/Veh`、`Imported/Air`、`Imported/Ship` 下面（输出里有一行「用上了导入的装备模型：…」）；想先整理好也可以自己拖进去，
@@ -47,7 +47,7 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
    船的主炮用原模型上的、跟着炮塔转，航行灯挪到原模型的桅顶、舰桥翼、船尾；打爆后烧黑。哪个型号用哪个模型见 `src/ReplicatedStorage/ImportedMeta.lua`、`ImportedAir.lua` 的 `alias`
    （舰艇按型号，`ImportedShip.lua`）。
 
-重新转换（要网页版仓库）：`python3 -I tools/models/mdl2glb.py <网页版仓库目录>`；飞机先 `lune run tools/models/airdefs.luau > airdefs.json`，
+重新转换（要网页版仓库）：`python3 -I tools/models/mdl2glb.py <网页版仓库目录> [--sf <Sketchfab 下载目录>]`（ZTQ-15 要 `--sf`，见 `tools/models/sfveh.py`；不给就照旧）；飞机先 `lune run tools/models/airdefs.luau > airdefs.json`，
 再 `python3 -I tools/models/air2glb.py <网页版仓库目录> airdefs.json`；舰艇先 `lune run tools/models/shipdefs.luau > shipdefs.json`，再 `python3 -I tools/models/ship2glb.py <网页版仓库目录> shipdefs.json`。
 模型都是 CC-BY，署名在 `models/veh/credits.txt`、`models/air/credits.txt`、`models/ship/credits.txt`（发布时放进游戏简介或游戏里的致谢）。
 
@@ -73,7 +73,7 @@ lune run tools/test/check.luau                        # 语法检查
 lune run tools/test/ia_flow.luau RobloxTotalBattlefield.rbxlx  # 流程：开服 → 分队 → 部署 → 开枪击杀 → 复活 → 抢滩 → 占领 → 结算 → 下一局
 lune run tools/test/ia_bots.luau RobloxTotalBattlefield.rbxlx 8  # 机器人：一个真人 + 机器人打 8 分钟（补人数、抢滩、交火、占领、耗时）
 lune run tools/test/ia_veh.luau RobloxTotalBattlefield.rbxlx     # 载具：部署、开车、悬架、开炮、烟幕弹、瞄准镜四种模式、下车上车、被毁、气垫艇
-lune run tools/test/ia_import.luau RobloxTotalBattlefield.rbxlx  # 原模型：假装导入了 M1A2、JLTV，看收模型、拼车、炮塔炮管转轴、车轮悬架、炮口、烧黑
+lune run tools/test/ia_import.luau RobloxTotalBattlefield.rbxlx  # 原模型：假装导入了 M1A2、JLTV、ZTQ-15，看收模型、拼车、炮塔炮管转轴、车轮悬架、炮口、烧黑、没导入的零件拼的炮塔位置
 lune run tools/test/ia_import_air.luau RobloxTotalBattlefield.rbxlx  # 飞机原模型：假装导入歼-15、阿帕奇、歼-20，看蒙皮换掉、挂弹贴机翼、起落架收放、折翼、旋翼
 lune run tools/test/ia_import_ship.luau RobloxTotalBattlefield.rbxlx  # 舰艇原模型：假装导入 7 艘，看蒙皮换掉、炮位照原模型、主炮跟着转、桅顶灯、烧黑
 lune run tools/test/ia_boot.luau RobloxTotalBattlefield.rbxlx  # 开服计时（地形生成）
