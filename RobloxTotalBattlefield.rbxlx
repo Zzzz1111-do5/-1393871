@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="1">
+  <Item class="ReplicatedStorage" referent="0">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="1">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -440,7 +440,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -605,7 +605,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -715,7 +715,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -773,7 +773,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -793,7 +793,7 @@ local V = Vector3.new
 FortDefs.W = {
   hmg = { kind = "gun", dmg = 34, rate = 0.12, burst = { 5, 9 }, pause = { 1.0, 1.8 }, range = 820, spread = 1.2, spreadPer = 0.0035,
     vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", head = 1 },
-  naval127 = { kind = "shell", dmg = 520, speed = 950, gscale = 0.5, splash = 15, rate = 8, range = 3300, minR = 160,
+  naval127 = { kind = "shell", dmg = 520, speed = 950, gscale = 0.5, splash = 15, rate = 10, range = 3300, minR = 160,   -- rate 原来 8：攻方还没有舰艇压制岸防炮
     vs = { inf = 1, light = 1.4, armor = 0.9, air = 0, ship = 1.4, fort = 1 }, fx = "tank" },
   flak35 = { kind = "flak", dmg = 70, speed = 1150, gscale = 0.15, splash = 11, rate = 0.25, range = 2300, fuse = 9, spread = 1.1,
     vs = { inf = 0.6, light = 0.4, armor = 0.05, air = 2.2, ship = 0.1, fort = 0.2 }, fx = "ac" },
@@ -1016,7 +1016,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -1285,7 +1285,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -1632,7 +1632,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -1917,22 +1917,17 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="10">
+    <Item class="Folder" referent="9">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
-    <Item class="Folder" referent="11">
-      <Properties>
-        <string name="Name">SceneryModels</string>
-      </Properties>
-    </Item>
   </Item>
-  <Item class="ServerScriptService" referent="12">
+  <Item class="ServerScriptService" referent="10">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="13">
+    <Item class="Script" referent="11">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -2097,7 +2092,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：部署（名额、挂载、出生点）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -2914,7 +2909,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -2990,8 +2985,21 @@ function Armor.init(G)
   ---------------------------------------------------------------- 摆车
 
   -- (x, z) 附近一块够平、够大的地（四个角高度差小）
-  local function parkAt(x, z, r0, r1, d)
-    for _ = 1, 30 do
+  -- 车头前方 ahead 格的路能不能开出去：坡不比 Drive.lua 能爬的陡、不下海、不顶着房子 / 帐篷 / 旗杆 / 工事（面朝 ±Z 时按轴对齐的方框查）
+  local function laneClear(px, pz, d, face, ahead)
+    local h0 = Map.height(px, pz)
+    for s = d.L * 0.5 + 4, d.L * 0.5 + ahead, 4 do
+      local h1 = Map.height(px + face.X * s, pz + face.Z * s)
+      if h1 < 0.6 or (h1 - h0) / 4 > 0.7 then return false end
+      h0 = h1
+    end
+    if not G.spotClear then return true end
+    local mid = d.L * 0.5 + ahead * 0.5
+    return G.spotClear(px + face.X * mid, pz + face.Z * mid, d.W * 0.5 + 1, ahead * 0.5, d.H)
+  end
+  -- face：车头朝哪（给了就再要求车头前方几个车长开得出去——营地里车头正对着房子、旗杆的话一出生就开不动）
+  local function parkAt(x, z, r0, r1, d, face)
+    for try = 1, 60 do
       local a, r = math.random() * math.pi * 2, r0 + math.random() * (r1 - r0)
       local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
       local ok = true
@@ -3003,8 +3011,9 @@ function Armor.init(G)
       end
       if ok then
         local lo, hi = math.min(table.unpack(hs)), math.max(table.unpack(hs))
-        -- 还要空着：不压在房子、帐篷、工事、钢刺猬上（Forts 的 G.spotClear）
-        if hi - lo < d.L * 0.18 and (not G.spotClear or G.spotClear(px, pz, d.W * 0.5 + 1, d.L * 0.5 + 1, d.H)) then return px, pz end
+        -- 还要空着：不压在房子、帐篷、工事、钢刺猬上（Forts 的 G.spotClear）；前 40 次还要车头前方开得出去，找不到再放宽
+        if hi - lo < d.L * 0.18 and (not G.spotClear or G.spotClear(px, pz, d.W * 0.5 + 1, d.L * 0.5 + 1, d.H))
+          and (not face or try > 40 or laneClear(px, pz, d, face, d.L * 3)) then return px, pz end
       end
     end
     return x, z
@@ -3137,7 +3146,7 @@ function Armor.init(G)
   ---------------------------------------------------------------- 气垫艇（攻方不会游的车从海上送上滩）
 
   local lcacs = {}
-  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 900 }
+  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 1800 }   -- 同登陆艇：岸防炮要中 3 发才沉
   local function lcacCF(b, dist)
     local p = V(b.cx, 2.2, b.z + b.dir * dist)
     return CFrame.lookAt(p, p + V(0, 0, -b.dir))
@@ -3232,7 +3241,7 @@ function Armor.init(G)
     else
       local x, z = sp.x, sp.z
       local face = (P.team == "def") and V(0, 0, 1) or V(0, 0, -1)
-      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d)
+      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d, face)
       e = newVehicle(P.team, id, baseAt(d, px, pz, face), P)
     end
     P.spawnCF = e.root.CFrame
@@ -3452,7 +3461,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -4099,7 +4108,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -4351,7 +4360,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -5542,7 +5551,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -5735,7 +5744,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
@@ -6299,7 +6308,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -6370,7 +6379,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -6385,7 +6394,9 @@ function Vehicles.init(G)
   local CF = CFrame.new
   local now = os.clock
 
-  local BOAT = { start = 620, speed = 48, wait = 4, hp = 650, size = V(16, 7, 34), seats = 12 }
+  -- hp：岸防炮一发直接命中 728（520 × 打船 1.4），原来 650 一发就沉、一船人全灭（机器人对打 6 分钟被打沉 53 条，攻方一个据点都拿不下）；
+  --   现在要中 3 发才沉，被盯上了还有机会冲上滩
+  local BOAT = { start = 620, speed = 48, wait = 4, hp = 1600, size = V(16, 7, 34), seats = 12 }
   local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
   local running = {}
 
@@ -6617,7 +6628,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -7091,7 +7102,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -7544,15 +7555,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="25">
+  <Item class="StarterPlayer" referent="23">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="26">
+    <Item class="StarterPlayerScripts" referent="24">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="27">
+      <Item class="LocalScript" referent="25">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -7617,7 +7628,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="28">
+        <Item class="ModuleScript" referent="26">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -8483,7 +8494,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="29">
+        <Item class="ModuleScript" referent="27">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -9127,7 +9138,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="30">
+        <Item class="ModuleScript" referent="28">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -9624,7 +9635,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="31">
+        <Item class="ModuleScript" referent="29">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -9939,7 +9950,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="30">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -10300,7 +10311,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="31">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -10840,7 +10851,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="32">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -11030,7 +11041,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -11477,7 +11488,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -12112,7 +12123,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的零件模型：按 VehDefs 的尺寸拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -12479,7 +12490,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -12858,13 +12869,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="39">
+  <Item class="Workspace" referent="37">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="40">
+  <Item class="Lighting" referent="38">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">3</float>

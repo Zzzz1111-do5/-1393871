@@ -35,6 +35,7 @@ end
 print("① 开服：生成地图")
 H.run(0.5)
 local G = H.Gs.server
+G.fortsHold = true   -- 这里测的不是工事：工事不开火（同 tools/mock/*.lua；不然岸防炮会把测试里的登陆艇打沉）
 check(G ~= nil, "服务器模块起来了")
 G.Config.Bots.minPerTeam = 0   -- 这个测试不要机器人（机器人另有 ia_bots）
 local ok = H.runUntil(function() return G.worldReady end, 900)

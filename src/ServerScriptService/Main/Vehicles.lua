@@ -10,7 +10,9 @@ function Vehicles.init(G)
   local CF = CFrame.new
   local now = os.clock
 
-  local BOAT = { start = 620, speed = 48, wait = 4, hp = 650, size = V(16, 7, 34), seats = 12 }
+  -- hp：岸防炮一发直接命中 728（520 × 打船 1.4），原来 650 一发就沉、一船人全灭（机器人对打 6 分钟被打沉 53 条，攻方一个据点都拿不下）；
+  --   现在要中 3 发才沉，被盯上了还有机会冲上滩
+  local BOAT = { start = 620, speed = 48, wait = 4, hp = 1600, size = V(16, 7, 34), seats = 12 }
   local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
   local running = {}
 

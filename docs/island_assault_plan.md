@@ -47,6 +47,37 @@
 - [ ] 百人同服的性能测试、界面截图检查。
 - [ ] 模型包转换。
 - [ ] 新图标和宣传图。
+- [x] 平衡：岸防炮原来一发就打沉登陆艇（520 × 打船 1.4 = 728，艇 650 血），机器人对打 6 分钟被打沉 53 条，攻方只拿下 A。
+  登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
+  机器人对打 8 分钟（`ia_bots.luau 8`）：没有工事时攻方拿下 3 个点、阵亡 攻 43 / 守 26；加了工事、没调之前只拿下 1 个、阵亡 攻 306 / 守 16；调过以后拿下 3 个、阵亡 攻 137 / 守 39。
+  以后攻方舰艇做出来能压制岸防炮了，可以再把射速调回去。统计攻方死在什么上面：`lune run tools/test/ia_balance.luau <rbxlx> 6`。
+
+## 协作（几个会话一起改这个仓库）
+
+用户同时开了几个会话做这个游戏，各自推在自己的 `claude/*` 分支上。到 2026-11-16 为止：
+
+| 分支 | 会话 | 做了什么 |
+| --- | --- | --- |
+| `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具 |
+| `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机（进行中） |
+| `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」 |
+| `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下） |
+
+三条分支是一条线接着做的（后一条从前一条的最新提交开始），`keen-heisenberg` 已经快进到 `darksword-forts-navy` 的 17787e7。
+
+规矩：
+- 开工前 `git fetch`，从最新的那条分支开始做；别人的分支有新提交就合并进来，不要另起一份平行的实现。
+- 动手前在上面的进度表里写一句「谁在做」，做完打勾；改到别人的文件，在提交说明里写清楚。
+- 两套测试都要过：有 Lune 跑 `tools/test/*.luau`（真正的 Luau，最接近 Roblox），没有 Lune 跑 `python3 tools/mock/run.py tools/mock/<测试>.lua`（Lua 5.4 模拟）。
+  改了一边的测试前提（比如 `G.fortsHold`），另一边的同名测试也要跟着改。
+
+协调这一轮（keen-heisenberg）做的：
+- 用 Lune 把 Luau 测试全部重跑了一遍。后两个会话没有 Lune，只跑过 Lua 5.4 模拟，这些问题它们看不到：
+  - `ia_flow` 登陆艇不走：工事那次提交给模拟测试加了「工事不开火」（`G.fortsHold`），Luau 测试没加，岸防炮把测试里的艇打沉了。补上了，流程测试 47 项全过。
+  - `ia_veh` 坦克开不出营地（时好时坏）：营地里车头朝南随机停，正前方是房子和旗杆。`Armor.lua` 选停车位时多查一下车头前方三个车长能不能开出去，连跑 5 次都过。
+  - `ia_veh` 烟团离车的距离偶尔 53 格（检查上限 50）：车停在下坡上烟幕弹落得远，上限放到 60。
+- 平衡：见进度表最后一条。
+- 还没人认领：百人同服的性能测试和界面截图、模型包转换、新图标和宣传图。飞机直升机在 `darksword-air-map` 做；舰艇看分支名可能是 `darksword-forts-navy` 接着做。
 
 `src/` 已经整个换成这个游戏，`RobloxTotalBattlefield.rbxlx` 是它生成的；大亨版的代码和测试删掉了（要看去翻 git 历史，最后一版是提交 8809346）。
 

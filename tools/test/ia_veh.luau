@@ -30,6 +30,7 @@ local function drive(pl, msg) as(pl, function() H.Gs[pl.Name].R.Drive:FireServer
 
 H.run(0.5)
 local G = H.Gs.server
+G.fortsHold = true   -- 这里测的不是工事：工事不开火（同 tools/mock/*.lua；不然岸防炮会把测试里的登陆艇打沉）
 G.Config.Bots.minPerTeam = 0
 H.runUntil(function() return G.worldReady end, 120)
 local p1, p2 = H.addPlayer("P1", 5001), H.addPlayer("P2", 5002)
@@ -117,10 +118,10 @@ if #G.smokes > 0 then
 	local b = s.p - V3.new(60, -2, 0)
 	check(G.smokeBlocks(a, b), "穿过烟团的视线被挡住")
 	check(not G.smokeBlocks(s.p + V3.new(0, 200, 0), s.p + V3.new(50, 200, 0)), "烟团上面的视线不挡")
-	-- 烟幕弹从发射筒打出去：落点在车的前方两侧 25～40 格
+	-- 烟幕弹从发射筒打出去：落点在车的前方两侧 25～40 格（按弹道落地：车停在下坡上会落得远一些，上限放到 60）
 	local base = e.root.CFrame * CF.new(0, -e.def.H / 2, 0)
 	local lp = base:PointToObjectSpace(s.p)
-	check((lp * V3.new(1, 0, 1)).Magnitude > 20 and (lp * V3.new(1, 0, 1)).Magnitude < 50, string.format("烟团在车旁 %.0f 格", (lp * V3.new(1, 0, 1)).Magnitude))
+	check((lp * V3.new(1, 0, 1)).Magnitude > 20 and (lp * V3.new(1, 0, 1)).Magnitude < 60, string.format("烟团在车旁 %.0f 格", (lp * V3.new(1, 0, 1)).Magnitude))
 end
 check(e.smokeLeft == 1, "烟幕弹还剩一次齐射：" .. tostring(e.smokeLeft))
 

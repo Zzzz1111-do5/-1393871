@@ -71,8 +71,21 @@ function Armor.init(G)
   ---------------------------------------------------------------- 摆车
 
   -- (x, z) 附近一块够平、够大的地（四个角高度差小）
-  local function parkAt(x, z, r0, r1, d)
-    for _ = 1, 30 do
+  -- 车头前方 ahead 格的路能不能开出去：坡不比 Drive.lua 能爬的陡、不下海、不顶着房子 / 帐篷 / 旗杆 / 工事（面朝 ±Z 时按轴对齐的方框查）
+  local function laneClear(px, pz, d, face, ahead)
+    local h0 = Map.height(px, pz)
+    for s = d.L * 0.5 + 4, d.L * 0.5 + ahead, 4 do
+      local h1 = Map.height(px + face.X * s, pz + face.Z * s)
+      if h1 < 0.6 or (h1 - h0) / 4 > 0.7 then return false end
+      h0 = h1
+    end
+    if not G.spotClear then return true end
+    local mid = d.L * 0.5 + ahead * 0.5
+    return G.spotClear(px + face.X * mid, pz + face.Z * mid, d.W * 0.5 + 1, ahead * 0.5, d.H)
+  end
+  -- face：车头朝哪（给了就再要求车头前方几个车长开得出去——营地里车头正对着房子、旗杆的话一出生就开不动）
+  local function parkAt(x, z, r0, r1, d, face)
+    for try = 1, 60 do
       local a, r = math.random() * math.pi * 2, r0 + math.random() * (r1 - r0)
       local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
       local ok = true
@@ -84,8 +97,9 @@ function Armor.init(G)
       end
       if ok then
         local lo, hi = math.min(table.unpack(hs)), math.max(table.unpack(hs))
-        -- 还要空着：不压在房子、帐篷、工事、钢刺猬上（Forts 的 G.spotClear）
-        if hi - lo < d.L * 0.18 and (not G.spotClear or G.spotClear(px, pz, d.W * 0.5 + 1, d.L * 0.5 + 1, d.H)) then return px, pz end
+        -- 还要空着：不压在房子、帐篷、工事、钢刺猬上（Forts 的 G.spotClear）；前 40 次还要车头前方开得出去，找不到再放宽
+        if hi - lo < d.L * 0.18 and (not G.spotClear or G.spotClear(px, pz, d.W * 0.5 + 1, d.L * 0.5 + 1, d.H))
+          and (not face or try > 40 or laneClear(px, pz, d, face, d.L * 3)) then return px, pz end
       end
     end
     return x, z
@@ -218,7 +232,7 @@ function Armor.init(G)
   ---------------------------------------------------------------- 气垫艇（攻方不会游的车从海上送上滩）
 
   local lcacs = {}
-  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 900 }
+  local LCAC = { start = 520, speed = 55, size = V(28, 6, 48), hp = 1800 }   -- 同登陆艇：岸防炮要中 3 发才沉
   local function lcacCF(b, dist)
     local p = V(b.cx, 2.2, b.z + b.dir * dist)
     return CFrame.lookAt(p, p + V(0, 0, -b.dir))
@@ -313,7 +327,7 @@ function Armor.init(G)
     else
       local x, z = sp.x, sp.z
       local face = (P.team == "def") and V(0, 0, 1) or V(0, 0, -1)
-      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d)
+      local px, pz = parkAt(x, z, (sp.kind == "point") and 60 or 20, (sp.kind == "point") and 120 or 80, d, face)
       e = newVehicle(P.team, id, baseAt(d, px, pz, face), P)
     end
     P.spawnCF = e.root.CFrame

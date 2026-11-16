@@ -15,7 +15,7 @@ local V = Vector3.new
 FortDefs.W = {
   hmg = { kind = "gun", dmg = 34, rate = 0.12, burst = { 5, 9 }, pause = { 1.0, 1.8 }, range = 820, spread = 1.2, spreadPer = 0.0035,
     vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", head = 1 },
-  naval127 = { kind = "shell", dmg = 520, speed = 950, gscale = 0.5, splash = 15, rate = 8, range = 3300, minR = 160,
+  naval127 = { kind = "shell", dmg = 520, speed = 950, gscale = 0.5, splash = 15, rate = 10, range = 3300, minR = 160,   -- rate 原来 8：攻方还没有舰艇压制岸防炮
     vs = { inf = 1, light = 1.4, armor = 0.9, air = 0, ship = 1.4, fort = 1 }, fx = "tank" },
   flak35 = { kind = "flak", dmg = 70, speed = 1150, gscale = 0.15, splash = 11, rate = 0.25, range = 2300, fuse = 9, spread = 1.1,
     vs = { inf = 0.6, light = 0.4, armor = 0.05, air = 2.2, ship = 0.1, fort = 0.2 }, fx = "ac" },

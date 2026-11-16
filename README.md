@@ -58,7 +58,12 @@ lune run tools/test/ia_flow.luau RobloxTotalBattlefield.rbxlx  # 流程：开服
 lune run tools/test/ia_bots.luau RobloxTotalBattlefield.rbxlx 8  # 机器人：一个真人 + 机器人打 8 分钟（补人数、抢滩、交火、占领、耗时）
 lune run tools/test/ia_veh.luau RobloxTotalBattlefield.rbxlx     # 载具：部署、开车、悬架、开炮、烟幕弹、瞄准镜四种模式、下车上车、被毁、气垫艇
 lune run tools/test/ia_boot.luau RobloxTotalBattlefield.rbxlx  # 开服计时（地形生成）
+lune run tools/test/ia_balance.luau RobloxTotalBattlefield.rbxlx 6  # 平衡统计：机器人对打几分钟，攻方的兵、登陆艇死在什么上面
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图
 ```
+
+没有 Lune 也能跑一套 Lua 5.4 的模拟测试：`python3 tools/mock/run.py tools/mock/<flow|veh|forts|air|bots|fps>.lua`。两套都要过。
+
+几个会话同时在改这个仓库：分工、规矩和这一轮的协调记录见方案文档的「协作」一节。
 
 渲染、物理、Roblox 自带的镜头和角色控制模拟不了。上线前还是要在 Studio 里实际玩一遍。
