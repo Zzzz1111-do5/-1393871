@@ -129,6 +129,9 @@ function UI.init(G)
   round(teamTag, 6)
   local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -140, 0, 0), 16, MUTE, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)   -- 语言按钮左边
   local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
+  local sideBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(0.5, 140, 0.5, 0), RGB(40, 46, 52), Vector2.new(0, 0.5))   -- 换阵营（回到选阵营界面）
+  sideBtn.TextSize = 14
+  sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
   local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
 
   -- 左边：兵种卡片（载具不在这里选：到地图里的生成点去生成，Depot.lua）
@@ -255,6 +258,7 @@ function UI.init(G)
     teamTag.BackgroundColor3 = teamColor(S.team)
     goal.Text = T((S.team == "def") and "ui.goalDef" or "ui.goalAtk")
     langBtn.Text = T("ui.lang")
+    sideBtn.Text = T("ui.switchSide")
     for id, c in pairs(roleCards) do
       local w = {}
       for _, wid in ipairs(c.r.weapons) do table.insert(w, T("weapon." .. wid)) end
@@ -471,6 +475,7 @@ function UI.init(G)
       return
     end
     loading.Visible = false
+    if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：还没选、或者点了「换阵营」
     local showDeploy = not S.alive and S.phase ~= "end"
     deploy.Visible = showDeploy
     hud.Visible = not showDeploy

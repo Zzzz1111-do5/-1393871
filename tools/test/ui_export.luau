@@ -1,6 +1,6 @@
 --!nocheck
 -- 界面导出：开服、进两个玩家，在几个场合把 PlayerGui 存下来（写成 JS 文件，给 ui_view.html 画出来看排版）
---   场合：deploy 部署 · hangar 挂载编辑器全景（航母甲板上的生成点按 E 弹出）· hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
+--   场合：faction 选阵营 · deploy 部署 · hangar 挂载编辑器全景（航母甲板上的生成点按 E 弹出）· hangar_sel 选中挂点换弹 · fly 甲板上的歼-35 ·
 --   fly_air 空中 · heli 直升机 · battle 步兵 · board 计分板 · result 结算
 --   挂载编辑器的 ViewportFrame 里的零件按镜头投影存下来（ui_view.html 按面画成 3D，看白圈是不是对在挂点上）
 -- 用法：lune run ui_export.luau <rbxlx> <输出.js> [pc|phone]
@@ -167,6 +167,13 @@ for _, X in ipairs({ C, CD }) do
 	if X.refresh then X.refresh() end
 end
 H.run(0.3)
+
+-- 选阵营（进服先看这个）
+H.run(0.5)
+snap("faction")
+act(atk, "pickTeam", "atk")
+act(def, "pickTeam", "def")
+H.run(0.6)
 
 -- 部署：步兵
 C.deploySel.role, C.deploySel.spawn = "rifle", "fleet"

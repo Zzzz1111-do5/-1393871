@@ -56,6 +56,27 @@ check(C1 ~= nil and C1.S ~= nil, "客户端收到了战况")
 check(G.round.phase == "prep" or G.round.phase == "battle", "回合阶段 " .. G.round.phase)
 local dep = pls[1].PlayerGui:FindFirstChild("Main") and pls[1].PlayerGui.Main:FindFirstChild("Deploy")
 check(dep ~= nil and dep.Visible, "没出生时显示部署界面")
+-- 选阵营：进服先看选阵营界面（解放军 / 美军两张卡）；人多的一边进不去；点自己这一边的「加入」定下来
+local fg = pls[1].PlayerGui:FindFirstChild("Faction")
+check(fg ~= nil and fg.Enabled, "进服先看到选阵营界面")
+do
+	local P1 = G.P[pls[1]]
+	local other = (P1.team == "atk") and "def" or "atk"
+	local C1x = H.Gs.P1
+	local card = fg:FindFirstChild("Card_" .. other, true)
+	local btn = card and card:FindFirstChild("Join")
+	check(btn ~= nil and btn.Text == C1x.T("faction.full"), "3 : 3 时对面那一边显示「人数已满」：" .. tostring(btn and btn.Text))
+	act(pls[1], "pickTeam", other)
+	H.run(0.5)
+	check(P1.team ~= other and not P1.picked, "人多的一边进不去")
+	local mine = fg:FindFirstChild("Card_" .. P1.team, true)
+	local join = mine and mine:FindFirstChild("Join")
+	if join then H.press(pls[1], join) end
+	H.run(0.6)
+	check(P1.picked and not fg.Enabled, "点「加入」定下阵营，选阵营界面关了")
+end
+for _, pl in ipairs(pls) do act(pl, "pickTeam", G.P[pl].team) end
+H.run(0.5)
 
 -- 按队分好
 local atk, def = {}, {}

@@ -48,23 +48,32 @@ function Round.init(G)
     P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
   end
 
-  -- 新来的人：补到真人少的一方，一样多就随机
+  -- 新来的人先放到真人少的一方（临时的），进服先看选阵营界面：自己选解放军（攻）还是美军（守）
   local function pickTeam()
     local a, d = teamCount("atk", true), teamCount("def", true)
     if a < d then return "atk" elseif d < a then return "def" end
     return (math.random() < 0.5) and "atk" or "def"
   end
 
-  -- 开局：所有人打乱，一半一半
-  local function shuffleTeams()
-    local list = {}
-    for _, P in pairs(G.P) do table.insert(list, P) end
-    for i = #list, 2, -1 do
-      local j = math.random(i)
-      list[i], list[j] = list[j], list[i]
+  -- 能不能进这一队：不算自己，这一队的真人不比另一队多（人多的一边「人数已满」）
+  local function canJoin(P, team)
+    if team ~= "atk" and team ~= "def" then return false end
+    local other = (team == "atk") and "def" or "atk"
+    local a, b = teamCount(team, true), teamCount(other, true)
+    if P.team == team then a -= 1 elseif P.team == other then b -= 1 end
+    return a <= b
+  end
+  G.canJoin = canJoin
+  -- 选阵营（解放军 = 攻、美军 = 守）：没出生的时候才能选 / 换；开新一局不再打乱，各自留在自己选的阵营
+  function G.ACT.pickTeam(P, team)
+    if P.alive or not canJoin(P, team) then
+      if not P.alive and (team == "atk" or team == "def") and P.team ~= team then G.msg(P.pl, "bad", "ui.teamFull") end
+      if P.team == team then P.picked = true G.pushOne(P) end
+      return
     end
-    local first = (math.random() < 0.5) and "atk" or "def"
-    for i, P in ipairs(list) do setTeam(P, (i % 2 == 1) and first or ((first == "atk") and "def" or "atk")) end
+    setTeam(P, team)
+    P.picked = true
+    G.pushAll()
   end
 
   ---------------------------------------------------------------- 出生点
@@ -505,7 +514,6 @@ function Round.init(G)
     R.winner = nil
     resetPoints()
     clearChars()
-    shuffleTeams()
     for _, P in pairs(G.P) do
       P.kills, P.deaths, P.score, P.caps, P.roundXp = 0, 0, 0, 0, 0
     end
@@ -600,6 +608,10 @@ function Round.init(G)
   local function personal(P, C)
     local t = now()
     C.team = P.team
+    C.round = R.n
+    C.picked = P.picked == true
+    C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
+    C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")
     C.role = P.role
     C.alive = P.alive
     C.wait = math.max(0, math.ceil((P.canDeployAt or 0) - t))
@@ -643,7 +655,6 @@ function Round.init(G)
     G.pushOne(P)
     task.delay(1, function()
       if G.P[pl] == P then
-        G.msg(pl, "center", "ui.youAre", { k = "team." .. P.team })
         for _, m in ipairs(G.bootErrors) do G.msg(pl, "bad", m) end
       end
     end)
