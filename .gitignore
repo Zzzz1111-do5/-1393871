@@ -1,3 +1,8 @@
 # 本地生成的东西
 *.log
 /build/
+
+# 枪械模型管线：依赖、下载的原模型、预览图
+/tools/weapons/node_modules
+/tools/weapons/cache/
+/tools/weapons/preview/

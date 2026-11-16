@@ -28,6 +28,24 @@
     （`FPSView.lua`）；动作抽成关键帧（`FPSAnim.lua`：拔枪、换弹、空仓换弹），加待机呼吸、走路晃、转镜头滞后、后坐、开镜（照门准星对正中）；
     网格和贴图嵌在 `FPSMesh.lua`，开局用 EditableMesh 生成（发布后要在游戏设置 → 安全里打开 Mesh / Image API）；也可以在 Studio 导入 `models/fps_m4.glb`
     放进 `ReplicatedStorage/Imported/FPS_M4`（优先用这个）；都不行时退回零件拼的。抽取工具 `tools/fps/fps_bake.py`，测试 `tools/mock/fps.lua`。
+  - 瞄准镜（用户：第一人称的瞄准镜太粗糙、要有光学效果、居然是多边形；从 Sketchfab 找瞄准镜的模型，原封不动拷贝，给狙击镜做分划和倍率）：
+    - 真模型（`Optics.lua`）：狙击镜是 suspensy 的「Nightforce ATACR 7-35x56 F1」（带皮卡汀尼镜座），望远镜是 TORI106 的「binoculars」，都是 CC-BY；
+      几何、材质、贴图原样，只换单位（米 → 格）、方向和原点（`tools/weapons/optics.mjs` + `optics.json`）。Studio 里导入 `models/optics/<键>.glb`
+      （块叫 `O_<键>__<块名>`，`Imports.lua` 开服时收进 `ReplicatedStorage.Imported.Optics`）就用带 PBR 贴图的原模型；没导入时客户端用 `OpticMesh/<键>.lua`
+      里嵌的网格和底色贴图（缩小、256 色）开局用 EditableMesh 生成；都没有时退回零件拼的。元数据 `OpticsMeta.lua`（每块中心、目镜 / 物镜的位置和半径）。
+      狙击枪工具上的镜子（第三人称别人看到的）导入了也换成真模型（`Weapons.lua` 的 `Scope_*`）。
+    - 第一人称（`FPSView.lua` 的 `OPTIC`）：狙击枪装上 ATACR、观察员拿着真望远镜；开镜时整个举到眼前，镜子的光轴对正屏幕中心，目镜离眼睛的距离按视角算
+      （放大时视角小、目镜推远，屏幕上始终占高度的 86%）；举镜过程中只留镜子本身，眼睛贴上目镜（ads > 0.9）才藏起来、换成目镜里的像（`G.fpsOpticPending`）。
+    - 目镜里的像（`Scope.lua`，替换 `Play.lua` 原来四块黑板围出的方框）：正圆出瞳（Frame + UICorner，外面一圈 3200 像素的黑描边）；两个圆叠着——
+      视场光阑 A 和眼睛的出瞳 B，镜子一晃、转得快、走路、开枪、刚贴上目镜时错开，边上出现月牙形的镜内阴影；一圈圈半透明描边叠成边缘渐暗；
+      偏了才看得出的红蓝色散彩边；镀膜淡色、左上反光弧；对着月亮时镜片泛白；开镜先黑一下、出瞳由小变大、画面从糊到清楚（BlurEffect 对焦），变倍、开枪也轻轻糊一下。
+      狙击镜分划照 ATACR F1 做成第一焦平面的密位分划：细十字、每密位刻度（5、10 长一点，倍率高时加半密位）、10 密位外粗柱、2 4 6 8 数字、
+      倍率够高时中心下面一组提前量点；刻线跟倍率一起缩放（每密位像素 = 屏幕半高 ÷ tan(半视角) × 0.001）；夜里中心 ±2 密位和中心点发暗红光（开着夜视仪调暗）。
+      倍率 7–35（同这具镜子，滚轮变，手机有 ＋ / − 键），鼠标灵敏度随倍率降；呼吸晃（Shift 屏息几秒，憋过头晃得更厉害），走动晃得多，晃动加在镜头上（子弹照样打屏幕正中）。
+      望远镜：两个圆并排（左右各按半边屏幕裁开，正好是两圆的并集）、琥珀色测距框、密位刻度，底下一行激光测距 / 方位 / 倍率。开着镜不画小地图，夜视仪的镜筒圈也不画。
+    - 镜片闪光：开着镜的人对着你（视线在你附近 20° 以内）时他的镜片会闪（服务器只记 `Scoped` / `ScopeDir` 两个属性，`G.ACT.scope`；看的人本地画，墙挡得住）。
+    - 测试：`tools/test/ia_optics.luau`（假装导入了模型：工具上是真镜子、第一人称举镜、目镜对正中心占 86%、变倍时目镜推远、分划跟着放大、望远镜）、
+      `ia_flow` 里开镜 / 变倍 / 服务器记开镜 / 对面看到闪光、`tools/mock/fps.lua` 里内嵌的真模型能生成；界面截图 `ui_export` 的 `scope`、`scope_kick`、`scope_moon`、`binoc`。
 - [x] 登陆艇抢滩、伞降。
 - [x] 地面载具（坦克、装甲车、防空、火炮，两队共 27 个型号，`VehDefs.lua`）：部署页签、名额与冷却、本地算位置开车、车轮 / 负重轮各自弹簧悬架（过坡上下抖）、
   炮塔回转速度和俯仰范围、主炮炮弹有下坠、并列机枪、榴弹炮 / 火箭炮曲射、烟幕弹从型号规定的发射筒打出（烟团挡视线）、
@@ -66,6 +84,9 @@
   真人比另一边多的那一边「人数已满」（服务器 `G.canJoin`、`ACT.pickTeam`）；开新一局不再打乱分队；部署界面顶上「换阵营」能回来（没出生时）。
   内容按 1280 × 720 摆、按屏幕整体缩放（手机横屏也放得下）。测试 `ia_flow` 查选阵营界面、人多的一边进不去、点加入定下来。
 - [ ] 枪械配置：默认是士兵，可以改枪（主武器、副武器、装备，枪上配件）——**session_015eAzKBC4CDJLpwoYfRQTvP 在做**（接第一人称 M4：配件在镜头前看得见、改数值）。
+  - keen-heisenberg 在它认领之前已经按用户的话（「模型你去 Sketchfab 上找」）找好、下好了两边各五把主武器和配件的 CC-BY 模型（清单、模型号、作者、方向、比例在
+    `tools/weapons/weapons.json`），校准到第一人称 M4 枪身骨骼的工具 `tools/weapons/build.mjs`（侧视对比图、量截面）做到一半，没接进游戏，认领的会话可以接着用；
+    瞄准镜那一块（真模型、目镜里的像）已经做完，见上面「瞄准镜」。
 - [ ] 界面按参考截图重做（暗色、扁平、有高级感；驾驶画面照参考的空战游戏）。
 - [x] 机器人填充：每队补到 18 人（全服最多 40 个），攻方集中兵力打「主攻」据点、成班坐登陆艇抢滩，守方按压力分到各据点；寻路用流场（`Nav.lua`）。
 - [x] 守方工事：地图自带、每局系统摆好，玩家不用（也不能）自己部署（`FortDefs.lua`、服务器 `Forts.lua`、客户端 `FortView.lua` / `Gunner.lua`，测试 `tools/mock/forts.lua`）。
@@ -104,7 +125,7 @@
 | `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具 |
 | `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机（进行中） |
 | `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」、舰艇；接着做枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
-| `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下） |
+| `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果） |
 
 三条分支是一条线接着做的（后一条从前一条的最新提交开始），`keen-heisenberg` 已经快进到 `darksword-forts-navy` 的 17787e7。
 

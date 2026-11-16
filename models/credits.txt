@@ -29,3 +29,8 @@
   改动：原模型的手臂没用（游戏里画成 Roblox 方块手臂）；枪按零件分开、单位换成格、补上 FBX 里弹匣骨骼的缩放；贴图缩小（GLB 1024、游戏内嵌 512 / 128）；动作抽成相对相机的关键帧（长的隔帧）
 
 全面大战场的地面载具原模型（models/veh/*.glb）的署名见 models/veh/credits.txt。
+
+第一人称的瞄准镜、望远镜（models/optics/*.glb；游戏里 src/ReplicatedStorage/OpticMesh、OpticsMeta）：
+  狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）（atacr.glb）：「Nightforce ATACR 7-35x56 F1」，作者 suspensy，CC-BY-4.0 https://sketchfab.com/3d-models/nightforce-atacr-7-35x56-f1-881b1a99ac1c4e3d89c45b4467e738f2
+  望远镜（binoc.glb）：「binoculars」，作者 TORI106，CC-BY-4.0 https://sketchfab.com/3d-models/binoculars-b38216dc4d5248428060d4b854c3d9e5
+  改动：几何、材质、贴图都没改，只换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；游戏内嵌的版本贴图缩小并压成 256 色

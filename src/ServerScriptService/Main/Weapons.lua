@@ -59,7 +59,34 @@ function Weapons.init(G)
       if S.stock then weld(h, p(tool, V(0.35, 0.55, 1.1), CF(0, 0.2, 1.1), S.color)) end
       if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
       if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
-      if S.scope then weld(h, p(tool, V(0.28, 0.28, 1.3), CF(0, 0.75, -0.6), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+      if S.scope then   -- 瞄准镜：Studio 里导入了真模型（models/optics/atacr.glb，Imports.lua 收进 Imported.Optics.atacr）就装它，不然零件拼一根镜筒
+        local RS = game:GetService("ReplicatedStorage")
+        local imp = RS:FindFirstChild("Imported")
+        local opt = imp and imp:FindFirstChild("Optics")
+        opt = opt and opt:FindFirstChild("atacr")
+        local okM, OM = pcall(function() return require(RS:FindFirstChild("OpticsMeta")) end)
+        local real = false
+        if opt and okM and type(OM) == "table" and OM.atacr then
+          for _, src in ipairs(opt:GetChildren()) do
+            local name = string.match(src.Name, "__(.+)$")
+            local info = name and OM.atacr.parts[name]
+            if src:IsA("BasePart") and info then   -- 器材坐标 +Z 朝前、原点在镜座底面；工具 −Z 朝前：转 180°，镜座贴在枪身顶面（y 0.55）
+              local q = src:Clone()
+              q.Name = "Scope_" .. name
+              q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.Massless = false, false, false, false, true
+              q.CFrame = CF(0, 0.55, -1.1) * CFrame.Angles(0, math.pi, 0) * CF(info.c[1], info.c[2], info.c[3])
+              q.Parent = tool
+              weld(h, q)
+              real = true
+            end
+          end
+        end
+        if not real then
+          local sc = p(tool, V(1.3, 0.28, 0.28), CF(0, 0.75, -0.6) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)
+          sc.Name = "Scope"
+          weld(h, sc)
+        end
+      end
       if S.rail then weld(h, p(tool, V(0.22, 0.1, S.L * 0.55), CF(0, 0.6, -S.L * 0.3), DARK, Enum.Material.Metal)) end
     elseif S and S.tube then   -- 发射筒：扛在肩上
       local t = p(tool, V(S.tube, S.dia, S.dia), CF(0, 0.6, -0.4) * CFrame.Angles(0, math.pi / 2, 0), S.color, Enum.Material.Metal, Enum.PartType.Cylinder)

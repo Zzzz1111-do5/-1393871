@@ -86,7 +86,7 @@ function Night.init(G)
       blur.Parent = Lighting
       fx = { cc, bl, blur }
       fitTube()
-      gui.Enabled = G.fly == nil   -- 飞行员是头盔显示：不加镜筒那一圈
+      gui.Enabled = G.fly == nil and G.sail == nil and not G.scopeOn   -- 飞行员是头盔显示、开着镜时目镜自己是圆的：都不加镜筒那一圈
       if G.playSound then G.playSound("quiet", nil, 2.4) end
     else
       for _, e in ipairs(fx) do e:Destroy() end
@@ -141,7 +141,7 @@ function Night.init(G)
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 or (G.drive and not G.fly and not G.sail) then setOn(false) return end
-    gui.Enabled = G.fly == nil and G.sail == nil   -- 目镜的圆框只在步兵时画（开飞机、开船是追尾镜头）
+    gui.Enabled = G.fly == nil and G.sail == nil and not G.scopeOn   -- 目镜的圆框只在步兵时画（开飞机、开船是追尾镜头；开着狙击镜、望远镜时目镜自己是圆的）
     local cc = fx[1]
     if cc then cc.Brightness = 0.04 + (math.random() - 0.5) * 0.018 end   -- 增像管的轻微闪烁
     irT += dt

@@ -588,6 +588,14 @@ roblox.implementMethod("Camera", "ScreenPointToRay", function(self, x, y) return
 roblox.implementMethod("Camera", "ViewportPointToRay", function(self, x, y) return camRay(self, x, y) end)
 roblox.implementMethod("Camera", "WorldToViewportPoint", function(self, p)
 	local lp = self.CFrame:PointToObjectSpace(p)
+	if H.realProjection then   -- 界面截图要看画在投影点上的东西（瞄准镜的眩光等）：真的透视投影
+		local vs = self.ViewportSize
+		local z = -lp.Z
+		if z <= 1e-3 then return V3.new(vs.X / 2, vs.Y / 2, z), false end
+		local k = (vs.Y / 2) / math.tan(math.rad(self.FieldOfView) / 2)
+		local x, y = vs.X / 2 + lp.X / z * k, vs.Y / 2 - lp.Y / z * k
+		return V3.new(x, y, z), x >= 0 and x <= vs.X and y >= 0 and y <= vs.Y
+	end
 	return V3.new(640, 360, -lp.Z), lp.Z < 0
 end)
 roblox.implementMethod("Camera", "WorldToScreenPoint", function(self, p)

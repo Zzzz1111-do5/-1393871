@@ -1,0 +1,58 @@
+{
+ "_说明": "瞄准镜、望远镜模型（optics.mjs 读）：sources 原模型；items 每件怎么摆——axes / scale 转到器材坐标（格，+Z 朝前、+Y 朝上），anchor 原点（nodes 节点名正则，x、z 取中心、y 取最低或中心），parts 材质名 → 块名，eye / obj 目镜、物镜的节点名正则，embedTex 内嵌版每块的贴图边长",
+ "sources": {
+  "atacr": {
+   "uid": "881b1a99ac1c4e3d89c45b4467e738f2",
+   "name": "Nightforce ATACR 7-35x56 F1",
+   "author": "suspensy",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/nightforce-atacr-7-35x56-f1-881b1a99ac1c4e3d89c45b4467e738f2"
+  },
+  "binoc": {
+   "uid": "b38216dc4d5248428060d4b854c3d9e5",
+   "name": "binoculars",
+   "author": "TORI106",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/binoculars-b38216dc4d5248428060d4b854c3d9e5"
+  }
+ },
+ "items": {
+  "atacr": {
+   "src": "atacr",
+   "title": "狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "mount34"
+   },
+   "parts": {
+    "atacr": "Body",
+    "mount34": "Mount",
+    "atacrGlass": "Glass",
+    "reticle": "Reticle"
+   },
+   "eye": "atacrGlass_low\\.007",
+   "obj": "atacrGlass_low\\.006",
+   "embedTex": {
+    "Body": 256,
+    "Mount": 256,
+    "Glass": 64
+   }
+  },
+  "binoc": {
+   "src": "binoc",
+   "title": "望远镜",
+   "axes": "-z,y,x",
+   "scale": 0.00094,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "parts": {},
+   "embedTex": {
+    "Body": 256
+   }
+  }
+ }
+}

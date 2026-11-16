@@ -1,0 +1,253 @@
+{
+ "_说明": "枪械模型管线的配置（build.mjs 读）：sources 原模型（Sketchfab 模型号、作者、许可），items 每件怎么处理；坐标见 build.mjs 开头",
+ "m4": {
+  "grip": [
+   0.005,
+   -0.164,
+   -0.223
+  ]
+ },
+ "sources": {
+  "fps_m4": {
+   "file": "models/fps_m4.glb",
+   "name": "M4 - FPS Weapon Animations Pack (v.1)",
+   "author": "BarcodeGames",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/m4-fps-weapon-animations-pack-v1-662fc74dda2646cfb48fc610705768ef"
+  },
+  "qbz191": {
+   "uid": "ecea4d9c90a345c0b2c50a7850f65ffc",
+   "name": "QBZ-191 (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "qbz192": {
+   "uid": "2ade5a1f7f0842fa968e235f780b1e34",
+   "name": "Low-Poly QBZ-192",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0"
+  },
+  "qcw05": {
+   "uid": "0418d46e15d941d1a89f84d639ee118d",
+   "name": "Low-Poly QCW-05 JS",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0"
+  },
+  "qbu191": {
+   "uid": "7b25638809db493eb65a88145d3b94cc",
+   "name": "QBU191",
+   "author": "flyinglist1",
+   "license": "CC-BY-4.0"
+  },
+  "qjy88": {
+   "uid": "f3d6595f4b954ce48d9441590b64fb3e",
+   "name": "QJY88",
+   "author": "flyinglist1",
+   "license": "CC-BY-4.0"
+  },
+  "hk416": {
+   "uid": "059e968f6f764357880807c62c117ab7",
+   "name": "Low-Poly HK416",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0"
+  },
+  "mp7": {
+   "uid": "0ebd1e2b7a60408cb3b587b4807635ab",
+   "name": "Low-Poly HK MP7",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0"
+  },
+  "m110": {
+   "uid": "3253ae4c38a540ff9ed5f948886ad722",
+   "name": "low-poly M110 SASS",
+   "author": "DU1701",
+   "license": "CC-BY-4.0"
+  },
+  "xm250": {
+   "uid": "3742ed3c96894da69a9f6cb236f93977",
+   "name": "SIG Sauer XM250 (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "collim": {
+   "uid": "288373d26dd84db2898920222ac3e430",
+   "name": "low-poly Collimator Set",
+   "author": "DU1701",
+   "license": "CC-BY-4.0"
+  },
+  "acog": {
+   "uid": "374bd6e3054b47cdbeb2eeb7817613d1",
+   "name": "Trijicon ACOG 3.5x35 Riflescope (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "lpvo": {
+   "uid": "6bf44aca5fb645e6bb5791d14d311d73",
+   "name": "Vortex Razor HD Gen II-E Scope (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "peq": {
+   "uid": "3758001408b0404592e7e80e7d5b3072",
+   "name": "ATPIAL AN/PEQ-15 (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "rvg": {
+   "uid": "86b3580a65c441db9d3401712c5c9b6d",
+   "name": "Low-Poly Magpul RVG",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0"
+  },
+  "bipod": {
+   "uid": "daa7dd1e247e453496974a5d252396f4",
+   "name": "Harris Bipod (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0"
+  },
+  "urgi": {
+   "uid": "3533ef82f07742e1a261d5ccced627a7",
+   "name": "low-poly URG-I SOCOM",
+   "author": "DU1701",
+   "license": "CC-BY-4.0"
+  },
+  "acc": {
+   "uid": "d492ba2aaa304510a5eab5c62d16709b",
+   "name": "Free weapon accessories",
+   "author": "RottenDesign3D",
+   "license": "CC-BY-4.0"
+  },
+  "light": {
+   "uid": "c04c7a9b2f8346bd90c3938b0af8024a",
+   "name": "SureFire M600DF Game Ready Flashlight",
+   "author": "mbvisuals1",
+   "license": "CC-BY-4.0"
+  }
+ },
+ "items": {
+  "m4": {
+   "src": "fps_m4",
+   "kind": "gun",
+   "keep": [
+    4,
+    2
+   ],
+   "nodeOff": {
+    "2": [
+     0.008,
+     -0.252,
+     0.204
+    ]
+   },
+   "noMesh": true,
+   "tris": 99999,
+   "pts": {
+    "grip": [
+     0.005,
+     -0.164,
+     -0.223
+    ],
+    "lh": [
+     0.084,
+     -0.049,
+     0.523
+    ],
+    "muzzle": [
+     0.005,
+     0.05,
+     1.5
+    ]
+   }
+  },
+  "qbz191": {
+   "src": "qbz191",
+   "kind": "gun",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 6000,
+   "pts": {}
+  },
+  "qbz191c": {
+   "src": "qbz192",
+   "kind": "gun",
+   "axes": "-z,x,-y",
+   "scale": 0.8794,
+   "tris": 6000,
+   "pts": {}
+  },
+  "qcw05": {
+   "src": "qcw05",
+   "kind": "gun",
+   "axes": "-x,-z,-y",
+   "scale": 0.00022013,
+   "tris": 5000,
+   "pts": {}
+  },
+  "qbu191": {
+   "src": "qbu191",
+   "kind": "gun",
+   "axes": "x,y,z",
+   "scale": 0.16828,
+   "drop": [
+    23,
+    24,
+    30,
+    31,
+    27,
+    28,
+    29,
+    34
+   ],
+   "tris": 6500,
+   "pts": {}
+  },
+  "qjy88": {
+   "src": "qjy88",
+   "kind": "gun",
+   "axes": "x,y,z",
+   "scale": 0.42125,
+   "tris": 7000,
+   "pts": {}
+  },
+  "m27": {
+   "src": "hk416",
+   "kind": "gun",
+   "axes": "-x,-z,-y",
+   "scale": 0.00020299,
+   "tris": 6000,
+   "pts": {}
+  },
+  "mp7": {
+   "src": "mp7",
+   "kind": "gun",
+   "axes": "-y,-z,x",
+   "scale": 0.0020029,
+   "tris": 5000,
+   "pts": {}
+  },
+  "m110": {
+   "src": "m110",
+   "kind": "gun",
+   "axes": "-z,y,x",
+   "scale": 0.27319,
+   "drop": [
+    0,
+    1,
+    4,
+    5,
+    6,
+    7
+   ],
+   "tris": 6500,
+   "pts": {}
+  },
+  "m250": {
+   "src": "xm250",
+   "kind": "gun",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 7000,
+   "pts": {}
+  }
+ }
+}

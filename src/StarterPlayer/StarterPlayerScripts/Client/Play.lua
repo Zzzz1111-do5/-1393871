@@ -43,18 +43,7 @@ function Play.init(G)
   local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.GothamBold, Vector2.new(0.5, 0))
   tipText.TextStrokeTransparency = 0.4
   tipText.ZIndex = 15
-  local scope = ui.frame(G.gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
-  scope.ZIndex = 12
-  scope.Visible = false
-  do   -- 狙击镜：四周黑、中间十字
-    for _, s in ipairs({ { UDim2.new(1, 0, 0.5, -170), UDim2.new() }, { UDim2.new(1, 0, 0.5, -170), UDim2.new(0, 0, 0.5, 170) }, { UDim2.new(0.5, -170, 0, 340), UDim2.new(0, 0, 0.5, -170) }, { UDim2.new(0.5, -170, 0, 340), UDim2.new(0.5, 170, 0.5, -170) } }) do
-      local f = ui.frame(scope, s[1], s[2], RGB(0, 0, 0), 0)
-      f.ZIndex = 12
-    end
-    local h = ui.frame(scope, UDim2.fromOffset(340, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 0, Vector2.new(0.5, 0.5))
-    local v = ui.frame(scope, UDim2.fromOffset(1, 340), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 0, Vector2.new(0.5, 0.5))
-    h.ZIndex, v.ZIndex = 13, 13
-  end
+  local scope = { Visible = false }   -- 狙击镜、望远镜开镜：圆形目镜和光学效果在 Scope.lua（这里只记开没开）
 
   function G.hitMarker(kind)
     hitX.TextColor3 = (kind == "kill") and RGB(255, 70, 60) or ((kind == "head") and RGB(255, 220, 80) or Color3.new(1, 1, 1))
@@ -255,6 +244,7 @@ function Play.init(G)
     a.n -= 1
     if a.n <= 0 then reload() end
     if G.fpsFire then G.fpsFire(id) end   -- 第一人称：后坐、枪口火光
+    if G.scopeFire then G.scopeFire() end   -- 开着镜：出瞳一甩、像糊一下
     if w.kind == "gun" then
       local p = aimPoint(w.range)
       local handle = cur.tool and cur.tool:FindFirstChild("Handle")
@@ -377,6 +367,7 @@ function Play.init(G)
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
       cross.Visible, scope.Visible, bar.Visible = false, false, false
+      if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
       if G.fpsOff then G.fpsOff() end
@@ -405,14 +396,16 @@ function Play.init(G)
       hum.AutoRotate = true
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
-    cross.Visible = armed == true and not (fp and cur.aiming)
+    local wc = cur.id and W[cur.id]
+    cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
     -- 瞄准：拉近；狙击镜、望远镜放大得多
     local w = cur.id and W[cur.id]
     local zoom = 1
     if armed and cur.aiming and w then
-      if w.scope or w.kind == "spot" then zoom = (w.scope or 5) else zoom = 1.35 end
+      if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
     cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
     -- 连发
     if cur.firing and armed and w and (w.auto or w.kind == "repair") then tryFire(false) end

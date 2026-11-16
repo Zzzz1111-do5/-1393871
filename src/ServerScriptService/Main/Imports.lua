@@ -18,13 +18,21 @@ function Imports.init(G)
   end
 
   local veh = folder(folder(RS, "Imported"), "Veh")
+  local optics = folder(folder(RS, "Imported"), "Optics")   -- 瞄准镜、望远镜（models/optics/<键>.glb，块叫 O_<键>__<块名>）
   local n, keys = 0, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
-      if d:IsA("BasePart") and not d:IsDescendantOf(veh) then
+      if d:IsA("BasePart") and not d:IsDescendantOf(veh) and not d:IsDescendantOf(optics) then
         local key, part = string.match(d.Name, "^V_(%w+)__([%w_]+)$")
-        if key then
+        local okey = string.match(d.Name, "^O_(%w+)__[%w_]+$")
+        if okey then
+          local parent = d.Parent
+          d.Anchored = true
+          d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
+          d.Parent = folder(optics, okey)
+          if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
+        elseif key then
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false

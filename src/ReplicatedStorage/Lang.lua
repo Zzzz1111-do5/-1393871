@@ -360,6 +360,16 @@ add("ui.map", "地图", "Map")
 
 ---------------------------------------------------------------- 翻译
 
+-- 方位（望远镜的读数；北是地图的 −Z）
+add("dir.0", "北", "N")
+add("dir.1", "东北", "NE")
+add("dir.2", "东", "E")
+add("dir.3", "东南", "SE")
+add("dir.4", "南", "S")
+add("dir.5", "西南", "SW")
+add("dir.6", "西", "W")
+add("dir.7", "西北", "NW")
+
 function Lang.pick(localeId)
   if type(localeId) == "string" and string.sub(string.lower(localeId), 1, 2) == "zh" then return "zh" end
   return "en"

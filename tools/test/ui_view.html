@@ -99,7 +99,21 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
   const stroke = comp(n, 'UIStroke');
   const isText = TEXT.has(n.c);
   if (stroke && (stroke.p.ApplyStrokeMode === 'Border' || !isText)) {
-    d.style.boxShadow = `0 0 0 ${stroke.p.Thickness}px ${rgba(stroke.p.Color, 1 - stroke.p.Transparency)}`;
+    const sgr = comp(stroke, 'UIGradient');
+    const th = stroke.p.Thickness, a0 = 1 - stroke.p.Transparency;
+    if (sgr && sgr.p.Transparency && cor && cor.p.CornerRadius[0] >= 0.5) {
+      // 描边上挂的渐变（圆形）：外面套一圈线性渐变的环，遮罩只留描边那一圈
+      const tr = sgr.p.Transparency;
+      const stops = tr.map(k => `${rgba(stroke.p.Color, a0 * (1 - k[1]))} ${k[0] * 100}%`);
+      const rg = document.createElement('div');
+      rg.className = 'g';
+      rg.style.cssText += `left:${-th}px;top:${-th}px;width:calc(100% + ${2 * th}px);height:calc(100% + ${2 * th}px);border-radius:50%;pointer-events:none;`;
+      rg.style.background = `linear-gradient(${90 + (sgr.p.Rotation || 0)}deg, ${stops.join(', ')})`;
+      const mk = `radial-gradient(closest-side, transparent calc(100% - ${th}px), #000 calc(100% - ${th}px))`;
+      rg.style.webkitMaskImage = mk;
+      rg.style.maskImage = mk;
+      d.appendChild(rg);
+    } else d.style.boxShadow = `0 0 0 ${th}px ${rgba(stroke.p.Color, a0)}`;
   }
   if (p.ClipsDescendants || n.c === 'ScrollingFrame') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }
   const szc = comp(n, 'UISizeConstraint');
@@ -391,6 +405,7 @@ function render(snap) {
   scr.style.width = snap.vw + 'px';
   scr.style.height = snap.vh + 'px';
   if (Q.get('bg')) scr.style.backgroundImage = `url(${Q.get('bg')})`;
+  scr.style.isolation = 'isolate';   // DisplayOrder 是负数的界面（夜视仪镜筒、瞄准镜）也画在背景图上面
   const phone = snap.dev === 'phone';
   // Roblox 自带界面占的地方（近似）：顶栏；手机两边的刘海安全区、底下的横条
   const inset = phone ? { t: 44, l: 47, r: 47, b: 21 } : { t: 58, l: 0, r: 0, b: 0 };

@@ -274,6 +274,18 @@ function Round.init(G)
     hinge.C0 = (on == true) and NVG_DOWN or NVG_UP
     char:SetAttribute("NVG", on == true)
   end
+  -- 开着狙击镜 / 望远镜、朝哪看：别人的客户端在他镜片上画闪光（只记两个属性；同一状态 0.12 秒内不重复记）
+  function G.ACT.scope(P, on, dir)
+    local char = P.char
+    if not char then return end
+    local t = os.clock()
+    if t - (P.scopeT or 0) < 0.12 and (on == true) == (char:GetAttribute("Scoped") == true) then return end
+    P.scopeT = t
+    char:SetAttribute("Scoped", on == true)
+    if on == true and typeof(dir) == "Vector3" and dir.X == dir.X and dir.Magnitude > 0.5 and dir.Magnitude < 2 then
+      char:SetAttribute("ScopeDir", dir.Unit)
+    end
+  end
 
   local function onDied(P, char)
     if P.char ~= char then return end
