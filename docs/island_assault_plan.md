@@ -35,7 +35,7 @@
   - [x] 两栖车从海里开上岸卡在水边（3be2537 修好；模拟测试 `tools/mock/veh.lua atk` 通过）。
 - [x] 直升机、战斗机（`Fly.lua`、`Hangar.lua`、`WeaponModels.lua`，测试 `tools/test/ia_air.luau`）：航母甲板滑到弹射器卡上、推满油门弹射，拦阻索着舰，机场起降，3D 挂载编辑器，导弹炸弹按型号建模。
 - [x] 载具改成地图里的生成点（见「出生点」）：`Depots.lua` / `Depot.lua`，测试 `ia_veh`、`ia_air`、`tools/mock/veh.lua`、`air.lua` 都改成走到生成点按 E。
-- [ ] 舰艇。
+- [ ] 舰艇——**session_015eAzKBC4CDJLpwoYfRQTvP 在做**（`darksword-forts-navy`）：攻方 055、054A、022，守方 DDG-125、CG-47、LCS-2、PBR；生成点照 `Depots.lua`（攻方登陆平台旁的水面、守方北岸码头），开船、主炮、垂发、近防炮，AI 舰艇火力支援。
 - [x] 交战全部改成夜晚（用户：夜晚弥补画质，做出 3A 质感）：
   - 光照（`World.lighting`）：凌晨两点多、月光冷蓝、环境光很低、深蓝灰的雾、星空和大一点的月亮、泛光、冷调色；Future 光照在地图文件里设好（`tools/build.luau`）。
   - 夜视仪（客户端 `Night.lua`，N 开关、手机右边「NV」按钮）：本地增亮、绿色荧光调色、灯光强泛光、雾变淡、镜筒形视野（飞行员不加这一圈）、轻微闪烁；
@@ -52,7 +52,7 @@
   选阵营界面（客户端 `Faction.lua`）两张并排的阵营档案卡：徽记、英文全称、中文名、任务、三样主要装备、在线人数和两边比例条、加入按钮；
   真人比另一边多的那一边「人数已满」（服务器 `G.canJoin`、`ACT.pickTeam`）；开新一局不再打乱分队；部署界面顶上「换阵营」能回来（没出生时）。
   内容按 1280 × 720 摆、按屏幕整体缩放（手机横屏也放得下）。测试 `ia_flow` 查选阵营界面、人多的一边进不去、点加入定下来。
-- [ ] 枪械配置：默认是士兵，可以改枪（主武器、副武器、装备，枪上配件）。
+- [ ] 枪械配置：默认是士兵，可以改枪（主武器、副武器、装备，枪上配件）——**session_015eAzKBC4CDJLpwoYfRQTvP 在做**（接第一人称 M4：配件在镜头前看得见、改数值）。
 - [ ] 界面按参考截图重做（暗色、扁平、有高级感；驾驶画面照参考的空战游戏）。
 - [x] 机器人填充：每队补到 18 人（全服最多 40 个），攻方集中兵力打「主攻」据点、成班坐登陆艇抢滩，守方按压力分到各据点；寻路用流场（`Nav.lua`）。
 - [x] 守方工事：地图自带、每局系统摆好，玩家不用（也不能）自己部署（`FortDefs.lua`、服务器 `Forts.lua`、客户端 `FortView.lua` / `Gunner.lua`，测试 `tools/mock/forts.lua`）。
@@ -90,7 +90,7 @@
 | --- | --- | --- |
 | `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具 |
 | `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机（进行中） |
-| `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」 |
+| `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」；接着做舰艇、枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
 | `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下） |
 
 三条分支是一条线接着做的（后一条从前一条的最新提交开始），`keen-heisenberg` 已经快进到 `darksword-forts-navy` 的 17787e7。
