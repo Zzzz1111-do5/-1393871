@@ -244,9 +244,11 @@ local function natural(x, z)
   return -min(Map.SEA_DEPTH, lip - 0.6 + off * k), -off
 end
 
-function Map.height(x, z)
+-- 压平之后、压路之前的高度；第三个返回值是压平的权重（0～1，路在压平的场地里不再改高度）
+local function flatHeight(x, z)
   local y, d = natural(x, z)
-  if y <= 0.3 then return y, d end
+  if y <= 0.3 then return y, d, 0 end
+  local wmax = 0
   for _, F in ipairs(FLAT) do
     local dx, dz = x - F.x, z - F.z
     local w = 0
@@ -257,10 +259,14 @@ function Map.height(x, z)
       local q = dx * dx + dz * dz
       if q < F.r2 * F.r2 then w = 1 - smooth(F.r, F.r2, sqrt(q)) end
     end
-    if w > 0 then y = lerp(y, max(F.y, 0.8), w * smooth(0, 25, d)) end   -- 岸边那一点不压（不改岸线）
+    if w > 0 then
+      y = lerp(y, max(F.y, 0.8), w * smooth(0, 25, d))   -- 岸边那一点不压（不改岸线）
+      if w > wmax then wmax = w end
+    end
   end
-  return y, d
+  return y, d, wmax
 end
+
 -- 地面（站人、放车）：海上是海面
 function Map.ground(x, z)
   local y = Map.height(x, z)
@@ -294,6 +300,101 @@ do local A = Map.AIRFIELD addRect(A.x, A.z - 40, A.len / 2 + 50, 120, 170, max(4
 do local C = Map.CAMP addRect(C.x, C.z + 15, 200, 85, 120, max(3, avgNatural(C.x, C.z, 70))) end   -- 营地：帐篷、营房，南面一排车场、北面直升机停机坪（Depots.lua）
 flatHere(Map.PORT.x, Map.PORT.z, 80, 190)
 addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70, 60, 6)
+---------------------------------------------------------------- 路网（tools/map/roads.lua 离线算好的路线；这里按沿路平滑过的高度压平路面）
+
+-- 线段：起点、终点、两头的路面高度、路宽；按 48 格的格子登记（查的时候只看这一格里的线段）
+local SX0, SZ0, SX1, SZ1, SY0, SY1, SW = {}, {}, {}, {}, {}, {}, {}
+local RCELL = 48
+local rgrid = {}
+local ROADS = {}
+Map.ROADS = ROADS
+do
+  local ok, data = false, nil
+  local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  if mod then ok, data = pcall(require, mod) end
+  if ok and type(data) == "table" then
+    for _, r in ipairs(data) do
+      local n = #r.p // 2
+      if n >= 2 then
+        local xs, zs, ys = table.create(n), table.create(n), table.create(n)
+        for i = 1, n do
+          xs[i], zs[i] = r.p[2 * i - 1], r.p[2 * i]
+          ys[i] = max(1.2, (flatHeight(xs[i], zs[i])))
+        end
+        -- 路面高度沿路平滑（坑坑洼洼的地形上路是顺的）；挖填不超过 5 格
+        local base = table.clone(ys)
+        for _ = 1, 6 do
+          local nys = table.clone(ys)
+          for i = 2, n - 1 do nys[i] = ys[i - 1] * 0.25 + ys[i] * 0.5 + ys[i + 1] * 0.25 end
+          ys = nys
+        end
+        for i = 1, n do ys[i] = clamp(ys[i], base[i] - 5, base[i] + 5) end
+        table.insert(ROADS, { name = r.name, w = r.w, x = xs, z = zs, y = ys })
+        for i = 1, n - 1 do
+          local k = #SX0 + 1
+          SX0[k], SZ0[k], SX1[k], SZ1[k], SY0[k], SY1[k], SW[k] = xs[i], zs[i], xs[i + 1], zs[i + 1], ys[i], ys[i + 1], r.w
+          local pad = r.w * 0.5 + 12
+          for gx = floor((min(xs[i], xs[i + 1]) - pad) / RCELL), floor((max(xs[i], xs[i + 1]) + pad) / RCELL) do
+            for gz = floor((min(zs[i], zs[i + 1]) - pad) / RCELL), floor((max(zs[i], zs[i + 1]) + pad) / RCELL) do
+              local key = gx * 4096 + gz
+              local list = rgrid[key]
+              if not list then list = {} rgrid[key] = list end
+              table.insert(list, k)
+            end
+          end
+        end
+      end
+    end
+  end
+end
+-- 离最近的路多远、这里的路面高度、路宽（附近没路返回 nil）
+--   路面高度按附近各条线段加权（越近越重）：两条路交汇处各自平滑出来的高度不一样，只取最近那条会在交界处突然跳一截
+local function roadNear(x, z)
+  local list = rgrid[floor(x / RCELL) * 4096 + floor(z / RCELL)]
+  if not list then return nil end
+  local best, bw = 1e18, 0
+  local sw, sy = 0, 0
+  for _, k in ipairs(list) do
+    local ax, az = SX0[k], SZ0[k]
+    local dx, dz = SX1[k] - ax, SZ1[k] - az
+    local L2 = dx * dx + dz * dz
+    local t = (L2 > 0) and clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1) or 0
+    local px, pz = ax + dx * t - x, az + dz * t - z
+    local dd = px * px + pz * pz
+    if dd < best then best, bw = dd, SW[k] end
+    local reach = SW[k] * 0.5 + 12
+    if dd < reach * reach then
+      local d = sqrt(dd)
+      local w = (1 - d / reach) ^ 2 / (1 + d)
+      sw += w
+      sy += w * (SY0[k] + (SY1[k] - SY0[k]) * t)
+    end
+  end
+  if best >= 1e18 then return nil end
+  return sqrt(best), (sw > 0) and sy / sw or 0, bw
+end
+Map.roadNear = roadNear
+function Map.roadDist(x, z)
+  local d = roadNear(x, z)
+  return d or 1e9
+end
+
+function Map.height(x, z)
+  local y, d, wf = flatHeight(x, z)
+  if y <= 0.3 then return y, d end
+  local rd, ry, rw = roadNear(x, z)
+  if rd then
+    local half = rw * 0.5
+    local w = 1 - smooth(half, half + 10, rd)   -- 路面完全压平，两边 10 格慢慢接回地形
+    if w > 0 then y = lerp(y, ry, w * (1 - wf) * smooth(0, 20, d)) end
+  end
+  return y, d
+end
+-- 这一点在压平的场地（据点、机场、营地、港口）里有多深：0 外面～1 完全压平（摆树、花草时避开）
+function Map.flatW(x, z)
+  local _, _, w = flatHeight(x, z)
+  return w or 0
+end
 for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
 for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "PORT", "AFIELD2" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
 
@@ -303,6 +404,8 @@ function Map.material(x, z, y, slope)
   if y <= 0.4 then
     return (y > -3.5) and Enum.Material.Sand or Enum.Material.Sand
   end
+  local rd, _, rw = roadNear(x, z)
+  if rd and rd < rw * 0.5 + 1.2 * noise(x / 9, z / 9, 3.3) then return Enum.Material.Ground end   -- 土路（边上毛一点）
   local zs, zn = Map.coastS(x), Map.coastN(x)
   local nearBeach = y < 8 and zs and ((beachAt(x, false) and zs - z > -10 and zs - z < 90) or (beachAt(x, true) and z - zn > -10 and z - zn < 90))
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
@@ -311,7 +414,7 @@ function Map.material(x, z, y, slope)
   if slope > 0.75 then return Enum.Material.Ground end
   local n = noise(x / 85, z / 85, 11.3)
   if y < 9 and n > 0.15 then return Enum.Material.Ground end
-  return (n > -0.1) and Enum.Material.LeafyGrass or Enum.Material.Grass
+  return (n > 0.32) and Enum.Material.LeafyGrass or Enum.Material.Grass   -- 大片草地（地形草只长在 Grass 上），零星深色的一块块
 end
 
 ---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）

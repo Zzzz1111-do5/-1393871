@@ -7,5 +7,10 @@
 /tools/weapons/cache/
 /tools/weapons/preview/
 
+# 花草树木模型管线：依赖（和枪械管线共用）、下载的原模型、预览图
+/tools/scenery/node_modules
+/tools/scenery/cache/
+/tools/scenery/preview/
+
 # Python 缓存
 __pycache__/

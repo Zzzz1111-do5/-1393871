@@ -47,7 +47,9 @@ function MapUI.init(G)
     if y < 200 then return 4 end
     return 5
   end
-  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128) }
+  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128), RGB(50, 86, 46) }
+  local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
+  if not okF then Flora = nil end
   local N = 110
   local cell = SPAN / N
   task.spawn(function()
@@ -56,7 +58,12 @@ function MapUI.init(G)
       local runB, runI = nil, 0
       for i = 0, N do
         local b = nil
-        if i < N then b = band(Map.height(X0 + (i + 0.5) * cell, z)) end
+        if i < N then
+          local x = X0 + (i + 0.5) * cell
+          b = band(Map.height(x, z))
+          -- 树林（Flora.lua 的林子）：深绿
+          if Flora and b and b >= 2 and b <= 4 and Flora.forest(x, z) > 0.14 and Map.flatW(x, z) < 0.3 then b = 6 end
+        end
         if b ~= runB then
           if runB then
             local f = Instance.new("Frame")
@@ -70,6 +77,28 @@ function MapUI.init(G)
         end
       end
       if j % 12 == 0 then task.wait() end
+    end
+    -- 路网：沿路每隔几个点连一段细线（土黄色）
+    for _, r in ipairs(Map.ROADS or {}) do
+      local step = 3
+      for i = 1, #r.x - 1, step do
+        local k = math.min(#r.x, i + step)
+        local u0, v0 = toUV(r.x[i], r.z[i])
+        local u1, v1 = toUV(r.x[k], r.z[k])
+        local len = math.sqrt((u1 - u0) ^ 2 + (v1 - v0) ^ 2)
+        if len > 0 then
+          local f = Instance.new("Frame")
+          f.Name = "Road"
+          f.BorderSizePixel = 0
+          f.BackgroundColor3 = RGB(176, 150, 102)
+          f.AnchorPoint = Vector2.new(0.5, 0.5)
+          f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
+          f.Size = UDim2.new(len * 1.04, 0, 0, 2)
+          f.Rotation = math.deg(math.atan2(v1 - v0, u1 - u0))
+          f.ZIndex = 2
+          f.Parent = land
+        end
+      end
     end
   end)
 

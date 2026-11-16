@@ -320,8 +320,24 @@ function View.init(G)
     -- 扬尘：在陆地上开得快才有
     local land = not onWater
     if v.fireLight then v.fireLight.Brightness = 2.2 + math.random() * 1.8 end
-    local rate = land and math.clamp((math.abs(v.speed) - 6) * 1.3, 0, 45) or 0
-    for _, pe in ipairs(M.dust) do pe.Rate = rate end
+    -- 扬尘按脚下的地面：土路、沙地最浓，草地淡一半，石头上更淡（每 0.3 秒看一次地面）
+    v.dustT = (v.dustT or 0) - dt
+    if v.dustT <= 0 then
+      v.dustT = 0.3
+      local mat = land and Map.material(pos.X, pos.Z, Map.height(pos.X, pos.Z), Map.slope(pos.X, pos.Z)) or nil
+      local k, col = 0.5, nil
+      if mat == Enum.Material.Ground then k, col = 1, Color3.fromRGB(168, 142, 104)
+      elseif mat == Enum.Material.Sand then k, col = 1, Color3.fromRGB(206, 190, 150)
+      elseif mat == Enum.Material.Rock or mat == Enum.Material.Slate then k, col = 0.3, Color3.fromRGB(150, 146, 138)
+      else k, col = 0.45, Color3.fromRGB(150, 140, 112) end
+      v.dustK = k
+      if col and v.dustCol ~= col then
+        v.dustCol = col
+        for _, pe in ipairs(M.dust) do pe.Color = ColorSequence.new(col) end
+      end
+    end
+    local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true

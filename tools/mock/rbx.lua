@@ -1991,5 +1991,6 @@ R.Enum = Enum
 R.Vector3 = Vector3
 R.Vector2 = Vector2
 R.CFrame = CFrame
+R.Instance = Instance
 R.base = base
 return R

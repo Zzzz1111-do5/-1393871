@@ -99,7 +99,7 @@ by = {s.name: s for s in services}
 rs = by.setdefault('ReplicatedStorage', Item('ReplicatedStorage', 'ReplicatedStorage'))
 if rs not in services:
     services.append(rs)
-for f in ('UnitModels', 'SceneryModels'):
+for f in ('UnitModels',):
     if not rs.find(f):
         rs.kids.append(Item('Folder', f))
 services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'false')]))

@@ -245,7 +245,7 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    T.Decoration = false
+    T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048

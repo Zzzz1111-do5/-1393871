@@ -1,0 +1,12 @@
+花草树木模型包（models/scenery/scenery.glb）用到的模型，都是 Sketchfab 上 CC-BY 4.0（署名）授权：
+
+- 「Realistic fir trees pack (LODS, gameready)」，作者 lolipop_1707，https://sketchfab.com/3d-models/f58e8b6d733e4b0586e5b7db847b89e7，CC-BY 4.0
+- 「Coniferous Forest Assets Pack」，作者 dariiiii，https://sketchfab.com/3d-models/240ce9cf0ad3474f809a59f9446e63cd，CC-BY 4.0
+- 「Various Forest Assets Pack」，作者 dariiiii，https://sketchfab.com/3d-models/cf138b8eb2d340cda643ed59f824989c，CC-BY 4.0
+- 「Grass pack (lowpoly, game-ready)」，作者 lolipop_1707，https://sketchfab.com/3d-models/422f42f618d342c6958b02613dc57403，CC-BY 4.0
+- 「Grass (pack of 9 vars, lowpoly, game ready)」，作者 lolipop_1707，https://sketchfab.com/3d-models/0561204a1fa14c17939300ee1108948b，CC-BY 4.0
+- 「Dandelion Blossom Flower (game ready asset)」，作者 apariciosilva3D，https://sketchfab.com/3d-models/c09331338f7745a980865098c4c7da6e，CC-BY 4.0
+- 「Undergrowth pack (lowpoly, game-ready)」，作者 lolipop_1707，https://sketchfab.com/3d-models/c98b4c1a15aa447a97cb76df127c1c78，CC-BY 4.0
+
+改动：挑出其中几棵树 / 灌木 / 石头 / 草 / 花，单位换成 Roblox 的格（1 米 = 2.8 格）并按需要放大，树干减面，贴图缩小（树叶 512、树干 256），
+树叶、草、花的面片做成双面；草丛、花丛是把几株随机撒成一片。

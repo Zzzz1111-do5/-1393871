@@ -421,14 +421,17 @@ function VehModels.build(d, team)
     local pe = Instance.new("ParticleEmitter")
     pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
     pe.Rate = 0
-    pe.Lifetime = NumberRange.new(1.4, 2.6)
-    pe.Speed = NumberRange.new(2, 6)
-    pe.SpreadAngle = Vector2.new(35, 35)
-    pe.Acceleration = V(0, 2.5, 0)
-    pe.Drag = 1.5
-    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(1, 11) })
-    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1) })
-    pe.Color = ColorSequence.new(RGB(190, 170, 130))
+    -- 尘柱：一团团往后、往上慢慢胀开、飘好几秒（Arma 里车后那一长条黄土），颜色和浓淡按脚下的地面在 View.lua 里换
+    pe.Lifetime = NumberRange.new(2.6, 5.2)
+    pe.Speed = NumberRange.new(3, 8)
+    pe.SpreadAngle = Vector2.new(40, 25)
+    pe.Acceleration = V(0, 1.6, 0)
+    pe.Drag = 0.9
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-12, 12)
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(0.35, 10), NumberSequenceKeypoint.new(1, 19) })
+    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.4, 0.62), NumberSequenceKeypoint.new(1, 1) })
+    pe.Color = ColorSequence.new(RGB(170, 146, 110))
     pe.EmissionDirection = Enum.NormalId.Back
     pe.LightInfluence = 1
     pe.Parent = p

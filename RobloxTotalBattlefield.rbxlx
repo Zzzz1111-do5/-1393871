@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="0">
+  <Item class="ReplicatedStorage" referent="1">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="1">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -487,7 +487,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -652,7 +652,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -762,7 +762,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -820,7 +820,175 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="6">
+      <Properties>
+        <string name="Name">Flora</string>
+        <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
+--   用户：地图要像 Arma 那样——土路、草地花丛、成片的针叶林、起伏的山丘
+--   按 64 格一格，每格按格子坐标定随机种子：
+--     树：18 格一个候选点（抖开）；树林是两层噪声叠出来的大片（林子里密、林缘稀、草地上偶尔一棵）；山上多针叶（冷杉、松树），低处多阔叶（白桦、橡树、枫树）；
+--       林缘长小冷杉、灌木，林子里偶尔一棵枯树、一根倒木
+--     灌木：林缘多、草地上零星；石头：坡陡、山高的地方多，岩坡上是成堆的岩石
+--     草丛：9 格一个，草地上大半都有（高草、矮草、杂草）；花：另一层噪声圈出的一片片花地，里面开满黄花（蒲公英）
+--   不长的地方：海滩沙地和水边、路面和路肩、压平的场地（据点、机场、营地、港口、机场岛）、工事旁边、太陡的崖壁（只有石头）
+--   Flora.cell(cx, cz, layer) 返回这一格这一层的 { { k 模型键, x, y, z, yaw, s 缩放 }, … }；客户端（Scenery.lua）按距离摆出来
+local RS = game:GetService("ReplicatedStorage")
+local Map = require(RS:WaitForChild("Map"))
+
+local Flora = {}
+Flora.CELL = 64
+local CELL = Flora.CELL
+local noise, floor, sqrt, max, min = math.noise, math.floor, math.sqrt, math.max, math.min
+local smooth = Map.smooth
+
+-- 各层：候选点间距
+Flora.LAYERS = { tree = 18, bush = 22, rock = 40, grass = 10, flower = 8 }
+
+-- 工事（碉堡、岸防炮……）周围不长树、灌木：按 FortDefs 的摆法（开服时一样）
+local fortPts = nil
+local function forts()
+  if fortPts then return fortPts end
+  fortPts = {}
+  local ok, FD = pcall(function() return require(RS:WaitForChild("FortDefs", 5)) end)
+  if ok and FD and FD.layout then
+    local ok2, list = pcall(FD.layout, Map)
+    if ok2 and list then
+      for _, f in ipairs(list) do
+        local p = f.cf and f.cf.Position
+        if p then table.insert(fortPts, { p.X, p.Z }) end
+      end
+    end
+  end
+  return fortPts
+end
+local function nearFort(x, z, r)
+  for _, f in ipairs(forts()) do
+    local dx, dz = x - f[1], z - f[2]
+    if dx * dx + dz * dz < r * r then return true end
+  end
+  return false
+end
+local function nearPoint(x, z, r)
+  for _, p in ipairs(Map.POINTS) do
+    local dx, dz = x - p.x, z - p.z
+    if dx * dx + dz * dz < r * r then return true end
+  end
+  return false
+end
+
+-- 树林密度（−1～1 左右；> 0.05 算林子）、花地（> 0.2 是一片花）
+function Flora.forest(x, z)
+  return noise(x / 430, z / 430, 21.7) * 0.7 + noise(x / 140, z / 140, 5.3) * 0.35 + noise(x / 47, z / 47, 9.9) * 0.1
+end
+function Flora.flowerField(x, z)
+  return noise(x / 190, z / 190, 33.1) + noise(x / 55, z / 55, 2.2) * 0.25
+end
+
+-- 可重复的随机数：按格子坐标、层定种子
+local function rng(cx, cz, salt)
+  local s = (cx * 73856093 + cz * 19349663 + salt * 83492791) % 2147483647
+  if s <= 0 then s = s + 2147483646 end
+  return function()
+    s = (s * 48271) % 2147483647
+    return s / 2147483647
+  end
+end
+local SALT = { tree = 1, bush = 2, rock = 3, grass = 4, flower = 5 }
+
+-- 这一点能不能长东西：返回高度、坡度；不能长返回 nil
+local function site(x, z, roadPad, flatMax)
+  local h = Map.height(x, z)
+  if h < 4 then return nil end   -- 海里、海滩、水边
+  local rd, _, rw = Map.roadNear(x, z)
+  if rd and rd < rw * 0.5 + roadPad then return nil end
+  if Map.flatW(x, z) > (flatMax or 0.02) then return nil end
+  local zs, zn = Map.coastS(x), Map.coastN(x)
+  if zs and (zs - z < 70 or z - zn < 50) and h < 14 then return nil end   -- 海滩后面的沙丘
+  return h, Map.slope(x, z)
+end
+
+local CONIFER = { "fir1", "fir2", "fir3", "fir4", "fir1", "fir2", "pine" }
+local BROAD = { "birch1", "birch2", "oak", "maple", "birch1" }
+local BUSH = { "cshrub", "dshrub", "holly", "sapling" }
+
+local function pick(list, r) return list[floor(r * #list) + 1] end
+
+function Flora.cell(cx, cz, layer)
+  local out = {}
+  local step = Flora.LAYERS[layer]
+  local R = rng(cx, cz, SALT[layer])
+  local n = floor(CELL / step + 0.5)
+  local x0, z0 = cx * CELL, cz * CELL
+  for i = 0, n - 1 do
+    for k = 0, n - 1 do
+      local x = x0 + (i + 0.15 + R() * 0.7) * step
+      local z = z0 + (k + 0.15 + R() * 0.7) * step
+      local roll, roll2, yaw, sc = R(), R(), R() * math.pi * 2, 0.85 + R() * 0.3
+      if layer == "tree" then
+        local f = Flora.forest(x, z)
+        local p = (f > 0.05) and (0.15 + 0.75 * smooth(0.05, 0.3, f)) or 0.025   -- 林子里密、林缘稀、草地上偶尔一棵
+        if roll < p then
+          local h, sl = site(x, z, 7)
+          if h and sl < 0.85 and not nearFort(x, z, 34) and not nearPoint(x, z, Map.POINT_R + 15) then
+            local conifer = roll2 < 0.55 + 0.4 * smooth(25, 140, h)   -- 山上全是针叶，低处一半阔叶
+            local k2
+            if f < 0.12 and roll2 > 0.7 then k2 = (roll2 > 0.85) and "nfir" or "fir5"   -- 林缘的小树
+            elseif R() < 0.025 and f > 0.15 then k2 = "deadfir"
+            elseif conifer then k2 = pick(CONIFER, R())
+            else k2 = pick(BROAD, R()) end
+            table.insert(out, { k = k2, x = x, y = h - 0.4, z = z, yaw = yaw, s = sc })
+          end
+        end
+      elseif layer == "bush" then
+        local f = Flora.forest(x, z)
+        local p = (f > -0.06 and f < 0.14) and 0.35 or ((f >= 0.14) and 0.12 or 0.05)
+        if roll < p then
+          local h, sl = site(x, z, 4)
+          if h and sl < 0.9 and not nearFort(x, z, 24) and not nearPoint(x, z, Map.POINT_R) then
+            local k2 = (f > 0.14 and R() < 0.25) and "log" or pick(BUSH, R())
+            table.insert(out, { k = k2, x = x, y = h - 0.3, z = z, yaw = yaw, s = sc })
+          end
+        end
+      elseif layer == "rock" then
+        local h0 = Map.height(x, z)
+        if h0 > 4 then
+          local sl = Map.slope(x, z)
+          local p = 0.03 + 0.55 * smooth(0.45, 1.0, sl) + ((h0 > 160) and 0.15 or 0)
+          if roll < p then
+            local h = site(x, z, 3)
+            if h and not nearFort(x, z, 20) then
+              local k2 = (sl > 0.6 and roll2 < 0.6) and "rock3" or ((roll2 < 0.5) and "rock1" or "rock2")
+              table.insert(out, { k = k2, x = x, y = h - 1.2, z = z, yaw = yaw, s = sc * ((k2 == "rock3") and 1.1 or 0.8) })
+            end
+          end
+        end
+      elseif layer == "grass" then
+        local f = Flora.forest(x, z)
+        local p = (f > 0.2) and 0.25 or 0.6
+        if roll < p then
+          local h, sl = site(x, z, 1.5, 0.3)
+          if h and sl < 0.9 then
+            local k2 = (roll2 < 0.55) and "grass_s" or ((roll2 < 0.85) and "grass_t" or "weeds")
+            table.insert(out, { k = k2, x = x, y = h - 0.1, z = z, yaw = yaw, s = sc })
+          end
+        end
+      elseif layer == "flower" then
+        local ff = Flora.flowerField(x, z)
+        if ff > 0.2 and roll < 0.35 + 0.5 * smooth(0.2, 0.5, ff) and Flora.forest(x, z) < 0.15 then
+          local h, sl = site(x, z, 1.5, 0.3)
+          if h and sl < 0.6 then table.insert(out, { k = "flowers", x = x, y = h - 0.05, z = z, yaw = yaw, s = sc }) end
+        end
+      end
+    end
+  end
+  return out
+end
+
+return Flora
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -1063,7 +1231,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<模型键>.glb）的元数据
@@ -1096,7 +1264,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -1133,7 +1301,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py），别手改：网页版舰艇模型原样转成的 Roblox 模型（models/ship/<型号>.glb）的元数据
@@ -1155,7 +1323,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -1558,7 +1726,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -1807,9 +1975,11 @@ local function natural(x, z)
   return -min(Map.SEA_DEPTH, lip - 0.6 + off * k), -off
 end
 
-function Map.height(x, z)
+-- 压平之后、压路之前的高度；第三个返回值是压平的权重（0～1，路在压平的场地里不再改高度）
+local function flatHeight(x, z)
   local y, d = natural(x, z)
-  if y <= 0.3 then return y, d end
+  if y <= 0.3 then return y, d, 0 end
+  local wmax = 0
   for _, F in ipairs(FLAT) do
     local dx, dz = x - F.x, z - F.z
     local w = 0
@@ -1820,10 +1990,14 @@ function Map.height(x, z)
       local q = dx * dx + dz * dz
       if q < F.r2 * F.r2 then w = 1 - smooth(F.r, F.r2, sqrt(q)) end
     end
-    if w > 0 then y = lerp(y, max(F.y, 0.8), w * smooth(0, 25, d)) end   -- 岸边那一点不压（不改岸线）
+    if w > 0 then
+      y = lerp(y, max(F.y, 0.8), w * smooth(0, 25, d))   -- 岸边那一点不压（不改岸线）
+      if w > wmax then wmax = w end
+    end
   end
-  return y, d
+  return y, d, wmax
 end
+
 -- 地面（站人、放车）：海上是海面
 function Map.ground(x, z)
   local y = Map.height(x, z)
@@ -1857,6 +2031,101 @@ do local A = Map.AIRFIELD addRect(A.x, A.z - 40, A.len / 2 + 50, 120, 170, max(4
 do local C = Map.CAMP addRect(C.x, C.z + 15, 200, 85, 120, max(3, avgNatural(C.x, C.z, 70))) end   -- 营地：帐篷、营房，南面一排车场、北面直升机停机坪（Depots.lua）
 flatHere(Map.PORT.x, Map.PORT.z, 80, 190)
 addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70, 60, 6)
+---------------------------------------------------------------- 路网（tools/map/roads.lua 离线算好的路线；这里按沿路平滑过的高度压平路面）
+
+-- 线段：起点、终点、两头的路面高度、路宽；按 48 格的格子登记（查的时候只看这一格里的线段）
+local SX0, SZ0, SX1, SZ1, SY0, SY1, SW = {}, {}, {}, {}, {}, {}, {}
+local RCELL = 48
+local rgrid = {}
+local ROADS = {}
+Map.ROADS = ROADS
+do
+  local ok, data = false, nil
+  local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  if mod then ok, data = pcall(require, mod) end
+  if ok and type(data) == "table" then
+    for _, r in ipairs(data) do
+      local n = #r.p // 2
+      if n >= 2 then
+        local xs, zs, ys = table.create(n), table.create(n), table.create(n)
+        for i = 1, n do
+          xs[i], zs[i] = r.p[2 * i - 1], r.p[2 * i]
+          ys[i] = max(1.2, (flatHeight(xs[i], zs[i])))
+        end
+        -- 路面高度沿路平滑（坑坑洼洼的地形上路是顺的）；挖填不超过 5 格
+        local base = table.clone(ys)
+        for _ = 1, 6 do
+          local nys = table.clone(ys)
+          for i = 2, n - 1 do nys[i] = ys[i - 1] * 0.25 + ys[i] * 0.5 + ys[i + 1] * 0.25 end
+          ys = nys
+        end
+        for i = 1, n do ys[i] = clamp(ys[i], base[i] - 5, base[i] + 5) end
+        table.insert(ROADS, { name = r.name, w = r.w, x = xs, z = zs, y = ys })
+        for i = 1, n - 1 do
+          local k = #SX0 + 1
+          SX0[k], SZ0[k], SX1[k], SZ1[k], SY0[k], SY1[k], SW[k] = xs[i], zs[i], xs[i + 1], zs[i + 1], ys[i], ys[i + 1], r.w
+          local pad = r.w * 0.5 + 12
+          for gx = floor((min(xs[i], xs[i + 1]) - pad) / RCELL), floor((max(xs[i], xs[i + 1]) + pad) / RCELL) do
+            for gz = floor((min(zs[i], zs[i + 1]) - pad) / RCELL), floor((max(zs[i], zs[i + 1]) + pad) / RCELL) do
+              local key = gx * 4096 + gz
+              local list = rgrid[key]
+              if not list then list = {} rgrid[key] = list end
+              table.insert(list, k)
+            end
+          end
+        end
+      end
+    end
+  end
+end
+-- 离最近的路多远、这里的路面高度、路宽（附近没路返回 nil）
+--   路面高度按附近各条线段加权（越近越重）：两条路交汇处各自平滑出来的高度不一样，只取最近那条会在交界处突然跳一截
+local function roadNear(x, z)
+  local list = rgrid[floor(x / RCELL) * 4096 + floor(z / RCELL)]
+  if not list then return nil end
+  local best, bw = 1e18, 0
+  local sw, sy = 0, 0
+  for _, k in ipairs(list) do
+    local ax, az = SX0[k], SZ0[k]
+    local dx, dz = SX1[k] - ax, SZ1[k] - az
+    local L2 = dx * dx + dz * dz
+    local t = (L2 > 0) and clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1) or 0
+    local px, pz = ax + dx * t - x, az + dz * t - z
+    local dd = px * px + pz * pz
+    if dd < best then best, bw = dd, SW[k] end
+    local reach = SW[k] * 0.5 + 12
+    if dd < reach * reach then
+      local d = sqrt(dd)
+      local w = (1 - d / reach) ^ 2 / (1 + d)
+      sw += w
+      sy += w * (SY0[k] + (SY1[k] - SY0[k]) * t)
+    end
+  end
+  if best >= 1e18 then return nil end
+  return sqrt(best), (sw > 0) and sy / sw or 0, bw
+end
+Map.roadNear = roadNear
+function Map.roadDist(x, z)
+  local d = roadNear(x, z)
+  return d or 1e9
+end
+
+function Map.height(x, z)
+  local y, d, wf = flatHeight(x, z)
+  if y <= 0.3 then return y, d end
+  local rd, ry, rw = roadNear(x, z)
+  if rd then
+    local half = rw * 0.5
+    local w = 1 - smooth(half, half + 10, rd)   -- 路面完全压平，两边 10 格慢慢接回地形
+    if w > 0 then y = lerp(y, ry, w * (1 - wf) * smooth(0, 20, d)) end
+  end
+  return y, d
+end
+-- 这一点在压平的场地（据点、机场、营地、港口）里有多深：0 外面～1 完全压平（摆树、花草时避开）
+function Map.flatW(x, z)
+  local _, _, w = flatHeight(x, z)
+  return w or 0
+end
 for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
 for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "PORT", "AFIELD2" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
 
@@ -1866,6 +2135,8 @@ function Map.material(x, z, y, slope)
   if y <= 0.4 then
     return (y > -3.5) and Enum.Material.Sand or Enum.Material.Sand
   end
+  local rd, _, rw = roadNear(x, z)
+  if rd and rd < rw * 0.5 + 1.2 * noise(x / 9, z / 9, 3.3) then return Enum.Material.Ground end   -- 土路（边上毛一点）
   local zs, zn = Map.coastS(x), Map.coastN(x)
   local nearBeach = y < 8 and zs and ((beachAt(x, false) and zs - z > -10 and zs - z < 90) or (beachAt(x, true) and z - zn > -10 and z - zn < 90))
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
@@ -1874,7 +2145,7 @@ function Map.material(x, z, y, slope)
   if slope > 0.75 then return Enum.Material.Ground end
   local n = noise(x / 85, z / 85, 11.3)
   if y < 9 and n > 0.15 then return Enum.Material.Ground end
-  return (n > -0.1) and Enum.Material.LeafyGrass or Enum.Material.Grass
+  return (n > 0.32) and Enum.Material.LeafyGrass or Enum.Material.Grass   -- 大片草地（地形草只长在 Grass 上），零星深色的一块块
 end
 
 ---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）
@@ -1907,11 +2178,31 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="11">
+    <Item class="ModuleScript" referent="13">
+      <Properties>
+        <string name="Name">MapRoads</string>
+        <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
+--   每条路：name 名字、w 路面宽（格）、p 路线上的点 { x1, z1, x2, z2, … }（每 ≤ 20 格一个）
+return {
+  { name = "营地—指挥所", w = 11, p = { 140,-2076,129,-2076,118,-2076,107,-2076,91,-2076,74,-2076,59,-2076,45,-2076,30,-2076,17,-2079,3,-2081,-10,-2084,-29,-2091,-47,-2099,-59,-2106,-70,-2114,-81,-2121,-91,-2131,-101,-2141,-111,-2151,-126,-2162,-140,-2173,-154,-2181,-169,-2188,-183,-2192,-196,-2196,-210,-2196,-223,-2196,-234,-2195,-245,-2194,-262,-2191,-273,-2187,-279,-2181,-283,-2176,-284,-2173,-283,-2172,-280,-2172,-279,-2171,-279,-2170,-280,-2167,-283,-2164,-284,-2162,-283,-2161,-279,-2160,-273,-2160,-269,-2159,-268,-2158,-268,-2155,-271,-2152,-268,-2150,-257,-2149,-240,-2148,-228,-2148,-216,-2148,-197,-2147,-184,-2146,-175,-2143,-172,-2140,-171,-2138,-171,-2137,-172,-2136,-175,-2136,-177,-2135,-177,-2134,-175,-2131,-172,-2128,-171,-2126,-171,-2125,-172,-2124,-175,-2124,-177,-2123,-177,-2122,-175,-2119,-172,-2116,-171,-2114,-171,-2113,-172,-2112,-175,-2112,-177,-2111,-177,-2110,-175,-2107,-172,-2104,-171,-2102,-171,-2101,-172,-2100,-175,-2100,-177,-2099,-177,-2098,-175,-2095,-172,-2092,-172,-2090,-173,-2089,-177,-2088,-183,-2088,-187,-2087,-188,-2086,-187,-2083,-184,-2080,-183,-2078,-183,-2077,-184,-2076,-187,-2076,-181,-2068,-174,-2059,-166,-2051,-154,-2039,-142,-2026,-131,-2015,-120,-2004,-109,-1993,-96,-1981,-82,-1969,-72,-1960,-61,-1952,-46,-1944,-37,-1944,-27,-1940,-15,-1933,-1,-1921,6,-1914,14,-1906,28,-1895,41,-1888,54,-1884,66,-1884,77,-1885,86,-1888,93,-1893,99,-1899,104,-1903,109,-1906,113,-1908,116,-1908,121,-1911,128,-1917,138,-1926,150,-1938,160,-1946,167,-1951,173,-1951,176,-1948,182,-1945,191,-1942,203,-1939,218,-1936,230,-1933,240,-1928,248,-1923,253,-1917,256,-1913,259,-1910,260,-1908 } },
+  { name = "指挥所—港口镇", w = 11, p = { 260,-1908,260,-1898,261,-1887,261,-1877,261,-1861,262,-1845,262,-1831,262,-1817,263,-1803,261,-1785,259,-1767,255,-1752,250,-1737,244,-1725,237,-1713,228,-1704,219,-1695,206,-1681,199,-1672,197,-1668,200,-1668,201,-1667,201,-1666,200,-1663,197,-1660,196,-1658,197,-1657,201,-1656,207,-1656,199,-1643,188,-1630,176,-1618,164,-1605,152,-1592,140,-1579,127,-1567,114,-1554,101,-1541,89,-1528,76,-1516,64,-1503,51,-1490,39,-1477,27,-1465,17,-1452,20,-1452,21,-1451,21,-1450,20,-1447,17,-1444,15,-1442,15,-1441,17,-1440,20,-1440,21,-1439,21,-1438,20,-1435,17,-1432,14,-1430,11,-1429,8,-1428,5,-1428,3,-1427,3,-1426,5,-1423,8,-1420,9,-1418,9,-1417,8,-1416,5,-1416,3,-1415,3,-1414,5,-1411,8,-1408,9,-1406,9,-1405,8,-1404,5,-1404,3,-1403,3,-1402,5,-1399,8,-1396,1,-1385,-7,-1375,-16,-1366,-29,-1352,-42,-1338,-54,-1326,-66,-1314,-78,-1302,-93,-1288,-107,-1275,-118,-1266,-130,-1257,-145,-1248,-154,-1248,-163,-1246,-172,-1241,-181,-1234,-190,-1225,-198,-1219,-204,-1214,-208,-1212,-211,-1212,-221,-1204,-229,-1197,-238,-1189,-249,-1178,-261,-1167,-271,-1157,-281,-1147,-291,-1137,-302,-1126,-313,-1115,-321,-1108,-328,-1102,-336,-1096,-336,-1099,-337,-1101,-338,-1101,-340,-1099,-343,-1096,-346,-1096,-347,-1097,-348,-1101,-348,-1107,-349,-1111,-350,-1112,-352,-1111,-355,-1108,-358,-1109,-359,-1114,-360,-1122,-360,-1134,-361,-1144,-364,-1153,-369,-1161,-375,-1167,-379,-1170,-382,-1170,-384,-1167,-384,-1161,-385,-1157,-386,-1156,-388,-1156,-391,-1159,-394,-1161,-395,-1161,-396,-1159,-396,-1156,-397,-1153,-398,-1150,-400,-1147,-403,-1144,-407,-1142,-412,-1141,-417,-1140,-423,-1140,-431,-1143,-442,-1150,-456,-1161,-463,-1168,-471,-1175,-483,-1185,-491,-1192,-495,-1195 } },
+  { name = "指挥所—机场", w = 11, p = { 260,-1908,260,-1898,261,-1887,261,-1877,261,-1861,262,-1845,262,-1831,262,-1817,263,-1803,261,-1785,259,-1767,255,-1752,250,-1737,244,-1725,237,-1713,228,-1704,219,-1695,206,-1681,199,-1672,197,-1668,200,-1668,201,-1667,201,-1666,200,-1663,197,-1660,196,-1658,197,-1657,201,-1656,207,-1656,199,-1643,188,-1630,176,-1618,164,-1605,152,-1592,140,-1579,127,-1567,114,-1554,101,-1541,89,-1528,76,-1516,64,-1503,51,-1490,39,-1477,27,-1465,17,-1452,20,-1452,21,-1451,21,-1450,20,-1447,17,-1444,15,-1442,15,-1441,17,-1440,20,-1440,21,-1439,21,-1438,20,-1435,17,-1432,14,-1430,11,-1429,8,-1428,5,-1428,3,-1427,3,-1426,5,-1423,8,-1420,9,-1418,9,-1417,8,-1416,5,-1416,3,-1415,3,-1414,5,-1411,8,-1408,9,-1406,9,-1405,8,-1404,5,-1404,3,-1403,3,-1402,5,-1399,8,-1396,2,-1386,-6,-1377,-13,-1368,-25,-1355,-37,-1342,-48,-1331,-59,-1320,-70,-1309,-83,-1296,-95,-1282,-103,-1272,-112,-1261,-120,-1246,-120,-1237,-115,-1226,-106,-1213,-100,-1205,-93,-1197,-84,-1188,-75,-1179,-66,-1174,-57,-1169,-39,-1168,-21,-1174,-12,-1182,-3,-1189,11,-1200,22,-1206,29,-1207,32,-1204,34,-1198,35,-1189,36,-1177,36,-1162,37,-1150,38,-1141,41,-1135,44,-1132,51,-1130,63,-1129,80,-1128,90,-1128,101,-1128,111,-1130,121,-1132,131,-1137,140,-1141,150,-1148,159,-1155,168,-1164,177,-1173,185,-1180,192,-1186,204,-1195,213,-1200,219,-1200,224,-1199,229,-1198,233,-1195,236,-1192,245,-1198,254,-1204,262,-1211,273,-1222,285,-1233,295,-1243,305,-1253,315,-1263,329,-1274,344,-1285,358,-1292,371,-1300,384,-1303,398,-1306,410,-1306,423,-1305,441,-1304,454,-1303,460,-1303 } },
+  { name = "红滩—港口镇", w = 10, p = { -900,-831,-898,-830,-895,-830,-891,-830,-885,-829,-881,-829,-880,-830,-880,-832,-883,-835,-874,-838,-862,-838,-851,-839,-834,-840,-816,-840,-800,-840,-784,-840,-768,-840,-754,-842,-739,-844,-725,-847,-706,-853,-688,-860,-672,-870,-655,-880,-642,-894,-628,-907,-618,-922,-608,-937,-601,-952,-595,-968,-591,-985,-588,-1002,-588,-1020,-588,-1038,-588,-1052,-587,-1066,-586,-1085,-583,-1096,-580,-1099,-578,-1102,-577,-1105,-576,-1108,-576,-1111,-571,-1119,-561,-1130,-553,-1138,-546,-1146,-535,-1156,-525,-1166,-518,-1173,-510,-1180,-500,-1190,-495,-1195 } },
+  { name = "港口镇—白滩", w = 10, p = { -495,-1195,-491,-1192,-483,-1185,-471,-1175,-463,-1168,-456,-1161,-442,-1150,-431,-1143,-423,-1140,-417,-1140,-412,-1141,-407,-1142,-403,-1144,-400,-1147,-398,-1150,-397,-1153,-396,-1156,-396,-1159,-395,-1161,-394,-1161,-391,-1159,-388,-1156,-386,-1156,-385,-1157,-384,-1161,-384,-1167,-382,-1170,-379,-1170,-375,-1167,-369,-1161,-364,-1153,-361,-1144,-360,-1134,-360,-1122,-359,-1114,-358,-1109,-355,-1108,-352,-1111,-350,-1112,-349,-1111,-348,-1107,-348,-1101,-347,-1097,-346,-1096,-343,-1096,-340,-1099,-338,-1101,-337,-1101,-336,-1099,-336,-1096,-335,-1095,-334,-1095,-331,-1096,-328,-1099,-326,-1096,-325,-1085,-324,-1068,-324,-1056,-324,-1044,-323,-1026,-322,-1014,-319,-1008,-316,-1008,-314,-1007,-313,-1006,-312,-1003,-312,-1000,-310,-1000,-307,-1001,-303,-1005,-297,-1011,-292,-1015,-287,-1016,-283,-1015,-280,-1012,-276,-1010,-270,-1009,-262,-1008,-253,-1008,-247,-1007,-244,-1006,-244,-1003,-247,-1000,-244,-998,-235,-997,-220,-996,-210,-996,-199,-996,-184,-995,-175,-994,-172,-991,-175,-988,-177,-985,-177,-982,-175,-979,-172,-976,-171,-974,-171,-973,-172,-972,-175,-972,-177,-971,-177,-970,-175,-967,-172,-964,-171,-962,-171,-961,-172,-960,-175,-960,-177,-959,-177,-958,-175,-955,-172,-952,-172,-950,-173,-949,-177,-948,-183,-948,-187,-947,-188,-946,-187,-943,-184,-940,-183,-938,-183,-937,-184,-936,-187,-936,-186,-932,-180,-925,-169,-913,-162,-906,-154,-898,-143,-884,-136,-871,-132,-858,-132,-846,-131,-836,-130,-829,-127,-825,-124,-822,-122,-821,-121,-820,-120,-819 } },
+  { name = "白滩—蓝滩", w = 10, p = { -120,-819,-121,-820,-122,-821,-124,-822,-127,-825,-130,-829,-131,-834,-132,-841,-132,-850,-130,-855,-125,-855,-118,-850,-109,-841,-96,-835,-78,-830,-67,-829,-55,-828,-42,-828,-28,-828,-17,-829,-6,-830,12,-835,26,-841,35,-850,50,-857,60,-859,71,-862,84,-863,98,-864,114,-864,131,-864,145,-862,159,-860,171,-856,183,-853,193,-847,203,-841,210,-834,218,-826,233,-815,248,-808,263,-804,278,-804,290,-802,301,-799,309,-795,315,-789,320,-785,324,-783,326,-782,328,-783,329,-784,330,-785,330,-785 } },
+  { name = "蓝滩—金滩", w = 10, p = { 330,-785,330,-785,329,-784,328,-783,326,-782,324,-783,320,-785,315,-789,309,-795,308,-802,311,-811,318,-822,330,-834,339,-844,345,-851,348,-856,348,-859,350,-863,353,-868,357,-873,363,-879,375,-883,393,-886,405,-887,417,-888,432,-888,447,-888,459,-887,472,-886,482,-883,491,-881,506,-874,515,-865,530,-859,540,-856,551,-854,564,-853,578,-852,594,-852,611,-852,623,-852,636,-853,654,-854,665,-856,668,-859,671,-862,676,-863,681,-864,687,-864,692,-863,697,-862,701,-859,704,-856,709,-854,716,-853,726,-852,738,-852,748,-853,756,-855,761,-858,765,-862,767,-865,769,-867,770,-868 } },
+  { name = "金滩—机场", w = 10, p = { 770,-868,770,-875,770,-890,769,-901,769,-911,769,-926,769,-940,775,-954,782,-968,789,-982,799,-996,809,-1009,819,-1023,829,-1037,841,-1050,853,-1063,865,-1077,877,-1090,889,-1104,902,-1117,916,-1130,929,-1144,942,-1157,956,-1170,969,-1183,981,-1195,993,-1207,1005,-1219,1018,-1231,1030,-1243,1043,-1257,1056,-1270,1070,-1283,1080,-1293,1090,-1303 } },
+  { name = "营地—侧翼滩", w = 10, p = { 140,-2076,153,-2076,166,-2076,179,-2076,199,-2076,218,-2076,235,-2076,253,-2076,270,-2076,290,-2076,310,-2077,324,-2078,337,-2078,353,-2080,356,-2083,359,-2086,362,-2087,365,-2088,368,-2088,370,-2090,371,-2095,372,-2101,372,-2110,373,-2116,374,-2119,377,-2119,380,-2116,382,-2115,383,-2115,384,-2116,384,-2119,385,-2121,386,-2121,389,-2119,392,-2116,405,-2114,417,-2113,429,-2113,446,-2112,464,-2112,479,-2112,494,-2112,509,-2112,527,-2110,545,-2109,560,-2106,574,-2103,584,-2098,594,-2094,606,-2082,623,-2073,635,-2070,646,-2067,660,-2065,674,-2064,690,-2064,707,-2064,720,-2065,734,-2066,744,-2068,755,-2071,770,-2077,779,-2086,791,-2093,808,-2097,818,-2098,829,-2099,841,-2098,853,-2098,872,-2097,884,-2097,890,-2096 } },
+  { name = "营地往西", w = 9, p = { -80,-2151,-80,-2150,-81,-2146,-81,-2141,-82,-2134,-88,-2134,-97,-2139,-111,-2151,-120,-2160,-129,-2169,-139,-2176,-149,-2182,-160,-2187,-172,-2191,-184,-2194,-196,-2196,-210,-2196,-223,-2196,-235,-2195,-246,-2194,-264,-2189,-277,-2182,-286,-2173,-302,-2167,-313,-2164,-325,-2162,-339,-2161,-354,-2160,-372,-2160,-390,-2160,-404,-2160,-418,-2161,-437,-2162,-448,-2164,-451,-2167,-464,-2170,-475,-2170,-487,-2171,-503,-2172,-519,-2172,-533,-2172,-547,-2172,-561,-2172,-578,-2170,-595,-2169,-609,-2166,-622,-2163,-632,-2158,-642,-2154,-654,-2142,-669,-2133,-687,-2127,-697,-2125,-708,-2124,-720,-2124,-732,-2124,-751,-2122,-766,-2119,-777,-2115,-783,-2109,-791,-2104,-802,-2101,-814,-2100,-829,-2100,-844,-2097,-857,-2092,-870,-2084,-882,-2073,-891,-2065,-897,-2059,-900,-2057 } },
+}
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="14">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -1931,7 +2222,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="13">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -1972,7 +2263,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -1992,7 +2283,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -2012,7 +2303,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -2032,7 +2323,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -2059,7 +2350,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -2093,7 +2384,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -2113,7 +2404,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -2161,7 +2452,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -2223,7 +2514,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -2243,7 +2534,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -2277,7 +2568,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -2298,7 +2589,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="25">
+    <Item class="ModuleScript" referent="28">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -2434,7 +2725,51 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="26">
+    <Item class="ModuleScript" referent="29">
+      <Properties>
+        <string name="Name">SceneryMeta</string>
+        <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
+--   kind 种类（conifer 针叶树、young 小针叶树、broad 阔叶树、bush 灌木、dead 枯树、log 倒木、rock 石头、outcrop 岩石、grass 草丛、flower 花丛、lod 远景版本）、
+--   h 高、r 冠幅半径（格）、o 在 GLB 里的原点（导入后各块按它找回相对位置）、parts 每块的中心 c 和大小 s（相对这件的原点：树干底部中心）、tris 三角形数
+return {
+  fir1 = { kind = "conifer", h = 49.52, r = 15.01, o = { 12.93, 0, 13.45 }, tris = 9492, parts = { { name = "Bark", c = { 0, 23.31, 0 }, s = { 11.98, 46.62, 14.47 } }, { name = "Leaves", c = { 1.04, 25, -0.05 }, s = { 27.93, 49.04, 26.79 } } } },
+  fir1_m = { kind = "lod", h = 49.61, r = 15.07, o = { 60.71, 0, 14.49 }, tris = 5834, parts = { { name = "Bark", c = { 0, 23.31, 0 }, s = { 3.48, 46.62, 4.31 } }, { name = "Leaves", c = { 1.15, 25.1, -1.09 }, s = { 27.84, 49, 26.79 } } } },
+  fir1_f = { kind = "lod", h = 49.11, r = 13.92, o = { 109.7, 0, 13.39 }, tris = 40, parts = { { name = "Leaves", c = { 0, 24.55, 0 }, s = { 27.84, 49.11, 26.79 } } } },
+  fir2 = { kind = "conifer", h = 49.18, r = 14.07, o = { 156.55, 0, 14.07 }, tris = 7492, parts = { { name = "Bark", c = { 0, 23.29, 0 }, s = { 13.77, 46.58, 12.49 } }, { name = "Leaves", c = { 0.25, 27.72, -1.08 }, s = { 26.36, 42.91, 25.98 } } } },
+  fir2_m = { kind = "lod", h = 49.25, r = 14.32, o = { 203.24, 0, 14.32 }, tris = 4452, parts = { { name = "Bark", c = { 0, 23.29, 0 }, s = { 2.7, 46.58, 3.98 } }, { name = "Leaves", c = { -0.09, 27.76, -1.33 }, s = { 26.36, 42.99, 25.98 } } } },
+  fir2_f = { kind = "lod", h = 48.76, r = 13.05, o = { 249.38, 0, 12.99 }, tris = 40, parts = { { name = "Leaves", c = { 0, 24.38, 0 }, s = { 26.09, 48.76, 25.98 } } } },
+  fir3 = { kind = "conifer", h = 43.07, r = 12.58, o = { 294.83, 0, 12.58 }, tris = 8272, parts = { { name = "Bark", c = { 0, 20.09, 0 }, s = { 12.94, 40.18, 11.14 } }, { name = "Leaves", c = { -0.32, 21.77, -0.23 }, s = { 24.16, 42.6, 24.69 } } } },
+  fir3_m = { kind = "lod", h = 43.44, r = 13.91, o = { 338.22, 0, 13.91 }, tris = 5280, parts = { { name = "Bark", c = { 0, 17.46, 0 }, s = { 9.18, 34.91, 6.39 } }, { name = "Leaves", c = { 0.45, 22.22, -1.57 }, s = { 24.16, 42.44, 24.69 } } } },
+  fir3_f = { kind = "lod", h = 43, r = 12.35, o = { 12.08, 0, 59.14 }, tris = 40, parts = { { name = "Leaves", c = { 0, 21.5, 0 }, s = { 24.16, 43, 24.69 } } } },
+  fir4 = { kind = "conifer", h = 36.99, r = 13.22, o = { 56.85, 0, 60.01 }, tris = 7912, parts = { { name = "Bark", c = { 0, 17.23, 0 }, s = { 10.04, 34.46, 12.66 } }, { name = "Leaves", c = { -0.04, 18.58, -0.92 }, s = { 25.3, 36.83, 24.6 } } } },
+  fir4_m = { kind = "lod", h = 37.07, r = 13.81, o = { 100.94, 0, 57.71 }, tris = 4612, parts = { { name = "Bark", c = { 0, 17.23, 0 }, s = { 6.39, 34.46, 4.77 } }, { name = "Leaves", c = { 1.16, 18.7, 1.38 }, s = { 25.3, 36.73, 24.6 } } } },
+  fir4_f = { kind = "lod", h = 36.7, r = 12.65, o = { 147.4, 0, 58.97 }, tris = 40, parts = { { name = "Leaves", c = { 0, 18.35, 0 }, s = { 25.3, 36.7, 24.35 } } } },
+  fir5 = { kind = "young", h = 19.86, r = 7.56, o = { 186.61, 0, 54.3 }, tris = 6412, parts = { { name = "Bark", c = { 0, 8.85, 0 }, s = { 4.86, 17.7, 5.93 } }, { name = "Leaves", c = { 0.5, 9.98, -0.58 }, s = { 14.12, 19.76, 13.86 } } } },
+  fir5_f = { kind = "lod", h = 19.72, r = 7.06, o = { 221.23, 0, 53.72 }, tris = 40, parts = { { name = "Leaves", c = { 0, 9.86, 0 }, s = { 14.12, 19.72, 13.86 } } } },
+  pine = { kind = "conifer", h = 49.43, r = 15.95, o = { 264.06, 0, 62.66 }, tris = 3990, parts = { { name = "Bark", c = { 0, 22.11, 0 }, s = { 22.26, 44.21, 23.39 } }, { name = "Leaves", c = { 0.09, 30.82, -0.35 }, s = { 31.72, 37.23, 31.04 } } } },
+  nfir = { kind = "young", h = 27.12, r = 10.14, o = { 309.06, 0, 56.49 }, tris = 3888, parts = { { name = "Bark", c = { 0, 11.87, 0 }, s = { 11.51, 23.73, 11.13 } }, { name = "Leaves", c = { 0.54, 14.38, -0.52 }, s = { 19.19, 25.48, 18.37 } } } },
+  cshrub = { kind = "bush", h = 15.35, r = 9.22, o = { 8.65, 0, 107.04 }, tris = 6199, parts = { { name = "Bark", c = { 0, 6.76, 0 }, s = { 11.91, 12.68, 12.59 } }, { name = "Leaves", c = { -0.24, 7.68, -0.4 }, s = { 16.82, 15.35, 17.62 } } } },
+  sapling = { kind = "bush", h = 8.59, r = 2.68, o = { 39.41, 0, 100.26 }, tris = 729, parts = { { name = "Bark", c = { 0, 3.24, 0 }, s = { 2.35, 6.48, 2.1 } }, { name = "Leaves", c = { -0.18, 4.45, 0.12 }, s = { 4.83, 8.28, 5.12 } } } },
+  deadfir = { kind = "dead", h = 45.07, r = 11.43, o = { 72.74, 0, 109.25 }, tris = 900, parts = { { name = "Bark", c = { 0, 22.54, 0 }, s = { 22.19, 45.07, 22.86 } } } },
+  log = { kind = "log", h = 2.18, r = 8.23, o = { 112.07, 0, 105.21 }, tris = 320, parts = { { name = "Bark", c = { 0, 1.09, 0 }, s = { 16.46, 2.18, 14.77 } } } },
+  rock1 = { kind = "rock", h = 8.08, r = 4.76, o = { 145.06, 0, 102.52 }, tris = 768, parts = { { name = "Body", c = { 0, 4.04, 0 }, s = { 9.51, 8.08, 9.4 } } } },
+  rock2 = { kind = "rock", h = 8.08, r = 5.01, o = { 174.82, 0, 102.69 }, tris = 768, parts = { { name = "Body", c = { 0, 4.04, 0 }, s = { 10.02, 8.08, 9.72 } } } },
+  rock3 = { kind = "outcrop", h = 10.46, r = 8.22, o = { 207.14, 0, 106.05 }, tris = 1400, parts = { { name = "Body", c = { 0, 5.23, 0 }, s = { 14.62, 10.46, 16.45 } } } },
+  birch1 = { kind = "broad", h = 48.12, r = 14.2, o = { 246.83, 0, 110.81 }, tris = 2548, parts = { { name = "Bark", c = { 0, 21.05, 0 }, s = { 13.75, 42.09, 14.7 } }, { name = "Leaves", c = { 0.42, 28.27, 0.6 }, s = { 25.59, 39.7, 27.19 } } } },
+  birch2 = { kind = "broad", h = 55.82, r = 13.15, o = { 12.37, 0, 158.16 }, tris = 2944, parts = { { name = "Bark", c = { 0, 25.18, 0 }, s = { 13.15, 50.36, 15.11 } }, { name = "Leaves", c = { -0.02, 34.67, -0.37 }, s = { 24.69, 42.31, 25.56 } } } },
+  oak = { kind = "broad", h = 47.7, r = 25.8, o = { 70.5, 0, 169.27 }, tris = 3150, parts = { { name = "Bark", c = { 0, 18.51, 0 }, s = { 33, 37.03, 27.93 } }, { name = "Leaves", c = { -2.19, 27.06, 0.08 }, s = { 47.22, 41.29, 48.67 } } } },
+  maple = { kind = "broad", h = 49.62, r = 23, o = { 133.42, 0, 166.88 }, tris = 3438, parts = { { name = "Bark", c = { 0, 19.83, 0 }, s = { 22.55, 39.67, 21.67 } }, { name = "Leaves", c = { 0.75, 27.95, -0.1 }, s = { 44.5, 43.34, 43.53 } } } },
+  dshrub = { kind = "bush", h = 10.82, r = 7.35, o = { 182.56, 0, 152.2 }, tris = 3421, parts = { { name = "Bark", c = { 0, 4.03, 0 }, s = { 10.17, 7.46, 9.99 } }, { name = "Leaves", c = { 0.6, 5.41, -0.02 }, s = { 13.49, 10.82, 14.33 } } } },
+  holly = { kind = "bush", h = 10.29, r = 7.78, o = { 217.22, 0, 152.32 }, tris = 3168, parts = { { name = "Bark", c = { 0, 3.26, 0 }, s = { 7.88, 6.46, 7.77 } }, { name = "Leaves", c = { 0.23, 5.14, 0.01 }, s = { 15.09, 10.29, 14.64 } } } },
+  grass_s = { kind = "grass", h = 2.06, r = 5.77, o = { 249.37, 0, 150.04 }, tris = 1036, parts = { { name = "Leaves", c = { -1.53, 0.64, 0.2 }, s = { 5.67, 1.28, 8.25 } }, { name = "Leaves2", c = { 2.09, 1.03, -0.67 }, s = { 7.36, 2.06, 8.71 } } } },
+  grass_t = { kind = "grass", h = 3.55, r = 4.71, o = { 278.82, 0, 148.91 }, tris = 1150, parts = { { name = "Leaves", c = { 0.28, 1.77, 0.48 }, s = { 6.99, 3.55, 8.45 } }, { name = "Leaves2", c = { -0.52, 0.7, 0.17 }, s = { 6.32, 1.41, 8.13 } } } },
+  flowers = { kind = "flower", h = 1.8, r = 4.54, o = { 306.01, 0, 148.77 }, tris = 3816, parts = { { name = "Leaves", c = { -0.32, 0.73, -0.87 }, s = { 3.87, 1.46, 5.77 } }, { name = "Leaves2", c = { 0.56, 0.9, 0.41 }, s = { 7.94, 1.8, 7.91 } }, { name = "Leaves3", c = { 0.58, 0.62, -0.08 }, s = { 6.32, 1.24, 7.3 } } } },
+  weeds = { kind = "flower", h = 3.23, r = 5.19, o = { 3.21, 0, 218.88 }, tris = 1070, parts = { { name = "Leaves", c = { 0.4, 0.46, 0.33 }, s = { 5.49, 0.92, 7.05 } }, { name = "Leaves2", c = { 1.89, 1.61, 0.45 }, s = { 2.88, 3.23, 4.54 } }, { name = "Leaves3", c = { 0.89, 1.09, -0.53 }, s = { 8.2, 2.18, 9.33 } } } },
+}
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="30">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -2565,7 +2900,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="27">
+    <Item class="ModuleScript" referent="31">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -2880,7 +3215,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="28">
+    <Item class="ModuleScript" referent="32">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -3119,17 +3454,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="29">
+    <Item class="Folder" referent="33">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="30">
+  <Item class="ServerScriptService" referent="34">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="31">
+    <Item class="Script" referent="35">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -3295,7 +3630,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -4006,7 +4341,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -4540,7 +4875,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -5187,7 +5522,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -5541,7 +5876,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -5801,7 +6136,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -6992,11 +7327,12 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
---   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）以后，MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/
+--   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）、models/scenery/scenery.glb（花草树木，一个文件全有）以后，
+--   MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ N_<键>__<块>（Bark、Leaves、Body：地图上的树、灌木、石头、草丛、花丛）/
 --   A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/ S_<型号>__<块>（Hull_1、T1_1……）/ O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，
 --   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>，
 --   客户端（VehModels.lua、AirModels.lua）拼的时候看这里有没有，有就换上原模型；导入时自带的空 Model / 文件夹顺手删掉
@@ -7018,18 +7354,18 @@ function Imports.init(G)
 
   local imported = folder(RS, "Imported")
   -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）
-  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics") }
+  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics"), N = folder(imported, "Scenery") }
   local n, keys, airKeys, shipKeys = 0, {}, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VASO])_(%w+)__[%w_]+$")
-        if kind == "O" then   -- 瞄准镜：只收好，不算进装备模型
+        local kind, key = string.match(d.Name, "^([VASON])_([%w_]-)__[%w_]+$")
+        if kind == "O" or kind == "N" then   -- 瞄准镜、花草树木：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
-          d.Parent = folder(dest.O, key)
+          d.Parent = folder(dest[kind], key)
           if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
         elseif key then
           local parent = d.Parent
@@ -7069,7 +7405,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -7262,7 +7598,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -8223,7 +8559,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
@@ -8914,7 +9250,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -8985,7 +9321,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -9234,7 +9570,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -9735,7 +10071,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -9985,7 +10321,7 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    T.Decoration = false
+    T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -10341,15 +10677,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="46">
+  <Item class="StarterPlayer" referent="50">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="47">
+    <Item class="StarterPlayerScripts" referent="51">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="48">
+      <Item class="LocalScript" referent="52">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -10374,7 +10710,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "FortView", "Gunner", "Optics", "FPSView", "Scope" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "FortView", "Gunner", "Optics", "FPSView", "Scope", "Scenery" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -10409,7 +10745,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
-  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end } }
+  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end },
+  { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end } }
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)
@@ -10418,7 +10755,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -11514,7 +11851,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -11655,7 +11992,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -12304,7 +12641,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -12860,7 +13197,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -13064,7 +13401,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -14061,7 +14398,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -14379,7 +14716,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -14868,7 +15205,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -15406,7 +15743,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -15808,7 +16145,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -15860,7 +16197,9 @@ function MapUI.init(G)
     if y < 200 then return 4 end
     return 5
   end
-  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128) }
+  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128), RGB(50, 86, 46) }
+  local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
+  if not okF then Flora = nil end
   local N = 110
   local cell = SPAN / N
   task.spawn(function()
@@ -15869,7 +16208,12 @@ function MapUI.init(G)
       local runB, runI = nil, 0
       for i = 0, N do
         local b = nil
-        if i < N then b = band(Map.height(X0 + (i + 0.5) * cell, z)) end
+        if i < N then
+          local x = X0 + (i + 0.5) * cell
+          b = band(Map.height(x, z))
+          -- 树林（Flora.lua 的林子）：深绿
+          if Flora and b and b >= 2 and b <= 4 and Flora.forest(x, z) > 0.14 and Map.flatW(x, z) < 0.3 then b = 6 end
+        end
         if b ~= runB then
           if runB then
             local f = Instance.new("Frame")
@@ -15883,6 +16227,28 @@ function MapUI.init(G)
         end
       end
       if j % 12 == 0 then task.wait() end
+    end
+    -- 路网：沿路每隔几个点连一段细线（土黄色）
+    for _, r in ipairs(Map.ROADS or {}) do
+      local step = 3
+      for i = 1, #r.x - 1, step do
+        local k = math.min(#r.x, i + step)
+        local u0, v0 = toUV(r.x[i], r.z[i])
+        local u1, v1 = toUV(r.x[k], r.z[k])
+        local len = math.sqrt((u1 - u0) ^ 2 + (v1 - v0) ^ 2)
+        if len > 0 then
+          local f = Instance.new("Frame")
+          f.Name = "Road"
+          f.BorderSizePixel = 0
+          f.BackgroundColor3 = RGB(176, 150, 102)
+          f.AnchorPoint = Vector2.new(0.5, 0.5)
+          f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
+          f.Size = UDim2.new(len * 1.04, 0, 0, 2)
+          f.Rotation = math.deg(math.atan2(v1 - v0, u1 - u0))
+          f.ZIndex = 2
+          f.Parent = land
+        end
+      end
     end
   end)
 
@@ -15998,7 +16364,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -16203,7 +16569,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -16370,7 +16736,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -16812,7 +17178,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -17344,7 +17710,365 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="68">
+          <Properties>
+            <string name="Name">Scenery</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的树林、灌木、石头、草丛、花丛：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
+--   长在哪由 Flora.lua 按格子算（每个人看到的一样）；这里管「画多少、画哪一版」：
+--     针叶树近处（130 格内）是完整的树、中距离（210 格内）是作者给的简化版、再远到 1300 格是公告板（两片交叉的贴图；松树借冷杉的）；
+--     阔叶树、枯树 540 格内、灌木倒木 300 格内、石头 480 格内；草丛 115 格内、花丛 135 格内；按画质设置整体放远 / 拉近（画质 6 时乘 0.9）
+--     这样密林里原模型一共约两百万个三角形
+--   模型：Studio 里导入了 models/scenery/scenery.glb（Imports.lua 收进 ReplicatedStorage.Imported.Scenery.<键>）就用原模型，
+--     没导入用零件拼的（树干 + 几团球形树冠、石块；草不拼——地形草已经开了）
+--   性能：同一种、同一档大小的模型放进对象池反复用（离开范围的挪到地下藏起来），一次 BulkMoveTo 挪完；每帧算格子、换模型都有上限
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+
+local Scenery = {}
+
+function Scenery.init(G)
+  local Flora = require(RS:WaitForChild("Flora"))
+  local META = require(RS:WaitForChild("SceneryMeta"))
+  local V = Vector3.new
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local cam = workspace.CurrentCamera
+  local CELL = Flora.CELL
+  local HIDE = CF(0, -6000, 0)
+
+  local folder = Instance.new("Folder")
+  folder.Name = "Scenery"
+  folder.Parent = workspace
+  G.sceneryFolder = folder
+
+  -- 画质（1～10；自动按 6）：距离整体乘 0.65～1.1
+  local quality = 6
+  pcall(function()
+    local lvl = UserSettings():GetService("UserGameSettings").SavedQualityLevel
+    local n = tonumber(string.match(tostring(lvl), "(%d+)$"))
+    if n then quality = n end
+  end)
+  local K = 0.6 + quality * 0.05
+  local D = { near = 130 * K, mid = 210 * K, far = 1300 * K, broad = 540 * K, bush = 300 * K, rock = 480 * K, grass = 115 * K, flower = 135 * K }
+  -- 没有远景版本的针叶树：远处借身高差不多的冷杉公告板（松树 50 格高 → fir2_f，小冷杉 → fir5_f）
+  local FAR_PROXY = { pine = "fir2_f", nfir = "fir5_f" }
+  local LAYER_R = { tree = D.far, bush = D.bush, rock = D.rock, grass = D.grass, flower = D.flower }
+  G.sceneryDist = D
+
+  -- 这一株在这个距离画哪一版（nil = 不画）
+  local function want(k, d)
+    local m = META[k]
+    if not m then return nil end
+    local kind = m.kind
+    if kind == "conifer" or kind == "young" then
+      if d < D.near then return k end
+      if d < D.mid then return META[k .. "_m"] and (k .. "_m") or k end
+      local f = META[k .. "_f"] and (k .. "_f") or FAR_PROXY[k]
+      if f then return (d < D.far) and f or nil end
+      return (d < D.broad) and k or nil
+    elseif kind == "broad" or kind == "dead" then return (d < D.broad) and k or nil
+    elseif kind == "bush" or kind == "log" then return (d < D.bush) and k or nil
+    elseif kind == "rock" or kind == "outcrop" then return (d < D.rock) and k or nil
+    elseif kind == "grass" then return (d < D.grass) and k or nil
+    elseif kind == "flower" then return (d < D.flower) and k or nil end
+    return nil
+  end
+
+  ---------------------------------------------------------------- 模板：导入的原模型，或者零件拼的
+
+  local templates = {}   -- [键] = { { p = 零件, rel = 相对这株原点的 CFrame }, … }（false = 这种不画）
+  local function importedFolder()
+    local imp = RS:FindFirstChild("Imported")
+    return imp and imp:FindFirstChild("Scenery")
+  end
+  local function prepPart(p, shadow)
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+    p.CastShadow = shadow
+  end
+  -- 零件拼的：按种类、高、冠幅
+  local TRUNK, NEEDLE, LEAF, BUSHC, ROCK = RGB(86, 66, 50), RGB(34, 58, 36), RGB(64, 96, 48), RGB(58, 84, 46), RGB(112, 110, 104)
+  local function ball(list, d, c, color, mat)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Ball
+    p.Size = V(d, d, d)
+    p.Color = color
+    p.Material = mat or Enum.Material.Grass
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    table.insert(list, { p = p, rel = CF(c) })
+  end
+  local function trunk(list, h, dia, color)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Cylinder
+    p.Size = V(h, dia, dia)
+    p.Color = color or TRUNK
+    p.Material = Enum.Material.Wood
+    table.insert(list, { p = p, rel = CF(0, h / 2, 0) * CFrame.Angles(0, 0, math.pi / 2) })
+  end
+  local function fallback(k)
+    local base = string.gsub(k, "_[mf]$", "")
+    local m = META[base] or META[k]
+    if not m then return false end
+    local list = {}
+    local h, r = m.h, m.r
+    local kind = m.kind
+    if kind == "conifer" or kind == "young" then
+      trunk(list, h * 0.35, math.max(0.8, h * 0.035))
+      for i = 0, 3 do   -- 下面大、上面小的几团：冷杉的样子
+        local t = i / 3
+        ball(list, r * 1.5 * (1 - t * 0.72), V(0, h * (0.32 + t * 0.48), 0), NEEDLE)
+      end
+    elseif kind == "broad" then
+      trunk(list, h * 0.5, math.max(0.9, h * 0.03))
+      ball(list, r * 1.3, V(0, h * 0.62, 0), LEAF)
+      ball(list, r * 0.95, V(r * 0.35, h * 0.78, r * 0.2), LEAF)
+      ball(list, r * 0.85, V(-r * 0.3, h * 0.74, -r * 0.25), LEAF)
+    elseif kind == "dead" then
+      trunk(list, h * 0.9, math.max(0.7, h * 0.025), RGB(96, 84, 72))
+    elseif kind == "bush" then
+      ball(list, r * 1.3, V(0, r * 0.45, 0), BUSHC)
+      ball(list, r * 0.9, V(r * 0.4, r * 0.35, 0), BUSHC)
+    elseif kind == "log" then
+      local p = Instance.new("Part")
+      p.Shape = Enum.PartType.Cylinder
+      p.Size = V(r * 1.8, 1.6, 1.6)
+      p.Color, p.Material = TRUNK, Enum.Material.Wood
+      table.insert(list, { p = p, rel = CF(0, 0.8, 0) })
+    elseif kind == "rock" or kind == "outcrop" then
+      local n = (kind == "outcrop") and 3 or 1
+      for i = 1, n do
+        local p = Instance.new("Part")
+        p.Size = V(r * 1.1, h * 0.9, r * 0.9) * ((i == 1) and 1 or 0.7)
+        p.Color, p.Material = ROCK, Enum.Material.Rock
+        table.insert(list, { p = p, rel = CF((i - 1) * r * 0.5, h * 0.4, (i % 2) * r * 0.3) * CFrame.Angles(0.2 * i, i, 0.15) })
+      end
+    elseif kind == "flower" and k == "flowers" then
+      for i = 1, 6 do
+        ball(list, 0.55, V(math.cos(i * 1.7) * r * 0.5, 0.7, math.sin(i * 2.3) * r * 0.5), RGB(236, 204, 40), Enum.Material.SmoothPlastic)
+      end
+    else
+      return false   -- 草丛：零件拼不出来（地形草已经有了）
+    end
+    return list
+  end
+  -- 导入的原模型：各块按元数据里的中心找回这株的原点
+  local function fromImport(k)
+    local f = importedFolder()
+    local src = f and f:FindFirstChild(k)
+    local m = META[k]
+    if not src or not m then return nil end
+    local parts = {}
+    for _, p in ipairs(src:GetChildren()) do
+      if p:IsA("BasePart") then table.insert(parts, p) end
+    end
+    if #parts == 0 then return nil end
+    local origin, n = V(), 0
+    local byName = {}
+    for _, pm in ipairs(m.parts) do byName[pm.name] = pm end
+    for _, p in ipairs(parts) do
+      local pm = byName[string.match(p.Name, "__([%w_]+)$") or ""]
+      if pm then
+        origin += p.Position - V(pm.c[1], pm.c[2], pm.c[3])
+        n += 1
+      end
+    end
+    if n == 0 then return nil end
+    origin /= n
+    local list = {}
+    for _, p in ipairs(parts) do table.insert(list, { p = p, rel = CF(origin):ToObjectSpace(p.CFrame) }) end
+    return list
+  end
+  local function template(k)
+    local t = templates[k]
+    if t == nil then
+      t = fromImport(k) or fallback(k)
+      templates[k] = t
+    end
+    return t
+  end
+  G.sceneryImported = function() local f = importedFolder() return f ~= nil and #f:GetChildren() > 0 end
+
+  ---------------------------------------------------------------- 对象池（同一种、同一档大小）
+
+  local pools = {}   -- [键 .. "#" .. 档] = { 实例, … }
+  local nLive, nMade = 0, 0
+  local function bucketOf(s) return math.clamp(math.floor((s - 0.85) / 0.15 + 0.5), 0, 2) end
+  local function newInst(k, b)
+    local t = template(k)
+    if not t then return nil end
+    local s = 0.85 + b * 0.15
+    local kind = META[k] and META[k].kind or ""
+    local shadow = (kind == "conifer" or kind == "broad" or kind == "rock" or kind == "outcrop") and quality >= 7
+    local inst = { k = k, b = b, parts = {}, rels = {} }
+    for i, it in ipairs(t) do
+      local p = it.p:Clone()
+      prepPart(p, shadow)
+      p.Size = it.p.Size * s
+      local r = it.rel
+      inst.parts[i] = p
+      inst.rels[i] = CF(r.Position * s) * (r - r.Position)
+      p.CFrame = HIDE
+      p.Parent = folder
+    end
+    nMade += 1
+    return inst
+  end
+  local moveP, moveC = {}, {}
+  local function queueMove(inst, cf)
+    for i, p in ipairs(inst.parts) do
+      moveP[#moveP + 1] = p
+      moveC[#moveC + 1] = cf * inst.rels[i]
+    end
+  end
+  local function take(k, s)
+    local b = bucketOf(s)
+    local key = k .. "#" .. b
+    local pool = pools[key]
+    local inst = pool and table.remove(pool)
+    if not inst then inst = newInst(k, b) end
+    if inst then nLive += 1 end
+    return inst
+  end
+  local function give(inst)
+    local key = inst.k .. "#" .. inst.b
+    pools[key] = pools[key] or {}
+    table.insert(pools[key], inst)
+    queueMove(inst, HIDE)
+    nLive -= 1
+  end
+
+  ---------------------------------------------------------------- 格子
+
+  local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
+  local function cellKey(cx, cz) return cx * 100003 + cz end
+  local LAYERS = { "tree", "bush", "rock", "grass", "flower" }
+  local maxR = 0
+  for _, r in pairs(LAYER_R) do maxR = math.max(maxR, r) end
+
+  local lastPos, timer = nil, 0
+  local stats = { cells = 0, items = 0, live = 0, made = 0, genMs = 0 }
+  G.sceneryStats = stats
+
+  -- 一次更新：镜头附近的格子按距离挑版本；超出范围的收回池里
+  local function update(budgetMs)
+    local cp = cam.CFrame.Position
+    local t0 = os.clock()
+    local ccx, ccz = math.floor(cp.X / CELL), math.floor(cp.Z / CELL)
+    local rc = math.ceil(maxR / CELL) + 1
+    local changes = 0
+    local seen = {}
+    -- 由近到远：先摆近的（预算用完了远处下次再说）
+    local order = {}
+    for dz = -rc, rc do
+      for dx = -rc, rc do
+        local x0, z0 = (ccx + dx) * CELL, (ccz + dz) * CELL
+        local ex = math.max(x0 - cp.X, 0, cp.X - (x0 + CELL))
+        local ez = math.max(z0 - cp.Z, 0, cp.Z - (z0 + CELL))
+        local d = math.sqrt(ex * ex + ez * ez)
+        if d < maxR then table.insert(order, { ccx + dx, ccz + dz, d }) end
+      end
+    end
+    table.sort(order, function(a, b) return a[3] < b[3] end)
+    for _, o in ipairs(order) do
+      local cx, cz, dCell = o[1], o[2], o[3]
+      local key = cellKey(cx, cz)
+      seen[key] = true
+      local c = cells[key]
+      if not c then
+        c = { cx = cx, cz = cz }
+        cells[key] = c
+      end
+      for _, layer in ipairs(LAYERS) do
+        if dCell < LAYER_R[layer] then
+          local list = c[layer]
+          if not list and os.clock() - t0 < budgetMs / 1000 then
+            local g0 = os.clock()
+            list = Flora.cell(cx, cz, layer)
+            stats.genMs += (os.clock() - g0) * 1000
+            c[layer] = list
+            stats.items += #list
+          end
+          if list then
+            for _, it in ipairs(list) do
+              local dx, dz = it.x - cp.X, it.z - cp.Z
+              local dy = (it.y - cp.Y) * 0.5   -- 天上往下看：高度算一半（飞机上看地面不至于全变公告板）
+              local d = math.sqrt(dx * dx + dz * dz + dy * dy)
+              local w = want(it.k, d)
+              if w ~= it.cur then
+                if changes < 400 then
+                  if it.inst then give(it.inst) it.inst = nil end
+                  if w then
+                    local inst = take(w, it.s)
+                    if inst then
+                      queueMove(inst, CF(it.x, it.y, it.z) * CFrame.Angles(0, it.yaw, 0))
+                      it.inst = inst
+                    end
+                  end
+                  it.cur = w
+                  changes += 1
+                end
+              end
+            end
+          end
+        elseif c[layer] then   -- 这一层超出范围：全收回
+          for _, it in ipairs(c[layer]) do
+            if it.inst then give(it.inst) it.inst = nil end
+            it.cur = nil
+          end
+        end
+      end
+    end
+    -- 远得不在范围里的格子：收回、扔掉（再回来重新算）
+    for key, c in pairs(cells) do
+      if not seen[key] then
+        for _, layer in ipairs(LAYERS) do
+          for _, it in ipairs(c[layer] or {}) do if it.inst then give(it.inst) it.inst = nil end end
+        end
+        cells[key] = nil
+      end
+    end
+    if #moveP > 0 then
+      workspace:BulkMoveTo(moveP, moveC, Enum.BulkMoveMode.FireCFrameChanged)
+      table.clear(moveP)
+      table.clear(moveC)
+    end
+    local n = 0
+    for _ in pairs(cells) do n += 1 end
+    stats.cells, stats.live, stats.made = n, nLive, nMade
+    -- 按版本数：摆出来多少株、原模型的话一共多少三角形（调距离用）
+    local byKey, tris = {}, 0
+    for _, c in pairs(cells) do
+      for _, layer in ipairs(LAYERS) do
+        for _, it in ipairs(c[layer] or {}) do
+          if it.cur then
+            byKey[it.cur] = (byKey[it.cur] or 0) + 1
+            tris += (META[it.cur] and META[it.cur].tris or 0)
+          end
+        end
+      end
+    end
+    stats.byKey, stats.tris = byKey, tris
+    return changes
+  end
+  G.sceneryUpdate = update
+
+  -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
+  function G.stepScenery(dt)
+    timer += dt
+    local cp = cam.CFrame.Position
+    if (lastPos and (cp - lastPos).Magnitude < 10 and timer < 0.3) then return end
+    if timer < 0.08 then return end
+    timer = 0
+    lastPos = cp
+    update(4)
+  end
+  local _ = Players
+end
+
+return Scenery
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -18075,7 +18799,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -18673,7 +19397,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -19229,7 +19953,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -19655,14 +20379,17 @@ function VehModels.build(d, team)
     local pe = Instance.new("ParticleEmitter")
     pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
     pe.Rate = 0
-    pe.Lifetime = NumberRange.new(1.4, 2.6)
-    pe.Speed = NumberRange.new(2, 6)
-    pe.SpreadAngle = Vector2.new(35, 35)
-    pe.Acceleration = V(0, 2.5, 0)
-    pe.Drag = 1.5
-    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(1, 11) })
-    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1) })
-    pe.Color = ColorSequence.new(RGB(190, 170, 130))
+    -- 尘柱：一团团往后、往上慢慢胀开、飘好几秒（Arma 里车后那一长条黄土），颜色和浓淡按脚下的地面在 View.lua 里换
+    pe.Lifetime = NumberRange.new(2.6, 5.2)
+    pe.Speed = NumberRange.new(3, 8)
+    pe.SpreadAngle = Vector2.new(40, 25)
+    pe.Acceleration = V(0, 1.6, 0)
+    pe.Drag = 0.9
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-12, 12)
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(0.35, 10), NumberSequenceKeypoint.new(1, 19) })
+    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.4, 0.62), NumberSequenceKeypoint.new(1, 1) })
+    pe.Color = ColorSequence.new(RGB(170, 146, 110))
     pe.EmissionDirection = Enum.NormalId.Back
     pe.LightInfluence = 1
     pe.Parent = p
@@ -19721,7 +20448,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -20046,8 +20773,24 @@ function View.init(G)
     -- 扬尘：在陆地上开得快才有
     local land = not onWater
     if v.fireLight then v.fireLight.Brightness = 2.2 + math.random() * 1.8 end
-    local rate = land and math.clamp((math.abs(v.speed) - 6) * 1.3, 0, 45) or 0
-    for _, pe in ipairs(M.dust) do pe.Rate = rate end
+    -- 扬尘按脚下的地面：土路、沙地最浓，草地淡一半，石头上更淡（每 0.3 秒看一次地面）
+    v.dustT = (v.dustT or 0) - dt
+    if v.dustT <= 0 then
+      v.dustT = 0.3
+      local mat = land and Map.material(pos.X, pos.Z, Map.height(pos.X, pos.Z), Map.slope(pos.X, pos.Z)) or nil
+      local k, col = 0.5, nil
+      if mat == Enum.Material.Ground then k, col = 1, Color3.fromRGB(168, 142, 104)
+      elseif mat == Enum.Material.Sand then k, col = 1, Color3.fromRGB(206, 190, 150)
+      elseif mat == Enum.Material.Rock or mat == Enum.Material.Slate then k, col = 0.3, Color3.fromRGB(150, 146, 138)
+      else k, col = 0.45, Color3.fromRGB(150, 140, 112) end
+      v.dustK = k
+      if col and v.dustCol ~= col then
+        v.dustCol = col
+        for _, pe in ipairs(M.dust) do pe.Color = ColorSequence.new(col) end
+      end
+    end
+    local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
@@ -20127,17 +20870,17 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="69">
+  <Item class="Workspace" referent="74">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="70">
+  <Item class="Lighting" referent="75">
     <Properties>
       <string name="Name">Lighting</string>
-      <float name="Brightness">2.2</float>
-      <float name="ClockTime">2.3</float>
+      <float name="Brightness">3</float>
+      <float name="ClockTime">14.6</float>
       <float name="EnvironmentDiffuseScale">1</float>
       <float name="EnvironmentSpecularScale">1</float>
       <bool name="GlobalShadows">true</bool>

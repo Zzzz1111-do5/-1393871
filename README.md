@@ -51,6 +51,19 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
 再 `python3 -I tools/models/air2glb.py <网页版仓库目录> airdefs.json`；舰艇先 `lune run tools/models/shipdefs.luau > shipdefs.json`，再 `python3 -I tools/models/ship2glb.py <网页版仓库目录> shipdefs.json`。
 模型都是 CC-BY，署名在 `models/veh/credits.txt`、`models/air/credits.txt`、`models/ship/credits.txt`（发布时放进游戏简介或游戏里的致谢）。
 
+## 地图上的树林、花草（`models/scenery/scenery.glb`）
+
+地图有路网（营地、指挥所、港口镇、机场、各海滩之间的土路）、成片的树林（山上冷杉松树、低处白桦橡树枫树）、林缘的小树灌木、草地上的草丛和一片片黄花、坡上的石头。
+长在哪是按地形算的（`Flora.lua`），每个人看到的一样；只在本机画，不挡人、不挡车、不挡子弹。
+
+- 不导入也有：树、灌木、石头用零件拼的，地面是地形草。
+- 想要真的树和花草：Studio「主页 → 导入 3D」选 `models/scenery/scenery.glb`（一个文件，33 件：冷杉 / 松树 / 白桦 / 橡树 / 枫树、灌木、枯树倒木、石头、草丛、花丛，
+  冷杉还带中距离简化版和远处的公告板），导入设置用默认的，导进 Workspace 就行；开服时自动收进 `ReplicatedStorage/Imported/Scenery`。块名别改（`N_<键>__<块>`）。
+- 近处是完整的树（130 格内）、中距离是简化版（210 格内）、远处到 1300 格是公告板；草丛、花丛只画身边一百多格；按画质设置整体放远 / 拉近。
+- 模型都是 Sketchfab 上的 CC-BY，署名在 `models/scenery/credits.txt`。重新转换：`cd tools/weapons && npm ci`，再在仓库根目录 `node tools/scenery/scenery.mjs`
+  （要从 Sketchfab 下载原模型时设好环境变量 `SKETCHFAB_TOKEN`）；挑哪几件、放大多少在 `tools/scenery/scenery.json`。
+- 路网是离线算好的（`tools/map/roads.lua` → `src/ReplicatedStorage/MapRoads.lua`），改了地形重跑：`python3 tools/mock/run.py tools/map/roads.lua`。
+
 ## 改代码
 
 - 脚本都在 `src/`，目录和 Rojo 的约定一样：
@@ -81,7 +94,7 @@ lune run tools/test/ia_balance.luau RobloxTotalBattlefield.rbxlx 6  # 平衡统�
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图
 ```
 
-没有 Lune 也能跑一套 Lua 5.4 的模拟测试：`python3 tools/mock/run.py tools/mock/<flow|veh|forts|air|bots|fps>.lua`。两套都要过。
+没有 Lune 也能跑一套 Lua 5.4 的模拟测试：`python3 tools/mock/run.py tools/mock/<flow|veh|forts|air|navy|bots|fps|scenery>.lua`（`scenery`：路网、花草树木的摆放和按距离换版本）。两套都要过。
 
 几个会话同时在改这个仓库：分工、规矩和这一轮的协调记录见方案文档的「协作」一节。
 

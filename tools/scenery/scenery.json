@@ -1,0 +1,467 @@
+{
+  "说明": "花草树木模型包：从 Sketchfab 的 CC-BY 模型里挑出来，tools/scenery/scenery.mjs 转成 models/scenery/scenery.glb（Studio 导入一次）+ src/ReplicatedStorage/SceneryMeta.lua。nodes 是原模型里的节点名（取它下面所有网格），lod 是同一棵树的远景版本；s 是在 1 米 = 2.8 格之外再放大几倍",
+  "sources": {
+    "fir": {
+      "uid": "f58e8b6d733e4b0586e5b7db847b89e7",
+      "name": "Realistic fir trees pack (LODS, gameready)",
+      "author": "lolipop_1707"
+    },
+    "conif": {
+      "uid": "240ce9cf0ad3474f809a59f9446e63cd",
+      "name": "Coniferous Forest Assets Pack",
+      "author": "dariiiii"
+    },
+    "forest": {
+      "uid": "cf138b8eb2d340cda643ed59f824989c",
+      "name": "Various Forest Assets Pack",
+      "author": "dariiiii"
+    },
+    "grass": {
+      "uid": "422f42f618d342c6958b02613dc57403",
+      "name": "Grass pack (lowpoly, game-ready)",
+      "author": "lolipop_1707"
+    },
+    "grass9": {
+      "uid": "0561204a1fa14c17939300ee1108948b",
+      "name": "Grass (pack of 9 vars, lowpoly, game ready)",
+      "author": "lolipop_1707"
+    },
+    "under": {
+      "uid": "c98b4c1a15aa447a97cb76df127c1c78",
+      "name": "Undergrowth pack (lowpoly, game-ready)",
+      "author": "lolipop_1707"
+    },
+    "dande": {
+      "uid": "c09331338f7745a980865098c4c7da6e",
+      "name": "Dandelion Blossom Flower (game ready asset)",
+      "author": "apariciosilva3D"
+    }
+  },
+  "items": [
+    {
+      "key": "fir1",
+      "kind": "conifer",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_LOD1_Bark_Mat_0",
+        "Christmas tree_LOD1_Brunches_Mat_0"
+      ],
+      "s": 1.9,
+      "barkTris": 1200
+    },
+    {
+      "key": "fir1_m",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_LOD2_Bark_Mat_0",
+        "Christmas tree_LOD2_Brunches_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir1_f",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_LOD3_Christmas tree_1_Billboard_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir2",
+      "kind": "conifer",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_2_LOD1_Bark_Mat_0",
+        "Christmas tree_2_LOD1_Brunches_Mat_0"
+      ],
+      "s": 1.9,
+      "barkTris": 1200
+    },
+    {
+      "key": "fir2_m",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_2_LOD2_Bark_Mat_0",
+        "Christmas tree_2_LOD2_Brunches_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir2_f",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_2_LOD3_Christmas tree_2_Billboard_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir3",
+      "kind": "conifer",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_3_LOD1_Bark_Mat_0",
+        "Christmas tree_3_LOD1_Brunches_Mat_0"
+      ],
+      "s": 1.9,
+      "barkTris": 1200
+    },
+    {
+      "key": "fir3_m",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_3_LOD2_Bark_Mat_0",
+        "Christmas tree_3_LOD2_Brunches_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir3_f",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_3_LOD3_Christmas tree_3_Billboard_Mat_0"
+      ],
+      "s": 1.9
+    },
+    {
+      "key": "fir4",
+      "kind": "conifer",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_6_LOD1_Bark_Mat_0",
+        "Christmas tree_6_LOD1_Brunches_Mat_0"
+      ],
+      "s": 2.0,
+      "barkTris": 1200
+    },
+    {
+      "key": "fir4_m",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_6_LOD2_Bark_Mat_0",
+        "Christmas tree_6_LOD2_Brunches_Mat_0"
+      ],
+      "s": 2.0
+    },
+    {
+      "key": "fir4_f",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_6_LOD3_Christmas tree_6_Billboard_Mat_0"
+      ],
+      "s": 2.0
+    },
+    {
+      "key": "fir5",
+      "kind": "young",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_4_LOD1_Bark_Mat_0",
+        "Christmas tree_4_LOD1_Brunches_Mat_0"
+      ],
+      "s": 1.6,
+      "barkTris": 1200
+    },
+    {
+      "key": "fir5_f",
+      "kind": "lod",
+      "src": "fir",
+      "nodes": [
+        "Christmas tree_4_LOD3_Christmas tree_4_Billboard_Mat_0"
+      ],
+      "s": 1.6
+    },
+    {
+      "key": "pine",
+      "kind": "conifer",
+      "src": "conif",
+      "nodes": [
+        "PineTree_1"
+      ],
+      "s": 1.0,
+      "barkTris": 1400
+    },
+    {
+      "key": "nfir",
+      "kind": "young",
+      "src": "conif",
+      "nodes": [
+        "NobleFirTree_2"
+      ],
+      "s": 1.3,
+      "barkTris": 1200
+    },
+    {
+      "key": "cshrub",
+      "kind": "bush",
+      "src": "conif",
+      "nodes": [
+        "ConiferousShrub_3"
+      ],
+      "s": 0.55,
+      "barkTris": 900
+    },
+    {
+      "key": "sapling",
+      "kind": "bush",
+      "src": "conif",
+      "nodes": [
+        "Coniferous Sapling_4"
+      ],
+      "s": 0.9,
+      "barkTris": 400
+    },
+    {
+      "key": "deadfir",
+      "kind": "dead",
+      "src": "conif",
+      "nodes": [
+        "Coniferous Dead Tree_6"
+      ],
+      "s": 1.0,
+      "barkTris": 900
+    },
+    {
+      "key": "log",
+      "kind": "log",
+      "src": "conif",
+      "nodes": [
+        "Coniferous Dead Log_5"
+      ],
+      "s": 1.0
+    },
+    {
+      "key": "rock1",
+      "kind": "rock",
+      "src": "conif",
+      "nodes": [
+        "BoulderMossyLarge_8"
+      ],
+      "s": 1.0
+    },
+    {
+      "key": "rock2",
+      "kind": "rock",
+      "src": "conif",
+      "nodes": [
+        "BoulderPlainLarge_13"
+      ],
+      "s": 1.0
+    },
+    {
+      "key": "rock3",
+      "kind": "outcrop",
+      "src": "conif",
+      "nodes": [
+        "BoulderOutcropMossyMedium_10"
+      ],
+      "s": 1.0,
+      "barkTris": 1400
+    },
+    {
+      "key": "birch1",
+      "kind": "broad",
+      "src": "forest",
+      "nodes": [
+        "Birch1_20"
+      ],
+      "s": 1.0,
+      "barkTris": 1600
+    },
+    {
+      "key": "birch2",
+      "kind": "broad",
+      "src": "forest",
+      "nodes": [
+        "Birch2_21"
+      ],
+      "s": 0.9,
+      "barkTris": 1600
+    },
+    {
+      "key": "oak",
+      "kind": "broad",
+      "src": "forest",
+      "nodes": [
+        "Oak_25"
+      ],
+      "s": 0.9,
+      "barkTris": 1800
+    },
+    {
+      "key": "maple",
+      "kind": "broad",
+      "src": "forest",
+      "nodes": [
+        "Maple_24"
+      ],
+      "s": 0.9,
+      "barkTris": 1800
+    },
+    {
+      "key": "dshrub",
+      "kind": "bush",
+      "src": "forest",
+      "nodes": [
+        "DeciduousShrub_27"
+      ],
+      "s": 0.6,
+      "barkTris": 700
+    },
+    {
+      "key": "holly",
+      "kind": "bush",
+      "src": "forest",
+      "nodes": [
+        "HollyShrub_4"
+      ],
+      "s": 0.7,
+      "barkTris": 700
+    },
+    {
+      "key": "grass_s",
+      "kind": "grass",
+      "patch": [
+        {
+          "src": "grass",
+          "nodes": [
+            "Grass main fresh_Grass_Mat_0",
+            "Grass main fresh.001_Grass_Mat_0",
+            "Grass main fresh.002_Grass_Mat_0",
+            "Grass main aged_Grass_Mat_0",
+            "Grass main aged.001_Grass_Mat_0",
+            "Grass main dry_Grass_Mat_0"
+          ],
+          "n": 14,
+          "r": 1.4,
+          "s": 1.6
+        },
+        {
+          "src": "grass9",
+          "nodes": [
+            "Grass large 1",
+            "Grass large 2",
+            "Grass large 3",
+            "Grass medium 1",
+            "Grass medium 2",
+            "Grass medium 3"
+          ],
+          "n": 10,
+          "r": 1.5,
+          "s": 1.8
+        }
+      ]
+    },
+    {
+      "key": "grass_t",
+      "kind": "grass",
+      "patch": [
+        {
+          "src": "grass",
+          "nodes": [
+            "Grass tall high_Tall_grass_Mat_0",
+            "Grass tall high.001_Tall_grass_Mat_0",
+            "Grass tall high.002_Tall_grass_Mat_0",
+            "Grass tall low_Tall_grass_Mat_0",
+            "Grass tall low.001_Tall_grass_Mat_0"
+          ],
+          "n": 9,
+          "r": 1.2,
+          "s": 1.25
+        },
+        {
+          "src": "grass",
+          "nodes": [
+            "Grass main dry_Grass_Mat_0",
+            "Grass main dry.001_Grass_Mat_0",
+            "Grass main aged.002_Grass_Mat_0"
+          ],
+          "n": 6,
+          "r": 1.3,
+          "s": 1.6
+        }
+      ]
+    },
+    {
+      "key": "flowers",
+      "kind": "flower",
+      "patch": [
+        {
+          "src": "dande",
+          "nodes": [
+            "Dandelion1_0",
+            "Dandelion2_1",
+            "Dandelion3_2"
+          ],
+          "n": 6,
+          "r": 1.3,
+          "s": 2.2,
+          "tris": 220
+        },
+        {
+          "src": "under",
+          "nodes": [
+            "Dandelion.001",
+            "Dandelion.002",
+            "Dandelion.003",
+            "Dandelion.004",
+            "Dandelion.005"
+          ],
+          "n": 8,
+          "r": 1.4,
+          "s": 2.4
+        },
+        {
+          "src": "grass9",
+          "nodes": [
+            "Grass medium 1",
+            "Grass medium 2",
+            "Grass small 1",
+            "Grass small 3"
+          ],
+          "n": 8,
+          "r": 1.4,
+          "s": 1.8
+        }
+      ]
+    },
+    {
+      "key": "weeds",
+      "kind": "flower",
+      "patch": [
+        {
+          "src": "under",
+          "nodes": [
+            "Lactuca.001",
+            "Lactuca.002",
+            "Lactuca.003",
+            "Plantain.001",
+            "Plantain.002",
+            "Plantain.004"
+          ],
+          "n": 8,
+          "r": 1.3,
+          "s": 1.9
+        },
+        {
+          "src": "grass9",
+          "nodes": [
+            "Grass large 1",
+            "Grass large 3",
+            "Grass medium 2"
+          ],
+          "n": 5,
+          "r": 1.3,
+          "s": 1.8
+        }
+      ]
+    }
+  ]
+}
