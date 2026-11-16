@@ -646,6 +646,11 @@ function Air.init(G)
           e.vel = e.vel * (1 - 0.15 * dt)
           local np = p + e.vel * dt
           local look = e.vel.Magnitude > 5 and e.vel.Unit or e.root.CFrame.LookVector
+          if math.abs(look.Y) > 0.97 then   -- 几乎竖直往下掉（悬停时跳伞、原地放出来的）：留一点机头原来的朝向，不然 lookAt 退化成 NaN，位置跟着变 NaN
+            local h = V(e.root.CFrame.LookVector.X, 0, e.root.CFrame.LookVector.Z)
+            if h.Magnitude < 0.05 then h = V(0, 0, -1) end
+            look = (look + h.Unit * 0.3).Unit
+          end
           G.moveEnt(e, CFrame.lookAt(np, np + look) * CFrame.Angles(0, 0, math.sin(t * 1.3) * 0.4))
           if np.Y < math.max(surface(np.X, np.Z), -1) + 2 then crash(e, "ground") end
         elseif not e.onGround then   -- 掉到地面 / 海面上：海里、或者还很快，就是摔了（原来停在离地 3 格的地方漂着不炸）；慢慢落在陆地 / 甲板上才算停住

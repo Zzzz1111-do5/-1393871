@@ -20,6 +20,7 @@ function Navy.init(G)
 
   local ships = {}
   G.ships = ships
+  G.ShipDefs = SD   -- 测试、别的模块查型号用
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -157,7 +158,7 @@ function Navy.init(G)
         x += d.W / 2 + 24
       end
     end
-    -- 守方：后方营地在北岸的崖顶上（高八十多格），崖下伸进北面海里一条军港码头；船船尾朝岸、船头朝北，在码头两边并排停（每条船前面都是开阔海面，
+    -- 守方：后方营地在北岸的崖顶上（高约五十格），崖下伸进北面海里一条军港码头；船船尾朝岸、船头朝北，在码头两边并排停（每条船前面都是开阔海面，
     --   不会被别的船堵住）；终端柱在营地北边崖顶上一排
     local C = Map.CAMP
     local x0 = C.x
@@ -746,15 +747,28 @@ function Navy.init(G)
     local A = e.ai
     local t = now()
     -- 开船：朝下一个航点，转向有上限；前面水浅就换下一个点
+    --   规避：航向左右蛇行（±25°）、每二十来秒换一次航速——岸防炮按航向航速算提前量、一发比一发准，船一变就得重新试射
+    --   损管：血掉到四成五以下往外海撤（离岸再远 1500 格），一边撤一边修，修到八成五回来接着巡逻
     local c = cfOf(e)
     local p = c.Position
+    if not A.retreat and e.hp < e.maxHp * 0.45 then A.retreat = true end
+    if A.retreat then
+      e.hp = math.min(e.maxHp, e.hp + e.maxHp * 0.006 * dt)
+      e.model:SetAttribute("Hp", math.floor(e.hp))
+      if e.hp > e.maxHp * 0.85 then A.retreat = false end
+    end
     local wp = A.route[A.i]
     if (flat(wp) - flat(p)).Magnitude < 40 then A.i = A.i % #A.route + 1 wp = A.route[A.i] end
+    if A.retreat then wp = V(wp.X, 0, wp.Z + (A.out or 1500)) end
     local want = flat(wp) - flat(p)
     local yawNow = math.deg(math.atan2(-c.LookVector.X, -c.LookVector.Z))
-    local yawWant = math.deg(math.atan2(-want.X, -want.Z))
+    local yawWant = math.deg(math.atan2(-want.X, -want.Z)) + ((A.retreat or not A.weave) and 0 or math.sin(t / 11 + (A.ph or 0)) * 25)
     local yaw = math.rad(yawNow + math.clamp(angDiff(yawNow, yawWant), -d.turn * 1.4 * dt, d.turn * 1.4 * dt))
-    local spd = d.speed * 0.45
+    if t >= (A.spdAt or 0) then
+      A.spdAt = t + 16 + math.random() * 10
+      A.spdK = 0.3 + math.random() * 0.4
+    end
+    local spd = d.speed * (A.retreat and 0.8 or (A.spdK or 0.45))
     local fwd = V(-math.sin(yaw), 0, -math.cos(yaw))
     local np = p + fwd * spd * dt
     local ahead = np + fwd * d.L * 0.5
@@ -814,7 +828,9 @@ function Navy.init(G)
             if math.abs(wy - e.ty[gi]) < 2 and math.abs(wp2 - e.gp[gi]) < 2 and t >= (e.next[gi] or 0) then
               fireGun(e, gi, dir)
               if w.kind ~= "gun" then
-                e.next[gi] = now() + w.rate * 2.5 + math.random()   -- AI 打得慢一点（不是所有炮弹都朝岸上砸）
+                -- 打岸防炮、敌舰（会还手的）照常射速压制；别的目标打得慢一点（不是所有炮弹都朝岸上砸）
+                local duel = (tg.fort and tg.fkind == "coastal") or tg.ship
+                e.next[gi] = now() + (duel and w.rate * 1.1 or (w.rate * 2.5 + math.random()))
                 A.err = (A.err or 0) * -0.5
               end
             end
@@ -836,7 +852,7 @@ function Navy.init(G)
     local p = route[1]
     local e = newShip(team, def.id, CFrame.lookAt(V(p.X, 0, p.Z), V(route[2].X, 0, route[2].Z)))
     if not e then return end
-    e.ai = { route = route, i = 2 }
+    e.ai = { route = route, i = 2, ph = math.random() * 6, out = (team == "atk") and 1500 or 0, weave = team == "atk" }   -- 港湾里的巡逻艇不蛇行（湾窄）
     e.model:SetAttribute("AI", true)
     e.model:SetAttribute("Order", 2)
   end
