@@ -1474,7 +1474,7 @@ R.services.CollectionService = service("CollectionService", {}, { methods = {
   end,
 } })
 R.keys = {}
-R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default } }, {
+R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default }, MouseIconEnabled = { T.bool, true } }, {
   events = { InputBegan = true, InputEnded = true, InputChanged = true, TouchTap = true, TouchPan = true, TouchPinch = true, TouchRotate = true },
   ro = { TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true },
   methods = {

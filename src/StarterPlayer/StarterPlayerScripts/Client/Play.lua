@@ -267,6 +267,7 @@ function Play.init(G)
 
   UIS.InputBegan:Connect(function(io, gp)
     if gp or G.drive then return end
+    if G.menuOpen and G.menuOpen() then return end   -- 挂载编辑器里点 3D 的飞机（ViewportFrame 不吞点击）不能开枪
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
@@ -334,7 +335,8 @@ function Play.init(G)
     elseif a.r > 0 then
       ammoText.Text = T("ui.reloading", name)
     else
-      ammoText.Text = T("ui.ammo", name, a.n, a.res and tostring(a.res) or "∞") .. (G.mobile and "" or ("   " .. T("ui.reloadKey")))
+      -- 「R 换弹」只在打空了时提示（用户：持枪第一视角不要显示键位）
+      ammoText.Text = T("ui.ammo", name, a.n, a.res and tostring(a.res) or "∞") .. ((G.mobile or a.n > 0) and "" or ("   " .. T("ui.reloadKey")))
     end
     tipText.Text = ""
     if w.kind == "lock" then
@@ -370,6 +372,7 @@ function Play.init(G)
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpActive = false
       if G.fpsOff then G.fpsOff() end
       return
     end
@@ -379,12 +382,15 @@ function Play.init(G)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local armed = cur.id ~= nil and hum and hum.Health > 0 and not G.drive and not (hrp and hrp.Anchored)
     local fp = G.firstPerson ~= false and hum ~= nil and hum.Health > 0 and not (hrp and hrp.Anchored)
+    G.fpActive = fp   -- 步行第一人称（UI 据此藏鼠标指针、底部键位说明）
+    local menu = G.menuOpen and G.menuOpen()
+    if menu then cur.firing, cur.aiming = false, false end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
     baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
-    elseif armed and not G.mobile then   -- 第三人称：肩后视角，鼠标锁在中间、人跟着镜头转
+    elseif armed and not G.mobile and not menu then   -- 第三人称：肩后视角，鼠标锁在中间、人跟着镜头转（开着挂载编辑器时不锁）
       UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
       hum.AutoRotate = false
       hum.CameraOffset = hum.CameraOffset:Lerp(V(1.9, 0.5, 0), math.min(1, dt * 10))

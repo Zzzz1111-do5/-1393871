@@ -1,0 +1,39 @@
+Roblox全面大战场 · 原模型导入说明
+==================================
+
+（仓库里这些文件就在 models/ 下面；发给用户的是按下面分好的 3 个压缩包，解压到同一个文件夹）
+一共 3 个压缩包，解压到同一个文件夹：
+  1. 原模型1_地面载具.zip      veh/      21 个（坦克、步战车、自行火炮、防空车……）
+  2. 原模型2_飞机直升机.zip    air/      16 个
+  3. 原模型3_舰艇装备花草.zip  ship/     7 艘舰艇
+                               optics/   13 件手持装备、瞄准镜、望远镜
+                               scenery/  地图上的树、灌木、石头、草、花（一个文件）
+                               fps_m4.glb  第一人称的 M4
+
+一、导入（Roblox Studio，一次就行）
+  1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。
+  2. 「主页 → 导入 3D」（Import 3D），选 GLB 文件。文件对话框里可以一次多选；文件多的话按文件夹分几批导。
+     导入设置都用默认的，不要勾「合并网格」（Merge Meshes），导进 Workspace 就行。
+     ztz96、m1a2v3、ztq15 这几个大的要等一会儿。
+  3. 「测试 → 开始游戏」，打开「视图 → 输出」，有这一行就成功了：
+         [全面大战场] 用上了导入的装备模型：……
+     车、飞机、船、瞄准镜、树、第一人称 M4 都会自动换上原模型。
+     导进来的零件名字别改（V_…__…、A_…__…、S_…__…、O_…、N_…、FPS_M4_…），游戏是按名字认的。
+  4. 保存（「文件 → 保存」，要上线就「发布到 Roblox」）。
+
+二、以后更新游戏不用再导一遍（推荐）
+  1. 「视图 → 命令栏」（Command Bar），把下面一整段粘进去回车。它把导入的零件都收进 ServerStorage.ImportedModels，
+     顺手把空了的外壳 Model 删掉、碰撞改成方盒（文件小很多，这些零件只看不碰）：
+
+local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASON]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
+
+  2. 资源管理器里右键 ServerStorage 下的 ImportedModels →「保存到文件…」（Save to File），存成 Imported.rbxm。
+  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库网页上切到分支 claude/darksword-forts-navy，
+     进 models 目录 →「Add file → Upload files」，路径写 imported/Imported.rbxm）。
+     以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
+     （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）
+
+三、注意
+  - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
+  - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
+  - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。

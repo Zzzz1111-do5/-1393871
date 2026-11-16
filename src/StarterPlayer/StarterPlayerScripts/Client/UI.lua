@@ -187,6 +187,14 @@ function UI.init(G)
   extraList.Padding = UDim.new(0, 8)
   extraList.Parent = extraSpawns
 
+  -- 键位说明放在部署界面最下面（战斗里第一人称不显示键位）
+  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 16), UDim2.new(0.5, 0, 1, -20), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  deployHelp.Visible = not G.mobile
+  -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
+  function G.menuOpen()
+    return (G.hangarOpen ~= nil and G.hangarOpen()) or deploy.Visible
+  end
+
   local deployBtn = button(deploy, "", UDim2.new(0.36, -30, 0, 52), UDim2.new(0, 20, 1, -76), RGB(60, 150, 80))
   deployBtn.TextSize = 22
   deployBtn.Activated:Connect(function()
@@ -532,7 +540,16 @@ function UI.init(G)
     local drv = G.drive
     hpBg.Visible, roleText.Visible = not drv, not drv
     help.Text = T(drv and (drv.help or "ui.vehHelp") or "ui.help")
-    help.Visible = not G.mobile   -- 手机上是触屏按钮，不显示键盘说明
+    -- 手机上是触屏按钮，不显示键盘说明；步行第一人称也不显示（用户：持枪第一视角不要显示鼠标、键位；键位说明在部署界面最下面）
+    help.Visible = not G.mobile and not (G.fpActive and not drv)
+    deployHelp.Text = T("ui.help")
+    -- 鼠标指针：游戏里锁在屏幕中间时（第一人称、肩后瞄准、开车开飞机开船、操作工事）不画——准星是自己画的；开着菜单时画出来
+    if not G.mobile then
+      local menu = G.menuOpen()
+      local locked = not menu and (UIS.MouseBehavior == Enum.MouseBehavior.LockCenter or (G.fpActive and not drv) or drv ~= nil)
+      if UIS.MouseIconEnabled == locked then UIS.MouseIconEnabled = not locked end
+      if menu and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
+    end
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then

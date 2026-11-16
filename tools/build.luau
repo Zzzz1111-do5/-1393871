@@ -66,6 +66,31 @@ for _, svcName in sorted(fs.readDir("src")) do
 	build("src/" .. svcName, svc)
 end
 
+-- 在 Studio 里导入过一次的原模型（用户把导入的 MeshPart 收进一个文件夹、右键「保存到文件」存成 models/imported/*.rbxm / *.rbxmx）：
+--   放进 ServerStorage.ImportedModels，开服时 Imports.lua 按名字收进 ReplicatedStorage.Imported——以后每个版本的地图文件都带着，不用再导一遍
+local nImported = 0
+if fs.isDir("models/imported") then
+	local holder = Instance.new("Folder")
+	holder.Name = "ImportedModels"
+	for _, name in sorted(fs.readDir("models/imported")) do
+		if name:match("%.rbxmx?$") then
+			local ok, list = pcall(roblox.deserializeModel, fs.readFile("models/imported/" .. name))
+			if ok then
+				for _, inst in list do
+					inst.Parent = holder
+					for _, d in inst:GetDescendants() do
+						if d:IsA("BasePart") then nImported += 1 end
+					end
+					if inst:IsA("BasePart") then nImported += 1 end
+				end
+			else
+				print("读不了 models/imported/" .. name .. "：" .. tostring(list))
+			end
+		end
+	end
+	if nImported > 0 then holder.Parent = game:GetService("ServerStorage") end
+end
+
 -- 不是脚本的东西：放导入模型的文件夹、关掉流式加载（客户端要复制服务器的单位模型）
 local rs = game:GetService("ReplicatedStorage")
 if not rs:FindFirstChild("UnitModels") then
@@ -116,3 +141,4 @@ xml = table.concat(parts)
 fs.writeFile(out, xml)
 print("Source 改成 ProtectedString：" .. fixed .. " 处")
 print(string.format("写好了 %s：Script %d、LocalScript %d、ModuleScript %d、Folder %d", out, count.Script, count.LocalScript, count.ModuleScript, count.Folder))
+if nImported > 0 then print("带上了 models/imported 里导入过的原模型：" .. nImported .. " 块") end
