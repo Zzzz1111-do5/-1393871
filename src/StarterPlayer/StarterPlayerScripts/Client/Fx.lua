@@ -202,12 +202,14 @@ function Fx.init(G)
       flying[e.id] = { body = body, p = e.p, v = e.v, gb = true, t = 0, kind = kind, trailT = 0 }
       return
     else
-      body = part(CYL, V(2.2, 0.5, 0.5), CFrame.new(e.p), RGB(80, 86, 70), Enum.Material.Metal, 0)
-      local glow = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
+      local big = (e.w == "asm") and V(8, 1.3, 1.3) or ((e.w == "sam") and V(6, 1, 1)) or nil   -- 舰艇的反舰 / 防空导弹：大一号、灰白色
+      body = part(CYL, big or V(2.2, 0.5, 0.5), CFrame.new(e.p), big and RGB(196, 198, 194) or RGB(80, 86, 70), Enum.Material.Metal, 0)
+      local glow = part(BALL, big and V(1.8, 1.8, 1.8) or V(0.9, 0.9, 0.9), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
+      if big then glowOn(glow, RGB(255, 190, 110), 26, 4) end
       glow.Name = "Glow"
       glow.Parent = body
     end
-    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0 }
+    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0, half = body.Size.X / 2 + 0.1 }
     if kind == "rocket" or kind == "missile" then G.playSound("rocket", e.p) end
   end
   local function endShot(id)
@@ -261,13 +263,15 @@ function Fx.init(G)
         local cf = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
         s.body.CFrame = cf
         local g = s.body:FindFirstChild("Glow")
-        if g then g.CFrame = CFrame.new(s.p - s.v.Unit * 1.2) end
+        local back = s.half or 1.2
+        if g then g.CFrame = CFrame.new(s.p - s.v.Unit * back) end
         s.trailT += dt
-        if s.trailT > 0.04 then   -- 尾烟
+        if s.trailT > 0.04 then   -- 尾烟（舰艇导弹的粗一些）
           s.trailT = 0
-          local sm = part(BALL, V(1, 1, 1), CFrame.new(s.p - s.v.Unit * 1.5), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
-          tween(sm, 1.2, { Size = V(3.5, 3.5, 3.5), Transparency = 1 })
-          Debris:AddItem(sm, 1.25)
+          local k = math.max(1, back / 1.6)
+          local sm = part(BALL, V(1, 1, 1) * k, CFrame.new(s.p - s.v.Unit * (back + 0.3)), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
+          tween(sm, 1.2 * k, { Size = V(3.5, 3.5, 3.5) * k, Transparency = 1 })
+          Debris:AddItem(sm, 1.25 * k)
         end
       end
       if s.t > ((s.kind == "bomb") and 40 or 15) then endShot(id) end
@@ -346,7 +350,7 @@ function Fx.init(G)
     else
       G.playSound("lmg", e.p)
     end
-    if G.vehRecoil and e.id then G.vehRecoil(e.id) end
+    if G.vehRecoil and e.id then G.vehRecoil(e.id, e.g) end
     local dd = (e.p - cam.CFrame.Position).Magnitude
     if big and dd < 140 then G.shake(0.3 * (1 - dd / 140)) end
   end
@@ -386,6 +390,24 @@ function Fx.init(G)
     end
     G.playSound("splash", e.p, 1.6)
     Debris:AddItem(holder, life + 12)
+  end
+
+  -- 垂发：舱口一团火光、往上翻的一大团白烟（防空导弹的小一点）
+  local function vls(e)
+    local s = e.sam and 0.7 or 1
+    local fl = part(BALL, V(3, 3, 3) * s, CFrame.new(e.p), RGB(255, 214, 140), Enum.Material.Neon, 0)
+    tween(fl, 0.3, { Size = V(9, 9, 9) * s, Transparency = 1 })
+    Debris:AddItem(fl, 0.35)
+    flash(e.p + V(0, 3, 0), RGB(255, 196, 120), 50 * s, 8, 0.5)
+    for i = 1, 6 do
+      local off = V(math.random() - 0.5, math.random() * 0.6, math.random() - 0.5) * 6 * s
+      local sm = part(BALL, V(5, 5, 5) * s, CFrame.new(e.p + off), RGB(226, 226, 222), Enum.Material.SmoothPlastic, 0.2)
+      tween(sm, 3 + math.random(), { Size = V(22, 22, 22) * s, Transparency = 1, CFrame = CFrame.new(e.p + off + V(0, 14 + i * 3, 0)) })
+      Debris:AddItem(sm, 4.2)
+    end
+    G.playSound("rocket", e.p, 0.9)
+    local d = (e.p - cam.CFrame.Position).Magnitude
+    if d < 200 then G.shake(0.25 * (1 - d / 200)) end
   end
 
   -- 炮弹：落地前一秒多传来呼啸声
@@ -448,6 +470,7 @@ function Fx.init(G)
       elseif k == "spots" then spots(e.list)
       elseif k == "ramp" then G.playSound("splash")
       elseif k == "vfire" then vfire(e)
+      elseif k == "vls" then vls(e)
       elseif k == "smokeLaunch" then smokeLaunch(e)
       elseif k == "smokeCloud" then smokeCloud(e)
       end

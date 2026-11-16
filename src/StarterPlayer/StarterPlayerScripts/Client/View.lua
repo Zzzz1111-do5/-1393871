@@ -199,10 +199,10 @@ function View.init(G)
   end
 
   -- 开炮：这辆车的炮往后坐一下
-  function G.vehRecoil(id)
+  function G.vehRecoil(id, g)   -- g：第几门炮（舰艇有前后两门的）
     local v = byId[id]
     if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35
-    elseif v and v.ext and v.ext.recoil then v.ext.recoil(v) end
+    elseif v and v.ext and v.ext.recoil then v.ext.recoil(v, g) end
   end
 
   ---------------------------------------------------------------- 载具：悬架

@@ -529,7 +529,7 @@ function Drive.init(G)
   function G.stepDrive(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
-    if vs and (vs.fort or vs.air) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管
+    if vs and (vs.fort or vs.air or vs.ship) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管，舰艇归 Sail 管
     if vs and (not st or st.id ~= vs.id) then
       if st then stop() end
       begin(vs)

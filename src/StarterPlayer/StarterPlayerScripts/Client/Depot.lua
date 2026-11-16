@@ -9,10 +9,11 @@ local Depot = {}
 function Depot.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local AD = require(RS:WaitForChild("AirDefs"))
+  local SD = require(RS:WaitForChild("ShipDefs"))
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
-  local function defOf(id) return VD.get(id) or AD.get(id) end
+  local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
 
   local pads = {}       -- [生成点 Model] = { prompt, bb, name, info, bar }
   local lastLoad = {}   -- [飞机型号] = 上次选的挂载
@@ -103,7 +104,7 @@ function Depot.init(G)
         x.name.Text = T("veh." .. id)
         local av = S and S.vehAvail and d and S.vehAvail[d.cat]
         local st = ""
-        if not open then st = T("pad.needD")
+        if not open then st = T("pad.need" .. need)
         elseif av and av.u >= av.cap then st = (av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)
         elseif av then st = T("pad.ready", av.u, av.cap) end
         x.info.Text = (d and T("vcat." .. d.cat) or "") .. "   " .. st

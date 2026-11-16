@@ -123,7 +123,7 @@ function Night.init(G)
 
   UIS.InputBegan:Connect(function(io, gp)
     if gp or io.KeyCode ~= Enum.KeyCode.N then return end
-    if G.drive and not G.fly then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像
+    if G.drive and not G.fly and not G.sail then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像（开船、开飞机时 N 照样是夜视仪）
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     setOn(not on)
@@ -140,8 +140,8 @@ function Night.init(G)
   RunService.RenderStepped:Connect(function(dt)
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or (G.drive and not G.fly) then setOn(false) return end
-    gui.Enabled = G.fly == nil
+    if not hum or hum.Health <= 0 or (G.drive and not G.fly and not G.sail) then setOn(false) return end
+    gui.Enabled = G.fly == nil and G.sail == nil   -- 目镜的圆框只在步兵时画（开飞机、开船是追尾镜头）
     local cc = fx[1]
     if cc then cc.Brightness = 0.04 + (math.random() - 0.5) * 0.018 end   -- 增像管的轻微闪烁
     irT += dt
