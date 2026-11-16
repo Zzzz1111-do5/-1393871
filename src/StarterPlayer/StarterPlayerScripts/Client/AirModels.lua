@@ -9,6 +9,9 @@
 --     起落架 gear 0～1，襟翼 flap，弹舱 bay / bayS，座舱盖 can，尾钩 hook，折翼 fold，旋翼转角 spin1 / spin2 / spinT，转速 rpm，炮塔 ty / gp，
 --     滑门 door，跳板 ramp）算出每个零件的位置，一次 BulkMoveTo
 --   AM.setStores(M, str)：Stores 属性（每个挂点剩几枚）变了，藏掉打出去的弹
+--   原模型（网页版的飞机直升机原样转的 models/air/<模型键>.glb，Studio 导入后 Imports.lua 收进 ReplicatedStorage.Imported.Air.<模型键>，
+--     元数据 ImportedAir）：有就只换「蒙皮」——机身、机翼、尾翼、座舱盖、进气道、尾喷口、舵面、舱门、模型自带的起落架、旋翼都换成原模型（真实尺寸）；
+--     挂架和弹、航行灯、加力火焰、模型没带的起落架照旧拼，挪到原模型上（挂架挂在机翼下表面、灯在翼尖 / 蒙皮上、火焰从原模型的尾喷口喷）
 local AM = {}
 
 local V = Vector3.new
@@ -28,6 +31,63 @@ local SKIN_ID = { h6k = RGB(196, 198, 196), b2 = RGB(66, 68, 72), a10c = RGB(112
   z20 = RGB(100, 110, 104), z10 = RGB(112, 120, 116) }
 local GLASS, GOLD, DARK, TIRE, STEEL, RADOME = RGB(36, 52, 62), RGB(150, 122, 62), RGB(36, 38, 40), RGB(26, 26, 28), RGB(84, 86, 88), RGB(200, 202, 196)
 
+local RS = game:GetService("ReplicatedStorage")
+local IA = nil   -- 原模型的元数据（tools/models/air2glb.py 生成）
+do
+  local ok, r = pcall(function() return require(RS:WaitForChild("ImportedAir", 3)) end)
+  if ok and type(r) == "table" then IA = r end
+end
+-- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
+function AM.importedFor(d)
+  local k = IA and IA.alias and IA.alias[d.id]
+  if not k then return nil end
+  local plain = string.sub(k, -1) == "~"
+  local key = plain and string.sub(k, 1, -2) or k
+  local info = IA.m and IA.m[key]
+  local imp = RS:FindFirstChild("Imported")
+  local air = imp and imp:FindFirstChild("Air")
+  local f = air and air:FindFirstChild(key)
+  if not (info and f) then return nil end
+  return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
+end
+-- 原模型机身中线上 / 下表面在 z 处的高（模型坐标；元数据从 z0 起每格一个）
+local function profAt(I, arr, z)
+  local P = I.prof
+  local a = P and P[arr]
+  if not a or #a == 0 then return nil end
+  return a[math.clamp(math.floor(z - P.z0) + 1, 1, #a)]
+end
+-- 夜航灯挪到原模型上：翼尖灯在翼尖（航行灯前段、频闪后段），垂尾灯在垂尾顶，防撞灯、着陆灯贴着机背 / 机腹
+local function impLights(L0, imp, d)
+  local I, oy = imp.info, imp.O.Y
+  local L = table.clone(L0)
+  if I.tip and (d.kind == "jet" or d.style == "attackheli") then
+    local t = I.tip
+    L.tip = V(t[1] + 0.2, t[2] + oy, t[3] + 0.28 * (t[4] - t[3]))
+    if L.strobe then L.strobe = V(t[1] + 0.15, t[2] + oy, t[3] + 0.82 * (t[4] - t[3])) end
+  end
+  if I.tails and d.kind == "jet" and not d.flyingWing and not d.tailless then
+    local p = I.tails.p
+    L.tails = I.tails.twin and { V(p[1], p[2] + oy + 0.2, p[3]), V(-p[1], p[2] + oy + 0.2, p[3]) } or { V(0, p[2] + oy + 0.2, p[3] + 0.2) }
+  end
+  local function onSkin(pt, arr, dy)
+    local y = pt and profAt(I, arr, pt.Z)
+    return y and V(pt.X, y + oy + dy, pt.Z) or pt
+  end
+  L.top = onSkin(L.top, "top", 0.25)
+  L.bottom = onSkin(L.bottom, "bot", -0.25)
+  L.land = onSkin(L.land, "bot", -0.1)
+  return L
+end
+-- 桨毂坐标系：Y 轴转到旋翼轴 a 上
+local function axisY(a)
+  local up = V(0, 1, 0)
+  local dot = math.clamp(up:Dot(a), -1, 1)
+  if dot > 0.9999 then return CFrame.new() end
+  if dot < -0.9999 then return CFrame.Angles(math.pi, 0, 0) end
+  return CFrame.fromAxisAngle(up:Cross(a).Unit, math.acos(dot))
+end
+
 local function newPart(m, size, color, mat, shape, tr, cls)
   local p = Instance.new(cls or "Part")
   if shape then p.Shape = shape end
@@ -46,6 +106,10 @@ function AM.build(d, team, load)
   m.Name = d.id
   local items = {}
   local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, team = team }
+  local imp = AM.importedFor(d)
+  M.imp = imp
+  -- 正在拼哪一类零件（有原模型时只留下这几类，其余的是蒙皮、换成原模型）：gear 起落架、rotor 旋翼 / 螺旋桨、lamp 灯、store 挂架和弹、pilot 飞行员
+  local TAG = nil
   local skin = SKIN_ID[d.id] or ((SKIN[team] or SKIN.atk)[(d.kind == "heli") and "heli" or (d.drone and "drone") or (d.stealth and "stealth") or "jet"])
   local skinD = skin:Lerp(Color3.new(0, 0, 0), 0.18)
   local skinL = skin:Lerp(Color3.new(1, 1, 1), 0.12)
@@ -55,6 +119,7 @@ function AM.build(d, team, load)
   local function add(p, cf, kind, extra)
     local it = extra or {}
     it.p, it.cf0, it.kind = p, cf, kind or "b"
+    it.tag = TAG
     it.tr0 = p.Transparency
     if it.kind == "h" then
       it.H = CF(it.hp)
@@ -177,6 +242,9 @@ function AM.build(d, team, load)
   end
   local function buildStores()
     local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
+    local t0 = TAG
+    TAG = "store"
+    local adjs = imp and imp.info.pyl and imp.info.pyl[d.id]
     for i, s in ipairs(d.st or {}) do
       local wid = load and load[i]
       M.stores[i] = {}
@@ -184,27 +252,35 @@ function AM.build(d, team, load)
         local w = AD.W[wid]
         local n = AD.count(s, wid)
         local S = w.shape or { L = 5, d = 0.6 }
-        local side = (s.pos.X >= 0) and 1 or -1
-        local fold = (d.fold and math.abs(s.pos.X) > d.fold) and side or nil
+        -- 原模型：挂点挪到原模型的机翼（短翼）下面——展向照型号表，前后挪到弦上，挂架顶贴着翼下表面（tools/models/air2glb.py 算好的）
+        local pos, wy = s.pos, (d.wing and d.wing.y or 0) - 0.3
+        local adj = adjs and adjs[i]
+        if adj then
+          local ys = adj[1] + imp.O.Y
+          local top = (d.kind == "heli") and ((d.stub and d.stub.y or 0) - 0.25) or wy   -- 零件拼的翼（短翼）下表面
+          pos = V(adj[3], s.pos.Y + ys - top, adj[2])
+          wy = ys
+        end
+        local side = (pos.X >= 0) and 1 or -1
+        local fold = (d.fold and math.abs(pos.X) > d.fold) and side or nil
         local bayK = s.bay and ((s.bay == "main") and "bay" or "bayS") or nil
         -- 外挂：挂架（翼下的竖板）
         if not s.bay and d.kind == "jet" then
-          local wy = (d.wing and d.wing.y or 0) - 0.3
-          local h = math.max(0.4, wy - s.pos.Y)
-          local pyl = box(V(0.35, h, math.max(2.5, S.L * 0.45)), CF(s.pos.X, s.pos.Y + h / 2, s.pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
+          local h = math.max(0.4, wy - pos.Y)
+          local pyl = box(V(0.35, h, math.max(2.5, S.L * 0.45)), CF(pos.X, pos.Y + h / 2, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
           table.insert(M.pylons, pyl)
           if n > 1 and w.kind ~= "rkt" then   -- 多联挂架的横梁
-            box(V(S.d * 2.2, 0.3, S.L * 0.4), CF(s.pos.X, s.pos.Y - 0.15, s.pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
+            box(V(S.d * 2.2, 0.3, S.L * 0.4), CF(pos.X, pos.Y - 0.15, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
           end
         end
         local count = (w.kind == "rkt") and 1 or n
         for k = 1, count do
           local off = layout((w.kind == "rkt") and 1 or n, k, S, s.bay ~= nil)
-          local cf = CF(s.pos + off)
+          local cf = CF(pos + off)
           local kind, extra = "b", nil
           if s.bay and s.bay ~= "main" then   -- 侧弹舱：挂架连弹推出舱外
             kind = "m"
-            local out = (s.pos.X >= 0) and 1 or -1
+            local out = (pos.X >= 0) and 1 or -1
             extra = { f = function(c) local k2 = c.bayS or 0 return CF(out * 1.1 * k2, -1.5 * k2, 0) end }
           elseif fold then
             kind, extra = "f", { fold = fold }
@@ -218,11 +294,14 @@ function AM.build(d, team, load)
         end
       end
     end
+    TAG = t0
   end
 
   ---------------------------------------------------------------- 旋翼、尾桨、螺旋桨
 
   local function rotor(R, kind, spinKey, axis)
+    local t0 = TAG
+    TAG = "rotor"
     -- 桨毂坐标系：主旋翼轴是 Y；尾桨轴是 X（cant 往上斜）；螺旋桨轴是 Z
     local hub
     if axis == "y" then hub = CF(R.hub)
@@ -253,18 +332,24 @@ function AM.build(d, team, load)
     local disc = add(newPart(m, V(0.12, R.r * 2.05, R.r * 2.05), RGB(40, 42, 44), MAT.Glass, CYL, 1), CF(0, (axis == "y") and 0.25 or 0, 0) * UPRIGHT, "r", { hub = hub, f = function() return 0 end, tilt = tiltF })
     disc.p.CastShadow = false
     table.insert(M.discs, disc)
+    TAG = t0
     return hub
   end
 
   ---------------------------------------------------------------- 起落架
 
   local function wheel(cf, r, w, kind, extra)
+    local t0 = TAG
+    TAG = "gear"
     local it = add(newPart(m, V(w, r * 2, r * 2), TIRE, MAT.SmoothPlastic, CYL), cf, kind, extra)
     add(newPart(m, V(w * 1.04, r * 1.1, r * 1.1), STEEL, MAT.Metal, CYL), cf, kind, extra and table.clone(extra))
+    TAG = t0
     return it
   end
   -- 一根可收放的起落架：铰链在 top（机体坐标），收起绕 ax 转 ang（弧度，按 1 − gear）
   local function gearLeg(top, len, r, ax, ang, twin, bogie, fixed)
+    local t0 = TAG
+    TAG = "gear"
     local f = fixed and function() return 0 end or function(c) return (1 - (c.gear or 1)) * ang end
     local ex = { hp = top, ax = ax, f = f }
     box(V(0.5, len, 0.5), CF(top - V(0, len / 2, 0)), STEEL, MAT.Metal, "h", table.clone(ex))
@@ -280,6 +365,7 @@ function AM.build(d, team, load)
     else
       wheel(CF(bottom + V(0, 0, 0)), r, r * 0.9, "h", table.clone(ex))
     end
+    TAG = t0
   end
 
   ---------------------------------------------------------------- 灯
@@ -288,7 +374,10 @@ function AM.build(d, team, load)
   --   mode：nav 航行灯常亮、beacon 红色防撞灯一秒闪一下（phase 错开）、strobe 白色频闪双闪、land 着陆灯（随起落架，射灯）
   local NAV_R, NAV_G, NAV_W, BEACON, STROBE = RGB(255, 46, 36), RGB(60, 255, 120), RGB(255, 250, 236), RGB(255, 40, 30), RGB(236, 244, 255)
   local function lamp(pos, color, mode, size, range, kind, extra, phase)
+    local t0 = TAG
+    TAG = "lamp"
     local it = neon(V(size, size, size), CF(pos), color, kind, extra)
+    TAG = t0
     it.p.CastShadow = false
     local bb = Instance.new("BillboardGui")
     bb.Name = "Glow"
@@ -329,6 +418,7 @@ function AM.build(d, team, load)
   -- 一架飞机的整套灯：tip 右翼尖航行灯（左边对称是红的）、strobe 右翼尖频闪、tails 尾部白灯、top / bottom 防撞灯、land 着陆灯
   --   fold：翼尖的灯跟着折叠的外翼走（舰载机停在甲板上折翼）
   local function navLights(L0)
+    if imp then L0 = impLights(L0, imp, d) end
     local fk = L0.fold and "f" or nil
     lamp(L0.tip, NAV_G, "nav", 0.42, 9, fk, fk and { fold = 1 } or nil)
     lamp(V(-L0.tip.X, L0.tip.Y, L0.tip.Z), NAV_R, "nav", 0.42, 9, fk, fk and { fold = -1 } or nil)
@@ -358,10 +448,13 @@ function AM.build(d, team, load)
     end
   end
   local function pilot(cf, helmetColor)
+    local t0 = TAG
+    TAG = "pilot"
     add(newPart(m, V(1.5, 1.6, 1.1), RGB(70, 80, 60), MAT.Fabric), cf * CF(0, -0.9, 0.2))
     add(newPart(m, V(0.95, 0.95, 0.95), RGB(230, 190, 150), MAT.SmoothPlastic, BALL), cf * CF(0, 0.25, 0))
     add(newPart(m, V(1.12, 1.12, 1.12), helmetColor or RGB(230, 230, 220), MAT.SmoothPlastic, BALL), cf * CF(0, 0.38, 0.05))
     add(newPart(m, V(0.8, 0.3, 0.2), DARK, MAT.Glass), cf * CF(0, 0.3, -0.5))   -- 护目镜
+    TAG = t0
   end
 
   ---------------------------------------------------------------- 固定翼
@@ -433,6 +526,14 @@ function AM.build(d, team, load)
     end
     -- 尾喷口：收敛调节片随加力张开、加力火焰、马赫环
     for j, E in ipairs(d.eng or {}) do
+      if imp and imp.info.noz and not E.prop then   -- 原模型：火焰从原模型的尾喷口喷（左右按最近的配）
+        local best, bd = nil, math.huge
+        for _, nz in ipairs(imp.info.noz) do
+          local dd = math.abs(nz[1] - E.x) + math.abs(nz[3] - E.z) * 0.1
+          if dd < bd then best, bd = nz, dd end
+        end
+        if best then E = setmetatable({ x = best[1], y = best[2] + imp.O.Y, z = best[3], r = best[4] }, { __index = E }) end
+      end
       local base = CF(E.x, E.y, E.z)
       if E.prop then   -- 推进式螺旋桨
         ball(V(E.r * 2.4, E.r * 2.4, 2.2), base * CF(0, 0, 0.4), skinD)
@@ -750,7 +851,8 @@ function AM.build(d, team, load)
         wheel(CF(s * 3.2, -d.gearH + 0.95, -7), 0.95, 0.7)
       end
       wheel(CF(0, -1.4, T.hub.Z - 6), 0.6, 0.4)
-      -- 外挂架短翼（挂了东西才有）
+      -- 外挂架短翼（挂了东西才有；原模型没有短翼，这个照旧拼）
+      TAG = "store"
       for i, s in ipairs(d.st or {}) do
         if load and load[i] then
           local sd = (s.pos.X >= 0) and 1 or -1
@@ -758,6 +860,7 @@ function AM.build(d, team, load)
           table.insert(M.pylons, p)
         end
       end
+      TAG = nil
       navLights({ tip = V(cw / 2 + 0.15, ch * 0.42, -3), tails = { V(0, T.hub.Y + 2.9, T.hub.Z + 1.2) },
         top = V(0, ch * 0.5 + 1.25, 4.5), bottom = V(0, -ch / 2 - 0.2, -2), land = V(0, -ch / 2 - 0.15, -cl * 0.38) })   -- 座舱两侧航行灯、垂尾顶白灯、发动机后面 / 机腹防撞灯
       cylY(R.hub.Y - ch * 0.6, 0.9, CF(R.hub.X, (R.hub.Y + ch * 0.6) / 2, R.hub.Z), STEEL, MAT.Metal)
@@ -793,6 +896,67 @@ function AM.build(d, team, load)
 
   if d.kind == "heli" then heli() else jet() end
   buildStores()
+  if imp then
+    -- 蒙皮换成原模型：零件拼的只留挂架和弹、灯、加力火焰，模型没带起落架的固定翼留零件拼的起落架
+    local keepGear = d.kind == "jet" and not imp.info.gear
+    local n = 0
+    for i = 1, #items do
+      local it = items[i]
+      local t = it.tag
+      if it.kind == "ab" or t == "lamp" or t == "store" or (t == "gear" and keepGear) then
+        n += 1
+        items[n] = it
+      else
+        it.p:Destroy()
+      end
+    end
+    for i = #items, n + 1, -1 do items[i] = nil end
+    M.blades, M.discs = {}, {}
+    local I, O = imp.info, imp.O
+    for name, p in pairs(I.parts) do
+      local src = imp.folder:FindFirstChild("A_" .. imp.key .. "__" .. name)
+      if src and src:IsA("BasePart") then
+        local mp = src:Clone()
+        mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性
+        local bare = not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "")
+        if imp.plain then   -- 拿美军机代的：去掉原机涂装（国籍标志、舷号在底色贴图里），按我方蒙皮色
+          for _, sa in ipairs(mp:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() mp.TextureID = "" end)
+          if not p.a then mp.Color, mp.Material = skin, MAT.SmoothPlastic end
+        elseif p.col and bare then   -- 原模型这块本来就没贴图：照原材质颜色（Studio 导入不一定带过来）
+          mp.Color = RGB(p.col[1], p.col[2], p.col[3])
+          mp.Material = p.met and MAT.Metal or MAT.SmoothPlastic
+          if p.a then mp.Transparency = 1 - p.a end
+        end
+        mp.Parent = m
+        local c = V(p.c[1], p.c[2], p.c[3]) + O
+        local g = p.g
+        if g == "Gear" then   -- 起落架：收起时藏起来
+          add(mp, CF(c), "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
+        elseif g == "Rotor" or g == "Rotor2" or g == "TRotor" then
+          local R = I[string.lower(g)]
+          local R0 = (g == "Rotor" and d.rotor) or (g == "Rotor2" and d.rotor2) or nil
+          local hub = CF(V(R.p[1], R.p[2], R.p[3]) + O) * axisY(V(R.a[1], R.a[2], R.a[3]).Unit)
+          local spinKey = (g == "Rotor" and "spin1") or (g == "Rotor2" and "spin2") or "spinT"
+          local dir = R0 and R0.dir or 1
+          local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
+          add(mp, hub:Inverse() * CF(c), "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
+        elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
+          add(mp, CF(c), "f", { fold = (g == "FoldR") and 1 or -1 })
+        elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链
+          local F = I.fold and I.fold.Tip
+          add(mp, CF(c), "f", { fold = (g == "TipR") and 1 or -1, fh = F and { x = F.x, y = F.y + O.Y, A = F.A } or nil })
+        else
+          add(mp, CF(c), "b")
+        end
+      end
+    end
+    local F = I.fold and I.fold.Fold
+    if F then M.foldH = { x = F.x, y = F.y + O.Y, A = F.A } end
+    M.imported = imp.key
+  end
 
   -- 血条、名字挂的点（机顶）
   local anchor = Instance.new("Part")
@@ -824,6 +988,8 @@ end
 
 local function foldCF(M, side, c)
   local d = M.def
+  local H = M.foldH   -- 原模型：照原模型的铰链和折起的角度
+  if H then return CF(side * H.x, H.y, 0) * CFrame.Angles(0, 0, side * (c.fold or 0) * H.A) * CF(-side * H.x, -H.y, 0) end
   local hx = side * d.fold
   local y = d.wing.y
   return CF(hx, y, 0) * CFrame.Angles(0, 0, side * (c.fold or 0) * rad(100)) * CF(-hx, -y, 0)
@@ -841,7 +1007,10 @@ function AM.pose(M, cf, c, now, world)
   for i, it in ipairs(M.items) do
     local k = it.kind
     local base = cf
-    if it.fold then base = cf * fold[it.fold] end
+    if it.fh then   -- 自己有铰链的折叠面（原模型歼-15 的平尾外段）
+      local h, sd = it.fh, it.fold
+      base = cf * CF(sd * h.x, h.y, 0) * CFrame.Angles(0, 0, sd * (c.fold or 0) * h.A) * CF(-sd * h.x, -h.y, 0)
+    elseif it.fold then base = cf * fold[it.fold] end
     local out
     if k == "b" then out = cf * it.cf0
     elseif k == "f" then out = base * it.cf0
@@ -877,6 +1046,13 @@ function AM.pose(M, cf, c, now, world)
       end
     else out = cf * it.cf0 end
     clist[i] = out
+    if it.vis then   -- 原模型的起落架：收起时藏起来
+      local on = it.vis(c)
+      if on ~= it.visOn then
+        it.visOn = on
+        it.p.Transparency = on and it.tr0 or 1
+      end
+    end
     if it.st and (visChanged or it.goneSeen ~= it.gone) then   -- 挂的弹：打掉的、弹舱关着的藏起来
       it.goneSeen = it.gone
       local hide = it.gone or (it.bayK == "bay" and not bayOpen) or (it.bayK == "bayS" and not baySOpen)

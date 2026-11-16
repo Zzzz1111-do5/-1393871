@@ -1078,6 +1078,7 @@ local function hrequire(m)
 	return value
 end
 genv.require = hrequire
+H.require = hrequire   -- 测试里按当前的 H.ctx（哪个客户端 / 服务器）取游戏的模块（比如直接拿客户端的 AirModels 拼飞机）
 
 H.destroyed = destroyed
 function softDestroy(x)

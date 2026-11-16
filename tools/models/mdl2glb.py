@@ -13,10 +13,8 @@ import base64, io, json, math, os, struct, sys
 import numpy as np
 from PIL import Image
 
-WEB = sys.argv[1]
-OUTDIR = sys.argv[2] if len(sys.argv) > 2 else 'models/veh'
-META = sys.argv[3] if len(sys.argv) > 3 else 'src/ReplicatedStorage/ImportedMeta.lua'
-ONLY = sys.argv[4:]
+WEB = None   # 网页版仓库目录（命令行第一个参数；tools/models/air2glb.py import 这个文件时自己设）
+OUTDIR, META, ONLY = 'models/veh', 'src/ReplicatedStorage/ImportedMeta.lua', []
 S = 2.8          # 米 → 格
 CHUNK = 19500    # 一块网格最多几个三角形
 TEXMAX = 1024    # Roblox 贴图最大边长
@@ -162,9 +160,9 @@ def convert(key):
     return meta, binb, info, out
 
 
-def write_glb(key, meta, binb, info, out, path):
-    J = {'asset': {'version': '2.0', 'generator': 'RobloxTotalBattlefield mdl2glb.py'}, 'scene': 0, 'scenes': [{'name': 'V_' + key, 'nodes': [0]}],
-         'nodes': [{'name': 'V_' + key, 'children': []}], 'meshes': [], 'accessors': [], 'bufferViews': [], 'buffers': [], 'materials': [],
+def write_glb(key, meta, binb, info, out, path, prefix='V_'):
+    J = {'asset': {'version': '2.0', 'generator': 'RobloxTotalBattlefield mdl2glb.py'}, 'scene': 0, 'scenes': [{'name': prefix + key, 'nodes': [0]}],
+         'nodes': [{'name': prefix + key, 'children': []}], 'meshes': [], 'accessors': [], 'bufferViews': [], 'buffers': [], 'materials': [],
          'textures': [], 'images': [], 'samplers': []}
     blob = bytearray()
 
@@ -196,7 +194,7 @@ def write_glb(key, meta, binb, info, out, path):
         wrap = (WRAP.get(ref[1] if len(ref) > 1 else 0, 10497), WRAP.get(ref[2] if len(ref) > 2 else 0, 10497))
         if ii not in img_ix:
             data, mime, size = image_bytes(meta, binb, ii, alpha)
-            J['images'].append({'bufferView': view(data), 'mimeType': mime, 'name': 'V_%s_tex%d' % (key, ii)})
+            J['images'].append({'bufferView': view(data), 'mimeType': mime, 'name': '%s%s_tex%d' % (prefix, key, ii)})
             img_ix[ii] = len(J['images']) - 1
         if wrap not in samp_ix:
             J['samplers'].append({'wrapS': wrap[0], 'wrapT': wrap[1], 'magFilter': 9729, 'minFilter': 9987})
@@ -224,7 +222,7 @@ def write_glb(key, meta, binb, info, out, path):
             t2 = texture(m.get('mrt'))
             if t2 is not None:
                 pbr['metallicRoughnessTexture'] = {'index': t2}
-        M = {'name': 'V_%s_%s' % (key, m.get('n', 'm%d' % mi)), 'pbrMetallicRoughness': pbr, 'doubleSided': bool(m.get('ds', 0))}
+        M = {'name': '%s%s_%s' % (prefix, key, m.get('n', 'm%d' % mi)), 'pbrMetallicRoughness': pbr, 'doubleSided': bool(m.get('ds', 0))}
         if m.get('nt'):
             tn = texture(m.get('nt'))
             if tn is not None:
@@ -242,8 +240,8 @@ def write_glb(key, meta, binb, info, out, path):
         prim = {'attributes': {'POSITION': acc(P.astype(np.float32), 'VEC3', minmax=True), 'NORMAL': acc(nrm.astype(np.float32), 'VEC3'),
                                'TEXCOORD_0': acc(UV.astype(np.float32), 'VEC2')},
                 'indices': acc(idx.reshape(-1), 'SCALAR', 5125, target=34963), 'material': material(mi)}
-        J['meshes'].append({'name': 'V_%s__%s' % (key, name), 'primitives': [prim]})
-        J['nodes'].append({'name': 'V_%s__%s' % (key, name), 'mesh': len(J['meshes']) - 1, 'translation': info['parts'][name]['c']})
+        J['meshes'].append({'name': '%s%s__%s' % (prefix, key, name), 'primitives': [prim]})
+        J['nodes'].append({'name': '%s%s__%s' % (prefix, key, name), 'mesh': len(J['meshes']) - 1, 'translation': info['parts'][name]['c']})
         J['nodes'][0]['children'].append(len(J['nodes']) - 1)
     if not J['samplers']:
         del J['samplers']
@@ -264,15 +262,45 @@ def write_glb(key, meta, binb, info, out, path):
         f.write(blob)
 
 
+def web_credits(keys):
+    """网页版 docs/credits.md 里各模型那一条：键 → (中文名, 英文署名 + 网页版的改动)"""
+    out = {}
+    try:
+        for ln in open(os.path.join(WEB, 'docs', 'credits.md'), encoding='utf-8'):
+            for key in keys:
+                if '（js/mdl/%s.js）：' % key in ln:
+                    out[key] = ln.strip().lstrip('- ').split('（js/mdl/', 1)[0], ln.strip().split('.js）：', 1)[1]
+    except OSError:
+        pass
+    return out
+
+
+def write_credits(path, keys, meta_out, head):
+    """署名（CC-BY 要写作者、出处、授权、改了什么）：照网页版 docs/credits.md 那一条（含网页版的改动），前面 head 写这里的改动"""
+    wc = web_credits(keys)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(head)
+        for key in keys:
+            if key not in meta_out:
+                continue
+            if key in wc:
+                name, line = wc[key]
+                f.write('- %s（%s.glb）：%s\n' % (name, key, line.replace('（改动：', '（网页版的改动：')))
+            else:
+                f.write('- %s.glb：%s\n' % (key, meta_out[key]['credit']))
+
+
 def lua(v):
     if isinstance(v, dict):
         items = []
         for k in sorted(v):
-            kk = k if k.isidentifier() else '[%s]' % json.dumps(k, ensure_ascii=False)
+            kk = ('[%d]' % k) if isinstance(k, int) else (k if k.isidentifier() else '[%s]' % json.dumps(k, ensure_ascii=False))
             items.append('%s = %s' % (kk, lua(v[k])))
         return '{ ' + ', '.join(items) + ' }'
     if isinstance(v, list):
         return '{ ' + ', '.join(lua(x) for x in v) + ' }'
+    if isinstance(v, (bool, np.bool_)):   # 要在 int 前面判断（Python 里 True 也是 int）；numpy 的布尔也算
+        return 'true' if v else 'false'
     if isinstance(v, str):
         return json.dumps(v, ensure_ascii=False)
     if isinstance(v, float):
@@ -281,6 +309,10 @@ def lua(v):
 
 
 if __name__ == '__main__':
+    WEB = sys.argv[1]
+    OUTDIR = sys.argv[2] if len(sys.argv) > 2 else OUTDIR
+    META = sys.argv[3] if len(sys.argv) > 3 else META
+    ONLY = sys.argv[4:]
     keys = sorted(set(ALIAS.values()))
     os.makedirs(OUTDIR, exist_ok=True)
     meta_out = {}
@@ -308,25 +340,8 @@ if __name__ == '__main__':
             if key in meta_out:
                 f.write('    %s = %s,\n' % (key, lua(meta_out[key])))
         f.write('  },\n}\n')
-    # 署名（CC-BY 要写作者、出处、授权、改了什么）：照网页版 docs/credits.md 那一条（含网页版的改动），再加这里的改动
-    web_cred = {}
-    try:
-        for ln in open(os.path.join(WEB, 'docs', 'credits.md'), encoding='utf-8'):
-            for key in keys:
-                if '（js/mdl/%s.js）：' % key in ln:
-                    web_cred[key] = ln.strip().lstrip('- ').split('（js/mdl/', 1)[0], ln.strip().split('.js）：', 1)[1]
-    except OSError:
-        pass
-    with open(os.path.join(OUTDIR, 'credits.txt'), 'w', encoding='utf-8') as f:
-        f.write('Roblox全面大战场的地面载具模型（models/veh/<模型键>.glb）：从网页版《暗剑》烘焙的装备模型原样转换（js/mdl/<模型键>.js）\n')
-        f.write('  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到车底中心；按部件（车体 / 炮塔 / 炮 / 每个车轮）和材质切成几块，'
-                '每块不超过 %d 个三角形；超过 %d 像素的贴图缩到 %d；不减面\n\n' % (CHUNK, TEXMAX, TEXMAX))
-        for key in keys:
-            if key not in meta_out:
-                continue
-            if key in web_cred:
-                name, line = web_cred[key]
-                f.write('- %s（%s.glb）：%s\n' % (name, key, line.replace('（改动：', '（网页版的改动：')))
-            else:
-                f.write('- %s.glb：%s\n' % (key, meta_out[key]['credit']))
+    write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
+                  'Roblox全面大战场的地面载具模型（models/veh/<模型键>.glb）：从网页版《暗剑》烘焙的装备模型原样转换（js/mdl/<模型键>.js）\n'
+                  '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到车底中心；按部件（车体 / 炮塔 / 炮 / 每个车轮）和材质切成几块，'
+                  '每块不超过 %d 个三角形；超过 %d 像素的贴图缩到 %d；不减面\n\n' % (CHUNK, TEXMAX, TEXMAX))
     print('写好了 %s/*.glb、%s/credits.txt 和 %s' % (OUTDIR, OUTDIR, META))

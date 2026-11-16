@@ -84,7 +84,11 @@ function Fly.init(G)
           if v.M then v.M.dark = true end   -- 被击毁：灯全灭
           for _, it in ipairs(M.items) do
             local p = it.p
-            if p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
+            if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+              for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+              pcall(function() p.TextureID = "" end)
+              if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
+            elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
           end
         end
         local W = v.wreck
