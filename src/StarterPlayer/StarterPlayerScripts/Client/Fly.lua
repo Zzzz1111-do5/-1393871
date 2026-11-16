@@ -185,12 +185,11 @@ function Fly.init(G)
   local vsText = hud("", UDim2.fromOffset(140, 18), UDim2.new(0.5, 230, 0.5, 26), 14, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   local warnText = hud("", UDim2.fromOffset(520, 34), UDim2.new(0.5, 0, 0.5, -130), 26, Vector2.new(0.5, 0.5))
   warnText.TextColor3 = RGB(255, 80, 70)
-  local hintText = hud("", UDim2.fromOffset(560, 22), UDim2.new(0.5, 0, 0.5, 120), 16, Vector2.new(0.5, 0.5))
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
   landMark.TextColor3 = RGB(120, 200, 255)
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
-  local HUDS = { bore, aimRing, spdText, altText, thrText, vsText, warnText, hintText }
+  local HUDS = { bore, aimRing, spdText, altText, thrText, vsText, warnText }
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -520,7 +519,7 @@ function Fly.init(G)
         pos = start + V(0, d.gearH, 0)
         cf = CFrame.lookAt(pos, pos + dir)
         st.cat.full = (st.thr >= 90) and ((st.cat.full or 0) + dt) or 0
-        if st.thr >= 90 and (key(Enum.KeyCode.Space) or (G.mobile and st.cat.full > 1.5)) then
+        if st.thr >= 90 and (key(Enum.KeyCode.Space) or st.cat.full > 1.2) then   -- 推满油门一会儿就弹（空格立刻弹）
           st.cat.state, st.cat.s, st.cat.v = "launch", 0, 0
           if G.shake then G.shake(0.4) end
           if G.playSound then G.playSound("boom", pos, 1.6) end
@@ -535,7 +534,6 @@ function Fly.init(G)
           st.pr = rad(5)
           pos = start + dir * len + V(0, d.gearH + 1, 0)
           cf = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(rad(5), 0, 0)
-          if G.toast then G.toast(T("air.catGone"), "good") end
         else
           pos = start + dir * st.cat.s + V(0, d.gearH, 0)
           cf = CFrame.lookAt(pos, pos + dir)
@@ -562,10 +560,7 @@ function Fly.init(G)
       local deck = AD.onDeck(Map, pos.X, pos.Z)
       if st.trap then
         st.spd = math.max(0, st.spd - st.trapA * dt)
-        if st.spd < 1 then
-          st.trap = nil
-          if G.toast then G.toast(T("air.trapped"), "good") end
-        end
+        if st.spd < 1 then st.trap = nil end
       elseif deck == "carrier" then
         st.spd = math.min(st.spd, AD.TAXI)
       end
@@ -579,8 +574,7 @@ function Fly.init(G)
           local lat = (rel - dir * along).Magnitude
           if math.abs(along) < 12 and lat < 7 and look0:Dot(dir) > math.cos(rad(25)) then
             st.cat = { i = i, state = "hooked" }
-            if G.toast then G.toast(T("air.catHooked"), "info") end
-            if G.playSound then G.playSound("capture", pos) end
+            if G.playSound then G.playSound("capture", pos) end   -- 卡上：咔一声，不出字
             break
           end
         end
@@ -628,8 +622,6 @@ function Fly.init(G)
           if AD.onDeck(Map, pos.X, pos.Z) == "carrier" and (st.c.hook or 0) > 0.5 and AD.inWires(Map, pos.X, pos.Z) then
             st.trap, st.trapA = true, math.max(20, st.spd * st.spd / (2 * 85))
             if G.shake then G.shake(0.5) end
-          elseif G.toast then
-            G.toast(T("air.landed"), "good")
           end
         else
           crash()
@@ -939,17 +931,7 @@ function Fly.init(G)
       elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup") end
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
-      local hint = nil
-      if d.kind == "jet" and st.ground then
-        hint = (st.spd >= d.vRot) and T("air.rotate") or ((st.thr < 60) and T("air.takeoff") or nil)
-      elseif d.kind == "heli" and st.rpm < 92 then
-        hint = T("air.spool")
-      end
-      if d.kind == "jet" and st.ground and not st.cat and AD.onDeck(Map, pos.X, pos.Z) == "carrier" and d.carrier then hint = T("air.deckHint") end
-      if st.cat then hint = (st.cat.state == "hooked") and T(G.mobile and "air.catLaunchMobile" or "air.catLaunch") or nil end
-      hintText.Text = hint or ""
-      hintText.Visible = hint ~= nil
-      -- 降落引导：起落架放着、在天上：最近的能落的地方画个菱形，写距离和下滑道高低（3.5°）
+      -- 降落引导：起落架放着、在天上：最近的能落的地方画个菱形，旁边写公里数；菱形按下滑道（3.5°）变色——绿正好、黄偏高、红偏低
       local site = nil
       if d.kind == "jet" and not st.ground and st.gearWant > 0.5 then
         local bd = math.huge
@@ -964,8 +946,9 @@ function Fly.init(G)
           local ideal = bd * math.tan(rad(3.5))
           local dh = (pos.Y - d.gearH - site.p.Y) - ideal
           local tol = ideal * 0.35 + 18
-          local cue = (dh > tol) and "air.glideHigh" or ((dh < -tol) and "air.glideLow" or "air.glideOk")
-          landText.Text = T("air.landAt", math.floor(bd / AD.M + 0.5)) .. " · " .. T(cue)
+          local col = (dh > tol) and RGB(255, 200, 90) or ((dh < -tol) and RGB(255, 90, 80) or RGB(120, 230, 140))
+          landMark.TextColor3, landText.TextColor3 = col, col
+          landText.Text = string.format("%.1f", bd / AD.M / 1000)
         end
       end
       if not site then landMark.Visible, landText.Visible = false, false end

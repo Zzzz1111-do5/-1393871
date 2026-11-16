@@ -48,13 +48,6 @@ function Hangar.init(G)
 
   local spots = ui.frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   local title = ui.label(bg, "", UDim2.fromOffset(520, 30), UDim2.new(0.5, 0, 0, 22), 24, TEXT, Enum.Font.GothamBlack, Vector2.new(0.5, 0))
-  local hint = ui.label(bg, "", UDim2.fromOffset(620, 18), UDim2.new(0.5, 0, 0, 54), 13, MUTE, Enum.Font.GothamMedium, Vector2.new(0.5, 0))
-  local presetRow = ui.frame(bg, UDim2.fromOffset(700, 34), UDim2.new(0.5, 0, 0, 80), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
-  local pl = Instance.new("UIListLayout")
-  pl.FillDirection = Enum.FillDirection.Horizontal
-  pl.HorizontalAlignment = Enum.HorizontalAlignment.Center
-  pl.Padding = UDim.new(0, 8)
-  pl.Parent = presetRow
   local symBtn = ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0))
   symBtn.TextSize = 14
   -- 左边：这个挂点能挂的弹
@@ -205,25 +198,6 @@ function Hangar.init(G)
     end
   end
 
-  local presetBtns = {}
-  local function buildPresets()
-    for _, b in ipairs(presetBtns) do b:Destroy() end
-    presetBtns = {}
-    for _, p in ipairs(H.d.presets or {}) do
-      local b = ui.button(presetRow, T("preset." .. p.key), UDim2.fromOffset(120, 32), nil, RGB(26, 30, 34))
-      b.TextSize = 14
-      b.Activated:Connect(function()
-        if not H then return end
-        H.load = AD.presetLoad(H.d, p.key)
-        H.presetKey = p.key
-        rebuild()
-        buildList()
-        G.refreshHangar()
-      end)
-      presetBtns[p.key] = b
-    end
-  end
-
   local function selectStation(i)
     H.sel = i
     local s = H.d.st[i]
@@ -244,15 +218,9 @@ function Hangar.init(G)
   function G.refreshHangar()
     if not H then return end
     title.Text = T("veh." .. H.d.id)
-    hint.Text = T("hangar.hint")
     symBtn.Text = T(H.sym and "hangar.symOn" or "hangar.symOff")
     backBtn.Text = T("hangar.back")
     saveBtn.Text = T("hangar.save")
-    for key, b in pairs(presetBtns) do
-      b.Text = T("preset." .. key)
-      b.BackgroundColor3 = (H.presetKey == key) and RGB(255, 255, 255) or RGB(26, 30, 34)
-      b.TextColor3 = (H.presetKey == key) and RGB(16, 16, 16) or TEXT
-    end
     -- 总共挂了什么
     local count, order = {}, {}
     for i, s in ipairs(H.d.st or {}) do
@@ -289,7 +257,6 @@ function Hangar.init(G)
     for i = 1, #(d.st or {}) do if H.load[i] == nil then H.load[i] = false end end
     gui.Enabled = true
     rebuild()
-    buildPresets()
     -- 挂点的白圈（空心圈 + 中间一个点，不把弹盖住；选中的变黄、变大）
     for i, s in ipairs(d.st or {}) do
       local b = Instance.new("TextButton")

@@ -136,14 +136,11 @@ teleport(atk, CF.lookAt(start - dir * 6 + V3.new(0, e.def.gearH, 0), start - dir
 st.thr = 10
 H.run(1)
 check(st.cat ~= nil and st.cat.state == "hooked", "卡上了弹射器 " .. tostring(st.cat and st.cat.i))
-H.key(atk, Enum.KeyCode.W, true)
-H.run(2.2)
-check(st.thr >= 90, string.format("油门推满（%.0f）", st.thr))
-H.key(atk, Enum.KeyCode.Space, true)
-H.run(0.2)
-H.key(atk, Enum.KeyCode.Space, false)
-check(st.cat and st.cat.state == "launch", "按空格开始弹射")
 local zBefore = e.root.CFrame.Position.Z
+H.key(atk, Enum.KeyCode.W, true)
+local launched = H.runUntil(function() return st.cat == nil or st.cat.state == "launch" end, 6)
+check(st.thr >= 90, string.format("油门推满（%.0f）", st.thr))
+check(launched, "推满油门一会儿自动弹射（不用按键、不出提示）")
 H.runUntil(function() return not st.ground end, 8)
 H.run(0.5)
 check(not st.ground and st.spd >= e.def.vRot, string.format("弹射离舰（%.0f 格 / 秒，起飞速度 %.0f）", st.spd, e.def.vRot))
