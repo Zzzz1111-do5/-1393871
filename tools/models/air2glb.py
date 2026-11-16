@@ -14,6 +14,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mdl2glb as B   # noqa: E402  贴图、材质、GLB 写出、署名、Lua 输出都和地面载具共用
+import air_anim as A   # noqa: E402  舵面、弹舱门、座舱盖、起落架支柱
 
 S = B.S
 CHUNK = B.CHUNK
@@ -161,7 +162,8 @@ def fit_pylon(Pt, x, z, thin):
     return None
 
 
-def convert(key, AD, ids):
+def segment(key):
+    """读网页版模型、按部件分好三角形（网页版坐标）：机体、起落架、旋翼、折叠外翼，再切出舵面、弹舱门、座舱盖、起落架支柱（air_anim.py）"""
     meta, binb, credit = B.load(key)
     st = meta.get('st', 8)
     vb0, vbn = meta['vb']
@@ -227,16 +229,25 @@ def convert(key, AD, ids):
         right = C[:, 1] < 0   # 网页版 y < 0 是右边
         tri_g[body[sel & right]] = F['g'] + 'R'
         tri_g[body[sel & ~right]] = F['g'] + 'L'
+    # 活动部件：网页版按抬高后的坐标量的（V3G_BAY、V3G_PIT），这里的模型没抬高——表里的高度已经减掉了 lift
+    VB, tris, tri_g, tri_m, surf = A.apply(key, VB, tris, tri_g, tri_m, A.SURF, A.GEAR, [x.get('n', '') for x in meta['mats']])
+    return meta, binb, credit, VB, tris, tri_g, tri_m, rot_piv, surf
+
+
+def convert(key, AD, ids):
+    meta, binb, credit, VB, tris, tri_g, tri_m, rot_piv, surf = segment(key)
     # Roblox 坐标（格）
     Pw = B.rb(VB[:, 0:3])
     Nw = B.rbn(VB[:, 3:6])
     UV = VB[:, 6:8]
-    isBody = np.isin(tri_g, ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'])
+    # 机体：除了起落架、旋翼、去掉的外挂，其余（含切出来的舵面、舱门、座舱盖、折叠外翼）都算
+    isGear = np.array([str(x).startswith('Gear') for x in tri_g], dtype=bool)
+    isBody = ~isGear & ~np.isin(tri_g, ['Rotor', 'Rotor2', 'TRotor', 'Drop'])
     hb = Pw[np.unique(tris[isBody].reshape(-1))]
     blo, bhi = hb.min(0), hb.max(0)
-    hasGear = bool((tri_g == 'Gear').any())
+    hasGear = bool(isGear.any())
     if hasGear:
-        ground = Pw[np.unique(tris[tri_g == 'Gear'].reshape(-1))][:, 1].min()
+        ground = Pw[np.unique(tris[isGear].reshape(-1))][:, 1].min()
     else:
         ground = blo[1] - LIFT.get(key, 0) * S
     org = np.array([(blo[0] + bhi[0]) / 2, ground, (blo[2] + bhi[2]) / 2])
@@ -261,7 +272,7 @@ def convert(key, AD, ids):
     # 按（部件，材质）分块
     out = []
     count = {}
-    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL', 'Gear', 'Rotor', 'Rotor2', 'TRotor']
+    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor']
     for g in order:
         for mi in sorted(set(tri_m[tri_g == g].tolist())):
             idx_all = tris[(tri_g == g) & (tri_m == mi)]
@@ -284,6 +295,25 @@ def convert(key, AD, ids):
                     if (m.get('mr') or [0, 0.8])[0] > 0.5:
                         info['parts'][name]['met'] = 1
                 out.append((name, g, mi, P - c, Nw[u], UV[u], inv.reshape(-1, 3).astype(np.uint32)))
+    # 活动部件的铰链（模型坐标）
+    if surf:
+        info['surf'] = {}
+        for g, e in sorted(surf.items()):
+            e = dict(e)
+            e['a'] = [round(float(x), 3) for x in R(e['a'])]
+            e['b'] = [round(float(x), 3) for x in R(e['b'])]
+            info['surf'][g] = e
+    # 弹舱井（开舱时看见舱里，不是机身里面空的）：盒子的中心、大小
+    wells = []
+    for W in A.WELL.get(key, []):
+        lo_, hi_ = R([W['x'][1], W['y'][1], W['z0']]), R([W['x'][0], W['y'][0], W['top']])
+        lo, hi = np.minimum(lo_, hi_), np.maximum(lo_, hi_)
+        wells.append({'c': [round(float(x), 3) for x in (lo + hi) / 2], 's': [round(float(x), 3) for x in (hi - lo)]})
+    if wells:
+        info['wells'] = wells
+    # 飞行员（座舱里头的位置）
+    if A.PIT.get(key):
+        info['pit'] = [[round(float(x), 3) for x in R(p)] for p in A.PIT[key]]
     # 旋翼：支点、轴
     for g, (p, a) in rot_piv.items():
         if (tri_g == g).any():
