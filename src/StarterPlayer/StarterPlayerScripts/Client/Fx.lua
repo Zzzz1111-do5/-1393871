@@ -139,6 +139,8 @@ function Fx.init(G)
     msl = { { id = EXP, vol = 0.65, s = { 0.78, 0.86 }, reg = { 0.04, 1.2 }, eq = { 6, 0, -5 } },
       { id = WIND, vol = 10, s = { 1.05, 1.15 }, reg = { 3, 5.2 }, eq = { 4, 10, 0 }, dist = 0.5, fade = 0.8 } },
     bombRel = { { id = TICK, vol = 1, s = { 0.3, 0.34 } }, { id = THUD, vol = 0.8, s = { 0.5, 0.56 } } },
+    -- 子弹从耳边飞过：一下尖的「嗖」（风声截短、拉快、削掉低音）+ 一声脆响
+    whiz = { { id = WIND, vol = 7, s = { 2.6, 3.3 }, reg = { 2.1, 2.45 }, eq = { -12, 4, 8 } }, { id = TICK, vol = 0.45, s = { 3.6, 4.2 } } },
   }
   -- 导弹飞行中的发动机声：挂在弹上跟着飞走（燃烧完就停）
   local ROAR = { id = WIND, vol = 10, s = { 0.95, 1.05 }, loop = { 0.5, 9.5 }, eq = { 6, 10, -1 }, dist = 0.55 }
@@ -812,11 +814,32 @@ function Fx.init(G)
 
   ---------------------------------------------------------------- 服务器发来的特效
 
+  -- 子弹擦身（用户：感受不到激烈对抗）：敌人的枪弹从离头 7 格以内飞过——嗖的一声，屏幕边缘发暗、微微模糊（压制，Hud.lua G.suppress），越近越重
+  local function nearMiss(e)
+    if typeof(e.a) ~= "Vector3" or typeof(e.b) ~= "Vector3" then return end
+    if e.t and e.t == me:GetAttribute("Side") then return end   -- 自己人的
+    local ch = me.Character
+    local head = ch and ch:FindFirstChild("Head")
+    if not head then return end
+    local p = head.Position
+    local ab = e.b - e.a
+    local L2 = ab:Dot(ab)
+    if L2 < 4 then return end
+    local u = math.clamp((p - e.a):Dot(ab) / L2, 0, 1)
+    if u < 0.04 then return end   -- 枪口就在身边（贴脸开枪的不算擦身）
+    local q = e.a + ab * u
+    local d = (q - p).Magnitude
+    if d > 7 then return end
+    if G.sfx then G.sfx("whiz", q, { vol = 1.15 - d / 9, rmax = 60 }) end
+    if G.suppress then G.suppress(math.clamp(1 - d / 7, 0.2, 1) * 0.32) end
+  end
+
   function G.onFx(list)
     for _, e in ipairs(list) do
       local k = e.k
       if k == "gun" then
         if e.by ~= me.UserId then
+          nearMiss(e)
           G.gunFx(e.w, e.a, e.b, false)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end

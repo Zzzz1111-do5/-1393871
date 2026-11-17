@@ -281,17 +281,24 @@ function Menu.init(G)
     if stageOn then stageOn = false Stage.show(false) end
     if G.refresh then G.refresh() end
   end
-  card(1, enter)
+  -- 第一张卡「快速加入」（用户：没法快速进入战局）：点一下自动分队、默认装备，直接出生在离当前目标最近的出生点（Round.lua ACT.quickJoin）
+  local function quick()
+    enter()
+    G.quickAt = os.clock()   -- 等服务器出生的这一会儿别弹选阵营界面（Faction.lua）
+    G.R.Act:FireServer("quickJoin")
+  end
+  G.quickJoin = quick
+  card(1, quick)
   card(2, function()
     enter()
     if G.showFaction then G.showFaction() end
   end)
   card(3, function() showPanel("help") end)
   card(4, function() showPanel("credits") end)
-  -- 回车直接进入战斗
+  -- 回车：快速加入
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
-    if io.KeyCode == Enum.KeyCode.Return then enter() end
+    if io.KeyCode == Enum.KeyCode.Return then quick() end
   end)
 
   -- 右下：游戏名、测试版、版本号

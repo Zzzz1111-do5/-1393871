@@ -175,9 +175,16 @@ function Sail.init(G)
     st.rcmd = cmd
     st.rudder = approach(st.rudder, cmd, dt * 0.85)
     local eff = math.clamp(math.abs(st.speed) / (d.speed * 0.35), 0.06, 1) * ((st.speed < -0.5) and -1 or 1)
-    local ny = st.yaw - st.rudder * math.rad(d.turn) * eff * dt
+    -- 驾驶手感（用户：驾驶手感也做到最好）：舵打下去船头要一会儿才转起来、回正以后还接着转一阵（船越长越迟钝）；
+    --   转弯掉速（满舵全速每秒掉 8% 上下）；船身往外侧滑——前进方向慢半拍才跟上船头
+    local lag = math.clamp((d.L or 60) / 110, 0.5, 2.6)
+    st.yr = (st.yr or 0) + (st.rudder * math.rad(d.turn) * eff - (st.yr or 0)) * math.min(1, dt / lag)
+    local ny = st.yaw - st.yr * dt
+    st.speed -= st.speed * math.clamp(math.abs(st.yr) / math.max(math.rad(d.turn), 1e-3), 0, 1) * 0.08 * dt
+    st.slip = (st.slip or 0) + (st.yr * math.abs(st.speed) * 0.025 - (st.slip or 0)) * math.min(1, dt * 1.1)
+    local right = V(math.cos(ny), 0, -math.sin(ny))
     local step = st.speed * dt
-    local np = st.pos + fwdOf(ny) * step
+    local np = st.pos + fwdOf(ny) * step - right * st.slip * dt
     local why = (math.abs(step) > 1e-4) and blockedAt(np, ny, (step > 0) and 1 or -1, d) or nil
     if why then
       if math.abs(st.speed) > d.speed * 0.3 and G.shake then G.shake(0.3) end
