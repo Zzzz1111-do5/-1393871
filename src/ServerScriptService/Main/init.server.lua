@@ -78,6 +78,12 @@ function G.emit(ev, ...)
   for _, f in ipairs(hooks[ev] or {}) do G.try(ev, f, ...) end
 end
 
+-- 人在载具里（车、飞机、船里的人由载具挨打，步枪、炮弹打不着人）；遥控无人机的不算：人站在地上端着平板，照样挨打、会被看见（Air.lua 的 P.remote）
+function G.inVeh(P)
+  local v = P.vehicle
+  return v ~= nil and v ~= P.remote
+end
+
 local ACT = {}
 G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy = function(P, ...) … end
 

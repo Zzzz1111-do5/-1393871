@@ -472,7 +472,7 @@ function Round.init(G)
       if P.alive and P.char then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
-        if hrp and hum and hum.Health > 0 and not (P.vehicle and (P.vehicle.air or P.vehicle.sea)) then
+        if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
           local p = hrp.Position
           local dx, dz = p.X - s.x, p.Z - s.z
           if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < 45 then

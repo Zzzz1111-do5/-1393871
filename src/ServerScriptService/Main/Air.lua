@@ -121,35 +121,144 @@ function Air.init(G)
       end
     end
   end
+  -- 战术平板（遥控无人机）：胸前端着一块加固平板（橡胶包角、天线、屏幕亮着），两条胳膊抬起来托着；别人看得到这个人在遥控
+  --   （用户：无人机驾驶应该是用一个战术平板）。胳膊靠改肩、肘关节的 C0（动画的 Transform 叠在上面，原来的 C0 记在 P.armC0 里，收起时还原）
+  local TAB = { body = Color3.fromRGB(46, 50, 44), bump = Color3.fromRGB(24, 26, 24), scr = Color3.fromRGB(64, 118, 150), bez = Color3.fromRGB(16, 18, 18) }
+  local ARM = {
+    RightShoulder = CFrame.Angles(math.rad(20), 0, math.rad(-14)), LeftShoulder = CFrame.Angles(math.rad(20), 0, math.rad(14)),   -- R15：大臂往前、往里收
+    RightElbow = CFrame.Angles(math.rad(85), 0, 0), LeftElbow = CFrame.Angles(math.rad(85), 0, 0),                                  -- 小臂往前抬平
+    ["Right Shoulder"] = CFrame.Angles(0, 0, math.rad(62)), ["Left Shoulder"] = CFrame.Angles(0, 0, math.rad(-62)),                  -- R6：整条胳膊往前抬
+  }
+  local function tablet(P, on)
+    local char = P.char
+    if not char then return end
+    local old = char:FindFirstChild("UavTablet")
+    if old then old:Destroy() end
+    for j, c0 in pairs(P.armC0 or {}) do
+      if j.Parent then j.C0 = c0 end
+    end
+    P.armC0 = nil
+    char:SetAttribute("Tablet", on == true)
+    if not on then return end
+    local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
+    if not torso then return end
+    P.armC0 = {}
+    for _, j in ipairs(char:GetDescendants()) do
+      if j:IsA("Motor6D") and ARM[j.Name] then
+        P.armC0[j] = j.C0
+        j.C0 = j.C0 * ARM[j.Name]
+      end
+    end
+    local m = Instance.new("Model")
+    m.Name = "UavTablet"
+    local k = math.max(torso.Size.X, 1) / 2   -- 按上身宽缩放（R15、R6 上身都是 2 格宽）
+    -- 平板在肚子前面、上沿往外倾 50°，屏幕（+Z 面）朝着脸
+    local base = torso.CFrame * CF(0, -0.3 * k, -1.25 * k) * CFrame.Angles(math.rad(-50), 0, 0)
+    local function piece(name, size, off, col, mat, shape, rot)
+      local p = Instance.new("Part")
+      p.Name = name
+      if shape then p.Shape = shape end
+      p.Size = size * k
+      p.Color = col
+      p.Material = mat or Enum.Material.SmoothPlastic
+      p.CanCollide, p.CanQuery, p.CanTouch, p.Massless, p.CastShadow = false, false, false, true, false
+      p.CFrame = base * CF(off.X * k, off.Y * k, off.Z * k) * (rot or CF())   -- 先摆好再焊（焊上以后改 CFrame 会把整个人拖过去）
+      local w = Instance.new("WeldConstraint")
+      w.Part0, w.Part1 = torso, p
+      w.Parent = p
+      p.Parent = m
+      return p
+    end
+    piece("Body", V(1.3, 0.88, 0.1), V(), TAB.body)
+    piece("Bezel", V(1.16, 0.72, 0.012), V(0, 0.01, 0.054), TAB.bez)
+    local scr = piece("Screen", V(1.04, 0.62, 0.01), V(0, 0.02, 0.062), TAB.scr, Enum.Material.Neon)
+    scr.Transparency = 0.15
+    for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do   -- 四个橡胶包角
+      piece("Bumper", V(0.2, 0.2, 0.15), V(c[1] * 0.6, c[2] * 0.39, 0), TAB.bump, Enum.Material.Rubber)
+    end
+    piece("Grip", V(0.1, 0.5, 0.16), V(-0.68, 0, -0.02), TAB.bump, Enum.Material.Rubber)
+    piece("Grip", V(0.1, 0.5, 0.16), V(0.68, 0, -0.02), TAB.bump, Enum.Material.Rubber)
+    piece("Antenna", V(0.36, 0.05, 0.05), V(0.52, 0.56, -0.03), TAB.bump, Enum.Material.Rubber, Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2))   -- 数据链天线竖在右上角
+    piece("Led", V(0.035, 0.035, 0.02), V(-0.5, 0.4, 0.06), Color3.fromRGB(90, 255, 120), Enum.Material.Neon)
+    m.Parent = char
+  end
+  G.uavTablet = tablet
+
   local function seat(P, e, asPass)
     local char = P.char
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then hrp.Anchored = true end
-    hideChar(char, true)
+    -- 无人机：人站在原地拿平板遥控（不藏、不挪进机身，照样会挨打）；P.remote 记着遥控的是哪架（G.inVeh 不把他算在载具里）
+    local uav = e.def.drone and not asPass
+    if uav then tablet(P, true) else hideChar(char, true) end
     P.vehicle = e
+    P.remote = uav and e or nil
     if asPass then
       table.insert(e.pass, P)
     else
       e.driver = P
       e.emptyAt = nil
       e.model:SetAttribute("Driver", P.pl.UserId)
+      if uav then
+        e.loit = nil
+        e.opId = P.pl.UserId
+        e.model:SetAttribute("Op", P.pl.UserId)
+        e.model:SetAttribute("Loiter", false)
+      end
     end
-    char:PivotTo(e.root.CFrame)
+    if not uav then char:PivotTo(e.root.CFrame) end
     G.pushOne(P)
   end
+  -- 无人机断了链路（收起平板、操作员阵亡 / 走了）：在天上的照原来的高度自动盘旋 LOITER 秒（等操作员重连，ACT.uavLink），时间到了才掉下来
+  local LOITER = 75
+  local function startLoiter(e)
+    if not e.alive or not e.def.drone or e.onGround then return end
+    local cf = e.root.CFrame
+    local h = V(cf.LookVector.X, 0, cf.LookVector.Z)
+    h = (h.Magnitude > 0.05) and h.Unit or V(0, 0, -1)
+    local r = V(-h.Z, 0, h.X)   -- 右边（往右盘旋）
+    local R = math.max(e.def.W * 8, 380)
+    local p = cf.Position
+    local c = p + r * R
+    e.loit = { c = c, r = R, a = math.atan2(p.Z - c.Z, p.X - c.X), v = math.max(e.def.stall * 1.25, e.def.vMil * 0.55), y = p.Y, T = now() + LOITER }
+    e.model:SetAttribute("Loiter", true)
+    e.model:SetAttribute("LoitEnd", workspace:GetServerTimeNow() + LOITER)   -- 客户端提示还剩几秒
+  end
+  local function loiterStep(e, dt)
+    local L = e.loit
+    L.a += L.v / L.r * dt
+    local x, z = L.c.X + math.cos(L.a) * L.r, L.c.Z + math.sin(L.a) * L.r
+    local y = math.max(L.y, math.max(surface(x, z), 0) + e.def.gearH + 120)   -- 盘旋圈上有山：抬高一点绕过去
+    L.y = L.y + (y - L.y) * math.min(1, dt * 0.5)
+    local np = V(x, L.y, z)
+    local tang = V(-math.sin(L.a), 0, math.cos(L.a))
+    e.vel = tang * L.v
+    G.moveEnt(e, CFrame.lookAt(np, np + tang) * CFrame.Angles(0, 0, -math.rad(16)))
+  end
+
   -- 下飞机：在地上走到机身旁边；在天上跳伞（固定翼是弹射座椅：往上弹出去）
   local function unseat(P, e, place)
     if P.vehicle == e then P.vehicle = nil end
+    local uav = P.remote == e
+    if uav then P.remote = nil end
     if e.driver == P then
       e.driver = nil
       e.emptyAt = now()
       e.trig = false
       e.model:SetAttribute("Driver", 0)
       e.model:SetAttribute("Fire", false)
+      if e.def.drone then startLoiter(e) end
     end
     for i, Q in ipairs(e.pass) do if Q == P then table.remove(e.pass, i) break end end
     local char = P.char
+    if uav then   -- 遥控无人机的：人本来就在地上，收起平板就行
+      tablet(P, false)
+      local hrp = char and char:FindFirstChild("HumanoidRootPart")
+      if hrp and char.Parent then hrp.Anchored = false end
+      G.pushOne(P)
+      return
+    end
     if char and char.Parent and place then
       hideChar(char, false)
       local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -217,6 +326,11 @@ function Air.init(G)
           G.msg(Q.pl, "bad", "ui.vehLost")
         end
         local D = self.driver
+        if D and D.remote == self then   -- 无人机被打掉：操作员在地上，只是断了链路
+          unseat(D, self, true)
+          G.msg(D.pl, "bad", "ui.uavLost")
+          D = nil
+        end
         self.driver = nil
         if D then kill(D) end
         for _, Q in ipairs(self.pass) do kill(Q) end
@@ -241,6 +355,10 @@ function Air.init(G)
     e.home = "pad"
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
+    if d.drone and P and P.alive and P.char and not P.vehicle and G.P[P.pl] == P then   -- 无人机：在终端前直接拿出平板接管，不用走到跑道上
+      e.resP = nil
+      seat(P, e)
+    end
     return e
   end
 
@@ -258,6 +376,13 @@ function Air.init(G)
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > math.max(e.def.L, e.def.W) * 0.5 + 18 then return end
     if not e.driver then e.resP = nil seat(P, e) return end
     if e.def.transport and #e.pass < (e.def.seats or 1) then seat(P, e, true) end
+  end
+  -- 重连自己放出去的无人机（收起平板、操作员阵亡后它在原地盘旋；停在地上的也行）：在哪都能连，不用走到飞机旁边
+  G.ACT.uavLink = function(P, entId)
+    local e = type(entId) == "string" and G.entById[entId] or nil
+    if not e or not e.air or not e.alive or not e.def.drone or e.driver or e.team ~= P.team then return end
+    if e.opId ~= P.pl.UserId or P.vehicle or not P.alive or not P.char then return end
+    seat(P, e)
   end
 
   ---------------------------------------------------------------- 武器
@@ -606,7 +731,7 @@ function Air.init(G)
     if e and e.air then
       if not e.alive then return nil end
       return { id = e.id, m = e.def.id, air = true, pilot = e.driver == P, load = e.load, stores = e.stores, gun = e.gunAmmo, flares = e.flares, home = e.home,
-        ground = e.onGround == true }
+        ground = e.onGround == true, uav = (P.remote == e) or nil }
     end
     if vehState0 then return vehState0(P) end
     return nil
@@ -629,19 +754,27 @@ function Air.init(G)
         e.emptyAt = t
         e.trig = false
         e.model:SetAttribute("Driver", 0)
+        if D.remote == e then D.remote = nil end
+        if e.def.drone then startLoiter(e) end
         D = nil
       end
       for i = #e.pass, 1, -1 do
         local Q = e.pass[i]
         if not Q.alive or not Q.char or not Q.char.Parent or G.P[Q.pl] ~= Q then table.remove(e.pass, i) end
       end
-      if D and D.char then D.char:PivotTo(e.root.CFrame) end
+      if D and D.char and D.remote ~= e then D.char:PivotTo(e.root.CFrame) end
       for i, Q in ipairs(e.pass) do if Q.char then Q.char:PivotTo(e.root.CFrame * CF(((i % 2) * 2 - 1) * 2, 0, -2 + i * 2.5)) end end
       if e.alive and not D then
         local p = e.root.CFrame.Position
         local g = surface(p.X, p.Z)
         local agl = p.Y - math.max(g, 0) - e.def.gearH
-        if agl > 3 and not e.onGround then   -- 没人开、在天上：往下掉，机头慢慢栽下去
+        if e.loit and t >= e.loit.T then
+          e.loit = nil
+          e.model:SetAttribute("Loiter", false)
+        end
+        if e.loit and not e.onGround then   -- 断了链路的无人机：自动盘旋，等操作员重连
+          loiterStep(e, dt)
+        elseif agl > 3 and not e.onGround then   -- 没人开、在天上：往下掉，机头慢慢栽下去
           e.vel = (e.vel or V()) + V(0, -GRAV * 0.8, 0) * dt
           e.vel = e.vel * (1 - 0.15 * dt)
           local np = p + e.vel * dt

@@ -304,9 +304,16 @@ function Fly.init(G)
       if d.kind == "jet" then st.spd = d.vMil * 0.8 else st.hv = look * d.vMax * 0.6 end
       st.vel = look * ((d.kind == "jet") and st.spd or d.vMax * 0.6)
     end
+    -- 遥控无人机（服务器 vs.uav）：人在地上端着战术平板，画面是平板（Tablet.lua）；默认前视光电，右键 / V 换外部视角，Z 变焦
+    st.uav = vs.uav == true and d.drone == true
+    st.dcam, st.zoom, st.zoomS = st.uav and "nose" or nil, 1, 1
     G.fly, G.drive = st, st   -- G.drive：步兵的操作（Play）先停下
     cam.CameraType = Enum.CameraType.Scriptable
     panel.Visible = true
+    -- 平板模式：面板挪进平板屏幕里（底边外壳上不放东西）
+    local rect = G.tabletRect
+    panel.Position = (st.uav and rect) and UDim2.new(0.5, 0, rect[4], -12) or UDim2.new(0.5, 0, 1, -24)
+    if st.uav and G.tabletOpen then G.tabletOpen(st) end
     for _, l in ipairs(HUDS) do l.Visible = st.pilot end
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = st.pilot end end
     local m = workspace:FindFirstChild("Map")
@@ -328,6 +335,8 @@ function Fly.init(G)
     lockBox.Visible, lockText.Visible, pipper.Visible = false, false, false
     landMark.Visible, landText.Visible = false, false
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = false end end
+    panel.Position = UDim2.new(0.5, 0, 1, -24)
+    if old and old.uav and G.tabletClose then G.tabletClose() end
   end
 
   ---------------------------------------------------------------- 武器
@@ -743,6 +752,10 @@ function Fly.init(G)
       if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end
     elseif k == Enum.KeyCode.R then
       G.flyNextTarget()
+    elseif st.uav and (k == Enum.KeyCode.V or io.UserInputType == Enum.UserInputType.MouseButton2) then   -- 平板：前视光电 ↔ 外部视角
+      st.dcam = (st.dcam == "nose") and "chase" or "nose"
+    elseif st.uav and k == Enum.KeyCode.Z then   -- 变焦一档一档跳：1× → 3× → 8× → 1×
+      st.zoom = (st.zoom < 2.9) and 3 or ((st.zoom < 7.9) and 8 or 1)
     else
       local n = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 })[k]
       if n and st.wl[n] then
@@ -753,6 +766,10 @@ function Fly.init(G)
   end)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
+  end)
+  UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
+    if gp or not st or not st.uav or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+    st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 12)
   end)
 
   G.R.Drive.OnClientEvent:Connect(function(m)
@@ -806,6 +823,9 @@ function Fly.init(G)
     -- 镜头转动
     if not G.mobile then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
     local md = UIS:GetMouseDelta()
+    -- 平板前视光电变焦：倍率越大鼠标越慢（准星在画面上走得一样快）
+    st.zoomS = st.zoomS + ((st.uav and st.dcam == "nose" and st.zoom or 1) - st.zoomS) * math.min(1, dt * 8)
+    if st.uav then md = md / st.zoomS end
     if d.kind == "jet" and not G.mobile then
       st.aimYaw -= md.X * SENS
       st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
@@ -841,7 +861,12 @@ function Fly.init(G)
     end
     -- 镜头
     local pos = st.cf.Position
-    if d.kind == "jet" and not G.mobile and st.pilot then
+    if st.uav and st.dcam == "nose" then
+      -- 无人机前视光电（机头下面的光电球）：顺着鼠标想去的方向看（手机上就是机头方向），不画镜头抖动
+      local eye = (st.cf * CF(0, -d.H * 0.22, -d.L * 0.5 - 0.8)).Position
+      local look = G.mobile and st.cf.LookVector or aimDirNow()
+      cam.CFrame = CFrame.lookAt(eye, eye + look * 100)
+    elseif d.kind == "jet" and not G.mobile and st.pilot then
       local aim = aimDirNow()
       local back = d.L * 1.3 + 26
       -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
@@ -865,7 +890,9 @@ function Fly.init(G)
       local camPos = pos + V(0, d.H * 0.5, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 1.1 + 18))
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
     end
-    cam.FieldOfView = cam.FieldOfView + (((d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70) - cam.FieldOfView) * math.min(1, dt * 4)
+    local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
+    if st.uav and st.dcam == "nose" then fovT = 70 / st.zoomS end
+    cam.FieldOfView = cam.FieldOfView + (fovT - cam.FieldOfView) * math.min(1, dt * ((st.uav and 10) or 4))
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
@@ -946,7 +973,7 @@ function Fly.init(G)
     else
       aWpn.Text = T("air.noWeapon")
     end
-    st.help = st.pilot and ((d.kind == "jet") and "air.helpJet" or "air.helpHeli") or "air.helpPass"
+    st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and "air.helpJet" or "air.helpHeli")) or "air.helpPass"
     if st.pilot then
       spdText.Text = string.format("%d", kmh)
       altText.Text = string.format("%d", math.max(0, agl))
@@ -954,7 +981,9 @@ function Fly.init(G)
       vsText.Text = string.format("%+d", math.floor(st.vel.Y / AD.M + 0.5))
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon
-      if d.kind == "jet" and not G.mobile then
+      if st.uav and st.dcam == "nose" then
+        aimRing.Visible = false   -- 前视光电：镜头就是瞄准方向，平板画十字线
+      elseif d.kind == "jet" and not G.mobile then
         local ap, aon = project(pos + aimDirNow() * 400)
         aimRing.Position, aimRing.Visible = ap, aon
       else

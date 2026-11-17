@@ -238,7 +238,7 @@ function Forts.init(G)
     -- 先收集一遍攻方在地上的人和车（每步一次），再按雷区的范围粗筛
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == "atk" and P.alive and P.char and not P.vehicle then
+      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, { x = hrp.Position.X, z = hrp.Position.Z, veh = false, r = 0 }) end
       end
@@ -512,7 +512,7 @@ function Forts.init(G)
     end
     if Tg.inf then
       for _, P in pairs(G.P) do
-        if P.team == foe and P.alive and P.char and not P.vehicle then
+        if P.team == foe and P.alive and P.char and not G.inVeh(P) then
           local hrp = P.char:FindFirstChild("HumanoidRootPart")
           local hum = P.char:FindFirstChildOfClass("Humanoid")
           if hrp and hum and hum.Health > 0 then consider(nil, P, hrp.Position, 1) end
@@ -572,7 +572,7 @@ function Forts.init(G)
   local function targetPos(c)
     if c.P then
       local P = c.P
-      if not P.alive or not P.char or P.vehicle then return nil end
+      if not P.alive or not P.char or G.inVeh(P) then return nil end
       local hrp = P.char:FindFirstChild("HumanoidRootPart")
       return hrp and (hrp.Position + V(0, 0.4, 0)) or nil
     end
@@ -629,7 +629,7 @@ function Forts.init(G)
     local w = e.w
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == foe and P.alive and P.char and not (P.vehicle and (P.vehicle.air or P.vehicle.sea)) then
+      if P.team == foe and P.alive and P.char and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, hrp.Position) end
       end

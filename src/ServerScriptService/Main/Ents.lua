@@ -125,7 +125,7 @@ function Ents.init(G)
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
-      if hrp and P.alive and not P.vehicle then   -- 在车里的人由车挨炸
+      if hrp and P.alive and not G.inVeh(P) then   -- 在车里的人由车挨炸（遥控无人机的人在地上，照样挨炸）
         local d = (hrp.Position - pos).Magnitude
         if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
       end
