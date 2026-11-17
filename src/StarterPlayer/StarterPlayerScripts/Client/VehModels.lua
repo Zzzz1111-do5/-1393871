@@ -9,6 +9,7 @@ local VehModels = {}
 -- 原模型（网页版装备模型原样转的 models/veh/<模型键>.glb，Studio 里导入后由 Imports.lua 收进 ReplicatedStorage.Imported.Veh.<模型键>）：
 --   有就整辆换成它（真实尺寸，不缩放；车体、炮塔、炮、各个车轮照元数据 ImportedMeta 摆、按各自的转轴动），没有就用下面零件拼的
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 local IM = nil
 do
   local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
@@ -130,7 +131,7 @@ function VehModels.build(d, team)
     for name, p in pairs(info.parts) do
       local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
       if src and src:IsA("BasePart") then
-        local mp = src:Clone()
+        local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = v3(p.s)
         -- 原模型里这块本来就没贴图（JLTV、M270 整车都是）：照原材质的颜色上色——Studio 导入时不一定把材质颜色带过来

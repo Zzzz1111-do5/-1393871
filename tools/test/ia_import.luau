@@ -115,6 +115,21 @@ do
 	end
 	check(Mz.imported == "ztq15" and cnt == n15 and nT >= 1 and nG >= 1, string.format("ZTQ-15 用 Sketchfab 的扫描模型：%d / %d 块，炮塔 %d、炮 %d", cnt, n15, nT, nG))
 	check(#Mz.wheels == 2 * d15.rw.n, string.format("扫描的车轮和车身是一整块：照型号表放了 %d 个看不见的弹簧", #Mz.wheels))
+	-- 原模型带贴图，这里假装导入时贴图没过来：零件上的是原贴图的平均色（ImportedTint），不是白的
+	do
+		local TT = luau.load(fs.readFile("src/ReplicatedStorage/ImportedTint.lua"), { debugName = "ImportedTint" })()
+		local nT2, okT2 = 0, true
+		for _, it in ipairs(Mz.parts) do
+			local t = it[1]:IsA("MeshPart") and TT[it[1].Name]
+			if t then
+				nT2 += 1
+				local c = it[1].Color
+				if math.abs(c.R * 255 - t[1]) > 1 or math.abs(c.G * 255 - t[2]) > 1 or math.abs(c.B * 255 - t[3]) > 1 then okT2 = false end
+				if c.R > 0.97 and c.G > 0.97 and c.B > 0.97 then okT2 = false end
+			end
+		end
+		check(okT2 and nT2 == cnt, string.format("贴图没导进来的 %d / %d 块上了原贴图的平均色（不是白的）", nT2, cnt))
+	end
 	check((d15.turret.pivot - V3.new(i15.tur[1], i15.tur[2], i15.tur[3])).Magnitude < 1e-3 and math.abs(d15.gun.len - i15.muz) < 1e-3,
 		string.format("型号表的炮塔转轴、炮口照扫描模型（转轴高 %.1f 格，炮口离耳轴 %.1f 格）", d15.turret.pivot.Y, d15.gun.len))
 	-- 炮管的最前端就是炮口（相对炮耳轴往前 muz 格）

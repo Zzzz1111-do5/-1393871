@@ -9,6 +9,7 @@
 --     航行灯、舰旗挪到原模型上，浪花、尾迹、烟囱排烟、着火照旧
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 
 local ShipView = {}
 
@@ -384,7 +385,7 @@ function ShipView.init(G)
       for name, p in pairs(info.parts) do
         local src = folder:FindFirstChild("S_" .. d.id .. "__" .. name)
         if src and src:IsA("BasePart") then
-          local mp = src:Clone()
+          local mp = Tint.fix(src:Clone(), src)
           mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
           mp.Size = V(p.s[1], p.s[2], p.s[3])
           local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性

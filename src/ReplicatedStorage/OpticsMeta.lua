@@ -24,12 +24,12 @@ return {
   },
   m40a5 = {
     parts = {
-      Body = { c = { -0.032, -0.035, -0.421 }, s = { 0.401, 0.433, 2.277 }, tri = 3554 },
-      Body2 = { c = { -0.042, 0.039, 1.697 }, s = { 0.322, 0.172, 3.972 }, tri = 7684 },
-      Body3 = { c = { -0.149, -0.168, 0 }, s = { 0.503, 0.541, 3.868 }, tri = 2084 },
+      Body = { c = { -0.018, -0.019, -0.236 }, s = { 0.225, 0.243, 1.276 }, tri = 3554 },
+      Body2 = { c = { -0.023, 0.022, 0.951 }, s = { 0.181, 0.096, 2.226 }, tri = 7684 },
+      Body3 = { c = { -0.084, -0.094, 0 }, s = { 0.282, 0.303, 2.167 }, tri = 2084 },
     },
-    pts = { grip = { 0, -0.25, -0.5 }, rail = { 0, 0.165, 0.2 }, muzzle = { 0, 0.03, 1.86 } },
-    size = { 0.569, 0.62, 5.617 },
+    pts = { grip = { 0, -0.1401, -0.2801 }, rail = { 0, 0.0924, 0.1121 }, muzzle = { 0, 0.005, 2.06 } },
+    size = { 0.32, 0.348, 3.148 },
     credit = "美军狙击枪（USMC M40A5）：USMC M40A5 Sniper，作者 Urpo，CC-BY-4.0 https://sketchfab.com/3d-models/usmc-m40a5-sniper-f724d89f40db46b0afce2b57ac6d4823",
   },
   qbu88 = {
@@ -50,7 +50,7 @@ return {
     parts = {
       Body = { c = { 0, 0, 0 }, s = { 0.484, 0.904, 2.856 }, tri = 8779 },
     },
-    pts = { grip = { 0, -0.3, 0.21 }, muzzle = { 0, 0.13, 1.45 } },
+    pts = { grip = { 0, -0.17, 0.96 }, muzzle = { 0, 0.19, 1.43 } },
     size = { 0.484, 0.904, 2.856 },
     credit = "美军火箭筒（AT4）：Anti-Tank Grenade Launcher | AT4 | GameReady，作者 Pan_Ar4ik，CC-BY-4.0 https://sketchfab.com/3d-models/anti-tank-grenade-launcher-at4-gameready-7ef6e4f3f0af4db8a7d3ccbaf506fd38",
   },
@@ -58,7 +58,7 @@ return {
     parts = {
       Body = { c = { 0, 0, 0.428 }, s = { 0.296, 0.601, 3.4 }, tri = 16098 },
     },
-    pts = { grip = { 0, -0.19, 0.89 }, muzzle = { 0, 0.05, 2.3 } },
+    pts = { grip = { 0, -0.19, 0.89 }, muzzle = { 0, 0.05, 2.15 } },
     size = { 0.296, 0.601, 3.4 },
     credit = "解放军火箭筒（RPG-7 / 69 式）：RPG-7，作者 Tactical_Beard，CC-BY-4.0 https://sketchfab.com/3d-models/rpg-7-01c0fa7bb9e0439cac27264b3119a3fd",
   },
@@ -68,7 +68,7 @@ return {
       C444 = { c = { -0.003, 0.02, 0 }, s = { 1.282, 1.175, 4.258 }, tri = 1366, col = { 61, 61, 61 }, met = 0 },
       C777 = { c = { 0.029, 0.024, -0.082 }, s = { 1.219, 1.076, 3.539 }, tri = 500, col = { 113, 113, 113 }, met = 0 },
     },
-    pts = { grip = { 0, -0.33, -0.36 }, muzzle = { 0, -0.04, 2.2 } },
+    pts = { grip = { 0, -0.33, -0.36 }, muzzle = { 0, -0.02, 2.13 } },
     size = { 1.288, 1.215, 4.258 },
     credit = "美军单兵防空导弹（FIM-92 毒刺）：FIM-92 Stinger，作者 Mortavex，CC-BY-4.0 https://sketchfab.com/3d-models/fim-92-stinger-d9de43d3b00a4381b991c35369b5e183",
   },
@@ -82,7 +82,7 @@ return {
       C777 = { c = { 0.058, -0.173, 0.111 }, s = { 0.035, 0.106, 0.112 }, tri = 168, col = { 121, 121, 121 }, met = 0.285 },
       C555 = { c = { -0.027, -0.133, -0.126 }, s = { 0.039, 0.213, 0.724 }, tri = 1477, col = { 86, 86, 86 }, met = 0.174 },
     },
-    pts = { grip = { 0, -0.33, 0.24 }, fpOff = { 0, -0.12, 0 }, muzzle = { 0, 0.22, 1.8 } },
+    pts = { grip = { 0, -0.33, 0.24 }, fpOff = { 0, -0.12, 0 }, muzzle = { 0, 0.18, 3.22 } },
     size = { 0.45, 0.906, 4.454 },
     credit = "解放军单兵防空导弹（前卫-2）：QW-2，作者 会飞的购物清单，CC-BY-4.0 https://sketchfab.com/3d-models/qw-2-b3fce788240740a4b15ab1e2011158ce",
   },

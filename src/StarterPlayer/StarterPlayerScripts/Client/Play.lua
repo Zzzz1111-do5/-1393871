@@ -40,6 +40,7 @@ function Play.init(G)
   local hitT = 0
   local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   ammoText.TextStrokeTransparency = 0.4
+  G.ammoLabel = ammoText   -- Hud.lua 换成右下角的武器、弹药（这一行字收起来）
   local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.GothamBold, Vector2.new(0.5, 0))
   tipText.TextStrokeTransparency = 0.4
   tipText.ZIndex = 15
@@ -75,6 +76,11 @@ function Play.init(G)
       a.r = 0
     end
     return a
+  end
+  -- 现在拿着哪件、弹药（Hud.lua 画右下角）
+  function G.weaponNow()
+    if not cur.id or not W[cur.id] then return nil end
+    return cur.id, ammoOf(cur.id)
   end
   local function reload()
     local id = cur.id

@@ -8,6 +8,7 @@
 --   性能：同一种、同一档大小的模型放进对象池反复用（离开范围的挪到地下藏起来），一次 BulkMoveTo 挪完；每帧算格子、换模型都有上限
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 
 local Scenery = {}
 
@@ -185,7 +186,7 @@ function Scenery.init(G)
     local shadow = (kind == "conifer" or kind == "broad" or kind == "rock" or kind == "outcrop") and quality >= 7
     local inst = { k = k, b = b, parts = {}, rels = {} }
     for i, it in ipairs(t) do
-      local p = it.p:Clone()
+      local p = Tint.fix(it.p:Clone(), it.p)
       prepPart(p, shadow)
       p.Size = it.p.Size * s
       local r = it.rel

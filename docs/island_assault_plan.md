@@ -169,6 +169,15 @@
 - [ ] 进服界面改版——**session_015eAzKBC4CDJLpwoYfRQTvP 在做**（`darksword-forts-navy`）：用户给了《坠落》（Downfall）的两张截图，要照这个风格做，进来不要先逼着选兵种：
   主菜单（左边一列大图卡片：进入战斗 / 阵营 / …，上面玩家名、军衔、经验条，右边人物，右下角游戏名和版本）→ 部署界面（左边兵种列表、选中的白底黑字，
   下面大字兵种名和说明，中间是自己的人物，底下 1～6 号装备格，右下「选择生成点」，顶上双方比分、时间、A～E 据点）。改 `UI.lua` 的部署界面、`Faction.lua`。
+- [ ] 战斗中的界面（HUD）照《坠落》第二张截图——**session_01Aa6LmJjU2LLknsYWd3DUJp 在做**（`keen-heisenberg-6zzaoc`，从 45aff57 开始）：
+  顶部比分条（四角括号、双方队名、细比分线、◀ 时间 ▶）、下面 A～E 菱形据点；世界里的据点菱形字母 + 距离；左下方形小地图（跟着人走、上方朝向读数和 N）；
+  左边小队面板（同队按 UserId 每 5 人一队：阿尔法 / 布拉沃…，名字 + 血条）；右下武器名 + 射击方式、细字体弹药。新文件 `Hud.lua`；
+  `UI.lua`、`Play.lua` 只各加一行把旧的顶栏、血条、弹药文字交给它藏掉——主菜单和部署界面仍归上一条。
+- [x] 导入后很多载具是纯白的（keen-heisenberg）：贴图没传上去 / 还在审核时零件是白的。`tools/models/tint.py` 算每块零件原贴图的平均色（`ImportedTint.lua`），
+  客户端 `Tint.lua` 先给复制出来的零件上平均色，带贴图的在后台查一次（`ContentProvider:PreloadAsync`），加载失败的去掉贴图、上平均色，输出窗口列出是哪些模型。
+- [x] 挂载编辑器里直-10 的旋翼是一整块实心圆盘（keen-heisenberg）：原模型自带半透明的「转起来的桨盘」，导入后不透明度丢了——停着藏起来、转快了才出现（`AirModels.lua` 的 `BLUR`）。
+- [x] 手持装备换真模型（keen-heisenberg）：`GearDefs.lua` 按阵营定用哪件（美军 M40A5 + ATACR、AT4、毒刺；解放军 QBU-88、RPG-7、前卫-2；手雷、急救包、扳手、炸药包、迫击炮、望远镜两边一样）。
+  服务器发的工具上装导入的原模型（属性 `Gear` / `GearMount`），第一人称用同一套（导入的或客户端现生成的）；M40A5 原来转大了 1.8 倍（2 米长），按真枪 1.124 米改了比例，枪口、AT4 握把、前卫-2 筒口的点重标。
 - [ ] 新图标和宣传图。
 - [x] 平衡：岸防炮原来一发就打沉登陆艇（520 × 打船 1.4 = 728，艇 650 血），机器人对打 6 分钟被打沉 53 条，攻方只拿下 A。
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
@@ -184,7 +193,7 @@
 | `claude/affectionate-pasteur-vj1oop` | session_01LjuH3fMZAmBoHts4cMHdAX | 1.0-alpha（地图、回合、部署、步兵武器、登陆艇、据点、界面）、机器人与寻路、地面载具；装备原模型（地面载具、飞机直升机、舰艇） |
 | `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机的型号表和服务器；实景地图（路网、树林花草、扬尘，从 affectionate-pasteur 的 ac9a2c6 开始） |
 | `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」、舰艇；接着做枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
-| `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果） |
+| `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果）；快进到 45aff57 后修白色载具、直-10 桨盘、手持装备真模型、战斗界面（HUD） |
 
 三条分支是一条线接着做的（后一条从前一条的最新提交开始），`keen-heisenberg` 已经快进到 `darksword-forts-navy` 的 17787e7。
 

@@ -32,11 +32,15 @@ local SKIN_ID = { h6k = RGB(196, 198, 196), b2 = RGB(66, 68, 72), a10c = RGB(112
 local GLASS, GOLD, DARK, TIRE, STEEL, RADOME = RGB(36, 52, 62), RGB(150, 122, 62), RGB(36, 38, 40), RGB(26, 26, 28), RGB(84, 86, 88), RGB(200, 202, 196)
 
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 local IA = nil   -- 原模型的元数据（tools/models/air2glb.py 生成）
 do
   local ok, r = pcall(function() return require(RS:WaitForChild("ImportedAir", 3)) end)
   if ok and type(r) == "table" then IA = r end
 end
+-- 原模型自带的「转起来的桨盘」（半透明的一整块圆盘 / 方片，材质不透明度只有 0.08 / 0.25）：导进 Roblox 后不透明度丢了，
+--   停着也是一整块实心圆盘（用户：挂载界面里螺旋桨位置对不上、而且是转起来的样子）——当成桨盘：停着不显示，转快了才淡淡地出现，桨叶同时变虚
+local BLUR = { z10w = { Rotor_2 = true, TRotor_2 = true } }
 -- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
 function AM.importedFor(d)
   local k = IA and IA.alias and IA.alias[d.id]
@@ -916,7 +920,7 @@ function AM.build(d, team, load)
     for name, p in pairs(I.parts) do
       local src = imp.folder:FindFirstChild("A_" .. imp.key .. "__" .. name)
       if src and src:IsA("BasePart") then
-        local mp = src:Clone()
+        local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = V(p.s[1], p.s[2], p.s[3])
         local okT, tid = pcall(function() return mp.TextureID end)   -- 不是 MeshPart 的没有这个属性
@@ -942,7 +946,14 @@ function AM.build(d, team, load)
           local spinKey = (g == "Rotor" and "spin1") or (g == "Rotor2" and "spin2") or "spinT"
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
-          add(mp, hub:Inverse() * CF(c), "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
+          local it = add(mp, hub:Inverse() * CF(c), "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
+          if BLUR[imp.key] and BLUR[imp.key][name] then
+            mp.CastShadow = false
+            mp.Transparency = 1
+            table.insert(M.discs, it)
+          else
+            table.insert(M.blades, it)
+          end
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
           add(mp, CF(c), "f", { fold = (g == "FoldR") and 1 or -1 })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链

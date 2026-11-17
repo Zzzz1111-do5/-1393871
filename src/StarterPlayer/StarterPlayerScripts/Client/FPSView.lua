@@ -11,11 +11,13 @@
 --   Play 调：G.fpsFire(武器) 开了一枪、G.fpsReload(武器, 秒数, 空仓) 换弹；G.fpsMuzzle() 枪口在哪（曳光从这儿出去）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 
 local FPSView = {}
 
 function FPSView.init(G)
   local A = require(RS:WaitForChild("FPSAnim"))
+  local GD = require(RS:WaitForChild("GearDefs"))
   local W = G.Config.Weapons
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
@@ -94,6 +96,51 @@ function FPSView.init(G)
     sniper = { key = "atacr", at = CF(0.005, 0.2525, 0.35), skip = "^Scope" },
     binoc = { key = "binoc", at = CF(GRIP + V(0, 0.18, 0.06)), skip = "." },
   }
+
+  -- 整件真模型（工具属性 Gear = 键、GearMount = 枪上的镜子，GearDefs）：握把放在 M4 握把那儿（再挪 fpOff、按 hold 转），镜子装在枪的导轨上；
+  --   导入的或者现生成的（Optics.lua）都还没有时返回 nil 和要等的键（先用工具上零件拼的，生成好了重建）
+  local function gearVM(model, items, key, mountKey)
+    local M = G.opticMeta and G.opticMeta[key]
+    if not M or not G.opticParts then return nil, nil end
+    local MM = mountKey and G.opticMeta[mountKey]
+    if mountKey and not MM then mountKey = nil end
+    local op = G.opticParts(key)
+    local mp = mountKey and G.opticParts(mountKey)
+    local need = {}
+    if not op then table.insert(need, key) end
+    if mountKey and not mp then table.insert(need, mountKey) end
+    if #need > 0 then return nil, need end
+    local at = CF(GRIP + GD.fpOff(key, M)) * GD.grip(M)
+    -- 开镜时一直看得见的块（optic）：望远镜、枪上装的镜子；镜子和枪是一整块的（QBU-88）整支都算
+    local whole = key == "binoc" or (M.eye ~= nil and not mountKey)
+    for _, x in ipairs(op) do
+      x.part.Parent = model
+      table.insert(items, { x.part, "gun", at * CF(x.c), optic = whole and x.name or nil })
+    end
+    local E, ea = M, at
+    if mp then
+      E, ea = MM, at * GD.mountAt(key, M)
+      for _, x in ipairs(mp) do
+        x.part.Parent = model
+        table.insert(items, { x.part, "gun", ea * CF(x.c), optic = x.name })
+      end
+    end
+    local info = nil
+    if key == "binoc" then
+      info = { kind = "binoc", eyeG = at * V(), objG = at * V(0, 0, 0.5), r = 0.03 }
+    elseif E.eye and E.obj then
+      info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r }
+    end
+    local mz = GD.muzzle(M)
+    return { optic = info, mz = mz and (at * CF(mz)) or nil }, nil
+  end
+  local function allReady(keys)
+    if not G.opticReady then return false end
+    for _, k in ipairs(keys) do
+      if not G.opticReady(k) then return false end
+    end
+    return true
+  end
 
   ---------------------------------------------------------------- 嵌在游戏里的真 M4：后台用 EditableMesh 生成（FPSMesh 是 base64 的顶点、三角形、贴图）
 
@@ -232,7 +279,7 @@ function FPSView.init(G)
 
   local function buildVM(id, tool)
     destroyVM()
-    local opticInfo, vm0Wait = nil, nil
+    local opticInfo, vm0Wait, realMz = nil, nil, nil
     local model = Instance.new("Model")
     model.Name = "FPSViewModel"
     local items = {}
@@ -243,7 +290,7 @@ function FPSView.init(G)
         for name, info in pairs(A.mesh) do
           local src = imp:FindFirstChild(name)
           if src and src:IsA("BasePart") then
-            local p = src:Clone()
+            local p = Tint.fix(src:Clone(), src)
             p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
             p.Parent = model
             table.insert(items, { p, info.piece, CF(info.c[1], info.c[2], info.c[3]) })
@@ -269,17 +316,27 @@ function FPSView.init(G)
         end
       end
     elseif tool then
+      local gk = tool:GetAttribute("Gear")
+      local gr, need = nil, nil
+      if gk then gr, need = gearVM(model, items, gk, tool:GetAttribute("GearMount")) end
+      if gr then   -- 整件真模型
+        opticInfo = gr.optic
+        realMz = gr.mz or CF(GRIP)
+      else
+      if need then vm0Wait = need end
       -- 工具的零件（焊在把手上的）按 0.75 缩小、装到握把那里（工具的枪口朝 −Z，M4 的枪身骨骼朝 +Z：转 180°）
       local h = tool:FindFirstChild("Handle")
       local K = 0.75
       local OD = OPTIC[id]
       local op = OD and G.opticParts and G.opticParts(OD.key)   -- 真模型（还没生成好时是 nil，先用零件拼的，生成好了下一帧重建）
-      if OD and not op then vm0Wait = id end
+      if OD and not op and not vm0Wait then vm0Wait = { OD.key } end
       if h then
         for _, src in ipairs(tool:GetDescendants()) do
           if src:IsA("BasePart") and src ~= h and src.Transparency < 1 and not (op and string.match(src.Name, OD.skip)) then
             local p = src:Clone()
-            for _, c in ipairs(p:GetChildren()) do c:Destroy() end
+            for _, c in ipairs(p:GetChildren()) do
+              if not c:IsA("SurfaceAppearance") then c:Destroy() end   -- 导入的块带着贴图：留着
+            end
             p.Size = src.Size * K
             p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
             p.Parent = model
@@ -307,6 +364,7 @@ function FPSView.init(G)
           r = eye and eye.r or 0.03,
         }
       end
+      end
     end
     -- 方块手臂
     local sc = sleeveColor()
@@ -325,8 +383,8 @@ function FPSView.init(G)
     light.Brightness, light.Range, light.Color, light.Enabled = 4, 10, RGB(255, 200, 120), false
     light.Parent = flash
     model.Parent = cam
-    local mzOff = isM4 and CF(MUZZLE) or nil
-    if not isM4 and model:GetAttribute("Muzzle") then
+    local mzOff = isM4 and CF(MUZZLE) or realMz
+    if not isM4 and not realMz and model:GetAttribute("Muzzle") then
       local mo = model:GetAttribute("MuzzleOff")
       mzOff = CF(GRIP) * CFrame.Angles(0, math.pi, 0) * CF(mo * 0.75)
     end
@@ -423,7 +481,7 @@ function FPSView.init(G)
       if vm then destroyVM() end
       return
     end
-    local opticNow = vm and vm.wait and G.opticReady and G.opticReady(OPTIC[vm.wait].key)   -- 真瞄准镜、望远镜刚生成好
+    local opticNow = vm and vm.wait and allReady(vm.wait)   -- 真模型（整件、瞄准镜、望远镜）刚生成好
     if not vm or vm.id ~= id or vm.tool ~= tool or (genStale and vm.m4) or opticNow then
       genStale = false
       buildVM(id, tool)

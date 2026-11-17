@@ -327,6 +327,8 @@ function UI.init(G)
 
   -- 小地图容器（右下）
   local miniBox = frame(hud, UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), PANEL, 1, Vector2.new(1, 1))
+  -- 战斗中的界面换成《坠落》那种风格（Hud.lua）：旧的顶栏、血条、兵种字交给它收起来，小地图框挪到左下
+  G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, help = help }
 
   ---------------------------------------------------------------- 消息
 
