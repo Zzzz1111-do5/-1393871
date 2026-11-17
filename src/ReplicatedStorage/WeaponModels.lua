@@ -4,7 +4,8 @@
 --   每个型号一条描述：nose 弹头样式（ir 红外导引头玻璃罩、radar 雷达罩、arm 反辐射雷达罩、tv 电视 / 红外成像大玻璃罩、laser 激光导引头 + 前翼、
 --     jdam / bomb 炸弹头）、col 弹体颜色、bands 色带（离弹头的比例、宽、颜色）、tail 尾翼 / mid 弹体中段的弹翼 / can 鸭翼（root 位置、弦长、展长……）、
 --     wing 弹体上方的折叠翼（挂着时折在弹体上，飞出去才展开）、kit 炸弹尾翼套件（mk 低阻尾锥、jdam 尾翼套件 + 弹体边条、paveway 大尾翼、sdb 小直径炸弹）、pod 火箭巢
---   WM.spec(w, flight) 返回零件描述 { t = "cyl" | "box" | "ball" | "wedge", size, cf, col, mat }；WM.make(parent, w, cf, flight) 直接拼出零件（返回零件和相对偏移）
+--   WM.spec(w, flight) 返回零件描述 { t = "cyl" | "box" | "ball" | "wedge" | "mesh"（导入的原模型，src 是模板）, size, cf, col, mat }；
+--   WM.make(parent, w, cf, flight) 直接拼出零件（返回零件和相对偏移）
 local WM = {}
 
 local V = Vector3.new
@@ -39,6 +40,7 @@ local D = {
   agm114 = { nose = "laser", col = OLIVE, bands = { { 0.3, 0.03, YELLOW }, { 0.62, 0.03, BROWN } }, tail = { at = 0.9, c = 0.12, s = 1.6 }, mid = { at = 0.5, c = 0.16, s = 1.3 } },
   agm65 = { nose = "tv", col = OLIVE2, bands = { { 0.28, 0.025, YELLOW }, { 0.6, 0.025, BROWN } }, tail = { at = 0.9, c = 0.12, s = 1.9 }, mid = { at = 0.5, c = 0.45, s = 0.9, strake = 1 } },
   kd88 = { nose = "tv", col = LGREY, bands = { { 0.3, 0.02, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 1.5 }, wing = { at = 0.48, c = 0.1, span = 2.6 } },
+  yj83k = { nose = "radar", col = LGREY, bands = { { 0.22, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.07, s = 1.5 }, wing = { at = 0.42, c = 0.11, span = 3.4 } },   -- 鹰击-83K：十字形弹翼在中段、尾翼在最后
   yj91 = { nose = "arm", col = GREY, bands = { { 0.26, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.09, s = 1.6 }, mid = { at = 0.45, c = 0.14, s = 1.4 }, can = { at = 0.18, c = 0.06, s = 1.2 } },
   agm88 = { nose = "arm", col = WHITE, bands = { { 0.24, 0.025, YELLOW }, { 0.55, 0.025, BROWN } }, tail = { at = 0.94, c = 0.08, s = 1.8 }, mid = { at = 0.38, c = 0.18, s = 2.0 } },
   -- 炸弹
@@ -63,8 +65,33 @@ local D = {
 WM.D = D
 
 local cache = {}
+-- 用户给的导弹合集（models/wpn/missiles.glb，开服时 Imports 收进 ReplicatedStorage.Imported.Wpn.<型号>）：导入了就用原模型，
+--   按 AirDefs 的弹长 L 等比缩放（GBU-38 借 GBU-32 的模型缩小）；没导入照旧零件拼。原模型导入时被转了半圈，乘 TURN 补回
+local IMP_ALIAS = { gbu38 = "gbu32" }
+local TURN = CFrame.Angles(0, math.pi, 0)
+local function impMesh(id)
+  local f = game:GetService("ReplicatedStorage"):FindFirstChild("Imported")
+  f = f and f:FindFirstChild("Wpn")
+  f = f and f:FindFirstChild(IMP_ALIAS[id] or id)
+  if not f then return nil end
+  for _, c in ipairs(f:GetChildren()) do
+    if c:IsA("MeshPart") then return c end
+  end
+  return nil
+end
+WM.impMesh = impMesh
 -- flight：飞出去的样子（折叠翼展开）；挂在飞机上是折着的
 function WM.spec(w, flight)
+  local tpl = impMesh(w.id)
+  if tpl then
+    local mk = (w.id or "?") .. "M"
+    local c = cache[mk]
+    if c and c[1].src == tpl then return c end
+    local L = (w.shape and w.shape.L) or tpl.Size.Z
+    c = { { t = "mesh", src = tpl, size = tpl.Size * (L / math.max(tpl.Size.Z, 0.01)), cf = TURN } }
+    cache[mk] = c
+    return c
+  end
   local key = (w.id or "?") .. (flight and "F" or "S")
   if cache[key] then return cache[key] end
   local S = w.shape or { L = 5, d = 0.6 }
@@ -213,7 +240,13 @@ end
 -- 按描述拼一个零件（AirModels、Fx、Hangar 共用）：圆柱的轴在 X，这里转到 Z；椭球用 SpecialMesh（Ball 零件只能是正圆）；楔子用 WedgePart
 function WM.part(e, parent)
   local p
-  if e.t == "wedge" then
+  if e.t == "mesh" then   -- 原模型：照导入的那块复制、按弹长缩放
+    p = e.src:Clone()
+    p.Size = e.size
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = parent
+    return p
+  elseif e.t == "wedge" then
     p = Instance.new("WedgePart")
   else
     p = Instance.new("Part")

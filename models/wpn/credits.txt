@@ -1,0 +1,15 @@
+导弹、炸弹模型（missiles.glb）
+
+来源：「Missile & Bomb Collection - Fighter Jets - Free」，作者 bohmerang (https://sketchfab.com/bohmerang)，CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/) 授权。
+网址：https://sketchfab.com/3d-models/missile-bomb-collection-fighter-jets-free-d203b678424a43568703bf85ba680f47
+改动：只取其中游戏里有的型号、各自居中摆正（弹头朝前）、换算成 Roblox 尺寸；金属度压到 0.3 以下、粗糙度至少 0.45；大于 1024 的贴图缩到 1024。
+授权要求：署名、非商业使用、相同方式共享——本文件夹里转换后的模型同样按 CC BY-NC-SA 4.0 授权（https://creativecommons.org/licenses/by-nc-sa/4.0/）。
+
+- AGM-114「地狱火」：合集里的「AGM-114 Hellfire」
+- AGM-65「小牛」：合集里的「AGM-65 Maverick」
+- AIM-9X「响尾蛇」（模型是 AIM-9）：合集里的「AIM-9 Sidewinder」
+- AKD-10（模型是 HJ-10）：合集里的「HJ-10」
+- GBU-12「宝石路」II：合集里的「GBU-12 Paveway II」
+- GBU-31 JDAM：合集里的「JDAM」
+- GBU-32 JDAM（GBU-38 借用缩小）：合集里的「JDAM (2)」
+- 天燕-90：合集里的「TY-90」

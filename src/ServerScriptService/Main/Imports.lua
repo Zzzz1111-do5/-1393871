@@ -22,21 +22,23 @@ function Imports.init(G)
   end
 
   local imported = folder(RS, "Imported")
-  -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）
-  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics"), N = folder(imported, "Scenery") }
+  -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）、
+  --   W 机载导弹炸弹（models/wpn/missiles.glb，块叫 W_<型号>__Body_1；WeaponModels 有就用它）
+  local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics"), N = folder(imported, "Scenery"),
+    W = folder(imported, "Wpn") }
   local n, keys, airKeys, shipKeys = 0, {}, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VASON])_([%w_]-)__[%w_]+$")
+        local kind, key = string.match(d.Name, "^([VASONW])_([%w_]-)__[%w_]+$")
         if not kind and string.match(d.Name, "^FPS_M4_%w+$") then   -- 第一人称的 M4（models/fps_m4.glb）：收进 Imported.FPS_M4（FPSView 在那里找）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
           d.Parent = folder(imported, "FPS_M4")
           if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
-        elseif kind == "O" or kind == "N" then   -- 瞄准镜、花草树木：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
+        elseif kind == "O" or kind == "N" or kind == "W" then   -- 瞄准镜、花草树木、导弹炸弹：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false

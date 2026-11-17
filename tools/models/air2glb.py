@@ -15,6 +15,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mdl2glb as B   # noqa: E402  贴图、材质、GLB 写出、署名、Lua 输出都和地面载具共用
 import air_anim as A   # noqa: E402  舵面、弹舱门、座舱盖、起落架支柱
+import air_kf as KF   # noqa: E402  原模型自带关键帧动画的（F-22A）：动画里会动的节点做成部件
 import orient   # noqa: E402  修朝反了的面（Roblox 只画正面）
 
 S = B.S
@@ -23,12 +24,12 @@ CHUNK = B.CHUNK
 # 游戏里的型号（AirDefs）→ 网页版的模型；后面带 ~ 的去掉原机涂装（我方没有模型的用外形最接近的美军机代，原机的国籍标志、舷号都在底色贴图里），游戏里按我方涂色
 ALIAS = {
     'z10': 'z10w', 'ah64e': 'ah64', 'z20': 'uh60~', 'uh60': 'uh60', 'ch47': 'ch47',
-    'j20': 'j20', 'j35': 'j31', 'j15t': 'j15', 'j16': 'j16', 'j50': 'j50', 'h6k': 'h6k', 'gj11': 'x47b~', 'gj2': 'mq9~',
-    'a10c': 'a10', 'f35': 'f35', 'f22': 'f22', 'mq9': 'mq9', 'b2': 'b2',
+    'j20': 'j20', 'j35': 'j31', 'j15t': 'j15t', 'j16': 'j16', 'j50': 'j50', 'h6k': 'h6k', 'gj11': 'x47b~', 'gj2': 'mq9~',
+    'a10c': 'a10', 'f35': 'f35', 'f22': 'f22a', 'mq9': 'mq9', 'b2': 'b2',
 }
 FLIP = {'h6k', 'x47b'}
 # 模型本身没放起落架的（按飞行状态做的）：停在地上时机腹离地多高（米），同网页版 V3G_GEAR 的 lift（真实全高减模型高）
-LIFT = {'j50': 1.3, 'j20': 1.25, 'f22': 1.04, 'j16': 1.6}
+LIFT = {'j50': 1.3, 'j20': 1.25, 'f22': 1.04, 'j16': 1.6, 'j15t': 1.15}   # 歼-15T（Jeyhun1985 的）：收起起落架的样子，真机全高 5.92 米减模型高
 MATFIX = {'z10w': {0: {'am': 0, 'a': 1}, 1: {'am': 0, 'a': 1}, 2: {'a': .08}}}
 # 直-10：旋翼、尾桨和机身烘焙成了一体——按连通块挑出来（网页版 V3G_ROTSPLIT 的量法：c 主旋翼桨毂、z 主旋翼块的高度范围、r 离轴多远以内、tb 尾桨块范围、tc 尾桨中心）
 ROTSPLIT = {'z10w': {'c': [1.21, 0, 2.95], 'z': [2.78, 3.17], 'r': 6.1, 'tb': [-7.2, -3.6, -.6, -.35, 1.3, 4.7], 'tc': [-5.41, -.46, 3.01]}}
@@ -39,7 +40,10 @@ DROP = {'ah64': [{'x': [2.4, 8.6], 'y': [1.0, 4.6], 'z': [-11.5, -4.4]}],
         'z10w': [{'x': [3.0, 6.5], 'y': [1.5, 3.6], 'z': [-3.5, 0.4]}]}
 # 直升机短翼（模型坐标）：下表面高 y、弦中间 z、翼尖 x1——挂点挂在这里（按连通块和下表面量的）
 HELI_STUB = {'ah64': {'y': 4.2, 'z': -6.5, 'x1': 8.1}, 'z10w': {'y': 3.75, 'z': -1.5, 'x1': 6.6}}
-FOLD = {'j15': [{'g': 'Fold', 'y': 3.47, 'z': 2.66, 'x': [-7.5, .6], 'zr': [1.6, 3.3], 'A': 2.0},
+# 歼-15T（Jeyhun1985 的模型，用户给的）：按这个模型量的——外翼铰链在 |y| 3.6 米、上表面高 1.8（烘焙坐标，没抬高）；平尾外段 |y| 3.7、高 1.08
+FOLD_J15T = [{'g': 'Fold', 'y': 3.6, 'z': 1.8, 'x': [-6.9, .8], 'zr': [1.12, 2.4], 'A': 2.0},
+             {'g': 'Tip', 'y': 3.7, 'z': 1.08, 'x': [-10.4, -6.3], 'zr': [.85, 1.11], 'A': 1.57}]
+FOLD = {'j15t': FOLD_J15T, 'j15': [{'g': 'Fold', 'y': 3.47, 'z': 2.66, 'x': [-7.5, .6], 'zr': [1.6, 3.3], 'A': 2.0},
                 {'g': 'Tip', 'y': 3.47, 'z': 2.03, 'x': [-10.6, -5.9], 'zr': [1.85, 2.12], 'A': 1.57}]}
 
 
@@ -186,6 +190,8 @@ def segment(key):
             if fx['a'] < 0.99 and 'am' not in fx:
                 m['am'] = 2
     parts = meta.get('parts', [])
+    kf = KF.load(key)   # 原模型自带动画的：烘焙时按节点分好的部件（名字就是部件名），活动方式在 tools/models/kf/<键>.json
+    kfs = kf['surf'] if kf else {}
     # 每个三角形属于哪个部件
     tri_g, tri_m, tris = [], [], []
     rot_piv = {}   # 部件名 → (支点, 轴)（网页版坐标）
@@ -204,6 +210,8 @@ def segment(key):
             elif n == 'trotor':
                 g = 'TRotor'
                 rot_piv[g] = (P['p'], P.get('a', [0, 1, 0]))
+            elif n in kfs:
+                g = n
             else:
                 g = 'Body'
             tri_g += [g] * len(T)
@@ -215,7 +223,7 @@ def segment(key):
     tri_g = np.array(tri_g, dtype=object)
     tri_m = np.array(tri_m)
     # 有活动部件的固定翼：修朝反了的面（网页版双面渲染看不出来；Roblox 只画正面，歼-31 机翼下表面整片朝里，从下往上看机翼是透明的）
-    if key in A.SURF or key in A.GEAR:
+    if key in A.SURF or key in A.GEAR or kfs:
         VB, tris, src, st = orient.fix(VB, tris)
         tri_g, tri_m = tri_g[src], tri_m[src]
         print('  %s 修了朝反的面：翻过来 %d 个、补反面 %d 个（共 %d 个三角形）' % (key, st['flip'], st['dup'], st['n']))
@@ -237,6 +245,12 @@ def segment(key):
         tri_g[body[sel & ~right]] = F['g'] + 'L'
     # 活动部件：网页版按抬高后的坐标量的（V3G_BAY、V3G_PIT），这里的模型没抬高——表里的高度已经减掉了 lift
     VB, tris, tri_g, tri_m, surf = A.apply(key, VB, tris, tri_g, tri_m, A.SURF, A.GEAR, [x.get('n', '') for x in meta['mats']])
+    for g, e in kfs.items():
+        if not (tri_g == g).any():
+            raise ValueError('%s 的部件 %s 一个三角形也没有（烘焙配置的 parts 对不上？）' % (key, g))
+        if e.get('auto'):   # 弹舱门：铰链按门板的形状算
+            e = KF.auto_bay(e, VB[np.unique(tris[tri_g == g].reshape(-1)), 0:3])
+        surf[g] = {k: v for k, v in e.items() if k != 'deg'}
     return meta, binb, credit, VB, tris, tri_g, tri_m, rot_piv, surf
 
 
@@ -254,6 +268,10 @@ def convert(key, AD, ids):
     hasGear = bool(isGear.any())
     if hasGear:
         ground = Pw[np.unique(tris[isGear].reshape(-1))][:, 1].min()
+        # 关键帧起落架（原模型的静止姿势是收起的）：按放下那一帧的机轮最低点
+        kfg = [g for g, e in surf.items() if e.get('k') == 'kf' and e.get('ch') == 'gear' and str(g).startswith('Gear')]
+        if kfg:
+            ground = min(B.rb(KF.apply_key(surf[g], VB[np.unique(tris[tri_g == g].reshape(-1)), 0:3]))[:, 1].min() for g in kfg)
     else:
         ground = blo[1] - LIFT.get(key, 0) * S
     org = np.array([(blo[0] + bhi[0]) / 2, ground, (blo[2] + bhi[2]) / 2])
@@ -305,6 +323,9 @@ def convert(key, AD, ids):
     if surf:
         info['surf'] = {}
         for g, e in sorted(surf.items()):
+            if e.get('k') == 'kf':   # 关键帧部件：支点、每帧的挪动和转动
+                info['surf'][g] = KF.to_model(e, R, B.rb)
+                continue
             e = dict(e)
             e['a'] = [round(float(x), 3) for x in R(e['a'])]
             e['b'] = [round(float(x), 3) for x in R(e['b'])]
