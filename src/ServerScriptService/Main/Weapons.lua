@@ -181,6 +181,18 @@ function Weapons.init(G)
     TOOLS.def[id] = makeTool(id, "def")
   end
   G.TOOLS = TOOLS
+  -- 部署界面装备格里的小图（客户端 GearView.lua）：两边的工具各放一份样子；导入了原模型的就是原模型
+  do
+    local prev = Instance.new("Folder")
+    prev.Name = "ToolPreview"
+    for team, set in pairs(TOOLS) do
+      local f = Instance.new("Folder")
+      f.Name = team
+      for _, t in pairs(set) do t:Clone().Parent = f end
+      f.Parent = prev
+    end
+    prev.Parent = RS
+  end
 
   ---------------------------------------------------------------- 弹药
 
@@ -219,14 +231,14 @@ function Weapons.init(G)
   -- 按兵种发武器（每次出生都重发、弹药补满）
   function G.giveLoadout(P)
     local pl = P.pl
-    local role = Config.RoleById[P.role] or Config.Roles[1]
+    local kit = G.kitOf(P)   -- 部署时选的装备栏（Round.lua）
     local bp = pl:FindFirstChildOfClass("Backpack") or pl:WaitForChild("Backpack", 5)
     if not bp then return end
     for _, c in ipairs(bp:GetChildren()) do if c:IsA("Tool") then c:Destroy() end end
     P.ammo = {}
     P.placed = {}
     P.cd = {}
-    for i, id in ipairs(role.weapons) do
+    for i, id in ipairs(kit.weapons) do
       local t = (TOOLS[P.team] or TOOLS.def)[id]:Clone()
       t:SetAttribute("Slot", i)
       t.Parent = bp
@@ -249,8 +261,8 @@ function Weapons.init(G)
     if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
-    local role = Config.RoleById[P.role]
-    if not role or not table.find(role.weapons, id) then return nil end
+    local kit = G.kitOf(P)
+    if not kit or not table.find(kit.weapons, id) then return nil end
     return char, head, tool
   end
 

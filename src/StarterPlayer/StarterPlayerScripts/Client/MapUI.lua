@@ -19,18 +19,29 @@ function MapUI.init(G)
 
   local root = Instance.new("Frame")
   root.Name = "IslandMap"
-  root.BackgroundColor3 = RGB(28, 86, 118)
+  -- 配色压暗、去饱和（用户：界面太卡通，要精致、简洁）：深色的海、灰绿的陆地、细网格、直角
+  root.BackgroundColor3 = RGB(14, 24, 32)
   root.BorderSizePixel = 0
   root.ClipsDescendants = true
   root.SizeConstraint = Enum.SizeConstraint.RelativeYY
-  local corner = Instance.new("UICorner")
-  corner.CornerRadius = UDim.new(0, 8)
-  corner.Parent = root
   local land = Instance.new("Frame")
   land.Name = "Land"
   land.BackgroundTransparency = 1
   land.Size = UDim2.fromScale(1, 1)
   land.Parent = root
+  for k = 1, 7 do   -- 细网格
+    for _, vert in ipairs({ true, false }) do
+      local g = Instance.new("Frame")
+      g.Name = "Grid"
+      g.BorderSizePixel = 0
+      g.BackgroundColor3 = Color3.new(1, 1, 1)
+      g.BackgroundTransparency = 0.93
+      g.Size = vert and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1)
+      g.Position = vert and UDim2.fromScale(k / 8, 0) or UDim2.fromScale(0, k / 8)
+      g.ZIndex = 2
+      g.Parent = root
+    end
+  end
   local marks = Instance.new("Frame")
   marks.Name = "Marks"
   marks.BackgroundTransparency = 1
@@ -47,7 +58,7 @@ function MapUI.init(G)
     if y < 200 then return 4 end
     return 5
   end
-  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128), RGB(50, 86, 46) }
+  local BAND = { RGB(118, 112, 92), RGB(62, 74, 58), RGB(54, 66, 50), RGB(70, 74, 64), RGB(92, 92, 88), RGB(42, 54, 42) }
   local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
   if not okF then Flora = nil end
   local N = 110
@@ -90,10 +101,10 @@ function MapUI.init(G)
           local f = Instance.new("Frame")
           f.Name = "Road"
           f.BorderSizePixel = 0
-          f.BackgroundColor3 = RGB(176, 150, 102)
+          f.BackgroundColor3 = RGB(150, 140, 116)
           f.AnchorPoint = Vector2.new(0.5, 0.5)
           f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
-          f.Size = UDim2.new(len * 1.04, 0, 0, 2)
+          f.Size = UDim2.new(len * 1.04, 0, 0, 1)
           f.Rotation = math.deg(math.atan2(v1 - v0, u1 - u0))
           f.ZIndex = 2
           f.Parent = land
@@ -131,7 +142,7 @@ function MapUI.init(G)
   local pointDots = {}
   for _, p in ipairs(Map.POINTS) do
     local u, v = toUV(p.x, p.z)
-    pointDots[p.id] = dot(marks, u, v, 22, Config.Teams.def.color, p.id, 5)
+    pointDots[p.id] = dot(marks, u, v, 18, Config.Teams.def.color, p.id, 5)
   end
   -- 舰队、机场岛（小灰块）
   for _, s in ipairs(Map.FLEET) do
@@ -141,7 +152,7 @@ function MapUI.init(G)
     f.Position = UDim2.fromScale(u, v)
     f.Size = UDim2.fromScale((s.kind == "lst") and 0.006 or 0.009, (s.kind == "carrier") and 0.1 or 0.07)
     f.Size = UDim2.fromScale(0.012, (s.kind == "carrier") and 0.09 or ((s.kind == "lhd") and 0.07 or 0.045))
-    f.BackgroundColor3 = RGB(70, 76, 82)
+    f.BackgroundColor3 = RGB(120, 126, 132)
     f.BorderSizePixel = 0
     f.ZIndex = 2
     f.Parent = marks

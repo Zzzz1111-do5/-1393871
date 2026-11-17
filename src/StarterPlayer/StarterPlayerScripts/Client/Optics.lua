@@ -127,6 +127,9 @@ function Optics.init(G)
     end)
   end
 
+  -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
+  function G.opticFailed(key) return failed[key] == true end
+
   -- 有没有现成的（导入的或已经生成好的），不复制
   function G.opticReady(key)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)

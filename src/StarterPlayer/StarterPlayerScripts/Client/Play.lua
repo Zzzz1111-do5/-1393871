@@ -23,11 +23,11 @@ function Play.init(G)
   ---------------------------------------------------------------- 界面：武器栏、准星、弹药、命中标记
 
   local hud = G.gui:WaitForChild("Hud")
-  local bar = ui.frame(hud, UDim2.fromOffset(420, 52), UDim2.new(0.5, 0, 1, -70), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  local bar = ui.frame(hud, UDim2.fromOffset(560, 32), UDim2.new(0.5, 0, 1, -50), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
   local barList = Instance.new("UIListLayout")
   barList.FillDirection = Enum.FillDirection.Horizontal
   barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-  barList.Padding = UDim.new(0, 6)
+  barList.Padding = UDim.new(0, 4)
   barList.Parent = bar
   local slots = {}
   local cross = ui.label(G.gui, "+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 30, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
@@ -121,9 +121,20 @@ function Play.init(G)
     for i, t in pairs(tools()) do
       local id = t:GetAttribute("Weapon")
       local on = t.Parent == player.Character
-      local b = ui.button(bar, i .. "  " .. T("weapon." .. id), UDim2.fromOffset(130, 44), nil, on and RGB(70, 90, 60) or RGB(30, 36, 42))
+      -- 细线、半透明、直角（用户：界面要精致简洁，不要卡通）；拿在手里的那格顶上一道白线
+      local b = Instance.new("TextButton")
+      b.Size = UDim2.fromOffset(124, 32)
+      b.BackgroundColor3 = RGB(8, 10, 12)
+      b.BackgroundTransparency = on and 0.3 or 0.6
+      b.BorderSizePixel = 0
+      b.AutoButtonColor = false
+      b.Text = i .. "   " .. T("weapon." .. id)
+      b.TextSize = 13
+      b.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      b.TextColor3 = on and RGB(255, 255, 255) or RGB(150, 156, 160)
+      b.Parent = bar
+      if on then ui.frame(b, UDim2.new(1, 0, 0, 2), nil, RGB(255, 255, 255), 0) end
       b.LayoutOrder = i
-      b.TextSize = 14
       b.Activated:Connect(function() equip(i) end)
       table.insert(slots, b)
     end

@@ -12,7 +12,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) { opt[args[i].slice(2)] = args[i + 1]; i++; } else pos.push(args[i]);
 }
 const [dataDir, outDir, ...names] = pos;
-const ALL = ['faction', 'deploy', 'hangar', 'hangar_sel', 'fly', 'fly_air', 'heli', 'battle', 'board', 'scope', 'scope_kick', 'scope_moon', 'binoc', 'result'];
+const ALL = ['menu', 'faction', 'deploy_kit', 'deploy_pick', 'deploy', 'hangar', 'hangar_sel', 'fly', 'fly_air', 'heli', 'battle', 'board', 'scope', 'scope_kick', 'scope_moon', 'binoc', 'result'];
 const list = names.length ? names : ['pc', 'phone'].flatMap(d => ALL.map(s => d + '_' + s));
 const fileUrl = p => 'file://' + path.resolve(p);
 

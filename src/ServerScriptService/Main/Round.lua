@@ -331,15 +331,44 @@ function Round.init(G)
     G.pushOne(P)
   end
 
+  -- 带什么（P.kit）：部署时选的装备栏；老的兵种名（测试、机器人）换成那个兵种原来的武器
+  local function kitFromRole(id)
+    local r = Config.RoleById[id]
+    return r and { weapons = table.clone(r.weapons), hp = r.hp, speed = r.speed, role = id } or nil
+  end
+  local LAUNCH_ROLE = { rpg = "at", manpads = "aa", mortar = "mortar" }
+  local function kitFromLoadout(L)
+    if type(L) ~= "table" then return nil end
+    local list, pick = {}, {}
+    for _, slot in ipairs(Config.Loadout) do
+      local v = L[slot.id]
+      if v == nil or v == "" or v == false then
+        v = (not slot.none) and slot.opts[1] or nil
+      elseif type(v) ~= "string" or not table.find(slot.opts, v) then
+        return nil
+      end
+      pick[slot.id] = v
+      if v then table.insert(list, v) end
+    end
+    local S = Config.Soldier
+    -- 战况表上的标签：按主武器、发射器挑一个
+    local role = (pick.primary == "sniper" and "sniper") or LAUNCH_ROLE[pick.launcher or ""] or "rifle"
+    return { weapons = list, hp = S.hp, speed = pick.launcher and S.heavy or S.speed, role = role, pick = pick }
+  end
+  function G.kitOf(P)
+    if P.kit and P.kit.role == P.role then return P.kit end   -- 别处直接改了 P.role（测试换成观察员）就按那个兵种
+    return kitFromRole(P.role) or kitFromRole("rifle")
+  end
+
   local function onCharacter(P, char)
     P.char = char
     local hum = char:WaitForChild("Humanoid", 10)
     local hrp = char:WaitForChild("HumanoidRootPart", 10)
     if not hum or not hrp or G.P[P.pl] ~= P then return end
-    local role = Config.RoleById[P.role] or Config.Roles[1]
-    hum.MaxHealth = role.hp
-    hum.Health = role.hp
-    hum.WalkSpeed = role.speed
+    local kit = G.kitOf(P)
+    hum.MaxHealth = kit.hp
+    hum.Health = kit.hp
+    hum.WalkSpeed = kit.speed
     hum.BreakJointsOnDeath = false
     G.try("换衣服", dress, P, char)
     hum.Died:Connect(function() G.try("阵亡", onDied, P, char) end)
@@ -361,17 +390,19 @@ function Round.init(G)
     G.pushOne(P)
   end
 
-  -- 部署：选好兵种和出生点
-  function G.ACT.deploy(P, role, spawnId)
+  -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
+  function G.ACT.deploy(P, choice, spawnId)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
-    if not Config.RoleById[role] then return end
+    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice)
+    if not kit then return end
     local sp = nil
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true }   -- 准备阶段只能在自己的后方出生（不能先上滩、先跳伞）
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    P.role = role
+    P.role = kit.role
+    P.kit = kit
     P.spawnId = spawnId
     P.spawnCF = spawnCF(P, sp)
     P.after = nil

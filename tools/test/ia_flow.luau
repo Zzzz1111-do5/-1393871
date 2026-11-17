@@ -57,8 +57,18 @@ check(G.round.phase == "prep" or G.round.phase == "battle", "回合阶段 " .. G
 local dep = pls[1].PlayerGui:FindFirstChild("Main") and pls[1].PlayerGui.Main:FindFirstChild("Deploy")
 check(dep ~= nil and dep.Visible, "没出生时显示部署界面")
 -- 选阵营：进服先看选阵营界面（解放军 / 美军两张卡）；人多的一边进不去；点自己这一边的「加入」定下来
+-- 进服先到主菜单（Menu.lua），点「进入战斗」才是选阵营
+local mg = pls[1].PlayerGui:FindFirstChild("Menu")
+check(mg ~= nil and mg.Enabled, "进服先看到主菜单")
+do
+	local prev = H.ctx
+	H.ctx = pls[1]
+	H.Gs.P1.menuEnter()
+	H.ctx = prev
+	H.run(0.6)
+end
 local fg = pls[1].PlayerGui:FindFirstChild("Faction")
-check(fg ~= nil and fg.Enabled, "进服先看到选阵营界面")
+check(fg ~= nil and fg.Enabled and not mg.Enabled, "点「进入战斗」后看到选阵营界面")
 do
 	local P1 = G.P[pls[1]]
 	local other = (P1.team == "atk") and "def" or "atk"

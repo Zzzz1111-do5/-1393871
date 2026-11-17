@@ -292,11 +292,11 @@ function Forts.init(G)
       local hum = char and char:FindFirstChildOfClass("Humanoid")
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hum and hrp and P.alive and not P.vehicle then
-        local role = Config.RoleById[P.role] or Config.Roles[1]
+        local kit = G.kitOf and G.kitOf(P) or Config.Roles[1]
         local inside = inWire(hrp.Position.X, hrp.Position.Z)
         if inside ~= (P.inWire == true) then
           P.inWire = inside
-          hum.WalkSpeed = role.speed * (inside and FD.WIRE.slow or 1)
+          hum.WalkSpeed = kit.speed * (inside and FD.WIRE.slow or 1)
           if inside then G.msg(P.pl, "info", "ui.inWire") end
         end
       else

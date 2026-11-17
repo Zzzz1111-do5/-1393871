@@ -277,6 +277,26 @@ function FPSView.init(G)
     return nil
   end
 
+  -- 部署界面装备格的小图：整支 M4（导入的或现生成的），按待机姿势摆好，枪身骨骼坐标（+Z 朝枪口）；都还没有返回 nil
+  function G.m4Model()
+    local imp = importedM4()
+    local g0 = sample(CLIP.Idle, "gun", 0):Inverse()
+    local m, n = Instance.new("Model"), 0
+    for name, info in pairs(A.mesh) do
+      local p = (imp and imp:FindFirstChild(name)) or (gen and gen[name])
+      if p and info.piece ~= "mag2" then   -- 换弹时手里那个新弹匣不要
+        local q = p:Clone()
+        if imp then Tint.fix(q, p) end
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+        q.CFrame = g0 * sample(CLIP.Idle, info.piece, 0) * CF(info.c[1], info.c[2], info.c[3])
+        q.Parent = m
+        n += 1
+      end
+    end
+    if n == 0 then m:Destroy() return nil end
+    return m
+  end
+
   local function buildVM(id, tool)
     destroyVM()
     local opticInfo, vm0Wait, realMz = nil, nil, nil

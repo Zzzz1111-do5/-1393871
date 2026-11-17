@@ -49,6 +49,17 @@ Config.Roles = {
 Config.RoleById = {}
 for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 
+-- 装备栏（用户：开局不选兵种，默认就是一个士兵，部署界面底下改枪械配置）：四格各挑一样，服务器按这张表核对；
+--   上面的「兵种」只剩老的名字（测试、机器人、战况表的标签）还认
+Config.Loadout = {
+  { id = "primary", opts = { "m4", "sniper" } },                       -- 主武器
+  { id = "launcher", opts = { "rpg", "manpads", "mortar" }, none = true },   -- 发射器（可以不带：跑得快一点）
+  { id = "gadget", opts = { "medkit", "repair", "breach", "binoc" } },  -- 装备
+  { id = "throw", opts = { "grenade", "c4" } },                        -- 投掷
+}
+Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
+Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点
+
 ---------------------------------------------------------------- 武器
 
 -- 目标类别：inf 步兵、light 轻型车、armor 装甲、air 飞机直升机、ship 舰艇、fort 工事

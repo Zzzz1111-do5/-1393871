@@ -154,6 +154,7 @@ function Faction.init(G)
   function G.refreshFaction(S)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
+      and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
     gui.Enabled = show
     if not show then return end
     head.Text = T("faction.title")

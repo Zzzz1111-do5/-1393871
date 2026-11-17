@@ -541,6 +541,17 @@ Config.Roles = {
 Config.RoleById = {}
 for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 
+-- 装备栏（用户：开局不选兵种，默认就是一个士兵，部署界面底下改枪械配置）：四格各挑一样，服务器按这张表核对；
+--   上面的「兵种」只剩老的名字（测试、机器人、战况表的标签）还认
+Config.Loadout = {
+  { id = "primary", opts = { "m4", "sniper" } },                       -- 主武器
+  { id = "launcher", opts = { "rpg", "manpads", "mortar" }, none = true },   -- 发射器（可以不带：跑得快一点）
+  { id = "gadget", opts = { "medkit", "repair", "breach", "binoc" } },  -- 装备
+  { id = "throw", opts = { "grenade", "c4" } },                        -- 投掷
+}
+Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
+Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点
+
 ---------------------------------------------------------------- 武器
 
 -- 目标类别：inf 步兵、light 轻型车、armor 装甲、air 飞机直升机、ship 舰艇、fort 工事
@@ -2505,7 +2516,7 @@ add("ui.boatSunk", "登陆艇被击沉了", "Your landing craft was sunk")
 add("ui.joinBalance", "人数不平衡，你被分到{1}", "Teams were unbalanced: you joined the {1}")
 add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured points stay with the Attackers")
 add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
-add("ui.needPick", "先选兵种和出生点", "Pick a role and a spawn point first")
+add("ui.needPick", "先选一个生成点", "Pick a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
 add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–4 切武器 · V 第一 / 第三人称 · E 上车 / 操作 · Tab 战况 · M 地图",
   "WASD move · LMB fire · RMB aim · R reload · 1-4 weapons · V 1st / 3rd person · E enter / man · Tab scoreboard · M map")
@@ -2621,6 +2632,68 @@ add("ui.smokeLeft", "烟幕弹 ×{1}", "Smoke ×{1}")
 add("ui.reloading", "装填中", "Reloading")
 add("ui.speed", "{1} 公里/时", "{1} km/h")
 add("ui.range", "{1} 米", "{1} m")
+-- 部署界面（UI.lua）：不选兵种，底下装备栏改枪械配置，再选生成点
+add("deploy.tab.kit", "装备", "LOADOUT")
+add("deploy.tab.spawn", "生成点", "SPAWN")
+add("deploy.pickSpawn", "选择生成点", "SELECT SPAWN")
+add("deploy.enter", "回车", "ENTER")
+add("deploy.slot.primary", "主武器", "PRIMARY")
+add("deploy.slot.launcher", "发射器", "LAUNCHER")
+add("deploy.slot.gadget", "装备", "GADGET")
+add("deploy.slot.throw", "投掷", "THROWABLE")
+add("deploy.choose", "选择{1}", "SELECT {1}")
+add("deploy.none", "不带", "NONE")
+add("deploy.noneDesc", "不带发射器，跑得快一点", "Travel light: move a little faster")
+add("deploy.current", "已装备", "EQUIPPED")
+add("deploy.stat.dmg", "伤害", "DAMAGE")
+add("deploy.stat.rate", "射速", "FIRE RATE")
+add("deploy.stat.range", "射程", "RANGE")
+add("deploy.stat.acc", "精度", "ACCURACY")
+add("deploy.stat.blast", "杀伤半径", "BLAST")
+add("deploy.stat.ammo", "弹药", "AMMO")
+add("deploy.rpm", "{1} 发/分", "{1} RPM")
+add("deploy.m", "{1} 米", "{1} m")
+add("deploy.kitLine", "装备：{1}", "Loadout: {1}")
+add("deploy.editKit", "改装备", "EDIT LOADOUT")
+add("deploy.blocked", "不可用", "UNAVAILABLE")
+add("deploy.ready", "可以出击", "READY")
+add("gear.m4.desc", "全自动卡宾枪，近中距离都好用", "Full-auto carbine for close to medium range")
+add("gear.sniper.desc", "远距离一枪一个，爆头双倍", "Long-range precision; headshots deal double")
+add("gear.rpg.desc", "打坦克、装甲车、碉堡", "For tanks, armor and bunkers")
+add("gear.manpads.desc", "锁定直升机、飞机后发射", "Lock on to helicopters and jets, then fire")
+add("gear.mortar.desc", "点准星下的地面，炮弹几秒后落下", "Aim at the ground; shells land a few seconds later")
+add("gear.medkit.desc", "给身边的队友回血", "Heals teammates around you")
+add("gear.repair.desc", "修车、修工事", "Repairs vehicles and fortifications")
+add("gear.breach.desc", "探雷、排雷、剪铁丝网", "Detects and clears mines, cuts wire")
+add("gear.binoc.desc", "标记敌人给全队看，呼叫炮火覆盖", "Spots enemies for the team and calls in artillery")
+add("gear.grenade.desc", "投掷后几秒爆炸", "Explodes a few seconds after the throw")
+add("gear.c4.desc", "放下，再用一次引爆", "Place it, use again to detonate")
+-- 主菜单（Menu.lua）
+add("menu.rankLine", "{1}   ·   下一级 {2}", "{1}   ·   NEXT {2}")
+add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
+add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
+add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
+add("menu.c1.title", "进入战斗", "PLAY")
+add("menu.c1.sub", "群岛登陆 · 攻防战", "ARCHIPELAGO ASSAULT")
+add("menu.c1.tag", "快速加入", "QUICK JOIN")
+add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
+add("menu.c2.cat", "阵营", "FACTION")
+add("menu.c2.title", "选择阵营", "CHOOSE SIDE")
+add("menu.c2.sub", "中国人民解放军 · 美国军队", "PLA · U.S. FORCES")
+add("menu.c2.none", "未选择", "NOT CHOSEN")
+add("menu.c3.cat", "操作", "CONTROLS")
+add("menu.c3.title", "操作说明", "HOW TO PLAY")
+add("menu.c3.sub", "步兵 · 载具 · 飞机 · 直升机", "INFANTRY · VEHICLES · JETS · HELICOPTERS")
+add("menu.c4.cat", "制作人员", "CREDITS")
+add("menu.c4.title", "模型与授权", "MODELS & LICENSES")
+add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-BY)")
+add("menu.beta", "测试版", "BETA")
+add("menu.close", "关闭", "CLOSE")
+add("menu.open", "菜单", "MENU")
+add("menu.h.inf", "步兵", "INFANTRY")
+add("menu.h.veh", "地面载具", "GROUND VEHICLES")
+add("menu.h.jet", "固定翼", "JETS")
+add("menu.h.heli", "直升机", "HELICOPTERS")
 -- 战斗中的界面（Hud.lua）
 add("hud.atk", "解放军", "PLA")
 add("hud.def", "美军", "U.S.")
@@ -2639,6 +2712,16 @@ add("hud.reload", "换弹中", "RELOADING")
 add("hud.dead", "阵亡", "KIA")
 add("hud.prep", "准备", "PREP")
 add("hud.ot", "加时", "OT")
+add("hud.mode", "攻防战", "ASSAULT")
+add("hud.tip.title", "目标与据点", "OBJECTIVES")
+add("hud.tip.page", "{1} / {2}", "{1} / {2}")
+add("hud.tip.2", "站进据点的圈里就开始占领，圈里自己人越多越快；圈里有敌人就停住。拿下的据点在上面变成实心。", "Stand inside a point's circle to capture it; more teammates capture faster, enemies inside stop it. Captured points turn solid at the top.")
+add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、直升机、飞机和艇，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, helicopters, jets and boats; walk up and press E to get in.")
+add("hud.tip.4", "阵亡以后在部署界面底下的装备格换枪械和装备。按 Tab 看战况。", "After you die, change weapons and gear in the loadout slots at the bottom of the deploy screen. Hold Tab for the scoreboard.")
+add("hud.tip.close", "结束", "CLOSE")
+add("hud.tip.next", "下一个", "NEXT")
+add("hud.key.back", "退格", "BKSP")
+add("hud.key.enter", "回车", "ENTER")
 add("sight.day", "昼光", "DAY")
 add("sight.nv", "夜视", "NV")
 add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
@@ -7404,11 +7487,11 @@ function Forts.init(G)
       local hum = char and char:FindFirstChildOfClass("Humanoid")
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hum and hrp and P.alive and not P.vehicle then
-        local role = Config.RoleById[P.role] or Config.Roles[1]
+        local kit = G.kitOf and G.kitOf(P) or Config.Roles[1]
         local inside = inWire(hrp.Position.X, hrp.Position.Z)
         if inside ~= (P.inWire == true) then
           P.inWire = inside
-          hum.WalkSpeed = role.speed * (inside and FD.WIRE.slow or 1)
+          hum.WalkSpeed = kit.speed * (inside and FD.WIRE.slow or 1)
           if inside then G.msg(P.pl, "info", "ui.inWire") end
         end
       else
@@ -9873,15 +9956,44 @@ function Round.init(G)
     G.pushOne(P)
   end
 
+  -- 带什么（P.kit）：部署时选的装备栏；老的兵种名（测试、机器人）换成那个兵种原来的武器
+  local function kitFromRole(id)
+    local r = Config.RoleById[id]
+    return r and { weapons = table.clone(r.weapons), hp = r.hp, speed = r.speed, role = id } or nil
+  end
+  local LAUNCH_ROLE = { rpg = "at", manpads = "aa", mortar = "mortar" }
+  local function kitFromLoadout(L)
+    if type(L) ~= "table" then return nil end
+    local list, pick = {}, {}
+    for _, slot in ipairs(Config.Loadout) do
+      local v = L[slot.id]
+      if v == nil or v == "" or v == false then
+        v = (not slot.none) and slot.opts[1] or nil
+      elseif type(v) ~= "string" or not table.find(slot.opts, v) then
+        return nil
+      end
+      pick[slot.id] = v
+      if v then table.insert(list, v) end
+    end
+    local S = Config.Soldier
+    -- 战况表上的标签：按主武器、发射器挑一个
+    local role = (pick.primary == "sniper" and "sniper") or LAUNCH_ROLE[pick.launcher or ""] or "rifle"
+    return { weapons = list, hp = S.hp, speed = pick.launcher and S.heavy or S.speed, role = role, pick = pick }
+  end
+  function G.kitOf(P)
+    if P.kit and P.kit.role == P.role then return P.kit end   -- 别处直接改了 P.role（测试换成观察员）就按那个兵种
+    return kitFromRole(P.role) or kitFromRole("rifle")
+  end
+
   local function onCharacter(P, char)
     P.char = char
     local hum = char:WaitForChild("Humanoid", 10)
     local hrp = char:WaitForChild("HumanoidRootPart", 10)
     if not hum or not hrp or G.P[P.pl] ~= P then return end
-    local role = Config.RoleById[P.role] or Config.Roles[1]
-    hum.MaxHealth = role.hp
-    hum.Health = role.hp
-    hum.WalkSpeed = role.speed
+    local kit = G.kitOf(P)
+    hum.MaxHealth = kit.hp
+    hum.Health = kit.hp
+    hum.WalkSpeed = kit.speed
     hum.BreakJointsOnDeath = false
     G.try("换衣服", dress, P, char)
     hum.Died:Connect(function() G.try("阵亡", onDied, P, char) end)
@@ -9903,17 +10015,19 @@ function Round.init(G)
     G.pushOne(P)
   end
 
-  -- 部署：选好兵种和出生点
-  function G.ACT.deploy(P, role, spawnId)
+  -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
+  function G.ACT.deploy(P, choice, spawnId)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
-    if not Config.RoleById[role] then return end
+    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice)
+    if not kit then return end
     local sp = nil
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true }   -- 准备阶段只能在自己的后方出生（不能先上滩、先跳伞）
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    P.role = role
+    P.role = kit.role
+    P.kit = kit
     P.spawnId = spawnId
     P.spawnCF = spawnCF(P, sp)
     P.after = nil
@@ -10734,6 +10848,18 @@ function Weapons.init(G)
     TOOLS.def[id] = makeTool(id, "def")
   end
   G.TOOLS = TOOLS
+  -- 部署界面装备格里的小图（客户端 GearView.lua）：两边的工具各放一份样子；导入了原模型的就是原模型
+  do
+    local prev = Instance.new("Folder")
+    prev.Name = "ToolPreview"
+    for team, set in pairs(TOOLS) do
+      local f = Instance.new("Folder")
+      f.Name = team
+      for _, t in pairs(set) do t:Clone().Parent = f end
+      f.Parent = prev
+    end
+    prev.Parent = RS
+  end
 
   ---------------------------------------------------------------- 弹药
 
@@ -10772,14 +10898,14 @@ function Weapons.init(G)
   -- 按兵种发武器（每次出生都重发、弹药补满）
   function G.giveLoadout(P)
     local pl = P.pl
-    local role = Config.RoleById[P.role] or Config.Roles[1]
+    local kit = G.kitOf(P)   -- 部署时选的装备栏（Round.lua）
     local bp = pl:FindFirstChildOfClass("Backpack") or pl:WaitForChild("Backpack", 5)
     if not bp then return end
     for _, c in ipairs(bp:GetChildren()) do if c:IsA("Tool") then c:Destroy() end end
     P.ammo = {}
     P.placed = {}
     P.cd = {}
-    for i, id in ipairs(role.weapons) do
+    for i, id in ipairs(kit.weapons) do
       local t = (TOOLS[P.team] or TOOLS.def)[id]:Clone()
       t:SetAttribute("Slot", i)
       t.Parent = bp
@@ -10802,8 +10928,8 @@ function Weapons.init(G)
     if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
-    local role = Config.RoleById[P.role]
-    if not role or not table.find(role.weapons, id) then return nil end
+    local kit = G.kitOf(P)
+    if not kit or not table.find(kit.weapons, id) then return nil end
     return char, head, tool
   end
 
@@ -11744,7 +11870,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "FortView", "Gunner", "Optics", "FPSView", "Scope", "Scenery", "Hud" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -13968,6 +14094,26 @@ function FPSView.init(G)
     return nil
   end
 
+  -- 部署界面装备格的小图：整支 M4（导入的或现生成的），按待机姿势摆好，枪身骨骼坐标（+Z 朝枪口）；都还没有返回 nil
+  function G.m4Model()
+    local imp = importedM4()
+    local g0 = sample(CLIP.Idle, "gun", 0):Inverse()
+    local m, n = Instance.new("Model"), 0
+    for name, info in pairs(A.mesh) do
+      local p = (imp and imp:FindFirstChild(name)) or (gen and gen[name])
+      if p and info.piece ~= "mag2" then   -- 换弹时手里那个新弹匣不要
+        local q = p:Clone()
+        if imp then Tint.fix(q, p) end
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+        q.CFrame = g0 * sample(CLIP.Idle, info.piece, 0) * CF(info.c[1], info.c[2], info.c[3])
+        q.Parent = m
+        n += 1
+      end
+    end
+    if n == 0 then m:Destroy() return nil end
+    return m
+  end
+
   local function buildVM(id, tool)
     destroyVM()
     local opticInfo, vm0Wait, realMz = nil, nil, nil
@@ -14459,6 +14605,7 @@ function Faction.init(G)
   function G.refreshFaction(S)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
+      and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
     gui.Enabled = show
     if not show then return end
     head.Text = T("faction.title")
@@ -16310,6 +16457,138 @@ return Fx
         </Item>
         <Item class="ModuleScript" referent="62">
           <Properties>
+            <string name="Name">GearView</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
+--   有真模型就用：手持装备是 Sketchfab 原模型（导入的或现生成的，Optics.lua），M4 是第一人称那支（FPSView）；
+--   没有就用服务器放在 ReplicatedStorage.ToolPreview 里的工具样子（零件拼的，导入了原模型的工具上也是原模型）
+--   G.gearModel(武器, 阵营) → Model（器材坐标：+Z 朝前、+Y 朝上），真模型还在生成中（过一会儿再要一次），是不是真模型
+--   G.viewFit(ViewportFrame, Model, 留边, 视线方向) 把模型放进视口，相机（默认从右前方略俯视）按投影后的大小正好装下
+local RS = game:GetService("ReplicatedStorage")
+
+local GearView = {}
+
+function GearView.init(G)
+  local GD = require(RS:WaitForChild("GearDefs"))
+  local CF, V = CFrame.new, Vector3.new
+  local FLIP = CFrame.Angles(0, math.pi, 0)   -- 工具的枪口朝 −Z → 器材坐标 +Z
+
+  local function realModel(id, team)
+    local key = GD.key(id, team)
+    local M = key and G.opticMeta and G.opticMeta[key]
+    if not M or not G.opticParts then return nil, false end
+    local mk = GD.MOUNT[key]
+    if mk and not G.opticMeta[mk.key] then mk = nil end
+    local op = G.opticParts(key)
+    local mp = mk and G.opticParts(mk.key)
+    if op and (not mk or mp) then
+      local m = Instance.new("Model")
+      for _, x in ipairs(op) do
+        x.part.CFrame = CF(x.c)
+        x.part.Parent = m
+      end
+      if mp then
+        local at = GD.mountAt(key, M)
+        for _, x in ipairs(mp) do
+          x.part.CFrame = at * CF(x.c)
+          x.part.Parent = m
+        end
+      end
+      return m, false
+    end
+    local failed = G.opticFailed and (G.opticFailed(key) or (mk and G.opticFailed(mk.key)))
+    return nil, not failed
+  end
+
+  local function toolModel(id, team)
+    local tp = RS:FindFirstChild("ToolPreview")
+    tp = tp and (tp:FindFirstChild(team or "def") or tp:FindFirstChild("def"))
+    local t = tp and tp:FindFirstChild(id)
+    local h = t and t:FindFirstChild("Handle")
+    if not h then return nil end
+    local m = Instance.new("Model")
+    for _, d in ipairs(t:GetDescendants()) do
+      if d:IsA("BasePart") and d ~= h and d.Transparency < 1 then
+        local q = d:Clone()
+        for _, c in ipairs(q:GetChildren()) do
+          if not c:IsA("SurfaceAppearance") then c:Destroy() end
+        end
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+        q.CFrame = FLIP * h.CFrame:ToObjectSpace(d.CFrame)
+        q.Parent = m
+      end
+    end
+    return m
+  end
+
+  function G.gearModel(id, team)
+    local m, wait = realModel(id, team)
+    if m then return m, false, true end
+    if id == "m4" and G.m4Model then
+      local mm = G.m4Model()
+      if mm then return mm, false, true end
+      wait = true
+    end
+    -- 工具上导入了原模型的（MeshPart）也算真的
+    local tm = toolModel(id, team)
+    local real = false
+    if tm then
+      for _, p in ipairs(tm:GetChildren()) do if p:IsA("MeshPart") then real = true end end
+    end
+    return tm, wait, real
+  end
+
+  -- 相机：从器材的右边、略靠前、略高处看过去（枪口朝屏幕右边）
+  local LOOK = V(1, -0.2, -0.16).Unit
+  function G.viewFit(vp, model, pad, look)
+    for _, c in ipairs(vp:GetChildren()) do
+      if c:IsA("Model") or c:IsA("Camera") or c:IsA("WorldModel") or c:IsA("BasePart") then c:Destroy() end
+    end
+    local cam = Instance.new("Camera")
+    cam.FieldOfView = 24
+    cam.Parent = vp
+    vp.CurrentCamera = cam
+    if not model then return end
+    model.Parent = vp
+    local R = CFrame.lookAt(V(), look or LOOK)
+    local mn, mx = V(1e9, 1e9, 1e9), V(-1e9, -1e9, -1e9)
+    for _, p in ipairs(model:GetDescendants()) do
+      if p:IsA("BasePart") then
+        local h = p.Size / 2
+        for sx = -1, 1, 2 do
+          for sy = -1, 1, 2 do
+            for sz = -1, 1, 2 do
+              local w = p.CFrame * V(sx * h.X, sy * h.Y, sz * h.Z)
+              local l = R:PointToObjectSpace(w)
+              mn = V(math.min(mn.X, l.X), math.min(mn.Y, l.Y), math.min(mn.Z, l.Z))
+              mx = V(math.max(mx.X, l.X), math.max(mx.Y, l.Y), math.max(mx.Z, l.Z))
+            end
+          end
+        end
+      end
+    end
+    if mn.X > mx.X then return end
+    local okA, abs = pcall(function() return vp.AbsoluteSize end)
+    local aspect = (okA and abs and abs.X > 4 and abs.Y > 4) and (abs.X / abs.Y) or (16 / 9)
+    local tv = math.tan(math.rad(cam.FieldOfView) / 2)
+    local w, h = mx.X - mn.X, mx.Y - mn.Y
+    local dist = math.max((w / 2) / (tv * aspect), (h / 2) / tv) * (pad or 1.12) + (mx.Z - mn.Z) / 2
+    local c = (mn + mx) / 2
+    cam.CFrame = R * CF(c.X, c.Y, c.Z + dist)
+    -- 转的时候绕模型中心：中心记在属性 C 里，模型的轴心挪到那儿（零件的位置不动）
+    local center = R * c
+    pcall(function()
+      model.WorldPivot = CF(center)
+      model:SetAttribute("C", center)
+    end)
+  end
+end
+
+return GearView
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="63">
+          <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
 --   机枪碉堡：坐在机枪后面从射孔往外看，鼠标转枪（左右各 60°），按住左键连发；
@@ -16846,7 +17125,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -17259,17 +17538,19 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">Hud</string>
-            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面（用户给了《坠落》的截图，照那个风格）：
---   顶部比分条：四角括号框住；左边自己队（队名、细比分线、手里的据点数），中间 ◀ 时间 ▶，右边对面；下面 A～E 菱形据点（颜色按谁占着，进度条、争夺中闪）
---   世界里的据点：菱形字母 + 距离（米），隔着东西也看得见
---   左下：方形小地图（跟着人走、北朝上），上面是镜头朝向的读数，中间白箭头是自己
---   左边：小队（同队真人按 UserId 排、每 5 人一队：阿尔法 / 布拉沃…；名字 + 血条，自己高亮）
---   右下：武器名 + 射击方式，弹药「028 / 900」细字体
---   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（它们照样刷新，只是不画）；小地图框挪到左下
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
+--   顶部：四角括号框住比分——两头小字队名、队色大数字（手里的据点数）、细线，中间时间、下面小字模式；再下面 A～E 小菱形
+--     （自己队的描边、对面的实心、正在被占的下面一道细进度线、争夺中描边闪）。部署界面也显示
+--   世界里的据点：字母 + 距离（米），隔着东西也看得见
+--   左下：方形小地图（跟着人走、北朝上），右上角镜头朝向读数；小地图右边是小队（同队真人按 UserId 每 5 人一队：阿尔法 / 布拉沃…；名字 + 细血条）
+--   右下：武器名 + 射击方式，弹药「028/900」（前面补的 0 暗一点）
+--   第一次出生：屏幕上方一块「目标与据点」说明（4 页，回车下一页、退格关掉）
+--   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（照样刷新，只是不画）；小地图框挪到左下
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 
 local Hud = {}
 
@@ -17282,17 +17563,21 @@ function Hud.init(G)
   local V2 = Vector2.new
   local W = Config.Weapons
   local WHITE = Color3.new(1, 1, 1)
-  local TEXT, MUTE = RGB(236, 240, 236), RGB(170, 178, 174)
+  local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
   local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
   local M_PER = 2.8            -- 1 米多少格（同 AirDefs.M）
   local function T(k, ...) return G.T(k, ...) end
   local function teamColor(t) return Config.Teams[t or "atk"].color end
   local function other(t) return (t == "atk") and "def" or "atk" end
-  local function shadow(l, a)
-    l.TextStrokeTransparency = a or 0.55
+  local function hex(c) return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
+  local function txt(parent, s, size, pos, ts, color, font, anchor, align, stroke)
+    local l = ui.label(parent, s, size, pos, ts, color, font, anchor, align)
+    l.TextWrapped = false
+    l.TextStrokeTransparency = stroke or 0.75
     l.TextStrokeColor3 = Color3.new(0, 0, 0)
     return l
   end
+  local function line(parent, size, pos, color, alpha, anchor) return ui.frame(parent, size, pos, color or WHITE, alpha or 0, anchor) end
   local mobile = G.mobile == true
 
   -- 旧的顶栏、血条、兵种字、弹药字：收进一个关着的 ScreenGui
@@ -17306,49 +17591,44 @@ function Hud.init(G)
   end
   if G.ammoLabel then G.ammoLabel.Parent = stash end
 
-  ---------------------------------------------------------------- 顶部比分条
+  ---------------------------------------------------------------- 顶部比分
 
-  local BW = 700
-  local top = ui.frame(P.hud, UDim2.fromOffset(BW, 44), UDim2.new(0.5, 0, 0, mobile and 6 or 12), RGB(0, 0, 0), 1, V2(0.5, 0))
+  local BW, BH = mobile and 470 or 600, mobile and 62 or 72
+  local top = ui.frame(G.gui, UDim2.fromOffset(BW, BH), UDim2.new(0.5, 0, 0, mobile and 4 or 10), RGB(0, 0, 0), 1, V2(0.5, 0))
   top.Name = "ScoreBar"
+  top.ZIndex = 12
   for _, a in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do   -- 四角括号
-    ui.frame(top, UDim2.fromOffset(16, 2), UDim2.fromScale(a[1], a[2]), WHITE, 0.3, V2(a[1], a[2]))
-    ui.frame(top, UDim2.fromOffset(2, 12), UDim2.fromScale(a[1], a[2]), WHITE, 0.3, V2(a[1], a[2]))
+    line(top, UDim2.fromOffset(14, 1), UDim2.fromScale(a[1], a[2]), WHITE, 0.25, V2(a[1], a[2]))
+    line(top, UDim2.fromOffset(1, 14), UDim2.fromScale(a[1], a[2]), WHITE, 0.25, V2(a[1], a[2]))
   end
-  -- 背后一层很淡的暗色，亮的天空、雪地上字也看得清
-  local shade = ui.frame(top, UDim2.new(1, -8, 1, -8), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 0.72, V2(0.5, 0.5))
-  local grad = Instance.new("UIGradient")
-  grad.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.18, 0.2), NumberSequenceKeypoint.new(0.82, 0.2), NumberSequenceKeypoint.new(1, 1) })
-  grad.Parent = shade
   local sides = {}
   for _, sx in ipairs({ -1, 1 }) do
     local left = sx < 0
     local s = {}
-    s.name = shadow(ui.label(top, "", UDim2.fromOffset(84, 20), UDim2.new(left and 0 or 1, left and 16 or -16, 0.5, 0), 15, TEXT, Enum.Font.GothamBold,
-      V2(left and 0 or 1, 0.5), left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right))
-    s.barBg = ui.frame(top, UDim2.fromOffset(150, 3), UDim2.new(0.5, sx * 183, 0.5, 0), WHITE, 0.8, V2(0.5, 0.5))
-    s.bar = ui.frame(s.barBg, UDim2.fromScale(0, 1), UDim2.fromScale(left and 1 or 0, 0), WHITE, 0, V2(left and 1 or 0, 0))   -- 从比分那头往外长
-    s.score = shadow(ui.label(top, "", UDim2.fromOffset(46, 30), UDim2.new(0.5, sx * 82, 0.5, 0), 26, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5)))
-    s.arrow = shadow(ui.label(top, left and "◀" or "▶", UDim2.fromOffset(16, 16), UDim2.new(0.5, sx * 50, 0.5, 0), 12, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5)), 0.8)
+    s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.GothamMedium, V2(left and 0 or 1, 0.5),
+      left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right)
+    s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
+    local lw = mobile and 70 or 120
+    s.barBg = line(top, UDim2.fromOffset(lw, 1), UDim2.new(0.5, sx * (46 + lw / 2), 0, 17), WHITE, 0.82, V2(0.5, 0.5))
+    s.bar = line(s.barBg, UDim2.new(0, 0, 0, 2), UDim2.fromScale(left and 1 or 0, 0.5), WHITE, 0, V2(left and 1 or 0, 0.5))   -- 从时间那头往外长
     sides[sx] = s
   end
-  local timer = shadow(ui.label(top, "", UDim2.fromOffset(84, 28), UDim2.fromScale(0.5, 0.5), 22, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5)))
-  -- A～E 菱形
+  local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
+  local mode = txt(top, "", UDim2.fromOffset(84, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  -- A～E 小菱形
   local diamonds = {}
-  local row = ui.frame(P.hud, UDim2.fromOffset(BW, 34), UDim2.new(0.5, 0, 0, (mobile and 6 or 12) + 50), RGB(0, 0, 0), 1, V2(0.5, 0))
-  row.Name = "Objectives"
   for i, p in ipairs(Map.POINTS) do
-    local holder = ui.frame(row, UDim2.fromOffset(30, 34), UDim2.new(0.5, (i - (#Map.POINTS + 1) / 2) * 44, 0, 0), RGB(0, 0, 0), 1, V2(0.5, 0))
-    local d = ui.frame(holder, UDim2.fromOffset(19, 19), UDim2.new(0.5, 0, 0, 13), teamColor("def"), 0.12, V2(0.5, 0.5))
+    local cx = (i - (#Map.POINTS + 1) / 2) * (mobile and 30 or 34)
+    local d = ui.frame(top, UDim2.fromOffset(13, 13), UDim2.new(0.5, cx, 0, BH - 20), WHITE, 1, V2(0.5, 0.5))
     d.Rotation = 45
-    local st = ui.stroke(d, WHITE, 1.5, 0.25)
-    local l = shadow(ui.label(holder, p.id, UDim2.fromOffset(30, 26), UDim2.fromScale(0.5, 0), 13, WHITE, Enum.Font.GothamBlack, V2(0.5, 0)), 0.7)
-    local pb = ui.frame(holder, UDim2.fromOffset(24, 3), UDim2.new(0.5, 0, 1, -3), RGB(0, 0, 0), 0.5, V2(0.5, 0))
-    local pf = ui.frame(pb, UDim2.fromScale(0, 1), nil, teamColor("atk"), 0)
-    diamonds[p.id] = { holder = holder, d = d, st = st, l = l, pb = pb, pf = pf }
+    local st = ui.stroke(d, WHITE, 1, 0.15)
+    local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 1)
+    local pb = line(top, UDim2.fromOffset(18, 1), UDim2.new(0.5, cx, 0, BH - 8), WHITE, 0.82, V2(0.5, 0))
+    local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
+    diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
   end
 
-  ---------------------------------------------------------------- 世界里的据点标记
+  ---------------------------------------------------------------- 世界里的据点：字母 + 距离
 
   local pg = me:WaitForChild("PlayerGui")
   local marks = {}
@@ -17359,21 +17639,18 @@ function Hud.init(G)
     a.Transparency = 1
     a.Size = Vector3.new(1, 1, 1)
     a.CFrame = CFrame.new(p.x, (p.y or 40) + 30, p.z)
-    a.Parent = workspace.CurrentCamera   -- 只在自己这儿，别人看不见、不参与碰撞
+    a.Parent = workspace.CurrentCamera   -- 只在自己这儿
     local bb = Instance.new("BillboardGui")
     bb.Name = "ObjMark_" .. p.id
     bb.Adornee = a
     bb.AlwaysOnTop = true
     bb.LightInfluence = 0
-    bb.Size = UDim2.fromOffset(64, 50)
+    bb.Size = UDim2.fromOffset(60, 40)
     bb.ResetOnSpawn = false
     bb.Parent = pg
-    local d = ui.frame(bb, UDim2.fromOffset(20, 20), UDim2.new(0.5, 0, 0, 14), teamColor("def"), 0.15, V2(0.5, 0.5))
-    d.Rotation = 45
-    ui.stroke(d, WHITE, 1.5, 0.2)
-    shadow(ui.label(bb, p.id, UDim2.fromOffset(30, 28), UDim2.fromScale(0.5, 0), 14, WHITE, Enum.Font.GothamBlack, V2(0.5, 0)), 0.6)
-    local dist = shadow(ui.label(bb, "", UDim2.fromOffset(64, 16), UDim2.new(0.5, 0, 0, 30), 13, WHITE, NUM, V2(0.5, 0)), 0.4)
-    marks[p.id] = { part = a, bb = bb, d = d, dist = dist, y0 = p.y, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
+    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.fromScale(0.5, 0), 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.55)
+    local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 24), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
+    marks[p.id] = { part = a, bb = bb, l = l, dist = dist, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
   end
   -- 据点高度：Map 里没写的照地面找（地形生成好以前找不到，过一会儿再试）
   local rp = RaycastParams.new()
@@ -17389,56 +17666,126 @@ function Hud.init(G)
 
   ---------------------------------------------------------------- 左下小地图
 
-  local MS = mobile and 150 or 210
+  local MS = mobile and 140 or 200
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(0, 1)
-  box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(0, 16, 1, -16)   -- 手机：左下是摇杆，放到左上（让开战况表按钮）
+  box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(0, 18, 1, -18)   -- 手机：左下是摇杆，放到左上（让开战况表按钮）
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(8, 12, 14)
-  box.BackgroundTransparency = 0.35
+  box.BackgroundColor3 = RGB(6, 10, 12)
+  box.BackgroundTransparency = 0.3
   box.ClipsDescendants = true
-  ui.stroke(box, WHITE, 1, 0.75)
+  ui.stroke(box, WHITE, 1, 0.82)
   local ZOOM = 1200   -- 小地图里整张图画多大（像素）：框里看得到大约 1000 格
-  local arrow = shadow(ui.label(box, "▲", UDim2.fromOffset(18, 18), UDim2.fromScale(0.5, 0.5), 15, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5)), 0.2)
+  local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 20
-  local north = shadow(ui.label(box, "N", UDim2.fromOffset(16, 16), UDim2.new(0.5, 0, 0, 2), 12, WHITE, Enum.Font.GothamBold, V2(0.5, 0)), 0.3)
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, RGB(235, 90, 80), Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
   north.ZIndex = 20
-  local heading = shadow(ui.label(P.hud, "", UDim2.fromOffset(60, 18), mobile and UDim2.new(0, 16 + MS / 2, 0, 118 + MS + 2) or UDim2.new(0, 16 + MS / 2, 1, -16 - MS - 4), 15, WHITE, NUM,
-    mobile and V2(0.5, 0) or V2(0.5, 1)), 0.4)
+  local heading = txt(box, "", UDim2.fromOffset(44, 16), UDim2.new(1, -8, 0, 5), 13, WHITE, NUM, V2(1, 0), Enum.TextXAlignment.Right, 0.4)
+  heading.ZIndex = 20
 
-  ---------------------------------------------------------------- 左边小队
+  ---------------------------------------------------------------- 小队（小地图右边）
 
-  local squad = ui.frame(P.hud, UDim2.fromOffset(230, 140), UDim2.new(0, 16, 0.42, 0), RGB(0, 0, 0), 1, V2(0, 0))
+  local squad = ui.frame(P.hud, UDim2.fromOffset(250, 150), UDim2.new(0, 18 + MS + 22, 1, -18), RGB(0, 0, 0), 1, V2(0, 1))
   squad.Name = "Squad"
   squad.Visible = not mobile
-  local sqHead = shadow(ui.label(squad, "", UDim2.new(1, 0, 0, 20), nil, 14, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left))
-  local sqLine = ui.frame(squad, UDim2.new(1, 0, 0, 1), UDim2.fromOffset(0, 22), WHITE, 0.7)
+  local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 0.6)
   local rows = {}
   for i = 1, 5 do
-    local r = ui.frame(squad, UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 26 + (i - 1) * 23), RGB(0, 0, 0), 0.6)
-    local mark = ui.frame(r, UDim2.new(0, 3, 1, 0), nil, teamColor("atk"), 0)
-    local nm = shadow(ui.label(r, "", UDim2.new(1, -86, 1, 0), UDim2.fromOffset(10, 0), 13, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left), 0.8)
+    local y = 24 + (i - 1) * 25
+    local mark = ui.frame(squad, UDim2.fromOffset(6, 6), UDim2.fromOffset(4, y + 7), teamColor("atk"), 0, V2(0.5, 0.5))
+    mark.Rotation = 45
+    local nm = txt(squad, "", UDim2.fromOffset(200, 16), UDim2.fromOffset(16, y), 13, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left, 0.7)
     nm.TextTruncate = Enum.TextTruncate.AtEnd
-    local hb = ui.frame(r, UDim2.fromOffset(64, 3), UDim2.new(1, -8, 0.5, 0), WHITE, 0.8, V2(1, 0.5))
-    local hf = ui.frame(hb, UDim2.fromScale(1, 1), nil, WHITE, 0)
-    local dead = shadow(ui.label(r, "", UDim2.fromOffset(64, 22), UDim2.new(1, -8, 0, 0), 12, RGB(230, 90, 80), Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Right), 0.8)
-    rows[i] = { f = r, mark = mark, nm = nm, hb = hb, hf = hf, dead = dead }
+    local hb = line(squad, UDim2.fromOffset(170, 1), UDim2.fromOffset(16, y + 18), WHITE, 0.82)
+    local hf = line(hb, UDim2.new(1, 0, 0, 2), UDim2.fromScale(0, 0.5), WHITE, 0, V2(0, 0.5))
+    local dead = txt(squad, "", UDim2.fromOffset(60, 16), UDim2.fromOffset(196, y), 11, RGB(230, 96, 84), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 0.7)
+    rows[i] = { mark = mark, nm = nm, hb = hb, hf = hf, dead = dead }
   end
 
   ---------------------------------------------------------------- 右下武器、弹药
 
-  local wp = ui.frame(P.hud, UDim2.fromOffset(280, 66), mobile and UDim2.new(1, -260, 1, -30) or UDim2.new(1, -24, 1, -18), RGB(0, 0, 0), 1, V2(1, 1))   -- 手机：让开右下的开火按钮
+  local wp = ui.frame(P.hud, UDim2.fromOffset(280, 64), mobile and UDim2.new(1, -260, 1, -62) or UDim2.new(1, -28, 1, -16), RGB(0, 0, 0), 1, V2(1, 1))   -- 手机：让开右下的开火按钮、下面的武器栏
   wp.Name = "Weapon"
-  local wName = shadow(ui.label(wp, "", UDim2.new(1, 0, 0, 18), nil, 14, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Right))
-  local wMag = shadow(ui.label(wp, "", UDim2.fromOffset(120, 44), UDim2.new(1, -66, 1, 0), 40, WHITE, NUM, V2(1, 1), Enum.TextXAlignment.Right), 0.5)
-  local wRes = shadow(ui.label(wp, "", UDim2.fromOffset(64, 26), UDim2.new(1, 0, 1, -6), 20, MUTE, NUM, V2(1, 1), Enum.TextXAlignment.Left), 0.6)
-  local wLine = ui.frame(wp, UDim2.fromOffset(150, 1), UDim2.new(1, 0, 0, 21), WHITE, 0.6, V2(1, 0))
+  local wName = txt(wp, "", UDim2.new(1, 0, 0, 18), nil, 15, TEXT, NUM, nil, Enum.TextXAlignment.Right, 0.7)
+  local wAmmo = txt(wp, "", UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 1, 0), 36, WHITE, NUM, V2(0, 1), Enum.TextXAlignment.Right, 0.6)
+  wAmmo.RichText = true
+
+  ---------------------------------------------------------------- 目标说明（第一次出生时）
+
+  local tipW = mobile and 330 or 500
+  local tip = ui.frame(P.hud, UDim2.fromOffset(tipW, 168), UDim2.new(mobile and 0.42 or 0.5, 0, 0, BH + (mobile and 10 or 24)), RGB(8, 10, 12), 0.12, V2(0.5, 0))   -- 手机：让开右边的按钮
+  tip.Name = "Tips"
+  tip.Visible = false
+  local tipTitle = txt(tip, "", UDim2.new(1, -120, 0, 20), UDim2.fromOffset(20, 16), 16, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 1)
+  local tipPage = txt(tip, "", UDim2.fromOffset(80, 16), UDim2.new(1, -20, 0, 18), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right, 1)
+  local NT = 4
+  local segs = {}
+  for k = 1, NT do
+    segs[k] = line(tip, UDim2.new(1 / NT, -3, 0, 2), UDim2.new((k - 1) / NT, 0, 0, 48), WHITE, 0.8)
+  end
+  local tipBody = ui.label(tip, "", UDim2.new(1, -40, 0, 54), UDim2.fromOffset(20, 60), 13, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  tipBody.TextYAlignment = Enum.TextYAlignment.Top
+  line(tip, UDim2.new(1, -40, 0, 1), UDim2.new(0, 20, 1, -46), WHITE, 0.88)
+  local function keyChip(parent, x, anchorX)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(120, 26)
+    b.Position = UDim2.new(anchorX, x, 1, -14)
+    b.AnchorPoint = V2(anchorX, 1)
+    b.BackgroundTransparency = 1
+    b.Text = ""
+    b.Parent = parent
+    local k = ui.frame(b, UDim2.fromOffset(46, 20), UDim2.new(anchorX, 0, 0.5, 0), RGB(40, 44, 48), 0.2, V2(anchorX, 0.5))
+    local kl = txt(k, "", UDim2.fromScale(1, 1), nil, 9, TEXT, Enum.Font.GothamBold, nil, nil, 1)
+    local wl = txt(b, "", UDim2.fromOffset(66, 20), UDim2.new(anchorX, (anchorX == 0) and 54 or -54, 0.5, 0), 12, TEXT, Enum.Font.GothamMedium, V2(anchorX, 0.5),
+      (anchorX == 0) and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, 1)
+    return b, kl, wl
+  end
+  local closeB, closeK, closeW = keyChip(tip, 20, 0)
+  local nextB, nextK, nextW = keyChip(tip, -20, 1)
+  local tipI, tipDone = 1, false
+  local function tipText(i)
+    if i == 1 then return T("faction." .. ((G.S and G.S.team) or "atk") .. ".desc") end
+    return T("hud.tip." .. i)
+  end
+  local function showTip()
+    tipTitle.Text = T("hud.tip.title")
+    tipPage.Text = T("hud.tip.page", tipI, NT)
+    tipBody.Text = tipText(tipI)
+    for k, s in ipairs(segs) do s.BackgroundTransparency = (k <= tipI) and 0 or 0.8 end
+    closeK.Text, closeW.Text = T("hud.key.back"), T("hud.tip.close")
+    nextK.Text, nextW.Text = T("hud.key.enter"), (tipI < NT) and T("hud.tip.next") or T("hud.tip.close")
+  end
+  local function closeTip()
+    tipDone = true
+    tip.Visible = false
+  end
+  local function nextTip()
+    if tipI >= NT then closeTip() return end
+    tipI += 1
+    showTip()
+  end
+  closeB.Activated:Connect(closeTip)
+  nextB.Activated:Connect(nextTip)
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not tip.Visible then return end
+    if io.KeyCode == Enum.KeyCode.Return then nextTip()
+    elseif io.KeyCode == Enum.KeyCode.Backspace then closeTip() end
+  end)
+  local tipT0 = nil
 
   ---------------------------------------------------------------- 每帧
 
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
     return string.format("%02d:%02d", s // 60, s % 60)
+  end
+  -- 028 / 900：前面补的 0 暗一点
+  local function padNum(n, dim)
+    local s = string.format("%03d", math.max(0, n))
+    local lead = string.match(s, "^0*")
+    if #lead == #s then lead = string.sub(s, 1, #s - 1) end
+    local rest = string.sub(s, #lead + 1)
+    return (#lead > 0 and ('<font color="' .. dim .. '">' .. lead .. "</font>") or "") .. rest
   end
   local sqT, gT = 0, 0
   local function squadOf(team)
@@ -17456,9 +17803,13 @@ function Hud.init(G)
 
   function G.stepHud(dt)
     local S = G.S
-    if not S or not P.hud.Visible then
+    local deployOn = G.menuOpen ~= nil and G.menuOpen() and not (G.hangarOpen and G.hangarOpen())
+    -- 比分条：战斗中和部署界面都有；选阵营、结算、开服加载时不显示
+    top.Visible = S ~= nil and S.picked ~= false and not G.factionOpen and S.phase ~= "end" and (S.progress or 1) >= 1 and (P.hud.Visible or deployOn)
+    if not S or not top.Visible then
       for _, m in pairs(marks) do m.bb.Enabled = false end
-      return
+      tip.Visible = false
+      if not S then return end
     end
     local mine = S.team or "atk"
     local foe = other(mine)
@@ -17471,31 +17822,33 @@ function Hud.init(G)
       local s = sides[sx]
       local c = teamColor(t)
       s.name.Text = T("hud." .. t)
-      s.name.TextColor3 = c:Lerp(WHITE, 0.25)
-      s.bar.BackgroundColor3 = c
-      s.bar.Size = UDim2.fromScale((held[t] or 0) / n, 1)
       s.score.Text = tostring(held[t] or 0)
-      s.arrow.TextColor3 = c
+      s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+      s.bar.BackgroundColor3 = c
+      s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
     end
-    if S.phase == "prep" then timer.Text = T("hud.prep") .. " " .. math.max(0, S.left or 0)
-    elseif S.ot then timer.Text = T("hud.ot") .. " " .. fmtTime(S.ot)
-    else timer.Text = fmtTime(S.left) end
+    if S.phase == "prep" then timer.Text = fmtTime(S.left) mode.Text = T("hud.prep")
+    elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
+    else timer.Text = fmtTime(S.left) mode.Text = T("hud.mode") end
     local t = os.clock()
     for _, s in ipairs(pts) do
       local d = diamonds[s.id]
       if d then
-        local c = teamColor(s.owner)
-        d.d.BackgroundColor3 = c
-        d.d.BackgroundTransparency = s.locked and 0.55 or 0.12
+        local ours = s.owner == mine
+        d.d.BackgroundColor3 = teamColor(s.owner)
+        d.d.BackgroundTransparency = ours and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (0.1 + 0.5 * (0.5 + 0.5 * math.sin(t * 8))) or 0.25
+        d.st.Transparency = fight and (0.1 + 0.6 * (0.5 + 0.5 * math.sin(t * 8))) or (s.locked and 0.55 or 0.15)
+        d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
+        d.l.TextTransparency = s.locked and 0.45 or 0
         local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
         d.pb.Visible = pr > 0
         d.pf.Size = UDim2.fromScale(pr, 1)
-        d.l.TextTransparency = s.locked and 0.4 or 0
+        d.pf.BackgroundColor3 = teamColor("atk")
       end
     end
-    -- 世界里的据点：没拿下的才标；开着镜、开着车也标（AlwaysOnTop）
+    if not P.hud.Visible then return end
+    -- 世界里的据点：没拿下的才标
     gT -= dt
     local cam = workspace.CurrentCamera
     local cp = cam.CFrame.Position
@@ -17509,7 +17862,7 @@ function Hud.init(G)
         local on = not s.locked and not G.scopeOn
         m.bb.Enabled = on
         if on then
-          m.d.BackgroundColor3 = teamColor(s.owner)
+          m.l.TextColor3 = (s.owner == mine) and WHITE or teamColor(s.owner):Lerp(WHITE, 0.2)
           local dd = (Vector3.new(m.x, cp.Y, m.z) - cp).Magnitude
           m.dist.Text = math.floor(dd / M_PER + 0.5) .. "m"
         end
@@ -17526,7 +17879,7 @@ function Hud.init(G)
       root.AnchorPoint = V2(0, 0)
       root.Size = UDim2.fromOffset(ZOOM, ZOOM)
       root.Position = UDim2.new(0.5, -u * ZOOM, 0.5, -v * ZOOM)
-      root.BackgroundTransparency = 0.3   -- 海半透明，看得见后面的战场（部署界面的大地图照旧不透明）
+      root.BackgroundTransparency = 0.2   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
     elseif root and root.BackgroundTransparency ~= 0 then
       root.BackgroundTransparency = 0
     end
@@ -17539,25 +17892,23 @@ function Hud.init(G)
     if sqT <= 0 and not mobile then
       sqT = 0.25
       local list, gi = squadOf(mine)
-      sqHead.Text = T("hud.squad", T("hud.squad." .. math.clamp(gi, 1, 8))) .. "   " .. #list .. "/5"
-      sqHead.TextColor3 = teamColor(mine):Lerp(WHITE, 0.35)
-      sqLine.BackgroundColor3 = teamColor(mine)
+      sqHead.Text = T("hud.squad", T("hud.squad." .. math.clamp(gi, 1, 8))) .. "  " .. #list .. "/5"
+      local tc = teamColor(mine)
       for i, r in ipairs(rows) do
         local pl = list[i]
-        r.f.Visible = pl ~= nil
+        local vis = pl ~= nil
+        r.mark.Visible, r.nm.Visible, r.hb.Visible, r.dead.Visible = vis, vis, vis, vis
         if pl then
           local hum = pl.Character and pl.Character:FindFirstChildOfClass("Humanoid")
           local k = hum and math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 0
           local alive = hum ~= nil and hum.Health > 0
-          r.nm.Text = pl.DisplayName
-          r.nm.TextColor3 = (pl == me) and WHITE or TEXT:Lerp(teamColor(mine), 0.25)
+          r.nm.Text = string.upper(pl.DisplayName)
+          r.nm.TextColor3 = (pl == me) and WHITE or TEXT
           r.nm.Font = (pl == me) and Enum.Font.GothamBold or Enum.Font.GothamMedium
-          r.mark.BackgroundColor3 = teamColor(mine)
-          r.mark.Visible = pl == me
-          r.f.BackgroundTransparency = (pl == me) and 0.45 or 0.65
+          r.mark.BackgroundColor3 = tc
           r.hb.Visible = alive
-          r.hf.Size = UDim2.fromScale(k, 1)
-          r.hf.BackgroundColor3 = (k > 0.35) and WHITE or RGB(235, 90, 70)
+          r.hf.Size = UDim2.new(k, 0, 0, 2)
+          r.hf.BackgroundColor3 = (k > 0.35) and tc:Lerp(WHITE, 0.2) or RGB(235, 90, 70)
           r.dead.Text = alive and "" or T("hud.dead")
         end
       end
@@ -17569,17 +17920,27 @@ function Hud.init(G)
     wp.Visible = w ~= nil and not G.drive
     if w then
       local name = T("weapon." .. id)
-      if w.kind == "gun" then name = name .. "  [" .. T(w.auto and "hud.auto" or "hud.semi") .. "]" end
+      if w.kind == "gun" then name = name .. "    [" .. T(w.auto and "hud.auto" or "hud.semi") .. "]" end
       wName.Text = name
       if w.kind == "heal" or w.kind == "repair" or w.kind == "spot" or w.kind == "breach" then
-        wMag.Text, wRes.Text = "", ""
+        wAmmo.Text = ""
       elseif a and a.r and a.r > 0 then
-        wMag.Text, wRes.Text = "", ""
-        wName.Text = name .. "  ·  " .. T("hud.reload")
+        wAmmo.Text = '<font size="18">' .. T("hud.reload") .. "</font>"
       elseif a then
-        wMag.Text = string.format("%03d", a.n or 0)
-        wRes.Text = "/" .. (a.res and string.format("%03d", a.res) or "∞")
-        wMag.TextColor3 = ((a.n or 0) == 0) and RGB(235, 90, 70) or WHITE
+        wAmmo.TextColor3 = ((a.n or 0) == 0) and RGB(235, 90, 70) or WHITE
+        wAmmo.Text = padNum(a.n or 0, hex(FAINT)) .. '<font size="22" color="' .. hex(MUTE) .. '">/' .. (a.res and string.format("%03d", a.res) or "∞") .. "</font>"
+      end
+    end
+    -- 目标说明：第一次出生后过一秒弹出来，一次进服只一次；开着战况表（Tab）时先让开
+    local boardOn = G.boardShown ~= nil and G.boardShown()
+    if not tipDone and S.alive and S.phase ~= "end" then
+      tipT0 = tipT0 or t
+      local want = t - tipT0 > 1 and not boardOn
+      if want and not tip.Visible then
+        tip.Visible = true
+        showTip()
+      elseif not want and tip.Visible then
+        tip.Visible = false
       end
     end
   end
@@ -17589,7 +17950,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -17613,18 +17974,29 @@ function MapUI.init(G)
 
   local root = Instance.new("Frame")
   root.Name = "IslandMap"
-  root.BackgroundColor3 = RGB(28, 86, 118)
+  -- 配色压暗、去饱和（用户：界面太卡通，要精致、简洁）：深色的海、灰绿的陆地、细网格、直角
+  root.BackgroundColor3 = RGB(14, 24, 32)
   root.BorderSizePixel = 0
   root.ClipsDescendants = true
   root.SizeConstraint = Enum.SizeConstraint.RelativeYY
-  local corner = Instance.new("UICorner")
-  corner.CornerRadius = UDim.new(0, 8)
-  corner.Parent = root
   local land = Instance.new("Frame")
   land.Name = "Land"
   land.BackgroundTransparency = 1
   land.Size = UDim2.fromScale(1, 1)
   land.Parent = root
+  for k = 1, 7 do   -- 细网格
+    for _, vert in ipairs({ true, false }) do
+      local g = Instance.new("Frame")
+      g.Name = "Grid"
+      g.BorderSizePixel = 0
+      g.BackgroundColor3 = Color3.new(1, 1, 1)
+      g.BackgroundTransparency = 0.93
+      g.Size = vert and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1)
+      g.Position = vert and UDim2.fromScale(k / 8, 0) or UDim2.fromScale(0, k / 8)
+      g.ZIndex = 2
+      g.Parent = root
+    end
+  end
   local marks = Instance.new("Frame")
   marks.Name = "Marks"
   marks.BackgroundTransparency = 1
@@ -17641,7 +18013,7 @@ function MapUI.init(G)
     if y < 200 then return 4 end
     return 5
   end
-  local BAND = { RGB(214, 198, 150), RGB(98, 140, 72), RGB(80, 120, 60), RGB(104, 112, 78), RGB(140, 136, 128), RGB(50, 86, 46) }
+  local BAND = { RGB(118, 112, 92), RGB(62, 74, 58), RGB(54, 66, 50), RGB(70, 74, 64), RGB(92, 92, 88), RGB(42, 54, 42) }
   local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
   if not okF then Flora = nil end
   local N = 110
@@ -17684,10 +18056,10 @@ function MapUI.init(G)
           local f = Instance.new("Frame")
           f.Name = "Road"
           f.BorderSizePixel = 0
-          f.BackgroundColor3 = RGB(176, 150, 102)
+          f.BackgroundColor3 = RGB(150, 140, 116)
           f.AnchorPoint = Vector2.new(0.5, 0.5)
           f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
-          f.Size = UDim2.new(len * 1.04, 0, 0, 2)
+          f.Size = UDim2.new(len * 1.04, 0, 0, 1)
           f.Rotation = math.deg(math.atan2(v1 - v0, u1 - u0))
           f.ZIndex = 2
           f.Parent = land
@@ -17725,7 +18097,7 @@ function MapUI.init(G)
   local pointDots = {}
   for _, p in ipairs(Map.POINTS) do
     local u, v = toUV(p.x, p.z)
-    pointDots[p.id] = dot(marks, u, v, 22, Config.Teams.def.color, p.id, 5)
+    pointDots[p.id] = dot(marks, u, v, 18, Config.Teams.def.color, p.id, 5)
   end
   -- 舰队、机场岛（小灰块）
   for _, s in ipairs(Map.FLEET) do
@@ -17735,7 +18107,7 @@ function MapUI.init(G)
     f.Position = UDim2.fromScale(u, v)
     f.Size = UDim2.fromScale((s.kind == "lst") and 0.006 or 0.009, (s.kind == "carrier") and 0.1 or 0.07)
     f.Size = UDim2.fromScale(0.012, (s.kind == "carrier") and 0.09 or ((s.kind == "lhd") and 0.07 or 0.045))
-    f.BackgroundColor3 = RGB(70, 76, 82)
+    f.BackgroundColor3 = RGB(120, 126, 132)
     f.BorderSizePixel = 0
     f.ZIndex = 2
     f.Parent = marks
@@ -17808,7 +18180,355 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
+          <Properties>
+            <string name="Name">Menu</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
+--   进服先到这里（还没定阵营时），盖在选阵营界面上面：左上玩家名、军衔、经验条；左边一列大卡片（背景是导入的原模型：坦克、战斗机、直升机、军舰，没导入就不放）——
+--   进入战斗（→ 选阵营 / 部署）· 选择阵营 · 操作说明 · 模型与授权（Sketchfab 作者署名，CC-BY 要求的）；右下游戏名、测试版、版本号
+--   部署界面右上角「菜单」能回来
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+
+local Menu = {}
+
+function Menu.init(G)
+  local me = Players.LocalPlayer
+  local Config = G.Config
+  local RGB = Color3.fromRGB
+  local V2 = Vector2.new
+  local function T(k, ...) return G.T(k, ...) end
+  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
+  local Tint = require(script.Parent:WaitForChild("Tint"))
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Menu"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 14   -- 盖在选阵营（12）上面
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+
+  local function frame(parent, size, pos, color, tr, anchor)
+    local f = Instance.new("Frame")
+    f.Size, f.Position = size, pos or UDim2.new()
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = color or RGB(0, 0, 0), tr or 0, 0
+    if anchor then f.AnchorPoint = anchor end
+    f.Parent = parent
+    return f
+  end
+  local function text(parent, str, size, pos, ts, color, font, anchor, xa)
+    local l = Instance.new("TextLabel")
+    l.Size, l.Position = size, pos or UDim2.new()
+    l.BackgroundTransparency = 1
+    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.GothamMedium
+    l.TextXAlignment = xa or Enum.TextXAlignment.Left
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+    if anchor then l.AnchorPoint = anchor end
+    l.Parent = parent
+    return l
+  end
+  local function stroke(f, tr)
+    local s = Instance.new("UIStroke")
+    s.Color, s.Transparency, s.Thickness, s.ApplyStrokeMode = WHITE, tr or 0.88, 1, Enum.ApplyStrokeMode.Border
+    s.Parent = f
+    return s
+  end
+
+  -- 背景：近黑；右边一个大的原模型（自己阵营的主战坦克 / 战斗机，导入了才有），左边压暗
+  local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
+  local hero = Instance.new("ViewportFrame")
+  hero.Name = "Hero"
+  hero.BackgroundTransparency = 1
+  hero.Size = UDim2.fromScale(0.62, 0.86)
+  hero.Position = UDim2.fromScale(1, 0.5)
+  hero.AnchorPoint = V2(1, 0.5)
+  hero.Ambient = RGB(70, 74, 84)
+  hero.LightColor = RGB(255, 214, 170)
+  hero.LightDirection = Vector3.new(-0.7, -0.45, 0.55)
+  hero.Parent = bg
+  do
+    local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.42, 0.08), NumberSequenceKeypoint.new(0.62, 0.75), NumberSequenceKeypoint.new(1, 0.9) })
+    g.Parent = shade
+  end
+  -- 内容按 1280 × 720 摆，按屏幕整体缩放（手机横屏也放得下）
+  local content = frame(bg, UDim2.fromOffset(1280, 720), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  local scale = Instance.new("UIScale")
+  scale.Parent = content
+  local function fit()
+    local vs = workspace.CurrentCamera.ViewportSize
+    scale.Scale = math.clamp(math.min(vs.X / 1280, vs.Y / 720), 0.4, 1.3)
+  end
+  fit()
+  workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+
+  -- 左上：玩家名、军衔、经验条
+  local X0, CW = 48, 440
+  local who = text(content, "", UDim2.fromOffset(CW, 26), UDim2.fromOffset(X0, 92), 22, WHITE, Enum.Font.GothamBold)
+  local rankLine = text(content, "", UDim2.fromOffset(CW - 140, 14), UDim2.fromOffset(X0, 122), 11, MUTE, Enum.Font.GothamMedium)
+  local xpLine = text(content, "", UDim2.fromOffset(160, 14), UDim2.fromOffset(X0 + CW, 122), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local xpBg = frame(content, UDim2.fromOffset(CW, 2), UDim2.fromOffset(X0, 142), WHITE, 0.85)
+  local xpFill = frame(xpBg, UDim2.fromScale(0, 1), nil, WHITE, 0)
+
+  ---------------------------------------------------------------- 卡片背景里的原模型（导入了才放）
+
+  local META = {}
+  for _, k in ipairs({ "ImportedMeta", "ImportedAir", "ImportedShip" }) do
+    local ok, r = pcall(function() return require(RS:WaitForChild(k, 3)) end)
+    if ok and type(r) == "table" then META[k] = r end
+  end
+  local KIND = { Veh = { "ImportedMeta", "V_" }, Air = { "ImportedAir", "A_" }, Ship = { "ImportedShip", "S_" } }
+  local function preview(kind, key)
+    local K = KIND[kind]
+    local meta = META[K[1]]
+    local info = meta and meta.m and meta.m[key]
+    local imp = RS:FindFirstChild("Imported")
+    local f = imp and imp:FindFirstChild(kind)
+    f = f and f:FindFirstChild(key)
+    if not info or not f then return nil end
+    local m, n = Instance.new("Model"), 0
+    for name, p in pairs(info.parts) do
+      local src = f:FindFirstChild(K[2] .. key .. "__" .. name)
+      if src and src:IsA("BasePart") then
+        local q = Tint.fix(src:Clone(), src)
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+        q.Size = Vector3.new(p.s[1], p.s[2], p.s[3])
+        q.CFrame = CFrame.new(p.c[1], p.c[2], p.c[3])
+        if p.col and not q:FindFirstChildOfClass("SurfaceAppearance") then q.Color = RGB(p.col[1], p.col[2], p.col[3]) end
+        if p.a then q.Transparency = 1 - p.a end
+        q.Parent = m
+        n += 1
+      end
+    end
+    if n == 0 then m:Destroy() return nil end
+    return m
+  end
+  -- 每张卡用哪个模型（按自己的阵营）：坦克、战斗机、直升机、军舰
+  local SHOW = {
+    atk = { { "Veh", "ztz99" }, { "Air", "j31" }, { "Air", "z10w" }, { "Ship", "t055" } },
+    def = { { "Veh", "m1a2v3" }, { "Air", "f22" }, { "Air", "ah64" }, { "Ship", "ddg125" } },
+  }
+  local LOOK = Vector3.new(0.72, -0.26, 0.64).Unit   -- 从左前上方看（车头、机头朝 −Z）
+  local HERO = { atk = { "Veh", "ztz99" }, def = { "Veh", "m1a2v3" } }
+  local HERO_LOOK = Vector3.new(-0.62, -0.2, 0.76).Unit   -- 大图从右前方看，车头朝左边的卡片
+
+  ---------------------------------------------------------------- 卡片
+
+  local cards = {}
+  local CH, GAP, Y0 = 104, 8, 160
+  local function card(i, onClick)
+    local b = Instance.new("TextButton")
+    b.Name = "Card" .. i
+    b.Size = UDim2.fromOffset(CW, CH)
+    b.Position = UDim2.fromOffset(X0, Y0 + (i - 1) * (CH + GAP))
+    b.BackgroundColor3 = RGB(10, 12, 14)
+    b.BackgroundTransparency = 0.3
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.ClipsDescendants = true
+    b.Parent = content
+    local st = stroke(b, 0.88)
+    local vp = Instance.new("ViewportFrame")
+    vp.BackgroundTransparency = 1
+    vp.Size = UDim2.new(0.66, 0, 1, 0)
+    vp.Position = UDim2.fromScale(1, 0)
+    vp.AnchorPoint = V2(1, 0)
+    vp.Ambient = RGB(120, 122, 130)
+    vp.LightColor = RGB(255, 236, 214)
+    vp.LightDirection = Vector3.new(-0.5, -0.7, 0.4)
+    vp.Parent = b
+    -- 模型左边淡出到卡片底色，字压在上面也看得清
+    local fade = frame(b, UDim2.new(0.5, 0, 1, 0), UDim2.fromScale(0.34, 0), RGB(10, 12, 14), 0)
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = fade
+    local K = { b = b, st = st, vp = vp, model = nil }
+    K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.GothamMedium)
+    K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.GothamBold)
+    K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.GothamMedium)
+    K.tag = text(b, "", UDim2.fromOffset(180, 16), UDim2.new(1, -18, 0, 36), 13, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Right)
+    K.subtag = text(b, "", UDim2.fromOffset(180, 12), UDim2.new(1, -18, 0, 56), 10, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+    for _, l in ipairs({ K.tag, K.subtag, K.title }) do
+      l.TextStrokeTransparency = 0.6
+      l.TextStrokeColor3 = Color3.new(0, 0, 0)
+    end
+    b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.55, 0.2 end)
+    b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.88, 0.3 end)
+    b.Activated:Connect(onClick)
+    cards[i] = K
+    return K
+  end
+
+  -- 右边的说明面板（操作说明、模型与授权）
+  local panel = frame(content, UDim2.fromOffset(560, 560), UDim2.fromOffset(1232, 92), RGB(8, 10, 12), 0.08, V2(1, 0))
+  panel.Visible = false
+  stroke(panel, 0.86)
+  local pTitle = text(panel, "", UDim2.new(1, -120, 0, 24), UDim2.fromOffset(24, 20), 18, WHITE, Enum.Font.GothamBold)
+  local pClose = Instance.new("TextButton")
+  pClose.Size, pClose.Position, pClose.AnchorPoint = UDim2.fromOffset(80, 24), UDim2.new(1, -20, 0, 20), V2(1, 0)
+  pClose.BackgroundTransparency = 1
+  pClose.TextColor3, pClose.TextSize, pClose.Font = MUTE, 12, Enum.Font.GothamMedium
+  pClose.TextXAlignment = Enum.TextXAlignment.Right
+  pClose.Parent = panel
+  frame(panel, UDim2.new(1, -48, 0, 1), UDim2.fromOffset(24, 56), WHITE, 0.88)
+  local pScroll = Instance.new("ScrollingFrame")
+  pScroll.Size = UDim2.new(1, -40, 1, -84)
+  pScroll.Position = UDim2.fromOffset(24, 68)
+  pScroll.BackgroundTransparency = 1
+  pScroll.BorderSizePixel = 0
+  pScroll.ScrollBarThickness = 2
+  pScroll.ScrollBarImageColor3 = WHITE
+  pScroll.CanvasSize = UDim2.new()
+  pScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  pScroll.Parent = panel
+  local pBody = Instance.new("TextLabel")
+  pBody.Size = UDim2.new(1, -12, 0, 0)
+  pBody.AutomaticSize = Enum.AutomaticSize.Y
+  pBody.BackgroundTransparency = 1
+  pBody.TextWrapped = true
+  pBody.RichText = true
+  pBody.TextXAlignment = Enum.TextXAlignment.Left
+  pBody.TextYAlignment = Enum.TextYAlignment.Top
+  pBody.TextSize = 13
+  pBody.LineHeight = 1.25
+  pBody.TextColor3 = TEXT
+  pBody.Font = Enum.Font.GothamMedium
+  pBody.Parent = pScroll
+  local panelKind = nil
+  local function head(s) return '<font color="#FFFFFF" size="14"><b>' .. s .. "</b></font>" end
+  local function showPanel(kind)
+    if panelKind == kind and panel.Visible then panel.Visible = false panelKind = nil return end
+    panelKind = kind
+    panel.Visible = true
+    pClose.Text = T("menu.close")
+    if kind == "help" then
+      pTitle.Text = T("menu.c3.title")
+      local function plain(k) return (string.gsub(T(k), " · ", "\n")) end
+      pBody.Text = head(T("menu.h.inf")) .. "\n" .. plain("ui.help") .. "\n\n" .. head(T("menu.h.veh")) .. "\n" .. plain("ui.vehHelp")
+        .. "\n\n" .. head(T("menu.h.jet")) .. "\n" .. plain("air.helpJet") .. "\n\n" .. head(T("menu.h.heli")) .. "\n" .. plain("air.helpHeli")
+    else
+      pTitle.Text = T("menu.c4.title")
+      local lines = {}
+      for _, k in ipairs({ "ImportedMeta", "ImportedAir", "ImportedShip" }) do
+        local m = META[k]
+        if m and m.m then
+          local keys = {}
+          for key in pairs(m.m) do table.insert(keys, key) end
+          table.sort(keys)
+          for _, key in ipairs(keys) do
+            local c = m.m[key].credit
+            if c then table.insert(lines, (string.gsub(c, "（https?://[^）]*）", ""))) end
+          end
+        end
+      end
+      local okO, OM = pcall(function() return require(RS:WaitForChild("OpticsMeta", 3)) end)
+      if okO and type(OM) == "table" then
+        local keys = {}
+        for key in pairs(OM) do table.insert(keys, key) end
+        table.sort(keys)
+        for _, key in ipairs(keys) do
+          local c = OM[key].credit
+          if c then table.insert(lines, (string.gsub(c, "%s*https?://%S+", ""))) end
+        end
+      end
+      pBody.Text = table.concat(lines, "\n\n")
+    end
+  end
+  pClose.Activated:Connect(function() panel.Visible = false panelKind = nil end)
+
+  local entered = false   -- 点过「进入战斗」：这次进服不再自动弹主菜单
+  local function enter()
+    entered = true
+    G.menuOpenNow = false
+    gui.Enabled = false
+    panel.Visible = false
+    if G.refresh then G.refresh() end
+  end
+  card(1, enter)
+  card(2, function()
+    enter()
+    if G.showFaction then G.showFaction() end
+  end)
+  card(3, function() showPanel("help") end)
+  card(4, function() showPanel("credits") end)
+  -- 回车直接进入战斗
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not gui.Enabled then return end
+    if io.KeyCode == Enum.KeyCode.Return then enter() end
+  end)
+
+  -- 右下：游戏名、测试版、版本号
+  local gTitle = text(content, "", UDim2.fromOffset(400, 24), UDim2.fromOffset(1232, 624), 20, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Right)
+  local gSub = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(1232, 652), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local gVer = text(content, "", UDim2.fromOffset(400, 12), UDim2.fromOffset(1232, 668), 10, FAINT, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+
+  ---------------------------------------------------------------- 刷新
+
+  local lastTeam = nil
+  function G.refreshMenu(S)
+    if not S then return end
+    local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (S.progress or 1) >= 1)
+    gui.Enabled = show
+    if not show then return end
+    local mine = S.me or {}
+    who.Text = me.DisplayName
+    local R = Config.Ranks or { 0 }
+    local rk = math.clamp(mine.rank or 1, 1, #R)
+    local xp = mine.xp or 0
+    if rk < #R then
+      rankLine.Text = T("menu.rankLine", G.Lang.rank(G.lang, rk), G.Lang.rank(G.lang, rk + 1))
+      xpLine.Text = T("menu.xp", xp, R[rk + 1])
+      xpFill.Size = UDim2.fromScale(math.clamp((xp - R[rk]) / math.max(1, R[rk + 1] - R[rk]), 0, 1), 1)
+    else
+      rankLine.Text = T("menu.maxRank", G.Lang.rank(G.lang, rk))
+      xpLine.Text = tostring(xp)
+      xpFill.Size = UDim2.fromScale(1, 1)
+    end
+    local team = S.team or "atk"
+    for i, K in ipairs(cards) do
+      K.cat.Text = T("menu.c" .. i .. ".cat")
+      K.title.Text = T("menu.c" .. i .. ".title")
+      K.sub.Text = T("menu.c" .. i .. ".sub")
+      K.tag.Text, K.subtag.Text = "", ""
+    end
+    cards[1].tag.Text = T("menu.c1.tag")
+    cards[1].subtag.Text = T("menu.c1.subtag", (S.rAtk or 0) + (S.rDef or 0))
+    cards[2].tag.Text = S.picked and T("faction." .. team .. ".name") or T("menu.c2.none")
+    cards[2].subtag.Text = (S.rAtk or 0) .. " : " .. (S.rDef or 0)
+    gTitle.Text = T("game.title")
+    gSub.Text = T("menu.beta")
+    gVer.Text = tostring(Config.Version or "")
+    -- 卡片背景的模型（换了阵营重放；还没导入的不放）
+    if lastTeam ~= team and G.viewFit then
+      lastTeam = team
+      for i, K in ipairs(cards) do
+        local s = SHOW[team][i]
+        local m = s and preview(s[1], s[2])
+        G.viewFit(K.vp, m, 1.0, LOOK)
+        K.model = m
+      end
+      local h = HERO[team]
+      G.viewFit(hero, h and preview(h[1], h[2]), 1.05, HERO_LOOK)
+    end
+  end
+  -- 部署界面右上角「菜单」
+  function G.showMenu()
+    G.menuOpenNow = true
+    if G.S then G.refreshMenu(G.S) end
+  end
+  G.menuEnter = enter   -- 测试、截图用
+  function G.menuShown() return gui.Enabled end
+end
+
+return Menu
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -18013,7 +18733,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -18145,6 +18865,9 @@ function Optics.init(G)
     end)
   end
 
+  -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
+  function G.opticFailed(key) return failed[key] == true end
+
   -- 有没有现成的（导入的或已经生成好的），不复制
   function G.opticReady(key)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)
@@ -18182,7 +18905,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -18210,11 +18933,11 @@ function Play.init(G)
   ---------------------------------------------------------------- 界面：武器栏、准星、弹药、命中标记
 
   local hud = G.gui:WaitForChild("Hud")
-  local bar = ui.frame(hud, UDim2.fromOffset(420, 52), UDim2.new(0.5, 0, 1, -70), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  local bar = ui.frame(hud, UDim2.fromOffset(560, 32), UDim2.new(0.5, 0, 1, -50), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
   local barList = Instance.new("UIListLayout")
   barList.FillDirection = Enum.FillDirection.Horizontal
   barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-  barList.Padding = UDim.new(0, 6)
+  barList.Padding = UDim.new(0, 4)
   barList.Parent = bar
   local slots = {}
   local cross = ui.label(G.gui, "+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 30, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
@@ -18308,9 +19031,20 @@ function Play.init(G)
     for i, t in pairs(tools()) do
       local id = t:GetAttribute("Weapon")
       local on = t.Parent == player.Character
-      local b = ui.button(bar, i .. "  " .. T("weapon." .. id), UDim2.fromOffset(130, 44), nil, on and RGB(70, 90, 60) or RGB(30, 36, 42))
+      -- 细线、半透明、直角（用户：界面要精致简洁，不要卡通）；拿在手里的那格顶上一道白线
+      local b = Instance.new("TextButton")
+      b.Size = UDim2.fromOffset(124, 32)
+      b.BackgroundColor3 = RGB(8, 10, 12)
+      b.BackgroundTransparency = on and 0.3 or 0.6
+      b.BorderSizePixel = 0
+      b.AutoButtonColor = false
+      b.Text = i .. "   " .. T("weapon." .. id)
+      b.TextSize = 13
+      b.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      b.TextColor3 = on and RGB(255, 255, 255) or RGB(150, 156, 160)
+      b.Parent = bar
+      if on then ui.frame(b, UDim2.new(1, 0, 0, 2), nil, RGB(255, 255, 255), 0) end
       b.LayoutOrder = i
-      b.TextSize = 14
       b.Activated:Connect(function() equip(i) end)
       table.insert(slots, b)
     end
@@ -18636,7 +19370,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -19168,7 +19902,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的树林、灌木、石头、草丛、花丛：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -19527,7 +20261,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -20258,7 +20992,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -20857,7 +21591,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -20970,7 +21704,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -20979,6 +21713,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local UI = {}
 
@@ -21092,91 +21827,284 @@ function UI.init(G)
   loadText.ZIndex = 41
 
   ---------------------------------------------------------------- 部署界面
-
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(8, 12, 16), 0.12)
+  -- 照用户给的参考图：不选兵种，进来默认就是一个士兵；底下一排装备格改枪械配置（点一格，上面弹出能换的），右下白色「选择生成点」→ 地图上选点、出击。
+  --   两页：kit 装备（左上标题、说明、数据条，右边转着的大图，底下 4 格）· spawn 生成点（左边出生点列表，右边地图）
+  --   要比参考图精致、简洁（用户：现在这个太卡通）：黑底半透明、细线、直角、小字，只有主按钮是白底黑字
+  local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
+  local M0 = mobile and 18 or 48   -- 左右边距
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  local top = frame(deploy, UDim2.new(1, 0, 0, 64), nil, RGB(12, 16, 20), 0.2)
-  local title = label(top, "", UDim2.new(0, 330, 1, 0), UDim2.fromOffset(140, 0), 22, TEXT, Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Left)   -- 让开左上角 Roblox 的菜单、聊天按钮
-  local teamTag = label(top, "", UDim2.new(0, 260, 0, 34), UDim2.new(0.5, 0, 0.5, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
-  teamTag.BackgroundTransparency = 0.1
-  round(teamTag, 6)
-  local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -140, 0, 0), 16, MUTE, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)   -- 语言按钮左边
-  local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
-  local sideBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(0.5, 140, 0.5, 0), RGB(40, 46, 52), Vector2.new(0, 0.5))   -- 换阵营（回到选阵营界面）
-  sideBtn.TextSize = 14
-  sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
-  local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-
-  -- 左边：兵种卡片（载具不在这里选：到地图里的生成点去生成，Depot.lua）
-  local sel = { role = nil, spawn = nil }
-  G.deploySel = sel
-  local roles = Instance.new("ScrollingFrame")
-  roles.Size = UDim2.new(0.36, -30, 1, -186)
-  roles.Position = UDim2.fromOffset(20, 100)
-  roles.BackgroundTransparency = 1
-  roles.BorderSizePixel = 0
-  roles.ScrollBarThickness = 6
-  roles.CanvasSize = UDim2.new()
-  roles.AutomaticCanvasSize = Enum.AutomaticSize.Y
-  roles.Parent = deploy
-  local grid = Instance.new("UIGridLayout")
-  grid.CellSize = UDim2.new(0.5, -6, 0, 92)
-  grid.CellPadding = UDim2.fromOffset(8, 8)
-  grid.SortOrder = Enum.SortOrder.LayoutOrder
-  grid.Parent = roles
-  local roleCards = {}
-  for i, r in ipairs(Config.Roles) do
+  do   -- 左边、下边压暗，右上透出一点战场
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Rotation = -20
+    g.Parent = deploy
+  end
+  local function hair(parent, size, pos, alpha, anchor)   -- 一像素的细线
+    return frame(parent, size, pos, WHITE, alpha or 0.86, anchor)
+  end
+  local function txt(parent, s, size, pos, ts, color, font, anchor, align)
+    local l = label(parent, s, size, pos, ts, color, font, anchor, align)
+    l.TextWrapped = false
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+    return l
+  end
+  -- 主按钮：白底黑字（字写在按钮自己身上），右边一个小键位
+  local function mainButton(parent, size, pos, anchor)
     local b = Instance.new("TextButton")
-    b.Text = ""
-    b.LayoutOrder = i
-    b.BackgroundColor3 = RGB(28, 34, 40)
-    b.BackgroundTransparency = 0.1
+    b.Size, b.Position, b.AnchorPoint = size, pos, anchor or Vector2.new()
+    b.BackgroundColor3 = WHITE
+    b.BorderSizePixel = 0
     b.AutoButtonColor = true
-    b.Parent = roles
-    round(b, 8)
-    local st = stroke(b, LINE, 2, 1)
-    local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 17, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-    local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-    ds.TextYAlignment = Enum.TextYAlignment.Top
-    local ws = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-    roleCards[r.id] = { b = b, st = st, nm = nm, ds = ds, ws = ws, r = r }
-    b.Activated:Connect(function()
-      sel.role = r.id
-      G.refreshDeploy()
-    end)
+    b.Text = ""
+    b.TextSize = mobile and 16 or 19
+    b.TextColor3 = RGB(10, 10, 12)
+    b.Font = Enum.Font.GothamBold
+    b.TextXAlignment = Enum.TextXAlignment.Left
+    b.Parent = parent
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 22)
+    pad.Parent = b
+    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+    return b, b, k
+  end
+  -- 只有字的按钮（页签、换阵营、语言）
+  local function link(parent, s, size, pos, ts, anchor, align)
+    local b = Instance.new("TextButton")
+    b.Size, b.Position, b.AnchorPoint = size, pos, anchor or Vector2.new()
+    b.BackgroundTransparency = 1
+    b.Text = s
+    b.TextSize = ts or 13
+    b.TextColor3 = DIM
+    b.Font = Enum.Font.GothamMedium
+    b.TextXAlignment = align or Enum.TextXAlignment.Left
+    b.AutoButtonColor = false
+    b.Parent = parent
+    return b
   end
 
-  -- 右边：地图 + 出生点
-  local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
+  local sel = { role = nil, spawn = nil, page = nil, pageUser = nil, slot = nil }
+  G.deploySel = sel
+  -- 装备栏：上次选的（这一局里记着）；开局默认 M4 + 急救包 + 手雷
+  sel.kit = table.clone(Config.LoadoutDefault or { primary = "m4" })
+  local SLOTS = Config.Loadout or { { id = "primary", opts = { "m4" } } }
+
+  -- 顶上一行：页签（装备 / 生成点），右边换阵营、语言
+  local topY = mobile and 74 or 96
+  local tabs = {}
+  for i, pg in ipairs({ "kit", "spawn" }) do
+    local b = link(deploy, "", UDim2.fromOffset(mobile and 70 or 92, 26), UDim2.fromOffset(M0 + (i - 1) * (mobile and 80 or 104), topY), mobile and 14 or 16)
+    b.Font = Enum.Font.GothamBold
+    local u = hair(b, UDim2.new(0, 22, 0, 2), UDim2.new(0, 0, 1, 2), 0)
+    tabs[pg] = { b = b, u = u }
+  end
+  local langBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  local sideBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0 - 118, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
+  local menuBtn = link(deploy, "", UDim2.fromOffset(80, 26), UDim2.new(1, -M0 - 236, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  menuBtn.Activated:Connect(function() if G.showMenu then G.showMenu() end end)
+  hair(deploy, UDim2.new(1, -M0 * 2, 0, 1), UDim2.fromOffset(M0, topY + 34), 0.9)
+
+  local kitPage = frame(deploy, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  local spawnPage = frame(deploy, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+
+  ------------------------------------ 装备页
+  local infoY = topY + (mobile and 40 or 66)
+  local facDot = frame(kitPage, UDim2.fromOffset(6, 6), UDim2.fromOffset(M0, infoY + 5), WHITE, 0)
+  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local stats = {}
+  for k = 1, 4 do
+    local y = infoY + (mobile and 84 or 112) + (k - 1) * 24
+    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    local bg = hair(kitPage, UDim2.fromOffset(180, 2), UDim2.fromOffset(M0 + 86, y + 7), 0.86)
+    local fill = frame(bg, UDim2.fromScale(0.5, 1), nil, WHITE, 0.05)
+    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    stats[k] = { a = a, bg = bg, fill = fill, v = v }
+    a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
+  end
+  -- 右边的大图（慢慢左右转）
+  local big = Instance.new("ViewportFrame")
+  big.Name = "GearBig"
+  big.BackgroundTransparency = 1
+  big.Size = mobile and UDim2.new(0.5, 0, 0.42, 0) or UDim2.new(0.56, 0, 0.5, 0)
+  big.Position = mobile and UDim2.new(0.97, 0, 0.16, 0) or UDim2.new(0.97, 0, 0.17, 0)
+  big.AnchorPoint = Vector2.new(1, 0)
+  big.Ambient = RGB(150, 152, 158)
+  big.LightColor = RGB(255, 250, 242)
+  big.LightDirection = Vector3.new(-0.35, -1, -0.55)
+  big.Parent = kitPage
+  -- 底下的装备格
+  local SW, SH, GAP = mobile and 128 or 206, mobile and 80 or 124, mobile and 6 or 10
+  local slotY = mobile and -14 or -40
+  local cards = {}
+  local picker = frame(kitPage, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  picker.Visible = false
+  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local pickCards = {}
+  local function newCard(parent, w, h)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(w, h)
+    b.BackgroundColor3 = RGB(12, 14, 16)
+    b.BackgroundTransparency = 0.35
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Parent = parent
+    local st = Instance.new("UIStroke")
+    st.Color = WHITE
+    st.Thickness = 1
+    st.Transparency = 0.88
+    st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st.Parent = b
+    local vp = Instance.new("ViewportFrame")
+    vp.BackgroundTransparency = 1
+    vp.Size = UDim2.new(1, -24, 1, -(mobile and 34 or 44))
+    vp.Position = UDim2.fromOffset(12, mobile and 10 or 16)
+    vp.Ambient = RGB(150, 152, 158)
+    vp.LightColor = RGB(255, 250, 242)
+    vp.LightDirection = Vector3.new(-0.35, -1, -0.55)
+    vp.Parent = b
+    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local bar = frame(b, UDim2.new(1, 0, 0, 2), nil, WHITE, 1)   -- 选中的那格顶上一道白线
+    return { b = b, st = st, vp = vp, idx = idx, cat = cat, nm = nm, cnt = cnt, bar = bar, item = nil, wait = false }
+  end
+  for i, slot in ipairs(SLOTS) do
+    local c = newCard(kitPage, SW, SH)
+    c.b.AnchorPoint = Vector2.new(0, 1)
+    c.b.Position = UDim2.new(0, M0 + (i - 1) * (SW + GAP), 1, slotY)
+    c.slot = slot
+    cards[i] = c
+  end
+  -- 主按钮：选择生成点
+  local CW, CH = mobile and 200 or 270, mobile and 48 or 62
+  local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
+  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.GothamMedium, Vector2.new(1, 1), Enum.TextXAlignment.Right)
+
+  -- 数量（消耗品：弹匣 + 备弹）
+  local function countOf(id)
+    local w = Config.Weapons[id]
+    if not w or w.kind == "gun" or w.kind == "heal" or w.kind == "repair" or w.kind == "breach" or w.kind == "spot" then return nil end
+    return (w.mag or 1) + (w.reserve or 0)
+  end
+  -- 数据条：枪看伤害 / 射速 / 射程 / 精度；炸的看伤害 / 杀伤半径 / 射程 / 弹药；工具不显示
+  local function statRows(id)
+    local w = Config.Weapons[id]
+    if not w then return {} end
+    local m = function(studs) return math.floor((studs or 0) / 2.8 + 0.5) end
+    if w.kind == "gun" then
+      return {
+        { T("deploy.stat.dmg"), math.clamp(w.dmg / 100, 0, 1), tostring(w.dmg) },
+        { T("deploy.stat.rate"), math.clamp((60 / w.rate) / 800, 0, 1), T("deploy.rpm", math.floor(60 / w.rate + 0.5)) },
+        { T("deploy.stat.range"), math.clamp(m(w.range) / 550, 0, 1), T("deploy.m", m(w.range)) },
+        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) / 0.8, 0.05, 1), string.format("±%.2f°", w.spread or 0) },
+      }
+    elseif w.dmg then
+      local rows = {
+        { T("deploy.stat.dmg"), math.clamp(w.dmg / 260, 0, 1), tostring(w.dmg) },
+        { T("deploy.stat.blast"), math.clamp((w.splash or 0) / 20, 0, 1), T("deploy.m", m(w.splash)) },
+      }
+      if w.range or w.maxR then table.insert(rows, { T("deploy.stat.range"), math.clamp(m(w.range or w.maxR) / 500, 0, 1), T("deploy.m", m(w.range or w.maxR)) }) end
+      local n = countOf(id)
+      if n then table.insert(rows, { T("deploy.stat.ammo"), math.clamp(n / 12, 0, 1), "×" .. n }) end
+      return rows
+    end
+    return {}
+  end
+
+  local focus = 1   -- 大图、标题看的是哪一格
+  local bigItem, bigWait = nil, false
+  local function itemName(id) return id and T("weapon." .. id) or T("deploy.none") end
+  local function setModel(vp, id, team)
+    if not G.gearModel or not G.viewFit then return id ~= nil end   -- GearView 还没起来：等一会儿再画
+    if not id then
+      G.viewFit(vp, nil)
+      return false
+    end
+    local m, wait, real = G.gearModel(id, team)
+    if m and not real then   -- 零件拼的方块不放（粗糙）：等真模型
+      m:Destroy()
+      m = nil
+    end
+    G.viewFit(vp, m, 1.12)
+    return wait
+  end
+
+  ------------------------------------ 生成点页
+  local listW = mobile and 230 or 340
+  local listY = topY + (mobile and 40 or 66)
+  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local list = Instance.new("ScrollingFrame")
+  list.Size = UDim2.new(0, listW, 1, -(listY + 24) - (mobile and 80 or 150))
+  list.Position = UDim2.fromOffset(M0, listY + 24)
+  list.BackgroundTransparency = 1
+  list.BorderSizePixel = 0
+  list.ScrollBarThickness = 2
+  list.ScrollBarImageColor3 = WHITE
+  list.CanvasSize = UDim2.new()
+  list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  list.Parent = spawnPage
+  local listLayout = Instance.new("UIListLayout")
+  listLayout.Padding = UDim.new(0, 4)
+  listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+  listLayout.Parent = list
+  -- 地图：右边一个正方形
+  local mapBox = frame(spawnPage, mobile and UDim2.new(1, -(M0 * 2 + listW + 16), 1, -(listY + 80)) or UDim2.new(1, -(M0 * 2 + listW + 40), 1, -(listY + 150)),
+    UDim2.new(1, -M0, 0, listY), RGB(0, 0, 0), 1, Vector2.new(1, 0))
   local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
   local aspect = Instance.new("UIAspectRatioConstraint")
   aspect.AspectRatio = 1
   aspect.Parent = mapHolder
   local spawnLayer = nil
   local spawnBtns = {}
-  local extraSpawns = frame(deploy, UDim2.new(0.64, -40, 0, 40), UDim2.new(0.36, 10, 1, -80), RGB(0, 0, 0), 1)
-  local extraList = Instance.new("UIListLayout")
-  extraList.FillDirection = Enum.FillDirection.Horizontal
-  extraList.Padding = UDim.new(0, 8)
-  extraList.Parent = extraSpawns
+  -- 装备一行 + 改装备
+  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local editKit = link(spawnPage, "", UDim2.fromOffset(160, 18), UDim2.new(0, M0, 1, slotY), 12, Vector2.new(0, 1))
+  editKit.TextColor3 = WHITE
+  editKit.Font = Enum.Font.GothamBold
+  -- 主按钮：出击
+  local deployBtn, deployBtnT, deployBtnK = mainButton(spawnPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
 
   -- 键位说明放在部署界面最下面（战斗里第一人称不显示键位）
-  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 16), UDim2.new(0.5, 0, 1, -20), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 14), UDim2.new(0.5, 0, 1, -16), 11, FAINT, Enum.Font.Gotham, Vector2.new(0.5, 0))
   deployHelp.Visible = not G.mobile
   -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or deploy.Visible
   end
 
-  local deployBtn = button(deploy, "", UDim2.new(0.36, -30, 0, 52), UDim2.new(0, 20, 1, -76), RGB(60, 150, 80))
-  deployBtn.TextSize = 22
-  deployBtn.Activated:Connect(function()
+  local function doDeploy()
     local S = G.S
     if not S or S.alive or (S.wait or 0) > 0 then return end
-    if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
-    G.R.Act:FireServer("deploy", sel.role, sel.spawn)
+    if not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+    G.R.Act:FireServer("deploy", sel.role or sel.kit, sel.spawn)
+  end
+  deployBtn.Activated:Connect(doDeploy)
+  local function setPage(pg, user)
+    sel.page = pg
+    if user then sel.pageUser = pg end
+    sel.slot = nil
+    G.refreshDeploy()
+  end
+  goSpawn.Activated:Connect(function() setPage("spawn", true) end)
+  editKit.Activated:Connect(function() setPage("kit", true) end)
+  tabs.kit.b.Activated:Connect(function() setPage("kit", true) end)
+  tabs.spawn.b.Activated:Connect(function() setPage("spawn", true) end)
+  -- 回车：装备页 → 生成点 → 出击；退格：回装备页
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not deploy.Visible then return end
+    if io.KeyCode == Enum.KeyCode.Return then
+      if sel.page == "spawn" then doDeploy() else setPage("spawn", true) end
+    elseif io.KeyCode == Enum.KeyCode.Backspace and sel.page == "spawn" then
+      setPage("kit", true)
+    end
   end)
 
   local function spawnName(s)
@@ -21191,78 +22119,228 @@ function UI.init(G)
     return s.id
   end
 
+  -- 出生点：左边一列（名字、能不能去），地图上一个个小点
   local function buildSpawns(S)
     for _, b in ipairs(spawnBtns) do b:Destroy() end
     spawnBtns = {}
-    if not spawnLayer then return end
     local ids = {}
-    for _, s in ipairs(S.spawns or {}) do
+    for i, s in ipairs(S.spawns or {}) do
       ids[s.id] = s
       local chosen = sel.spawn == s.id
-      local b
-      if s.x then
-        local u, v = G.mapUV(s.x, s.z)
-        b = Instance.new("TextButton")
-        b.AnchorPoint = Vector2.new(0.5, 0.5)
-        b.Position = UDim2.fromScale(u, v)
-        b.Size = UDim2.fromOffset(chosen and 34 or 26, chosen and 34 or 26)
-        b.BackgroundColor3 = s.ok and (chosen and RGB(255, 210, 60) or RGB(255, 255, 255)) or RGB(90, 90, 90)
-        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or ((s.kind == "af2") and "✈" or "▲"))
-        b.TextColor3 = RGB(20, 20, 20)
-        b.TextScaled = true
-        b.Font = Enum.Font.GothamBlack
-        b.ZIndex = 8
-        b.Parent = spawnLayer
-        round(b, 20)
-        stroke(b, RGB(0, 0, 0), 2, 0.2)
-        local tip = label(b, spawnName(s), UDim2.fromOffset(150, 18), UDim2.new(0.5, 0, 1, 2), 12, TEXT, Enum.Font.GothamBold, Vector2.new(0.5, 0))
-        tip.ZIndex = 8
-        tip.TextStrokeTransparency = 0.3
-      else
-        b = button(extraSpawns, spawnName(s), UDim2.new(0.25, -6, 0, 40), nil, s.ok and (chosen and RGB(200, 160, 40) or RGB(50, 58, 66)) or RGB(40, 40, 40))   -- 一排四个（舰、航母、登陆平台、伞降）
-        b.TextSize = 15
-      end
-      b.Active = s.ok
-      b.Activated:Connect(function()
+      local function pick()
         if not s.ok then G.toast(T("ui.spawnBlocked"), "bad") return end
         sel.spawn = s.id
         G.refreshDeploy()
-      end)
-      table.insert(spawnBtns, b)
+      end
+      -- 列表里一行
+      local row = Instance.new("TextButton")
+      row.LayoutOrder = i
+      row.Size = UDim2.new(1, -6, 0, mobile and 30 or 38)
+      row.BackgroundColor3 = chosen and RGB(255, 255, 255) or RGB(12, 14, 16)
+      row.BackgroundTransparency = chosen and 0.9 or 0.45
+      row.BorderSizePixel = 0
+      row.AutoButtonColor = false
+      row.Text = ""
+      row.Parent = list
+      frame(row, UDim2.new(0, 2, 1, 0), nil, WHITE, chosen and 0 or 1)
+      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.GothamBold or Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      txt(row, s.ok and "" or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      row.Activated:Connect(pick)
+      table.insert(spawnBtns, row)
+      -- 地图上的点
+      if s.x and spawnLayer then
+        local u, v = G.mapUV(s.x, s.z)
+        local b = Instance.new("TextButton")
+        b.AnchorPoint = Vector2.new(0.5, 0.5)
+        b.Position = UDim2.fromScale(u, v)
+        b.Size = UDim2.fromOffset(chosen and 16 or 11, chosen and 16 or 11)
+        b.Rotation = 45
+        b.BackgroundColor3 = s.ok and WHITE or RGB(110, 110, 110)
+        b.BackgroundTransparency = chosen and 0 or 0.25
+        b.BorderSizePixel = 0
+        b.Text = ""
+        b.ZIndex = 8
+        b.Parent = spawnLayer
+        local st = Instance.new("UIStroke")
+        st.Color = RGB(0, 0, 0)
+        st.Thickness = 1
+        st.Transparency = 0.3
+        st.Parent = b
+        if chosen then
+          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+          tip.ZIndex = 8
+          tip.TextStrokeTransparency = 0.4
+          table.insert(spawnBtns, tip)
+        end
+        b.Activated:Connect(pick)
+        table.insert(spawnBtns, b)
+      end
     end
     if sel.spawn and (not ids[sel.spawn] or not ids[sel.spawn].ok) then sel.spawn = nil end
   end
 
+  -- 装备格：上面弹出这一格能换的
+  local function openPicker(i)
+    for _, c in ipairs(pickCards) do c.b:Destroy() end
+    pickCards = {}
+    if sel.slot == i or not SLOTS[i] then sel.slot = nil picker.Visible = false return end
+    sel.slot = i
+    focus = i
+    local slot = SLOTS[i]
+    local opts = table.clone(slot.opts)
+    if slot.none then table.insert(opts, false) end
+    local S = G.S or {}
+    local pw, ph = mobile and 112 or 168, mobile and 70 or 104
+    local x0 = math.max(M0, M0 + (i - 1) * (SW + GAP))
+    pickHead.Text = T("deploy.choose", T("deploy.slot." .. slot.id))
+    pickHead.Position = UDim2.new(0, x0, 1, slotY - SH - 14 - ph - 22)
+    for k, id in ipairs(opts) do
+      local c = newCard(picker, pw, ph)
+      c.b.AnchorPoint = Vector2.new(0, 1)
+      c.b.Position = UDim2.new(0, x0 + (k - 1) * (pw + 6), 1, slotY - SH - 14)
+      c.idx.Text = ""
+      local on = (sel.kit[slot.id] or false) == id
+      c.cat.Text = on and T("deploy.current") or ""
+      c.nm.Text = itemName(id or nil)
+      local n = id and countOf(id)
+      c.cnt.Text = n and ("×" .. n) or ""
+      c.st.Transparency = on and 0.2 or 0.86
+      if id then c.wait = setModel(c.vp, id, S.team) c.item = id end
+      c.b.Activated:Connect(function()
+        sel.kit[slot.id] = id or nil
+        sel.slot = nil
+        picker.Visible = false
+        for _, cc in ipairs(pickCards) do cc.b:Destroy() end
+        pickCards = {}
+        G.refreshDeploy()
+      end)
+      table.insert(pickCards, c)
+    end
+    picker.Visible = true
+  end
+  for i, c in ipairs(cards) do
+    c.b.Activated:Connect(function()
+      openPicker(i)
+      G.refreshDeploy()
+    end)
+  end
+  G.deployPick = openPicker   -- 测试、截图用：点开 / 收起第 i 格
+
+  local lastTeam = nil
   function G.refreshDeploy()
     local S = G.S
     if not S then return end
-    title.Text = T("game.title")
-    teamTag.Text = T("team." .. (S.team or "atk"))
-    teamTag.BackgroundColor3 = teamColor(S.team)
-    goal.Text = T((S.team == "def") and "ui.goalDef" or "ui.goalAtk")
+    local team = S.team or "atk"
+    local tc = teamColor(team)
+    -- 页：上次出击过（记着出生点）就先给生成点页，好直接再出击；第一次进来先看装备
+    local page = sel.pageUser or (sel.spawn and "spawn" or "kit")
+    sel.page = page
+    kitPage.Visible = page == "kit"
+    spawnPage.Visible = page == "spawn"
+    for pg, t in pairs(tabs) do
+      t.b.Text = T("deploy.tab." .. pg)
+      t.b.TextColor3 = (pg == page) and WHITE or DIM
+      t.u.BackgroundTransparency = (pg == page) and 0 or 1
+      t.u.BackgroundColor3 = WHITE
+    end
     langBtn.Text = T("ui.lang")
     sideBtn.Text = T("ui.switchSide")
-    for id, c in pairs(roleCards) do
-      local w = {}
-      for _, wid in ipairs(c.r.weapons) do table.insert(w, T("weapon." .. wid)) end
-      c.nm.Text = T("role." .. id)
-      c.ds.Text = T("role." .. id .. ".desc")
-      c.ws.Text = table.concat(w, " · ")
-      local on = sel.role == id
-      c.st.Transparency = on and 0 or 1
-      c.st.Color = RGB(255, 210, 60)
-      c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
+    menuBtn.Text = T("menu.open")
+    -- 阵营一行
+    facDot.BackgroundColor3 = tc
+    facLine.Text = T("faction." .. team .. ".name") .. "   ·   " .. T((team == "def") and "ui.goalDef" or "ui.goalAtk")
+    -- 换了阵营：装备格的样子（两边的模型不一样）重画
+    if lastTeam ~= team then
+      lastTeam = team
+      for _, c in ipairs(cards) do c.item = "?" end
+      bigItem = "?"
     end
+    -- 装备格
+    for i, c in ipairs(cards) do
+      local slot = c.slot
+      local id = sel.kit[slot.id]
+      if not id and not slot.none then id = slot.opts[1] sel.kit[slot.id] = id end
+      c.idx.Text = tostring(i)
+      c.cat.Text = T("deploy.slot." .. slot.id)
+      c.nm.Text = itemName(id)
+      c.nm.TextColor3 = id and WHITE or FAINT
+      local n = id and countOf(id)
+      c.cnt.Text = n and ("×" .. n) or ""
+      local on = (sel.slot == i) or (sel.slot == nil and focus == i)
+      c.st.Transparency = on and 0.35 or 0.86
+      c.bar.BackgroundTransparency = (sel.slot == i) and 0 or 1
+      c.b.BackgroundTransparency = on and 0.25 or 0.4
+      if c.item ~= (id or false) then
+        c.item = id or false
+        c.wait = setModel(c.vp, id, team)
+      end
+    end
+    picker.Visible = sel.slot ~= nil
+    -- 标题、说明、数据、大图：看的那一格
+    local fs = SLOTS[focus] or SLOTS[1]
+    local fid = sel.kit[fs.id]
+    bigName.Text = fid and itemName(fid) or T("deploy.none")
+    bigDesc.Text = T("deploy.slot." .. fs.id) .. "   ·   " .. (fid and T("gear." .. fid .. ".desc") or T("deploy.noneDesc"))
+    local rows = fid and statRows(fid) or {}
+    for k, r in ipairs(stats) do
+      local d = rows[k]
+      local show = d ~= nil and not mobile
+      r.a.Visible, r.bg.Visible, r.v.Visible = show, show, show
+      if d then
+        r.a.Text = d[1]
+        r.fill.Size = UDim2.fromScale(d[2], 1)
+        r.v.Text = d[3]
+      end
+    end
+    if bigItem ~= (fid or false) then
+      bigItem = fid or false
+      bigWait = setModel(big, fid, team)
+    end
+    -- 主按钮
+    goSpawnT.Text = T("deploy.pickSpawn")
+    goSpawnK.Text = mobile and "" or T("deploy.enter")
     buildSpawns(S)
-    if (S.wait or 0) > 0 then
-      deployBtn.Text = T("ui.waitRespawn", S.wait)
-      deployBtn.BackgroundColor3 = RGB(70, 70, 70)
-    else
-      deployBtn.Text = T("ui.deployBtn")
-      local ready = sel.role and sel.spawn
-      deployBtn.BackgroundColor3 = ready and RGB(60, 150, 80) or RGB(70, 90, 76)
+    listHead.Text = T("deploy.tab.spawn")
+    local names = {}
+    for _, slot in ipairs(SLOTS) do
+      local id = sel.kit[slot.id]
+      if id then table.insert(names, itemName(id)) end
     end
+    kitLine.Text = T("deploy.kitLine", table.concat(names, " · "))
+    editKit.Text = T("deploy.editKit")
+    if (S.wait or 0) > 0 then
+      deployBtnT.Text = T("ui.waitRespawn", S.wait)
+      deployBtn.BackgroundColor3 = RGB(46, 48, 52)
+      deployBtnT.TextColor3 = DIM
+      deployBtn.AutoButtonColor = false
+    else
+      deployBtnT.Text = T("ui.deployBtn")
+      deployBtn.BackgroundColor3 = WHITE
+      deployBtnT.TextColor3 = sel.spawn and RGB(10, 10, 12) or RGB(120, 120, 124)
+      deployBtn.AutoButtonColor = true
+    end
+    deployBtnK.Text = mobile and "" or T("deploy.enter")
   end
+
+  -- 真模型还在生成：隔两秒再要一次（最多等半分钟）
+  task.spawn(function()
+    for _ = 1, 15 do
+      task.wait(2)
+      if deploy.Visible and G.S then
+        local any = false
+        for _, c in ipairs(cards) do if c.wait then c.item = "?" any = true end end
+        if bigWait then bigItem = "?" any = true end
+        if any then G.refreshDeploy() end
+      end
+    end
+  end)
+  -- 大图慢慢左右转（绕模型中心：G.viewFit 记在属性 C 里）
+  RunService.RenderStepped:Connect(function()
+    if not deploy.Visible or not kitPage.Visible then return end
+    local m = big:FindFirstChildOfClass("Model")
+    local c = m and m:GetAttribute("C")
+    if c then pcall(function() m:PivotTo(CFrame.new(c) * CFrame.Angles(0, math.sin(os.clock() * 0.5) * 0.3, 0)) end) end
+  end)
 
   langBtn.Activated:Connect(function()
     G.lang = (G.lang == "zh") and "en" or "zh"
@@ -21307,7 +22385,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 消息
 
-  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.3, 0), 28, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
+  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   center.TextStrokeTransparency = 0.3
   center.ZIndex = 30
   local centerT = 0
@@ -21364,18 +22442,20 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 战况表（按住 Tab）
 
-  local board = frame(gui, UDim2.fromOffset(760, 520), UDim2.fromScale(0.5, 0.5), PANEL, 0.12, Vector2.new(0.5, 0.5))
+  -- 跟新界面一个样子：深色、直角、细线（用户：要精致简洁，不要卡通）
+  local board = frame(gui, UDim2.fromOffset(780, 520), UDim2.fromScale(0.5, 0.52), RGB(6, 8, 10), 0.08, Vector2.new(0.5, 0.5))
   board.Visible = false
   board.ZIndex = 20
-  round(board, 10)
-  local boardTitle = label(board, "", UDim2.new(1, 0, 0, 36), nil, 20, TEXT, Enum.Font.GothamBlack)
+  stroke(board, LINE, 1, 0.88)
+  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   boardTitle.ZIndex = 21
   local cols = {}
   for i, t in ipairs({ "atk", "def" }) do
-    local c = frame(board, UDim2.new(0.5, -18, 1, -50), UDim2.new((i - 1) * 0.5, 12, 0, 42), RGB(0, 0, 0), 0.6)
+    local c = frame(board, UDim2.new(0.5, -36, 1, -64), UDim2.new((i - 1) * 0.5, 24, 0, 52), RGB(0, 0, 0), 1)
     c.ZIndex = 21
-    round(c, 8)
-    local h = label(c, "", UDim2.new(1, 0, 0, 26), nil, 16, teamColor(t), Enum.Font.GothamBlack)
+    local tl = frame(c, UDim2.new(1, 0, 0, 2), nil, teamColor(t), 0)   -- 顶上一道队色细线
+    tl.ZIndex = 22
+    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
     h.ZIndex = 22
     local list = Instance.new("Frame")
     list.BackgroundTransparency = 1
@@ -21397,17 +22477,17 @@ function UI.init(G)
       local rows = {}
       for _, e in ipairs(boardData) do if e.t == t then table.insert(rows, e) end end
       table.sort(rows, function(a, b) return (a.s or 0) > (b.s or 0) end)
-      c.head.Text = T("team." .. t) .. "  (" .. #rows .. ")"
+      c.head.Text = T("hud." .. t) .. "   ·   " .. T("team." .. t) .. "   " .. #rows
       local hdr = frame(c.list, UDim2.new(1, 0, 0, 18), nil, PANEL, 1)
       hdr.LayoutOrder = 0
       hdr.ZIndex = 22
       for k, txt in ipairs({ "", T("ui.kills"), T("ui.deaths"), T("ui.captures"), T("ui.score") }) do
-        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 11, MUTE, Enum.Font.GothamBold)
+        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.GothamMedium)
         l.ZIndex = 23
       end
       for i, e in ipairs(rows) do
         if i > 22 then break end
-        local r = frame(c.list, UDim2.new(1, 0, 0, 18), nil, (e.id == player.UserId) and RGB(80, 70, 30) or PANEL, (e.id == player.UserId) and 0.3 or 1)
+        local r = frame(c.list, UDim2.new(1, 0, 0, 20), nil, RGB(255, 255, 255), (e.id == player.UserId) and 0.9 or 1)
         r.LayoutOrder = i
         r.ZIndex = 22
         local nm = e.n .. (e.bot and (" " .. T("ui.bot")) or "")
@@ -21425,11 +22505,15 @@ function UI.init(G)
       board.Visible = true
       G.drawBoard()
     end
+    G.boardShown = function() return board.Visible end
   end)
   UIS.InputEnded:Connect(function(io)
     if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
   end)
-  local boardBtn = button(hud, "≡", UDim2.fromOffset(40, 40), UDim2.new(0, 16, 0, 70), RGB(40, 46, 52))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
+  local boardBtn = button(hud, "≡", UDim2.fromOffset(36, 36), UDim2.new(0, 16, 0, 70), RGB(8, 10, 12))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
+  boardBtn.BackgroundTransparency = 0.5
+  boardBtn.TextColor3 = RGB(200, 206, 210)
+  for _, c in ipairs(boardBtn:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end   -- 直角，跟新界面一样
   boardBtn.TextSize = 22
   boardBtn.Activated:Connect(function()
     board.Visible = not board.Visible
@@ -21460,8 +22544,10 @@ function UI.init(G)
       return
     end
     loading.Visible = false
-    if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：还没选、或者点了「换阵营」
+    if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
+    if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
     local showDeploy = not S.alive and S.phase ~= "end"
+    if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy
     hud.Visible = not showDeploy
     results.Visible = S.phase == "end"
@@ -21474,7 +22560,6 @@ function UI.init(G)
     end
     if G.mapRefresh then G.mapRefresh(S) end
     if showDeploy then
-      if not sel.role then sel.role = S.role or "rifle" end
       G.refreshDeploy()
       if S.phase == "prep" then phaseText.Text = T("ui.prep", S.left) else phaseText.Text = T("ui.timeLeft") .. "  " .. fmtTime(S.left) end
     else
@@ -21545,7 +22630,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -22041,7 +23126,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -22463,13 +23548,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="77">
+  <Item class="Workspace" referent="79">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="78">
+  <Item class="Lighting" referent="80">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

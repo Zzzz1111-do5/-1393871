@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local UI = {}
 
@@ -117,91 +118,284 @@ function UI.init(G)
   loadText.ZIndex = 41
 
   ---------------------------------------------------------------- 部署界面
-
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(8, 12, 16), 0.12)
+  -- 照用户给的参考图：不选兵种，进来默认就是一个士兵；底下一排装备格改枪械配置（点一格，上面弹出能换的），右下白色「选择生成点」→ 地图上选点、出击。
+  --   两页：kit 装备（左上标题、说明、数据条，右边转着的大图，底下 4 格）· spawn 生成点（左边出生点列表，右边地图）
+  --   要比参考图精致、简洁（用户：现在这个太卡通）：黑底半透明、细线、直角、小字，只有主按钮是白底黑字
+  local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
+  local M0 = mobile and 18 or 48   -- 左右边距
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  local top = frame(deploy, UDim2.new(1, 0, 0, 64), nil, RGB(12, 16, 20), 0.2)
-  local title = label(top, "", UDim2.new(0, 330, 1, 0), UDim2.fromOffset(140, 0), 22, TEXT, Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Left)   -- 让开左上角 Roblox 的菜单、聊天按钮
-  local teamTag = label(top, "", UDim2.new(0, 260, 0, 34), UDim2.new(0.5, 0, 0.5, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
-  teamTag.BackgroundTransparency = 0.1
-  round(teamTag, 6)
-  local phaseText = label(top, "", UDim2.new(0, 300, 1, 0), UDim2.new(1, -140, 0, 0), 16, MUTE, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)   -- 语言按钮左边
-  local langBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(1, -14, 0.5, 0), RGB(50, 58, 66), Vector2.new(1, 0.5))
-  local sideBtn = button(top, "", UDim2.fromOffset(110, 34), UDim2.new(0.5, 140, 0.5, 0), RGB(40, 46, 52), Vector2.new(0, 0.5))   -- 换阵营（回到选阵营界面）
-  sideBtn.TextSize = 14
-  sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
-  local goal = label(deploy, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 70), 16, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-
-  -- 左边：兵种卡片（载具不在这里选：到地图里的生成点去生成，Depot.lua）
-  local sel = { role = nil, spawn = nil }
-  G.deploySel = sel
-  local roles = Instance.new("ScrollingFrame")
-  roles.Size = UDim2.new(0.36, -30, 1, -186)
-  roles.Position = UDim2.fromOffset(20, 100)
-  roles.BackgroundTransparency = 1
-  roles.BorderSizePixel = 0
-  roles.ScrollBarThickness = 6
-  roles.CanvasSize = UDim2.new()
-  roles.AutomaticCanvasSize = Enum.AutomaticSize.Y
-  roles.Parent = deploy
-  local grid = Instance.new("UIGridLayout")
-  grid.CellSize = UDim2.new(0.5, -6, 0, 92)
-  grid.CellPadding = UDim2.fromOffset(8, 8)
-  grid.SortOrder = Enum.SortOrder.LayoutOrder
-  grid.Parent = roles
-  local roleCards = {}
-  for i, r in ipairs(Config.Roles) do
+  do   -- 左边、下边压暗，右上透出一点战场
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Rotation = -20
+    g.Parent = deploy
+  end
+  local function hair(parent, size, pos, alpha, anchor)   -- 一像素的细线
+    return frame(parent, size, pos, WHITE, alpha or 0.86, anchor)
+  end
+  local function txt(parent, s, size, pos, ts, color, font, anchor, align)
+    local l = label(parent, s, size, pos, ts, color, font, anchor, align)
+    l.TextWrapped = false
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+    return l
+  end
+  -- 主按钮：白底黑字（字写在按钮自己身上），右边一个小键位
+  local function mainButton(parent, size, pos, anchor)
     local b = Instance.new("TextButton")
-    b.Text = ""
-    b.LayoutOrder = i
-    b.BackgroundColor3 = RGB(28, 34, 40)
-    b.BackgroundTransparency = 0.1
+    b.Size, b.Position, b.AnchorPoint = size, pos, anchor or Vector2.new()
+    b.BackgroundColor3 = WHITE
+    b.BorderSizePixel = 0
     b.AutoButtonColor = true
-    b.Parent = roles
-    round(b, 8)
-    local st = stroke(b, LINE, 2, 1)
-    local nm = label(b, "", UDim2.new(1, -16, 0, 22), UDim2.fromOffset(10, 6), 17, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-    local ds = label(b, "", UDim2.new(1, -16, 0, 34), UDim2.fromOffset(10, 28), 12, MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-    ds.TextYAlignment = Enum.TextYAlignment.Top
-    local ws = label(b, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 10, 1, -24), 12, RGB(220, 200, 140), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-    roleCards[r.id] = { b = b, st = st, nm = nm, ds = ds, ws = ws, r = r }
-    b.Activated:Connect(function()
-      sel.role = r.id
-      G.refreshDeploy()
-    end)
+    b.Text = ""
+    b.TextSize = mobile and 16 or 19
+    b.TextColor3 = RGB(10, 10, 12)
+    b.Font = Enum.Font.GothamBold
+    b.TextXAlignment = Enum.TextXAlignment.Left
+    b.Parent = parent
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 22)
+    pad.Parent = b
+    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+    return b, b, k
+  end
+  -- 只有字的按钮（页签、换阵营、语言）
+  local function link(parent, s, size, pos, ts, anchor, align)
+    local b = Instance.new("TextButton")
+    b.Size, b.Position, b.AnchorPoint = size, pos, anchor or Vector2.new()
+    b.BackgroundTransparency = 1
+    b.Text = s
+    b.TextSize = ts or 13
+    b.TextColor3 = DIM
+    b.Font = Enum.Font.GothamMedium
+    b.TextXAlignment = align or Enum.TextXAlignment.Left
+    b.AutoButtonColor = false
+    b.Parent = parent
+    return b
   end
 
-  -- 右边：地图 + 出生点
-  local mapBox = frame(deploy, UDim2.new(0.64, -40, 1, -190), UDim2.new(0.36, 10, 0, 104), RGB(0, 0, 0), 1)
+  local sel = { role = nil, spawn = nil, page = nil, pageUser = nil, slot = nil }
+  G.deploySel = sel
+  -- 装备栏：上次选的（这一局里记着）；开局默认 M4 + 急救包 + 手雷
+  sel.kit = table.clone(Config.LoadoutDefault or { primary = "m4" })
+  local SLOTS = Config.Loadout or { { id = "primary", opts = { "m4" } } }
+
+  -- 顶上一行：页签（装备 / 生成点），右边换阵营、语言
+  local topY = mobile and 74 or 96
+  local tabs = {}
+  for i, pg in ipairs({ "kit", "spawn" }) do
+    local b = link(deploy, "", UDim2.fromOffset(mobile and 70 or 92, 26), UDim2.fromOffset(M0 + (i - 1) * (mobile and 80 or 104), topY), mobile and 14 or 16)
+    b.Font = Enum.Font.GothamBold
+    local u = hair(b, UDim2.new(0, 22, 0, 2), UDim2.new(0, 0, 1, 2), 0)
+    tabs[pg] = { b = b, u = u }
+  end
+  local langBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  local sideBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0 - 118, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
+  local menuBtn = link(deploy, "", UDim2.fromOffset(80, 26), UDim2.new(1, -M0 - 236, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  menuBtn.Activated:Connect(function() if G.showMenu then G.showMenu() end end)
+  hair(deploy, UDim2.new(1, -M0 * 2, 0, 1), UDim2.fromOffset(M0, topY + 34), 0.9)
+
+  local kitPage = frame(deploy, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  local spawnPage = frame(deploy, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+
+  ------------------------------------ 装备页
+  local infoY = topY + (mobile and 40 or 66)
+  local facDot = frame(kitPage, UDim2.fromOffset(6, 6), UDim2.fromOffset(M0, infoY + 5), WHITE, 0)
+  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local stats = {}
+  for k = 1, 4 do
+    local y = infoY + (mobile and 84 or 112) + (k - 1) * 24
+    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    local bg = hair(kitPage, UDim2.fromOffset(180, 2), UDim2.fromOffset(M0 + 86, y + 7), 0.86)
+    local fill = frame(bg, UDim2.fromScale(0.5, 1), nil, WHITE, 0.05)
+    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    stats[k] = { a = a, bg = bg, fill = fill, v = v }
+    a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
+  end
+  -- 右边的大图（慢慢左右转）
+  local big = Instance.new("ViewportFrame")
+  big.Name = "GearBig"
+  big.BackgroundTransparency = 1
+  big.Size = mobile and UDim2.new(0.5, 0, 0.42, 0) or UDim2.new(0.56, 0, 0.5, 0)
+  big.Position = mobile and UDim2.new(0.97, 0, 0.16, 0) or UDim2.new(0.97, 0, 0.17, 0)
+  big.AnchorPoint = Vector2.new(1, 0)
+  big.Ambient = RGB(150, 152, 158)
+  big.LightColor = RGB(255, 250, 242)
+  big.LightDirection = Vector3.new(-0.35, -1, -0.55)
+  big.Parent = kitPage
+  -- 底下的装备格
+  local SW, SH, GAP = mobile and 128 or 206, mobile and 80 or 124, mobile and 6 or 10
+  local slotY = mobile and -14 or -40
+  local cards = {}
+  local picker = frame(kitPage, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  picker.Visible = false
+  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local pickCards = {}
+  local function newCard(parent, w, h)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(w, h)
+    b.BackgroundColor3 = RGB(12, 14, 16)
+    b.BackgroundTransparency = 0.35
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Parent = parent
+    local st = Instance.new("UIStroke")
+    st.Color = WHITE
+    st.Thickness = 1
+    st.Transparency = 0.88
+    st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st.Parent = b
+    local vp = Instance.new("ViewportFrame")
+    vp.BackgroundTransparency = 1
+    vp.Size = UDim2.new(1, -24, 1, -(mobile and 34 or 44))
+    vp.Position = UDim2.fromOffset(12, mobile and 10 or 16)
+    vp.Ambient = RGB(150, 152, 158)
+    vp.LightColor = RGB(255, 250, 242)
+    vp.LightDirection = Vector3.new(-0.35, -1, -0.55)
+    vp.Parent = b
+    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local bar = frame(b, UDim2.new(1, 0, 0, 2), nil, WHITE, 1)   -- 选中的那格顶上一道白线
+    return { b = b, st = st, vp = vp, idx = idx, cat = cat, nm = nm, cnt = cnt, bar = bar, item = nil, wait = false }
+  end
+  for i, slot in ipairs(SLOTS) do
+    local c = newCard(kitPage, SW, SH)
+    c.b.AnchorPoint = Vector2.new(0, 1)
+    c.b.Position = UDim2.new(0, M0 + (i - 1) * (SW + GAP), 1, slotY)
+    c.slot = slot
+    cards[i] = c
+  end
+  -- 主按钮：选择生成点
+  local CW, CH = mobile and 200 or 270, mobile and 48 or 62
+  local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
+  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.GothamMedium, Vector2.new(1, 1), Enum.TextXAlignment.Right)
+
+  -- 数量（消耗品：弹匣 + 备弹）
+  local function countOf(id)
+    local w = Config.Weapons[id]
+    if not w or w.kind == "gun" or w.kind == "heal" or w.kind == "repair" or w.kind == "breach" or w.kind == "spot" then return nil end
+    return (w.mag or 1) + (w.reserve or 0)
+  end
+  -- 数据条：枪看伤害 / 射速 / 射程 / 精度；炸的看伤害 / 杀伤半径 / 射程 / 弹药；工具不显示
+  local function statRows(id)
+    local w = Config.Weapons[id]
+    if not w then return {} end
+    local m = function(studs) return math.floor((studs or 0) / 2.8 + 0.5) end
+    if w.kind == "gun" then
+      return {
+        { T("deploy.stat.dmg"), math.clamp(w.dmg / 100, 0, 1), tostring(w.dmg) },
+        { T("deploy.stat.rate"), math.clamp((60 / w.rate) / 800, 0, 1), T("deploy.rpm", math.floor(60 / w.rate + 0.5)) },
+        { T("deploy.stat.range"), math.clamp(m(w.range) / 550, 0, 1), T("deploy.m", m(w.range)) },
+        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) / 0.8, 0.05, 1), string.format("±%.2f°", w.spread or 0) },
+      }
+    elseif w.dmg then
+      local rows = {
+        { T("deploy.stat.dmg"), math.clamp(w.dmg / 260, 0, 1), tostring(w.dmg) },
+        { T("deploy.stat.blast"), math.clamp((w.splash or 0) / 20, 0, 1), T("deploy.m", m(w.splash)) },
+      }
+      if w.range or w.maxR then table.insert(rows, { T("deploy.stat.range"), math.clamp(m(w.range or w.maxR) / 500, 0, 1), T("deploy.m", m(w.range or w.maxR)) }) end
+      local n = countOf(id)
+      if n then table.insert(rows, { T("deploy.stat.ammo"), math.clamp(n / 12, 0, 1), "×" .. n }) end
+      return rows
+    end
+    return {}
+  end
+
+  local focus = 1   -- 大图、标题看的是哪一格
+  local bigItem, bigWait = nil, false
+  local function itemName(id) return id and T("weapon." .. id) or T("deploy.none") end
+  local function setModel(vp, id, team)
+    if not G.gearModel or not G.viewFit then return id ~= nil end   -- GearView 还没起来：等一会儿再画
+    if not id then
+      G.viewFit(vp, nil)
+      return false
+    end
+    local m, wait, real = G.gearModel(id, team)
+    if m and not real then   -- 零件拼的方块不放（粗糙）：等真模型
+      m:Destroy()
+      m = nil
+    end
+    G.viewFit(vp, m, 1.12)
+    return wait
+  end
+
+  ------------------------------------ 生成点页
+  local listW = mobile and 230 or 340
+  local listY = topY + (mobile and 40 or 66)
+  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local list = Instance.new("ScrollingFrame")
+  list.Size = UDim2.new(0, listW, 1, -(listY + 24) - (mobile and 80 or 150))
+  list.Position = UDim2.fromOffset(M0, listY + 24)
+  list.BackgroundTransparency = 1
+  list.BorderSizePixel = 0
+  list.ScrollBarThickness = 2
+  list.ScrollBarImageColor3 = WHITE
+  list.CanvasSize = UDim2.new()
+  list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  list.Parent = spawnPage
+  local listLayout = Instance.new("UIListLayout")
+  listLayout.Padding = UDim.new(0, 4)
+  listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+  listLayout.Parent = list
+  -- 地图：右边一个正方形
+  local mapBox = frame(spawnPage, mobile and UDim2.new(1, -(M0 * 2 + listW + 16), 1, -(listY + 80)) or UDim2.new(1, -(M0 * 2 + listW + 40), 1, -(listY + 150)),
+    UDim2.new(1, -M0, 0, listY), RGB(0, 0, 0), 1, Vector2.new(1, 0))
   local mapHolder = frame(mapBox, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
   local aspect = Instance.new("UIAspectRatioConstraint")
   aspect.AspectRatio = 1
   aspect.Parent = mapHolder
   local spawnLayer = nil
   local spawnBtns = {}
-  local extraSpawns = frame(deploy, UDim2.new(0.64, -40, 0, 40), UDim2.new(0.36, 10, 1, -80), RGB(0, 0, 0), 1)
-  local extraList = Instance.new("UIListLayout")
-  extraList.FillDirection = Enum.FillDirection.Horizontal
-  extraList.Padding = UDim.new(0, 8)
-  extraList.Parent = extraSpawns
+  -- 装备一行 + 改装备
+  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local editKit = link(spawnPage, "", UDim2.fromOffset(160, 18), UDim2.new(0, M0, 1, slotY), 12, Vector2.new(0, 1))
+  editKit.TextColor3 = WHITE
+  editKit.Font = Enum.Font.GothamBold
+  -- 主按钮：出击
+  local deployBtn, deployBtnT, deployBtnK = mainButton(spawnPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
 
   -- 键位说明放在部署界面最下面（战斗里第一人称不显示键位）
-  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 16), UDim2.new(0.5, 0, 1, -20), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 14), UDim2.new(0.5, 0, 1, -16), 11, FAINT, Enum.Font.Gotham, Vector2.new(0.5, 0))
   deployHelp.Visible = not G.mobile
   -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or deploy.Visible
   end
 
-  local deployBtn = button(deploy, "", UDim2.new(0.36, -30, 0, 52), UDim2.new(0, 20, 1, -76), RGB(60, 150, 80))
-  deployBtn.TextSize = 22
-  deployBtn.Activated:Connect(function()
+  local function doDeploy()
     local S = G.S
     if not S or S.alive or (S.wait or 0) > 0 then return end
-    if not sel.role or not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
-    G.R.Act:FireServer("deploy", sel.role, sel.spawn)
+    if not sel.spawn then G.toast(T("ui.needPick"), "bad") return end
+    G.R.Act:FireServer("deploy", sel.role or sel.kit, sel.spawn)
+  end
+  deployBtn.Activated:Connect(doDeploy)
+  local function setPage(pg, user)
+    sel.page = pg
+    if user then sel.pageUser = pg end
+    sel.slot = nil
+    G.refreshDeploy()
+  end
+  goSpawn.Activated:Connect(function() setPage("spawn", true) end)
+  editKit.Activated:Connect(function() setPage("kit", true) end)
+  tabs.kit.b.Activated:Connect(function() setPage("kit", true) end)
+  tabs.spawn.b.Activated:Connect(function() setPage("spawn", true) end)
+  -- 回车：装备页 → 生成点 → 出击；退格：回装备页
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not deploy.Visible then return end
+    if io.KeyCode == Enum.KeyCode.Return then
+      if sel.page == "spawn" then doDeploy() else setPage("spawn", true) end
+    elseif io.KeyCode == Enum.KeyCode.Backspace and sel.page == "spawn" then
+      setPage("kit", true)
+    end
   end)
 
   local function spawnName(s)
@@ -216,78 +410,228 @@ function UI.init(G)
     return s.id
   end
 
+  -- 出生点：左边一列（名字、能不能去），地图上一个个小点
   local function buildSpawns(S)
     for _, b in ipairs(spawnBtns) do b:Destroy() end
     spawnBtns = {}
-    if not spawnLayer then return end
     local ids = {}
-    for _, s in ipairs(S.spawns or {}) do
+    for i, s in ipairs(S.spawns or {}) do
       ids[s.id] = s
       local chosen = sel.spawn == s.id
-      local b
-      if s.x then
-        local u, v = G.mapUV(s.x, s.z)
-        b = Instance.new("TextButton")
-        b.AnchorPoint = Vector2.new(0.5, 0.5)
-        b.Position = UDim2.fromScale(u, v)
-        b.Size = UDim2.fromOffset(chosen and 34 or 26, chosen and 34 or 26)
-        b.BackgroundColor3 = s.ok and (chosen and RGB(255, 210, 60) or RGB(255, 255, 255)) or RGB(90, 90, 90)
-        b.Text = (s.kind == "point") and s.point or ((s.kind == "camp") and "⌂" or ((s.kind == "af2") and "✈" or "▲"))
-        b.TextColor3 = RGB(20, 20, 20)
-        b.TextScaled = true
-        b.Font = Enum.Font.GothamBlack
-        b.ZIndex = 8
-        b.Parent = spawnLayer
-        round(b, 20)
-        stroke(b, RGB(0, 0, 0), 2, 0.2)
-        local tip = label(b, spawnName(s), UDim2.fromOffset(150, 18), UDim2.new(0.5, 0, 1, 2), 12, TEXT, Enum.Font.GothamBold, Vector2.new(0.5, 0))
-        tip.ZIndex = 8
-        tip.TextStrokeTransparency = 0.3
-      else
-        b = button(extraSpawns, spawnName(s), UDim2.new(0.25, -6, 0, 40), nil, s.ok and (chosen and RGB(200, 160, 40) or RGB(50, 58, 66)) or RGB(40, 40, 40))   -- 一排四个（舰、航母、登陆平台、伞降）
-        b.TextSize = 15
-      end
-      b.Active = s.ok
-      b.Activated:Connect(function()
+      local function pick()
         if not s.ok then G.toast(T("ui.spawnBlocked"), "bad") return end
         sel.spawn = s.id
         G.refreshDeploy()
-      end)
-      table.insert(spawnBtns, b)
+      end
+      -- 列表里一行
+      local row = Instance.new("TextButton")
+      row.LayoutOrder = i
+      row.Size = UDim2.new(1, -6, 0, mobile and 30 or 38)
+      row.BackgroundColor3 = chosen and RGB(255, 255, 255) or RGB(12, 14, 16)
+      row.BackgroundTransparency = chosen and 0.9 or 0.45
+      row.BorderSizePixel = 0
+      row.AutoButtonColor = false
+      row.Text = ""
+      row.Parent = list
+      frame(row, UDim2.new(0, 2, 1, 0), nil, WHITE, chosen and 0 or 1)
+      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.GothamBold or Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      txt(row, s.ok and "" or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      row.Activated:Connect(pick)
+      table.insert(spawnBtns, row)
+      -- 地图上的点
+      if s.x and spawnLayer then
+        local u, v = G.mapUV(s.x, s.z)
+        local b = Instance.new("TextButton")
+        b.AnchorPoint = Vector2.new(0.5, 0.5)
+        b.Position = UDim2.fromScale(u, v)
+        b.Size = UDim2.fromOffset(chosen and 16 or 11, chosen and 16 or 11)
+        b.Rotation = 45
+        b.BackgroundColor3 = s.ok and WHITE or RGB(110, 110, 110)
+        b.BackgroundTransparency = chosen and 0 or 0.25
+        b.BorderSizePixel = 0
+        b.Text = ""
+        b.ZIndex = 8
+        b.Parent = spawnLayer
+        local st = Instance.new("UIStroke")
+        st.Color = RGB(0, 0, 0)
+        st.Thickness = 1
+        st.Transparency = 0.3
+        st.Parent = b
+        if chosen then
+          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+          tip.ZIndex = 8
+          tip.TextStrokeTransparency = 0.4
+          table.insert(spawnBtns, tip)
+        end
+        b.Activated:Connect(pick)
+        table.insert(spawnBtns, b)
+      end
     end
     if sel.spawn and (not ids[sel.spawn] or not ids[sel.spawn].ok) then sel.spawn = nil end
   end
 
+  -- 装备格：上面弹出这一格能换的
+  local function openPicker(i)
+    for _, c in ipairs(pickCards) do c.b:Destroy() end
+    pickCards = {}
+    if sel.slot == i or not SLOTS[i] then sel.slot = nil picker.Visible = false return end
+    sel.slot = i
+    focus = i
+    local slot = SLOTS[i]
+    local opts = table.clone(slot.opts)
+    if slot.none then table.insert(opts, false) end
+    local S = G.S or {}
+    local pw, ph = mobile and 112 or 168, mobile and 70 or 104
+    local x0 = math.max(M0, M0 + (i - 1) * (SW + GAP))
+    pickHead.Text = T("deploy.choose", T("deploy.slot." .. slot.id))
+    pickHead.Position = UDim2.new(0, x0, 1, slotY - SH - 14 - ph - 22)
+    for k, id in ipairs(opts) do
+      local c = newCard(picker, pw, ph)
+      c.b.AnchorPoint = Vector2.new(0, 1)
+      c.b.Position = UDim2.new(0, x0 + (k - 1) * (pw + 6), 1, slotY - SH - 14)
+      c.idx.Text = ""
+      local on = (sel.kit[slot.id] or false) == id
+      c.cat.Text = on and T("deploy.current") or ""
+      c.nm.Text = itemName(id or nil)
+      local n = id and countOf(id)
+      c.cnt.Text = n and ("×" .. n) or ""
+      c.st.Transparency = on and 0.2 or 0.86
+      if id then c.wait = setModel(c.vp, id, S.team) c.item = id end
+      c.b.Activated:Connect(function()
+        sel.kit[slot.id] = id or nil
+        sel.slot = nil
+        picker.Visible = false
+        for _, cc in ipairs(pickCards) do cc.b:Destroy() end
+        pickCards = {}
+        G.refreshDeploy()
+      end)
+      table.insert(pickCards, c)
+    end
+    picker.Visible = true
+  end
+  for i, c in ipairs(cards) do
+    c.b.Activated:Connect(function()
+      openPicker(i)
+      G.refreshDeploy()
+    end)
+  end
+  G.deployPick = openPicker   -- 测试、截图用：点开 / 收起第 i 格
+
+  local lastTeam = nil
   function G.refreshDeploy()
     local S = G.S
     if not S then return end
-    title.Text = T("game.title")
-    teamTag.Text = T("team." .. (S.team or "atk"))
-    teamTag.BackgroundColor3 = teamColor(S.team)
-    goal.Text = T((S.team == "def") and "ui.goalDef" or "ui.goalAtk")
+    local team = S.team or "atk"
+    local tc = teamColor(team)
+    -- 页：上次出击过（记着出生点）就先给生成点页，好直接再出击；第一次进来先看装备
+    local page = sel.pageUser or (sel.spawn and "spawn" or "kit")
+    sel.page = page
+    kitPage.Visible = page == "kit"
+    spawnPage.Visible = page == "spawn"
+    for pg, t in pairs(tabs) do
+      t.b.Text = T("deploy.tab." .. pg)
+      t.b.TextColor3 = (pg == page) and WHITE or DIM
+      t.u.BackgroundTransparency = (pg == page) and 0 or 1
+      t.u.BackgroundColor3 = WHITE
+    end
     langBtn.Text = T("ui.lang")
     sideBtn.Text = T("ui.switchSide")
-    for id, c in pairs(roleCards) do
-      local w = {}
-      for _, wid in ipairs(c.r.weapons) do table.insert(w, T("weapon." .. wid)) end
-      c.nm.Text = T("role." .. id)
-      c.ds.Text = T("role." .. id .. ".desc")
-      c.ws.Text = table.concat(w, " · ")
-      local on = sel.role == id
-      c.st.Transparency = on and 0 or 1
-      c.st.Color = RGB(255, 210, 60)
-      c.b.BackgroundColor3 = on and RGB(48, 56, 40) or RGB(28, 34, 40)
+    menuBtn.Text = T("menu.open")
+    -- 阵营一行
+    facDot.BackgroundColor3 = tc
+    facLine.Text = T("faction." .. team .. ".name") .. "   ·   " .. T((team == "def") and "ui.goalDef" or "ui.goalAtk")
+    -- 换了阵营：装备格的样子（两边的模型不一样）重画
+    if lastTeam ~= team then
+      lastTeam = team
+      for _, c in ipairs(cards) do c.item = "?" end
+      bigItem = "?"
     end
+    -- 装备格
+    for i, c in ipairs(cards) do
+      local slot = c.slot
+      local id = sel.kit[slot.id]
+      if not id and not slot.none then id = slot.opts[1] sel.kit[slot.id] = id end
+      c.idx.Text = tostring(i)
+      c.cat.Text = T("deploy.slot." .. slot.id)
+      c.nm.Text = itemName(id)
+      c.nm.TextColor3 = id and WHITE or FAINT
+      local n = id and countOf(id)
+      c.cnt.Text = n and ("×" .. n) or ""
+      local on = (sel.slot == i) or (sel.slot == nil and focus == i)
+      c.st.Transparency = on and 0.35 or 0.86
+      c.bar.BackgroundTransparency = (sel.slot == i) and 0 or 1
+      c.b.BackgroundTransparency = on and 0.25 or 0.4
+      if c.item ~= (id or false) then
+        c.item = id or false
+        c.wait = setModel(c.vp, id, team)
+      end
+    end
+    picker.Visible = sel.slot ~= nil
+    -- 标题、说明、数据、大图：看的那一格
+    local fs = SLOTS[focus] or SLOTS[1]
+    local fid = sel.kit[fs.id]
+    bigName.Text = fid and itemName(fid) or T("deploy.none")
+    bigDesc.Text = T("deploy.slot." .. fs.id) .. "   ·   " .. (fid and T("gear." .. fid .. ".desc") or T("deploy.noneDesc"))
+    local rows = fid and statRows(fid) or {}
+    for k, r in ipairs(stats) do
+      local d = rows[k]
+      local show = d ~= nil and not mobile
+      r.a.Visible, r.bg.Visible, r.v.Visible = show, show, show
+      if d then
+        r.a.Text = d[1]
+        r.fill.Size = UDim2.fromScale(d[2], 1)
+        r.v.Text = d[3]
+      end
+    end
+    if bigItem ~= (fid or false) then
+      bigItem = fid or false
+      bigWait = setModel(big, fid, team)
+    end
+    -- 主按钮
+    goSpawnT.Text = T("deploy.pickSpawn")
+    goSpawnK.Text = mobile and "" or T("deploy.enter")
     buildSpawns(S)
-    if (S.wait or 0) > 0 then
-      deployBtn.Text = T("ui.waitRespawn", S.wait)
-      deployBtn.BackgroundColor3 = RGB(70, 70, 70)
-    else
-      deployBtn.Text = T("ui.deployBtn")
-      local ready = sel.role and sel.spawn
-      deployBtn.BackgroundColor3 = ready and RGB(60, 150, 80) or RGB(70, 90, 76)
+    listHead.Text = T("deploy.tab.spawn")
+    local names = {}
+    for _, slot in ipairs(SLOTS) do
+      local id = sel.kit[slot.id]
+      if id then table.insert(names, itemName(id)) end
     end
+    kitLine.Text = T("deploy.kitLine", table.concat(names, " · "))
+    editKit.Text = T("deploy.editKit")
+    if (S.wait or 0) > 0 then
+      deployBtnT.Text = T("ui.waitRespawn", S.wait)
+      deployBtn.BackgroundColor3 = RGB(46, 48, 52)
+      deployBtnT.TextColor3 = DIM
+      deployBtn.AutoButtonColor = false
+    else
+      deployBtnT.Text = T("ui.deployBtn")
+      deployBtn.BackgroundColor3 = WHITE
+      deployBtnT.TextColor3 = sel.spawn and RGB(10, 10, 12) or RGB(120, 120, 124)
+      deployBtn.AutoButtonColor = true
+    end
+    deployBtnK.Text = mobile and "" or T("deploy.enter")
   end
+
+  -- 真模型还在生成：隔两秒再要一次（最多等半分钟）
+  task.spawn(function()
+    for _ = 1, 15 do
+      task.wait(2)
+      if deploy.Visible and G.S then
+        local any = false
+        for _, c in ipairs(cards) do if c.wait then c.item = "?" any = true end end
+        if bigWait then bigItem = "?" any = true end
+        if any then G.refreshDeploy() end
+      end
+    end
+  end)
+  -- 大图慢慢左右转（绕模型中心：G.viewFit 记在属性 C 里）
+  RunService.RenderStepped:Connect(function()
+    if not deploy.Visible or not kitPage.Visible then return end
+    local m = big:FindFirstChildOfClass("Model")
+    local c = m and m:GetAttribute("C")
+    if c then pcall(function() m:PivotTo(CFrame.new(c) * CFrame.Angles(0, math.sin(os.clock() * 0.5) * 0.3, 0)) end) end
+  end)
 
   langBtn.Activated:Connect(function()
     G.lang = (G.lang == "zh") and "en" or "zh"
@@ -332,7 +676,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 消息
 
-  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.3, 0), 28, Color3.new(1, 1, 1), Enum.Font.GothamBlack, Vector2.new(0.5, 0.5))
+  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   center.TextStrokeTransparency = 0.3
   center.ZIndex = 30
   local centerT = 0
@@ -389,18 +733,20 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 战况表（按住 Tab）
 
-  local board = frame(gui, UDim2.fromOffset(760, 520), UDim2.fromScale(0.5, 0.5), PANEL, 0.12, Vector2.new(0.5, 0.5))
+  -- 跟新界面一个样子：深色、直角、细线（用户：要精致简洁，不要卡通）
+  local board = frame(gui, UDim2.fromOffset(780, 520), UDim2.fromScale(0.5, 0.52), RGB(6, 8, 10), 0.08, Vector2.new(0.5, 0.5))
   board.Visible = false
   board.ZIndex = 20
-  round(board, 10)
-  local boardTitle = label(board, "", UDim2.new(1, 0, 0, 36), nil, 20, TEXT, Enum.Font.GothamBlack)
+  stroke(board, LINE, 1, 0.88)
+  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   boardTitle.ZIndex = 21
   local cols = {}
   for i, t in ipairs({ "atk", "def" }) do
-    local c = frame(board, UDim2.new(0.5, -18, 1, -50), UDim2.new((i - 1) * 0.5, 12, 0, 42), RGB(0, 0, 0), 0.6)
+    local c = frame(board, UDim2.new(0.5, -36, 1, -64), UDim2.new((i - 1) * 0.5, 24, 0, 52), RGB(0, 0, 0), 1)
     c.ZIndex = 21
-    round(c, 8)
-    local h = label(c, "", UDim2.new(1, 0, 0, 26), nil, 16, teamColor(t), Enum.Font.GothamBlack)
+    local tl = frame(c, UDim2.new(1, 0, 0, 2), nil, teamColor(t), 0)   -- 顶上一道队色细线
+    tl.ZIndex = 22
+    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
     h.ZIndex = 22
     local list = Instance.new("Frame")
     list.BackgroundTransparency = 1
@@ -422,17 +768,17 @@ function UI.init(G)
       local rows = {}
       for _, e in ipairs(boardData) do if e.t == t then table.insert(rows, e) end end
       table.sort(rows, function(a, b) return (a.s or 0) > (b.s or 0) end)
-      c.head.Text = T("team." .. t) .. "  (" .. #rows .. ")"
+      c.head.Text = T("hud." .. t) .. "   ·   " .. T("team." .. t) .. "   " .. #rows
       local hdr = frame(c.list, UDim2.new(1, 0, 0, 18), nil, PANEL, 1)
       hdr.LayoutOrder = 0
       hdr.ZIndex = 22
       for k, txt in ipairs({ "", T("ui.kills"), T("ui.deaths"), T("ui.captures"), T("ui.score") }) do
-        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 11, MUTE, Enum.Font.GothamBold)
+        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.GothamMedium)
         l.ZIndex = 23
       end
       for i, e in ipairs(rows) do
         if i > 22 then break end
-        local r = frame(c.list, UDim2.new(1, 0, 0, 18), nil, (e.id == player.UserId) and RGB(80, 70, 30) or PANEL, (e.id == player.UserId) and 0.3 or 1)
+        local r = frame(c.list, UDim2.new(1, 0, 0, 20), nil, RGB(255, 255, 255), (e.id == player.UserId) and 0.9 or 1)
         r.LayoutOrder = i
         r.ZIndex = 22
         local nm = e.n .. (e.bot and (" " .. T("ui.bot")) or "")
@@ -450,11 +796,15 @@ function UI.init(G)
       board.Visible = true
       G.drawBoard()
     end
+    G.boardShown = function() return board.Visible end
   end)
   UIS.InputEnded:Connect(function(io)
     if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
   end)
-  local boardBtn = button(hud, "≡", UDim2.fromOffset(40, 40), UDim2.new(0, 16, 0, 70), RGB(40, 46, 52))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
+  local boardBtn = button(hud, "≡", UDim2.fromOffset(36, 36), UDim2.new(0, 16, 0, 70), RGB(8, 10, 12))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
+  boardBtn.BackgroundTransparency = 0.5
+  boardBtn.TextColor3 = RGB(200, 206, 210)
+  for _, c in ipairs(boardBtn:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end   -- 直角，跟新界面一样
   boardBtn.TextSize = 22
   boardBtn.Activated:Connect(function()
     board.Visible = not board.Visible
@@ -485,8 +835,10 @@ function UI.init(G)
       return
     end
     loading.Visible = false
-    if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：还没选、或者点了「换阵营」
+    if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
+    if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
     local showDeploy = not S.alive and S.phase ~= "end"
+    if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy
     hud.Visible = not showDeploy
     results.Visible = S.phase == "end"
@@ -499,7 +851,6 @@ function UI.init(G)
     end
     if G.mapRefresh then G.mapRefresh(S) end
     if showDeploy then
-      if not sel.role then sel.role = S.role or "rifle" end
       G.refreshDeploy()
       if S.phase == "prep" then phaseText.Text = T("ui.prep", S.left) else phaseText.Text = T("ui.timeLeft") .. "  " .. fmtTime(S.left) end
     else
