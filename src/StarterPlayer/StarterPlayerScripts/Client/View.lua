@@ -411,8 +411,11 @@ function View.init(G)
         remove(em)
       else
         local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
-        v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
-        v.bb.Enabled = hp < mx and hp > 0
+        if hp ~= v.hpSeen or mx ~= v.mxSeen then
+          v.hpSeen, v.mxSeen = hp, mx
+          v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
+          v.bb.Enabled = hp < mx and hp > 0
+        end
         if v.kind == "veh" then
           G.try_(stepVeh, v, dt, camPos)
         elseif v.ext then

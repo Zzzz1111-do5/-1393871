@@ -227,6 +227,17 @@ function Scenery.init(G)
   for _, r in pairs(LAYER_R) do maxR = math.max(maxR, r) end
 
   local lastPos, timer = nil, 0
+  -- 自动画质（Fx.lua 的 G.perfK）：卡了树林画得近一点，流畅了再放远；变了就整片重挑一次
+  local D0, curK = {}, 1
+  for name, r in pairs(D) do D0[name] = r end
+  local function applyK(k)
+    curK = k
+    for name, r in pairs(D0) do D[name] = r * k end
+    LAYER_R.tree, LAYER_R.bush, LAYER_R.rock, LAYER_R.grass, LAYER_R.flower = D.far, D.bush, D.rock, D.grass, D.flower
+    maxR = 0
+    for _, r in pairs(LAYER_R) do maxR = math.max(maxR, r) end
+    lastPos = nil
+  end
   local stats = { cells = 0, items = 0, live = 0, made = 0, genMs = 0 }
   G.sceneryStats = stats
 
@@ -386,10 +397,9 @@ function Scenery.init(G)
     p.Name = "Sea"
     p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
     p.Size = V(OS, 1, OS)
-    p.Material = Enum.Material.Glass
-    p.Color = RGB(30, 104, 128)
-    p.Transparency = 0.05
-    p.Reflectance = 0.25
+    p.Material = Enum.Material.SmoothPlastic   -- 原来是半透明玻璃：要折射，铺满半个屏幕最费（用户：太卡了）；夜里不透明的看着一样
+    p.Color = RGB(22, 74, 94)
+    p.Reflectance = 0.12
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
     tiles[i] = p
   end
@@ -424,6 +434,8 @@ function Scenery.init(G)
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
   function G.stepScenery(dt)
     stepOcean()
+    local pk = G.perfK or 1
+    if math.abs(pk - curK) > 0.01 then applyK(pk) end
     timer += dt
     local cp = cam.CFrame.Position
     if (lastPos and (cp - lastPos).Magnitude < 10 and timer < 0.3) then return end

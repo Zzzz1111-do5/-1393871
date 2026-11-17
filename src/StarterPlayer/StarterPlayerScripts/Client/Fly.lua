@@ -103,7 +103,7 @@ function Fly.init(G)
           if p.Y < g + 1 then
             W.down = true
             p = V(p.X, g + 1, p.Z)
-            if G.boom then G.boom(p, 2) end
+            if G.boom then G.boom(p, 2, "wreck") end
           end
           local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
           v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
@@ -199,7 +199,107 @@ function Fly.init(G)
   landMark.TextColor3 = RGB(120, 200, 255)
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
-  local HUDS = { bore, aimRing, spdText, altText, thrText, vsText, warnText, fuelText }
+  -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
+  --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
+  local function box(w, h, pos, anchor)
+    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 24, 10), 0.72, anchor)
+    ui.stroke(f, HUD, 2, 0.1)
+    f.Visible = false
+    return f
+  end
+  local spdBox = box(120, 46, UDim2.new(0.5, -300, 0.5, 0), Vector2.new(1, 0.5))
+  local altBox = box(120, 46, UDim2.new(0.5, 300, 0.5, 0), Vector2.new(0, 0.5))
+  local hdgBox = box(74, 30, UDim2.new(0.5, 0, 0, 104), Vector2.new(0.5, 0.5))
+  spdBox.Name, altBox.Name, hdgBox.Name = "SpdBox", "AltBox", "HdgBox"
+  for _, it in ipairs({ { spdText, spdBox }, { altText, altBox } }) do
+    local l = it[1]
+    l.Parent, l.Size, l.Position, l.AnchorPoint = it[2], UDim2.new(1, -8, 1, 0), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5)
+    l.TextSize, l.TextXAlignment, l.Visible = 30, Enum.TextXAlignment.Center, true
+  end
+  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.Code)
+  local spdCap = hud(T("hud.spd"), UDim2.fromOffset(120, 16), UDim2.new(0.5, -420, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
+  local altCap = hud(T("hud.alt"), UDim2.fromOffset(120, 16), UDim2.new(0.5, 300, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
+  thrText.Position, vsText.Position, fuelText.Position = UDim2.new(0.5, -300, 0.5, 36), UDim2.new(0.5, 300, 0.5, 36), UDim2.new(0.5, -300, 0.5, 56)
+  thrText.AnchorPoint, vsText.AnchorPoint, fuelText.AnchorPoint = Vector2.new(1, 0), Vector2.new(0, 0), Vector2.new(1, 0)
+  local ring = ui.frame(gui, UDim2.fromOffset(300, 300), UDim2.fromScale(0.5, 0.5), HUD, 1, Vector2.new(0.5, 0.5))
+  ring.Name = "HudRing"
+  ui.round(ring, 2000)
+  ui.stroke(ring, HUD, 2, 0.15)
+  ring.Visible = false
+  for _, a in ipairs({ { 0.5, 0, 2, 14 }, { 0.5, 1, 2, 14 }, { 0, 0.5, 14, 2 }, { 1, 0.5, 14, 2 } }) do   -- 上下左右四个刻度
+    ui.frame(ring, UDim2.fromOffset(a[3], a[4]), UDim2.fromScale(a[1], a[2]), HUD, 0.1, Vector2.new(0.5, 0.5))
+  end
+  local ringText = hud("", UDim2.fromOffset(240, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
+  ringText.Name = "RingText"
+
+  -- 右侧竖排武器栏（用户：导弹什么的在侧面显示，按几切换到什么导弹，带导弹的图标和剩余数量）：
+  --   每行 [按键] 图标 名字 ×剩几发，选中的那行亮；打光了变灰；最下面一行热诱弹（X）
+  local wList = ui.frame(gui, UDim2.fromOffset(260, 10), UDim2.new(1, -18, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(1, 0.5))
+  wList.Name = "WeaponList"
+  wList.Visible = false
+  local wRows = {}
+  -- 弹的图标：几块小方块拼的（空空弹细长带弹翼、空地弹粗、火箭巢、炸弹、航炮一排炮弹、热诱弹三颗亮点）
+  local function drawIcon(ic, it)
+    local kind = it.flare and "flare" or (it.w and it.w.kind) or "gun"
+    local function r(x, y, sw, sh, rot, rr)
+      local f = ui.frame(ic, UDim2.fromOffset(sw, sh), UDim2.fromOffset(x, y), HUD, 0, Vector2.new(0.5, 0.5))
+      if rot then f.Rotation = rot end
+      if rr then ui.round(f, rr) end
+      return f
+    end
+    if kind == "aam" then
+      r(30, 10, 44, 3) r(53, 10, 6, 3, nil, 2)
+      r(12, 6, 8, 2, -35) r(12, 14, 8, 2, 35)
+      r(31, 7, 6, 2, -30) r(31, 13, 6, 2, 30)
+    elseif kind == "agm" then
+      r(30, 10, 40, 6) r(51, 10, 6, 6, nil, 3)
+      r(12, 5, 9, 3, -40) r(12, 15, 9, 3, 40)
+    elseif kind == "rkt" then
+      local pod = r(28, 10, 36, 16, nil, 5)
+      pod.BackgroundTransparency = 0.55
+      for k = -1, 1 do r(43, 10 + k * 4, 3, 3, nil, 2) end
+    elseif kind == "bomb" then
+      r(30, 10, 30, 9, nil, 5) r(13, 6, 7, 2, -30) r(13, 14, 7, 2, 30)
+    elseif kind == "flare" then
+      for k = 0, 2 do
+        local d = r(16 + k * 14, 10 + ((k == 1) and -3 or 3), 6, 6, nil, 3)
+        d.BackgroundColor3 = RGB(255, 232, 150)
+      end
+    else
+      for k = 0, 3 do r(12 + k * 12, 10, 9, 4, nil, 2) end
+    end
+  end
+
+  -- 光电吊舱的画面（P 键）：四个角的取景框、中间十字、左上模式和倍率、右上目标距离和吊舱指向、底下按键说明
+  local eoGui = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  eoGui.Name = "EoView"
+  eoGui.Visible = false
+  local EOC = RGB(235, 240, 235)
+  for _, c in ipairs({ { 0.3, 0.3, 1, 1 }, { 0.7, 0.3, -1, 1 }, { 0.3, 0.7, 1, -1 }, { 0.7, 0.7, -1, -1 } }) do
+    ui.frame(eoGui, UDim2.fromOffset(46, 2), UDim2.fromScale(c[1], c[2]), EOC, 0.1, Vector2.new((c[3] > 0) and 0 or 1, 0.5))
+    ui.frame(eoGui, UDim2.fromOffset(2, 46), UDim2.fromScale(c[1], c[2]), EOC, 0.1, Vector2.new(0.5, (c[4] > 0) and 0 or 1))
+  end
+  for _, a in ipairs({ { -30, 0, 36, 2 }, { 30, 0, 36, 2 }, { 0, -30, 2, 36 }, { 0, 30, 2, 36 } }) do
+    ui.frame(eoGui, UDim2.fromOffset(a[3], a[4]), UDim2.new(0.5, a[1], 0.5, a[2]), EOC, 0.05, Vector2.new(0.5, 0.5))
+  end
+  local eoMode = ui.label(eoGui, "", UDim2.fromOffset(360, 24), UDim2.new(0, 28, 0, 90), 18, EOC, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+  local eoInfo = ui.label(eoGui, "", UDim2.fromOffset(360, 24), UDim2.new(1, -300, 0, 90), 16, EOC, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  local eoHint = ui.label(eoGui, "", UDim2.fromOffset(760, 22), UDim2.new(0.5, 0, 1, -128), 15, EOC, Enum.Font.Gotham, Vector2.new(0.5, 0.5))
+  eoMode.Name, eoInfo.Name, eoHint.Name = "EoMode", "EoInfo", "EoHint"
+  -- 光电的画面效果：电视（黑白、对比高一点）、热成像白热 / 黑热（所有实体高亮成白 / 黑）
+  local eoCC = Instance.new("ColorCorrectionEffect")
+  eoCC.Name = "EoCC"
+  eoCC.Enabled = false
+  eoCC.Parent = game:GetService("Lighting")
+  local eoHl = Instance.new("Highlight")
+  eoHl.Name = "EoHeat"
+  eoHl.Enabled = false
+  eoHl.FillTransparency, eoHl.OutlineTransparency = 0.08, 0.6
+  eoHl.DepthMode = Enum.HighlightDepthMode.Occluded
+  eoHl.Parent = cam
+  local EO_MODES = { "tv", "whot", "bhot" }
+
+  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList }
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -265,6 +365,99 @@ function Fly.init(G)
     for _, f in ipairs(touchUI) do f.Visible = false end
   end
 
+  ---------------------------------------------------------------- 武器栏、光电吊舱
+
+  local function buildList()
+    for _, r in ipairs(wRows) do r.f:Destroy() end
+    wRows = {}
+    if not st then return end
+    local items = {}
+    for i, wid in ipairs(st.wl) do items[#items + 1] = { key = tostring(i), wid = wid, w = AD.W[wid], idx = i } end
+    items[#items + 1] = { key = "X", flare = true }
+    local H = 34
+    wList.Size = UDim2.fromOffset(260, #items * (H + 4))
+    for i, it in ipairs(items) do
+      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 18, 6), 0.6)
+      f.Name = "Row_" .. (it.wid or "flare")
+      local sk = ui.stroke(f, HUD, 1, 0.7)
+      local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
+      ui.stroke(kb, HUD, 1, 0.2)
+      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.Code)
+      kl.Name = "Key"
+      local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
+      ic.Name = "Icon"
+      drawIcon(ic, it)
+      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      nm.TextWrapped = false
+      nm.Name = "Name"
+      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+      cnt.Name = "Count"
+      wRows[i] = { f = f, s = sk, cnt = cnt, nm = nm, it = it }
+    end
+  end
+
+  -- 自己的飞机：看光电时藏起来（吊舱在机腹，不然一低头就是自己的机翼）；热成像高亮所有实体时也不把自己涂白
+  local ownAir = Instance.new("Model")
+  ownAir.Name = "OwnAir"
+  ownAir.Parent = workspace
+  local function ownHide(on)
+    local v = st and G.views and G.views[st.em]
+    if not v or not v.M then return end
+    for _, p in ipairs(v.M.plist or {}) do
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
+    end
+    if on and v.model and v.model.Parent == G.viewFolder then v.model.Parent = ownAir
+    elseif not on and v.model and v.model.Parent == ownAir and G.viewFolder then v.model.Parent = G.viewFolder end
+  end
+  local function eoApply()
+    local on = st ~= nil and st.eo == true
+    eoGui.Visible = on
+    local m = on and EO_MODES[st.eoMode or 1] or nil
+    eoCC.Enabled = on
+    eoHl.Enabled = on and m ~= "tv"
+    if on then
+      if m == "tv" then
+        eoCC.Saturation, eoCC.Contrast, eoCC.Brightness, eoCC.TintColor = -1, 0.25, 0.02, Color3.new(1, 1, 1)
+      elseif m == "whot" then
+        eoCC.Saturation, eoCC.Contrast, eoCC.Brightness, eoCC.TintColor = -1, 0.45, -0.3, RGB(225, 225, 225)
+        eoHl.FillColor, eoHl.OutlineColor = Color3.new(1, 1, 1), Color3.new(1, 1, 1)
+      else
+        eoCC.Saturation, eoCC.Contrast, eoCC.Brightness, eoCC.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
+        eoHl.FillColor, eoHl.OutlineColor = Color3.new(0, 0, 0), Color3.new(0, 0, 0)
+      end
+      eoHl.Adornee = G.viewFolder
+    end
+  end
+  -- P：进出光电吊舱（用户：飞机驾驶按 P 也要能切换光电视角）。鼠标只转吊舱（稳定在世界方向上），飞机自己保持平飞（固定翼按住进吊舱时的航向、
+  --   航迹拉平；直升机机头不跟着转、不低头）；Z / 滚轮变焦，V 电视 / 白热 / 黑热；画面里的瞄准点就是吊舱看着的地方（对地弹、机头炮塔都朝那里）
+  local function setEO(on)
+    if not st then return end
+    if st.uav then st.dcam = (st.dcam == "nose") and "chase" or "nose" return end   -- 无人机本来就有前视光电：P 跟 V 一样切
+    on = on and st.pilot and not st.crashed
+    if on == (st.eo == true) then return end
+    st.eo = on
+    if on then
+      local look = cam.CFrame.LookVector
+      st.eoYaw = math.atan2(-look.X, -look.Z)
+      st.eoPitch = clamp(math.asin(clamp(look.Y, -1, 1)) - 0.15, -1.5, 0.35)
+      st.eoMode = st.eoMode or 1
+      st.zoom = 1
+      if st.d.kind == "jet" then   -- 自动驾驶：按现在的航向平飞
+        local v = (st.vel.Magnitude > 1) and st.vel.Unit or st.cf.LookVector
+        st.aimYaw = math.atan2(-v.X, -v.Z)
+        st.aimPitch = clamp(math.asin(clamp(v.Y, -1, 1)), -0.06, 0.12)
+      else   -- 直升机：镜头角度回到悬停（heliPhysics 的 HELI_CAM0），机头不跟吊舱转
+        st.camPitch, st.camYaw = -0.12, st.yaw
+      end
+    else
+      st.zoom = 1
+    end
+    ownHide(on)
+    eoApply()
+    if G.playSound then G.playSound("quiet", nil, on and 1.5 or 1.2) end
+  end
+  G.flyEO = setEO
+
   ---------------------------------------------------------------- 开始 / 结束
 
   local function findEnt(id)
@@ -319,6 +512,7 @@ function Fly.init(G)
     panel.Position = (st.uav and rect) and UDim2.new(0.5, 0, rect[4], -12) or UDim2.new(0.5, 0, 1, -24)
     if st.uav and G.tabletOpen then G.tabletOpen(st) end
     for _, l in ipairs(HUDS) do l.Visible = st.pilot end
+    buildList()
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = st.pilot end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
@@ -327,6 +521,12 @@ function Fly.init(G)
 
   local function stop()
     if st and st.trig then G.R.Drive:FireServer({ op = "trig", on = false }) end
+    if G.gunLoop then G.gunLoop("me", nil, nil, false) end
+    if st and st.eo then
+      ownHide(false)
+      st.eo = false
+    end
+    eoGui.Visible, eoCC.Enabled, eoHl.Enabled = false, false, false
     local old = st
     st = nil
     G.fly = nil
@@ -415,9 +615,12 @@ function Fly.init(G)
     end
     return cam.CFrame.LookVector
   end
+  -- 光电吊舱看着的方向（世界方向，鼠标转）；瞄准、挑目标用的方向：开着光电就是吊舱，不然是鼠标瞄准方向
+  local function eoDir() return (CFrame.Angles(0, st.eoYaw or 0, 0) * CFrame.Angles(st.eoPitch or 0, 0, 0)).LookVector end
+  local function lookDir() return st.eo and eoDir() or aimDirNow() end
   local function pickTarget(w, skip)
     local best, bs = nil, math.huge
-    local want = aimDirNow()
+    local want = lookDir()
     for _, c in ipairs(candidates(w)) do
       if inCone(w, c) and c.id ~= skip then
         local s = 1 - want:Dot(c.dir) + c.dist / 20000
@@ -435,6 +638,12 @@ function Fly.init(G)
   end
 
   local function setTrig(on)
+    -- 航炮声：按住扳机就一直响（循环一小段起爆声，一圈一发），打光了就停
+    local loud = on and (st.gunAmmo or 0) > 0 and (not G.S or G.S.phase == "battle")
+    if G.gunLoop and loud ~= (st.gunSnd == true) then
+      st.gunSnd = loud
+      G.gunLoop("me", st.d.gun, nil, loud)
+    end
     if st.trig == on then return end
     st.trig = on
     G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt })
@@ -454,7 +663,8 @@ function Fly.init(G)
         break
       end
     end
-    if G.playSound then G.playSound("rocket", st.cf.Position) end
+    -- 开火声按武器（Fx.lua 的 G.sfx）：导弹低沉的点火 + 呼啸、火箭弹「噗」一声 + 呼的一下、炸弹挂架弹开「咣」一声
+    if G.sfx then G.sfx((w.kind == "rkt") and "rkt" or ((w.kind == "bomb") and "bombRel" or "msl"), nil, { vol = (w.kind == "rkt") and 0.7 or 0.8 }) end
   end
 
   ---------------------------------------------------------------- 物理：固定翼
@@ -821,9 +1031,14 @@ function Fly.init(G)
       if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end
     elseif k == Enum.KeyCode.R then
       G.flyNextTarget()
+    elseif k == Enum.KeyCode.P then   -- 光电吊舱视角
+      setEO(not st.eo)
+    elseif st.eo and k == Enum.KeyCode.V then   -- 光电：电视 → 热成像白热 → 黑热
+      st.eoMode = (st.eoMode or 1) % #EO_MODES + 1
+      eoApply()
     elseif st.uav and (k == Enum.KeyCode.V or io.UserInputType == Enum.UserInputType.MouseButton2) then   -- 平板：前视光电 ↔ 外部视角
       st.dcam = (st.dcam == "nose") and "chase" or "nose"
-    elseif st.uav and k == Enum.KeyCode.Z then   -- 变焦一档一档跳：1× → 3× → 8× → 1×
+    elseif (st.uav or st.eo) and k == Enum.KeyCode.Z then   -- 变焦一档一档跳：1× → 3× → 8× → 1×
       st.zoom = (st.zoom < 2.9) and 3 or ((st.zoom < 7.9) and 8 or 1)
     else
       local n = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 })[k]
@@ -837,7 +1052,7 @@ function Fly.init(G)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
   end)
   UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
-    if gp or not st or not st.uav or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+    if gp or not st or not (st.uav or st.eo) or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
     st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 12)
   end)
 
@@ -910,14 +1125,19 @@ function Fly.init(G)
     if not G.mobile then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
     local md = UIS:GetMouseDelta()
     -- 平板前视光电变焦：倍率越大鼠标越慢（准星在画面上走得一样快）
-    st.zoomS = st.zoomS + ((st.uav and st.dcam == "nose" and st.zoom or 1) - st.zoomS) * math.min(1, dt * 8)
-    if st.uav then md = md / st.zoomS end
-    if d.kind == "jet" and not G.mobile then
-      st.aimYaw -= md.X * SENS
-      st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
+    st.zoomS = st.zoomS + ((((st.uav and st.dcam == "nose") or st.eo) and st.zoom or 1) - st.zoomS) * math.min(1, dt * 8)
+    if st.uav or st.eo then md = md / st.zoomS end
+    if st.eo then   -- 光电：鼠标只转吊舱（飞机按自动驾驶飞）
+      st.eoYaw -= md.X * SENS
+      st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
+    else
+      if d.kind == "jet" and not G.mobile then
+        st.aimYaw -= md.X * SENS
+        st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
+      end
+      st.camYaw -= md.X * SENS
+      st.camPitch = clamp(st.camPitch - md.Y * SENS, -1.2, 0.9)
     end
-    st.camYaw -= md.X * SENS
-    st.camPitch = clamp(st.camPitch - md.Y * SENS, -1.2, 0.9)
     -- 飞
     if st.pilot and not st.crashed then
       if d.kind == "jet" then jetPhysics(dt) else heliPhysics(dt) end
@@ -947,7 +1167,11 @@ function Fly.init(G)
     end
     -- 镜头
     local pos = st.cf.Position
-    if st.uav and st.dcam == "nose" then
+    if st.eo then
+      -- 光电吊舱：机腹下面（固定翼）/ 机头下面的光电球（直升机），视线稳定在世界方向上，不画镜头抖动
+      local eye = (d.kind == "jet") and (st.cf * CF(0, -d.H * 0.5 - 0.6, -d.L * 0.12)).Position or (st.cf * CF(0, -d.H * 0.3, -d.L * 0.5 - 0.8)).Position
+      cam.CFrame = CFrame.lookAt(eye, eye + eoDir() * 100)
+    elseif st.uav and st.dcam == "nose" then
       -- 无人机前视光电（机头下面的光电球）：顺着鼠标想去的方向看（手机上就是机头方向），不画镜头抖动
       local eye = (st.cf * CF(0, -d.H * 0.22, -d.L * 0.5 - 0.8)).Position
       local look = G.mobile and st.cf.LookVector or aimDirNow()
@@ -977,15 +1201,15 @@ function Fly.init(G)
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
     end
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
-    if st.uav and st.dcam == "nose" then fovT = 70 / st.zoomS end
+    if (st.uav and st.dcam == "nose") or st.eo then fovT = 70 / st.zoomS end
     cam.FieldOfView = cam.FieldOfView + (fovT - cam.FieldOfView) * math.min(1, dt * ((st.uav and 10) or 4))
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
     table.insert(ex, st.em)
     aimParams.FilterDescendantsInstances = ex
-    local adir = aimDirNow()
-    local o = (d.kind == "jet" and st.pilot and not G.mobile) and pos or cam.CFrame.Position
+    local adir = lookDir()
+    local o = (d.kind == "jet" and st.pilot and not G.mobile and not st.eo) and pos or cam.CFrame.Position
     local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * 4000, aimParams)
     st.aimPt = res and res.Position or (o + adir * 4000)
     -- 机头炮塔：跟着瞄准点转
@@ -1007,7 +1231,7 @@ function Fly.init(G)
       if w.kind == "gun" then
         setTrig(st.firing or (touch and touch.fire) or false)
       else
-        if st.trig then setTrig(false) end
+        if st.trig or st.gunSnd then setTrig(false) end
         if st.firing or (touch and touch.fire) then
           if w.kind == "rkt" or not st.fireLatch then fireStore(wid, w) end
           st.fireLatch = true
@@ -1073,9 +1297,37 @@ function Fly.init(G)
       fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       local bp, bon = project(pos + st.cf.LookVector * 400)
-      bore.Position, bore.Visible = bp, bon
-      if st.uav and st.dcam == "nose" then
-        aimRing.Visible = false   -- 前视光电：镜头就是瞄准方向，平板画十字线
+      bore.Position, bore.Visible = bp, bon and not st.eo
+      -- 大圈：圈心在机头指向；大小是选中武器能锁的离轴角（导弹的导引头）/ 航炮、火箭、炸弹的瞄准圈；圈底下写武器和剩几发
+      local rdeg = (not w and 5) or (w.kind == "gun" and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
+      if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end
+      local vh = cam.ViewportSize.Y
+      local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), 110, vh * 0.86)
+      ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav
+      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 + 6), bon and not st.eo and not st.uav
+      ringText.Text = wid and (T("aw." .. wid) .. "  ×" .. left(wid)) or ""
+      local lk = st.cf.LookVector
+      hdgText.Text = string.format("%03d", math.floor((math.deg(math.atan2(lk.X, -lk.Z)) + 360) % 360 + 0.5) % 360)
+      -- 右侧武器栏：剩几发、选中的那行亮、打光了变灰
+      for _, r in ipairs(wRows) do
+        local n = r.it.flare and st.flares or left(r.it.wid)
+        r.cnt.Text = "×" .. n
+        local sel = r.it.idx == st.wi
+        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(20, 96, 44) or RGB(0, 18, 6), sel and 0.3 or 0.6
+        r.s.Transparency, r.s.Thickness = sel and 0 or 0.7, sel and 2 or 1
+        local col = (n <= 0) and RGB(110, 130, 112) or HUD
+        r.cnt.TextColor3, r.nm.TextColor3 = col, col
+      end
+      -- 光电画面的字：模式、倍率、目标距离、吊舱相对机头的方位 / 俯仰
+      if st.eo then
+        eoMode.Text = T("eo.title") .. "  " .. T("eo." .. EO_MODES[st.eoMode or 1]) .. string.format("   ×%.1f", st.zoomS)
+        local rel = st.cf:VectorToObjectSpace(eoDir())
+        local az, el = math.deg(math.atan2(rel.X, -rel.Z)), math.deg(math.asin(clamp(rel.Y, -1, 1)))
+        eoInfo.Text = string.format("%s %dm   %+d° %+d°", T("eo.range"), math.floor((st.aimPt - cam.CFrame.Position).Magnitude / AD.M + 0.5), math.floor(az + 0.5), math.floor(el + 0.5))
+        eoHint.Text = T("eo.hint")
+      end
+      if st.eo or (st.uav and st.dcam == "nose") then
+        aimRing.Visible = false   -- 光电 / 前视光电：镜头就是瞄准方向，画十字线
       elseif d.kind == "jet" and not G.mobile then
         local ap, aon = project(pos + aimDirNow() * 400)
         aimRing.Position, aimRing.Visible = ap, aon

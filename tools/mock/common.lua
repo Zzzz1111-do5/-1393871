@@ -47,6 +47,7 @@ function T.join(name, uid, client)
   R.run(0.5)
   if client then
     T.C = R.Gs.client
+    T.C.perfFixed = true   -- 自动画质不调（模拟器的帧率不是真的）
     -- 客户端每帧的步骤出错只显示在界面的红条上：也记进报错
     local se = T.C.showError
     if se then T.C.showError = function(m) R.errors[#R.errors + 1] = "客户端：" .. tostring(m) return se(m) end end
@@ -57,6 +58,14 @@ end
 function T.key(code, down)
   R.keys[code.Name] = down or nil
   R.as("client", function()
+    -- ContextActionService 绑了这个键的（坦克的 Shift 瞄准镜、狙击镜屏息）：先调它
+    for name, keys in pairs(R.bindKeys or {}) do
+      for _, k in ipairs(keys) do
+        if k == code and R.binds[name] then
+          R.binds[name](name, down and Enum.UserInputState.Begin or Enum.UserInputState.End, { KeyCode = code, UserInputType = Enum.UserInputType.Keyboard })
+        end
+      end
+    end
     if down then UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Keyboard, KeyCode = code, UserInputState = Enum.UserInputState.Begin }, false)
     else UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.Keyboard, KeyCode = code, UserInputState = Enum.UserInputState.End }, false) end
   end)

@@ -491,7 +491,7 @@ function Navy.init(G)
         dir = want
       end
       if (tp - s.pos).Magnitude < 14 then
-        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6 }) return true end
+        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6, c = "msl" }) return true end
         G.explode(s.pos, w, s.src, 0.9)
         return true
       end
@@ -575,7 +575,7 @@ function Navy.init(G)
           if en.kill and t - en.t0 > 0.8 then
             table.remove(G.shots, i)
             G.fx({ k = "shotEnd", id = s.id })
-            G.fx({ k = "boom", p = s.pos, s = 0.8 })
+            G.fx({ k = "boom", p = s.pos, s = 0.8, c = "msl" })
           end
           busy = true
           break

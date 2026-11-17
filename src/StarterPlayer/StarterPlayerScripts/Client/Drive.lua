@@ -1,11 +1,13 @@
 -- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
---   镜头：追尾（鼠标绕着车转），右键 / V 进炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
---   瞄准镜四种模式（N 切换）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--   镜头：追尾（鼠标绕着车转），Shift / 右键进出炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
+--   瞄准镜四种光电模式（V 切换，N 也行）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
---   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、X 烟幕弹、F 下车
+--   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、M 烟幕弹（X 也行）、F 下车
+--   用户：坦克按 Shift 切换开镜；开镜画面上写着「按 V 切换光电模式」「按 M 释放烟雾弹」
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")
+local CAS = game:GetService("ContextActionService")
 local Lighting = game:GetService("Lighting")
 
 local Drive = {}
@@ -114,6 +116,15 @@ function Drive.init(G)
   local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
   local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
   local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  -- 镜里的操作提示（左上角两行大字 + 底下一行）：V 切换光电模式（写着现在是哪种）、M 释放烟雾弹（还剩几发）、Shift 退出、Z 倍率
+  local hintBox = ui.frame(sight, UDim2.fromOffset(330, 66), UDim2.new(0, 28, 0, 96), RGB(0, 0, 0), 0.55)
+  hintBox.Name = "SightHints"
+  local hintV = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 4), 18, RGB(235, 240, 235), Enum.Font.GothamBold)
+  local hintM = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 34), 18, RGB(235, 240, 235), Enum.Font.GothamBold)
+  hintV.Name, hintM.Name = "HintOptic", "HintSmoke"
+  hintV.TextXAlignment, hintM.TextXAlignment = Enum.TextXAlignment.Left, Enum.TextXAlignment.Left
+  local hintLine = ui.label(sight, "", UDim2.fromOffset(640, 22), UDim2.new(0.5, 0, 1, -86), 15, RGB(220, 226, 220), Enum.Font.Gotham, Vector2.new(0.5, 0.5))
+  hintLine.Name = "HintLine"
   local grain = Instance.new("Frame")
   grain.Size = UDim2.fromScale(1, 1)
   grain.BackgroundTransparency = 1
@@ -284,6 +295,20 @@ function Drive.init(G)
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
+  -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
+  local function toggleSight()
+    if not st then return end
+    st.sight = not st.sight
+    ownVisible(not st.sight)
+    applyMode()
+  end
+  local function nextMode()
+    if not st then return end
+    st.mode = st.mode % #MODES + 1
+    applyMode()
+  end
+  local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
+
   local function begin(vs)
     local em = findEnt(vs.id)
     if not em then return end
@@ -297,6 +322,11 @@ function Drive.init(G)
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
     G.drive, G.myVeh = st, st
+    -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
+    CAS:BindActionAtPriority("DriveSight", function(_, state)
+      if state == Enum.UserInputState.Begin and st then toggleSight() end
+      return Enum.ContextActionResult.Sink
+    end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
     cam.CameraType = Enum.CameraType.Scriptable
     panel.Visible = true
     cross.Visible = true
@@ -317,6 +347,7 @@ function Drive.init(G)
     end
     st = nil
     G.drive, G.myVeh = nil, nil
+    CAS:UnbindAction("DriveSight")
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
     if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
@@ -562,9 +593,9 @@ function Drive.init(G)
     fb.Position = UDim2.fromOffset(140, 120)
     fb.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = true tryFire() end end)
     fb.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = false end end)
-    tap("◎", UDim2.fromOffset(60, 140), function() if st then st.sight = not st.sight ownVisible(not st.sight) applyMode() end end)
-    tap("N", UDim2.fromOffset(60, 66), function() if st then st.mode = st.mode % #MODES + 1 applyMode() end end)
-    tap("X", UDim2.fromOffset(140, 40), function() G.R.Drive:FireServer({ op = "smoke" }) end)
+    tap("◎", UDim2.fromOffset(60, 140), toggleSight)
+    tap(T("drv.optic"), UDim2.fromOffset(60, 66), nextMode)
+    tap(T("drv.smoke"), UDim2.fromOffset(140, 40), smoke)
     tap("F", UDim2.fromOffset(0, 0), function() G.R.Drive:FireServer({ op = "exit" }) end)
     tap("1/2", UDim2.fromOffset(170, -30), function() if st then st.wi = (st.wi % #st.d.weapons) + 1 end end)
     G.touchDrive = touch
@@ -580,20 +611,17 @@ function Drive.init(G)
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       st.firing = true
       tryFire()
-    elseif io.UserInputType == Enum.UserInputType.MouseButton2 or k == Enum.KeyCode.V then
-      st.sight = not st.sight
-      ownVisible(not st.sight)
-      applyMode()
-    elseif k == Enum.KeyCode.N then
-      st.mode = st.mode % #MODES + 1
-      applyMode()
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
+      toggleSight()
+    elseif k == Enum.KeyCode.V or k == Enum.KeyCode.N then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热
+      nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
     elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
       local i = (k == Enum.KeyCode.One) and 1 or 2
       if st.d.weapons[i] then st.wi = i end
-    elseif k == Enum.KeyCode.X then
-      G.R.Drive:FireServer({ op = "smoke" })
+    elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
+      smoke()
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E then
       G.R.Drive:FireServer({ op = "exit" })
     end
@@ -723,6 +751,9 @@ function Drive.init(G)
       local dist = (st.aimPt - cam.CFrame.Position).Magnitude
       rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
       zoomText.Text = string.format("×%.1f", 70 / ZOOMS[st.zoom])
+      hintV.Text = T("drv.hintOptic", T("sight." .. MODES[st.mode]))
+      hintM.Text = T("drv.hintSmoke", vs.smoke or 0)
+      hintLine.Text = T("drv.hintLine")
       if grain.Visible then
         local vs2 = cam.ViewportSize
         for _, g in ipairs(dots) do

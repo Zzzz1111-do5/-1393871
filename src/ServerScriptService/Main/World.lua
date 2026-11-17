@@ -141,16 +141,16 @@ function World.lighting()
     Lighting.ExposureCompensation = 0.55
     Lighting.FogColor = RGB(16, 20, 30)
     Lighting.FogStart = 900
-    Lighting.FogEnd = 8500   -- 地图放大了：看得远一点（远海客户端铺到镜头外一万格）
+    Lighting.FogEnd = 12000   -- 地图放大了：看得远一点（远海客户端铺到镜头外一万格）
   end)
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.3
+    atm.Density = 0.21   -- 原来 0.3（用户：视野很短）：远处的岛、舰、飞机看得更远
     atm.Offset = 0.06
     atm.Color = RGB(44, 54, 76)
     atm.Decay = RGB(12, 15, 24)
     atm.Glare = 0.15
-    atm.Haze = 1.6
+    atm.Haze = 1.1
     atm.Parent = Lighting
   end)
   pcall(function()   -- 星空、大一点的月亮

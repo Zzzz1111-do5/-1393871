@@ -192,13 +192,27 @@ function Soldier.init(G)
     step = function(v, dt, camPos)
       local target = v.root.CFrame
       local p = target.Position
+      -- 远了（1500 格外，跟着自动画质 G.perfK 缩放）：整个人收起来（不画、动画也不算）；回到范围里再摆回去
+      local dist = (p - camPos).Magnitude
+      local hideD = 1500 * (G.perfK or 1)
+      if dist > hideD then
+        if not v.hidden then
+          v.hidden, v.home = true, v.model.Parent
+          v.model.Parent = nil
+        end
+        v.cf, v.lastP, v.spd = target, p, 0
+        return
+      elseif v.hidden and dist < hideD * 0.95 then
+        v.hidden = false
+        v.model.Parent = v.home
+      end
       -- 走多快：服务器一秒挪十几次，按位置的变化估、再平滑
       local moved = (V(p.X, 0, p.Z) - V(v.lastP.X, 0, v.lastP.Z)).Magnitude
       v.lastP = p
       v.spd = v.spd + (moved / math.max(dt, 1 / 240) - v.spd) * math.min(1, dt * 5)
       v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
       v.hrp.CFrame = v.cf * CF(0, v.hip - HALF, 0)
-      local far = (p - camPos).Magnitude > 700
+      local far = dist > 700 * (G.perfK or 1)
       if v.rig then
         local want = (v.spd > 19) and "run" or ((v.spd > 1.5) and "walk" or "idle")
         local T = v.tracks

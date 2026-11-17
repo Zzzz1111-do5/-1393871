@@ -1000,6 +1000,7 @@ function TacPad.init(G)
       end
       -- 曳光：每一发从机头打到扫射带上那一点（爆点是服务器给的）
       local fired = 0
+      local gunKey = "tac" .. tostring(e.id or math.random(1, 1e6))
       local flashP = newPart(V(3, 3, 3), CF(0, -500, 0), RGB(255, 214, 140), Enum.Material.Neon, 1)
       flashP.Shape = Enum.PartType.Ball
       local fl = Instance.new("PointLight")
@@ -1017,7 +1018,10 @@ function TacPad.init(G)
           local d = hit - from
           local tr = newPart(V(0.4, 0.4, d.Magnitude), CFrame.lookAt(from + d / 2, hit), RGB(255, 206, 128), Enum.Material.Neon, 0.1)
           table.insert(tracers, { p = tr, t = t })
-          if fired % 3 == 1 and G.playSound then G.playSound("lmg", from, 0.55 + math.random() * 0.1) end
+          if G.gunLoop then   -- 航炮声：机头那里一个循环声（一圈一发，Fx.lua），打完 0.25 秒自己停
+            local jd = G.AD and G.AD.get and G.AD.get(jid)
+            G.gunLoop(gunKey, (jd and jd.gun) or "gau8", from, true)
+          elseif fired % 3 == 1 and G.playSound then G.playSound("lmg", from, 0.55 + math.random() * 0.1) end
         end
         local firing = t >= T1 and t <= T1 + dur
         if firing and nose then

@@ -238,8 +238,14 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · F 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · F exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · X 烟幕弹 · 右键 / V 瞄准镜 · N 夜视 / 热成像 · F 下车",
-  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · X smoke · RMB / V gunner sight · N night vision / thermal · F exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · F 下车",
+  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · F exit")
+-- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
+add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
+add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
+add("drv.hintLine", "Shift 退出瞄准镜 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · Z / Wheel zoom · 1/2 weapon · LMB fire")
+add("drv.optic", "光电", "OPT")
+add("drv.smoke", "烟幕", "SMK")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
 -- 舰艇
@@ -335,10 +341,21 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
-  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · G gear · F eject")
-add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· Q 升 / E 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛油箱 · F 下飞机",
-  "Mouse: fly where you look (look down = nose down, go) · Q up / E down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · F exit")
+add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
+  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · P targeting pod · X flares · J drop tanks · G gear · F eject")
+add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· Q 升 / E 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · F 下飞机",
+  "Mouse: fly where you look (look down = nose down, go) · Q up / E down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · P EO sight · X flares · J drop tanks · F exit")
+-- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
+add("hud.spd", "速度 km/h", "SPD km/h")
+add("hud.alt", "高度 m", "ALT m")
+add("air.flareName", "热诱弹", "Flares")
+add("eo.title", "光电吊舱", "EO POD")
+add("eo.tv", "电视", "TV")
+add("eo.whot", "热成像 · 白热", "IR · WHT")
+add("eo.bhot", "热成像 · 黑热", "IR · BHT")
+add("eo.range", "距离", "RNG")
+add("eo.hint", "P 退出光电 · V 电视 / 白热 / 黑热 · Z / 滚轮 变焦 · R 换目标 · 左键 开火（对地弹、炮塔打吊舱看着的地方）· 飞机自动保持平飞",
+  "P exit pod · V TV / WHT / BHT · Z / Wheel zoom · R target · LMB fire (AGMs and turret go where the pod looks) · autopilot holds level flight")
 -- 油量、副油箱（用户：增加油量这个东西并且可以选择挂载副油箱）
 add("air.fuel", "油 {1}%", "FUEL {1}%")
 add("air.fuelP", "油 {1}%", "Fuel {1}%")
