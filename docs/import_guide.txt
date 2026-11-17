@@ -1,7 +1,8 @@
 Roblox全面大战场 · 原模型导入说明
 ==================================
 
-（仓库里这些文件就在 models/ 下面；Studio 的「导入 3D」只认 .glb，不认压缩包——发给用户的是一个个 .glb 文件，按下面的文件夹分批导。
+（仓库里这些文件就在 models/ 下面。发给用户的是一个压缩包「Roblox全面大战场_全部.zip」：先解压，再按下面的文件夹分批导里面的 .glb——
+  Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
 模型一共 60 个 .glb，按文件夹分：
