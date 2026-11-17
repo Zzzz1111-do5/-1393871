@@ -44,16 +44,17 @@ end
 local BLUR = { z10w = { Rotor_2 = true, TRotor_2 = true } }
 -- 原模型上切出来的活动部件（ImportedAir 的 surf）：按动法算转角。sg 已经把正方向统一成：舵面后缘往下、方向舵 / 全动垂尾后缘往右、
 --   舱门和座舱盖打开、起落架收起；s 是哪一侧（1 右、−1 左）。操纵量 pit / rol / yaw 是 −1～1（抬头、右滚、右偏为正），flap 0～1
+--   减速板（c.brk，B 键）：这些机型没有单独的减速板，照真飞机用舵面减速——副翼两边一起上翘、襟副翼往下、双垂尾的方向舵 / 全动垂尾往外撇
 local SURF_F = {
-  ail = function(c, s) return -s * (c.rol or 0) * rad(20) end,                                  -- 副翼：右滚时右边后缘往上
+  ail = function(c, s) return -s * (c.rol or 0) * rad(20) - (c.brk or 0) * rad(28) end,          -- 副翼：右滚时右边后缘往上；减速时两边一起往上
   flap = function(c) return (c.flap or 0) * rad(30) end,
-  flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) end,      -- 襟副翼：放襟翼 + 差动滚转
+  flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) + (c.brk or 0) * rad(22) end,   -- 襟副翼：放襟翼 + 差动滚转；减速时往下
   elevon = function(c, s) return math.clamp(-(c.pit or 0) * rad(15) - s * (c.rol or 0) * rad(15), -rad(25), rad(25)) end,   -- 升降副翼：抬头时后缘往上
   stab = function(c, s) return -(c.pit or 0) * rad(18) - s * (c.rol or 0) * rad(6) end,          -- 全动平尾：带一点差动帮滚转
   elev = function(c) return -(c.pit or 0) * rad(20) end,
   can = function(c) return (c.pit or 0) * rad(16) end,                                          -- 鸭翼：抬头时前缘往上（后缘往下）
-  rud = function(c) return (c.yaw or 0) * rad(25) end,
-  fin = function(c) return (c.yaw or 0) * rad(18) end,
+  rud = function(c, s) return (c.yaw or 0) * rad(25) + (s or 0) * (c.brk or 0) * rad(28) end,   -- 方向舵；双垂尾减速时两边往外撇（单垂尾 s = 0 不动）
+  fin = function(c, s) return (c.yaw or 0) * rad(18) + (s or 0) * (c.brk or 0) * rad(22) end,   -- 全动垂尾：同上
   rv = function(c, s) return -(c.pit or 0) * rad(18) + s * (c.yaw or 0) * rad(15) end,          -- V 尾：抬头两边一起往上，偏航两边反着
   bay = function(c, _, A) return (c.bay or 0) * A end,
   bayS = function(c, _, A) return (c.bayS or 0) * A end,
@@ -499,11 +500,12 @@ function AM.build(d, team, load)
     local t0 = TAG
     TAG = "pilot"
     nPilot += 1
+    local neck = cf * CF(0, -0.2, 0.1)   -- 头绕脖子转
     local list = {
       add(newPart(m, V(1.5, 1.6, 1.1), RGB(70, 80, 60), MAT.Fabric), cf * CF(0, -0.9, 0.2)),
-      add(newPart(m, V(0.95, 0.95, 0.95), RGB(230, 190, 150), MAT.SmoothPlastic, BALL), cf * CF(0, 0.25, 0)),
-      add(newPart(m, V(1.12, 1.12, 1.12), helmetColor or RGB(230, 230, 220), MAT.SmoothPlastic, BALL), cf * CF(0, 0.38, 0.05)),
-      add(newPart(m, V(0.8, 0.3, 0.2), DARK, MAT.Glass), cf * CF(0, 0.3, -0.5)),   -- 护目镜
+      add(newPart(m, V(0.95, 0.95, 0.95), RGB(230, 190, 150), MAT.SmoothPlastic, BALL), cf * CF(0, 0.25, 0), "b", { neck = neck }),
+      add(newPart(m, V(1.12, 1.12, 1.12), helmetColor or RGB(230, 230, 220), MAT.SmoothPlastic, BALL), cf * CF(0, 0.38, 0.05), "b", { neck = neck }),
+      add(newPart(m, V(0.8, 0.3, 0.2), DARK, MAT.Glass), cf * CF(0, 0.3, -0.5), "b", { neck = neck }),   -- 护目镜
     }
     for _, it in ipairs(list) do it.seat, it.ref = nPilot, cf end   -- 换原模型时照原模型座舱里的眼位重新摆
     TAG = t0
@@ -534,7 +536,7 @@ function AM.build(d, team, load)
     if Cn then
       local hinge = V(0, Cn.y + Cn.h * 0.15, Cn.z + Cn.len * 0.5)
       local canF = function(c) return (c.can or 0) * 0.85 end   -- 绕后铰链往上掀
-      local ex = { hp = hinge, ax = V(1, 0, 0), f = canF }
+      local ex = { hp = hinge, ax = V(1, 0, 0), f = canF, canopy = true }   -- canopy：弹射时抛掉
       ball(V(Cn.w, Cn.h * 1.7, Cn.len), CF(0, Cn.y, Cn.z), glass, MAT.Glass, "h", table.clone(ex), 0.35)
       box(V(Cn.w * 0.9, 0.18, 0.35), CF(0, Cn.y + Cn.h * 0.62, Cn.z + Cn.len * 0.1), skinD, MAT.Metal, "h", table.clone(ex))   -- 盖框
       pilot(CF(0, Cn.y - 0.2, Cn.z + Cn.len * 0.05), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96))
@@ -960,6 +962,8 @@ function AM.build(d, team, load)
     local sg, s, A = S.sg or 1, S.s or 0, S.A or 0
     local ex = { hp = a, ax = (b - a).Unit, f = function(c) return sg * f(c, s, A) end }
     if S.k == "gear" then ex.vis = function(c) return (c.gear or 1) > 0.03 end end   -- 收到底就藏起来（收进去的部分别从蒙皮里穿出来）
+    if S.k == "gear" and (S.s or 0) == 0 then ex.steer = true end   -- 前起落架（中间那根）：地上滑行时跟着方向舵左右转
+    if S.k == "canopy" then ex.canopy = true end   -- 弹射时抛掉
     if S.fold then ex.fold = S.fold end   -- 歼-15 折叠外翼上的：跟着外翼折
     if S.tip then   -- 平尾外段上的：跟着平尾外段的铰链折
       local F = I.fold and I.fold.Tip
@@ -978,7 +982,9 @@ function AM.build(d, team, load)
       if it.kind == "ab" or t == "lamp" or t == "store" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
         if t == "pilot" then   -- 挪进原模型的座舱：眼位往下 0.3 格、往后 0.3 格是零件拼的那个参考点（头的中心偏下）
           local e = pit[it.seat]
-          it.cf0 = CF(V(e[1], e[2] - 0.3, e[3] + 0.3) + imp.O) * it.ref:Inverse() * it.cf0
+          local mv = CF(V(e[1], e[2] - 0.3, e[3] + 0.3) + imp.O) * it.ref:Inverse()
+          it.cf0 = mv * it.cf0
+          if it.neck then it.neck = mv * it.neck end
         end
         n += 1
         items[n] = it
@@ -1104,9 +1110,13 @@ function AM.pose(M, cf, c, now, world)
       base = cf * CF(sd * h.x, h.y, 0) * CFrame.Angles(0, 0, sd * (c.fold or 0) * h.A) * CF(-sd * h.x, -h.y, 0)
     elseif it.fold then base = cf * fold[it.fold] end
     local out
-    if k == "b" then out = cf * it.cf0
+    if k == "b" then
+      if it.neck then out = cf * it.neck * CFrame.Angles(0, c.hy or 0, 0) * CFrame.Angles(c.hp or 0, 0, 0) * it.neck:Inverse() * it.cf0   -- 飞行员的头：c.hy 左右、c.hp 上下（Fly.lua 算）
+      else out = cf * it.cf0 end
     elseif k == "f" then out = base * it.cf0
-    elseif k == "h" then out = base * it.H * CFrame.fromAxisAngle(it.ax, it.f(c)) * it.off
+    elseif k == "h" then
+      if it.steer then out = base * it.H * CFrame.fromAxisAngle(it.ax, it.f(c)) * CFrame.Angles(0, -(c.steer or 0), 0) * it.off   -- 前轮转向（c.steer 往右为正）
+      else out = base * it.H * CFrame.fromAxisAngle(it.ax, it.f(c)) * it.off end
     elseif k == "m" then out = cf * it.f(c) * it.cf0
     elseif k == "r" then
       local hub = cf * it.hub
@@ -1177,6 +1187,68 @@ function AM.pose(M, cf, c, now, world)
     end
   end
   M.anchor.CFrame = cf * CF(0, M.def.H * 0.7 + 2, 0)
+end
+
+---------------------------------------------------------------- 飞机动画第二批用（AirAnim.lua）：加跟着机体的零件、飞行员显隐、弹射、翼尖位置
+
+-- 加一个跟着机体走的零件（翼尖涡流的拖尾架、凝结雾的发射点）：cf0 是机体坐标
+function AM.attach(M, part, cf0)
+  part.Parent = M.model
+  local it = { p = part, cf0 = cf0, kind = "b", tr0 = part.Transparency }
+  table.insert(M.items, it)
+  M.plist[#M.items] = part
+  M.n = #M.items
+  return it
+end
+
+-- 飞行员显隐（座舱里没人时不画；弹射以后不再画）
+function AM.setPilots(M, on)
+  if M.ejected then on = false end
+  if M.pilotsOn == on then return end
+  M.pilotsOn = on
+  for _, it in ipairs(M.items) do
+    if it.tag == "pilot" then it.p.Transparency = on and it.tr0 or 1 end
+  end
+end
+
+-- 机体坐标里第 seat 个座位的飞行员身子（没有座舱的返回 nil）
+function AM.seatCF(M, seat)
+  for _, it in ipairs(M.items) do
+    if it.tag == "pilot" and it.seat == (seat or 1) and not it.neck then return it.cf0 end
+  end
+  return nil
+end
+
+-- 弹射：座舱盖、飞行员藏起来；返回座舱盖每块复制出来的零件和它现在的世界位置（AirAnim 让它们翻滚着飞走）
+function AM.eject(M, cf)
+  local caps = {}
+  for i, it in ipairs(M.items) do
+    if it.canopy and it.p.Transparency < 1 then
+      local ok, q = pcall(function() return it.p:Clone() end)
+      if ok and q then
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+        table.insert(caps, { p = q, cf = (M.clist and M.clist[i]) or (cf * it.cf0) })
+      end
+      it.p.Transparency = 1
+      it.tr0 = 1
+    end
+  end
+  M.ejected = true
+  M.pilotsOn = nil
+  AM.setPilots(M, false)
+  return caps
+end
+
+-- 左右翼尖后缘（机体坐标；翼尖涡流从这里拖出去）
+function AM.tips(M)
+  local d = M.def
+  if M.imp and M.imp.info.tip then
+    local t, oy = M.imp.info.tip, M.imp.O.Y
+    return V(t[1], t[2] + oy, t[4]), V(-t[1], t[2] + oy, t[4])
+  end
+  local w = d.wing
+  if not w or not w.xt then return nil end
+  return V(w.xt, (w.y or 0), w.zt1 or 0), V(-w.xt, (w.y or 0), w.zt1 or 0)
 end
 
 return AM
