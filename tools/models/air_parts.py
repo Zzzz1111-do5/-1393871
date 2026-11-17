@@ -22,6 +22,8 @@ def deflect(PT, g, surf, k=1.0):
     PT = PT.copy()
     for nm, e in surf.items():
         sel = np.where(g == nm)[0]
+        if e['k'] == 'gdoor':
+            continue
         th = e['sg'] * (e.get('A', 0.44) if e['k'] in ('bay', 'bayS', 'canopy', 'gear') else 0.44) * k
         for t in sel:
             for j in range(3):
