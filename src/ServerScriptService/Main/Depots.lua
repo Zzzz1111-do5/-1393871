@@ -2,10 +2,11 @@
 --   守方：营地车场（南面一排地面载具、北面直升机停机坪）、机场停机坪（据点 D 在守方手里才能用）
 --   攻方：登陆平台（舰队前面浮在海上的大平台；两侧水面是地面载具的生成点：车站在气垫艇上，自己开去哪个海滩都行）、
 --         两栖攻击舰甲板（直升机）、航母甲板（舰载机）、攻方机场岛停机坪（陆基飞机）
---   地面载具每种型号一个生成点：一根终端柱（ProximityPrompt「生成」，文字、牌子由客户端 Depot.lua 按语言写）+ 地上画出停放的位置；
+--   地面载具也是「召唤点」（用户：召唤点里让我自己选哪种车，不要固定）：一根终端柱（ProximityPrompt，文字、牌子由客户端 Depot.lua 按语言写）
+--     + 地上画出停放的位置；按 E 弹出本队全部地面车型（坦克 / 装甲车 / 防空 / 火炮，名额按类别），选了生成在这个车位上（p.summon、p.vids，kind "veh"）；
 --   飞机、直升机是「召唤点」（用户：地图改成召唤飞机的地方，我可以选哪种飞机、改导弹挂载）：每个航空基地几个召唤位，
 --     按 E 弹出这个基地能用的机型（名额、冷却），选了再进挂载编辑器（含副油箱），生成在这个召唤位上（p.summon、p.vids）；
---   走过去按住 E：地面载具直接停在地台上；有挂点的飞机先在客户端弹出 3D 挂载界面，选好再发 padSpawn 生成；生成后自己走过去按 E 坐上
+--   走过去按住 E：先选型号（地面载具选了直接停在车位上；有挂点的飞机再进 3D 挂载界面），客户端发 padSpawn 生成；生成后自己走过去按 E 坐上
 --   刚生成的 30 秒只有生成的人能上（别人抢不走）；90 秒没人上就收走（不算冷却，Armor / Air 里原有的空车回收）
 --   舰艇的生成点、码头在 Navy.lua（用这里的 G.depotAddPad / G.depotBuildPad 加进来；kind "ship"，生成后直接坐上舰桥）
 local RS = game:GetService("ReplicatedStorage")
@@ -52,20 +53,36 @@ function Depots.init(G)
 
   ---------------------------------------------------------------- 布局
 
-  local function layout()
-    -- 守方营地：南面一排地面载具（车头朝南，背后是通道，终端柱在车尾），北面直升机停机坪
-    local C = Map.CAMP
+  -- 本队全部地面车型（召唤点里能选的，按坦克、装甲车、防空、火炮排）、其中最大的长宽（车位按它留地方）
+  local function groundIds(team)
     local list = {}
     for _, cat in ipairs({ "tank", "apc", "aa", "arty" }) do
-      for _, id in ipairs(models("def", cat)) do table.insert(list, id) end
+      for _, id in ipairs(models(team, cat)) do table.insert(list, id) end
     end
-    local gap = 22
-    local x0 = C.x - (#list - 1) * gap / 2
-    for i, id in ipairs(list) do
-      local x, z = x0 + (i - 1) * gap, C.z + 70
+    return list
+  end
+  local function biggest(ids)
+    local L, W = 0, 0
+    for _, id in ipairs(ids) do
       local d = defOf(id)
-      addPad({ team = "def", vid = id, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
-        term = V(x - 4, 0, z - d.L / 2 - 4), r = 12, size = V(d.W + 2, 0, d.L + 2) })
+      if d then L, W = math.max(L, d.L), math.max(W, d.W) end
+    end
+    return L, W
+  end
+  local GROUND_PADS = 8   -- 每边几个地面车位（原来一型一个，现在哪个位都能召唤任何一型）
+
+  local function layout()
+    -- 守方营地：南面一排地面车位（车头朝南，背后是通道，终端柱在车尾），北面直升机停机坪
+    local C = Map.CAMP
+    local list = groundIds("def")
+    local gL, gW = biggest(list)
+    local n = math.min(GROUND_PADS, #list)
+    local gap = math.max(22, gW + 10)
+    local x0 = C.x - (n - 1) * gap / 2
+    for i = 1, n do
+      local x, z = x0 + (i - 1) * gap, C.z + 70
+      addPad({ team = "def", vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
+        term = V(x - 4, 0, z - gL / 2 - 4), r = 12, size = V(gW + 2, 0, gL + 2) })
     end
     local hx = { C.x - 140, C.x + 120, C.x + 172 }
     local dh = models("def", "heli")
@@ -78,15 +95,7 @@ function Depots.init(G)
     -- 陆上机场的飞机：停在跑道上、机头朝东顺着跑道，一架接一架往东排、左右错开（地上的飞机彼此不碰撞，后面的照样直接起飞）；
     --   从跑道中间偏西开始排，前面还有两千多格跑道；终端柱在跑道北边（用户：机场太小、跑道非常短——
     --   原来停在跑道北边的停机坪上、机头朝南，一推油门就横穿过几十格宽的跑道冲出去了）
-    local EAST = V(1, 0, 0)
-    local function biggest(ids)   -- 召唤位按这个基地最大的机型留地方
-      local L, W = 0, 0
-      for _, id in ipairs(ids) do
-        local d = defOf(id)
-        if d then L, W = math.max(L, d.L), math.max(W, d.W) end
-      end
-      return L, W
-    end
+    local EAST = V(1, 0, 0)   -- 召唤位按这个基地最大的机型留地方（biggest）
     local function runwayPads(A, team, ids, need)
       if #ids == 0 then return end
       local L, W = biggest(ids)
@@ -134,20 +143,18 @@ function Depots.init(G)
     local land = {}
     for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
     runwayPads(Map.AFIELD2, "atk", land, nil)
-    -- 攻方登陆平台：两侧水面一格一个地面载具（车头朝北，朝着岛），终端柱在平台边上
+    -- 攻方登陆平台：两侧水面一格一个地面车位（车头朝北，朝着岛；车站在气垫艇上），终端柱在平台边上；哪个位都能召唤任何一型
     local B = Map.BARGE
-    list = {}
-    for _, cat in ipairs({ "tank", "apc", "aa", "arty" }) do
-      for _, id in ipairs(models("atk", cat)) do table.insert(list, id) end
-    end
-    local half = math.ceil(#list / 2)
-    for i, id in ipairs(list) do
+    list = groundIds("atk")
+    local n2 = math.min(GROUND_PADS, #list)
+    local half = math.ceil(n2 / 2)
+    for i = 1, n2 do
       local west = i <= half
       local k = west and (i - 1) or (i - half - 1)
       local z = B.z - B.L / 2 + 40 + k * 56 + (west and 0 or 28)
       local sx = west and (B.x - B.W / 2 - 16) or (B.x + B.W / 2 + 16)   -- 气垫艇宽 28：贴着平台边，站在边上按 E 够得着
       local tx = west and (B.x - B.W / 2 + 5) or (B.x + B.W / 2 - 5)
-      addPad({ team = "atk", vid = id, kind = "veh", sea = true, base = CFrame.lookAt(V(sx, 0, z), V(sx, 0, z) + NORTH),
+      addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", sea = true, base = CFrame.lookAt(V(sx, 0, z), V(sx, 0, z) + NORTH),
         term = V(tx, B.top, z + 16), r = 16 })
     end
   end
@@ -292,7 +299,8 @@ function Depots.init(G)
   end
 
   -- 能不能在这个生成点生成（不能的话给这个人说一声为什么）
-  local function check(P, p, vid)
+  -- anyModel：地面召唤位按 E 时还没选型号，名额（按类别）等选了再查
+  local function check(P, p, vid, anyModel)
     local R = G.round
     if not R or (R.phase ~= "prep" and R.phase ~= "battle") then return false end
     if not P or not P.alive or not P.char or P.vehicle then return false end
@@ -302,7 +310,7 @@ function Depots.init(G)
     if not padOpen(p, P.team) then G.msg(P.pl, "bad", "ui.padLocked") return false end
     local d = defOf(vid or p.vid)
     if not d then return false end
-    local av = G.vehAvail(P.team)[d.cat]
+    local av = (not anyModel) and G.vehAvail(P.team)[d.cat] or nil
     if av and av.u >= av.cap then
       if av.cd and av.cd > 0 then G.msg(P.pl, "bad", "ui.vehCdMsg", av.cd) else G.msg(P.pl, "bad", "ui.vehFull") end
       return false
@@ -325,7 +333,7 @@ function Depots.init(G)
     elseif p.kind == "ship" then
       e = G.spawnShip and G.spawnShip(P.team, p.vid, p.base, P)
     else
-      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, p.vid, p.base, p.sea, P)
+      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P)
     end
     if e then
       e.padId = p.id
@@ -335,11 +343,16 @@ function Depots.init(G)
   end
   G.padSpawnAt = spawnAt
 
-  -- 按住 E：地面载具直接生成；有挂点的飞机先让客户端弹出挂载界面（选好了发 padSpawn）
+  -- 按住 E：召唤位先让客户端弹出型号列表；老的一型一位：地面载具直接生成，有挂点的飞机先弹挂载界面（选好了发 padSpawn）
   function G.padTrigger(pl, padId)
     local P = G.P[pl]
     local p = byId[padId]
     if not P or not p then return end
+    if p.summon and p.kind == "veh" then   -- 地面召唤位：本队全部地面车型（客户端按类别分组、写名额）
+      if not check(P, p, p.vid, true) then return end
+      G.R.Drive:FireClient(pl, { op = "vehPick", pad = p.id, ids = p.vids })
+      return
+    end
     if p.summon then   -- 召唤位：先弹出机型列表（客户端选了机型、挂载再发 padSpawn）
       if not check(P, p, p.vid) then return end   -- 一个召唤位上的机型同一类（飞机 / 直升机），名额一样，先查一遍
       G.R.Drive:FireClient(pl, { op = "airPick", pad = p.id, ids = p.vids, heli = p.heli == true })
@@ -354,10 +367,11 @@ function Depots.init(G)
     spawnAt(P, p, nil)
   end
 
-  -- vid：召唤位上选的机型（要在这个召唤位的列表里）；fuel：挂载界面选的内油（几成，Air.lua 再夹到 0.25～1）
+  -- vid：召唤位上选的型号（要在这个召唤位的列表里）；fuel：挂载界面选的内油（几成，Air.lua 再夹到 0.25～1）
   function G.ACT.padSpawn(P, padId, load, vid, fuel)
     local p = type(padId) == "string" and byId[padId] or nil
-    if not p or p.kind ~= "air" then return end
+    if not p or not (p.kind == "air" or (p.kind == "veh" and p.summon)) then return end
+    if p.kind == "veh" then load, fuel = nil, nil end
     if p.summon then
       vid = vid or p.vid   -- 没说型号（老客户端、老的一型一位）：这个召唤位的第一型
       local okId = false

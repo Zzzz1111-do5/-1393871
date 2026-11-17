@@ -915,8 +915,17 @@ function Fly.init(G)
       end
     end
     st.cf = cf
-    -- 起落架：离地后自动不收，按 G 收放；地上一直放着
-    if st.ground then st.gearWant = 1 end
+    -- 起落架（用户：起飞自动把起落架收了）：离地爬过 15 米、还在往上爬就自动收一次；这次起飞只收一次，之后按 G 放下就听玩家的；
+    --   地上一直放着，落地重置
+    if st.ground then
+      st.gearWant, st.gearAuto = 1, false
+    elseif not st.gearAuto and st.gearWant > 0.5 and st.vel and st.vel.Y > 0.5 then
+      local p0 = cf.Position
+      if p0.Y - d.gearH - math.max(ground(p0.X, p0.Z), 0) > 15 * AD.M then
+        st.gearAuto, st.gearWant = true, 0
+        if G.toast then G.toast(T("coach.gearAuto"), "info") end
+      end
+    end
     st.gear = approach(st.gear, st.gearWant, dt / 2.5)
     st.c.gear = st.gear
     st.c.thr = st.thr
@@ -1312,6 +1321,7 @@ function Fly.init(G)
     aName.Text = T("veh." .. d.id) .. (st.pilot and "" or ("   " .. T("air.passenger")))
     local kmh = math.floor(st.vel.Magnitude / AD.M * 3.6 + 0.5)
     local agl = math.floor((pos.Y - ground(pos.X, pos.Z) - d.gearH) / AD.M + 0.5)
+    st.aglM, st.kmh = agl, kmh   -- 离地高度（米）、速度（km/h）：Coach.lua 看要不要提示放起落架
     aInfo.Text = T("ui.speed", kmh) .. "    " .. T("air.alt", math.max(0, agl)) .. "    " .. T("air.flares", st.flares) .. "    " .. T("air.fuelP", math.floor((st.fuel + st.fuelX) * 100 + 0.5))
       .. ((d.kind == "jet") and ("    " .. T("air.gearState." .. ((st.gearWant > 0.5) and "down" or "up"))) or "")
     if wid then

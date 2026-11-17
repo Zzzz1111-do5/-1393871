@@ -31,14 +31,31 @@ local e = G.spawnAircraft("atk", "z10", CF(x, gy + 6, z), nil, P)
 check(e ~= nil, "放了一架直-10")
 if not e then T.summary() return end
 me.Character:PivotTo(CF(x + 20, gy + 3.5, z))
+T.tap(Enum.KeyCode.Backspace)   -- 先关上出生时的「目标与据点」说明（开着的时候三步卡等它）
 R.run(0.3)
 T.act("enterVeh", e.id)
 R.run(1)
 local st = C.fly
 check(P.vehicle == e and st ~= nil and st.d.kind == "heli", "坐进了直升机")
 if not st then T.summary() return end
+-- 新手指导（Coach.lua）：最下面一排只给几个键；旋翼没转起来时只有一句「等转速到 100%」；第一次开直升机弹三步卡
+local function keyShown(k)
+  for _, dd in ipairs(me.PlayerGui:GetDescendants()) do
+    if dd.ClassName == "TextLabel" and dd.Name == "Key" and dd.Text == k and T.visible(dd) then return true end
+  end
+  return false
+end
+R.run(0.2)
+check(#T.texts("^" .. (C.T("coach.spool"):gsub("%p", "%%%0")) .. "$") > 0, "旋翼还没转起来：提示等转速到 100%")
+check(C.coachCard and C.coachCard() == "heli" and #T.texts((C.T("coach.card.heli.2"):gsub("%p", "%%%0"))) > 0, "第一次开直升机：左边弹出三步卡（第二步写着 E 升、Q 降）")
 T.runUntil(function() return st.rpm and st.rpm >= 95 end, 15)
 check(st.rpm >= 95, string.format("旋翼转起来了（%.0f%%）", st.rpm))
+R.run(0.2)
+check(keyShown("E/Q") and keyShown("W/S") and keyShown("A/D") and #T.texts("^" .. C.T("coach.updown") .. "$") > 0,
+  "能飞了：最下面一排换成 E/Q 升降、W/S 前后、A/D 转向……")
+T.tap(Enum.KeyCode.Return)
+R.run(0.2)
+check(C.coachCard() == nil and me:GetAttribute("Seen") and me:GetAttribute("Seen"):find("heli", 1, true), "回车关上三步卡；服务器记下看过了（" .. tostring(me:GetAttribute("Seen")) .. "）")
 
 print("② E 升、Q 降")
 local y0 = st.cf.Position.Y
@@ -96,8 +113,16 @@ R.run(4)
 check(math.abs(angd(yaw1, st.yaw)) < 0.12, string.format("鼠标转镜头，机头不跟着转（%.0f°）", math.deg(angd(yaw1, st.yaw))))
 local p = st.cf.Position
 check(p.X == p.X and p.Y == p.Y and p.Z == p.Z, "位置正常（没有 NaN）")
-local helpOk = false
-for _, t in ipairs(T.texts("E 升")) do if t:find("Q 降", 1, true) and t:find("A/D", 1, true) and t:find("F", 1, true) then helpOk = true end end
-check(helpOk, "最下面一行写着 E 升 / Q 降、A/D 转向、F 导弹")
+-- 开了一会儿（看过三步卡的 10 秒后）：最下面收成一个「F1 全部按键」；F1 打开全部按键（原来最下面那一整行说明的全文）
+check(keyShown("F1") and not keyShown("E/Q"), "开了一会儿：最下面收成「F1 全部按键」")
+T.tap(Enum.KeyCode.F1)
+R.run(0.2)
+local panel = me.PlayerGui:FindFirstChild("CoachPanel", true)
+local qd = C.T("air.helpHeli"):match("E ([^·]-)%s*·")   -- 「升 / Q 降」：E 那一格的动作
+check(panel and T.visible(panel) and keyShown("E") and keyShown("A/D") and keyShown("F") and qd and #T.texts("^" .. qd:gsub("%p", "%%%0") .. "$") > 0,
+  "F1：全部按键面板（E 升 / Q 降、A/D 转向、F 导弹……）")
+T.tap(Enum.KeyCode.F1)
+R.run(0.2)
+check(not T.visible(panel), "再按 F1 关上")
 
 T.summary()

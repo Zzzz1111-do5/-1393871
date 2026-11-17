@@ -43,9 +43,24 @@ if side == "def" then
   T.click("^" .. C.T("ui.deployBtn") .. "$")
   R.run(2)
   local tp = T.pad(tankId)
-  check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
+  check(tp ~= nil and tp.team == "def" and tp.summon == true and tp.kind == "veh", "营地车场的车位是召唤位（" .. #(tp and tp.vids or {}) .. " 型可选）")
+  if tp then
+    -- 用户：召唤点里自己选哪种车，不要固定——先按一次 E 看列表：本队全部地面车型都有卡片；取消
+    local y = G.airSurface(tp.term.X, tp.term.Z)
+    me.Character:PivotTo(T.CF(tp.term.X + 1.5, y + 3, tp.term.Z + 1.5))
+    R.run(0.2)
+    R.as("server", function() tp.prompt.Triggered:Fire(me) end)
+    R.run(0.6)
+    local n = 0
+    for _, id in ipairs(tp.vids) do if T.findNamed("Pick_" .. id) then n = n + 1 end end
+    check(n == #tp.vids and n >= 10, string.format("按 E 弹出了本队全部 %d 型地面载具的卡片（看得见 %d 张）", #tp.vids, n))
+    local cancel = T.findNamed("Cancel")
+    if cancel then T.press(cancel) end
+    R.run(0.2)
+    check(not T.findNamed("Pick_" .. tankId), "取消：列表关上了")
+  end
   local e0 = tp and T.usePad(me, tp)
-  check(e0 ~= nil and e0.driver == nil, "生成了一辆空的 " .. tostring(e0 and e0.def.id))
+  check(e0 ~= nil and e0.driver == nil and e0.def.id == tankId, "点了 " .. tankId .. " 的卡片：生成了一辆空的 " .. tostring(e0 and e0.def.id))
   -- 夜视：出生后屏幕下方提示「按 N 开启夜视」；步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），提示消失；坐进车里照样开着
   R.run(2)
   local hintGui = me.PlayerGui:FindFirstChild("NVHint")

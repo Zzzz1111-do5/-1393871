@@ -3,6 +3,8 @@
 --   有挂点的飞机：服务器发 { op = "hangar" } → 弹出 3D 挂载界面（右下按钮是「生成」），选好发 padSpawn；每种飞机记住上次选的挂载
 --   飞机、直升机的召唤位（Depots.lua 的 summon）：牌子写「召唤飞机 / 直升机」；按 E 服务器发 { op = "airPick" } → 弹出机型列表（卡片：名字、用途、
 --     舰载 / 隐身 / 航炮 / 挂点数 / 内油），点一架 → 有挂点的进挂载编辑器（可以挂副油箱），选好发 padSpawn(召唤位, 挂载, 机型)
+--   地面载具的召唤位（用户：召唤点里自己选哪种车，不要固定）：牌子写「召唤地面载具」；按 E 服务器发 { op = "vehPick" } → 弹出本队全部车型
+--     （按坦克 / 装甲车 / 防空 / 火炮分组，每张卡片：名字、类别和名额 / 冷却、履带 / 轮式、主炮、两栖），点一辆 → padSpawn(召唤位, nil, 型号)
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -101,19 +103,25 @@ function Depot.init(G)
         local need = m:GetAttribute("Need") or ""
         local open = mine and (need == "" or pointOwner(need) == side)
         local summon = (m:GetAttribute("Summon") or "") ~= ""
-        local title = summon and T(m:GetAttribute("Heli") and "pad.summonHeli" or "pad.summonJet") or T("veh." .. id)
+        local ground = summon and m:GetAttribute("Kind") == "veh"   -- 地面召唤位：哪一型都能选，名额按类别
+        local title = ground and T("pad.summonVeh") or summon and T(m:GetAttribute("Heli") and "pad.summonHeli" or "pad.summonJet") or T("veh." .. id)
         x.prompt.Enabled = mine
-        x.prompt.ActionText = T(summon and "pad.summon" or "pad.spawn")
+        x.prompt.ActionText = T(ground and "pad.summonVehAct" or summon and "pad.summon" or "pad.spawn")
         x.prompt.ObjectText = title
         x.bb.Enabled = mine
         x.name.Text = title
-        local av = S and S.vehAvail and d and S.vehAvail[d.cat]
-        local st = ""
-        if not open then st = T("pad.need" .. need)
-        elseif av and av.u >= av.cap then st = (av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)
-        elseif av then st = T("pad.ready", av.u, av.cap) end
-        x.info.Text = (d and T("vcat." .. d.cat) or "") .. "   " .. st
-        x.info.TextColor3 = (open and av and av.u < av.cap) and RGB(150, 156, 162) or RGB(214, 120, 96)
+        if ground then
+          x.info.Text = open and T("pad.vehKinds") or T("pad.need" .. need)
+          x.info.TextColor3 = open and RGB(150, 156, 162) or RGB(214, 120, 96)
+        else
+          local av = S and S.vehAvail and d and S.vehAvail[d.cat]
+          local st = ""
+          if not open then st = T("pad.need" .. need)
+          elseif av and av.u >= av.cap then st = (av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)
+          elseif av then st = T("pad.ready", av.u, av.cap) end
+          x.info.Text = (d and T("vcat." .. d.cat) or "") .. "   " .. st
+          x.info.TextColor3 = (open and av and av.u < av.cap) and RGB(150, 156, 162) or RGB(214, 120, 96)
+        end
       end
     end
   end
@@ -204,8 +212,27 @@ function Depot.init(G)
   cancel.Activated:Connect(closePick)
   G.pickerOpen = function() return pick.Enabled end
 
+  local function quota(cat)   -- 这一类现在的名额、冷却：能不能再召唤、给卡片写的字
+    local S = G.S
+    local av = S and S.vehAvail and S.vehAvail[cat]
+    if not av then return true, "" end
+    if av.u >= av.cap then return false, (av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap) end
+    return true, T("pad.ready", av.u, av.cap)
+  end
+
   local function choose(id)
     local pad = pickPad
+    local vd = VD.get(id)
+    if vd then   -- 地面载具：这一类名额满了就不关列表，提示一下
+      local ok, why = quota(vd.cat)
+      if not ok then
+        if G.toast then G.toast(T("vcat." .. vd.cat) .. "  " .. why, "bad") end
+        return
+      end
+      closePick()
+      if pad then G.R.Act:FireServer("padSpawn", pad, false, id) end   -- 挂载那一格传 false：中间夹着 nil 的参数表有空洞
+      return
+    end
     closePick()
     local d = AD.get(id)
     if not d or not pad then return end
@@ -215,21 +242,66 @@ function Depot.init(G)
         G.R.Act:FireServer("padSpawn", pad, load, id, fuel)
       end, nil, { confirm = "pad.spawn", fuel = lastFuel[id] })
     else
-      G.R.Act:FireServer("padSpawn", pad, nil, id)
+      G.R.Act:FireServer("padSpawn", pad, false, id)
     end
   end
 
-  local function openPick(padId, ids, heli)
+  -- 地面载具的卡片（比飞机的小一号：一个召唤位能选十几型）
+  local CAT_ORDER = { tank = 1, apc = 2, aa = 3, arty = 4 }
+  local function vehCards(ids)
+    gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 74), UDim2.fromOffset(8, 8)
+    pTitle.Text = T("pad.summonVeh")
+    pSub.Text = T("pick.subVeh")
+    local list = {}
+    for i, id in ipairs(ids) do
+      local d = VD.get(id)
+      if d then table.insert(list, { id = id, d = d, o = (CAT_ORDER[d.cat] or 9) * 100 + i }) end
+    end
+    table.sort(list, function(a, b) return a.o < b.o end)
+    for i, it in ipairs(list) do
+      local d, id = it.d, it.id
+      local ok, why = quota(d.cat)
+      local b = Instance.new("TextButton")
+      b.Name = "Pick_" .. id
+      b.Text = ""
+      b.LayoutOrder = i
+      b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(24, 27, 31), ok and 0.05 or 0.45, 0
+      b.AutoButtonColor = ok
+      b.Parent = grid
+      local stroke = Instance.new("UIStroke")
+      stroke.Color, stroke.Transparency, stroke.Thickness = RGB(255, 255, 255), 0.9, 1
+      stroke.Parent = b
+      b.MouseEnter:Connect(function() stroke.Transparency = ok and 0.4 or 0.8 end)
+      b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
+      label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.GothamBlack)
+      local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 29), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
+      cl.Name = "Quota"
+      local tags = { T((d.arch == "wheeled") and "pick.wheeled" or "pick.tracked") }
+      if d.weapons and d.weapons[1] then table.insert(tags, T("vw." .. d.weapons[1])) end
+      if d.amphib then table.insert(tags, T("pick.amphib")) end
+      label(b, table.concat(tags, " · "), UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 48), 11, RGB(170, 176, 182), Enum.Font.GothamMedium)
+      b.Activated:Connect(function() choose(id) end)
+      table.insert(cards, b)
+    end
+  end
+
+  local function openPick(padId, ids, heli, ground)
     for _, c in ipairs(cards) do c:Destroy() end
     cards = {}
     pickPad = padId
+    cancel.Text = T("pick.cancel")
+    if ground then
+      vehCards(ids)
+      pick.Enabled = true
+      return
+    end
+    gl.CellSize, gl.CellPadding = UDim2.fromOffset(250, 104), UDim2.fromOffset(10, 10)
     pTitle.Text = T(heli and "pad.summonHeli" or "pad.summonJet")
     local S = G.S
     local av = S and S.vehAvail and S.vehAvail[heli and "heli" or "jet"]
     local st = ""
     if av then st = (av.u >= av.cap) and ((av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)) or T("pad.ready", av.u, av.cap) end
     pSub.Text = T("pick.sub") .. "   ·   " .. st
-    cancel.Text = T("pick.cancel")
     for i, id in ipairs(ids) do
       local d = AD.get(id)
       if d then
@@ -271,12 +343,16 @@ function Depot.init(G)
       openPick(d.pad, d.ids, d.heli == true)
       return
     end
+    if d.op == "vehPick" and type(d.ids) == "table" then
+      openPick(d.pad, d.ids, false, true)
+      return
+    end
     if d.op ~= "hangar" or not G.openHangar then return end
     local id, pad = d.id, d.pad
     if not AD.get(id) then return end
     G.openHangar(id, lastLoad[id], function(load, _, fuel)
       lastLoad[id], lastFuel[id] = load, fuel
-      G.R.Act:FireServer("padSpawn", pad, load, nil, fuel)
+      G.R.Act:FireServer("padSpawn", pad, load, false, fuel)
     end, nil, { confirm = "pad.spawn", fuel = lastFuel[id] })
   end)
 end

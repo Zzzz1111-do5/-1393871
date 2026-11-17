@@ -130,8 +130,9 @@ if st and e then
   T.tap(Enum.KeyCode.V)
   R.run(0.2)
   check(st.dcam == "nose", "V 换回前视")
-  local help = C.T("air.helpUav")
-  check(seen(help:sub(1, 12)), "最下面一行是平板的操作说明")
+  -- 最下面一排按键（Coach.lua）：遥控无人机的几个键（看过三步卡以前一直显示），最后一个是「空格 收起平板」；全文在 F1
+  check(C.coachMode and C.coachMode() == "uav" and seen("^" .. (C.T("coach.stowPad"):gsub("%p", "%%%0")) .. "$") and seen("^" .. (C.T("coach.pitch"):gsub("%p", "%%%0")) .. "$"),
+    "最下面一排是遥控无人机的几个键（抬头 / 低头……收起平板）")
 end
 
 print("③ 起飞，空格收起平板：无人机自动盘旋，人能走了")

@@ -696,14 +696,66 @@ function AM.build(d, team, load)
         end
       end
       if not E.prop then
-        local fl = neon(V(1, E.r * 1.6, E.r * 1.6), base, RGB(255, 150, 60), "ab", { base = base, r = E.r, cold = E.cold, vec = tvcVec }, CYL)
-        fl.p.Transparency = 1
-        table.insert(M.flames, fl)
-        if d.ab then
-          for k = 1, 3 do   -- 马赫环
-            local ring = neon(V(0.25, E.r * 1.1, E.r * 1.1), base, RGB(255, 220, 160), "ab", { base = base, r = E.r, ring = k, vec = tvcVec }, CYL)
-            ring.p.Transparency = 1
-            table.insert(M.flames, ring)
+        -- 尾焰（用户：尾部喷口是一根光柱，不真实，也没有立体热浪）——不再拖一根霓虹圆柱：
+        --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
+        --   ② 加力火焰：喷口上两层粒子（锁在零件上跟着飞机走）——里层蓝白的焰芯短，外层橙色的焰舌长、边缘透明、一直在跳
+        --   ③ 马赫节：加力时焰流里几颗发亮的扁椭球，一颗比一颗淡、微微闪
+        --   ④ 热浪：喷口后面几团玻璃材质的透明球（高画质下玻璃会折射后面的景物），一直抖、越往后越大越淡；油门过两成半才有，加力时接在火焰后面
+        local hot = { base = base, r = E.r, cold = E.cold, vec = tvcVec }
+        local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
+        local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
+          or neon(V(0.12, E.r * 1.55, E.r * 1.55), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), CYL)
+        core.p.Transparency = 1
+        table.insert(M.flames, core)
+        if d.ab and not E.cold then
+          local src = newPart(m, V(E.r * 1.2, E.r * 1.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          src.Name = "Plume"
+          src.CastShadow = false
+          local it = add(src, base, "ab", hotItem({ plume = true }))
+          local function emitter(name, tex, life, size, tr, col, bright)
+            local pe = Instance.new("ParticleEmitter")
+            pe.Name = name
+            pe.Texture = tex
+            pe.EmissionDirection = Enum.NormalId.Back   -- 零件的 +Z：从喷口往后
+            pe.LockedToPart = true                      -- 跟着飞机走（几百格每秒，不锁就拖成一长条）
+            pe.LightEmission, pe.LightInfluence, pe.Brightness = 1, 0, bright
+            pe.Lifetime = life
+            pe.Speed = NumberRange.new(E.r * 45, E.r * 55)
+            pe.SpreadAngle = Vector2.new(3, 3)
+            pe.Rotation = NumberRange.new(0, 360)
+            pe.RotSpeed = NumberRange.new(-240, 240)
+            pe.Size = size
+            pe.Transparency = tr
+            pe.Color = col
+            pe.Rate = 0
+            pe.Enabled = false
+            pe.Parent = src
+            return pe
+          end
+          local r = E.r
+          it.outer = emitter("AbFlame", "rbxasset://textures/particles/fire_main.dds", NumberRange.new(0.09, 0.14),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 1.45), NumberSequenceKeypoint.new(0.5, r * 1.25), NumberSequenceKeypoint.new(1, r * 0.45) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.55, 0.45), NumberSequenceKeypoint.new(1, 1) }),
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 205)), ColorSequenceKeypoint.new(0.3, RGB(255, 168, 86)), ColorSequenceKeypoint.new(1, RGB(255, 92, 40)) }), 2.5)
+          it.inner = emitter("AbCore", "rbxasset://textures/particles/explosion01_implosion_main.dds", NumberRange.new(0.05, 0.08),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 1.05), NumberSequenceKeypoint.new(1, r * 0.35) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 0.85) }),
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(205, 222, 255)), ColorSequenceKeypoint.new(0.5, RGB(255, 242, 222)), ColorSequenceKeypoint.new(1, RGB(255, 198, 140)) }), 4)
+          table.insert(M.flames, it)
+          for k = 1, 4 do   -- 马赫节
+            local dm = neon(V(r * 0.5, r * 0.62, r * 0.62), base, RGB(255, 238, 205), "ab", hotItem({ diamond = k }), BALL)
+            dm.p.Size = V(r * 0.62, r * 0.62, r * 0.62)   -- 球：三边一样；扁的样子靠前后挨得近
+            dm.p.Transparency = 1
+            table.insert(M.flames, dm)
+          end
+        end
+        if not E.cold then
+          for k = 1, 4 do   -- 热浪
+            local sz = E.r * (1.3 + k * 0.5)
+            local hz = add(newPart(m, V(sz, sz, sz), RGB(226, 228, 232), MAT.Glass, BALL, 1), base, "ab", hotItem({ haze = k, seed = (j * 3.1 + k * 1.7) % 6.28 }))
+            hz.p.Name = "Haze"
+            hz.p.CastShadow = false
+            table.insert(M.flames, hz)
           end
         end
       end
@@ -1200,6 +1252,8 @@ end
 
 function AM.pose(M, cf, c, now, world)
   local plist, clist = M.plist, M.clist
+  local cam = workspace.CurrentCamera
+  M.near = (world == nil) and cam ~= nil and (cf.Position - cam.CFrame.Position).Magnitude < 700   -- 热浪只画近处的（挂载编辑器里不画）
   local fold = { [1] = nil, [-1] = nil }
   if M.def.fold then fold[1], fold[-1] = foldCF(M, 1, c), foldCF(M, -1, c) end
   -- 弹舱里的弹：舱门开了才看得见
@@ -1232,25 +1286,48 @@ function AM.pose(M, cf, c, now, world)
       local piv = CF(it.piv)
       if it.yawOnly then out = cf * piv * CFrame.Angles(0, yaw, 0) * CF(-it.piv) * it.cf0
       else out = cf * piv * CFrame.Angles(0, yaw, 0) * CFrame.Angles(rad(c.gp or 0), 0, 0) * CF(-it.piv) * it.cf0 end
-    elseif k == "ab" then   -- 加力火焰：长度、透明度跟油门；马赫环只在加力时有
+    elseif k == "ab" then   -- 尾焰：热芯、加力火焰（粒子）、马赫节、热浪，都跟着油门；推力矢量喷口跟着出口偏
       local t = c.thr or 0
-      local E = setmetatable({ base = it.vec and (it.vec(c) * it.base) or it.base }, { __index = it })   -- 推力矢量喷口：火焰跟着出口偏
+      local b0 = it.vec and (it.vec(c) * it.base) or it.base
       local ab = (t > 100) and math.min(1, (t - 100) / 25) or 0
-      local len
-      if E.ring then
-        len = 0.25
-        out = cf * E.base * CF(0, 0, E.r * (1.4 + E.ring * 1.6) * (0.6 + ab * 0.5)) * ALONG_Z
-        local tr = (ab > 0.2) and (0.35 + E.ring * 0.12) or 1
-        if math.abs(it.p.Transparency - tr) > 0.02 then it.p.Transparency = tr end
-      else
-        len = E.cold and 1 or (0.6 + t / 100 * 2.2 + ab * E.r * 7)
-        out = cf * E.base * CF(0, 0, len / 2) * ALONG_Z
-        local tr = E.cold and 1 or ((ab > 0) and (0.12 + (1 - ab) * 0.3) or math.clamp(1 - t / 160, 0.6, 1))
-        if math.abs(it.p.Transparency - tr) > 0.02 then it.p.Transparency = tr end
-        if math.abs(it.p.Size.X - len) > 0.08 then it.p.Size = V(len, E.r * (1.65 - ab * 0.4), E.r * (1.65 - ab * 0.4)) end
-        local col = (ab > 0) and RGB(255, 170, 90):Lerp(RGB(150, 190, 255), 0.25) or RGB(255, 140, 60)
-        if it.p.Color ~= col then it.p.Color = col end
+      local r = it.r
+      local tr = 1
+      if it.core then
+        out = cf * b0 * CF(0, 0, -0.25) * ALONG_Z   -- 凹进喷口一点：从侧面看不见，从后面看喷口里发亮
+        if not it.cold then
+          tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
+          local col = (ab > 0) and RGB(255, 190, 110):Lerp(RGB(255, 242, 214), ab) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
+          if it.p.Color ~= col then it.p.Color = col end
+        end
+      elseif it.plume then
+        out = cf * b0 * CF(0, 0, 0.15)
+        local q = math.floor(ab * 10 + 0.5)   -- 分 10 档，变了才改粒子（每帧改属性费）
+        if q ~= it.q then
+          it.q = q
+          local on = q > 0
+          it.outer.Enabled, it.inner.Enabled = on, on
+          if on then
+            local a = q / 10
+            it.outer.Rate, it.inner.Rate = 70 + 90 * a, 45 + 55 * a
+            it.outer.Speed = NumberRange.new(r * (38 + 26 * a), r * (48 + 32 * a))
+          end
+        end
+      elseif it.diamond then
+        out = cf * b0 * CF(0, 0, r * (1.4 + it.diamond * 1.35) * (0.7 + ab * 0.45))
+        if ab > 0.15 then tr = math.clamp(0.28 + it.diamond * 0.15 + 0.08 * math.sin((now or 0) * 41 + it.diamond * 2.3) - ab * 0.12, 0, 0.95) end
+      else   -- 热浪：几团玻璃球抖着往后排；离镜头远了不画
+        local k2 = it.haze
+        if not it.cold and t > 25 and M.near then
+          local ph = (now or 0) * (10 + k2 * 2.6) + it.seed
+          local j = r * 0.16
+          local z0 = ((ab > 0) and r * (5.5 + 3 * ab) or r * 0.6) + r * k2 * 1.9
+          out = cf * b0 * CF(math.sin(ph) * j, math.cos(ph * 1.27) * j, z0 + math.sin(ph * 0.71) * r * 0.25)
+          tr = ((ab > 0) and 0.9 or 0.93) + k2 * 0.012 + 0.015 * math.sin(ph * 2.9)   -- 很淡：主要看玻璃折射把后面的景物扭一扭
+        else
+          out = cf * b0
+        end
       end
+      if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end
     else out = cf * it.cf0 end
     clist[i] = out
     if it.vis then   -- 原模型的起落架：收起时藏起来

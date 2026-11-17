@@ -50,10 +50,11 @@ end, 60)
 check(landed, "攻方机器人上岸了")
 -- 机器人的样子：Roblox 小人（模拟器里没有 R15 模板，用零件拼的经典小人：圆头、笑脸）
 do
-  local VF = R.services.Workspace:FindFirstChild("EntView")
+  -- 离镜头 1500 格外的收起来了（不在 EntView 里，自动画质）：按客户端的视图表数
   local nb, okHead = 0, false
-  for _, m in ipairs(VF and VF:GetChildren() or {}) do
-    if m.Name == "bot" then
+  for _, v in pairs(T.C.views or {}) do
+    local m = v.model
+    if m and m.Name == "bot" then
       nb = nb + 1
       for _, p in ipairs(m:GetChildren()) do
         local sm = p:IsA("BasePart") and p:FindFirstChildOfClass("SpecialMesh")

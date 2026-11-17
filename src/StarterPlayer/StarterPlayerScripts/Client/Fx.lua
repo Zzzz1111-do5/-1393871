@@ -100,7 +100,7 @@ function Fx.init(G)
   ---------------------------------------------------------------- 自动画质（用户：太卡了优化不到位、视野很短）
   -- 按实际帧率调「画多远、画多细」：每两秒算一次平均帧率，连着两次低于 40 帧就往下降一档（树林 Scenery、士兵 Soldier、爆炸粒子都乘 G.perfK），
   --   高于 57 帧慢慢升回去，最高 1.2（机器好的树林画得更远）。G.perfFixed 为真时不调（模拟测试）
-  G.perfK, G.fps = 1, 60
+  G.perfK, G.frameRate = 1, 60   -- 帧率别叫 G.fps：那是 FPSView 的第一人称视图模型
   do
     local acc, n, low = 0, 0, 0
     RunService.RenderStepped:Connect(function(dt)
@@ -109,7 +109,7 @@ function Fx.init(G)
       if acc < 2 then return end
       local fps = n / acc
       acc, n = 0, 0
-      G.fps = fps
+      G.frameRate = fps
       if G.perfFixed then return end
       local k = G.perfK
       if fps < 40 then

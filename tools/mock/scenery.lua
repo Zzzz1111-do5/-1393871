@@ -160,6 +160,9 @@ R.run(3)
 
 print("⑥ 远海：跟着镜头铺到雾的尽头；地形海水那一片里不摆（不和地形水面打架）")
 local Map = G.Map
+-- 主菜单背后的场景（MenuStage）每帧摆镜头：先选阵营把主菜单关掉，测试摆的镜头才算数
+T.act("pickTeam", "def")
+R.run(0.5)
 check(Map.K and Map.K >= 3 and Map.R >= 12288, string.format("地图放大 %.1f 倍，地形范围 ±%d 格", Map.K or 1, Map.R))
 check(Map.PLAY > Map.R * 2.5 and Map.SEA_LIM > Map.R * 2, string.format("飞机作战区 ±%d 格（约 %.1f 公里）、船能开到 ±%d 格（约 %.1f 公里）", Map.PLAY, Map.PLAY / 2.8 / 1000, Map.SEA_LIM, Map.SEA_LIM / 2.8 / 1000))
 cam.CFrame = CF(0, 300, 0)

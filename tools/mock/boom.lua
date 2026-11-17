@@ -200,9 +200,9 @@ if e then
     if ri then
       T.tap(({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four })[ri])
       R.run(0.2)
-      T.mouse(true)
+      T.key(Enum.KeyCode.F, true)   -- 挂载按 F 发（左键是机炮，keen-heisenberg 改的键位）
       R.run(0.5)
-      T.mouse(false)
+      T.key(Enum.KeyCode.F, false)
       R.run(0.3)
     end
     local nR = 0
@@ -212,9 +212,9 @@ if e then
     if mi then
       T.tap(({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four })[mi])
       R.run(0.2)
-      T.mouse(true)
+      T.key(Enum.KeyCode.F, true)
       R.run(0.1)
-      T.mouse(false)
+      T.key(Enum.KeyCode.F, false)
       R.run(0.5)
     end
     local nM, dup = 0, 0

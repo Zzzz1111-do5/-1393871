@@ -970,7 +970,7 @@ function UI.init(G)
     hpBg.Visible, roleText.Visible = not drv, not drv
     help.Text = T(drv and (drv.help or "ui.vehHelp") or "ui.help")
     -- 手机上是触屏按钮，不显示键盘说明；步行第一人称也不显示（用户：持枪第一视角不要显示鼠标、键位；键位说明在部署界面最下面）
-    help.Visible = not G.mobile and not (G.fpActive and not drv)
+    help.Visible = not G.coachOn and not G.mobile and not (G.fpActive and not drv)   -- Coach.lua 换成按当前状态的几个键（全文在 F1）
     deployHelp.Text = T("ui.help")
     -- 鼠标指针：游戏里锁在屏幕中间时（第一人称、肩后瞄准、开车开飞机开船、操作工事）不画——准星是自己画的；开着菜单时画出来
     if not G.mobile then

@@ -148,12 +148,19 @@ end
 function T.actAsRemote(pl, ...) T.remoteAs(pl, "Act", ...) end
 
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E；返回生成出来的那一辆
+--   召唤位（飞机、直升机、地面载具都是：一个位上好几型，Depots.lua 的 summon、vids）：记下要的型号，usePad 时在弹出的卡片里点这一型
+T.padVid = {}
 function T.pad(vid)
   for _, p in ipairs(T.G.pads or {}) do
     if p.vid == vid and not p.summon then return p end
   end
-  for _, p in ipairs(T.G.pads or {}) do   -- 飞机 / 直升机召唤位：一个位上好几型（Depots.lua 的 summon、vids）
-    for _, id in ipairs(p.vids or {}) do if id == vid then return p end end
+  for _, p in ipairs(T.G.pads or {}) do
+    for _, id in ipairs(p.vids or {}) do
+      if id == vid then
+        T.padVid[p] = vid
+        return p
+      end
+    end
   end
   return nil
 end
@@ -171,6 +178,13 @@ function T.usePad(pl, p)
   R.run(0.2)
   R.as("server", function() p.prompt.Triggered:Fire(pl) end)
   R.run(0.6)
+  -- 地面召唤位：弹出车型卡片，点 T.pad 时要的那一型（不跑客户端的玩家直接替他发 padSpawn）；飞机的卡片测试自己点（后面还有挂载界面）
+  local vid = p.summon and p.kind == "veh" and T.padVid[p]
+  if vid then
+    local card = (pl == R.localPlayer) and T.findNamed("Pick_" .. vid, pl)
+    if card then T.press(card) else T.actAsRemote(pl, "padSpawn", p.id, false, vid) end
+    R.run(0.6)
+  end
   for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
     for _, e in ipairs(list) do
       if e.padId == p.id and e.alive then return e end
