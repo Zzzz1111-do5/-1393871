@@ -666,6 +666,7 @@ function Round.init(G)
       C.vehModels = G.vehModels(P.team)   -- 生成点牌子上写的名额、冷却（Depot.lua）
     end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
+    if G.tacState then C.tac = G.tacState(P) end   -- 战术平板：每样还剩几次、冷却（Tactical.lua）
     return C
   end
   function G.pushOne(P)

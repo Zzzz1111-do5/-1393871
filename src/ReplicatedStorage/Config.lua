@@ -162,6 +162,26 @@ Config.Bots = {
 
 ---------------------------------------------------------------- 得分、经验、军衔
 
+-- 单兵战术平板（每个人都有，B 键拿出来；用户：能召唤空投载具、空中打击，但必须有次数限制）：
+--   在平板的地图上点目标点，呼叫一样东西；每样每局有次数（n，阵亡不补，新一局重置）、用完一次自己冷却 cd 秒；
+--   同一种全队 teamCd 秒内只能叫一次（几十个人同时叫会把地图炸平）；目标离自己不超过 range 格；只在开战以后能叫
+--   flight：从呼叫到落地 / 命中几秒；veh 空投的车（按阵营）；vmax 全队空投下来还活着的车最多几辆
+--   打击的伤害按 Weapons 那套（dmg、splash、vs 对各类目标的倍数）；扫射、轰炸沿「自己 → 目标点」的方向排开 len 格
+Config.TacPad = {
+  range = 4200,
+  teamCd = 20,
+  order = { "vdrop", "supply", "pgm", "gunrun", "cluster" },
+  items = {
+    vdrop = { kind = "drop", n = 1, cd = 240, flight = 10, veh = { atk = "zsl92b", def = "jltv" }, vmax = 3 },
+    supply = { kind = "supply", n = 2, cd = 90, flight = 8, r = 20, life = 75, heal = 8 },
+    pgm = { kind = "pgm", n = 2, cd = 90, flight = 6, w = { id = "pgm", dmg = 420, splash = 26, vs = { inf = 1, light = 3, armor = 2.4, air = 0.3, ship = 1.6, fort = 3 } } },
+    gunrun = { kind = "gunrun", n = 1, cd = 150, flight = 6, len = 170, hits = 24, w = { id = "gunrun", dmg = 60, splash = 7, vs = { inf = 1, light = 1.5, armor = 0.35, air = 0.5, ship = 0.4, fort = 0.6 } } },
+    cluster = { kind = "cluster", n = 1, cd = 240, flight = 9, len = 230, bombs = 12, w = { id = "cluster", dmg = 200, splash = 18, vs = { inf = 1, light = 2, armor = 1.2, air = 0.2, ship = 1, fort = 1.8 } } },
+  },
+  -- 飞过来的飞机（客户端画）：精确打击战斗机、扫射攻击机、集束轰炸机、空投直升机
+  jets = { atk = { pgm = "j20", gunrun = "j16", cluster = "h6k", drop = "z20" }, def = { pgm = "f35", gunrun = "a10c", cluster = "b2", drop = "ch47" } },
+}
+
 Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200,
   fortKill = 250, defuse = 30, wireCut = 15 }
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）

@@ -17,6 +17,8 @@ function MapUI.init(G)
   local SPAN = math.max(X1 - X0, Z1 - Z0)
   local function toUV(x, z) return (x - X0) / SPAN, (z - Z0) / SPAN end
   G.mapUV = toUV
+  G.mapXZ = function(u, v) return X0 + u * SPAN, Z0 + v * SPAN end   -- 地图上的点 → 世界坐标（战术平板点目标用）
+  G.mapSpan = SPAN
 
   local root = Instance.new("Frame")
   root.Name = "IslandMap"

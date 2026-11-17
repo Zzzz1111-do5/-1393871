@@ -88,14 +88,14 @@ function Optics.init(G)
             nid[i + 1] = em:AddNormal(V(nx / 127, ny / 127, nz / 127))
             local u, w = string.unpack("<HH", uv, i * 4 + 1)
             uid[i + 1] = em:AddUV(Vector2.new(ub[1] + (ub[3] - ub[1]) * u / 65535, ub[2] + (ub[4] - ub[2]) * w / 65535))
-            if i % 4000 == 3999 then task.wait() end
+            if i % 1500 == 1499 then task.wait() end   -- 一帧少做一点：在战斗里现生成也不掉帧
           end
           for t = 0, d.t - 1 do
             local a, b2, c = string.unpack("<HHH", idx, t * 6 + 1)
             local f = em:AddTriangle(vid[a + 1], vid[b2 + 1], vid[c + 1])
             em:SetFaceNormals(f, { nid[a + 1], nid[b2 + 1], nid[c + 1] })
             em:SetFaceUVs(f, { uid[a + 1], uid[b2 + 1], uid[c + 1] })
-            if t % 4000 == 3999 then task.wait() end
+            if t % 1500 == 1499 then task.wait() end
           end
           local mp = quiet(AS:CreateMeshPartAsync(Content.fromObject(em)))
           mp.Name = "O_" .. key .. "__" .. name
@@ -143,7 +143,7 @@ function Optics.init(G)
   end
 
   function G.opticParts(key)
-    if not META[key] then return nil end
+    if not META[key] or failed[key] then return nil end
     local list = imported(key) or gen[key]
     if not list then
       build(key)
@@ -158,8 +158,42 @@ function Optics.init(G)
         table.insert(out, { name = x.name, part = p, c = x.c, cf = x.cf })
       end
     end
-    return (#out > 0) and out or nil
+    if #out == 0 then
+      -- 有模型却一块也复制不出来（导入的零件不能复制、现生成的网格不让复制）：记成失败，用零件拼的。
+      --   原来 opticReady 一直说「好了」、这里一直给 nil，第一人称每一帧都重建一遍视图模型——切到火箭筒就卡住（用户：第一人称用枪切火箭炮会卡住）
+      failed[key] = true
+      warn("[全面大战场] 装备模型 " .. key .. " 复制不出来，用零件拼的代替")
+      return nil
+    end
+    return out
   end
+
+  -- 出生以后：背包里的装备有真模型的，后台一件一件先生成好（第一次切过去不用现生成，不卡那一下）
+  local me = game:GetService("Players").LocalPlayer
+  local function prewarm(char)
+    task.delay(3, function()
+      local bp = me:FindFirstChildOfClass("Backpack")
+      local keys = {}
+      for _, holder in ipairs({ bp, char }) do
+        if holder then
+          for _, t in ipairs(holder:GetChildren()) do
+            if t:IsA("Tool") then
+              for _, a in ipairs({ "Gear", "GearMount" }) do
+                local k = t:GetAttribute(a)
+                if type(k) == "string" and META[k] then keys[k] = true end
+              end
+            end
+          end
+        end
+      end
+      for k in pairs(keys) do
+        if not imported(k) then build(k) end
+        task.wait(0.5)
+      end
+    end)
+  end
+  me.CharacterAdded:Connect(prewarm)
+  if me.Character then prewarm(me.Character) end
 
   -- 开局后台先生成第一人称已经在用的（狙击镜、望远镜；导入了就不用）；别的件（狙击枪、火箭筒等，还没接进第一人称）用到时才生成，免得手机内存白占
   task.delay(4, function()

@@ -32,6 +32,7 @@ function Fly.init(G)
     return math.max(b, a - s)
   end
   local function angDiff(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end
+  local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
   local function ground(x, z) return AD.ground(Map, x, z) end
 
   local st = nil   -- 正在开 / 坐的飞机
@@ -689,6 +690,12 @@ function Fly.init(G)
 
   ---------------------------------------------------------------- 物理：直升机
 
+  -- 直升机（用户：直升机操作感觉不太真实）：按真直升机的道理飞——旋翼拉力沿桨盘法线，桨盘往哪倾就往哪加速：
+  --   W / S 前推后拉驾驶杆（低头加速、抬头减速 / 后退），Q / E 左右压杆（压坡度侧移）；姿态有惯性（二阶弹簧），松杆自动回平；
+  --   低速（悬停附近）松杆时自动往反方向带一点把飘移收住，快的时候松杆就保持平飞、靠阻力慢慢减速（要停下来得抬头拉一下）；
+  --   空格 / Ctrl 总距：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
+  --   A / D 脚蹬：偏航角速度，有惯性；速度上来以后压坡度就会转弯（协调转弯），尾翼让机头顺着来流（风标效应），鼠标看哪边就往哪边压坡度转过去；
+  --   平移升力（二十几格每秒以上旋翼效率高一点）、地效（离地一个旋翼直径以内托得更稳）；最高平飞速度、爬升率照型号表
   local function heliPhysics(dt)
     local d = st.d
     if st.out then st.rpm = approach(st.rpm, 72, 9 * dt) else st.rpm = approach(st.rpm, 100, 22 * dt) end   -- 旋翼转起来要四五秒；熄火后靠气流自转，转速掉下来
@@ -705,24 +712,67 @@ function Fly.init(G)
         if math.abs(mv.X) > 0.1 then yawIn = mv.X end
       end
     end
-    -- 转向：按 A / D；没按的时候往前飞，机头慢慢转向镜头方向
-    if yawIn ~= 0 then
-      st.yaw -= yawIn * rad(d.yaw) * dt
-    elseif not G.mobile and (fwdIn ~= 0 or st.hv.Magnitude > 10) and not st.ground then
-      st.yaw += clamp(angDiff(st.yaw, st.camYaw), -rad(d.yaw) * 0.8 * dt, rad(d.yaw) * 0.8 * dt)
-    end
+    local GS = GR or 27.5
+    local heavy = st.heavy or 1
+    local maxT = rad(d.tilt)
     local f = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
     local r = V(math.cos(st.yaw), 0, -math.sin(st.yaw))
-    local want = (f * fwdIn * d.vMax + r * sideIn * d.vMax * 0.45) * (1 - (st.drag or 0))
-    if auto then want *= 0.5
-    elseif not lift or st.ground then want = V() end
-    local dv = want - st.hv
-    local amax = d.accel * dt / (st.heavy or 1)
-    if dv.Magnitude > amax then dv = dv.Unit * amax end
-    st.lastHv = st.hv
-    st.hv += dv
-    local vyWant = auto and (-14 + math.max(upIn, 0) * 6) or (lift and upIn * d.climb / (st.heavy or 1) or -18)
-    st.vy = approach(st.vy, vyWant, d.climb * 1.8 * dt)
+    local hv = st.hv
+    local spd = hv.Magnitude
+    local vf, vr = hv:Dot(f), hv:Dot(r)
+    local g0 = ground(st.cf.Position.X, st.cf.Position.Z)
+    local agl = st.cf.Position.Y - d.gearH - math.max(g0, 0)
+    -- 驾驶杆 → 想要的姿态（俯仰：负的是低头）
+    local hold = 1 - smooth(14, 34, spd)   -- 低速：松杆时自动收住飘移
+    local tP = (fwdIn ~= 0) and (-fwdIn * maxT * 0.85) or clamp(vf * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
+    local tR = (sideIn ~= 0) and (sideIn * maxT * 0.8) or clamp(-vr * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
+    -- 鼠标看向哪边：快的时候压坡度转过去（低速时用脚蹬慢慢把机头转过去）
+    local camOff = angDiff(st.yaw, st.camYaw)
+    local fast = smooth(18, 40, spd)
+    if not G.mobile and sideIn == 0 and yawIn == 0 and not st.ground then
+      tR += clamp(-camOff * 1.3, -maxT * 0.75, maxT * 0.75) * fast
+    end
+    tP, tR = clamp(tP, -maxT, maxT), clamp(tR, -maxT, maxT)
+    if st.ground then tP, tR = 0, 0 end
+    -- 姿态：二阶弹簧（有惯性、不一下子到位）
+    st.pR = (st.pR or 0) + ((tP - st.tiltP) * 10 - (st.pR or 0) * 6) * dt
+    st.rR = (st.rR or 0) + ((tR - st.tiltR) * 10 - (st.rR or 0) * 6) * dt
+    st.tiltP += st.pR * dt
+    st.tiltR += st.rR * dt
+    -- 偏航：脚蹬给角速度（有惯性）；快的时候协调转弯（坡度 → 转弯角速度）、风标效应（机头顺着来流）
+    local yrWant = -yawIn * rad(d.yaw)
+    if yawIn == 0 and not G.mobile and not st.ground then   -- 低速：机头慢慢对上镜头方向（相当于自己蹬舵）
+      yrWant += clamp(camOff * 1.5, -rad(d.yaw) * 0.6, rad(d.yaw) * 0.6) * (1 - fast)
+    end
+    if not st.ground then
+      yrWant += -GS * math.tan(st.tiltR) / math.max(spd, 25) * fast
+      yrWant += -math.atan2(vr, math.max(math.abs(vf), 1)) * 0.8 * smooth(10, 40, spd)
+    end
+    st.yr = (st.yr or 0) + (yrWant - (st.yr or 0)) * math.min(1, dt * 2.5)
+    st.yaw += st.yr * dt
+    -- 拉力：总距（松开时自动定高；停在地上时放到底）× 平移升力 × 地效
+    local colWant = upIn
+    if upIn == 0 then colWant = clamp(-st.vy * 0.07, -0.8, 0.8) end
+    if st.ground and upIn <= 0 then colWant = -0.5 end
+    if upIn < 0 and agl < 25 then colWant = -0.45 end   -- 快到地面了：下降慢一点（落地不摔）
+    st.col = approach(st.col or 0, colWant, dt * 1.8)
+    local k = d.climb * 0.6 / GS / heavy   -- 满总距的爬升率 ≈ 型号表 climb
+    local etl = 1 + 0.06 * smooth(16, 36, spd)
+    local ige = 1 + 0.1 * (1 - clamp(agl / ((d.rotor and d.rotor.r or 20) * 2), 0, 1))
+    local Tm
+    if auto then Tm = GS * (0.74 + 0.3 * math.max(upIn, 0))
+    elseif not lift then Tm = GS * (st.rpm / 100) * 0.8
+    else Tm = GS * (1 + st.col * k) * etl * ige end
+    local cfA = CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.tiltP, 0, -st.tiltR)
+    local up = cfA.UpVector
+    -- 阻力：最大压杆时最高速度正好是型号表的 vMax
+    local cl = 0.03
+    local cq = math.max(1e-5, (GS * math.sin(maxT * 0.85) - cl * d.vMax) / (d.vMax * d.vMax)) * (1 + (st.drag or 0))
+    st.lastHv = hv
+    local acc = V(up.X, 0, up.Z) * Tm - hv * (cl + cq * spd)
+    if st.ground then acc = V() hv *= math.max(0, 1 - 5 * dt) end
+    st.hv = hv + acc * dt
+    st.vy += (Tm * up.Y - GS - st.vy * 0.6) * dt
     local pos = st.cf.Position + (st.hv + V(0, st.vy, 0)) * dt
     local g = ground(pos.X, pos.Z)
     if pos.Y - d.gearH <= g then
@@ -730,22 +780,17 @@ function Fly.init(G)
       if (st.vy < -30 or overSea) and not st.ground and not st.crashed then crash() end
       pos = V(pos.X, g + d.gearH, pos.Z)
       st.vy = math.max(st.vy, 0)
-      st.ground = upIn <= 0
+      st.ground = upIn <= 0 and Tm * up.Y <= GS * 1.02
       if st.ground then st.hv *= math.max(0, 1 - 5 * dt) end
     else
       st.ground = false
     end
-    -- 姿态：往前加速低头、侧移压坡度
-    local acc = (st.hv - st.lastHv) / math.max(dt, 1e-3)
-    local accF, accR = acc:Dot(f), acc:Dot(r)
-    local tP = clamp(-accF * 0.01 - st.hv:Dot(f) / d.vMax * 0.22, -rad(d.tilt), rad(d.tilt))
-    local tR = clamp(accR * 0.01 + st.hv:Dot(r) / d.vMax * 0.2 + yawIn * 0.06, -rad(d.tilt), rad(d.tilt))
-    if st.ground then tP, tR = 0, 0 end
-    st.tiltP = approach(st.tiltP, tP, dt * 0.9)
-    st.tiltR = approach(st.tiltR, tR, dt * 0.9)
     st.cf = CF(pos) * CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.tiltP, 0, -st.tiltR)
     st.vel = st.hv + V(0, st.vy, 0)
-    st.c.pit, st.c.rol, st.c.yaw, st.c.col = fwdIn, sideIn, yawIn, upIn
+    -- 动画通道（桨盘跟着驾驶杆倾）：用平滑过的杆量
+    st.c.pit = approach(st.c.pit or 0, fwdIn ~= 0 and fwdIn or clamp(-tP / maxT, -1, 1) * 0.5, dt * 4)
+    st.c.rol = approach(st.c.rol or 0, sideIn ~= 0 and sideIn or clamp(tR / maxT, -1, 1) * 0.5, dt * 4)
+    st.c.yaw, st.c.col = yawIn, clamp(st.col, -1, 1)
     st.c.rpm, st.c.thr, st.c.gear = st.rpm, st.rpm, 1
   end
 

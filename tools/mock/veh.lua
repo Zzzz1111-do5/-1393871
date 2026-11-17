@@ -50,13 +50,16 @@ if side == "def" then
   R.run(2)
   local hintGui = me.PlayerGui:FindFirstChild("NVHint")
   local hint = hintGui and hintGui:FindFirstChild("Hint")
-  check(hint and hint.Visible and string.find(hint.Text, "N") ~= nil, "出生后提示：" .. tostring(hint and hint.Text))
-  T.tap(Enum.KeyCode.N)
-  R.run(1)
-  check(hint and not hint.Visible, "开了夜视，提示消失")
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
-  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled), "步兵按 N 开夜视：全屏调色、没有镜筒框")
+  -- 夜视默认开着（用户：不管什么情况默认都开着）：出生就开、不用提示；按 N 关掉，再按又开
+  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生夜视就开着：全屏调色、没有镜筒框、没有「按 N」提示")
+  T.tap(Enum.KeyCode.N)
+  R.run(1)
+  check(C.nvgOn and not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "按 N 关掉")
+  T.tap(Enum.KeyCode.N)
+  R.run(1)
+  check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 又开了")
   T.act("enterVeh", e0 and e0.id)
   R.run(1.5)
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
@@ -84,7 +87,7 @@ if side == "def" then
   if v then for _, w in ipairs(v.M.wheels) do lo, hi = math.min(lo, w.dy), math.max(hi, w.dy) end end
   check(hi - lo > 0.05, string.format("负重轮各自上下（%.2f ～ %.2f 格）", lo, hi))
 
-  print("③ 瞄准镜：昼光 → 夜视 → 热成像白热 → 黑热")
+  print("③ 瞄准镜：默认夜视 → 热成像白热 → 黑热 → 昼光")
   T.tap(Enum.KeyCode.V)
   R.run(0.3)
   local cc = C.sightCC
@@ -96,7 +99,7 @@ if side == "def" then
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
-  check(modes[1] == "nv" and modes[2] == "whot" and modes[3] == "bhot", "N 依次切夜视、白热、黑热：" .. table.concat(modes, " → "))
+  check(modes[1] == "whot" and modes[2] == "bhot" and modes[3] == "day", "瞄准镜默认夜视档，N 依次切白热、黑热、昼光：" .. table.concat(modes, " → "))
   T.tap(Enum.KeyCode.V)
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "退出瞄准镜，调色关了")

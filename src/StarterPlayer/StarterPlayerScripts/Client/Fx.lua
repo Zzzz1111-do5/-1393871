@@ -511,6 +511,7 @@ function Fx.init(G)
       elseif k == "smokeLaunch" then smokeLaunch(e)
       elseif k == "smokeCloud" then smokeCloud(e)
       elseif k == "tankDrop" then tankDrop(e)
+      elseif G.fxExtra and G.fxExtra[k] then G.fxExtra[k](e)   -- 别的模块登记的（战术平板的空投、空袭：TacPad.lua）
       end
     end
   end

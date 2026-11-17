@@ -5,7 +5,8 @@
 --   ShipView 舰艇的样子 · Sail 开船（车钟、舵、舰炮、反舰导弹）· Hangar 挂载编辑器 ·
 --   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）·
 --   Depot 地图里的载具生成点（牌子、按键文字、飞机生成前弹挂载界面）· Night 夜视仪（N）· Faction 选阵营（解放军 / 美军）·
---   Chute 跳伞的人头顶的降落伞 · Tablet 遥控无人机的战术平板（平板外壳、地面站遥测、重连提示）· Soldier 机器人士兵（Roblox 小人）
+--   Chute 跳伞的人头顶的降落伞 · Tablet 遥控无人机的战术平板（平板外壳、地面站遥测、重连提示）· Soldier 机器人士兵（Roblox 小人）·
+--   TacPad 单兵战术平板（B：呼叫空投载具、空投补给、空中打击，每样一局有次数；飞来的飞机、落下的货盘和炸弹）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -21,7 +22,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "Chute", "Tablet", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -60,6 +61,7 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
   { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
+  { "tacpad", function(dt) if G.stepTacPad then G.stepTacPad(dt) end end },
   { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end } }   -- 主菜单背后的场景（火光、镜头）
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do

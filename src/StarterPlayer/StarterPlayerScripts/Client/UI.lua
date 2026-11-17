@@ -383,6 +383,7 @@ function UI.init(G)
   -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
+      or (G.tacOpen ~= nil and G.tacOpen())   -- 战术平板开着：鼠标放出来点地图、不开枪
   end
 
   local function doDeploy()
@@ -744,6 +745,10 @@ function UI.init(G)
   function G.onMsg(kind, key, ...)
     if kind == "hit" then
       if G.hitMarker then G.hitMarker(key) end
+      return
+    end
+    if kind == "refill" then   -- 战术平板的补给箱：本地弹药也补满（Play.lua）
+      if G.refillAmmo then G.refillAmmo() end
       return
     end
     local text = T(key, ...)

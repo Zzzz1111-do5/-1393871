@@ -233,10 +233,14 @@ function Drive.init(G)
   local function baseAt(d, pos, yaw, carried)
     local face = V(-math.sin(yaw), 0, -math.cos(yaw))
     local right = V(-face.Z, 0, face.X)
-    if carried and Map.height(pos.X, pos.Z) < 0.6 then   -- 站在气垫艇上、还在水上：车底就是艇的甲板，跟着艇轻轻晃
+    if carried then   -- 站在气垫艇上：车底就是艇的甲板（离水面 / 沙滩一层气垫），跟着艇晃；转弯往外侧倾、加速抬头
       local t = os.clock()
-      local p = V(pos.X, VD.LCAC.deck + math.sin(t * 1.4) * 0.12, pos.Z)
-      return CFrame.lookAt(p, p + face) * CFrame.Angles(math.sin(t * 0.8) * 0.01, 0, math.sin(t * 1.0) * 0.015)
+      local g = math.max(Map.height(pos.X, pos.Z), 0)
+      local p = V(pos.X, g + VD.LCAC.deck + math.sin(t * 1.4) * 0.12, pos.Z)
+      local hv = st and st.hv
+      local roll = hv and math.clamp(-hv.yr * math.abs(st.speed) * 0.012, -0.07, 0.07) or 0
+      local pitch = hv and math.clamp((hv.af or 0) * 0.0025, -0.04, 0.04) or 0
+      return CFrame.lookAt(p, p + face) * CFrame.Angles(pitch + math.sin(t * 0.8) * 0.01, 0, roll + math.sin(t * 1.0) * 0.015)
     end
     -- 两栖车：浮着时车底在吃水线（海面下大半个车体）；水浅到履带碰着海底，就踩着海底往上爬（车底取海底和吃水线高的那个），
     --   不会在水深 1.5 格那一下从吃水线弹到海面上
@@ -255,6 +259,20 @@ function Drive.init(G)
       return cf * CFrame.Angles(math.sin(t * 0.9) * 0.012, 0, math.sin(t * 1.1) * 0.02)
     end
     local y = (yf + yb + yl + yr) / 4
+    -- 四个角定的平面在山脊、坡顶上会切进地里（中间的地比四角的平均高）：车底下再取 9 个点，哪儿冒出平面就整车抬起来
+    --   只管整辆在陆地上的时候（水边、两栖车爬岸时四个角一半在水里，抬起来会一跳一跳）
+    if math.min(yf, yb, yl, yr) > 0.3 then
+      local gf, gr = (yf - yb) / (d.L * 0.8), (yr - yl) / (d.W * 0.8)
+      local lift = 0
+      for _, u in ipairs({ -0.45, 0, 0.45 }) do
+        for _, s in ipairs({ -0.45, 0, 0.45 }) do
+          local p = c + face * (u * d.L) + right * (s * d.W)
+          local over = gh(p) - (y + gf * u * d.L + gr * s * d.W)
+          if over > lift then lift = over end
+        end
+      end
+      if lift > 0.2 then y += math.min(lift - 0.2, 4) end
+    end
     local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
     local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
     local up = side:Cross(fwd).Unit
@@ -276,7 +294,7 @@ function Drive.init(G)
     local look = base.LookVector
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
-      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 1, zoom = 1,
+      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
     G.drive, G.myVeh = st, st
     cam.CameraType = Enum.CameraType.Scriptable
@@ -312,6 +330,61 @@ function Drive.init(G)
   end
   local function angDiff(a, b) return (b - a + 180) % 360 - 180 end
 
+  -- 坐在气垫艇上（登陆平台出发）：开的是艇，不是车（用户：登陆的时候我应该驾驶登陆船，而不是让坦克带着登陆船）——
+  --   气垫艇的手感：推力沿艇首（风扇在艇尾），前后、侧向的阻力分开算（侧向也小：转弯时甩尾、横着滑一段）；
+  --   舵在风扇后面，越快越灵，低速靠首部喷口慢慢转；转向有惯性；车停在甲板上不动（炮塔照样能转、能打）。
+  --   能冲上平缓的沙滩；车底下是陆地了服务器就把车放下（Armor.lua dropOff），接着开车从艇首开下去
+  local function hover(dt, thr, str)
+    local d, L = st.d, VD.LCAC
+    local fwd = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+    local hv = st.hv
+    if not hv then
+      hv = { v = fwd * st.speed, yr = 0, af = 0 }
+      st.hv = hv
+    end
+    local right = V(-fwd.Z, 0, fwd.X)
+    local v = hv.v
+    local vf, vs = v:Dot(fwd), v:Dot(right)
+    local push = (thr > 0) and 22 or ((thr < 0) and -10 or 0)   -- 格 / 秒²：推满大约 75 格 / 秒到顶（VehDefs.LCAC.speed）
+    local af = push - vf * 0.22 - vf * math.abs(vf) * 0.001
+    local as = -vs * 0.9 - vs * math.abs(vs) * 0.004
+    -- 艇首前面是陡坡、堤岸：冲不上去（平缓的沙滩能上）
+    local bow = st.pos + fwd * (L.size.Z * 0.5)
+    local hb, hc = Map.height(bow.X, bow.Z), Map.height(st.pos.X, st.pos.Z)
+    if vf > 0 and hb > math.max(hc, 0) + 3 then af = math.min(af, -vf * 4) end
+    v += (fwd * af + right * as) * dt
+    local auth = 0.3 + 0.7 * math.clamp(math.abs(vf) / 35, 0, 1)
+    local yrWant = -str * math.rad(24) * auth * ((vf < -1) and -1 or 1)
+    hv.yr += (yrWant - hv.yr) * math.min(1, dt * 1.4)
+    st.yaw += hv.yr * dt
+    -- 撞上登陆平台、码头、舰船：弹回来一点
+    local np = st.pos + v * dt
+    local sp = v.Magnitude
+    if sp * dt > 1e-3 then
+      local o = V(st.pos.X, math.max(hc, 0) + L.deck + 2, st.pos.Z)
+      local res = workspace:Raycast(o, v.Unit * (L.size.Z * 0.5 + sp * dt + 1), mapParams)
+      if res then
+        if sp > 20 and G.shake then G.shake(0.3) end
+        v = -v * 0.25
+        np = st.pos
+      end
+    end
+    hv.v, hv.af = v, af
+    st.pos = V(np.X, st.pos.Y, np.Z)
+    st.speed = v:Dot(fwd)
+    st.accel = af
+    st.steer = approach(st.steer, str, dt * 4)
+    local base = baseAt(d, st.pos, st.yaw, true)
+    st.pos = base.Position
+    st.root = base * CF(0, d.H / 2, 0)
+  end
+  -- 气垫艇在自己车底下的样子（View 用：自己开的那条艇按本地算的位置画，跟车贴得死死的；同服务器 Armor.lua 的 lcacUnder，艇比车靠前 2 格）
+  function G.lcacUnderMine(cid)
+    if not st or st.id ~= cid or not st.hv or not st.root then return nil end
+    local L = VD.LCAC
+    return st.root * CF(0, -st.d.H / 2, 0) * CF(0, L.y - L.deck, -2)
+  end
+
   local function physics(dt)
     local d = st.d
     local key = function(k) return UIS:IsKeyDown(k) end
@@ -322,7 +395,17 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
-    local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：连艇一起开
+    local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：开的是艇
+    if carried then
+      hover(dt, thr, str)
+      return
+    end
+    if st.hv then   -- 刚被放下艇：车底从甲板落到地面，0.6 秒滑下去（不一下子掉），带着一点艇的速度
+      local fwd0 = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+      st.speed = math.clamp(st.hv.v:Dot(fwd0) * 0.3, 0, d.speed)
+      st.dropFrom, st.dropT, st.dropAt = st.root and (st.root * CF(0, -d.H / 2, 0)).Position.Y, 0, st.pos
+      st.hv = nil
+    end
     local maxF, maxR = d.speed, d.rev
     if inWater then
       if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
@@ -371,7 +454,18 @@ function Drive.init(G)
         st.pos = np
       end
     end
-    local base = baseAt(d, st.pos, st.yaw, carried)
+    local base = baseAt(d, st.pos, st.yaw, false)
+    if st.dropT then   -- 从艇上开下来：车底从甲板高度顺下来
+      st.dropT += dt
+      local k = math.clamp(st.dropT / 0.6, 0, 1)
+      local far = st.dropAt and (V(st.pos.X, 0, st.pos.Z) - V(st.dropAt.X, 0, st.dropAt.Z)).Magnitude > 40   -- 被挪走了（服务器拉回、测试瞬移）：不接着顺
+      if k >= 1 or not st.dropFrom or far then
+        st.dropT, st.dropFrom, st.dropAt = nil, nil, nil
+      else
+        local y = st.dropFrom + (base.Position.Y - st.dropFrom) * (k * k * (3 - 2 * k))
+        base = base + V(0, y - base.Position.Y, 0)
+      end
+    end
     st.pos = base.Position
     st.root = base * CF(0, d.H / 2, 0)
   end
@@ -577,7 +671,12 @@ function Drive.init(G)
     else
       local center = st.root.Position + V(0, d.H * 0.4, 0)
       local dist = d.L * 1.25 + 14
-      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, d.H * 0.6, 0)
+      local up = d.H * 0.6
+      if st.hv then   -- 开着气垫艇：镜头拉远、抬高，整条艇在画面里
+        local L = VD.LCAC
+        dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8
+      end
+      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, up, 0)
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
       cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * math.min(1, dt * 10)
       st.aimPt = aimPoint()
@@ -605,7 +704,8 @@ function Drive.init(G)
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
     hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
-    vName.Text = T("veh." .. d.id) .. (st.locked and ("   " .. T("ui.lcac")) or "")
+    vName.Text = st.hv and T("ui.lcacOn", T("veh.lcac"), T("veh." .. d.id)) or (T("veh." .. d.id) .. (st.locked and ("   " .. T("ui.lcac")) or ""))
+    st.help = st.hv and "ui.lcacHelp" or nil   -- 底部键位说明（UI.lua）：开艇和开车不一样
     local wid = weaponId()
     local ammo = vs.ammo and wid and vs.ammo[wid]
     local kmh = math.floor(math.abs(st.speed) / 2.8 * 3.6 + 0.5)

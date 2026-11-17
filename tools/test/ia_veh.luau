@@ -95,7 +95,7 @@ H.run(1.5)
 H.key(def, Enum.KeyCode.A, false)
 check(CD.drive and math.abs(CD.drive.steer) > 0, "按 A 转向")
 
-print("③ 瞄准镜：昼光 → 夜视 → 热成像白热 → 黑热")
+print("③ 瞄准镜：默认夜视 → 热成像白热 → 黑热 → 昼光")
 H.key(def, Enum.KeyCode.V, true) H.key(def, Enum.KeyCode.V, false)
 H.run(0.3)
 local cc = CD.sightCC   -- 测试台里几个客户端共用一棵树：用这个客户端自己的
@@ -109,8 +109,8 @@ for i = 1, 3 do
 	table.insert(modes, string.format("%s 饱和度 %.1f 亮度 %.2f 高亮 %d", tostring(({ "day", "nv", "whot", "bhot" })[CD.drive.mode]), cc.Saturation, cc.Brightness, nh))
 end
 print("    " .. table.concat(modes, " | "))
-check(modes[1]:find("nv") and modes[2]:find("whot") and modes[3]:find("bhot"), "N 依次切夜视、白热、黑热")
-check(modes[2]:find("高亮 [1-9]") ~= nil, "热成像有高亮（热的东西发白）")
+check(modes[1]:find("whot") and modes[2]:find("bhot") and modes[3]:find("day"), "瞄准镜默认夜视档，N 依次切白热、黑热、昼光")
+check(modes[1]:find("高亮 [1-9]") ~= nil, "热成像有高亮（热的东西发白）")
 H.key(def, Enum.KeyCode.V, true) H.key(def, Enum.KeyCode.V, false)
 H.run(0.3)
 check(not CD.drive.sight and not cc.Enabled, "退出瞄准镜，调色关了")

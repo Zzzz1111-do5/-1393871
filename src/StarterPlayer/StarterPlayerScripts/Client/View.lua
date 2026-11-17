@@ -421,6 +421,10 @@ function View.init(G)
           local target = v.root.CFrame
           local moved = (target.Position - v.cf.Position).Magnitude
           v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+          if v.kind == "lcac" and G.lcacUnderMine then   -- 自己正开着的这条气垫艇：按本地算的车底摆（不等服务器，和甲板上的车贴死）
+            local mine = G.lcacUnderMine(em:GetAttribute("Carry"))
+            if mine then v.cf = mine end
+          end
           v.t += dt * math.clamp(moved * 2, 0, 12)
           for _, L in pairs(v.parts) do
             local off = L[2]

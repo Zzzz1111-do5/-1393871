@@ -505,6 +505,7 @@ function FPSView.init(G)
   end
   local lastCam, lastPos, bobPhase, speedS = nil, nil, 0, 0
   local hiddenTool = nil
+  local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
 
   local function hideTool(tool, on)
     if not tool then return end
@@ -524,6 +525,13 @@ function FPSView.init(G)
       return
     end
     local opticNow = vm and vm.wait and allReady(vm.wait)   -- 真模型（整件、瞄准镜、望远镜）刚生成好
+    if opticNow then   -- 说好了却还是拿不到的：最多重建 3 次，别每一帧都重建（切到火箭筒卡住就是这样）
+      local n = (waitTries[vm.tool or vm] or 0) + 1
+      waitTries[vm.tool or vm] = n
+      if n > 3 then
+        vm.wait, opticNow = nil, false
+      end
+    end
     if not vm or vm.id ~= id or vm.tool ~= tool or (genStale and vm.m4) or opticNow then
       genStale = false
       buildVM(id, tool)

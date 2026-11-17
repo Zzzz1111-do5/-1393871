@@ -116,6 +116,17 @@ function Armor.init(G)
     local l, r = c - right * d.W * 0.4, c + right * d.W * 0.4
     local yf, yb, yl, yr = gh(f), gh(b), gh(l), gh(r)
     local y = (yf + yb + yl + yr) / 4
+    -- 坡顶、山脊上四角的平面会切进地里：车底下再取 9 个点，冒出平面就整车抬起来（同客户端 Drive.lua）
+    local gf, gr = (yf - yb) / (d.L * 0.8), (yr - yl) / (d.W * 0.8)
+    local lift = 0
+    for _, u in ipairs({ -0.45, 0, 0.45 }) do
+      for _, s in ipairs({ -0.45, 0, 0.45 }) do
+        local p = c + face * (u * d.L) + right * (s * d.W)
+        local over = gh(p) - (y + gf * u * d.L + gr * s * d.W)
+        if over > lift then lift = over end
+      end
+    end
+    if lift > 0.2 then y += lift - 0.2 end
     local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
     local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
     local up = side:Cross(fwd).Unit
@@ -236,10 +247,12 @@ function Armor.init(G)
   local LCAC = VD.LCAC   -- 同登陆艇：岸防炮要中 3 发才沉；deck 是车底的高度
   G.LCAC = LCAC
   -- 车底在 base 时气垫艇的 CFrame：车停在艇的后半（往后 2 格），艇和车同一朝向
+  --   冲上沙滩时艇跟着地面抬高（一层气垫托着），不陷进沙里
   local function lcacUnder(base)
     local look = V(base.LookVector.X, 0, base.LookVector.Z)
     look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
-    local p = V(base.Position.X, LCAC.y, base.Position.Z) + look * 2
+    local g = Map.ground(base.Position.X, base.Position.Z)
+    local p = V(base.Position.X, g + LCAC.y, base.Position.Z) + look * 2
     return CFrame.lookAt(p, p + look)
   end
   local function carryOn(veh, base)
@@ -247,6 +260,7 @@ function Armor.init(G)
     boat.veh, boat.state = veh, "carry"
     veh.lcac = boat
     veh.model:SetAttribute("Lcac", true)
+    boat.model:SetAttribute("Carry", veh.id)   -- 客户端：开这辆车的人本地按自己的车摆这条艇（Drive.lua G.lcacUnderMine）
     boat.onDeath = function(self, src)
       if self.veh and self.veh.alive and self.veh.lcac == self then G.damageEnt(self.veh, 1e6, src) end   -- 艇沉了，车也没了
       self.state = "sunk"
@@ -259,6 +273,7 @@ function Armor.init(G)
     local boat = veh.lcac
     veh.lcac = nil
     veh.model:SetAttribute("Lcac", false)
+    if boat and boat.model then boat.model:SetAttribute("Carry", nil) end
     if boat and boat.alive then boat.veh, boat.state, boat.backAt = nil, "landed", now() + 8 end
   end
   local function stepLcacs(dt)

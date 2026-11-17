@@ -57,6 +57,7 @@ function Play.init(G)
 
   local cur = { tool = nil, id = nil, nextShot = 0, firing = false, aiming = false, lockT = 0, lockId = nil }
   local ammo = {}
+  function G.refillAmmo() ammo = {} end   -- 补给箱（战术平板）：下次取弹药时按满弹匣、满备弹重新算
   local function ammoOf(id)
     local w = W[id]
     local a = ammo[id]

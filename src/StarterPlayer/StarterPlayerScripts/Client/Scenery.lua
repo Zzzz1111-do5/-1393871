@@ -230,10 +230,48 @@ function Scenery.init(G)
   local stats = { cells = 0, items = 0, live = 0, made = 0, genMs = 0 }
   G.sceneryStats = stats
 
+  -- 车压着的草、花、灌木、石头不画（用户：坦克都卡在地底下——草丛一丛 2～3.5 格高、石头半埋，原来照样从车身里长出来，
+  --   履带、车体下半截全被盖住，夜视里看着就像车陷在地里）。车的占地（长宽各放 3 格）按车头方向算；树不管（车从树林穿过去照旧）
+  local FLAT_KIND = { grass = true, flower = true, bush = true, log = true, rock = true, outcrop = true }
+  local flats = {}
+  local function collectFlats(cp)
+    table.clear(flats)
+    for _, v in pairs(G.views or {}) do
+      local d = v.def
+      if v.kind == "veh" and d and v.cf and d.L and d.W then
+        local p = v.cf.Position
+        if math.abs(p.X - cp.X) < maxR and math.abs(p.Z - cp.Z) < maxR then
+          local lv = v.cf.LookVector
+          local fx, fz = lv.X, lv.Z
+          local m = math.sqrt(fx * fx + fz * fz)
+          if m > 1e-3 then fx, fz = fx / m, fz / m else fx, fz = 0, -1 end
+          table.insert(flats, { x = p.X, z = p.Z, fx = fx, fz = fz, hl = d.L / 2 + 3, hw = d.W / 2 + 3, r = math.sqrt(d.L * d.L + d.W * d.W) / 2 + 9 })
+        end
+      end
+    end
+  end
+  local function underVeh(it)
+    if #flats == 0 then return false end
+    local m = META[it.k]
+    if not m or not FLAT_KIND[m.kind] then return false end
+    local rr = math.min(4, (m.r or 2) * (it.s or 1) * 0.5)
+    for _, f in ipairs(flats) do
+      local dx, dz = it.x - f.x, it.z - f.z
+      if math.abs(dx) < f.r and math.abs(dz) < f.r then
+        local along = dx * f.fx + dz * f.fz
+        local side = dx * f.fz - dz * f.fx
+        if math.abs(along) < f.hl + rr and math.abs(side) < f.hw + rr then return true end
+      end
+    end
+    return false
+  end
+  G.sceneryUnderVeh = underVeh
+
   -- 一次更新：镜头附近的格子按距离挑版本；超出范围的收回池里
   local function update(budgetMs)
     local cp = cam.CFrame.Position
     local t0 = os.clock()
+    collectFlats(cp)
     local ccx, ccz = math.floor(cp.X / CELL), math.floor(cp.Z / CELL)
     local rc = math.ceil(maxR / CELL) + 1
     local changes = 0
@@ -275,6 +313,7 @@ function Scenery.init(G)
               local dy = (it.y - cp.Y) * 0.5   -- 天上往下看：高度算一半（飞机上看地面不至于全变公告板）
               local d = math.sqrt(dx * dx + dz * dz + dy * dy)
               local w = want(it.k, d)
+              if w and underVeh(it) then w = nil end   -- 车压着：先收起来，车开走了下一次更新再摆回去
               if w ~= it.cur then
                 if changes < 400 then
                   if it.inst then give(it.inst) it.inst = nil end

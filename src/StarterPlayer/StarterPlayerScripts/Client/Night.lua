@@ -3,6 +3,7 @@
 --     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
 --   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 是切车上瞄准镜的夜视 / 热成像（Drive.lua），
 --     开着车上的瞄准镜看时夜视仪先让出画面（瞄准镜有自己的调色，叠在一起热成像会发绿、过亮），退出瞄准镜自动恢复；死了关掉
+--   默认开着（用户：视野不管是在什么情况默认夜视仪都是开着的）：每次出生自动打开；按 N 关掉的话这一条命里关着，下次出生又是开的；车上瞄准镜默认也是夜视档
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -63,6 +64,8 @@ function Night.init(G)
 
   local function setOn(v)
     if v == on then return end
+    local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+    if v and not (hum and hum.Health > 0) then return end   -- 没出生（部署界面、主菜单）不开
     on = v
     pcall(function() G.R.Act:FireServer("nvg", on) end)
     fxApply(on and not held())
@@ -111,7 +114,24 @@ function Night.init(G)
   end
   G.nvgHint = showHint
   local function onChar(ch)
-    task.delay(2.5, function()   -- 出生、部署界面关掉以后再提示
+    -- 出生自动打开夜视（等人物的 Humanoid 到了；最多等 10 秒）
+    -- 服务器给人戴夜视仪（头盔上的 NVG）可能比 Humanoid 晚到：到了再把开着的状态发一遍，别人那边镜筒才翻得下来
+    ch.ChildAdded:Connect(function(c)
+      if c.Name == "NVG" and on and me.Character == ch then pcall(function() G.R.Act:FireServer("nvg", true) end) end
+    end)
+    task.spawn(function()
+      local hum = ch:WaitForChild("Humanoid", 10)
+      ch:WaitForChild("NVG", 3)
+      for _ = 1, 40 do
+        if not ch.Parent or not hum or hum.Health <= 0 then return end
+        if me.Character == ch then
+          setOn(true)
+          if on then break end
+        end
+        task.wait(0.25)
+      end
+    end)
+    task.delay(2.5, function()   -- 万一没开（自己按 N 关了）：出生、部署界面关掉以后再提示
       local hum = ch and ch.Parent and ch:FindFirstChildOfClass("Humanoid")
       if hum and hum.Health > 0 and not on then showHint(10) end
     end)
