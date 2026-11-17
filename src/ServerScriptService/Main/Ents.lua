@@ -233,7 +233,7 @@ function Ents.init(G)
           G.explode(s.pos, s.w, s.src)
           done = true
         end
-        if not done and (s.t > (s.life or 8) or s.pos.Y < -Map.SEA_DEPTH) then
+        if not done and (s.t > (s.life or 8) or (s.pos.Y < -1.5 and Map.height(s.pos.X, s.pos.Z) < -1.5)) then   -- 掉进海里：水面上溅起水花（海加深以后不能等沉到海底）
           if s.kind ~= "grenade" then G.fx({ k = "splash", p = V(s.pos.X, 0, s.pos.Z) }) end
           done = true
         end
