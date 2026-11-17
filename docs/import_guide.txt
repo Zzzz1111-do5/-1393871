@@ -1,13 +1,13 @@
 Roblox全面大战场 · 原模型导入说明
 ==================================
 
-（仓库里这些文件就在 models/ 下面；发给用户的是按下面分好的压缩包）
-游戏本身：
-  0. 游戏_Roblox全面大战场.zip  RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）+ 这份说明 + 署名
-模型一共 3 个压缩包，解压到同一个文件夹：
-  1. 原模型1_地面载具.zip      veh/      21 个（坦克、步战车、自行火炮、防空车……）
-  2. 原模型2_飞机直升机.zip    air/      16 个
-  3. 原模型3_舰艇装备花草.zip  ship/     7 艘舰艇
+（仓库里这些文件就在 models/ 下面；Studio 的「导入 3D」只认 .glb，不认压缩包——发给用户的是一个个 .glb 文件，按下面的文件夹分批导。
+  models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
+游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
+模型一共 60 个 .glb，按文件夹分：
+  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
+  2. 飞机直升机                air/      16 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…）
+  3. 舰艇、装备、花草          ship/     7 艘舰艇
                                optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
                                scenery/  地图上的树、灌木、石头、草、花（一个文件）
                                fps_m4.glb  第一人称的 M4
@@ -32,7 +32,7 @@ Roblox全面大战场 · 原模型导入说明
 local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASON]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
 
   2. 资源管理器里右键 ServerStorage 下的 ImportedModels →「保存到文件…」（Save to File），存成 Imported.rbxm。
-  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库网页上切到分支 claude/affectionate-pasteur-vj1oop——现在最新的游戏在这个分支，
+  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库网页上切到分支 claude/darksword-forts-navy——现在最新的游戏在这个分支，
      进 models 目录 →「Add file → Upload files」，路径写 imported/Imported.rbxm）。
      以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
      （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）

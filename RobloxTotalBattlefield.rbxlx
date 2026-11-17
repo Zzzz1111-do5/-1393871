@@ -10066,6 +10066,7 @@ function Imports.init(G)
   local okD, AD = pcall(function() return require(RS:WaitForChild("AirDefs", 5)) end)
   if okM and okD and type(IA) == "table" and type(AD) == "table" and IA.m then
     local none, partial = {}, {}
+    local function file(k) return (string.gsub(string.gsub(k, "~$", ""), "_v%d+$", "")) .. ".glb" end   -- 仓库里的文件名不带版本（j20.glb 里是 A_j20_v3__…）
     local ids = {}
     for id in pairs(AD.D or {}) do table.insert(ids, id) end
     table.sort(ids)
@@ -10088,14 +10089,14 @@ function Imports.init(G)
           end
           local ok = miss == 0 or (miss <= total * 0.25 and mv <= tv * 0.03)
           if ok then best = nil break end
-          best = best or string.format("%s（%s 缺 %d / %d 块）", id, k, miss, total)
+          best = best or string.format("%s（%s 缺 %d / %d 块）", id, file(k), miss, total)
         end
       end
       if best then table.insert(partial, best)
       else
         local any = false
         for _, k in ipairs(keys) do if dest.A:FindFirstChild((string.gsub(k, "~$", ""))) then any = true end end
-        if not any and #keys > 0 then table.insert(none, id .. "（" .. string.gsub(keys[1], "~$", "") .. ".glb）") end
+        if not any and #keys > 0 then table.insert(none, id .. "（" .. file(keys[1]) .. "）") end
       end
     end
     if #none > 0 then print("[全面大战场] 这些飞机还没导入原模型，用零件拼的：" .. table.concat(none, "、") .. "——Studio「导入 3D」导入 models/air/ 下对应的文件") end
