@@ -43,6 +43,7 @@ export async function vehicle(key, base) {
   const src = await loadGLB(`${base}/models/veh/${key}.glb`);
   const model = src.clone(true);
   prepMats(model, 0.25);
+  eraseEmblems(key, model);
   const root = new THREE.Group(); root.name = 'veh:' + key;
   root.add(model);
   root.updateMatrixWorld(true);
@@ -80,6 +81,13 @@ export async function aircraft(key, base) {
   const src = await loadGLB(`${base}/models/air/${key}.glb`);
   const model = src.clone(true);
   prepMats(model, 0.35, key === 'z10w');
+  // 歼-20：原模型的漆面偏亮、偏光滑，月光在机背两条发动机舱的弧面上反出两道白光（用户看着像光柱）；按真机的暗灰隐身涂层压暗、调成哑光
+  if (key === 'j20') model.traverse(o => {
+    if (!o.isMesh || !o.material || o.material.transparent) return;
+    o.material = o.material.clone();
+    o.material.roughness = Math.max(o.material.roughness ?? 0.5, 0.66); o.material.metalness = Math.min(o.material.metalness ?? 0, 0.3);
+    o.material.color.multiplyScalar(0.62); o.material.envMapIntensity = 0.25;
+  });
   const root = new THREE.Group(); root.name = 'air:' + key;
   root.add(model);
   root.updateMatrixWorld(true);
@@ -310,6 +318,62 @@ export function hovercraft(tex) {
   return { root: g, fans, spin(t) { for (const f of fans) f.rotation.z = t * 25; } };
 }
 
+// —— 导弹精模：车削的弹体（导引头罩 / 雷达罩、弹体、收口的尾段）、喷管，有厚度带后掠的弹翼和舵面，色带、吊挂；弹头朝 −Z、中心在原点 ——
+//   o：len 全长、r 半径、nose 'ir'（玻璃半球罩，红外弹）/ 'radar'（尖拱雷达罩）、strake 长条弹翼 [前缘起点 0–1, 弦长 0–1, 翼展]、
+//      fins 尾舵 [根弦, 梢弦, 翼展, 后掠]、canard 前翼 [位置 0–1, 根弦, 梢弦, 翼展, 后掠]、bands 色带 [[位置 0–1, 宽 0–1, 颜色]…]、lugs 吊挂、roll 弹翼滚转角
+export function missileModel(o) {
+  const { len, r, nose = 'radar', strake = null, fins = null, canard = null, bands = [], col = 0xd8dadc, lugs = false, roll = Math.PI / 4 } = o;
+  const g = new THREE.Group();
+  const mBody = new THREE.MeshStandardMaterial({ color: col, roughness: 0.36, metalness: 0.25, envMapIntensity: 0.7 });
+  const mFin = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(0.84), roughness: 0.4, metalness: 0.25, envMapIntensity: 0.6 });
+  const mDark = new THREE.MeshStandardMaterial({ color: 0x26292c, roughness: 0.5, metalness: 0.6, envMapIntensity: 0.5 });
+  const mGlass = new THREE.MeshStandardMaterial({ color: 0x0a0f14, roughness: 0.03, metalness: 0.95, envMapIntensity: 2.2 });
+  const add = (geo, m) => { const x = new THREE.Mesh(geo, m); x.castShadow = true; x.receiveShadow = true; g.add(x); return x; };
+  // 外形（半径, 离尾部的距离），从尾到头
+  const P = [], V = (a, b) => P.push(new THREE.Vector2(Math.max(0.0005, a), b));
+  V(r * 0.6, 0); V(r * 0.86, r * 0.35); V(r, r * 1.3);
+  if (nose === 'ir') {
+    const s0 = len - r * 1.5;
+    V(r, s0); V(r * 0.93, s0 + r * 0.25); V(r * 0.93, len - r * 0.55); V(r * 0.88, len - r * 0.5);
+  } else {
+    const nL = r * 5.2, s0 = len - nL;
+    V(r, s0);
+    for (let i = 1; i <= 16; i++) { const k = i / 16; V(r * Math.pow(1 - Math.pow(k, 1.7), 0.62), s0 + nL * k); }
+  }
+  const body = new THREE.LatheGeometry(P, 40).rotateX(-Math.PI / 2).translate(0, 0, len / 2);   // 车削轴 +Y → −Z（弹头朝前）
+  add(body, mBody);
+  if (nose === 'ir') { const d = add(new THREE.SphereGeometry(r * 0.88, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(-Math.PI / 2), mGlass); d.position.z = -len / 2 + r * 0.5; }
+  // 喷管：尾部一圈深色的管口 + 里面更暗
+  const noz = add(new THREE.CylinderGeometry(r * 0.5, r * 0.56, r * 0.5, 28, 1, true).rotateX(Math.PI / 2), mDark); noz.position.z = len / 2 + r * 0.1;
+  const nozIn = add(new THREE.CircleGeometry(r * 0.48, 24), new THREE.MeshBasicMaterial({ color: 0x060606 })); nozIn.position.z = len / 2 - r * 0.05;
+  // 色带：比弹体略粗一点点的薄圈
+  for (const [at, w, c] of bands) {
+    const b = add(new THREE.CylinderGeometry(r * 1.004, r * 1.004, len * w, 40, 1, true).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.1 }));
+    b.position.z = -len / 2 + len * at;
+  }
+  // 板（翼、舵）：形状在（翼展 x, 弦向 y）平面，拉出厚度后转成弦向朝 +Z（往后）、从弹体表面往外长
+  const plate = (root, tip, span, sweep, th) => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0); s.lineTo(span, sweep); s.lineTo(span, sweep + tip); s.lineTo(0, root); s.lineTo(0, 0);
+    const geo = new THREE.ExtrudeGeometry(s, { depth: th, bevelEnabled: false });
+    geo.translate(r * 0.92, 0, -th / 2).rotateX(Math.PI / 2);
+    return geo;
+  };
+  const ring = (geo, zLead, m, a0 = roll) => { for (let i = 0; i < 4; i++) { const f = add(geo, m); f.rotation.z = a0 + i * Math.PI / 2; f.position.z = -len / 2 + zLead; } };
+  if (strake) { const [a, c, sp] = strake; ring(plate(len * c, len * c - sp * 2.4, sp, sp * 1.2, r * 0.08), len * a, mFin); }
+  if (canard) { const [a, rc, tc, sp, sw] = canard; ring(plate(rc, tc, sp, sw, r * 0.1), len * a, mFin); }
+  if (fins) { const [rc, tc, sp, sw] = fins; ring(plate(rc, tc, sp, sw, r * 0.12), len - rc - r * 0.35, mFin); }
+  // 吊挂：弹体上方两个小块（挂在导轨上的那一面朝 +Y）
+  if (lugs) for (const at of [0.36, 0.62]) { const l = add(new THREE.BoxGeometry(r * 0.35, r * 0.28, r * 0.9), mDark); l.position.set(0, r * 1.08, -len / 2 + len * at); }
+  g.userData = { len, r };
+  return g;
+}
+// 霹雳-10（侧弹舱的近距格斗弹）：3 米长 = 8.4 格、弹径 0.16 米；白弹体、玻璃导引头罩、贯通大半个弹身的长条弹翼、尾部切梢三角舵，战斗部黄色色带、发动机棕色色带
+export const pl10 = () => missileModel({ len: 8.4, r: 0.224, nose: 'ir', strake: [0.22, 0.52, 0.3], fins: [1.05, 0.42, 0.62, 0.52], bands: [[0.2, 0.025, 0xc9a227], [0.42, 0.02, 0x7a5a32]], lugs: true });
+// 红旗-9 一类的舰空导弹（055 垂发）：6.8 米 = 19 格；尖拱雷达罩、前翼、尾舵
+export const hhq9 = () => missileModel({ len: 19, r: 0.95, nose: 'radar', canard: [0.2, 1.3, 0.55, 0.75, 0.6], fins: [3.0, 1.3, 1.7, 1.5], bands: [[0.32, 0.012, 0xb03a2e]], col: 0xe6e6e2, roll: 0 });
+// 爱国者 PAC-2：5.3 米 = 14.8 格、弹径 0.41 米；白色雷达罩、四片大尾舵
+export const pac2 = () => missileModel({ len: 14.8, r: 0.57, nose: 'radar', fins: [2.8, 1.1, 1.55, 1.6], col: 0xe2e2dc, roll: 0 });
 // —— 霹雳-15：弹体、头锥、尾翼、弹体中段一圈深色（4 米长 = 11.2 格，弹径 0.2 米）；弹头朝 −Z ——
 export function pl15() {
   const g = new THREE.Group();
@@ -349,6 +413,163 @@ export function j20Bay(A) {
       if (attached) { m.visible = k > 0.15; m.position.set(0, Y - 0.38 - drop, Z0 - 0.3); }
     },
   };
+}
+// —— 歼-20 侧弹舱（进气道下面、机身两侧）：一扇窄门（铰链在外沿、往下翻到竖直）、暗色舱井、把霹雳-10 放出舱外的导轨（导轨梁 + 两根连杆）——
+//   位置照网页版 V3G_BAY 的侧弹舱：舱长 3.44 米、宽 0.35 米、比主弹舱高 0.83 米；换成格（× 2.8，机头朝 −Z）。s：哪一侧（+1 右、−1 左）
+export function j20SideBay(A, s = 1, o = {}) {
+  const Y = o.y ?? 5.82, XI = 3.42, XO = 4.40, Z0 = -0.48, LEN = 9.63, W = XO - XI;
+  const mDoor = new THREE.MeshStandardMaterial({ color: 0x55595d, roughness: 0.5, metalness: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide });
+  const mWell = new THREE.MeshStandardMaterial({ color: 0x0a0b0c, roughness: 0.9, envMapIntensity: 0.05 });
+  const mRail = new THREE.MeshStandardMaterial({ color: 0x2c2f32, roughness: 0.45, metalness: 0.7, envMapIntensity: 0.4 });
+  const piv = new THREE.Group(); piv.position.set(s * XO, Y, Z0); A.root.add(piv);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(W, 0.07, LEN), mDoor); door.position.set(-s * W / 2, -0.035, 0); door.castShadow = true; piv.add(door);
+  // 门内侧的加强筋（门翻下来以后看得见）
+  for (const dz of [-3.2, 0, 3.2]) { const r = new THREE.Mesh(new THREE.BoxGeometry(W * 0.9, 0.12, 0.1), mRail); r.position.set(-s * W / 2, 0.05, dz); piv.add(r); }
+  const well = new THREE.Mesh(new THREE.BoxGeometry(W - 0.04, 0.8, LEN - 0.1), mWell); well.position.set(s * (XI + XO) / 2, Y + 0.41, Z0); A.root.add(well);
+  const m = pl10(); A.root.add(m);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.15, 6.4), mRail); rail.castShadow = true; A.root.add(rail);
+  const links = [-1.7, 1.5].map(dz => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.13, 1, 0.2), mRail); l.castShadow = true; A.root.add(l); return { l, dz }; });
+  // 弹的中心：收在舱里 → 放到舱外（门翻下来挡在外侧，导轨直着往下放，弹顶在门的下沿以下）
+  const stow = new THREE.Vector3(s * 3.91, Y + 0.36, Z0 - 0.1), out = new THREE.Vector3(s * 3.98, Y - 1.3, Z0 - 0.1);
+  const topY = Y + 0.72;
+  const UP = new THREE.Vector3(0, 1, 0);
+  return {
+    missile: m, stow, out,
+    // k 门开度 0–1、e 导轨放出去多少 0–1、attached 弹还在导轨上没有
+    set(k, e, attached = true) {
+      piv.rotation.z = s * 1.62 * k;
+      well.visible = k > 0.02;
+      const rp = stow.clone().lerp(out, e);
+      const rTop = rp.clone().add(new THREE.Vector3(0, 0.224 + 0.11, 0));
+      rail.position.copy(rTop); rail.visible = k > 0.25;
+      for (const { l, dz } of links) {
+        const a = new THREE.Vector3(stow.x, topY, Z0 + dz), b = new THREE.Vector3(rTop.x, rTop.y, Z0 + dz);
+        const d = b.clone().sub(a), L = d.length();
+        l.position.copy(a).add(b).multiplyScalar(0.5); l.scale.y = Math.max(0.02, L);
+        l.quaternion.setFromUnitVectors(UP, L > 1e-4 ? d.multiplyScalar(1 / L) : UP);
+        l.visible = k > 0.25;
+      }
+      if (attached) { m.visible = k > 0.08; m.position.copy(rp); m.quaternion.identity(); }
+    },
+  };
+}
+// —— 歼-20 的绿色电致发光编队灯带、精细的尾喷口 ——
+//   灯带：网页版 V3G_PAINT.j20 的 glow 材质（Material.009 / .014 / .020 / .022 / .024），导出的 GLB 里自发光丢了，模型里只有几厘米宽，
+//   所以除了材质自发光，还收集三角形中心（机体坐标）给镜头远的时候画发光点
+//   尾喷口：原模型的喷口很粗糙；照涡扇-10 的收敛扩散喷口做一圈 16 片锯齿调节片、内壁、火焰稳定器（加力时发光）、涡轮锥
+export function j20Extras(A) {
+  const GLOW = ['Material.009', 'Material.014', 'Material.020', 'Material.022', 'Material.024'];
+  A.root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(A.root.matrixWorld).invert();
+  const raw = [];
+  const mGlow = new THREE.MeshStandardMaterial({ color: 0x163a20, emissive: 0x3dff7a, emissiveIntensity: 2.4, roughness: 0.4 });
+  A.root.traverse(o => {
+    if (!o.isMesh || !o.material || !o.material.name || !GLOW.some(n => o.material.name.endsWith(n))) return;
+    o.material = mGlow;
+    const pos = o.geometry.attributes.position, idx = o.geometry.index;
+    const M = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    const n = idx ? idx.count : pos.count, v = new THREE.Vector3();
+    for (let i = 0; i < n; i += 3) {
+      const c = new THREE.Vector3();
+      for (let j = 0; j < 3; j++) c.add(v.fromBufferAttribute(pos, idx ? idx.getX(i + j) : i + j));
+      raw.push(c.multiplyScalar(1 / 3).applyMatrix4(M));
+    }
+  });
+  // 合并相近的点（1.2 格以内算一个）
+  const glowPts = [];
+  for (const p of raw) if (!glowPts.some(q => q.distanceToSquared(p) < 1.44)) glowPts.push(p);
+  // 尾喷口
+  const mOut = new THREE.MeshStandardMaterial({ color: 0x5f574e, roughness: 0.38, metalness: 0.85, envMapIntensity: 0.7, side: THREE.DoubleSide });
+  const mIn = new THREE.MeshStandardMaterial({ color: 0x3b342d, roughness: 0.5, metalness: 0.7, envMapIntensity: 0.4, side: THREE.BackSide });
+  const mHot = new THREE.MeshStandardMaterial({ color: 0x16120f, roughness: 0.7, metalness: 0.4, emissive: 0xff6a22, emissiveIntensity: 0 });
+  const nozzles = [];
+  for (const n of A.noz) {
+    const r = n.r * 1.04, g = new THREE.Group(); g.position.copy(n.p); A.root.add(g);
+    const N = 16, P = [];
+    for (let i = 0; i < N; i++) {
+      const a0 = (i + 0.04) / N * Math.PI * 2, a1 = (i + 0.96) / N * Math.PI * 2, am = (a0 + a1) / 2;
+      const ring = (a, rr, z) => [Math.cos(a) * rr, Math.sin(a) * rr, z];
+      const r0a = ring(a0, r * 1.13, -2.3 * r), r0b = ring(a1, r * 1.13, -2.3 * r), e0 = ring(a0, r, 0), e1 = ring(a1, r, 0), tip = ring(am, r * 0.97, 0.36 * r);
+      P.push(...r0a, ...e0, ...r0b, ...r0b, ...e0, ...e1, ...e0, ...tip, ...e1);
+    }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); pg.computeVertexNormals();
+    const pet = new THREE.Mesh(pg, mOut); pet.castShadow = true; g.add(pet);
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.94, r * 0.86, 2.2 * r, 32, 1, true).rotateX(Math.PI / 2), mIn); inner.position.z = -1.1 * r; g.add(inner);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(r * 0.88, 32), new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.9 })); face.position.z = -2.15 * r; g.add(face);
+    for (const [rr, w] of [[0.62, 0.05], [0.36, 0.045]]) { const t = new THREE.Mesh(new THREE.TorusGeometry(r * rr, r * w, 8, 40), mHot); t.position.z = -1.95 * r; g.add(t); }
+    for (let i = 0; i < 8; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(r * 0.05, r * 0.66, r * 0.05), mHot); b.position.set(Math.cos(i / 8 * Math.PI * 2) * r * 0.5, Math.sin(i / 8 * Math.PI * 2) * r * 0.5, -1.96 * r); b.rotation.z = i / 8 * Math.PI * 2 + Math.PI / 2; g.add(b); }
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r * 0.22, r * 0.5, 20).rotateX(Math.PI / 2), mHot); cone.position.z = -1.85 * r; g.add(cone);
+    nozzles.push(g);
+  }
+  return { glowPts, nozzles, heat(k) { mHot.emissiveIntensity = 2.5 * k; } };
+}
+// —— 飞机解体：按三角形中心的位置把模型切成几块（机头、左翼、右翼、尾段、中段），每块单独一组、原点在自己的中心（机体坐标）——
+export function breakApart(A, cuts = { nose: -10, tail: 12, wing: 7 }) {
+  A.root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(A.root.matrixWorld).invert();
+  const names = ['nose', 'wingL', 'wingR', 'tail', 'mid'];
+  const pick = c => c.z < cuts.nose ? 0 : (c.x < -cuts.wing ? 1 : (c.x > cuts.wing ? 2 : (c.z > cuts.tail ? 3 : 4)));
+  const parts = names.map(() => []), sum = names.map(() => new THREE.Vector3()), cnt = names.map(() => 0);
+  const meshes = [];
+  A.root.traverse(o => { if (o.isMesh && o.geometry && o.geometry.attributes.position && !o.material.isShaderMaterial) meshes.push(o); });
+  const v = new THREE.Vector3();
+  for (const mesh of meshes) {
+    const geo = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+    const M = new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
+    const pos = geo.attributes.position, per = names.map(() => []);
+    for (let i = 0; i + 2 < pos.count; i += 3) {
+      const c = new THREE.Vector3();
+      for (let j = 0; j < 3; j++) c.add(v.fromBufferAttribute(pos, i + j));
+      c.multiplyScalar(1 / 3).applyMatrix4(M);
+      const k = pick(c); per[k].push(i); sum[k].add(c); cnt[k]++;
+    }
+    per.forEach((tris, k) => {
+      if (!tris.length) return;
+      const g2 = new THREE.BufferGeometry();
+      for (const name of Object.keys(geo.attributes)) {
+        const src = geo.attributes[name], isz = src.itemSize, arr = new Float32Array(tris.length * 3 * isz);
+        let o = 0;
+        for (const i of tris) for (let j = 0; j < 3; j++) { const q = i + j; arr[o++] = src.getX(q); if (isz > 1) arr[o++] = src.getY(q); if (isz > 2) arr[o++] = src.getZ(q); if (isz > 3) arr[o++] = src.getW(q); }
+        g2.setAttribute(name, new THREE.BufferAttribute(arr, isz));
+      }
+      g2.applyMatrix4(M);
+      parts[k].push({ geo: g2, mat: mesh.material });
+    });
+  }
+  return names.map((nm, k) => {
+    const c = cnt[k] ? sum[k].multiplyScalar(1 / cnt[k]) : new THREE.Vector3();
+    const grp = new THREE.Group();
+    for (const { geo, mat } of parts[k]) { geo.translate(-c.x, -c.y, -c.z); const m = new THREE.Mesh(geo, mat); m.castShadow = true; grp.add(m); }
+    return { name: nm, group: grp, c, n: cnt[k] };
+  }).filter(p => p.n > 0);
+}
+// —— 99A 去掉车上的国徽：徽章画在车体贴图里（炮塔顶两个、首上一个），用旁边的迷彩盖掉（只改片子里的，游戏模型不动）——
+const EMB = { ztz99: [[812, 117, 24, 0, 52], [945, 117, 24, 0, 54], [851, 370, 20, -46, 0]] };   // 圆心 x, y、半径、取样偏移 dx, dy（贴图 1024²）
+function eraseEmblems(key, model) {
+  const L = EMB[key];
+  if (!L) return;
+  model.traverse(o => {
+    if (!o.isMesh || !o.material || !o.material.map || o.material.userData.noEmblem) return;
+    const tex = o.material.map, img = tex.image;
+    if (!img || !img.width || img.width < 1000) return;
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const g = cv.getContext('2d'); g.drawImage(img, 0, 0);
+    const k = img.width / 1024;
+    for (const [x, y, r, dx, dy] of L) {
+      const R = r * k, X = x * k, Y = y * k;
+      const p = document.createElement('canvas'); p.width = p.height = Math.ceil(R * 2);
+      const pg = p.getContext('2d');
+      pg.drawImage(cv, X + dx * k - R, Y + dy * k - R, R * 2, R * 2, 0, 0, R * 2, R * 2);
+      pg.globalCompositeOperation = 'destination-in';
+      const grd = pg.createRadialGradient(R, R, R * 0.55, R, R, R);
+      grd.addColorStop(0, 'rgba(0,0,0,1)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      pg.fillStyle = grd; pg.fillRect(0, 0, R * 2, R * 2);
+      g.drawImage(p, X - R, Y - R);
+    }
+    const t2 = new THREE.CanvasTexture(cv);
+    t2.flipY = tex.flipY; t2.colorSpace = tex.colorSpace; t2.wrapS = tex.wrapS; t2.wrapT = tex.wrapT; t2.anisotropy = 4;
+    o.material.map = t2; o.material.userData.noEmblem = true; o.material.needsUpdate = true;
+  });
 }
 // —— 爱国者：发射箱口外露着的四个弹头和发射箱是同一块网格，切成四块单独的网格（发射了哪一枚就藏哪一枚）——
 //   发射箱轴线、口的位置是离线量的（tools 里按顶点主成分：中心 C、轴 AX，沿轴 6.9 格以外是弹头）；四块按两个侧向坐标的正负分
