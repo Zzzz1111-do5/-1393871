@@ -37,7 +37,8 @@ local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModel
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
   - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。
-  - 飞机更新过（舵面、弹舱门、座舱盖、起落架会动）：models/air/ 里 12 个固定翼（a10 b2 f22 f35 h6k j15 j16 j20 j31 j50 mq9 x47b）要重新导一次，
-    新导进来的块叫 A_<键>_v2__…，和老的不重名；老的可以删掉（不删也行，游戏优先用新的）。没重新导的照旧用老的，只是舵面这些不会动。
+  - 飞机更新过（舵面、弹舱门、座舱盖、起落架会动；修了从下往上看机翼透明——原模型有的整片面朝里，Roblox 只画正面）：
+    models/air/ 里 12 个固定翼（a10 b2 f22 f35 h6k j15 j16 j20 j31 j50 mq9 x47b）要重新导一次，新导进来的块叫 A_<键>_v3__…，和老的不重名；
+    老的（A_<键>__…、A_<键>_v2__…）可以删掉（不删也行，游戏优先用最新的）。没重新导的照旧用老的。直升机没变，不用重导。
   - Roblox 导入 GLB 时会把每一块网格各自掉个头（绕竖轴转半圈），游戏脚本摆的时候已经转回来了（src/ReplicatedStorage/ImportTurn.lua），不用管。
     万一哪天 Roblox 改了、模型看着又是反的（比如飞机的主翼跑到尾巴上）：在 ReplicatedStorage 上加一个布尔属性 ImportTurn，设成 false。

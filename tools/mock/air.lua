@@ -14,7 +14,7 @@ do
   IA = load(f:read("a"))()
   f:close()
 end
-local IKEY = TEST_ARGS:match("old") and "j20" or "j20_v2"
+local IKEY = TEST_ARGS:match("old") and "j20" or (TEST_ARGS:match("v2") and "j20_v2") or IA.alias.j20   -- 默认最新版；old 只导入了老版、v2 只导入了第二版
 for name, p in pairs(IA.m[IKEY].parts) do
   local mp = R.Instance.new("MeshPart")
   mp.Name = "A_" .. IKEY .. "__" .. name
@@ -104,7 +104,7 @@ if e and e.def.id == "j20" then
   check(v ~= nil and v.M ~= nil and v.M.imported == IKEY, "飞机用上了导入的原模型（" .. tostring(v and v.M and v.M.imported) .. "）")
   check(n > 0 and bad == 0, string.format("%d 块导入的零件都转了半圈（朝向不对的 %d 块）", n, bad))
   check(n > 0 and worst < 0.01, string.format("位置照元数据（最大偏差 %.3f 格）", worst))
-  if IKEY == "j20_v2" then
+  if IA.m[IKEY].surf then
     print("③ 活动部件：按操纵量绕铰链往对的方向转")
     -- 这一组块在通道 c 下，块中心往上挪了多少（格）
     local function dy(g, c)

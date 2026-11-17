@@ -15,6 +15,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mdl2glb as B   # noqa: E402  贴图、材质、GLB 写出、署名、Lua 输出都和地面载具共用
 import air_anim as A   # noqa: E402  舵面、弹舱门、座舱盖、起落架支柱
+import orient   # noqa: E402  修朝反了的面（Roblox 只画正面）
 
 S = B.S
 CHUNK = B.CHUNK
@@ -213,6 +214,11 @@ def segment(key):
     tris = np.concatenate(tris)
     tri_g = np.array(tri_g, dtype=object)
     tri_m = np.array(tri_m)
+    # 有活动部件的固定翼：修朝反了的面（网页版双面渲染看不出来；Roblox 只画正面，歼-31 机翼下表面整片朝里，从下往上看机翼是透明的）
+    if key in A.SURF or key in A.GEAR:
+        VB, tris, src, st = orient.fix(VB, tris)
+        tri_g, tri_m = tri_g[src], tri_m[src]
+        print('  %s 修了朝反的面：翻过来 %d 个、补反面 %d 个（共 %d 个三角形）' % (key, st['flip'], st['dup'], st['n']))
     if key in ROTSPLIT:
         cf = ROTSPLIT[key]
         body = np.where(tri_g == 'Body')[0]
@@ -393,7 +399,7 @@ def convert(key, AD, ids):
 
 # 有活动部件（舵面、弹舱门、座舱盖、起落架支柱）的模型换个键名（<键>_v2，块叫 A_<键>_v2__<块名>）：和用户已经导入的老版本（一整块蒙皮）
 #   不会重名、能同时放在 Imported.Air 里；元数据里老版本那一行原样留着（old 表），游戏先找新的、没导入新的照旧用老的（不会动）
-VER = '_v2'
+VER = '_v3'   # v2：有活动部件；v3：再修了朝反的面（v2 导入了的照样能用，见 old 表）
 
 
 if __name__ == '__main__':
@@ -406,8 +412,16 @@ if __name__ == '__main__':
     anim = {k for k in keys if k in A.SURF or k in A.GEAR}
     kname = {k: (k + VER if k in anim else k) for k in keys}   # 导入后的键名
     old = B.old_lines(META)   # 原来元数据里各模型那一行
-    # 老版本（没有活动部件那一版）：原来的元数据里键名不带 _v2 的那一行就是
-    legacy = {k: old[k] for k in anim if k in old and 'surf = ' not in old[k]}
+    # 老版本：原来元数据里这个模型的别的版本（不带后缀的一整块蒙皮版、_v2……）原样留着，用户导入的是哪一版都能用
+    import re
+    legacy = {}
+    for k in anim:
+        for ok_ in old:
+            if ok_ != kname[k] and re.fullmatch(re.escape(k) + r'(_v\d+)?', ok_):
+                legacy[ok_] = old[ok_]
+    def vnum(x):
+        m = re.search(r'_v(\d+)$', x)
+        return int(m.group(1)) if m else 0
     meta_out, lua_out = {}, {}
     for key in keys:
         ids = [i for i, v in ALIAS.items() if v.rstrip('~') == key]
@@ -422,7 +436,13 @@ if __name__ == '__main__':
             kname[key], tris, len(out), info['len'], info['w'], info['h'], os.path.getsize(path) / 1e6, '/'.join(groups),
             ' '.join('%s:%d/%d' % (g, len(info['pyl'][g]), sum(1 for s in AD[g].get('st') or [] if not s.get('bay'))) for g in ids)))
     alias = {i: kname[v.rstrip('~')] + ('~' if v.endswith('~') else '') for i, v in ALIAS.items()}
-    alias0 = {i: v for i, v in ALIAS.items() if v.rstrip('~') in legacy}
+    # old[型号] = 老版本的键（新的在前）：游戏先找 alias 的，没导入就挨个往下找
+    alias0 = {}
+    for i, v in ALIAS.items():
+        base, tilde = v.rstrip('~'), ('~' if v.endswith('~') else '')
+        vs = sorted([k for k in legacy if re.fullmatch(re.escape(base) + r'(_v\d+)?', k)], key=vnum, reverse=True)
+        if vs:
+            alias0[i] = [k + tilde for k in vs]
     with open(META, 'w', encoding='utf-8') as f:
         f.write('-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据\n')
         f.write('--   alias：游戏里的型号 → 模型键（带 ~ 的去掉原机涂装，按我方涂色）；m[模型键] = { len 长 / w 翼展 / h 高（格，真实尺寸：1 米 = 2.8 格）,\n')
@@ -432,7 +452,7 @@ if __name__ == '__main__':
         f.write('--     surf[部件] = { k 动法（ail 副翼 / flap / flaperon / elevon / stab 全动平尾 / elev 升降舵 / can 鸭翼 / rud 方向舵 / fin 全动垂尾 / rv V 尾 / bay / bayS 弹舱门 /\n')
         f.write('--       canopy 座舱盖 / gear 起落架支柱 / gdoor 起落架舱门）, s 侧（1 右 −1 左）, a / b 铰链两端, sg 正角度的方向, A 开到多大（弧度）, fold / tip 跟着哪边折 },\n')
         f.write('--     wells 弹舱井 { c 中心, s 大小 }, pit 飞行员头的位置, credit 署名 }\n')
-        f.write('--   old：有活动部件的模型换了键名（<键>_v2）；用户只导入过老版本（一整块蒙皮）时照这张表用老的元数据（不会动）\n')
+        f.write('--   old[型号] = { 老版本的键…（新的在前）}：有活动部件的模型换了键名（<键>_v3）；用户导入的是老版本时照这张表找（_v2 会动但有的面朝反了，不带后缀的一整块蒙皮不会动）\n')
         f.write('--   坐标：X 右、Y 上、−Z 朝前，高度 0 是停在地上时的地面（游戏里再往下挪 gearH 就是机体坐标）；导入后 MeshPart 叫 A_<模型键>__<块名>\n')
         f.write('return {\n  alias = ' + B.lua(alias) + ',\n  old = ' + B.lua(alias0) + ',\n  m = {\n')
         for key in sorted(lua_out):

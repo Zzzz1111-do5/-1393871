@@ -98,8 +98,8 @@ function Menu.init(G)
   end
   local KIND = { Veh = { "ImportedMeta", "V_" }, Air = { "ImportedAir", "A_" }, Ship = { "ImportedShip", "S_" } }
   local previewKey
-  local function preview(kind, key)   -- 飞机先找新版（有活动部件，键名 <键>_v2），没导入新版用老版
-    if kind == "Air" then return previewKey(kind, key .. "_v2") or previewKey(kind, key) end
+  local function preview(kind, key)   -- 飞机先找最新版（<键>_v3：有活动部件、修过朝反的面），再找 _v2、老版
+    if kind == "Air" then return previewKey(kind, key .. "_v3") or previewKey(kind, key .. "_v2") or previewKey(kind, key) end
     return previewKey(kind, key)
   end
   function previewKey(kind, key)

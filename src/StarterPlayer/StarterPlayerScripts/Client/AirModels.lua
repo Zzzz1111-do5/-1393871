@@ -61,7 +61,8 @@ local SURF_F = {
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
 }
 -- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
---   先找新版（有舵面、舱门、座舱盖、起落架支柱这些活动部件，键名 <键>_v2），没导入新版就用老版（一整块蒙皮，不会动；ImportedAir 的 old 表）；
+--   先找最新版（有舵面、舱门、座舱盖、起落架支柱这些活动部件，修过朝反的面，键名 <键>_v3），没导入就按 ImportedAir 的 old 表挨个找老版
+--   （_v2 会动、有的面朝反了；不带后缀的一整块蒙皮、不会动）；
 --   元数据里的块要全在（导入了一半、或者文件夹里是别的版本的块，就不用这一版）
 local complete = {}   -- [文件夹] = 块齐不齐（每个文件夹只查一次）
 local function usable(info, f, key)
@@ -80,16 +81,18 @@ function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
   if not (IA and air) then return nil end
-  for _, tab in ipairs({ IA.alias, IA.old }) do
-    local k = tab and tab[d.id]
-    if k then
-      local plain = string.sub(k, -1) == "~"
-      local key = plain and string.sub(k, 1, -2) or k
-      local info = IA.m and IA.m[key]
-      local f = air:FindFirstChild(key)
-      if usable(info, f, key) then
-        return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
-      end
+  local list = {}
+  if IA.alias and IA.alias[d.id] then table.insert(list, IA.alias[d.id]) end
+  local old = IA.old and IA.old[d.id]
+  if type(old) == "string" then table.insert(list, old)
+  elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(list, k) end end
+  for _, k in ipairs(list) do
+    local plain = string.sub(k, -1) == "~"
+    local key = plain and string.sub(k, 1, -2) or k
+    local info = IA.m and IA.m[key]
+    local f = air:FindFirstChild(key)
+    if usable(info, f, key) then
+      return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
     end
   end
   return nil
