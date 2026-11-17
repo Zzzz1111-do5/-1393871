@@ -206,7 +206,7 @@ function UI.init(G)
   G.passFor = function(item) return Config.PassFor and Config.PassFor[item] end   -- 物品 / 机型 → 通行证名（不用的是 nil）
   G.buyPass = function(name) pcall(function() G.R.Act:FireServer("buyPass", name) end) end
   for name in pairs(Config.Passes or {}) do
-    player:GetAttributeChangedSignal("Pass_" .. name):Connect(function() if G.refreshDeploy then G.refreshDeploy() end end)
+    pcall(function() player:GetAttributeChangedSignal("Pass_" .. name):Connect(function() if G.refreshDeploy then G.refreshDeploy() end end) end)
   end
 
   -- 顶上一行：页签（装备 / 生成点），右边换阵营、语言

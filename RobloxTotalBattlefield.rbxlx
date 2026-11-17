@@ -11768,7 +11768,8 @@ return Navy
 --   玩家属性 Pass_<名字> = true / false：客户端（部署界面、召唤点的机型列表）看它画锁、价钱
 --   客户端发 buyPass(名字)：弹出 Roblox 的购买框（PromptGamePassPurchase）
 local Players = game:GetService("Players")
-local MPS = game:GetService("MarketplaceService")
+local okM, MPS = pcall(function() return game:GetService("MarketplaceService") end)   -- 拿不到（测试环境）就当通行证都没配
+if not okM then MPS = nil end
 local RunService = game:GetService("RunService")
 
 local Passes = {}
@@ -11791,6 +11792,7 @@ function Passes.init(G)
       own[uid][name] = RunService:IsStudio()
       return own[uid][name]
     end
+    if not MPS then return true end
     local ok, r = pcall(function() return MPS:UserOwnsGamePassAsync(uid, c.id) end)
     if ok then own[uid][name] = r == true end   -- 查失败不记：下回再查
     return ok and r == true
@@ -11818,11 +11820,11 @@ function Passes.init(G)
   -- 客户端：点了锁着的东西 → 弹出购买框
   G.ACT.buyPass = function(P, name)
     local c = type(name) == "string" and CFG[name] or nil
-    if not c or (c.id or 0) == 0 then return end
+    if not c or (c.id or 0) == 0 or not MPS then return end
     pcall(function() MPS:PromptGamePassPurchase(P.pl, c.id) end)
   end
   -- 买成了：马上算数（UserOwnsGamePassAsync 有缓存，刚买完不一定查得到）
-  pcall(function()
+  if MPS then pcall(function()
     MPS.PromptGamePassPurchaseFinished:Connect(function(pl, passId, bought)
       if not bought then return end
       for name, c in pairs(CFG) do
@@ -11834,7 +11836,7 @@ function Passes.init(G)
         end
       end
     end)
-  end)
+  end) end
 end
 
 return Passes
@@ -30351,7 +30353,7 @@ function UI.init(G)
   G.passFor = function(item) return Config.PassFor and Config.PassFor[item] end   -- 物品 / 机型 → 通行证名（不用的是 nil）
   G.buyPass = function(name) pcall(function() G.R.Act:FireServer("buyPass", name) end) end
   for name in pairs(Config.Passes or {}) do
-    player:GetAttributeChangedSignal("Pass_" .. name):Connect(function() if G.refreshDeploy then G.refreshDeploy() end end)
+    pcall(function() player:GetAttributeChangedSignal("Pass_" .. name):Connect(function() if G.refreshDeploy then G.refreshDeploy() end end) end)
   end
 
   -- 顶上一行：页签（装备 / 生成点），右边换阵营、语言
