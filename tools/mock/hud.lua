@@ -132,7 +132,7 @@ check(v and v.M.plist[1].LocalTransparencyModifier == 0, "自己的飞机又看�
 check(cam.FieldOfView > 60, string.format("视场回来了（%.0f°）", cam.FieldOfView))
 
 print("④ 直升机进光电：不低头往前冲")
-T.tap(Enum.KeyCode.F)
+T.tap(Enum.KeyCode.Space)   -- 空格下飞机（F 现在是发导弹）
 R.run(1.5)
 local hx, hz = x + 260, z - 120
 local hgy = G.airSurface(hx, hz)

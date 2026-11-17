@@ -416,6 +416,8 @@ function UI.init(G)
   local function spawnName(s)
     if s.kind == "beach" then return T("beach." .. s.beach) end
     if s.kind == "point" then return T("point." .. s.point) end
+    if s.kind == "rally" then return T("spawn.rally", T("point." .. s.point)) end   -- 守方前线集结点（据点后方）
+    if s.kind == "staging" then return T("spawn.staging", T("point." .. s.point)) end   -- 攻方攻击出发阵地（据点前面）
     if s.kind == "camp" then return T("spawn.camp") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
@@ -425,6 +427,20 @@ function UI.init(G)
     return s.id
   end
 
+  -- 推荐的出生点（服务器标 rec：离当前目标最近的）：没选过、选的不能用了、换了阶段 / 新一局，就自动选上它——进来按一下出击就上战场
+  local function autoSpawn(S)
+    local ids, rec = {}, nil
+    for _, s in ipairs(S.spawns or {}) do
+      ids[s.id] = s
+      if s.rec then rec = s end
+    end
+    local cur = sel.spawn and ids[sel.spawn]
+    local stale = not cur or not cur.ok or sel.spawnStage ~= (S.stage or 1) or sel.spawnRound ~= S.round
+    if stale and rec then
+      sel.spawn = rec.id
+      sel.spawnStage, sel.spawnRound = S.stage or 1, S.round
+    end
+  end
   -- 出生点：左边一列（名字、能不能去），地图上一个个小点
   local function buildSpawns(S)
     for _, b in ipairs(spawnBtns) do b:Destroy() end
@@ -436,6 +452,7 @@ function UI.init(G)
       local function pick()
         if not s.ok then G.toast(T("ui.spawnBlocked"), "bad") return end
         sel.spawn = s.id
+        sel.spawnStage, sel.spawnRound = S.stage or 1, S.round   -- 自己挑的：这一阶段里一直用它
         G.refreshDeploy()
       end
       -- 列表里一行
@@ -450,7 +467,8 @@ function UI.init(G)
       row.Parent = list
       frame(row, UDim2.new(0, 2, 1, 0), nil, WHITE, chosen and 0 or 1)
       txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.GothamBold or Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-      txt(row, s.ok and "" or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      local tag = txt(row, s.ok and (s.rec and T("deploy.rec") or "") or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.GothamBold, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      if s.ok and s.rec then tag.TextColor3 = teamColor(S.team or "atk"):Lerp(WHITE, 0.3) end   -- 推荐：离当前目标最近
       row.Activated:Connect(pick)
       table.insert(spawnBtns, row)
       -- 地图上的点
@@ -538,7 +556,8 @@ function UI.init(G)
     if not S then return end
     local team = S.team or "atk"
     local tc = teamColor(team)
-    -- 页：上次出击过（记着出生点）就先给生成点页，好直接再出击；第一次进来先看装备
+    autoSpawn(S)
+    -- 页：选好了出生点（推荐的自动选上）就先给生成点页，装备用默认的，按一下出击就上战场；想改装备点「改装备」
     local page = sel.pageUser or (sel.spawn and "spawn" or "kit")
     sel.page = page
     kitPage.Visible = page == "kit"
@@ -751,7 +770,13 @@ function UI.init(G)
       if G.refillAmmo then G.refillAmmo() end
       return
     end
+    if kind == "stage" then   -- 开战 / 打下一个阶段：大横幅（Hud.lua）
+      if G.stageBanner then G.stageBanner(key, ...) else G.centerMsg(T(key)) end
+      return
+    end
     local text = T(key, ...)
+    -- 击杀、自己占下据点：准星下面弹一行（Hud.lua G.pop），右上角照样留一条
+    if G.pop and (kind == "kill" or key == "ui.capturedYou") then G.pop(text, kind) end
     if kind == "center" then G.centerMsg(text)
     elseif kind == "feed" then feedAdd(text)
     else G.toast(text, kind) end

@@ -588,7 +588,7 @@ function Weapons.init(G)
     local hit = res and res.Position or (from + dir * (w.range or 500))
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team })
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
-    return res and res.Instance or nil   -- 打中了什么（机器人用来判断是不是被墙挡着）
+    return res and res.Instance or nil, res and res.Position or nil   -- 打中了什么、打在哪（机器人、工事用来判断是不是被墙挡着）
   end
 end
 

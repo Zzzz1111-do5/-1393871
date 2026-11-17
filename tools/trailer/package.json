@@ -1,0 +1,10 @@
+{
+  "name": "trailer",
+  "private": true,
+  "description": "宣传片（tools/trailer）：three.js 离线逐帧渲染的依赖；npm ci 后运行 render.cjs",
+  "devDependencies": {
+    "three": "0.160.0",
+    "@fontsource/noto-serif-sc": "5.1.1",
+    "@fontsource/noto-sans-sc": "5.1.1"
+  }
+}

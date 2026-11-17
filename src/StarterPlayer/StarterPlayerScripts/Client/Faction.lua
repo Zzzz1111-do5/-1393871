@@ -154,6 +154,7 @@ function Faction.init(G)
   function G.refreshFaction(S)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
+      and not (G.quickAt and os.clock() - G.quickAt < 4 and G.factionOpen ~= true)   -- 主菜单点了「快速加入」：服务器正在分队、出生，别闪出来
       and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
     gui.Enabled = show and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：先不画，免得透上来
     if not show then return end

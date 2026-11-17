@@ -1,5 +1,5 @@
 -- 直升机操纵测试（模拟器）：python3 tools/mock/run.py tools/mock/heli.lua [v]
---   用户：升降改成 E 升、Q 降（原来 Q 升 E 降，又改过来）；镜头往哪看就往哪飞——往下看机头压下去、惯性往前冲；配合 WASD（W / S 前后、A / D 左右平移）
+--   用户：升降 E 升、Q 降（Q 升 E 降之后又改回来）；W / S 前后、A / D 转向；鼠标只转镜头、瞄机炮（不再带着飞机转）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -59,46 +59,45 @@ R.run(4)
 T.key(Enum.KeyCode.E, false)
 R.run(2)
 
-print("③ 往下看：机头压下去、往前冲；往上看：抬头刹车")
+print("③ W 压机头往前冲、S 抬头刹车")
 local function fwdSpeed()
   local f = V3(-math.sin(st.yaw), 0, -math.cos(st.yaw))
   return st.hv:Dot(f)
 end
 local v0 = fwdSpeed()
-st.camYaw = st.yaw
-st.camPitch = -0.12 - 0.45   -- 比平常往下看 26°
+T.key(Enum.KeyCode.W, true)
 R.run(4)
 local v1 = fwdSpeed()
 check(st.tiltP < -0.15, string.format("机头压下去了（%.0f°）", math.deg(st.tiltP)))
 check(v1 > v0 + 25, string.format("往前冲（前进速度 %.0f → %.0f 格 / 秒）", v0, v1))
-st.camPitch = -0.12 + 0.35   -- 往上看
-R.run(4)
+T.key(Enum.KeyCode.W, false)
+T.key(Enum.KeyCode.S, true)
+R.run(3)
+T.key(Enum.KeyCode.S, false)
 local v2 = fwdSpeed()
-check(v2 < v1 - 10, string.format("往上看抬头刹车（%.0f → %.0f）", v1, v2))
-st.camPitch = -0.12
+check(v2 < v1 - 10, string.format("按 S 抬头刹车（%.0f → %.0f）", v1, v2))
 R.run(4)
 
-print("④ A / D 左右平移；机头跟着镜头转")
-local function sideSpeed()
-  local r = V3(math.cos(st.yaw), 0, -math.sin(st.yaw))
-  return st.hv:Dot(r)
-end
-local s0 = sideSpeed()
-T.key(Enum.KeyCode.D, true)
-R.run(2.5)
-T.key(Enum.KeyCode.D, false)
-local s1 = sideSpeed()
-check(s1 > s0 + 8, string.format("按 D 往右平移（侧向速度 %.0f → %.0f）", s0, s1))
-R.run(3)
+print("④ A / D 转向，镜头跟着机头转；鼠标只转镜头（瞄机炮），不带着飞机转")
+local function angd(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end
+st.camYaw = st.yaw
 local yaw0 = st.yaw
-st.camYaw = yaw0 + 1.2
-R.run(5)
-local turned = (st.yaw - yaw0 + math.pi) % (2 * math.pi) - math.pi
-check(turned > 0.6, string.format("机头跟着镜头转过去（%.0f°）", math.deg(turned)))
+T.key(Enum.KeyCode.D, true)
+R.run(1)   -- 一秒转七八十度（超过半圈就分不清往哪边转了）
+T.key(Enum.KeyCode.D, false)
+R.run(0.5)
+local turned = angd(yaw0, st.yaw)
+check(turned < -0.6, string.format("按 D 往右转（%.0f°）", -math.deg(turned)))
+check(math.abs(angd(st.yaw, st.camYaw)) < 0.2, string.format("镜头跟着机头转（差 %.0f°）", math.deg(angd(st.yaw, st.camYaw))))
+R.run(3)   -- 松开 D 以后转动的惯性停下来
+local yaw1 = st.yaw
+st.camYaw = yaw1 + 1.2   -- 鼠标往左转镜头
+R.run(4)
+check(math.abs(angd(yaw1, st.yaw)) < 0.12, string.format("鼠标转镜头，机头不跟着转（%.0f°）", math.deg(angd(yaw1, st.yaw))))
 local p = st.cf.Position
 check(p.X == p.X and p.Y == p.Y and p.Z == p.Z, "位置正常（没有 NaN）")
 local helpOk = false
-for _, t in ipairs(T.texts("E 升")) do if t:find("Q 降", 1, true) and t:find("A/D", 1, true) then helpOk = true end end
-check(helpOk, "最下面一行写着 E 升 / Q 降、A/D 平移")
+for _, t in ipairs(T.texts("E 升")) do if t:find("Q 降", 1, true) and t:find("A/D", 1, true) and t:find("F", 1, true) then helpOk = true end end
+check(helpOk, "最下面一行写着 E 升 / Q 降、A/D 转向、F 导弹")
 
 T.summary()

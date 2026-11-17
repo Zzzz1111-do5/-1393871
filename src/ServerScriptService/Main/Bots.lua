@@ -134,6 +134,8 @@ function Bots.init(G)
 
   local function pointList() return Map.POINTS end
   local function pointState(id) return G.points and G.points[id] end
+  -- 能去打 / 去守的：还没被拿下、而且是当前阶段开放的（Round.lua 分阶段突破：别的阶段的据点不去）
+  local function open(s) return s ~= nil and not s.locked and (not G.pointActive or G.pointActive(s.id)) end
   local function assigned(team, field, id)
     local n = 0
     for _, B in ipairs(list) do if B.team == team and B[field] == id and B.e then n += 1 end end
@@ -159,7 +161,7 @@ function Bots.init(G)
     local best, bs = nil, -1e9
     for _, p in ipairs(pointList()) do
       local s = pointState(p.id)
-      if s and not s.locked then
+      if open(s) and not (G.flankOf and G.flankOf[p.id]) then   -- 主攻不放在侧翼
         local sc = (WEIGHT[p.id] or 1) + 2.5 * (s.prog or 0) - 0.12 * defNear(p) + math.random() * 0.1
         if p.id == focus then sc += 0.4 end   -- 别来回换
         if sc > bs then best, bs = p, sc end
@@ -169,7 +171,7 @@ function Bots.init(G)
     focusAt = now() + 20
   end
   local function pickAtkTarget(land)
-    if now() >= focusAt or (focus and pointState(focus) and pointState(focus).locked) then pickFocus() end
+    if now() >= focusAt or (focus and not open(pointState(focus))) then pickFocus() end
     if focus and math.random() < 0.7 then
       for _, p in ipairs(pointList()) do
         if p.id == focus and (not land or p.land == land) then return p end
@@ -178,21 +180,52 @@ function Bots.init(G)
     local best, bs = nil, -1e9
     for _, p in ipairs(pointList()) do
       local s = pointState(p.id)
-      if s and not s.locked and (not land or p.land == land) then
+      if open(s) and (not land or p.land == land) then
         local sc = (WEIGHT[p.id] or 1) / (1 + assigned("atk", "target", p.id)) + math.random() * 0.05
         if sc > bs then best, bs = p, sc end
       end
     end
     return best
   end
-  -- 守方去守的据点：攻方在附近的多派（need = 圈附近的攻方 + 1）/（已派 + 1）
-  local function pickDefPoint(land)
+  -- 下一阶段的据点（守方纵深：当前阶段守满了的去那里先守着）
+  local function nextStage(s)
+    return s ~= nil and not s.locked and s.owner == "def" and G.stageOf ~= nil and G.round ~= nil and G.stageOf[s.id] == (G.round.stage or 1) + 1
+      and not (G.flankOf and G.flankOf[s.id])
+  end
+  -- 守方去守的据点：攻方在附近的多派（need = 圈附近的攻方 + 1）/（已派 + 1）；
+  --   守当前阶段的不超过攻方在场人数的六成（至少 4 个），多的去守下一阶段的（纵深）——不然开局全挤在前哨岛上，
+  --   攻方怎么也凑不够人数占点（机器人对打：6 分钟一个点都拿不下，阵亡攻 144 守 51）
+  local function frontCap()
+    local n = realCount("atk")
+    for _, B in ipairs(list) do if B.team == "atk" and B.e then n += 1 end end
+    return math.max(4, math.ceil(n * 0.6))
+  end
+  local function pickDefPoint(land, self)
+    local front = 0
+    for _, B in ipairs(list) do
+      if B ~= self and B.team == "def" and B.e and B.guard and open(pointState(B.guard)) then front += 1 end
+    end
+    if front >= frontCap() then
+      local best, bs = nil, -1e9
+      for _, p in ipairs(pointList()) do
+        local s = pointState(p.id)
+        if nextStage(s) and (not land or p.land == land) then
+          local sc = 1 / (1 + assigned("def", "guard", p.id)) + math.random() * 0.05
+          if sc > bs then best, bs = p, sc end
+        end
+      end
+      if best then return best end
+    end
     local best, bs = nil, -1e9
     for _, p in ipairs(pointList()) do
       local s = pointState(p.id)
-      if s and not s.locked and s.owner == "def" and (not land or p.land == land) then
+      if open(s) and s.owner == "def" and (not land or p.land == land) then
         local press = (s.atk or 0) + (s.prog or 0) * 3
-        local sc = (1 + press) / (1 + assigned("def", "guard", p.id)) + math.random() * 0.05
+        local n = assigned("def", "guard", p.id)
+        local sc = (1 + press) / (1 + n) + math.random() * 0.05
+        if G.flankOf and G.flankOf[p.id] and press <= 0 then   -- 侧翼没人打：少派（最多 3 个），人留给主攻方向（机器人对打：灯塔岛上趴了 10 个，指挥部丢了也不动）
+          sc = (n >= 3) and -1 or sc * 0.5
+        end
         if sc > bs then best, bs = p, sc end
       end
     end
@@ -276,6 +309,7 @@ function Bots.init(G)
       B.respawnAt = now() + Config.RespawnDelay + 2 + math.random() * 4
       B.target, B.guard = nil, nil
       G.try("机器人记功", credit, src, B)
+      G.emit("botDied", B)   -- 攻方兵力扣 1（Round.lua）
       if B.leaving then dropRecord(B) end
     end
     task.delay(0.05, function() G.removeEnt(e) end)
@@ -292,6 +326,17 @@ function Bots.init(G)
   end
 
   local function spawnAtk(B)
+    -- 攻击出发阵地能用（第二阶段起、守方没压过来，Round.lua）：八成在那里出生，直接上前线——
+    --   不然拿下港口 C 以后要走 4 分多钟才到机场 D，一路没仗打
+    local tg0 = pickAtkTarget(nil)
+    local st = tg0 and G.stagingOk and G.stagingOk(tg0.id)
+    if st and math.random() < 0.8 then
+      local sp = spotNear(st.x, st.z, 0, 35)
+      makeEnt(B, rootCF(sp.X, sp.Z, V(tg0.x - sp.X, 0, tg0.z - sp.Z)))
+      B.target = tg0.id
+      B.state = "move"
+      return true
+    end
     -- 有拿下的据点、同一块陆地上还有要打的：四成在那里出生
     local caps = {}
     for _, p in ipairs(pointList()) do
@@ -312,6 +357,12 @@ function Bots.init(G)
     local b = landingFor(tg)
     if not b or not G.boatBot then return false end
     local boat, cf = G.boatBot(B, b.id)
+    if boat == false and cf then   -- 登陆场已经建立：直接在滩上出生，朝据点走
+      makeEnt(B, cf)
+      B.target = tg.id
+      B.state = "move"
+      return true
+    end
     if not boat then return false end
     makeEnt(B, cf)
     B.target = tg.id
@@ -329,6 +380,15 @@ function Bots.init(G)
       return true
     end
     local s = pointState(p.id)
+    local hot = s and (s.pressed or (G.countAt and select(1, G.countAt(p.x, p.z, Map.ground(p.x, p.z), 160)) > 0))   -- 攻方到了 160 格以内：不在点里刷
+    local rp = hot and G.rallyOf and G.rallyOf(p.id)
+    if rp then   -- 据点被攻方压着 / 攻方快到了：在据点后方的集结点出生，冲回去
+      local sp = spotNear(rp.x, rp.z, 0, 30)
+      makeEnt(B, rootCF(sp.X, sp.Z, V(p.x - sp.X, 0, p.z - sp.Z)))
+      B.guard = p.id
+      B.state = "guard"
+      return true
+    end
     if s and s.pressed then
       -- 圈里有攻方：不能直接出生在那里——主岛上的据点从营地走过去，小岛上的换一个
       if p.land ~= "main" then
@@ -513,11 +573,31 @@ function Bots.init(G)
 
   ---------------------------------------------------------------- 想（每半秒一次，错开）
 
+  -- 离要去的据点还很远（换了阶段：拿下港口 C 以后机场 D 在 4 公里外）、眼前没有敌人：过几秒「重新部署」（同真人按 H：不算阵亡、
+  --   不扣兵力）——攻方到攻击出发阵地、守方按出生规则（据点 / 集结点）重新出生，不在路上走几分钟没仗打
+  local function farHop(B, pt)
+    local p = B.e.root.CFrame.Position
+    local d = math.sqrt((p.X - pt.x) ^ 2 + (p.Z - pt.z) ^ 2)
+    local ok = not B.tgt and d > 1300 and G.round ~= nil and G.round.phase == "battle"
+    if ok and B.team == "atk" then
+      local st = G.stagingOk and G.stagingOk(pt.id)
+      ok = st ~= nil and d > math.sqrt((st.x - pt.x) ^ 2 + (st.z - pt.z) ^ 2) + 600
+    end
+    if not ok then B.hopAt = nil return false end
+    B.hopAt = B.hopAt or (now() + 2 + math.random() * 6)
+    if now() < B.hopAt then return false end
+    B.hopAt = nil
+    despawn(B)
+    B.state = "wait"
+    B.respawnAt = now() + 0.5
+    return true
+  end
+
   local function thinkAtk(B)
     local e = B.e
     local p = e.root.CFrame.Position
     local s = B.target and pointState(B.target)
-    if not s or s.locked then
+    if not open(s) then
       local land = Map.landOf(p.X, p.Z)
       local tg = pickAtkTarget(land)
       if tg then
@@ -539,6 +619,7 @@ function Bots.init(G)
     local pt = nil
     for _, q in ipairs(Map.POINTS) do if q.id == B.target then pt = q end end
     if not pt then return end
+    if farHop(B, pt) then return end
     local dx, dz = p.X - pt.x, p.Z - pt.z
     local inside = dx * dx + dz * dz < (Map.POINT_R * 0.8) ^ 2
     B.navKey = pt.id
@@ -555,9 +636,17 @@ function Bots.init(G)
     local e = B.e
     local p = e.root.CFrame.Position
     local s = B.guard and pointState(B.guard)
-    if not s or s.locked or s.owner ~= "def" or (B.reassignAt and now() >= B.reassignAt) then
+    if not (open(s) or nextStage(s)) or s.owner ~= "def" or (B.reassignAt and now() >= B.reassignAt) then
       local land = Map.landOf(p.X, p.Z)
-      local q = pickDefPoint(land)
+      -- 先在所有据点里挑；挑中的在别的岛上（侧翼守多了、小岛据点不用守了）又没在交火：撤走，到那边重新出生（走不过去）
+      local q = pickDefPoint(nil, B)
+      if q and q.land ~= land and not B.tgt then
+        despawn(B)
+        B.state = "wait"
+        B.respawnAt = now() + 1
+        return
+      end
+      if q and q.land ~= land then q = pickDefPoint(land, B) end
       B.reassignAt = now() + 20 + math.random() * 20
       if q and q.id ~= B.guard then
         B.guard = q.id
@@ -568,11 +657,23 @@ function Bots.init(G)
     end
     local pt = nil
     for _, q in ipairs(Map.POINTS) do if q.id == B.guard then pt = q end end
+    if not pt and Map.landOf(p.X, p.Z) ~= "main" then   -- 小岛上的据点丢了（战线推到主岛）：过一会儿撤走，到新的战线上重新出生
+      B.recycleAt = B.recycleAt or (now() + 8 + math.random() * 8)
+      if now() >= B.recycleAt then
+        B.recycleAt = nil
+        despawn(B)
+        B.state = "wait"
+        B.respawnAt = now() + 1
+      end
+      return
+    end
+    B.recycleAt = nil
     if not pt then
       B.navKey = "camp"
       if not B.goal and Map.landOf(p.X, p.Z) == "main" then B.goal = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60) end
       return
     end
+    if farHop(B, pt) then return end
     B.navKey = pt.id
     if not B.goal and not B.detour then
       local dx, dz = p.X - pt.x, p.Z - pt.z
@@ -615,7 +716,7 @@ function Bots.init(G)
         if B.state ~= "boat" and not B.leaving and t >= (B.respawnAt or 0) then
           local ok = false
           if B.team == "def" and (phase == "prep" or phase == "battle") then ok = spawnDef(B)
-          elseif B.team == "atk" and phase == "battle" then ok = spawnAtk(B) end
+          elseif B.team == "atk" and (phase == "prep" or phase == "battle") and ((G.round and G.round.tickets) or 1) > 0 then ok = spawnAtk(B) end
           if not ok then B.respawnAt = t + 2 end
         elseif B.leaving and not B.e then
           dropRecord(B)

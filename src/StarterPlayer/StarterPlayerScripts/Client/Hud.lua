@@ -71,7 +71,10 @@ function Hud.init(G)
     sides[sx] = s
   end
   local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
-  local mode = txt(top, "", UDim2.fromOffset(84, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  -- 比分条下面一行：现在该干什么（进攻 / 防守哪个据点，用户：玩法不够清晰）
+  local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  goal.RichText = true
   -- A～E 小菱形
   local diamonds = {}
   for i, p in ipairs(Map.POINTS) do
@@ -102,12 +105,13 @@ function Hud.init(G)
     bb.Adornee = a
     bb.AlwaysOnTop = true
     bb.LightInfluence = 0
-    bb.Size = UDim2.fromOffset(60, 40)
+    bb.Size = UDim2.fromOffset(80, 56)
     bb.ResetOnSpawn = false
     bb.Parent = pg
-    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.fromScale(0.5, 0), 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.55)
-    local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 24), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
-    marks[p.id] = { part = a, bb = bb, l = l, dist = dist, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
+    local verb = txt(bb, "", UDim2.fromOffset(80, 13), UDim2.fromScale(0.5, 0), 10, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)   -- 进攻 / 防守
+    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.new(0.5, 0, 0, 13), 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.55)
+    local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 37), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
+    marks[p.id] = { part = a, bb = bb, l = l, dist = dist, verb = verb, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
   end
   -- 据点高度：Map 里没写的照地面找（地形生成好以前找不到，过一会儿再试）
   local rp = RaycastParams.new()
@@ -411,29 +415,52 @@ function Hud.init(G)
     local held = { atk = 0, def = 0 }
     for _, s in ipairs(pts) do held[s.owner] = (held[s.owner] or 0) + 1 end
     local n = math.max(1, #pts)
+    -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
+    local tk = S.tickets
     for sx, t in pairs({ [-1] = mine, [1] = foe }) do
       local s = sides[sx]
       local c = teamColor(t)
-      s.name.Text = T("hud." .. t)
-      s.score.Text = tostring(held[t] or 0)
-      s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+      if t == "atk" and tk then
+        s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
+        s.score.Text = tostring(tk)
+        s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
+        s.score.TextColor3 = (tk <= 30 and os.clock() % 1 < 0.5) and RGB(255, 90, 80) or c:Lerp(WHITE, 0.15)   -- 快打光了：红字闪
+      else
+        s.name.Text = T("hud." .. t)
+        s.score.Text = tostring(held[t] or 0)
+        s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
+        s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+      end
       s.bar.BackgroundColor3 = c
-      s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
     end
-    if S.phase == "prep" then timer.Text = fmtTime(S.left) mode.Text = T("hud.prep")
+    local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
+    if S.phase == "prep" then timer.Text = fmtTime(S.left) mode.Text = T("hud.prep") .. " · " .. stg
     elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
-    else timer.Text = fmtTime(S.left) mode.Text = T("hud.mode") end
+    else timer.Text = fmtTime(S.left) mode.Text = stg end
+    -- 现在的目标：当前阶段开放的据点（侧翼另写）
+    local main, flank = {}, {}
+    for _, s in ipairs(pts) do
+      if s.act and not s.locked then table.insert(s.flank and flank or main, T("point." .. s.id)) end
+    end
+    local gtext = ""
+    if #main > 0 then
+      local col = hex(teamColor(mine):Lerp(WHITE, 0.25))
+      gtext = '<font color="' .. col .. '">' .. T((mine == "atk") and "hud.goalAtk" or "hud.goalDef") .. "</font>  " .. table.concat(main, "  ·  ")
+      if #flank > 0 then gtext ..= '   <font color="#9aa0a6">' .. T("hud.goalFlank", table.concat(flank, "  ·  ")) .. "</font>" end
+    end
+    goal.Text = gtext
     local t = os.clock()
     for _, s in ipairs(pts) do
       local d = diamonds[s.id]
       if d then
         local ours = s.owner == mine
+        local idle = s.act == false and not s.locked   -- 还没轮到的阶段
         d.d.BackgroundColor3 = teamColor(s.owner)
-        d.d.BackgroundTransparency = ours and 1 or (s.locked and 0.45 or 0.05)
+        d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (0.1 + 0.6 * (0.5 + 0.5 * math.sin(t * 8))) or (s.locked and 0.55 or 0.15)
+        d.st.Transparency = fight and (0.1 + 0.6 * (0.5 + 0.5 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
         d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
-        d.l.TextTransparency = s.locked and 0.45 or 0
+        d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
         local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
         d.pb.Visible = pr > 0
         d.pf.Size = UDim2.fromScale(pr, 1)
@@ -452,12 +479,14 @@ function Hud.init(G)
           m.tries += 1
           ground(m)
         end
-        local on = not s.locked and not G.scopeOn
+        local on = not s.locked and s.act ~= false and not G.scopeOn   -- 只标当前阶段能占的
         m.bb.Enabled = on
         if on then
           m.l.TextColor3 = (s.owner == mine) and WHITE or teamColor(s.owner):Lerp(WHITE, 0.2)
           local dd = (Vector3.new(m.x, cp.Y, m.z) - cp).Magnitude
           m.dist.Text = math.floor(dd / M_PER + 0.5) .. "m"
+          m.verb.Text = T((mine == "atk") and "hud.markAtk" or "hud.markDef") .. (s.flank and (" · " .. T("hud.flank")) or "")
+          m.verb.TextColor3 = teamColor(mine):Lerp(WHITE, 0.35)
         end
       end
     end
@@ -602,6 +631,124 @@ function Hud.init(G)
         tip.Visible = false
       end
     end
+  end
+
+  ---------------------------------------------------------------- 阶段横幅（开战、每打下一个阶段）：屏幕上方三分之一处，大字阶段名 + 这一阶段打 / 守哪儿，四秒多淡出
+  local TweenService = game:GetService("TweenService")
+  local banner = ui.frame(G.gui, UDim2.fromOffset(640, 120), UDim2.fromScale(0.5, 0.3), RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  banner.Name = "StageBanner"
+  banner.ZIndex = 30
+  banner.Visible = false
+  local bTop = txt(banner, "", UDim2.new(1, 0, 0, 18), UDim2.fromOffset(0, 0), 14, MUTE, Enum.Font.GothamBold, nil, nil, 0.6)
+  local bTitle = txt(banner, "", UDim2.new(1, 0, 0, 52), UDim2.fromOffset(0, 22), mobile and 34 or 46, WHITE, Enum.Font.GothamBlack, nil, nil, 0.4)
+  local bSub = txt(banner, "", UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 80), mobile and 15 or 18, TEXT, Enum.Font.GothamMedium, nil, nil, 0.5)
+  local bL = line(banner, UDim2.fromOffset(120, 1), UDim2.new(0, 0, 0, 48), WHITE, 0.3)
+  local bR = line(banner, UDim2.fromOffset(120, 1), UDim2.new(1, -120, 0, 48), WHITE, 0.3)
+  for _, l in ipairs({ bTop, bTitle, bSub }) do l.ZIndex = 31 end
+  local bSeq = 0
+  function G.stageBanner(key, i, n)
+    bSeq += 1
+    local my = bSeq
+    local team = (G.S and G.S.team) or "atk"
+    bTop.Text = T("hud.stageN", i or 1, n or 3)
+    bTitle.Text = T(key)
+    bSub.Text = T(key .. "." .. team)
+    local c = teamColor(team):Lerp(WHITE, 0.2)
+    bL.BackgroundColor3, bR.BackgroundColor3 = c, c
+    banner.Visible = true
+    local parts = { bTop, bTitle, bSub }
+    for _, l in ipairs(parts) do l.TextTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 0 }):Play() end
+    for _, l in ipairs({ bL, bR }) do l.BackgroundTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { BackgroundTransparency = 0.3 }):Play() end
+    if G.playSound then G.playSound("capture", nil, 0.55) end
+    task.delay(4.2, function()
+      if my ~= bSeq then return end
+      local d = G.objDist and G.objDist()
+      if d and d > 1200 and G.toast then G.toast(T("hud.redeployTip"), "info") end   -- 新目标在几公里外：提示按 H 重新部署
+      for _, l in ipairs(parts) do TweenService:Create(l, TweenInfo.new(0.9), { TextTransparency = 1 }):Play() end
+      for _, l in ipairs({ bL, bR }) do TweenService:Create(l, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play() end
+      task.delay(1, function() if my == bSeq then banner.Visible = false end end)
+    end)
+  end
+
+  ---------------------------------------------------------------- 重新部署（H，服务器 Round.lua redeploy）：离当前目标多远（格），活着、开战了才算
+  function G.objDist()
+    local S = G.S
+    local char = me.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not (S and S.alive and S.phase == "battle" and hrp) then return nil end
+    local best = nil
+    for _, s in ipairs(S.points or {}) do
+      if s.act ~= false and not s.locked then
+        for _, p in ipairs(Map.POINTS) do
+          if p.id == s.id then
+            local d = ((p.x - hrp.Position.X) ^ 2 + (p.z - hrp.Position.Z) ^ 2) ^ 0.5
+            if not best or d < best then best = d end
+          end
+        end
+      end
+    end
+    return best
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or io.KeyCode ~= Enum.KeyCode.H then return end
+    local S = G.S
+    if S and S.alive and S.phase == "battle" then G.R.Act:FireServer("redeploy") end
+  end)
+
+  ---------------------------------------------------------------- 压制（Fx.lua 子弹擦身时调 G.suppress）：屏幕四边往里渐暗、微微模糊，两三秒退掉；越近、越密越重
+  local RunService = game:GetService("RunService")
+  local vig = {}
+  for _, e in ipairs({ { V2(0, 0), UDim2.new(1, 0, 0.32, 0), 90 }, { V2(0, 1), UDim2.new(1, 0, 0.32, 0), -90 },
+    { V2(0, 0), UDim2.new(0.26, 0, 1, 0), 0 }, { V2(1, 0), UDim2.new(0.26, 0, 1, 0), 180 } }) do
+    local f = ui.frame(G.gui, e[2], UDim2.fromScale(e[1].X, e[1].Y), RGB(0, 0, 0), 1, e[1])
+    f.Name = "Suppress"
+    f.ZIndex = 1
+    f.BackgroundTransparency = 0
+    local g = Instance.new("UIGradient")
+    g.Rotation = e[3]
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = f
+    f.Visible = false
+    table.insert(vig, f)
+  end
+  local blur = Instance.new("BlurEffect")
+  blur.Name = "SuppressBlur"
+  blur.Size = 0
+  blur.Enabled = false
+  blur.Parent = workspace.CurrentCamera
+  local supp = 0
+  function G.suppress(k) supp = math.min(1, supp + (k or 0.3)) end
+  RunService.RenderStepped:Connect(function(dt)
+    if supp <= 0 and not vig[1].Visible then return end
+    supp = math.max(0, supp - dt * 0.45)
+    local on = supp > 0.01
+    for _, f in ipairs(vig) do
+      f.Visible = on
+      if on then f.BackgroundTransparency = 1 - supp * 0.85 end
+    end
+    blur.Enabled = supp > 0.12
+    blur.Size = supp * 7
+  end)
+
+  ---------------------------------------------------------------- 准星下面弹一行（击杀、占领）：一两秒淡出，新的把旧的往上顶（用户：感受不到激烈对抗）
+  local pops = {}
+  function G.pop(text, kind)
+    local col = (kind == "kill") and RGB(255, 214, 120) or RGB(140, 230, 160)
+    local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.45)
+    l.ZIndex = 25
+    table.insert(pops, 1, l)
+    for i, x in ipairs(pops) do
+      if x.Parent then x.Position = UDim2.new(0.5, 0, 0.6, -(i - 1) * 24) end
+    end
+    while #pops > 3 do table.remove(pops):Destroy() end
+    task.delay(1.4, function()
+      if l.Parent then TweenService:Create(l, TweenInfo.new(0.6), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play() end
+      task.delay(0.65, function()
+        local i = table.find(pops, l)
+        if i then table.remove(pops, i) end
+        l:Destroy()
+      end)
+    end)
   end
 end
 

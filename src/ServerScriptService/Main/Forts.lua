@@ -709,6 +709,10 @@ function Forts.init(G)
   local function stepAI(e, dt)
     if G.fortsHold then return end   -- 测试用：工事不开火
     local t = now()
+    if (e.supUntil or 0) > t then   -- 被火力准备的炮弹砸在旁边（Ambience.lua）：缩着不开火
+      e.tgt = nil
+      return
+    end
     local w = e.w
     if w.kind == "arty" then stepArtyAI(e, dt) return end
     if t >= (e.thinkAt or 0) then
@@ -764,10 +768,12 @@ function Forts.init(G)
     if err > tol or t < (e.fireAt or 0) or G.round.phase ~= "battle" then return end
     if w.kind == "gun" then
       e.burst = e.burst or math.random(w.burst[1], w.burst[2])
-      local hit = fireGun(e, dir, w.spread + c.d * w.spreadPer)
-      -- 连着几枪都打在墙上、房子上（不是目标、也不是别的实体）：多半被挡着，这个目标先不打
+      local hit, hp = fireGun(e, dir, w.spread + c.d * w.spreadPer)
+      -- 连着几枪都打在墙上、房子上（不是目标、也不是别的实体）：多半被挡着，这个目标先不打；
+      --   打在目标脚边（8 格以内）的地上不算挡着——散布打低了而已（原来站在沙滩上的人常被当成「挡着」放过去）
       local key = c.P or c.ent
-      if hit and not G.entOf(hit) and not (c.P and c.P.char and hit:IsDescendantOf(c.P.char)) then
+      local near = hp ~= nil and (hp - tp).Magnitude < 8
+      if hit and not near and not G.entOf(hit) and not (c.P and c.P.char and hit:IsDescendantOf(c.P.char)) then
         e.miss = (e.miss or 0) + 1
         if e.miss >= 8 then
           e.miss = 0

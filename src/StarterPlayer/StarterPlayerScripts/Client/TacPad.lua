@@ -1133,6 +1133,33 @@ function TacPad.init(G)
   end
   G.fxExtra = G.fxExtra or {}
   G.fxExtra.tac = fxTac
+  -- 战场氛围（服务器 Ambience.lua）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
+  G.fxExtra.flyby = function(e)
+    if typeof(e.p) ~= "Vector3" then return end
+    local team = (e.team == "def") and "def" or "atk"
+    local jets = TP.jets[team] or TP.jets.atk
+    local dir = (typeof(e.d) == "Vector3" and e.d.Magnitude > 0.1) and V(e.d.X, 0, e.d.Z).Unit or V(0, 0, -1)
+    local side = dir:Cross(UPV)
+    local H, VP, HALF = 230 + math.random() * 120, 430, 2200
+    for i = 1, math.clamp(tonumber(e.n) or 2, 1, 3) do
+      local P = plane((i == 1) and jets.pgm or (jets.gunrun or jets.pgm), team)
+      if P then
+        P.c.thr = 125   -- 加力
+        local off = side * ((i % 2 == 0) and 70 or -40) - dir * (i - 1) * 110 + UPV * (i - 1) * 25
+        local function pos(t) return e.p - dir * HALF + dir * VP * t + off + UPV * H end
+        local roar = false
+        job(function(t, dt)
+          if t > HALF * 2 / VP then return false end
+          posePlane(P, lookCF(pos(t), dir), dt)
+          if not roar and t > HALF / VP - 1.2 then   -- 快到头顶：呼的一声
+            roar = true
+            if G.sfx then G.sfx({ { id = "rbxasset://sounds/action_falling.ogg", vol = 10, s = { 0.75, 0.85 }, reg = { 2, 5 }, eq = { 6, 8, -2 }, dist = 0.4, fade = 1.2 } }, pos(t), { rmax = 2400 }) end
+          end
+          return true
+        end, function() P.M.model:Destroy() end)
+      end
+    end
+  end
 
   ---------------------------------------------------------------- 每帧
 

@@ -134,19 +134,19 @@ if st and e then
   check(seen(help:sub(1, 12)), "最下面一行是平板的操作说明")
 end
 
-print("③ 起飞，F 收起平板：无人机自动盘旋，人能走了")
+print("③ 起飞，空格收起平板：无人机自动盘旋，人能走了")
 if st and e then
-  T.key(Enum.KeyCode.W, true)
-  T.key(Enum.KeyCode.Up, true)
+  T.key(Enum.KeyCode.LeftShift, true)   -- Shift 加油门、按住 S 拉杆
+  T.key(Enum.KeyCode.S, true)
   local up = T.runUntil(function() return not st.ground end, 50)
-  T.key(Enum.KeyCode.Up, false)
   check(up, "滑跑起飞")
-  st.aimPitch = 0.3   -- 鼠标往上抬：爬升
-  R.run(10)
-  T.key(Enum.KeyCode.W, false)
+  R.run(1.5)   -- 再拉一会儿：爬升
+  T.key(Enum.KeyCode.S, false)
+  R.run(8.5)
+  T.key(Enum.KeyCode.LeftShift, false)
   local p = e.root.CFrame.Position
   check(p.Y > G.airSurface(p.X, p.Z) + 25, string.format("飞起来了（离地 %.0f 格）", p.Y - G.airSurface(p.X, p.Z)))
-  T.tap(Enum.KeyCode.F)
+  T.tap(Enum.KeyCode.Space)
   R.run(1)
   check(P.vehicle == nil and P.remote == nil, "收起了平板")
   check(char:GetAttribute("Tablet") == false and char:FindFirstChild("UavTablet") == nil, "平板零件收掉了")
