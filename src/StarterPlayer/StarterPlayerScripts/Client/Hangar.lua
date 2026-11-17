@@ -31,6 +31,17 @@ function Hangar.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
 
   local bg = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 0)
+  bg.Active = true   -- 点在编辑器上不算点在游戏里
+  -- 第一人称时 Roblox 的镜头每帧把鼠标锁在屏幕中间（用户：改导弹时准心锁在中间改不了）：
+  -- 有一个看得见的 Modal 按钮，引擎就放开鼠标；编辑器开着它就在（跟着这个 ScreenGui 开关）
+  local modal = Instance.new("TextButton")
+  modal.Name = "FreeMouse"
+  modal.Text = ""
+  modal.Size = UDim2.fromOffset(1, 1)
+  modal.BackgroundTransparency = 1
+  modal.AutoButtonColor = false
+  modal.Modal = true
+  modal.Parent = gui
   local vp = Instance.new("ViewportFrame")
   vp.Size = UDim2.fromScale(1, 1)
   vp.BackgroundColor3 = RGB(0, 0, 0)

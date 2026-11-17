@@ -23,11 +23,11 @@ function Play.init(G)
   ---------------------------------------------------------------- 界面：武器栏、准星、弹药、命中标记
 
   local hud = G.gui:WaitForChild("Hud")
-  local bar = ui.frame(hud, UDim2.fromOffset(420, 52), UDim2.new(0.5, 0, 1, -70), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  local bar = ui.frame(hud, UDim2.fromOffset(560, 32), UDim2.new(0.5, 0, 1, -50), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
   local barList = Instance.new("UIListLayout")
   barList.FillDirection = Enum.FillDirection.Horizontal
   barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-  barList.Padding = UDim.new(0, 6)
+  barList.Padding = UDim.new(0, 4)
   barList.Parent = bar
   local slots = {}
   local cross = ui.label(G.gui, "+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 30, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
@@ -40,6 +40,7 @@ function Play.init(G)
   local hitT = 0
   local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   ammoText.TextStrokeTransparency = 0.4
+  G.ammoLabel = ammoText   -- Hud.lua 换成右下角的武器、弹药（这一行字收起来）
   local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.GothamBold, Vector2.new(0.5, 0))
   tipText.TextStrokeTransparency = 0.4
   tipText.ZIndex = 15
@@ -75,6 +76,11 @@ function Play.init(G)
       a.r = 0
     end
     return a
+  end
+  -- 现在拿着哪件、弹药（Hud.lua 画右下角）
+  function G.weaponNow()
+    if not cur.id or not W[cur.id] then return nil end
+    return cur.id, ammoOf(cur.id)
   end
   local function reload()
     local id = cur.id
@@ -115,9 +121,20 @@ function Play.init(G)
     for i, t in pairs(tools()) do
       local id = t:GetAttribute("Weapon")
       local on = t.Parent == player.Character
-      local b = ui.button(bar, i .. "  " .. T("weapon." .. id), UDim2.fromOffset(130, 44), nil, on and RGB(70, 90, 60) or RGB(30, 36, 42))
+      -- 细线、半透明、直角（用户：界面要精致简洁，不要卡通）；拿在手里的那格顶上一道白线
+      local b = Instance.new("TextButton")
+      b.Size = UDim2.fromOffset(124, 32)
+      b.BackgroundColor3 = RGB(8, 10, 12)
+      b.BackgroundTransparency = on and 0.3 or 0.6
+      b.BorderSizePixel = 0
+      b.AutoButtonColor = false
+      b.Text = i .. "   " .. T("weapon." .. id)
+      b.TextSize = 13
+      b.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      b.TextColor3 = on and RGB(255, 255, 255) or RGB(150, 156, 160)
+      b.Parent = bar
+      if on then ui.frame(b, UDim2.new(1, 0, 0, 2), nil, RGB(255, 255, 255), 0) end
       b.LayoutOrder = i
-      b.TextSize = 14
       b.Activated:Connect(function() equip(i) end)
       table.insert(slots, b)
     end
@@ -267,6 +284,7 @@ function Play.init(G)
 
   UIS.InputBegan:Connect(function(io, gp)
     if gp or G.drive then return end
+    if G.menuOpen and G.menuOpen() then return end   -- 挂载编辑器里点 3D 的飞机（ViewportFrame 不吞点击）不能开枪
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
@@ -334,7 +352,8 @@ function Play.init(G)
     elseif a.r > 0 then
       ammoText.Text = T("ui.reloading", name)
     else
-      ammoText.Text = T("ui.ammo", name, a.n, a.res and tostring(a.res) or "∞") .. (G.mobile and "" or ("   " .. T("ui.reloadKey")))
+      -- 「R 换弹」只在打空了时提示（用户：持枪第一视角不要显示键位）
+      ammoText.Text = T("ui.ammo", name, a.n, a.res and tostring(a.res) or "∞") .. ((G.mobile or a.n > 0) and "" or ("   " .. T("ui.reloadKey")))
     end
     tipText.Text = ""
     if w.kind == "lock" then
@@ -370,6 +389,7 @@ function Play.init(G)
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpActive = false
       if G.fpsOff then G.fpsOff() end
       return
     end
@@ -379,12 +399,15 @@ function Play.init(G)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local armed = cur.id ~= nil and hum and hum.Health > 0 and not G.drive and not (hrp and hrp.Anchored)
     local fp = G.firstPerson ~= false and hum ~= nil and hum.Health > 0 and not (hrp and hrp.Anchored)
+    G.fpActive = fp   -- 步行第一人称（UI 据此藏鼠标指针、底部键位说明）
+    local menu = G.menuOpen and G.menuOpen()
+    if menu then cur.firing, cur.aiming = false, false end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
     baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
-    elseif armed and not G.mobile then   -- 第三人称：肩后视角，鼠标锁在中间、人跟着镜头转
+    elseif armed and not G.mobile and not menu then   -- 第三人称：肩后视角，鼠标锁在中间、人跟着镜头转（开着挂载编辑器时不锁）
       UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
       hum.AutoRotate = false
       hum.CameraOffset = hum.CameraOffset:Lerp(V(1.9, 0.5, 0), math.min(1, dt * 10))

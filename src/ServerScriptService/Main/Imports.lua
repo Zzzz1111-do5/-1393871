@@ -2,7 +2,8 @@
 --   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）、models/scenery/scenery.glb（花草树木，一个文件全有）以后，
 --   MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ N_<键>__<块>（Bark、Leaves、Body：地图上的树、灌木、石头、草丛、花丛）/
 --   A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/ S_<型号>__<块>（Hull_1、T1_1……）/ O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，
---   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>，
+--   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>（第一人称的 M4，models/fps_m4.glb 的 FPS_M4_* 收进 Imported.FPS_M4），
+--   导入一次存成 models/imported/*.rbxm 的话，tools/build.luau 生成地图文件时把它放进 ServerStorage.ImportedModels，以后的版本都带着；
 --   客户端（VehModels.lua、AirModels.lua）拼的时候看这里有没有，有就换上原模型；导入时自带的空 Model / 文件夹顺手删掉
 local RS = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -29,7 +30,13 @@ function Imports.init(G)
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
         local kind, key = string.match(d.Name, "^([VASON])_([%w_]-)__[%w_]+$")
-        if kind == "O" or kind == "N" then   -- 瞄准镜、花草树木：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
+        if not kind and string.match(d.Name, "^FPS_M4_%w+$") then   -- 第一人称的 M4（models/fps_m4.glb）：收进 Imported.FPS_M4（FPSView 在那里找）
+          local parent = d.Parent
+          d.Anchored = true
+          d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
+          d.Parent = folder(imported, "FPS_M4")
+          if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
+        elseif kind == "O" or kind == "N" then   -- 瞄准镜、花草树木：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false

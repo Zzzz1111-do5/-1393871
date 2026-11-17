@@ -404,7 +404,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return Tab LeftShift RightShift LeftControl RightControl One Two Three Four Five",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl One Two Three Four Five",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -1474,7 +1474,7 @@ R.services.CollectionService = service("CollectionService", {}, { methods = {
   end,
 } })
 R.keys = {}
-R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default } }, {
+R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default }, MouseIconEnabled = { T.bool, true } }, {
   events = { InputBegan = true, InputEnded = true, InputChanged = true, TouchTap = true, TouchPan = true, TouchPinch = true, TouchRotate = true },
   ro = { TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true },
   methods = {

@@ -1511,6 +1511,7 @@ function H.boot(placePath, opts)
 	H.UIS.MouseEnabled = true
 	H.UIS.GamepadEnabled = false
 	H.UIS.MouseBehavior = Enum.MouseBehavior.Default
+	H.UIS.MouseIconEnabled = true   -- 第一人称时界面把鼠标指针藏起来（UI.lua）：没有默认值读不出来
 	for _, s in { "ReplicatedStorage", "ServerScriptService", "ServerStorage", "StarterPlayer", "Lighting", "Debris", "TweenService", "CollectionService", "DataStoreService", "MemoryStoreService", "MessagingService", "TeleportService", "ProximityPromptService", "SoundService", "StarterGui", "Teams", "Chat", "TextChatService", "GuiService", "ContextActionService" } do
 		pcall(function() game:GetService(s) end)
 	end

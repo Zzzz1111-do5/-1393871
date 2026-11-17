@@ -40,9 +40,12 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
 不导入的话车、飞机、船是零件拼的。`models/veh/<模型键>.glb`（地面载具，21 个）、`models/air/<模型键>.glb`（飞机直升机，16 个）、`models/ship/<型号>.glb`（舰艇，7 艘）
 是网页版的装备模型原样转的（ZTQ-15 网页版没有，是 Sketchfab 上的扫描模型）：最精细的网格（不减面）、原贴图和法线 / 金属粗糙度贴图；车、飞机是真实尺寸（1 米 = 2.8 格），舰艇照游戏里舰艇的比例（真船的 0.6 倍），每个模型一个文件。
 
-1. Studio「主页 → 导入 3D」，选 `models/veh/`、`models/air/`、`models/ship/` 里的 GLB（一次选一个或几个都行），导入设置用默认的（别勾「合并网格」），导进 Workspace 就行。
-2. 开服时自动收进 `ReplicatedStorage/Imported/Veh`、`Imported/Air`、`Imported/Ship` 下面（输出里有一行「用上了导入的装备模型：…」）；想先整理好也可以自己拖进去，
-   名字别改（`V_<模型键>__<块>`、`A_<模型键>__<块>`、`S_<型号>__<块>`）。
+1. Studio「主页 → 导入 3D」，选 `models/veh/`、`models/air/`、`models/ship/`（还有 `models/optics/` 手持装备和瞄准镜、`models/scenery/scenery.glb` 花草树木、`models/fps_m4.glb` 第一人称 M4）里的 GLB
+   （一次选一个或几个都行），导入设置用默认的（别勾「合并网格」），导进 Workspace 就行。一步步的说明（含下面命令栏那一段）见 `docs/import_guide.txt`。
+2. 开服时自动收进 `ReplicatedStorage/Imported/Veh`、`Imported/Air`、`Imported/Ship`（M4 收进 `Imported/FPS_M4`）下面（输出里有一行「用上了导入的装备模型：…」）；
+   名字别改（`V_<模型键>__<块>`、`A_<模型键>__<块>`、`S_<型号>__<块>`、`FPS_M4_<件>`）。
+   **以后的版本不用再导一遍**：命令栏跑一下 `docs/import_guide.txt` 里那一段（把导入的零件收进 `ServerStorage/ImportedModels`、碰撞改方盒），
+   右键 `ImportedModels` →「保存到文件」存成 `.rbxm`，放进仓库的 `models/imported/`；`lune run tools/build.luau` 生成地图文件时会把它放进 `ServerStorage/ImportedModels`，打开就是原模型。
 3. 导入了的型号游戏里自动换上：车的炮塔、炮管按原模型的转轴转，车轮各自有悬架、跟着转；飞机挂的弹、航行灯、加力火焰挪到原模型上，起落架收放、旋翼转、歼-15 折翼；
    船的主炮用原模型上的、跟着炮塔转，航行灯挪到原模型的桅顶、舰桥翼、船尾；打爆后烧黑。哪个型号用哪个模型见 `src/ReplicatedStorage/ImportedMeta.lua`、`ImportedAir.lua` 的 `alias`
    （舰艇按型号，`ImportedShip.lua`）。

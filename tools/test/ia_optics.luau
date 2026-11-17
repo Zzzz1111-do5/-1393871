@@ -3,7 +3,8 @@
 --   开服时收进 ReplicatedStorage.Imported.Optics → 服务器发的狙击枪工具上装的是真瞄准镜（别人看到的）→ 第一人称狙击枪装着真瞄准镜 →
 --   按住右键：先把镜子举到眼前（目镜里的像还没出来），举到了换成目镜里的像；目镜正对屏幕中心、光轴朝前、在屏幕上占高度的 86% →
 --   滚轮变倍：视角变小、目镜推远（屏幕上一样大）、分划跟着放大（第一焦平面：每密位的像素数跟着倍率涨）→ 松开：收镜、模型又看得见 →
---   观察员的望远镜也是真模型，举到眼前后换成双圆视野
+--   观察员的望远镜也是真模型，举到眼前后换成双圆视野 → 手持装备的真模型（这里还假装导入了 m40a5、rpg7）：服务器按阵营发的工具上装的是它，
+--   美军狙击枪 = M40A5 + 导轨上的 ATACR，第一人称也是这一套、开镜看的是 ATACR 的目镜；解放军 RPG-7 的筒口在弹头尖
 -- 用法（仓库根目录）：lune run tools/test/ia_optics.luau <rbxlx>
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
@@ -16,7 +17,7 @@ H.realProjection = true
 
 local OM = luau.load(fs.readFile("src/ReplicatedStorage/OpticsMeta.lua"), { debugName = "OpticsMeta" })()
 H.boot(process.args[1], { ds = "mock", before = function(game)
-	for _, k in ipairs({ "atacr", "binoc" }) do
+	for _, k in ipairs({ "atacr", "binoc", "m40a5", "rpg7" }) do
 		local m = Inst.new("Model")
 		m.Name = "O_" .. k
 		for name, p in pairs(OM[k].parts) do
@@ -55,9 +56,29 @@ print("① 开服：收好导入的瞄准镜、望远镜；狙击枪工具装的
 local RS = H.game:GetService("ReplicatedStorage")
 local opt = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Optics")
 check(opt and opt:FindFirstChild("atacr") and #opt.atacr:GetChildren() == 4 and opt:FindFirstChild("binoc") ~= nil, "Imported.Optics 里有 atacr（4 块）、binoc")
-local nReal = 0
-for _, c in ipairs(G.TOOLS.sniper:GetChildren()) do if string.match(c.Name, "^Scope_") then nReal += 1 end end
-check(nReal == 4 and G.TOOLS.sniper:FindFirstChild("Scope") == nil, "狙击枪工具上装的是真瞄准镜（" .. nReal .. " 块），没有零件拼的镜筒")
+local function count(tool, pat) local n = 0 for _, c in ipairs(tool:GetChildren()) do if string.match(c.Name, pat) then n += 1 end end return n end
+local TA, TD = G.TOOLS.atk, G.TOOLS.def
+local nReal = count(TA.sniper, "^Scope_")
+check(nReal == 4 and TA.sniper:FindFirstChild("Scope") == nil and count(TA.sniper, "^Gear_") == 0,
+	"解放军狙击枪（QBU-88 没导入）：零件拼的枪上装着真瞄准镜（" .. nReal .. " 块），没有零件拼的镜筒")
+check(count(TD.sniper, "^Gear_") == 3 and count(TD.sniper, "^Scope_") == 4 and TD.sniper:GetAttribute("Gear") == "m40a5" and TD.sniper:GetAttribute("GearMount") == "atacr",
+	string.format("美军狙击枪：M40A5 真模型 %d 块 + 导轨上的 ATACR %d 块", count(TD.sniper, "^Gear_"), count(TD.sniper, "^Scope_")))
+-- ATACR 的镜座底面贴在 M40A5 的导轨上（工具坐标：握把在把手处、枪口朝 −Z）
+do
+	local h = TD.sniper.Handle
+	local mt = TD.sniper:FindFirstChild("Scope_Mount")
+	local g, r = OM.m40a5.pts.grip, OM.m40a5.pts.rail
+	local want = CF.Angles(0, math.pi, 0) * V3.new(r[1] - g[1], r[2] - g[2], r[3] - g[3]) + CF.Angles(0, math.pi, 0) * V3.new(OM.atacr.parts.Mount.c[1], OM.atacr.parts.Mount.c[2], OM.atacr.parts.Mount.c[3])
+	local got = mt and h.CFrame:PointToObjectSpace(mt.CFrame.Position)
+	check(got and (got - want).Magnitude < 1e-3, string.format("ATACR 镜座在 M40A5 导轨上（差 %.4f 格）", got and (got - want).Magnitude or -1))
+end
+do   -- RPG-7：筒口在弹头尖（器材坐标的 muzzle 点转到工具坐标）
+	local g, m = OM.rpg7.pts.grip, OM.rpg7.pts.muzzle
+	local want = V3.new(-(m[1] - g[1]), m[2] - g[2], -(m[3] - g[3]))
+	local mz = TA.rpg.Handle:FindFirstChild("Muzzle")
+	check(count(TA.rpg, "^Gear_") == 1 and count(TD.rpg, "^Gear_") == 0 and mz and (mz.Position - want).Magnitude < 1e-3,
+		string.format("解放军火箭筒是 RPG-7 真模型、筒口在弹头尖（%.2f, %.2f, %.2f）；美军 AT4 没导入照旧零件拼", mz and mz.Position.X or 0, mz and mz.Position.Y or 0, mz and mz.Position.Z or 0))
+end
 
 print("② 狙击手出生、拿狙击枪：第一人称装着真瞄准镜")
 local pl = H.addPlayer("P1", 9101)
@@ -147,6 +168,37 @@ H.run(0.8)
 check(C.fpsOpticPending() == false and sg.Enabled and C.scopeOn, "举到眼前：双圆视野")
 H.mouseUp(pl, 640, 360, Enum.UserInputType.MouseButton2)
 H.run(0.5)
+
+print("⑤ 美军狙击手：第一人称是 M40A5 真模型，导轨上的 ATACR 开镜")
+local p2 = H.addPlayer("P2", 9102)
+H.run(2)
+act(p2, "pickTeam", "def")
+H.run(0.5)
+act(p2, "deploy", "sniper", "camp")
+H.run(3)
+local C2 = H.Gs[p2.Name]
+local P2 = G.P[p2]
+H.key(p2, Enum.KeyCode.One, true) H.key(p2, Enum.KeyCode.One, false)
+H.run(1)
+for _ = 1, 3 do
+	if P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") then break end
+	local prev = H.ctx
+	H.ctx = p2
+	C2.equipSlot(1)
+	H.ctx = prev
+	H.run(1)
+end
+local vm2 = C2.fps
+local nGun, nOpt = 0, 0
+if vm2 then for _, it in ipairs(vm2.items) do if it.optic then nOpt += 1 elseif string.match(it[1].Name, "^O_m40a5__") then nGun += 1 end end end
+check(P2 and P2.alive and P2.team == "def" and vm2 and vm2.id == "sniper" and nGun == 3 and nOpt == 4 and vm2.optic ~= nil,
+	string.format("第一人称：M40A5 %d 块 + ATACR %d 块（开镜用 ATACR 的目镜；活着 %s、%s 队、拿着 %s、视图 %s 共 %d 块）", nGun, nOpt, tostring(P2 and P2.alive), tostring(P2 and P2.team),
+		tostring(P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") and P2.char:FindFirstChildOfClass("Tool"):GetAttribute("Gear")), tostring(vm2 and vm2.id), vm2 and #vm2.items or -1))
+-- 开镜的目镜：ATACR 的目镜中心（装在导轨上）
+if vm2 and vm2.optic then
+	local g, r, e = OM.m40a5.pts.grip, OM.m40a5.pts.rail, OM.atacr.eye.c
+	check(math.abs(vm2.optic.r - OM.atacr.eye.r) < 1e-6, "开镜用的是 ATACR 目镜的半径")
+end
 
 H.summary()
 for i, e in ipairs(H.errors) do if i <= 10 then print("  错误：" .. tostring(e.where) .. " " .. tostring(e.err or e.msg)) end end

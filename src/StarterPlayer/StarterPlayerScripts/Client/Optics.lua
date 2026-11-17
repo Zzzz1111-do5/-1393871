@@ -4,6 +4,7 @@
 --   两样都没有时 G.opticParts 返回 nil，FPSView 照旧用零件拼的
 --   G.opticParts(键) → { { name 块名, part 复制出来的 MeshPart, c 块中心（器材坐标） }, … }；G.opticMeta = OpticsMeta（目镜、物镜的位置和半径）
 local RS = game:GetService("ReplicatedStorage")
+local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
 
 local Optics = {}
 
@@ -126,6 +127,9 @@ function Optics.init(G)
     end)
   end
 
+  -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
+  function G.opticFailed(key) return failed[key] == true end
+
   -- 有没有现成的（导入的或已经生成好的），不复制
   function G.opticReady(key)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)
@@ -143,6 +147,7 @@ function Optics.init(G)
       local ok, p = pcall(function() return x.src:Clone() end)
       if ok and p then
         quiet(p)
+        if x.src:IsDescendantOf(RS) then Tint.fix(p, x.src) end
         table.insert(out, { name = x.name, part = p, c = x.c })
       end
     end

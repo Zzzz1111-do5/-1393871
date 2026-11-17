@@ -10,6 +10,13 @@ function Weapons.init(G)
   local RGB = Color3.fromRGB
   local W = Config.Weapons
   local now = os.clock
+  local RS = game:GetService("ReplicatedStorage")
+  local GD = require(RS:WaitForChild("GearDefs"))
+  local OM = nil   -- 手持装备真模型的元数据（OpticsMeta：块的中心、握把、枪口……）
+  do
+    local ok, r = pcall(function() return require(RS:WaitForChild("OpticsMeta", 5)) end)
+    if ok and type(r) == "table" then OM = r end
+  end
 
   ---------------------------------------------------------------- 工具的样子（零件拼的；把手 Handle 在握把处，枪口 Muzzle）
 
@@ -37,8 +44,48 @@ function Weapons.init(G)
     manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
     mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
   }
+  -- 真模型（Studio 里导入了 models/optics/<键>.glb，Imports.lua 收进 Imported.Optics.<键>）：块按「握把坐标」（GearDefs）装到把手上——
+  --   握把在把手处，工具的枪口朝 −Z、器材坐标朝 +Z：转 180°
+  local FLIP = CFrame.Angles(0, math.pi, 0)
+  local function attachReal(tool, h, key, base, prefix)
+    local imp = RS:FindFirstChild("Imported")
+    local f = imp and imp:FindFirstChild("Optics")
+    f = f and f:FindFirstChild(key)
+    local M = OM and OM[key]
+    if not f or not M then return 0 end
+    local n = 0
+    for _, src in ipairs(f:GetChildren()) do
+      local name = string.match(src.Name, "__(.+)$")
+      local info = name and M.parts[name]
+      if src:IsA("BasePart") and info then
+        local q = src:Clone()
+        q.Name = prefix .. name
+        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.Massless = false, false, false, false, true
+        q.CFrame = base * CF(info.c[1], info.c[2], info.c[3])
+        q.Parent = tool
+        weld(h, q)
+        n += 1
+      end
+    end
+    return n
+  end
+  -- 整件换成真模型；没导入返回 nil（照旧零件拼），导入了返回枪口 / 筒口（工具坐标）
+  local function addGear(tool, h, key)
+    local M = OM and OM[key]
+    if not M then return nil end
+    local base = FLIP * GD.grip(M)
+    if attachReal(tool, h, key, base, "Gear_") == 0 then return nil end
+    local mt = GD.MOUNT[key]
+    if mt and attachReal(tool, h, mt.key, base * GD.mountAt(key, M), "Scope_") == 0 then   -- 枪导入了、镜子没导入：零件拼一根镜筒
+      local sc = p(tool, V(1.1, 0.16, 0.16), base * GD.mountAt(key, M) * CF(0, 0.14, 0) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)
+      sc.Name = "Scope"
+      weld(h, sc)
+    end
+    local mz = GD.muzzle(M)
+    return mz and (base * mz) or V(0, 0.3, -1)
+  end
   -- 破障器材：探雷器（杆子 + 探头圆盘）
-  local function makeTool(id)
+  local function makeTool(id, team)
     local tool = Instance.new("Tool")
     tool.Name = id
     tool.CanBeDropped = false
@@ -49,7 +96,14 @@ function Weapons.init(G)
     h.Transparency = 1
     local S = SHAPE[id]
     local muzzle = V(0, 0.3, -1)
-    if S and S.L then   -- 枪：沿 −Z 朝前
+    -- 按阵营用哪件真模型（GearDefs）：第一人称（FPSView）照这两个属性用同一套
+    local key = GD.key(id, team)
+    if key then tool:SetAttribute("Gear", key) end
+    if key and GD.MOUNT[key] then tool:SetAttribute("GearMount", GD.MOUNT[key].key) end
+    local realMz = key and addGear(tool, h, key)
+    if realMz then
+      muzzle = realMz
+    elseif S and S.L then   -- 枪：沿 −Z 朝前
       local th = S.small and 0.35 or 0.45
       local body = p(tool, V(th, 0.5, S.L), CF(0, 0.3, -S.L / 2 + 0.6), S.color)
       weld(h, body)
@@ -60,13 +114,11 @@ function Weapons.init(G)
       if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
       if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
       if S.scope then   -- 瞄准镜：Studio 里导入了真模型（models/optics/atacr.glb，Imports.lua 收进 Imported.Optics.atacr）就装它，不然零件拼一根镜筒
-        local RS = game:GetService("ReplicatedStorage")
         local imp = RS:FindFirstChild("Imported")
         local opt = imp and imp:FindFirstChild("Optics")
         opt = opt and opt:FindFirstChild("atacr")
-        local okM, OM = pcall(function() return require(RS:FindFirstChild("OpticsMeta")) end)
         local real = false
-        if opt and okM and type(OM) == "table" and OM.atacr then
+        if opt and OM and OM.atacr then
           for _, src in ipairs(opt:GetChildren()) do
             local name = string.match(src.Name, "__(.+)$")
             local info = name and OM.atacr.parts[name]
@@ -122,9 +174,25 @@ function Weapons.init(G)
     tool.GripPos = V(0, -0.1, 0.3)
     return tool
   end
-  local TOOLS = {}
-  for id in pairs(W) do TOOLS[id] = makeTool(id) end
+  -- 两边各一套（真模型按阵营不同：美军 M40A5 + ATACR、AT4、毒刺，解放军 QBU-88、RPG-7、前卫-2）
+  local TOOLS = { atk = {}, def = {} }
+  for id in pairs(W) do
+    TOOLS.atk[id] = makeTool(id, "atk")
+    TOOLS.def[id] = makeTool(id, "def")
+  end
   G.TOOLS = TOOLS
+  -- 部署界面装备格里的小图（客户端 GearView.lua）：两边的工具各放一份样子；导入了原模型的就是原模型
+  do
+    local prev = Instance.new("Folder")
+    prev.Name = "ToolPreview"
+    for team, set in pairs(TOOLS) do
+      local f = Instance.new("Folder")
+      f.Name = team
+      for _, t in pairs(set) do t:Clone().Parent = f end
+      f.Parent = prev
+    end
+    prev.Parent = RS
+  end
 
   ---------------------------------------------------------------- 弹药
 
@@ -163,15 +231,15 @@ function Weapons.init(G)
   -- 按兵种发武器（每次出生都重发、弹药补满）
   function G.giveLoadout(P)
     local pl = P.pl
-    local role = Config.RoleById[P.role] or Config.Roles[1]
+    local kit = G.kitOf(P)   -- 部署时选的装备栏（Round.lua）
     local bp = pl:FindFirstChildOfClass("Backpack") or pl:WaitForChild("Backpack", 5)
     if not bp then return end
     for _, c in ipairs(bp:GetChildren()) do if c:IsA("Tool") then c:Destroy() end end
     P.ammo = {}
     P.placed = {}
     P.cd = {}
-    for i, id in ipairs(role.weapons) do
-      local t = TOOLS[id]:Clone()
+    for i, id in ipairs(kit.weapons) do
+      local t = (TOOLS[P.team] or TOOLS.def)[id]:Clone()
       t:SetAttribute("Slot", i)
       t.Parent = bp
     end
@@ -193,8 +261,8 @@ function Weapons.init(G)
     if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
-    local role = Config.RoleById[P.role]
-    if not role or not table.find(role.weapons, id) then return nil end
+    local kit = G.kitOf(P)
+    if not kit or not table.find(kit.weapons, id) then return nil end
     return char, head, tool
   end
 

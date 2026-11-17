@@ -126,7 +126,7 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
     cv.className = 'g';
     cv.style.cssText += 'left:0;top:0;width:100%;height:100%';
     d.appendChild(cv);
-    vps.push({ cv, d, vp: n.vp });
+    if (n.vp) vps.push({ cv, d, vp: n.vp });   // 还没放镜头的视口（模型没好）不画
   }
   if (n.c === 'ImageLabel' || n.c === 'ImageButton') {
     if (p.Image) { d.style.outline = '1px dotted rgba(255,255,255,0.5)'; d.title = p.Image; }
@@ -270,7 +270,7 @@ function drawVp(o) {
   g.scale(dpr, dpr);
   const V = o.vp, t = V.t, L = V.light, amb = V.amb || [128, 128, 128], lc = V.lc || [255, 255, 255];
   const faces = [];
-  for (const P of V.parts) {
+  for (const P of (Array.isArray(V.parts) ? V.parts : [])) {   // 空视口导出来是 {}
     const R = P.r, p = P.p;
     const tf = v => [p[0] + R[0] * v[0] + R[1] * v[1] + R[2] * v[2], p[1] + R[3] * v[0] + R[4] * v[1] + R[5] * v[2], p[2] + R[6] * v[0] + R[7] * v[1] + R[8] * v[2]];
     for (const f of vpGeom(P)) {
