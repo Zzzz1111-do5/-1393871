@@ -64,8 +64,9 @@ function Menu.init(G)
   hero.LightColor = RGB(255, 214, 170)
   hero.LightDirection = Vector3.new(-0.7, -0.45, 0.55)
   hero.Parent = bg
+  -- 左边压暗（卡片、玩家名压在上面看得清）；后面的场景开着时浅一点，像参考图那样卡片后面还透出火光和废墟
+  local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
   do
-    local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
     local g = Instance.new("UIGradient")
     g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.42, 0.08), NumberSequenceKeypoint.new(0.62, 0.75), NumberSequenceKeypoint.new(1, 0.9) })
     g.Parent = shade
@@ -310,6 +311,7 @@ function Menu.init(G)
     stageTeam = S.team or "atk"
     local live = Stage.active()
     bg.BackgroundTransparency = live and 1 or 0
+    shade.BackgroundTransparency = live and 0.4 or 0
     hero.Visible = not live
     if not show then return end
     local mine = S.me or {}
