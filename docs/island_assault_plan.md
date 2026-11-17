@@ -322,6 +322,16 @@
   - 测试：`tools/mock/flow.lua`、`tools/test/ia_flow.luau` 加了阶段、兵力、出生点、出发阵地、重新部署的检查。
 - [ ] 飞机空中出发：用户以前说过不要大界面选载具、在地图上的生成点生成（「空中出发」那时去掉了），这次先没做；要做就在召唤点加一个选项，归 darksword-air-map。
 - [ ] 新图标和宣传图。
+- [x] 宣传片 · 微电影《黎明之前》（session_01LjuH3fMZAmBoHts4cMHdAX，用户：「给这个游戏做一个电影级宣传片，你可以直接做一个微电影」）：约 96 秒、1080p、24 帧、2.39 : 1 宽银幕，
+  夜里的一场登岛战，两边各有各的人：序幕（海上的月光、碉堡外的美军哨兵、夜视仪里海平线上的舰队）→ 解放军登陆编队（055、航母甲板上的歼-15、登陆艇里的兵）→
+  H 时（垂发、弹射、火力准备）→ 抢滩（气垫艇、碉堡机枪、登陆艇放跳板、99A 下艇开炮、M1A2 还击、歼-20 和 F-22、直-10、爱国者）→ 天亮 → 片名、卖点、选阵营、署名。
+  不是游戏里录的：用游戏的原模型（`models/veh`、`air`、`ship`、第一人称 M4）和地图（`Map.lua` 的地形、`World.lua` / 工事 / 舰队的零件、灯）在 three.js 里离线逐帧渲染；
+  士兵照游戏里的样子拼（R15 方块人、两队迷彩、头盔夜视仪、臂章）。配乐、音效是 WebAudio 离线合成的。视频不进仓库。
+  - 工具 `tools/trailer/`：`export_world.luau`（开服搭世界，导出地形高度、材质、零件、灯）、`export_meta.luau`（模型元数据）、`render.cjs`（静态服务器 + Playwright 逐帧渲染、
+    合成配乐、ffmpeg 剪辑；步骤 still / stills / bench / frames / audio / edit，见文件开头）、`film/`（world 地形海天雾、models 模型和士兵、fx 特效、post 后期、shots 分镜、audio 配乐、titles 字幕）。
+  - 重新渲：`cd tools/trailer && npm ci`；仓库根目录 `lune run tools/trailer/export_world.luau <rbxlx> <数据目录>`、`lune run tools/trailer/export_meta.luau <数据目录>/meta.json`；
+    数据目录里再放 `assets/`（从网页版仓库拷：`assets/vfx/*.webp` 特效序列帧（用户在 Fab 买的 ArmyVFX）、`assets/water/normals.jpg`、`assets/terrain/sand.jpg`（CC-BY，片尾有署名））；
+    然后 `NODE_PATH=$(npm root -g) node tools/trailer/render.cjs <数据目录> <输出目录> frames`（没有显卡约一小时，可 `PART=0/2`、`PART=1/2` 两个进程分头渲）、`… audio`、`… edit` → `film.mp4`。
 - [x] 平衡：岸防炮原来一发就打沉登陆艇（520 × 打船 1.4 = 728，艇 650 血），机器人对打 6 分钟被打沉 53 条，攻方只拿下 A。
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
   机器人对打 8 分钟（`ia_bots.luau 8`）：没有工事时攻方拿下 3 个点、阵亡 攻 43 / 守 26；加了工事、没调之前只拿下 1 个、阵亡 攻 306 / 守 16；调过以后拿下 3 个、阵亡 攻 137 / 守 39。
