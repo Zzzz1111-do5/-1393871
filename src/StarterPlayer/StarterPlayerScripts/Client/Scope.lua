@@ -11,6 +11,7 @@
 --   手稳：呼吸晃，按住 Shift 屏住（稳几秒，憋过头晃得更厉害、一会儿屏不了），走动晃得多；晃动加在镜头上（子弹照样打屏幕正中），
 --     镜头转得快、开枪时出瞳跟着偏；倍率高时鼠标灵敏度跟着降
 --   别人开着镜对着你（他的视线在你附近 20° 以内）时他的镜片闪光：服务器只记 Scoped / ScopeDir 两个属性，闪光是看的人本地画的、墙挡得住
+--   步枪（M4）上装的 ACOG（kind acog）：固定 3.5 倍、TA31 的红色箭形分划和测距线，不屏息、不闪镜片（用户：武器瞄准没有镜子）
 --   Play 调：G.scopeStep(dt, 开没开, 武器表) 每帧、G.scopeZoom(武器表) 现在的倍率、G.scopeFire() 开了一枪
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -233,6 +234,39 @@ function Scope.init(G)
     end
   end
 
+  -- 步枪上的 ACOG（Trijicon TA31 的箭形分划，第二焦平面：大小按出瞳直径的比例，不随倍率变）：中心一个红色发光的箭形（尖是瞄准点），
+  --   下面一根细竖线挂着 400～800 米的测距横线（越远越短，正好是人肩宽），左右各一段横线（不到中心）
+  local acogRet = fr(root, 2, BLACK, 1)
+  local acog = {}   -- { f, x, y, w, h（直径的比例；负数是像素），lit 发光的、a0 原来的透明度 }
+  local function ae(x, y, w, h, color, alpha, rot, lit)
+    local f = fr(acogRet, 2, color or RC, alpha or 0)
+    if rot then f.Rotation = rot end
+    table.insert(acog, { f = f, x = x, y = y, w = w, h = h, lit = lit, a0 = alpha or 0 })
+    return f
+  end
+  do
+    local CH, CA = 0.042, 50   -- 箭形每边多长（直径的比例）、和竖直方向的夹角（度）
+    local sa, ca = math.sin(math.rad(CA)), math.cos(math.rad(CA))
+    local CR = RGB(255, 52, 36)
+    for _, k in ipairs({ { -10, 1.16, 0.84 }, { -4, 1, 0.02 } }) do   -- 先画一圈晕光、再画箭形本身
+      ae(CH * 0.5 * sa, CH * 0.5 * ca, k[1], CH * k[2], CR, k[3], -CA, true)
+      ae(-CH * 0.5 * sa, CH * 0.5 * ca, k[1], CH * k[2], CR, k[3], CA, true)
+    end
+    local y0, y1 = CH * ca + 0.012, 0.19
+    ae(0, (y0 + y1) / 2, -1, y1 - y0, RC, 0.1)
+    for _, v in ipairs({ { 0.07, 0.05 }, { 0.1, 0.041 }, { 0.13, 0.034 }, { 0.16, 0.028 }, { 0.19, 0.023 } }) do ae(0, v[1], v[2], -2, RC, 0.08) end
+    ae(-0.3, 0, 0.4, -2, RC, 0.04)
+    ae(0.3, 0, 0.4, -2, RC, 0.04)
+  end
+  local function layoutAcog(D)
+    for _, e in ipairs(acog) do
+      local w = (e.w >= 0) and math.max(1, math.floor(e.w * D + 0.5)) or -e.w
+      local h = (e.h >= 0) and math.max(1, math.floor(e.h * D + 0.5)) or -e.h
+      sz(e.f, w, h)
+      at(e.f, math.floor(e.x * D + 0.5), math.floor(e.y * D + 0.5))
+    end
+  end
+
   -- 出瞳：狙击镜 A（视场光阑）、B（眼睛的出瞳）；望远镜左右两个（各在半边屏幕的裁剪框里）
   local apB = aperture(root, 4, 12, 0.13, 0.95, 1.6)
   local apA = aperture(root, 5, 10, 0.075, 0.92, 2.2)
@@ -316,6 +350,7 @@ function Scope.init(G)
 
   local KINDS = {
     sniper = { zooms = { 7, 10, 14, 20, 27, 35 }, sway = 0.0017, def = 10 },   -- 这具 ATACR 是 7–35 倍
+    acog = { zooms = { 3.5 }, sway = 0.0008, def = 3.5 },   -- 步枪上的 ACOG：固定 3.5 倍，倍率低、晃得少
     binoc = { zooms = { 4, 6, 8, 10 }, sway = 0.0011, def = 8 },
   }
   local S = {
@@ -325,7 +360,11 @@ function Scope.init(G)
   }
   G.scopeOn = false
 
-  local function kindOf(w) return (w and w.kind == "spot") and "binoc" or "sniper" end
+  local function kindOf(w)
+    if w and w.kind == "spot" then return "binoc" end
+    if w and w.optic == "acog" then return "acog" end
+    return "sniper"
+  end
   local function zoomIndex(kind, want)
     local K, best, bd = KINDS[kind], 1, 1e9
     for i, z in ipairs(K.zooms) do
@@ -365,6 +404,13 @@ function Scope.init(G)
     layoutRet(Dr, kind)
     at(ret, vs.X / 2, vs.Y / 2)
     sz(ret, 0)
+    ret.Visible = kind ~= "acog"
+    acogRet.Visible = kind == "acog"
+    if kind == "acog" then
+      layoutAcog(D)
+      at(acogRet, vs.X / 2, vs.Y / 2)
+      sz(acogRet, 0)
+    end
     local big = kind ~= "binoc"
     apA.box.Visible, apB.box.Visible, lens.Visible, caR.Visible, caB.Visible = big, big, big, big, big
     clipL.Visible, clipR.Visible = not big, not big
@@ -374,11 +420,11 @@ function Scope.init(G)
     sz(tintR, Db)
     zoomT.TextSize = math.max(14, math.floor(D / 48))
     lrfT.TextSize = math.max(14, math.floor(Db / 40))
-    zoomT.Visible, breathBg.Visible = big, big
+    zoomT.Visible, breathBg.Visible = kind == "sniper", kind == "sniper"   -- ACOG 是定倍的、也不用屏息
     lrfT.Visible = not big
     if zin then   -- 手机：变倍按钮在镜子左边（右边是开火键、小地图）
       local bx = math.max(36, vs.X / 2 - Dr / 2 - 40)
-      zin.Visible, zout.Visible = true, true
+      zin.Visible, zout.Visible = kind ~= "acog", kind ~= "acog"
       at(zin, bx, vs.Y / 2 - 78)
       at(zout, bx, vs.Y / 2 - 24)
     end
@@ -401,15 +447,18 @@ function Scope.init(G)
     blur.Enabled, cc.Enabled = true, true
     if G.mapRoot then G.mapRoot.Visible = false end   -- 开着镜不画小地图（手机上它会挡住半个目镜）
     if not S.sens then pcall(function() S.sens = UIS.MouseDeltaSensitivity end) end
-    pcall(function()
-      CAS:BindActionAtPriority("ScopeHoldBreath", onHold, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
-    end)
+    if kind ~= "acog" then   -- 步枪的 ACOG：Shift 留给别的（不屏息）；也不告诉服务器（人人端枪都闪镜片就没意思了，闪光只留给狙击镜、望远镜）
+      pcall(function()
+        CAS:BindActionAtPriority("ScopeHoldBreath", onHold, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
+      end)
+      S.sendT, S.sentDir = now(), cam.CFrame.LookVector
+      sendState(true)
+    end
     if G.playSound then G.playSound("quiet", nil, 1.1) end
-    S.sendT, S.sentDir = now(), cam.CFrame.LookVector
-    sendState(true)
   end
 
   local function exit()
+    local was = S.kind
     S.kind = nil
     G.scopeOn = false
     gui.Enabled = false
@@ -423,7 +472,7 @@ function Scope.init(G)
       S.sens = nil
     end
     pcall(function() CAS:UnbindAction("ScopeHoldBreath") end)
-    sendState(false)
+    if was ~= "acog" then sendState(false) end
   end
 
   function G.scopeFire()
@@ -520,7 +569,7 @@ function Scope.init(G)
       if UIS.MouseDeltaSensitivity ~= v then pcall(function() UIS.MouseDeltaSensitivity = v end) end
     end
 
-    if kind == "sniper" then
+    if kind == "sniper" or kind == "acog" then
       local DA = D * scale
       local ax, ay = cx + eye.X, cy + eye.Y
       sizeAp(apA, DA)
@@ -539,27 +588,35 @@ function Scope.init(G)
       at(caB, ax - off.X - 0.35, ay - off.Y - 0.2)
       caRs.Transparency = 0.8 - ca
       caBs.Transparency = 0.78 - ca
-      -- 倍率、屏息条（出瞳左边的黑处；右下角是小地图）
-      local rx = math.max(40, cx - D / 2 - 46)
-      zoomT.Text = string.format("%.1f×", zoom)
-      at(zoomT, rx, cy + D * 0.3)
-      sz(breathBg, 3, math.floor(D * 0.12))
-      at(breathBg, rx, cy + D * 0.38)
-      breathFill.Size = UDim2.new(1, 0, math.clamp(S.breath, 0, 1), 0)
-      breathFill.BackgroundColor3 = (S.tired > 0) and RGB(220, 90, 70) or RGB(200, 206, 200)
-      breathBg.BackgroundTransparency = (S.breath >= 1 and not S.hold) and 0.75 or 0.35
-      -- 分划按现在的视角摆（第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001）
-      layoutFfp(0.001 * (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView) / 2))
-      -- 照明：夜里中心那段细十字和中心点发暗红光；开着夜视仪时画面本来就亮，照明调暗（不然一团光）
-      local nv = G.nvgOn and G.nvgOn()
-      if S.lit ~= (not nv) then
-        S.lit = not nv
-        for _, e in ipairs(ffp) do
-          if e.lit and e.f ~= glow and e.f ~= dot then e.f.BackgroundTransparency = S.lit and 0.05 or 1 end
+      if kind == "acog" then
+        -- 箭形照明：夜里亮（光纤 + 氚光），开着夜视仪调暗；分划跟着出瞳一起晃（第二焦平面，大小不变）
+        local nv = G.nvgOn and G.nvgOn()
+        for _, e in ipairs(acog) do
+          if e.lit then e.f.BackgroundTransparency = nv and math.min(0.92, e.a0 + 0.45) or e.a0 end
         end
+      else
+        -- 倍率、屏息条（出瞳左边的黑处；右下角是小地图）
+        local rx = math.max(40, cx - D / 2 - 46)
+        zoomT.Text = string.format("%.1f×", zoom)
+        at(zoomT, rx, cy + D * 0.3)
+        sz(breathBg, 3, math.floor(D * 0.12))
+        at(breathBg, rx, cy + D * 0.38)
+        breathFill.Size = UDim2.new(1, 0, math.clamp(S.breath, 0, 1), 0)
+        breathFill.BackgroundColor3 = (S.tired > 0) and RGB(220, 90, 70) or RGB(200, 206, 200)
+        breathBg.BackgroundTransparency = (S.breath >= 1 and not S.hold) and 0.75 or 0.35
+        -- 分划按现在的视角摆（第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001）
+        layoutFfp(0.001 * (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView) / 2))
+        -- 照明：夜里中心那段细十字和中心点发暗红光；开着夜视仪时画面本来就亮，照明调暗（不然一团光）
+        local nv = G.nvgOn and G.nvgOn()
+        if S.lit ~= (not nv) then
+          S.lit = not nv
+          for _, e in ipairs(ffp) do
+            if e.lit and e.f ~= glow and e.f ~= dot then e.f.BackgroundTransparency = S.lit and 0.05 or 1 end
+          end
+        end
+        dot.BackgroundTransparency = nv and 0.5 or 0.08
+        glow.BackgroundTransparency = nv and 0.94 or 0.82
       end
-      dot.BackgroundTransparency = nv and 0.5 or 0.08
-      glow.BackgroundTransparency = nv and 0.94 or 0.82
     else
       local s = Db * 0.84 * scale
       local Dd = Db * scale
@@ -598,8 +655,8 @@ function Scope.init(G)
     end
     tint.BackgroundTransparency = 0.93 - 0.05 * inten   -- 对着亮处，整块镜片泛白一点（杂散光）
 
-    -- 告诉服务器：开着镜、朝哪看（别人那边画镜片闪光）
-    if t - S.sendT > 0.25 then
+    -- 告诉服务器：开着镜、朝哪看（别人那边画镜片闪光；步枪的 ACOG 不发）
+    if kind ~= "acog" and t - S.sendT > 0.25 then
       local look = cam.CFrame.LookVector
       if not S.sentDir or look:Dot(S.sentDir) < 0.9997 then
         S.sendT, S.sentDir = t, look

@@ -127,4 +127,19 @@ return {
     size = { 1.71, 2.798, 2.249 },
     credit = "迫击炮（M224）：Mortar - M224，作者 Jan Češnjevar，CC-BY-4.0 https://sketchfab.com/3d-models/mortar-m224-c86a73e40d994431bcdb57dc741cf8be",
   },
+  acog = {
+    parts = {
+      Body = { c = { 0.008, 0.078, 0 }, s = { 0.122, 0.155, 0.4 }, tri = 2576, col = { 60, 60, 60 }, met = 0 },
+      Mount = { c = { 0.029, 0.02, 0.029 }, s = { 0.012, 0.029, 0.175 }, tri = 36, col = { 42, 42, 42 }, met = 0 },
+      Knobs = { c = { 0.045, 0.07, -0.016 }, s = { 0.042, 0.112, 0.218 }, tri = 208, col = { 108, 108, 108 }, met = 0 },
+      FiberCover = { c = { -0.011, 0.138, 0.077 }, s = { 0.034, 0.035, 0.243 }, tri = 60, col = { 203, 203, 203 }, met = 0 },
+      Fiber = { c = { -0.011, 0.137, 0.073 }, s = { 0.027, 0.029, 0.233 }, tri = 44, col = { 165, 0, 0 }, met = 0 },
+      Glass = { c = { 0, 0.098, -0.022 }, s = { 0.065, 0.065, 0.34 }, tri = 56, col = { 239, 239, 239 }, met = 0 },
+      Reticle = { c = { 0, 0.087, -0.056 }, s = { 0.005, 0.023, 0 }, tri = 16, col = { 255, 0, 17 }, met = 0 },
+    },
+    eye = { c = { 0, 0.098, -0.19 }, r = 0.025 },
+    obj = { c = { 0, 0.098, 0.145 }, r = 0.032 },
+    size = { 0.122, 0.155, 0.4 },
+    credit = "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1",
+  },
 }

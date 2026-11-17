@@ -175,6 +175,10 @@ do   -- Vector2.Magnitude / .Unit
       if m < 1e-12 then return newV2(0, 0) end
       return newV2(rawget(t, "_X") / m, rawget(t, "_Y") / m)
     end
+    if k == "Lerp" then   -- Vector2:Lerp(目标, 比例)
+      return function(a, g, al) return newV2(a._X + (g._X - a._X) * al, a._Y + (g._Y - a._Y) * al) end
+    end
+    if k == "Dot" then return function(a, g) return a._X * g._X + a._Y * g._Y end end
     return base(t, k)
   end
 end

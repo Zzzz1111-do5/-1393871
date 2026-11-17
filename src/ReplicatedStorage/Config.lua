@@ -71,7 +71,8 @@ Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火
 -- vs 对各类目标的伤害倍数
 local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }
 Config.Weapons = {
-  m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6 },   -- 两队都用这一种（第一人称动作照 M4 动作包）
+  m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6,
+    scope = 3.5, optic = "acog" },   -- 两队都用这一种（第一人称动作照 M4 动作包）；上机匣导轨上一具 ACOG 3.5 倍镜（用户：武器瞄准没有镜子）
   sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 0.03, vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
   rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
     vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },

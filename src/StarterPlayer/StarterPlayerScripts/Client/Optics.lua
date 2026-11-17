@@ -161,7 +161,7 @@ function Optics.init(G)
 
   -- 开局后台先生成第一人称已经在用的（狙击镜、望远镜；导入了就不用）；别的件（狙击枪、火箭筒等，还没接进第一人称）用到时才生成，免得手机内存白占
   task.delay(4, function()
-    for _, key in ipairs({ "atacr", "binoc" }) do
+    for _, key in ipairs({ "acog", "atacr", "binoc" }) do   -- 步枪的 ACOG 人人都用：最先生成
       if META[key] and not imported(key) then build(key) end
       task.wait(1)
     end

@@ -97,6 +97,9 @@ function FPSView.init(G)
     sniper = { key = "atacr", at = CF(0.005, 0.2525, 0.35), skip = "^Scope" },
     binoc = { key = "binoc", at = CF(GRIP + V(0, 0.18, 0.06)), skip = "." },
   }
+  -- M4 上机匣的皮卡汀尼导轨（真模型量的：z −0.05～0.85 一段平的，顶面 y 0.142）上装一具 ACOG：镜座底面贴导轨，目镜在照门前面
+  --   （照门 z −0.25～−0.10、比光轴高一点，眼睛贴上目镜时它在眼睛后面）
+  local M4_OPTIC = { key = "acog", at = CF(0, 0.142, 0.24) }
 
   -- 整件真模型（工具属性 Gear = 键、GearMount = 枪上的镜子，GearDefs）：握把放在 M4 握把那儿（再挪 fpOff、按 hold 转），镜子装在枪的导轨上；
   --   导入的或者现生成的（Optics.lua）都还没有时返回 nil 和要等的键（先用工具上零件拼的，生成好了重建）
@@ -328,13 +331,30 @@ function FPSView.init(G)
           end
         end
       end
-      if #items == 0 then
+      local partsM4 = #items == 0
+      if partsM4 then
         for _, d in ipairs(M4PARTS) do
           local size = d[3]
           local p = newPart(model, d[6] and V(size.Z, size.X, size.Y) or size, d[4], MAT.Metal, d[6] and CYL or nil)
           local off = CF(d[2]) * CFrame.Angles(math.rad(d[5] or 0), 0, 0)
           if d[6] then off = off * ALONG end
           table.insert(items, { p, d[1], off })
+        end
+      end
+      -- 导轨上的 ACOG（用户：武器瞄准没有镜子）：开镜时光轴对正屏幕中心、目镜举到眼前，贴上以后换成 Scope.lua 画的目镜里的像
+      --   零件拼的 M4 导轨顶面高一点（0.1625）
+      if G.opticMeta and G.opticMeta[M4_OPTIC.key] then
+        local op = G.opticParts and G.opticParts(M4_OPTIC.key)
+        local at = partsM4 and (CF(0, 0.1625 - 0.142, 0) * M4_OPTIC.at) or M4_OPTIC.at
+        if op then
+          local M = G.opticMeta[M4_OPTIC.key]
+          for _, x in ipairs(op) do
+            x.part.Parent = model
+            table.insert(items, { x.part, "gun", at * x.cf, optic = x.name })
+          end
+          opticInfo = { kind = "scope", eyeG = at * V(M.eye.c[1], M.eye.c[2], M.eye.c[3]), objG = at * V(M.obj.c[1], M.obj.c[2], M.obj.c[3]), r = M.eye.r }
+        elseif not (G.opticFailed and G.opticFailed(M4_OPTIC.key)) then
+          vm0Wait = { M4_OPTIC.key }   -- 还在生成：先用光秃秃的 M4，生成好了重建
         end
       end
     elseif tool then

@@ -91,6 +91,13 @@
    "author": "Jan Češnjevar",
    "license": "CC-BY-4.0",
    "url": "https://sketchfab.com/3d-models/mortar-m224-c86a73e40d994431bcdb57dc741cf8be"
+  },
+  "acog": {
+   "uid": "374bd6e3054b47cdbeb2eeb7817613d1",
+   "name": "Trijicon ACOG 3.5x35 Riflescope (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1"
   }
  },
  "items": {
@@ -453,6 +460,33 @@
      0.2
     ]
    }
+  },
+  "acog": {
+   "src": "acog",
+   "title": "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "offAdj": [
+    0.0078,
+    0,
+    0
+   ],
+   "parts": {
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_1": "Body",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_2": "Mount",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_3": "Knobs",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_5": "FiberCover",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_4": "Fiber",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Glass_1": "Glass",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_7": "Reticle",
+    "Trijicon_ACOG_3.5x35_Riflescope_1_Material_6": "Reticle"
+   },
+   "eye": "Glass 1_Trijicon",
+   "obj": "Glass 1\\.001",
+   "embedTex": {}
   }
  }
 }

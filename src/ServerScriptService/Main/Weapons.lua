@@ -39,7 +39,7 @@ function Weapons.init(G)
   local GUN, DARK, OLIVE, TAN = RGB(48, 50, 52), RGB(30, 31, 33), RGB(86, 96, 64), RGB(176, 156, 112)
   -- 每把武器：枪身长 L、枪管长、枪托、弹匣……；返回把手和枪口
   local SHAPE = {
-    m4 = { L = 2.9, barrel = 1.3, stock = true, mag = 0.95, color = RGB(40, 40, 42), rail = true },
+    m4 = { L = 2.9, barrel = 1.3, stock = true, mag = 0.95, color = RGB(40, 40, 42), rail = true, acog = true },
     sniper = { L = 4.0, barrel = 2.2, stock = true, scope = true, mag = 0.6, color = RGB(70, 66, 52) },
     rpg = { tube = 4.6, dia = 0.7, color = OLIVE, warhead = true },
     manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
@@ -141,6 +141,37 @@ function Weapons.init(G)
         end
       end
       if S.rail then weld(h, p(tool, V(0.22, 0.1, S.L * 0.55), CF(0, 0.6, -S.L * 0.3), DARK, Enum.Material.Metal)) end
+      if S.acog then   -- 导轨上一具 ACOG（用户：武器瞄准没有镜子）：导入了真模型（models/optics/acog.glb）就装它（按枪放大 1.2 倍），不然零件拼一具
+        local imp = RS:FindFirstChild("Imported")
+        local opt = imp and imp:FindFirstChild("Optics")
+        opt = opt and opt:FindFirstChild("acog")
+        local base = CF(0, 0.65, -0.5) * CFrame.Angles(0, math.pi, 0)   -- 镜座底面贴导轨顶面；器材 +Z 朝前、工具 −Z 朝前：转 180°
+        local real = false
+        if opt and OM and OM.acog then
+          for _, src in ipairs(opt:GetChildren()) do
+            local name = string.match(src.Name, "__(.+)$")
+            local info = name and OM.acog.parts[name]
+            if src:IsA("BasePart") and info then
+              local q = src:Clone()
+              q.Name = "Scope_" .. name
+              q.Size = src.Size * 1.2
+              q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.Massless = false, false, false, false, true
+              q.CFrame = base * CF(info.c[1] * 1.2, info.c[2] * 1.2, info.c[3] * 1.2) * TURN
+              q.Parent = tool
+              weld(h, q)
+              real = true
+            end
+          end
+        end
+        if not real then
+          local body = p(tool, V(0.17, 0.17, 0.4), base * CF(0, 0.12, -0.02), DARK, Enum.Material.Metal)
+          body.Name = "Scope"
+          weld(h, body)
+          weld(h, p(tool, V(0.1, 0.24, 0.24), base * CF(0, 0.12, 0.2) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder))   -- 物镜
+          weld(h, p(tool, V(0.1, 0.06, 0.2), base * CF(0, 0.035, -0.02), DARK, Enum.Material.Metal))   -- 镜座
+          weld(h, p(tool, V(0.035, 0.03, 0.26), base * CF(-0.015, 0.215, 0.07), RGB(200, 40, 30), Enum.Material.Neon))   -- 顶上的红色光纤
+        end
+      end
     elseif S and S.tube then   -- 发射筒：扛在肩上
       local t = p(tool, V(S.tube, S.dia, S.dia), CF(0, 0.6, -0.4) * CFrame.Angles(0, math.pi / 2, 0), S.color, Enum.Material.Metal, Enum.PartType.Cylinder)
       weld(h, t)
