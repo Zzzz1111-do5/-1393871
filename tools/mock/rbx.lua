@@ -186,6 +186,9 @@ local UDim2 = {
   fromOffset = function(x, y) return newUDim2(0, x, 0, y) end,
   fromScale = function(x, y) return newUDim2(x, 0, y, 0) end,
 }
+-- 和真的一样：UDim2 能相加、相减（界面跟着别的位置挪一点）
+UD2mt.__add = function(a, b) return newUDim2(a._XS + b._XS, a._XO + b._XO, a._YS + b._YS, a._YO + b._YO) end
+UD2mt.__sub = function(a, b) return newUDim2(a._XS - b._XS, a._XO - b._XO, a._YS - b._YS, a._YO - b._YO) end
 -- 和真的一样：UDim2.X / .Y（.Width / .Height）是 UDim，带 .Scale / .Offset
 do
   local base = UD2mt.__index
@@ -404,7 +407,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl One Two Three Four Five",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl One Two Three Four Five Six Seven Eight Nine Zero",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",

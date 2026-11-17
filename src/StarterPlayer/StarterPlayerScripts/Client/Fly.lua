@@ -472,13 +472,20 @@ function Fly.init(G)
     local cf = st.cf
     local fwd, upV, right = cf.LookVector, cf.UpVector, cf.RightVector
     -- 速度：油门给目标速度（加力到 vAB），往目标加减速；爬升掉速、俯冲加速、拉杆转弯掉能量；地上没油门时滚着慢下来
-    local tgt = (st.thr <= 100) and d.vMil * st.thr / 100 or (d.vMil + (d.vMax - d.vMil) * (st.thr - 100) / 30)
-    local acc = (st.thr > 100) and (d.accel + (d.abAccel or 0)) or d.accel
+    -- 重量感（用户：飞机驾驶没有重量感）：W 越大越「沉」——F-22、歼-20 约 1，A-10 约 2，轰-6K、B-2、MQ-9 是 3
+    local W = math.clamp(220 / math.max(d.roll or 200, 1), 1, 3)
+    -- 发动机有迟滞：推力跟着油门慢慢起来（加力点着要一下）
+    st.thrE = approach(st.thrE or st.thr, st.thr, (st.thr > (st.thrE or 0) and 38 or 55) / W * dt)
+    local thr = st.thrE
+    local tgt = (thr <= 100) and d.vMil * thr / 100 or (d.vMil + (d.vMax - d.vMil) * (thr - 100) / 30)
+    local acc = (thr > 100) and (d.accel + (d.abAccel or 0)) or d.accel
     if st.trap then   -- 挂着拦阻索：发动机推力不算，地上那段按拦阻索减速
     elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt) else st.spd -= math.min(st.spd - tgt, (st.ground and (key(Enum.KeyCode.B) and 60 or 22) or acc * 0.45) * dt) end
     if not st.ground then
-      st.spd -= GR * fwd.Y * 0.9 * dt
+      local vd = st.vdir or fwd
+      st.spd -= GR * vd.Y * 0.9 * dt   -- 沿航迹爬升掉速、俯冲加速
       st.spd -= math.abs(st.pr) * st.spd * 0.16 * dt
+      st.spd -= (1 - math.clamp(vd:Dot(fwd), -1, 1)) * st.spd * 2.6 * dt   -- 机头和航迹差得越多（大迎角、侧滑）掉速越快
     end
     st.spd = clamp(st.spd, 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
@@ -512,9 +519,9 @@ function Fly.init(G)
     local gLim = d.g * GR / math.max(st.spd, 30)
     pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
     rc, yc = rc * q, yc * q
-    st.pr = approach(st.pr, pc, 4 * dt)
-    st.rr = approach(st.rr, rc, rad(d.roll) * 5 * dt)
-    st.yr = approach(st.yr, yc, 2 * dt)
+    st.pr = approach(st.pr, pc, 2.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢
+    st.rr = approach(st.rr, rc, rad(d.roll) * 2.8 / W ^ 0.5 * dt)
+    st.yr = approach(st.yr, yc, 1.2 / W ^ 0.6 * dt)
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
     if st.ground and st.cat then
@@ -554,6 +561,7 @@ function Fly.init(G)
         end
       end
       st.vel = cf.LookVector * st.spd
+      st.vdir, st.accV = cf.LookVector, nil
       st.sink = 0
     elseif st.ground then
       -- 地上：机头只能左右转（前轮转向），速度够了抬头就离地
@@ -602,6 +610,7 @@ function Fly.init(G)
         cf = CFrame.lookAt(pos, pos + look)
       end
       st.vel = look * st.spd
+      st.vdir, st.accV = (st.ground and look) or cf.LookVector, nil
       st.sink = 0
     else
       cf = cf * CFrame.Angles(st.pr * dt, -st.yr * dt, -st.rr * dt)
@@ -609,7 +618,17 @@ function Fly.init(G)
       local lift = clamp((st.spd / d.stall) ^ 2, 0, 1)
       st.sink = approach(st.sink, GR * (1 - lift) * 1.8, GR * dt)
       if lift < 0.85 then cf = cf * CFrame.Angles(-(1 - lift) * 0.9 * dt, 0, 0) end
-      st.vel = cf.LookVector * st.spd + V(0, -st.sink, 0)
+      -- 航迹不是机头指哪就飞哪：升力把速度方向往机头那边拉，快、升力足拉得快，重的飞机拉得慢——拉杆时机头先抬、飞机「吃」一下才转过去
+      local vd = st.vdir or cf.LookVector
+      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.7, 0.35, 3.4) / W ^ 0.7
+      vd = (vd + (cf.LookVector - vd) * math.min(1, pull * dt))
+      st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or cf.LookVector
+      local v0 = st.vel
+      st.vel = st.vdir * st.spd + V(0, -st.sink, 0)
+      if v0 then   -- 加速度（镜头用：过载把镜头甩开）
+        local a = (st.vel - v0) / math.max(dt, 1e-3)
+        st.accV = (st.accV or a):Lerp(a, math.min(1, dt * 6))
+      end
       pos += st.vel * dt
       cf = cf - cf.Position + pos
       -- 撞地 / 落地
@@ -825,8 +844,19 @@ function Fly.init(G)
     if d.kind == "jet" and not G.mobile and st.pilot then
       local aim = aimDirNow()
       local back = d.L * 1.3 + 26
-      local camPos = pos - aim * back + V(0, d.H * 0.9 + 7, 0)
-      cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300)
+      -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
+      local want = -aim * back + V(0, d.H * 0.9 + 7, 0)
+      st.camOff = st.camOff and st.camOff:Lerp(want, 1 - math.exp(-dt * 7)) or want
+      local acc = st.accV or V()
+      local push = -acc * 0.014
+      if push.Magnitude > 7 then push = push.Unit * 7 end
+      st.camPush = (st.camPush or push):Lerp(push, 1 - math.exp(-dt * 4))
+      local camPos = pos + st.camOff + st.camPush
+      local gl = acc.Magnitude / GR   -- 大概几个 g
+      local amp = math.clamp((gl - 3) * 0.0016, 0, 0.012) + ((st.thrE or 0) > 100 and 0.0012 or 0)
+      local t = os.clock()
+      local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp, math.noise(t * 18, 7.1) * amp, 0)
+      cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300) * shake
     elseif d.kind == "jet" then
       local camPos = (st.cf * CF(0, d.H * 0.9 + 7, d.L * 1.3 + 26)).Position
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))

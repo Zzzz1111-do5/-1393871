@@ -173,4 +173,39 @@ if me.Character then
   R.run(0.3)
   check(R.services.Workspace:FindFirstChild("Parachute") == nil, "落地收掉了")
 end
+print("⑤ 起飞、拉杆：有重量感——航迹落后于机头（迎角）、角速度慢慢起来、大迎角掉速")
+local fst = C.fly
+if fst and e then
+  T.key(Enum.KeyCode.W, true)
+  T.key(Enum.KeyCode.Up, true)
+  local up = T.runUntil(function() return not fst.ground end, 40)
+  T.key(Enum.KeyCode.Up, false)
+  check(up, string.format("滑跑起飞（离地时速度 %.0f 格 / 秒）", fst.spd or 0))
+  R.run(8)
+  local p = fst.cf.Position
+  check(p.Y == p.Y and p.Y > G.Map.ground(p.X, p.Z) + 20, string.format("飞起来了（离地 %.0f 格，速度 %.0f）", p.Y - G.Map.ground(p.X, p.Z), fst.spd))
+  -- 收到军推、平飞稳一下，再猛拉杆：角速度一开始还没起来，航迹慢半拍跟上机头，大迎角掉速
+  T.key(Enum.KeyCode.W, false)
+  fst.thr = 85
+  R.run(3)
+  local spd0 = fst.spd
+  T.key(Enum.KeyCode.Down, true)
+  R.run(0.1)
+  local pr1 = fst.pr
+  local aoa = 0
+  for _ = 1, 45 do
+    R.run(1 / 30)
+    local f = fst.cf.LookVector
+    if fst.vdir then aoa = math.max(aoa, math.deg(math.acos(math.max(-1, math.min(1, f:Dot(fst.vdir)))))) end
+  end
+  T.key(Enum.KeyCode.Down, false)
+  local prMax = math.rad(e.def.pitch)
+  check(math.abs(pr1) < prMax * 0.6, string.format("拉杆 0.1 秒俯仰角速度才到 %.0f%%（转动有惯性）", 100 * math.abs(pr1) / prMax))
+  check(aoa > 1.5 and aoa < 25, string.format("拉杆时机头比航迹高 %.1f°（飞机「吃」一下才转过去）", aoa))
+  check(fst.spd < spd0, string.format("大迎角掉速：%.0f → %.0f", spd0, fst.spd))
+  local q = fst.cf.Position
+  check(q.X == q.X and q.Y == q.Y and q.Z == q.Z, "位置正常（没有算出 NaN）")
+  T.key(Enum.KeyCode.W, false)
+end
+
 T.summary()
