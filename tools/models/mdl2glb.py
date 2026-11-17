@@ -27,6 +27,9 @@ ALIAS = {
     'm1a2': 'm1a2v3', 'm1a1': 'm1a1', 'm2a3': 'm2a3', 'stryker': 'stryker', 'mshorad': 'stryker', 'm1150': 'm1150', 'hmmwv': 'hmmwv',
     'jltv': 'jltv', 'm1117': 'matv', 'm163': 'm163', 'cram': 'cram', 'patriot': 'patriot', 'm109a7': 'm109', 'm270': 'm270',
 }
+# 网页版烘焙出来车头朝后的（网页版游戏里 JLTV 用的是 M-ATV 的模型，这个 JLTV 模型从没开过，方向反了没人发现）：掉头 180°
+#   用户：「这个车操作是倒着开的」——模型的备胎（真车挂在车尾）在游戏认的车头那一端
+FLIP = {'jltv'}
 GROUP = {'tur': 'Turret', 'yaw': 'Turret', 'rws': 'Turret', 'tow': 'Turret', 'rdr': 'Turret', 'gun': 'Gun', 'gat': 'Gun', 'lnch': 'Gun'}
 WRAP = {0: 10497, 1: 33071, 2: 33648}   # 重复、夹边、镜像
 
@@ -91,6 +94,13 @@ def convert(key, src=None):
     st = meta.get('st', 8)
     vb0, vbn = meta['vb']
     VB = np.frombuffer(binb, dtype='<f4', count=vbn // 4, offset=vb0).reshape(-1, st)
+    if key in FLIP:   # 绕竖轴转 180°（网页版坐标 x 前、y 左、z 上：x、y 取反，法线一样；部件的支点、轴跟着转）
+        VB = VB.copy()
+        VB[:, [0, 1, 3, 4]] *= -1
+        for P in meta.get('parts', []):
+            for k in ('p', 'a', 'q'):
+                if k in P:
+                    P[k] = [-P[k][0], -P[k][1], P[k][2]]
     ib0, ibn = meta['ib']
     IB = np.frombuffer(binb, dtype='<u4' if meta['it'] == 4 else '<u2', count=ibn // meta['it'], offset=ib0)
     wheel_ix = {}
@@ -263,6 +273,10 @@ def write_glb(key, meta, binb, info, out, path, prefix='V_'):
         f.write(js)
         f.write(struct.pack('<II', len(blob), 0x004E4942))
         f.write(blob)
+    # 导入 Roblox 前的修正：朝里的面翻过来（Roblox 只画正面）、只有底色的材质配纯色贴图（Roblox 导入不认底色）——tools/models/glbfix.py
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import glbfix
+    glbfix.fix_file(path, log=lambda m: print('  %s%s' % (key, m)))
 
 
 def web_credits(keys):
