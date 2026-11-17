@@ -253,6 +253,13 @@ export async function renderScore(SHOTS) {
         case 'rotor': roar(t, t + s.dur, 0.22, 380, 0, 18); break;
         case 'rockets': for (let i = 0; i < 8; i++) whoosh(t + i * 0.09, 1.0, 0.1, 600, 4000, -0.3, 0.3); break;
         case 'aftermath': ambience(t, t + s.dur, 0.08); roar(t, t + s.dur, 0.03, 500, 0, 0.2); for (let i = 0; i < 4; i++) boom(t + 1 + i * 1.7, 0.12, (R() - 0.5), 0.95); break;
+        case 'lockGrowl': for (let i = 0; i < 9; i++) { const g = ctx.createGain(); g.connect(out(SFX, 0.1)); env(g, t + i * 0.12, 0.005, 0.035, 0.05, 0.03); const o = osc('square', 820, t + i * 0.12, t + i * 0.12 + 0.12); const lp = filt('lowpass', 2400); o.connect(lp); lp.connect(g); } break;
+        case 'lockTone': { const g = ctx.createGain(); g.connect(out(SFX, 0.1)); env(g, t, 0.005, 0.05, 1.0, 0.1); const o = osc('square', 1240, t, t + 1.2); const lp = filt('lowpass', 3000); o.connect(lp); lp.connect(g); } break;
+        case 'bay': roar(t, t + 0.9, 0.05, 1800, -0.2, 0); clank(t + 0.75, 0.12, -0.2); break;
+        case 'release': clank(t, 0.18, 0); break;
+        case 'missileFly': roar(t, t + s.dur, 0.18, 1600, 0, 0); whoosh(t, s.dur * 0.6, 0.08, 900, 4200, -0.2, 0.2); break;
+        case 'airboom': boom(t, 1.5, 0); boom(t + 0.05, 0.9, -0.4, 0.3); boom(t + 0.25, 0.6, 0.5, 0.5); break;
+        case 'rocketRipple': for (let i = 0; i < (e.n || 10); i++) { const tt = t + i / (e.rate || 15); shot(tt, 0.16 * v, (i % 2 ? 0.35 : -0.35), 0.7); whoosh(tt, 0.7, 0.05 * v, 500, 3500, (i % 2 ? 0.3 : -0.3), 0); } break;
         case 'ambience': break;
         default: break;
       }

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { V3, keys, ease, easeIn, easeOut, easeIO, smooth, lerp, shake, rng, DEG, fbm1, clamp, sat } from './lib.js';
 import { seaY, seaNormal, SEA } from './world.js';
-import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META } from './models.js';
+import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META, pl15, j20Bay, patriotNoses } from './models.js';
 import { explosion, muzzle, burst, flare, flarePos, fire, missile, spray, beamMesh, flameMesh } from './fx.js';
 import { fadeIO } from './titles.js';
 
@@ -28,8 +28,10 @@ export const SHOTS = [
   { id: 'S12', dur: 5, setup: shotAssault },
   { id: 'S13', dur: 4.5, setup: shotTank },
   { id: 'S14', dur: 3.5, setup: shotAbrams },
-  { id: 'S15', dur: 4.5, setup: shotAir },
-  { id: 'S16', dur: 3.5, setup: shotHeli },
+  { id: 'S15', dur: 2.8, setup: shotAir },
+  { id: 'S15B', dur: 2.6, setup: shotBay },
+  { id: 'S15C', dur: 3.4, setup: shotKill },
+  { id: 'S16', dur: 4.5, setup: shotHeli },
   { id: 'S17', dur: 3, setup: shotPatriot },
   { id: 'S18', dur: 8, setup: shotDawn },
   { id: 'S19', dur: 6, setup: shotTitle },
@@ -125,8 +127,8 @@ function afterburners(A, fx, kf) {
     if (k < 0.01) return;
     for (const n of A.noz) {
       const p = A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 0.6)));
-      f.addGlow(p, n.r * 3.2, new THREE.Color(1, 0.62, 0.32), 6 * k, 1, 0.0012);
-      f.addLight(A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 6))), new THREE.Color(1, 0.55, 0.25), 1.6 * k, 120);
+      f.addGlow(p, n.r * 2.4, new THREE.Color(1, 0.62, 0.32), 3.2 * k, 1, 0.0012);
+      f.addLight(A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 12))), new THREE.Color(1, 0.55, 0.25), 0.45 * k, 120);
     }
   });
 }
@@ -568,117 +570,260 @@ async function shotAbrams(env, add) {
     events: [{ t: 0, k: 'battleBed' }, { t: fireT, k: 'tankFire' }, { t: fireT + 0.55, k: 'boom' }],
   };
 }
-// S15 空中：月光下的歼-20，F-22 横穿、放热诱弹
+// —— 空战：歼-20 锁定 F-22 → 弹舱打开、霹雳-15 放下、点火 → 追着导弹看它打中 F-22 ——
+//   三个镜头共用一条时间线 τ（S15 开头 = 0）；S15 0–2.8、S15B 2.8–5.4、S15C 5.4–8.8
+const AIR = (() => {
+  const V = new THREE.Vector3(90, 0, -290), P0 = new THREE.Vector3(-150, 650, 1600);
+  const yaw = Math.atan2(-V.x, -V.z);
+  const rot = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), yaw);
+  const jp = tau => P0.clone().addScaledVector(V, tau).add(V3(0, Math.sin(tau * 0.4) * 6, 0));
+  const local = (tau, v) => jp(tau).add(v.clone().applyQuaternion(rot));   // 歼-20 机体坐标 → 世界（只按航向转，弹舱那段机翼放平）
+  // F-22 在前上方，锁定以后开始往右压坡度规避
+  const fOff = tau => V3(40 + 14 * tau + (tau > 4 ? 60 * (tau - 4) ** 2 : 0), 46 - 4 * tau, -560 + 20 * tau);
+  const fp = tau => local(tau, fOff(tau));
+  const T_REL = 4.6, T_IGN = 4.95, T_HIT = 7.0;
+  const relLocal = tau => { const u = Math.max(0, tau - T_REL); return V3(0, 3.5 - 0.38 - 1.5 - 0.5 * 24 * u * u, -0.45 + 4 * u); };
+  const pIgn = local(T_IGN, relLocal(T_IGN)), pHit = fp(T_HIT);
+  const vJet = V.clone();
+  const fdir = fp(T_HIT + 0.05).sub(pHit).normalize();
+  const c1 = pIgn.clone().addScaledVector(vJet, 0.45), c2 = pHit.clone().addScaledVector(fdir, -170).add(V3(0, 25, 0));   // 从 F-22 后面追上去
+  const bez = (s) => { const k = 1 - s; return pIgn.clone().multiplyScalar(k * k * k).add(c1.clone().multiplyScalar(3 * k * k * s)).add(c2.clone().multiplyScalar(3 * k * s * s)).add(pHit.clone().multiplyScalar(s * s * s)); };
+  const mp = tau => {
+    if (tau <= T_IGN) return local(tau, relLocal(tau));
+    const u = clamp((tau - T_IGN) / (T_HIT - T_IGN), 0, 1);
+    return bez(Math.pow(u, 1.55));
+  };
+  // 打中以后 F-22 拖着火往下掉、翻滚
+  const vF = fp(T_HIT).sub(fp(T_HIT - 0.05)).multiplyScalar(20);
+  const fall = tau => { const u = tau - T_HIT; return fp(T_HIT).addScaledVector(vF, u * 0.75).add(V3(0, -0.5 * 27 * 0.8 * u * u, 0)); };
+  return { jp, fp, mp, fall, yaw, rot, local, T_REL, T_IGN, T_HIT, vF };
+})();
+function airPlane(A, tau, roll = 0) {
+  A.root.position.copy(AIR.jp(tau));
+  A.root.quaternion.copy(AIR.rot);
+  A.root.rotateZ(roll);
+  A.root.updateMatrixWorld(true);
+}
+function f22Pose(F, tau) {
+  if (tau < AIR.T_HIT) {
+    const p = AIR.fp(tau), d = AIR.fp(tau + 0.05).sub(p).normalize();
+    F.root.position.copy(p);
+    F.root.quaternion.setFromUnitVectors(V3(0, 0, -1), d);
+    F.root.rotateZ(tau > 4 ? -Math.min(1.1, (tau - 4) * 0.9) : -0.15);
+  } else {
+    const u = tau - AIR.T_HIT;
+    F.root.position.copy(AIR.fall(tau));
+    F.root.quaternion.setFromUnitVectors(V3(0, 0, -1), AIR.vF.clone().normalize());
+    F.root.rotateX(-u * 0.9); F.root.rotateZ(-1.1 - u * 2.6);
+  }
+  F.root.updateMatrixWorld(true);
+}
+// 平显的锁定框：F-22 投到画面上的位置
+function lockBoxAt(env, p) {
+  const v = p.clone().project(env.camera);
+  if (v.z > 1) return null;
+  const band = env.post.ah / env.H;
+  return [0.5 + v.x / 2, 0.5 - v.y * band / 2];
+}
+// S15 锁定：歼-20 后上方，前面的 F-22 被框住，绿框搜索 → 红框锁定
 async function shotAir(env, add) {
   const { fx } = env;
   const J = await aircraft('j20', env.REPO); add(J.root);
   const F = await aircraft('f22', env.REPO); add(F.root);
-  afterburners(J, fx, () => 0.75); afterburners(F, fx, () => 0.9);
-  const jp = t => V3(300 + t * 10, 420 + Math.sin(t * 0.6) * 6, 900 - t * 300);
-  const fp = t => V3(-1300 + t * 640, 470 - t * 12, -100 + t * 90);
-  for (let k = 0; k < 8; k++) {
-    const tr = 1.9 + k * 0.09, side = k % 2 ? 1 : -1;
+  afterburners(J, fx, () => 0.6); afterburners(F, fx, () => 0.8);
+  let box = null, dist = 0;
+  return {
+    update(t) {
+      const tau = t;
+      airPlane(J, tau, Math.sin(tau * 0.5) * 0.06);
+      f22Pose(F, tau);
+      const eye = J.root.localToWorld(V3(0.6, 12, 40));
+      cam(env, eye, F.root.position.clone().lerp(J.root.localToWorld(V3(0, 6, -40)), 0.25), 30);
+      shake(env.camera, t, 0.25, 4, 23);
+      env.camera.updateMatrixWorld(true);
+      box = lockBoxAt(env, F.root.position);
+      dist = F.root.position.distanceTo(J.root.position) / 2800;
+      return { exposure: 1.2, shadowAt: J.root.position, shadowR: 80, bloom: 1.2, fogDensity: 0.00026 };
+    },
+    titles: t => {
+      if (!box) return [];
+      const locked = t > 1.6, k = smooth(0.4, 0.7, t);
+      const s = locked ? 0.075 : lerp(0.14, 0.085, smooth(0.5, 1.6, t));
+      const blink = locked ? (t < 1.9 ? ((t * 10) % 1 < 0.5 ? 1 : 0.35) : 1) : (0.6 + 0.4 * ((t * 6) % 1 < 0.5 ? 1 : 0));
+      return [{ box: [box[0], box[1], s * 0.5625, s], a: k * blink, color: locked ? '#ff4b3a' : '#7dff9a', diamond: locked,
+        label: locked ? '锁定' : '搜索', sub: locked ? '霹雳-15 · 雷达锁定' : '霹雳-15' }];
+    },
+    events: [{ t: 0, k: 'jetCabin' }, { t: 0.5, k: 'lockGrowl' }, { t: 1.6, k: 'lockTone' }],
+  };
+}
+// S15B 弹舱：机腹下面看弹舱门打开、吊架把霹雳-15 放下来、脱离、点火冲出去
+async function shotBay(env, add) {
+  const { fx } = env;
+  const T0 = 2.8;
+  const J = await aircraft('j20', env.REPO); add(J.root);
+  afterburners(J, fx, () => 0.6);
+  const bay = j20Bay(J);
+  const m = bay.missile;
+  // 点火以后的导弹（世界坐标）：尾焰、烟
+  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: 8, size: 1.1, smokeLife: 3 }));
+  return {
+    update(t) {
+      const tau = T0 + t;
+      airPlane(J, tau, 0);
+      const k = smooth(0.4, 1.1, t) * (1 - smooth(2.6, 3.2, t));
+      const drop = smooth(1.15, 1.6, t) * 1.5;
+      const attached = tau < AIR.T_REL;
+      bay.set(k, drop, attached);
+      if (!attached) {
+        m.visible = tau < AIR.T_IGN + 0.6;
+        const p = AIR.mp(tau), d = AIR.mp(tau + 0.02).sub(p).normalize();
+        m.position.copy(J.root.worldToLocal(p.clone()));
+        m.quaternion.copy(new THREE.Quaternion().copy(AIR.rot).invert().multiply(new THREE.Quaternion().setFromUnitVectors(V3(0, 0, -1), tau < AIR.T_IGN ? V3(0, 0, -1).applyQuaternion(AIR.rot) : d)));
+      }
+      J.root.updateMatrixWorld(true);
+      cam(env, J.root.localToWorld(V3(-10, -4.5, 13)), J.root.localToWorld(V3(0, 1.6, -5 - smooth(2.15, 2.5, t) * 30)), 40);
+      shake(env.camera, t, 0.3 + (t > 2.15 ? 0.8 * Math.exp(-(t - 2.15) * 3) : 0), 5, 31);
+      return { exposure: 1.25, shadowAt: J.root.position, shadowR: 40, bloom: 1.25, fogDensity: 0.00026 };
+    },
+    events: [{ t: 0, k: 'jetCabin' }, { t: 0.4, k: 'bay' }, { t: 1.8, k: 'release' }, { t: 2.15, k: 'missileLaunch' }],
+  };
+}
+// S15C 击落：跟在导弹后面，F-22 放热诱弹也没躲开，打中、炸开，拖着火往下掉
+async function shotKill(env, add) {
+  const { fx } = env;
+  const T0 = 5.4, hitL = AIR.T_HIT - T0;
+  const F = await aircraft('f22', env.REPO); add(F.root);
+  afterburners(F, fx, t => (T0 + t < AIR.T_HIT ? 0.9 : 0));
+  const M = pl15(); add(M);
+  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: hitL, size: 1.1, smokeLife: 3.5 }));
+  // 热诱弹：F-22 两侧一串往下坠的亮点
+  for (let k = 0; k < 10; k++) {
+    const tr = 0.55 + k * 0.08, side = k % 2 ? 1 : -1;
     fx.add((t, f) => {
       const u = t - tr;
-      if (u < 0 || u > 3.2) return;
-      const p0 = fp(tr), v = V3(240 + side * 60, -40, 60 + side * 60);
-      const p = p0.clone().addScaledVector(v, u * 0.55).add(V3(0, -0.5 * 27 * 0.7 * u * u, 0));
-      const kk = 1 - u / 3.2;
+      if (u < 0 || u > 3) return;
+      const p0 = AIR.fp(T0 + tr), v = AIR.fp(T0 + tr + 0.05).sub(p0).multiplyScalar(20 * 0.35).add(V3(side * 70, -30, 0));
+      const p = p0.clone().addScaledVector(v, u).add(V3(0, -0.5 * 27 * 0.6 * u * u, 0));
+      const kk = 1 - u / 3;
       f.addGlow(p, 5, new THREE.Color(1, 0.75, 0.45), 14 * kk, 1, 0.0022);
       f.addLight(p, new THREE.Color(1, 0.7, 0.4), 20 * kk, 200);
-      for (let j = 1; j < 10; j++) { const b = j * 0.08; if (b > u) break; const q = p0.clone().addScaledVector(v, (u - b) * 0.55).add(V3(0, -0.5 * 27 * 0.7 * (u - b) ** 2, 0)); f.sprite('puff', q, 3 + b * 10, 10 + b * 20, 0.4 * kk * (1 - j / 10), 0, [1.0, 0.95, 0.9], j); }
+      for (let j = 1; j < 9; j++) { const b = j * 0.07; if (b > u) break; const q = p0.clone().addScaledVector(v, u - b).add(V3(0, -0.5 * 27 * 0.6 * (u - b) ** 2, 0)); f.sprite('puff', q, 3 + b * 12, 10 + b * 20, 0.38 * kk * (1 - j / 9), 0, [1.0, 0.95, 0.9], j); }
     });
   }
-  fx.add(missile({ path: tau => { const u = tau - 2.4; return fp(2.4).add(V3(-60, 5, 0)).add(V3(u * 200 - u * u * 120, u * 15, -u * 600)); }, t0: 2.4, t1: 6, size: 1.0, smokeLife: 3 }));
+  fx.add(explosion({ p: AIR.fp(AIR.T_HIT), t0: hitL, s: 46, seed: 501, debris: 34, dust: false, ember: 50 }));
+  // 打中以后：飞机上的火、拖着的黑烟
+  fx.add((t, f) => {
+    if (t < hitL) return;
+    const tau = T0 + t, p = AIR.fall(tau), u = t - hitL;
+    f.sprite('fire', p, 14, ((t * 24) % 64 + 64) % 64, Math.min(1, u * 3), 1.2, [0.2, 0.18, 0.16], u);
+    f.addLight(p, new THREE.Color(1, 0.55, 0.22), 30, 260);
+    for (let j = 1; j < 26; j++) { const b = j * 0.07; if (b > u) break; const q = AIR.fall(tau - b).add(V3(0, b * 3, 0)); f.sprite('puff', q, 6 + b * 14, 14 + b * 18, 0.6 * (1 - j / 26), 0, [0.22, 0.2, 0.19], j * 1.3); }
+  });
   return {
     update(t) {
-      const p = jp(t);
-      J.root.position.copy(p);
-      J.root.rotation.set(0, 0, 0);
-      J.root.rotateZ(Math.sin(t * 0.7) * 0.35 + 0.3);
-      J.root.rotateX(0.04);
-      J.root.updateMatrixWorld(true);
-      F.root.position.copy(fp(t));
-      F.root.rotation.set(0, -Math.PI / 2 + 0.15, 0);
-      F.root.rotateZ(-0.9);
-      F.root.updateMatrixWorld(true);
-      cam(env, p.clone().add(V3(30, 14, 78)), p.clone().add(V3(-8, -40, -200)), 36);
-      env.camera.rotateZ(-(Math.sin(t * 0.7) * 0.35 + 0.3) * 0.25);
-      shake(env.camera, t, 0.35, 5, 23);
-      return { exposure: 1.2, shadowAt: p, shadowR: 80, bloom: 1.2, fogDensity: 0.00026 };
+      const tau = T0 + t;
+      f22Pose(F, tau);
+      const before = tau < AIR.T_HIT;
+      M.visible = before;
+      const mpos = AIR.mp(Math.min(tau, AIR.T_HIT - 0.02)), mdir = AIR.mp(Math.min(tau, AIR.T_HIT - 0.02) + 0.02).sub(mpos).normalize();
+      M.position.copy(mpos); M.quaternion.setFromUnitVectors(V3(0, 0, -1), mdir);
+      // 镜头：贴在导弹后面；打中以后慢下来、看着往下掉的火球
+      const camAt = tl => { const tt = Math.min(T0 + tl, AIR.T_HIT - 0.1); const p = AIR.mp(tt), d = AIR.mp(tt + 0.02).sub(p).normalize(); return p.addScaledVector(d, -(24 + 150 * smooth(hitL - 0.75, hitL - 0.05, tl))).add(V3(3, 5 + 20 * smooth(hitL - 0.75, hitL, tl), 0)); };   // 打中前半秒镜头落后、拉开，整个爆炸都在画面里
+      let cp;
+      if (before) cp = camAt(t);
+      else { const u = t - hitL, c0 = camAt(hitL - 0.05), d = AIR.mp(AIR.T_HIT - 0.1).sub(AIR.mp(AIR.T_HIT - 0.12)).normalize(); cp = c0.addScaledVector(d, u * 12); }
+      cam(env, cp, before ? AIR.fp(tau).lerp(mpos, 0.2) : AIR.fall(tau), before ? 30 : lerp(30, 40, smooth(hitL, hitL + 1.2, t)));
+      shake(env.camera, t, 0.35 + (t > hitL ? 2.4 * Math.exp(-(t - hitL) * 2.5) : 0), 6, 37);
+      return { exposure: 1.2, shadowAt: F.root.position, shadowR: 90, bloom: 1.3, fogDensity: 0.00026, flash: t > hitL ? 0.35 * Math.exp(-(t - hitL) * 12) : 0 };
     },
-    events: [{ t: 0, k: 'jetCabin' }, { t: 1.6, k: 'jetPass' }, { t: 1.9, k: 'flares' }, { t: 2.4, k: 'missileLaunch' }],
+    events: [{ t: 0, k: 'missileFly' }, { t: 0.55, k: 'flares' }, { t: hitL, k: 'airboom' }],
   };
 }
-// S16 直-10 从头顶低空掠过，机头探照灯扫过海滩，火箭往岛里打
+// S16 直-10 火箭齐射：跟在直-10 后面，看它一串串打出去、落在碉堡上炸开
 async function shotHeli(env, add) {
   const { fx, groundY } = env;
-  const hs = [await aircraft('z10w', env.REPO), await aircraft('z10w', env.REPO)];
-  hs.forEach(h => add(h.root));
-  const hp = (i, t) => V3(330 + i * 70, 30 + i * 14 + Math.sin(t * 1.3 + i) * 1.0, -640 - t * 62 - i * 40);
-  // 探照灯：光柱 + 真的聚光灯
-  const beam = beamMesh(320, 7 * DEG, new THREE.Color(1, 0.96, 0.88), 1.4);
-  hs[0].root.add(beam); beam.position.set(0, 3.0, -15); beam.rotation.set(-0.55, 0, 0);
-  const sl = new THREE.SpotLight(0xfff4e0, 26000, 500, 8 * DEG, 0.5, 2); hs[0].root.add(sl); sl.position.set(0, 3.0, -15);
-  hs[0].root.add(sl.target); sl.target.position.set(0, -180, -280);
-  // 航行灯：左红右绿、尾白闪
-  hs.forEach(h => fx.add((t, f) => {
-    const M = h.M, w = (M.tip ? M.tip[0] : 6) * 0.9;
+  const H1 = await aircraft('z10w', env.REPO), H2 = await aircraft('z10w', env.REPO);
+  add(H1.root); add(H2.root);
+  const tg = BUNKER_B.clone(); tg.y = groundY(tg.x, tg.z) + 2;
+  const alt = (x, z, a) => Math.max(groundY(x, z) + a, a + 12);   // 永远在地形上面（原来有一段钻进山里）
+  const hp = (i, t) => { const x = i ? 452 : 394, z = (i ? -566 : -598) - t * 5; return V3(x, alt(x, z, i ? 40 : 34) + Math.sin(t * 1.4 + i) * 0.6, z); };
+  const quat = (i, t) => { const p = hp(i, t), y = headingTo(p, tg); return new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.13 - (t > 0.6 && t < 2.2 ? 0.04 : 0), y, Math.sin(t + i) * 0.03, 'YXZ')); };
+  const pose = (H, i, t) => { H.root.position.copy(hp(i, t)); H.root.quaternion.copy(quat(i, t)); H.root.updateMatrixWorld(true); };
+  [H1, H2].forEach(h => {   // 旋翼的虚影
+    const d = new THREE.Mesh(new THREE.CircleGeometry(h.M.w * 0.5 * 1.25, 48), new THREE.MeshBasicMaterial({ color: 0x0d0f10, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
+    d.rotation.x = -Math.PI / 2; if (h.rot.rotor) h.rot.rotor.add(d);
+  });
+  const R = rng(611);
+  const rocketTimes = [];
+  const salvo = (i, n, t0, rate, spread) => {
+    for (let k = 0; k < n; k++) {
+      const tl = t0 + k / rate, pod = V3(k % 2 ? 3.6 : -3.6, 3.0, -3.5);
+      const from = hp(i, tl).add(pod.applyQuaternion(quat(i, tl)));
+      const to = tg.clone().add(V3(R.range(-spread, spread), R.range(0, 4), R.range(-spread * 0.7, spread * 0.7)));
+      const fly = from.distanceTo(to) / 330;
+      fx.add(missile({ path: tau => { const u = clamp((tau - tl) / fly, 0, 1); return from.clone().lerp(to, u).add(V3(0, -u * u * 6, 0)); }, t0: tl, t1: tl + fly, size: 0.55, smokeLife: 1.4, col: new THREE.Color(1, 0.6, 0.3) }));
+      fx.add((t, f) => { const u = t - tl; if (u < 0 || u > 0.12) return; f.addGlow(from, 6, new THREE.Color(1, 0.7, 0.4), 6 * (1 - u / 0.12), 1, 0); f.addLight(from, new THREE.Color(1, 0.6, 0.3), 3, 60); });
+      fx.add(explosion({ p: to, t0: tl + fly, s: R.range(11, 16), seed: 620 + i * 40 + k, debris: 5, ember: 8, dust: k % 3 === 0 }));
+      rocketTimes.push({ t: tl, hit: tl + fly });
+    }
+  };
+  salvo(0, 20, 0.7, 18, 16);
+  salvo(1, 12, 1.05, 16, 20);
+  fx.add(explosion({ p: tg.clone().add(V3(0, 2, 0)), t0: 2.75, s: 36, seed: 690, debris: 30 }));
+  fx.add(fire({ p: tg.clone(), s: 10, t0: 3.0, seed: 691 }));
+  fx.add(flare({ p0: V3(380, 250, -760), t0: -5, seed: 692 }));
+  fx.add(flare({ p0: V3(430, 200, -640), t0: -2, seed: 693 }));
+  // 航行灯
+  [H1, H2].forEach(h => fx.add((t, f) => {
+    const w = (h.M.tip ? h.M.tip[0] : 6) * 0.9;
     f.addGlow(h.root.localToWorld(V3(-w, 3.4, -2)), 0.8, new THREE.Color(1, 0.1, 0.05), 6, 1, 0.0015);
     f.addGlow(h.root.localToWorld(V3(w, 3.4, -2)), 0.8, new THREE.Color(0.1, 1, 0.3), 6, 1, 0.0015);
-    if ((t * 1.3) % 1 < 0.12) f.addGlow(h.root.localToWorld(V3(0, 9.5, 14)), 1.2, new THREE.Color(1, 1, 1), 14, 1, 0.002);
   }));
-  for (let i = 0; i < 2; i++) for (let k = 0; k < 4; k++) {
-    const tl = 1.3 + k * 0.16 + i * 0.08;
-    fx.add(missile({ path: tau => { const u = tau - tl; const p0 = hp(i, tl).add(V3(k % 2 ? 4 : -4, 2, -8)); return p0.add(V3(0, -u * 8, -u * 420)); }, t0: tl, t1: tl + 2.5, size: 0.7, smokeLife: 2.5, col: new THREE.Color(1, 0.6, 0.3) }));
-  }
-  [[2.7, 330, -1000], [2.9, 380, -1030], [3.1, 300, -1050]].forEach(([t0, x, z], i) => fx.add(explosion({ p: V3(x, groundY(x, z), z), t0, s: 30, seed: 220 + i })));
-  fx.add(fire({ p: V3(300, groundY(300, -771), -771), s: 9, seed: 223 }));
-  fx.add(flare({ p0: V3(340, 260, -800), t0: -6, seed: 224 }));
-  fx.add(flare({ p0: V3(352, 150, -520), t0: -1.5, seed: 225 }));   // 南边低一点的照明弹：直升机的剪影
   return {
     update(t) {
-      hs.forEach((h, i) => {
-        h.root.position.copy(hp(i, t));
-        h.root.rotation.set(-0.2, 0.05, Math.sin(t + i) * 0.05);
-        h.spin(t, 0.13);
-        h.root.updateMatrixWorld(true);
-      });
-      const cp = V3(318, groundY(318, -778) + 3.2, -778);
-      const tgt = hp(0, t).add(V3(0, 4, 0));
-      cam(env, cp, tgt.lerp(V3(330, 60, -900), smooth(1.8, 3.4, t) * 0.5), 46);
-      shake(env.camera, t, 0.45 + smooth(1.4, 2.4, t) * 0.5, 4, 29);
-      return { exposure: 1.15, shadowAt: V3(330, 20, -760), shadowR: 140, bloom: 1.25 };
+      pose(H1, 0, t); pose(H2, 1, t);
+      H1.spin(t, 0.13); H2.spin(t + 0.3, 0.13);
+      const cp = H1.root.localToWorld(V3(-11, 7.5, 27));
+      cam(env, cp, tg.clone().add(V3(0, 8, 0)).lerp(H1.root.position, 0.18), 40);
+      const firing = smooth(0.6, 0.8, t) * (1 - smooth(1.9, 2.2, t));
+      shake(env.camera, t, 0.35 + firing * 0.6 + (t > 2.75 ? 1.2 * Math.exp(-(t - 2.75) * 3) : 0), 9, 29);
+      return { exposure: 1.15, shadowAt: V3(400, 20, -700), shadowR: 160, bloom: 1.25 };
     },
-    events: [{ t: 0, k: 'rotor' }, { t: 1.3, k: 'rockets' }, { t: 2.7, k: 'boom' }, { t: 2.9, k: 'boom' }, { t: 3.1, k: 'boom' }],
+    events: [{ t: 0, k: 'rotor' }, { t: 0.7, k: 'rocketRipple', n: 20, rate: 18 }, { t: 1.05, k: 'rocketRipple', n: 12, rate: 16, v: 0.6 },
+      ...rocketTimes.filter((r, i) => i % 3 === 0).map(r => ({ t: r.hit, k: 'boom', v: 0.45 })), { t: 2.75, k: 'bigboom', v: 1 }],
   };
 }
-// S17 爱国者发射
+// S17 爱国者发射：沿发射箱的轴线（朝车头斜上 34°）打出去，发射过的那个箱口不再露着弹头，尾焰从箱子后面喷
 async function shotPatriot(env, add) {
   const { fx } = env;
   const P = await vehicle('patriot', env.REPO);
+  const NO = patriotNoses(P);
   add(P.root);
   const at = V3(705, 0, -1235);
   onGround(env, P.root, at.x, at.z, Math.PI * 0.95, 0.1);
-  const tl = 0.6;
-  const exit = () => P.root.localToWorld(V3(0, 13, 6));
-  const dir = () => V3(0, 0.62, 0.78).applyQuaternion(P.root.quaternion).normalize();
-  fx.add(missile({ path: tau => { const u = Math.max(0, tau - tl); return exit().addScaledVector(dir(), u * 30 + u * u * 160); }, t0: tl, t1: tl + 4, size: 2.0, smokeLife: 5 }));
-  fx.add((t, f) => {
+  const tl = 0.6, which = 3;   // 右上那一枚
+  const exitL = NO.noses[which].p.clone(), rearL = NO.center.clone().addScaledVector(NO.axis, -10.2).add(exitL.clone().sub(NO.center).projectOnPlane(NO.axis));
+  const exit = () => P.root.localToWorld(exitL.clone());
+  const dir = () => NO.axis.clone().applyQuaternion(P.root.quaternion).normalize();
+  fx.add(missile({ path: tau => { const u = Math.max(0, tau - tl); return exit().addScaledVector(dir(), 3 + u * 40 + u * u * 170); }, t0: tl, t1: tl + 4, size: 2.0, smokeLife: 5 }));
+  fx.add((t, f) => {   // 出箱：箱口闪光、箱子后面喷出来的尾焰和一大团烟
     const u = t - tl;
-    if (u < 0 || u > 3) return;
-    const b = exit();
-    if (u < 0.4) f.addGlow(b, 30, new THREE.Color(1, 0.75, 0.45), 6 * (1 - u / 0.4), 1, 0);
-    f.addLight(b.clone().addScaledVector(dir(), 25), new THREE.Color(1, 0.6, 0.3), 30 * Math.exp(-u * 1.5), 260);
-    for (let j = 0; j < 10; j++) {
-      const a = j / 10 * Math.PI * 2, r = 6 + 22 * (1 - Math.exp(-u * 2));
-      f.sprite('puff', P.root.localToWorld(V3(Math.cos(a) * r, 3 + Math.sin(j) * 1.5, 12 + Math.sin(a) * r)), 12 + u * 6, 8 + u * 9, 0.6 * (1 - u / 3), 0, [0.75, 0.72, 0.7], j);
+    if (u < 0 || u > 3.5) return;
+    const b = exit(), r = P.root.localToWorld(rearL.clone()), back = dir().negate();
+    if (u < 0.35) { f.addGlow(b, 26, new THREE.Color(1, 0.75, 0.45), 6 * (1 - u / 0.35), 1, 0); f.addGlow(r, 30, new THREE.Color(1, 0.7, 0.4), 7 * (1 - u / 0.35), 1, 0); }
+    f.addLight(r.clone().addScaledVector(back, 16), new THREE.Color(1, 0.6, 0.3), 9 * Math.exp(-u * 1.5), 260);
+    for (let j = 0; j < 14; j++) {
+      const a = j / 14 * Math.PI * 2, rr = 4 + 26 * (1 - Math.exp(-u * 2.2)) * (0.6 + 0.4 * Math.sin(j * 2.3));
+      const q = r.clone().addScaledVector(back, 6 + 20 * (1 - Math.exp(-u * 3))).add(V3(Math.cos(a) * rr, Math.sin(j * 1.7) * 3 + u * 2, Math.sin(a) * rr));
+      f.sprite('puff', q, 12 + u * 7, 8 + u * 9, 0.62 * (1 - u / 3.5) * smooth(0, 0.06, u), 0, [0.78, 0.75, 0.72], j);
     }
   });
   return {
     update(t) {
-      cam(env, P.root.localToWorld(V3(-18, 3.2, -16)), P.root.localToWorld(V3(0, 12 + smooth(tl, tl + 1.5, t) * 30, 30)), 38);
-      shake(env.camera, t, t > tl ? 1.8 * Math.exp(-(t - tl) * 2) + 0.15 : 0.15, 6, 31);
+      NO.noses[which].meshes.forEach(m => { m.visible = t < tl; });
+      const ax = dir(), base = P.root.localToWorld(NO.center.clone());
+      cam(env, P.root.localToWorld(V3(-17, 3.5, 25)), base.clone().addScaledVector(ax, 30 + smooth(tl, tl + 2, t) * 140), 40);
+      shake(env.camera, t, t > tl ? 1.6 * Math.exp(-(t - tl) * 2) + 0.15 : 0.15, 6, 31);
       return { exposure: 1.15, shadowAt: P.root.position, shadowR: 60, bloom: 1.25 };
     },
     titles: t => [{ text: 'MIM-104 爱国者', x: 0.94, y: 0.84, size: 0.015, font: SANS, align: 'right', spacing: 0.3, a: fadeIO(t, 0.3, 2.8, 0.4, 0.4), color: '#9fb4d8' }],

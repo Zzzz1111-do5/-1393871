@@ -309,3 +309,82 @@ export function hovercraft(tex) {
   B(4, 4.6, 6.5, grey, 10.5, 6.6, -14); B(4.2, 1.2, 6.7, deck, 10.5, 9.0, -14);
   return { root: g, fans, spin(t) { for (const f of fans) f.rotation.z = t * 25; } };
 }
+
+// —— 霹雳-15：弹体、头锥、尾翼、弹体中段一圈深色（4 米长 = 11.2 格，弹径 0.2 米）；弹头朝 −Z ——
+export function pl15() {
+  const g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.45, metalness: 0.3, envMapIntensity: 0.4 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3a3e42, roughness: 0.6, metalness: 0.2, envMapIntensity: 0.3 });
+  const M = (geo, m) => { const x = new THREE.Mesh(geo, m); x.castShadow = true; g.add(x); return x; };
+  M(new THREE.CylinderGeometry(0.29, 0.29, 9.6, 16).rotateX(Math.PI / 2), body).position.z = 0.4;
+  M(new THREE.ConeGeometry(0.29, 1.6, 16).rotateX(-Math.PI / 2), body).position.z = -5.2;
+  M(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16).rotateX(Math.PI / 2), dark).position.z = -1.5;
+  for (let i = 0; i < 4; i++) {
+    const f = M(new THREE.BoxGeometry(0.05, 0.95, 1.3), dark); f.position.set(0, 0, 4.6); f.rotation.z = i * Math.PI / 2 + Math.PI / 4; f.translateY(0.55);
+  }
+  return g;
+}
+// —— 歼-20 主弹舱：两扇门（铰链在外侧、往下翻）、门后的暗色舱井、吊架；照网页版的弹舱位置（门 4.3 米长、1.56 米宽）、机腹高 3.55 格 ——
+export function j20Bay(A) {
+  const Y = 3.5, X = 2.18, Z0 = -0.15, LEN = 12.1;
+  const mDoor = new THREE.MeshStandardMaterial({ color: 0x5e6266, roughness: 0.55, metalness: 0.35, envMapIntensity: 0.35, side: THREE.DoubleSide });
+  const mWell = new THREE.MeshStandardMaterial({ color: 0x08090a, roughness: 0.9, envMapIntensity: 0.05 });
+  const doors = [];
+  for (const s of [1, -1]) {
+    const piv = new THREE.Group(); piv.position.set(s * X, Y, Z0); A.root.add(piv);
+    const d = new THREE.Mesh(new THREE.BoxGeometry(X, 0.08, LEN), mDoor); d.position.set(-s * X / 2, -0.04, 0); d.castShadow = true; piv.add(d);
+    doors.push({ piv, s });
+  }
+  const well = new THREE.Mesh(new THREE.BoxGeometry(2 * X - 0.05, 0.22, LEN - 0.1), mWell); well.position.set(0, Y + 0.02, Z0); A.root.add(well);
+  const m = pl15(); A.root.add(m); m.position.set(0, Y - 0.38, Z0 - 0.3);
+  const arms = [];
+  for (const z of [-2.2, 1.8]) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1, 0.16), mDoor); A.root.add(a); arms.push({ a, z }); }
+  return {
+    missile: m,
+    // k 门开度 0–1，drop 吊架放下多少（格），attached 弹还挂在吊架上没有
+    set(k, drop = 0, attached = true) {
+      for (const d of doors) d.piv.rotation.z = d.s * 1.75 * k;
+      well.visible = k > 0.02;
+      for (const { a, z } of arms) { a.visible = attached && drop > 0.02; a.scale.y = Math.max(0.01, drop); a.position.set(0, Y - drop / 2, Z0 + z); }
+      if (attached) { m.visible = k > 0.15; m.position.set(0, Y - 0.38 - drop, Z0 - 0.3); }
+    },
+  };
+}
+// —— 爱国者：发射箱口外露着的四个弹头和发射箱是同一块网格，切成四块单独的网格（发射了哪一枚就藏哪一枚）——
+//   发射箱轴线、口的位置是离线量的（tools 里按顶点主成分：中心 C、轴 AX，沿轴 6.9 格以外是弹头）；四块按两个侧向坐标的正负分
+export function patriotNoses(V) {
+  const C = new THREE.Vector3(0.09, 13.58, 5.04), AX = new THREE.Vector3(0.005, 0.561, -0.828).normalize();
+  const e1 = new THREE.Vector3().crossVectors(AX, new THREE.Vector3(0, 1, 0)).normalize(), e2 = new THREE.Vector3().crossVectors(e1, AX);
+  V.root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(V.root.matrixWorld).invert();
+  const out = [[], [], [], []], centers = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], cnt = [0, 0, 0, 0];
+  const meshes = [];
+  V.recoil.traverse(o => { if (o.isMesh) meshes.push(o); });
+  for (const mesh of meshes) {
+    mesh.geometry = mesh.geometry.clone();   // 克隆出来的模型和缓存共用网格，先复制一份再切
+    const geo = mesh.geometry, pos = geo.attributes.position;
+    const M = new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
+    const idx = geo.index ? geo.index.array : [...Array(pos.count).keys()];
+    const rest = [], parts = [[], [], [], []];
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i < idx.length; i += 3) {
+      a.fromBufferAttribute(pos, idx[i]).applyMatrix4(M); b.fromBufferAttribute(pos, idx[i + 1]).applyMatrix4(M); c.fromBufferAttribute(pos, idx[i + 2]).applyMatrix4(M);
+      const g = a.clone().add(b).add(c).multiplyScalar(1 / 3).sub(C);
+      if (g.dot(AX) > 6.9) {
+        const k = (g.dot(e1) > 0 ? 2 : 0) + (g.dot(e2) > 0.47 ? 1 : 0);
+        parts[k].push(idx[i], idx[i + 1], idx[i + 2]);
+        centers[k].add(g.add(C)); cnt[k]++;
+      } else rest.push(idx[i], idx[i + 1], idx[i + 2]);
+    }
+    if (rest.length === idx.length) continue;
+    geo.setIndex(rest);
+    parts.forEach((p, k) => {
+      if (!p.length) return;
+      const g2 = geo.clone(); g2.setIndex(p);
+      const n = new THREE.Mesh(g2, mesh.material); n.castShadow = true;
+      mesh.parent.add(n); n.position.copy(mesh.position); n.quaternion.copy(mesh.quaternion); n.scale.copy(mesh.scale);
+      out[k].push(n);
+    });
+  }
+  return { axis: AX, center: C, noses: out.map((ms, k) => ({ meshes: ms, p: cnt[k] ? centers[k].multiplyScalar(1 / cnt[k]) : C.clone(), hide() { for (const m of ms) m.visible = false; } })) };
+}
