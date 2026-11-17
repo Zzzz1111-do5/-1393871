@@ -696,20 +696,24 @@ function Fly.init(G)
   --   空格 / Ctrl 总距：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
   --   A / D 脚蹬：偏航角速度，有惯性；速度上来以后压坡度就会转弯（协调转弯），尾翼让机头顺着来流（风标效应），鼠标看哪边就往哪边压坡度转过去；
   --   平移升力（二十几格每秒以上旋翼效率高一点）、地效（离地一个旋翼直径以内托得更稳）；最高平飞速度、爬升率照型号表
+  local HELI_CAM0 = -0.12   -- 直升机镜头「平常」的俯仰（略往下）：比这更往下看就往前飞
   local function heliPhysics(dt)
     local d = st.d
     if st.out then st.rpm = approach(st.rpm, 72, 9 * dt) else st.rpm = approach(st.rpm, 100, 22 * dt) end   -- 旋翼转起来要四五秒；熄火后靠气流自转，转速掉下来
     local lift = st.rpm >= 92
     local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
+    -- 用户：直升机升降改成 Q / E（Q 升、E 降，空格 / Ctrl 也还能用）；镜头往哪看就往哪飞——往下看机头压下去、惯性往前冲，
+    --   往上看抬头减速；机头跟着镜头转；W / S 前后、A / D 左右平移（侧倾）
     local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
-    local sideIn = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
-    local yawIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
-    local upIn = ((key(Enum.KeyCode.Space) or (touch and touch.up)) and 1 or 0) - ((key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
+    local sideIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
+    local yawIn = 0
+    local upIn = ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.Space) or (touch and touch.up)) and 1 or 0)
+      - ((key(Enum.KeyCode.E) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
     if G.mobile and controls then
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
         if math.abs(mv.Z) > 0.1 then fwdIn = -mv.Z end
-        if math.abs(mv.X) > 0.1 then yawIn = mv.X end
+        if math.abs(mv.X) > 0.1 then yawIn, sideIn = mv.X, 0 end   -- 手机：摇杆左右还是转向
       end
     end
     local GS = GR or 27.5
@@ -724,7 +728,13 @@ function Fly.init(G)
     local agl = st.cf.Position.Y - d.gearH - math.max(g0, 0)
     -- 驾驶杆 → 想要的姿态（俯仰：负的是低头）
     local hold = 1 - smooth(14, 34, spd)   -- 低速：松杆时自动收住飘移
-    local tP = (fwdIn ~= 0) and (-fwdIn * maxT * 0.85) or clamp(vf * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
+    -- 镜头俯仰 → 机头俯仰：比平常（略往下 7°）再往下看多少，机头就压多少（往下看 25° 左右压满），往上看抬头刹车；中间 4° 不动
+    local camT = nil
+    if not G.mobile and not st.ground then
+      local dp = (st.camPitch or HELI_CAM0) - HELI_CAM0
+      if math.abs(dp) > rad(4) then camT = clamp((dp - ((dp > 0) and 1 or -1) * rad(4)) * 2.2, -maxT, maxT * 0.6) end
+    end
+    local tP = (fwdIn ~= 0) and (-fwdIn * maxT * 0.85) or (camT or clamp(vf * 0.018 * hold, -maxT * 0.4, maxT * 0.4))
     local tR = (sideIn ~= 0) and (sideIn * maxT * 0.8) or clamp(-vr * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
     -- 鼠标看向哪边：快的时候压坡度转过去（低速时用脚蹬慢慢把机头转过去）
     local camOff = angDiff(st.yaw, st.camYaw)

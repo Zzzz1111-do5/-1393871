@@ -337,8 +337,8 @@ add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
 add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
   "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · G gear · F eject")
-add("air.helpHeli", "鼠标 瞄准 · W/S 前后 · A/D 转向 · Q/E 平移 · 空格 / Ctrl 升降 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛油箱 · F 下飞机",
-  "Mouse aim · W/S forward/back · A/D turn · Q/E strafe · Space / Ctrl up/down · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · F exit")
+add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· Q 升 / E 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛油箱 · F 下飞机",
+  "Mouse: fly where you look (look down = nose down, go) · Q up / E down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · F exit")
 -- 油量、副油箱（用户：增加油量这个东西并且可以选择挂载副油箱）
 add("air.fuel", "油 {1}%", "FUEL {1}%")
 add("air.fuelP", "油 {1}%", "Fuel {1}%")
