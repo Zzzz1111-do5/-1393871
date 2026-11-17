@@ -159,4 +159,18 @@ if e and e.def.id == "j20" then
     check(wells >= 3, "弹舱里有深色的舱壁（" .. wells .. " 个）")
   end
 end
+print("④ 降落伞：角色带着 Chute 属性（服务器在跳伞时设）就在头顶张开一顶伞，落地收掉")
+if me.Character then
+  me.Character:SetAttribute("Chute", true)
+  R.run(1.2)
+  local m = R.services.Workspace:FindFirstChild("Parachute")
+  local n, hi = 0, -1e9
+  if m then for _, p in ipairs(m:GetChildren()) do n = n + 1 hi = math.max(hi, p.CFrame.Position.Y) end end
+  local hrp = me.Character:FindFirstChild("HumanoidRootPart")
+  check(m ~= nil and n > 20, "张开了一顶伞（" .. n .. " 块）")
+  check(hrp and hi > hrp.Position.Y + 12, string.format("伞在头顶上方（最高处比人高 %.1f 格）", hrp and (hi - hrp.Position.Y) or 0))
+  me.Character:SetAttribute("Chute", false)
+  R.run(0.3)
+  check(R.services.Workspace:FindFirstChild("Parachute") == nil, "落地收掉了")
+end
 T.summary()

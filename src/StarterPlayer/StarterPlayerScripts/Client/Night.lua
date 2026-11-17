@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Night = {}
 
@@ -69,6 +70,63 @@ function Night.init(G)
   end
   G.nvgOn = function() return on end
   G.setNvg = setOn
+
+  ---------------------------------------------------------------- 提示：出生后、坐上飞机或船时夜视没开，屏幕下方淡入一行「按 N 开启夜视」，十秒后淡出（用户：提示一下按 N 开启夜视）
+
+  local hintGui = Instance.new("ScreenGui")
+  hintGui.Name = "NVHint"
+  hintGui.ResetOnSpawn = false
+  hintGui.IgnoreGuiInset = true
+  hintGui.DisplayOrder = 3
+  hintGui.Parent = me:WaitForChild("PlayerGui")
+  local hint = Instance.new("TextLabel")
+  hint.Name = "Hint"
+  hint.AnchorPoint = Vector2.new(0.5, 1)
+  hint.Position = UDim2.new(0.5, 0, 1, -168)
+  hint.Size = UDim2.fromOffset(240, 30)
+  hint.BackgroundColor3 = RGB(10, 12, 12)
+  hint.BackgroundTransparency = 1
+  hint.TextColor3 = RGB(186, 255, 196)
+  hint.TextTransparency = 1
+  hint.Font = Enum.Font.GothamMedium
+  hint.TextSize = 15
+  hint.Visible = false
+  hint.Parent = hintGui
+  local hc = Instance.new("UICorner")
+  hc.CornerRadius = UDim.new(0, 4)
+  hc.Parent = hint
+  local hintUntil, hideAt = 0, nil
+  local function showHint(sec)
+    if on then return end
+    local key = UIS.TouchEnabled and not UIS.KeyboardEnabled and "nvg.hintTouch" or "nvg.hint"
+    hint.Text = (G.T and G.T(key)) or "按 N 开启夜视"
+    hint.Visible = true
+    hintUntil, hideAt = os.clock() + (sec or 10), nil
+    TweenService:Create(hint, TweenInfo.new(0.4), { TextTransparency = 0, BackgroundTransparency = 0.45 }):Play()
+  end
+  local function hideHint()
+    if not hint.Visible or hideAt then return end
+    hintUntil, hideAt = 0, os.clock() + 0.5   -- 淡出半秒后收起
+    TweenService:Create(hint, TweenInfo.new(0.5), { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+  end
+  G.nvgHint = showHint
+  local function onChar(ch)
+    task.delay(2.5, function()   -- 出生、部署界面关掉以后再提示
+      local hum = ch and ch.Parent and ch:FindFirstChildOfClass("Humanoid")
+      if hum and hum.Health > 0 and not on then showHint(10) end
+    end)
+  end
+  me.CharacterAdded:Connect(onChar)
+  if me.Character then onChar(me.Character) end
+  local wasAir = false
+  RunService.Heartbeat:Connect(function()
+    if on then hideHint()
+    elseif hintUntil ~= 0 and os.clock() > hintUntil then hideHint() end
+    if hideAt and os.clock() > hideAt then hint.Visible, hideAt = false, nil end
+    local air = (G.fly ~= nil) or (G.sail ~= nil)   -- 坐上飞机、船：夜视在那里也能开（地面载具里 N 是瞄准镜的，不提示）
+    if air and not wasAir then showHint(8) end
+    wasAir = air
+  end)
 
   -- 队友（真人）头盔后面的红外频闪：夜视里每 0.8 秒闪一下（本地改透明度，别人那边不变）
   local irT = 0

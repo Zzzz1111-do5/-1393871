@@ -45,9 +45,14 @@ if side == "def" then
   check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
   local e0 = tp and T.usePad(me, tp)
   check(e0 ~= nil and e0.driver == nil, "生成了一辆空的 " .. tostring(e0 and e0.def.id))
-  -- 夜视：步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），坐进车里照样开着
+  -- 夜视：出生后屏幕下方提示「按 N 开启夜视」；步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），提示消失；坐进车里照样开着
+  R.run(2)
+  local hintGui = me.PlayerGui:FindFirstChild("NVHint")
+  local hint = hintGui and hintGui:FindFirstChild("Hint")
+  check(hint and hint.Visible and string.find(hint.Text, "N") ~= nil, "出生后提示：" .. tostring(hint and hint.Text))
   T.tap(Enum.KeyCode.N)
-  R.run(0.3)
+  R.run(1)
+  check(hint and not hint.Visible, "开了夜视，提示消失")
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled), "步兵按 N 开夜视：全屏调色、没有镜筒框")

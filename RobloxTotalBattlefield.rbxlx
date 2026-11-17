@@ -3812,6 +3812,8 @@ add("hud.key.back", "退格", "BKSP")
 add("hud.key.enter", "回车", "ENTER")
 add("sight.day", "昼光", "DAY")
 add("sight.nv", "夜视", "NV")
+add("nvg.hint", "按 N 开启夜视", "Press N for night vision")
+add("nvg.hintTouch", "点 NV 开启夜视", "Tap NV for night vision")
 add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
 add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
 add("vw.gun125", "125 毫米炮", "125 mm gun")
@@ -12943,7 +12945,8 @@ return World
 --   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂 · Fly 飞机、直升机的样子和驾驶（AirModels 拼零件）·
 --   ShipView 舰艇的样子 · Sail 开船（车钟、舵、舰炮、反舰导弹）· Hangar 挂载编辑器 ·
 --   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）·
---   Depot 地图里的载具生成点（牌子、按键文字、飞机生成前弹挂载界面）· Night 夜视仪（N）· Faction 选阵营（解放军 / 美军）
+--   Depot 地图里的载具生成点（牌子、按键文字、飞机生成前弹挂载界面）· Night 夜视仪（N）· Faction 选阵营（解放军 / 美军）·
+--   Chute 跳伞的人头顶的降落伞
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -12959,7 +12962,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "Chute", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -12995,7 +12998,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
-  { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end } }
+  { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
+  { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end } }
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)
@@ -14194,6 +14198,163 @@ return AM
         </Item>
         <Item class="ModuleScript" referent="57">
           <Properties>
+            <string name="Name">Chute</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
+--   头顶张开一顶圆伞（用户：跳伞没有降落伞）——10 片伞衣两种颜色相间、顶上一圈顶孔、六根伞绳连到肩上；开伞 0.6 秒从小到大张开，空中轻轻摆，
+--   落地（Chute 变回 false）收掉。别人的伞也画（每个客户端看所有玩家的角色属性）；零件不碰撞、不挡射线，每帧一次 BulkMoveTo
+local Players = game:GetService("Players")
+
+local Chute = {}
+
+function Chute.init(G)
+  local RGB, V, CF = Color3.fromRGB, Vector3.new, CFrame.new
+  local R = 11       -- 伞衣半径（格）：圆伞展开直径约 8 米
+  local HC = 4.2     -- 伞衣顶比边缘高多少
+  local UP = 15      -- 伞衣边缘比人的身体中心高多少
+  local N = 10       -- 伞衣片数
+  local OPEN = 0.6   -- 开伞要几秒
+  local live = {}    -- [角色] = { parts, rels（伞衣坐标里的样子）, lines, t0 }
+
+  local function mk(cls, size, color, mat)
+    local p = Instance.new(cls)
+    p.Size = size
+    p.Color = color
+    p.Material = mat or Enum.Material.Fabric
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    return p
+  end
+
+  -- 一个三角形（a、b、c，伞衣坐标）用两块楔块拼：返回 { 零件, 相对 CFrame } ×2（同 AirModels 拼机翼的做法）
+  local function tri(list, a, b, c, th, color)
+    local ab, ac, bc = b - a, c - a, c - b
+    local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+    if abd > acd and abd > bcd then c, a = a, c
+    elseif acd > bcd and acd > abd then a, b = b, a end
+    ab, ac, bc = b - a, c - a, c - b
+    local right = ac:Cross(ab)
+    if right.Magnitude < 1e-6 or bc.Magnitude < 1e-6 then return end
+    right = right.Unit
+    local up = bc:Cross(right).Unit
+    local back = bc.Unit
+    local height = math.abs(ab:Dot(up))
+    local l0, l1 = math.abs(ab:Dot(back)), math.abs(ac:Dot(back))
+    if height < 0.05 then return end
+    if l0 > 0.05 then table.insert(list, { mk("WedgePart", V(th, height, l0), color), CFrame.fromMatrix((a + b) / 2, right, up, back) }) end
+    if l1 > 0.05 then table.insert(list, { mk("WedgePart", V(th, height, l1), color), CFrame.fromMatrix((a + c) / 2, -right, up, -back) }) end
+  end
+
+  local function build(ch, side)
+    local c1 = (side == "def") and RGB(186, 168, 126) or RGB(98, 116, 76)    -- 美军沙色、解放军橄榄绿
+    local c2 = c1:Lerp(Color3.new(1, 1, 1), 0.18)
+    local list = {}
+    local rim = {}
+    for i = 0, N - 1 do
+      local a = i / N * math.pi * 2
+      rim[i] = V(math.cos(a) * R, 0, math.sin(a) * R)
+    end
+    local mid = {}
+    for i = 0, N - 1 do   -- 伞衣中间一圈：往里收、往上鼓（伞衣是圆顶，不是尖锥）
+      local a = (i + 0.5) / N * math.pi * 2
+      mid[i] = V(math.cos(a) * R * 0.62, HC * 0.78, math.sin(a) * R * 0.62)
+    end
+    local top = V(0, HC, 0)
+    for i = 0, N - 1 do
+      local j = (i + 1) % N
+      local col = (i % 2 == 0) and c1 or c2
+      tri(list, rim[i], rim[j], mid[i], 0.12, col)
+      tri(list, rim[j], mid[j], mid[i], 0.12, col)
+      tri(list, mid[i], mid[j], top, 0.12, col)
+    end
+    local vent = mk("Part", V(0.15, R * 0.28, R * 0.28), RGB(222, 222, 214))   -- 顶孔一圈浅色
+    vent.Shape = Enum.PartType.Cylinder
+    table.insert(list, { vent, CF(0, HC + 0.05, 0) * CFrame.Angles(0, 0, math.pi / 2) })
+    local lines = {}
+    for k = 0, 5 do
+      local p = mk("Part", V(0.08, 0.08, 1), RGB(200, 200, 190), Enum.Material.SmoothPlastic)
+      p.CastShadow = false
+      lines[k + 1] = { p = p, rim = rim[math.floor(k * N / 6)] }
+    end
+    local model = Instance.new("Model")
+    model.Name = "Parachute"
+    for _, x in ipairs(list) do x[1].Parent = model end
+    for _, l in ipairs(lines) do l.p.Parent = model end
+    model.Parent = workspace
+    return { model = model, list = list, lines = lines, t0 = os.clock(), side = side }
+  end
+
+  local function remove(ch)
+    local L = live[ch]
+    if L then
+      L.model:Destroy()
+      live[ch] = nil
+    end
+  end
+
+  local plist, clist = {}, {}
+  function G.stepChute(dt)
+    local now = os.clock()
+    local seen = {}
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      if ch and ch:GetAttribute("Chute") == true then
+        local hrp = ch:FindFirstChild("HumanoidRootPart")
+        if hrp then
+          seen[ch] = true
+          local L = live[ch]
+          if not L then
+            L = build(ch, pl:GetAttribute("Side"))
+            live[ch] = L
+          end
+          -- 开伞：0.6 秒从收着（贴着背）张开；张开以后轻轻摆
+          local k = math.clamp((now - L.t0) / OPEN, 0, 1)
+          local e = 1 - (1 - k) * (1 - k)
+          local s = 0.12 + 0.88 * e
+          local look = hrp.CFrame.LookVector
+          local yaw = math.atan2(-look.X, -look.Z)
+          local t = now - L.t0
+          local base = CF(hrp.Position + V(0, 1.5 + UP * e, 0)) * CFrame.Angles(0, yaw, 0)
+            * CFrame.Angles(math.sin(t * 0.9) * 0.07 * e, 0, math.cos(t * 0.7) * 0.06 * e)
+          for _, x in ipairs(L.list) do
+            local rel = x[2]
+            plist[#plist + 1] = x[1]
+            clist[#clist + 1] = base * (CF(rel.Position * s) * (rel - rel.Position))
+          end
+          -- 伞绳：伞衣边缘 → 肩上
+          local sh = hrp.CFrame * CF(0, 1.3, 0)
+          for i, l in ipairs(L.lines) do
+            local a = (base * CF(l.rim * s)).Position
+            local b = (sh * CF((i % 2 == 0) and 0.7 or -0.7, 0, 0)).Position
+            local len = (b - a).Magnitude
+            if math.abs(l.p.Size.Z - len) > 0.05 then l.p.Size = V(0.08, 0.08, math.max(0.1, len)) end
+            plist[#plist + 1] = l.p
+            clist[#clist + 1] = CFrame.lookAt((a + b) / 2, b)
+          end
+        end
+      end
+    end
+    for ch in pairs(live) do
+      if not seen[ch] then remove(ch) end
+    end
+    if #plist > 0 then
+      workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+      table.clear(plist)
+      table.clear(clist)
+    end
+  end
+  G.chuteCount = function()
+    local n = 0
+    for _ in pairs(live) do n += 1 end
+    return n
+  end
+end
+
+return Chute
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="58">
+          <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
 --   按语言写按键文字（「生成」+ 型号名），只给自己队的生成点开按键；柱子上方一块小牌子：型号名、类别、名额 / 冷却（G.S.vehAvail）
@@ -14333,7 +14494,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -14982,7 +15143,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -15618,7 +15779,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -15823,7 +15984,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -16822,7 +16983,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -17140,7 +17301,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -17629,7 +17790,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -17761,7 +17922,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -18299,7 +18460,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -18712,7 +18873,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -19124,7 +19285,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -19354,7 +19515,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -19708,7 +19869,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -19720,6 +19881,7 @@ local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Night = {}
 
@@ -19782,6 +19944,63 @@ function Night.init(G)
   end
   G.nvgOn = function() return on end
   G.setNvg = setOn
+
+  ---------------------------------------------------------------- 提示：出生后、坐上飞机或船时夜视没开，屏幕下方淡入一行「按 N 开启夜视」，十秒后淡出（用户：提示一下按 N 开启夜视）
+
+  local hintGui = Instance.new("ScreenGui")
+  hintGui.Name = "NVHint"
+  hintGui.ResetOnSpawn = false
+  hintGui.IgnoreGuiInset = true
+  hintGui.DisplayOrder = 3
+  hintGui.Parent = me:WaitForChild("PlayerGui")
+  local hint = Instance.new("TextLabel")
+  hint.Name = "Hint"
+  hint.AnchorPoint = Vector2.new(0.5, 1)
+  hint.Position = UDim2.new(0.5, 0, 1, -168)
+  hint.Size = UDim2.fromOffset(240, 30)
+  hint.BackgroundColor3 = RGB(10, 12, 12)
+  hint.BackgroundTransparency = 1
+  hint.TextColor3 = RGB(186, 255, 196)
+  hint.TextTransparency = 1
+  hint.Font = Enum.Font.GothamMedium
+  hint.TextSize = 15
+  hint.Visible = false
+  hint.Parent = hintGui
+  local hc = Instance.new("UICorner")
+  hc.CornerRadius = UDim.new(0, 4)
+  hc.Parent = hint
+  local hintUntil, hideAt = 0, nil
+  local function showHint(sec)
+    if on then return end
+    local key = UIS.TouchEnabled and not UIS.KeyboardEnabled and "nvg.hintTouch" or "nvg.hint"
+    hint.Text = (G.T and G.T(key)) or "按 N 开启夜视"
+    hint.Visible = true
+    hintUntil, hideAt = os.clock() + (sec or 10), nil
+    TweenService:Create(hint, TweenInfo.new(0.4), { TextTransparency = 0, BackgroundTransparency = 0.45 }):Play()
+  end
+  local function hideHint()
+    if not hint.Visible or hideAt then return end
+    hintUntil, hideAt = 0, os.clock() + 0.5   -- 淡出半秒后收起
+    TweenService:Create(hint, TweenInfo.new(0.5), { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+  end
+  G.nvgHint = showHint
+  local function onChar(ch)
+    task.delay(2.5, function()   -- 出生、部署界面关掉以后再提示
+      local hum = ch and ch.Parent and ch:FindFirstChildOfClass("Humanoid")
+      if hum and hum.Health > 0 and not on then showHint(10) end
+    end)
+  end
+  me.CharacterAdded:Connect(onChar)
+  if me.Character then onChar(me.Character) end
+  local wasAir = false
+  RunService.Heartbeat:Connect(function()
+    if on then hideHint()
+    elseif hintUntil ~= 0 and os.clock() > hintUntil then hideHint() end
+    if hideAt and os.clock() > hideAt then hint.Visible, hideAt = false, nil end
+    local air = (G.fly ~= nil) or (G.sail ~= nil)   -- 坐上飞机、船：夜视在那里也能开（地面载具里 N 是瞄准镜的，不提示）
+    if air and not wasAir then showHint(8) end
+    wasAir = air
+  end)
 
   -- 队友（真人）头盔后面的红外频闪：夜视里每 0.8 秒闪一下（本地改透明度，别人那边不变）
   local irT = 0
@@ -19878,7 +20097,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -20055,7 +20274,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -20520,7 +20739,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -21052,7 +21271,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的树林、灌木、石头、草丛、花丛：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -21407,7 +21626,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -22138,7 +22357,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -22738,7 +22957,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -22851,7 +23070,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -23777,7 +23996,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -24275,7 +24494,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -24697,13 +24916,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="81">
+  <Item class="Workspace" referent="82">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="82">
+  <Item class="Lighting" referent="83">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
