@@ -7,7 +7,8 @@ function Nav.init(G)
   local Map = G.Map
   local V = Vector3.new
   local CELL = 40
-  local X0, Z0, X1, Z1 = -3200, -3000, 3200, 1200   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
+  local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
+  local X0, Z0, X1, Z1 = -3200 * K, -3000 * K, 3200 * K, 1200 * K   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
   local MAXSLOPE = 0.9   -- 比这陡（约 42°）走不了
   local H = {}           -- [格号] = 高度（只记陆地）

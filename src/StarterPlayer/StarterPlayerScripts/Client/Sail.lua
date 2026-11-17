@@ -148,7 +148,7 @@ function Sail.init(G)
     local pts = { tip, np + f * dir * (d.L * 0.32) + r * (d.W * 0.45), np + f * dir * (d.L * 0.32) - r * (d.W * 0.45) }
     for _, p in ipairs(pts) do
       if not deep(p, d) then return "shallow" end
-      if math.abs(p.X) > Map.R + 1400 or math.abs(p.Z) > Map.R + 1400 then return "edge" end
+      if math.abs(p.X) > Map.SEA_LIM or math.abs(p.Z) > Map.SEA_LIM then return "edge" end
     end
     -- 码头、登陆平台、舰队（地图零件）：从船头往前打一小段射线
     local res = workspace:Raycast(tip + V(0, 2.5, 0) - f * dir * 2, f * dir * 6, mapParams)

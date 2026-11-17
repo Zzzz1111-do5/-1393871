@@ -278,21 +278,6 @@ function World.terrain(onProgress)
   return total, #list
 end
 
--- 地形范围外的远海：一圈平面（从岸上、飞机上看得到海一直铺到天边）
-local function farSea(f)
-  local R, S = Map.R, 2048
-  for x = -R - 2 * S, R + S, S do
-    for z = -R - 2 * S, R + S, S do
-      if not (x >= -R and x < R and z >= -R and z < R) then
-        local p = part(f, V(S, 1, S), CF(x + S / 2, -0.6, z + S / 2), RGB(30, 104, 128), MAT.Glass, nil, false)
-        p.Transparency = 0.05
-        p.Reflectance = 0.25
-        p.CastShadow = false
-      end
-    end
-  end
-end
-
 ---------------------------------------------------------------- 小建筑
 
 local function sandbags(f, c, r, a0, a1, h)   -- 一圈 / 一段沙袋墙（圆心 c、半径 r、从角 a0 到 a1）
@@ -581,7 +566,7 @@ function World.build(G)
   local deco = folder("Scenery", root)
   local n, chunks = World.terrain(function(p) G.worldProgress = p end)
   G.terrainVoxels, G.terrainChunks = n, chunks
-  G.try("远海", farSea, folder("FarSea", root))
+  -- 远海改在客户端跟着镜头铺（Scenery.lua）：地图放大以后服务器这一圈不够远，飞机飞出去看得到海的尽头
   G.try("机场", airfield, deco, Map.AIRFIELD, "def")
   G.try("港口镇", portTown, deco)
   G.try("指挥所", commandPost, deco)

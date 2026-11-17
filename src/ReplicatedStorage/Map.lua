@@ -1,5 +1,7 @@
 -- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
---   坐标：X 东西（东为正），Z 南北（北是 −Z），海平面 Y = 0；地形范围 ±4096 格，再往外是一块平面当远海
+--   坐标：X 东西（东为正），Z 南北（北是 −Z），海平面 Y = 0；地形范围 ±Map.R 格，再往外的远海是客户端跟着镜头铺的平面（Scenery.lua）
+--   整张图按 K 放大（用户：地图还有海洋过于小了）：下面的数都是放大前的「设计尺寸」，水平方向的位置、大小、起伏的波长都乘 K，高度乘 HK；
+--     房子、工事、车场这些人的尺度的东西不放大，只是摆的位置跟着锚点（据点、海滩、机场……）走
 --   主岛「棕榈岛」照网页版《暗剑》js/isle.js 的虚构热带岛：南岸宽而平缓（四处海滩）、东西两个岬角、西南向南开口的 U 形港湾（湾底港口镇）、
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
@@ -12,25 +14,30 @@ local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t
 local function lerp(a, b, t) return a + (b - a) * t end
 Map.clamp, Map.smooth, Map.lerp = clamp, smooth, lerp
 
-Map.R = 4096           -- 地形范围 ±R
+local K, HK = 1.5, 1.2  -- 水平放大、高度放大（坡度变成原来的 HK / K）
+Map.K, Map.HK = K, HK
+Map.R = 6144           -- 地形范围 ±R（2048 的倍数：海水按 2048 一块灌）
+Map.PLAY = 14336       -- 飞机的作战区 ±PLAY（再往外自动掉头）；约 ±5 公里
+Map.SEA_LIM = 10240    -- 船能开到 ±SEA_LIM
 Map.SEA_DEPTH = 12     -- 远海水深（格）
-Map.MAXH = 290         -- 高度系数 1 对应多少格（主峰约 250）
+Map.MAXH = 290 * HK    -- 高度系数 1 对应多少格（主峰约 300）
 Map.RES = 4            -- 地形体素边长
 
 ---------------------------------------------------------------- 主岛
 
-local MI = { x = 0, z = -1500, hs = 1500, S = 800, N = 760 }   -- 中心、东西半宽、南岸 / 北岸离中线最远多少
+local MI = { x = 0, z = -1500 * K, hs = 1500 * K, S = 800 * K, N = 760 * K }   -- 中心、东西半宽、南岸 / 北岸离中线最远多少
 Map.MAIN = MI
 local PH = { 0.7, 2.1, 4.0, 1.3, 5.2, 3.3, 0.4, 2.8, 4.6, 1.9, 3.7, 5.9 }   -- 起伏的相位（网页版按种子随机，这里定死：每局一样）
-local BAY = { x = -495, w = 120, d = 320 }   -- 港湾：中心、半宽、伸进岛里多深
-local CAPES = { { x = -1110, ext = 150, w = 105 }, { x = 1200, ext = 130, w = 95 } }   -- 南岸东西两个岬角：伸出多远、半宽
+local BAY = { x = -495 * K, w = 120 * K, d = 320 * K }   -- 港湾：中心、半宽、伸进岛里多深
+local CAPES = { { x = -1110 * K, ext = 150 * K, w = 105 * K }, { x = 1200 * K, ext = 130 * K, w = 95 * K } }   -- 南岸东西两个岬角：伸出多远、半宽
 Map.BAY = BAY
+Map.CAPES = CAPES
 
 local function southRaw(x)
   local u = (x - MI.x) / MI.hs
   if abs(u) >= 1 then return nil end
   local f = (1 - abs(u) ^ 3.5) ^ 0.45   -- 南岸正面宽而平缓（能登陆的岸段长），东西两头陡收
-  local c = MI.S * f + f * (35 * sin(x / 155 + PH[1]) + 14 * sin(x / 48 + PH[2]) + 6 * sin(x / 21 + PH[3]))
+  local c = MI.S * f + f * K * (35 * sin(x / (155 * K) + PH[1]) + 14 * sin(x / (48 * K) + PH[2]) + 6 * sin(x / (21 * K) + PH[3]))
   for _, k in ipairs(CAPES) do c += k.ext * f * exp(-((x - k.x) / k.w) ^ 2) end
   local q = (x - BAY.x) / BAY.w
   c -= BAY.d * exp(-((q * q) ^ 1.6))   -- U 形湾：湾底平、湾口不收窄
@@ -40,7 +47,7 @@ local function northRaw(x)
   local u = (x - MI.x) / MI.hs
   if abs(u) >= 1 then return nil end
   local g = (1 - abs(u) ^ 3) ^ 0.5
-  local c = MI.N * g + g * (30 * sin(x / 140 + PH[4]) + 16 * sin(x / 53 + PH[5]) + 7 * sin(x / 19 + PH[6]))
+  local c = MI.N * g + g * K * (30 * sin(x / (140 * K) + PH[4]) + 16 * sin(x / (53 * K) + PH[5]) + 7 * sin(x / (19 * K) + PH[6]))
   return MI.z - c
 end
 
@@ -67,11 +74,11 @@ function Map.coastN(x) return coastLookup(cN, x) end   -- 北岸线
 
 -- 南岸四处海滩（避开港湾、岬角）；东北岸一处侧翼海滩
 Map.BEACHES = {
-  { id = "red", x0 = -980, x1 = -820, color = Color3.fromRGB(215, 70, 60) },
-  { id = "white", x0 = -200, x1 = -40, color = Color3.fromRGB(235, 235, 235) },
-  { id = "blue", x0 = 250, x1 = 410, color = Color3.fromRGB(70, 130, 230) },
-  { id = "gold", x0 = 690, x1 = 850, color = Color3.fromRGB(235, 190, 60) },
-  { id = "flank", x0 = 820, x1 = 960, north = true, color = Color3.fromRGB(150, 110, 220) },
+  { id = "red", x0 = -980 * K, x1 = -820 * K, color = Color3.fromRGB(215, 70, 60) },
+  { id = "white", x0 = -200 * K, x1 = -40 * K, color = Color3.fromRGB(235, 235, 235) },
+  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(70, 130, 230) },
+  { id = "gold", x0 = 690 * K, x1 = 850 * K, color = Color3.fromRGB(235, 190, 60) },
+  { id = "flank", x0 = 820 * K, x1 = 960 * K, north = true, color = Color3.fromRGB(150, 110, 220) },
 }
 for _, b in ipairs(Map.BEACHES) do
   b.cx = (b.x0 + b.x1) / 2
@@ -80,36 +87,36 @@ for _, b in ipairs(Map.BEACHES) do
 end
 local function beachAt(x, north)
   for _, b in ipairs(Map.BEACHES) do
-    if (b.north == true) == (north == true) and x >= b.x0 - 25 and x <= b.x1 + 25 then return b end
+    if (b.north == true) == (north == true) and x >= b.x0 - 25 * K and x <= b.x1 + 25 * K then return b end
   end
   return nil
 end
 Map.beachAt = beachAt
 
-local function ridgeZ(x) return MI.z - 230 + 65 * sin(x / 260 + PH[7]) + 30 * sin(x / 85 + PH[8]) end
+local function ridgeZ(x) return MI.z + K * (-230 + 65 * sin(x / (260 * K) + PH[7]) + 30 * sin(x / (85 * K) + PH[8])) end
 Map.ridgeZ = ridgeZ
 local HILLS = {
-  { x = -420, z = MI.z - 450, r = 300, h = 0.95 },   -- 西北主峰
-  { x = -760, z = MI.z - 90, r = 250, h = 0.5 },
-  { x = 470, z = MI.z - 200, r = 270, h = 0.5 },
-  { x = 1060, z = MI.z - 330, r = 190, h = 0.4 },
+  { x = -420 * K, z = MI.z - 450 * K, r = 300 * K, h = 0.95 },   -- 西北主峰
+  { x = -760 * K, z = MI.z - 90 * K, r = 250 * K, h = 0.5 },
+  { x = 470 * K, z = MI.z - 200 * K, r = 270 * K, h = 0.5 },
+  { x = 1060 * K, z = MI.z - 330 * K, r = 190 * K, h = 0.4 },
 }
 
 -- 机场（守方，东部沿海平原，跑道东西向）、指挥所（山脊北面）、后方营地（北岸，不能占）、港口镇（湾底）
-local afX = 780
-Map.AIRFIELD = { x = afX, z = (Map.coastS(afX) or 0) - 470, len = 560, wid = 44, rot = 0 }
-local AFP = { x = afX, z = Map.AIRFIELD.z - 40 }   -- 机场一带是一片低平的沿海平原（mainNatural 里压低）
-Map.COMMAND = { x = 260, z = ridgeZ(260) - 230 }
-Map.CAMP = { x = 140, z = (Map.coastN(140) or 0) + 120 }
-Map.PORT = { x = BAY.x, z = (Map.coastS(BAY.x) or 0) - 70 }
+local afX = 780 * K
+Map.AIRFIELD = { x = afX, z = (Map.coastS(afX) or 0) - 470 * K, len = 560 * K, wid = 44, rot = 0 }   -- 跑道跟着放大（约 300 米），宽度不变
+local AFP = { x = afX, z = Map.AIRFIELD.z - 40 * K }   -- 机场一带是一片低平的沿海平原（mainNatural 里压低）
+Map.COMMAND = { x = 260 * K, z = ridgeZ(260 * K) - 230 * K }
+Map.CAMP = { x = 140 * K, z = (Map.coastN(140 * K) or 0) + 120 * K }
+Map.PORT = { x = BAY.x, z = (Map.coastS(BAY.x) or 0) - 70 * K }
 
 ---------------------------------------------------------------- 小岛
 
 local ISLES = {
-  { id = "outpost", x = 150, z = 500, a = 230, b = 170, h = 34, ph = 1.1 },   -- 前哨岛：离攻方舰队最近
-  { id = "lighthouse", x = 2500, z = -300, a = 300, b = 230, h = 62, ph = 2.7 },   -- 灯塔岛（东）
-  { id = "westreef", x = -2500, z = -200, a = 270, b = 220, h = 46, ph = 4.2 },   -- 西礁岛：岸防炮台
-  { id = "afield", x = 0, z = 3200, a = 620, b = 230, h = 6, ph = 0.3, flat = true },   -- 攻方机场岛：平的
+  { id = "outpost", x = 150 * K, z = 500 * K, a = 230 * K, b = 170 * K, h = 34 * HK, ph = 1.1 },   -- 前哨岛：离攻方舰队最近
+  { id = "lighthouse", x = 2500 * K, z = -300 * K, a = 300 * K, b = 230 * K, h = 62 * HK, ph = 2.7 },   -- 灯塔岛（东）
+  { id = "westreef", x = -2500 * K, z = -200 * K, a = 270 * K, b = 220 * K, h = 46 * HK, ph = 4.2 },   -- 西礁岛：岸防炮台
+  { id = "afield", x = 0, z = 3200 * K, a = 620 * K, b = 230 * K, h = 6, ph = 0.3, flat = true },   -- 攻方机场岛：平的
 }
 Map.ISLES = ISLES
 for _, I in ipairs(ISLES) do Map[string.upper(I.id)] = I end
@@ -124,20 +131,20 @@ Map.isleRad = isleRad
 local function isleD(I, x, z)
   local dx, dz = x - I.x, z - I.z
   local rho = sqrt(dx * dx + dz * dz)
-  if rho > I.a * 1.3 + 400 then return -1e9, 1, rho end
+  if rho > I.a * 1.3 + 400 * K then return -1e9, 1, rho end
   local R = isleRad(I, math.atan2(dz, dx))
   return R - rho, R, rho
 end
 
 -- 5 个据点：A 前哨岛、B 灯塔岛、C 港口镇、D 机场、E 指挥所（开局都归守方）
 Map.POINTS = {
-  { id = "A", x = 150, z = 500, isle = "outpost" },
-  { id = "B", x = 2480, z = -320, isle = "lighthouse" },
+  { id = "A", x = 150 * K, z = 500 * K, isle = "outpost" },
+  { id = "B", x = 2480 * K, z = -320 * K, isle = "lighthouse" },
   { id = "C", x = Map.PORT.x, z = Map.PORT.z },
-  { id = "D", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z - 80 },   -- 机场北面的停机坪、塔台一带
+  { id = "D", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z - 80 * K },   -- 机场北面的停机坪、塔台一带
   { id = "E", x = Map.COMMAND.x, z = Map.COMMAND.z },
 }
-Map.POINT_R = 70   -- 据点半径
+Map.POINT_R = 80   -- 据点半径
 
 -- 登陆点：主岛的 5 处海滩 + 前哨岛、灯塔岛的南岸（登陆艇从南边冲上去）；攻方选「抢滩」出生、机器人坐艇都按它
 Map.LANDINGS = {}
@@ -155,7 +162,7 @@ end
 -- 这一点在哪块陆地上：小岛编号，或者 "main"（主岛；海里也算主岛）
 function Map.landOf(x, z)
   for _, I in ipairs(ISLES) do
-    if (isleD(I, x, z)) > -80 then return I.id end
+    if (isleD(I, x, z)) > -80 * K then return I.id end
   end
   return "main"
 end
@@ -163,14 +170,14 @@ for _, p in ipairs(Map.POINTS) do p.land = p.isle or "main" end
 
 -- 攻方舰队（固定平台，打不掉）、机场岛跑道
 Map.FLEET = {
-  { kind = "carrier", x = -420, z = 2250, rot = 0 },   -- 航母（福建舰）
-  { kind = "lhd", x = 330, z = 2150, rot = 0 },   -- 两栖攻击舰（075）
-  { kind = "lst", x = -1000, z = 2050, rot = 0 },   -- 登陆舰（072A）
-  { kind = "lst", x = 950, z = 2050, rot = 0 },
+  { kind = "carrier", x = -420 * K, z = 2250 * K, rot = 0 },   -- 航母（福建舰）
+  { kind = "lhd", x = 330 * K, z = 2150 * K, rot = 0 },   -- 两栖攻击舰（075）
+  { kind = "lst", x = -1000 * K, z = 2050 * K, rot = 0 },   -- 登陆舰（072A）
+  { kind = "lst", x = 950 * K, z = 2050 * K, rot = 0 },
 }
-Map.AFIELD2 = { x = 0, z = 3200, len = 900, wid = 50, rot = 0 }
+Map.AFIELD2 = { x = 0, z = 3200 * K, len = 900 * K, wid = 50, rot = 0 }
 -- 登陆平台：舰队前面一块浮在海上的大平台（攻方地面载具的生成点在两侧水面：车站在气垫艇上，自己开去哪个海滩都行，冲上岸艇自己回去）
-Map.BARGE = { x = -40, z = 1800, W = 120, L = 360, top = 3.5 }
+Map.BARGE = { x = -40 * K, z = 1800 * K, W = 120, L = 360, top = 3.5 }
 
 ---------------------------------------------------------------- 压平的场地
 
@@ -189,24 +196,24 @@ local function mainNatural(x, z)
   local d = min(dS, dN)   -- 离岸（南北方向量；岛东西两头偏小一点，没关系）
   if d <= 0 then return nil, d, dS, dN end
   local u = (x - MI.x) / MI.hs
-  local e = 0.06 + min(0.18, d / 1500)
-  e += 0.3 * exp(-((z - ridgeZ(x)) ^ 2) / 22500) * smooth(0, 0.5, 1 - abs(u)) * (1 - 0.75 * exp(-((x - 180) / 110) ^ 2))   -- 中央山脊，偏东一个山口
+  local e = 0.06 + min(0.18, d / (1500 * K))
+  e += 0.3 * exp(-((z - ridgeZ(x)) ^ 2) / (22500 * K * K)) * smooth(0, 0.5, 1 - abs(u)) * (1 - 0.75 * exp(-((x - 180 * K) / (110 * K)) ^ 2))   -- 中央山脊，偏东一个山口
   for _, h in ipairs(HILLS) do e += h.h * exp(-((x - h.x) ^ 2 + (z - h.z) ^ 2) / (2 * h.r * h.r)) end
   local bS = beachAt(x, false)
-  local headland = not bS and not (abs(x - BAY.x) < BAY.w + 60) and (abs(x - CAPES[1].x) < CAPES[1].w * 1.2 or abs(x - CAPES[2].x) < CAPES[2].w * 1.2)
-  if headland then e += 0.14 * exp(-((dS - 35) ^ 2) / 2250) end   -- 岬角：岸边陡起的崖顶
-  e += noise(x / 300, z / 300, 1.37) * 0.16 + noise(x / 110, z / 110, 7.1) * 0.06   -- 起伏
-  e *= lerp(0.4, 1, smooth(20, 325, d))   -- 沿海平原
+  local headland = not bS and not (abs(x - BAY.x) < BAY.w + 60 * K) and (abs(x - CAPES[1].x) < CAPES[1].w * 1.2 or abs(x - CAPES[2].x) < CAPES[2].w * 1.2)
+  if headland then e += 0.14 * exp(-((dS - 35 * K) ^ 2) / (2250 * K * K)) end   -- 岬角：岸边陡起的崖顶
+  e += noise(x / (300 * K), z / (300 * K), 1.37) * 0.16 + noise(x / (110 * K), z / (110 * K), 7.1) * 0.06   -- 起伏
+  e *= lerp(0.4, 1, smooth(20 * K, 325 * K, d))   -- 沿海平原
   do   -- 东部沿海平原（机场）：一大片低平地（往一个平的高度抹），往外慢慢抬起来
-    local qx, qz = max(0, abs(x - AFP.x) - 330), max(0, abs(z - AFP.z) - 160)
-    e = lerp(0.075, e, smooth(40, 520, sqrt(qx * qx + qz * qz)))
+    local qx, qz = max(0, abs(x - AFP.x) - 330 * K), max(0, abs(z - AFP.z) - 160 * K)
+    e = lerp(0.075, e, smooth(40 * K, 520 * K, sqrt(qx * qx + qz * qz)))
   end
-  if bS and dS < 160 then e *= lerp(0.35, 1, smooth(15, 120, dS)) end   -- 海滩后方平缓
+  if bS and dS < 160 * K then e *= lerp(0.35, 1, smooth(15 * K, 120 * K, dS)) end   -- 海滩后方平缓
   local bN = beachAt(x, true)
-  if bN and dN < 160 then e *= lerp(0.35, 1, smooth(15, 120, dN)) end
+  if bN and dN < 160 * K then e *= lerp(0.35, 1, smooth(15 * K, 120 * K, dN)) end
   e = clamp(1 - exp(-1.35 * max(0, e)), 0, 1)   -- 软压缩：高处越来越缓，不会削成平顶台地
   local y = e * Map.MAXH
-  local edge = ((bS and dS < dN) or (bN and dN <= dS)) and 70 or (headland and dS < dN and 18 or 45)
+  local edge = (((bS and dS < dN) or (bN and dN <= dS)) and 70 or (headland and dS < dN and 18 or 45)) * K
   return y * smooth(0, edge, d) + 0.6, d, dS, dN
 end
 
@@ -215,11 +222,11 @@ local function isleNatural(I, x, z)
   if d <= 0 then return nil, d end
   local y
   if I.flat then
-    y = I.h * smooth(0, 60, d)
+    y = I.h * smooth(0, 60 * K, d)
   else
     local k = clamp(rho / R, 0, 1)
-    y = I.h * (1 - k * k) ^ 0.8 + (noise(x / 90, z / 90, I.ph * 3) * 0.5) * I.h * 0.25 * smooth(0, 80, d)
-    y *= smooth(0, 40, d)
+    y = I.h * (1 - k * k) ^ 0.8 + (noise(x / (90 * K), z / (90 * K), I.ph * 3) * 0.5) * I.h * 0.25 * smooth(0, 80 * K, d)
+    y *= smooth(0, 40 * K, d)
   end
   return max(y, 0) + 0.6, d
 end
@@ -295,11 +302,11 @@ end
 local function flatHere(x, z, r, r2, yMin)
   addFlat(x, z, r, r2, max(yMin or 3, avgNatural(x, z, r)))
 end
-for _, p in ipairs(Map.POINTS) do flatHere(p.x, p.z, 55, 110) end
-do local A = Map.AIRFIELD addRect(A.x, A.z - 40, A.len / 2 + 50, 120, 170, max(4, avgNatural(A.x, A.z - 40, 200))) end   -- 跑道 + 北面停机坪
-do local C = Map.CAMP addRect(C.x, C.z + 15, 200, 85, 120, max(3, avgNatural(C.x, C.z, 70))) end   -- 营地：帐篷、营房，南面一排车场、北面直升机停机坪（Depots.lua）
-flatHere(Map.PORT.x, Map.PORT.z, 80, 190)
-addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70, 60, 6)
+for _, p in ipairs(Map.POINTS) do flatHere(p.x, p.z, 55 * K, 110 * K) end
+do local A = Map.AIRFIELD addRect(A.x, A.z - 40 * K, A.len / 2 + 50, 120 * K, 170 * K, max(4, avgNatural(A.x, A.z - 40 * K, 200 * K))) end   -- 跑道 + 北面停机坪
+do local C = Map.CAMP addRect(C.x, C.z + 15 * K, 200 * K, 85 * K, 120 * K, max(3, avgNatural(C.x, C.z, 70 * K))) end   -- 营地：帐篷、营房，南面一排车场、北面直升机停机坪（Depots.lua）
+flatHere(Map.PORT.x, Map.PORT.z, 80 * K, 190 * K)   -- 压平的场地都跟着放大：路网是按放大前的地图（连这些场地）算的
+addRect(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len / 2 + 20, 70 * K, 60 * K, 6)
 ---------------------------------------------------------------- 路网（tools/map/roads.lua 离线算好的路线；这里按沿路平滑过的高度压平路面）
 
 -- 线段：起点、终点、两头的路面高度、路宽；按 48 格的格子登记（查的时候只看这一格里的线段）
@@ -318,7 +325,7 @@ do
       if n >= 2 then
         local xs, zs, ys = table.create(n), table.create(n), table.create(n)
         for i = 1, n do
-          xs[i], zs[i] = r.p[2 * i - 1], r.p[2 * i]
+          xs[i], zs[i] = r.p[2 * i - 1] * K, r.p[2 * i] * K   -- tools/map/roads.lua 按放大前的地图算的：坐标乘 K（路宽不变）
           ys[i] = max(1.2, (flatHeight(xs[i], zs[i])))
         end
         -- 路面高度沿路平滑（坑坑洼洼的地形上路是顺的）；挖填不超过 5 格
@@ -409,10 +416,10 @@ function Map.material(x, z, y, slope)
   local zs, zn = Map.coastS(x), Map.coastN(x)
   local nearBeach = y < 8 and zs and ((beachAt(x, false) and zs - z > -10 and zs - z < 90) or (beachAt(x, true) and z - zn > -10 and z - zn < 90))
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
-  if slope > 1.15 then return (y > 120) and Enum.Material.Slate or Enum.Material.Rock end
-  if y > 232 then return Enum.Material.Rock end
-  if slope > 0.75 then return Enum.Material.Ground end
-  local n = noise(x / 85, z / 85, 11.3)
+  if slope > 1.15 * HK / K then return (y > 120 * HK) and Enum.Material.Slate or Enum.Material.Rock end
+  if y > 232 * HK then return Enum.Material.Rock end
+  if slope > 0.75 * HK / K then return Enum.Material.Ground end
+  local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.15 then return Enum.Material.Ground end
   return (n > 0.32) and Enum.Material.LeafyGrass or Enum.Material.Grass   -- 大片草地（地形草只长在 Grass 上），零星深色的一块块
 end
@@ -422,7 +429,7 @@ end
 -- 返回 { x0, z0, x1, z1 } 若干个：主岛、各小岛，外扩一圈浅滩
 function Map.landBoxes()
   local pad = 120
-  local boxes = { { MI.x - MI.hs - pad, MI.z - MI.N - 140 - pad, MI.x + MI.hs + pad, MI.z + MI.S + 200 + pad } }
+  local boxes = { { MI.x - MI.hs - pad, MI.z - MI.N - 140 * K - pad, MI.x + MI.hs + pad, MI.z + MI.S + 200 * K + pad } }
   for _, I in ipairs(ISLES) do
     local r = max(I.a, I.b) * 1.15 + pad
     table.insert(boxes, { I.x - r, I.z - r, I.x + r, I.z + r })

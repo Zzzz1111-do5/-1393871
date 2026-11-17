@@ -635,7 +635,7 @@ function Air.init(G)
     local dist = (p1 - p0).Magnitude
     local def = e.def
     local maxD = def.vMax * 1.5 * dt + 25
-    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.R + 1500 or math.abs(p1.Z) > Map.R + 1500 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
+    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
     e.lastSync = t
     if bad then
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame, v = e.vel })

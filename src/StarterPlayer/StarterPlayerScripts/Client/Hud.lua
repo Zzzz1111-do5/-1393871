@@ -132,7 +132,7 @@ function Hud.init(G)
   box.BackgroundTransparency = 0.3
   box.ClipsDescendants = true
   ui.stroke(box, WHITE, 1, 0.82)
-  local ZOOM = 1200   -- 小地图里整张图画多大（像素）：框里看得到大约 1000 格
+  local ZOOM = 1200 * ((G.Map and G.Map.K) or 1)   -- 小地图里整张图画多大（像素）：框里看得到大约 1000 格（地图放大了，整张图跟着画大）
   local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 20
   local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, RGB(235, 90, 80), Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)

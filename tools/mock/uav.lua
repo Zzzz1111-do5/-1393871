@@ -139,6 +139,7 @@ if st and e then
   local up = T.runUntil(function() return not st.ground end, 50)
   T.key(Enum.KeyCode.Up, false)
   check(up, "滑跑起飞")
+  st.aimPitch = 0.3   -- 鼠标往上抬：爬升
   R.run(10)
   T.key(Enum.KeyCode.W, false)
   local p = e.root.CFrame.Position

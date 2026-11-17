@@ -841,16 +841,16 @@ function Fly.init(G)
         local res = workspace:Raycast(st.cf.Position, stepV + stepV.Unit * d.L * 0.4, mapParams)
         if res and res.Normal.Y < 0.6 then crash() end
       end
-      -- 飞出作战区：自动掉头（喷气机掉头半径七八百格）；再往外硬拦住（服务器在 Map.R + 1500 以外不认）
+      -- 飞出作战区（±Map.PLAY，约 5 公里）：自动掉头（喷气机掉头半径七八百格）；再往外硬拦住（服务器在 Map.PLAY + 1200 以外不认）
       local p = st.cf.Position
-      local lim = Map.R + 300
+      local lim = Map.PLAY
       st.oob = math.abs(p.X) > lim or math.abs(p.Z) > lim
       if st.oob and d.kind == "jet" then
         local back = V(-p.X, 0, -p.Z).Unit
         st.aimYaw = math.atan2(-back.X, -back.Z)
         st.aimPitch = 0.05
       end
-      local hard = Map.R + 1300
+      local hard = Map.PLAY + 1000
       if math.abs(p.X) > hard or math.abs(p.Z) > hard then
         st.cf = st.cf - p + V(math.clamp(p.X, -hard, hard), p.Y, math.clamp(p.Z, -hard, hard))
         if d.kind == "heli" then st.hv = V() end

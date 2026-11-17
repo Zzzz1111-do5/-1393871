@@ -158,4 +158,20 @@ check(st.made < made0 * 3, string.format("模型生成了 %d 个（第一次 %d�
 
 print("⑤ 正常跑几秒（每帧步骤）")
 R.run(3)
+
+print("⑥ 远海：跟着镜头铺到雾的尽头；地形海水那一片里不摆（不和地形水面打架）")
+local Map = G.Map
+check(Map.K and Map.K > 1 and Map.R >= 6144, string.format("地图放大 %.1f 倍，地形范围 ±%d 格", Map.K or 1, Map.R))
+check(Map.PLAY > Map.R * 2 and Map.SEA_LIM > Map.R, string.format("飞机作战区 ±%d 格（约 %.1f 公里）、船能开到 ±%d 格", Map.PLAY, Map.PLAY / 2.8 / 1000, Map.SEA_LIM))
+cam.CFrame = CF(0, 300, 0)
+R.run(0.2)
+local n0 = C.oceanTiles()
+cam.CFrame = CF(Map.PLAY - 500, 900, 300)
+R.run(0.2)
+local n1 = C.oceanTiles()
+check(n0 == 49 - 36 and n1 == 49, string.format("岛上空：远海 %d 块（地形海水外面一圈）；飞到作战区边上：%d 块（四周全是海）", n0, n1))
+local ocean = R.services.Workspace:FindFirstChild("Ocean")
+local far = 0
+for _, p in ipairs(ocean and ocean:GetChildren() or {}) do far = math.max(far, math.abs(p.Position.X - cam.CFrame.Position.X)) end
+check(far > 5200 + 1024, string.format("远海铺到镜头外 %.0f 格（雾 5200 格就看不见了）", far))
 T.summary()

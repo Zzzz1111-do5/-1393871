@@ -333,8 +333,58 @@ function Scenery.init(G)
   end
   G.sceneryUpdate = update
 
+  ---------------------------------------------------------------- 远海
+  -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（7 × 7 块，每块 2048 格，盖过雾的尽头）：飞到哪都看得到海一直铺到天边，
+  --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
+  local Map = G.Map
+  local OS, ON = 2048, 3
+  local ocean = Instance.new("Folder")
+  ocean.Name = "Ocean"
+  ocean.Parent = workspace
+  local tiles = {}
+  for i = 1, (2 * ON + 1) ^ 2 do
+    local p = Instance.new("Part")
+    p.Name = "Sea"
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Size = V(OS, 1, OS)
+    p.Material = Enum.Material.Glass
+    p.Color = RGB(30, 104, 128)
+    p.Transparency = 0.05
+    p.Reflectance = 0.25
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    tiles[i] = p
+  end
+  local seaKey = nil
+  local RI = math.floor((Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格
+  local function stepOcean()
+    local c = cam.CFrame.Position
+    local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)
+    local key = gx * 65536 + gz
+    if key == seaKey then return end
+    seaKey = key
+    local n = 0
+    for i = gx - ON, gx + ON do
+      for k = gz - ON, gz + ON do
+        n += 1
+        local p = tiles[n]
+        if i >= -RI and i < RI and k >= -RI and k < RI then
+          p.Parent = nil
+        else
+          p.CFrame = CF((i + 0.5) * OS, -0.6, (k + 0.5) * OS)
+          p.Parent = ocean
+        end
+      end
+    end
+  end
+  G.oceanTiles = function()
+    local n = 0
+    for _, p in ipairs(tiles) do if p.Parent then n += 1 end end
+    return n
+  end
+
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
   function G.stepScenery(dt)
+    stepOcean()
     timer += dt
     local cp = cam.CFrame.Position
     if (lastPos and (cp - lastPos).Magnitude < 10 and timer < 0.3) then return end

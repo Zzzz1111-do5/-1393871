@@ -621,7 +621,7 @@ function Navy.init(G)
     local p1 = cf.Position
     local dist = (flat(p1) - flat(c0.Position)).Magnitude
     local bad = p1.X ~= p1.X or p1.Z ~= p1.Z or dist > sd.speed * 1.5 * dt + 10 or math.abs(p1.Y) > 6
-      or math.abs(p1.X) > Map.R + 1500 or math.abs(p1.Z) > Map.R + 1500
+      or math.abs(p1.X) > Map.SEA_LIM + 300 or math.abs(p1.Z) > Map.SEA_LIM + 300
     if not bad and Map.height(p1.X, p1.Z) > -sd.draft * 0.3 then bad = true end   -- 搁浅（客户端也拦着，这里再查一次）
     if bad then
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = c0, ship = true })
@@ -696,9 +696,11 @@ function Navy.init(G)
   local function aiRoute(team)
     if team == "atk" then
       local out = {}
-      for _, x in ipairs({ -1200, -400, 400, 1200, 400, -400 }) do
+      local K = Map.K or 1
+      for _, x0 in ipairs({ -1200, -400, 400, 1200, 400, -400 }) do
+        local x = x0 * K
         local zc = Map.coastS(x) or -700
-        table.insert(out, V(x, 0, zc + 1500))
+        table.insert(out, V(x, 0, zc + 1500 * K))
       end
       return out
     end
@@ -759,7 +761,7 @@ function Navy.init(G)
     end
     local wp = A.route[A.i]
     if (flat(wp) - flat(p)).Magnitude < 40 then A.i = A.i % #A.route + 1 wp = A.route[A.i] end
-    if A.retreat then wp = V(wp.X, 0, wp.Z + (A.out or 1500)) end
+    if A.retreat then wp = V(wp.X, 0, wp.Z + (A.out or 1500 * (Map.K or 1))) end
     local want = flat(wp) - flat(p)
     local yawNow = math.deg(math.atan2(-c.LookVector.X, -c.LookVector.Z))
     local yawWant = math.deg(math.atan2(-want.X, -want.Z)) + ((A.retreat or not A.weave) and 0 or math.sin(t / 11 + (A.ph or 0)) * 25)
@@ -852,7 +854,7 @@ function Navy.init(G)
     local p = route[1]
     local e = newShip(team, def.id, CFrame.lookAt(V(p.X, 0, p.Z), V(route[2].X, 0, route[2].Z)))
     if not e then return end
-    e.ai = { route = route, i = 2, ph = math.random() * 6, out = (team == "atk") and 1500 or 0, weave = team == "atk" }   -- 港湾里的巡逻艇不蛇行（湾窄）
+    e.ai = { route = route, i = 2, ph = math.random() * 6, out = (team == "atk") and 1500 * (Map.K or 1) or 0, weave = team == "atk" }   -- 港湾里的巡逻艇不蛇行（湾窄）
     e.model:SetAttribute("AI", true)
     e.model:SetAttribute("Order", 2)
   end

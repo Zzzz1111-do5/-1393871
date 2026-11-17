@@ -144,7 +144,8 @@ function FortDefs.layout(Map)
   add("bunker", P.E.x - 70, P.E.z + 70, P.E.x - 120, P.E.z + 500, "E", "command")
   add("bunker", P.E.x + 70, P.E.z + 70, P.E.x + 120, P.E.z + 500, "E", "command")
   -- 岸防炮：东西两个岬角的崖顶、西礁岛炮台、灯塔岛西南角；炮口朝南（舰队、登陆艇来的方向）
-  for _, cx in ipairs({ -1110, 1200 }) do
+  for _, cape in ipairs(Map.CAPES) do
+    local cx = cape.x
     local zc = Map.coastS(cx) or -700
     add("coastal", cx, zc - 48, cx * 0.6, zc + 1200, nil, "cape", 20)
   end

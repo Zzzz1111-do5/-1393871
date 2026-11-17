@@ -12,7 +12,8 @@ function MapUI.init(G)
   local RGB = Color3.fromRGB
 
   -- 地图范围（世界坐标）：所有岛和舰队都在里面
-  local X0, X1, Z0, Z1 = -3000, 3000, -2500, 3600
+  local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
+  local X0, X1, Z0, Z1 = -3000 * K, 3000 * K, -2500 * K, 3600 * K
   local SPAN = math.max(X1 - X0, Z1 - Z0)
   local function toUV(x, z) return (x - X0) / SPAN, (z - Z0) / SPAN end
   G.mapUV = toUV
