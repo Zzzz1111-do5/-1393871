@@ -122,7 +122,8 @@ function Round.init(G)
         local off = V((math.random() - 0.5) * d.W * 0.6, 3, (math.random() - 0.5) * d.L * 0.5)
         return CFrame.lookAt(d.cf.Position + off, d.cf.Position + off + face)
       end
-      return CFrame.new(0, 40, 2150)
+      local f = Map.FLEET[2] or Map.FLEET[1]
+      return CFrame.new(f.x, 40, f.z)
     elseif sp.kind == "cv" then   -- 航母：舰岛后面（右舷停机位旁边），别站在弹射器、着舰区上
       for _, d in ipairs(G.decks or {}) do
         if d.kind == "carrier" then

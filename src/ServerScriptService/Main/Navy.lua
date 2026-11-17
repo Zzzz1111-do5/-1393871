@@ -271,7 +271,7 @@ function Navy.init(G)
   local function newShip(team, id, base)
     local d = SD.get(id)
     if not d then return nil end
-    local e = G.newEnt({ kind = "ship", team = team, cat = "ship", hp = d.hp, size = d.size, cf = base * CF(0, d.H / 2 - d.draft, 0), solid = false,
+    local e = G.newEnt({ kind = "ship", team = team, cat = "ship", hp = d.hp, size = d.size, cf = base * CF(0, d.H / 2 - d.draft, 0), solid = true,   -- 实心
       extra = { ship = true, sea = true, sd = d } })
     e.model:SetAttribute("Model", id)
     e.model:SetAttribute("Driver", 0)
@@ -531,7 +531,8 @@ function Navy.init(G)
     if d.sam and e.samN > 0 and t >= e.samAt then
       local best, bd = nil, SD.W.sam.range
       for _, x in ipairs(G.aircraft or {}) do
-        if x.alive and x.team ~= e.team and not x.onGround then
+        -- 刚起飞 12 秒内的不打（用户：刚起飞就被导弹打下来；Air.lua 记 upAt）
+        if x.alive and x.team ~= e.team and not x.onGround and not (x.upAt and t - x.upAt < 12) then
           local p = x.root.CFrame.Position
           local dd = (p - cpos).Magnitude
           if dd < bd and p.Y - Map.ground(p.X, p.Z) > 15 then best, bd = x, dd end
@@ -700,7 +701,8 @@ function Navy.init(G)
       for _, x0 in ipairs({ -1200, -400, 400, 1200, 400, -400 }) do
         local x = x0 * K
         local zc = Map.coastS(x) or -700
-        table.insert(out, V(x, 0, zc + 1500 * K))
+        -- 离岸 2250 格（不跟着 K 一起放大）：舰炮（4000 格）够得着岸边的碉堡、岸防炮；舰空导弹（3400 格）够不着内陆 1400 来格的守方机场
+        table.insert(out, V(x, 0, zc + 1500 * math.min(K, 1.5)))
       end
       return out
     end

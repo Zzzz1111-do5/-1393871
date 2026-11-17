@@ -376,8 +376,8 @@ for id, d in pairs(D) do
   d.air = true
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
-    d.vRot = d.stall * 1.08   -- 抬头离地的速度
-    d.landMax = d.stall * 1.45   -- 着陆最快多少（再快就是撞地）
+    d.vRot = d.stall * 1.5   -- 抬头离地的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）
+    d.landMax = d.stall * 1.9   -- 着陆最快多少（再快就是撞地）；比离地速度快一点，正常进近不至于判成撞地
     d.seats = d.seats or 1
   else
     d.vMax = d.vMax or 90

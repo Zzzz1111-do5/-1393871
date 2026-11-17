@@ -226,8 +226,8 @@ add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured point
 add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
 add("ui.needPick", "先选一个生成点", "Pick a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
-add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–4 切武器 · V 第一 / 第三人称 · E 上车 / 操作 · Tab 战况 · M 地图",
-  "WASD move · LMB fire · RMB aim · R reload · 1-4 weapons · V 1st / 3rd person · E enter / man · Tab scoreboard · M map")
+add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–4 / 滚轮 切武器 · Q 上一把 · V 第一 / 第三人称 · E 上车 / 操作 · Tab 战况 · M 地图",
+  "WASD move · LMB fire · RMB aim · R reload · 1-4 / wheel weapons · Q last weapon · V 1st / 3rd person · E enter / man · Tab scoreboard · M map")
 -- 载具
 add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
 add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")

@@ -488,6 +488,9 @@ function Fly.init(G)
     local thr = st.thrE
     local tgt = (thr <= 100) and d.vMil * thr / 100 or (d.vMil + (d.vMax - d.vMil) * (thr - 100) / 30)
     local acc = (thr > 100) and (d.accel + (d.abAccel or 0)) or d.accel
+    -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
+    --   一推油门不再四五十米就飞起来；弹射器单独算）
+    if st.ground and not st.cat then acc *= 0.25 end
     if st.trap then   -- 挂着拦阻索：发动机推力不算，地上那段按拦阻索减速
     elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt) else st.spd -= math.min(st.spd - tgt, (st.ground and (key(Enum.KeyCode.B) and 60 or 22) or acc * 0.45) * dt) end
     if not st.ground then

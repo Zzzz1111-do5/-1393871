@@ -140,12 +140,12 @@ function World.lighting()
     Lighting.ShadowSoftness = 0.3
     Lighting.ExposureCompensation = 0.55
     Lighting.FogColor = RGB(16, 20, 30)
-    Lighting.FogStart = 600
-    Lighting.FogEnd = 5200
+    Lighting.FogStart = 900
+    Lighting.FogEnd = 8500   -- 地图放大了：看得远一点（远海客户端铺到镜头外一万格）
   end)
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.36
+    atm.Density = 0.3
     atm.Offset = 0.06
     atm.Color = RGB(44, 54, 76)
     atm.Decay = RGB(12, 15, 24)
@@ -270,10 +270,14 @@ function World.terrain(onProgress)
     end
   end
   local total = 0
+  local t0 = os.clock()
   for n, c in ipairs(list) do
     total += writeChunk(T, c[1], c[2])
     if onProgress then onProgress(n / #list) end
-    task.wait()
+    if os.clock() - t0 > 0.03 then   -- 按时间片让帧（地图大了块多：每块都等一帧，光等帧就要半分钟）
+      task.wait()
+      t0 = os.clock()
+    end
   end
   return total, #list
 end
@@ -355,10 +359,24 @@ end
 local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机库、塔台
   local y = A.y or Map.ground(A.x, A.z)
   local base = CF(A.x, y, A.z)
-  part(f, V(A.len, 1, A.wid), base * CF(0, 0.45, 0), C.asphalt, MAT.Asphalt, nil, true)
-  for i = -A.len / 2 + 20, A.len / 2 - 20, 30 do part(f, V(14, 0.1, 1.2), base * CF(i, 1, 0), C.white, MAT.SmoothPlastic) end
-  for s = -1, 1, 2 do part(f, V(6, 0.1, A.wid - 8), base * CF(s * (A.len / 2 - 8), 1, 0), C.white, MAT.SmoothPlastic) end
-  part(f, V(A.len * 0.6, 1, 70), base * CF(0, 0.45, -A.wid / 2 - 45), C.concrete, MAT.Concrete, nil, true)   -- 停机坪
+  -- 跑道长过 2048 格（零件最长 2048）：分几段铺
+  local nseg = math.ceil(A.len / 2000)
+  for i = 1, nseg do
+    local L = A.len / nseg
+    part(f, V(L, 1, A.wid), base * CF(-A.len / 2 + (i - 0.5) * L, 0.45, 0), C.asphalt, MAT.Asphalt, nil, true)
+  end
+  for i = -A.len / 2 + 20, A.len / 2 - 20, 45 do part(f, V(22, 0.1, 1.6), base * CF(i, 1, 0), C.white, MAT.SmoothPlastic) end   -- 中线
+  for s = -1, 1, 2 do
+    part(f, V(6, 0.1, A.wid - 8), base * CF(s * (A.len / 2 - 8), 1, 0), C.white, MAT.SmoothPlastic)   -- 两头的入口线
+    for k = -3, 3 do if k ~= 0 then part(f, V(40, 0.1, 4), base * CF(s * (A.len / 2 - 50), 1, k * A.wid / 8), C.white, MAT.SmoothPlastic) end end   -- 入口的斑马线
+    for e2 = -1, 1, 2 do   -- 两边的边线（分段，零件最长 2048）
+      for i = 1, nseg do
+        local L = A.len / nseg
+        part(f, V(L, 0.1, 1.2), base * CF(-A.len / 2 + (i - 0.5) * L, 1, e2 * (A.wid / 2 - 3)), C.white, MAT.SmoothPlastic)
+      end
+    end
+  end
+  part(f, V(math.min(2000, A.len * 0.6), 1, 70), base * CF(0, 0.45, -A.wid / 2 - 45), C.concrete, MAT.Concrete, nil, true)   -- 停机坪
   for i = -1, 1 do   -- 机库
     local hb = base * CF(i * 110, 0, -A.wid / 2 - 120)
     part(f, V(60, 18, 44), hb * CF(0, 9, 0), RGB(120, 126, 120), MAT.Metal, nil, true)
@@ -373,14 +391,14 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
   local lights = Instance.new("Folder")
   lights.Name = "RunwayLights"
   lights.Parent = f
-  for xx = -A.len / 2 + 10, A.len / 2 - 10, 40 do
+  for xx = -A.len / 2 + 10, A.len / 2 - 10, 60 do   -- 跑道长了：60 格一盏（灯太多费）
     for sd = -1, 1, 2 do light(lights, (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) end
   end
   for zz = -A.wid / 2 + 3, A.wid / 2 - 3, 8 do
     light(lights, (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
     light(lights, (base * CF(A.len / 2 + 2, 1.2, zz)).Position, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
   end
-  for xx = -A.len * 0.3, A.len * 0.3, 36 do light(lights, (base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5, nil, nil, nil, 3) end
+  for xx = -math.min(1000, A.len * 0.3), math.min(1000, A.len * 0.3), 50 do light(lights, (base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5, nil, nil, nil, 3) end
   for i = -1, 1 do floodPole(lights, A.x + i * A.len * 0.24, y, A.z - A.wid / 2 - 84, 22, RGB(255, 222, 170), 120) end
   local _ = team
 end

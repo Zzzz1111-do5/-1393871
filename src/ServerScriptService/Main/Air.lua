@@ -289,7 +289,7 @@ function Air.init(G)
   local function newAircraft(team, id, cf, P, load, vel, onGround)
     local d = AD.get(id)
     local hp = math.floor(d.hp * ((Config.VehicleMod[id] and Config.VehicleMod[id].hp) or 1))
-    local e = G.newEnt({ kind = "air", team = team, cat = "air", hp = hp, size = d.hitbox, cf = cf, air = true, solid = false,
+    local e = G.newEnt({ kind = "air", team = team, cat = "air", hp = hp, size = d.hitbox, cf = cf, air = true, solid = true,   -- 实心：停着的飞机人穿不过去
       extra = { def = d, vcat = d.cat } })
     e.model:SetAttribute("Model", id)
     e.model:SetAttribute("Driver", 0)
@@ -649,6 +649,7 @@ function Air.init(G)
     end
     G.moveEnt(e, cf)
     if typeof(d.v) == "Vector3" and d.v.Magnitude < def.vMax * 1.6 then e.vel = d.v end
+    if e.onGround and d.gd ~= true then e.upAt = now() end   -- 刚离地（AI 舰艇的自动防空导弹 12 秒内不打：Navy.lua）
     e.onGround = d.gd == true
     if typeof(d.aim) == "Vector3" then e.aim = d.aim end
     local m = e.model

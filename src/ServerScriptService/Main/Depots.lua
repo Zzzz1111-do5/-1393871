@@ -72,20 +72,25 @@ function Depots.init(G)
       addPad({ team = "def", vid = id, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
         term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
     end
-    -- 守方机场：跑道北面的停机坪，机头朝南对着跑道（据点 D 丢了就用不了）
-    local A = Map.AIRFIELD
-    local jets = models("def", "jet")
-    local width = 0
-    for _, id in ipairs(jets) do width += defOf(id).W + 20 end
-    local x = A.x - width / 2
-    for _, id in ipairs(jets) do
-      local d = defOf(id)
-      x += d.W / 2 + 10
-      local z = A.z - A.wid / 2 - 22 - d.L / 2
-      addPad({ team = "def", vid = id, kind = "air", need = "D", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
-        term = V(x - d.W / 2 + 4, 0, z - d.L / 2 - 5), r = math.max(d.L, d.W) * 0.45, size = V(d.W + 4, 0, d.L + 4) })
-      x += d.W / 2 + 10
+    -- 陆上机场的飞机：停在跑道上、机头朝东顺着跑道，一架接一架往东排、左右错开（地上的飞机彼此不碰撞，后面的照样直接起飞）；
+    --   从跑道中间偏西开始排，前面还有两千多格跑道；终端柱在跑道北边（用户：机场太小、跑道非常短——
+    --   原来停在跑道北边的停机坪上、机头朝南，一推油门就横穿过几十格宽的跑道冲出去了）
+    local EAST = V(1, 0, 0)
+    local function runwayPads(A, team, ids, need)
+      local x = A.x - 420
+      for i, id in ipairs(ids) do
+        local d = defOf(id)
+        x += d.L / 2
+        local z = A.z + ((i % 2 == 0) and 1 or -1) * A.wid * 0.2
+        local pos = V(x, surface(x, z), z)
+        addPad({ team = team, vid = id, kind = "air", need = need, base = CFrame.lookAt(pos, pos + EAST),
+          term = V(x, 0, A.z - A.wid / 2 - 10), r = math.max(d.L, d.W) * 0.45, size = V(d.W + 4, 0, d.L + 4) })
+        x += d.L / 2 + 30
+      end
     end
+    -- 守方机场（据点 D 丢了就用不了）
+    local A = Map.AIRFIELD
+    runwayPads(A, "def", models("def", "jet"), "D")
 
     -- 攻方航母：右舷后部停机位（舰岛后面），机头朝舰艏，自己滑到弹射器
     local cv = deckOf("carrier")
@@ -114,21 +119,10 @@ function Depots.init(G)
         addPad({ team = "atk", vid = id, kind = "air", base = base, term = (lhd.cf * CF(-16, 0, zl + 30)).Position, r = 24, size = V(30, 0, 30), heli = true })
       end
     end
-    -- 攻方机场岛：跑道北面的停机坪（陆基飞机），机头朝南对着跑道
-    local A2 = Map.AFIELD2
+    -- 攻方机场岛：陆基飞机（同守方机场，停在跑道上顺着跑道）
     local land = {}
     for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
-    width = 0
-    for _, id in ipairs(land) do width += defOf(id).W + 22 end
-    x = A2.x - width / 2
-    for _, id in ipairs(land) do
-      local d = defOf(id)
-      x += d.W / 2 + 11
-      local z = A2.z - A2.wid / 2 - 24 - d.L / 2
-      addPad({ team = "atk", vid = id, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
-        term = V(x - d.W / 2 + 4, 0, z - d.L / 2 - 5), r = math.max(d.L, d.W) * 0.45, size = V(d.W + 4, 0, d.L + 4) })
-      x += d.W / 2 + 11
-    end
+    runwayPads(Map.AFIELD2, "atk", land, nil)
     -- 攻方登陆平台：两侧水面一格一个地面载具（车头朝北，朝着岛），终端柱在平台边上
     local B = Map.BARGE
     list = {}

@@ -4,6 +4,7 @@
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R = T.R
 local check = T.check
+local Enum = T.Enum
 local minutes = tonumber(TEST_ARGS:match("%d+%.?%d*") or "") or 6
 local cpu = os.clock   -- 真实耗时（脚本里的 os.clock 是模拟的时钟）
 
@@ -47,6 +48,21 @@ local landed = T.runUntil(function()
   return false
 end, 60)
 check(landed, "攻方机器人上岸了")
+-- 机器人的样子：Roblox 小人（模拟器里没有 R15 模板，用零件拼的经典小人：圆头、笑脸）
+do
+  local VF = R.services.Workspace:FindFirstChild("EntView")
+  local nb, okHead = 0, false
+  for _, m in ipairs(VF and VF:GetChildren() or {}) do
+    if m.Name == "bot" then
+      nb = nb + 1
+      for _, p in ipairs(m:GetChildren()) do
+        local sm = p:IsA("BasePart") and p:FindFirstChildOfClass("SpecialMesh")
+        if sm and sm.MeshType == Enum.MeshType.Head and p:FindFirstChild("face") then okHead = true end
+      end
+    end
+  end
+  check(nb > 5 and okHead, "机器人是 Roblox 小人的样子（圆头、笑脸）：" .. nb .. " 个")
+end
 
 print(string.format("③ 打 %d 分钟", minutes))
 local stepT, stepN, worst, slow = 0, 0, 0, 0

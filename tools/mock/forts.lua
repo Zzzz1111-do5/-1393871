@@ -131,6 +131,13 @@ if aa and me.Character then
   check(P.vehicle == aa and aa.gunner == P, "接手了高炮")
   check(C.gunner ~= nil and C.gunner.id == aa.id, "客户端进入操作模式")
   check(me.Character.HumanoidRootPart.Anchored, "人锚定在炮位上")
+  -- 鼠标往右：炮往右转（镜头朝向的方位角变大，北 0°、东 90°）
+  local cam = R.services.Workspace.CurrentCamera
+  local function brg() local l = cam.CFrame.LookVector return math.deg(math.atan2(l.X, -l.Z)) end
+  local b0 = brg()
+  for _ = 1, 10 do R.mouseDelta = R.Vector2.new(30, 0) R.run(1 / 30) end
+  local db = (brg() - b0 + 540) % 360 - 180
+  check(db > 5, string.format("鼠标往右，高炮往右转（方位 %+.0f°）", db))
   G.fortsHold = false
   local n0 = #G.shots
   T.mouse(true)

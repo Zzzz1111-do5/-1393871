@@ -93,17 +93,30 @@ function Play.init(G)
     if G.fpsReload then G.fpsReload(id, w.reload, a.n <= 0) end   -- 第一人称：播换弹（打空了是空仓换弹）
   end
 
+  -- 身上的装备，按装备栏格子的顺序排成 1、2、3……（用户：第一人称持枪的时候无法切换枪——原来按格子号，默认不带发射器，
+  --   第 2 格是空的，按 2 没反应；现在第几把就按几）
   local function tools()
-    local list = {}
+    local bySlot = {}
     local bp = player:FindFirstChildOfClass("Backpack")
     for _, holder in ipairs({ bp, player.Character }) do
       if holder then
         for _, t in ipairs(holder:GetChildren()) do
-          if t:IsA("Tool") and t:GetAttribute("Slot") then list[t:GetAttribute("Slot")] = t end
+          if t:IsA("Tool") and t:GetAttribute("Slot") then table.insert(bySlot, t) end
         end
       end
     end
-    return list
+    table.sort(bySlot, function(a, b) return a:GetAttribute("Slot") < b:GetAttribute("Slot") end)
+    return bySlot
+  end
+  local lastTool = nil   -- 上一把（Q 切回去）
+  local function equipTool(t)
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 or G.drive or not t then return end
+    if t.Parent == char then return end   -- 已经拿着
+    local cur0 = char:FindFirstChildOfClass("Tool")
+    if cur0 then lastTool = cur0 end
+    hum:EquipTool(t)
   end
   local function equip(i)
     local char = player.Character
@@ -111,14 +124,25 @@ function Play.init(G)
     if not hum or hum.Health <= 0 or G.drive then return end
     local t = tools()[i]
     if not t then return end
-    if t.Parent == char then hum:UnequipTools() else hum:EquipTool(t) end
+    if t.Parent == char then hum:UnequipTools() else equipTool(t) end
+  end
+  -- 滚轮 / 手柄：换下一把、上一把（d = 1 / −1）
+  local function cycle(d)
+    local list = tools()
+    if #list == 0 then return end
+    local char = player.Character
+    local i0 = 0
+    for i, t in ipairs(list) do if t.Parent == char then i0 = i end end
+    local j = (i0 == 0) and ((d > 0) and 1 or #list) or ((i0 - 1 + d) % #list + 1)
+    equipTool(list[j])
   end
   G.equipSlot = equip
+  G.equipCycle = cycle
 
   local function drawBar()
     for _, s in ipairs(slots) do s:Destroy() end
     slots = {}
-    for i, t in pairs(tools()) do
+    for i, t in ipairs(tools()) do
       local id = t:GetAttribute("Weapon")
       local on = t.Parent == player.Character
       -- 细线、半透明、直角（用户：界面要精致简洁，不要卡通）；拿在手里的那格顶上一道白线
@@ -300,7 +324,15 @@ function Play.init(G)
     elseif k == Enum.KeyCode.Two then equip(2)
     elseif k == Enum.KeyCode.Three then equip(3)
     elseif k == Enum.KeyCode.Four then equip(4)
+    elseif k == Enum.KeyCode.Q then   -- 切回上一把
+      if lastTool and lastTool.Parent and lastTool.Parent ~= player.Character then equipTool(lastTool) else cycle(1) end
     end
+  end)
+  -- 滚轮换枪（开着狙击镜时滚轮是变倍，Scope.lua 管）
+  UIS.InputChanged:Connect(function(io, gp)
+    if gp or G.drive or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+    if G.scopeOn or (G.menuOpen and G.menuOpen()) or not G.fpActive then return end   -- 第三人称时滚轮还是拉镜头
+    if io.Position.Z ~= 0 then cycle((io.Position.Z < 0) and 1 or -1) end
   end)
   UIS.InputEnded:Connect(function(io)
     if io.UserInputType == Enum.UserInputType.MouseButton1 then cur.firing = false
@@ -323,14 +355,7 @@ function Play.init(G)
     local rl = tbtn("R", UDim2.new(1, -200, 1, -330), 56)
     rl.Activated:Connect(reload)
     local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
-    sw.Activated:Connect(function()
-      local list = tools()
-      local i = cur.tool and cur.tool:GetAttribute("Slot") or 0
-      for k = 1, 4 do
-        local j = (i + k - 1) % 4 + 1
-        if list[j] then equip(j) return end
-      end
-    end)
+    sw.Activated:Connect(function() cycle(1) end)
     local fbtn = tbtn("F", UDim2.new(1, -280, 1, -300), 56)
     fbtn.Activated:Connect(function() tryFire(true) end)
   end

@@ -293,8 +293,9 @@ function Gunner.init(G)
     local tPivot = (base * CF(Tt.pivot)).Position
     local o, look
     if gs.kind == "bunker" or gs.kind == "aaa" then
-      -- 鼠标直接给想要的方位、俯仰（碉堡里限在射孔的范围内）
-      gs.ay = gs.ay - md.X * sens * 57.3
+      -- 鼠标直接给想要的方位、俯仰（碉堡里限在射孔的范围内）；方位顺时针为正（dirOf），鼠标往右就是往右转
+      --   （用户：驾驶炮的时候视角转动是反着的——原来减号，往右推鼠标高炮、机枪往左转）
+      gs.ay = gs.ay + md.X * sens * 57.3
       gs.ap = math.clamp(gs.ap - md.Y * sens * 57.3, Tt.elev[1], Tt.elev[2])
       if full then gs.ay = (gs.ay + 180) % 360 - 180 else gs.ay = math.clamp(gs.ay, -Tt.arc, Tt.arc) end
       look = dirOf(base, gs.ay, gs.ap)

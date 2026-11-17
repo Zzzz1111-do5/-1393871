@@ -927,7 +927,7 @@ def("Attachment", "Instance", { Position = { T.Vector3, v3() }, CFrame = { T.CFr
     return pos
   end,
 } })
-def("Decal", "Instance", { Transparency = { T.number, 0 }, Texture = { T.string, "" } })
+def("Decal", "Instance", { Transparency = { T.number, 0 }, Texture = { T.string, "" }, Face = { E("NormalId"), Enum.NormalId.Front }, Color3 = { T.Color3, newC3(1, 1, 1) } })
 def("Tool", "Model", { RequiresHandle = { T.bool, true }, CanBeDropped = { T.bool, true }, ToolTip = { T.string, "" }, Grip = { T.CFrame, CFrame.new() }, Enabled = { T.bool, true },
   GripPos = { T.Vector3, v3() }, GripForward = { T.Vector3, v3(0, 0, -1) }, GripRight = { T.Vector3, v3(1, 0, 0) }, GripUp = { T.Vector3, v3(0, 1, 0) },
   TextureId = { T.string, "" }, ManualActivationOnly = { T.bool, false } },

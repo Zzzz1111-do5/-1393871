@@ -147,14 +147,30 @@ R.run(0.5)
 G.ACT.scope = scope0
 check(scopeGui and not scopeGui.Enabled, "松开右键收镜")
 
-print("⑤ 换手雷：同一双手端着")
+print("⑤ 换武器：按 2（第二件，不管装备栏哪格空着）、滚轮、Q 切回上一把；同一双手端着")
+local UISv = R.services.UserInputService
+local function wheel(z)
+  R.as("client", function() UISv.InputChanged:Fire({ UserInputType = Enum.UserInputType.MouseWheel, Position = V3(0, 0, z) }, false) end)
+end
 T.tap(Enum.KeyCode.Two)
 R.run(1)
 vm = C.fps
-check(vm and vm.id == "grenade" and #vm.items >= 1 and #vm.arms == 6, "手雷：" .. tostring(vm and vm.id) .. "，零件 " .. tostring(vm and #vm.items))
+local id2 = vm and vm.id
+check(vm and id2 ~= "m4" and #vm.items >= 1 and #vm.arms == 6, "按 2 换成第二件：" .. tostring(id2) .. "，零件 " .. tostring(vm and #vm.items))
+T.tap(Enum.KeyCode.Q)
+R.run(1)
+check(C.fps and C.fps.id == "m4", "Q 切回上一把（M4）")
+wheel(-1)
+R.run(1)
+check(C.fps and C.fps.id == id2, "滚轮往下：下一件（" .. tostring(C.fps and C.fps.id) .. "）")
+wheel(1)
+R.run(1)
+check(C.fps and C.fps.id == "m4", "滚轮往上：回到 M4")
+T.tap(Enum.KeyCode.One)
+R.run(0.5)
 T.tap(Enum.KeyCode.One)
 R.run(1)
-check(C.fps and C.fps.id == "m4", "切回 M4")
+check(C.fps and C.fps.id == "m4", "按 1 拿着 M4")
 
 print("⑥ V 切到第三人称")
 T.tap(Enum.KeyCode.V)

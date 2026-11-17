@@ -147,6 +147,13 @@ for _, pl in ipairs(def) do
   local P = G.P[pl]
   if P.alive and pl.Character then pl.Character:PivotTo(CF(0, 100, -2000)) end
 end
+-- 开局时生成的守方机器人还守在 A 的圈里（地图放大后来不及走开）：清掉，「没人守」
+for _, e in pairs(G.entById) do
+  if e.alive and e.kind == "bot" and e.team == "def" then
+    local p = e.root.CFrame.Position
+    if (p.X - A.x) ^ 2 + (p.Z - A.z) ^ 2 < 300 * 300 then G.damageEnt(e, 1e6, nil) end
+  end
+end
 local endsBefore = G.round.endsAt
 R.run(2)
 check(A.prog > 0, string.format("占领进度在涨（%.2f）", A.prog))

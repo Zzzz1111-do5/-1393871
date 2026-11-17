@@ -61,6 +61,7 @@ if side == "def" then
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
+  check(e and e.root.CanCollide == true, "车是实心的（碰撞盒挡人）")
   check(P.alive and me.Character and me.Character.HumanoidRootPart.Anchored, "人锚定在车里")
   check(C.drive ~= nil and C.drive.id == (e and e.id), "客户端接管驾驶")
   local v

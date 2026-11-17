@@ -183,7 +183,8 @@ function Armor.init(G)
     local c = CATS[d.cat]
     local mod = Config.VehicleMod[id] or {}
     local hp = math.floor(c.hp * (mod.hp or 1))
-    local e = G.newEnt({ kind = "veh", team = team, cat = c.tgt, hp = hp, size = V(d.W, d.H, d.L), cf = rootFromBase(d, base), solid = false,
+    -- solid：车是实心的，人走不过去、能站上去（用户：让载具建模变成实体）；开车、坐车的人锚定在车里，不受影响
+    local e = G.newEnt({ kind = "veh", team = team, cat = c.tgt, hp = hp, size = V(d.W, d.H, d.L), cf = rootFromBase(d, base), solid = true,
       extra = { def = d, vcat = d.cat } })   -- 占领时不单算车：开车的人照常算一个
     e.model:SetAttribute("Model", id)
     e.model:SetAttribute("Ty", 0)

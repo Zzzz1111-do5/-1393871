@@ -155,8 +155,9 @@ function FortDefs.layout(Map)
   add("coastal", LH.x - 130, LH.z + 110, LH.x - 900, LH.z + 1100, "B", "lighthouse", 20)
   -- 高炮：机场两座、指挥所、港口、两座小岛据点、后方营地
   local A = Map.AIRFIELD
-  add("aaa", A.x - 190, A.z - 95, A.x - 190, A.z + 400, "D", "airfield")
-  add("aaa", A.x + 190, A.z - 95, A.x + 190, A.z + 400, "D", "airfield")
+  local ax = math.min(1100, A.len * 0.3) + 60   -- 跑道两头停机坪外（飞机生成点在跑道中间偏西，别挡着）
+  add("aaa", A.x - ax, A.z - A.wid / 2 - 70, A.x - ax, A.z + 400, "D", "airfield")
+  add("aaa", A.x + ax, A.z - A.wid / 2 - 70, A.x + ax, A.z + 400, "D", "airfield")
   add("aaa", P.E.x + 55, P.E.z - 45, P.E.x, P.E.z + 400, "E", "command")
   add("aaa", P.C.x + 95, P.C.z - 55, P.C.x, P.C.z + 400, "C", "port")
   add("aaa", P.A.x + 55, P.A.z - 40, P.A.x, P.A.z + 400, "A", "outpost")

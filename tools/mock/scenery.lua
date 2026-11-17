@@ -67,8 +67,11 @@ local bad = { road = 0, flat = 0, beach = 0, fort = 0 }
 local n = { tree = 0, bush = 0, rock = 0, grass = 0, flower = 0 }
 local forts = {}
 for _, f in ipairs(R.require(RS.FortDefs).layout(Map)) do table.insert(forts, f.cf.Position) end
-for cz = -36, -12 do
-  for cx = -22, 22, 2 do
+local K = Map.K or 1   -- 地图放大了：抽样的格子跟着散开（格子数不变）
+for cz0 = -36, -12 do
+  local cz = math.floor(cz0 * K + 0.5)
+  for cx0 = -22, 22, 2 do
+    local cx = math.floor(cx0 * K + 0.5)
     for _, layer in ipairs({ "tree", "bush", "rock", "grass", "flower" }) do
       for _, it in ipairs(Flora.cell(cx, cz, layer)) do
         n[layer] = n[layer] + 1
@@ -97,7 +100,8 @@ check(C.sceneryUpdate ~= nil, "客户端有摆花草树木的模块")
 check(RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Scenery") and RS.Imported.Scenery:FindFirstChild("fir1"), "导入的模型包收进了 Imported.Scenery")
 -- 找一片林子：从岛中间往外找树最密的格子
 local best, bx, bz = 0, 0, 0
-for cz = -34, -14, 2 do
+for cz0 = -34, -14, 2 do
+  local cz = math.floor(cz0 * (Map.K or 1) + 0.5)
   for cx = -18, 18, 2 do
     local k = #Flora.cell(cx, cz, "tree")
     if k > best then best, bx, bz = k, (cx + 0.5) * Flora.CELL, (cz + 0.5) * Flora.CELL end
@@ -161,17 +165,17 @@ R.run(3)
 
 print("⑥ 远海：跟着镜头铺到雾的尽头；地形海水那一片里不摆（不和地形水面打架）")
 local Map = G.Map
-check(Map.K and Map.K > 1 and Map.R >= 6144, string.format("地图放大 %.1f 倍，地形范围 ±%d 格", Map.K or 1, Map.R))
-check(Map.PLAY > Map.R * 2 and Map.SEA_LIM > Map.R, string.format("飞机作战区 ±%d 格（约 %.1f 公里）、船能开到 ±%d 格", Map.PLAY, Map.PLAY / 2.8 / 1000, Map.SEA_LIM))
+check(Map.K and Map.K >= 3 and Map.R >= 12288, string.format("地图放大 %.1f 倍，地形范围 ±%d 格", Map.K or 1, Map.R))
+check(Map.PLAY > Map.R * 2.5 and Map.SEA_LIM > Map.R * 2, string.format("飞机作战区 ±%d 格（约 %.1f 公里）、船能开到 ±%d 格（约 %.1f 公里）", Map.PLAY, Map.PLAY / 2.8 / 1000, Map.SEA_LIM, Map.SEA_LIM / 2.8 / 1000))
 cam.CFrame = CF(0, 300, 0)
 R.run(0.2)
 local n0 = C.oceanTiles()
 cam.CFrame = CF(Map.PLAY - 500, 900, 300)
 R.run(0.2)
 local n1 = C.oceanTiles()
-check(n0 == 49 - 36 and n1 == 49, string.format("岛上空：远海 %d 块（地形海水外面一圈）；飞到作战区边上：%d 块（四周全是海）", n0, n1))
+check(n0 == 0 and n1 == 121, string.format("岛上空：远海 %d 块（四周都是地形海水）；飞到作战区边上：%d 块（四周全是海）", n0, n1))
 local ocean = R.services.Workspace:FindFirstChild("Ocean")
 local far = 0
 for _, p in ipairs(ocean and ocean:GetChildren() or {}) do far = math.max(far, math.abs(p.Position.X - cam.CFrame.Position.X)) end
-check(far > 5200 + 1024, string.format("远海铺到镜头外 %.0f 格（雾 5200 格就看不见了）", far))
+check(far > 8500 + 1024, string.format("远海铺到镜头外 %.0f 格（雾 8500 格就看不见了）", far))
 T.summary()

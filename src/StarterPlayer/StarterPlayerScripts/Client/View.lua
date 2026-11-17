@@ -168,7 +168,11 @@ function View.init(G)
     views[em] = nil
     if v.id then byId[v.id] = nil end
     local hp = em:GetAttribute("Hp") or 1
-    if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
+    if v.ext and v.ext.remove then
+      local ok, keep = pcall(v.ext.remove, v)
+      if not ok and G.showError then G.showError("local view: " .. tostring(keep)) end
+      if ok and keep == true then return end   -- 自己收尾（机器人倒地，Soldier.lua）
+    end
     if hp <= 0 and v.kind ~= "veh" and not v.ext then
       v.t0 = os.clock()
       if v.bb then v.bb:Destroy() end

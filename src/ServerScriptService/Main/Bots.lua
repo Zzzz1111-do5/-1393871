@@ -15,6 +15,26 @@ function Bots.init(G)
   local SIZE = V(2.2, 5.6, 1.6)   -- 命中盒（脚底到头顶）
   local HALF = SIZE.Y / 2
 
+  -- 机器人的样子用 Roblox 正常小人（用户：士兵建模太粗糙了，就用 Roblox 正常小人的建模）：开服时生成一个默认的 R15 小人当模板
+  --   放进 ReplicatedStorage.BotRig，客户端（Soldier.lua）每个机器人克隆一个、按队伍上色、播 Roblox 自带的动作；生成不了（没网）就用零件拼的经典小人
+  task.spawn(function()
+    local RS = game:GetService("ReplicatedStorage")
+    if RS:FindFirstChild("BotRig") then return end
+    local ok, rig = pcall(function()
+      local desc = Instance.new("HumanoidDescription")
+      return game:GetService("Players"):CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+    end)
+    if not ok or not rig then
+      print("[全面大战场] 机器人小人模板生成不了（客户端用零件拼的经典小人）：" .. tostring(rig))
+      return
+    end
+    for _, d in ipairs(rig:GetDescendants()) do
+      if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
+    end
+    rig.Name = "BotRig"
+    rig.Parent = RS
+  end)
+
   local NAMES = { "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November",
     "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu" }
   local list = {}   -- 全部机器人记录（活着的、等复活的）
@@ -608,13 +628,14 @@ function Bots.init(G)
         if B.e then
           B.tgtPos = B.tgt and targetPos(B.tgt) or nil
           if not B.tgtPos then B.tgt = nil end
-          -- 交火：150 格以内站住打（守方一直站住打），300 格以内边走边打（走慢点），再远照常走、偶尔打几枪
+          -- 交火：守方一直站住打；攻方 300 格以内边走边打（走慢点）、贴脸（60 格以内）才站住——地图放大到 3 倍以后，
+          --   原来「150 格以内站住打」让攻方停在据点外两三百格对射，一直冲不进圈；再远照常走、偶尔打几枪
           local td = B.tgtPos and (B.tgtPos - B.e.root.CFrame.Position).Magnitude or 1e9
           if B.tgtPos and phase == "battle" and t >= B.fireAt then
             fire(B, B.tgtPos)
             if td > 300 then B.fireAt += BC.fireGap * 2 end
           end
-          local hold = B.tgtPos and (B.team == "def" or td < 150)
+          local hold = B.tgtPos and (B.team == "def" or td < 60)
           if not hold then walk(B, dt, (td < 300) and 0.5 or 1) elseif B.tgtPos then
             local p = B.e.root.CFrame.Position
             local look = V(B.tgtPos.X - p.X, 0, B.tgtPos.Z - p.Z)
