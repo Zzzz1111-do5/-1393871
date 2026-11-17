@@ -86,11 +86,14 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
   const bt = p.BackgroundTransparency === undefined ? 1 : p.BackgroundTransparency;
   if (bt < 1 && p.BackgroundColor3) {
     const gr = comp(n, 'UIGradient');
-    if (gr && gr.p.Color) {
+    if (gr && (gr.p.Color || gr.p.Transparency)) {
+      // 只设了透明度的渐变（颜色默认白 = 底色不变）也要画；颜色、透明度的关键点合在一起取，中间的透明度关键点不丢
       const base = p.BackgroundColor3;
+      const col = gr.p.Color || [[0, 255, 255, 255], [1, 255, 255, 255]];
       const tr = gr.p.Transparency || [[0, 0], [1, 0]];
-      const trAt = t => { for (let i = 0; i < tr.length - 1; i++) if (t <= tr[i + 1][0]) { const f = (t - tr[i][0]) / Math.max(1e-6, tr[i + 1][0] - tr[i][0]); return tr[i][1] + (tr[i + 1][1] - tr[i][1]) * f; } return tr[tr.length - 1][1]; };
-      const stops = gr.p.Color.map(k => `${rgba([base[0] * k[1] / 255, base[1] * k[2] / 255, base[2] * k[3] / 255].map(Math.round), (1 - bt) * (1 - trAt(k[0])))} ${k[0] * 100}%`);
+      const lerpAt = (seq, t, j) => { for (let i = 0; i < seq.length - 1; i++) if (t <= seq[i + 1][0]) { const f = (t - seq[i][0]) / Math.max(1e-6, seq[i + 1][0] - seq[i][0]); return seq[i][j] + (seq[i + 1][j] - seq[i][j]) * f; } return seq[seq.length - 1][j]; };
+      const ts = [...new Set([...col.map(k => k[0]), ...tr.map(k => k[0])])].sort((a, b) => a - b);
+      const stops = ts.map(t => `${rgba([1, 2, 3].map(j => Math.round(base[j - 1] * lerpAt(col, t, j) / 255)), (1 - bt) * (1 - lerpAt(tr, t, 1)))} ${t * 100}%`);
       d.style.background = `linear-gradient(${90 + (gr.p.Rotation || 0)}deg, ${stops.join(', ')})`;
     } else d.style.background = rgba(p.BackgroundColor3, 1 - bt);
   }
@@ -115,7 +118,7 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
       d.appendChild(rg);
     } else d.style.boxShadow = `0 0 0 ${th}px ${rgba(stroke.p.Color, a0)}`;
   }
-  if (p.ClipsDescendants || n.c === 'ScrollingFrame') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }
+  if (p.ClipsDescendants || n.c === 'ScrollingFrame' || n.c === 'CanvasGroup') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }   // CanvasGroup 按自己的圆角裁剪里面的东西（雷达）
   const szc = comp(n, 'UISizeConstraint');
   if (szc) {
     if (szc.p.MaxSize) { if (szc.p.MaxSize[0] < 1e7) d.style.maxWidth = szc.p.MaxSize[0] + 'px'; if (szc.p.MaxSize[1] < 1e7) d.style.maxHeight = szc.p.MaxSize[1] + 'px'; }
@@ -140,6 +143,15 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
     tw.style.alignItems = ya === 'Top' ? 'flex-start' : ya === 'Bottom' ? 'flex-end' : 'center';
     tw.style.textAlign = xa === 'Left' ? 'left' : xa === 'Right' ? 'right' : 'center';
     if (auto !== 'None') { tw.style.position = 'relative'; tw.style.inset = 'auto'; }
+    else {
+      // 自己身上的 UIPadding 也让开文字（Roblox 里按钮、标签的字照内边距排）
+      const tp = comp(n, 'UIPadding');
+      if (tp) {
+        const q = tp.p, z = [0, 0];
+        tw.style.left = ud(...(q.PaddingLeft || z)); tw.style.right = ud(...(q.PaddingRight || z));
+        tw.style.top = ud(...(q.PaddingTop || z)); tw.style.bottom = ud(...(q.PaddingBottom || z));
+      }
+    }
     const sp = document.createElement('span');
     sp.style.fontSize = (p.TextSize || 14) + 'px';
     sp.style.fontWeight = FONT_W[p.Font] || 400;

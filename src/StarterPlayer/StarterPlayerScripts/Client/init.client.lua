@@ -59,7 +59,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
-  { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end } }
+  { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
+  { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end } }   -- 主菜单背后的场景（火光、镜头）
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)

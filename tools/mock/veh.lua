@@ -38,6 +38,7 @@ if side == "def" then
   check(C.S.vehModels and #C.S.vehModels > 0, "客户端拿到了能开的型号：" .. table.concat(C.S.vehModels or {}, ","))
   check(C.S.vehAvail and C.S.vehAvail.tank and C.S.vehAvail.tank.cap >= 1, "坦克名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.tank and C.S.vehAvail.tank.cap))
   C.deploySel.spawn, C.deploySel.role = "camp", "engineer"
+  T.leaveMenu()
   R.as("client", function() C.refreshDeploy() end)
   T.click("^" .. C.T("ui.deployBtn") .. "$")
   R.run(2)

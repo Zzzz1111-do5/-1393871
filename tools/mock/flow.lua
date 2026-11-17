@@ -30,6 +30,12 @@ local C = T.C
 check(C ~= nil and C.S ~= nil, "客户端收到了战况")
 check(G.round.phase == "prep" or G.round.phase == "battle", "回合阶段 " .. G.round.phase)
 local dep = pls[1].PlayerGui:FindFirstChild("Main") and pls[1].PlayerGui.Main:FindFirstChild("Deploy")
+-- 进服先到主菜单（背后是透明的 3D 场景，部署界面先不画）；点「进入战斗」后才有部署界面（同 Luau 的 ia_flow）
+if C.menuShown and C.menuShown() then
+  check(dep ~= nil and not dep.Visible, "主菜单开着：部署界面不透上来")
+  C.menuEnter()
+  R.run(0.5)
+end
 check(dep ~= nil and dep.Visible, "没出生时显示部署界面")
 local atk, def = {}, {}
 for _, pl in ipairs(pls) do

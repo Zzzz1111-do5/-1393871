@@ -47,6 +47,7 @@ check(CD.S.vehModels and #CD.S.vehModels > 0, "客户端拿到了能开的型号
 check(CD.S.vehAvail and CD.S.vehAvail.tank and CD.S.vehAvail.tank.cap >= 1, "坦克名额 " .. tostring(CD.S.vehAvail and CD.S.vehAvail.tank and CD.S.vehAvail.tank.cap))
 check(#(G.pads or {}) >= 20, "地图里摆了 " .. #(G.pads or {}) .. " 个载具生成点")
 CD.deploySel.spawn, CD.deploySel.role = "camp", "engineer"
+H.leaveMenu(def)
 CD.refreshDeploy()
 H.click(def, "^" .. CD.T("ui.deployBtn") .. "$")
 H.run(2)

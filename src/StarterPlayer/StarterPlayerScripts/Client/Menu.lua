@@ -17,6 +17,7 @@ function Menu.init(G)
   local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
   local Tint = require(script.Parent:WaitForChild("Tint"))
   local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈：摆的时候转回来
+  local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Menu"
@@ -53,7 +54,7 @@ function Menu.init(G)
   end
 
   -- 背景：近黑；右边一个大的原模型（自己阵营的主战坦克 / 战斗机，导入了才有），左边压暗
-  local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
+  local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)   -- 后面的场景搭好了就透明（MenuStage.lua），没搭好照旧近黑
   local hero = Instance.new("ViewportFrame")
   hero.Name = "Hero"
   hero.BackgroundTransparency = 1
@@ -64,11 +65,20 @@ function Menu.init(G)
   hero.LightColor = RGB(255, 214, 170)
   hero.LightDirection = Vector3.new(-0.7, -0.45, 0.55)
   hero.Parent = bg
+  -- 左边压暗（卡片、玩家名压在上面看得清）；后面的场景开着时浅一点，像参考图那样卡片后面还透出火光和废墟
+  local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
   do
-    local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
     local g = Instance.new("UIGradient")
     g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.42, 0.08), NumberSequenceKeypoint.new(0.62, 0.75), NumberSequenceKeypoint.new(1, 0.9) })
     g.Parent = shade
+  end
+  -- 上下暗角（电影感）
+  local vignette = frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 0)
+  do
+    local g = Instance.new("UIGradient")
+    g.Rotation = 90
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.18, 0.85), NumberSequenceKeypoint.new(0.75, 0.9), NumberSequenceKeypoint.new(1, 0.25) })
+    g.Parent = vignette
   end
   -- 内容按 1280 × 720 摆，按屏幕整体缩放（手机横屏也放得下）
   local content = frame(bg, UDim2.fromOffset(1280, 720), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, V2(0.5, 0.5))
@@ -262,11 +272,13 @@ function Menu.init(G)
   pClose.Activated:Connect(function() panel.Visible = false panelKind = nil end)
 
   local entered = false   -- 点过「进入战斗」：这次进服不再自动弹主菜单
+  local stageOn, stageTeam = false, nil   -- 背后的场景开着没有、按哪一方搭的
   local function enter()
     entered = true
     G.menuOpenNow = false
     gui.Enabled = false
     panel.Visible = false
+    if stageOn then stageOn = false Stage.show(false) end
     if G.refresh then G.refresh() end
   end
   card(1, enter)
@@ -290,10 +302,23 @@ function Menu.init(G)
   ---------------------------------------------------------------- 刷新
 
   local lastTeam = nil
+  function G.stepMenu(dt) if stageOn then Stage.step(dt) end end
   function G.refreshMenu(S)
     if not S then return end
     local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (S.progress or 1) >= 1)
     gui.Enabled = show
+    -- 背后的场景：开着主菜单时镜头对着它，关了收起来、镜头还给游戏
+    if show ~= stageOn then
+      stageOn = show
+      Stage.show(show, S.team or "atk")
+    elseif show and stageTeam ~= (S.team or "atk") then
+      Stage.show(true, S.team or "atk")
+    end
+    stageTeam = S.team or "atk"
+    local live = Stage.active()
+    bg.BackgroundTransparency = live and 1 or 0
+    shade.BackgroundTransparency = live and 0.4 or 0
+    hero.Visible = not live
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName

@@ -69,6 +69,7 @@ local def = (G.P[p1].team == "def") and p1 or p2
 local PD = G.P[def]
 local CD = H.Gs[def.Name]
 CD.deploySel.spawn, CD.deploySel.role = "camp", "engineer"
+H.leaveMenu(def)
 CD.refreshDeploy()
 H.click(def, "^" .. CD.T("ui.deployBtn") .. "$")
 H.run(2)

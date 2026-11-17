@@ -170,13 +170,13 @@ function Fly.init(G)
     return l
   end
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
-  ui.round(panel, 10)
   panel.Visible = false
   local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
   local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
   aimRing.TextColor3 = Color3.new(1, 1, 1)
@@ -965,7 +965,7 @@ function Fly.init(G)
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     aName.Text = T("veh." .. d.id) .. (st.pilot and "" or ("   " .. T("air.passenger")))
     local kmh = math.floor(st.vel.Magnitude / AD.M * 3.6 + 0.5)
     local agl = math.floor((pos.Y - ground(pos.X, pos.Z) - d.gearH) / AD.M + 0.5)

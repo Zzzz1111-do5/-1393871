@@ -35,7 +35,6 @@ function Gunner.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 70), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，gs.help）
-  ui.round(panel, 10)
   panel.Visible = false
   local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
@@ -43,6 +42,7 @@ function Gunner.init(G)
   local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 58), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(1, 1), nil, RGB(240, 200, 80), 0)
+  ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = fName })   -- 跟新界面一个样子（UI.lua）
   local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
@@ -389,7 +389,7 @@ function Gunner.init(G)
     local em = gs.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), math.clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     fName.Text = T("fort." .. gs.kind)
     local info = T("fw." .. w.id)
     local rel = 1

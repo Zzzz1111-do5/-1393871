@@ -106,6 +106,13 @@ function T.press(b)
     b.MouseButton1Up:Fire(640, 360)
   end)
 end
+-- 主菜单开着（背后是透明的 3D 场景，部署界面先不画）：像玩家一样点「进入战斗」关掉它（同 Luau 测试台的 H.leaveMenu）
+function T.leaveMenu()
+  R.as("client", function()
+    if T.C.menuShown and T.C.menuShown() then T.C.menuEnter() end
+  end)
+  R.run(0.3)
+end
 function T.click(pattern)
   local b = T.findButton(pattern)
   if not b then error("找不到看得见的按钮：" .. pattern, 2) end

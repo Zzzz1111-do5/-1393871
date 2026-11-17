@@ -88,7 +88,21 @@ function UI.init(G)
     round(b, 8)
     return b
   end
-  G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button }
+  -- 载具、飞机、舰艇、工事的信息面板（Drive / Fly / Sail / Gunner）跟新界面一个样子：深色、直角、细线；血条、装填条换成细线，名字不加粗
+  local function flatPanel(p, o)
+    for _, c in ipairs(p:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end
+    p.BackgroundColor3, p.BackgroundTransparency = RGB(6, 8, 10), 0.2
+    stroke(p, LINE, 1, 0.88)
+    for _, bg in ipairs({ o.hp or false, o.rel or false }) do
+      if bg then
+        bg.Size = UDim2.new(bg.Size.X.Scale, bg.Size.X.Offset, 0, (bg == o.hp) and 3 or 2)
+        bg.BackgroundColor3, bg.BackgroundTransparency = LINE, 0.86
+      end
+    end
+    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.GothamMedium, TEXT end
+  end
+  local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
+  G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
   local function teamColor(t) return Config.Teams[t or "atk"].color end
   local function fmtTime(s)
@@ -670,7 +684,12 @@ function UI.init(G)
   help.TextStrokeTransparency = 0.6
 
   -- 小地图容器（右下）
-  local miniBox = frame(hud, UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), PANEL, 1, Vector2.new(1, 1))
+  -- 圆形雷达（Hud.lua 摆、画）：CanvasGroup 才能把里面的地图、亮点按圆角裁成圆
+  local miniBox = Instance.new("CanvasGroup")
+  miniBox.Name = "Radar"
+  miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
+  miniBox.BackgroundColor3, miniBox.BackgroundTransparency, miniBox.BorderSizePixel = PANEL, 1, 0
+  miniBox.Parent = hud
   -- 战斗中的界面换成《坠落》那种风格（Hud.lua）：旧的顶栏、血条、兵种字交给它收起来，小地图框挪到左下
   G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, help = help }
 
@@ -685,7 +704,7 @@ function UI.init(G)
   feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
   feedList.SortOrder = Enum.SortOrder.LayoutOrder
   feedList.Parent = feed
-  local toasts = frame(gui, UDim2.fromOffset(520, 200), UDim2.new(0.5, 0, 1, -110), PANEL, 1, Vector2.new(0.5, 1))
+  local toasts = frame(gui, UDim2.fromOffset(440, 200), UDim2.new(0.5, 0, 1, -110), PANEL, 1, Vector2.new(0.5, 1))
   local toastList = Instance.new("UIListLayout")
   toastList.VerticalAlignment = Enum.VerticalAlignment.Bottom
   toastList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -693,14 +712,16 @@ function UI.init(G)
   toastList.SortOrder = Enum.SortOrder.LayoutOrder
   toastList.Parent = toasts
   local order = 0
-  local KIND_COL = { good = RGB(60, 150, 80), bad = RGB(170, 50, 45), info = RGB(40, 50, 60), kill = RGB(150, 110, 30) }
+  -- 跟新界面一个样子（深色、直角、细线）：底是深色，左边一道颜色细条分好消息、坏消息、击杀
+  local KIND_COL = { good = RGB(96, 200, 124), bad = RGB(232, 84, 72), info = RGB(160, 170, 166), kill = RGB(232, 184, 76) }
   function G.toast(text, kind)
     order += 1
-    local l = label(toasts, text, UDim2.fromOffset(500, 26), nil, 15, Color3.new(1, 1, 1), Enum.Font.GothamBold)
-    l.BackgroundColor3 = KIND_COL[kind or "info"] or KIND_COL.info
+    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.GothamMedium)
+    l.BackgroundColor3 = RGB(6, 8, 10)
     l.BackgroundTransparency = 0.2
     l.LayoutOrder = order
-    round(l, 6)
+    stroke(l, LINE, 1, 0.9)
+    frame(l, UDim2.new(0, 3, 1, 0), nil, KIND_COL[kind or "info"] or KIND_COL.info, 0)
     task.delay(4, function() l:Destroy() end)
   end
   function G.centerMsg(text)
@@ -813,15 +834,34 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 结算
 
-  local results = frame(gui, UDim2.fromOffset(620, 300), UDim2.fromScale(0.5, 0.45), PANEL, 0.1, Vector2.new(0.5, 0.5))
+  -- 跟战况表一个样子：深色、直角、细线；顶上一道胜方的队色细线，四个大数字，经验、军衔，下一局倒计时
+  local results = frame(gui, UDim2.fromOffset(640, 286), UDim2.fromScale(0.5, 0.46), RGB(6, 8, 10), 0.08, Vector2.new(0.5, 0.5))
   results.Visible = false
   results.ZIndex = 25
-  round(results, 12)
-  local resTitle = label(results, "", UDim2.new(1, -20, 0, 50), UDim2.fromOffset(10, 16), 30, TEXT, Enum.Font.GothamBlack)
-  local resSub = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.fromOffset(10, 70), 18, MUTE, Enum.Font.GothamBold)
-  local resStats = label(results, "", UDim2.new(1, -20, 0, 90), UDim2.fromOffset(10, 110), 18, TEXT, Enum.Font.GothamMedium)
-  local resNext = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 1, -46), 16, MUTE, Enum.Font.GothamMedium)
-  for _, x in ipairs({ resTitle, resSub, resStats, resNext }) do x.ZIndex = 26 end
+  stroke(results, LINE, 1, 0.88)
+  local resLine = frame(results, UDim2.new(1, 0, 0, 2), nil, LINE, 0)
+  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resNums = {}
+  for i, k in ipairs({ "ui.kills", "ui.deaths", "ui.captures", "ui.score" }) do
+    local x = 28 + (i - 1) * 146
+    resNums[i] = {
+      k = k,
+      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
+      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
+    }
+  end
+  local resSep = frame(results, UDim2.new(1, -56, 0, 1), UDim2.fromOffset(28, 196), LINE, 0.88)
+  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  for _, x in ipairs({ resLine, resCap, resTitle, resSub, resSep, resXp, resNext }) do x.ZIndex = 26 end
+  for _, r in ipairs(resNums) do r.n.ZIndex, r.c.ZIndex = 26, 26 end
+  if mobile then   -- 手机横屏（844 × 390）：缩一点，别盖住触屏按钮
+    local sc = Instance.new("UIScale")
+    sc.Scale = 0.8
+    sc.Parent = results
+  end
 
   ---------------------------------------------------------------- 刷新（收到服务器状态时）
 
@@ -839,7 +879,7 @@ function UI.init(G)
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
     local showDeploy = not S.alive and S.phase ~= "end"
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
-    deploy.Visible = showDeploy
+    deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
@@ -878,12 +918,18 @@ function UI.init(G)
     roleText.TextColor3 = teamColor(S.team)
     if S.phase == "end" then
       local won = S.winner == S.team
+      resLine.BackgroundColor3 = teamColor(S.winner)
+      resCap.Text = T("ui.roundOver")
       resTitle.Text = T(won and "ui.youWon" or "ui.youLost")
-      resTitle.TextColor3 = won and RGB(120, 230, 140) or RGB(240, 110, 100)
-      resSub.Text = T((S.winner == "atk") and "ui.win.atk" or "ui.win.def") .. (S.mvp and ("   MVP: " .. S.mvp) or "")
+      resTitle.TextColor3 = won and TEXT or RGB(236, 120, 108)
+      resSub.Text = T((S.winner == "atk") and "ui.win.atk" or "ui.win.def") .. (S.mvp and ("   ·   MVP  " .. S.mvp) or "")
       local me = S.me or {}
-      resStats.Text = T("ui.kills") .. " " .. (me.k or 0) .. "    " .. T("ui.deaths") .. " " .. (me.d or 0) .. "    " .. T("ui.captures") .. " " .. (me.c or 0) .. "    " .. T("ui.score") .. " " .. (me.s or 0)
-        .. "\n" .. T("ui.xp", me.gain or 0) .. "    " .. Lang.rank(G.lang, me.rank or 1)
+      local vals = { me.k or 0, me.d or 0, me.c or 0, me.s or 0 }
+      for i, r in ipairs(resNums) do
+        r.n.Text = tostring(vals[i])
+        r.c.Text = T(r.k)
+      end
+      resXp.Text = T("ui.xp", me.gain or 0) .. "   ·   " .. Lang.rank(G.lang, me.rank or 1)
       resNext.Text = T("ui.nextRound", S.left)
     end
   end
@@ -912,8 +958,9 @@ function UI.init(G)
       hpText.Text = math.ceil(hum.Health) .. " / " .. math.ceil(hum.MaxHealth)
     end
     local a = os.clock() - centerT
-    center.TextTransparency = math.clamp((a - 3) / 1, 0, 1)
-    center.TextStrokeTransparency = 0.3 + 0.7 * math.clamp((a - 3) / 1, 0, 1)
+    local fade = results.Visible and 1 or math.clamp((a - 3) / 1, 0, 1)   -- 结算面板开着：中间那行大字（胜负原因）面板上有了，不叠着画
+    center.TextTransparency = fade
+    center.TextStrokeTransparency = 0.3 + 0.7 * fade
   end
 end
 

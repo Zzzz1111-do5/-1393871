@@ -60,6 +60,13 @@ function MapUI.init(G)
     return 5
   end
   local BAND = { RGB(118, 112, 92), RGB(62, 74, 58), RGB(54, 66, 50), RGB(70, 74, 64), RGB(92, 92, 88), RGB(42, 54, 42) }
+  -- 放进左下的雷达时整张图换成墨绿（Hud.lua 调 G.mapTheme("radar")）：海近黑、陆地按高低深浅、路和网格是亮一点的绿
+  local RADAR = { RGB(22, 66, 38), RGB(16, 54, 30), RGB(14, 48, 27), RGB(20, 60, 34), RGB(28, 72, 42), RGB(10, 40, 22) }
+  local theme = "map"
+  local landBand = {}   -- 陆地块 → 档（换配色用）
+  local roads = {}
+  local fleetMarks = {}   -- 舰队、机场岛的小灰块：雷达里换成暗绿
+  local function landCol(b) return (theme == "radar" and RADAR or BAND)[b] end
   local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
   if not okF then Flora = nil end
   local N = 110
@@ -80,7 +87,8 @@ function MapUI.init(G)
           if runB then
             local f = Instance.new("Frame")
             f.BorderSizePixel = 0
-            f.BackgroundColor3 = BAND[runB]
+            f.BackgroundColor3 = landCol(runB)
+            landBand[f] = runB
             f.Position = UDim2.fromScale(runI / N, j / N)
             f.Size = UDim2.fromScale((i - runI) / N, 1 / N + 0.0008)
             f.Parent = land
@@ -102,7 +110,8 @@ function MapUI.init(G)
           local f = Instance.new("Frame")
           f.Name = "Road"
           f.BorderSizePixel = 0
-          f.BackgroundColor3 = RGB(150, 140, 116)
+          f.BackgroundColor3 = (theme == "radar") and RGB(70, 150, 90) or RGB(150, 140, 116)
+          table.insert(roads, f)
           f.AnchorPoint = Vector2.new(0.5, 0.5)
           f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
           f.Size = UDim2.new(len * 1.04, 0, 0, 1)
@@ -153,10 +162,11 @@ function MapUI.init(G)
     f.Position = UDim2.fromScale(u, v)
     f.Size = UDim2.fromScale((s.kind == "lst") and 0.006 or 0.009, (s.kind == "carrier") and 0.1 or 0.07)
     f.Size = UDim2.fromScale(0.012, (s.kind == "carrier") and 0.09 or ((s.kind == "lhd") and 0.07 or 0.045))
-    f.BackgroundColor3 = RGB(120, 126, 132)
+    f.BackgroundColor3 = (theme == "radar") and RGB(50, 110, 70) or RGB(120, 126, 132)
     f.BorderSizePixel = 0
     f.ZIndex = 2
     f.Parent = marks
+    table.insert(fleetMarks, f)
   end
   -- 海滩：彩色短线
   for _, b in ipairs(Map.BEACHES) do
@@ -220,6 +230,22 @@ function MapUI.init(G)
     return root, marks
   end
   G.mapRoot = root
+  -- 配色：「map」部署界面的大地图（灰绿），「radar」左下雷达（墨绿）
+  function G.mapTheme(t)
+    if t == theme then return end
+    theme = t
+    local radar = t == "radar"
+    root.BackgroundColor3 = radar and RGB(3, 14, 8) or RGB(14, 24, 32)
+    for f, b in pairs(landBand) do f.BackgroundColor3 = landCol(b) end
+    for _, f in ipairs(roads) do f.BackgroundColor3 = radar and RGB(70, 150, 90) or RGB(150, 140, 116) end
+    for _, f in ipairs(fleetMarks) do f.BackgroundColor3 = radar and RGB(50, 110, 70) or RGB(120, 126, 132) end
+    for _, g in ipairs(root:GetChildren()) do
+      if g.Name == "Grid" then
+        g.BackgroundColor3 = radar and RGB(80, 255, 140) or Color3.new(1, 1, 1)
+        g.BackgroundTransparency = radar and 0.9 or 0.93
+      end
+    end
+  end
 end
 
 return MapUI

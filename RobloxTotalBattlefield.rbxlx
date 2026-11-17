@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="1">
+  <Item class="ReplicatedStorage" referent="0">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="1">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -487,7 +487,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -551,6 +551,11 @@ Config.Loadout = {
 }
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
 Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点
+
+-- 左下的雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）：
+--   友军都显示；敌人里车、船、飞机在范围内就显示（雷达回波），步兵要在自己视线里、开了枪（没消音的，开枪的地方闪一下）或者被友军标记了才显示——
+--   不然雷达就成了透视；allEnemies = true 时范围内的敌人全显示
+Config.Radar = { range = 520, sweep = 2.4, ping = 3, allEnemies = false }   -- 半径（格，约 186 米）、扫一圈几秒、开枪的红圈留几秒
 
 ---------------------------------------------------------------- 武器
 
@@ -664,7 +669,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -774,7 +779,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -832,7 +837,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">Flora</string>
         <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
@@ -1000,7 +1005,7 @@ return Flora
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -1245,7 +1250,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">GearDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——手持装备用哪件真模型（Sketchfab 原模型：tools/weapons/optics.json → OpticsMeta / OpticMesh / models/optics/<键>.glb）
@@ -1305,7 +1310,7 @@ return GD
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">ImportTurn</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -1322,7 +1327,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -1384,7 +1389,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="11">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -1421,7 +1426,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="12">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py），别手改：网页版舰艇模型原样转成的 Roblox 模型（models/ship/<型号>.glb）的元数据
@@ -1443,7 +1448,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="13">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">ImportedTint</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -3378,7 +3383,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="14">
+    <Item class="ModuleScript" referent="13">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -3580,7 +3585,8 @@ add("ui.win.atk", "进攻方胜利：5 个据点全部拿下", "ATTACKERS WIN: a
 add("ui.win.def", "防守方胜利：守住了据点", "DEFENDERS WIN: held the line")
 add("ui.youWon", "你们赢了！", "Victory!")
 add("ui.youLost", "你们输了", "Defeat")
-add("ui.nextRound", "{1} 秒后开下一局，重新分队", "Next round in {1}s with new teams")
+add("ui.nextRound", "{1} 秒后开下一局", "Next round in {1}s")   -- 开新一局不打乱分队（各自留在选的阵营）
+add("ui.roundOver", "本局结束", "ROUND OVER")
 add("ui.xp", "经验 +{1}", "+{1} XP")
 add("ui.rankUp", "晋升：{1}", "Promoted: {1}")
 add("ui.killed", "{1} 击毙了 {2}", "{1} killed {2}")
@@ -3902,7 +3908,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="15">
+    <Item class="ModuleScript" referent="14">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -4363,7 +4369,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="15">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -4383,11 +4389,11 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="17">
+    <Item class="Folder" referent="16">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -4449,7 +4455,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -4469,7 +4475,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -4510,7 +4516,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -4530,7 +4536,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -4550,7 +4556,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -4570,7 +4576,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -4597,7 +4603,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -4631,7 +4637,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -4651,7 +4657,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -4699,7 +4705,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -4761,7 +4767,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -4781,7 +4787,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -4815,7 +4821,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -4836,7 +4842,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="32">
+    <Item class="ModuleScript" referent="31">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -4987,7 +4993,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="33">
+    <Item class="ModuleScript" referent="32">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -5031,7 +5037,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="34">
+    <Item class="ModuleScript" referent="33">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -5162,7 +5168,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="35">
+    <Item class="ModuleScript" referent="34">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -5477,7 +5483,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="36">
+    <Item class="ModuleScript" referent="35">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -5716,17 +5722,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="37">
+    <Item class="Folder" referent="36">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="38">
+  <Item class="ServerScriptService" referent="37">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="39">
+    <Item class="Script" referent="38">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -5898,7 +5904,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -6743,7 +6749,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -7278,7 +7284,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -7946,7 +7952,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -8294,7 +8300,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -8554,7 +8560,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -9745,7 +9751,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="46">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -9830,7 +9836,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -10024,7 +10030,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -10989,11 +10995,11 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">Round</string>
-          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（兵种 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
---   一局：准备（Config.Round.prep 秒，所有人随机分成人数相当的两队）→ 战斗（20 分钟，攻方每拿下一个据点 +3 分钟）→ 结算 → 重新分队开下一局
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、5 个据点的占领、时间与加时、胜负、得分、结算
+--   一局：准备（Config.Round.prep 秒；阵营进服时自己选，真人多的一边进不去）→ 战斗（20 分钟，攻方每拿下一个据点 +3 分钟）→ 结算 → 开下一局（不打乱分队，各自留在选的阵营）
 --   胜负：攻方拿下全部 5 个 → 攻方赢；时间到守方手里还有任何一个 → 守方赢（到点时有据点正在被占：加时到占领中断或成功，最多 90 秒）
 --   据点被攻方拿下后锁定，守方夺不回去
 local Players = game:GetService("Players")
@@ -11712,7 +11718,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -11783,7 +11789,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -12032,7 +12038,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -12378,7 +12384,7 @@ function Weapons.init(G)
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
     local hit = res and res.Position or (origin + dir * w.range)
-    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team })   -- t：哪一方开的枪（客户端雷达上闪红圈）
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
 
@@ -12623,7 +12629,7 @@ function Weapons.init(G)
     params.FilterDescendantsInstances = ignore or {}
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
     local hit = res and res.Position or (from + dir * (w.range or 500))
-    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team })
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
     return res and res.Instance or nil   -- 打中了什么（机器人用来判断是不是被墙挡着）
   end
@@ -12633,7 +12639,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -13242,15 +13248,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="54">
+  <Item class="StarterPlayer" referent="53">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="55">
+    <Item class="StarterPlayerScripts" referent="54">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="56">
+      <Item class="LocalScript" referent="55">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -13314,7 +13320,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
-  { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end } }
+  { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
+  { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end } }   -- 主菜单背后的场景（火光、镜头）
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)
@@ -13323,7 +13330,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -14511,7 +14518,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -14668,7 +14675,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -14809,7 +14816,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -14848,7 +14855,6 @@ function Drive.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 76), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 下面让出操作说明那一行（UI.lua）
-  ui.round(panel, 10)
   panel.Visible = false
   local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
@@ -14856,6 +14862,7 @@ function Drive.init(G)
   local vInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 42), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 63), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
+  ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = vName })   -- 跟新界面一个样子（UI.lua）
 
   local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
@@ -15418,7 +15425,7 @@ function Drive.init(G)
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), math.clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     vName.Text = T("veh." .. d.id) .. (st.locked and ("   " .. T("ui.lcac")) or "")
     local wid = weaponId()
     local ammo = vs.ammo and wid and vs.ammo[wid]
@@ -15458,7 +15465,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -16114,7 +16121,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -16274,7 +16281,7 @@ function Faction.init(G)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
       and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
-    gui.Enabled = show
+    gui.Enabled = show and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：先不画，免得透上来
     if not show then return end
     head.Text = T("faction.title")
     sub.Text = T("faction.sub")
@@ -16319,7 +16326,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -16494,13 +16501,13 @@ function Fly.init(G)
     return l
   end
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
-  ui.round(panel, 10)
   panel.Visible = false
   local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
   local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
   aimRing.TextColor3 = Color3.new(1, 1, 1)
@@ -17289,7 +17296,7 @@ function Fly.init(G)
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     aName.Text = T("veh." .. d.id) .. (st.pilot and "" or ("   " .. T("air.passenger")))
     local kmh = math.floor(st.vel.Magnitude / AD.M * 3.6 + 0.5)
     local agl = math.floor((pos.Y - ground(pos.X, pos.Z) - d.gearH) / AD.M + 0.5)
@@ -17380,7 +17387,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -17698,7 +17705,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -18150,7 +18157,10 @@ function Fx.init(G)
     for _, e in ipairs(list) do
       local k = e.k
       if k == "gun" then
-        if e.by ~= me.UserId then G.gunFx(e.w, e.a, e.b, false) end
+        if e.by ~= me.UserId then
+          G.gunFx(e.w, e.a, e.b, false)
+          if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
+        end
       elseif k == "boom" then boom(e.p, e.s)
       elseif k == "shot" then newShot(e)
       elseif k == "shotEnd" then endShot(e.id)
@@ -18187,7 +18197,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -18319,7 +18329,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -18359,7 +18369,6 @@ function Gunner.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 70), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，gs.help）
-  ui.round(panel, 10)
   panel.Visible = false
   local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
@@ -18367,6 +18376,7 @@ function Gunner.init(G)
   local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 58), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(1, 1), nil, RGB(240, 200, 80), 0)
+  ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = fName })   -- 跟新界面一个样子（UI.lua）
   local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
@@ -18713,7 +18723,7 @@ function Gunner.init(G)
     local em = gs.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), math.clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     fName.Text = T("fort." .. gs.kind)
     local info = T("fw." .. w.id)
     local rel = 1
@@ -18858,7 +18868,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -18922,8 +18932,11 @@ function Hangar.init(G)
 
   local spots = ui.frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   local title = ui.label(bg, "", UDim2.fromOffset(520, 30), UDim2.new(0.5, 0, 0, 22), 24, TEXT, Enum.Font.GothamBlack, Vector2.new(0.5, 0))
-  local symBtn = ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0))
+  -- 直角（跟新界面一样：深色、直角、细线）：ui.button 自带的圆角去掉
+  local function square(x) for _, c in ipairs(x:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end return x end
+  local symBtn = square(ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0)))
   symBtn.TextSize = 14
+  ui.stroke(symBtn, RGB(255, 255, 255), 1, 0.85)
   -- 左边：这个挂点能挂的弹
   local listBox = ui.frame(bg, UDim2.fromOffset(370, 420), UDim2.new(0, 40, 1, -96), RGB(0, 0, 0), 1, Vector2.new(0, 1))
   local listLayout = Instance.new("UIListLayout")
@@ -18933,7 +18946,6 @@ function Hangar.init(G)
   listLayout.Parent = listBox
   -- 右下：弹的资料
   local info = ui.frame(bg, UDim2.fromOffset(380, 196), UDim2.new(1, -40, 1, -96), RGB(10, 12, 14), 0.1, Vector2.new(1, 1))
-  ui.round(info, 6)
   ui.stroke(info, RGB(255, 255, 255), 1, 0.85)
   local iName = ui.label(info, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 18), 19, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local iCat = ui.label(info, "", UDim2.new(1, -40, 0, 18), UDim2.fromOffset(20, 50), 13, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
@@ -18944,11 +18956,11 @@ function Hangar.init(G)
     rows[k] = { a, b }
   end
   local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.GothamMedium, Vector2.new(0.5, 1))
-  local backBtn = ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1))
+  local backBtn = square(ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1)))
   ui.stroke(backBtn, RGB(255, 255, 255), 1, 0.7)
   backBtn.TextSize = 20
   backBtn.Font = Enum.Font.Gotham
-  local saveBtn = ui.button(bg, "", UDim2.fromOffset(170, 52), UDim2.new(0.5, 8, 1, -28), RGB(255, 255, 255), Vector2.new(0, 1))
+  local saveBtn = square(ui.button(bg, "", UDim2.fromOffset(170, 52), UDim2.new(0.5, 8, 1, -28), RGB(255, 255, 255), Vector2.new(0, 1)))
   saveBtn.TextColor3 = RGB(10, 10, 10)
   saveBtn.TextSize = 20
   saveBtn.Font = Enum.Font.Gotham
@@ -19044,7 +19056,6 @@ function Hangar.init(G)
       b.BackgroundTransparency = on and 0 or 0.15
       b.AutoButtonColor = true
       b.Parent = listBox
-      ui.round(b, 6)
       ui.stroke(b, RGB(255, 255, 255), 1, on and 0 or 0.82)
       local fg = on and RGB(16, 16, 16) or TEXT
       local w = wid and AD.W[wid]
@@ -19271,7 +19282,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -19397,24 +19408,160 @@ function Hud.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 左下小地图
+  ---------------------------------------------------------------- 左下雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）
+  --   圆（UI.lua 建的 CanvasGroup 按圆角裁）里是染成墨绿的地图（北朝上、跟着人走），三道距离环、十字线、带余辉的扫描线；
+  --   亮点：友军绿、敌军红；步兵圆点、车和船方块、飞机菱形；扫描线扫过时最亮、一圈里慢慢暗下去；敌人开枪的地方闪一个红圈
+  --   哪些敌人上雷达见 Config.Radar（车船飞机在范围内就有；步兵要在视线里、开了枪或者被标记）
 
-  local MS = mobile and 140 or 200
+  local RC = Config.Radar or { range = 520, sweep = 2.4, ping = 3 }
+  local GREEN, GDIM = RGB(90, 255, 140), RGB(40, 150, 80)
+  local FRIEND, FOE = RGB(110, 255, 150), RGB(255, 72, 58)
+  local MS = mobile and 150 or 210
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(0, 1)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(0, 18, 1, -18)   -- 手机：左下是摇杆，放到左上（让开战况表按钮）
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(6, 10, 12)
-  box.BackgroundTransparency = 0.3
-  box.ClipsDescendants = true
-  ui.stroke(box, WHITE, 1, 0.82)
-  local ZOOM = 1200 * ((G.Map and G.Map.K) or 1)   -- 小地图里整张图画多大（像素）：框里看得到大约 1000 格（地图放大了，整张图跟着画大）
+  box.BackgroundColor3 = RGB(2, 12, 6)
+  box.BackgroundTransparency = 0.15
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = box
+  end
+  ui.stroke(box, GREEN, 1.5, 0.35)
+  local ZOOM = 6100 * ((G.Map and G.Map.K) or 1) * (MS / 2) / RC.range   -- 整张地图（6100 × K 格见方，MapUI；地图放大了 K 倍）画多大：半径正好是雷达范围
+  local function ring(k)   -- 距离环
+    local r = ui.frame(box, UDim2.fromScale(k, k), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
+    r.ZIndex = 18
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = r
+    ui.stroke(r, GREEN, 1, 0.72)
+  end
+  ring(1 / 3)
+  ring(2 / 3)
+  for _, vert in ipairs({ true, false }) do   -- 十字线
+    local l = line(box, vert and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, 0.5), GREEN, 0.84, V2(0.5, 0.5))
+    l.ZIndex = 18
+  end
+  -- 扫描线：一根从圆心到边的亮线 + 后面一扇越来越淡的余辉。每根线放在一个和雷达一样大、绕中心转的透明框里，
+  --   线只占框的上半截（圆心到上边），转框就是转线
+  local sweepLines = {}
+  for k = 0, 13 do
+    local holder = ui.frame(box, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
+    holder.ZIndex = 19
+    local l = line(holder, UDim2.new(0, k == 0 and 2 or 3, 0.5, 0), UDim2.fromScale(0.5, 0), GREEN, (k == 0) and 0.05 or (0.55 + k * 0.03), V2(0.5, 0))
+    l.ZIndex = 19
+    sweepLines[k + 1] = holder
+  end
+  local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
+  blipLayer.ZIndex = 20
   local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
-  arrow.ZIndex = 20
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, RGB(235, 90, 80), Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
-  north.ZIndex = 20
-  local heading = txt(box, "", UDim2.fromOffset(44, 16), UDim2.new(1, -8, 0, 5), 13, WHITE, NUM, V2(1, 0), Enum.TextXAlignment.Right, 0.4)
-  heading.ZIndex = 20
+  arrow.ZIndex = 22
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, GREEN, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  north.ZIndex = 22
+  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, GREEN, NUM, V2(0.5, 1), nil, 0.4)
+  heading.ZIndex = 22
+  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(40, 12), UDim2.new(0.5, MS * 0.33 - 2, 0.5, -10), 9, GDIM, NUM, V2(0, 0.5), Enum.TextXAlignment.Left, 0.6)
+  rangeL.ZIndex = 22
+
+  -- 亮点（对象池）：kind inf 圆点 / veh 方块 / air 菱形 / ping 红圈
+  local pool, used = {}, 0
+  local function blip()
+    used += 1
+    local b = pool[used]
+    if not b then
+      local f = Instance.new("Frame")
+      f.AnchorPoint = V2(0.5, 0.5)
+      f.BorderSizePixel = 0
+      f.ZIndex = 21
+      f.Parent = blipLayer
+      local c = Instance.new("UICorner")
+      c.Parent = f
+      local st = Instance.new("UIStroke")
+      st.Thickness = 1
+      st.Parent = f
+      b = { f = f, c = c, st = st }
+      pool[used] = b
+    end
+    b.f.Visible = true
+    return b
+  end
+  local function shape(b, kind, col, alpha)
+    local f = b.f
+    if kind == "ping" then
+      f.Size = UDim2.fromOffset(12, 12)
+      f.Rotation = 0
+      b.c.CornerRadius = UDim.new(0.5, 0)
+      f.BackgroundTransparency = 1
+      b.st.Color, b.st.Transparency, b.st.Thickness = col, alpha, 1.5
+      return
+    end
+    local sz = (kind == "inf") and 5 or 7
+    f.Size = UDim2.fromOffset(sz, sz)
+    f.Rotation = (kind == "air") and 45 or 0
+    b.c.CornerRadius = (kind == "inf") and UDim.new(0.5, 0) or UDim.new(0, 1)
+    f.BackgroundColor3, f.BackgroundTransparency = col, alpha
+    b.st.Color, b.st.Transparency, b.st.Thickness = Color3.new(0, 0, 0), 0.4 + alpha * 0.6, 1
+  end
+
+  -- 雷达里的东西：真人（角色带 Team）、实体（workspace.Ents：机器人、车、飞机、船；工事、地雷不上雷达）
+  local CAT = { inf = "inf", light = "veh", armor = "veh", ship = "veh", air = "air" }
+  local contacts = {}      -- { pos, team, kind, model }
+  local seenT = {}         -- 敌人 → 最近一次看见（视线里）的时刻
+  local losT = {}          -- 敌人 → 下次查视线的时刻
+  local pings = {}         -- 敌人开枪的地方：{ pos, t }
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
+  local scanT, sweepA, purgeT = 0, 0, 5
+  local function myEnt(m)
+    local d = G.drive
+    if d and d.em == m then return true end
+    local uid = me.UserId
+    return m:GetAttribute("Driver") == uid or m:GetAttribute("Pilot") == uid or m:GetAttribute("Gunner") == uid
+  end
+  local function scan(center, mine)
+    table.clear(contacts)
+    local R2 = (RC.range * 1.05) ^ 2
+    local function add(pos, team, kind, model)
+      local dx, dz = pos.X - center.X, pos.Z - center.Z
+      if dx * dx + dz * dz <= R2 then table.insert(contacts, { pos = pos, team = team, kind = kind, model = model }) end
+    end
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+      if pl ~= me and hrp and hum and hum.Health > 0 then
+        add(hrp.CFrame.Position, ch:GetAttribute("Team") or pl:GetAttribute("Side"), "inf", ch)
+      end
+    end
+    local ents = workspace:FindFirstChild("Ents")
+    for _, m in ipairs(ents and ents:GetChildren() or {}) do
+      local kind = CAT[m:GetAttribute("Cat") or ""]
+      local root = m.PrimaryPart or m:FindFirstChild("Root")
+      if kind and root and not m:GetAttribute("Wreck") and (m:GetAttribute("Hp") or 1) > 0 and not myEnt(m) then
+        add(root.CFrame.Position, m:GetAttribute("Team"), kind, m)
+      end
+    end
+  end
+  -- 敌人看不看得见：从镜头往它身上打一条线，先打到它自己（或者比它远的东西）就算看见
+  local function visible(c, from)
+    local to = c.pos + Vector3.new(0, 1.5, 0)
+    local d = to - from
+    local ex = { me.Character }
+    if G.drive and G.drive.em then table.insert(ex, G.drive.em) end
+    rayP.FilterDescendantsInstances = ex
+    local hit = workspace:Raycast(from, d, rayP)
+    return (not hit) or (c.model and hit.Instance:IsDescendantOf(c.model)) or (hit.Position - from).Magnitude > d.Magnitude - 3
+  end
+  -- 服务器发的开枪特效（Fx.lua）：敌人没消音的枪 → 雷达上开枪的地方闪一个红圈
+  function G.radarShot(pos, team, quiet)
+    if quiet or not pos or not team or team == me:GetAttribute("Side") then return end
+    table.insert(pings, { pos = pos, t = os.clock() })
+    if #pings > 40 then table.remove(pings, 1) end
+  end
+  G.radarContacts = function() return contacts end   -- 测试用
+  G.radarShown = {}                                   -- 测试用：这一帧画出来的 { team, kind, enemy }
 
   ---------------------------------------------------------------- 小队（小地图右边）
 
@@ -19602,24 +19749,90 @@ function Hud.init(G)
       end
     end
     if gT <= 0 then gT = 2 end
-    -- 小地图：跟着人走、北朝上
+    -- 雷达：跟着人走、北朝上
     local root = G.mapRoot
     local ch = me.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local pos = hrp and hrp.CFrame.Position or cp
+    -- 视线从自己的眼睛（开车时从镜头）往外打：第三人称的镜头可能在墙外头
+    local head = ch and ch:FindFirstChild("Head")
+    local eye = (head and not G.drive) and head.CFrame.Position or cp
     if root and root.Parent == box and G.mapUV then
-      local pos = hrp and hrp.Position or cp
+      if G.mapTheme then G.mapTheme("radar") end
       local u, v = G.mapUV(pos.X, pos.Z)
       root.AnchorPoint = V2(0, 0)
       root.Size = UDim2.fromOffset(ZOOM, ZOOM)
       root.Position = UDim2.new(0.5, -u * ZOOM, 0.5, -v * ZOOM)
-      root.BackgroundTransparency = 0.2   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
+      root.BackgroundTransparency = 0.25   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
     elseif root and root.BackgroundTransparency ~= 0 then
       root.BackgroundTransparency = 0
+      if G.mapTheme then G.mapTheme("map") end
     end
     local lv = cam.CFrame.LookVector
     local hdg = (math.deg(math.atan2(lv.X, -lv.Z)) + 360) % 360   -- 北 = −Z（地图上方）
-    heading.Text = string.format("%03d", math.floor(hdg + 0.5) % 360)
+    heading.Text = string.format("%03d°", math.floor(hdg + 0.5) % 360)
     arrow.Rotation = hdg
+    -- 扫描线
+    local now = os.clock()
+    sweepA = (sweepA + dt * 360 / RC.sweep) % 360
+    for k, l in ipairs(sweepLines) do l.Rotation = sweepA - (k - 1) * 3 end
+    -- 亮点：0.1 秒收一次雷达范围里的东西；敌方步兵每个 0.3 秒查一次视线
+    scanT -= dt
+    local mine = me:GetAttribute("Side")
+    if scanT <= 0 then
+      scanT = 0.1
+      scan(pos, mine)
+      purgeT -= 0.1
+      if purgeT <= 0 then   -- 阵亡、消失了的模型不留在表里（长时间开着越积越多）
+        purgeT = 5
+        for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
+        for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
+      end
+      for _, c in ipairs(contacts) do
+        if c.team ~= mine and c.kind == "inf" and c.model and now >= (losT[c.model] or 0) then
+          losT[c.model] = now + 0.3
+          if visible(c, eye) then seenT[c.model] = now end
+        end
+      end
+    end
+    used = 0
+    table.clear(G.radarShown)
+    local px = (MS / 2) / RC.range
+    local function place(b, wpos)
+      b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
+    end
+    local function fadeAt(wpos)   -- 扫描线刚扫过最亮，一圈里慢慢暗下去
+      local brg = (math.deg(math.atan2(wpos.X - pos.X, -(wpos.Z - pos.Z))) + 360) % 360
+      local age = ((sweepA - brg) % 360) / 360
+      return 0.05 + 0.6 * age
+    end
+    for _, c in ipairs(contacts) do
+      local enemy = c.team ~= mine
+      local show = not enemy or RC.allEnemies or c.kind ~= "inf" or (c.model and now - (seenT[c.model] or -99) < 2)
+      if show then
+        local b = blip()
+        shape(b, c.kind, enemy and FOE or FRIEND, fadeAt(c.pos))
+        place(b, c.pos)
+        table.insert(G.radarShown, { team = c.team, kind = c.kind, enemy = enemy })
+      end
+    end
+    for i = #pings, 1, -1 do
+      local p = pings[i]
+      local age = now - p.t
+      if age > RC.ping then
+        table.remove(pings, i)
+      else
+        local dx, dz = p.pos.X - pos.X, p.pos.Z - pos.Z
+        if dx * dx + dz * dz <= RC.range * RC.range then
+          local b = blip()
+          shape(b, "ping", FOE, math.clamp(age / RC.ping, 0, 1) * 0.9)
+          b.f.Size = UDim2.fromOffset(8 + age * 6, 8 + age * 6)
+          place(b, p.pos)
+          table.insert(G.radarShown, { team = "ping", kind = "ping", enemy = true })
+        end
+      end
+    end
+    for i = used + 1, #pool do pool[i].f.Visible = false end
     -- 小队（0.25 秒一次）
     sqT -= dt
     if sqT <= 0 and not mobile then
@@ -19683,7 +19896,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -19748,6 +19961,13 @@ function MapUI.init(G)
     return 5
   end
   local BAND = { RGB(118, 112, 92), RGB(62, 74, 58), RGB(54, 66, 50), RGB(70, 74, 64), RGB(92, 92, 88), RGB(42, 54, 42) }
+  -- 放进左下的雷达时整张图换成墨绿（Hud.lua 调 G.mapTheme("radar")）：海近黑、陆地按高低深浅、路和网格是亮一点的绿
+  local RADAR = { RGB(22, 66, 38), RGB(16, 54, 30), RGB(14, 48, 27), RGB(20, 60, 34), RGB(28, 72, 42), RGB(10, 40, 22) }
+  local theme = "map"
+  local landBand = {}   -- 陆地块 → 档（换配色用）
+  local roads = {}
+  local fleetMarks = {}   -- 舰队、机场岛的小灰块：雷达里换成暗绿
+  local function landCol(b) return (theme == "radar" and RADAR or BAND)[b] end
   local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
   if not okF then Flora = nil end
   local N = 110
@@ -19768,7 +19988,8 @@ function MapUI.init(G)
           if runB then
             local f = Instance.new("Frame")
             f.BorderSizePixel = 0
-            f.BackgroundColor3 = BAND[runB]
+            f.BackgroundColor3 = landCol(runB)
+            landBand[f] = runB
             f.Position = UDim2.fromScale(runI / N, j / N)
             f.Size = UDim2.fromScale((i - runI) / N, 1 / N + 0.0008)
             f.Parent = land
@@ -19790,7 +20011,8 @@ function MapUI.init(G)
           local f = Instance.new("Frame")
           f.Name = "Road"
           f.BorderSizePixel = 0
-          f.BackgroundColor3 = RGB(150, 140, 116)
+          f.BackgroundColor3 = (theme == "radar") and RGB(70, 150, 90) or RGB(150, 140, 116)
+          table.insert(roads, f)
           f.AnchorPoint = Vector2.new(0.5, 0.5)
           f.Position = UDim2.fromScale((u0 + u1) / 2, (v0 + v1) / 2)
           f.Size = UDim2.new(len * 1.04, 0, 0, 1)
@@ -19841,10 +20063,11 @@ function MapUI.init(G)
     f.Position = UDim2.fromScale(u, v)
     f.Size = UDim2.fromScale((s.kind == "lst") and 0.006 or 0.009, (s.kind == "carrier") and 0.1 or 0.07)
     f.Size = UDim2.fromScale(0.012, (s.kind == "carrier") and 0.09 or ((s.kind == "lhd") and 0.07 or 0.045))
-    f.BackgroundColor3 = RGB(120, 126, 132)
+    f.BackgroundColor3 = (theme == "radar") and RGB(50, 110, 70) or RGB(120, 126, 132)
     f.BorderSizePixel = 0
     f.ZIndex = 2
     f.Parent = marks
+    table.insert(fleetMarks, f)
   end
   -- 海滩：彩色短线
   for _, b in ipairs(Map.BEACHES) do
@@ -19908,13 +20131,29 @@ function MapUI.init(G)
     return root, marks
   end
   G.mapRoot = root
+  -- 配色：「map」部署界面的大地图（灰绿），「radar」左下雷达（墨绿）
+  function G.mapTheme(t)
+    if t == theme then return end
+    theme = t
+    local radar = t == "radar"
+    root.BackgroundColor3 = radar and RGB(3, 14, 8) or RGB(14, 24, 32)
+    for f, b in pairs(landBand) do f.BackgroundColor3 = landCol(b) end
+    for _, f in ipairs(roads) do f.BackgroundColor3 = radar and RGB(70, 150, 90) or RGB(150, 140, 116) end
+    for _, f in ipairs(fleetMarks) do f.BackgroundColor3 = radar and RGB(50, 110, 70) or RGB(120, 126, 132) end
+    for _, g in ipairs(root:GetChildren()) do
+      if g.Name == "Grid" then
+        g.BackgroundColor3 = radar and RGB(80, 255, 140) or Color3.new(1, 1, 1)
+        g.BackgroundTransparency = radar and 0.9 or 0.93
+      end
+    end
+  end
 end
 
 return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -19936,6 +20175,7 @@ function Menu.init(G)
   local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
   local Tint = require(script.Parent:WaitForChild("Tint"))
   local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈：摆的时候转回来
+  local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Menu"
@@ -19972,7 +20212,7 @@ function Menu.init(G)
   end
 
   -- 背景：近黑；右边一个大的原模型（自己阵营的主战坦克 / 战斗机，导入了才有），左边压暗
-  local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
+  local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)   -- 后面的场景搭好了就透明（MenuStage.lua），没搭好照旧近黑
   local hero = Instance.new("ViewportFrame")
   hero.Name = "Hero"
   hero.BackgroundTransparency = 1
@@ -19983,11 +20223,20 @@ function Menu.init(G)
   hero.LightColor = RGB(255, 214, 170)
   hero.LightDirection = Vector3.new(-0.7, -0.45, 0.55)
   hero.Parent = bg
+  -- 左边压暗（卡片、玩家名压在上面看得清）；后面的场景开着时浅一点，像参考图那样卡片后面还透出火光和废墟
+  local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
   do
-    local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
     local g = Instance.new("UIGradient")
     g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.42, 0.08), NumberSequenceKeypoint.new(0.62, 0.75), NumberSequenceKeypoint.new(1, 0.9) })
     g.Parent = shade
+  end
+  -- 上下暗角（电影感）
+  local vignette = frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 0)
+  do
+    local g = Instance.new("UIGradient")
+    g.Rotation = 90
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.18, 0.85), NumberSequenceKeypoint.new(0.75, 0.9), NumberSequenceKeypoint.new(1, 0.25) })
+    g.Parent = vignette
   end
   -- 内容按 1280 × 720 摆，按屏幕整体缩放（手机横屏也放得下）
   local content = frame(bg, UDim2.fromOffset(1280, 720), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, V2(0.5, 0.5))
@@ -20181,11 +20430,13 @@ function Menu.init(G)
   pClose.Activated:Connect(function() panel.Visible = false panelKind = nil end)
 
   local entered = false   -- 点过「进入战斗」：这次进服不再自动弹主菜单
+  local stageOn, stageTeam = false, nil   -- 背后的场景开着没有、按哪一方搭的
   local function enter()
     entered = true
     G.menuOpenNow = false
     gui.Enabled = false
     panel.Visible = false
+    if stageOn then stageOn = false Stage.show(false) end
     if G.refresh then G.refresh() end
   end
   card(1, enter)
@@ -20209,10 +20460,23 @@ function Menu.init(G)
   ---------------------------------------------------------------- 刷新
 
   local lastTeam = nil
+  function G.stepMenu(dt) if stageOn then Stage.step(dt) end end
   function G.refreshMenu(S)
     if not S then return end
     local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (S.progress or 1) >= 1)
     gui.Enabled = show
+    -- 背后的场景：开着主菜单时镜头对着它，关了收起来、镜头还给游戏
+    if show ~= stageOn then
+      stageOn = show
+      Stage.show(show, S.team or "atk")
+    elseif show and stageTeam ~= (S.team or "atk") then
+      Stage.show(true, S.team or "atk")
+    end
+    stageTeam = S.team or "atk"
+    local live = Stage.active()
+    bg.BackgroundTransparency = live and 1 or 0
+    shade.BackgroundTransparency = live and 0.4 or 0
+    hero.Visible = not live
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName
@@ -20265,6 +20529,328 @@ function Menu.init(G)
 end
 
 return Menu
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="71">
+          <Properties>
+            <string name="Name">MenuStage</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
+--   夜里废墟、暗红的火光、往上飘的火星和烟，一个全副武装的士兵（头盔、放下来的夜视仪、防弹插板背心、弹匣包，手里本阵营的枪）的低机位特写，
+--   人在画面右边（左边是菜单卡片）。只在本机：零件搭在地图外很远的地方，主菜单开着时镜头对着它、慢慢呼吸似地晃，关了主菜单收起来、镜头还给游戏。
+--   枪用服务器放在 ReplicatedStorage.ToolPreview 里的工具样子（导入了原模型就是原模型）；没有就用零件拼一支
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+
+local Stage = {}
+
+local RGB = Color3.fromRGB
+local V = Vector3.new
+local CF = CFrame.new
+local ORIGIN = CF(9000, 900, -9000)   -- 地图外（地图在 ±3000 格以内）、半空里：周围什么都没有
+local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }   -- 同 Round.lua 的迷彩色
+local HELMET = { atk = RGB(96, 104, 72), def = RGB(146, 128, 96) }
+local GEAR = { atk = RGB(70, 76, 56), def = RGB(118, 104, 80) }   -- 背心、弹匣包
+local DARK = RGB(26, 26, 28)
+
+local model, built, team0 = nil, false, nil
+local fireLights, emitters = {}, {}
+local cam0 = nil   -- 进主菜单前镜头的类型和视角（关了主菜单还回去）
+local t = 0
+
+local function part(parent, name, size, cf, color, mat, shape)
+  local p = Instance.new("Part")
+  p.Name = name
+  p.Size = size
+  p.CFrame = cf
+  p.Color = color
+  p.Material = mat or Enum.Material.SmoothPlastic
+  if shape then p.Shape = shape end
+  p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+  p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+  p.Parent = parent
+  return p
+end
+-- 从 a 到 b 的一截（手臂、腿）
+local function limb(parent, name, a, b, w, color, mat)
+  local d = (b - a).Magnitude
+  return part(parent, name, V(w, w, d), CFrame.lookAt((a + b) / 2, b), color, mat)
+end
+
+-- 士兵（站在 at，面朝 -Z）；团队决定迷彩、头盔、背心颜色
+local function soldier(parent, at, team)
+  local U = UNIFORM[team] or UNIFORM.def
+  local gear, helm = GEAR[team] or GEAR.def, HELMET[team] or HELMET.def
+  local m = Instance.new("Model")
+  m.Name = "Soldier"
+  m.Parent = parent
+  local function P(name, size, off, color, mat, shape) return part(m, name, size, at * off, color, mat, shape) end
+  local function L(name, a, b, w, color, mat) return limb(m, name, (at * CF(a)).Position, (at * CF(b)).Position, w, color, mat) end
+  -- 腿：左腿在前一点，右腿在后（站姿）；护膝、靴子
+  for _, s in ipairs({ { -0.5, -0.25, 1 }, { 0.5, 0.35, -1 } }) do
+    local x, z = s[1], s[2]
+    L("Thigh", V(x, 2.95, 0), V(x * 1.05, 1.6, z * 0.6), 0.95, U[2], Enum.Material.Fabric)
+    L("Shin", V(x * 1.05, 1.6, z * 0.6), V(x * 1.1, 0.45, z), 0.88, U[2], Enum.Material.Fabric)
+    P("KneePad", V(0.72, 0.6, 0.3), CF(x * 1.05, 1.62, z * 0.6 - 0.48), DARK, Enum.Material.Plastic)
+    P("Boot", V(0.98, 0.55, 1.3), CF(x * 1.1, 0.28, z - 0.2), RGB(36, 30, 26), Enum.Material.Leather)
+  end
+  -- 腰带、腿挂
+  P("Belt", V(2.15, 0.42, 1.18), CF(0, 2.98, 0), DARK, Enum.Material.Fabric)
+  P("DropPouch", V(0.5, 0.7, 0.45), CF(-1.05, 2.6, 0.15), gear, Enum.Material.Fabric)
+  -- 上身、防弹插板背心、弹匣包、无线电
+  P("Torso", V(2, 2.05, 1), CF(0, 4.15, 0), U[1], Enum.Material.Fabric)
+  P("PlateFront", V(1.9, 1.55, 0.34), CF(0, 4.3, -0.62), gear, Enum.Material.Fabric)
+  P("PlateBack", V(1.9, 1.6, 0.34), CF(0, 4.3, 0.62), gear, Enum.Material.Fabric)
+  P("Cummerbund", V(2.12, 0.7, 1.3), CF(0, 3.62, 0), gear, Enum.Material.Fabric)
+  for i = -1, 1 do
+    P("MagPouch", V(0.46, 0.66, 0.3), CF(i * 0.52, 3.72, -0.86), gear:Lerp(Color3.new(0, 0, 0), 0.12), Enum.Material.Fabric)
+    P("MagFlap", V(0.48, 0.12, 0.34), CF(i * 0.52, 4.08, -0.87), gear:Lerp(Color3.new(0, 0, 0), 0.22), Enum.Material.Fabric)
+  end
+  P("Radio", V(0.5, 0.9, 0.4), CF(-0.62, 4.3, 0.98), DARK, Enum.Material.Plastic)
+  P("Antenna", V(0.06, 1.6, 0.06), CF(-0.75, 5.4, 1.05) * CFrame.Angles(math.rad(-8), 0, math.rad(6)), DARK, Enum.Material.Metal)
+  for _, sx in ipairs({ -1, 1 }) do P("Strap", V(0.36, 0.25, 1.36), CF(sx * 0.62, 5.12, 0), gear, Enum.Material.Fabric) end
+  -- 头：面罩、耳机、头盔、放下来的夜视仪
+  P("Neck", V(0.62, 0.35, 0.62), CF(0, 5.3, 0), DARK, Enum.Material.Fabric)
+  local head = P("Head", V(1.15, 1.15, 1.15), CF(0, 5.95, -0.05) * CFrame.Angles(0, math.rad(-12), 0), RGB(34, 34, 36), Enum.Material.Fabric)
+  local hc = head.CFrame
+  local function H(name, size, off, color, mat) return part(m, name, size, hc * off, color, mat) end
+  local shell = H("Helmet", V(1.46, 0.92, 1.56), CF(0, 0.45, 0.04), helm, Enum.Material.Fabric)
+  local sm = Instance.new("SpecialMesh")
+  sm.MeshType = Enum.MeshType.Sphere
+  sm.Parent = shell
+  H("HelmetRim", V(1.5, 0.14, 1.6), CF(0, 0.1, 0.04), helm:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Fabric)
+  for _, sx in ipairs({ -1, 1 }) do
+    H("Rail", V(0.1, 0.18, 0.8), CF(sx * 0.74, 0.32, 0.05), DARK, Enum.Material.Metal)
+    H("EarCup", V(0.26, 0.6, 0.5), CF(sx * 0.66, -0.02, 0.05), RGB(52, 56, 46), Enum.Material.Plastic)
+  end
+  H("NVGMount", V(0.36, 0.26, 0.18), CF(0, 0.42, -0.78), DARK, Enum.Material.Metal)
+  H("NVGBody", V(0.66, 0.22, 0.24), CF(0, 0.12, -0.9), RGB(30, 32, 34), Enum.Material.Metal)
+  for _, sx in ipairs({ -1, 1 }) do
+    local tube = H("NVGTube", V(0.34, 0.26, 0.26), CF(sx * 0.2, 0.03, -1.04) * CFrame.Angles(0, math.rad(90), 0), RGB(24, 26, 28), Enum.Material.Metal, nil)
+    tube.Shape = Enum.PartType.Cylinder
+    local lens = H("NVGLens", V(0.04, 0.2, 0.2), CF(sx * 0.2, 0.03, -1.18) * CFrame.Angles(0, math.rad(90), 0), RGB(40, 120, 70), Enum.Material.Neon)
+    lens.Shape = Enum.PartType.Cylinder
+    lens.Transparency = 0.35
+  end
+  H("Strobe", V(0.22, 0.14, 0.14), CF(0, 0.55, 0.78), DARK, Enum.Material.Plastic)
+  -- 手臂：右手握把、左手护木（低姿持枪）；肩、肘、手的位置先定，再拉两截
+  local T = V(0, 4.15, 0)
+  local hands = { R = T + V(0.45, -0.35, -0.9), L = T + V(-0.4, -0.78, -1.62) }   -- 低姿持枪：护木的左手比握把低，枪口朝前下
+  for _, s in ipairs({ { "R", 1 }, { "L", -1 } }) do
+    local sh = T + V(s[2] * 1.12, 0.78, 0)
+    local hand = hands[s[1]]
+    local elbow = (sh + hand) / 2 + V(s[2] * 0.42, -0.5, 0.2)
+    L("UpperArm", sh, elbow, 0.86, U[1], Enum.Material.Fabric)
+    L("Forearm", elbow, hand, 0.8, U[1], Enum.Material.Fabric)
+    P("Glove", V(0.62, 0.62, 0.62), CF(hand), RGB(30, 30, 30), Enum.Material.Leather)
+    P("ShoulderPad", V(0.95, 0.4, 1.05), CF(sh + V(0, 0.15, 0)), gear, Enum.Material.Fabric)
+  end
+  -- 枪：右手到左手的方向，枪口朝前下方
+  local grip = at * CF(hands.R)
+  local fore = (at * CF(hands.L)).Position
+  local dir = (fore - grip.Position).Unit
+  local gunCF = CFrame.lookAt(grip.Position, grip.Position + dir)
+  local prev = RS:FindFirstChild("ToolPreview")
+  local tool = nil
+  if prev and prev:FindFirstChild(team) then
+    for _, tl in ipairs(prev[team]:GetChildren()) do
+      if tl:GetAttribute("Weapon") == "m4" then tool = tl end
+    end
+  end
+  local placed = false
+  if tool then
+    local ok = pcall(function()
+      local c = tool:Clone()
+      local handle = c:FindFirstChild("Handle")
+      if not handle then error("no handle") end
+      local g = Instance.new("Model")
+      g.Name = "Rifle"
+      for _, x in ipairs(c:GetDescendants()) do
+        if x:IsA("BasePart") then x.Anchored, x.CanCollide, x.CanQuery, x.CanTouch = true, false, false, false end
+      end
+      -- 握持：握点 × 工具 Grip 的逆 = 把手（Roblox 拿工具就是这么焊的）；游戏里的枪沿把手的 −Z 朝前，握点的 −Z 对着枪口方向
+      local rel = {}
+      for _, x in ipairs(c:GetDescendants()) do
+        if x:IsA("BasePart") then rel[x] = handle.CFrame:ToObjectSpace(x.CFrame) end
+      end
+      local hcf = gunCF * c.Grip:Inverse()
+      for x, r in pairs(rel) do x.CFrame = hcf * r end
+      for _, x in ipairs(c:GetChildren()) do x.Parent = g end
+      c:Destroy()
+      g.Parent = m
+    end)
+    placed = ok
+  end
+  if not placed then   -- 零件拼一支卡宾枪
+    local function G2(name, size, off, color, mat) return part(m, name, size, gunCF * off, color, mat) end
+    G2("Receiver", V(0.22, 0.38, 1.3), CF(0, 0.12, -0.35), DARK, Enum.Material.Metal)
+    G2("Handguard", V(0.24, 0.26, 1.15), CF(0, 0.16, -1.5), RGB(34, 34, 36), Enum.Material.Metal)
+    G2("Barrel", V(0.08, 0.08, 0.7), CF(0, 0.16, -2.4), RGB(20, 20, 22), Enum.Material.Metal)
+    G2("Stock", V(0.2, 0.36, 0.95), CF(0, 0.06, 0.65), DARK, Enum.Material.Plastic)
+    G2("Mag", V(0.16, 0.6, 0.3), CF(0, -0.3, -0.62) * CFrame.Angles(math.rad(12), 0, 0), DARK, Enum.Material.Metal)
+    G2("Optic", V(0.18, 0.2, 0.42), CF(0, 0.42, -0.45), RGB(16, 16, 18), Enum.Material.Metal)
+    G2("Grip", V(0.18, 0.45, 0.24), CF(0, -0.18, 0.05) * CFrame.Angles(math.rad(-15), 0, 0), DARK, Enum.Material.Plastic)
+  end
+  return m
+end
+
+local function build(team)
+  model = Instance.new("Model")
+  model.Name = "MenuStage"
+  local o = ORIGIN
+  local function W(name, size, off, color, mat) return part(model, name, size, o * off, color, mat) end
+  -- 地面、瓦砾（随机数固定种子：每次一样）
+  W("Ground", V(90, 1, 90), CF(0, -0.5, 0), RGB(36, 32, 30), Enum.Material.Concrete)
+  local rnd = Random.new(7)
+  for i = 1, 46 do
+    local s = rnd:NextNumber(0.4, 2.6)
+    local x, z = rnd:NextNumber(-22, 22), rnd:NextNumber(-6, 24)
+    if math.abs(x) > 2.4 or z > 3 then
+      local c = (rnd:NextNumber() < 0.5) and RGB(58, 50, 44) or RGB(44, 40, 38)
+      W("Rubble", V(s * rnd:NextNumber(0.6, 1.6), s * rnd:NextNumber(0.3, 0.8), s), CF(x, s * 0.2, z) * CFrame.Angles(rnd:NextNumber(-0.4, 0.4), rnd:NextNumber(0, 6.28), rnd:NextNumber(-0.4, 0.4)),
+        c, (i % 3 == 0) and Enum.Material.Brick or Enum.Material.Concrete)
+    end
+  end
+  -- 后面一堵烧过的残墙：窗洞里透出外面的火光；柱子、断梁
+  -- （镜头朝 +Z 看：屏幕右边是 −X、左边是 +X）
+  W("WallL", V(26, 22, 2), CF(-12, 10, 26), RGB(50, 40, 34), Enum.Material.Brick)
+  W("WallR", V(26, 22, 2), CF(24, 10, 26), RGB(48, 38, 32), Enum.Material.Brick)
+  W("WallTop", V(10, 8, 2), CF(6, 17, 26), RGB(46, 36, 30), Enum.Material.Brick)
+  W("WallLow", V(10, 5, 2), CF(6, 2.5, 26), RGB(46, 36, 30), Enum.Material.Brick)
+  local glow = W("WindowGlow", V(10, 8, 0.4), CF(6, 9, 29), RGB(255, 120, 40), Enum.Material.Neon)
+  glow.Transparency = 0.55
+  W("Pillar", V(2.4, 24, 2.4), CF(-5, 11, 16), RGB(40, 34, 30), Enum.Material.Concrete)
+  W("Beam", V(16, 1.4, 1.4), CF(-9, 6, 20) * CFrame.Angles(0, -0.3, -0.45), RGB(30, 26, 24), Enum.Material.Wood)
+  W("SideWall", V(2, 16, 30), CF(-24, 8, 12), RGB(42, 36, 32), Enum.Material.Brick)
+  -- 左后方一辆烧毁的车
+  local car = Instance.new("Model")
+  car.Name = "Wreck"
+  car.Parent = model
+  local cc = o * CF(12, 0, 14) * CFrame.Angles(0, -0.5, 0)
+  local function C(name, size, off, color, mat, shape)
+    return part(car, name, size, cc * off, color, mat, shape)
+  end
+  C("Body", V(6, 2.2, 11), CF(0, 1.8, 0), RGB(30, 27, 25), Enum.Material.CorrodedMetal)
+  C("Cab", V(5.6, 2, 5), CF(0, 3.9, 1.5), RGB(26, 24, 22), Enum.Material.CorrodedMetal)
+  for _, w in ipairs({ { -3, -3.5 }, { 3, -3.5 }, { -3, 3.5 }, { 3, 3.5 } }) do
+    C("Wheel", V(0.9, 2.4, 2.4), CF(w[1], 1.1, w[2]), RGB(18, 18, 18), Enum.Material.Rubber, Enum.PartType.Cylinder)
+  end
+  -- 士兵
+  soldier(model, o * CF(0, 0, 0) * CFrame.Angles(0, math.rad(-24), 0), team)   -- 朝镜头、稍微侧向左边的菜单
+  -- 火：右前方地上（画面外）一堆烧着的瓦砾照亮士兵；车里也有余火；后面窗洞外的火
+  local function fire(at, heat, size, light)
+    local f = W("Fire", V(2, 1, 2), at, RGB(40, 30, 24), Enum.Material.Slate)
+    local fi = Instance.new("Fire")
+    fi.Heat, fi.Size = heat, size
+    fi.Color, fi.SecondaryColor = RGB(255, 120, 40), RGB(255, 210, 120)
+    fi.Parent = f
+    if light then
+      local pl = Instance.new("PointLight")
+      pl.Color, pl.Range, pl.Brightness, pl.Shadows = RGB(255, 130, 60), light, 2.4, true
+      pl.Parent = f
+      table.insert(fireLights, { l = pl, b = 2.4, seed = #fireLights * 1.7 })
+    end
+    return f
+  end
+  fire(CF(-6, 0.5, -4), 9, 6, 26)
+  fire(CF(12, 2.4, 13), 6, 4, 16)
+  fire(CF(6, 0.5, 33), 12, 10, 30)
+  -- 冷色的轮廓光：左后方一点蓝灰，把人从暗背景里勾出来
+  do
+    local rim = W("Rim", V(1, 1, 1), CF(7, 8, 8), Color3.new(0, 0, 0))
+    rim.Transparency = 1
+    local pl = Instance.new("PointLight")
+    pl.Color, pl.Range, pl.Brightness = RGB(130, 150, 200), 18, 0.7
+    pl.Parent = rim
+  end
+  -- 火星：从火堆一带往上飘、随风往左；烟：大团、慢慢往上
+  local src = W("Embers", V(26, 1, 20), CF(-2, 0.5, 6), Color3.new(0, 0, 0))
+  src.Transparency = 1
+  local em = Instance.new("ParticleEmitter")
+  em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+  em.Color = ColorSequence.new(RGB(255, 170, 70), RGB(255, 90, 30))
+  em.LightEmission = 1
+  em.LightInfluence = 0
+  em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.14), NumberSequenceKeypoint.new(1, 0.03) })
+  em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.8, 0.3), NumberSequenceKeypoint.new(1, 1) })
+  em.Lifetime = NumberRange.new(3.5, 7)
+  em.Rate = 26
+  em.Speed = NumberRange.new(1.5, 4.5)
+  em.SpreadAngle = Vector2.new(35, 35)
+  em.Acceleration = V(1.2, 1.4, 0)   -- 往屏幕左边飘
+  em.RotSpeed = NumberRange.new(-90, 90)
+  em.EmissionDirection = Enum.NormalId.Top
+  em.Parent = src
+  table.insert(emitters, em)
+  local sm = Instance.new("ParticleEmitter")
+  sm.Texture = "rbxasset://textures/particles/smoke_main.dds"
+  sm.Color = ColorSequence.new(RGB(70, 60, 56), RGB(30, 28, 28))
+  sm.LightInfluence = 0.6
+  sm.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 5), NumberSequenceKeypoint.new(1, 16) })
+  sm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.82), NumberSequenceKeypoint.new(1, 1) })
+  sm.Lifetime = NumberRange.new(8, 13)
+  sm.Rate = 2.5
+  sm.Speed = NumberRange.new(0.6, 1.8)
+  sm.SpreadAngle = Vector2.new(25, 25)
+  sm.Acceleration = V(0.4, 0.5, 0)
+  sm.RotSpeed = NumberRange.new(-12, 12)
+  sm.EmissionDirection = Enum.NormalId.Top
+  sm.Parent = src
+  table.insert(emitters, sm)
+  built, team0 = true, team
+end
+
+-- 镜头：低机位、离人十来格，人在画面右边（镜头朝 +Z 看，看向人的 +X 一侧 = 屏幕左边一点）
+local function camCF(k)
+  local o = ORIGIN
+  local eye = (o * CF(2.2 + math.sin(k * 0.21) * 0.25, 3.1 + math.sin(k * 0.37) * 0.12, -11.5)).Position
+  local look = (o * CF(2.7, 4.3, 0)).Position
+  return CFrame.lookAt(eye, look)
+end
+
+-- 打开 / 关上（Menu.lua 调）
+function Stage.show(on, team)
+  local cam = workspace.CurrentCamera
+  if on then
+    if built and team0 ~= team and model then   -- 换了阵营：换身衣服、换枪
+      model:Destroy()
+      built, model, fireLights, emitters = false, nil, {}, {}
+    end
+    if not built then
+      local ok, err = pcall(build, team or "def")
+      if not ok then warn("[全面大战场] 主菜单背景没搭好：" .. tostring(err)) return end
+    end
+    model.Parent = workspace
+    for _, e in ipairs(emitters) do e.Enabled = true end
+    if not cam0 then cam0 = { type = cam.CameraType, fov = cam.FieldOfView } end
+    cam.CameraType = Enum.CameraType.Scriptable
+    cam.FieldOfView = 38
+    cam.CFrame = camCF(t)
+  else
+    if model and model.Parent then
+      for _, e in ipairs(emitters) do e.Enabled = false end
+      model.Parent = nil
+    end
+    if cam0 then
+      cam.CameraType = cam0.type == Enum.CameraType.Scriptable and Enum.CameraType.Custom or cam0.type
+      cam.FieldOfView = cam0.fov
+      cam0 = nil
+    end
+  end
+end
+
+function Stage.step(dt)
+  if not (model and model.Parent) then return end
+  t += dt
+  workspace.CurrentCamera.CFrame = camCF(t)
+  for _, f in ipairs(fireLights) do   -- 火光闪
+    f.l.Brightness = f.b * (0.78 + 0.16 * math.sin(t * 9.3 + f.seed) + 0.1 * math.sin(t * 23.1 + f.seed * 2))
+  end
+end
+
+function Stage.active() return model ~= nil and model.Parent ~= nil end
+
+return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
@@ -21200,7 +21786,6 @@ function Sail.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
 
   local panel = ui.frame(gui, UDim2.fromOffset(470, 96), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))
-  ui.round(panel, 10)
   panel.Visible = false
   local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
@@ -21209,6 +21794,7 @@ function Sail.init(G)
   local info2 = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 59), 14, RGB(222, 226, 230), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 83), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
+  ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = vName })   -- 跟新界面一个样子（UI.lua）
 
   local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
@@ -21665,7 +22251,7 @@ function Sail.init(G)
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
-    hpBar.BackgroundColor3 = RGB(230, 70, 60):Lerp(RGB(90, 210, 110), math.clamp(hp / mx, 0, 1))
+    hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
     vName.Text = T("veh." .. d.id) .. ((vs.rest and vs.rest > 0) and ("   " .. T("ship.rest")) or "")
     local f = fwdOf(st.yaw)
     local hdg = math.floor((math.deg(math.atan2(f.X, -f.Z)) + 360) % 360 + 0.5) % 360
@@ -24402,7 +24988,21 @@ function UI.init(G)
     round(b, 8)
     return b
   end
-  G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button }
+  -- 载具、飞机、舰艇、工事的信息面板（Drive / Fly / Sail / Gunner）跟新界面一个样子：深色、直角、细线；血条、装填条换成细线，名字不加粗
+  local function flatPanel(p, o)
+    for _, c in ipairs(p:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end
+    p.BackgroundColor3, p.BackgroundTransparency = RGB(6, 8, 10), 0.2
+    stroke(p, LINE, 1, 0.88)
+    for _, bg in ipairs({ o.hp or false, o.rel or false }) do
+      if bg then
+        bg.Size = UDim2.new(bg.Size.X.Scale, bg.Size.X.Offset, 0, (bg == o.hp) and 3 or 2)
+        bg.BackgroundColor3, bg.BackgroundTransparency = LINE, 0.86
+      end
+    end
+    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.GothamMedium, TEXT end
+  end
+  local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
+  G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
   local function teamColor(t) return Config.Teams[t or "atk"].color end
   local function fmtTime(s)
@@ -24984,7 +25584,12 @@ function UI.init(G)
   help.TextStrokeTransparency = 0.6
 
   -- 小地图容器（右下）
-  local miniBox = frame(hud, UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), PANEL, 1, Vector2.new(1, 1))
+  -- 圆形雷达（Hud.lua 摆、画）：CanvasGroup 才能把里面的地图、亮点按圆角裁成圆
+  local miniBox = Instance.new("CanvasGroup")
+  miniBox.Name = "Radar"
+  miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
+  miniBox.BackgroundColor3, miniBox.BackgroundTransparency, miniBox.BorderSizePixel = PANEL, 1, 0
+  miniBox.Parent = hud
   -- 战斗中的界面换成《坠落》那种风格（Hud.lua）：旧的顶栏、血条、兵种字交给它收起来，小地图框挪到左下
   G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, help = help }
 
@@ -24999,7 +25604,7 @@ function UI.init(G)
   feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
   feedList.SortOrder = Enum.SortOrder.LayoutOrder
   feedList.Parent = feed
-  local toasts = frame(gui, UDim2.fromOffset(520, 200), UDim2.new(0.5, 0, 1, -110), PANEL, 1, Vector2.new(0.5, 1))
+  local toasts = frame(gui, UDim2.fromOffset(440, 200), UDim2.new(0.5, 0, 1, -110), PANEL, 1, Vector2.new(0.5, 1))
   local toastList = Instance.new("UIListLayout")
   toastList.VerticalAlignment = Enum.VerticalAlignment.Bottom
   toastList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -25007,14 +25612,16 @@ function UI.init(G)
   toastList.SortOrder = Enum.SortOrder.LayoutOrder
   toastList.Parent = toasts
   local order = 0
-  local KIND_COL = { good = RGB(60, 150, 80), bad = RGB(170, 50, 45), info = RGB(40, 50, 60), kill = RGB(150, 110, 30) }
+  -- 跟新界面一个样子（深色、直角、细线）：底是深色，左边一道颜色细条分好消息、坏消息、击杀
+  local KIND_COL = { good = RGB(96, 200, 124), bad = RGB(232, 84, 72), info = RGB(160, 170, 166), kill = RGB(232, 184, 76) }
   function G.toast(text, kind)
     order += 1
-    local l = label(toasts, text, UDim2.fromOffset(500, 26), nil, 15, Color3.new(1, 1, 1), Enum.Font.GothamBold)
-    l.BackgroundColor3 = KIND_COL[kind or "info"] or KIND_COL.info
+    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.GothamMedium)
+    l.BackgroundColor3 = RGB(6, 8, 10)
     l.BackgroundTransparency = 0.2
     l.LayoutOrder = order
-    round(l, 6)
+    stroke(l, LINE, 1, 0.9)
+    frame(l, UDim2.new(0, 3, 1, 0), nil, KIND_COL[kind or "info"] or KIND_COL.info, 0)
     task.delay(4, function() l:Destroy() end)
   end
   function G.centerMsg(text)
@@ -25127,15 +25734,34 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 结算
 
-  local results = frame(gui, UDim2.fromOffset(620, 300), UDim2.fromScale(0.5, 0.45), PANEL, 0.1, Vector2.new(0.5, 0.5))
+  -- 跟战况表一个样子：深色、直角、细线；顶上一道胜方的队色细线，四个大数字，经验、军衔，下一局倒计时
+  local results = frame(gui, UDim2.fromOffset(640, 286), UDim2.fromScale(0.5, 0.46), RGB(6, 8, 10), 0.08, Vector2.new(0.5, 0.5))
   results.Visible = false
   results.ZIndex = 25
-  round(results, 12)
-  local resTitle = label(results, "", UDim2.new(1, -20, 0, 50), UDim2.fromOffset(10, 16), 30, TEXT, Enum.Font.GothamBlack)
-  local resSub = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.fromOffset(10, 70), 18, MUTE, Enum.Font.GothamBold)
-  local resStats = label(results, "", UDim2.new(1, -20, 0, 90), UDim2.fromOffset(10, 110), 18, TEXT, Enum.Font.GothamMedium)
-  local resNext = label(results, "", UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 1, -46), 16, MUTE, Enum.Font.GothamMedium)
-  for _, x in ipairs({ resTitle, resSub, resStats, resNext }) do x.ZIndex = 26 end
+  stroke(results, LINE, 1, 0.88)
+  local resLine = frame(results, UDim2.new(1, 0, 0, 2), nil, LINE, 0)
+  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resNums = {}
+  for i, k in ipairs({ "ui.kills", "ui.deaths", "ui.captures", "ui.score" }) do
+    local x = 28 + (i - 1) * 146
+    resNums[i] = {
+      k = k,
+      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
+      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
+    }
+  end
+  local resSep = frame(results, UDim2.new(1, -56, 0, 1), UDim2.fromOffset(28, 196), LINE, 0.88)
+  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  for _, x in ipairs({ resLine, resCap, resTitle, resSub, resSep, resXp, resNext }) do x.ZIndex = 26 end
+  for _, r in ipairs(resNums) do r.n.ZIndex, r.c.ZIndex = 26, 26 end
+  if mobile then   -- 手机横屏（844 × 390）：缩一点，别盖住触屏按钮
+    local sc = Instance.new("UIScale")
+    sc.Scale = 0.8
+    sc.Parent = results
+  end
 
   ---------------------------------------------------------------- 刷新（收到服务器状态时）
 
@@ -25153,7 +25779,7 @@ function UI.init(G)
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
     local showDeploy = not S.alive and S.phase ~= "end"
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
-    deploy.Visible = showDeploy
+    deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
@@ -25192,12 +25818,18 @@ function UI.init(G)
     roleText.TextColor3 = teamColor(S.team)
     if S.phase == "end" then
       local won = S.winner == S.team
+      resLine.BackgroundColor3 = teamColor(S.winner)
+      resCap.Text = T("ui.roundOver")
       resTitle.Text = T(won and "ui.youWon" or "ui.youLost")
-      resTitle.TextColor3 = won and RGB(120, 230, 140) or RGB(240, 110, 100)
-      resSub.Text = T((S.winner == "atk") and "ui.win.atk" or "ui.win.def") .. (S.mvp and ("   MVP: " .. S.mvp) or "")
+      resTitle.TextColor3 = won and TEXT or RGB(236, 120, 108)
+      resSub.Text = T((S.winner == "atk") and "ui.win.atk" or "ui.win.def") .. (S.mvp and ("   ·   MVP  " .. S.mvp) or "")
       local me = S.me or {}
-      resStats.Text = T("ui.kills") .. " " .. (me.k or 0) .. "    " .. T("ui.deaths") .. " " .. (me.d or 0) .. "    " .. T("ui.captures") .. " " .. (me.c or 0) .. "    " .. T("ui.score") .. " " .. (me.s or 0)
-        .. "\n" .. T("ui.xp", me.gain or 0) .. "    " .. Lang.rank(G.lang, me.rank or 1)
+      local vals = { me.k or 0, me.d or 0, me.c or 0, me.s or 0 }
+      for i, r in ipairs(resNums) do
+        r.n.Text = tostring(vals[i])
+        r.c.Text = T(r.k)
+      end
+      resXp.Text = T("ui.xp", me.gain or 0) .. "   ·   " .. Lang.rank(G.lang, me.rank or 1)
       resNext.Text = T("ui.nextRound", S.left)
     end
   end
@@ -25226,8 +25858,9 @@ function UI.init(G)
       hpText.Text = math.ceil(hum.Health) .. " / " .. math.ceil(hum.MaxHealth)
     end
     local a = os.clock() - centerT
-    center.TextTransparency = math.clamp((a - 3) / 1, 0, 1)
-    center.TextStrokeTransparency = 0.3 + 0.7 * math.clamp((a - 3) / 1, 0, 1)
+    local fade = results.Visible and 1 or math.clamp((a - 3) / 1, 0, 1)   -- 结算面板开着：中间那行大字（胜负原因）面板上有了，不叠着画
+    center.TextTransparency = fade
+    center.TextStrokeTransparency = 0.3 + 0.7 * fade
   end
 end
 
