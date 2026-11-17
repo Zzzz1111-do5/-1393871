@@ -135,7 +135,7 @@ void main() {
     }
     F.tSrc.value = this.scene.texture; F.tDof.value = this.dof.texture; F.uDofOn.value = dofOn;
     for (let i = 0; i < 6; i++) F['tB' + i].value = L[i].a.texture;
-    F.uExp.value = P.exposure ?? 1; F.uBloom.value = P.bloom ?? 0.9; F.uTime.value = P.time || 0; F.uGrain.value = P.grain ?? 0.026; F.uVig.value = P.vignette ?? 0.55;
+    F.uExp.value = P.exposure ?? 1; F.uBloom.value = P.bloom ?? 0.9; F.uTime.value = P.time || 0; F.uGrain.value = P.grain ?? 0.010;   // 颗粒淡一点：每帧都变的颗粒最占码率 F.uVig.value = P.vignette ?? 0.55;
     F.uCA.value = P.ca ?? 0.012; F.uFade.value = P.fade || 0; F.uFlash.value = P.flash || 0; F.uNvg.value = P.nvg || 0; F.uSat.value = P.sat ?? 0.92; F.uContrast.value = P.contrast ?? 1.06;
     F.uLift.value = P.lift ?? 0.012; F.uTint.value = P.tint ?? 1;
     r.setRenderTarget(null);

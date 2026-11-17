@@ -154,7 +154,7 @@ async function shotSea(env, add) {
       cam(env, V3(lerp(-300, -272, u), 4.0 + Math.sin(t * 0.9) * 0.35, lerp(1150, 1092, u)), V3(7, 108, 204), 32);
       env.camera.rotateZ(Math.sin(t * 0.6) * 0.7 * DEG);
       beam(t + 1);
-      return { fade: 1 - smooth(0.2, 2.2, t), exposure: 1.2, shadowR: 600, grain: 0.03, bloom: 1.0 };
+      return { fade: 1 - smooth(0.2, 2.2, t), exposure: 1.2, shadowR: 600, grain: 0.012, bloom: 1.0 };
     },
     titles: t => [
       { text: '凌晨 02:14', x: 0.5, y: 0.76, size: 0.034, font: SERIF, weight: 700, spacing: 0.25, a: fadeIO(t, 1.4, 5.3, 0.8, 0.6) },
@@ -206,7 +206,7 @@ async function shotNvg(env, add) {
       const from = V3(300, env.groundY(300, -762) + 5.6, -762);
       cam(env, from, from.clone().add(V3(Math.sin(yaw) * 100, -1.2, 100)), 9);
       shake(env.camera, t, 0.25, 2, 3);
-      return { nvg: 1, exposure: 1.4, grain: 0.05, vignette: 0.9, bloom: 1.3, shadowR: 300 };
+      return { nvg: 1, exposure: 1.4, grain: 0.035, vignette: 0.9, bloom: 1.3, shadowR: 300 };
     },
     events: [{ t: 0, k: 'nvgWhine' }, { t: 2.4, k: 'distant' }],
   };
@@ -736,7 +736,7 @@ async function shotTitle(env, add) {
   return {
     update(t) {
       cam(env, V3(0, 0, 0), V3(0, 0, -1), 40);
-      return { exposure: 1, bloom: 1.4, fade: 0, grain: 0.03, lift: 0 };
+      return { exposure: 1, bloom: 1.4, fade: 0, grain: 0.012, lift: 0 };
     },
     titles: t => [
       { text: 'Roblox全面大战场', x: 0.5, y: 0.47, size: 0.085, font: SERIF, weight: 700, spacing: 0.12, a: fadeIO(t, 0.6, 5.7, 1.2, 0.8), color: '#efe9de', glow: 'rgba(255,170,90,0.35)' },
@@ -761,7 +761,7 @@ async function shotFeatures(env, add) {
       else { J.root.position.set(34, -3, -92); J.root.rotation.set(0.1, -1.0 + u * 0.35, 0.25); }
       cam(env, V3(0, 0, 0), V3(0, 0, -1), 32);
       const k = fadeIO(t, seg === 0 ? 0 : 3.75, seg === 0 ? 3.75 : 7.5, 0.5, 0.5);
-      return { exposure: 1.4 * k + 0.0001, bloom: 0.8, fade: 0, grain: 0.03, vignette: 0.8, lift: 0 };
+      return { exposure: 1.4 * k + 0.0001, bloom: 0.8, fade: 0, grain: 0.012, vignette: 0.8, lift: 0 };
     },
     titles: t => {
       const A = (a, b) => fadeIO(t, a, b, 0.45, 0.45);
@@ -780,7 +780,7 @@ async function shotEnd(env, add) {
   env.worldVisible(false);
   const credits = ['ZTZ-99A：philano', 'M1A2 SEPv3：dannzjs', '歼-20、F-22：andertan', '歼-15、直-10：42manako', '055 型驱逐舰：FeriseCAT', '爱国者：Muhamad Mirza Arrafi', 'ZTQ-15：lhc526', 'M4：BarcodeGames', '沙地贴图：Terrie Simmons-Ehrhardt'];
   return {
-    update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.025, lift: 0 }; },
+    update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.010, lift: 0 }; },
     titles: t => {
       const a = fadeIO(t, 0.2, 5.5, 0.6, 0.9);
       return [
