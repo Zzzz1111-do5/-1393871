@@ -92,6 +92,7 @@ lune run tools/test/ia_veh.luau RobloxTotalBattlefield.rbxlx     # 载具：部�
 lune run tools/test/ia_import.luau RobloxTotalBattlefield.rbxlx  # 原模型：假装导入了 M1A2、JLTV、ZTQ-15，看收模型、拼车、炮塔炮管转轴、车轮悬架、炮口、烧黑、没导入的零件拼的炮塔位置
 lune run tools/test/ia_import_air.luau RobloxTotalBattlefield.rbxlx  # 飞机原模型：假装导入歼-15、阿帕奇、歼-20，看蒙皮换掉、挂弹贴机翼、起落架收放、折翼、旋翼
 lune run tools/test/ia_import_ship.luau RobloxTotalBattlefield.rbxlx  # 舰艇原模型：假装导入 7 艘，看蒙皮换掉、炮位照原模型、主炮跟着转、桅顶灯、烧黑
+lune run tools/test/ia_radar.luau RobloxTotalBattlefield.rbxlx  # 雷达：看得见的敌人上雷达、太远和墙后的不上、开枪闪红圈、敌我车辆
 lune run tools/test/ia_boot.luau RobloxTotalBattlefield.rbxlx  # 开服计时（地形生成）
 lune run tools/test/ia_balance.luau RobloxTotalBattlefield.rbxlx 6  # 平衡统计：机器人对打几分钟，攻方的兵、登陆艇死在什么上面
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图

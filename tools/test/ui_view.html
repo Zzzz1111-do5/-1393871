@@ -115,7 +115,7 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
       d.appendChild(rg);
     } else d.style.boxShadow = `0 0 0 ${th}px ${rgba(stroke.p.Color, a0)}`;
   }
-  if (p.ClipsDescendants || n.c === 'ScrollingFrame') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }
+  if (p.ClipsDescendants || n.c === 'ScrollingFrame' || n.c === 'CanvasGroup') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }   // CanvasGroup 按自己的圆角裁剪里面的东西（雷达）
   const szc = comp(n, 'UISizeConstraint');
   if (szc) {
     if (szc.p.MaxSize) { if (szc.p.MaxSize[0] < 1e7) d.style.maxWidth = szc.p.MaxSize[0] + 'px'; if (szc.p.MaxSize[1] < 1e7) d.style.maxHeight = szc.p.MaxSize[1] + 'px'; }
@@ -140,6 +140,15 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
     tw.style.alignItems = ya === 'Top' ? 'flex-start' : ya === 'Bottom' ? 'flex-end' : 'center';
     tw.style.textAlign = xa === 'Left' ? 'left' : xa === 'Right' ? 'right' : 'center';
     if (auto !== 'None') { tw.style.position = 'relative'; tw.style.inset = 'auto'; }
+    else {
+      // 自己身上的 UIPadding 也让开文字（Roblox 里按钮、标签的字照内边距排）
+      const tp = comp(n, 'UIPadding');
+      if (tp) {
+        const q = tp.p, z = [0, 0];
+        tw.style.left = ud(...(q.PaddingLeft || z)); tw.style.right = ud(...(q.PaddingRight || z));
+        tw.style.top = ud(...(q.PaddingTop || z)); tw.style.bottom = ud(...(q.PaddingBottom || z));
+      }
+    }
     const sp = document.createElement('span');
     sp.style.fontSize = (p.TextSize || 14) + 'px';
     sp.style.fontWeight = FONT_W[p.Font] || 400;

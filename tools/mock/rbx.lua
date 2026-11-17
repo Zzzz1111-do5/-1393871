@@ -957,6 +957,7 @@ local guiObj = {
 }
 def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true } })
 def("Frame", "GuiObject", {})
+def("CanvasGroup", "GuiObject", { GroupTransparency = { T.number, 0 }, GroupColor3 = { T.Color3, newC3(1, 1, 1) } })   -- 雷达：按圆角裁剪里面的东西
 -- 挂载编辑器：ViewportFrame 里放一个 WorldModel（BulkMoveTo 同 Workspace）
 def("ViewportFrame", "GuiObject", { Ambient = { T.Color3, newC3(0.78, 0.78, 0.78) }, LightColor = { T.Color3, newC3(0.55, 0.55, 0.55) },
   LightDirection = { T.Vector3, v3(-1, -1, -1) }, CurrentCamera = { T.Instance, nil }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 } })

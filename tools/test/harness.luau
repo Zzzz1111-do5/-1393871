@@ -1086,6 +1086,7 @@ local function hrequire(m)
 	return value
 end
 genv.require = hrequire
+H.genv = genv   -- 测试里要用游戏环境里的东西（RaycastParams……）
 H.require = hrequire   -- 测试里按当前的 H.ctx（哪个客户端 / 服务器）取游戏的模块（比如直接拿客户端的 AirModels 拼飞机）
 
 H.destroyed = destroyed
@@ -1296,6 +1297,17 @@ function H.press(pl, btn)
 	ev(btn, "Activated"):Fire(inputObj(Enum.UserInputType.MouseButton1), 1)
 	ev(btn, "MouseButton1Click"):Fire()
 	ev(btn, "MouseButton1Up"):Fire(640, 360)
+end
+-- 主菜单开着（背后是透明的 3D 场景，部署界面先不画）：像玩家一样点「进入战斗」关掉它，再去点部署界面
+function H.leaveMenu(pl)
+	local C = H.Gs[pl.Name]
+	if C and C.menuShown and C.menuShown() then
+		local prev = H.ctx
+		H.ctx = pl
+		C.menuEnter()
+		H.ctx = prev
+		H.run(0.3)
+	end
 end
 function H.click(pl, pattern)
 	local b = H.findButton(pl, pattern)

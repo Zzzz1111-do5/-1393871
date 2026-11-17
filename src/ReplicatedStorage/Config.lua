@@ -60,6 +60,11 @@ Config.Loadout = {
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
 Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点
 
+-- 左下的雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）：
+--   友军都显示；敌人里车、船、飞机在范围内就显示（雷达回波），步兵要在自己视线里、开了枪（没消音的，开枪的地方闪一下）或者被友军标记了才显示——
+--   不然雷达就成了透视；allEnemies = true 时范围内的敌人全显示
+Config.Radar = { range = 520, sweep = 2.4, ping = 3, allEnemies = false }   -- 半径（格，约 186 米）、扫一圈几秒、开枪的红圈留几秒
+
 ---------------------------------------------------------------- 武器
 
 -- 目标类别：inf 步兵、light 轻型车、armor 装甲、air 飞机直升机、ship 舰艇、fort 工事

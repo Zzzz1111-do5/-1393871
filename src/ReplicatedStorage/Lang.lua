@@ -197,7 +197,8 @@ add("ui.win.atk", "进攻方胜利：5 个据点全部拿下", "ATTACKERS WIN: a
 add("ui.win.def", "防守方胜利：守住了据点", "DEFENDERS WIN: held the line")
 add("ui.youWon", "你们赢了！", "Victory!")
 add("ui.youLost", "你们输了", "Defeat")
-add("ui.nextRound", "{1} 秒后开下一局，重新分队", "Next round in {1}s with new teams")
+add("ui.nextRound", "{1} 秒后开下一局", "Next round in {1}s")   -- 开新一局不打乱分队（各自留在选的阵营）
+add("ui.roundOver", "本局结束", "ROUND OVER")
 add("ui.xp", "经验 +{1}", "+{1} XP")
 add("ui.rankUp", "晋升：{1}", "Promoted: {1}")
 add("ui.killed", "{1} 击毙了 {2}", "{1} killed {2}")

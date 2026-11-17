@@ -59,8 +59,11 @@ function Hangar.init(G)
 
   local spots = ui.frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   local title = ui.label(bg, "", UDim2.fromOffset(520, 30), UDim2.new(0.5, 0, 0, 22), 24, TEXT, Enum.Font.GothamBlack, Vector2.new(0.5, 0))
-  local symBtn = ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0))
+  -- 直角（跟新界面一样：深色、直角、细线）：ui.button 自带的圆角去掉
+  local function square(x) for _, c in ipairs(x:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end return x end
+  local symBtn = square(ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0)))
   symBtn.TextSize = 14
+  ui.stroke(symBtn, RGB(255, 255, 255), 1, 0.85)
   -- 左边：这个挂点能挂的弹
   local listBox = ui.frame(bg, UDim2.fromOffset(370, 420), UDim2.new(0, 40, 1, -96), RGB(0, 0, 0), 1, Vector2.new(0, 1))
   local listLayout = Instance.new("UIListLayout")
@@ -70,7 +73,6 @@ function Hangar.init(G)
   listLayout.Parent = listBox
   -- 右下：弹的资料
   local info = ui.frame(bg, UDim2.fromOffset(380, 196), UDim2.new(1, -40, 1, -96), RGB(10, 12, 14), 0.1, Vector2.new(1, 1))
-  ui.round(info, 6)
   ui.stroke(info, RGB(255, 255, 255), 1, 0.85)
   local iName = ui.label(info, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 18), 19, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
   local iCat = ui.label(info, "", UDim2.new(1, -40, 0, 18), UDim2.fromOffset(20, 50), 13, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
@@ -81,11 +83,11 @@ function Hangar.init(G)
     rows[k] = { a, b }
   end
   local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.GothamMedium, Vector2.new(0.5, 1))
-  local backBtn = ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1))
+  local backBtn = square(ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1)))
   ui.stroke(backBtn, RGB(255, 255, 255), 1, 0.7)
   backBtn.TextSize = 20
   backBtn.Font = Enum.Font.Gotham
-  local saveBtn = ui.button(bg, "", UDim2.fromOffset(170, 52), UDim2.new(0.5, 8, 1, -28), RGB(255, 255, 255), Vector2.new(0, 1))
+  local saveBtn = square(ui.button(bg, "", UDim2.fromOffset(170, 52), UDim2.new(0.5, 8, 1, -28), RGB(255, 255, 255), Vector2.new(0, 1)))
   saveBtn.TextColor3 = RGB(10, 10, 10)
   saveBtn.TextSize = 20
   saveBtn.Font = Enum.Font.Gotham
@@ -181,7 +183,6 @@ function Hangar.init(G)
       b.BackgroundTransparency = on and 0 or 0.15
       b.AutoButtonColor = true
       b.Parent = listBox
-      ui.round(b, 6)
       ui.stroke(b, RGB(255, 255, 255), 1, on and 0 or 0.82)
       local fg = on and RGB(16, 16, 16) or TEXT
       local w = wid and AD.W[wid]

@@ -56,7 +56,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
   { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
-  { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end } }
+  { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
+  { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end } }   -- 主菜单背后的场景（火光、镜头）
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)

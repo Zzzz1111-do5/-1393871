@@ -121,24 +121,160 @@ function Hud.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 左下小地图
+  ---------------------------------------------------------------- 左下雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）
+  --   圆（UI.lua 建的 CanvasGroup 按圆角裁）里是染成墨绿的地图（北朝上、跟着人走），三道距离环、十字线、带余辉的扫描线；
+  --   亮点：友军绿、敌军红；步兵圆点、车和船方块、飞机菱形；扫描线扫过时最亮、一圈里慢慢暗下去；敌人开枪的地方闪一个红圈
+  --   哪些敌人上雷达见 Config.Radar（车船飞机在范围内就有；步兵要在视线里、开了枪或者被标记）
 
-  local MS = mobile and 140 or 200
+  local RC = Config.Radar or { range = 520, sweep = 2.4, ping = 3 }
+  local GREEN, GDIM = RGB(90, 255, 140), RGB(40, 150, 80)
+  local FRIEND, FOE = RGB(110, 255, 150), RGB(255, 72, 58)
+  local MS = mobile and 150 or 210
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(0, 1)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(0, 18, 1, -18)   -- 手机：左下是摇杆，放到左上（让开战况表按钮）
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(6, 10, 12)
-  box.BackgroundTransparency = 0.3
-  box.ClipsDescendants = true
-  ui.stroke(box, WHITE, 1, 0.82)
-  local ZOOM = 1200   -- 小地图里整张图画多大（像素）：框里看得到大约 1000 格
+  box.BackgroundColor3 = RGB(2, 12, 6)
+  box.BackgroundTransparency = 0.15
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = box
+  end
+  ui.stroke(box, GREEN, 1.5, 0.35)
+  local ZOOM = 6100 * (MS / 2) / RC.range   -- 整张地图（6100 格见方，MapUI）画多大：半径正好是雷达范围
+  local function ring(k)   -- 距离环
+    local r = ui.frame(box, UDim2.fromScale(k, k), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
+    r.ZIndex = 18
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = r
+    ui.stroke(r, GREEN, 1, 0.72)
+  end
+  ring(1 / 3)
+  ring(2 / 3)
+  for _, vert in ipairs({ true, false }) do   -- 十字线
+    local l = line(box, vert and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, 0.5), GREEN, 0.84, V2(0.5, 0.5))
+    l.ZIndex = 18
+  end
+  -- 扫描线：一根从圆心到边的亮线 + 后面一扇越来越淡的余辉。每根线放在一个和雷达一样大、绕中心转的透明框里，
+  --   线只占框的上半截（圆心到上边），转框就是转线
+  local sweepLines = {}
+  for k = 0, 13 do
+    local holder = ui.frame(box, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
+    holder.ZIndex = 19
+    local l = line(holder, UDim2.new(0, k == 0 and 2 or 3, 0.5, 0), UDim2.fromScale(0.5, 0), GREEN, (k == 0) and 0.05 or (0.55 + k * 0.03), V2(0.5, 0))
+    l.ZIndex = 19
+    sweepLines[k + 1] = holder
+  end
+  local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
+  blipLayer.ZIndex = 20
   local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
-  arrow.ZIndex = 20
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, RGB(235, 90, 80), Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
-  north.ZIndex = 20
-  local heading = txt(box, "", UDim2.fromOffset(44, 16), UDim2.new(1, -8, 0, 5), 13, WHITE, NUM, V2(1, 0), Enum.TextXAlignment.Right, 0.4)
-  heading.ZIndex = 20
+  arrow.ZIndex = 22
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, GREEN, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  north.ZIndex = 22
+  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, GREEN, NUM, V2(0.5, 1), nil, 0.4)
+  heading.ZIndex = 22
+  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(40, 12), UDim2.new(0.5, MS * 0.33 - 2, 0.5, -10), 9, GDIM, NUM, V2(0, 0.5), Enum.TextXAlignment.Left, 0.6)
+  rangeL.ZIndex = 22
+
+  -- 亮点（对象池）：kind inf 圆点 / veh 方块 / air 菱形 / ping 红圈
+  local pool, used = {}, 0
+  local function blip()
+    used += 1
+    local b = pool[used]
+    if not b then
+      local f = Instance.new("Frame")
+      f.AnchorPoint = V2(0.5, 0.5)
+      f.BorderSizePixel = 0
+      f.ZIndex = 21
+      f.Parent = blipLayer
+      local c = Instance.new("UICorner")
+      c.Parent = f
+      local st = Instance.new("UIStroke")
+      st.Thickness = 1
+      st.Parent = f
+      b = { f = f, c = c, st = st }
+      pool[used] = b
+    end
+    b.f.Visible = true
+    return b
+  end
+  local function shape(b, kind, col, alpha)
+    local f = b.f
+    if kind == "ping" then
+      f.Size = UDim2.fromOffset(12, 12)
+      f.Rotation = 0
+      b.c.CornerRadius = UDim.new(0.5, 0)
+      f.BackgroundTransparency = 1
+      b.st.Color, b.st.Transparency, b.st.Thickness = col, alpha, 1.5
+      return
+    end
+    local sz = (kind == "inf") and 5 or 7
+    f.Size = UDim2.fromOffset(sz, sz)
+    f.Rotation = (kind == "air") and 45 or 0
+    b.c.CornerRadius = (kind == "inf") and UDim.new(0.5, 0) or UDim.new(0, 1)
+    f.BackgroundColor3, f.BackgroundTransparency = col, alpha
+    b.st.Color, b.st.Transparency, b.st.Thickness = Color3.new(0, 0, 0), 0.4 + alpha * 0.6, 1
+  end
+
+  -- 雷达里的东西：真人（角色带 Team）、实体（workspace.Ents：机器人、车、飞机、船；工事、地雷不上雷达）
+  local CAT = { inf = "inf", light = "veh", armor = "veh", ship = "veh", air = "air" }
+  local contacts = {}      -- { pos, team, kind, model }
+  local seenT = {}         -- 敌人 → 最近一次看见（视线里）的时刻
+  local losT = {}          -- 敌人 → 下次查视线的时刻
+  local pings = {}         -- 敌人开枪的地方：{ pos, t }
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
+  local scanT, sweepA, purgeT = 0, 0, 5
+  local function myEnt(m)
+    local d = G.drive
+    if d and d.em == m then return true end
+    local uid = me.UserId
+    return m:GetAttribute("Driver") == uid or m:GetAttribute("Pilot") == uid or m:GetAttribute("Gunner") == uid
+  end
+  local function scan(center, mine)
+    table.clear(contacts)
+    local R2 = (RC.range * 1.05) ^ 2
+    local function add(pos, team, kind, model)
+      local dx, dz = pos.X - center.X, pos.Z - center.Z
+      if dx * dx + dz * dz <= R2 then table.insert(contacts, { pos = pos, team = team, kind = kind, model = model }) end
+    end
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+      if pl ~= me and hrp and hum and hum.Health > 0 then
+        add(hrp.CFrame.Position, ch:GetAttribute("Team") or pl:GetAttribute("Side"), "inf", ch)
+      end
+    end
+    local ents = workspace:FindFirstChild("Ents")
+    for _, m in ipairs(ents and ents:GetChildren() or {}) do
+      local kind = CAT[m:GetAttribute("Cat") or ""]
+      local root = m.PrimaryPart or m:FindFirstChild("Root")
+      if kind and root and not m:GetAttribute("Wreck") and (m:GetAttribute("Hp") or 1) > 0 and not myEnt(m) then
+        add(root.CFrame.Position, m:GetAttribute("Team"), kind, m)
+      end
+    end
+  end
+  -- 敌人看不看得见：从镜头往它身上打一条线，先打到它自己（或者比它远的东西）就算看见
+  local function visible(c, from)
+    local to = c.pos + Vector3.new(0, 1.5, 0)
+    local d = to - from
+    local ex = { me.Character }
+    if G.drive and G.drive.em then table.insert(ex, G.drive.em) end
+    rayP.FilterDescendantsInstances = ex
+    local hit = workspace:Raycast(from, d, rayP)
+    return (not hit) or (c.model and hit.Instance:IsDescendantOf(c.model)) or (hit.Position - from).Magnitude > d.Magnitude - 3
+  end
+  -- 服务器发的开枪特效（Fx.lua）：敌人没消音的枪 → 雷达上开枪的地方闪一个红圈
+  function G.radarShot(pos, team, quiet)
+    if quiet or not pos or not team or team == me:GetAttribute("Side") then return end
+    table.insert(pings, { pos = pos, t = os.clock() })
+    if #pings > 40 then table.remove(pings, 1) end
+  end
+  G.radarContacts = function() return contacts end   -- 测试用
+  G.radarShown = {}                                   -- 测试用：这一帧画出来的 { team, kind, enemy }
 
   ---------------------------------------------------------------- 小队（小地图右边）
 
@@ -326,24 +462,90 @@ function Hud.init(G)
       end
     end
     if gT <= 0 then gT = 2 end
-    -- 小地图：跟着人走、北朝上
+    -- 雷达：跟着人走、北朝上
     local root = G.mapRoot
     local ch = me.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local pos = hrp and hrp.CFrame.Position or cp
+    -- 视线从自己的眼睛（开车时从镜头）往外打：第三人称的镜头可能在墙外头
+    local head = ch and ch:FindFirstChild("Head")
+    local eye = (head and not G.drive) and head.CFrame.Position or cp
     if root and root.Parent == box and G.mapUV then
-      local pos = hrp and hrp.Position or cp
+      if G.mapTheme then G.mapTheme("radar") end
       local u, v = G.mapUV(pos.X, pos.Z)
       root.AnchorPoint = V2(0, 0)
       root.Size = UDim2.fromOffset(ZOOM, ZOOM)
       root.Position = UDim2.new(0.5, -u * ZOOM, 0.5, -v * ZOOM)
-      root.BackgroundTransparency = 0.2   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
+      root.BackgroundTransparency = 0.25   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
     elseif root and root.BackgroundTransparency ~= 0 then
       root.BackgroundTransparency = 0
+      if G.mapTheme then G.mapTheme("map") end
     end
     local lv = cam.CFrame.LookVector
     local hdg = (math.deg(math.atan2(lv.X, -lv.Z)) + 360) % 360   -- 北 = −Z（地图上方）
-    heading.Text = string.format("%03d", math.floor(hdg + 0.5) % 360)
+    heading.Text = string.format("%03d°", math.floor(hdg + 0.5) % 360)
     arrow.Rotation = hdg
+    -- 扫描线
+    local now = os.clock()
+    sweepA = (sweepA + dt * 360 / RC.sweep) % 360
+    for k, l in ipairs(sweepLines) do l.Rotation = sweepA - (k - 1) * 3 end
+    -- 亮点：0.1 秒收一次雷达范围里的东西；敌方步兵每个 0.3 秒查一次视线
+    scanT -= dt
+    local mine = me:GetAttribute("Side")
+    if scanT <= 0 then
+      scanT = 0.1
+      scan(pos, mine)
+      purgeT -= 0.1
+      if purgeT <= 0 then   -- 阵亡、消失了的模型不留在表里（长时间开着越积越多）
+        purgeT = 5
+        for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
+        for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
+      end
+      for _, c in ipairs(contacts) do
+        if c.team ~= mine and c.kind == "inf" and c.model and now >= (losT[c.model] or 0) then
+          losT[c.model] = now + 0.3
+          if visible(c, eye) then seenT[c.model] = now end
+        end
+      end
+    end
+    used = 0
+    table.clear(G.radarShown)
+    local px = (MS / 2) / RC.range
+    local function place(b, wpos)
+      b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
+    end
+    local function fadeAt(wpos)   -- 扫描线刚扫过最亮，一圈里慢慢暗下去
+      local brg = (math.deg(math.atan2(wpos.X - pos.X, -(wpos.Z - pos.Z))) + 360) % 360
+      local age = ((sweepA - brg) % 360) / 360
+      return 0.05 + 0.6 * age
+    end
+    for _, c in ipairs(contacts) do
+      local enemy = c.team ~= mine
+      local show = not enemy or RC.allEnemies or c.kind ~= "inf" or (c.model and now - (seenT[c.model] or -99) < 2)
+      if show then
+        local b = blip()
+        shape(b, c.kind, enemy and FOE or FRIEND, fadeAt(c.pos))
+        place(b, c.pos)
+        table.insert(G.radarShown, { team = c.team, kind = c.kind, enemy = enemy })
+      end
+    end
+    for i = #pings, 1, -1 do
+      local p = pings[i]
+      local age = now - p.t
+      if age > RC.ping then
+        table.remove(pings, i)
+      else
+        local dx, dz = p.pos.X - pos.X, p.pos.Z - pos.Z
+        if dx * dx + dz * dz <= RC.range * RC.range then
+          local b = blip()
+          shape(b, "ping", FOE, math.clamp(age / RC.ping, 0, 1) * 0.9)
+          b.f.Size = UDim2.fromOffset(8 + age * 6, 8 + age * 6)
+          place(b, p.pos)
+          table.insert(G.radarShown, { team = "ping", kind = "ping", enemy = true })
+        end
+      end
+    end
+    for i = used + 1, #pool do pool[i].f.Visible = false end
     -- 小队（0.25 秒一次）
     sqT -= dt
     if sqT <= 0 and not mobile then

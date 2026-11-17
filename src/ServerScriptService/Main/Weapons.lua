@@ -309,7 +309,7 @@ function Weapons.init(G)
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
     local hit = res and res.Position or (origin + dir * w.range)
-    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet })
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team })   -- t：哪一方开的枪（客户端雷达上闪红圈）
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
 
@@ -554,7 +554,7 @@ function Weapons.init(G)
     params.FilterDescendantsInstances = ignore or {}
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
     local hit = res and res.Position or (from + dir * (w.range or 500))
-    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit })
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team })
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
     return res and res.Instance or nil   -- 打中了什么（机器人用来判断是不是被墙挡着）
   end

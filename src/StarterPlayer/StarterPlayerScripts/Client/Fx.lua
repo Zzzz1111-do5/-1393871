@@ -447,7 +447,10 @@ function Fx.init(G)
     for _, e in ipairs(list) do
       local k = e.k
       if k == "gun" then
-        if e.by ~= me.UserId then G.gunFx(e.w, e.a, e.b, false) end
+        if e.by ~= me.UserId then
+          G.gunFx(e.w, e.a, e.b, false)
+          if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
+        end
       elseif k == "boom" then boom(e.p, e.s)
       elseif k == "shot" then newShot(e)
       elseif k == "shotEnd" then endShot(e.id)
