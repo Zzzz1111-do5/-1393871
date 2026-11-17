@@ -209,7 +209,7 @@
   地面载具里 N 是切车上瞄准镜的夜视 / 热成像，开着车上的瞄准镜看时夜视仪先让出画面（两套调色叠在一起热成像会发绿、过亮），退出瞄准镜自动恢复（`Night.lua`）。
   枪械后坐调低三成：开枪视线上跳（`Fx.lua` G.kick）、第一人称枪往后坐往上抬（`FPSView.lua`）。
   模拟测试 `tools/mock/veh.lua` 查步兵开夜视、坐进坦克照样开着、开瞄准镜让出画面、退出来恢复。
-- [ ] 用户这一批（**darksword-air-map 在做**，session_01UJLfFEixacgxgs7dCsgNkA）：开飞机从下往上看机翼看不见；夜视提示「按 N 开启夜视」；跳伞没有降落伞；
+- [x] 用户这一批（darksword-air-map，session_01UJLfFEixacgxgs7dCsgNkA，2026-11-17 做完）：开飞机从下往上看机翼看不见；夜视提示「按 N 开启夜视」；跳伞没有降落伞；
   飞机驾驶没有重量感；无人机改用战术平板操控；地图和海洋太小；枪瞄准没有镜子（接手上面「枪械配置」里的枪上瞄准镜，那个会话很久没动了）；其余能优化的顺手优化。
   - [x] 枪上有瞄准镜（接手「枪械配置」里的这一块）：M4（两队都用）上机匣导轨上装一具 Trijicon ACOG 3.5×35（GoldbergR 的 CC-BY 模型，
     `tools/weapons/optics.json` 的 `acog`，同狙击镜那条管线：`models/optics/acog.glb`、`OpticMesh/acog.lua`、`OpticsMeta`）。第一人称（`FPSView.lua` 的 `M4_OPTIC`，
