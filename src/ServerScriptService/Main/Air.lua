@@ -93,6 +93,15 @@ function Air.init(G)
     for i, w in ipairs(e.load) do s[i] = w or "" end
     return table.concat(s, ",")
   end
+  -- 油量（用户：增加油量这个东西、可以挂副油箱）：e.fuel 内油、e.fuelX 副油箱里还有的油（都按「内油加满 = 1」算），
+  --   属性 Fuel / FuelX 给客户端的油量表和熄火用（往上取整到 0.2%：只有真烧干了才是 0）
+  local function pushFuel(e)
+    local m = e.model
+    local f = math.ceil(math.max(0, e.fuel or 0) * 500) / 500
+    local x = math.ceil(math.max(0, e.fuelX or 0) * 500) / 500
+    if m:GetAttribute("Fuel") ~= f then m:SetAttribute("Fuel", f) end
+    if m:GetAttribute("FuelX") ~= x then m:SetAttribute("FuelX", x) end
+  end
   local function fillStores(e)
     local d = e.def
     e.stores = {}
@@ -102,8 +111,10 @@ function Air.init(G)
     end
     e.gunAmmo = d.gunAmmo
     e.flares = d.flares
+    e.fuelX = (AD.tankFuel(d, e.load))   -- 副油箱挂回去、加满
     e.model:SetAttribute("Stores", storesStr(e))
     e.model:SetAttribute("Flares", e.flares)
+    pushFuel(e)
   end
 
   ---------------------------------------------------------------- 上下飞机
@@ -286,7 +297,7 @@ function Air.init(G)
 
   ---------------------------------------------------------------- 新飞机、被毁
 
-  local function newAircraft(team, id, cf, P, load, vel, onGround)
+  local function newAircraft(team, id, cf, P, load, vel, onGround, fuel)
     local d = AD.get(id)
     local hp = math.floor(d.hp * ((Config.VehicleMod[id] and Config.VehicleMod[id].hp) or 1))
     local e = G.newEnt({ kind = "air", team = team, cat = "air", hp = hp, size = d.hitbox, cf = cf, air = true, solid = true,   -- 实心：停着的飞机人穿不过去
@@ -295,6 +306,8 @@ function Air.init(G)
     e.model:SetAttribute("Driver", 0)
     e.load = AD.cleanLoad(d, load)
     e.model:SetAttribute("Load", loadStr(e))
+    e.fuelSel = AD.cleanFuel(fuel)   -- 出发时选的内油（落地加油也加到这么多）
+    e.fuel = e.fuelSel
     fillStores(e)
     e.vel = vel or V()
     e.onGround = onGround
@@ -348,10 +361,10 @@ function Air.init(G)
 
   -- 停在停机位上（cf 是机身中心：地面 / 甲板 + 起落架高），挂载照挂载界面选的（没给就按第一套预设）；
   --   生成的人 30 秒内独占；没人上 90 秒收走（不算冷却）
-  function G.spawnAircraft(team, id, cf, load, P)
+  function G.spawnAircraft(team, id, cf, load, P, fuel)
     local d = AD.get(id)
     if not d then return nil end
-    local e = newAircraft(team, id, cf, nil, (type(load) == "table") and load or AD.presetLoad(d), V(), true)
+    local e = newAircraft(team, id, cf, nil, (type(load) == "table") and load or AD.presetLoad(d), V(), true, fuel)
     e.home = "pad"
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
@@ -504,6 +517,50 @@ function Air.init(G)
     e.stores[i] -= 1
     e.model:SetAttribute("Stores", storesStr(e))
   end
+  -- 抛副油箱：auto 是油用完自动抛（挂着空箱子白白多阻力）；手动抛（J 键，进入空战前）里面剩的油一起扔掉
+  local function dropTanks(e, auto)
+    local any = false
+    for i, s in ipairs(e.def.st or {}) do
+      local wid = e.load[i]
+      local w = wid and AD.W[wid]
+      if w and w.kind == "tank" and (e.stores[i] or 0) > 0 then
+        e.stores[i] = 0
+        any = true
+        G.fx({ k = "tankDrop", w = wid, cf = stationWorld(e, s), v = e.vel or V() })   -- 客户端：箱子翻着掉下去
+      end
+    end
+    if not any then return false end
+    e.fuelX = 0
+    e.model:SetAttribute("Stores", storesStr(e))
+    pushFuel(e)
+    if e.driver then
+      G.msg(e.driver.pl, "info", auto and "ui.tankEmpty" or "ui.tankDrop")
+      G.pushOne(e.driver)
+    end
+    return true
+  end
+  -- 烧油：有人开的按他发来的油门 / 总距；链路断了自动盘旋的无人机按巡航；先烧副油箱（真飞机也是先用外挂的油），烧干了自动抛
+  local function burnFuel(e, dt)
+    local d, m = e.def, e.model
+    local r
+    if e.loit then
+      r = AD.burn(d, 60, 0, 100, 0.6, false)
+    elseif e.driver then
+      local thr = (d.kind == "heli") and 100 or (m:GetAttribute("Thr") or 0)
+      r = AD.burn(d, thr, m:GetAttribute("Col") or 0, m:GetAttribute("Rpm") or 0, (e.vel and e.vel.Magnitude or 0) / math.max(d.vMax, 1), e.onGround)
+    else
+      return
+    end
+    local use = r * dt
+    if (e.fuelX or 0) > 0 then
+      local take = math.min(e.fuelX, use)
+      e.fuelX -= take
+      use -= take
+      if e.fuelX <= 1e-5 then dropTanks(e, true) end
+    end
+    if use > 0 then e.fuel = math.max(0, (e.fuel or 0) - use) end
+    pushFuel(e)
+  end
 
   -- 目标：客户端锁定的实体（服务器再看一眼：射程、导引头视场放宽一点）
   local function validTarget(e, w, tid)
@@ -523,7 +580,7 @@ function Air.init(G)
 
   local function fireStore(P, e, wid, tid, aim)
     local w = AD.W[type(wid) == "string" and wid or ""]
-    if not w or w.kind == "gun" then return end
+    if not w or w.kind == "gun" or w.kind == "tank" then return end   -- 副油箱不是弹（抛油箱走 jettison）
     if G.round.phase ~= "battle" then return end
     local t = now()
     if t < (e.nextStore or 0) then return end
@@ -708,6 +765,7 @@ function Air.init(G)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
     elseif d.op == "flare" then flare(P, e)
+    elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then
       local p = e.root.CFrame.Position
       if p.Y - math.max(surface(p.X, p.Z), 0) < e.def.H + 40 or d.hit then crash(e, "ground") end   -- 客户端说撞了：离地面 / 障碍物不远才认
@@ -732,7 +790,7 @@ function Air.init(G)
     if e and e.air then
       if not e.alive then return nil end
       return { id = e.id, m = e.def.id, air = true, pilot = e.driver == P, load = e.load, stores = e.stores, gun = e.gunAmmo, flares = e.flares, home = e.home,
-        ground = e.onGround == true, uav = (P.remote == e) or nil }
+        ground = e.onGround == true, uav = (P.remote == e) or nil, fuel = e.fuel, fuelX = e.fuelX }
     end
     if vehState0 then return vehState0(P) end
     return nil
@@ -765,11 +823,12 @@ function Air.init(G)
       end
       if D and D.char and D.remote ~= e then D.char:PivotTo(e.root.CFrame) end
       for i, Q in ipairs(e.pass) do if Q.char then Q.char:PivotTo(e.root.CFrame * CF(((i % 2) * 2 - 1) * 2, 0, -2 + i * 2.5)) end end
+      if e.alive then burnFuel(e, dt) end
       if e.alive and not D then
         local p = e.root.CFrame.Position
         local g = surface(p.X, p.Z)
         local agl = p.Y - math.max(g, 0) - e.def.gearH
-        if e.loit and t >= e.loit.T then
+        if e.loit and (t >= e.loit.T or (e.fuel or 1) <= 0) then   -- 盘旋到时候了、或者油烧干了：掉下来
           e.loit = nil
           e.model:SetAttribute("Loiter", false)
         end
@@ -804,6 +863,7 @@ function Air.init(G)
         if e.restT > 5 then
           if not e.rearmed then
             e.rearmed = true
+            e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
             fillStores(e)
             if e.driver then
               G.msg(e.driver.pl, "good", "ui.rearmed")

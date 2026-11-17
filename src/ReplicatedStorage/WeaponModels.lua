@@ -54,6 +54,11 @@ local D = {
   -- 火箭巢
   hydra = { pod = true, col = OLIVE },
   fl90 = { pod = true, col = DGREEN },
+  -- 副油箱：浅灰（解放军 800 升，尾部三片小安定面）、美军灰、直升机墨绿 / 橄榄绿
+  tk800 = { tank = true, col = LGREY, fins = true },
+  tk370 = { tank = true, col = GREY },
+  tkh = { tank = true, col = DGREEN },
+  tk230 = { tank = true, col = OLIVE },
 }
 WM.D = D
 
@@ -64,7 +69,7 @@ function WM.spec(w, flight)
   if cache[key] then return cache[key] end
   local S = w.shape or { L = 5, d = 0.6 }
   local L, d = S.L, S.d
-  local desc = D[w.id] or (w.kind == "bomb" and { nose = "bomb", col = OLIVE, kit = "mk" })
+  local desc = D[w.id] or (w.kind == "bomb" and { nose = "bomb", col = OLIVE, kit = "mk" }) or (w.kind == "tank" and { tank = true, col = LGREY })
     or (w.kind == "rkt" and { pod = true, col = OLIVE }) or { nose = "radar", col = WHITE, tail = { at = 0.92, c = 0.09, s = 2 } }
   local out = {}
   local function put(t, size, cf, col, mat) table.insert(out, { t = t, size = size, cf = cf, col = col, mat = mat or MAT.SmoothPlastic }) end
@@ -84,6 +89,24 @@ function WM.spec(w, flight)
     end
     put("cyl", V(L * 0.04, d * 1.03, d * 1.03), CF(0, 0, -L * 0.2), YELLOW)
     put("box", V(d * 0.2, d * 0.25, L * 0.3), CF(0, d * 0.55, 0), DARK, MAT.Metal)   -- 吊耳
+    cache[key] = out
+    return out
+  end
+  if desc.tank then   -- 副油箱：两头尖的流线长筒（中段圆柱，前面短椭球、后面长椭球收尖），中间一道焊缝，上面两个吊耳；有的尾部三片小安定面
+    put("cyl", V(L * 0.46, d, d), CF(0, 0, -L * 0.02), col, MAT.Metal)
+    put("ball", V(d, d, L * 0.44), CF(0, 0, -L * 0.25), col, MAT.Metal)
+    put("ball", V(d * 0.99, d * 0.99, L * 0.56), CF(0, 0, L * 0.2), col, MAT.Metal)
+    put("cyl", V(0.05, d * 1.01, d * 1.01), CF(0, 0, -L * 0.02), col:Lerp(DARK, 0.3))
+    put("cyl", V(0.05, d * 1.01, d * 1.01), CF(0, 0, -L * 0.22), col:Lerp(DARK, 0.3))
+    if desc.fins then
+      for _, a in ipairs({ math.pi, math.pi * 0.25, -math.pi * 0.25 }) do   -- 下面一片、上面左右各一片（避开挂架）
+        put("wedge", V(0.06, d * 0.42, L * 0.13), CF(0, 0, L * 0.38) * CFrame.Angles(0, 0, a) * CF(0, d * 0.3 + d * 0.21, 0), col)
+      end
+    end
+    if not flight then
+      put("box", V(d * 0.16, d * 0.14, d * 0.45), CF(0, d * 0.52, -L * 0.12), DARK, MAT.Metal)
+      put("box", V(d * 0.16, d * 0.14, d * 0.45), CF(0, d * 0.52, L * 0.12), DARK, MAT.Metal)
+    end
     cache[key] = out
     return out
   end

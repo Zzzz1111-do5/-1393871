@@ -59,6 +59,7 @@ local function teleport(pl, cf, spd, ground)
 		st.hv = V3.new(st.vel.X, 0, st.vel.Z)
 		st.ground = ground == true
 		st.sink, st.pr, st.rr, st.yr = 0, 0, 0, 0
+		st.vdir, st.accV = look, nil   -- 航迹方向也摆正（Fly 的「航迹落后于机头」：留着瞬移前的航迹，机头和航迹差得远，一下子掉光速度失速）
 		st.aimYaw, st.aimPitch = st.yaw, math.asin(math.clamp(look.Y, -1, 1))
 		st.crashed = false
 		st.cat, st.trap = nil, nil
@@ -272,6 +273,8 @@ check(bombs >= 1 and e.stores[idx] + e.stores[mate] == before - 1, "投出一枚
 
 print("⑧ 机场岛降落、停稳补弹")
 H.key(atk, Enum.KeyCode.W, false)   -- 弹射时推的油门松开
+-- 从弹射起一直推满油门（加力）飞了几分钟（还等了开战），油快烧干了（烧干熄火、只能滑翔）：加满再降落（油量在模拟测试 air.lua 里测）
+e.fuel = 1
 local A2 = G.Map.AFIELD2
 local gy = G.airSurface(A2.x + A2.len / 2 - 60, A2.z)
 local tdP = V3.new(A2.x + A2.len / 2 - 60, gy + e.def.gearH, A2.z)

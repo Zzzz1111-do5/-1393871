@@ -1255,9 +1255,19 @@ local function visible(g)
 end
 H.visible = visible
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E（触发服务器那边的 ProximityPrompt）；生成出来的那一辆
+-- 飞机 / 直升机召唤位（Depots.lua 的 summon）：一个位上好几型（p.vids）；按型号找到的召唤位记下型号，usePad 时在弹出的机型卡片里点这一型
+H.padVid = {}
 function H.pad(G, vid)
 	for _, p in ipairs(G.pads or {}) do
-		if p.vid == vid then return p end
+		if p.vid == vid and not p.summon then return p end
+	end
+	for _, p in ipairs(G.pads or {}) do
+		for _, id in ipairs(p.vids or {}) do
+			if id == vid then
+				H.padVid[p] = vid
+				return p
+			end
+		end
 	end
 	return nil
 end
@@ -1273,6 +1283,18 @@ function H.usePad(G, pl, p)
 	ev(p.prompt, "Triggered"):Fire(pl)
 	H.ctx = prev
 	H.run(0.6)
+	-- 召唤位：先弹出机型卡片，点 H.pad 时要的那一型（接着弹出挂载编辑器）
+	local vid = p.summon and H.padVid[p]
+	if vid then
+		local pg = pl:FindFirstChildOfClass("PlayerGui")
+		for _, d in pg:GetDescendants() do
+			if d:IsA("TextButton") and d.Name == "Pick_" .. vid and visible(d) then
+				H.press(pl, d)
+				H.run(0.4)
+				break
+			end
+		end
+	end
 	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
 		for _, e in ipairs(list) do
 			if e.padId == p.id and e.alive then return e end

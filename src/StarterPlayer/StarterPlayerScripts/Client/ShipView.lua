@@ -34,6 +34,8 @@ function ShipView.init(G)
     local imp = RS:FindFirstChild("Imported")
     local sh = imp and imp:FindFirstChild("Ship")
     local f = sh and sh:FindFirstChild(d.id)
+    local n = f and f:GetAttribute("N")   -- 块还没全复制过来就先不用（View 等块齐了再重建）
+    if n and #f:GetChildren() < n then return nil end
     if info and f then return info, f end
     return nil
   end
@@ -588,7 +590,8 @@ function ShipView.init(G)
   end
 
   G.viewKind = G.viewKind or {}
-  G.viewKind.ship = { build = viewBuild, step = viewStep, recoil = viewRecoil, remove = function() end }
+  G.viewKind.ship = { build = viewBuild, step = viewStep, recoil = viewRecoil, remove = function() end,
+    importReady = function(v) return v.M ~= nil and not v.M.imported and v.d ~= nil and importedFor(v.d) ~= nil end }   -- 原模型后来才复制齐：View 重建
 end
 
 return ShipView

@@ -141,9 +141,19 @@ function T.actAsRemote(pl, ...) T.remoteAs(pl, "Act", ...) end
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E；返回生成出来的那一辆
 function T.pad(vid)
   for _, p in ipairs(T.G.pads or {}) do
-    if p.vid == vid then return p end
+    if p.vid == vid and not p.summon then return p end
+  end
+  for _, p in ipairs(T.G.pads or {}) do   -- 飞机 / 直升机召唤位：一个位上好几型（Depots.lua 的 summon、vids）
+    for _, id in ipairs(p.vids or {}) do if id == vid then return p end end
   end
   return nil
+end
+-- 按名字找一个看得见的按钮（召唤位的机型卡片 Pick_<型号>、挂载界面的内油 Fuel75……）
+function T.findNamed(name, pl)
+  pl = pl or R.localPlayer
+  for _, d in ipairs(pl.PlayerGui:GetDescendants()) do
+    if (d.ClassName == "TextButton" or d.ClassName == "ImageButton") and d.Name == name and visible(d) then return d end
+  end
 end
 function T.usePad(pl, p)
   local G = T.G

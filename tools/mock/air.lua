@@ -47,7 +47,7 @@ local AD = require and nil
 AD = R.requireModule and R.requireModule("AirDefs") or nil
 local C = T.C
 
-print("① 生成点：飞机型号、名额；走到停机位按 E，挂载界面按「生成」，再走过去坐上")
+print("① 召唤位：飞机型号、名额；走到召唤位按 E，选机型（卡片）→ 挂载界面（选内油、按「生成」），再走过去坐上")
 local jets = G.Config.Vehicles[side].jet
 local jetId = (side == "atk") and "j20" or "f22"
 local has = false
@@ -58,8 +58,15 @@ T.act("deploy", "rifle", (side == "atk") and "af2" or "point.D")   -- 攻方机�
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 local jp = T.pad(jetId)
-check(jp ~= nil and jp.kind == "air", "有 " .. jetId .. " 的停机位生成点")
+check(jp ~= nil and jp.kind == "air" and jp.summon == true, "有能召唤 " .. jetId .. " 的召唤位（" .. table.concat((jp and jp.vids) or {}, ",") .. "）")
 if jp then T.usePad(me, jp) end
+local card = T.findNamed("Pick_" .. jetId)
+check(card ~= nil, "弹出了选机型的卡片")
+if card then T.press(card) end
+R.run(0.3)
+local f75 = T.findNamed("Fuel75")
+check(f75 ~= nil, "挂载界面里能选内油（25% / 50% / 75% / 100%）")
+if f75 then T.press(f75) end
 local go = T.findButton("^" .. C.T("pad.spawn") .. "$")
 check(go ~= nil, "弹出了挂载界面（按钮是「生成」）")
 if go then T.press(go) end
@@ -67,6 +74,7 @@ R.run(1)
 local e0 = nil
 for _, x in ipairs(G.aircraft or {}) do if jp and x.padId == jp.id and x.alive then e0 = x end end
 check(e0 ~= nil and e0.driver == nil, "飞机停在停机位上（空着）")
+check(e0 ~= nil and e0.fuel == 0.75 and e0.model:GetAttribute("Fuel") == 0.75, "带了选的 75% 内油（" .. tostring(e0 and e0.model:GetAttribute("Fuel")) .. "）")
 T.act("enterVeh", e0 and e0.id)
 R.run(1.5)
 local e = P.vehicle
@@ -181,7 +189,9 @@ if fst and e then
   local up = T.runUntil(function() return not fst.ground end, 40)
   T.key(Enum.KeyCode.Up, false)
   check(up, string.format("滑跑起飞（离地时速度 %.0f 格 / 秒）", fst.spd or 0))
+  fst.aimPitch = 0.25   -- 鼠标往上：先爬高（鼠标不动就贴着跑道二十几格高平飞，后面拉杆会撞上机场的楼）
   R.run(8)
+  fst.aimPitch = 0
   local p = fst.cf.Position
   check(p.Y == p.Y and p.Y > G.Map.ground(p.X, p.Z) + 20, string.format("飞起来了（离地 %.0f 格，速度 %.0f）", p.Y - G.Map.ground(p.X, p.Z), fst.spd))
   -- 收到军推、平飞稳一下，再猛拉杆：角速度一开始还没起来，航迹慢半拍跟上机头，大迎角掉速
@@ -206,6 +216,50 @@ if fst and e then
   local q = fst.cf.Position
   check(q.X == q.X and q.Y == q.Y and q.Z == q.Z, "位置正常（没有算出 NaN）")
   T.key(Enum.KeyCode.W, false)
+end
+
+print("⑥ 油量：飞着就烧油（油门越大越费）、平显上有油量；副油箱先烧、烧干自动抛、J 键手动抛；烧干熄火")
+check(fst ~= nil and e ~= nil and e.alive and P.vehicle == e, string.format("还开着飞机（fly %s、alive %s、P.vehicle 是它 %s、高度 %.0f）", tostring(fst ~= nil),
+  tostring(e and e.alive), tostring(P.vehicle == e), fst and (fst.cf.Position.Y - G.Map.ground(fst.cf.Position.X, fst.cf.Position.Z)) or -1))
+if fst and e and e.alive then
+  local f0 = e.fuel
+  fst.thr = 100
+  R.run(3)
+  local used = f0 - e.fuel
+  local want = AD and AD.burn(e.def, 100) * 3 or used
+  check(used > 0 and math.abs(used - want) < want * 0.5, string.format("军推 3 秒烧了 %.4f（应该约 %.4f）", used, want))
+  local ft = T.texts((C.T("air.fuel", math.floor(e.model:GetAttribute("Fuel") * 100 + 0.5)):gsub("%%", "%%%%")))
+  check(#ft > 0, "平显上写着油量：" .. tostring(ft[1]))
+  -- 直接给它挂上两个副油箱（服务器那边的挂载），看先烧外挂的、J 键抛掉
+  local wing = {}
+  for i, s in ipairs(e.def.st or {}) do
+    for _, w in ipairs(s.opts) do if w == "tk800" or w == "tk370" then wing[i] = w end end
+  end
+  local n = 0
+  for i, w in pairs(wing) do e.load[i], e.stores[i], n = w, 1, n + 1 end
+  e.fuelX = n * 0.3
+  local fi, fx = e.fuel, e.fuelX
+  R.run(2)
+  check(n > 0 and e.fuelX < fx and math.abs(e.fuel - fi) < 1e-6, string.format("先烧副油箱（外挂 %.3f → %.3f，内油没动）", fx, e.fuelX))
+  local fxn = 0
+  local fx0 = G.fx
+  G.fx = function(x) if x.k == "tankDrop" then fxn = fxn + 1 end return fx0(x) end
+  T.key(Enum.KeyCode.J, true)
+  R.run(0.3)
+  T.key(Enum.KeyCode.J, false)
+  R.run(0.5)
+  local left = 0
+  for i in pairs(wing) do left = left + (e.stores[i] or 0) end
+  check(n > 0 and left == 0 and e.fuelX == 0 and fxn == n, string.format("J 键抛掉了 %d 个副油箱（还挂着 %d 个，掉下去的特效 %d 个）", n, left, fxn))
+  G.fx = fx0
+  -- 烧干：熄火，油门推不上去
+  e.fuel = 0.0005
+  R.run(1.5)
+  fst.thr = 100
+  R.run(0.5)
+  check(e.fuel == 0 and fst.out == true and fst.thr == 0, string.format("油烧干了熄火（内油 %.4f，油门 %.0f）", e.fuel, fst.thr))
+  local wt = T.texts(C.T("air.flameout"))
+  check(#wt > 0, "平显警告：燃油耗尽")
 end
 
 T.summary()

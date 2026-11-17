@@ -172,6 +172,7 @@ function Fx.init(G)
   local flying = {}
   local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
   local WM = require(game:GetService("ReplicatedStorage"):WaitForChild("WeaponModels"))
+  local MapM = require(game:GetService("ReplicatedStorage"):WaitForChild("Map"))
   local function newShot(e)
     local kind = e.kind
     local aw = e.w and AD.W[e.w]
@@ -275,6 +276,39 @@ function Fx.init(G)
         end
       end
       if s.t > ((s.kind == "bomb") and 40 or 15) then endShot(id) end
+    end
+  end
+  -- 抛副油箱：照挂着的样子拼一个（WeaponModels 的外形），带着飞机的速度往下掉——空箱子阻力大很快慢下来，重心靠前机头往下栽、绕纵轴慢慢转；
+  --   掉到海里溅一下、地上起一团土就没了
+  local drops = {}
+  local function tankDrop(e)
+    local aw = e.w and AD.W[e.w]
+    if not aw or typeof(e.cf) ~= "CFrame" then return end
+    local mdl = WM.make(FXF, aw, e.cf, false)
+    table.insert(drops, { wm = mdl, cf = e.cf, v = (typeof(e.v) == "Vector3") and e.v or V(), t = 0, spin = (math.random() - 0.5) * 2.4, cfs = table.create(#mdl.parts) })
+    G.playSound("quiet", e.cf.Position, 0.6)
+  end
+  local function stepDrops(dt)
+    for i = #drops, 1, -1 do
+      local s = drops[i]
+      s.t += dt
+      s.v = (s.v + V(0, -27.5, 0) * dt) * (1 - 0.3 * dt)
+      local p = s.cf.Position + s.v * dt
+      s.cf = CFrame.new(p) * (s.cf - s.cf.Position) * CFrame.Angles(-0.8 * dt * math.min(1, s.t), 0, s.spin * dt)
+      for k, o in ipairs(s.wm.offs) do s.cfs[k] = s.cf * o end
+      workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
+      local gy = math.max(AD.ground(MapM, p.X, p.Z), 0)   -- 甲板也算（落在航母上就没了）
+      if p.Y <= gy + 0.5 or s.t > 30 then
+        if p.Y <= gy + 2 then
+          if gy <= 0.5 then splash(p) else
+            local d = part(BALL, V(4, 4, 4), CFrame.new(p), RGB(168, 150, 122), Enum.Material.SmoothPlastic, 0.3)
+            tween(d, 1.3, { Size = V(15, 15, 15), Transparency = 1 })
+            Debris:AddItem(d, 1.35)
+          end
+        end
+        for _, q in ipairs(s.wm.parts) do q:Destroy() end
+        table.remove(drops, i)
+      end
     end
   end
   -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
@@ -476,11 +510,15 @@ function Fx.init(G)
       elseif k == "vls" then vls(e)
       elseif k == "smokeLaunch" then smokeLaunch(e)
       elseif k == "smokeCloud" then smokeCloud(e)
+      elseif k == "tankDrop" then tankDrop(e)
       end
     end
   end
 
-  function G.stepFx(dt) stepShots(dt or 1 / 60) end
+  function G.stepFx(dt)
+    stepShots(dt or 1 / 60)
+    if #drops > 0 then stepDrops(dt or 1 / 60) end
+  end
 end
 
 return Fx

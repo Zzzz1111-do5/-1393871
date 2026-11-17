@@ -66,17 +66,36 @@ local SURF_F = {
 --   （_v2 会动、有的面朝反了；不带后缀的一整块蒙皮、不会动）；
 --   元数据里的块要全在（导入了一半、或者文件夹里是别的版本的块，就不用这一版）
 local complete = {}   -- [文件夹] = 块齐不齐（每个文件夹只查一次）
+--   只记「齐了」：进服时几千块是陆续复制过来的，先看的那一下块不齐就永远当成没导入，很多飞机就一直是零件拼的（用户：很多飞机找不到建模）
+--   都复制过来了（块数到了服务器记的 N）还缺几小块的照样用（原模型里有不少 0.02 格的小碎块，Studio 导入时可能丢掉特别小、退化的网格；
+--   原来缺一块就整架换成零件拼的）：缺的体积不到百分之三、块数不到四分之一，输出窗口说一声缺哪几块；缺得多（导入了一半、文件夹里是别的版本的块）才不用
+local warnedMiss = {}
 local function usable(info, f, key)
   if not (info and f) then return false end
-  local ok = complete[f]
-  if ok == nil then
-    ok = true
-    for name in pairs(info.parts) do
-      if not f:FindFirstChild("A_" .. key .. "__" .. name) then ok = false break end
+  if complete[f] then return true end
+  local n = f:GetAttribute("N")   -- 服务器记的块数（Imports.lua）
+  if n and #f:GetChildren() < n then return false end
+  local miss, missV, totV, total = {}, 0, 0, 0
+  for name, p in pairs(info.parts) do
+    local v = (p.s and p.s[1] * p.s[2] * p.s[3]) or 1
+    totV += v
+    total += 1
+    if not f:FindFirstChild("A_" .. key .. "__" .. name) then
+      table.insert(miss, name)
+      missV += v
     end
-    complete[f] = ok
   end
-  return ok
+  if #miss > 0 then
+    if not n then return false end   -- 不知道服务器那边有几块：可能还在复制，等等再看
+    if #miss > total * 0.25 or missV > totV * 0.03 then return false end
+    if not warnedMiss[f] then
+      warnedMiss[f] = true
+      table.sort(miss)
+      warn("[全面大战场] 原模型 " .. key .. " 缺 " .. #miss .. " 块（照样用）：" .. table.concat(miss, "、", 1, math.min(#miss, 8)))
+    end
+  end
+  complete[f] = true
+  return true
 end
 function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")

@@ -83,6 +83,23 @@ function Hangar.init(G)
     rows[k] = { a, b }
   end
   local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.GothamMedium, Vector2.new(0.5, 1))
+  -- 左上：内油（用户：增加油量这个东西）——四档，少带油轻、加速快，多带飞得久；下面写巡航能飞多久（副油箱另算）、重量
+  local fuelBox = ui.frame(bg, UDim2.fromOffset(300, 104), UDim2.fromOffset(40, 80), RGB(10, 12, 14), 0.1)
+  fuelBox.Name = "Fuel"
+  ui.stroke(fuelBox, RGB(255, 255, 255), 1, 0.85)
+  local fTitle = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 18), UDim2.fromOffset(14, 10), 13, MUTE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local fuelBtns = {}
+  for k, f in ipairs(AD.FUEL_OPTS) do
+    local b = square(ui.button(fuelBox, string.format("%d%%", math.floor(f * 100 + 0.5)), UDim2.new(0.25, -9, 0, 30), UDim2.new((k - 1) * 0.25, 14 - (k - 1) * 4, 0, 32), RGB(8, 10, 12)))
+    b.Name = "Fuel" .. math.floor(f * 100 + 0.5)
+    b.TextSize = 15
+    b.Font = Enum.Font.GothamMedium
+    ui.stroke(b, RGB(255, 255, 255), 1, 0.8)
+    fuelBtns[k] = { b = b, f = f }
+  end
+  local fInfo = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 30), UDim2.fromOffset(14, 68), 12, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  fInfo.TextWrapped = true
+  fInfo.TextYAlignment = Enum.TextYAlignment.Top
   local backBtn = square(ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1)))
   ui.stroke(backBtn, RGB(255, 255, 255), 1, 0.7)
   backBtn.TextSize = 20
@@ -98,6 +115,7 @@ function Hangar.init(G)
   local spotBtns = {}
 
   local function weaponCat(w)
+    if w.kind == "tank" then return "wcat.tank" end
     if w.arm then return "wcat.arm" end
     if w.kind == "bomb" then return w.guided and "wcat.gbomb" or "wcat.bomb" end
     return "wcat." .. w.kind
@@ -150,6 +168,16 @@ function Hangar.init(G)
     end
     iName.Text = T("aw." .. wid)
     iCat.Text = string.upper(T(weaponCat(w)))
+    if w.kind == "tank" then   -- 副油箱：加多少油（按内油的几成）、多多少阻力、多飞几分钟
+      local data = { { T("hangar.tankFuel"), string.format("+%d%%", math.floor(w.fuel * (n or 1) * 100 + 0.5)) },
+        { T("hangar.tankDrag"), string.format("−%d%%", math.floor(w.drag * (n or 1) * 100 + 0.5)) },
+        { T("hangar.tankMin"), T("hangar.min", AD.fuelMin(H.d, w.fuel * (n or 1))) }, { T("hangar.count"), "×" .. tostring(n or 1) } }
+      for k, r in ipairs(rows) do
+        local e = data[k]
+        r[1].Text, r[2].Text = e and e[1] or "", e and e[2] or ""
+      end
+      return
+    end
     local data = { { T("hangar.guide"), T("guide." .. (w.guide or "none")) } }
     if w.range then table.insert(data, { T("hangar.range"), T("hangar.km", km(w.range)) }) end
     if w.kind == "rkt" then table.insert(data, { T("hangar.count"), tostring(w.tubes or 1) }) else table.insert(data, { T("hangar.count"), "×" .. tostring(n or 1) }) end
@@ -192,7 +220,8 @@ function Hangar.init(G)
       local l1 = ui.label(b, nm, UDim2.new(1, -24, 0, 26), UDim2.fromOffset(16, 6), 19, fg, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
       l1.TextTruncate = Enum.TextTruncate.AtEnd
       ui.label(b, w and T(weaponCat(w)) or "", UDim2.new(0.62, -16, 0, 18), UDim2.fromOffset(16, 36), 14, on and RGB(60, 60, 60) or MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Left)
-      ui.label(b, w and T("guide." .. (w.guide or "none")) or "", UDim2.new(0.38, -16, 0, 18), UDim2.new(0.62, 0, 0, 36), 13, on and RGB(60, 60, 60) or MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Right)
+      local right = w and ((w.kind == "tank") and T("hangar.tankAdd", math.floor(w.fuel * n * 100 + 0.5)) or T("guide." .. (w.guide or "none"))) or ""
+      ui.label(b, right, UDim2.new(0.38, -16, 0, 18), UDim2.new(0.62, 0, 0, 36), 13, on and RGB(60, 60, 60) or MUTE, Enum.Font.Gotham, nil, Enum.TextXAlignment.Right)
       b.MouseEnter:Connect(function() if H then showInfo(wid, n) end end)
       b.Activated:Connect(function()
         if not H then return end
@@ -247,6 +276,26 @@ function Hangar.init(G)
     for _, wid in ipairs(order) do table.insert(parts, T("aw." .. wid) .. " ×" .. count[wid]) end
     summary.Text = table.concat(parts, "   ·   ")
     if not H.sel then showInfo(nil) iName.Text = T("hangar.pick") end
+    -- 油量：选中的那档白底；巡航续航（内油 + 副油箱）、比一半内油重多少；选了挂点时让开（左边是弹的列表，矮屏幕上会叠在一起）
+    fuelBox.Visible = H.sel == nil
+    fTitle.Text = T("hangar.fuel")
+    for _, x in ipairs(fuelBtns) do
+      local on = math.abs(x.f - H.fuel) < 0.01
+      x.b.BackgroundColor3 = on and RGB(255, 255, 255) or RGB(8, 10, 12)
+      x.b.TextColor3 = on and RGB(16, 16, 16) or TEXT
+    end
+    local tf = AD.tankFuel(H.d, H.load)
+    local heavy = AD.heavy(H.d, H.fuel, tf)
+    local txt = T("hangar.endur", AD.fuelMin(H.d, H.fuel + tf))
+    if tf > 0 then txt = txt .. "  " .. T("hangar.endurTank", AD.fuelMin(H.d, tf)) end
+    fInfo.Text = txt .. "\n" .. T("hangar.weight", string.format("%+d%%", math.floor((heavy - 1) * 100 + 0.5)))
+  end
+  for _, x in ipairs(fuelBtns) do
+    x.b.Activated:Connect(function()
+      if not H then return end
+      H.fuel = x.f
+      G.refreshHangar()
+    end)
   end
 
   local function close()
@@ -257,14 +306,14 @@ function Hangar.init(G)
     gui.Enabled = false
   end
 
-  -- opts.confirm：右下按钮的文字键（生成点打开时是「生成」）
+  -- opts.confirm：右下按钮的文字键（生成点打开时是「生成」）；opts.fuel：上次选的内油（几成）；保存时 onSave(挂载, 预设键, 内油)
   function G.openHangar(id, load, onSave, presetKey, opts)
     local d = AD.get(id)
     if not d then return end
     if H then close() end
     local size = math.max(d.L, d.W)
     H = { d = d, load = table.clone(load or AD.presetLoad(d)), team = me:GetAttribute("Side") or "atk", onSave = onSave, sym = true, presetKey = presetKey,
-      confirm = opts and opts.confirm,
+      confirm = opts and opts.confirm, fuel = AD.cleanFuel(opts and opts.fuel or 1),
       yaw = rad(-150), pitch = rad(8), dist = size * 1.5, focus = V(0, -1, 0), shift = 0 }   -- 全景从左前稍下方看：挂点都在机腹、翼下，从上面看会挤成一团
     H.tYaw, H.tPitch, H.tDist, H.tFocus = H.yaw, H.pitch, H.dist, H.focus
     H.home = { yaw = H.yaw, pitch = H.pitch, dist = H.dist, focus = H.focus }
@@ -320,9 +369,9 @@ function Hangar.init(G)
   end)
   saveBtn.Activated:Connect(function()
     if not H then return end
-    local f, load, key = H.onSave, table.clone(H.load), H.presetKey
+    local f, load, key, fuel = H.onSave, table.clone(H.load), H.presetKey, H.fuel
     close()
-    if f then f(load, key) end
+    if f then f(load, key, fuel) end
   end)
 
   ---------------------------------------------------------------- 拖动转视角、滚轮缩放

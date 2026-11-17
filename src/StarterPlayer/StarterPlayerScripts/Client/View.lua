@@ -377,8 +377,33 @@ function View.init(G)
   end)
 
   local cam = workspace.CurrentCamera
+  -- 原模型是进服后陆续复制过来的：先用零件拼的样子建起来的，两秒看一次原模型齐了没有，齐了就重建（用户：很多飞机找不到建模）
+  local function rebuild(em)
+    local v = views[em]
+    if not v then return end
+    views[em] = nil
+    if v.id then byId[v.id] = nil end
+    if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
+    if v.model then v.model:Destroy() end
+    add(em)
+  end
+  local impT = 0
+  local function checkImports(dt)
+    impT += dt
+    if impT < 2 then return end
+    impT = 0
+    local list = {}
+    for em, v in pairs(views) do
+      local ok = false
+      if v.kind == "veh" then ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
+      elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
+      if ok and em.Parent then table.insert(list, em) end
+    end
+    for _, em in ipairs(list) do G.try_(rebuild, em) end
+  end
   function G.stepView(dt)
     stepDying()
+    G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
     local camPos = cam.CFrame.Position
     for em, v in pairs(views) do

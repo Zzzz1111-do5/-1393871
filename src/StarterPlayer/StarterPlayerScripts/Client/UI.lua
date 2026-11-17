@@ -382,7 +382,7 @@ function UI.init(G)
   deployHelp.Visible = not G.mobile
   -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
   function G.menuOpen()
-    return (G.hangarOpen ~= nil and G.hangarOpen()) or deploy.Visible
+    return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
   end
 
   local function doDeploy()

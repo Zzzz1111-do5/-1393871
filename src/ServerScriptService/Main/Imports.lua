@@ -70,9 +70,58 @@ function Imports.init(G)
     return list
   end
   G.importedVeh, G.importedAir, G.importedShip = sorted(keys), sorted(airKeys), sorted(shipKeys)
+  -- 每个模型的文件夹记下有几块（属性 N）：进服时几千块是陆续复制到客户端的，客户端等这些块都到了再用，
+  --   不然先到的半架飞机 / 半辆车会一直缺块，或者一直当成「没导入」用零件拼的（用户：很多飞机找不到建模）
+  for _, root in ipairs({ dest.V, dest.A, dest.S, dest.O, dest.N, imported:FindFirstChild("FPS_M4") }) do
+    if root then
+      if root.Name == "FPS_M4" then root:SetAttribute("N", #root:GetChildren())
+      else for _, f in ipairs(root:GetChildren()) do if f:IsA("Folder") then f:SetAttribute("N", #f:GetChildren()) end end end
+    end
+  end
   if n > 0 then
     print("[全面大战场] 用上了导入的装备模型：" .. table.concat(G.importedVeh, "、") .. ((#G.importedAir > 0) and ("；飞机直升机：" .. table.concat(G.importedAir, "、")) or "")
       .. ((#G.importedShip > 0) and ("；舰艇：" .. table.concat(G.importedShip, "、")) or "") .. "（" .. n .. " 块）")
+  end
+  -- 飞机：每一型找不找得到原模型（照客户端 AirModels.importedFor 的顺序：新版 → 老版），没导入的、缺块的在输出窗口列出来，
+  --   看得出该补导哪个文件（用户：很多飞机找不到建模）。缺的体积不到百分之三、块数不到四分之一的客户端照样用
+  local okM, IA = pcall(function() return require(RS:WaitForChild("ImportedAir", 5)) end)
+  local okD, AD = pcall(function() return require(RS:WaitForChild("AirDefs", 5)) end)
+  if okM and okD and type(IA) == "table" and type(AD) == "table" and IA.m then
+    local none, partial = {}, {}
+    local ids = {}
+    for id in pairs(AD.D or {}) do table.insert(ids, id) end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+      local keys = {}
+      if IA.alias and IA.alias[id] then table.insert(keys, IA.alias[id]) end
+      local old = IA.old and IA.old[id]
+      if type(old) == "string" then table.insert(keys, old) elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(keys, k) end end
+      local best = nil
+      for _, k in ipairs(keys) do
+        k = string.gsub(k, "~$", "")
+        local f, info = dest.A:FindFirstChild(k), IA.m[k]
+        if f and info then
+          local miss, total, mv, tv = 0, 0, 0, 0
+          for name, p in pairs(info.parts) do
+            local v = (p.s and p.s[1] * p.s[2] * p.s[3]) or 1
+            total += 1
+            tv += v
+            if not f:FindFirstChild("A_" .. k .. "__" .. name) then miss += 1 mv += v end
+          end
+          local ok = miss == 0 or (miss <= total * 0.25 and mv <= tv * 0.03)
+          if ok then best = nil break end
+          best = best or string.format("%s（%s 缺 %d / %d 块）", id, k, miss, total)
+        end
+      end
+      if best then table.insert(partial, best)
+      else
+        local any = false
+        for _, k in ipairs(keys) do if dest.A:FindFirstChild((string.gsub(k, "~$", ""))) then any = true end end
+        if not any and #keys > 0 then table.insert(none, id .. "（" .. string.gsub(keys[1], "~$", "") .. ".glb）") end
+      end
+    end
+    if #none > 0 then print("[全面大战场] 这些飞机还没导入原模型，用零件拼的：" .. table.concat(none, "、") .. "——Studio「导入 3D」导入 models/air/ 下对应的文件") end
+    if #partial > 0 then warn("[全面大战场] 这些飞机的原模型缺块太多，用零件拼的（重新导入一次）：" .. table.concat(partial, "、")) end
   end
 end
 

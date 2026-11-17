@@ -53,6 +53,8 @@ function Optics.init(G)
     f = f and f:FindFirstChild("Optics")
     f = f and f:FindFirstChild(key)
     if not f then return nil end
+    local n = f:GetAttribute("N")   -- 块还没全复制过来：先当没导入（不然拿到缺块的枪）
+    if n and #f:GetChildren() < n then return nil end
     local list = {}
     for name, info in pairs(META[key].parts) do
       local src = f:FindFirstChild("O_" .. key .. "__" .. name)

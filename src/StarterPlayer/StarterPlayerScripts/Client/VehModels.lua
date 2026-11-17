@@ -25,6 +25,8 @@ local function importedFor(d)
   local veh = imp and imp:FindFirstChild("Veh")
   local f = veh and veh:FindFirstChild(key)
   if not f then return nil end
+  local n = f:GetAttribute("N")   -- 服务器记的块数：还没全复制过来就先不用（View 等块齐了再重建）
+  if n and #f:GetChildren() < n then return nil end
   return key, info, f
 end
 VehModels.importedFor = importedFor

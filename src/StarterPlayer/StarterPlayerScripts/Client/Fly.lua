@@ -57,6 +57,7 @@ function Fly.init(G)
 
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
+    importReady = function(v) return v.M ~= nil and not v.M.imported and v.def ~= nil and AM.importedFor(v.def) ~= nil end,   -- 原模型后来才复制齐：View 重建
     build = function(v, em, team)
       local d = AD.get(em:GetAttribute("Model") or "")
       if not d then return false end
@@ -190,13 +191,14 @@ function Fly.init(G)
   local altText = hud("", UDim2.fromOffset(140, 26), UDim2.new(0.5, 230, 0.5, 0), 20, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   local thrText = hud("", UDim2.fromOffset(140, 18), UDim2.new(0.5, -230, 0.5, 26), 14, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
   local vsText = hud("", UDim2.fromOffset(140, 18), UDim2.new(0.5, 230, 0.5, 26), 14, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
+  local fuelText = hud("", UDim2.fromOffset(200, 18), UDim2.new(0.5, -230, 0.5, 46), 14, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)   -- 油量、按现在的油门还能飞多久
   local warnText = hud("", UDim2.fromOffset(520, 34), UDim2.new(0.5, 0, 0.5, -130), 26, Vector2.new(0.5, 0.5))
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
   landMark.TextColor3 = RGB(120, 200, 255)
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
-  local HUDS = { bore, aimRing, spdText, altText, thrText, vsText, warnText }
+  local HUDS = { bore, aimRing, spdText, altText, thrText, vsText, warnText, fuelText }
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -257,6 +259,7 @@ function Fly.init(G)
     tap(rb, "G", UDim2.fromOffset(80, 80), function() if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end end)
     tap(rb, "R", UDim2.fromOffset(10, 150), function() G.flyNextTarget() end)
     tap(rb, "F", UDim2.fromOffset(10, 80), function() G.R.Drive:FireServer({ op = "exit" }) end)
+    tap(rb, "J", UDim2.fromOffset(80, 10), function() G.R.Drive:FireServer({ op = "jettison" }) end)
     touchUI = { lb, rb }
     for _, f in ipairs(touchUI) do f.Visible = false end
   end
@@ -468,6 +471,7 @@ function Fly.init(G)
     local up = key(Enum.KeyCode.W) or (touch and touch.up)
     local dn = key(Enum.KeyCode.S) or (touch and touch.down)
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
     local pitchIn = (key(Enum.KeyCode.Down) and 1 or 0) - (key(Enum.KeyCode.Up) and 1 or 0)
@@ -488,6 +492,9 @@ function Fly.init(G)
     local thr = st.thrE
     local tgt = (thr <= 100) and d.vMil * thr / 100 or (d.vMil + (d.vMax - d.vMil) * (thr - 100) / 30)
     local acc = (thr > 100) and (d.accel + (d.abAccel or 0)) or d.accel
+    -- 副油箱的阻力：最大速度、加速度都少几成；油多就重：加速慢（满内油 + 两个副油箱比一半内油重三成多）
+    tgt *= 1 - (st.drag or 0)
+    acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
     -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
     --   一推油门不再四五十米就飞起来；弹射器单独算）
     if st.ground and not st.cat then acc *= 0.25 end
@@ -528,7 +535,7 @@ function Fly.init(G)
       if yawIn ~= 0 then yc = yawIn * rad(d.yaw) end
     end
     -- 过载限制：转弯角速度不超过 g × 重力 / 速度
-    local gLim = d.g * GR / math.max(st.spd, 30)
+    local gLim = d.g * GR / math.max(st.spd, 30) / math.sqrt(st.heavy or 1)   -- 重了转不快
     pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
     rc, yc = rc * q, yc * q
     st.pr = approach(st.pr, pc, 2.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢
@@ -684,8 +691,9 @@ function Fly.init(G)
 
   local function heliPhysics(dt)
     local d = st.d
-    st.rpm = approach(st.rpm, 100, 22 * dt)   -- 旋翼转起来要四五秒
+    if st.out then st.rpm = approach(st.rpm, 72, 9 * dt) else st.rpm = approach(st.rpm, 100, 22 * dt) end   -- 旋翼转起来要四五秒；熄火后靠气流自转，转速掉下来
     local lift = st.rpm >= 92
+    local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
     local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
     local sideIn = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
     local yawIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
@@ -705,14 +713,15 @@ function Fly.init(G)
     end
     local f = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
     local r = V(math.cos(st.yaw), 0, -math.sin(st.yaw))
-    local want = f * fwdIn * d.vMax + r * sideIn * d.vMax * 0.45
-    if not lift or st.ground then want = V() end
+    local want = (f * fwdIn * d.vMax + r * sideIn * d.vMax * 0.45) * (1 - (st.drag or 0))
+    if auto then want *= 0.5
+    elseif not lift or st.ground then want = V() end
     local dv = want - st.hv
-    local amax = d.accel * dt
+    local amax = d.accel * dt / (st.heavy or 1)
     if dv.Magnitude > amax then dv = dv.Unit * amax end
     st.lastHv = st.hv
     st.hv += dv
-    local vyWant = lift and upIn * d.climb or -18
+    local vyWant = auto and (-14 + math.max(upIn, 0) * 6) or (lift and upIn * d.climb / (st.heavy or 1) or -18)
     st.vy = approach(st.vy, vyWant, d.climb * 1.8 * dt)
     local pos = st.cf.Position + (st.hv + V(0, st.vy, 0)) * dt
     local g = ground(pos.X, pos.Z)
@@ -751,6 +760,8 @@ function Fly.init(G)
       st.firing = true
     elseif k == Enum.KeyCode.X then
       G.R.Drive:FireServer({ op = "flare" })
+    elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
+      G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
       if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end
     elseif k == Enum.KeyCode.R then
@@ -784,6 +795,9 @@ function Fly.init(G)
         st.spd = m.v.Magnitude
         st.hv = V(m.v.X, 0, m.v.Z)
       end
+      -- 航迹方向跟着拉回去（不然留着原来的航迹，机头和航迹差得远，一下子掉光速度失速）
+      st.vdir = (typeof(m.v) == "Vector3" and m.v.Magnitude > 1) and m.v.Unit or m.cf.LookVector
+      st.accV = nil
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
       if G.playSound then G.playSound("capture", nil, 2.2) end
@@ -823,6 +837,20 @@ function Fly.init(G)
       st.stores = st.storesLocal
     end
     st.gunAmmo, st.flares, st.load = vs.gun or 0, vs.flares or 0, vs.load or st.load
+    -- 油量（服务器算，属性 Fuel / FuelX）：烧干了熄火；挂着的副油箱算阻力，油多算重量
+    local f0, x0 = st.em:GetAttribute("Fuel"), st.em:GetAttribute("FuelX")
+    st.fuel = (type(f0) == "number") and f0 or 1
+    st.fuelX = (type(x0) == "number") and x0 or 0
+    st.out = st.fuel <= 0 and st.fuelX <= 0
+    st.heavy = AD.heavy(d, st.fuel, st.fuelX)
+    st.drag, st.tanks = 0, 0
+    for i, s2 in ipairs(d.st or {}) do
+      local w2 = st.load and st.load[i] and AD.W[st.load[i]]
+      if w2 and w2.kind == "tank" and (st.stores[i] or 0) > 0 then
+        st.drag += w2.drag * st.stores[i]
+        st.tanks += st.stores[i]
+      end
+    end
     -- 镜头转动
     if not G.mobile then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
     local md = UIS:GetMouseDelta()
@@ -969,7 +997,7 @@ function Fly.init(G)
     aName.Text = T("veh." .. d.id) .. (st.pilot and "" or ("   " .. T("air.passenger")))
     local kmh = math.floor(st.vel.Magnitude / AD.M * 3.6 + 0.5)
     local agl = math.floor((pos.Y - ground(pos.X, pos.Z) - d.gearH) / AD.M + 0.5)
-    aInfo.Text = T("ui.speed", kmh) .. "    " .. T("air.alt", math.max(0, agl)) .. "    " .. T("air.flares", st.flares)
+    aInfo.Text = T("ui.speed", kmh) .. "    " .. T("air.alt", math.max(0, agl)) .. "    " .. T("air.flares", st.flares) .. "    " .. T("air.fuelP", math.floor((st.fuel + st.fuelX) * 100 + 0.5))
       .. ((d.kind == "jet") and ("    " .. T("air.gearState." .. ((st.gearWant > 0.5) and "down" or "up"))) or "")
     if wid then
       aWpn.Text = "[" .. st.wi .. "/" .. #st.wl .. "] " .. T("aw." .. wid) .. "  ×" .. left(wid)
@@ -982,6 +1010,13 @@ function Fly.init(G)
       altText.Text = string.format("%d", math.max(0, agl))
       thrText.Text = (d.kind == "jet") and ((st.thr > 100) and T("air.ab") or string.format("%d%%", math.floor(st.thr + 0.5))) or string.format("RPM %d%%", math.floor(st.rpm))
       vsText.Text = string.format("%+d", math.floor(st.vel.Y / AD.M + 0.5))
+      -- 油量：内油 %（+ 副油箱 %）、照现在的油门还能飞几分几秒；少于两成半变黄、一成变红
+      local tot = st.fuel + st.fuelX
+      local rate = AD.burn(d, (d.kind == "heli") and 100 or st.thr, st.c.col or 0, (d.kind == "heli") and st.rpm or st.thr, st.vel.Magnitude / math.max(d.vMax, 1), st.ground)
+      local secs = (rate > 0) and tot / rate or math.huge
+      local left2 = (secs < 5999) and string.format("%d:%02d", math.floor(secs / 60), math.floor(secs % 60)) or "--:--"
+      fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
+      fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon
       if st.uav and st.dcam == "nose" then
@@ -995,9 +1030,11 @@ function Fly.init(G)
       -- 警告
       local warn = nil
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
+      elseif st.out and not st.ground then warn = T("air.flameout")
       elseif st.oob then warn = T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
-      elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup") end
+      elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup")
+      elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
       -- 降落引导：起落架放着、在天上：最近的能落的地方画个菱形，旁边写公里数；菱形按下滑道（3.5°）变色——绿正好、黄偏高、红偏低

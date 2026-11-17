@@ -65,13 +65,15 @@ do
 end
 local id = (side == "atk") and "gj11" or "mq9"
 local pad = T.pad(id)
-check(pad ~= nil and pad.kind == "air", "有 " .. id .. " 的生成点")
+check(pad ~= nil and pad.kind == "air", "有能召唤 " .. id .. " 的召唤位")
 local tr = char:FindFirstChild("RightUpperArm")
 local sh = tr and tr:FindFirstChild("RightShoulder")
 local c00 = sh and sh.C0
 local e
 if pad then
   T.usePad(me, pad)
+  local card = T.findNamed("Pick_" .. id)   -- 召唤位：先在机型卡片里点这一型
+  if card then T.press(card) R.run(0.3) end
   local go = T.findButton("^" .. C.T("pad.spawn") .. "$")
   if go then T.press(go) end
   R.run(1.5)

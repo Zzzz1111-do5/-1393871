@@ -268,7 +268,7 @@ local SW = {
 for k, v in pairs(SW) do add("sw." .. k, v[1], v[2]) end
 
 -- 飞机、直升机
-add("ui.rearmed", "补满了弹药和热诱弹", "Rearmed and resupplied with flares")
+add("ui.rearmed", "加好了油，补满了弹药和热诱弹", "Refueled, rearmed and resupplied with flares")
 local PRESET = {
   aa = { "空战", "Air superiority" }, ag = { "对地", "Ground attack" }, beast = { "满挂", "Full load" }, at = { "反坦克", "Anti-tank" },
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
@@ -332,10 +332,50 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · G 起落架 · F 跳伞",
-  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · X flares · G gear · F eject")
-add("air.helpHeli", "鼠标 瞄准 · W/S 前后 · A/D 转向 · Q/E 平移 · 空格 / Ctrl 升降 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · F 下飞机",
-  "Mouse aim · W/S forward/back · A/D turn · Q/E strafe · Space / Ctrl up/down · LMB fire · 1-6 weapons · R target · X flares · F exit")
+add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
+  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · G gear · F eject")
+add("air.helpHeli", "鼠标 瞄准 · W/S 前后 · A/D 转向 · Q/E 平移 · 空格 / Ctrl 升降 · 左键 开火 · 1-6 武器 · R 换目标 · X 热诱弹 · J 抛油箱 · F 下飞机",
+  "Mouse aim · W/S forward/back · A/D turn · Q/E strafe · Space / Ctrl up/down · LMB fire · 1-6 weapons · R target · X flares · J drop tanks · F exit")
+-- 油量、副油箱（用户：增加油量这个东西并且可以选择挂载副油箱）
+add("air.fuel", "油 {1}%", "FUEL {1}%")
+add("air.fuelP", "油 {1}%", "Fuel {1}%")
+add("air.bingo", "燃油不足", "BINGO FUEL")
+add("air.flameout", "燃油耗尽", "FLAMEOUT")
+add("ui.tankEmpty", "副油箱用完，已抛掉", "Drop tanks empty, jettisoned")
+add("ui.tankDrop", "抛掉了副油箱", "Drop tanks jettisoned")
+add("aw.tk800", "800 升副油箱", "800 L drop tank")
+add("aw.tk370", "370 加仑副油箱", "370 gal drop tank")
+add("aw.tkh", "外挂油箱", "External fuel tank")
+add("aw.tk230", "230 加仑外挂油箱", "230 gal external tank")
+add("wcat.tank", "副油箱", "Drop Tank")
+add("hangar.fuel", "内油", "INTERNAL FUEL")
+add("hangar.endur", "巡航约 {1} 分钟", "About {1} min cruise")
+add("hangar.endurTank", "（副油箱 +{1} 分钟）", "(tanks +{1} min)")
+add("hangar.weight", "重量 {1}（比一半内油、不挂副油箱）", "Weight {1} (vs. half fuel, no tanks)")
+add("hangar.tankFuel", "加油", "Fuel")
+add("hangar.tankDrag", "最大速度", "Top speed")
+add("hangar.tankMin", "多飞", "Extra endurance")
+add("hangar.min", "{1} 分钟", "{1} min")
+add("hangar.tankAdd", "+{1}% 油", "+{1}% fuel")
+-- 飞机召唤位（用户：地图改为召唤飞机的地方，我可以选择哪种飞机）
+add("pad.summon", "选择机型", "Choose aircraft")
+add("pad.summonJet", "召唤飞机", "Aircraft Terminal")
+add("pad.summonHeli", "召唤直升机", "Helicopter Terminal")
+add("pick.sub", "选一型飞机，再改挂载和油量", "Pick an aircraft, then set its loadout and fuel")
+add("pick.cancel", "取消", "CANCEL")
+add("pick.carrier", "舰载", "Carrier")
+add("pick.stealth", "隐身", "Stealth")
+add("pick.gun", "航炮", "Gun")
+add("pick.st", "{1} 个挂点", "{1} hardpoints")
+add("pick.fuel", "巡航 {1} 分钟", "{1} min cruise")
+add("arole.fighter", "战斗机", "Fighter")
+add("arole.strike", "战斗轰炸机", "Strike fighter")
+add("arole.attack", "攻击机", "Attack aircraft")
+add("arole.bomber", "轰炸机", "Bomber")
+add("arole.uav", "察打无人机", "Armed drone")
+add("arole.aheli", "武装直升机", "Attack helicopter")
+add("arole.uheli", "通用直升机", "Utility helicopter")
+add("arole.theli", "运输直升机", "Transport helicopter")
 add("air.helpPass", "你坐在后面 · 鼠标 看四周 · F 下飞机（在天上就跳伞）", "You're a passenger · Mouse look · F jump out (parachute if airborne)")
 add("ui.smokeLeft", "烟幕弹 ×{1}", "Smoke ×{1}")
 add("ui.reloading", "装填中", "Reloading")

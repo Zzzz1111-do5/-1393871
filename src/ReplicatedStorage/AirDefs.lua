@@ -66,6 +66,12 @@ AirDefs.W = {
 
   hydra = { kind = "rkt", dmg = 230, splash = 12, speed = 760, range = 1800, rate = 0.11, tubes = 19, vs = VS_RKT, shape = { L = 4.6, d = 1.1 } },
 
+  -- 副油箱（用户：可以选择挂载副油箱）：fuel 一个能加内油的几成，drag 挂着时最大速度、加速度少几成；油用完自动抛掉，J 键手动抛
+  tk800 = { kind = "tank", fuel = 0.3, drag = 0.03, shape = { L = 12.6, d = 1.75 } },    -- 解放军 800 升（歼-10 / 歼-20 那种）
+  tk370 = { kind = "tank", fuel = 0.32, drag = 0.03, shape = { L = 13.4, d = 1.9 } },    -- 美军 370 加仑（约 1400 升）
+  tkh = { kind = "tank", fuel = 0.35, drag = 0.02, shape = { L = 9.5, d = 1.7 } },       -- 直升机外挂油箱（解放军）
+  tk230 = { kind = "tank", fuel = 0.35, drag = 0.02, shape = { L = 10.0, d = 1.75 } },   -- 直升机 230 加仑外挂油箱（美军）
+
   pl12 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 720, range = 2800, lockTime = 1.6, cone = 25, turn = 50, burn = 4.5, life = 7.5, vs = VS_AAM,
     shape = { L = 10.4, d = 0.57, fin = 1.0 } },
   yj91 = { kind = "agm", arm = true, dmg = 1000, splash = 14, speed = 560, range = 3800, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
@@ -387,6 +393,16 @@ for id, d in pairs(D) do
   d.hitbox = (d.kind == "heli") and V(math.max(d.W, 8), d.H * 0.8, d.L * 0.8) or V(d.W * 0.7, d.H * 0.75, d.L * 0.9)
   for i, s in ipairs(d.st or {}) do s.i = i end
 end
+-- 能挂副油箱的挂点（照真飞机：侧卫系、A-10 机翼内侧，歼-20 / 歼-35 / F-35 翼下，察打无人机内侧，直升机短翼）；左右成对的挂点共用一张 opts 表，只加一次
+local TANKS = { j15t = { inner = "tk800" }, j16 = { inner = "tk800" }, j20 = { wing = "tk800" }, j35 = { wingI = "tk800" }, gj2 = { inner = "tk800" },
+  a10c = { inner = "tk370" }, f35 = { wingI = "tk370" }, mq9 = { inner = "tk370" }, z10 = { inner = "tkh" }, z20 = { stub = "tkh" }, ah64e = { inner = "tk230" }, uh60 = { stub = "tk230" } }
+for id, map in pairs(TANKS) do
+  local d = D[id]
+  for _, st in ipairs((d and d.st) or {}) do
+    local wid = map[st.name]
+    if wid and st.opts and not table.find(st.opts, wid) then table.insert(st.opts, wid) end
+  end
+end
 
 -- 攻方舰队的甲板（和 World.fleet 拼的一样大：甲板面高 top）：飞机能停在上面、从上面起飞
 AirDefs.DECKS = { carrier = { L = 620, W = 120, top = 30.5 }, lhd = { L = 480, W = 94, top = 26.5 }, lst = { L = 300, W = 60, top = 18.5 } }
@@ -470,9 +486,61 @@ function AirDefs.groups(d, load)
   if d.gun then table.insert(out, d.gun) seen[d.gun] = true end
   for _, s in ipairs(d.st or {}) do
     local w = load[s.i]
-    if w and not seen[w] then table.insert(out, w) seen[w] = true end
+    if w and not seen[w] and not (AirDefs.W[w] and AirDefs.W[w].kind == "tank") then table.insert(out, w) seen[w] = true end   -- 副油箱不是武器
   end
   return out
+end
+
+---------------------------------------------------------------- 燃油（用户：增加油量这个东西）
+
+-- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
+--   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j50 = 500, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
+  gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
+function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
+-- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；
+--   直升机：旋翼没转起来不烧，地上慢车三成，天上悬停六成，爬升（col 是升降杆 −1～1）、飞得快再多烧（spd 是速度 / 最大速度）
+function AirDefs.burn(d, thr, col, rpm, spd, ground)
+  local cap = AirDefs.fuelCap(d)
+  if d.kind == "heli" then
+    if (rpm or 0) < 30 then return 0 end
+    if ground then return 0.3 / cap end
+    return (0.6 + 0.25 * math.clamp(col or 0, 0, 1) + 0.15 * math.clamp(spd or 0, 0, 1)) / cap
+  end
+  local t = math.clamp(thr or 0, 0, 130)
+  if t > 100 then return (1 + 1.2 * (t - 100) / 30) / cap end
+  return (0.12 + 0.88 * (t / 100) ^ 1.6) / cap
+end
+-- 巡航（油门六成 / 直升机平飞七成速度）带 f 成油（内油 + 副油箱，默认满内油）能飞几分钟：选机型的卡片、挂载界面上写
+function AirDefs.fuelMin(d, f)
+  local r = AirDefs.burn(d, 60, 0, 100, 0.7, false)
+  return math.floor((f or 1) / math.max(r, 1e-6) / 60 + 0.5)
+end
+-- 出发时能选的内油（几成）：少带油轻、加速快，多带飞得久
+AirDefs.FUEL_OPTS = { 0.25, 0.5, 0.75, 1 }
+function AirDefs.cleanFuel(f)
+  f = tonumber(f)
+  if not f or f ~= f then return 1 end
+  return math.clamp(f, 0.25, 1)
+end
+-- 重量（相对一半内油、不挂副油箱）：内油大约是战斗机起飞重量的四分之一，副油箱连油带箱子再重一成；直升机油占得少
+function AirDefs.heavy(d, fuel, fuelX)
+  local k = (d.kind == "heli") and 0.2 or 0.35
+  return (1 + k * ((fuel or 0.5) + 1.1 * (fuelX or 0))) / (1 + k * 0.5)
+end
+-- 一套挂载里副油箱加几成油、加几成阻力
+function AirDefs.tankFuel(d, load)
+  local f, drag, n = 0, 0, 0
+  for i, s in ipairs(d.st or {}) do
+    local w = load and load[i] and AirDefs.W[load[i]]
+    if w and w.kind == "tank" then
+      local c = AirDefs.count(s, load[i])
+      f += w.fuel * c
+      drag += w.drag * c
+      n += c
+    end
+  end
+  return f, drag, n
 end
 
 return AirDefs
