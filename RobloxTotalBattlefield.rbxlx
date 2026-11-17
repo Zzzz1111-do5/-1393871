@@ -19178,8 +19178,8 @@ return Menu
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
 --   开着：整个画面都是夜视（本地增亮、绿色荧光调色、灯光强烈泛光、雾变淡一点看得更远、画面轻微闪烁；用户：要全屏的夜视，不要望远镜那样四周一圈黑）；
 --     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
---   坐进载具（车、飞机、直升机、船、炮位）时自动关掉；地面载具和炮位里一直关着（车上有自己的夜视 / 热成像瞄准镜，Drive.lua，N 是切它的），
---     飞机、船上想要可以再按 N 打开；死了关掉
+--   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 是切车上瞄准镜的夜视 / 热成像（Drive.lua），
+--     开着车上的瞄准镜看时夜视仪先让出画面（瞄准镜有自己的调色，叠在一起热成像会发绿、过亮），退出瞄准镜自动恢复；死了关掉
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -19196,11 +19196,12 @@ function Night.init(G)
 
   ---------------------------------------------------------------- 开关
 
-  local function setOn(v)
-    if v == on then return end
-    on = v
-    pcall(function() G.R.Act:FireServer("nvg", on) end)
-    if on then
+  -- 夜视的画面效果加上 / 撤掉（开着夜视仪、但正在看车上的瞄准镜时撤掉，on 不变）
+  local fxOn = false
+  local function fxApply(want)
+    if want == fxOn then return end
+    fxOn = want
+    if want then
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       saved = { exp = Lighting.ExposureCompensation, amb = Lighting.Ambient, oamb = Lighting.OutdoorAmbient, dens = atm and atm.Density, atm = atm }
       Lighting.ExposureCompensation = saved.exp + 2.7
@@ -19220,7 +19221,6 @@ function Night.init(G)
       blur.Size = 1.5
       blur.Parent = Lighting
       fx = { cc, bl, blur }
-      if G.playSound then G.playSound("quiet", nil, 2.4) end
     else
       for _, e in ipairs(fx) do e:Destroy() end
       fx = {}
@@ -19233,6 +19233,16 @@ function Night.init(G)
       end
       G.irStrobes(false)
     end
+  end
+  -- 正在看车上的瞄准镜（它有自己的昼光 / 夜视 / 热成像调色）：夜视仪先让出画面
+  local function held() return G.sightCC ~= nil and G.sightCC.Enabled end
+
+  local function setOn(v)
+    if v == on then return end
+    on = v
+    pcall(function() G.R.Act:FireServer("nvg", on) end)
+    fxApply(on and not held())
+    if on and G.playSound then G.playSound("quiet", nil, 2.4) end
   end
   G.nvgOn = function() return on end
   G.setNvg = setOn
@@ -19269,14 +19279,12 @@ function Night.init(G)
     end
   end
 
-  local wasIn = false   -- 上一帧是不是坐在载具里（刚坐进去那一下关掉夜视）
   RunService.RenderStepped:Connect(function(dt)
-    local inVeh = G.drive ~= nil
-    local enter = inVeh and not wasIn
-    wasIn = inVeh
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
-    if enter or not hum or hum.Health <= 0 or (G.drive and not G.fly and not G.sail) then setOn(false) return end
+    if not hum or hum.Health <= 0 then setOn(false) return end
+    fxApply(not held())   -- 坐进载具照样开着；看车上的瞄准镜时让出画面，退出来再加上
+    if not fxOn then return end
     local cc = fx[1]
     if cc then cc.Brightness = 0.04 + (math.random() - 0.5) * 0.018 end   -- 增像管的轻微闪烁
     irT += dt

@@ -45,7 +45,7 @@ if side == "def" then
   check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
   local e0 = tp and T.usePad(me, tp)
   check(e0 ~= nil and e0.driver == nil, "生成了一辆空的 " .. tostring(e0 and e0.def.id))
-  -- 夜视：步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），坐进车里自动关掉
+  -- 夜视：步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），坐进车里照样开着
   T.tap(Enum.KeyCode.N)
   R.run(0.3)
   local lighting = R.services.Lighting
@@ -53,7 +53,7 @@ if side == "def" then
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled), "步兵按 N 开夜视：全屏调色、没有镜筒框")
   T.act("enterVeh", e0 and e0.id)
   R.run(1.5)
-  check(C.nvgOn and not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "坐进车里夜视自动关掉")
+  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
   check(P.alive and me.Character and me.Character.HumanoidRootPart.Anchored, "人锚定在车里")
@@ -82,6 +82,7 @@ if side == "def" then
   R.run(0.3)
   local cc = C.sightCC
   check(C.drive.sight and cc and cc.Enabled, "进瞄准镜，画面调色开了")
+  check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
   local modes = {}
   for _ = 1, 3 do
     T.tap(Enum.KeyCode.N)
@@ -92,6 +93,7 @@ if side == "def" then
   T.tap(Enum.KeyCode.V)
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "退出瞄准镜，调色关了")
+  check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
 
   print("④ 开战后开炮、放烟幕弹")
   T.runUntil(function() return G.round.phase == "battle" end, 40)
