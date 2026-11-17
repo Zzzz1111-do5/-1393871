@@ -76,6 +76,10 @@ AirDefs.W = {
     shape = { L = 10.4, d = 0.57, fin = 1.0 } },
   yj91 = { kind = "agm", arm = true, dmg = 1000, splash = 14, speed = 560, range = 3800, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
     vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 13.2, d = 1.0, fin = 1.6 } },
+  -- 鹰击-83K 空射反舰导弹（歼-15T 的原模型就挂着它，用户给的「J-15T with YJ-83K」）：长约 5.1 米、弹径 0.36 米、翼展约 1.2 米；
+  --   涡喷发动机亚音速掠海飞行，比 KD-88 慢、射程远，打船狠（对船 3.2 倍）
+  yj83k = { kind = "agm", dmg = 1600, splash = 20, speed = 440, range = 5000, lockTime = 1.6, cone = 18, turn = 22, burn = 14, life = 15,
+    vs = { inf = 0.6, light = 1.2, armor = 0.8, air = 0.1, ship = 3.2, fort = 1.0 }, shape = { L = 14.3, d = 1.0, fin = 1.4, wing = 3.4 } },
   agm88 = { kind = "agm", arm = true, dmg = 950, splash = 13, speed = 580, range = 3600, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
     vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 11.6, d = 0.71, fin = 1.3 } },
   gbu32 = { kind = "bomb", guided = true, dmg = 1700, splash = 36, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 8.5, d = 1.0, fin = 1.3 } },
@@ -86,7 +90,7 @@ AirDefs.W = {
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
 local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", akd10 = "laser", agm114 = "laser",
-  kd88 = "tv", agm65 = "tv", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
+  kd88 = "tv", agm65 = "tv", yj83k = "radar", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
 for id, w in pairs(AirDefs.W) do
   w.id = id
   w.guide = GUIDE[id] or ((w.kind == "gun") and "gun" or "none")
@@ -218,11 +222,12 @@ D.j15t = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp 
   st = mirror({
     { name = "tip", pos = V(20.6, -0.1, 11.5), opts = { "pl10" } },
     { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15", "pl12" } },
-    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
-    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj83k", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj83k", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
     { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6" } },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl15", inner = "pl15", duct = "pl15" }),
+    preset("antiship", { tip = "pl10", outer = "pl12", mid = "pl15", inner = "yj83k", duct = "pl15" }),   -- 两枚鹰击-83K（原模型的挂法）
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "ls6", duct = "ls6" }),
     preset("strike", { tip = "pl10", mid = "b250", inner = "b250", duct = "ls6" }),
     preset("sead", { tip = "pl10", outer = "pl12", mid = "yj91", inner = "lt2", duct = "pl15" }) } }

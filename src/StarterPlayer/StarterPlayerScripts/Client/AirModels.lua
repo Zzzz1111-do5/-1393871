@@ -61,6 +61,16 @@ local SURF_F = {
   canopy = function(c, _, A) return (c.can or 0) * A end,
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
 }
+-- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
+--   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
+--   原模型的变形动画就是这一开一合），整只绕喉道中心偏转：抬头时出口往上、右偏时出口往右、右滚时右边往上左边往下；加力火焰跟着出口走
+local TVC_ON = { j15t = true, j16 = true, j20 = true, j35 = true, f35 = true }
+local TVC_P, TVC_Y, TVC_R = rad(16), rad(10), rad(7)
+local function tvcOpen(t)
+  if t <= 100 then return 0.45 - 0.3 * math.clamp(t / 100, 0, 1) end
+  return 0.15 + 0.85 * math.min(1, (t - 100) / 25)
+end
+AM.tvcOpen = tvcOpen
 -- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
 --   先找最新版（有舵面、舱门、座舱盖、起落架支柱这些活动部件，修过朝反的面，键名 <键>_v3），没导入就按 ImportedAir 的 old 表挨个找老版
 --   （_v2 会动、有的面朝反了；不带后缀的一整块蒙皮、不会动）；
@@ -97,6 +107,18 @@ local function usable(info, f, key)
   complete[f] = true
   return true
 end
+local function tvcAsset()
+  local info = IA and IA.m and IA.m.tvc
+  local imp = RS:FindFirstChild("Imported")
+  local air = imp and imp:FindFirstChild("Air")
+  local f = air and air:FindFirstChild("tvc")
+  if info and info.tvc and f and usable(info, f, "tvc") then return info, f end
+  return nil
+end
+-- 原模型里「起落架」那几块其实是机腹 / 翼下的蒙皮（转换脚本按最低的三角形挑的；这两架是按收起起落架的样子做的，机轮收在舱里、整架趴在地上）：
+--   那几块当蒙皮一直画，整架抬高 lift 格（放下起落架时机身离地的高度，真机全高减模型高），用零件拼的起落架（用户：部分飞机没有起落架）
+local NOGEAR = { a10 = 2.5, a10_v2 = 2.5, a10_v3 = 2.5, b2 = 4.8, b2_v2 = 4.8, b2_v3 = 4.8 }
+AM.NOGEAR = NOGEAR
 function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
@@ -112,7 +134,8 @@ function AM.importedFor(d)
     local info = IA.m and IA.m[key]
     local f = air:FindFirstChild(key)
     if usable(info, f, key) then
-      return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
+      local lift = NOGEAR[key]
+      return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH + (lift or 0), 0), noGear = lift ~= nil }   -- 模型坐标的高度 0 是停在地上时的地面
     end
   end
   return nil
@@ -172,7 +195,7 @@ function AM.build(d, team, load)
   local m = Instance.new("Model")
   m.Name = d.id
   local items = {}
-  local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, team = team }
+  local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, tvc = {}, team = team }
   local imp = AM.importedFor(d)
   M.imp = imp
   -- 正在拼哪一类零件（有原模型时只留下这几类，其余的是蒙皮、换成原模型）：gear 起落架、rotor 旋翼 / 螺旋桨、lamp 灯、store 挂架和弹、pilot 飞行员
@@ -323,9 +346,12 @@ function AM.build(d, team, load)
         local pos, wy = s.pos, (d.wing and d.wing.y or 0) - 0.3
         local adj = adjs and adjs[i]
         if adj then
+          -- 挂架（连发射导轨）高：真飞机 0.3～0.5 米，弹越粗挂架越高一点；直升机的发射架直接吊在短翼下（用户：飞机导弹挂架太长了——
+          --   原来照型号表的高低差挂，进气道下的挂点吊下来三四格）
+          local S0 = w.shape or { d = 0.6 }
+          local hp = (d.kind == "heli") and math.clamp(0.2 + S0.d * 0.25, 0.25, 0.6) or math.clamp(0.35 + S0.d * 0.55, 0.6, 1.3)
           local ys = adj[1] + imp.O.Y
-          local top = (d.kind == "heli") and ((d.stub and d.stub.y or 0) - 0.25) or wy   -- 零件拼的翼（短翼）下表面
-          pos = V(adj[3], s.pos.Y + ys - top, adj[2])
+          pos = V(adj[3], ys - hp, adj[2])
           wy = ys
         end
         local side = (pos.X >= 0) and 1 or -1
@@ -334,7 +360,7 @@ function AM.build(d, team, load)
         -- 外挂：挂架（翼下的竖板）
         if not s.bay and d.kind == "jet" then
           local h = math.max(0.4, wy - pos.Y)
-          local pyl = box(V(0.35, h, math.max(2.5, S.L * 0.45)), CF(pos.X, pos.Y + h / 2, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
+          local pyl = box(V(0.35, h, math.clamp(S.L * 0.38, 2.0, 5.5)), CF(pos.X, pos.Y + h / 2, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
           table.insert(M.pylons, pyl)
           if n > 1 and w.kind ~= "rkt" then   -- 多联挂架的横梁
             box(V(S.d * 2.2, 0.3, S.L * 0.4), CF(pos.X, pos.Y - 0.15, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
@@ -607,6 +633,45 @@ function AM.build(d, team, load)
         end
         if best then E = setmetatable({ x = best[1], y = best[2] + imp.O.Y, z = best[3], r = best[4] }, { __index = E }) end
       end
+      local tvcVec = nil
+      if imp and TVC_ON[d.id] and not E.prop and not E.flat then
+        local TI, TF = tvcAsset()
+        if TI then
+          local T = TI.tvc
+          local k = E.r / T.r                            -- 外罩和原模型的喷口一样粗
+          local side = (E.x >= 0) and 1 or -1
+          local throat = V(E.x, E.y, E.z + 0.42 * k)    -- 铰链那一圈：外罩前沿正好贴着原模型的出口
+          local function vec(c)
+            local th = -((c.pit or 0) * TVC_P + side * (c.rol or 0) * TVC_R)
+            return CF(throat) * CFrame.Angles(th, (c.yaw or 0) * TVC_Y, 0) * CF(-throat)
+          end
+          tvcVec = vec
+          local hinge = {}
+          for _, h in ipairs(T.petals) do hinge[h.g] = h end
+          local t0 = TAG
+          TAG = "tvc"
+          for name, p in pairs(TI.parts) do
+            local src = TF:FindFirstChild("A_tvc__" .. name)
+            if src and src:IsA("BasePart") then
+              local mp = Tint.fix(src:Clone(), src)
+              mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch, mp.CastShadow = true, false, false, false, false
+              mp.Size = V(p.s[1], p.s[2], p.s[3]) * k
+              if p.col and not mp:FindFirstChildOfClass("SurfaceAppearance") then mp.Color, mp.Material = RGB(p.col[1], p.col[2], p.col[3]), MAT.Metal end
+              mp.Parent = m
+              local cc0 = CF(throat + V(p.c[1], p.c[2], p.c[3]) * k) * TURN
+              local H = hinge[p.g]
+              local f = vec
+              if H then   -- 调节片：绕自己的铰链张开
+                local hp, ax = throat + V(H.p[1], H.p[2], H.p[3]) * k, V(H.a[1], H.a[2], H.a[3])
+                f = function(c) return vec(c) * CF(hp) * CFrame.fromAxisAngle(ax, tvcOpen(c.thr or 0) * T.A) * CF(-hp) end
+              end
+              table.insert(M.tvc, add(mp, cc0, "m", { f = f, petal = H ~= nil }))
+            end
+          end
+          TAG = t0
+          E = setmetatable({ z = E.z + (0.42 + T.exit) * k }, { __index = E })   -- 火焰从推力矢量喷口的出口喷
+        end
+      end
       local base = CF(E.x, E.y, E.z)
       if E.prop then   -- 推进式螺旋桨
         ball(V(E.r * 2.4, E.r * 2.4, 2.2), base * CF(0, 0, 0.4), skinD)
@@ -631,12 +696,12 @@ function AM.build(d, team, load)
         end
       end
       if not E.prop then
-        local fl = neon(V(1, E.r * 1.6, E.r * 1.6), base, RGB(255, 150, 60), "ab", { base = base, r = E.r, cold = E.cold }, CYL)
+        local fl = neon(V(1, E.r * 1.6, E.r * 1.6), base, RGB(255, 150, 60), "ab", { base = base, r = E.r, cold = E.cold, vec = tvcVec }, CYL)
         fl.p.Transparency = 1
         table.insert(M.flames, fl)
         if d.ab then
           for k = 1, 3 do   -- 马赫环
-            local ring = neon(V(0.25, E.r * 1.1, E.r * 1.1), base, RGB(255, 220, 160), "ab", { base = base, r = E.r, ring = k }, CYL)
+            local ring = neon(V(0.25, E.r * 1.1, E.r * 1.1), base, RGB(255, 220, 160), "ab", { base = base, r = E.r, ring = k, vec = tvcVec }, CYL)
             ring.p.Transparency = 1
             table.insert(M.flames, ring)
           end
@@ -975,6 +1040,25 @@ function AM.build(d, team, load)
       add(mp, cc0, "b", { vis = function(c) return (c.gear or 1) > 0.5 end })
       return
     end
+    if S.k == "kf" then   -- 原模型动画里的部件（F-22A 的起落架、舱门、侧弹舱门和发射架）：按操纵量在动画的关键帧之间插值
+      --   每帧 { dx, dy, dz, qx, qy, qz, qw }：绕支点 p 转 q、支点挪 d；ch 是 gear（0 收起～1 放下）或 bayS（0 关～1 开）
+      local K = {}
+      for i, k in ipairs(S.key) do K[i] = CFrame.new(k[1], k[2], k[3], k[4], k[5], k[6], k[7]) end
+      local P = V(S.p[1], S.p[2], S.p[3]) + O
+      local PC, PCi = CF(P), CF(-P)
+      local n, ch, def = #K, S.ch, (S.ch == "gear") and 1 or 0
+      local lastU, lastC = nil, nil
+      add(mp, cc0, "m", { kf = S.ch, f = function(c)
+        local u = math.clamp(c[ch] or def, 0, 1)
+        if u ~= lastU then   -- 操纵量没变就不重算（飞行中起落架一直收着）
+          local x = u * (n - 1) + 1
+          local i = math.min(n - 1, math.floor(x))
+          lastU, lastC = u, PC * K[i]:Lerp(K[i + 1], x - i) * PCi
+        end
+        return lastC
+      end })
+      return
+    end
     local f = SURF_F[S.k]
     local a, b = V(S.a[1], S.a[2], S.a[3]) + O, V(S.b[1], S.b[2], S.b[3]) + O
     if not f or (b - a).Magnitude < 1e-4 then add(mp, cc0, "b") return end
@@ -992,13 +1076,13 @@ function AM.build(d, team, load)
   end
   if imp then
     -- 蒙皮换成原模型：零件拼的只留挂架和弹、灯、加力火焰，模型没带起落架的固定翼留零件拼的起落架
-    local keepGear = d.kind == "jet" and not imp.info.gear
+    local keepGear = d.kind == "jet" and (not imp.info.gear or imp.noGear)
     local pit = imp.info.pit   -- 原模型座舱里飞行员头的位置（一个座位一个）
     local n = 0
     for i = 1, #items do
       local it = items[i]
       local t = it.tag
-      if it.kind == "ab" or t == "lamp" or t == "store" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
+      if it.kind == "ab" or t == "lamp" or t == "store" or t == "tvc" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
         if t == "pilot" then   -- 挪进原模型的座舱：眼位往下 0.3 格、往后 0.3 格是零件拼的那个参考点（头的中心偏下）
           local e = pit[it.seat]
           local mv = CF(V(e[1], e[2] - 0.3, e[3] + 0.3) + imp.O) * it.ref:Inverse()
@@ -1036,7 +1120,9 @@ function AM.build(d, team, load)
         local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
         local g = p.g
         local S = I.surf and I.surf[g]
-        if S then   -- 活动部件（舵面、弹舱门、座舱盖、起落架支柱）：绕原模型上切出来的铰链转
+        if imp.noGear and (g == "Gear" or (S and (S.k == "gear" or S.k == "gdoor"))) then   -- 不是真起落架（见 NOGEAR）：当蒙皮一直画
+          add(mp, cc0, "b")
+        elseif S then   -- 活动部件（舵面、弹舱门、座舱盖、起落架支柱）：绕原模型上切出来的铰链转
           addSurf(mp, cc0, S, I, O)
         elseif g == "Gear" then   -- 起落架：收起时藏起来
           add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
@@ -1148,7 +1234,7 @@ function AM.pose(M, cf, c, now, world)
       else out = cf * piv * CFrame.Angles(0, yaw, 0) * CFrame.Angles(rad(c.gp or 0), 0, 0) * CF(-it.piv) * it.cf0 end
     elseif k == "ab" then   -- 加力火焰：长度、透明度跟油门；马赫环只在加力时有
       local t = c.thr or 0
-      local E = it
+      local E = setmetatable({ base = it.vec and (it.vec(c) * it.base) or it.base }, { __index = it })   -- 推力矢量喷口：火焰跟着出口偏
       local ab = (t > 100) and math.min(1, (t - 100) / 25) or 0
       local len
       if E.ring then

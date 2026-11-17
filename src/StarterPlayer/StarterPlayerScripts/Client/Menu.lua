@@ -266,6 +266,8 @@ function Menu.init(G)
           if c then table.insert(lines, (string.gsub(c, "%s*https?://%S+", ""))) end
         end
       end
+      local okW, WMeta = pcall(function() return require(RS:WaitForChild("ImportedWpn", 3)) end)   -- 导弹合集（CC BY-NC-SA）
+      if okW and type(WMeta) == "table" and WMeta.credit then table.insert(lines, (string.gsub(WMeta.credit, "（https?://[^）]*）", ""))) end
       pBody.Text = table.concat(lines, "\n\n")
     end
   end

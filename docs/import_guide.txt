@@ -5,15 +5,18 @@ Roblox全面大战场 · 原模型导入说明
   Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
-模型一共 60 个 .glb，按文件夹分：
+模型一共 64 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
-  2. 飞机直升机                air/      16 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…）
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…；
+                                         f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
+     导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     7 艘舰艇
                                optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
                                scenery/  地图上的树、灌木、石头、草、花（一个文件）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
-  以前导过一次的：之后只有 optics/m40a5.glb 换过（美军狙击枪按真枪 1.124 米改了比例），删掉旧的 O_m40a5__… 零件、重导这一个就行。
+  以前导过一次的：之后只有 optics/m40a5.glb 换过（美军狙击枪按真枪 1.124 米改了比例），删掉旧的 O_m40a5__… 零件、重导这一个就行；
+    这次新加的只要导这 4 个：air/f22a.glb、air/j15t.glb、air/tvc.glb、wpn/missiles.glb（不导也能玩：F-22 照旧用老模型，导弹照旧零件拼）。
 
 一、导入（Roblox Studio，一次就行）
   1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。
@@ -23,14 +26,14 @@ Roblox全面大战场 · 原模型导入说明
   3. 「测试 → 开始游戏」，打开「视图 → 输出」，有这一行就成功了：
          [全面大战场] 用上了导入的装备模型：……
      车、飞机、船、瞄准镜、树、第一人称 M4 都会自动换上原模型。
-     导进来的零件名字别改（V_…__…、A_…__…、S_…__…、O_…、N_…、FPS_M4_…），游戏是按名字认的。
+     导进来的零件名字别改（V_…__…、A_…__…、S_…__…、O_…、N_…、W_…__…、FPS_M4_…），游戏是按名字认的。
   4. 保存（「文件 → 保存」，要上线就「发布到 Roblox」）。
 
 二、以后更新游戏不用再导一遍（推荐）
   1. 「视图 → 命令栏」（Command Bar），把下面一整段粘进去回车。它把导入的零件都收进 ServerStorage.ImportedModels，
      顺手把空了的外壳 Model 删掉、碰撞改成方盒（文件小很多，这些零件只看不碰）：
 
-local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASON]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
+local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASONW]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
 
   2. 资源管理器里右键 ServerStorage 下的 ImportedModels →「保存到文件…」（Save to File），存成 Imported.rbxm。
   3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库网页上切到分支 claude/darksword-forts-navy——现在最新的游戏在这个分支，
@@ -42,6 +45,8 @@ local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModel
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
   - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。
+    只有 wpn/missiles.glb（导弹合集）是 CC BY-NC-SA：只能非商业使用（你说游戏不收费，可以用）——以后要是开了收费（游戏通行证、开发者产品、付费进入），
+    得把 W_ 开头的零件删掉（游戏会自动退回零件拼的导弹）。署名在 wpn/credits.txt。
   - 飞机更新过（舵面、弹舱门、座舱盖、起落架会动；修了从下往上看机翼透明——原模型有的整片面朝里，Roblox 只画正面）：
     models/air/ 里 12 个固定翼（a10 b2 f22 f35 h6k j15 j16 j20 j31 j50 mq9 x47b）要重新导一次，新导进来的块叫 A_<键>_v3__…，和老的不重名；
     老的（A_<键>__…、A_<键>_v2__…）可以删掉（不删也行，游戏优先用最新的）。没重新导的照旧用老的。直升机没变，不用重导。

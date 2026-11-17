@@ -350,8 +350,10 @@ local agl = eH.root.CFrame.Position.Y - G.airSurface(eH.root.CFrame.Position.X, 
 check(agl > 40, string.format("起飞了（离地 %.0f 格）", agl))
 H.key(def, Enum.KeyCode.W, true)
 H.run(3)
+local hv3 = sh.hv.Magnitude
+H.run(3)   -- 直升机是真的物理（先压机头把旋翼盘往前倾，靠拉力的水平分量加速）：3 秒才七八米每秒，6 秒才算飞起来
 H.key(def, Enum.KeyCode.W, false)
-check(sh.hv.Magnitude > 40, string.format("往前飞（%.0f 格 / 秒）", sh.hv.Magnitude))
+check(sh.hv.Magnitude > 40 and sh.hv.Magnitude > hv3, string.format("往前飞（3 秒 %.0f、6 秒 %.0f 格 / 秒）", hv3, sh.hv.Magnitude))
 sh.wi = 0
 for i, wid in ipairs(sh.wl) do if wid == "hydra" then sh.wi = i end end
 if sh.wi > 0 then
