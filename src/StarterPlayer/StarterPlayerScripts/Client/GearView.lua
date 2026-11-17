@@ -23,13 +23,13 @@ function GearView.init(G)
     if op and (not mk or mp) then
       local m = Instance.new("Model")
       for _, x in ipairs(op) do
-        x.part.CFrame = CF(x.c)
+        x.part.CFrame = x.cf
         x.part.Parent = m
       end
       if mp then
         local at = GD.mountAt(key, M)
         for _, x in ipairs(mp) do
-          x.part.CFrame = at * CF(x.c)
+          x.part.CFrame = at * x.cf
           x.part.Parent = m
         end
       end

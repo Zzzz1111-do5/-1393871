@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：摆的时候转回来
 
 local ShipView = {}
 
@@ -394,7 +395,7 @@ function ShipView.init(G)
             if p.a then mp.Transparency = 1 - p.a end
           end
           mp.Parent = M.model
-          local c = CF(p.c[1], p.c[2], p.c[3])
+          local c = CF(p.c[1], p.c[2], p.c[3]) * TURN
           local gi = tonumber(string.match(p.g, "^T(%d+)$"))
           local gd = gi and info.guns and info.guns[gi]
           if gd then   -- 主炮：绕原模型的炮塔转轴转

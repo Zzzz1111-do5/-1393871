@@ -33,6 +33,7 @@ local GLASS, GOLD, DARK, TIRE, STEEL, RADOME = RGB(36, 52, 62), RGB(150, 122, 62
 
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈：摆的时候转回来
 local IA = nil   -- 原模型的元数据（tools/models/air2glb.py 生成）
 do
   local ok, r = pcall(function() return require(RS:WaitForChild("ImportedAir", 3)) end)
@@ -936,9 +937,10 @@ function AM.build(d, team, load)
         end
         mp.Parent = m
         local c = V(p.c[1], p.c[2], p.c[3]) + O
+        local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
         local g = p.g
         if g == "Gear" then   -- 起落架：收起时藏起来
-          add(mp, CF(c), "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
+          add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
         elseif g == "Rotor" or g == "Rotor2" or g == "TRotor" then
           local R = I[string.lower(g)]
           local R0 = (g == "Rotor" and d.rotor) or (g == "Rotor2" and d.rotor2) or nil
@@ -946,7 +948,7 @@ function AM.build(d, team, load)
           local spinKey = (g == "Rotor" and "spin1") or (g == "Rotor2" and "spin2") or "spinT"
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
-          local it = add(mp, hub:Inverse() * CF(c), "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
+          local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
           if BLUR[imp.key] and BLUR[imp.key][name] then
             mp.CastShadow = false
             mp.Transparency = 1
@@ -955,12 +957,12 @@ function AM.build(d, team, load)
             table.insert(M.blades, it)
           end
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
-          add(mp, CF(c), "f", { fold = (g == "FoldR") and 1 or -1 })
+          add(mp, cc0, "f", { fold = (g == "FoldR") and 1 or -1 })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链
           local F = I.fold and I.fold.Tip
-          add(mp, CF(c), "f", { fold = (g == "TipR") and 1 or -1, fh = F and { x = F.x, y = F.y + O.Y, A = F.A } or nil })
+          add(mp, cc0, "f", { fold = (g == "TipR") and 1 or -1, fh = F and { x = F.x, y = F.y + O.Y, A = F.A } or nil })
         else
-          add(mp, CF(c), "b")
+          add(mp, cc0, "b")
         end
       end
     end

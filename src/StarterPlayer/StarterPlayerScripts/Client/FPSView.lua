@@ -12,6 +12,7 @@
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：摆的时候转回来
 
 local FPSView = {}
 
@@ -115,14 +116,14 @@ function FPSView.init(G)
     local whole = key == "binoc" or (M.eye ~= nil and not mountKey)
     for _, x in ipairs(op) do
       x.part.Parent = model
-      table.insert(items, { x.part, "gun", at * CF(x.c), optic = whole and x.name or nil })
+      table.insert(items, { x.part, "gun", at * x.cf, optic = whole and x.name or nil })
     end
     local E, ea = M, at
     if mp then
       E, ea = MM, at * GD.mountAt(key, M)
       for _, x in ipairs(mp) do
         x.part.Parent = model
-        table.insert(items, { x.part, "gun", ea * CF(x.c), optic = x.name })
+        table.insert(items, { x.part, "gun", ea * x.cf, optic = x.name })
       end
     end
     local info = nil
@@ -285,10 +286,11 @@ function FPSView.init(G)
     for name, info in pairs(A.mesh) do
       local p = (imp and imp:FindFirstChild(name)) or (gen and gen[name])
       if p and info.piece ~= "mag2" then   -- 换弹时手里那个新弹匣不要
+        local fromImp = imp and imp:FindFirstChild(name) == p
         local q = p:Clone()
-        if imp then Tint.fix(q, p) end
+        if fromImp then Tint.fix(q, p) end
         q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
-        q.CFrame = g0 * sample(CLIP.Idle, info.piece, 0) * CF(info.c[1], info.c[2], info.c[3])
+        q.CFrame = g0 * sample(CLIP.Idle, info.piece, 0) * CF(info.c[1], info.c[2], info.c[3]) * (fromImp and TURN or CF())
         q.Parent = m
         n += 1
       end
@@ -313,7 +315,7 @@ function FPSView.init(G)
             local p = Tint.fix(src:Clone(), src)
             p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
             p.Parent = model
-            table.insert(items, { p, info.piece, CF(info.c[1], info.c[2], info.c[3]) })
+            table.insert(items, { p, info.piece, CF(info.c[1], info.c[2], info.c[3]) * TURN })   -- 导入的：补回转掉的半圈
           end
         end
       end
@@ -373,7 +375,7 @@ function FPSView.init(G)
         local M = G.opticMeta and G.opticMeta[OD.key]
         for _, x in ipairs(op) do
           x.part.Parent = model
-          table.insert(items, { x.part, "gun", OD.at * CF(x.c), optic = x.name })
+          table.insert(items, { x.part, "gun", OD.at * x.cf, optic = x.name })
         end
         local eye = M and M.eye
         local obj = M and M.obj

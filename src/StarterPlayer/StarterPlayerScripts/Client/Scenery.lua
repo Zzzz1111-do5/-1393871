@@ -9,6 +9,7 @@
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：摆的时候转回来
 
 local Scenery = {}
 
@@ -147,20 +148,15 @@ function Scenery.init(G)
       if p:IsA("BasePart") then table.insert(parts, p) end
     end
     if #parts == 0 then return nil end
-    local origin, n = V(), 0
+    -- 各块照元数据里的中心摆（相对这株的原点），再补回导入时转掉的半圈（ImportTurn.lua）——不用导入零件自己的位置和朝向
     local byName = {}
     for _, pm in ipairs(m.parts) do byName[pm.name] = pm end
+    local list = {}
     for _, p in ipairs(parts) do
       local pm = byName[string.match(p.Name, "__([%w_]+)$") or ""]
-      if pm then
-        origin += p.Position - V(pm.c[1], pm.c[2], pm.c[3])
-        n += 1
-      end
+      if pm then table.insert(list, { p = p, rel = CF(pm.c[1], pm.c[2], pm.c[3]) * TURN }) end
     end
-    if n == 0 then return nil end
-    origin /= n
-    local list = {}
-    for _, p in ipairs(parts) do table.insert(list, { p = p, rel = CF(origin):ToObjectSpace(p.CFrame) }) end
+    if #list == 0 then return nil end
     return list
   end
   local function template(k)

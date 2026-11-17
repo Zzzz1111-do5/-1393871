@@ -5,6 +5,7 @@
 --   G.opticParts(键) → { { name 块名, part 复制出来的 MeshPart, c 块中心（器材坐标） }, … }；G.opticMeta = OpticsMeta（目镜、物镜的位置和半径）
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）
 
 local Optics = {}
 
@@ -55,7 +56,10 @@ function Optics.init(G)
     local list = {}
     for name, info in pairs(META[key].parts) do
       local src = f:FindFirstChild("O_" .. key .. "__" .. name)
-      if src and src:IsA("BasePart") then table.insert(list, { name = name, src = src, c = V(info.c[1], info.c[2], info.c[3]) }) end
+      if src and src:IsA("BasePart") then
+        local c = V(info.c[1], info.c[2], info.c[3])
+        table.insert(list, { name = name, src = src, c = c, cf = CFrame.new(c) * TURN })   -- 导入的：补回转掉的半圈
+      end
     end
     return (#list > 0) and list or nil
   end
@@ -114,7 +118,8 @@ function Optics.init(G)
             mp.Color = Color3.new(1, 1, 1)
           end
           local info = META[key].parts[name]
-          table.insert(list, { name = name, src = mp, c = info and V(info.c[1], info.c[2], info.c[3]) or V() })
+          local c = info and V(info.c[1], info.c[2], info.c[3]) or V()
+          table.insert(list, { name = name, src = mp, c = c, cf = CFrame.new(c) })   -- 现生成的网格方向本来就对
           task.wait()
         end
         gen[key] = list
@@ -148,7 +153,7 @@ function Optics.init(G)
       if ok and p then
         quiet(p)
         if x.src:IsDescendantOf(RS) then Tint.fix(p, x.src) end
-        table.insert(out, { name = x.name, part = p, c = x.c })
+        table.insert(out, { name = x.name, part = p, c = x.c, cf = x.cf })
       end
     end
     return (#out > 0) and out or nil

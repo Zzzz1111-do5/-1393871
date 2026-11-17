@@ -12,6 +12,7 @@ function Weapons.init(G)
   local now = os.clock
   local RS = game:GetService("ReplicatedStorage")
   local GD = require(RS:WaitForChild("GearDefs"))
+  local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：装的时候转回来
   local OM = nil   -- 手持装备真模型的元数据（OpticsMeta：块的中心、握把、枪口……）
   do
     local ok, r = pcall(function() return require(RS:WaitForChild("OpticsMeta", 5)) end)
@@ -61,7 +62,7 @@ function Weapons.init(G)
         local q = src:Clone()
         q.Name = prefix .. name
         q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.Massless = false, false, false, false, true
-        q.CFrame = base * CF(info.c[1], info.c[2], info.c[3])
+        q.CFrame = base * CF(info.c[1], info.c[2], info.c[3]) * TURN
         q.Parent = tool
         weld(h, q)
         n += 1
@@ -126,7 +127,7 @@ function Weapons.init(G)
               local q = src:Clone()
               q.Name = "Scope_" .. name
               q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.Massless = false, false, false, false, true
-              q.CFrame = CF(0, 0.55, -1.1) * CFrame.Angles(0, math.pi, 0) * CF(info.c[1], info.c[2], info.c[3])
+              q.CFrame = CF(0, 0.55, -1.1) * CFrame.Angles(0, math.pi, 0) * CF(info.c[1], info.c[2], info.c[3]) * TURN
               q.Parent = tool
               weld(h, q)
               real = true

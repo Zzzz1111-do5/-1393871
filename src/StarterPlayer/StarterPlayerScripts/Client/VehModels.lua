@@ -10,6 +10,7 @@ local VehModels = {}
 --   有就整辆换成它（真实尺寸，不缩放；车体、炮塔、炮、各个车轮照元数据 ImportedMeta 摆、按各自的转轴动），没有就用下面零件拼的
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：摆的时候转回来
 local IM = nil
 do
   local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
@@ -150,6 +151,7 @@ function VehModels.build(d, team)
           local w = wheels[wi]
           grp, off = "wheel", CF(c - V(w.x, w.r, w.z))
         end
+        off = off * TURN   -- 绕这块自己的中心补回导入时转掉的半圈
         mp.CFrame = off
         mp.Parent = m
         table.insert(parts, { mp, grp, off, wi })

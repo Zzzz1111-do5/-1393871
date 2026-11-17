@@ -103,8 +103,13 @@ for f in ('UnitModels',):
     if not rs.find(f):
         rs.kids.append(Item('Folder', f))
 services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'false')]))
-services.append(Item('Lighting', 'Lighting', props=[('float', 'Brightness', '3'), ('float', 'ClockTime', '14.6'), ('float', 'EnvironmentDiffuseScale', '1'),
+# 同 tools/build.luau：夜战（开服时 World.lighting 还会再设一遍）
+services.append(Item('Lighting', 'Lighting', props=[('float', 'Brightness', '2.2'), ('float', 'ClockTime', '2.3'), ('float', 'EnvironmentDiffuseScale', '1'),
                                                     ('float', 'EnvironmentSpecularScale', '1'), ('bool', 'GlobalShadows', 'true'), ('token', 'Technology', '4')]))
+# 导入过一次的原模型（models/imported/*.rbxm）：tools/build.luau 会塞进 ServerStorage.ImportedModels；这里读不了二进制 rbxm，有的话提示用 Lune 打包
+imp_dir = os.path.join(ROOT, 'models', 'imported')
+if os.path.isdir(imp_dir) and any(n.endswith(('.rbxm', '.rbxmx')) for n in os.listdir(imp_dir)):
+    print('注意：models/imported 里有导入过的原模型，这个脚本带不上——用 lune run tools/build.luau 打包')
 body = '\n'.join(s.xml(1) for s in services)
 with open(out, 'w', encoding='utf-8', newline='\n') as f:
     f.write('<roblox version="4">\n' + body + '\n</roblox>\n')

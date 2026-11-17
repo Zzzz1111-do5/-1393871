@@ -16,6 +16,7 @@ function Menu.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
   local Tint = require(script.Parent:WaitForChild("Tint"))
+  local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈：摆的时候转回来
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Menu"
@@ -111,7 +112,7 @@ function Menu.init(G)
         local q = Tint.fix(src:Clone(), src)
         q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
         q.Size = Vector3.new(p.s[1], p.s[2], p.s[3])
-        q.CFrame = CFrame.new(p.c[1], p.c[2], p.c[3])
+        q.CFrame = CFrame.new(p.c[1], p.c[2], p.c[3]) * TURN
         if p.col and not q:FindFirstChildOfClass("SurfaceAppearance") then q.Color = RGB(p.col[1], p.col[2], p.col[3]) end
         if p.a then q.Transparency = 1 - p.a end
         q.Parent = m
