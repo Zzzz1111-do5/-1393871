@@ -119,7 +119,8 @@ if st and e then
   check(d < e.def.L, string.format("镜头在机头（离机身中心 %.1f 格）", d))
   T.tap(Enum.KeyCode.Z)
   R.run(0.6)
-  check(st.zoom == 3 and cam.FieldOfView < 30, string.format("Z 变焦到 3×（视场 %.0f°）", cam.FieldOfView))
+  check(st.zoom == 4 and cam.FieldOfView < 30, string.format("Z 变焦到 4×（视场 %.0f°）", cam.FieldOfView))
+  T.tap(Enum.KeyCode.Z)   -- 12×、30×、回到 1×
   T.tap(Enum.KeyCode.Z)
   T.tap(Enum.KeyCode.Z)
   T.mouse(true, 640, 360, Enum.UserInputType.MouseButton2)

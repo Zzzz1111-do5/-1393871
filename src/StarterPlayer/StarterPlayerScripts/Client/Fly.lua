@@ -2,8 +2,9 @@
 --   样子（G.viewKind.air，View.lua 每帧调）：AirModels 按型号拼零件；位置平滑跟着服务器的 Root，舵面、起落架、弹舱、座舱盖、旋翼按实体属性
 --     （Thr、Gear、Pit、Rol、Yaw、Bay、BayS、Rpm、Ty、Gp……）摆；自己开的用本地的；被击毁的往下掉、冒火冒黑烟，落地炸一下
 --   驾驶（服务器推来的 S.veh.air）：位置在本地算，每秒 15 次报给服务器（Air.lua 查速度、查撞地）
---     固定翼（用户：准星控制方向手感一般，改成键盘）：S 拉杆抬头、W 推杆低头（↓ / ↑ 同样）、A / D 滚转、Q / E 方向舵、Shift / Ctrl 油门（推满再推进加力）；
---       松开 A / D 自动把机翼摆平（坡度不大、没倒飞时），压着坡度不拉杆也自动带一点杆保持高度（只按 A / D 就能转弯）；鼠标只转镜头看四周，松开一会儿镜头回到机尾；
+--     固定翼：鼠标瞄准（鼠标给想去的方向，自动压坡度、拉杆转过去）+ 键盘（用户：准星也要能控制方向，WASD 也不要动）：
+--       S 拉杆抬头、W 推杆低头（↓ / ↑ 同样）、A / D 滚转、Q / E 方向舵、Shift / Ctrl 油门（推满再推进加力）；按着键盘时那个轴听键盘、鼠标瞄准跟着机头走，
+--       松开键盘就接着往机头指的方向飞（机翼自动摆平）；C 把鼠标瞄准拉回机头正前方；
 --       速度不够失速（机头往下掉）、爬升掉速、俯冲加速、拉杆转弯掉能量；跑道 / 甲板上：油门加速，速度够了按 S 抬头离地；
 --       放着起落架、下沉不快、速度不快、姿态平就能落地（落在自己的机场 / 甲板上停 5 秒补弹修理）
 --     直升机：W / S 前后、A / D 转向（快的时候压坡度转弯）、E 升 / Q 降，旋翼先转起来才飞得动；鼠标转镜头、机头炮塔跟着镜头瞄
@@ -146,7 +147,8 @@ function Fly.init(G)
       if d.rotor2 then v.spin2 = (v.spin2 + rpm / 100 * d.rotor2.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
       if d.tail then v.spinT = (v.spinT + rpm / 100 * 18 * dt) % (math.pi * 2) end
       if d.prop then v.spinP = (v.spinP + (c.thr or 0) / 100 * 30 * dt) % (math.pi * 2) end
-      c.spin1, c.spin2, c.spinT, c.spinP = v.spin1, v.spin2, v.spinT, v.spinP
+      if d.fanEng then v.spinF = ((v.spinF or 0) + (0.25 + (c.thr or 0) / 100) * 45 * dt) % (math.pi * 2) end   -- 涡扇风扇（A-10）：慢车也转
+      c.spin1, c.spin2, c.spinT, c.spinP, c.spinF = v.spin1, v.spin2, v.spinT, v.spinP, v.spinF
       AM.setStores(M, em:GetAttribute("Stores"))
       -- 远的少摆几次（一架几百个零件）
       v.frame += 1
@@ -498,7 +500,7 @@ function Fly.init(G)
       thr = onGround and 0 or 85, ground = onGround, gearWant = onGround and 1 or 0, gear = onGround and 1 or 0, rpm = (d.kind == "heli" and not onGround) and 100 or 0,
       yaw = yaw, hv = V(), vy = 0, tiltP = 0, tiltR = 0, camYaw = yaw, camPitch = -0.15, aimYaw = yaw, aimPitch = 0, c = {},
       load = vs.load or {}, wl = AD.groups(d, vs.load or {}), wi = 1, firing = false, trig = false, sendT = 0, lock = nil, lockT = 0, nextFire = 0,
-      ty = 0, gp = 0, lastHv = V(), crashed = false, bay = 0, bayS = 0, lkY = 0, lkP = 0, lkT = 0 }
+      ty = 0, gp = 0, lastHv = V(), crashed = false, bay = 0, bayS = 0 }
     for i, wid in ipairs(st.wl) do   -- 默认选中第一种挂载（机炮一直在鼠标左键上）
       local w = AD.W[wid]
       if w and w.kind ~= "gun" then st.wi = i break end
@@ -636,13 +638,13 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(cone))
   end
-  -- 瞄准 / 挑目标的方向：固定翼是机头（不再用鼠标瞄准），直升机是镜头（鼠标瞄机头炮塔）
+  -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
+  local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
+  -- 瞄准 / 挑目标的方向：固定翼是鼠标瞄准方向（手机上是机头），直升机是镜头（鼠标瞄机头炮塔）
   local function aimDirNow()
-    if st.d.kind == "jet" then return st.cf.LookVector end
+    if st.d.kind == "jet" then return G.mobile and st.cf.LookVector or autoDir() end
     return cam.CFrame.LookVector
   end
-  -- 自动驾驶要去的方向（光电吊舱、飞出作战区自动掉头时用 aimYaw / aimPitch）
-  local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 光电吊舱看着的方向（世界方向，鼠标转）；瞄准、挑目标用的方向：开着光电就是吊舱，不然是鼠标瞄准方向
   local function eoDir() return (CFrame.Angles(0, st.eoYaw or 0, 0) * CFrame.Angles(st.eoPitch or 0, 0, 0)).LookVector end
   local function lookDir() return st.eo and eoDir() or aimDirNow() end
@@ -749,19 +751,16 @@ function Fly.init(G)
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
-    -- 想怎么转：键盘直接操纵（松开 A / D 自动摆平、压坡度自动带杆保高度）；光电吊舱 / 飞出作战区时自动驾驶
+    -- 想怎么转（用户：准星也能控制飞行方向，WASD 也不要动）：平时鼠标瞄准——鼠标给想去的方向，自动压坡度、拉杆转过去（像《战争雷霆》）；
+    --   按着 WASD / QE 时那个轴听键盘，同时鼠标瞄准方向跟着机头走（松开键盘后接着往机头现在指的方向飞，不会被拽回原来鼠标指的地方）
     local pc, rc, yc
-    if G.mobile or not (st.eo or st.oob) then
+    local keyIn = rollIn ~= 0 or pitchIn ~= 0 or yawIn ~= 0
+    if not G.mobile and keyIn and not st.eo and not st.oob then
+      local lk = cf.LookVector
+      st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
+    end
+    if G.mobile then
       pc, rc, yc = -pitchIn * rad(d.pitch), rollIn * rad(d.roll), yawIn * rad(d.yaw)
-      if not G.mobile and not st.ground then
-        local bank = math.asin(clamp(right.Y, -1, 1))
-        local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
-        if rollIn == 0 and upright then rc = clamp(bank * 2.2, -1, 1) * rad(d.roll) * 0.75 end   -- 松杆：机翼慢慢摆平
-        if pitchIn == 0 and upright then   -- 压着坡度：自动带杆，转弯不掉高度（水平转弯要的俯仰角速度 = g·tanφ·sinφ / v）
-          local phi = math.min(math.abs(bank), rad(75))
-          pc = math.min(GR * math.tan(phi) * math.sin(phi) / math.max(st.spd, 30), rad(d.pitch) * 0.8)
-        end
-      end
     else
       local aim = autoDir()
       local l = cf:VectorToObjectSpace(aim)
@@ -830,8 +829,11 @@ function Fly.init(G)
       st.vdir, st.accV = cf.LookVector, nil
       st.sink = 0
     elseif st.ground then
-      -- 地上：机头只能左右转（前轮转向：A / D 或 Q / E），速度够了按 S 抬头就离地
-      local steer = (yawIn ~= 0) and yawIn or rollIn
+      -- 地上：机头只能左右转（前轮转向：A / D、Q / E，或者鼠标往哪边），速度够了按 S 抬头（或者鼠标往上抬）就离地
+      local aimG = autoDir()
+      local lg = cf:VectorToObjectSpace(aimG)
+      local steer = G.mobile and 0 or clamp(math.atan2(lg.X, math.max(-lg.Z, 0.05)) * 1.5, -1, 1)
+      if yawIn ~= 0 or rollIn ~= 0 or G.mobile then steer = (yawIn ~= 0) and yawIn or rollIn end
       st.yaw -= steer * rad(30) * clamp(st.spd / 25, 0.15, 1) * dt
       -- 航母甲板：没上弹射器滑不快（起飞要靠弹射器）；挂上拦阻索的一路被拉停
       local deck = AD.onDeck(Map, pos.X, pos.Z)
@@ -859,7 +861,7 @@ function Fly.init(G)
       local look = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
       pos += look * st.spd * dt
       local g = ground(pos.X, pos.Z)
-      local wantUp = pitchIn < -0.3
+      local wantUp = pitchIn < -0.3 or (not G.mobile and aimG.Y > math.sin(rad(3)))
       if st.spd >= d.vRot and wantUp then   -- 离地
         st.ground = false
         st.pr = rad(6)
@@ -1053,8 +1055,9 @@ function Fly.init(G)
       st.firing = true
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
-    elseif k == Enum.KeyCode.C and st.d.kind == "jet" then   -- 镜头回到机尾
-      st.lkY, st.lkP = 0, 0
+    elseif k == Enum.KeyCode.C and st.d.kind == "jet" then   -- 鼠标瞄准回到机头正前方
+      local lk = st.cf.LookVector
+      st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
     elseif k == Enum.KeyCode.X then
       G.R.Drive:FireServer({ op = "flare" })
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
@@ -1071,7 +1074,7 @@ function Fly.init(G)
     elseif st.uav and (k == Enum.KeyCode.V or io.UserInputType == Enum.UserInputType.MouseButton2) then   -- 平板：前视光电 ↔ 外部视角
       st.dcam = (st.dcam == "nose") and "chase" or "nose"
     elseif (st.uav or st.eo) and k == Enum.KeyCode.Z then   -- 变焦一档一档跳：1× → 3× → 8× → 1×
-      st.zoom = (st.zoom < 2.9) and 3 or ((st.zoom < 7.9) and 8 or 1)
+      st.zoom = (st.zoom < 3.9) and 4 or ((st.zoom < 11.9) and 12 or ((st.zoom < 29.9) and 30 or 1))   -- 用户：光电要看得远一点（最大 30 倍）
     else
       local n = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 })[k]
       if n and st.wl[n] then
@@ -1086,7 +1089,7 @@ function Fly.init(G)
   end)
   UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
     if gp or not st or not (st.uav or st.eo) or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
-    st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 12)
+    st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
   end)
 
   G.R.Drive.OnClientEvent:Connect(function(m)
@@ -1168,14 +1171,9 @@ function Fly.init(G)
       st.eoYaw -= md.X * SENS
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
-      if d.kind == "jet" and not G.mobile then   -- 鼠标只环视：松开 0.8 秒后镜头慢慢回到机尾
-        if md.Magnitude > 0.5 then st.lkT = os.clock() end
-        st.lkY = clamp(st.lkY - md.X * SENS, -math.pi, math.pi)
-        st.lkP = clamp(st.lkP - md.Y * SENS, -1.2, 1.2)
-        if os.clock() - st.lkT > 0.8 then
-          local k = math.exp(-dt * 2.5)
-          st.lkY, st.lkP = st.lkY * k, st.lkP * k
-        end
+      if d.kind == "jet" and not G.mobile then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
+        st.aimYaw -= md.X * SENS
+        st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
       end
       -- 直升机：镜头跟着机头一起转（A / D 转向时视角不留在原地），鼠标在这上面加减——瞄机头炮塔
       if d.kind == "heli" and st.yawSeen then st.camYaw += angDiff(st.yawSeen, st.yaw) end
@@ -1231,10 +1229,8 @@ function Fly.init(G)
       local look = G.mobile and st.cf.LookVector or aimDirNow()
       cam.CFrame = CFrame.lookAt(eye, eye + look * 100)
     elseif d.kind == "jet" and not G.mobile and st.pilot then
-      -- 镜头在机尾后上方顺着机头看（鼠标环视在这上面转）；地平线跟着坡度歪三成，翻筋斗时不乱翻
-      local lk = st.cf.LookVector
-      local nYaw, nPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-      local aim = (CFrame.Angles(0, nYaw + st.lkY, 0) * CFrame.Angles(clamp(nPitch * (1 - math.min(1, math.abs(st.lkY))) + st.lkP, -1.5, 1.5), 0, 0)).LookVector
+      -- 镜头在飞机后上方顺着鼠标瞄准方向看（按着键盘时瞄准方向跟着机头，镜头也就跟着机头）；地平线跟着坡度歪三成
+      local aim = aimDirNow()
       local back = d.L * 1.3 + 26
       -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
       local want = -aim * back + V(0, d.H * 0.9 + 7, 0)
@@ -1277,8 +1273,9 @@ function Fly.init(G)
     aimParams.FilterDescendantsInstances = ex
     local adir = lookDir()
     local o = (d.kind == "jet" and not st.eo) and pos or cam.CFrame.Position
-    local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * 4000, aimParams)
-    st.aimPt = res and res.Position or (o + adir * 4000)
+    local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
+    local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
+    st.aimPt = res and res.Position or (o + adir * far)
     -- 机头炮塔：跟着瞄准点转（鼠标瞄）
     local gid, gw = gunW()
     local wid, w = storeW()
@@ -1405,7 +1402,10 @@ function Fly.init(G)
       end
       if st.eo or (st.uav and st.dcam == "nose") then
         aimRing.Visible = false   -- 光电 / 前视光电：镜头就是瞄准方向，画十字线
-      elseif d.kind == "jet" then   -- 固定翼：准星就是机头（bore），不另画鼠标瞄准圈
+      elseif d.kind == "jet" and not G.mobile then   -- 固定翼：小十字是机头（bore），圆圈是鼠标瞄准（飞机往圆圈那边转）
+        local ap, aon = project(pos + aimDirNow() * 400)
+        aimRing.Position, aimRing.Visible = ap, aon
+      elseif d.kind == "jet" then
         aimRing.Visible = false
       else
         aimRing.Position, aimRing.Visible = UDim2.fromScale(0.5, 0.5), d.kind == "heli"

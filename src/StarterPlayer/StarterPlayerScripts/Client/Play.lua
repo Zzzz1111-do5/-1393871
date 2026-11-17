@@ -121,13 +121,19 @@ function Play.init(G)
     if cur0 then lastTool = cur0 end
     hum:EquipTool(t)
   end
+  -- 按数字键拿第几件：已经拿着就不动（原来是收起来、变成空手——用户：切到 2 号武器就卡住，多半是连按 / 按住时收起来了）；
+  --   0.15 秒内只认一次（键盘连发、和别的界面同时收到按键）
+  local lastEquipT = 0
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 or G.drive then return end
     local t = tools()[i]
-    if not t then return end
-    if t.Parent == char then hum:UnequipTools() else equipTool(t) end
+    if not t or t.Parent == char then return end
+    local now = os.clock()
+    if now - lastEquipT < 0.15 then return end
+    lastEquipT = now
+    equipTool(t)
   end
   -- 滚轮 / 手柄：换下一把、上一把（d = 1 / −1）
   local function cycle(d)

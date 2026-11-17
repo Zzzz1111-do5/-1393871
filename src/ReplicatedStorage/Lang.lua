@@ -343,8 +343,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "S 抬头 · W 低头 · A/D 滚转（松开自动改平）· Q/E 方向舵 · Shift/Ctrl 油门（推满进加力）· 鼠标 看四周（C 回正）· 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "S pitch up · W pitch down · A/D roll (auto-level) · Q/E rudder · Shift/Ctrl throttle (full = afterburner) · Mouse look (C recenter) · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（圆圈）· S 抬头 · W 低头 · A/D 滚转 · Q/E 方向舵 · Shift/Ctrl 油门（推满进加力）· C 瞄准回正 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse steer (circle) · S pitch up · W pitch down · A/D roll · Q/E rudder · Shift/Ctrl throttle (full = afterburner) · C recenter aim · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpHeli", "W/S 前后 · A/D 转向 · E 升 / Q 降 · 鼠标 看四周、瞄机炮 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "W/S forward/back · A/D turn · E up / Q down · Mouse look & aim gun · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面

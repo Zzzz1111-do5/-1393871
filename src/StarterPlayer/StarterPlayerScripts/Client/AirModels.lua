@@ -673,6 +673,9 @@ function AM.build(d, team, load)
         end
       end
       local base = CF(E.x, E.y, E.z)
+      if E.fan then   -- 涡扇发动机进气口里的风扇（A-10）：跟着油门转，转快了是一圈模糊的盘
+        rotor({ hub = V(E.x, E.y, E.z - E.fan), r = E.r * 1.2, blades = 14, chord = 0.32, dir = 1 }, "r", "spinF", "z")
+      end
       if E.prop then   -- 推进式螺旋桨
         ball(V(E.r * 2.4, E.r * 2.4, 2.2), base * CF(0, 0, 0.4), skinD)
         local hub = rotor({ hub = V(E.x, E.y, E.z + 1.2), r = E.prop, blades = 3, chord = 0.55, dir = 1 }, "r", "spinP", "z")
@@ -701,7 +704,7 @@ function AM.build(d, team, load)
         --   ② 加力火焰：喷口上两层粒子（锁在零件上跟着飞机走）——里层蓝白的焰芯短，外层橙色的焰舌长、边缘透明、一直在跳
         --   ③ 马赫节：加力时焰流里几颗发亮的扁椭球，一颗比一颗淡、微微闪
         --   ④ 热浪：喷口后面几团玻璃材质的透明球（高画质下玻璃会折射后面的景物），一直抖、越往后越大越淡；油门过两成半才有，加力时接在火焰后面
-        local hot = { base = base, r = E.r, cold = E.cold, vec = tvcVec }
+        local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
           or neon(V(0.12, E.r * 1.55, E.r * 1.55), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), CYL)
@@ -1294,7 +1297,11 @@ function AM.pose(M, cf, c, now, world)
       local tr = 1
       if it.core then
         out = cf * b0 * CF(0, 0, -0.25) * ALONG_Z   -- 凹进喷口一点：从侧面看不见，从后面看喷口里发亮
-        if not it.cold then
+        if it.mild then   -- 涡扇：喷口里只有暗暗的橙红（排气温度低）
+          tr = math.clamp(0.98 - t / 100 * 0.32, 0.62, 0.98)
+          local col = RGB(110, 36, 18):Lerp(RGB(196, 84, 36), math.clamp(t / 100, 0, 1))
+          if it.p.Color ~= col then it.p.Color = col end
+        elseif not it.cold then
           tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
           local col = (ab > 0) and RGB(255, 190, 110):Lerp(RGB(255, 242, 214), ab) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
@@ -1322,7 +1329,7 @@ function AM.pose(M, cf, c, now, world)
           local j = r * 0.16
           local z0 = ((ab > 0) and r * (5.5 + 3 * ab) or r * 0.6) + r * k2 * 1.9
           out = cf * b0 * CF(math.sin(ph) * j, math.cos(ph * 1.27) * j, z0 + math.sin(ph * 0.71) * r * 0.25)
-          tr = ((ab > 0) and 0.9 or 0.93) + k2 * 0.012 + 0.015 * math.sin(ph * 2.9)   -- 很淡：主要看玻璃折射把后面的景物扭一扭
+          tr = ((ab > 0) and 0.9 or 0.93) + k2 * 0.012 + 0.015 * math.sin(ph * 2.9) + (it.mild and 0.02 or 0)   -- 很淡：主要看玻璃折射把后面的景物扭一扭（涡扇再淡一点）
         else
           out = cf * b0
         end

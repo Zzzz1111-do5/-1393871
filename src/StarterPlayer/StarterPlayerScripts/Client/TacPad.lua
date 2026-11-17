@@ -808,6 +808,7 @@ function TacPad.init(G)
     if d.rotor2 then c.spin2 = (c.spin2 + d.rotor2.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
     if d.tail then c.spinT = (c.spinT + 18 * dt) % (math.pi * 2) end
     if d.prop then c.spinP = (c.spinP + 30 * dt) % (math.pi * 2) end
+    if d.fanEng then c.spinF = ((c.spinF or 0) + 45 * dt) % (math.pi * 2) end   -- A-10 的涡扇风扇
     pcall(AM.pose, P.M, cf, c, os.clock())
   end
   local function job(f, kill)
@@ -1133,7 +1134,7 @@ function TacPad.init(G)
   end
   G.fxExtra = G.fxExtra or {}
   G.fxExtra.tac = fxTac
-  -- 战场氛围（服务器 Ambience.lua）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
+  -- 战场氛围（服务器原来的 Ambience.lua，用户嫌假炮火怪已删掉，现在没人发这个特效；留着以后用）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
   G.fxExtra.flyby = function(e)
     if typeof(e.p) ~= "Vector3" then return end
     local team = (e.team == "def") and "def" or "atk"
