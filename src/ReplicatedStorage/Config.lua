@@ -68,11 +68,22 @@ for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 --   上面的「兵种」只剩老的名字（测试、机器人、战况表的标签）还认
 Config.Loadout = {
   { id = "primary", opts = { "m4", "sniper" } },                       -- 主武器
+  { id = "secondary", opts = { "tablet" }, none = true },             -- 副武器：战术平板（R 币解锁：Config.Passes.tablet；用户：不要按 B 召唤平板，平板做成物品）
   { id = "launcher", opts = { "rpg", "manpads", "mortar" }, none = true },   -- 发射器（可以不带：跑得快一点）
   { id = "gadget", opts = { "medkit", "repair", "breach", "binoc" } },  -- 装备
   { id = "throw", opts = { "grenade", "c4" } },                        -- 投掷
 }
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
+
+-- R 币解锁（游戏通行证 Game Pass）：在 Roblox 创作者后台给这个体验建两个通行证（价格照 price），把通行证编号填进 id——
+--   id 还是 0 的时候谁都能用（没上架前不挡人，Studio 里测试也方便）；填了编号就只有买了的人能用，没买的点了弹出购买框
+--   item：这个通行证解锁什么（装备栏里的物品 / 召唤点的机型）
+Config.Passes = {
+  tablet = { id = 0, price = 99, item = "tablet" },   -- 战术平板（副武器）：召唤步战车、空投补给、呼叫火力
+  b2 = { id = 0, price = 199, item = "b2" },          -- B-2 隐身轰炸机（守方）
+}
+Config.PassFor = {}   -- 物品 / 机型 → 通行证名
+for k, v in pairs(Config.Passes) do Config.PassFor[v.item] = k end
 Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点
 
 -- 左下的雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）：
@@ -107,6 +118,7 @@ Config.Weapons = {
   breach = { kind = "breach", range = 6, detect = 34, time = 1.6, mag = 1, reload = 0 },   -- 破障器材：探雷（detect 格以内）、排雷 / 剪铁丝网（离得 range 格以内按住 time 秒）
   c4 = { kind = "place", dmg = 260, splash = 13, mag = 1, reserve = 1, reload = 0.6, rate = 0.8, trigger = "remote",
     vs = { inf = 1, light = 4, armor = 5, air = 0, ship = 2, fort = 5 } },
+  tablet = { kind = "pad", mag = 1, reload = 0 },   -- 战术平板：拿在手上就打开平板（客户端 TacPad.lua），收起来就关上
   binoc = { kind = "spot", range = 1600, spotTime = 12, cd = 4, strikeCd = 75, strike = { n = 8, r = 26, dmg = 120, splash = 20, flight = 6,
     vs = { inf = 1, light = 1, armor = 0.45, air = 0, ship = 0.3, fort = 1 } }, mag = 1, reload = 0 },
 }
@@ -187,7 +199,7 @@ Config.TacPad = {
   teamCd = 20,
   order = { "vdrop", "supply", "pgm", "gunrun", "cluster" },
   items = {
-    vdrop = { kind = "drop", n = 1, cd = 240, flight = 10, veh = { atk = "zsl92b", def = "jltv" }, vmax = 3 },
+    vdrop = { kind = "drop", n = 1, cd = 240, flight = 10, veh = { atk = "zsl92b", def = "m2a3" }, vmax = 3 },   -- 空投步战车（用户：平板能召唤步战车）：92B 轮式步战车 / M2A3 布雷德利
     supply = { kind = "supply", n = 2, cd = 90, flight = 8, r = 20, life = 75, heal = 8 },
     pgm = { kind = "pgm", n = 2, cd = 90, flight = 6, w = { id = "pgm", dmg = 420, splash = 26, vs = { inf = 1, light = 3, armor = 2.4, air = 0.3, ship = 1.6, fort = 3 } } },
     gunrun = { kind = "gunrun", n = 1, cd = 150, flight = 6, len = 170, hits = 24, w = { id = "gunrun", dmg = 60, splash = 7, vs = { inf = 1, light = 1.5, armor = 0.35, air = 0.5, ship = 0.4, fort = 0.6 } } },

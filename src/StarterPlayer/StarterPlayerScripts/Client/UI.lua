@@ -196,6 +196,18 @@ function UI.init(G)
   -- 装备栏：上次选的（这一局里记着）；开局默认 M4 + 急救包 + 手雷
   sel.kit = table.clone(Config.LoadoutDefault or { primary = "m4" })
   local SLOTS = Config.Loadout or { { id = "primary", opts = { "m4" } } }
+  -- R 币解锁（Config.Passes）：服务器把有没有写在玩家属性 Pass_<名字> 上；通行证编号还是 0 的谁都能用
+  local function passOk(name)
+    local c = Config.Passes and Config.Passes[name]
+    if not c or (c.id or 0) == 0 then return true end
+    return player:GetAttribute("Pass_" .. name) == true
+  end
+  G.passOk = passOk
+  G.passFor = function(item) return Config.PassFor and Config.PassFor[item] end   -- 物品 / 机型 → 通行证名（不用的是 nil）
+  G.buyPass = function(name) pcall(function() G.R.Act:FireServer("buyPass", name) end) end
+  for name in pairs(Config.Passes or {}) do
+    player:GetAttributeChangedSignal("Pass_" .. name):Connect(function() if G.refreshDeploy then G.refreshDeploy() end end)
+  end
 
   -- 顶上一行：页签（装备 / 生成点），右边换阵营、语言
   local topY = mobile and 74 or 96
@@ -524,13 +536,17 @@ function UI.init(G)
       c.b.Position = UDim2.new(0, x0 + (k - 1) * (pw + 6), 1, slotY - SH - 14)
       c.idx.Text = ""
       local on = (sel.kit[slot.id] or false) == id
-      c.cat.Text = on and T("deploy.current") or ""
+      local pass = id and G.passFor(id)
+      local locked = pass and not passOk(pass)
+      c.cat.Text = locked and T("pass.lockTag", Config.Passes[pass].price) or (on and T("deploy.current") or "")
+      c.cat.TextColor3 = locked and RGB(255, 196, 92) or FAINT
       c.nm.Text = itemName(id or nil)
       local n = id and countOf(id)
       c.cnt.Text = n and ("×" .. n) or ""
       c.st.Transparency = on and 0.2 or 0.86
       if id then c.wait = setModel(c.vp, id, S.team) c.item = id end
       c.b.Activated:Connect(function()
+        if locked then G.buyPass(pass) return end   -- 没解锁：弹出 Roblox 的购买框（买成了属性一变，这里自动刷新）
         sel.kit[slot.id] = id or nil
         sel.slot = nil
         picker.Visible = false
@@ -585,6 +601,7 @@ function UI.init(G)
       local slot = c.slot
       local id = sel.kit[slot.id]
       if not id and not slot.none then id = slot.opts[1] sel.kit[slot.id] = id end
+      if id and G.passFor(id) and not passOk(G.passFor(id)) then id = nil sel.kit[slot.id] = nil end   -- 没解锁的（比如通行证刚上架）不带
       c.idx.Text = tostring(i)
       c.cat.Text = T("deploy.slot." .. slot.id)
       c.nm.Text = itemName(id)

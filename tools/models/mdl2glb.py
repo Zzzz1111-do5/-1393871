@@ -29,7 +29,8 @@ ALIAS = {
 }
 # 网页版烘焙出来车头朝后的（网页版游戏里 JLTV 用的是 M-ATV 的模型，这个 JLTV 模型从没开过，方向反了没人发现）：掉头 180°
 #   用户：「这个车操作是倒着开的」——模型的备胎（真车挂在车尾）在游戏认的车头那一端
-FLIP = {'jltv'}
+FLIP = {'jltv', 'm270'}
+#   M270 同样：驾驶室在网页版坐标的 −x 那头（网页版配置也写的 fwd +z），游戏里一直是倒着开的
 # 原模型整车只有一种颜色的（JLTV：车窗、轮胎也是沙黄；用户：车窗是透明的吧，轮胎黑色吧）：按网页版的材质号 + 高度（网页版坐标 z，米）改色
 #   JLTV 的 12 号材质是胎面；5 号材质是胎侧，混着左门上的一块车窗（离地 1.25 米以上）；22 号是车窗、51 号是挡风玻璃和灯罩
 RECOLOR = {'jltv': [{'mats': [12], 'to': 'tire'}, {'mats': [5], 'zmax': 1.25, 'to': 'tire'}, {'mats': [5], 'zmin': 1.25, 'to': 'glass'},
@@ -37,6 +38,113 @@ RECOLOR = {'jltv': [{'mats': [12], 'to': 'tire'}, {'mats': [5], 'zmax': 1.25, 't
 NEWMAT = {'tire': {'n': 'tire', 'c': [0.02, 0.02, 0.022, 1], 'mr': [0, 0.92]},
           'glass': {'n': 'glass', 'c': [0.03, 0.045, 0.055, 0.42], 'am': 2, 'mr': [0.2, 0.06]}}   # 深色半透明（游戏里按元数据的 a 设透明度）
 GROUP = {'tur': 'Turret', 'yaw': 'Turret', 'rws': 'Turret', 'tow': 'Turret', 'rdr': 'Turret', 'gun': 'Gun', 'gat': 'Gun', 'lnch': 'Gun'}
+# 原模型里机枪塔 / 炮管和车身（或炮塔）烘焙成一整块的：按连通块拆出来，好让机枪塔转、炮管俯仰，炮弹从看得见的炮口出去
+#   （用户：很多载具的机枪塔没法旋转；载具开火的位置要对）
+#   坐标是网页版烘焙坐标（x 前、y 左、z 上，米；FLIP 的车照掉头前的坐标写，转的时候跟着掉头）
+#   rules：from 从哪个部件拆、to 拆成哪个部件；box [x0, x1, y0, y1] + zmin / zmax：整个连通块都落在框里才拆——
+#     贴着车身、伸出框外的面（车顶、炮塔壳）不会被拆走；tur 炮塔（机枪塔）转轴、gun 炮耳轴（机枪的俯仰轴）
+#   悍马（M998 软篷）原模型就没有机枪：游戏里给它在车顶补一挺零件拼的 M2（客户端 VehModels）
+SPLIT = {
+    # JLTV：车顶 O-GPK 式机枪塔（座圈、护盾）+ M2，炮口朝车头（掉头前的 −x）
+    'jltv': {'rules': [{'from': 'Body', 'to': 'Turret', 'box': [-1.35, 1.40, -0.75, 0.75], 'zmin': 2.40},
+                       {'from': 'Turret', 'to': 'Body', 'box': [-1.35, -0.62, -0.75, 0.75], 'zmax': 2.56},   # 机枪塔前面车顶上的小零件留在车身
+                       {'from': 'Turret', 'to': 'Gun', 'box': [-1.35, 0.30, -0.30, 0.30], 'zmin': 2.56}],
+             'tur': [0.585, 0, 2.45], 'gun': [-0.10, 0, 2.82]},
+    # M1150：炮塔顶上的车长指挥塔（座圈、舱盖）+ M2（炮塔本身不转：没有主炮，后面挂着扫雷火箭发射箱）
+    'm1150': {'rules': [{'from': 'Body', 'to': 'Turret', 'box': [-1.60, 0.50, -0.55, 0.55], 'zmin': 1.95},
+                        {'from': 'Turret', 'to': 'Body', 'box': [-0.45, 0.50, -0.55, 0.55], 'zmax': 2.25},   # 指挥塔前面炮塔顶上的箱子、观察镜留在车身
+                        {'from': 'Turret', 'to': 'Body', 'box': [-1.61, -1.48, -0.55, 0.55], 'zmin': 2.3},   # 后面横杆上的零碎
+                        {'from': 'Turret', 'to': 'Gun', 'box': [-0.95, 0.50, -0.40, 0.40], 'zmin': 2.28}],
+              'tur': [-1.06, 0, 2.0], 'gun': [-0.60, 0, 2.42]},
+    # M-ATV（游戏里的 M1117）：机枪塔本来就是单独的部件，M2 和塔是一块——拆出来；原模型的 M2 抬着 18°，转平（lvl）
+    'matv': {'rules': [{'from': 'Turret', 'to': 'Gun', 'box': [-0.60, 1.10, -0.25, 0.25], 'zmin': 2.74}],
+             'gun': [-0.15, 0.035, 2.98], 'lvl': 17.8},
+    # 斯特赖克：网页版烘焙时 M151 遥控武器站留在了车身里（炮塔部件只有几块碎片）——整个武器站拆成炮塔，M2 拆成炮
+    'stryker': {'rules': [{'from': 'Body', 'to': 'Turret', 'box': [-0.75, 1.32, -0.92, 0.06], 'zmin': 2.45},
+                          {'from': 'Turret', 'to': 'Gun', 'box': [-0.70, 1.32, -0.56, -0.34], 'zmin': 2.80}],
+                'gun': [-0.20, -0.45, 2.95]},
+    # M1A1、96 式：炮管（连炮盾、并列机枪）烘焙在炮塔里——拆成炮，照炮耳轴俯仰；炮管本来就是平的
+    'm1a1': {'rules': [{'from': 'Turret', 'to': 'Gun', 'box': [0.79, 5.10, -0.42, 0.25], 'zmin': 1.80}],
+             'gun': [0.95, 0.015, 2.125]},
+    # 悍马（M998 软篷）：原模型没有机枪——游戏里在车顶补一挺零件拼的 M2（客户端 VehModels 看 mg）：座圈在篷顶上，
+    #   枪架高 0.46 米，耳轴到枪口 1.35 米（muz）
+    'hmmwv': {'rules': [], 'tur': [-0.25, 0, 1.84], 'gun': [-0.25, 0, 2.30], 'mg': 'm2', 'muz': 1.35},
+    'ztz96': {'rules': [{'from': 'Turret', 'to': 'Body', 'box': [-5, 5.2, -2, 2], 'zmax': 1.585},   # 网页版炮塔框带进来的车体甲板零件（挡泥板沿、螺栓）还给车体
+                        {'from': 'Turret', 'to': 'Gun', 'box': [-0.66, 5.10, -0.40, 0.27], 'zmin': 1.50}],
+              'gun': [0.05, -0.01, 1.785]},
+}
+
+
+def _components(T):
+    """三角形的连通块（T：每个三角形三个顶点的焊接编号）→ 每个三角形的块号"""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+    n = int(T.max()) + 1 if len(T) else 0
+    r = np.concatenate([T[:, 0], T[:, 1]])
+    c = np.concatenate([T[:, 1], T[:, 2]])
+    g = coo_matrix((np.ones(len(r), dtype=np.int8), (r, c)), shape=(n, n))
+    _, lab = connected_components(g, directed=False)
+    return lab[T[:, 0]]
+
+
+def split_parts(key, VB, bins):
+    """按 SPLIT 把整块落在框里的连通块挪到别的部件（bins：(部件, 材质) → [三角形顶点下标]）"""
+    cfg = SPLIT[key]
+    fl = key in FLIP
+    P = VB[:, 0:3].astype(np.float64)
+    q = np.round(P / 0.001).astype(np.int64)   # 按位置焊接（1 毫米）：同一个零件上 UV 接缝处的顶点是分开存的
+    _, weld = np.unique(q, axis=0, return_inverse=True)
+    weld = weld.reshape(-1)
+    for rule in cfg['rules']:
+        b = rule['box']
+        box = [-b[1], -b[0], -b[3], -b[2]] if fl else b
+        src = sorted(k for k in bins if k[0] == rule['from'])
+        if not src:
+            continue
+        tris = [np.concatenate(bins[k]).reshape(-1, 3) for k in src]
+        allT = np.concatenate(tris)
+        lab = _components(weld[allT])
+        pts = P[allT]
+        nc = int(lab.max()) + 1
+        clo, chi = np.full((nc, 3), np.inf), np.full((nc, 3), -np.inf)
+        np.minimum.at(clo, lab, pts.min(axis=1))
+        np.maximum.at(chi, lab, pts.max(axis=1))
+        e = 0.005
+        ok = (clo[:, 0] >= box[0] - e) & (chi[:, 0] <= box[1] + e) & (clo[:, 1] >= box[2] - e) & (chi[:, 1] <= box[3] + e)
+        if 'zmin' in rule:
+            ok &= clo[:, 2] >= rule['zmin'] - e
+        if 'zmax' in rule:
+            ok &= chi[:, 2] <= rule['zmax'] + e
+        selT = ok[lab]
+        o = 0
+        for k, t in zip(src, tris):
+            s = selT[o:o + len(t)]
+            o += len(t)
+            if not s.any():
+                continue
+            bins.setdefault((rule['to'], k[1]), []).append(t[s].reshape(-1))
+            rest = t[~s]
+            if len(rest):
+                bins[k] = [rest.reshape(-1)]
+            else:
+                del bins[k]
+        print('  %s 拆分 %s → %s：%d 个三角形（%d 块）' % (key, rule['from'], rule['to'], int(selT.sum()), len(np.unique(lab[selT]))))
+    if cfg.get('lvl') and 'gun' in cfg:   # 原模型里炮（机枪）是抬着的：绕炮耳轴压平（顶点、法线一起转；拆出来的连通块不和别的块共用顶点）
+        g = [np.concatenate(v) for k, v in bins.items() if k[0] == 'Gun']
+        if g:
+            u = np.unique(np.concatenate(g))
+            p0 = np.array(cfg['gun'], dtype=np.float64)
+            if fl:
+                p0[0:2] *= -1
+            e = math.radians(cfg['lvl'])
+            ce, se = math.cos(e), math.sin(e)
+            for o in (0, 3):   # 位置（绕炮耳轴）、法线
+                x = VB[u, o].astype(np.float64) - (p0[0] if o == 0 else 0)
+                z = VB[u, o + 2].astype(np.float64) - (p0[2] if o == 0 else 0)
+                VB[u, o] = x * ce + z * se + (p0[0] if o == 0 else 0)
+                VB[u, o + 2] = -x * se + z * ce + (p0[2] if o == 0 else 0)
+            print('  %s 炮压平 %.1f°（%d 个顶点）' % (key, cfg['lvl'], len(u)))
+    return bins
 WRAP = {0: 10497, 1: 33071, 2: 33648}   # 重复、夹边、镜像
 
 
@@ -143,6 +251,10 @@ def convert(key, src=None):
                     bins[(g, mi)] = [rest]
                 else:
                     del bins[(g, mi)]
+    if key in SPLIT:   # 和车身烘焙在一起的机枪塔、炮管拆出来
+        if not VB.flags.writeable:   # 要压平炮管时改顶点
+            VB = VB.copy()
+        bins = split_parts(key, VB, bins)
     pieces = []   # (部件, 材质, 顶点下标数组)
     for (g, mi), lst in sorted(bins.items()):
         idx = np.concatenate(lst).reshape(-1, 3)
@@ -195,7 +307,16 @@ def convert(key, src=None):
             info['tur'] = [round(float(x), 3) for x in (rb(p['p']) - org)]
         if n in ('gun', 'lnch') and 'q' in p:
             info['gun'] = [round(float(x), 3) for x in (rb(p['q']) - org)]
-    if 'gun' in info:
+    for nm in ('tur', 'gun'):   # 拆出来的机枪塔、炮：转轴照 SPLIT
+        if nm in SPLIT.get(key, {}):
+            p = SPLIT[key][nm]
+            if key in FLIP:
+                p = [-p[0], -p[1], p[2]]
+            info[nm] = [round(float(x), 3) for x in (rb(p) - org)]
+    if SPLIT.get(key, {}).get('mg'):   # 零件拼的机枪（原模型没有）：耳轴到枪口多远直接给
+        info['mg'] = SPLIT[key]['mg']
+        info['muz'] = round(SPLIT[key]['muz'] * S, 3)
+    if 'gun' in info and 'mg' not in info:
         G = [o[3] + np.array(info['parts'][o[0]]['c']) for o in out if o[1] == 'Gun']
         if G:
             A = np.concatenate(G)

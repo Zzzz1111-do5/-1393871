@@ -1,5 +1,5 @@
 -- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
---   每个人都有（客户端 TacPad.lua，B 键拿出来），在平板的地图上点目标，发 tacCall(种类, 位置)。这里核对：
+--   装备栏副武器带了战术平板的人（R 币解锁，Config.Passes.tablet），拿在手上就打开（客户端 TacPad.lua），在平板的地图上点目标，发 tacCall(种类, 位置)。这里核对：
 --   活着、没在载具里、开战了、这一局还有次数、自己的冷却到了、全队同一种没刚叫过、目标离自己不超过 range 格、空投的点在陆地上、全队空投的车没超量；
 --   过了就执行（Config.TacPad）：
 --     空投载具：直升机飞过、挂着伞落下来，落地生成一辆空车（30 秒内只给呼叫的人，没人上 90 秒收走——同生成点的车）
@@ -182,6 +182,10 @@ function Tactical.init(G)
     local it = type(id) == "string" and TP.items[id] or nil
     if not it or typeof(pos) ~= "Vector3" or pos.X ~= pos.X or pos.Z ~= pos.Z then return end
     if not P.alive or not P.char or G.inVeh(P) then return end
+    -- 平板是副武器（用户：不要按 B 召唤平板，做成物品；99 R 币解锁）：装备栏里带了、通行证有才行
+    local kit = G.kitOf and G.kitOf(P)
+    if not (kit and table.find(kit.weapons, "tablet")) then G.msg(P.pl, "bad", "tac.noPad") return end
+    if G.passOkFor and not G.passOkFor(P, "tablet") then G.msg(P.pl, "bad", "pass.locked", { k = "weapon.tablet" }) return end
     if not G.round or G.round.phase ~= "battle" then G.msg(P.pl, "bad", "tac.notYet") return end
     local s = slot(P, id)
     local t = now()

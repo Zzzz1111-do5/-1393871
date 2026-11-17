@@ -159,6 +159,23 @@ function VehModels.build(d, team)
         table.insert(parts, { mp, grp, off, wi })
       end
     end
+    -- 原模型没有机枪的（悍马 M998 软篷）：篷顶上补一挺零件拼的 M2——座圈、枪盾、枪架跟着炮塔转，枪身跟着俯仰，
+    --   枪口正好在服务器算的炮口上（耳轴前 d.gun.len；用户：很多载具的机枪塔没法旋转、开火位置要对）
+    if info.mg == "m2" then
+      local GM, BL, OD = RGB(46, 48, 46), RGB(28, 29, 28), RGB(74, 80, 58)
+      local gy = (gpiv - tpiv).Y   -- 枪架高
+      tur(V(0.3, 3.0, 3.0), CF(0, 0.15, 0) * UPRIGHT, C.dark, MAT.Metal, CYL)   -- 座圈
+      for sx = -1, 1, 2 do   -- 正面枪盾：左右两块，中间留出枪管的缝
+        tur(V(1.05, 1.25, 0.12), CF(sx * 0.66, 0.95, -1.3), C.base)
+        tur(V(0.12, 1.1, 0.8), CF(sx * 1.22, 0.9, -0.95) * CFrame.Angles(0, sx * 0.45, 0), C.base)   -- 侧翼
+      end
+      tur(V(0.24, gy, 0.24), CF(0, gy / 2, 0.1), GM)   -- 枪架立柱
+      gun(V(0.5, 0.58, 1.7), CF(0, 0.1, 0.1), GM)   -- 机匣
+      gun(V(0.14, 0.36, 0.26), CF(0, 0.05, 1.05), BL)   -- 握把
+      tube(gun, 0, 0.12, -0.75, -1.85, 0.3, BL)   -- 散热套筒
+      tube(gun, 0, 0.12, -1.85, -d.gun.len, 0.17, BL)   -- 枪管
+      gun(V(0.4, 0.5, 0.78), CF(-0.48, -0.06, 0.05), OD)   -- 弹箱（M2 从左边供弹）
+    end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel }
   end
 

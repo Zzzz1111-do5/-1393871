@@ -198,6 +198,17 @@ function Weapons.init(G)
       weld(h, p(tool, V(0.5, 0.4, 0.7), CF(0, 0.15, -0.3), RGB(200, 170, 60), Enum.Material.Plastic))
     elseif id == "binoc" then
       for s = -1, 1, 2 do weld(h, p(tool, V(0.9, 0.35, 0.35), CF(s * 0.22, 0.4, -0.4) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)) end
+    elseif id == "tablet" then   -- 战术平板（副武器）：加固外壳、四角护角、一块微微发光的屏，斜着端在手上
+      local tilt = CF(0, 0.45, -0.7) * CFrame.Angles(math.rad(-50), 0, 0)
+      weld(h, p(tool, V(1.6, 0.14, 1.1), tilt, RGB(44, 48, 42), Enum.Material.Plastic))   -- 外壳
+      local scr = p(tool, V(1.36, 0.02, 0.86), tilt * CF(0, 0.08, 0), RGB(36, 92, 70), Enum.Material.Neon)
+      scr.Name = "Screen"
+      scr.Transparency = 0.2
+      weld(h, scr)
+      for sx = -1, 1, 2 do
+        for sz = -1, 1, 2 do weld(h, p(tool, V(0.22, 0.2, 0.22), tilt * CF(sx * 0.74, 0, sz * 0.48), RGB(26, 28, 26), Enum.Material.Plastic)) end   -- 护角
+      end
+      weld(h, p(tool, V(0.5, 0.1, 0.12), tilt * CF(0, 0.02, 0.6), RGB(26, 28, 26), Enum.Material.Plastic))   -- 提手
     end
     local a = Instance.new("Attachment")
     a.Name = "Muzzle"

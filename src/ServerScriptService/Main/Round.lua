@@ -527,7 +527,7 @@ function Round.init(G)
     return r and { weapons = table.clone(r.weapons), hp = r.hp, speed = r.speed, role = id } or nil
   end
   local LAUNCH_ROLE = { rpg = "at", manpads = "aa", mortar = "mortar" }
-  local function kitFromLoadout(L)
+  local function kitFromLoadout(L, P)
     if type(L) ~= "table" then return nil end
     local list, pick = {}, {}
     for _, slot in ipairs(Config.Loadout) do
@@ -536,6 +536,10 @@ function Round.init(G)
         v = (not slot.none) and slot.opts[1] or nil
       elseif type(v) ~= "string" or not table.find(slot.opts, v) then
         return nil
+      end
+      if v and P and G.passOkFor and not G.passOkFor(P, v) then   -- R 币解锁的（战术平板）没买：这一格空着出去
+        G.msg(P.pl, "bad", "pass.locked", { k = "weapon." .. v })
+        v = (not slot.none) and slot.opts[1] or nil
       end
       pick[slot.id] = v
       if v then table.insert(list, v) end
@@ -584,7 +588,7 @@ function Round.init(G)
   function G.ACT.deploy(P, choice, spawnId)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
-    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice)
+    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice, P)
     if not kit then return end
     local sp = nil
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end

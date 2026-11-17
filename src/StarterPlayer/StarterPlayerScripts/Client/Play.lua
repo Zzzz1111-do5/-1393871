@@ -147,6 +147,11 @@ function Play.init(G)
   end
   G.equipSlot = equip
   G.equipCycle = cycle
+  G.equipTool = equipTool
+  -- 换回上一把（平板界面收起时：TacPad.lua）；没有上一把就拿第一件
+  G.equipLast = function()
+    if lastTool and lastTool.Parent and lastTool.Parent ~= player.Character then equipTool(lastTool) else equip(1) end
+  end
 
   local function drawBar()
     for _, s in ipairs(slots) do s:Destroy() end
@@ -262,6 +267,7 @@ function Play.init(G)
     local S = G.S
     if not S or S.phase ~= "battle" then return end
     local w = W[id]
+    if not w or w.kind == "pad" then return end   -- 战术平板不开火（拿在手上平板界面开着，点的是平板上的地图）
     local t = now()
     if t < cur.nextShot then return end
     if w.kind == "heal" then
@@ -319,6 +325,10 @@ function Play.init(G)
     if gp or G.drive then return end
     if G.menuOpen and G.menuOpen() then return end   -- 挂载编辑器里点 3D 的飞机（ViewportFrame 不吞点击）不能开枪
     local k = io.KeyCode
+    if G.tacOpen and G.tacOpen() and (io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.MouseButton2
+      or k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three or k == Enum.KeyCode.Four or k == Enum.KeyCode.Five) then
+      return   -- 平板开着：鼠标点平板、数字键选支援（TacPad.lua），不切枪、不开火
+    end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
       tryFire(false)
@@ -333,6 +343,7 @@ function Play.init(G)
     elseif k == Enum.KeyCode.Two then equip(2)
     elseif k == Enum.KeyCode.Three then equip(3)
     elseif k == Enum.KeyCode.Four then equip(4)
+    elseif k == Enum.KeyCode.Five then equip(5)
     elseif k == Enum.KeyCode.Q then   -- 切回上一把
       if lastTool and lastTool.Parent and lastTool.Parent ~= player.Character then equipTool(lastTool) else cycle(1) end
     end

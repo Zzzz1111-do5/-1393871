@@ -320,6 +320,12 @@ function Depots.init(G)
   end
 
   local function spawnAt(P, p, load, vid, fuel)
+    -- R 币解锁的机型（B-2 199 R 币；Config.Passes）：没买的不给生成（客户端列表里画着锁、点了是购买框）
+    local want = vid or p.vid
+    if want and G.passOkFor and not G.passOkFor(P, want) then
+      G.msg(P.pl, "bad", "pass.locked", { k = "veh." .. want })
+      return
+    end
     vid = vid or p.vid
     local ok, d = check(P, p, vid)
     if not ok then return nil end
