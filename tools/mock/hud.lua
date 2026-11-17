@@ -146,9 +146,9 @@ local hs = C.fly
 check(hs ~= nil and hs.d.kind == "heli", "坐进了直-10")
 if hs then
   T.runUntil(function() return hs.rpm and hs.rpm >= 95 end, 15)
-  T.key(Enum.KeyCode.Q, true)
+  T.key(Enum.KeyCode.E, true)
   R.run(4)
-  T.key(Enum.KeyCode.Q, false)
+  T.key(Enum.KeyCode.E, false)
   hs.camPitch = -0.12 - 0.45   -- 正往下看
   R.run(0.5)
   T.tap(Enum.KeyCode.P)

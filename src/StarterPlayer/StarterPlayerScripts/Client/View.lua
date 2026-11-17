@@ -385,7 +385,7 @@ function View.init(G)
     if v.id then byId[v.id] = nil end
     if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
     if v.model then v.model:Destroy() end
-    add(em)
+    add(em)   -- 新建的 solidOn 是空的：下一帧离得近就重新挑实心零件
   end
   local impT = 0
   local function checkImports(dt)
@@ -401,11 +401,64 @@ function View.init(G)
     end
     for _, em in ipairs(list) do G.try_(rebuild, em) end
   end
+  -- 实体对得上模型（用户：模型的实体和模型对不上）：服务器上的实体只有一个方盒（按型号表的长宽高），坦克是炮塔那么高一整块、
+  --   飞机连翼尖都框不全、船连桅杆那么高——碰撞改在本机做：离自己的人近的车、飞机、船、工事、气垫艇，把看得见的零件设成实心
+  --   （人的物理本来就在本机算，挡人按真正的外形；服务器的方盒只管挨打，不挡人）。很小的、几乎透明的、发光的、转的（旋翼、螺旋桨）、尾焰不算；
+  --   自己正开着的那辆不算（人在里面）
+  local SOLID_KIND = { veh = true, air = true, ship = true, fort = true, lcac = true }
+  local SOLID_IN, SOLID_OUT = 280, 340
+  local function solidSet(v, on)
+    if (v.solidOn == true) == on then return end
+    v.solidOn = on
+    if on then
+      local skip = {}
+      local M = v.M
+      if M then
+        for _, key in ipairs({ "blades", "discs", "flames", "strobes", "lamps", "tvc" }) do
+          for _, it in ipairs(M[key] or {}) do
+            local p = (typeof(it) == "Instance") and it or (type(it) == "table" and (it.p or it[1])) or nil
+            if typeof(p) == "Instance" then skip[p] = true end
+          end
+        end
+      end
+      local list = {}
+      for _, p in ipairs(v.model:GetDescendants()) do
+        if p:IsA("BasePart") and not skip[p] and p ~= v.anchor and p.Transparency < 0.9 and p.Material ~= Enum.Material.Neon
+          and math.max(p.Size.X, p.Size.Y, p.Size.Z) >= 0.8 then
+          p.CanQuery = true   -- 实心的零件 CanQuery 得开着（Roblox 的规定）
+          p.CanCollide = true
+          list[#list + 1] = p
+        end
+      end
+      v.solidList = list
+    else
+      for _, p in ipairs(v.solidList or {}) do
+        if p.Parent then
+          p.CanCollide = false
+          p.CanQuery = false
+        end
+      end
+      v.solidList = nil
+    end
+  end
+  G.viewSolid = solidSet
+  local function stepSolid(v, here)
+    if not SOLID_KIND[v.kind] or not v.model or not v.model.Parent then return end
+    local mine = (G.drive and G.drive.em == v.em) or (G.fly and G.fly.em == v.em)
+    local p = (v.cf and v.cf.Position) or v.root.Position
+    local d = here and (p - here).Magnitude or math.huge
+    local want = (not mine) and ((v.solidOn and d < SOLID_OUT) or (not v.solidOn and d < SOLID_IN))
+    solidSet(v, want and true or false)
+  end
+
   function G.stepView(dt)
     stepDying()
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
     local camPos = cam.CFrame.Position
+    local ch = me.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local here = hrp and hrp.Position or nil
     for em, v in pairs(views) do
       if not em.Parent then
         remove(em)
@@ -416,6 +469,7 @@ function View.init(G)
           v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
           v.bb.Enabled = hp < mx and hp > 0
         end
+        G.try_(stepSolid, v, here)
         if v.kind == "veh" then
           G.try_(stepVeh, v, dt, camPos)
         elseif v.ext then

@@ -343,8 +343,8 @@ add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
 add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
   "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · P targeting pod · X flares · J drop tanks · G gear · F eject")
-add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· Q 升 / E 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · F 下飞机",
-  "Mouse: fly where you look (look down = nose down, go) · Q up / E down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · P EO sight · X flares · J drop tanks · F exit")
+add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· E 升 / Q 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · F 下飞机",
+  "Mouse: fly where you look (look down = nose down, go) · E up / Q down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · P EO sight · X flares · J drop tanks · F exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")

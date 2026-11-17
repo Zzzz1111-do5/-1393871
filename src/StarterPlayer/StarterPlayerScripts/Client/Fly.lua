@@ -505,6 +505,8 @@ function Fly.init(G)
     st.uav = vs.uav == true and d.drone == true
     st.dcam, st.zoom, st.zoomS = st.uav and "nose" or nil, 1, 1
     G.fly, G.drive = st, st   -- G.drive：步兵的操作（Play）先停下
+    -- 直升机按住 E 爬升：身边的「按 E」提示（上车、召唤位终端）先关掉，免得误触
+    pcall(function() game:GetService("ProximityPromptService").Enabled = false end)
     cam.CameraType = Enum.CameraType.Scriptable
     panel.Visible = true
     -- 平板模式：面板挪进平板屏幕里（底边外壳上不放东西）
@@ -520,6 +522,7 @@ function Fly.init(G)
   end
 
   local function stop()
+    pcall(function() game:GetService("ProximityPromptService").Enabled = true end)
     if st and st.trig then G.R.Drive:FireServer({ op = "trig", on = false }) end
     if G.gunLoop then G.gunLoop("me", nil, nil, false) end
     if st and st.eo then
@@ -912,13 +915,13 @@ function Fly.init(G)
     if st.out then st.rpm = approach(st.rpm, 72, 9 * dt) else st.rpm = approach(st.rpm, 100, 22 * dt) end   -- 旋翼转起来要四五秒；熄火后靠气流自转，转速掉下来
     local lift = st.rpm >= 92
     local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
-    -- 用户：直升机升降改成 Q / E（Q 升、E 降，空格 / Ctrl 也还能用）；镜头往哪看就往哪飞——往下看机头压下去、惯性往前冲，
+    -- 用户：直升机升降改成 E 升、Q 降（空格 / Ctrl 也还能用）；镜头往哪看就往哪飞——往下看机头压下去、惯性往前冲，
     --   往上看抬头减速；机头跟着镜头转；W / S 前后、A / D 左右平移（侧倾）
     local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
     local sideIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn = 0
-    local upIn = ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.Space) or (touch and touch.up)) and 1 or 0)
-      - ((key(Enum.KeyCode.E) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
+    local upIn = ((key(Enum.KeyCode.E) or key(Enum.KeyCode.Space) or (touch and touch.up)) and 1 or 0)   -- 用户：改成 E 升、Q 降
+      - ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
     if G.mobile and controls then
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then

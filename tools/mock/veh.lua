@@ -60,12 +60,26 @@ if side == "def" then
   T.tap(Enum.KeyCode.N)
   R.run(1)
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 又开了")
+  -- 用户：模型的实体和模型对不上——挡人改成客户端按看得见的零件（离人近的才开）
+  local v0
+  if C.views and e0 then for em, vv in pairs(C.views) do if em == e0.model then v0 = vv end end end
+  local nSolid, nAll = 0, 0
+  if v0 and v0.model then
+    for _, p in ipairs(v0.model:GetDescendants()) do
+      if p:IsA("BasePart") and p.Transparency < 0.9 then
+        nAll = nAll + 1
+        if p.CanCollide then nSolid = nSolid + 1 end
+      end
+    end
+  end
+  check(v0 and v0.solidOn == true and nSolid > nAll * 0.5, string.format("站在车旁边：车的模型零件是实心的（%d / %d 块）", nSolid, nAll))
   T.act("enterVeh", e0 and e0.id)
   R.run(1.5)
+  check(v0 and v0.solidOn == false, "坐进自己开的车：这辆不再挡人（人在里面）")
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
-  check(e and e.root.CanCollide == true, "车是实心的（碰撞盒挡人）")
+  check(e and e.root.CanCollide == false, "服务器的方盒不挡人（只管挨打）")
   check(P.alive and me.Character and me.Character.HumanoidRootPart.Anchored, "人锚定在车里")
   check(C.drive ~= nil and C.drive.id == (e and e.id), "客户端接管驾驶")
   local v

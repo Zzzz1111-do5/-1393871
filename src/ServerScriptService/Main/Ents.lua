@@ -27,7 +27,8 @@ function Ents.init(G)
     local root = Instance.new("Part")
     root.Name = "Root"
     root.Anchored = true
-    root.CanCollide = def.solid == true
+    -- 挡人改在客户端按真正的模型做（View.lua 的 solidSet）：服务器的方盒按型号表的长宽高，跟外形对不上（用户：模型的实体和模型对不上），只管挨打
+    root.CanCollide = false
     root.CanTouch = false
     root.CanQuery = true
     root.Transparency = 1
