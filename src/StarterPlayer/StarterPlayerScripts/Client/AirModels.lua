@@ -42,18 +42,57 @@ end
 -- 原模型自带的「转起来的桨盘」（半透明的一整块圆盘 / 方片，材质不透明度只有 0.08 / 0.25）：导进 Roblox 后不透明度丢了，
 --   停着也是一整块实心圆盘（用户：挂载界面里螺旋桨位置对不上、而且是转起来的样子）——当成桨盘：停着不显示，转快了才淡淡地出现，桨叶同时变虚
 local BLUR = { z10w = { Rotor_2 = true, TRotor_2 = true } }
+-- 原模型上切出来的活动部件（ImportedAir 的 surf）：按动法算转角。sg 已经把正方向统一成：舵面后缘往下、方向舵 / 全动垂尾后缘往右、
+--   舱门和座舱盖打开、起落架收起；s 是哪一侧（1 右、−1 左）。操纵量 pit / rol / yaw 是 −1～1（抬头、右滚、右偏为正），flap 0～1
+local SURF_F = {
+  ail = function(c, s) return -s * (c.rol or 0) * rad(20) end,                                  -- 副翼：右滚时右边后缘往上
+  flap = function(c) return (c.flap or 0) * rad(30) end,
+  flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) end,      -- 襟副翼：放襟翼 + 差动滚转
+  elevon = function(c, s) return math.clamp(-(c.pit or 0) * rad(15) - s * (c.rol or 0) * rad(15), -rad(25), rad(25)) end,   -- 升降副翼：抬头时后缘往上
+  stab = function(c, s) return -(c.pit or 0) * rad(18) - s * (c.rol or 0) * rad(6) end,          -- 全动平尾：带一点差动帮滚转
+  elev = function(c) return -(c.pit or 0) * rad(20) end,
+  can = function(c) return (c.pit or 0) * rad(16) end,                                          -- 鸭翼：抬头时前缘往上（后缘往下）
+  rud = function(c) return (c.yaw or 0) * rad(25) end,
+  fin = function(c) return (c.yaw or 0) * rad(18) end,
+  rv = function(c, s) return -(c.pit or 0) * rad(18) + s * (c.yaw or 0) * rad(15) end,          -- V 尾：抬头两边一起往上，偏航两边反着
+  bay = function(c, _, A) return (c.bay or 0) * A end,
+  bayS = function(c, _, A) return (c.bayS or 0) * A end,
+  canopy = function(c, _, A) return (c.can or 0) * A end,
+  gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
+}
 -- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
+--   先找新版（有舵面、舱门、座舱盖、起落架支柱这些活动部件，键名 <键>_v2），没导入新版就用老版（一整块蒙皮，不会动；ImportedAir 的 old 表）；
+--   元数据里的块要全在（导入了一半、或者文件夹里是别的版本的块，就不用这一版）
+local complete = {}   -- [文件夹] = 块齐不齐（每个文件夹只查一次）
+local function usable(info, f, key)
+  if not (info and f) then return false end
+  local ok = complete[f]
+  if ok == nil then
+    ok = true
+    for name in pairs(info.parts) do
+      if not f:FindFirstChild("A_" .. key .. "__" .. name) then ok = false break end
+    end
+    complete[f] = ok
+  end
+  return ok
+end
 function AM.importedFor(d)
-  local k = IA and IA.alias and IA.alias[d.id]
-  if not k then return nil end
-  local plain = string.sub(k, -1) == "~"
-  local key = plain and string.sub(k, 1, -2) or k
-  local info = IA.m and IA.m[key]
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
-  local f = air and air:FindFirstChild(key)
-  if not (info and f) then return nil end
-  return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
+  if not (IA and air) then return nil end
+  for _, tab in ipairs({ IA.alias, IA.old }) do
+    local k = tab and tab[d.id]
+    if k then
+      local plain = string.sub(k, -1) == "~"
+      local key = plain and string.sub(k, 1, -2) or k
+      local info = IA.m and IA.m[key]
+      local f = air:FindFirstChild(key)
+      if usable(info, f, key) then
+        return { key = key, info = info, folder = f, plain = plain, O = V(0, -d.gearH, 0) }   -- 模型坐标的高度 0 是停在地上时的地面
+      end
+    end
+  end
+  return nil
 end
 -- 原模型机身中线上 / 下表面在 z 处的高（模型坐标；元数据从 z0 起每格一个）
 local function profAt(I, arr, z)
@@ -452,13 +491,18 @@ function AM.build(d, team, load)
       box(V(r * 3.6, 0.07, r * 0.6), cf, white, MAT.SmoothPlastic)
     end
   end
+  local nPilot = 0
   local function pilot(cf, helmetColor)
     local t0 = TAG
     TAG = "pilot"
-    add(newPart(m, V(1.5, 1.6, 1.1), RGB(70, 80, 60), MAT.Fabric), cf * CF(0, -0.9, 0.2))
-    add(newPart(m, V(0.95, 0.95, 0.95), RGB(230, 190, 150), MAT.SmoothPlastic, BALL), cf * CF(0, 0.25, 0))
-    add(newPart(m, V(1.12, 1.12, 1.12), helmetColor or RGB(230, 230, 220), MAT.SmoothPlastic, BALL), cf * CF(0, 0.38, 0.05))
-    add(newPart(m, V(0.8, 0.3, 0.2), DARK, MAT.Glass), cf * CF(0, 0.3, -0.5))   -- 护目镜
+    nPilot += 1
+    local list = {
+      add(newPart(m, V(1.5, 1.6, 1.1), RGB(70, 80, 60), MAT.Fabric), cf * CF(0, -0.9, 0.2)),
+      add(newPart(m, V(0.95, 0.95, 0.95), RGB(230, 190, 150), MAT.SmoothPlastic, BALL), cf * CF(0, 0.25, 0)),
+      add(newPart(m, V(1.12, 1.12, 1.12), helmetColor or RGB(230, 230, 220), MAT.SmoothPlastic, BALL), cf * CF(0, 0.38, 0.05)),
+      add(newPart(m, V(0.8, 0.3, 0.2), DARK, MAT.Glass), cf * CF(0, 0.3, -0.5)),   -- 护目镜
+    }
+    for _, it in ipairs(list) do it.seat, it.ref = nPilot, cf end   -- 换原模型时照原模型座舱里的眼位重新摆
     TAG = t0
   end
 
@@ -901,14 +945,38 @@ function AM.build(d, team, load)
 
   if d.kind == "heli" then heli() else jet() end
   buildStores()
+  -- 原模型的活动部件：绕铰链转（S.a → S.b，模型坐标；cc0 是这块不转时的样子）
+  local function addSurf(mp, cc0, S, I, O)
+    if S.k == "gdoor" then   -- 起落架舱门、轮舱：不转，收到一半藏起来
+      add(mp, cc0, "b", { vis = function(c) return (c.gear or 1) > 0.5 end })
+      return
+    end
+    local f = SURF_F[S.k]
+    local a, b = V(S.a[1], S.a[2], S.a[3]) + O, V(S.b[1], S.b[2], S.b[3]) + O
+    if not f or (b - a).Magnitude < 1e-4 then add(mp, cc0, "b") return end
+    local sg, s, A = S.sg or 1, S.s or 0, S.A or 0
+    local ex = { hp = a, ax = (b - a).Unit, f = function(c) return sg * f(c, s, A) end }
+    if S.k == "gear" then ex.vis = function(c) return (c.gear or 1) > 0.03 end end   -- 收到底就藏起来（收进去的部分别从蒙皮里穿出来）
+    if S.fold then ex.fold = S.fold end   -- 歼-15 折叠外翼上的：跟着外翼折
+    if S.tip then   -- 平尾外段上的：跟着平尾外段的铰链折
+      local F = I.fold and I.fold.Tip
+      if F then ex.fh, ex.fold = { x = F.x, y = F.y + O.Y, A = F.A }, S.tip end
+    end
+    add(mp, cc0, "h", ex)
+  end
   if imp then
     -- 蒙皮换成原模型：零件拼的只留挂架和弹、灯、加力火焰，模型没带起落架的固定翼留零件拼的起落架
     local keepGear = d.kind == "jet" and not imp.info.gear
+    local pit = imp.info.pit   -- 原模型座舱里飞行员头的位置（一个座位一个）
     local n = 0
     for i = 1, #items do
       local it = items[i]
       local t = it.tag
-      if it.kind == "ab" or t == "lamp" or t == "store" or (t == "gear" and keepGear) then
+      if it.kind == "ab" or t == "lamp" or t == "store" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
+        if t == "pilot" then   -- 挪进原模型的座舱：眼位往下 0.3 格、往后 0.3 格是零件拼的那个参考点（头的中心偏下）
+          local e = pit[it.seat]
+          it.cf0 = CF(V(e[1], e[2] - 0.3, e[3] + 0.3) + imp.O) * it.ref:Inverse() * it.cf0
+        end
         n += 1
         items[n] = it
       else
@@ -939,7 +1007,10 @@ function AM.build(d, team, load)
         local c = V(p.c[1], p.c[2], p.c[3]) + O
         local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
         local g = p.g
-        if g == "Gear" then   -- 起落架：收起时藏起来
+        local S = I.surf and I.surf[g]
+        if S then   -- 活动部件（舵面、弹舱门、座舱盖、起落架支柱）：绕原模型上切出来的铰链转
+          addSurf(mp, cc0, S, I, O)
+        elseif g == "Gear" then   -- 起落架：收起时藏起来
           add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
         elseif g == "Rotor" or g == "Rotor2" or g == "TRotor" then
           local R = I[string.lower(g)]
@@ -965,6 +1036,11 @@ function AM.build(d, team, load)
           add(mp, cc0, "b")
         end
       end
+    end
+    for _, w in ipairs(I.wells or {}) do
+      local wp = newPart(m, V(math.max(w.s[1] - 0.1, 0.1), math.max(w.s[2], 0.1), math.max(w.s[3] - 0.1, 0.1)), DARK, MAT.SmoothPlastic)
+      wp.CastShadow = false
+      add(wp, CF(V(w.c[1], w.c[2], w.c[3]) + O), "b")
     end
     local F = I.fold and I.fold.Fold
     if F then M.foldH = { x = F.x, y = F.y + O.Y, A = F.A } end

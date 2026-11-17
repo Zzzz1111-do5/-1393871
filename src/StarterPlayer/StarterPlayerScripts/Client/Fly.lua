@@ -131,6 +131,8 @@ function Fly.init(G)
         for k, a in pairs(CH) do c[k] = em:GetAttribute(a) or 0 end
         if em:GetAttribute("BayS") == nil then c.bayS = c.bay end
       end
+      v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
+      c.can = v.canS
       local onGround = c.gear > 0.9 and (v.cf.Position.Y - ground(v.cf.Position.X, v.cf.Position.Z) - d.gearH) < 1.5
       c.door = (d.sideDoor and onGround) and 1 or 0
       c.ramp = (d.ramp and onGround) and 1 or 0

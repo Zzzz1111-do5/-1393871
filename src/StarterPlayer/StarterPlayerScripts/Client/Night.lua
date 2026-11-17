@@ -1,7 +1,8 @@
 -- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
---   开着：本地增亮（曝光、环境光）、绿色荧光调色、灯光强烈泛光、雾变淡一点（看得更远）、镜筒形的视野（四周黑，飞行员用头盔显示不加这一圈）、
---     画面轻微闪烁；队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
---   开地面载具时关掉（车上有自己的夜视 / 热成像瞄准镜，Drive.lua）；死了关掉
+--   开着：整个画面都是夜视（本地增亮、绿色荧光调色、灯光强烈泛光、雾变淡一点看得更远、画面轻微闪烁；用户：要全屏的夜视，不要望远镜那样四周一圈黑）；
+--     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
+--   坐进载具（车、飞机、直升机、船、炮位）时自动关掉；地面载具和炮位里一直关着（车上有自己的夜视 / 热成像瞄准镜，Drive.lua，N 是切它的），
+--     飞机、船上想要可以再按 N 打开；死了关掉
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -15,49 +16,6 @@ function Night.init(G)
   local on = false
   local saved = nil
   local fx = {}
-
-  ---------------------------------------------------------------- 镜筒形视野：一个两头圆的框，外面一圈特别粗的黑描边把四周盖住
-
-  local gui = Instance.new("ScreenGui")
-  gui.Name = "NVG"
-  gui.ResetOnSpawn = false
-  gui.IgnoreGuiInset = true
-  gui.DisplayOrder = -5   -- 在别的界面下面
-  gui.Enabled = false
-  gui.Parent = me:WaitForChild("PlayerGui")
-  local tube = Instance.new("Frame")
-  tube.Name = "Tube"
-  tube.AnchorPoint = Vector2.new(0.5, 0.5)
-  tube.Position = UDim2.fromScale(0.5, 0.5)
-  tube.BackgroundTransparency = 1
-  tube.Parent = gui
-  local tc = Instance.new("UICorner")
-  tc.CornerRadius = UDim.new(0.5, 0)
-  tc.Parent = tube
-  local mask = Instance.new("UIStroke")
-  mask.Thickness = 2400
-  mask.Color = RGB(0, 0, 0)
-  mask.Transparency = 0
-  mask.Parent = tube
-  local edge = Instance.new("Frame")   -- 视野边上一圈软的暗边
-  edge.AnchorPoint = Vector2.new(0.5, 0.5)
-  edge.Position = UDim2.fromScale(0.5, 0.5)
-  edge.Size = UDim2.new(1, -28, 1, -28)
-  edge.BackgroundTransparency = 1
-  edge.Parent = tube
-  local ec = Instance.new("UICorner")
-  ec.CornerRadius = UDim.new(0.5, 0)
-  ec.Parent = edge
-  local es = Instance.new("UIStroke")
-  es.Thickness = 30
-  es.Color = RGB(0, 0, 0)
-  es.Transparency = 0.45
-  es.Parent = edge
-  local function fitTube()
-    local vs = workspace.CurrentCamera.ViewportSize
-    local h = vs.Y * 0.97
-    tube.Size = UDim2.fromOffset(math.min(vs.X * 0.98, h * 1.62), h)
-  end
 
   ---------------------------------------------------------------- 开关
 
@@ -85,8 +43,6 @@ function Night.init(G)
       blur.Size = 1.5
       blur.Parent = Lighting
       fx = { cc, bl, blur }
-      fitTube()
-      gui.Enabled = G.fly == nil and G.sail == nil and not G.scopeOn   -- 飞行员是头盔显示、开着镜时目镜自己是圆的：都不加镜筒那一圈
       if G.playSound then G.playSound("quiet", nil, 2.4) end
     else
       for _, e in ipairs(fx) do e:Destroy() end
@@ -98,7 +54,6 @@ function Night.init(G)
         if saved.atm and saved.dens then saved.atm.Density = saved.dens end
         saved = nil
       end
-      gui.Enabled = false
       G.irStrobes(false)
     end
   end
@@ -137,11 +92,14 @@ function Night.init(G)
     end
   end
 
+  local wasIn = false   -- 上一帧是不是坐在载具里（刚坐进去那一下关掉夜视）
   RunService.RenderStepped:Connect(function(dt)
+    local inVeh = G.drive ~= nil
+    local enter = inVeh and not wasIn
+    wasIn = inVeh
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or (G.drive and not G.fly and not G.sail) then setOn(false) return end
-    gui.Enabled = G.fly == nil and G.sail == nil and not G.scopeOn   -- 目镜的圆框只在步兵时画（开飞机、开船是追尾镜头；开着狙击镜、望远镜时目镜自己是圆的）
+    if enter or not hum or hum.Health <= 0 or (G.drive and not G.fly and not G.sail) then setOn(false) return end
     local cc = fx[1]
     if cc then cc.Brightness = 0.04 + (math.random() - 0.5) * 0.018 end   -- 增像管的轻微闪烁
     irT += dt
@@ -150,7 +108,6 @@ function Night.init(G)
       G.irStrobes(true)
     end
   end)
-  workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitTube)
 
   ---------------------------------------------------------------- 地图上会动的灯（服务器摆的零件带 Anim 属性）：blink 每秒闪 Spd 下、spin 绕 Pivot 转（灯塔光柱，Spd 圈 / 秒）
 

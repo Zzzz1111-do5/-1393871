@@ -97,7 +97,12 @@ function Menu.init(G)
     if ok and type(r) == "table" then META[k] = r end
   end
   local KIND = { Veh = { "ImportedMeta", "V_" }, Air = { "ImportedAir", "A_" }, Ship = { "ImportedShip", "S_" } }
-  local function preview(kind, key)
+  local previewKey
+  local function preview(kind, key)   -- 飞机先找新版（有活动部件，键名 <键>_v2），没导入新版用老版
+    if kind == "Air" then return previewKey(kind, key .. "_v2") or previewKey(kind, key) end
+    return previewKey(kind, key)
+  end
+  function previewKey(kind, key)
     local K = KIND[kind]
     local meta = META[K[1]]
     local info = meta and meta.m and meta.m[key]

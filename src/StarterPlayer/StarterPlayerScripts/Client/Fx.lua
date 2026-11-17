@@ -106,9 +106,9 @@ function Fx.init(G)
       trauma = math.max(0, trauma - dt * 1.6)
     end)
   end)
-  -- 开枪的后坐：视线往上一跳
+  -- 开枪的后坐：视线往上一跳（用户：后坐稍微调低一点——比原来小三成）
   function G.kick(w)
-    local k = (w.dmg or 20) / 600
+    local k = (w.dmg or 20) / 860
     cam.CFrame = cam.CFrame * CFrame.Angles(k * (0.6 + math.random() * 0.4), (math.random() - 0.5) * k * 0.6, 0)
   end
 

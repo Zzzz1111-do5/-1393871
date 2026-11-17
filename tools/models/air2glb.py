@@ -391,6 +391,11 @@ def convert(key, AD, ids):
     return meta, binb, info, out
 
 
+# 有活动部件（舵面、弹舱门、座舱盖、起落架支柱）的模型换个键名（<键>_v2，块叫 A_<键>_v2__<块名>）：和用户已经导入的老版本（一整块蒙皮）
+#   不会重名、能同时放在 Imported.Air 里；元数据里老版本那一行原样留着（old 表），游戏先找新的、没导入新的照旧用老的（不会动）
+VER = '_v2'
+
+
 if __name__ == '__main__':
     B.WEB = sys.argv[1]
     AD = json.load(open(sys.argv[2], encoding='utf-8'))
@@ -398,33 +403,48 @@ if __name__ == '__main__':
     META = sys.argv[4] if len(sys.argv) > 4 else 'src/ReplicatedStorage/ImportedAir.lua'
     os.makedirs(OUTDIR, exist_ok=True)
     keys = sorted(set(v.rstrip('~') for v in ALIAS.values()))
-    meta_out = {}
+    anim = {k for k in keys if k in A.SURF or k in A.GEAR}
+    kname = {k: (k + VER if k in anim else k) for k in keys}   # 导入后的键名
+    old = B.old_lines(META)   # 原来元数据里各模型那一行
+    # 老版本（没有活动部件那一版）：原来的元数据里键名不带 _v2 的那一行就是
+    legacy = {k: old[k] for k in anim if k in old and 'surf = ' not in old[k]}
+    meta_out, lua_out = {}, {}
     for key in keys:
         ids = [i for i, v in ALIAS.items() if v.rstrip('~') == key]
         meta, binb, info, out = convert(key, AD, ids)
         path = os.path.join(OUTDIR, key + '.glb')
-        B.write_glb(key, meta, binb, info, out, path, prefix='A_')
+        B.write_glb(kname[key], meta, binb, info, out, path, prefix='A_')
         meta_out[key] = info
+        lua_out[kname[key]] = info
         tris = sum(len(o[6]) for o in out)
         groups = sorted(set(o[1] for o in out))
-        print('%-5s %7d 个三角形  %3d 块  长 %5.1f 翼展 %5.1f 高 %4.1f 格  %5.1f MB  %s  挂架 %s' % (
-            key, tris, len(out), info['len'], info['w'], info['h'], os.path.getsize(path) / 1e6, '/'.join(groups),
+        print('%-8s %7d 个三角形  %3d 块  长 %5.1f 翼展 %5.1f 高 %4.1f 格  %5.1f MB  %s  挂架 %s' % (
+            kname[key], tris, len(out), info['len'], info['w'], info['h'], os.path.getsize(path) / 1e6, '/'.join(groups),
             ' '.join('%s:%d/%d' % (g, len(info['pyl'][g]), sum(1 for s in AD[g].get('st') or [] if not s.get('bay'))) for g in ids)))
+    alias = {i: kname[v.rstrip('~')] + ('~' if v.endswith('~') else '') for i, v in ALIAS.items()}
+    alias0 = {i: v for i, v in ALIAS.items() if v.rstrip('~') in legacy}
     with open(META, 'w', encoding='utf-8') as f:
-        f.write('-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<模型键>.glb）的元数据\n')
+        f.write('-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据\n')
         f.write('--   alias：游戏里的型号 → 模型键（带 ~ 的去掉原机涂装，按我方涂色）；m[模型键] = { len 长 / w 翼展 / h 高（格，真实尺寸：1 米 = 2.8 格）,\n')
-        f.write('--     parts[块名] = { g 部件（Body / Gear / Rotor / Rotor2 / TRotor / FoldR / FoldL / TipR / TipL）, c 中心, s 大小, col 没贴图的块的颜色, a 不透明度, met 金属 },\n')
+        f.write('--     parts[块名] = { g 部件（Body / Gear / Rotor / Rotor2 / TRotor / FoldR / FoldL / TipR / TipL，活动部件见 surf）, c 中心, s 大小, col 没贴图的块的颜色, a 不透明度, met 金属 },\n')
         f.write('--     gear 模型自带起落架, rotor / rotor2 / trotor = { p 支点, a 轴 }, fold[Fold / Tip] = { x 右侧铰链, y 高, A 折起的角度 }, noz 尾喷口 { x, y, z, 半径 },\n')
-        f.write('--     tip 右翼尖 { x, y, 前缘 z, 后缘 z }, prof 机身中线的上 / 下表面（从 z0 起每格一个）, tails 垂尾顶 { twin 双垂尾, p }, pyl[型号][挂点] = { 机翼下表面的高, 挪到的 z, x }, credit 署名 }\n')
+        f.write('--     tip 右翼尖 { x, y, 前缘 z, 后缘 z }, prof 机身中线的上 / 下表面（从 z0 起每格一个）, tails 垂尾顶 { twin 双垂尾, p }, pyl[型号][挂点] = { 机翼下表面的高, 挪到的 z, x },\n')
+        f.write('--     surf[部件] = { k 动法（ail 副翼 / flap / flaperon / elevon / stab 全动平尾 / elev 升降舵 / can 鸭翼 / rud 方向舵 / fin 全动垂尾 / rv V 尾 / bay / bayS 弹舱门 /\n')
+        f.write('--       canopy 座舱盖 / gear 起落架支柱 / gdoor 起落架舱门）, s 侧（1 右 −1 左）, a / b 铰链两端, sg 正角度的方向, A 开到多大（弧度）, fold / tip 跟着哪边折 },\n')
+        f.write('--     wells 弹舱井 { c 中心, s 大小 }, pit 飞行员头的位置, credit 署名 }\n')
+        f.write('--   old：有活动部件的模型换了键名（<键>_v2）；用户只导入过老版本（一整块蒙皮）时照这张表用老的元数据（不会动）\n')
         f.write('--   坐标：X 右、Y 上、−Z 朝前，高度 0 是停在地上时的地面（游戏里再往下挪 gearH 就是机体坐标）；导入后 MeshPart 叫 A_<模型键>__<块名>\n')
-        f.write('return {\n  alias = ' + B.lua(ALIAS) + ',\n  m = {\n')
-        for key in keys:
-            f.write('    %s = %s,\n' % (key, B.lua(meta_out[key])))
+        f.write('return {\n  alias = ' + B.lua(alias) + ',\n  old = ' + B.lua(alias0) + ',\n  m = {\n')
+        for key in sorted(lua_out):
+            f.write('    %s = %s,\n' % (key, B.lua(lua_out[key])))
+        for key in sorted(legacy):
+            f.write(legacy[key] if legacy[key].endswith('\n') else legacy[key] + '\n')
         f.write('  },\n}\n')
     B.write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
                     'Roblox全面大战场的飞机、直升机模型（models/air/<模型键>.glb）：从网页版《暗剑》烘焙的模型原样转换（js/mdl/<模型键>.js）\n'
                     '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到机身中心和地面；按部件（机体 / 起落架 / 旋翼 / 尾桨 / 折叠外翼）和材质切成几块，'
                     '每块不超过 %d 个三角形；超过 %d 像素的贴图缩到 %d；不减面；轰-6K、X-47B 掉头（网页版烘焙时机头朝后）；直-10 的旋翼从机身上拆开、材质改成不透明；'
-                    'AH-64、直-10 去掉了模型自带的外挂（发射架、导弹、火箭巢；游戏里按选的挂载另外画）\n\n'
+                    'AH-64、直-10 去掉了模型自带的外挂（发射架、导弹、火箭巢；游戏里按选的挂载另外画）；'
+                    '固定翼的舵面、弹舱门、座舱盖沿铰链线和边界线把机体三角形切开、单独成块（游戏里绕铰链转），起落架按支柱分块\n\n'
                     % (CHUNK, B.TEXMAX, B.TEXMAX))
     print('写好了 %s/*.glb、%s/credits.txt 和 %s' % (OUTDIR, OUTDIR, META))

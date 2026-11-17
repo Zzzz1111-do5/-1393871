@@ -45,8 +45,15 @@ if side == "def" then
   check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
   local e0 = tp and T.usePad(me, tp)
   check(e0 ~= nil and e0.driver == nil, "生成了一辆空的 " .. tostring(e0 and e0.def.id))
+  -- 夜视：步兵按 N 打开（整个画面调色，没有望远镜那样的镜筒框），坐进车里自动关掉
+  T.tap(Enum.KeyCode.N)
+  R.run(0.3)
+  local lighting = R.services.Lighting
+  local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
+  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled), "步兵按 N 开夜视：全屏调色、没有镜筒框")
   T.act("enterVeh", e0 and e0.id)
   R.run(1.5)
+  check(C.nvgOn and not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "坐进车里夜视自动关掉")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
   check(P.alive and me.Character and me.Character.HumanoidRootPart.Anchored, "人锚定在车里")

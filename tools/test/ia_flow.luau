@@ -136,12 +136,12 @@ if a1.Character then
 	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
 	H.run(0.5)
 	local nv = a1.PlayerGui:FindFirstChild("NVG")
-	check(CA.nvgOn and CA.nvgOn() and Lighting:FindFirstChild("NVGrade") and nv and nv.Enabled, "按 N 开夜视：画面调色、镜筒框")
+	check(CA.nvgOn and CA.nvgOn() and Lighting:FindFirstChild("NVGrade") and not (nv and nv.Enabled), "按 N 开夜视：整个画面调色（全屏，没有望远镜那样的镜筒框）")
 	check(Lighting.ExposureCompensation > exp0 + 1, string.format("夜视增亮（曝光 %.2f → %.2f）", exp0, Lighting.ExposureCompensation))
 	check(ch:GetAttribute("NVG") == true and hinge and hinge.C0 ~= c0, "镜筒翻下来了（别人也看得到）")
 	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
 	H.run(0.5)
-	check(not CA.nvgOn() and Lighting:FindFirstChild("NVGrade") == nil and math.abs(Lighting.ExposureCompensation - exp0) < 1e-3 and not nv.Enabled, "再按 N 关掉，恢复原样")
+	check(not CA.nvgOn() and Lighting:FindFirstChild("NVGrade") == nil and math.abs(Lighting.ExposureCompensation - exp0) < 1e-3 , "再按 N 关掉，恢复原样")
 end
 local cv = H.workspace.Map.Fleet:FindFirstChild("Ship_carrier1")
 local nLights = 0

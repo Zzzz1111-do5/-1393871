@@ -6,16 +6,18 @@ local R, V3, Enum = T.R, T.V3, T.Enum
 local check = T.check
 local side = TEST_ARGS:match("def") and "def" or "atk"
 
--- 假装在 Studio 里导入了歼-20 的原模型（A_j20__<块>，Imports.lua 开服时收进 Imported.Air.j20）：查摆放时每块都补回了导入时转掉的半圈（ImportTurn.lua）
+-- 假装在 Studio 里导入了歼-20 的原模型（Imports.lua 开服时收进 Imported.Air.<键>）：默认导入新版（j20_v2：舵面、弹舱门、座舱盖是单独的块），
+--   参数 old 只导入老版（j20：一整块蒙皮）——游戏照旧用老版、不会动。都查摆放时每块补回了导入时转掉的半圈（ImportTurn.lua）
 local IA
 do
   local f = assert(io.open(SRC_DIR .. "/ReplicatedStorage/ImportedAir.lua"))
   IA = load(f:read("a"))()
   f:close()
 end
-for name, p in pairs(IA.m.j20.parts) do
+local IKEY = TEST_ARGS:match("old") and "j20" or "j20_v2"
+for name, p in pairs(IA.m[IKEY].parts) do
   local mp = R.Instance.new("MeshPart")
-  mp.Name = "A_j20__" .. name
+  mp.Name = "A_" .. IKEY .. "__" .. name
   mp.Size = V3(p.s[1], p.s[2], p.s[3])
   mp.CFrame = T.CF(900 + p.c[1], 200 + p.c[2], 900 + p.c[3])
   mp.Parent = R.services.Workspace
@@ -77,26 +79,84 @@ if e then
   check(math.abs(p.Y - G.airSurface(p.X, p.Z) - e.def.gearH) < 0.5, string.format("停在跑道上（离地 %.1f 格）", p.Y - G.airSurface(p.X, p.Z)))
 end
 if e and e.def.id == "j20" then
-  print("② 导入的原模型：每块在原位置、绕自己的中心转了半圈（Roblox 导入 GLB 时把每块网格转了半圈，摆的时候转回来）")
+  print("② 导入的原模型（" .. IKEY .. "）：每块在原位置、绕自己的中心转了半圈（Roblox 导入 GLB 时把每块网格转了半圈，摆的时候转回来）")
   local v
   if C.views then for em, vv in pairs(C.views) do if em == e.model then v = vv end end end
   local n, bad, worst = 0, 0, 0
   local O = V3(0, -e.def.gearH, 0)
+  local byGroup = {}
   if v and v.M then
     for _, it in ipairs(v.M.items) do
-      local name = string.match(it.p.Name, "^A_j20__(.+)$")
-      local p = name and IA.m.j20.parts[name]
+      local name = string.match(it.p.Name, "^A_" .. IKEY:gsub("_", "%%_") .. "__(.+)$")
+      local p = name and IA.m[IKEY].parts[name]
       if p and it.kind ~= "r" then
         n = n + 1
         local cf = it.cf0
         if it.kind == "h" then cf = it.H * it.off end   -- 绕铰链转的块：转角 0 时的样子
         if cf.LookVector.Z < 0.999 or cf.UpVector.Y < 0.999 then bad = bad + 1 end
         worst = math.max(worst, (cf.Position - (V3(p.c[1], p.c[2], p.c[3]) + O)).Magnitude)
+        local g = p.g
+        byGroup[g] = byGroup[g] or {}
+        table.insert(byGroup[g], it)
       end
     end
   end
-  check(v ~= nil and v.M ~= nil and v.M.imported == "j20", "飞机用上了导入的原模型（" .. tostring(v and v.M and v.M.imported) .. "）")
+  check(v ~= nil and v.M ~= nil and v.M.imported == IKEY, "飞机用上了导入的原模型（" .. tostring(v and v.M and v.M.imported) .. "）")
   check(n > 0 and bad == 0, string.format("%d 块导入的零件都转了半圈（朝向不对的 %d 块）", n, bad))
   check(n > 0 and worst < 0.01, string.format("位置照元数据（最大偏差 %.3f 格）", worst))
+  if IKEY == "j20_v2" then
+    print("③ 活动部件：按操纵量绕铰链往对的方向转")
+    -- 这一组块在通道 c 下，块中心往上挪了多少（格）
+    local function dy(g, c)
+      local list = byGroup[g]
+      if not list then return nil end
+      local s = 0
+      for _, it in ipairs(list) do
+        if it.kind ~= "h" then return nil end
+        local cf0 = it.H * it.off
+        local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f(c)) * it.off
+        s = s + (cf1.Position.Y - cf0.Position.Y)
+      end
+      return s / #list
+    end
+    local function fmt(x) return x and string.format("%.2f", x) or "没有" end
+    local a = dy("ElvR", { pit = 1 })
+    check(a and a > 0.05, "抬头：右升降副翼后缘往上（块中心升 " .. fmt(a) .. " 格）")
+    local r1, r2 = dy("AilR", { rol = 1 }), dy("AilL", { rol = 1 })
+    check(r1 and r2 and r1 > 0.05 and r2 < -0.05, "右滚：右副翼往上 " .. fmt(r1) .. "、左副翼往下 " .. fmt(r2))
+    local b = dy("BayM1", { bay = 1 })
+    check(b and b < -0.3, "开弹舱：主弹舱门往下翻（" .. fmt(b) .. " 格）")
+    -- 侧弹舱门在进气道下侧 45° 的斜面上、铰链在外上沿：打开是往外翻（中心高度差不多，往外挪）
+    local out = nil
+    for _, it in ipairs(byGroup.BaySL or {}) do
+      local cf0 = it.H * it.off
+      local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f({ bayS = 1 })) * it.off
+      out = (out or 0) + (math.abs(cf1.Position.X) - math.abs(cf0.Position.X)) / #byGroup.BaySL
+    end
+    check(out and out > 0.3, "开侧弹舱：左侧弹舱门往外翻（" .. fmt(out) .. " 格）")
+    local cn = dy("Canopy", { can = 1 })
+    check(cn and cn > 1, "停机掀座舱盖：往上掀（" .. fmt(cn) .. " 格）")
+    local rz = 0
+    for _, it in ipairs(byGroup.FinR or {}) do
+      local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f({ yaw = 1 })) * it.off
+      rz = math.max(rz, select(2, (it.H * it.off):ToObjectSpace(cf1):ToAxisAngle()))
+    end
+    check(rz > math.rad(10), string.format("右偏航：全动垂尾转了 %.0f°", math.deg(rz)))
+    local pil, near = 0, 99
+    local pit = IA.m[IKEY].pit[1]
+    for _, it in ipairs(v.M.items) do
+      if it.tag == "pilot" then
+        pil = pil + 1
+        near = math.min(near, (it.cf0.Position - (V3(pit[1], pit[2], pit[3]) + O)).Magnitude)
+      end
+    end
+    check(pil >= 4 and near < 1.5, string.format("座舱里坐着飞行员（%d 块，离原模型的眼位 %.2f 格）", pil, near))
+    local wells = 0
+    for _, it in ipairs(v.M.items) do
+      local col = it.p.Color
+      if it.kind == "b" and not it.tag and it.p.ClassName == "Part" and col.R < 0.16 and col.G < 0.16 and col.B < 0.17 then wells = wells + 1 end
+    end
+    check(wells >= 3, "弹舱里有深色的舱壁（" .. wells .. " 个）")
+  end
 end
 T.summary()

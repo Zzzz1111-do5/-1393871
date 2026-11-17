@@ -457,7 +457,7 @@ function FPSView.init(G)
     if not vm then return end
     local w = W[id]
     local big = w and (w.kind ~= "gun") or (id == "sniper")
-    local k = big and 3 or 1
+    local k = (big and 3 or 1) * 0.7   -- 用户：后坐稍微调低一点（枪往后坐、往上抬都比原来小三成）
     recoilV += V(0.9 * k, (0.7 + math.random() * 0.3) * k, (math.random() - 0.5) * 0.6 * k)
     vm.bolt = 1
     vm.flashT = now()
