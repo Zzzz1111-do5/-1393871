@@ -15,8 +15,15 @@ Roblox全面大战场 · 原模型导入说明
                                scenery/  地图上的石头（花草树木已经删掉，改用 Roblox 地形自带的草；这个文件里的树不用了，只用石头）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
-  以前导过一次的：之后只有 optics/m40a5.glb 换过（美军狙击枪按真枪 1.124 米改了比例），删掉旧的 O_m40a5__… 零件、重导这一个就行；
-    这次新加的只要导这 4 个：air/f22a.glb、air/j15t.glb、air/tvc.glb、wpn/missiles.glb（不导也能玩：F-22 照旧用老模型，导弹照旧零件拼）。
+  以前导过一次的：之后只有 optics/m40a5.glb 换过（美军狙击枪按真枪 1.124 米改了比例），删掉旧的 O_m40a5__… 零件、重导这一个就行。
+  11 月 17 日这一批要重导 veh/、air/、ship/ 三个文件夹（全部），再加 wpn/missiles.glb：
+    - 原模型里朝里的面翻正了（Roblox 只画正面：歼-20 机头原来像镂空）；只有颜色、没有贴图的材质配了纯色贴图（JLTV 等原来是灰的）；
+    - JLTV 掉了个头（原来倒着开）；
+    - 新的：air/f22a.glb（新换的 F-22）、air/j15t.glb（歼-15T + 鹰击-83K）、air/tvc.glb（推力矢量喷口）、wpn/missiles.glb（导弹炸弹）。
+    先在命令栏（「视图 → 命令栏」）粘下面这一行回车，删掉旧的车、飞机、舰艇零件（瞄准镜、花草、第一人称 M4 不动），再照「一、导入」把这几个文件夹重导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^[VAS]_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
 
 一、导入（Roblox Studio，一次就行）
   1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。

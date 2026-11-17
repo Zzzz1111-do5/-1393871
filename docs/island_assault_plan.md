@@ -380,6 +380,22 @@
   - 重新渲：`cd tools/trailer && npm ci`；仓库根目录 `lune run tools/trailer/export_world.luau <rbxlx> <数据目录>`、`lune run tools/trailer/export_meta.luau <数据目录>/meta.json`；
     数据目录里再放 `assets/`（从网页版仓库拷：`assets/vfx/*.webp` 特效序列帧（用户在 Fab 买的 ArmyVFX）、`assets/water/normals.jpg`、`assets/terrain/sand.jpg`（CC-BY，片尾有署名））；
     然后 `NODE_PATH=$(npm root -g) node tools/trailer/render.cjs <数据目录> <输出目录> frames`（没有显卡约一小时，可 `PART=0/2`、`PART=1/2` 两个进程分头渲）、`… audio`、`… edit` → `film.mp4`。
+  - 用户看了成片的意见（碎片是方块、尾焰和导弹尾部是光柱、直-10 离碉堡太近、055 背景要全是海且往前开、去掉坦克国徽、结尾「解放军 vs 美军」换成过审的字、
+    结尾坦克粗糙、侧弹舱发射霹雳-10、导弹精模、F-22 要炸开、弹射要有挡焰板、歼-20 绿色编队灯和尾喷口、开头哨兵持枪穿模、士兵下船先朝碉堡射击、加 055 的 1130 拦截导弹、
+    地图又小又怪）改到一半，用户说先停：特效（碎片、尾焰朝向、导弹尾焰尾烟）、空战（侧弹舱、霹雳-10、F-22 解体、编队灯、尾喷口）的代码在 `tools/trailer/film/`，还没重渲。
+- [x] 模型在 Roblox 里的三个问题（session_01LjuH3fMZAmBoHts4cMHdAX）：
+  - 歼-20 机头镂空（用户）：原模型部分蒙皮朝里（歼-20 机头那一段 99% 朝里），网页版、glTF 的材质是双面的看不出来，Roblox 只画正面就成了空壳。
+    `tools/models/glbfix.py`（`facing.py`）：单个三角形的绕向按顶点法线翻正；按连通块从面积大的三角形往正反两面各打几条射线，反面打得出去的多就整块翻（绕向和法线一起）。
+  - JLTV 没颜色（用户）：Roblox「导入 3D」不认 glTF 材质的底色，只认贴图；只有底色的材质（JLTV 整车、歼-20 等）配一张 8×8 的纯色贴图。同在 `glbfix.py`。
+  - `mdl2glb.write_glb` 写完自动过 `glbfix.py`（地面载具、飞机、舰艇的转换都走这里）；现有的 GLB 全部过了一遍：`python3 -I tools/models/glbfix.py <目录或文件>`。
+  - JLTV 倒着开（用户）：网页版这个 JLTV 模型车头朝后（网页版游戏里 JLTV 用的是 M-ATV 的模型，没人开过）；`mdl2glb.py` 的 `FLIP` 掉头 180°。
+  - 歼-16 换用户给的原版模型（andertan「Shenyang J16 "Hidden Dragon"」，喷口原样、不装 Su-30 的发动机内腔，用户：尾喷别改）：在临时目录里用网页版的
+    `tools/v3gbake.js` 烘焙（v3gmodels.json 的 j16 换 glb、去掉 credit2），再 `air2glb.py <临时目录> <airdefs.json>`；网页版仓库不动。
+  - JLTV 原模型整车一个颜色（用户：车窗是透明的、轮胎黑色）：`mdl2glb.py` 的 `RECOLOR` 按材质号 + 高度把胎面、胎侧换成黑色，车窗、挡风玻璃换成深色半透明。
+- [x] 飞机航炮（用户：要有散布、后坐力和打击感）：服务器每发单独打（原来一步几发合成一发，像激光），散布标准差约 4.5 毫弧度、连射 2 秒扩到将近两倍；
+  客户端开火时机身高频抖、掉一点速度、镜头抖、视野收一点；命中标记标在炮口指的地方（`G.hitMarkerAt`），打中时镜头跳一下、准星变红放大（`G.onHitMarker`）。
+- [x] 士兵、车「半截身子在地里」（用户）：另一个会话打开的地形草（`Terrain.Decoration`）默认两格来高，把机器人小兵的腿和车轮、沙袋下半截都埋住了；`GrassLength` 调成 0.3。
+- [x] 主菜单卡片里的坦克、战斗机、直升机、军舰模型（还有右边的大图）去掉（用户：很奇怪），卡片只有字。
 - [x] 平衡：岸防炮原来一发就打沉登陆艇（520 × 打船 1.4 = 728，艇 650 血），机器人对打 6 分钟被打沉 53 条，攻方只拿下 A。
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
   机器人对打 8 分钟（`ia_bots.luau 8`）：没有工事时攻方拿下 3 个点、阵亡 攻 43 / 守 26；加了工事、没调之前只拿下 1 个、阵亡 攻 306 / 守 16；调过以后拿下 3 个、阵亡 攻 137 / 守 39。

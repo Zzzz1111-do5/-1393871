@@ -47,10 +47,12 @@ function Play.init(G)
   local scope = { Visible = false }   -- 狙击镜、望远镜开镜：圆形目镜和光学效果在 Scope.lua（这里只记开没开）
 
   function G.hitMarker(kind)
+    hitX.Position = G.hitMarkerAt or UDim2.fromScale(0.5, 0.5)   -- 开飞机时标在炮口指的地方（Fly.lua 每帧设），不然在屏幕中间
     hitX.TextColor3 = (kind == "kill") and RGB(255, 70, 60) or ((kind == "head") and RGB(255, 220, 80) or Color3.new(1, 1, 1))
     hitX.TextTransparency = 0
     hitT = now()
     if G.playSound then G.playSound((kind == "kill") and "killding" or "hit") end
+    if G.onHitMarker then G.onHitMarker(kind) end
   end
 
   ---------------------------------------------------------------- 武器栏

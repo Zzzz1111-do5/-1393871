@@ -539,6 +539,7 @@ function Fly.init(G)
     local old = st
     st = nil
     G.fly = nil
+    G.hitMarkerAt = nil
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -745,6 +746,7 @@ function Fly.init(G)
       st.spd -= math.abs(st.pr) * st.spd * 0.16 * dt
       st.spd -= (1 - math.clamp(vd:Dot(fwd), -1, 1)) * st.spd * 2.6 * dt   -- 机头和航迹差得越多（大迎角、侧滑）掉速越快
     end
+    if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
     -- 想怎么转：键盘直接操纵（松开 A / D 自动摆平、压坡度自动带杆保高度）；光电吊舱 / 飞出作战区时自动驾驶
@@ -1113,6 +1115,10 @@ function Fly.init(G)
     return UDim2.fromOffset(sp.X, sp.Y), on
   end
 
+  -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
+  function G.onHitMarker(kind)
+    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+  end
   function G.stepFly(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
@@ -1204,6 +1210,15 @@ function Fly.init(G)
     else
       st.cf = st.em.Root.CFrame   -- 坐在后面：跟着服务器
     end
+    -- 航炮后坐：开火时机身高频抖一点（模型跟着抖，用户：飞机机炮要有散布、后坐力和打击感）
+    local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed
+    st.recoil = approach(st.recoil or 0, gunOn and 1 or 0, dt * (gunOn and 14 or 6))
+    st.hitKick = math.max(0, (st.hitKick or 0) - dt * 5)
+    if st.recoil > 0.02 and st.pilot then
+      local t = os.clock()
+      local a = math.rad(0.05) * st.recoil
+      st.cf = st.cf * CFrame.Angles(math.noise(t * 37, 2.1) * a, math.noise(t * 33, 5.3) * a, math.noise(t * 29, 8.7) * a)
+    end
     -- 镜头
     local pos = st.cf.Position
     if st.eo then
@@ -1243,9 +1258,18 @@ function Fly.init(G)
       local camPos = pos + V(0, d.H * 0.5, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 1.1 + 18))
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
     end
+    -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
     if (st.uav and st.dcam == "nose") or st.eo then fovT = 70 / st.zoomS end
-    cam.FieldOfView = cam.FieldOfView + (fovT - cam.FieldOfView) * math.min(1, dt * ((st.uav and 10) or 4))
+    st.fov = st.fov or cam.FieldOfView
+    st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
+    local kick = (st.eo and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
+    if kick > 0.01 then
+      local t = os.clock()
+      local a = math.rad(0.32) * kick
+      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t * 31, 1.3) * a, math.noise(t * 27, 7.1) * a, math.noise(t * 23, 4.7) * a * 0.5)
+    end
+    cam.FieldOfView = st.fov - (st.eo and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
@@ -1346,6 +1370,11 @@ function Fly.init(G)
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo
+      -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
+      G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
+      local hk = math.min(1, st.hitKick or 0)
+      bore.TextSize = 34 + 14 * hk
+      bore.TextColor3 = Color3.new(1, 1 - 0.7 * hk, 1 - 0.75 * hk)
       -- 大圈：圈心在机头指向；大小是选中武器能锁的离轴角（导弹的导引头）/ 航炮、火箭、炸弹的瞄准圈；圈底下写武器和剩几发
       local rdeg = (not w and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
       if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { V3, keys, ease, easeIn, easeOut, easeIO, smooth, lerp, shake, rng, DEG, fbm1, clamp, sat } from './lib.js';
 import { seaY, seaNormal, SEA } from './world.js';
-import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META, pl15, j20Bay, patriotNoses } from './models.js';
+import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META, pl10, hhq9, pac2, j20SideBay, j20Extras, breakApart, patriotNoses } from './models.js';
 import { explosion, muzzle, burst, flare, flarePos, fire, missile, spray, beamMesh, flameMesh } from './fx.js';
 import { fadeIO } from './titles.js';
 
@@ -29,8 +29,8 @@ export const SHOTS = [
   { id: 'S13', dur: 4.5, setup: shotTank },
   { id: 'S14', dur: 3.5, setup: shotAbrams },
   { id: 'S15', dur: 2.8, setup: shotAir },
-  { id: 'S15B', dur: 2.6, setup: shotBay },
-  { id: 'S15C', dur: 3.4, setup: shotKill },
+  { id: 'S15B', dur: 2.9, setup: shotBay },
+  { id: 'S15C', dur: 3.1, setup: shotKill },
   { id: 'S16', dur: 4.5, setup: shotHeli },
   { id: 'S17', dur: 3, setup: shotPatriot },
   { id: 'S18', dur: 8, setup: shotDawn },
@@ -112,23 +112,23 @@ function navLights(fx, S) {
     if (M.stern) L(V3(...M.stern).multiplyScalar(k).add(V3(0, 3, 0)), new THREE.Color(1, 1, 0.9), 5);
   });
 }
-// 喷气机的加力尾焰（挂在模型上）：发光的锥 + 喷口里的亮光 + 照亮周围的灯；kf() 给这一刻的加力程度
-function afterburners(A, fx, kf) {
+// 喷气机的加力尾焰（挂在模型上）：发光的锥 + 喷口里的亮光 + 照亮周围的灯；kf() 给这一刻的加力程度，lk 照亮周围的灯另乘（镜头贴在机尾时调暗，不然机背一片白）
+function afterburners(A, fx, kf, lk = 1) {
   const fl = [];
   for (const n of A.noz) {
-    const m = flameMesh(n.r * 0.9, n.r * 9);
+    const m = flameMesh(n.r * 0.9, n.r * 6.5);
     m.position.copy(n.p);
     A.root.add(m);
     fl.push(m);
   }
   fx.add((t, f) => {
     const k = kf(t);
-    for (const m of fl) { m.material.uniforms.uK.value = k; m.material.uniforms.uT.value = t; m.scale.set(1, 1, 0.6 + 0.4 * k); m.visible = k > 0.01; }
+    for (const m of fl) { m.material.uniforms.uK.value = k; m.material.uniforms.uT.value = t; m.scale.set(1, 1, 0.55 + 0.45 * k); m.visible = k > 0.01; }
     if (k < 0.01) return;
     for (const n of A.noz) {
-      const p = A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 0.6)));
-      f.addGlow(p, n.r * 2.4, new THREE.Color(1, 0.62, 0.32), 3.2 * k, 1, 0.0012);
-      f.addLight(A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 12))), new THREE.Color(1, 0.55, 0.25), 0.45 * k, 120);
+      const p = A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 0.35)));
+      f.addGlow(p, n.r * 1.7, new THREE.Color(1, 0.62, 0.32), 2.2 * k, 1, 0.0010);
+      if (lk > 0) f.addLight(A.root.localToWorld(n.p.clone().add(V3(0, 0, n.r * 12))), new THREE.Color(1, 0.55, 0.25), 0.45 * k * lk, 120);
     }
   });
 }
@@ -570,33 +570,39 @@ async function shotAbrams(env, add) {
     events: [{ t: 0, k: 'battleBed' }, { t: fireT, k: 'tankFire' }, { t: fireT + 0.55, k: 'boom' }],
   };
 }
-// —— 空战：歼-20 锁定 F-22 → 弹舱打开、霹雳-15 放下、点火 → 追着导弹看它打中 F-22 ——
-//   三个镜头共用一条时间线 τ（S15 开头 = 0）；S15 0–2.8、S15B 2.8–5.4、S15C 5.4–8.8
+// —— 空战：歼-20 锁定 F-22 → 侧弹舱门打开、导轨把霹雳-10 放出舱外、在导轨上点火射出 → 追着导弹看它打中 F-22、F-22 炸开解体 ——
+//   三个镜头共用一条时间线 τ（S15 开头 = 0）；S15 0–2.8、S15B 2.8–5.7、S15C 5.7–8.8
+//   用户：「导弹为什么从弹仓中心出来，改成侧弹仓出来然后点火发射」「F-22 要爆炸，而不是完好无损的落下去」
+const SIDE = 1;   // 右侧弹舱（镜头在右下方）
+const GREEN_EL = new THREE.Color(0.25, 1, 0.48);
 const AIR = (() => {
   const V = new THREE.Vector3(90, 0, -290), P0 = new THREE.Vector3(-150, 650, 1600);
   const yaw = Math.atan2(-V.x, -V.z);
   const rot = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), yaw);
   const jp = tau => P0.clone().addScaledVector(V, tau).add(V3(0, Math.sin(tau * 0.4) * 6, 0));
-  const local = (tau, v) => jp(tau).add(v.clone().applyQuaternion(rot));   // 歼-20 机体坐标 → 世界（只按航向转，弹舱那段机翼放平）
-  // F-22 在前上方，锁定以后开始往右压坡度规避
-  const fOff = tau => V3(40 + 14 * tau + (tau > 4 ? 60 * (tau - 4) ** 2 : 0), 46 - 4 * tau, -560 + 20 * tau);
+  const local = (tau, v) => jp(tau).add(v.clone().applyQuaternion(rot));   // 歼-20 机体坐标 → 世界（只按航向转）
+  // F-22 在前上方，导弹一发射就往右压坡度规避
+  const fOff = tau => V3(40 + 14 * tau + (tau > 4.6 ? 60 * (tau - 4.6) ** 2 : 0), 46 - 4 * tau, -560 + 20 * tau);
   const fp = tau => local(tau, fOff(tau));
-  const T_REL = 4.6, T_IGN = 4.95, T_HIT = 7.0;
-  const relLocal = tau => { const u = Math.max(0, tau - T_REL); return V3(0, 3.5 - 0.38 - 1.5 - 0.5 * 24 * u * u, -0.45 + 4 * u); };
-  const pIgn = local(T_IGN, relLocal(T_IGN)), pHit = fp(T_HIT);
-  const vJet = V.clone();
+  const T_DOOR = [3.1, 3.7], T_RAIL = [3.8, 4.3], T_IGN = 4.75, T_HIT = 7.0;
+  const OUT = V3(SIDE * 3.98, 5.82 - 1.3, -0.58);   // 导轨放出去以后弹的中心（机体坐标，同 j20SideBay 的 out）
+  const pIgn = local(T_IGN, OUT), pHit = fp(T_HIT);
+  const hd = V.clone().normalize();
   const fdir = fp(T_HIT + 0.05).sub(pHit).normalize();
-  const c1 = pIgn.clone().addScaledVector(vJet, 0.45), c2 = pHit.clone().addScaledVector(fdir, -170).add(V3(0, 25, 0));   // 从 F-22 后面追上去
-  const bez = (s) => { const k = 1 - s; return pIgn.clone().multiplyScalar(k * k * k).add(c1.clone().multiplyScalar(3 * k * k * s)).add(c2.clone().multiplyScalar(3 * k * s * s)).add(pHit.clone().multiplyScalar(s * s * s)); };
+  const c1 = pIgn.clone().addScaledVector(hd, 260), c2 = pHit.clone().addScaledVector(fdir, -220).add(V3(0, 20, 0));   // 先顺着航向出去，再从 F-22 后面追上去
+  const bez = s => { const k = 1 - s; return pIgn.clone().multiplyScalar(k * k * k).add(c1.clone().multiplyScalar(3 * k * k * s)).add(c2.clone().multiplyScalar(3 * k * s * s)).add(pHit.clone().multiplyScalar(s * s * s)); };
+  // 离轨那一刻和飞机一样快，之后匀加速：按弧长走「初速 + 加速度」（按曲线参数缓入的话点火时速度是零，看着像往后飞）
+  const NS = 400, LS = [0];
+  for (let i = 1, q0 = bez(0); i <= NS; i++) { const q = bez(i / NS); LS.push(LS[i - 1] + q.distanceTo(q0)); q0 = q; }
+  const TF = T_HIT - T_IGN, v0 = V.length(), acc = 2 * (LS[NS] - v0 * TF) / (TF * TF);
+  const sAt = d => { let lo = 0, hi = NS; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (LS[m] < d) lo = m; else hi = m; } return (lo + clamp((d - LS[lo]) / Math.max(1e-6, LS[hi] - LS[lo]), 0, 1)) / NS; };
   const mp = tau => {
-    if (tau <= T_IGN) return local(tau, relLocal(tau));
-    const u = clamp((tau - T_IGN) / (T_HIT - T_IGN), 0, 1);
-    return bez(Math.pow(u, 1.55));
+    if (tau <= T_IGN) return local(tau, OUT);
+    const u = Math.min(tau - T_IGN, TF);
+    return bez(sAt(v0 * u + 0.5 * acc * u * u));
   };
-  // 打中以后 F-22 拖着火往下掉、翻滚
   const vF = fp(T_HIT).sub(fp(T_HIT - 0.05)).multiplyScalar(20);
-  const fall = tau => { const u = tau - T_HIT; return fp(T_HIT).addScaledVector(vF, u * 0.75).add(V3(0, -0.5 * 27 * 0.8 * u * u, 0)); };
-  return { jp, fp, mp, fall, yaw, rot, local, T_REL, T_IGN, T_HIT, vF };
+  return { jp, fp, mp, yaw, rot, local, T_DOOR, T_RAIL, T_IGN, T_HIT, vF, OUT };
 })();
 function airPlane(A, tau, roll = 0) {
   A.root.position.copy(AIR.jp(tau));
@@ -605,18 +611,15 @@ function airPlane(A, tau, roll = 0) {
   A.root.updateMatrixWorld(true);
 }
 function f22Pose(F, tau) {
-  if (tau < AIR.T_HIT) {
-    const p = AIR.fp(tau), d = AIR.fp(tau + 0.05).sub(p).normalize();
-    F.root.position.copy(p);
-    F.root.quaternion.setFromUnitVectors(V3(0, 0, -1), d);
-    F.root.rotateZ(tau > 4 ? -Math.min(1.1, (tau - 4) * 0.9) : -0.15);
-  } else {
-    const u = tau - AIR.T_HIT;
-    F.root.position.copy(AIR.fall(tau));
-    F.root.quaternion.setFromUnitVectors(V3(0, 0, -1), AIR.vF.clone().normalize());
-    F.root.rotateX(-u * 0.9); F.root.rotateZ(-1.1 - u * 2.6);
-  }
+  const p = AIR.fp(tau), d = AIR.fp(tau + 0.05).sub(p).normalize();
+  F.root.position.copy(p);
+  F.root.quaternion.setFromUnitVectors(V3(0, 0, -1), d);
+  F.root.rotateZ(tau > 4.6 ? -Math.min(1.1, (tau - 4.6) * 0.9) : -0.15);
   F.root.updateMatrixWorld(true);
+}
+// 歼-20 的绿色编队灯带：发光点（灯带只有几厘米宽，远了靠这个）
+function j20Glow(fx, J, X) {
+  fx.add((t, f) => { if (!J.root.visible) return; for (const p of X.glowPts) f.addGlow(J.root.localToWorld(p.clone()), 0.3, GREEN_EL, 1.5, 1, 0.0007); });
 }
 // 平显的锁定框：F-22 投到画面上的位置
 function lockBoxAt(env, p) {
@@ -630,8 +633,10 @@ async function shotAir(env, add) {
   const { fx } = env;
   const J = await aircraft('j20', env.REPO); add(J.root);
   const F = await aircraft('f22', env.REPO); add(F.root);
-  afterburners(J, fx, () => 0.6); afterburners(F, fx, () => 0.8);
-  let box = null, dist = 0;
+  const X = j20Extras(J); X.heat(0.3);
+  afterburners(J, fx, () => 0.3, 0.15); afterburners(F, fx, () => 0.8);
+  j20Glow(fx, J, X);
+  let box = null;
   return {
     update(t) {
       const tau = t;
@@ -642,7 +647,6 @@ async function shotAir(env, add) {
       shake(env.camera, t, 0.25, 4, 23);
       env.camera.updateMatrixWorld(true);
       box = lockBoxAt(env, F.root.position);
-      dist = F.root.position.distanceTo(J.root.position) / 2800;
       return { exposure: 1.2, shadowAt: J.root.position, shadowR: 80, bloom: 1.2, fogDensity: 0.00026 };
     },
     titles: t => {
@@ -651,54 +655,84 @@ async function shotAir(env, add) {
       const s = locked ? 0.075 : lerp(0.14, 0.085, smooth(0.5, 1.6, t));
       const blink = locked ? (t < 1.9 ? ((t * 10) % 1 < 0.5 ? 1 : 0.35) : 1) : (0.6 + 0.4 * ((t * 6) % 1 < 0.5 ? 1 : 0));
       return [{ box: [box[0], box[1], s * 0.5625, s], a: k * blink, color: locked ? '#ff4b3a' : '#7dff9a', diamond: locked,
-        label: locked ? '锁定' : '搜索', sub: locked ? '霹雳-15 · 雷达锁定' : '霹雳-15' }];
+        label: locked ? '锁定' : '搜索', sub: locked ? '霹雳-10 · 红外锁定' : '霹雳-10' }];
     },
     events: [{ t: 0, k: 'jetCabin' }, { t: 0.5, k: 'lockGrowl' }, { t: 1.6, k: 'lockTone' }],
   };
 }
-// S15B 弹舱：机腹下面看弹舱门打开、吊架把霹雳-15 放下来、脱离、点火冲出去
+// S15B 侧弹舱：右下方看侧弹舱门翻下来、导轨把霹雳-10 放出舱外，在导轨上点火、冲出去
 async function shotBay(env, add) {
   const { fx } = env;
   const T0 = 2.8;
   const J = await aircraft('j20', env.REPO); add(J.root);
-  afterburners(J, fx, () => 0.6);
-  const bay = j20Bay(J);
+  const X = j20Extras(J); X.heat(0.3);
+  afterburners(J, fx, () => 0.3, 0.3);
+  j20Glow(fx, J, X);
+  const bay = j20SideBay(J, SIDE);
   const m = bay.missile;
-  // 点火以后的导弹（世界坐标）：尾焰、烟
-  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: 8, size: 1.1, smokeLife: 3 }));
+  const ML = m.userData.len;
+  // 点火以后的导弹（世界坐标）：尾焰、烟从喷口接出来
+  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: 8, size: 1.0, smokeLife: 3, tail: ML / 2 + 0.1 }));
+  fx.add((t, f) => {   // 点火那一下：导轨上一团火光、照亮机身侧面，烟往后喷在机身上
+    const u = T0 + t - AIR.T_IGN;
+    if (u < 0 || u > 1.2) return;
+    const n = J.root.localToWorld(AIR.OUT.clone().add(V3(0, 0, ML / 2 + 0.3)));
+    if (u < 0.25) f.addGlow(n, 1.6, new THREE.Color(1, 0.75, 0.45), 3 * (1 - u / 0.25), 1, 0);
+    f.addLight(n, new THREE.Color(1, 0.6, 0.3), 2.5 * Math.exp(-u * 4), 70);
+  });
   return {
     update(t) {
       const tau = T0 + t;
       airPlane(J, tau, 0);
-      const k = smooth(0.4, 1.1, t) * (1 - smooth(2.6, 3.2, t));
-      const drop = smooth(1.15, 1.6, t) * 1.5;
-      const attached = tau < AIR.T_REL;
-      bay.set(k, drop, attached);
+      const k = smooth(AIR.T_DOOR[0], AIR.T_DOOR[1], tau);
+      const e = smooth(AIR.T_RAIL[0], AIR.T_RAIL[1], tau) * (1 - smooth(AIR.T_IGN + 0.45, AIR.T_IGN + 0.85, tau));
+      const attached = tau < AIR.T_IGN;
+      bay.set(k, e, attached);
       if (!attached) {
-        m.visible = tau < AIR.T_IGN + 0.6;
         const p = AIR.mp(tau), d = AIR.mp(tau + 0.02).sub(p).normalize();
+        m.visible = true;
         m.position.copy(J.root.worldToLocal(p.clone()));
-        m.quaternion.copy(new THREE.Quaternion().copy(AIR.rot).invert().multiply(new THREE.Quaternion().setFromUnitVectors(V3(0, 0, -1), tau < AIR.T_IGN ? V3(0, 0, -1).applyQuaternion(AIR.rot) : d)));
+        m.quaternion.copy(AIR.rot.clone().invert().multiply(new THREE.Quaternion().setFromUnitVectors(V3(0, 0, -1), d)));
       }
       J.root.updateMatrixWorld(true);
-      cam(env, J.root.localToWorld(V3(-10, -4.5, 13)), J.root.localToWorld(V3(0, 1.6, -5 - smooth(2.15, 2.5, t) * 30)), 40);
-      shake(env.camera, t, 0.3 + (t > 2.15 ? 0.8 * Math.exp(-(t - 2.15) * 3) : 0), 5, 31);
+      // 镜头：右下后方看侧弹舱；点火以后转过去跟着导弹往前看
+      const look0 = J.root.localToWorld(V3(SIDE * 3.6, 4.6, -1.5));
+      const w = smooth(AIR.T_IGN + 0.05, AIR.T_IGN + 0.7, tau) * 0.8;
+      const look = look0.lerp(AIR.mp(tau), w);
+      cam(env, J.root.localToWorld(V3(SIDE * 15, 1.2, 10)), look, lerp(38, 33, w));
+      const ig = tau - AIR.T_IGN;
+      shake(env.camera, t, 0.3 + (ig > 0 ? 0.9 * Math.exp(-ig * 3) : 0), 5, 31);
       return { exposure: 1.25, shadowAt: J.root.position, shadowR: 40, bloom: 1.25, fogDensity: 0.00026 };
     },
-    events: [{ t: 0, k: 'jetCabin' }, { t: 0.4, k: 'bay' }, { t: 1.8, k: 'release' }, { t: 2.15, k: 'missileLaunch' }],
+    events: [{ t: 0, k: 'jetCabin' }, { t: AIR.T_DOOR[0] - T0, k: 'bay' }, { t: AIR.T_RAIL[0] - T0, k: 'release' }, { t: AIR.T_IGN - T0, k: 'missileLaunch' }],
   };
 }
-// S15C 击落：跟在导弹后面，F-22 放热诱弹也没躲开，打中、炸开，拖着火往下掉
+// S15C 击落：跟在导弹后面，F-22 放热诱弹也没躲开，打中、炸开，机头、两翼、尾段各自拖着火翻滚着掉下去
 async function shotKill(env, add) {
   const { fx } = env;
-  const T0 = 5.4, hitL = AIR.T_HIT - T0;
+  const T0 = 5.7, hitL = AIR.T_HIT - T0;
   const F = await aircraft('f22', env.REPO); add(F.root);
   afterburners(F, fx, t => (T0 + t < AIR.T_HIT ? 0.9 : 0));
-  const M = pl15(); add(M);
-  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: hitL, size: 1.1, smokeLife: 3.5 }));
-  // 热诱弹：F-22 两侧一串往下坠的亮点
+  const M = pl10(); add(M);
+  const ML = M.userData.len;
+  fx.add(missile({ path: tl => AIR.mp(T0 + tl), t0: AIR.T_IGN - T0, t1: hitL, size: 1.0, smokeLife: 3.5, tail: ML / 2 + 0.1 }));
+  // 解体：按打中那一刻的姿态把各块摆到世界里，各自往外飞、翻滚、受阻力慢下来再往下掉
+  f22Pose(F, AIR.T_HIT - 0.001);
+  const pieces = breakApart(F);
+  const R = rng(511), KD = 0.9, G = 27 * 0.8;
+  const F0 = F.root.position.clone(), Q0 = F.root.quaternion.clone();
+  for (const pc of pieces) {
+    pc.p0 = F.root.localToWorld(pc.c.clone());
+    const out = pc.p0.clone().sub(F0); out.y += 4; if (out.lengthSq() < 1) out.set(0, 1, 0); out.normalize();
+    pc.v = AIR.vF.clone().multiplyScalar(R.range(0.75, 0.95)).addScaledVector(out, R.range(35, 70));
+    pc.w = V3(R.range(-1, 1), R.range(-1, 1), R.range(-1, 1)).normalize(); pc.sp = R.range(1.5, 4.5) * (pc.name === 'mid' ? 0.5 : 1);
+    pc.at = u => pc.p0.clone().addScaledVector(pc.v, (1 - Math.exp(-KD * u)) / KD).add(V3(0, -0.5 * G * u * u, 0));
+    pc.group.visible = false; add(pc.group);
+  }
+  const main = pieces.find(p => p.name === 'mid') || pieces[0];
+  // 热诱弹：F-22 两侧一串往下坠的亮点（和原来同一个时刻：τ 5.95 起）
   for (let k = 0; k < 10; k++) {
-    const tr = 0.55 + k * 0.08, side = k % 2 ? 1 : -1;
+    const tr = 0.25 + k * 0.08, side = k % 2 ? 1 : -1;
     fx.add((t, f) => {
       const u = t - tr;
       if (u < 0 || u > 3) return;
@@ -710,33 +744,45 @@ async function shotKill(env, add) {
       for (let j = 1; j < 9; j++) { const b = j * 0.07; if (b > u) break; const q = p0.clone().addScaledVector(v, u - b).add(V3(0, -0.5 * 27 * 0.6 * (u - b) ** 2, 0)); f.sprite('puff', q, 3 + b * 12, 10 + b * 20, 0.38 * kk * (1 - j / 9), 0, [1.0, 0.95, 0.9], j); }
     });
   }
-  fx.add(explosion({ p: AIR.fp(AIR.T_HIT), t0: hitL, s: 46, seed: 501, debris: 34, dust: false, ember: 50 }));
-  // 打中以后：飞机上的火、拖着的黑烟
+  fx.add(explosion({ p: AIR.fp(AIR.T_HIT), t0: hitL, s: 46, seed: 501, debris: 42, dust: false, ember: 60, air: { v: AIR.vF } }));
+  // 各块上的火、拖着的黑烟
   fx.add((t, f) => {
     if (t < hitL) return;
-    const tau = T0 + t, p = AIR.fall(tau), u = t - hitL;
-    f.sprite('fire', p, 14, ((t * 24) % 64 + 64) % 64, Math.min(1, u * 3), 1.2, [0.2, 0.18, 0.16], u);
-    f.addLight(p, new THREE.Color(1, 0.55, 0.22), 30, 260);
-    for (let j = 1; j < 26; j++) { const b = j * 0.07; if (b > u) break; const q = AIR.fall(tau - b).add(V3(0, b * 3, 0)); f.sprite('puff', q, 6 + b * 14, 14 + b * 18, 0.6 * (1 - j / 26), 0, [0.22, 0.2, 0.19], j * 1.3); }
+    const u = t - hitL;
+    pieces.forEach((pc, i) => {
+      const big = pc.name === 'mid' || pc.name === 'tail', p = pc.at(u);
+      const k = Math.min(1, u * 4);
+      f.sprite('fire', p, big ? 15 : 8, ((t * 24 + i * 9) % 64 + 64) % 64, k, 1.2, [0.2, 0.18, 0.16], i);
+      f.addLight(p, new THREE.Color(1, 0.55, 0.22), big ? 22 : 7, big ? 240 : 120);
+      for (let j = 1; j < 24; j++) { const b = j * 0.07; if (b > u) break; const q = pc.at(u - b).add(V3(0, b * 3, 0)); f.sprite('puff', q, (big ? 6 : 3.5) + b * (big ? 14 : 9), 14 + b * 18, (big ? 0.6 : 0.45) * (1 - j / 24), 0, [0.22, 0.2, 0.19], j * 1.3 + i * 7); }
+    });
   });
   return {
     update(t) {
       const tau = T0 + t;
-      f22Pose(F, tau);
       const before = tau < AIR.T_HIT;
+      F.root.visible = before;
+      if (before) f22Pose(F, tau);
+      for (const pc of pieces) {
+        pc.group.visible = !before;
+        if (before) continue;
+        const u = tau - AIR.T_HIT;
+        pc.group.position.copy(pc.at(u));
+        pc.group.quaternion.copy(Q0).premultiply(new THREE.Quaternion().setFromAxisAngle(pc.w, u * pc.sp));
+      }
       M.visible = before;
       const mpos = AIR.mp(Math.min(tau, AIR.T_HIT - 0.02)), mdir = AIR.mp(Math.min(tau, AIR.T_HIT - 0.02) + 0.02).sub(mpos).normalize();
       M.position.copy(mpos); M.quaternion.setFromUnitVectors(V3(0, 0, -1), mdir);
-      // 镜头：贴在导弹后面；打中以后慢下来、看着往下掉的火球
-      const camAt = tl => { const tt = Math.min(T0 + tl, AIR.T_HIT - 0.1); const p = AIR.mp(tt), d = AIR.mp(tt + 0.02).sub(p).normalize(); return p.addScaledVector(d, -(24 + 150 * smooth(hitL - 0.75, hitL - 0.05, tl))).add(V3(3, 5 + 20 * smooth(hitL - 0.75, hitL, tl), 0)); };   // 打中前半秒镜头落后、拉开，整个爆炸都在画面里
+      // 镜头：贴在导弹后面；打中前半秒落后、拉开，整个爆炸都在画面里；之后慢慢跟着往下掉的中段
+      const camAt = tl => { const tt = Math.min(T0 + tl, AIR.T_HIT - 0.1); const p = AIR.mp(tt), d = AIR.mp(tt + 0.02).sub(p).normalize(); return p.addScaledVector(d, -(16 + 150 * smooth(hitL - 0.7, hitL - 0.05, tl))).add(V3(2, 3 + 20 * smooth(hitL - 0.7, hitL, tl), 0)); };
       let cp;
       if (before) cp = camAt(t);
       else { const u = t - hitL, c0 = camAt(hitL - 0.05), d = AIR.mp(AIR.T_HIT - 0.1).sub(AIR.mp(AIR.T_HIT - 0.12)).normalize(); cp = c0.addScaledVector(d, u * 12); }
-      cam(env, cp, before ? AIR.fp(tau).lerp(mpos, 0.2) : AIR.fall(tau), before ? 30 : lerp(30, 40, smooth(hitL, hitL + 1.2, t)));
+      cam(env, cp, before ? AIR.fp(tau).lerp(mpos, 0.2) : main.at(tau - AIR.T_HIT).lerp(AIR.fp(AIR.T_HIT), 0.35), before ? 30 : lerp(30, 42, smooth(hitL, hitL + 1.2, t)));
       shake(env.camera, t, 0.35 + (t > hitL ? 2.4 * Math.exp(-(t - hitL) * 2.5) : 0), 6, 37);
-      return { exposure: 1.2, shadowAt: F.root.position, shadowR: 90, bloom: 1.3, fogDensity: 0.00026, flash: t > hitL ? 0.35 * Math.exp(-(t - hitL) * 12) : 0 };
+      return { exposure: 1.2, shadowAt: F0, shadowR: 90, bloom: 1.2, fogDensity: 0.00026, flash: t > hitL ? 0.12 * Math.exp(-(t - hitL) * 12) : 0 };
     },
-    events: [{ t: 0, k: 'missileFly' }, { t: 0.55, k: 'flares' }, { t: hitL, k: 'airboom' }],
+    events: [{ t: 0, k: 'missileFly' }, { t: 0.25, k: 'flares' }, { t: hitL, k: 'airboom' }],
   };
 }
 // S16 直-10 火箭齐射：跟在直-10 后面，看它一串串打出去、落在碉堡上炸开

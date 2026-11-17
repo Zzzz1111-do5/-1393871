@@ -141,6 +141,24 @@ void main() {
   });
 }
 
+// 碎片的形状：一圈 7 个点的不规则多边形，拉出厚度、上下面各歪一点（像撕开的铁皮、崩开的水泥块），每块再随机转、拉伸
+function shardGeo() {
+  const R = rng(77), n = 7, top = [], bot = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2 + R.range(-0.3, 0.3), r = R.range(0.28, 0.62), sq = R.range(0.55, 1);
+    top.push([Math.cos(a) * r, 0.12 + R.range(-0.07, 0.07), Math.sin(a) * r * sq]);
+    const k = R.range(0.65, 1);
+    bot.push([Math.cos(a) * r * k, -0.12 + R.range(-0.07, 0.07), Math.sin(a) * r * sq * k]);
+  }
+  const pos = [], tri = (a, b, c) => pos.push(...a, ...b, ...c);
+  const ct = [0.05, 0.2, -0.03], cb = [-0.04, -0.17, 0.02];
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; tri(ct, top[j], top[i]); tri(cb, bot[i], bot[j]); tri(top[i], top[j], bot[j]); tri(top[i], bot[j], bot[i]); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
 export class FX {
   constructor(scene, tex) {
     this.scene = scene;
@@ -163,8 +181,8 @@ export class FX {
     this.streak = { mesh: new THREE.Mesh(sg, streakMat()), g: sg, list: [] };
     this.streak.mesh.frustumCulled = false; this.streak.mesh.renderOrder = 11;
     scene.add(this.streak.mesh);
-    // 碎片：小方块
-    this.debris = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x1c1a18, roughness: 0.9 }), 800);
+    // 碎片：不规则的片（原来是小方块，空中炸开时一眼就是一堆正方形）
+    this.debris = new THREE.InstancedMesh(shardGeo(), new THREE.MeshStandardMaterial({ color: 0x24221f, roughness: 0.8, metalness: 0.25, flatShading: true }), 800);
     this.debris.frustumCulled = false; this.debris.castShadow = true; this.debris.count = 0;
     scene.add(this.debris);
     this.dlist = [];
@@ -266,16 +284,29 @@ const C = (r, g, b) => new THREE.Color(r, g, b);
 const FIRE_C = C(1, 0.55, 0.22), FLASH_C = C(1, 0.8, 0.55);
 
 // 爆炸：火球（序列帧）、闪光、灯、碎片、火星、之后的烟；water 落在水里是水柱
+//   air：空中爆炸 { v: 被打中的飞机的速度 }——碎片、火星往四面八方飞（地上的只往上崩），带着原来的速度、受空气阻力慢下来再往下掉，
+//   三分之一的碎片烧着、拖着烟
 export function explosion(o) {
-  const { p, t0, s = 20, seed = 1, water = false, debris = 18, smoke = true, dust = true, ember = 30 } = o;
+  const { p, t0, s = 20, seed = 1, water = false, debris = 18, smoke = true, dust = true, ember = 30, air = null } = o;
   const R = rng(seed);
   const D = [];
   for (let i = 0; i < debris; i++) {
     const a = R() * Math.PI * 2, up = R.range(0.5, 1.2);
-    D.push({ v: new THREE.Vector3(Math.cos(a) * R.range(0.3, 1), up, Math.sin(a) * R.range(0.3, 1)).multiplyScalar(s * R.range(1.4, 3.2)), sz: s * R.range(0.03, 0.09), w: new THREE.Vector3(R(), R(), R()).normalize(), sp: R.range(4, 14) });
+    const v = new THREE.Vector3(Math.cos(a) * R.range(0.3, 1), up, Math.sin(a) * R.range(0.3, 1)).multiplyScalar(s * R.range(1.4, 3.2));
+    const sz = s * R.range(0.03, 0.09), w = new THREE.Vector3(R(), R(), R()).normalize(), sp = R.range(4, 14);
+    if (air) { v.y = (up - 0.85) / 0.35 * 0.8 * Math.hypot(v.x, v.z); v.multiplyScalar(0.8); v.addScaledVector(air.v, 0.45 + 0.4 * ((i * 0.618) % 1)); }
+    D.push({ v, sz: sz * (air ? 0.45 : 0.75), w, sp, burn: air && i % 3 === 0 });
   }
   const E = [];
-  for (let i = 0; i < ember; i++) { const a = R() * Math.PI * 2; E.push({ v: new THREE.Vector3(Math.cos(a) * R.range(0.2, 1), R.range(0.4, 1.5), Math.sin(a) * R.range(0.2, 1)).multiplyScalar(s * R.range(1.5, 4)), life: R.range(0.8, 2.6) }); }
+  for (let i = 0; i < ember; i++) {
+    const a = R() * Math.PI * 2;
+    const v = new THREE.Vector3(Math.cos(a) * R.range(0.2, 1), R.range(0.4, 1.5), Math.sin(a) * R.range(0.2, 1)).multiplyScalar(s * R.range(1.5, 4));
+    if (air) { v.y -= s * 2.6; v.addScaledVector(air.v, 0.5); }
+    E.push({ v, life: R.range(0.8, 2.6) });
+  }
+  // 空中的碎片：带空气阻力（速度按 e^(−k·t) 衰减）+ 重力
+  const KD = 1.1;
+  const flyAir = (v, u, g) => p.clone().addScaledVector(v, (1 - Math.exp(-KD * u)) / KD).add(new THREE.Vector3(0, -0.5 * g * u * u, 0));
   const SM = [];
   for (let i = 0; i < 9; i++) SM.push({ a: R() * Math.PI * 2, d: R.range(0, s * 0.4), rise: R.range(0.15, 0.35) * s, sz: s * R.range(0.8, 1.4), t: R.range(0.15, 0.9), rot: R() * 6.28 });
   const g = 9.8 * 2.8;
@@ -284,9 +315,10 @@ export function explosion(o) {
     if (u < 0) return;
     const dur = 1.8 + s * 0.012;
     // 闪光、灯
-    if (u < 0.35) fx.addGlow(p.clone().addScaledVector(UP, s * 0.3), s * 3.2, FLASH_C, 9 * Math.pow(1 - u / 0.35, 2), 1, 0);
+    // 空中爆炸的闪光小一些（原来和地上的一样大，镜头在一两百格外整个画面发白）
+    if (u < 0.35) fx.addGlow(p.clone().addScaledVector(UP, s * 0.3), s * (air ? 1.4 : 3.2), FLASH_C, (air ? 4 : 9) * Math.pow(1 - u / 0.35, 2), 1, 0);
     const li = (u < 0.12 ? 1 : Math.exp(-(u - 0.12) * 2.2)) * (s / 20);
-    if (li > 0.01) fx.addLight(p.clone().addScaledVector(UP, s * 0.5), FIRE_C, li * 3.5, s * 9);
+    if (li > 0.01) fx.addLight(p.clone().addScaledVector(UP, s * 0.5), FIRE_C, li * (air ? 1.8 : 3.5), s * 9);
     if (!water) {
       const fu = u / dur;
       if (fu < 1) fx.sprite('expl', p.clone().addScaledVector(UP, s * (0.12 + 0.45 * fu)), s * 1.7, fu * 120, 1, 1.7 * (1 - smooth(0.12, 0.55, fu)) + 0.15, [0.26, 0.24, 0.22], seed);
@@ -299,7 +331,23 @@ export function explosion(o) {
       }
     }
     // 碎片（弹道）
-    for (const d of D) {
+    for (let i = 0; i < D.length; i++) {
+      const d = D[i];
+      if (air) {
+        if (u > 6) continue;
+        const q = flyAir(d.v, u, g * 0.8);
+        fx.addDebris(q, d.sz, new THREE.Quaternion().setFromAxisAngle(d.w, u * d.sp));
+        if (d.burn) {   // 烧着的碎片：一小团火 + 一路的黑烟
+          const k = 1 - smooth(2.5, 5, u);
+          fx.sprite('fire', q, d.sz * 5, ((u * 24 + i * 7) % 64 + 64) % 64, 0.9 * k, 1.1, [0.2, 0.18, 0.16], i);
+          fx.addGlow(q, d.sz * 2.5, FIRE_C, 1.2 * k, 1, 0.0008);
+          for (let j = 1; j < 14; j++) {
+            const b = j * 0.09; if (b > u) break;
+            fx.sprite('puff', flyAir(d.v, u - b, g * 0.8).add(new THREE.Vector3(0, b * 2, 0)), d.sz * (2.5 + b * 9), 12 + b * 14, 0.45 * k * (1 - j / 14), 0, [0.2, 0.19, 0.18], i * 3.1 + j);
+          }
+        }
+        continue;
+      }
       const ut = Math.min(u, 4);
       const q = p.clone().addScaledVector(d.v, ut); q.y -= 0.5 * g * ut * ut;
       if (q.y < p.y - 2 && ut > 0.3) continue;
@@ -308,8 +356,8 @@ export function explosion(o) {
     // 火星
     for (const e of E) {
       if (u > e.life) continue;
-      const q = p.clone().addScaledVector(e.v, u); q.y -= 0.5 * g * 0.35 * u * u;
-      const prev = p.clone().addScaledVector(e.v, Math.max(0, u - 0.04)); prev.y -= 0.5 * g * 0.35 * Math.max(0, u - 0.04) ** 2;
+      const at = uu => air ? flyAir(e.v, uu, g * 0.35) : p.clone().addScaledVector(e.v, uu).add(new THREE.Vector3(0, -0.5 * g * 0.35 * uu * uu, 0));
+      const q = at(u), prev = at(Math.max(0, u - 0.04));
       const k = 1 - u / e.life;
       fx.addStreak(prev, q, 0.25, FIRE_C, 3 * k * k, 0.3, 0.0005);
     }
@@ -435,9 +483,12 @@ export function fire(o) {
     }
   };
 }
-// 导弹 / 火箭：沿 path(τ) 飞，尾焰发光 + 灯 + 一路的烟
+// 导弹 / 火箭：沿 path(τ) 飞；喷口一团小而亮的火 + 一截短尾焰 + 照亮四周的灯，烟从喷口直接接出来、刚出来的一截被火照成橙色
+//   tail：path 给的点到喷口的距离（弹体中心 → 尾部）
+//   原来亮光画在弹体中间、拖一道 9 倍长的光带，近看就是一根白色光柱、把弹体都盖住了
 export function missile(o) {
-  const { path, t0, t1, seed = 1, smoke = true, col = C(1, 0.7, 0.4), size = 1, smokeLife = 7, burn = 99 } = o;
+  const { path, t0, t1, seed = 1, smoke = true, col = C(1, 0.7, 0.4), size = 1, smokeLife = 7, burn = 99, tail = 0 } = o;
+  const UPV = new THREE.Vector3(0, 1, 0);
   return (t, fx) => {
     const u = t - t0;
     if (u < 0) return;
@@ -446,17 +497,36 @@ export function missile(o) {
     const d = p.clone().sub(p2).normalize();
     const on = t < t1 && u < burn;
     if (on) {
-      fx.addGlow(p, 4 * size, col, 8, 1, 0.0018);
-      fx.addStreak(p, p.clone().addScaledVector(d, -9 * size), 2.2 * size, col, 5, 0.05, 0.0008);
-      fx.addLight(p, col, 2.2 * size, 260 * size);
+      const fl = 0.85 + 0.15 * Math.sin(t * 71 + seed) * Math.sin(t * 43 + seed * 3);
+      const n = p.clone().addScaledVector(d, -tail);
+      fx.addGlow(n, 1.3 * size, col, 3.5 * fl, 1, 0.0013);
+      fx.addStreak(n.clone().addScaledVector(d, -4.5 * size * fl), n, 0.8 * size, col, 3.0, 0.8, 0.0004);
+      fx.addLight(n, col, 2.2 * size, 260 * size);
     }
     if (smoke) {
-      const step = 0.03;
-      for (let tau = Math.max(t0, t - smokeLife); tau < Math.min(t, t1, t0 + burn); tau += step) {
+      // 烟团按走过的距离放（快的导弹原来一团团隔得很开）；时间格子从点火算起，每一帧同一团烟在同一个地方
+      const tEnd = Math.min(t, t1, t0 + burn), gap = 0.9 * size;
+      let prev = null, prevEmit = null, acc = 0;
+      for (let k = 0; ; k++) {
+        const tau = t0 + k * 0.004;
+        if (tau > tEnd) break;
+        const q0 = path(tau);
+        if (prev) acc += q0.distanceTo(prev);
+        prev = q0;
+        if (prevEmit && acc < gap) continue;
+        const seg = acc; acc = 0;
+        const dir = prevEmit ? q0.clone().sub(prevEmit) : d.clone();
+        prevEmit = q0;
         const b = t - tau;
-        const q = path(tau).addScaledVector(fx.wind, b * 0.6).add(new THREE.Vector3(0, b * 0.8, 0));
-        const a = 0.5 * (1 - b / smokeLife) * smooth(0, 0.15, b);
-        fx.sprite('puff', q, (2.2 + b * 2.8) * size, 10 + b * 6, a, 0, [0.9, 0.88, 0.85], tau * 37);
+        if (b > smokeLife) continue;
+        if (dir.lengthSq() < 1e-8) dir.copy(d); dir.normalize();
+        const q = q0.clone().addScaledVector(dir, -tail).addScaledVector(fx.wind, b * 0.6).addScaledVector(UPV, b * 0.8);
+        const sz = (2.0 + b * 2.8) * size;
+        const a = 0.55 * (1 - b / smokeLife) * smooth(0, 0.04, b);
+        const hot = on ? Math.exp(-b * 14) : 0;   // 喷口后面一小截被火照亮
+        const tint = [0.9 + 5.5 * hot, 0.88 + 2.8 * hot, 0.85 + 0.9 * hot];
+        const asp = Math.max(1, seg / sz * 1.4);   // 隔得开的地方顺着航迹拉长，连成一条
+        fx.sprite('puff', q, sz, 10 + b * 6, a, 0, tint, asp > 1.05 ? 0 : tau * 37, asp > 1.05 ? dir : null, asp);
       }
     }
   };
@@ -513,8 +583,9 @@ void main() {
   return mesh;
 }
 // 加力尾焰：喷口后面一截发光的锥（菱形马赫环）
+//   原来 rotateX 转反了：锥朝 −Z（机头方向）戳进机身，着色器里沿锥的位置全算成 0、整根一样亮，从机身表面透出来就是两根光柱
 export function flameMesh(r, len) {
-  const g = new THREE.CylinderGeometry(r * 0.55, r * 0.95, len, 20, 16, true).translate(0, -len / 2, 0).rotateX(Math.PI / 2);   // 从原点朝 +Z（机尾方向）
+  const g = new THREE.CylinderGeometry(r * 0.92, r * 0.3, len, 24, 24, true).translate(0, -len / 2, 0).rotateX(-Math.PI / 2);   // 从原点朝 +Z（机尾方向），喷口粗、往后收细
   const m = new THREE.ShaderMaterial({
     uniforms: { uK: { value: 1 }, uLen: { value: len }, uT: { value: 0 } },
     vertexShader: `varying float vZ; varying vec3 vN; varying vec3 vW;
@@ -530,11 +601,14 @@ void main() {
   #include <logdepthbuf_fragment>
   float z = clamp(vZ / uLen, 0.0, 1.0);
   vec3 V = normalize(cameraPosition - vW);
-  float edge = pow(abs(dot(V, vN)), 0.8);
-  float diamonds = 0.6 + 0.4 * pow(abs(sin(z * 18.0 - uT * 3.0)), 3.0) * (1.0 - z);
-  vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(1.0, 0.42, 0.12), smoothstep(0.0, 0.5, z));
-  c = mix(c, vec3(0.5, 0.35, 0.9), smoothstep(0.55, 1.0, z) * 0.5);
-  gl_FragColor = vec4(c * edge * diamonds * (1.0 - z) * (1.0 - z) * uK * 3.0, 1.0);
+  float edge = pow(abs(dot(V, vN)), 1.3);   // 正对着看（锥的中间）亮、边缘淡：像一团有厚度的火，不是一根实心的管子
+  // 马赫环：一串亮圈，越往后越淡；火苗闪动
+  float diamonds = 0.45 + 0.55 * pow(abs(sin(z * 15.0)), 6.0) * (1.0 - z * 0.8);
+  float flick = 0.88 + 0.12 * sin(uT * 37.0 + z * 9.0) * sin(uT * 23.0 - z * 5.0);
+  vec3 c = mix(vec3(1.0, 0.82, 0.55), vec3(1.0, 0.45, 0.14), smoothstep(0.05, 0.45, z));
+  c = mix(c, vec3(0.45, 0.3, 0.85), smoothstep(0.55, 1.0, z) * 0.6);
+  float fade = (1.0 - z) * (1.0 - z) * smoothstep(0.0, 0.04, z);
+  gl_FragColor = vec4(c * edge * diamonds * flick * fade * uK * 1.7, 1.0);
 }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   });
