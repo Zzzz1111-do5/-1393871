@@ -135,7 +135,7 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
       const audio = path.join(OUT, 'audio.wav');
       const args = ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(all, '%05d.jpg')];
       if (fs.existsSync(audio)) args.push('-i', audio);
-      args.push('-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart');
+      args.push('-vf', 'hqdn3d=1:1:4:4', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-tune', 'film', '-pix_fmt', 'yuv420p', '-movflags', '+faststart');   // 轻降噪：画里的胶片颗粒每帧都变，不压一下码率很高
       if (fs.existsSync(audio)) args.push('-af', 'highpass=f=28,equalizer=f=70:t=q:w=1.2:g=-3,equalizer=f=2800:t=q:w=1:g=2,loudnorm=I=-15:TP=-1.5:LRA=12', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000');
       args.push('-t', total.toFixed(3), path.join(OUT, 'film.mp4'));
       execFileSync('ffmpeg', args, { stdio: 'inherit' });
