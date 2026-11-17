@@ -30,6 +30,12 @@ ALIAS = {
 # 网页版烘焙出来车头朝后的（网页版游戏里 JLTV 用的是 M-ATV 的模型，这个 JLTV 模型从没开过，方向反了没人发现）：掉头 180°
 #   用户：「这个车操作是倒着开的」——模型的备胎（真车挂在车尾）在游戏认的车头那一端
 FLIP = {'jltv'}
+# 原模型整车只有一种颜色的（JLTV：车窗、轮胎也是沙黄；用户：车窗是透明的吧，轮胎黑色吧）：按网页版的材质号 + 高度（网页版坐标 z，米）改色
+#   JLTV 的 12 号材质是胎面；5 号材质是胎侧，混着左门上的一块车窗（离地 1.25 米以上）；22 号是车窗、51 号是挡风玻璃和灯罩
+RECOLOR = {'jltv': [{'mats': [12], 'to': 'tire'}, {'mats': [5], 'zmax': 1.25, 'to': 'tire'}, {'mats': [5], 'zmin': 1.25, 'to': 'glass'},
+                    {'mats': [22, 51], 'to': 'glass'}]}
+NEWMAT = {'tire': {'n': 'tire', 'c': [0.02, 0.02, 0.022, 1], 'mr': [0, 0.92]},
+          'glass': {'n': 'glass', 'c': [0.03, 0.045, 0.055, 0.42], 'am': 2, 'mr': [0.2, 0.06]}}   # 深色半透明（游戏里按元数据的 a 设透明度）
 GROUP = {'tur': 'Turret', 'yaw': 'Turret', 'rws': 'Turret', 'tow': 'Turret', 'rdr': 'Turret', 'gun': 'Gun', 'gat': 'Gun', 'lnch': 'Gun'}
 WRAP = {0: 10497, 1: 33071, 2: 33648}   # 重复、夹边、镜像
 
@@ -113,6 +119,30 @@ def convert(key, src=None):
     for mi, pi, s0, cnt in segs:
         g = part_group(meta, pi, wheel_ix)
         bins.setdefault((g, mi), []).append(IB[s0:s0 + cnt])
+    if key in RECOLOR:   # 按材质 + 高度挑出来的三角形换成新材质（轮胎、玻璃）
+        newmi = {}
+        for nm, m in NEWMAT.items():
+            meta['mats'].append(dict(m))
+            newmi[nm] = len(meta['mats']) - 1
+        for rule in RECOLOR[key]:
+            for (g, mi) in list(bins):
+                if mi not in rule['mats']:
+                    continue
+                tri = np.concatenate(bins[(g, mi)]).reshape(-1, 3)
+                z = VB[tri, 2].mean(axis=1)
+                sel = np.ones(len(tri), dtype=bool)
+                if 'zmax' in rule:
+                    sel &= z <= rule['zmax']
+                if 'zmin' in rule:
+                    sel &= z > rule['zmin']
+                if not sel.any():
+                    continue
+                bins.setdefault((g, newmi[rule['to']]), []).append(tri[sel].reshape(-1))
+                rest = tri[~sel].reshape(-1)
+                if len(rest):
+                    bins[(g, mi)] = [rest]
+                else:
+                    del bins[(g, mi)]
     pieces = []   # (部件, 材质, 顶点下标数组)
     for (g, mi), lst in sorted(bins.items()):
         idx = np.concatenate(lst).reshape(-1, 3)

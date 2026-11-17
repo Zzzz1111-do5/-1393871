@@ -4,20 +4,27 @@
 #   2) 连通块（顶点坐标到 0.01 格相同的算连着）整块朝里：从块里挑面积大的三角形，在正、反两面各打几条射线，
 #      数「打出去碰不到整架模型任何三角形」的条数——朝外那面打得出去，朝里那面会碰到对面的蒙皮；反面打出去的多就整块翻（绕向、法线一起翻）
 #   整个块都在机身里面（座舱里的零件）两面都打不出去、算不出来，不动
-#   3) 两面都打得出去的块是一张没有厚度的单层板（歼-16 的垂尾、天线、桨叶……原作者靠双面材质两面都看得见）：记在 c['dup']，
+#   3) 没有厚度的单层板（歼-16 的垂尾、天线、桨叶……原作者靠双面材质两面都看得见）——两面都大片露在外面，或者是开口的面片（不少边只属于
+#      一个三角形）、两面都有方向打得出去（歼-16 的左垂尾内侧对着右垂尾，正着打撞上右垂尾，斜着打得出去）：记在 c['dup']，
 #      glbfix.py 给它补一份反面（不补的话 Roblox 从背面看只剩一条边，歼-16 的左垂尾从右边看像根杆子）
 #   面积不到整架万分之 0.2 的小碎块不打射线（太多、看不出来）
 # 用在 glbfix.py（GLB 写出后的修正，地面载具、飞机、舰艇都过一遍）
 import numpy as np
 
 
-def components(P, T):
+def welded(P, T):
+    """顶点坐标到 0.01 格相同的算同一个点：三角形的三个点换成焊接后的编号"""
+    q = np.round(P * 100).astype(np.int64)
+    _, vid = np.unique(q, axis=0, return_inverse=True)
+    return vid.reshape(-1)[T]
+
+
+def components(P, T, F=None):
     """三角形按连通块编号（顶点坐标到 0.01 格相同的算连着；标号传播 + 指针跳跃）"""
     if len(T) == 0:
         return np.zeros(0, dtype=np.int64)
-    q = np.round(P * 100).astype(np.int64)
-    _, vid = np.unique(q, axis=0, return_inverse=True)
-    F = vid.reshape(-1)[T]
+    if F is None:
+        F = welded(P, T)
     lab = np.arange(F.max() + 1)
     e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [0, 2]]])
     while True:
@@ -91,7 +98,8 @@ def orient(chunks, log=None):
         c['dup'] = np.zeros(m, dtype=bool)
         if m == 0:
             continue
-        comp = components(P, T)
+        F = welded(P, T)
+        comp = components(P, T, F)
         a, b, cc = P[T[:, 0]], P[T[:, 1]], P[T[:, 2]]
         fn = np.cross(b - a, cc - a)
         area = np.linalg.norm(fn, axis=1) / 2
@@ -129,9 +137,17 @@ def orient(chunks, log=None):
                 vs = np.unique(T[sel])
                 N[vs] *= -1
                 flipped += len(sel)
-            elif nr and ep >= 0.6 * nr and em >= 0.6 * nr:   # 两面都在外面：单层板
-                c['dup'][sel] = True
-                dups += len(sel)
+            elif nr and ep >= 1 and em >= 1:
+                # 单层板：两面都大片露在外面；或者是开口的面片（边只属于一个三角形的占一成以上）、两面都有方向看得见
+                sheet = ep >= 0.6 * nr and em >= 0.6 * nr
+                if not sheet:
+                    Fs = F[sel]
+                    E = np.sort(np.concatenate([Fs[:, [0, 1]], Fs[:, [1, 2]], Fs[:, [2, 0]]]), axis=1)
+                    _, cnt = np.unique(E, axis=0, return_counts=True)
+                    sheet = (cnt == 1).sum() >= 0.1 * len(cnt)
+                if sheet:
+                    c['dup'][sel] = True
+                    dups += len(sel)
         base += m
     if log:
         log('  面朝向：单个三角形按法线翻 %d 个，整块朝里翻 %d 个三角形，单层板补反面 %d 个' % (one, flipped, dups))

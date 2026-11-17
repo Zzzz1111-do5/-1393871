@@ -447,26 +447,39 @@ function Air.init(G)
     end
     return fwd, (cf * CF(e.def.gunPos or V(0, 0, -e.def.L * 0.45))).Position
   end
+  -- 近似正态分布（三个均匀分布相加），标准差 1
+  local function gauss() return (math.random() + math.random() + math.random() - 1.5) * 2 end
+  -- 航炮：每发单独打（原来一步里几发合成一发、方向一样，看着像一道激光；用户：飞机机炮要有散布、后坐力和打击感）——
+  --   散布按真炮的量级（标准差约 4.5 毫弧度：200 米外一发偏一米左右），连着打越久越散（炮管、机体振动，打满 2 秒到将近两倍），门炮再大一些；
+  --   同一步里的几发沿弹道错开（射速间隔 × 弹速），不叠在一个点上
   local function stepGuns(dt)
     for _, e in ipairs(aircraft) do
       if e.alive and e.trig and e.driver and e.gunAmmo > 0 and G.round.phase == "battle" then
         local w = AD.W[e.def.gun or ""]
         if w then
           e.gunT += dt
+          e.gunHeat = math.min(3, (e.gunHeat or 0) + dt)
           local nShots = math.min(e.gunAmmo, math.floor(e.gunT / w.rate))
           if nShots > 0 then
             e.gunT -= nShots * w.rate
             e.gunAmmo -= nShots
-            local dir, o = gunDir(e, w)
-            local spread = 0.006 + (w.door and 0.01 or 0)
-            dir = (dir + V((math.random() - 0.5), (math.random() - 0.5), (math.random() - 0.5)) * spread * 2).Unit
-            local ww = { dmg = w.dmg * nShots, splash = w.splash, vs = w.vs, id = w.id, fx = "agun" }
-            G.launch({ kind = "shell", pos = o + dir * 2, vel = (e.vel or V()) + dir * w.speed, grav = true, gscale = 0.08, w = ww, src = src(e.driver), ignore = ignoreOf(e),
-              life = w.range / w.speed + 0.2, byEnt = e.id })
+            local dir0, o = gunDir(e, w)
+            local sp = ((w.disp or 0.0045) + (w.door and 0.01 or 0)) * (1 + math.min(1, e.gunHeat / 2) * 0.9)
+            local right = dir0:Cross(V(0, 1, 0))
+            if right.Magnitude < 1e-3 then right = V(1, 0, 0) end
+            right = right.Unit
+            local up = right:Cross(dir0).Unit
+            for k = 1, nShots do
+              local dir = (dir0 + right * (gauss() * sp) + up * (gauss() * sp)).Unit
+              local ww = { dmg = w.dmg, splash = w.splash, vs = w.vs, id = w.id, fx = "agun" }
+              G.launch({ kind = "shell", pos = o + dir * (2 + (k - 1) * w.rate * w.speed), vel = (e.vel or V()) + dir * w.speed, grav = true, gscale = 0.08, w = ww,
+                src = src(e.driver), ignore = ignoreOf(e), life = w.range / w.speed + 0.2, byEnt = e.id })
+            end
           end
         end
       else
         e.gunT = 0
+        e.gunHeat = math.max(0, (e.gunHeat or 0) - dt * 1.5)
       end
     end
   end
