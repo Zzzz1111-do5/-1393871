@@ -325,7 +325,7 @@ function Air.init(G)
         self.alive = false
         self.wreck = true
         self.model:SetAttribute("Wreck", true)
-        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.6 })
+        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.6, c = "wreck" })
         G.fx({ k = "airWreck", id = self.id, p = self.root.CFrame.Position, v = self.vel or V() })
         local list = pending[self.team][self.vcat] or {}
         table.insert(list, now() + (CATS[self.vcat].cd or 75))
@@ -455,7 +455,7 @@ function Air.init(G)
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
       if dist < fuse then
-        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6 }) return true end
+        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6, c = "msl" }) return true end
         G.explode(s.pos, w, s.src)
         return true
       end
@@ -679,7 +679,7 @@ function Air.init(G)
 
   local function crash(e, why)
     if not e.alive then return end
-    G.fx({ k = "boom", p = e.root.CFrame.Position, s = 2.8 })
+    G.fx({ k = "boom", p = e.root.CFrame.Position, s = 2.8, c = "wreck" })
     G.damageEnt(e, 1e6, e.lastHitBy or { team = "none", name = why or "crash" })
   end
 

@@ -89,7 +89,7 @@ function Ents.init(G)
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
-      if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2 }) end   -- 步兵倒下不炸（客户端画倒地）
+      if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2, c = "wreck" }) end   -- 步兵倒下不炸（客户端画倒地）
       if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
     end
@@ -118,10 +118,26 @@ function Ents.init(G)
   end
   G.hitThing = hitThing
 
+  -- 爆炸的样子（客户端 Fx 按它画、按它出声）：gun 航炮 / 小口径炮弹，nade 手雷、炸药，shell 炮弹、地雷，rkt 火箭弹，msl 导弹，
+  --   bomb 炸弹，flak 高炮空炸；w.boom 直接指定
+  local function boomKind(w)
+    if w.boom then return w.boom end
+    local k = w.kind
+    if k == "bomb" or w.id == "pgm" or w.id == "cluster" then return "bomb" end
+    if w.id == "gunrun" then return "gun" end
+    if k == "aam" or k == "agm" or k == "missile" or k == "sam" or k == "lock" then return "msl" end
+    if k == "rkt" or k == "proj" then return "rkt" end
+    if k == "flak" then return "flak" end
+    if k == "throw" or k == "place" then return "nade" end
+    if k == "shell" or k == "arty" or k == "mortar" or w.trig then return "shell" end
+    return nil
+  end
+  G.boomKind = boomKind
+
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
     local r = w.splash or 8
-    G.fx({ k = "boom", p = pos, s = scale or (r / 12) })
+    G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -198,7 +214,8 @@ function Ents.init(G)
         local res = workspace:Raycast(s.pos, step, params)
         if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
-          s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs }
+          s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
+            boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
           done = true
         elseif res and s.kind ~= "grenade" then

@@ -160,15 +160,26 @@ local cv = H.workspace.Map.Fleet:FindFirstChild("Ship_carrier1")
 local nLights = 0
 if cv then for _, x in ipairs(cv:GetDescendants()) do if x:IsA("BillboardGui") and x.Name == "Glow" then nLights += 1 end end end
 check(nLights > 60, "航母甲板上的夜灯 " .. nLights .. " 盏（着舰中线、边灯、下降灯、着舰指示器、弹射器、航行灯）")
--- 其余人：攻方抢滩不能在准备阶段选
-act(atk[2], "deploy", "rifle", "beach.red")
+-- 分阶段突破：第一阶段只列前哨岛的登陆点；准备阶段就能上艇，艇在海上等着，开战一起冲滩
+local has = { red = false, outpost = false }
+for _, s in ipairs(G.spawnList("atk", G.P[atk[2]])) do
+	if s.id == "beach.red" then has.red = true end
+	if s.id == "beach.outpost" then has.outpost = s.ok end
+end
+check(has.outpost and not has.red, "第一阶段只能在前哨岛抢滩（主岛的海滩还没开）")
+act(atk[2], "deploy", "rifle", "beach.outpost")
 H.run(0.5)
-check(not G.P[atk[2]].alive, "准备阶段不能选抢滩")
+local boat0 = G.P[atk[2]].boat
+check(G.P[atk[2]].alive and boat0 ~= nil and boat0.state == "loading", "准备阶段上了登陆艇，在海上等着")
 
 print("④ 开战")
 local okB = H.runUntil(function() return G.round.phase == "battle" end, G.Config.Round.prep + 5)
 check(okB, "准备 " .. G.Config.Round.prep .. " 秒后开战")
-check(math.abs((G.round.endsAt - H.now) - G.Config.Round.battle) < 5, "战斗时间 " .. G.Config.Round.battle .. " 秒")
+local st1 = G.Config.Stages[1]
+check(G.round.stage == 1 and math.abs((G.round.endsAt - H.now) - st1.time) < 5, "第一阶段（抢滩）限时 " .. st1.time .. " 秒")
+check(G.pointActive("A") and not G.pointActive("C"), "第一阶段只能占 A（C 还没开）")
+H.run(1.5)
+check(boat0 and boat0.state ~= "loading", "开战了艇一起冲滩（" .. tostring(boat0 and boat0.state) .. "）")
 -- 狙击镜（Scope.lua）：换成狙击手的武器、拿狙击枪、按住右键开镜 → 圆形目镜；服务器记下开着镜、朝哪看（对面画镜片闪光）；滚轮变倍；松开收镜
 if a1.Character and PA.alive then
 	local ch = a1.Character
@@ -237,16 +248,10 @@ act(d1, "deploy", "rifle", "camp")
 H.run(1)
 check(PD.alive, "等够了能复活")
 
-print("⑥ 抢滩：登陆艇把人送上滩")
+print("⑥ 抢滩：登陆艇把人送上前哨岛的滩")
 local a2 = atk[2]
-act(a2, "deploy", "rifle", "beach.red")
-H.run(1)
 local P2 = G.P[a2]
-check(P2.alive, "攻方 " .. a2.Name .. " 上了登陆艇")
-local z0 = a2.Character and a2.Character.HumanoidRootPart.Position.Z or 0
-H.run(8)
-local z1 = a2.Character and a2.Character.HumanoidRootPart.Position.Z or 0
-check(z1 < z0 - 100, string.format("艇往岸边开（z %.0f → %.0f）", z0, z1))
+check(P2.alive, "攻方 " .. a2.Name .. " 还在艇上 / 已经上岸")
 local landed = H.runUntil(function()
 	local hrp = a2.Character and a2.Character:FindFirstChild("HumanoidRootPart")
 	return hrp and not hrp.Anchored and H.map.isLand(hrp.Position.X, hrp.Position.Z)
@@ -272,16 +277,46 @@ for _, pl in ipairs(def) do
 	local P = G.P[pl]
 	if P.alive and pl.Character then pl.Character:PivotTo(CF.new(0, 100, -2000)) end
 end
-local endsBefore = G.round.endsAt
+-- 守方机器人还守在 A 的圈里（地图放大后来不及走开，模拟测试 flow.lua 同样处理）：清掉，「没人守」
+for _, e in pairs(G.entById) do
+	if e.alive and e.kind == "bot" and e.team == "def" then
+		local p = e.root.CFrame.Position
+		if (p.X - A.x) ^ 2 + (p.Z - A.z) ^ 2 < 300 * 300 then G.damageEnt(e, 1e6, nil) end
+	end
+end
+local tk0 = G.round.tickets
 H.run(2)
 check(A.prog > 0, string.format("占领进度在涨（%.2f）", A.prog))
 local capOk = H.runUntil(function() return A.owner == "atk" end, G.Config.Capture.fast + 10)
 check(capOk, "15 秒左右拿下 A（攻方多 3 人）")
 check(A.locked, "拿下后锁定")
-check(math.abs((G.round.endsAt - endsBefore) - G.Config.Round.perCapture) < 0.01, "战斗时间 +" .. G.Config.Round.perCapture .. " 秒")
+local st2 = G.Config.Stages[2]
+check(G.round.stage == 2 and math.abs((G.round.endsAt - H.now) - st2.time) < 3, "拿下 A 进入第二阶段（主岛），重新计时 " .. st2.time .. " 秒")
+check((G.round.tickets or 0) >= tk0 + G.Config.Tickets.perStage - 5, string.format("攻方兵力补了（%d → %d）", tk0 or -1, G.round.tickets or -1))
+check(G.pointActive("C") and G.pointActive("D") and not G.pointActive("E"), "第二阶段能占 C、D，E 还没开")
 local spA = false
 for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do if s.id == "point.A" and s.ok then spA = true end end
 check(spA, "攻方可以在 A 出生")
+-- 攻击出发阵地（第二阶段起）：C、D 前面各一处，守方没压过来就能用、推荐它，不在守方碉堡的射界里（同 tools/mock/flow.lua）
+local stg, recK = {}, nil
+for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do
+	if s.kind == "staging" then stg[s.point] = s end
+	if s.rec then recK = s.kind end
+end
+check(stg.C ~= nil and stg.C.ok and stg.D ~= nil and stg.D.ok, "第二阶段 C、D 前面各有攻击出发阵地能出生")
+check(recK == "staging", "推荐的出生点是攻击出发阵地（" .. tostring(recK) .. "）")
+check(stg.D ~= nil and not G.stagingCovered(stg.D.x, stg.D.z), "机场 D 的出发阵地不在守方碉堡的射界里")
+-- 重新部署（H）：不算阵亡、不扣兵力，回部署界面；接着在 D 的出发阵地出生
+local Pr = G.P[atk[2]]
+Pr.dmgLog = {}
+local d0, tk1 = Pr.deaths, G.round.tickets
+act(atk[2], "redeploy")
+H.run(0.5)
+check(not Pr.alive and Pr.deaths == d0 and G.round.tickets == tk1, string.format("按 H 重新部署：回部署界面，不算阵亡（%d → %d）、不扣兵力（%d → %d）", d0, Pr.deaths, tk1, G.round.tickets))
+act(atk[2], "deploy", "rifle", "stage.D")
+H.run(1.5)
+local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootPart")
+check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
 H.run(1)
 check(CA.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
 

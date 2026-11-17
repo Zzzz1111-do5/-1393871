@@ -1,4 +1,6 @@
--- Roblox全面大战场（客户端）——地图上的树林、灌木、石头、草丛、花丛：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
+-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
+--   用户：花草树木删掉，用 Roblox 自带的草更合适——树林、灌木、草丛、花丛不再摆（下面 LAYERS 只留 rock），草地上是地形自带的会动的草；
+--   下面的说明是原来摆树林时写的，树的代码留着（LAYERS 里加回 "tree" 等就恢复）
 --   长在哪由 Flora.lua 按格子算（每个人看到的一样）；这里管「画多少、画哪一版」：
 --     针叶树近处（130 格内）是完整的树、中距离（210 格内）是作者给的简化版、再远到 1300 格是公告板（两片交叉的贴图；松树借冷杉的）；
 --     阔叶树、枯树 540 格内、灌木倒木 300 格内、石头 480 格内；草丛 115 格内、花丛 135 格内；按画质设置整体放远 / 拉近（画质 6 时乘 0.9）
@@ -222,11 +224,23 @@ function Scenery.init(G)
 
   local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
   local function cellKey(cx, cz) return cx * 100003 + cz end
-  local LAYERS = { "tree", "bush", "rock", "grass", "flower" }
+  -- 用户：花草树木删掉，用 Roblox 地形自带的草（World.lua 开着 Terrain.Decoration，草地是 Grass 材质）——树、灌木、草丛、花丛都不摆了，只留石头
+  local LAYERS = { "rock" }
   local maxR = 0
-  for _, r in pairs(LAYER_R) do maxR = math.max(maxR, r) end
+  for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
 
   local lastPos, timer = nil, 0
+  -- 自动画质（Fx.lua 的 G.perfK）：卡了树林画得近一点，流畅了再放远；变了就整片重挑一次
+  local D0, curK = {}, 1
+  for name, r in pairs(D) do D0[name] = r end
+  local function applyK(k)
+    curK = k
+    for name, r in pairs(D0) do D[name] = r * k end
+    LAYER_R.tree, LAYER_R.bush, LAYER_R.rock, LAYER_R.grass, LAYER_R.flower = D.far, D.bush, D.rock, D.grass, D.flower
+    maxR = 0
+    for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
+    lastPos = nil
+  end
   local stats = { cells = 0, items = 0, live = 0, made = 0, genMs = 0 }
   G.sceneryStats = stats
 
@@ -386,10 +400,9 @@ function Scenery.init(G)
     p.Name = "Sea"
     p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
     p.Size = V(OS, 1, OS)
-    p.Material = Enum.Material.Glass
-    p.Color = RGB(30, 104, 128)
-    p.Transparency = 0.05
-    p.Reflectance = 0.25
+    p.Material = Enum.Material.SmoothPlastic   -- 原来是半透明玻璃：要折射，铺满半个屏幕最费（用户：太卡了）；夜里不透明的看着一样
+    p.Color = RGB(22, 74, 94)
+    p.Reflectance = 0.12
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
     tiles[i] = p
   end
@@ -424,6 +437,8 @@ function Scenery.init(G)
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
   function G.stepScenery(dt)
     stepOcean()
+    local pk = G.perfK or 1
+    if math.abs(pk - curK) > 0.01 then applyK(pk) end
     timer += dt
     local cp = cam.CFrame.Position
     if (lastPos and (cp - lastPos).Magnitude < 10 and timer < 0.3) then return end

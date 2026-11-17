@@ -87,22 +87,33 @@ if side == "def" then
   if v then for _, w in ipairs(v.M.wheels) do lo, hi = math.min(lo, w.dy), math.max(hi, w.dy) end end
   check(hi - lo > 0.05, string.format("负重轮各自上下（%.2f ～ %.2f 格）", lo, hi))
 
-  print("③ 瞄准镜：默认夜视 → 热成像白热 → 黑热 → 昼光")
-  T.tap(Enum.KeyCode.V)
+  print("③ 瞄准镜（用户：Shift 开镜，镜里写着按 V 切换光电模式、按 M 释放烟雾弹）：默认夜视 → 热成像白热 → 黑热 → 昼光")
+  T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
   local cc = C.sightCC
-  check(C.drive.sight and cc and cc.Enabled, "进瞄准镜，画面调色开了")
+  check(C.drive.sight and cc and cc.Enabled, "Shift 进瞄准镜，画面调色开了")
+  local function shown(name)
+    for _, d in ipairs(me.PlayerGui:GetDescendants()) do
+      if d.Name == name and T.visible(d) then return d.Text end
+    end
+  end
+  local hv, hm = shown("HintOptic"), shown("HintSmoke")
+  check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.nv"), 1, true), "镜里写着：" .. tostring(hv))
+  check(hm and hm:find("M", 1, true) and hm:find(tostring(e.smoke or e.def.smoke.n * #e.def.smoke.banks), 1, true) ~= nil or (hm and hm:find("M", 1, true)), "镜里写着：" .. tostring(hm))
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
   local modes = {}
   for _ = 1, 3 do
-    T.tap(Enum.KeyCode.N)
+    T.tap(Enum.KeyCode.V)
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
-  check(modes[1] == "whot" and modes[2] == "bhot" and modes[3] == "day", "瞄准镜默认夜视档，N 依次切白热、黑热、昼光：" .. table.concat(modes, " → "))
-  T.tap(Enum.KeyCode.V)
+  check(modes[1] == "whot" and modes[2] == "bhot" and modes[3] == "day", "瞄准镜默认夜视档，V 依次切白热、黑热、昼光：" .. table.concat(modes, " → "))
+  local hv2 = shown("HintOptic")
+  check(hv2 and hv2:find(C.T("sight.day"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
+  T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
-  check(not C.drive.sight and not cc.Enabled, "退出瞄准镜，调色关了")
+  check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
+  check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
 
   print("④ 开战后开炮、放烟幕弹")
@@ -115,9 +126,9 @@ if side == "def" then
   R.run(1)
   local ammo1 = e.wst[w1].reserve + e.wst[w1].mag
   check(ammo1 == ammo0 - 1, string.format("主炮打了一发（%d → %d）", ammo0, ammo1))
-  T.tap(Enum.KeyCode.X)
+  T.tap(Enum.KeyCode.M)
   R.run(1.5)
-  check(#G.smokes == e.def.smoke.n * #e.def.smoke.banks, "烟幕弹落地起了 " .. #G.smokes .. " 团烟")
+  check(#G.smokes == e.def.smoke.n * #e.def.smoke.banks, "按 M 放烟幕弹：落地起了 " .. #G.smokes .. " 团烟")
 
   print("⑤ 下车、再上车")
   T.tap(Enum.KeyCode.F)

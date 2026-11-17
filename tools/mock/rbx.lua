@@ -422,6 +422,9 @@ local ENUMS = {
   CoreGuiType = "PlayerList Health Backpack Chat All EmotesMenu SelfView Captures",
   RenderPriority = "First Input Camera Character Last",
   StartCorner = "TopLeft TopRight BottomLeft BottomRight",
+  ParticleOrientation = "FacingCamera FacingCameraWorldUp VelocityParallel VelocityPerpendicular",
+  ContextActionPriority = "Low Medium Default High",
+  ContextActionResult = "Sink Pass",
 }
 local Enum = {}
 for ename, list in pairs(ENUMS) do
@@ -519,7 +522,7 @@ local function seqType(name, kp)
       for _, k in ipairs(a) do if typeof(k) ~= kp then error(name .. ".new 的表里要 " .. kp, 2) end end
       if a[1].Time ~= 0 or a[#a].Time ~= 1 then error(name .. ".new 关键点的时间要从 0 到 1", 2) end
     end
-    return setmetatable({ a = a, b = b }, { __type = name })
+    return setmetatable({ a = a, b = b, Keypoints = (type(a) == "table" and typeof(a) == "table") and a or nil }, { __type = name })
   end }
 end
 local ColorSequence, NumberSequence = seqType("ColorSequence", "ColorSequenceKeypoint"), seqType("NumberSequence", "NumberSequenceKeypoint")
@@ -1029,7 +1032,7 @@ def("ParticleEmitter", "Instance", {
   Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Texture = { T.string, "" }, Rotation = { T.NumberRange, NumberRange.new(0) },
   RotSpeed = { T.NumberRange, NumberRange.new(0) }, Acceleration = { T.Vector3, v3() }, EmissionDirection = { E("NormalId"), Enum.NormalId.Top },
   LightEmission = { T.number, 0 }, LightInfluence = { T.number, 0 }, Drag = { T.number, 0 }, LockedToPart = { T.bool, false }, ZOffset = { T.number, 0 },
-  VelocityInheritance = { T.number, 0 },
+  VelocityInheritance = { T.number, 0 }, Orientation = { E("ParticleOrientation"), Enum.ParticleOrientation.FacingCamera }, Brightness = { T.number, 1 },
 }, { methods = { Emit = function(_, n) if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end end, Clear = function() end } })
 def("SpotLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
   Face = { E("NormalId"), Enum.NormalId.Front }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
@@ -1055,7 +1058,16 @@ def("Highlight", "Instance", {
 def("Atmosphere", "Instance", { Density = { T.number, 0.3 }, Offset = { T.number, 0 }, Haze = { T.number, 0 }, Glare = { T.number, 0 }, Color = { T.Color3, newC3(0.78, 0.78, 0.78) }, Decay = { T.Color3, newC3(0.42, 0.44, 0.49) } })
 def("IntValue", "Instance", { Value = { function(v) return type(v) == "number" and v == math.floor(v) end, 0 } })
 def("Sound", "Instance", { SoundId = { T.string, "" }, Volume = { T.number, 0.5 }, RollOffMaxDistance = { T.number, 10000 }, RollOffMinDistance = { T.number, 10 }, Looped = { T.bool, false },
-  PlaybackSpeed = { T.number, 1 }, TimePosition = { T.number, 0 }, PlayOnRemove = { T.bool, false } }, { events = { Ended = true }, methods = { Play = function() end, Stop = function() end, Pause = function() end, Resume = function() end } })
+  PlaybackSpeed = { T.number, 1 }, TimePosition = { T.number, 0 }, PlayOnRemove = { T.bool, false },
+  PlaybackRegionsEnabled = { T.bool, false }, PlaybackRegion = { T.NumberRange, NumberRange.new(0, 60000) }, LoopRegion = { T.NumberRange, NumberRange.new(0, 60000) } },
+  { events = { Ended = true }, methods = { Play = function() end, Stop = function() end, Pause = function() end, Resume = function() end } })
+-- 声音效果（属性名照真机：失真、均衡、回声、混响、颤音、变调）
+def("DistortionSoundEffect", "Instance", { Level = { T.number, 0.5 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
+def("EqualizerSoundEffect", "Instance", { LowGain = { T.number, 0 }, MidGain = { T.number, -20 }, HighGain = { T.number, 0 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
+def("EchoSoundEffect", "Instance", { Delay = { T.number, 1 }, Feedback = { T.number, 0.5 }, DryLevel = { T.number, 0 }, WetLevel = { T.number, 0 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
+def("ReverbSoundEffect", "Instance", { DecayTime = { T.number, 1.5 }, Density = { T.number, 1 }, Diffusion = { T.number, 1 }, DryLevel = { T.number, -6 }, WetLevel = { T.number, 0 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
+def("TremoloSoundEffect", "Instance", { Depth = { T.number, 1 }, Duty = { T.number, 0.5 }, Frequency = { T.number, 5 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
+def("PitchShiftSoundEffect", "Instance", { Octave = { T.number, 1.25 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
 def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number, 100 }, WalkSpeed = { T.number, 16 },
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
@@ -1502,17 +1514,17 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
 })
 
 -- 按键绑定（瞄准镜的屏息键等）：只记下来，R.binds[名字] = 函数
-R.binds = {}
+R.binds, R.bindKeys = {}, {}   -- 绑定的按键也记下来（common.lua 的 T.key 按下时照样调它）
 R.services.ContextActionService = service("ContextActionService", {}, { methods = {
-  BindAction = function(_, name, f)
+  BindAction = function(_, name, f, _, ...)
     if type(name) ~= "string" or type(f) ~= "function" then error("BindAction(名字, 函数, 要不要按钮, 按键…)", 2) end
-    R.binds[name] = f
+    R.binds[name], R.bindKeys[name] = f, { ... }
   end,
-  BindActionAtPriority = function(_, name, f, _, prio)
+  BindActionAtPriority = function(_, name, f, _, prio, ...)
     if type(name) ~= "string" or type(f) ~= "function" or type(prio) ~= "number" then error("BindActionAtPriority(名字, 函数, 要不要按钮, 优先级数字, 按键…)", 2) end
-    R.binds[name] = f
+    R.binds[name], R.bindKeys[name] = f, { ... }
   end,
-  UnbindAction = function(_, name) R.binds[name] = nil end,
+  UnbindAction = function(_, name) R.binds[name], R.bindKeys[name] = nil, nil end,
 } })
 
 -- 存档：一张表；R.dsFail 为真时读写都报错（模拟 Studio 没开 API）

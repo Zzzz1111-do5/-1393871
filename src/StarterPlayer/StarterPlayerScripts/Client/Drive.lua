@@ -1,11 +1,13 @@
 -- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
---   镜头：追尾（鼠标绕着车转），右键 / V 进炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
---   瞄准镜四种模式（N 切换）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--   镜头：追尾（鼠标绕着车转），Shift / 右键进出炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
+--   瞄准镜四种光电模式（V 切换，N 也行）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
---   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、X 烟幕弹、F 下车
+--   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、M 烟幕弹（X 也行）、F 下车
+--   用户：坦克按 Shift 切换开镜；开镜画面上写着「按 V 切换光电模式」「按 M 释放烟雾弹」
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")
+local CAS = game:GetService("ContextActionService")
 local Lighting = game:GetService("Lighting")
 
 local Drive = {}
@@ -114,6 +116,15 @@ function Drive.init(G)
   local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
   local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
   local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  -- 镜里的操作提示（左上角两行大字 + 底下一行）：V 切换光电模式（写着现在是哪种）、M 释放烟雾弹（还剩几发）、Shift 退出、Z 倍率
+  local hintBox = ui.frame(sight, UDim2.fromOffset(330, 66), UDim2.new(0, 28, 0, 96), RGB(0, 0, 0), 0.55)
+  hintBox.Name = "SightHints"
+  local hintV = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 4), 18, RGB(235, 240, 235), Enum.Font.GothamBold)
+  local hintM = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 34), 18, RGB(235, 240, 235), Enum.Font.GothamBold)
+  hintV.Name, hintM.Name = "HintOptic", "HintSmoke"
+  hintV.TextXAlignment, hintM.TextXAlignment = Enum.TextXAlignment.Left, Enum.TextXAlignment.Left
+  local hintLine = ui.label(sight, "", UDim2.fromOffset(640, 22), UDim2.new(0.5, 0, 1, -86), 15, RGB(220, 226, 220), Enum.Font.Gotham, Vector2.new(0.5, 0.5))
+  hintLine.Name = "HintLine"
   local grain = Instance.new("Frame")
   grain.Size = UDim2.fromScale(1, 1)
   grain.BackgroundTransparency = 1
@@ -281,8 +292,53 @@ function Drive.init(G)
 
   local mapParams = RaycastParams.new()
   mapParams.FilterType = Enum.RaycastFilterType.Include
+  local camParams = RaycastParams.new()   -- 镜头别钻进山坡、房子（地形也算）
+  camParams.FilterType = Enum.RaycastFilterType.Include
+
+  -- 发动机声（开车的人自己听）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、削掉高音）+ 涡轮 / 履带的呜呜声（风声循环），
+  --   油门越大、开得越快音调越高、越响；坦克沉一点，轮式车尖一点
+  local engine = nil
+  local function engineStop()
+    if engine then
+      for _, snd in ipairs(engine.s) do snd:Destroy() end
+      engine = nil
+    end
+  end
+  local function engineStart(d)
+    engineStop()
+    if not G.makeSound then return end
+    local SS = game:GetService("SoundService")
+    local heavy = d.arch ~= "wheeled"
+    local rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
+    local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
+    engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
+  end
+  local function engineStep(dt, thr, spd)
+    if not engine then return end
+    local want = math.clamp(0.22 + 0.5 * spd + 0.3 * math.abs(thr), 0, 1)   -- 转速：油门一踩先上去，车速跟着
+    engine.rpm += (want - engine.rpm) * math.min(1, dt * 3)
+    local r = engine.rpm
+    engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
+    engine.rumble.Volume = 0.3 + 0.35 * r
+    engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
+    engine.whine.Volume = 0.6 + 2.6 * r * r
+  end
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
+
+  -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
+  local function toggleSight()
+    if not st then return end
+    st.sight = not st.sight
+    ownVisible(not st.sight)
+    applyMode()
+  end
+  local function nextMode()
+    if not st then return end
+    st.mode = st.mode % #MODES + 1
+    applyMode()
+  end
+  local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
 
   local function begin(vs)
     local em = findEnt(vs.id)
@@ -297,6 +353,11 @@ function Drive.init(G)
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
     G.drive, G.myVeh = st, st
+    -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
+    CAS:BindActionAtPriority("DriveSight", function(_, state)
+      if state == Enum.UserInputState.Begin and st then toggleSight() end
+      return Enum.ContextActionResult.Sink
+    end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
     cam.CameraType = Enum.CameraType.Scriptable
     panel.Visible = true
     cross.Visible = true
@@ -304,7 +365,9 @@ function Drive.init(G)
     if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = true end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
+    camParams.FilterDescendantsInstances = m and { m, workspace.Terrain } or { workspace.Terrain }
     if G.playSound then G.playSound("capture") end
+    engineStart(d)
   end
 
   local function stop()
@@ -316,7 +379,9 @@ function Drive.init(G)
       if m and m.Parent == ownBox and G.viewFolder then m.Parent = G.viewFolder end
     end
     st = nil
+    engineStop()
     G.drive, G.myVeh = nil, nil
+    CAS:UnbindAction("DriveSight")
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
     if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
@@ -410,17 +475,44 @@ function Drive.init(G)
     if inWater then
       if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
     end
-    local target = (thr > 0) and maxF or ((thr < 0) and -maxR or 0)
-    local a = (carried and inWater) and math.max(d.accel, 18) or d.accel   -- 气垫艇起步比坦克快
-    if target == 0 then a = d.accel * 0.8
-    elseif (target > 0) ~= (st.speed > 0) and math.abs(st.speed) > 1 then a = d.accel * 2.4 end   -- 反向：先刹车
-    local old = st.speed
-    st.speed = approach(st.speed, target, a * dt)
-    st.accel = (st.speed - old) / math.max(dt, 1e-3)
-    -- 转向：履带车能原地转；轮式车要走起来才转得动，倒车反着打
-    local k = (d.arch == "wheeled") and math.clamp(math.abs(st.speed) / 10, 0, 1) or 1
-    local dir = (d.arch == "wheeled" and st.speed < -0.5) and -1 or 1
-    st.yaw -= str * math.rad(d.turn) * k * dir * dt
+    -- 驾驶手感（用户：驾驶手感也做到最好）：
+    --   油门——发动机低速劲大、接近极速劲小；反着推是刹车（比加速猛得多）；松油门滚着慢下来（履带阻力大停得快）；
+    --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
+    local tracked = d.arch ~= "wheeled"
+    local v = st.speed
+    local slope = inWater and 0 or (st.slopeS or 0)
+    local a
+    if thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
+      local vmax = (thr > 0) and maxF or maxR
+      local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
+      a = thr * d.accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
+      if math.abs(v) > vmax then a = -math.sign(v) * d.accel * 0.7 end   -- 下坡冲过极速：发动机拖住
+    elseif thr ~= 0 then
+      a = thr * d.accel * 2.6   -- 刹车
+    else
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), d.accel * (tracked and 1.1 or 0.55))
+    end
+    if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
+    if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+    local old = v
+    v += a * dt
+    if thr == 0 and math.abs(v) < 0.4 then v = 0 end
+    v = math.clamp(v, -maxR * 1.25, maxF * 1.3)
+    st.speed = v
+    st.accel = (v - old) / math.max(dt, 1e-3)
+    -- 转向有惯性：履带车原地能转、越快转得越慢（D 永远往右转车头）；轮式车前轮打角（越快打得越少、打过去要一会儿），
+    --   按轴距算转弯半径（走起来才转，倒车反着），侧向抓地有上限（太快转不过来、推头）
+    if tracked then
+      local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn) * k, math.rad(d.turn) * ((str ~= 0) and 3.2 or 5.5) * dt)
+    else
+      local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
+      st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
+      local want = v / (d.L * 0.55) * math.tan(st.steerA)
+      local grip = 30 / math.max(math.abs(v), 1)
+      st.yr = approach(st.yr or 0, math.clamp(want, -grip, grip), 4 * dt)
+    end
+    st.yaw -= st.yr * dt
     st.steer = approach(st.steer, str, dt * 4)
     -- 往前挪：坡太陡、不会游的下水、撞到房子都走不动
     local fwd = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
@@ -455,6 +547,7 @@ function Drive.init(G)
       end
     end
     local base = baseAt(d, st.pos, st.yaw, false)
+    st.slopeS = math.clamp(base.LookVector.Y, -1, 1)   -- 车头朝上为正（下一帧的上坡阻力）
     if st.dropT then   -- 从艇上开下来：车底从甲板高度顺下来
       st.dropT += dt
       local k = math.clamp(st.dropT / 0.6, 0, 1)
@@ -465,6 +558,36 @@ function Drive.init(G)
         local y = st.dropFrom + (base.Position.Y - st.dropFrom) * (k * k * (3 - 2 * k))
         base = base + V(0, y - base.Position.Y, 0)
       end
+      st.sus = nil
+    else
+      -- 悬挂：车身跟地形起伏是弹簧阻尼（坑坑洼洼的地上一颠一颠，不是硬贴上去）；加速车头抬、刹车点头、转弯往外侧倾（轮式车软一点）
+      local tp = math.asin(math.clamp(base.LookVector.Y, -1, 1))
+      local tr = math.asin(math.clamp(base.RightVector.Y, -1, 1))
+      local soft = tracked and 1 or 1.4
+      local dynP = math.clamp(st.accel * 0.0042 * soft, -0.07, 0.07)
+      local dynR = math.clamp(v * (st.yr or 0) * 0.0045 * soft, -0.06, 0.06)
+      local S = st.sus
+      if not S or (V(st.pos.X, 0, st.pos.Z) - V(S.x, 0, S.z)).Magnitude > 30 then   -- 第一次 / 被挪走了：直接贴上
+        S = { y = base.Position.Y, vy = 0, p = tp, vp = 0, r = tr, vr = 0 }
+        st.sus = S
+      end
+      S.x, S.z = st.pos.X, st.pos.Z
+      local n = (dt > 1 / 45) and 3 or 1   -- 掉帧时分几步算，免得弹簧算飞
+      local h = dt / n
+      for _ = 1, n do
+        local function spring(x, vx, target, k, z)
+          vx += (k * (target - x) - 2 * math.sqrt(k) * z * vx) * h
+          return x + vx * h, vx
+        end
+        S.y, S.vy = spring(S.y, S.vy, base.Position.Y, 160, 0.55)
+        S.p, S.vp = spring(S.p, S.vp, tp + dynP, 90, 0.6)
+        S.r, S.vr = spring(S.r, S.vr, tr + dynR, 90, 0.6)
+      end
+      if S.y < base.Position.Y - 0.25 then S.y, S.vy = base.Position.Y - 0.25, math.max(S.vy, 0) end   -- 不陷进地里
+      S.y = math.min(S.y, base.Position.Y + 1.5)
+      local fwdF = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+      local p0 = V(st.pos.X, S.y, st.pos.Z)
+      base = CFrame.lookAt(p0, p0 + fwdF) * CFrame.Angles(S.p, 0, S.r)
     end
     st.pos = base.Position
     st.root = base * CF(0, d.H / 2, 0)
@@ -562,9 +685,9 @@ function Drive.init(G)
     fb.Position = UDim2.fromOffset(140, 120)
     fb.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = true tryFire() end end)
     fb.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch and st then st.firing = false end end)
-    tap("◎", UDim2.fromOffset(60, 140), function() if st then st.sight = not st.sight ownVisible(not st.sight) applyMode() end end)
-    tap("N", UDim2.fromOffset(60, 66), function() if st then st.mode = st.mode % #MODES + 1 applyMode() end end)
-    tap("X", UDim2.fromOffset(140, 40), function() G.R.Drive:FireServer({ op = "smoke" }) end)
+    tap("◎", UDim2.fromOffset(60, 140), toggleSight)
+    tap(T("drv.optic"), UDim2.fromOffset(60, 66), nextMode)
+    tap(T("drv.smoke"), UDim2.fromOffset(140, 40), smoke)
     tap("F", UDim2.fromOffset(0, 0), function() G.R.Drive:FireServer({ op = "exit" }) end)
     tap("1/2", UDim2.fromOffset(170, -30), function() if st then st.wi = (st.wi % #st.d.weapons) + 1 end end)
     G.touchDrive = touch
@@ -580,21 +703,18 @@ function Drive.init(G)
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       st.firing = true
       tryFire()
-    elseif io.UserInputType == Enum.UserInputType.MouseButton2 or k == Enum.KeyCode.V then
-      st.sight = not st.sight
-      ownVisible(not st.sight)
-      applyMode()
-    elseif k == Enum.KeyCode.N then
-      st.mode = st.mode % #MODES + 1
-      applyMode()
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
+      toggleSight()
+    elseif k == Enum.KeyCode.V or k == Enum.KeyCode.N then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热
+      nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
     elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
       local i = (k == Enum.KeyCode.One) and 1 or 2
       if st.d.weapons[i] then st.wi = i end
-    elseif k == Enum.KeyCode.X then
-      G.R.Drive:FireServer({ op = "smoke" })
-    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E then
+    elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
+      smoke()
+    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
       G.R.Drive:FireServer({ op = "exit" })
     end
   end)
@@ -677,11 +797,25 @@ function Drive.init(G)
         dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8
       end
       local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, up, 0)
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
-      cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * math.min(1, dt * 10)
+      -- 镜头别钻进山坡、房子：从车往镜头打一条射线，碰到了就拉近
+      local off = camPos - center
+      if off.Magnitude > 1 then
+        local hit = workspace:Raycast(center, off, camParams)
+        if hit then camPos = center + off.Unit * math.max(4, (hit.Position - center).Magnitude - 1.5) end
+      end
+      -- 越快视野越宽一点、轻轻抖（气垫艇上抖得少）
+      local spd = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.3)
+      local amp = 0.0022 * spd * (st.hv and 0.4 or 1)
+      local tt = os.clock()
+      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector) * CFrame.Angles(math.noise(tt * 9, 0.3) * amp, math.noise(tt * 9, 5.7) * amp, 0)
+      cam.FieldOfView = cam.FieldOfView + ((70 + 7 * spd) - cam.FieldOfView) * math.min(1, dt * 4)
       st.aimPt = aimPoint()
     end
     aimTurret(dt)
+    do   -- 发动机声
+      local thrK = (UIS:IsKeyDown(Enum.KeyCode.W) or UIS:IsKeyDown(Enum.KeyCode.S)) and 1 or ((G.touchDrive and G.touchDrive.thr ~= 0) and 1 or 0)
+      engineStep(dt, thrK, math.abs(st.speed) / math.max(d.speed, 1))
+    end
     -- 连发
     local w = VD.W[weaponId() or ""]
     if st.firing and w and w.rate < 0.5 then tryFire() end
@@ -723,6 +857,9 @@ function Drive.init(G)
       local dist = (st.aimPt - cam.CFrame.Position).Magnitude
       rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
       zoomText.Text = string.format("×%.1f", 70 / ZOOMS[st.zoom])
+      hintV.Text = T("drv.hintOptic", T("sight." .. MODES[st.mode]))
+      hintM.Text = T("drv.hintSmoke", vs.smoke or 0)
+      hintLine.Text = T("drv.hintLine")
       if grain.Visible then
         local vs2 = cam.ViewportSize
         for _, g in ipairs(dots) do

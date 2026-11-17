@@ -187,7 +187,7 @@ function Gunner.init(G)
       gs.sight = not gs.sight
     elseif k == Enum.KeyCode.Z then
       gs.zoom = gs.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.F then
+    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.Space then   -- 空格也能离开炮位
       G.R.Drive:FireServer({ op = "exit" })
     end
   end)

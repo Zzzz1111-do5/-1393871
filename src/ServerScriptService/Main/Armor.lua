@@ -215,7 +215,7 @@ function Armor.init(G)
         self.alive = false
         self.wreck = true
         self.model:SetAttribute("Wreck", true)
-        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4 })
+        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4, c = "wreck" })
         G.fx({ k = "wreck", id = self.id, p = self.root.CFrame.Position, life = 25 })
         local list = pending[self.team][self.vcat] or {}
         table.insert(list, now() + (CATS[self.vcat].cd or 60))

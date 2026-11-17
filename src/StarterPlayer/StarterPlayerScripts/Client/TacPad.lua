@@ -1000,6 +1000,7 @@ function TacPad.init(G)
       end
       -- 曳光：每一发从机头打到扫射带上那一点（爆点是服务器给的）
       local fired = 0
+      local gunKey = "tac" .. tostring(e.id or math.random(1, 1e6))
       local flashP = newPart(V(3, 3, 3), CF(0, -500, 0), RGB(255, 214, 140), Enum.Material.Neon, 1)
       flashP.Shape = Enum.PartType.Ball
       local fl = Instance.new("PointLight")
@@ -1017,7 +1018,10 @@ function TacPad.init(G)
           local d = hit - from
           local tr = newPart(V(0.4, 0.4, d.Magnitude), CFrame.lookAt(from + d / 2, hit), RGB(255, 206, 128), Enum.Material.Neon, 0.1)
           table.insert(tracers, { p = tr, t = t })
-          if fired % 3 == 1 and G.playSound then G.playSound("lmg", from, 0.55 + math.random() * 0.1) end
+          if G.gunLoop then   -- 航炮声：机头那里一个循环声（一圈一发，Fx.lua），打完 0.25 秒自己停
+            local jd = G.AD and G.AD.get and G.AD.get(jid)
+            G.gunLoop(gunKey, (jd and jd.gun) or "gau8", from, true)
+          elseif fired % 3 == 1 and G.playSound then G.playSound("lmg", from, 0.55 + math.random() * 0.1) end
         end
         local firing = t >= T1 and t <= T1 + dur
         if firing and nose then
@@ -1129,6 +1133,33 @@ function TacPad.init(G)
   end
   G.fxExtra = G.fxExtra or {}
   G.fxExtra.tac = fxTac
+  -- 战场氛围（服务器 Ambience.lua）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
+  G.fxExtra.flyby = function(e)
+    if typeof(e.p) ~= "Vector3" then return end
+    local team = (e.team == "def") and "def" or "atk"
+    local jets = TP.jets[team] or TP.jets.atk
+    local dir = (typeof(e.d) == "Vector3" and e.d.Magnitude > 0.1) and V(e.d.X, 0, e.d.Z).Unit or V(0, 0, -1)
+    local side = dir:Cross(UPV)
+    local H, VP, HALF = 230 + math.random() * 120, 430, 2200
+    for i = 1, math.clamp(tonumber(e.n) or 2, 1, 3) do
+      local P = plane((i == 1) and jets.pgm or (jets.gunrun or jets.pgm), team)
+      if P then
+        P.c.thr = 125   -- 加力
+        local off = side * ((i % 2 == 0) and 70 or -40) - dir * (i - 1) * 110 + UPV * (i - 1) * 25
+        local function pos(t) return e.p - dir * HALF + dir * VP * t + off + UPV * H end
+        local roar = false
+        job(function(t, dt)
+          if t > HALF * 2 / VP then return false end
+          posePlane(P, lookCF(pos(t), dir), dt)
+          if not roar and t > HALF / VP - 1.2 then   -- 快到头顶：呼的一声
+            roar = true
+            if G.sfx then G.sfx({ { id = "rbxasset://sounds/action_falling.ogg", vol = 10, s = { 0.75, 0.85 }, reg = { 2, 5 }, eq = { 6, 8, -2 }, dist = 0.4, fade = 1.2 } }, pos(t), { rmax = 2400 }) end
+          end
+          return true
+        end, function() P.M.model:Destroy() end)
+      end
+    end
+  end
 
   ---------------------------------------------------------------- 每帧
 
