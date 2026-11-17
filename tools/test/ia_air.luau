@@ -164,9 +164,9 @@ do
 end
 
 print("③ 滑到弹射器：甲板上滑不快，到起点对正就卡上")
-H.key(atk, Enum.KeyCode.W, true)
+H.key(atk, Enum.KeyCode.LeftShift, true)   -- 油门：Shift 加、Ctrl 减（W / S 是推拉杆）
 H.run(3)
-H.key(atk, Enum.KeyCode.W, false)
+H.key(atk, Enum.KeyCode.LeftShift, false)
 check(st.spd <= 28.5, string.format("甲板上限速（%.0f 格 / 秒）", st.spd))
 -- 直接摆到斜角甲板那条弹射器的起点前一点（自己滑过去的路这里不测）
 local start, dir = AirDefs.cat(G.Map, 3)
@@ -175,7 +175,7 @@ st.thr = 10
 H.run(1)
 check(st.cat ~= nil and st.cat.state == "hooked", "卡上了弹射器 " .. tostring(st.cat and st.cat.i))
 local zBefore = e.root.CFrame.Position.Z
-H.key(atk, Enum.KeyCode.W, true)
+H.key(atk, Enum.KeyCode.LeftShift, true)
 local launched = H.runUntil(function() return st.cat == nil or st.cat.state == "launch" end, 6)
 check(st.thr >= 90, string.format("油门推满（%.0f）", st.thr))
 check(launched, "推满油门一会儿自动弹射（不用按键、不出提示）")
@@ -184,10 +184,12 @@ H.run(0.5)
 check(not st.ground and st.spd >= e.def.vRot, string.format("弹射离舰（%.0f 格 / 秒，起飞速度 %.0f）", st.spd, e.def.vRot))
 check(zBefore - e.root.CFrame.Position.Z > 150, string.format("服务器跟着飞出去了 %.0f 格", zBefore - e.root.CFrame.Position.Z))
 
-print("④ 爬升、收起落架")
-st.aimPitch = 0.25
+print("④ 爬升（按 S 拉杆抬头）、收起落架")
 local y0 = e.root.CFrame.Position.Y
-H.run(6)
+H.key(atk, Enum.KeyCode.S, true)
+H.run(1.2)
+H.key(atk, Enum.KeyCode.S, false)
+H.run(4.8)
 check(e.root.CFrame.Position.Y > y0 + 60, string.format("爬升了 %.0f 格", e.root.CFrame.Position.Y - y0))
 H.key(atk, Enum.KeyCode.G, true) H.key(atk, Enum.KeyCode.G, false)
 H.run(3.5)
@@ -229,9 +231,9 @@ H.run(2.8)
 check(st.lock ~= nil and st.lock.id == eD.id, "锁定了 F-22：" .. tostring(st.lock and st.lock.id))
 check(st.lockT >= 2, string.format("锁定时间够了（%.1f 秒）", st.lockT))
 local nShots = #G.shots
-H.mouseDown(atk, 640, 360)
+H.key(atk, Enum.KeyCode.F, true)   -- F 发导弹（鼠标左键是机炮）
 H.run(0.15)
-H.mouseUp(atk, 640, 360)
+H.key(atk, Enum.KeyCode.F, false)
 H.run(0.2)
 local msl = nil
 for _, s in ipairs(G.shots) do if s.kind == "missile" and s.tgt == eD then msl = s end end
@@ -263,16 +265,16 @@ st.wi = 0
 for i, wid in ipairs(st.wl) do if wid == "lt2" then st.wi = i end end
 local before = e.stores[idx] + e.stores[mate]
 H.run(0.3)
-H.mouseDown(atk, 640, 360)
+H.key(atk, Enum.KeyCode.F, true)
 H.run(0.15)
-H.mouseUp(atk, 640, 360)
+H.key(atk, Enum.KeyCode.F, false)
 H.run(0.5)
 local bombs = 0
 for _, s in ipairs(G.shots) do if s.kind == "bomb" then bombs += 1 end end
 check(bombs >= 1 and e.stores[idx] + e.stores[mate] == before - 1, "投出一枚雷霆-2（还剩 " .. (e.stores[idx] + e.stores[mate]) .. "）")
 
 print("⑧ 机场岛降落、停稳补弹")
-H.key(atk, Enum.KeyCode.W, false)   -- 弹射时推的油门松开
+H.key(atk, Enum.KeyCode.LeftShift, false)   -- 弹射时推的油门松开
 -- 从弹射起一直推满油门（加力）飞了几分钟（还等了开战），油快烧干了（烧干熄火、只能滑翔）：加满再降落（油量在模拟测试 air.lua 里测）
 e.fuel = 1
 local A2 = G.Map.AFIELD2
@@ -314,7 +316,7 @@ print("⑩ 跳伞")
 local up = st.cf.Position + V3.new(0, 500, -200)
 teleport(atk, CF.lookAt(up, up + ldir), 300, false)
 H.run(0.5)
-H.key(atk, Enum.KeyCode.F, true) H.key(atk, Enum.KeyCode.F, false)
+H.key(atk, Enum.KeyCode.Space, true) H.key(atk, Enum.KeyCode.Space, false)   -- 空格下飞机（在天上就跳伞）
 H.run(1)
 check(PA.vehicle == nil and PA.chute ~= nil, "弹射跳伞（降落伞 " .. tostring(PA.chute ~= nil) .. "）")
 check(CA.fly == nil, "客户端交还操作")
@@ -343,9 +345,9 @@ check(eH ~= nil and eH.def.id == "ah64e" and sh ~= nil, "坐进了阿帕奇")
 check(sh and sh.rpm < 50, "旋翼刚开始转")
 H.run(5)
 check(sh and sh.rpm >= 92, string.format("旋翼转起来了（%d%%）", sh and math.floor(sh.rpm) or -1))
-H.key(def, Enum.KeyCode.Space, true)
+H.key(def, Enum.KeyCode.Q, true)   -- Q 升
 H.run(3)
-H.key(def, Enum.KeyCode.Space, false)
+H.key(def, Enum.KeyCode.Q, false)
 local agl = eH.root.CFrame.Position.Y - G.airSurface(eH.root.CFrame.Position.X, eH.root.CFrame.Position.Z)
 check(agl > 40, string.format("起飞了（离地 %.0f 格）", agl))
 H.key(def, Enum.KeyCode.W, true)
@@ -357,9 +359,9 @@ for i, wid in ipairs(sh.wl) do if wid == "hydra" then sh.wi = i end end
 if sh.wi > 0 then
 	local n0 = 0
 	for i, s in ipairs(eH.def.st) do if eH.load[i] == "hydra" then n0 += eH.stores[i] end end
-	H.mouseDown(def, 640, 360)
+	H.key(def, Enum.KeyCode.F, true)   -- F 打火箭（按住连发）；左键是机头炮
 	H.run(0.6)
-	H.mouseUp(def, 640, 360)
+	H.key(def, Enum.KeyCode.F, false)
 	H.run(0.2)
 	local n1 = 0
 	for i, s in ipairs(eH.def.st) do if eH.load[i] == "hydra" then n1 += eH.stores[i] end end

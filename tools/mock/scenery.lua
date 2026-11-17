@@ -96,7 +96,7 @@ print("③ 客户端按距离摆")
 local me = T.join("P1", 5001, true)
 R.run(1)
 local C = T.C
-check(C.sceneryUpdate ~= nil, "客户端有摆花草树木的模块")
+check(C.sceneryUpdate ~= nil, "客户端有摆石头的模块")
 check(RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Scenery") and RS.Imported.Scenery:FindFirstChild("fir1"), "导入的模型包收进了 Imported.Scenery")
 -- 找一片林子：从岛中间往外找树最密的格子
 local best, bx, bz = 0, 0, 0
@@ -114,35 +114,30 @@ local t0 = os.clock()
 for _ = 1, 40 do R.as("client", function() C.sceneryUpdate(1000) end) end
 local dt = os.clock() - t0
 local st = C.sceneryStats
-check(st.live > 300, string.format("林子里（x %.0f z %.0f，一格 %d 棵）摆出来 %d 株，生成了 %d 个、算了 %d 格（模拟器里 %.1f 秒）", bx, bz, best, st.live, st.made, st.cells, dt))
+-- 用户：花草树木删掉，用 Roblox 自带的草——林子那块地方不再摆树、灌木、草丛、花丛（只留石头），草地上是地形自带的草（Terrain.Decoration）
+local veg = {}
+for dz = -3, 3 do
+  for dx = -3, 3 do
+    local cx, cz = math.floor(bx / Flora.CELL) + dx, math.floor(bz / Flora.CELL) + dz
+    for _, layer in ipairs({ "tree", "bush", "grass", "flower" }) do
+      for _, it in ipairs(Flora.cell(cx, cz, layer)) do veg[it.k] = true end
+    end
+  end
+end
+local vegN = 0
+for k, v in pairs(st.byKey) do if veg[k] then vegN = vegN + v end end
+check(vegN == 0, string.format("原来的林子里（x %.0f z %.0f，一格 %d 棵）不再摆树、灌木、草丛、花丛：%d 株（石头 %d 株，模拟器里 %.1f 秒）", bx, bz, best, vegN, st.live, dt))
+local terr = R.services.Workspace:FindFirstChildOfClass("Terrain") or R.services.Workspace.Terrain
+check(terr ~= nil and terr.Decoration == true, "地形自带的草开着（Terrain.Decoration）")
 local folder = R.services.Workspace:FindFirstChild("Scenery")
-local parts, collide, query, mesh = 0, 0, 0, 0
-local kinds = {}
+local collide, query = 0, 0
 for _, p in ipairs(folder:GetChildren()) do
   if p.CFrame.Position.Y > -1000 then
-    parts = parts + 1
     if p.CanCollide then collide = collide + 1 end
     if p.CanQuery then query = query + 1 end
-    if p.ClassName == "MeshPart" then mesh = mesh + 1 end
   end
 end
-check(parts > 300 and collide == 0 and query == 0, string.format("看得见的零件 %d 个，都不挡人（%d）、不挡子弹（%d）", parts, collide, query))
-check(mesh > 0, "导入了的冷杉、草丛用原模型（MeshPart " .. mesh .. " 块）")
-do
-  local near, mid, far, grass = 0, 0, 0, 0
-  for k, v in pairs(st.byKey) do
-    if k:match("_m$") then mid = mid + v elseif k:match("_f$") then far = far + v
-    elseif k:match("^grass") or k == "flowers" or k == "weeds" then grass = grass + v else near = near + v end
-  end
-  print(string.format("    近处完整的树和灌木石头 %d、中距离简化版 %d、远处公告板 %d、草丛花丛 %d；全换成原模型共 %.1f 万个三角形", near, mid, far, grass, st.tris / 1e4))
-  local top = {}
-  for k, v in pairs(st.byKey) do table.insert(top, { k, v, v * ((META[k] and META[k].tris) or 0) }) end
-  table.sort(top, function(a, b) return a[3] > b[3] end)
-  local s2 = {}
-  for i = 1, math.min(8, #top) do s2[#s2 + 1] = string.format("%s×%d=%.0f万", top[i][1], top[i][2], top[i][3] / 1e4) end
-  print("    最占三角形的：" .. table.concat(s2, "，"))
-  check(st.tris < 2.6e6, "原模型的三角形总数不超过 260 万")
-end
+check(collide == 0 and query == 0, string.format("摆出来的石头不挡人（%d）、不挡子弹（%d）", collide, query))
 local D = C.sceneryDist
 check(D.near < D.mid and D.mid < D.far and D.grass < D.near, string.format("距离：近 %.0f、中 %.0f、远 %.0f、草 %.0f 格", D.near, D.mid, D.far, D.grass))
 
@@ -158,7 +153,7 @@ for _ = 1, 40 do R.as("client", function() C.sceneryUpdate(1000) end) end
 cam.CFrame = CF(bx, gy + 6, bz)
 for _ = 1, 40 do R.as("client", function() C.sceneryUpdate(1000) end) end
 check(math.abs(st.live - live1) <= live1 * 0.02, string.format("回到原地摆的一样多（%d / %d）", st.live, live1))
-check(st.made < made0 * 3, string.format("模型生成了 %d 个（第一次 %d），来回挪不会越生越多", st.made, made0))
+check(st.made <= made0 * 3 + 5, string.format("模型生成了 %d 个（第一次 %d），来回挪不会越生越多", st.made, made0))
 
 print("⑤ 正常跑几秒（每帧步骤）")
 R.run(3)

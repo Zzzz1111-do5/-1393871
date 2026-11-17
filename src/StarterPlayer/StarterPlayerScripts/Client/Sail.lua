@@ -380,7 +380,7 @@ function Sail.init(G)
         st.lock = pickLock()
         st.sticky = st.lock ~= nil
       end
-    elseif k == Enum.KeyCode.F then
+    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.Space then   -- 空格也能下船
       G.R.Drive:FireServer({ op = "exit" })
     end
   end)

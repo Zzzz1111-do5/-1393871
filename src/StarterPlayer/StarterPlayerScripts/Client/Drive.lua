@@ -714,7 +714,7 @@ function Drive.init(G)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
-    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E then
+    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
       G.R.Drive:FireServer({ op = "exit" })
     end
   end)

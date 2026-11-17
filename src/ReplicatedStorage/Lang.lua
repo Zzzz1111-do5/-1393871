@@ -238,10 +238,10 @@ add("ui.vehKilled", "击毁 {1}", "Destroyed {1}")
 add("ui.outOfRange", "超出射程", "Out of range")
 add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bringing your vehicle ashore...")
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
-add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · F 下车",
-  "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · F exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · F 下车",
-  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · F exit")
+add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
+  "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
@@ -254,8 +254,8 @@ add("ui.enterVeh", "按 F 上车", "Press F to enter")
 add("pad.needC", "港口失守", "Port lost")
 add("ui.shipRearmed", "靠上码头：导弹补满了，正在修理", "Alongside the pier: missiles reloaded, repairing")
 add("ui.boardShip", "上船", "Board")
-add("ship.help", "W/S 车钟 · A/D 转舵 · 鼠标 瞄准 · 左键 开火 · 1 舰炮 · 2 反舰导弹 · R 锁定 · 右键 / V 望远镜 · N 夜视 · F 下船",
-  "W/S engine order · A/D rudder · Mouse aim · LMB fire · 1 guns · 2 anti-ship missiles · R lock · RMB / V binoculars · N night vision · F leave ship")
+add("ship.help", "W/S 车钟 · A/D 转舵 · 鼠标 瞄准 · 左键 开火 · 1 舰炮 · 2 反舰导弹 · R 锁定 · 右键 / V 望远镜 · N 夜视 · 空格 下船",
+  "W/S engine order · A/D rudder · Mouse aim · LMB fire · 1 guns · 2 anti-ship missiles · R lock · RMB / V binoculars · N night vision · Space leave ship")
 local ORD = { [-2] = { "后退二", "Full astern" }, [-1] = { "后退一", "Slow astern" }, [0] = { "停车", "Stop" }, [1] = { "前进一", "Dead slow ahead" },
   [2] = { "前进二", "Slow ahead" }, [3] = { "前进三", "Half ahead" }, [4] = { "前进四", "Full ahead" }, [5] = { "全速前进", "Flank speed" } }
 for k, v in pairs(ORD) do add("ship.order." .. k, v[1], v[2]) end
@@ -343,11 +343,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向 · W/S 油门（推满进加力）· A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · F 跳伞",
-  "Mouse steer · W/S throttle (max = afterburner) · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · P targeting pod · X flares · J drop tanks · G gear · F eject")
-add("air.helpHeli", "鼠标 看哪飞哪（往下看低头往前冲、往上看抬头减速）· Q 升 / E 降 · W/S 前后 · A/D 左右平移 · 左键 开火 · 1-6 武器 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · F 下飞机",
-  "Mouse: fly where you look (look down = nose down, go) · Q up / E down · W/S fwd/back · A/D strafe · LMB fire · 1-6 weapons · R target · P EO sight · X flares · J drop tanks · F exit")
--- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
+add("air.helpJet", "S 抬头 · W 低头 · A/D 滚转（松开自动改平）· Q/E 方向舵 · Shift/Ctrl 油门（推满进加力）· 鼠标 看四周（C 回正）· 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "S pitch up · W pitch down · A/D roll (auto-level) · Q/E rudder · Shift/Ctrl throttle (full = afterburner) · Mouse look (C recenter) · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpHeli", "W/S 前后 · A/D 转向 · Q 升 / E 降 · 鼠标 看四周、瞄机炮 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "W/S forward/back · A/D turn · Q up / E down · Mouse look & aim gun · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · X flares · J drop tanks · Space exit")
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
 add("air.flareName", "热诱弹", "Flares")
@@ -398,7 +397,9 @@ add("arole.uav", "察打无人机", "Armed drone")
 add("arole.aheli", "武装直升机", "Attack helicopter")
 add("arole.uheli", "通用直升机", "Utility helicopter")
 add("arole.theli", "运输直升机", "Transport helicopter")
-add("air.helpPass", "你坐在后面 · 鼠标 看四周 · F 下飞机（在天上就跳伞）", "You're a passenger · Mouse look · F jump out (parachute if airborne)")
+add("air.mouseGun", "左键 {1} ×{2}", "LMB {1} ×{2}")
+add("air.helpPass", "你坐在后面 · 鼠标 看四周 · 空格 下飞机（在天上就跳伞）",
+  "You're a passenger · Mouse look · Space jump out (parachute if airborne)")
 add("ui.smokeLeft", "烟幕弹 ×{1}", "Smoke ×{1}")
 add("ui.reloading", "装填中", "Reloading")
 add("ui.speed", "{1} 公里/时", "{1} km/h")
@@ -529,8 +530,8 @@ add("sight.nv", "夜视", "NV")
 add("nvg.hint", "按 N 开启夜视", "Press N for night vision")
 add("nvg.hintTouch", "点 NV 开启夜视", "Tap NV for night vision")
 -- 无人机战术平板（Tablet.lua）
-add("air.helpUav", "鼠标 飞行方向 · W/S 油门 · A/D 滚转 · Q/E 方向舵 · 左键 开火 · 1-6 武器 · R 换目标 · 右键/V 切镜头 · Z 变焦（滚轮细调）· G 起落架 · F 收起平板",
-  "Mouse steer · W/S throttle · A/D roll · Q/E rudder · LMB fire · 1-6 weapons · R target · RMB/V camera · Z zoom (wheel fine) · G gear · F put tablet away")
+add("air.helpUav", "S 抬头 · W 低头 · A/D 滚转 · Q/E 方向舵 · Shift/Ctrl 油门 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · 右键/V 切镜头 · Z 变焦（滚轮细调）· G 起落架 · 空格 收起平板",
+  "S pitch up · W pitch down · A/D roll · Q/E rudder · Shift/Ctrl throttle · LMB gun · F missile · 1-6 select · R next target · RMB/V camera · Z zoom (wheel) · G gear · Space close tablet")
 add("ui.uavLost", "无人机被击落，数据链中断", "UAV shot down — link lost")
 add("uav.brand", "TAC-UAV · 地面控制终端", "TAC-UAV · GROUND CONTROL")
 add("uav.kCam", "镜头", "CAM")

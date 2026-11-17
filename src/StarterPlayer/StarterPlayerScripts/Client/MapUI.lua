@@ -69,8 +69,6 @@ function MapUI.init(G)
   local roads = {}
   local fleetMarks = {}   -- 舰队、机场岛的小灰块：雷达里换成暗绿
   local function landCol(b) return (theme == "radar" and RADAR or BAND)[b] end
-  local okF, Flora = pcall(function() return require(RS:WaitForChild("Flora", 5)) end)
-  if not okF then Flora = nil end
   local N = 110
   local cell = SPAN / N
   task.spawn(function()
@@ -82,8 +80,7 @@ function MapUI.init(G)
         if i < N then
           local x = X0 + (i + 0.5) * cell
           b = band(Map.height(x, z))
-          -- 树林（Flora.lua 的林子）：深绿
-          if Flora and b and b >= 2 and b <= 4 and Flora.forest(x, z) > 0.14 and Map.flatW(x, z) < 0.3 then b = 6 end
+          -- （树林删掉了，地图上不再画深绿的林子）
         end
         if b ~= runB then
           if runB then
