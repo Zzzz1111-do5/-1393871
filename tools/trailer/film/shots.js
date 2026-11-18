@@ -8,6 +8,10 @@ import { explosion, muzzle, burst, flare, flarePos, fire, missile, spray, beamMe
 import { fadeIO } from './titles.js';
 import { BIG, s2w, s2wV, heightAt, placeOnGround } from './bigmap.js';
 
+// 片子里的地图放大了（bigmap.js）：抢滩那一片（离 BIG.fx / fz 320 格以内）原样，往外越远放得越大。
+//   分镜里按游戏坐标写死的位置要换算：gp 地面上的点（贴地）、sp 海面 / 空中的点（只挪水平位置）
+const gp = (x, z, lift = 0) => placeOnGround(x, z, lift);
+const sp = (x, y, z) => { const [wx, wz] = s2w(x, z); return V3(wx, y, wz); };
 const NIGHT_FOG = new THREE.Color(0x0e1420);
 const RED_T = new THREE.Color(1, 0.32, 0.12), GREEN_T = new THREE.Color(0.45, 1, 0.35);
 const SERIF = '"Noto Serif SC"', SANS = '"Noto Sans SC"';
@@ -15,15 +19,16 @@ const SERIF = '"Noto Serif SC"', SANS = '"Noto Sans SC"';
 const BUNKER_A = V3(290, 24, -771), BUNKER_B = V3(412, 18, -812), COASTAL = V3(1185, 29, -805), LIGHTHOUSE = V3(2665, 97, -270);
 
 export const SHOTS = [
-  { id: 'S01', dur: 5.5, setup: shotSea },
+  { id: 'S01', dur: 5.5, terrain: () => s2w(-290, 1100), setup: shotSea },
   { id: 'S02', dur: 4.5, setup: shotWatch },
-  { id: 'S03', dur: 3.5, setup: shotNvg },
-  { id: 'S04', dur: 5, setup: shotFleet },
-  { id: 'S05', dur: 4, setup: shotDeck },
-  { id: 'S06', dur: 4, setup: shotBoat },
-  { id: 'S07', dur: 3.5, setup: shotVls },
-  { id: 'S08', dur: 3, setup: shotCat },
-  { id: 'S09', dur: 4.5, setup: shotBarrage },
+  { id: 'S03', dur: 3.5, terrain: () => s2w(200, 400), setup: shotNvg },
+  { id: 'S04', dur: 5, terrain: () => s2w(260, 1420), setup: shotFleet },
+  { id: 'S05', dur: 4, terrain: () => s2w(-402, 2120), setup: shotDeck },
+  { id: 'S06', dur: 4, terrain: () => s2w(330, 180), setup: shotBoat },
+  { id: 'S07', dur: 3.5, terrain: () => s2w(260, 1360), setup: shotVls },
+  { id: 'S07B', dur: 4.2, terrain: () => s2w(560, 1240), setup: shotCiws },
+  { id: 'S08', dur: 3, terrain: () => s2w(-402, 2060), setup: shotCat },
+  { id: 'S09', dur: 4.5, terrain: () => s2w(560, -900), setup: shotBarrage },
   { id: 'S10', dur: 4.5, setup: shotLcac },
   { id: 'S11', dur: 3.5, setup: shotMg },
   { id: 'S12', dur: 5, setup: shotAssault },
@@ -33,7 +38,7 @@ export const SHOTS = [
   { id: 'S15B', dur: 2.9, setup: shotBay },
   { id: 'S15C', dur: 3.1, setup: shotKill },
   { id: 'S16', dur: 4.5, setup: shotHeli },
-  { id: 'S17', dur: 3, setup: shotPatriot },
+  { id: 'S17', dur: 3, terrain: () => s2w(705, -1235), setup: shotPatriot },
   { id: 'S18', dur: 8, setup: shotDawn },
   { id: 'S19', dur: 6, setup: shotTitle },
   { id: 'S20', dur: 7.5, setup: shotFeatures },
@@ -49,7 +54,8 @@ export async function setupShot(S, env) {
   SEA.amp = 1;
   env.fx.wind.set(6, 0, -2);
   env.worldVisible(true);
-  env.terrainAt(...(S.terrain || [BIG.fx, BIG.fz]), S.terrainOpt || {});   // 地形网格以哪儿为中心（离镜头近的地方密）
+  const tc = (typeof S.terrain === 'function') ? S.terrain() : (S.terrain || [BIG.fx, BIG.fz]);
+  env.terrainAt(tc[0], tc[1], S.terrainOpt || {});   // 地形网格以哪儿为中心（离镜头近的地方密）
   const sh = await S.setup(env, add);
   sh.dur = S.dur; sh.t0 = S.t0;
   const d0 = sh.dispose;
@@ -97,7 +103,7 @@ async function squad(env, team, n, seed, opt = {}) {
 // 灯塔：转动的光柱
 function lighthouseBeam(add) {
   const b = beamMesh(2600, 2.0 * DEG, new THREE.Color(1, 0.92, 0.78), 1.1);
-  b.position.copy(LIGHTHOUSE);
+  b.position.copy(gp(LIGHTHOUSE.x, LIGHTHOUSE.z, 70));
   add(b);
   return t => { b.rotation.set(0, t * 0.55 + 1.2, 0); b.rotateX(-2.5 * DEG); };
 }
@@ -155,7 +161,7 @@ async function shotSea(env, add) {
     update(t) {
       const u = t / 5.5;
       SEA.amp = 1.15;
-      cam(env, V3(lerp(-300, -272, u), 4.0 + Math.sin(t * 0.9) * 0.35, lerp(1150, 1092, u)), V3(7, 108, 204), 32);
+      cam(env, sp(lerp(-300, -272, u), 4.0 + Math.sin(t * 0.9) * 0.35, lerp(1150, 1092, u)), sp(7, 320, 204), 32);
       env.camera.rotateZ(Math.sin(t * 0.6) * 0.7 * DEG);
       beam(t + 1);
       return { fade: 1 - smooth(0.2, 2.2, t), exposure: 1.2, shadowR: 600, grain: 0.012, bloom: 1.0 };
@@ -182,7 +188,7 @@ async function shotWatch(env, add) {
   return {
     update(t) {
       const u = t / 4.5;
-      pose(s, { ...STAND, headY: Math.sin(t * 0.35) * 0.18 - 0.05, headX: 0.04, gun: { p: [0.35, 0.75, -0.8], r: [-0.6, 0.15, 0.2] } });
+      pose(s, { ...STAND, headY: Math.sin(t * 0.35) * 0.18 - 0.05, headX: 0.04, gun: { p: [0.52, 1.0, -1.02], r: [-0.22, 0.3, 0.1] } });   // 用户：开头哨兵的枪穿模——端在身前、枪口朝斜下，不插进胸口
       s.chest.scale.setScalar(1 + Math.sin(t * 1.6) * 0.008);
       s.root.updateMatrixWorld(true);
       const eye = head();
@@ -190,7 +196,7 @@ async function shotWatch(env, add) {
       beam(t + 6);
       return { exposure: 1.15, shadowAt: p, shadowR: 60, dof: { focus: env.camera.position.distanceTo(eye), range: 3, max: 1.0 }, bloom: 1.1 };
     },
-    titles: t => [{ text: '美国军队 · 蓝滩守备分队', x: 0.06, y: 0.84, size: 0.017, font: SANS, align: 'left', spacing: 0.2, a: fadeIO(t, 0.8, 4.2, 0.6, 0.5), color: '#9fb4d8' }],
+    titles: t => [{ text: '蓝方 · 滩头守备分队', x: 0.06, y: 0.84, size: 0.017, font: SANS, align: 'left', spacing: 0.2, a: fadeIO(t, 0.8, 4.2, 0.6, 0.5), color: '#9fb4d8' }],
     events: [{ t: 0, k: 'wind' }, { t: 0.5, k: 'radioStatic' }, { t: 0, k: 'pulse' }],
   };
 }
@@ -201,11 +207,11 @@ async function shotNvg(env, add) {
   const f2 = await ship('t054a', env.REPO);
   add(f2.root);
   navLights(env.fx, fleet); navLights(env.fx, f2);
-  env.fx.add((t, f) => { const fl = t > 2.4 ? Math.exp(-(t - 2.4) * 3) : 0; if (fl > 0.01) f.addGlow(V3(150, 40, 1640), 40, new THREE.Color(1, 0.8, 0.5), 20 * fl, 1, 0); });
+  env.fx.add((t, f) => { const fl = t > 2.4 ? Math.exp(-(t - 2.4) * 3) : 0; if (fl > 0.01) f.addGlow(V3(BIG.fx - 240, 40, BIG.fz + 4180), 60, new THREE.Color(1, 0.8, 0.5), 26 * fl, 1, 0); });
   return {
     update(t) {
-      onWaves(fleet.root, 120, 1650, 0.15, t, 0, 0.3);
-      onWaves(f2.root, -520, 1500, -0.1, t, 0, 0.3);
+      onWaves(fleet.root, BIG.fx - 260, BIG.fz + 4200, 0.15, t, 0, 0.3);
+      onWaves(f2.root, BIG.fx - 1700, BIG.fz + 3900, -0.1, t, 0, 0.3);
       const yaw = lerp(-0.08, 0.06, ease(t / 3.5));
       const from = V3(300, env.groundY(300, -762) + 5.6, -762);
       cam(env, from, from.clone().add(V3(Math.sin(yaw) * 100, -1.2, 100)), 9);
@@ -222,7 +228,7 @@ async function shotFleet(env, add) {
   add(S.root);
   navLights(fx, S);
   const half = S.len / 2;
-  const pos = t => V3(260, 0, 1500 - t * 14);
+  const pos = t => sp(260, 0, 1500 - t * 14);
   fx.add(spray({ at: (b, q) => S.root.localToWorld(V3(q.x * 14, 2, -half * 0.95 + Math.abs(q.z) * 30)).setY(1.5), rate: 70, size: 10, up: 10, life: 1.8, alpha: 0.35 }));
   return {
     update(t) {
@@ -233,27 +239,28 @@ async function shotFleet(env, add) {
       env.camera.rotateZ(1.5 * DEG + Math.sin(t * 0.7) * 0.5 * DEG);
       return { exposure: 1.2, shadowAt: S.root.position, shadowR: 450, bloom: 1.0 };
     },
-    titles: t => [{ text: '中国人民解放军 · 登陆编队', x: 0.06, y: 0.84, size: 0.017, font: SANS, align: 'left', spacing: 0.2, a: fadeIO(t, 0.8, 4.7, 0.6, 0.5), color: '#d8b8a0' }],
+    titles: t => [{ text: '红方 · 登陆编队', x: 0.06, y: 0.84, size: 0.017, font: SANS, align: 'left', spacing: 0.2, a: fadeIO(t, 0.8, 4.7, 0.6, 0.5), color: '#d8b8a0' }],
     events: [{ t: 0, k: 'shipRumble' }],
   };
 }
 // 航母甲板的两盏探照灯
 function deckLights(add) {
-  spot(add, V3(-388, 52, 2163), V3(-410, 31, 2120), 0xfff0d8, 5200, 42, 260);
-  spot(add, V3(-388, 52, 2312), V3(-410, 31, 2240), 0xfff0d8, 4200, 42, 260);
+  const dk = sp(-402, 31, 2120);
+  spot(add, dk.clone().add(V3(14, 21, 43)), dk.clone().add(V3(-8, 0, 0)), 0xfff0d8, 5200, 42, 260);
+  spot(add, dk.clone().add(V3(14, 21, 192)), dk.clone().add(V3(-8, 0, 120)), 0xfff0d8, 4200, 42, 260);
 }
 // S05 航母甲板：歼-15 挂在弹射器上，尾喷口加力
 async function shotDeck(env, add) {
   const { fx } = env;
   const A = await aircraft('j15', env.REPO);
   add(A.root);
-  const p0 = V3(-402, 31, 2120);
+  const p0 = sp(-402, 31, 2120);
   A.root.position.copy(p0);
   const kf = t => 0.35 + 0.65 * smooth(1.2, 2.6, t);
   afterburners(A, fx, kf);
   deckLights(add);
   const crew = await squad(env, 'atk', 2, 21, { nvg: 0 });
-  crew.forEach((c, i) => { add(c.root); c.root.position.set(-384 + i * 5, 31, 2104 + i * 16); c.root.rotation.y = 0.9 + i * 2; });
+  crew.forEach((c, i) => { add(c.root); c.root.position.copy(p0).add(V3(18 + i * 5, 0, -16 + i * 16)); c.root.rotation.y = 0.9 + i * 2; });
   fx.add(spray({ at: (b, q) => p0.clone().add(V3(q.x * 2, 0.5, -24 + q.z * 30)), rate: 30, size: 6, up: 3, life: 2.4, alpha: 0.2, tint: [1.2, 1.2, 1.25] }));
   return {
     update(t) {
@@ -261,7 +268,7 @@ async function shotDeck(env, add) {
       A.root.position.copy(p0).add(V3(0, Math.sin(t * 40) * 0.02 * k, 0));
       A.root.updateMatrixWorld(true);
       crew.forEach((c, i) => pose(c, { ...STAND, gun: { p: [0.2, -0.5, -0.4], r: [-1.4, 0, 0] }, headY: i ? -0.3 : 0.5 }));
-      cam(env, V3(-422 + t * 0.5, 34.0, 2178 - t * 1.6), A.root.localToWorld(V3(2, 6, -14)), 32);
+      cam(env, p0.clone().add(V3(-20 + t * 0.5, 3.0, 58 - t * 1.6)), A.root.localToWorld(V3(2, 6, -14)), 32);
       shake(env.camera, t, 0.12 + 0.3 * k, 6, 9);
       return { exposure: 1.15, shadowAt: p0, shadowR: 120, dof: { focus: 60, range: 40, max: 0.5 }, bloom: 1.2 };
     },
@@ -278,7 +285,7 @@ async function shotBoat(env, add) {
   sq.forEach((s, i) => { const row = i % 2, col = Math.floor(i / 2); s.root.position.set(row ? 3.2 : -3.2, -0.6, -11 + col * 5.2); s.nvgDown(i === 9 ? 0 : (i % 3 === 0 ? 1 : 0)); });
   const red = new THREE.PointLight(0xff2a14, 140, 40, 2); red.position.set(0, 6.5, 10.5); L.root.add(red);
   const red2 = new THREE.PointLight(0xff2a14, 70, 30, 2); red2.position.set(0, 5.5, -8); L.root.add(red2);
-  const pos = t => V3(330, 0, 260 - t * 22);
+  const pos = t => sp(330, 0, 260 - t * 22);
   fx.add(spray({ at: (b, q) => L.root.localToWorld(V3(q.x * 8, 5 + q.z, -18)), rate: 40, size: 6, up: 10, life: 1.4, alpha: 0.45 }));
   return {
     update(t) {
@@ -306,7 +313,7 @@ async function shotVls(env, add) {
   add(S.root);
   navLights(fx, S);
   const half = S.len / 2;
-  const at = V3(260, 0, 1380);
+  const at = sp(260, 0, 1380);
   const cells = [V3(-3, 10.5, -72), V3(3, 10.5, -66)].map(v => v.multiplyScalar(S.k));
   const launches = [0.55, 2.0];
   launches.forEach((tl, i) => {
@@ -336,6 +343,67 @@ async function shotVls(env, add) {
     events: [{ t: 0.55, k: 'launch' }, { t: 0.55, k: 'hit' }, { t: 2.0, k: 'launch' }],
   };
 }
+// S07B 1130 近防炮拦截（用户：再加一个 055 的 1130 拦截一堆导弹的震撼画面）：
+//   四枚掠海反舰导弹从右舷后方贴着海面扑过来，舰艉的 1130 泼出一道几乎连成线的曳光，一枚接一枚在空中被打爆，越打越近
+async function shotCiws(env, add) {
+  const { fx } = env;
+  const S = await ship('t055', env.REPO);
+  add(S.root);
+  navLights(fx, S);
+  const half = S.len / 2;
+  const at = sp(560, 0, 1240);
+  const gun0 = at.clone().add(V3(0, 27, half * 0.55));   // 1130 在机库顶上（舰艉那一段）
+  const dirIn = V3(0.18, 0, 0.98).normalize();            // 来袭导弹从舰艏方向扑过来（往 +Z 飞）：曳光从舰艉的近防炮越过整条船打出去
+  const INC = [[0.10, 1.05, 620], [0.70, 1.70, 480], [1.40, 2.45, 360], [2.10, 3.10, 240]];   // 出现、被打爆的时刻、在多远被打爆
+  const mp = (i, t) => {
+    const [t0, tHit, dHit] = INC[i];
+    const end = gun0.clone().addScaledVector(dirIn, -dHit); end.y = 9;
+    const start = gun0.clone().addScaledVector(dirIn, -(dHit + 1500)); start.y = 15;
+    return start.lerp(end, clamp((t - t0) / (tHit - t0), 0, 1));
+  };
+  INC.forEach(([t0, tHit], i) => {
+    fx.add(missile({ path: t => mp(i, t), t0, t1: tHit, size: 1.5, smokeLife: 2.6 }));
+    const hp = mp(i, tHit);
+    fx.add(explosion({ p: hp, t0: tHit, s: 34 + i * 3, seed: 710 + i, dust: false, debris: 16, ember: 40, air: { v: dirIn.clone().multiplyScalar(240) } }));
+    fx.add((t, f) => {   // 打爆以后的残片拖着火往海里掉
+      const u = t - tHit;
+      if (u < 0 || u > 2.2) return;
+      const q = hp.clone().addScaledVector(dirIn, u * 90).add(V3(0, -0.5 * 27 * u * u, 0));
+      if (q.y < 0.5) return;
+      f.sprite('fire', q, 7, ((t * 24 + i * 11) % 64 + 64) % 64, 1 - u / 2.2, 1.1, [0.2, 0.18, 0.16], i);
+      f.addLight(q, new THREE.Color(1, 0.55, 0.22), 6, 120);
+    });
+  });
+  // 曳光：盯住还没被打掉的那一枚，打完一枚立刻转向下一枚
+  const aimAt = t => {
+    for (let i = 0; i < INC.length; i++) if (t <= INC[i][1]) return mp(i, Math.max(t, INC[i][0]));
+    return gun0.clone().addScaledVector(dirIn, -500).setY(30);
+  };
+  fx.add(burst({ from: gun0, dir: t => aimAt(t).sub(gun0).normalize(), t0: 0.2, t1: 3.15, rate: 36, speed: 1400, len: 26,
+    color: new THREE.Color(1, 0.78, 0.32), spread: 0.0055, seed: 701, every: 1, flash: 'mg', maxD: 1100, width: 0.9, bright: 6 }));
+  fx.add((t, f) => {   // 炮口一团一直在跳的火光，照亮舰艉
+    if (t < 0.2 || t > 3.15) return;
+    const k = 0.75 + 0.25 * Math.sin(t * 61);
+    f.addGlow(gun0, 5.5, new THREE.Color(1, 0.8, 0.45), 9 * k, 1, 0.0015);
+    f.addLight(gun0.clone().add(V3(0, 4, 0)), new THREE.Color(1, 0.7, 0.35), 7 * k, 420);
+  });
+  fx.add(spray({ at: (b, q) => S.root.localToWorld(V3(q.x * 14, 2, -half * 0.95 + Math.abs(q.z) * 30)).setY(1.5), rate: 50, size: 9, up: 8, life: 1.8, alpha: 0.3 }));
+  return {
+    update(t) {
+      onWaves(S.root, at.x, at.z - t * 7, 0, t, 0, 0.35);
+      const u = t / 4.2;
+      // 镜头贴在近防炮旁边，顺着开火方向看出去：曳光从镜头边上泼出去，一枚枚导弹在正前方炸开
+      const look = gun0.clone().addScaledVector(dirIn, -lerp(420, 560, ease(u))).add(V3(0, 34, 0));
+      cam(env, at.clone().add(V3(lerp(-300, -262, ease(u)), lerp(66, 58, u), lerp(330, 300, ease(u)))), look, lerp(40, 35, ease(u)));
+      env.camera.rotateZ(1.0 * DEG);
+      shake(env.camera, t, 0.5 + ((t > 0.2 && t < 3.15) ? 0.5 : 0), 7, 43);
+      return { exposure: 1.15, shadowAt: S.root.position, shadowR: 420, bloom: 1.3 };
+    },
+    titles: t => [{ text: '1130 近防炮 · 每分钟一万发', x: 0.94, y: 0.84, size: 0.015, font: SANS, align: 'right', spacing: 0.3, a: fadeIO(t, 0.6, 3.9, 0.5, 0.5), color: '#d8b8a0' }],
+    events: [{ t: 0, k: 'shipRumble' }, { t: 0.2, k: 'mgStart' }, { t: 3.15, k: 'mgStop' },
+      ...INC.map(([, tHit], i) => ({ t: tHit, k: 'boom', v: 0.8 - i * 0.05 }))],
+  };
+}
 // S08 弹射起飞：歼-15 从镜头边冲过去
 async function shotCat(env, add) {
   const { fx } = env;
@@ -343,18 +411,33 @@ async function shotCat(env, add) {
   add(A.root);
   afterburners(A, fx, () => 1);
   deckLights(add);
-  const p0 = V3(-402, 31, 2120);
-  const pos = t => { const u = Math.max(0, t - 0.35); const z = p0.z - 0.5 * 130 * Math.min(u, 1.6) ** 2 - Math.max(0, u - 1.6) * 208; const lift = z < 1945 ? (1945 - z) * 0.12 : 0; return V3(p0.x, p0.y + lift, z); };
-  fx.add(spray({ at: (b, q) => V3(p0.x + q.x * 3, 31.5, pos(b).z + 22 + q.z * 6), t0: 0.35, rate: 50, size: 7, up: 4, life: 1.8, alpha: 0.28, tint: [1.2, 1.2, 1.25] }));
+  const p0 = sp(-402, 31, 2120);
+  // 挡焰板（用户：弹射起飞现实中有那个板子）：飞机屁股后面的甲板板块立起来，加力的焰流打在上面；飞机冲出去以后放平
+  const jbdPiv = new THREE.Group();
+  jbdPiv.position.copy(p0).add(V3(0, 0, 26));
+  add(jbdPiv);
+  const jbd = new THREE.Mesh(new THREE.BoxGeometry(34, 1.1, 17), new THREE.MeshStandardMaterial({ color: 0x6a6f70, roughness: 0.55, metalness: 0.6, envMapIntensity: 0.2 }));
+  jbd.position.set(0, 0.55, 8.5);
+  jbd.castShadow = jbd.receiveShadow = true;
+  jbdPiv.add(jbd);
+  for (const sx of [-1, 0, 1]) {   // 板面上的格栅
+    const r = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.4, 15), new THREE.MeshStandardMaterial({ color: 0x4e5355, roughness: 0.5, metalness: 0.6 }));
+    r.position.set(sx * 11, 1.3, 8.5);
+    jbdPiv.add(r);
+  }
+  const z0 = p0.z - 175;
+  const pos = t => { const u = Math.max(0, t - 0.35); const z = p0.z - 0.5 * 130 * Math.min(u, 1.6) ** 2 - Math.max(0, u - 1.6) * 208; const lift = z < z0 ? (z0 - z) * 0.12 : 0; return V3(p0.x, p0.y + lift, z); };
+  fx.add(spray({ at: (b, q) => V3(p0.x + q.x * 3, p0.y + 0.5, pos(b).z + 22 + q.z * 6), t0: 0.35, rate: 50, size: 7, up: 4, life: 1.8, alpha: 0.28, tint: [1.2, 1.2, 1.25] }));
   return {
     update(t) {
       const p = pos(t);
+      jbdPiv.rotation.x = -smooth(0, 0.3, t) * 0.95 + smooth(1.6, 2.4, t) * 0.95;   // 弹射前立起、冲出去以后放平
       A.root.position.copy(p);
-      A.root.rotation.set(Math.max(0, (p.y - 31) * 0.004), 0, 0);
+      A.root.rotation.set(Math.max(0, (p.y - p0.y) * 0.004), 0, 0);
       A.root.updateMatrixWorld(true);
-      cam(env, V3(-380, 34.5, 2010), p.clone().add(V3(0, 7, -6)), 34);
+      cam(env, p0.clone().add(V3(22, 3.5, -110)), p.clone().add(V3(0, 7, -6)), 34);
       shake(env.camera, t, smooth(0.3, 1.2, t) * 0.7 * (1 - smooth(1.8, 2.8, t)) + 0.1, 8, 4);
-      return { exposure: 1.15, shadowAt: V3(-400, 31, 2060), shadowR: 140, bloom: 1.3 };
+      return { exposure: 1.15, shadowAt: p0, shadowR: 140, bloom: 1.3 };
     },
     events: [{ t: 0.35, k: 'catapult' }, { t: 0.35, k: 'jetPass' }],
   };
@@ -364,23 +447,23 @@ async function shotCat(env, add) {
 // S09 火力准备：高处看海岸，导弹从头顶飞过去，岸防炮、高炮一个个炸开，守军打照明弹
 async function shotBarrage(env, add) {
   const { fx, groundY } = env;
-  const targets = [COASTAL.clone(), V3(677, 25, -867), V3(589, 31, -1328), V3(969, 31, -1328), V3(-42, 39, -787)];
+  const targets = [[620, -900], [170, -840], [430, -1010], [790, -1090], [260, -1160]].map(([x, z]) => gp(x, z, 2));   // 都挪到滩头后面这一带：一个画面里看得全
   const times = [0.9, 1.5, 2.2, 2.6, 3.2];
   targets.forEach((tg, i) => {
-    tg.y = groundY(tg.x, tg.z) + 2;
     const t1 = times[i], fly = 2.2;
-    const from = V3(300 + i * 60, 150, 600);
+    const from = V3(180 + i * 80, 420, 760);
     const path = tau => { const u = clamp((tau - (t1 - fly)) / fly, 0, 1); const p = from.clone().lerp(tg, u); p.y += Math.sin(u * Math.PI) * 120; return p; };
     fx.add(missile({ path, t0: t1 - fly, t1, size: 1.3, smokeLife: 3 }));
     fx.add(explosion({ p: tg, t0: t1, s: 34 + i * 4, seed: 40 + i, debris: 24 }));
     fx.add(fire({ p: tg.clone(), s: 10, t0: t1 + 0.4, seed: 50 + i }));
   });
-  [[260, 1.4], [420, 2.3], [140, 3.0]].forEach(([x, t0], i) => fx.add(flare({ p0: V3(x, 230 + i * 30, -720 + i * 40), t0, seed: 60 + i })));
+  [[260, 1.4], [420, 2.3], [140, 3.0]].forEach(([x, t0], i) => fx.add(flare({ p0: sp(x, 230 + i * 30, -720 + i * 40), t0, seed: 60 + i })));
   return {
     update(t) {
-      cam(env, V3(lerp(420, 400, t / 4.5), lerp(170, 160, t / 4.5), lerp(-170, -200, t / 4.5)), V3(520, 30, -900), 42);
+      const look = gp(450, -1000, 40);
+      cam(env, V3(lerp(330, 310, t / 4.5), lerp(215, 205, t / 4.5), lerp(-30, -90, t / 4.5)), look, 42);
       shake(env.camera, t, 0.15, 1.5, 2);
-      return { exposure: 1.15, shadowAt: V3(500, 0, -900), shadowR: 800, bloom: 1.2 };
+      return { exposure: 1.15, shadowAt: look, shadowR: 900, bloom: 1.2 };
     },
     events: [{ t: 0, k: 'incoming' }, ...times.map((t, i) => ({ t, k: 'bigboom', v: 0.7 + i * 0.05 })), { t: 1.4, k: 'flarePop' }],
   };
@@ -395,7 +478,7 @@ async function shotLcac(env, add) {
   tank.root.position.set(0, 0.8, 2);
   const L2 = landingCraft(env.T); add(L2.root);
   const L3 = landingCraft(env.T); add(L3.root);
-  const pos = t => V3(360, 0, -330 - t * 58);
+  const pos = t => sp(360, 0, -330 - t * 58);
   fx.add(spray({ at: (b, q) => { const p = pos(b); return V3(p.x + q.x * 15, 1, p.z + 6 + q.z * 22); }, rate: 90, size: 9, up: 7, life: 1.4, alpha: 0.22, tint: [1.0, 1.08, 1.2] }));
   fx.add(spray({ at: (b, q) => { const p = pos(b); return V3(p.x + q.x * 10, 2, p.z + 30 + q.z * 6); }, rate: 40, size: 13, up: 3, life: 2.0, alpha: 0.18, tint: [1.0, 1.08, 1.2] }));
   const R = rng(9);
@@ -403,15 +486,16 @@ async function shotLcac(env, add) {
     const src = V3(290 + i * 40, 24, -780);
     fx.add(burst({ from: src, dir: () => pos(1.5).add(V3(R.range(-60, 60), 6, R.range(-60, 60))).sub(src).normalize(), t0: 0.2 + i * 0.4, t1: 4.5, rate: 7, speed: 1100, color: RED_T, spread: 0.02, seed: 70 + i, every: 1, flash: 'mg', maxD: 900 }));
   }
-  [[330, 0.0, 270], [470, 1.2, 240]].forEach(([x, t0, y], i) => fx.add(flare({ p0: V3(x, y, -700), t0: t0 - 3, seed: 80 + i })));
+  [[330, 0.0, 270], [470, 1.2, 240]].forEach(([x, t0, y], i) => fx.add(flare({ p0: sp(x, y, -700), t0: t0 - 3, seed: 80 + i })));
   return {
     update(t) {
       const p = pos(t);
       SEA.amp = 1.1;
       onWaves(H.root, p.x, p.z, 0, t, 2.6, 0.4);
       H.spin(t);
-      onWaves(L2.root, 250, -280 - t * 40, 0.05, t, 1.8);
-      onWaves(L3.root, 470, -230 - t * 42, -0.04, t, 1.8);
+      const q2 = sp(250, 0, -280 - t * 40), q3 = sp(470, 0, -230 - t * 42);
+      onWaves(L2.root, q2.x, q2.z, 0.05, t, 1.8);
+      onWaves(L3.root, q3.x, q3.z, -0.04, t, 1.8);
       tank.aim(0, 0.02);
       cam(env, V3(p.x + 52, 6 + Math.sin(t * 2) * 0.5, p.z - 36), p.clone().add(V3(-2, 6, 4)), 34);
       shake(env.camera, t, 0.6, 4, 6);
@@ -433,17 +517,18 @@ async function shotMg(env, add) {
   fx.add(burst({ from: slit, dir: t => V3(0.15 + Math.sin(t * 0.8) * 0.12, -0.05, 1).normalize(), t0: 0.15, t1: 3.5, rate: 13, speed: 1200, color: RED_T, spread: 0.01, seed: 101, every: 1, flash: 'mg', maxD: 700, width: 0.7 }));
   const rifleT = [0.6, 0.85, 1.2, 1.9, 2.15, 2.8];
   rifleT.forEach((tt, i) => fx.add(muzzle({ p: () => s.gunPiv.localToWorld(V3(0, 0.06, -1.05)), dir: () => V3(0, 0, -1).transformDirection(s.gunPiv.matrixWorld), t0: tt, kind: 'rifle', seed: 110 + i })));
-  [[330, -2, 250], [250, 0.8, 230]].forEach(([x, t0, y], i) => fx.add(flare({ p0: V3(x, y, -600), t0, seed: 120 + i })));
-  [[1.3, 300, -470], [2.6, 360, -500]].forEach(([t0, x, z], i) => fx.add(explosion({ p: V3(x, 0, z), t0, s: 16, seed: 130 + i, water: true, debris: 0, ember: 0, dust: false })));
+  [[330, -2, 250], [250, 0.8, 230]].forEach(([x, t0, y], i) => fx.add(flare({ p0: sp(x, y, -600), t0, seed: 120 + i })));
+  [[1.3, 300, -470], [2.6, 360, -500]].forEach(([t0, x, z], i) => fx.add(explosion({ p: sp(x, 0, z), t0, s: 16, seed: 130 + i, water: true, debris: 0, ember: 0, dust: false })));
   return {
     update(t) {
-      onWaves(L1.root, 300, -420 - t * 30, 0.05, t, 1.8);
-      onWaves(L2.root, 370, -380 - t * 28, -0.05, t, 1.8);
-      onWaves(H.root, 230, -330 - t * 50, 0.1, t, 2.6, 0.4); H.spin(t);
+      const a1 = sp(300, 0, -420 - t * 30), a2 = sp(370, 0, -380 - t * 28), a3 = sp(230, 0, -330 - t * 50);
+      onWaves(L1.root, a1.x, a1.z, 0.05, t, 1.8);
+      onWaves(L2.root, a2.x, a2.z, -0.05, t, 1.8);
+      onWaves(H.root, a3.x, a3.z, 0.1, t, 2.6, 0.4); H.spin(t);
       const recoil = rifleT.reduce((a, tt) => a + (t > tt && t < tt + 0.15 ? (1 - (t - tt) / 0.15) : 0), 0);
       pose(s, { ...AIM, gun: { p: [0.45, 1.12, -0.85 + recoil * 0.15], r: [-0.05 - recoil * 0.06, 0.35, 0] } });
       const cp = s.root.localToWorld(V3(-3.2, 6.6, 7.5));
-      cam(env, cp, V3(286, -6, -520), 38);
+      cam(env, cp, sp(286, -6, -520), 38);
       shake(env.camera, t, 0.35, 5, 8);
       return { exposure: 1.15, shadowAt: V3(300, 20, -765), shadowR: 70, dof: { focus: 160, range: 160, max: 0.4 }, bloom: 1.25 };
     },
@@ -463,8 +548,19 @@ async function shotAssault(env, add) {
     const boat = i < 6 ? b1 : b2;
     const start = boat.clone().add(V3(R.range(-4, 4), 0, -16 - R.range(0, 8)));
     const dir = V3(R.range(-0.25, 0.25), 0, -1).normalize();
-    return { s, start, dir, t0: 1.0 + (i % 6) * 0.28 + R.range(0, 0.2), sp: R.range(15, 19), ph: R() };
+    // 下船先朝碉堡打一梭子再往前冲（用户：士兵从登陆船下来应该立马先朝碉堡射击，它的一系列动作不合理）
+    const t0 = 0.8 + (i % 6) * 0.24 + R.range(0, 0.15);
+    return { s, start, dir, t0, sp: R.range(15, 19), ph: R(), fire: (i % 2 === 0) ? [t0 + 0.25, t0 + 0.95] : null, tgt: (i < 6) ? BUNKER_A : BUNKER_B };
   });
+  // 冲下来的兵朝碉堡的枪口焰
+  for (const r of runners) {
+    if (!r.fire) continue;
+    for (let k = 0; k < 4; k++) {
+      const tt = r.fire[0] + k * 0.17;
+      if (tt > r.fire[1]) break;
+      fx.add(muzzle({ p: () => r.s.gunPiv.localToWorld(V3(0, 0.06, -1.05)), dir: () => V3(0, 0, -1).transformDirection(r.s.gunPiv.matrixWorld), t0: tt, kind: 'rifle', seed: 190 + Math.floor(tt * 31) }));
+    }
+  }
   fx.add(burst({ from: BUNKER_A.clone().add(V3(1, 1.5, 6)), dir: t => V3(0.25 + Math.sin(t * 1.3) * 0.12, -0.12, 1).normalize(), t0: 0, t1: 5, rate: 11, speed: 1100, color: RED_T, spread: 0.015, seed: 150, flash: 'mg', maxD: 700 }));
   fx.add(burst({ from: BUNKER_B.clone().add(V3(-2, 1.5, 6)), dir: t => V3(-0.45 + Math.sin(t) * 0.1, -0.1, 1).normalize(), t0: 0.4, t1: 5, rate: 9, speed: 1100, color: RED_T, spread: 0.02, seed: 151, flash: 'mg', maxD: 700 }));
   for (let i = 0; i < 5; i++) {
@@ -472,7 +568,7 @@ async function shotAssault(env, add) {
     fx.add(burst({ from, dir: V3(-0.1 + i * 0.05, 0.1, -1).normalize(), t0: 1.6 + i * 0.5, t1: 5, rate: 4, speed: 900, color: GREEN_T, spread: 0.03, seed: 160 + i, flash: 'rifle', maxD: 500, width: 0.45, bright: 4 }));
   }
   [[1.8, 330, -728], [3.1, 372, -712], [4.2, 290, -706]].forEach(([t0, x, z], i) => fx.add(explosion({ p: V3(x, groundY(x, z), z), t0, s: 18, seed: 170 + i, debris: 14 })));
-  [[0.6, 395, -650], [2.5, 270, -648]].forEach(([t0, x, z], i) => fx.add(explosion({ p: V3(x, 0, z), t0, s: 14, seed: 175 + i, water: true, debris: 0, ember: 0, dust: false })));
+  [[0.6, 395, -650], [2.5, 270, -648]].forEach(([t0, x, z], i) => fx.add(explosion({ p: sp(x, 0, z), t0, s: 14, seed: 175 + i, water: true, debris: 0, ember: 0, dust: false })));
   [[320, -6, 240], [400, -1, 260]].forEach(([x, t0, y], i) => fx.add(flare({ p0: V3(x, y, -720), t0, seed: 180 + i })));
   return {
     update(t) {
@@ -484,11 +580,19 @@ async function shotAssault(env, add) {
         const u = t - r.t0;
         if (u < 0) { r.s.root.visible = false; continue; }
         r.s.root.visible = true;
-        const p = r.start.clone().addScaledVector(r.dir, Math.min(u, 3.5) * r.sp);
+        // 下了跳板先端枪朝碉堡打，打完再往前冲（跑的距离从开火结束那一刻才算）
+        const firing = r.fire && t >= r.fire[0] && t <= r.fire[1];
+        const run = r.fire ? Math.max(0, t - r.fire[1]) : u;
+        const p = r.start.clone().addScaledVector(r.dir, Math.min(run, 3.5) * r.sp);
         const gy = Math.max(groundY(p.x, p.z), seaY(p.x, p.z, t) - 1.5);
         r.s.root.position.set(p.x, gy, p.z);
-        r.s.root.rotation.set(0, headingTo(V3(), r.dir), 0);
-        pose(r.s, runPose((u * 1.6 + r.ph) % 1));
+        r.s.root.rotation.set(0, firing ? headingTo(p, r.tgt) : headingTo(V3(), r.dir), 0);
+        if (firing) {
+          const rk = ((t - r.fire[0]) * 6) % 1 < 0.35 ? 1 : 0;
+          pose(r.s, { ...AIM, gun: { p: [0.45, 1.12, -0.85 + rk * 0.12], r: [-0.04 - rk * 0.05, 0.35, 0] } });
+        } else {
+          pose(r.s, runPose((run * 1.6 + r.ph) % 1));
+        }
       }
       cam(env, V3(lerp(334, 326, t / 5), 9.5, lerp(-612, -618, t / 5)), V3(326, 12, -740), 36);
       shake(env.camera, t, 0.55, 3, 13);
@@ -578,7 +682,7 @@ async function shotAbrams(env, add) {
 const SIDE = 1;   // 右侧弹舱（镜头在右下方）
 const GREEN_EL = new THREE.Color(0.25, 1, 0.48);
 const AIR = (() => {
-  const V = new THREE.Vector3(90, 0, -290), P0 = new THREE.Vector3(-150, 650, 1600);
+  const V = new THREE.Vector3(90, 0, -290), P0 = sp(-150, 1850, 1600);   // 地图放大了：高度抬到山脊以上（主峰约 1300），起点按放大后的位置
   const yaw = Math.atan2(-V.x, -V.z);
   const rot = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), yaw);
   const jp = tau => P0.clone().addScaledVector(V, tau).add(V3(0, Math.sin(tau * 0.4) * 6, 0));
@@ -794,7 +898,7 @@ async function shotHeli(env, add) {
   add(H1.root); add(H2.root);
   const tg = BUNKER_B.clone(); tg.y = groundY(tg.x, tg.z) + 2;
   const alt = (x, z, a) => Math.max(groundY(x, z) + a, a + 12);   // 永远在地形上面（原来有一段钻进山里）
-  const hp = (i, t) => { const x = i ? 452 : 394, z = (i ? -566 : -598) - t * 5; return V3(x, alt(x, z, i ? 40 : 34) + Math.sin(t * 1.4 + i) * 0.6, z); };
+  const hp = (i, t) => { const x = i ? 500 : 380, z = (i ? -40 : -90) - t * 24; return V3(x, alt(x, z, i ? 78 : 64) + Math.sin(t * 1.4 + i) * 0.6, z); };   // 用户：直-10 打碉堡离得太近——退到七八百格（近 300 米）外，边打边压上来
   const quat = (i, t) => { const p = hp(i, t), y = headingTo(p, tg); return new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.13 - (t > 0.6 && t < 2.2 ? 0.04 : 0), y, Math.sin(t + i) * 0.03, 'YXZ')); };
   const pose = (H, i, t) => { H.root.position.copy(hp(i, t)); H.root.quaternion.copy(quat(i, t)); H.root.updateMatrixWorld(true); };
   [H1, H2].forEach(h => {   // 旋翼的虚影
@@ -815,12 +919,12 @@ async function shotHeli(env, add) {
       rocketTimes.push({ t: tl, hit: tl + fly });
     }
   };
-  salvo(0, 20, 0.7, 18, 16);
-  salvo(1, 12, 1.05, 16, 20);
-  fx.add(explosion({ p: tg.clone().add(V3(0, 2, 0)), t0: 2.75, s: 36, seed: 690, debris: 30 }));
-  fx.add(fire({ p: tg.clone(), s: 10, t0: 3.0, seed: 691 }));
+  salvo(0, 20, 0.5, 18, 20);
+  salvo(1, 12, 0.85, 16, 26);
+  fx.add(explosion({ p: tg.clone().add(V3(0, 2, 0)), t0: 3.15, s: 36, seed: 690, debris: 30 }));
+  fx.add(fire({ p: tg.clone(), s: 10, t0: 3.4, seed: 691 }));
   fx.add(flare({ p0: V3(380, 250, -760), t0: -5, seed: 692 }));
-  fx.add(flare({ p0: V3(430, 200, -640), t0: -2, seed: 693 }));
+  fx.add(flare({ p0: sp(430, 200, -400), t0: -2, seed: 693 }));
   // 航行灯
   [H1, H2].forEach(h => fx.add((t, f) => {
     const w = (h.M.tip ? h.M.tip[0] : 6) * 0.9;
@@ -831,14 +935,14 @@ async function shotHeli(env, add) {
     update(t) {
       pose(H1, 0, t); pose(H2, 1, t);
       H1.spin(t, 0.13); H2.spin(t + 0.3, 0.13);
-      const cp = H1.root.localToWorld(V3(-11, 7.5, 27));
-      cam(env, cp, tg.clone().add(V3(0, 8, 0)).lerp(H1.root.position, 0.18), 40);
-      const firing = smooth(0.6, 0.8, t) * (1 - smooth(1.9, 2.2, t));
-      shake(env.camera, t, 0.35 + firing * 0.6 + (t > 2.75 ? 1.2 * Math.exp(-(t - 2.75) * 3) : 0), 9, 29);
+      const cp = H1.root.localToWorld(V3(-13, 8.5, 34));
+      cam(env, cp, tg.clone().add(V3(0, 8, 0)).lerp(H1.root.position, 0.1), 34);
+      const firing = smooth(0.4, 0.6, t) * (1 - smooth(1.7, 2.0, t));
+      shake(env.camera, t, 0.35 + firing * 0.6 + (t > 3.15 ? 1.2 * Math.exp(-(t - 3.15) * 3) : 0), 9, 29);
       return { exposure: 1.15, shadowAt: V3(400, 20, -700), shadowR: 160, bloom: 1.25 };
     },
-    events: [{ t: 0, k: 'rotor' }, { t: 0.7, k: 'rocketRipple', n: 20, rate: 18 }, { t: 1.05, k: 'rocketRipple', n: 12, rate: 16, v: 0.6 },
-      ...rocketTimes.filter((r, i) => i % 3 === 0).map(r => ({ t: r.hit, k: 'boom', v: 0.45 })), { t: 2.75, k: 'bigboom', v: 1 }],
+    events: [{ t: 0, k: 'rotor' }, { t: 0.5, k: 'rocketRipple', n: 20, rate: 18 }, { t: 0.85, k: 'rocketRipple', n: 12, rate: 16, v: 0.6 },
+      ...rocketTimes.filter((r, i) => i % 3 === 0).map(r => ({ t: r.hit, k: 'boom', v: 0.45 })), { t: 3.15, k: 'bigboom', v: 1 }],
   };
 }
 // S17 爱国者发射：沿发射箱的轴线（朝车头斜上 34°）打出去，发射过的那个箱口不再露着弹头，尾焰从箱子后面喷
@@ -847,7 +951,7 @@ async function shotPatriot(env, add) {
   const P = await vehicle('patriot', env.REPO);
   const NO = patriotNoses(P);
   add(P.root);
-  const at = V3(705, 0, -1235);
+  const at = gp(705, -1235);
   onGround(env, P.root, at.x, at.z, Math.PI * 0.95, 0.1);
   const tl = 0.6, which = 3;   // 右上那一枚
   const exitL = NO.noses[which].p.clone(), rearL = NO.center.clone().addScaledVector(NO.axis, -10.2).add(exitL.clone().sub(NO.center).projectOnPlane(NO.axis));
@@ -941,7 +1045,7 @@ async function shotTitle(env, add) {
 // S20 卖点：几行字，背后是缓缓转动的坦克 / 战斗机剪影
 async function shotFeatures(env, add) {
   env.worldVisible(false);
-  const tank = await vehicle('ztq15', env.REPO); add(tank.root);
+  const tank = await vehicle('ztz99', env.REPO); add(tank.root);   // 用户：结尾那辆坦克建模极其粗糙——ZTQ-15 换成 99A
   const J = await aircraft('j20', env.REPO); add(J.root);
   const key = new THREE.DirectionalLight(0xffd6b0, 4.0); key.position.set(-25, 18, 35); add(key);
   const rim = new THREE.DirectionalLight(0x8fb0ff, 6.0); rim.position.set(30, 14, -90); add(rim);
@@ -977,8 +1081,8 @@ async function shotEnd(env, add) {
     titles: t => {
       const a = fadeIO(t, 0.2, 5.5, 0.6, 0.9);
       return [
-        { text: '中国人民解放军　VS　美国军队', x: 0.5, y: 0.36, size: 0.03, font: SERIF, weight: 700, spacing: 0.18, a },
-        { text: '选择你的阵营', x: 0.5, y: 0.42, size: 0.02, font: SANS, spacing: 0.6, a, color: '#c9c1b4' },
+        { text: '红方　VS　蓝方', x: 0.5, y: 0.36, size: 0.03, font: SERIF, weight: 700, spacing: 0.18, a },
+        { text: '两个阵营　一张战场　选择你的立场', x: 0.5, y: 0.42, size: 0.02, font: SANS, spacing: 0.3, a, color: '#c9c1b4' },
         { text: 'Roblox全面大战场　1.0-alpha 测试中', x: 0.5, y: 0.53, size: 0.018, font: SANS, spacing: 0.3, a: a * 0.9, color: '#a8a196' },
         { text: '本片为游戏原模型与地图离线渲染的微电影　模型均为 Sketchfab 上 CC-BY 4.0 授权作品', x: 0.5, y: 0.645, size: 0.0125, font: SANS, spacing: 0.1, a: a * 0.75, color: '#8a847a' },
         { text: credits.slice(0, 5).join('　·　'), x: 0.5, y: 0.68, size: 0.0125, font: SANS, spacing: 0.05, a: a * 0.75, color: '#8a847a' },
