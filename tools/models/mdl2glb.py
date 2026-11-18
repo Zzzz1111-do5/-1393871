@@ -22,8 +22,9 @@ CHUNK = 19500    # 一块网格最多几个三角形
 TEXMAX = 1024    # Roblox 贴图最大边长
 
 # Roblox 里的型号 → 网页版的模型（网页版自己就拿 LAV-25 代 ZSL-92B、PzH 2000 代 PLZ-07、M-ATV 代 M1117……照它）
+#   99A 用户 11-18 指定换成 42manako 的「ZTZ-99A2」（Sketchfab，CC-BY；原来是 philano 的低面数 Type 99）：网页版没有，在临时目录里用网页版的 v3gbake.js 烘焙
 ALIAS = {
-    'ztz99a': 'ztz99', 'ztz96': 'ztz96', 'zbd05': 'zbd97', 'zsl92b': 'lav25', 'ptl02': 'ptl02', 'pgl625': 't625', 'plz07': 'pzh2000',
+    'ztz99a': 'ztz99a2', 'ztz96': 'ztz96', 'zbd05': 'zbd97', 'zsl92b': 'lav25', 'ptl02': 'ptl02', 'pgl625': 't625', 'plz07': 'pzh2000',
     'm1a2': 'm1a2v3', 'm1a1': 'm1a1', 'm2a3': 'm2a3', 'stryker': 'stryker', 'mshorad': 'stryker', 'm1150': 'm1150', 'hmmwv': 'hmmwv',
     'jltv': 'jltv', 'm1117': 'matv', 'm163': 'm163', 'cram': 'cram', 'patriot': 'patriot', 'm109a7': 'm109', 'm270': 'm270',
 }
