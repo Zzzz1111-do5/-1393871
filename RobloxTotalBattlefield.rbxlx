@@ -643,6 +643,7 @@ Config.StageOff = 420    -- 攻方攻击出发阵地：第二阶段起，据点�
 -- 占领：圈里数双方的人（步兵、地面载具；飞机、舰艇不算；机器人也算）
 Config.Capture = {
   r = 70,          -- 据点半径（和 Map.POINT_R 一样）
+  height = 45,     -- 据点上下可占领的高度（格）
   slow = 45,       -- 攻方多 1 人：几秒占完
   fast = 15,       -- 攻方多 3 人以上：几秒占完
   decay = 90,      -- 守方人不少于攻方：进度从满退到零要几秒
@@ -3623,16 +3624,16 @@ add("hud.ot", "加时", "OT")
 add("hud.mode", "攻防战", "ASSAULT")
 add("hud.tip.title", "目标与据点", "OBJECTIVES")
 add("hud.tip.page", "{1} / {2}", "{1} / {2}")
-add("hud.tip.2", "屏幕上方写着现在要打 / 要守的据点，菱形标记和距离指着它。站进圈里就开始占领，自己人越多越快；圈里有敌人就停住。", "The top of the screen names the objectives to attack or defend; the diamond marker and distance point to them. Stand inside the circle to capture; more teammates capture faster, enemies inside stop it.")
+add("hud.tip.2", "看屏幕上方的目标，再跟着菱形标记走。进入据点圈后，上方会显示占领进度。攻方要在圈内取得人数优势，才能推进占领。", "Follow the objective at the top of the screen and its diamond marker. The capture meter appears inside the zone. Attackers must outnumber defenders in the zone to advance it.")
 add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、直升机、飞机和艇，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, helicopters, jets and boats; walk up and press E to get in.")
 add("hud.tip.4", "阵亡以后在部署界面底下的装备格换枪械和装备。目标离得太远就按 H 重新部署（不算阵亡）。按 Tab 看战况。", "After you die, change weapons and gear in the loadout slots at the bottom of the deploy screen. Objective too far away? Press H to redeploy (no death counted). Hold Tab for the scoreboard.")
 -- 分阶段突破（Round.lua / Hud.lua）
 add("stage.beach", "抢滩登陆", "STORM THE BEACH")
 add("stage.beach.atk", "冲上前哨岛，拿下据点 A", "Storm Outpost Island and take objective A")
-add("stage.beach.def", "守住前哨岛据点 A，把登陆的敌人打回海里", "Hold Outpost A and throw the landing back into the sea")
+add("stage.beach.def", "守住前哨岛 A，击退登陆部队。", "Hold Outpost A against the landing.")
 add("stage.beach.short", "抢滩", "BEACH")
 add("stage.main", "登陆主岛", "MAIN ISLAND")
-add("stage.main.atk", "登陆主岛，拿下港口 C 和机场 D（灯塔岛 B 是侧翼，拿下补兵力）", "Land on the main island and take Port C and Airfield D (Lighthouse B is a flank: taking it adds reinforcements)")
+add("stage.main.atk", "夺取港口 C 和机场 D。拿下侧翼 B 可补充兵力。", "Take C and D. Capture flank B for reinforcements.")
 add("stage.main.def", "守住港口 C 和机场 D", "Hold Port C and Airfield D")
 add("stage.main.short", "主岛", "MAIN ISLAND")
 add("stage.hq", "决战指挥部", "FINAL ASSAULT")
@@ -3641,6 +3642,11 @@ add("stage.hq.def", "最后一道防线：死守指挥部 E", "Last line: hold C
 add("stage.hq.short", "指挥部", "COMMAND")
 add("hud.stage", "阶段 {1}/{2}", "SECTOR {1}/{2}")
 add("hud.stageN", "第 {1} / {2} 阶段", "SECTOR {1} OF {2}")
+add("operation.inZone", "已进入占领区", "IN CAPTURE ZONE")
+add("operation.capturing", "正在占领", "CAPTURE ADVANCING")
+add("operation.losing", "敌方正在占领", "ENEMY CAPTURE ADVANCING")
+add("operation.recovering", "敌方占领进度正在回退", "ATTACKER PROGRESS FALLING")
+add("operation.stalled", "占领进度停滞", "CAPTURE STALLED")
 add("hud.tickets", "兵力", "TICKETS")
 add("hud.goalAtk", "进攻", "ATTACK")
 add("hud.goalDef", "防守", "DEFEND")
@@ -13398,7 +13404,7 @@ function Round.init(G)
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
           local p = hrp.Position
           local dx, dz = p.X - s.x, p.Z - s.z
-          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < 45 then
+          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < CC.height then
             if P.team == "atk" then a += 1 else d += 1 end
             table.insert(who, P)
           end
@@ -13438,7 +13444,7 @@ function Round.init(G)
     R.endsAt = now() + (st.time or 480)
     R.overtimeEnds = nil
     R.stageAt = now()
-    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 客户端：全屏横幅（第几阶段、这一阶段打哪儿）
+    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 旧客户端的阶段横幅
     G.emit("stage", R.stage, st)
   end
   local function captured(s, who)
@@ -13491,6 +13497,7 @@ function Round.init(G)
         else
           s.prog = math.max(0, s.prog - dt / CC.decay)
         end
+        s.motion = s.prog > old and 1 or (s.prog < old and -1 or 0)
         if s.prog >= 1 then
           captured(s, who)
         elseif math.abs(s.prog - old) > 1e-6 then
@@ -13498,7 +13505,7 @@ function Round.init(G)
           paint(s)
         end
       else
-        s.atk, s.def, s.pressed = 0, 0, false
+        s.atk, s.def, s.pressed, s.motion = 0, 0, false, 0
       end
     end
   end
@@ -13607,7 +13614,7 @@ function Round.init(G)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
-        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil })
+        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
     end
     return out
   end
@@ -15813,22 +15820,56 @@ local function lighthouse(f)
   local I = Map.LIGHTHOUSE
   local x, z = I.x + I.a * 0.55, I.z + 30   -- 东岸崖顶
   local y = Map.ground(x, z)
+  f = folder("Lighthouse", f)
   for i = 0, 5 do cyl(f, 8, 12 - i * 0.6, CF(x, y + 4 + i * 8, z), (i % 2 == 0) and C.white or C.red, MAT.Concrete, true) end
-  local lamp = part(f, V(6, 6, 6), CF(x, y + 51, z), RGB(255, 236, 160), MAT.Neon, BALL)
-  -- 灯塔的光柱：一根长长的半透明光束 + 射灯，客户端（Night.lua）让它绕着转
-  local beam = part(f, V(4, 4, 260), CF(x, y + 51, z) * CF(0, 0, -130), RGB(255, 240, 200), MAT.Neon)
-  beam.Transparency = 0.86
-  beam.CastShadow = false
-  beam:SetAttribute("Anim", "spin")
-  beam:SetAttribute("Spd", 0.08)
-  beam:SetAttribute("Pivot", V(x, y + 51, z))
-  local sl = Instance.new("SpotLight")
-  sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color = Enum.NormalId.Front, 18, 60, 6, RGB(255, 240, 200)
-  sl.Parent = beam
+  local lantern = CF(x, y + 51, z)
+  local warm = RGB(255, 226, 170)
+  cyl(f, 1.2, 14, lantern * CF(0, -3, 0), C.dark, MAT.Metal)
+  cyl(f, 1, 11, lantern * CF(0, 3, 0), C.red, MAT.Metal)
+  cyl(f, 1.3, 7, lantern * CF(0, 4.1, 0), C.dark, MAT.Metal)
+  for i = 0, 7 do
+    local corner = lantern * CFrame.Angles(0, i * math.pi / 4, 0)
+    part(f, V(0.26, 6, 0.26), corner * CF(0, 0, -4.3), C.dark, MAT.Metal)
+    part(f, V(5.3, 0.23, 0.23), corner * CF(0, -1.2, -6.45), C.metal, MAT.Metal)
+  end
+  local lamp = part(f, V(3.2, 3.2, 3.2), lantern, warm, MAT.Neon, BALL)
   local pl = Instance.new("PointLight")
-  pl.Range, pl.Brightness, pl.Color = 40, 2, RGB(255, 236, 170)
+  pl.Range, pl.Brightness, pl.Color = 28, 1.4, warm
   pl.Parent = lamp
-  part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
+
+  -- 两层渐隐光束共用一个转轴，客户端按服务器时钟同步扫过海面。
+  local sweep = part(f, V(1, 1, 1), lantern, warm)
+  sweep.Name = "LighthouseSweep"
+  sweep.Transparency = 1
+  sweep:SetAttribute("Anim", "spin")
+  sweep:SetAttribute("Spd", 0.08)
+  sweep:SetAttribute("Pivot", lantern.Position)
+  local lens = Instance.new("Attachment")
+  lens.Position = V(0, 0, -4.7)
+  lens.Parent = sweep
+  for _, spec in ipairs({
+    { name = "LanternCore", distance = 220, width0 = 1.8, width1 = 10, alpha = 0.88 },
+    { name = "SeaHaze", distance = 650, width0 = 4, width1 = 48, alpha = 0.94 },
+  }) do
+    local reach = Instance.new("Attachment")
+    reach.Position = V(0, -0.025 * spec.distance, -spec.distance)
+    reach.Parent = sweep
+    local beam = Instance.new("Beam")
+    beam.Name = spec.name
+    beam.Attachment0, beam.Attachment1 = lens, reach
+    beam.Width0, beam.Width1 = spec.width0, spec.width1
+    beam.FaceCamera, beam.LightEmission, beam.LightInfluence = true, 0.7, 0
+    beam.Color = ColorSequence.new(warm, RGB(172, 199, 215))
+    beam.Transparency = NumberSequence.new({
+      NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.10, spec.alpha),
+      NumberSequenceKeypoint.new(0.37, spec.alpha), NumberSequenceKeypoint.new(1, 1),
+    })
+    beam.Parent = sweep
+  end
+  local sl = Instance.new("SpotLight")
+  sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color = Enum.NormalId.Front, 20, 60, 2.5, warm
+  sl.Shadows = false
+  sl.Parent = sweep
   building(f, "jph2", x - 30, z + 12, 0.2 + math.pi / 2)   -- 看守的小屋
 end
 
@@ -16008,7 +16049,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -16043,7 +16084,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
-  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
+  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end },
+  { "operation", function(dt) G.stepOperation(dt) end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
   { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
@@ -18207,7 +18249,7 @@ function Coach.init(G)
   local function pointPos(id)
     local cam = workspace.CurrentCamera
     local mp = cam:FindFirstChild("Obj_" .. id)   -- Hud.lua 放的据点标记（高度照地面找过）
-    if mp then return mp.Position end
+    if mp then return mp.CFrame.Position end
     for _, p in ipairs(Map.POINTS) do
       if p.id == id then return V3(p.x, (p.y or 40) + 30, p.z) end
     end
@@ -25090,6 +25132,7 @@ return Hangar
 --   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（照样刷新，只是不画）；小地图框挪到左下
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Hud = {}
 
@@ -25716,7 +25759,7 @@ function Hud.init(G)
     local boardOn = G.boardShown ~= nil and G.boardShown()
     if not tipDone and S.alive and S.phase ~= "end" then
       tipT0 = tipT0 or t
-      local want = t - tipT0 > 1 and not boardOn
+      local want = t - tipT0 > 1 and not boardOn and not (G.operationHudVisible and G.operationHudVisible())
       if want and not tip.Visible then
         tip.Visible = true
         showTip()
@@ -25724,43 +25767,6 @@ function Hud.init(G)
         tip.Visible = false
       end
     end
-  end
-
-  ---------------------------------------------------------------- 阶段横幅（开战、每打下一个阶段）：屏幕上方三分之一处，大字阶段名 + 这一阶段打 / 守哪儿，四秒多淡出
-  local TweenService = game:GetService("TweenService")
-  local banner = ui.frame(G.gui, UDim2.fromOffset(640, 120), UDim2.fromScale(0.5, 0.3), RGB(0, 0, 0), 1, V2(0.5, 0.5))
-  banner.Name = "StageBanner"
-  banner.ZIndex = 30
-  banner.Visible = false
-  local bTop = txt(banner, "", UDim2.new(1, 0, 0, 18), UDim2.fromOffset(0, 0), 14, MUTE, Enum.Font.GothamBold, nil, nil, 0.6)
-  local bTitle = txt(banner, "", UDim2.new(1, 0, 0, 52), UDim2.fromOffset(0, 22), mobile and 34 or 46, WHITE, Enum.Font.GothamBlack, nil, nil, 0.4)
-  local bSub = txt(banner, "", UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 80), mobile and 15 or 18, TEXT, Enum.Font.GothamMedium, nil, nil, 0.5)
-  local bL = line(banner, UDim2.fromOffset(120, 1), UDim2.new(0, 0, 0, 48), WHITE, 0.3)
-  local bR = line(banner, UDim2.fromOffset(120, 1), UDim2.new(1, -120, 0, 48), WHITE, 0.3)
-  for _, l in ipairs({ bTop, bTitle, bSub }) do l.ZIndex = 31 end
-  local bSeq = 0
-  function G.stageBanner(key, i, n)
-    bSeq += 1
-    local my = bSeq
-    local team = (G.S and G.S.team) or "atk"
-    bTop.Text = T("hud.stageN", i or 1, n or 3)
-    bTitle.Text = T(key)
-    bSub.Text = T(key .. "." .. team)
-    local c = teamColor(team):Lerp(WHITE, 0.2)
-    bL.BackgroundColor3, bR.BackgroundColor3 = c, c
-    banner.Visible = true
-    local parts = { bTop, bTitle, bSub }
-    for _, l in ipairs(parts) do l.TextTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 0 }):Play() end
-    for _, l in ipairs({ bL, bR }) do l.BackgroundTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { BackgroundTransparency = 0.3 }):Play() end
-    if G.playSound then G.playSound("capture", nil, 0.55) end
-    task.delay(4.2, function()
-      if my ~= bSeq then return end
-      local d = G.objDist and G.objDist()
-      if d and d > 1200 and G.toast then G.toast(T("hud.redeployTip"), "info") end   -- 新目标在几公里外：提示按 H 重新部署
-      for _, l in ipairs(parts) do TweenService:Create(l, TweenInfo.new(0.9), { TextTransparency = 1 }):Play() end
-      for _, l in ipairs({ bL, bR }) do TweenService:Create(l, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play() end
-      task.delay(1, function() if my == bSeq then banner.Visible = false end end)
-    end)
   end
 
   ---------------------------------------------------------------- 重新部署（H，服务器 Round.lua redeploy）：离当前目标多远（格），活着、开战了才算
@@ -25774,7 +25780,8 @@ function Hud.init(G)
       if s.act ~= false and not s.locked then
         for _, p in ipairs(Map.POINTS) do
           if p.id == s.id then
-            local d = ((p.x - hrp.Position.X) ^ 2 + (p.z - hrp.Position.Z) ^ 2) ^ 0.5
+            local pos = hrp.CFrame.Position
+            local d = ((p.x - pos.X) ^ 2 + (p.z - pos.Z) ^ 2) ^ 0.5
             if not best or d < best then best = d end
           end
         end
@@ -27414,7 +27421,7 @@ function Night.init(G)
   task.spawn(function()
     for _ = 1, 120 do
       local root = workspace:FindFirstChild("Map")
-      if root and G.S then
+      if root and G.S and (G.S.progress or 0) >= 1 then
         task.wait(2)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
@@ -27445,7 +27452,8 @@ function Night.init(G)
           end
         elseif x.a == "spin" and typeof(x.pivot) == "Vector3" then
           local P = CFrame.new(x.pivot)
-          x.p.CFrame = P * CFrame.Angles(0, -t * x.spd * math.pi * 2, 0) * (P:Inverse() * x.cf0)
+          local angle = (workspace:GetServerTimeNow() * x.spd) % 1
+          x.p.CFrame = P * CFrame.Angles(0, -angle * math.pi * 2, 0) * (P:Inverse() * x.cf0)
         end
       end
     end
@@ -27457,6 +27465,184 @@ return Night
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="85">
+          <Properties>
+            <string name="Name">Operation</string>
+            <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
+local Players = game:GetService("Players")
+
+local Operation = {}
+
+local RGB = Color3.fromRGB
+local INK = RGB(9, 18, 25)
+local WHITE = RGB(234, 243, 247)
+local MUTE = RGB(157, 182, 195)
+local TEAL = RGB(121, 220, 213)
+local AMBER = RGB(255, 192, 122)
+local CENTER_TOP = Vector2.new(0.5, 0)
+local LEFT = Enum.TextXAlignment.Left
+local RIGHT = Enum.TextXAlignment.Right
+local HOLD = 4.8
+
+function Operation.init(G)
+  local ui, T, mobile = G.ui, G.T, G.mobile
+  local player = Players.LocalPlayer
+  local stages = G.Config.Stages or {}
+  local capture = G.Config.Capture
+  local pointById = {}
+  for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
+
+  local function panel(className, name, width, height)
+    local f = Instance.new(className)
+    f.Name = name
+    f.AnchorPoint = CENTER_TOP
+    f.Position = UDim2.new(0.5, mobile and -22 or 0, 0, mobile and 86 or 112)
+    f.Size = mobile and UDim2.new(1, -400, 0, height) or UDim2.new(0.82, 0, 0, height)
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = INK, 0.1, 0
+    f.ZIndex, f.Visible = 24, false
+    local bounds = Instance.new("UISizeConstraint")
+    bounds.MaxSize = Vector2.new(width, height)
+    bounds.Parent = f
+    f.Parent = G.gui
+    return f
+  end
+
+  local function label(parent, name, size, pos, fontSize, color, font, align)
+    local l = ui.label(parent, "", size, pos, fontSize, color, font, nil, align)
+    l.Name = name
+    return l
+  end
+
+  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 94 or 128)
+  local rail = ui.frame(brief, UDim2.new(1, 0, 0, 2), nil, TEAL, 0)
+  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 11, TEAL, Enum.Font.GothamBold, LEFT)
+  local title = label(brief, "Title", UDim2.new(1, -32, 0, mobile and 25 or 34), UDim2.fromOffset(16, mobile and 19 or 23),
+    mobile and 22 or 30, WHITE, Enum.Font.GothamBlack, LEFT)
+  local description = label(brief, "Orders", UDim2.new(1, -32, 0, mobile and 27 or 33), UDim2.fromOffset(16, mobile and 43 or 57),
+    mobile and 12 or 14, WHITE, Enum.Font.GothamMedium, LEFT)
+  description.TextYAlignment = Enum.TextYAlignment.Top
+  local route = ui.frame(brief, UDim2.new(1, -32, 0, mobile and 19 or 23), UDim2.new(0, 16, 1, mobile and -24 or -30), INK, 1)
+  route.Name = "Route"
+  local stops = {}
+  for i, stage in ipairs(stages) do
+    local width = 1 / #stages
+    local stop = ui.frame(route, UDim2.new(width, -4, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), TEAL, 0.8)
+    stop.Name = stage.id
+    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
+    stops[i] = { frame = stop, label = text, points = table.concat(stage.points, " · ") }
+  end
+
+  local localPanel = panel("Frame", "ObjectiveStatus", 334, 56)
+  ui.stroke(localPanel, MUTE, 1, 0.68)
+  local objective = label(localPanel, "Objective", UDim2.new(1, -80, 0, 18), UDim2.fromOffset(12, 6), 14, WHITE, Enum.Font.GothamBold, LEFT)
+  local percent = label(localPanel, "Progress", UDim2.fromOffset(56, 18), UDim2.new(1, -68, 0, 6), 14, WHITE, Enum.Font.GothamBold, RIGHT)
+  local status = label(localPanel, "Status", UDim2.new(1, -24, 0, 14), UDim2.fromOffset(12, 25), 11, MUTE, Enum.Font.GothamMedium, LEFT)
+  local track = ui.frame(localPanel, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -9), MUTE, 0.72)
+  local fill = ui.frame(track, UDim2.fromScale(0, 1), nil, AMBER, 0)
+
+  local shownRound, shownStage, startedAt, renderedLanguage
+  local redeployHint = false
+  local lastPoint, meter = nil, 0
+
+  local function writeBrief(s, stage)
+    local accent = s.team == "atk" and AMBER or TEAL
+    local key = "stage." .. stage.id
+    rail.BackgroundColor3, header.TextColor3 = accent, accent
+    header.Text = T("hud.stageN", s.stage, s.stages or #stages)
+    title.Text, description.Text = T(key), T(key .. "." .. s.team)
+    for i, stop in ipairs(stops) do
+      stop.frame.BackgroundColor3 = i == s.stage and accent or MUTE
+      stop.frame.BackgroundTransparency = i == s.stage and 0.07 or (i < s.stage and 0.81 or 0.9)
+      stop.label.TextColor3 = i == s.stage and INK or MUTE
+      stop.label.Text = mobile and stop.points or (T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points)
+    end
+    renderedLanguage = G.lang
+  end
+
+  local function closestPoint(s)
+    if G.fly or G.sail then return nil end
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local pos = root.CFrame.Position
+    local closest, best = nil, capture.r ^ 2
+    for _, state in ipairs(s.points or {}) do
+      local p = pointById[state.id]
+      if p and state.act and not state.locked and math.abs(p.y - pos.Y) < capture.height then
+        local distance = (p.x - pos.X) ^ 2 + (p.z - pos.Z) ^ 2
+        if distance < best then closest, best = state, distance end
+      end
+    end
+    return closest
+  end
+
+  local function showCapture(s, p, dt)
+    local progress = p.prog or 0
+    local key, color = "operation.inZone", MUTE
+    if p.motion == 1 then
+      key = s.team == "atk" and "operation.capturing" or "operation.losing"
+      color = AMBER
+    elseif p.motion == -1 then
+      key, color = "operation.recovering", TEAL
+    elseif (p.atk or 0) > 0 then
+      key = "operation.stalled"
+    end
+    if lastPoint ~= p.id then meter = progress end
+    lastPoint = p.id
+    meter += (progress - meter) * math.min(dt * 14, 1)
+    fill.Size = UDim2.fromScale(meter, 1)
+    localPanel.Visible = true
+    status.Text, status.TextColor3 = T(key), color
+    objective.Text = T("point." .. p.id)
+    percent.Text = string.format("%d%%", math.floor(progress * 100 + 0.5))
+  end
+
+  G.operationHudVisible = function() return brief.Visible or localPanel.Visible end
+  function G.stepOperation(dt)
+    local s = G.S
+    local canBrief = s and s.phase == "battle" and s.alive and s.team
+      and not G.scopeOn and not (G.drive and (G.drive.sight or G.drive.eo))
+      and not (G.boardShown and G.boardShown()) and not (G.menuOpen and G.menuOpen())
+      and not (G.tabletState and G.tabletState.open)
+    if not canBrief then
+      brief.Visible, localPanel.Visible, lastPoint = false, false, nil
+      if s and s.phase ~= "battle" then startedAt = nil end
+      return
+    end
+
+    local time = os.clock()
+    local stage = stages[s.stage]
+    if stage and (s.round ~= shownRound or s.stage ~= shownStage) then
+      redeployHint = not mobile and shownRound == s.round and shownStage ~= nil and s.stage > shownStage
+      shownRound, shownStage, startedAt = s.round, s.stage, time
+      writeBrief(s, stage)
+      if G.playSound then G.playSound("capture", nil, 0.65) end
+    end
+
+    local age = startedAt and time - startedAt or HOLD
+    brief.Visible = stage ~= nil and age < HOLD
+    if brief.Visible then
+      if renderedLanguage ~= G.lang then writeBrief(s, stage) end
+      brief.GroupTransparency = math.clamp(math.max(1 - age / 0.22, (age - HOLD + 0.45) / 0.45), 0, 1)
+    elseif redeployHint then
+      redeployHint = false
+      local distance = G.objDist()
+      if distance and distance > 1200 then G.toast(T("hud.redeployTip"), "info") end
+    end
+
+    local p = not brief.Visible and closestPoint(s)
+    if p then
+      showCapture(s, p, dt)
+    else
+      localPanel.Visible, lastPoint = false, nil
+    end
+  end
+end
+
+return Operation
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -27676,7 +27862,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -28107,7 +28293,7 @@ function Play.init(G)
     rl.Activated:Connect(reload)
     local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -280, 1, -300), 56)
+    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
     fbtn.Activated:Connect(function() tryFire(true) end)
   end
 
@@ -28255,7 +28441,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -28794,7 +28980,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -29253,7 +29439,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -30041,7 +30227,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -30643,7 +30829,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -31393,7 +31579,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -31848,7 +32034,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -33078,7 +33264,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -33191,7 +33377,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -33988,8 +34174,8 @@ function UI.init(G)
       if G.refillAmmo then G.refillAmmo() end
       return
     end
-    if kind == "stage" then   -- 开战 / 打下一个阶段：大横幅（Hud.lua）
-      if G.stageBanner then G.stageBanner(key, ...) else G.centerMsg(T(key)) end
+    if kind == "stage" then   -- Operation.lua 直接从战况读阶段，中途入场也会显示简报。
+      if not G.stepOperation then G.centerMsg(T(key)) end
       return
     end
     local text = T(key, ...)
@@ -34216,7 +34402,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -34739,7 +34925,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -35362,13 +35548,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="98">
+  <Item class="Workspace" referent="99">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="99">
+  <Item class="Lighting" referent="100">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
