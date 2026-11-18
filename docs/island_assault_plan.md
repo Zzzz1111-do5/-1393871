@@ -387,6 +387,12 @@
     测试跟上之前的改动：`boom.lua` 挂载按 F 发（左键是机炮）、`bots.lua` 数机器人按客户端视图表（1500 格外的收起来了）、
     `scenery.lua` 先选阵营关掉主菜单（主菜单背后的场景每帧摆镜头，远海那项一直数的是菜单镜头那儿）。
 - 练习场（新手建议第 7 条）：用户说不做了。
+- [ ] **模型精细化——keen-heisenberg（session_01Aa6LmJjU2LLknsYWd3DUJp）在做（用户 11-18：其他 AI 还在改，你打磨细节、提升画面质感，
+  所有舰船、飞机、载具的涂装和细节 1:1 还原真实质感，粗糙的去 Sketchfab 找精细的自己换）**。别的会话先别换 `models/` 里的模型、别改转换工具和
+  `ImportedMeta / ImportedAir / ImportedShip / ImportedTint`；`AirModels.lua`、`VehModels.lua`、`ShipView.lua` 里只动换模型需要的地方（会在提交说明里写清楚）。
+  - 盘点：没有模型、零件拼的——M10、ZTD-05、PGZ-07、LD-2000；拿别的车顶替的——ZBD-05（ZBD-97）、ZSL-92B（LAV-25）、PLZ-07（PzH 2000）、M1117（M-ATV）、
+    直-20（黑鹰）、攻击-11（X-47B，4 千面）、攻击-2（MQ-9）；面数低的——99A（1.25 万）、ZBD-97、爱国者、M163、C-RAM、布雷德利、B-2、阿帕奇、支奴干、LCS-2（6 千）；
+    舰艇是网页版减过面的（055 原模型 20 万面，现在 3.5 万）；攻方舰队（航母、075、072A）是长方块；直-10W 是《战地 3》扒的（必须换）。
 - [x] 用户这一批之四（keen-heisenberg，2026-11-18）：
   - 去掉白天、锁定晚上（用户：把白天模式去掉，就锁定晚上）：`Config.DayNight.lockNight = true`、`clock = 2.3`（半夜两点多）；`DayNight.lua` 锁定时不按 DayT0 算钟点，
     灯光、大气、调色就是夜里那一套；出生自动开夜视（`Night.lua` 原来就是天黑才自动开）。要恢复昼夜更替把 lockNight 改成 false。
