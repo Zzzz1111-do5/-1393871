@@ -792,8 +792,8 @@ function UI.init(G)
       if G.refillAmmo then G.refillAmmo() end
       return
     end
-    if kind == "stage" then   -- 开战 / 打下一个阶段：大横幅（Hud.lua）
-      if G.stageBanner then G.stageBanner(key, ...) else G.centerMsg(T(key)) end
+    if kind == "stage" then   -- Operation.lua 直接从战况读阶段，中途入场也会显示简报。
+      if not G.stepOperation then G.centerMsg(T(key)) end
       return
     end
     local text = T(key, ...)

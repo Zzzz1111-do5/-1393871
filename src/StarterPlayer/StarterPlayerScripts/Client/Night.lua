@@ -192,7 +192,7 @@ function Night.init(G)
   task.spawn(function()
     for _ = 1, 120 do
       local root = workspace:FindFirstChild("Map")
-      if root and G.S then
+      if root and G.S and (G.S.progress or 0) >= 1 then
         task.wait(2)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
@@ -223,7 +223,8 @@ function Night.init(G)
           end
         elseif x.a == "spin" and typeof(x.pivot) == "Vector3" then
           local P = CFrame.new(x.pivot)
-          x.p.CFrame = P * CFrame.Angles(0, -t * x.spd * math.pi * 2, 0) * (P:Inverse() * x.cf0)
+          local angle = (workspace:GetServerTimeNow() * x.spd) % 1
+          x.p.CFrame = P * CFrame.Angles(0, -angle * math.pi * 2, 0) * (P:Inverse() * x.cf0)
         end
       end
     end
