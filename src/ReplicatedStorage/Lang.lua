@@ -347,8 +347,8 @@ add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
 add("air.helpJet", "鼠标 飞行方向（准心）· W 加速 · S 减速（地上收到底按住倒退）· A/D 滚转（滚筒，不拽准心）· C 准心回正 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
   "Mouse steer (aim) · W speed up · S slow down (hold at idle on the ground to back up) · A/D roll (barrel rolls keep the aim) · C recenter aim · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpHeli", "W/S 前后 · A/D 转向 · E 升 / Q 降 · 鼠标 看四周、瞄机炮 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "W/S forward/back · A/D turn · E up / Q down · Mouse look & aim gun · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · X flares · J drop tanks · Space exit")
+add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -425,6 +425,9 @@ add("coach.spool", "旋翼正在转起来，等转速到 100%", "Rotor spinning 
 add("coach.updown", "升 / 降", "Up / down")
 add("coach.fwdBack", "前 / 后", "Forward / back")
 add("coach.turn", "转向", "Turn")
+add("coach.nose", "机头朝向", "Nose heading")
+add("coach.cyclic", "前倾 / 刹车", "Tilt fwd / brake")
+add("coach.strafe", "侧飞", "Sidestep")
 add("coach.rockets", "火箭 / 导弹", "Rockets / missiles")
 add("coach.stowPad", "收起平板", "Close tablet")
 add("coach.telegraph", "车钟（一档一档加减速）", "Engine order")
@@ -465,8 +468,8 @@ add("coach.card.jet.1", "W 推油门（推满进加力），A / D 在跑道上�
 add("coach.card.jet.2", "速度到 {1} km/h 把准心往上抬就离地，起落架会自动收起；鼠标管方向，A / D 滚转", "At {1} km/h raise the aim to lift off — the gear retracts by itself. The mouse steers, A / D roll")
 add("coach.card.jet.3", "左键机炮，F 发导弹（1–6 换挂载，导弹先锁定），X 热诱弹，空格跳伞", "LMB gun, F missile (1–6 pick stores, lock first), X flares, Space to bail out")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；W / S 前后飞，A / D 转向", "Hold E to climb, Q to descend; W / S fly forward / back, A / D turn")
-add("coach.card.heli.3", "鼠标瞄准机炮、左键开火，F 火箭 / 导弹，X 热诱弹，空格下飞机", "The mouse aims the gun, LMB fires, F rockets / missiles, X flares, Space to get out")
+add("coach.card.heli.2", "按住 E 升、Q 降；机头跟着准心转，W 桨盘前倾往前飞，A / D 侧飞", "Hold E to climb, Q to descend; the nose follows your aim, W tilts the rotor forward, A / D sidestep")
+add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
 add("coach.card.uav.3", "右键 / V 切镜头、Z 变焦，F 发导弹，空格收起平板", "RMB / V camera, Z zoom, F missile, Space to put the tablet away")

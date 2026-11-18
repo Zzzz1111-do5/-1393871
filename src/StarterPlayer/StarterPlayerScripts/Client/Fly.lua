@@ -978,18 +978,21 @@ function Fly.init(G)
     if st.out then st.rpm = approach(st.rpm, 72, 9 * dt) else st.rpm = approach(st.rpm, 100, 22 * dt) end   -- 旋翼转起来要四五秒；熄火后靠气流自转，转速掉下来
     local lift = st.rpm >= 92
     local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
-    -- 用户：鼠标控制机枪——鼠标只转镜头、瞄机头炮塔，不带着飞机转；W / S 前后、A / D 转向（快的时候压坡度协调转弯）；
-    --   升降 E 升、Q 降（用户又改过来；Ctrl / C 也能降）；空格下飞机
+    -- 用户：桨盘对着哪里往哪飞（按受力算，要有物理引擎的感觉），准心决定机头朝向——
+    --   鼠标转准心（镜头），机头跟着准心转：尾桨有惯性，最快 d.yaw 度 / 秒，起转、停住都要一会儿（按住 Alt 自由看，机头不跟）
+    --   W / S 桨盘前倾 / 后仰（往前飞 / 带杆刹车、倒飞），A / D 桨盘左右倾（侧飞）；E 升、Q 降（Ctrl / C 也降）；空格下飞机
+    --   拉力顺着桨盘法线：倾得越多水平推力越大、往上托的越少（猛一推杆先掉一点高度）；速度有惯性，松杆桨盘回平但人还往前冲，靠阻力慢慢停
+    --   快速前飞时转机头，桨盘自动往那边压坡度（协调转弯），航迹跟着机头弯过去；侧面阻力大，侧飞快不起来
     local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
-    local sideIn = 0
-    local yawIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
+    local sideIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
+    local yawIn = 0
     local upIn = ((key(Enum.KeyCode.E) or (touch and touch.up)) and 1 or 0)
       - ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
     if G.mobile and controls then
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
         if math.abs(mv.Z) > 0.1 then fwdIn = -mv.Z end
-        if math.abs(mv.X) > 0.1 then yawIn, sideIn = mv.X, 0 end   -- 手机：摇杆左右还是转向
+        if math.abs(mv.X) > 0.1 then yawIn, sideIn = mv.X, 0 end   -- 手机没有鼠标：摇杆左右转机头
       end
     end
     local GS = GR or 27.5
@@ -1002,36 +1005,41 @@ function Fly.init(G)
     local vf, vr = hv:Dot(f), hv:Dot(r)
     local g0 = ground(st.cf.Position.X, st.cf.Position.Z)
     local agl = st.cf.Position.Y - d.gearH - math.max(g0, 0)
-    -- 驾驶杆 → 想要的姿态（俯仰：负的是低头）
-    local hold = 1 - smooth(14, 34, spd)   -- 低速：松杆时自动收住飘移
-    local tP = (fwdIn ~= 0) and (-fwdIn * maxT * 0.85) or clamp(vf * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
-    local tR = (sideIn ~= 0) and (sideIn * maxT * 0.8) or clamp(-vr * 0.018 * hold, -maxT * 0.4, maxT * 0.4)
-    -- 快的时候按 A / D：压坡度协调转弯（低速时原地用尾桨转）
-    local fast = smooth(18, 40, spd)
-    if yawIn ~= 0 and not st.ground then tR += yawIn * maxT * 0.6 * fast end
+    -- 机头：朝准心（镜头方位）转，角速度有上限、有角加速度（尾桨）；在地上转速够了才能原地慢慢转
+    local maxR = rad(d.yaw)
+    local yrWant
+    if G.mobile then
+      yrWant = -yawIn * maxR
+    else
+      yrWant = clamp(angDiff(st.yaw, st.noseYaw or st.camYaw) * 3.2, -maxR, maxR)
+    end
+    if st.ground then yrWant *= (lift and 0.3 or 0) end
+    st.yr = approach(st.yr or 0, yrWant, maxR * 2.6 * dt)
+    st.yaw += st.yr * dt
+    -- 驾驶杆 → 桨盘想要的倾角（俯仰：负的是低头 = 往前倾）；松杆桨盘回平
+    local tP = -fwdIn * maxT
+    local tR = sideIn * maxT * 0.8
+    -- 往前飞得快时转机头：桨盘自动压坡度——要的侧向加速度 = 转弯的向心那份（速度 × 角速度）+ 消掉侧滑的那份（没按 A / D 时），
+    --   tan 坡度 = 侧向加速度 / g；坡度给的侧向力把航迹拉着跟机头弯过去（压不过来的那一截就是侧滑，靠侧面阻力慢慢吃掉）
+    if not st.ground then
+      local aLat = spd * -st.yr - ((sideIn == 0) and vr * 0.8 or 0)
+      tR += clamp(math.atan(aLat / GS), -maxT, maxT) * smooth(12, 40, vf)
+    end
     tP, tR = clamp(tP, -maxT, maxT), clamp(tR, -maxT, maxT)
     if st.ground then tP, tR = 0, 0 end
-    -- 姿态：二阶弹簧（有惯性、不一下子到位）
-    st.pR = (st.pR or 0) + ((tP - st.tiltP) * 10 - (st.pR or 0) * 6) * dt
-    st.rR = (st.rR or 0) + ((tR - st.tiltR) * 10 - (st.rR or 0) * 6) * dt
+    -- 桨盘姿态：二阶弹簧（有惯性、接近临界阻尼，一秒左右到位）
+    st.pR = (st.pR or 0) + ((tP - st.tiltP) * 12 - (st.pR or 0) * 6.5) * dt
+    st.rR = (st.rR or 0) + ((tR - st.tiltR) * 12 - (st.rR or 0) * 6.5) * dt
     st.tiltP += st.pR * dt
     st.tiltR += st.rR * dt
-    -- 偏航：脚蹬给角速度（有惯性）；快的时候协调转弯（坡度 → 转弯角速度）、风标效应（机头顺着来流）
-    local yrWant = -yawIn * rad(d.yaw) * (1 - 0.5 * fast)   -- 快的时候转弯主要靠坡度
-    if not st.ground then
-      yrWant += -GS * math.tan(st.tiltR) / math.max(spd, 25) * fast
-      yrWant += -math.atan2(vr, math.max(math.abs(vf), 1)) * 0.8 * smooth(10, 40, spd)
-    end
-    st.yr = (st.yr or 0) + (yrWant - (st.yr or 0)) * math.min(1, dt * 2.5)
-    st.yaw += st.yr * dt
-    -- 拉力：总距（松开时自动定高；停在地上时放到底）× 平移升力 × 地效
+    -- 拉力：总距（松开时慢慢稳住升降，不替你补桨盘倾斜少掉的那份；停在地上时放到底）× 平移升力 × 地效
     local colWant = upIn
-    if upIn == 0 then colWant = clamp(-st.vy * 0.07, -0.8, 0.8) end
+    if upIn == 0 then colWant = clamp(-st.vy * 0.05, -0.6, 0.6) end
     if st.ground and upIn <= 0 then colWant = -0.5 end
     if upIn < 0 and agl < 25 then colWant = -0.45 end   -- 快到地面了：下降慢一点（落地不摔）
-    st.col = approach(st.col or 0, colWant, dt * 1.8)
+    st.col = approach(st.col or 0, colWant, dt * 1.6)
     local k = d.climb * 0.6 / GS / heavy   -- 满总距的爬升率 ≈ 型号表 climb
-    local etl = 1 + 0.06 * smooth(16, 36, spd)
+    local etl = 1 + 0.08 * smooth(16, 36, spd)
     local ige = 1 + 0.1 * (1 - clamp(agl / ((d.rotor and d.rotor.r or 20) * 2), 0, 1))
     local Tm
     if auto then Tm = GS * (0.74 + 0.3 * math.max(upIn, 0))
@@ -1039,14 +1047,22 @@ function Fly.init(G)
     else Tm = GS * (1 + st.col * k) * etl * ige end
     local cfA = CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.tiltP, 0, -st.tiltR)
     local up = cfA.UpVector
-    -- 阻力：最大压杆时最高速度正好是型号表的 vMax
-    local cl = 0.03
-    local cq = math.max(1e-5, (GS * math.sin(maxT * 0.85) - cl * d.vMax) / (d.vMax * d.vMax)) * (1 + (st.drag or 0))
+    -- 阻力（按机身方向分开算）：前后流线——桨盘前倾到底、拉力托住重量时正好飞到型号表的 vMax；侧面大得多，侧飞四十几格每秒就到头；
+    --   悬停附近多一点（好稳住，不然松杆飘半天）
+    local clF = 0.05 + 0.1 * (1 - smooth(6, 30, spd))
+    local cq = math.max(1e-5, (GS * math.tan(maxT) - 0.05 * d.vMax) / (d.vMax * d.vMax)) * (1 + (st.drag or 0))
     st.lastHv = hv
-    local acc = V(up.X, 0, up.Z) * Tm - hv * (cl + cq * spd)
+    local acc = V(up.X, 0, up.Z) * Tm - f * (vf * (clF + cq * math.abs(vf))) - r * (vr * (clF * 2 + cq * 3 * math.abs(vr)))
     if st.ground then acc = V() hv *= math.max(0, 1 - 5 * dt) end
     st.hv = hv + acc * dt
-    st.vy += (Tm * up.Y - GS - st.vy * 0.6) * dt
+    st.vy += (Tm * up.Y - GS - st.vy * 0.5) * dt
+    -- 合速度不超过服务器认的（往下冲时重力也在加速）
+    local v3 = st.hv + V(0, st.vy, 0)
+    local cap = d.vMax * 1.3
+    if v3.Magnitude > cap then
+      v3 = v3.Unit * cap
+      st.hv, st.vy = V(v3.X, 0, v3.Z), v3.Y
+    end
     local pos = st.cf.Position + (st.hv + V(0, st.vy, 0)) * dt
     local g = ground(pos.X, pos.Z)
     if pos.Y - d.gearH <= g then
@@ -1061,10 +1077,10 @@ function Fly.init(G)
     end
     st.cf = CF(pos) * CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.tiltP, 0, -st.tiltR)
     st.vel = st.hv + V(0, st.vy, 0)
-    -- 动画通道（桨盘跟着驾驶杆倾）：用平滑过的杆量
-    st.c.pit = approach(st.c.pit or 0, fwdIn ~= 0 and fwdIn or clamp(-tP / maxT, -1, 1) * 0.5, dt * 4)
-    st.c.rol = approach(st.c.rol or 0, sideIn ~= 0 and sideIn or clamp(tR / maxT, -1, 1) * 0.5, dt * 4)
-    st.c.yaw, st.c.col = yawIn, clamp(st.col, -1, 1)
+    -- 动画通道：驾驶杆（桨盘跟着倾）、脚蹬（尾桨）、总距
+    st.c.pit = approach(st.c.pit or 0, clamp(-tP / maxT, -1, 1), dt * 4)
+    st.c.rol = approach(st.c.rol or 0, clamp(tR / maxT, -1, 1), dt * 4)
+    st.c.yaw, st.c.col = clamp(-st.yr / maxR, -1, 1), clamp(st.col, -1, 1)
     st.c.rpm, st.c.thr, st.c.gear = st.rpm, st.rpm, 1
   end
 
@@ -1199,8 +1215,19 @@ function Fly.init(G)
         st.aimYaw -= md.X * SENS
         st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
       end
-      -- 直升机：镜头跟着机头一起转（A / D 转向时视角不留在原地），鼠标在这上面加减——瞄机头炮塔
-      if d.kind == "heli" and st.yawSeen then st.camYaw += angDiff(st.yawSeen, st.yaw) end
+      -- 直升机：机头跟着准心转（鼠标转的就是准心）；手机没有鼠标、坐后面的人不开飞机：镜头跟着机头一起转
+      if d.kind == "heli" then
+        if (G.mobile or not st.pilot) and st.yawSeen then st.camYaw += angDiff(st.yawSeen, st.yaw) end
+        -- 按住 Alt 自由看：机头停在按下时的准心上；松开回到原来的准心
+        local alt = st.pilot and not G.mobile and key(Enum.KeyCode.LeftAlt)
+        if alt and not st.freeLook then
+          st.freeLook = { st.camYaw, st.camPitch }
+          st.noseYaw = st.camYaw
+        elseif not alt and st.freeLook then
+          st.camYaw, st.camPitch = st.freeLook[1], st.freeLook[2]
+          st.freeLook, st.noseYaw = nil, nil
+        end
+      end
       st.yawSeen = st.yaw
       st.camYaw -= md.X * SENS
       st.camPitch = clamp(st.camPitch - md.Y * SENS, -1.2, 0.9)

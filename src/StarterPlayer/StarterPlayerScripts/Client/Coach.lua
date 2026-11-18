@@ -94,7 +94,7 @@ function Coach.init(G)
     jet = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
     jetLand = { { "G", "coach.gearDown" }, { "S", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
-    heli = { { "E/Q", "coach.updown" }, { "W/S", "coach.fwdBack" }, { "A/D", "coach.turn" }, { "LMB", "coach.gun" }, { "F", "coach.rockets" } },
+    heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
@@ -204,7 +204,7 @@ function Coach.init(G)
   pBody.Parent = panel
   -- 说明里一格「W/S 前后」拆成键和动作：前面连着的几个「像键的词」（大写字母 / 数字 / 左键 右键 空格 鼠标 滚轮 / 斜杠）算键
   local KEYWORD = { ["左键"] = true, ["右键"] = true, ["空格"] = true, ["鼠标"] = true, ["滚轮"] = true, ["/"] = true,
-    Mouse = true, Wheel = true, wheel = true, Space = true, LMB = true, RMB = true, Tab = true, Enter = true, Shift = true, Ctrl = true, ["Shift/Ctrl"] = true }
+    Mouse = true, Wheel = true, wheel = true, Space = true, LMB = true, RMB = true, Tab = true, Enter = true, Shift = true, Ctrl = true, Alt = true, ["Shift/Ctrl"] = true }
   local function keyPart(entry)
     local toks = {}
     for t in string.gmatch(entry, "%S+") do table.insert(toks, t) end
