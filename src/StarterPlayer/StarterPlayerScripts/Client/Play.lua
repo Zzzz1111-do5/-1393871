@@ -426,7 +426,7 @@ function Play.init(G)
     rl.Activated:Connect(reload)
     local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -280, 1, -300), 56)
+    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
     fbtn.Activated:Connect(function() tryFire(true) end)
   end
 

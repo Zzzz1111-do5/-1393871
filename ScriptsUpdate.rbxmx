@@ -3632,10 +3632,10 @@ add("hud.tip.4", "阵亡以后在部署界面底下的装备格换枪械和装�
 -- 分阶段突破（Round.lua / Hud.lua）
 add("stage.beach", "抢滩登陆", "STORM THE BEACH")
 add("stage.beach.atk", "冲上前哨岛，拿下据点 A", "Storm Outpost Island and take objective A")
-add("stage.beach.def", "守住前哨岛据点 A，把登陆的敌人打回海里", "Hold Outpost A and throw the landing back into the sea")
+add("stage.beach.def", "守住前哨岛 A，击退登陆部队。", "Hold Outpost A against the landing.")
 add("stage.beach.short", "抢滩", "BEACH")
 add("stage.main", "登陆主岛", "MAIN ISLAND")
-add("stage.main.atk", "拿下港口 C 和机场 D。可夺取侧翼 B 补充兵力。", "Take Port C and Airfield D. Capture flank B for reinforcements.")
+add("stage.main.atk", "夺取港口 C 和机场 D。拿下侧翼 B 可补充兵力。", "Take C and D. Capture flank B for reinforcements.")
 add("stage.main.def", "守住港口 C 和机场 D", "Hold Port C and Airfield D")
 add("stage.main.short", "主岛", "MAIN ISLAND")
 add("stage.hq", "决战指挥部", "FINAL ASSAULT")
@@ -18240,7 +18240,7 @@ function Coach.init(G)
   local function pointPos(id)
     local cam = workspace.CurrentCamera
     local mp = cam:FindFirstChild("Obj_" .. id)   -- Hud.lua 放的据点标记（高度照地面找过）
-    if mp then return mp.Position end
+    if mp then return mp.CFrame.Position end
     for _, p in ipairs(Map.POINTS) do
       if p.id == id then return V3(p.x, (p.y or 40) + 30, p.z) end
     end
@@ -27486,8 +27486,8 @@ function Operation.init(G)
     local f = Instance.new(className)
     f.Name = name
     f.AnchorPoint = CENTER_TOP
-    f.Position = UDim2.new(0.5, 0, 0, mobile and 87 or 112)
-    f.Size = UDim2.new(0.82, 0, 0, height)
+    f.Position = UDim2.new(0.5, mobile and -22 or 0, 0, mobile and 86 or 112)
+    f.Size = mobile and UDim2.new(1, -400, 0, height) or UDim2.new(0.82, 0, 0, height)
     f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = INK, 0.1, 0
     f.ZIndex, f.Visible = 24, false
     local bounds = Instance.new("UISizeConstraint")
@@ -27503,9 +27503,9 @@ function Operation.init(G)
     return l
   end
 
-  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 98 or 128)
+  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 94 or 128)
   local rail = ui.frame(brief, UDim2.new(1, 0, 0, 2), nil, TEAL, 0)
-  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 10, TEAL, Enum.Font.GothamBold, LEFT)
+  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 11, TEAL, Enum.Font.GothamBold, LEFT)
   local title = label(brief, "Title", UDim2.new(1, -32, 0, mobile and 25 or 34), UDim2.fromOffset(16, mobile and 19 or 23),
     mobile and 22 or 30, WHITE, Enum.Font.GothamBlack, LEFT)
   local description = label(brief, "Orders", UDim2.new(1, -32, 0, mobile and 27 or 33), UDim2.fromOffset(16, mobile and 43 or 57),
@@ -27518,7 +27518,7 @@ function Operation.init(G)
     local width = 1 / #stages
     local stop = ui.frame(route, UDim2.new(width, -4, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), TEAL, 0.8)
     stop.Name = stage.id
-    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, mobile and 10 or 11, WHITE, Enum.Font.GothamBold)
+    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
     stops[i] = { frame = stop, label = text, points = table.concat(stage.points, " · ") }
   end
 
@@ -27544,7 +27544,7 @@ function Operation.init(G)
       stop.frame.BackgroundColor3 = i == s.stage and accent or MUTE
       stop.frame.BackgroundTransparency = i == s.stage and 0.07 or (i < s.stage and 0.81 or 0.9)
       stop.label.TextColor3 = i == s.stage and INK or MUTE
-      stop.label.Text = T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points
+      stop.label.Text = mobile and stop.points or (T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points)
     end
     renderedLanguage = G.lang
   end
@@ -28284,7 +28284,7 @@ function Play.init(G)
     rl.Activated:Connect(reload)
     local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -280, 1, -300), 56)
+    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
     fbtn.Activated:Connect(function() tryFire(true) end)
   end
 

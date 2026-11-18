@@ -26,8 +26,8 @@ function Operation.init(G)
     local f = Instance.new(className)
     f.Name = name
     f.AnchorPoint = CENTER_TOP
-    f.Position = UDim2.new(0.5, 0, 0, mobile and 87 or 112)
-    f.Size = UDim2.new(0.82, 0, 0, height)
+    f.Position = UDim2.new(0.5, mobile and -22 or 0, 0, mobile and 86 or 112)
+    f.Size = mobile and UDim2.new(1, -400, 0, height) or UDim2.new(0.82, 0, 0, height)
     f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = INK, 0.1, 0
     f.ZIndex, f.Visible = 24, false
     local bounds = Instance.new("UISizeConstraint")
@@ -43,9 +43,9 @@ function Operation.init(G)
     return l
   end
 
-  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 98 or 128)
+  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 94 or 128)
   local rail = ui.frame(brief, UDim2.new(1, 0, 0, 2), nil, TEAL, 0)
-  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 10, TEAL, Enum.Font.GothamBold, LEFT)
+  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 11, TEAL, Enum.Font.GothamBold, LEFT)
   local title = label(brief, "Title", UDim2.new(1, -32, 0, mobile and 25 or 34), UDim2.fromOffset(16, mobile and 19 or 23),
     mobile and 22 or 30, WHITE, Enum.Font.GothamBlack, LEFT)
   local description = label(brief, "Orders", UDim2.new(1, -32, 0, mobile and 27 or 33), UDim2.fromOffset(16, mobile and 43 or 57),
@@ -58,7 +58,7 @@ function Operation.init(G)
     local width = 1 / #stages
     local stop = ui.frame(route, UDim2.new(width, -4, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), TEAL, 0.8)
     stop.Name = stage.id
-    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, mobile and 10 or 11, WHITE, Enum.Font.GothamBold)
+    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
     stops[i] = { frame = stop, label = text, points = table.concat(stage.points, " · ") }
   end
 
@@ -84,7 +84,7 @@ function Operation.init(G)
       stop.frame.BackgroundColor3 = i == s.stage and accent or MUTE
       stop.frame.BackgroundTransparency = i == s.stage and 0.07 or (i < s.stage and 0.81 or 0.9)
       stop.label.TextColor3 = i == s.stage and INK or MUTE
-      stop.label.Text = T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points
+      stop.label.Text = mobile and stop.points or (T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points)
     end
     renderedLanguage = G.lang
   end

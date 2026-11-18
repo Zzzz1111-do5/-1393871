@@ -358,7 +358,7 @@ function Coach.init(G)
   local function pointPos(id)
     local cam = workspace.CurrentCamera
     local mp = cam:FindFirstChild("Obj_" .. id)   -- Hud.lua 放的据点标记（高度照地面找过）
-    if mp then return mp.Position end
+    if mp then return mp.CFrame.Position end
     for _, p in ipairs(Map.POINTS) do
       if p.id == id then return V3(p.x, (p.y or 40) + 30, p.z) end
     end

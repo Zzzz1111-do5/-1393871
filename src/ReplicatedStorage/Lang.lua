@@ -627,10 +627,10 @@ add("hud.tip.4", "阵亡以后在部署界面底下的装备格换枪械和装�
 -- 分阶段突破（Round.lua / Hud.lua）
 add("stage.beach", "抢滩登陆", "STORM THE BEACH")
 add("stage.beach.atk", "冲上前哨岛，拿下据点 A", "Storm Outpost Island and take objective A")
-add("stage.beach.def", "守住前哨岛据点 A，把登陆的敌人打回海里", "Hold Outpost A and throw the landing back into the sea")
+add("stage.beach.def", "守住前哨岛 A，击退登陆部队。", "Hold Outpost A against the landing.")
 add("stage.beach.short", "抢滩", "BEACH")
 add("stage.main", "登陆主岛", "MAIN ISLAND")
-add("stage.main.atk", "拿下港口 C 和机场 D。可夺取侧翼 B 补充兵力。", "Take Port C and Airfield D. Capture flank B for reinforcements.")
+add("stage.main.atk", "夺取港口 C 和机场 D。拿下侧翼 B 可补充兵力。", "Take C and D. Capture flank B for reinforcements.")
 add("stage.main.def", "守住港口 C 和机场 D", "Hold Port C and Airfield D")
 add("stage.main.short", "主岛", "MAIN ISLAND")
 add("stage.hq", "决战指挥部", "FINAL ASSAULT")
