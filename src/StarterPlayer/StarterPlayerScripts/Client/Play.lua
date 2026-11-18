@@ -30,10 +30,34 @@ function Play.init(G)
   barList.Padding = UDim.new(0, 4)
   barList.Parent = bar
   local slots = {}
-  local cross = ui.label(G.gui, "+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 30, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
-  cross.TextStrokeTransparency = 0.4
+  -- 准星：四条细线 + 中间一点，张开多少照这一发的散布（Config.gunSpread：跑起来、跳起来、连射都会张开，停下很快收回；开枪那一下弹一下）
+  --   （原来是一个「+」字，看不出现在准不准）
+  local cross = Instance.new("Frame")
+  cross.Name = "Crosshair"
+  cross.AnchorPoint = Vector2.new(0.5, 0.5)
+  cross.Position = UDim2.fromScale(0.5, 0.5)
+  cross.Size = UDim2.fromOffset(120, 120)
+  cross.BackgroundTransparency = 1
   cross.Visible = false
   cross.ZIndex = 15
+  cross.Parent = G.gui
+  local crossBars = {}
+  for i = 1, 5 do
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.BorderSizePixel = 0
+    f.BackgroundColor3 = Color3.new(1, 1, 1)
+    f.BackgroundTransparency = (i == 5) and 0.15 or 0.12
+    f.Size = (i == 5) and UDim2.fromOffset(2, 2) or ((i <= 2) and UDim2.fromOffset(2, 9) or UDim2.fromOffset(9, 2))
+    f.Position = UDim2.fromScale(0.5, 0.5)
+    f.ZIndex = 15
+    local st = Instance.new("UIStroke")   -- 一圈淡黑边：亮的地方也看得清
+    st.Color, st.Transparency, st.Thickness = Color3.new(0, 0, 0), 0.55, 1
+    st.Parent = f
+    f.Parent = cross
+    crossBars[i] = f
+  end
+  local crossGap, crossPop = 8, 0
   local hitX = ui.label(G.gui, "✕", UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 28, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   hitX.TextTransparency = 1
   hitX.ZIndex = 16
@@ -64,6 +88,7 @@ function Play.init(G)
   ---------------------------------------------------------------- 武器栏
 
   local cur = { tool = nil, id = nil, nextShot = 0, firing = false, aiming = false, lockT = 0, lockId = nil }
+  local bloomOf = {}   -- [枪] = { v 连射攒下的散布（度）, t 上一发 }：和服务器 Weapons.lua 一样算，准星照它张开
   local ammo = {}
   function G.refillAmmo() ammo = {} end   -- 补给箱（战术平板）：下次取弹药时按满弹匣、满备弹重新算
   local function ammoOf(id)
@@ -306,7 +331,15 @@ function Play.init(G)
     end
     local a = ammoOf(id)
     if a.r > 0 then return end
-    if a.n <= 0 then reload() return end
+    if a.n <= 0 then
+      if a.res and a.res <= 0 then   -- 没子弹了：扣扳机咔一声（不连着响）
+        cur.nextShot = t + 0.35
+        if G.sfx then G.sfx("dry") end
+      else
+        reload()
+      end
+      return
+    end
     cur.nextShot = t + (w.rate or 0.2)
     a.n -= 1
     if a.n <= 0 then reload() end
@@ -318,8 +351,14 @@ function Play.init(G)
       local mz = handle and handle:FindFirstChild("Muzzle")
       local from = (G.fpsMuzzle and G.fpsMuzzle()) or (mz and mz.WorldPosition)   -- 第一人称时曳光从镜头前那支枪的枪口出去
       if G.gunFx and from then G.gunFx(id, from, p, true) end
-      RShoot:FireServer(id, p)
-      if G.kick then G.kick(w) end
+      -- 开着镜（镜子已经举到眼前）告诉服务器：散布按开镜算（Config.gunSpread）；镜子还在往上举的那一下按腰射算
+      local ads = cur.aiming and not (G.fpsOpticPending and G.fpsOpticPending())
+      RShoot:FireServer(id, p, ads and "ads" or nil)
+      if w.bloom then   -- 本地也照服务器那样攒连射的散布（准星画多大）
+        bloomOf[id] = { v = math.min(w.bloom[2], Config.bloomAt(w, bloomOf[id], t) + w.bloom[1]), t = t }
+      end
+      crossPop = 1
+      if G.kick then G.kick(w, ads, id) end
     elseif w.kind == "lock" then
       RShoot:FireServer(id, cur.lockId, aimPoint(w.range))
       cur.lockT, cur.lockId = 0, nil
@@ -477,6 +516,24 @@ function Play.init(G)
     end
     local wc = cur.id and W[cur.id]
     cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
+    if cross.Visible and wc and hrp then
+      -- 张开多少：这一发的散布在屏幕上有多宽（跑起来、跳起来、连射攒的都算），开枪那一下再弹开一点
+      local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)   -- 读不到（测试台）就当站着不动
+      if not okv or typeof(v) ~= "Vector3" then v = V() end
+      local okf, fm = pcall(function() return hum.FloorMaterial end)
+      local air = okf and fm == Enum.Material.Air and math.abs(v.Y) > 1.5
+      local b = Config.bloomAt(wc, bloomOf[cur.id], now())
+      local deg = (wc.kind == "gun") and Config.gunSpread(wc, false, V(v.X, 0, v.Z).Magnitude, air, b) or math.max(wc.spread or 0.4, 0.4)
+      -- 服务器的散布是方形的（每个方向各自 ±deg），斜着最远约 1.4 倍：准星的线画在最远那一圈
+      local px = cam.ViewportSize.Y / 2 * math.tan(math.rad(deg * 1.4)) / math.tan(math.rad(cam.FieldOfView / 2))
+      crossGap += (math.clamp(px, 4, 90) + crossPop * 5 - crossGap) * math.min(1, dt * 18)
+      crossPop = math.max(0, crossPop - dt * 9)
+      local g = math.floor(crossGap + 0.5) + 4
+      crossBars[1].Position = UDim2.new(0.5, 0, 0.5, -g)
+      crossBars[2].Position = UDim2.new(0.5, 0, 0.5, g)
+      crossBars[3].Position = UDim2.new(0.5, -g, 0.5, 0)
+      crossBars[4].Position = UDim2.new(0.5, g, 0.5, 0)
+    end
     -- 瞄准：拉近；狙击镜、望远镜放大得多
     local w = cur.id and W[cur.id]
     local zoom = 1

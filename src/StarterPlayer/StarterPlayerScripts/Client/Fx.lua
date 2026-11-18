@@ -162,6 +162,18 @@ function Fx.init(G)
     streak = { { id = TICK, vol = 0.8, s = { 1.6, 1.6 } }, { id = TICK, vol = 0.8, s = { 2.0, 2.0 }, delay = 0.09 }, { id = TICK, vol = 0.9, s = { 2.5, 2.5 }, delay = 0.18 },
       { id = EXP, vol = 0.25, s = { 1.6, 1.7 }, reg = { 0.02, 0.3 }, eq = { 6, 0, -8 } } },
     heart = { { id = THUD, vol = 1.6, s = { 0.5, 0.52 }, eq = { 10, -4, -24 } }, { id = THUD, vol = 1.1, s = { 0.47, 0.49 }, eq = { 10, -4, -24 }, delay = 0.24 } },
+    -- 自己开枪（耳边，用户 11-18：提高手感；原来是一层拉快的爆炸声，薄）：脆的一下（起爆那一截拉快）+ 低沉的一下（放慢、只留低音）
+    --   + 枪机的咔哒 + 很短的回声尾巴；狙击枪更重、尾巴更长
+    rifleMe = { { id = EXP, vol = 0.3, s = { 2.5, 2.8 }, reg = { 0.02, 0.3 }, eq = { -3, 2, 4 } },
+      { id = EXP, vol = 0.3, s = { 1.28, 1.4 }, reg = { 0, 0.34 }, eq = { 9, -3, -12 } },
+      { id = TICK, vol = 0.18, s = { 1.9, 2.2 }, eq = { -6, 2, 2 }, delay = 0.012 },
+      { id = EXP, vol = 0.08, s = { 0.95, 1.05 }, reg = { 0.06, 1.0 }, eq = { 2, -2, -14 }, echo = { 0.13, 0.2, -14 }, delay = 0.03 } },
+    sniperMe = { { id = EXP, vol = 0.5, s = { 1.9, 2.05 }, reg = { 0.02, 0.4 }, eq = { -2, 2, 4 } },
+      { id = EXP, vol = 0.5, s = { 0.9, 0.98 }, reg = { 0, 0.55 }, eq = { 10, -2, -12 } },
+      { id = TICK, vol = 0.25, s = { 1.2, 1.35 }, eq = { -4, 2, 0 }, delay = 0.5 },
+      { id = EXP, vol = 0.16, s = { 0.7, 0.76 }, reg = { 0.05, 1.8 }, eq = { 4, -2, -14 }, echo = { 0.22, 0.3, -10 }, delay = 0.05 } },
+    dry = { { id = TICK, vol = 0.6, s = { 1.45, 1.55 }, eq = { -6, 3, 0 } } },   -- 打空了扣扳机
+    brass = { { id = TICK, vol = 0.07, s = { 3.3, 3.9 }, eq = { -14, 0, 4 } }, { id = TICK, vol = 0.05, s = { 3.6, 4.2 }, eq = { -14, 0, 4 }, delay = 0.09 } },   -- 弹壳落地
   }
   -- 导弹飞行中的发动机声：挂在弹上跟着飞走（燃烧完就停）
   local ROAR = { id = WIND, vol = 10, s = { 0.95, 1.05 }, loop = { 0.5, 9.5 }, eq = { 6, 10, -1 }, dist = 0.55 }
@@ -270,22 +282,85 @@ function Fx.init(G)
     end
   end
 
-  -- 震屏
+  -- 镜头上的震屏和开枪后坐（用户 11-18：提高手感）
+  --   Roblox 自带的镜头（步行时）每帧从「现在的朝向」接着算：往 cam.CFrame 上加的俯仰、偏航会一直留下。原来震屏每帧加全量，
+  --   炸一下准星就被甩到别处（随机游走）；后坐每发一下子跳 1～1.7°、不回落，一梭子打完视线往上飘四五十度。现在分两份：
+  --   · 一下就回来的（震屏、后坐的「踢」——弹簧，约 0.03 秒到顶、0.15 秒回到原处）：步行时每帧只加这一帧的增量，晃完视线回到原处；
+  --     开车、开飞机是脚本镜头（每帧重新摆），照旧加全量。横滚每帧都被 Roblox 镜头摆正，加全量
+  --   · 留下来的（后坐的上抬、左右飘）：几帧里平滑加上去（不是一下跳），要自己往下压枪
   local trauma = 0
   function G.shake(a) trauma = math.min(1, trauma + a) end
+  local pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0   -- 踢：俯仰、偏航、横滚（弧度）和角速度
+  local climbP, climbY = 0, 0                       -- 还没加上去的上抬、左右飘
+  local aP, aY = 0, 0                               -- 步行时已经加进镜头朝向里的「一下就回来的」那份
+  local SPR = 30                                    -- 弹簧角频率（临界阻尼）
   pcall(function()
     RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Last.Value, function(dt)
-      if trauma <= 0.002 then return end
-      local s = trauma * trauma
-      local t = os.clock() * 26
-      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t, 1.7) * 0.05 * s, math.noise(t, 5.3) * 0.05 * s, math.noise(t, 9.1) * 0.03 * s)
-      trauma = math.max(0, trauma - dt * 1.6)
+      dt = math.min(dt, 0.1)
+      if trauma <= 0.002 and climbP == 0 and climbY == 0 and math.abs(pp) + math.abs(py) + math.abs(pr) + math.abs(vp) + math.abs(vy) + math.abs(vr) < 1e-5
+        and aP == 0 and aY == 0 then
+        pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0
+        return
+      end
+      local n = math.max(1, math.ceil(dt / (1 / 240)))   -- 弹簧分小步算（帧率低时不发散）
+      local h = dt / n
+      for _ = 1, n do
+        vp += (-SPR * SPR * pp - 2 * SPR * vp) * h
+        vy += (-SPR * SPR * py - 2 * SPR * vy) * h
+        vr += (-SPR * SPR * pr - 2 * SPR * vr) * h
+        pp += vp * h
+        py += vy * h
+        pr += vr * h
+      end
+      local sP, sY, sR = 0, 0, 0
+      if trauma > 0.002 then
+        local s = trauma * trauma
+        local t = os.clock() * 26
+        sP, sY, sR = math.noise(t, 1.7) * 0.05 * s, math.noise(t, 5.3) * 0.05 * s, math.noise(t, 9.1) * 0.03 * s
+        trauma = math.max(0, trauma - dt * 1.6)
+      else
+        trauma = 0
+      end
+      local tP, tY, tR = pp + sP, py + sY, pr + sR
+      local f = 1 - math.exp(-dt * 40)   -- 上抬几帧里加完（60 帧时一帧加一半）
+      local cP, cY = climbP * f, climbY * f
+      climbP -= cP
+      climbY -= cY
+      if math.abs(climbP) < 1e-6 then climbP = 0 end
+      if math.abs(climbY) < 1e-6 then climbY = 0 end
+      if cam.CameraType == Enum.CameraType.Scriptable then
+        cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR)
+        aP, aY = 0, 0
+      else
+        cam.CFrame = cam.CFrame * CFrame.Angles(cP + tP - aP, cY + tY - aY, tR)
+        aP, aY = tP, tY
+        if math.abs(aP) < 1e-6 and math.abs(aY) < 1e-6 and trauma == 0 then aP, aY = 0, 0 end
+      end
     end)
   end)
-  -- 开枪的后坐：视线往上一跳（用户：后坐稍微调低一点——比原来小三成）
-  function G.kick(w)
-    local k = (w.dmg or 20) / 860
-    cam.CFrame = cam.CFrame * CFrame.Angles(k * (0.6 + math.random() * 0.4), (math.random() - 0.5) * k * 0.6, 0)
+  -- 开枪的后坐：up 每发留下来的上抬（度）、side 左右飘、punch 一下就回来的踢、roll 踢的横滚；开镜（ads）上抬 × 0.45、踢 × 0.45
+  --   （开着 3.5 倍镜，同样的角度看着大三倍多）；一梭子的头一发 × 0.55，越打越大，第五发起 × 1.15（点射稳、扫射飘）；
+  --   左右飘按一梭子里慢慢摆（每梭子起点随机），不是每发乱跳
+  local RC = { m4 = { up = 0.3, side = 0.12, punch = 1.0, roll = 0.5 }, sniper = { up = 1.8, side = 0.35, punch = 3.4, roll = 1.2 } }
+  local burstN, lastShot, driftPh = 0, 0, 0
+  function G.kick(w, ads, id)
+    local d = w.dmg or 20
+    local rc = RC[id or ""] or { up = d * 0.012, side = d * 0.0045, punch = d * 0.04, roll = 0.5 }
+    local t = os.clock()
+    if t - lastShot > (w.rate or 0.1) * 2.5 + 0.08 then
+      burstN = 0
+      driftPh = math.random() * 2 * math.pi
+    end
+    lastShot = t
+    burstN += 1
+    local k = math.min(1.15, 0.55 + 0.15 * (burstN - 1)) * (ads and 0.45 or 1)
+    local r = math.rad
+    climbP += r(rc.up) * k * (0.85 + math.random() * 0.3)
+    climbY += r(rc.side) * k * (math.sin(driftPh + burstN * 0.55) * 0.8 + (math.random() - 0.5) * 0.9)
+    local v0 = r(rc.punch) * (ads and 0.45 or 1) * SPR * math.exp(1)   -- 临界阻尼弹簧：初速 v0 的峰值 = v0 / (ω·e)
+    vp += v0 * (0.9 + math.random() * 0.2)
+    vy += v0 * 0.25 * (math.random() - 0.5)
+    vr += r(rc.roll) * (ads and 0.5 or 1) * SPR * math.exp(1) * (math.random() - 0.5) * 2
   end
 
   ---------------------------------------------------------------- 曳光、枪口火光
@@ -342,6 +417,11 @@ function Fx.init(G)
         tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
         Debris:AddItem(puff, 0.45)
       end)
+    end
+    if mine and (id == "m4" or id == "sniper" or id == "rifle") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
+      G.sfx((id == "sniper") and "sniperMe" or "rifleMe", nil, { must = true })
+      if math.random() < 0.35 then G.sfx("brass", nil, { delay = 0.35 + math.random() * 0.25 }) end
+      return
     end
     local snd = (id == "smgsd") and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")
     G.playSound(snd, a)

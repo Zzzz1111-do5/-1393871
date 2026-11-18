@@ -102,11 +102,16 @@ Config.Radar = { range = 520, veh = 900, heli = 4000, jet = 9000, sweep = 2.4, p
 --   （雷区、铁丝网、炮都是地图自带的，玩家不能自己布雷、架炮）
 -- dmg 每发、rate 几秒一发、mag 弹匣、reserve 备弹（不算弹匣里的；没写就是无限）、reload 换弹秒数、range 射程、spread 散布（度）；
 -- vs 对各类目标的伤害倍数
+-- 枪（kind gun）的散布（用户 11-18：提高手感）：spread 是腰射，adsK 开镜乘几，moveK 跑到 16 格每秒多散几倍（开镜减半），
+--   跳在半空乘 2.2，bloom = { 每发多几度, 最多多几度, 每秒收回几度, 停手几秒后才收回 }（连射越打越散，停手很快收回；开镜减半）——Config.gunSpread
 local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }
 Config.Weapons = {
-  m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, auto = true, vs = G_VS, head = 1.6,
+  m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, adsK = 0.35, moveK = 0.8, bloom = { 0.06, 0.55, 2.2, 0.12 },
+    auto = true, vs = G_VS, head = 1.6,
     scope = 3.5, optic = "acog" },   -- 两队都用这一种（第一人称动作照 M4 动作包）；上机匣导轨上一具 ACOG 3.5 倍镜（用户：武器瞄准没有镜子）
-  sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 0.03, vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
+  -- 狙击枪：开镜 0.03°（原来不分开不开镜都是这么准），腰射 2.6°（不开镜别指望一枪一个）
+  sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 2.6, adsK = 0.0115, moveK = 1.5,
+    vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
   rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
     vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },
   manpads = { kind = "lock", dmg = 120, rate = 0.5, mag = 1, reserve = 1, reload = 3.5, range = 1400, speed = 320, splash = 9, lockTime = 1.6,
@@ -220,6 +225,24 @@ function Config.RankOf(xp)
     if xp >= v then i = k end
   end
   return i
+end
+
+-- 枪这一发的散布（度）：服务器（Weapons.lua）开枪时按它打，客户端准星（Play.lua）照它画——两边一样
+--   ads 开着镜；speed 水平速度（格 / 秒）；air 在半空；bloom 连射攒下的（度）
+-- 连射攒下的散布（度）：st = { v 上一发打完攒到多少, t 上一发的时刻 }；停手 bloom[4] 秒以后才开始收回（连射时攒得起来）
+function Config.bloomAt(w, st, t)
+  local bl = w.bloom
+  if not bl or not st then return 0 end
+  return math.max(0, st.v - math.max(0, t - st.t - (bl[4] or 0.12)) * bl[3])
+end
+
+function Config.gunSpread(w, ads, speed, air, bloom)
+  local s = w.spread or 0
+  if ads then s *= (w.adsK or 1) end
+  local mv = math.clamp(((speed or 0) - 2) / 14, 0, 1)
+  s *= 1 + (w.moveK or 0) * mv * (ads and 0.5 or 1)
+  if air then s *= 2.2 end
+  return s + (bloom or 0) * (ads and 0.5 or 1)
 end
 
 return Config

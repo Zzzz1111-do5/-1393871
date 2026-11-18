@@ -108,6 +108,9 @@ end
 local glass = 0
 for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Material == Enum.Material.Glass and d.Name == "Haze" then glass = glass + 1 end end
 check(glass == 0, "没有玻璃球热浪")
+local haze = 0
+for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "ParticleEmitter" and d.Name == "HeatHaze" then haze = haze + 1 end end
+check(haze == 0, "喷口后面没有热浪粒子（用户：喷口有怪异的泡泡）")
 st.thr, st.thrE = 100, 100
 R.run(0.3)
 check(beams() == 0, "军推：没有火焰光带")

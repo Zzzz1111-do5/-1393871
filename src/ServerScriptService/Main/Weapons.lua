@@ -342,13 +342,34 @@ function Weapons.init(G)
 
   local KIND = {}
 
-  KIND.gun = function(P, id, w, char, head, tool, aim)
+  -- 散布（用户 11-18：提高手感）：开镜（客户端发 "ads"）收紧、跑起来 / 跳在半空变散、连射越打越散（P.bloom），公式在 Config.gunSpread，
+  --   客户端准星照同一个公式画。开镜只会让散布变小，谎报了也就是一直按开镜算，不影响别的
+  local function gunSpread(P, id, w, char, ads)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    -- 读不到（测试台的 Lune 没有这两个属性）就当站着不动、踩在地上：不能让这一枪报错打不出去
+    local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)
+    if not okv or typeof(v) ~= "Vector3" then v = V() end
+    local okf, fm = pcall(function() return hum.FloorMaterial end)
+    local air = okf and fm == Enum.Material.Air and math.abs(v.Y) > 1.5
+    local bl = w.bloom
+    local b = 0
+    if bl then
+      P.bloom = P.bloom or {}
+      local t = now()
+      b = Config.bloomAt(w, P.bloom[id], t)
+      P.bloom[id] = { v = math.min(bl[2], b + bl[1]), t = t }   -- 这一发按打之前攒的算，打完再加
+    end
+    return Config.gunSpread(w, ads, V(v.X, 0, v.Z).Magnitude, air, b)
+  end
+
+  KIND.gun = function(P, id, w, char, head, tool, aim, mode)
     if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
     local origin = head.Position
     local dir = aim - origin
     if dir.Magnitude < 0.5 then return end
     if not spend(P, id) then return end
-    dir = spreadDir(dir.Unit, w.spread)
+    dir = spreadDir(dir.Unit, gunSpread(P, id, w, char, mode == "ads"))
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
     -- 按现在的位置没打中人 / 车：按他屏幕上那一刻的位置再判一次（Rewind.lua，延迟补偿）

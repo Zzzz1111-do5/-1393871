@@ -21,6 +21,15 @@
     灯塔看守小屋、炮台营房，导进来以后都换成网页版地图用的写实模型（CC-BY，署名在 bld/credits.txt）；
     导入方法同下面「一、导入」：「导入 3D」选 bld/buildings.glb，导进 Workspace 就行（块叫 B_<键>__Body_<号>，开服时自动收好、摆到地图上）。
     不导也行：地图上是零件拼的新房子（坡屋顶、檐口山墙、窗框窗台、门廊、烟囱、平顶楼的楼层线和女儿墙、拱顶机库、八角玻璃塔台），比原来的方块房子细。
+  11 月 18 日第三包：只重导 air/ 里的三个文件——j20.glb、h6k.glb、a10.glb（别的不用动）：
+    - 歼-20：修了机头和前机身「镂空」（一万多个三角形朝反了）；照真机涂装——机身深灰微带青、雷达罩更深、喷管橄榄青铜色、座舱盖茶金色；
+      机头两侧和两片垂尾上的绿色编队灯带会发光（左边那条原模型比右边短一截，补齐了）；
+    - H-6、A-10：同样修了朝反的面；发动机里垫了深色堵头，从后往前看不再是空的（游戏脚本里加的，导入新文件以后才对得上位置）；
+    - 歼-16 的绿色灯带是游戏脚本贴上去的，不用重导；喷口后面那串「泡泡」（热浪粒子）去掉了，也不用重导。
+    先在命令栏粘下面这一行删掉这三架的旧零件，再导入这三个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20_v3__") or d.Name:match("^A_h6k_v3__") or d.Name:match("^A_a10_v3__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
   11 月 18 日第二包：要重导 veh/、ship/ 两个文件夹（飞机、导弹、瞄准镜、花草、第一人称 M4 没变，不用动）：
     - M1A2 换成你指定的沙漠涂装 SEPv2（veh/m1a2dc.glb，Muhamad Mirza Arrafi，CC-BY）：车长位置的 CROWS 遥控武器站自己会转、上面的 M2 会俯仰，
       开火的曳光弹从 M2 枪口出、顺着枪管飞；炮长瞄准镜视角在炮塔右前方那个瞄准镜盒子的位置；
