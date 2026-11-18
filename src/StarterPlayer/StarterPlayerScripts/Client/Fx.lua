@@ -647,7 +647,7 @@ function Fx.init(G)
       end
       if not mine(e) then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
-        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w }
+        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
       if glow then addRoar(flying[e.id], glow, e.p) end
       if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：导弹视角小窗（MslCam.lua）
       return

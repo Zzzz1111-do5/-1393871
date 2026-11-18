@@ -20,35 +20,47 @@ check(G.round.phase == "battle", "开战了")
 local Map = G.Map
 local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 
-print("① 两队各派出 AI 车")
+print("① 第一阶段（交战区是前哨岛 A）：攻方派 AI 车坐气垫艇；守方在 A 后面的集结点出车")
 local function pick(team)
   for _, e in ipairs(G.aiVehicles or {}) do if e.team == team and e.alive then return e end end
 end
 T.runUntil(function() return pick("atk") ~= nil and pick("def") ~= nil end, 40)
-local A, D = pick("atk"), pick("def")
-check(A ~= nil and D ~= nil, string.format("攻方 %s、守方 %s", A and A.def.id or "无", D and D.def.id or "无"))
-if not (A and D) then T.summary() return end
-check(D.model:GetAttribute("Driver") == -1 and A.model:GetAttribute("Driver") == -1, "AI 车 Driver 属性 −1（有人开着，没有「E 上车」）")
-local avD = G.vehAvail("def")[D.vcat]
-check(avD and avD.u == 0, string.format("不占玩家的名额（守方%s在用 %d）", D.vcat, avD and avD.u or -1))
+local A, D1 = pick("atk"), pick("def")
+check(A ~= nil and D1 ~= nil, string.format("攻方 %s、守方 %s", A and A.def.id or "无", D1 and D1.def.id or "无"))
+local pA = G.points.A
+local dD1 = D1 and ((D1.root.CFrame.Position.X - pA.x) ^ 2 + (D1.root.CFrame.Position.Z - pA.z) ^ 2) ^ 0.5 or -1
+check(D1 ~= nil and D1.ai.goal == "A" and dD1 < 320, string.format("守方的车守 A：在前哨岛上 A 后面出车（离 A %.0f 格）", dD1))
+-- 第一阶段的守方车收掉（下面看第二阶段新派的）
+if D1 then G.removeEnt(D1) end
+if not A then T.summary() return end
 check(A.lcac ~= nil and A.ai.state == "boat", "攻方 AI 车坐在气垫艇上（第一阶段打前哨岛）")
-
-print("② 往据点开")
 local function goalOf(e)
   for _, p in ipairs(Map.POINTS) do if p.id == e.ai.goal then return p end end
 end
 local function dist(e, p) local q = e.root.CFrame.Position return ((q.X - p.x) ^ 2 + (q.Z - p.z) ^ 2) ^ 0.5 end
-local gD = goalOf(D)
-check(gD ~= nil and gD.land == "main", "守方的目标在主岛上：" .. tostring(gD and gD.id))
-local d0 = gD and dist(D, gD) or 0
 local landed = T.runUntil(function() return not A.alive or A.lcac == nil end, 90)
 check(landed and A.alive and A.lcac == nil and A.ai and A.ai.state ~= "boat", "攻方 AI 车冲上沙滩、放下了气垫艇")
 check(A.ai and Map.landOf(A.root.CFrame.Position.X, A.root.CFrame.Position.Z) == "outpost", "在前哨岛上")
-R.run(15)
-local d1 = gD and dist(D, gD) or 0
-check(D.alive and d1 < d0 - 150, string.format("守方 AI 车往据点 %s 开：%.0f → %.0f 格", tostring(gD and gD.id), d0, d1))
 local gA = A.ai and goalOf(A)
 check(gA ~= nil and gA.id == "A", "攻方的目标是据点 A")
+
+print("② 打下 A 进第二阶段（交战区港口 C，在主岛）：守方派车往 C 开")
+G.points.A.owner, G.points.A.locked = "atk", true
+G.round.stage = 2
+T.runUntil(function() return pick("def") ~= nil end, 60)
+local D = pick("def")
+check(D ~= nil, "守方派出 AI 车：" .. (D and D.def.id or "无"))
+if not D then T.summary() return end
+check(D.model:GetAttribute("Driver") == -1 and A.model:GetAttribute("Driver") == -1, "AI 车 Driver 属性 −1（有人开着，没有「E 上车」）")
+local avD = G.vehAvail("def")[D.vcat]
+check(avD and avD.u == 0, string.format("不占玩家的名额（守方%s在用 %d）", D.vcat, avD and avD.u or -1))
+local gD = goalOf(D)
+check(gD ~= nil and gD.id == "C", "守方的目标是交战区里的港口 C：" .. tostring(gD and gD.id))
+local d0 = gD and dist(D, gD) or 0
+check(d0 < 320, string.format("守方 AI 车在 C 后面的集结点出车（离 C %.0f 格，不从几公里外的营地来）", d0))
+R.run(15)
+local d1 = gD and dist(D, gD) or 0
+check(D.alive and d1 < d0 - 60, string.format("守方 AI 车往据点 %s 开：%.0f → %.0f 格", tostring(gD and gD.id), d0, d1))
 
 print("③ 旁边摆一辆敌方的车：炮塔转过去、开炮")
 -- 守方 AI 车先停下（停车点就设在脚下），在它四周找一块从车长位置看得见的平地（180～320 格），摆一辆攻方的空坦克

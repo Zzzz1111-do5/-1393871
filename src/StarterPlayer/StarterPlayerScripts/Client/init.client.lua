@@ -11,6 +11,7 @@
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Marks 落点标记（拿手雷时的弹道和落点圈、开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -26,7 +27,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice", "Marks" }) do
   require(script:WaitForChild(name)).init(G)
 end
 

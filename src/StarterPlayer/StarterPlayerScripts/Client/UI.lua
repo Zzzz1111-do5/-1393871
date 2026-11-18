@@ -431,6 +431,7 @@ function UI.init(G)
     if s.kind == "rally" then return T("spawn.rally", T("point." .. s.point)) end   -- 守方前线集结点（据点后方）
     if s.kind == "staging" then return T("spawn.staging", T("point." .. s.point)) end   -- 攻方攻击出发阵地（据点前面）
     if s.kind == "camp" then return T("spawn.camp") end
+    if s.kind == "afield" then return T("spawn.afield") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
     if s.kind == "cv" then return T("spawn.cv") end

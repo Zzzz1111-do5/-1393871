@@ -44,8 +44,7 @@ function AIVeh.init(G)
     if team == "atk" then return (active and s.owner ~= "atk") and 2 or 0 end
     if s.owner ~= "def" then return 0 end
     if active then return 2 + (s.atk or 0) + (s.prog or 0) * 3 end
-    local stage = (G.round and G.round.stage) or 1
-    return (G.stageOf and G.stageOf[p.id] == stage + 1) and 1 or 0
+    return 0   -- 用户（交战区）：只去当前交战区
   end
   local function pickGoal(team, land)
     local best, bs = nil, 0
@@ -125,12 +124,22 @@ function AIVeh.init(G)
   end
 
   local function spawn(team)
-    local goal = pickGoal(team, (team == "def") and Map.landOf(Map.CAMP.x, Map.CAMP.z) or nil)
+    local goal = pickGoal(team, nil)   -- 守方也不限陆地了：在目标后面的集结点出车（前哨岛 A 也守得到）
     if not goal then return nil end
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
-    if team == "def" then   -- 营地车场的空车位
+    if team == "def" then
+      -- 用户（出生点跟着战线走）：目标后面的集结点出车；那里有敌人（或找不到平地）才从营地车场出
+      local rp = G.rallyOf and G.rallyOf(goal.id)
+      if rp then
+        local x, z = landSpot(rp.x, rp.z, 60)
+        if x and Map.landOf(x, z) == goal.land then
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, x, z, V(goal.x - x, 0, goal.z - z)))
+          return setup(e, team, goal, V(x, 0, z), "go")
+        end
+      end
+      if goal.land ~= Map.landOf(Map.CAMP.x, Map.CAMP.z) then return nil end   -- 营地开不过去（在别的岛上）
       for _, p in ipairs(G.pads or {}) do
         if p.team == "def" and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
           local face = p.base.LookVector
