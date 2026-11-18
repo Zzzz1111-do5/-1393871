@@ -346,6 +346,341 @@ local function tent(f, x, z, rot, color)
   wedge(f, V(14, 7, 6), base * CF(0, 3.5, 3) * CFrame.Angles(0, math.pi, 0), color or C.tent, MAT.Fabric, true)
 end
 
+---------------------------------------------------------------- 建筑（用户：继续把游戏内地图的建筑的建模优化）
+-- 导入了 models/bld/buildings.glb（网页版地图用的写实模型，带贴图）：摆原模型，外加看不见的碰撞盒挡人、挡子弹、挡车（G.spotClear 也靠它判断）；
+--   没导入：零件拼一座（坡屋顶带檐口和山墙、窗框窗台、门廊、烟囱；平顶楼的楼层线、女儿墙、屋顶设备；铁皮营房、拱顶机库、八角玻璃塔台……）
+--   尺寸都照 BuildingMeta（导没导入占地一样，出生点、停车位、掩体的判断都一样）
+local BM, TURN = nil, CFrame.new()
+pcall(function() BM = require(RS:WaitForChild("BuildingMeta", 5)) end)
+pcall(function() TURN = require(RS:WaitForChild("ImportTurn", 5)).TURN end)
+World.BM = BM
+
+local function importedBld(key)
+  local imp = RS:FindFirstChild("Imported")
+  local b = imp and imp:FindFirstChild("Bld")
+  return b and b:FindFirstChild(key)
+end
+World.importedBld = importedBld
+
+-- 占地四角、中心里最低的地面（坡上的房子不悬空：上坡那边埋进去一点）
+local function footY(x, z, w, d, rot)
+  local c, s = math.cos(rot or 0), math.sin(rot or 0)
+  local y = Map.ground(x, z)
+  for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+    local lx, lz = o[1] * w / 2, o[2] * d / 2
+    y = math.min(y, Map.ground(x + lx * c + lz * s, z - lx * s + lz * c))
+  end
+  return y
+end
+World.footY = footY
+
+-- 占地全在陆上（四角、四边中点都不是海）：港口镇、机场摆房子前先看一眼
+local function footOnLand(x, z, w, d, rot)
+  local c, s = math.cos(rot or 0), math.sin(rot or 0)
+  for _, o in ipairs({ { 0, 0 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+    local lx, lz = o[1] * w / 2, o[2] * d / 2
+    if not Map.isLand(x + lx * c + lz * s, z - lx * s + lz * c) then return false end
+  end
+  return true
+end
+World.footOnLand = footOnLand
+
+-- 零件拼的建筑用的小工具：deco 装饰（不挡人、不挡射线）、slab 实心
+local function deco(m, size, cf, col, mat, shape) return part(m, size, cf, col, mat, shape) end
+local function slab(m, size, cf, col, mat, shape) return part(m, size, cf, col, mat, shape, true) end
+-- 窗：白窗框 + 深色玻璃 + 窗台（贴在墙面上：face 是墙面的 CFrame，Z 朝外）
+local GLASS_D, FRAME_W = RGB(44, 58, 70), RGB(222, 222, 214)
+local function window(m, face, x, y, ww, wh, frameCol)
+  deco(m, V(ww + 0.5, wh + 0.5, 0.2), face * CF(x, y, 0.1), frameCol or FRAME_W, MAT.SmoothPlastic)
+  local g = deco(m, V(ww, wh, 0.3), face * CF(x, y, 0.18), GLASS_D, MAT.Glass)
+  g.Reflectance = 0.15
+  deco(m, V(ww + 1.0, 0.3, 0.7), face * CF(x, y - wh / 2 - 0.35, 0.35), FRAME_W, MAT.Concrete)
+  if ww > 2.4 then deco(m, V(0.18, wh, 0.34), face * CF(x, y, 0.2), frameCol or FRAME_W, MAT.SmoothPlastic) end   -- 竖窗棂
+end
+-- 门：门框 + 门板 + 台阶 + 小雨棚
+local function door(m, face, x, dw, dh, col)
+  deco(m, V(dw + 0.8, dh + 0.5, 0.2), face * CF(x, dh / 2 + 0.6, 0.1), FRAME_W, MAT.SmoothPlastic)
+  deco(m, V(dw, dh, 0.3), face * CF(x, dh / 2 + 0.6, 0.18), col or C.wood, MAT.Wood)
+  slab(m, V(dw + 2.2, 0.6, 2.2), face * CF(x, 0.3, 1.1), RGB(150, 150, 146), MAT.Concrete)
+  deco(m, V(dw + 3, 0.35, 2.6), face * CF(x, dh + 1.5, 1.3), RGB(80, 84, 88), MAT.Metal)
+end
+-- 四面墙的 CFrame（相对建筑底面中心，Z 朝外）：前（−Z）、后、左、右
+local function faces(base, w, d)
+  return {
+    { cf = base * CF(0, 0, -d / 2) * CFrame.Angles(0, math.pi, 0), len = w },
+    { cf = base * CF(0, 0, d / 2), len = w },
+    { cf = base * CF(-w / 2, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), len = d },
+    { cf = base * CF(w / 2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), len = d },
+  }
+end
+
+-- 坡屋顶民房：墙到檐口（六成高），山墙、两片屋面带出檐、屋脊、烟囱；一层或两层窗；正面中间门
+local function fbHouse(m, base, w, h, d, o)
+  local eave = h * 0.58
+  local rh = h - eave
+  slab(m, V(w + 0.8, 1.2, d + 0.8), base * CF(0, 0.3, 0), RGB(120, 118, 112), MAT.Concrete)   -- 墙基
+  slab(m, V(w, eave, d), base * CF(0, eave / 2, 0), o.wall, o.wallMat or MAT.Concrete)
+  -- 山墙（墙色的实心三角）+ 屋面（薄板，四边出檐）
+  wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, -d / 4), o.wall, o.wallMat or MAT.Concrete, true)
+  wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, d / 4) * CFrame.Angles(0, math.pi, 0), o.wall, o.wallMat or MAT.Concrete, true)
+  for _, s in ipairs({ -1, 1 }) do   -- −1 前坡、1 后坡
+    local th = math.atan2(rh, d / 2)
+    local n = V(0, math.cos(th), s * math.sin(th))
+    local L = math.sqrt((d / 2) ^ 2 + rh ^ 2) + 1.6
+    local mid = (base * CF(0, eave + rh / 2, s * d / 4)).Position
+    local rot = base - base.Position
+    local pos = mid + rot:VectorToWorldSpace(n * 0.3 + V(0, -math.sin(th), s * math.cos(th)) * 0.8)
+    local cf = CFrame.fromMatrix(pos, rot:VectorToWorldSpace(V(1, 0, 0)), rot:VectorToWorldSpace(n))
+    slab(m, V(w + 2.4, 0.6, L), cf, o.roof, o.roofMat or MAT.Slate)
+  end
+  deco(m, V(w + 2.6, 0.7, 1.0), base * CF(0, h + 0.15, 0), o.roof:Lerp(Color3.new(0, 0, 0), 0.25), o.roofMat or MAT.Slate)   -- 屋脊
+  deco(m, V(2.4, rh * 0.9 + 1.5, 2.4), base * CF(w * 0.26, eave + rh * 0.62, d * 0.12), RGB(120, 70, 56), MAT.Brick)   -- 烟囱
+  deco(m, V(2.8, 0.4, 2.8), base * CF(w * 0.26, eave + rh * 1.07 + 0.75, d * 0.12), RGB(70, 70, 70), MAT.Concrete)
+  -- 窗、门
+  local floors = (eave > 11) and 2 or 1   -- 檐口高过 4 米：两层
+  local F = faces(base, w, d)
+  for fi, fc in ipairs(F) do
+    local n = math.max(1, math.floor(fc.len / 8.5))
+    for fl = 1, floors do
+      local y = (floors == 1) and eave * 0.55 or eave * (fl == 1 and 0.3 or 0.74)
+      for i = 1, n do
+        local x = -fc.len / 2 + (i - 0.5) * fc.len / n
+        if not (fi == 1 and fl == 1 and math.abs(x) < 3.5) then window(m, fc.cf, x, y, 3.0, 3.8, o.frame) end
+      end
+    end
+  end
+  door(m, F[1].cf, 0, 3.4, 6.6, o.door)
+  return eave
+end
+
+-- 平顶楼（水泥楼、办公楼、公寓楼、消防站）：楼层线、每层一条窗带（窗间墙隔开）、女儿墙、屋顶空调外机 / 水箱；消防站正面几扇红色车库门
+local function fbBlock(m, base, w, h, d, o)
+  slab(m, V(w + 0.6, 1.0, d + 0.6), base * CF(0, 0.3, 0), RGB(110, 110, 106), MAT.Concrete)
+  slab(m, V(w, h - 1.6, d), base * CF(0, (h - 1.6) / 2, 0), o.wall, o.wallMat or MAT.Concrete)
+  for _, p in ipairs({ { 0, -d / 2, w + 0.6, 0.8 }, { 0, d / 2, w + 0.6, 0.8 }, { -w / 2, 0, 0.8, d }, { w / 2, 0, 0.8, d } }) do   -- 女儿墙
+    slab(m, V(p[3], 1.8, p[4]), base * CF(p[1], h - 0.9, p[2]), o.trim or o.wall, o.wallMat or MAT.Concrete)
+  end
+  local floors = math.max(1, math.floor((h - 1.6) / 7.6))   -- 一层 2.7 米上下
+  local fh = (h - 1.6) / floors
+  local F = faces(base, w, d)
+  for fi, fc in ipairs(F) do
+    for fl = 1, floors do
+      local y0 = (fl - 1) * fh
+      if fl > 1 then deco(m, V(fc.len + 0.4, 0.6, 0.6), fc.cf * CF(0, y0, 0.2), o.trim or RGB(196, 196, 190), MAT.Concrete) end   -- 楼层线
+      local garage = o.garage and fi == 1 and fl == 1
+      if garage then
+        for g = 1, o.garage do
+          local x = -fc.len / 2 + (g - 0.5) * fc.len / (o.garage + 1)
+          deco(m, V(fc.len / (o.garage + 1) * 0.78, fh * 0.78, 0.35), fc.cf * CF(x, fh * 0.39 + 0.5, 0.18), RGB(170, 36, 30), MAT.Metal)   -- 车库门
+        end
+        door(m, fc.cf, fc.len / 2 - fc.len / (o.garage + 1) * 0.5, 3.2, 6.4, RGB(80, 84, 90))
+      else
+        local n = math.max(1, math.floor(fc.len / 8))
+        for i = 1, n do
+          local x = -fc.len / 2 + (i - 0.5) * fc.len / n
+          if not (fi == 1 and fl == 1 and i == math.ceil(n / 2)) then   -- 窗（平顶楼窗多：只要玻璃和窗台两块）
+            local ww, wh = math.min(4.2, fc.len / n * 0.62), fh * 0.46
+            local g = deco(m, V(ww, wh, 0.3), fc.cf * CF(x, y0 + fh * 0.55, 0.15), GLASS_D, MAT.Glass)
+            g.Reflectance = 0.15
+            deco(m, V(ww + 0.8, 0.3, 0.6), fc.cf * CF(x, y0 + fh * 0.55 - wh / 2 - 0.3, 0.3), o.trim or FRAME_W, MAT.Concrete)
+          end
+        end
+        if fi == 1 and fl == 1 then door(m, fc.cf, -fc.len / 2 + (math.ceil(n / 2) - 0.5) * fc.len / n, 3.6, 6.6, RGB(70, 76, 82)) end
+      end
+    end
+  end
+  -- 屋顶：空调外机、水箱、检修口
+  deco(m, V(4, 2.4, 3), base * CF(-w * 0.22, h - 0.4, d * 0.18), RGB(196, 198, 196), MAT.Metal)
+  deco(m, V(3, 2.0, 3), base * CF(w * 0.2, h - 0.6, -d * 0.2), RGB(186, 188, 186), MAT.Metal)
+  deco(m, V(3.4, 4.5, 3.4), base * CF(w * 0.3, h + 0.6, d * 0.25), RGB(150, 152, 150), MAT.Metal, CYL)
+end
+
+-- 半圆铁皮营房（匡西特）：瓦楞铁拱顶（顺着长边）、两头的端墙带门和窗
+local function fbQuonset(m, base, w, h, d, o)
+  slab(m, V(w + 1.2, 0.8, d + 1.2), base * CF(0, 0.2, 0), RGB(120, 120, 116), MAT.Concrete)
+  local r = math.min(w / 2, h)
+  slab(m, V(d, r * 2, r * 2), base * CF(0, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), o.wall or RGB(110, 116, 100), MAT.CorrodedMetal, CYL)
+  for k = 1, math.floor(d / 6) do   -- 拱上一道道接缝
+    deco(m, V(0.4, r * 2 + 0.25, r * 2 + 0.25), base * CF(0, 0, -d / 2 + k * 6) * CFrame.Angles(0, math.pi / 2, 0), RGB(84, 88, 78), MAT.Metal, CYL)
+  end
+  for _, s in ipairs({ -1, 1 }) do
+    local face = base * CF(0, 0, s * d / 2) * (s < 0 and CFrame.Angles(0, math.pi, 0) or CFrame.new())
+    door(m, face, 0, 4.0, 6.8, RGB(70, 78, 66))
+    window(m, face, -r * 0.55, r * 0.45, 2.6, 2.6)
+    window(m, face, r * 0.55, r * 0.45, 2.6, 2.6)
+  end
+end
+
+-- 拱顶机库：矮侧墙 + 椭圆拱（十几块板拼）、正面大推拉门（门缝、门上的窗带）、背面墙
+local function fbHangar(m, base, w, h, d, o)
+  local wall = h * 0.3
+  slab(m, V(w + 2, 1, d + 2), base * CF(0, 0.3, 0), RGB(130, 130, 126), MAT.Concrete)
+  for _, s in ipairs({ -1, 1 }) do slab(m, V(1.2, wall, d), base * CF(s * w / 2, wall / 2, 0), RGB(150, 152, 146), MAT.Concrete) end
+  local N = 12
+  local pts = {}
+  for i = 0, N do
+    local t = math.pi * i / N
+    table.insert(pts, V(math.cos(t) * w / 2, wall + math.sin(t) * (h - wall), 0))
+  end
+  for i = 1, N do
+    local a, b = pts[i], pts[i + 1]
+    local mid, L = (a + b) / 2, (b - a).Magnitude
+    local dir = (b - a).Unit
+    local up = V(-dir.Y, dir.X, 0)
+    if up.Y < 0 then up = -up end
+    local rot = base - base.Position
+    slab(m, V(L + 0.4, 0.8, d + 1.6), CFrame.fromMatrix((base * CF(mid)).Position, rot:VectorToWorldSpace(dir), rot:VectorToWorldSpace(up)), o.wall or RGB(126, 132, 128), MAT.CorrodedMetal)
+  end
+  -- 两头：拱形端墙用几层横条拼（宽度照椭圆）；正面下面是大门
+  for _, s in ipairs({ -1, 1 }) do
+    local face = base * CF(0, 0, s * d / 2) * (s < 0 and CFrame.Angles(0, math.pi, 0) or CFrame.new())
+    local layers = 6
+    for k = 0, layers - 1 do
+      local y0 = wall + (h - wall) * k / layers
+      local y1 = wall + (h - wall) * (k + 1) / layers
+      local hw = w / 2 * math.sqrt(math.max(0, 1 - (((y1 - wall) / (h - wall)) ^ 2)))
+      slab(m, V(hw * 2, y1 - y0, 0.8), face * CF(0, (y0 + y1) / 2, -0.2), RGB(140, 144, 140), MAT.Metal)
+    end
+    if s < 0 then   -- 正面：四扇推拉门（门缝）+ 门上一条窗带
+      for k = 1, 4 do
+        deco(m, V(w / 4 - 0.4, wall - 0.4, 0.5), face * CF(-w / 2 + (k - 0.5) * w / 4, wall / 2, 0.1), RGB(96, 102, 98), MAT.DiamondPlate)
+      end
+      slab(m, V(w, wall, 0.5), face * CF(0, wall / 2, -0.3), RGB(96, 102, 98), MAT.Metal)
+      deco(m, V(w * 0.8, 1.6, 0.4), face * CF(0, wall + 2, 0.1), GLASS_D, MAT.Glass)
+    else
+      slab(m, V(w, wall, 0.8), face * CF(0, wall / 2, -0.2), RGB(140, 144, 140), MAT.Metal)
+    end
+  end
+end
+
+-- 塔台：两段收分的混凝土塔身、两圈检修平台、八角形外倾的玻璃塔顶（窗棂）、顶上的天线杆
+local function fbTower(m, base, w, h, d, o)
+  local cab = h * 0.14
+  local shaftH = h - cab - 3
+  slab(m, V(w * 0.62, 2, w * 0.62), base * CF(0, 1, 0), RGB(140, 140, 136), MAT.Concrete)
+  slab(m, V(w * 0.36, shaftH * 0.6, w * 0.36), base * CF(0, shaftH * 0.3, 0), C.concrete, MAT.Concrete)
+  slab(m, V(w * 0.3, shaftH * 0.4, w * 0.3), base * CF(0, shaftH * 0.8, 0), C.concrete, MAT.Concrete)
+  for _, y in ipairs({ shaftH * 0.42, shaftH * 0.7 }) do deco(m, V(w * 0.5, 0.6, w * 0.5), base * CF(0, y, 0), RGB(110, 112, 110), MAT.Metal) end
+  slab(m, V(1.5, w * 0.86, w * 0.86), base * CF(0, shaftH + 0.75, 0) * UP, RGB(96, 98, 100), MAT.Concrete, CYL)   -- 塔顶楼板
+  local R = w * 0.4
+  for k = 0, 7 do   -- 八块外倾的玻璃 + 窗棂
+    local a = k * math.pi / 4
+    local cf = base * CF(0, shaftH + 1.5 + cab / 2, 0) * CFrame.Angles(0, a, 0) * CF(0, 0, -R) * CFrame.Angles(math.rad(-12), 0, 0)
+    local g = slab(m, V(R * 0.83, cab, 0.4), cf, GLASS_D, MAT.Glass)
+    g.Reflectance = 0.2
+    deco(m, V(0.5, cab + 0.2, 0.6), base * CF(0, shaftH + 1.5 + cab / 2, 0) * CFrame.Angles(0, a + math.pi / 8, 0) * CF(0, 0, -R * 0.98), RGB(60, 62, 66), MAT.Metal)
+  end
+  slab(m, V(1.2, w * 0.92, w * 0.92), base * CF(0, shaftH + 1.5 + cab + 0.6, 0) * UP, C.dark, MAT.Metal, CYL)   -- 塔顶
+  deco(m, V(0.4, 7, 0.4), base * CF(R * 0.3, shaftH + cab + 5.5, 0), C.metal, MAT.Metal)   -- 天线
+  deco(m, V(2.4, 0.3, 2.4), base * CF(-R * 0.3, shaftH + cab + 3.2, 0), C.metal, MAT.Metal)   -- 雷达盘座
+end
+
+-- 库房、厂房：瓦楞铁墙、坡顶或锯齿顶（采光窗）、正面卷帘门；砖砌库房墙用砖
+local function fbShed(m, base, w, h, d, o)
+  local eave = h * (o.saw and 0.62 or 0.7)
+  slab(m, V(w + 0.6, 0.8, d + 0.6), base * CF(0, 0.2, 0), RGB(118, 118, 114), MAT.Concrete)
+  slab(m, V(w, eave, d), base * CF(0, eave / 2, 0), o.wall, o.wallMat or MAT.CorrodedMetal)
+  local rh = h - eave
+  if o.saw then   -- 锯齿顶：一排朝北的采光窗
+    local n = math.max(2, math.floor(d / 14))
+    for k = 1, n do
+      local z = -d / 2 + (k - 0.5) * d / n
+      wedge(m, V(w, rh, d / n), base * CF(0, eave + rh / 2, z) * CFrame.Angles(0, math.pi, 0), o.roof, MAT.CorrodedMetal, true)   -- 竖着的一面朝前
+      deco(m, V(w - 1, rh * 0.8, 0.3), base * CF(0, eave + rh * 0.45, z - d / n / 2 - 0.2), GLASS_D, MAT.Glass)
+    end
+  else
+    wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, -d / 4), o.roof, MAT.CorrodedMetal, true)
+    wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, d / 4) * CFrame.Angles(0, math.pi, 0), o.roof, MAT.CorrodedMetal, true)
+    deco(m, V(w + 1, 0.6, 1.2), base * CF(0, h + 0.1, 0), o.roof:Lerp(Color3.new(0, 0, 0), 0.3), MAT.Metal)
+  end
+  local F = faces(base, w, d)
+  local n = math.max(1, math.floor(F[1].len / 22))
+  for i = 1, n do   -- 正面卷帘门（带一道道横纹）
+    local x = -F[1].len / 2 + (i - 0.5) * F[1].len / n
+    local dw, dh = math.min(14, F[1].len / n * 0.6), math.min(eave * 0.8, 11)
+    deco(m, V(dw + 1, dh + 0.8, 0.25), F[1].cf * CF(x, dh / 2 + 0.4, 0.12), RGB(70, 72, 74), MAT.Metal)
+    deco(m, V(dw, dh, 0.35), F[1].cf * CF(x, dh / 2 + 0.4, 0.2), RGB(150, 154, 150), MAT.DiamondPlate)
+  end
+  for _, fc in ipairs({ F[3], F[4] }) do   -- 侧面高窗
+    local k = math.max(1, math.floor(fc.len / 12))
+    for i = 1, k do window(m, fc.cf, -fc.len / 2 + (i - 0.5) * fc.len / k, eave * 0.75, 4, 2) end
+  end
+end
+
+-- 每种建筑：零件拼的样子、颜色，碰撞盒（相对宽 / 高 / 深的比例：{ 中心 x, y, z, 大小 x, y, z }）
+local BLD = {
+  jph1 = { fb = fbHouse, wall = RGB(214, 210, 198), roof = RGB(58, 62, 68), roofMat = MAT.Slate, frame = RGB(230, 230, 226) },
+  jph2 = { fb = fbHouse, wall = RGB(160, 120, 92), wallMat = MAT.WoodPlanks, roof = RGB(60, 58, 56), roofMat = MAT.Slate },
+  jph3 = { fb = fbHouse, wall = RGB(200, 200, 194), roof = RGB(70, 74, 80), roofMat = MAT.Slate },
+  house = { fb = fbHouse, wall = RGB(196, 186, 160), roof = RGB(150, 78, 58), roofMat = MAT.Slate, door = RGB(90, 60, 40) },
+  conc1 = { fb = fbBlock, wall = RGB(176, 174, 166), trim = RGB(150, 148, 140) },
+  conc2 = { fb = fbBlock, wall = RGB(168, 166, 160), trim = RGB(144, 142, 136) },
+  conc3 = { fb = fbBlock, wall = RGB(182, 178, 168), trim = RGB(150, 146, 136) },
+  industrial = { fb = fbBlock, wall = RGB(150, 92, 72), wallMat = MAT.Brick, trim = RGB(190, 186, 176) },
+  flats1 = { fb = fbBlock, wall = RGB(140, 76, 58), wallMat = MAT.Brick, trim = RGB(200, 196, 186) },
+  firestation = { fb = fbBlock, wall = RGB(156, 70, 56), wallMat = MAT.Brick, trim = RGB(210, 206, 196), garage = 3 },
+  quonset = { fb = fbQuonset, wall = RGB(104, 112, 96), coll = { { 0, 0.4, 0, 0.86, 0.8, 0.98 } } },
+  hangar = { fb = fbHangar, wall = RGB(126, 132, 128), coll = { { 0, 0.42, 0, 0.96, 0.84, 0.98 } } },
+  atc = { fb = fbTower, coll = { { 0, 0.4, 0, 0.36, 0.8, 0.36 }, { 0, 0.9, 0, 0.86, 0.2, 0.86 } } },
+  wh3 = { fb = fbShed, wall = RGB(150, 156, 150), roof = RGB(110, 116, 112) },
+  sawtooth = { fb = fbShed, wall = RGB(120, 96, 84), roof = RGB(96, 90, 86), saw = true },
+  smallwh = { fb = fbShed, wall = RGB(118, 124, 104), roof = RGB(90, 96, 84) },
+  wh99 = { fb = fbShed, wall = RGB(136, 70, 54), wallMat = MAT.Brick, roof = RGB(80, 84, 88) },
+}
+World.BLD = BLD
+-- 默认碰撞盒：墙身整块 + 屋顶收窄一点（坡屋顶上面空着的地方不挡子弹太多）
+local COLL_DEF = { { 0, 0.33, 0, 0.96, 0.66, 0.96 }, { 0, 0.8, 0, 0.8, 0.3, 0.7 } }
+
+-- 摆一座建筑：key 是 BuildingMeta 的键；front 朝向 = 正面（−Z）转 rot；返回 (底面 CFrame, Model)
+local function building(f, key, x, z, rot, opt)
+  opt = opt or {}
+  local info = BM and BM[key]
+  local spec = BLD[key] or BLD.conc1
+  local w, h, d = (info and info.w) or opt.w or 24, (info and info.h) or opt.h or 16, (info and info.d) or opt.d or 24
+  local y = footY(x, z, w * 0.9, d * 0.9, rot) - 0.25
+  local base = CF(x, y, z) * CFrame.Angles(0, rot or 0, 0)
+  local m = Instance.new("Model")
+  m.Name = "Bld_" .. key
+  m:SetAttribute("Bld", key)
+  local src = info and importedBld(key)
+  local n = 0
+  if src then   -- 原模型：每块照元数据的中心摆，补回导入时转掉的半圈（同载具）
+    for name, p in pairs(info.parts) do
+      local s0 = src:FindFirstChild("B_" .. key .. "__" .. name)
+      if s0 and s0:IsA("BasePart") then
+        local mp = s0:Clone()
+        mp.Anchored = true
+        mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
+        if p.col then
+          local okT, tid = pcall(function() return mp.TextureID end)
+          if not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then mp.Color = RGB(p.col[1], p.col[2], p.col[3]) end
+        end
+        mp.Parent = m
+        n += 1
+      end
+    end
+    if n > 0 then
+      for _, c in ipairs(spec.coll or COLL_DEF) do   -- 看不见的碰撞盒：挡人、挡车、挡子弹（原模型的网格不参与碰撞：窗洞、门洞会卡人）
+        local bx = part(m, V(w * c[4], h * c[5], d * c[6]), base * CF(w * c[1], h * c[2], d * c[3]), C.concrete, MAT.SmoothPlastic, nil, true)
+        bx.Name = "Collision"
+        bx.Transparency = 1
+        bx.CastShadow = false
+      end
+    end
+  end
+  if n == 0 then spec.fb(m, base, w, h, d, spec) end
+  -- 夜里：正门边一盏暖黄的壁灯（机库、塔台不要：机库有停机坪的探照灯，塔台顶上有红灯）
+  if key ~= "hangar" and key ~= "atc" then
+    light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
+  end
+  m:SetAttribute("Imported", n > 0)
+  m.Parent = f
+  return base, m, w, h, d
+end
+World.building = building
+
 local function mast(f, x, z, h)   -- 天线杆：顶上红灯一闪一闪
   local y = Map.ground(x, z)
   cyl(f, h, 0.8, CF(x, y + h / 2, z), C.metal, MAT.Metal, true)
@@ -405,16 +740,19 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
     end
   end
   part(f, V(math.min(2000, A.len * 0.6), 1, 70), base * CF(0, 0.45, -A.wid / 2 - 45), C.concrete, MAT.Concrete, nil, true)   -- 停机坪
-  for i = -1, 1 do   -- 机库
-    local hb = base * CF(i * 110, 0, -A.wid / 2 - 120)
-    part(f, V(60, 18, 44), hb * CF(0, 9, 0), RGB(120, 126, 120), MAT.Metal, nil, true)
-    part(f, V(60, 30, 30), hb * CF(0, 18, 0), RGB(110, 116, 110), MAT.Metal, CYL, true)   -- 半圆拱顶（圆柱一半埋在库房里）
-  end
-  local tb = base * CF(A.len / 2 - 40, 0, -A.wid / 2 - 110)   -- 塔台
-  part(f, V(10, 26, 10), tb * CF(0, 13, 0), C.concrete, MAT.Concrete, nil, true)
-  part(f, V(15, 7, 15), tb * CF(0, 29.5, 0), C.glass, MAT.Glass, nil, true)
-  part(f, V(16, 1, 16), tb * CF(0, 33.5, 0), C.dark, MAT.Metal, nil, true)
-  light(f, (tb * CF(0, 34.4, 0)).Position, RGB(255, 40, 40), 1, 14, 1.2).Name = "TowerBeacon"
+  -- 机库、塔台、营房（用户：继续把地图建筑的建模优化）：网页版地图的写实模型（导入了 buildings.glb）或零件拼的；
+  --   两座拱顶机库在停机坪北边、大门朝南对着停机坪（中间空着：攻方机场岛的出生点在 x 0 一带，守方据点 D 的圈也在那里）
+  local bf = folder("Buildings", f)
+  local hz = -A.wid / 2 - 80 - ((BM and BM.hangar and BM.hangar.d) or 126) / 2 - 6
+  for _, sx in ipairs({ -1, 1 }) do building(bf, "hangar", A.x + sx * 130, A.z + hz, math.pi) end
+  -- 塔台在跑道东头北边（原来的位置）；旁边一座消防站（机场救援）、北边一排铁皮营房、一座小库房
+  local tx, tz = A.x + A.len / 2 - 40, A.z - A.wid / 2 - 110
+  local _, _, _, th = building(bf, "atc", tx, tz, math.pi)
+  local ty = footY(tx, tz, 20, 20, 0) - 0.25
+  light(f, V(tx, ty + th + 1.2, tz), RGB(255, 40, 40), 1, 14, 1.2).Name = "TowerBeacon"
+  building(bf, "firestation", tx - 130, A.z - A.wid / 2 - 130, math.pi)
+  for k = 0, 2 do building(bf, "quonset", A.x - 330 - k * 50, A.z - A.wid / 2 - 170, math.pi) end
+  building(bf, "smallwh", A.x + 300, A.z - A.wid / 2 - 120, math.pi)
   -- 夜里的跑道灯：两边白色边灯每 40 格一盏，两头入口绿灯、末端红灯（两头都能起降：一头绿一头红）；停机坪南边一排蓝色滑行道灯
   local lights = Instance.new("Folder")
   lights.Name = "RunwayLights"
@@ -436,12 +774,21 @@ local function portTown(f)
   -- 码头：从湾底伸进湾里
   local zs = Map.coastS(P.x) or P.z
   for i = -1, 1 do part(f, V(14, 2, 90), CF(P.x + i * 70, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true) end
-  local spots = { { -60, -40, 22, 18, 14 }, { -20, -55, 18, 16, 20 }, { 25, -45, 26, 18, 12 }, { 65, -30, 20, 16, 16 }, { -70, 10, 18, 22, 10 },
-    { 70, 15, 22, 18, 12 }, { -30, 40, 16, 14, 9 }, { 35, 45, 18, 14, 9 }, { -95, -75, 16, 16, 12 }, { 100, -70, 18, 16, 14 } }
+  -- 镇上的房子（用户：继续把地图建筑的建模优化）：民房、瓦房、水泥楼混着摆，街北的正门朝南、街南的朝北（都朝着镇中心那条街），
+  --   每座稍微歪一点；湾边一排库房、码头根上一座小库房（大门朝海）
+  local bf = folder("Buildings", f)
+  local spots = { { -60, -40, "jph1" }, { -20, -55, "conc2" }, { 25, -45, "house" }, { 65, -30, "jph3" }, { -70, 10, "conc1" },
+    { 70, 15, "jph2" }, { -30, 40, "jph1" }, { 35, 45, "conc3" }, { -95, -75, "house" }, { 100, -70, "conc1" } }
   for k, s in ipairs(spots) do
     local x, z = P.x + s[1], P.z + s[2]
-    if Map.isLand(x, z) then house(f, x, z, s[3], s[4], s[5], (k % 3) * 0.08, nil, (k % 2 == 0) and RGB(160, 80, 60) or RGB(70, 90, 110)) end
+    local info = BM and BM[s[3]]
+    local rot = ((s[2] < 0) and math.pi or 0) + ((k % 3) - 1) * 0.06
+    if footOnLand(x, z, info and info.w or 20, info and info.d or 20, rot) then building(bf, s[3], x, z, rot) end
   end
+  local wz = zs - 48
+  if footOnLand(P.x, wz, 132, 30, math.pi) then building(bf, "wh3", P.x, wz, math.pi) end
+  if footOnLand(P.x - 150, zs - 40, 30, 34, math.pi) then building(bf, "smallwh", P.x - 150, zs - 40, math.pi) end
+  if footOnLand(P.x + 150, zs - 60, 46, 64, math.pi) then building(bf, "sawtooth", P.x + 150, zs - 60, math.pi) end
   -- 吊车
   local cx, cz = P.x + 70, zs + 20
   local y = Map.ground(cx, cz)
@@ -462,8 +809,8 @@ end
 local function camp(f)
   local P = Map.CAMP
   for i = -2, 2 do tent(f, P.x + i * 24, P.z - 20, 0, C.tent) end
-  house(f, P.x - 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
-  house(f, P.x + 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
+  local bf = folder("Buildings", f)
+  for _, sx in ipairs({ -1, 1 }) do building(bf, "quonset", P.x + sx * 50, P.z + 20, math.pi / 2) end   -- 铁皮营房：长边东西向，门朝东西两头
   local y = Map.ground(P.x, P.z)
   cyl(f, 30, 0.8, CF(P.x, y + 15, P.z + 40), C.white, MAT.Metal, true)
   -- 夜里：车场一排探照灯（车场在南面 z + 70）、北面直升机停机坪两盏、帐篷门口小灯
@@ -492,12 +839,12 @@ local function lighthouse(f)
   pl.Range, pl.Brightness, pl.Color = 40, 2, RGB(255, 236, 170)
   pl.Parent = lamp
   part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
-  house(f, x - 26, z + 10, 16, 12, 8, 0.2)
+  building(f, "jph2", x - 30, z + 12, 0.2 + math.pi / 2)   -- 看守的小屋
 end
 
 local function battery(f)   -- 西礁岛岸防炮台：营房（炮本身是 Forts 管的工事实体，能开火、能被打掉、玩家能操作）
   local I = Map.WESTREEF
-  house(f, I.x - 50, I.z - 20, 20, 14, 8, 0.5, RGB(150, 150, 130), RGB(90, 96, 80))
+  building(f, "conc3", I.x - 50, I.z - 20, 0.5)   -- 炮台营房：水泥楼
 end
 
 -- 攻方舰队：固定的大平台（航母、两栖攻击舰、登陆舰），甲板离水面约 30 格；出生点在甲板上

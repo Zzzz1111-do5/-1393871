@@ -573,6 +573,34 @@ return AirDefs
     </Item>
     <Item class="ModuleScript" referent="2">
       <Properties>
+        <string name="Name">BuildingMeta</string>
+        <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/bld2glb.py），别手改：地图建筑的原模型（models/bld/buildings.glb，网页版地图用的写实模型）的元数据
+--   [键] = { name 中文名, w / h / d 宽、高、深（格，1 米 = 2.8 格）, o 在 GLB 里的原点, parts[块名] = { c 中心, s 大小, col 没贴图的块的颜色 },
+--     credit 署名 }；坐标 X 右、Y 上、−Z 正面，原点在地面、占地中心；导入后 MeshPart 叫 B_<键>__<块名>
+return {
+  jph1 = { credit = "民房：Japanese Residential Home 01，作者 Morrissey Alexander（https://sketchfab.com/3d-models/japanese-residential-home-01-d690f83d8e8d48e6a532bebe84901595），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 22.722, h = 22.84, name = "民房", o = { 12.896, 0, 0 }, parts = { Body_1 = { c = { 0, 11.42, 0 }, s = { 25.793, 22.84, 22.722 } } }, w = 25.793 },
+  jph2 = { credit = "民房：Japanese Residential Home 02，作者 Morrissey Alexander（https://sketchfab.com/3d-models/japanese-residential-home-02-c31697f09152453cb3ed215482e7a810），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 22.859, h = 19.682, name = "民房", o = { 54.208, 0, 0 }, parts = { Body_1 = { c = { 0, 9.841, 0 }, s = { 16.83, 19.682, 22.859 } } }, w = 16.83 },
+  jph3 = { credit = "民房：Japanese Residential Home 03，作者 Morrissey Alexander（https://sketchfab.com/3d-models/japanese-residential-home-03-1c53f4f37fc44c32a8874464025aea48），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 33.052, h = 19.827, name = "民房", o = { 98.651, 0, 0 }, parts = { Body_1 = { c = { 0, 9.914, 0 }, s = { 32.056, 19.827, 33.052 } } }, w = 32.056 },
+  house = { credit = "瓦房：House，作者 SpatialNeglect（https://sketchfab.com/3d-models/house-e70c4aebc911429ba9a894b38146892c），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 22.087, h = 16.83, name = "瓦房", o = { 148.335, 0, 0 }, parts = { Body_1 = { c = { 0.144, 11.462, -0.136 }, s = { 27.026, 8.76, 21.815 } }, Body_2 = { c = { 0.392, 4.363, 0.009 }, s = { 25.958, 8.727, 20.695 } }, Body_3 = { c = { -0.234, 10.38, 2.653 }, s = { 26.845, 12.9, 16.781 } }, Body_4 = { c = { 0.413, 8.338, 0.355 }, s = { 26.402, 13.862, 20.412 } } }, w = 27.313 },
+  conc1 = { credit = "水泥楼：Old Concete Building Pack | Lowpoly，作者 Frid.blend（https://sketchfab.com/3d-models/old-concete-building-pack-lowpoly-6d070fcc86b0430dadf53da67545c6f3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 29.294, h = 19.119, name = "水泥楼", o = { 196.638, 0, 0 }, parts = { Body_1 = { c = { 0, 9.56, 0 }, s = { 29.293, 19.119, 29.294 } } }, w = 29.293 },
+  conc2 = { credit = "水泥楼：Old Concete Building Pack | Lowpoly，作者 Frid.blend（https://sketchfab.com/3d-models/old-concete-building-pack-lowpoly-6d070fcc86b0430dadf53da67545c6f3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 28.242, h = 18.913, name = "水泥楼", o = { 245.406, 0, 0 }, parts = { Body_1 = { c = { 0, 9.457, 0 }, s = { 28.242, 18.913, 28.242 } } }, w = 28.242 },
+  conc3 = { credit = "水泥楼：Old Concete Building Pack | Lowpoly，作者 Frid.blend（https://sketchfab.com/3d-models/old-concete-building-pack-lowpoly-6d070fcc86b0430dadf53da67545c6f3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 24.132, h = 15.984, name = "水泥楼", o = { 291.593, 0, 0 }, parts = { Body_1 = { c = { 0, 7.992, 0 }, s = { 24.132, 15.984, 24.132 } } }, w = 24.132 },
+  hangar = { credit = "机库：j type hanger，作者 ElectricL（https://sketchfab.com/3d-models/j-type-hanger-d86713d61b4941378a6ad21569e0cbac），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 125.837, h = 27.021, name = "机库", o = { 366.981, 0, 0 }, parts = { Body_1 = { c = { 0, 13.51, 0 }, s = { 86.644, 27.021, 125.837 } } }, w = 86.644 },
+  atc = { credit = "塔台：Air Traffic Control Tower，作者 abass20（https://sketchfab.com/3d-models/air-traffic-control-tower-84f215391662453680e646649d42b264），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 27.051, h = 106.04, name = "塔台", o = { 443.829, 0, 0 }, parts = { Body_1 = { c = { 0, 53.02, 0 }, s = { 27.051, 106.04, 27.051 } } }, w = 27.051 },
+  quonset = { credit = "铁皮营房：Military Style Building (with animations)，作者 TampaJoey（https://sketchfab.com/3d-models/military-style-building-with-animations-1671685e1dd94b6e9216ead632f08f6e），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 54.574, h = 16.765, name = "铁皮营房", o = { 493.808, 0, 0 }, parts = { Body_1 = { c = { -0.013, 3.752, -16.216 }, s = { 3.454, 5.959, 0.391 } }, Body_10 = { c = { -0.05, 5.065, -19.518 }, s = { 21.602, 3.825, 0.959 } }, Body_11 = { c = { -0.067, 4.959, -19.646 }, s = { 21.636, 4.695, 0.02 } }, Body_12 = { c = { -0.067, 4.959, -19.64 }, s = { 21.636, 4.695, 0.158 } }, Body_2 = { c = { -0.028, 4.964, -18.806 }, s = { 15.921, 4.822, 0.505 } }, Body_3 = { c = { 0, 5.889, 23.955 }, s = { 21.737, 10.54, 0.615 } }, Body_4 = { c = { 0.006, 5.417, 24.432 }, s = { 9.776, 9.305, 0.171 } }, Body_5 = { c = { -0.001, 8.577, 3.083 }, s = { 32.604, 16.376, 46.338 } }, Body_6 = { c = { 0, 7.723, 2.997 }, s = { 31.7, 15.049, 45.882 } }, Body_7 = { c = { 0.033, 5.037, -17.954 }, s = { 9.149, 9.903, 4.84 } }, Body_8 = { c = { 0.022, 6.006, 3.164 }, s = { 12.312, 1.478, 47.094 } }, Body_9 = { c = { 0, 0.378, 0 }, s = { 32.909, 0.756, 54.574 } } }, w = 32.909 },
+  firestation = { credit = "消防站：Fire Station No. 1，作者 CommonSpence（https://sketchfab.com/3d-models/fire-station-no-1-87edf04deb28434993274d9f05070865），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 66.107, h = 29.591, name = "消防站", o = { 574.036, 0, 0 }, parts = { Body_1 = { c = { 0, 14.796, 0 }, s = { 87.545, 29.591, 66.107 } } }, w = 87.545 },
+  wh3 = { credit = "库房：Pack - Realistic - 3 Warehouse，作者 Islide（https://sketchfab.com/3d-models/pack-realistic-3-warehouse-320c272513a94c0482dbb3c4e79d61f5），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 29.028, h = 12.2, name = "库房", o = { 703.88, 0, 0 }, parts = { Body_1 = { c = { -19.044, 2.813, -1.465 }, s = { 92.698, 5.625, 24.727 } }, Body_2 = { c = { 0, 9.844, -0 }, s = { 131.253, 4.712, 28.43 } }, Body_3 = { c = { 0, 6.153, 0 }, s = { 131.253, 11.133, 28.126 } }, Body_4 = { c = { 0, 0.293, 0 }, s = { 131.487, 0.586, 28.36 } }, Body_5 = { c = { 0, 6.1, 0 }, s = { 132.144, 12.2, 29.028 } }, Body_6 = { c = { -2.744, 3.809, -6.26 }, s = { 125.297, 2.725, 15.136 } } }, w = 132.144 },
+  sawtooth = { credit = "厂房：Warehouse Building，作者 OmegaRedZA（https://sketchfab.com/3d-models/warehouse-building-0c37b0f92cb54e07a1e1c6c3df9f8439），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 63.237, h = 18.57, name = "厂房", o = { 812.884, 0, 0 }, parts = { Body_1 = { c = { -0.012, 14.686, 0 }, s = { 45.839, 7.768, 63.237 } }, Body_2 = { c = { 0.147, 5.624, -0.402 }, s = { 45.569, 11.249, 62.287 } }, Body_3 = { c = { 12.288, 5.624, -31.365 }, s = { 21.231, 11.249, 0.288 } }, Body_4 = { c = { 0.013, 5.768, 30.671 }, s = { 45.085, 11.249, 0.288 } }, Body_5 = { c = { 22.748, 5.768, -0.464 }, s = { 0.288, 11.249, 21.217 } }, Body_6 = { c = { 0.032, 14.615, -0.302 }, s = { 45.584, 7.641, 62.565 } }, Body_7 = { c = { 0.032, 0.453, -0.424 }, s = { 44.937, 0.302, 62.273 } } }, w = 45.863 },
+  smallwh = { credit = "小库房：Small Warehouse，作者 Wardster（https://sketchfab.com/3d-models/small-warehouse-c7f4c017c20943cb9e9e559822a5c402），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 33.931, h = 10.736, name = "小库房", o = { 869.953, 0, 0 }, parts = { Body_1 = { c = { 0, 5.368, 0 }, s = { 28.276, 10.736, 33.931 } }, Body_2 = { c = { -1.548, 3.945, -16.527 }, s = { 22.784, 7.889, 0.356 } } }, w = 28.276 },
+  industrial = { credit = "办公楼：industrial building，作者 spicybamer（https://sketchfab.com/3d-models/industrial-building-770acf6b0da74af397f748d95141f8be），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 57.956, h = 48.864, name = "办公楼", o = { 932.125, 0, 0 }, parts = { Body_1 = { c = { 0, 24.206, 0 }, s = { 56.067, 48.411, 57.956 } }, Body_2 = { c = { 0, 41.467, 0 }, s = { 56.067, 14.794, 57.956 } } }, w = 56.067 },
+  flats1 = { credit = "公寓楼：Davison Street Flats 1 - Flat Roof，作者 Charlie_Zane（https://sketchfab.com/3d-models/davison-street-flats-1-flat-roof-0f461ea81f8541db8d6a5f5e35133588），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 25.2, h = 26.6, name = "公寓楼", o = { 1020.198, 0, 0 }, parts = { Body_1 = { c = { 0, 13.3, 0 }, s = { 80.08, 26.6, 25.2 } } }, w = 80.08 },
+  wh99 = { credit = "砖砌库房：Warehouses，作者 99.Miles（https://sketchfab.com/3d-models/warehouses-e6e105d35b3f486292c42ffa52f363c0），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）", d = 60.243, h = 24.047, name = "砖砌库房", o = { 1149.333, 0, 0 }, parts = { Body_1 = { c = { 0, 12.024, 0 }, s = { 138.191, 24.047, 60.243 } } }, w = 138.191 },
+}
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="3">
+      <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
 -- 文字都在 Lang.lua（中英双语），这里只放编号和数
@@ -802,7 +830,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -912,7 +940,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -970,7 +998,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">Flora</string>
         <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
@@ -1138,7 +1166,7 @@ return Flora
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -1383,7 +1411,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">GearDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——手持装备用哪件真模型（Sketchfab 原模型：tools/weapons/optics.json → OpticsMeta / OpticMesh / models/optics/<键>.glb）
@@ -1443,7 +1471,7 @@ return GD
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">ImportTurn</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -1460,7 +1488,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -1525,7 +1553,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -1562,7 +1590,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="11">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py），别手改：网页版舰艇模型原样转成的 Roblox 模型（models/ship/<型号>.glb）的元数据
@@ -1584,7 +1612,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="12">
+    <Item class="ModuleScript" referent="13">
       <Properties>
         <string name="Name">ImportedTint</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -2928,7 +2956,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="13">
+    <Item class="ModuleScript" referent="14">
       <Properties>
         <string name="Name">ImportedWpn</string>
         <ProtectedString name="Source"><![CDATA[-- 导弹合集（models/wpn/missiles.glb，tools/models/wpn2glb.py 生成）：署名（主菜单「致谢」）和导入了的型号
@@ -2939,7 +2967,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="14">
+    <Item class="ModuleScript" referent="15">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -3734,7 +3762,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="15">
+    <Item class="ModuleScript" referent="16">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -3757,6 +3785,7 @@ local K, HK = 3, 2      -- 水平放大、高度放大（坡度变成原来的 H
 Map.K, Map.HK = K, HK
 Map.R = 12288          -- 地形（含海水）范围 ±R（2048 的倍数：海水按 2048 一块灌）；攻方机场岛最南到 10300 左右
 Map.PLAY = 36864       -- 飞机的作战区 ±PLAY（再往外自动掉头）：约 ±13 公里
+Map.SEA_R = 24576      -- 地形海水再往外铺一圈薄的（±SEA_R，约 ±8.8 公里）：用户要「一望无际的海」，远海那圈平面和地形水面接不上、有割裂感
 Map.SEA_LIM = 28672    -- 船能开到 ±SEA_LIM：约 ±10 公里（地形海水外面是客户端铺的远海平面）
 Map.SEA_DEPTH = 110    -- 远海水深（格，约 40 米；用户：海太浅了不真实——原来 12 格，四米多）
 Map.SHELF = 14         -- 近岸浅滩最深多少格（海滩外缓坡：登陆艇、两栖车照样冲得上滩），再往外陡降到 SEA_DEPTH
@@ -4200,7 +4229,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="17">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -4220,11 +4249,11 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="17">
+    <Item class="Folder" referent="18">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -4286,7 +4315,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -4306,7 +4335,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -4347,7 +4376,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -4367,7 +4396,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -4387,7 +4416,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -4407,7 +4436,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -4434,7 +4463,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -4468,7 +4497,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -4488,7 +4517,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -4536,7 +4565,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -4598,7 +4627,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -4618,7 +4647,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -4652,7 +4681,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -4673,7 +4702,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="32">
+    <Item class="ModuleScript" referent="33">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -4824,7 +4853,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="33">
+    <Item class="ModuleScript" referent="34">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -4868,7 +4897,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="34">
+    <Item class="ModuleScript" referent="35">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -4999,7 +5028,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="35">
+    <Item class="ModuleScript" referent="36">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -5353,7 +5382,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="36">
+    <Item class="ModuleScript" referent="37">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -5648,17 +5677,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="37">
+    <Item class="Folder" referent="38">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="38">
+  <Item class="ServerScriptService" referent="39">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="39">
+    <Item class="Script" referent="40">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -5830,7 +5859,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -6317,7 +6346,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -6635,6 +6664,7 @@ function Air.init(G)
     e.onGround = onGround
     e.pass = {}
     e.lastSync = now()
+    e.syncT, e.syncSlack = now(), 160   -- 位置报告的校验（sync）：从这一刻起算
     e.gunT = 0
     e.trig = false
     e.aim = nil
@@ -6989,17 +7019,20 @@ function Air.init(G)
   end
 
   -- 热诱弹：一次一组 4 发；正在追这架飞机的红外弹六成被骗走，雷达弹一成五
+  -- 热诱弹（用户：改成按住连续放）：客户端按住 X 每 0.3 秒发一次，一次放 2 发（原来按一下放 4 发、冷却 1.2 秒）；
+  --   每放一组，追着这架飞机的空空弹有一定机会被骗走（连着放几组，红外弹多半被骗走）
   local function flare(P, e)
     local t = now()
     if e.flares <= 0 or t < (e.flareNext or 0) then return end
-    e.flares = math.max(0, e.flares - 4)
-    e.flareNext = t + 1.2
+    local n = math.min(2, e.flares)
+    e.flares = math.max(0, e.flares - n)
+    e.flareNext = t + 0.25
     e.model:SetAttribute("Flares", e.flares)
     local p = e.root.CFrame.Position
-    G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V() })
+    G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V(), n = n })
     for _, s in ipairs(G.shots) do
       if s.tgt == e and s.w and (s.w.kind == "aam") then
-        local chance = (s.w.seeker == "ir") and 0.6 or 0.15
+        local chance = (s.w.seeker == "ir") and 0.33 or 0.07
         if (s.pos - p).Magnitude < 2200 and math.random() < chance then
           s.tgt = { decoy = true, pos = p - (e.vel or V()) * 0.15, vel = (e.vel or V()) * 0.35 + V(0, -10, 0) }
           s.tgId = nil
@@ -7018,17 +7051,34 @@ function Air.init(G)
     G.damageEnt(e, 1e6, e.lastHitBy or { team = "none", name = why or "crash" })
   end
 
+  -- 飞得快一卡一卡（用户 11-18）：原来按「两次收到报告的间隔」算允许飞多远（最少按 0.02 秒）——报告挤在一起到（客户端帧率低、网络抖、
+  --   服务器一帧处理两包），高速时一包挪的距离就超了，服务器把飞机拉回上一个位置，客户端一顿一顿地往回跳。
+  --   现在按「离上次认下的位置过了多久」算（挤在一起到的两包，第二包允许的距离也是按真实经过的时间），再加一个会慢慢回满的余量；
+  --   超出一点的不拉回客户端、服务器这边先挪到允许的地方，差得太远（瞬移、出界）才拉回
   local function sync(P, e, d)
     local cf = d.cf
     if typeof(cf) ~= "CFrame" then return end
     local t = now()
-    local dt = math.max(0.02, t - (e.lastSync or t))
+    local dtA = math.max(0, t - (e.syncT or t))
+    e.syncT = t
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local dist = (p1 - p0).Magnitude
     local def = e.def
-    local maxD = def.vMax * 1.5 * dt + 25
-    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
-    e.lastSync = t
+    e.syncSlack = math.min(160, (e.syncSlack or 160) + dtA * 120)
+    local allow = def.vMax * 1.6 * dtA
+    local bad = p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
+    if not bad and dist > allow then
+      local over = dist - allow
+      if over <= e.syncSlack then
+        e.syncSlack -= over
+      elseif over > e.syncSlack + 600 then
+        bad = true   -- 差得太远：瞬移、改了速度
+      else
+        cf = CFrame.new(p0 + (p1 - p0).Unit * (allow + e.syncSlack)) * cf.Rotation   -- 服务器先挪到允许的地方，不拉回客户端，下一包接着追
+        p1 = cf.Position
+        e.syncSlack = 0
+      end
+    end
     if bad then
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame, v = e.vel })
       return
@@ -7235,7 +7285,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -7812,7 +7862,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -8939,7 +8989,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -9338,7 +9388,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -9631,7 +9681,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="46">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -10828,11 +10878,12 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
---   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）、models/scenery/scenery.glb（花草树木，一个文件全有）以后，
+--   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）、models/scenery/scenery.glb（花草树木，一个文件全有）、
+--   models/bld/buildings.glb（地图建筑：民房、水泥楼、机库、塔台、营房、库房……一个文件全有，块叫 B_<键>__Body_<号>，收进 Imported.Bld）以后，
 --   MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ N_<键>__<块>（Bark、Leaves、Body：地图上的树、灌木、石头、草丛、花丛）/
 --   A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/ S_<型号>__<块>（Hull_1、T1_1……）/ O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，
 --   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>（第一人称的 M4，models/fps_m4.glb 的 FPS_M4_* 收进 Imported.FPS_M4），
@@ -10858,20 +10909,20 @@ function Imports.init(G)
   -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）、
   --   W 机载导弹炸弹（models/wpn/missiles.glb，块叫 W_<型号>__Body_1；WeaponModels 有就用它）
   local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics"), N = folder(imported, "Scenery"),
-    W = folder(imported, "Wpn") }
+    W = folder(imported, "Wpn"), B = folder(imported, "Bld") }
   local n, keys, airKeys, shipKeys = 0, {}, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VASONW])_([%w_]-)__[%w_]+$")
+        local kind, key = string.match(d.Name, "^([VASONWB])_([%w_]-)__[%w_]+$")
         if not kind and string.match(d.Name, "^FPS_M4_%w+$") then   -- 第一人称的 M4（models/fps_m4.glb）：收进 Imported.FPS_M4（FPSView 在那里找）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
           d.Parent = folder(imported, "FPS_M4")
           if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
-        elseif kind == "O" or kind == "N" or kind == "W" then   -- 瞄准镜、花草树木、导弹炸弹：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
+        elseif kind == "O" or kind == "N" or kind == "W" or kind == "B" then   -- B：地图建筑（World.lua 开服时摆）   -- 瞄准镜、花草树木、导弹炸弹：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
@@ -10965,7 +11016,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -11159,7 +11210,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -12124,7 +12175,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -12208,7 +12259,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -13239,7 +13290,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="53">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -13339,7 +13390,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="54">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -13565,7 +13616,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="54">
+      <Item class="ModuleScript" referent="55">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -13861,7 +13912,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="55">
+      <Item class="ModuleScript" referent="56">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -14474,7 +14525,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="56">
+      <Item class="ModuleScript" referent="57">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -14746,6 +14797,23 @@ function World.terrain(onProgress)
     end
     task.wait()
   end
+  -- 远海（用户 11-18：要一望无际的海，不要这种割裂感——原来 ±R 以外是客户端跟着镜头铺的一圈不透明平面，颜色、反光和地形水面不一样，
+  --   从天上看海面中间一道分界线）：±R 到 ±SEA_R 也灌成地形海水，水面和近海一模一样；只灌 24 格深，底下铺一层玄武岩，
+  --   玄武岩染成深海的颜色（地图别处不用玄武岩），透过水看着和 110 格深的海一样暗。再往外才是客户端的平面（Scenery.lua），已经在雾里了
+  local SR = Map.SEA_R or R
+  if SR > R then
+    pcall(function() T:SetMaterialColor(MAT.Basalt, RGB(18, 58, 70)) end)
+    local FD = 24
+    for x = -SR, SR - TILE, TILE do
+      for z = -SR, SR - TILE, TILE do
+        if not (x >= -R and x < R and z >= -R and z < R) then
+          T:FillBlock(CF(x + TILE / 2, -FD - 2, z + TILE / 2), V(TILE, 4, TILE), MAT.Basalt)
+          T:FillBlock(CF(x + TILE / 2, -FD / 2, z + TILE / 2), V(TILE, FD, TILE), MAT.Water)
+        end
+      end
+      task.wait()
+    end
+  end
   local CH = 64 * Map.RES
   local seen, list = {}, {}
   for _, b in ipairs(Map.landBoxes()) do
@@ -14808,6 +14876,341 @@ local function tent(f, x, z, rot, color)
   wedge(f, V(14, 7, 6), base * CF(0, 3.5, 3) * CFrame.Angles(0, math.pi, 0), color or C.tent, MAT.Fabric, true)
 end
 
+---------------------------------------------------------------- 建筑（用户：继续把游戏内地图的建筑的建模优化）
+-- 导入了 models/bld/buildings.glb（网页版地图用的写实模型，带贴图）：摆原模型，外加看不见的碰撞盒挡人、挡子弹、挡车（G.spotClear 也靠它判断）；
+--   没导入：零件拼一座（坡屋顶带檐口和山墙、窗框窗台、门廊、烟囱；平顶楼的楼层线、女儿墙、屋顶设备；铁皮营房、拱顶机库、八角玻璃塔台……）
+--   尺寸都照 BuildingMeta（导没导入占地一样，出生点、停车位、掩体的判断都一样）
+local BM, TURN = nil, CFrame.new()
+pcall(function() BM = require(RS:WaitForChild("BuildingMeta", 5)) end)
+pcall(function() TURN = require(RS:WaitForChild("ImportTurn", 5)).TURN end)
+World.BM = BM
+
+local function importedBld(key)
+  local imp = RS:FindFirstChild("Imported")
+  local b = imp and imp:FindFirstChild("Bld")
+  return b and b:FindFirstChild(key)
+end
+World.importedBld = importedBld
+
+-- 占地四角、中心里最低的地面（坡上的房子不悬空：上坡那边埋进去一点）
+local function footY(x, z, w, d, rot)
+  local c, s = math.cos(rot or 0), math.sin(rot or 0)
+  local y = Map.ground(x, z)
+  for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+    local lx, lz = o[1] * w / 2, o[2] * d / 2
+    y = math.min(y, Map.ground(x + lx * c + lz * s, z - lx * s + lz * c))
+  end
+  return y
+end
+World.footY = footY
+
+-- 占地全在陆上（四角、四边中点都不是海）：港口镇、机场摆房子前先看一眼
+local function footOnLand(x, z, w, d, rot)
+  local c, s = math.cos(rot or 0), math.sin(rot or 0)
+  for _, o in ipairs({ { 0, 0 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+    local lx, lz = o[1] * w / 2, o[2] * d / 2
+    if not Map.isLand(x + lx * c + lz * s, z - lx * s + lz * c) then return false end
+  end
+  return true
+end
+World.footOnLand = footOnLand
+
+-- 零件拼的建筑用的小工具：deco 装饰（不挡人、不挡射线）、slab 实心
+local function deco(m, size, cf, col, mat, shape) return part(m, size, cf, col, mat, shape) end
+local function slab(m, size, cf, col, mat, shape) return part(m, size, cf, col, mat, shape, true) end
+-- 窗：白窗框 + 深色玻璃 + 窗台（贴在墙面上：face 是墙面的 CFrame，Z 朝外）
+local GLASS_D, FRAME_W = RGB(44, 58, 70), RGB(222, 222, 214)
+local function window(m, face, x, y, ww, wh, frameCol)
+  deco(m, V(ww + 0.5, wh + 0.5, 0.2), face * CF(x, y, 0.1), frameCol or FRAME_W, MAT.SmoothPlastic)
+  local g = deco(m, V(ww, wh, 0.3), face * CF(x, y, 0.18), GLASS_D, MAT.Glass)
+  g.Reflectance = 0.15
+  deco(m, V(ww + 1.0, 0.3, 0.7), face * CF(x, y - wh / 2 - 0.35, 0.35), FRAME_W, MAT.Concrete)
+  if ww > 2.4 then deco(m, V(0.18, wh, 0.34), face * CF(x, y, 0.2), frameCol or FRAME_W, MAT.SmoothPlastic) end   -- 竖窗棂
+end
+-- 门：门框 + 门板 + 台阶 + 小雨棚
+local function door(m, face, x, dw, dh, col)
+  deco(m, V(dw + 0.8, dh + 0.5, 0.2), face * CF(x, dh / 2 + 0.6, 0.1), FRAME_W, MAT.SmoothPlastic)
+  deco(m, V(dw, dh, 0.3), face * CF(x, dh / 2 + 0.6, 0.18), col or C.wood, MAT.Wood)
+  slab(m, V(dw + 2.2, 0.6, 2.2), face * CF(x, 0.3, 1.1), RGB(150, 150, 146), MAT.Concrete)
+  deco(m, V(dw + 3, 0.35, 2.6), face * CF(x, dh + 1.5, 1.3), RGB(80, 84, 88), MAT.Metal)
+end
+-- 四面墙的 CFrame（相对建筑底面中心，Z 朝外）：前（−Z）、后、左、右
+local function faces(base, w, d)
+  return {
+    { cf = base * CF(0, 0, -d / 2) * CFrame.Angles(0, math.pi, 0), len = w },
+    { cf = base * CF(0, 0, d / 2), len = w },
+    { cf = base * CF(-w / 2, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), len = d },
+    { cf = base * CF(w / 2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), len = d },
+  }
+end
+
+-- 坡屋顶民房：墙到檐口（六成高），山墙、两片屋面带出檐、屋脊、烟囱；一层或两层窗；正面中间门
+local function fbHouse(m, base, w, h, d, o)
+  local eave = h * 0.58
+  local rh = h - eave
+  slab(m, V(w + 0.8, 1.2, d + 0.8), base * CF(0, 0.3, 0), RGB(120, 118, 112), MAT.Concrete)   -- 墙基
+  slab(m, V(w, eave, d), base * CF(0, eave / 2, 0), o.wall, o.wallMat or MAT.Concrete)
+  -- 山墙（墙色的实心三角）+ 屋面（薄板，四边出檐）
+  wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, -d / 4), o.wall, o.wallMat or MAT.Concrete, true)
+  wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, d / 4) * CFrame.Angles(0, math.pi, 0), o.wall, o.wallMat or MAT.Concrete, true)
+  for _, s in ipairs({ -1, 1 }) do   -- −1 前坡、1 后坡
+    local th = math.atan2(rh, d / 2)
+    local n = V(0, math.cos(th), s * math.sin(th))
+    local L = math.sqrt((d / 2) ^ 2 + rh ^ 2) + 1.6
+    local mid = (base * CF(0, eave + rh / 2, s * d / 4)).Position
+    local rot = base - base.Position
+    local pos = mid + rot:VectorToWorldSpace(n * 0.3 + V(0, -math.sin(th), s * math.cos(th)) * 0.8)
+    local cf = CFrame.fromMatrix(pos, rot:VectorToWorldSpace(V(1, 0, 0)), rot:VectorToWorldSpace(n))
+    slab(m, V(w + 2.4, 0.6, L), cf, o.roof, o.roofMat or MAT.Slate)
+  end
+  deco(m, V(w + 2.6, 0.7, 1.0), base * CF(0, h + 0.15, 0), o.roof:Lerp(Color3.new(0, 0, 0), 0.25), o.roofMat or MAT.Slate)   -- 屋脊
+  deco(m, V(2.4, rh * 0.9 + 1.5, 2.4), base * CF(w * 0.26, eave + rh * 0.62, d * 0.12), RGB(120, 70, 56), MAT.Brick)   -- 烟囱
+  deco(m, V(2.8, 0.4, 2.8), base * CF(w * 0.26, eave + rh * 1.07 + 0.75, d * 0.12), RGB(70, 70, 70), MAT.Concrete)
+  -- 窗、门
+  local floors = (eave > 11) and 2 or 1   -- 檐口高过 4 米：两层
+  local F = faces(base, w, d)
+  for fi, fc in ipairs(F) do
+    local n = math.max(1, math.floor(fc.len / 8.5))
+    for fl = 1, floors do
+      local y = (floors == 1) and eave * 0.55 or eave * (fl == 1 and 0.3 or 0.74)
+      for i = 1, n do
+        local x = -fc.len / 2 + (i - 0.5) * fc.len / n
+        if not (fi == 1 and fl == 1 and math.abs(x) < 3.5) then window(m, fc.cf, x, y, 3.0, 3.8, o.frame) end
+      end
+    end
+  end
+  door(m, F[1].cf, 0, 3.4, 6.6, o.door)
+  return eave
+end
+
+-- 平顶楼（水泥楼、办公楼、公寓楼、消防站）：楼层线、每层一条窗带（窗间墙隔开）、女儿墙、屋顶空调外机 / 水箱；消防站正面几扇红色车库门
+local function fbBlock(m, base, w, h, d, o)
+  slab(m, V(w + 0.6, 1.0, d + 0.6), base * CF(0, 0.3, 0), RGB(110, 110, 106), MAT.Concrete)
+  slab(m, V(w, h - 1.6, d), base * CF(0, (h - 1.6) / 2, 0), o.wall, o.wallMat or MAT.Concrete)
+  for _, p in ipairs({ { 0, -d / 2, w + 0.6, 0.8 }, { 0, d / 2, w + 0.6, 0.8 }, { -w / 2, 0, 0.8, d }, { w / 2, 0, 0.8, d } }) do   -- 女儿墙
+    slab(m, V(p[3], 1.8, p[4]), base * CF(p[1], h - 0.9, p[2]), o.trim or o.wall, o.wallMat or MAT.Concrete)
+  end
+  local floors = math.max(1, math.floor((h - 1.6) / 7.6))   -- 一层 2.7 米上下
+  local fh = (h - 1.6) / floors
+  local F = faces(base, w, d)
+  for fi, fc in ipairs(F) do
+    for fl = 1, floors do
+      local y0 = (fl - 1) * fh
+      if fl > 1 then deco(m, V(fc.len + 0.4, 0.6, 0.6), fc.cf * CF(0, y0, 0.2), o.trim or RGB(196, 196, 190), MAT.Concrete) end   -- 楼层线
+      local garage = o.garage and fi == 1 and fl == 1
+      if garage then
+        for g = 1, o.garage do
+          local x = -fc.len / 2 + (g - 0.5) * fc.len / (o.garage + 1)
+          deco(m, V(fc.len / (o.garage + 1) * 0.78, fh * 0.78, 0.35), fc.cf * CF(x, fh * 0.39 + 0.5, 0.18), RGB(170, 36, 30), MAT.Metal)   -- 车库门
+        end
+        door(m, fc.cf, fc.len / 2 - fc.len / (o.garage + 1) * 0.5, 3.2, 6.4, RGB(80, 84, 90))
+      else
+        local n = math.max(1, math.floor(fc.len / 8))
+        for i = 1, n do
+          local x = -fc.len / 2 + (i - 0.5) * fc.len / n
+          if not (fi == 1 and fl == 1 and i == math.ceil(n / 2)) then   -- 窗（平顶楼窗多：只要玻璃和窗台两块）
+            local ww, wh = math.min(4.2, fc.len / n * 0.62), fh * 0.46
+            local g = deco(m, V(ww, wh, 0.3), fc.cf * CF(x, y0 + fh * 0.55, 0.15), GLASS_D, MAT.Glass)
+            g.Reflectance = 0.15
+            deco(m, V(ww + 0.8, 0.3, 0.6), fc.cf * CF(x, y0 + fh * 0.55 - wh / 2 - 0.3, 0.3), o.trim or FRAME_W, MAT.Concrete)
+          end
+        end
+        if fi == 1 and fl == 1 then door(m, fc.cf, -fc.len / 2 + (math.ceil(n / 2) - 0.5) * fc.len / n, 3.6, 6.6, RGB(70, 76, 82)) end
+      end
+    end
+  end
+  -- 屋顶：空调外机、水箱、检修口
+  deco(m, V(4, 2.4, 3), base * CF(-w * 0.22, h - 0.4, d * 0.18), RGB(196, 198, 196), MAT.Metal)
+  deco(m, V(3, 2.0, 3), base * CF(w * 0.2, h - 0.6, -d * 0.2), RGB(186, 188, 186), MAT.Metal)
+  deco(m, V(3.4, 4.5, 3.4), base * CF(w * 0.3, h + 0.6, d * 0.25), RGB(150, 152, 150), MAT.Metal, CYL)
+end
+
+-- 半圆铁皮营房（匡西特）：瓦楞铁拱顶（顺着长边）、两头的端墙带门和窗
+local function fbQuonset(m, base, w, h, d, o)
+  slab(m, V(w + 1.2, 0.8, d + 1.2), base * CF(0, 0.2, 0), RGB(120, 120, 116), MAT.Concrete)
+  local r = math.min(w / 2, h)
+  slab(m, V(d, r * 2, r * 2), base * CF(0, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), o.wall or RGB(110, 116, 100), MAT.CorrodedMetal, CYL)
+  for k = 1, math.floor(d / 6) do   -- 拱上一道道接缝
+    deco(m, V(0.4, r * 2 + 0.25, r * 2 + 0.25), base * CF(0, 0, -d / 2 + k * 6) * CFrame.Angles(0, math.pi / 2, 0), RGB(84, 88, 78), MAT.Metal, CYL)
+  end
+  for _, s in ipairs({ -1, 1 }) do
+    local face = base * CF(0, 0, s * d / 2) * (s < 0 and CFrame.Angles(0, math.pi, 0) or CFrame.new())
+    door(m, face, 0, 4.0, 6.8, RGB(70, 78, 66))
+    window(m, face, -r * 0.55, r * 0.45, 2.6, 2.6)
+    window(m, face, r * 0.55, r * 0.45, 2.6, 2.6)
+  end
+end
+
+-- 拱顶机库：矮侧墙 + 椭圆拱（十几块板拼）、正面大推拉门（门缝、门上的窗带）、背面墙
+local function fbHangar(m, base, w, h, d, o)
+  local wall = h * 0.3
+  slab(m, V(w + 2, 1, d + 2), base * CF(0, 0.3, 0), RGB(130, 130, 126), MAT.Concrete)
+  for _, s in ipairs({ -1, 1 }) do slab(m, V(1.2, wall, d), base * CF(s * w / 2, wall / 2, 0), RGB(150, 152, 146), MAT.Concrete) end
+  local N = 12
+  local pts = {}
+  for i = 0, N do
+    local t = math.pi * i / N
+    table.insert(pts, V(math.cos(t) * w / 2, wall + math.sin(t) * (h - wall), 0))
+  end
+  for i = 1, N do
+    local a, b = pts[i], pts[i + 1]
+    local mid, L = (a + b) / 2, (b - a).Magnitude
+    local dir = (b - a).Unit
+    local up = V(-dir.Y, dir.X, 0)
+    if up.Y < 0 then up = -up end
+    local rot = base - base.Position
+    slab(m, V(L + 0.4, 0.8, d + 1.6), CFrame.fromMatrix((base * CF(mid)).Position, rot:VectorToWorldSpace(dir), rot:VectorToWorldSpace(up)), o.wall or RGB(126, 132, 128), MAT.CorrodedMetal)
+  end
+  -- 两头：拱形端墙用几层横条拼（宽度照椭圆）；正面下面是大门
+  for _, s in ipairs({ -1, 1 }) do
+    local face = base * CF(0, 0, s * d / 2) * (s < 0 and CFrame.Angles(0, math.pi, 0) or CFrame.new())
+    local layers = 6
+    for k = 0, layers - 1 do
+      local y0 = wall + (h - wall) * k / layers
+      local y1 = wall + (h - wall) * (k + 1) / layers
+      local hw = w / 2 * math.sqrt(math.max(0, 1 - (((y1 - wall) / (h - wall)) ^ 2)))
+      slab(m, V(hw * 2, y1 - y0, 0.8), face * CF(0, (y0 + y1) / 2, -0.2), RGB(140, 144, 140), MAT.Metal)
+    end
+    if s < 0 then   -- 正面：四扇推拉门（门缝）+ 门上一条窗带
+      for k = 1, 4 do
+        deco(m, V(w / 4 - 0.4, wall - 0.4, 0.5), face * CF(-w / 2 + (k - 0.5) * w / 4, wall / 2, 0.1), RGB(96, 102, 98), MAT.DiamondPlate)
+      end
+      slab(m, V(w, wall, 0.5), face * CF(0, wall / 2, -0.3), RGB(96, 102, 98), MAT.Metal)
+      deco(m, V(w * 0.8, 1.6, 0.4), face * CF(0, wall + 2, 0.1), GLASS_D, MAT.Glass)
+    else
+      slab(m, V(w, wall, 0.8), face * CF(0, wall / 2, -0.2), RGB(140, 144, 140), MAT.Metal)
+    end
+  end
+end
+
+-- 塔台：两段收分的混凝土塔身、两圈检修平台、八角形外倾的玻璃塔顶（窗棂）、顶上的天线杆
+local function fbTower(m, base, w, h, d, o)
+  local cab = h * 0.14
+  local shaftH = h - cab - 3
+  slab(m, V(w * 0.62, 2, w * 0.62), base * CF(0, 1, 0), RGB(140, 140, 136), MAT.Concrete)
+  slab(m, V(w * 0.36, shaftH * 0.6, w * 0.36), base * CF(0, shaftH * 0.3, 0), C.concrete, MAT.Concrete)
+  slab(m, V(w * 0.3, shaftH * 0.4, w * 0.3), base * CF(0, shaftH * 0.8, 0), C.concrete, MAT.Concrete)
+  for _, y in ipairs({ shaftH * 0.42, shaftH * 0.7 }) do deco(m, V(w * 0.5, 0.6, w * 0.5), base * CF(0, y, 0), RGB(110, 112, 110), MAT.Metal) end
+  slab(m, V(1.5, w * 0.86, w * 0.86), base * CF(0, shaftH + 0.75, 0) * UP, RGB(96, 98, 100), MAT.Concrete, CYL)   -- 塔顶楼板
+  local R = w * 0.4
+  for k = 0, 7 do   -- 八块外倾的玻璃 + 窗棂
+    local a = k * math.pi / 4
+    local cf = base * CF(0, shaftH + 1.5 + cab / 2, 0) * CFrame.Angles(0, a, 0) * CF(0, 0, -R) * CFrame.Angles(math.rad(-12), 0, 0)
+    local g = slab(m, V(R * 0.83, cab, 0.4), cf, GLASS_D, MAT.Glass)
+    g.Reflectance = 0.2
+    deco(m, V(0.5, cab + 0.2, 0.6), base * CF(0, shaftH + 1.5 + cab / 2, 0) * CFrame.Angles(0, a + math.pi / 8, 0) * CF(0, 0, -R * 0.98), RGB(60, 62, 66), MAT.Metal)
+  end
+  slab(m, V(1.2, w * 0.92, w * 0.92), base * CF(0, shaftH + 1.5 + cab + 0.6, 0) * UP, C.dark, MAT.Metal, CYL)   -- 塔顶
+  deco(m, V(0.4, 7, 0.4), base * CF(R * 0.3, shaftH + cab + 5.5, 0), C.metal, MAT.Metal)   -- 天线
+  deco(m, V(2.4, 0.3, 2.4), base * CF(-R * 0.3, shaftH + cab + 3.2, 0), C.metal, MAT.Metal)   -- 雷达盘座
+end
+
+-- 库房、厂房：瓦楞铁墙、坡顶或锯齿顶（采光窗）、正面卷帘门；砖砌库房墙用砖
+local function fbShed(m, base, w, h, d, o)
+  local eave = h * (o.saw and 0.62 or 0.7)
+  slab(m, V(w + 0.6, 0.8, d + 0.6), base * CF(0, 0.2, 0), RGB(118, 118, 114), MAT.Concrete)
+  slab(m, V(w, eave, d), base * CF(0, eave / 2, 0), o.wall, o.wallMat or MAT.CorrodedMetal)
+  local rh = h - eave
+  if o.saw then   -- 锯齿顶：一排朝北的采光窗
+    local n = math.max(2, math.floor(d / 14))
+    for k = 1, n do
+      local z = -d / 2 + (k - 0.5) * d / n
+      wedge(m, V(w, rh, d / n), base * CF(0, eave + rh / 2, z) * CFrame.Angles(0, math.pi, 0), o.roof, MAT.CorrodedMetal, true)   -- 竖着的一面朝前
+      deco(m, V(w - 1, rh * 0.8, 0.3), base * CF(0, eave + rh * 0.45, z - d / n / 2 - 0.2), GLASS_D, MAT.Glass)
+    end
+  else
+    wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, -d / 4), o.roof, MAT.CorrodedMetal, true)
+    wedge(m, V(w, rh, d / 2), base * CF(0, eave + rh / 2, d / 4) * CFrame.Angles(0, math.pi, 0), o.roof, MAT.CorrodedMetal, true)
+    deco(m, V(w + 1, 0.6, 1.2), base * CF(0, h + 0.1, 0), o.roof:Lerp(Color3.new(0, 0, 0), 0.3), MAT.Metal)
+  end
+  local F = faces(base, w, d)
+  local n = math.max(1, math.floor(F[1].len / 22))
+  for i = 1, n do   -- 正面卷帘门（带一道道横纹）
+    local x = -F[1].len / 2 + (i - 0.5) * F[1].len / n
+    local dw, dh = math.min(14, F[1].len / n * 0.6), math.min(eave * 0.8, 11)
+    deco(m, V(dw + 1, dh + 0.8, 0.25), F[1].cf * CF(x, dh / 2 + 0.4, 0.12), RGB(70, 72, 74), MAT.Metal)
+    deco(m, V(dw, dh, 0.35), F[1].cf * CF(x, dh / 2 + 0.4, 0.2), RGB(150, 154, 150), MAT.DiamondPlate)
+  end
+  for _, fc in ipairs({ F[3], F[4] }) do   -- 侧面高窗
+    local k = math.max(1, math.floor(fc.len / 12))
+    for i = 1, k do window(m, fc.cf, -fc.len / 2 + (i - 0.5) * fc.len / k, eave * 0.75, 4, 2) end
+  end
+end
+
+-- 每种建筑：零件拼的样子、颜色，碰撞盒（相对宽 / 高 / 深的比例：{ 中心 x, y, z, 大小 x, y, z }）
+local BLD = {
+  jph1 = { fb = fbHouse, wall = RGB(214, 210, 198), roof = RGB(58, 62, 68), roofMat = MAT.Slate, frame = RGB(230, 230, 226) },
+  jph2 = { fb = fbHouse, wall = RGB(160, 120, 92), wallMat = MAT.WoodPlanks, roof = RGB(60, 58, 56), roofMat = MAT.Slate },
+  jph3 = { fb = fbHouse, wall = RGB(200, 200, 194), roof = RGB(70, 74, 80), roofMat = MAT.Slate },
+  house = { fb = fbHouse, wall = RGB(196, 186, 160), roof = RGB(150, 78, 58), roofMat = MAT.Slate, door = RGB(90, 60, 40) },
+  conc1 = { fb = fbBlock, wall = RGB(176, 174, 166), trim = RGB(150, 148, 140) },
+  conc2 = { fb = fbBlock, wall = RGB(168, 166, 160), trim = RGB(144, 142, 136) },
+  conc3 = { fb = fbBlock, wall = RGB(182, 178, 168), trim = RGB(150, 146, 136) },
+  industrial = { fb = fbBlock, wall = RGB(150, 92, 72), wallMat = MAT.Brick, trim = RGB(190, 186, 176) },
+  flats1 = { fb = fbBlock, wall = RGB(140, 76, 58), wallMat = MAT.Brick, trim = RGB(200, 196, 186) },
+  firestation = { fb = fbBlock, wall = RGB(156, 70, 56), wallMat = MAT.Brick, trim = RGB(210, 206, 196), garage = 3 },
+  quonset = { fb = fbQuonset, wall = RGB(104, 112, 96), coll = { { 0, 0.4, 0, 0.86, 0.8, 0.98 } } },
+  hangar = { fb = fbHangar, wall = RGB(126, 132, 128), coll = { { 0, 0.42, 0, 0.96, 0.84, 0.98 } } },
+  atc = { fb = fbTower, coll = { { 0, 0.4, 0, 0.36, 0.8, 0.36 }, { 0, 0.9, 0, 0.86, 0.2, 0.86 } } },
+  wh3 = { fb = fbShed, wall = RGB(150, 156, 150), roof = RGB(110, 116, 112) },
+  sawtooth = { fb = fbShed, wall = RGB(120, 96, 84), roof = RGB(96, 90, 86), saw = true },
+  smallwh = { fb = fbShed, wall = RGB(118, 124, 104), roof = RGB(90, 96, 84) },
+  wh99 = { fb = fbShed, wall = RGB(136, 70, 54), wallMat = MAT.Brick, roof = RGB(80, 84, 88) },
+}
+World.BLD = BLD
+-- 默认碰撞盒：墙身整块 + 屋顶收窄一点（坡屋顶上面空着的地方不挡子弹太多）
+local COLL_DEF = { { 0, 0.33, 0, 0.96, 0.66, 0.96 }, { 0, 0.8, 0, 0.8, 0.3, 0.7 } }
+
+-- 摆一座建筑：key 是 BuildingMeta 的键；front 朝向 = 正面（−Z）转 rot；返回 (底面 CFrame, Model)
+local function building(f, key, x, z, rot, opt)
+  opt = opt or {}
+  local info = BM and BM[key]
+  local spec = BLD[key] or BLD.conc1
+  local w, h, d = (info and info.w) or opt.w or 24, (info and info.h) or opt.h or 16, (info and info.d) or opt.d or 24
+  local y = footY(x, z, w * 0.9, d * 0.9, rot) - 0.25
+  local base = CF(x, y, z) * CFrame.Angles(0, rot or 0, 0)
+  local m = Instance.new("Model")
+  m.Name = "Bld_" .. key
+  m:SetAttribute("Bld", key)
+  local src = info and importedBld(key)
+  local n = 0
+  if src then   -- 原模型：每块照元数据的中心摆，补回导入时转掉的半圈（同载具）
+    for name, p in pairs(info.parts) do
+      local s0 = src:FindFirstChild("B_" .. key .. "__" .. name)
+      if s0 and s0:IsA("BasePart") then
+        local mp = s0:Clone()
+        mp.Anchored = true
+        mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
+        if p.col then
+          local okT, tid = pcall(function() return mp.TextureID end)
+          if not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then mp.Color = RGB(p.col[1], p.col[2], p.col[3]) end
+        end
+        mp.Parent = m
+        n += 1
+      end
+    end
+    if n > 0 then
+      for _, c in ipairs(spec.coll or COLL_DEF) do   -- 看不见的碰撞盒：挡人、挡车、挡子弹（原模型的网格不参与碰撞：窗洞、门洞会卡人）
+        local bx = part(m, V(w * c[4], h * c[5], d * c[6]), base * CF(w * c[1], h * c[2], d * c[3]), C.concrete, MAT.SmoothPlastic, nil, true)
+        bx.Name = "Collision"
+        bx.Transparency = 1
+        bx.CastShadow = false
+      end
+    end
+  end
+  if n == 0 then spec.fb(m, base, w, h, d, spec) end
+  -- 夜里：正门边一盏暖黄的壁灯（机库、塔台不要：机库有停机坪的探照灯，塔台顶上有红灯）
+  if key ~= "hangar" and key ~= "atc" then
+    light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
+  end
+  m:SetAttribute("Imported", n > 0)
+  m.Parent = f
+  return base, m, w, h, d
+end
+World.building = building
+
 local function mast(f, x, z, h)   -- 天线杆：顶上红灯一闪一闪
   local y = Map.ground(x, z)
   cyl(f, h, 0.8, CF(x, y + h / 2, z), C.metal, MAT.Metal, true)
@@ -14867,16 +15270,19 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
     end
   end
   part(f, V(math.min(2000, A.len * 0.6), 1, 70), base * CF(0, 0.45, -A.wid / 2 - 45), C.concrete, MAT.Concrete, nil, true)   -- 停机坪
-  for i = -1, 1 do   -- 机库
-    local hb = base * CF(i * 110, 0, -A.wid / 2 - 120)
-    part(f, V(60, 18, 44), hb * CF(0, 9, 0), RGB(120, 126, 120), MAT.Metal, nil, true)
-    part(f, V(60, 30, 30), hb * CF(0, 18, 0), RGB(110, 116, 110), MAT.Metal, CYL, true)   -- 半圆拱顶（圆柱一半埋在库房里）
-  end
-  local tb = base * CF(A.len / 2 - 40, 0, -A.wid / 2 - 110)   -- 塔台
-  part(f, V(10, 26, 10), tb * CF(0, 13, 0), C.concrete, MAT.Concrete, nil, true)
-  part(f, V(15, 7, 15), tb * CF(0, 29.5, 0), C.glass, MAT.Glass, nil, true)
-  part(f, V(16, 1, 16), tb * CF(0, 33.5, 0), C.dark, MAT.Metal, nil, true)
-  light(f, (tb * CF(0, 34.4, 0)).Position, RGB(255, 40, 40), 1, 14, 1.2).Name = "TowerBeacon"
+  -- 机库、塔台、营房（用户：继续把地图建筑的建模优化）：网页版地图的写实模型（导入了 buildings.glb）或零件拼的；
+  --   两座拱顶机库在停机坪北边、大门朝南对着停机坪（中间空着：攻方机场岛的出生点在 x 0 一带，守方据点 D 的圈也在那里）
+  local bf = folder("Buildings", f)
+  local hz = -A.wid / 2 - 80 - ((BM and BM.hangar and BM.hangar.d) or 126) / 2 - 6
+  for _, sx in ipairs({ -1, 1 }) do building(bf, "hangar", A.x + sx * 130, A.z + hz, math.pi) end
+  -- 塔台在跑道东头北边（原来的位置）；旁边一座消防站（机场救援）、北边一排铁皮营房、一座小库房
+  local tx, tz = A.x + A.len / 2 - 40, A.z - A.wid / 2 - 110
+  local _, _, _, th = building(bf, "atc", tx, tz, math.pi)
+  local ty = footY(tx, tz, 20, 20, 0) - 0.25
+  light(f, V(tx, ty + th + 1.2, tz), RGB(255, 40, 40), 1, 14, 1.2).Name = "TowerBeacon"
+  building(bf, "firestation", tx - 130, A.z - A.wid / 2 - 130, math.pi)
+  for k = 0, 2 do building(bf, "quonset", A.x - 330 - k * 50, A.z - A.wid / 2 - 170, math.pi) end
+  building(bf, "smallwh", A.x + 300, A.z - A.wid / 2 - 120, math.pi)
   -- 夜里的跑道灯：两边白色边灯每 40 格一盏，两头入口绿灯、末端红灯（两头都能起降：一头绿一头红）；停机坪南边一排蓝色滑行道灯
   local lights = Instance.new("Folder")
   lights.Name = "RunwayLights"
@@ -14898,12 +15304,21 @@ local function portTown(f)
   -- 码头：从湾底伸进湾里
   local zs = Map.coastS(P.x) or P.z
   for i = -1, 1 do part(f, V(14, 2, 90), CF(P.x + i * 70, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true) end
-  local spots = { { -60, -40, 22, 18, 14 }, { -20, -55, 18, 16, 20 }, { 25, -45, 26, 18, 12 }, { 65, -30, 20, 16, 16 }, { -70, 10, 18, 22, 10 },
-    { 70, 15, 22, 18, 12 }, { -30, 40, 16, 14, 9 }, { 35, 45, 18, 14, 9 }, { -95, -75, 16, 16, 12 }, { 100, -70, 18, 16, 14 } }
+  -- 镇上的房子（用户：继续把地图建筑的建模优化）：民房、瓦房、水泥楼混着摆，街北的正门朝南、街南的朝北（都朝着镇中心那条街），
+  --   每座稍微歪一点；湾边一排库房、码头根上一座小库房（大门朝海）
+  local bf = folder("Buildings", f)
+  local spots = { { -60, -40, "jph1" }, { -20, -55, "conc2" }, { 25, -45, "house" }, { 65, -30, "jph3" }, { -70, 10, "conc1" },
+    { 70, 15, "jph2" }, { -30, 40, "jph1" }, { 35, 45, "conc3" }, { -95, -75, "house" }, { 100, -70, "conc1" } }
   for k, s in ipairs(spots) do
     local x, z = P.x + s[1], P.z + s[2]
-    if Map.isLand(x, z) then house(f, x, z, s[3], s[4], s[5], (k % 3) * 0.08, nil, (k % 2 == 0) and RGB(160, 80, 60) or RGB(70, 90, 110)) end
+    local info = BM and BM[s[3]]
+    local rot = ((s[2] < 0) and math.pi or 0) + ((k % 3) - 1) * 0.06
+    if footOnLand(x, z, info and info.w or 20, info and info.d or 20, rot) then building(bf, s[3], x, z, rot) end
   end
+  local wz = zs - 48
+  if footOnLand(P.x, wz, 132, 30, math.pi) then building(bf, "wh3", P.x, wz, math.pi) end
+  if footOnLand(P.x - 150, zs - 40, 30, 34, math.pi) then building(bf, "smallwh", P.x - 150, zs - 40, math.pi) end
+  if footOnLand(P.x + 150, zs - 60, 46, 64, math.pi) then building(bf, "sawtooth", P.x + 150, zs - 60, math.pi) end
   -- 吊车
   local cx, cz = P.x + 70, zs + 20
   local y = Map.ground(cx, cz)
@@ -14924,8 +15339,8 @@ end
 local function camp(f)
   local P = Map.CAMP
   for i = -2, 2 do tent(f, P.x + i * 24, P.z - 20, 0, C.tent) end
-  house(f, P.x - 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
-  house(f, P.x + 50, P.z + 20, 30, 16, 10, 0, RGB(170, 176, 150), RGB(80, 90, 70))
+  local bf = folder("Buildings", f)
+  for _, sx in ipairs({ -1, 1 }) do building(bf, "quonset", P.x + sx * 50, P.z + 20, math.pi / 2) end   -- 铁皮营房：长边东西向，门朝东西两头
   local y = Map.ground(P.x, P.z)
   cyl(f, 30, 0.8, CF(P.x, y + 15, P.z + 40), C.white, MAT.Metal, true)
   -- 夜里：车场一排探照灯（车场在南面 z + 70）、北面直升机停机坪两盏、帐篷门口小灯
@@ -14954,12 +15369,12 @@ local function lighthouse(f)
   pl.Range, pl.Brightness, pl.Color = 40, 2, RGB(255, 236, 170)
   pl.Parent = lamp
   part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
-  house(f, x - 26, z + 10, 16, 12, 8, 0.2)
+  building(f, "jph2", x - 30, z + 12, 0.2 + math.pi / 2)   -- 看守的小屋
 end
 
 local function battery(f)   -- 西礁岛岸防炮台：营房（炮本身是 Forts 管的工事实体，能开火、能被打掉、玩家能操作）
   local I = Map.WESTREEF
-  house(f, I.x - 50, I.z - 20, 20, 14, 8, 0.5, RGB(150, 150, 130), RGB(90, 96, 80))
+  building(f, "conc3", I.x - 50, I.z - 20, 0.5)   -- 炮台营房：水泥楼
 end
 
 -- 攻方舰队：固定的大平台（航母、两栖攻击舰、登陆舰），甲板离水面约 30 格；出生点在甲板上
@@ -15094,15 +15509,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="57">
+  <Item class="StarterPlayer" referent="58">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="58">
+    <Item class="StarterPlayerScripts" referent="59">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="59">
+      <Item class="LocalScript" referent="60">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -15186,7 +15601,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -15366,7 +15781,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -16074,6 +16489,8 @@ function AM.build(d, team, load)
         --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
         --   ② 加力火焰：两条从喷口往后拉的光带（Beam，正对镜头）——外层橙色，粗→细、实→透明，长度跟着加力；里层蓝白的焰芯短一些；
         --      每帧长短、粗细轻轻抖一点（火焰在跳）；军推以下不画火焰
+        --   ③ 热浪（用户 11-18：热浪太假了——原来是喷口后面几团抖动的玻璃球，一个个球的轮廓看得出来）：改成锁在喷口上的一股很淡的气流粒子，
+        --      往后拉长、变粗、散掉，受月光照（不自己发光）；油门过两成半才有、越大越浓，加力时接在火焰后面；离镜头远了关掉
         local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }   -- mild：涡扇（A-10），热芯暗一点
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
@@ -16115,6 +16532,32 @@ function AM.build(d, team, load)
             NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.6, 0.4), NumberSequenceKeypoint.new(1, 1) }),
             r * 1.1, r * 0.2)
           table.insert(M.flames, it)
+        end
+        if not E.cold then   -- 热浪：一股很淡的气流
+          local hs = newPart(m, V(E.r * 1.1, E.r * 1.1, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          hs.Name = "Haze"
+          hs.CastShadow = false
+          local hz = add(hs, base, "ab", hotItem({ haze = true }))
+          local r = E.r
+          local pe = Instance.new("ParticleEmitter")
+          pe.Name = "HeatHaze"
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+          pe.EmissionDirection = Enum.NormalId.Back   -- 从喷口往后
+          pe.LockedToPart = true                      -- 跟着飞机走（不锁的话几百格每秒拖成一长条）
+          pe.LightEmission, pe.LightInfluence = 0, 1  -- 不自己发光：只是被照到的一点灰白
+          pe.Lifetime = NumberRange.new(0.18, 0.3)
+          pe.Speed = NumberRange.new(r * 30, r * 40)
+          pe.SpreadAngle = Vector2.new(6, 6)
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-120, 120)
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.8), NumberSequenceKeypoint.new(1, r * 2.8) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.97), NumberSequenceKeypoint.new(0.25, 0.92), NumberSequenceKeypoint.new(1, 1) })
+          pe.Color = ColorSequence.new(RGB(196, 200, 206))
+          pe.Rate = 0
+          pe.Enabled = false
+          pe.Parent = hs
+          hz.pe = pe
+          table.insert(M.flames, hz)
         end
       end
     end
@@ -16610,6 +17053,8 @@ end
 
 function AM.pose(M, cf, c, now, world)
   local plist, clist = M.plist, M.clist
+  local cam = workspace.CurrentCamera
+  M.near = (world == nil) and cam ~= nil and (cf.Position - cam.CFrame.Position).Magnitude < 700   -- 热浪只画近处的（挂载编辑器里不画）
   local fold = { [1] = nil, [-1] = nil }
   if M.def.fold then fold[1], fold[-1] = foldCF(M, 1, c), foldCF(M, -1, c) end
   -- 弹舱里的弹：舱门开了才看得见
@@ -16671,6 +17116,14 @@ function AM.pose(M, cf, c, now, world)
           it.outerEnd.Position = V(0, 0, r * (3.2 + 4.5 * ab) * fl)
           it.innerEnd.Position = V(0, 0, r * (1.6 + 1.6 * ab) * (2 - fl))
           it.outer.Width0 = r * (1.55 + 0.25 * ab) * fl
+        end
+      elseif it.haze then   -- 热浪：气流粒子（加力时接在火焰后面）；油门过两成半、离镜头近才放，分 6 档，变了才改（每帧改粒子属性费）
+        out = cf * b0 * CF(0, 0, (ab > 0) and r * (4.5 + 3 * ab) or r * 0.4)
+        local q = (not it.cold and t > 25 and M.near) and math.clamp(math.floor((math.min(t, 100) - 25) / 15) + 1 + ((ab > 0) and 1 or 0), 1, 6) or 0
+        if q ~= it.q and it.pe then
+          it.q = q
+          it.pe.Enabled = q > 0
+          if q > 0 then it.pe.Rate = (it.mild and 10 or 16) * q end
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end
@@ -16783,7 +17236,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -16940,7 +17393,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -17515,7 +17968,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -17646,7 +18099,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -18031,7 +18484,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -18935,7 +19388,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -19613,7 +20066,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -19819,7 +20272,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -19951,6 +20404,8 @@ function Fly.init(G)
       else
         for k, a in pairs(CH) do c[k] = em:GetAttribute(a) or 0 end
         if em:GetAttribute("BayS") == nil then c.bayS = c.bay end
+        v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4)   -- 折翼：服务器按 0.1 一档推过来，这边平滑成动画
+        c.fold = v.foldS
       end
       v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
       c.can = v.canS
@@ -19973,6 +20428,7 @@ function Fly.init(G)
       local dist = (v.cf.Position - camPos).Magnitude
       local every = (own or dist < 1500) and 1 or ((dist < 4000) and 2 or 4)
       if v.frame % every == 0 then AM.pose(M, v.cf, c, os.clock()) end
+      if G.aeroStep then G.aeroStep(v, dt, own or nil, camPos) end   -- 机翼凝结雾、翼尖涡流、蒸汽锥、音爆（Aero.lua）
     end,
   }
 
@@ -20046,10 +20502,10 @@ function Fly.init(G)
   local ring = ui.frame(gui, UDim2.fromOffset(300, 300), UDim2.fromScale(0.5, 0.5), HUD, 1, Vector2.new(0.5, 0.5))
   ring.Name = "HudRing"
   ui.round(ring, 2000)
-  ui.stroke(ring, HUD, 2, 0.15)
+  ui.stroke(ring, HUD, 1.5, 0.55)   -- 细、淡（用户：这个圈太小了挡视野——放大到画面边上，线也别抢眼）
   ring.Visible = false
-  for _, a in ipairs({ { 0.5, 0, 2, 14 }, { 0.5, 1, 2, 14 }, { 0, 0.5, 14, 2 }, { 1, 0.5, 14, 2 } }) do   -- 上下左右四个刻度
-    ui.frame(ring, UDim2.fromOffset(a[3], a[4]), UDim2.fromScale(a[1], a[2]), HUD, 0.1, Vector2.new(0.5, 0.5))
+  for _, a in ipairs({ { 0.5, 0, 2, 12 }, { 0.5, 1, 2, 12 }, { 0, 0.5, 12, 2 }, { 1, 0.5, 12, 2 } }) do   -- 上下左右四个刻度
+    ui.frame(ring, UDim2.fromOffset(a[3], a[4]), UDim2.fromScale(a[1], a[2]), HUD, 0.45, Vector2.new(0.5, 0.5))
   end
   local ringText = hud("", UDim2.fromOffset(240, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   ringText.Name = "RingText"
@@ -20157,7 +20613,7 @@ function Fly.init(G)
   local touch = nil
   local touchUI = nil
   if UIS.TouchEnabled then
-    touch = { up = false, down = false, fire = false }
+    touch = { up = false, down = false, fire = false, flare = false }
     local lb = ui.frame(gui, UDim2.fromOffset(90, 170), UDim2.new(0, 20, 1, -320), RGB(0, 0, 0), 1)
     local rb = ui.frame(gui, UDim2.fromOffset(250, 230), UDim2.new(1, -260, 1, -340), RGB(0, 0, 0), 1)
     local function hold(parent, text, size, pos, key)
@@ -20178,7 +20634,7 @@ function Fly.init(G)
     hold(lb, "▼", UDim2.fromOffset(80, 80), UDim2.fromOffset(5, 90), "down")
     hold(rb, "●", UDim2.fromOffset(96, 96), UDim2.fromOffset(150, 130), "fire")
     tap(rb, "1/2", UDim2.fromOffset(80, 150), function() G.flyNextWeapon() end)
-    tap(rb, "X", UDim2.fromOffset(150, 60), function() G.R.Drive:FireServer({ op = "flare" }) end)
+    hold(rb, "X", UDim2.fromOffset(60, 60), UDim2.fromOffset(150, 60), "flare")   -- 热诱弹：按住连续放
     tap(rb, "G", UDim2.fromOffset(80, 80), function() if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end end)
     tap(rb, "R", UDim2.fromOffset(10, 150), function() G.flyNextTarget() end)
     tap(rb, "F", UDim2.fromOffset(10, 80), function() G.R.Drive:FireServer({ op = "exit" }) end)
@@ -20600,7 +21056,7 @@ function Fly.init(G)
       local pz, py = aim:Dot(vd0), aim:Dot(lh)
       local pe = math.atan2(py, math.max(pz, 0.05))
       if pz < 0 then pe = (py >= 0) and math.pi / 2 or -math.pi / 2 end
-      local pc = clamp(pe * 2.4, -1, 1) * rad(d.pitch)   -- 增益比原来低一点（用户：转弯稍微多一些迟钝感）
+      local pc = clamp(pe * 2.1, -1, 1) * rad(d.pitch)   -- 增益再低一点（用户 11-18 两次：转弯稍微多一些迟钝感、再笨重一点）
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
       nCmd = 1 + pc * math.max(st.spd, 30) / GR
       yc = 0
@@ -20608,7 +21064,7 @@ function Fly.init(G)
     end
     st.nCmd = clamp(nCmd, -2, d.g / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
     st.yawCmd = yc * q
-    st.rr = approach(st.rr, rc * q, rad(d.roll) * 2.8 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢
+    st.rr = approach(st.rr, rc * q, rad(d.roll) * 2.2 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢（2.8 → 2.2：用户说再笨重一点）
     if st.ground then st.rr, st.yr = 0, 0 end
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
@@ -20621,7 +21077,7 @@ function Fly.init(G)
         pos = start + V(0, d.gearH, 0)
         cf = CFrame.lookAt(pos, pos + dir)
         st.cat.full = (st.thr >= 90) and ((st.cat.full or 0) + dt) or 0
-        if st.thr >= 90 and st.cat.full > 1.2 then   -- 推满油门一会儿就弹（空格改成下飞机了）
+        if st.thr >= 90 and st.cat.full > 1.2 and (st.foldK or 0) < 0.02 then   -- 推满油门一会儿就弹（空格改成下飞机了）；机翼还没展开完不弹
           st.cat.state, st.cat.s, st.cat.v = "launch", 0, 0
           if G.shake then G.shake(0.4) end
           if G.playSound then G.playSound("boom", pos, 1.6) end
@@ -20726,7 +21182,7 @@ function Fly.init(G)
       local aNeed = clamp((st.nCmd or 1) * GR / math.max(ka, 1e-3), -aMax * 0.5, aMax * 0.95)
       local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5
       pc = clamp(pc, -rad(d.pitch) * 0.7, rad(d.pitch))
-      st.pr = approach(st.pr, pc, rad(d.pitch) * 4 / W ^ 0.8 * dt)   -- 转动惯量：零点几秒角速度才起来，重的更慢
+      st.pr = approach(st.pr, pc, rad(d.pitch) * 3.2 / W ^ 0.8 * dt)   -- 转动惯量：零点几秒角速度才起来，重的更慢（4 → 3.2：再笨重一点）
       st.yr = approach(st.yr, clamp(beta * 3, -rad(d.yaw), rad(d.yaw)) + (st.yawCmd or 0), 1.5 / W ^ 0.6 * dt)   -- 自动协调：侧滑往零收
       local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
       vd = vd + aPerp / spd * dt
@@ -20783,7 +21239,12 @@ function Fly.init(G)
     st.c.thr = st.thr
     st.c.flap = (st.gear > 0.5 and st.spd < d.stall * 1.6) and 1 or 0
     st.c.can = (st.ground and st.thr < 5 and st.spd < 3) and 1 or 0
-    st.c.fold = (d.fold and st.ground and st.thr < 5 and st.spd < 3 and AD.onDeck(Map, pos.X, pos.Z)) and 1 or 0
+    -- 折翼（用户：飞机机翼折叠没有动画）：原来直接 0 / 1 一下就折好；现在约 4 秒折起 / 展开（真机十几秒，游戏里缩短），
+    --   一上来就停在甲板上的直接是折着的；推油门就开始展开，展开完才能弹射
+    local foldWant = (d.fold and st.ground and st.thr < 5 and st.spd < 3 and AD.onDeck(Map, pos.X, pos.Z)) and 1 or 0
+    if st.foldK == nil then st.foldK = foldWant end
+    st.foldK = approach(st.foldK, foldWant, dt / 4)
+    st.c.fold = st.foldK
     st.c.hook = (d.gear and d.gear.hook and st.gear > 0.9 and not st.ground) and 1 or 0
     st.c.brk = (key(Enum.KeyCode.B)) and 1 or 0
     st.c.rpm = st.thr
@@ -20922,8 +21383,12 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" then   -- 鼠标瞄准回到机头正前方
       local lk = st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-    elseif k == Enum.KeyCode.X then
-      G.R.Drive:FireServer({ op = "flare" })
+    elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
+      st.flareHold = true
+      if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
+        st.flareNext = os.clock() + 0.3
+        G.R.Drive:FireServer({ op = "flare" })
+      end
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
@@ -20950,6 +21415,7 @@ function Fly.init(G)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
     if st and io.KeyCode == Enum.KeyCode.F then st.missile = false end
+    if st and io.KeyCode == Enum.KeyCode.X then st.flareHold = false end
   end)
   UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
     if gp or not st or not (st.uav or st.eo) or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
@@ -21202,9 +21668,14 @@ function Fly.init(G)
       st.lock, st.lockT = nil, 0
     end
     -- 报给服务器（每秒 15 次）
+    -- 热诱弹：按住 X（手机按住 X 键）每 0.3 秒放一组
+    if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
+      st.flareNext = os.clock() + 0.3
+      G.R.Drive:FireServer({ op = "flare" })
+    end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
-      st.sendT = 1 / 15
+      st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
       G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
@@ -21251,9 +21722,11 @@ function Fly.init(G)
       local rdeg = (not w and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
       if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end
       local vh = cam.ViewportSize.Y
-      local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), 110, vh * 0.86)
+      -- 用户：圈太小、挡视野——原来按导引头离轴角画，小的只有一两百像素、正好套在飞机和前方上；现在至少框到画面高度的八成，
+      --   飞机和前方留空，离轴角大的弹（近距格斗弹）再大一点；武器名写在圈里靠下
+      local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), vh * 0.8, vh * 0.94)
       ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav
-      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 + 6), bon and not st.eo and not st.uav
+      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav
       ringText.Text = wid and (T("aw." .. wid) .. "  ×" .. left(wid)) or (gid and (T("aw." .. gid) .. "  ×" .. left(gid))) or ""
       local lk = st.cf.LookVector
       hdgText.Text = string.format("%03d", math.floor((math.deg(math.atan2(lk.X, -lk.Z)) + 360) % 360 + 0.5) % 360)
@@ -21351,7 +21824,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -21669,7 +22142,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -22386,18 +22859,18 @@ function Fx.init(G)
     s.v = e.v
   end
   -- 热诱弹：一串亮点往后下方撒开，拖着白烟
-  local function flares(e)
+  local function flares(e)   -- 一组几发（按住 X 连续放：服务器每 0.25 秒一组 2 发）
     local v0 = (typeof(e.v) == "Vector3") and e.v or V()
-    for i = 1, 4 do
+    for i = 1, (e.n or 4) do
       local dir = (-v0.Unit * 0.4 + V((math.random() - 0.5) * 1.6, -0.4 - math.random() * 0.4, (math.random() - 0.5) * 1.6)).Unit
       local f = part(BALL, V(1.4, 1.4, 1.4), CFrame.new(e.p), RGB(255, 236, 170), Enum.Material.Neon, 0)
       local p1 = e.p + v0 * 0.35 + dir * (40 + i * 8)
       tween(f, 1.8, { CFrame = CFrame.new(p1 - V(0, 30, 0)), Transparency = 1, Size = V(0.6, 0.6, 0.6) })
       if i <= 2 then tween(glowOn(f, RGB(255, 222, 160), 34, 5), 1.8, { Brightness = 0 }) end   -- 夜里热诱弹把飞机照亮
       Debris:AddItem(f, 1.85)
-      for k = 1, 4 do
-        task.delay(k * 0.25, function()
-          local q = e.p:Lerp(p1, k / 4) - V(0, 30 * (k / 4) ^ 2, 0)
+      for k = 1, 3 do   -- 每发拖三团烟（连着放时零件不至于太多）
+        task.delay(k * 0.3, function()
+          local q = e.p:Lerp(p1, k / 3) - V(0, 30 * (k / 3) ^ 2, 0)
           local sm = part(BALL, V(1.5, 1.5, 1.5), CFrame.new(q), RGB(235, 235, 230), Enum.Material.SmoothPlastic, 0.35)
           tween(sm, 1.6, { Size = V(5, 5, 5), Transparency = 1 })
           Debris:AddItem(sm, 1.65)
@@ -22620,7 +23093,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -22752,7 +23225,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -23291,7 +23764,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -23754,7 +24227,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -24526,7 +24999,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -24793,7 +25266,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -25049,7 +25522,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -25357,7 +25830,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -25679,7 +26152,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -25894,7 +26367,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -26133,7 +26606,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -26353,7 +26826,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -26870,7 +27343,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -27409,7 +27882,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -27804,7 +28277,7 @@ function Scenery.init(G)
   -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（11 × 11 块，每块 2048 格，镜头外一万格以上，盖过雾的尽头 8500）：飞到哪都看得到海一直铺到天边，
   --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
   local Map = G.Map
-  local OS, ON = 2048, 5
+  local OS, ON = 2048, 7   -- 15 × 15 块：镜头外一万五千格（地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
   local ocean = Instance.new("Folder")
   ocean.Name = "Ocean"
   ocean.Parent = workspace
@@ -27815,13 +28288,13 @@ function Scenery.init(G)
     p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
     p.Size = V(OS, 1, OS)
     p.Material = Enum.Material.SmoothPlastic   -- 原来是半透明玻璃：要折射，铺满半个屏幕最费（用户：太卡了）；夜里不透明的看着一样
-    p.Color = RGB(22, 74, 94)
-    p.Reflectance = 0.12
+    p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
+    p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
     tiles[i] = p
   end
   local seaKey = nil
-  local RI = math.floor((Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格
+  local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
   local function stepOcean()
     local c = cam.CFrame.Position
     local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)
@@ -27868,7 +28341,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -28656,7 +29129,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -29258,7 +29731,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -30008,7 +30481,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -30463,7 +30936,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -31693,7 +32166,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -31806,7 +32279,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -32831,7 +33304,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -33354,7 +33827,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -33936,13 +34409,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="95">
+  <Item class="Workspace" referent="96">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="96">
+  <Item class="Lighting" referent="97">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
