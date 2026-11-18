@@ -1,17 +1,19 @@
-# Roblox全面大战场
+# 全面大战场 / Island Assault
 
-Roblox Total Battlefield —— 百人同服的攻防登岛战。原来的「军事大亨」已经整个换掉。
+百人同服的攻防登岛战。原来的「军事大亨」已经整个换掉。名字里不带 Roblox（平台规则）和 Battlefield（EA 的商标），2026-11-18 从「Roblox全面大战场」改过来。
 
-- 进服后系统随机把人分成进攻方、防守方（人数相当，中途进来的补到人少的一方）。
-- 每次出生前选兵种（步枪兵、狙击手、反坦克兵、防空兵、医疗兵、工兵、迫击炮手、特种兵、观察员；主枪都是 M4，狙击手另有狙击枪）和出生点；阵亡几秒后能复活。
+- 两个虚构的阵营：**登陆联军**（COALITION LANDING FORCE，进攻方）和**岛屿守备军**（ISLAND GARRISON COMMAND，防守方）。不用真实国家的名字、国旗、军徽（降低被审核下架的风险）；坦克、飞机、军舰还是真实型号。
+- 进服先选阵营（人数相当，人多的一边进不去）。
+- 不选兵种：部署界面里配装备（主武器 M4 / 狙击枪、发射器、装备、投掷物）、选出生点；阵亡几秒后能复活。
 - 第一人称：镜头前是真 M4（拔枪、换弹、开镜、后坐都有动作）和 Roblox 方块手臂；V 切第三人称。
 - 地图是一片大海和几个岛：主岛「棕榈岛」、前哨岛、灯塔岛、西礁岛，南边海上是攻方舰队和攻方机场岛。
-- 5 个据点（A 前哨岛、B 灯塔岛、C 港口镇、D 机场、E 指挥所）开局都归守方。攻方全部拿下就赢；时间到（20 分钟，每拿下一个 +3 分钟）守方手里还有任何一个，守方赢。
+- 5 个据点（A 前哨岛、B 灯塔岛、C 港口镇、D 机场、E 指挥所）开局都归守方，分阶段突破：先打 A，再打 C、D（B 是侧翼），最后打 E；每个阶段限时。
+  攻方有兵力（阵亡一个扣 1），E 也拿下攻方赢；兵力扣光或时间到守方赢（`Config.Stages`、`Config.Tickets`）。
 - 守方的机枪碉堡、岸防炮、高炮、榴弹炮和滩头的钢刺猬、铁丝网、雷区都是地图自带的；炮没人管时 AI 打，自己队的人走过去按 E 就能接手。
 - 攻方从舰队甲板出生，或者坐登陆艇抢滩、伞降、在拿下的据点出生；守方在北岸营地或还没被压住的据点出生。
 - 中英双语，按系统语言自动选，部署界面右上角能切。
 
-方案、规则细节和进度：[docs/island_assault_plan.md](docs/island_assault_plan.md)。现在是 1.0-alpha：回合、分队、部署、步兵武器（第一人称）、登陆艇、据点、胜负、界面、机器人（人不够时每队补到 18 人）、地面载具（坦克、装甲车、防空、火炮）、守方工事已经能玩；直升机、飞机、舰艇还在做。
+方案、规则细节和进度：[docs/island_assault_plan.md](docs/island_assault_plan.md)。现在是 1.0-alpha：回合、分队、部署、步兵武器（第一人称）、登陆艇、据点、胜负、界面、机器人（人不够时每队补到 18 人）、地面载具（坦克、装甲车、防空、火炮）、守方工事、直升机、飞机、舰艇都能玩了。
 
 ## 直接玩
 
@@ -27,6 +29,7 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
 ## 发布到 Roblox
 
 1. 「文件 → 发布到 Roblox」（Alt + P），选「创建新体验」，类型选「战斗」；设备勾电脑、手机、平板。
+   **名字填「全面大战场」（英文 Island Assault）**——Studio 会按文件名预填 `RobloxTotalBattlefield`，要改掉（文件名没改，免得别的会话的命令对不上）。
 2. 「主页 → 游戏设置」：
    - 「地点」：最多玩家数设成 **100**（上限 200）。Studio 里找不到的话，到 create.roblox.com → 你的体验 → 地点 → 配置。
    - 「安全」：打开「允许 Studio 访问 API 服务」，Studio 里测试也能存档（军衔、经验、战绩）；打开 Mesh / Image API（第一人称的真 M4 是开局用 EditableMesh 生成的，不开就退回零件拼的）。
@@ -34,6 +37,19 @@ WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火
    - 「权限」：改成公开。第一次公开前要在 create.roblox.com 上填「内容成熟度问卷」。
 3. 以后更新：再「发布到 Roblox」覆盖线上版本；开着的服务器要到 create.roblox.com → 地点 →「⋯」→ 重启服务器。
 4. `promo/` 里的图标和宣传图还是大亨版的，新玩法做完后重做。
+
+## 手机上实测性能（上线前一定要做）
+
+Studio 里的「设备模拟」只换屏幕大小，量不出手机的内存和帧率；测试台（`tools/test/`）也只能量服务器。所以要拿真手机进一次：
+
+1. 先照下面「换上装备的原模型」导入模型（不导入的话量的是零件拼的版本，不准）。
+2. 发布成**私有**（权限先别改公开），用一台中低端手机（两三年前的千元机）登你的号进游戏，打一局有机器人的。
+3. 在聊天框输入 `/console` 打开开发者控制台：「Memory」页看总内存（Total）和 `PlaceMemory`、`Graphics…`、`TerrainVoxels`；屏幕左上看帧率。
+   电脑上按 F9 开控制台、Shift + F5 看帧率、Shift + F3 看网络（Received KB/s）。
+4. 把这几个数和卡不卡发给我。参考线：手机总内存一直往 2 GB 以上涨、帧率掉到 20 以下，就要打开流式加载（Workspace → StreamingEnabled）
+   并给原模型做减面 / 远处换简化模型——这两步要改不少客户端代码（远处的东西不在本地了），等量出来再做，不要直接在 Studio 里勾上就发布。
+
+已经做了的（2026-11-18）：枪声特效不再广播给所有人，只发给附近的人（服务器 `init.server.lua` 的 `G.flushFx`）。
 
 ## 换上装备的原模型（`models/veh/`）
 
@@ -93,13 +109,14 @@ lune run tools/test/ia_import.luau RobloxTotalBattlefield.rbxlx  # 原模型：�
 lune run tools/test/ia_import_air.luau RobloxTotalBattlefield.rbxlx  # 飞机原模型：假装导入歼-15、阿帕奇、歼-20，看蒙皮换掉、挂弹贴机翼、起落架收放、折翼、旋翼
 lune run tools/test/ia_import_ship.luau RobloxTotalBattlefield.rbxlx  # 舰艇原模型：假装导入 7 艘，看蒙皮换掉、炮位照原模型、主炮跟着转、桅顶灯、烧黑
 lune run tools/test/ia_radar.luau RobloxTotalBattlefield.rbxlx  # 雷达：看得见的敌人上雷达、太远和墙后的不上、开枪闪红圈、敌我车辆
+lune run tools/test/ia_hitreg.luau RobloxTotalBattlefield.rbxlx  # 命中延迟补偿：跑动的小兵 / 玩家打得中，太久以前的位置、墙后的打不中；枪声只发给附近的人
 lune run tools/test/ia_boot.luau RobloxTotalBattlefield.rbxlx  # 开服计时（地形生成）
 lune run tools/test/ia_balance.luau RobloxTotalBattlefield.rbxlx 6  # 平衡统计：机器人对打几分钟，攻方的兵、登陆艇死在什么上面
 lune run tools/test/map_export.luau map.bin 8 && python3 tools/test/map_png.py map.bin map.png   # 画地图俯视图
 ```
 
-没有 Lune 也能跑一套 Lua 5.4 的模拟测试：`python3 tools/mock/run.py tools/mock/<flow|veh|forts|air|navy|bots|fps|scenery>.lua`（`scenery`：路网、花草树木的摆放和按距离换版本）。两套都要过。
+没有 Lune 也能跑一套 Lua 5.4 的模拟测试：`python3 tools/mock/run.py tools/mock/<flow|veh|forts|air|navy|bots|fps|scenery|hitreg>.lua`（`scenery`：路网、花草树木的摆放和按距离换版本）。两套都要过。
 
-几个会话同时在改这个仓库：分工、规矩和这一轮的协调记录见方案文档的「协作」一节。
+几个会话同时在改这个仓库：**以后都从 `main` 分支开始做，做完合回 `main`**（2026-11-18 起；GitHub 仓库设置里把默认分支改成 main）。分工、规矩和协调记录见方案文档的「协作」一节。
 
 渲染、物理、Roblox 自带的镜头和角色控制模拟不了。上线前还是要在 Studio 里实际玩一遍。

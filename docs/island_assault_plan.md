@@ -1,4 +1,4 @@
-# Roblox全面大战场：方案（原「登岛战」大改）
+# 全面大战场（Island Assault）：方案（原「登岛战」大改；2026-11-18 前叫「Roblox全面大战场」）
 
 把「军事大亨」改成百人同服的攻防登岛战。这份文档记录需求、定下来的方案和进度，后面照着它写。
 
@@ -546,10 +546,25 @@
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
   机器人对打 8 分钟（`ia_bots.luau 8`）：没有工事时攻方拿下 3 个点、阵亡 攻 43 / 守 26；加了工事、没调之前只拿下 1 个、阵亡 攻 306 / 守 16；调过以后拿下 3 个、阵亡 攻 137 / 守 39。
   以后攻方舰艇做出来能压制岸防炮了，可以再把射速调回去。统计攻方死在什么上面：`lune run tools/test/ia_balance.luau <rbxlx> 6`。
-- [ ] **评估后的修改——session_01FhMEBuiN19S5cT4mapA4Wr（`claude/vibrant-ramanujan-hd84ou`）在做（用户 11-18，从 darksword-forts-navy 的 1a9a2de 开始）**：
-  游戏改名「全面大战场 / Island Assault」（名字里不再有 Roblox、Battlefield）；两个阵营改成虚构的（名字、徽记、旗、臂章换成自制的，装备型号不动）；
-  开枪的命中判定加延迟补偿（跑动的小兵、玩家打中了却不算）；枪声特效只发给附近的人等百人同服的性能问题；建 `main` 主分支，以后都从 main 开始。
-  这一批做完前，别的会话先别动 `Weapons.lua` 的开火判定、`Play.lua` 的 `aimPoint`、`Faction.lua` 和 `Lang.lua` 里阵营、游戏名的字。
+- [x] **评估后的修改——session_01FhMEBuiN19S5cT4mapA4Wr（`claude/vibrant-ramanujan-hd84ou`，用户 11-18，从 darksword-forts-navy 的 1a9a2de 开始）**：
+  用户让这个会话评估整个游戏，然后照评估里的建议改（版权那一条用户说先不管）：
+  - 改名「全面大战场 / Island Assault」（`Lang.lua` game.title）：名字里不再有 Roblox（平台规则）、Battlefield（EA 的商标）。存档键、`RobloxTotalBattlefield.rbxlx` 文件名没改；
+    发布时体验名要手动填新名字（Studio 按文件名预填，README「发布到 Roblox」写了）。
+  - 两个阵营改成虚构的（降低被审核下架的风险；装备型号照旧）：登陆联军 COALITION LANDING FORCE（CLF，攻）、岛屿守备军 ISLAND GARRISON COMMAND（IGC，守），
+    `Lang.lua` 的 faction.* / hud.* / menu.c2.sub；选阵营卡片的五角星徽记换成自制的（攻：红底白箭头 + 海浪，守：蓝底白城垛，`Faction.lua`）；
+    零件拼的飞机：机徽换成队伍色菱形、尾翼的八一标志换成队伍色小菱形（`AirModels.lua` 的 roundel 和尾翼那一行）。旗、臂章、工事旗本来就是队伍色，没动。
+    - [ ] **还差：原模型贴图里自带真实的标志**——`models/` 归模型精细化的会话（keen-heisenberg），这次没动：比如 `air/j15t.glb` 的机身贴图（A_j15t_tex9）机翼上有军徽和「中国海军」字、
+      垂尾有飞鲨队徽；`air/f35.glb` 的贴图是真机照片，带美军机徽（tex3 角上还有摄影师水印）。换模型 / 改贴图时顺手涂掉（可以照 `tools/models/livery.py` 改贴图的办法），没导入的零件拼版本已经没有了。
+  - 命中判定加延迟补偿（`Rewind.lua` 新）：客户端画别人是快照插值（`View.lua` G.follow，比收到的晚约 0.13 秒），瞄着跑动的小兵身体开枪，服务器上小兵已经走了两三格，原来按现在的位置判定就打空了。
+    服务器每 0.05 秒记下实体命中盒、真人角色最近 0.8 秒的位置；真人开枪按现在的位置没打中人 / 车时，按他屏幕上那一刻再判一次
+    （画面晚的 0.13 秒 + 一到两倍 `GetNetworkPing`，它是单程还是来回说不清，两种都找；前后放宽 0.06 秒，最多往回 0.6 秒；只找敌人，打中的点要在墙、地形前面）。
+    步枪、狙击枪（`Weapons.lua` KIND.gun）和真人操作的车载机枪、工事、舰炮（`G.botShot` 带 P）都走它。客户端准星不再打服务器的隐形命中盒，按画面上的位置算（`View.lua` G.viewRay、`Play.lua` aimPoint），
+    曳光弹落在看得见的人身上。测试 `tools/mock/hitreg.lua`、`tools/test/ia_hitreg.luau`。
+  - 百人同服的带宽：gun 特效不再广播给所有人，只发给枪口在 1100 格内、或弹道从 400 格内擦过的人；开飞机的按雷达范围 9000 格；死了 / 在部署界面的照旧全发；爆炸等照旧全发
+    （`init.server.lua` G.flushFx，测试在 hitreg ⑦）。流式加载（StreamingEnabled）、原模型减面没做：要先拿真手机量（README「手机上实测性能」），量出来内存、帧率不行再做，要改不少客户端代码。
+  - 建 `main` 主分支：以 darksword-forts-navy 的 1a9a2de（已经包含另外三条分支的全部提交）为底，加上这一批。以后都从 main 开始（见「协作」）。
+  - 测试：改之前（1a9a2de）Luau 测试就有不过的——`ia_veh` 3 处（按键文字的语言、瞄准镜调色、瞄准镜默认夜视档）、`ia_optics` 2 处（目镜占屏幕高度 45% / 59%）、`ia_bots` 1 处（攻方拿下 0 个据点）；
+    `ui_export` 的战斗画面在测试台里有一条 Coach.lua pointPos 的 'Position' 报错（Lune 的 roblox 库缺默认值，改之前就有）。这一批没让它们变多，结果见提交说明。
 
 ## 协作（几个会话一起改这个仓库）
 
@@ -561,11 +576,14 @@
 | `claude/darksword-air-map` | session_01UJLfFEixacgxgs7dCsgNkA | 两栖车上岸、不用 Lune 的模拟测试（`tools/mock/`）、飞机直升机的型号表和服务器；实景地图（路网、树林花草、扬尘，从 affectionate-pasteur 的 ac9a2c6 开始） |
 | `claude/darksword-forts-navy` | session_015eAzKBC4CDJLpwoYfRQTvP | 守方工事和障碍、第一人称 M4、改名「Roblox全面大战场」、舰艇；接着做枪械配置（从 affectionate-pasteur 的 6170a6f 开始） |
 | `claude/keen-heisenberg-6zzaoc` | session_01Aa6LmJjU2LLknsYWd3DUJp | 方案文档；快进到上面三条的最新提交后做协调（见下）；载具生成点、夜战、选阵营；快进到 `darksword-forts-navy` 的 9f6448f 后做瞄准镜（真模型 + 光学效果）；快进到 45aff57 后修白色载具、直-10 桨盘、手持装备真模型、战斗界面（HUD）；快进到 4cc06c1 后做战术平板、夜视默认开、开气垫艇登陆、直升机飞行、坦克陷地 / 切火箭筒卡住 |
+| `claude/vibrant-ramanujan-hd84ou` → `main` | session_01FhMEBuiN19S5cT4mapA4Wr | 2026-11-18：评估整个游戏后照用户选的改——改名、阵营虚构化、命中延迟补偿、枪声特效只发给附近的人；建 `main`（以 darksword-forts-navy 的 1a9a2de 为底）|
 
 三条分支是一条线接着做的（后一条从前一条的最新提交开始），`keen-heisenberg` 已经快进到 `darksword-forts-navy` 的 17787e7。
 
 规矩：
-- 开工前 `git fetch`，从最新的那条分支开始做；别人的分支有新提交就合并进来，不要另起一份平行的实现。
+- **2026-11-18 起有了 `main` 主分支**（用户定的）：开工前 `git fetch`，从 `origin/main` 开始做，推在自己的 `claude/*` 分支上，做完合回 `main`
+  （先把 main 的新提交合进自己的分支、两套测试都过了再合）；不要再从别人的 `claude/*` 分支接着做，也不要另起一份平行的实现。
+- 以前的规矩（main 之前）：开工前 `git fetch`，从最新的那条分支开始做；别人的分支有新提交就合并进来。
 - 动手前在上面的进度表里写一句「谁在做」，做完打勾；改到别人的文件，在提交说明里写清楚。
 - 两套测试都要过：有 Lune 跑 `tools/test/*.luau`（真正的 Luau，最接近 Roblox），没有 Lune 跑 `python3 tools/mock/run.py tools/mock/<测试>.lua`（Lua 5.4 模拟）。
   改了一边的测试前提（比如 `G.fortsHold`），另一边的同名测试也要跟着改。
@@ -773,7 +791,8 @@
 
 ## 名字
 
-- 「军事大亨 / Army Base Tycoon」不再贴切。先叫过「暗剑：登岛战 / Darksword: Island Assault」，现在定名「Roblox全面大战场 / Roblox Total Battlefield」
-  （代码、界面标题、生成的 `RobloxTotalBattlefield.rbxlx` 都改了；存档键 `IslandAssault_v1` 没改，玩家的军衔、经验不丢）。
-  - 注意：Roblox 的规则不让体验名冒充官方，发布时如果标题里的「Roblox」过不了审，商店里的名字可以换个说法，代码不用动。
+- 「军事大亨 / Army Base Tycoon」不再贴切。先叫过「暗剑：登岛战 / Darksword: Island Assault」，后来叫「Roblox全面大战场 / Roblox Total Battlefield」，
+  **2026-11-18 定名「全面大战场 / Island Assault」**（用户在评估后选的：名字里不能带 Roblox——平台规则不让体验名像官方的；英文也不带 Battlefield——EA 的商标）。
+  界面标题（`Lang.lua` game.title）改了；存档键 `IslandAssault_v1` 没改，玩家的军衔、经验不丢；生成的 `RobloxTotalBattlefield.rbxlx` 文件名没改（免得各会话的命令对不上），
+  发布时体验名手动填「全面大战场」（Studio 会按文件名预填）。代码注释里的「Roblox全面大战场」是旧名，不影响玩家。
 - 现有的图标和宣传图是大亨版的，新玩法做完后要重做。

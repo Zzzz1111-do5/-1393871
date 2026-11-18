@@ -1,4 +1,4 @@
-Roblox全面大战场 · 原模型导入说明
+全面大战场（Island Assault）· 原模型导入说明
 ==================================
 
 （仓库里这些文件就在 models/ 下面。发给用户的是一个压缩包「Roblox全面大战场_全部.zip」：先解压，再按下面的文件夹分批导里面的 .glb——
@@ -64,7 +64,7 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASONW]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
 
   2. 资源管理器里右键 ServerStorage 下的 ImportedModels →「保存到文件…」（Save to File），存成 Imported.rbxm。
-  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库首页默认显示的分支 claude/keen-heisenberg-6zzaoc——现在最新的游戏在这个分支，别的会话的改动都并进来了；
+  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（main 分支——2026-11-18 起各会话的改动都并进 main，GitHub 仓库设置里把默认分支改成 main 以后仓库首页显示的就是它；
      进 models 目录 →「Add file → Upload files」，路径写 imported/Imported.rbxm）。
      以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
      （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）
