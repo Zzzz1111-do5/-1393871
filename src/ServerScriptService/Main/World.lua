@@ -248,7 +248,9 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    T.GrassLength = 0.3   -- 草叶调短：默认 0.7 有两格来高，把机器人小兵的腿（两格）和沙袋下半截都埋住了（用户：很多士兵半截身子在地里）
+    -- 草叶长度（默认 0.7 约两格高）：0.3 是当时以为小兵「半截身子在地里」是草挡的——其实是机器人样板关节没解算（Bots.lua 已修）；
+    --   用户 11-18：草多用 Roblox 自带的那种草、效果很好——0.55 约一格半高，没过脚面到小腿，车轮、履带下沿埋在草里
+    T.GrassLength = 0.55
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
