@@ -69,7 +69,7 @@ function Fly.init(G)
       v.M, v.def, v.model, v.anchor = M, d, M.model, M.anchor
       v.c = {}
       v.spin1, v.spin2, v.spinT, v.spinP = math.random() * 6, math.random() * 6, 0, 0
-      v.prevT, v.vel = v.root.CFrame, V()
+      v.cf = v.root.CFrame
       v.frame = 0
       return true
     end,
@@ -77,15 +77,9 @@ function Fly.init(G)
       local em, d, M = v.em, v.def, v.M
       local own = st and st.em == em and st
       local target = v.root.CFrame
-      -- 别人的飞机：按服务器位置的变化估速度（被击毁时接着往下掉要用）
-      if target ~= v.prevT then
-        local dp = target.Position - v.prevT.Position
-        if dp.Magnitude < 400 then v.vel = v.vel:Lerp(dp / math.max(dt, 1 / 60), 0.5) end
-        v.prevT = target
-      end
-      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下
+      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下（别人的飞机：速度按收到的位置快照算，View.lua G.follow）
         if not v.wreck then
-          v.wreck = { vel = (own and own.vel) or v.vel, spin = (math.random() - 0.5) * 3, t = 0 }
+          v.wreck = { vel = (own and own.vel) or (v.fl and v.fl.vel) or V(), spin = (math.random() - 0.5) * 3, t = 0 }
           if v.M then v.M.dark = true end   -- 被击毁：灯全灭
           for _, it in ipairs(M.items) do
             local p = it.p
@@ -123,10 +117,8 @@ function Fly.init(G)
         end
       elseif own then
         v.cf = own.cf
-      elseif (target.Position - v.cf.Position).Magnitude > 220 then
-        v.cf = target
-      else
-        v.cf = v.cf:Lerp(target, math.min(1, dt * 11))
+      else   -- 别人的飞机：快照插值（匀速，不一顿一顿；跳太远直接过去）
+        v.cf = G.follow(v, target, 400)
       end
       -- 通道：自己开的用本地的操纵量；别人的读属性
       local c = v.c
@@ -709,14 +701,15 @@ function Fly.init(G)
 
   local function jetPhysics(dt)
     local d = st.d
-    -- 用户：不让准星控制方向，改成 WASD——S 抬头、W 低头（像驾驶杆：往回拉抬头），A / D 滚转，Q / E 方向舵，Shift / Ctrl 油门
-    local up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
-    local dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
+    -- 用户 11-18：W 向前加速、S 减速（地上收到零了接着按 S 就倒退），纯准心控制（鼠标给方向，自动压坡度、拉杆转过去），
+    --   A / D 滚转（滚筒的时候不把准心拽回机头：松开以后接着往准心飞），转弯比原来稍迟钝一点；Shift / Ctrl 也还能推、收油门
+    local up = key(Enum.KeyCode.W) or key(Enum.KeyCode.Up) or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
+    local dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
     if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
+    local rev = st.ground and not st.cat and not st.trap and dn and st.thr <= 0.5   -- 地上油门收到底还按着 S：倒退（推出来、调头）
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
-    local yawIn = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
-    local pitchIn = ((key(Enum.KeyCode.W) or key(Enum.KeyCode.Up)) and 1 or 0) - ((key(Enum.KeyCode.S) or key(Enum.KeyCode.Down)) and 1 or 0)
+    local yawIn, pitchIn = 0, 0   -- 纯准心控制：键盘不管俯仰、方向舵（手机上摇杆照旧当驾驶杆）
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
@@ -737,6 +730,7 @@ function Fly.init(G)
     -- 副油箱的阻力：最大速度、加速度都少几成；油多就重：加速慢（满内油 + 两个副油箱比一半内油重三成多）
     tgt *= 1 - (st.drag or 0)
     acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
+    if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
     -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
     --   一推油门不再四五十米就飞起来；弹射器单独算）
     if st.ground and not st.cat then acc *= 0.25 end
@@ -749,16 +743,11 @@ function Fly.init(G)
       st.spd -= (1 - math.clamp(vd:Dot(fwd), -1, 1)) * st.spd * 2.6 * dt   -- 机头和航迹差得越多（大迎角、侧滑）掉速越快
     end
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
-    st.spd = clamp(st.spd, 0, d.vMax * 1.3)
+    st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
-    -- 想怎么转（用户：准星也能控制飞行方向，WASD 也不要动）：平时鼠标瞄准——鼠标给想去的方向，自动压坡度、拉杆转过去（像《战争雷霆》）；
-    --   按着 WASD / QE 时那个轴听键盘，同时鼠标瞄准方向跟着机头走（松开键盘后接着往机头现在指的方向飞，不会被拽回原来鼠标指的地方）
+    -- 想怎么转：纯准心控制——鼠标给想去的方向，自动压坡度、拉杆转过去（像《战争雷霆》）；按着 A / D 时滚转听键盘，
+    --   俯仰照旧往准心拉（准心不动：边滚边拉就是绕着准心的滚筒），松开 A / D 自动把升力方向摆回准心那边
     local pc, rc, yc
-    local keyIn = rollIn ~= 0 or pitchIn ~= 0 or yawIn ~= 0
-    if not G.mobile and keyIn and not st.eo and not st.oob then
-      local lk = cf.LookVector
-      st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-    end
     if G.mobile then
       pc, rc, yc = -pitchIn * rad(d.pitch), rollIn * rad(d.roll), yawIn * rad(d.yaw)
     else
@@ -773,20 +762,18 @@ function Fly.init(G)
       rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(level * 2.5, -1, 1)) * rad(d.roll)
       local pe = math.atan2(l.Y, math.max(fz, 0.05))
       if fz < 0 then pe = (l.Y >= 0) and math.pi / 2 or -math.pi / 2 end
-      pc = clamp(pe * 3, -1, 1) * rad(d.pitch)
+      pc = clamp(pe * 2.4, -1, 1) * rad(d.pitch)   -- 增益比原来低一点（用户：转弯稍微多一些迟钝感）
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
       yc = clamp(math.atan2(l.X, math.max(fz, 0.05)) * 2, -1, 1) * rad(d.yaw)
       if rollIn ~= 0 then rc = rollIn * rad(d.roll) end
-      if pitchIn ~= 0 then pc = -pitchIn * rad(d.pitch) end
-      if yawIn ~= 0 then yc = yawIn * rad(d.yaw) end
     end
     -- 过载限制：转弯角速度不超过 g × 重力 / 速度
     local gLim = d.g * GR / math.max(st.spd, 30) / math.sqrt(st.heavy or 1)   -- 重了转不快
     pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
     rc, yc = rc * q, yc * q
-    st.pr = approach(st.pr, pc, 2.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢
+    st.pr = approach(st.pr, pc, 2.1 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢；比原来（2.6）再沉一点
     st.rr = approach(st.rr, rc, rad(d.roll) * 2.8 / W ^ 0.5 * dt)
-    st.yr = approach(st.yr, yc, 1.2 / W ^ 0.6 * dt)
+    st.yr = approach(st.yr, yc, 1.0 / W ^ 0.6 * dt)
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
     if st.ground and st.cat then
@@ -834,7 +821,8 @@ function Fly.init(G)
       local lg = cf:VectorToObjectSpace(aimG)
       local steer = G.mobile and 0 or clamp(math.atan2(lg.X, math.max(-lg.Z, 0.05)) * 1.5, -1, 1)
       if yawIn ~= 0 or rollIn ~= 0 or G.mobile then steer = (yawIn ~= 0) and yawIn or rollIn end
-      st.yaw -= steer * rad(30) * clamp(st.spd / 25, 0.15, 1) * dt
+      local sk = (st.spd >= 0) and clamp(st.spd / 25, 0.15, 1) or -clamp(-st.spd / 25, 0.15, 0.5)   -- 倒退时前轮转向反过来
+      st.yaw -= steer * rad(30) * sk * dt
       -- 航母甲板：没上弹射器滑不快（起飞要靠弹射器）；挂上拦阻索的一路被拉停
       local deck = AD.onDeck(Map, pos.X, pos.Z)
       if st.trap then
@@ -884,7 +872,7 @@ function Fly.init(G)
       if lift < 0.85 then cf = cf * CFrame.Angles(-(1 - lift) * 0.9 * dt, 0, 0) end
       -- 航迹不是机头指哪就飞哪：升力把速度方向往机头那边拉，快、升力足拉得快，重的飞机拉得慢——拉杆时机头先抬、飞机「吃」一下才转过去
       local vd = st.vdir or cf.LookVector
-      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.7, 0.35, 3.4) / W ^ 0.7
+      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.5, 0.35, 3.2) / W ^ 0.7   -- 航迹跟上机头再慢一点（原来 1.7）
       vd = (vd + (cf.LookVector - vd) * math.min(1, pull * dt))
       st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or cf.LookVector
       local v0 = st.vel

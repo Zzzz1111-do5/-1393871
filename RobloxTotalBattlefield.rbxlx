@@ -605,7 +605,9 @@ Config.Stages = {
 }
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
-Config.DayNight = { period = 24 * 60 }   -- 昼夜更替（客户端 DayNight.lua）：一圈多少秒，每局从早上 7:30 开始
+-- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
+--   lockNight = false 才按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替
+Config.DayNight = { lockNight = true, clock = 2.3, period = 24 * 60 }
 Config.RallyBack = 300   -- 守方前线集结点：据点往守方后方（北）多远（格），据点被压着时守方在这里出生
 Config.StageOff = 420    -- 攻方攻击出发阵地：第二阶段起，据点往攻方来的方向多远（格），攻方在这里出生、不用走几公里（Round.lua）
 
@@ -3877,8 +3879,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（圆圈）· S 抬头 · W 低头 · A/D 滚转 · Q/E 方向舵 · Shift/Ctrl 油门（推满进加力）· C 瞄准回正 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse steer (circle) · S pitch up · W pitch down · A/D roll · Q/E rudder · Shift/Ctrl throttle (full = afterburner) · C recenter aim · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（准心）· W 加速 · S 减速（地上收到底按住倒退）· A/D 滚转（滚筒，不拽准心）· C 准心回正 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse steer (aim) · W speed up · S slow down (hold at idle on the ground to back up) · A/D roll (barrel rolls keep the aim) · C recenter aim · LMB gun · F missile · 1-6 select · R next target · P targeting pod · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpHeli", "W/S 前后 · A/D 转向 · E 升 / Q 降 · 鼠标 看四周、瞄机炮 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "W/S forward/back · A/D turn · E up / Q down · Mouse look & aim gun · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -3943,8 +3945,11 @@ add("coach.throttle", "油门", "Throttle")
 add("coach.lcacBeach", "冲上沙滩自动放车", "Beach it to unload")
 add("coach.throttleUp", "推油门（推满加力）", "Throttle up (full = afterburner)")
 add("coach.taxi", "滑行转向", "Taxi steer")
-add("coach.rotate", "抬头离地（{1} km/h）", "Rotate at {1} km/h")
+add("coach.rotate", "准心上抬就离地（{1} km/h）", "Raise the aim to lift off at {1} km/h")
 add("coach.pitch", "抬头 / 低头", "Pitch up / down")
+add("coach.aimSteer", "方向（准心）", "Steer (aim)")
+add("coach.speed", "加速 / 减速", "Speed up / down")
+add("coach.reverse", "倒退", "Back up")
 add("coach.roll", "滚转", "Roll")
 add("coach.gun", "机炮", "Gun")
 add("coach.missile", "导弹", "Missile")
@@ -3990,14 +3995,14 @@ add("coach.card.veh.3", "Shift 进瞄准镜（V 切夜视 / 热成像），M 放
 add("coach.card.lcac.1", "W / S 油门，A / D 转向：越快越灵，转弯会甩尾", "W / S throttle, A / D steer: sharper at speed, the stern slides out")
 add("coach.card.lcac.2", "开到海滩、冲上沙滩，车会自动放下来", "Run up onto a beach and the vehicle is set down automatically")
 add("coach.card.lcac.3", "接着开车从艇首开下去；空格下车", "Then drive off over the bow; Space to get out")
-add("coach.card.jet.1", "按住 Shift 推油门（推满进加力），A / D 在跑道上转向", "Hold Shift to throttle up (full = afterburner); A / D steer on the runway")
-add("coach.card.jet.2", "速度到 {1} km/h 按 S 抬头离地，起落架会自动收起；W 低头，A / D 滚转转弯", "At {1} km/h press S to lift off — the gear retracts by itself. W pitches down, A / D roll to turn")
+add("coach.card.jet.1", "W 推油门（推满进加力），A / D 在跑道上转向，油门收到底按住 S 倒退", "W throttle up (full = afterburner); A / D steer on the runway; hold S at idle to back up")
+add("coach.card.jet.2", "速度到 {1} km/h 把准心往上抬就离地，起落架会自动收起；鼠标管方向，A / D 滚转", "At {1} km/h raise the aim to lift off — the gear retracts by itself. The mouse steers, A / D roll")
 add("coach.card.jet.3", "左键机炮，F 发导弹（1–6 换挂载，导弹先锁定），X 热诱弹，空格跳伞", "LMB gun, F missile (1–6 pick stores, lock first), X flares, Space to bail out")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
 add("coach.card.heli.2", "按住 E 升、Q 降；W / S 前后飞，A / D 转向", "Hold E to climb, Q to descend; W / S fly forward / back, A / D turn")
 add("coach.card.heli.3", "鼠标瞄准机炮、左键开火，F 火箭 / 导弹，X 热诱弹，空格下飞机", "The mouse aims the gun, LMB fires, F rockets / missiles, X flares, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
-add("coach.card.uav.2", "S / W 抬头低头，A / D 滚转，Shift / Ctrl 油门", "S / W pitch, A / D roll, Shift / Ctrl throttle")
+add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
 add("coach.card.uav.3", "右键 / V 切镜头、Z 变焦，F 发导弹，空格收起平板", "RMB / V camera, Z zoom, F missile, Space to put the tablet away")
 add("coach.card.ship.1", "W / S 调车钟，一档一档加减速；A / D 转舵——船大，转得慢", "W / S set the engine order step by step; A / D rudder — big ships turn slowly")
 add("coach.card.ship.2", "鼠标瞄准、左键开火：1 舰炮，2 反舰导弹（R 锁定）", "Mouse aims, LMB fires: 1 guns, 2 anti-ship missiles (R to lock)")
@@ -4162,8 +4167,8 @@ add("sight.nv", "夜视", "NV")
 add("nvg.hint", "按 N 开启夜视", "Press N for night vision")
 add("nvg.hintTouch", "点 NV 开启夜视", "Tap NV for night vision")
 -- 无人机战术平板（Tablet.lua）
-add("air.helpUav", "S 抬头 · W 低头 · A/D 滚转 · Q/E 方向舵 · Shift/Ctrl 油门 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · 右键/V 切镜头 · Z 变焦（滚轮细调）· G 起落架 · 空格 收起平板",
-  "S pitch up · W pitch down · A/D roll · Q/E rudder · Shift/Ctrl throttle · LMB gun · F missile · 1-6 select · R next target · RMB/V camera · Z zoom (wheel) · G gear · Space close tablet")
+add("air.helpUav", "鼠标 飞行方向（准心）· W 加速 · S 减速 · A/D 滚转 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · 右键/V 切镜头 · Z 变焦（滚轮细调）· G 起落架 · 空格 收起平板",
+  "Mouse steer (aim) · W speed up · S slow down · A/D roll · LMB gun · F missile · 1-6 select · R next target · RMB/V switch view · Z zoom (wheel fine-tune) · G gear · Space stow tablet")
 add("ui.uavLost", "无人机被击落，数据链中断", "UAV shot down — link lost")
 add("uav.brand", "TAC-UAV · 地面控制终端", "TAC-UAV · GROUND CONTROL")
 add("uav.kCam", "镜头", "CAM")
@@ -7857,6 +7862,15 @@ function Bots.init(G)
       if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
     end
     rig.Name = "BotRig"
+    -- 先在 workspace 高空放一下让关节解算（各零件摆到站姿的位置），再收进 ReplicatedStorage：直接放进去的话零件位置没解算，
+    --   客户端按零件量「根零件到脚底」量出来偏小，小人被摆低、腿埋在地里（用户：士兵卡在地底下）
+    pcall(function()
+      local hrp = rig:FindFirstChild("HumanoidRootPart")
+      if hrp then hrp.Anchored = true end
+      rig:PivotTo(CFrame.new(0, 4000, 0))
+      rig.Parent = workspace
+      for _ = 1, 3 do game:GetService("RunService").Heartbeat:Wait() end
+    end)
     rig.Parent = RS
   end)
 
@@ -16491,12 +16505,12 @@ function Coach.init(G)
     inf = { { "LMB", "coach.fire" }, { "RMB", "coach.aim" }, { "R", "coach.reload" }, { "E", "coach.board" }, { "F1", "coach.allKeys" } },
     veh = { { "W/S", "coach.drive" }, { "A/D", "coach.steer" }, { "LMB", "coach.fire" }, { "Shift", "coach.sight" }, { "Space", "coach.exit" } },
     lcac = { { "W/S", "coach.throttle" }, { "A/D", "coach.steer" }, { nil, "coach.lcacBeach" }, { "Space", "coach.exit" } },
-    jetGround = { { "Shift", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "S", "coach.rotate" } },
-    jet = { { "S/W", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
-    jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
+    jetGround = { { "W", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "Mouse", "coach.rotate" }, { "S", "coach.reverse" } },
+    jet = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
+    jetLand = { { "G", "coach.gearDown" }, { "S", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
     heli = { { "E/Q", "coach.updown" }, { "W/S", "coach.fwdBack" }, { "A/D", "coach.turn" }, { "LMB", "coach.gun" }, { "F", "coach.rockets" } },
-    uav = { { "S/W", "coach.pitch" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
+    uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
     arty = { { "Mouse", "coach.pointTarget" }, { "LMB", "coach.fire" }, { "RMB", "coach.zoom" }, { "Space", "coach.leave" } },
@@ -16974,7 +16988,7 @@ return Coach
         <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">DayNight</string>
-            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪）
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
 --   每局从早上 7:30 开始，一圈 24 分钟（Config.DayNight.period）：白天长（7:30～17:30 约 13 分钟）、黄昏 / 清晨各一分多钟、夜里不到 6 分钟；
 --   时间按服务器开局时记下的 workspace 属性 DayT0 和服务器时钟算，所有人看到的一样
 --   跟着太阳高度渐变：亮度、环境光、天空光的颜色（黄昏偏橙）、雾、大气（白天通透、看得远）、泛光和调色（夜里冷蓝、白天中性）；
@@ -17022,15 +17036,28 @@ function DayNight.init(G)
   G.isNight = function() return dayK < 0.35 end
   G.clockNow = function() return clock end
 
+  -- 灯光属性只有真变了才写（用户 11-18：一卡一卡的——原来每 0.1 秒把钟点、大气、调色全写一遍，钟点一动太阳就动，阴影、天空跟着重算）；
+  --   跟属性现在的值比（不另记一份）：别处（服务器开服时的那套夜里灯光）改过的也照样改回来
+  local function put(obj, prop, v)
+    local o = obj[prop]
+    local t = typeof(v)
+    if t == "number" and type(o) == "number" and math.abs(o - v) < 1e-3 then return end
+    if t == "Color3" and typeof(o) == "Color3" and math.abs(o.R - v.R) + math.abs(o.G - v.G) + math.abs(o.B - v.B) < 2e-3 then return end
+    obj[prop] = v
+  end
   local acc = 1
   local function step(dt)
     acc += dt
     if acc < 0.1 then return end   -- 一秒十次就够顺
     acc = 0
-    local t0 = workspace:GetAttribute("DayT0")
-    if type(t0) ~= "number" then t0 = 0 end
-    local f = ((serverNow() - t0) / PERIOD) % 1
-    clock = clockAt(f)
+    if DN.lockNight then   -- 锁定晚上（用户：把白天模式去掉）：钟点停在半夜，太阳高度在地平线下面，灯光就是夜里那一套
+      clock = DN.clock or 2.3
+    else
+      local t0 = workspace:GetAttribute("DayT0")
+      if type(t0) ~= "number" then t0 = 0 end
+      local f = ((serverNow() - t0) / PERIOD) % 1
+      clock = clockAt(f)
+    end
     local alt = math.sin((clock - 6) / 12 * math.pi)   -- 太阳高度（−1 半夜 ～ 1 正午）
     dayK = smooth(-0.08, 0.22, alt)
     local dusk = (alt > -0.18 and alt < 0.3) and (1 - math.abs(alt - 0.05) / 0.25) or 0
@@ -17041,37 +17068,43 @@ function DayNight.init(G)
     local nv = G.nvLight == true
     local nk = 1 - dayK
     pcall(function()
-      Lighting.ClockTime = clock
-      Lighting.Brightness = lerp(NIGHT.bright, DAY.bright, dayK)
+      put(Lighting, "ClockTime", clock)
+      put(Lighting, "Brightness", lerp(NIGHT.bright, DAY.bright, dayK))
       local amb, oamb = lc(NIGHT.amb, DAY.amb, dayK), lc(NIGHT.oamb, DAY.oamb, dayK)
       local exp = lerp(NIGHT.exp, DAY.exp, dayK)
       if nv then   -- 夜视：本地增亮（白天只亮一点点）
         exp += 2.7 * nk + 0.25 * dayK
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
       end
-      Lighting.Ambient, Lighting.OutdoorAmbient, Lighting.ExposureCompensation = amb, oamb, exp
-      Lighting.ColorShift_Top = lc(lc(NIGHT.top, DAY.top, dayK), DUSK.top, dusk)
-      Lighting.ColorShift_Bottom = lc(NIGHT.bot, DAY.bot, dayK)
-      Lighting.EnvironmentDiffuseScale = lerp(NIGHT.diff, DAY.diff, dayK)
-      Lighting.EnvironmentSpecularScale = lerp(NIGHT.spec, DAY.spec, dayK)
-      Lighting.FogColor = lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk)
-      Lighting.FogEnd = 12000 + 18000 * hk
+      put(Lighting, "Ambient", amb)
+      put(Lighting, "OutdoorAmbient", oamb)
+      put(Lighting, "ExposureCompensation", exp)
+      put(Lighting, "ColorShift_Top", lc(lc(NIGHT.top, DAY.top, dayK), DUSK.top, dusk))
+      put(Lighting, "ColorShift_Bottom", lc(NIGHT.bot, DAY.bot, dayK))
+      put(Lighting, "EnvironmentDiffuseScale", lerp(NIGHT.diff, DAY.diff, dayK))
+      put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
+      put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
+      put(Lighting, "FogEnd", 12000 + 18000 * hk)
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       if atm then
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
         if nv then dens = math.max(0.06, dens * 0.55) end
-        atm.Density = dens
-        atm.Color = lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk)
-        atm.Decay = lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk)
-        atm.Glare = lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk
-        atm.Haze = lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk)
+        put(atm, "Density", dens)
+        put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
+        put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
+        put(atm, "Glare", lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk)
+        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk))
       end
       local bloom = Lighting:FindFirstChild("NightBloom")
-      if bloom then bloom.Intensity, bloom.Threshold = lerp(NIGHT.bloomI, DAY.bloomI, dayK), lerp(NIGHT.bloomT, DAY.bloomT, dayK) end
+      if bloom then
+        put(bloom, "Intensity", lerp(NIGHT.bloomI, DAY.bloomI, dayK))
+        put(bloom, "Threshold", lerp(NIGHT.bloomT, DAY.bloomT, dayK))
+      end
       local cc = Lighting:FindFirstChild("NightGrade")
       if cc then
-        cc.Saturation, cc.Contrast = lerp(NIGHT.ccSat, DAY.ccSat, dayK), lerp(NIGHT.ccCon, DAY.ccCon, dayK)
-        cc.TintColor = lc(NIGHT.ccTint, DAY.ccTint, dayK)
+        put(cc, "Saturation", lerp(NIGHT.ccSat, DAY.ccSat, dayK))
+        put(cc, "Contrast", lerp(NIGHT.ccCon, DAY.ccCon, dayK))
+        put(cc, "TintColor", lc(NIGHT.ccTint, DAY.ccTint, dayK))
       end
     end)
   end
@@ -19312,7 +19345,7 @@ function Fly.init(G)
       v.M, v.def, v.model, v.anchor = M, d, M.model, M.anchor
       v.c = {}
       v.spin1, v.spin2, v.spinT, v.spinP = math.random() * 6, math.random() * 6, 0, 0
-      v.prevT, v.vel = v.root.CFrame, V()
+      v.cf = v.root.CFrame
       v.frame = 0
       return true
     end,
@@ -19320,15 +19353,9 @@ function Fly.init(G)
       local em, d, M = v.em, v.def, v.M
       local own = st and st.em == em and st
       local target = v.root.CFrame
-      -- 别人的飞机：按服务器位置的变化估速度（被击毁时接着往下掉要用）
-      if target ~= v.prevT then
-        local dp = target.Position - v.prevT.Position
-        if dp.Magnitude < 400 then v.vel = v.vel:Lerp(dp / math.max(dt, 1 / 60), 0.5) end
-        v.prevT = target
-      end
-      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下
+      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下（别人的飞机：速度按收到的位置快照算，View.lua G.follow）
         if not v.wreck then
-          v.wreck = { vel = (own and own.vel) or v.vel, spin = (math.random() - 0.5) * 3, t = 0 }
+          v.wreck = { vel = (own and own.vel) or (v.fl and v.fl.vel) or V(), spin = (math.random() - 0.5) * 3, t = 0 }
           if v.M then v.M.dark = true end   -- 被击毁：灯全灭
           for _, it in ipairs(M.items) do
             local p = it.p
@@ -19366,10 +19393,8 @@ function Fly.init(G)
         end
       elseif own then
         v.cf = own.cf
-      elseif (target.Position - v.cf.Position).Magnitude > 220 then
-        v.cf = target
-      else
-        v.cf = v.cf:Lerp(target, math.min(1, dt * 11))
+      else   -- 别人的飞机：快照插值（匀速，不一顿一顿；跳太远直接过去）
+        v.cf = G.follow(v, target, 400)
       end
       -- 通道：自己开的用本地的操纵量；别人的读属性
       local c = v.c
@@ -19952,14 +19977,15 @@ function Fly.init(G)
 
   local function jetPhysics(dt)
     local d = st.d
-    -- 用户：不让准星控制方向，改成 WASD——S 抬头、W 低头（像驾驶杆：往回拉抬头），A / D 滚转，Q / E 方向舵，Shift / Ctrl 油门
-    local up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
-    local dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
+    -- 用户 11-18：W 向前加速、S 减速（地上收到零了接着按 S 就倒退），纯准心控制（鼠标给方向，自动压坡度、拉杆转过去），
+    --   A / D 滚转（滚筒的时候不把准心拽回机头：松开以后接着往准心飞），转弯比原来稍迟钝一点；Shift / Ctrl 也还能推、收油门
+    local up = key(Enum.KeyCode.W) or key(Enum.KeyCode.Up) or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
+    local dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
     if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
+    local rev = st.ground and not st.cat and not st.trap and dn and st.thr <= 0.5   -- 地上油门收到底还按着 S：倒退（推出来、调头）
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
-    local yawIn = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
-    local pitchIn = ((key(Enum.KeyCode.W) or key(Enum.KeyCode.Up)) and 1 or 0) - ((key(Enum.KeyCode.S) or key(Enum.KeyCode.Down)) and 1 or 0)
+    local yawIn, pitchIn = 0, 0   -- 纯准心控制：键盘不管俯仰、方向舵（手机上摇杆照旧当驾驶杆）
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
@@ -19980,6 +20006,7 @@ function Fly.init(G)
     -- 副油箱的阻力：最大速度、加速度都少几成；油多就重：加速慢（满内油 + 两个副油箱比一半内油重三成多）
     tgt *= 1 - (st.drag or 0)
     acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
+    if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
     -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
     --   一推油门不再四五十米就飞起来；弹射器单独算）
     if st.ground and not st.cat then acc *= 0.25 end
@@ -19992,16 +20019,11 @@ function Fly.init(G)
       st.spd -= (1 - math.clamp(vd:Dot(fwd), -1, 1)) * st.spd * 2.6 * dt   -- 机头和航迹差得越多（大迎角、侧滑）掉速越快
     end
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
-    st.spd = clamp(st.spd, 0, d.vMax * 1.3)
+    st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
-    -- 想怎么转（用户：准星也能控制飞行方向，WASD 也不要动）：平时鼠标瞄准——鼠标给想去的方向，自动压坡度、拉杆转过去（像《战争雷霆》）；
-    --   按着 WASD / QE 时那个轴听键盘，同时鼠标瞄准方向跟着机头走（松开键盘后接着往机头现在指的方向飞，不会被拽回原来鼠标指的地方）
+    -- 想怎么转：纯准心控制——鼠标给想去的方向，自动压坡度、拉杆转过去（像《战争雷霆》）；按着 A / D 时滚转听键盘，
+    --   俯仰照旧往准心拉（准心不动：边滚边拉就是绕着准心的滚筒），松开 A / D 自动把升力方向摆回准心那边
     local pc, rc, yc
-    local keyIn = rollIn ~= 0 or pitchIn ~= 0 or yawIn ~= 0
-    if not G.mobile and keyIn and not st.eo and not st.oob then
-      local lk = cf.LookVector
-      st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-    end
     if G.mobile then
       pc, rc, yc = -pitchIn * rad(d.pitch), rollIn * rad(d.roll), yawIn * rad(d.yaw)
     else
@@ -20016,20 +20038,18 @@ function Fly.init(G)
       rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(level * 2.5, -1, 1)) * rad(d.roll)
       local pe = math.atan2(l.Y, math.max(fz, 0.05))
       if fz < 0 then pe = (l.Y >= 0) and math.pi / 2 or -math.pi / 2 end
-      pc = clamp(pe * 3, -1, 1) * rad(d.pitch)
+      pc = clamp(pe * 2.4, -1, 1) * rad(d.pitch)   -- 增益比原来低一点（用户：转弯稍微多一些迟钝感）
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
       yc = clamp(math.atan2(l.X, math.max(fz, 0.05)) * 2, -1, 1) * rad(d.yaw)
       if rollIn ~= 0 then rc = rollIn * rad(d.roll) end
-      if pitchIn ~= 0 then pc = -pitchIn * rad(d.pitch) end
-      if yawIn ~= 0 then yc = yawIn * rad(d.yaw) end
     end
     -- 过载限制：转弯角速度不超过 g × 重力 / 速度
     local gLim = d.g * GR / math.max(st.spd, 30) / math.sqrt(st.heavy or 1)   -- 重了转不快
     pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
     rc, yc = rc * q, yc * q
-    st.pr = approach(st.pr, pc, 2.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢
+    st.pr = approach(st.pr, pc, 2.1 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢；比原来（2.6）再沉一点
     st.rr = approach(st.rr, rc, rad(d.roll) * 2.8 / W ^ 0.5 * dt)
-    st.yr = approach(st.yr, yc, 1.2 / W ^ 0.6 * dt)
+    st.yr = approach(st.yr, yc, 1.0 / W ^ 0.6 * dt)
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
     if st.ground and st.cat then
@@ -20077,7 +20097,8 @@ function Fly.init(G)
       local lg = cf:VectorToObjectSpace(aimG)
       local steer = G.mobile and 0 or clamp(math.atan2(lg.X, math.max(-lg.Z, 0.05)) * 1.5, -1, 1)
       if yawIn ~= 0 or rollIn ~= 0 or G.mobile then steer = (yawIn ~= 0) and yawIn or rollIn end
-      st.yaw -= steer * rad(30) * clamp(st.spd / 25, 0.15, 1) * dt
+      local sk = (st.spd >= 0) and clamp(st.spd / 25, 0.15, 1) or -clamp(-st.spd / 25, 0.15, 0.5)   -- 倒退时前轮转向反过来
+      st.yaw -= steer * rad(30) * sk * dt
       -- 航母甲板：没上弹射器滑不快（起飞要靠弹射器）；挂上拦阻索的一路被拉停
       local deck = AD.onDeck(Map, pos.X, pos.Z)
       if st.trap then
@@ -20127,7 +20148,7 @@ function Fly.init(G)
       if lift < 0.85 then cf = cf * CFrame.Angles(-(1 - lift) * 0.9 * dt, 0, 0) end
       -- 航迹不是机头指哪就飞哪：升力把速度方向往机头那边拉，快、升力足拉得快，重的飞机拉得慢——拉杆时机头先抬、飞机「吃」一下才转过去
       local vd = st.vdir or cf.LookVector
-      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.7, 0.35, 3.4) / W ^ 0.7
+      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.5, 0.35, 3.2) / W ^ 0.7   -- 航迹跟上机头再慢一点（原来 1.7）
       vd = (vd + (cf.LookVector - vd) * math.min(1, pull * dt))
       st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or cf.LookVector
       local v0 = st.vel
@@ -21083,13 +21104,26 @@ function Fx.init(G)
     return tw
   end
   -- 夜战：一闪的光（枪口焰、炮口、爆炸）——看不见的锚定小零件挂一个点光源，亮度很快降到 0（Future 光照下会照亮四周的地面、墙、车）
+  -- 一卡一卡（用户 11-18）：夜里每声枪响、每次爆炸都点一盏，同时亮着的太多（尤其投影子的）显卡一顿一顿——
+  --   同时最多 10 盏、投影子的最多 2 盏，离镜头太远（光照范围外再 400 格）的不点
+  local liveFlash, liveShadow = 0, 0
   local function flash(p, color, range, bright, t)
+    local cam = workspace.CurrentCamera
+    if cam and (cam.CFrame.Position - p).Magnitude > range + 400 then return nil end
+    if liveFlash >= 10 then return nil end
+    local shadows = range > 20 and liveShadow < 2
     local h = part(nil, V(0.2, 0.2, 0.2), CFrame.new(p), color, Enum.Material.SmoothPlastic, 1)
     local pl = Instance.new("PointLight")
-    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, range > 20
+    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, shadows
     pl.Parent = h
     tween(pl, t, { Brightness = 0 })
     Debris:AddItem(h, t + 0.05)
+    liveFlash += 1
+    if shadows then liveShadow += 1 end
+    task.delay(t + 0.05, function()
+      liveFlash -= 1
+      if shadows then liveShadow -= 1 end
+    end)
     return pl
   end
   G.flash = flash
@@ -21312,26 +21346,48 @@ function Fx.init(G)
   ---------------------------------------------------------------- 曳光、枪口火光
 
   local TRACER = { m4 = RGB(255, 220, 140), rifle = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210) }
+  -- 一卡一卡（用户 11-18）：几十个机器人一起开枪，每一发都新建曳光、枪口火、灯光、弹着点的灰——一秒几百个零件加补间。
+  --   别人打的：枪口离镜头 900 格外、弹道也没从镜头 300 格内擦过的不画；350 格外的只画曳光（不点灯、没有枪口火球和弹着灰）；
+  --   画全套的每秒最多 50 发（多出来的也只画曳光）。自己打的照旧全画
+  local gunTok, gunTokT = 50, 0
   function G.gunFx(id, a, b, mine)
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
+    local lite = false
+    if not mine then
+      local c = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or a
+      local da = (a - c).Magnitude
+      if da > 350 then
+        local u = math.clamp((c - a):Dot(d) / (L * L), 0, 1)
+        if da > 900 and (a + d * u - c).Magnitude > 300 then return end
+        lite = true
+      end
+      local now = os.clock()
+      gunTok = math.min(50, gunTok + (now - gunTokT) * 50)
+      gunTokT = now
+      if not lite then
+        if gunTok >= 1 then gunTok -= 1 else lite = true end
+      end
+    end
     local col = TRACER[id] or RGB(255, 220, 140)
     local len = math.min(L, 14)
     local tr = part(nil, V(0.12, 0.12, len), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, 0.1)
     local speed = 900
     local tw = tween(tr, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len / 2, b + d.Unit) }, Enum.EasingStyle.Linear)
     Debris:AddItem(tr, L / speed + 0.05)
-    local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
-    tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
-    Debris:AddItem(fl, 0.08)
-    if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
-    -- 弹着点一小团灰
-    task.delay(L / speed, function()
-      local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
-      tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
-      Debris:AddItem(puff, 0.45)
-    end)
+    if not lite then
+      local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
+      tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
+      Debris:AddItem(fl, 0.08)
+      if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
+      -- 弹着点一小团灰
+      task.delay(L / speed, function()
+        local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
+        tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
+        Debris:AddItem(puff, 0.45)
+      end)
+    end
     local snd = (id == "smgsd") and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")
     G.playSound(snd, a)
   end
@@ -27961,11 +28017,10 @@ function ShipView.init(G)
   local function viewStep(v, dt, camPos)
     local em, d, M = v.em, v.d, v.M
     local own = G.sail and G.sail.em == em and G.sail or nil
-    -- 位置：自己开的用本地的；别人的平滑跟（离得太远直接跳过去）
+    -- 位置：自己开的用本地的；别人的快照插值（View.lua G.follow：匀速，不一顿一顿；跳太远直接过去）
     local target = v.root.CFrame * CF(0, -(d.H / 2 - d.draft), 0)
     if own and own.cf then v.base = own.cf
-    elseif (target.Position - v.base.Position).Magnitude > 160 then v.base = target
-    else v.base = v.base:Lerp(target, math.min(1, dt * 6)) end
+    else v.base = G.follow(v, target, 160) end
     local pos = v.base.Position
     local far = (pos - camPos).Magnitude
     v.frame += 1
@@ -28192,7 +28247,11 @@ function Soldier.init(G)
     hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
     hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
     pcall(function() hum.EvaluateStateMachine = false end)   -- 不跑人物的状态机（站、跳、掉）：位置是这里摆的
-    local hip = hrp.Position.Y - low   -- HumanoidRootPart 中心离脚底多高
+    local hip = hrp.Position.Y - low   -- HumanoidRootPart 中心离脚底多高（按模板里各零件的位置量）
+    -- R15 的 HipHeight 就是根零件底面离地多高，按它算更靠得住：模板的关节没解算时零件位置不对，量出来偏小，
+    --   小人被摆低、半截身子埋在地里（用户：士兵卡在地底下）；最后按 R15 小人的身高夹一下
+    if hum.RigType == Enum.HumanoidRigType.R15 and (hum.HipHeight or 0) > 0.5 then hip = hum.HipHeight + hrp.Size.Y / 2 end
+    hip = math.clamp(hip, 2.4, 3.6)
     local k = head.Size.Y / 1.2
     helmet(m, head, team, k, 0)
     local rh = m:FindFirstChild("RightHand")
@@ -28282,17 +28341,18 @@ function Soldier.init(G)
           v.hidden, v.home = true, v.model.Parent
           v.model.Parent = nil
         end
-        v.cf, v.lastP, v.spd = target, p, 0
+        v.cf, v.lastP, v.spd, v.fl = target, p, 0, nil   -- 插值的快照也扔掉：回到范围里从当时的位置重新开始
         return
       elseif v.hidden and dist < hideD * 0.95 then
         v.hidden = false
         v.model.Parent = v.home
       end
-      -- 走多快：服务器一秒挪十几次，按位置的变化估、再平滑
-      local moved = (V(p.X, 0, p.Z) - V(v.lastP.X, 0, v.lastP.Z)).Magnitude
+      -- 位置：快照插值（View.lua G.follow：匀速走，原来指数逼近一跳一跳的目标，人一顿一顿的）
+      v.cf = G.follow(v, target)
       v.lastP = p
-      v.spd = v.spd + (moved / math.max(dt, 1 / 240) - v.spd) * math.min(1, dt * 5)
-      v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+      -- 走多快：按快照算的水平速度再平滑（原来按每帧位置变化估，服务器没挪的那几帧是 0，走路动画一快一慢）
+      local fv = v.fl.vel
+      v.spd = v.spd + (V(fv.X, 0, fv.Z).Magnitude - v.spd) * math.min(1, dt * 5)
       v.hrp.CFrame = v.cf * CF(0, v.hip - HALF, 0)
       local far = dist > 700 * (G.perfK or 1)
       if v.rig then
@@ -31915,7 +31975,7 @@ function View.init(G)
     local own = G.myVeh and G.myVeh.em == em and G.myVeh
     local target = own and own.root or v.root.CFrame
     -- 位置：自己开的直接用本地算的；别人的平滑跟
-    if own then v.cf = target else v.cf = v.cf:Lerp(target, math.min(1, dt * 12)) end
+    if own then v.cf = target else v.cf = G.follow(v, target) end
     local base = v.cf * CF(0, -d.H / 2, 0)
     -- 速度、转弯（别人的车按位置变化估）
     local pos = base.Position
@@ -32090,7 +32150,10 @@ function View.init(G)
   --   （人的物理本来就在本机算，挡人按真正的外形；服务器的方盒只管挨打，不挡人）。很小的、几乎透明的、发光的、转的（旋翼、螺旋桨）、尾焰不算；
   --   自己正开着的那辆不算（人在里面）
   local SOLID_KIND = { veh = true, air = true, ship = true, fort = true, lcac = true }
-  local SOLID_IN, SOLID_OUT = 280, 340
+  -- 一卡一卡（用户 11-18）：原来 280 格内的车、飞机、船全开着碰撞，这些零件每帧都在挪，物理引擎每帧都要重算——
+  --   只在步行时、70 格内才开（走路撞得上的就这么近），一帧最多新开一辆（一下子来一群也不顿）
+  local SOLID_IN, SOLID_OUT = 70, 95
+  local solidBudget = 0
   local function solidSet(v, on)
     if (v.solidOn == true) == on then return end
     v.solidOn = on
@@ -32129,13 +32192,19 @@ function View.init(G)
   local function stepSolid(v, here)
     if not SOLID_KIND[v.kind] or not v.model or not v.model.Parent then return end
     local mine = (G.drive and G.drive.em == v.em) or (G.fly and G.fly.em == v.em)
+    local onFoot = not G.drive and not G.fly
     local p = (v.cf and v.cf.Position) or v.root.Position
     local d = here and (p - here).Magnitude or math.huge
-    local want = (not mine) and ((v.solidOn and d < SOLID_OUT) or (not v.solidOn and d < SOLID_IN))
+    local want = onFoot and (not mine) and ((v.solidOn and d < SOLID_OUT) or (not v.solidOn and d < SOLID_IN))
+    if want and not v.solidOn then
+      if solidBudget <= 0 then return end   -- 这一帧已经开过一辆了：下一帧再开
+      solidBudget -= 1
+    end
     solidSet(v, want and true or false)
   end
 
   function G.stepView(dt)
+    solidBudget = 1
     stepDying()
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
@@ -32160,8 +32229,8 @@ function View.init(G)
           G.try_(v.ext.step, v, dt, camPos)
         else
           local target = v.root.CFrame
-          local moved = (target.Position - v.cf.Position).Magnitude
-          v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+          v.cf = G.follow(v, target)
+          local moved = v.fl.vel.Magnitude * 0.1   -- 走多快（腿、跳板的动画快慢）：按快照算的速度，一个更新间隔挪多远
           if v.kind == "lcac" and G.lcacUnderMine then   -- 自己正开着的这条气垫艇：按本地算的车底摆（不等服务器，和甲板上的车贴死）
             local mine = G.lcacUnderMine(em:GetAttribute("Carry"))
             if mine then v.cf = mine end
@@ -32177,6 +32246,54 @@ function View.init(G)
       end
     end
   end
+  -- 跟服务器位置（用户 11-18：一卡一卡的）：服务器一秒只挪十来次（飞机按驾驶的人每秒报 15 次），原来每帧往「最新收到的位置」指数逼近——
+  --   目标一跳一跳，跟的速度就一阵快一阵慢（十赫兹的顿挫，别人的车、飞机、船、士兵全是）。改成快照插值：记下最近几次收到的位置和收到的时刻，
+  --   画面晚一点点（约 1.3 个更新间隔，按实际收到的间隔自己调），在前后两次之间按时间匀速插；跳得太远（传送、重生）直接过去；
+  --   停了很久又动：先补一个「上一刻还在原地」的快照，从静止起步，不一下窜出去。返回插好的 CFrame；fl.vel 是按快照算的速度（格 / 秒）
+  local FL_N = 6
+  function G.follow(v, target, jump)
+    local now = os.clock()
+    local f = v.fl
+    if not f then
+      f = { n = 1, t = { now }, c = { target }, gap = 0.1, vel = Vector3.zero }
+      v.fl = f
+      return target
+    end
+    local n = f.n
+    local last = f.c[n]
+    if target ~= last then
+      local g = now - f.t[n]
+      if (target.Position - last.Position).Magnitude > (jump or 250) then   -- 传送、重生：清空、直接过去
+        f.n, f.t, f.c, f.vel = 1, { now }, { target }, Vector3.zero
+        return target
+      end
+      if g < 0.5 then
+        f.gap += (math.clamp(g, 0.03, 0.3) - f.gap) * 0.2
+      else   -- 停了很久才又动：补一个刚才还在原地的快照
+        if n >= FL_N then table.remove(f.t, 1) table.remove(f.c, 1) n -= 1 end
+        n += 1
+        f.t[n], f.c[n] = now - f.gap, last
+      end
+      if n >= FL_N then table.remove(f.t, 1) table.remove(f.c, 1) n -= 1 end
+      n += 1
+      f.t[n], f.c[n] = now, target
+      f.n = n
+      local dtS = f.t[n] - f.t[n - 1]
+      if dtS > 1e-3 then f.vel = f.vel:Lerp((f.c[n].Position - f.c[n - 1].Position) / dtS, 0.5) end
+    elseif now - f.t[n] > 0.6 then
+      f.vel = Vector3.zero   -- 好一阵没动了：停了
+    end
+    local rt = now - math.clamp(f.gap * 1.3, 0.06, 0.3)
+    if rt >= f.t[n] then return f.c[n] end
+    for i = n, 2, -1 do
+      local t0 = f.t[i - 1]
+      if t0 <= rt then
+        return f.c[i - 1]:Lerp(f.c[i], (rt - t0) / math.max(1e-3, f.t[i] - t0))
+      end
+    end
+    return f.c[1]
+  end
+
   -- 一辆车出错不影响别的
   function G.try_(f, ...)
     local ok, err = pcall(f, ...)

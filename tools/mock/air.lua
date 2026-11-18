@@ -181,24 +181,44 @@ if me.Character then
   R.run(0.3)
   check(R.services.Workspace:FindFirstChild("Parachute") == nil, "落地收掉了")
 end
-print("⑤ 起飞、拉杆：有重量感——航迹落后于机头（迎角）、角速度慢慢起来、大迎角掉速")
+print("⑤a 新键位（用户 11-18）：W 加速、S 减速，地上收到底按住 S 倒退；纯准心控制，A / D 滚转时准心不被拽回")
 local fst = C.fly
 if fst and e then
-  T.key(Enum.KeyCode.LeftShift, true)   -- Shift 加油门，按住 S 拉杆抬头
+  fst.thr = 0
+  local p0 = fst.cf.Position
+  local lk0 = fst.cf.LookVector
   T.key(Enum.KeyCode.S, true)
+  R.run(2)
+  T.key(Enum.KeyCode.S, false)
+  local back = (fst.cf.Position - p0):Dot(lk0)
+  check(fst.spd < -3 and back < -3, string.format("地上油门收到底按住 S：倒退（速度 %.1f、往后挪了 %.1f 格）", fst.spd, -back))
+  T.key(Enum.KeyCode.W, true)
+  R.run(1)
+  T.key(Enum.KeyCode.W, false)
+  check(fst.thr > 40, string.format("按住 W 推油门（%.0f）", fst.thr))
+  T.key(Enum.KeyCode.S, true)
+  R.run(0.4)
+  T.key(Enum.KeyCode.S, false)
+  check(fst.thr < 40, string.format("按住 S 收油门（%.0f）", fst.thr))
+end
+print("⑤ 起飞、拉杆：有重量感——航迹落后于机头（迎角）、角速度慢慢起来、大迎角掉速")
+if fst and e then
+  T.key(Enum.KeyCode.W, true)   -- W 推油门；准心往上抬就离地、爬升（纯准心控制）
+  fst.aimPitch = math.rad(12)
   local up = T.runUntil(function() return not fst.ground end, 40)
   check(up, string.format("滑跑起飞（离地时速度 %.0f 格 / 秒）", fst.spd or 0))
-  R.run(1.2)   -- 再拉一会儿：先爬高（不然贴着跑道平飞，后面拉杆会撞上机场的楼）
-  T.key(Enum.KeyCode.S, false)
-  R.run(7)
+  R.run(8.2)
+  fst.aimPitch = math.rad(3)
   local p = fst.cf.Position
   check(p.Y == p.Y and p.Y > G.Map.ground(p.X, p.Z) + 20, string.format("飞起来了（离地 %.0f 格，速度 %.0f）", p.Y - G.Map.ground(p.X, p.Z), fst.spd))
-  -- 收到军推、平飞稳一下，再猛拉杆：角速度一开始还没起来，航迹慢半拍跟上机头，大迎角掉速
-  T.key(Enum.KeyCode.LeftShift, false)
+  -- 收到军推、平飞稳一下，再把准心猛地往上提：角速度一开始还没起来，航迹慢半拍跟上机头，大迎角掉速
+  T.key(Enum.KeyCode.W, false)
   fst.thr = 85
+  local lk = fst.cf.LookVector
+  fst.aimYaw, fst.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(math.max(-1, math.min(1, lk.Y)))
   R.run(3)
   local spd0 = fst.spd
-  T.key(Enum.KeyCode.S, true)
+  fst.aimPitch = math.min(1.4, fst.aimPitch + math.rad(80))
   R.run(0.1)
   local pr1 = fst.pr
   local aoa = 0
@@ -207,13 +227,23 @@ if fst and e then
     local f = fst.cf.LookVector
     if fst.vdir then aoa = math.max(aoa, math.deg(math.acos(math.max(-1, math.min(1, f:Dot(fst.vdir)))))) end
   end
-  T.key(Enum.KeyCode.S, false)
+  local lk2 = fst.cf.LookVector
+  fst.aimYaw, fst.aimPitch = math.atan2(-lk2.X, -lk2.Z), math.asin(math.max(-1, math.min(1, lk2.Y)))
   local prMax = math.rad(e.def.pitch)
   check(math.abs(pr1) < prMax * 0.6, string.format("拉杆 0.1 秒俯仰角速度才到 %.0f%%（转动有惯性）", 100 * math.abs(pr1) / prMax))
   check(aoa > 1.5 and aoa < 25, string.format("拉杆时机头比航迹高 %.1f°（飞机「吃」一下才转过去）", aoa))
   check(fst.spd < spd0, string.format("大迎角掉速：%.0f → %.0f", spd0, fst.spd))
   local q = fst.cf.Position
   check(q.X == q.X and q.Y == q.Y and q.Z == q.Z, "位置正常（没有算出 NaN）")
+  -- A / D 滚筒：准心（鼠标给的方向）不被拽回机头；松开以后接着往准心飞
+  local ay, ap = fst.aimYaw, fst.aimPitch
+  local r0 = fst.cf.RightVector
+  T.key(Enum.KeyCode.D, true)
+  R.run(0.8)
+  local rolled = math.deg(math.acos(math.max(-1, math.min(1, fst.cf.RightVector:Dot(r0)))))
+  T.key(Enum.KeyCode.D, false)
+  check(rolled > 40, string.format("按住 D 滚转（0.8 秒滚了 %.0f°）", rolled))
+  check(math.abs(fst.aimYaw - ay) < 1e-6 and math.abs(fst.aimPitch - ap) < 1e-6, "滚转时准心没被拽回机头")
 end
 
 print("⑥ 油量：飞着就烧油（油门越大越费）、平显上有油量；副油箱先烧、烧干自动抛、J 键手动抛；烧干熄火")
@@ -235,21 +265,25 @@ if fst and e and e.alive then
   end
   local n = 0
   for i, w in pairs(wing) do e.load[i], e.stores[i], n = w, 1, n + 1 end
-  e.fuelX = n * 0.3
-  local fi, fx = e.fuel, e.fuelX
-  R.run(2)
-  check(n > 0 and e.fuelX < fx and math.abs(e.fuel - fi) < 1e-6, string.format("先烧副油箱（外挂 %.3f → %.3f，内油没动）", fx, e.fuelX))
-  local fxn = 0
-  local fx0 = G.fx
-  G.fx = function(x) if x.k == "tankDrop" then fxn = fxn + 1 end return fx0(x) end
-  T.key(Enum.KeyCode.J, true)
-  R.run(0.3)
-  T.key(Enum.KeyCode.J, false)
-  R.run(0.5)
-  local left = 0
-  for i in pairs(wing) do left = left + (e.stores[i] or 0) end
-  check(n > 0 and left == 0 and e.fuelX == 0 and fxn == n, string.format("J 键抛掉了 %d 个副油箱（还挂着 %d 个，掉下去的特效 %d 个）", n, left, fxn))
-  G.fx = fx0
+  if n == 0 then   -- F-22 只有弹舱、没有挂副油箱的挂点（AirDefs 的 TANKS 里没有它）：守方这两项跳过
+    print("  （" .. e.def.id .. " 没有挂副油箱的挂点，副油箱两项跳过）")
+  else
+    e.fuelX = n * 0.3
+    local fi, fx = e.fuel, e.fuelX
+    R.run(2)
+    check(e.fuelX < fx and math.abs(e.fuel - fi) < 1e-6, string.format("先烧副油箱（外挂 %.3f → %.3f，内油没动）", fx, e.fuelX))
+    local fxn = 0
+    local fx0 = G.fx
+    G.fx = function(x) if x.k == "tankDrop" then fxn = fxn + 1 end return fx0(x) end
+    T.key(Enum.KeyCode.J, true)
+    R.run(0.3)
+    T.key(Enum.KeyCode.J, false)
+    R.run(0.5)
+    local left = 0
+    for i in pairs(wing) do left = left + (e.stores[i] or 0) end
+    check(left == 0 and e.fuelX == 0 and fxn == n, string.format("J 键抛掉了 %d 个副油箱（还挂着 %d 个，掉下去的特效 %d 个）", n, left, fxn))
+    G.fx = fx0
+  end
   -- 烧干：熄火，油门推不上去
   e.fuel = 0.0005
   R.run(1.5)

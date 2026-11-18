@@ -158,10 +158,33 @@ function Signal:Wait()
 	end)
 	return coroutine.yield()
 end
+-- 性能剖析（H.prof = {} 打开）：按「哪一边 + 源文件:行」记每个回调的次数、总耗时、最慢一次；tools/test/ia_prof.luau 用
+local function profKey(fn, side)
+	local ok, src, line = pcall(debug.info, fn, "sl")
+	if not ok then return side .. " ?" end
+	return side .. " " .. tostring(src):gsub("^.*[%./]", "") .. ":" .. tostring(line)
+end
+local function profAdd(key, dt)
+	local r = H.prof[key]
+	if not r then
+		r = { n = 0, t = 0, max = 0 }
+		H.prof[key] = r
+	end
+	r.n += 1
+	r.t += dt
+	if dt > r.max then r.max = dt end
+end
 local function runConn(c, ...)
 	local co = coroutine.create(c.fn)
 	threadCtx[co] = c.ctx
-	resume(co, ...)
+	if H.prof then
+		c.pk = c.pk or profKey(c.fn, c.ctx and "客户端" or "服务器")
+		local t0 = os.clock()
+		resume(co, ...)
+		profAdd(c.pk, os.clock() - t0)
+	else
+		resume(co, ...)
+	end
 end
 function Signal:Fire(...)
 	for _, c in ipairs(table.clone(self.conns)) do
@@ -489,7 +512,21 @@ local function segBox(ox, oy, oz, dx, dy, dz, e)
 	return true
 end
 
+local raycast0
 function H.raycast(o, d, params)
+	if H.prof then   -- 剖析时单独记：测试台的射线是一格一格模拟的，真 Roblox 里很快，要从别的耗时里扣掉
+		local t0 = os.clock()
+		local r = raycast0(o, d, params)
+		local k = "测试台射线（真 Roblox 里很快）"
+		local r0 = H.prof[k] or { n = 0, t = 0, max = 0 }
+		H.prof[k] = r0
+		local dd = os.clock() - t0
+		r0.n += 1 r0.t += dd if dd > r0.max then r0.max = dd end
+		return r
+	end
+	return raycast0(o, d, params)
+end
+function raycast0(o, d, params)
 	if typeof(o) ~= "Vector3" or typeof(d) ~= "Vector3" then error("Raycast 参数要是 Vector3", 3) end
 	local include = params and params.FilterType == Enum.RaycastFilterType.Include
 	local list = params and params.FilterDescendantsInstances or {}
@@ -1408,7 +1445,15 @@ function H.step(dt)
 	local guard = 0
 	while heap[1] and heap[1].at <= H.now + 1e-9 do
 		local e = hpop()
-		resume(e.co, table.unpack(e.args, 1, e.args.n))
+		if H.prof then   -- 后台任务（task.wait / delay 醒来）：按它停在哪一行记
+			local ok, src, line = pcall(debug.info, e.co, 2, "sl")
+			local key = "任务 " .. (ok and (tostring(src):gsub("^.*[%./]", "") .. ":" .. tostring(line)) or "?")
+			local t0 = os.clock()
+			resume(e.co, table.unpack(e.args, 1, e.args.n))
+			profAdd(key, os.clock() - t0)
+		else
+			resume(e.co, table.unpack(e.args, 1, e.args.n))
+		end
 		guard += 1
 		if guard > 200000 then error("任务风暴：一帧里恢复了二十万个线程") end
 	end

@@ -41,13 +41,26 @@ function Fx.init(G)
     return tw
   end
   -- 夜战：一闪的光（枪口焰、炮口、爆炸）——看不见的锚定小零件挂一个点光源，亮度很快降到 0（Future 光照下会照亮四周的地面、墙、车）
+  -- 一卡一卡（用户 11-18）：夜里每声枪响、每次爆炸都点一盏，同时亮着的太多（尤其投影子的）显卡一顿一顿——
+  --   同时最多 10 盏、投影子的最多 2 盏，离镜头太远（光照范围外再 400 格）的不点
+  local liveFlash, liveShadow = 0, 0
   local function flash(p, color, range, bright, t)
+    local cam = workspace.CurrentCamera
+    if cam and (cam.CFrame.Position - p).Magnitude > range + 400 then return nil end
+    if liveFlash >= 10 then return nil end
+    local shadows = range > 20 and liveShadow < 2
     local h = part(nil, V(0.2, 0.2, 0.2), CFrame.new(p), color, Enum.Material.SmoothPlastic, 1)
     local pl = Instance.new("PointLight")
-    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, range > 20
+    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, shadows
     pl.Parent = h
     tween(pl, t, { Brightness = 0 })
     Debris:AddItem(h, t + 0.05)
+    liveFlash += 1
+    if shadows then liveShadow += 1 end
+    task.delay(t + 0.05, function()
+      liveFlash -= 1
+      if shadows then liveShadow -= 1 end
+    end)
     return pl
   end
   G.flash = flash
@@ -270,26 +283,48 @@ function Fx.init(G)
   ---------------------------------------------------------------- 曳光、枪口火光
 
   local TRACER = { m4 = RGB(255, 220, 140), rifle = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210) }
+  -- 一卡一卡（用户 11-18）：几十个机器人一起开枪，每一发都新建曳光、枪口火、灯光、弹着点的灰——一秒几百个零件加补间。
+  --   别人打的：枪口离镜头 900 格外、弹道也没从镜头 300 格内擦过的不画；350 格外的只画曳光（不点灯、没有枪口火球和弹着灰）；
+  --   画全套的每秒最多 50 发（多出来的也只画曳光）。自己打的照旧全画
+  local gunTok, gunTokT = 50, 0
   function G.gunFx(id, a, b, mine)
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
+    local lite = false
+    if not mine then
+      local c = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or a
+      local da = (a - c).Magnitude
+      if da > 350 then
+        local u = math.clamp((c - a):Dot(d) / (L * L), 0, 1)
+        if da > 900 and (a + d * u - c).Magnitude > 300 then return end
+        lite = true
+      end
+      local now = os.clock()
+      gunTok = math.min(50, gunTok + (now - gunTokT) * 50)
+      gunTokT = now
+      if not lite then
+        if gunTok >= 1 then gunTok -= 1 else lite = true end
+      end
+    end
     local col = TRACER[id] or RGB(255, 220, 140)
     local len = math.min(L, 14)
     local tr = part(nil, V(0.12, 0.12, len), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, 0.1)
     local speed = 900
     local tw = tween(tr, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len / 2, b + d.Unit) }, Enum.EasingStyle.Linear)
     Debris:AddItem(tr, L / speed + 0.05)
-    local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
-    tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
-    Debris:AddItem(fl, 0.08)
-    if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
-    -- 弹着点一小团灰
-    task.delay(L / speed, function()
-      local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
-      tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
-      Debris:AddItem(puff, 0.45)
-    end)
+    if not lite then
+      local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
+      tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
+      Debris:AddItem(fl, 0.08)
+      if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
+      -- 弹着点一小团灰
+      task.delay(L / speed, function()
+        local puff = part(BALL, V(0.8, 0.8, 0.8), CFrame.new(b), RGB(180, 170, 150), Enum.Material.SmoothPlastic, 0.3)
+        tween(puff, 0.4, { Size = V(2.2, 2.2, 2.2), Transparency = 1 })
+        Debris:AddItem(puff, 0.45)
+      end)
+    end
     local snd = (id == "smgsd") and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")
     G.playSound(snd, a)
   end

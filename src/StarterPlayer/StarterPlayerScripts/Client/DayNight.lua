@@ -1,4 +1,4 @@
--- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪）
+-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
 --   每局从早上 7:30 开始，一圈 24 分钟（Config.DayNight.period）：白天长（7:30～17:30 约 13 分钟）、黄昏 / 清晨各一分多钟、夜里不到 6 分钟；
 --   时间按服务器开局时记下的 workspace 属性 DayT0 和服务器时钟算，所有人看到的一样
 --   跟着太阳高度渐变：亮度、环境光、天空光的颜色（黄昏偏橙）、雾、大气（白天通透、看得远）、泛光和调色（夜里冷蓝、白天中性）；
@@ -46,15 +46,28 @@ function DayNight.init(G)
   G.isNight = function() return dayK < 0.35 end
   G.clockNow = function() return clock end
 
+  -- 灯光属性只有真变了才写（用户 11-18：一卡一卡的——原来每 0.1 秒把钟点、大气、调色全写一遍，钟点一动太阳就动，阴影、天空跟着重算）；
+  --   跟属性现在的值比（不另记一份）：别处（服务器开服时的那套夜里灯光）改过的也照样改回来
+  local function put(obj, prop, v)
+    local o = obj[prop]
+    local t = typeof(v)
+    if t == "number" and type(o) == "number" and math.abs(o - v) < 1e-3 then return end
+    if t == "Color3" and typeof(o) == "Color3" and math.abs(o.R - v.R) + math.abs(o.G - v.G) + math.abs(o.B - v.B) < 2e-3 then return end
+    obj[prop] = v
+  end
   local acc = 1
   local function step(dt)
     acc += dt
     if acc < 0.1 then return end   -- 一秒十次就够顺
     acc = 0
-    local t0 = workspace:GetAttribute("DayT0")
-    if type(t0) ~= "number" then t0 = 0 end
-    local f = ((serverNow() - t0) / PERIOD) % 1
-    clock = clockAt(f)
+    if DN.lockNight then   -- 锁定晚上（用户：把白天模式去掉）：钟点停在半夜，太阳高度在地平线下面，灯光就是夜里那一套
+      clock = DN.clock or 2.3
+    else
+      local t0 = workspace:GetAttribute("DayT0")
+      if type(t0) ~= "number" then t0 = 0 end
+      local f = ((serverNow() - t0) / PERIOD) % 1
+      clock = clockAt(f)
+    end
     local alt = math.sin((clock - 6) / 12 * math.pi)   -- 太阳高度（−1 半夜 ～ 1 正午）
     dayK = smooth(-0.08, 0.22, alt)
     local dusk = (alt > -0.18 and alt < 0.3) and (1 - math.abs(alt - 0.05) / 0.25) or 0
@@ -65,37 +78,43 @@ function DayNight.init(G)
     local nv = G.nvLight == true
     local nk = 1 - dayK
     pcall(function()
-      Lighting.ClockTime = clock
-      Lighting.Brightness = lerp(NIGHT.bright, DAY.bright, dayK)
+      put(Lighting, "ClockTime", clock)
+      put(Lighting, "Brightness", lerp(NIGHT.bright, DAY.bright, dayK))
       local amb, oamb = lc(NIGHT.amb, DAY.amb, dayK), lc(NIGHT.oamb, DAY.oamb, dayK)
       local exp = lerp(NIGHT.exp, DAY.exp, dayK)
       if nv then   -- 夜视：本地增亮（白天只亮一点点）
         exp += 2.7 * nk + 0.25 * dayK
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
       end
-      Lighting.Ambient, Lighting.OutdoorAmbient, Lighting.ExposureCompensation = amb, oamb, exp
-      Lighting.ColorShift_Top = lc(lc(NIGHT.top, DAY.top, dayK), DUSK.top, dusk)
-      Lighting.ColorShift_Bottom = lc(NIGHT.bot, DAY.bot, dayK)
-      Lighting.EnvironmentDiffuseScale = lerp(NIGHT.diff, DAY.diff, dayK)
-      Lighting.EnvironmentSpecularScale = lerp(NIGHT.spec, DAY.spec, dayK)
-      Lighting.FogColor = lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk)
-      Lighting.FogEnd = 12000 + 18000 * hk
+      put(Lighting, "Ambient", amb)
+      put(Lighting, "OutdoorAmbient", oamb)
+      put(Lighting, "ExposureCompensation", exp)
+      put(Lighting, "ColorShift_Top", lc(lc(NIGHT.top, DAY.top, dayK), DUSK.top, dusk))
+      put(Lighting, "ColorShift_Bottom", lc(NIGHT.bot, DAY.bot, dayK))
+      put(Lighting, "EnvironmentDiffuseScale", lerp(NIGHT.diff, DAY.diff, dayK))
+      put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
+      put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
+      put(Lighting, "FogEnd", 12000 + 18000 * hk)
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       if atm then
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
         if nv then dens = math.max(0.06, dens * 0.55) end
-        atm.Density = dens
-        atm.Color = lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk)
-        atm.Decay = lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk)
-        atm.Glare = lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk
-        atm.Haze = lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk)
+        put(atm, "Density", dens)
+        put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
+        put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
+        put(atm, "Glare", lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk)
+        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk))
       end
       local bloom = Lighting:FindFirstChild("NightBloom")
-      if bloom then bloom.Intensity, bloom.Threshold = lerp(NIGHT.bloomI, DAY.bloomI, dayK), lerp(NIGHT.bloomT, DAY.bloomT, dayK) end
+      if bloom then
+        put(bloom, "Intensity", lerp(NIGHT.bloomI, DAY.bloomI, dayK))
+        put(bloom, "Threshold", lerp(NIGHT.bloomT, DAY.bloomT, dayK))
+      end
       local cc = Lighting:FindFirstChild("NightGrade")
       if cc then
-        cc.Saturation, cc.Contrast = lerp(NIGHT.ccSat, DAY.ccSat, dayK), lerp(NIGHT.ccCon, DAY.ccCon, dayK)
-        cc.TintColor = lc(NIGHT.ccTint, DAY.ccTint, dayK)
+        put(cc, "Saturation", lerp(NIGHT.ccSat, DAY.ccSat, dayK))
+        put(cc, "Contrast", lerp(NIGHT.ccCon, DAY.ccCon, dayK))
+        put(cc, "TintColor", lc(NIGHT.ccTint, DAY.ccTint, dayK))
       end
     end)
   end

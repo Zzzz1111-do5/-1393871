@@ -231,7 +231,7 @@ function View.init(G)
     local own = G.myVeh and G.myVeh.em == em and G.myVeh
     local target = own and own.root or v.root.CFrame
     -- 位置：自己开的直接用本地算的；别人的平滑跟
-    if own then v.cf = target else v.cf = v.cf:Lerp(target, math.min(1, dt * 12)) end
+    if own then v.cf = target else v.cf = G.follow(v, target) end
     local base = v.cf * CF(0, -d.H / 2, 0)
     -- 速度、转弯（别人的车按位置变化估）
     local pos = base.Position
@@ -406,7 +406,10 @@ function View.init(G)
   --   （人的物理本来就在本机算，挡人按真正的外形；服务器的方盒只管挨打，不挡人）。很小的、几乎透明的、发光的、转的（旋翼、螺旋桨）、尾焰不算；
   --   自己正开着的那辆不算（人在里面）
   local SOLID_KIND = { veh = true, air = true, ship = true, fort = true, lcac = true }
-  local SOLID_IN, SOLID_OUT = 280, 340
+  -- 一卡一卡（用户 11-18）：原来 280 格内的车、飞机、船全开着碰撞，这些零件每帧都在挪，物理引擎每帧都要重算——
+  --   只在步行时、70 格内才开（走路撞得上的就这么近），一帧最多新开一辆（一下子来一群也不顿）
+  local SOLID_IN, SOLID_OUT = 70, 95
+  local solidBudget = 0
   local function solidSet(v, on)
     if (v.solidOn == true) == on then return end
     v.solidOn = on
@@ -445,13 +448,19 @@ function View.init(G)
   local function stepSolid(v, here)
     if not SOLID_KIND[v.kind] or not v.model or not v.model.Parent then return end
     local mine = (G.drive and G.drive.em == v.em) or (G.fly and G.fly.em == v.em)
+    local onFoot = not G.drive and not G.fly
     local p = (v.cf and v.cf.Position) or v.root.Position
     local d = here and (p - here).Magnitude or math.huge
-    local want = (not mine) and ((v.solidOn and d < SOLID_OUT) or (not v.solidOn and d < SOLID_IN))
+    local want = onFoot and (not mine) and ((v.solidOn and d < SOLID_OUT) or (not v.solidOn and d < SOLID_IN))
+    if want and not v.solidOn then
+      if solidBudget <= 0 then return end   -- 这一帧已经开过一辆了：下一帧再开
+      solidBudget -= 1
+    end
     solidSet(v, want and true or false)
   end
 
   function G.stepView(dt)
+    solidBudget = 1
     stepDying()
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
@@ -476,8 +485,8 @@ function View.init(G)
           G.try_(v.ext.step, v, dt, camPos)
         else
           local target = v.root.CFrame
-          local moved = (target.Position - v.cf.Position).Magnitude
-          v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+          v.cf = G.follow(v, target)
+          local moved = v.fl.vel.Magnitude * 0.1   -- 走多快（腿、跳板的动画快慢）：按快照算的速度，一个更新间隔挪多远
           if v.kind == "lcac" and G.lcacUnderMine then   -- 自己正开着的这条气垫艇：按本地算的车底摆（不等服务器，和甲板上的车贴死）
             local mine = G.lcacUnderMine(em:GetAttribute("Carry"))
             if mine then v.cf = mine end
@@ -493,6 +502,54 @@ function View.init(G)
       end
     end
   end
+  -- 跟服务器位置（用户 11-18：一卡一卡的）：服务器一秒只挪十来次（飞机按驾驶的人每秒报 15 次），原来每帧往「最新收到的位置」指数逼近——
+  --   目标一跳一跳，跟的速度就一阵快一阵慢（十赫兹的顿挫，别人的车、飞机、船、士兵全是）。改成快照插值：记下最近几次收到的位置和收到的时刻，
+  --   画面晚一点点（约 1.3 个更新间隔，按实际收到的间隔自己调），在前后两次之间按时间匀速插；跳得太远（传送、重生）直接过去；
+  --   停了很久又动：先补一个「上一刻还在原地」的快照，从静止起步，不一下窜出去。返回插好的 CFrame；fl.vel 是按快照算的速度（格 / 秒）
+  local FL_N = 6
+  function G.follow(v, target, jump)
+    local now = os.clock()
+    local f = v.fl
+    if not f then
+      f = { n = 1, t = { now }, c = { target }, gap = 0.1, vel = Vector3.zero }
+      v.fl = f
+      return target
+    end
+    local n = f.n
+    local last = f.c[n]
+    if target ~= last then
+      local g = now - f.t[n]
+      if (target.Position - last.Position).Magnitude > (jump or 250) then   -- 传送、重生：清空、直接过去
+        f.n, f.t, f.c, f.vel = 1, { now }, { target }, Vector3.zero
+        return target
+      end
+      if g < 0.5 then
+        f.gap += (math.clamp(g, 0.03, 0.3) - f.gap) * 0.2
+      else   -- 停了很久才又动：补一个刚才还在原地的快照
+        if n >= FL_N then table.remove(f.t, 1) table.remove(f.c, 1) n -= 1 end
+        n += 1
+        f.t[n], f.c[n] = now - f.gap, last
+      end
+      if n >= FL_N then table.remove(f.t, 1) table.remove(f.c, 1) n -= 1 end
+      n += 1
+      f.t[n], f.c[n] = now, target
+      f.n = n
+      local dtS = f.t[n] - f.t[n - 1]
+      if dtS > 1e-3 then f.vel = f.vel:Lerp((f.c[n].Position - f.c[n - 1].Position) / dtS, 0.5) end
+    elseif now - f.t[n] > 0.6 then
+      f.vel = Vector3.zero   -- 好一阵没动了：停了
+    end
+    local rt = now - math.clamp(f.gap * 1.3, 0.06, 0.3)
+    if rt >= f.t[n] then return f.c[n] end
+    for i = n, 2, -1 do
+      local t0 = f.t[i - 1]
+      if t0 <= rt then
+        return f.c[i - 1]:Lerp(f.c[i], (rt - t0) / math.max(1e-3, f.t[i] - t0))
+      end
+    end
+    return f.c[1]
+  end
+
   -- 一辆车出错不影响别的
   function G.try_(f, ...)
     local ok, err = pcall(f, ...)
