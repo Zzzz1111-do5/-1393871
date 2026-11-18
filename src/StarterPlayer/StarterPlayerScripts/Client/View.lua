@@ -563,6 +563,47 @@ function View.init(G)
     return f.c[1]
   end
 
+  -- 准星射线打在「看得见的」实体上（评估后的修改：命中判定）：画面上的小兵、车是 G.follow 插值过的，比服务器的命中盒晚一截，
+  --   原来准星射线打的是隐形命中盒，瞄着跑动的小兵身体开枪，射线从命中盒后面擦过去、曳光弹穿过人打在地上；
+  --   现在按画面上的位置算（小兵用随姿势变的 Hit 盒，别的用 Root 盒），服务器那边按开枪的人看到的那一刻判定（Rewind.lua）。
+  --   返回最近的交点、实体模型、距离；maxLen 以内没有就返回 nil
+  local function slab(p, d, h, tmin, tmax)
+    if math.abs(d) < 1e-9 then
+      if p < -h or p > h then return nil end
+      return tmin, tmax
+    end
+    local t1, t2 = (-h - p) / d, (h - p) / d
+    if t1 > t2 then t1, t2 = t2, t1 end
+    if t1 > tmin then tmin = t1 end
+    if t2 < tmax then tmax = t2 end
+    if tmin > tmax then return nil end
+    return tmin, tmax
+  end
+  function G.viewRay(o, dir, maxLen)
+    local u = dir.Unit
+    local best, bestEm, bestT = nil, nil, maxLen
+    for em, v in pairs(views) do
+      local root = v.root
+      if root and root.Parent and em.Parent and em:GetAttribute("Driver") ~= me.UserId then
+        local hb = em:FindFirstChild("Hit") or root
+        local cf = ((v.fl and v.cf) or root.CFrame) * root.CFrame:ToObjectSpace(hb.CFrame)   -- 有快照插值的按画面上的位置
+        local size = hb.Size
+        local rel = cf.Position - o
+        local along = rel:Dot(u)
+        local r = size.Magnitude / 2
+        if along > -r and along < bestT + r and (rel - u * along).Magnitude <= r then
+          local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(u)
+          local a, b = slab(lo.X, ld.X, size.X / 2, 0, bestT)
+          if a then a, b = slab(lo.Y, ld.Y, size.Y / 2, a, b) end
+          if a then a, b = slab(lo.Z, ld.Z, size.Z / 2, a, b) end
+          if a and a < bestT then best, bestEm, bestT = o + u * a, em, a end
+        end
+      end
+    end
+    if best then return best, bestEm, bestT end
+    return nil
+  end
+
   -- 一辆车出错不影响别的
   function G.try_(f, ...)
     local ok, err = pcall(f, ...)

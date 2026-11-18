@@ -351,9 +351,12 @@ function Weapons.init(G)
     dir = spreadDir(dir.Unit, w.spread)
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
-    local hit = res and res.Position or (origin + dir * w.range)
+    -- 按现在的位置没打中人 / 车：按他屏幕上那一刻的位置再判一次（Rewind.lua，延迟补偿）
+    local rw = G.rewindShot and G.rewindShot(P, origin, dir, w.range, res)
+    local hit = (rw and rw.pos) or (res and res.Position) or (origin + dir * w.range)
     G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team })   -- t：哪一方开的枪（客户端雷达上闪红圈）
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
+    if rw then G.hitRewound(rw, w, w.dmg, src(P), w.head)
+    elseif res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
 
   KIND.proj = function(P, id, w, char, head, tool, aim)
@@ -596,9 +599,16 @@ function Weapons.init(G)
     dir = spreadDir(dir.Unit, deg or w.spread)
     params.FilterDescendantsInstances = ignore or {}
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
-    local hit = res and res.Position or (from + dir * (w.range or 500))
+    -- 真人在操作（车上的机枪、工事、舰炮）：和步枪一样做延迟补偿（Rewind.lua）；机器人、没人管的工事照旧
+    local P = srcInfo and srcInfo.P
+    local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
+    local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
     local B = srcInfo and srcInfo.bot
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil })   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
+    if rw then
+      G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)
+      return (rw.e and rw.e.root) or rw.part, rw.pos
+    end
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
     return res and res.Instance or nil, res and res.Position or nil   -- 打中了什么、打在哪（机器人、工事用来判断是不是被墙挡着）
   end
