@@ -96,6 +96,14 @@ function Bots.init(G)
     end
   end
 
+  -- 登陆艇满了、真人要上（Vehicles.lua）：这个机器人让座——收掉，过两秒重新出生（坐下一班）
+  function G.botBump(B)
+    if not B then return end
+    despawn(B)
+    B.state = "wait"
+    B.respawnAt = now() + 2
+  end
+
   local function balance()
     local want = wanted()
     for _, team in ipairs({ "atk", "def" }) do

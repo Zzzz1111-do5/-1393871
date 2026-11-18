@@ -137,6 +137,8 @@ function Fly.init(G)
       end
       v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
       c.can = v.canS
+      v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4.5)   -- 折叠机翼（用户：折叠机翼没有动画）：也是 0 / 1，显示时四秒多慢慢折起、展开
+      c.fold = v.foldS
       local onGround = c.gear > 0.9 and (v.cf.Position.Y - ground(v.cf.Position.X, v.cf.Position.Z) - d.gearH) < 1.5
       c.door = (d.sideDoor and onGround) and 1 or 0
       c.ramp = (d.ramp and onGround) and 1 or 0
@@ -741,25 +743,25 @@ function Fly.init(G)
     elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt) else st.spd -= math.min(st.spd - tgt, (st.ground and (key(Enum.KeyCode.B) and 60 or 22) or acc * 0.45) * dt) end
     if not st.ground then
       local vd = st.vdir or fwd
-      st.spd -= GR * vd.Y * 0.9 * dt   -- 沿航迹爬升掉速、俯冲加速
-      st.spd -= math.abs(st.pr) * st.spd * 0.16 * dt
-      st.spd -= (1 - math.clamp(vd:Dot(fwd), -1, 1)) * st.spd * 2.6 * dt   -- 机头和航迹差得越多（大迎角、侧滑）掉速越快
+      st.spd -= GR * vd.Y * 0.9 * dt   -- 沿航迹爬升掉速、俯冲加速（拉杆掉的能量在下面按过载算：诱导阻力）
     end
     st.spd = clamp(st.spd, 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
-    -- 想怎么转：键盘直接操纵（松开 A / D 自动摆平、压坡度自动带杆保高度）；光电吊舱 / 飞出作战区时自动驾驶
-    local pc, rc, yc
+    -- 操纵（用户：飞机操作感不够真实，很像玩具）：照真飞机的电传飞控——
+    --   S / W 是要几个 g（拉杆 = 过载指令，松杆 = 1 g），不是直接转机头：飞控自己找迎角，升力把航迹掰过去，机头先抬、航迹慢半拍跟上
+    --   A / D 是滚转角速度，松开就停在那个坡度（不再自动摆平）；坡度 33° 以内飞控补一点杆保高度（同民航客机的转弯补偿），再大就得自己拉
+    --   方向舵（Q / E）只给一点，飞控自动协调（侧滑往零收）；光电吊舱 / 飞出作战区时自动驾驶（算出俯仰角速度再换成过载）
+    local bank = math.asin(clamp(right.Y, -1, 1))
+    local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
+    local nCmd, rc, yc
     if G.mobile or not (st.eo or st.oob) then
-      pc, rc, yc = -pitchIn * rad(d.pitch), rollIn * rad(d.roll), yawIn * rad(d.yaw)
-      if not G.mobile and not st.ground then
-        local bank = math.asin(clamp(right.Y, -1, 1))
-        local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
-        if rollIn == 0 and upright then rc = clamp(bank * 2.2, -1, 1) * rad(d.roll) * 0.75 end   -- 松杆：机翼慢慢摆平
-        if pitchIn == 0 and upright then   -- 压着坡度：自动带杆，转弯不掉高度（水平转弯要的俯仰角速度 = g·tanφ·sinφ / v）
-          local phi = math.min(math.abs(bank), rad(75))
-          pc = math.min(GR * math.tan(phi) * math.sin(phi) / math.max(st.spd, 30), rad(d.pitch) * 0.8)
-        end
+      local pull = -pitchIn   -- S 拉杆为正
+      nCmd = (pull >= 0) and (1 + pull * (d.g - 1)) or (1 + pull * 3)   -- 推杆到 −2 g
+      if pitchIn == 0 and upright and not st.ground then
+        local phi = math.min(math.abs(bank), rad(75))
+        nCmd = 1 + (1 / math.cos(phi) - 1) * (1 - Map.smooth(rad(33), rad(60), phi))
       end
+      rc, yc = rollIn * rad(d.roll), yawIn * rad(d.yaw) * 0.6
     else
       local aim = autoDir()
       local l = cf:VectorToObjectSpace(aim)
@@ -768,24 +770,21 @@ function Fly.init(G)
       local w = Map.smooth(rad(2), rad(10), off)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
-      local level = math.asin(clamp(right.Y, -1, 1))   -- 目标正前方时把机翼摆平
-      rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(level * 2.5, -1, 1)) * rad(d.roll)
+      rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(bank * 2.5, -1, 1)) * rad(d.roll)
       local pe = math.atan2(l.Y, math.max(fz, 0.05))
       if fz < 0 then pe = (l.Y >= 0) and math.pi / 2 or -math.pi / 2 end
-      pc = clamp(pe * 3, -1, 1) * rad(d.pitch)
+      local pc = clamp(pe * 3, -1, 1) * rad(d.pitch)
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
-      yc = clamp(math.atan2(l.X, math.max(fz, 0.05)) * 2, -1, 1) * rad(d.yaw)
+      nCmd = 1 + pc * math.max(st.spd, 30) / GR
+      yc = 0
       if rollIn ~= 0 then rc = rollIn * rad(d.roll) end
-      if pitchIn ~= 0 then pc = -pitchIn * rad(d.pitch) end
-      if yawIn ~= 0 then yc = yawIn * rad(d.yaw) end
+      if pitchIn ~= 0 then nCmd = (pitchIn < 0) and (1 - pitchIn * (d.g - 1)) or (1 - pitchIn * 3) end
+      if yawIn ~= 0 then yc = yawIn * rad(d.yaw) * 0.6 end
     end
-    -- 过载限制：转弯角速度不超过 g × 重力 / 速度
-    local gLim = d.g * GR / math.max(st.spd, 30) / math.sqrt(st.heavy or 1)   -- 重了转不快
-    pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
-    rc, yc = rc * q, yc * q
-    st.pr = approach(st.pr, pc, 2.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢
-    st.rr = approach(st.rr, rc, rad(d.roll) * 2.8 / W ^ 0.5 * dt)
-    st.yr = approach(st.yr, yc, 1.2 / W ^ 0.6 * dt)
+    st.nCmd = clamp(nCmd, -2, d.g / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
+    st.yawCmd = yc * q
+    st.rr = approach(st.rr, rc * q, rad(d.roll) * 2.8 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢
+    if st.ground then st.rr, st.yr = 0, 0 end
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
     if st.ground and st.cat then
@@ -873,21 +872,45 @@ function Fly.init(G)
       st.vdir, st.accV = (st.ground and look) or cf.LookVector, nil
       st.sink = 0
     else
+      -- 天上（用户：很像玩具——原来航迹直接被拉向机头，压坡度不拉杆就不转）：按真飞机的道理——
+      --   升力 ∝ 速度² × 迎角，方向垂直于航迹、在机翼的上方；压坡度升力就斜过去，带着航迹转弯（竖直的那份不够重力就掉高度）；
+      --   失速速度上用最大迎角正好 1 g，再慢就托不住；过了失速迎角升力往下掉。拉得越狠诱导阻力越大（∝ 过载² / 速度²），掉速
+      --   飞控：要 nCmd 个 g 需要多大迎角（限在最大迎角里），机体俯仰角速度 = 航迹转的角速度 + 把迎角往要的那个收（零点几秒）
       cf = cf * CFrame.Angles(st.pr * dt, -st.yr * dt, -st.rr * dt)
-      -- 失速：升力不够，往下沉、机头往速度方向掉
-      local lift = clamp((st.spd / d.stall) ^ 2, 0, 1)
-      st.sink = approach(st.sink, GR * (1 - lift) * 1.8, GR * dt)
-      if lift < 0.85 then cf = cf * CFrame.Angles(-(1 - lift) * 0.9 * dt, 0, 0) end
-      -- 航迹不是机头指哪就飞哪：升力把速度方向往机头那边拉，快、升力足拉得快，重的飞机拉得慢——拉杆时机头先抬、飞机「吃」一下才转过去
-      local vd = st.vdir or cf.LookVector
-      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.7, 0.35, 3.4) / W ^ 0.7
-      vd = (vd + (cf.LookVector - vd) * math.min(1, pull * dt))
-      st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or cf.LookVector
+      local fw, upB, rtB = cf.LookVector, cf.UpVector, cf.RightVector
+      local spd = math.max(st.spd, 1)
+      local vd = st.vdir or fw
+      local aoa = math.atan2(-vd:Dot(upB), math.max(vd:Dot(fw), 0.05))
+      local beta = math.asin(clamp(vd:Dot(rtB), -1, 1))
+      local aMax = rad(d.aoaMax or 24)
+      local ka = GR / (d.stall * d.stall * aMax) * spd * spd
+      local function liftOf(a)
+        if a > aMax then return ka * aMax * math.max(0.35, 1 - (a - aMax) / aMax * 1.5) end
+        if a < -aMax * 0.6 then return -ka * aMax * 0.6 end
+        return ka * a
+      end
+      local lhat = upB - vd * vd:Dot(upB)
+      lhat = (lhat.Magnitude > 1e-3) and lhat.Unit or upB
+      local gv = V(0, -GR, 0)
+      local gPerp = gv - vd * vd:Dot(gv)
+      local L = liftOf(aoa)
+      local aNeed = clamp((st.nCmd or 1) * GR / math.max(ka, 1e-3), -aMax * 0.5, aMax * 0.95)
+      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5
+      pc = clamp(pc, -rad(d.pitch) * 0.7, rad(d.pitch))
+      st.pr = approach(st.pr, pc, rad(d.pitch) * 4 / W ^ 0.8 * dt)   -- 转动惯量：零点几秒角速度才起来，重的更慢
+      st.yr = approach(st.yr, clamp(beta * 3, -rad(d.yaw), rad(d.yaw)) + (st.yawCmd or 0), 1.5 / W ^ 0.6 * dt)   -- 自动协调：侧滑往零收
+      local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
+      vd = vd + aPerp / spd * dt
+      st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or fw
+      local n = L / GR
+      st.gLoad = n
+      st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
+      st.sink = 0
       local v0 = st.vel
-      st.vel = st.vdir * st.spd + V(0, -st.sink, 0)
+      st.vel = st.vdir * st.spd
       if v0 then   -- 加速度（镜头用：过载把镜头甩开）
-        local a = (st.vel - v0) / math.max(dt, 1e-3)
-        st.accV = (st.accV or a):Lerp(a, math.min(1, dt * 6))
+        local acc = (st.vel - v0) / math.max(dt, 1e-3)
+        st.accV = (st.accV or acc):Lerp(acc, math.min(1, dt * 6))
       end
       pos += st.vel * dt
       cf = cf - cf.Position + pos
@@ -1220,13 +1243,13 @@ function Fly.init(G)
       local lk = st.cf.LookVector
       local nYaw, nPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
       local aim = (CFrame.Angles(0, nYaw + st.lkY, 0) * CFrame.Angles(clamp(nPitch * (1 - math.min(1, math.abs(st.lkY))) + st.lkP, -1.5, 1.5), 0, 0)).LookVector
-      local back = d.L * 1.3 + 26
+      local back = d.L * 0.85 + 12   -- 用户：视角要离飞机近一点（原来一倍半机身长再往后 26 格，飞机在画面里像个玩具）
       -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
-      local want = -aim * back + V(0, d.H * 0.9 + 7, 0)
+      local want = -aim * back + V(0, d.H * 0.55 + 3.5, 0)
       st.camOff = st.camOff and st.camOff:Lerp(want, 1 - math.exp(-dt * 7)) or want
       local acc = st.accV or V()
       local push = -acc * 0.014
-      if push.Magnitude > 7 then push = push.Unit * 7 end
+      if push.Magnitude > 5 then push = push.Unit * 5 end
       st.camPush = (st.camPush or push):Lerp(push, 1 - math.exp(-dt * 4))
       local camPos = pos + st.camOff + st.camPush
       local gl = acc.Magnitude / GR   -- 大概几个 g
@@ -1236,11 +1259,11 @@ function Fly.init(G)
       local upC = (V(0, 1, 0) * 0.7 + st.cf.UpVector * 0.3)
       cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300, (upC.Magnitude > 0.1) and upC.Unit or V(0, 1, 0)) * shake
     elseif d.kind == "jet" then
-      local camPos = (st.cf * CF(0, d.H * 0.9 + 7, d.L * 1.3 + 26)).Position
+      local camPos = (st.cf * CF(0, d.H * 0.6 + 4, d.L * 0.9 + 12)).Position
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))
     else
       local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
-      local camPos = pos + V(0, d.H * 0.5, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 1.1 + 18))
+      local camPos = pos + V(0, d.H * 0.5, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 0.8 + 11))   -- 直升机也近一点
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
     end
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70

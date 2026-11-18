@@ -887,6 +887,7 @@ def("BasePart", "PVInstance", {
   TopSurface = { E("SurfaceType"), Enum.SurfaceType.Smooth }, BottomSurface = { E("SurfaceType"), Enum.SurfaceType.Smooth },
   Orientation = { T.Vector3, v3() },
   LocalTransparencyModifier = { T.number, 0 },
+  AssemblyLinearVelocity = { T.Vector3, v3() },   -- 模拟器没有物理：只记着（跳伞时服务器给人一个初速度）
 }, { events = { Touched = true, TouchEnded = true }, ro = { Position = function(o) return partCF(o).Position end }, noCreate = true })
 def("Part", "BasePart", { Shape = { E("PartType"), Enum.PartType.Block } })
 def("Terrain", "BasePart", {
@@ -1042,13 +1043,14 @@ def("Beam", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Width0 = { T.number, 1 }, Width1 = { T.number, 1 }, LightEmission = { T.number, 0 }, FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Segments = { T.number, 10 },
   CurveSize0 = { T.number, 0 }, CurveSize1 = { T.number, 0 }, Texture = { T.string, "" }, TextureSpeed = { T.number, 1 }, TextureLength = { T.number, 1 }, ZOffset = { T.number, 0 },
+  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 },
 })
 def("SpecialMesh", "Instance", { MeshType = { E("MeshType"), Enum.MeshType.Head }, Scale = { T.Vector3, v3(1, 1, 1) }, Offset = { T.Vector3, v3() },
   MeshId = { T.string, "" }, TextureId = { T.string, "" }, VertexColor = { T.Vector3, v3(1, 1, 1) } })
 def("Trail", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Lifetime = { T.number, 2 }, MinLength = { T.number, 0.1 }, MaxLength = { T.number, 0 }, WidthScale = { T.NumberSequence, NumberSequence.new(1) }, LightEmission = { T.number, 0 },
-  FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 },
+  FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 }, LightInfluence = { T.number, 1 },
 }, { methods = { Clear = function() end } })
 def("PointLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 8 }, Color = { T.Color3, newC3(1, 1, 1) }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
 def("Highlight", "Instance", {

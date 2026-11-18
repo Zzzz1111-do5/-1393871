@@ -223,6 +223,7 @@ add("ui.c4placed", "放好了炸药包（再按一次引爆）", "C4 placed (use
 add("ui.minePlaced", "埋好了反坦克地雷", "AT mine placed")
 add("ui.outOfAmmo", "没有弹药了", "Out of ammo")
 add("ui.landing", "登陆艇正在冲滩……", "Landing craft heading for the beach…")
+add("ui.boatLeave", "上了登陆艇：{1} 秒后开船（船上 {2}/{3} 人，坐满提前开）", "Aboard the landing craft: leaving in {1}s ({2}/{3} aboard, leaves early when full)")
 add("ui.boatSunk", "登陆艇被击沉了", "Your landing craft was sunk")
 add("ui.joinBalance", "人数不平衡，你被分到{1}", "Teams were unbalanced: you joined the {1}")
 add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured points stay with the Attackers")
@@ -475,6 +476,11 @@ add("coach.card.arty.1", "鼠标指向要打的地方，旁边写着距离和射
 add("coach.card.arty.2", "左键开炮，炮弹要飞几秒才落地", "LMB fires — shells take a few seconds to land")
 add("coach.card.arty.3", "右键放大看落点，空格离开", "RMB to zoom in, Space to leave")
 add("coach.gearAuto", "起落架已自动收起", "Gear retracted")
+-- 导弹视角小窗（MslCam.lua）
+add("mcam.title", "导弹视角 · {1}", "WEAPON CAM · {1}")
+add("mcam.hit", "命中", "HIT")
+add("mcam.miss", "未命中", "MISS")
+add("mcam.noTgt", "无目标", "NO TARGET")
 add("coach.free", "可驾驶", "Free")
 -- 地面载具召唤位（Depot.lua，用户：召唤点里自己选哪种车）
 add("pad.summonVeh", "召唤地面载具", "Vehicle Terminal")

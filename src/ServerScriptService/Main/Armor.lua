@@ -26,7 +26,7 @@ function Armor.init(G)
   local function used(team, cat)
     local n = 0
     for _, e in ipairs(vehicles) do
-      if e.alive and e.team == team and e.vcat == cat then n += 1 end
+      if e.alive and e.team == team and e.vcat == cat and not e.ai then n += 1 end   -- AI 开的车（AIVeh.lua）不占玩家的名额
     end
     local t = now()
     local list = pending[team][cat] or {}
@@ -217,9 +217,11 @@ function Armor.init(G)
         self.model:SetAttribute("Wreck", true)
         G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4, c = "wreck" })
         G.fx({ k = "wreck", id = self.id, p = self.root.CFrame.Position, life = 25 })
-        local list = pending[self.team][self.vcat] or {}
-        table.insert(list, now() + (CATS[self.vcat].cd or 60))
-        pending[self.team][self.vcat] = list
+        if not self.ai then   -- AI 的车被毁不给玩家记冷却
+          local list = pending[self.team][self.vcat] or {}
+          table.insert(list, now() + (CATS[self.vcat].cd or 60))
+          pending[self.team][self.vcat] = list
+        end
         local D = self.driver
         if D then
           self.driver = nil
@@ -240,6 +242,7 @@ function Armor.init(G)
     table.insert(vehicles, e)
     return e
   end
+  G.newVehicle = newVehicle   -- AIVeh.lua：AI 开的车
 
   ---------------------------------------------------------------- 气垫艇（攻方不会游的车：登陆平台旁边站在气垫艇上生成，开车的人连艇一起开，冲上岸放下车、艇自己回去）
 
@@ -269,6 +272,7 @@ function Armor.init(G)
     table.insert(lcacs, boat)
   end
   -- 车开上岸了：气垫艇放下车，停一会儿自己回去（收走）
+  G.lcacUnder, G.lcacCarry = lcacUnder, carryOn
   local function dropOff(veh)
     local boat = veh.lcac
     veh.lcac = nil
@@ -276,6 +280,7 @@ function Armor.init(G)
     if boat and boat.model then boat.model:SetAttribute("Carry", nil) end
     if boat and boat.alive then boat.veh, boat.state, boat.backAt = nil, "landed", now() + 8 end
   end
+  G.lcacDropOff = dropOff
   local function stepLcacs(dt)
     for i = #lcacs, 1, -1 do
       local boat = lcacs[i]
@@ -331,7 +336,7 @@ function Armor.init(G)
   -- 上自己队的空车（离车 18 格以内）
   function G.ACT.enterVeh(P, entId)
     local e = type(entId) == "string" and G.entById[entId] or nil
-    if not e or not e.alive or not e.def or e.driver or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
+    if not e or not e.alive or not e.def or e.driver or e.ai or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end   -- AI 开着的上不去
     if G.reservedFor(e, P) then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
