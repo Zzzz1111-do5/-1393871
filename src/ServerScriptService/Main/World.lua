@@ -265,6 +265,23 @@ function World.terrain(onProgress)
     end
     task.wait()
   end
+  -- 远海（用户 11-18：要一望无际的海，不要这种割裂感——原来 ±R 以外是客户端跟着镜头铺的一圈不透明平面，颜色、反光和地形水面不一样，
+  --   从天上看海面中间一道分界线）：±R 到 ±SEA_R 也灌成地形海水，水面和近海一模一样；只灌 24 格深，底下铺一层玄武岩，
+  --   玄武岩染成深海的颜色（地图别处不用玄武岩），透过水看着和 110 格深的海一样暗。再往外才是客户端的平面（Scenery.lua），已经在雾里了
+  local SR = Map.SEA_R or R
+  if SR > R then
+    pcall(function() T:SetMaterialColor(MAT.Basalt, RGB(18, 58, 70)) end)
+    local FD = 24
+    for x = -SR, SR - TILE, TILE do
+      for z = -SR, SR - TILE, TILE do
+        if not (x >= -R and x < R and z >= -R and z < R) then
+          T:FillBlock(CF(x + TILE / 2, -FD - 2, z + TILE / 2), V(TILE, 4, TILE), MAT.Basalt)
+          T:FillBlock(CF(x + TILE / 2, -FD / 2, z + TILE / 2), V(TILE, FD, TILE), MAT.Water)
+        end
+      end
+      task.wait()
+    end
+  end
   local CH = 64 * Map.RES
   local seen, list = {}, {}
   for _, b in ipairs(Map.landBoxes()) do

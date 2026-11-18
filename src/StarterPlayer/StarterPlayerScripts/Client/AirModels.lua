@@ -703,7 +703,8 @@ function AM.build(d, team, load)
         --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
         --   ② 加力火焰：喷口上两层粒子（锁在零件上跟着飞机走）——里层蓝白的焰芯短，外层橙色的焰舌长、边缘透明、一直在跳
         --   ③ 马赫节：加力时焰流里几颗发亮的扁椭球，一颗比一颗淡、微微闪
-        --   ④ 热浪：喷口后面几团玻璃材质的透明球（高画质下玻璃会折射后面的景物），一直抖、越往后越大越淡；油门过两成半才有，加力时接在火焰后面
+        --   ④ 热浪（用户 11-18：热浪太假了——原来是喷口后面几团抖动的玻璃球，一个个球的轮廓看得出来）：改成锁在喷口上的一股很淡的气流粒子，
+        --      往后拉长、变粗、散掉，受月光照（不自己发光）；油门过两成半才有、越大越浓，加力时接在火焰后面；离镜头远了关掉
         local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
@@ -752,14 +753,31 @@ function AM.build(d, team, load)
             table.insert(M.flames, dm)
           end
         end
-        if not E.cold then
-          for k = 1, 4 do   -- 热浪
-            local sz = E.r * (1.3 + k * 0.5)
-            local hz = add(newPart(m, V(sz, sz, sz), RGB(226, 228, 232), MAT.Glass, BALL, 1), base, "ab", hotItem({ haze = k, seed = (j * 3.1 + k * 1.7) % 6.28 }))
-            hz.p.Name = "Haze"
-            hz.p.CastShadow = false
-            table.insert(M.flames, hz)
-          end
+        if not E.cold then   -- 热浪：一股很淡的气流
+          local hs = newPart(m, V(E.r * 1.1, E.r * 1.1, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          hs.Name = "Haze"
+          hs.CastShadow = false
+          local hz = add(hs, base, "ab", hotItem({ haze = true }))
+          local r = E.r
+          local pe = Instance.new("ParticleEmitter")
+          pe.Name = "HeatHaze"
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+          pe.EmissionDirection = Enum.NormalId.Back   -- 从喷口往后
+          pe.LockedToPart = true                      -- 跟着飞机走（不锁的话几百格每秒拖成一长条）
+          pe.LightEmission, pe.LightInfluence = 0, 1  -- 不自己发光：只是被照到的一点灰白
+          pe.Lifetime = NumberRange.new(0.18, 0.3)
+          pe.Speed = NumberRange.new(r * 30, r * 40)
+          pe.SpreadAngle = Vector2.new(6, 6)
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-120, 120)
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.8), NumberSequenceKeypoint.new(1, r * 2.8) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.97), NumberSequenceKeypoint.new(0.25, 0.92), NumberSequenceKeypoint.new(1, 1) })
+          pe.Color = ColorSequence.new(RGB(196, 200, 206))
+          pe.Rate = 0
+          pe.Enabled = false
+          pe.Parent = hs
+          hz.pe = pe
+          table.insert(M.flames, hz)
         end
       end
     end
@@ -1322,16 +1340,13 @@ function AM.pose(M, cf, c, now, world)
       elseif it.diamond then
         out = cf * b0 * CF(0, 0, r * (1.4 + it.diamond * 1.35) * (0.7 + ab * 0.45))
         if ab > 0.15 then tr = math.clamp(0.28 + it.diamond * 0.15 + 0.08 * math.sin((now or 0) * 41 + it.diamond * 2.3) - ab * 0.12, 0, 0.95) end
-      else   -- 热浪：几团玻璃球抖着往后排；离镜头远了不画
-        local k2 = it.haze
-        if not it.cold and t > 25 and M.near then
-          local ph = (now or 0) * (10 + k2 * 2.6) + it.seed
-          local j = r * 0.16
-          local z0 = ((ab > 0) and r * (5.5 + 3 * ab) or r * 0.6) + r * k2 * 1.9
-          out = cf * b0 * CF(math.sin(ph) * j, math.cos(ph * 1.27) * j, z0 + math.sin(ph * 0.71) * r * 0.25)
-          tr = ((ab > 0) and 0.9 or 0.93) + k2 * 0.012 + 0.015 * math.sin(ph * 2.9) + (it.mild and 0.02 or 0)   -- 很淡：主要看玻璃折射把后面的景物扭一扭（涡扇再淡一点）
-        else
-          out = cf * b0
+      else   -- 热浪：气流粒子（加力时接在火焰后面）；油门过两成半、离镜头近才放，分 6 档，变了才改（每帧改粒子属性费）
+        out = cf * b0 * CF(0, 0, (ab > 0) and r * (4.5 + 3 * ab) or r * 0.4)
+        local q = (not it.cold and t > 25 and M.near) and math.clamp(math.floor((math.min(t, 100) - 25) / 15) + 1 + ((ab > 0) and 1 or 0), 1, 6) or 0
+        if q ~= it.q and it.pe then
+          it.q = q
+          it.pe.Enabled = q > 0
+          if q > 0 then it.pe.Rate = (it.mild and 10 or 16) * q end
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end

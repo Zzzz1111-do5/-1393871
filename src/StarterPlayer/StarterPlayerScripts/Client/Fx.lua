@@ -691,18 +691,18 @@ function Fx.init(G)
     s.v = e.v
   end
   -- 热诱弹：一串亮点往后下方撒开，拖着白烟
-  local function flares(e)
+  local function flares(e)   -- 一组几发（按住 X 连续放：服务器每 0.25 秒一组 2 发）
     local v0 = (typeof(e.v) == "Vector3") and e.v or V()
-    for i = 1, 4 do
+    for i = 1, (e.n or 4) do
       local dir = (-v0.Unit * 0.4 + V((math.random() - 0.5) * 1.6, -0.4 - math.random() * 0.4, (math.random() - 0.5) * 1.6)).Unit
       local f = part(BALL, V(1.4, 1.4, 1.4), CFrame.new(e.p), RGB(255, 236, 170), Enum.Material.Neon, 0)
       local p1 = e.p + v0 * 0.35 + dir * (40 + i * 8)
       tween(f, 1.8, { CFrame = CFrame.new(p1 - V(0, 30, 0)), Transparency = 1, Size = V(0.6, 0.6, 0.6) })
       if i <= 2 then tween(glowOn(f, RGB(255, 222, 160), 34, 5), 1.8, { Brightness = 0 }) end   -- 夜里热诱弹把飞机照亮
       Debris:AddItem(f, 1.85)
-      for k = 1, 4 do
-        task.delay(k * 0.25, function()
-          local q = e.p:Lerp(p1, k / 4) - V(0, 30 * (k / 4) ^ 2, 0)
+      for k = 1, 3 do   -- 每发拖三团烟（连着放时零件不至于太多）
+        task.delay(k * 0.3, function()
+          local q = e.p:Lerp(p1, k / 3) - V(0, 30 * (k / 3) ^ 2, 0)
           local sm = part(BALL, V(1.5, 1.5, 1.5), CFrame.new(q), RGB(235, 235, 230), Enum.Material.SmoothPlastic, 0.35)
           tween(sm, 1.6, { Size = V(5, 5, 5), Transparency = 1 })
           Debris:AddItem(sm, 1.65)

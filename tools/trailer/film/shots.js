@@ -6,6 +6,7 @@ import { seaY, seaNormal, SEA } from './world.js';
 import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META, pl10, hhq9, pac2, j20SideBay, j20Extras, breakApart, patriotNoses } from './models.js';
 import { explosion, muzzle, burst, flare, flarePos, fire, missile, spray, beamMesh, flameMesh } from './fx.js';
 import { fadeIO } from './titles.js';
+import { BIG, s2w, s2wV, heightAt, placeOnGround } from './bigmap.js';
 
 const NIGHT_FOG = new THREE.Color(0x0e1420);
 const RED_T = new THREE.Color(1, 0.32, 0.12), GREEN_T = new THREE.Color(0.45, 1, 0.35);
@@ -48,6 +49,7 @@ export async function setupShot(S, env) {
   SEA.amp = 1;
   env.fx.wind.set(6, 0, -2);
   env.worldVisible(true);
+  env.terrainAt(...(S.terrain || [BIG.fx, BIG.fz]), S.terrainOpt || {});   // 地形网格以哪儿为中心（离镜头近的地方密）
   const sh = await S.setup(env, add);
   sh.dur = S.dur; sh.t0 = S.t0;
   const d0 = sh.dispose;

@@ -127,6 +127,8 @@ function Fly.init(G)
       else
         for k, a in pairs(CH) do c[k] = em:GetAttribute(a) or 0 end
         if em:GetAttribute("BayS") == nil then c.bayS = c.bay end
+        v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4)   -- 折翼：服务器按 0.1 一档推过来，这边平滑成动画
+        c.fold = v.foldS
       end
       v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
       c.can = v.canS
@@ -147,6 +149,7 @@ function Fly.init(G)
       local dist = (v.cf.Position - camPos).Magnitude
       local every = (own or dist < 1500) and 1 or ((dist < 4000) and 2 or 4)
       if v.frame % every == 0 then AM.pose(M, v.cf, c, os.clock()) end
+      if G.aeroStep then G.aeroStep(v, dt, own or nil, camPos) end   -- 机翼凝结雾、翼尖涡流、蒸汽锥、音爆（Aero.lua）
     end,
   }
 
@@ -220,10 +223,10 @@ function Fly.init(G)
   local ring = ui.frame(gui, UDim2.fromOffset(300, 300), UDim2.fromScale(0.5, 0.5), HUD, 1, Vector2.new(0.5, 0.5))
   ring.Name = "HudRing"
   ui.round(ring, 2000)
-  ui.stroke(ring, HUD, 2, 0.15)
+  ui.stroke(ring, HUD, 1.5, 0.55)   -- 细、淡（用户：这个圈太小了挡视野——放大到画面边上，线也别抢眼）
   ring.Visible = false
-  for _, a in ipairs({ { 0.5, 0, 2, 14 }, { 0.5, 1, 2, 14 }, { 0, 0.5, 14, 2 }, { 1, 0.5, 14, 2 } }) do   -- 上下左右四个刻度
-    ui.frame(ring, UDim2.fromOffset(a[3], a[4]), UDim2.fromScale(a[1], a[2]), HUD, 0.1, Vector2.new(0.5, 0.5))
+  for _, a in ipairs({ { 0.5, 0, 2, 12 }, { 0.5, 1, 2, 12 }, { 0, 0.5, 12, 2 }, { 1, 0.5, 12, 2 } }) do   -- 上下左右四个刻度
+    ui.frame(ring, UDim2.fromOffset(a[3], a[4]), UDim2.fromScale(a[1], a[2]), HUD, 0.45, Vector2.new(0.5, 0.5))
   end
   local ringText = hud("", UDim2.fromOffset(240, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   ringText.Name = "RingText"
@@ -331,7 +334,7 @@ function Fly.init(G)
   local touch = nil
   local touchUI = nil
   if UIS.TouchEnabled then
-    touch = { up = false, down = false, fire = false }
+    touch = { up = false, down = false, fire = false, flare = false }
     local lb = ui.frame(gui, UDim2.fromOffset(90, 170), UDim2.new(0, 20, 1, -320), RGB(0, 0, 0), 1)
     local rb = ui.frame(gui, UDim2.fromOffset(250, 230), UDim2.new(1, -260, 1, -340), RGB(0, 0, 0), 1)
     local function hold(parent, text, size, pos, key)
@@ -352,7 +355,7 @@ function Fly.init(G)
     hold(lb, "▼", UDim2.fromOffset(80, 80), UDim2.fromOffset(5, 90), "down")
     hold(rb, "●", UDim2.fromOffset(96, 96), UDim2.fromOffset(150, 130), "fire")
     tap(rb, "1/2", UDim2.fromOffset(80, 150), function() G.flyNextWeapon() end)
-    tap(rb, "X", UDim2.fromOffset(150, 60), function() G.R.Drive:FireServer({ op = "flare" }) end)
+    hold(rb, "X", UDim2.fromOffset(60, 60), UDim2.fromOffset(150, 60), "flare")   -- 热诱弹：按住连续放
     tap(rb, "G", UDim2.fromOffset(80, 80), function() if st.d.kind == "jet" and not st.ground then st.gearWant = (st.gearWant > 0.5) and 0 or 1 end end)
     tap(rb, "R", UDim2.fromOffset(10, 150), function() G.flyNextTarget() end)
     tap(rb, "F", UDim2.fromOffset(10, 80), function() G.R.Drive:FireServer({ op = "exit" }) end)
@@ -759,20 +762,20 @@ function Fly.init(G)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
       local level = math.asin(clamp(right.Y, -1, 1))   -- 目标正前方时把机翼摆平
-      rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(level * 2.5, -1, 1)) * rad(d.roll)
+      rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(level * 2.5, -1, 1)) * rad(d.roll) * 0.88
       local pe = math.atan2(l.Y, math.max(fz, 0.05))
       if fz < 0 then pe = (l.Y >= 0) and math.pi / 2 or -math.pi / 2 end
-      pc = clamp(pe * 2.4, -1, 1) * rad(d.pitch)   -- 增益比原来低一点（用户：转弯稍微多一些迟钝感）
+      pc = clamp(pe * 2.1, -1, 1) * rad(d.pitch)   -- 增益再低一点（用户 11-18 两次：转弯稍微多一些迟钝感、再笨重一点）
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
       yc = clamp(math.atan2(l.X, math.max(fz, 0.05)) * 2, -1, 1) * rad(d.yaw)
-      if rollIn ~= 0 then rc = rollIn * rad(d.roll) end
+      if rollIn ~= 0 then rc = rollIn * rad(d.roll) * 0.88 end
     end
     -- 过载限制：转弯角速度不超过 g × 重力 / 速度
     local gLim = d.g * GR / math.max(st.spd, 30) / math.sqrt(st.heavy or 1)   -- 重了转不快
     pc = clamp(pc, -math.min(rad(d.pitch), gLim) * 0.6, math.min(rad(d.pitch), gLim)) * q
     rc, yc = rc * q, yc * q
-    st.pr = approach(st.pr, pc, 2.1 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢；比原来（2.6）再沉一点
-    st.rr = approach(st.rr, rc, rad(d.roll) * 2.8 / W ^ 0.5 * dt)
+    st.pr = approach(st.pr, pc, 1.6 / W ^ 0.8 * dt)   -- 角速度要一会儿才起来、停下（转动惯量）：重的更慢；2.6 → 2.1 → 1.6（用户又说再笨重一点）
+    st.rr = approach(st.rr, rc, rad(d.roll) * 2.2 / W ^ 0.5 * dt)
     st.yr = approach(st.yr, yc, 1.0 / W ^ 0.6 * dt)
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(rad(d.pitch), 1e-3), -1, 1), clamp(st.rr / math.max(rad(d.roll), 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
@@ -785,7 +788,7 @@ function Fly.init(G)
         pos = start + V(0, d.gearH, 0)
         cf = CFrame.lookAt(pos, pos + dir)
         st.cat.full = (st.thr >= 90) and ((st.cat.full or 0) + dt) or 0
-        if st.thr >= 90 and st.cat.full > 1.2 then   -- 推满油门一会儿就弹（空格改成下飞机了）
+        if st.thr >= 90 and st.cat.full > 1.2 and (st.foldK or 0) < 0.02 then   -- 推满油门一会儿就弹（空格改成下飞机了）；机翼还没展开完不弹
           st.cat.state, st.cat.s, st.cat.v = "launch", 0, 0
           if G.shake then G.shake(0.4) end
           if G.playSound then G.playSound("boom", pos, 1.6) end
@@ -872,7 +875,7 @@ function Fly.init(G)
       if lift < 0.85 then cf = cf * CFrame.Angles(-(1 - lift) * 0.9 * dt, 0, 0) end
       -- 航迹不是机头指哪就飞哪：升力把速度方向往机头那边拉，快、升力足拉得快，重的飞机拉得慢——拉杆时机头先抬、飞机「吃」一下才转过去
       local vd = st.vdir or cf.LookVector
-      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.5, 0.35, 3.2) / W ^ 0.7   -- 航迹跟上机头再慢一点（原来 1.7）
+      local pull = math.clamp(lift * st.spd / math.max(d.stall, 1) * 1.25, 0.3, 2.8) / W ^ 0.7   -- 航迹跟上机头再慢一点（1.7 → 1.5 → 1.25）：拉杆后飞机「吃」一下才转过去
       vd = (vd + (cf.LookVector - vd) * math.min(1, pull * dt))
       st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or cf.LookVector
       local v0 = st.vel
@@ -923,7 +926,12 @@ function Fly.init(G)
     st.c.thr = st.thr
     st.c.flap = (st.gear > 0.5 and st.spd < d.stall * 1.6) and 1 or 0
     st.c.can = (st.ground and st.thr < 5 and st.spd < 3) and 1 or 0
-    st.c.fold = (d.fold and st.ground and st.thr < 5 and st.spd < 3 and AD.onDeck(Map, pos.X, pos.Z)) and 1 or 0
+    -- 折翼（用户：飞机机翼折叠没有动画）：原来直接 0 / 1 一下就折好；现在约 4 秒折起 / 展开（真机十几秒，游戏里缩短），
+    --   一上来就停在甲板上的直接是折着的；推油门就开始展开，展开完才能弹射
+    local foldWant = (d.fold and st.ground and st.thr < 5 and st.spd < 3 and AD.onDeck(Map, pos.X, pos.Z)) and 1 or 0
+    if st.foldK == nil then st.foldK = foldWant end
+    st.foldK = approach(st.foldK, foldWant, dt / 4)
+    st.c.fold = st.foldK
     st.c.hook = (d.gear and d.gear.hook and st.gear > 0.9 and not st.ground) and 1 or 0
     st.c.brk = (key(Enum.KeyCode.B)) and 1 or 0
     st.c.rpm = st.thr
@@ -1046,8 +1054,8 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" then   -- 鼠标瞄准回到机头正前方
       local lk = st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-    elseif k == Enum.KeyCode.X then
-      G.R.Drive:FireServer({ op = "flare" })
+    elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
+      st.flareHold = true
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
@@ -1074,6 +1082,7 @@ function Fly.init(G)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
     if st and io.KeyCode == Enum.KeyCode.F then st.missile = false end
+    if st and io.KeyCode == Enum.KeyCode.X then st.flareHold = false end
   end)
   UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
     if gp or not st or not (st.uav or st.eo) or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
@@ -1219,9 +1228,9 @@ function Fly.init(G)
     elseif d.kind == "jet" and not G.mobile and st.pilot then
       -- 镜头在飞机后上方顺着鼠标瞄准方向看（按着键盘时瞄准方向跟着机头，镜头也就跟着机头）；地平线跟着坡度歪三成
       local aim = aimDirNow()
-      local back = d.L * 1.3 + 26
+      local back = d.L * 1.0 + 15   -- 用户：视野距离飞机可以再近一点（原来 1.3 倍机长 + 26 格）
       -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
-      local want = -aim * back + V(0, d.H * 0.9 + 7, 0)
+      local want = -aim * back + V(0, d.H * 0.75 + 5, 0)
       st.camOff = st.camOff and st.camOff:Lerp(want, 1 - math.exp(-dt * 7)) or want
       local acc = st.accV or V()
       local push = -acc * 0.014
@@ -1235,7 +1244,7 @@ function Fly.init(G)
       local upC = (V(0, 1, 0) * 0.7 + st.cf.UpVector * 0.3)
       cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300, (upC.Magnitude > 0.1) and upC.Unit or V(0, 1, 0)) * shake
     elseif d.kind == "jet" then
-      local camPos = (st.cf * CF(0, d.H * 0.9 + 7, d.L * 1.3 + 26)).Position
+      local camPos = (st.cf * CF(0, d.H * 0.75 + 5, d.L * 1.0 + 15)).Position
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))
     else
       local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
@@ -1315,9 +1324,14 @@ function Fly.init(G)
       st.lock, st.lockT = nil, 0
     end
     -- 报给服务器（每秒 15 次）
+    -- 热诱弹：按住 X（手机按住 X 键）每 0.3 秒放一组
+    if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
+      st.flareNext = os.clock() + 0.3
+      G.R.Drive:FireServer({ op = "flare" })
+    end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
-      st.sendT = 1 / 15
+      st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
       G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
@@ -1364,9 +1378,11 @@ function Fly.init(G)
       local rdeg = (not w and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
       if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end
       local vh = cam.ViewportSize.Y
-      local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), 110, vh * 0.86)
+      -- 用户：圈太小、挡视野——原来按导引头离轴角画，小的只有一两百像素、正好套在飞机和前方上；现在至少框到画面高度的八成，
+      --   飞机和前方留空，离轴角大的弹（近距格斗弹）再大一点；武器名写在圈里靠下
+      local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), vh * 0.8, vh * 0.94)
       ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav
-      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 + 6), bon and not st.eo and not st.uav
+      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav
       ringText.Text = wid and (T("aw." .. wid) .. "  ×" .. left(wid)) or (gid and (T("aw." .. gid) .. "  ×" .. left(gid))) or ""
       local lk = st.cf.LookVector
       hdgText.Text = string.format("%03d", math.floor((math.deg(math.atan2(lk.X, -lk.Z)) + 360) % 360 + 0.5) % 360)

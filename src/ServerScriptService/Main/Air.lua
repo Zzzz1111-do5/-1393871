@@ -313,6 +313,7 @@ function Air.init(G)
     e.onGround = onGround
     e.pass = {}
     e.lastSync = now()
+    e.syncT, e.syncSlack = now(), 160   -- 位置报告的校验（sync）：从这一刻起算
     e.gunT = 0
     e.trig = false
     e.aim = nil
@@ -667,17 +668,20 @@ function Air.init(G)
   end
 
   -- 热诱弹：一次一组 4 发；正在追这架飞机的红外弹六成被骗走，雷达弹一成五
+  -- 热诱弹（用户：改成按住连续放）：客户端按住 X 每 0.3 秒发一次，一次放 2 发（原来按一下放 4 发、冷却 1.2 秒）；
+  --   每放一组，追着这架飞机的空空弹有一定机会被骗走（连着放几组，红外弹多半被骗走）
   local function flare(P, e)
     local t = now()
     if e.flares <= 0 or t < (e.flareNext or 0) then return end
-    e.flares = math.max(0, e.flares - 4)
-    e.flareNext = t + 1.2
+    local n = math.min(2, e.flares)
+    e.flares = math.max(0, e.flares - n)
+    e.flareNext = t + 0.25
     e.model:SetAttribute("Flares", e.flares)
     local p = e.root.CFrame.Position
-    G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V() })
+    G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V(), n = n })
     for _, s in ipairs(G.shots) do
       if s.tgt == e and s.w and (s.w.kind == "aam") then
-        local chance = (s.w.seeker == "ir") and 0.6 or 0.15
+        local chance = (s.w.seeker == "ir") and 0.33 or 0.07
         if (s.pos - p).Magnitude < 2200 and math.random() < chance then
           s.tgt = { decoy = true, pos = p - (e.vel or V()) * 0.15, vel = (e.vel or V()) * 0.35 + V(0, -10, 0) }
           s.tgId = nil
@@ -696,17 +700,34 @@ function Air.init(G)
     G.damageEnt(e, 1e6, e.lastHitBy or { team = "none", name = why or "crash" })
   end
 
+  -- 飞得快一卡一卡（用户 11-18）：原来按「两次收到报告的间隔」算允许飞多远（最少按 0.02 秒）——报告挤在一起到（客户端帧率低、网络抖、
+  --   服务器一帧处理两包），高速时一包挪的距离就超了，服务器把飞机拉回上一个位置，客户端一顿一顿地往回跳。
+  --   现在按「离上次认下的位置过了多久」算（挤在一起到的两包，第二包允许的距离也是按真实经过的时间），再加一个会慢慢回满的余量；
+  --   超出一点的不拉回客户端、服务器这边先挪到允许的地方，差得太远（瞬移、出界）才拉回
   local function sync(P, e, d)
     local cf = d.cf
     if typeof(cf) ~= "CFrame" then return end
     local t = now()
-    local dt = math.max(0.02, t - (e.lastSync or t))
+    local dtA = math.max(0, t - (e.syncT or t))
+    e.syncT = t
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local dist = (p1 - p0).Magnitude
     local def = e.def
-    local maxD = def.vMax * 1.5 * dt + 25
-    local bad = dist > maxD or p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
-    e.lastSync = t
+    e.syncSlack = math.min(160, (e.syncSlack or 160) + dtA * 120)
+    local allow = def.vMax * 1.6 * dtA
+    local bad = p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
+    if not bad and dist > allow then
+      local over = dist - allow
+      if over <= e.syncSlack then
+        e.syncSlack -= over
+      elseif over > e.syncSlack + 600 then
+        bad = true   -- 差得太远：瞬移、改了速度
+      else
+        cf = CFrame.new(p0 + (p1 - p0).Unit * (allow + e.syncSlack)) * cf.Rotation   -- 服务器先挪到允许的地方，不拉回客户端，下一包接着追
+        p1 = cf.Position
+        e.syncSlack = 0
+      end
+    end
     if bad then
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame, v = e.vel })
       return
