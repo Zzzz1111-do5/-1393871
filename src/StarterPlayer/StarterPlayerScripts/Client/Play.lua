@@ -47,10 +47,12 @@ function Play.init(G)
   local scope = { Visible = false }   -- 狙击镜、望远镜开镜：圆形目镜和光学效果在 Scope.lua（这里只记开没开）
 
   function G.hitMarker(kind)
+    hitX.Position = G.hitMarkerAt or UDim2.fromScale(0.5, 0.5)   -- 开飞机时标在炮口指的地方（Fly.lua 每帧设），不然在屏幕中间
     hitX.TextColor3 = (kind == "kill") and RGB(255, 70, 60) or ((kind == "head") and RGB(255, 220, 80) or Color3.new(1, 1, 1))
     hitX.TextTransparency = 0
     hitT = now()
     if G.playSound then G.playSound((kind == "kill") and "killding" or "hit") end
+    if G.onHitMarker then G.onHitMarker(kind) end
   end
 
   ---------------------------------------------------------------- 武器栏
@@ -119,13 +121,19 @@ function Play.init(G)
     if cur0 then lastTool = cur0 end
     hum:EquipTool(t)
   end
+  -- 按数字键拿第几件：已经拿着就不动（原来是收起来、变成空手——用户：切到 2 号武器就卡住，多半是连按 / 按住时收起来了）；
+  --   0.15 秒内只认一次（键盘连发、和别的界面同时收到按键）
+  local lastEquipT = 0
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 or G.drive then return end
     local t = tools()[i]
-    if not t then return end
-    if t.Parent == char then hum:UnequipTools() else equipTool(t) end
+    if not t or t.Parent == char then return end
+    local now = os.clock()
+    if now - lastEquipT < 0.15 then return end
+    lastEquipT = now
+    equipTool(t)
   end
   -- 滚轮 / 手柄：换下一把、上一把（d = 1 / −1）
   local function cycle(d)
@@ -139,6 +147,11 @@ function Play.init(G)
   end
   G.equipSlot = equip
   G.equipCycle = cycle
+  G.equipTool = equipTool
+  -- 换回上一把（平板界面收起时：TacPad.lua）；没有上一把就拿第一件
+  G.equipLast = function()
+    if lastTool and lastTool.Parent and lastTool.Parent ~= player.Character then equipTool(lastTool) else equip(1) end
+  end
 
   local function drawBar()
     for _, s in ipairs(slots) do s:Destroy() end
@@ -254,6 +267,7 @@ function Play.init(G)
     local S = G.S
     if not S or S.phase ~= "battle" then return end
     local w = W[id]
+    if not w or w.kind == "pad" then return end   -- 战术平板不开火（拿在手上平板界面开着，点的是平板上的地图）
     local t = now()
     if t < cur.nextShot then return end
     if w.kind == "heal" then
@@ -311,6 +325,10 @@ function Play.init(G)
     if gp or G.drive then return end
     if G.menuOpen and G.menuOpen() then return end   -- 挂载编辑器里点 3D 的飞机（ViewportFrame 不吞点击）不能开枪
     local k = io.KeyCode
+    if G.tacOpen and G.tacOpen() and (io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.MouseButton2
+      or k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three or k == Enum.KeyCode.Four or k == Enum.KeyCode.Five) then
+      return   -- 平板开着：鼠标点平板、数字键选支援（TacPad.lua），不切枪、不开火
+    end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       cur.firing = true
       tryFire(false)
@@ -325,6 +343,7 @@ function Play.init(G)
     elseif k == Enum.KeyCode.Two then equip(2)
     elseif k == Enum.KeyCode.Three then equip(3)
     elseif k == Enum.KeyCode.Four then equip(4)
+    elseif k == Enum.KeyCode.Five then equip(5)
     elseif k == Enum.KeyCode.Q then   -- 切回上一把
       if lastTool and lastTool.Parent and lastTool.Parent ~= player.Character then equipTool(lastTool) else cycle(1) end
     end

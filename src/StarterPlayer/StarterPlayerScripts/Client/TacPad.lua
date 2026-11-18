@@ -1,5 +1,6 @@
 -- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
---   步行时按 B（手机：右边「平板」按钮）拿出来：人端着平板（服务器 Air.lua 的 G.uavTablet，别人看得到），手里的枪先收起；画面中间一块加固平板——
+--   平板是副武器（用户：不要按 B 召唤平板，平板做成物品；R 币 99 解锁）：部署时装备栏副武器选上，按它的数字键（手机：右边「平板」按钮）拿在手上
+--     就打开、切回别的武器（Q）就关上：人端着平板（服务器 Air.lua 的 G.uavTablet，别人看得到）；画面中间一块加固平板——
 --     左边一列支援：空投载具、空投补给、精确打击、机炮扫射、集束轰炸（Config.TacPad），每样这一局还剩几次（圆点）、冷却还有多久
 --       （次数、冷却都是服务器 Tactical.lua 管的，随状态发来 G.S.tac）；1–5 选、或者点卡片；
 --     右边是群岛地图（借 MapUI 那张图，以自己为中心放大；滚轮缩放、右键拖动），一圈呼叫范围；左键点目标，
@@ -167,7 +168,7 @@ function TacPad.init(G)
   brand.Visible = not mob
   local capLabels = {}
   if not mob then
-    local caps = { { "1–5", "tac.kSel" }, { "ENTER", "tac.kCall" }, { "B", "tac.kClose" } }
+    local caps = { { "1–5", "tac.kSel" }, { "ENTER", "tac.kCall" }, { "Q", "tac.kClose" } }   -- Q 换回上一把武器 = 收起平板
     local x = DW - BR
     for i = #caps, 1, -1 do
       local c = caps[i]
@@ -656,17 +657,38 @@ function TacPad.init(G)
     if G.scopeOn then return false end
     return true
   end
-  local function openPad()
+  -- 平板这件工具（装备栏副武器）：手上的、背包里的
+  local function isPad(t) return t and t:IsA("Tool") and t:GetAttribute("Weapon") == "tablet" end
+  local function heldPad()
+    local ch = me.Character
+    local t = ch and ch:FindFirstChildOfClass("Tool")
+    return isPad(t) and t or nil
+  end
+  local function padTool()
+    for _, holder in ipairs({ me.Character, me:FindFirstChildOfClass("Backpack") }) do
+      if holder then
+        for _, t in ipairs(holder:GetChildren()) do if isPad(t) then return t end end
+      end
+    end
+    return nil
+  end
+  G.tacHasPad = function() return padTool() ~= nil end
+  local function openPad(fromTool)
     if open or not canUse() then return end
+    if not fromTool and not heldPad() then   -- 没拿在手上：拿出平板（工具拿到手上时再打开）；没带平板就提示去装备栏选
+      local t = padTool()
+      local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+      if t and hum then
+        if G.equipTool then G.equipTool(t) else hum:EquipTool(t) end
+      elseif G.toast then
+        G.toast(T("tac.needPad"), "info")
+      end
+      return
+    end
     open, closing, sending = true, nil, nil
     gui.Enabled = true
     fit()
-    -- 枪收起来（两只手端着平板），收平板时再拿回来
-    local ch = me.Character
-    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-    local tool = ch and ch:FindFirstChildOfClass("Tool")
-    prevTool = tool
-    if tool and hum then hum:UnequipTools() end
+    prevTool = nil   -- 手上拿的就是平板（收起时换回之前那把：Play.lua 的 G.equipLast）
     -- 借地图（收起时还给右下角的雷达）
     if G.mapMount and G.mapRoot then
       G.mapMount(holder, UDo(10, 10))
@@ -690,10 +712,11 @@ function TacPad.init(G)
     pcall(function() G.R.Act:FireServer("tacPad", false) end)
     local ch = me.Character
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-    local tool = prevTool
     prevTool = nil
-    if not keepTool and tool and hum and hum.Health > 0 and not G.drive and tool.Parent and tool.Parent ~= ch and not tool.Parent:IsA("Model") then
-      hum:EquipTool(tool)
+    -- 平板界面上收起的（收起按钮、呼叫成功）：平板放回去，换回拿平板之前那把；切枪切走的（keepTool）不用管
+    if not keepTool and heldPad() and hum and hum.Health > 0 and not G.drive then
+      hum:UnequipTools()
+      if G.equipLast then G.equipLast() end
     end
     local mine = {}
     closing = mine
@@ -703,6 +726,17 @@ function TacPad.init(G)
   end
   G.tacOpen = function() return open end
   G.tacToggle = function() if open then closePad() else openPad() end end
+  -- 平板拿到手上就打开，收起来（切枪、Q、死了）就关上
+  local function watch(ch)
+    ch.ChildAdded:Connect(function(c)
+      if isPad(c) then task.defer(function() if c.Parent == ch then openPad(true) end end) end
+    end)
+    ch.ChildRemoved:Connect(function(c)
+      if isPad(c) and open then closePad(true) end
+    end)
+  end
+  if me.Character then watch(me.Character) end
+  me.CharacterAdded:Connect(watch)
   G.tacSelect = function(id) if TP.items[id] then sel = id end end
 
   local function callNow()
@@ -730,14 +764,12 @@ function TacPad.init(G)
     return prevMsg(kind, key, ...)
   end
 
-  -- 键：B 拿出 / 收起；开着时 Enter 呼叫、1–5 选
+  -- 键：开着时 Enter 呼叫、1–5 选（这时 Play.lua 不拿数字键切枪）；不再有 B 键（用户：不要让 B 召唤平板）
   local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5 }
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local k = io.KeyCode
-    if k == Enum.KeyCode.B then
-      if open then closePad() else openPad() end
-    elseif open and k == Enum.KeyCode.Return then
+    if open and k == Enum.KeyCode.Return then
       callNow()
     elseif open and KEYS[k] and ORDER[KEYS[k]] then
       sel = ORDER[KEYS[k]]
@@ -808,6 +840,7 @@ function TacPad.init(G)
     if d.rotor2 then c.spin2 = (c.spin2 + d.rotor2.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
     if d.tail then c.spinT = (c.spinT + 18 * dt) % (math.pi * 2) end
     if d.prop then c.spinP = (c.spinP + 30 * dt) % (math.pi * 2) end
+    if d.fanEng then c.spinF = ((c.spinF or 0) + 45 * dt) % (math.pi * 2) end   -- A-10 的涡扇风扇
     pcall(AM.pose, P.M, cf, c, os.clock())
   end
   local function job(f, kill)
@@ -1133,7 +1166,7 @@ function TacPad.init(G)
   end
   G.fxExtra = G.fxExtra or {}
   G.fxExtra.tac = fxTac
-  -- 战场氛围（服务器 Ambience.lua）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
+  -- 战场氛围（服务器原来的 Ambience.lua，用户嫌假炮火怪已删掉，现在没人发这个特效；留着以后用）：两架战机从目标上空低空掠过——前后错开、一左一右，四百多格 / 秒，开着加力；只是画的，打不着也打不到人
   G.fxExtra.flyby = function(e)
     if typeof(e.p) ~= "Vector3" then return end
     local team = (e.team == "def") and "def" or "atk"

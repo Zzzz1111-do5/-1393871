@@ -190,8 +190,10 @@ local function writeChunk(T, x0, z0)
       if h > ymax then ymax = h end
     end
   end
-  if ymax <= -D + 0.5 then return 0 end   -- 整块都是远海（海水、海底已经铺了）
-  local yb0 = math.floor((math.max(ymin, -D) - RES) / RES)
+  -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
+  local DW = math.min(D, 30)
+  if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
+  local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
   local M, O = table.create(N), table.create(N)
@@ -246,13 +248,20 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
+    T.GrassLength = 0.3   -- 草叶调短：默认 0.7 有两格来高，把机器人小兵的腿（两格）和沙袋下半截都埋住了（用户：很多士兵半截身子在地里）
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do
       T:FillBlock(CF(x + TILE / 2, -D - 2, z + TILE / 2), V(TILE, 4, TILE), MAT.Sand)
-      T:FillBlock(CF(x + TILE / 2, -D / 2, z + TILE / 2), V(TILE, D, TILE), MAT.Water)
+      -- 海水按 60 格一层灌（海加深到 110 格后一块 2048 见方要七百多万体素：分层每次不到四百万，免得一次填太大）
+      local y1 = 0
+      while y1 > -D do
+        local h = math.min(60, y1 + D)
+        T:FillBlock(CF(x + TILE / 2, y1 - h / 2, z + TILE / 2), V(TILE, h, TILE), MAT.Water)
+        y1 -= h
+      end
     end
     task.wait()
   end

@@ -67,8 +67,9 @@ if side == "def" then
   local hint = hintGui and hintGui:FindFirstChild("Hint")
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
-  -- 夜视默认开着（用户：不管什么情况默认都开着）：出生就开、不用提示；按 N 关掉，再按又开
-  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生夜视就开着：全屏调色、没有镜筒框、没有「按 N」提示")
+  -- 锁定晚上（用户 11-18：把白天模式去掉）：一直是半夜；出生自动开夜视（全屏调色、没有镜筒框），开着就不提示「按 N」；按 N 关掉、再按又开
+  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("锁定晚上（钟点 %.1f）", lighting.ClockTime or -1))
+  check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生自动开夜视：全屏调色、没有镜筒框、不提示「按 N」")
   T.tap(Enum.KeyCode.N)
   R.run(1)
   check(C.nvgOn and not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "按 N 关掉")

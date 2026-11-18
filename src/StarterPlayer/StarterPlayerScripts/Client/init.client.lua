@@ -25,7 +25,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -66,9 +66,10 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
   { "tacpad", function(dt) if G.stepTacPad then G.stepTacPad(dt) end end },
   { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end },   -- 主菜单背后的场景（火光、镜头）
-  { "coach", function(dt) if G.stepCoach then G.stepCoach(dt) end end },
+  { "coach", function(dt) if G.stepCoach then G.stepCoach(dt) end end },   -- 新手指导：按键提示、三步卡、目标箭头、队友 / 空车标记
+  { "daynight", function(dt) if G.stepDayNight then G.stepDayNight(dt) end end },   -- 昼夜更替（DayNight.lua）
   { "airfx", function(dt) if G.stepAirFx then G.stepAirFx(dt) end end },   -- 飞机机动的翼尖涡流、机翼水汽、蒸汽锥、音爆
-  { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗   -- 新手指导：按键提示、三步卡、目标箭头、队友 / 空车标记
+  { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗
 RunService.RenderStepped:Connect(function(dt)
   for _, s in ipairs(steps) do
     local ok, err = pcall(s[2], dt)

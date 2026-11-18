@@ -32,6 +32,15 @@ function Bots.init(G)
       if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
     end
     rig.Name = "BotRig"
+    -- 先在 workspace 高空放一下让关节解算（各零件摆到站姿的位置），再收进 ReplicatedStorage：直接放进去的话零件位置没解算，
+    --   客户端按零件量「根零件到脚底」量出来偏小，小人被摆低、腿埋在地里（用户：士兵卡在地底下）
+    pcall(function()
+      local hrp = rig:FindFirstChild("HumanoidRootPart")
+      if hrp then hrp.Anchored = true end
+      rig:PivotTo(CFrame.new(0, 4000, 0))
+      rig.Parent = workspace
+      for _ = 1, 3 do game:GetService("RunService").Heartbeat:Wait() end
+    end)
     rig.Parent = RS
   end)
 

@@ -146,7 +146,15 @@ function Hud.init(G)
     c.Parent = box
   end
   ui.stroke(box, GREEN, 1.5, 0.35)
-  local ZOOM = 6100 * ((G.Map and G.Map.K) or 1) * (MS / 2) / RC.range   -- 整张地图（6100 × K 格见方，MapUI；地图放大了 K 倍）画多大：半径正好是雷达范围
+  -- 雷达范围跟着坐的东西变（用户：飞机的雷达有点近）：步兵 RC.range，地面载具 RC.veh，直升机 RC.heli，固定翼 RC.jet；换的时候慢慢缩放
+  local curR = RC.range
+  local function wantRange()
+    local f = G.fly
+    if f and f.d then return (f.d.kind == "jet") and (RC.jet or 9000) or (RC.heli or 4000) end
+    if G.drive then return RC.veh or 900 end
+    return RC.range
+  end
+  local MAPW = 6100 * ((G.Map and G.Map.K) or 1)   -- 整张地图（6100 × K 格见方，MapUI；地图放大了 K 倍）：画多大让半径正好是雷达范围
   local function ring(k)   -- 距离环
     local r = ui.frame(box, UDim2.fromScale(k, k), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
     r.ZIndex = 18
@@ -239,7 +247,7 @@ function Hud.init(G)
   end
   local function scan(center, mine)
     table.clear(contacts)
-    local R2 = (RC.range * 1.05) ^ 2
+    local R2 = (curR * 1.05) ^ 2
     local function add(pos, team, kind, model)
       local dx, dz = pos.X - center.X, pos.Z - center.Z
       if dx * dx + dz * dz <= R2 then table.insert(contacts, { pos = pos, team = team, kind = kind, model = model }) end
@@ -499,6 +507,9 @@ function Hud.init(G)
     -- 视线从自己的眼睛（开车时从镜头）往外打：第三人称的镜头可能在墙外头
     local head = ch and ch:FindFirstChild("Head")
     local eye = (head and not G.drive) and head.CFrame.Position or cp
+    curR += (wantRange() - curR) * math.min(1, dt * 3)
+    rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
+    local ZOOM = MAPW * (MS / 2) / curR
     if root and root.Parent == box and G.mapUV then
       if G.mapTheme then G.mapTheme("radar") end
       local u, v = G.mapUV(pos.X, pos.Z)
@@ -539,7 +550,7 @@ function Hud.init(G)
     end
     used = 0
     table.clear(G.radarShown)
-    local px = (MS / 2) / RC.range
+    local px = (MS / 2) / curR
     local function place(b, wpos)
       b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
     end
@@ -565,7 +576,7 @@ function Hud.init(G)
         table.remove(pings, i)
       else
         local dx, dz = p.pos.X - pos.X, p.pos.Z - pos.Z
-        if dx * dx + dz * dz <= RC.range * RC.range then
+        if dx * dx + dz * dz <= curR * curR then
           local b = blip()
           shape(b, "ping", FOE, math.clamp(age / RC.ping, 0, 1) * 0.9)
           b.f.Size = UDim2.fromOffset(8 + age * 6, 8 + age * 6)

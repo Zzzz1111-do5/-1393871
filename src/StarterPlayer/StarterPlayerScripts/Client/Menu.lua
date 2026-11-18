@@ -1,5 +1,5 @@
 -- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
---   进服先到这里（还没定阵营时），盖在选阵营界面上面：左上玩家名、军衔、经验条；左边一列大卡片（背景是导入的原模型：坦克、战斗机、直升机、军舰，没导入就不放）——
+--   进服先到这里（还没定阵营时），盖在选阵营界面上面：左上玩家名、军衔、经验条；左边一列大卡片（只有字：用户嫌卡片里放坦克、战斗机这些模型奇怪）——
 --   进入战斗（→ 选阵营 / 部署）· 选择阵营 · 操作说明 · 模型与授权（Sketchfab 作者署名，CC-BY 要求的）；右下游戏名、测试版、版本号
 --   部署界面右上角「菜单」能回来
 local Players = game:GetService("Players")
@@ -15,8 +15,6 @@ function Menu.init(G)
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
   local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
-  local Tint = require(script.Parent:WaitForChild("Tint"))
-  local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈：摆的时候转回来
   local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
@@ -53,18 +51,8 @@ function Menu.init(G)
     return s
   end
 
-  -- 背景：近黑；右边一个大的原模型（自己阵营的主战坦克 / 战斗机，导入了才有），左边压暗
+  -- 背景：近黑，左边压暗（原来右边还放一个大的原模型，和卡片里的模型一起去掉了）
   local bg = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)   -- 后面的场景搭好了就透明（MenuStage.lua），没搭好照旧近黑
-  local hero = Instance.new("ViewportFrame")
-  hero.Name = "Hero"
-  hero.BackgroundTransparency = 1
-  hero.Size = UDim2.fromScale(0.62, 0.86)
-  hero.Position = UDim2.fromScale(1, 0.5)
-  hero.AnchorPoint = V2(1, 0.5)
-  hero.Ambient = RGB(70, 74, 84)
-  hero.LightColor = RGB(255, 214, 170)
-  hero.LightDirection = Vector3.new(-0.7, -0.45, 0.55)
-  hero.Parent = bg
   -- 左边压暗（卡片、玩家名压在上面看得清）；后面的场景开着时浅一点，像参考图那样卡片后面还透出火光和废墟
   local shade = frame(bg, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0)
   do
@@ -99,52 +87,12 @@ function Menu.init(G)
   local xpBg = frame(content, UDim2.fromOffset(CW, 2), UDim2.fromOffset(X0, 142), WHITE, 0.85)
   local xpFill = frame(xpBg, UDim2.fromScale(0, 1), nil, WHITE, 0)
 
-  ---------------------------------------------------------------- 卡片背景里的原模型（导入了才放）
-
+  -- 模型署名（「模型与授权」面板用）
   local META = {}
   for _, k in ipairs({ "ImportedMeta", "ImportedAir", "ImportedShip" }) do
     local ok, r = pcall(function() return require(RS:WaitForChild(k, 3)) end)
     if ok and type(r) == "table" then META[k] = r end
   end
-  local KIND = { Veh = { "ImportedMeta", "V_" }, Air = { "ImportedAir", "A_" }, Ship = { "ImportedShip", "S_" } }
-  local previewKey
-  local function preview(kind, key)   -- 飞机先找最新版（<键>_v3：有活动部件、修过朝反的面），再找 _v2、老版
-    if kind == "Air" then return previewKey(kind, key .. "_v3") or previewKey(kind, key .. "_v2") or previewKey(kind, key) end
-    return previewKey(kind, key)
-  end
-  function previewKey(kind, key)
-    local K = KIND[kind]
-    local meta = META[K[1]]
-    local info = meta and meta.m and meta.m[key]
-    local imp = RS:FindFirstChild("Imported")
-    local f = imp and imp:FindFirstChild(kind)
-    f = f and f:FindFirstChild(key)
-    if not info or not f then return nil end
-    local m, n = Instance.new("Model"), 0
-    for name, p in pairs(info.parts) do
-      local src = f:FindFirstChild(K[2] .. key .. "__" .. name)
-      if src and src:IsA("BasePart") then
-        local q = Tint.fix(src:Clone(), src)
-        q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
-        q.Size = Vector3.new(p.s[1], p.s[2], p.s[3])
-        q.CFrame = CFrame.new(p.c[1], p.c[2], p.c[3]) * TURN
-        if p.col and not q:FindFirstChildOfClass("SurfaceAppearance") then q.Color = RGB(p.col[1], p.col[2], p.col[3]) end
-        if p.a then q.Transparency = 1 - p.a end
-        q.Parent = m
-        n += 1
-      end
-    end
-    if n == 0 then m:Destroy() return nil end
-    return m
-  end
-  -- 每张卡用哪个模型（按自己的阵营）：坦克、战斗机、直升机、军舰
-  local SHOW = {
-    atk = { { "Veh", "ztz99" }, { "Air", "j31" }, { "Air", "z10w" }, { "Ship", "t055" } },
-    def = { { "Veh", "m1a2v3" }, { "Air", "f22" }, { "Air", "ah64" }, { "Ship", "ddg125" } },
-  }
-  local LOOK = Vector3.new(0.72, -0.26, 0.64).Unit   -- 从左前上方看（车头、机头朝 −Z）
-  local HERO = { atk = { "Veh", "ztz99" }, def = { "Veh", "m1a2v3" } }
-  local HERO_LOOK = Vector3.new(-0.62, -0.2, 0.76).Unit   -- 大图从右前方看，车头朝左边的卡片
 
   ---------------------------------------------------------------- 卡片
 
@@ -163,21 +111,7 @@ function Menu.init(G)
     b.ClipsDescendants = true
     b.Parent = content
     local st = stroke(b, 0.88)
-    local vp = Instance.new("ViewportFrame")
-    vp.BackgroundTransparency = 1
-    vp.Size = UDim2.new(0.66, 0, 1, 0)
-    vp.Position = UDim2.fromScale(1, 0)
-    vp.AnchorPoint = V2(1, 0)
-    vp.Ambient = RGB(120, 122, 130)
-    vp.LightColor = RGB(255, 236, 214)
-    vp.LightDirection = Vector3.new(-0.5, -0.7, 0.4)
-    vp.Parent = b
-    -- 模型左边淡出到卡片底色，字压在上面也看得清
-    local fade = frame(b, UDim2.new(0.5, 0, 1, 0), UDim2.fromScale(0.34, 0), RGB(10, 12, 14), 0)
-    local g = Instance.new("UIGradient")
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
-    g.Parent = fade
-    local K = { b = b, st = st, vp = vp, model = nil }
+    local K = { b = b, st = st }
     K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.GothamMedium)
     K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.GothamBold)
     K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.GothamMedium)
@@ -310,7 +244,6 @@ function Menu.init(G)
 
   ---------------------------------------------------------------- 刷新
 
-  local lastTeam = nil
   function G.stepMenu(dt) if stageOn then Stage.step(dt) end end
   function G.refreshMenu(S)
     if not S then return end
@@ -327,7 +260,6 @@ function Menu.init(G)
     local live = Stage.active()
     bg.BackgroundTransparency = live and 1 or 0
     shade.BackgroundTransparency = live and 0.4 or 0
-    hero.Visible = not live
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName
@@ -357,18 +289,6 @@ function Menu.init(G)
     gTitle.Text = T("game.title")
     gSub.Text = T("menu.beta")
     gVer.Text = tostring(Config.Version or "")
-    -- 卡片背景的模型（换了阵营重放；还没导入的不放）
-    if lastTeam ~= team and G.viewFit then
-      lastTeam = team
-      for i, K in ipairs(cards) do
-        local s = SHOW[team][i]
-        local m = s and preview(s[1], s[2])
-        G.viewFit(K.vp, m, 1.0, LOOK)
-        K.model = m
-      end
-      local h = HERO[team]
-      G.viewFit(hero, h and preview(h[1], h[2]), 1.05, HERO_LOOK)
-    end
   end
   -- 部署界面右上角「菜单」
   function G.showMenu()

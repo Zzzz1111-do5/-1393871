@@ -527,7 +527,7 @@ function Round.init(G)
     return r and { weapons = table.clone(r.weapons), hp = r.hp, speed = r.speed, role = id } or nil
   end
   local LAUNCH_ROLE = { rpg = "at", manpads = "aa", mortar = "mortar" }
-  local function kitFromLoadout(L)
+  local function kitFromLoadout(L, P)
     if type(L) ~= "table" then return nil end
     local list, pick = {}, {}
     for _, slot in ipairs(Config.Loadout) do
@@ -536,6 +536,10 @@ function Round.init(G)
         v = (not slot.none) and slot.opts[1] or nil
       elseif type(v) ~= "string" or not table.find(slot.opts, v) then
         return nil
+      end
+      if v and P and G.passOkFor and not G.passOkFor(P, v) then   -- R 币解锁的（战术平板）没买：这一格空着出去
+        G.msg(P.pl, "bad", "pass.locked", { k = "weapon." .. v })
+        v = (not slot.none) and slot.opts[1] or nil
       end
       pick[slot.id] = v
       if v then table.insert(list, v) end
@@ -584,7 +588,7 @@ function Round.init(G)
   function G.ACT.deploy(P, choice, spawnId)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
-    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice)
+    local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice, P)
     if not kit then return end
     local sp = nil
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
@@ -694,6 +698,7 @@ function Round.init(G)
   end
 
   -- 数圈里的人：活着的玩家（不在飞机、舰艇上）、机器人、地面载具
+  -- 返回：圈里攻方、守方的人数（真人 + 机器人 + 地面载具）、圈里的真人、攻方真人数、守方真人数
   local function countIn(s)
     local a, d = 0, 0
     local who = {}
@@ -712,19 +717,23 @@ function Round.init(G)
         end
       end
     end
+    local ra, rd = a, d
     if G.countAt then
       local ba, bd = G.countAt(s.x, s.z, s.y, CC.r)
       a += ba
       d += bd
     end
-    return a, d, who
+    return a, d, who, ra, rd
   end
 
+  -- 占领速度：多出来的人数（可以是小数：机器人只算 CC.botW 个人）连续地插值——多 1 人 slow 秒、多 2 人两头之间、多 3 人以上 fast 秒，不到 1 人按比例慢下去
   local function capRate(diff)
     if diff <= 0 then return 0 end
-    if diff >= 3 then return 1 / CC.fast end
-    local mid = 2 / (CC.slow + CC.fast)   -- 多 2 人：两头之间
-    return (diff == 1) and (1 / CC.slow) or mid
+    local s1, s2, s3 = 1 / CC.slow, 2 / (CC.slow + CC.fast), 1 / CC.fast
+    if diff < 1 then return s1 * diff end
+    if diff < 2 then return s1 + (s2 - s1) * (diff - 1) end
+    if diff < 3 then return s2 + (s3 - s2) * (diff - 2) end
+    return s3
   end
 
   local finish   -- 下面定义（拿下最后一个阶段时要调）
@@ -779,12 +788,18 @@ function Round.init(G)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       if isActive(s) then
-        local a, d, who = countIn(s)
+        local a, d, who, ra = countIn(s)
         s.atk, s.def = a, d
         s.pressed = a > 0
         local old = s.prog
-        if a > d then
-          s.prog = math.min(1, s.prog + capRate(a - d) * dt)
+        -- PvP（用户：进攻方登陆过快，这是 PvP，不要让 AI 带领节奏）：机器人只算 CC.botW 个人；攻方有真人在服务器上时，
+        --   圈里没有攻方真人就不涨——机器人自己占不下来，节奏跟着真人走（攻方全是机器人时照样能慢慢占）
+        local needReal = teamCount("atk", true) > 0
+        local effA = ra + (a - ra) * (CC.botW or 1)
+        if a > d and (not needReal or ra > 0) then
+          s.prog = math.min(1, s.prog + capRate(effA - d) * dt)
+        elseif a > d then
+          -- 只有机器人压着：不涨也不退（守方得来把人清掉）
         else
           s.prog = math.max(0, s.prog - dt / CC.decay)
         end
@@ -818,6 +833,7 @@ function Round.init(G)
     R.prepEnds = now() + RC.prep
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
+    pcall(function() workspace:SetAttribute("DayT0", workspace:GetServerTimeNow()) end)   -- 昼夜：每局从早上开始（客户端 DayNight.lua 按这个算）
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets

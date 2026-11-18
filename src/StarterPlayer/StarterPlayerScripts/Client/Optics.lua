@@ -68,16 +68,22 @@ function Optics.init(G)
 
   -- 嵌在游戏里的：后台生成一次，之后复制
   local gen, busy, failed = {}, {}, {}
+  local running = 0   -- 正在现生成的件数：一次只生成一件（几件一起生成，手机上那几秒会掉帧、看着像卡住）
   local function build(key)
     if gen[key] or busy[key] or failed[key] then return end
     busy[key] = true
     task.spawn(function()
+      while running > 0 do task.wait(0.1) end
+      running += 1
       local ok, err = pcall(function()
         local D = require(RS:WaitForChild("OpticMesh", 5):WaitForChild(key, 5))
         local AS = game:GetService("AssetService")
         local list = {}
         for name, d in pairs(D.parts) do
-          local pos, nrm, uv, idx = unb64(d.pos), unb64(d.nrm), unb64(d.uv), unb64(d.idx)
+          local pos = unb64(d.pos) task.wait()   -- 大件解码一段让一帧
+          local nrm = unb64(d.nrm) task.wait()
+          local uv = unb64(d.uv) task.wait()
+          local idx = unb64(d.idx) task.wait()
           local b, ub = d.b, d.ub
           local em = AS:CreateEditableMesh()
           local vid, nid, uid = table.create(d.n), table.create(d.n), table.create(d.n)
@@ -126,6 +132,7 @@ function Optics.init(G)
         end
         gen[key] = list
       end)
+      running -= 1
       busy[key] = nil
       if not ok then
         failed[key] = true

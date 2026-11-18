@@ -19,7 +19,8 @@ Map.K, Map.HK = K, HK
 Map.R = 12288          -- 地形（含海水）范围 ±R（2048 的倍数：海水按 2048 一块灌）；攻方机场岛最南到 10300 左右
 Map.PLAY = 36864       -- 飞机的作战区 ±PLAY（再往外自动掉头）：约 ±13 公里
 Map.SEA_LIM = 28672    -- 船能开到 ±SEA_LIM：约 ±10 公里（地形海水外面是客户端铺的远海平面）
-Map.SEA_DEPTH = 12     -- 远海水深（格）
+Map.SEA_DEPTH = 110    -- 远海水深（格，约 40 米；用户：海太浅了不真实——原来 12 格，四米多）
+Map.SHELF = 14         -- 近岸浅滩最深多少格（海滩外缓坡：登陆艇、两栖车照样冲得上滩），再往外陡降到 SEA_DEPTH
 Map.MAXH = 290 * HK    -- 高度系数 1 对应多少格（主峰约 500）
 Map.RES = 4            -- 地形体素边长
 
@@ -249,8 +250,11 @@ local function natural(x, z)
     if -di < off then off, k = -di, 0.12 end
   end
   -- 岸线外头几格从陆地边上的 +0.6 平滑降到 −1.2（原来在岸线上直接断开 1.8 格：车开到水线就是一道坎）；海滩的缓些
+  --   近岸是缓坡浅滩（最深 SHELF 格），离岸 150 格以外大陆坡往下陡降（每格降 0.28），四百多格外就是远海的深度
   local lip = 1.8 * smooth(0, (k < 0.1) and 10 or 6, off)
-  return -min(Map.SEA_DEPTH, lip - 0.6 + off * k), -off
+  local shelf = min(Map.SHELF, lip - 0.6 + off * k)
+  local slope = max(0, off - 50 * K) * 0.28
+  return -min(Map.SEA_DEPTH, shelf + slope), -off
 end
 
 -- 压平之后、压路之前的高度；第三个返回值是压平的权重（0～1，路在压平的场地里不再改高度）

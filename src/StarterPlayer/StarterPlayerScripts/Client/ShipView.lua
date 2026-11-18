@@ -482,11 +482,10 @@ function ShipView.init(G)
   local function viewStep(v, dt, camPos)
     local em, d, M = v.em, v.d, v.M
     local own = G.sail and G.sail.em == em and G.sail or nil
-    -- 位置：自己开的用本地的；别人的平滑跟（离得太远直接跳过去）
+    -- 位置：自己开的用本地的；别人的快照插值（View.lua G.follow：匀速，不一顿一顿；跳太远直接过去）
     local target = v.root.CFrame * CF(0, -(d.H / 2 - d.draft), 0)
     if own and own.cf then v.base = own.cf
-    elseif (target.Position - v.base.Position).Magnitude > 160 then v.base = target
-    else v.base = v.base:Lerp(target, math.min(1, dt * 6)) end
+    else v.base = G.follow(v, target, 160) end
     local pos = v.base.Position
     local far = (pos - camPos).Magnitude
     v.frame += 1

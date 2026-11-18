@@ -1,4 +1,4 @@
--- Roblox全面大战场——夜视仪（客户端）：交战全在夜里（World.lighting），步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
+-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
 --   开着：整个画面都是夜视（本地增亮、绿色荧光调色、灯光强烈泛光、雾变淡一点看得更远、画面轻微闪烁；用户：要全屏的夜视，不要望远镜那样四周一圈黑）；
 --     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
 --   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 是切车上瞄准镜的夜视 / 热成像（Drive.lua），
@@ -16,7 +16,6 @@ function Night.init(G)
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local on = false
-  local saved = nil
   local fx = {}
 
   ---------------------------------------------------------------- 开关
@@ -27,12 +26,8 @@ function Night.init(G)
     if want == fxOn then return end
     fxOn = want
     if want then
-      local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-      saved = { exp = Lighting.ExposureCompensation, amb = Lighting.Ambient, oamb = Lighting.OutdoorAmbient, dens = atm and atm.Density, atm = atm }
-      Lighting.ExposureCompensation = saved.exp + 2.7
-      Lighting.Ambient = RGB(52, 60, 56)
-      Lighting.OutdoorAmbient = RGB(96, 110, 100)
-      if atm then atm.Density = math.max(0.12, (saved.dens or 0.3) * 0.55) end
+      -- 增亮、环境光、大气变淡交给昼夜（DayNight.lua 每次更新时按 G.nvLight 加上去：白天开夜视只亮一点点）
+      G.nvLight = true
       local cc = Instance.new("ColorCorrectionEffect")
       cc.Name = "NVGrade"
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.32, 0.04, RGB(120, 255, 158)
@@ -49,13 +44,7 @@ function Night.init(G)
     else
       for _, e in ipairs(fx) do e:Destroy() end
       fx = {}
-      if saved then
-        Lighting.ExposureCompensation = saved.exp
-        Lighting.Ambient = saved.amb
-        Lighting.OutdoorAmbient = saved.oamb
-        if saved.atm and saved.dens then saved.atm.Density = saved.dens end
-        saved = nil
-      end
+      G.nvLight = false
       G.irStrobes(false)
     end
   end
@@ -125,15 +114,17 @@ function Night.init(G)
       for _ = 1, 40 do
         if not ch.Parent or not hum or hum.Health <= 0 then return end
         if me.Character == ch then
+          -- 昼夜更替以后：天黑了才自动打开（白天出生不开）；白天开着的到天亮了不关，玩家自己按 N
+          if G.isNight and not G.isNight() then break end
           setOn(true)
           if on then break end
         end
         task.wait(0.25)
       end
     end)
-    task.delay(2.5, function()   -- 万一没开（自己按 N 关了）：出生、部署界面关掉以后再提示
+    task.delay(2.5, function()   -- 万一没开（自己按 N 关了）：出生、部署界面关掉以后再提示（只在天黑时）
       local hum = ch and ch.Parent and ch:FindFirstChildOfClass("Humanoid")
-      if hum and hum.Health > 0 and not on then showHint(10) end
+      if hum and hum.Health > 0 and not on and not (G.isNight and not G.isNight()) then showHint(10) end
     end)
   end
   me.CharacterAdded:Connect(onChar)

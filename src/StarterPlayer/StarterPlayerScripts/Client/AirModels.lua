@@ -673,6 +673,9 @@ function AM.build(d, team, load)
         end
       end
       local base = CF(E.x, E.y, E.z)
+      if E.fan then   -- 涡扇发动机进气口里的风扇（A-10）：跟着油门转，转快了是一圈模糊的盘
+        rotor({ hub = V(E.x, E.y, E.z - E.fan), r = E.r * 1.2, blades = 14, chord = 0.32, dir = 1 }, "r", "spinF", "z")
+      end
       if E.prop then   -- 推进式螺旋桨
         ball(V(E.r * 2.4, E.r * 2.4, 2.2), base * CF(0, 0, 0.4), skinD)
         local hub = rotor({ hub = V(E.x, E.y, E.z + 1.2), r = E.prop, blades = 3, chord = 0.55, dir = 1 }, "r", "spinP", "z")
@@ -700,7 +703,7 @@ function AM.build(d, team, load)
         --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
         --   ② 加力火焰：两条从喷口往后拉的光带（Beam，正对镜头）——外层橙色，粗→细、实→透明，长度跟着加力；里层蓝白的焰芯短一些；
         --      每帧长短、粗细轻轻抖一点（火焰在跳）；军推以下不画火焰
-        local hot = { base = base, r = E.r, cold = E.cold, vec = tvcVec }
+        local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }   -- mild：涡扇（A-10），热芯暗一点
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
           or neon(V(0.12, E.r * 1.55, E.r * 1.55), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), CYL)
@@ -1276,7 +1279,11 @@ function AM.pose(M, cf, c, now, world)
       local tr = 1
       if it.core then
         out = cf * b0 * CF(0, 0, -0.25) * ALONG_Z   -- 凹进喷口一点：从侧面看不见，从后面看喷口里发亮
-        if not it.cold then
+        if it.mild then   -- 涡扇：喷口里只有暗暗的橙红（排气温度低）
+          tr = math.clamp(0.98 - t / 100 * 0.32, 0.62, 0.98)
+          local col = RGB(110, 36, 18):Lerp(RGB(196, 84, 36), math.clamp(t / 100, 0, 1))
+          if it.p.Color ~= col then it.p.Color = col end
+        elseif not it.cold then
           tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
           local col = (ab > 0) and RGB(255, 190, 110):Lerp(RGB(255, 242, 214), ab) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end

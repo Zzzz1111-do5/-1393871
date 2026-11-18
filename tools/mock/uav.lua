@@ -119,7 +119,8 @@ if st and e then
   check(d < e.def.L, string.format("镜头在机头（离机身中心 %.1f 格）", d))
   T.tap(Enum.KeyCode.Z)
   R.run(0.6)
-  check(st.zoom == 3 and cam.FieldOfView < 30, string.format("Z 变焦到 3×（视场 %.0f°）", cam.FieldOfView))
+  check(st.zoom == 4 and cam.FieldOfView < 30, string.format("Z 变焦到 4×（视场 %.0f°）", cam.FieldOfView))
+  T.tap(Enum.KeyCode.Z)   -- 12×、30×、回到 1×
   T.tap(Enum.KeyCode.Z)
   T.tap(Enum.KeyCode.Z)
   T.mouse(true, 640, 360, Enum.UserInputType.MouseButton2)
@@ -131,20 +132,19 @@ if st and e then
   R.run(0.2)
   check(st.dcam == "nose", "V 换回前视")
   -- 最下面一排按键（Coach.lua）：遥控无人机的几个键（看过三步卡以前一直显示），最后一个是「空格 收起平板」；全文在 F1
-  check(C.coachMode and C.coachMode() == "uav" and seen("^" .. (C.T("coach.stowPad"):gsub("%p", "%%%0")) .. "$") and seen("^" .. (C.T("coach.pitch"):gsub("%p", "%%%0")) .. "$"),
-    "最下面一排是遥控无人机的几个键（抬头 / 低头……收起平板）")
+  check(C.coachMode and C.coachMode() == "uav" and seen("^" .. (C.T("coach.stowPad"):gsub("%p", "%%%0")) .. "$") and seen("^" .. (C.T("coach.aimSteer"):gsub("%p", "%%%0")) .. "$"),
+    "最下面一排是遥控无人机的几个键（方向（准心）……收起平板）")
 end
 
 print("③ 起飞，空格收起平板：无人机自动盘旋，人能走了")
 if st and e then
-  T.key(Enum.KeyCode.LeftShift, true)   -- Shift 加油门、按住 S 拉杆
-  T.key(Enum.KeyCode.S, true)
+  T.key(Enum.KeyCode.W, true)   -- W 推油门、准心往上抬（纯准心控制）
+  st.aimPitch = math.rad(12)
   local up = T.runUntil(function() return not st.ground end, 50)
   check(up, "滑跑起飞")
-  R.run(1.5)   -- 再拉一会儿：爬升
-  T.key(Enum.KeyCode.S, false)
-  R.run(8.5)
-  T.key(Enum.KeyCode.LeftShift, false)
+  R.run(10)
+  st.aimPitch = math.rad(3)
+  T.key(Enum.KeyCode.W, false)
   local p = e.root.CFrame.Position
   check(p.Y > G.airSurface(p.X, p.Z) + 25, string.format("飞起来了（离地 %.0f 格）", p.Y - G.airSurface(p.X, p.Z)))
   T.tap(Enum.KeyCode.Space)

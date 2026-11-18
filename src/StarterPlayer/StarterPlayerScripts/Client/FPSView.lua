@@ -506,6 +506,7 @@ function FPSView.init(G)
   local lastCam, lastPos, bobPhase, speedS = nil, nil, 0, 0
   local hiddenTool = nil
   local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
+  local badTool = setmetatable({}, { __mode = "k" })     -- [工具] = 建视图模型出过错（不再重建）
 
   local function hideTool(tool, on)
     if not tool then return end
@@ -534,9 +535,22 @@ function FPSView.init(G)
     end
     if not vm or vm.id ~= id or vm.tool ~= tool or (genStale and vm.m4) or opticNow then
       genStale = false
-      buildVM(id, tool)
-      if not vm then return end
-      vm.tool = tool
+      -- 建视图模型出错（导入的零件少块、器材坐标对不上……）：这件工具记下来，不再每一帧重建（用户：切到 2 号武器就卡住），
+      --   改用工具上零件拼的样子；只报一次
+      if badTool[tool] then
+        if vm and vm.tool ~= tool then destroyVM() end
+        if not vm then return end
+      else
+        local ok, err = pcall(buildVM, id, tool)
+        if not ok then
+          badTool[tool] = true
+          destroyVM()
+          warn("[全面大战场] 第一人称 " .. tostring(id) .. " 建不起来，用第三人称的样子代替：" .. tostring(err))
+          return
+        end
+        if not vm then return end
+        vm.tool = tool
+      end
     end
     hideTool(tool, true)
     hiddenTool = tool

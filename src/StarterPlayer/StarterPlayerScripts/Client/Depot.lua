@@ -220,8 +220,19 @@ function Depot.init(G)
     return true, T("pad.ready", av.u, av.cap)
   end
 
+  -- R 币解锁的机型（B-2 199 R 币）：没买的卡片上写价钱，点了弹出 Roblox 的购买框
+  local function lockedPass(id)
+    local pass = G.passFor and G.passFor(id)
+    if pass and G.passOk and not G.passOk(pass) then return pass end
+    return nil
+  end
   local function choose(id)
     local pad = pickPad
+    local lp = lockedPass(id)
+    if lp then
+      if G.buyPass then G.buyPass(lp) end
+      return
+    end
     local vd = VD.get(id)
     if vd then   -- 地面载具：这一类名额满了就不关列表，提示一下
       local ok, why = quota(vd.cat)
@@ -319,6 +330,14 @@ function Depot.init(G)
         b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
         label(b, T("veh." .. id), UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 10), 18, RGB(240, 242, 244), Enum.Font.GothamBlack)
         label(b, T("arole." .. (ROLE[id] or (d.kind == "heli" and "uheli" or "fighter"))), UDim2.new(1, -24, 0, 16), UDim2.fromOffset(12, 36), 12, RGB(214, 190, 120), Enum.Font.GothamBold)
+        local lp = lockedPass(id)
+        if lp then   -- 右上角：解锁 R$ 价钱（琥珀色），卡片暗一点
+          local pt = label(b, T("pass.lockTag", G.Config.Passes[lp].price), UDim2.fromOffset(120, 18), UDim2.new(1, -132, 0, 12), 12, RGB(255, 196, 92), Enum.Font.GothamBlack,
+            Enum.TextXAlignment.Right)
+          pt.Name = "PassTag"
+          b.BackgroundTransparency = 0.3
+          stroke.Color, stroke.Transparency = RGB(255, 196, 92), 0.55
+        end
         local tags = {}
         if d.carrier then table.insert(tags, T("pick.carrier")) end
         if d.stealth then table.insert(tags, T("pick.stealth")) end

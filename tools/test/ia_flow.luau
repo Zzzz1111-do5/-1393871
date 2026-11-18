@@ -127,14 +127,14 @@ end
 -- 夜战：夜晚的光照；头盔、夜视仪、红外频闪；按 N 开夜视（画面调色、镜筒框、服务器那边镜筒翻下来），再按关掉、恢复
 local Lighting = H.game:GetService("Lighting")
 local Enum = roblox.Enum
-check(Lighting.ClockTime < 5 or Lighting.ClockTime > 21, string.format("交战在夜里（%.1f 点）", Lighting.ClockTime))
-check(Lighting:FindFirstChild("NightBloom") ~= nil and Lighting:FindFirstChildOfClass("Sky") ~= nil, "夜里的泛光、星空")
+check(Lighting.ClockTime < 5 or Lighting.ClockTime > 20, string.format("锁定晚上（用户 11-18：把白天模式去掉）：钟点 %.1f", Lighting.ClockTime))
+check(Lighting:FindFirstChild("NightBloom") ~= nil and Lighting:FindFirstChildOfClass("Sky") ~= nil, "泛光、天空（夜里有星空）")
 if a1.Character then
 	local ch = a1.Character
 	check(ch:FindFirstChild("Helmet") and ch:FindFirstChild("NVG") and ch:FindFirstChild("IRStrobe"), "戴着头盔、夜视仪，头盔后面有红外频闪")
 	local hinge = ch.NVG:FindFirstChild("NVGHinge")
-	-- 夜视默认开着（用户：不管什么情况默认夜视都开着）：出生就是开的；按 N 关掉恢复原样，再按 N 又开
-	-- 测试台里几个客户端共用一个 Lighting：数自己那一份调色（NVGrade 的个数），不看有没有
+	-- 锁定晚上（用户 11-18）：出生自动开夜视（全屏调色、镜筒翻下来）；按 N 关掉、再按又开
+	-- 测试台里几个客户端共用一个 Lighting：数调色的个数（NVGrade）前后差一份，不看曝光（几个客户端的昼夜都在写）
 	local function nGrade()
 		local n = 0
 		for _, c in ipairs(Lighting:GetChildren()) do if c.Name == "NVGrade" then n += 1 end end
@@ -143,14 +143,12 @@ if a1.Character then
 	H.run(0.9)
 	local nv = a1.PlayerGui:FindFirstChild("NVG")
 	local nOn = nGrade()
-	check(CA.nvgOn and CA.nvgOn() and nOn >= 1 and not (nv and nv.Enabled), "出生夜视就开着：整个画面调色（全屏，没有望远镜那样的镜筒框）")
-	local expOn = Lighting.ExposureCompensation
 	local cOn = hinge and hinge.C0
+	check(CA.nvgOn and CA.nvgOn() and nOn >= 1 and not (nv and nv.Enabled), "锁定晚上：出生自动开了夜视（整个画面调色，全屏，没有望远镜那样的镜筒框）")
 	check(ch:GetAttribute("NVG") == true and hinge ~= nil, "镜筒翻下来了（别人也看得到）")
 	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
 	H.run(0.5)
-	local exp0 = Lighting.ExposureCompensation
-	check(not CA.nvgOn() and nGrade() == nOn - 1 and expOn > exp0 + 1, string.format("按 N 关掉，恢复原样（曝光 %.2f → %.2f）", expOn, exp0))
+	check(not CA.nvgOn() and nGrade() == nOn - 1, "按 N 关掉")
 	check(ch:GetAttribute("NVG") == false and hinge and hinge.C0 ~= cOn, "镜筒翻上去了")
 	H.key(a1, Enum.KeyCode.N, true) H.key(a1, Enum.KeyCode.N, false)
 	H.run(0.5)

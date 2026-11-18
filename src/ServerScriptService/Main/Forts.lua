@@ -709,7 +709,7 @@ function Forts.init(G)
   local function stepAI(e, dt)
     if G.fortsHold then return end   -- 测试用：工事不开火
     local t = now()
-    if (e.supUntil or 0) > t then   -- 被火力准备的炮弹砸在旁边（Ambience.lua）：缩着不开火
+    if (e.supUntil or 0) > t then   -- 被压制（原来的 Ambience.lua 火力准备会设；用户嫌莫名其妙的炮火怪，已删，留着给以后的真炮火用）：缩着不开火
       e.tgt = nil
       return
     end

@@ -94,6 +94,14 @@ local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "ra
 for id, w in pairs(AirDefs.W) do
   w.id = id
   w.guide = GUIDE[id] or ((w.kind == "gun") and "gun" or "none")
+  -- 用户：飞机的雷达、视野都有点近——导弹射程拉远（雷达制导空空弹 2.6 倍、红外弹 1.8 倍、空地弹 1.7 倍），
+  --   烧得久一点、飞得久一点才够得着（雷达弹约 3.5 公里、红外弹约 1.2 公里、KD-88 约 2.5 公里）
+  if w.kind == "aam" or w.kind == "agm" then
+    local k = (w.kind == "aam") and ((w.seeker == "radar") and 2.6 or 1.8) or 1.7
+    w.range = math.floor(w.range * k)
+    w.life = (w.life or 8) * (0.45 + 0.55 * k)
+    w.burn = (w.burn or 3) * (0.6 + 0.4 * k)
+  end
 end
 -- 每个挂点每种武器挂几枚（多联挂架）：没写就是 1；火箭巢是一个巢（弹数在 tubes）
 local function N(t) return t end
@@ -309,7 +317,10 @@ D.a10c = { kind = "jet", cat = "jet", L = 46, W = 49, H = 12.5, gearH = 6.0, hp 
   wing = { xr = 2.4, zr0 = -4, zr1 = 3.5, xt = 24.5, zt0 = -2.0, zt1 = 3.0, y = -1.4 },
   htail = { xr = 2.0, zr0 = 16, zr1 = 21, xt = 9.5, zt0 = 16.8, zt1 = 21, y = 1.0 },
   vt = { x = 9.6, zr0 = 15, zr1 = 21.5, zt0 = 16.5, zt1 = 21.5, h = 9, y0 = -3.4, cant = 0, endplate = true },
-  pods = { { x = 3.4, y = 3.2, z = 9, len = 9, r = 1.9 } }, eng = { { x = 3.4, y = 3.2, z = 14, r = 1.4, cold = true }, { x = -3.4, y = 3.2, z = 14, r = 1.4, cold = true } },
+  -- 发动机（用户：A-10 的发动机像个摆设）：TF34 涡扇——进气口里的风扇跟着油门转（fan：喷口往前多远是风扇，按原模型发动机舱量的），
+  --   喷口后面有淡淡的热浪、油门大时喷口里暗橙（mild：涵道比高、排气温度低，比战斗机淡得多）
+  pods = { { x = 3.4, y = 3.2, z = 9, len = 9, r = 1.9 } }, eng = { { x = 3.4, y = 3.2, z = 14, r = 1.4, fan = 9.6, mild = true }, { x = -3.4, y = 3.2, z = 14, r = 1.4, fan = 9.6, mild = true } },
+  fanEng = true,
   gear = { nose = { z = -17, len = 4.5 }, main = { x = 8.5, z = -2.5, len = 4.5, pod = true }, r = 1.25 },
   st = mirror({
     { name = "tip", pos = V(22, -2.3, -0.2), opts = { "aim9x" }, n = N({ aim9x = 2 }) },

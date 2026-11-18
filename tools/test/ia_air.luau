@@ -164,7 +164,7 @@ do
 end
 
 print("③ 滑到弹射器：甲板上滑不快，到起点对正就卡上")
-H.key(atk, Enum.KeyCode.LeftShift, true)   -- 油门：Shift 加、Ctrl 减（W / S 是推拉杆）
+H.key(atk, Enum.KeyCode.LeftShift, true)   -- 油门：W / Shift 加、S / Ctrl 减（方向是鼠标准心）
 H.run(3)
 H.key(atk, Enum.KeyCode.LeftShift, false)
 check(st.spd <= 28.5, string.format("甲板上限速（%.0f 格 / 秒）", st.spd))
@@ -184,16 +184,15 @@ H.run(0.5)
 check(not st.ground and st.spd >= e.def.vRot, string.format("弹射离舰（%.0f 格 / 秒，起飞速度 %.0f）", st.spd, e.def.vRot))
 check(zBefore - e.root.CFrame.Position.Z > 150, string.format("服务器跟着飞出去了 %.0f 格", zBefore - e.root.CFrame.Position.Z))
 
-print("④ 爬升（按 S 拉杆抬头）、收起落架")
+print("④ 爬升（准心往上抬）、起落架离地爬过 15 米自动收起")
 local y0 = e.root.CFrame.Position.Y
-H.key(atk, Enum.KeyCode.S, true)
+st.aimPitch = math.rad(25)
 H.run(1.2)
-H.key(atk, Enum.KeyCode.S, false)
+st.aimPitch = math.rad(4)
 H.run(4.8)
 check(e.root.CFrame.Position.Y > y0 + 60, string.format("爬升了 %.0f 格", e.root.CFrame.Position.Y - y0))
-H.key(atk, Enum.KeyCode.G, true) H.key(atk, Enum.KeyCode.G, false)
 H.run(3.5)
-check((e.model:GetAttribute("Gear") or 1) < 0.1, "起落架收起来了（服务器属性 Gear " .. tostring(e.model:GetAttribute("Gear")) .. "）")
+check((e.model:GetAttribute("Gear") or 1) < 0.1, "起落架自动收起来了（服务器属性 Gear " .. tostring(e.model:GetAttribute("Gear")) .. "）")
 check(e.alive, "飞机还好好的")
 
 print("⑤ 开战后：守方在机场（据点 D）出生、生成一架 F-22 坐上去（摆到天上当靶子），攻方锁定、打霹雳-15")

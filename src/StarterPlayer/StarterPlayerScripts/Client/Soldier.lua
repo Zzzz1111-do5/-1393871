@@ -110,7 +110,11 @@ function Soldier.init(G)
     hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
     hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
     pcall(function() hum.EvaluateStateMachine = false end)   -- 不跑人物的状态机（站、跳、掉）：位置是这里摆的
-    local hip = hrp.Position.Y - low   -- HumanoidRootPart 中心离脚底多高
+    local hip = hrp.Position.Y - low   -- HumanoidRootPart 中心离脚底多高（按模板里各零件的位置量）
+    -- R15 的 HipHeight 就是根零件底面离地多高，按它算更靠得住：模板的关节没解算时零件位置不对，量出来偏小，
+    --   小人被摆低、半截身子埋在地里（用户：士兵卡在地底下）；最后按 R15 小人的身高夹一下
+    if hum.RigType == Enum.HumanoidRigType.R15 and (hum.HipHeight or 0) > 0.5 then hip = hum.HipHeight + hrp.Size.Y / 2 end
+    hip = math.clamp(hip, 2.4, 3.6)
     local k = head.Size.Y / 1.2
     helmet(m, head, team, k, 0)
     local rh = m:FindFirstChild("RightHand")
@@ -200,17 +204,18 @@ function Soldier.init(G)
           v.hidden, v.home = true, v.model.Parent
           v.model.Parent = nil
         end
-        v.cf, v.lastP, v.spd = target, p, 0
+        v.cf, v.lastP, v.spd, v.fl = target, p, 0, nil   -- 插值的快照也扔掉：回到范围里从当时的位置重新开始
         return
       elseif v.hidden and dist < hideD * 0.95 then
         v.hidden = false
         v.model.Parent = v.home
       end
-      -- 走多快：服务器一秒挪十几次，按位置的变化估、再平滑
-      local moved = (V(p.X, 0, p.Z) - V(v.lastP.X, 0, v.lastP.Z)).Magnitude
+      -- 位置：快照插值（View.lua G.follow：匀速走，原来指数逼近一跳一跳的目标，人一顿一顿的）
+      v.cf = G.follow(v, target)
       v.lastP = p
-      v.spd = v.spd + (moved / math.max(dt, 1 / 240) - v.spd) * math.min(1, dt * 5)
-      v.cf = v.cf:Lerp(target, math.min(1, dt * 10))
+      -- 走多快：按快照算的水平速度再平滑（原来按每帧位置变化估，服务器没挪的那几帧是 0，走路动画一快一慢）
+      local fv = v.fl.vel
+      v.spd = v.spd + (V(fv.X, 0, fv.Z).Magnitude - v.spd) * math.min(1, dt * 5)
       v.hrp.CFrame = v.cf * CF(0, v.hip - HALF, 0)
       local far = dist > 700 * (G.perfK or 1)
       if v.rig then

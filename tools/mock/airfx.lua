@@ -35,15 +35,18 @@ R.run(1.2)
 local st = C.fly
 check(st ~= nil and st.pilot, "坐进了歼-20")
 if not st then T.summary() return end
--- 真的滑跑起飞（直接把飞机摆到天上，服务器不认会拉回跑道）：Shift 加油门、S 抬头，离地后爬一会儿
-T.key(Enum.KeyCode.LeftShift, true)
-T.key(Enum.KeyCode.S, true)
+-- 真的滑跑起飞（直接把飞机摆到天上，服务器不认会拉回跑道）：W 推油门、准心往上抬（纯准心控制），离地后爬一会儿
+T.key(Enum.KeyCode.W, true)
+st.aimPitch = math.rad(12)
 T.runUntil(function() return not st.ground end, 40)
 R.run(1.5)
-T.key(Enum.KeyCode.S, false)
+st.aimPitch = math.rad(3)
 R.run(5)
-T.key(Enum.KeyCode.LeftShift, false)
-st.thr = 100
+T.key(Enum.KeyCode.W, false)
+-- 一直按 W 油门推到了加力、快到音障（会冒蒸汽锥）：收到军推、速度放回巡航
+st.thr, st.thrE = 90, 90
+st.spd = math.min(st.spd, e.def.vMil * 0.8)
+st.vel = st.vdir * st.spd
 R.run(2)
 local v = C.views and C.views[e.model]
 local function trailsOn()
@@ -58,16 +61,20 @@ local function vaporOn()
 end
 print("① 平飞没有云雾；拉杆有翼尖涡流、机翼水汽")
 check(v ~= nil and v.M ~= nil, "客户端拼好了飞机")
-check(trailsOn() == 0 and vaporOn() == 0, "平飞：没有拖线、没有水汽")
-T.key(Enum.KeyCode.S, true)
-local got4, got7 = false, false
+check(trailsOn() == 0 and vaporOn() == 0, string.format("平飞：没有拖线、没有水汽（拖线 %d、水汽 %d，%.1f g，%.0f 格 / 秒）", trailsOn(), vaporOn(), st.gLoad or 0, st.spd or 0))
+-- 准心猛往上抬 80°：教官要大过载拉起来
+local lk = st.cf.LookVector
+st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.min(1.4, math.asin(math.max(-1, math.min(1, lk.Y))) + math.rad(80))
+local got4, got7, gMax = false, false, 0
 for _ = 1, 60 do
   R.run(1 / 20)
+  gMax = math.max(gMax, st.gLoad or 0)
   if (st.gLoad or 0) > 4 and trailsOn() >= 2 then got4 = true end
   if (st.gLoad or 0) > 7 and vaporOn() >= 2 then got7 = true end
 end
-T.key(Enum.KeyCode.S, false)
-check(got4, string.format("拉到 4 g 以上：两个翼尖拖出白线（最大 %.1f g）", st.gLoad or 0))
+lk = st.cf.LookVector
+st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(math.max(-1, math.min(1, lk.Y)))
+check(got4, string.format("拉到 4 g 以上：两个翼尖拖出白线（最大 %.1f g）", gMax))
 check(got7, "拉到 7 g 以上：两边机翼上冒水汽")
 R.run(3)
 
@@ -117,7 +124,8 @@ do
   if foe then
     local id = 990001
     local mpos = p0 + st.cf.LookVector * 20
-    C.flyingShots[id] = { p = mpos, v = (foe.root.CFrame.Position - mpos).Unit * 900, t = 0, kind = "missile" }
+    local body = R.Instance.new("Part")
+    C.flyingShots[id] = { p = mpos, v = (foe.root.CFrame.Position - mpos).Unit * 900, t = 0, kind = "missile", body = body, trailT = 0, half = 1.2 }
     R.as("client", function() C.onMyShot({ id = id, tg = foe.id, w = "pl15", p = mpos, by = st.id }) end)
     R.run(0.2)
     local gui = me.PlayerGui:FindFirstChild("MslCam")
