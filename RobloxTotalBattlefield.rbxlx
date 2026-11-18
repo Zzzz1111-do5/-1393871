@@ -22136,9 +22136,12 @@ function Fly.init(G)
     elseif d.kind == "jet" and not G.mobile and st.pilot then
       -- 镜头在飞机后上方顺着鼠标瞄准方向看（按着键盘时瞄准方向跟着机头，镜头也就跟着机头）；地平线跟着坡度歪三成
       local aim = aimDirNow()
-      local back = d.L * 0.85 + 12   -- 用户：视角要离飞机近一点（原来一倍半机身长再往后 26 格，飞机在画面里像个玩具）
+      -- 用户：视角要离飞机近一点（最早一倍半机身长再往后 26 格；11-18 改成 0.85 倍 + 12 格；11-18 晚又说再近一点）：
+      --   现在 0.62 倍 + 6 格（歼-20 从 60 格到 41 格），按机身长和七成翼展里大的算——B-2 这种翼展比机身长得多的，镜头转到侧面不钻进机翼
+      local size = math.max(d.L, d.W * 0.7)
+      local back = size * 0.62 + 6
       -- 镜头带弹簧慢半拍跟上，加速度把镜头往反方向甩开一点（转弯时飞机在画面里往外偏、拉起时往下沉）；大过载、加力时轻轻抖
-      local want = -aim * back + V(0, d.H * 0.55 + 3.5, 0)
+      local want = -aim * back + V(0, d.H * 0.45 + 2.5, 0)
       st.camOff = st.camOff and st.camOff:Lerp(want, 1 - math.exp(-dt * 7)) or want
       local acc = st.accV or V()
       local push = -acc * 0.014
@@ -22152,11 +22155,11 @@ function Fly.init(G)
       local upC = (V(0, 1, 0) * 0.7 + st.cf.UpVector * 0.3)
       cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300, (upC.Magnitude > 0.1) and upC.Unit or V(0, 1, 0)) * shake
     elseif d.kind == "jet" then
-      local camPos = (st.cf * CF(0, d.H * 0.6 + 4, d.L * 0.9 + 12)).Position
+      local camPos = (st.cf * CF(0, d.H * 0.5 + 3, math.max(d.L, d.W * 0.7) * 0.65 + 7)).Position   -- 手机 / 坐后面的：也近一点
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))
     else
       local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
-      local camPos = pos + V(0, d.H * 0.5, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 0.8 + 11))   -- 直升机也近一点
+      local camPos = pos + V(0, d.H * 0.45, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 0.62 + 7))   -- 直升机也近一点（0.8 倍 + 11 → 0.62 倍 + 7）
       cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
     end
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
