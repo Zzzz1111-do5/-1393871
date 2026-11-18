@@ -14,6 +14,15 @@ local pl = T.join("P1", 4001, true)
 R.run(3)
 local BC = G.Config.Bots
 local P = G.P[pl]
+-- 真人放在守方：攻方有真人在线时机器人自己占不下据点（要真人进圈，Round.lua 的 PvP 规则），这里要看机器人能不能打下来
+if P.team ~= "def" then
+  P.team = "def"
+  pl.Team = G.TEAM.def
+  pl.Neutral = false
+  pl:SetAttribute("Side", "def")
+  G.pushOne(P)
+  R.run(3)
+end
 print("① 补人数（真人 1 个，在" .. P.team .. "）")
 local nA, nD = G.botCount("atk"), G.botCount("def")
 local wantA = BC.minPerTeam - ((P.team == "atk") and 1 or 0)
@@ -77,10 +86,45 @@ G.botsStep = function(dt)
   worst = math.max(worst, d)
   if d > 0.008 then slow = slow + 1 end
 end
+local nades = 0
+local launch0 = G.launch
+G.launch = function(sh, ...)
+  if sh and sh.kind == "grenade" and sh.src and sh.src.bot then nades = nades + 1 end
+  return launch0(sh, ...)
+end
 local t0 = R.clock()
 local lastPrint = t0
+-- 小队、姿势、动作（用户：给小兵加上动画和姿势；登陆和防守的按小队聚在一起，每个人要有自己的动作逻辑）：每 5 秒看一眼
+local stances, acts, bigSquads, tight, sqSeen = { [0] = 0, [1] = 0, [2] = 0 }, {}, 0, 0, 0
+local function sample()
+  for _, e in ipairs(G.ents) do
+    if e.alive and e.kind == "bot" then
+      stances[e.stance or 0] = stances[e.stance or 0] + 1
+      local a = e.model:GetAttribute("Act")
+      if type(a) == "string" then acts[a:sub(1, 1)] = (acts[a:sub(1, 1)] or 0) + 1 end
+    end
+  end
+  for _, S in ipairs(G.botSquads()) do
+    local alive = {}
+    for _, B in ipairs(S.m) do if B.e and B.e.alive and B.state ~= "boat" then table.insert(alive, B) end end
+    if #alive >= 3 then
+      bigSquads = bigSquads + 1
+      local L = S.lead and S.lead.e and S.lead.e.root.CFrame.Position
+      if L then
+        local near = 0
+        for _, B in ipairs(alive) do
+          local p = B.e.root.CFrame.Position
+          if ((p.X - L.X) ^ 2 + (p.Z - L.Z) ^ 2) ^ 0.5 < 45 then near = near + 1 end
+        end
+        sqSeen = sqSeen + 1
+        if near >= #alive * 0.6 then tight = tight + 1 end
+      end
+    end
+  end
+end
 while R.clock() - t0 < minutes * 60 and G.round.phase == "battle" do
   R.run(5)
+  sample()
   if R.clock() - lastPrint >= 60 then
     lastPrint = R.clock()
     local caps = {}
@@ -100,5 +144,14 @@ check(k.atk + k.def > 10, string.format("交火了：击杀 攻 %d 守 %d，阵�
 local capped = 0
 for _, s in pairs(G.points) do if s.owner == "atk" then capped = capped + 1 end end
 if minutes >= 5 then check(capped >= 1 or G.round.phase ~= "battle", "攻方拿下了据点：" .. capped .. " 个") else print("  攻方拿下了据点：" .. capped .. " 个") end
+print("④ 小队、姿势、动作、每人不一样")
+check(bigSquads > 0 and tight >= sqSeen * 0.6, string.format("按小队行动：三人以上的小队 %d 次，其中队员大多在队长 45 格以内的 %d / %d 次", bigSquads, tight, sqSeen))
+check(stances[0] > 0 and stances[1] > 0 and stances[2] > 0, string.format("姿势有站有蹲有趴（站 %d、蹲跪 %d、趴 %d 人次）", stances[0], stances[1], stances[2]))
+check((acts.r or 0) > 0 and (acts.s or 0) > 0 and nades > 0, string.format("有人换弹匣（%d）、队长打手势（%d）、扔手雷（扔了 %d 颗）", acts.r or 0, acts.s or 0, nades))
+local rs = {}
+for _, e in ipairs(G.ents) do if e.alive and e.kind == "bot" and e.bot then table.insert(rs, e.bot.pers.react) end end
+local mn, mx = math.huge, -math.huge
+for _, x in ipairs(rs) do mn, mx = math.min(mn, x), math.max(mx, x) end
+check(#rs > 5 and mx - mn > 0.3, string.format("每个人反应快慢不一样（%.2f～%.2f）", mn, mx))
 check(stepN > 0, string.format("机器人每步平均 %.2f 毫秒，最慢 %.1f 毫秒，超过 8 毫秒 %d 次（模拟器里，Luau 真服务器快几倍）", stepT / math.max(1, stepN) * 1000, worst * 1000, slow))
 T.summary()

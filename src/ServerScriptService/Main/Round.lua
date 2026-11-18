@@ -669,7 +669,21 @@ function Round.init(G)
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
     hum:TakeDamage(amt)
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and "kill" or ((part and part.Name == "Head") and "head" or "hit")) end
+    local head = part ~= nil and part.Name == "Head"
+    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
+    if victim and victim.pl then
+      local ap = G.boomAt
+      if ap then   -- 炸的：指向炸点
+      elseif src and src.P and src.P.char then
+        local h = src.P.char:FindFirstChild("HumanoidRootPart")
+        ap = h and h.Position or ap
+      elseif src and src.bot and src.bot.e then
+        ap = src.bot.e.root.CFrame.Position
+      end
+      if typeof(ap) == "Vector3" then pcall(function() G.R.Msg:FireClient(victim.pl, "hurt", ap) end) end
+    end
     return true
   end
 

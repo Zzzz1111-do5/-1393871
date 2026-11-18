@@ -93,6 +93,7 @@ function View.init(G)
   local views = {}   -- [entModel] = { model, parts, cf, kind, t, … }
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
+  G.viewById = function(id) return byId[id] end
   local function bar(m, adornee, h)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(46, 6)

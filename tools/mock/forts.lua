@@ -11,6 +11,7 @@ G.Config.Bots.minPerTeam = 0
 G.navyNoAI = true   -- 不要 AI 舰艇：攻方 054A 一开战就炮击岸防炮（76 毫米每秒一发），等不到⑤接手就打掉了
 G.aiVehOff = true   -- 也不要 AI 坦克（AIVeh.lua）：冲上前哨岛就打碉堡，等不到⑥看工事归攻方
 T.runUntil(function() return G.worldReady end, 900)
+G.botsClear()   -- 每队人数设成 0 之前刷出来的机器人也收掉（不然坦克拿机枪打小兵、小兵挡在碉堡的射线上）
 local me = T.join("P1", 6001, true)
 local foe = T.join("P2", 6002, false)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)

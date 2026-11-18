@@ -783,6 +783,11 @@ function UI.init(G)
       if G.hitMarker then G.hitMarker(key) end
       return
     end
+    if kind == "hurt" then   -- 挨打：伤害从哪来（Juice.lua 在准星周围画红弧），key 是位置
+      if G.juiceHurt and typeof(key) == "Vector3" then G.juiceHurt(key) end
+      return
+    end
+    if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
     if kind == "refill" then   -- 战术平板的补给箱：本地弹药也补满（Play.lua）
       if G.refillAmmo then G.refillAmmo() end
       return

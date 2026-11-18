@@ -13,6 +13,7 @@ G.fortsHold = true
 G.navyNoAI = true
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
+G.botsClear()   -- 每队人数设成 0 之前刷出来的机器人也收掉（不然坦克拿机枪打小兵、小兵挡在碉堡的射线上）
 T.join("P1", 7001, true)
 T.runUntil(function() return G.round and G.round.phase == "battle" end, 120)
 check(G.round.phase == "battle", "开战了")

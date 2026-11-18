@@ -157,6 +157,11 @@ function Fx.init(G)
     -- 音爆（AirFx.lua）：N 形波的头尾两声连着的低沉「嘭——嘭」，放慢、失真、削掉高音；远处的人按距离晚到
     sonic = { { id = EXP, vol = 1.2, s = { 0.5, 0.55 }, reg = { 0, 1.7 }, eq = { 10, 0, -16 }, dist = 0.55 },
       { id = EXP, vol = 1, s = { 0.47, 0.5 }, reg = { 0, 1.5 }, eq = { 10, -2, -18 }, dist = 0.55, delay = 0.14 } },
+    -- 爽感（Juice.lua）：爆头——打在头盔上的一声脆「叮」；连杀——往上走的三声；低血量——一下一下的心跳
+    headshot = { { id = TICK, vol = 1, s = { 3.3, 3.4 }, eq = { -10, 2, 6 } }, { id = TICK, vol = 0.7, s = { 4.7, 4.8 }, eq = { -10, 0, 8 }, delay = 0.035 } },
+    streak = { { id = TICK, vol = 0.8, s = { 1.6, 1.6 } }, { id = TICK, vol = 0.8, s = { 2.0, 2.0 }, delay = 0.09 }, { id = TICK, vol = 0.9, s = { 2.5, 2.5 }, delay = 0.18 },
+      { id = EXP, vol = 0.25, s = { 1.6, 1.7 }, reg = { 0.02, 0.3 }, eq = { 6, 0, -8 } } },
+    heart = { { id = THUD, vol = 1.6, s = { 0.5, 0.52 }, eq = { 10, -4, -24 } }, { id = THUD, vol = 1.1, s = { 0.47, 0.49 }, eq = { 10, -4, -24 }, delay = 0.24 } },
   }
   -- 导弹飞行中的发动机声：挂在弹上跟着飞走（燃烧完就停）
   local ROAR = { id = WIND, vol = 10, s = { 0.95, 1.05 }, loop = { 0.5, 9.5 }, eq = { 6, 10, -1 }, dist = 0.55 }
@@ -889,6 +894,11 @@ function Fx.init(G)
     for _, e in ipairs(list) do
       local k = e.k
       if k == "gun" then
+        if e.ent then   -- 机器人开的枪：小兵后坐、枪口焰，曳光从它的枪口出来（Soldier.lua）
+          if G.vehRecoil then G.vehRecoil(e.ent) end
+          local mz = G.botMuzzle and G.botMuzzle(e.ent)
+          if mz and (mz - e.a).Magnitude < 8 then e.a = mz end
+        end
         if e.by ~= me.UserId then
           nearMiss(e)
           G.gunFx(e.w, e.a, e.b, false)

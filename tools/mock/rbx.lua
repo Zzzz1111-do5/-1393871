@@ -283,11 +283,47 @@ function CFm.PointToWorldSpace(c, v)
   return c * v
 end
 function CFm.PointToObjectSpace(c, v) return CFm.Inverse(c) * v end
+-- 旋转按四元数球面插值（和真 Roblox 一样；逐分量插值转得多时会把零件压扁）
+local function m2q(m)
+  local tr = m[1] + m[5] + m[9]
+  local w, x, y, z
+  if tr > 0 then
+    local s = math.sqrt(tr + 1) * 2
+    w, x, y, z = 0.25 * s, (m[8] - m[6]) / s, (m[3] - m[7]) / s, (m[4] - m[2]) / s
+  elseif m[1] > m[5] and m[1] > m[9] then
+    local s = math.sqrt(1 + m[1] - m[5] - m[9]) * 2
+    w, x, y, z = (m[8] - m[6]) / s, 0.25 * s, (m[2] + m[4]) / s, (m[3] + m[7]) / s
+  elseif m[5] > m[9] then
+    local s = math.sqrt(1 + m[5] - m[1] - m[9]) * 2
+    w, x, y, z = (m[3] - m[7]) / s, (m[2] + m[4]) / s, 0.25 * s, (m[6] + m[8]) / s
+  else
+    local s = math.sqrt(1 + m[9] - m[1] - m[5]) * 2
+    w, x, y, z = (m[4] - m[2]) / s, (m[3] + m[7]) / s, (m[6] + m[8]) / s, 0.25 * s
+  end
+  return w, x, y, z
+end
+local function q2m(w, x, y, z)
+  return { 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+    2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+    2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y) }
+end
 function CFm.Lerp(a, b, t)
   if not isCF(b) then error("CFrame:Lerp 要 CFrame", 2) end
-  local m = {}
-  for i = 1, 9 do m[i] = a.m[i] + (b.m[i] - a.m[i]) * t end
-  return setmetatable({ p = a.p:Lerp(b.p, t), m = m }, CF)
+  local aw, ax, ay, az = m2q(a.m)
+  local bw, bx, by, bz = m2q(b.m)
+  local d = aw * bw + ax * bx + ay * by + az * bz
+  if d < 0 then bw, bx, by, bz, d = -bw, -bx, -by, -bz, -d end
+  local k0, k1
+  if d > 0.9995 then
+    k0, k1 = 1 - t, t
+  else
+    local th = math.acos(math.min(1, d))
+    local sn = math.sin(th)
+    k0, k1 = math.sin((1 - t) * th) / sn, math.sin(t * th) / sn
+  end
+  local w, x, y, z = aw * k0 + bw * k1, ax * k0 + bx * k1, ay * k0 + by * k1, az * k0 + bz * k1
+  local n = math.sqrt(w * w + x * x + y * y + z * z)
+  return setmetatable({ p = a.p:Lerp(b.p, t), m = q2m(w / n, x / n, y / n, z / n) }, CF)
 end
 function CFm.GetComponents(c) return c.p._x, c.p._y, c.p._z, unpack(c.m) end
 CFm.components = CFm.GetComponents
@@ -1304,7 +1340,7 @@ function R.castRay(origin, dir, params)
   local inc = params and params.FilterType == Enum.RaycastFilterType.Include
   local list = params and params.FilterDescendantsInstances or {}
   for _, o in ipairs(descendants(ws, {})) do
-    if isA(o._cls, "BasePart") and o._cls ~= "Terrain" and o._p.CanQuery ~= false and not (o._p.Transparency == 1 and o._p.CanCollide == false and o._p.Name ~= "Root") then
+    if isA(o._cls, "BasePart") and o._cls ~= "Terrain" and o._p.CanQuery ~= false and not (o._p.Transparency == 1 and o._p.CanCollide == false and o._p.Name ~= "Root" and o._p.Name ~= "Hit") then
       local ok = true
       if params then
         local u = underAny(o, list)
@@ -2014,5 +2050,6 @@ R.Vector3 = Vector3
 R.Vector2 = Vector2
 R.CFrame = CFrame
 R.Instance = Instance
+R.Color3 = Color3
 R.base = base
 return R

@@ -78,15 +78,24 @@ function Ents.init(G)
     return nil
   end
 
-  -- 打实体：amt 已经乘过倍数；src = { P, name, team }
-  function G.damageEnt(e, amt, src)
+  -- 打实体：amt 已经乘过倍数；src = { P, name, team }；head：打在小兵头上
+  --   给开枪的真人的命中提示（客户端的命中叉、加分、连杀）：hit / head、打死 kill / headkill、打掉车船 vkill、工事 fkill
+  function G.damageEnt(e, amt, src, head)
     if not e or not e.alive or amt <= 0 then return end
     if src and src.team == e.team then return end
     if e.invuln then return end
     e.hp -= amt
     e.lastHitBy = src
     e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (e.hp <= 0) and "kill" or "hit") end
+    if src and src.P and src.P.pl then
+      local k
+      if e.hp <= 0 then
+        k = (e.cat == "inf") and (head and "headkill" or "kill") or ((e.cat == "fort") and "fkill" or "vkill")
+      else
+        k = head and "head" or "hit"
+      end
+      G.R.Msg:FireClient(src.P.pl, "hit", k)
+    end
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
@@ -105,8 +114,10 @@ function Ents.init(G)
     local e = G.entOf(inst)
     if e then
       local k = 1
-      if e.headTop and hitPos and hitPos.Y > e.root.CFrame.Position.Y + e.root.Size.Y / 2 - e.headTop then k = headMul or 1 end
-      G.damageEnt(e, dmg * mult(w, e.cat) * k, src)
+      local hb = e.hit or e.root   -- 小兵的命中零件随姿势变（Bots.lua）
+      local head = e.headTop ~= nil and hitPos ~= nil and hitPos.Y > hb.CFrame.Position.Y + hb.Size.Y / 2 - e.headTop
+      if head then k = headMul or 1 end
+      G.damageEnt(e, dmg * mult(w, e.cat) * k, src, head and (headMul or 1) > 1)
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")
@@ -144,7 +155,11 @@ function Ents.init(G)
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hrp and P.alive and not G.inVeh(P) then   -- 在车里的人由车挨炸（遥控无人机的人在地上，照样挨炸）
         local d = (hrp.Position - pos).Magnitude
-        if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
+        if d < r then
+          G.boomAt = pos   -- 受伤方向按炸点（Round.lua 的 hurtChar）
+          G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src)
+          G.boomAt = nil
+        end
       end
     end
     for _, e in ipairs(table.clone(ents)) do
