@@ -12,7 +12,7 @@
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     7 艘舰艇
                                optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
-                               scenery/  地图上的石头（花草树木已经删掉，改用 Roblox 地形自带的草；这个文件里的树不用了，只用石头）
+                               scenery/  地图上的石头（11 月 18 日起 scenery.glb 里只有 3 块石头；树、草丛、花丛去掉了，草用 Roblox 地形自带的）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
@@ -45,6 +45,12 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^[VAS]_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
 
+
+  11 月 18 日第四包（用户：草用 Roblox 自带的、不要树）：scenery/scenery.glb 换成只有石头的新文件（1.4 MB）。
+    已经导过旧 scenery.glb 的：Workspace 里那一堆树、草丛、花丛游戏不用，在命令栏（「视图 → 命令栏」）粘下面这一行回车删掉（石头留着），
+    或者干脆把 N_ 开头的全删了、重导新的 scenery.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^N_") and not d.Name:match("^N_rock%d__") then d:Destroy() n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("删掉了 "..n.." 块树、草")
 
 一、导入（Roblox Studio，一次就行）
   1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。

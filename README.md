@@ -56,7 +56,7 @@ Studio 里的「设备模拟」只换屏幕大小，量不出手机的内存和�
 不导入的话车、飞机、船是零件拼的。`models/veh/<模型键>.glb`（地面载具，21 个）、`models/air/<模型键>.glb`（飞机直升机，16 个）、`models/ship/<型号>.glb`（舰艇，7 艘）
 是网页版的装备模型原样转的（ZTQ-15 网页版没有，是 Sketchfab 上的扫描模型）：最精细的网格（不减面）、原贴图和法线 / 金属粗糙度贴图；车、飞机是真实尺寸（1 米 = 2.8 格），舰艇照游戏里舰艇的比例（真船的 0.6 倍），每个模型一个文件。
 
-1. Studio「主页 → 导入 3D」，选 `models/veh/`、`models/air/`、`models/ship/`（还有 `models/optics/` 手持装备和瞄准镜、`models/scenery/scenery.glb` 花草树木、`models/fps_m4.glb` 第一人称 M4）里的 GLB
+1. Studio「主页 → 导入 3D」，选 `models/veh/`、`models/air/`、`models/ship/`（还有 `models/optics/` 手持装备和瞄准镜、`models/scenery/scenery.glb` 石头、`models/fps_m4.glb` 第一人称 M4）里的 GLB
    （一次选一个或几个都行），导入设置用默认的（别勾「合并网格」），导进 Workspace 就行。一步步的说明（含下面命令栏那一段）见 `docs/import_guide.txt`。
 2. 开服时自动收进 `ReplicatedStorage/Imported/Veh`、`Imported/Air`、`Imported/Ship`（M4 收进 `Imported/FPS_M4`）下面（输出里有一行「用上了导入的装备模型：…」）；
    名字别改（`V_<模型键>__<块>`、`A_<模型键>__<块>`、`S_<型号>__<块>`、`FPS_M4_<件>`）。
@@ -70,15 +70,15 @@ Studio 里的「设备模拟」只换屏幕大小，量不出手机的内存和�
 再 `python3 -I tools/models/air2glb.py <网页版仓库目录> airdefs.json`；舰艇先 `lune run tools/models/shipdefs.luau > shipdefs.json`，再 `python3 -I tools/models/ship2glb.py <网页版仓库目录> shipdefs.json`。
 模型都是 CC-BY，署名在 `models/veh/credits.txt`、`models/air/credits.txt`、`models/ship/credits.txt`（发布时放进游戏简介或游戏里的致谢）。
 
-## 地图上的树林、花草（`models/scenery/scenery.glb`）
+## 地图上的草和石头（`models/scenery/scenery.glb`）
 
-地图有路网（营地、指挥所、港口镇、机场、各海滩之间的土路）、成片的树林（山上冷杉松树、低处白桦橡树枫树）、林缘的小树灌木、草地上的草丛和一片片黄花、坡上的石头。
-长在哪是按地形算的（`Flora.lua`），每个人看到的一样；只在本机画，不挡人、不挡车、不挡子弹。
+地图有路网（营地、指挥所、港口镇、机场、各海滩之间的土路）、Roblox 地形自带的会动的草、坡上的石头。**不种树，也不放草丛、花丛**
+（用户 11-17：「花草树木删掉，用 Roblox 自带的草」；11-18 又确认了一次：不要树、草用 Roblox 自带的）。石头长在哪是按地形算的（`Flora.lua`），每个人看到的一样；只在本机画，不挡人、不挡车、不挡子弹。
 
-- 不导入也有：树、灌木、石头用零件拼的，地面是地形草。
-- 想要真的树和花草：Studio「主页 → 导入 3D」选 `models/scenery/scenery.glb`（一个文件，33 件：冷杉 / 松树 / 白桦 / 橡树 / 枫树、灌木、枯树倒木、石头、草丛、花丛，
-  冷杉还带中距离简化版和远处的公告板），导入设置用默认的，导进 Workspace 就行；开服时自动收进 `ReplicatedStorage/Imported/Scenery`。块名别改（`N_<键>__<块>`）。
-- 近处是完整的树（130 格内）、中距离是简化版（210 格内）、远处到 1300 格是公告板；草丛、花丛只画身边一百多格；按画质设置整体放远 / 拉近。
+- 不导入也有：石头用零件拼的，地面是地形草。
+- 想要真的石头：Studio「主页 → 导入 3D」选 `models/scenery/scenery.glb`（现在只有 3 块石头：`N_rock1`、`N_rock2`、`N_rock3`），开服时自动收进 `ReplicatedStorage/Imported/Scenery`。块名别改（`N_<键>__<块>`）。
+- 2026-11-18 起 `scenery.glb` 只留石头（`python3 -I tools/scenery/keep_only.py <原来的 scenery.glb> models/scenery/scenery.glb N_rock`）：原来的包里还有 30 件树、灌木、草丛、花丛，
+  游戏不用，导入后却会在 Workspace 里摆一堆（树叶贴图还有黑边）。树的代码还在 `Scenery.lua`（`LAYERS` 加回 `"tree"` 等就恢复），要恢复得用 `tools/scenery/scenery.mjs` 重新转一个带树的包。
 - 模型都是 Sketchfab 上的 CC-BY，署名在 `models/scenery/credits.txt`。重新转换：`cd tools/weapons && npm ci`，再在仓库根目录 `node tools/scenery/scenery.mjs`
   （要从 Sketchfab 下载原模型时设好环境变量 `SKETCHFAB_TOKEN`）；挑哪几件、放大多少在 `tools/scenery/scenery.json`。
 - 路网是离线算好的（`tools/map/roads.lua` → `src/ReplicatedStorage/MapRoads.lua`），改了地形重跑：`python3 tools/mock/run.py tools/map/roads.lua`。

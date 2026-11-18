@@ -563,6 +563,9 @@
   - 百人同服的带宽：gun 特效不再广播给所有人，只发给枪口在 1100 格内、或弹道从 400 格内擦过的人；开飞机的按雷达范围 9000 格；死了 / 在部署界面的照旧全发；爆炸等照旧全发
     （`init.server.lua` G.flushFx，测试在 hitreg ⑦）。流式加载（StreamingEnabled）、原模型减面没做：要先拿真手机量（README「手机上实测性能」），量出来内存、帧率不行再做，要改不少客户端代码。
   - 建 `main` 主分支：以 darksword-forts-navy 的 1a9a2de（已经包含另外三条分支的全部提交）为底，加上这一批。以后都从 main 开始（见「协作」）。
+  - 地图不种树（用户 11-18 又确认：草用 Roblox 自带的、不要树）：`models/scenery/scenery.glb` 只留 3 块石头（`tools/scenery/keep_only.py` 新，12.7 MB → 1.4 MB）。
+    原来整包 33 件，导入后 Workspace 里摆一堆用不上的树、草丛（树叶是 MASK 贴图，Roblox 按半透明画出黑边，用户看到的就是这个）；游戏本来就只摆石头（`Scenery.lua` LAYERS），代码没动。
+    改到模型精细化会话管的 `models/`：只动了 scenery 这一个文件和它的 credits.txt。
   - 测试：改之前（1a9a2de）Luau 测试就有不过的——`ia_veh` 3 处（按键文字的语言、瞄准镜调色、瞄准镜默认夜视档）、`ia_optics` 2 处（目镜占屏幕高度 45% / 59%）、`ia_bots` 1 处（攻方拿下 0 个据点）；
     `ui_export` 的战斗画面在测试台里有一条 Coach.lua pointPos 的 'Position' 报错（Lune 的 roblox 库缺默认值，改之前就有）。这一批没让它们变多，结果见提交说明。
 

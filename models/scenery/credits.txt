@@ -1,3 +1,6 @@
+2026-11-18 起 scenery.glb 只留 3 块石头（rock1、rock2、rock3，来自下面 dariiiii 的「Coniferous Forest Assets Pack」）；树、灌木、草丛、花丛去掉了（地图不种树，草用 Roblox 地形自带的）。
+下面是原来整包的署名，留着备查。
+
 花草树木模型包（models/scenery/scenery.glb）用到的模型，都是 Sketchfab 上 CC-BY 4.0（署名）授权：
 
 - 「Realistic fir trees pack (LODS, gameready)」，作者 lolipop_1707，https://sketchfab.com/3d-models/f58e8b6d733e4b0586e5b7db847b89e7，CC-BY 4.0
