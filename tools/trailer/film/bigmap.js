@@ -244,7 +244,7 @@ export function seaHeightTex(cx, cz, r, size) {
 // —— 地图上的零件挪到放大后的位置：挨着的（40 格以内）算一组整体平移（碉堡、机场、港口照原样），
 //   铁丝网、沙袋墙这些沿着海岸一长串的一件件挪；海上的（码头、舰队）只挪水平位置 ——
 const PER_PART = /^Map\/(Wire|Defenses)$/;
-const DROP = /^Map\/Pads$/;
+const DROP = /^Map\/(Pads|Points)$/;   // 召唤位、据点旗（游戏里的标记：一大块蓝 / 红旗板，摆在片子里很抢眼）不进片子
 // 整组平移过的东西（军舰、码头、工事、机场……）：包围盒 + 平移量。摆在它们上面的东西（甲板上的飞机、码头上的人）
 //   要跟着同一个平移，不能各自按 s2w 算——放大以后两点的位移差好几百格，飞机就悬空了（用户：飞机起飞甲板为什么是透明的）
 const MOVED = [];
@@ -259,8 +259,12 @@ export function s2wAt(x, z) {
   const [wx, wz] = s2w(x, z);
   return [wx, wz, 0];
 }
+// 海滩的标志旗（Map/Scenery 里 8 × 5 的布块，红 / 白 / 蓝 / 金 / 紫五处海滩各一面）和它的旗杆：游戏里的标记，片子里一大块纯色很抢眼
+function isBeachFlag(p) { return p.g === 'Map/Scenery' && /Fabric/.test(p.m) && Math.abs(p.s[0] - 8) < 0.6 && Math.abs(p.s[1] - 5) < 0.6 && p.s[2] < 0.8; }
 export function relocateParts(parts) {
-  const keep = parts.filter(p => !DROP.test(p.g));
+  const flags = parts.filter(isBeachFlag);
+  const nearFlag = p => flags.some(f => Math.hypot(p.cf[0] - f.cf[0], p.cf[2] - f.cf[2]) < 9);
+  const keep = parts.filter(p => !DROP.test(p.g) && !isBeachFlag(p) && !(p.g === 'Map/Scenery' && p.s[1] > 12 && p.s[0] < 2 && p.s[2] < 2 && nearFlag(p)));
   const out = [];
   MOVED.length = 0;
   const move = (list) => {

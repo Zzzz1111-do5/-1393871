@@ -988,36 +988,79 @@ async function shotPatriot(env, add) {
 // S18 天亮了：滩头的烟、烧着的残骸，人影往坡上走；镜头从人身后升起来，岛的山脊后面天发白
 async function shotDawn(env, add) {
   const { fx, groundY } = env;
-  const sq = await squad(env, 'atk', 7, 251, { nvg: 0 });
+  // 用户：「日初那一幕没啥感觉，看了就感觉地图挺糙的」——改成逆光剪影：天亮在山脊后面，兵顺着滩头往里走，
+  //   低机位贴着地面、慢慢升起来；地面一层晨雾、残骸的烟柱逆着光，地表压进暗部（粗糙的地形不再平白地摊在画面里）
+  const SUN = V3(0.38, 0.14, -0.92).normalize();   // 日头刚出山脊：再低一点地面就全黑了（光是擦着地的）
+  const sq = await squad(env, 'atk', 9, 251, { nvg: 0 });
   sq.forEach(s => add(s.root));
   const tank = await vehicle('ztz99', env.REPO); add(tank.root);
-  onGround(env, tank.root, 356, -722, 0.25, 0.2);
-  tank.aim(-0.3, 0.02);
-  [[290, -771, 6], [412, -812, 5], [330, -730, 3.5], [262, -742, 3]].forEach(([x, z, s], i) => fx.add(fire({ p: V3(x, groundY(x, z) + 0.5, z), s, seed: 260 + i })));
+  onGround(env, tank.root, 404, -742, 0.12, 0.2);
+  tank.aim(-0.25, 0.02);
+  // 烧着的残骸：烟柱逆着光（天亮那一侧），画面里一层层拉开纵深
+  [[292, -806, 7], [412, -836, 5.5], [344, -790, 3.2], [250, -800, 3], [474, -828, 4.5]].forEach(([x, z, sz], i) =>
+    fx.add(fire({ p: V3(x, groundY(x, z) + 0.5, z), s: sz, seed: 260 + i })));
   const R = rng(270);
-  const walkers = sq.map((s, i) => ({ s, start: V3(298 + i * 11 + R.range(-3, 3), 0, -712 - R.range(0, 14)), sp: R.range(3.2, 4.6), ph: R() }));
+  // 一列往里走的兵：两个在镜头跟前（大剪影），其余拉开纵深
+  // 一列斜着穿过画面往里走：头一个离镜头二十几格（大剪影），往后一个比一个远
+  const DIR = V3(-0.18, 0, -1).normalize();
+  const walkers = sq.map((s, i) => ({
+    s, start: V3(292 + i * 16 + R.range(-4, 4), 0, -676 - (i % 3) * 10 - R.range(0, 6)),
+    sp: R.range(2.6, 3.4), ph: R(), yaw: headingTo(V3(), DIR) + R.range(-0.08, 0.08),
+  }));
+  // 地面晨雾：一片贴着地面的大团淡雾，慢慢往一边飘（挡住平白的地表，拉出层次）
+  const MIST = [];
+  for (let i = 0; i < 44; i++) MIST.push({ x: R.range(210, 520), z: R.range(-960, -640), s: R.range(70, 150), a: R.range(0.09, 0.17), ph: R() * 6.28, v: R.range(1.2, 3.0) });
+  fx.add((t, f) => {
+    for (const m of MIST) {
+      const x = m.x + t * m.v, z = m.z + Math.sin(t * 0.12 + m.ph) * 4;
+      f.sprite('puff', V3(x, groundY(x, z) + 4 + Math.sin(t * 0.3 + m.ph) * 1.5, z), m.s, 18 + (t * 1.5 + m.ph * 6) % 30,
+        m.a * smooth(0, 1.2, t), 0, [1.25, 1.12, 1.0], m.ph + t * 0.02);
+    }
+  });
+  // 天亮：山脊后面透出来的光。先量出这个方向上山脊的仰角，把光团摆在脊线再往上一点，镜头升起来的时候正好露出来
+  const camP0 = V3(304, 34, -598);   // 镜头起点（下面 update 里的 cp 起点）：按它量山脊的仰角
+  let ang = -1;
+  for (let d = 600; d < 9000; d += 150) {
+    const x = camP0.x + SUN.x * d, z = camP0.z + SUN.z * d;
+    ang = Math.max(ang, (env.groundY(x, z) - camP0.y) / d);
+  }
+  const sunAt = V3(camP0.x + SUN.x * 9000, camP0.y + ang * 9000 + 430, camP0.z + SUN.z * 9000);   // 脊线再往上一点：镜头抬起来也看得见
+  fx.add((t, f) => {
+    const k = smooth(0.6, 6.5, t);
+    f.addGlow(sunAt, 900, new THREE.Color(1, 0.66, 0.34), 2.5 + 10 * k, 1, 0);        // 日头本身
+    f.addGlow(sunAt, 3400, new THREE.Color(1, 0.5, 0.24), 0.22 + 0.7 * k, 0, 0);      // 周围的霞光
+  });
   return {
     update(t) {
       const u = t / 8;
       for (const w of walkers) {
-        const z = w.start.z - t * w.sp;
-        w.s.root.position.set(w.start.x, groundY(w.start.x, z), z);
-        w.s.root.rotation.set(0, 0.05, 0);
-        pose(w.s, { ...runPose((t * 0.7 + w.ph) % 1, 0.45), twist: 0.24, gun: { p: [0.44, 0.92, -0.9], r: [-0.33, 0.3, 0.08] } });   // 走着端枪：身子拧一点，左手够得着护木
+        const p = w.start.clone().addScaledVector(DIR, t * w.sp);
+        w.s.root.position.set(p.x, groundY(p.x, p.z), p.z);
+        w.s.root.rotation.set(0, w.yaw, 0);
+        pose(w.s, { ...runPose((t * 0.62 + w.ph) % 1, 0.4), twist: 0.24, gun: { p: [0.44, 0.92, -0.9], r: [-0.33, 0.3, 0.08] } });
       }
+      // 镜头：低低地架在队伍侧后方，兵斜着穿过画面往山脊那边走（逆光剪影），镜头慢慢升一点、往远处推
       const e = easeIO(u);
-      const cp = V3(lerp(324, 318, e), lerp(groundY(324, -698) + 2.4, 62, e), lerp(-698, -650, e));
-      const look = V3(lerp(330, 340, e), lerp(28, 52, e), lerp(-800, -980, e));
-      cam(env, cp, look, lerp(34, 40, e));
-      const dawn = lerp(0.35, 0.85, u);
-      return { exposure: lerp(1.25, 1.1, u), dawn, sunDir: V3(0.38, 0.03, -0.92).normalize(), moonVis: 1 - dawn * 0.8,
-        fogColor: new THREE.Color().setRGB(lerp(0.035, 0.13, dawn), lerp(0.04, 0.105, dawn), lerp(0.06, 0.115, dawn)), fogDensity: 0.00055,
-        moonDir: V3(0.38, 0.1, -0.92).normalize(), moonI: lerp(2.0, 3.6, dawn), moonC: 0xffc89a, hemiI: lerp(1.2, 1.8, dawn),
-        shadowAt: V3(330, 15, -740), shadowR: 160, sat: 0.88, bloom: 1.0 };
+      // 收尾的大全景：镜头从水边抬起来、往后拉，把整个滩头亮出来——烧着的残骸、沙滩上的车和人、晨雾，
+      //   远处山脊后面日头刚出来（贴着地面架机位时近处的坡会堵住大半个画面，抬起来才看得全）
+      const cp = V3(lerp(304, 288, e), lerp(34, 112, e), lerp(-598, -512, e));
+      const look = V3(lerp(352, 376, e), lerp(46, 96, e), lerp(-800, -920, e));   // 往上看一点：地平线压到下半幅，日头和霞光占住上面
+      cam(env, cp, look, lerp(36, 43, e));
+      env.camera.rotateZ(Math.sin(t * 0.4) * 0.35 * DEG);
+      shake(env.camera, t, 0.12, 1.2, 61);
+      const dawn = lerp(0.3, 0.95, smooth(0, 7, t));
+      return { exposure: lerp(1.3, 1.12, u), dawn, sunDir: SUN, moonVis: Math.max(0, 1 - dawn * 1.3),
+        // 雾浓一点：远处的山脊退成一层层的剪影（地形的粗糙就看不出来了）
+        fogColor: new THREE.Color().setRGB(lerp(0.05, 0.19, dawn), lerp(0.05, 0.135, dawn), lerp(0.07, 0.125, dawn)), fogDensity: lerp(0.00075, 0.00105, u),
+        moonDir: SUN, moonI: lerp(3.0, 6.0, dawn), moonC: 0xffb070, hemiI: lerp(1.1, 1.9, dawn),   // 「月光」当成贴着地平线的晨光：人、车、烟都镶一道暖边
+        shadowAt: V3(336, 10, -760), shadowR: 260, sat: 0.92, contrast: 1.1, bloom: 1.15, tint: 1.04,
+        dof: { focus: lerp(45, 200, e), range: lerp(120, 360, e), max: 0.38 } };
     },
+    titles: t => [{ text: '天亮了', x: 0.5, y: 0.8, size: 0.03, font: SERIF, weight: 700, spacing: 0.4, a: fadeIO(t, 4.6, 7.8, 1.0, 0.7), color: '#f0e2cc' }],
     events: [{ t: 0, k: 'dawnMusic' }, { t: 0, k: 'aftermath' }],
   };
 }
+
 // S19 片名
 async function shotTitle(env, add) {
   env.worldVisible(false);
