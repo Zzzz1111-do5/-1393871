@@ -6,12 +6,12 @@ import { seaY, seaNormal, SEA } from './world.js';
 import { vehicle, aircraft, ship, soldier, pose, runPose, AIM, KNEEL, CROUCH, STAND, landingCraft, hovercraft, loadGLB, META, pl10, hhq9, pac2, j20SideBay, j20Extras, breakApart, patriotNoses } from './models.js';
 import { explosion, muzzle, burst, flare, flarePos, fire, missile, spray, beamMesh, flameMesh } from './fx.js';
 import { fadeIO } from './titles.js';
-import { BIG, s2w, s2wV, heightAt, placeOnGround } from './bigmap.js';
+import { BIG, s2w, s2wAt, s2wV, heightAt, placeOnGround } from './bigmap.js';
 
 // 片子里的地图放大了（bigmap.js）：抢滩那一片（离 BIG.fx / fz 320 格以内）原样，往外越远放得越大。
 //   分镜里按游戏坐标写死的位置要换算：gp 地面上的点（贴地）、sp 海面 / 空中的点（只挪水平位置）
 const gp = (x, z, lift = 0) => placeOnGround(x, z, lift);
-const sp = (x, y, z) => { const [wx, wz] = s2w(x, z); return V3(wx, y, wz); };
+const sp = (x, y, z) => { const [wx, wz, dy] = s2wAt(x, z); return V3(wx, y + dy, wz); };   // 在整组搬过的东西（军舰甲板）上就跟着它走
 const NIGHT_FOG = new THREE.Color(0x0e1420);
 const RED_T = new THREE.Color(1, 0.32, 0.12), GREEN_T = new THREE.Color(0.45, 1, 0.35);
 const SERIF = '"Noto Serif SC"', SANS = '"Noto Sans SC"';
@@ -97,7 +97,7 @@ async function rifle(env) { return loadGLB(`${env.REPO}/models/fps_m4.glb`); }
 async function squad(env, team, n, seed, opt = {}) {
   const R = rng(seed), g = await rifle(env);
   const out = [];
-  for (let i = 0; i < n; i++) out.push(soldier(team, { rifle: g, skin: Math.floor(R() * 5), nvg: opt.nvg ?? 1, nvgGlow: opt.glow ?? 0, fabric: env.T.grime }));
+  for (let i = 0; i < n; i++) out.push(soldier(team, { rifle: opt.noRifle ? null : g, skin: Math.floor(R() * 5), nvg: opt.nvg ?? 1, nvgGlow: opt.glow ?? 0, fabric: env.T.grime }));
   return out;
 }
 // 灯塔：转动的光柱
@@ -188,11 +188,12 @@ async function shotWatch(env, add) {
   return {
     update(t) {
       const u = t / 4.5;
-      pose(s, { ...STAND, headY: Math.sin(t * 0.35) * 0.18 - 0.05, headX: 0.04, gun: { p: [0.52, 1.0, -1.02], r: [-0.22, 0.3, 0.1] } });   // 用户：开头哨兵的枪穿模——端在身前、枪口朝斜下，不插进胸口
+      // 端枪警戒（和碉堡里那个机枪手同一套姿势：两手都在枪上、枪托抵肩，用户两次说持枪姿势怪）
+      pose(s, { ...AIM, headY: -0.3 + Math.sin(t * 0.35) * 0.16, headX: 0.1 });
       s.chest.scale.setScalar(1 + Math.sin(t * 1.6) * 0.008);
       s.root.updateMatrixWorld(true);
       const eye = head();
-      cam(env, s.root.localToWorld(V3(lerp(1.8, 1.1, ease(u)), lerp(4.7, 4.9, u), lerp(-9, -6, ease(u)))), eye.clone().add(V3(0, -0.15, 0)), 26);
+      cam(env, s.root.localToWorld(V3(lerp(2.3, 1.6, ease(u)), lerp(4.9, 5.0, u), lerp(-11.5, -8.5, ease(u)))), eye.clone().add(V3(0, -1.0, 0)), 30);   // 退一点：看得到端枪的姿势，不只是一个脑袋
       beam(t + 6);
       return { exposure: 1.15, shadowAt: p, shadowR: 60, dof: { focus: env.camera.position.distanceTo(eye), range: 3, max: 1.0 }, bloom: 1.1 };
     },
@@ -259,7 +260,7 @@ async function shotDeck(env, add) {
   const kf = t => 0.35 + 0.65 * smooth(1.2, 2.6, t);
   afterburners(A, fx, kf);
   deckLights(add);
-  const crew = await squad(env, 'atk', 2, 21, { nvg: 0 });
+  const crew = await squad(env, 'atk', 2, 21, { nvg: 0, noRifle: true });   // 甲板人员不带枪
   crew.forEach((c, i) => { add(c.root); c.root.position.copy(p0).add(V3(18 + i * 5, 0, -16 + i * 16)); c.root.rotation.y = 0.9 + i * 2; });
   fx.add(spray({ at: (b, q) => p0.clone().add(V3(q.x * 2, 0.5, -24 + q.z * 30)), rate: 30, size: 6, up: 3, life: 2.4, alpha: 0.2, tint: [1.2, 1.2, 1.25] }));
   return {
@@ -267,7 +268,7 @@ async function shotDeck(env, add) {
       const k = kf(t);
       A.root.position.copy(p0).add(V3(0, Math.sin(t * 40) * 0.02 * k, 0));
       A.root.updateMatrixWorld(true);
-      crew.forEach((c, i) => pose(c, { ...STAND, gun: { p: [0.2, -0.5, -0.4], r: [-1.4, 0, 0] }, headY: i ? -0.3 : 0.5 }));
+      crew.forEach((c, i) => pose(c, { ...STAND, twist: 0, gun: { p: [0.34, 0.1, -0.26], r: [-1.1, 0.1, 0] }, headY: i ? -0.3 : 0.5 }));   // 手垂在身前
       cam(env, p0.clone().add(V3(-20 + t * 0.5, 3.0, 58 - t * 1.6)), A.root.localToWorld(V3(2, 6, -14)), 32);
       shake(env.camera, t, 0.12 + 0.3 * k, 6, 9);
       return { exposure: 1.15, shadowAt: p0, shadowR: 120, dof: { focus: 60, range: 40, max: 0.5 }, bloom: 1.2 };
@@ -1002,7 +1003,7 @@ async function shotDawn(env, add) {
         const z = w.start.z - t * w.sp;
         w.s.root.position.set(w.start.x, groundY(w.start.x, z), z);
         w.s.root.rotation.set(0, 0.05, 0);
-        pose(w.s, { ...runPose((t * 0.7 + w.ph) % 1, 0.45), gun: { p: [0.4, 0.75, -0.8], r: [-0.5, 0.2, 0.15] } });
+        pose(w.s, { ...runPose((t * 0.7 + w.ph) % 1, 0.45), twist: 0.24, gun: { p: [0.44, 0.92, -0.9], r: [-0.33, 0.3, 0.08] } });   // 走着端枪：身子拧一点，左手够得着护木
       }
       const e = easeIO(u);
       const cp = V3(lerp(324, 318, e), lerp(groundY(324, -698) + 2.4, 62, e), lerp(-698, -650, e));

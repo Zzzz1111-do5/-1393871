@@ -245,16 +245,35 @@ export function seaHeightTex(cx, cz, r, size) {
 //   铁丝网、沙袋墙这些沿着海岸一长串的一件件挪；海上的（码头、舰队）只挪水平位置 ——
 const PER_PART = /^Map\/(Wire|Defenses)$/;
 const DROP = /^Map\/Pads$/;
+// 整组平移过的东西（军舰、码头、工事、机场……）：包围盒 + 平移量。摆在它们上面的东西（甲板上的飞机、码头上的人）
+//   要跟着同一个平移，不能各自按 s2w 算——放大以后两点的位移差好几百格，飞机就悬空了（用户：飞机起飞甲板为什么是透明的）
+const MOVED = [];
+export function shiftOf(x, z) {
+  for (const g of MOVED) if (x >= g.x0 && x <= g.x1 && z >= g.z0 && z <= g.z1) return g;
+  return null;
+}
+// 游戏坐标 → 片子里的坐标：在整组搬过的东西上就跟着它走，否则按平滑映射；返回 [x, z, 高度的平移]
+export function s2wAt(x, z) {
+  const g = shiftOf(x, z);
+  if (g) return [x + g.dx, z + g.dz, g.dy];
+  const [wx, wz] = s2w(x, z);
+  return [wx, wz, 0];
+}
 export function relocateParts(parts) {
   const keep = parts.filter(p => !DROP.test(p.g));
   const out = [];
+  MOVED.length = 0;
   const move = (list) => {
-    let sx = 0, sz = 0;
-    for (const p of list) { sx += p.cf[0]; sz += p.cf[2]; }
+    let sx = 0, sz = 0, x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const p of list) {
+      sx += p.cf[0]; sz += p.cf[2];
+      x0 = Math.min(x0, p.cf[0]); x1 = Math.max(x1, p.cf[0]); z0 = Math.min(z0, p.cf[2]); z1 = Math.max(z1, p.cf[2]);
+    }
     sx /= list.length; sz /= list.length;
     const [nx, nz] = s2w(sx, sz);
     const g0 = srcH0(sx, sz);
     const dy = g0 < 0.5 ? 0 : heightAt(nx, nz) - g0;
+    if (list.length > 20) MOVED.push({ x0: x0 - 40, x1: x1 + 40, z0: z0 - 40, z1: z1 + 40, dx: nx - sx, dz: nz - sz, dy });
     for (const p of list) { const q = { ...p, cf: p.cf.slice() }; q.cf[0] += nx - sx; q.cf[1] += dy; q.cf[2] += nz - sz; out.push(q); }
   };
   // 分组：同一类里中心相距 40 格以内的连成一组（并查集 + 网格）
@@ -263,7 +282,7 @@ export function relocateParts(parts) {
   for (const [g, L] of Object.entries(byG)) {
     if (PER_PART.test(g)) { for (const p of L) move([p]); continue; }
     const par = L.map((_, i) => i), find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
-    const cell = {}, C = 40, key = (a, b) => a + ',' + b;
+    const cell = {}, C = 160, key = (a, b) => a + ',' + b;   // 连成一块的距离：40 格太小，航母的甲板块、舰岛会被拆成好多组，各组按自己的位移搬就把船抻开了
     L.forEach((p, i) => { const a = Math.floor(p.cf[0] / C), b = Math.floor(p.cf[2] / C); (cell[key(a, b)] = cell[key(a, b)] || []).push(i); });
     L.forEach((p, i) => {
       const a = Math.floor(p.cf[0] / C), b = Math.floor(p.cf[2] / C);
@@ -278,10 +297,11 @@ export function relocateParts(parts) {
     for (const list of Object.values(groups)) {
       let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
       for (const p of list) { x0 = Math.min(x0, p.cf[0]); x1 = Math.max(x1, p.cf[0]); z0 = Math.min(z0, p.cf[2]); z1 = Math.max(z1, p.cf[2]); }
-      if (Math.hypot(x1 - x0, z1 - z0) > 900) for (const p of list) move([p]); else move(list);
+      // 连在一起的一大块（军舰、机场）整组搬；只有拉得特别长的一串（长围栏之类）才一件件搬
+      if (Math.hypot(x1 - x0, z1 - z0) > 2500) for (const p of list) move([p]); else move(list);
     }
   }
   return out;
 }
 // 游戏里的一点（地面上）→ 片子里的位置（贴地）
-export function placeOnGround(x, z, lift = 0) { const [wx, wz] = s2w(x, z); return new THREE.Vector3(wx, heightAt(wx, wz) + lift, wz); }
+export function placeOnGround(x, z, lift = 0) { const [wx, wz] = s2wAt(x, z); return new THREE.Vector3(wx, heightAt(wx, wz) + lift, wz); }
