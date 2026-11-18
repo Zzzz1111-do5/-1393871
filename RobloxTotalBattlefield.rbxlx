@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="0">
+  <Item class="ReplicatedStorage" referent="1">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="1">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -571,7 +571,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">BuildingMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/bld2glb.py），别手改：地图建筑的原模型（models/bld/buildings.glb，网页版地图用的写实模型）的元数据
@@ -599,7 +599,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -626,18 +626,20 @@ Config.MinPlayersToStart = 1
 -- 分阶段突破（用户：玩法不够清晰、没法快速进入战局、感受不到激烈对抗）：5 个据点不再同时开，一个阶段一个阶段打——
 --   同时只能占当前阶段的据点，两边的人（机器人也是）都往那里去；打下这一阶段的全部据点，战线往前推、出生点跟着走。
 --   time 这一阶段限时（秒，到点守方赢；有据点正在被占就加时）；flank 侧翼据点：从这一阶段起开放，拿下给攻方补兵力，不拿也能往前推
-Config.Stages = {
-  { id = "beach", points = { "A" }, time = 7 * 60 },                     -- 第一阶段：抢滩前哨岛
-  { id = "main", points = { "C", "D" }, time = 9 * 60, flank = { "B" } }, -- 第二阶段：登陆主岛，港口 + 机场（灯塔岛侧翼）
-  { id = "hq", points = { "E" }, time = 8 * 60 },                        -- 第三阶段：指挥部决战
+Config.Stages = {   -- 用户：同一时间只开一个交战区（像 Battlefield 的突破模式）——一个阶段一个据点，灯塔岛 B 不开放
+  { id = "beach", points = { "A" }, time = 7 * 60 },     -- 第一阶段：抢滩前哨岛
+  { id = "port", points = { "C" }, time = 6 * 60 },      -- 第二阶段：登陆主岛，拿下港口
+  { id = "airfield", points = { "D" }, time = 6 * 60 },  -- 第三阶段：机场
+  { id = "hq", points = { "E" }, time = 7 * 60 },        -- 第四阶段：指挥部决战
 }
+Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
 -- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
 --   lockNight = false 才按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替
 Config.DayNight = { lockNight = true, clock = 2.3, period = 24 * 60 }
-Config.RallyBack = 300   -- 守方前线集结点：据点往守方后方（北）多远（格），据点被压着时守方在这里出生
-Config.StageOff = 420    -- 攻方攻击出发阵地：第二阶段起，据点往攻方来的方向多远（格），攻方在这里出生、不用走几公里（Round.lua）
+Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
+Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
 -- 占领：圈里数双方的人（步兵、地面载具；飞机、舰艇不算；机器人也算）
 Config.Capture = {
@@ -856,7 +858,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -966,7 +968,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -1024,7 +1026,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">Flora</string>
         <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
@@ -1192,7 +1194,7 @@ return Flora
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -1444,7 +1446,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">GearDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——手持装备用哪件真模型（Sketchfab 原模型：tools/weapons/optics.json → OpticsMeta / OpticMesh / models/optics/<键>.glb）
@@ -1504,7 +1506,7 @@ return GD
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">ImportTurn</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -1521,7 +1523,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -1586,7 +1588,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="11">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -1623,7 +1625,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="12">
+    <Item class="ModuleScript" referent="13">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py），别手改：网页版舰艇模型原样转成的 Roblox 模型（models/ship/<型号>.glb）的元数据
@@ -1645,7 +1647,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="13">
+    <Item class="ModuleScript" referent="14">
       <Properties>
         <string name="Name">ImportedTint</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -2934,7 +2936,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="14">
+    <Item class="ModuleScript" referent="15">
       <Properties>
         <string name="Name">ImportedWpn</string>
         <ProtectedString name="Source"><![CDATA[-- 导弹合集（models/wpn/missiles.glb，tools/models/wpn2glb.py 生成）：署名（主菜单「致谢」）和导入了的型号
@@ -2945,7 +2947,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="15">
+    <Item class="ModuleScript" referent="16">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -3043,6 +3045,7 @@ add("beach.outpost", "前哨岛南岸", "Outpost Isle (south)")
 add("beach.lighthouse", "灯塔岛南岸", "Lighthouse Isle (south)")
 add("beach.port", "港湾（直冲港口）", "Harbor (port assault)")
 add("spawn.camp", "后方营地", "Rear Camp")
+add("spawn.afield", "守方机场（战斗机）", "Airbase (jets)")
 add("spawn.fleet", "两栖攻击舰", "Assault ship")
 add("spawn.cv", "航母甲板", "Carrier deck")
 add("spawn.barge", "登陆平台", "Landing platform")
@@ -3583,6 +3586,14 @@ add("stage.main", "登陆主岛", "MAIN ISLAND")
 add("stage.main.atk", "登陆主岛，拿下港口 C 和机场 D（灯塔岛 B 是侧翼，拿下补兵力）", "Land on the main island and take Port C and Airfield D (Lighthouse B is a flank: taking it adds reinforcements)")
 add("stage.main.def", "守住港口 C 和机场 D", "Hold Port C and Airfield D")
 add("stage.main.short", "主岛", "MAIN ISLAND")
+add("stage.port", "夺取港口", "TAKE THE PORT")
+add("stage.port.atk", "登陆主岛，拿下港口 C", "Land on the main island and take Port C")
+add("stage.port.def", "守住港口 C", "Hold Port C")
+add("stage.port.short", "港口", "PORT")
+add("stage.airfield", "夺取机场", "TAKE THE AIRFIELD")
+add("stage.airfield.atk", "拿下机场 D", "Take Airfield D")
+add("stage.airfield.def", "守住机场 D", "Hold Airfield D")
+add("stage.airfield.short", "机场", "AIRFIELD")
 add("stage.hq", "决战指挥部", "FINAL ASSAULT")
 add("stage.hq.atk", "攻下指挥部 E，结束战斗", "Take Command E to win")
 add("stage.hq.def", "最后一道防线：死守指挥部 E", "Last line: hold Command E at all costs")
@@ -3748,7 +3759,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="17">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -4215,7 +4226,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="17">
+    <Item class="ModuleScript" referent="18">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -4235,11 +4246,11 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="18">
+    <Item class="Folder" referent="19">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -4301,7 +4312,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -4321,7 +4332,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -4362,7 +4373,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -4382,7 +4393,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -4402,7 +4413,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -4422,7 +4433,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -4449,7 +4460,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -4483,7 +4494,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -4503,7 +4514,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -4551,7 +4562,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -4613,7 +4624,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -4633,7 +4644,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -4667,7 +4678,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -4688,7 +4699,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="33">
+    <Item class="ModuleScript" referent="34">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -4839,7 +4850,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="34">
+    <Item class="ModuleScript" referent="35">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -4883,7 +4894,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="35">
+    <Item class="ModuleScript" referent="36">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -5014,7 +5025,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="36">
+    <Item class="ModuleScript" referent="37">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -5368,7 +5379,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="37">
+    <Item class="ModuleScript" referent="38">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -5663,17 +5674,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="38">
+    <Item class="Folder" referent="39">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="39">
+  <Item class="ServerScriptService" referent="40">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="40">
+    <Item class="Script" referent="41">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -5901,7 +5912,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -5950,8 +5961,7 @@ function AIVeh.init(G)
     if team == "atk" then return (active and s.owner ~= "atk") and 2 or 0 end
     if s.owner ~= "def" then return 0 end
     if active then return 2 + (s.atk or 0) + (s.prog or 0) * 3 end
-    local stage = (G.round and G.round.stage) or 1
-    return (G.stageOf and G.stageOf[p.id] == stage + 1) and 1 or 0
+    return 0   -- 用户（交战区）：只去当前交战区
   end
   local function pickGoal(team, land)
     local best, bs = nil, 0
@@ -6031,12 +6041,22 @@ function AIVeh.init(G)
   end
 
   local function spawn(team)
-    local goal = pickGoal(team, (team == "def") and Map.landOf(Map.CAMP.x, Map.CAMP.z) or nil)
+    local goal = pickGoal(team, nil)   -- 守方也不限陆地了：在目标后面的集结点出车（前哨岛 A 也守得到）
     if not goal then return nil end
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
-    if team == "def" then   -- 营地车场的空车位
+    if team == "def" then
+      -- 用户（出生点跟着战线走）：目标后面的集结点出车；那里有敌人（或找不到平地）才从营地车场出
+      local rp = G.rallyOf and G.rallyOf(goal.id)
+      if rp then
+        local x, z = landSpot(rp.x, rp.z, 60)
+        if x and Map.landOf(x, z) == goal.land then
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, x, z, V(goal.x - x, 0, goal.z - z)))
+          return setup(e, team, goal, V(x, 0, z), "go")
+        end
+      end
+      if goal.land ~= Map.landOf(Map.CAMP.x, Map.CAMP.z) then return nil end   -- 营地开不过去（在别的岛上）
       for _, p in ipairs(G.pads or {}) do
         if p.team == "def" and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
           local face = p.base.LookVector
@@ -6388,7 +6408,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -6888,6 +6908,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airBombStep = guideBomb   -- 测试用（客户端 Marks.lua 的炸弹落点按同一套算）
   local function guideRocket(s, dt)
     s.age += dt
     s.vel += V(0, -GRAV * 0.25, 0) * dt
@@ -7342,7 +7363,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -7919,7 +7940,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -9046,7 +9067,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -9482,7 +9503,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="46">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -9775,7 +9796,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -10972,7 +10993,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -11110,7 +11131,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -11304,7 +11325,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -12292,7 +12313,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -12376,7 +12397,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="53">
         <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -12611,7 +12632,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="54">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -12660,10 +12681,11 @@ function Round.init(G)
   end
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
+  --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
   local function isActive(s)
     if not s or s.locked then return false end
     local k = stageOf[s.id]
-    if not k then return true end
+    if not k then return false end
     if flankOf[s.id] then return R.stage >= k end
     return k == R.stage
   end
@@ -12678,27 +12700,10 @@ function Round.init(G)
     return out
   end
   G.objectives = objectives
-  -- 守方前线集结点：据点往北（守方后方）Config.RallyBack 格、同一块陆地上能站人的地方（据点被压着时守方在这里出生，不用从几公里外的营地跑过来）
-  local rally = {}
-  for _, p in ipairs(Map.POINTS) do
-    local back = Config.RallyBack or 300
-    local land = p.isle or "main"
-    local best = nil
-    for k = 0, 10 do
-      for _, sx in ipairs({ 0, 1, -1 }) do
-        local x, z = p.x + sx * k * 30, p.z - back * (1 - k * 0.07)
-        if not best and Map.isLand(x, z) and Map.landOf(x, z) == land and Map.slope(x, z) < 0.9 then best = { x = x, z = z } end
-      end
-    end
-    rally[p.id] = best or { x = p.x, z = p.z - 120 }
-  end
-  G.rallyOf = function(id) return rally[id] end
-  -- 攻方攻击出发阵地（第二阶段起）：每个要打的据点往攻方来的方向（同一块陆地上上一阶段的据点；没有就是最近的登陆点）
-  --   退 Config.StageOff 格（来向没那么远就取八成五，至少 260 格），找同一块陆地上能站人的地方。攻方在这里出生，
-  --   不用从几公里外的滩头、上一个据点走过去（机器人对打：拿下港口 C 以后攻方走了 4 分多钟才到机场 D，一路没仗打）。
-  --   和守方集结点一样，对方 150 格以内有人就不能用（不出生在敌人脸上）。
-  --   不放在守方机枪碉堡的射界里（开局照 FortDefs.layout 摆、朝哪、射界多宽、看多远、中间有没有山挡着）：正前方被封锁就往两边挪，
-  --   从侧面接近（机器人对打：机场 D 南边 150 格的碉堡正对着出发阵地，4 分钟打死攻方 60 多人）
+  -- 用户（交战区）：出生点跟着战线走——攻方在离目标 Config.StageOff 格（200～300）的攻击出发阵地出生，守方在目标后面
+  --   Config.RallyBack 格（150～250）的集结点出生；每处算几个备选位置，对方在附近就换下一个（不出生在敌人脸上）
+  local rally = {}   -- [据点] = { {x, z}, … }（在攻方来向的反方向，下面和出发阵地一起算）
+  G.rallyOf = function(id) return rally[id] and rally[id][1] end
   local FD = require(game:GetService("ReplicatedStorage"):WaitForChild("FortDefs"))
   local bunkers = {}
   for _, f in ipairs(FD.layout(Map)) do
@@ -12720,13 +12725,16 @@ function Round.init(G)
     end
     return false
   end
-  local staging = {}
+  local staging = {}   -- [据点] = { {x, z}, … }（好的在前；都在机枪碉堡射界里时才用射界里的）
+  local OFF = Config.StageOff or 260
+  local BACK = Config.RallyBack or 200
   for _, p in ipairs(Map.POINTS) do
     local k = stageOf[p.id]
-    if k and k >= 2 and not flankOf[p.id] then
+    if k and not flankOf[p.id] then
+      -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
       local fx, fz, fd = nil, nil, math.huge
       for _, q in ipairs(Map.POINTS) do
-        if stageOf[q.id] == k - 1 and not flankOf[q.id] and q.land == p.land then
+        if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
           local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
           if d < fd then fx, fz, fd = q.x, q.z, d end
         end
@@ -12739,28 +12747,42 @@ function Round.init(G)
           end
         end
       end
-      local ux, uz = 0, 1   -- 没有来向：往南（攻方从南边的海上来）
+      local ux, uz = 0, 1
       if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
-      local off = math.clamp(fx and fd * 0.85 or 400, 260, Config.StageOff or 420)
-      local rp = rally[p.id]
-      local best, fallback = nil, nil
-      for _, ang in ipairs({ 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100 }) do
+      local good, bad = {}, {}
+      for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
         local a = math.rad(ang)
         local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
-        for _, kr in ipairs({ 1, 0.85, 1.15, 0.7, 1.3 }) do
-          local x, z = p.x + dx * off * kr, p.z + dz * off * kr
-          if off * kr >= 230 and Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and (x - rp.x) ^ 2 + (z - rp.z) ^ 2 > 300 * 300 then
-            if not covered(x, z) then best = { x = x, z = z } break end
-            fallback = fallback or { x = x, z = z }
+        for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
+          local x, z = p.x + dx * r, p.z + dz * r
+          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+            table.insert(covered(x, z) and bad or good, { x = x, z = z })
+            break
           end
         end
-        if best then break end
       end
-      staging[p.id] = best or fallback
+      for _, c in ipairs(bad) do table.insert(good, c) end
+      staging[p.id] = (#good > 0) and good or nil
+      -- 守方集结点：反方向（据点后面）150～250 格
+      local rs = {}
+      for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
+        local a = math.rad(ang)
+        local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
+        for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
+          local x, z = p.x + dx * r, p.z + dz * r
+          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+            table.insert(rs, { x = x, z = z })
+            break
+          end
+        end
+      end
+      rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
+    else
+      rally[p.id] = { { x = p.x, z = p.z - 120 } }
     end
   end
   G.stagingCovered = covered
-  G.stagingOf = function(id) return staging[id] end
+  G.stagingOf = function(id) return staging[id] and staging[id][1] end
 
   ---------------------------------------------------------------- 队伍人数、分队
 
@@ -12824,13 +12846,27 @@ function Round.init(G)
     end
     return false
   end
-  local function rallyHot(x, z) return hotFor("atk", x, z, 120) end
-  -- 攻击出发阵地现在能不能用（机器人出生也看这个）：开战了、据点是当前阶段的主目标、守方 150 格以内没人；能用返回位置
+  -- 集结点现在能用的那一个（攻方 120 格以内没人）
+  local function rallyFree(id)
+    for _, c in ipairs(rally[id] or {}) do
+      if not hotFor("atk", c.x, c.z, 120) then return c end
+    end
+    return nil
+  end
+  -- 第一波：准备阶段和开战后 Config.FirstWave 秒（第一阶段）能坐登陆艇抢滩；之后只能在攻击出发阵地出生
+  local function firstWave()
+    if R.phase == "prep" then return true end
+    return R.phase == "battle" and R.stage == 1 and now() - (R.battleAt or 0) < (Config.FirstWave or 45)
+  end
+  G.firstWave = firstWave
+  -- 攻击出发阵地现在能不能用（AI 车出生也看这个）：开战了、过了第一波、据点是当前阶段的目标；守方 150 格以内没人的那一个
   local function stagingOk(id)
-    local sp = staging[id]
-    if not sp or R.phase ~= "battle" or flankOf[id] or not isActive(points[id]) then return nil end
-    if hotFor("def", sp.x, sp.z, 150) then return nil end
-    return sp
+    local list = staging[id]
+    if not list or R.phase ~= "battle" or flankOf[id] or not isActive(points[id]) or firstWave() then return nil end
+    for _, c in ipairs(list) do
+      if not hotFor("def", c.x, c.z, 150) then return c end
+    end
+    return nil
   end
   G.stagingOk = stagingOk
 
@@ -12839,7 +12875,7 @@ function Round.init(G)
     local objs = objectives(false)
     local best, bd = nil, math.huge
     for _, s in ipairs(list) do
-      local kindOk = (team == "atk" and (s.kind == "beach" or s.kind == "point" or s.kind == "staging")) or (team == "def" and (s.kind == "point" or s.kind == "rally"))
+      local kindOk = (team == "atk" and (s.kind == "beach" or s.kind == "staging")) or (team == "def" and (s.kind == "point" or s.kind == "rally"))
       if s.ok and s.x and kindOk then
         for _, o in ipairs(objs) do
           local d = math.sqrt((s.x - o.x) ^ 2 + (s.z - o.z) ^ 2)
@@ -12863,37 +12899,44 @@ function Round.init(G)
   -- 出生点：{ id, kind, x, z, ok, rec }；每队能选哪些、现在能不能用、推荐哪个（离当前目标最近的）
   --   攻方的登陆点只列当前目标所在的那块陆地上的；守方的集结点只给当前阶段的据点。自己手里的据点都能出生（守方的机场 D 是飞机基地）
   local function spawnList(team, P)
+    -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
+    --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
-    local lands = {}
-    for _, p in ipairs(objectives(true)) do lands[p.land] = true end
+    local objs = objectives(false)
     if team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
       table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
       table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
       table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
-      -- 登陆艇：准备阶段也能上（艇在海上等着，开战一起冲滩）
-      for _, b in ipairs(Map.LANDINGS) do
-        if lands[b.isle or "main"] then table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" or R.phase == "prep" }) end
+      if firstWave() then   -- 第一波：坐登陆艇抢滩（准备阶段上艇，开战一起冲）
+        local lands = {}
+        for _, p in ipairs(objs) do lands[p.land] = true end
+        for _, b in ipairs(Map.LANDINGS) do
+          if lands[b.isle or "main"] then table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = true }) end
+        end
       end
-      for _, p in ipairs(Map.POINTS) do
-        local s = points[p.id]
-        if s and s.owner == "atk" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = true }) end
-      end
-      for _, p in ipairs(objectives(false)) do   -- 攻击出发阵地：当前阶段的主目标（第二阶段起）
-        local sp = staging[p.id]
-        if sp then table.insert(out, { id = "stage." .. p.id, kind = "staging", point = p.id, x = sp.x, z = sp.z, ok = stagingOk(p.id) ~= nil }) end
+      for _, p in ipairs(objs) do   -- 攻击出发阵地：离目标 200～300 格
+        local list = staging[p.id]
+        if list then
+          local c = stagingOk(p.id)
+          local sp = c or list[1]
+          table.insert(out, { id = "stage." .. p.id, kind = "staging", point = p.id, x = sp.x, z = sp.z, ok = c ~= nil })
+        end
       end
       table.insert(out, { id = "para", kind = "para", ok = R.phase == "battle" and now() >= ((P and P.paraCd) or 0) })
     else
-      table.insert(out, { id = "camp", kind = "camp", x = Map.CAMP.x, z = Map.CAMP.z, ok = true })
-      for _, p in ipairs(Map.POINTS) do
+      table.insert(out, { id = "camp", kind = "camp", x = Map.CAMP.x, z = Map.CAMP.z, ok = true })   -- 后方营地（地面载具、直升机）
+      local D = points.D
+      if Map.AIRFIELD and D and D.owner == "def" then   -- 守方机场（战斗机）：机场 D 还在手里
+        table.insert(out, { id = "afield", kind = "afield", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z, ok = true })
+      end
+      for _, p in ipairs(objs) do
         local s = points[p.id]
         if s and s.owner == "def" then
           table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = not s.pressed })
-          if isActive(s) then
-            local rp = rally[p.id]
-            table.insert(out, { id = "rally." .. p.id, kind = "rally", point = p.id, x = rp.x, z = rp.z, ok = not rallyHot(rp.x, rp.z) })
-          end
+          local c = rallyFree(p.id)
+          local rp = c or rally[p.id][1]
+          table.insert(out, { id = "rally." .. p.id, kind = "rally", point = p.id, x = rp.x, z = rp.z, ok = c ~= nil })
         end
       end
     end
@@ -12937,6 +12980,10 @@ function Round.init(G)
     elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
       local A = Map.AFIELD2
       local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
+      return CFrame.lookAt(p, p + V(0, 0, 1))
+    elseif sp.kind == "afield" then   -- 守方机场：跑道北边
+      local A = Map.AIRFIELD
+      local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 60, 10)
       return CFrame.lookAt(p, p + V(0, 0, 1))
     elseif sp.kind == "point" then
       local p = standAt(sp.x, sp.z, 30)
@@ -13479,6 +13526,7 @@ function Round.init(G)
   local function startBattle()
     R.phase = "battle"
     R.stage = 1
+    R.battleAt = now()   -- 第一波（登陆艇）从这时算
     R.endsAt = now() + ((STAGES[1] and STAGES[1].time) or RC.battle)
     R.overtimeEnds = nil
     R.stageAt = now()
@@ -13642,7 +13690,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="54">
+      <Item class="ModuleScript" referent="55">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -13742,7 +13790,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="55">
+      <Item class="ModuleScript" referent="56">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -13968,7 +14016,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="56">
+      <Item class="ModuleScript" referent="57">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -14264,7 +14312,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="57">
+      <Item class="ModuleScript" referent="58">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -14908,7 +14956,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="58">
+      <Item class="ModuleScript" referent="59">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -15902,15 +15950,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="59">
+  <Item class="StarterPlayer" referent="60">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="60">
+    <Item class="StarterPlayerScripts" referent="61">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="61">
+      <Item class="LocalScript" referent="62">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -15926,6 +15974,7 @@ return World
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Marks 落点标记（拿手雷时的弹道和落点圈、开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -15941,7 +15990,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice", "Marks" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -15994,7 +16043,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -16174,7 +16223,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -17618,7 +17667,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -17775,7 +17824,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -18350,7 +18399,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -18481,7 +18530,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -18866,7 +18915,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -19770,7 +19819,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -20448,7 +20497,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -20663,7 +20712,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -22335,7 +22384,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -22653,7 +22702,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -23305,7 +23354,7 @@ function Fx.init(G)
       end
       if not mine(e) then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
-        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w }
+        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
       if glow then addRoar(flying[e.id], glow, e.p) end
       if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：导弹视角小窗（MslCam.lua）
       return
@@ -23684,7 +23733,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -23816,7 +23865,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -24355,7 +24404,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -24818,7 +24867,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -25590,7 +25639,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -25857,7 +25906,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -26113,7 +26162,241 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
+          <Properties>
+            <string name="Name">Marks</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——落点标记
+--   ① 手雷弹道（用户：手榴弹增加一个弹道）：拿着手雷时，按服务器扔雷的算法（Weapons.lua KIND.throw：往准星那边 45° 抛出去，
+--      速度按水平距离算；重力是 0.55 倍）一步一步模拟，画一串小亮点到第一次落地，落地那里一个杀伤半径的圈
+--   ② 炸弹落点（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）：开飞机选中炸弹时，按服务器炸弹的算法（Air.lua guideBomb：
+--      投出去带着飞机的速度、往下 4 格 / 秒，重力 AD.GRAV、一点阻力）算出落在哪，地上画一个杀伤半径的红圈、中间十字、一道竖光柱
+--      （高空也看得见）；制导炸弹锁上了就标在目标上。扔出去的炸弹落地前，地上也一直标着它要落在哪（小一点的圈）
+--   标记零件都只在本地、不碰撞、不挡射线
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Marks = {}
+
+function Marks.init(G)
+  local AD = require(RS:WaitForChild("AirDefs"))
+  local Map = G.Map or require(RS:WaitForChild("Map"))
+  local W = G.Config.Weapons
+  local me = Players.LocalPlayer
+  local V, RGB = Vector3.new, Color3.fromRGB
+  local GR = AD.GRAV or 27.5
+  local function ground(x, z) return AD.ground and AD.ground(Map, x, z) or Map.ground(x, z) end
+
+  local folder = Instance.new("Folder")
+  folder.Name = "Marks"
+  folder.Parent = workspace
+  local function part(size, color, shape, tr)
+    local p = Instance.new("Part")
+    if shape then p.Shape = shape end
+    p.Size, p.Color = size, color
+    p.Material = Enum.Material.Neon
+    p.Transparency = tr or 0
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = nil
+    return p
+  end
+  -- 地上的一个圈：扁圆柱（轴竖着）+ 中间一个亮点
+  local function ring(color, tr)
+    local disc = part(V(0.3, 10, 10), color, Enum.PartType.Cylinder, tr)
+    disc.Name = "MarkRing"
+    return disc
+  end
+  local function placeRing(disc, pos, r)
+    disc.Size = V(0.3, r * 2, r * 2)
+    disc.CFrame = CFrame.new(pos + V(0, 0.25, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+    disc.Parent = folder
+  end
+
+  ---------------------------------------------------------------- ① 手雷弹道
+
+  local NDOT = 26
+  local dots = {}
+  for i = 1, NDOT do
+    local d = part(V(0.32, 0.32, 0.32), RGB(255, 246, 210), Enum.PartType.Ball, 0.15)
+    d.Name = "NadeDot"
+    dots[i] = d
+  end
+  local nadeRing = ring(RGB(255, 120, 60), 0.72)
+  local nadeCore = part(V(0.32, 1.6, 1.6), RGB(255, 90, 50), Enum.PartType.Cylinder, 0.1)
+  nadeCore.Name = "NadeCore"
+  local rp = RaycastParams.new()
+  rp.FilterType = Enum.RaycastFilterType.Exclude
+  local function hideNade()
+    for _, d in ipairs(dots) do d.Parent = nil end
+    nadeRing.Parent, nadeCore.Parent = nil, nil
+  end
+  -- 模拟一颗手雷：返回路径点和落点（第一次碰到东西）
+  local function nadePath(w, head, aim)
+    local m = head + V(0, 0.5, 0)
+    local flat = V(aim.X - m.X, 0, aim.Z - m.Z)
+    local d = math.min(flat.Magnitude, w.range)
+    local dir = (flat.Magnitude > 0.1) and flat.Unit or V(0, 0, -1)
+    local sp = math.clamp(math.sqrt(math.max(1, d) * workspace.Gravity * 0.55), 20, w.speed)
+    local vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0)
+    local g = V(0, -workspace.Gravity * 0.55, 0)
+    local pts, pos, dt = { m }, m, 1 / 15   -- 一步 1/15 秒（每帧几十条射线就够，弹道是抛物线，步子大点也准）
+    for _ = 1, 90 do
+      vel += g * dt
+      local step = vel * dt
+      local res = workspace:Raycast(pos, step, rp)
+      if res then
+        table.insert(pts, res.Position)
+        return pts, res.Position
+      end
+      pos += step
+      table.insert(pts, pos)
+      if pos.Y < ground(pos.X, pos.Z) then return pts, V(pos.X, ground(pos.X, pos.Z), pos.Z) end
+    end
+    return pts, pos
+  end
+  G.nadePath = nadePath   -- 测试用
+
+  local function stepNade()
+    local id = G.weaponNow and G.weaponNow()
+    local w = id and W[id]
+    local char = me.Character
+    local head = char and char:FindFirstChild("Head")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not w or w.kind ~= "throw" or not head or not hum or hum.Health <= 0 or G.drive or G.fly or not G.aimPoint then
+      hideNade()
+      return
+    end
+    local ex = { char, folder }   -- 不挡弹道的：自己、标记、特效（没有的不放，表里不能有空洞）
+    if G.fxFolder then table.insert(ex, G.fxFolder) end
+    if G.viewFolder then table.insert(ex, G.viewFolder) end
+    rp.FilterDescendantsInstances = ex
+    local aim = G.aimPoint(w.range or 90)
+    local pts, land = nadePath(w, head.Position, aim)
+    -- 小亮点按路径长度均匀摆
+    local total = 0
+    for i = 2, #pts do total += (pts[i] - pts[i - 1]).Magnitude end
+    local segI, acc = 2, 0
+    for k = 1, NDOT do
+      local want = total * k / (NDOT + 1)
+      while segI < #pts and acc + (pts[segI] - pts[segI - 1]).Magnitude < want do
+        acc += (pts[segI] - pts[segI - 1]).Magnitude
+        segI += 1
+      end
+      local a, b = pts[segI - 1], pts[segI]
+      local L = (b - a).Magnitude
+      local p = (L > 1e-4) and a:Lerp(b, math.clamp((want - acc) / L, 0, 1)) or b
+      dots[k].CFrame = CFrame.new(p)
+      dots[k].Parent = folder
+    end
+    placeRing(nadeRing, land, w.splash or 14)
+    nadeCore.CFrame = CFrame.new(land + V(0, 0.32, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+    nadeCore.Parent = folder
+  end
+
+  ---------------------------------------------------------------- ② 炸弹落点
+
+  local bombRing = ring(RGB(255, 60, 40), 0.68)
+  local crossA = part(V(0.4, 0.4, 14), RGB(255, 70, 50), nil, 0.1)
+  local crossB = part(V(14, 0.4, 0.4), RGB(255, 70, 50), nil, 0.1)
+  local beam = part(V(0.6, 160, 0.6), RGB(255, 90, 60), nil, 0.55)
+  crossA.Name, crossB.Name, beam.Name = "BombCross", "BombCross", "BombBeam"
+  local function hideBomb()
+    bombRing.Parent, crossA.Parent, crossB.Parent, beam.Parent = nil, nil, nil, nil
+  end
+  -- 按服务器的炸弹物理往前推，落到地面（或海面）为止
+  local function bombImpact(p, v)
+    local dt = 0.05
+    for _ = 1, 1200 do
+      v += V(0, -GR, 0) * dt
+      v = v * (1 - 0.02 * dt)
+      local np = p + v * dt
+      local g = math.max(ground(np.X, np.Z), 0)
+      if np.Y <= g then
+        local k = (p.Y - g) / math.max(p.Y - np.Y, 1e-3)
+        local hit = p:Lerp(np, math.clamp(k, 0, 1))
+        return V(hit.X, g, hit.Z)
+      end
+      p = np
+    end
+    return V(p.X, math.max(ground(p.X, p.Z), 0), p.Z)
+  end
+  G.bombImpact = bombImpact   -- 测试用
+
+  local function stepBomb()
+    local st = G.fly
+    if not st or not st.pilot or st.crashed or st.ground or not st.wl then
+      hideBomb()
+      return
+    end
+    local wid = st.wl[st.wi]
+    local w = wid and AD.W[wid]
+    if not w or w.kind ~= "bomb" then
+      -- 选的是炮：看看挂载里第一种是不是炸弹（F 打的是它）
+      for _, wid2 in ipairs(st.wl) do
+        local w2 = AD.W[wid2]
+        if w2 and w2.kind ~= "gun" then w = w2 break end
+      end
+    end
+    if not w or w.kind ~= "bomb" then
+      hideBomb()
+      return
+    end
+    local hit
+    local locked = st.lock and st.lockT and st.lockT >= (w.lockTime or 1)
+    if w.guided and locked then   -- 制导炸弹锁上了：标在目标上
+      local em = st.lock.em
+      local root = em and em.Parent and em:FindFirstChild("Root")
+      local tp = root and root.CFrame.Position or st.lock.pos
+      if tp then hit = V(tp.X, math.max(ground(tp.X, tp.Z), 0), tp.Z) end
+    end
+    if not hit then
+      local cf = st.cf
+      local p0 = (cf * CFrame.new(0, -(st.d.H or 4) * 0.35 - 1.5, 0)).Position
+      hit = bombImpact(p0, (st.vel or V()) - cf.UpVector * 4)
+    end
+    local r = w.splash or 30
+    placeRing(bombRing, hit, r)
+    crossA.Size, crossB.Size = V(0.5, 0.5, r * 2.2), V(r * 2.2, 0.5, 0.5)
+    crossA.CFrame, crossB.CFrame = CFrame.new(hit + V(0, 0.45, 0)), CFrame.new(hit + V(0, 0.45, 0))
+    beam.CFrame = CFrame.new(hit + V(0, 80, 0))
+    crossA.Parent, crossB.Parent, beam.Parent = folder, folder, folder
+  end
+
+  -- 扔出去的炸弹：每颗地上一个小圈，跟着算到落地
+  local live = {}   -- [弹编号] = 圈
+  local function stepDropped()
+    local fs = G.flyingShots or {}
+    for id, s in pairs(fs) do
+      if s.gb and s.my and s.p and s.v then
+        local r = live[id]
+        if not r then
+          r = ring(RGB(255, 150, 60), 0.6)
+          live[id] = r
+        end
+        local aw = s.w and AD.W[s.w]
+        placeRing(r, bombImpact(s.p, s.v), math.max(8, (aw and aw.splash or 30) * 0.45))
+      end
+    end
+    for id, r in pairs(live) do
+      if not fs[id] then
+        r:Destroy()
+        live[id] = nil
+      end
+    end
+  end
+
+  RunService.RenderStepped:Connect(function()
+    G.try_(stepNade)
+    G.try_(stepBomb)
+    G.try_(stepDropped)
+  end)
+end
+
+return Marks
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -26421,7 +26704,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -26743,7 +27026,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -26958,7 +27241,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -27197,7 +27480,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -27417,7 +27700,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -27996,7 +28279,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -28535,7 +28818,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -28994,7 +29277,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -29782,7 +30065,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -30384,7 +30667,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -31134,7 +31417,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -31589,7 +31872,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -32819,7 +33102,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -32932,7 +33215,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -33368,6 +33651,7 @@ function UI.init(G)
     if s.kind == "rally" then return T("spawn.rally", T("point." .. s.point)) end   -- 守方前线集结点（据点后方）
     if s.kind == "staging" then return T("spawn.staging", T("point." .. s.point)) end   -- 攻方攻击出发阵地（据点前面）
     if s.kind == "camp" then return T("spawn.camp") end
+    if s.kind == "afield" then return T("spawn.afield") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
     if s.kind == "cv" then return T("spawn.cv") end
@@ -33957,7 +34241,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -34480,7 +34764,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -35103,13 +35387,13 @@ return View
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="97">
+  <Item class="Workspace" referent="99">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="98">
+  <Item class="Lighting" referent="100">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
