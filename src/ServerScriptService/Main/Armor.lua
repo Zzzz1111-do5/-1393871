@@ -383,9 +383,31 @@ function Armor.init(G)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     if type(d.sp) == "number" then e.model:SetAttribute("Sp", math.floor(math.clamp(d.sp, -99, 99) + 0.5)) end
+    if d0.rws then   -- 遥控武器站的转角（别人那边的机枪塔跟着转）
+      if type(d.my) == "number" and d.my == d.my then e.my = (d.my + 180) % 360 - 180 end
+      if type(d.mp) == "number" and d.mp == d.mp then e.mp = math.clamp(d.mp, d0.rws.elev[1], d0.rws.elev[2]) end
+      e.model:SetAttribute("My", math.floor((e.my or 0) * 2 + 0.5) / 2)
+      e.model:SetAttribute("Mp", math.floor((e.mp or 0) * 2 + 0.5) / 2)
+    end
   end
 
-  local function fire(P, e, wid, dir, aim)
+  local function angDiff(a, b) return (a - b + 180) % 360 - 180 end
+
+  -- 开火那一刻客户端的炮塔、炮管、机枪塔角度（用户：弹道要顺着枪管和炮管、开火位置和枪口对上）：
+  --   客户端每秒才报十来次角度，炮塔一转服务器记的就落后几度——开火时把这一刻的角度一起发来，和服务器记的差得不多才用（防作弊）
+  local function fireAngles(e, m)
+    if type(m) ~= "table" then return end
+    local d0 = e.def
+    local function num(x) return type(x) == "number" and x == x end
+    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = m.ty % 360 end
+    if num(m.gp) and math.abs(m.gp - e.gp) < 15 then e.gp = math.clamp(m.gp, d0.turret.elev[1], d0.turret.elev[2]) end
+    if d0.rws then
+      if num(m.my) and math.abs(angDiff(m.my, e.my or 0)) < 40 then e.my = (m.my + 180) % 360 - 180 end
+      if num(m.mp) and math.abs(m.mp - (e.mp or 0)) < 30 then e.mp = math.clamp(m.mp, d0.rws.elev[1], d0.rws.elev[2]) end
+    end
+  end
+
+  local function fire(P, e, wid, dir, aim, msg)
     if G.round.phase ~= "battle" or e.locked then return end
     local d = e.def
     if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
@@ -399,9 +421,9 @@ function Armor.init(G)
       st.mag, st.reserve = n, st.reserve - n
     end
     local base = baseOf(e)
-    local mz = VD.muzzle(d, base, e.ty, e.gp, (w.kind == "gun" and d.coax) and "coax" or nil)
-    local gdir = mz.LookVector
-    if typeof(dir) == "Vector3" and dir.Magnitude > 0.5 and dir.Unit:Dot(gdir) > math.cos(math.rad(8)) then gdir = dir.Unit end
+    fireAngles(e, msg)
+    local mz = VD.muzzle(d, base, e.ty, e.gp, VD.mgWhich(d, wid), e.my, e.mp)
+    local gdir = mz.LookVector   -- 顺着炮管 / 枪管出去（原来客户端给的方向和炮管差 8° 以内就用客户端的，弹道会斜着出炮口）
     local S = src(P)
     if w.kind == "shell" then
       G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
@@ -488,7 +510,7 @@ function Armor.init(G)
     local e = P.vehicle
     if not e or not e.alive or e.driver ~= P or type(d) ~= "table" then return end
     if d.op == "state" then sync(P, e, d)
-    elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim)
+    elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
     elseif d.op == "exit" then unseat(P, e, true) end
   end

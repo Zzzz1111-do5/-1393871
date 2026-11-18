@@ -308,7 +308,7 @@ function AIVeh.init(G)
       st.mag, st.reserve = n, st.reserve - n
     end
     local base = G.vehBaseOf(e)
-    local mz = VD.muzzle(d, base, e.ty, e.gp, (w.kind == "gun" and d.coax) and "coax" or nil)
+    local mz = VD.muzzle(d, base, e.ty, e.gp, VD.mgWhich(d, wid), e.my, e.mp)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     if w.kind == "shell" then
       local dir = spread(mz.LookVector, 0.25)
@@ -336,6 +336,15 @@ function AIVeh.init(G)
     local w = VD.W[wid]
     local base = G.vehBaseOf(e)
     local pos = targetPos(tgt) or tgt.pos
+    if d.rws and VD.mgWhich(d, wid) == "rws" then   -- 遥控武器站：机枪塔自己转向目标、M2 自己俯仰，对准了开火（主炮不跟着转）
+      local myW, mpW = VD.rwsAim(d, base, e.ty, pos + V(0, (tgt.kind == "inf") and 1.5 or 1, 0))
+      e.my = (e.my or 0) + approach(0, angDiff(myW, e.my or 0), d.rws.trav * dt)
+      e.mp = approach(e.mp or 0, mpW, d.rws.rate * dt)
+      e.model:SetAttribute("My", math.floor(e.my * 2 + 0.5) / 2)
+      e.model:SetAttribute("Mp", math.floor(e.mp * 2 + 0.5) / 2)
+      if now() >= e.ai.aimT and math.abs(angDiff(myW, e.my)) < 3 and math.abs(mpW - e.mp) < 3 then fire(e, wid) end
+      return wid
+    end
     local l = base:PointToObjectSpace(pos + V(0, (tgt.kind == "inf") and 1.5 or 1, 0)) - d.turret.pivot
     local horiz = math.sqrt(l.X * l.X + l.Z * l.Z)
     local wantYaw = math.deg(math.atan2(l.X, -l.Z))

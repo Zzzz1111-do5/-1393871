@@ -264,6 +264,19 @@ do
           d.gun.pivot = V(info.gun[1], info.gun[2], info.gun[3]) - tur
           if info.muz and info.muz > 1 then d.gun.len = info.muz end
         end
+        -- 炮长主瞄准镜、并列机枪口照原模型（用户：观瞄系统位置要对）：瞄准镜视角从模型上那个镜头看出去
+        if info.sight then d.sight = V(info.sight[1], info.sight[2], info.sight[3]) - tur end
+        if info.coax then d.coax = V(info.coax[1], info.coax[2], info.coax[3]) - tur end
+        -- 遥控武器站（M1A2 车长位的 CROWS + M2）：底座跟着炮塔转、自己再转，M2 自己俯仰；机枪那一栏从并列机枪换成它的 12.7 毫米机枪
+        --   （用户：机枪也要能转动、开火位置和枪口对上、弹道顺着枪管）
+        if info.rws and info.rws.p and info.rws.g then
+          local rp = V(info.rws.p[1], info.rws.p[2], info.rws.p[3])
+          local rg = V(info.rws.g[1], info.rws.g[2], info.rws.g[3])
+          d.rws = { pivot = rp - tur, gun = rg - rp, len = info.rws.muz or 2.5, trav = 120, rate = 90, elev = { -20, 60 } }
+          for i, wid in ipairs(d.weapons) do
+            if wid == "coax" then d.weapons[i] = "hmg" end
+          end
+        end
         d.model = key
       end
     end
@@ -279,13 +292,39 @@ end
 function VehDefs.gunCF(d, base, yaw, pitch)
   return VehDefs.turretCF(d, base, yaw) * CFrame.new(d.gun.pivot) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
 end
--- 炮口（主炮）；coax 并列机枪口
-function VehDefs.muzzle(d, base, yaw, pitch, which)
+-- 遥控武器站：底座跟炮塔转（yaw）再自己转（my，度，往右为正，同炮塔），M2 俯仰（mp，度，抬头为正）
+function VehDefs.rwsCF(d, base, yaw, my, mp)
+  local R = d.rws
+  return VehDefs.turretCF(d, base, yaw) * CFrame.new(R.pivot) * CFrame.Angles(0, -math.rad(my or 0), 0) * CFrame.new(R.gun)
+    * CFrame.Angles(math.rad(mp or 0), 0, 0)
+end
+-- 遥控武器站要转到多少才对着 target（世界坐标）：返回 my、mp（夹在俯仰范围里）
+function VehDefs.rwsAim(d, base, yaw, target)
+  local R = d.rws
+  local piv = VehDefs.turretCF(d, base, yaw) * CFrame.new(R.pivot)
+  local rel = piv:PointToObjectSpace(target)
+  local my = math.deg(math.atan2(rel.X, -rel.Z))
+  local horiz = math.sqrt(rel.X * rel.X + rel.Z * rel.Z)
+  local mp = math.deg(math.atan2(rel.Y - R.gun.Y, math.max(horiz, 1)))
+  return my, math.clamp(mp, R.elev[1], R.elev[2])
+end
+-- 炮口（主炮）；coax 并列机枪口；rws 遥控武器站的枪口（my、mp 是它的转角）
+function VehDefs.muzzle(d, base, yaw, pitch, which, my, mp)
+  if which == "rws" and d.rws then
+    return VehDefs.rwsCF(d, base, yaw, my, mp) * CFrame.new(0, 0, -d.rws.len)
+  end
   if which == "coax" and d.coax then
     local t = VehDefs.turretCF(d, base, yaw) * CFrame.new(d.coax) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
     return t * CFrame.new(0, 0, -1.2)
   end
   return VehDefs.gunCF(d, base, yaw, pitch) * CFrame.new(0, 0, -(d.gun.len > 0 and d.gun.len or 2))
+end
+-- 这件武器从哪个口出去：遥控站的 12.7 毫米机枪 → rws；别的机枪 → 并列机枪口；主炮 → nil
+function VehDefs.mgWhich(d, wid)
+  local w = VehDefs.W[wid]
+  if not w or w.kind ~= "gun" then return nil end
+  if wid == "hmg" and d.rws then return "rws" end
+  return d.coax and "coax" or nil
 end
 -- 烟幕弹发射筒：返回 { { pos, dir }, … }（世界坐标）；装在炮塔上的随炮塔转，hull 的装在车体上
 function VehDefs.smokeTubes(d, base, yaw)

@@ -1332,12 +1332,14 @@ function H.usePad(G, pl, p)
 			end
 		end
 	end
+	-- 同一个召唤位上可能已经停着先前生成的别的车（守方地面车位：所有车型共用一个）：选了哪一型就找哪一型，最新生成的优先
+	local hit = nil
 	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
 		for _, e in ipairs(list) do
-			if e.padId == p.id and e.alive then return e end
+			if e.padId == p.id and e.alive and (not vid or (e.def and e.def.id == vid)) then hit = e end
 		end
 	end
-	return nil
+	return hit
 end
 function H.findButton(pl, pattern, all)
 	local pg = pl:FindFirstChildOfClass("PlayerGui")

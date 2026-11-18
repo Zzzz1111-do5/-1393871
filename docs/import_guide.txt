@@ -15,7 +15,18 @@ Roblox全面大战场 · 原模型导入说明
                                scenery/  地图上的石头（花草树木已经删掉，改用 Roblox 地形自带的草；这个文件里的树不用了，只用石头）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
-  11 月 18 日这一包：模型和 11 月 17 日那一批一样，没有新的；17 日那批已经全导过的不用再导，换上新的 RobloxTotalBattlefield.rbxlx 就行。
+  11 月 18 日第二包：要重导 veh/、ship/ 两个文件夹（飞机、导弹、瞄准镜、花草、第一人称 M4 没变，不用动）：
+    - M1A2 换成你指定的沙漠涂装 SEPv2（veh/m1a2dc.glb，Muhamad Mirza Arrafi，CC-BY）：车长位置的 CROWS 遥控武器站自己会转、上面的 M2 会俯仰，
+      开火的曳光弹从 M2 枪口出、顺着枪管飞；炮长瞄准镜视角在炮塔右前方那个瞄准镜盒子的位置；
+    - 99A 换成 ZTZ-99A2（veh/ztz99a2.glb，42manako，CC-BY）；
+    - 涂装统一：解放军的车统一成一套三色林地迷彩（橄榄绿、深绿、土黄），美军的车统一成沙漠黄单色，舰艇统一成海军灰——原来各个模型作者的颜色、深浅、迷彩各不一样；
+    - 旧的 veh/m1a2v3.glb（上一辆 M1A2）、veh/ztz99.glb（旧 99A）不用了，包里已经去掉；
+    - 以前导的舰艇从上往下看有地方透明：重导 ship/ 就好（现在的文件面朝向都翻正了，旧的零件是早先那一版）。
+    先在命令栏（「视图 → 命令栏」）粘下面这一行回车，删掉旧的车、舰艇零件，再照「一、导入」把 veh/、ship/ 重导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^[VS]_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
+  11 月 18 日第一包：模型和 11 月 17 日那一批一样，没有新的。
     推力矢量喷口（用户给的 F-15 SE 可动喷口）是单独一个文件 air/tvc.glb：游戏里自动装到歼-15T、歼-16、歼-20、歼-35、F-35 的两个尾喷口上
     （15 片调节片按油门开合，整只跟着抬头、低头、滚转偏转，加力火焰从它的出口喷）。要看到它，air/tvc.glb 和这几架的
     j15t.glb、j16.glb、j20.glb、j31.glb（歼-35 用它）、f35.glb 都得导进去；只导了飞机、没导 tvc.glb 的，飞机照样是原模型，只是没有可动喷口。
@@ -33,7 +44,7 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
   1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。
   2. 「主页 → 导入 3D」（Import 3D），选 GLB 文件。文件对话框里可以一次多选；文件多的话按文件夹分几批导。
      导入设置都用默认的，不要勾「合并网格」（Merge Meshes），导进 Workspace 就行。
-     ztz96、m1a2v3、ztq15 这几个大的要等一会儿。
+     ztz96、m1a2dc、ztz99a2、ztq15 这几个大的要等一会儿。
   3. 「测试 → 开始游戏」，打开「视图 → 输出」，有这一行就成功了：
          [全面大战场] 用上了导入的装备模型：……
      车、飞机、船、瞄准镜、树、第一人称 M4 都会自动换上原模型。

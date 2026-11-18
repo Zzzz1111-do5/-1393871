@@ -92,6 +92,9 @@ function VehModels.build(d, team)
     local function v3(t) return V(t[1], t[2], t[3]) end
     local tpiv = info.tur and v3(info.tur) or d.turret.pivot
     local gpiv = info.gun and v3(info.gun) or (tpiv + d.gun.pivot)
+    -- 遥控武器站（M1A2 的 CROWS）：底座转轴、M2 俯仰轴（用户：机枪也要能转动）
+    local rpiv = info.rws and info.rws.p and v3(info.rws.p) or nil
+    local rgpiv = info.rws and info.rws.g and v3(info.rws.g) or nil
     -- 车轮：每个轮一个弹簧（中心、半径照原模型）；轮式车最前面 d.steer 排转向
     local wix, names = {}, {}
     for g in pairs(info.wheels or {}) do table.insert(names, g) end
@@ -148,6 +151,8 @@ function VehModels.build(d, team)
         local grp, off, wi = "hull", CF(c), nil
         if p.g == "Turret" then grp, off = "turret", CF(c - tpiv)
         elseif p.g == "Gun" then grp, off = "gun", CF(c - gpiv)
+        elseif p.g == "Rws" and rpiv then grp, off = "rws", CF(c - rpiv)
+        elseif p.g == "RwsGun" and rgpiv then grp, off = "rwg", CF(c - rgpiv)
         elseif wix[p.g] then
           wi = wix[p.g]
           local w = wheels[wi]
@@ -176,7 +181,8 @@ function VehModels.build(d, team)
       tube(gun, 0, 0.12, -1.85, -d.gun.len, 0.17, BL)   -- 枪管
       gun(V(0.4, 0.5, 0.78), CF(-0.48, -0.06, 0.05), OD)   -- 弹箱（M2 从左边供弹）
     end
-    extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel }
+    extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
+      rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil }
   end
 
   if not ikey then
@@ -505,7 +511,7 @@ function VehModels.build(d, team)
   end
 
   return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps,
-    imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel }
+    imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv }
 end
 
 return VehModels

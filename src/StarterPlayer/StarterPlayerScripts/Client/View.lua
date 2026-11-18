@@ -256,6 +256,14 @@ function View.init(G)
       v.gp = v.gp + (gp - v.gp) * math.min(1, dt * 10)
     end
     v.recoil = math.max(0, v.recoil - dt * 2.6)
+    -- 遥控武器站：自己开的用本地算的转角，别人的读属性再平滑跟（用户：机枪也要能转动）
+    if M.rpiv then
+      local my, mp = em:GetAttribute("My") or 0, em:GetAttribute("Mp") or 0
+      if own then v.my, v.mp = own.my or 0, own.mp or 0 else
+        v.my = (v.my or 0) + angDiff(v.my or 0, my) * math.min(1, dt * 10)
+        v.mp = (v.mp or 0) + (mp - (v.mp or 0)) * math.min(1, dt * 10)
+      end
+    end
     local far = (pos - camPos).Magnitude > 420
     -- 轮子：每个一个弹簧阻尼；远了不算（省事）
     local W = M.wheels
@@ -296,7 +304,9 @@ function View.init(G)
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
-    v.hullF, v.tF, v.gF = hullF, tF, gF
+    local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
+    local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
+    v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
     local plist, clist = v.plist, v.clist
@@ -308,6 +318,8 @@ function View.init(G)
         cf = tF * off
         if it[1]:GetAttribute("Radar") then cf = cf * CFrame.Angles(0, now * 3, 0) end
       elseif grp == "gun" then cf = gF * off
+      elseif grp == "rws" then cf = (rF or tF) * off
+      elseif grp == "rwg" then cf = (rgF or rF or tF) * off
       elseif grp == "wheel" then
         local w = W[it[4]]
         local wcf = base * CF(w.x, w.r + w.dy, w.z)

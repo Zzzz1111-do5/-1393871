@@ -285,7 +285,10 @@ function Fx.init(G)
 
   ---------------------------------------------------------------- 曳光、枪口火光
 
-  local TRACER = { m4 = RGB(255, 220, 140), rifle = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210) }
+  local TRACER = { m4 = RGB(255, 220, 140), rifle = RGB(255, 220, 140), lmg = RGB(255, 190, 110), sniper = RGB(255, 245, 210),
+    hmg = RGB(255, 96, 52), coax = RGB(255, 150, 70) }
+  -- 车载机枪（遥控武器站的 M2、并列机枪）：曳光弹粗、长、亮，外面再套一层淡的光晕，飞得慢一点看得清（用户：机枪开火子弹要明显、要有曳光弹）
+  local HEAVY = { hmg = { r = 0.32, len = 30, glow = 1.1, speed = 640 }, coax = { r = 0.24, len = 24, glow = 0.8, speed = 700 } }
   -- 一卡一卡（用户 11-18）：几十个机器人一起开枪，每一发都新建曳光、枪口火、灯光、弹着点的灰——一秒几百个零件加补间。
   --   别人打的：枪口离镜头 900 格外、弹道也没从镜头 300 格内擦过的不画；350 格外的只画曳光（不点灯、没有枪口火球和弹着灰）；
   --   画全套的每秒最多 50 发（多出来的也只画曳光）。自己打的照旧全画
@@ -311,11 +314,18 @@ function Fx.init(G)
       end
     end
     local col = TRACER[id] or RGB(255, 220, 140)
-    local len = math.min(L, 14)
-    local tr = part(nil, V(0.12, 0.12, len), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, 0.1)
-    local speed = 900
+    local hv = HEAVY[id]
+    local len = math.min(L, hv and hv.len or 14)
+    local r = hv and hv.r or 0.12
+    local speed = hv and hv.speed or 900
+    local tr = part(nil, V(r, r, len), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, hv and 0 or 0.1)
     local tw = tween(tr, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len / 2, b + d.Unit) }, Enum.EasingStyle.Linear)
     Debris:AddItem(tr, L / speed + 0.05)
+    if hv and not lite then   -- 光晕：同一条线上粗一圈、很淡
+      local gl = part(nil, V(hv.glow, hv.glow, len * 0.8), CFrame.lookAt(a + d.Unit * len / 2, b), col, Enum.Material.Neon, 0.78)
+      tween(gl, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len * 0.4, b + d.Unit) }, Enum.EasingStyle.Linear)
+      Debris:AddItem(gl, L / speed + 0.05)
+    end
     if not lite then
       local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
       tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })

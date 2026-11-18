@@ -351,7 +351,7 @@ function Drive.init(G)
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
-      wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
+      wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0 }
     G.drive, G.myVeh = st, st
     -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
     CAS:BindActionAtPriority("DriveSight", function(_, state)
@@ -623,6 +623,13 @@ function Drive.init(G)
     end
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -d.turret.trav * dt, d.turret.trav * dt)) % 360
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), 35 * dt)
+    -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
+    if d.rws then
+      local myW, mpW = VD.rwsAim(d, base, st.ty, ap)
+      st.my = st.my + math.clamp(angDiff(st.my, myW), -d.rws.trav * dt, d.rws.trav * dt)
+      st.my = (st.my + 180) % 360 - 180
+      st.mp = approach(st.mp, mpW, d.rws.rate * dt)
+    end
   end
 
   local function weaponId() return st.d.weapons[st.wi] end
@@ -637,8 +644,17 @@ function Drive.init(G)
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
     st.next[wid] = t + w.rate
     local base = st.root * CF(0, -st.d.H / 2, 0)
-    local mz = VD.muzzle(st.d, base, st.ty, st.gp, (w.kind == "gun" and st.d.coax) and "coax" or nil)
-    G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt })
+    local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
+    -- 开火这一刻的炮塔、炮管、机枪塔角度一起发过去：服务器按它摆好炮管再算炮口（用户：弹道顺着枪管和炮管、开火位置和枪口对上）
+    G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp })
+    if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
+      local dir = mz.LookVector
+      local ex = { G.viewFolder, ownBox, st.em }
+      if me.Character then table.insert(ex, me.Character) end
+      aimParams.FilterDescendantsInstances = ex
+      local res = workspace:Raycast(mz.Position, dir * (w.range or 900), aimParams)
+      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
+    end
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
@@ -652,6 +668,8 @@ function Drive.init(G)
       end
     end
   end
+
+  G.driveTryFire = tryFire   -- 测试用（tools/test/ia_rws.luau）
 
   ---------------------------------------------------------------- 手机：方向键、开火、烟幕、瞄准镜、模式、下车
 
@@ -823,7 +841,7 @@ function Drive.init(G)
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then
       st.sendT = 1 / 15
-      G.R.Drive:FireServer({ op = "state", cf = st.root, ty = st.ty, gp = st.gp, sp = st.speed })
+      G.R.Drive:FireServer({ op = "state", cf = st.root, ty = st.ty, gp = st.gp, sp = st.speed, my = d.rws and st.my or nil, mp = d.rws and st.mp or nil })
     end
     -- 炮现在指着哪（追尾镜头里画一个黄十字）
     local base = st.root * CF(0, -d.H / 2, 0)
