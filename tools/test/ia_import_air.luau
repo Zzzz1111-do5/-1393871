@@ -261,15 +261,19 @@ do
 end
 -- 侧弹舱、起落架舱（用户：侧弹仓打开为什么能看穿飞机）：tools/models/doorbay.py 做的舱 Well_1…5 画出来、深灰色
 do
-	local n, dark = 0, 0
+	local n, dark, nd = 0, 0, 0
 	for _, it in ipairs(MJ.items) do
 		local nm = it.p and string.match(it.p.Name, "^A_j20_v4__(Well_%d+)$")
 		if nm then
 			n += 1
 			if it.p.Color.R < 0.3 and it.p.Color.G < 0.3 then dark += 1 end
 		end
+		local dn = it.p and string.match(it.p.Name, "^A_j20_v4__(Duct_%d+)$")
+		if dn and it.p.Color.R < 0.2 then nd += 1 end
 	end
 	check(n == 5 and dark == 5, string.format("舱门里封好的舱 %d 个（深灰 %d 个，应该 5 个）", n, dark))
+	-- 进气道（用户：从前下方能从进气道口看穿）：唇口后面补的深色管道，两边各一个
+	check(nd == 2, string.format("进气道里深色的管道 %d 个（应该 2 个）", nd))
 end
 local function partsOf(g)
 	local list = {}

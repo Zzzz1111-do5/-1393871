@@ -198,6 +198,11 @@ if e and e.def.id == "j20" then
     check(wells + cav >= 3, "弹舱里有深色的舱壁（方盒 " .. wells .. " 个、舱 " .. cav .. " 个）")
     if IA.m[IKEY].bayfix then
       check(cav == 5, "侧弹舱、起落架舱是封好的舱（" .. cav .. " 个，应该 5 个：两个侧弹舱、两个主起落架舱、前起落架舱）")
+      local duct = 0
+      for _, it in ipairs(v.M.items) do
+        if it.kind == "b" and string.match(it.p.Name, "__Duct_%d+$") then duct = duct + 1 end
+      end
+      check(duct == 2, "进气道里补了深色管道（" .. duct .. " 个，应该 2 个）")
     end
   end
 end

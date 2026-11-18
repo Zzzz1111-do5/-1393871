@@ -25,6 +25,7 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
     - 不减面的原模型（23.6 万个三角形，原来 13.5 万），照样是第三包那套真机涂装和会发光的绿色灯带；
     - 起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
     - 打开侧弹舱、起落架舱门不再能看穿飞机：舱门里面有封好的深灰色舱（块名 A_j20_v4__Well_1…5），舱门内侧也画出来了；
+    - 从前下方也不能从进气道口看穿了：唇口后面补了深色管道（A_j20_v4__Duct_1、Duct_2）；
     - 新导进来的块叫 A_j20_v4__…，游戏优先用它；旧的 A_j20_v3__…不删也行（游戏不用了），想删就在命令栏粘下面这一行回车：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20__") or d.Name:match("^A_j20_v[23]__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")

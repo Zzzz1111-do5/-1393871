@@ -627,7 +627,7 @@
       正面打不出去、背面打得出去的翻过来：22,259 个翻正，剩 2 个。j20 每块上限改 1.5 万面（`air2glb.py` CHUNKK；2 万面一块时 glbfix 有 1,941 个背面因块太大跳过了）。
     - 和 main 合并：同一天另一个会话（session_01Aa6LmJjU2LLknsYWd3DUJp）给 v3 做了真机涂装和发光的绿色灯带（`airpaint.py`）、26 个方向的面朝向检查（`glbvote.py`），
       v4 也跑了一遍：`airpaint.py` 的 PAINT.j20 改成 `j20_v4`，起落架那几种材质不涂（keep）。rayfix 之后再跑 glbvote 看得见的背面又少了 3～10 倍（翻 4,395、补反面 1,785）。
-    - 结果 `models/air/j20.glb`：99 块（94 块原模型 + 5 个舱）、20.6 MB；新键名 `j20_v4`（`air2glb.py` VERK）：游戏先找 `_v4`，没导入就照 old 表找 `_v3`、`_v2`、老版。
+    - 结果 `models/air/j20.glb`：101 块（94 块原模型 + 5 个舱 + 2 段进气道）、20.6 MB；新键名 `j20_v4`（`air2glb.py` VERK）：游戏先找 `_v4`，没导入就照 old 表找 `_v3`、`_v2`、老版。
       署名 `models/air/credits.txt` 的歼-20 原来写成了 42manako 的另一个模型，改成 andertan 这个。
     - 重做：网页版仓库复制到临时目录，v3gmodels.json 的 j20 去掉 tri0 / tri0Flags、glb 指向原文件 → `node tools/v3gbake.js <放原文件的目录> j20`
       → `python3 -I tools/models/j20_gear.py <临时目录>` → `python3 -I tools/models/air_one.py <临时目录> <airdefs.json> j20` → `python3 tools/models/rayfix.py models/air/j20.glb`
@@ -639,9 +639,12 @@
       看进去是有深度的深灰色舱（侧弹舱 0.3 米、主起落架舱 0.45 米、前起落架舱 0.75 米），GLB 里多 5 块 Well_1…5；8 扇舱门都补了反面（9,181 个三角形）。
       WELL 表的 j20 只留主弹舱顶板（主弹舱原模型里有舱）。量法：three.js 只画正面 / 两面都画各渲一张，背景纯色，只在只画正面那张透出背景的像素 = 看得穿：
       侧弹舱、起落架舱打开的几个角度从 4～5.5 万像素降到 0～260；关着的时候和加之前比只差边缘几十个像素（舱没露到外面）。
-      还剩：从前下方很低的角度能从进气道口看穿（原模型进气道里没有发动机端面，和舱门无关，没动）。
+    - 从进气道口看穿（用户 11-18 让补）：原模型进气道唇口后面直接通到空的机身里，没有管道；唇口顶上的内壁还和外面的蒙皮一样朝上，从进气道里看是背面。
+      `doorbay.py` 的进气道一步：① 唇口那一截（Z −12.6 → −9.5）从管道中心线往四周打射线，先打到的面是背面的补反面（左 310、右 235 个三角形）；
+      ② 在 Z −9.5（唇口里面、轮廓还闭合）量出开口轮廓，往后挤 1.4 米深色管道（Duct_1 / Duct_2，停在侧弹舱的舱前面）、末端封口。
+      从前下方看得穿的像素 1,880 → 2，正前方偏下 211 → 54；外面看只有进气道口里面变了。舱、进气道各自只做一次（元数据 bayfix / 已有 Duct_1 就跳过）。
     - 测试：`tools/mock/air.lua` 加了 j20_v4 起落架（主起往前、往上收两格以上，操纵量 0.25 已收到底，前舱门放下时开、收起时关，主舱门往外开，不再拼零件起落架）；
-      `tools/test/ia_import_air.luau` 改成查 `_v4`（绿色灯带那一条也查 v4，加了 5 个舱画出来、深灰色）；mock air.lua 也查 5 个舱；`tools/mock/rbx.lua` 的 CFrame.new 支持四元数。
+      `tools/test/ia_import_air.luau` 改成查 `_v4`（绿色灯带那一条也查 v4，加了 5 个舱画出来、深灰色，进气道 2 段）；mock air.lua 也查 5 个舱、2 段进气道；`tools/mock/rbx.lua` 的 CFrame.new 支持四元数。
     - 改到模型精细化会话管的 `models/air/j20.glb`、`tools/models/`（用户让这个会话换模型）。
   - 测试：改之前（1a9a2de）Luau 测试就有不过的——`ia_veh` 3 处（按键文字的语言、瞄准镜调色、瞄准镜默认夜视档）、`ia_optics` 2 处（目镜占屏幕高度 45% / 59%）、`ia_bots` 1 处（攻方拿下 0 个据点）；
     `ui_export` 的战斗画面在测试台里有一条 Coach.lua pointPos 的 'Position' 报错（Lune 的 roblox 库缺默认值，改之前就有）。这一批没让它们变多，结果见提交说明。
