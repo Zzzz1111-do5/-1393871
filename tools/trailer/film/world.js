@@ -164,20 +164,15 @@ void main() {
 // —— 海 ——
 export function makeSea(renderer, D, normals, rw, rh) {
   const rt = new THREE.WebGLRenderTarget(rw, rh, { type: THREE.HalfFloatType });
-  // 地形高度贴图（浅滩的颜色、浪花）
-  const n = D.n, hb = D.height;
-  const hd = new Uint16Array(n * n);
-  for (let i = 0; i < n * n; i++) hd[i] = THREE.DataUtils.toHalfFloat(hb[i]);
-  const ht = new THREE.DataTexture(hd, n, n, THREE.RedFormat, THREE.HalfFloatType);
-  ht.magFilter = ht.minFilter = THREE.LinearFilter;
-  ht.needsUpdate = true;
+  // 水深贴图（浅滩的颜色、浪花）：世界坐标，镜头附近一张细的、外面一张粗的（setDepth 按镜头换）
+  const blank = new THREE.DataTexture(new Uint16Array([THREE.DataUtils.toHalfFloat(-60)]), 1, 1, THREE.RedFormat, THREE.HalfFloatType); blank.needsUpdate = true;
   normals.wrapS = normals.wrapT = THREE.RepeatWrapping;
   const uWa = WAVES.map(w => new THREE.Vector4(w.dx, w.dz, w.k, w.A)), uWb = WAVES.map(w => new THREE.Vector2(w.Q, w.c));
   const texMat = new THREE.Matrix4();
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
-      uTime: { value: 0 }, uRefl: { value: rt.texture }, uTexM: { value: texMat }, uNorm: { value: normals }, uH: { value: ht },
-      uMapR: { value: D.R }, uMoon: { value: new THREE.Vector3() }, uMoonC: { value: new THREE.Color(0x8fa4c8) }, uDeep: { value: new THREE.Color(0x01040a) },
+      uTime: { value: 0 }, uRefl: { value: rt.texture }, uTexM: { value: texMat }, uNorm: { value: normals }, uHn: { value: blank }, uHf: { value: blank },
+      uHnC: { value: new THREE.Vector3(0, 0, 1) }, uHfC: { value: new THREE.Vector3(0, 0, 1) }, uMoon: { value: new THREE.Vector3() }, uMoonC: { value: new THREE.Color(0x8fa4c8) }, uDeep: { value: new THREE.Color(0x01040a) },
       uShallow: { value: new THREE.Color(0x0a1a1c) }, uSeaAmp: { value: 1 }, uWa: { value: uWa }, uWb: { value: uWb }, uReflK: { value: 1 }, uFoamK: { value: 1 },
     }]),
     vertexShader: `${WAVE_GLSL}
@@ -200,7 +195,7 @@ void main() {
   #include <logdepthbuf_vertex>
   #include <fog_vertex>
 }`,
-    fragmentShader: `uniform float uTime, uMapR, uReflK, uFoamK; uniform sampler2D uRefl, uNorm, uH; uniform vec3 uMoon, uMoonC, uDeep, uShallow;
+    fragmentShader: `uniform float uTime, uReflK, uFoamK; uniform sampler2D uRefl, uNorm, uHn, uHf; uniform vec3 uMoon, uMoonC, uDeep, uShallow, uHnC, uHfC;
 varying vec3 vW; varying vec3 vN; varying float vCrest; varying vec4 vMir;
 #include <common>
 #include <logdepthbuf_pars_fragment>
@@ -225,15 +220,15 @@ void main() {
   float cosT = max(dot(N, V), 0.0);
   float F = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
   // 水深（地形高度贴图）：浅的地方带点沙色、浪花
-  vec2 huv = (vW.xz + uMapR) / (2.0 * uMapR);
-  float ground = texture2D(uH, huv).r;
+  vec2 hn = (vW.xz - uHnC.xy) / (2.0 * uHnC.z) + 0.5, hf = (vW.xz - uHfC.xy) / (2.0 * uHfC.z) + 0.5;
+  float ground = (hn.x > 0.002 && hn.x < 0.998 && hn.y > 0.002 && hn.y < 0.998) ? texture2D(uHn, hn).r : ((hf.x > 0.0 && hf.x < 1.0 && hf.y > 0.0 && hf.y < 1.0) ? texture2D(uHf, hf).r : -60.0);
   float depth = max(0.0, -ground + vW.y * 0.5);
   vec3 body = mix(uShallow, uDeep, 1.0 - exp(-depth / 9.0));
   vec3 col = mix(body * (0.35 + 0.65 * max(N.y, 0.0)), refl, F);
   // 月光的高光（一条闪烁的月光路）
   vec3 R = reflect(-V, N);
   float glint = pow(vn(vW.xz * 0.8 + vec2(uTime * 0.9, -uTime * 0.6)), 6.0) * 5.0;   // 碎光：一片闪烁的亮点，不是一整团
-  float sp = pow(max(dot(R, uMoon), 0.0), 70.0) * (0.06 + glint) * 2.2;
+  float sp = pow(max(dot(R, uMoon), 0.0), 110.0) * (0.05 + glint * 0.55) * 1.5;   // 海面原来看不见（绕反了），现在看得见了：月光路收窄、调暗，不盖住字幕
   col += uMoonC * sp;
   // 浪花：浪尖、浅滩、拍岸的一道道
   float n1 = vn(vW.xz / 3.5 + uTime * 0.3), n2 = vn(vW.xz / 11.0 - uTime * 0.12);
@@ -259,7 +254,7 @@ void main() {
   for (let i = 0; i < rings.length; i++) for (let j = 0; j < seg; j++) { const a = j / seg * Math.PI * 2; pos.push(Math.cos(a) * rings[i], 0, Math.sin(a) * rings[i]); }
   for (let i = 0; i < rings.length - 1; i++) for (let j = 0; j < seg; j++) {
     const a = i * seg + j, b = i * seg + (j + 1) % seg, c = (i + 1) * seg + j, d = (i + 1) * seg + (j + 1) % seg;
-    idx.push(a, c, b, b, c, d);
+    idx.push(a, b, c, b, d, c);   // 正面朝上（原来绕反了，从上往下看整片海被背面剔除，高处镜头看到的是海底和地形网格的锯齿边）
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -309,6 +304,12 @@ void main() {
     if (sky) sky.position.copy(camera.position);
   };
   mesh.userData.mat = mat;
+  // 换水深贴图：near / far = [贴图, 中心 x, 中心 z, 半边长]
+  mesh.userData.setDepth = (near, far) => {
+    const U = mat.uniforms;
+    U.uHn.value = near[0]; U.uHnC.value.set(near[1], near[2], near[3]);
+    U.uHf.value = far[0]; U.uHfC.value.set(far[1], far[2], far[3]);
+  };
   return mesh;
 }
 
@@ -356,6 +357,14 @@ export function makeTerrain(D, tex, box = [-3300, -2700, 3300, 3600]) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('aW', new THREE.BufferAttribute(wts, 4));
   geo.setIndex(idx);
+  const mesh = new THREE.Mesh(geo, terrainMaterial(tex));
+  mesh.receiveShadow = true;
+  mesh.castShadow = true;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+// 地形材质：顶点色（游戏材质）× 细节贴图（沙、草、岩、土按权重 aW）、湿沙
+export function terrainMaterial(tex) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   mat.onBeforeCompile = sh => {
     sh.uniforms.tSand = { value: tex.sand };
@@ -377,11 +386,7 @@ export function makeTerrain(D, tex, box = [-3300, -2700, 3300, 3600]) {
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   roughnessFactor = mix(roughnessFactor, 0.62, smoothstep(2.2, 0.2, vWP.y));   // 湿沙有一点光泽（太光滑的话月亮低时整条水线发白）`);
   };
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.receiveShadow = true;
-  mesh.castShadow = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return mat;
 }
 // 地形高度（双线性）：摆东西、算车在坡上的姿态
 export function groundY(D, x, z) {

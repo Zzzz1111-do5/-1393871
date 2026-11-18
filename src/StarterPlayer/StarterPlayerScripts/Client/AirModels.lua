@@ -703,6 +703,8 @@ function AM.build(d, team, load)
         --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
         --   ② 加力火焰：两条从喷口往后拉的光带（Beam，正对镜头）——外层橙色，粗→细、实→透明，长度跟着加力；里层蓝白的焰芯短一些；
         --      每帧长短、粗细轻轻抖一点（火焰在跳）；军推以下不画火焰
+        --   ③ 热浪（用户 11-18：热浪太假了——原来是喷口后面几团抖动的玻璃球，一个个球的轮廓看得出来）：改成锁在喷口上的一股很淡的气流粒子，
+        --      往后拉长、变粗、散掉，受月光照（不自己发光）；油门过两成半才有、越大越浓，加力时接在火焰后面；离镜头远了关掉
         local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }   -- mild：涡扇（A-10），热芯暗一点
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
@@ -744,6 +746,32 @@ function AM.build(d, team, load)
             NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.6, 0.4), NumberSequenceKeypoint.new(1, 1) }),
             r * 1.1, r * 0.2)
           table.insert(M.flames, it)
+        end
+        if not E.cold then   -- 热浪：一股很淡的气流
+          local hs = newPart(m, V(E.r * 1.1, E.r * 1.1, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          hs.Name = "Haze"
+          hs.CastShadow = false
+          local hz = add(hs, base, "ab", hotItem({ haze = true }))
+          local r = E.r
+          local pe = Instance.new("ParticleEmitter")
+          pe.Name = "HeatHaze"
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+          pe.EmissionDirection = Enum.NormalId.Back   -- 从喷口往后
+          pe.LockedToPart = true                      -- 跟着飞机走（不锁的话几百格每秒拖成一长条）
+          pe.LightEmission, pe.LightInfluence = 0, 1  -- 不自己发光：只是被照到的一点灰白
+          pe.Lifetime = NumberRange.new(0.18, 0.3)
+          pe.Speed = NumberRange.new(r * 30, r * 40)
+          pe.SpreadAngle = Vector2.new(6, 6)
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-120, 120)
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.8), NumberSequenceKeypoint.new(1, r * 2.8) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.97), NumberSequenceKeypoint.new(0.25, 0.92), NumberSequenceKeypoint.new(1, 1) })
+          pe.Color = ColorSequence.new(RGB(196, 200, 206))
+          pe.Rate = 0
+          pe.Enabled = false
+          pe.Parent = hs
+          hz.pe = pe
+          table.insert(M.flames, hz)
         end
       end
     end
@@ -1239,6 +1267,8 @@ end
 
 function AM.pose(M, cf, c, now, world)
   local plist, clist = M.plist, M.clist
+  local cam = workspace.CurrentCamera
+  M.near = (world == nil) and cam ~= nil and (cf.Position - cam.CFrame.Position).Magnitude < 700   -- 热浪只画近处的（挂载编辑器里不画）
   local fold = { [1] = nil, [-1] = nil }
   if M.def.fold then fold[1], fold[-1] = foldCF(M, 1, c), foldCF(M, -1, c) end
   -- 弹舱里的弹：舱门开了才看得见
@@ -1300,6 +1330,14 @@ function AM.pose(M, cf, c, now, world)
           it.outerEnd.Position = V(0, 0, r * (3.2 + 4.5 * ab) * fl)
           it.innerEnd.Position = V(0, 0, r * (1.6 + 1.6 * ab) * (2 - fl))
           it.outer.Width0 = r * (1.55 + 0.25 * ab) * fl
+        end
+      elseif it.haze then   -- 热浪：气流粒子（加力时接在火焰后面）；油门过两成半、离镜头近才放，分 6 档，变了才改（每帧改粒子属性费）
+        out = cf * b0 * CF(0, 0, (ab > 0) and r * (4.5 + 3 * ab) or r * 0.4)
+        local q = (not it.cold and t > 25 and M.near) and math.clamp(math.floor((math.min(t, 100) - 25) / 15) + 1 + ((ab > 0) and 1 or 0), 1, 6) or 0
+        if q ~= it.q and it.pe then
+          it.q = q
+          it.pe.Enabled = q > 0
+          if q > 0 then it.pe.Rate = (it.mild and 10 or 16) * q end
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end

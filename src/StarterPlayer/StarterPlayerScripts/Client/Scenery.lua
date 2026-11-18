@@ -390,7 +390,7 @@ function Scenery.init(G)
   -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（11 × 11 块，每块 2048 格，镜头外一万格以上，盖过雾的尽头 8500）：飞到哪都看得到海一直铺到天边，
   --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
   local Map = G.Map
-  local OS, ON = 2048, 5
+  local OS, ON = 2048, 7   -- 15 × 15 块：镜头外一万五千格（地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
   local ocean = Instance.new("Folder")
   ocean.Name = "Ocean"
   ocean.Parent = workspace
@@ -401,13 +401,13 @@ function Scenery.init(G)
     p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
     p.Size = V(OS, 1, OS)
     p.Material = Enum.Material.SmoothPlastic   -- 原来是半透明玻璃：要折射，铺满半个屏幕最费（用户：太卡了）；夜里不透明的看着一样
-    p.Color = RGB(22, 74, 94)
-    p.Reflectance = 0.12
+    p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
+    p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
     tiles[i] = p
   end
   local seaKey = nil
-  local RI = math.floor((Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格
+  local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
   local function stepOcean()
     local c = cam.CFrame.Position
     local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)

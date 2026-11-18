@@ -171,7 +171,7 @@ local n0 = C.oceanTiles()
 cam.CFrame = CF(Map.PLAY - 500, 900, 300)
 R.run(0.2)
 local n1 = C.oceanTiles()
-check(n0 == 0 and n1 == 121, string.format("岛上空：远海 %d 块（四周都是地形海水）；飞到作战区边上：%d 块（四周全是海）", n0, n1))
+check(n0 == 0 and n1 > 150, string.format("岛上空：远海 %d 块（四周都是地形海水，现在铺到 ±SEA_R）；飞到作战区边上：%d 块（四周全是海）", n0, n1))
 local ocean = R.services.Workspace:FindFirstChild("Ocean")
 local far = 0
 for _, p in ipairs(ocean and ocean:GetChildren() or {}) do far = math.max(far, math.abs(p.Position.X - cam.CFrame.Position.X)) end

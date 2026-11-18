@@ -91,7 +91,8 @@ T.tap(Enum.KeyCode.Two)
 R.run(0.2)
 check(st.wi == 2 and bright(rows[2]) < bright(rows[1]), "按 2：第二行亮了（" .. tostring(st.wl[2]) .. "）")
 local aamPx = ring.Size.X.Offset
-check(aamPx > gunPx * 1.3, string.format("大圈跟着武器变（导引头离轴角）：%s %.0f 像素 → %s %.0f 像素", tostring(st.wl[1]), gunPx, tostring(st.wl[2]), aamPx))
+-- 用户要大圈至少框到画面高度的八成（Fly.lua 夹在八成到九成四之间）：离轴角大的近距弹还是更大一点，但差不了三成了
+check(aamPx > gunPx * 1.05, string.format("大圈跟着武器变（导引头离轴角）：%s %.0f 像素 → %s %.0f 像素", tostring(st.wl[1]), gunPx, tostring(st.wl[2]), aamPx))
 local rt = find("RingText")
 check(rt and T.visible(rt) and rt.Text:find("×", 1, true), "圈底下写着武器和剩几发：" .. tostring(rt and rt.Text))
 

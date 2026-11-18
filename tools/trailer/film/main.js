@@ -1,6 +1,7 @@
 // 微电影主程序：载入数据、搭世界，按分镜（shots.js）把任意镜头的任意时刻渲出来；配乐（audio.js）也从这里离线合成
 import * as THREE from 'three';
-import { patchFog, makeSky, makeSea, makeTerrain, makeParts, makeNoiseTex, makeGrimeTex, groundY } from './world.js';
+import { patchFog, makeSky, makeSea, terrainMaterial, makeParts, makeNoiseTex, makeGrimeTex } from './world.js';
+import { BIG, initBigMap, heightAt, bigTerrainGeo, seaHeightTex, relocateParts } from './bigmap.js';
 import { Post } from './post.js';
 import { FX } from './fx.js';
 import { setMeta, loadGLB } from './models.js';
@@ -36,6 +37,9 @@ function tex(url, srgb = true) {
     const meta = await (await fetch(`${DATA}/meta.json`)).json();
     setMeta(meta);
     const D = { ...world, world, height: await bin(`${DATA}/height.bin`, Float32Array), mat: await bin(`${DATA}/mat.bin`, Uint8Array) };
+    // 片子里放大的地图（bigmap.js）：游戏的高度、材质按离抢滩点的远近放大；地图零件挪到放大后的位置
+    initBigMap(D);
+    world.parts = relocateParts(world.parts);
     const T = {
       noise: makeNoiseTex(256, 3), sand: await tex(`${DATA}/assets/terrain/sand.jpg`), water: await tex(`${DATA}/assets/water/normals.jpg`, false),
       expl: await tex(`${DATA}/assets/vfx/expl.webp`, false), fire: await tex(`${DATA}/assets/vfx/fire.webp`, false), mzl: await tex(`${DATA}/assets/vfx/mzl.webp`, false),
@@ -59,7 +63,8 @@ function tex(url, srgb = true) {
       scene.environment = pm.fromScene(new RoomEnvironment(renderer), 0.04).texture;
       pm.dispose();
     }
-    const terrain = makeTerrain(D, T);
+    const terrain = new THREE.Mesh(new THREE.BufferGeometry(), terrainMaterial(T));
+    terrain.receiveShadow = terrain.castShadow = true; terrain.frustumCulled = false;
     terrain.material.envMapIntensity = 0.04;
     scene.add(terrain);
     const parts = makeParts(D, T);
@@ -79,7 +84,25 @@ function tex(url, srgb = true) {
     const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    const env = { THREE, renderer, scene, camera, sky, sea, terrain, parts, moon, hemi, fx, D, T, post, titles, REPO, groundY: (x, z) => groundY(D, x, z), FPS, W, H, log };
+    const env = { THREE, renderer, scene, camera, sky, sea, terrain, parts, moon, hemi, fx, D, T, post, titles, REPO, groundY: heightAt, FPS, W, H, log };
+    // 地形网格、水深贴图按镜头搭（离镜头近的地方密）：terrainAt(中心 x, z, 网格参数)，同一个中心不重搭
+    let tKey = null;
+    env.terrainAt = (x, z, o = {}) => {
+      const key = [Math.round(x), Math.round(z), o.sp, o.a, o.cap].join(',');
+      if (key === tKey) return;
+      tKey = key;
+      const t0 = performance.now();
+      terrain.geometry.dispose();
+      terrain.geometry = bigTerrainGeo(x, z, o);
+      const nr = o.seaR ?? 2048;
+      const old = sea.userData.depthTex;
+      if (old) old.forEach(t => t.dispose());
+      const near = seaHeightTex(x, z, nr, 1024), far = seaHeightTex(x, z, 40000, 512);
+      sea.userData.depthTex = [near, far];
+      sea.userData.setDepth([near, x, z, nr], [far, x, z, 40000]);
+      log('地形', key, (performance.now() - t0).toFixed(0) + ' 毫秒', terrain.geometry.index.count / 3 + ' 个三角形');
+    };
+    env.terrainAt(BIG.fx, BIG.fz);
     // 片名、片尾那几个镜头不要地形、海、天
     env.worldVisible = on => { for (const o of [sky, sea, terrain, parts.group]) o.visible = on; moon.visible = on; hemi.visible = on; };
     let cur = null;   // 当前搭好的镜头
