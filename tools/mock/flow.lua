@@ -102,6 +102,12 @@ local actA, actC = G.pointActive("A"), G.pointActive("C")
 check(actA and not actC, "第一阶段只能占 A（C 还没开）")
 R.run(1.5)
 check(boat0 and boat0.state ~= "loading", "开战了艇一起冲滩（" .. tostring(boat0 and boat0.state) .. "）")
+local brief = pls[1].PlayerGui.Main.OperationBrief
+check(brief.Visible and brief.Orders.Text == C.T("stage.beach." .. C.S.team), "开战简报显示本阵营目标")
+local sweep = map.Scenery.Lighthouse.LighthouseSweep
+local look = sweep.CFrame.LookVector
+R.run(0.25)
+check((sweep.CFrame.LookVector - look).Magnitude > 0.01 and sweep.SeaHaze:IsA("Beam"), "灯塔的两层光束随转轴扫动")
 
 print("⑤ 开枪：攻方打死守方，守方等几秒复活")
 local pa = V3(150, G.Map.ground(150, 700) + 3.5, 700)
@@ -173,6 +179,11 @@ end
 local tk0 = G.round.tickets
 R.run(2)
 check(A.prog > 0, string.format("占领进度在涨（%.2f）", A.prog))
+local nearby = pls[1].PlayerGui.Main.ObjectiveStatus
+check(nearby.Visible == (C.S.team == "atk"), "据点状态只在占领区内显示")
+if C.S.team == "atk" then
+  check(nearby.Status.Text == C.T("operation.capturing"), "占领区内显示服务器的推进状态")
+end
 local capOk = T.runUntil(function() return A.owner == "atk" end, G.Config.Capture.fast + 10)
 check(capOk, "15 秒左右拿下 A（攻方多 3 人）")
 check(A.locked, "拿下后锁定")
@@ -208,6 +219,9 @@ local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootP
 check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
 R.run(1)
 check(C.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
+check(brief.Visible and brief.Title.Text == C.T("stage.main") and not nearby.Visible, "进入第二阶段显示简报并收起旧据点")
+R.run(5)
+check(not brief.Visible, "同一阶段持续收战况时简报不会重复显示")
 
 print("⑧ 时间到守方赢 → 结算 → 下一局")
 G.round.endsAt = R.clock() + 1

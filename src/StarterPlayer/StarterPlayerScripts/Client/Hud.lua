@@ -8,6 +8,7 @@
 --   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（照样刷新，只是不画）；小地图框挪到左下
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Hud = {}
 
@@ -634,7 +635,7 @@ function Hud.init(G)
     local boardOn = G.boardShown ~= nil and G.boardShown()
     if not tipDone and S.alive and S.phase ~= "end" then
       tipT0 = tipT0 or t
-      local want = t - tipT0 > 1 and not boardOn
+      local want = t - tipT0 > 1 and not boardOn and not (G.operationHudVisible and G.operationHudVisible())
       if want and not tip.Visible then
         tip.Visible = true
         showTip()
@@ -642,43 +643,6 @@ function Hud.init(G)
         tip.Visible = false
       end
     end
-  end
-
-  ---------------------------------------------------------------- 阶段横幅（开战、每打下一个阶段）：屏幕上方三分之一处，大字阶段名 + 这一阶段打 / 守哪儿，四秒多淡出
-  local TweenService = game:GetService("TweenService")
-  local banner = ui.frame(G.gui, UDim2.fromOffset(640, 120), UDim2.fromScale(0.5, 0.3), RGB(0, 0, 0), 1, V2(0.5, 0.5))
-  banner.Name = "StageBanner"
-  banner.ZIndex = 30
-  banner.Visible = false
-  local bTop = txt(banner, "", UDim2.new(1, 0, 0, 18), UDim2.fromOffset(0, 0), 14, MUTE, Enum.Font.GothamBold, nil, nil, 0.6)
-  local bTitle = txt(banner, "", UDim2.new(1, 0, 0, 52), UDim2.fromOffset(0, 22), mobile and 34 or 46, WHITE, Enum.Font.GothamBlack, nil, nil, 0.4)
-  local bSub = txt(banner, "", UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 80), mobile and 15 or 18, TEXT, Enum.Font.GothamMedium, nil, nil, 0.5)
-  local bL = line(banner, UDim2.fromOffset(120, 1), UDim2.new(0, 0, 0, 48), WHITE, 0.3)
-  local bR = line(banner, UDim2.fromOffset(120, 1), UDim2.new(1, -120, 0, 48), WHITE, 0.3)
-  for _, l in ipairs({ bTop, bTitle, bSub }) do l.ZIndex = 31 end
-  local bSeq = 0
-  function G.stageBanner(key, i, n)
-    bSeq += 1
-    local my = bSeq
-    local team = (G.S and G.S.team) or "atk"
-    bTop.Text = T("hud.stageN", i or 1, n or 3)
-    bTitle.Text = T(key)
-    bSub.Text = T(key .. "." .. team)
-    local c = teamColor(team):Lerp(WHITE, 0.2)
-    bL.BackgroundColor3, bR.BackgroundColor3 = c, c
-    banner.Visible = true
-    local parts = { bTop, bTitle, bSub }
-    for _, l in ipairs(parts) do l.TextTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 0 }):Play() end
-    for _, l in ipairs({ bL, bR }) do l.BackgroundTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { BackgroundTransparency = 0.3 }):Play() end
-    if G.playSound then G.playSound("capture", nil, 0.55) end
-    task.delay(4.2, function()
-      if my ~= bSeq then return end
-      local d = G.objDist and G.objDist()
-      if d and d > 1200 and G.toast then G.toast(T("hud.redeployTip"), "info") end   -- 新目标在几公里外：提示按 H 重新部署
-      for _, l in ipairs(parts) do TweenService:Create(l, TweenInfo.new(0.9), { TextTransparency = 1 }):Play() end
-      for _, l in ipairs({ bL, bR }) do TweenService:Create(l, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play() end
-      task.delay(1, function() if my == bSeq then banner.Visible = false end end)
-    end)
   end
 
   ---------------------------------------------------------------- 重新部署（H，服务器 Round.lua redeploy）：离当前目标多远（格），活着、开战了才算
@@ -692,7 +656,8 @@ function Hud.init(G)
       if s.act ~= false and not s.locked then
         for _, p in ipairs(Map.POINTS) do
           if p.id == s.id then
-            local d = ((p.x - hrp.Position.X) ^ 2 + (p.z - hrp.Position.Z) ^ 2) ^ 0.5
+            local pos = hrp.CFrame.Position
+            local d = ((p.x - pos.X) ^ 2 + (p.z - pos.Z) ^ 2) ^ 0.5
             if not best or d < best then best = d end
           end
         end
