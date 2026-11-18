@@ -160,4 +160,31 @@ if v then
   check(e.hp < hp3, string.format("照客户端的准星点开枪：服务器算打中（血 %d → %d）", hp3, e.hp))
 end
 
+print("⑦ 枪声只发给附近的人（百人同服的带宽）：远处的枪不发，擦身而过的发，爆炸照旧全发")
+placeShooter()
+R.run(0.1)
+local got = { gun = 0, boom = 0 }
+local onFx0 = C.onFx
+C.onFx = function(list)
+  for _, ev in ipairs(list) do
+    if ev.k == "gun" then got.gun = got.gun + 1 elseif ev.k == "boom" then got.boom = got.boom + 1 end
+  end
+  return onFx0(list)
+end
+local function fxCount(ev)
+  got.gun, got.boom = 0, 0
+  G.fx(ev)
+  R.run(0.1)
+  return got.gun, got.boom
+end
+local g1 = fxCount({ k = "gun", w = "m4", a = O + V3(0, 0, -5000), b = O + V3(100, 0, -5000), t = P2.team })
+check(g1 == 0, "5000 格外、弹道也不擦过的枪声没发过来（收到 " .. g1 .. " 条）")
+local g2 = fxCount({ k = "gun", w = "m4", a = O + V3(0, 0, -200), b = O + V3(30, 0, -150), t = P2.team })
+check(g2 == 1, "200 格内的枪声发过来了（收到 " .. g2 .. " 条）")
+local g3 = fxCount({ k = "gun", w = "sniper", a = O + V3(0, 0, -3000), b = O + V3(2, 0, 400), t = P2.team })
+check(g3 == 1, "3000 格外打过来、从身边擦过的子弹发过来了（收到 " .. g3 .. " 条）")
+local _, b4 = fxCount({ k = "boom", p = O + V3(0, 0, -6000), s = 2 })
+check(b4 == 1, "远处的爆炸照旧发（收到 " .. b4 .. " 条）")
+C.onFx = onFx0
+
 T.summary()

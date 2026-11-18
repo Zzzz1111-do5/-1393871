@@ -527,18 +527,13 @@ function AM.build(d, team, load)
       it.cf0 = CFrame.lookAt(L0.land, L0.land + V(0, -0.12, -1))   -- 射灯朝前、稍微往下
     end
   end
+  -- 机徽（虚构阵营，评估后改的：原来是照解放军 / 美军的机徽画的）：队伍色菱形里一个白色小菱形；隐身机用低可视的深浅灰
   local function roundel(cf, r)
-    local red, yel, blue, white = RGB(200, 30, 30), RGB(240, 200, 40), RGB(40, 60, 120), RGB(230, 230, 230)
-    if d.stealth then red, yel, blue, white = skinD, skinL, skinD, skinL end
-    if team == "atk" then
-      cylY(0.06, r * 2, cf, yel, MAT.SmoothPlastic)
-      cylY(0.08, r * 1.7, cf, red, MAT.SmoothPlastic)
-      box(V(r * 3.2, 0.07, r * 0.55), cf * CF(0, 0, r * 0.2), red, MAT.SmoothPlastic)
-    else
-      cylY(0.06, r * 2, cf, blue, MAT.SmoothPlastic)
-      cylY(0.08, r * 1.3, cf, white, MAT.SmoothPlastic)
-      box(V(r * 3.6, 0.07, r * 0.6), cf, white, MAT.SmoothPlastic)
-    end
+    local outer, inner = (team == "atk") and RGB(176, 40, 34) or RGB(40, 70, 140), RGB(232, 232, 232)
+    if d.stealth then outer, inner = skinD, skinL end
+    local rot = cf * CFrame.Angles(0, rad(45), 0)
+    box(V(r * 1.5, 0.06, r * 1.5), rot, outer, MAT.SmoothPlastic)
+    box(V(r * 0.7, 0.08, r * 0.7), rot, inner, MAT.SmoothPlastic)
   end
   local nPilot = 0
   local function pilot(cf, helmetColor)
@@ -860,7 +855,11 @@ function AM.build(d, team, load)
         local top = pt(1, 0.6)
         if Vt.endplate then box(V(1.2, 0.6, 3), CF(top), skinD) end
         table.insert(NL.tails, pt(1, 0.94) + V(0, 0.2, 0))   -- 尾部白灯：垂尾顶端后缘
-        if team == "atk" and not d.stealth then box(V(0.06, Vt.h * 0.22, 2.4), CF(pt(0.6, 0.45)) * CF(s * 0.25, 0, 0), RGB(200, 30, 30), MAT.SmoothPlastic) end   -- 尾翼上的八一标志
+        -- 尾翼上的队徽：队伍色小菱形（虚构阵营，评估后改的：原来攻方是八一标志）
+        if not d.stealth then
+          local k = Vt.h * 0.16
+          box(V(0.06, k, k), CF(pt(0.6, 0.45)) * CF(s * 0.25, 0, 0) * CFrame.Angles(rad(45), 0, 0), (team == "atk") and RGB(176, 40, 34) or RGB(40, 70, 140), MAT.SmoothPlastic)
+        end
       end
     end
     -- V 形 / 倒 V 形尾翼（无人机）：方向升降舵

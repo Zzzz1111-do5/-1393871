@@ -3,7 +3,7 @@
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改名成「Roblox全面大战场」后照旧用这个，玩家的军衔、经验不丢）
+Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 
 ---------------------------------------------------------------- 回合

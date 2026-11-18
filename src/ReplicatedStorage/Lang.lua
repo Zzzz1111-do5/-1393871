@@ -13,18 +13,19 @@ end
 
 ---------------------------------------------------------------- 名字
 
-add("game.title", "Roblox全面大战场", "Roblox Total Battlefield")
+add("game.title", "全面大战场", "Island Assault")   -- 评估后改的：名字里不带 Roblox（平台规则）、不带 Battlefield（EA 的商标）
 add("team.atk", "进攻方", "Attackers")
 add("team.def", "防守方", "Defenders")
 add("team.atk.short", "攻", "ATK")
 add("team.def.short", "守", "DEF")
--- 选阵营（解放军 = 进攻方、美军 = 防守方）
+-- 选阵营：两个虚构的阵营（评估后改的，降低被 Roblox 审核下架的风险；原来是解放军 = 进攻方、美军 = 防守方，装备型号照旧）
+--   登陆联军 COALITION LANDING FORCE（CLF）= 进攻方、岛屿守备军 ISLAND GARRISON COMMAND（IGC）= 防守方
 add("faction.title", "选择阵营", "CHOOSE YOUR SIDE")
 add("faction.sub", "夜战 · 群岛登陆", "NIGHT OPS · ARCHIPELAGO ASSAULT")
-add("faction.atk.en", "PEOPLE'S LIBERATION ARMY", "PEOPLE'S LIBERATION ARMY")
-add("faction.def.en", "UNITED STATES ARMED FORCES", "UNITED STATES ARMED FORCES")
-add("faction.atk.name", "中国人民解放军", "PLA")
-add("faction.def.name", "美国军队", "U.S. Forces")
+add("faction.atk.en", "COALITION LANDING FORCE", "COALITION LANDING FORCE")
+add("faction.def.en", "ISLAND GARRISON COMMAND", "ISLAND GARRISON COMMAND")
+add("faction.atk.name", "登陆联军", "CLF")
+add("faction.def.name", "岛屿守备军", "IGC")
 add("faction.atk.role", "进攻  ·  两栖登陆", "ATTACK  ·  AMPHIBIOUS ASSAULT")
 add("faction.def.role", "防守  ·  岛屿防御", "DEFEND  ·  ISLAND DEFENSE")
 add("faction.atk.desc", "从海上一路打上去：先抢滩前哨岛 A，再登陆主岛拿下港口 C 和机场 D，最后攻下指挥部 E。上了主岛以后可以直接在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
@@ -584,7 +585,7 @@ add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
 add("menu.c2.title", "选择阵营", "CHOOSE SIDE")
-add("menu.c2.sub", "中国人民解放军 · 美国军队", "PLA · U.S. FORCES")
+add("menu.c2.sub", "登陆联军 · 岛屿守备军", "COALITION · GARRISON")
 add("menu.c2.none", "未选择", "NOT CHOSEN")
 add("menu.c3.cat", "操作", "CONTROLS")
 add("menu.c3.title", "操作说明", "HOW TO PLAY")
@@ -600,8 +601,8 @@ add("menu.h.veh", "地面载具", "GROUND VEHICLES")
 add("menu.h.jet", "固定翼", "JETS")
 add("menu.h.heli", "直升机", "HELICOPTERS")
 -- 战斗中的界面（Hud.lua）
-add("hud.atk", "解放军", "PLA")
-add("hud.def", "美军", "U.S.")
+add("hud.atk", "联军", "CLF")
+add("hud.def", "守备军", "IGC")
 add("hud.squad", "{1}小队", "{1} SQUAD")
 add("hud.squad.1", "阿尔法", "ALPHA")
 add("hud.squad.2", "布拉沃", "BRAVO")

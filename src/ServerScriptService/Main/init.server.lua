@@ -133,6 +133,62 @@ task.spawn(function()
   print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
 end)
 
+---------------------------------------------------------------- 特效：枪声只发给附近的人
+
+-- 评估后改的（百人同服的带宽）：原来每一发枪（真人、机器人、工事）都广播给所有人，客户端再把 900 格外的扔掉（Fx.lua gunFx）。
+--   现在 gun 事件只发给「枪口离他 GUN_R 格以内、或者弹道从他 GUN_PASS 格以内擦过」的人；开飞机的按雷达范围 AIR_R 发（平显雷达上的开枪红圈）；
+--   没有身体的（死了、在部署界面）照旧全发；别的事件（爆炸、导弹、炮弹……）照旧发给所有人。
+--   客户端照样画：900 格内的枪口、300 格内擦过的弹道、7 格内的子弹擦身声、雷达（步兵 520 格、车 900 格）都在发的范围里
+local GUN_R, GUN_PASS, AIR_R = 1100, 400, (Config.Radar and Config.Radar.jet) or 9000
+local function viewPoints(P)
+  local pts = {}
+  local v = P.vehicle
+  if v and v.root and v.root.Parent then pts[#pts + 1] = v.root.CFrame.Position end
+  local r = P.remote
+  if r and r.root and r.root.Parent then pts[#pts + 1] = r.root.CFrame.Position end
+  local hrp = P.alive and P.char and P.char:FindFirstChild("HumanoidRootPart")
+  if hrp then pts[#pts + 1] = hrp.Position end
+  return pts, (v and v.air) and AIR_R or GUN_R
+end
+local function segDist(p, a, b)
+  local ab = b - a
+  local L2 = ab:Dot(ab)
+  local t = (L2 > 1e-6) and math.clamp((p - a):Dot(ab) / L2, 0, 1) or 0
+  return (a + ab * t - p).Magnitude
+end
+local function gunNear(e, pts, R)
+  for _, p in ipairs(pts) do
+    if (e.a - p).Magnitude <= R or segDist(p, e.a, e.b) <= GUN_PASS then return true end
+  end
+  return false
+end
+function G.flushFx(list)
+  local guns, rest = {}, {}
+  for _, e in ipairs(list) do
+    if e.k == "gun" and typeof(e.a) == "Vector3" and typeof(e.b) == "Vector3" then guns[#guns + 1] = e else rest[#rest + 1] = e end
+  end
+  if #guns == 0 then
+    G.R.Fx:FireAllClients(list)
+    return
+  end
+  local sent = {}
+  for pl, P in pairs(G.P) do
+    sent[pl] = true
+    local pts, R = viewPoints(P)
+    local out = list
+    if #pts > 0 then
+      out = table.clone(rest)
+      for _, e in ipairs(guns) do
+        if gunNear(e, pts, R) then out[#out + 1] = e end
+      end
+    end
+    if #out > 0 then G.R.Fx:FireClient(pl, out) end
+  end
+  for _, pl in ipairs(Players:GetPlayers()) do   -- 还没进 G.P 的（刚进服）照旧全发
+    if not sent[pl] then G.R.Fx:FireClient(pl, list) end
+  end
+end
+
 ---------------------------------------------------------------- 循环
 
 -- 推演：每 Config.Tick 秒一步（占领、AI、炮弹、导弹、登陆艇）
@@ -156,7 +212,7 @@ RunService.Heartbeat:Connect(function(dt)
   if #fxq > 0 then
     local list = fxq
     fxq = {}
-    G.R.Fx:FireAllClients(list)
+    G.try("特效", G.flushFx, list)
   end
 end)
 

@@ -11,7 +11,6 @@ function Faction.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local TEXT, MUTE, LINE = RGB(238, 240, 242), RGB(138, 146, 154), RGB(255, 255, 255)
   local COL = { atk = RGB(214, 58, 46), def = RGB(64, 132, 238) }
-  local GOLD = RGB(232, 196, 92)
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Faction"
@@ -91,17 +90,27 @@ function Faction.init(G)
     cs.Color, cs.Transparency, cs.Thickness, cs.ApplyStrokeMode = LINE, 0.9, 1, Enum.ApplyStrokeMode.Border
     cs.Parent = c
     frame(c, UDim2.new(1, 0, 0, 3), nil, COL[side], 0)   -- 顶上一条阵营色
-    -- 徽记：解放军是金边红底上一颗金星；美军是蓝圆里一颗白星
-    local em = frame(c, UDim2.fromOffset(58, 58), UDim2.fromOffset(28, 30), (side == "atk") and RGB(170, 32, 28) or RGB(26, 56, 112), 0)
+    -- 徽记（虚构阵营，评估后改的：原来是照解放军 / 美军画的五角星）：
+    --   登陆联军（攻）红底上一个白色向上的箭头、底下一道海浪；岛屿守备军（守）蓝底上一座白色城垛
+    local em = frame(c, UDim2.fromOffset(58, 58), UDim2.fromOffset(28, 30), (side == "atk") and RGB(150, 34, 30) or RGB(26, 56, 112), 0)
+    em.Name = "Emblem"
     local es = Instance.new("UIStroke")
-    es.Color, es.Thickness, es.ApplyStrokeMode = (side == "atk") and GOLD or RGB(220, 226, 236), 1.5, Enum.ApplyStrokeMode.Border
+    es.Color, es.Thickness, es.ApplyStrokeMode = RGB(220, 226, 236), 1.5, Enum.ApplyStrokeMode.Border
     es.Parent = em
-    if side == "def" then
-      local cr = Instance.new("UICorner")
-      cr.CornerRadius = UDim.new(0.5, 0)
-      cr.Parent = em
+    local INK = RGB(240, 242, 246)
+    local function bar(w, h, x, y, rot, tr)
+      local b = frame(em, UDim2.fromOffset(w, h), UDim2.fromOffset(x, y), INK, tr or 0, Vector2.new(0.5, 0.5))
+      b.Rotation = rot or 0
+      return b
     end
-    text(em, "★", UDim2.fromScale(1, 1), nil, 34, (side == "atk") and GOLD or RGB(255, 255, 255), Enum.Font.GothamBlack, nil, Enum.TextXAlignment.Center)
+    if side == "atk" then
+      bar(26, 6, 20, 22, -40)   -- 箭头左半（Rotation 顺时针为正：-40 右端朝上）
+      bar(26, 6, 38, 22, 40)    -- 箭头右半
+      bar(34, 4, 29, 42, 0, 0.15)   -- 海浪
+    else
+      bar(34, 14, 29, 36)   -- 城墙
+      for k = -1, 1 do bar(7, 8, 29 + k * 13, 25) end   -- 三个垛口
+    end
     local K = {}
     K.en = text(c, "", UDim2.new(1, -120, 0, 14), UDim2.fromOffset(102, 34), 11, MUTE, Enum.Font.GothamBold)
     K.name = text(c, "", UDim2.new(1, -120, 0, 32), UDim2.fromOffset(102, 50), 26, TEXT, Enum.Font.GothamBlack)
