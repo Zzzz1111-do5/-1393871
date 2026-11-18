@@ -550,6 +550,10 @@
     `Soldier.lua` 按 HipHeight 算高度）、坦克被草石盖住像陷进地里（704de5f：`Scenery.lua` 车压着的不画）、载具朝里的面（`mdl2glb.write_glb` 写完自动过 `glbfix.py`，
     重新转的 M1A2 也过了：再过一遍按法线翻 0 个）。另外试了 `glbvote.py`（舰艇、歼-20 用的那道）在地面载具上：只画正面的渲染里修之前本来就没有洞，
     修之后车体首上、侧裙边上反而出一片片发黑的三角形——地面载具不用它。
+- [x] 只换脚本（darksword-forts-navy，2026-11-18 晚；用户：怎么才能只改脚本）：`tools/build.luau` 每次除了 `RobloxTotalBattlefield.rbxlx` 还写
+  `ScriptsUpdate.rbxmx`（一个 ScriptsUpdate 文件夹，按 ReplicatedStorage / ServerScriptService / StarterPlayerScripts 分好，装着 src/ 的全部脚本），两个都提交。
+  用户在自己的地点里右键 ServerStorage「从文件插入」它，命令栏粘导入说明「三、只换脚本」那一行：同名旧脚本删掉、新的放进去，导入的模型、地图、设置不动。
+  测试 `tools/test/scripts_update.luau`（新）：旧地点 + 导入的模型 + 插入更新包 + 原样跑说明里那一行命令，脚本全换新、模型还在、更新包删掉。
 
 - [ ] 新图标和宣传图。
 - [x] 宣传片 · 微电影《黎明之前》（session_01LjuH3fMZAmBoHts4cMHdAX，用户：「给这个游戏做一个电影级宣传片，你可以直接做一个微电影」）：约 96 秒、1080p、24 帧、2.39 : 1 宽银幕，

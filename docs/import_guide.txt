@@ -4,7 +4,7 @@
 （仓库里这些文件就在 models/ 下面。发给用户的是一个压缩包「Roblox全面大战场_全部.zip」：先解压，再按下面的文件夹分批导里面的 .glb——
   Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
-游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
+游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 65 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
   2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…；
@@ -99,7 +99,22 @@ local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModel
      以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
      （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）
 
-三、注意
+三、只换脚本（导入的模型、地图、设置都不动）
+  每次更新我都会同时给两个文件：RobloxTotalBattlefield.rbxlx（整个游戏）和 ScriptsUpdate.rbxmx（只有脚本）。
+  已经在自己的地点里导入过模型、不想重新打开整个游戏文件的，用 ScriptsUpdate.rbxmx：
+  1. 用 Studio 打开你自己的地点（导入过模型的那个）。
+  2. 资源管理器里右键 ServerStorage →「从文件插入…」（Insert from File…），选 ScriptsUpdate.rbxmx。
+     ServerStorage 下面会多一个 ScriptsUpdate 文件夹（放 ServerStorage 里的脚本不会运行，不用担心）。
+  3. 「视图 → 命令栏」，粘下面这一行回车：
+
+local u=game:GetService("ServerStorage"):FindFirstChild("ScriptsUpdate") or workspace:FindFirstChild("ScriptsUpdate") assert(u,"先把 ScriptsUpdate.rbxmx 插入到 ServerStorage") local to={ReplicatedStorage=game:GetService("ReplicatedStorage"),ServerScriptService=game:GetService("ServerScriptService"),StarterPlayerScripts=game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts")} local n=0 for k,svc in pairs(to) do local f=u:FindFirstChild(k) if f then for _,c in ipairs(f:GetChildren()) do local old=svc:FindFirstChild(c.Name) if old then old:Destroy() end c.Parent=svc n+=1 end end end u:Destroy() print("脚本换好了："..n.." 项（导入的模型、地图都没动），记得保存")
+
+     输出里出现「脚本换好了：26 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
+  4. 保存（要上线就「发布到 Roblox」）。
+  注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
+  更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
+
+四、注意
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
   - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。
