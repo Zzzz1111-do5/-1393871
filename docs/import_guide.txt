@@ -16,6 +16,13 @@
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
+  11 月 18 日第六包：只重导 veh/m1a2dc.glb 一个文件（别的都不用动）：
+    - M1A2 改回原模型的颜色（用户：颜色改回原模型的颜色）：原来统一刷成的单色沙黄去掉，换回作者原来的涂装——
+      深一点、旧一点的沙色，机枪和炮口是黑的金属色，背包是绿的，原来的磨损、脏污、标记都在；形状、零件、能动的部件和以前一样。
+    先在命令栏粘下面这一行删掉旧的 M1A2 零件，再导入 veh/m1a2dc.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_m1a2dc__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的 M1A2 零件，可以重导了")
+
   11 月 18 日第五包：只重导 ship/ 文件夹（7 艘舰艇；车、飞机、建筑都不用动）：
     - 舰艇模型里还有不少朝里的面（055 约一成、提康德罗加两成多）：Roblox 只画正面，有的角度看不见船身、只剩上层建筑像漂在海上——这次全部翻正了；
     - 攻方登陆平台（驳船）、浮码头、港口木栈桥是游戏脚本搭的，不用导：驳船有了船身、红色船底、水线、艏艉斜面、护舷轮胎、四根锚链和闪灯浮标，
