@@ -546,6 +546,10 @@
   登陆艇 650 → 1600 血、气垫艇 900 → 1800、岸防炮每 8 秒一发 → 10 秒，现在要中 3 发才沉。
   机器人对打 8 分钟（`ia_bots.luau 8`）：没有工事时攻方拿下 3 个点、阵亡 攻 43 / 守 26；加了工事、没调之前只拿下 1 个、阵亡 攻 306 / 守 16；调过以后拿下 3 个、阵亡 攻 137 / 守 39。
   以后攻方舰艇做出来能压制岸防炮了，可以再把射速调回去。统计攻方死在什么上面：`lune run tools/test/ia_balance.luau <rbxlx> 6`。
+- [ ] **评估后的修改——session_01FhMEBuiN19S5cT4mapA4Wr（`claude/vibrant-ramanujan-hd84ou`）在做（用户 11-18，从 darksword-forts-navy 的 1a9a2de 开始）**：
+  游戏改名「全面大战场 / Island Assault」（名字里不再有 Roblox、Battlefield）；两个阵营改成虚构的（名字、徽记、旗、臂章换成自制的，装备型号不动）；
+  开枪的命中判定加延迟补偿（跑动的小兵、玩家打中了却不算）；枪声特效只发给附近的人等百人同服的性能问题；建 `main` 主分支，以后都从 main 开始。
+  这一批做完前，别的会话先别动 `Weapons.lua` 的开火判定、`Play.lua` 的 `aimPoint`、`Faction.lua` 和 `Lang.lua` 里阵营、游戏名的字。
 
 ## 协作（几个会话一起改这个仓库）
 
