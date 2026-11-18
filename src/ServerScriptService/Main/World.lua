@@ -248,9 +248,9 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高）：0.3 是当时以为小兵「半截身子在地里」是草挡的——其实是机器人样板关节没解算（Bots.lua 已修）；
-    --   用户 11-18：草多用 Roblox 自带的那种草、效果很好——0.55 约一格半高，没过脚面到小腿，车轮、履带下沿埋在草里
-    T.GrassLength = 0.55
+    -- 草叶长度（默认 0.7 约两格高）：0.3（约一格高）——长了小兵的腿、车轮、沙袋下半截都埋在草里，看着像半截身子在地下
+    --   （用户 11-18：现在所有单位都是半截身子在地下的——上午调到 0.55 就是这样；草多用 Roblox 自带的那种，是铺得更满，不是更高）
+    T.GrassLength = 0.3
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -773,7 +773,17 @@ local function portTown(f)
   local P = Map.PORT
   -- 码头：从湾底伸进湾里
   local zs = Map.coastS(P.x) or P.z
-  for i = -1, 1 do part(f, V(14, 2, 90), CF(P.x + i * 70, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true) end
+  for i = -1, 1 do
+    local px = P.x + i * 70
+    part(f, V(14, 2, 90), CF(px, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true)
+    for k = 0, 3 do   -- 木桩：打到海底（原来木板直接摆在水面上，像漂着；用户 11-18：这些建筑漂在水里）
+      for _, sx in ipairs({ -1, 1 }) do
+        local x, z = px + sx * 6, zs + 40 - 45 + 8 + k * 25
+        local bed = math.min(-1, math.max(Map.height(x, z), -40))
+        cyl(f, -bed + 0.2, 1.1, CF(x, bed / 2 + 0.1, z), RGB(70, 58, 44), MAT.Wood, true)
+      end
+    end
+  end
   -- 镇上的房子（用户：继续把地图建筑的建模优化）：民房、瓦房、水泥楼混着摆，街北的正门朝南、街南的朝北（都朝着镇中心那条街），
   --   每座稍微歪一点；湾边一排库房、码头根上一座小库房（大门朝海）
   local bf = folder("Buildings", f)

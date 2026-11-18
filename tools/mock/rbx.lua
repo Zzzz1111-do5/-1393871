@@ -1119,7 +1119,8 @@ def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
-  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false } }, { events = { Died = true, HealthChanged = true }, methods = {
+  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false },
+  FloorMaterial = { E("Material"), Enum.Material.Grass } }, { events = { Died = true, HealthChanged = true }, methods = {   -- 脚下的材质（跳起来是 Air）：模拟器里人总站在地上
   -- 跟真机一样：拿起一件之前，手里原来的放回背包；UnequipTools 把手里的都放回背包
   EquipTool = function(o, t)
     if not t then return end

@@ -188,12 +188,17 @@ if e and e.def.id == "j20" then
       for _, it in ipairs(v.M.items) do if it.tag == "gear" then built = built + 1 end end
       check(built == 0, "原模型自带起落架：零件拼的起落架不画了（" .. built .. " 个零件）")
     end
-    local wells = 0
+    -- 弹舱 / 起落架舱里：WELL 表的深色方盒子（Part），v4 的侧弹舱、起落架舱换成 tools/models/doorbay.py 做的舱（网格 Well_1…，开口一圈封住，开了舱门看不穿飞机）
+    local wells, cav = 0, 0
     for _, it in ipairs(v.M.items) do
       local col = it.p.Color
       if it.kind == "b" and not it.tag and it.p.ClassName == "Part" and col.R < 0.16 and col.G < 0.16 and col.B < 0.17 then wells = wells + 1 end
+      if it.kind == "b" and string.match(it.p.Name, "__Well_%d+$") then cav = cav + 1 end
     end
-    check(wells >= 3, "弹舱里有深色的舱壁（" .. wells .. " 个）")
+    check(wells + cav >= 3, "弹舱里有深色的舱壁（方盒 " .. wells .. " 个、舱 " .. cav .. " 个）")
+    if IA.m[IKEY].bayfix then
+      check(cav == 5, "侧弹舱、起落架舱是封好的舱（" .. cav .. " 个，应该 5 个：两个侧弹舱、两个主起落架舱、前起落架舱）")
+    end
   end
 end
 print("④ 降落伞：角色带着 Chute 属性（服务器在跳伞时设）就在头顶张开一顶伞，落地收掉")

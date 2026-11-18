@@ -11,10 +11,11 @@ local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local H = require("./harness")
 local V3, CF, Inst = roblox.Vector3, roblox.CFrame, roblox.Instance
+local Enum = roblox.Enum
 H.quietWarn = process.args[2] ~= "v"
 
 local IA = luau.load(fs.readFile("src/ReplicatedStorage/ImportedAir.lua"), { debugName = "ImportedAir" })()
-local KEYS = { "j15t", "ah64", "j20_v4", "z10w", "a10_v3", "tvc", "f22a" }
+local KEYS = { "j15t", "ah64", "j20_v4", "z10w", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
 local function count(t) local n = 0 for _ in pairs(t) do n += 1 end return n end
 
 H.boot(process.args[1], { ds = "mock", before = function(game)
@@ -248,6 +249,28 @@ local MJ = AM.build(dj, "atk", AD.presetLoad(dj, "aa"))
 local gearN = 0
 for _, it in ipairs(MJ.items) do if it.tag == "gear" then gearN += 1 end end
 check(MJ.imported == "j20_v4" and gearN == 0, string.format("用的是 %s，零件拼的起落架 %d 个零件（应该没有）", tostring(MJ.imported), gearN))
+-- 绿色编队灯带（用户 11-18：歼-20 改得跟现实的一样，包括绿色光条；v4 也照 airpaint.py 重涂过）：元数据 glow 的那几块是 Neon、绿色，不带贴图
+do
+	local gl = IA.m.j20_v4.glow or {}
+	local want, ok = count(gl), 0
+	for _, it in ipairs(MJ.items) do
+		local nm = it.p and it.p:IsA("MeshPart") and string.match(it.p.Name, "__(.+)$")
+		if nm and gl[nm] and it.p.Material == Enum.Material.Neon and it.p.Color.G > 0.9 then ok += 1 end
+	end
+	check(want >= 4 and ok == want, string.format("绿色灯带 %d / %d 块发光（Neon）", ok, want))
+end
+-- 侧弹舱、起落架舱（用户：侧弹仓打开为什么能看穿飞机）：tools/models/doorbay.py 做的舱 Well_1…5 画出来、深灰色
+do
+	local n, dark = 0, 0
+	for _, it in ipairs(MJ.items) do
+		local nm = it.p and string.match(it.p.Name, "^A_j20_v4__(Well_%d+)$")
+		if nm then
+			n += 1
+			if it.p.Color.R < 0.3 and it.p.Color.G < 0.3 then dark += 1 end
+		end
+	end
+	check(n == 5 and dark == 5, string.format("舱门里封好的舱 %d 个（深灰 %d 个，应该 5 个）", n, dark))
+end
 local function partsOf(g)
 	local list = {}
 	for _, it in ipairs(MJ.items) do
@@ -291,6 +314,28 @@ do
 	check(MA.imported == "a10_v3" and gN > 0, string.format("原模型 + 零件拼的起落架 %d 个零件", gN))
 	check(fake > 0 and fakeShown == fake, string.format("收起落架时原模型那 %d 块「起落架」照样看得见（是蒙皮）", fake))
 	MA.model:Destroy()
+end
+
+print("④d 歼-16 的绿色灯带（模型里没有：贴在量出来的蒙皮位置）、H-6 / A-10 的发动机堵头（从后往前看不再是空的）")
+do
+	local function neonN(M)
+		local n = 0
+		for _, it in ipairs(M.items) do if it.p and it.p:IsA("Part") and it.p.Material == Enum.Material.Neon and it.p.Color.G > 0.9 and it.p.Size.Y <= 0.06 then n += 1 end end
+		return n
+	end
+	local d16 = AD.get("j16")
+	local M16 = AM.build(d16, "atk", AD.presetLoad(d16))
+	check(M16.imported == "j16_v3" and neonN(M16) == #(IA.m.j16_v3.strips or {}) and neonN(M16) >= 4, string.format("歼-16：灯带 %d 条（元数据 %d 条）", neonN(M16), #(IA.m.j16_v3.strips or {})))
+	M16.model:Destroy()
+	for _, pair in ipairs({ { "h6k", "h6k_v3" }, { "a10c", "a10_v3" } }) do
+		local dd = AD.get(pair[1])
+		local MM = AM.build(dd, "def", AD.presetLoad(dd))
+		local plugs = 0
+		for _, it in ipairs(MM.items) do if it.p and it.p:IsA("Part") and it.p.Shape == Enum.PartType.Cylinder and it.p.Color.R < 0.15 and it.p.Size.X < 0.2 then plugs += 1 end end
+		local want = #(IA.m[pair[2]].plugs or {})
+		check(MM.imported == pair[2] and want >= 2 and plugs >= want, string.format("%s：发动机堵头 %d 个（元数据 %d 个）", pair[1], plugs, want))
+		MM.model:Destroy()
+	end
 end
 
 print("④c F-22A（用户给的带动画的「F22 Raptor FREE」）：原模型动画里的起落架、舱门、侧弹舱照关键帧动；主弹舱门、舵面、座舱盖绕铰链转")

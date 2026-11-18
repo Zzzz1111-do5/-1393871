@@ -17,6 +17,9 @@ import mdl2glb as B   # noqa: E402  贴图、材质、GLB 写出、署名、Lua 
 import air_anim as A   # noqa: E402  舵面、弹舱门、座舱盖、起落架支柱
 import air_kf as KF   # noqa: E402  原模型自带关键帧动画的（F-22A）：动画里会动的节点做成部件
 import orient   # noqa: E402  修朝反了的面（Roblox 只画正面）
+import glbvote   # noqa: E402  写完 GLB 再从 26 个方向检查一遍面朝向、法线
+import airpaint   # noqa: E402  重新涂装（歼-20）、发光灯带（歼-20、歼-16）、发动机堵头（H-6、A-10）
+import doorbay   # noqa: E402  舱门里补封好的舱、舱门补反面（歼-20：开了舱门别能看穿飞机）
 
 S = B.S
 CHUNK = B.CHUNK
@@ -454,6 +457,7 @@ if __name__ == '__main__':
         meta, binb, info, out = convert(key, AD, ids)
         path = os.path.join(OUTDIR, key + '.glb')
         B.write_glb(kname[key], meta, binb, info, out, path, prefix='A_')
+        glbvote.vote_file(path, log=lambda m: print('  %s%s' % (kname[key], m)))   # 最后一道面朝向检查（26 个方向看；歼-20 机头镂空就是前两道漏的）
         meta_out[key] = info
         lua_out[kname[key]] = info
         tris = sum(len(o[6]) for o in out)
@@ -486,6 +490,16 @@ if __name__ == '__main__':
         for key in sorted(legacy):
             f.write(legacy[key] if legacy[key].endswith('\n') else legacy[key] + '\n')
         f.write('  },\n}\n')
+    # 重新涂装、灯带、发动机堵头（tools/models/airpaint.py 的 PAINT：歼-20 涂装和绿色灯带、歼-16 灯带、H-6 / A-10 堵头）——改 GLB 和刚写好的元数据那一行
+    for nm, spec in airpaint.PAINT.items():
+        if spec['key'] in lua_out:
+            print('%-8s 涂装 / 灯带 / 堵头' % spec['key'])
+            airpaint.paint(nm, os.path.join(OUTDIR, nm + '.glb'), META)
+    # 舱门开口挤出舱、舱门补反面（tools/models/doorbay.py 的 SPEC）——要在涂装之后
+    for nm, spec in doorbay.SPEC.items():
+        if spec['key'] in lua_out:
+            print('%-8s 舱、舱门反面' % spec['key'])
+            doorbay.run(nm, os.path.join(OUTDIR, nm + '.glb'), META)
     B.write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
                     'Roblox全面大战场的飞机、直升机模型（models/air/<模型键>.glb）：从网页版《暗剑》烘焙的模型原样转换（js/mdl/<模型键>.js）\n'
                     '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到机身中心和地面；按部件（机体 / 起落架 / 旋翼 / 尾桨 / 折叠外翼）和材质切成几块，'

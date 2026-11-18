@@ -321,7 +321,7 @@ function UI.init(G)
         { T("deploy.stat.dmg"), math.clamp(w.dmg / 100, 0, 1), tostring(w.dmg) },
         { T("deploy.stat.rate"), math.clamp((60 / w.rate) / 800, 0, 1), T("deploy.rpm", math.floor(60 / w.rate + 0.5)) },
         { T("deploy.stat.range"), math.clamp(m(w.range) / 550, 0, 1), T("deploy.m", m(w.range)) },
-        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) / 0.8, 0.05, 1), string.format("±%.2f°", w.spread or 0) },
+        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) * (w.adsK or 1) / 0.8, 0.05, 1), string.format("±%.2f°", (w.spread or 0) * (w.adsK or 1)) },   -- 开镜的精度（spread 是腰射）
       }
     elseif w.dmg then
       local rows = {

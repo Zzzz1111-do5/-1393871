@@ -4,7 +4,7 @@
 （仓库里这些文件就在 models/ 下面。发给用户的是一个压缩包「Roblox全面大战场_全部.zip」：先解压，再按下面的文件夹分批导里面的 .glb——
   Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
-游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
+游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 65 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
   2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
@@ -16,16 +16,50 @@
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
-  11 月 18 日第四包：只换歼-20，重导 air/j20.glb 一个文件，别的都不用动：
-    - 不减面的原模型（23.6 万个三角形，原来 13.5 万），起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
+  想一次全部换成最新的（所有文件夹都重导，比如歼-20 修好机头镂空那版、舰艇翻正、M1A2 原色、建筑一起换）：
+    先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 18 日第七包：只换歼-20，重导 air/j20.glb 一个文件，别的都不用动：
+    - 不减面的原模型（23.6 万个三角形，原来 13.5 万），照样是第三包那套真机涂装和会发光的绿色灯带；
+    - 起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
+    - 打开侧弹舱、起落架舱门不再能看穿飞机：舱门里面有封好的深灰色舱（块名 A_j20_v4__Well_1…5），舱门内侧也画出来了；
     - 新导进来的块叫 A_j20_v4__…，游戏优先用它；旧的 A_j20_v3__…不删也行（游戏不用了），想删就在命令栏粘下面这一行回车：
+
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20__") or d.Name:match("^A_j20_v[23]__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")
-    - 导入方法同下面「一、导入」：「导入 3D」选 air/j20.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
+
+    导入方法同下面「一、导入」：「导入 3D」选 air/j20.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
+
+  11 月 18 日第六包：只重导 veh/m1a2dc.glb 一个文件（别的都不用动）：
+    - M1A2 改回原模型的颜色（用户：颜色改回原模型的颜色）：原来统一刷成的单色沙黄去掉，换回作者原来的涂装——
+      深一点、旧一点的沙色，机枪和炮口是黑的金属色，背包是绿的，原来的磨损、脏污、标记都在；形状、零件、能动的部件和以前一样。
+    先在命令栏粘下面这一行删掉旧的 M1A2 零件，再导入 veh/m1a2dc.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_m1a2dc__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的 M1A2 零件，可以重导了")
+
+  11 月 18 日第五包：只重导 ship/ 文件夹（7 艘舰艇；车、飞机、建筑都不用动）：
+    - 舰艇模型里还有不少朝里的面（055 约一成、提康德罗加两成多）：Roblox 只画正面，有的角度看不见船身、只剩上层建筑像漂在海上——这次全部翻正了；
+    - 攻方登陆平台（驳船）、浮码头、港口木栈桥是游戏脚本搭的，不用导：驳船有了船身、红色船底、水线、艏艉斜面、护舷轮胎、四根锚链和闪灯浮标，
+      浮码头改成一节节浮箱加锚链，守方码头、港口木栈桥补了打到海底的桩，不再像一块板浮在水面上。
+    先在命令栏粘下面这一行删掉旧的舰艇零件，再导入 ship/ 里的 7 个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^S_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
   11 月 18 日第三包：新增地图建筑 bld/buildings.glb（一个文件，17 种建筑，约 4.5 万个三角形、带贴图），别的都不用动：
     港口镇的民房、瓦房、水泥楼，湾边的库房、厂房，两个机场的拱顶机库、塔台、消防站、铁皮营房、小库房，营地的铁皮营房，
     灯塔看守小屋、炮台营房，导进来以后都换成网页版地图用的写实模型（CC-BY，署名在 bld/credits.txt）；
     导入方法同下面「一、导入」：「导入 3D」选 bld/buildings.glb，导进 Workspace 就行（块叫 B_<键>__Body_<号>，开服时自动收好、摆到地图上）。
     不导也行：地图上是零件拼的新房子（坡屋顶、檐口山墙、窗框窗台、门廊、烟囱、平顶楼的楼层线和女儿墙、拱顶机库、八角玻璃塔台），比原来的方块房子细。
+  11 月 18 日第三包：只重导 air/ 里的三个文件——j20.glb、h6k.glb、a10.glb（别的不用动）：
+    - 歼-20：修了机头和前机身「镂空」（一万多个三角形朝反了）；照真机涂装——机身深灰微带青、雷达罩更深、喷管橄榄青铜色、座舱盖茶金色；
+      机头两侧和两片垂尾上的绿色编队灯带会发光（左边那条原模型比右边短一截，补齐了）；
+    - H-6、A-10：同样修了朝反的面；发动机里垫了深色堵头，从后往前看不再是空的（游戏脚本里加的，导入新文件以后才对得上位置）；
+    - 歼-16 的绿色灯带是游戏脚本贴上去的，不用重导；喷口后面那串「泡泡」（热浪粒子）去掉了，也不用重导。
+    先在命令栏粘下面这一行删掉这三架的旧零件，再导入这三个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20_v3__") or d.Name:match("^A_h6k_v3__") or d.Name:match("^A_a10_v3__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
   11 月 18 日第二包：要重导 veh/、ship/ 两个文件夹（飞机、导弹、瞄准镜、花草、第一人称 M4 没变，不用动）：
     - M1A2 换成你指定的沙漠涂装 SEPv2（veh/m1a2dc.glb，Muhamad Mirza Arrafi，CC-BY）：车长位置的 CROWS 遥控武器站自己会转、上面的 M2 会俯仰，
       开火的曳光弹从 M2 枪口出、顺着枪管飞；炮长瞄准镜视角在炮塔右前方那个瞄准镜盒子的位置；
@@ -80,7 +114,22 @@ local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModel
      以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
      （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）
 
-三、注意
+三、只换脚本（导入的模型、地图、设置都不动）
+  每次更新我都会同时给两个文件：RobloxTotalBattlefield.rbxlx（整个游戏）和 ScriptsUpdate.rbxmx（只有脚本）。
+  已经在自己的地点里导入过模型、不想重新打开整个游戏文件的，用 ScriptsUpdate.rbxmx：
+  1. 用 Studio 打开你自己的地点（导入过模型的那个）。
+  2. 资源管理器里右键 ServerStorage →「从文件插入…」（Insert from File…），选 ScriptsUpdate.rbxmx。
+     ServerStorage 下面会多一个 ScriptsUpdate 文件夹（放 ServerStorage 里的脚本不会运行，不用担心）。
+  3. 「视图 → 命令栏」，粘下面这一行回车：
+
+local u=game:GetService("ServerStorage"):FindFirstChild("ScriptsUpdate") or workspace:FindFirstChild("ScriptsUpdate") assert(u,"先把 ScriptsUpdate.rbxmx 插入到 ServerStorage") local to={ReplicatedStorage=game:GetService("ReplicatedStorage"),ServerScriptService=game:GetService("ServerScriptService"),StarterPlayerScripts=game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts")} local n=0 for k,svc in pairs(to) do local f=u:FindFirstChild(k) if f then for _,c in ipairs(f:GetChildren()) do local old=svc:FindFirstChild(c.Name) if old then old:Destroy() end c.Parent=svc n+=1 end end end u:Destroy() print("脚本换好了："..n.." 项（导入的模型、地图都没动），记得保存")
+
+     输出里出现「脚本换好了：26 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
+  4. 保存（要上线就「发布到 Roblox」）。
+  注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
+  更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
+
+四、注意
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
   - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。

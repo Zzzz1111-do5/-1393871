@@ -9,6 +9,7 @@ function Ents.init(G)
   local Config, Map = G.Config, G.Map
   local V = Vector3.new
   local GRAV = V(0, -workspace.Gravity * 0.55, 0)   -- 弹道用的重力（比角色的轻一点，火箭弹、手雷飞得远一点）
+  local HitSurf = require(game:GetService("ReplicatedStorage"):WaitForChild("HitSurf"))
 
   local folder = Instance.new("Folder")
   folder.Name = "Ents"
@@ -230,6 +231,11 @@ function Ents.init(G)
         local res = workspace:Raycast(s.pos, step, params)
         if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
+          local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
+          if hs and HitSurf.METAL[hs] then
+            G.fx({ k = "spark", p = res.Position, n = res.Normal, h = hs, s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+          end
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)

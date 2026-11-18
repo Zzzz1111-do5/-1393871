@@ -744,32 +744,8 @@ function AM.build(d, team, load)
             r * 1.1, r * 0.2)
           table.insert(M.flames, it)
         end
-        if not E.cold then   -- 热浪：一股很淡的气流
-          local hs = newPart(m, V(E.r * 1.1, E.r * 1.1, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
-          hs.Name = "Haze"
-          hs.CastShadow = false
-          local hz = add(hs, base, "ab", hotItem({ haze = true }))
-          local r = E.r
-          local pe = Instance.new("ParticleEmitter")
-          pe.Name = "HeatHaze"
-          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
-          pe.EmissionDirection = Enum.NormalId.Back   -- 从喷口往后
-          pe.LockedToPart = true                      -- 跟着飞机走（不锁的话几百格每秒拖成一长条）
-          pe.LightEmission, pe.LightInfluence = 0, 1  -- 不自己发光：只是被照到的一点灰白
-          pe.Lifetime = NumberRange.new(0.18, 0.3)
-          pe.Speed = NumberRange.new(r * 30, r * 40)
-          pe.SpreadAngle = Vector2.new(6, 6)
-          pe.Rotation = NumberRange.new(0, 360)
-          pe.RotSpeed = NumberRange.new(-120, 120)
-          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.8), NumberSequenceKeypoint.new(1, r * 2.8) })
-          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.97), NumberSequenceKeypoint.new(0.25, 0.92), NumberSequenceKeypoint.new(1, 1) })
-          pe.Color = ColorSequence.new(RGB(196, 200, 206))
-          pe.Rate = 0
-          pe.Enabled = false
-          pe.Parent = hs
-          hz.pe = pe
-          table.insert(M.flames, hz)
-        end
+        -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
+        --   之前的玻璃球也是这样）。Roblox 的粒子做不出空气的折射，假的只会像泡泡
       end
     end
     -- 机翼（舵面：后 22% 弦长；有折叠的在折叠线分开）
@@ -1183,6 +1159,12 @@ function AM.build(d, team, load)
           mp.Material = p.met and MAT.Metal or MAT.SmoothPlastic
           if p.a then mp.Transparency = 1 - p.a end
         end
+        local gl = I.glow and I.glow[name]
+        if gl then   -- 自己发光的灯带（歼-20 机头两侧、两片垂尾上的绿色电致发光编队灯，tools/models/airpaint.py）：去掉贴图，Neon
+          for _, sa in ipairs(mp:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() mp.TextureID = "" end)
+          mp.Color, mp.Material, mp.CastShadow = RGB(gl[1], gl[2], gl[3]), MAT.Neon, false
+        end
         mp.Parent = m
         local c = V(p.c[1], p.c[2], p.c[3]) + O
         local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
@@ -1223,6 +1205,22 @@ function AM.build(d, team, load)
       local wp = newPart(m, V(math.max(w.s[1] - 0.1, 0.1), math.max(w.s[2], 0.1), math.max(w.s[3] - 0.1, 0.1)), DARK, MAT.SmoothPlastic)
       wp.CastShadow = false
       add(wp, CF(V(w.c[1], w.c[2], w.c[3]) + O), "b")
+    end
+    -- 贴在蒙皮上的发光灯带（歼-16 的绿色编队灯：模型里没有，tools/models/airpaint.py 在模型表面量出来的位置）：薄薄一条 Neon
+    for _, s in ipairs(I.strips or {}) do
+      local n, dd = V(s.n[1], s.n[2], s.n[3]).Unit, V(s.d[1], s.d[2], s.d[3]).Unit
+      local c = V(s.c[1], s.c[2], s.c[3]) + O + n * 0.03
+      local sp = newPart(m, V(s.w, 0.05, s.l), RGB(s.col[1], s.col[2], s.col[3]), MAT.Neon)
+      sp.CastShadow = false
+      add(sp, CFrame.lookAt(c, c + dd, n), "b")
+    end
+    -- 发动机堵头（H-6、A-10：模型没做风扇、离远了喷管里的零件被 Roblox 减面减掉，从后往前看是空的）：喷口往里一点一块深色圆盘
+    for _, pl in ipairs(I.plugs or {}) do
+      local ax = V(pl.a[1], pl.a[2], pl.a[3]).Unit
+      local c = V(pl.c[1], pl.c[2], pl.c[3]) + O
+      local disc = newPart(m, V(0.12, pl.r * 2, pl.r * 2), RGB(24, 24, 26), MAT.SmoothPlastic, CYL)
+      disc.CastShadow = false
+      add(disc, CFrame.lookAt(c, c + ax) * CFrame.Angles(0, math.pi / 2, 0), "b")   -- 圆柱的轴是 X：转到顺着喷口
     end
     local F = I.fold and I.fold.Fold
     if F then M.foldH = { x = F.x, y = F.y + O.Y, A = F.A } end
@@ -1331,14 +1329,6 @@ function AM.pose(M, cf, c, now, world)
           it.outerEnd.Position = V(0, 0, r * (3.2 + 4.5 * ab) * fl)
           it.innerEnd.Position = V(0, 0, r * (1.6 + 1.6 * ab) * (2 - fl))
           it.outer.Width0 = r * (1.55 + 0.25 * ab) * fl
-        end
-      elseif it.haze then   -- 热浪：气流粒子（加力时接在火焰后面）；油门过两成半、离镜头近才放，分 6 档，变了才改（每帧改粒子属性费）
-        out = cf * b0 * CF(0, 0, (ab > 0) and r * (4.5 + 3 * ab) or r * 0.4)
-        local q = (not it.cold and t > 25 and M.near) and math.clamp(math.floor((math.min(t, 100) - 25) / 15) + 1 + ((ab > 0) and 1 or 0), 1, 6) or 0
-        if q ~= it.q and it.pe then
-          it.q = q
-          it.pe.Enabled = q > 0
-          if q > 0 then it.pe.Rate = (it.mild and 10 or 16) * q end
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end
