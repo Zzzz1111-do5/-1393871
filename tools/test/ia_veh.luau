@@ -54,7 +54,8 @@ H.run(2)
 check(PD.alive and PD.vehicle == nil, "步兵在营地出生")
 local tp = H.pad(G, tankId)
 check(tp ~= nil and tp.team == "def", "营地车场有 " .. tankId .. " 的生成点")
-check(tp.prompt.ObjectText == CD.T("veh." .. tankId) and tp.prompt.ActionText == CD.T("pad.spawn"), "按键文字照客户端的语言：" .. tp.prompt.ActionText .. " " .. tp.prompt.ObjectText)
+-- 地面车位是召唤位（哪一型都能选）：按键写「选择载具 / 召唤地面载具」
+check(tp.prompt.ObjectText == CD.T("pad.summonVeh") and tp.prompt.ActionText == CD.T("pad.summonVehAct"), "按键文字照客户端的语言：" .. tp.prompt.ActionText .. " " .. tp.prompt.ObjectText)
 local e = H.usePad(G, def, tp)
 check(e ~= nil and e.alive and e.def.id == tankId and e.driver == nil, "生成了一辆空的 " .. tostring(e and e.def.id) .. "，停在地台上")
 local again = H.usePad(G, def, tp)
@@ -96,7 +97,9 @@ H.key(def, Enum.KeyCode.A, false)
 check(CD.drive and math.abs(CD.drive.steer) > 0, "按 A 转向")
 
 print("③ 瞄准镜：默认夜视 → 热成像白热 → 黑热 → 昼光")
-H.key(def, Enum.KeyCode.V, true) H.key(def, Enum.KeyCode.V, false)
+-- 进出瞄准镜是 Shift / 右键（Shift 走 ContextActionService，测试台不派发，这里用右键）；V / N 换光电模式
+local function rclick() H.mouseDown(def, 640, 360, Enum.UserInputType.MouseButton2) H.mouseUp(def, 640, 360, Enum.UserInputType.MouseButton2) end
+rclick()
 H.run(0.3)
 local cc = CD.sightCC   -- 测试台里几个客户端共用一棵树：用这个客户端自己的
 check(CD.drive.sight and cc and cc.Enabled, "进瞄准镜，画面调色开了")
@@ -111,7 +114,7 @@ end
 print("    " .. table.concat(modes, " | "))
 check(modes[1]:find("whot") and modes[2]:find("bhot") and modes[3]:find("day"), "瞄准镜默认夜视档，N 依次切白热、黑热、昼光")
 check(modes[1]:find("高亮 [1-9]") ~= nil, "热成像有高亮（热的东西发白）")
-H.key(def, Enum.KeyCode.V, true) H.key(def, Enum.KeyCode.V, false)
+rclick()
 H.run(0.3)
 check(not CD.drive.sight and not cc.Enabled, "退出瞄准镜，调色关了")
 

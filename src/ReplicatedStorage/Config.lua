@@ -175,16 +175,19 @@ Config.VehicleMod = {
   gj11 = { drone = true, hp = 0.6 }, gj2 = { drone = true, hp = 0.6 }, mq9 = { drone = true, hp = 0.6, speed = 0.55 },
   t022 = { hp = 0.4, speed = 1.3 }, pbr = { hp = 0.25, speed = 1.4 }, lcs2 = { hp = 0.6, speed = 1.3 },
 }
--- 这一队这一类最多同时在场几辆（按队伍人数，真人 + 机器人）
+-- 这一队这一类最多同时在场几辆（按队伍人数，真人 + 机器人）；人数不到 VehicleCapFloor 按它算——原来机器人把每队补到 18 人，
+--   去掉 AI 士兵以后（用户 11-18）人少的服务器照旧有那么多车（不然舰艇、火炮名额是 0）
+Config.VehicleCapFloor = 18
 function Config.VehicleCap(cat, teamN)
   local c = Config.VehicleCats[cat]
-  return math.clamp(math.floor(teamN / c.perN) + c.min, c.min, c.max)
+  local n = math.max(teamN or 0, Config.VehicleCapFloor or 0)
+  return math.clamp(math.floor(n / c.perN) + c.min, c.min, c.max)
 end
 
 ---------------------------------------------------------------- 机器人
 
 Config.Bots = {
-  minPerTeam = 18,       -- 每队保底人数：真人不够用 AI 补
+  minPerTeam = 0,        -- 每队保底人数：真人不够用 AI 补（用户 11-18：把 AI 士兵去掉——0 就一个都不出；代码留着，改回 18 就恢复）
   maxTotal = 40,         -- 全服最多几个机器人
   hp = 100, speed = 14,  -- 步兵机器人：血量、走路速度（格 / 秒）
   weapon = "m4",         -- 用哪种枪的伤害、射程

@@ -10,6 +10,7 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 
 local G = T.boot()
+G.Config.Bots.minPerTeam = 18   -- 要打小兵（正式服关了机器人，用户 11-18）
 T.runUntil(function() return G.worldReady end, 120)
 local me = T.join("P1", 7001, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)

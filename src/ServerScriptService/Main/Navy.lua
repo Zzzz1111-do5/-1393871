@@ -76,8 +76,10 @@ function Navy.init(G)
     p.Parent = parent
     return p
   end
-  -- 一段码头：从 a 到 b（水平），宽 w，面高 top；两边黄色护轮坎、一排系船桩，下面一排桩，夜里隔一段一盏灯
-  local function pier(f, a, b, w, top)
+  -- 一段码头：从 a 到 b（水平），宽 w，面高 top；两边黄色护轮坎、一排系船桩，夜里隔一段一盏灯；
+  --   固定码头下面一排桩，一直打到海底（原来 18 格长，深水里够不着底，像悬在水里）；
+  --   浮码头（float）下面是一节节浮箱、两头锚链斜着拉进海里（用户 11-18：这些建筑漂在水里——海中间的码头要看得出是浮着、锚住的）
+  local function pier(f, a, b, w, top, float)
     local mid = (a + b) / 2
     local L = (b - a).Magnitude
     local cf = CFrame.lookAt(V(mid.X, top - 0.75, mid.Z), V(b.X, top - 0.75, b.Z))
@@ -91,10 +93,31 @@ function Navy.init(G)
     end
     local n = math.max(2, math.floor(L / 36))
     local along = V(b.X - a.X, 0, b.Z - a.Z).Unit
-    for i = 0, n do
-      local p = a + (b - a) * (i / n)
-      local pc = CFrame.lookAt(V(p.X, top - 10, p.Z), V(p.X, top - 10, p.Z) + along)
-      for s = -1, 1, 2 do part(f, V(1.8, 18, 1.8), pc * CF(s * (w / 2 - 1.2), 0, 0), RGB(52, 54, 56), MAT.Concrete) end
+    if float then
+      for i = 0, n - 1 do   -- 浮箱：一节一节，中间留一道缝（看得出是拼起来的）
+        local p = a + (b - a) * ((i + 0.5) / n)
+        local pc = CFrame.lookAt(V(p.X, top - 3.3, p.Z), V(p.X, top - 3.3, p.Z) + along)
+        part(f, V(w + 1.6, 3.6, L / n - 0.8), pc, RGB(78, 82, 86), MAT.Metal, true)
+        part(f, V(w + 1.7, 0.7, L / n - 0.7), pc * CF(0, -1.2, 0), RGB(30, 31, 33), MAT.Metal)   -- 水线带
+      end
+      for _, e in ipairs({ { a, -1 }, { b, 1 } }) do   -- 两头的锚链
+        for s = -1, 1, 2 do
+          local p0 = e[1] + V(0, top, 0)
+          local side = V(-along.Z, 0, along.X) * s
+          local p1 = V(p0.X, 0, p0.Z) + along * e[2] * 30 + side * 30 + V(0, -6, 0)
+          part(f, V(0.45, 0.45, (p1 - p0).Magnitude), CFrame.lookAt((p0 + p1) / 2, p1), RGB(46, 44, 40), MAT.Metal)
+        end
+      end
+    else
+      for i = 0, n do
+        local p = a + (b - a) * (i / n)
+        for s = -1, 1, 2 do
+          local q = CFrame.lookAt(V(p.X, 0, p.Z), V(p.X, 0, p.Z) + along) * CF(s * (w / 2 - 1.2), 0, 0)
+          local bed = math.max(Map.height(q.Position.X, q.Position.Z), top - 160)   -- 海底（太深的截在 160 格）
+          local h = math.max(4, top - 1 - bed)
+          part(f, V(1.8, h, 1.8), q * CF(0, top - 1 - h / 2, 0), RGB(52, 54, 56), MAT.Concrete)
+        end
+      end
     end
     local W = G.World
     if W and W.light then
@@ -148,7 +171,7 @@ function Navy.init(G)
     local B = Map.BARGE
     local zP = B.z + B.L / 2 - 13
     local x1 = B.x + B.W / 2
-    G.try("攻方码头", pier, f, V(x1 - 2, 0, zP), V(x1 + 240, 0, zP), 14, B.top)
+    G.try("攻方码头", pier, f, V(x1 - 2, 0, zP), V(x1 + 240, 0, zP), 14, B.top, true)   -- 海中间：浮码头
     local x = x1 + 70
     for _, id in ipairs(Config.Vehicles.atk.ship or {}) do
       local d = SD.get(id)

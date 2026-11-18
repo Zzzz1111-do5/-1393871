@@ -9,6 +9,7 @@ local minutes = tonumber(TEST_ARGS:match("%d+%.?%d*") or "") or 6
 local cpu = os.clock   -- 真实耗时（脚本里的 os.clock 是模拟的时钟）
 
 local G = T.boot()
+G.Config.Bots.minPerTeam = 18   -- 正式服关了（用户 11-18：把 AI 士兵去掉），这里打开，测机器人代码还能用
 T.runUntil(function() return G.worldReady end, 120)
 local pl = T.join("P1", 4001, true)
 R.run(3)

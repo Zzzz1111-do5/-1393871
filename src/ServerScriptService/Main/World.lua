@@ -773,7 +773,17 @@ local function portTown(f)
   local P = Map.PORT
   -- 码头：从湾底伸进湾里
   local zs = Map.coastS(P.x) or P.z
-  for i = -1, 1 do part(f, V(14, 2, 90), CF(P.x + i * 70, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true) end
+  for i = -1, 1 do
+    local px = P.x + i * 70
+    part(f, V(14, 2, 90), CF(px, 1, zs + 40), C.wood, MAT.WoodPlanks, nil, true)
+    for k = 0, 3 do   -- 木桩：打到海底（原来木板直接摆在水面上，像漂着；用户 11-18：这些建筑漂在水里）
+      for _, sx in ipairs({ -1, 1 }) do
+        local x, z = px + sx * 6, zs + 40 - 45 + 8 + k * 25
+        local bed = math.min(-1, math.max(Map.height(x, z), -40))
+        cyl(f, -bed + 0.2, 1.1, CF(x, bed / 2 + 0.1, z), RGB(70, 58, 44), MAT.Wood, true)
+      end
+    end
+  end
   -- 镇上的房子（用户：继续把地图建筑的建模优化）：民房、瓦房、水泥楼混着摆，街北的正门朝南、街南的朝北（都朝着镇中心那条街），
   --   每座稍微歪一点；湾边一排库房、码头根上一座小库房（大门朝海）
   local bf = folder("Buildings", f)

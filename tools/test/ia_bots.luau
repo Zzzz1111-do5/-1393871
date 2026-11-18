@@ -15,6 +15,7 @@ end
 
 H.run(0.5)
 local G = H.Gs.server
+G.Config.Bots.minPerTeam = 18   -- 正式服关了（用户 11-18：把 AI 士兵去掉），这里打开，测机器人代码还能用
 H.runUntil(function() return G.worldReady end, 120)
 local pl = H.addPlayer("P1", 4001)
 H.run(3)

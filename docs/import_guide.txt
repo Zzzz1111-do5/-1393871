@@ -16,6 +16,14 @@
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
+  11 月 18 日第五包：只重导 ship/ 文件夹（7 艘舰艇；车、飞机、建筑都不用动）：
+    - 舰艇模型里还有不少朝里的面（055 约一成、提康德罗加两成多）：Roblox 只画正面，有的角度看不见船身、只剩上层建筑像漂在海上——这次全部翻正了；
+    - 攻方登陆平台（驳船）、浮码头、港口木栈桥是游戏脚本搭的，不用导：驳船有了船身、红色船底、水线、艏艉斜面、护舷轮胎、四根锚链和闪灯浮标，
+      浮码头改成一节节浮箱加锚链，守方码头、港口木栈桥补了打到海底的桩，不再像一块板浮在水面上。
+    先在命令栏粘下面这一行删掉旧的舰艇零件，再导入 ship/ 里的 7 个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^S_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
   11 月 18 日第三包：新增地图建筑 bld/buildings.glb（一个文件，17 种建筑，约 4.5 万个三角形、带贴图），别的都不用动：
     港口镇的民房、瓦房、水泥楼，湾边的库房、厂房，两个机场的拱顶机库、塔台、消防站、铁皮营房、小库房，营地的铁皮营房，
     灯塔看守小屋、炮台营房，导进来以后都换成网页版地图用的写实模型（CC-BY，署名在 bld/credits.txt）；
