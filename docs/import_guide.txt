@@ -16,6 +16,11 @@
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
+  想一次全部换成最新的（所有文件夹都重导，比如歼-20 修好机头镂空那版、舰艇翻正、M1A2 原色、建筑一起换）：
+    先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
   11 月 18 日第六包：只重导 veh/m1a2dc.glb 一个文件（别的都不用动）：
     - M1A2 改回原模型的颜色（用户：颜色改回原模型的颜色）：原来统一刷成的单色沙黄去掉，换回作者原来的涂装——
       深一点、旧一点的沙色，机枪和炮口是黑的金属色，背包是绿的，原来的磨损、脏污、标记都在；形状、零件、能动的部件和以前一样。
