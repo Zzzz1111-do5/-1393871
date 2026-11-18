@@ -63,6 +63,7 @@ local function teleport(pl, cf, spd, ground)
 		st.aimYaw, st.aimPitch = st.yaw, math.asin(math.clamp(look.Y, -1, 1))
 		st.crashed = false
 		st.cat, st.trap = nil, nil
+		st.thrE, st.floatT = nil, nil   -- 发动机转速跟着油门重新起（不然留着瞬移前的加力，进近时一路加速）
 	end
 end
 
@@ -281,18 +282,49 @@ local gy = G.airSurface(A2.x + A2.len / 2 - 60, A2.z)
 local tdP = V3.new(A2.x + A2.len / 2 - 60, gy + e.def.gearH, A2.z)
 local appr = tdP + V3.new(260, 18, 0)
 teleport(atk, CF.lookAt(appr, appr + V3.new(-1, -0.06, 0)), e.def.stall * 1.15, false)
+e.hp = e.maxHp * 0.6   -- 挨过打：落地以后修
+e.model:SetAttribute("Hp", math.floor(e.hp))
 st.gearWant, st.gear = 1, 1
 st.thr = 35
 st.aimYaw = math.atan2(1, 0)
 st.aimPitch = -0.06
-local landed = H.runUntil(function() return st.ground or st.crashed end, 15)
+local maxBank = 0
+local landed = H.runUntil(function()
+	local b = math.abs(math.deg(math.asin(math.clamp(st.cf.RightVector.Y, -1, 1))))
+	if b > maxBank then maxBank = b end
+	return st.ground or st.crashed
+end, 15)
 check(landed and st.ground and not st.crashed, "落在跑道上" .. (st.crashed and "（摔了）" or ""))
+check(maxBank < 25, string.format("准心压在机头下方进近：机翼基本平着（最大坡度 %.0f°，原来一下子翻到 79°）", maxBank))
 st.thr = 0
-H.key(atk, Enum.KeyCode.B, true)
-H.runUntil(function() return st.spd < 2 end, 20)
-H.key(atk, Enum.KeyCode.B, false)
-H.run(7)
+H.run(1)
+check(e.model:GetAttribute("Rest") == 10, "滑跑中：平显提示停稳就补给（Rest " .. tostring(e.model:GetAttribute("Rest")) .. "）")
+local tStop = H.now
+local stopped = H.runUntil(function() return st.spd < 2 end, 20)   -- 不按 B：油门收到底自动刹车
+check(stopped and H.now - tStop < 9, string.format("油门收到底自动刹车：%.1f 秒停住", H.now - tStop))
+H.run(2)
+local r1 = e.model:GetAttribute("Rest")
+check(type(r1) == "number" and r1 >= 1 and r1 <= 5, "停稳：补给倒计时（Rest " .. tostring(r1) .. "）")
+H.run(5)
 check(e.stores[idx] + e.stores[mate] == before, "停稳 5 秒补满了弹（雷霆-2 " .. (e.stores[idx] + e.stores[mate]) .. "）")
+check(e.model:GetAttribute("Rest") == -1 and e.hp > e.maxHp * 0.6, string.format("补完弹接着修（血 %.0f%%）", e.hp / e.maxHp * 100))
+H.run(5)
+check(e.hp >= e.maxHp and e.model:GetAttribute("Rest") == -2, string.format("修满了、可以起飞（血 %.0f%%）", e.hp / e.maxHp * 100))
+
+print("⑧b 接地太快：贴着跑道飘、提示收油门，慢下来再落（原来直接摔）")
+local appr2 = tdP + V3.new(120, 6, 0)
+teleport(atk, CF.lookAt(appr2, appr2 + V3.new(-1, -0.03, 0)), e.def.landMax * 1.3, false)
+st.gearWant, st.gear = 1, 1
+st.thr = 0
+st.aimYaw = math.atan2(1, 0)
+st.aimPitch = -0.03
+local floated = false
+H.runUntil(function()
+	if st.floatT then floated = true end
+	return st.ground or st.crashed
+end, 15)
+check(st.ground and not st.crashed and floated, "太快时先飘、慢下来接地" .. (st.crashed and "（摔了）" or "") .. (floated and "" or "（没飘）"))
+H.runUntil(function() return st.spd < 2 end, 20)
 
 print("⑨ 航母拦阻索着舰")
 local base = AirDefs.carrierCF(G.Map)

@@ -200,6 +200,9 @@ function Fly.init(G)
   landMark.TextColor3 = RGB(120, 200, 255)
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
+  -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
+  local restText = hud("", UDim2.fromOffset(560, 26), UDim2.new(0.5, 0, 0.5, -96), 20, Vector2.new(0.5, 0.5))
+  restText.Name = "RestText"
   -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
   --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
   local function box(w, h, pos, anchor)
@@ -546,7 +549,7 @@ function Fly.init(G)
     panel.Visible = false
     for _, l in ipairs(HUDS) do l.Visible = false end
     lockBox.Visible, lockText.Visible, pipper.Visible = false, false, false
-    landMark.Visible, landText.Visible = false, false
+    landMark.Visible, landText.Visible, restText.Visible = false, false, false
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = false end end
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
@@ -711,6 +714,8 @@ function Fly.init(G)
     local up = key(Enum.KeyCode.W) or key(Enum.KeyCode.Up) or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
     local dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    -- 自动收油门（真飞机拉平时自动油门收到慢车）：接地太快贴着跑道飘的时候不按 W 就自己往回收（按住 W 是复飞）
+    if not up and os.clock() - (st.floatT or -9) < 0.3 then st.thr = math.max(0, st.thr - 55 * dt) end
     if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
     local rev = st.ground and not st.cat and not st.trap and dn and st.thr <= 0.5   -- 地上油门收到底还按着 S：倒退（推出来、调头）
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
@@ -724,6 +729,16 @@ function Fly.init(G)
     end
     local cf = st.cf
     local fwd, upV, right = cf.LookVector, cf.UpVector, cf.RightVector
+    -- 降落辅助（用户：把降落做好）：起落架放着、离地不到 45 格、底下是跑道 / 甲板 / 能落的地方——
+    --   不按 A / D 就自动摆平机翼，贴近时把下沉率收到能落的范围（真飞机的拉平），见下面天上那段
+    local landAid = nil
+    if st.gear and st.gear > 0.9 and not st.ground then
+      local p0 = cf.Position
+      local gH = ground(p0.X, p0.Z)
+      local agl = p0.Y - d.gearH - gH
+      if agl < 45 and (gH > 0.4 or AD.onDeck(Map, p0.X, p0.Z) ~= nil) then landAid = math.max(agl, 0) end
+    end
+    st.landAid = landAid
     -- 速度：油门给目标速度（加力到 vAB），往目标加减速；爬升掉速、俯冲加速、拉杆转弯掉能量；地上没油门时滚着慢下来
     -- 重量感（用户：飞机驾驶没有重量感）：W 越大越「沉」——F-22、歼-20 约 1，A-10 约 2，轰-6K、B-2、MQ-9 是 3
     local W = math.clamp(220 / math.max(d.roll or 200, 1), 1, 3)
@@ -736,11 +751,18 @@ function Fly.init(G)
     tgt *= 1 - (st.drag or 0)
     acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
     if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
+    -- 进近自动油门（真飞机的速度保护 / 迎角地板）：起落架放着在天上，速度不掉到 1.2 倍失速以下——
+    --   油门收太多也不至于失速、掉在跑道前面的海里（收起落架就没有这个保护）
+    local apc = st.gear > 0.9 and not st.ground and not st.out and tgt < d.stall * 1.2
+    if apc then tgt = d.stall * 1.2 end
+    st.apc = apc
     -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
     --   一推油门不再四五十米就飞起来；弹射器单独算）
     if st.ground and not st.cat then acc *= 0.25 end
     if st.trap then   -- 挂着拦阻索：发动机推力不算，地上那段按拦阻索减速
-    elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt) else st.spd -= math.min(st.spd - tgt, (st.ground and (key(Enum.KeyCode.B) and 60 or 22) or acc * 0.45) * dt) end
+    -- 地上减速：B 刹车 70；油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）；带着点油门滑行只有轮子阻力 22
+    elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt)
+    else st.spd -= math.min(st.spd - tgt, (st.ground and ((key(Enum.KeyCode.B) and 70) or (st.thr < 5 and 36) or 22) or acc * 0.45) * dt) end
     if not st.ground then
       local vd = st.vdir or fwd
       st.spd -= GR * vd.Y * 0.9 * dt   -- 沿航迹爬升掉速、俯冲加速（拉杆掉的能量在下面按过载算：诱导阻力）
@@ -763,6 +785,7 @@ function Fly.init(G)
         nCmd = 1 + (1 / math.cos(phi) - 1) * (1 - Map.smooth(rad(33), rad(60), phi))
       end
       rc, yc = rollIn * rad(d.roll), yawIn * rad(d.yaw) * 0.6
+      if landAid and rollIn == 0 then rc = clamp(bank * 2.5, -1, 1) * rad(d.roll) end   -- 贴着跑道 / 甲板：机翼自动摆平
     else
       local aim = autoDir()
       local l = cf:VectorToObjectSpace(aim)
@@ -771,17 +794,74 @@ function Fly.init(G)
       local w = Map.smooth(rad(2), rad(10), off)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
-      rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * clamp(bank * 2.5, -1, 1)) * rad(d.roll)
-      -- 俯仰按航迹（速度方向）对准心：机头比航迹高一个迎角，按机头对准心的话平飞会一直往下掉
+      local level = clamp(bank * 2.5, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
       local vd0 = st.vdir or cf.LookVector
+      -- 准心相对航迹偏左 / 右多少（世界坐标里水平量，右为正）
+      local vdH = V(vd0.X, 0, vd0.Z)
+      local aimH = V(aim.X, 0, aim.Z)
+      local psi = 0
+      if vdH.Magnitude > 1e-3 and aimH.Magnitude > 1e-3 then
+        vdH, aimH = vdH.Unit, aimH.Unit
+        psi = math.atan2(aimH:Dot(V(-vdH.Z, 0, vdH.X)), aimH:Dot(vdH))
+      end
+      -- 降落辅助：离地 30 格以内拉平——航迹最陡只到下沉 6～14 格 / 秒（越低越平），准心压得再低也不往跑道上扎
+      --   （原来下面只把航迹托平、机头照样压向准心，接地时机头朝下二十度判摔）：把要去的方向抬到这个下滑角
+      --   准心不在前方 45° 以内（飞过了瞄的那一点、准心落到身后）就顺着现在的航向拉平，不往回拽
+      local aimL = aim
+      local flare = landAid and landAid < 30 and vdH.Magnitude > 0.5
+      if flare then
+        local gMin = -math.asin(clamp((6 + 8 * math.min(landAid, 25) / 25) / math.max(st.spd, 30), 0, 1))
+        local ahead = aimH.Magnitude > 0.5 and aimH:Dot(vdH) > 0.7
+        local gA = math.asin(clamp(aim.Y, -1, 1))
+        if not ahead or gA < gMin then
+          local g2 = ahead and math.max(gA, gMin) or gMin
+          aimL = (ahead and aimH or vdH.Unit) * math.cos(g2) + V(0, math.sin(g2), 0)
+        end
+      end
+      -- 机体的升力方向（垂直于航迹）
       local lh = upV - vd0 * vd0:Dot(upV)
       lh = (lh.Magnitude > 1e-3) and lh.Unit or upV
-      local pz, py = aim:Dot(vd0), aim:Dot(lh)
+      -- 准心在机头下方不远（下滑、进近、对准跑道；放着起落架时 35° 以内，平时 15° 以内）：不翻过去「把目标滚到头顶再拉」
+      --   （原来准心压到机头下面十度就整架翻过来，测试里进近时坡度一下子到 79°）；也不能只按机体坐标往目标那侧滚（机身一歪，
+      --   下面的目标在机体坐标里就跑到低的那侧机翼，越滚越歪）——按升力矢量算：航迹要往准心那边转多快 → 要多大的加速度，
+      --   加上抵消重力那份，就是升力该有的方向和大小；滚到那个方向、拉那么多 g。往下最多 0.8 g（一直是正过载，不翻过去），
+      --   放着起落架时左右最多 0.58 g（坡度 30° 以内）；准心压得更低的照旧滚过去拉（俯冲攻击）
+      local gentle = flare or (l.Y < 0 and (off < rad(15) or (st.gear > 0.9 and off < rad(35))))
+      local nGentle, gentleW = nil, 0
+      if gentle then
+        toTarget = 0
+        local ang = math.acos(clamp(vd0:Dot(aimL), -1, 1))
+        local ev = aimL - vd0 * vd0:Dot(aimL)
+        local aDes = (ev.Magnitude > 1e-4) and ev.Unit * math.min(ang * 2.1, rad(d.pitch)) * math.max(st.spd, 30) or V()
+        local dnP = V(0, -1, 0) - vd0 * (-vd0.Y)   -- 垂直于航迹、朝下
+        if dnP.Magnitude > 1e-3 then
+          dnP = dnP.Unit
+          local sdP = vd0:Cross(dnP)   -- 垂直于航迹的水平方向
+          local cD, cS = aDes:Dot(dnP), aDes:Dot(sdP)
+          local sMax = ((st.gear > 0.9) and 0.58 or 4) * GR
+          aDes = dnP * math.min(cD, 0.8 * GR) + sdP * clamp(cS, -sMax, sMax)
+        end
+        local aL = aDes - (V(0, -GR, 0) - vd0 * (-GR * vd0.Y))   -- 升力要给的加速度 = 想要的 − 重力（垂直于航迹那份）
+        local lhat = (aL.Magnitude > 1e-3) and aL.Unit or lh
+        local th = math.atan2(vd0:Dot(lh:Cross(lhat)), lh:Dot(lhat))   -- 升力方向要绕航迹转多少（正：往右滚）
+        -- 偏得很少（10° 以内，平时打仗修一点点方向）跟原来一样以摆平机翼为主，不为了几度就压个大坡度；拉平时全按升力矢量
+        local wg = flare and 1 or w
+        rc = (wg * clamp(th * 2.5, -1, 1) + (1 - wg) * level) * rad(d.roll)
+        nGentle = math.max(aL:Dot(lh), 0) / GR
+        gentleW = wg
+      else
+        rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * level) * rad(d.roll)
+      end
+      -- 贴着跑道 / 甲板：机翼自动摆平，只留几度坡度对准跑道
+      if landAid and rollIn == 0 then rc = clamp((bank + clamp(psi * 1.5, -rad(8), rad(8))) * 2.5, -1, 1) * rad(d.roll) end
+      -- 俯仰按航迹（速度方向）对准心：机头比航迹高一个迎角，按机头对准心的话平飞会一直往下掉
+      local pz, py = aimL:Dot(vd0), aimL:Dot(lh)
       local pe = math.atan2(py, math.max(pz, 0.05))
       if pz < 0 then pe = (py >= 0) and math.pi / 2 or -math.pi / 2 end
       local pc = clamp(pe * 2.1, -1, 1) * rad(d.pitch)   -- 增益再低一点（用户 11-18 两次：转弯稍微多一些迟钝感、再笨重一点）
       if math.abs(toTarget) > rad(100) and off > rad(25) then pc = math.min(pc, rad(d.pitch) * 0.15) end   -- 还没滚过去别乱拉
-      nCmd = 1 + pc * math.max(st.spd, 30) / GR
+      local nPe = 1 + pc * math.max(st.spd, 30) / GR
+      nCmd = nGentle and (gentleW * nGentle + (1 - gentleW) * math.max(nPe, 0)) or nPe
       yc = 0
       if rollIn ~= 0 then rc = rollIn * rad(d.roll) end
     end
@@ -910,6 +990,18 @@ function Fly.init(G)
       local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
       vd = vd + aPerp / spd * dt
       st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or fw
+      -- 降落辅助：离地 25 格以内把下沉率收到 6～14 格 / 秒（越低越小）——真飞机接地前的拉平（加上地效）；
+      --   玩家把准心压在跑道上、速度别太快就落得住（原来照直往下扎，下沉过了 24 格 / 秒就判摔）
+      if landAid and landAid < 25 and st.vdir.Y < 0 then
+        local vyT = -(6 + 8 * landAid / 25) / spd
+        if st.vdir.Y < vyT then
+          local h = V(st.vdir.X, 0, st.vdir.Z)
+          if h.Magnitude > 1e-3 then
+            local vy = approach(st.vdir.Y, vyT, 1.2 * dt)
+            st.vdir = h.Unit * math.sqrt(math.max(0, 1 - vy * vy)) + V(0, vy, 0)
+          end
+        end
+      end
       local n = L / GR
       st.gLoad = n
       st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
@@ -928,13 +1020,29 @@ function Fly.init(G)
         local fw = cf.LookVector
         local bank = math.abs(deg(math.asin(clamp(cf.RightVector.Y, -1, 1))))
         local pitch = deg(math.asin(clamp(fw.Y, -1, 1)))
-        local landable = g > 0.4 or AD.onDeck(Map, pos.X, pos.Z) ~= nil
-        if st.gear > 0.9 and landable and st.vel.Y > -24 and st.spd < d.landMax and bank < 20 and pitch > -8 and pitch < 22 then
+        local deckK = AD.onDeck(Map, pos.X, pos.Z)
+        local landable = g > 0.4 or deckK ~= nil
+        -- 用户：把降落做好——姿态放宽一点（下沉 30 格 / 秒、坡度 25°、俯仰 −10°～25° 以内）；
+        --   姿态对、只是太快（1.5 倍着陆速度以内）：不摔，贴着跑道飘（地效托着、落不下去），提示收油门，慢到能落了就接地；
+        --   航母上尾钩放着、飘过拦阻索区照样挂上（真舰载机是全推力着舰、靠拦阻索拉停）
+        local attOk = st.gear > 0.9 and landable and st.vel.Y > -30 and bank < 25 and pitch > -10 and pitch < 25
+        local hookOk = deckK == "carrier" and (st.c.hook or 0) > 0.5 and AD.inWires(Map, pos.X, pos.Z)
+        if attOk and st.spd >= d.landMax and st.spd < d.landMax * 1.5 and not hookOk then
+          pos = V(pos.X, g + d.gearH + 0.5, pos.Z)
+          st.vdir = V(st.vdir.X, math.max(st.vdir.Y, 0), st.vdir.Z).Unit
+          st.spd = math.max(0, st.spd - 14 * dt)   -- 地效 + 拉平的迎角：比空中多掉一点速度
+          st.vel = st.vdir * st.spd
+          cf = cf - cf.Position + pos
+          st.floatT = os.clock()
+        elseif attOk and (st.spd < d.landMax or (hookOk and st.spd < d.landMax * 1.5)) then
           st.ground = true
           st.yaw = math.atan2(-fw.X, -fw.Z)
           pos = V(pos.X, g + d.gearH, pos.Z)
           cf = CFrame.lookAt(pos, pos + V(fw.X, 0, fw.Z))
           st.sink, st.pr, st.rr, st.yr = 0, 0, 0, 0
+          -- 接地：不按 W 就自动收到慢车（地上油门收到底就自动刹车，五六秒停住、停稳补给）；按住 W 是连续起降
+          if not up and st.thr <= 100 then st.thr = 0 end
+          if G.shake then G.shake(0.15) end
           -- 航母：尾钩放着、落在拦阻索区，被拦阻索拉停（85 格内停住）
           if AD.onDeck(Map, pos.X, pos.Z) == "carrier" and (st.c.hook or 0) > 0.5 and AD.inWires(Map, pos.X, pos.Z) then
             st.trap, st.trapA = true, math.max(20, st.spd * st.spd / (2 * 85))
@@ -1425,7 +1533,7 @@ function Fly.init(G)
     if st.pilot then
       spdText.Text = string.format("%d", kmh)
       altText.Text = string.format("%d", math.max(0, agl))
-      thrText.Text = (d.kind == "jet") and ((st.thr > 100) and T("air.ab") or string.format("%d%%", math.floor(st.thr + 0.5))) or string.format("RPM %d%%", math.floor(st.rpm))
+      thrText.Text = (d.kind == "jet") and ((st.thr > 100) and T("air.ab") or (string.format("%d%%", math.floor(st.thr + 0.5)) .. (st.apc and ("  " .. T("air.apc")) or ""))) or string.format("RPM %d%%", math.floor(st.rpm))
       vsText.Text = string.format("%+d", math.floor(st.vel.Y / AD.M + 0.5))
       -- 油量：内油 %（+ 副油箱 %）、照现在的油门还能飞几分几秒；少于两成半变黄、一成变红
       local tot = st.fuel + st.fuelX
@@ -1487,10 +1595,22 @@ function Fly.init(G)
       elseif st.out and not st.ground then warn = T("air.flameout")
       elseif st.oob then warn = T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
+      elseif os.clock() - (st.floatT or -9) < 0.6 then warn = T("air.tooFast")   -- 接地太快、贴着跑道飘：收油门
       elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup")
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
+      --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
+      local rest = st.ground and em:GetAttribute("Rest") or 0
+      local rtx, rcol = nil, RGB(120, 230, 140)
+      if type(rest) ~= "number" or rest == 0 then rtx = nil
+      elseif rest > 0 and rest <= 5 then rtx = T("air.restWait", math.floor(rest))
+      elseif rest == 10 then rtx = T("air.restRoll")
+      elseif rest == -1 then rtx = T("air.restFix", math.floor(clamp(hp / mx, 0, 1) * 100))
+      elseif rest == -2 then rtx = T("air.restDone")
+      elseif rest == -3 and math.abs(st.spd) < 30 then rtx, rcol = T("air.restNo"), RGB(255, 200, 90) end
+      restText.Text, restText.TextColor3, restText.Visible = rtx or "", rcol, rtx ~= nil
       -- 降落引导：起落架放着、在天上：最近的能落的地方画个菱形，旁边写公里数；菱形按下滑道（3.5°）变色——绿正好、黄偏高、红偏低
       local site = nil
       if d.kind == "jet" and not st.ground and st.gearWant > 0.5 then
