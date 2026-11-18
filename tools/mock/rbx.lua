@@ -366,13 +366,22 @@ local function rotX(a) local c, s = math.cos(a), math.sin(a) return { 1, 0, 0, 0
 local function rotY(a) local c, s = math.cos(a), math.sin(a) return { c, 0, s, 0, 1, 0, -s, 0, c } end
 local function rotZ(a) local c, s = math.cos(a), math.sin(a) return { c, -s, 0, s, c, 0, 0, 0, 1 } end
 local CFrame = {}
-function CFrame.new(a, b, c)
+function CFrame.new(a, b, c, qx, qy, qz, qw)
   if a == nil then return cf(0, 0, 0) end
   if isV3(a) then
     if b ~= nil then error("这个模拟只支持 CFrame.new(Vector3)", 2) end
     return cf(a._x, a._y, a._z)
   end
   if type(a) ~= "number" or type(b) ~= "number" or type(c) ~= "number" then error("CFrame.new 参数不对", 2) end
+  if qx ~= nil then   -- 位置 + 四元数（Roblox 的 CFrame.new(x, y, z, qX, qY, qZ, qW)；原模型关键帧部件 kf 用）
+    if type(qx) ~= "number" or type(qy) ~= "number" or type(qz) ~= "number" or type(qw) ~= "number" then error("CFrame.new 四元数要四个数字", 2) end
+    local n = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    if n < 1e-12 then return cf(a, b, c) end
+    local x, y, z, w = qx / n, qy / n, qz / n, qw / n
+    return cf(a, b, c, { 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+                         2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+                         2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y) })
+  end
   return cf(a, b, c)
 end
 function CFrame.Angles(x, y, z)

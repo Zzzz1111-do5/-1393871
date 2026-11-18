@@ -60,6 +60,8 @@ local SURF_F = {
   bayS = function(c, _, A) return (c.bayS or 0) * A end,
   canopy = function(c, _, A) return (c.can or 0) * A end,
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
+  -- 起落架舱门（原模型蒙皮上切出来的，歼-20 j20_v4）：放起落架的前 1/4 先开门（之后支柱才放下，kf 关键帧照同一个节奏），收起的最后 1/4 才关上
+  gdh = function(c, _, A) return math.clamp((c.gear or 1) * 4, 0, 1) * A end,
 }
 -- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，

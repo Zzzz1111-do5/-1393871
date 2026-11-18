@@ -7,7 +7,7 @@
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
 模型一共 65 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…；
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     7 艘舰艇
@@ -16,6 +16,11 @@
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
   4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
+  11 月 18 日第四包：只换歼-20，重导 air/j20.glb 一个文件，别的都不用动：
+    - 不减面的原模型（23.6 万个三角形，原来 13.5 万），起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
+    - 新导进来的块叫 A_j20_v4__…，游戏优先用它；旧的 A_j20_v3__…不删也行（游戏不用了），想删就在命令栏粘下面这一行回车：
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20__") or d.Name:match("^A_j20_v[23]__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")
+    - 导入方法同下面「一、导入」：「导入 3D」选 air/j20.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
   11 月 18 日第三包：新增地图建筑 bld/buildings.glb（一个文件，17 种建筑，约 4.5 万个三角形、带贴图），别的都不用动：
     港口镇的民房、瓦房、水泥楼，湾边的库房、厂房，两个机场的拱顶机库、塔台、消防站、铁皮营房、小库房，营地的铁皮营房，
     灯塔看守小屋、炮台营房，导进来以后都换成网页版地图用的写实模型（CC-BY，署名在 bld/credits.txt）；

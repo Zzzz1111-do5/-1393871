@@ -566,6 +566,23 @@
   - 地图不种树（用户 11-18 又确认：草用 Roblox 自带的、不要树）：`models/scenery/scenery.glb` 只留 3 块石头（`tools/scenery/keep_only.py` 新，12.7 MB → 1.4 MB）。
     原来整包 33 件，导入后 Workspace 里摆一堆用不上的树、草丛（树叶是 MASK 贴图，Roblox 按半透明画出黑边，用户看到的就是这个）；游戏本来就只摆石头（`Scenery.lua` LAYERS），代码没动。
     改到模型精细化会话管的 `models/`：只动了 scenery 这一个文件和它的 credits.txt。
+  - 歼-20 换成不减面的原模型、加起落架收放（用户 11-18：现在的模型材质、分辨率有玩具感，用户一架一架发模型、这个会话一架一架换；这是第一架，
+    用户给的是 andertan「Chengdu J-20 Fighter」原文件，参考图是另一个带动画的 J-20 模型，只用来看动画和弹舱结构）：
+    - 游戏里原来就是这个模型，只是网页版烘焙时减到约 13.5 万面（v3gmodels.json 的 tri0 130000）。在临时目录里去掉 tri0 / tri0Flags 重新烘焙，留下全部 218,943 面，
+      坐标系和原来一样，`air_anim.py` 的 SURF / PIT 表照用（舵面、主弹舱门、侧弹舱门、座舱盖、飞行员都还在）。机翼不折叠（真机就不折，没加）。
+    - 起落架：原模型没有（原来是零件拼的方块）。`tools/models/j20_gear.py`（新）往烘焙好的 js/mdl/j20.js 里加一套网格：支柱、镀铬减震筒、扭力臂、轮叉、轮轴、作动筒、
+      轮胎（车削）、轮毂，前起落架带着陆灯，共 5,612 面；三根都往前收（前起收进座舱下面，主起竖着收进进气道下侧），关键帧写在 `tools/models/kf/j20.json`（kf 部件，跟 gear 操纵量）。
+    - 起落架舱门从机腹蒙皮上切出来（SURF j20 的 GDoorN1 / N2 / ML / MR，新动法 gdh：放轮子的头 1/4 先开门、收轮子的最后 1/4 才关门，`AirModels.lua` SURF_F.gdh），
+      轮舱补深色舱壁（WELL j20）。`AirDefs.lua` j20 的 gear 位置照新起落架改（前轮 z −13.6、主轮 x ±3.4 z 11.6）。
+    - 朝反的面：不减面以后 glbfix 按连通块翻不够，机头一片片斑点。`tools/models/rayfix.py`（新，要 `pip install trimesh embreex`）逐个三角形往两面打射线，
+      正面打不出去、背面打得出去的翻过来：22,259 个翻正，剩 2 个。j20 每块上限改 1.5 万面（`air2glb.py` CHUNKK；2 万面一块时 glbfix 有 1,941 个背面因块太大跳过了）。
+    - 结果 `models/air/j20.glb`：236,174 面、94 块、19.8 MB；新键名 `j20_v4`（`air2glb.py` VERK）：游戏先找 `_v4`，没导入就照 old 表找 `_v3`、`_v2`、老版。
+      署名 `models/air/credits.txt` 的歼-20 原来写成了 42manako 的另一个模型，改成 andertan 这个。
+    - 重做：网页版仓库复制到临时目录，v3gmodels.json 的 j20 去掉 tri0 / tri0Flags、glb 指向原文件 → `node tools/v3gbake.js <放原文件的目录> j20`
+      → `python3 -I tools/models/j20_gear.py <临时目录>` → `python3 -I tools/models/air_one.py <临时目录> <airdefs.json> j20` → `python3 tools/models/rayfix.py models/air/j20.glb`。
+    - 测试：`tools/mock/air.lua` 加了 j20_v4 起落架（主起往前、往上收两格以上，操纵量 0.25 已收到底，前舱门放下时开、收起时关，主舱门往外开，不再拼零件起落架）；
+      `tools/test/ia_import_air.luau` 改成查 `_v4`；`tools/mock/rbx.lua` 的 CFrame.new 支持四元数。
+    - 改到模型精细化会话管的 `models/air/j20.glb`、`tools/models/`（用户让这个会话换模型）。
   - 测试：改之前（1a9a2de）Luau 测试就有不过的——`ia_veh` 3 处（按键文字的语言、瞄准镜调色、瞄准镜默认夜视档）、`ia_optics` 2 处（目镜占屏幕高度 45% / 59%）、`ia_bots` 1 处（攻方拿下 0 个据点）；
     `ui_export` 的战斗画面在测试台里有一条 Coach.lua pointPos 的 'Position' 报错（Lune 的 roblox 库缺默认值，改之前就有）。这一批没让它们变多，结果见提交说明。
 
