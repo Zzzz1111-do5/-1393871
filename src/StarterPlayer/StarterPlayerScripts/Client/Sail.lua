@@ -473,8 +473,8 @@ function Sail.init(G)
       end
     end
     lockBox.Visible = false
-    lockText.Visible = st.wi == 2
-    if st.wi == 2 then
+    lockText.Visible = st.wi == 2 and not G.vehHudOn   -- 有新的驾驶界面（VehHud.lua）：锁定框照《现代战舰》画在那边
+    if st.wi == 2 and not G.vehHudOn then
       if st.lock and st.lock.root then
         local sp, on = cam:WorldToViewportPoint(st.lock.root.CFrame.Position)
         lockBox.Visible = on

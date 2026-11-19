@@ -1,5 +1,6 @@
 --!nocheck
--- 载具界面导出（照 ui_export.luau，只拍载具）：坦克追尾视角 tank、坦克开炮那一下 tank_fire、坦克瞄准镜 tank_sight、舰艇 ship
+-- 载具界面导出（照 ui_export.luau，只拍载具）：坦克追尾视角 tank、坦克开炮那一下 tank_fire、MWT 式准星 tank_pen / tank_mg、坦克瞄准镜 tank_sight、
+--   舰艇 ship、《现代战舰》式准星 ship_lead / ship_locking / ship_locked
 --   用法：lune run tools/test/ui_veh.luau <rbxlx> <输出.js> [pc|phone]
 --   截图：NODE_PATH=$(npm root -g) node tools/test/ui_shot.cjs <放 ui_pc.js 的目录> <输出目录> pc_tank pc_tank_sight … [--bg 背景图]
 local process = require("@lune/process")
@@ -202,6 +203,34 @@ if st then
 		H.run(1.2)
 		snap("tank_reload")
 	end
+	-- MWT 式准星：正前方 140 格放一辆攻方坦克——主炮正对着打（绿：可击穿），换机枪（红：打不穿）
+	do
+		local d0 = st.d
+		local base0 = st.root * CF.new(0, -d0.H / 2, 0)
+		local fwd = V3.new(-math.sin(st.camYaw), 0, -math.cos(st.camYaw))
+		local fp = base0.Position + fwd * 140
+		local foeT = G.spawnGroundVeh("atk", G.Config.Vehicles.atk.tank[1], CF.lookAt(fp, fp - fwd), false, nil)
+		local function aimAt(pt)
+			local rel = pt - H.workspace.CurrentCamera.CFrame.Position
+			st.camYaw = math.atan2(-rel.X, -rel.Z)
+			st.camPitch = math.asin(math.clamp(rel.Unit.Y, -1, 1))
+		end
+		if foeT then
+			for _ = 1, 30 do aimAt(foeT.root.CFrame.Position) H.run(0.1) end
+			snap("tank_pen")
+			-- 换 12.7 毫米机枪打坦克：红「打不穿」
+			H.key(def, Enum.KeyCode.Two, true)
+			H.run(0.1)
+			H.key(def, Enum.KeyCode.Two, false)
+			for _ = 1, 8 do aimAt(foeT.root.CFrame.Position) H.run(0.1) end
+			snap("tank_mg")
+			H.key(def, Enum.KeyCode.One, true)
+			H.run(0.1)
+			H.key(def, Enum.KeyCode.One, false)
+			G.removeEnt(foeT)
+			H.run(0.5)
+		end
+	end
 	H.mouseDown(def, 640, 360, Enum.UserInputType.MouseButton2)
 	H.run(0.1)
 	H.mouseUp(def, 640, 360, Enum.UserInputType.MouseButton2)
@@ -235,6 +264,45 @@ if es and CD.sail then
 	H.run(2)
 	snap("ship")
 	H.key(def, Enum.KeyCode.A, false)
+	-- 《现代战舰》式准星：前方 1300 格一艘攻方 022 横着开过去——落点大圈、目标卡、提前量；再换导弹：锁定中 → 已锁定
+	local sst = CD.sail
+	local sfwd = V3.new(-math.sin(sst.yaw), 0, -math.cos(sst.yaw))
+	local sright = V3.new(-sfwd.Z, 0, sfwd.X)
+	-- 先把船挪到外海（码头在崖下：镜头会钻进崖壁，准星打在镜头上）
+	sst.pos = sst.pos + sfwd * 700
+	sst.cf = CF.lookAt(sst.pos, sst.pos + sfwd)
+	sst.speed, sst.order = 0, 0
+	G.moveEnt(es, sst.cf * CF.new(0, es.sd.H / 2 - es.sd.draft, 0))
+	es.lastSync, es.speed = os.clock(), 0
+	H.run(1)
+	local fp2 = es.root.CFrame.Position + sfwd * 1300
+	local foeS = G.spawnShip("atk", "t022", CF.lookAt(V3.new(fp2.X, 0, fp2.Z), V3.new(fp2.X, 0, fp2.Z) + sright), nil)
+	if foeS then
+		local function aimShip()
+			local tp = foeS.root.CFrame.Position
+			local rel = tp - H.workspace.CurrentCamera.CFrame.Position
+			sst.camYaw = math.atan2(-rel.X, -rel.Z)
+			sst.camPitch = math.asin(math.clamp(rel.Unit.Y, -1, 1))
+		end
+		sst.order = 0
+		for _ = 1, 50 do
+			G.moveEnt(foeS, foeS.root.CFrame + sright * 4.5)   -- 每秒 45 格横穿
+			aimShip()
+			H.run(0.1)
+		end
+		snap("ship_lead")
+		H.key(def, Enum.KeyCode.Two, true)
+		H.run(0.1)
+		H.key(def, Enum.KeyCode.Two, false)
+		for _ = 1, 3 do G.moveEnt(foeS, foeS.root.CFrame + sright * 4.5) aimShip() H.run(0.1) end
+		snap("ship_locking")
+		for _ = 1, 8 do G.moveEnt(foeS, foeS.root.CFrame + sright * 4.5) aimShip() H.run(0.1) end
+		snap("ship_locked")
+		H.key(def, Enum.KeyCode.One, true)
+		H.run(0.1)
+		H.key(def, Enum.KeyCode.One, false)
+		G.removeEnt(foeS)
+	end
 else
 	print("  没上舰")
 end

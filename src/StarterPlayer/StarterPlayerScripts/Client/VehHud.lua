@@ -8,8 +8,11 @@
 --     「武器」：每一种武器一行（按键、名字、弹药），选中的那行亮、左边一道琥珀色；右边装填环（24 颗点：装填时一颗颗亮起琥珀色，装好全绿、写「就绪」）；
 --       坦克的烟幕弹、舰艇的防空导弹、近防炮
 --   · 顶上：罗盘（每 5° 一格、每 15° 一个数、八个方位字），中间是镜头朝向；琥珀色小三角是炮管（坦克）/ 舰首（舰艇）的朝向
---   · 中间：镜头看的地方一个小圈；炮现在指的地方（坦克：炮管方向打出去；舰艇：主炮的落点）一个战雷式的瞄准圈（圈、四根刻度、中心点），
---     装填时圈外 16 颗点的进度、圈变琥珀色；右边测距（米）；坦克炮塔还没转过来时圈上一个小箭头指着镜头准心
+--   · 中间：镜头看的地方一个小圈；炮现在指的地方一个准星——坦克、舰艇两套不一样（用户 11-19：参考 MWT 和《现代战舰》）：
+--     坦克（MWT）：四段弧 + 三道刻度 + 中心点，装填时弧顺时针一段段亮；颜色 = 打不打得穿（照服务器的跳弹算法：绿可击穿、黄可能跳弹、
+--       红会跳弹 / 打不穿），下面写出来；右边测距、左边装填秒数；炮塔还没转过来时一个小箭头指着镜头准心
+--     舰艇（《现代战舰》）：主炮落点一个细的大圈、四根长线（横线有刻度）、中间菱形，外圈 40 段装填；距离、炮弹飞多久、炮名；
+--       瞄着的敌人上方目标卡（名字、距离、血条）和提前量（它照现在的航速、炮弹落下时开到哪）；导弹：四个角框住，锁定中琥珀、已锁定红
 --   · 四周一圈很淡的暗角；开炮：瞄准圈一涨一缩、画面一亮
 local VehHud = {}
 
@@ -18,7 +21,7 @@ function VehHud.init(G)
   local RunService = game:GetService("RunService")
   local Lighting = game:GetService("Lighting")
   local RS = game:GetService("ReplicatedStorage")
-  local V2, UD2, UD = Vector2.new, UDim2.new, UDim.new
+  local V2, V3, UD2, UD = Vector2.new, Vector3.new, UDim2.new, UDim.new
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
@@ -322,58 +325,235 @@ function VehHud.init(G)
     compMark.Position = UD2(0, CW / 2 + math.clamp(dg, -CW / 2 / PX, CW / 2 / PX) * PX, 0, 24)
   end
 
-  ---------------------------------------------------------------- 中间：准星（坦克、舰艇共用）
+  ---------------------------------------------------------------- 中间：准星——坦克照 MWT（现代战争坦克）、舰艇照《现代战舰》，两套样子
+  --   用户 11-19：「船、坦克的准心可以不一样，参考 MWT 和现代战舰」
   local camAim = roundf(frame(ret, UD2(0, 14, 0, 14), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
   stroke(camAim, WHITE, 1.5, 0.35)
   camAim.Name = "CamAim"
-  local gun = frame(ret, UD2(0, 34, 0, 34), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
-  gun.Name = "GunReticle"
-  local gunStroke = stroke(roundf(frame(gun, UD2(1, 0, 1, 0), nil, INK, 1)), TXT, 2, 0.05)
-  roundf(frame(gun, UD2(0, 4, 0, 4), UD2(0.5, 0, 0.5, 0), TXT, 0, V2(0.5, 0.5)))
-  for _, e in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-    local hz = e[1] ~= 0
-    frame(gun, hz and UD2(0, 9, 0, 2) or UD2(0, 2, 0, 9), UD2(0.5, e[1] * 25, 0.5, e[2] * 25), TXT, 0.05, V2(0.5, 0.5))
+  local Config = require(RS:WaitForChild("Config"))
+  -- 圆上一圈小短条（Roblox 没有弧线）：from / to 度数（0 正上、顺时针），每条切着圆
+  local function arcSegs(parent, n, r, w, h, from, to, col)
+    local segs = {}
+    for i = 1, n do
+      local a = from + (to - from) * (i - 0.5) / n
+      local rad = math.rad(a)
+      local sg0 = frame(parent, UD2(0, w, 0, h), UD2(0.5, math.sin(rad) * r, 0.5, -math.cos(rad) * r), col or TXT, 0, V2(0.5, 0.5))
+      sg0.Rotation = a
+      segs[i] = sg0
+    end
+    return segs
   end
-  local gunDots = {}
-  for i = 1, 16 do
-    local a = (i - 0.5) / 16 * 2 * math.pi
-    gunDots[i] = roundf(frame(gun, UD2(0, 3, 0, 3), UD2(0.5, math.sin(a) * 33, 0.5, -math.cos(a) * 33), AMBER, 0.2, V2(0.5, 0.5)))
+  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(96, 236, 128), RGB(255, 214, 72), RGB(255, 72, 60)
+
+  -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
+  --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
+  local TR = {}
+  TR.root = frame(ret, UD2(0, 120, 0, 120), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  TR.root.Name = "TankReticle"
+  TR.scale = Instance.new("UIScale")
+  TR.scale.Parent = TR.root
+  TR.segs = {}
+  for q = 0, 3 do
+    for _, sgx in ipairs(arcSegs(TR.root, 9, 22, 3.4, 2, q * 90 - 33, q * 90 + 33)) do table.insert(TR.segs, sgx) end
   end
-  local rangeL = label(ret, "", UD2(0, 90, 0, 16), UD2(0, 0, 0, 0), 13, TXT, MONO, V2(0, 0.5), LEFT)
-  rangeL.Name = "Range"
-  rangeL.TextStrokeTransparency = 0.6
+  TR.ticks = {}
+  for _, a in ipairs({ 90, 180, 270 }) do
+    local rad = math.rad(a)
+    local tk = frame(TR.root, UD2(0, 2, 0, 9), UD2(0.5, math.sin(rad) * 32, 0.5, -math.cos(rad) * 32), TXT, 0, V2(0.5, 0.5))
+    tk.Rotation = a
+    table.insert(TR.ticks, tk)
+  end
+  TR.dot = roundf(frame(TR.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), TXT, 0, V2(0.5, 0.5)))
+  TR.pen = label(TR.root, "", UD2(0, 160, 0, 14), UD2(0.5, 0, 0.5, 46), 12, TXT, BOLD, V2(0.5, 0.5))
+  TR.pen.Name = "PenState"
+  TR.pen.TextStrokeTransparency = 0.55
+  TR.rng = label(TR.root, "", UD2(0, 80, 0, 14), UD2(0.5, 42, 0.5, 0), 12, TXT, MONO, V2(0, 0.5), LEFT)
+  TR.rng.Name = "Range"
+  TR.rng.TextStrokeTransparency = 0.6
+  TR.rel = label(TR.root, "", UD2(0, 60, 0, 14), UD2(0.5, -42, 0.5, 0), 12, AMBER, MONO, V2(1, 0.5), RIGHT)
+  TR.rel.Name = "ReloadLeft"
+  TR.rel.TextStrokeTransparency = 0.6
   local lagArrow = label(ret, "▶", UD2(0, 16, 0, 16), UD2(0, 0, 0, 0), 13, AMBER, BOLD, V2(0.5, 0.5))
   lagArrow.Name = "TurretLag"
+
+  -- 舰艇（《现代战舰》）：主炮落点一个细的大圈、四根长线（横线上有刻度）、中间菱形；外圈 40 段装填；右下距离、炮弹飞多久，左下炮名；
+  --   瞄着的敌人：上方一张卡（名字、距离、血条），照它的航速和炮弹飞的时间算提前量（琥珀色小圈 + 一串点连过去）；
+  --   导弹：四个角框住目标，刚框上从大往小收，框住琥珀、锁定红，下面写距离和导弹飞过去要多久
+  local SR = {}
+  SR.root = frame(ret, UD2(0, 240, 0, 240), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  SR.root.Name = "ShipReticle"
+  SR.scale = Instance.new("UIScale")
+  SR.scale.Parent = SR.root
+  SR.ring = roundf(frame(SR.root, UD2(0, 76, 0, 76), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  SR.ringStroke = stroke(SR.ring, CYAN, 1.2, 0.1)
+  SR.lines = {}
+  for _, e in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+    local hz = e[1] ~= 0
+    local L0, L = 46, 40
+    table.insert(SR.lines, frame(SR.root, hz and UD2(0, L, 0, 1) or UD2(0, 1, 0, L), UD2(0.5, e[1] * (L0 + L / 2), 0.5, e[2] * (L0 + L / 2)), CYAN, 0.15, V2(0.5, 0.5)))
+    if hz then
+      for k = 1, 4 do table.insert(SR.lines, frame(SR.root, UD2(0, 1, 0, (k % 2 == 0) and 7 or 4), UD2(0.5, e[1] * (L0 + k * 9), 0.5, 0), CYAN, 0.2, V2(0.5, 0.5))) end
+    end
+  end
+  SR.dia = frame(SR.root, UD2(0, 9, 0, 9), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  SR.dia.Rotation = 45
+  SR.diaStroke = stroke(SR.dia, WHITE, 1.5, 0)
+  frame(SR.root, UD2(0, 2, 0, 2), UD2(0.5, 0, 0.5, 0), WHITE, 0, V2(0.5, 0.5))
+  SR.segs = arcSegs(SR.root, 40, 47, 5.4, 2, 0, 360, CYAN)
+  SR.rng = label(SR.root, "", UD2(0, 90, 0, 14), UD2(0.5, 50, 0.5, 30), 12, TXT, MONO, V2(0, 0.5), LEFT)
+  SR.rng.Name = "Range"
+  SR.tof = label(SR.root, "", UD2(0, 90, 0, 14), UD2(0.5, 50, 0.5, 44), 11, CYAN, MONO, V2(0, 0.5), LEFT)
+  SR.tof.Name = "FlightTime"
+  SR.wpn = label(SR.root, "", UD2(0, 120, 0, 14), UD2(0.5, -50, 0.5, 30), 11, MUTE, MED, V2(1, 0.5), RIGHT)
+  for _, l in ipairs({ SR.rng, SR.tof, SR.wpn }) do l.TextStrokeTransparency = 0.6 end
+  SR.lead = roundf(frame(ret, UD2(0, 14, 0, 14), nil, INK, 1, V2(0.5, 0.5)))
+  SR.lead.Name = "LeadMark"
+  stroke(SR.lead, AMBER, 1.6, 0)
+  SR.leadDots = {}
+  for i = 1, 6 do SR.leadDots[i] = roundf(frame(ret, UD2(0, 3, 0, 3), nil, AMBER, 0.25, V2(0.5, 0.5))) end
+  SR.card = frame(ret, UD2(0, 160, 0, 30), nil, INK, 1, V2(0.5, 1))
+  SR.card.Name = "TargetCard"
+  SR.cardName = label(SR.card, "", UD2(1, 0, 0, 14), UD2(0, 0, 0, 0), 12, TXT, BOLD)
+  SR.cardName.TextStrokeTransparency = 0.55
+  SR.cardBg = frame(SR.card, UD2(0, 110, 0, 4), UD2(0.5, 0, 0, 18), INK, 0.35, V2(0.5, 0))
+  SR.cardHp = frame(SR.cardBg, UD2(1, 0, 1, 0), nil, BAD, 0)
+  SR.lock = frame(ret, UD2(0, 60, 0, 60), nil, INK, 1, V2(0.5, 0.5))
+  SR.lock.Name = "MissileLock"
+  SR.corners = {}
+  for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+    local h = frame(SR.lock, UD2(0, 14, 0, 2), UD2(c[1], 0, c[2], 0), PEN_MAYBE, 0, V2(c[1], c[2]))
+    local v = frame(SR.lock, UD2(0, 2, 0, 14), UD2(c[1], 0, c[2], 0), PEN_MAYBE, 0, V2(c[1], c[2]))
+    table.insert(SR.corners, h)
+    table.insert(SR.corners, v)
+  end
+  SR.lockTxt = label(ret, "", UD2(0, 260, 0, 16), nil, 12, PEN_MAYBE, BOLD, V2(0.5, 0))
+  SR.lockTxt.Name = "LockText"
+  SR.lockTxt.TextStrokeTransparency = 0.5
+
   local fireCC = Instance.new("ColorCorrectionEffect")
   fireCC.Name = "VehFireFlash"
   fireCC.Brightness = 0
   fireCC.Parent = Lighting
   local kickT = -9
 
-  -- 炮的准星摆到屏幕上：p 炮指着的点、o 炮口（测距）、relK / ready 装填、lag 要不要画追准心的小箭头
-  local function placeGun(p, o, relK, ready, lag)
+  ---------------------------------------------------------------- 瞄着谁：实体（workspace.Ents 下的模型）、它的航速
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
+  local function entOf(inst)
+    local ents = workspace:FindFirstChild("Ents")
+    while inst and inst.Parent and inst.Parent ~= ents do inst = inst.Parent end
+    return (inst and inst.Parent == ents) and inst or nil
+  end
+  local vel = setmetatable({}, { __mode = "k" })   -- [实体模型] = { p 上次位置, t 时间, v 平滑后的速度 }
+  local function velOf(em)
+    local r = em:FindFirstChild("Root")
+    if not r then return V3(0, 0, 0) end
+    local p, t = r.CFrame.Position, os.clock()
+    local s = vel[em]
+    if not s then
+      vel[em] = { p = p, t = t, v = V3(0, 0, 0) }
+      return V3(0, 0, 0)
+    end
+    local dt = t - s.t
+    if dt > 0.05 then
+      local raw = (p - s.p) / dt
+      if raw.Magnitude > 600 then raw = s.v end   -- 瞬移（重生、拉回）不算
+      s.v = s.v:Lerp(raw, math.min(1, dt * 4))
+      s.p, s.t = p, t
+    end
+    return s.v
+  end
+  local function enemyEnt(em)
+    if not em or em:GetAttribute("Wreck") or (em:GetAttribute("Hp") or 1) <= 0 then return false end
+    local tm = em:GetAttribute("Team")
+    return tm ~= nil and tm ~= me:GetAttribute("Side")
+  end
+  -- 屏幕上离 (x, y) 最近的敌方水面目标 / 地面车辆（R 像素以内）
+  local nearT, nearEm = 0, nil
+  local function enemyNear(x, y, R)
+    if os.clock() - nearT < 0.12 then return nearEm end
+    nearT, nearEm = os.clock(), nil
+    local ents = workspace:FindFirstChild("Ents")
+    local best = R
+    for _, em in ipairs(ents and ents:GetChildren() or {}) do
+      local cat = em:GetAttribute("Cat")
+      if (cat == "ship" or cat == "armor" or cat == "light") and enemyEnt(em) then
+        local r = em:FindFirstChild("Root")
+        if r then
+          local sp, on = cam:WorldToViewportPoint(r.CFrame.Position)
+          if on then
+            local dd = (V2(sp.X, sp.Y) - V2(x, y)).Magnitude
+            if dd < best then best, nearEm = dd, em end
+          end
+        end
+      end
+    end
+    return nearEm
+  end
+
+  -- 坦克炮打过去打不打得穿：照服务器（Ents.lua）的跳弹算法——入射方向和装甲面法线的夹角、目标是重甲（armor）还是轻甲（light）
+  --   返回 颜色、字（没瞄着敌方车辆返回 nil）
+  local function penState(w, o, p, own)
+    local dir = p - o
+    if dir.Magnitude < 1 then return nil end
+    local ex = { own }
+    if me.Character then table.insert(ex, me.Character) end
+    if G.viewFolder then table.insert(ex, G.viewFolder) end
+    rayP.FilterDescendantsInstances = ex
+    local res = workspace:Raycast(o, dir.Unit * (dir.Magnitude + 6), rayP)
+    local em = res and entOf(res.Instance)
+    if not em or not enemyEnt(em) then return nil end
+    local cat = em:GetAttribute("Cat")
+    local RIC = Config.Ricochet
+    local k = (w.vs and w.vs[cat]) or 1
+    if k < 0.35 then return PEN_NO, T("vh.penNo") end   -- 机枪、小口径打重甲
+    if w.kind ~= "shell" or not (RIC and RIC.a0[cat]) then return PEN_OK, T("vh.penOk") end
+    local ang = math.deg(math.acos(math.clamp(math.abs(dir.Unit:Dot(res.Normal)), 0, 1)))
+    local pr = math.clamp((ang - RIC.a0[cat]) / math.max(1, RIC.a1[cat] - RIC.a0[cat]), 0, 1)
+    if pr >= 0.75 then return PEN_NO, T("vh.penRic") end
+    if pr > 0.04 or ang > RIC.a0[cat] - 6 then return PEN_MAYBE, T("vh.penMaybe", math.floor(pr * 100 + 0.5)) end
+    return (k < 0.7) and PEN_MAYBE or PEN_OK, T((k < 0.7) and "vh.penWeak" or "vh.penOk")
+  end
+
+  -- 坦克的准星摆到屏幕上：p 炮指着的点、o 炮口、relK / ready / left 装填、pen 颜色和字
+  local function placeTank(p, o, relK, ready, left, lag, penC, penT)
+    SR.root.Visible, SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false, false
+    for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
     local sp, on = cam:WorldToViewportPoint(p)
     local vp = cam.ViewportSize
-    gun.Visible, rangeL.Visible = on, on
+    TR.root.Visible = on
     local kick = math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
-    local sz = 34 * (1 + 0.45 * kick)
-    gun.Size = UD2(0, sz, 0, sz)
-    gun.Position = UD2(0, sp.X, 0, sp.Y)
-    gunStroke.Color = ready and TXT or AMBER
-    for i, gd in ipairs(gunDots) do
-      gd.Visible = not ready
-      gd.BackgroundTransparency = (i <= math.floor(relK * 16 + 0.001)) and 0.05 or 0.75
+    TR.scale.Scale = 1 + 0.4 * kick
+    TR.root.Position = UD2(0, sp.X, 0, sp.Y)
+    local col = penC or TXT
+    local lit = ready and #TR.segs or math.floor(relK * #TR.segs + 0.001)
+    for i, sgx in ipairs(TR.segs) do
+      local onSeg = i <= lit
+      sgx.BackgroundColor3 = onSeg and (ready and col or AMBER) or TXT
+      sgx.BackgroundTransparency = onSeg and 0.02 or 0.72
     end
-    rangeL.Position = UD2(0, sp.X + sz / 2 + 12, 0, sp.Y)
-    rangeL.Text = string.format("%d m", math.floor((p - o).Magnitude / 2.8 / 5 + 0.5) * 5)
+    for _, tk in ipairs(TR.ticks) do tk.BackgroundColor3 = col end
+    TR.dot.BackgroundColor3 = col
+    TR.pen.Text = penT or ""
+    TR.pen.TextColor3 = col
+    TR.rng.Text = string.format("%d m", math.floor((p - o).Magnitude / 2.8 / 5 + 0.5) * 5)
+    TR.rel.Text = ready and "" or string.format("%.1f", left)
     local off = V2(vp.X / 2, vp.Y / 2) - V2(sp.X, sp.Y)
-    lagArrow.Visible = lag and on and off.Magnitude > 26
+    lagArrow.Visible = lag and on and off.Magnitude > 30
     if lagArrow.Visible then
       local u = off.Unit
-      lagArrow.Position = UD2(0, sp.X + u.X * (sz / 2 + 14), 0, sp.Y + u.Y * (sz / 2 + 14))
+      lagArrow.Position = UD2(0, sp.X + u.X * 40, 0, sp.Y + u.Y * 40)
       lagArrow.Rotation = math.deg(math.atan2(u.Y, u.X))
     end
     fireCC.Brightness = 0.12 * kick * kick
+  end
+  G.tankPen = penState   -- 测试用
+
+  local function hideReticles()
+    TR.root.Visible, SR.root.Visible, lagArrow.Visible = false, false, false
+    SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false
+    for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
+    fireCC.Brightness = 0
   end
 
   ---------------------------------------------------------------- 每帧：坦克
@@ -432,15 +612,116 @@ function VehHud.init(G)
     stepCompass(hdgOf(st.camYaw), hdgOf((st.yaw or 0) - math.rad(st.ty or 0)))
     local hasGun = d.turret ~= nil and d.gun ~= nil and d.weapons[1] ~= nil
     if not hasGun then
-      gun.Visible, rangeL.Visible, lagArrow.Visible = false, false, false
-      fireCC.Brightness = 0
+      hideReticles()
       return
     end
     local base = st.root * CFrame.new(0, -d.H / 2, 0)
     local gcf = VD.gunCF(d, base, st.ty or 0, st.gp or 0)
     local aim = st.aimPt or (gcf.Position + gcf.LookVector * 200)
-    placeGun(gcf.Position + gcf.LookVector * math.max(30, (aim - gcf.Position).Magnitude), gcf.Position, relK, ready, true)
+    local pt = gcf.Position + gcf.LookVector * math.max(30, (aim - gcf.Position).Magnitude)
+    local wid = d.weapons[st.wi]
+    local w = wid and VD.W[wid]
+    local penC, penT = nil, nil
+    if w then penC, penT = penState(w, gcf.Position, pt, st.em) end
+    placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT)
   end
+
+  -- 舰艇主炮的准星：p 落点、o 炮口、tof 炮弹飞多久；瞄着的敌人：目标卡 + 提前量
+  local function placeShip(p, o, relK, ready, left, tof, wname)
+    local sp, on = cam:WorldToViewportPoint(p)
+    SR.root.Visible = on
+    local kick = math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
+    SR.scale.Scale = 1 + 0.25 * kick
+    SR.root.Position = UD2(0, sp.X, 0, sp.Y)
+    local col = ready and CYAN or AMBER
+    SR.ringStroke.Color = col
+    for _, l in ipairs(SR.lines) do l.BackgroundColor3 = col end
+    local lit = ready and #SR.segs or math.floor(relK * #SR.segs + 0.001)
+    for i, sgx in ipairs(SR.segs) do
+      sgx.BackgroundColor3 = ready and CYAN or AMBER
+      sgx.BackgroundTransparency = (i <= lit) and (ready and 0.35 or 0.02) or 0.8
+    end
+    local km = (p - o).Magnitude / 2.8 / 1000
+    SR.rng.Text = (km >= 1) and string.format("%.1f km", km) or string.format("%d m", math.floor(km * 1000 / 5 + 0.5) * 5)
+    SR.tof.Text = ready and string.format("T %.1f s", tof or 0) or string.format("%s %.1f", T("vh.reload"), left)
+    SR.tof.TextColor3 = ready and CYAN or AMBER
+    SR.wpn.Text = wname or ""
+    fireCC.Brightness = 0.1 * kick * kick
+    -- 瞄着的敌人（落点附近 90 像素内最近的）
+    local em = on and enemyNear(sp.X, sp.Y, 90) or nil
+    local r = em and em:FindFirstChild("Root")
+    if not r then
+      SR.card.Visible, SR.lead.Visible = false, false
+      for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
+      return
+    end
+    local tp = r.CFrame.Position
+    local tsp, ton = cam:WorldToViewportPoint(tp)
+    local size = r.Size.Magnitude
+    local top = cam:WorldToViewportPoint(tp + V3(0, r.Size.Y * 0.5 + size * 0.06, 0))
+    SR.card.Visible = ton
+    SR.card.Position = UD2(0, tsp.X, 0, top.Y - 8)
+    local key = "veh." .. tostring(em:GetAttribute("Model") or em:GetAttribute("Kind") or "")
+    SR.cardName.Text = string.format("%s   %.1f km", T(key), (tp - o).Magnitude / 2800)
+    local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
+    SR.cardHp.Size = UD2(math.clamp(hp / math.max(1, mx), 0, 1), 0, 1, 0)
+    -- 提前量：炮弹落下去的时候它开到哪
+    local v = velOf(em)
+    local fut = tp + V3(v.X, 0, v.Z) * (tof or 0)
+    local lsp, lon = cam:WorldToViewportPoint(fut)
+    local show = ton and lon and V3(v.X, 0, v.Z).Magnitude > 2
+    SR.lead.Visible = show
+    if show then
+      SR.lead.Position = UD2(0, lsp.X, 0, lsp.Y)
+      for i, dd in ipairs(SR.leadDots) do
+        local k = i / (#SR.leadDots + 1)
+        dd.Visible = true
+        dd.Position = UD2(0, tsp.X + (lsp.X - tsp.X) * k, 0, tsp.Y + (lsp.Y - tsp.Y) * k)
+      end
+    else
+      for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
+    end
+  end
+  G.shipLead = function() return SR.lead.Visible and SR.lead.Position or nil end   -- 测试用
+
+  -- 导弹锁定（《现代战舰》）：四个角框住目标；刚框上 0.5 秒从两倍大收到贴着目标（琥珀「锁定中」），收好了 / 按了锁定键变红
+  local lockEm, lockT0 = nil, 0
+  local function placeLock(st)
+    local lk = (st.wi == 2) and st.lock or nil
+    local r = lk and lk.root
+    if not r or not r.Parent then
+      SR.lock.Visible = false
+      SR.lockTxt.Visible = st.wi == 2
+      SR.lockTxt.Text = T("ship.noLock")
+      SR.lockTxt.TextColor3 = MUTE
+      SR.lockTxt.Position = UD2(0.5, 0, 0.5, 46)
+      lockEm = nil
+      return
+    end
+    if lk.em ~= lockEm then lockEm, lockT0 = lk.em, os.clock() end
+    local tp = r.CFrame.Position
+    local sp, on = cam:WorldToViewportPoint(tp)
+    local dist = (tp - cam.CFrame.Position).Magnitude
+    local px = math.clamp(r.Size.Magnitude / math.max(dist, 1) * cam.ViewportSize.Y * 0.9, 34, 170)
+    local a = math.clamp((os.clock() - lockT0) / 0.5, 0, 1)
+    local locked = a >= 1 or st.sticky
+    local sz = px * (1 + (1 - a) * (1 - a) * 1.2)
+    SR.lock.Visible = on
+    SR.lock.Position = UD2(0, sp.X, 0, sp.Y)
+    SR.lock.Size = UD2(0, sz, 0, sz)
+    local col = locked and PEN_NO or PEN_MAYBE
+    for _, c in ipairs(SR.corners) do c.BackgroundColor3 = col end
+    local key = (lk.kind == "fort") and ("fort." .. tostring(lk.em:GetAttribute("Model") or "bunker"))
+      or ("veh." .. ((lk.d and lk.d.id) or (lk.def and lk.def.id) or lk.kind or ""))
+    local own = st.em and st.em:FindFirstChild("Root")
+    local km = own and (tp - own.CFrame.Position).Magnitude or dist
+    local msp = (SD.W.asm and SD.W.asm.speed) or 320
+    SR.lockTxt.Visible = on
+    SR.lockTxt.Position = UD2(0, sp.X, 0, sp.Y + sz / 2 + 8)
+    SR.lockTxt.TextColor3 = col
+    SR.lockTxt.Text = string.format("%s  %s   %.1f km   ETA %.0f s", locked and T("ship.locked") or T("ship.locking"), T(key), km / 2800, km / (msp * 0.85) + 1)
+  end
+  G.shipLockState = function() return SR.lock.Visible, SR.corners[1].BackgroundColor3 end   -- 测试用
 
   ---------------------------------------------------------------- 每帧：舰艇
   local function stepShip(st)
@@ -497,15 +778,22 @@ function VehHud.init(G)
     if d.ciws and #d.ciws > 0 then setRow(SH.rows[4], nil, T("vh.ciws"), T("vh.auto"), false) else setRow(SH.rows[4], nil, nil) end
     setRing(SH.ring, relK, ready, left)
     stepCompass(hdgOf(st.camYaw), hdgOf(st.yaw))
-    -- 主炮的落点
+    -- 准星：主炮的落点（《现代战舰》的大圈）、导弹的锁定框
+    TR.root.Visible, lagArrow.Visible = false, false
     local fp = (st.wi == 1 and G.sailFall and g1) and G.sailFall(1) or nil
     if fp then
-      local gpos = st.em and st.em:FindFirstChild("Root") and st.em.Root.CFrame.Position or fp
-      placeGun(fp, gpos, relK, ready and (st.onT and st.onT[1]) ~= false, false)
+      local w = SD.W[g1.w]
+      local mz = SD.muzzle(d, st.cf, 1, st.ty[1] or 0, st.gp[1] or 0)
+      local h = V3(fp.X - mz.Position.X, 0, fp.Z - mz.Position.Z).Magnitude
+      local lv = mz.LookVector
+      local tof = (w.kind == "gun") and ((fp - mz.Position).Magnitude / 1500) or (h / math.max(1, w.speed * math.sqrt(lv.X * lv.X + lv.Z * lv.Z)))
+      placeShip(fp, mz.Position, relK, ready and (st.onT and st.onT[1]) ~= false, left, tof, T("sw." .. g1.w))
     else
-      gun.Visible, rangeL.Visible, lagArrow.Visible = false, false, false
+      SR.root.Visible, SR.lead.Visible, SR.card.Visible = false, false, false
+      for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
       fireCC.Brightness = 0
     end
+    placeLock(st)
   end
 
   ---------------------------------------------------------------- 坦克瞄准镜里（Drive.lua 画目镜、分划、测距数字；这里在镜里补战雷那一套仪表）
