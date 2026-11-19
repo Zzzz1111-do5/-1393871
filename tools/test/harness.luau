@@ -541,6 +541,7 @@ function raycast0(o, d, params)
 	local list = params and params.FilterDescendantsInstances or {}
 	local ws = H.workspace
 	local best, bt = nil, math.huge
+	local bestCF, bestSize = nil, nil
 	local function consider(p, cf, size)
 		local ok = true
 		if #list > 0 or include then
@@ -549,7 +550,7 @@ function raycast0(o, d, params)
 		end
 		if ok then
 			local t = rayBox(o, d, cf, size)
-			if t and t < bt then bt, best = t, p end
+			if t and t < bt then bt, best, bestCF, bestSize = t, p, cf, size end
 		end
 	end
 	rcRefresh()
@@ -618,7 +619,17 @@ function raycast0(o, d, params)
 	end
 	if not best then return nil end
 	local pos = o + d * bt
-	return { Instance = best, Position = pos, Normal = (best == terrain) and normal or V3.new(0, 1, 0), Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
+	if best ~= terrain and bestCF and bestSize then   -- 零件：打中的是方块的哪一面（离哪个面最近），法线朝那一面（跳弹按它算入射角）
+		local l = bestCF:PointToObjectSpace(pos)
+		local hx, hy, hz = math.max(bestSize.X / 2, 1e-3), math.max(bestSize.Y / 2, 1e-3), math.max(bestSize.Z / 2, 1e-3)
+		local ax, ay, az = math.abs(l.X) / hx, math.abs(l.Y) / hy, math.abs(l.Z) / hz
+		local ln
+		if ax >= ay and ax >= az then ln = V3.new(l.X >= 0 and 1 or -1, 0, 0)
+		elseif ay >= az then ln = V3.new(0, l.Y >= 0 and 1 or -1, 0)
+		else ln = V3.new(0, 0, l.Z >= 0 and 1 or -1) end
+		normal = bestCF:VectorToWorldSpace(ln)
+	end
+	return { Instance = best, Position = pos, Normal = normal, Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
 end
 
 local function camRay(cam, x, y)
@@ -949,6 +960,7 @@ roblox.implementMethod("UserInputService", "GetFocusedTextBox", function(self) r
 roblox.implementMethod("UserInputService", "GetKeysPressed", function(self) return {} end)
 roblox.implementMethod("UserInputService", "GetLastInputType", function(self) return Enum.UserInputType.Keyboard end)
 roblox.implementMethod("ContextActionService", "BindAction", function(self) end)
+roblox.implementMethod("ContextActionService", "BindActionAtPriority", function(self) end)
 roblox.implementMethod("ContextActionService", "UnbindAction", function(self) end)
 roblox.implementMethod("StarterGui", "SetCoreGuiEnabled", function(self) end)
 roblox.implementMethod("StarterGui", "SetCore", function(self) end)

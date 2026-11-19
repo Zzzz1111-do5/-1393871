@@ -13,6 +13,7 @@ local View = {}
 function View.init(G)
   local Config = G.Config
   local Map = require(RS:WaitForChild("Map"))
+  local Debris = game:GetService("Debris")
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local V = Vector3.new
@@ -203,12 +204,174 @@ function View.init(G)
     end
   end
 
-  -- 开炮：这辆车的炮往后坐一下
+  -- 开炮：这辆车的炮往后坐一下；坦克、自行火炮的车体还被后坐力推得一晃（炮朝前开就抬头、朝侧面开就往另一边歪，弹簧摆两下才停——战雷那样）
   function G.vehRecoil(id, g)   -- g：第几门炮（舰艇有前后两门的）
     local v = byId[id]
-    if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35
+    if v and v.kind == "veh" then
+      local big = v.def.cat == "tank" or v.def.cat == "arty"
+      v.recoil = big and 1.7 or 0.35
+      if big and not v.wrecked then
+        local a = math.rad(v.ty or 0)
+        local k = (v.def.cat == "arty") and 0.95 or 0.8
+        v.pitchV = (v.pitchV or 0) + k * math.cos(a)
+        v.rollV = (v.rollV or 0) + k * math.sin(a)
+        v.bobV = (v.bobV or 0) - 2.5
+      end
     elseif v and v.ext and v.ext.recoil then v.ext.recoil(v, g) end
   end
+
+  ---------------------------------------------------------------- 弹药殉爆：炮塔连炮整个掀飞（用户：坦克被打爆盖子可以飞起来，动画逼真一点）
+  -- 被毁的那一下，座圈里先喷一柱火，炮塔带着炮转着往上飞一两层楼高，落地砸起土、迸火星，弹一两下歪着停住；车体接着烧、殉爆的小炸响几声。
+  -- 随机数按车的编号定：每个人看到的是同一个样子
+  local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
+  local function tossFx(p, big)
+    if not G.fxPart then return end
+    local part = G.fxPart
+    -- 一柱火：从座圈直冲上去
+    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local fire = Instance.new("ParticleEmitter")
+    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+    fire.Rate = 0
+    fire.Lifetime = NumberRange.new(0.35, 0.8)
+    fire.Speed = NumberRange.new(28, 60)
+    fire.SpreadAngle = Vector2.new(14, 14)
+    fire.Drag = 1.5
+    fire.LightEmission = 1
+    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3.5), NumberSequenceKeypoint.new(0.5, 7), NumberSequenceKeypoint.new(1, 2) })
+    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
+    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 246, 200)), ColorSequenceKeypoint.new(0.4, RGB(255, 160, 60)), ColorSequenceKeypoint.new(1, RGB(120, 40, 20)) })
+    fire.EmissionDirection = Enum.NormalId.Front
+    fire.Parent = h
+    fire:Emit(big and 70 or 40)
+    -- 火星：往四周上方撒，带重力落下来
+    local sp = Instance.new("ParticleEmitter")
+    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    sp.Rate = 0
+    sp.Lifetime = NumberRange.new(0.8, 1.8)
+    sp.Speed = NumberRange.new(30, 70)
+    sp.SpreadAngle = Vector2.new(60, 60)
+    sp.Acceleration = V(0, -60, 0)
+    sp.LightEmission = 1
+    sp.Size = NumberSequence.new(0.35)
+    sp.Color = ColorSequence.new(RGB(255, 210, 120))
+    sp.EmissionDirection = Enum.NormalId.Front
+    sp.Parent = h
+    sp:Emit(big and 90 or 50)
+    -- 黑烟蘑菇云
+    local sm = Instance.new("ParticleEmitter")
+    sm.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    sm.Rate = 0
+    sm.Lifetime = NumberRange.new(2.5, 4.5)
+    sm.Speed = NumberRange.new(14, 30)
+    sm.SpreadAngle = Vector2.new(30, 30)
+    sm.Drag = 1.2
+    sm.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 5), NumberSequenceKeypoint.new(1, 20) })
+    sm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+    sm.Color = ColorSequence.new(RGB(34, 30, 28))
+    sm.EmissionDirection = Enum.NormalId.Front
+    sm.Parent = h
+    sm:Emit(big and 26 or 14)
+    Debris:AddItem(h, 6)
+    if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9) end
+    if G.playSound then
+      G.playSound("boom", p, 0.5)
+      for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
+        task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
+          G.playSound("mortar", p, 0.7 + math.random() * 0.3)
+          if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25) end
+        end)
+      end
+    end
+    if G.shake then
+      local cam = workspace.CurrentCamera
+      local dd = cam and (cam.CFrame.Position - p).Magnitude or 999
+      if dd < 220 then G.shake(0.5 * (1 - dd / 220)) end
+    end
+  end
+  local function landFx(p)
+    if not G.fxPart then return end
+    local part, tween = G.fxPart, G.tween
+    local ring = part(Enum.PartType.Cylinder, V(0.5, 6, 6), CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2), RGB(120, 106, 84), Enum.Material.SmoothPlastic, 0.35)
+    tween(ring, 0.6, { Size = V(0.5, 26, 26), Transparency = 1 })
+    Debris:AddItem(ring, 0.65)
+    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local du = Instance.new("ParticleEmitter")
+    du.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    du.Rate = 0
+    du.Lifetime = NumberRange.new(1, 2.2)
+    du.Speed = NumberRange.new(8, 22)
+    du.SpreadAngle = Vector2.new(75, 75)
+    du.Drag = 2.5
+    du.Acceleration = V(0, -4, 0)
+    du.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 11) })
+    du.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+    du.Color = ColorSequence.new(RGB(140, 124, 98))
+    du.EmissionDirection = Enum.NormalId.Front
+    du.Parent = h
+    du:Emit(22)
+    local sp = Instance.new("ParticleEmitter")
+    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    sp.Rate = 0
+    sp.Lifetime = NumberRange.new(0.3, 0.7)
+    sp.Speed = NumberRange.new(20, 40)
+    sp.SpreadAngle = Vector2.new(80, 80)
+    sp.Acceleration = V(0, -70, 0)
+    sp.LightEmission = 1
+    sp.Size = NumberSequence.new(0.3)
+    sp.Color = ColorSequence.new(RGB(255, 200, 120))
+    sp.EmissionDirection = Enum.NormalId.Front
+    sp.Parent = h
+    sp:Emit(24)
+    Debris:AddItem(h, 3)
+    if G.playSound then G.playSound("splash", p, 0.35) G.playSound("boom", p, 1.6) end
+  end
+  G.tossCount = 0   -- 测试用
+  local function startToss(v)
+    local tF = v.tF
+    if not tF then return end
+    local seed = tonumber(v.id) or 0
+    if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
+    local rng = Random.new(seed * 7919 + 17)
+    local side = rng:NextUnitVector()
+    local hv = V(side.X, 0, side.Z)
+    hv = (hv.Magnitude > 0.05 and hv.Unit or V(1, 0, 0)) * (5 + rng:NextNumber() * 10)
+    v.toss = {
+      cf = tF, vel = V(hv.X, 36 + rng:NextNumber() * 18, hv.Z),
+      w = V((rng:NextNumber() - 0.5) * 5, (rng:NextNumber() - 0.5) * 7, (rng:NextNumber() - 0.5) * 5),   -- 角速度（弧度/秒，世界坐标）
+      bounce = 0, rest = false,
+      restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
+    }
+    G.tossCount += 1
+    tossFx(tF.Position, v.def.cat == "tank")
+  end
+  local function stepToss(v, dt)
+    local T = v.toss
+    if not T or T.rest then return end
+    dt = math.min(dt, 1 / 20)
+    T.vel += V(0, -TOSS_G, 0) * dt
+    local p = T.cf.Position + T.vel * dt
+    local wm = T.w.Magnitude
+    local rot = (wm > 1e-4) and CFrame.fromAxisAngle(T.w.Unit, wm * dt) or CFrame.new()
+    local gy = math.max(Map.height(p.X, p.Z), -0.5)
+    if p.Y < gy + 0.4 and T.vel.Y < 0 then   -- 砸到地上：弹一下（越弹越低），转得慢下来
+      p = V(p.X, gy + 0.4, p.Z)
+      T.bounce += 1
+      landFx(p)
+      if T.bounce >= 3 or math.abs(T.vel.Y) < 9 then
+        T.rest = true
+        -- 停住：保留水平朝向，歪一点躺着（随机的倾角）
+        local look = T.cf.LookVector
+        local flat = V(look.X, 0, look.Z)
+        flat = flat.Magnitude > 0.05 and flat.Unit or V(0, 0, -1)
+        T.cf = CFrame.lookAt(p, p + flat) * T.restTilt
+        return
+      end
+      T.vel = V(T.vel.X * 0.45, -T.vel.Y * 0.32, T.vel.Z * 0.45)
+      T.w = T.w * 0.5
+    end
+    T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+  end
+  G.stepToss = stepToss
 
   ---------------------------------------------------------------- 载具：悬架
 
@@ -304,6 +467,10 @@ function View.init(G)
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
+    if v.toss then   -- 掀飞了的炮塔自己飞（炮、机枪塔跟着它）
+      stepToss(v, dt)
+      tF = v.toss.cf
+    end
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
@@ -358,6 +525,11 @@ function View.init(G)
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
+      -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
+      if d.turret and not v.toss then
+        local seed = tonumber(v.id) or 0
+        if d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+      end
       M.fire.Rate, M.black.Rate = 30, 12
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
         local pl = Instance.new("PointLight")
@@ -489,8 +661,11 @@ function View.init(G)
         if hp ~= v.hpSeen or mx ~= v.mxSeen then
           v.hpSeen, v.mxSeen = hp, mx
           v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
-          v.bb.Enabled = hp < mx and hp > 0
         end
+        -- 自己开的车、船不挂血条：右下的载具面板有车体血量；坐进瞄准镜（第一人称）时镜头前也不会飘着自己的血条
+        local mine = (G.myVeh ~= nil and G.myVeh.em == em) or (G.sail ~= nil and G.sail.em == em)
+        local bbOn = hp < mx and hp > 0 and not mine
+        if v.bb.Enabled ~= bbOn then v.bb.Enabled = bbOn end
         G.try_(stepSolid, v, here)
         if v.kind == "veh" then
           G.try_(stepVeh, v, dt, camPos)

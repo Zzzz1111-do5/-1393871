@@ -229,7 +229,38 @@ function Ents.init(G)
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
-        if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+        local ricE = res and s.kind == "shell" and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
+        local RIC = G.Config.Ricochet
+        local bounced = false
+        if ricE and RIC and ricE.alive and RIC.a0[ricE.cat] then
+          -- 跳弹（用户：跳弹也做出来）：炮弹打在坦克、装甲车上，入射方向和装甲面的法线夹角越大越容易滑开（a0 度起有可能、a1 度一定）
+          local vd = s.vel.Unit
+          local ang = math.deg(math.acos(math.clamp(math.abs(vd:Dot(res.Normal)), 0, 1)))
+          local k = math.clamp((ang - RIC.a0[ricE.cat]) / math.max(1, RIC.a1[ricE.cat] - RIC.a0[ricE.cat]), 0, 1)
+          if k > 0 and math.random() < k then
+            local n = res.Normal
+            local refl = vd - 2 * vd:Dot(n) * n
+            refl = (refl + V((math.random() - 0.5) * 0.16, math.random() * 0.08, (math.random() - 0.5) * 0.16)).Unit
+            s.vel = refl * s.vel.Magnitude * RIC.keep
+            s.pos = res.Position + n * 0.5
+            s.ricocheted = true
+            s.life = s.t + RIC.life
+            if RIC.dmg > 0 then G.damageEnt(ricE, s.w.dmg * RIC.dmg, s.src) end
+            G.fx({ k = "ricochet", id = s.id, p = s.pos, v = s.vel, n = n })
+            local P = s.src and s.src.P
+            if P and P.pl then G.msg(P.pl, "ric", "hit.ric") end
+            local D = ricE.driver
+            if D and D.pl then G.msg(D.pl, "ric", "hit.ricIn") end
+            G.ricochets = (G.ricochets or 0) + 1   -- 测试用
+            bounced = true
+          end
+        end
+        if bounced then
+          -- 刚跳开：位置、速度上面已经改好了
+        elseif res and s.ricocheted then   -- 跳开过的弹：再碰到东西就没了（不炸、不伤），碰的地方迸一点火星
+          G.fx({ k = "spark", p = res.Position, n = res.Normal, h = "m", s = 1 })
+          done = true
+        elseif res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
           -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
           local hs = res.Instance and HitSurf.of(res.Instance, res.Material)

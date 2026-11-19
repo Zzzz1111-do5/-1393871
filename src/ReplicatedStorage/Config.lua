@@ -145,6 +145,9 @@ Config.VehicleCats = {
   ship = { tgt = "ship", hp = 3000, speed = 45, perN = 16, min = 0, max = 2, cd = 120 },
 }
 Config.VehicleOrder = { "tank", "apc", "aa", "arty", "heli", "jet", "ship" }
+-- 跳弹（用户：跳弹也做出来）：炮弹打在坦克（armor）、轻装甲车（light）上，入射方向离装甲面法线超过 a0 度开始有可能滑开、a1 度一定滑开；
+--   滑开的弹只伤 dmg 倍，顺着反射方向飞走（速度剩 keep 倍，再飞 life 秒，碰到东西不炸）
+Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 84 }, dmg = 0.04, keep = 0.5, life = 1.2 }
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {

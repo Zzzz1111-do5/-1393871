@@ -1,5 +1,5 @@
 --!nocheck
--- 雷达测试（Hud.lua 左下的圆形绿色雷达）：友军都显示；敌方步兵在视线里才显示（太远、躲在墙后都不显示）；
+-- 雷达测试（Hud.lua 右上的方形绿色雷达小地图；没有转圈的扫描线）：友军都显示；敌方步兵在视线里才显示（太远、躲在墙后都不显示）；
 --   敌人开了没消音的枪，开枪的地方闪红圈；Config.Radar.allEnemies 打开后墙后的也显示；车（敌我）在范围内就显示
 -- 用法（仓库根目录）：lune run tools/test/ia_radar.luau <rbxlx>
 local process = require("@lune/process")
@@ -44,7 +44,29 @@ H.run(3)
 local CA = H.Gs[atk.Name]
 check(G.P[atk].alive and G.P[def].alive and atk.Character and def.Character, "攻方、守方都出生了")
 local box = atk.PlayerGui:FindFirstChild("Radar", true)
-check(box ~= nil and box:IsA("CanvasGroup"), "左下是圆形雷达（CanvasGroup 按圆角裁剪）")
+check(box ~= nil and box:IsA("CanvasGroup"), "雷达小地图（CanvasGroup 裁边）")
+if box then
+	local corner = box:FindFirstChildOfClass("UICorner")
+	check(box.AnchorPoint.X == 1 and box.AnchorPoint.Y == 0 and box.Position.X.Scale == 1 and box.Position.Y.Scale == 0,
+		"在右上角（用户：右上角加个正方形小地图）")
+	check(box.Size.X.Offset == box.Size.Y.Offset and corner ~= nil and corner.CornerRadius.Scale == 0 and corner.CornerRadius.Offset <= 4,
+		"正方形（不是圆）")
+	-- 没有扫描线：框里的 Frame 过一会儿都不转（▲ 跟着朝向转，是字）
+	local rot = {}
+	for _, d in box:GetDescendants() do
+		if d:IsA("Frame") then rot[d] = d.Rotation end
+	end
+	H.run(0.6)
+	local turned = 0
+	for d, r in pairs(rot) do
+		if d.Parent and d.Rotation ~= r and d.Size.X.Offset > 2 and d.Size.Y.Scale >= 0.5 then turned += 1 end
+	end
+	check(turned == 0, "没有绕圈转的扫描线")
+	local feed = CA.hudParts and CA.hudParts.feed
+	if feed then
+		check(feed.Position.Y.Offset >= box.Position.Y.Offset + box.Size.Y.Offset, "击杀信息挪到小地图下面（不叠在一起）")
+	end
+end
 
 local function shown()
 	local n = { enemyInf = 0, enemyVeh = 0, friendVeh = 0, ping = 0 }

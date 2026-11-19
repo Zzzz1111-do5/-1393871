@@ -359,9 +359,9 @@ function Drive.init(G)
       return Enum.ContextActionResult.Sink
     end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
     cam.CameraType = Enum.CameraType.Scriptable
-    panel.Visible = true
-    cross.Visible = true
-    gunMark.Visible = true
+    panel.Visible = not G.vehHudOn   -- 有新的驾驶界面（VehHud.lua）就不画这块小面板、圆圈、黄十字
+    cross.Visible = not G.vehHudOn
+    gunMark.Visible = not G.vehHudOn
     if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = true end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
@@ -658,6 +658,9 @@ function Drive.init(G)
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+      -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
+      st.kick = (w.dmg > 300) and 1 or 0.35
+      st.fireT = t
     end
     if ammo then   -- 本地先扣（服务器的数半秒后来校正）
       ammo[1] -= 1
@@ -830,6 +833,17 @@ function Drive.init(G)
       st.aimPt = aimPoint()
     end
     aimTurret(dt)
+    -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
+    st.kick = math.max(0, (st.kick or 0) - dt * 2.4)
+    if st.kick > 0 then
+      local k = st.kick * st.kick
+      local tt = os.clock()
+      if st.sight then
+        cam.CFrame = cam.CFrame * CFrame.Angles(k * 0.05 + math.noise(tt * 26, 1.3) * k * 0.012, math.noise(tt * 26, 4.1) * k * 0.012, math.noise(tt * 21, 8.2) * k * 0.02)
+      else
+        cam.CFrame = cam.CFrame * CF(0, k * 0.5, k * 2.2) * CFrame.Angles(k * 0.035, 0, math.noise(tt * 18, 2.9) * k * 0.02)
+      end
+    end
     do   -- 发动机声
       local thrK = (UIS:IsKeyDown(Enum.KeyCode.W) or UIS:IsKeyDown(Enum.KeyCode.S)) and 1 or ((G.touchDrive and G.touchDrive.thr ~= 0) and 1 or 0)
       engineStep(dt, thrK, math.abs(st.speed) / math.max(d.speed, 1))
@@ -848,9 +862,9 @@ function Drive.init(G)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
     local sp, on = cam:WorldToViewportPoint(gp)
-    gunMark.Visible = on and not st.sight
+    gunMark.Visible = on and not st.sight and not G.vehHudOn
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
-    cross.Visible = not st.sight
+    cross.Visible = not st.sight and not G.vehHudOn
     -- 仪表
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1

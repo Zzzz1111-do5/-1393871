@@ -111,7 +111,7 @@ function Sail.init(G)
     st.cf = CFrame.lookAt(st.pos, st.pos + V(-math.sin(yaw), 0, -math.cos(yaw)))
     G.sail, G.drive = st, st   -- G.drive：步兵的操作（Play）先停下、界面最下面一行换成开船说明
     cam.CameraType = Enum.CameraType.Scriptable
-    panel.Visible, cross.Visible = true, true
+    panel.Visible, cross.Visible = not G.vehHudOn, not G.vehHudOn   -- 有新的驾驶界面（VehHud.lua）就不画这块小面板和圆圈
     if G.touchSailUI then for _, f in ipairs(G.touchSailUI) do f.Visible = true end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
@@ -263,6 +263,7 @@ function Sail.init(G)
     local t = (vy + math.sqrt(disc)) / gg
     return p0 + V(dir.X, 0, dir.Z) * w.speed * t + V(0, yt - p0.Y, 0)
   end
+  G.sailFall = fallOfShot   -- 新的驾驶界面（VehHud.lua）按它画炮的落点
 
   local function tryFire()
     local d = st.d
@@ -466,7 +467,7 @@ function Sail.init(G)
       local fp = fallOfShot(1)
       if fp then
         local sp, on = cam:WorldToViewportPoint(fp)
-        gunMark.Visible = on
+        gunMark.Visible = on and not G.vehHudOn
         gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
         gunMark.TextColor3 = st.onT[1] and RGB(255, 210, 80) or RGB(170, 170, 170)
       end
@@ -498,7 +499,7 @@ function Sail.init(G)
       warn.Visible = false
     end
     bino.Visible = st.bino
-    cross.Visible = true
+    cross.Visible = not G.vehHudOn
     if st.bino then binoText.Text = string.format("×%.0f", 70 / ZOOMS[st.zoom]) end
     -- 仪表
     local em = st.em

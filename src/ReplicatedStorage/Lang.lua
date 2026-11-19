@@ -362,12 +362,15 @@ add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
 add("air.flareName", "热诱弹", "Flares")
 add("eo.title", "光电吊舱", "EO POD")
-add("eo.tv", "电视", "TV")
-add("eo.whot", "热成像 · 白热", "IR · WHT")
-add("eo.bhot", "热成像 · 黑热", "IR · BHT")
+add("eo.tv", "CCD", "CCD")   -- 吊舱页面左上的模式字（跟真的瞄准吊舱一样用英文缩写：电视 CCD、热成像白热 WHOT、黑热 BHOT）
+add("eo.whot", "WHOT", "WHOT")
+add("eo.bhot", "BHOT", "BHOT")
+add("eo.sayHold", "弹已投出，吊舱一直对着目标。", "Weapon away. Keep the pod on the target.")
+add("eo.sayPoint", "已跟踪目标，左键投放。", "Target tracked. Click to release.")
+add("eo.sayArea", "移动鼠标搜索目标，滚轮放大。", "Slew to search. Wheel to zoom.")
 add("eo.range", "距离", "RNG")
-add("eo.hint", "P 退出光电 · V 电视 / 白热 / 黑热 · Z / 滚轮 变焦 · R 换目标 · 左键 开火（对地弹、炮塔打吊舱看着的地方）· 飞机自动保持平飞",
-  "P exit pod · V TV / WHT / BHT · Z / Wheel zoom · R target · LMB fire (AGMs and turret go where the pod looks) · autopilot holds level flight")
+add("eo.hint", "[P] 退出吊舱 · 鼠标 转动 · 滚轮 变焦\n[Z] 宽 / 窄视场 · [V] 白热 / 黑热 / 电视\n[R] 换目标 · 左键 投放 / 开火 · 飞机自动保持平飞",
+  "[P] exit pod · mouse slew · wheel zoom\n[Z] wide / narrow · [V] white-hot / black-hot / TV\n[R] next target · click release / fire · autopilot holds level")
 -- 油量、副油箱（用户：增加油量这个东西并且可以选择挂载副油箱）
 add("air.fuel", "油 {1}%", "FUEL {1}%")
 add("air.fuelP", "油 {1}%", "Fuel {1}%")
@@ -798,5 +801,18 @@ end
 
 -- 军衔名（第几级）
 function Lang.rank(lang, i) return tr(lang, "rank." .. i) end
+
+-- 载具驾驶界面（VehHud.lua）
+add("vh.hull", "车体", "HULL")
+add("vh.smoke", "烟幕弹", "SMOKE")
+add("vh.ready", "就绪", "READY")
+add("vh.reload", "装填中", "RELOADING")
+add("vh.hullShip", "舰体", "HULL")
+add("vh.sam", "防空导弹", "SAM")
+add("vh.ciws", "近防炮", "CIWS")
+add("vh.auto", "自动", "AUTO")
+add("vh.loaded", "装填完毕", "LOADED")
+add("hit.ric", "跳弹！", "RICOCHET!")
+add("hit.ricIn", "炮弹被装甲弹开了", "Shell bounced off your armor")
 
 return Lang

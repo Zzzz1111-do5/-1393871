@@ -720,8 +720,7 @@ function UI.init(G)
   local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
   help.TextStrokeTransparency = 0.6
 
-  -- 小地图容器（右下）
-  -- 圆形雷达（Hud.lua 摆、画）：CanvasGroup 才能把里面的地图、亮点按圆角裁成圆
+  -- 小地图容器（Hud.lua 摆到右上、画成方形雷达小地图）：CanvasGroup 才能把里面的地图、亮点按框裁掉
   local miniBox = Instance.new("CanvasGroup")
   miniBox.Name = "Radar"
   miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
@@ -737,6 +736,7 @@ function UI.init(G)
   center.ZIndex = 30
   local centerT = 0
   local feed = frame(gui, UDim2.fromOffset(340, 160), UDim2.new(1, -16, 0, 120), PANEL, 1, Vector2.new(1, 0))
+  G.hudParts.feed = feed   -- 击杀信息：Hud.lua 把小地图放到右上后挪到它下面
   local feedList = Instance.new("UIListLayout")
   feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
   feedList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -788,6 +788,10 @@ function UI.init(G)
       return
     end
     if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
+    if kind == "ric" then   -- 跳弹（服务器 Ents.lua）：准星下面弹一行黄字（打出去的跳了 / 打过来的被弹开）
+      if G.pop then G.pop(T(key, ...), key == "hit.ricIn" and "ricIn" or "ric") end
+      return
+    end
     if kind == "refill" then   -- 战术平板的补给箱：本地弹药也补满（Play.lua）
       if G.refillAmmo then G.refillAmmo() end
       return

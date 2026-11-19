@@ -252,9 +252,9 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高）：0.3（约一格高）——长了小兵的腿、车轮、沙袋下半截都埋在草里，看着像半截身子在地下
-    --   （用户 11-18：现在所有单位都是半截身子在地下的——上午调到 0.55 就是这样；草多用 Roblox 自带的那种，是铺得更满，不是更高）
-    T.GrassLength = 0.3
+    -- 草叶长度（默认 0.7 约两格高）：0.45——用户 11-19：地上草高一点、多一点（Roblox 自带的那种）；
+    --   不回到 0.55（11-18 那样小兵、车轮下半截埋在草里，看着像半截身子在地下）。「多」靠 Map.material 让更多地方是 Grass
+    T.GrassLength = 0.45
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
