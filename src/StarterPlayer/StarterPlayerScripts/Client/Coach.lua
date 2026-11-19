@@ -531,14 +531,16 @@ function Coach.init(G)
     if panelOpen and panelMode ~= mode then buildPanel(mode) end
     -- 三步卡：换了状态（下车、阵亡）就收起；第一次进某种载具弹出来；30 秒没关自己收（算看过）
     if cardMode and (cardMode ~= mode or now - cardT0 > 30) then closeCard(now - cardT0 > 30) end
-    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
-    card.Visible = cardMode ~= nil and not panelOpen and hudOn
+    -- 电脑上开坦克（VehHud 的 MWT 那套，G.tankHudActive）：屏幕上只留那一套——三步卡、按键条、目标箭头都不出（F1 照样能开全部按键）
+    local mwt = G.tankHudActive == true
+    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not mwt and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
+    card.Visible = cardMode ~= nil and not panelOpen and hudOn and not mwt
     -- 按键提示
     local sub = mode and subOf(mode)
     if sub ~= lastSub then lastSub, subT0 = sub, now end
     local list, dim = nil, false
     local d = G.drive
-    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo))
+    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo)) or mwt
     if not hidden and mode then
       if mode == "inf" then
         local od = G.objDist and G.objDist()
@@ -561,7 +563,7 @@ function Coach.init(G)
     end
     -- 目标箭头、队友、空车
     local showWorld = hudOn and alive and S.phase ~= "end"
-    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)))
+    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)) and not mwt)
     stepMarks(dt, showWorld)
   end
 end

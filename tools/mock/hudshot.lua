@@ -7,41 +7,57 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local out = TEST_ARGS:match("out=(%S+)")
 local kind = TEST_ARGS:match("kind=(%a+)") or "tank"
+local mySide = TEST_ARGS:match("side=(%a+)") or "def"   -- atk：开 96 式那一边的车
 
 local G = T.boot()
 T.runUntil(function() return G.worldReady end, 120)
 local me = T.join("P1", 7501, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)
 local P = G.P[me]
-P.team = "def"
-me.Team = G.TEAM.def
+P.team = mySide
+me.Team = G.TEAM[mySide]
 me.Neutral = false
-me:SetAttribute("Side", "def")
+me:SetAttribute("Side", mySide)
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "camp")
+T.act("deploy", "rifle", mySide == "def" and "camp" or "fleet")
 R.run(3)
 check(P.alive, "守方在营地出生")
 if not TEST_ARGS:find("prep", 1, true) then T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10) end
 
 if kind ~= "inf" then
   local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
-  local list = G.Config.Vehicles.def[kind] or G.Config.Vehicles.def.tank
+  local list = G.Config.Vehicles[mySide][kind] or G.Config.Vehicles[mySide].tank
+  local foeSide = mySide == "def" and "atk" or "def"
   local tid = list[1]
   local d = VD.get(tid)
   local hrp = me.Character.HumanoidRootPart
   local p = hrp.Position
   local x, z = p.X + 30, p.Z + 30
-  local e = G.newVehicle("def", tid, G.vehBaseAt(d, x, z, V3(0, 0, -1)))
-  local ft = G.Config.Vehicles.atk.tank[1]
-  G.newVehicle("atk", ft, G.vehBaseAt(VD.get(ft), x + 25, z - 160, V3(0, 0, 1)))
+  if mySide == "atk" then   -- 攻方在舰队出生：找一块岸上的平地
+    local pt = G.points and (G.points.A or G.points.C)
+    local px, pz = pt and pt.pos and pt.pos.X or 0, pt and pt.pos and pt.pos.Z or 0
+    for r = 120, 900, 40 do
+      local found = false
+      for a = 0, 330, 30 do
+        local tx, tz = px + math.cos(math.rad(a)) * r, pz + math.sin(math.rad(a)) * r
+        if G.Map.height(tx, tz) > 4 and G.Map.slope(tx, tz) < 0.12 and G.Map.height(tx, tz - 160) > 3 then x, z, found = tx, tz, true break end
+      end
+      if found then break end
+    end
+  end
+  local e = G.newVehicle(mySide, tid, G.vehBaseAt(d, x, z, V3(0, 0, -1)))
+  local ft = G.Config.Vehicles[foeSide].tank[1]
+  G.newVehicle(foeSide, ft, G.vehBaseAt(VD.get(ft), x + 25, z - 160, V3(0, 0, 1)))
   R.run(0.5)
   me.Character:PivotTo(CF(x + 6, G.Map.ground(x + 6, z) + 3.5, z))
   R.run(0.3)
   T.act("enterVeh", e.id)
-  R.run(2)
+  R.run(1)
   check(C.drive ~= nil, "坐进 " .. tid)
+  if C.drive then C.drive.camYaw = C.drive.yaw + math.pi end   -- 镜头朝车头看（模拟器里镜头偏航和车头差半圈；炮塔不用转过来）
+  R.run(1)
   T.key(Enum.KeyCode.W, true)
   R.run(1.5)
   T.key(Enum.KeyCode.W, false)
@@ -64,7 +80,13 @@ local function place(o, px, py, pw, ph, scale, guiName, z0, alpha)
   local y = py + ps.YS * ph + ps.YO * scale - ap.Y * h
   return x, y, w, h
 end
-local function walk(o, px, py, pw, ph, scale, guiName, depth, alpha, forced)
+local function cut(a, x, y, w, h, r)   -- 裁剪框（ClipsDescendants、CanvasGroup）：和上一层的取交集
+  local b = { x, y, x + w, y + h, r or 0 }
+  if not a then return b end
+  return { math.max(a[1], b[1]), math.max(a[2], b[2]), math.min(a[3], b[3]), math.min(a[4], b[4]), (r and r > 0) and r or a[5] }
+end
+local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
+  ga = ga or 1
   -- 子元素：有 UIListLayout 的按顺序排
   local layout = o:FindFirstChildOfClass("UIListLayout")
   local kids = {}
@@ -101,10 +123,29 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, alpha, forced)
       rec.scaled = c.TextScaled
       rec.xa = tostring(c.TextXAlignment)
     end
-    if c._cls == "ImageLabel" or c._cls == "ImageButton" then rec.img = c.Image rec.ic = c3(c.ImageColor3) rec.iT = c.ImageTransparency end
+    if c._cls == "ImageLabel" or c._cls == "ImageButton" then
+      rec.img = c.Image rec.ic = c3(c.ImageColor3) rec.iT = c.ImageTransparency
+      rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
+    end
+    rec.clip, rec.ga = clip, ga
+    local grad = c:FindFirstChildOfClass("UIGradient")
+    if grad then
+      pcall(function()
+        local kp = {}
+        for _, k in ipairs(grad.Transparency.Keypoints) do kp[#kp + 1] = { k.Time, k.Value } end
+        rec.grad = { rot = grad.Rotation or 0, kp = kp }
+      end)
+    end
     items[#items + 1] = rec
     perGui[guiName] = (perGui[guiName] or 0) + 1
-    if c._cls ~= "ViewportFrame" then walk(c, x, y, w, h, sc, guiName, depth + 1) end
+    local kidClip, kidGa = clip, ga
+    if c._cls == "CanvasGroup" then
+      kidGa = ga * (1 - (c.GroupTransparency or 0))
+      kidClip = cut(clip, x, y, w, h, rec.corner)
+    elseif c.ClipsDescendants then
+      kidClip = cut(clip, x, y, w, h, nil)
+    end
+    if c._cls ~= "ViewportFrame" then walk(c, x, y, w, h, sc, guiName, depth + 1, kidClip, kidGa) end
   end
 end
 local pg = me:FindFirstChildOfClass("PlayerGui")

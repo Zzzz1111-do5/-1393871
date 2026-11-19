@@ -244,6 +244,147 @@ function VehHud.init(G)
   TK.thr.BackgroundColor3 = CYAN
   TK.hp.pct.Size = UD2(0, 110, 0, 14)
 
+  ---------------------------------------------------------------- 坦克（电脑）：MWT 那套（用户 11-19 又发了一遍截图：「确保我开坦克是这个驾驶 ui」）
+  --   右下：车名、青色的侧面剪影（挨打闪红、血少变黄 / 红）、血量「当前/满」（当前青色）；最右下：每种武器一个六边形按钮
+  --   （弹种缩写 + 炮弹图标，选中的青色发光）；正下方偏右：烟幕弹的青色全息图标（X、剩几发）；
+  --   准星（下面 placeTank）：镜头准心一个小圈里「+」、左右两道短刻度；准心左边弹药数、下面「已就绪 / 装填」，右边测距；
+  --   炮现在指的地方一个「∧」（颜色 = 打不打得穿）。电脑上开坦克时原来右下两块面板、顶上的罗盘收起（触屏照旧用紧凑读数面板）
+  local MW = {}
+  local HOLO = RGB(110, 226, 240)
+  MW.root = frame(hud, UD2(1, 0, 1, 0), nil, INK, 1)
+  MW.root.Name = "MWT"
+  MW.root.Visible = false
+  -- 右下一块（自己一个 UIScale，贴着右下角缩放）
+  MW.br = frame(MW.root, UD2(0, 460, 0, 124), UD2(1, -18, 1, -14), INK, 1, V2(1, 1))
+  MW.br.Name = "MwtVehicle"
+  MW.brScale = Instance.new("UIScale")
+  MW.brScale.Parent = MW.br
+  -- 六边形（尖朝上）：外接圆半径 R——三块转 0 / 60 / 120° 的长方形拼成实心的底（放在 CanvasGroup 里统一调透明，叠的地方不发黑），六条边描边
+  local function hexagon(parent, cx, cy, R)
+    local o = {}
+    o.box = frame(parent, UD2(0, R * 2, 0, R * 2), UD2(0, cx, 0, cy), INK, 1, V2(0.5, 0.5))
+    local cg = Instance.new("CanvasGroup")
+    cg.Size, cg.BackgroundTransparency = UD2(1, 0, 1, 0), 1
+    cg.Parent = o.box
+    o.fillGroup = cg
+    o.fills = {}
+    for i, a in ipairs({ 0, 60, 120 }) do
+      local f = frame(cg, UD2(0, R * 1.732, 0, R), UD2(0.5, 0, 0.5, 0), INK, 0, V2(0.5, 0.5))
+      f.Rotation = a
+      o.fills[i] = f
+    end
+    o.edges = {}
+    for k = 0, 5 do
+      local a0, a1 = math.rad(90 + k * 60), math.rad(150 + k * 60)
+      local x0, y0, x1, y1 = math.cos(a0) * R, -math.sin(a0) * R, math.cos(a1) * R, -math.sin(a1) * R
+      local e = frame(o.box, UD2(0, R + 1, 0, 2), UD2(0.5, (x0 + x1) / 2, 0.5, (y0 + y1) / 2), TXT, 0, V2(0.5, 0.5))
+      e.Rotation = math.deg(math.atan2(y1 - y0, x1 - x0))
+      o.edges[k + 1] = e
+    end
+    return o
+  end
+  -- 炮弹图标：斜着的弹体 + 弹头
+  local function shellIcon(parent, cx, cy, len)
+    local o = {}
+    o.body = roundf(frame(parent, UD2(0, 6, 0, len), UD2(0, cx, 0, cy), TXT, 0, V2(0.5, 0.5)), UD(0, 2))
+    o.body.Rotation = 40
+    local rad = math.rad(40)
+    o.tip = roundf(frame(parent, UD2(0, 6, 0, 8), UD2(0, cx + math.sin(rad) * (len / 2 + 3), 0, cy - math.cos(rad) * (len / 2 + 3)), TXT, 0, V2(0.5, 0.5)))
+    o.tip.Rotation = 40
+    return o
+  end
+  MW.hex = {}
+  local HEX_R = 32
+  for i = 1, 3 do
+    local R = HEX_R
+    local h = hexagon(MW.br, 460 - R, 124 - R - 2, R)   -- 横着摆在哪：stepTank 按这辆车有几种武器靠右排
+    h.box.Name = "Ammo" .. i
+    h.icon = shellIcon(h.box, R, R - 4, 22)
+    h.key = label(h.box, "", UD2(0, 16, 0, 14), UD2(0.5, -R * 0.5, 0.5, -R * 0.62), 11, MUTE, BOLD)
+    h.tag = label(h.box, "", UD2(0, R * 1.6, 0, 12), UD2(0.5, 4, 0.5, R * 0.5), 10, MUTE, BOLD, V2(0.5, 0.5))
+    h.tag.Rotation = -20
+    MW.hex[i] = h
+  end
+  -- 车名、剪影、血量（六边形左边）
+  MW.veh = frame(MW.br, UD2(0, 190, 0, 112), UD2(0, 0, 0, 6), INK, 1)
+  MW.veh.Name = "MwtHull"
+  MW.name = label(MW.veh, "", UD2(1, 0, 0, 20), UD2(0, 0, 0, 0), 16, TXT, BOLD)
+  MW.name.Name = "VehName"
+  MW.name.TextStrokeTransparency = 0.6
+  MW.sil = frame(MW.veh, UD2(0, 170, 0, 50), UD2(0.5, 0, 0, 24), INK, 1, V2(0.5, 0))
+  MW.sil.Name = "Silhouette"
+  MW.silParts = {}
+  -- 侧面剪影（炮口朝右）：负重轮那一条、车体、首上斜面、炮塔、炮塔尾舱、车长塔、炮管、炮口
+  for _, b in ipairs({ { 14, 31, 112, 14, 7, 0 }, { 6, 24, 124, 10, 2, 0 }, { 118, 21, 20, 9, 2, -24 }, { 44, 12, 52, 13, 3, 0 },
+    { 34, 14, 14, 9, 2, 0 }, { 54, 6, 12, 7, 2, 0 }, { 94, 16, 70, 3, 1, 0 }, { 160, 14, 8, 6, 1, 0 } }) do
+    local f = roundf(frame(MW.sil, UD2(0, b[3], 0, b[4]), UD2(0, b[1], 0, b[2]), HOLO, 0.08), UD(0, b[5]))
+    f.Rotation = b[6]
+    table.insert(MW.silParts, f)
+  end
+  for i = 0, 5 do   -- 负重轮：深色小圆点压在那一条上
+    table.insert(MW.silParts, roundf(frame(MW.sil, UD2(0, 9, 0, 9), UD2(0, 26 + i * 18, 0, 33.5), INK, 0.35)))
+  end
+  MW.hp = label(MW.veh, "", UD2(1, 0, 0, 22), UD2(0, 0, 0, 80), 17, TXT, BOLD)
+  MW.hp.Name = "HullHp"
+  MW.hp.RichText = true
+  MW.hp.TextStrokeTransparency = 0.6
+  -- 正下方偏右：烟幕弹的全息图标
+  MW.sm = frame(MW.root, UD2(0, 60, 0, 70), UD2(0.5, 70, 1, -16), INK, 1, V2(0.5, 1))
+  MW.sm.Name = "MwtSmoke"
+  MW.smScale = Instance.new("UIScale")
+  MW.smScale.Parent = MW.sm
+  MW.smCan = roundf(frame(MW.sm, UD2(0, 24, 0, 34), UD2(0.5, 0, 0, 16), INK, 0.6, V2(0.5, 0)), UD(0, 5))
+  MW.smCan.Rotation = -16
+  MW.smStroke = stroke(MW.smCan, HOLO, 2, 0)
+  MW.smCap = frame(MW.smCan, UD2(0, 10, 0, 7), UD2(0.5, 0, 0, -6), HOLO, 0, V2(0.5, 0))
+  MW.smPin = frame(MW.smCan, UD2(0, 2, 0, 12), UD2(0.5, 5, 0, -14), HOLO, 0, V2(0.5, 0))
+  MW.smWin = frame(MW.smCan, UD2(0, 10, 0, 12), UD2(0.5, 0, 0.5, 2), HOLO, 0.55, V2(0.5, 0.5))
+  MW.smTxt = label(MW.sm, "", UD2(1, 20, 0, 14), UD2(0.5, 0, 1, -2), 12, HOLO, BOLD, V2(0.5, 1))
+  MW.smTxt.Name = "SmokeLeft"
+  MW.smTxt.TextStrokeTransparency = 0.6
+  ---------------------------------------------------------------- 3A：抗锯齿的图（HudArt 解的 HudIcons，用户 11-19：「像素感太强，我要 3A 级别的 UI」）
+  --   车：原模型正侧面拍的全息图（带柔光晕），按车型换；六边形的底 / 边 / 光晕、炮弹 / 机枪弹、烟幕弹都是 4 倍超采样画的图。
+  --   用不了 EditableImage 时（游戏设置 → 安全里没打开 Mesh / Image API）退回上面方块拼的
+  local function img(parent, name, size, pos, anchor, color, tr)
+    local l = Instance.new("ImageLabel")
+    l.Name = name
+    l.BackgroundTransparency = 1
+    l.Size, l.Position, l.AnchorPoint = size, pos or UD2(), anchor or V2()
+    l.ImageColor3 = color or WHITE
+    l.ImageTransparency = tr or 0
+    l.Parent = parent
+    return l
+  end
+  local function art(label, name) return G.hudIconOn ~= nil and G.hudIconOn(label, name) == true end
+  MW.icon = img(MW.veh, "HoloIcon", UD2(0, 156, 0, 54), UD2(0.5, 0, 0, 24), V2(0.5, 0), HOLO)
+  MW.icon.Visible = false
+  for _, h in ipairs(MW.hex) do
+    local R2 = HEX_R * 2
+    h.iFill = img(h.box, "HexFill", UD2(0, R2, 0, R2 * 80 / 72), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5), INK, 0.35)
+    h.iGlow = img(h.box, "HexGlow", UD2(0, R2, 0, R2 * 80 / 72), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5), HOLO, 0.15)
+    h.iEdge = img(h.box, "HexEdge", UD2(0, R2, 0, R2 * 80 / 72), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5), MUTE, 0)
+    h.iIcon = img(h.box, "AmmoIcon", UD2(0, 30, 0, 30), UD2(0.5, 0, 0.5, -6), V2(0.5, 0.5), MUTE, 0)
+    h.art = art(h.iFill, "hexFill") and art(h.iGlow, "hexGlow") and art(h.iEdge, "hexEdge")
+    h.iFill.ZIndex, h.iGlow.ZIndex, h.iEdge.ZIndex, h.iIcon.ZIndex = 1, 2, 3, 4
+    h.key.ZIndex, h.tag.ZIndex = 5, 5
+    h.fillGroup.Visible = not h.art
+    for _, e in ipairs(h.edges) do e.Visible = not h.art end
+    h.icon.body.Visible, h.icon.tip.Visible = not h.art, not h.art
+    h.iFill.Visible, h.iGlow.Visible, h.iEdge.Visible, h.iIcon.Visible = h.art, h.art, h.art, h.art
+  end
+  MW.smImg = img(MW.sm, "SmokeIcon", UD2(0, 46, 0, 52), UD2(0.5, 0, 0, 2), V2(0.5, 0), HOLO, 0)
+  MW.smArt = art(MW.smImg, "smoke")
+  MW.smImg.Visible = MW.smArt
+  MW.smCan.Visible = not MW.smArt
+  -- 弹种缩写（六边形里）：主炮穿甲弹 APFSDS、机炮 HEI、机枪 MG、火炮 HE
+  local function ammoTag(w)
+    if not w then return "" end
+    if w.kind == "shell" then return ((w.dmg or 0) >= 300) and "APFSDS" or "HEI" end
+    if w.kind == "gun" then return "MG" end
+    if w.kind == "arty" then return "HE" end
+    return string.upper(string.sub(w.kind or "", 1, 3))
+  end
+
   ---------------------------------------------------------------- 舰艇：舰况、武器
   local SH = {}
   SH.car = panel(hud, UD2(0, 296, 0, 156), UD2(1, -334, 1, -40), V2(1, 1))   -- 比坦克的宽一点：右边放车钟梯子
@@ -404,6 +545,7 @@ function VehHud.init(G)
 
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
+  local mwtOn = false   -- 电脑上开坦克：MWT 那套（帧函数里按 compact 定）
   local TR = {}
   TR.root = frame(ret, UD2(0, 120, 0, 120), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   TR.root.Name = "TankReticle"
@@ -438,8 +580,55 @@ function VehHud.init(G)
   TR.state = label(TR.root, "", UD2(0, 110, 0, 16), UD2(0.5, -46, 0.5, 11), 13, CYAN, BOLD, V2(1, 0.5), RIGHT)
   TR.state.Name = "ReadyState"
   TR.state.TextStrokeTransparency = 0.6
+  TR.chev = {   -- MWT：炮指的地方一个「∧」（两道斜线，顶点在这一点上方一点）
+    frame(TR.root, UD2(0, 11, 0, 2), UD2(0.5, -3.6, 0.5, 2.2), TXT, 0, V2(0.5, 0.5)),
+    frame(TR.root, UD2(0, 11, 0, 2), UD2(0.5, 3.6, 0.5, 2.2), TXT, 0, V2(0.5, 0.5)),
+  }
+  TR.chev[1].Rotation, TR.chev[2].Rotation = -52, 52
+  do   -- 有抗锯齿的图就用图（转了角度的细方块边缘有锯齿）
+    local l = Instance.new("ImageLabel")
+    l.Name = "Chevron"
+    l.BackgroundTransparency = 1
+    l.Size, l.Position, l.AnchorPoint = UD2(0, 24, 0, 16), UD2(0.5, 0, 0.5, 1), V2(0.5, 0.5)
+    l.Parent = TR.root
+    if G.hudIconOn and G.hudIconOn(l, "chevron") then TR.chevImg = l else l:Destroy() end
+  end
   local lagArrow = label(ret, "▶", UD2(0, 16, 0, 16), UD2(0, 0, 0, 0), 13, AMBER, BOLD, V2(0.5, 0.5))
   lagArrow.Name = "TurretLag"
+  -- MWT（电脑开坦克）：镜头准心小圈里一个「+」、左右两道短刻度；准心左边弹药数（前面一颗小炮弹）、下面「已就绪 / 装填」，右边测距；
+  --   炮现在指的地方一个「∧」（TR.root 的位置，颜色 = 打不打得穿）。触屏照旧用上面那套
+  local MR = {}
+  MR.plus = {
+    frame(camAim, UD2(0, 8, 0, 1.5), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)),
+    frame(camAim, UD2(0, 1.5, 0, 8), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)),
+  }
+  MR.ticks = {
+    frame(ret, UD2(0, 2, 0, 8), UD2(0.5, -54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
+    frame(ret, UD2(0, 2, 0, 8), UD2(0.5, 54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
+  }
+  MR.ammo = label(ret, "", UD2(0, 80, 0, 22), UD2(0.5, -76, 0.5, -14), 19, TXT, BOLD, V2(1, 0.5), RIGHT)
+  MR.ammo.Name = "MwtAmmo"
+  MR.ammo.TextStrokeTransparency = 0.55
+  MR.bullet = roundf(frame(ret, UD2(0, 4, 0, 11), UD2(0.5, -120, 0.5, -14), TXT, 0.05, V2(0.5, 0.5)), UD(0, 2))   -- 弹药数前面的小炮弹（stepTank 按位数挪）
+  MR.state = label(ret, "", UD2(0, 140, 0, 24), UD2(0.5, -76, 0.5, 12), 20, CYAN, BOLD, V2(1, 0.5), RIGHT)
+  MR.state.Name = "MwtState"
+  MR.state.TextStrokeTransparency = 0.55
+  MR.rng = label(ret, "", UD2(0, 120, 0, 22), UD2(0.5, 86, 0.5, -14), 19, TXT, BOLD, V2(0, 0.5), LEFT)
+  MR.rng.Name = "MwtRange"
+  MR.rng.TextStrokeTransparency = 0.55
+  do
+    local l = Instance.new("ImageLabel")
+    l.Name = "BulletIcon"
+    l.BackgroundTransparency = 1
+    l.Size, l.Position, l.AnchorPoint = UD2(0, 7, 0, 16), MR.bullet.Position, V2(0.5, 0.5)
+    l.ImageColor3 = TXT
+    l.Parent = ret
+    if G.hudIconOn and G.hudIconOn(l, "bullet") then
+      MR.bullet:Destroy()
+      MR.bullet = l
+    else l:Destroy() end
+  end
+  MR.all = { MR.ticks[1], MR.ticks[2], MR.ammo, MR.bullet, MR.state, MR.rng }
 
   -- 舰艇（《现代战舰》）：主炮落点一个细的大圈、四根长线（横线上有刻度）、中间菱形；外圈 40 段装填；右下距离、炮弹飞多久，左下炮名；
   --   瞄着的敌人：上方一张卡（名字、距离、血条），照它的航速和炮弹飞的时间算提前量（琥珀色小圈 + 一串点连过去）；
@@ -606,6 +795,30 @@ function VehHud.init(G)
     TR.ammo.Text = ammoTxt or ""
     TR.state.Text = ready and T("vh.rdy") or T("vh.loading", string.format("%.1f", left))
     TR.state.TextColor3 = ready and CYAN or AMBER
+    -- MWT（电脑）：炮指的地方只留「∧」，数字挪到镜头准心两边
+    local mw = mwtOn
+    for _, sgx in ipairs(TR.segs) do sgx.Visible = not mw end
+    for _, tk in ipairs(TR.ticks) do tk.Visible = not mw end
+    TR.dot.Visible, TR.pen.Visible, TR.rng.Visible, TR.ammo.Visible, TR.state.Visible = not mw, not mw, not mw, not mw, not mw
+    local chevCol = penC or (ready and WHITE or AMBER)
+    for _, c in ipairs(TR.chev) do
+      c.Visible = mw and TR.chevImg == nil
+      c.BackgroundColor3 = chevCol
+    end
+    if TR.chevImg then
+      TR.chevImg.Visible = mw
+      TR.chevImg.ImageColor3 = chevCol
+    end
+    for _, x in ipairs(MR.all) do x.Visible = mw end
+    for _, x in ipairs(MR.plus) do x.Visible = mw end
+    if mw then
+      MR.ammo.Text = ammoTxt or ""
+      MR.bullet.Position = UD2(0.5, -76 - #(ammoTxt or "") * 11 - 9, 0.5, -14)
+      MR.bullet.Visible = (ammoTxt or "") ~= ""
+      MR.state.Text = ready and T("vh.rdy") or T("vh.loading", string.format("%.1f", left))
+      MR.state.TextColor3 = ready and CYAN or AMBER
+      MR.rng.Text = TR.rng.Text
+    end
     local off = V2(vp.X / 2, vp.Y / 2) - V2(sp.X, sp.Y)
     lagArrow.Visible = lag and on and off.Magnitude > 30
     if lagArrow.Visible then
@@ -619,6 +832,8 @@ function VehHud.init(G)
 
   local function hideReticles()
     TR.root.Visible, SR.root.Visible, lagArrow.Visible = false, false, false
+    for _, x in ipairs(MR.all) do x.Visible = false end
+    for _, x in ipairs(MR.plus) do x.Visible = false end
     SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false
     for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
     fireCC.Brightness = 0
@@ -680,6 +895,75 @@ function VehHud.init(G)
     end
     TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
     setRing(TK.ring, relK, ready, left)
+    if mwtOn then
+      -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
+      MW.name.Text = TK.name.Text
+      local silCol = (k > 0.6 and col == OK) and HOLO or col
+      if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
+        MW.iconId = d.id
+        local ok = art(MW.icon, "veh_" .. d.id)
+        local ic = ok and G.hudIcon("veh_" .. d.id)
+        if ic then MW.icon.Size = UD2(0, math.floor(ic.w * 0.62 + 0.5), 0, math.floor(ic.h * 0.62 + 0.5)) end
+        MW.icon.Visible = ok
+        MW.sil.Visible = not ok
+        MW.hp.Position = UD2(0, 0, 0, ok and (24 + (ic and ic.h * 0.62 or 54) - 2) or 80)
+      end
+      MW.icon.ImageColor3 = silCol
+      for i, f in ipairs(MW.silParts) do
+        if i <= 8 then f.BackgroundColor3 = silCol end
+      end
+      local hp, mx = math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0)
+      local hc = (k > 0.6) and HOLO or col
+      MW.hp.Text = string.format('<font color="#%02X%02X%02X">%d</font>/%d', math.floor(hc.R * 255), math.floor(hc.G * 255), math.floor(hc.B * 255), hp, mx)
+      local n = 0
+      for i = 1, #MW.hex do if d.weapons[i] then n = i end end
+      if MW.nHex ~= n then
+        MW.nHex = n
+        for i, h in ipairs(MW.hex) do
+          h.box.Visible = i <= n
+          h.box.Position = UD2(0, 460 - HEX_R - (n - i) * (HEX_R * 1.732 + 8), 0, 124 - HEX_R - 2)
+        end
+        local left0 = 460 - HEX_R - (n - 1) * (HEX_R * 1.732 + 8) - HEX_R
+        MW.veh.Position = UD2(0, math.max(0, left0 - 200), 0, 6)
+      end
+      for i = 1, n do
+        local h = MW.hex[i]
+        local wid = d.weapons[i]
+        local w = VD.W[wid]
+        local ammo = vs and vs.ammo and vs.ammo[wid]
+        local empty = ammo ~= nil and ammo[1] + ammo[2] == 0
+        local sel = i == st.wi
+        local edge = empty and BAD or (sel and HOLO or MUTE)
+        for _, e in ipairs(h.edges) do
+          e.BackgroundColor3 = edge
+          e.BackgroundTransparency = sel and 0 or 0.35
+        end
+        for _, f in ipairs(h.fills) do f.BackgroundColor3 = sel and RGB(16, 58, 66) or INK end
+        h.fillGroup.GroupTransparency = sel and 0.25 or 0.45
+        h.icon.body.BackgroundColor3, h.icon.tip.BackgroundColor3 = sel and HOLO or MUTE, sel and WHITE or MUTE
+        h.key.Text = tostring(i)
+        h.key.TextColor3 = sel and TXT or MUTE
+        h.tag.Text = ammoTag(w)
+        h.tag.TextColor3 = sel and HOLO or MUTE
+        if h.art then
+          h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(14, 52, 60) or INK, sel and 0.22 or 0.4
+          h.iGlow.Visible = sel and not empty
+          h.iEdge.ImageColor3, h.iEdge.ImageTransparency = edge, sel and 0 or 0.3
+          local ic = (w and w.kind == "gun") and "mg" or "shell"
+          if h.iconName ~= ic then h.iconName = ic art(h.iIcon, ic) end
+          h.iIcon.ImageColor3 = sel and Color3.new(1, 1, 1):Lerp(HOLO, 0.35) or MUTE
+        end
+      end
+      local sm = vs and vs.smoke or 0
+      MW.smTxt.Text = string.format("X  ×%d", sm)
+      local dim = sm <= 0
+      MW.smStroke.Transparency = dim and 0.65 or 0
+      MW.smCap.BackgroundTransparency = dim and 0.65 or 0
+      MW.smPin.BackgroundTransparency = dim and 0.65 or 0
+      MW.smWin.BackgroundTransparency = dim and 0.85 or 0.55
+      MW.smTxt.TextTransparency = dim and 0.5 or 0
+      MW.smImg.ImageTransparency = dim and 0.62 or 0
+    end
     local gear = TK.gear.Text
     updateCompact(TK.name.Text, TK.spd.Text .. " km/h", tonumber(gear) and ("D" .. gear) or gear, TK.hdg.Text,
       TK.hp.lab.Text, k, col, TK.rows[st.wi], relK, ready, left)
@@ -910,10 +1194,11 @@ function VehHud.init(G)
   end
   SG.ring = frame(sg, UD2(0, 180, 0, 180), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   SG.ring.Name = "SightReload"
-  for i = 1, 32 do
-    local a = (i - 0.5) / 32 * 2 * math.pi
-    SG.dots[i] = roundf(frame(SG.ring, UD2(0, 4, 0, 4), UD2(0.5, math.sin(a) * 86, 0.5, -math.cos(a) * 86), TXT, 0.7, V2(0.5, 0.5)))
-  end
+  -- 装填环：原来 32 颗 4 像素的小点（用户 11-19：像素感太强）——换成一道平滑的细圆环（圆角 + 描边，抗锯齿），
+  --   装填中琥珀色、越装越亮，装好变绿（剩几秒写在右边的状态框里）
+  SG.ringLine = roundf(frame(SG.ring, UD2(0, 172, 0, 172), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  SG.ringLine.Name = "ReloadRing"
+  SG.ringStroke = stroke(SG.ringLine, TXT, 1.6, 0.6)
   SG.scale = frame(sg, UD2(0, 60, 0, 220), UD2(0.5, -250, 0.5, 0), INK, 1, V2(0.5, 0.5))
   SG.scale.Name = "RangeScale"
   frame(SG.scale, UD2(0, 2, 1, 0), UD2(0, 30, 0, 0), TXT, 0.35)
@@ -985,6 +1270,9 @@ function VehHud.init(G)
       pr[3].Scale, pr[4].Scale = s, s
       pr[1].Position, pr[2].Position = UD2(1, -334 * s, 1, -40 * s), UD2(1, -24 * s, 1, -40 * s)
     end
+    MW.brScale.Scale, MW.smScale.Scale = s, s
+    MW.br.Position = UD2(1, -18 * s, 1, -14 * s)
+    MW.sm.Position = UD2(0.5, 70 * s, 1, -16 * s)
 
     local x, y, width = compactDock(vp, mob, 342, 72)
     local split = width >= 232 and 108 or 88
@@ -1030,11 +1318,8 @@ function VehHud.init(G)
       local tint = (cc and cc.Enabled) and cc.TintColor or Color3.fromRGB(255, 255, 255)
       SG.haze.BackgroundColor3 = Color3.fromRGB(168, 156, 136):Lerp(tint, 0.55)
     end
-    local lit = math.floor(relK * 32 + 0.001)
-    for i, dd in ipairs(SG.dots) do
-      dd.BackgroundColor3 = ready and OK or (i <= lit and AMBER or TXT)
-      dd.BackgroundTransparency = ready and 0.25 or (i <= lit and 0.05 or 0.75)
-    end
+    SG.ringStroke.Color = ready and OK or AMBER
+    SG.ringStroke.Transparency = ready and 0.3 or (0.8 - 0.5 * relK)
     SG.ammo.Text = wid and T("vw." .. wid) or ""
     SG.count.Text = wid and (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞") or ""
     SG.state.Text = ready and T("vh.loaded") or string.format("%s  %.1f", T("vh.reload"), left)
@@ -1068,6 +1353,8 @@ function VehHud.init(G)
     if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
       hp0 = nil
+      mwtOn = false
+      G.tankHudActive = false
     end
     if not gui.Enabled and not inSight then return end
     layoutPanels()
@@ -1076,8 +1363,11 @@ function VehHud.init(G)
       if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
       return
     end
-    compGroup.Visible = not compact and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
-    TK.car.Visible, TK.arm.Visible = showTank and not compact, showTank and not compact
+    mwtOn = showTank and not compact
+    G.tankHudActive = mwtOn
+    MW.root.Visible = mwtOn
+    compGroup.Visible = not compact and not showTank and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
+    TK.car.Visible, TK.arm.Visible = false, false   -- 电脑开坦克是 MWT 那套（MW），触屏是紧凑读数面板（MS）
     SH.car.Visible, SH.arm.Visible = sailing and not compact, sailing and not compact
     MS.box.Visible = compact
     local ok, err = pcall(showTank and stepTank or stepShip, showTank and tank or ship)

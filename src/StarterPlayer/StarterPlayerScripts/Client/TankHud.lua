@@ -73,7 +73,7 @@ function TankHud.init(G)
   local spotTxt = label(spot, "", UD2(1, -34, 1, 0), UD2(0, 30, 0, 0), 15, AMBER, BOLD, nil, Enum.TextXAlignment.Left)
 
   -- 爆反 / 主动防御还剩多少
-  local armLine = label(gui, "", UDim2.fromOffset(300, 18), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -204), 13, CYAN, MONO,
+  local armLine = label(gui, "", UDim2.fromOffset(300, 18), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -150), 13, CYAN, MONO,
     mobile and V2(0.5, 0) or V2(1, 1), mobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Right)
 
   -- 圆形小地图的方位刻度（挪到左下时才显示）
@@ -113,18 +113,27 @@ function TankHud.init(G)
     docked = on
     local corner = box:FindFirstChildOfClass("UICorner")
     local squad = G.hudParts.hud and G.hudParts.hud:FindFirstChild("Squad")   -- 左下的小队名单（Hud.lua）：挪到圆形小地图右边，不叠在一起
+    -- 用户 11-19（MWT 截图）：圆形小地图里只有地图和亮点——方框式的网格、取景框、N / 航向 / 范围读数收起（外圈 0 / 90 / 180 / 270 是这里画的）；
+    --   小队名单开坦克时收起（截图上没有）
+    local function deco(show)
+      for _, c in ipairs(box:GetChildren()) do
+        if c.Name == "RadarDeco" and c:IsA("GuiObject") then c.Visible = show end
+      end
+    end
     if on then
       saved = { a = box.AnchorPoint, p = box.Position, s = box.Size, r = corner and corner.CornerRadius,
-        rr = G.hudLayout and G.hudLayout.radarRight, sq = squad and squad.Position }
+        rr = G.hudLayout and G.hudLayout.radarRight, sq = squad and squad.Visible }
       box.AnchorPoint, box.Position, box.Size = V2(0, 1), UD2(0, 26, 1, -26), UDim2.fromOffset(MS, MS)
       if corner then corner.CornerRadius = UDim.new(0.5, 0) end
       if G.hudLayout then G.hudLayout.radarRight = false end
-      if squad then squad.Position = UD2(0, 26 + MS + 30, 1, -18) end
+      if squad then squad.Visible = false end
+      deco(false)
     elseif saved then
       box.AnchorPoint, box.Position, box.Size = saved.a, saved.p, saved.s
       if corner and saved.r then corner.CornerRadius = saved.r end
       if G.hudLayout then G.hudLayout.radarRight = saved.rr end
-      if squad and saved.sq then squad.Position = saved.sq end
+      if squad and saved.sq ~= nil then squad.Visible = saved.sq end
+      deco(true)
     end
     ring.Visible = on
   end

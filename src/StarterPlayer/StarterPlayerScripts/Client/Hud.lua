@@ -220,12 +220,14 @@ function Hud.init(G)
     lv.ZIndex = 18
     local lh = line(box, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, k), LINE, a, V2(0.5, 0.5))
     lh.ZIndex = 18
+    lv.Name, lh.Name = "RadarDeco", "RadarDeco"   -- 开坦克时小地图变圆（TankHud）：方框式的网格、取景框、读数收起
   end
   for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
     local ax = V2(c[1], c[2])
     local h = line(box, UDim2.fromOffset(12, 2), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
     local v = line(box, UDim2.fromOffset(2, 12), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
     h.ZIndex, v.ZIndex = 22, 22
+    h.Name, v.Name = "RadarDeco", "RadarDeco"
   end
   local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
   blipLayer.ZIndex = 20
@@ -237,6 +239,7 @@ function Hud.init(G)
   heading.ZIndex = 22
   local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(52, 12), UDim2.new(1, -8, 1, -6), 9, LINE_DIM, NUM, V2(1, 1), Enum.TextXAlignment.Right, 0.6)
   rangeL.ZIndex = 22
+  north.Name, heading.Name, rangeL.Name = "RadarDeco", "RadarDeco", "RadarDeco"
 
   -- 亮点（对象池）：kind inf 圆点 / veh 方块 / air 菱形 / ping 红圈
   local pool, used = {}, 0
@@ -686,7 +689,7 @@ function Hud.init(G)
     local boardOn = G.boardShown ~= nil and G.boardShown()
     if not tipDone and S.alive and S.phase ~= "end" then
       tipT0 = tipT0 or t
-      local want = t - tipT0 > 1 and not boardOn and not (G.operationHudVisible and G.operationHudVisible())
+      local want = t - tipT0 > 1 and not boardOn and not (G.operationHudVisible and G.operationHudVisible()) and not G.tankHudActive
       if want and not tip.Visible then
         tip.Visible = true
         showTip()
