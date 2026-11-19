@@ -1,5 +1,5 @@
 --!nocheck
--- 雷达测试（Hud.lua 右上的方形绿色雷达小地图；没有转圈的扫描线）：友军都显示；敌方步兵在视线里才显示（太远、躲在墙后都不显示）；
+-- 雷达测试（Hud.lua 右上的方形小地图，正常的地图颜色；没有转圈的扫描线）：友军都显示；敌方步兵在视线里才显示（太远、躲在墙后都不显示）；
 --   敌人开了没消音的枪，开枪的地方闪红圈；Config.Radar.allEnemies 打开后墙后的也显示；车（敌我）在范围内就显示
 -- 用法（仓库根目录）：lune run tools/test/ia_radar.luau <rbxlx>
 local process = require("@lune/process")
@@ -62,6 +62,38 @@ if box then
 		if d.Parent and d.Rotation ~= r and d.Size.X.Offset > 2 and d.Size.Y.Scale >= 0.5 then turned += 1 end
 	end
 	check(turned == 0, "没有绕圈转的扫描线")
+	-- 用户 11-19：小地图不要黑绿，改成正常的——地图用「mini」配色（蓝海），框是白边，不是雷达绿
+	check(CA.mapThemeNow and CA.mapThemeNow() == "mini", "小地图是正常的地图颜色（mini 配色）：" .. tostring(CA.mapThemeNow and CA.mapThemeNow()))
+	local root = CA.mapRoot
+	local sea = root and root.BackgroundColor3
+	check(sea ~= nil and sea.B > sea.G and sea.G > sea.R and sea.B < 0.35, string.format("海是暗的深蓝（%d, %d, %d）", sea and sea.R * 255 or -1, sea and sea.G * 255 or -1, sea and sea.B * 255 or -1))
+	-- 卫星图（MapPaint：用户 11-19 小地图更精细、更暗淡、更拟真）：测试台没有 EditableImage，直接算几个像素看颜色对不对
+	local RS = H.game:GetService("ReplicatedStorage")
+	local Paint = H.require(RS:FindFirstChild("MapPaint"))
+	local Map = G.Map
+	local function px(x, z, detail)
+		local buf = buffer.create(3 * 4)
+		Paint.paint(Map, { x0 = x - 9, z0 = z - 3, step = 6, w = 3, h = 1, detail = detail }, 0, 1, buf)
+		return buffer.readu8(buf, 4), buffer.readu8(buf, 5), buffer.readu8(buf, 6)
+	end
+	local K = Map.K
+	local deepX, deepZ = nil, nil   -- 找一处深海（水深 60 格以上，周围 800 格都是海）
+	for _, c in ipairs({ { -8200, 0 }, { 8200, 0 }, { -8200, 6000 }, { 8200, 6000 }, { 0, 5200 }, { -6000, -7000 }, { 6000, -7000 } }) do
+		if not deepX and Map.height(c[1], c[2]) < -60 and not Paint.hasLand(Map, c[1], c[2], 800) then deepX, deepZ = c[1], c[2] end
+	end
+	check(deepX ~= nil, "找到一处深海：" .. tostring(deepX) .. ", " .. tostring(deepZ))
+	local r1, g1, b1 = px(deepX or 0, deepZ or 0, false)
+	check(b1 > g1 and g1 > r1 and b1 < 70, string.format("深海：暗的深蓝（%d, %d, %d）", r1, g1, b1))
+	local A = Map.AIRFIELD
+	local r2, g2, b2 = px(A.x, A.z, true)
+	check(math.abs(r2 - g2) < 10 and math.abs(g2 - b2) < 10 and r2 < 80, string.format("跑道：暗灰的沥青（%d, %d, %d）", r2, g2, b2))
+	local gx, gz = Map.MAIN.x - 500 * K, Map.ridgeZ(Map.MAIN.x - 500 * K) + 120 * K
+	local r3, g3, b3 = px(gx, gz, true)
+	check(Map.height(gx, gz) > 1 and g3 >= r3 - 20 and r3 + g3 + b3 < 3 * 170, string.format("主岛上的地：暗、偏绿或土色（%d, %d, %d）", r3, g3, b3))
+	check(Paint.hasLand(Map, Map.MAIN.x - 400, Map.MAIN.z - 400, 800) and deepX ~= nil, "细节块：主岛上要画，深海不画")
+	check(CA.mapSatState ~= nil, "小地图有卫星图（测试台没有 EditableImage：退回色块）：" .. tostring(CA.mapSatState and CA.mapSatState()))
+	local st = box:FindFirstChildOfClass("UIStroke")
+	check(st ~= nil and st.Color.R > 0.85 and st.Color.G > 0.85, "框是白边（不是绿的）")
 	local feed = CA.hudParts and CA.hudParts.feed
 	if feed then
 		check(feed.Position.Y.Offset >= box.Position.Y.Offset + box.Size.Y.Offset, "击杀信息挪到小地图下面（不叠在一起）")

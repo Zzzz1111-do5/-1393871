@@ -947,11 +947,13 @@ function VehHud.init(G)
     if lastVp == vp and lastMob == mob then return end
     lastVp, lastMob = vp, mob
     compact = mob or vp.X < 760 or vp.Y < 480
-    local sideWidth = vp.X / 2 - 330
+    -- 计分栏左边：左上角是 Roblox 自己的菜单、聊天按钮（约 130 px 宽），罗盘从它们右边起，到计分栏左边留 12 px
+    local SIDE_X = 140
+    local sideWidth = vp.X / 2 - 330 - SIDE_X - 12
     compassSide = sideWidth >= 172
     CW = compassSide and math.min(420, math.floor(sideWidth)) or math.clamp(math.floor(vp.X - 32), 1, 420)
     compGroup.Size = UD2(0, CW, 0, 51)
-    compGroup.Position = compassSide and UD2(0, 18, 0, 16) or UD2(0.5, -CW / 2, 0, 118)
+    compGroup.Position = compassSide and UD2(0, SIDE_X, 0, 16) or UD2(0.5, -CW / 2, 0, 118)
 
     local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.74, 1.25)
     for _, pr in ipairs(PAIRS) do

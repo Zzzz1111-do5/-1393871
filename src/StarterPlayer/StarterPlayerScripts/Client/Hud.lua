@@ -137,28 +137,29 @@ function Hud.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 右上方形雷达小地图（用户：右上角加个正方形小地图、雷达视角，不要那根绕圈转的扫描线）
-  --   方框（UI.lua 建的 CanvasGroup 裁边）里是染成墨绿的地图（北朝上、跟着人走），淡淡的网格、四角的取景框；
-  --   亮点：友军绿、敌军红；步兵圆点、车和船方块、飞机菱形；敌人开枪的地方闪一个红圈
+  ---------------------------------------------------------------- 右上方形小地图（用户：右上角加个正方形小地图，不要那根绕圈转的扫描线；11-19：不要黑绿，改成正常的）
+  --   方框（UI.lua 建的 CanvasGroup 裁边）里是正常颜色的地图（北朝上、跟着人走）：有 EditableImage 时是 MapPaint 画的卫星图
+  --   （暗淡、拟真：水深、沙滩、草地、土路、岩石、山体阴影，身边每像素 6.25 格），没有就是 MapUI 的「mini」色块，
+  --   淡淡的白网格、四角的取景框、白边；亮点：友军蓝、敌军红；步兵圆点、车和船方块、飞机菱形；敌人开枪的地方闪一个红圈
   --   哪些敌人上雷达见 Config.Radar（车船飞机在范围内就有；步兵要在视线里、开了枪或者被标记）
   --   手机：右边一列是开火、换枪、夜视、战术平板的按钮，小地图还放左上
 
   local RC = Config.Radar or { range = 520, ping = 3 }
-  local GREEN, GDIM = RGB(90, 255, 140), RGB(40, 150, 80)
-  local FRIEND, FOE = RGB(110, 255, 150), RGB(255, 72, 58)
+  local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
+  local FRIEND, FOE = RGB(72, 168, 255), RGB(255, 64, 52)
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(2, 12, 6)
-  box.BackgroundTransparency = 0.15
+  box.BackgroundColor3 = RGB(22, 36, 50)   -- 地图外面也是深海的蓝
+  box.BackgroundTransparency = 0.12
   do
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 3)
     c.Parent = box
   end
-  ui.stroke(box, GREEN, 1.5, 0.35)
+  ui.stroke(box, LINE, 1.5, 0.35)
   local hudLayout = { radarRight = not mobile, radarX = mobile and 16 or 18, radarY = mobile and 118 or 18, radarSize = MS }
   G.hudLayout = hudLayout
   local scoreViewport, scoreRight, compactScore
@@ -215,26 +216,26 @@ function Hud.init(G)
   for i = 1, 3 do
     local k = i / 4
     local a = (i == 2) and 0.82 or 0.9
-    local lv = line(box, UDim2.new(0, 1, 1, 0), UDim2.fromScale(k, 0.5), GREEN, a, V2(0.5, 0.5))
+    local lv = line(box, UDim2.new(0, 1, 1, 0), UDim2.fromScale(k, 0.5), LINE, a, V2(0.5, 0.5))
     lv.ZIndex = 18
-    local lh = line(box, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, k), GREEN, a, V2(0.5, 0.5))
+    local lh = line(box, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, k), LINE, a, V2(0.5, 0.5))
     lh.ZIndex = 18
   end
   for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
     local ax = V2(c[1], c[2])
-    local h = line(box, UDim2.fromOffset(12, 2), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), GREEN, 0.25, ax)
-    local v = line(box, UDim2.fromOffset(2, 12), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), GREEN, 0.25, ax)
+    local h = line(box, UDim2.fromOffset(12, 2), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
+    local v = line(box, UDim2.fromOffset(2, 12), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
     h.ZIndex, v.ZIndex = 22, 22
   end
   local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
   blipLayer.ZIndex = 20
   local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 22
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, GREEN, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
   north.ZIndex = 22
-  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, GREEN, NUM, V2(0.5, 1), nil, 0.4)
+  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, LINE, NUM, V2(0.5, 1), nil, 0.4)
   heading.ZIndex = 22
-  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(52, 12), UDim2.new(1, -8, 1, -6), 9, GDIM, NUM, V2(1, 1), Enum.TextXAlignment.Right, 0.6)
+  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(52, 12), UDim2.new(1, -8, 1, -6), 9, LINE_DIM, NUM, V2(1, 1), Enum.TextXAlignment.Right, 0.6)
   rangeL.ZIndex = 22
 
   -- 亮点（对象池）：kind inf 圆点 / veh 方块 / air 菱形 / ping 红圈
@@ -561,12 +562,13 @@ function Hud.init(G)
     rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
     local ZOOM = MAPW * (MS / 2) / curR
     if root and root.Parent == box and G.mapUV then
-      if G.mapTheme then G.mapTheme("radar") end
+      if G.mapTheme then G.mapTheme("mini") end
+      if G.mapFocus then G.mapFocus(pos.X, pos.Z, curR) end   -- 身边画细节块（MapUI 的卫星图）
       local u, v = G.mapUV(pos.X, pos.Z)
       root.AnchorPoint = V2(0, 0)
       root.Size = UDim2.fromOffset(ZOOM, ZOOM)
       root.Position = UDim2.new(0.5, -u * ZOOM, 0.5, -v * ZOOM)
-      root.BackgroundTransparency = 0.25   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
+      root.BackgroundTransparency = 0.1   -- 海稍微透一点（部署界面的大地图照旧不透明）
     elseif root and root.BackgroundTransparency ~= 0 then
       root.BackgroundTransparency = 0
       if G.mapTheme then G.mapTheme("map") end

@@ -67,7 +67,7 @@ local r = foe.root.CFrame
 local fc = (r * CF.new(0, 0, -foe.root.Size.Z / 2)).Position
 local function shot(alpha, w)
 	local a = math.rad(alpha)
-	local o = fc + (r.LookVector * math.cos(a) + r.RightVector * math.sin(a)) * 60
+	local o = fc + (r.LookVector * math.cos(a) + r.RightVector * math.sin(a)) * 25   -- 近一点：中间不会隔着山坡
 	local col, txt
 	H.ctx = def
 	col, txt = CD.tankPen(w, o, fc, e.model)
