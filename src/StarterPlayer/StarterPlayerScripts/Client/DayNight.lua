@@ -102,16 +102,17 @@ function DayNight.init(G)
       put(Lighting, "EnvironmentDiffuseScale", lerp(NIGHT.diff, DAY.diff, dayK))
       put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
       put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
-      put(Lighting, "FogEnd", 12000 + 18000 * hk)
+      local wk = G.weather and G.weather.k or 0   -- 暴风雨（Warfx.lua）：雾变近、大气变浑
+      put(Lighting, "FogEnd", (12000 + 18000 * hk) * (1 - 0.45 * wk))
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       if atm then
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
         if nv then dens = math.max(0.06, dens * 0.55) end
-        put(atm, "Density", dens)
+        put(atm, "Density", dens + 0.12 * wk)
         put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
         put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
         put(atm, "Glare", lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk)
-        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk))
+        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk) + 1.2 * wk)
       end
       local bloom = Lighting:FindFirstChild("NightBloom")
       if bloom then

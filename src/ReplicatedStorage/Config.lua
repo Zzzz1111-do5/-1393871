@@ -259,6 +259,8 @@ Config.Battle = {
   illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
   -- bld 房子炸塌：血量 = 占地面积 × hpPerArea（hpMin～hpMax）；k 按爆炸种类的伤害倍数；血掉到 fire 以下着火
   bld = { hpPerArea = 1.5, hpMin = 700, hpMax = 4000, fire = 0.55, k = { nade = 0.3, shell = 1, rkt = 0.8, msl = 1, bomb = 1.4 } },
+  -- storm 暴风雨：开战后 at 秒（随机范围）有 chance 的机会来一场、持续 dur 秒、前后 ramp 秒变大变小
+  storm = { chance = 0.85, at = { 150, 420 }, dur = { 150, 230 }, ramp = 25 },
 }
 
 return Config

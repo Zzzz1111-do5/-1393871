@@ -868,6 +868,8 @@ Config.Battle = {
   illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
   -- bld 房子炸塌：血量 = 占地面积 × hpPerArea（hpMin～hpMax）；k 按爆炸种类的伤害倍数；血掉到 fire 以下着火
   bld = { hpPerArea = 1.5, hpMin = 700, hpMax = 4000, fire = 0.55, k = { nade = 0.3, shell = 1, rkt = 0.8, msl = 1, bomb = 1.4 } },
+  -- storm 暴风雨：开战后 at 秒（随机范围）有 chance 的机会来一场、持续 dur 秒、前后 ramp 秒变大变小
+  storm = { chance = 0.85, at = { 150, 420 }, dur = { 150, 230 }, ramp = 25 },
 }
 
 return Config
@@ -8004,6 +8006,8 @@ return Armor
 --      只发一条特效 { k = "illum", o 发射点, p 炸开的点, t 服务器时刻, fl 飞几秒, burn, fall, w 风 }：客户端（Warfx.lua）按服务器时间算出它在哪、多亮，
 --      所有人看到的是同一发、照亮的是同一片（不影响谁能打中谁：只是画面）
 --   3. 房子炸塌（战地的招牌）：地图上的房子有血量，炸掉一半着火，炸光了塌成一摊废墟（不再挡人、挡子弹），新一局复原。见下面「房子炸塌」
+--   4. 暴风雨：每局开战后几分钟可能变天，服务器只给强度（workspace 属性 StormK），雨、闪电、雷声、云、浪、雾都是客户端画
+--   5. 阵亡镜头：死了以后告诉客户端凶手在哪（G.killcam，Round.lua 调），客户端镜头转过去、拉近、红色标出来
 local Battle = {}
 
 function Battle.init(G)
@@ -8380,9 +8384,85 @@ function Battle.init(G)
     end
   end)
 
-  G.onFrame(function()
+  ---------------------------------------------------------------- 暴风雨（战地 4 那种中途变天）
+  -- 每局开战后 at 秒（随机）有 chance 的机会来一场暴风雨，持续 dur 秒：前后 ramp 秒慢慢变大、变小。
+  --   服务器只管强度：workspace 的属性 StormK（0～1，每半秒更新一次，后进服的人也对得上）；下雨、打闪、打雷、云、浪、雾都是客户端（Warfx.lua）照它画
+  local ST = BC.storm or {}
+  local storm = nil    -- { t0, dur } 本局的暴风雨（os.clock）
+  local stormRound = -1
+  local stormK, stormSent = 0, -1
+  local function setStormK(k)
+    stormK = k
+    if math.abs(k - stormSent) > 0.02 or (k == 0 and stormSent ~= 0) then
+      stormSent = k
+      pcall(function() workspace:SetAttribute("StormK", math.floor(k * 100 + 0.5) / 100) end)
+    end
+  end
+  function G.startStorm(delay, dur)   -- 测试用：delay 秒后来一场，持续 dur 秒
+    storm = { t0 = now() + (delay or 0), dur = dur or 180 }
+  end
+  local stormAcc = 0
+  local function stepStorm(dt)
+    stormAcc += dt or 0
+    if stormAcc < 0.5 then return end
+    stormAcc = 0
+    local R = G.round
+    if R and R.phase == "battle" and stormRound ~= R.n then
+      stormRound = R.n
+      if math.random() < (ST.chance or 0.85) then
+        local at, du = ST.at or { 150, 420 }, ST.dur or { 150, 230 }
+        storm = { t0 = now() + rnd(at[1], at[2]), dur = rnd(du[1], du[2]) }
+      end
+    end
+    local k = 0
+    if storm then
+      local u = now() - storm.t0
+      local ramp = ST.ramp or 25
+      if u > 0 and u < storm.dur then
+        k = math.clamp(math.min(u / ramp, (storm.dur - u) / ramp), 0, 1)
+      elseif u >= storm.dur then
+        storm = nil
+      end
+    end
+    setStormK(k)
+  end
+  G.on("roundStart", function()
+    storm = nil
+    setStormK(0)
+  end)
+
+  ---------------------------------------------------------------- 阵亡镜头（战地那种：死了以后镜头转过去、拉近，看清是谁打死的）
+  -- Round.lua 记完阵亡调 G.killcam(P, killer)：killer 是伤害记录里最后打伤的（真人 by、机器人 bot）。算出凶手现在在哪，只发给死的人：
+  --   { p 凶手的位置, from 死的人头的位置, name 名字, d 距离（格）, uid 真人的 UserId }；客户端（Warfx.lua）镜头转过去、拉近、标出来
+  function G.killcam(P, killer)
+    if not killer or not P or not P.pl then return end
+    local pos
+    local K = killer.by
+    if K and K ~= P then
+      local root = K.vehicle and K.vehicle.root
+      if root then
+        pos = root.CFrame.Position
+      else
+        local ch = K.char or (K.pl and K.pl.Character)
+        local h = ch and ch:FindFirstChild("HumanoidRootPart")
+        pos = h and h.CFrame.Position
+      end
+    elseif killer.bot then
+      local e = killer.bot.e
+      pos = e and e.root and e.root.CFrame.Position
+    end
+    if not pos then return end
+    local ch = P.char or P.pl.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local from = hrp and (hrp.CFrame.Position + Vector3.new(0, 1.6, 0)) or nil   -- 眼睛的高度
+    G.msg(P.pl, "killcam", { p = pos, from = from, name = killer.name, d = from and (pos - from).Magnitude or nil,
+      uid = K and K.pl and K.pl.UserId or nil })
+  end
+
+  G.onFrame(function(dt)
     stepCraters()
     stepIllum()
+    stepStorm(dt)
     if not scanned and G.worldReady then scanBlds() end
   end)
 end
@@ -13611,6 +13691,7 @@ function Round.init(G)
       killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
+    if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
@@ -18987,16 +19068,17 @@ function DayNight.init(G)
       put(Lighting, "EnvironmentDiffuseScale", lerp(NIGHT.diff, DAY.diff, dayK))
       put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
       put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
-      put(Lighting, "FogEnd", 12000 + 18000 * hk)
+      local wk = G.weather and G.weather.k or 0   -- 暴风雨（Warfx.lua）：雾变近、大气变浑
+      put(Lighting, "FogEnd", (12000 + 18000 * hk) * (1 - 0.45 * wk))
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       if atm then
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
         if nv then dens = math.max(0.06, dens * 0.55) end
-        put(atm, "Density", dens)
+        put(atm, "Density", dens + 0.12 * wk)
         put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
         put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
         put(atm, "Glare", lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk)
-        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk))
+        put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk) + 1.2 * wk)
       end
       local bloom = Lighting:FindFirstChild("NightBloom")
       if bloom then
@@ -35983,6 +36065,8 @@ return View
 --      影子跟着照明弹慢慢挪），再加上「附近有照明弹，整片地都亮起来」：G.illum = { k 亮度 0～1.2 }，DayNight.lua 按它把环境光往暖白抬、曝光加一点，一闪一闪
 --   2. 夜空：一层低云；守方要地的对空探照灯慢慢扫；远处时不时的闷炮声（只有声音）
 --   3. 房子着火、塌（服务器 Battle.lua）：着火的房子冒火、冒烟、火光一闪一闪；塌的时候扬起一大团尘土、碎块乱飞、轰隆一声；废墟冒一阵烟
+--   4. 暴风雨（服务器给强度 StormK）：雨、闪电、雷声，云变厚、浪变大、风变大、雾变近
+--   5. 阵亡镜头：死了以后镜头转向凶手、拉近，去色、景深，红色标记
 local Warfx = {}
 
 function Warfx.init(G)
@@ -36482,8 +36566,250 @@ function Warfx.init(G)
     end
   end
 
+  ---------------------------------------------------------------- 暴风雨（服务器 Battle.lua 给强度：workspace 的属性 StormK）
+  -- 雨：镜头上方一块看不见的板子往下撒细长的雨丝（顺着速度方向拉长；受光：照明弹、火光、探照灯附近的雨亮晶晶，黑处几乎看不见）；
+  --   开飞机飞到云上面（700 格以上）不下。闪电：远处一道折线的白光、整个画面亮两下（双闪），雷声按距离晚到、拖着长长的回声；
+  --   云变厚变黑、海浪变大、风把草吹得乱晃、雾变近（DayNight.lua 读 G.weather.k）；雨声的「沙——」跟着强度
+  local stormK = 0
+  local rainPart, rainPE, rainSnd
+  local flashCC = Instance.new("ColorCorrectionEffect")
+  flashCC.Name = "LightningFlash"
+  flashCC.Brightness = 0
+  pcall(function() flashCC.Parent = game:GetService("Lighting") end)
+  local flashT = nil
+  local nextBolt = 0
+  local bolts = 0
+  G.boltCount = function() return bolts end   -- 测试用
+  G.weather = { k = 0 }
+  local T0 = { cover = clouds and clouds.Cover or 0.6, dens = clouds and clouds.Density or 0.5 }
+  local terr = workspace:FindFirstChildOfClass("Terrain")
+  local W0 = { size = terr and terr.WaterWaveSize or 0.15, speed = terr and terr.WaterWaveSpeed or 8 }
+
+  local function ensureRain()
+    if rainPart then return end
+    rainPart = part(Enum.PartType.Block, V(120, 1, 120), CFrame.new(0, -500, 0), RGB(0, 0, 0), nil, 1)
+    rainPart.Name = "Rain"
+    rainPE = emitter(rainPart, { tex = "rbxasset://textures/particles/SquareParticle.png", rate = 0, life = { 0.45, 0.6 }, spd = { 140, 175 }, spread = 6,
+      dir = Enum.NormalId.Bottom, size = nseq(0, 0.07, 1, 0.07), tr = nseq(0, 0.45, 1, 0.55), col = cseq(RGB(206, 214, 228), RGB(190, 200, 216)), rot = 0 })
+    rainPE.LightEmission, rainPE.LightInfluence = 0.15, 0.85
+    rainPE.RotSpeed = NumberRange.new(0, 0)
+    rainPE.Rotation = NumberRange.new(0, 0)
+    pcall(function() rainPE.Orientation = Enum.ParticleOrientation.VelocityParallel end)
+    pcall(function() rainPE.Squash = NumberSequence.new(3) end)   -- 拉成细长的雨丝
+    if G.makeSound then
+      rainSnd = G.makeSound({ id = WIND, vol = 0.01, s = { 1.25, 1.3 }, loop = { 0.5, 9.5 }, eq = { -24, -4, 5 } }, game:GetService("SoundService"), {})
+    end
+  end
+
+  -- 一道闪电：从云底（800 格）往下的折线，几段亮白的细条 + 一条分叉，0.25 秒后没了
+  local function bolt()
+    local cp = camPos()
+    local a = math.random() * 2 * math.pi
+    local dist = 1200 + math.random() * 3800
+    local x, z = cp.X + math.cos(a) * dist, cp.Z + math.sin(a) * dist
+    local gy = math.max(0, MapM.ground(x, z))
+    local pts, y = { V(x, 800, z) }, 800
+    while y > gy + 1 do
+      y = math.max(gy, y - (60 + math.random() * 70))
+      local last = pts[#pts]
+      table.insert(pts, V(last.X + (math.random() - 0.5) * 70, y, last.Z + (math.random() - 0.5) * 70))
+    end
+    local segs = {}
+    local function seg(p0, p1, wdt)
+      local L = (p1 - p0).Magnitude
+      local s = part(Enum.PartType.Block, V(wdt, wdt, L), CFrame.lookAt((p0 + p1) / 2, p1), RGB(230, 236, 255), Enum.Material.Neon, 0)
+      table.insert(segs, s)
+    end
+    for i = 1, #pts - 1 do seg(pts[i], pts[i + 1], 1.6) end
+    local k0 = math.random(2, math.max(2, #pts - 2))   -- 分叉
+    local bp = pts[k0]
+    for i = 1, 3 do
+      local nb = bp + V((math.random() - 0.5) * 120, -(50 + math.random() * 60), (math.random() - 0.5) * 120)
+      seg(bp, nb, 0.9)
+      bp = nb
+    end
+    for _, s in ipairs(segs) do Debris:AddItem(s, 0.25) end
+    flashT = os.clock()
+    local d = (V(x, gy, z) - cp).Magnitude
+    if G.sfx then
+      G.sfx({ { id = EXP, vol = 1.5, s = { 0.3, 0.36 }, reg = { 0, 2.5 }, eq = { 8, -2, -18 }, echo = { 0.5, 0.5, -6 } },
+        { id = EXP, vol = 0.9, s = { 0.25, 0.28 }, reg = { 0, 2.5 }, eq = { 10, -4, -24 }, delay = 0.4 } },
+        V(x, gy + 50, z), { delay = d / 960, rmin = 4000, rmax = 12000, must = true })
+    end
+    bolts += 1
+  end
+
+  local function stepStorm(dt)
+    local target = workspace:GetAttribute("StormK")
+    target = type(target) == "number" and target or 0
+    stormK += (target - stormK) * math.min(1, dt * 0.8)
+    if math.abs(target - stormK) < 0.005 then stormK = target end
+    G.weather.k = stormK
+    local k = stormK
+    local cp = camPos()
+    if k > 0.01 then
+      ensureRain()
+      local cam = workspace.CurrentCamera
+      local look = cam and cam.CFrame.LookVector or V(0, 0, -1)
+      rainPart.CFrame = CFrame.new(cp + V(0, 38, 0) + V(look.X, 0, look.Z) * 20)
+      local high = cp.Y > 700   -- 云上面不下雨
+      rainPE.Rate = high and 0 or math.floor(1300 * k * math.clamp(G.perfK or 1, 0.4, 1))
+      if rainSnd then rainSnd.Volume = high and 0 or 1.4 * k end
+      if k > 0.4 and os.clock() >= nextBolt then
+        nextBolt = os.clock() + (5 + math.random() * 9) / k
+        bolt()
+      end
+    elseif rainPE then
+      rainPE.Rate = 0
+      if rainSnd then rainSnd.Volume = 0 end
+    end
+    -- 云、浪、风
+    if clouds then
+      clouds.Cover = T0.cover + (0.9 - T0.cover) * k
+      clouds.Density = T0.dens + (0.82 - T0.dens) * k
+      clouds.Color = RGB(66, 72, 88):Lerp(RGB(40, 44, 54), k)
+    end
+    if terr then
+      pcall(function()
+        terr.WaterWaveSize = W0.size + (0.55 - W0.size) * k
+        terr.WaterWaveSpeed = W0.speed + (18 - W0.speed) * k
+      end)
+    end
+    pcall(function() workspace.GlobalWind = V(20, 0, 10) * k end)
+    -- 闪电的双闪
+    if flashT then
+      local u = os.clock() - flashT
+      local b = 0
+      if u < 0.07 then b = 0.38 elseif u < 0.12 then b = 0.05 elseif u < 0.2 then b = 0.26 elseif u < 0.32 then b = 0.08 * (1 - (u - 0.2) / 0.12) else flashT = nil end
+      flashCC.Brightness = b
+    elseif flashCC.Brightness ~= 0 then
+      flashCC.Brightness = 0
+    end
+  end
+
+  ---------------------------------------------------------------- 阵亡镜头（服务器 Battle.lua 的 G.killcam 发来 killcam）
+  -- 战地那种：死了以后 3 秒，镜头从倒下的地方转向凶手、慢慢拉近（视野收窄到凶手周围十几格），画面去色、景深对准凶手，
+  --   凶手头顶一个红色的标记（名字、多少米），真人还有一圈红色描边。镜头按渲染优先级 Camera + 20 每帧摆（盖过别的镜头逻辑），3.2 秒后放开、视野复原
+  local Lighting = game:GetService("Lighting")
+  local Players = game:GetService("Players")
+  local kc = nil
+  local kcN = 0
+  G.killcamCount = function() return kcN end   -- 测试用
+  G.killcamOn = function() return kc ~= nil end
+  local function smooth(x) x = math.clamp(x, 0, 1) return x * x * (3 - 2 * x) end
+
+  local function endKillcam()
+    if not kc then return end
+    pcall(function() RunService:UnbindFromRenderStep("Killcam") end)
+    local cam = workspace.CurrentCamera
+    if cam then cam.FieldOfView = kc.fov0 end
+    for _, o in ipairs(kc.objs) do if o.Parent then o:Destroy() end end
+    kc = nil
+  end
+
+  local function stepKillcam()
+    if not kc then return end
+    local u = os.clock() - kc.t0
+    if u > 3.2 then
+      endKillcam()
+      return
+    end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local to = (kc.p - kc.from).Unit
+    local dir = kc.look0:Lerp(to, smooth(u / 0.7))
+    if dir.Magnitude < 0.01 then dir = to end
+    cam.CFrame = CFrame.lookAt(kc.from, kc.from + dir.Unit)
+    cam.FieldOfView = kc.fov0 + (kc.fovZ - kc.fov0) * smooth((u - 0.45) / 1.1)
+  end
+
+  local function startKillcam(e)
+    if type(e) ~= "table" or typeof(e.p) ~= "Vector3" then return end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local from = (typeof(e.from) == "Vector3") and e.from or cam.CFrame.Position
+    local d = (e.p - from).Magnitude
+    if d < 3 or d > 2500 then return end
+    endKillcam()
+    kcN += 1
+    -- 视野收到凶手周围约 14 格（远的拉得多），最窄 8°
+    local fovZ = math.clamp(math.deg(2 * math.atan(14 / d)), 8, cam.FieldOfView)
+    kc = { t0 = os.clock(), from = from + V(0, 0.4, 0), look0 = cam.CFrame.LookVector, p = e.p, d = d, fov0 = cam.FieldOfView, fovZ = fovZ, objs = {} }
+    -- 凶手头顶的标记
+    local anchor = part(Enum.PartType.Block, V(0.2, 0.2, 0.2), CFrame.new(e.p + V(0, 4.5, 0)), RGB(0, 0, 0), nil, 1)
+    anchor.Name = "KillcamTag"
+    table.insert(kc.objs, anchor)
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(240, 64)
+    bb.AlwaysOnTop = true
+    bb.LightInfluence = 0
+    bb.Adornee = anchor
+    bb.Parent = anchor
+    local mark = Instance.new("Frame")
+    mark.Size = UDim2.fromOffset(16, 16)
+    mark.AnchorPoint = Vector2.new(0.5, 0.5)
+    mark.Position = UDim2.new(0.5, 0, 1, -10)
+    mark.Rotation = 45
+    mark.BackgroundColor3 = RGB(230, 52, 46)
+    mark.BorderSizePixel = 0
+    mark.Parent = bb
+    local lab = Instance.new("TextLabel")
+    lab.Size = UDim2.new(1, 0, 0, 36)
+    lab.BackgroundTransparency = 1
+    lab.Font = Enum.Font.GothamBold
+    lab.TextSize = 18
+    lab.TextColor3 = RGB(255, 236, 232)
+    lab.TextStrokeTransparency = 0.4
+    lab.Text = string.format("%s  ·  %d m", tostring(e.name or "?"), math.floor(d / 2.8 + 0.5))
+    lab.Parent = bb
+    -- 真人：一圈红色描边
+    if type(e.uid) == "number" then
+      local pl = Players:GetPlayerByUserId(e.uid)
+      local ch = pl and pl.Character
+      if ch then
+        local hl = Instance.new("Highlight")
+        hl.FillColor, hl.OutlineColor = RGB(230, 52, 46), RGB(255, 90, 80)
+        hl.FillTransparency, hl.OutlineTransparency = 0.8, 0
+        hl.Adornee = ch
+        hl.Parent = ch
+        table.insert(kc.objs, hl)
+      end
+    end
+    -- 去色 + 景深（对准凶手）
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Name = "KillcamGrade"
+    cc.Saturation, cc.Contrast, cc.TintColor = -0.55, 0.12, RGB(255, 228, 222)
+    cc.Parent = Lighting
+    table.insert(kc.objs, cc)
+    pcall(function()
+      local dof = Instance.new("DepthOfFieldEffect")
+      dof.Name = "KillcamFocus"
+      dof.FocusDistance, dof.InFocusRadius, dof.FarIntensity, dof.NearIntensity = d, math.max(8, d * 0.15), 0.55, 0.75
+      dof.Parent = Lighting
+      table.insert(kc.objs, dof)
+    end)
+    RunService:BindToRenderStep("Killcam", Enum.RenderPriority.Camera.Value + 20, function()
+      local ok, err = pcall(stepKillcam)
+      if not ok then
+        endKillcam()
+        if G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      end
+    end)
+  end
+  local prevMsg = G.onMsg
+  G.onMsg = function(kind, key, ...)
+    if kind == "killcam" then
+      local ok, err = pcall(startKillcam, key)
+      if not ok and G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      return
+    end
+    if prevMsg then return prevMsg(kind, key, ...) end
+  end
+
   local acc, bAcc = 0, 0
   RunService.RenderStepped:Connect(function(dt)
+    local okS, errS = pcall(stepStorm, dt or 1 / 60)
+    if not okS and G.showError then G.showError("暴风雨：" .. tostring(errS)) end
     local ok, err = pcall(stepFlares)
     if not ok and G.showError then G.showError("照明弹：" .. tostring(err)) end
     G.illum.k = illumK

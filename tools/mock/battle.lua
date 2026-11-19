@@ -192,6 +192,90 @@ do
   end
 end
 
+print("⑥ 暴风雨：下雨、打闪、打雷，过去以后雨停")
+do
+  local C = T.C
+  local WS = R.services.Workspace
+  -- 先出生（镜头跟着人到地面上：云下面才下雨）
+  local P = G.P[me]
+  P.team = "atk"
+  me.Team = G.TEAM.atk
+  me.Neutral = false
+  me:SetAttribute("Side", "atk")
+  G.pushOne(P)
+  R.run(1)
+  T.act("deploy", "rifle", "af2")
+  R.run(3)
+  check(P.alive, "出生了")
+  G.Config.Battle.storm.ramp = 2
+  local cover0 = C.nightClouds and C.nightClouds.Cover or 0
+  local b0 = C.boltCount()
+  G.startStorm(0, 24)
+  R.run(4)
+  local k = WS:GetAttribute("StormK") or 0
+  check(k > 0.9, string.format("服务器：暴风雨来了（强度 %.2f）", k))
+  check(C.weather.k > 0.3, string.format("客户端跟上强度（%.2f）", C.weather.k))
+  local rain = C.fxFolder and C.fxFolder:FindFirstChild("Rain")
+  local pe = rain and rain:FindFirstChildOfClass("ParticleEmitter")
+  local camY = WS.CurrentCamera.CFrame.Position.Y
+  if camY < 700 then
+    check(pe ~= nil and pe.Rate > 100, "镜头上方下雨（" .. (pe and pe.Rate or 0) .. " 滴 / 秒）")
+  else
+    check(pe ~= nil and pe.Rate == 0, string.format("镜头在云上面（%.0f 格高）：不下雨", camY))
+  end
+  -- 镜头压到地面附近一帧：云下面要下雨（测试台的镜头停在主菜单的机位上）
+  WS.CurrentCamera.CFrame = CF(spots[1].X, spots[1].Y + 6, spots[1].Z)
+  R.run(1 / 60, 1 / 60)
+  local lowRate = pe and pe.Rate or 0
+  check(lowRate > 100, "镜头在地面附近：头顶下雨（" .. lowRate .. " 滴 / 秒）")
+  check(C.nightClouds and C.nightClouds.Cover > cover0 + 0.05, string.format("云变厚（%.2f → %.2f）", cover0, C.nightClouds and C.nightClouds.Cover or 0))
+  T.runUntil(function() return C.boltCount() > b0 end, 20)
+  check(C.boltCount() > b0, "打闪、打雷（" .. (C.boltCount() - b0) .. " 道）")
+  T.runUntil(function() return (WS:GetAttribute("StormK") or 0) == 0 end, 30)
+  R.run(8)
+  check((WS:GetAttribute("StormK") or 0) == 0 and pe and pe.Rate == 0, "暴风雨过去：雨停了")
+  G.Config.Battle.storm.ramp = 25
+end
+
+print("⑦ 阵亡镜头：死了以后镜头转向凶手、拉近，3 秒后复原")
+do
+  local C = T.C
+  local WS = R.services.Workspace
+  local P = G.P[me]
+  if not P.alive then
+    T.act("deploy", "rifle", "af2")
+    R.run(3)
+  end
+  local hrp = P.char and P.char:FindFirstChild("HumanoidRootPart")
+  check(P.alive and hrp ~= nil, "出生了")
+  if hrp then
+    -- 一个假的机器人凶手：站在 60 格外
+    local root = R.Instance.new("Part")
+    root.Anchored, root.Size = true, V3(2, 5, 2)
+    root.CFrame = CF(hrp.Position + V3(60, 0, 0))
+    root.Parent = WS
+    local bot = { e = { root = root }, team = (P.team == "atk") and "def" or "atk", name = "神枪手", k = 0, s = 0 }
+    local n0 = C.killcamCount()
+    local fov0 = WS.CurrentCamera.FieldOfView
+    G.hurtChar(P.char, 999, { bot = bot, team = bot.team, name = bot.name })
+    R.run(0.3)
+    check(C.killcamCount() > n0, "阵亡：服务器把凶手的位置发过来，镜头转过去")
+    R.run(1.6)
+    local cam = WS.CurrentCamera
+    local look = cam.CFrame.LookVector
+    local want = (root.Position - cam.CFrame.Position).Unit
+    check(look:Dot(want) > 0.97, string.format("镜头对着凶手（夹角 %.0f°）", math.deg(math.acos(math.min(1, look:Dot(want))))))
+    check(cam.FieldOfView < fov0 - 10, string.format("视野拉近（%.0f° → %.0f°）", fov0, cam.FieldOfView))
+    check(R.services.Lighting:FindFirstChild("KillcamGrade") ~= nil, "画面去色")
+    local zoomed = cam.FieldOfView
+    R.run(2)
+    check(not C.killcamOn(), "3 秒后放开镜头")
+    check(R.services.Lighting:FindFirstChild("KillcamGrade") == nil and R.services.Lighting:FindFirstChild("KillcamFocus") == nil, "去色、景深收掉")
+    check(WS.CurrentCamera.FieldOfView > zoomed + 20, string.format("视野不再拉近（%.0f°）", WS.CurrentCamera.FieldOfView))
+    root:Destroy()
+  end
+end
+
 print("③ 新一局：挖过的地写回去、房子复原")
 do
   local v0 = R.voxelsWritten or 0

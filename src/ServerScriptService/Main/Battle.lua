@@ -11,6 +11,8 @@
 --      只发一条特效 { k = "illum", o 发射点, p 炸开的点, t 服务器时刻, fl 飞几秒, burn, fall, w 风 }：客户端（Warfx.lua）按服务器时间算出它在哪、多亮，
 --      所有人看到的是同一发、照亮的是同一片（不影响谁能打中谁：只是画面）
 --   3. 房子炸塌（战地的招牌）：地图上的房子有血量，炸掉一半着火，炸光了塌成一摊废墟（不再挡人、挡子弹），新一局复原。见下面「房子炸塌」
+--   4. 暴风雨：每局开战后几分钟可能变天，服务器只给强度（workspace 属性 StormK），雨、闪电、雷声、云、浪、雾都是客户端画
+--   5. 阵亡镜头：死了以后告诉客户端凶手在哪（G.killcam，Round.lua 调），客户端镜头转过去、拉近、红色标出来
 local Battle = {}
 
 function Battle.init(G)
@@ -387,9 +389,85 @@ function Battle.init(G)
     end
   end)
 
-  G.onFrame(function()
+  ---------------------------------------------------------------- 暴风雨（战地 4 那种中途变天）
+  -- 每局开战后 at 秒（随机）有 chance 的机会来一场暴风雨，持续 dur 秒：前后 ramp 秒慢慢变大、变小。
+  --   服务器只管强度：workspace 的属性 StormK（0～1，每半秒更新一次，后进服的人也对得上）；下雨、打闪、打雷、云、浪、雾都是客户端（Warfx.lua）照它画
+  local ST = BC.storm or {}
+  local storm = nil    -- { t0, dur } 本局的暴风雨（os.clock）
+  local stormRound = -1
+  local stormK, stormSent = 0, -1
+  local function setStormK(k)
+    stormK = k
+    if math.abs(k - stormSent) > 0.02 or (k == 0 and stormSent ~= 0) then
+      stormSent = k
+      pcall(function() workspace:SetAttribute("StormK", math.floor(k * 100 + 0.5) / 100) end)
+    end
+  end
+  function G.startStorm(delay, dur)   -- 测试用：delay 秒后来一场，持续 dur 秒
+    storm = { t0 = now() + (delay or 0), dur = dur or 180 }
+  end
+  local stormAcc = 0
+  local function stepStorm(dt)
+    stormAcc += dt or 0
+    if stormAcc < 0.5 then return end
+    stormAcc = 0
+    local R = G.round
+    if R and R.phase == "battle" and stormRound ~= R.n then
+      stormRound = R.n
+      if math.random() < (ST.chance or 0.85) then
+        local at, du = ST.at or { 150, 420 }, ST.dur or { 150, 230 }
+        storm = { t0 = now() + rnd(at[1], at[2]), dur = rnd(du[1], du[2]) }
+      end
+    end
+    local k = 0
+    if storm then
+      local u = now() - storm.t0
+      local ramp = ST.ramp or 25
+      if u > 0 and u < storm.dur then
+        k = math.clamp(math.min(u / ramp, (storm.dur - u) / ramp), 0, 1)
+      elseif u >= storm.dur then
+        storm = nil
+      end
+    end
+    setStormK(k)
+  end
+  G.on("roundStart", function()
+    storm = nil
+    setStormK(0)
+  end)
+
+  ---------------------------------------------------------------- 阵亡镜头（战地那种：死了以后镜头转过去、拉近，看清是谁打死的）
+  -- Round.lua 记完阵亡调 G.killcam(P, killer)：killer 是伤害记录里最后打伤的（真人 by、机器人 bot）。算出凶手现在在哪，只发给死的人：
+  --   { p 凶手的位置, from 死的人头的位置, name 名字, d 距离（格）, uid 真人的 UserId }；客户端（Warfx.lua）镜头转过去、拉近、标出来
+  function G.killcam(P, killer)
+    if not killer or not P or not P.pl then return end
+    local pos
+    local K = killer.by
+    if K and K ~= P then
+      local root = K.vehicle and K.vehicle.root
+      if root then
+        pos = root.CFrame.Position
+      else
+        local ch = K.char or (K.pl and K.pl.Character)
+        local h = ch and ch:FindFirstChild("HumanoidRootPart")
+        pos = h and h.CFrame.Position
+      end
+    elseif killer.bot then
+      local e = killer.bot.e
+      pos = e and e.root and e.root.CFrame.Position
+    end
+    if not pos then return end
+    local ch = P.char or P.pl.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local from = hrp and (hrp.CFrame.Position + Vector3.new(0, 1.6, 0)) or nil   -- 眼睛的高度
+    G.msg(P.pl, "killcam", { p = pos, from = from, name = killer.name, d = from and (pos - from).Magnitude or nil,
+      uid = K and K.pl and K.pl.UserId or nil })
+  end
+
+  G.onFrame(function(dt)
     stepCraters()
     stepIllum()
+    stepStorm(dt)
     if not scanned and G.worldReady then scanBlds() end
   end)
 end

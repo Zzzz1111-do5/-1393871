@@ -517,6 +517,7 @@ function Round.init(G)
       killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
+    if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end

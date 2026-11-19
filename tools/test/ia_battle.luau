@@ -162,6 +162,78 @@ do
 	end
 end
 
+print("⑥ 暴风雨：下雨、打闪、打雷，过去以后雨停")
+do
+	local C = H.Gs.P1
+	local WS = H.game:GetService("Workspace")
+	-- 先出生（镜头跟着人到地面上：云下面才下雨）
+	local P1 = G.P[p1]
+	local function remote(pl, name, ...)
+		local args = table.pack(...)
+		local prev = H.ctx
+		H.ctx = pl
+		local co = coroutine.create(function() H.Gs[pl.Name].R[name]:FireServer(table.unpack(args, 1, args.n)) end)
+		coroutine.resume(co)
+		H.ctx = prev
+	end
+	remote(p1, "Act", "pickTeam", P1.team)
+	H.run(0.5)
+	remote(p1, "Act", "deploy", "rifle", (P1.team == "atk") and "fleet" or "camp")
+	H.run(3)
+	check(P1.alive, "出生了")
+	G.Config.Battle.storm.ramp = 2
+	local b0 = C.boltCount()
+	G.startStorm(0, 24)
+	H.run(4)
+	local k = WS:GetAttribute("StormK") or 0
+	check(k > 0.9, string.format("服务器：暴风雨来了（强度 %.2f）", k))
+	check(C.weather.k > 0.3, string.format("客户端跟上强度（%.2f）", C.weather.k))
+	local rain = C.fxFolder and C.fxFolder:FindFirstChild("Rain")
+	local pe = rain and rain:FindFirstChildOfClass("ParticleEmitter")
+	local camY = WS.CurrentCamera.CFrame.Position.Y
+	if camY < 700 then
+		check(pe ~= nil and pe.Rate > 100, "镜头上方下雨（" .. (pe and pe.Rate or 0) .. " 滴 / 秒）")
+	else
+		check(pe ~= nil and pe.Rate == 0, string.format("镜头在云上面（%.0f 格高）：不下雨", camY))
+	end
+	H.runUntil(function() return C.boltCount() > b0 end, 20)
+	check(C.boltCount() > b0, "打闪、打雷")
+	H.runUntil(function() return (WS:GetAttribute("StormK") or 0) == 0 end, 30)
+	H.run(8)
+	check((WS:GetAttribute("StormK") or 0) == 0 and pe and pe.Rate == 0, "暴风雨过去：雨停了")
+	G.Config.Battle.storm.ramp = 25
+end
+
+print("⑦ 阵亡镜头：死了以后镜头转向凶手、拉近，3 秒后复原")
+do
+	local C = H.Gs.P1
+	local WS = H.game:GetService("Workspace")
+	local P = G.P[p1]
+	local hrp = P.char and P.char:FindFirstChild("HumanoidRootPart")
+	check(P.alive and hrp ~= nil, "活着")
+	if hrp then
+		local root = Inst.new("Part")
+		root.Anchored, root.Size = true, V3.new(2, 5, 2)
+		root.CFrame = CF.new(hrp.CFrame.Position + V3.new(60, 0, 0))
+		root.Parent = WS
+		local bot = { e = { root = root }, team = (P.team == "atk") and "def" or "atk", name = "神枪手", k = 0, s = 0 }
+		local n0 = C.killcamCount()
+		G.hurtChar(P.char, 999, { bot = bot, team = bot.team, name = bot.name })
+		H.run(0.3)
+		check(C.killcamCount() > n0, "阵亡：镜头转向凶手")
+		H.run(1.6)
+		local cam = WS.CurrentCamera
+		local look = cam.CFrame.LookVector
+		local want = (root.CFrame.Position - cam.CFrame.Position).Unit
+		check(look:Dot(want) > 0.97, string.format("镜头对着凶手（夹角 %.0f°）", math.deg(math.acos(math.min(1, look:Dot(want))))))
+		local zoomed = cam.FieldOfView
+		check(zoomed < 40, string.format("视野拉近（%.0f°）", zoomed))
+		H.run(2)
+		check(not C.killcamOn() and cam.FieldOfView > zoomed + 20, "3 秒后放开镜头、视野复原")
+		root:Destroy()
+	end
+end
+
 print("③ 新一局：挖过的地写回去、房子复原")
 do
 	local v0 = H.voxelWrites
