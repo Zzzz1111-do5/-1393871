@@ -283,6 +283,18 @@ do
   end
 end
 
+-- 零件拼的坦克（没有原模型：M10）：车长位上一个会转的遥控武器站（用户 11-19：坦克的机枪要能转，开火位置要在机枪）——
+--   机枪那一栏从并列机枪（主炮旁边）换成它的 12.7 毫米机枪；有原模型的坦克在元数据里给（tools/models/vehrws.py）
+for _, d in pairs(D) do
+  if d.cat == "tank" and not d.rws and not d.model and d.cupola then
+    local top = (d.turret and d.turret.size and d.turret.size.Y) or 2.3
+    d.rws = { pivot = V(d.cupola.X, top, d.cupola.Z), gun = V(0, 0.62, -0.45), len = 2.45, trav = 120, rate = 90, elev = { -15, 55 }, mk = "rws" }
+    for i, wid in ipairs(d.weapons) do
+      if wid == "coax" then d.weapons[i] = "hmg" end
+    end
+  end
+end
+
 function VehDefs.get(id) return D[id] end
 
 -- 炮塔、炮的坐标系：base 是车底（着地中心）的 CFrame

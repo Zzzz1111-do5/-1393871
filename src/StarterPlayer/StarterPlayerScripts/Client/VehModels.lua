@@ -73,6 +73,27 @@ function VehModels.build(d, team)
     local L = math.abs(z1 - z0)
     return fn(V(L, dia, dia), CF(x, y, (z0 + z1) / 2) * ALONG_Z, color, mat, CYL)
   end
+  -- 零件拼的车顶遥控武器站（原模型上没有机枪、或者机枪和炮塔分不开的坦克：99A2、15 式、零件拼的 M10；用户 11-19：坦克的机枪要能转，开火位置要在机枪）：
+  --   座圈、武器站的罩子、光电盒子跟着底座转（rws，原点在座圈中心），12.7 毫米机枪（机匣、散热套筒、枪管、弹箱）跟着俯仰（rwg，原点在俯仰轴）；
+  --   gunOff 俯仰轴相对座圈中心，muz 枪口在俯仰轴前面多远——枪口正好在服务器算的枪口上（VehDefs.muzzle 的 rws）
+  local function rwsMg(gunOff, muz)
+    local GM, BL = RGB(54, 56, 52), RGB(30, 31, 30)
+    local function rw(size, off, color, mat, shape) return add("rws", size, off, color or C.base, mat or MAT.Metal, shape) end
+    local function rg(size, off, color, mat, shape) return add("rwg", size, off, color or GM, mat or MAT.Metal, shape) end
+    local gy, gz = gunOff.Y, gunOff.Z
+    rw(V(0.22, 1.7, 1.7), CF(0, 0.11, 0) * UPRIGHT, C.dark, MAT.Metal, CYL)   -- 座圈
+    rw(V(1.0, math.max(0.3, gy - 0.25), 1.1), CF(0, 0.22 + math.max(0.3, gy - 0.25) / 2, gz * 0.45), C.base)   -- 武器站的罩子（底座）
+    rw(V(0.2, 0.55, 0.5), CF(0.42, gy - 0.12, gz), C.base)   -- 枪架右侧板
+    rw(V(0.2, 0.55, 0.5), CF(-0.42, gy - 0.12, gz), C.base)   -- 枪架左侧板
+    rw(V(0.5, 0.42, 0.58), CF(-0.78, gy + 0.05, gz + 0.05), GM)   -- 光电盒子（左边）
+    rw(V(0.22, 0.2, 0.06), CF(-0.78, gy + 0.08, gz - 0.25), RGB(18, 22, 26), MAT.Glass)   -- 镜头
+    rg(V(0.42, 0.44, 1.35), CF(0, 0, 0.35), GM)   -- 机匣
+    rg(V(0.16, 0.3, 0.26), CF(0, -0.08, 1.12), BL)   -- 后部握把
+    tube(rg, 0, 0.04, -0.32, -1.25, 0.26, BL)   -- 散热套筒
+    tube(rg, 0, 0.04, -1.25, -muz, 0.14, BL)   -- 枪管
+    rg(V(0.11, 0.2, 0.2), CF(0, 0.04, -muz + 0.08), BL)   -- 枪口制退器
+    rg(V(0.36, 0.44, 0.62), CF(0.44, -0.04, 0.3), C.base)   -- 弹箱（右边供弹）
+  end
   -- 一组迷彩斑块（贴在一个面上的薄片）
   local function blotches(fn, cx, cy, cz, w, h, axis, n)
     for _ = 1, n do
@@ -181,6 +202,8 @@ function VehModels.build(d, team)
       tube(gun, 0, 0.12, -1.85, -d.gun.len, 0.17, BL)   -- 枪管
       gun(V(0.4, 0.5, 0.78), CF(-0.48, -0.06, 0.05), OD)   -- 弹箱（M2 从左边供弹）
     end
+    -- 原模型上没有机枪（或者去掉了）的坦克：元数据的 rws.mk——在座圈上拼一个遥控武器站（tools/models/vehrws.py）
+    if info.rws and info.rws.mk and rpiv and rgpiv then rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
       rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil }
   end
@@ -332,7 +355,9 @@ function VehModels.build(d, team)
     tur(V(0.9, 0.8, 1.1), CF(d.sight.X, s.Y + 0.4, d.sight.Z), C.dark)   -- 炮长镜
     tur(V(0.15, 0.15, 1.4), CF(d.sight.X, s.Y + 0.4, d.sight.Z - 0.6) * CFrame.Angles(0, 0, 0), GLASS, MAT.Glass)
     if d.citv then tur(V(1.0, 1.2, 1.0), CF(d.citv.X, s.Y + 0.6, d.citv.Z), C.dark) end
-    tur(V(0.6, 0.6, 1.4), CF((d.cupola and d.cupola.X or 1.4), s.Y + 0.6, (d.cupola and d.cupola.Z or 0.2) - 0.6), RGB(40, 42, 44))   -- 车长机枪
+    if not d.rws then   -- 车长机枪（有遥控武器站的换成会转的，下面拼）
+      tur(V(0.6, 0.6, 1.4), CF((d.cupola and d.cupola.X or 1.4), s.Y + 0.6, (d.cupola and d.cupola.Z or 0.2) - 0.6), RGB(40, 42, 44))
+    end
     for sx = -1, 1, 2 do tur(V(0.1, 7, 0.1), CF(sx * s.X * 0.32, s.Y + 3.5, s.Z * 0.42), RGB(30, 30, 30), MAT.Metal, CYL) end
     blotches(tur, 0, s.Y + 0.01, 0, s.X * 0.6, s.Z * 0.6, "y", 3)
   elseif st == "ifv" then
@@ -439,6 +464,11 @@ function VehModels.build(d, team)
     end
   end
 
+  -- 零件拼的坦克（M10；还有没导入原模型时的退路）：车长位上拼一个会转的遥控武器站（VehDefs 给的 d.rws）
+  if d.rws and d.rws.gun then
+    rwsMg(d.rws.gun, d.rws.len or 2.45)
+    extra.rpiv, extra.rgpiv = d.rws.pivot, d.rws.gun
+  end
   end   -- 零件拼的（没有原模型时）
 
   -- 扬尘：后轮那里两个隐形发射点
