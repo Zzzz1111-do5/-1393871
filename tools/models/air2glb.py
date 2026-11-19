@@ -19,9 +19,12 @@ import air_kf as KF   # noqa: E402  原模型自带关键帧动画的（F-22A）
 import orient   # noqa: E402  修朝反了的面（Roblox 只画正面）
 import glbvote   # noqa: E402  写完 GLB 再从 26 个方向检查一遍面朝向、法线
 import airpaint   # noqa: E402  重新涂装（歼-20）、发光灯带（歼-20、歼-16）、发动机堵头（H-6、A-10）
+import doorbay   # noqa: E402  舱门里补封好的舱、舱门补反面（歼-20：开了舱门别能看穿飞机）
 
 S = B.S
 CHUNK = B.CHUNK
+# 单独调小的：一块里留出余量，glbfix.py 给单层板补反面时不会顶到 Roblox 一块 2 万个三角形的上限（歼-20 v4 不减面以后有一两千个三角形补不上）
+CHUNKK = {'j20': 15000}
 
 # 游戏里的型号（AirDefs）→ 网页版的模型；后面带 ~ 的去掉原机涂装（我方没有模型的用外形最接近的美军机代，原机的国籍标志、舷号都在底色贴图里），游戏里按我方涂色
 ALIAS = {
@@ -302,8 +305,9 @@ def convert(key, AD, ids):
     for g in order:
         for mi in sorted(set(tri_m[tri_g == g].tolist())):
             idx_all = tris[(tri_g == g) & (tri_m == mi)]
-            for c0 in range(0, len(idx_all), CHUNK):
-                tri = idx_all[c0:c0 + CHUNK]
+            ck = CHUNKK.get(key, CHUNK)
+            for c0 in range(0, len(idx_all), ck):
+                tri = idx_all[c0:c0 + ck]
                 u, inv = np.unique(tri.reshape(-1), return_inverse=True)
                 P = Pw[u] - org
                 count[g] = count.get(g, 0) + 1
@@ -423,6 +427,8 @@ def convert(key, AD, ids):
 # 有活动部件（舵面、弹舱门、座舱盖、起落架支柱）的模型换个键名（<键>_v2，块叫 A_<键>_v2__<块名>）：和用户已经导入的老版本（一整块蒙皮）
 #   不会重名、能同时放在 Imported.Air 里；元数据里老版本那一行原样留着（old 表），游戏先找新的、没导入新的照旧用老的（不会动）
 VER = '_v3'   # v2：有活动部件；v3：再修了朝反的面（v2 导入了的照样能用，见 old 表）
+# 单独换过版本的：j20 v4 是 11-18 用原模型不减面重新转的（21.9 万个三角形，原来烘焙时减到 13 万）、补了起落架和起落架舱门（tools/models/j20_gear.py）
+VERK = {'j20': '_v4'}
 
 
 if __name__ == '__main__':
@@ -433,7 +439,7 @@ if __name__ == '__main__':
     os.makedirs(OUTDIR, exist_ok=True)
     keys = sorted(set(v.rstrip('~') for v in ALIAS.values()))
     anim = {k for k in keys if k in A.SURF or k in A.GEAR}
-    kname = {k: (k + VER if k in anim else k) for k in keys}   # 导入后的键名
+    kname = {k: (k + VERK.get(k, VER) if k in anim else k) for k in keys}   # 导入后的键名
     old = B.old_lines(META)   # 原来元数据里各模型那一行
     # 老版本：原来元数据里这个模型的别的版本（不带后缀的一整块蒙皮版、_v2……）原样留着，用户导入的是哪一版都能用
     import re
@@ -489,6 +495,11 @@ if __name__ == '__main__':
         if spec['key'] in lua_out:
             print('%-8s 涂装 / 灯带 / 堵头' % spec['key'])
             airpaint.paint(nm, os.path.join(OUTDIR, nm + '.glb'), META)
+    # 舱门开口挤出舱、舱门补反面（tools/models/doorbay.py 的 SPEC）——要在涂装之后
+    for nm, spec in doorbay.SPEC.items():
+        if spec['key'] in lua_out:
+            print('%-8s 舱、舱门反面' % spec['key'])
+            doorbay.run(nm, os.path.join(OUTDIR, nm + '.glb'), META)
     B.write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
                     'Roblox全面大战场的飞机、直升机模型（models/air/<模型键>.glb）：从网页版《暗剑》烘焙的模型原样转换（js/mdl/<模型键>.js）\n'
                     '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到机身中心和地面；按部件（机体 / 起落架 / 旋翼 / 尾桨 / 折叠外翼）和材质切成几块，'

@@ -1,13 +1,11 @@
--- Roblox全面大战场（客户端）——落点标记
---   ① 手雷弹道（用户：手榴弹增加一个弹道）：拿着手雷时，按服务器扔雷的算法（Weapons.lua KIND.throw：往准星那边 45° 抛出去，
---      速度按水平距离算；重力是 0.55 倍）一步一步模拟，画一串小亮点到第一次落地，落地那里一个杀伤半径的圈
---   ② 炸弹落点（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）：开飞机选中炸弹时，按服务器炸弹的算法（Air.lua guideBomb：
---      投出去带着飞机的速度、往下 4 格 / 秒，重力 AD.GRAV、一点阻力）算出落在哪，地上画一个杀伤半径的红圈、中间十字、一道竖光柱
---      （高空也看得见）；制导炸弹锁上了就标在目标上。扔出去的炸弹落地前，地上也一直标着它要落在哪（小一点的圈）
+-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
+--   开飞机选中炸弹时，按服务器炸弹的算法（Air.lua guideBomb：投出去带着飞机的速度、往下 4 格 / 秒，重力 AD.GRAV、一点阻力）
+--   算出落在哪，地上画一个杀伤半径的红圈、中间十字、一道竖光柱（高空也看得见）；制导炸弹锁上了就标在目标上。
+--   扔出去的炸弹落地前，地上也一直标着它要落在哪（小一点的圈）。
+--   （手雷的抛物线在 Nade.lua，另一个会话做的：按住右键瞄时画，算了弹跳和引信爆点）
 --   标记零件都只在本地、不碰撞、不挡射线
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Marks = {}
 
@@ -45,88 +43,7 @@ function Marks.init(G)
     disc.Parent = folder
   end
 
-  ---------------------------------------------------------------- ① 手雷弹道
-
-  local NDOT = 26
-  local dots = {}
-  for i = 1, NDOT do
-    local d = part(V(0.32, 0.32, 0.32), RGB(255, 246, 210), Enum.PartType.Ball, 0.15)
-    d.Name = "NadeDot"
-    dots[i] = d
-  end
-  local nadeRing = ring(RGB(255, 120, 60), 0.72)
-  local nadeCore = part(V(0.32, 1.6, 1.6), RGB(255, 90, 50), Enum.PartType.Cylinder, 0.1)
-  nadeCore.Name = "NadeCore"
-  local rp = RaycastParams.new()
-  rp.FilterType = Enum.RaycastFilterType.Exclude
-  local function hideNade()
-    for _, d in ipairs(dots) do d.Parent = nil end
-    nadeRing.Parent, nadeCore.Parent = nil, nil
-  end
-  -- 模拟一颗手雷：返回路径点和落点（第一次碰到东西）
-  local function nadePath(w, head, aim)
-    local m = head + V(0, 0.5, 0)
-    local flat = V(aim.X - m.X, 0, aim.Z - m.Z)
-    local d = math.min(flat.Magnitude, w.range)
-    local dir = (flat.Magnitude > 0.1) and flat.Unit or V(0, 0, -1)
-    local sp = math.clamp(math.sqrt(math.max(1, d) * workspace.Gravity * 0.55), 20, w.speed)
-    local vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0)
-    local g = V(0, -workspace.Gravity * 0.55, 0)
-    local pts, pos, dt = { m }, m, 1 / 15   -- 一步 1/15 秒（每帧几十条射线就够，弹道是抛物线，步子大点也准）
-    for _ = 1, 90 do
-      vel += g * dt
-      local step = vel * dt
-      local res = workspace:Raycast(pos, step, rp)
-      if res then
-        table.insert(pts, res.Position)
-        return pts, res.Position
-      end
-      pos += step
-      table.insert(pts, pos)
-      if pos.Y < ground(pos.X, pos.Z) then return pts, V(pos.X, ground(pos.X, pos.Z), pos.Z) end
-    end
-    return pts, pos
-  end
-  G.nadePath = nadePath   -- 测试用
-
-  local function stepNade()
-    local id = G.weaponNow and G.weaponNow()
-    local w = id and W[id]
-    local char = me.Character
-    local head = char and char:FindFirstChild("Head")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not w or w.kind ~= "throw" or not head or not hum or hum.Health <= 0 or G.drive or G.fly or not G.aimPoint then
-      hideNade()
-      return
-    end
-    local ex = { char, folder }   -- 不挡弹道的：自己、标记、特效（没有的不放，表里不能有空洞）
-    if G.fxFolder then table.insert(ex, G.fxFolder) end
-    if G.viewFolder then table.insert(ex, G.viewFolder) end
-    rp.FilterDescendantsInstances = ex
-    local aim = G.aimPoint(w.range or 90)
-    local pts, land = nadePath(w, head.Position, aim)
-    -- 小亮点按路径长度均匀摆
-    local total = 0
-    for i = 2, #pts do total += (pts[i] - pts[i - 1]).Magnitude end
-    local segI, acc = 2, 0
-    for k = 1, NDOT do
-      local want = total * k / (NDOT + 1)
-      while segI < #pts and acc + (pts[segI] - pts[segI - 1]).Magnitude < want do
-        acc += (pts[segI] - pts[segI - 1]).Magnitude
-        segI += 1
-      end
-      local a, b = pts[segI - 1], pts[segI]
-      local L = (b - a).Magnitude
-      local p = (L > 1e-4) and a:Lerp(b, math.clamp((want - acc) / L, 0, 1)) or b
-      dots[k].CFrame = CFrame.new(p)
-      dots[k].Parent = folder
-    end
-    placeRing(nadeRing, land, w.splash or 14)
-    nadeCore.CFrame = CFrame.new(land + V(0, 0.32, 0)) * CFrame.Angles(0, 0, math.pi / 2)
-    nadeCore.Parent = folder
-  end
-
-  ---------------------------------------------------------------- ② 炸弹落点
+  ---------------------------------------------------------------- 炸弹落点
 
   local bombRing = ring(RGB(255, 60, 40), 0.68)
   local crossA = part(V(0.4, 0.4, 14), RGB(255, 70, 50), nil, 0.1)
@@ -218,8 +135,7 @@ function Marks.init(G)
     end
   end
 
-  RunService.RenderStepped:Connect(function()
-    G.try_(stepNade)
+  G.frameConn("Marks", function()
     G.try_(stepBomb)
     G.try_(stepDropped)
   end)

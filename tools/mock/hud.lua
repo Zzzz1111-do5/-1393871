@@ -66,6 +66,17 @@ check(okR, "中间一个大圈")
 local gunPx = ring.Size.X.Offset
 local okW, list = shown("WeaponList")
 check(okW, "右侧武器栏")
+-- 用户：飞机飞行参考 DCS——平显左边 G 过载、α 迎角、M 马赫；俯仰梯（地平线和上下每 5° 一根）
+local okG, gl = shown("GLoad")
+local okAo, ao = shown("AoA")
+local okM, mm = shown("Mach")
+check(okG and okAo and okM and gl.Text:match("^G %-?%d") ~= nil and ao.Text:find("α", 1, true) ~= nil and mm.Text:match("^M %d") ~= nil,
+  string.format("平显左边 G / α / M：%s  %s  %s", tostring(gl and gl.Text), tostring(ao and ao.Text), tostring(mm and mm.Text)))
+local nLad = 0
+for _, d2 in ipairs(me.PlayerGui:GetDescendants()) do
+  if d2.Name == "PitchLadder" and T.visible(d2) then nLad = nLad + 1 end
+end
+check(nLad >= 3, "俯仰梯画出来了：" .. nLad .. " 根")
 
 print("② 右侧武器栏：按键号、图标、名字、剩几发；最后一行热诱弹；按 2 选中第二行")
 local rows = {}

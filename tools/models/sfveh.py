@@ -10,25 +10,7 @@ from PIL import Image
 
 # 模型键 → 来源、署名、加工方法。alias：游戏里哪些型号用它（VehDefs 的型号）
 SF = {
-    'ztq15': {
-        'uid': 'e9863d7b5a474eb0800fc59e82f9ebd4',
-        'title': 'PLA LIGHT MAIN BATTLE TANK TYPE 15 HEAVY', 'author': 'lhc526', 'user': 'https://sketchfab.com/lhc526',
-        'url': 'https://sketchfab.com/3d-models/pla-light-main-battle-tank-type-15-heavy-e9863d7b5a474eb0800fc59e82f9ebd4',
-        'license': 'CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)', 'name': 'ZTQ-15 轻型坦克', 'alias': ['ztq15'],
-        # 作者用手机扫描（RealityScan）的一个 1:65 左右的坦克模型，连着下面一块木桌面；炮塔往右转了 30° 左右
-        'scan': {
-            'L': 19 / 2.8,      # 车体长（米）：照 VehDefs 的 L（1 米 = 2.8 格），按它定放大倍数
-            'cut': 0.001,       # 桌面以上多高才算车（模型单位，米）
-            'band': (0.004, 0.014),   # 量车体轴线、长宽用的高度段（履带、车体侧面）
-            'hcut': 0.0258,     # 炮塔和车体从这个高度分开（炮塔座圈上沿）
-            'gun_r': 0.0024,    # 炮管周围多粗的范围算炮（模型单位）
-            'mant': 0.0265,     # 炮管从炮塔正面伸出来的位置（离炮塔转轴，往前为正）
-            'trun': 0.006,      # 炮耳轴在炮管根部后面多远
-            'tiles': 2,         # 贴图按贴图坐标分成 2 × 2 块，各自一张 1024 的图
-        },
-        'mods': '去掉扫描带的木桌面；按车体轴线摆正，炮塔转回正前方，拆成车体、炮塔、炮管；炮塔座圈补一块底板；'
-                '按真车大小放大（车体长 6.8 米）；贴图按图集分成 4 块，各自裁剪、缩到 1024 像素',
-    },
+    # 'ztq15'（lhc526 手机扫描的 15 式轻坦，CC-BY）11-19 删掉了：用户嫌建模非常粗糙
 }
 
 

@@ -174,11 +174,14 @@ end
 
 ---------------------------------------------------------------- 地形
 
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70) }
+-- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+  Mud = RGB(54, 47, 40) }
 
--- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水
-local function writeChunk(T, x0, z0)
-  local RES, N, D = Map.RES, 64, Map.SEA_DEPTH
+-- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
+--   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
+local function writeChunk(T, x0, z0, n, yFloor)
+  local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -194,6 +197,7 @@ local function writeChunk(T, x0, z0)
   local DW = math.min(D, 30)
   if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
+  if yFloor then yb0 = math.min(yb0, math.floor(yFloor / RES)) end
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
   local M, O = table.create(N), table.create(N)
@@ -248,9 +252,9 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高）：0.3（约一格高）——长了小兵的腿、车轮、沙袋下半截都埋在草里，看着像半截身子在地下
-    --   （用户 11-18：现在所有单位都是半截身子在地下的——上午调到 0.55 就是这样；草多用 Roblox 自带的那种，是铺得更满，不是更高）
-    T.GrassLength = 0.3
+    -- 草叶长度（默认 0.7 约两格高）：0.45——用户 11-19：地上草高一点、多一点（Roblox 自带的那种）；
+    --   不回到 0.55（11-18 那样小兵、车轮下半截埋在草里，看着像半截身子在地下）。「多」靠 Map.material 让更多地方是 Grass
+    T.GrassLength = 0.45
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -309,6 +313,8 @@ function World.terrain(onProgress)
   end
   return total, #list
 end
+
+World.writeChunk = writeChunk
 
 ---------------------------------------------------------------- 小建筑
 
@@ -676,6 +682,9 @@ local function building(f, key, x, z, rot, opt)
     light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
   end
   m:SetAttribute("Imported", n > 0)
+  -- 占地（Battle.lua 炸塌房子用：废墟按这个摆）
+  m:SetAttribute("BldBase", base)
+  m:SetAttribute("BldSize", V(w, h, d))
   m.Parent = f
   return base, m, w, h, d
 end
@@ -833,22 +842,56 @@ local function lighthouse(f)
   local I = Map.LIGHTHOUSE
   local x, z = I.x + I.a * 0.55, I.z + 30   -- 东岸崖顶
   local y = Map.ground(x, z)
+  f = folder("Lighthouse", f)
   for i = 0, 5 do cyl(f, 8, 12 - i * 0.6, CF(x, y + 4 + i * 8, z), (i % 2 == 0) and C.white or C.red, MAT.Concrete, true) end
-  local lamp = part(f, V(6, 6, 6), CF(x, y + 51, z), RGB(255, 236, 160), MAT.Neon, BALL)
-  -- 灯塔的光柱：一根长长的半透明光束 + 射灯，客户端（Night.lua）让它绕着转
-  local beam = part(f, V(4, 4, 260), CF(x, y + 51, z) * CF(0, 0, -130), RGB(255, 240, 200), MAT.Neon)
-  beam.Transparency = 0.86
-  beam.CastShadow = false
-  beam:SetAttribute("Anim", "spin")
-  beam:SetAttribute("Spd", 0.08)
-  beam:SetAttribute("Pivot", V(x, y + 51, z))
-  local sl = Instance.new("SpotLight")
-  sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color = Enum.NormalId.Front, 18, 60, 6, RGB(255, 240, 200)
-  sl.Parent = beam
+  local lantern = CF(x, y + 51, z)
+  local warm = RGB(255, 226, 170)
+  cyl(f, 1.2, 14, lantern * CF(0, -3, 0), C.dark, MAT.Metal)
+  cyl(f, 1, 11, lantern * CF(0, 3, 0), C.red, MAT.Metal)
+  cyl(f, 1.3, 7, lantern * CF(0, 4.1, 0), C.dark, MAT.Metal)
+  for i = 0, 7 do
+    local corner = lantern * CFrame.Angles(0, i * math.pi / 4, 0)
+    part(f, V(0.26, 6, 0.26), corner * CF(0, 0, -4.3), C.dark, MAT.Metal)
+    part(f, V(5.3, 0.23, 0.23), corner * CF(0, -1.2, -6.45), C.metal, MAT.Metal)
+  end
+  local lamp = part(f, V(3.2, 3.2, 3.2), lantern, warm, MAT.Neon, BALL)
   local pl = Instance.new("PointLight")
-  pl.Range, pl.Brightness, pl.Color = 40, 2, RGB(255, 236, 170)
+  pl.Range, pl.Brightness, pl.Color = 28, 1.4, warm
   pl.Parent = lamp
-  part(f, V(9, 1, 9), CF(x, y + 55, z), C.red, MAT.Metal, nil, true)
+
+  -- 两层渐隐光束共用一个转轴，客户端按服务器时钟同步扫过海面。
+  local sweep = part(f, V(1, 1, 1), lantern, warm)
+  sweep.Name = "LighthouseSweep"
+  sweep.Transparency = 1
+  sweep:SetAttribute("Anim", "spin")
+  sweep:SetAttribute("Spd", 0.08)
+  sweep:SetAttribute("Pivot", lantern.Position)
+  local lens = Instance.new("Attachment")
+  lens.Position = V(0, 0, -4.7)
+  lens.Parent = sweep
+  for _, spec in ipairs({
+    { name = "LanternCore", distance = 220, width0 = 1.8, width1 = 10, alpha = 0.88 },
+    { name = "SeaHaze", distance = 650, width0 = 4, width1 = 48, alpha = 0.94 },
+  }) do
+    local reach = Instance.new("Attachment")
+    reach.Position = V(0, -0.025 * spec.distance, -spec.distance)
+    reach.Parent = sweep
+    local beam = Instance.new("Beam")
+    beam.Name = spec.name
+    beam.Attachment0, beam.Attachment1 = lens, reach
+    beam.Width0, beam.Width1 = spec.width0, spec.width1
+    beam.FaceCamera, beam.LightEmission, beam.LightInfluence = true, 0.7, 0
+    beam.Color = ColorSequence.new(warm, RGB(172, 199, 215))
+    beam.Transparency = NumberSequence.new({
+      NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.10, spec.alpha),
+      NumberSequenceKeypoint.new(0.37, spec.alpha), NumberSequenceKeypoint.new(1, 1),
+    })
+    beam.Parent = sweep
+  end
+  local sl = Instance.new("SpotLight")
+  sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color = Enum.NormalId.Front, 20, 60, 2.5, warm
+  sl.Shadows = false
+  sl.Parent = sweep
   building(f, "jph2", x - 30, z + 12, 0.2 + math.pi / 2)   -- 看守的小屋
 end
 

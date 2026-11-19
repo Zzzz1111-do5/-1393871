@@ -729,7 +729,7 @@ function Scope.init(G)
     return G2
   end
   local glintScan = 0
-  RunService.RenderStepped:Connect(function(dt)
+  G.frameConn("Scope", function(dt)
     local t = now()
     if t - glintScan > 0.25 then   -- 每 0.25 秒看一遍谁开着镜
       glintScan = t

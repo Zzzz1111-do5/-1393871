@@ -12,6 +12,7 @@ function Weapons.init(G)
   local now = os.clock
   local RS = game:GetService("ReplicatedStorage")
   local GD = require(RS:WaitForChild("GearDefs"))
+  local HitSurf = require(RS:WaitForChild("HitSurf"))   -- 子弹打在什么上面（客户端按它画弹着点：钢甲火花、土、水……）
   local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：装的时候转回来
   local OM = nil   -- 手持装备真模型的元数据（OpticsMeta：块的中心、握把、枪口……）
   do
@@ -342,6 +343,12 @@ function Weapons.init(G)
 
   local KIND = {}
 
+  -- 子弹打在什么上面（客户端画弹着点用）：延迟补偿判中的按补偿到的目标（车按类别、人是 f），不然按射线打中的零件和材质
+  local function surfOf(rw, res)
+    if rw then return (rw.e and rw.e.root and HitSurf.of(rw.e.root)) or "f" end
+    return res and HitSurf.of(res.Instance, res.Material) or nil
+  end
+
   -- 散布（用户 11-18：提高手感）：开镜（客户端发 "ads"）收紧、跑起来 / 跳在半空变散、连射越打越散（P.bloom），公式在 Config.gunSpread，
   --   客户端准星照同一个公式画。开镜只会让散布变小，谎报了也就是一直按开镜算，不影响别的
   local function gunSpread(P, id, w, char, ads)
@@ -375,7 +382,8 @@ function Weapons.init(G)
     -- 按现在的位置没打中人 / 车：按他屏幕上那一刻的位置再判一次（Rewind.lua，延迟补偿）
     local rw = G.rewindShot and G.rewindShot(P, origin, dir, w.range, res)
     local hit = (rw and rw.pos) or (res and res.Position) or (origin + dir * w.range)
-    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team })   -- t：哪一方开的枪（客户端雷达上闪红圈）
+    -- t：哪一方开的枪（客户端雷达上闪红圈）；h：打在什么上面（HitSurf：钢甲火花、土、水……；没打中东西是空）
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team, h = surfOf(rw, res) })
     if rw then G.hitRewound(rw, w, w.dmg, src(P), w.head)
     elseif res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
   end
@@ -625,7 +633,8 @@ function Weapons.init(G)
     local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
     local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
     local B = srcInfo and srcInfo.bot
-    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil })   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
+      h = surfOf(rw, res) })
     if rw then
       G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)
       return (rw.e and rw.e.root) or rw.part, rw.pos

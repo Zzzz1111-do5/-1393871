@@ -21,6 +21,9 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 0.8, armor = 0.1, air = 2.4, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
   vulcan = { kind = "shell", dmg = 26, speed = 1200, drop = 0.2, splash = 2.5, rate = 0.035, mag = 300, reload = 6, reserve = 1200, range = 1600,
     vs = { inf = 1, light = 0.6, armor = 0.05, air = 2.0, ship = 0.15, fort = 0.25 }, fx = "ac", cal = 0.14 },
+  -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
+  gau8 = { kind = "shell", dmg = 52, speed = 1250, drop = 0.18, splash = 3.5, rate = 0.05, mag = 512, reload = 6, reserve = 1536, range = 2200,
+    vs = { inf = 1, light = 1.1, armor = 0.32, air = 1.6, ship = 0.4, fort = 0.9 }, fx = "ac", cal = 0.22 },
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
     vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
@@ -66,13 +69,6 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   sight = V(-1.7, 2.0, -2.2), cupola = V(1.6, 2.2, 0.4),
   smoke = { banks = { { at = V(3.1, 1.4, -1.2), yaw = 40 }, { at = V(-3.1, 1.4, -1.2), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
-D.ztq15 = tracked({ cat = "tank", L = 19, W = 9.0, H = 6.8, hullH = 3.9, clear = 1.3, speed = 40, accel = 12, turn = 42,
-  rw = { n = 6, r = 1.0, x = 3.6, z0 = -6.6, z1 = 6.2 }, era = false, skirt = true,
-  turret = { pivot = V(0, 3.9, 0.2), size = V(6.2, 2.1, 6.6), style = "wedge", trav = 45, elev = { -6, 18 }, bustle = 1.6 },
-  gun = { pivot = V(0, 0.85, -3.0), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.0, 0.85, -3.1),
-  sight = V(-1.6, 2.0, -2.2), cupola = V(1.5, 2.1, 0.2),
-  smoke = { banks = { { at = V(2.9, 1.4, -1.4), yaw = 40 }, { at = V(-2.9, 1.4, -1.4), yaw = -40 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
 D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
@@ -279,6 +275,18 @@ do
         end
         d.model = key
       end
+    end
+  end
+end
+
+-- 零件拼的坦克（没有原模型：M10）：车长位上一个会转的遥控武器站（用户 11-19：坦克的机枪要能转，开火位置要在机枪）——
+--   机枪那一栏从并列机枪（主炮旁边）换成它的 12.7 毫米机枪；有原模型的坦克在元数据里给（tools/models/vehrws.py）
+for _, d in pairs(D) do
+  if d.cat == "tank" and not d.rws and not d.model and d.cupola then
+    local top = (d.turret and d.turret.size and d.turret.size.Y) or 2.3
+    d.rws = { pivot = V(d.cupola.X, top, d.cupola.Z), gun = V(0, 0.62, -0.45), len = 2.45, trav = 120, rate = 90, elev = { -15, 55 }, mk = "rws" }
+    for i, wid in ipairs(d.weapons) do
+      if wid == "coax" then d.weapons[i] = "hmg" end
     end
   end
 end

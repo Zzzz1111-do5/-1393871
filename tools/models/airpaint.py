@@ -18,7 +18,9 @@ import mdl2glb as B   # noqa: E402
 # 颜色是 sRGB（0–255），m 金属度、r 粗糙度
 PAINT = {
     'j20': {
-        'key': 'j20_v3',
+        'key': 'j20_v4',   # 11-18 换成不减面、带起落架的 v4（tools/models/j20_gear.py）；v3 那次涂好的元数据原样留在 ImportedAir.lua
+        # 不涂的材质：j20_gear.py 加的起落架（金属支柱、镀铬减震筒、轮胎、轮毂、着陆灯）保持自己的颜色
+        'keep': ['gear_metal', 'gear_chrome', 'gear_tire', 'gear_hub', 'gear_light'],
         'pal': {'body': ((92, 97, 100), 0.4, 0.48), 'radome': ((62, 66, 68), 0.1, 0.6), 'nozzle': ((112, 103, 72), 0.82, 0.42),
                 'nozzle_in': ((150, 148, 142), 0.9, 0.35), 'dark': ((30, 31, 33), 0.2, 0.7), 'lens': ((196, 202, 208), 0.1, 0.2),
                 'glow': ((96, 255, 150), 0.0, 0.5)},
@@ -368,6 +370,8 @@ def paint(name, glb, meta_path, log=print):
         M = J['materials'][mi] if mi >= 0 else {}
         if M.get('alphaMode') == 'BLEND':
             continue   # 玻璃：按元数据上色
+        if mn in spec.get('keep', ()):
+            continue
         dflt = spec['mats'].get(mn, 'body')
         P = get(pr, 'POSITION').astype(np.float64)
         N = get(pr, 'NORMAL').astype(np.float64)

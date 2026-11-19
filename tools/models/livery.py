@@ -22,10 +22,11 @@ PAL = {
     'us': [(150, 132, 96), (186, 166, 124), (204, 188, 150)],   # 用户 11-18 要黄色的 M1A2（沙漠涂装）：美军一律单色沙黄
 }
 NAVY = {'plan': (150, 156, 160), 'usn': (128, 134, 140)}   # 中国海军浅灰、美国海军灰
+# 不统一、保留原模型颜色的：M1A2（用户 11-18 晚：颜色改回原模型的颜色——用 v3gextra.json 的步骤重下原模型、重新烘焙转换，不跑这个脚本）
 FAMILY = {
-    'veh/ztz96': 'pla', 'veh/ztz99a2': 'pla', 'veh/ztq15': 'pla', 'veh/zbd97': 'pla', 'veh/lav25': 'pla', 'veh/ptl02': 'pla',
+    'veh/ztz96': 'pla', 'veh/ztz99a2': 'pla', 'veh/zbd97': 'pla', 'veh/lav25': 'pla', 'veh/ptl02': 'pla',
     'veh/t625': 'pla', 'veh/pzh2000': 'pla',
-    'veh/m1a2dc': 'us', 'veh/m1a1': 'us', 'veh/m2a3': 'us', 'veh/stryker': 'us', 'veh/matv': 'us', 'veh/hmmwv': 'us',
+    'veh/m1a1': 'us', 'veh/m2a3': 'us', 'veh/stryker': 'us', 'veh/matv': 'us', 'veh/hmmwv': 'us',
     'veh/jltv': 'us', 'veh/m1150': 'us', 'veh/m109': 'us', 'veh/m163': 'us', 'veh/m270': 'us', 'veh/patriot': 'us', 'veh/cram': 'us',
     'ship/t055': 'plan', 'ship/t054a': 'plan', 'ship/t022': 'plan',
     'ship/ddg125': 'usn', 'ship/cg47': 'usn', 'ship/lcs2': 'usn',

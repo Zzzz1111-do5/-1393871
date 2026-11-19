@@ -181,12 +181,19 @@ function ShipView.init(G)
     end
   end
 
-  -- 近防炮：底座、白色雷达罩、一束炮管
-  local function ciws(M, mp, col)
-    mk(M, "Part", V(2.4, 1.6, 2.4), CF(mp + V(0, -0.9, 0)), col, MAT.Metal)
-    mk(M, "Part", V(2.3, 2.3, 2.3), CF(mp + V(0, 0.9, 0.1)), RGB(232, 234, 232), MAT.SmoothPlastic, nil, nil, BALL)
-    mk(M, "Part", V(1.4, 1.4, 1.6), CF(mp + V(0, -0.1, 0)), RGB(220, 222, 220), MAT.SmoothPlastic)
-    mk(M, "Part", V(2.4, 0.5, 0.5), CF(mp + V(0, -0.1, -1.8)) * CFrame.Angles(0, math.pi / 2, 0), RGB(40, 42, 44), MAT.Metal, nil, nil, CYL)
+  -- 近防炮：底座、白色雷达罩、一束炮管——整座绕 mp 的竖轴转向目标（grp "c"，off 相对 mp）；
+  --   平时炮口朝 ry（原模型里这一座朝哪，ShipDefs.ciwsInfo；没有原模型的是 0 船头），跟原模型的那座一样
+  local function ciws(M, d, mp, col, mi)
+    local R = CFrame.Angles(0, -math.rad((d.ciwsInfo and d.ciwsInfo[mi] and d.ciwsInfo[mi].ry) or 0), 0)
+    local function c(cls, size, off, ...)
+      local p = mk(M, cls, size, R * off, ...)
+      M.items[#M.items].piv = CF(mp)
+      return p
+    end
+    c("Part", V(2.4, 1.6, 2.4), CF(0, -0.9, 0), col, MAT.Metal, "c", mi)
+    c("Part", V(2.3, 2.3, 2.3), CF(0, 0.9, 0.1), RGB(232, 234, 232), MAT.SmoothPlastic, "c", mi, BALL)
+    c("Part", V(1.4, 1.4, 1.6), CF(0, -0.1, 0), RGB(220, 222, 220), MAT.SmoothPlastic, "c", mi)
+    c("Part", V(2.4, 0.5, 0.5), CF(0, -0.1, -1.8) * CFrame.Angles(0, math.pi / 2, 0), RGB(40, 42, 44), MAT.Metal, "c", mi, CYL)
   end
 
   local function build(d, team)
@@ -327,7 +334,7 @@ function ShipView.init(G)
     end
     -- 炮、近防炮
     for gi in ipairs(d.guns or {}) do gun(M, d, gi, supCol) end
-    for _, mp in ipairs(d.ciws or {}) do ciws(M, mp, supCol) end
+    for mi, mp in ipairs(d.ciws or {}) do ciws(M, d, mp, supCol, mi) end
     -- 舷号：船头两侧
     if not L.open then hullNumber(M, d, L.num, z0 + bowL + math.max(4, d.deck * 0.9), d.deck * 0.55 + 0.4, math.max(1.6, d.deck * 0.5)) end
     -- 航行灯：桅顶白灯、舰桥两侧左红右绿、船尾白灯
@@ -377,7 +384,8 @@ function ShipView.init(G)
       local n = 0
       for i = 1, #M.items do
         local it = M.items[i]
-        if it.tag == "lamp" or it.tag == "fx" or it.tag == "flag" then
+        local ic = it.g == "c" and info.ciws and info.ciws[it.i]
+        if it.tag == "lamp" or it.tag == "fx" or it.tag == "flag" or (ic and not ic.g) then   -- 原模型上没拆出来的近防炮：留零件拼的那座（也会转）
           n += 1
           M.items[n] = it
         else
@@ -399,10 +407,22 @@ function ShipView.init(G)
           mp.Parent = M.model
           local c = CF(p.c[1], p.c[2], p.c[3]) * TURN
           local gi = tonumber(string.match(p.g, "^T(%d+)$"))
+          local bi = tonumber(string.match(p.g, "^B(%d+)$"))
+          local ci = tonumber(string.match(p.g, "^C(%d+)$"))
           local gd = gi and info.guns and info.guns[gi]
-          if gd then   -- 主炮：绕原模型的炮塔转轴转
+          local bd = bi and info.guns and info.guns[bi]
+          local cd = ci and info.ciws and info.ciws[ci]
+          if gd then   -- 主炮炮塔：绕原模型的炮塔转轴转
             local piv = CF(gd.piv[1], gd.piv[2], gd.piv[3])
             table.insert(M.items, { p = mp, g = "ti", i = gi, piv = piv, off = piv:Inverse() * c })
+          elseif bd and bd.trn then   -- 炮管：跟着炮塔转，再绕耳轴俯仰、开炮往后坐（船尾的炮原模型里朝后：俯仰、后坐反过来）
+            local piv = CF(bd.piv[1], bd.piv[2], bd.piv[3])
+            local trn = CF(bd.trn[1] - bd.piv[1], bd.trn[2] - bd.piv[2], bd.trn[3] - bd.piv[3])
+            local sg = (d.guns[bi] and d.guns[bi].aft) and -1 or 1
+            table.insert(M.items, { p = mp, g = "bi", i = bi, piv = piv, trn = trn, sg = sg, off = (piv * trn):Inverse() * c })
+          elseif cd then   -- 近防炮：整座绕自己的竖轴转（原模型里炮口朝 ry）
+            local piv = CF(cd.piv[1], cd.piv[2], cd.piv[3])
+            table.insert(M.items, { p = mp, g = "c", i = ci, piv = piv, off = piv:Inverse() * c })
           else
             table.insert(M.items, { p = mp, g = "hull", off = c })
           end
@@ -471,6 +491,13 @@ function ShipView.init(G)
     v.base = v.root.CFrame * CF(0, -(d.H / 2 - d.draft), 0)
     v.ty, v.gp, v.rec = {}, {}, {}
     for gi in ipairs(d.guns) do v.ty[gi], v.gp[gi], v.rec[gi] = em:GetAttribute("Ty" .. gi) or 0, em:GetAttribute("Gp" .. gi) or 0, 0 end
+    -- 近防炮：现在朝哪（cy，相对船头的度数，正数往右）、要转到哪（cyT）、最后一次开火（cyAt：三秒没打就慢慢转回原位）
+    v.cy, v.cyT, v.cyAt = {}, {}, {}
+    for mi in ipairs(d.ciws or {}) do
+      local ry = (d.ciwsInfo and d.ciwsInfo[mi] and d.ciwsInfo[mi].ry) or 0
+      v.cy[mi], v.cyT[mi], v.cyAt[mi] = ry, ry, -1e9
+    end
+    v.lids = {}   -- 掀开的垂发舱盖（开火时加，合上以后去掉）
     v.phase = math.random() * 6
     v.lastYaw = 0
     v.yawRate = 0
@@ -530,14 +557,46 @@ function ShipView.init(G)
       tcf[gi] = SD.turretCF(d, cf, gi, v.ty[gi])
       gcf[gi] = SD.gunCF(d, cf, gi, v.ty[gi], v.gp[gi]) * CF(0, 0, v.rec[gi])
     end
+    -- 近防炮：转向最近一次打的目标（每秒最多 220 度），三秒没打就转回原位
+    local cyR = {}
+    for mi, ry in pairs(v.cy) do
+      local want = (t - v.cyAt[mi] < 3) and v.cyT[mi] or ((d.ciwsInfo and d.ciwsInfo[mi] and d.ciwsInfo[mi].ry) or 0)
+      local dd = angDiff(ry, want)
+      local step = 220 * dt
+      v.cy[mi] = ry + math.clamp(dd, -step, step)
+      cyR[mi] = CFrame.Angles(0, -math.rad(v.cy[mi] - ((d.ciwsInfo and d.ciwsInfo[mi] and d.ciwsInfo[mi].ry) or 0)), 0)
+    end
     local plist, clist = v.plist, v.clist
     for i, it in ipairs(M.items) do
       if it.g == "t" then clist[i] = tcf[it.i] * it.off
       elseif it.g == "g" then clist[i] = gcf[it.i] * it.off
       elseif it.g == "ti" then clist[i] = cf * it.piv * CFrame.Angles(0, -math.rad(v.ty[it.i] or 0), 0) * it.off   -- 原模型的主炮（船尾的炮原模型里本来就朝后）
+      elseif it.g == "bi" then   -- 原模型的炮管：炮塔转 → 耳轴俯仰 → 后坐
+        clist[i] = cf * it.piv * CFrame.Angles(0, -math.rad(v.ty[it.i] or 0), 0) * it.trn
+          * CFrame.Angles(it.sg * math.rad(v.gp[it.i] or 0), 0, 0) * CF(0, 0, it.sg * (v.rec[it.i] or 0)) * it.off
+      elseif it.g == "c" then clist[i] = cf * it.piv * (cyR[it.i] or CFrame.identity) * it.off
       else clist[i] = cf * it.off end
     end
     workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+    -- 垂发舱盖：0.22 秒掀开到 105 度，开 2.4 秒，0.5 秒合上；盖子绕格子靠船头那条边转（铰链在前），底下一块黑的是打开的格子
+    for k2 = #v.lids, 1, -1 do
+      local L = v.lids[k2]
+      local a = t - L.t0
+      local open
+      if a < 0.22 then open = a / 0.22
+      elseif a < 2.62 then open = 1
+      elseif a < 3.12 then open = 1 - (a - 2.62) / 0.5
+      else open = 0 end
+      local base = cf * CF(L.lp)
+      local hinge = base * CF(0, 0.08, -L.l / 2) * CFrame.Angles(-math.rad(105) * open, 0, 0) * CF(0, 0, L.l / 2)
+      L.lid.CFrame = hinge
+      L.hole.CFrame = base * CF(0, 0.03, 0)
+      if a > 3.2 then
+        L.lid:Destroy()
+        L.hole:Destroy()
+        table.remove(v.lids, k2)
+      end
+    end
     v.anchor.CFrame = cf * CF(0, d.H - d.draft + 4, 0)
     v.board.CFrame = cf * CF(0, d.deck + 2, d.L / 2 - math.min(10, d.L * 0.2))
     if v.bb and not v.bbSet then v.bbSet = true v.bb.MaxDistance = 1800 v.bb.Size = UDim2.fromOffset(70, 7) end
@@ -588,8 +647,78 @@ function ShipView.init(G)
     if v.rec and v.d and v.d.guns[gi] then v.rec[gi] = math.min(1.6, v.d.guns[gi].len * 0.11) end
   end
 
+  -- 近防炮开火（Fx.lua 收到服务器的 gun / ciws，带着船的编号和第几座）：这一座转向目标
+  local function viewCiws(v, mi, target)
+    if not (v.cy and v.cy[mi] and v.d and v.d.ciws and v.d.ciws[mi]) or typeof(target) ~= "Vector3" then return end
+    local cf = v.base or v.root.CFrame
+    local lp = (cf * CF(v.d.ciws[mi])):PointToObjectSpace(target)
+    v.cyT[mi] = math.deg(math.atan2(lp.X, -lp.Z))
+    v.cyAt[mi] = os.clock()
+  end
+
+  -- 导弹出筒（Fx.lua 的 vls）：垂发掀开那一格的舱盖；斜置的发射箱箱口的盖子崩飞、箱尾往后喷一股燃气
+  local function viewLaunch(v, e)
+    local d = v.d
+    if not d or not v.M then return end
+    local cf = v.base or v.root.CFrame
+    if e.b and e.c then
+      local lp, w, l = SD.vlsCell(d, e.b, e.c)
+      if not lp then return end
+      local lid = Instance.new("Part")
+      lid.Size, lid.Color, lid.Material = V(w * 0.86, 0.14, l * 0.86), RGB(74, 78, 80), MAT.DiamondPlate
+      local hole = Instance.new("Part")
+      hole.Size, hole.Color, hole.Material = V(w * 0.8, 0.04, l * 0.8), RGB(8, 8, 9), MAT.SmoothPlastic
+      for _, p in ipairs({ lid, hole }) do
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+        p.CFrame = cf * CF(lp)
+        p.Parent = v.M.model
+      end
+      table.insert(v.lids, { lid = lid, hole = hole, lp = lp, l = l * 0.86, t0 = os.clock() })
+      G.shipLidCount = (G.shipLidCount or 0) + 1   -- 测试用
+    elseif e.can then
+      local mouth = SD.canTube(d, e.can, e.tube or 0)
+      local rear = SD.canTube(d, e.can, e.tube or 0, true)
+      if not mouth then return end
+      local wm, wr = cf * mouth, cf * rear
+      -- 箱口的盖子：一块圆片往前上方崩飞、翻着落进海里
+      local cap = Instance.new("Part")
+      cap.Shape, cap.Size, cap.Color, cap.Material = CYL, V(0.12, 1.3, 1.3), RGB(150, 148, 140), MAT.SmoothPlastic
+      cap.Anchored, cap.CanCollide, cap.CanQuery, cap.CanTouch = true, false, false, false
+      cap.CFrame = wm * CFrame.Angles(0, math.pi / 2, 0)
+      cap.Parent = workspace
+      local vel = wm.LookVector * 28 + V((math.random() - 0.5) * 6, 10, (math.random() - 0.5) * 6)
+      local spin = V(math.random() * 12 - 6, math.random() * 12 - 6, math.random() * 12 - 6)
+      local t0 = os.clock()
+      local conn
+      conn = game:GetService("RunService").Heartbeat:Connect(function(dt)
+        if not cap.Parent or os.clock() - t0 > 3 then
+          conn:Disconnect()
+          cap:Destroy()
+          return
+        end
+        vel += V(0, -60 * dt, 0)
+        cap.CFrame = (cap.CFrame + vel * dt) * CFrame.Angles(spin.X * dt, spin.Y * dt, spin.Z * dt)
+        if cap.CFrame.Position.Y < -1 then cap.Transparency = 1 end
+      end)
+      -- 箱尾燃气：往后一大团白烟；箱口一团火（Fx.lua 的 G.emitBurst 从看不见的小零件的正面喷）
+      local function burst(pos, dir, o)
+        if not G.emitBurst then return end
+        local h = Instance.new("Part")
+        h.Size, h.Transparency, h.Anchored = V(0.2, 0.2, 0.2), 1, true
+        h.CanCollide, h.CanQuery, h.CanTouch = false, false, false
+        h.CFrame = CFrame.lookAt(pos, pos + dir)
+        h.Parent = workspace
+        G.emitBurst(h, o)
+        game:GetService("Debris"):AddItem(h, 3)
+      end
+      burst(wr.Position, -wm.LookVector, { life = { 0.8, 2.2 }, speed = { 26, 55 }, spread = 18, drag = 2.2, size = { 2.5, 11 }, tr = 0.3, color = RGB(232, 230, 224), n = 26 })
+      burst(wm.Position, wm.LookVector, { life = { 0.15, 0.4 }, speed = { 30, 60 }, spread = 25, size = { 2.2, 0.4 }, tr = 0.05, color = RGB(255, 196, 110), glow = 1, n = 16 })
+      G.shipCanCount = (G.shipCanCount or 0) + 1   -- 测试用
+    end
+  end
+
   G.viewKind = G.viewKind or {}
-  G.viewKind.ship = { build = viewBuild, step = viewStep, recoil = viewRecoil, remove = function() end,
+  G.viewKind.ship = { build = viewBuild, step = viewStep, recoil = viewRecoil, ciws = viewCiws, launch = viewLaunch, remove = function() end,
     importReady = function(v) return v.M ~= nil and not v.M.imported and v.d ~= nil and importedFor(v.d) ~= nil end }   -- 原模型后来才复制齐：View 重建
 end
 

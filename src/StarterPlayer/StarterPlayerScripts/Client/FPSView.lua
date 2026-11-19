@@ -503,7 +503,7 @@ function FPSView.init(G)
   function G.fpsOpticPending()
     return vm ~= nil and vm.optic ~= nil and ads < 0.88
   end
-  local lastCam, lastPos, bobPhase, speedS = nil, nil, 0, 0
+  local lastCam, lastPos, bobPhase, speedS, latS = nil, nil, 0, 0, 0
   local hiddenTool = nil
   local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
   local badTool = setmetatable({}, { __mode = "k" })     -- [工具] = 建视图模型出过错（不再重建）
@@ -561,21 +561,24 @@ function FPSView.init(G)
     local tx, ty = 0, 0
     if lastCam then   -- 镜头转得越快，枪落后得越多（往反方向偏一点、再弹回来）
       local d = lastCam:ToObjectSpace(cc)
-      tx = math.clamp(-d.LookVector.X / dt * 0.012, -0.1, 0.1)
-      ty = math.clamp(-d.LookVector.Y / dt * 0.012, -0.1, 0.1)
+      -- 记录仪观感（用户：持枪参考 bodycam）：枪更沉，转镜头时落后得更多
+      tx = math.clamp(-d.LookVector.X / dt * 0.017, -0.14, 0.14)
+      ty = math.clamp(-d.LookVector.Y / dt * 0.017, -0.14, 0.14)
     end
     lastCam = cc
     swayVX += ((tx - swayX) * 120 - swayVX * 16) * dt
     swayVY += ((ty - swayY) * 120 - swayVY * 16) * dt
-    swayX = math.clamp(swayX + swayVX * dt, -0.12, 0.12)
-    swayY = math.clamp(swayY + swayVY * dt, -0.12, 0.12)
+    swayX = math.clamp(swayX + swayVX * dt, -0.16, 0.16)
+    swayY = math.clamp(swayY + swayVY * dt, -0.16, 0.16)
     -- 走路晃（按人实际移动的速度）
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if hrp then
       local p = hrp.Position
       if lastPos then
-        local sp = V(p.X - lastPos.X, 0, p.Z - lastPos.Z).Magnitude / dt
+        local dv = V(p.X - lastPos.X, 0, p.Z - lastPos.Z) / dt
+        local sp = dv.Magnitude
         speedS = speedS + (math.min(sp, 30) - speedS) * math.min(1, dt * 8)
+        latS = latS + (math.clamp(cc.RightVector:Dot(dv) / 16, -1.2, 1.2) - latS) * math.min(1, dt * 6)   -- 横着走：枪往那边歪
       end
       lastPos = p
     end
@@ -597,8 +600,8 @@ function FPSView.init(G)
     -- 程序化：呼吸、走路、滞后、后坐；别的装备的拔出、换弹
     local breath = math.sin(t * 1.6) * 0.006 * (1 - ads * 0.7)
     local sw = 1 - ads * 0.6
-    local P = CF(math.sin(bobPhase) * 0.035 * walk + swayX * 0.3 * sw, breath - math.abs(math.cos(bobPhase)) * 0.03 * walk + swayY * 0.3 * sw, 0)
-      * CFrame.Angles(swayY * 0.5 * sw + math.cos(bobPhase * 2) * 0.006 * walk, -swayX * 0.8 * sw, math.sin(bobPhase) * 0.01 * walk)
+    local P = CF(math.sin(bobPhase) * 0.05 * walk + swayX * 0.3 * sw, breath - math.abs(math.cos(bobPhase)) * 0.045 * walk + swayY * 0.3 * sw, 0)
+      * CFrame.Angles(swayY * 0.5 * sw + math.cos(bobPhase * 2) * 0.009 * walk, -swayX * 0.8 * sw, math.sin(bobPhase) * 0.022 * walk - latS * 0.07 * sw)
     local pivot = CF(0.2, -0.35, -0.6)   -- 后坐绕着握把附近转
     local kick = CF(0, 0, recoil.X) * pivot * CFrame.Angles(recoil.Y * 0.8, recoil.Z * 0.5, 0) * pivot:Inverse()
     local extra = CF()

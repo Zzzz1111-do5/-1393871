@@ -40,6 +40,7 @@ Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方�
 -- 占领：圈里数双方的人（步兵、地面载具；飞机、舰艇不算；机器人也算）
 Config.Capture = {
   r = 70,          -- 据点半径（和 Map.POINT_R 一样）
+  height = 45,     -- 据点上下可占领的高度（格）
   slow = 45,       -- 攻方多 1 人：几秒占完
   fast = 15,       -- 攻方多 3 人以上：几秒占完
   decay = 90,      -- 守方人不少于攻方：进度从满退到零要几秒
@@ -146,10 +147,13 @@ Config.VehicleCats = {
   ship = { tgt = "ship", hp = 3000, speed = 45, perN = 16, min = 0, max = 2, cd = 120 },
 }
 Config.VehicleOrder = { "tank", "apc", "aa", "arty", "heli", "jet", "ship" }
+-- 跳弹（用户：跳弹也做出来）：炮弹打在坦克（armor）、轻装甲车（light）上，入射方向离装甲面法线超过 a0 度开始有可能滑开、a1 度一定滑开；
+--   滑开的弹只伤 dmg 倍，顺着反射方向飞走（速度剩 keep 倍，再飞 life 秒，碰到东西不炸）
+Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 84 }, dmg = 0.04, keep = 0.5, life = 1.2 }
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {
-    tank = { "ztq15", "ztz96", "ztz99a" },
+    tank = { "ztz96", "ztz99a" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
     apc = { "ztd05", "zbd05", "zsl92b", "ptl02" },
     aa = { "pgz07", "pgl625", "ld2000" },
     arty = { "plz07" },
@@ -168,7 +172,7 @@ Config.Vehicles = {
   },
 }
 Config.VehicleMod = {
-  ztq15 = { hp = 0.75, speed = 1.15, gun = 0.8 }, m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
+  m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
   zbd05 = { amphib = true }, ztd05 = { amphib = true, gun = 1.6 }, hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
   m1150 = { hp = 1.4, speed = 0.8 }, m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
@@ -249,5 +253,20 @@ function Config.gunSpread(w, ads, speed, air, bloom)
   if air then s *= 2.2 end
   return s + (bloom or 0) * (ads and 0.5 or 1)
 end
+
+-- 战场氛围（用户 11-18：按 3A 游戏的标准做到惊艳，参考战雷、战地；服务器 Battle.lua、客户端 Warfx.lua）
+--   crater 弹坑：k 坑口半径 / 杀伤半径（按爆炸种类）、minR / maxR 坑口半径（格）上下限、depth 坑深 / 坑口半径、maxDepth 最深几格、
+--     gap 离已有的坑多近不再炸（两坑半径和的倍数）、max 一局最多几个、perSec 一秒最多挖几个（多的排队）
+--   illum 照明弹：every 隔几秒打一发（随机范围）、alive 同时最多几发、height 在离地多高炸开、burn 烧几秒、fall 每秒落几格、sea 攻方舰队打的比例
+--   bld 房子炸塌（Battle.lua）
+Config.Battle = {
+  -- perSec 一秒最多挖几个、stale 排队超过几秒的不挖（用户 11-19：游戏非常卡顿——挖一个坑全服的客户端都要重算那块地面的网格）
+  crater = { k = { shell = 0.36, rkt = 0.32, msl = 0.34, bomb = 0.3 }, minR = 3.2, maxR = 13, depth = 0.34, maxDepth = 5.5, gap = 0.55, max = 240, perSec = 4, stale = 2 },
+  illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
+  -- bld 房子炸塌：血量 = 占地面积 × hpPerArea（hpMin～hpMax）；k 按爆炸种类的伤害倍数；血掉到 fire 以下着火
+  bld = { hpPerArea = 1.5, hpMin = 700, hpMax = 4000, fire = 0.55, k = { nade = 0.3, shell = 1, rkt = 0.8, msl = 1, bomb = 1.4 } },
+  -- storm 暴风雨：开战后 at 秒（随机范围）有 chance 的机会来一场、持续 dur 秒、前后 ramp 秒变大变小
+  storm = { chance = 0.85, at = { 150, 420 }, dur = { 150, 230 }, ramp = 25 },
+}
 
 return Config

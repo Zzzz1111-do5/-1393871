@@ -425,11 +425,11 @@ function Map.material(x, z, y, slope)
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
   if slope > 1.15 * HK / K then return (y > 120 * HK) and Enum.Material.Slate or Enum.Material.Rock end
   if y > 232 * HK then return Enum.Material.Rock end
-  if slope > 0.75 * HK / K then return Enum.Material.Ground end
+  if slope > 0.92 * HK / K then return Enum.Material.Ground end   -- 陡一点的坡才露土（原来 0.75：用户 11-19 草多一点）
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
-  if y < 9 and n > 0.28 then return Enum.Material.Ground end   -- 海边低处零星的土地块
-  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18：草多用 Roblox 自带的那种草），深色 LeafyGrass 只留零星几块
-  return (n > 0.45) and Enum.Material.LeafyGrass or Enum.Material.Grass
+  if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
+  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18 / 11-19：草多用 Roblox 自带的那种草、多一点），深色 LeafyGrass 只留很少几块
+  return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
 ---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）

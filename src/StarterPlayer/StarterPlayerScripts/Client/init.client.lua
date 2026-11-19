@@ -11,7 +11,8 @@
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
---   Marks 落点标记（拿手雷时的弹道和落点圈、开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
+--   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
+--   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -27,7 +28,19 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach", "AirFx", "MslCam", "Juice", "Marks" }) do
+-- 逐帧回调计时（F7 性能面板 Perf.lua 读）：G.perfT[名字] = 这半秒累计的秒数；各模块自己的 RenderStepped 用 G.frameConn(名字, 函数) 连
+G.perfT = {}
+function G.perfWrap(name, f)
+  return function(...)
+    local t0 = os.clock()
+    f(...)
+    local T = G.perfT
+    T[name] = (T[name] or 0) + (os.clock() - t0)
+  end
+end
+function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
+
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "Marks", "Perf" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -62,7 +75,8 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
-  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
+  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end },
+  { "operation", function(dt) G.stepOperation(dt) end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
   { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
@@ -73,8 +87,11 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "airfx", function(dt) if G.stepAirFx then G.stepAirFx(dt) end end },   -- 飞机机动的翼尖涡流、机翼水汽、蒸汽锥、音爆
   { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗
 RunService.RenderStepped:Connect(function(dt)
+  local T = G.perfT
   for _, s in ipairs(steps) do
+    local t0 = os.clock()
     local ok, err = pcall(s[2], dt)
+    T[s[1]] = (T[s[1]] or 0) + (os.clock() - t0)
     if not ok then G.showError("local " .. s[1] .. ": " .. tostring(err)) end
   end
 end)

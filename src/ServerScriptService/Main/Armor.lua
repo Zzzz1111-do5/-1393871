@@ -189,8 +189,10 @@ function Armor.init(G)
 
   ---------------------------------------------------------------- 新车、被毁
 
-  local function newVehicle(team, id, base, P)
-    local d = VD.get(id)
+  local TM = require(RS:WaitForChild("TankMods"))
+  -- mods：改装（TankMods，客户端改装界面选的；AI 的车、没选的用默认）——型号数据按它改一份（车速、武器表），爆反、主动防御按它装
+  local function newVehicle(team, id, base, P, mods)
+    local d = TM.applyDef(VD.get(id), mods)
     local c = CATS[d.cat]
     local mod = Config.VehicleMod[id] or {}
     local hp = math.floor(c.hp * (mod.hp or 1))
@@ -198,6 +200,7 @@ function Armor.init(G)
     local e = G.newEnt({ kind = "veh", team = team, cat = c.tgt, hp = hp, size = V(d.W, d.H, d.L), cf = rootFromBase(d, base), solid = true,
       extra = { def = d, vcat = d.cat } })   -- 占领时不单算车：开车的人照常算一个
     e.model:SetAttribute("Model", id)
+    if d.mods then e.model:SetAttribute("Mods", TM.encode(d.mods)) end   -- 客户端按它画发射器、加特林，改车速、武器表
     e.model:SetAttribute("Ty", 0)
     e.model:SetAttribute("Gp", 0)
     e.model:SetAttribute("Driver", 0)
@@ -210,6 +213,8 @@ function Armor.init(G)
       e.wst[wid] = { mag = w.mag, reserve = w.reserve or 0, next = 0 }
     end
     e.lastSync = now()
+    if G.eraSetup then G.try("爆反", G.eraSetup, e) end   -- Era.lua：原模型上的爆反块
+    if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -303,7 +308,7 @@ function Armor.init(G)
 
   -- 陆地上停在地台上；登陆平台外的水面上站在气垫艇上（两栖车也坐艇：自己游太慢，三千多格要好几分钟）
   --   生成的人 30 秒内独占（别人上不去）；没人上 90 秒收走（不算冷却）
-  function G.spawnGroundVeh(team, id, base, sea, P)
+  function G.spawnGroundVeh(team, id, base, sea, P, mods)
     local d = VD.get(id)
     if not d then return nil end
     local face = V(base.LookVector.X, 0, base.LookVector.Z)
@@ -313,10 +318,10 @@ function Armor.init(G)
     local e
     if sea then
       local b = CFrame.lookAt(V(p.X, LCAC.deck, p.Z), V(p.X, LCAC.deck, p.Z) + face)
-      e = newVehicle(team, id, b)
+      e = newVehicle(team, id, b, nil, mods)
       carryOn(e, b)
     else
-      e = newVehicle(team, id, baseAt(d, p.X, p.Z, face))
+      e = newVehicle(team, id, baseAt(d, p.X, p.Z, face), nil, mods)
     end
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
@@ -423,6 +428,10 @@ function Armor.init(G)
     local base = baseOf(e)
     fireAngles(e, msg)
     local mz = VD.muzzle(d, base, e.ty, e.gp, VD.mgWhich(d, wid), e.my, e.mp)
+    if wid == "gau8" then   -- 车顶加特林（改装）：从它自己的炮口出去
+      local L = TM.eraOf(d.id)
+      if L then mz = TM.kitMuzzle(L, base, e.ty, e.gp) end
+    end
     local gdir = mz.LookVector   -- 顺着炮管 / 枪管出去（原来客户端给的方向和炮管差 8° 以内就用客户端的，弹道会斜着出炮口）
     local S = src(P)
     if w.kind == "shell" then

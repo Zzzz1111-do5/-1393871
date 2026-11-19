@@ -15,6 +15,7 @@ local Drive = {}
 function Drive.init(G)
   local Map = require(RS:WaitForChild("Map"))
   local VD = require(RS:WaitForChild("VehDefs"))
+  local TMods = require(RS:WaitForChild("TankMods"))   -- 坦克改装（用户 11-19）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -313,10 +314,23 @@ function Drive.init(G)
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
     engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
   end
+  -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
+  --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
+  local GEARS = 5
   local function engineStep(dt, thr, spd)
     if not engine then return end
-    local want = math.clamp(0.22 + 0.5 * spd + 0.3 * math.abs(thr), 0, 1)   -- 转速：油门一踩先上去，车速跟着
-    engine.rpm += (want - engine.rpm) * math.min(1, dt * 3)
+    local back = st and (st.speed or 0) < -0.4
+    local g = 0
+    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+    if st then
+      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then engine.shiftT = os.clock() end   -- 升档
+      st.gearN = g
+    end
+    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
+    if shifting then want *= 0.75 end
+    engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
     engine.rumble.Volume = 0.3 + 0.35 * r
@@ -345,6 +359,7 @@ function Drive.init(G)
     if not em then return end
     local d = VD.get(vs.m)
     if not d then return end
+    d = TMods.applyDef(d, em:GetAttribute("Mods"))   -- 坦克改装（TankMods）：车速、武器表（加特林是第 3 件）按选的改一份
     local root = em.Root.CFrame
     local base = root * CF(0, -d.H / 2, 0)
     local look = base.LookVector
@@ -359,9 +374,9 @@ function Drive.init(G)
       return Enum.ContextActionResult.Sink
     end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
     cam.CameraType = Enum.CameraType.Scriptable
-    panel.Visible = true
-    cross.Visible = true
-    gunMark.Visible = true
+    panel.Visible = not G.vehHudOn   -- 有新的驾驶界面（VehHud.lua）就不画这块小面板、圆圈、黄十字
+    cross.Visible = not G.vehHudOn
+    gunMark.Visible = not G.vehHudOn
     if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = true end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
@@ -658,6 +673,9 @@ function Drive.init(G)
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+      -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
+      st.kick = (w.dmg > 300) and 1 or 0.35
+      st.fireT = t
     end
     if ammo then   -- 本地先扣（服务器的数半秒后来校正）
       ammo[1] -= 1
@@ -727,8 +745,8 @@ function Drive.init(G)
       nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
-      local i = (k == Enum.KeyCode.One) and 1 or 2
+    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three then   -- 3：改装的车顶加特林
+      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or 3)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
@@ -830,6 +848,17 @@ function Drive.init(G)
       st.aimPt = aimPoint()
     end
     aimTurret(dt)
+    -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
+    st.kick = math.max(0, (st.kick or 0) - dt * 2.4)
+    if st.kick > 0 then
+      local k = st.kick * st.kick
+      local tt = os.clock()
+      if st.sight then
+        cam.CFrame = cam.CFrame * CFrame.Angles(k * 0.05 + math.noise(tt * 26, 1.3) * k * 0.012, math.noise(tt * 26, 4.1) * k * 0.012, math.noise(tt * 21, 8.2) * k * 0.02)
+      else
+        cam.CFrame = cam.CFrame * CF(0, k * 0.5, k * 2.2) * CFrame.Angles(k * 0.035, 0, math.noise(tt * 18, 2.9) * k * 0.02)
+      end
+    end
     do   -- 发动机声
       local thrK = (UIS:IsKeyDown(Enum.KeyCode.W) or UIS:IsKeyDown(Enum.KeyCode.S)) and 1 or ((G.touchDrive and G.touchDrive.thr ~= 0) and 1 or 0)
       engineStep(dt, thrK, math.abs(st.speed) / math.max(d.speed, 1))
@@ -848,9 +877,9 @@ function Drive.init(G)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
     local sp, on = cam:WorldToViewportPoint(gp)
-    gunMark.Visible = on and not st.sight
+    gunMark.Visible = on and not st.sight and not G.vehHudOn
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
-    cross.Visible = not st.sight
+    cross.Visible = not st.sight and not G.vehHudOn
     -- 仪表
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1

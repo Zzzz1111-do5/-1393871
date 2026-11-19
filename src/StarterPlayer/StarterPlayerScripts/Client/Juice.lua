@@ -6,7 +6,6 @@
 --   ④ 受伤方向：挨打时准星周围一道红弧指向开枪的人（炸的指向炸点），一秒多淡出
 --   ⑤ 低血量：三成血以下屏幕四周发红、画面发灰，心跳一下一下（血越少越快）
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 
@@ -189,7 +188,7 @@ function Juice.init(G)
   ---------------------------------------------------------------- 每帧
 
   local lastAlive = true
-  RunService.RenderStepped:Connect(function(dt)
+  G.frameConn("Juice", function(dt)
     local t = now()
     -- 加分滚动：2.5 秒没新的就淡出
     local a = t - lastT

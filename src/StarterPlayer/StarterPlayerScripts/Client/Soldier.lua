@@ -12,7 +12,6 @@
 --   远了降帧：300 格外每秒 15 次、700 格外每秒 4 次；1500 格外（跟着自动画质缩放）整个收起来
 --   零件都不碰撞、不挡射线（子弹打的是服务器上的命中盒）
 local RS = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local Soldier = {}
@@ -707,7 +706,7 @@ function Soldier.init(G)
     if not v or not v.rj or v.hidden then return nil end
     return (v.hrp.CFrame * v.rj.C0 * CF(RIF.muzzle)).Position
   end
-  RunService.RenderStepped:Connect(function()
+  G.frameConn("Soldier", function()
     local t = os.clock()
     for i = #dying, 1, -1 do
       local d = dying[i]

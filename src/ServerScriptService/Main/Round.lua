@@ -543,6 +543,7 @@ function Round.init(G)
       killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
+    if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
@@ -750,7 +751,7 @@ function Round.init(G)
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
           local p = hrp.Position
           local dx, dz = p.X - s.x, p.Z - s.z
-          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < 45 then
+          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < CC.height then
             if P.team == "atk" then a += 1 else d += 1 end
             table.insert(who, P)
           end
@@ -790,7 +791,7 @@ function Round.init(G)
     R.endsAt = now() + (st.time or 480)
     R.overtimeEnds = nil
     R.stageAt = now()
-    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 客户端：全屏横幅（第几阶段、这一阶段打哪儿）
+    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 旧客户端的阶段横幅
     G.emit("stage", R.stage, st)
   end
   local function captured(s, who)
@@ -843,6 +844,7 @@ function Round.init(G)
         else
           s.prog = math.max(0, s.prog - dt / CC.decay)
         end
+        s.motion = s.prog > old and 1 or (s.prog < old and -1 or 0)
         if s.prog >= 1 then
           captured(s, who)
         elseif math.abs(s.prog - old) > 1e-6 then
@@ -850,7 +852,7 @@ function Round.init(G)
           paint(s)
         end
       else
-        s.atk, s.def, s.pressed = 0, 0, false
+        s.atk, s.def, s.pressed, s.motion = 0, 0, false, 0
       end
     end
   end
@@ -960,7 +962,7 @@ function Round.init(G)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
-        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil })
+        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
     end
     return out
   end

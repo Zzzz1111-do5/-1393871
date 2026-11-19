@@ -36,6 +36,7 @@ local task = {}
 local function newThread(f, sd)
   local co = coroutine.create(f)
   sideOf[co] = sd or side()
+  if R.sampler then debug.sethook(co, R.sampler, "", 997) end   -- 按行采样（tools/mock/perf.lua）
   return co
 end
 R.newThread = newThread
@@ -366,13 +367,22 @@ local function rotX(a) local c, s = math.cos(a), math.sin(a) return { 1, 0, 0, 0
 local function rotY(a) local c, s = math.cos(a), math.sin(a) return { c, 0, s, 0, 1, 0, -s, 0, c } end
 local function rotZ(a) local c, s = math.cos(a), math.sin(a) return { c, -s, 0, s, c, 0, 0, 0, 1 } end
 local CFrame = {}
-function CFrame.new(a, b, c)
+function CFrame.new(a, b, c, qx, qy, qz, qw)
   if a == nil then return cf(0, 0, 0) end
   if isV3(a) then
     if b ~= nil then error("这个模拟只支持 CFrame.new(Vector3)", 2) end
     return cf(a._x, a._y, a._z)
   end
   if type(a) ~= "number" or type(b) ~= "number" or type(c) ~= "number" then error("CFrame.new 参数不对", 2) end
+  if qx ~= nil then   -- 位置 + 四元数（Roblox 的 CFrame.new(x, y, z, qX, qY, qZ, qW)；原模型关键帧部件 kf 用）
+    if type(qx) ~= "number" or type(qy) ~= "number" or type(qz) ~= "number" or type(qw) ~= "number" then error("CFrame.new 四元数要四个数字", 2) end
+    local n = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    if n < 1e-12 then return cf(a, b, c) end
+    local x, y, z, w = qx / n, qy / n, qz / n, qw / n
+    return cf(a, b, c, { 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+                         2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+                         2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y) })
+  end
   return cf(a, b, c)
 end
 function CFrame.Angles(x, y, z)
@@ -624,12 +634,50 @@ local function newSig()
     for _, c in ipairs(s.conns) do if c.on then list[#list + 1] = c end end
     for _, c in ipairs(list) do
       local co = newThread(c.f, c.side)
-      resume(co, ...)
+      if R.prof then   -- 测耗时（tools/mock/perf.lua）：按回调函数定义的位置记真实 CPU 时间（射线另算：模拟器的射线逐个零件试，比真的慢几百倍）
+        local t0, r0, n0 = os.clock(), R.rayT, R.rayN
+        resume(co, ...)
+        local key = c.key
+        if not key then
+          local info = debug.getinfo(c.f, "S")
+          key = (((info.source or "?"):match("([^/]+)$")) or "?") .. ":" .. tostring(info.linedefined)
+          for i = 1, 8 do   -- G.frameConn(名字, 函数) 连的：按名字记
+            local n, v = debug.getupvalue(c.f, i)
+            if not n then break end
+            if n == "name" and type(v) == "string" then key = "帧:" .. v break end
+          end
+          c.key = key
+        end
+        R.prof[key] = (R.prof[key] or 0) + (os.clock() - t0) - (R.rayT - r0)
+        R.profRay[key] = (R.profRay[key] or 0) + (R.rayN - n0)
+      else
+        resume(co, ...)
+      end
     end
   end
   return s
 end
 R.newSig = newSig
+
+-- 操作计数（tools/mock/perf.lua）：R.ops 是表时，记每个操作是哪一边、游戏代码哪一行做的
+--   真 Roblox 里贵的是实例的建、删、改属性、射线、远程事件的数据量——模拟器的 CPU 时间不准，数次数
+R.rayT, R.rayN, R.profRay = 0, 0, {}
+local function opAt(kind, w)
+  local ops = R.ops
+  local where = "?"
+  for lv = 3, 18 do
+    local info = debug.getinfo(lv, "Sl")
+    if not info then break end
+    local src = info.source or ""   -- 不用 short_src：只有 60 个字，长路径会被截掉开头的 /src/
+    if src:find("/src/", 1, true) then
+      where = (src:match("([^/]+)$") or src) .. ":" .. tostring(info.currentline)
+      break
+    end
+  end
+  local k = side() .. "\t" .. kind .. "\t" .. where
+  ops[k] = (ops[k] or 0) + (w or 1)
+end
+R.opAt = opAt
 
 local function make(cls)
   local o = setmetatable({ _cls = cls, _p = {}, _kids = {}, _attr = {}, _ev = {}, _chg = {}, _dead = false }, INST)
@@ -640,6 +688,14 @@ end
 local function fire(o, prop)
   local s = o._chg[prop]
   if s then s:Fire() end
+end
+
+local function allBelow(o, out)
+  for _, c in ipairs(o._kids) do
+    out[#out + 1] = c
+    allBelow(c, out)
+  end
+  return out
 end
 
 local function setParent(o, p)
@@ -661,6 +717,16 @@ local function setParent(o, p)
   if p then table.insert(p._kids, o) end
   if old and old._ev.ChildRemoved then old._ev.ChildRemoved:Fire(o) end
   if p and p._ev.ChildAdded then p._ev.ChildAdded:Fire(o) end
+  -- DescendantAdded：新放进来的这个和它的子孙，对每一层祖先各发一次（有人连了才算）
+  local a = p
+  while a do
+    local ev = a._ev.DescendantAdded
+    if ev then
+      ev:Fire(o)
+      for _, d in ipairs(allBelow(o, {})) do ev:Fire(d) end
+    end
+    a = rawget(a, "_parent")
+  end
   if o._ev.AncestryChanged then o._ev.AncestryChanged:Fire(o, p) end
 end
 
@@ -712,6 +778,7 @@ INST.__index = function(o, k)
 end
 
 INST.__newindex = function(o, k, v)
+  if R.ops then opAt((k == "Parent" and (v == nil and "unparent " or "parent ") or ("set " .. k .. " ")) .. o._cls) end
   if k == "Parent" then return setParent(o, v) end
   if k == "Name" then
     if type(v) ~= "string" then error("Name 要字符串", 2) end
@@ -761,8 +828,11 @@ local function descendants(o, out)
 end
 
 local base = {}
+local destroyDepth = 0
 function base.Destroy(o)
   if o._dead then return end
+  if R.ops and destroyDepth == 0 then opAt("destroy " .. o._cls, 1 + #descendants(o, {})) end
+  destroyDepth = destroyDepth + 1
   for _, c in ipairs({ unpack(o._kids) }) do base.Destroy(c) end
   if rawget(o, "_parent") then setParent(o, nil) end
   o._dead = true
@@ -770,9 +840,11 @@ function base.Destroy(o)
     for _, c in ipairs(s.conns) do c.on = false end
   end
   for _, set in pairs(tags) do set[o] = nil end
+  destroyDepth = destroyDepth - 1
 end
 local CLONE_SKIP = { Player = true, Backpack = true, PlayerGui = true }
 function base.Clone(o)
+  if R.ops then opAt("clone " .. o._cls, 1 + #descendants(o, {})) end
   if o._p.Archivable == false or CLONE_SKIP[o._cls] then return nil end
   local map = {}
   local function copy(src)
@@ -802,8 +874,15 @@ end
 function base.ClearAllChildren(o)
   for _, c in ipairs({ unpack(o._kids) }) do base.Destroy(c) end
 end
-function base.GetChildren(o) return { unpack(o._kids) } end
-function base.GetDescendants(o) return descendants(o, {}) end
+function base.GetChildren(o)
+  if R.ops then opAt("GetChildren", #o._kids) end
+  return { unpack(o._kids) }
+end
+function base.GetDescendants(o)
+  local out = descendants(o, {})
+  if R.ops then opAt("GetDescendants", #out) end
+  return out
+end
 function base.FindFirstChild(o, name, rec)
   if type(name) ~= "string" then error("FindFirstChild 要名字字符串", 2) end
   for _, c in ipairs(o._kids) do if c._p.Name == name then return c end end
@@ -896,7 +975,7 @@ function base.GetFullName(o)
   end
   return table.concat(names, ".")
 end
-def("Instance", nil, { Archivable = { T.bool, true } }, { methods = base, noCreate = true, events = { ChildAdded = true, ChildRemoved = true, AncestryChanged = true, Destroying = true } })
+def("Instance", nil, { Archivable = { T.bool, true } }, { methods = base, noCreate = true, events = { ChildAdded = true, ChildRemoved = true, AncestryChanged = true, Destroying = true, DescendantAdded = true, DescendantRemoving = true } })
 
 -- 物体
 local pv = {}
@@ -949,6 +1028,15 @@ def("Terrain", "BasePart", {
   end,
   FillCylinder = function(_, c, h, r, mat)
     if not isCF(c) or type(h) ~= "number" or type(r) ~= "number" or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillCylinder(CFrame, 高, 半径, Material) 参数不对", 2) end
+  end,
+  -- 把一块（按 4 格对齐的 Region3）里的某种材质换成另一种（弹坑烧焦：Battle.lua）
+  ReplaceMaterial = function(_, region, res, from, to)
+    if typeof(region) ~= "Region3" or res ~= 4 or typeof(from) ~= "EnumItem" or typeof(to) ~= "EnumItem" then error("ReplaceMaterial(Region3, 4, Material, Material) 参数不对", 2) end
+    local a, b = region._min, region._max
+    for _, v in ipairs({ a._x, a._y, a._z, b._x, b._y, b._z }) do
+      if math.abs(v / 4 - math.floor(v / 4 + 0.5)) > 1e-6 then error("ReplaceMaterial 的区域要按 4 格对齐", 2) end
+    end
+    table.insert(R.terrainFills, { k = "replace", p = region.CFrame.Position, size = region.Size, mat = to.Name, from = from.Name })
   end,
   FillWedge = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillWedge(CFrame, Vector3, Material) 参数不对", 2) end
@@ -1019,6 +1107,9 @@ local textProps = {
   TextTruncate = { E("TextTruncate"), Enum.TextTruncate.None }, LineHeight = { T.number, 1 }, MaxVisibleGraphemes = { T.number, -1 },
 }
 def("TextLabel", "GuiObject", textProps)
+-- 图片（小地图的卫星图 MapUI.lua）：只记属性，不画
+def("ImageLabel", "GuiObject", { Image = { T.string, "" }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 },
+  ImageContent = { function() return true end, nil } })
 local tb = {}
 for k, v in pairs(textProps) do tb[k] = v end
 tb.AutoButtonColor = { T.bool, true }
@@ -1141,6 +1232,24 @@ def("LuaSourceContainer", "Instance", { Source = { T.string, "" } }, { noCreate 
 def("ModuleScript", "LuaSourceContainer", {})
 def("Script", "LuaSourceContainer", { Disabled = { T.bool, false } })
 def("LocalScript", "Script", {})
+local function bytesOf(v, depth)
+  local tv = type(v)
+  if tv == "string" then return #v + 2 end
+  if tv == "number" then return 9 end
+  if tv == "boolean" or tv == "nil" then return 1 end
+  if tv == "table" then
+    if (depth or 0) > 12 then return 4 end
+    local mt = getmetatable(v)
+    if mt == V3 then return 13 end
+    if mt == CF then return 49 end
+    if mt == INST then return 8 end
+    local n = 2
+    for k, x in pairs(v) do n = n + bytesOf(k, (depth or 0) + 1) + bytesOf(x, (depth or 0) + 1) end
+    return n
+  end
+  return 8
+end
+R.bytesOf = bytesOf
 local function ser(v, seen, path, forStore)
   local tv = typeof(v)
   if tv == "function" or tv == "thread" then error("远程事件 / 存档里不能传 " .. tv .. "（" .. path .. "）", 0) end
@@ -1167,6 +1276,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
   FireServer = function(o, ...)
     if side() ~= "client" then error("FireServer 只能在客户端调用", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote↑ " .. o._p.Name) opAt("bytes↑ " .. o._p.Name, bytesOf(args)) end
     local pl = R.localPlayer
     R.up = R.up or {}
     table.insert(R.up, { name = o._p.Name, args = args })
@@ -1176,6 +1286,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
     if side() ~= "server" then error("FireClient 只能在服务器调用", 2) end
     if typeof(pl) ~= "Instance" or pl._cls ~= "Player" then error("FireClient 第一个参数要 Player", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote→1 " .. o._p.Name) opAt("bytes→1 " .. o._p.Name, bytesOf(args)) end
     table.insert(R.sent, { name = o._p.Name, args = args })
     if pl == R.localPlayer then
       local co = newThread(function() o.OnClientEvent:Fire(unpack(args)) end, "client")
@@ -1185,6 +1296,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
   FireAllClients = function(o, ...)
     if side() ~= "server" then error("FireAllClients 只能在服务器调用", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote→all " .. o._p.Name) opAt("bytes→all " .. o._p.Name, bytesOf(args)) end
     table.insert(R.sent, { name = o._p.Name, args = args, all = true })
     if R.localPlayer then
       local co = newThread(function() o.OnClientEvent:Fire(unpack(args)) end, "client")
@@ -1196,6 +1308,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
 ------------------------------------------------------------ 服务和游戏
 
 function Instance.new(cls, parent)
+  if R.ops then opAt("new " .. cls) end
   local c = CLASS[cls]
   if not c or c.noCreate then error("Instance.new：不能创建 " .. tostring(cls), 2) end
   local o = make(cls)
@@ -1281,11 +1394,17 @@ local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity 
     end
   end,
   Raycast = function(_, origin, dir, params)
+    if R.ops and isV3(dir) then opAt("raycast") opAt("raylen", dir.Magnitude) end
     if not isV3(origin) or not isV3(dir) then error("Raycast(Vector3, Vector3, RaycastParams)", 2) end
     if params ~= nil and typeof(params) ~= "RaycastParams" then error("Raycast 第三个参数要 RaycastParams", 2) end
     local hit = R.nextRay
     R.nextRay = nil
-    if not hit then return R.castRay(origin, dir, params) end
+    if not hit then
+      local t0 = os.clock()
+      local res = R.castRay(origin, dir, params)
+      R.rayT, R.rayN = R.rayT + (os.clock() - t0), R.rayN + 1
+      return res
+    end
     if hit and params and params.FilterType == Enum.RaycastFilterType.Include then
       local ok = false
       for _, inst in ipairs(params.FilterDescendantsInstances) do
@@ -1943,7 +2062,7 @@ local function envFor(scriptInst, sd)
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
     ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
-    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end },
+    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,
     print = function(...) if R.verbose then print(...) end end,
     PROBE_SET = function(v) R.lastProbe = v end,
