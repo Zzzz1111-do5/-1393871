@@ -826,8 +826,9 @@ function Drive.init(G)
       st.aimPt = res and res.Position or (o + want * 4000)
     else
       local center = st.root.Position + V(0, d.H * 0.4, 0)
-      local dist = d.L * 1.25 + 14
-      local up = d.H * 0.6
+      -- 用户 11-19（MWT 截图）：开坦克时镜头离车近一点、从后上方往下看——车占画面四成来宽、在下半屏（原来 L × 1.25 + 14，车只占两成）
+      local dist = d.L * 0.62 + 8
+      local up = d.H * 0.6 + dist * 0.18
       if st.hv then   -- 开着气垫艇：镜头拉远、抬高，整条艇在画面里
         local L = VD.LCAC
         dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8

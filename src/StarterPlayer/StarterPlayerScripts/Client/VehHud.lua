@@ -300,15 +300,15 @@ function VehHud.init(G)
     local h = hexagon(MW.br, 460 - R, 124 - R - 2, R)   -- 横着摆在哪：stepTank 按这辆车有几种武器靠右排
     h.box.Name = "Ammo" .. i
     h.icon = shellIcon(h.box, R, R - 4, 22)
-    h.key = label(h.box, "", UD2(0, 16, 0, 14), UD2(0.5, -R * 0.5, 0.5, -R * 0.62), 11, MUTE, BOLD)
-    h.tag = label(h.box, "", UD2(0, R * 1.6, 0, 12), UD2(0.5, 4, 0.5, R * 0.5), 10, MUTE, BOLD, V2(0.5, 0.5))
+    h.key = label(h.box, "", UD2(0, 14, 0, 12), UD2(0.5, -R * 0.5, 0.5, -R * 0.62), 9, MUTE, BOLD)
+    h.tag = label(h.box, "", UD2(0, R * 1.6, 0, 10), UD2(0.5, 4, 0.5, R * 0.5), 8, MUTE, BOLD, V2(0.5, 0.5))
     h.tag.Rotation = -20
     MW.hex[i] = h
   end
   -- 车名、剪影、血量（六边形左边）
   MW.veh = frame(MW.br, UD2(0, 190, 0, 112), UD2(0, 0, 0, 6), INK, 1)
   MW.veh.Name = "MwtHull"
-  MW.name = label(MW.veh, "", UD2(1, 0, 0, 20), UD2(0, 0, 0, 0), 16, TXT, BOLD)
+  MW.name = label(MW.veh, "", UD2(1, 0, 0, 16), UD2(0, 0, 0, 2), 13, TXT, BOLD)
   MW.name.Name = "VehName"
   MW.name.TextStrokeTransparency = 0.6
   MW.sil = frame(MW.veh, UD2(0, 170, 0, 50), UD2(0.5, 0, 0, 24), INK, 1, V2(0.5, 0))
@@ -324,12 +324,13 @@ function VehHud.init(G)
   for i = 0, 5 do   -- 负重轮：深色小圆点压在那一条上
     table.insert(MW.silParts, roundf(frame(MW.sil, UD2(0, 9, 0, 9), UD2(0, 26 + i * 18, 0, 33.5), INK, 0.35)))
   end
-  MW.hp = label(MW.veh, "", UD2(1, 0, 0, 22), UD2(0, 0, 0, 80), 17, TXT, BOLD)
+  MW.hp = label(MW.veh, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 80), 14, TXT, BOLD)
   MW.hp.Name = "HullHp"
   MW.hp.RichText = true
   MW.hp.TextStrokeTransparency = 0.6
   -- 正下方偏右：烟幕弹的全息图标
-  MW.sm = frame(MW.root, UD2(0, 60, 0, 70), UD2(0.5, 70, 1, -16), INK, 1, V2(0.5, 1))
+  MW.sm = frame(MW.root, UD2(0, 60, 0, 70), UD2(0.5, 104, 1, -16), INK, 1, V2(0.5, 1))   -- 正下方让给视角图，烟幕弹往右挪
+  MW.sm.Visible = false   -- 用户 11-19：烟幕弹也不要显示了（X 键照样放）
   MW.sm.Name = "MwtSmoke"
   MW.smScale = Instance.new("UIScale")
   MW.smScale.Parent = MW.sm
@@ -339,7 +340,7 @@ function VehHud.init(G)
   MW.smCap = frame(MW.smCan, UD2(0, 10, 0, 7), UD2(0.5, 0, 0, -6), HOLO, 0, V2(0.5, 0))
   MW.smPin = frame(MW.smCan, UD2(0, 2, 0, 12), UD2(0.5, 5, 0, -14), HOLO, 0, V2(0.5, 0))
   MW.smWin = frame(MW.smCan, UD2(0, 10, 0, 12), UD2(0.5, 0, 0.5, 2), HOLO, 0.55, V2(0.5, 0.5))
-  MW.smTxt = label(MW.sm, "", UD2(1, 20, 0, 14), UD2(0.5, 0, 1, -2), 12, HOLO, BOLD, V2(0.5, 1))
+  MW.smTxt = label(MW.sm, "", UD2(1, 20, 0, 12), UD2(0.5, 0, 1, -2), 10, HOLO, BOLD, V2(0.5, 1))
   MW.smTxt.Name = "SmokeLeft"
   MW.smTxt.TextStrokeTransparency = 0.6
   ---------------------------------------------------------------- 3A：抗锯齿的图（HudArt 解的 HudIcons，用户 11-19：「像素感太强，我要 3A 级别的 UI」）
@@ -372,6 +373,96 @@ function VehHud.init(G)
     h.icon.body.Visible, h.icon.tip.Visible = not h.art, not h.art
     h.iFill.Visible, h.iGlow.Visible, h.iEdge.Visible, h.iIcon.Visible = h.art, h.art, h.art, h.art
   end
+  -- 正下方中间：视角图（用户 11-19：屏幕下面中心放带着光晕的视角图，照 MWT）——俯视的车：车体按相对镜头的朝向转，
+  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；青色全息，车体外面两圈越来越淡的描边当光晕
+  MW.view = frame(MW.root, UD2(0, 100, 0, 100), UD2(0.5, 0, 1, -8), INK, 1, V2(0.5, 1))
+  MW.view.Name = "MwtView"
+  MW.viewScale = Instance.new("UIScale")
+  MW.viewScale.Parent = MW.view
+  for _, a in ipairs({ -30, 30 }) do   -- 视野：从车中心往上张开 ±30°（GUI 绕自己的中心转：按中点摆）
+    local L = 46
+    local r = math.rad(a)
+    local ln = frame(MW.view, UD2(0, 1.5, 0, L), UD2(0.5, math.sin(r) * L / 2, 0.5, 2 - math.cos(r) * L / 2), HOLO, 0.35, V2(0.5, 0.5))
+    ln.Rotation = a
+    grad(ln, 90, nseq(0, 1, 0.3, 0.75, 1, 0.3))   -- 越往外越淡
+  end
+  -- 视角图的车（用户 11-19：坦克图标有点难看 → 4 倍超采样画的全息图；坦克宽一点、不要履带、四个角直角；不要涂色，就车体边框、炮塔边框、炮管，
+  --   剩下都镂空；用很薄的一个个长方形显示爆反，哪块没了就空一块）
+  --   车体、炮塔各一个转的框（跟 HudIcons 的 topHull / topTurret 一样大：72 × 120 的图缩成 50 × 84），框里是全息图（用不了 EditableImage 时是
+  --   方块拼的轮廓）和这辆车的爆反块（EraMeta：每块从上往下看的位置、朝向；叠在同一处的几层并成一条）；车体框绕车中心转、炮塔框绕座圈转
+  local VK, VWD, VHT = 50 / 72, 50, 84
+  MW.vHullBox = frame(MW.view, UD2(0, VWD, 0, VHT), UD2(0.5, 0, 0.5, 2), INK, 1, V2(0.5, 0.5))
+  MW.vHullBox.Name = "ViewHull"
+  MW.vTurBox = frame(MW.view, UD2(0, VWD, 0, VHT), UD2(0.5, 0, 0.5, 2), INK, 1, V2(0.5, 0.5))
+  MW.vTurBox.Name = "ViewTurret"
+  MW.vHullImg = img(MW.vHullBox, "ViewHullArt", UD2(1, 0, 1, 0), nil, nil, HOLO, 0)
+  MW.vTurImg = img(MW.vTurBox, "ViewTurretArt", UD2(1, 0, 1, 0), nil, nil, HOLO, 0)
+  MW.vArt = art(MW.vHullImg, "topHull") and art(MW.vTurImg, "topTurret")
+  MW.vHullImg.Visible, MW.vTurImg.Visible = MW.vArt, MW.vArt
+  MW.vFall = {}   -- 方块拼的（染色用）
+  if not MW.vArt then
+    local hb = frame(MW.vHullBox, UD2(0, 44 * VK, 0, 90 * VK), UD2(0.5, 0, 69 / 120, 0), HOLO, 1, V2(0.5, 0.5))   -- 直角，只有边框（镂空）
+    local tc = roundf(frame(MW.vTurBox, UD2(0, 36 * VK, 0, 34 * VK), UD2(0.5, 0, 0.5, 2 * VK), HOLO, 1, V2(0.5, 0.5)), UD(0, 3))
+    local gn = frame(MW.vTurBox, UD2(0, 3, 0, 44 * VK), UD2(0.5, 0, 0.5, -11 * VK), HOLO, 0.05, V2(0.5, 1))
+    table.insert(MW.vFall, { f = hb, s = stroke(hb, HOLO, 1.6, 0) })
+    table.insert(MW.vFall, { f = tc, s = stroke(tc, HOLO, 1.4, 0) })
+    table.insert(MW.vFall, { f = gn })
+  end
+  -- 爆反块：这辆车 EraMeta 里的每块投到俯视图上（车体的按车体图摆：车宽、车长对上图里车体的半宽 22、半长 45；炮塔上的按座圈摆）
+  local TMods = require(RS:WaitForChild("TankMods"))
+  MW.era = {}
+  local function buildEra(d)
+    for _, e in ipairs(MW.era) do e.f:Destroy() end
+    MW.era = {}
+    local ok, L = pcall(function() return TMods.eraOf and TMods.eraOf(d.id) end)
+    if not ok or not L or not L.b then return end
+    local sx, sz = 22 * VK / ((d.W or 10) / 2), 45 * VK / ((d.L or 20) / 2)   -- 车的格 → 框里的像素
+    local tur = L.tur or { 0, 0, 0 }
+    local cols, order = {}, {}
+    for i, b in ipairs(L.b) do
+      local turret = b[1] == "t"
+      local x, z = b[2], b[4]
+      local nx, nz = b[5], b[7]
+      local ux, uy, uz = b[8], b[9], b[10]
+      local vx, vz = b[6] * uz - b[7] * uy, b[5] * uy - b[6] * ux   -- 高的方向 v = n × u（只要水平分量）
+      vx, vz = -vx, -vz
+      local nl = math.sqrt(nx * nx + nz * nz)
+      local tx, tz
+      if nl > 0.3 then tx, tz = -nz / nl, nx / nl
+      else
+        local ul = math.sqrt(ux * ux + uz * uz)
+        tx, tz = (ul > 0.1) and ux / ul or 1, (ul > 0.1) and uz / ul or 0
+      end
+      local len = math.max(math.abs(ux * tx + uz * tz) * b[11], math.abs(vx * tx + vz * tz) * b[12])
+      local oct = (nl > 0.3) and math.floor((math.deg(math.atan2(nz, nx)) + 382.5) / 45) % 8 or 9
+      local along = math.floor((x * tx + z * tz) / 0.9 + 0.5)
+      local key = (turret and "t" or "h") .. oct .. ":" .. along
+      local c = cols[key]
+      local depth = (nl > 0.3) and (x * nx + z * nz) / nl or 0
+      if not c then
+        c = { turret = turret, tx = tx, tz = tz, len = len, idx = {}, depth = -1e9 }
+        cols[key] = c
+        table.insert(order, c)
+      end
+      table.insert(c.idx, i)
+      c.len = math.max(c.len, len)
+      if depth > c.depth then   -- 最外面那一层的位置（贴着车体轮廓外边）
+        c.depth = depth
+        if turret then c.px, c.py = VWD / 2 + (x - tur[1]) * sx, 60 * VK + (z - tur[3]) * sz
+        else c.px, c.py = VWD / 2 + x * sx, 69 * VK + z * sz end
+        if nl > 0.3 then c.px, c.py = c.px + nx / nl * 1.4, c.py + nz / nl * 1.4 end
+      end
+    end
+    for _, c in ipairs(order) do
+      local k = math.abs(c.tx) * sx + math.abs(c.tz) * sz
+      local f = frame(c.turret and MW.vTurBox or MW.vHullBox, UD2(0, math.max(2, c.len * k - 1.2), 0, 1.6), UD2(0, c.px, 0, c.py), HOLO, 0, V2(0.5, 0.5))
+      f.Rotation = math.deg(math.atan2(c.tz, c.tx))   -- 块和块之间留一道细缝
+      f.Name = "Era"
+      f.ZIndex = 3
+      table.insert(MW.era, { f = f, idx = c.idx })
+    end
+  end
+  G.viewEraBars = function() return MW.era end   -- 测试用
   MW.smImg = img(MW.sm, "SmokeIcon", UD2(0, 46, 0, 52), UD2(0.5, 0, 0, 2), V2(0.5, 0), HOLO, 0)
   MW.smArt = art(MW.smImg, "smoke")
   MW.smImg.Visible = MW.smArt
@@ -606,21 +697,22 @@ function VehHud.init(G)
     frame(ret, UD2(0, 2, 0, 8), UD2(0.5, -54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
     frame(ret, UD2(0, 2, 0, 8), UD2(0.5, 54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
   }
-  MR.ammo = label(ret, "", UD2(0, 80, 0, 22), UD2(0.5, -76, 0.5, -14), 19, TXT, BOLD, V2(1, 0.5), RIGHT)
+  -- 字号照 MWT 截图（用户 11-19：文字精简一下、小一点）：弹药数、测距 14，已就绪 15
+  MR.ammo = label(ret, "", UD2(0, 80, 0, 18), UD2(0.5, -70, 0.5, -12), 14, TXT, BOLD, V2(1, 0.5), RIGHT)
   MR.ammo.Name = "MwtAmmo"
   MR.ammo.TextStrokeTransparency = 0.55
-  MR.bullet = roundf(frame(ret, UD2(0, 4, 0, 11), UD2(0.5, -120, 0.5, -14), TXT, 0.05, V2(0.5, 0.5)), UD(0, 2))   -- 弹药数前面的小炮弹（stepTank 按位数挪）
-  MR.state = label(ret, "", UD2(0, 140, 0, 24), UD2(0.5, -76, 0.5, 12), 20, CYAN, BOLD, V2(1, 0.5), RIGHT)
+  MR.bullet = roundf(frame(ret, UD2(0, 3, 0, 9), UD2(0.5, -110, 0.5, -12), TXT, 0.05, V2(0.5, 0.5)), UD(0, 2))   -- 弹药数前面的小炮弹（stepTank 按位数挪）
+  MR.state = label(ret, "", UD2(0, 120, 0, 18), UD2(0.5, -70, 0.5, 7), 15, CYAN, BOLD, V2(1, 0.5), RIGHT)
   MR.state.Name = "MwtState"
   MR.state.TextStrokeTransparency = 0.55
-  MR.rng = label(ret, "", UD2(0, 120, 0, 22), UD2(0.5, 86, 0.5, -14), 19, TXT, BOLD, V2(0, 0.5), LEFT)
+  MR.rng = label(ret, "", UD2(0, 100, 0, 18), UD2(0.5, 76, 0.5, -12), 14, TXT, BOLD, V2(0, 0.5), LEFT)
   MR.rng.Name = "MwtRange"
   MR.rng.TextStrokeTransparency = 0.55
   do
     local l = Instance.new("ImageLabel")
     l.Name = "BulletIcon"
     l.BackgroundTransparency = 1
-    l.Size, l.Position, l.AnchorPoint = UD2(0, 7, 0, 16), MR.bullet.Position, V2(0.5, 0.5)
+    l.Size, l.Position, l.AnchorPoint = UD2(0, 5, 0, 12), MR.bullet.Position, V2(0.5, 0.5)
     l.ImageColor3 = TXT
     l.Parent = ret
     if G.hudIconOn and G.hudIconOn(l, "bullet") then
@@ -813,9 +905,9 @@ function VehHud.init(G)
     for _, x in ipairs(MR.plus) do x.Visible = mw end
     if mw then
       MR.ammo.Text = ammoTxt or ""
-      MR.bullet.Position = UD2(0.5, -76 - #(ammoTxt or "") * 11 - 9, 0.5, -14)
+      MR.bullet.Position = UD2(0.5, -70 - #(ammoTxt or "") * 8.5 - 7, 0.5, -12)
       MR.bullet.Visible = (ammoTxt or "") ~= ""
-      MR.state.Text = ready and T("vh.rdy") or T("vh.loading", string.format("%.1f", left))
+      MR.state.Text = ready and T("vh.rdy") or string.format("%.1fs", left)
       MR.state.TextColor3 = ready and CYAN or AMBER
       MR.rng.Text = TR.rng.Text
     end
@@ -897,8 +989,10 @@ function VehHud.init(G)
     setRing(TK.ring, relK, ready, left)
     if mwtOn then
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
-      MW.name.Text = TK.name.Text
-      local silCol = (k > 0.6 and col == OK) and HOLO or col
+      MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）
+      -- 车的图标（全息图、视角图）、血量数字的颜色只看车况（用户 11-19：被打到状态一般改成黄色，状态很差改成红色）：
+      --   六成以上青色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
+      local silCol = (k > 0.6) and HOLO or ((k > 0.3) and RGB(255, 214, 64) or RGB(255, 64, 52))
       if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
         MW.iconId = d.id
         local ok = art(MW.icon, "veh_" .. d.id)
@@ -909,11 +1003,35 @@ function VehHud.init(G)
         MW.hp.Position = UD2(0, 0, 0, ok and (24 + (ic and ic.h * 0.62 or 54) - 2) or 80)
       end
       MW.icon.ImageColor3 = silCol
+      -- 视角图：车体框、炮塔框按相对镜头的朝向转（跟原来面板里的俯视轮廓一样算），颜色跟着车况；爆反哪块没了就空一块
+      MW.vHullBox.Rotation, MW.vTurBox.Rotation = TK.hull.Rotation, TK.tur.Rotation
+      MW.vTurBox.Visible = d.turret ~= nil
+      MW.vHullImg.ImageColor3, MW.vTurImg.ImageColor3 = silCol, silCol
+      for _, q in ipairs(MW.vFall) do
+        if q.s then q.s.Color = silCol else q.f.BackgroundColor3 = silCol end   -- 边框染色；炮管是实心的细条
+      end
+      if MW.eraId ~= d.id then
+        MW.eraId = d.id
+        buildEra(d)
+      end
+      if #MW.era > 0 then
+        local dead = {}
+        for k2 in string.gmatch(st.em:GetAttribute("EraX") or "", "%d+") do dead[tonumber(k2)] = true end
+        local ec = silCol:Lerp(WHITE, 0.3)
+        for _, e in ipairs(MW.era) do
+          local alive = 0
+          for _, i2 in ipairs(e.idx) do if not dead[i2] then alive += 1 end end
+          e.f.Visible = alive > 0
+          e.f.BackgroundColor3 = ec
+          e.f.BackgroundTransparency = (alive == #e.idx) and 0 or 0.55   -- 叠着的几层炸掉一部分：淡一点
+        end
+      end
+      MW.viewScale.Scale = MW.brScale.Scale
       for i, f in ipairs(MW.silParts) do
         if i <= 8 then f.BackgroundColor3 = silCol end
       end
       local hp, mx = math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0)
-      local hc = (k > 0.6) and HOLO or col
+      local hc = silCol
       MW.hp.Text = string.format('<font color="#%02X%02X%02X">%d</font>/%d', math.floor(hc.R * 255), math.floor(hc.G * 255), math.floor(hc.B * 255), hp, mx)
       local n = 0
       for i = 1, #MW.hex do if d.weapons[i] then n = i end end
@@ -955,7 +1073,7 @@ function VehHud.init(G)
         end
       end
       local sm = vs and vs.smoke or 0
-      MW.smTxt.Text = string.format("X  ×%d", sm)
+      MW.smTxt.Text = string.format("X ×%d", sm)
       local dim = sm <= 0
       MW.smStroke.Transparency = dim and 0.65 or 0
       MW.smCap.BackgroundTransparency = dim and 0.65 or 0

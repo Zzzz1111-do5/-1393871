@@ -2,7 +2,7 @@
 --   照那张图的布局和感觉做（不照抄它的图标、配色细节）：
 --   · 敌人头顶：看得见的敌方车辆上面一个小牌子（红色的型号名、距离「183 米」），最多 6 个，离得远的、被挡住的不画
 --   · 「被发现！」：附近有敌人看得见自己（视线没被挡），或者刚挨了打——左边一块琥珀色的牌子，一闪一闪
---   · 爆反、主动防御还剩多少（右下面板上面一行，青色）
+--   · 主动防御还剩多少（右下面板上面一行，青色；爆反不显示——用户 11-19）
 --   · 开坦克时（电脑）右上的方形小地图挪到左下角、裁成圆的，外圈 0 / 90 / 180 / 270 的方位刻度；下车、换别的载具恢复
 --   VehHud.lua 每帧调 G.tankHudExtra(st, 血量比例)；准星两边的弹药数、已就绪、测距在 VehHud 里
 local Players = game:GetService("Players")
@@ -16,7 +16,7 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED, AMBER, INK = RGB(110, 226, 240), RGB(255, 78, 64), RGB(255, 186, 72), RGB(6, 10, 14)
+  local CYAN, RED = RGB(110, 226, 240), RGB(255, 78, 64)
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -43,37 +43,133 @@ function TankHud.init(G)
   local tags = {}
   for i = 1, 6 do
     local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(130, 34)
+    f.Size = UDim2.fromOffset(110, 28)
     f.AnchorPoint = V2(0.5, 1)
     f.BackgroundTransparency = 1
     f.Visible = false
     f.Parent = gui
-    local nm = label(f, "", UD2(1, 0, 0, 16), UD2(0, 0, 0, 0), 13, RED, BOLD)
-    local dist = label(f, "", UD2(1, 0, 0, 14), UD2(0, 0, 0, 17), 12, Color3.new(1, 1, 1), MONO)
+    local nm = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 0), 11, RED, BOLD)   -- 字号照 MWT（用户 11-19：文字精简、小一点）
+    local dist = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 14), 12, Color3.new(1, 1, 1), BOLD)
     tags[i] = { f = f, nm = nm, dist = dist }
   end
 
-  -- 「被发现！」
+  -- 「被发现!」：照 MWT 的样子（用户 11-19：和 MWT 的被发现一模一样的效果，换个颜色）——
+  --   左边一道白光拖过来、一个发光的小太阳（圆 + 八道光芒、外面一圈光晕）、后面一块实心的小牌子写「被发现!」（深色字）；
+  --   MWT 是橙黄的，这里是红的。刚被发现时整块从左边滑进来、光拖得长一点，之后光晕一呼一吸
+  local SPOT = RGB(255, 86, 74)
   local spot = Instance.new("Frame")
-  spot.Size = UDim2.fromOffset(150, 30)
+  spot.Name = "Spotted"
+  spot.Size = UDim2.fromOffset(110, 22)
   spot.AnchorPoint = V2(0, 0.5)
-  spot.Position = mobile and UD2(0, 16, 0.3, 0) or UD2(0, 36, 0.42, 0)
-  spot.BackgroundColor3, spot.BackgroundTransparency = INK, 0.35
+  spot.Position = mobile and UD2(0, 16, 0.3, 0) or UD2(0, 60, 0.43, 0)
+  spot.BackgroundTransparency = 1
   spot.Visible = false
   spot.Parent = gui
+  local spotX = spot.Position
+  local streak = Instance.new("Frame")   -- 拖过来的白光：左边透明、右边亮
+  streak.AnchorPoint, streak.Position, streak.Size = V2(1, 0.5), UD2(0, 10, 0.5, 0), UDim2.fromOffset(34, 2)
+  streak.BackgroundColor3, streak.BorderSizePixel = Color3.new(1, 1, 1), 0
+  streak.Parent = spot
+  do
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 0.45), NumberSequenceKeypoint.new(1, 0.05) })
+    g.Parent = streak
+  end
+  local sun = Instance.new("Frame")   -- 发光的小太阳
+  sun.AnchorPoint, sun.Position, sun.Size = V2(0.5, 0.5), UD2(0, 14, 0.5, 0), UDim2.fromOffset(22, 22)
+  sun.BackgroundTransparency = 1
+  sun.Parent = spot
+  local halo = Instance.new("Frame")
+  halo.AnchorPoint, halo.Position, halo.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UDim2.fromOffset(20, 20)
+  halo.BackgroundColor3, halo.BackgroundTransparency, halo.BorderSizePixel = SPOT, 0.7, 0
+  halo.Parent = sun
+  local core = Instance.new("Frame")
+  core.AnchorPoint, core.Position, core.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UDim2.fromOffset(8, 8)
+  core.BackgroundColor3, core.BorderSizePixel = RGB(255, 236, 230), 0
+  core.Parent = sun
+  for _, f in ipairs({ halo, core }) do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = f
+  end
+  local rays = {}
+  for k = 0, 7 do   -- 八道光芒（绕自己的中心转：按中点摆）
+    local a = math.rad(k * 45)
+    local r = Instance.new("Frame")
+    r.AnchorPoint, r.Size = V2(0.5, 0.5), UDim2.fromOffset(1.5, 4)
+    r.Position = UD2(0.5, math.sin(a) * 8, 0.5, -math.cos(a) * 8)
+    r.Rotation = k * 45
+    r.BackgroundColor3, r.BorderSizePixel = RGB(255, 220, 212), 0
+    r.Parent = sun
+    rays[k + 1] = r
+  end
+  local tag = Instance.new("Frame")   -- 实心的小牌子
+  tag.AnchorPoint, tag.Position, tag.Size = V2(0, 0.5), UD2(0, 28, 0.5, 0), UDim2.fromOffset(50, 17)
+  tag.BackgroundColor3, tag.BackgroundTransparency, tag.BorderSizePixel = SPOT, 0.06, 0
+  tag.Parent = spot
   do
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 4)
-    c.Parent = spot
-    local s = Instance.new("UIStroke")
-    s.Color, s.Thickness, s.Transparency = AMBER, 1, 0.3
-    s.Parent = spot
+    c.CornerRadius = UDim.new(0, 3)
+    c.Parent = tag
   end
-  local eye = label(spot, "◉", UDim2.fromOffset(26, 30), UD2(0, 4, 0, 0), 16, AMBER, BOLD)
-  local spotTxt = label(spot, "", UD2(1, -34, 1, 0), UD2(0, 30, 0, 0), 15, AMBER, BOLD, nil, Enum.TextXAlignment.Left)
+  local spotTxt = label(tag, "", UD2(1, 0, 1, 0), UD2(0, 0, 0, 0), 11, RGB(70, 10, 8), BOLD)
+  spotTxt.TextStrokeTransparency = 1
+  local spotOn, spotT0 = false, 0
 
-  -- 爆反 / 主动防御还剩多少
-  local armLine = label(gui, "", UDim2.fromOffset(300, 18), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -150), 13, CYAN, MONO,
+  -- 车旁边的全息屏：车速（用户 11-19：坦克旁边也要有个牌子写着 km/h，要有全息屏的感觉，照 MWT）——
+  --   镜头右边那一侧、炮塔高度浮着一块半透明的青色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
+  --   斜着一点朝镜头，跟着车走；只在本机（放在镜头下面），开着瞄准镜、下车就收起
+  local holo = Instance.new("Part")
+  holo.Name = "SpeedHolo"
+  holo.Anchored, holo.CanCollide, holo.CanQuery, holo.CanTouch, holo.CastShadow = true, false, false, false, false
+  holo.Transparency = 1
+  holo.Size = V3(4.2, 1.9, 0.05)
+  holo.Parent = cam
+  local hsg = Instance.new("SurfaceGui")
+  hsg.Name = "SpeedHoloGui"
+  hsg.Face = Enum.NormalId.Front
+  hsg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  hsg.PixelsPerStud = 60
+  hsg.LightInfluence = 0
+  hsg.AlwaysOnTop = true
+  pcall(function() hsg.Brightness = 1.6 end)   -- 测试用的模拟器里没有这个属性
+  hsg.Enabled = false
+  hsg.Parent = holo
+  local hp = Instance.new("Frame")   -- 屏：上浓下淡的青色
+  hp.Size, hp.BackgroundColor3, hp.BackgroundTransparency, hp.BorderSizePixel = UD2(1, 0, 1, 0), CYAN, 0.8, 0
+  hp.Parent = hsg
+  do
+    local g = Instance.new("UIGradient")
+    g.Rotation = 90
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0.8) })
+    g.Parent = hp
+    local st0 = Instance.new("UIStroke")
+    st0.Color, st0.Thickness, st0.Transparency = CYAN, 2, 0.35
+    st0.Parent = hp
+    for i = 0, 18 do   -- 扫描线
+      local l = Instance.new("Frame")
+      l.Size, l.Position = UD2(1, 0, 0, 1), UD2(0, 0, 0, 3 + i * 6)
+      l.BackgroundColor3, l.BackgroundTransparency, l.BorderSizePixel = CYAN, 0.82, 0
+      l.Parent = hp
+    end
+    for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do   -- 四角的亮线
+      for _, sz in ipairs({ { 16, 3 }, { 3, 16 } }) do
+        local l = Instance.new("Frame")
+        l.AnchorPoint, l.Position, l.Size = V2(c[1], c[2]), UD2(c[1], 0, c[2], 0), UDim2.fromOffset(sz[1], sz[2])
+        l.BackgroundColor3, l.BorderSizePixel = CYAN, 0
+        l.Parent = hp
+      end
+    end
+  end
+  local hSpd = label(hp, "0", UD2(0.62, 0, 1, -8), UD2(0, 8, 0, 4), 66, CYAN, BOLD, nil, Enum.TextXAlignment.Right)
+  hSpd.TextStrokeColor3, hSpd.TextStrokeTransparency = CYAN, 0.75
+  local hUnit = label(hp, "km/h", UD2(0.36, -8, 0, 30), UD2(0.64, 0, 1, -40), 26, CYAN, BOLD, nil, Enum.TextXAlignment.Left)
+  hUnit.TextStrokeTransparency = 0.85
+  local holoT = -9   -- 上一次 tankHudExtra 摆它的时刻（瞄准镜里、下车不调 → 收起）
+  G.speedHolo = function() return hsg.Enabled and hSpd.Text or nil end   -- 测试用
+
+  -- 主动防御还剩多少（爆反不显示）
+  local armLine = label(gui, "", UDim2.fromOffset(240, 14), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -150), 11, CYAN, MONO,
     mobile and V2(0.5, 0) or V2(1, 1), mobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Right)
 
   -- 圆形小地图的方位刻度（挪到左下时才显示）
@@ -99,7 +195,7 @@ function TankHud.init(G)
     s.Parent = edge
     for _, b in ipairs({ { 0, "0" }, { 90, "90" }, { 180, "180" }, { 270, "270" } }) do
       local a = math.rad(b[1])
-      label(ring, b[2], UDim2.fromOffset(34, 14), UD2(0.5, math.sin(a) * (MS / 2 + 11), 0.5, -math.cos(a) * (MS / 2 + 11)), 11, CYAN, MONO, V2(0.5, 0.5))
+      label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5))
     end
   end
 
@@ -186,8 +282,8 @@ function TankHud.init(G)
         if (cat == "armor" or cat == "light" or cat == "ship") and enemy(em, side) then
           local r = em:FindFirstChild("Root")
           if r then
-            local d = (r.Position - myPos).Magnitude
-            if d < 1100 and clear(cam.CFrame.Position, r.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
+            local d = (r.CFrame.Position - myPos).Magnitude   -- CFrame.Position：测试台的零件只认这个
+            if d < 1100 and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
           end
         end
       end
@@ -197,7 +293,7 @@ function TankHud.init(G)
     for _, c in ipairs(cands) do
       if n >= #tags then break end
       if c.em.Parent and c.r.Parent then
-        local top = c.r.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0)
+        local top = c.r.CFrame.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0)
         local sp, on = cam:WorldToViewportPoint(top)
         if on then
           n += 1
@@ -205,8 +301,8 @@ function TankHud.init(G)
           tg.f.Visible = true
           tg.f.Position = UDim2.fromOffset(sp.X, sp.Y)
           local id = c.em:GetAttribute("Model")
-          tg.nm.Text = id and T("veh." .. id) or ""
-          tg.dist.Text = T("vh.m", math.floor((c.r.Position - myPos).Magnitude / 2.8 + 0.5))
+          tg.nm.Text = id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or ""   -- 只写型号
+          tg.dist.Text = T("vh.m", math.floor((c.r.CFrame.Position - myPos).Magnitude / 2.8 + 0.5))
         end
       end
     end
@@ -224,9 +320,9 @@ function TankHud.init(G)
         for _, pl in ipairs(Players:GetPlayers()) do
           if pl ~= me and pl:GetAttribute("Side") and pl:GetAttribute("Side") ~= side then
             local hrp = pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.Position - myPos).Magnitude < 500 then
+            if hrp and (hrp.CFrame.Position - myPos).Magnitude < 500 then
               rp.FilterDescendantsInstances = excludeList(st)
-              local hit = workspace:Raycast(myPos + V3(0, 4, 0), hrp.Position - myPos - V3(0, 4, 0), rp)
+              local hit = workspace:Raycast(myPos + V3(0, 4, 0), hrp.CFrame.Position - myPos - V3(0, 4, 0), rp)
               if not hit or hit.Instance:IsDescendantOf(pl.Character) then spotted = true break end
             end
           end
@@ -234,21 +330,44 @@ function TankHud.init(G)
       end
     end
     local show = spotted or (t - hurtT < 3)
+    if show and not spotOn then spotT0 = t end   -- 刚被发现：从左边滑进来
+    spotOn = show
     spot.Visible = show
     if show then
       spotTxt.Text = T("vh.spotted")
-      local blink = (t * 2.5) % 1 < 0.6
-      eye.TextTransparency = blink and 0 or 0.6
+      local a = math.clamp((t - spotT0) / 0.22, 0, 1)
+      local e = 1 - (1 - a) * (1 - a)
+      spot.Position = spotX + UD2(0, -40 * (1 - e), 0, 0)
+      streak.Size = UDim2.fromOffset(34 + 60 * (1 - e), 2)
+      local pulse = 0.5 + 0.5 * math.sin(t * 5)
+      halo.BackgroundTransparency = 0.55 + 0.3 * pulse
+      halo.Size = UDim2.fromOffset(16 + 8 * pulse, 16 + 8 * pulse)
+      for _, r in ipairs(rays) do r.BackgroundTransparency = 0.15 + 0.35 * pulse end
+      streak.BackgroundTransparency = 0.1 + 0.25 * pulse
+    end
+    -- 车旁边的全息屏：镜头右边那一侧、炮塔高度，斜一点朝着镜头
+    local root = st.root
+    if root then
+      local d = st.d or {}
+      local cp = cam.CFrame
+      local right = V3(cp.RightVector.X, 0, cp.RightVector.Z)
+      right = (right.Magnitude > 0.01) and right.Unit or V3(1, 0, 0)
+      local W, H = (d.W or 10), (d.H or 7)
+      local pos = root.Position + right * (W * 0.5 + 3.2) + V3(0, H * 0.1, 0)
+      holo.Size = V3(4.2, 1.9, 0.05) * math.clamp(W / 10, 0.8, 1.2)
+      holo.CFrame = CFrame.lookAt(pos, cp.Position) * CFrame.Angles(0, math.rad(-16), 0)
+      local kmh = math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5)
+      hSpd.Text = tostring(kmh)
+      local flick = (math.noise(t * 3, 1.7) > 0.42) and 0.12 or 0   -- 偶尔闪一下
+      hp.BackgroundTransparency = 0.8 + flick
+      hSpd.TextTransparency = flick * 0.8
+      hsg.Enabled = true
+      holoT = t
     end
     -- 爆反、主动防御
     local em = st.em
     local parts = {}
-    local nEra = em and em:GetAttribute("Era")
-    if nEra then
-      local dead = 0
-      for _ in string.gmatch(em:GetAttribute("EraX") or "", "%d+") do dead += 1 end
-      table.insert(parts, T("vh.era", nEra - dead, nEra))
-    end
+    -- 爆反还剩几块不显示了（用户 11-19：不要显示爆反了）；装了主动防御的照旧写还剩几发
     local aps = em and em:GetAttribute("ApsMax")
     if aps then table.insert(parts, T("vh.aps", em:GetAttribute("Aps") or 0, aps)) end
     armLine.Text = table.concat(parts, "   ·   ")
@@ -256,6 +375,7 @@ function TankHud.init(G)
 
   -- 不在开坦克：收起来，小地图放回去
   G.frameConn("TankHud", function()
+    if hsg.Enabled and os.clock() - holoT > 0.15 then hsg.Enabled = false end   -- 开着瞄准镜、下车：全息屏收起
     if not G.myVeh then
       if gui.Enabled then
         gui.Enabled = false

@@ -1,4 +1,4 @@
--- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf]
+-- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5]
 --   用户：开坦克要是 MWT 那套驾驶界面（截图），不要叠着旧界面。坐进一辆车、前方放一辆敌车开一会，
 --   把所有显示着的界面元素按 Roblox 的排版算出屏幕上的方框（1280×720，UDim2 + AnchorPoint + UIListLayout + UIScale 的近似），
 --   写成 JSON；tools/mock/hud_render.py 画成图看。也按 ScreenGui 列出各有多少个显示着的元素（找没关掉的旧界面）
@@ -62,6 +62,18 @@ if kind ~= "inf" then
   R.run(1.5)
   T.key(Enum.KeyCode.W, false)
   R.run(2.5)
+  -- hp=0.5：挨一下打到这个血量（看「被发现!」、车的图标按车况变黄 / 变红）
+  local hpK = tonumber(TEST_ARGS:match("hp=([%d%.]+)") or "")
+  if hpK and e and e.alive then
+    G.damageEnt(e, e.maxHp * (1 - hpK), { team = foeSide, name = "test" })
+    R.run(0.6)
+  end
+  -- erax=1,2,5：这几块爆反算炸掉了（看视角图上爆反的缺口）
+  local ex = TEST_ARGS:match("erax=([%d,]+)")
+  if ex and e and e.model then
+    e.model:SetAttribute("EraX", ex)
+    R.run(0.3)
+  end
 end
 
 -- 排版：算每个显示着的界面元素在屏幕上的方框

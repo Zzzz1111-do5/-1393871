@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="1">
+  <Item class="ReplicatedStorage" referent="0">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="1">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -572,7 +572,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">BuildingMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/bld2glb.py），别手改：地图建筑的原模型（models/bld/buildings.glb，网页版地图用的写实模型）的元数据
@@ -600,7 +600,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -878,7 +878,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">EraMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（python3 -I tools/models/eralayout.py），别手改：每型坦克原模型上的爆反块、主动防御的发射器和雷达板（车的坐标，格；炮塔上的按炮塔转角 0 摆）
@@ -1032,7 +1032,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -1142,7 +1142,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -1200,7 +1200,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">Flora</string>
         <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
@@ -1368,7 +1368,7 @@ return Flora
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -1620,7 +1620,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">GearDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——手持装备用哪件真模型（Sketchfab 原模型：tools/weapons/optics.json → OpticsMeta / OpticMesh / models/optics/<键>.glb）
@@ -1680,7 +1680,7 @@ return GD
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="11">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">HitSurf</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——子弹打在什么上面（弹着点的样子、声音按它出；用户：枪打在坦克上要有火花）：
@@ -1730,7 +1730,7 @@ return HitSurf
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="12">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">HudIcons</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/hudicons.py），别手改：驾驶界面的图标——每辆地面载具的侧面全息图标（原模型正侧面拍的，灰度、带柔光晕，
@@ -1746,6 +1746,8 @@ return {
   mg = { w = 36, h = 36, f = "a", d = "AFsCAQAhAwAhAwACLCAAAQEAGwICAAEFgeAXAAEBABoCAAJJ0f+OAAEEABoDAAEsp///+jYAAQMAAQEDABYEAAFf+v/7/cgCAgABAwACBQAUAwABNvX/+/v+dAABBQQAAQN7VwABAwARAgABFur//f78+RkEAAJCyPkYAAEBABABAhHK//z/+/9/AAIanv//nQABAwADAgAMAQUAAaz/+//7/5sAAQJ86f/7+0IBAwABAQIADQQAAY//+v/8/8cFAAGB///5/tsEAQEDAAI7DQAKBAABZf/7//3/3hQAAWH/+v37/38AAQYAAhinuwQCAAgEAAFE//3+/v3uNgABN/X+/v/8/i8CAAEFbej/SgABAwAHAwABLez9/f/6/1YAASTu//3/+v+AAAJEyP//4w0BAQAGAgIS0v/8//r/cgABFcv//P/7/6EBA7X///j+jAABBAAGAQIBx//8//v/oAEAAaz/+//8/8oOAAGc//z8/Pw3AAEDAAYCAAGa//v//P/KDQABmf/7//z/3hUAAXL/+v/8/88CAgAGAwKA//r//f/qGgABaf/7//397jcAAVb/+v/+/fVGAAECAAYCBIP///v+9TkAAUf/+/7++/9WAAE37v3+//r/YAABAwAIAQABVu3//GIAATfs/f3//P9pAAEW3v/8//r/gAABBQAKBAABL9OHAAEW3v/8//v/mQACu//7//v/mgABBAAMBAABDAcLxf/8//v/uwACmf/7//z/xwEBAQANAgACd//6//3/yxYAAWn//P/9/94SAgIADwEDEpb//P3tJAABRv/7/v797DQAAQMAFGb9/zoAATDs/f7++/9EAAEEABMBAwABRmYAARLS//z/+/9nAAEEABYCAAIMx//7//v/mAABAwAYAwQSvf/7+v+sAAEEAQAZAQACmv//yxECAgAbAQIAAXTlHwABAgAdAQEAARMAAQEAIAIAAQEAIgEAEg==" },
   shell = { w = 36, h = 36, f = "a", d = "AP8ANQIDAwQCABwCBAEAHwECAAMdQkBnVAABAgAXAgACOIDF9f///4kAAQQAFgIAAQyP//////35/H4AAQQAFQMAATXg//77/P7/+/+AAAEEABQCAAEh7v/7///////7/38AAQQAEwECEcv/+/////////v/gwABBAASAQUAAaz/+//////////8/1IAAQMAEgQAAY//+v///////////f87AAEDABECAAFi//v///////////396xEBAQAQBAM3//v+///////////7/2wAAQMAEyKp//z+/////////P/GBAIBAA8BAAEXRAACmf/8/f/////9/+kWAQIADwEDAAGs/28AAmn///3///7+9TYAAQIAEAMAAYz/+P+eDwABWe7//P/7/2AAAQQAEAMAAUH/+/37/8ooAAE45v/3/4AAAQUAEQECDXD///37/+1KAAEayf+dAQQAFmLy//z9//9zAAEMhwwAAQEAFQUAATbm//v+/f+gGQAaBAABGcr/+/37/zUEAwAZAwABDZ3/+v5dAAEDABsCAAKL/4AAAQQAHQEBAAFABgIAIAMAJAMBAF0=" },
   smoke = { w = 56, h = 64, f = "la", d = "ACzh4eHh4eHR4QAv4eHh4eHh4eHh4QAs4eHh4eHh0tLh4eHh4eEAKeHh4eHi4vX4+Pbi4eHh4eEAJuHR4eHi4uL6//////zj4eHh4QAd4eHh4eHh4dHh4eHh4uLi+v/89ub6//zj4eHhABvh4eHh4eHR4eHh4eHi4uLi5f/84+Pj4/n/+NLh4QAa4eHh4eHh0uLi4uLi4uLi4+P5/+bj5OPj5P/84uHhABnh4eHh4uLj4+Li4uLS4vf8///+/+bj5OPj4//84uHRABjh4eHi4vf7/v78+ePj5Pv///z8/v/95uPj0/f/+eLh4QAX4eHh4uP7/////v///eb7//rk4+Pk/P/+5eT3/v7k4uHhABbh4eHi4vz//ffk5Ob8////+uPT4+Pj5Pz//v///uXi4eHRABXh4eHi0vf//eTj0+Pj4/v//uTj4+Pj4+Pk/f/8+eTi4tHh4QAT4dHh4eLi4vz/9+Pj4+Pj4+X//uTj49LS4+Pj+f/l4+Li0eHhABPh4eHi4uLj5P//5OPj4+Pj0+T+/+bj4+Li0uPj+f/24uLh4eEAE+Hh4eLS4+Pj5Obm1OTj4+Pj4+P9/+Tj4+Li4uPj+//k0uLR0QAT4eHh4uPk5OXl5eXl5eXk5OPj4+P5//jj4+Pj4+Ll//zi4tHh4QAT0eHi4/3+/v7+/v7+/v7+/ubj4+Pj/f/34uLi4uX+/+Ti4eHhABPh4eLi5P7//////////////+fT4+Pi5f7//Pn5+///9+Lh4eEAE+Hh4eLj5P7//////////////+fj49Li4uP6//////z14uHh0eEAE+Hh4uLj5f7//////////////+fk4+Pi4uLi4/X14+Lh4eHR4QAT4eHh4uPj5f7//////////////+jk4+Pi4uLi4uLh4eHh4eHhABTh4eLi5Pv+/////////////////vzm4+Li4uHh4eHh4dHhABXh4eHi5P7//////////////////////+bi4uHh4eHh4eEAF+Hh4tL6//76+fr6+vr6+vr6+vr5+v3//ePi4eHR4QAa4eHi4/7/+ubn5+fn5+fn5+fn5+fn+P//5eLi4eEAG+Hh4uP+//nn5+fn5+fn5+fn5+fn5+f+/+bi4uHhABvh4eLj/v/55+fn5+fn5+fn5+fn5+fo/v/m0uLh4QAa4eHi4uP+//nn5+fn5+fn5+fn5+fn5+j+/+bi4uHhABrh4eLi4/7/+efn5+fn5+fn5+fn5+fn6P7/5uLi0eEAGuHh4tLk/v/55+fn5+fn5+fn5+fn5+fo/v/m4uLh4QAa4eHi0uT+//nn6Ofn5+fn5+fn5+fo5+j+/+bi4uHhABrh4eLS5P7/+ef7+/v7+/v7+/v7+/vo5/7/5uLi4eEAGuHh4tLk/v/55/v8/Pz8/Pz8/Pz8/Ojo/v/m4uLh4QAa4eHi4uT+//nn+/z8/Pz8/Pz8/Pz86Oj+/+bi4uHhABrh4eLi5P7/+ej8/Pz8/Pz8/Pz8/Pzp6P7/5uLi4eEAGuHh4uLk/v/56Pz8/Pz8/Pz8/Pz8/Ono/v/m4uLh4QAa4eHi4uT+//no/Pz8/Pz8/Pz8/Pz86ej+/+bi4uHhABrh4eLi5P7/+ej8/Pz8/Pz8/Pz8/Pzp6P7/5uLi4eEAGuHh4uLk/v/56Pz8/Pz8/Pz8/Pz8/Ono/v/m4uLh4QAa4eHi4uT+//no/Pz8/Pz8/Pz8/Pz86ej+/+bi4uHhABrh4eLi5P7/+ef8/Pz8/Pz8/Pz8/Pzp6P7/5uLi4eEAGuHh4tLk/v/55/v8/Pz8/Pz8/Pz8/Ojo/v/m4uLh4QAa4eHi0uT+//nn/Pz8/Pz8/Pz8/Pz86Oj+/+bi4uHhABrh4eLS5P7/+ef4+Pj4+Pj4+Pj4+Pjn6P7/5uLi4eEAGuHh4tLk/v/55+fn5+fn5+fn5+fn5+fo/v/m4uLh4QAa4eHi4uP+//nn5+fn5+fn5+fn5+fn5+f+/+bi4uHhABrh4eLi4/7/+ebn5+fm5ubm5ubn5+fn5/7/5uLi4eEAGuHh4uLj/v/55ufn5ubm5ubm5ubn5+fn/v/m4uLh4QAa4eHi4uP+//nm5+fn5ubm5ubm5ufn5+f+/+bi4tHhABrh4eHi4/7/+ebn5+fm5ubm5ubn5+fn5/7/5tLi4eEAG+Hh4uP+//nn5+fn5+fn5+fn5+fn5+f+/+bi4uHhABvR4eLj/v/55ufn5+fn5+fn5+fn5+bn///m4uLh4QAb4eHi4vv//fjn5+fn5+fn5+fn5+fn/P/+4+Lh0QAc4eHh4uX////+/v7+/v7+/v7+/v7////44uLh4QAd4dHi4vb9///////////////////++OLi4eEAHuHh4eLS4uXm5ubm5ubm5ubm5ubm4+Li4eHhAB/h4eHi4tLi0uLi4uLi4uLi0uLi4uLh4eEAIeHh4eHi4uLi4uLi4uLi4uLi4uHh4eEAJOHh4eHh4dHh4eHh0dHh4eHh4QAp4eHh4eHh4eHh4eHh4QC/" },
+  topHull = { w = 72, h = 120, f = "la", d = "AP8A/wD/AP8A/wAl4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAd4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAY4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eEAFeHh4eHi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uHh4eEAFOHh4eLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLh4eHhABLh4eHi8/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz89eLh4eEAEuHh4uL7///////////////////////////////////////////////////////////+8+Lh4QAS4eHi4vz/9OPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Tj/P/j4uHh4QAQ4eHh4uL8/+Pj4+Li4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uPj4/z/4+Lh4eEAEOHh4eLi/P/j4+Pi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4+P8/+Pi4uHhABDh4eHi4vz/4+Li4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uPj/P/j4uLh4QAQ4eHh4uL8/+Pi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4uLi4/z/4+Li4eEAEOHh4eLi/P/j4uLh4eHhABzh4eHh4uLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHh4QAe4eHh4uLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eEAIOHh4eLi/P/j4uLh4QAQ4eHh4uL8/+Pi4uHhACDh4eHi4vz/4+Li4eEAEOHh4eLi/P/j4uLh4QAg4eHh4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eHhAB7h4eHi4uL8/+Pi4uHhABDh4eHi4vz/4+Li4eHh4QAc4eHh4eLi4vz/4+Li4eEAEOHh4eLi/P/j4uLi4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uL8/+Pi4uHhABDh4eHi4vz/4+Li4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uLj/P/j4uLh4QAQ4eHh4uL8/+Pj4uLi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4uLi4uLj4/z/4+Li4eEAEOHh4eLi/P/k4+Pj4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uPj4+P8/+Pi4eHhABHh4eLi/P/j4+Pj4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uPj4+P8/+Pi4eHhABHh4eLi/P/8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz+//Pi4eHhABHh4eHi9f7////////////////////////////////////////////////////////+9+Lh4eEAE+Hh4eLj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj8+Lh4eHhABPh4eHh4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLh4eHhABXh4eHh4eHi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLh4eHh4QAX4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHhABrh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eEADQ==" },
+  topTurret = { w = 72, h = 120, f = "la", d = "ACLh4eHh4QBC4eHh4eHh4QBA4eHh8vLh4eEAQOHh4vv+9eHh4QA+4eHi4vz/9eLh4QA+4eHi4vz/9eLi4QA+4eHi4vz/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA94eHi4/z/9uLi4eEAPeHh4uP8//bi4uHhAD3h4eLj/P/24uLh4QA84eHi4uP8//bj4uHh4QA34eHh4eHi4uPj/P/24+Li4eHh4eEAMuHh4eHh4eLi4uPk/P/24+Pi4uHh4eHh4eEALeHh4eLi4uLi4uPj5OT8//fk4+Pi4uLi4uLh4eEAK+Hh4eLi4uLi4+Pj4+Tk/P/25OTj4+Pi4uLi4uHh4QAp4eHh4uL3/Pz8/Pz8/Pz8/v/9/Pz8/Pz8/Pz54uLh4eEAJ+Hh4eLi9//////////////+/v/////////////54uLh4eEAJeHh4eLi9f799OTj4+Pj4+Tk5OTk5OTj4+Pj5OT7//fi4uHh4QAk4eHi4vX+/vXj4+Li4uLi4uLi4uLi4uLi4uLi4+T8//fi4uHh4QAi4eHi4uP9//Xi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4/3/9eLi4eHhACDh4eLi4/z/9+Li4uHh4eHh4eHh4eHh4eHh4eHh4eLi4vX+/vXi4uHh4QAe4eHi4uL7//fi4uLh4eHhAAzh4eHh4eLi9f794+Li4eEAHeHh4eLi+v/54uLi4eEAEuHh4eLi9v/84+Li4eEAHOHh4uL5//ri4uLh4QAU4eHh4uL3//zi4uHhABzh4uL3//zj4uLh4QAW4eHi4uP5//ni4uHhABrh4eLi/P/04+Lh4eEAF+Hh4uPj/f/j4uHhABrh4eLi/P/j4uLh4QAY4eHi4uP8/+Pi4eEAGuHh4uL8/+Pi4uHhABnh4uLj/P/j4uHhABrh4eLi/P/j4uLhABrh4eLj/P/j4uHhABrh4eLj/P/j4uLhAArh4eHh4eEACuHh4uP8/+Pi4eEAGuHh4uP8/+Pi4eEACOHh4eHh4eHh4eEACOHh4uP8/+Pi4eEAGuHh4uP8/+Pi4eEAB+Hh4eHi4uLi4uHh4QAH4eHi4/z/4+Lh4QAa4eHi4/z/4+Lh4QAG4eHh4uL1+fn24uLh4eEABuHh4uP8/+Pi4eEAGuHh4uP8/+Pi4eEABuHh4uL6//////zz4uHh4QAF4eHi4/z/4+Lh4QAa4eHi4/z/4+Li4eEABOHh4uL6//j05Pf//OPi4eEABeHh4uP8/+Pi4eEAGuHh4uP8/+Pi4uHhAAPh4eHi9f/44+Pj4/X/+OLi4eEAA+Hh4eLj/P/j4uHhABrh4eLj/P/j4uLh4eHh4eHh4uL5/+Tj4+Pj4/384uLh4eHh4eHh4uLj/P/j4uHhABrh4eLj/P/k4+Li4eHh4eHh4uL5/+Tj4+Pj4/z94uLh4eHh4eHi4uPj/P/j4uHhABrh4eLj/P/k4+Pi4uLi4uLi4uL2//fj4+Pj5P/64uLi4uLi4uLi4+Pj/P/j4uHhABrh4eLj/P/k4+Pj4uLi4uLi4uLj/P724+P0/f704uLi4uLi4uLj4+Pj/P/j4uHhABrh4eLj/P/k5Pn6+vn5+fn04uLi4/3//fz///Xi4uLi+fn5+fr6+vXk/P/j4uHhABrh4eLj/P/l5Pz9/f39/f314uLi4uP4/Pz59OLi4uLj/P39/f39/fbk/f/j4uHhABrh4eLi+v/65OTk5OPj4+Li4uHh4uLi4uLi4uLh4eLi4uPj4+Tk5OT3//3j4uHhABvh4uL2///25OTk5OPj4uLi4eHh4eLi4uLh4eHh4eLi4+Pk5OTl5f3/+OLi4eEAG+Hh4uP6//38/f39/f399eLh4eHh4eHh4eHh4eHi4/z9/f39/f38//3j4uLhABzh4eLj5P3//fr6+vr6+fTi4uHh4eHh4eHh4eHh4uL5+vr6+vr8///24+Lh4QAd4eHi4/f//eXk5OTj4+Li4uLi4uLi4uLi4uLi4uLj4+Tk5OX7//rj4uLh4QAd4eHi4+P7//vk5OTk4+Pj4uLi4uLi4uLi4uLi4+Pj5OTk5Pn//eTj4uHhAB/h4eLj9f7/9+Tk5OPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pk5OX+//fj4uHhACDh4eHi4/j//vz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P7/++Pi4uHhACHh4eLi4/r+/////////////////////////////////vv04uLh4QAj4eHh4uLj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Li4uHhACXh4eHi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4eHhACfh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAq4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QD/AP8A/wD/AP8A/wD/AP8A/wD/AEA=" },
   veh_cram = { w = 69, h = 90, f = "la", d = "AFrh4eHh4eHh4eHh4QA44eHh4eHh4eHh4eHh4eHhADXh4eHh4eHh4eHh4eHh4eHh4eEAMeHh4eHh4eHi4uLi4uLi4uHh4eHh4QAv4eHh4eHi4uLi4+Pj4+Pi4uLi4eHh4eEALeHh4eHh4uLj4+Pj4+Tk4+Pj4+Li4uHh4eEALOHh4eHi4uPj5OTk5eXl5OTk4+Pi4uLh4eEAK+Hh4eHi4uPk5Ojq7O3u7uzq6OTk4+Li4eHh4QAq4eHh4uLj5Pf8/////////////ffk4+Li4eHhACnh4eHh4uPk5f7///////////////735OPi4uHh4QAo4eHh4uLj5Ovv7u/v7+/v7+/v7+/v7OTj4uLh4eEAKOHh4eLj4+X+7+////////////////7m5OPi4eHhACjh4eHi4+Tl/q/Pz8/f39/f7+/v7+//9+Tj4uLh4eEAJuHh4eLi4+Tm3p+vv6+/v7+/z8/Pz9/v5+Tj4uLh4eEAJuHh4eLi4+Tm/q+/z8/Pz9/f39/f3+//5+Tj4uLh4eEAJuHh4eLi4+Tm/q+/z8/Pz9/f39/f3+//5+Xk4+Lh4eEAJuHh4eLi4+Tm3p+vr6+/v7+/z8/Pz9/v5+Xk4+Lh4eEAJuHh4eLi4+Tn/q+/z8/Pz9/f39/f39//+OXk4+Lh4eEAJuHh4eLj4+Xm/r/Pv8/Pz8/f39/f3+//5+Xk4+Lh4eEAJuHh4eLj5OXm7r+/r6+/v7+/z8/Pz9/v5+Xk4+Lh4eEAJuHh4eLj5OXm/r/Pv8/P39/f39/f3+//5+Xk4+Lh4eHhACXh4eHi4+Tl5v6vv8/Pz8/f39/f39/v/+fl5OPi4eHh4QAl4eHh4uPk5ebur7+vr7+/v8/Pz8/P3+/n5eTj4uHh4eEAJOHh4eHi4+Tl5v7Pv7+/z8/Pz9/f39/v/+fl5OPi4eHh4QAk4eHh4eLj5OXm/r/Pz7/P39/f39/f3+//5+Xk4+Lh4eHhACTh4eHh4uPk5eben6+/r7+/v7/Pz8/P3+/n5eTj4uHh4eEAJOHh4eHi4+Tl5v6vv8/Pz8/f39/f39/v/+fl5OPi4eHh4QAk4eHh4eLj5OXm/q/Pz8/fz9/f39/f3+//5+Xk4+Li4eHhACTh4eHh4uPk5eben6+/r6/Pv7/Pz8/P3+/n5eTj4uLh4eHhACPh4eHh4uPk5eb+r7/Pz8/f39/f39/f7//n5eTj4uLh4eHhACPh4eHh4uPk5eb+r7/Pz8/P39/f39/f7//o5eTj4uLh4eHhACPh4eHh4uPk5eben6+/r7+/v7/Pz8/P3+/o5eTj4uLh4eHh4QAi4eHh4eLj5OXm/q+/z8/Pz9/f39/f3+//6OXk4+Li4eHh4eEAIuHh4eHi4+Tl5/6/z8/Pz9/f39/f39/v/+jl5OPj4uLh4eHh4eEAIOHh4eHi4+Tl5+6/v6+vv7+/v8/Pz8/f7+jm5eTj4uLh4eHh4eHh4QAe4eHh4eLj5OXn/s/Pv8/Pz8/P39/f3+//6Obl5OPj4uLh4eHh4eHh4eHh4eHh4QAX4eHh4uLj5OXm/q+/z8/P39/f39/f3+//+ufm5eTj4+Li4uHh4eHh4eHh4eHh4eHh4eHhABLh4eHi4uPk5ejuz9/Pz8/Pz8/Pz8/Pz9/u5+bl5OTj4+Li4uLi4eHh4eHh4eHh4eHh4eHhABHh4eHi4uPk5fz//+/v7+/f39/f39/v39//++jm5eTk4+Pj4uLi4uLi4uLi4eHh4eHh4eHh4QAQ4eHh4uLj5OX8/+/P39/f39/f39/f38/P7///+Obl5OTk4+Pj4+Li4uLi4uLi4uLi4tLR4eHhAA7h4eHh4uLj5OXs78+/v7+/v7+/v7+/v7/P3+7s6+fn7enk5OPj4+Pj4uLi4uLi4uLi4uLh4eHhAA7h4eHh4uLj5eb8/+/Pz9/Pz8/Pz8/Pz8/P7//+//7+///6+fj4+Pf39/f39/b3+vr6+fn44eHhAA7h4eHh4uPj5eb8/+/Pz8/Pz8/Pz8/fz8/P3////+////7///////////////////7+/v7+4eHh4QAN4eHh4eLj5OXm7O/Pv7+/v7+/v7+/v7+/v8/v79/v7+/v7evr6+vq6urq6urp6uzs7Ozs6+Hh4QAO4eHh4uLj5OXm/P/fz8/Pz8/Pz8/Pz8/f3//+7P35+Pv85eTk4+Pj4+Pi4uLi4uLi4uLi4eHh4QAN4eHh4eLi4+Tl5vz/78/Pz8/Pz8/Pz8/Pz9/v///p5+fm5eTk5OPj4+Pi4uLi4uLi4uLi4eHh4eEADeHh4eHi4+Pl5uft79+/v7+/v7+/v7+/v7/P7+3q6ejn5uXk5OPj4uLi4uLi4uLi4uLh4eHh4eEADuHh4eLi4+Tl5uj9/+/fz8/Pz8/Pz8/Pz9/f//zp6Ofn5uXk4+Pi4uLi4eHh4eHh4eHh4eHh4QAO4eHh4eLi4+T5/f7+///vz8/Pz8/Pz8/Pz9///////fz9+uXk4+Pi4uHh4eHh4eHh4eHh4eHhAA/h4eHh4uPj5e7v7+/v79+/v7+/v7+/v7+/z+/v7+/v7+/v5+Tj4uLh4eHh4eHh4eHh4eEAEuHh4eHi4+Tl/f//////38/Pz8/fz8/Pz8/P//////////725OPi4uHh4eHh4eEAF+Hh4eLi4+Tl/f/////fz8/Pz8/Pz8/Pz8/Pz///////7/7l5OPi4uHh4eHhABnh4eHi4uPk5e3v7+/fz7+/v7+/v7+/v7+/v8/P3+/v36/s5eTj4uLh4eHh4QAY4eHh4eLi4+Tl/d/Pz+//39/Pz8/Pz8/Pz9/f7+/P3//O/vjl5OPi4uHh4eHhABjh4eHh4uLj5OX9r5+fz//v/+/Pz8/Pz8/f/+//76+fz8/95uXk4+Li4eHh4eEAF+Hh4eHh4uPj5OXen4+vn8+/v8/fv7+/v8/fv7/Pn7+Pr+/p5uXk4+Li4eHh4eEAFuHh4eHh4uLj4+Tm6f3//9+fv6/v78/Pz8/f77+vr9//3//85+bk5OPi4uHh4eHhABbh4eHh4uLi4+Tl5ufo6v7vr6/P3+/Pz8/P3+/Pr5/f///86Ofm5eTj4uLi4eHh4QAV4eHh4eHi4uPk5OXm5+jq76+Pn6/f38+/v7/P37+fn6/v7eno5+bl5OPj4uLh4eHh4QAU4eHh4eLi4+Pk5ebn6On9/9+/76/f/+/v7+/v/8/f38/P/+ro5+bm5eTj4+Li4eHh4QAT4eHh4eLi4+Tk5fn6+vv8////7//////////////////////9+/v6+ubl5OPj4uLh4eEAE+Hh4eLi4+Tk5ebt7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/o5eXk4+Li4eHh4QAR4eHh4eLi4+T4/Pz+///////////////////////////////////////9/Pvk5OPi4uHh4QAR4eHh4uLj5Pr9///vz9/f39/f39/f39/f39/f39/f39/f39/f39/f39/////79uPi4uHh4QAR4eHh4uLj5O/f38+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/Pz+/v6ePj4uHh4QAQ4eHh4eLj4+T+/8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/v//nk4+Lh4eHhAA/h4eHh4uPk5fv/38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P3+/+5uTj4uLh4eEAD+Hh4eHi4+Tl6u/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/P3+3l5OPi4uHh4QAP4eHh4eLj5OX6/9/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/v/ubk4+Li4eHhAA/h4eHh4uPk5fr/38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P3+/95eTj4uLh4eEAD+Hh4eHi4+Tl6u/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/P3+3l5OPi4uHh4QAP4eHh4eLj5OX6/9/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9///eXk4+Li4eHhAA/h4eHh4uPk5ef+38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/f3//75eTj4uLh4eEAD+Hh4eHi4+Tl5+7Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/P7+rl5OPi4uHh4QAP4eHh4eLj4+X4/9/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz+///OXk4+Lh4eHhAA/h4eHh4uLj5Of+38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P7//65eTj4uHh4QAR4eHh4uLj5Obuz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z+/q5eTj4uHh4QAR4eHh4uLj5Ob+39/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/f7//65OTj4uHh4QAR4eHh4eLj5Pf+///fz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/////75OPi4uHh4QAR4eHh4eLi4+rv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/u5OPi4eHh4QAS4eHh4uLj9/7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/vzj4uLh4eEAE+Hh4eHi4uPj5OTl5eXm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubl5eXl5OTj4+Lh4eHhABTh4eHh4uLj4+Pk5OTk5OTl5eXl5eXl5eXl5eXl5eXl5eXl5OTk5OTk4+Pi4uLh4eEAFuHh4eHi4uLj4+Pj4+Pj4+Pj5OTk5OTk5OTk5OTk4+Pj4+Pj4+Pj4+Li4uLh4eHhABbh4eHh4eLi4uLi4uLi4uPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Li4uLi4uLi4uHh4eHhABjh4eHh4eHh4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4eHh4eHh4QAa4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHhAB3h4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAi4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHhABk=" },
   veh_hmmwv = { w = 201, h = 90, f = "la", d = "ABDh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QBT4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QBO4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eEAS+Hh4eHh4eHh4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4eHh4eHh4eHh4eHh4eHhAEjh4eHh4eLi4uLi4uLi4uLi4uLi4uLi4+Pj4+Pj4+Pj4+Pj4uLi4uLi4uLi4uLi4uLi4uLj4+Pj4+Pj4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4eHh4eHhAEbh4eHh4uLi4uPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Li4uLi4eHh4eEAROHh4eHi4uLj4+Tk5OTk5OTk5OTk5OTk5OTl5eXl5eXl5eXk5OTk5OTk5OTk5OTk5OTk5OTk5OXl5eXl5eTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk4+Pj4+Pi4uHh4eEAROHh4eLi4+Pk5OXl5eXl5eXl5eXl5ebm5ubm5ubm5ubm5ubm5ubm5uXl5eXl5eXl5eXl5ebm5ubm5ubm5ubm5uXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eTk5OPj4uLh4eHhAELh4eHh4uPj6+7u7u7u7e3t7Ozr6+vr7Ozt7e7u7u7u7u7u7u3t7ezs7Ovr6+rq6unp6uvs7e7u7u7u7u7u7u7t7Orp6Ojo6Ojo6Onq7O3t7Orp6Ojo6Ojo6Onq7O3u7u3r6eno6Ojo6Ojo6Onq7O3t7Orp6Ojn5+fm5+fp6+3t7OTj4uLh4eHhAEHh4eHi4uPk/f/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////+/v7+/v////////jk4+Li4eHhAEHh4eHi4+Pl/v////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////nk4+Pi4eHh4QA/4eHh4uLj5Obu7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+7u7u/v7+/v7+/v7+/v7+/v7+/v7+7u7u7u7u7u7u/v6+Xk4+Li4eHhAD/h4eHi4uPk9////////////////////////////////////////////////////////////////////////////////////////////////////////////+/v/////////////////////////////////////////+/////////85eXj4+Lh4eEAP+Hh4eLj5OX4/9/f39/f7+/f39/v7+/f39/f39/f39/Pz8/Pz8/Pz8/f39/f39/f39/f39/f39/f38/Pz9/f77/fz8/Pz9/fz8/Pz9/fz8/P39/f39/f39/f79/f39//39/fz8/f39/f39/f39/f39/f39/f39/f39//79/P38/v//755eTj4uLh4eEAPeHh4eHi4+Tl6e/Pv7+vr7+/v7+/v7+/v7+/v7+/v7+/r6+vr6+vr6+vr7+/v7+/r7+/v7+/v7+/v7+/v7+/z7+/v6+/v8+/r6+vr6+vr6+vr6+vr6+vr6+vr7/fv8+vv6+/v7/Pv5+vr6+vr6+vr6+vr6+vr6+vr6+/n8/fv7+/3+/v7Ofk4+Li4eHhAD3h4eHh4uPk5fr/78/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/Pz8/Pz8/Pz9/f39/f39/f39/f39/f39/f39/fz8/fv8+/38/Pv9/f39/f39/f39/f39/f39/f39/f3+/P39/Pz9//7//95eTj4uHh4eEAPOHh4eLi4+Tl+//vz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P37/fz8/Pz7/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9+/z7/fz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9+/38/fz9/v//3l5OPi4eHh4QA84eHh4uLj5OXs78+/v6+vr6+vr6+vr6+vr6+/v7+/v6+vv6+vv7+vr6+vr6+vr6+vr6+vr7+/v7+/v7+/v7/Pr7+vr6+/r7+vr6+vr6+vr6+vr6+vr6+vr7+/v7+/z6+/r7+vv6+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vv6+/v8+vv8/v7eXk4+Li4eHhADzh4eHi4uPk5vz/38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8+/38/Pv8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8/P37/P3//95eTj4uLh4eHhADvh4eHi4uPl5v3/38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P37/Pz8/Pz7/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8+/z8/Pv8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8+/37/P3//95eTj4uLh4eHh4QA54eHh4eLj5OXm7t+/r6+/r6+vr6+vr6+vr6+vr6+vr6+vv6+vr6+vv7+vr6+vr6+vr6+vr6+vr7+/v7+/v7/Pr7+/r6+/r7+vr6+vr6+vr6+vr6+vr6+vr6+/v7+/r7+vv6+/v7+vv6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+vv6/Pr7/P7+3m5ePj4uHh4eHh4QA44eHh4eLj5OXn/u/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/v7+/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/z7/fz8+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/z8/fv8/f//3m5eTj4uLh4eHh4eHhADbh4eHh4uPk5ej/z8+/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv7+/v7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P38/Pz8/Pz7/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz7/Pv8/Pz7/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz7/Pz9+/z9///ebl5OPi4uHh4eHh4eHh4eHh4QAx4eHh4eLj5OXo77+vr6+vv6+vr6+vr6+vr6+vr6+vr6+/v6+vr6+vr6+/v6+vr6+vr6+vr6+vr6+/v7+/v8+vv7+/v7+vv6+vr6+vr6+vr6+vr6+vr6+vr6+/v7+/v7+vv6+/v7+vv6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+vv6+/r7/P7+3m5eTj4uLi4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAm4eHh4uLj5OX5/9/Pv7/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz7+/v7+/v7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/P39+/37/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/z7/Pz8+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/fv+////3m5eTj4+Li4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eEAH+Hh4eLi4+Tl+v/fz7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/v7+/v7+/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/Pz8+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8+/z8/Pv8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv8+/78+/3//85ubl5OPj4uLi4uLi4uHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4QAb4eHh4uLj5OXr78+vr6+vv7+vr6+vr6+vr6+vr6+vr6+/v6+vr6+vr6+vr7+/r6+vr6+vr6+vr6+vr7+/z6+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v6+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/r7+/37/P7ujn5uXk5OPj4+Pj4uLi4uLi4uLi4uLi4uLi4eHh4eHh4eHh4eHh4eHh4eHh4QAX4eHh4uLj5Ob8/+/Pv7+/z8/Pz8/Pz8/Pz8/Pz8/Pz8/Pv7+/v7+/v7+/v7/Pz8/Pz8/Pz8/Pz8/Pz8/P36/fv8+/z9/f39/f39/f39/f39/f39/f39/f39/f39/Pz8/Pz7/Pz8/f39/f39/f39/f39/f39/f39/f39/f39/fz8/Pv+///uno5+bl5eTk5OTj4+Pj4+Pj4+Li4uLi4uLi4uLi4uLi4uLh4eHh4eHh4eHh4eHh4eEAE+Hh4eLi4+Xm/f/fz7+/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz7+/v7+/v7+/v7+/z8/Pz8/Pz8/Pz8/Pz8/P39+/z7/Pz8/P39/f39/f39/f39/f39/f39/f39/f39/Pz8/Pz8+/z8/Pz9/f39/fz8/Pz8/Pz8/Pz8/Pz8/Pv8/Pz8/Pz8/P///q6Ofn5ubl5eXl5OTk5OTk5OPj4+Pj4+Pj4+Pj4+Pj4uLi4uLi4uLh4eHh4eHh4eHh4eHh4eEADeHh4eHi4+Tl5u3vv6+vr6+vv6+vr6+vr6+/v7+/v7+/v7+vr6+vr6+vr6+vr6+/v7+/v7+vr6+vr6+vv8+/v7+vv7+vr6+vr6+vr5+vr6+vr6+vr6+vr5+fr6+vr7+/v6+/r7+/v6+vr6+vr6+vr6+vr6+vr6+vr6+vv7+vr6+/v7+/r8/v7u3p6eno6Ojo5+bl5eXl5eXl5eTk5OTk5OTk5OTk4+Pj4+Pj4+Li4uLi4uLh4eHh4eHh4eHh4eEAC+Hh4eHi4+Tl5v7/z8+/v7+/z8/Pz8/Pz8/Pz8/Pz8/Pz7+/v7+/v7+/v7+/v7+/z7+/v8/Pz8/Pz8/Pz9+/z7/Pz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/Pz7/Pv8/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/z8+/v7/Pz8/Pv8/f///9/////////vjn5+fn5ubm5ubl5eXl5eXl5eXl5eXk5OTk5OPj4+Pi4uLi4uLh4eHh4eHh4eHh4QAJ4eHh4eLj5OXn/u/Pz7+/v7/Pz8/Pz8/Pz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8/Pz8/Pz8/P36/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z8/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z8/v/+6v3+////////7+/v7+/v39/Pz7+vn5+Pn4+fnm5uXl5eXl5OTk5OPj4+Pi4uLi4uLh4eHh4eHh4eEAB+Hh4eHi4+Tl6e/Pv6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+/v7+/v7+/v7+/v7+/v6+/v6+/z7+vv6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6/Pr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+vv8/Pr6+vv7/fr+/v7+/v7+/v7+/v7+/v7+/v7+/u7ezr6uzo5uXl5eXk5OTk4+Pj4uLi4uLi4uHh4eHh4QAG4eHh4eLj5OX8/9/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P38/f39/v37/Pv8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv8+vv7/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8/f37+/v8+/3/////////////////////////////////79/Pr45+bl5eXk5OTj4+Pj4+L1+uLh4eHhAAbh4eHh4uPk5fz/38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/f39/f39/f39/f7+/Pr8/Pz9/Pz8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv6+/v8/fz8/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/f79/f3+/////////////////////////////////+/fv45uXl5eTk5OPj4/b+4uLh4eHhAAXh4eHi4uPk5ezvv6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+fn5+fn5+fn5+fr6+vr6+vn7+/r5+vr7+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vv5+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vn6+vr6+vr6/Pz7+/r8/v3+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7uzp5+Xl5eTk5Obu4uLh4eHhAAXh4eHi4uPk5fv/z7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+/v8/Pr5+fn7+/v8/Pz8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6/Pv9/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/r7+/v7+/v9/v38/Pv9/v78/v/////////////////////////////////////vz55uXl5Pf+4+Li4eHh4QAE4eHh4uLj5OX4/7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z6+fn6+/v7+/z7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+vz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv7+/v7+/v7+/v7/f79/Pz7/P38/Pz8/Pz9/f39/f39/f3+/v7+/v///////////v//////77+OX3/uPi4uHh4eEABOHh4eLi4+Tl6O+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+vz5+fr6+vn7+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+/n7+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vn6+vr6+vr6+vr6+vr9+vv5/Pr6+/r7+vv7+/v8+/v7+/v7+/r7+/v7+/z8/Pv8/v7+/f3+/v7+/t7u7j4+Li4eHhAATh4eHi4uPk5fj/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/7//fr7+vv6/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z6/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v8+/z8+/z7/Pz8/Pz8/Pz8+/v8+/v8/Pz8/Pz8/Pz8/f7//fv9/vz7+/z///+fn+5OPi4uHh4QAE4eHh4eLj5OX4/6+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+//////9/Pr7+/v8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+vz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv7+/v7+/v7+/v7/Pr9+/z7/Pz7+/z8+/v8/Pz8/Pz8/P39/f39/f39/f3////9/fv8+/v7+//+f5/+Tj4uLh4eHhAAPh4eHi4uPk5ejvr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6/Pz8/P36+vn7+fv6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vv5+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vr6+vr6+vr7+Pv5+/v7+vr6+/r7/Pz7+/v7+/v7+/v7+/v7+/v7/Pz+/v7+/vr6+vv6/v6uvv5OPj4uHh4eEAA+Hh4eLi4+Tl+P/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8/vz9/Pv7+/z6/fv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/Pr8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/r7+/v7+/v7+/v7+/37+vv7/Pz7+/v7/v79+vz7+/v7+/v7+/v7+/v7+/v7+/z+/////fv7/Pv9/87P/l5OPi4eHh4QAD4eHh4eLj5OX5/9+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8/fz7+/v7+/v8/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+vv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv7+/v7+/v7+/v7+/z8+/r9/fz8/P3+//z9+/v7+/v7+/v7+/v7+/v7+/v7+/v7/v7//Pv7+/387O3uXk4+Lh4eHhAAPh4eHi4uPk5envv6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+vr6+vr6+/n8+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vv5+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vr6+vr6+vr6+vr7+vv9+/v7+/z6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7/fz++/r6/fvb6u5eTj4uLh4eEAA+Hh4eLi4+Tl+f/Pv7+/v7+/v7+/v7/Pz8/Pz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v9+v37+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/Pr8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/r7+/v7+/v7+/v7+/v7+/v8+/z7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8//7///79/M3r7l5OPi4uHh4QAD4eHh4uLj5OX7/8+/v7/fz8/fv7/P7///////z7+/v7+/v7+/z8/f39/f38/Pv7+/v7+/v7+/v7+/v7+/v7+/z8/Pz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+vz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z8/f39/f39/Pz7+/v7+/v7+/v9///////tzv3uXk4+Li4eHhAAPh4eHi4uPk5ezvz6+vv7+fn6/Pz8/u7u7u7u7fr6+vr6+vz9/f39/Pz9/f39/fz6+vr6+vr7+vr6+vr6+vr6+vz5/Pr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vv5+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vr6+vr6+vr6+vr6+vr6+vr7+/z8+vr6+vv8/f39/fz8/f39/f37+vr6+vr6+vr7/P7+/u7N/O5eTj4uLh4eEAAuHh4eHi4uPk5fn+38+/z7/Pz9/P//7r6urq6/7/z7+/z9/v79/f3+/v7+/v7+/f///f39/f39/fv7+/v7+/v7+/v9+v77+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z6/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v7+/v7+/v7+/39/fv9/vv8/v79/f3+/v7+/v7+/v7//v37+/v7/P//////z+7s+u5eTj4uLh4eEAAuHh4eHi4uPk5fn+37+/3//fz////urq6urq/f/vv7/P79/f39/f39/fz9/f39/v7+/v/8+fr+/Pz7+/v7+/v7+/v8/Pz9+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z6/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v7+/v7+/v7/f//7e///f79/P39/f39/f39/f39/v7+/f/++/v8///fz9/fvuv9/e5eTj4uLh4eEAAuHh4eHi4+Pl5envz8/v7+/v7+/u6unp6urs79+vr7/Pv8+/v7+/v7+/r7+/v7+/z9/fz+/f36+/r6+vr6+vr6+vr6/Pr8+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr5+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vr6+vr6+vr6+vr6+vr8+/z8/vz7/Pz8/Pv7+/v7+/v7+/v7+/v8/f39/vv8/v7erq6ens7+/t5eTj4uLh4eEAAuHh4eHi4+Pk5eb7///96+vr6+rp6enp6fz/77+/z9/fz8/Pz8+/v6+vr6+vr7/Pz8/f7////9+/z7+/v7+/v7+/v7+/35/vz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+vv6+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v7+/v7+/z//Pz//fz8/P38/Pz8+/v7+vr6+vr7+/z8/f3+/f/8///erq6en6///95eTj4uLh4eEAAuHh4eLi4+X8/fv87//96vvq6ur7+/v7+//fv7+/z8/Pz8/Pv6+fn5+fn5+fn5+vv8/Pz+//79/Pz8+/v7+/v7+/r7+/v9+/78+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v6+/v7+/v7+/v7+/v7+/v7/P/+7//8/P38/Pz8+/v7+vn5+fn5+fn5+vr7/Pz9/v3+///erq6en6///95eTj4uHh4eEAAuHh4eLi4+ft7u/vj5/f7+/v7+/v7+/v78+vr6+/v7+vv6+vn4+Pj4+Pj4+Pj4+Pj5+vv7/Pz8/v7+/fr6+vr6+vn6+vr7+/v9+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr5+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+v3+7vz6+vv7+/v6+vn5+Pj4+Pj4+Pj4+Pj5+vv7+/38/P7+7u7u7uz8/t5OTj4uHh4eEAAuHh4eLi4/zn+v/en5+v39/f39/Pz8/P39/f/7/Pz7+/v7+vn5+fn5+fn5+fn5+fn5+vv8/P7////////9+/v7+/v7+/v7/fz9/vz7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z6+/z7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/z8+vv7+/v7+/v7+/v7+/v7+/z+/fv7/Pz8+/v7+vn5+fn5+fn5+fn5+fn5+fr8/P3+/f38/Pz8/Pv9/95OPj4uHh4eEAAuHh4eHi4/79/P7On5+v39/Pz8/Pz8/P7//+3v/Pv7+/v6+fn5+vv7+/v7+/v5+fn5+fr7/Pz9/vz7/f///vv7+/v6+/v6+/38+/39/f39/f39/f39/f39/f39/f39/f39/Pz6/v39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f36/Pv7+/v7+/v7+/v7+/v7+/v8+/v7/Pv7+/v6+fn5+fv7+/v7+/v6+fn5+fn6/Pz9/f78+/v7+/z9/95OPi4uHh4QAE4eHh4uLZ79/v78/P7+/v7+/v7+/v7+/t6u7Pv6+vr5+Pj5+vz7+/v7+/z8+/r4+Pj4+fr7/Pv9/v7+/v78+vr6+fr6+vr6/Pz5+Pn5+fn5+fn5+fn5+fn5+fn5+fn5+fr7+/n5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn6/Pr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+fj4+fv8+/v7+/z8/Pv4+Pj4+fr7+/z8/v7+/v78/P7eTj4uLh4eEABOHh4eLi4+X3+fjo6Pj4+Pj4+fn5+fr66fz/37+/v6+vn6/f37+/v7+/v7+/39+/n5+fr7/Pz+///f3/////v7+/r7+/v7+/v8/f38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8+/v8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/fv7+/v7+/v7+/v7+/v7+/v7+/v8+vz7+/v7+vr5+/38+/v7+/v7+/v+/fr5+fn6+/z+///erp6Pr//vzj4+Lh4eHhAATh4eHh4uLj4+Pk5OTk5OXl5eXl5ubn5+j+/8+/v7+vr6/fz7+/z9/f39/fz7+/77+fn5+vv8/v/+zr/9/fz9+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8+/v7+/v7+vr5+/37+/v9/f39/f37/P39+vn5+fv7/f//7o5+fm9/bk4+Li4eHh4QAF4eHh4eLi4uPj4+Pk5OTk5OTl5ebm5+rvv6+vr6+vj7+/r6/Pv6+vr6+/z6+vr8+fj4+fr6/f7+3q7o+Pj7/Pz6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+fv6+vr6+vn5/Pr6+vz7+vr6+vv8+vr8+/j4+Pn6+v3+/q5+bl5OTj4uLh4eHhAAfh4eHh4uLi4uLi4+Pj4+Pj5OTl5uf7/9+/v7+/v7/Pv7/fz6+/v7/Pr8/fv7/fv5+fn7+/z//+6v+/v7/P///f39/Pv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v8//v9+/v7+/v6/Pz7+/38+vz7+/z5/P37+/37+fn6+/v+///Ofm5eTj4+Li4eHh4QAI4eHh4eHh4uLi4uLi4uLj4+Tk5eb8/9+/v7+/r7+/v7/fr8/v39/f36/P37+/36+fn6+/z9//6vz8/Pz8/Pz+////78/f38+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/Pz8/Pz8/P3//8/u/Pv7+/v7+/v7/fz6/f79/f79+fz9+/z7+fn6+vv9///ebl5OPj4uLh4eHhAArh4eHh4eHh4eHh4uLi4uPj5OXm7e+/r6+vr6+vr6+/r6/Pv7+vr7+/j7+/r7+vj5+fr6+/7+ro5+fn5ubm5+nr7e7v7+/vz6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr7+/z8/f3+/v7+/r6u+/r6+vr6+vr6+vv5+/v8+/r7/fv6/Pr6+/n4+fn6+/3+3m5eTj4uLh4eHh4QAM4eHh4eHh4eHh4eLi4uPk5eb+77+/v7+/v7+/v7/fz8+/z8+/v9+/v9+/z7+fr6+/v9//+ufn5ubl5eXl5ebm5vj5+/3+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v/+/v7+/f38+vn66ej7/7+/v7+/v7+/v7+/z8/Pv8+/v8/Pn8+/v8+vn6+vv8/f/ubl5OPi4uHh4eEAEOHh4eHh4eHh4uLj5OXm/t+/v8/Pz8+/v7/P78/Pv6/fv7/fv7/fv8/Pn6+vv7/f//rn5uXl5OTk5OTl5eXl5eXl5ufn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fm5ubm5ubm5ufo+/+/v7/Pz8/Pv7+/z++/z6+/z7+/z6/Pz7/Pr6+vr7+/v/7n5eTj4uHh4eEAE+Hh4eHh4eHi4+Pk5u3fr6+/v7+/v6+vz9/fv6+/r6+vv6+/v6+vr5+fr6+vz+/q5uXk5OPj4+Pj4+Tk5OTk5OTl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5ebm5+nvr6+vv7+/v6+vr8/vz7+vv6+vr7+fv6+vv6+fn5+vv7/u5uTj4uLh4eHhABTh4eHh4eHi4uPk5f3/z7/Pz8/fz7+/3///38+/v7+/z8/Pv7+/v7+vv7+/z//45eXk4+Pj4uLi4+Pj4+Pj4+Pk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OXl5uj/37/Pz8/P38+/v+/v/7/Pv7+/v8/Pz7+/v7+/r7+/z+/95eTj4uLh4eHhABXh4eHh4eLi4+Tl+//Pz8/P39/vv7+/////78/P3//v37+/v7+/v7+/v7/P/ufl5OPj4uLi4uLi4uLi4uLi4uPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj5OXl5/7fv8/Pz8/f37+/z////+/P3+//38+/v7+/v7+/v7/P//zl5OPi4uHh4QAX4eHh4eHi4+Tl6u+vv7+/v7/fz6+vv+/v7+/v7+/vv6+vr6+vr6+vr6/P7ubl5OPi4uLh4eHh4eHi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLj4+Tl5u3Pr7+/v8/P37+vr9/v7+/v7+/v76+vr6+/r6+vr6+/7+vl5OPi4eHh4QAY4eHh4eLj5OT4/8+/z9/P39//z7+/z////////9+/v7/Pz8+/v7+/z//85eTj4+Li4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4uLi4uLj4+Tl+/+/z8/f39//77+/v+////////+/v7+/z8/Pv7+/v8//+eXk4+Lh4eHhABnh4eHi4uPk5f3vv8/f39/v///Pv7+/7+/v78+/v7/P78/Pz7+/v8//+OXk4+Li4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uPk5ej/z8/P39/v3//vv7+/z+/v79+/v7+/39/Pz7+/v7/v/ubk4+Li4eHhABrh4eHh4uPk5ervn7+/z8/P3+/vv6+vr6+vr6+vr8/fv7+/v6+vr9/t5eTj4+Lh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHi4uPj5OXt36+/z8/P38/v76+vr6+vr6+vr7/fz7+/v6+vr7/v6uXk4+Li4eHhABrh4eHh4uLj5Ob+z7/P39/f7//////fz8+/z8/f///f38/Pv7+/z//65eTj4uLh4eHh4eHhAA3h4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4+Tl+f+/z8/f3+/v7///78/Pv7/Pz+//79/f38+/v7/f/+bk4+Pi4eHh4QAb4eHh4uLj5OX6/7/P39/f7+///////////////+/fz8/Pv7+/7/7m5OPj4uHh4eHh4QBK4eHh4eHh4eLj4+Tm/e+vz9/f7+///////////////+/v39/Pz7+/z//75eTj4uLh4eEAHOHh4eHi4uPk5ezfn7/Pz8/f39/v3+/v7+/f39/Pz7+/v6+vv+/o5eTj4uLh4eHhAE7h4eHh4eLi4+Tl5+6/r7/Pz8/f3+/v3+/v79/f39/Pz7+/r6+v3+3l5OPj4uHh4eEAHeHh4eLi4+Tk5v7Pr8/f39/v7+///////+/v39/f38/Pv8//+uXk4+Li4eHh4QBQ4eHh4eHi4uPk5fn/v7/f39/f7+/////////v79/f38/Pz7/P/ufl5OPi4uHh4QAe4eHh4eLi4+Tl6P/Pr8/f39/f7+/v7+/v79/f39/Pz6/P//vl5OPj4uLh4eHhAFHh4eHh4eLj4+Tl+/+/v9/f39/v7+/v7+/v79/f38/Pz7/P//jl5OPi4uHh4eEAH+Hh4eHi4uPk5ejuz5+vv8/Pz8/Pz8/Pz8+/v7+vr7/v6+Xk4+Pi4uHh4eEAU+Hh4eHi4uPj5OXq77+fv8/Pz8/Pz8/Pz8/Pv7+/r6/f7ujl5OPi4uHh4eEAIeHh4eLi4uPk5eb8/8+/v8/f39/f39/Pz8+/r8/v/vnl5OTj4uLh4eHhAFXh4eHh4uLj4+Tl6P7vz6+/39/f39/f38/Pz6+v3//95+Xk4+Pi4uHh4QAi4eHh4eLi4uPk5OX6/v/fv7+/v7/Pv7+/v9////zn5eTj4+Li4eHh4QBX4eHh4eLi4+Pk5ef8///Pv7+/v8+/v7+/v9///vvl5OTj4+Li4eHh4QAj4eHh4eLi4uPk5OXm6e3v38/Pv6+/z9/v7uvn5eTk4+Pi4uHh4eEAWeHh4eHi4uPj5OTl5+vu79/Pv6+/v8/v7+3q5uXk5OPi4uLh4eHhACXh4eHh4uLi4+Pk5OXl6Pr7/d7O7fz7+ebl5OTk4+Li4uHh4eEAW+Hh4eHi4uLj5OTk5eb5+/z9zt79/Pro5eXk5OPj4uLi4eHh4QAn4eHh4eHi4uLj4+Tk5OXl5eXl5eXl5OTk4+Pj4uLi4eHh4QBd4eHh4eLi4uPj4+Tk5OXl5eXl5eXl5OTk4+Pi4uLh4eHh4QAp4eHh4eHi4uLi4+Pj5OTk5OTk5OTj4+Pj4uLi4eHh4eEAX+Hh4eHh4uLi4+Pj4+Tk5OTk5OTk4+Pj4uLi4uHh4eHhACvh4eHh4eHi4uLi4uPj4+Pj4+Pj4+Li4uLh4eHh4eEAYeHh4eHh4eLi4uLj4+Pj4+Pj4+Pi4uLi4uHh4eHh4QAu4eHh4eHh4eLi4uLi4uLi4uLi4uLh4eHh4eHhAGPh4eHh4eHh4eLi4uLi4uLi4uLi4uHh4eHh4eHhADDh4eHh4eHh4eHh4uLi4uHh4eHh4eHh4eEAZ+Hh4eHh4eHh4eHi4uLi4eHh4eHh4eHh4QA04eHh4eHh4eHh4eHh4eHh4eHh4eHhAGnh4eHh4eHh4eHh4eHh4eHh4eHh4eEAOOHh4eHh4eHh4eHh4eHh4eHhAG3h4eHh4eHh4eHh4eHh4eHh4QA94eHh4eHh4eHh4eEAc+Hh4eHh4eHh4eHhABo=" },
   veh_jltv = { w = 167, h = 90, f = "la", d = "ADvh4eHh4eHh4eHh4eEAl+Hh4eHh4eHh4eHh4eHh4eHh4eHh4eEAkOHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eEAg+Hh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHhAH3h4eHh4eHi4uLi4uLi4uLi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHhAHjh4eHh4eLi4uLj4+Pj4+Pj4uLi4uLi4uLi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHhAHXh4eHh4eLi4+Pj5OTk5OTk4+Pj4+Pj4+Li4uLi4uLi4uLi4uLi4uLi4uLi4uHh4eHh4eEAdOHh4eLi4uPj5OTl5eXl5eXl5OTk5OTj4+Pj4+Pj4+Pj4+Pj4+Li4uLi4uLi4uLi4eHh4eEAcuHh4eHi4uPk5Orv7u/u7+/v7ubl5eXl5eTk5OTk5OTk5OPj4+Pj4+Pj4+Pj4+Pj4uLi4eHh4QBw4eHh4eLi4+T5/P7+/v7//v7+/ufm5ubm5uXl5eXl5eXk5OTk5OTk5OTk5OTk5Pbj4+Pi4uHh4eEAb+Hh4eLi4+Tk/v/+7u7+/v7+/v79/f39/f39/f3++Obm9/v89+bn9/f39+fm+f7+9eTj4+Li4eHhAG7h4eHh4uLj5eft7+/f7+/v7+/v7+/v7+/v7+/v7+/s6Onu7+/v7+/v7+/v7u3v7+/t6Ojo5eLh4eHhAGzh4eHh4uLj5Ob+/s/v7+/f///////////////////////9/v/////P3///////7+/f//////7z4eHh4QBr4eHh4eHi4uPk+v7/z9/vz9//7+/v7+/v7+/v7+/v3+/v//7u/v7+/v///////9/v3//++fj39uLi4eHh4QBn4eHh4eHh4eHi4uPk6e7fv8/Pv7/v38/Pz8/Pz8/Pz8/P38/P3+/u6unp6ezv7u7uz8/fz8/v5uTk4+Li4eHh4QBV4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4+Pl5f3vv9/vz9///+/v39/f39/f3+/v7+/v7+///urp6enp6en7///v39//9+Xk4+Li4eHh4eEAUOHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4uLj5OXm/f/P7+/fz//v/////+/v79/f7//f/+/v7+///vz8/Pz8/P3//+/v///45OTj4uLh4eHh4eEATOHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uPj5err7uruz8+/v9/Pv7+/v8/Pz8/Pz9/f38/Pz8/f3+/v7+/v7+/f3+/P7u3n5OTj4uLi4eHh4eHhAEnh4eHh4eHh4eHh4eLi4uLi4uLi4eHh4uLi4uLi4uLi4uLi4uPj5f3//+n+z7+/3////////+/v79/f39/v79/f39/v3+/v///v7+////////rl5OTj4+Li4uHh4eHh4eEAReHh4eHh4eHh4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLj4+Pj5OTl5ujo/s/Pv8//7+/f39/f39/f39/f39/f39/v7///////7////vz7+/v45eTk4+Pj4+Li4uHh4eHh4eEAQeHh4eHh4eHi4uLi4uPj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj5OTk5ebm5+ju7u6vv+/v39/f38/Pz8/Pz8/Pz8/Pz9/v7u7u7u7u7evp5+fm5uXl5eTk4+Pj4+Li4uLh4eHh4eEAPuHh4eHh4eHi4uLi4+Pj5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OXl5eXm5ufn6Orp6//P3+/v7+/v7+/f39/v7+/v7+/v//zq6unp6eno6Ofn5+fm5uXl5eT29/bj4+Pj4uLi4eHh4eEAPOHh4eHh4eLi4uPj4+Tk5OXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5ubm5ufn6Pv+/Or9/7/Pz9/f7+/v7+/v/+//7+/v//7q6enp6ejo6Ofo5+fm5ubm5eX4/v//9+Tk4+Pj4uLh4eHh4QA64eHh4eHi4uLj4+Pk5Ofo5+ns7Ovr6+zs7Onn5ujp6enp6enp6enp6enp6urq6enq6+zv7+3u7+/f3+/v7+/v3+/v7+/v7+/v7+/u7e3t7e3t7e3u7ezs6+vq6urt7+/u5uXl5OTj4+Li4eHh4eHhADfh4eHh4eLi4uPj5OTl+P/////////////////+/f////////////////////////////+////////////////////////////////////////////////////////++vjn5/z6+Pf35OPi4uLh4eHh4QA14eHh4eLi4uPj5OTl5eb8////////////////////////////////////////////////////7////////////////////////////////////////////////////v/9+ef5///////45OPi4uHh4eHh4QAz4eHh4eLi4uPj5OXl5ubr7u/f39/v39/f39/f39/f39/f39/f39/f39/fz8/Pz8/Pz9/f78/v39/f7+zr6+vq6urq6urq6urq6urq6urt7+/v7+/v7+/v7evr6+zs7u/f7+/q6+7v3+7v6OTk4+Li4eHh4eHh4QAx4eHh4eLj4+T2/fv8/Pz93//////v7+/v79/f39/f39/f7+/v7+/v7+/v7+/v7+/v7+/v/8//7+/v/+rp6Ojn5+fm5ubm5ubm5ubn5+f8///7+fn5+Pj35uXl5eXm5/z////////v////+uXl5OPi4uHh4eHh4eHh4QAt4eHh4eLi4+Tl9//9/v7+///v////////7//////v///////////////////////////////f79/v7//q6ejn5+bm5ubm5eXl5ubm5ufn/P//+efn5ubl5eXl5eXl5ebm/P//7////8////7m5eTk4+Li4uHh4eHh4eHh4eHh4eHhACbh4eHi4uPk5+vs7u3u7u7u3+/P3+/v79/f39/f39/f39/v7+/v7+/v7+/v7+/v79/v7+/v77/f38/P7+rp6Ofn5ubl5eXl5eXl5eXm5ubr7+/p5+bm5eXl5eTk5OXl5ubn7O/v7+/v76/v7+rm5eTk4+Li4uHh4eHh4eHh4eHh4eHh4eHh4QAg4eHh4eLj4+T9////////////7+/f7+/v7+/v7+/////v///v7+///+/////////v///v7+/v3//v7+///fvo5+fm5uXl5eXk5OXl5eXm5vv///jn5ubl5eXk5OTk5OXl5ufn+////+///9////rm5eTk4+Pi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eEAG+Hh4eLi4+T6/v/+////////z//v3+/f39/f39/f39/f39/f7+/v39/f39/f39/f39/f79/f79///+/v///+6ejn5+bm5eXl5eXl5eXm5ub7///75+bm5eXl5OTk5OXl5ebn6Pz/////////7///++bl5eTj4+Li4uLi4uLi4uHh4eHh4eHh4eHh4eHh4eHh4eEAFuHh4eLi4+Tt7u/u7+7v7u7v78/fz8/f38/f39/f39/f39/f39/f39/f39/fz8/Pz8/P38/P38/f39/Pz8/v7uvo5+fm5ubl5eXl5ebm5ufs79/v6ufm5uXl5eXl5eXl5ubn6O7f7u/v7+/v7+/v7+zn5eXk5OPj4+Li4uLi4uLi4uLi4uLh4eHh4eHh4eHh4eHh4eEAEuHh4eHi4uPk5v3//v/+///+////3+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7//v3+/f/+/v7//v/////vz55+fm5ubm5ubm5+fo/P/v//7n5+fm5ubm5ubm5ubn6On+//3+/v///+///////efm5eTk5OPj4+Pj4+Pj4+Pj4uLi4uLi4uLh4eHh4eHh4eHh4eHhAA/h4eHh4uPk5eb+////////////7+/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/v39/v3//v39/v7+/v7/////366Ofn5+fn5+fo6Pz//+//+ujn5+fm5ubm5+fn6Ojp/v///////+/v////7//+6Obm5eXk5OTk5OTk5OTk4+Pj4+Pj4uLi4uLi4uLh4eHh4eHh4eHhAA3h4eHh4uPk5e3v79/v79/v7+/vz8/f38/fz9/f39/f39/f39/f39/f39/f39/f39/f38/fz8/fz9/Pz8/P38/Pz8/f3+/v7u3t7e3t7e3t7e7vz8/v7u3t7Ozs6+vr6+vr6+vt79/fz9/fz9/f7+/v79/v7unn5ubm5eXl5eXp6OXl5eTk5OTk4+Pj4+Pi4uLi4uLi4eHh4eHh4eEAC+Hh4eHi4+Tl/P///9/////////v3+/v7+/f7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v3+/f/+/f39/f39/f39/f7+///////////////+/f3+/////////////////////v7+/f7///7+/v/9////////vo6Ojn5+jn+///+ubm5eXl5eXl5OTk5OPj4+Pj4uLi4uLh4eHh4eEACuHh4eHi4+Tl+///////7///7+/v3+/v7+/f7+/v7+/v7+/v7+/v7+/v7+/v7+/v39/f7+/f3+/f/+/f39/f39/f39/f39/v7+/v7+/v7+/v7+/f39/v7+/v7+/v7+/v7+/v7+/f/+/v7///79/f7+/v///////+/v/+/v/+/+///vz8+vn45+bm5eXl5eTk5OTj4+Pj4uLi4uHh4eHh4QAI4eHh4eLj5OXq7+/v7+/vz+/v78/Pz8/P38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P39/Pz8/P38/fz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/f39/f39/f38/Pz8/Pz8/Pz8/P79+/78/Pz8/fz8/fv9/f7+/v7+/v7+/v7+/v7+/v7+/v7+/u7u3r6ujn5uXl5eXk5OTj4+Pi4uLh4eHh4QAH4eHh4eLj5OXm/v//7////9//7+/f39/f79/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v3+/f79/f79/v79/f39/f39/f39/f39/f39/v/+/v3+/f79/f7+/fz+/v39/f39/f39/f7///39/v/+/v39/f/8///+/v7//v///////////////////////////+/vz6+Obl5eXk5OPj4+Li4uHh4eEABuHh4eHi4+Tl5v3/7///3////+/f3+/f3+/f79/f79/f39/f39/f39/f39/f39/f39/f39/f3+/f/+/f3+/v39/f39/f39/f39/v78/f7+/v79/v79/v7+/v39/f39/f39/f39/v7+/v7+/f39/f7///z//v39//3+/v7//////////////////////////////+/Pr35eXk5OTj4uLi4eHhAAbh4eHh4uPk5efu7++/7+/v3+/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/fz8/fz9/Pz9/Pz8/Pz8/Pz8/Pz8/Pz9/f38/Pz8/fz9/v38/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P39/fz8/P77/f38/P3+/v3+/v7+/v7+/v7+/v7+/v7+/v7+/v7+3p5uXk5OPj4uLh4eEABeHh4eHi4+Tl+f/f///f///v3//v79/v39/f79/v3+/v7+/v7+/f7+/v7+///+/f79/v79/v3+/f/+/v///v79/f39/f39/f39/f39/f39/v3+/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3+/v79/f3+//z//v7+/v7//////////////////////////////////+/Pnm5OPi4uHh4QAF4eHh4eLj5OX7/+/P///Pz9/v7+/f7//v/+/////v39/v///////////v/////+/v7//v7+/f/8/////P3+/v39/f39/f39/f39/f39/f3+/f79/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3+/f3+/v7//v39////////////////////////////////////////////78+OPi4uHh4QAE4eHh4eLj5OXt39/vz8/fz7/v78/fz8/Pz8/Pz8/P39/f7+/v38/f7+/v7+/v79/v37/Pv9/f37/fz9/f38/fz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/P39/Pz9/v7+/v7+/fz9/f39/f7+/v7+/v79/v7+/v7+/v7+/v7+/v7+Ti4uHh4QAE4eHh4eLj5OX//8+/39+/v6/P///v7+/v79/v7+//7//v7+/f7+/v39/Pz9/f7///////7+/v/8//7+/////v39/f39/f39/f39/f39/f3+/f79/f39/f39/f39/f39/f39/f39/f39/v39/f39/f39/f3+/v/9/f////////3+/v7+/v7+/v7+/v7///////3+//7///////76//+ePj4uHh4QAE4eHh4eLj5OX7/v//v+/P3///7//v7+/v7+/v7+///9//7//////////////v7+/v/////9/f/8///+/f39/f39/f39/f39/f39/f39/f3+/f7+/f39/f39/f39/f39/f39/f39/f3+/v3+/f39/f39/f39//7+///////+/v7+/f79/f39/f39/v/+/v/////+/v7+/vz+/fz//85OTj4uHh4QAE4eHh4eLj4+Tn7b7tz+7P7u3e7+/Pz8/Pz8/Pz9/f3+/Pz8/Pz8/Pz8/Pz8/Pz8/f39/v38/P78/v7+/fz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz9/Pz8/P39/f39/f39/Pz8/Pz8/Pz8/Pz9/P39/Pz8/Pz8/Pz8/fv+/f79/Pz9/Pz8/Pz8/Pz8/Pz8/Pz9/vv+/v78/f39/v79+/3+/n5eTj4uHh4QAE4eHh4eLi4+Tu7/7+z/7///7+/+/f79/v39/f/+/v/+/f39/f39/f39/f39/f39/f7//f/+/v7//////v3+/v///////////////////////v39/v3//////////////////////////v7//v39/f39/f3+//3////9/////v7+/v///////////////////////v7//////v7/3m5ePj4uHh4eEABOHh4eLi4+T5/v//z////////+/v7+/f79/v7+//79/f39/f39/f39/f39/f39/f3+//z//v3+/v///v3+//39/f39/f39/f39/f39/f3+//7////9/f39/f39/f39/f39/f39/f38/fz9//39/f39/f3//v////3+/////f38/v///////////////////////v7+//7//P//vm5ePj4uHh4eEABOHh4eHi4+Pk7O/er66vv9/v79/fv9/Pz9/P3+/Pz8/P38/Pz8/Pz8/Pz8/Pz8/Pz8/P77/v39/P39/vz8/v37+/r6+vr6+vr6+vr6+/z+/f3+/f79+/v7+/v7+/v7+/v6+vr7+/3+/f39/Pz8/Pz8/Pz9+/7+/f3+/Pr8/v39/vz6+vn4+Pj4+vr6+vr6/P7+/fz+/P7++/7+nm5OPi4uHh4eEABeHh4eLi4+T3+Pr+/d7+/P3/7//f7+/v3+//79/f7+//7+/v7+/f3+//79/f39/f3+///+//3+/v///v7+//38/Pz8/Pz8/Pz8/Pz9///+/v///v/9/Pz8/Pz8/Pz8/Pz8/Pz+//39/f39/f7+/v39/v/9///9///++/3//v///fz9/v/////9+vv7+/v7/////f/+///7//+ebk4+Li4eHh4QAF4eHh4eLi4+Tl9//dzv3o+//v7+/v79/v/9/f3+///7///+///////9/////v39/f3+//z//v7+/////f7+//7+/v7+/f7+/v7+/v///f7+//v///79/f39/f39/f39/f3+/v/+/f79/f39/v79/v3+/v3//P/+///////////////////////+/v7+/v7////+/v/+//z//65eTj4uLh4eHhAAXh4eHh4uLj4+Tn7ezt7ejp7u/f39/P39/Pz8/Pz++/7+/v7+/v7+/v7+/vz9/fz8/Pz9/vz+/v39/v79/f3+/v7+/v7+/v7+/v7+/v39/f3+/v39/v7+/v7+/v7+/v7+/v7+/f39/f39/f39/f39/f78/Pz+/Pz8/f7+/v79/v7+/v79/v79/f7+/v7+/v7+/f38/f3++v7+rm5ePj4uHh4eEABuHh4eHi4uPj5OTl5ubn6On+///f7+/f39/f7//P////////////////////7+/v39/v7//////v///v////7+/////v7+/v7+/v7+/v7+/v7+/v7///7+/v7+/v7+/////v7+/v7+/v7+/v7+/////vz//v3+/v7//////////v///////////f7+/v7+/v////7+//3//75uXk4+Lh4eHh4QAG4eHh4eLi4+Pk5OXm5+jp/f7u/+/f39/f7+/v///////P39/v79/v/////////+/f39/v7///7+//7////+/v////7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/////v7+/v7+/v7+/v7+/v7+//3///3+/v///////v39/v7+/fz+///////+/v39/v3+/v7+/f7+//++bl5OPi4uHh4eEABuHh4eHh4uLj4+Tl5ebn7e/f79/Pz8/Pz9/f7+/v79/f38/Pz8/f38/f7+/v7+/P38/Pz9/f78/P38/v79/Pz+/v78/f39/f38/f39/f39/P39/Pz8/Pz8/Pz8/f3+/v38/Pz8/Pz8/P39/f38/v38/vz8/fz+/v78/fz8/Pz8/f38/P39/v7+/vz9/Pz8/f79/fz9/v7+vm5eTj4uLh4eHhAAfh4eHh4uLi4+Pk5ebn/f/v7+/v39/v7///////3+/v7+/f7+/v/////////////9/f7///v+/f7+/v79/f39/v39/f39/f39/f39/f39/f39/f39/f39/f39/f3+/f7+/f39/f39/f39/f3+//7//v7+/v///v7+/v7+/f3+/v7+/v///v/////+/v79/v///v//////vn5uXk4+Li4eHhAAfh4eHh4eLi4+Pk5ebn/f/f/+/v39/v3//////v7+/v78/Pz9/f3+/v7+/v3///7+/f3+/////f///v7+/////v/////////////////////////////////////+//79/////////////////v/+/f79///9//3+/v39/f38/P39/f3+/v7//////v7+/f7//+/f39/fvn5uXk4+Li4eHh4QAH4eHh4eLi4+Pk5ejq7s/f38/Pz8/P39/vz8/f38/Pv8+/v6+/v6/Pz8/f77/v78/fz8/f7+/P7+/vz+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v78/v7+/v7+/v7+/v7+/v39/f39/f39/P38/Pv8+vv8/Pv6/Pz8/P39/v7+/f38/Pz9/v7u/u7u7u7Ozo4+Pi4eHh4QAH4eHh4eLi4+Tk+P//39//7+/v3+/f/+/v7+/v38/v////7+///9+/39/v7///////7+//79///7/v//+/r6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6/P///vr6+vr6+vr6+vr7//////3+/v79/v39/P78////////+v39/v7+///////+/f39///+///+/////85OPi4uHh4QAH4eHh4eLi4+Tl+f/Pv+//7+/v7+/f7+/v79/f39/v7//////////fz9/f7+/v///P79///8//////7////////////////////////////////////////////////+/////////////////////v7+/f7+/f39/f3///////////39/f79/v////3+/f3+/f7+/v79/v7//85OPi4uHh4QAH4eHh4eLi4+Tl7r+vr9/vz8/P38/Pz8/Pz8/fz8/vz+/v7+/v7+/v37/Pz8/f7+/fz+/vz6/P7+/v3+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v79/v7+/v7+/v7+/v7+/v39/vz8/Pz8/Pz8/P7+/f7+/v7+/v78+/z8/P3+/v78/P38/Pz8/Pz8/Pz8/u5OPi4uHh4QAH4eHh4uL3++T2/b+/v///7+/v79/f79/f39/f7//v/////////////9/f7+/f7///7//fn5+fz9/f/++vr8/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f7//f36+vz9/f39/f39/f3//v3+/f79/f39/v/////////////+/f3+/v7////+/v/+/v39/v79/f7//95OPi4uHh4QAI4eHS4vr//P7//8/P7//////v3+/v39/f39/v79///7/fv+///////8/v79/f/+//76+fn5+fn9///////8+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7/f78//////z5+fn5+fn5/v/+/f79/f3+/P7+/v///P/7/v/////9/f3+/v////3+/P/9/v7+/f7+/v//nk4+Li4eHhAAjh4eHi5e7v7uvq7+/v7+/v7+/P38/Pz8/Pv8/f78/f7+/v3+/v78/Pz8/fz8/v7++/j4+Pj4+Pz+/P39/vz7/P38/Pz8+/z9/Pv7+/v8/fz7/Pz7/P38+/z8+/z+/vv9/v3++/j4+Pj4+Pj6/f79/Pz8/P38/P39/fv+/v79/v79/v37/Pz9/f39/v7+/v38/P3+/f397v6uTj4uLh4eEACOHh4eLi9Pbk5OX5+vr6+vv6+//v79/f3+/f7+/v/9//////z///79/f3+/f3+//76+fn5+fn5/P///////Pz9/f39/fz8/f39/Pz8/P39/fz8/Pz9/f38/Pz8////+v/////8+fn5+fn5+fn8///+/f7+/v7+/f79/v/////9//7//f79/f7+/v//z7+/3/7+///////v/74+Pi4eHhAAnh4eHh4uLj4+Pk5OXl5ebn5+n+///v3+/v7+/v3///7///79/v/9/f39/v39/v/9+fn5+fn5+fn8/f7+/fv7/P39/Pz8+/z9/Pv7+/v8/vz7+/v7/P78+/v7+/z+/Pn7/f78+fn5+fn5+fn5/P///v3+/v7+/v3+///+///+/v7+//3+/v7+/////76Ojo/v//+vn7/P7+9ePi4uHh4QAK4eHh4eLi4uPj4+Tk5eXm5unv7uzv79/f39/fv+/v35/f78/Pz8+/z9/Pz8/P7+/Pj4+Pj5+Pj4+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+Pj4+Pn4+Pj4+Pj4+Pj7/f39/fz8/P39/fz7/v7++vv+/fz9/Pz8/f3+/t7u/s6Ofn6+/v6ebl5+/n4+Pi4eHh4QAL4eHh4eLi4uLi4+Pk5OXm5/z/6vz//////9/f7///////79/f78/v7+/f7+/v///fn5+/z6+fn5+fn5+fn5+fn5+fn5+/z6+fn5+fn5+fn5+fn8/Pr5+fn5+fn5+fn5+fn5+fn8/Pr5/P////3//v7+/v7//f79///////+/f3+/f7////uv//vnn5ubm/v/35eXl+eTj4uLh4eEADeHh4eHh4eLi4uLj4+Tl5vz//vv//+/////f39/////v38/v39//3+//7+////7+/v79/P7+/v7+/v7+/v7+/v7+/v79/P7+/v7+/v7+/v7+/vz8/v7+/v7+/v7+/v7+/v7+/vz8/v7+/v7/3//////v////7+/f////39/v7+/v7+///Pv//ujm5eXk9vbk5OPj4+Li4uHh4eEADuHh4eHh4eHi4uLj4+Tl6+/v7e7v39/v3+/vz7+/v8/f79/P38/f7+7u7+3p6Ojn5+bm5+fn5+fn5+fn5+fn5+fn5+bm5+fn5+fn5+fn5+fn5ubn5+fn5+fn5+fn5+fn5+fn5ubn5+jo6Ovv7+vt79/f3+/v37+vr7/fz9/fz+/f7+/q7e/t5uXk5OTj4+Pj4+Li4uHh4eHhABHh4eHh4eHh4uLj5OTn/v///v/////v////7+/v///v7///7//9/f//+efm5uXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5ubm5/vf/Or//////////////////+///////Pv///nl5OTj4+Pj4uLi4uLh4eHh4QAU4eHh4eHh4uLj5OX8////7//////v////////7+///+///ur+//7n5uXl5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTl5ebm+//+6fz////////////////////v//7p/v/+5uTk4+Pi4uLi4uHh4eHh4eEAFuHh4eHh4uLj5OTn7s/v3+/v3+/v79/v7+/f39/f39/v7Ozv7+rl5eTk4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pj4+Pk5OTl5+3v6+ju79/v7+/v7+/f39/f79/f7+rq7+7q5OTj4uLi4uHh4eHh4eHhABnh4eHh4eLi4+Tl+v///vz+/////////////+/v///++/7//OXl5OPj4+Li4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLj4+Tk5ff///zp/f//////////////////+uj+//zl5OPj4uLh4eHh4eHh4QAc4eHh4eHi4uPk5fz///37/P//////7+/v/////v39/v795uTk4+Pi4uLi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4uLi4uPj5OX8/v/++vz//////+////////3p6P3//vfk4+Pi4uHh4eHh4eEAH+Hh4eHi4uPj5OXs7+/u7Ovs7u/v7+/v7uzs7e7v7+vl5OTj4+Li4uHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHi4uLj4+Tl6O+v7+zq7O7v7+/v7+7t6+rs7+/t5uTj4+Li4eHh4eHhACLh4eHh4uLj4+Tm/P3v//78/Pz7+/v66vv97+///ffk5OPi4uLh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eLi4+Pk5fv+z//+/fz7+/z8++v8/f///v335OPj4uLh4eHh4QAl4eHh4eLi4+Pk5ff+///////+/f39/v+////65eTk4+Li4uHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHi4uPj5OT2/v/f/////f3+/v//////+eTk4+Pi4uHh4eHhACfh4eHh4uLj4+Tk5ujr7++vz8+/3+/v7urn5OTj4+Li4uHh4eHh4eHhAC/h4eHh4eHh4eLi4uPk5Obp7O/v79+/38/u7+7q5+Tk4+Pi4uHh4eHhACjh4eHh4eLi4uPj5OTl+fr87fvt/fr55uTk5OPj4uLh4eHh4eHhADXh4eHh4eHi4uLj4+Tk5fj5+/78/f35+Pbk5OPj4uLi4eHh4eEAKuHh4eHh4uLi4+Pj5OTk5OTk5OTk5OTj4+Pi4uLh4eHh4eEAOeHh4eHh4uLi4uPj5OTk5OTk5OTk5OTj4+Pi4uLh4eHh4QAt4eHh4eHi4uLi4+Pj4+Pj4+Pj4+Pj4uLi4eHh4eHhADzh4eHh4eHi4uLi4+Pj4+Pj4+Pj4+Pj4uLi4eHh4eHhAC/h4eHh4eHi4uLi4uLj4+Pj4uLi4uLh4eHh4eHhAD/h4eHh4eHi4uLi4uLj4+Pi4uLi4uLh4eHh4eEAMuHh4eHh4eHh4uLi4uLi4uLi4uHh4eHh4eEAQuHh4eHh4eHh4uLi4uLi4uLi4eHh4eHh4eEANeHh4eHh4eHh4eHh4eHh4eHh4eHh4QBG4eHh4eHh4eHh4eHh4eHh4eHh4eHhADnh4eHh4eHh4eHh4eHh4eHh4QBK4eHh4eHh4eHh4eHh4eHh4eEAPeHh4eHh4eHh4eHh4eEAT+Hh4eHh4eHh4eHh4QBD4eHh4eEAV+Hh4eEAIg==" },
@@ -1775,7 +1777,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="13">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">ImportTurn</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -1792,7 +1794,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="14">
+    <Item class="ModuleScript" referent="13">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -1858,7 +1860,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="15">
+    <Item class="ModuleScript" referent="14">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -1894,7 +1896,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="15">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py、tools/models/sfship.py），别手改：舰艇模型（models/ship/<型号>.glb）的元数据
@@ -1920,7 +1922,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="17">
+    <Item class="ModuleScript" referent="16">
       <Properties>
         <string name="Name">ImportedTint</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -3344,7 +3346,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="18">
+    <Item class="ModuleScript" referent="17">
       <Properties>
         <string name="Name">ImportedWpn</string>
         <ProtectedString name="Source"><![CDATA[-- 导弹合集（models/wpn/missiles.glb，tools/models/wpn2glb.py 生成）：署名（主菜单「致谢」）和导入了的型号
@@ -3355,7 +3357,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="19">
+    <Item class="ModuleScript" referent="18">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -4156,7 +4158,7 @@ add("gar.fixed", "标配", "STANDARD")
 add("vh.m", "{1} 米", "{1} m")
 add("vh.rdy", "已就绪", "READY")
 add("vh.loading", "装填 {1}", "LOADING {1}")
-add("vh.spotted", "被发现！", "SPOTTED!")
+add("vh.spotted", "被发现!", "SPOTTED!")
 add("vh.era", "爆反 {1}/{2}", "ERA {1}/{2}")
 add("vh.aps", "拦截 {1}/{2}", "APS {1}/{2}")
 add("vw.ac30", "30 毫米机关炮", "30 mm autocannon")
@@ -4231,7 +4233,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="20">
+    <Item class="ModuleScript" referent="19">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -4698,7 +4700,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="21">
+    <Item class="ModuleScript" referent="20">
       <Properties>
         <string name="Name">MapPaint</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——地图的「卫星图」：按 Map.lua 的高度、材质一个像素一个像素算颜色（客户端 MapUI 用 EditableImage 画小地图、部署地图）
@@ -4854,7 +4856,7 @@ return MapPaint
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="22">
+    <Item class="ModuleScript" referent="21">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -4874,11 +4876,11 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="23">
+    <Item class="Folder" referent="22">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -4940,7 +4942,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -4960,7 +4962,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -5001,7 +5003,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -5021,7 +5023,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -5041,7 +5043,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -5061,7 +5063,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -5088,7 +5090,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -5122,7 +5124,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -5142,7 +5144,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -5190,7 +5192,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -5252,7 +5254,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -5272,7 +5274,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -5306,7 +5308,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -5327,7 +5329,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="38">
+    <Item class="ModuleScript" referent="37">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -5478,7 +5480,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="39">
+    <Item class="ModuleScript" referent="38">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -5522,7 +5524,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="40">
+    <Item class="ModuleScript" referent="39">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -5769,7 +5771,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="41">
+    <Item class="ModuleScript" referent="40">
       <Properties>
         <string name="Name">TankMods</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克改装（用户 11-19：给坦克实现爆反和主动拦截系统，可以改坦克，像给飞机选导弹那样选装）
@@ -5923,7 +5925,7 @@ return TM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="42">
+    <Item class="ModuleScript" referent="41">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -6285,7 +6287,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="43">
+    <Item class="ModuleScript" referent="42">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -6580,17 +6582,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="44">
+    <Item class="Folder" referent="43">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="45">
+  <Item class="ServerScriptService" referent="44">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="46">
+    <Item class="Script" referent="45">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -6818,7 +6820,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -7314,7 +7316,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -8269,7 +8271,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">Aps</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防御系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；改装里选装，TankMods.OPT.hk）
@@ -8371,7 +8373,7 @@ return Aps
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -8957,7 +8959,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">Battle</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -9443,7 +9445,7 @@ return Battle
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -10570,7 +10572,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -11010,7 +11012,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="54">
+      <Item class="ModuleScript" referent="53">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -11362,7 +11364,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="55">
+      <Item class="ModuleScript" referent="54">
         <Properties>
           <string name="Name">Era</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -11484,7 +11486,7 @@ return Era
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="56">
+      <Item class="ModuleScript" referent="55">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -12681,7 +12683,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="57">
+      <Item class="ModuleScript" referent="56">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -12819,7 +12821,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="58">
+      <Item class="ModuleScript" referent="57">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -13013,7 +13015,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="59">
+      <Item class="ModuleScript" referent="58">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -14008,7 +14010,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="60">
+      <Item class="ModuleScript" referent="59">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -14092,7 +14094,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="61">
+      <Item class="ModuleScript" referent="60">
         <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -14327,7 +14329,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="62">
+      <Item class="ModuleScript" referent="61">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -15387,7 +15389,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="63">
+      <Item class="ModuleScript" referent="62">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -15487,7 +15489,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="64">
+      <Item class="ModuleScript" referent="63">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -15713,7 +15715,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="65">
+      <Item class="ModuleScript" referent="64">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -16009,7 +16011,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="66">
+      <Item class="ModuleScript" referent="65">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -16662,7 +16664,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="67">
+      <Item class="ModuleScript" referent="66">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -17699,15 +17701,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="68">
+  <Item class="StarterPlayer" referent="67">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="69">
+    <Item class="StarterPlayerScripts" referent="68">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="70">
+      <Item class="LocalScript" referent="69">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -17810,7 +17812,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -17990,7 +17992,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -19436,7 +19438,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -19606,7 +19608,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -19896,7 +19898,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -20053,7 +20055,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -20630,7 +20632,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -20770,7 +20772,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -21165,7 +21167,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -21996,8 +21998,9 @@ function Drive.init(G)
       st.aimPt = res and res.Position or (o + want * 4000)
     else
       local center = st.root.Position + V(0, d.H * 0.4, 0)
-      local dist = d.L * 1.25 + 14
-      local up = d.H * 0.6
+      -- 用户 11-19（MWT 截图）：开坦克时镜头离车近一点、从后上方往下看——车占画面四成来宽、在下半屏（原来 L × 1.25 + 14，车只占两成）
+      local dist = d.L * 0.62 + 8
+      local up = d.H * 0.6 + dist * 0.18
       if st.hv then   -- 开着气垫艇：镜头拉远、抬高，整条艇在画面里
         local L = VD.LCAC
         dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8
@@ -22098,7 +22101,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -22779,7 +22782,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -22994,7 +22997,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -25019,7 +25022,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -25337,7 +25340,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -26644,7 +26647,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -26956,7 +26959,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -27088,7 +27091,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -27627,7 +27630,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -28090,7 +28093,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -28880,7 +28883,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -28994,7 +28997,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -29260,7 +29263,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -29660,7 +29663,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -29810,7 +29813,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -30118,7 +30121,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -30440,7 +30443,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -30657,7 +30660,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -30791,7 +30794,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -31024,7 +31027,7 @@ function Night.init(G)
       if x.g.Parent == x.p and x.p.Parent then
         j += 1
         glows[j] = x
-        local dv = x.p.Position - cp
+        local dv = x.p.CFrame.Position - cp   -- CFrame.Position：跟 Position 一样，测试台也认
         local dd = dv:Dot(dv)
         local allow = dd < d1 * d1 or (dd < d2 * d2 and x.r < 0.5) or (dd < d3 * d3 and x.r < 0.25)
         glowAllow[x.g] = allow
@@ -31110,7 +31113,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -31377,7 +31380,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -31597,7 +31600,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -31756,7 +31759,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -32397,7 +32400,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -32937,7 +32940,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -33396,7 +33399,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -34184,7 +34187,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="105">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -34915,7 +34918,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -35664,7 +35667,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="107">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -36119,7 +36122,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -37339,14 +37342,14 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
 --   照那张图的布局和感觉做（不照抄它的图标、配色细节）：
 --   · 敌人头顶：看得见的敌方车辆上面一个小牌子（红色的型号名、距离「183 米」），最多 6 个，离得远的、被挡住的不画
 --   · 「被发现！」：附近有敌人看得见自己（视线没被挡），或者刚挨了打——左边一块琥珀色的牌子，一闪一闪
---   · 爆反、主动防御还剩多少（右下面板上面一行，青色）
+--   · 主动防御还剩多少（右下面板上面一行，青色；爆反不显示——用户 11-19）
 --   · 开坦克时（电脑）右上的方形小地图挪到左下角、裁成圆的，外圈 0 / 90 / 180 / 270 的方位刻度；下车、换别的载具恢复
 --   VehHud.lua 每帧调 G.tankHudExtra(st, 血量比例)；准星两边的弹药数、已就绪、测距在 VehHud 里
 local Players = game:GetService("Players")
@@ -37360,7 +37363,7 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED, AMBER, INK = RGB(110, 226, 240), RGB(255, 78, 64), RGB(255, 186, 72), RGB(6, 10, 14)
+  local CYAN, RED = RGB(110, 226, 240), RGB(255, 78, 64)
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -37387,37 +37390,133 @@ function TankHud.init(G)
   local tags = {}
   for i = 1, 6 do
     local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(130, 34)
+    f.Size = UDim2.fromOffset(110, 28)
     f.AnchorPoint = V2(0.5, 1)
     f.BackgroundTransparency = 1
     f.Visible = false
     f.Parent = gui
-    local nm = label(f, "", UD2(1, 0, 0, 16), UD2(0, 0, 0, 0), 13, RED, BOLD)
-    local dist = label(f, "", UD2(1, 0, 0, 14), UD2(0, 0, 0, 17), 12, Color3.new(1, 1, 1), MONO)
+    local nm = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 0), 11, RED, BOLD)   -- 字号照 MWT（用户 11-19：文字精简、小一点）
+    local dist = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 14), 12, Color3.new(1, 1, 1), BOLD)
     tags[i] = { f = f, nm = nm, dist = dist }
   end
 
-  -- 「被发现！」
+  -- 「被发现!」：照 MWT 的样子（用户 11-19：和 MWT 的被发现一模一样的效果，换个颜色）——
+  --   左边一道白光拖过来、一个发光的小太阳（圆 + 八道光芒、外面一圈光晕）、后面一块实心的小牌子写「被发现!」（深色字）；
+  --   MWT 是橙黄的，这里是红的。刚被发现时整块从左边滑进来、光拖得长一点，之后光晕一呼一吸
+  local SPOT = RGB(255, 86, 74)
   local spot = Instance.new("Frame")
-  spot.Size = UDim2.fromOffset(150, 30)
+  spot.Name = "Spotted"
+  spot.Size = UDim2.fromOffset(110, 22)
   spot.AnchorPoint = V2(0, 0.5)
-  spot.Position = mobile and UD2(0, 16, 0.3, 0) or UD2(0, 36, 0.42, 0)
-  spot.BackgroundColor3, spot.BackgroundTransparency = INK, 0.35
+  spot.Position = mobile and UD2(0, 16, 0.3, 0) or UD2(0, 60, 0.43, 0)
+  spot.BackgroundTransparency = 1
   spot.Visible = false
   spot.Parent = gui
+  local spotX = spot.Position
+  local streak = Instance.new("Frame")   -- 拖过来的白光：左边透明、右边亮
+  streak.AnchorPoint, streak.Position, streak.Size = V2(1, 0.5), UD2(0, 10, 0.5, 0), UDim2.fromOffset(34, 2)
+  streak.BackgroundColor3, streak.BorderSizePixel = Color3.new(1, 1, 1), 0
+  streak.Parent = spot
+  do
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 0.45), NumberSequenceKeypoint.new(1, 0.05) })
+    g.Parent = streak
+  end
+  local sun = Instance.new("Frame")   -- 发光的小太阳
+  sun.AnchorPoint, sun.Position, sun.Size = V2(0.5, 0.5), UD2(0, 14, 0.5, 0), UDim2.fromOffset(22, 22)
+  sun.BackgroundTransparency = 1
+  sun.Parent = spot
+  local halo = Instance.new("Frame")
+  halo.AnchorPoint, halo.Position, halo.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UDim2.fromOffset(20, 20)
+  halo.BackgroundColor3, halo.BackgroundTransparency, halo.BorderSizePixel = SPOT, 0.7, 0
+  halo.Parent = sun
+  local core = Instance.new("Frame")
+  core.AnchorPoint, core.Position, core.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UDim2.fromOffset(8, 8)
+  core.BackgroundColor3, core.BorderSizePixel = RGB(255, 236, 230), 0
+  core.Parent = sun
+  for _, f in ipairs({ halo, core }) do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = f
+  end
+  local rays = {}
+  for k = 0, 7 do   -- 八道光芒（绕自己的中心转：按中点摆）
+    local a = math.rad(k * 45)
+    local r = Instance.new("Frame")
+    r.AnchorPoint, r.Size = V2(0.5, 0.5), UDim2.fromOffset(1.5, 4)
+    r.Position = UD2(0.5, math.sin(a) * 8, 0.5, -math.cos(a) * 8)
+    r.Rotation = k * 45
+    r.BackgroundColor3, r.BorderSizePixel = RGB(255, 220, 212), 0
+    r.Parent = sun
+    rays[k + 1] = r
+  end
+  local tag = Instance.new("Frame")   -- 实心的小牌子
+  tag.AnchorPoint, tag.Position, tag.Size = V2(0, 0.5), UD2(0, 28, 0.5, 0), UDim2.fromOffset(50, 17)
+  tag.BackgroundColor3, tag.BackgroundTransparency, tag.BorderSizePixel = SPOT, 0.06, 0
+  tag.Parent = spot
   do
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 4)
-    c.Parent = spot
-    local s = Instance.new("UIStroke")
-    s.Color, s.Thickness, s.Transparency = AMBER, 1, 0.3
-    s.Parent = spot
+    c.CornerRadius = UDim.new(0, 3)
+    c.Parent = tag
   end
-  local eye = label(spot, "◉", UDim2.fromOffset(26, 30), UD2(0, 4, 0, 0), 16, AMBER, BOLD)
-  local spotTxt = label(spot, "", UD2(1, -34, 1, 0), UD2(0, 30, 0, 0), 15, AMBER, BOLD, nil, Enum.TextXAlignment.Left)
+  local spotTxt = label(tag, "", UD2(1, 0, 1, 0), UD2(0, 0, 0, 0), 11, RGB(70, 10, 8), BOLD)
+  spotTxt.TextStrokeTransparency = 1
+  local spotOn, spotT0 = false, 0
 
-  -- 爆反 / 主动防御还剩多少
-  local armLine = label(gui, "", UDim2.fromOffset(300, 18), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -150), 13, CYAN, MONO,
+  -- 车旁边的全息屏：车速（用户 11-19：坦克旁边也要有个牌子写着 km/h，要有全息屏的感觉，照 MWT）——
+  --   镜头右边那一侧、炮塔高度浮着一块半透明的青色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
+  --   斜着一点朝镜头，跟着车走；只在本机（放在镜头下面），开着瞄准镜、下车就收起
+  local holo = Instance.new("Part")
+  holo.Name = "SpeedHolo"
+  holo.Anchored, holo.CanCollide, holo.CanQuery, holo.CanTouch, holo.CastShadow = true, false, false, false, false
+  holo.Transparency = 1
+  holo.Size = V3(4.2, 1.9, 0.05)
+  holo.Parent = cam
+  local hsg = Instance.new("SurfaceGui")
+  hsg.Name = "SpeedHoloGui"
+  hsg.Face = Enum.NormalId.Front
+  hsg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  hsg.PixelsPerStud = 60
+  hsg.LightInfluence = 0
+  hsg.AlwaysOnTop = true
+  pcall(function() hsg.Brightness = 1.6 end)   -- 测试用的模拟器里没有这个属性
+  hsg.Enabled = false
+  hsg.Parent = holo
+  local hp = Instance.new("Frame")   -- 屏：上浓下淡的青色
+  hp.Size, hp.BackgroundColor3, hp.BackgroundTransparency, hp.BorderSizePixel = UD2(1, 0, 1, 0), CYAN, 0.8, 0
+  hp.Parent = hsg
+  do
+    local g = Instance.new("UIGradient")
+    g.Rotation = 90
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0.8) })
+    g.Parent = hp
+    local st0 = Instance.new("UIStroke")
+    st0.Color, st0.Thickness, st0.Transparency = CYAN, 2, 0.35
+    st0.Parent = hp
+    for i = 0, 18 do   -- 扫描线
+      local l = Instance.new("Frame")
+      l.Size, l.Position = UD2(1, 0, 0, 1), UD2(0, 0, 0, 3 + i * 6)
+      l.BackgroundColor3, l.BackgroundTransparency, l.BorderSizePixel = CYAN, 0.82, 0
+      l.Parent = hp
+    end
+    for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do   -- 四角的亮线
+      for _, sz in ipairs({ { 16, 3 }, { 3, 16 } }) do
+        local l = Instance.new("Frame")
+        l.AnchorPoint, l.Position, l.Size = V2(c[1], c[2]), UD2(c[1], 0, c[2], 0), UDim2.fromOffset(sz[1], sz[2])
+        l.BackgroundColor3, l.BorderSizePixel = CYAN, 0
+        l.Parent = hp
+      end
+    end
+  end
+  local hSpd = label(hp, "0", UD2(0.62, 0, 1, -8), UD2(0, 8, 0, 4), 66, CYAN, BOLD, nil, Enum.TextXAlignment.Right)
+  hSpd.TextStrokeColor3, hSpd.TextStrokeTransparency = CYAN, 0.75
+  local hUnit = label(hp, "km/h", UD2(0.36, -8, 0, 30), UD2(0.64, 0, 1, -40), 26, CYAN, BOLD, nil, Enum.TextXAlignment.Left)
+  hUnit.TextStrokeTransparency = 0.85
+  local holoT = -9   -- 上一次 tankHudExtra 摆它的时刻（瞄准镜里、下车不调 → 收起）
+  G.speedHolo = function() return hsg.Enabled and hSpd.Text or nil end   -- 测试用
+
+  -- 主动防御还剩多少（爆反不显示）
+  local armLine = label(gui, "", UDim2.fromOffset(240, 14), mobile and UD2(0.5, 0, 0, 72) or UD2(1, -24, 1, -150), 11, CYAN, MONO,
     mobile and V2(0.5, 0) or V2(1, 1), mobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Right)
 
   -- 圆形小地图的方位刻度（挪到左下时才显示）
@@ -37443,7 +37542,7 @@ function TankHud.init(G)
     s.Parent = edge
     for _, b in ipairs({ { 0, "0" }, { 90, "90" }, { 180, "180" }, { 270, "270" } }) do
       local a = math.rad(b[1])
-      label(ring, b[2], UDim2.fromOffset(34, 14), UD2(0.5, math.sin(a) * (MS / 2 + 11), 0.5, -math.cos(a) * (MS / 2 + 11)), 11, CYAN, MONO, V2(0.5, 0.5))
+      label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5))
     end
   end
 
@@ -37530,8 +37629,8 @@ function TankHud.init(G)
         if (cat == "armor" or cat == "light" or cat == "ship") and enemy(em, side) then
           local r = em:FindFirstChild("Root")
           if r then
-            local d = (r.Position - myPos).Magnitude
-            if d < 1100 and clear(cam.CFrame.Position, r.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
+            local d = (r.CFrame.Position - myPos).Magnitude   -- CFrame.Position：测试台的零件只认这个
+            if d < 1100 and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
           end
         end
       end
@@ -37541,7 +37640,7 @@ function TankHud.init(G)
     for _, c in ipairs(cands) do
       if n >= #tags then break end
       if c.em.Parent and c.r.Parent then
-        local top = c.r.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0)
+        local top = c.r.CFrame.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0)
         local sp, on = cam:WorldToViewportPoint(top)
         if on then
           n += 1
@@ -37549,8 +37648,8 @@ function TankHud.init(G)
           tg.f.Visible = true
           tg.f.Position = UDim2.fromOffset(sp.X, sp.Y)
           local id = c.em:GetAttribute("Model")
-          tg.nm.Text = id and T("veh." .. id) or ""
-          tg.dist.Text = T("vh.m", math.floor((c.r.Position - myPos).Magnitude / 2.8 + 0.5))
+          tg.nm.Text = id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or ""   -- 只写型号
+          tg.dist.Text = T("vh.m", math.floor((c.r.CFrame.Position - myPos).Magnitude / 2.8 + 0.5))
         end
       end
     end
@@ -37568,9 +37667,9 @@ function TankHud.init(G)
         for _, pl in ipairs(Players:GetPlayers()) do
           if pl ~= me and pl:GetAttribute("Side") and pl:GetAttribute("Side") ~= side then
             local hrp = pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.Position - myPos).Magnitude < 500 then
+            if hrp and (hrp.CFrame.Position - myPos).Magnitude < 500 then
               rp.FilterDescendantsInstances = excludeList(st)
-              local hit = workspace:Raycast(myPos + V3(0, 4, 0), hrp.Position - myPos - V3(0, 4, 0), rp)
+              local hit = workspace:Raycast(myPos + V3(0, 4, 0), hrp.CFrame.Position - myPos - V3(0, 4, 0), rp)
               if not hit or hit.Instance:IsDescendantOf(pl.Character) then spotted = true break end
             end
           end
@@ -37578,21 +37677,44 @@ function TankHud.init(G)
       end
     end
     local show = spotted or (t - hurtT < 3)
+    if show and not spotOn then spotT0 = t end   -- 刚被发现：从左边滑进来
+    spotOn = show
     spot.Visible = show
     if show then
       spotTxt.Text = T("vh.spotted")
-      local blink = (t * 2.5) % 1 < 0.6
-      eye.TextTransparency = blink and 0 or 0.6
+      local a = math.clamp((t - spotT0) / 0.22, 0, 1)
+      local e = 1 - (1 - a) * (1 - a)
+      spot.Position = spotX + UD2(0, -40 * (1 - e), 0, 0)
+      streak.Size = UDim2.fromOffset(34 + 60 * (1 - e), 2)
+      local pulse = 0.5 + 0.5 * math.sin(t * 5)
+      halo.BackgroundTransparency = 0.55 + 0.3 * pulse
+      halo.Size = UDim2.fromOffset(16 + 8 * pulse, 16 + 8 * pulse)
+      for _, r in ipairs(rays) do r.BackgroundTransparency = 0.15 + 0.35 * pulse end
+      streak.BackgroundTransparency = 0.1 + 0.25 * pulse
+    end
+    -- 车旁边的全息屏：镜头右边那一侧、炮塔高度，斜一点朝着镜头
+    local root = st.root
+    if root then
+      local d = st.d or {}
+      local cp = cam.CFrame
+      local right = V3(cp.RightVector.X, 0, cp.RightVector.Z)
+      right = (right.Magnitude > 0.01) and right.Unit or V3(1, 0, 0)
+      local W, H = (d.W or 10), (d.H or 7)
+      local pos = root.Position + right * (W * 0.5 + 3.2) + V3(0, H * 0.1, 0)
+      holo.Size = V3(4.2, 1.9, 0.05) * math.clamp(W / 10, 0.8, 1.2)
+      holo.CFrame = CFrame.lookAt(pos, cp.Position) * CFrame.Angles(0, math.rad(-16), 0)
+      local kmh = math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5)
+      hSpd.Text = tostring(kmh)
+      local flick = (math.noise(t * 3, 1.7) > 0.42) and 0.12 or 0   -- 偶尔闪一下
+      hp.BackgroundTransparency = 0.8 + flick
+      hSpd.TextTransparency = flick * 0.8
+      hsg.Enabled = true
+      holoT = t
     end
     -- 爆反、主动防御
     local em = st.em
     local parts = {}
-    local nEra = em and em:GetAttribute("Era")
-    if nEra then
-      local dead = 0
-      for _ in string.gmatch(em:GetAttribute("EraX") or "", "%d+") do dead += 1 end
-      table.insert(parts, T("vh.era", nEra - dead, nEra))
-    end
+    -- 爆反还剩几块不显示了（用户 11-19：不要显示爆反了）；装了主动防御的照旧写还剩几发
     local aps = em and em:GetAttribute("ApsMax")
     if aps then table.insert(parts, T("vh.aps", em:GetAttribute("Aps") or 0, aps)) end
     armLine.Text = table.concat(parts, "   ·   ")
@@ -37600,6 +37722,7 @@ function TankHud.init(G)
 
   -- 不在开坦克：收起来，小地图放回去
   G.frameConn("TankHud", function()
+    if hsg.Enabled and os.clock() - holoT > 0.15 then hsg.Enabled = false end   -- 开着瞄准镜、下车：全息屏收起
     if not G.myVeh then
       if gui.Enabled then
         gui.Enabled = false
@@ -37614,7 +37737,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -37727,7 +37850,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -38756,7 +38879,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -39061,15 +39184,15 @@ function VehHud.init(G)
     local h = hexagon(MW.br, 460 - R, 124 - R - 2, R)   -- 横着摆在哪：stepTank 按这辆车有几种武器靠右排
     h.box.Name = "Ammo" .. i
     h.icon = shellIcon(h.box, R, R - 4, 22)
-    h.key = label(h.box, "", UD2(0, 16, 0, 14), UD2(0.5, -R * 0.5, 0.5, -R * 0.62), 11, MUTE, BOLD)
-    h.tag = label(h.box, "", UD2(0, R * 1.6, 0, 12), UD2(0.5, 4, 0.5, R * 0.5), 10, MUTE, BOLD, V2(0.5, 0.5))
+    h.key = label(h.box, "", UD2(0, 14, 0, 12), UD2(0.5, -R * 0.5, 0.5, -R * 0.62), 9, MUTE, BOLD)
+    h.tag = label(h.box, "", UD2(0, R * 1.6, 0, 10), UD2(0.5, 4, 0.5, R * 0.5), 8, MUTE, BOLD, V2(0.5, 0.5))
     h.tag.Rotation = -20
     MW.hex[i] = h
   end
   -- 车名、剪影、血量（六边形左边）
   MW.veh = frame(MW.br, UD2(0, 190, 0, 112), UD2(0, 0, 0, 6), INK, 1)
   MW.veh.Name = "MwtHull"
-  MW.name = label(MW.veh, "", UD2(1, 0, 0, 20), UD2(0, 0, 0, 0), 16, TXT, BOLD)
+  MW.name = label(MW.veh, "", UD2(1, 0, 0, 16), UD2(0, 0, 0, 2), 13, TXT, BOLD)
   MW.name.Name = "VehName"
   MW.name.TextStrokeTransparency = 0.6
   MW.sil = frame(MW.veh, UD2(0, 170, 0, 50), UD2(0.5, 0, 0, 24), INK, 1, V2(0.5, 0))
@@ -39085,12 +39208,13 @@ function VehHud.init(G)
   for i = 0, 5 do   -- 负重轮：深色小圆点压在那一条上
     table.insert(MW.silParts, roundf(frame(MW.sil, UD2(0, 9, 0, 9), UD2(0, 26 + i * 18, 0, 33.5), INK, 0.35)))
   end
-  MW.hp = label(MW.veh, "", UD2(1, 0, 0, 22), UD2(0, 0, 0, 80), 17, TXT, BOLD)
+  MW.hp = label(MW.veh, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 80), 14, TXT, BOLD)
   MW.hp.Name = "HullHp"
   MW.hp.RichText = true
   MW.hp.TextStrokeTransparency = 0.6
   -- 正下方偏右：烟幕弹的全息图标
-  MW.sm = frame(MW.root, UD2(0, 60, 0, 70), UD2(0.5, 70, 1, -16), INK, 1, V2(0.5, 1))
+  MW.sm = frame(MW.root, UD2(0, 60, 0, 70), UD2(0.5, 104, 1, -16), INK, 1, V2(0.5, 1))   -- 正下方让给视角图，烟幕弹往右挪
+  MW.sm.Visible = false   -- 用户 11-19：烟幕弹也不要显示了（X 键照样放）
   MW.sm.Name = "MwtSmoke"
   MW.smScale = Instance.new("UIScale")
   MW.smScale.Parent = MW.sm
@@ -39100,7 +39224,7 @@ function VehHud.init(G)
   MW.smCap = frame(MW.smCan, UD2(0, 10, 0, 7), UD2(0.5, 0, 0, -6), HOLO, 0, V2(0.5, 0))
   MW.smPin = frame(MW.smCan, UD2(0, 2, 0, 12), UD2(0.5, 5, 0, -14), HOLO, 0, V2(0.5, 0))
   MW.smWin = frame(MW.smCan, UD2(0, 10, 0, 12), UD2(0.5, 0, 0.5, 2), HOLO, 0.55, V2(0.5, 0.5))
-  MW.smTxt = label(MW.sm, "", UD2(1, 20, 0, 14), UD2(0.5, 0, 1, -2), 12, HOLO, BOLD, V2(0.5, 1))
+  MW.smTxt = label(MW.sm, "", UD2(1, 20, 0, 12), UD2(0.5, 0, 1, -2), 10, HOLO, BOLD, V2(0.5, 1))
   MW.smTxt.Name = "SmokeLeft"
   MW.smTxt.TextStrokeTransparency = 0.6
   ---------------------------------------------------------------- 3A：抗锯齿的图（HudArt 解的 HudIcons，用户 11-19：「像素感太强，我要 3A 级别的 UI」）
@@ -39133,6 +39257,96 @@ function VehHud.init(G)
     h.icon.body.Visible, h.icon.tip.Visible = not h.art, not h.art
     h.iFill.Visible, h.iGlow.Visible, h.iEdge.Visible, h.iIcon.Visible = h.art, h.art, h.art, h.art
   end
+  -- 正下方中间：视角图（用户 11-19：屏幕下面中心放带着光晕的视角图，照 MWT）——俯视的车：车体按相对镜头的朝向转，
+  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；青色全息，车体外面两圈越来越淡的描边当光晕
+  MW.view = frame(MW.root, UD2(0, 100, 0, 100), UD2(0.5, 0, 1, -8), INK, 1, V2(0.5, 1))
+  MW.view.Name = "MwtView"
+  MW.viewScale = Instance.new("UIScale")
+  MW.viewScale.Parent = MW.view
+  for _, a in ipairs({ -30, 30 }) do   -- 视野：从车中心往上张开 ±30°（GUI 绕自己的中心转：按中点摆）
+    local L = 46
+    local r = math.rad(a)
+    local ln = frame(MW.view, UD2(0, 1.5, 0, L), UD2(0.5, math.sin(r) * L / 2, 0.5, 2 - math.cos(r) * L / 2), HOLO, 0.35, V2(0.5, 0.5))
+    ln.Rotation = a
+    grad(ln, 90, nseq(0, 1, 0.3, 0.75, 1, 0.3))   -- 越往外越淡
+  end
+  -- 视角图的车（用户 11-19：坦克图标有点难看 → 4 倍超采样画的全息图；坦克宽一点、不要履带、四个角直角；不要涂色，就车体边框、炮塔边框、炮管，
+  --   剩下都镂空；用很薄的一个个长方形显示爆反，哪块没了就空一块）
+  --   车体、炮塔各一个转的框（跟 HudIcons 的 topHull / topTurret 一样大：72 × 120 的图缩成 50 × 84），框里是全息图（用不了 EditableImage 时是
+  --   方块拼的轮廓）和这辆车的爆反块（EraMeta：每块从上往下看的位置、朝向；叠在同一处的几层并成一条）；车体框绕车中心转、炮塔框绕座圈转
+  local VK, VWD, VHT = 50 / 72, 50, 84
+  MW.vHullBox = frame(MW.view, UD2(0, VWD, 0, VHT), UD2(0.5, 0, 0.5, 2), INK, 1, V2(0.5, 0.5))
+  MW.vHullBox.Name = "ViewHull"
+  MW.vTurBox = frame(MW.view, UD2(0, VWD, 0, VHT), UD2(0.5, 0, 0.5, 2), INK, 1, V2(0.5, 0.5))
+  MW.vTurBox.Name = "ViewTurret"
+  MW.vHullImg = img(MW.vHullBox, "ViewHullArt", UD2(1, 0, 1, 0), nil, nil, HOLO, 0)
+  MW.vTurImg = img(MW.vTurBox, "ViewTurretArt", UD2(1, 0, 1, 0), nil, nil, HOLO, 0)
+  MW.vArt = art(MW.vHullImg, "topHull") and art(MW.vTurImg, "topTurret")
+  MW.vHullImg.Visible, MW.vTurImg.Visible = MW.vArt, MW.vArt
+  MW.vFall = {}   -- 方块拼的（染色用）
+  if not MW.vArt then
+    local hb = frame(MW.vHullBox, UD2(0, 44 * VK, 0, 90 * VK), UD2(0.5, 0, 69 / 120, 0), HOLO, 1, V2(0.5, 0.5))   -- 直角，只有边框（镂空）
+    local tc = roundf(frame(MW.vTurBox, UD2(0, 36 * VK, 0, 34 * VK), UD2(0.5, 0, 0.5, 2 * VK), HOLO, 1, V2(0.5, 0.5)), UD(0, 3))
+    local gn = frame(MW.vTurBox, UD2(0, 3, 0, 44 * VK), UD2(0.5, 0, 0.5, -11 * VK), HOLO, 0.05, V2(0.5, 1))
+    table.insert(MW.vFall, { f = hb, s = stroke(hb, HOLO, 1.6, 0) })
+    table.insert(MW.vFall, { f = tc, s = stroke(tc, HOLO, 1.4, 0) })
+    table.insert(MW.vFall, { f = gn })
+  end
+  -- 爆反块：这辆车 EraMeta 里的每块投到俯视图上（车体的按车体图摆：车宽、车长对上图里车体的半宽 22、半长 45；炮塔上的按座圈摆）
+  local TMods = require(RS:WaitForChild("TankMods"))
+  MW.era = {}
+  local function buildEra(d)
+    for _, e in ipairs(MW.era) do e.f:Destroy() end
+    MW.era = {}
+    local ok, L = pcall(function() return TMods.eraOf and TMods.eraOf(d.id) end)
+    if not ok or not L or not L.b then return end
+    local sx, sz = 22 * VK / ((d.W or 10) / 2), 45 * VK / ((d.L or 20) / 2)   -- 车的格 → 框里的像素
+    local tur = L.tur or { 0, 0, 0 }
+    local cols, order = {}, {}
+    for i, b in ipairs(L.b) do
+      local turret = b[1] == "t"
+      local x, z = b[2], b[4]
+      local nx, nz = b[5], b[7]
+      local ux, uy, uz = b[8], b[9], b[10]
+      local vx, vz = b[6] * uz - b[7] * uy, b[5] * uy - b[6] * ux   -- 高的方向 v = n × u（只要水平分量）
+      vx, vz = -vx, -vz
+      local nl = math.sqrt(nx * nx + nz * nz)
+      local tx, tz
+      if nl > 0.3 then tx, tz = -nz / nl, nx / nl
+      else
+        local ul = math.sqrt(ux * ux + uz * uz)
+        tx, tz = (ul > 0.1) and ux / ul or 1, (ul > 0.1) and uz / ul or 0
+      end
+      local len = math.max(math.abs(ux * tx + uz * tz) * b[11], math.abs(vx * tx + vz * tz) * b[12])
+      local oct = (nl > 0.3) and math.floor((math.deg(math.atan2(nz, nx)) + 382.5) / 45) % 8 or 9
+      local along = math.floor((x * tx + z * tz) / 0.9 + 0.5)
+      local key = (turret and "t" or "h") .. oct .. ":" .. along
+      local c = cols[key]
+      local depth = (nl > 0.3) and (x * nx + z * nz) / nl or 0
+      if not c then
+        c = { turret = turret, tx = tx, tz = tz, len = len, idx = {}, depth = -1e9 }
+        cols[key] = c
+        table.insert(order, c)
+      end
+      table.insert(c.idx, i)
+      c.len = math.max(c.len, len)
+      if depth > c.depth then   -- 最外面那一层的位置（贴着车体轮廓外边）
+        c.depth = depth
+        if turret then c.px, c.py = VWD / 2 + (x - tur[1]) * sx, 60 * VK + (z - tur[3]) * sz
+        else c.px, c.py = VWD / 2 + x * sx, 69 * VK + z * sz end
+        if nl > 0.3 then c.px, c.py = c.px + nx / nl * 1.4, c.py + nz / nl * 1.4 end
+      end
+    end
+    for _, c in ipairs(order) do
+      local k = math.abs(c.tx) * sx + math.abs(c.tz) * sz
+      local f = frame(c.turret and MW.vTurBox or MW.vHullBox, UD2(0, math.max(2, c.len * k - 1.2), 0, 1.6), UD2(0, c.px, 0, c.py), HOLO, 0, V2(0.5, 0.5))
+      f.Rotation = math.deg(math.atan2(c.tz, c.tx))   -- 块和块之间留一道细缝
+      f.Name = "Era"
+      f.ZIndex = 3
+      table.insert(MW.era, { f = f, idx = c.idx })
+    end
+  end
+  G.viewEraBars = function() return MW.era end   -- 测试用
   MW.smImg = img(MW.sm, "SmokeIcon", UD2(0, 46, 0, 52), UD2(0.5, 0, 0, 2), V2(0.5, 0), HOLO, 0)
   MW.smArt = art(MW.smImg, "smoke")
   MW.smImg.Visible = MW.smArt
@@ -39367,21 +39581,22 @@ function VehHud.init(G)
     frame(ret, UD2(0, 2, 0, 8), UD2(0.5, -54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
     frame(ret, UD2(0, 2, 0, 8), UD2(0.5, 54, 0.5, 0), WHITE, 0.3, V2(0.5, 0.5)),
   }
-  MR.ammo = label(ret, "", UD2(0, 80, 0, 22), UD2(0.5, -76, 0.5, -14), 19, TXT, BOLD, V2(1, 0.5), RIGHT)
+  -- 字号照 MWT 截图（用户 11-19：文字精简一下、小一点）：弹药数、测距 14，已就绪 15
+  MR.ammo = label(ret, "", UD2(0, 80, 0, 18), UD2(0.5, -70, 0.5, -12), 14, TXT, BOLD, V2(1, 0.5), RIGHT)
   MR.ammo.Name = "MwtAmmo"
   MR.ammo.TextStrokeTransparency = 0.55
-  MR.bullet = roundf(frame(ret, UD2(0, 4, 0, 11), UD2(0.5, -120, 0.5, -14), TXT, 0.05, V2(0.5, 0.5)), UD(0, 2))   -- 弹药数前面的小炮弹（stepTank 按位数挪）
-  MR.state = label(ret, "", UD2(0, 140, 0, 24), UD2(0.5, -76, 0.5, 12), 20, CYAN, BOLD, V2(1, 0.5), RIGHT)
+  MR.bullet = roundf(frame(ret, UD2(0, 3, 0, 9), UD2(0.5, -110, 0.5, -12), TXT, 0.05, V2(0.5, 0.5)), UD(0, 2))   -- 弹药数前面的小炮弹（stepTank 按位数挪）
+  MR.state = label(ret, "", UD2(0, 120, 0, 18), UD2(0.5, -70, 0.5, 7), 15, CYAN, BOLD, V2(1, 0.5), RIGHT)
   MR.state.Name = "MwtState"
   MR.state.TextStrokeTransparency = 0.55
-  MR.rng = label(ret, "", UD2(0, 120, 0, 22), UD2(0.5, 86, 0.5, -14), 19, TXT, BOLD, V2(0, 0.5), LEFT)
+  MR.rng = label(ret, "", UD2(0, 100, 0, 18), UD2(0.5, 76, 0.5, -12), 14, TXT, BOLD, V2(0, 0.5), LEFT)
   MR.rng.Name = "MwtRange"
   MR.rng.TextStrokeTransparency = 0.55
   do
     local l = Instance.new("ImageLabel")
     l.Name = "BulletIcon"
     l.BackgroundTransparency = 1
-    l.Size, l.Position, l.AnchorPoint = UD2(0, 7, 0, 16), MR.bullet.Position, V2(0.5, 0.5)
+    l.Size, l.Position, l.AnchorPoint = UD2(0, 5, 0, 12), MR.bullet.Position, V2(0.5, 0.5)
     l.ImageColor3 = TXT
     l.Parent = ret
     if G.hudIconOn and G.hudIconOn(l, "bullet") then
@@ -39574,9 +39789,9 @@ function VehHud.init(G)
     for _, x in ipairs(MR.plus) do x.Visible = mw end
     if mw then
       MR.ammo.Text = ammoTxt or ""
-      MR.bullet.Position = UD2(0.5, -76 - #(ammoTxt or "") * 11 - 9, 0.5, -14)
+      MR.bullet.Position = UD2(0.5, -70 - #(ammoTxt or "") * 8.5 - 7, 0.5, -12)
       MR.bullet.Visible = (ammoTxt or "") ~= ""
-      MR.state.Text = ready and T("vh.rdy") or T("vh.loading", string.format("%.1f", left))
+      MR.state.Text = ready and T("vh.rdy") or string.format("%.1fs", left)
       MR.state.TextColor3 = ready and CYAN or AMBER
       MR.rng.Text = TR.rng.Text
     end
@@ -39658,8 +39873,10 @@ function VehHud.init(G)
     setRing(TK.ring, relK, ready, left)
     if mwtOn then
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
-      MW.name.Text = TK.name.Text
-      local silCol = (k > 0.6 and col == OK) and HOLO or col
+      MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）
+      -- 车的图标（全息图、视角图）、血量数字的颜色只看车况（用户 11-19：被打到状态一般改成黄色，状态很差改成红色）：
+      --   六成以上青色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
+      local silCol = (k > 0.6) and HOLO or ((k > 0.3) and RGB(255, 214, 64) or RGB(255, 64, 52))
       if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
         MW.iconId = d.id
         local ok = art(MW.icon, "veh_" .. d.id)
@@ -39670,11 +39887,35 @@ function VehHud.init(G)
         MW.hp.Position = UD2(0, 0, 0, ok and (24 + (ic and ic.h * 0.62 or 54) - 2) or 80)
       end
       MW.icon.ImageColor3 = silCol
+      -- 视角图：车体框、炮塔框按相对镜头的朝向转（跟原来面板里的俯视轮廓一样算），颜色跟着车况；爆反哪块没了就空一块
+      MW.vHullBox.Rotation, MW.vTurBox.Rotation = TK.hull.Rotation, TK.tur.Rotation
+      MW.vTurBox.Visible = d.turret ~= nil
+      MW.vHullImg.ImageColor3, MW.vTurImg.ImageColor3 = silCol, silCol
+      for _, q in ipairs(MW.vFall) do
+        if q.s then q.s.Color = silCol else q.f.BackgroundColor3 = silCol end   -- 边框染色；炮管是实心的细条
+      end
+      if MW.eraId ~= d.id then
+        MW.eraId = d.id
+        buildEra(d)
+      end
+      if #MW.era > 0 then
+        local dead = {}
+        for k2 in string.gmatch(st.em:GetAttribute("EraX") or "", "%d+") do dead[tonumber(k2)] = true end
+        local ec = silCol:Lerp(WHITE, 0.3)
+        for _, e in ipairs(MW.era) do
+          local alive = 0
+          for _, i2 in ipairs(e.idx) do if not dead[i2] then alive += 1 end end
+          e.f.Visible = alive > 0
+          e.f.BackgroundColor3 = ec
+          e.f.BackgroundTransparency = (alive == #e.idx) and 0 or 0.55   -- 叠着的几层炸掉一部分：淡一点
+        end
+      end
+      MW.viewScale.Scale = MW.brScale.Scale
       for i, f in ipairs(MW.silParts) do
         if i <= 8 then f.BackgroundColor3 = silCol end
       end
       local hp, mx = math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0)
-      local hc = (k > 0.6) and HOLO or col
+      local hc = silCol
       MW.hp.Text = string.format('<font color="#%02X%02X%02X">%d</font>/%d', math.floor(hc.R * 255), math.floor(hc.G * 255), math.floor(hc.B * 255), hp, mx)
       local n = 0
       for i = 1, #MW.hex do if d.weapons[i] then n = i end end
@@ -39716,7 +39957,7 @@ function VehHud.init(G)
         end
       end
       local sm = vs and vs.smoke or 0
-      MW.smTxt.Text = string.format("X  ×%d", sm)
+      MW.smTxt.Text = string.format("X ×%d", sm)
       local dim = sm <= 0
       MW.smStroke.Transparency = dim and 0.65 or 0
       MW.smCap.BackgroundTransparency = dim and 0.65 or 0
@@ -40140,7 +40381,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -40841,7 +41082,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -41760,7 +42001,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -42600,13 +42841,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="117">
+  <Item class="Workspace" referent="116">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="118">
+  <Item class="Lighting" referent="117">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

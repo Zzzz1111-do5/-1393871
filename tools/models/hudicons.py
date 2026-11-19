@@ -2,7 +2,8 @@
 #   全息微微带着光晕」）：
 #   · 载具：tools/models/vehicons.mjs 拍的侧面明暗图（白色、透明背景）→ 裁边、去掉零碎小块、拉开明暗、勾亮轮廓、淡淡的横向扫描线、
 #     一圈柔光晕 → 灰度（游戏里用 ImageColor3 染成全息青色，挨打染红）
-#   · 界面图形：六边形（底、边、光晕）、炮弹、机枪弹、烟幕弹、「∧」、小炮弹——4 倍大画再缩小（边缘抗锯齿，不再是方块拼的锯齿）
+#   · 界面图形：六边形（底、边、光晕）、炮弹、机枪弹、烟幕弹、「∧」、小炮弹，视角图的俯视车体 / 炮塔（topHull / topTurret）——
+#     4 倍大画再缩小（边缘抗锯齿，不再是方块拼的锯齿）
 #   全部压进 src/ReplicatedStorage/HudIcons.lua：每张 { w, h, f, d }，f = "la"（每像素一字节：高 4 位亮度、低 4 位不透明度）或
 #   "a"（白色，每像素一字节不透明度）；d 是 base64，里面字节 0 后面跟一个字节 = 连续多少个透明像素
 #   用法：python3 -I tools/models/hudicons.py <侧面图目录> <输出 HudIcons.lua>
@@ -224,6 +225,55 @@ def smoke_icon():
     return w, h, pack_la(Lout, Aout)
 
 
+TOP_W, TOP_H = 72, 120   # 视角图（用户 11-19：屏幕下面中心带光晕的视角图；坦克宽一点、履带不要显示）：车体、炮塔两张同样大，炮塔座圈都在正中间
+TOP_HULL = (36, 22, 24, 114)   # 车体在图里：中线 x、半宽、前、后（界面上按这个把爆反块摆到车体轮廓上）
+
+
+def holo(big, fill_big, w, h, glow=3.2):
+    """全息：亮的线条（big）+ 淡淡的填充（fill_big）+ 一圈柔光晕 → (亮度, 不透明度)"""
+    A = np.asarray(big.resize((w, h), Image.LANCZOS)).astype(np.float64) / 255
+    F = np.asarray(fill_big.resize((w, h), Image.LANCZOS)).astype(np.float64) / 255
+    G = blur(A, glow) * 0.75
+    base = np.maximum(A, F * 0.22)
+    Aout = base + G * (1 - base)
+    Lout = np.where(Aout > 1e-3, (A * 1.0 + F * 0.22 * 0.75 * (1 - A) + 0.95 * G * (1 - base)) / np.maximum(Aout, 1e-3), 0)
+    return np.clip(Lout, 0, 1), np.clip(Aout, 0, 1)
+
+
+def top_hull():
+    """俯视的车体（车头朝上）：只有一圈边框（四个直角），里面镂空、不涂色（用户 11-19：不要涂色，就边框、炮塔边框、炮管，剩下都是镂空）"""
+    w, h, s = TOP_W, TOP_H, SS
+    big = Image.new('L', (w * s, h * s), 0)
+    fill = Image.new('L', (w * s, h * s), 0)
+    d = ImageDraw.Draw(big)
+    cx, hw, L0, L1 = TOP_HULL
+    body = [(cx - hw, L0), (cx + hw, L0), (cx + hw, L1), (cx - hw, L1)]
+    d.line([(x * s, y * s) for x, y in body + body[:2]], fill=255, width=int(1.8 * s))
+    Lout, Aout = holo(big, fill, w, h)
+    return w, h, pack_la(Lout, Aout)
+
+
+def top_turret():
+    """俯视的炮塔连炮管（炮口朝上）：炮塔一圈边框（楔形的前装甲、尾舱）、一根炮管、圆形舱盖、后面左右两个「=」，别的镂空；座圈在图正中间"""
+    w, h, s = TOP_W, TOP_H, SS
+    big = Image.new('L', (w * s, h * s), 0)
+    fill = Image.new('L', (w * s, h * s), 0)
+    d = ImageDraw.Draw(big)
+    cx, cy = w / 2, h / 2
+    P = [(-10, -15), (-18, -6), (-18, 11), (-13, 19), (13, 19), (18, 11), (18, -6), (10, -15)]
+    tur = [(cx + x, cy + y) for x, y in P]
+    d.line([(x * s, y * s) for x, y in tur + tur[:2]], fill=255, width=int(1.8 * s), joint='curve')
+    d.line([cx * s, 3 * s, cx * s, (cy - 15) * s], fill=255, width=int(2.2 * s))   # 炮管
+    # 用户 11-19：圆形舱盖加上，左后、右后各一个「=」（不然炮塔后半截有点空）
+    d.ellipse([(cx - 4.5) * s, (cy + 1.5) * s, (cx + 4.5) * s, (cy + 10.5) * s], outline=255, width=int(1.5 * s))
+    for sx in (-1, 1):
+        x0 = cx + sx * 11.5
+        for dy in (-1.8, 1.8):
+            d.line([(x0 - 3.5) * s, (cy + 12 + dy) * s, (x0 + 3.5) * s, (cy + 12 + dy) * s], fill=255, width=int(1.4 * s))
+    Lout, Aout = holo(big, fill, w, h, glow=2.6)
+    return w, h, pack_la(Lout, Aout)
+
+
 icons = {}
 for f in sorted(os.listdir(SRC)):
     if f.endswith('.png'):
@@ -238,6 +288,9 @@ for key, (w, h, fn, glow) in {
     icons[key] = (W, H, 'a', d)
 w, h, d = smoke_icon()
 icons['smoke'] = (w, h, 'la', d)
+for key, fn in (('topHull', top_hull), ('topTurret', top_turret)):
+    w, h, d = fn()
+    icons[key] = (w, h, 'la', d)
 
 lines = ['-- 自动生成（tools/models/hudicons.py），别手改：驾驶界面的图标——每辆地面载具的侧面全息图标（原模型正侧面拍的，灰度、带柔光晕，',
          '--   游戏里用 ImageColor3 染成全息青色）和界面图形（六边形、炮弹、机枪弹、烟幕弹、「∧」、小炮弹，4 倍超采样画的，边缘不起锯齿）',

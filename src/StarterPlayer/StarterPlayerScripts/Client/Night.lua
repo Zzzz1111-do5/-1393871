@@ -228,7 +228,7 @@ function Night.init(G)
       if x.g.Parent == x.p and x.p.Parent then
         j += 1
         glows[j] = x
-        local dv = x.p.Position - cp
+        local dv = x.p.CFrame.Position - cp   -- CFrame.Position：跟 Position 一样，测试台也认
         local dd = dv:Dot(dv)
         local allow = dd < d1 * d1 or (dd < d2 * d2 and x.r < 0.5) or (dd < d3 * d3 and x.r < 0.25)
         glowAllow[x.g] = allow
