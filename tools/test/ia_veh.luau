@@ -183,7 +183,8 @@ act(atk, "deploy", "rifle", "barge")
 H.run(2)
 local hrpA = atk.Character and atk.Character:FindFirstChild("HumanoidRootPart")
 check(PA.alive and hrpA and math.abs(hrpA.Position.Z - G.Map.BARGE.z) < G.Map.BARGE.L / 2 + 5 and hrpA.Position.Y > G.Map.BARGE.top, "步兵在登陆平台上出生")
-local tkId = G.Config.Vehicles.atk.tank[3]
+local atkT = G.Config.Vehicles.atk.tank
+local tkId = atkT[#atkT]   -- 最后一型（99A；15 式轻坦 11-19 删了，攻方只剩两型）
 local tpA = H.pad(G, tkId)
 check(tpA ~= nil and tpA.sea and tpA.team == "atk", "登陆平台边上有 " .. tkId .. " 的生成点（车在水面上）")
 local et = H.usePad(G, atk, tpA)

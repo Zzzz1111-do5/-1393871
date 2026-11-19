@@ -116,7 +116,7 @@ add("vcat.heli", "直升机", "Helicopters")
 add("vcat.jet", "固定翼", "Jets")
 add("vcat.ship", "舰艇", "Ships")
 local VEH = {
-  ztq15 = { "ZTQ-15 轻型坦克", "ZTQ-15 Light Tank" }, ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" },
+  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" },
   m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv3", "M1A2 SEPv3" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
@@ -761,6 +761,29 @@ add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
 add("vw.gun125", "125 毫米炮", "125 mm gun")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
+add("vw.gau8", "30 毫米加特林", "30 mm Gatling")
+-- 坦克改装、爆反、主动防御（用户 11-19）
+add("aps.hit", "主动防御拦截了来袭弹（剩 {1} 发）", "APS intercepted the threat ({1} left)")
+add("aps.blocked", "被敌方坦克的主动防御拦截了", "Intercepted by the enemy tank's APS")
+add("gar.title", "坦克改装", "TANK LOADOUT")
+add("gar.sub", "拖动转视角 · 点左边的改装位换装备", "Drag to rotate · pick a slot on the left")
+add("gar.slot.era", "爆炸反应装甲", "Reactive armour")
+add("gar.slot.aps", "主动防御系统", "Active protection")
+add("gar.slot.roof", "车顶武器", "Roof weapon")
+add("gar.opt.era", "标配（车上自带）", "Standard (built in)")
+add("gar.opt.none", "不装", "None")
+add("gar.opt.hk", "硬杀伤拦截（4 发）", "Hard-kill APS (4 shots)")
+add("gar.opt.stock", "原装机枪", "Stock machine gun")
+add("gar.opt.gau8", "GAU-8 加特林炮塔附件", "GAU-8 Gatling turret kit")
+add("gar.d.era", "火箭弹、导弹打在爆反块上，那一块炸开，伤害只剩两三成；重型爆反对穿甲弹也能削掉一些。炸掉的块不会再挡。", "A rocket or missile hitting a block sets it off and most of the damage is stopped; heavy ERA also blunts kinetic rounds. Spent blocks are gone.")
+add("gar.d.none", "不装主动防御：车更轻、快一点。", "No APS: lighter and a little faster.")
+add("gar.d.hk", "炮塔两侧的发射器在车外十来米打爆来袭的火箭弹、导弹；4 发、每 30 秒补一发，拦不了炮弹和头顶砸下来的。车速 −3%。", "Launchers on the turret sides kill incoming rockets and missiles about 10 m out. 4 shots, one back every 30 s; can't stop tank rounds or steep top attacks. Speed −3%.")
+add("gar.d.stock", "原来的车顶机枪。", "The tank's own roof machine gun.")
+add("gar.d.gau8", "炮塔顶上加一门 30 毫米加特林和两个弹鼓（2048 发），按 3 切换；打步兵、轻装甲、工事、低空飞机。车速 −5%。", "A 30 mm Gatling with two drums (2048 rounds) on the turret roof; press 3. Great against infantry, light armour, defences and low aircraft. Speed −5%.")
+add("gar.speed", "车速 {1} 公里 / 时", "Speed {1} km/h")
+add("gar.spawn", "出车", "DEPLOY")
+add("gar.back", "返回", "BACK")
+add("gar.fixed", "标配", "STANDARD")
 add("vw.ac30", "30 毫米机关炮", "30 mm autocannon")
 add("vw.ac35", "35 毫米高炮", "35 mm AA gun")
 add("vw.vulcan", "20 毫米加特林", "20 mm Gatling")

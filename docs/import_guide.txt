@@ -6,7 +6,7 @@
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 65 个 .glb，按文件夹分：
-  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
+  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
   2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
@@ -20,6 +20,14 @@
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 19 日第二包（坦克爆反、主动拦截、改装）：只要多导一个 veh/kitera.glb，再删掉 15 式轻坦的旧零件；别的都不用动：
+    - 新的 veh/kitera.glb：一块做旧的爆反砖（Kontakt-1，evt22，CC-BY），99A 炮塔正面补贴的爆反块用它（不导入也行，脚本用零件拼的做旧砖代替）；
+    - 15 式轻坦删掉了（用户：建模非常粗糙），veh/ztq15.glb 不用了。先在命令栏粘下面这一行删掉它的旧零件，再导入 veh/kitera.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_ztq15__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块 15 式的旧零件")
+
+    - 爆反、主动拦截、改装界面、加特林炮塔附件都是脚本：打开新的 RobloxTotalBattlefield.rbxlx 就有。
 
   11 月 19 日这一包：重导 ship/ 里 5 艘、veh/ 里 3 辆坦克（飞机、导弹、瞄准镜、建筑、别的车和船都不用动）：
     - 舰艇换成 Sketchfab 上的原模型：ship/t055.glb、ddg125.glb、cg47.glb、t054a.glb、t022.glb（055、阿利·伯克、提康德罗加、054A、022；

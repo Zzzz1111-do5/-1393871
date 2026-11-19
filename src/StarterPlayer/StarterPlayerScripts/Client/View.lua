@@ -126,8 +126,9 @@ function View.init(G)
     if kind == "veh" then
       local d = VD.get(em:GetAttribute("Model") or "")
       if not d then return end
-      local M = VM.build(d, team)
+      local M = VM.build(d, team, em:GetAttribute("Mods"))   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
+      v.modsAttr = em:GetAttribute("Mods")
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -505,6 +506,17 @@ function View.init(G)
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
+    -- 爆反块被炸掉（服务器写 EraX："3,7,12"）：那一块换成焦黑的空位（VehModels.eraBlown 新加的零件接到零件表后面）
+    local ex = em:GetAttribute("EraX")
+    if ex ~= v.eraX then
+      v.eraX = ex
+      for i in string.gmatch(ex or "", "%d+") do
+        for _, it in ipairs(VM.eraBlown(M, tonumber(i))) do
+          table.insert(M.parts, it)
+          v.plist[#v.plist + 1] = it[1]
+        end
+      end
+    end
     local plist, clist = v.plist, v.clist
     for i, it in ipairs(M.parts) do
       local grp, off = it[2], it[3]
@@ -516,6 +528,7 @@ function View.init(G)
       elseif grp == "gun" then cf = gF * off
       elseif grp == "rws" then cf = (rF or tF) * off
       elseif grp == "rwg" then cf = (rgF or rF or tF) * off
+      elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
       elseif grp == "wheel" then
         local w = W[it[4]]
         local wcf = base * CF(w.x, w.r + w.dy, w.z)
@@ -630,7 +643,9 @@ function View.init(G)
     local list = {}
     for em, v in pairs(views) do
       local ok = false
-      if v.kind == "veh" then ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
+      if v.kind == "veh" then
+        ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
+        if em:GetAttribute("Mods") ~= v.modsAttr then ok = true end   -- 改装属性晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end

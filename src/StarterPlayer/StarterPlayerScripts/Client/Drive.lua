@@ -15,6 +15,7 @@ local Drive = {}
 function Drive.init(G)
   local Map = require(RS:WaitForChild("Map"))
   local VD = require(RS:WaitForChild("VehDefs"))
+  local TMods = require(RS:WaitForChild("TankMods"))   -- 坦克改装（用户 11-19）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -358,6 +359,7 @@ function Drive.init(G)
     if not em then return end
     local d = VD.get(vs.m)
     if not d then return end
+    d = TMods.applyDef(d, em:GetAttribute("Mods"))   -- 坦克改装（TankMods）：车速、武器表（加特林是第 3 件）按选的改一份
     local root = em.Root.CFrame
     local base = root * CF(0, -d.H / 2, 0)
     local look = base.LookVector
@@ -743,8 +745,8 @@ function Drive.init(G)
       nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
-      local i = (k == Enum.KeyCode.One) and 1 or 2
+    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three then   -- 3：改装的车顶加特林
+      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or 3)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()

@@ -1334,7 +1334,7 @@ function H.goPad(G, pl, p)
 	pl.Character:PivotTo(CF.new(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
 	H.run(0.2)
 end
-function H.usePad(G, pl, p)
+function H.usePad(G, pl, p, retried)
 	H.goPad(G, pl, p)
 	local prev = H.ctx
 	H.ctx = nil
@@ -1352,6 +1352,17 @@ function H.usePad(G, pl, p)
 				break
 			end
 		end
+		-- 坦克选了以后先进改装界面（Garage.lua，用户 11-19）：照默认改装直接点「出车」
+		local C = H.Gs[pl.Name]
+		if C and C.garageOpen and C.garageOpen() then
+			for _, d in pg:GetDescendants() do
+				if d:IsA("TextButton") and d.Name == "GarageGo" and visible(d) then
+					H.press(pl, d)
+					H.run(0.4)
+					break
+				end
+			end
+		end
 	end
 	-- 同一个召唤位上可能已经停着先前生成的别的车（守方地面车位：所有车型共用一个）：选了哪一型就找哪一型，最新生成的优先
 	local hit = nil
@@ -1359,6 +1370,11 @@ function H.usePad(G, pl, p)
 		for _, e in ipairs(list) do
 			if e.padId == p.id and e.alive and (not vid or (e.def and e.def.id == vid)) then hit = e end
 		end
+	end
+	-- 没生成出来：多半撞上服务器「两次出车至少隔 2 秒」（坦克多了改装界面那一步，前一辆晚生成了一点）——等一下再来一次
+	if not hit and not retried and p.summon then
+		H.run(2.1)
+		return H.usePad(G, pl, p, true)
 	end
 	return hit
 end

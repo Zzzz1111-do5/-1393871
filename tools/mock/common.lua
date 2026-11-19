@@ -184,6 +184,12 @@ function T.usePad(pl, p)
     local card = (pl == R.localPlayer) and T.findNamed("Pick_" .. vid, pl)
     if card then T.press(card) else T.actAsRemote(pl, "padSpawn", p.id, false, vid) end
     R.run(0.6)
+    -- 坦克选了以后先进改装界面（Garage.lua，用户 11-19）：照默认改装直接点「出车」
+    local C = (pl == R.localPlayer) and T.C or nil
+    if C and C.garageOpen and C.garageOpen() then
+      local go = T.findNamed("GarageGo", pl)
+      if go then T.press(go) R.run(0.6) end
+    end
   end
   for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
     for _, e in ipairs(list) do

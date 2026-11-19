@@ -85,6 +85,8 @@ function Ents.init(G)
     if not e or not e.alive or amt <= 0 then return end
     if src and src.team == e.team then return end
     if e.invuln then return end
+    local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
+    if dk then amt *= dk end
     e.hp -= amt
     e.lastHitBy = src
     e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
@@ -150,6 +152,11 @@ function Ents.init(G)
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
     local r = w.splash or 8
+    local ownK = false
+    if not G.dmgK and G.eraBlast then
+      local m = G.eraBlast(pos, w, G.blastDir)
+      if m then G.dmgK, ownK = m, true end
+    end
     G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
     for _, P in pairs(G.P) do
       local char = P.char
@@ -178,6 +185,7 @@ function Ents.init(G)
       end
     end
     if G.onExplode then G.onExplode(pos, w, src) end
+    if ownK then G.dmgK = nil end
   end
 
   ---------------------------------------------------------------- 飞行中的弹
@@ -210,8 +218,12 @@ function Ents.init(G)
       local s = shots[i]
       s.t += dt
       local done = false
-      if s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+      if G.apsCheck and (s.kind == "rocket" or s.kind == "missile") and G.apsCheck(s, dt) then   -- 被坦克的主动防御打掉了（Aps.lua）
+        done = true
+      elseif s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+        G.blastDir = s.vel   -- 导引弹自己引爆时（step 里调 G.explode）爆反按这个来向找块
         local ok, r = pcall(s.step, s, dt)
+        G.blastDir = nil
         if not ok then G.reportError("导引", r) done = true elseif r then done = true end
       elseif s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
@@ -219,7 +231,9 @@ function Ents.init(G)
           local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude
           s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
           if (tg.root.CFrame.Position - s.pos).Magnitude < 12 then
+            G.blastDir = s.vel
             G.explode(s.pos, s.w, s.src)
+            G.blastDir = nil
             done = true
           end
         end
@@ -261,6 +275,9 @@ function Ents.init(G)
           G.fx({ k = "spark", p = res.Position, n = res.Normal, h = "m", s = 1 })
           done = true
         elseif res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+          local hitE = res.Instance and G.eraShell and G.entOf(res.Instance)
+          local ek = hitE and G.eraShell(hitE, s, res.Position)   -- 重型爆反挡穿甲弹（Era.lua）
+          if ek then G.dmgK = { [hitE] = ek } end
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
           -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
           local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
@@ -270,10 +287,15 @@ function Ents.init(G)
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          if ek then G.dmgK = nil end
           done = true
         elseif res and s.kind ~= "grenade" then
+          -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
+          local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
+          if m then G.dmgK = m end
           G.explode(res.Position, s.w, s.src)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
+          if m then G.dmgK = nil end
           done = true
         elseif res and s.kind == "grenade" then   -- 手雷：落地弹一下、滚一点，等引信
           s.pos = res.Position + res.Normal * 0.6

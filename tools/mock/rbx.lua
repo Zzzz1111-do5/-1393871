@@ -1037,6 +1037,9 @@ local textProps = {
   TextTruncate = { E("TextTruncate"), Enum.TextTruncate.None }, LineHeight = { T.number, 1 }, MaxVisibleGraphemes = { T.number, -1 },
 }
 def("TextLabel", "GuiObject", textProps)
+-- 图片（小地图的卫星图 MapUI.lua）：只记属性，不画
+def("ImageLabel", "GuiObject", { Image = { T.string, "" }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 },
+  ImageContent = { function() return true end, nil } })
 local tb = {}
 for k, v in pairs(textProps) do tb[k] = v end
 tb.AutoButtonColor = { T.bool, true }
@@ -1961,7 +1964,7 @@ local function envFor(scriptInst, sd)
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
     ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
-    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end },
+    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,
     print = function(...) if R.verbose then print(...) end end,
     PROBE_SET = function(v) R.lastProbe = v end,

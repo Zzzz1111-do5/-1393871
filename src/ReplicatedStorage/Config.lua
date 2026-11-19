@@ -151,7 +151,7 @@ Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {
-    tank = { "ztq15", "ztz96", "ztz99a" },
+    tank = { "ztz96", "ztz99a" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
     apc = { "ztd05", "zbd05", "zsl92b", "ptl02" },
     aa = { "pgz07", "pgl625", "ld2000" },
     arty = { "plz07" },
@@ -170,7 +170,7 @@ Config.Vehicles = {
   },
 }
 Config.VehicleMod = {
-  ztq15 = { hp = 0.75, speed = 1.15, gun = 0.8 }, m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
+  m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
   zbd05 = { amphib = true }, ztd05 = { amphib = true, gun = 1.6 }, hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
   m1150 = { hp = 1.4, speed = 0.8 }, m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
