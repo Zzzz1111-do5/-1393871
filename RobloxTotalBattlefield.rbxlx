@@ -858,9 +858,12 @@ end
 --   crater 弹坑：k 坑口半径 / 杀伤半径（按爆炸种类）、minR / maxR 坑口半径（格）上下限、depth 坑深 / 坑口半径、maxDepth 最深几格、
 --     gap 离已有的坑多近不再炸（两坑半径和的倍数）、max 一局最多几个、perSec 一秒最多挖几个（多的排队）
 --   illum 照明弹：every 隔几秒打一发（随机范围）、alive 同时最多几发、height 在离地多高炸开、burn 烧几秒、fall 每秒落几格、sea 攻方舰队打的比例
+--   bld 房子炸塌（Battle.lua）
 Config.Battle = {
   crater = { k = { shell = 0.36, rkt = 0.32, msl = 0.34, bomb = 0.3 }, minR = 3.2, maxR = 13, depth = 0.34, maxDepth = 5.5, gap = 0.55, max = 240, perSec = 8 },
   illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
+  -- bld 房子炸塌：血量 = 占地面积 × hpPerArea（hpMin～hpMax）；k 按爆炸种类的伤害倍数；血掉到 fire 以下着火
+  bld = { hpPerArea = 1.5, hpMin = 700, hpMax = 4000, fire = 0.55, k = { nade = 0.3, shell = 1, rkt = 0.8, msl = 1, bomb = 1.4 } },
 }
 
 return Config
@@ -8001,6 +8004,7 @@ return Armor
 --      有人在争夺的据点优先。在离地 height 格炸开，挂着降落伞每秒落 fall 格、烧 burn 秒，同时最多 alive 发。
 --      只发一条特效 { k = "illum", o 发射点, p 炸开的点, t 服务器时刻, fl 飞几秒, burn, fall, w 风 }：客户端（Warfx.lua）按服务器时间算出它在哪、多亮，
 --      所有人看到的是同一发、照亮的是同一片（不影响谁能打中谁：只是画面）
+--   3. 房子炸塌（战地的招牌）：地图上的房子有血量，炸掉一半着火，炸光了塌成一摊废墟（不再挡人、挡子弹），新一局复原。见下面「房子炸塌」
 local Battle = {}
 
 function Battle.init(G)
@@ -8222,9 +8226,165 @@ function Battle.init(G)
     fireIllum()
   end
 
+  ---------------------------------------------------------------- 房子炸塌（战地的招牌）
+  -- 地图上的房子（World.building 建的 Bld_<种类> 模型）有血量：按占地面积算（Config.Battle.bld：每平方格 hpPerArea，hpMin～hpMax）。
+  --   爆炸按到房子外接盒的距离算伤害（中心全伤、边上三成），按爆炸种类乘 k（手雷很少、炸弹加倍、航炮 / 高炮空炸不算）；
+  --   血掉到 fire 以下：着火（模型属性 Burning：客户端窗口里冒火、往上冒黑烟、火光一闪一闪）；
+  --   掉光：塌——房子收进 ServerStorage（客户端那边就没了，碰撞盒也没了：不再挡人、挡子弹），原地堆一摊废墟（几块碎石堆、几截断墙、几根歪倒的梁，
+  --   锚住、能踩上去、矮：车开得过去），发一条 collapse 特效（客户端：扬起一大团尘土、碎块乱飞、轰隆一声）；新一局全部复原
+  local BD = BC.bld or {}
+  local KB = BD.k or { nade = 0.3, shell = 1, rkt = 0.8, msl = 1, bomb = 1.4 }
+  local blds = {}
+  G.buildings = blds   -- 测试用
+  local scanned = false
+  local SS = game:GetService("ServerStorage")
+  local store = SS:FindFirstChild("RuinedBuildings") or Instance.new("Folder")
+  store.Name = "RuinedBuildings"
+  store.Parent = SS
+  local ruinsF = workspace:FindFirstChild("Ruins") or Instance.new("Folder")
+  ruinsF.Name = "Ruins"
+  ruinsF.Parent = workspace
+
+  local function scanBlds()
+    scanned = true
+    for _, m in ipairs(workspace:GetDescendants()) do
+      if m:IsA("Model") and m:GetAttribute("Bld") and m:GetAttribute("BldBase") then
+        local base, size = m:GetAttribute("BldBase"), m:GetAttribute("BldSize")
+        if typeof(base) == "CFrame" and typeof(size) == "Vector3" then
+          -- 外接盒（世界坐标、轴对齐）：按占地四角和高
+          local x0, y0, z0, x1, y1, z1 = math.huge, math.huge, math.huge, -math.huge, -math.huge, -math.huge
+          for _, cx in ipairs({ -0.5, 0.5 }) do
+            for _, cz in ipairs({ -0.5, 0.5 }) do
+              for _, cy in ipairs({ 0, 1 }) do
+                local q = base * V(size.X * cx, size.Y * cy, size.Z * cz)
+                x0, y0, z0 = math.min(x0, q.X), math.min(y0, q.Y), math.min(z0, q.Z)
+                x1, y1, z1 = math.max(x1, q.X), math.max(y1, q.Y), math.max(z1, q.Z)
+              end
+            end
+          end
+          local lo, hi = V(x0, y0, z0), V(x1, y1, z1)
+          local hp = math.clamp(size.X * size.Z * (BD.hpPerArea or 1.5), BD.hpMin or 700, BD.hpMax or 4000)
+          table.insert(blds, { m = m, key = m:GetAttribute("Bld"), base = base, size = size, lo = lo, hi = hi, center = (lo + hi) / 2,
+            hp = hp, hp0 = hp, seed = #blds + 1 })
+        end
+      end
+    end
+  end
+
+  local function boxDist(p, lo, hi)
+    local dx = math.max(lo.X - p.X, 0, p.X - hi.X)
+    local dy = math.max(lo.Y - p.Y, 0, p.Y - hi.Y)
+    local dz = math.max(lo.Z - p.Z, 0, p.Z - hi.Z)
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+  end
+
+  -- 废墟：几块碎石堆（方块、楔形）、几截断墙、几根歪倒的梁；颜色灰褐、烧黑
+  local RGB = Color3.fromRGB
+  local CF = CFrame.new
+  local function makeRuin(b)
+    local rng = Random.new(b.seed * 7919)
+    local m = Instance.new("Model")
+    m.Name = "Ruin_" .. tostring(b.key)
+    m:SetAttribute("Ruin", b.key)
+    local w, h, d = b.size.X, b.size.Y, b.size.Z
+    local hh = math.min(h, 16)
+    local cols = { RGB(96, 90, 82), RGB(72, 68, 63), RGB(112, 104, 94), RGB(54, 50, 47) }
+    local function piece(kind, size, cf, col, mat, solid)
+      local p = Instance.new(kind)
+      p.Size = size
+      p.CFrame = cf
+      p.Color = col
+      p.Material = mat or Enum.Material.Concrete
+      p.Anchored = true
+      p.CanCollide = solid ~= false
+      p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      p.Parent = m
+      return p
+    end
+    for i = 1, 9 do   -- 碎石堆
+      local sx, sz = rng:NextNumber(0.25, 0.55) * w, rng:NextNumber(0.25, 0.55) * d
+      local sy = rng:NextNumber(0.1, 0.24) * hh + 0.8
+      local ox, oz = rng:NextNumber(-0.32, 0.32) * w, rng:NextNumber(-0.32, 0.32) * d
+      piece((i % 3 == 0) and "WedgePart" or "Part", V(sx, sy, sz),
+        b.base * CF(ox, sy / 2 - 0.4, oz) * CFrame.Angles(rng:NextNumber(-0.12, 0.12), rng:NextNumber(0, 6.28), rng:NextNumber(-0.12, 0.12)),
+        cols[rng:NextInteger(1, #cols)], (i % 4 == 0) and Enum.Material.Slate or Enum.Material.Concrete)
+    end
+    for i = 1, 3 do   -- 断墙：贴着占地的边，一截矮一截高、歪一点
+      local side = rng:NextInteger(0, 3)
+      local along = rng:NextNumber(-0.35, 0.35)
+      local wh = rng:NextNumber(0.25, 0.5) * hh + 2
+      local ww = rng:NextNumber(0.18, 0.4) * ((side % 2 == 0) and w or d)
+      local ox = (side % 2 == 0) and along * w or ((side == 1) and 0.5 or -0.5) * w
+      local oz = (side % 2 == 0) and ((side == 0) and 0.5 or -0.5) * d or along * d
+      local rot = (side % 2 == 0) and 0 or math.pi / 2
+      piece("Part", V(ww, wh, 1.2), b.base * CF(ox, wh / 2 - 0.5, oz) * CFrame.Angles(0, rot, rng:NextNumber(-0.18, 0.18)), cols[1])
+    end
+    for i = 1, 3 do   -- 歪倒的梁
+      local L = rng:NextNumber(0.4, 0.7) * math.max(w, d)
+      piece("Part", V(L, 0.9, 0.9), b.base * CF(rng:NextNumber(-0.25, 0.25) * w, rng:NextNumber(1.5, 0.3 * hh + 2), rng:NextNumber(-0.25, 0.25) * d)
+        * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 6.28), rng:NextNumber(-0.35, 0.35)), RGB(48, 40, 34), Enum.Material.Wood)
+    end
+    m.Parent = ruinsF
+    return m
+  end
+
+  local function collapse(b)
+    b.down = true
+    b.parent = b.m.Parent
+    G.fx({ k = "collapse", p = b.center, s = b.size, cf = b.base })
+    b.m.Parent = store
+    b.ruin = makeRuin(b)
+  end
+  G.collapseBuilding = collapse   -- 测试用
+
+  local function bldHit(pos, w)
+    if not w or not w.dmg then return end
+    if not scanned then scanBlds() end
+    local kind = G.boomKind and G.boomKind(w)
+    local km = kind and KB[kind]
+    if not km or km <= 0 then return end
+    local r = w.splash or 8
+    for _, b in ipairs(blds) do
+      if not b.down then
+        local d = boxDist(pos, b.lo, b.hi)
+        if d < r then
+          b.hp -= w.dmg * km * (1 - 0.7 * d / r)
+          if b.hp <= 0 then
+            collapse(b)
+          elseif b.hp < b.hp0 * (BD.fire or 0.55) and not b.fire then
+            b.fire = true
+            b.m:SetAttribute("Burning", true)
+          end
+        end
+      end
+    end
+  end
+
+  local explode1 = G.onExplode
+  G.onExplode = function(pos, w, src)
+    if explode1 then explode1(pos, w, src) end
+    G.try("炸房子", bldHit, pos, w)
+  end
+
+  G.on("roundStart", function()
+    for _, b in ipairs(blds) do
+      if b.down then
+        b.m.Parent = b.parent
+        if b.ruin then b.ruin:Destroy() end
+        b.down, b.ruin = false, nil
+      end
+      if b.fire then
+        b.fire = false
+        b.m:SetAttribute("Burning", false)
+      end
+      b.hp = b.hp0
+    end
+  end)
+
   G.onFrame(function()
     stepCraters()
     stepIllum()
+    if not scanned and G.worldReady then scanBlds() end
   end)
 end
 
@@ -15924,6 +16084,9 @@ local function building(f, key, x, z, rot, opt)
     light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
   end
   m:SetAttribute("Imported", n > 0)
+  -- 占地（Battle.lua 炸塌房子用：废墟按这个摆）
+  m:SetAttribute("BldBase", base)
+  m:SetAttribute("BldSize", V(w, h, d))
   m.Parent = f
   return base, m, w, h, d
 end
@@ -35823,7 +35986,8 @@ return View
 --      挂着降落伞慢慢落、随风飘，一边烧一边拖出一条往上飘的白烟柱（被它自己照亮），往下掉火星；烧到最后几秒忽明忽暗、熄灭，伞掉得快了、淡掉。
 --      照亮：Roblox 的点光源最远 60 格，照明弹在一百多格高——光源放在照明弹正下方离地 40 格的地方跟着走（离镜头最近的那发投影子：
 --      影子跟着照明弹慢慢挪），再加上「附近有照明弹，整片地都亮起来」：G.illum = { k 亮度 0～1.2 }，DayNight.lua 按它把环境光往暖白抬、曝光加一点，一闪一闪
---   2. 夜空、远处的战火（task 13）：见下面
+--   2. 夜空：一层低云；守方要地的对空探照灯慢慢扫；远处时不时的闷炮声（只有声音）
+--   3. 房子着火、塌（服务器 Battle.lua）：着火的房子冒火、冒烟、火光一闪一闪；塌的时候扬起一大团尘土、碎块乱飞、轰隆一声；废墟冒一阵烟
 local Warfx = {}
 
 function Warfx.init(G)
@@ -36182,7 +36346,148 @@ function Warfx.init(G)
     rumbles += 1
   end
 
-  local acc = 0
+  ---------------------------------------------------------------- 房子着火、塌（服务器 Battle.lua）
+  -- 着火：房子模型的属性 Burning（被炸掉一半血）——屋顶那一层冒火、往上冒黑烟、橙色的火光一闪一闪（夜里很远就看得到）；
+  --   效果挂在房子模型底下（本地的）：房子塌了被服务器挪走，效果跟着没。每秒查一次属性；房子列表 15 秒重扫一次（新一局复原的房子是新的副本）
+  -- 塌：特效 collapse——扬起一大团尘土（往外冲的一圈 + 往上翻的一大团）、十几块碎块真的飞出去落地、轰隆一声（按距离晚到）、近处镜头震
+  -- 废墟（Ruins 文件夹里的 Ruin_ 模型）：冒一阵烟、几点余火（90 秒后烟停）
+  local FIRE = "rbxasset://textures/particles/fire_main.dds"
+  local THUD = "rbxasset://sounds/action_jump_land.mp3"
+  local bldList, scanAt = {}, 0
+  local burning = {}   -- [模型] = { h, light, ph }
+  local ruinFx = {}    -- [模型] = true
+  local collapses = 0
+  G.collapseCount = function() return collapses end   -- 测试用
+
+  local function decorateFire(m)
+    local base, size = m:GetAttribute("BldBase"), m:GetAttribute("BldSize")
+    if typeof(base) ~= "CFrame" or typeof(size) ~= "Vector3" then return end
+    local h = part(Enum.PartType.Block, V(math.min(size.X, 14) * 0.6, 1, math.min(size.Z, 14) * 0.6), base * CFrame.new(0, size.Y * 0.7, 0), RGB(0, 0, 0), nil, 1)
+    h.Name = "BldFire"
+    h.Parent = m
+    emitter(h, { tex = FIRE, rate = 16, life = { 0.6, 1.2 }, spd = { 3, 7 }, spread = 25, acc = V(0, 8, 0), size = nseq(0, 4.5, 1, 1),
+      tr = nseq(0, 0.15, 1, 1), col = cseq(RGB(255, 204, 128), RGB(255, 92, 40)), le = 0.9 })
+    emitter(h, { tex = TX.smoke, rate = 4, life = { 7, 11 }, spd = { 4, 8 }, spread = 15, acc = V(1.5, 4, 0.8), size = nseq(0, 4, 1, 18),
+      tr = nseq(0, 0.35, 1, 1), col = cseq(RGB(38, 34, 32), RGB(96, 92, 88)), rot = 10 })
+    local pl = Instance.new("PointLight")
+    pl.Range, pl.Brightness, pl.Color, pl.Shadows = 44, 3, RGB(255, 150, 80), false
+    pl.Parent = h
+    burning[m] = { h = h, light = pl, ph = math.random() * 6.28 }
+  end
+
+  local function decorateRuin(m)
+    ruinFx[m] = true
+    local ok, cf, size = pcall(function() return m:GetBoundingBox() end)
+    if not ok or typeof(cf) ~= "CFrame" then
+      local p0 = m:FindFirstChildWhichIsA("BasePart")
+      if not p0 then return end
+      cf, size = p0.CFrame, V(12, 4, 12)
+    end
+    local h = part(Enum.PartType.Block, V(math.max(4, size.X * 0.5), 1, math.max(4, size.Z * 0.5)), CFrame.new(cf.Position), RGB(0, 0, 0), nil, 1)
+    h.Name = "RuinSmoke"
+    h.Parent = m
+    local sm = emitter(h, { tex = TX.smoke, rate = 3, life = { 8, 13 }, spd = { 2, 5 }, spread = 25, acc = V(1.2, 2.5, 0.6), size = nseq(0, 5, 1, 16),
+      tr = nseq(0, 0.45, 1, 1), col = cseq(RGB(70, 66, 62), RGB(120, 116, 110)), rot = 8 })
+    local em = emitter(h, { tex = TX.glow, rate = 4, life = { 0.8, 1.6 }, spd = { 1, 4 }, spread = 40, acc = V(0, 3, 0), size = nseq(0, 0.35, 1, 0),
+      tr = nseq(0, 0, 1, 0.5), col = cseq(RGB(255, 190, 110), RGB(255, 110, 50)), le = 1 })
+    task.delay(90, function() sm.Enabled = false em.Enabled = false end)
+  end
+
+  local function stepBlds()
+    local t = os.clock()
+    if t >= scanAt then
+      scanAt = t + 15
+      table.clear(bldList)
+      for _, d in ipairs(workspace:GetDescendants()) do
+        if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+      end
+    end
+    for _, m in ipairs(bldList) do
+      local on = m.Parent ~= nil and m:GetAttribute("Burning") == true
+      if on and not burning[m] then
+        decorateFire(m)
+      elseif not on and burning[m] then
+        if burning[m].h.Parent then burning[m].h:Destroy() end
+        burning[m] = nil
+      end
+    end
+    for m in pairs(burning) do
+      if not m.Parent then burning[m] = nil end
+    end
+    local rf = workspace:FindFirstChild("Ruins")
+    if rf then
+      for _, m in ipairs(rf:GetChildren()) do
+        if m:IsA("Model") and not ruinFx[m] then decorateRuin(m) end
+      end
+    end
+    for m in pairs(ruinFx) do
+      if not m.Parent then ruinFx[m] = nil end
+    end
+  end
+
+  local function stepBurn()
+    local cp = camPos()
+    local t = os.clock()
+    for m, b in pairs(burning) do
+      if b.h.Parent and (b.h.CFrame.Position - cp).Magnitude < 1500 then
+        b.light.Brightness = 2.6 + 0.6 * math.sin(t * 11 + b.ph) + 0.4 * math.sin(t * 23.7 + b.ph * 2)
+      end
+    end
+  end
+
+  G.fxExtra.collapse = function(e)
+    if typeof(e.p) ~= "Vector3" or typeof(e.s) ~= "Vector3" then return end
+    collapses += 1
+    local p, s = e.p, e.s
+    local gy = (typeof(e.cf) == "CFrame") and e.cf.Position.Y or (p.Y - s.Y / 2)
+    local cp = camPos()
+    local d = (p - cp).Magnitude
+    if G.sfx and d < 5000 then
+      G.sfx({ { id = EXP, vol = 1.3, s = { 0.36, 0.42 }, reg = { 0, 2.4 }, eq = { 10, -2, -16 }, echo = { 0.3, 0.35, -8 } },
+        { id = THUD, vol = 1.2, s = { 0.32, 0.36 }, eq = { 8, 0, -12 }, delay = 0.25 },
+        { id = THUD, vol = 0.9, s = { 0.4, 0.45 }, eq = { 6, 0, -10 }, delay = 0.6 } },
+        p, { delay = d / 960, rmin = 80, rmax = 4500, must = true })
+    end
+    if d < 400 and G.shake then G.shake(0.55 * (1 - d / 400)) end
+    if d > 4000 then return end
+    local w = math.max(s.X, s.Z)
+    local h = part(Enum.PartType.Block, V(1, 1, 1), CFrame.new(p.X, gy + 1.5, p.Z), RGB(0, 0, 0), nil, 1)
+    -- 往外冲的一圈尘浪：零件绕竖轴转着一颗一颗往前发
+    local ring = emitter(h, { tex = TX.smoke, life = { 2.5, 4.5 }, spd = { w * 0.6, w * 1.2 }, spread = 8, drag = 1.6, dir = Enum.NormalId.Front,
+      acc = V(0, 1.5, 0), size = nseq(0, w * 0.18, 1, w * 0.55), tr = nseq(0, 0.25, 1, 1), col = cseq(RGB(164, 152, 134), RGB(140, 132, 120)), rot = 20 })
+    local base = h.CFrame
+    for i = 1, 18 do
+      h.CFrame = base * CFrame.Angles(0, (i + math.random() * 0.6) * 2 * math.pi / 18, 0)
+      ring:Emit(1)
+    end
+    h.CFrame = base
+    -- 往上翻的一大团
+    local col = emitter(h, { tex = TX.smoke, life = { 5, 9 }, spd = { w * 0.25, w * 0.7 }, spread = 50, drag = 1.2, acc = V(1, 3.5, 0.5),
+      size = nseq(0, w * 0.3, 0.4, w * 0.75, 1, w * 1.1), tr = nseq(0, 0.12, 0.6, 0.45, 1, 1), col = cseq(RGB(150, 140, 124), RGB(104, 98, 90)), rot = 12 })
+    col:Emit(math.floor(10 + w / 3))
+    Debris:AddItem(h, 10)
+    -- 碎块：真的零件往外飞、落地弹几下（本地物理）
+    local n = math.clamp(math.floor(w / 2), 8, 18)
+    if (G.perfK or 1) < 0.8 then n = math.floor(n / 2) end
+    for i = 1, n do
+      local c = Instance.new("Part")
+      c.Size = V(0.6 + math.random() * 1.8, 0.5 + math.random() * 1.2, 0.6 + math.random() * 1.8)
+      c.Color = (i % 3 == 0) and RGB(64, 58, 52) or RGB(108, 100, 90)
+      c.Material = Enum.Material.Concrete
+      c.CFrame = CFrame.new(p + V((math.random() - 0.5) * s.X * 0.6, (math.random() - 0.2) * s.Y * 0.4, (math.random() - 0.5) * s.Z * 0.6))
+      c.Anchored, c.CanCollide, c.CanQuery, c.CanTouch, c.CastShadow = false, true, false, false, true
+      c.Parent = FXF
+      local dir = V(math.random() - 0.5, 0, math.random() - 0.5)
+      dir = dir.Magnitude > 0.05 and dir.Unit or V(1, 0, 0)
+      pcall(function()
+        c.AssemblyLinearVelocity = dir * (8 + math.random() * 18) + V(0, 10 + math.random() * 22, 0)
+        c.AssemblyAngularVelocity = V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 12
+      end)
+      Debris:AddItem(c, 4 + math.random())
+    end
+  end
+
+  local acc, bAcc = 0, 0
   RunService.RenderStepped:Connect(function(dt)
     local ok, err = pcall(stepFlares)
     if not ok and G.showError then G.showError("照明弹：" .. tostring(err)) end
@@ -36193,9 +36498,16 @@ function Warfx.init(G)
       local ok2, err2 = pcall(function()
         stepLights()
         stepRumble()
+        stepBurn()
         if clouds then clouds.Enabled = (G.perfK or 1) >= 0.7 end
       end)
       if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
+    end
+    bAcc += dt or 1 / 60
+    if bAcc >= 1 then   -- 房子着火、废墟：一秒查一次
+      bAcc = 0
+      local ok3, err3 = pcall(stepBlds)
+      if not ok3 and G.showError then G.showError("房子：" .. tostring(err3)) end
     end
   end)
 end

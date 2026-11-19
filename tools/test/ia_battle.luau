@@ -135,13 +135,43 @@ do
 	check(C.rumbleCount() > r0, "远处时不时传来炮声")
 end
 
-print("③ 新一局：挖过的地写回去")
+print("⑤ 房子：炸掉一半着火、炸光了塌成废墟")
+local B
+do
+	local C = H.Gs.P1
+	local WS = H.game:GetService("Workspace")
+	check(G.buildings and #G.buildings >= 5, "地图上的房子登记了血量（" .. (G.buildings and #G.buildings or 0) .. " 栋）")
+	B = G.buildings and G.buildings[1]
+	if B then
+		local side = V3.new(B.center.X, B.lo.Y + 2, B.hi.Z + 2)
+		local hp0 = B.hp
+		G.explode(side, FD.W.how155, SRC)
+		H.run(0.3)
+		check(B.hp < hp0, string.format("榴弹在墙边炸：房子掉血（%.0f → %.0f）", hp0, B.hp))
+		while B.hp >= B.hp0 * 0.55 and not B.down do G.explode(side, FD.W.how155, SRC) end
+		H.run(1.5)
+		check(B.m:GetAttribute("Burning") == true, "掉到一半以下：着火")
+		local c0 = C.collapseCount()
+		G.explode(side, AD.W.gbu31, SRC)
+		H.run(1.5)
+		check(B.down and not B.m:IsDescendantOf(WS), "2000 磅炸弹：房子塌了（模型从场景里拿走）")
+		local n = 0
+		if B.ruin then for _, x in B.ruin:GetChildren() do if x:IsA("BasePart") then n += 1 end end end
+		check(B.ruin ~= nil and B.ruin:IsDescendantOf(WS) and n >= 12, "原地一摊废墟（" .. n .. " 块）")
+		check(C.collapseCount() > c0, "客户端：塌的特效")
+	end
+end
+
+print("③ 新一局：挖过的地写回去、房子复原")
 do
 	local v0 = H.voxelWrites
 	local nc = #G.craters
 	G.roundStart()
 	H.run(1)
 	check(#G.craters == 0 and nc >= 2 and H.voxelWrites > v0, string.format("挖过的 %d 处重写（写了 %d 次）", nc, H.voxelWrites - v0))
+	if B then
+		check(not B.down and B.m:IsDescendantOf(H.game:GetService("Workspace")) and B.ruin == nil and B.hp == B.hp0, "塌了的房子复原、废墟收掉、满血")
+	end
 end
 
 print(fails == 0 and "全部通过" or ("不对 " .. fails .. " 处"))

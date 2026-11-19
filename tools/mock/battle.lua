@@ -163,7 +163,36 @@ do
   check(C.rumbleCount() > r0, "远处时不时传来闷闷的炮声（20 秒 " .. (C.rumbleCount() - r0) .. " 次）")
 end
 
-print("③ 新一局：挖过的地写回去")
+print("⑤ 房子：炸掉一半着火、炸光了塌成废墟")
+local B
+do
+  local C = T.C
+  check(G.buildings and #G.buildings >= 5, "地图上的房子登记了血量（" .. (G.buildings and #G.buildings or 0) .. " 栋）")
+  B = G.buildings and G.buildings[1]
+  if B then
+    local side = V3(B.center.X, B.lo.Y + 2, B.hi.Z + 2)   -- 房子南墙外 2 格
+    local hp0 = B.hp
+    G.explode(side, FD.W.how155, SRC)
+    R.run(0.3)
+    check(B.hp < hp0, string.format("榴弹在墙边炸：房子掉血（%.0f → %.0f）", hp0, B.hp))
+    while B.hp >= B.hp0 * 0.55 and not B.down do G.explode(side, FD.W.how155, SRC) end
+    R.run(1.5)
+    check(B.m:GetAttribute("Burning") == true, "掉到一半以下：着火（属性 Burning）")
+    check(B.m:FindFirstChild("BldFire") ~= nil, "客户端：屋顶冒火、冒烟、火光")
+    local c0 = C.collapseCount()
+    G.explode(side, AD.W.gbu31, SRC)
+    R.run(1.5)
+    local inWS = B.m:IsDescendantOf(R.services.Workspace)
+    check(B.down and not inWS, "2000 磅炸弹：房子塌了（模型从场景里拿走：不再挡人、挡子弹）")
+    local n = 0
+    if B.ruin then for _, x in ipairs(B.ruin:GetChildren()) do if x:IsA("BasePart") then n = n + 1 end end end
+    check(B.ruin ~= nil and B.ruin:IsDescendantOf(R.services.Workspace) and n >= 12, "原地一摊废墟（" .. n .. " 块：碎石堆、断墙、梁）")
+    check(C.collapseCount() > c0, "客户端：塌的特效（尘土、碎块、轰隆一声）")
+    check(B.ruin and B.ruin:FindFirstChild("RuinSmoke") ~= nil, "废墟冒烟")
+  end
+end
+
+print("③ 新一局：挖过的地写回去、房子复原")
 do
   local v0 = R.voxelsWritten or 0
   local nc = #G.craters
@@ -171,6 +200,10 @@ do
   R.run(1)
   check(#G.craters == 0, "新一局：弹坑记录清空")
   check(nc >= 2 and (R.voxelsWritten or 0) > v0, string.format("新一局：挖过的 %d 处按原来的高度重写（写了 %d 个体素）", nc, (R.voxelsWritten or 0) - v0))
+  if B then
+    check(not B.down and B.m:IsDescendantOf(R.services.Workspace) and B.ruin == nil and B.m:GetAttribute("Burning") ~= true and B.hp == B.hp0,
+      "新一局：塌了的房子复原、废墟收掉、不再着火、满血")
+  end
 end
 
 T.summary()

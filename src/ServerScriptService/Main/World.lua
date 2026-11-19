@@ -682,6 +682,9 @@ local function building(f, key, x, z, rot, opt)
     light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
   end
   m:SetAttribute("Imported", n > 0)
+  -- 占地（Battle.lua 炸塌房子用：废墟按这个摆）
+  m:SetAttribute("BldBase", base)
+  m:SetAttribute("BldSize", V(w, h, d))
   m.Parent = f
   return base, m, w, h, d
 end
