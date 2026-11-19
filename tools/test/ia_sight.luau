@@ -108,16 +108,26 @@ for _, vid in ipairs(list) do
 			firedOnce = true
 			check(box ~= nil and box.Parent ~= nil and box.Parent.Name == "RadarTop", "开着镜：小地图整块在目镜黑框上面")
 			-- 用户：开火动画做的好一点——镜头后坐、镜里一阵炮口烟、炮管后坐，一两秒散掉
+			local rock = 0
+			local function rockStep(sec)   -- 小步走，一路记车体晃得最多的那一下（测试台一步比真机长，峰值来得早）
+				local n = math.max(1, math.floor(sec / 0.02 + 0.5))
+				for _ = 1, n do
+					H.run(0.02)
+					if v then rock = math.max(rock, math.abs(v.pitch or 0) + math.abs(v.roll or 0)) end
+				end
+			end
 			H.mouseDown(def, 640, 360, Enum.UserInputType.MouseButton1)
-			H.run(0.05)
+			rockStep(0.04)
+			local kick = st.kick or 0   -- 开炮后马上看镜头后坐
 			H.mouseUp(def, 640, 360, Enum.UserInputType.MouseButton1)
-			H.run(0.12)
+			rockStep(0.12)
 			local haze = def.PlayerGui:FindFirstChild("MuzzleHaze", true)
-			check((st.kick or 0) > 0.4, string.format("开炮：镜头后坐（%.2f）", st.kick or 0))
+			check(kick > 0.5, string.format("开炮：镜头后坐（%.2f）", kick))
 			check(haze ~= nil and haze.BackgroundTransparency < 0.8, string.format("开炮：镜里一阵炮口烟（透明度 %.2f）", haze and haze.BackgroundTransparency or 1))
 			check(v ~= nil and (v.recoil or 0) > 0.5, "开炮：炮管后坐")
-			check(v ~= nil and math.abs(v.pitchV or 0) + math.abs(v.rollV or 0) > 0.2, "开炮：车体被后坐力推得一晃")
-			H.run(2.5)
+			rockStep(0.4)
+			check(rock > 0.009, string.format("开炮：车体被后坐力推得一晃（最多 %.1f°）", math.deg(rock)))
+			H.run(2.1)
 			check(haze ~= nil and haze.BackgroundTransparency > 0.97, "炮口烟一两秒散掉")
 		end
 		-- 关镜

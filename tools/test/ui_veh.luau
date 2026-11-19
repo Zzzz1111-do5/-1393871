@@ -176,6 +176,7 @@ H.run(0.3)
 -- 坦克：守方营地出生，车场生成、坐上，往前开一会儿、炮塔转向侧面（看得出车体和炮塔的朝向不一样）
 act(def, "deploy", "rifle", "camp")
 H.run(2)
+snap("foot_body")   -- 步行第一人称：记录仪观感（用户：持枪参考 bodycam）
 local tankId = G.Config.Vehicles.def.tank[3]
 local tp = H.pad(G, tankId)
 local e = tp and H.usePad(G, def, tp)

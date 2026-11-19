@@ -22,6 +22,7 @@ function VehHud.init(G)
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
+  local layoutPanels   -- 面板摆放（下面定义）
   local VD = require(RS:WaitForChild("VehDefs"))
   local SD = require(RS:WaitForChild("ShipDefs"))
   local function T(k, ...) return G.T and G.T(k, ...) or k end
@@ -183,8 +184,7 @@ function VehHud.init(G)
   end
   local hud = frame(gui, UD2(1, 0, 1, 0), nil, INK, 1)
   hud.Name = "Panels"
-  local scale = Instance.new("UIScale")
-  scale.Parent = hud
+  -- 面板缩放：每块面板自己一个 UIScale（绕自己的锚点缩，贴着角落不动）——原来整层一起缩，小屏幕上面板往左上角跑到屏幕中间
   local ret = frame(gui, UD2(1, 0, 1, 0), nil, INK, 1)
   ret.Name = "Reticles"
 
@@ -403,7 +403,8 @@ function VehHud.init(G)
     TK.tur.Visible = d.turret ~= nil
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
-    TK.gear.Text = st.locked and "-" or (((st.speed or 0) > 0.4) and "D" or (back and "R" or "N"))
+    local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
+    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
     TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
     TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
@@ -572,6 +573,39 @@ function VehHud.init(G)
   end
   label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
 
+  -- 面板摆放：电脑在右下角（两块并排）；手机右边是一列按键、左下是方向键，放到下面正中间，缩小一点
+  local PAIRS = { { TK.car, TK.arm, 270 }, { SH.car, SH.arm, 296 } }
+  for _, pr in ipairs(PAIRS) do
+    for k = 1, 2 do
+      local u = Instance.new("UIScale")
+      u.Parent = pr[k]
+    end
+  end
+  local lastVp, lastMob = nil, nil
+  function layoutPanels()
+    local vp = cam.ViewportSize
+    local mob = G.mobile == true
+    if lastVp == vp and lastMob == mob then return end
+    lastVp, lastMob = vp, mob
+    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.55, 1.25)
+    if mob then s = math.min(s, 0.55) end
+    for _, pr in ipairs(PAIRS) do
+      local car, arm = pr[1], pr[2]
+      car:FindFirstChildOfClass("UIScale").Scale = s
+      arm:FindFirstChildOfClass("UIScale").Scale = s
+      local cw, aw, gap = pr[3] * s, 300 * s, 10 * s
+      car.AnchorPoint, arm.AnchorPoint = V2(1, 1), V2(1, 1)
+      if mob then
+        local total = cw + gap + aw
+        arm.Position = UD2(0.5, total / 2, 1, -6)
+        car.Position = UD2(0.5, total / 2 - aw - gap, 1, -6)
+      else
+        arm.Position = UD2(1, -24 * s, 1, -40 * s)
+        car.Position = UD2(1, -24 * s - aw - gap, 1, -40 * s)
+      end
+    end
+  end
+
   local function stepSight(st)
     local d = st.d
     local vs = G.S and G.S.veh
@@ -642,8 +676,7 @@ function VehHud.init(G)
       hp0 = nil
       return
     end
-    local vp = cam.ViewportSize
-    scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.58, 1.25)
+    layoutPanels()
     TK.car.Visible, TK.arm.Visible = mode == "tank", mode == "tank"
     SH.car.Visible, SH.arm.Visible = mode == "ship", mode == "ship"
     local ok, err = pcall(mode == "tank" and stepTank or stepShip, mode == "tank" and tank or ship)

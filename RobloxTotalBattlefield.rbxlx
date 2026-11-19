@@ -16604,7 +16604,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -18286,6 +18286,235 @@ return AM
         </Item>
         <Item class="ModuleScript" referent="66">
           <Properties>
+            <string name="Name">Bodycam</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪的「执法记录仪」观感（用户：第一人称持枪去参考 bodycam）
+--   只在步行第一人称（G.fpActive）、活着、没开狙击镜 / 望远镜时：
+--   ① 镜头跟着步子走：每一步往下一沉、左右一摆、一歪（跑起来更大），落地猛地一顿，站着时随呼吸轻轻起伏；开镜瞄准时收到两成，不耽误瞄准；
+--      镜头比眼睛低一点（像挂在胸前的记录仪）。只是看起来晃：每帧镜头模块算之前先把上一帧加的晃撤掉（不会越晃越偏）
+--   ② 画面：四角压暗的镜头暗角、一层细碎的噪点、高光溢出（Bloom）、偏冷一点的色调；甩镜头快的时候糊一下（像记录仪的运动模糊）
+--   ③ 右上角记录仪的字：● REC（一闪一闪）、机身型号和编号（虚构的）、日期时间
+--   ④ 准星：第一人称不画那四根线，只留中间一个很淡的小点（记录仪画面里没有准星；第三人称照旧）——Play.lua 看 G.bodycamOn
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local Bodycam = {}
+
+function Bodycam.init(G)
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local V, CF, RGB = Vector3.new, CFrame.new, Color3.fromRGB
+  local UD2, V2 = UDim2.new, Vector2.new
+  local mobile = G.mobile == true
+  G.bodycamOn = true
+
+  ---------------------------------------------------------------- 画面上的东西
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Bodycam"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = -2   -- 在主界面、狙击镜（-1）下面
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+  -- 暗角：四边往里的渐变
+  for _, e in ipairs({ { V2(0, 0), UD2(1, 0, 0.3, 0), 90 }, { V2(0, 1), UD2(1, 0, 0.3, 0), -90 }, { V2(0, 0), UD2(0.22, 0, 1, 0), 0 }, { V2(1, 0), UD2(0.22, 0, 1, 0), 180 } }) do
+    local f = Instance.new("Frame")
+    f.AnchorPoint = e[1]
+    f.Position = UDim2.fromScale(e[1].X, e[1].Y)
+    f.Size = e[2]
+    f.BorderSizePixel = 0
+    f.BackgroundColor3 = RGB(0, 0, 0)
+    f.BackgroundTransparency = 0.35
+    f.Parent = gui
+    local gr = Instance.new("UIGradient")
+    gr.Rotation = e[3]
+    gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.85), NumberSequenceKeypoint.new(1, 1) })
+    gr.Parent = f
+  end
+  -- 噪点
+  local grain = {}
+  for i = 1, (mobile and 24 or 70) do
+    local f = Instance.new("Frame")
+    f.BorderSizePixel = 0
+    f.BackgroundColor3 = RGB(255, 255, 255)
+    f.BackgroundTransparency = 0.82
+    f.Size = UDim2.fromOffset(2, 2)
+    f.Parent = gui
+    grain[i] = f
+  end
+  -- 右上角的字
+  local TS = mobile and 11 or 15
+  local function txt(y, col)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.AnchorPoint = V2(1, 0)
+    l.Position = UD2(1, -(mobile and 14 or 24), 0, y)
+    l.Size = UDim2.fromOffset(mobile and 220 or 320, TS + 4)
+    l.Font = Enum.Font.Code
+    l.TextSize = TS
+    l.TextColor3 = col or RGB(236, 238, 236)
+    l.TextTransparency = 0.12
+    l.TextStrokeTransparency = 0.45
+    l.TextStrokeColor3 = RGB(0, 0, 0)
+    l.TextXAlignment = Enum.TextXAlignment.Right
+    l.Parent = gui
+    return l
+  end
+  -- 右上角是小地图（Hud.lua）：字放在它下面
+  local L = G.hudLayout
+  local y0 = (L and L.radarRight) and (L.radarY + L.radarSize + 14 + 160 + 12) or 20   -- 小地图、击杀信息下面
+  local rec = txt(y0, RGB(255, 70, 60))
+  rec.Name = "Rec"
+  local model = txt(y0 + TS + 6)
+  local clock = txt(y0 + (TS + 6) * 2)
+  clock.Name = "BodycamClock"
+  local serial = string.format("SN IA-%06X", (me.UserId * 2654435761) % 0xFFFFFF)
+  model.Text = "ISLAND CAM X2   " .. serial
+  if mobile then rec.Visible, model.Visible, clock.Visible = false, false, false end   -- 手机：右上是开火、换枪那一列按钮，字不放
+  -- 准星位置上一个很淡的小点
+  local dot = Instance.new("Frame")
+  dot.Name = "BodycamDot"
+  dot.AnchorPoint = V2(0.5, 0.5)
+  dot.Position = UDim2.fromScale(0.5, 0.5)
+  dot.Size = UDim2.fromOffset(3, 3)
+  dot.BorderSizePixel = 0
+  dot.BackgroundColor3 = RGB(255, 255, 255)
+  dot.BackgroundTransparency = 0.45
+  dot.Parent = gui
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = dot
+  end
+
+  -- 画面效果
+  local cc = Instance.new("ColorCorrectionEffect")
+  cc.Name = "BodycamCC"
+  cc.Enabled = false
+  cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.16, 0.12, 0.01, RGB(232, 240, 255)
+  cc.Parent = Lighting
+  local bloom = Instance.new("BloomEffect")
+  bloom.Name = "BodycamBloom"
+  bloom.Enabled = false
+  bloom.Intensity, bloom.Size, bloom.Threshold = 0.7, 30, 1.25
+  bloom.Parent = Lighting
+  local blur = Instance.new("BlurEffect")
+  blur.Name = "BodycamBlur"
+  blur.Enabled = false
+  blur.Size = 0
+  blur.Parent = cam
+
+  -- 记录仪上的日期时间（本机时间；拿不到日期的环境退回按运行时间走的钟）
+  local function stamp()
+    local okD, str = pcall(function() return os.date("%Y-%m-%d  %H:%M:%S") end)
+    if okD and type(str) == "string" then return str end
+    local t = math.floor(os.clock())
+    return string.format("2026-11-19  %02d:%02d:%02d", math.floor(t / 3600) % 24, math.floor(t / 60) % 60, t % 60)
+  end
+
+  ---------------------------------------------------------------- 镜头的晃
+
+  local applied = nil      -- 这一帧加上去的晃（下一帧镜头模块算之前撤掉）
+  local phase, speedS, airT, land, lastY, lastVy = 0, 0, 0, 0, nil, 0
+  local lastLook, angS = nil, 0
+  local adsK = 0
+  G.bodycamState = { on = false }   -- 测试用
+
+  local function active()
+    if not G.bodycamOn or not G.fpActive or G.drive then return false end
+    local ch = me.Character
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    local sv = G.scopeVisible and G.scopeVisible()
+    if sv then return false end
+    if G.killcamOn and G.killcamOn() then return false end   -- 阵亡镜头（Warfx）在放
+    return true
+  end
+
+  -- 镜头模块（Camera 优先级）算之前：撤掉上一帧的晃
+  RunService:BindToRenderStep("BodycamUndo", Enum.RenderPriority.Camera.Value - 1, function()
+    if applied then
+      cam.CFrame = cam.CFrame * applied:Inverse()
+      applied = nil
+    end
+  end)
+
+  RunService:BindToRenderStep("Bodycam", Enum.RenderPriority.Camera.Value + 5, function(dt)
+    dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
+    local on = active()
+    gui.Enabled = on
+    cc.Enabled, bloom.Enabled = on, on
+    G.bodycamState.on = on
+    if not on then
+      blur.Enabled = false
+      lastLook, lastY = nil, nil
+      return
+    end
+    local ch = me.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    local t = os.clock()
+    -- 速度：按位置变化（测试台、网络延迟下也稳）
+    local vel = V()
+    local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)
+    if okv and typeof(v) == "Vector3" then vel = v end
+    local hs = V(vel.X, 0, vel.Z).Magnitude
+    speedS += (math.min(hs, 32) - speedS) * math.min(1, dt * 8)
+    local okf, fm = pcall(function() return hum.FloorMaterial end)
+    local grounded = not (okf and fm == Enum.Material.Air)
+    if not grounded then airT += dt else
+      if airT > 0.35 and lastVy < -18 then land = math.clamp(-lastVy / 60, 0.25, 1) end   -- 落地猛地一沉
+      airT = 0
+    end
+    lastVy = vel.Y
+    land = math.max(0, land - dt * 3.2)
+    local aiming = G.fpsAiming == true
+    adsK += ((aiming and 1 or 0) - adsK) * math.min(1, dt * 10)
+    local amp = (1 - 0.8 * adsK)
+    local run = math.clamp(speedS / 16, 0, 1.6) * (grounded and 1 or 0.2)
+    phase += dt * (5.6 + speedS * 0.32) * (run > 0.05 and 1 or 0)
+    local s1, s2 = math.sin(phase), math.sin(phase * 2)
+    local idle = 1 - math.clamp(run * 2, 0, 1)
+    -- 位置：胸前的记录仪（比眼睛低、靠前一点）+ 每步一沉一摆
+    local px = s1 * 0.07 * run
+    local py = -0.32 - math.abs(s1) * 0.1 * run - land * 0.45 + math.sin(t * 1.5) * 0.012 * idle
+    local pz = -0.18
+    -- 角度：低头点一下、左右歪（跑起来明显）、呼吸
+    local rx = (-math.abs(s2) * 0.012 * run - land * 0.05 + math.sin(t * 1.5) * 0.0025 * idle) * amp
+    local ry = s1 * 0.006 * run * amp
+    local rz = (s1 * 0.02 * run + math.sin(t * 0.9) * 0.002 * idle) * amp
+    local off = CF(px * amp, py * (0.35 + 0.65 * amp), pz) * CFrame.Angles(rx, ry, rz)
+    cam.CFrame = cam.CFrame * off
+    applied = off
+    -- 甩镜头快：糊一下
+    local look = cam.CFrame.LookVector
+    if lastLook then
+      local a = math.acos(math.clamp(look:Dot(lastLook), -1, 1)) / dt
+      angS += (a - angS) * math.min(1, dt * 14)
+    end
+    lastLook = look
+    local bs = math.clamp((angS - 2.2) * 1.4, 0, 6) * (1 - adsK)
+    blur.Enabled = bs > 0.3
+    blur.Size = bs
+    -- 噪点、REC 一闪一闪、时间
+    local vs = cam.ViewportSize
+    for _, g in ipairs(grain) do
+      g.Position = UDim2.fromOffset(math.random() * vs.X, math.random() * vs.Y)
+      g.BackgroundTransparency = 0.7 + math.random() * 0.25
+    end
+    rec.Text = ((t % 1) < 0.6 and "● " or "   ") .. "REC"
+    clock.Text = stamp()
+    dot.Visible = not aiming
+  end)
+end
+
+return Bodycam
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="67">
+          <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
 --   头顶张开一顶圆伞（用户：跳伞没有降落伞）——10 片伞衣两种颜色相间、顶上一圈顶孔、六根伞绳连到肩上；开伞 0.6 秒从小到大张开，空中轻轻摆，
@@ -18441,7 +18670,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -19016,7 +19245,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -19156,7 +19385,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -19541,7 +19770,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -19859,10 +20088,23 @@ function Drive.init(G)
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
     engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
   end
+  -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
+  --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
+  local GEARS = 5
   local function engineStep(dt, thr, spd)
     if not engine then return end
-    local want = math.clamp(0.22 + 0.5 * spd + 0.3 * math.abs(thr), 0, 1)   -- 转速：油门一踩先上去，车速跟着
-    engine.rpm += (want - engine.rpm) * math.min(1, dt * 3)
+    local back = st and (st.speed or 0) < -0.4
+    local g = 0
+    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+    if st then
+      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then engine.shiftT = os.clock() end   -- 升档
+      st.gearN = g
+    end
+    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
+    if shifting then want *= 0.75 end
+    engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
     engine.rumble.Volume = 0.3 + 0.35 * r
@@ -20459,7 +20701,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -20967,7 +21209,7 @@ function FPSView.init(G)
   function G.fpsOpticPending()
     return vm ~= nil and vm.optic ~= nil and ads < 0.88
   end
-  local lastCam, lastPos, bobPhase, speedS = nil, nil, 0, 0
+  local lastCam, lastPos, bobPhase, speedS, latS = nil, nil, 0, 0, 0
   local hiddenTool = nil
   local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
   local badTool = setmetatable({}, { __mode = "k" })     -- [工具] = 建视图模型出过错（不再重建）
@@ -21025,21 +21267,24 @@ function FPSView.init(G)
     local tx, ty = 0, 0
     if lastCam then   -- 镜头转得越快，枪落后得越多（往反方向偏一点、再弹回来）
       local d = lastCam:ToObjectSpace(cc)
-      tx = math.clamp(-d.LookVector.X / dt * 0.012, -0.1, 0.1)
-      ty = math.clamp(-d.LookVector.Y / dt * 0.012, -0.1, 0.1)
+      -- 记录仪观感（用户：持枪参考 bodycam）：枪更沉，转镜头时落后得更多
+      tx = math.clamp(-d.LookVector.X / dt * 0.017, -0.14, 0.14)
+      ty = math.clamp(-d.LookVector.Y / dt * 0.017, -0.14, 0.14)
     end
     lastCam = cc
     swayVX += ((tx - swayX) * 120 - swayVX * 16) * dt
     swayVY += ((ty - swayY) * 120 - swayVY * 16) * dt
-    swayX = math.clamp(swayX + swayVX * dt, -0.12, 0.12)
-    swayY = math.clamp(swayY + swayVY * dt, -0.12, 0.12)
+    swayX = math.clamp(swayX + swayVX * dt, -0.16, 0.16)
+    swayY = math.clamp(swayY + swayVY * dt, -0.16, 0.16)
     -- 走路晃（按人实际移动的速度）
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if hrp then
       local p = hrp.Position
       if lastPos then
-        local sp = V(p.X - lastPos.X, 0, p.Z - lastPos.Z).Magnitude / dt
+        local dv = V(p.X - lastPos.X, 0, p.Z - lastPos.Z) / dt
+        local sp = dv.Magnitude
         speedS = speedS + (math.min(sp, 30) - speedS) * math.min(1, dt * 8)
+        latS = latS + (math.clamp(cc.RightVector:Dot(dv) / 16, -1.2, 1.2) - latS) * math.min(1, dt * 6)   -- 横着走：枪往那边歪
       end
       lastPos = p
     end
@@ -21061,8 +21306,8 @@ function FPSView.init(G)
     -- 程序化：呼吸、走路、滞后、后坐；别的装备的拔出、换弹
     local breath = math.sin(t * 1.6) * 0.006 * (1 - ads * 0.7)
     local sw = 1 - ads * 0.6
-    local P = CF(math.sin(bobPhase) * 0.035 * walk + swayX * 0.3 * sw, breath - math.abs(math.cos(bobPhase)) * 0.03 * walk + swayY * 0.3 * sw, 0)
-      * CFrame.Angles(swayY * 0.5 * sw + math.cos(bobPhase * 2) * 0.006 * walk, -swayX * 0.8 * sw, math.sin(bobPhase) * 0.01 * walk)
+    local P = CF(math.sin(bobPhase) * 0.05 * walk + swayX * 0.3 * sw, breath - math.abs(math.cos(bobPhase)) * 0.045 * walk + swayY * 0.3 * sw, 0)
+      * CFrame.Angles(swayY * 0.5 * sw + math.cos(bobPhase * 2) * 0.009 * walk, -swayX * 0.8 * sw, math.sin(bobPhase) * 0.022 * walk - latS * 0.07 * sw)
     local pivot = CF(0.2, -0.35, -0.6)   -- 后坐绕着握把附近转
     local kick = CF(0, 0, recoil.X) * pivot * CFrame.Angles(recoil.Y * 0.8, recoil.Z * 0.5, 0) * pivot:Inverse()
     local extra = CF()
@@ -21137,7 +21382,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -21352,7 +21597,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -21555,6 +21800,64 @@ function Fly.init(G)
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
   landMark.TextColor3 = RGB(120, 200, 255)
+
+  ---------------------------------------------------------------- 平显的俯仰梯、速度矢量、过载 / 迎角 / 马赫（用户：飞机飞行参考 DCS）
+  -- 固定翼才有：俯仰梯每 5° 一档（正的实线、端头往下，负的虚线、端头往上；地平线一根长的），按真实的方向投到屏幕上（跟着天地转、跟着机头偏）；
+  --   速度矢量（航迹）一个带两翼一尾的小圈；左边 G 过载、α 迎角、M 马赫；过载太大眼前发灰（灰视）、负过载发红（红视）
+  local ladderPool = {}
+  local function ladderLine()
+    local holder = ui.frame(gui, UDim2.fromOffset(10, 10), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+    holder.Name = "PitchLadder"
+    holder.Visible = false
+    local segs = {}
+    for i = 1, 4 do   -- 左右各两段（负的画成虚线：每边两段中间留空；正的两段连成一段）
+      segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
+    end
+    local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 30, 10) end
+    return { f = holder, segs = segs, ticks = ticks, labs = labs }
+  end
+  for i = 1, 11 do ladderPool[i] = ladderLine() end
+  local fpm = ui.frame(gui, UDim2.fromOffset(16, 16), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+  fpm.Name = "FlightPathMarker"
+  fpm.Visible = false
+  do
+    ui.stroke(fpm, HUD, 1.6, 0.05)
+    ui.round(fpm, 8)
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(0, -14, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(1, 0, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(2, 8), UDim2.new(0.5, 0, 0, -8), HUD, 0.05, Vector2.new(0.5, 0))
+  end
+  local gText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 70), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local aText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 90), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local mText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 110), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  gText.Name, aText.Name, mText.Name = "GLoad", "AoA", "Mach"
+  -- 灰视 / 红视：四边往里压的渐变 + 整屏一层（过载撑久了越来越重，松杆一两秒缓过来）
+  local gGui = Instance.new("ScreenGui")
+  gGui.Name = "GEffect"
+  gGui.IgnoreGuiInset = true
+  gGui.ResetOnSpawn = false
+  gGui.DisplayOrder = 6   -- 盖在平显上面：灰视、红视连平显一起看不清（跟真的一样）
+  gGui.Parent = me:WaitForChild("PlayerGui")
+  local gVig = {}
+  for _, e in ipairs({ { Vector2.new(0, 0), UDim2.new(1, 0, 0.42, 0), 90 }, { Vector2.new(0, 1), UDim2.new(1, 0, 0.42, 0), -90 },
+    { Vector2.new(0, 0), UDim2.new(0.34, 0, 1, 0), 0 }, { Vector2.new(1, 0), UDim2.new(0.34, 0, 1, 0), 180 } }) do
+    local f = ui.frame(gGui, e[2], UDim2.fromScale(e[1].X, e[1].Y), RGB(0, 0, 0), 0, e[1])
+    local gr = Instance.new("UIGradient")
+    gr.Rotation = e[3]
+    gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+    gr.Parent = f
+    f.Visible = false
+    table.insert(gVig, f)
+  end
+  local gFill = ui.frame(gGui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  gFill.Name = "GFill"
+  local gCC = Instance.new("ColorCorrectionEffect")
+  gCC.Name = "GLocCC"
+  gCC.Enabled = false
+  gCC.Parent = game:GetService("Lighting")
+  local gStress = 0   -- 过载累积（正：灰视，负：红视）
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
   -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
@@ -21750,7 +22053,7 @@ function Fly.init(G)
   eoHl.Parent = cam
   local EO_MODES = { "tv", "whot", "bhot" }
 
-  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList }
+  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList, gText, aText, mText }
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -22455,6 +22758,7 @@ function Fly.init(G)
       end
       local n = L / GR
       st.gLoad = n
+      st.aoaDeg = math.deg(aoa)
       st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
       st.sink = 0
       local v0 = st.vel
@@ -22735,6 +23039,118 @@ function Fly.init(G)
     if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
+  -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
+  local function dcsHud(pos, kmh)
+    local d = st.d
+    local on = d.kind == "jet" and st.pilot and not st.eo and not st.crashed
+    fpm.Visible, gText.Visible, aText.Visible, mText.Visible = false, on, on, on
+    if not on then
+      for _, L in ipairs(ladderPool) do L.f.Visible = false end
+      return
+    end
+    local camP = cam.CFrame.Position
+    local v = (st.vel.Magnitude > 5) and st.vel.Unit or st.cf.LookVector
+    local hz = Vector3.new(v.X, 0, v.Z)
+    hz = (hz.Magnitude > 1e-3) and hz.Unit or Vector3.new(0, 0, -1)
+    local side = Vector3.new(-hz.Z, 0, hz.X)
+    if not st.ground then
+      local fp, fon = project(camP + v * 1000)
+      fpm.Position, fpm.Visible = fp, fon
+    end
+    -- 俯仰梯：镜头看着的俯仰角上下各 25° 里每 5° 一根
+    local lv = cam.CFrame.LookVector
+    local camPitch = math.deg(math.asin(clamp(lv.Y, -1, 1)))
+    local k0 = math.ceil((camPitch - 25) / 5)
+    local used = 0
+    local vh = cam.ViewportSize.Y
+    for k = k0, k0 + 10 do
+      local pa = k * 5
+      if pa >= -90 and pa <= 90 then
+        local r = rad(pa)
+        local dirC = hz * math.cos(r) + Vector3.new(0, math.sin(r), 0)
+        local c = camP + dirC * 1000
+        local w = (pa == 0) and 260 or 130   -- 半宽（世界里一千格外的长度：地平线长一倍）
+        local pl, onL = project(c - side * w)
+        local pr, onR = project(c + side * w)
+        if onL and onR then
+          used += 1
+          local L = ladderPool[used]
+          if not L then break end
+          local ax, ay = pl.X.Offset + pl.X.Scale * cam.ViewportSize.X, pl.Y.Offset + pl.Y.Scale * vh
+          local bx, by = pr.X.Offset + pr.X.Scale * cam.ViewportSize.X, pr.Y.Offset + pr.Y.Scale * vh
+          local cx, cy = (ax + bx) / 2, (ay + by) / 2
+          local len = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+          L.f.Position = UDim2.fromOffset(cx, cy)
+          L.f.Size = UDim2.fromOffset(len, 2)
+          L.f.Rotation = math.deg(math.atan2(by - ay, bx - ax))
+          L.f.Visible = true
+          local gap = math.min(70, len * 0.22)   -- 中间留空给速度矢量
+          local half = len / 2 - gap
+          local neg = pa < 0
+          for i, sgm in ipairs(L.segs) do
+            local left = i <= 2
+            local inner = (i % 2 == 0)
+            local x0 = left and 0 or (len / 2 + gap)
+            if neg then   -- 虚线：每边两段
+              local sl = half * 0.42
+              local xs = x0 + (inner == left and (half - sl) or 0)
+              if not left then xs = x0 + (inner and 0 or (half - sl)) end
+              sgm.Size = UDim2.fromOffset(sl, 2)
+              sgm.Position = UDim2.fromOffset(xs + sl / 2, 1)
+              sgm.Visible = true
+            else
+              sgm.Size = UDim2.fromOffset(half, 2)
+              sgm.Position = UDim2.fromOffset(x0 + half / 2, 1)
+              sgm.Visible = (i == 1 or i == 3)
+            end
+          end
+          -- 端头的小竖线：正的往下（指地平线），负的往上
+          for i, tk in ipairs(L.ticks) do
+            tk.Visible = pa ~= 0
+            tk.Position = UDim2.fromOffset((i == 1) and 1 or (len - 1), neg and -8 or 1)
+          end
+          for i, lb in ipairs(L.labs) do
+            lb.Text = (pa ~= 0) and tostring(math.abs(pa)) or ""
+            lb.Position = UDim2.fromOffset((i == 1) and -18 or (len + 18), neg and -6 or 6)
+            lb.Rotation = 0
+          end
+        end
+      end
+    end
+    for i = used + 1, #ladderPool do ladderPool[i].f.Visible = false end
+    -- G、α、M
+    local gl = st.gLoad or 1
+    gText.Text = string.format("G %.1f", gl)
+    gText.TextColor3 = (gl > 7.5 or gl < -2.5) and RGB(255, 90, 80) or HUD
+    aText.Text = string.format("α %.1f", st.aoaDeg or 0)
+    mText.Text = string.format("M %.2f", st.vel.Magnitude / AD.M / 340)
+  end
+  -- 灰视 / 红视：正过载超过 6.5g 慢慢变暗、发灰（撑得越久越重，到 9g 几乎全黑），负过载超过 −2.5g 发红；松了一两秒恢复
+  local function gEffect(dt)
+    local gl = (st and st.d and st.d.kind == "jet" and st.pilot and not st.ground and not st.crashed) and (st.gLoad or 1) or 1
+    local want = 0
+    if gl > 6.5 then want = (gl - 6.5) / 2.5 elseif gl < -2.5 then want = (gl + 2.5) / 1.5 end
+    want = clamp(want, -1, 1)
+    local rate = (math.abs(want) > math.abs(gStress)) and 0.55 or 1.4   -- 压上去慢、缓过来快
+    gStress += (want - gStress) * math.min(1, dt * rate)
+    local k = math.abs(gStress)
+    local red = gStress < 0
+    local on = k > 0.02
+    for _, f in ipairs(gVig) do
+      f.Visible = on
+      if on then
+        f.BackgroundColor3 = red and RGB(120, 0, 0) or RGB(0, 0, 0)
+        f.BackgroundTransparency = 1 - math.min(1, k * 1.3)
+      end
+    end
+    gFill.BackgroundColor3 = red and RGB(110, 0, 0) or RGB(0, 0, 0)
+    gFill.BackgroundTransparency = 1 - clamp((k - 0.5) * 1.6, 0, 0.92)
+    gCC.Enabled = on
+    if on then gCC.Saturation, gCC.Brightness = -k * 0.9, red and 0 or -k * 0.12 end
+    G.gStress = gStress   -- 测试用
+  end
+  G.flyGEffect = gEffect
+
   local tgpStep
   local REL = { bomb = "CCRP", agm = "PRE", rkt = "RKT", aam = "SRM", gun = "GUN" }
   local function fmtT(t)
@@ -22817,6 +23233,7 @@ function Fly.init(G)
   end
 
   function G.stepFly(dt)
+    G.try_(gEffect, dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
     if vs and not vs.air then vs = nil end
@@ -23084,6 +23501,7 @@ function Fly.init(G)
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo
+      G.try_(dcsHud, pos, kmh)
       -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
       G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
       local hk = math.min(1, st.hitKick or 0)
@@ -23204,7 +23622,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -23522,7 +23940,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -23538,6 +23956,7 @@ local Fx = {}
 function Fx.init(G)
   local Config = G.Config
   local V = Vector3.new
+  local CF = CFrame.new
   local RGB = Color3.fromRGB
   local cam = workspace.CurrentCamera
   local BALL, CYL = Enum.PartType.Ball, Enum.PartType.Cylinder
@@ -24821,7 +25240,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -24953,7 +25372,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -25492,7 +25911,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -25955,7 +26374,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -26095,7 +26514,7 @@ function Hud.init(G)
   local RC = Config.Radar or { range = 520, ping = 3 }
   local GREEN, GDIM = RGB(90, 255, 140), RGB(40, 150, 80)
   local FRIEND, FOE = RGB(110, 255, 150), RGB(255, 72, 58)
-  local MS = mobile and 140 or 216
+  local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
@@ -26693,7 +27112,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -26960,7 +27379,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -27216,7 +27635,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -27524,7 +27943,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -27846,7 +28265,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -28063,7 +28482,142 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="86">
+          <Properties>
+            <string name="Name">Nade</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
+--   拿着手雷（武器 kind = "throw"）按住右键瞄：照服务器扔雷的算法（Weapons.lua KIND.throw：头顶上方出手、45° 抛向准星、最远 range，
+--   弹道重力 = Gravity × 0.55，碰到东西弹一下、速度剩 35%）一步步算出去，画一串由白到橙的小点；第一次落地的地方一个小圈；
+--   引信到点（fuse 秒）时手雷在哪就在哪画一个红圈（爆炸半径 splash），上面写着秒数。松开右键、换武器、上车就收起来
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Nade = {}
+
+function Nade.init(G)
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local V, CF, RGB = Vector3.new, CFrame.new, Color3.fromRGB
+  local W = G.Config.Weapons
+  local N_DOT = 34
+
+  local folder = Instance.new("Folder")
+  folder.Name = "NadeArc"
+  folder.Parent = workspace
+  local function mk(shape, size, color, tr)
+    local p = Instance.new("Part")
+    p.Shape = shape
+    p.Size = size
+    p.Color = color
+    p.Material = Enum.Material.Neon
+    p.Transparency = tr
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = folder
+    return p
+  end
+  local dots = {}
+  for i = 1, N_DOT do
+    local k = (i - 1) / (N_DOT - 1)
+    dots[i] = mk(Enum.PartType.Ball, V(0.32, 0.32, 0.32), RGB(255, 255, 255):Lerp(RGB(255, 150, 60), k), 1)
+  end
+  local bounceRing = mk(Enum.PartType.Cylinder, V(0.15, 3, 3), RGB(255, 236, 200), 1)
+  local boomRing = mk(Enum.PartType.Cylinder, V(0.15, 28, 28), RGB(255, 70, 50), 1)
+  local boomCore = mk(Enum.PartType.Cylinder, V(0.16, 2.4, 2.4), RGB(255, 90, 60), 1)
+  local bb = Instance.new("BillboardGui")
+  bb.Size = UDim2.fromOffset(80, 22)
+  bb.StudsOffsetWorldSpace = V(0, 3, 0)
+  bb.AlwaysOnTop = true
+  bb.Enabled = false
+  bb.Adornee = boomCore
+  bb.Parent = boomCore
+  local fuseL = Instance.new("TextLabel")
+  fuseL.Size = UDim2.fromScale(1, 1)
+  fuseL.BackgroundTransparency = 1
+  fuseL.Font = Enum.Font.GothamBold
+  fuseL.TextSize = 15
+  fuseL.TextColor3 = RGB(255, 120, 90)
+  fuseL.TextStrokeTransparency = 0.4
+  fuseL.Parent = bb
+
+  local function hide()
+    for _, d in ipairs(dots) do d.Transparency = 1 end
+    bounceRing.Transparency, boomRing.Transparency, boomCore.Transparency = 1, 1, 1
+    bb.Enabled = false
+  end
+
+  local rp = RaycastParams.new()
+  rp.FilterType = Enum.RaycastFilterType.Exclude
+  G.nadeArc = { on = false }   -- 测试用：on、bounce（第一次落地点）、boom（引信到点的位置）
+
+  RunService.RenderStepped:Connect(function()
+    local id, aiming = nil, false
+    if G.curWeapon then id, aiming = G.curWeapon() end
+    local w = id and W[id]
+    local ch = me.Character
+    local head = ch and ch:FindFirstChild("Head")
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    local on = w ~= nil and w.kind == "throw" and aiming == true and head ~= nil and hum ~= nil and hum.Health > 0 and not G.drive
+    G.nadeArc.on = on
+    if not on then hide() return end
+    -- 出手：跟服务器一样
+    local aim = G.aimPoint and G.aimPoint(w.range or 90) or (cam.CFrame.Position + cam.CFrame.LookVector * 40)
+    local m = head.Position + V(0, 0.5, 0)
+    local flat = V(aim.X - m.X, 0, aim.Z - m.Z)
+    local d = math.min(flat.Magnitude, w.range or 90)
+    local dir = (flat.Magnitude > 0.1) and flat.Unit or V(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z).Unit
+    local sp = math.clamp(math.sqrt(math.max(1, d) * workspace.Gravity * 0.55), 20, w.speed or 70)
+    local vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0)
+    local grav = V(0, -workspace.Gravity * 0.55, 0)
+    rp.FilterDescendantsInstances = { ch, folder, G.fxFolder, G.viewFolder }
+    local p = m
+    local fuse = w.fuse or 2.8
+    local dt = 1 / 30
+    local steps = math.floor(fuse / dt + 0.5)
+    local bounce, path = nil, {}
+    for i = 1, steps do
+      vel += grav * dt
+      local step = vel * dt
+      local res = workspace:Raycast(p, step, rp)
+      if res then   -- 弹一下（照服务器）
+        if not bounce then bounce = res.Position end
+        p = res.Position + res.Normal * 0.6
+        vel = (vel - 1.6 * vel:Dot(res.Normal) * res.Normal) * 0.35
+      else
+        p += step
+      end
+      path[i] = p
+    end
+    -- 小点：沿着路径均匀取
+    for i, dpart in ipairs(dots) do
+      local k = math.clamp(math.floor((i - 1) / (N_DOT - 1) * (#path - 1)) + 1, 1, #path)
+      dpart.CFrame = CF(path[k])
+      dpart.Transparency = 0.15 + 0.5 * (i / N_DOT)
+    end
+    local up = CFrame.Angles(0, 0, math.pi / 2)   -- 圆柱的轴转到竖直：平放在地上的圆片
+    if bounce then
+      bounceRing.CFrame = CF(bounce + V(0, 0.08, 0)) * up
+      bounceRing.Transparency = 0.35
+    else
+      bounceRing.Transparency = 1
+    end
+    local last = path[#path] or m
+    local r = (w.splash or 14) * 2
+    boomRing.Size = V(0.15, r, r)
+    boomRing.CFrame = CF(last + V(0, 0.1, 0)) * up
+    boomRing.Transparency = 0.72
+    boomCore.CFrame = CF(last + V(0, 0.12, 0)) * up
+    boomCore.Transparency = 0.25
+    fuseL.Text = string.format("%.1f s", fuse)
+    bb.Enabled = true
+    G.nadeArc.bounce, G.nadeArc.boom = bounce, last
+  end)
+end
+
+return Nade
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -28303,7 +28857,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -28481,7 +29035,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -28701,7 +29255,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -28961,6 +29515,7 @@ function Play.init(G)
     return ray.Origin + ray.Direction * len, nil
   end
   G.aimPoint = aimPoint
+  G.curWeapon = function() return cur.id, cur.aiming end   -- 手雷抛物线预览（Nade.lua）：拿着什么、按没按右键
 
   -- 防空导弹锁定：准星 12° 以内、射程内最近的敌方飞机直升机
   local function lockCandidate(w)
@@ -29204,7 +29759,7 @@ function Play.init(G)
     local menu = G.menuOpen and G.menuOpen()
     if menu then cur.firing, cur.aiming = false, false end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
-    baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
+    baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
@@ -29221,7 +29776,9 @@ function Play.init(G)
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
     local wc = cur.id and W[cur.id]
-    cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
+    G.fpsAiming = armed == true and cur.aiming == true   -- 记录仪观感（Bodycam.lua）：开镜时镜头不晃
+    -- 开着镜不画准星（第三人称也是）；第一人称是记录仪的画面（Bodycam.lua）：不画四根线，只有一个淡淡的小点
+    cross.Visible = armed == true and not (fp and cur.aiming) and not (fp and G.bodycamOn) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))
     if cross.Visible and wc and hrp then
       -- 张开多少：这一发的散布在屏幕上有多宽（跑起来、跳起来、连射攒的都算），开枪那一下再弹开一点
       local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)   -- 读不到（测试台）就当站着不动
@@ -29247,6 +29804,7 @@ function Play.init(G)
       if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    G.scopeVisible = G.scopeVisible or function() return scope.Visible end
     if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
     cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
     -- 连发
@@ -29280,7 +29838,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -29820,7 +30378,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -30279,7 +30837,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -31067,7 +31625,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -31669,7 +32227,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -32419,7 +32977,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -32874,7 +33432,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -34104,7 +34662,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -34217,7 +34775,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -35246,7 +35804,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -35273,6 +35831,7 @@ function VehHud.init(G)
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
+  local layoutPanels   -- 面板摆放（下面定义）
   local VD = require(RS:WaitForChild("VehDefs"))
   local SD = require(RS:WaitForChild("ShipDefs"))
   local function T(k, ...) return G.T and G.T(k, ...) or k end
@@ -35434,8 +35993,7 @@ function VehHud.init(G)
   end
   local hud = frame(gui, UD2(1, 0, 1, 0), nil, INK, 1)
   hud.Name = "Panels"
-  local scale = Instance.new("UIScale")
-  scale.Parent = hud
+  -- 面板缩放：每块面板自己一个 UIScale（绕自己的锚点缩，贴着角落不动）——原来整层一起缩，小屏幕上面板往左上角跑到屏幕中间
   local ret = frame(gui, UD2(1, 0, 1, 0), nil, INK, 1)
   ret.Name = "Reticles"
 
@@ -35654,7 +36212,8 @@ function VehHud.init(G)
     TK.tur.Visible = d.turret ~= nil
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
-    TK.gear.Text = st.locked and "-" or (((st.speed or 0) > 0.4) and "D" or (back and "R" or "N"))
+    local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
+    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
     TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
     TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
@@ -35823,6 +36382,39 @@ function VehHud.init(G)
   end
   label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
 
+  -- 面板摆放：电脑在右下角（两块并排）；手机右边是一列按键、左下是方向键，放到下面正中间，缩小一点
+  local PAIRS = { { TK.car, TK.arm, 270 }, { SH.car, SH.arm, 296 } }
+  for _, pr in ipairs(PAIRS) do
+    for k = 1, 2 do
+      local u = Instance.new("UIScale")
+      u.Parent = pr[k]
+    end
+  end
+  local lastVp, lastMob = nil, nil
+  function layoutPanels()
+    local vp = cam.ViewportSize
+    local mob = G.mobile == true
+    if lastVp == vp and lastMob == mob then return end
+    lastVp, lastMob = vp, mob
+    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.55, 1.25)
+    if mob then s = math.min(s, 0.55) end
+    for _, pr in ipairs(PAIRS) do
+      local car, arm = pr[1], pr[2]
+      car:FindFirstChildOfClass("UIScale").Scale = s
+      arm:FindFirstChildOfClass("UIScale").Scale = s
+      local cw, aw, gap = pr[3] * s, 300 * s, 10 * s
+      car.AnchorPoint, arm.AnchorPoint = V2(1, 1), V2(1, 1)
+      if mob then
+        local total = cw + gap + aw
+        arm.Position = UD2(0.5, total / 2, 1, -6)
+        car.Position = UD2(0.5, total / 2 - aw - gap, 1, -6)
+      else
+        arm.Position = UD2(1, -24 * s, 1, -40 * s)
+        car.Position = UD2(1, -24 * s - aw - gap, 1, -40 * s)
+      end
+    end
+  end
+
   local function stepSight(st)
     local d = st.d
     local vs = G.S and G.S.veh
@@ -35893,8 +36485,7 @@ function VehHud.init(G)
       hp0 = nil
       return
     end
-    local vp = cam.ViewportSize
-    scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.58, 1.25)
+    layoutPanels()
     TK.car.Visible, TK.arm.Visible = mode == "tank", mode == "tank"
     SH.car.Visible, SH.arm.Visible = mode == "ship", mode == "ship"
     local ok, err = pcall(mode == "tank" and stepTank or stepShip, mode == "tank" and tank or ship)
@@ -35906,7 +36497,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -36429,7 +37020,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -36658,6 +37249,7 @@ function View.init(G)
   -- 被毁的那一下，座圈里先喷一柱火，炮塔带着炮转着往上飞一两层楼高，落地砸起土、迸火星，弹一两下歪着停住；车体接着烧、殉爆的小炸响几声。
   -- 随机数按车的编号定：每个人看到的是同一个样子
   local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
+  local trackMark   -- 履带印（下面定义）
   local function tossFx(p, big)
     if not G.fxPart then return end
     local part = G.fxPart
@@ -36766,9 +37358,8 @@ function View.init(G)
     local seed = tonumber(v.id) or 0
     if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
     local rng = Random.new(seed * 7919 + 17)
-    local side = rng:NextUnitVector()
-    local hv = V(side.X, 0, side.Z)
-    hv = (hv.Magnitude > 0.05 and hv.Unit or V(1, 0, 0)) * (5 + rng:NextNumber() * 10)
+    local ang = rng:NextNumber() * 2 * math.pi
+    local hv = V(math.cos(ang), 0, math.sin(ang)) * (5 + rng:NextNumber() * 10)
     v.toss = {
       cf = tF, vel = V(hv.X, 36 + rng:NextNumber() * 18, hv.Z),
       w = V((rng:NextNumber() - 0.5) * 5, (rng:NextNumber() - 0.5) * 7, (rng:NextNumber() - 0.5) * 5),   -- 角速度（弧度/秒，世界坐标）
@@ -36806,6 +37397,33 @@ function View.init(G)
     T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
   end
   G.stepToss = stepToss
+
+  -- 履带印：薄薄一片深色的方块贴在地上，淡出后回收（对象池，最多 MAX_MARK 段）
+  local MAX_MARK = 360
+  local marks, markI = {}, 0
+  local markFolder = Instance.new("Folder")
+  markFolder.Name = "TrackMarks"
+  markFolder.Parent = workspace
+  local TweenService = game:GetService("TweenService")
+  local markInfo = TweenInfo.new(14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+  function trackMark(cf, w, len)
+    markI = markI % MAX_MARK + 1
+    local m = marks[markI]
+    if not m then
+      m = Instance.new("Part")
+      m.Anchored, m.CanCollide, m.CanQuery, m.CanTouch, m.CastShadow = true, false, false, false, false
+      m.Material = Enum.Material.Ground
+      m.Color = Color3.fromRGB(46, 40, 32)
+      m.Parent = markFolder
+      marks[markI] = m
+    end
+    if m:GetAttribute("Tw") then m:SetAttribute("Tw", nil) end
+    m.Size = V(w, 0.1, len)
+    m.CFrame = cf
+    m.Transparency = 0.35
+    TweenService:Create(m, markInfo, { Transparency = 1 }):Play()
+  end
+  G.trackMarkCount = function() return #marks end   -- 测试用
 
   ---------------------------------------------------------------- 载具：悬架
 
@@ -36890,7 +37508,8 @@ function View.init(G)
     local trk = math.max(3, d.W * 0.8)
     -- 车体：跟着轮子上下、俯仰、侧倾（弹簧）；起步抬头、刹车点头
     local tBob = sum / n * 0.55
-    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0016, -0.035, 0.035)
+    -- 起步抬头、刹车点头（战雷那样明显一点）
+    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
     v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
     v.bob += v.bobV * dt
@@ -36956,6 +37575,28 @@ function View.init(G)
     end
     local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
+    -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
+    --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
+    if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
+      local lp = v.markPos
+      if not lp then v.markPos = pos
+      elseif (pos - lp).Magnitude >= 3.6 then
+        local mid = (pos + lp) / 2
+        local dir = pos - lp
+        local L = dir.Magnitude
+        local trackX = (d.rw and d.rw.x) or d.W * 0.36
+        local tw = math.max(1.2, d.W * 0.16)
+        for sgn = -1, 1, 2 do
+          local o = base.RightVector * (sgn * trackX)
+          local p = mid + o
+          local gy = Map.height(p.X, p.Z)
+          trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
+        end
+        v.markPos = pos
+      end
+    else
+      v.markPos = nil
+    end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
@@ -37224,7 +37865,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -38010,13 +38651,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="102">
+  <Item class="Workspace" referent="104">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="103">
+  <Item class="Lighting" referent="105">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

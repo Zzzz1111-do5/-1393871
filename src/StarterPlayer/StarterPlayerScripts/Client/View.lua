@@ -224,6 +224,7 @@ function View.init(G)
   -- 被毁的那一下，座圈里先喷一柱火，炮塔带着炮转着往上飞一两层楼高，落地砸起土、迸火星，弹一两下歪着停住；车体接着烧、殉爆的小炸响几声。
   -- 随机数按车的编号定：每个人看到的是同一个样子
   local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
+  local trackMark   -- 履带印（下面定义）
   local function tossFx(p, big)
     if not G.fxPart then return end
     local part = G.fxPart
@@ -332,9 +333,8 @@ function View.init(G)
     local seed = tonumber(v.id) or 0
     if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
     local rng = Random.new(seed * 7919 + 17)
-    local side = rng:NextUnitVector()
-    local hv = V(side.X, 0, side.Z)
-    hv = (hv.Magnitude > 0.05 and hv.Unit or V(1, 0, 0)) * (5 + rng:NextNumber() * 10)
+    local ang = rng:NextNumber() * 2 * math.pi
+    local hv = V(math.cos(ang), 0, math.sin(ang)) * (5 + rng:NextNumber() * 10)
     v.toss = {
       cf = tF, vel = V(hv.X, 36 + rng:NextNumber() * 18, hv.Z),
       w = V((rng:NextNumber() - 0.5) * 5, (rng:NextNumber() - 0.5) * 7, (rng:NextNumber() - 0.5) * 5),   -- 角速度（弧度/秒，世界坐标）
@@ -372,6 +372,33 @@ function View.init(G)
     T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
   end
   G.stepToss = stepToss
+
+  -- 履带印：薄薄一片深色的方块贴在地上，淡出后回收（对象池，最多 MAX_MARK 段）
+  local MAX_MARK = 360
+  local marks, markI = {}, 0
+  local markFolder = Instance.new("Folder")
+  markFolder.Name = "TrackMarks"
+  markFolder.Parent = workspace
+  local TweenService = game:GetService("TweenService")
+  local markInfo = TweenInfo.new(14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+  function trackMark(cf, w, len)
+    markI = markI % MAX_MARK + 1
+    local m = marks[markI]
+    if not m then
+      m = Instance.new("Part")
+      m.Anchored, m.CanCollide, m.CanQuery, m.CanTouch, m.CastShadow = true, false, false, false, false
+      m.Material = Enum.Material.Ground
+      m.Color = Color3.fromRGB(46, 40, 32)
+      m.Parent = markFolder
+      marks[markI] = m
+    end
+    if m:GetAttribute("Tw") then m:SetAttribute("Tw", nil) end
+    m.Size = V(w, 0.1, len)
+    m.CFrame = cf
+    m.Transparency = 0.35
+    TweenService:Create(m, markInfo, { Transparency = 1 }):Play()
+  end
+  G.trackMarkCount = function() return #marks end   -- 测试用
 
   ---------------------------------------------------------------- 载具：悬架
 
@@ -456,7 +483,8 @@ function View.init(G)
     local trk = math.max(3, d.W * 0.8)
     -- 车体：跟着轮子上下、俯仰、侧倾（弹簧）；起步抬头、刹车点头
     local tBob = sum / n * 0.55
-    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0016, -0.035, 0.035)
+    -- 起步抬头、刹车点头（战雷那样明显一点）
+    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
     v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
     v.bob += v.bobV * dt
@@ -522,6 +550,28 @@ function View.init(G)
     end
     local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
+    -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
+    --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
+    if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
+      local lp = v.markPos
+      if not lp then v.markPos = pos
+      elseif (pos - lp).Magnitude >= 3.6 then
+        local mid = (pos + lp) / 2
+        local dir = pos - lp
+        local L = dir.Magnitude
+        local trackX = (d.rw and d.rw.x) or d.W * 0.36
+        local tw = math.max(1.2, d.W * 0.16)
+        for sgn = -1, 1, 2 do
+          local o = base.RightVector * (sgn * trackX)
+          local p = mid + o
+          local gy = Map.height(p.X, p.Z)
+          trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
+        end
+        v.markPos = pos
+      end
+    else
+      v.markPos = nil
+    end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true

@@ -11,6 +11,7 @@ local Fx = {}
 function Fx.init(G)
   local Config = G.Config
   local V = Vector3.new
+  local CF = CFrame.new
   local RGB = Color3.fromRGB
   local cam = workspace.CurrentCamera
   local BALL, CYL = Enum.PartType.Ball, Enum.PartType.Cylinder

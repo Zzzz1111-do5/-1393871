@@ -198,6 +198,64 @@ function Fly.init(G)
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
   landMark.TextColor3 = RGB(120, 200, 255)
+
+  ---------------------------------------------------------------- 平显的俯仰梯、速度矢量、过载 / 迎角 / 马赫（用户：飞机飞行参考 DCS）
+  -- 固定翼才有：俯仰梯每 5° 一档（正的实线、端头往下，负的虚线、端头往上；地平线一根长的），按真实的方向投到屏幕上（跟着天地转、跟着机头偏）；
+  --   速度矢量（航迹）一个带两翼一尾的小圈；左边 G 过载、α 迎角、M 马赫；过载太大眼前发灰（灰视）、负过载发红（红视）
+  local ladderPool = {}
+  local function ladderLine()
+    local holder = ui.frame(gui, UDim2.fromOffset(10, 10), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+    holder.Name = "PitchLadder"
+    holder.Visible = false
+    local segs = {}
+    for i = 1, 4 do   -- 左右各两段（负的画成虚线：每边两段中间留空；正的两段连成一段）
+      segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
+    end
+    local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 30, 10) end
+    return { f = holder, segs = segs, ticks = ticks, labs = labs }
+  end
+  for i = 1, 11 do ladderPool[i] = ladderLine() end
+  local fpm = ui.frame(gui, UDim2.fromOffset(16, 16), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+  fpm.Name = "FlightPathMarker"
+  fpm.Visible = false
+  do
+    ui.stroke(fpm, HUD, 1.6, 0.05)
+    ui.round(fpm, 8)
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(0, -14, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(1, 0, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(2, 8), UDim2.new(0.5, 0, 0, -8), HUD, 0.05, Vector2.new(0.5, 0))
+  end
+  local gText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 70), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local aText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 90), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local mText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 110), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  gText.Name, aText.Name, mText.Name = "GLoad", "AoA", "Mach"
+  -- 灰视 / 红视：四边往里压的渐变 + 整屏一层（过载撑久了越来越重，松杆一两秒缓过来）
+  local gGui = Instance.new("ScreenGui")
+  gGui.Name = "GEffect"
+  gGui.IgnoreGuiInset = true
+  gGui.ResetOnSpawn = false
+  gGui.DisplayOrder = 6   -- 盖在平显上面：灰视、红视连平显一起看不清（跟真的一样）
+  gGui.Parent = me:WaitForChild("PlayerGui")
+  local gVig = {}
+  for _, e in ipairs({ { Vector2.new(0, 0), UDim2.new(1, 0, 0.42, 0), 90 }, { Vector2.new(0, 1), UDim2.new(1, 0, 0.42, 0), -90 },
+    { Vector2.new(0, 0), UDim2.new(0.34, 0, 1, 0), 0 }, { Vector2.new(1, 0), UDim2.new(0.34, 0, 1, 0), 180 } }) do
+    local f = ui.frame(gGui, e[2], UDim2.fromScale(e[1].X, e[1].Y), RGB(0, 0, 0), 0, e[1])
+    local gr = Instance.new("UIGradient")
+    gr.Rotation = e[3]
+    gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+    gr.Parent = f
+    f.Visible = false
+    table.insert(gVig, f)
+  end
+  local gFill = ui.frame(gGui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  gFill.Name = "GFill"
+  local gCC = Instance.new("ColorCorrectionEffect")
+  gCC.Name = "GLocCC"
+  gCC.Enabled = false
+  gCC.Parent = game:GetService("Lighting")
+  local gStress = 0   -- 过载累积（正：灰视，负：红视）
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
   -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
@@ -393,7 +451,7 @@ function Fly.init(G)
   eoHl.Parent = cam
   local EO_MODES = { "tv", "whot", "bhot" }
 
-  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList }
+  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList, gText, aText, mText }
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -1098,6 +1156,7 @@ function Fly.init(G)
       end
       local n = L / GR
       st.gLoad = n
+      st.aoaDeg = math.deg(aoa)
       st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
       st.sink = 0
       local v0 = st.vel
@@ -1378,6 +1437,118 @@ function Fly.init(G)
     if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
+  -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
+  local function dcsHud(pos, kmh)
+    local d = st.d
+    local on = d.kind == "jet" and st.pilot and not st.eo and not st.crashed
+    fpm.Visible, gText.Visible, aText.Visible, mText.Visible = false, on, on, on
+    if not on then
+      for _, L in ipairs(ladderPool) do L.f.Visible = false end
+      return
+    end
+    local camP = cam.CFrame.Position
+    local v = (st.vel.Magnitude > 5) and st.vel.Unit or st.cf.LookVector
+    local hz = Vector3.new(v.X, 0, v.Z)
+    hz = (hz.Magnitude > 1e-3) and hz.Unit or Vector3.new(0, 0, -1)
+    local side = Vector3.new(-hz.Z, 0, hz.X)
+    if not st.ground then
+      local fp, fon = project(camP + v * 1000)
+      fpm.Position, fpm.Visible = fp, fon
+    end
+    -- 俯仰梯：镜头看着的俯仰角上下各 25° 里每 5° 一根
+    local lv = cam.CFrame.LookVector
+    local camPitch = math.deg(math.asin(clamp(lv.Y, -1, 1)))
+    local k0 = math.ceil((camPitch - 25) / 5)
+    local used = 0
+    local vh = cam.ViewportSize.Y
+    for k = k0, k0 + 10 do
+      local pa = k * 5
+      if pa >= -90 and pa <= 90 then
+        local r = rad(pa)
+        local dirC = hz * math.cos(r) + Vector3.new(0, math.sin(r), 0)
+        local c = camP + dirC * 1000
+        local w = (pa == 0) and 260 or 130   -- 半宽（世界里一千格外的长度：地平线长一倍）
+        local pl, onL = project(c - side * w)
+        local pr, onR = project(c + side * w)
+        if onL and onR then
+          used += 1
+          local L = ladderPool[used]
+          if not L then break end
+          local ax, ay = pl.X.Offset + pl.X.Scale * cam.ViewportSize.X, pl.Y.Offset + pl.Y.Scale * vh
+          local bx, by = pr.X.Offset + pr.X.Scale * cam.ViewportSize.X, pr.Y.Offset + pr.Y.Scale * vh
+          local cx, cy = (ax + bx) / 2, (ay + by) / 2
+          local len = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+          L.f.Position = UDim2.fromOffset(cx, cy)
+          L.f.Size = UDim2.fromOffset(len, 2)
+          L.f.Rotation = math.deg(math.atan2(by - ay, bx - ax))
+          L.f.Visible = true
+          local gap = math.min(70, len * 0.22)   -- 中间留空给速度矢量
+          local half = len / 2 - gap
+          local neg = pa < 0
+          for i, sgm in ipairs(L.segs) do
+            local left = i <= 2
+            local inner = (i % 2 == 0)
+            local x0 = left and 0 or (len / 2 + gap)
+            if neg then   -- 虚线：每边两段
+              local sl = half * 0.42
+              local xs = x0 + (inner == left and (half - sl) or 0)
+              if not left then xs = x0 + (inner and 0 or (half - sl)) end
+              sgm.Size = UDim2.fromOffset(sl, 2)
+              sgm.Position = UDim2.fromOffset(xs + sl / 2, 1)
+              sgm.Visible = true
+            else
+              sgm.Size = UDim2.fromOffset(half, 2)
+              sgm.Position = UDim2.fromOffset(x0 + half / 2, 1)
+              sgm.Visible = (i == 1 or i == 3)
+            end
+          end
+          -- 端头的小竖线：正的往下（指地平线），负的往上
+          for i, tk in ipairs(L.ticks) do
+            tk.Visible = pa ~= 0
+            tk.Position = UDim2.fromOffset((i == 1) and 1 or (len - 1), neg and -8 or 1)
+          end
+          for i, lb in ipairs(L.labs) do
+            lb.Text = (pa ~= 0) and tostring(math.abs(pa)) or ""
+            lb.Position = UDim2.fromOffset((i == 1) and -18 or (len + 18), neg and -6 or 6)
+            lb.Rotation = 0
+          end
+        end
+      end
+    end
+    for i = used + 1, #ladderPool do ladderPool[i].f.Visible = false end
+    -- G、α、M
+    local gl = st.gLoad or 1
+    gText.Text = string.format("G %.1f", gl)
+    gText.TextColor3 = (gl > 7.5 or gl < -2.5) and RGB(255, 90, 80) or HUD
+    aText.Text = string.format("α %.1f", st.aoaDeg or 0)
+    mText.Text = string.format("M %.2f", st.vel.Magnitude / AD.M / 340)
+  end
+  -- 灰视 / 红视：正过载超过 6.5g 慢慢变暗、发灰（撑得越久越重，到 9g 几乎全黑），负过载超过 −2.5g 发红；松了一两秒恢复
+  local function gEffect(dt)
+    local gl = (st and st.d and st.d.kind == "jet" and st.pilot and not st.ground and not st.crashed) and (st.gLoad or 1) or 1
+    local want = 0
+    if gl > 6.5 then want = (gl - 6.5) / 2.5 elseif gl < -2.5 then want = (gl + 2.5) / 1.5 end
+    want = clamp(want, -1, 1)
+    local rate = (math.abs(want) > math.abs(gStress)) and 0.55 or 1.4   -- 压上去慢、缓过来快
+    gStress += (want - gStress) * math.min(1, dt * rate)
+    local k = math.abs(gStress)
+    local red = gStress < 0
+    local on = k > 0.02
+    for _, f in ipairs(gVig) do
+      f.Visible = on
+      if on then
+        f.BackgroundColor3 = red and RGB(120, 0, 0) or RGB(0, 0, 0)
+        f.BackgroundTransparency = 1 - math.min(1, k * 1.3)
+      end
+    end
+    gFill.BackgroundColor3 = red and RGB(110, 0, 0) or RGB(0, 0, 0)
+    gFill.BackgroundTransparency = 1 - clamp((k - 0.5) * 1.6, 0, 0.92)
+    gCC.Enabled = on
+    if on then gCC.Saturation, gCC.Brightness = -k * 0.9, red and 0 or -k * 0.12 end
+    G.gStress = gStress   -- 测试用
+  end
+  G.flyGEffect = gEffect
+
   local tgpStep
   local REL = { bomb = "CCRP", agm = "PRE", rkt = "RKT", aam = "SRM", gun = "GUN" }
   local function fmtT(t)
@@ -1460,6 +1631,7 @@ function Fly.init(G)
   end
 
   function G.stepFly(dt)
+    G.try_(gEffect, dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
     if vs and not vs.air then vs = nil end
@@ -1727,6 +1899,7 @@ function Fly.init(G)
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo
+      G.try_(dcsHud, pos, kmh)
       -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
       G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
       local hk = math.min(1, st.hitKick or 0)

@@ -255,6 +255,7 @@ function Play.init(G)
     return ray.Origin + ray.Direction * len, nil
   end
   G.aimPoint = aimPoint
+  G.curWeapon = function() return cur.id, cur.aiming end   -- 手雷抛物线预览（Nade.lua）：拿着什么、按没按右键
 
   -- 防空导弹锁定：准星 12° 以内、射程内最近的敌方飞机直升机
   local function lockCandidate(w)
@@ -498,7 +499,7 @@ function Play.init(G)
     local menu = G.menuOpen and G.menuOpen()
     if menu then cur.firing, cur.aiming = false, false end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
-    baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
+    baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
@@ -515,7 +516,9 @@ function Play.init(G)
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
     local wc = cur.id and W[cur.id]
-    cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
+    G.fpsAiming = armed == true and cur.aiming == true   -- 记录仪观感（Bodycam.lua）：开镜时镜头不晃
+    -- 开着镜不画准星（第三人称也是）；第一人称是记录仪的画面（Bodycam.lua）：不画四根线，只有一个淡淡的小点
+    cross.Visible = armed == true and not (fp and cur.aiming) and not (fp and G.bodycamOn) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))
     if cross.Visible and wc and hrp then
       -- 张开多少：这一发的散布在屏幕上有多宽（跑起来、跳起来、连射攒的都算），开枪那一下再弹开一点
       local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)   -- 读不到（测试台）就当站着不动
@@ -541,6 +544,7 @@ function Play.init(G)
       if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    G.scopeVisible = G.scopeVisible or function() return scope.Visible end
     if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
     cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
     -- 连发

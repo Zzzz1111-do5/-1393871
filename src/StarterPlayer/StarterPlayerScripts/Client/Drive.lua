@@ -313,10 +313,23 @@ function Drive.init(G)
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
     engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
   end
+  -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
+  --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
+  local GEARS = 5
   local function engineStep(dt, thr, spd)
     if not engine then return end
-    local want = math.clamp(0.22 + 0.5 * spd + 0.3 * math.abs(thr), 0, 1)   -- 转速：油门一踩先上去，车速跟着
-    engine.rpm += (want - engine.rpm) * math.min(1, dt * 3)
+    local back = st and (st.speed or 0) < -0.4
+    local g = 0
+    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+    if st then
+      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then engine.shiftT = os.clock() end   -- 升档
+      st.gearN = g
+    end
+    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
+    if shifting then want *= 0.75 end
+    engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
     engine.rumble.Volume = 0.3 + 0.35 * r
