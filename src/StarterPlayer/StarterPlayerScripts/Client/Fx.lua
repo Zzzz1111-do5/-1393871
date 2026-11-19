@@ -1162,6 +1162,9 @@ function Fx.init(G)
   -- 垂发：舱口一团火光、往上翻的一大团白烟（防空导弹的小一点）
   local function vls(e)
     local s = e.sam and 0.7 or 1
+    -- 船上掀开那一格垂发的舱盖 / 发射箱箱口崩盖子、箱尾喷气（ShipView.lua）
+    local v = e.id and G.viewById and G.viewById(e.id)
+    if v and v.ext and v.ext.launch then G.try_(v.ext.launch, v, e) end
     local fl = part(BALL, V(3, 3, 3) * s, CFrame.new(e.p), RGB(255, 214, 140), Enum.Material.Neon, 0)
     tween(fl, 0.3, { Size = V(9, 9, 9) * s, Transparency = 1 })
     Debris:AddItem(fl, 0.35)
@@ -1234,6 +1237,10 @@ function Fx.init(G)
     for _, e in ipairs(list) do
       local k = e.k
       if k == "gun" then
+        if e.mi and e.id then   -- 舰艇的近防炮：那一座转向目标（ShipView.lua）
+          local v = G.viewById and G.viewById(e.id)
+          if v and v.ext and v.ext.ciws then G.try_(v.ext.ciws, v, e.mi, e.b) end
+        end
         if e.ent then   -- 机器人开的枪：小兵后坐、枪口焰，曳光从它的枪口出来（Soldier.lua）
           if G.vehRecoil then G.vehRecoil(e.ent) end
           local mz = G.botMuzzle and G.botMuzzle(e.ent)
