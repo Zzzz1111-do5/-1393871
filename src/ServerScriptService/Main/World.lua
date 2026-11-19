@@ -174,11 +174,14 @@ end
 
 ---------------------------------------------------------------- 地形
 
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70) }
+-- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+  Mud = RGB(54, 47, 40) }
 
--- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水
-local function writeChunk(T, x0, z0)
-  local RES, N, D = Map.RES, 64, Map.SEA_DEPTH
+-- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
+--   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
+local function writeChunk(T, x0, z0, n, yFloor)
+  local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -194,6 +197,7 @@ local function writeChunk(T, x0, z0)
   local DW = math.min(D, 30)
   if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
+  if yFloor then yb0 = math.min(yb0, math.floor(yFloor / RES)) end
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
   local M, O = table.create(N), table.create(N)
@@ -309,6 +313,8 @@ function World.terrain(onProgress)
   end
   return total, #list
 end
+
+World.writeChunk = writeChunk
 
 ---------------------------------------------------------------- 小建筑
 

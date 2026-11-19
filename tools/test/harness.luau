@@ -391,6 +391,15 @@ roblox.implementMethod("Terrain", "FillWedge", function(self, cf, size, mat)
 	H.terrainFills += 1
 	terrOp({ k = "wedge", cf = cf, size = size, m = mat.Name })
 end)
+-- 把一块（按 4 格对齐的 Region3）里的某种材质换成另一种（弹坑烧焦：Battle.lua）
+roblox.implementMethod("Terrain", "ReplaceMaterial", function(self, region, res, from, to)
+	if typeof(region) ~= "Region3" or res ~= 4 or typeof(from) ~= "EnumItem" or typeof(to) ~= "EnumItem" then error("ReplaceMaterial 参数不对", 2) end
+	local c, sz = region.CFrame.Position, region.Size
+	for _, v in { c.X - sz.X / 2, c.Y - sz.Y / 2, c.Z - sz.Z / 2, c.X + sz.X / 2, c.Y + sz.Y / 2, c.Z + sz.Z / 2 } do
+		if math.abs(v / 4 - math.round(v / 4)) > 1e-6 then error("ReplaceMaterial 的区域要按 4 格对齐", 2) end
+	end
+	terrOp({ k = "replace", cf = region.CFrame, size = sz, m = to.Name, from = from.Name })
+end)
 roblox.implementMethod("Terrain", "Clear", function(self) end)
 -- 写体素：按 Roblox 的规矩检查（分辨率只能是 4、一次最多 4,194,304 个、三维数组的尺寸要和区域对上），记下写了多少
 H.voxelWrites, H.voxelCount = 0, 0

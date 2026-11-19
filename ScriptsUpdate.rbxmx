@@ -858,6 +858,15 @@ function Config.gunSpread(w, ads, speed, air, bloom)
   return s + (bloom or 0) * (ads and 0.5 or 1)
 end
 
+-- 战场氛围（用户 11-18：按 3A 游戏的标准做到惊艳，参考战雷、战地；服务器 Battle.lua、客户端 Warfx.lua）
+--   crater 弹坑：k 坑口半径 / 杀伤半径（按爆炸种类）、minR / maxR 坑口半径（格）上下限、depth 坑深 / 坑口半径、maxDepth 最深几格、
+--     gap 离已有的坑多近不再炸（两坑半径和的倍数）、max 一局最多几个、perSec 一秒最多挖几个（多的排队）
+--   illum 照明弹：every 隔几秒打一发（随机范围）、alive 同时最多几发、height 在离地多高炸开、burn 烧几秒、fall 每秒落几格、sea 攻方舰队打的比例
+Config.Battle = {
+  crater = { k = { shell = 0.36, rkt = 0.32, msl = 0.34, bomb = 0.3 }, minR = 3.2, maxR = 13, depth = 0.34, maxDepth = 5.5, gap = 0.55, max = 240, perSec = 8 },
+  illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
+}
+
 return Config
 ]]></ProtectedString>
         </Properties>
@@ -5824,7 +5833,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Air", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical" }) do
+for _, name in ipairs({ "Imports", "Store", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Air", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -7978,6 +7987,252 @@ return Armor
         </Item>
         <Item class="ModuleScript" referent="45">
           <Properties>
+            <string name="Name">Battle</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
+--   1. 弹坑（战地那种越打越烂的地面）：炮弹、火箭弹、导弹、炸弹在地上炸，地形上炸出一个浅碗形的坑，坑里、坑边烧成焦土（Mud）。
+--      坑口半径 = 杀伤半径（splash）× 按种类的系数（Config.Battle.crater.k；航炮、手雷、高炮空炸不挖）；坑深不到坑口半径的三分之一、最多 maxDepth 格
+--      （约 2 米：坦克、登陆艇、两栖车照样开得过去）。不挖的：水里、海边坑底会低于海面、半空炸、太陡的坡、
+--      坑口一圈往下打射线先碰到房子 / 工事 / 沙袋 / 车 / 障碍（锚住的零件）的、离已有的坑太近（同一处不越挖越深）。
+--      挖法：一个球心在地面上方的空气球（Terrain:FillBall Air）切出碗底，再把坑口外扩 3 格那一块里的草、土、沙换成焦土（ReplaceMaterial）。
+--      一局最多 max 个、一秒最多 perSec 个（集束炸弹一串排队挖）；新一局开始时按 Map 原来的高度把挖过的那一小块地重写回去（World.writeChunk）。
+--   2. 照明弹（夜战，战地 1、二战登陆夜战里那种半空吊着的白光）：开战后每隔 every 秒，往当前阶段还没拿下的据点上空打一发——
+--      sea 的比例是攻方舰队的星弹（从最近的登陆舰那边打过来），其余是守方迫击炮（从据点后方离海远的那边打上去）；
+--      有人在争夺的据点优先。在离地 height 格炸开，挂着降落伞每秒落 fall 格、烧 burn 秒，同时最多 alive 发。
+--      只发一条特效 { k = "illum", o 发射点, p 炸开的点, t 服务器时刻, fl 飞几秒, burn, fall, w 风 }：客户端（Warfx.lua）按服务器时间算出它在哪、多亮，
+--      所有人看到的是同一发、照亮的是同一片（不影响谁能打中谁：只是画面）
+local Battle = {}
+
+function Battle.init(G)
+  local Config, Map, World = G.Config, G.Map, G.World
+  local BC = Config.Battle or {}
+  local CR, IL = BC.crater or {}, BC.illum or {}
+  local V = Vector3.new
+  local MAT = Enum.Material
+  local T = workspace.Terrain
+  local now = os.clock
+  local function rnd(a, b) return a + (b - a) * math.random() end
+
+  ---------------------------------------------------------------- 弹坑
+
+  local KC = CR.k or {}
+  local craters = {}   -- 这一局挖过的 { x, z, s 地面高, rc 坑口半径, h 深 }
+  local queue = {}
+  local dug = 0        -- 这一局挖了几个（含排队的）
+  G.craters = craters  -- 测试用
+
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
+  rayP.IgnoreWater = true
+  pcall(function() rayP.FilterDescendantsInstances = { workspace:FindFirstChild("ClientFx") } end)
+
+  -- 坑口中心、半个坑口一圈、坑口外扩 2 格一圈（各 8 个点）：从地面上方 40 格往下打，先碰到锚住的零件（房子、工事、沙袋、车的命中盒、障碍）就不挖
+  local function blocked(x, s, z, rc)
+    local function hit(px, pz)
+      local res = workspace:Raycast(V(px, s + 40, pz), V(0, -60, 0), rayP)
+      return res and res.Instance and res.Instance ~= T and res.Instance:IsA("BasePart") and res.Instance.Anchored
+    end
+    if hit(x, z) then return true end
+    for _, rr in ipairs({ rc * 0.5, rc + 2 }) do
+      for i = 0, 7 do
+        local a = i * math.pi / 4
+        if hit(x + math.cos(a) * rr, z + math.sin(a) * rr) then return true end
+      end
+    end
+    return false
+  end
+
+  local SCORCH = { MAT.Grass, MAT.LeafyGrass, MAT.Ground, MAT.Sand }
+  local function snapDn(v) return math.floor(v / 4) * 4 end
+  local function snapUp(v) return math.ceil(v / 4) * 4 end
+
+  local function dig(c)
+    local rc, h = c.rc, c.h
+    -- 球冠：坑口半径 rc、深 h 的碗，球的半径 Rs = (rc² + h²) / 2h，球心在坑底往上 Rs
+    local Rs = (rc * rc + h * h) / (2 * h)
+    T:FillBall(V(c.x, c.s - h + Rs, c.z), Rs, MAT.Air)
+    local e = rc + 3
+    local reg = Region3.new(V(snapDn(c.x - e), snapDn(c.s - h - 4), snapDn(c.z - e)), V(snapUp(c.x + e), snapUp(c.s + 4), snapUp(c.z + e)))
+    for _, m in ipairs(SCORCH) do
+      pcall(function() T:ReplaceMaterial(reg, 4, m, MAT.Mud) end)
+    end
+  end
+
+  -- 爆炸后看要不要挖（G.onExplode：Ents.lua 的 G.explode 调；Forts.lua 也挂在上面，串起来）
+  local function crater(pos, w)
+    if not w or dug >= (CR.max or 240) then return end
+    local kind = G.boomKind and G.boomKind(w)
+    local k = kind and KC[kind]
+    if not k or k <= 0 then return end
+    local rc = math.min((w.splash or 8) * k, CR.maxR or 13)
+    if rc < (CR.minR or 3.2) then return end
+    local x, z = pos.X, pos.Z
+    local s = Map.height(x, z)
+    if s < 1.2 then return end                                     -- 水里、水边
+    if pos.Y - s > math.max(3, rc * 0.8) then return end            -- 半空炸
+    if (Map.slope and Map.slope(x, z) or 0) > 0.42 then return end  -- 陡坡（球会切进坡里）
+    local h = math.min(rc * (CR.depth or 0.34), CR.maxDepth or 5.5)
+    if s - h < 0.6 then h = s - 0.6 end                             -- 坑底不低于海面（海边的坑没水灌进来，看着怪）
+    if h < 1 then return end
+    local gap = CR.gap or 0.55
+    for _, o in ipairs(craters) do
+      local dx, dz = o.x - x, o.z - z
+      local dd = gap * (o.rc + rc)
+      if dx * dx + dz * dz < dd * dd then return end
+    end
+    for _, o in ipairs(queue) do
+      local dx, dz = o.x - x, o.z - z
+      local dd = gap * (o.rc + rc)
+      if dx * dx + dz * dz < dd * dd then return end
+    end
+    if blocked(x, s, z, rc) then return end
+    dug += 1
+    table.insert(queue, { x = x, z = z, s = s, rc = rc, h = h })
+  end
+  G.crater = crater
+
+  local explode0 = G.onExplode
+  G.onExplode = function(pos, w, src)
+    if explode0 then explode0(pos, w, src) end
+    G.try("弹坑", crater, pos, w)
+  end
+
+  -- 排队的坑：一秒最多 perSec 个
+  local tokens, tokAt = 0, now()
+  local function stepCraters()
+    if #queue == 0 then return end
+    local t = now()
+    tokens = math.min(CR.perSec or 8, tokens + (t - tokAt) * (CR.perSec or 8))
+    tokAt = t
+    while tokens >= 1 and #queue > 0 do
+      tokens -= 1
+      local c = table.remove(queue, 1)
+      G.try("挖弹坑", dig, c)
+      table.insert(craters, c)
+    end
+  end
+
+  -- 新一局：挖过的地方按原来的高度重写（一小块一小块，每几块让一帧）
+  local function restore(list)
+    for i, c in ipairs(list) do
+      local e = c.rc + 8
+      local x0, z0 = snapDn(c.x - e), snapDn(c.z - e)
+      local n = math.ceil((c.x + e - x0) / 4) + 1
+      G.try("填弹坑", World.writeChunk, T, x0, z0, n, c.s - c.h - 8)
+      if i % 6 == 0 then task.wait() end
+    end
+  end
+  G.on("roundStart", function()
+    local list = table.clone(craters)   -- 排队还没挖的不用填，一起清掉
+    table.clear(craters)
+    table.clear(queue)
+    dug = 0
+    if #list > 0 and World.writeChunk then task.spawn(restore, list) end
+  end)
+
+  ---------------------------------------------------------------- 照明弹
+
+  local alive = {}     -- 还在烧的 { die }
+  local nextAt = nil
+  local fired = 0
+  G.illumFired = function() return fired end   -- 测试用
+
+  local function stagePoints()
+    local R = G.round
+    local st = R and Config.Stages and Config.Stages[R.stage]
+    local out = {}
+    if not st or not G.points then return out end
+    local ids = {}
+    for _, id in ipairs(st.points or {}) do table.insert(ids, id) end
+    for _, id in ipairs(st.flank or {}) do table.insert(ids, id) end
+    for _, id in ipairs(ids) do
+      local s = G.points[id]
+      if s and not s.locked then table.insert(out, s) end
+    end
+    return out
+  end
+
+  -- 舰队里离目标最近的登陆舰 / 两栖攻击舰（航母不打炮）
+  local function fleetNear(x, z)
+    local best, bd
+    for _, f in ipairs(Map.FLEET or {}) do
+      if f.kind ~= "carrier" then
+        local d = (f.x - x) ^ 2 + (f.z - z) ^ 2
+        if not bd or d < bd then best, bd = f, d end
+      end
+    end
+    return best
+  end
+
+  local function fireIllum()
+    local pts = stagePoints()
+    if #pts == 0 then return false end
+    -- 有人在争夺的（据点里有攻方、或者占领进度不是零）权重大
+    local tot, ws = 0, {}
+    for i, s in ipairs(pts) do
+      ws[i] = ((s.atk or 0) > 0 or (s.prog or 0) > 0) and 3 or 1
+      tot += ws[i]
+    end
+    local r, pick = math.random() * tot, pts[1]
+    for i, s in ipairs(pts) do
+      r -= ws[i]
+      if r <= 0 then pick = s break end
+    end
+    local PR = Map.POINT_R or 80
+    local gx, gz = pick.x + rnd(-0.7, 0.7) * PR, pick.z + rnd(-0.7, 0.7) * PR
+    local gy = math.max(0, Map.ground(gx, gz))
+    local p = V(gx, gy + rnd(IL.height and IL.height[1] or 105, IL.height and IL.height[2] or 135), gz)
+    local f = fleetNear(gx, gz)
+    local o, by
+    if f and math.random() < (IL.sea or 0.6) then
+      o, by = V(f.x, 16, f.z), "atk"   -- 舰炮：从登陆舰上打过来
+    else
+      -- 守方迫击炮：据点后面、离舰队远的那一边 150～260 格
+      local away = f and V(gx - f.x, 0, gz - f.z) or V(0, 0, -1)
+      away = away.Magnitude > 1 and away.Unit or V(0, 0, -1)
+      local q = V(gx, 0, gz) + away * rnd(150, 260)
+      o, by = V(q.X, math.max(0, Map.ground(q.X, q.Z)) + 1, q.Z), "def"
+    end
+    local fl = math.clamp((p - o).Magnitude / 520, 2.4, 9)
+    local burn, fall = IL.burn or 32, IL.fall or 2.6
+    local okW, wind = pcall(function() return workspace.GlobalWind end)
+    if not okW or typeof(wind) ~= "Vector3" or wind.Magnitude < 0.1 then wind = V(2.2, 0, 1.1) end
+    G.fx({ k = "illum", o = o, p = p, t = workspace:GetServerTimeNow(), fl = fl, burn = burn, fall = fall, w = V(wind.X, 0, wind.Z) * 0.6, by = by })
+    table.insert(alive, { die = now() + fl + burn })
+    fired += 1
+    return true
+  end
+  G.fireIllum = fireIllum   -- 测试用
+
+  local function stepIllum()
+    local R = G.round
+    if not R or R.phase ~= "battle" then
+      nextAt = nil
+      return
+    end
+    local t = now()
+    if not nextAt then nextAt = t + (IL.first or 6) end   -- 开战后第一发
+    if t < nextAt then return end
+    local ev = IL.every or { 14, 24 }
+    nextAt = t + rnd(ev[1], ev[2])
+    for i = #alive, 1, -1 do
+      if alive[i].die < t then table.remove(alive, i) end
+    end
+    if #alive >= (IL.alive or 3) then return end
+    fireIllum()
+  end
+
+  G.onFrame(function()
+    stepCraters()
+    stepIllum()
+  end)
+end
+
+return Battle
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="46">
+          <Properties>
             <string name="Name">Bots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
 --   攻方：开战后成班坐登陆艇（按要打的据点挑海滩 / 小岛南岸），上岸朝据点推进，见敌就打；拿下一个往同一块陆地上的下一个推，
@@ -9103,7 +9358,7 @@ return Bots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">Depots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -9539,7 +9794,7 @@ return Depots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">Ents</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -9838,7 +10093,7 @@ return Ents
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">Forts</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -11035,7 +11290,7 @@ return Forts
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">Imports</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -11173,7 +11428,7 @@ return Imports
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -11367,7 +11622,7 @@ return Nav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">Navy</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -12355,7 +12610,7 @@ return Navy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">Passes</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -12439,7 +12694,7 @@ return Passes
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">Rewind</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -12674,7 +12929,7 @@ return Rewind
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">Round</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -13706,7 +13961,7 @@ return Round
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">Store</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -13806,7 +14061,7 @@ return Store
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Tactical</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -14032,7 +14287,7 @@ return Tactical
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">Vehicles</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -14328,7 +14583,7 @@ return Vehicles
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">Weapons</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -14981,7 +15236,7 @@ return Weapons
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">World</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -15160,11 +15415,14 @@ end
 
 ---------------------------------------------------------------- 地形
 
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70) }
+-- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+  Mud = RGB(54, 47, 40) }
 
--- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水
-local function writeChunk(T, x0, z0)
-  local RES, N, D = Map.RES, 64, Map.SEA_DEPTH
+-- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
+--   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
+local function writeChunk(T, x0, z0, n, yFloor)
+  local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -15180,6 +15438,7 @@ local function writeChunk(T, x0, z0)
   local DW = math.min(D, 30)
   if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
+  if yFloor then yb0 = math.min(yb0, math.floor(yFloor / RES)) end
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
   local M, O = table.create(N), table.create(N)
@@ -15295,6 +15554,8 @@ function World.terrain(onProgress)
   end
   return total, #list
 end
+
+World.writeChunk = writeChunk
 
 ---------------------------------------------------------------- 小建筑
 
@@ -16009,11 +16270,11 @@ return World
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="60">
+    <Item class="Folder" referent="61">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="61">
+      <Item class="LocalScript" referent="62">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -16044,7 +16305,7 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice" }) do
+for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -16098,7 +16359,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -16278,7 +16539,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -17724,7 +17985,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -17881,7 +18142,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -18456,7 +18717,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -18547,6 +18808,14 @@ function DayNight.init(G)
         exp += 2.7 * nk + 0.25 * dayK
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
       end
+      -- 照明弹（Warfx.lua 的 G.illum）：附近有照明弹在烧，整片地亮起来——环境光往暖白抬、曝光加一点，跟着它一闪一闪
+      local il = G.illum and G.illum.k or 0
+      if il > 0.01 then
+        local kk = math.min(il, 1)
+        oamb = lc(oamb, RGB(176, 166, 148), 0.55 * kk)
+        amb = lc(amb, RGB(84, 78, 70), 0.45 * kk)
+        exp += 0.3 * il
+      end
       put(Lighting, "Ambient", amb)
       put(Lighting, "OutdoorAmbient", oamb)
       put(Lighting, "ExposureCompensation", exp)
@@ -18587,7 +18856,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -18972,7 +19241,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -19876,7 +20145,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -20554,7 +20823,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -20769,7 +21038,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -22444,7 +22713,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -22762,7 +23031,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -23980,7 +24249,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -24112,7 +24381,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -24651,7 +24920,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -25114,7 +25383,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -25851,7 +26120,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -26118,7 +26387,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -26374,7 +26643,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -26682,7 +26951,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -27004,7 +27273,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -27219,7 +27488,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -27459,7 +27728,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -27637,7 +27906,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -27857,7 +28126,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -28436,7 +28705,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -28975,7 +29244,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -29434,7 +29703,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
@@ -30222,7 +30491,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -30824,7 +31093,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -31574,7 +31843,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -32029,7 +32298,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -33259,7 +33528,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -33372,7 +33641,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -34397,7 +34666,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -34920,7 +35189,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -35537,6 +35806,396 @@ function View.init(G)
 end
 
 return View
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="99">
+          <Properties>
+            <string name="Name">Warfx</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
+--   1. 照明弹（服务器 Battle.lua 打的，特效 k = "illum"）：按服务器时间算——
+--      发射：从舰炮 / 迫击炮那里一颗拖着短尾巴的亮点抛物线飞上去（离镜头远的不画）；炸开：一闪、一小团烟、「噗」一声（按距离晚到）；
+--      挂着降落伞慢慢落、随风飘，一边烧一边拖出一条往上飘的白烟柱（被它自己照亮），往下掉火星；烧到最后几秒忽明忽暗、熄灭，伞掉得快了、淡掉。
+--      照亮：Roblox 的点光源最远 60 格，照明弹在一百多格高——光源放在照明弹正下方离地 40 格的地方跟着走（离镜头最近的那发投影子：
+--      影子跟着照明弹慢慢挪），再加上「附近有照明弹，整片地都亮起来」：G.illum = { k 亮度 0～1.2 }，DayNight.lua 按它把环境光往暖白抬、曝光加一点，一闪一闪
+--   2. 夜空、远处的战火（task 13）：见下面
+local Warfx = {}
+
+function Warfx.init(G)
+  local RunService = game:GetService("RunService")
+  local Debris = game:GetService("Debris")
+  local V = Vector3.new
+  local RGB = Color3.fromRGB
+  local NSK, CSK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
+  local MapM = G.Map
+  local FXF = G.fxFolder or workspace
+  local function camPos() local c = workspace.CurrentCamera return c and c.CFrame.Position or V() end
+  local function serverNow()
+    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
+    return ok and t or os.clock()
+  end
+  local TX = {
+    glow = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+    smoke = "rbxasset://textures/particles/smoke_main.dds",
+  }
+  local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
+  local WIND = "rbxasset://sounds/action_falling.ogg"
+  local WARM = RGB(255, 238, 208)
+
+  local function part(shape, size, cf, color, mat, tr)
+    local p = Instance.new("Part")
+    p.Shape = shape or Enum.PartType.Block
+    p.Size = size
+    p.CFrame = cf
+    p.Color = color
+    p.Material = mat or Enum.Material.SmoothPlastic
+    p.Transparency = tr or 0
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = FXF
+    return p
+  end
+  local function emitter(h, o)
+    local pe = Instance.new("ParticleEmitter")
+    pe.Texture = o.tex
+    pe.Rate = o.rate or 0
+    pe.Lifetime = NumberRange.new(o.life[1], o.life[2])
+    pe.Speed = NumberRange.new(o.spd[1], o.spd[2])
+    pe.SpreadAngle = Vector2.new(o.spread or 180, o.spread or 180)
+    pe.Size = o.size
+    pe.Transparency = o.tr
+    pe.Color = o.col
+    pe.Acceleration = o.acc or V()
+    pe.Drag = o.drag or 0
+    pe.LightEmission = o.le or 0
+    pe.LightInfluence = (o.le or 0) > 0.5 and 0 or 1
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-(o.rot or 20), o.rot or 20)
+    pe.ZOffset = o.z or 0
+    pe.EmissionDirection = o.dir or Enum.NormalId.Top
+    pe.Parent = h
+    return pe
+  end
+  local function nseq(...)
+    local a, kp = { ... }, {}
+    for i = 1, #a, 2 do kp[#kp + 1] = NSK(a[i], a[i + 1]) end
+    return NumberSequence.new(kp)
+  end
+  local function cseq(a, b) return ColorSequence.new({ CSK(0, a), CSK(1, b) }) end
+
+  ---------------------------------------------------------------- 照明弹
+
+  local GR = V(0, -60, 0)   -- 上升段的「重力」（看着像一发炮弹抛上去，不按真实重力：几秒就到）
+  local flares = {}         -- 正在飞 / 烧的
+  G.flares = flares         -- 测试用
+  local illumK = 0
+
+  -- 照明弹在本地时刻 t（os.clock）的位置：上升段抛物线，炸开后随风飘、慢慢落、轻轻摆
+  --   收到时按服务器时间算出它已经飞了多久，换成本地时钟的起点 f.t0（以后只看本地时钟：不受服务器时间抖动影响）
+  local function flarePos(f, t)
+    local e = f.e
+    local u = t - f.t0
+    if u < e.fl then
+      local v0 = (e.p - e.o - GR * (0.5 * e.fl * e.fl)) / e.fl
+      return e.o + v0 * u + GR * (0.5 * u * u), "rise"
+    end
+    local b = u - e.fl
+    local fall = e.fall * b
+    if b > e.burn then fall = e.fall * e.burn + (b - e.burn) * e.fall * 4 end   -- 烧完了伞兜不住，掉得快
+    local sway = V(math.sin(b * 0.9 + f.ph) * 1.6, 0, math.cos(b * 0.7 + f.ph) * 1.2)
+    return e.p + (e.w or V()) * b - V(0, fall, 0) + sway, (b <= e.burn) and "burn" or "out"
+  end
+
+  -- 亮度 0～1：点着的头半秒亮起来，烧着时轻轻闪，最后 4 秒忽明忽暗地暗下去
+  local function flareI(f, b, burn)
+    if b < 0 or b > burn then return 0 end
+    local up = math.clamp(b / 0.5, 0, 1)
+    local fl = 0.88 + 0.07 * math.sin(b * 23 + f.ph) + 0.05 * math.sin(b * 37.7 + f.ph * 2)
+    local tail = 1
+    if b > burn - 4 then
+      tail = math.clamp((burn - b) / 4, 0, 1)
+      if math.random() < 0.25 then tail *= 0.45 end   -- 快烧完：噼啪地暗一下
+    end
+    return up * fl * tail
+  end
+
+  local function popSound(p, d)
+    if not G.sfx or d > 3200 then return end
+    G.sfx({ { id = EXP, vol = 0.55, s = { 1.9, 2.15 }, reg = { 0.02, 0.28 }, eq = { -6, 0, 0 } },
+      { id = EXP, vol = 0.25, s = { 0.9, 1 }, reg = { 0.04, 0.6 }, eq = { 6, -4, -14 }, delay = 0.03 } },
+      p, { delay = d / 960, rmin = 120, rmax = 3200, hiCut = -10 * math.clamp((d - 400) / 2000, 0, 1) })
+  end
+
+  local function ignite(f, pos)
+    local d = (pos - camPos()).Magnitude
+    if G.flash and d < 2400 then G.flash(pos, WARM, 50, 6, 0.3) end
+    popSound(pos, d)
+    local core = part(Enum.PartType.Ball, V(0.9, 0.9, 0.9), CFrame.new(pos), RGB(255, 246, 228), Enum.Material.Neon, 0)
+    core.Name = "Illum"
+    f.core = core
+    -- 刺眼的一团光晕（一闪一闪）
+    f.halo = emitter(core, { tex = TX.glow, rate = 22, life = { 0.12, 0.2 }, spd = { 0, 0 }, size = nseq(0, 6.5, 1, 9), tr = nseq(0, 0.2, 1, 0.65),
+      col = cseq(RGB(255, 250, 236), WARM), le = 1, z = 1 })
+    -- 往下掉的火星
+    f.sparks = emitter(core, { tex = TX.glow, rate = 7, life = { 0.6, 1.4 }, spd = { 2, 6 }, spread = 35, dir = Enum.NormalId.Bottom, acc = V(0, -40, 0),
+      size = nseq(0, 0.4, 1, 0), tr = nseq(0, 0, 1, 0.4), col = cseq(RGB(255, 236, 190), RGB(255, 150, 70)), le = 1 })
+    -- 往上飘的白烟柱：被照明弹自己照亮（受光），一条留在半空慢慢散开
+    local pk = G.perfK or 1
+    if d < 6000 then
+      f.smoke = emitter(core, { tex = TX.smoke, rate = (pk < 0.75) and 4 or 9, life = { 9, 15 }, spd = { 0.5, 1.5 }, spread = 25,
+        acc = V(0, 0.8, 0) + (f.e.w or V()) * 0.3, drag = 0.3, size = nseq(0, 1.6, 0.3, 4.5, 1, 10), tr = nseq(0, 0.3, 0.6, 0.6, 1, 1),
+        col = cseq(RGB(228, 224, 216), RGB(150, 150, 158)), rot = 15 })
+    end
+    -- 降落伞：一顶白伞 + 一根吊绳
+    f.chute = part(Enum.PartType.Ball, V(5.2, 2, 5.2), CFrame.new(pos + V(0, 5.5, 0)), RGB(226, 226, 220), Enum.Material.Fabric, 0)
+    f.cord = part(Enum.PartType.Block, V(0.06, 5, 0.06), CFrame.new(pos + V(0, 2.6, 0)), RGB(60, 60, 60), Enum.Material.SmoothPlastic, 0)
+    -- 照亮自己周围（烟、伞）的小灯
+    local pl = Instance.new("PointLight")
+    pl.Range, pl.Brightness, pl.Color, pl.Shadows = 30, 2, WARM, false
+    pl.Parent = core
+    f.selfLight = pl
+    -- 照地面的灯：在照明弹正下方离地 40 格（最远 60 格）
+    local anchor = part(Enum.PartType.Block, V(0.2, 0.2, 0.2), CFrame.new(pos), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local gl = Instance.new("PointLight")
+    gl.Range, gl.Brightness, gl.Color, gl.Shadows = 60, 4, WARM, false
+    gl.Parent = anchor
+    f.anchor, f.groundLight = anchor, gl
+    -- 烧着的嘶嘶声
+    if G.makeSound and d < 600 then
+      f.hiss = G.makeSound({ id = WIND, vol = 2.2, s = { 1.6, 1.8 }, loop = { 0.5, 9.5 }, eq = { -16, 0, 4 } }, core, { rmin = 20, rmax = 260 })
+    end
+  end
+
+  local function extinguish(f)
+    if f.out then return end
+    f.out = true
+    for _, k in ipairs({ "halo", "sparks", "smoke" }) do if f[k] then f[k].Enabled = false end end
+    if f.selfLight then f.selfLight.Enabled = false end
+    if f.groundLight then f.groundLight.Enabled = false end
+    if f.core then f.core.Transparency = 1 end
+    if f.hiss then f.hiss:Stop() end
+    if f.core then Debris:AddItem(f.core, 16) end   -- 烟柱的粒子还要飘一会儿
+    if f.anchor then Debris:AddItem(f.anchor, 0.1) end
+    if f.chute then
+      if G.tween then
+        G.tween(f.chute, 5, { Transparency = 1 })
+        G.tween(f.cord, 5, { Transparency = 1 })
+      end
+      Debris:AddItem(f.chute, 5.2)
+      Debris:AddItem(f.cord, 5.2)
+    end
+  end
+
+  local function newIllum(e)
+    if typeof(e.o) ~= "Vector3" or typeof(e.p) ~= "Vector3" or type(e.t) ~= "number" then return end
+    e.fl, e.burn, e.fall = e.fl or 3, e.burn or 30, e.fall or 2.6
+    local u = math.max(0, serverNow() - e.t)
+    if u > e.fl + e.burn then return end   -- 进服前就烧完了
+    local f = { e = e, ph = math.random() * 6.28, t0 = os.clock() - u }
+    -- 上升段：一颗拖着短尾巴的亮点（发射点、炸开点都离镜头远的不画）
+    local cp = camPos()
+    if u < e.fl and math.min((e.o - cp).Magnitude, (e.p - cp).Magnitude) < 2500 then
+      local sh = part(Enum.PartType.Ball, V(0.5, 0.5, 0.5), CFrame.new(e.o), RGB(255, 214, 160), Enum.Material.Neon, 0)
+      local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+      a0.Position, a1.Position = V(0, 0.25, 0), V(0, -0.25, 0)
+      a0.Parent, a1.Parent = sh, sh
+      local tr = Instance.new("Trail")
+      tr.Attachment0, tr.Attachment1 = a0, a1
+      tr.Lifetime, tr.LightEmission, tr.FaceCamera = 0.35, 1, true
+      tr.Color = cseq(RGB(255, 226, 180), RGB(255, 150, 80))
+      tr.Transparency = nseq(0, 0.2, 1, 1)
+      tr.Parent = sh
+      f.shell = sh
+      if (e.o - cp).Magnitude < 1800 then
+        if e.by == "def" then
+          if G.playSound then G.playSound("mortar", e.o) end
+        elseif G.sfx then
+          G.sfx({ { id = EXP, vol = 0.9, s = { 0.62, 0.7 }, reg = { 0, 1.4 }, eq = { 8, 0, -10 } } }, e.o, { delay = (e.o - cp).Magnitude / 960, rmin = 150, rmax = 6000 })
+        end
+      end
+    end
+    table.insert(flares, f)
+  end
+
+  local function stepFlares()
+    if #flares == 0 then
+      illumK = 0
+      return
+    end
+    local t = os.clock()
+    local cp = camPos()
+    local k, nearest, nd = 0, nil, math.huge
+    for i = #flares, 1, -1 do
+      local f = flares[i]
+      local e = f.e
+      local pos, ph = flarePos(f, t)
+      local b = t - f.t0 - e.fl
+      if ph == "rise" then
+        if f.shell then f.shell.CFrame = CFrame.new(pos) end
+      else
+        if f.shell then
+          f.shell:Destroy()
+          f.shell = nil
+        end
+        if not f.core and ph == "burn" then ignite(f, pos) end
+        local gy = math.max(0, MapM.ground(pos.X, pos.Z))
+        local alt = pos.Y - gy
+        if f.core and not f.out and (ph == "out" or alt < 3) then extinguish(f) end
+        if f.out then
+          -- 已熄灭：伞还在掉（落到地上就停）
+          if f.chute and f.chute.Parent and alt > 2 then
+            f.chute.CFrame = CFrame.new(pos + V(0, 5.5, 0))
+            f.cord.CFrame = CFrame.new(pos + V(0, 2.6, 0))
+          end
+        elseif f.core then
+          local I = flareI(f, b, e.burn)
+          f.core.CFrame = CFrame.new(pos)
+          if f.chute then
+            local tilt = CFrame.Angles(math.sin(b * 0.9 + f.ph) * 0.12, 0, math.cos(b * 0.7 + f.ph) * 0.12)
+            f.chute.CFrame = CFrame.new(pos + V(0, 5.5, 0)) * tilt
+            f.cord.CFrame = CFrame.new(pos + V(0, 2.6, 0)) * tilt
+          end
+          f.halo.Rate = 22 * math.max(0.2, I)
+          f.selfLight.Brightness = 2.4 * I
+          f.anchor.CFrame = CFrame.new(pos.X, gy + math.min(alt, 40), pos.Z)
+          f.groundLight.Brightness = 4.5 * I
+          local d = (pos - cp).Magnitude
+          if d < nd then nearest, nd = f, d end
+          -- 整片地亮起来：离照明弹 140 格内最亮，700 格外没有
+          k += I * math.clamp(1 - (d - 140) / 560, 0, 1)
+        end
+        if b > e.burn + 6 then table.remove(flares, i) end
+      end
+    end
+    -- 只有离镜头最近的那发投影子（点光源投影子很贵）
+    for _, f in ipairs(flares) do
+      if f.groundLight then f.groundLight.Shadows = (f == nearest) and nd < 900 end
+    end
+    illumK = math.min(1.2, k)
+  end
+
+  G.illum = { k = 0, col = WARM }
+  G.fxExtra = G.fxExtra or {}
+  G.fxExtra.illum = newIllum
+
+  ---------------------------------------------------------------- 夜空：低云
+  -- Roblox 地形的云（Terrain.Clouds）：一层压得低的深灰蓝的云，月光照着边、遮住一半星星，开飞机能钻进去；机器跟不上（G.perfK 低）就关掉
+  local clouds
+  pcall(function()
+    local T = workspace.Terrain
+    clouds = T:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+    clouds.Cover, clouds.Density, clouds.Color = 0.6, 0.5, RGB(66, 72, 88)
+    clouds.Parent = T
+  end)
+  G.nightClouds = clouds   -- 测试用
+
+  ---------------------------------------------------------------- 探照灯
+  -- 守方几处要地（指挥部、机场、港口、营地）各两盏对空探照灯：灰绿色的灯筒架在矮杆上，一道淡蓝白的光柱斜着照上天，慢慢来回扫
+  --   （二战登陆夜战那种画面）。只是画面：每个客户端自己画，扫的角度按服务器时间算（大家看到的差不多同步）；离镜头 9000 格外的不更新、不画
+  local LIGHTS = {}
+  G.searchlights = LIGHTS   -- 测试用
+  local slFolder = Instance.new("Folder")
+  slFolder.Name = "Searchlights"
+  slFolder.Parent = FXF
+  local function addLight(x, z, ph, az0)
+    local gy = math.max(0, MapM.ground(x, z))
+    local base = V(x, gy, z)
+    local pole = part(Enum.PartType.Block, V(0.8, 7, 0.8), CFrame.new(base + V(0, 3.5, 0)), RGB(48, 52, 46), Enum.Material.Metal, 0)
+    pole.Parent = slFolder
+    local head = part(Enum.PartType.Cylinder, V(3.2, 3.6, 3.6), CFrame.new(base + V(0, 8.5, 0)), RGB(66, 74, 60), Enum.Material.Metal, 0)
+    head.Parent = slFolder
+    local lens = part(Enum.PartType.Cylinder, V(0.2, 3.1, 3.1), CFrame.new(base + V(0, 8.5, 0)), RGB(230, 238, 255), Enum.Material.Neon, 0)
+    lens.Parent = slFolder
+    local a0 = Instance.new("Attachment")
+    a0.Parent = lens
+    local beams = {}
+    for _, spec in ipairs({ { len = 1100, w0 = 3, w1 = 60, a = 0.84 }, { len = 650, w0 = 1.6, w1 = 18, a = 0.7 } }) do
+      local a1 = Instance.new("Attachment")
+      a1.Position = V(spec.len, 0, 0)   -- 圆柱的轴是 X：灯头朝 +X 照（下面摆灯头时把 +X 转到光的方向）
+      a1.Parent = lens
+      local b = Instance.new("Beam")
+      b.Attachment0, b.Attachment1 = a0, a1
+      b.Width0, b.Width1 = spec.w0, spec.w1
+      b.FaceCamera, b.LightEmission, b.LightInfluence, b.Segments = true, 1, 0, 1
+      b.Color = ColorSequence.new(RGB(226, 234, 255), RGB(190, 206, 240))
+      b.Transparency = nseq(0, spec.a, 0.12, spec.a + 0.03, 1, 1)
+      b.Parent = lens
+      table.insert(beams, b)
+    end
+    table.insert(LIGHTS, { base = base, head = head, lens = lens, beams = beams, ph = ph, az0 = az0 })
+  end
+  pcall(function()
+    local sites = {}
+    if MapM.COMMAND then table.insert(sites, { MapM.COMMAND.x, MapM.COMMAND.z }) end
+    if MapM.AIRFIELD then table.insert(sites, { MapM.AIRFIELD.x, MapM.AIRFIELD.z - 160 }) end
+    if MapM.PORT then table.insert(sites, { MapM.PORT.x, MapM.PORT.z - 60 }) end
+    if MapM.CAMP then table.insert(sites, { MapM.CAMP.x, MapM.CAMP.z }) end
+    for i, s in ipairs(sites) do
+      -- 朝海（南边，攻方来的方向）照：两盏一左一右、相位错开
+      addLight(s[1] - 55, s[2] + 30, i * 1.7, math.rad(160))
+      addLight(s[1] + 55, s[2] + 30, i * 1.7 + 2.4, math.rad(200))
+    end
+  end)
+
+  local function stepLights()
+    if #LIGHTS == 0 then return end
+    local t = serverNow()
+    local cp = camPos()
+    for _, L in ipairs(LIGHTS) do
+      local near = (L.base - cp).Magnitude < 9000
+      for _, b in ipairs(L.beams) do b.Enabled = near end
+      if near then
+        -- 方位角在朝海方向左右各 50° 里慢慢来回，仰角 35°～72°
+        local az = L.az0 + math.rad(50) * math.sin(t * 0.11 + L.ph)
+        local el = math.rad(53) + math.rad(19) * math.sin(t * 0.17 + L.ph * 1.3)
+        local dir = V(math.sin(az) * math.cos(el), math.sin(el), math.cos(az) * math.cos(el))
+        local p = L.base + V(0, 8.5, 0)
+        local cf = CFrame.lookAt(p, p + dir) * CFrame.Angles(0, math.pi / 2, 0)   -- lookAt 的 −Z 朝 dir；绕 Y 转 90° 以后 +X 朝 dir（圆柱的轴）
+        L.head.CFrame = cf
+        L.lens.CFrame = cf * CFrame.new(1.65, 0, 0)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 远处的炮声
+  -- 战地那种「远处还在打」的底噪：每隔 7～16 秒，镜头外三四千格（作战区外、海那边）随机一个方向一声低沉的闷响（放慢、只留低音、长回声），
+  --   有时候连着两三声（一轮齐射）。只有声音：不画东西（画了会让人以为那边有人）
+  local rumbleAt = os.clock() + 8
+  local rumbles = 0
+  G.rumbleCount = function() return rumbles end   -- 测试用
+  local function stepRumble()
+    local t = os.clock()
+    if t < rumbleAt then return end
+    rumbleAt = t + 7 + math.random() * 9
+    if not G.sfx then return end
+    local a = math.random() * 2 * math.pi
+    local p = camPos() + V(math.cos(a), 0, math.sin(a)) * (3200 + math.random() * 1800)
+    local n = (math.random() < 0.35) and math.random(2, 3) or 1
+    for i = 1, n do
+      G.sfx({ { id = EXP, vol = 0.55, s = { 0.4, 0.48 }, reg = { 0, 2.2 }, eq = { 10, -6, -26 }, echo = { 0.42, 0.45, -8 }, delay = (i - 1) * (0.5 + math.random() * 0.6) } },
+        p, { rmin = 2500, rmax = 9000 })
+    end
+    rumbles += 1
+  end
+
+  local acc = 0
+  RunService.RenderStepped:Connect(function(dt)
+    local ok, err = pcall(stepFlares)
+    if not ok and G.showError then G.showError("照明弹：" .. tostring(err)) end
+    G.illum.k = illumK
+    acc += dt or 1 / 60
+    if acc >= 1 / 30 then   -- 探照灯、远处的炮声：一秒 30 次就够
+      acc = 0
+      local ok2, err2 = pcall(function()
+        stepLights()
+        stepRumble()
+        if clouds then clouds.Enabled = (G.perfK or 1) >= 0.7 end
+      end)
+      if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
+    end
+  end)
+end
+
+return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>

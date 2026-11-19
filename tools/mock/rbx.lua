@@ -959,6 +959,15 @@ def("Terrain", "BasePart", {
   FillCylinder = function(_, c, h, r, mat)
     if not isCF(c) or type(h) ~= "number" or type(r) ~= "number" or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillCylinder(CFrame, 高, 半径, Material) 参数不对", 2) end
   end,
+  -- 把一块（按 4 格对齐的 Region3）里的某种材质换成另一种（弹坑烧焦：Battle.lua）
+  ReplaceMaterial = function(_, region, res, from, to)
+    if typeof(region) ~= "Region3" or res ~= 4 or typeof(from) ~= "EnumItem" or typeof(to) ~= "EnumItem" then error("ReplaceMaterial(Region3, 4, Material, Material) 参数不对", 2) end
+    local a, b = region._min, region._max
+    for _, v in ipairs({ a._x, a._y, a._z, b._x, b._y, b._z }) do
+      if math.abs(v / 4 - math.floor(v / 4 + 0.5)) > 1e-6 then error("ReplaceMaterial 的区域要按 4 格对齐", 2) end
+    end
+    table.insert(R.terrainFills, { k = "replace", p = region.CFrame.Position, size = region.Size, mat = to.Name, from = from.Name })
+  end,
   FillWedge = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillWedge(CFrame, Vector3, Material) 参数不对", 2) end
   end,

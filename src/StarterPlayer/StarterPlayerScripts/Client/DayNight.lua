@@ -86,6 +86,14 @@ function DayNight.init(G)
         exp += 2.7 * nk + 0.25 * dayK
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
       end
+      -- 照明弹（Warfx.lua 的 G.illum）：附近有照明弹在烧，整片地亮起来——环境光往暖白抬、曝光加一点，跟着它一闪一闪
+      local il = G.illum and G.illum.k or 0
+      if il > 0.01 then
+        local kk = math.min(il, 1)
+        oamb = lc(oamb, RGB(176, 166, 148), 0.55 * kk)
+        amb = lc(amb, RGB(84, 78, 70), 0.45 * kk)
+        exp += 0.3 * il
+      end
       put(Lighting, "Ambient", amb)
       put(Lighting, "OutdoorAmbient", oamb)
       put(Lighting, "ExposureCompensation", exp)

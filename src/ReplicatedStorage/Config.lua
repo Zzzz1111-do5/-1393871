@@ -249,4 +249,13 @@ function Config.gunSpread(w, ads, speed, air, bloom)
   return s + (bloom or 0) * (ads and 0.5 or 1)
 end
 
+-- 战场氛围（用户 11-18：按 3A 游戏的标准做到惊艳，参考战雷、战地；服务器 Battle.lua、客户端 Warfx.lua）
+--   crater 弹坑：k 坑口半径 / 杀伤半径（按爆炸种类）、minR / maxR 坑口半径（格）上下限、depth 坑深 / 坑口半径、maxDepth 最深几格、
+--     gap 离已有的坑多近不再炸（两坑半径和的倍数）、max 一局最多几个、perSec 一秒最多挖几个（多的排队）
+--   illum 照明弹：every 隔几秒打一发（随机范围）、alive 同时最多几发、height 在离地多高炸开、burn 烧几秒、fall 每秒落几格、sea 攻方舰队打的比例
+Config.Battle = {
+  crater = { k = { shell = 0.36, rkt = 0.32, msl = 0.34, bomb = 0.3 }, minR = 3.2, maxR = 13, depth = 0.34, maxDepth = 5.5, gap = 0.55, max = 240, perSec = 8 },
+  illum = { every = { 14, 24 }, alive = 3, height = { 105, 135 }, burn = 32, fall = 2.6, sea = 0.6, first = 6 },
+}
+
 return Config
