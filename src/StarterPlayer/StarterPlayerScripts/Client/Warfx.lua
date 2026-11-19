@@ -1,9 +1,9 @@
 -- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
 --   1. 照明弹（服务器 Battle.lua 打的，特效 k = "illum"）：按服务器时间算——
 --      发射：从舰炮 / 迫击炮那里一颗拖着短尾巴的亮点抛物线飞上去（离镜头远的不画）；炸开：一闪、一小团烟、「噗」一声（按距离晚到）；
---      挂着降落伞慢慢落、随风飘，一边烧一边拖出一条往上飘的白烟柱（被它自己照亮），往下掉火星；烧到最后几秒忽明忽暗、熄灭，伞掉得快了、淡掉。
+--      挂着降落伞慢慢落、随风飘，往上冒烟、往下掉火星，最后几秒逐渐熄灭。
 --      照亮：Roblox 的点光源最远 60 格，照明弹在一百多格高——光源放在照明弹正下方离地 40 格的地方跟着走（离镜头最近的那发投影子：
---      影子跟着照明弹慢慢挪），再加上「附近有照明弹，整片地都亮起来」：G.illum = { k 亮度 0～1.2 }，DayNight.lua 按它把环境光往暖白抬、曝光加一点，一闪一闪
+--      影子跟着照明弹慢慢挪），DayNight.lua 按 G.illum 平滑提高附近环境光与曝光。
 --   2. 夜空：一层低云；守方要地的对空探照灯慢慢扫；远处时不时的闷炮声（只有声音）
 --   3. 房子着火、塌（服务器 Battle.lua）：着火的房子冒火、冒烟、火光一闪一闪；塌的时候扬起一大团尘土、碎块乱飞、轰隆一声；废墟冒一阵烟
 --   4. 暴风雨（服务器给强度 StormK）：雨、闪电、雷声，云变厚、浪变大、风变大、雾变近
@@ -13,6 +13,15 @@ local Warfx = {}
 function Warfx.init(G)
   local RunService = game:GetService("RunService")
   local Debris = game:GetService("Debris")
+  local Lighting = game:GetService("Lighting")
+  local Players = game:GetService("Players")
+  local GuiService = game:GetService("GuiService")
+  local reducedMotion = false
+  pcall(function()
+    local function readMotion() reducedMotion = GuiService.ReducedMotionEnabled == true end
+    readMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(readMotion)
+  end)
   local V = Vector3.new
   local RGB = Color3.fromRGB
   local NSK, CSK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
@@ -94,17 +103,13 @@ function Warfx.init(G)
     return e.p + (e.w or V()) * b - V(0, fall, 0) + sway, (b <= e.burn) and "burn" or "out"
   end
 
-  -- 亮度 0～1：点着的头半秒亮起来，烧着时轻轻闪，最后 4 秒忽明忽暗地暗下去
+  -- 柔和升降亮度，避免把高频闪烁传给整个夜间调色。
   local function flareI(f, b, burn)
     if b < 0 or b > burn then return 0 end
-    local up = math.clamp(b / 0.5, 0, 1)
-    local fl = 0.88 + 0.07 * math.sin(b * 23 + f.ph) + 0.05 * math.sin(b * 37.7 + f.ph * 2)
-    local tail = 1
-    if b > burn - 4 then
-      tail = math.clamp((burn - b) / 4, 0, 1)
-      if math.random() < 0.25 then tail *= 0.45 end   -- 快烧完：噼啪地暗一下
-    end
-    return up * fl * tail
+    local up = math.clamp(b / 0.75, 0, 1)
+    local tail = math.clamp((burn - b) / 4, 0, 1)
+    local glow = reducedMotion and 0.95 or (0.95 + 0.05 * math.sin(b * 2.4 + f.ph))
+    return up * glow * tail
   end
 
   local function popSound(p, d)
@@ -114,10 +119,12 @@ function Warfx.init(G)
       p, { delay = d / 960, rmin = 120, rmax = 3200, hiCut = -10 * math.clamp((d - 400) / 2000, 0, 1) })
   end
 
-  local function ignite(f, pos)
+  local function ignite(f, pos, age)
     local d = (pos - camPos()).Magnitude
-    if G.flash and d < 2400 then G.flash(pos, WARM, 50, 6, 0.3) end
-    popSound(pos, d)
+    if age < 0.65 then
+      if not reducedMotion and G.flash and d < 2400 then G.flash(pos, WARM, 50, 2.7, 0.3) end
+      popSound(pos, d)
+    end
     local core = part(Enum.PartType.Ball, V(0.9, 0.9, 0.9), CFrame.new(pos), RGB(255, 246, 228), Enum.Material.Neon, 0)
     core.Name = "Illum"
     f.core = core
@@ -225,8 +232,12 @@ function Warfx.init(G)
           f.shell:Destroy()
           f.shell = nil
         end
-        if not f.core and ph == "burn" then ignite(f, pos) end
-        local gy = math.max(0, MapM.ground(pos.X, pos.Z))
+        if not f.core and ph == "burn" then ignite(f, pos, b) end
+        if not f.groundAt or t >= f.groundAt then
+          f.ground = math.max(0, MapM.ground(pos.X, pos.Z))
+          f.groundAt = t + 1 / 20
+        end
+        local gy = f.ground
         local alt = pos.Y - gy
         if f.core and not f.out and (ph == "out" or alt < 3) then extinguish(f) end
         if f.out then
@@ -257,7 +268,10 @@ function Warfx.init(G)
     end
     -- 只有离镜头最近的那发投影子（点光源投影子很贵）
     for _, f in ipairs(flares) do
-      if f.groundLight then f.groundLight.Shadows = (f == nearest) and nd < 900 end
+      if f.groundLight then
+        local shadows = f == nearest and nd < 900 and not reducedMotion and (G.perfK or 1) >= 0.8
+        if f.groundLight.Shadows ~= shadows then f.groundLight.Shadows = shadows end
+      end
     end
     illumK = math.min(1.2, k)
   end
@@ -327,12 +341,16 @@ function Warfx.init(G)
 
   local function stepLights()
     if #LIGHTS == 0 then return end
-    local t = serverNow()
+    local t = reducedMotion and 0 or serverNow()
     local cp = camPos()
     for _, L in ipairs(LIGHTS) do
       local near = (L.base - cp).Magnitude < 9000
-      for _, b in ipairs(L.beams) do b.Enabled = near end
-      if near then
+      if L.near ~= near then
+        L.near = near
+        for _, b in ipairs(L.beams) do b.Enabled = near end
+      end
+      if near and L.time ~= t then
+        L.time = t
         -- 方位角在朝海方向左右各 50° 里慢慢来回，仰角 35°～72°
         local az = L.az0 + math.rad(50) * math.sin(t * 0.11 + L.ph)
         local el = math.rad(53) + math.rad(19) * math.sin(t * 0.17 + L.ph * 1.3)
@@ -418,8 +436,12 @@ function Warfx.init(G)
     if t >= scanAt then
       scanAt = t + 15
       table.clear(bldList)
-      for _, d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+      local map = workspace:FindFirstChild("Map")
+      local scenery = map and map:FindFirstChild("Scenery")
+      if scenery then
+        for _, d in ipairs(scenery:GetDescendants()) do
+          if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+        end
       end
     end
     for _, m in ipairs(bldList) do
@@ -448,9 +470,10 @@ function Warfx.init(G)
   local function stepBurn()
     local cp = camPos()
     local t = os.clock()
-    for m, b in pairs(burning) do
+    for _, b in pairs(burning) do
       if b.h.Parent and (b.h.CFrame.Position - cp).Magnitude < 1500 then
-        b.light.Brightness = 2.6 + 0.6 * math.sin(t * 11 + b.ph) + 0.4 * math.sin(t * 23.7 + b.ph * 2)
+        local brightness = reducedMotion and 2.6 or (2.6 + 0.32 * math.sin(t * 3.1 + b.ph))
+        if math.abs(b.light.Brightness - brightness) > 0.025 then b.light.Brightness = brightness end
       end
     end
   end
@@ -468,7 +491,7 @@ function Warfx.init(G)
         { id = THUD, vol = 0.9, s = { 0.4, 0.45 }, eq = { 6, 0, -10 }, delay = 0.6 } },
         p, { delay = d / 960, rmin = 80, rmax = 4500, must = true })
     end
-    if d < 400 and G.shake then G.shake(0.55 * (1 - d / 400)) end
+    if d < 400 and G.shake and not reducedMotion then G.shake(0.55 * (1 - d / 400)) end
     if d > 4000 then return end
     local w = math.max(s.X, s.Z)
     local h = part(Enum.PartType.Block, V(1, 1, 1), CFrame.new(p.X, gy + 1.5, p.Z), RGB(0, 0, 0), nil, 1)
@@ -509,26 +532,24 @@ function Warfx.init(G)
 
   ---------------------------------------------------------------- 暴风雨（服务器 Battle.lua 给强度：workspace 的属性 StormK）
   -- 雨：镜头上方一块看不见的板子往下撒细长的雨丝（顺着速度方向拉长；受光：照明弹、火光、探照灯附近的雨亮晶晶，黑处几乎看不见）；
-  --   开飞机飞到云上面（700 格以上）不下。闪电：远处一道折线的白光、整个画面亮两下（双闪），雷声按距离晚到、拖着长长的回声；
+  --   开飞机飞到云上面（700 格以上）不下。闪电保留远处的短光与雷声，减少动态效果时只保留雷声；
   --   云变厚变黑、海浪变大、风把草吹得乱晃、雾变近（DayNight.lua 读 G.weather.k）；雨声的「沙——」跟着强度
   local stormK = 0
   local rainPart, rainPE, rainSnd
-  local flashCC = Instance.new("ColorCorrectionEffect")
-  flashCC.Name = "LightningFlash"
-  flashCC.Brightness = 0
-  pcall(function() flashCC.Parent = game:GetService("Lighting") end)
-  local flashT = nil
+  local rainActive, rainSoundOn = false, false
+  local weatherAcc, lastLook = 0, 0
   local nextBolt = 0
   local bolts = 0
   G.boltCount = function() return bolts end   -- 测试用
   G.weather = { k = 0 }
-  local T0 = { cover = clouds and clouds.Cover or 0.6, dens = clouds and clouds.Density or 0.5 }
+  local stormCloud = RGB(40, 44, 54)
+  local T0 = { cover = clouds and clouds.Cover or 0.6, dens = clouds and clouds.Density or 0.5, color = clouds and clouds.Color or RGB(66, 72, 88) }
   local terr = workspace:FindFirstChildOfClass("Terrain")
-  local W0 = { size = terr and terr.WaterWaveSize or 0.15, speed = terr and terr.WaterWaveSpeed or 8 }
+  local waterSize, waterSpeed, wind
 
   local function ensureRain()
     if rainPart then return end
-    rainPart = part(Enum.PartType.Block, V(120, 1, 120), CFrame.new(0, -500, 0), RGB(0, 0, 0), nil, 1)
+    rainPart = part(Enum.PartType.Block, V(86, 1, 86), CFrame.new(0, -500, 0), RGB(0, 0, 0), nil, 1)
     rainPart.Name = "Rain"
     rainPE = emitter(rainPart, { tex = "rbxasset://textures/particles/SquareParticle.png", rate = 0, life = { 0.45, 0.6 }, spd = { 140, 175 }, spread = 6,
       dir = Enum.NormalId.Bottom, size = nseq(0, 0.07, 1, 0.07), tr = nseq(0, 0.45, 1, 0.55), col = cseq(RGB(206, 214, 228), RGB(190, 200, 216)), rot = 0 })
@@ -537,29 +558,21 @@ function Warfx.init(G)
     rainPE.Rotation = NumberRange.new(0, 0)
     pcall(function() rainPE.Orientation = Enum.ParticleOrientation.VelocityParallel end)
     pcall(function() rainPE.Squash = NumberSequence.new(3) end)   -- 拉成细长的雨丝
-    if G.makeSound then
-      rainSnd = G.makeSound({ id = WIND, vol = 0.01, s = { 1.25, 1.3 }, loop = { 0.5, 9.5 }, eq = { -24, -4, 5 } }, game:GetService("SoundService"), {})
-    end
   end
 
-  -- 一道闪电：从云底（800 格）往下的折线，几段亮白的细条 + 一条分叉，0.25 秒后没了
-  local function bolt()
-    local cp = camPos()
-    local a = math.random() * 2 * math.pi
-    local dist = 1200 + math.random() * 3800
-    local x, z = cp.X + math.cos(a) * dist, cp.Z + math.sin(a) * dist
-    local gy = math.max(0, MapM.ground(x, z))
-    local pts, y = { V(x, 800, z) }, 800
+  local function drawBolt(x, gy, z)
+    local y = math.max(800, gy + 140)
+    local pts = { V(x, y, z) }
     while y > gy + 1 do
       y = math.max(gy, y - (60 + math.random() * 70))
       local last = pts[#pts]
       table.insert(pts, V(last.X + (math.random() - 0.5) * 70, y, last.Z + (math.random() - 0.5) * 70))
     end
-    local segs = {}
     local function seg(p0, p1, wdt)
       local L = (p1 - p0).Magnitude
-      local s = part(Enum.PartType.Block, V(wdt, wdt, L), CFrame.lookAt((p0 + p1) / 2, p1), RGB(230, 236, 255), Enum.Material.Neon, 0)
-      table.insert(segs, s)
+      local s = part(Enum.PartType.Block, V(wdt, wdt, L), CFrame.lookAt((p0 + p1) / 2, p1), RGB(190, 207, 235), Enum.Material.Neon, 0.25)
+      if G.tween then G.tween(s, 0.28, { Transparency = 1 }) end
+      Debris:AddItem(s, 0.3)
     end
     for i = 1, #pts - 1 do seg(pts[i], pts[i + 1], 1.6) end
     local k0 = math.random(2, math.max(2, #pts - 2))   -- 分叉
@@ -569,8 +582,14 @@ function Warfx.init(G)
       seg(bp, nb, 0.9)
       bp = nb
     end
-    for _, s in ipairs(segs) do Debris:AddItem(s, 0.25) end
-    flashT = os.clock()
+  end
+
+  local function bolt(cp)
+    local a = math.random() * 2 * math.pi
+    local dist = 1200 + math.random() * 3800
+    local x, z = cp.X + math.cos(a) * dist, cp.Z + math.sin(a) * dist
+    local gy = math.max(0, MapM.ground(x, z))
+    if not reducedMotion then drawBolt(x, gy, z) end
     local d = (V(x, gy, z) - cp).Magnitude
     if G.sfx then
       G.sfx({ { id = EXP, vol = 1.5, s = { 0.3, 0.36 }, reg = { 0, 2.5 }, eq = { 8, -2, -18 }, echo = { 0.5, 0.5, -6 } },
@@ -580,59 +599,84 @@ function Warfx.init(G)
     bolts += 1
   end
 
-  local function stepStorm(dt)
-    local target = workspace:GetAttribute("StormK")
-    target = type(target) == "number" and target or 0
-    stormK += (target - stormK) * math.min(1, dt * 0.8)
-    if math.abs(target - stormK) < 0.005 then stormK = target end
-    G.weather.k = stormK
-    local k = stormK
-    local cp = camPos()
-    if k > 0.01 then
-      ensureRain()
-      local cam = workspace.CurrentCamera
-      local look = cam and cam.CFrame.LookVector or V(0, 0, -1)
-      rainPart.CFrame = CFrame.new(cp + V(0, 38, 0) + V(look.X, 0, look.Z) * 20)
-      local high = cp.Y > 700   -- 云上面不下雨
-      rainPE.Rate = high and 0 or math.floor(1300 * k * math.clamp(G.perfK or 1, 0.4, 1))
-      if rainSnd then rainSnd.Volume = high and 0 or 1.4 * k end
-      if k > 0.4 and os.clock() >= nextBolt then
-        nextBolt = os.clock() + (5 + math.random() * 9) / k
-        bolt()
-      end
-    elseif rainPE then
-      rainPE.Rate = 0
-      if rainSnd then rainSnd.Volume = 0 end
+  local function stepRain(k, cp, look)
+    if k > 0.01 then ensureRain() end
+    if not rainPE then return end
+    local active = k > 0.01 and cp.Y <= 700
+    if active then
+      local target = cp + V(look.X * 20, 38, look.Z * 20)
+      if (rainPart.CFrame.Position - target).Magnitude >= 0.5 then rainPart.CFrame = CFrame.new(target) end
+    elseif rainActive then
+      pcall(function() rainPE:Clear() end)
     end
-    -- 云、浪、风
+    rainActive = active
+    local budget = G.mobile and 100 or 400
+    if reducedMotion then budget = G.mobile and 68 or 120 end
+    local rate = active and math.floor(budget * k * math.clamp(G.perfK or 1, 0.4, 1)) or 0
+    if rainPE.Rate ~= rate then rainPE.Rate = rate end
+
+    if active then
+      if not rainSnd and G.makeSound then
+        rainSnd = G.makeSound({ id = WIND, vol = 0.01, s = { 1.25, 1.3 }, loop = { 0.5, 9.5 }, eq = { -24, -4, 5 } }, game:GetService("SoundService"), {})
+        rainSoundOn = rainSnd ~= nil
+      end
+      if rainSnd then
+        local volume = k * 1.4
+        if math.abs(rainSnd.Volume - volume) >= 0.015 then rainSnd.Volume = volume end
+        if not rainSoundOn then rainSnd:Play() rainSoundOn = true end
+      end
+    elseif rainSoundOn then
+      rainSnd:Stop()
+      rainSoundOn = false
+    end
+  end
+
+  local function setWeatherLook(k)
+    if k == lastLook or (k > 0 and math.abs(k - lastLook) < 0.012) then return end
+    if lastLook == 0 then
+      if terr then waterSize, waterSpeed = terr.WaterWaveSize, terr.WaterWaveSpeed end
+      pcall(function() wind = workspace.GlobalWind end)
+    end
+    lastLook = k
     if clouds then
       clouds.Cover = T0.cover + (0.9 - T0.cover) * k
       clouds.Density = T0.dens + (0.82 - T0.dens) * k
-      clouds.Color = RGB(66, 72, 88):Lerp(RGB(40, 44, 54), k)
+      clouds.Color = T0.color:Lerp(stormCloud, k)
     end
     if terr then
-      pcall(function()
-        terr.WaterWaveSize = W0.size + (0.55 - W0.size) * k
-        terr.WaterWaveSpeed = W0.speed + (18 - W0.speed) * k
-      end)
+      terr.WaterWaveSize = waterSize + (0.55 - waterSize) * k
+      terr.WaterWaveSpeed = waterSpeed + (18 - waterSpeed) * k
     end
-    pcall(function() workspace.GlobalWind = V(20, 0, 10) * k end)
-    -- 闪电的双闪
-    if flashT then
-      local u = os.clock() - flashT
-      local b = 0
-      if u < 0.07 then b = 0.38 elseif u < 0.12 then b = 0.05 elseif u < 0.2 then b = 0.26 elseif u < 0.32 then b = 0.08 * (1 - (u - 0.2) / 0.12) else flashT = nil end
-      flashCC.Brightness = b
-    elseif flashCC.Brightness ~= 0 then
-      flashCC.Brightness = 0
+    if wind then pcall(function() workspace.GlobalWind = wind:Lerp(V(20, 0, 10), k) end) end
+  end
+
+  local function stepStorm(dt)
+    local target = workspace:GetAttribute("StormK")
+    target = type(target) == "number" and math.clamp(target, 0, 1) or 0
+    stormK += (target - stormK) * (1 - math.exp(-dt * 0.8))
+    if math.abs(target - stormK) < 0.005 then stormK = target end
+    G.weather.k = stormK
+    local cam = workspace.CurrentCamera
+    if cam and (stormK > 0 or rainActive) then
+      local cf = cam.CFrame
+      stepRain(stormK, cf.Position, cf.LookVector)
+      if stormK > 0.4 and os.clock() >= nextBolt then
+        nextBolt = os.clock() + (5 + math.random() * 9) / stormK
+        bolt(cf.Position)
+      end
+    elseif rainActive then
+      stepRain(0, V(), V())
+    end
+    weatherAcc += dt
+    if weatherAcc >= 0.12 then
+      weatherAcc %= 0.12
+      setWeatherLook(stormK)
     end
   end
 
   ---------------------------------------------------------------- 阵亡镜头（服务器 Battle.lua 的 G.killcam 发来 killcam）
-  -- 战地那种：死了以后 3 秒，镜头从倒下的地方转向凶手、慢慢拉近（视野收窄到凶手周围十几格），画面去色、景深对准凶手，
-  --   凶手头顶一个红色的标记（名字、多少米），真人还有一圈红色描边。镜头按渲染优先级 Camera + 20 每帧摆（盖过别的镜头逻辑），3.2 秒后放开、视野复原
-  local Lighting = game:GetService("Lighting")
-  local Players = game:GetService("Players")
+  -- 阵亡后短暂转向事件来源。减少动态效果、重新部署、主菜单和镜头切换均优先接管。
+  local player = Players.LocalPlayer
   local kc = nil
   local kcN = 0
   G.killcamCount = function() return kcN end   -- 测试用
@@ -641,31 +685,31 @@ function Warfx.init(G)
 
   local function endKillcam()
     if not kc then return end
-    pcall(function() RunService:UnbindFromRenderStep("Killcam") end)
-    local cam = workspace.CurrentCamera
-    if cam then cam.FieldOfView = kc.fov0 end
-    for _, o in ipairs(kc.objs) do if o.Parent then o:Destroy() end end
+    local shot = kc
     kc = nil
+    pcall(function() RunService:UnbindFromRenderStep("Killcam") end)
+    if workspace.CurrentCamera == shot.cam then shot.cam.FieldOfView = shot.fov0 end
+    for _, o in ipairs(shot.objs) do if o.Parent then o:Destroy() end end
   end
 
   local function stepKillcam()
     if not kc then return end
     local u = os.clock() - kc.t0
-    if u > 3.2 then
+    local cam = workspace.CurrentCamera
+    local character = player.Character
+    local round = G.S and G.S.round
+    if u > 3.2 or reducedMotion or cam ~= kc.cam or (character and character ~= kc.character)
+      or (kc.round and round and kc.round ~= round) or (G.menuShown and G.menuShown()) then
       endKillcam()
       return
     end
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    local to = (kc.p - kc.from).Unit
-    local dir = kc.look0:Lerp(to, smooth(u / 0.7))
-    if dir.Magnitude < 0.01 then dir = to end
-    cam.CFrame = CFrame.lookAt(kc.from, kc.from + dir.Unit)
+    local angle = smooth(u / 0.85)
+    cam.CFrame = kc.fromView:Lerp(kc.focusView, angle)
     cam.FieldOfView = kc.fov0 + (kc.fovZ - kc.fov0) * smooth((u - 0.45) / 1.1)
   end
 
   local function startKillcam(e)
-    if type(e) ~= "table" or typeof(e.p) ~= "Vector3" then return end
+    if reducedMotion or (G.menuShown and G.menuShown()) or type(e) ~= "table" or typeof(e.p) ~= "Vector3" then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
     local from = (typeof(e.from) == "Vector3") and e.from or cam.CFrame.Position
@@ -674,8 +718,12 @@ function Warfx.init(G)
     endKillcam()
     kcN += 1
     -- 视野收到凶手周围约 14 格（远的拉得多），最窄 8°
-    local fovZ = math.clamp(math.deg(2 * math.atan(14 / d)), 8, cam.FieldOfView)
-    kc = { t0 = os.clock(), from = from + V(0, 0.4, 0), look0 = cam.CFrame.LookVector, p = e.p, d = d, fov0 = cam.FieldOfView, fovZ = fovZ, objs = {} }
+    local fov = cam.FieldOfView
+    local fovZ = math.clamp(math.deg(2 * math.atan(14 / d)), math.min(8, fov), fov)
+    local eye = from + V(0, 0.4, 0)
+    kc = { t0 = os.clock(), cam = cam, character = player.Character, round = G.S and G.S.round,
+      fromView = CFrame.new(eye) * cam.CFrame.Rotation, focusView = CFrame.lookAt(eye, e.p),
+      fov0 = fov, fovZ = fovZ, objs = {} }
     -- 凶手头顶的标记
     local anchor = part(Enum.PartType.Block, V(0.2, 0.2, 0.2), CFrame.new(e.p + V(0, 4.5, 0)), RGB(0, 0, 0), nil, 1)
     anchor.Name = "KillcamTag"
@@ -741,7 +789,10 @@ function Warfx.init(G)
   G.onMsg = function(kind, key, ...)
     if kind == "killcam" then
       local ok, err = pcall(startKillcam, key)
-      if not ok and G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      if not ok then
+        endKillcam()
+        if G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      end
       return
     end
     if prevMsg then return prevMsg(kind, key, ...) end
@@ -761,7 +812,10 @@ function Warfx.init(G)
         stepLights()
         stepRumble()
         stepBurn()
-        if clouds then clouds.Enabled = (G.perfK or 1) >= 0.7 end
+        if clouds then
+          local enabled = (G.perfK or 1) >= 0.7
+          if clouds.Enabled ~= enabled then clouds.Enabled = enabled end
+        end
       end)
       if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
     end
