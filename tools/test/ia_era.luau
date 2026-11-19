@@ -185,6 +185,33 @@ H.run(0.3)
 check(got and got.aps == "hk" and got.era == "era" and got.roof == "stock", "点「出车」把改装交给了回调：" .. (got and TM.encode(got) or "-"))
 check(not CD.garageOpen(), "界面关了")
 
+print("⑤ 驾驶界面：敌人头顶的名字和距离、被发现、爆反 / 主动防御剩多少、圆形小地图")
+local nearA = eA.root.CFrame * CF.new(eA.def.W / 2 + 4, 0, 0)
+def.Character:PivotTo(CF.new(nearA.Position.X, G.Map.ground(nearA.Position.X, nearA.Position.Z) + 3, nearA.Position.Z))
+H.run(0.3)
+act(def, "enterVeh", eA.id)
+H.run(1.5)
+local st = CD.drive
+check(st ~= nil and st.id == eA.id, "坐进了改装的 M1A2")
+local fwd = eA.root.CFrame.LookVector
+local fpos = eA.root.CFrame.Position + fwd * 120
+local foeE = G.newVehicle("atk", "ztz96", CF.lookAt(V3.new(fpos.X, G.Map.ground(fpos.X, fpos.Z), fpos.Z), V3.new(fpos.X, G.Map.ground(fpos.X, fpos.Z), fpos.Z) - fwd))
+H.run(1.5)
+local tagTxt, spotted, armTxt = nil, false, nil
+local th = pg:FindFirstChild("TankHud")
+if th then
+	for _, d in th:GetDescendants() do
+		if d:IsA("TextLabel") and d.Visible and d.Parent and d.Parent:IsA("Frame") and d.Parent.Visible and d.TextColor3.R > 0.9 and d.TextColor3.G < 0.5 and d.Text ~= "" then tagTxt = d.Text end
+		if d:IsA("TextLabel") and d.Text == CD.T("vh.spotted") and d.Parent.Visible then spotted = true end
+		if d:IsA("TextLabel") and string.find(d.Text, CD.T("vh.aps", 0, 4):sub(1, 6), 1, true) then armTxt = d.Text end
+	end
+end
+check(th ~= nil and th.Enabled, "坦克界面的补充层开着")
+check(tagTxt ~= nil, "敌人头顶的名牌：" .. tostring(tagTxt))
+check(spotted, "「被发现！」亮了（敌车 120 格、看得见）")
+check(armTxt ~= nil, "爆反 / 主动防御剩多少：" .. tostring(armTxt))
+check(CD.tankHudDocked and CD.tankHudDocked(), "小地图挪到左下变圆")
+
 H.summary()
 print(fails == 0 and "全部通过" or ("不对 " .. fails .. " 处"))
 process.exit(fails == 0 and 0 or 1)

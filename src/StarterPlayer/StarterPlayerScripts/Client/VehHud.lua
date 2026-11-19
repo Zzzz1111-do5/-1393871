@@ -233,6 +233,17 @@ function VehHud.init(G)
   TK.smoke = label(TK.arm, "", UD2(0, 200, 0, 18), UD2(0, 18, 1, -30), 12, MUTE, MED, nil, LEFT)
   TK.smoke.Name = "Smoke"
   TK.ring = reloadRing(TK.arm, 258, 66)
+  -- 坦克的两块面板换成青色全息（用户 11-19 给的截图那样）：边框、角上的亮线、选中那一行、油门条；血量写「当前 / 满」
+  for _, pnl in ipairs({ TK.car, TK.arm }) do
+    pnl.BackgroundTransparency = 0.32
+    for _, c in ipairs(pnl:GetChildren()) do
+      if c:IsA("UIStroke") then c.Color, c.Transparency = CYAN, 0.5
+      elseif c:IsA("Frame") and c.BackgroundColor3 == TXT and (c.Size.Y.Offset == 2 or c.Size.X.Offset == 2) then c.BackgroundColor3 = CYAN end
+    end
+  end
+  for _, r in ipairs(TK.rows) do r.bar.BackgroundColor3 = CYAN end
+  TK.thr.BackgroundColor3 = CYAN
+  TK.hp.pct.Size = UD2(0, 110, 0, 14)
 
   ---------------------------------------------------------------- 舰艇：舰况、武器
   local SH = {}
@@ -420,6 +431,14 @@ function VehHud.init(G)
   TR.rel = label(TR.root, "", UD2(0, 60, 0, 14), UD2(0.5, -42, 0.5, 0), 12, AMBER, MONO, V2(1, 0.5), RIGHT)
   TR.rel.Name = "ReloadLeft"
   TR.rel.TextStrokeTransparency = 0.6
+  TR.rel.Visible = false   -- 用户 11-19（截图）：左边改成弹药数 + 状态（下面两行）
+  -- 准星左边：弹药数（大）、状态（已就绪 / 装填 x.x 秒）；青色全息（用户 11-19 给的手机坦克游戏截图那样）
+  TR.ammo = label(TR.root, "", UD2(0, 90, 0, 22), UD2(0.5, -46, 0.5, -9), 20, TXT, MONO, V2(1, 0.5), RIGHT)
+  TR.ammo.Name = "AmmoLeft"
+  TR.ammo.TextStrokeTransparency = 0.55
+  TR.state = label(TR.root, "", UD2(0, 110, 0, 16), UD2(0.5, -46, 0.5, 11), 13, CYAN, BOLD, V2(1, 0.5), RIGHT)
+  TR.state.Name = "ReadyState"
+  TR.state.TextStrokeTransparency = 0.6
   local lagArrow = label(ret, "▶", UD2(0, 16, 0, 16), UD2(0, 0, 0, 0), 13, AMBER, BOLD, V2(0.5, 0.5))
   lagArrow.Name = "TurretLag"
 
@@ -563,7 +582,7 @@ function VehHud.init(G)
   end
 
   -- 坦克的准星摆到屏幕上：p 炮指着的点、o 炮口、relK / ready / left 装填、pen 颜色和字
-  local function placeTank(p, o, relK, ready, left, lag, penC, penT)
+  local function placeTank(p, o, relK, ready, left, lag, penC, penT, ammoTxt)
     SR.root.Visible, SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false, false
     for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
     local sp, on = cam:WorldToViewportPoint(p)
@@ -572,7 +591,7 @@ function VehHud.init(G)
     local kick = reducedMotion and 0 or math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
     TR.scale.Scale = 1 + 0.4 * kick
     TR.root.Position = UD2(0, sp.X, 0, sp.Y)
-    local col = penC or TXT
+    local col = penC or CYAN   -- 没瞄着车：青色（全息的感觉）
     local lit = ready and #TR.segs or math.floor(relK * #TR.segs + 0.001)
     for i, sgx in ipairs(TR.segs) do
       local onSeg = i <= lit
@@ -583,8 +602,11 @@ function VehHud.init(G)
     TR.dot.BackgroundColor3 = col
     TR.pen.Text = penT or ""
     TR.pen.TextColor3 = col
-    TR.rng.Text = string.format("%d m", math.floor((p - o).Magnitude / 2.8 / 5 + 0.5) * 5)
+    TR.rng.Text = T("vh.m", math.floor((p - o).Magnitude / 2.8 / 5 + 0.5) * 5)
     TR.rel.Text = ready and "" or string.format("%.1f", left)
+    TR.ammo.Text = ammoTxt or ""
+    TR.state.Text = ready and T("vh.rdy") or T("vh.loading", string.format("%.1f", left))
+    TR.state.TextColor3 = ready and CYAN or AMBER
     local off = V2(vp.X / 2, vp.Y / 2) - V2(sp.X, sp.Y)
     lagArrow.Visible = lag and on and off.Magnitude > 30
     if lagArrow.Visible then
@@ -623,6 +645,7 @@ function VehHud.init(G)
     local k, col = hpColor(st.em)
     TK.hullStroke.Color = col
     setHp(TK.hp, k, col)
+    TK.hp.pct.Text = string.format("%d / %d", math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0))
     local camY = math.deg(st.camYaw or 0)
     local hullY = math.deg(st.yaw or 0)
     TK.hull.Rotation = -(hullY - camY)
@@ -636,6 +659,7 @@ function VehHud.init(G)
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
     TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
     local relK, ready, left = 1, true, 0
+    local selAmmo = nil
     for i, r in ipairs(TK.rows) do
       local wid = d.weapons[i]
       if wid then
@@ -643,6 +667,7 @@ function VehHud.init(G)
         local ammo = vs and vs.ammo and vs.ammo[wid]
         setRow(r, tostring(i), T("vw." .. wid), ammo and string.format("%d / %d", ammo[1], ammo[2]) or "∞", i == st.wi, ammo and ammo[1] + ammo[2] == 0)
         if i == st.wi and w then
+          selAmmo = ammo and tostring(ammo[1] + ammo[2]) or "∞"
           local l = (st.next[wid] or 0) - os.clock()
           local full = (ammo and ammo[1] == w.mag and l > w.rate) and (w.reload or w.rate) or w.rate
           relK = 1 - math.clamp(l / math.max(full, 0.01), 0, 1)
@@ -673,7 +698,8 @@ function VehHud.init(G)
     local w = wid and VD.W[wid]
     local penC, penT = nil, nil
     if w then penC, penT = penState(w, gcf.Position, pt, st.em) end
-    placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT)
+    placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT, selAmmo)
+    if G.tankHudExtra then G.tankHudExtra(st, k) end   -- 敌人头顶的名字和距离、「被发现」、爆反 / 主动防御的状态（TankHud.lua）
   end
 
   -- 舰艇主炮的准星：p 落点、o 炮口、tof 炮弹飞多久；瞄着的敌人：目标卡 + 提前量
