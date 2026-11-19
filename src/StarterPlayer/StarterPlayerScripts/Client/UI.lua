@@ -138,13 +138,13 @@ function UI.init(G)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
   local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  do   -- 左边、下边压暗，右上透出一点战场
+  do   -- 保留远景，限制夜视和照明弹在部署页背后的亮斑
     local g = Instance.new("UIGradient")
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.13), NumberSequenceKeypoint.new(1, 0.24) })
     g.Rotation = -20
     g.Parent = deploy
   end

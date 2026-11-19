@@ -155,23 +155,27 @@ function Night.init(G)
     end
   end
 
-  UIS.InputBegan:Connect(function(io, gp)
-    if gp or io.KeyCode ~= Enum.KeyCode.N then return end
+  function G.nvgToggle()
     if G.drive and not G.fly and not G.sail then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像（开船、开飞机时 N 照样是夜视仪）
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     setOn(not on)
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if not gp and io.KeyCode == Enum.KeyCode.N then G.nvgToggle() end
   end)
-  if UIS.TouchEnabled then   -- 手机：右边一个小按钮
-    local b = G.ui and G.ui.button and G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 40), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
-    if b then
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 14
-      b.Activated:Connect(function() setOn(not on) end)
-    end
+  local vehicleTouch
+  if UIS.TouchEnabled then   -- 步兵按键由 Play.lua 排版；飞行和航行继续用各自的夜视入口。
+    vehicleTouch = G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 44), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
+    vehicleTouch.Name = "VehicleNightVision"
+    vehicleTouch.Visible = false
+    vehicleTouch.BackgroundTransparency = 0.35
+    vehicleTouch.TextSize = 14
+    vehicleTouch.Activated:Connect(G.nvgToggle)
   end
 
   RunService.RenderStepped:Connect(function(dt)
+    if vehicleTouch then vehicleTouch.Visible = (G.fly ~= nil or G.sail ~= nil) and not (G.menuOpen and G.menuOpen()) end
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then setOn(false) return end

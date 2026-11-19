@@ -1,13 +1,13 @@
 -- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
 --   照战雷、战地的样子重做坦克（Drive.lua 的 G.myVeh）和舰艇（Sail.lua 的 G.sail）的驾驶界面；
 --   有了这个模块（G.vehHudOn），Drive.lua、Sail.lua 原来那块小面板、圆圈、黄十字不画了（瞄准镜、望远镜、导弹锁定框照旧归它们）。
---   · 右下两块（左下是雷达和小队名单）：
+--   · 电脑右下两块，触屏用紧凑读数面板给方向键留位置：
 --     「车况 / 舰况」：名字；俯视轮廓（车体 / 舰体按相对镜头的朝向转，炮塔、炮管按各自的朝向转；外圈上方两道短线是镜头看的方向），
 --       描边按血量变色、挨打闪红；十格血条和百分比；坦克：速度（大数字）、挡位 D / R / N、航向、油门条；
 --       舰艇：航速（节）、车钟（后退二 … 全速前进 一格格的梯子，亮的是现在这一档）、舵角条（左右 35°）、航向
 --     「武器」：每一种武器一行（按键、名字、弹药），选中的那行亮、左边一道琥珀色；右边装填环（24 颗点：装填时一颗颗亮起琥珀色，装好全绿、写「就绪」）；
 --       坦克的烟幕弹、舰艇的防空导弹、近防炮
---   · 顶上：罗盘（每 5° 一格、每 15° 一个数、八个方位字），中间是镜头朝向；琥珀色小三角是炮管（坦克）/ 舰首（舰艇）的朝向
+--   · 电脑罗盘放在计分栏左侧或下方，触屏只在面板显示航向；琥珀色小三角是炮管（坦克）/ 舰首（舰艇）的朝向
 --   · 中间：镜头看的地方一个小圈；炮现在指的地方（坦克：炮管方向打出去；舰艇：主炮的落点）一个战雷式的瞄准圈（圈、四根刻度、中心点），
 --     装填时圈外 16 颗点的进度、圈变琥珀色；右边测距（米）；坦克炮塔还没转过来时圈上一个小箭头指着镜头准心
 --   · 四周一圈很淡的暗角；开炮：瞄准圈一涨一缩、画面一亮
@@ -15,19 +15,26 @@ local VehHud = {}
 
 function VehHud.init(G)
   local Players = game:GetService("Players")
+  local GuiService = game:GetService("GuiService")
   local RunService = game:GetService("RunService")
   local Lighting = game:GetService("Lighting")
   local RS = game:GetService("ReplicatedStorage")
+  local UIS = game:GetService("UserInputService")
   local V2, UD2, UD = Vector2.new, UDim2.new, UDim.new
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
-  local layoutPanels   -- 面板摆放（下面定义）
   local VD = require(RS:WaitForChild("VehDefs"))
   local SD = require(RS:WaitForChild("ShipDefs"))
   local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local reducedMotion = false
+  pcall(function()
+    local function updateMotion() reducedMotion = GuiService.ReducedMotionEnabled end
+    updateMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(updateMotion)
+  end)
 
-  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(150, 162, 160)
+  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
   local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(128, 214, 255)
   local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
   local WHITE = Color3.new(1, 1, 1)
@@ -76,7 +83,7 @@ function VehHud.init(G)
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
   -- 面板：深色半透明、细白边、左上角刻一道短的亮线
   local function panel(parent, size, pos, anchor)
-    local p = frame(parent, size, pos, INK, 0.36, anchor)
+    local p = frame(parent, size, pos, INK, 0.16, anchor)
     stroke(p, WHITE, 1, 0.86)
     frame(p, UD2(0, 26, 0, 2), UD2(0, -1, 0, -1), TXT, 0.1)
     frame(p, UD2(0, 2, 0, 14), UD2(0, -1, 0, -1), TXT, 0.1)
@@ -109,7 +116,8 @@ function VehHud.init(G)
       r.bar = frame(p, UD2(0, 3, 0, 22), UD2(0, 10, 0, y), AMBER, 0)
       r.key = label(p, "", UD2(0, 22, 0, 22), UD2(0, 18, 0, y), 12, TXT, BOLD)
       r.keyStroke = stroke(r.key, WHITE, 1, 0.7)
-      r.name = label(p, "", UD2(0, 130, 0, 22), UD2(0, 48, 0, y), 13, TXT, MED, nil, LEFT)
+      r.name = label(p, "", UD2(0, 112, 0, 22), UD2(0, 48, 0, y), 13, TXT, MED, nil, LEFT)
+      r.name.TextTruncate = Enum.TextTruncate.AtEnd
       r.ammo = label(p, "", UD2(0, 60, 0, 22), UD2(0, 226, 0, y), 13, TXT, MONO, V2(1, 0), RIGHT)
       r.name.Name, r.ammo.Name = "WName" .. i, "WAmmo" .. i
       rows[i] = r
@@ -265,6 +273,43 @@ function VehHud.init(G)
   SH.ring = reloadRing(SH.arm, 258, 66)
   SH.def = nil
 
+  -- 小屏读数单独排版，避免把固定面板的字一起缩小。
+  local MS = {}
+  MS.box = panel(hud, UD2(0, 330, 0, 72), nil)
+  MS.box.Name = "CompactInstruments"
+  MS.box.Visible = false
+  MS.speed = label(MS.box, "", UD2(0, 90, 0, 28), UD2(0, 10, 0, 3), 20, TXT, BOLD, nil, LEFT)
+  MS.motion = label(MS.box, "", UD2(0, 90, 0, 16), UD2(0, 10, 0, 32), 12, TXT, MED, nil, LEFT)
+  MS.heading = label(MS.box, "", UD2(0, 90, 0, 14), UD2(0, 10, 0, 50), 11, MUTE, MONO, nil, LEFT)
+  MS.split = frame(MS.box, UD2(0, 1, 1, -16), nil, TXT, 0.82)
+  MS.selection = label(MS.box, "", UD2(), nil, 13, TXT, BOLD, nil, LEFT)
+  MS.count = label(MS.box, "", UD2(), nil, 12, TXT, MONO, nil, LEFT)
+  MS.status = label(MS.box, "", UD2(0, 54, 0, 16), UD2(1, -8, 0, 24), 12, OK, BOLD, V2(1, 0), RIGHT)
+  MS.health = label(MS.box, "", UD2(), nil, 11, MUTE, MED, nil, LEFT)
+  MS.track = frame(MS.box, UD2(), nil, TXT, 0.82)
+  MS.fill = frame(MS.track, UD2(0, 0, 1, 0), nil, OK, 0)
+  MS.speed.Name, MS.motion.Name, MS.heading.Name = "Speed", "DriveState", "Heading"
+  MS.selection.Name, MS.status.Name, MS.health.Name = "Selection", "Readiness", "Hull"
+  MS.count.Name = "Ammo"
+  for _, l in ipairs({ MS.speed, MS.motion, MS.selection, MS.count, MS.health }) do
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+  end
+
+  local function updateCompact(name, speed, motion, heading, hp, k, col, row, relK, ready, left)
+    if not MS.box.Visible then return end
+    local selected = row and row.name.Visible
+    MS.speed.Text, MS.motion.Text, MS.heading.Text = speed, motion, heading
+    MS.selection.Text = selected and row.name.Text or name
+    MS.count.Text = selected and (string.gsub(row.ammo.Text, " / ", "/")) or ""
+    MS.count.TextColor3 = selected and row.ammo.TextColor3 or TXT
+    MS.status.Text = selected and (ready and T("vh.ready") or string.format("%.1fs", left)) or ""
+    MS.status.TextColor3 = ready and OK or AMBER
+    MS.health.Text, MS.health.TextColor3 = hp .. "  " .. string.format("%d%%", math.floor(k * 100 + 0.5)), col
+    MS.track.Visible = selected == true
+    MS.fill.BackgroundColor3 = ready and OK or AMBER
+    MS.fill.Size = UD2(relK, 0, 1, 0)
+  end
+
   local function buildShip(d)   -- 换船了：舰体长宽、炮塔的位置
     SH.def = d
     for _, t in ipairs(SH.turrets) do t.box:Destroy() end
@@ -286,8 +331,9 @@ function VehHud.init(G)
   end
 
   ---------------------------------------------------------------- 顶上：罗盘（坦克、舰艇共用）
-  local comp = frame(hud, UD2(0, 560, 0, 40), UD2(0.5, 0, 0, 14), INK, 1, V2(0.5, 0))
-  comp.Name = "Compass"
+  local compGroup = frame(hud, UD2(0, 560, 0, 51), nil, INK, 1)
+  compGroup.Name = "Compass"
+  local comp = frame(compGroup, UD2(1, 0, 0, 38), nil, INK, 1)
   comp.ClipsDescendants = true
   local compBg = frame(comp, UD2(1, 0, 0, 22), UD2(0, 0, 0, 0), INK, 0.55)
   grad(compBg, 0, nseq(0, 1, 0.18, 0.45, 0.82, 0.45, 1, 1))
@@ -296,8 +342,8 @@ function VehHud.init(G)
   for i = 1, 40 do
     ticks[i] = { t = frame(comp, UD2(0, 1, 0, 6), UD2(0, 0, 0, 0), TXT, 0.35), l = label(comp, "", UD2(0, 30, 0, 14), UD2(0, 0, 0, 7), 11, TXT, MONO, V2(0.5, 0)) }
   end
-  label(hud, "▼", UD2(0, 16, 0, 12), UD2(0.5, 0, 0, 36), 11, TXT, BOLD, V2(0.5, 0))
-  local compHdg = label(hud, "000", UD2(0, 60, 0, 18), UD2(0.5, 0, 0, 47), 15, TXT, MONO, V2(0.5, 0))
+  label(compGroup, "▼", UD2(0, 16, 0, 12), UD2(0.5, 0, 0, 18), 11, TXT, BOLD, V2(0.5, 0))
+  local compHdg = label(compGroup, "000", UD2(0, 60, 0, 18), UD2(0.5, 0, 0, 32), 15, TXT, MONO, V2(0.5, 0))
   compHdg.Name = "Heading"
   local compMark = label(comp, "▲", UD2(0, 14, 0, 10), UD2(0.5, 0, 0, 24), 10, AMBER, BOLD, V2(0.5, 0))
   compMark.Name = "MarkHeading"
@@ -305,6 +351,7 @@ function VehHud.init(G)
   local function deg360(r) return (math.deg(r) % 360 + 360) % 360 end
   local function hdgOf(yaw) return (360 - deg360(yaw or 0)) % 360 end   -- 偏航（逆时针、从 −Z 起）→ 航向（顺时针从北）
   local function stepCompass(camHdg, markHdg)
+    if not compGroup.Visible then return end
     local first = math.floor((camHdg - CW / 2 / PX) / 5) * 5
     for i, tk in ipairs(ticks) do
       local a = first + (i - 1) * 5
@@ -355,7 +402,7 @@ function VehHud.init(G)
     local sp, on = cam:WorldToViewportPoint(p)
     local vp = cam.ViewportSize
     gun.Visible, rangeL.Visible = on, on
-    local kick = math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
+    local kick = reducedMotion and 0 or math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
     local sz = 34 * (1 + 0.45 * kick)
     gun.Size = UD2(0, sz, 0, sz)
     gun.Position = UD2(0, sp.X, 0, sp.Y)
@@ -384,7 +431,7 @@ function VehHud.init(G)
     if hp0 and hp < hp0 - 0.5 then hurtT = os.clock() end
     hp0 = hp
     local col = (k > 0.6) and OK or ((k > 0.3) and AMBER or BAD)
-    if os.clock() - hurtT < 0.6 and (os.clock() * 10) % 2 < 1 then col = BAD end
+    if os.clock() - hurtT < 0.6 and (reducedMotion or (os.clock() * 10) % 2 < 1) then col = BAD end
     return k, col
   end
 
@@ -429,6 +476,9 @@ function VehHud.init(G)
     end
     TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
     setRing(TK.ring, relK, ready, left)
+    local gear = TK.gear.Text
+    updateCompact(TK.name.Text, TK.spd.Text .. " km/h", tonumber(gear) and ("D" .. gear) or gear, TK.hdg.Text,
+      TK.hp.lab.Text, k, col, TK.rows[st.wi], relK, ready, left)
     stepCompass(hdgOf(st.camYaw), hdgOf((st.yaw or 0) - math.rad(st.ty or 0)))
     local hasGun = d.turret ~= nil and d.gun ~= nil and d.weapons[1] ~= nil
     if not hasGun then
@@ -496,6 +546,8 @@ function VehHud.init(G)
     if d.sam then setRow(SH.rows[3], nil, T("vh.sam"), tostring(vs and vs.sam or 0), false) else setRow(SH.rows[3], nil, nil) end
     if d.ciws and #d.ciws > 0 then setRow(SH.rows[4], nil, T("vh.ciws"), T("vh.auto"), false) else setRow(SH.rows[4], nil, nil) end
     setRing(SH.ring, relK, ready, left)
+    updateCompact(SH.name.Text, T("ship.kn", SH.kn.Text), SH.order.Text, SH.hdg.Text,
+      SH.hp.lab.Text, k, col, SH.rows[st.wi], relK, ready, left)
     stepCompass(hdgOf(st.camYaw), hdgOf(st.yaw))
     -- 主炮的落点
     local fp = (st.wi == 1 and G.sailFall and g1) and G.sailFall(1) or nil
@@ -562,47 +614,83 @@ function VehHud.init(G)
   SG.ptr.Name = "RangePointer"
   label(SG.scale, "×100m", UD2(0, 60, 0, 12), UD2(0, 0, 1, 6), 10, MUTE, MONO)
   -- 右边跟左边测距尺对称：选中的弹 / 弹药 / 装填（下面 Drive 的测距数字和倍率不挡）
-  SG.ammo = label(sg, "", UD2(0, 220, 0, 18), UD2(0.5, 236, 0.5, -30), 14, TXT, MONO)
+  SG.info = frame(sg, UD2(0, 184, 0, 43), nil, INK, 0.19)
+  SG.info.Name = "SightStatus"
+  stroke(SG.info, WHITE, 1, 0.79)
+  SG.ammo = label(SG.info, "", UD2(1, -74, 0, 18), UD2(0, 10, 0, 4), 13, TXT, MED, nil, LEFT)
   SG.ammo.Name = "SightAmmo"
-  SG.state = label(sg, "", UD2(0, 220, 0, 16), UD2(0.5, 236, 0.5, -8), 12, OK, BOLD)
-  frame(sg, UD2(0, 2, 0, 44), UD2(0.5, 228, 0.5, -30), TXT, 0.45)
+  SG.ammo.TextTruncate = Enum.TextTruncate.AtEnd
+  SG.count = label(SG.info, "", UD2(0, 50, 0, 18), UD2(1, -8, 0, 4), 12, TXT, MONO, V2(1, 0), RIGHT)
+  SG.state = label(SG.info, "", UD2(1, -20, 0, 16), UD2(0, 10, 0, 23), 12, OK, BOLD, nil, LEFT)
   SG.comp = frame(sg, UD2(0, 300, 0, 22), UD2(0.5, 0, 0.5, -215), INK, 1, V2(0.5, 0))
   SG.comp.ClipsDescendants = true
   for i = 1, 24 do
     SG.ticks[i] = { t = frame(SG.comp, UD2(0, 1, 0, 5), UD2(0, 0, 0, 0), TXT, 0.4), l = label(SG.comp, "", UD2(0, 28, 0, 12), UD2(0, 0, 0, 6), 10, TXT, MONO, V2(0.5, 0)) }
   end
-  label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
+  SG.marker = label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
+  local sightRingScale = Instance.new("UIScale")
+  sightRingScale.Parent = SG.ring
 
-  -- 面板摆放：电脑在右下角（两块并排）；手机右边是一列按键、左下是方向键，放到下面正中间，缩小一点
-  local PAIRS = { { TK.car, TK.arm, 270 }, { SH.car, SH.arm, 296 } }
-  for _, pr in ipairs(PAIRS) do
-    for k = 1, 2 do
-      local u = Instance.new("UIScale")
-      u.Parent = pr[k]
+  -- 触屏左下的方向键最右到 x=250，右侧操作键最下到离底部 120 px。
+  local function compactDock(vp, mobile, width, height)
+    local margin = 14
+    local left = mobile and 262 or margin
+    local room = vp.X - left - margin
+    local top = vp.Y - height - margin
+    if mobile and room < 185 then
+      -- 竖屏保留左上小地图的 122 px 宽度。
+      left, room = 150, vp.X - 150 - margin
+      top = math.min(100, top)
     end
+    width = math.max(1, math.min(width, room))
+    return math.max(left, (vp.X - width) / 2), math.max(0, top), width
+  end
+
+  local PAIRS = { { TK.car, TK.arm }, { SH.car, SH.arm } }
+  for _, pr in ipairs(PAIRS) do
+    pr[3], pr[4] = Instance.new("UIScale"), Instance.new("UIScale")
+    pr[3].Parent, pr[4].Parent = pr[1], pr[2]
   end
   local lastVp, lastMob = nil, nil
-  function layoutPanels()
+  local compact, compassSide = false, false
+  local function layoutPanels()
     local vp = cam.ViewportSize
-    local mob = G.mobile == true
+    local mob = G.mobile == true or UIS.TouchEnabled
     if lastVp == vp and lastMob == mob then return end
     lastVp, lastMob = vp, mob
-    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.55, 1.25)
-    if mob then s = math.min(s, 0.55) end
+    compact = mob or vp.X < 760 or vp.Y < 480
+    local sideWidth = vp.X / 2 - 330
+    compassSide = sideWidth >= 172
+    CW = compassSide and math.min(420, math.floor(sideWidth)) or math.clamp(math.floor(vp.X - 32), 1, 420)
+    compGroup.Size = UD2(0, CW, 0, 51)
+    compGroup.Position = compassSide and UD2(0, 18, 0, 16) or UD2(0.5, -CW / 2, 0, 118)
+
+    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.74, 1.25)
     for _, pr in ipairs(PAIRS) do
-      local car, arm = pr[1], pr[2]
-      car:FindFirstChildOfClass("UIScale").Scale = s
-      arm:FindFirstChildOfClass("UIScale").Scale = s
-      local cw, aw, gap = pr[3] * s, 300 * s, 10 * s
-      car.AnchorPoint, arm.AnchorPoint = V2(1, 1), V2(1, 1)
-      if mob then
-        local total = cw + gap + aw
-        arm.Position = UD2(0.5, total / 2, 1, -6)
-        car.Position = UD2(0.5, total / 2 - aw - gap, 1, -6)
-      else
-        arm.Position = UD2(1, -24 * s, 1, -40 * s)
-        car.Position = UD2(1, -24 * s - aw - gap, 1, -40 * s)
-      end
+      pr[3].Scale, pr[4].Scale = s, s
+      pr[1].Position, pr[2].Position = UD2(1, -334 * s, 1, -40 * s), UD2(1, -24 * s, 1, -40 * s)
+    end
+
+    local x, y, width = compactDock(vp, mob, 342, 72)
+    local split = width >= 232 and 108 or 88
+    MS.box.Position, MS.box.Size = UD2(0, x, 0, y), UD2(0, width, 0, 72)
+    MS.speed.Size, MS.motion.Size = UD2(0, split - 15, 0, 28), UD2(0, split - 15, 0, 16)
+    MS.speed.TextSize = width >= 232 and 20 or 16
+    MS.split.Position = UD2(0, split, 0, 8)
+    MS.selection.Position, MS.selection.Size = UD2(0, split + 10, 0, 6), UD2(1, -split - 18, 0, 16)
+    MS.count.Position, MS.count.Size = UD2(0, split + 10, 0, 24), UD2(1, -split - 74, 0, 16)
+    MS.health.Position, MS.health.Size = UD2(0, split + 10, 0, 42), UD2(1, -split - 18, 0, 16)
+    MS.track.Position, MS.track.Size = UD2(0, split + 10, 1, -10), UD2(1, -split - 18, 0, 2)
+
+    local simpleSight = compact or vp.X < 900 or vp.Y < 520
+    SG.scale.Visible, SG.comp.Visible, SG.marker.Visible = not simpleSight, not simpleSight, not simpleSight
+    sightRingScale.Scale = simpleSight and 0.78 or 1
+    if simpleSight then
+      local sx, sy, sw = compactDock(vp, mob, 184, 43)
+      if mob and vp.X >= 600 then sx = vp.X - sw - 14 end
+      SG.info.Position, SG.info.Size = UD2(0, sx, 0, sy), UD2(0, sw, 0, 43)
+    else
+      SG.info.Position, SG.info.Size = UD2(0.5, 206, 0.5, -26), UD2(0, 184, 0, 43)
     end
   end
 
@@ -620,7 +708,7 @@ function VehHud.init(G)
     end
     -- 炮口烟：开炮后 0.06 秒涌上来，一秒多散掉
     local age = os.clock() - (st.fireT or -99)
-    local hz = (age < 2.2) and math.clamp(age / 0.06, 0, 1) * 0.62 * math.exp(-math.max(0, age - 0.06) * 2.1) or 0
+    local hz = (not reducedMotion and age < 2.2) and math.clamp(age / 0.06, 0, 1) * 0.62 * math.exp(-math.max(0, age - 0.06) * 2.1) or 0
     SG.haze.BackgroundTransparency = 1 - hz
     if hz > 0 then
       local cc = G.sightCC
@@ -632,9 +720,11 @@ function VehHud.init(G)
       dd.BackgroundColor3 = ready and OK or (i <= lit and AMBER or TXT)
       dd.BackgroundTransparency = ready and 0.25 or (i <= lit and 0.05 or 0.75)
     end
-    SG.ammo.Text = wid and (T("vw." .. wid) .. "  " .. (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞")) or ""
+    SG.ammo.Text = wid and T("vw." .. wid) or ""
+    SG.count.Text = wid and (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞") or ""
     SG.state.Text = ready and T("vh.loaded") or string.format("%s  %.1f", T("vh.reload"), left)
     SG.state.TextColor3 = ready and OK or AMBER
+    if not SG.scale.Visible then return end
     local dist = st.aimPt and (st.aimPt - cam.CFrame.Position).Magnitude / 2.8 or 0
     SG.ptr.Position = UD2(0, 46, 0, 220 - math.clamp(dist / 2000, 0, 1) * 220)
     -- 小罗盘：炮管朝向
@@ -652,34 +742,30 @@ function VehHud.init(G)
   end
 
   RunService.RenderStepped:Connect(function()
-    local tank0 = G.myVeh
-    local inSight = tank0 ~= nil and tank0 == G.drive and tank0.sight and tank0.d ~= nil
-    sg.Enabled = inSight
-    if inSight then
-      local ok, err = pcall(stepSight, tank0)
-      if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
-    end
-  end)
-
-  RunService.RenderStepped:Connect(function()
-    local tank = G.myVeh
-    local ship = G.sail
-    local mode = nil
-    if tank and tank == G.drive and not tank.sight and tank.d then
-      mode = "tank"
-    elseif ship and ship == G.drive and not ship.bino and ship.d then
-      mode = "ship"
-    end
-    gui.Enabled = mode ~= nil
-    if not mode then
+    local covered = (G.boardShown and G.boardShown()) or (G.menuOpen and G.menuOpen())
+      or (G.menuShown and G.menuShown()) or (G.coachPanel and G.coachPanel())
+    local tank, ship = G.myVeh, G.sail
+    local driving = not covered and tank ~= nil and tank == G.drive and tank.d ~= nil
+    local sailing = not covered and ship ~= nil and ship == G.drive and ship.d ~= nil and ship.bino ~= true
+    local inSight = driving and tank.sight == true
+    local showTank = driving and not inSight
+    gui.Enabled, sg.Enabled = showTank or sailing, inSight
+    if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
       hp0 = nil
+    end
+    if not gui.Enabled and not inSight then return end
+    layoutPanels()
+    if inSight then
+      local ok, err = pcall(stepSight, tank)
+      if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
       return
     end
-    layoutPanels()
-    TK.car.Visible, TK.arm.Visible = mode == "tank", mode == "tank"
-    SH.car.Visible, SH.arm.Visible = mode == "ship", mode == "ship"
-    local ok, err = pcall(mode == "tank" and stepTank or stepShip, mode == "tank" and tank or ship)
+    compGroup.Visible = not compact and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
+    TK.car.Visible, TK.arm.Visible = showTank and not compact, showTank and not compact
+    SH.car.Visible, SH.arm.Visible = sailing and not compact, sailing and not compact
+    MS.box.Visible = compact
+    local ok, err = pcall(showTank and stepTank or stepShip, showTank and tank or ship)
     if not ok and G.showError then G.showError("驾驶界面：" .. tostring(err)) end
   end)
 end

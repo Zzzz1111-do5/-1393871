@@ -3667,10 +3667,16 @@ add("stage.hq.short", "指挥部", "COMMAND")
 add("hud.stage", "阶段 {1}/{2}", "SECTOR {1}/{2}")
 add("hud.stageN", "第 {1} / {2} 阶段", "SECTOR {1} OF {2}")
 add("operation.inZone", "已进入占领区", "IN CAPTURE ZONE")
+add("operation.opening", "夜间登陆", "NIGHT LANDING")
 add("operation.capturing", "正在占领", "CAPTURE ADVANCING")
 add("operation.losing", "敌方正在占领", "ENEMY CAPTURE ADVANCING")
 add("operation.recovering", "敌方占领进度正在回退", "ATTACKER PROGRESS FALLING")
 add("operation.stalled", "占领进度停滞", "CAPTURE STALLED")
+add("touch.fire", "开火", "FIRE")
+add("touch.aim", "瞄准", "AIM")
+add("touch.reload", "换弹", "RELOAD")
+add("touch.swap", "切换", "SWAP")
+add("touch.support", "支援", "SUPPORT")
 add("hud.tickets", "兵力", "TICKETS")
 add("hud.goalAtk", "进攻", "ATTACK")
 add("hud.goalDef", "防守", "DEFEND")
@@ -18282,225 +18288,286 @@ return AM
         <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">Bodycam</string>
-            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪的「执法记录仪」观感（用户：第一人称持枪去参考 bodycam）
---   只在步行第一人称（G.fpActive）、活着、没开狙击镜 / 望远镜时：
---   ① 镜头跟着步子走：每一步往下一沉、左右一摆、一歪（跑起来更大），落地猛地一顿，站着时随呼吸轻轻起伏；开镜瞄准时收到两成，不耽误瞄准；
---      镜头比眼睛低一点（像挂在胸前的记录仪）。只是看起来晃：每帧镜头模块算之前先把上一帧加的晃撤掉（不会越晃越偏）
---   ② 画面：四角压暗的镜头暗角、一层细碎的噪点、高光溢出（Bloom）、偏冷一点的色调；甩镜头快的时候糊一下（像记录仪的运动模糊）
---   ③ 右上角记录仪的字：● REC（一闪一闪）、机身型号和编号（虚构的）、日期时间
---   ④ 准星：第一人称不画那四根线，只留中间一个很淡的小点（记录仪画面里没有准星；第三人称照旧）——Play.lua 看 G.bodycamOn
+            <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
+local GuiService = game:GetService("GuiService")
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 
 local Bodycam = {}
+local CAMERA_PRIORITY = Enum.RenderPriority.Camera.Value
+local GRAIN_INTERVAL = 1 / 12
+local GREEN = Color3.fromRGB(186, 218, 207)
+local LIGHT = Color3.fromRGB(237, 241, 240)
+local ZERO = Vector3.new()
 
 function Bodycam.init(G)
   local me = Players.LocalPlayer
-  local cam = workspace.CurrentCamera
-  local V, CF, RGB = Vector3.new, CFrame.new, Color3.fromRGB
-  local UD2, V2 = UDim2.new, Vector2.new
   local mobile = G.mobile == true
   G.bodycamOn = true
-
-  ---------------------------------------------------------------- 画面上的东西
+  G.bodycamState = { on = false }
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Bodycam"
   gui.ResetOnSpawn = false
   gui.IgnoreGuiInset = true
-  gui.DisplayOrder = -2   -- 在主界面、狙击镜（-1）下面
+  gui.DisplayOrder = -2
   gui.Enabled = false
   gui.Parent = me:WaitForChild("PlayerGui")
-  -- 暗角：四边往里的渐变
-  for _, e in ipairs({ { V2(0, 0), UD2(1, 0, 0.3, 0), 90 }, { V2(0, 1), UD2(1, 0, 0.3, 0), -90 }, { V2(0, 0), UD2(0.22, 0, 1, 0), 0 }, { V2(1, 0), UD2(0.22, 0, 1, 0), 180 } }) do
-    local f = Instance.new("Frame")
-    f.AnchorPoint = e[1]
-    f.Position = UDim2.fromScale(e[1].X, e[1].Y)
-    f.Size = e[2]
-    f.BorderSizePixel = 0
-    f.BackgroundColor3 = RGB(0, 0, 0)
-    f.BackgroundTransparency = 0.35
-    f.Parent = gui
-    local gr = Instance.new("UIGradient")
-    gr.Rotation = e[3]
-    gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.85), NumberSequenceKeypoint.new(1, 1) })
-    gr.Parent = f
+
+  local lens = Instance.new("Frame")
+  lens.Name = "Lens"
+  lens.Size = UDim2.fromScale(1, 1)
+  lens.BackgroundTransparency = 1
+  lens.Visible = false
+  lens.Parent = gui
+  for _, edge in ipairs({
+    { 0, 0, 1, 0.16, 90 },
+    { 0, 1, 1, 0.20, -90 },
+    { 0, 0, 0.14, 1, 0 },
+    { 1, 0, 0.14, 1, 180 },
+  }) do
+    local frame = Instance.new("Frame")
+    frame.AnchorPoint = Vector2.new(edge[1], edge[2])
+    frame.Position = UDim2.fromScale(edge[1], edge[2])
+    frame.Size = UDim2.fromScale(edge[3], edge[4])
+    frame.BorderSizePixel = 0
+    frame.BackgroundColor3 = Color3.fromRGB(3, 8, 9)
+    frame.BackgroundTransparency = 0.65
+    frame.Parent = lens
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Rotation = edge[5]
+    gradient.Transparency = NumberSequence.new({
+      NumberSequenceKeypoint.new(0, 0),
+      NumberSequenceKeypoint.new(0.48, 0.7),
+      NumberSequenceKeypoint.new(1, 1),
+    })
+    gradient.Parent = frame
   end
-  -- 噪点
-  local grain = {}
-  for i = 1, (mobile and 24 or 70) do
-    local f = Instance.new("Frame")
-    f.BorderSizePixel = 0
-    f.BackgroundColor3 = RGB(255, 255, 255)
-    f.BackgroundTransparency = 0.82
-    f.Size = UDim2.fromOffset(2, 2)
-    f.Parent = gui
-    grain[i] = f
+
+  local grain = Instance.new("Frame")
+  grain.Name = "Grain"
+  grain.Size = UDim2.fromScale(1, 1)
+  grain.BackgroundTransparency = 1
+  grain.Visible = false
+  grain.Parent = lens
+  local specks = {}
+  if not mobile then
+    for i = 1, 18 do
+      local speck = Instance.new("Frame")
+      speck.BorderSizePixel = 0
+      speck.BackgroundColor3 = LIGHT
+      speck.BackgroundTransparency = 0.86
+      speck.Size = UDim2.fromOffset(1, 1)
+      speck.Parent = grain
+      specks[i] = speck
+    end
   end
-  -- 右上角的字
-  local TS = mobile and 11 or 15
-  local function txt(y, col)
-    local l = Instance.new("TextLabel")
-    l.BackgroundTransparency = 1
-    l.AnchorPoint = V2(1, 0)
-    l.Position = UD2(1, -(mobile and 14 or 24), 0, y)
-    l.Size = UDim2.fromOffset(mobile and 220 or 320, TS + 4)
-    l.Font = Enum.Font.Code
-    l.TextSize = TS
-    l.TextColor3 = col or RGB(236, 238, 236)
-    l.TextTransparency = 0.12
-    l.TextStrokeTransparency = 0.45
-    l.TextStrokeColor3 = RGB(0, 0, 0)
-    l.TextXAlignment = Enum.TextXAlignment.Right
-    l.Parent = gui
-    return l
+
+  local readout = Instance.new("Frame")
+  readout.Name = "Readout"
+  readout.AnchorPoint = Vector2.new(1, 0)
+  local layout = G.hudLayout
+  local y = layout and layout.radarRight and (layout.radarY + layout.radarSize + 186) or 56
+  readout.Position = UDim2.new(1, -22, 0, y)
+  readout.Size = UDim2.fromOffset(210, 44)
+  readout.BackgroundTransparency = 1
+  readout.Visible = false
+  readout.Parent = gui
+
+  local function label(name, offset, size, color)
+    local text = Instance.new("TextLabel")
+    text.Name = name
+    text.BackgroundTransparency = 1
+    text.Position = UDim2.fromOffset(0, offset)
+    text.Size = UDim2.new(1, 0, 0, 18)
+    text.Font = Enum.Font.Code
+    text.TextSize = size
+    text.TextColor3 = color
+    text.TextStrokeTransparency = 0.36
+    text.TextStrokeColor3 = Color3.new(0, 0, 0)
+    text.TextXAlignment = Enum.TextXAlignment.Right
+    text.Parent = readout
+    return text
   end
-  -- 右上角是小地图（Hud.lua）：字放在它下面
-  local L = G.hudLayout
-  local y0 = (L and L.radarRight) and (L.radarY + L.radarSize + 14 + 160 + 12) or 20   -- 小地图、击杀信息下面
-  local rec = txt(y0, RGB(255, 70, 60))
-  rec.Name = "Rec"
-  local model = txt(y0 + TS + 6)
-  local clock = txt(y0 + (TS + 6) * 2)
-  clock.Name = "BodycamClock"
-  local serial = string.format("SN IA-%06X", (me.UserId * 2654435761) % 0xFFFFFF)
-  model.Text = "ISLAND CAM X2   " .. serial
-  if mobile then rec.Visible, model.Visible, clock.Visible = false, false, false end   -- 手机：右上是开火、换枪那一列按钮，字不放
-  -- 准星位置上一个很淡的小点
+
+  label("CameraModel", 0, 14, GREEN).Text = "CAM 02  /  ISLAND ASSAULT"
+  local clock = label("BodycamClock", 19, 12, LIGHT)
+
   local dot = Instance.new("Frame")
   dot.Name = "BodycamDot"
-  dot.AnchorPoint = V2(0.5, 0.5)
+  dot.AnchorPoint = Vector2.new(0.5, 0.5)
   dot.Position = UDim2.fromScale(0.5, 0.5)
   dot.Size = UDim2.fromOffset(3, 3)
   dot.BorderSizePixel = 0
-  dot.BackgroundColor3 = RGB(255, 255, 255)
-  dot.BackgroundTransparency = 0.45
+  dot.BackgroundColor3 = LIGHT
+  dot.BackgroundTransparency = 0.32
   dot.Parent = gui
-  do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.5, 0)
-    c.Parent = dot
-  end
 
-  -- 画面效果
+  local corner = Instance.new("UICorner")
+  corner.CornerRadius = UDim.new(0.5, 0)
+  corner.Parent = dot
+  local outline = Instance.new("UIStroke")
+  outline.Color = Color3.fromRGB(5, 10, 13)
+  outline.Transparency = 0.56
+  outline.Thickness = 1
+  outline.Parent = dot
+
   local cc = Instance.new("ColorCorrectionEffect")
   cc.Name = "BodycamCC"
   cc.Enabled = false
-  cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.16, 0.12, 0.01, RGB(232, 240, 255)
+  cc.Saturation, cc.Contrast, cc.Brightness = -0.08, 0.04, 0.015
+  cc.TintColor = Color3.fromRGB(244, 249, 255)
   cc.Parent = Lighting
+
   local bloom = Instance.new("BloomEffect")
   bloom.Name = "BodycamBloom"
   bloom.Enabled = false
-  bloom.Intensity, bloom.Size, bloom.Threshold = 0.7, 30, 1.25
+  bloom.Intensity, bloom.Size, bloom.Threshold = 0.24, 22, 1.8
   bloom.Parent = Lighting
+
   local blur = Instance.new("BlurEffect")
   blur.Name = "BodycamBlur"
   blur.Enabled = false
   blur.Size = 0
-  blur.Parent = cam
+  blur.Parent = Lighting
 
-  -- 记录仪上的日期时间（本机时间；拿不到日期的环境退回按运行时间走的钟）
-  local function stamp()
-    local okD, str = pcall(function() return os.date("%Y-%m-%d  %H:%M:%S") end)
-    if okD and type(str) == "string" then return str end
-    local t = math.floor(os.clock())
-    return string.format("2026-11-19  %02d:%02d:%02d", math.floor(t / 3600) % 24, math.floor(t / 60) % 60, t % 60)
+  local reducedMotion, coreMenuOpen = false, false
+  pcall(function()
+    local function update() reducedMotion = GuiService.ReducedMotionEnabled end
+    update()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(update)
+  end)
+  pcall(function()
+    local function update() coreMenuOpen = GuiService.MenuIsOpen end
+    update()
+    GuiService:GetPropertyChangedSignal("MenuIsOpen"):Connect(update)
+  end)
+
+  local modifiedCamera, baseFrame, bodyFrame
+  local trackedCamera, trackedRoot
+  local phase, speed, airTime, landing, verticalSpeed = 0, 0, 0, 0, 0
+  local lastLook, turnRate = nil, 0
+  local nextGrain, lastSecond = 0, nil
+  local random = Random.new()
+
+  local function resetMotion()
+    phase, speed, airTime, landing, verticalSpeed = 0, 0, 0, 0, 0
+    lastLook, turnRate = nil, 0
   end
 
-  ---------------------------------------------------------------- 镜头的晃
-
-  local applied = nil      -- 这一帧加上去的晃（下一帧镜头模块算之前撤掉）
-  local phase, speedS, airT, land, lastY, lastVy = 0, 0, 0, 0, nil, 0
-  local lastLook, angS = nil, 0
-  local adsK = 0
-  G.bodycamState = { on = false }   -- 测试用
-
-  local function active()
-    if not G.bodycamOn or not G.fpActive or G.drive then return false end
-    local ch = me.Character
-    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
-    local sv = G.scopeVisible and G.scopeVisible()
-    if sv then return false end
-    if G.killcamOn and G.killcamOn() then return false end   -- 阵亡镜头（Warfx）在放
-    return true
+  local function acceptsCamera(cam)
+    return G.bodycamOn and G.fpActive and not G.drive and cam.CameraType ~= Enum.CameraType.Scriptable
+      and not coreMenuOpen and not G.factionOpen and not G.scopeOn
+      and not (G.scopeVisible and G.scopeVisible()) and not (G.killcamOn and G.killcamOn())
+      and not (G.menuOpen and G.menuOpen()) and not (G.menuShown and G.menuShown())
+      and not (G.boardShown and G.boardShown()) and not (G.coachPanel and G.coachPanel())
   end
 
-  -- 镜头模块（Camera 优先级）算之前：撤掉上一帧的晃
-  RunService:BindToRenderStep("BodycamUndo", Enum.RenderPriority.Camera.Value - 1, function()
-    if applied then
-      cam.CFrame = cam.CFrame * applied:Inverse()
-      applied = nil
+  -- 恢复原始位姿。别的镜头接手后没必要回滚它写进去的值。
+  RunService:BindToRenderStep("BodycamUndo", CAMERA_PRIORITY - 1, function()
+    if modifiedCamera then
+      if modifiedCamera.Parent and modifiedCamera.CFrame == bodyFrame then
+        modifiedCamera.CFrame = baseFrame
+      end
+      modifiedCamera, baseFrame, bodyFrame = nil, nil, nil
     end
   end)
 
-  RunService:BindToRenderStep("Bodycam", Enum.RenderPriority.Camera.Value + 5, function(dt)
-    dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
-    local on = active()
-    gui.Enabled = on
-    cc.Enabled, bloom.Enabled = on, on
-    G.bodycamState.on = on
-    if not on then
-      blur.Enabled = false
-      lastLook, lastY = nil, nil
-      return
-    end
-    local ch = me.Character
-    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-    local t = os.clock()
-    -- 速度：按位置变化（测试台、网络延迟下也稳）
-    local vel = V()
-    local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)
-    if okv and typeof(v) == "Vector3" then vel = v end
-    local hs = V(vel.X, 0, vel.Z).Magnitude
-    speedS += (math.min(hs, 32) - speedS) * math.min(1, dt * 8)
-    local okf, fm = pcall(function() return hum.FloorMaterial end)
-    local grounded = not (okf and fm == Enum.Material.Air)
-    if not grounded then airT += dt else
-      if airT > 0.35 and lastVy < -18 then land = math.clamp(-lastVy / 60, 0.25, 1) end   -- 落地猛地一沉
-      airT = 0
-    end
-    lastVy = vel.Y
-    land = math.max(0, land - dt * 3.2)
+  RunService:BindToRenderStep("Bodycam", CAMERA_PRIORITY + 5, function(dt)
+    local cam = workspace.CurrentCamera
+    local char = me.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local on = cam ~= nil and hum ~= nil and root ~= nil and hum.Health > 0 and acceptsCamera(cam) == true
     local aiming = G.fpsAiming == true
-    adsK += ((aiming and 1 or 0) - adsK) * math.min(1, dt * 10)
-    local amp = (1 - 0.8 * adsK)
-    local run = math.clamp(speedS / 16, 0, 1.6) * (grounded and 1 or 0.2)
-    phase += dt * (5.6 + speedS * 0.32) * (run > 0.05 and 1 or 0)
-    local s1, s2 = math.sin(phase), math.sin(phase * 2)
-    local idle = 1 - math.clamp(run * 2, 0, 1)
-    -- 位置：胸前的记录仪（比眼睛低、靠前一点）+ 每步一沉一摆
-    local px = s1 * 0.07 * run
-    local py = -0.32 - math.abs(s1) * 0.1 * run - land * 0.45 + math.sin(t * 1.5) * 0.012 * idle
-    local pz = -0.18
-    -- 角度：低头点一下、左右歪（跑起来明显）、呼吸
-    local rx = (-math.abs(s2) * 0.012 * run - land * 0.05 + math.sin(t * 1.5) * 0.0025 * idle) * amp
-    local ry = s1 * 0.006 * run * amp
-    local rz = (s1 * 0.02 * run + math.sin(t * 0.9) * 0.002 * idle) * amp
-    local off = CF(px * amp, py * (0.35 + 0.65 * amp), pz) * CFrame.Angles(rx, ry, rz)
-    cam.CFrame = cam.CFrame * off
-    applied = off
-    -- 甩镜头快：糊一下
-    local look = cam.CFrame.LookVector
-    if lastLook then
-      local a = math.acos(math.clamp(look:Dot(lastLook), -1, 1)) / dt
-      angS += (a - angS) * math.min(1, dt * 14)
+    local optical = on and not aiming and not G.nvLight
+    local moving = on and not aiming and not reducedMotion
+    local noise = optical and moving and not mobile
+    if on ~= G.bodycamState.on then
+      G.bodycamState.on, gui.Enabled = on, on
     end
-    lastLook = look
-    local bs = math.clamp((angS - 2.2) * 1.4, 0, 6) * (1 - adsK)
-    blur.Enabled = bs > 0.3
-    blur.Size = bs
-    -- 噪点、REC 一闪一闪、时间
-    local vs = cam.ViewportSize
-    for _, g in ipairs(grain) do
-      g.Position = UDim2.fromOffset(math.random() * vs.X, math.random() * vs.Y)
-      g.BackgroundTransparency = 0.7 + math.random() * 0.25
+    if optical ~= lens.Visible then
+      lens.Visible, cc.Enabled, bloom.Enabled = optical, optical, optical and not mobile
     end
-    rec.Text = ((t % 1) < 0.6 and "● " or "   ") .. "REC"
-    clock.Text = stamp()
-    dot.Visible = not aiming
+    if noise ~= grain.Visible then
+      grain.Visible, nextGrain = noise, 0
+    end
+
+    local blurSize = 0
+    if moving then
+      if trackedCamera ~= cam or trackedRoot ~= root then
+        trackedCamera, trackedRoot = cam, root
+        resetMotion()
+      end
+      dt = math.clamp(dt, 1 / 240, 0.05)
+      local okVelocity, velocity = pcall(function() return root.AssemblyLinearVelocity end)
+      local vel = okVelocity and typeof(velocity) == "Vector3" and velocity or ZERO
+      local horizontal = math.sqrt(vel.X ^ 2 + vel.Z ^ 2)
+      speed += (math.min(horizontal, 26) - speed) * (1 - math.exp(-8 * dt))
+      local okFloor, floor = pcall(function() return hum.FloorMaterial end)
+      local grounded = not (okFloor and floor == Enum.Material.Air)
+      if grounded then
+        if airTime > 0.35 and verticalSpeed < -18 then landing = math.clamp(-verticalSpeed / 70, 0, 1) end
+        airTime = 0
+      else
+        airTime += dt
+      end
+      verticalSpeed = vel.Y
+      landing *= math.exp(-8 * dt)
+
+      local stride = math.min(speed / 16, 1.4) * (grounded and 1 or 0.16)
+      phase = (phase + dt * (4 + speed * 0.29)) % (2 * math.pi)
+      local step = math.sin(phase)
+      local amount = mobile and 0.63 or 1
+      local slide = step * 0.051 * stride
+      local dip = -0.10 - (math.abs(step) * 0.075 * stride + landing * 0.24) * amount
+      local tilt = -landing * 0.032 - math.abs(math.sin(2 * phase)) * 0.008 * stride
+      local roll = step * 0.014 * stride
+
+      local view = cam.CFrame
+      if optical and not mobile then
+        local look = view.LookVector
+        if lastLook then
+          local rate = math.acos(math.clamp(look:Dot(lastLook), -1, 1)) / dt
+          turnRate += (rate - turnRate) * (1 - math.exp(-13 * dt))
+        end
+        lastLook = look
+        blurSize = math.clamp((turnRate - 3.2) * 0.72, 0, 3)
+      else
+        lastLook, turnRate = nil, 0
+      end
+
+      modifiedCamera, baseFrame = cam, view
+      cam.CFrame = view * CFrame.new(slide * amount, dip, 0) * CFrame.Angles(tilt * amount, 0, roll * amount)
+      bodyFrame = cam.CFrame
+    elseif trackedCamera then
+      trackedCamera, trackedRoot = nil, nil
+      resetMotion()
+    end
+
+    local blurOn = blurSize > 0.3
+    if blur.Enabled ~= blurOn then blur.Enabled = blurOn end
+    if blurOn then blur.Size = blurSize end
+    if not on then return end
+
+    if dot.Visible == aiming then dot.Visible = not aiming end
+    local viewport = cam.ViewportSize
+    local showReadout = not mobile and not aiming and viewport.X >= 780 and viewport.Y >= y + 104
+    if readout.Visible ~= showReadout then readout.Visible = showReadout end
+    local t = os.clock()
+    if noise and t >= nextGrain then
+      nextGrain = t + GRAIN_INTERVAL
+      for _, speck in ipairs(specks) do
+        speck.Position = UDim2.fromScale(random:NextNumber(), random:NextNumber())
+      end
+    end
+    local second = math.floor(t)
+    if showReadout and lastSecond ~= second then
+      clock.Text = os.date("!%Y-%m-%d  %H:%M:%S")
+      lastSecond = second
+    end
   end)
 end
 
@@ -26381,6 +26448,7 @@ return Hangar
 --   第一次出生：屏幕上方一块「目标与据点」说明（4 页，回车下一页、退格关掉）
 --   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（照样刷新，只是不画）；小地图框挪到左下
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
@@ -26411,6 +26479,12 @@ function Hud.init(G)
   end
   local function line(parent, size, pos, color, alpha, anchor) return ui.frame(parent, size, pos, color or WHITE, alpha or 0, anchor) end
   local mobile = G.mobile == true
+  local reducedMotion = false
+  pcall(function()
+    local function syncMotion() reducedMotion = GuiService.ReducedMotionEnabled end
+    syncMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(syncMotion)
+  end)
 
   -- 旧的顶栏、血条、兵种字、弹药字：收进一个关着的 ScreenGui
   local stash = Instance.new("ScreenGui")
@@ -26426,7 +26500,7 @@ function Hud.init(G)
   ---------------------------------------------------------------- 顶部比分
 
   local BW, BH = mobile and 470 or 600, mobile and 62 or 72
-  local top = ui.frame(G.gui, UDim2.fromOffset(BW, BH), UDim2.new(0.5, 0, 0, mobile and 4 or 10), RGB(0, 0, 0), 1, V2(0.5, 0))
+  local top = ui.frame(G.gui, UDim2.fromOffset(BW, BH), UDim2.new(0.5, 0, 0, mobile and 4 or 10), RGB(8, 17, 24), 0.3, V2(0.5, 0))
   top.Name = "ScoreBar"
   top.ZIndex = 12
   for _, a in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do   -- 四角括号
@@ -26439,6 +26513,7 @@ function Hud.init(G)
     local s = {}
     s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.GothamMedium, V2(left and 0 or 1, 0.5),
       left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right)
+    s.name.TextTruncate = Enum.TextTruncate.AtEnd
     s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
     local lw = mobile and 70 or 120
     s.barBg = line(top, UDim2.fromOffset(lw, 1), UDim2.new(0.5, sx * (46 + lw / 2), 0, 17), WHITE, 0.82, V2(0.5, 0.5))
@@ -26447,9 +26522,12 @@ function Hud.init(G)
   end
   local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
   local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  mode.TextTruncate = Enum.TextTruncate.AtEnd
   -- 比分条下面一行：现在该干什么（进攻 / 防守哪个据点，用户：玩法不够清晰）
   local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
   goal.RichText = true
+  goal.Size = UDim2.new(1, -8, 0, 18)
+  goal.TextTruncate = Enum.TextTruncate.AtEnd
   -- A～E 小菱形
   local diamonds = {}
   for i, p in ipairs(Map.POINTS) do
@@ -26522,7 +26600,41 @@ function Hud.init(G)
     c.Parent = box
   end
   ui.stroke(box, GREEN, 1.5, 0.35)
-  G.hudLayout = { radarRight = not mobile, radarX = 18, radarY = 18, radarSize = MS }   -- 右上别的东西（击杀信息、导弹镜头）往下 / 往左让
+  local hudLayout = { radarRight = not mobile, radarX = mobile and 16 or 18, radarY = mobile and 118 or 18, radarSize = MS }
+  G.hudLayout = hudLayout
+  local scoreViewport, scoreRight, compactScore
+  local function layoutScore(viewport)
+    local edge = 12
+    local right = hudLayout.radarRight and (hudLayout.radarX + hudLayout.radarSize + edge) or edge
+    if mobile and viewport.Y < 360 and viewport.X > viewport.Y then right = G.infantryTouchWidth or 164 end
+    if (scoreViewport == viewport.X and scoreRight == right) or viewport.X < 1 then return end
+    scoreViewport, scoreRight = viewport.X, right
+    local width = math.max(1, math.min(BW, viewport.X - edge - right))
+    local center = math.max(edge + width / 2, math.min(viewport.X / 2, viewport.X - right - width / 2))
+    compactScore = width < 440
+    top.Size = UDim2.fromOffset(width, BH)
+    top.Position = UDim2.fromOffset(center, mobile and 4 or 10)
+    for _, sx in ipairs({ -1, 1 }) do
+      local s = sides[sx]
+      local scale = sx < 0 and 0 or 1
+      if compactScore then
+        s.name.Size = UDim2.fromOffset(math.clamp((width - 100) / 2 - 10, 0, 70), 14)
+        s.name.Position = UDim2.new(scale, -sx * 10, 0, 11)
+        s.score.Position = UDim2.new(scale, -sx * 32, 0, 31)
+        s.barBg.Visible = false
+      else
+        s.name.Size = UDim2.fromOffset(70, 14)
+        s.name.Position = UDim2.new(scale, -sx * 14, 0, 17)
+        s.score.Position = UDim2.new(scale, -sx * 110, 0, 17)
+        local railWidth = math.min(mobile and 70 or 120, width / 2 - 188)
+        s.barBg.Size = UDim2.fromOffset(railWidth, 1)
+        s.barBg.Position = UDim2.new(0.5, sx * (46 + railWidth / 2), 0, 17)
+        s.barBg.Visible = true
+      end
+    end
+    mode.Size = UDim2.fromOffset(math.max(1, math.min(170, width - 142)), 12)
+    hudLayout.scoreBottom = top.Position.Y.Offset + BH + goal.Position.Y.Offset + goal.Size.Y.Offset
+  end
   -- 坦克瞄准镜的目镜黑框（Drive，DisplayOrder 5）会盖住半个小地图：开镜时小地图挪到上面一层（像战雷，瞄准镜里也看得到小地图）
   local radarTop = Instance.new("ScreenGui")
   radarTop.Name = "RadarTop"
@@ -26783,6 +26895,8 @@ function Hud.init(G)
   end
 
   function G.stepHud(dt)
+    local cam = workspace.CurrentCamera
+    if cam then layoutScore(cam.ViewportSize) end
     local S = G.S
     local deployOn = G.menuOpen ~= nil and G.menuOpen() and not (G.hangarOpen and G.hangarOpen())
     -- 比分条：战斗中和部署界面都有；选阵营、结算、开服加载时不显示
@@ -26808,7 +26922,7 @@ function Hud.init(G)
         s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
         s.score.Text = tostring(tk)
         s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = (tk <= 30 and os.clock() % 1 < 0.5) and RGB(255, 90, 80) or c:Lerp(WHITE, 0.15)   -- 快打光了：红字闪
+        s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
       else
         s.name.Text = T("hud." .. t)
         s.score.Text = tostring(held[t] or 0)
@@ -26818,13 +26932,15 @@ function Hud.init(G)
       s.bar.BackgroundColor3 = c
     end
     local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
-    if S.phase == "prep" then timer.Text = fmtTime(S.left) mode.Text = T("hud.prep") .. " · " .. stg
+    if S.phase == "prep" then
+      timer.Text = fmtTime(S.left)
+      mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
     elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
     else timer.Text = fmtTime(S.left) mode.Text = stg end
     -- 现在的目标：当前阶段开放的据点（侧翼另写）
     local main, flank = {}, {}
     for _, s in ipairs(pts) do
-      if s.act and not s.locked then table.insert(s.flank and flank or main, T("point." .. s.id)) end
+      if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
     end
     local gtext = ""
     if #main > 0 then
@@ -26842,7 +26958,7 @@ function Hud.init(G)
         d.d.BackgroundColor3 = teamColor(s.owner)
         d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (0.1 + 0.6 * (0.5 + 0.5 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
+        d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
         d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
         d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
         local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
@@ -26851,10 +26967,9 @@ function Hud.init(G)
         d.pf.BackgroundColor3 = teamColor("atk")
       end
     end
-    if not P.hud.Visible then return end
+    if not P.hud.Visible or not cam then return end
     -- 世界里的据点：没拿下的才标
     gT -= dt
-    local cam = workspace.CurrentCamera
     local cp = cam.CFrame.Position
     for _, s in ipairs(pts) do
       local m = marks[s.id]
@@ -28772,23 +28887,27 @@ function Night.init(G)
     end
   end
 
-  UIS.InputBegan:Connect(function(io, gp)
-    if gp or io.KeyCode ~= Enum.KeyCode.N then return end
+  function G.nvgToggle()
     if G.drive and not G.fly and not G.sail then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像（开船、开飞机时 N 照样是夜视仪）
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     setOn(not on)
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if not gp and io.KeyCode == Enum.KeyCode.N then G.nvgToggle() end
   end)
-  if UIS.TouchEnabled then   -- 手机：右边一个小按钮
-    local b = G.ui and G.ui.button and G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 40), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
-    if b then
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 14
-      b.Activated:Connect(function() setOn(not on) end)
-    end
+  local vehicleTouch
+  if UIS.TouchEnabled then   -- 步兵按键由 Play.lua 排版；飞行和航行继续用各自的夜视入口。
+    vehicleTouch = G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 44), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
+    vehicleTouch.Name = "VehicleNightVision"
+    vehicleTouch.Visible = false
+    vehicleTouch.BackgroundTransparency = 0.35
+    vehicleTouch.TextSize = 14
+    vehicleTouch.Activated:Connect(G.nvgToggle)
   end
 
   RunService.RenderStepped:Connect(function(dt)
+    if vehicleTouch then vehicleTouch.Visible = (G.fly ~= nil or G.sail ~= nil) and not (G.menuOpen and G.menuOpen()) end
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then setOn(false) return end
@@ -28857,11 +28976,13 @@ return Night
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 
 local Operation = {}
 
 local RGB = Color3.fromRGB
 local INK = RGB(9, 18, 25)
+local SLATE = RGB(28, 47, 61)
 local WHITE = RGB(234, 243, 247)
 local MUTE = RGB(157, 182, 195)
 local TEAL = RGB(121, 220, 213)
@@ -28870,6 +28991,7 @@ local CENTER_TOP = Vector2.new(0.5, 0)
 local LEFT = Enum.TextXAlignment.Left
 local RIGHT = Enum.TextXAlignment.Right
 local HOLD = 4.8
+local OPENING_HOLD = 5.8
 
 function Operation.init(G)
   local ui, T, mobile = G.ui, G.T, G.mobile
@@ -28879,17 +29001,19 @@ function Operation.init(G)
   local pointById = {}
   for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
 
-  local function panel(className, name, width, height)
+  local reducedMotion = false
+  pcall(function()
+    local function syncMotion() reducedMotion = GuiService.ReducedMotionEnabled end
+    syncMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(syncMotion)
+  end)
+
+  local function panel(className, name)
     local f = Instance.new(className)
     f.Name = name
     f.AnchorPoint = CENTER_TOP
-    f.Position = UDim2.new(0.5, mobile and -22 or 0, 0, mobile and 86 or 112)
-    f.Size = mobile and UDim2.new(1, -400, 0, height) or UDim2.new(0.82, 0, 0, height)
     f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = INK, 0.1, 0
     f.ZIndex, f.Visible = 24, false
-    local bounds = Instance.new("UISizeConstraint")
-    bounds.MaxSize = Vector2.new(width, height)
-    bounds.Parent = f
     f.Parent = G.gui
     return f
   end
@@ -28900,48 +29024,115 @@ function Operation.init(G)
     return l
   end
 
-  local brief = panel("CanvasGroup", "OperationBrief", mobile and 438 or 562, mobile and 94 or 128)
+  local brief = panel("CanvasGroup", "OperationBrief")
+  brief.BackgroundTransparency = 1
+  local backing = ui.frame(brief, UDim2.fromScale(1, 1), nil, WHITE, 0.05)
+  local shade = Instance.new("UIGradient")
+  shade.Color = ColorSequence.new(INK, SLATE)
+  shade.Rotation = -12
+  shade.Parent = backing
+  ui.stroke(backing, MUTE, 1, 0.74)
   local rail = ui.frame(brief, UDim2.new(1, 0, 0, 2), nil, TEAL, 0)
-  local header = label(brief, "Sector", UDim2.new(1, -32, 0, 13), UDim2.fromOffset(16, mobile and 7 or 10), 11, TEAL, Enum.Font.GothamBold, LEFT)
-  local title = label(brief, "Title", UDim2.new(1, -32, 0, mobile and 25 or 34), UDim2.fromOffset(16, mobile and 19 or 23),
-    mobile and 22 or 30, WHITE, Enum.Font.GothamBlack, LEFT)
-  local description = label(brief, "Orders", UDim2.new(1, -32, 0, mobile and 27 or 33), UDim2.fromOffset(16, mobile and 43 or 57),
-    mobile and 12 or 14, WHITE, Enum.Font.GothamMedium, LEFT)
+  local railFade = Instance.new("UIGradient")
+  railFade.Transparency = NumberSequence.new(0, 0.8)
+  railFade.Parent = rail
+
+  local header = label(brief, "Chapter", UDim2.new(0.57, -16, 0, 14), nil, 11, TEAL, Enum.Font.GothamBold, LEFT)
+  local sector = label(brief, "Sector", UDim2.new(0.43, -16, 0, 14), nil, 11, WHITE, Enum.Font.GothamMedium, RIGHT)
+  local title = label(brief, "Title", UDim2.new(), nil, 30, WHITE, Enum.Font.GothamBlack, LEFT)
+  for _, textLabel in ipairs({ header, sector, title }) do
+    textLabel.TextWrapped = false
+    textLabel.TextTruncate = Enum.TextTruncate.AtEnd
+  end
+  title.TextScaled = true
+  local titleSize = Instance.new("UITextSizeConstraint")
+  titleSize.MinTextSize = 14
+  titleSize.Parent = title
+  local description = label(brief, "Orders", UDim2.new(), nil, 14, WHITE, Enum.Font.GothamMedium, LEFT)
   description.TextYAlignment = Enum.TextYAlignment.Top
-  local route = ui.frame(brief, UDim2.new(1, -32, 0, mobile and 19 or 23), UDim2.new(0, 16, 1, mobile and -24 or -30), INK, 1)
+  description.TextScaled = true
+  local orderSize = Instance.new("UITextSizeConstraint")
+  orderSize.MinTextSize = 11
+  orderSize.Parent = description
+  local route = ui.frame(brief, UDim2.new(), nil, INK, 1)
   route.Name = "Route"
   local stops = {}
   for i, stage in ipairs(stages) do
     local width = 1 / #stages
-    local stop = ui.frame(route, UDim2.new(width, -4, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), TEAL, 0.8)
+    local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
     stop.Name = stage.id
+    local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
     local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
-    stops[i] = { frame = stop, label = text, points = table.concat(stage.points, " · ") }
+    text.TextWrapped = false
+    stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
   end
 
-  local localPanel = panel("Frame", "ObjectiveStatus", 334, 56)
+  local localPanel = panel("Frame", "ObjectiveStatus")
+  localPanel.BackgroundTransparency = 0.08
   ui.stroke(localPanel, MUTE, 1, 0.68)
   local objective = label(localPanel, "Objective", UDim2.new(1, -80, 0, 18), UDim2.fromOffset(12, 6), 14, WHITE, Enum.Font.GothamBold, LEFT)
   local percent = label(localPanel, "Progress", UDim2.fromOffset(56, 18), UDim2.new(1, -68, 0, 6), 14, WHITE, Enum.Font.GothamBold, RIGHT)
-  local status = label(localPanel, "Status", UDim2.new(1, -24, 0, 14), UDim2.fromOffset(12, 25), 11, MUTE, Enum.Font.GothamMedium, LEFT)
+  local status = label(localPanel, "Status", UDim2.new(1, -24, 0, 26), UDim2.fromOffset(12, 23), 11, MUTE, Enum.Font.GothamMedium, LEFT)
   local track = ui.frame(localPanel, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -9), MUTE, 0.72)
   local fill = ui.frame(track, UDim2.fromScale(0, 1), nil, AMBER, 0)
 
-  local shownRound, shownStage, startedAt, renderedLanguage
+  local shownRound, shownStage, shownTeam, startedAt, renderedLanguage
+  local baseX, baseY, viewportW, viewportH, touchWidth, routeNames, canFit
   local redeployHint = false
   local lastPoint, meter = nil, 0
+
+  local function resize(viewport)
+    viewportW, viewportH = viewport.X, viewport.Y
+    touchWidth = G.infantryTouchWidth
+    local compact = mobile or viewportH < 500 or viewportW < 640
+    local tiny = compact and viewportH < 360
+    local hud = G.hudLayout
+    local left, right = 16, 16
+    local radarReserve = hud and (hud.radarX + hud.radarSize + 12) or 0
+    if hud and hud.radarRight then right = radarReserve end
+    if mobile then
+      if hud and not hud.radarRight then left = radarReserve end
+      if viewportW >= viewportH then right = touchWidth or 178 end
+    end
+    local width = math.max(1, math.min(viewportW - left - right, compact and 456 or 588))
+    canFit = width >= 150
+    routeNames = width >= 390
+    local center = math.max(left + width / 2, math.min(viewportW / 2, viewportW - right - width / 2))
+    baseX = center - viewportW / 2
+    baseY = (hud and hud.scoreBottom or (mobile and 88 or 108)) + 7
+    local inset = compact and 12 or 19
+    local contentSize = UDim2.new(1, -inset * 2, 0, compact and 26 or 42)
+    brief.Size = UDim2.fromOffset(width, tiny and 80 or (compact and 104 or 139))
+    header.Position = UDim2.fromOffset(inset, compact and 7 or 11)
+    sector.Position = UDim2.new(0.57, 4, 0, compact and 7 or 11)
+    header.TextSize, sector.TextSize = compact and 10 or 11, compact and 10 or 11
+    title.Size, title.Position = contentSize, UDim2.fromOffset(inset, compact and 19 or 23)
+    titleSize.MaxTextSize = compact and 23 or 35
+    description.Size = UDim2.new(1, -inset * 2, 0, compact and 34 or 38)
+    description.Position = UDim2.fromOffset(inset, compact and 46 or 65)
+    orderSize.MaxTextSize = compact and 12 or 15
+    route.Visible = not tiny
+    route.Size = UDim2.new(1, -inset * 2 + 3, 0, compact and 18 or 23)
+    route.Position = UDim2.new(0, inset, 1, compact and -23 or -31)
+    localPanel.Size = UDim2.fromOffset(math.min(width, 334), 58)
+    localPanel.Position = UDim2.new(0.5, baseX, 0, baseY)
+  end
 
   local function writeBrief(s, stage)
     local accent = s.team == "atk" and AMBER or TEAL
     local key = "stage." .. stage.id
     rail.BackgroundColor3, header.TextColor3 = accent, accent
-    header.Text = T("hud.stageN", s.stage, s.stages or #stages)
+    header.Text = s.stage == 1 and T("operation.opening") or T("faction." .. s.team .. ".name")
+    sector.Text = T("hud.stageN", s.stage, s.stages or #stages)
     title.Text, description.Text = T(key), T(key .. "." .. s.team)
     for i, stop in ipairs(stops) do
-      stop.frame.BackgroundColor3 = i == s.stage and accent or MUTE
-      stop.frame.BackgroundTransparency = i == s.stage and 0.07 or (i < s.stage and 0.81 or 0.9)
-      stop.label.TextColor3 = i == s.stage and INK or MUTE
-      stop.label.Text = mobile and stop.points or (T("stage." .. stages[i].id .. ".short") .. "  " .. stop.points)
+      local current, complete = i == s.stage, i < s.stage
+      stop.frame.BackgroundColor3 = current and accent or INK
+      stop.frame.BackgroundTransparency = current and 0.05 or 0.2
+      stop.edge.BackgroundColor3 = complete and accent or MUTE
+      stop.edge.Visible = not current
+      stop.label.TextColor3 = current and INK or (complete and accent or MUTE)
+      stop.label.Text = routeNames and (stop.points .. "  ·  " .. T("stage." .. stages[i].id .. ".short")) or stop.points
     end
     renderedLanguage = G.lang
   end
@@ -28964,7 +29155,7 @@ function Operation.init(G)
   end
 
   local function showCapture(s, p, dt)
-    local progress = p.prog or 0
+    local progress = math.clamp(p.prog or 0, 0, 1)
     local key, color = "operation.inZone", MUTE
     if p.motion == 1 then
       key = s.team == "atk" and "operation.capturing" or "operation.losing"
@@ -28974,10 +29165,11 @@ function Operation.init(G)
     elseif (p.atk or 0) > 0 then
       key = "operation.stalled"
     end
-    if lastPoint ~= p.id then meter = progress end
+    if reducedMotion or lastPoint ~= p.id then meter = progress end
     lastPoint = p.id
     meter += (progress - meter) * math.min(dt * 14, 1)
     fill.Size = UDim2.fromScale(meter, 1)
+    fill.BackgroundColor3 = color
     localPanel.Visible = true
     status.Text, status.TextColor3 = T(key), color
     objective.Text = T("point." .. p.id)
@@ -28988,36 +29180,52 @@ function Operation.init(G)
   function G.stepOperation(dt)
     local s = G.S
     local canBrief = s and s.phase == "battle" and s.alive and s.team
-      and not G.scopeOn and not (G.drive and (G.drive.sight or G.drive.eo))
+      and not G.scopeOn and not G.fpsAiming and not (G.drive and (G.drive.sight or G.drive.eo))
       and not (G.boardShown and G.boardShown()) and not (G.menuOpen and G.menuOpen())
+      and not (G.menuShown and G.menuShown()) and not G.factionOpen
       and not (G.tabletState and G.tabletState.open)
+      and not (G.killcamOn and G.killcamOn())
     if not canBrief then
       brief.Visible, localPanel.Visible, lastPoint = false, false, nil
       if s and s.phase ~= "battle" then startedAt = nil end
       return
     end
 
+    local camera = workspace.CurrentCamera
+    local viewport = camera and camera.ViewportSize
+    if not viewport or viewport.X < 1 or viewport.Y < 1 then return end
+    local resized = viewport.X ~= viewportW or viewport.Y ~= viewportH or touchWidth ~= G.infantryTouchWidth
+    if resized then resize(viewport) end
+
     local time = os.clock()
     local stage = stages[s.stage]
     if stage and (s.round ~= shownRound or s.stage ~= shownStage) then
       redeployHint = not mobile and shownRound == s.round and shownStage ~= nil and s.stage > shownStage
-      shownRound, shownStage, startedAt = s.round, s.stage, time
+      shownRound, shownStage, shownTeam, startedAt = s.round, s.stage, s.team, time
       writeBrief(s, stage)
       if G.playSound then G.playSound("capture", nil, 0.65) end
     end
 
-    local age = startedAt and time - startedAt or HOLD
-    brief.Visible = stage ~= nil and age < HOLD
+    local hold = s.stage == 1 and OPENING_HOLD or HOLD
+    local age = startedAt and time - startedAt or hold
+    brief.Visible = canFit and stage ~= nil and age < hold
     if brief.Visible then
-      if renderedLanguage ~= G.lang then writeBrief(s, stage) end
-      brief.GroupTransparency = math.clamp(math.max(1 - age / 0.22, (age - HOLD + 0.45) / 0.45), 0, 1)
+      if resized or renderedLanguage ~= G.lang or shownTeam ~= s.team then
+        shownTeam = s.team
+        writeBrief(s, stage)
+      end
+      local reveal = reducedMotion and 1 or math.clamp(age / 0.36, 0, 1)
+      local eased = 1 - (1 - reveal) ^ 3
+      brief.Position = UDim2.new(0.5, baseX, 0, baseY + 9 * (1 - eased))
+      brief.GroupTransparency = reducedMotion and 0 or math.clamp(math.max(1 - reveal, (age - hold + 0.42) / 0.42), 0, 1)
+      rail.Size = UDim2.new(eased, 0, 0, 2)
     elseif redeployHint then
       redeployHint = false
       local distance = G.objDist()
       if distance and distance > 1200 then G.toast(T("hud.redeployTip"), "info") end
     end
 
-    local p = not brief.Visible and closestPoint(s)
+    local p = canFit and not brief.Visible and closestPoint(s)
     if p then
       showCapture(s, p, dt)
     else
@@ -29665,25 +29873,72 @@ function Play.init(G)
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then cur.aiming = false end
   end)
 
-  -- 手机：开火（按住）、瞄准、换弹、换武器、F
+  local touchControls, layoutTouch, touchSpot
+  -- 右手触控区避开右下的跳跃键。横竖屏切换时按实际视口重新排列。
   if UIS.TouchEnabled then
-    local function tbtn(text, pos, size)
-      local b = ui.button(hud, text, UDim2.fromOffset(size or 70, size or 70), pos, RGB(30, 36, 42))
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 15
+    touchControls = ui.frame(hud, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+    touchControls.Name = "InfantryTouch"
+    touchControls.Visible = false
+    local function tbtn(name)
+      local b = ui.button(touchControls, "", UDim2.new(), nil, RGB(18, 29, 37), Vector2.new(1, 1))
+      b.Name = name
+      b.BackgroundTransparency = 0.24
+      b.TextScaled = true
+      local textSize = Instance.new("UITextSizeConstraint")
+      textSize.MinTextSize, textSize.MaxTextSize = 11, 14
+      textSize.Parent = b
+      ui.stroke(b, RGB(184, 208, 220), 1, 0.6)
       return b
     end
-    local fire = tbtn("●", UDim2.new(1, -110, 1, -300), 90)
+    local fire = tbtn("Fire")
     fire.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = true tryFire(false) end end)
     fire.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = false end end)
-    local aim = tbtn("◎", UDim2.new(1, -200, 1, -250))
+    local aim = tbtn("Aim")
     aim.Activated:Connect(function() cur.aiming = not cur.aiming end)
-    local rl = tbtn("R", UDim2.new(1, -200, 1, -330), 56)
+    local rl = tbtn("Reload")
     rl.Activated:Connect(reload)
-    local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
+    local sw = tbtn("Swap")
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
-    fbtn.Activated:Connect(function() tryFire(true) end)
+    touchSpot = tbtn("Support")
+    touchSpot.Activated:Connect(function() tryFire(true) end)
+    local night = tbtn("NightVision")
+    night.Text = "NV"
+    night.Activated:Connect(function() if G.nvgToggle then G.nvgToggle() end end)
+    local tablet = tbtn("Tablet")
+    tablet.Activated:Connect(function() if G.tacToggle then G.tacToggle() end end)
+    local lastWidth, lastHeight, lastLanguage, lastAim
+    function layoutTouch()
+      local camera = workspace.CurrentCamera
+      local viewport = camera and camera.ViewportSize
+      if viewport and viewport.Y > 0 and (viewport.X ~= lastWidth or viewport.Y ~= lastHeight) then
+        lastWidth, lastHeight = viewport.X, viewport.Y
+        local edge, spacing = 18, 8
+        local fireSize = math.floor(math.clamp(viewport.Y * 0.19, 58, 78))
+        local aimSize = math.floor(math.clamp(viewport.Y * 0.155, 48, 65))
+        local bottom = math.floor(math.clamp(viewport.Y * 0.24, 76, 116))
+        local aimX = edge + fireSize + spacing
+        fire.Size, fire.Position = UDim2.fromOffset(fireSize, fireSize), UDim2.new(1, -edge, 1, -bottom)
+        aim.Size, aim.Position = UDim2.fromOffset(aimSize, aimSize), UDim2.new(1, -aimX, 1, -bottom)
+        rl.Size, rl.Position = UDim2.fromOffset(math.max(aimSize, 56), 44), UDim2.new(1, -aimX, 1, -bottom - aimSize - spacing)
+        sw.Size, sw.Position = UDim2.fromOffset(math.max(56, fireSize - 12), 44), UDim2.new(1, -edge, 1, -bottom - fireSize - spacing)
+        touchSpot.Size, touchSpot.Position = UDim2.fromOffset(math.max(56, aimSize), 44), UDim2.new(1, -aimX, 1, -bottom + 52)
+        local utilityY = -bottom - fireSize - 44 - spacing * 2
+        night.Size, night.Position = sw.Size, UDim2.new(1, -edge, 1, utilityY)
+        tablet.Size, tablet.Position = rl.Size, UDim2.new(1, -aimX, 1, utilityY)
+        G.infantryTouchWidth = aimX + math.max(aimSize, 56) + 10
+      end
+      if G.lang ~= lastLanguage then
+        lastLanguage = G.lang
+        fire.Text, aim.Text = T("touch.fire"), T("touch.aim")
+        rl.Text, sw.Text, touchSpot.Text = T("touch.reload"), T("touch.swap"), T("touch.support")
+        tablet.Text = T("tac.key")
+      end
+      if cur.aiming ~= lastAim then
+        lastAim = cur.aiming
+        aim.BackgroundColor3 = cur.aiming and RGB(37, 75, 83) or RGB(18, 29, 37)
+      end
+    end
+    layoutTouch()
   end
 
   ---------------------------------------------------------------- 每帧
@@ -29736,10 +29991,12 @@ function Play.init(G)
   end
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
+      if touchControls then touchControls.Visible = false end
       cross.Visible, scope.Visible, bar.Visible = false, false, false
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpsAiming = false
       G.fpActive = false
       if G.fpsOff then G.fpsOff() end
       return
@@ -29753,6 +30010,15 @@ function Play.init(G)
     G.fpActive = fp   -- 步行第一人称（UI 据此藏鼠标指针、底部键位说明）
     local menu = G.menuOpen and G.menuOpen()
     if menu then cur.firing, cur.aiming = false, false end
+    if touchControls then
+      local touchVisible = armed == true and not menu and not (G.boardShown and G.boardShown())
+      if touchControls.Visible and not touchVisible then cur.firing = false end
+      touchControls.Visible = touchVisible
+      if touchVisible then
+        touchSpot.Visible = W[cur.id].kind == "spot"
+        layoutTouch()
+      end
+    end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
     baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
@@ -34208,18 +34474,8 @@ function TacPad.init(G)
       redraw()
     end
   end)
-  if mob then   -- 手机：右边一个小按钮（夜视按钮下面）
-    task.spawn(function()
-      local hud = G.gui and G.gui:WaitForChild("Hud", 20)
-      local b = hud and G.ui and G.ui.button and G.ui.button(hud, "", UDim2.fromOffset(52, 40), UDim2.new(1, -78, 0, 186), RGB(24, 28, 30))
-      if b then
-        b.Name = "TacPadBtn"
-        b.Text = T("tac.key")
-        b.BackgroundTransparency = 0.35
-        b.TextSize = 13
-        b.Activated:Connect(function() if open then closePad() else openPad() end end)
-      end
-    end)
+  if mob then   -- 开启入口由步兵触控区排版。收起按钮留在平板上。
+    function G.tacToggle() if open then closePad() else openPad() end end
     local closeBtn = Instance.new("TextButton")   -- 平板右上角的「收起」
     closeBtn.Name = "Close"
     closeBtn.Size = UDo(70, TOP - 4)
@@ -34913,13 +35169,13 @@ function UI.init(G)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
   local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  do   -- 左边、下边压暗，右上透出一点战场
+  do   -- 保留远景，限制夜视和照明弹在部署页背后的亮斑
     local g = Instance.new("UIGradient")
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.13), NumberSequenceKeypoint.new(1, 0.24) })
     g.Rotation = -20
     g.Parent = deploy
   end
@@ -35805,13 +36061,13 @@ return UI
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
 --   照战雷、战地的样子重做坦克（Drive.lua 的 G.myVeh）和舰艇（Sail.lua 的 G.sail）的驾驶界面；
 --   有了这个模块（G.vehHudOn），Drive.lua、Sail.lua 原来那块小面板、圆圈、黄十字不画了（瞄准镜、望远镜、导弹锁定框照旧归它们）。
---   · 右下两块（左下是雷达和小队名单）：
+--   · 电脑右下两块，触屏用紧凑读数面板给方向键留位置：
 --     「车况 / 舰况」：名字；俯视轮廓（车体 / 舰体按相对镜头的朝向转，炮塔、炮管按各自的朝向转；外圈上方两道短线是镜头看的方向），
 --       描边按血量变色、挨打闪红；十格血条和百分比；坦克：速度（大数字）、挡位 D / R / N、航向、油门条；
 --       舰艇：航速（节）、车钟（后退二 … 全速前进 一格格的梯子，亮的是现在这一档）、舵角条（左右 35°）、航向
 --     「武器」：每一种武器一行（按键、名字、弹药），选中的那行亮、左边一道琥珀色；右边装填环（24 颗点：装填时一颗颗亮起琥珀色，装好全绿、写「就绪」）；
 --       坦克的烟幕弹、舰艇的防空导弹、近防炮
---   · 顶上：罗盘（每 5° 一格、每 15° 一个数、八个方位字），中间是镜头朝向；琥珀色小三角是炮管（坦克）/ 舰首（舰艇）的朝向
+--   · 电脑罗盘放在计分栏左侧或下方，触屏只在面板显示航向；琥珀色小三角是炮管（坦克）/ 舰首（舰艇）的朝向
 --   · 中间：镜头看的地方一个小圈；炮现在指的地方（坦克：炮管方向打出去；舰艇：主炮的落点）一个战雷式的瞄准圈（圈、四根刻度、中心点），
 --     装填时圈外 16 颗点的进度、圈变琥珀色；右边测距（米）；坦克炮塔还没转过来时圈上一个小箭头指着镜头准心
 --   · 四周一圈很淡的暗角；开炮：瞄准圈一涨一缩、画面一亮
@@ -35819,19 +36075,26 @@ local VehHud = {}
 
 function VehHud.init(G)
   local Players = game:GetService("Players")
+  local GuiService = game:GetService("GuiService")
   local RunService = game:GetService("RunService")
   local Lighting = game:GetService("Lighting")
   local RS = game:GetService("ReplicatedStorage")
+  local UIS = game:GetService("UserInputService")
   local V2, UD2, UD = Vector2.new, UDim2.new, UDim.new
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
-  local layoutPanels   -- 面板摆放（下面定义）
   local VD = require(RS:WaitForChild("VehDefs"))
   local SD = require(RS:WaitForChild("ShipDefs"))
   local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local reducedMotion = false
+  pcall(function()
+    local function updateMotion() reducedMotion = GuiService.ReducedMotionEnabled end
+    updateMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(updateMotion)
+  end)
 
-  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(150, 162, 160)
+  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
   local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(128, 214, 255)
   local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
   local WHITE = Color3.new(1, 1, 1)
@@ -35880,7 +36143,7 @@ function VehHud.init(G)
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
   -- 面板：深色半透明、细白边、左上角刻一道短的亮线
   local function panel(parent, size, pos, anchor)
-    local p = frame(parent, size, pos, INK, 0.36, anchor)
+    local p = frame(parent, size, pos, INK, 0.16, anchor)
     stroke(p, WHITE, 1, 0.86)
     frame(p, UD2(0, 26, 0, 2), UD2(0, -1, 0, -1), TXT, 0.1)
     frame(p, UD2(0, 2, 0, 14), UD2(0, -1, 0, -1), TXT, 0.1)
@@ -35913,7 +36176,8 @@ function VehHud.init(G)
       r.bar = frame(p, UD2(0, 3, 0, 22), UD2(0, 10, 0, y), AMBER, 0)
       r.key = label(p, "", UD2(0, 22, 0, 22), UD2(0, 18, 0, y), 12, TXT, BOLD)
       r.keyStroke = stroke(r.key, WHITE, 1, 0.7)
-      r.name = label(p, "", UD2(0, 130, 0, 22), UD2(0, 48, 0, y), 13, TXT, MED, nil, LEFT)
+      r.name = label(p, "", UD2(0, 112, 0, 22), UD2(0, 48, 0, y), 13, TXT, MED, nil, LEFT)
+      r.name.TextTruncate = Enum.TextTruncate.AtEnd
       r.ammo = label(p, "", UD2(0, 60, 0, 22), UD2(0, 226, 0, y), 13, TXT, MONO, V2(1, 0), RIGHT)
       r.name.Name, r.ammo.Name = "WName" .. i, "WAmmo" .. i
       rows[i] = r
@@ -36069,6 +36333,43 @@ function VehHud.init(G)
   SH.ring = reloadRing(SH.arm, 258, 66)
   SH.def = nil
 
+  -- 小屏读数单独排版，避免把固定面板的字一起缩小。
+  local MS = {}
+  MS.box = panel(hud, UD2(0, 330, 0, 72), nil)
+  MS.box.Name = "CompactInstruments"
+  MS.box.Visible = false
+  MS.speed = label(MS.box, "", UD2(0, 90, 0, 28), UD2(0, 10, 0, 3), 20, TXT, BOLD, nil, LEFT)
+  MS.motion = label(MS.box, "", UD2(0, 90, 0, 16), UD2(0, 10, 0, 32), 12, TXT, MED, nil, LEFT)
+  MS.heading = label(MS.box, "", UD2(0, 90, 0, 14), UD2(0, 10, 0, 50), 11, MUTE, MONO, nil, LEFT)
+  MS.split = frame(MS.box, UD2(0, 1, 1, -16), nil, TXT, 0.82)
+  MS.selection = label(MS.box, "", UD2(), nil, 13, TXT, BOLD, nil, LEFT)
+  MS.count = label(MS.box, "", UD2(), nil, 12, TXT, MONO, nil, LEFT)
+  MS.status = label(MS.box, "", UD2(0, 54, 0, 16), UD2(1, -8, 0, 24), 12, OK, BOLD, V2(1, 0), RIGHT)
+  MS.health = label(MS.box, "", UD2(), nil, 11, MUTE, MED, nil, LEFT)
+  MS.track = frame(MS.box, UD2(), nil, TXT, 0.82)
+  MS.fill = frame(MS.track, UD2(0, 0, 1, 0), nil, OK, 0)
+  MS.speed.Name, MS.motion.Name, MS.heading.Name = "Speed", "DriveState", "Heading"
+  MS.selection.Name, MS.status.Name, MS.health.Name = "Selection", "Readiness", "Hull"
+  MS.count.Name = "Ammo"
+  for _, l in ipairs({ MS.speed, MS.motion, MS.selection, MS.count, MS.health }) do
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+  end
+
+  local function updateCompact(name, speed, motion, heading, hp, k, col, row, relK, ready, left)
+    if not MS.box.Visible then return end
+    local selected = row and row.name.Visible
+    MS.speed.Text, MS.motion.Text, MS.heading.Text = speed, motion, heading
+    MS.selection.Text = selected and row.name.Text or name
+    MS.count.Text = selected and (string.gsub(row.ammo.Text, " / ", "/")) or ""
+    MS.count.TextColor3 = selected and row.ammo.TextColor3 or TXT
+    MS.status.Text = selected and (ready and T("vh.ready") or string.format("%.1fs", left)) or ""
+    MS.status.TextColor3 = ready and OK or AMBER
+    MS.health.Text, MS.health.TextColor3 = hp .. "  " .. string.format("%d%%", math.floor(k * 100 + 0.5)), col
+    MS.track.Visible = selected == true
+    MS.fill.BackgroundColor3 = ready and OK or AMBER
+    MS.fill.Size = UD2(relK, 0, 1, 0)
+  end
+
   local function buildShip(d)   -- 换船了：舰体长宽、炮塔的位置
     SH.def = d
     for _, t in ipairs(SH.turrets) do t.box:Destroy() end
@@ -36090,8 +36391,9 @@ function VehHud.init(G)
   end
 
   ---------------------------------------------------------------- 顶上：罗盘（坦克、舰艇共用）
-  local comp = frame(hud, UD2(0, 560, 0, 40), UD2(0.5, 0, 0, 14), INK, 1, V2(0.5, 0))
-  comp.Name = "Compass"
+  local compGroup = frame(hud, UD2(0, 560, 0, 51), nil, INK, 1)
+  compGroup.Name = "Compass"
+  local comp = frame(compGroup, UD2(1, 0, 0, 38), nil, INK, 1)
   comp.ClipsDescendants = true
   local compBg = frame(comp, UD2(1, 0, 0, 22), UD2(0, 0, 0, 0), INK, 0.55)
   grad(compBg, 0, nseq(0, 1, 0.18, 0.45, 0.82, 0.45, 1, 1))
@@ -36100,8 +36402,8 @@ function VehHud.init(G)
   for i = 1, 40 do
     ticks[i] = { t = frame(comp, UD2(0, 1, 0, 6), UD2(0, 0, 0, 0), TXT, 0.35), l = label(comp, "", UD2(0, 30, 0, 14), UD2(0, 0, 0, 7), 11, TXT, MONO, V2(0.5, 0)) }
   end
-  label(hud, "▼", UD2(0, 16, 0, 12), UD2(0.5, 0, 0, 36), 11, TXT, BOLD, V2(0.5, 0))
-  local compHdg = label(hud, "000", UD2(0, 60, 0, 18), UD2(0.5, 0, 0, 47), 15, TXT, MONO, V2(0.5, 0))
+  label(compGroup, "▼", UD2(0, 16, 0, 12), UD2(0.5, 0, 0, 18), 11, TXT, BOLD, V2(0.5, 0))
+  local compHdg = label(compGroup, "000", UD2(0, 60, 0, 18), UD2(0.5, 0, 0, 32), 15, TXT, MONO, V2(0.5, 0))
   compHdg.Name = "Heading"
   local compMark = label(comp, "▲", UD2(0, 14, 0, 10), UD2(0.5, 0, 0, 24), 10, AMBER, BOLD, V2(0.5, 0))
   compMark.Name = "MarkHeading"
@@ -36109,6 +36411,7 @@ function VehHud.init(G)
   local function deg360(r) return (math.deg(r) % 360 + 360) % 360 end
   local function hdgOf(yaw) return (360 - deg360(yaw or 0)) % 360 end   -- 偏航（逆时针、从 −Z 起）→ 航向（顺时针从北）
   local function stepCompass(camHdg, markHdg)
+    if not compGroup.Visible then return end
     local first = math.floor((camHdg - CW / 2 / PX) / 5) * 5
     for i, tk in ipairs(ticks) do
       local a = first + (i - 1) * 5
@@ -36159,7 +36462,7 @@ function VehHud.init(G)
     local sp, on = cam:WorldToViewportPoint(p)
     local vp = cam.ViewportSize
     gun.Visible, rangeL.Visible = on, on
-    local kick = math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
+    local kick = reducedMotion and 0 or math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
     local sz = 34 * (1 + 0.45 * kick)
     gun.Size = UD2(0, sz, 0, sz)
     gun.Position = UD2(0, sp.X, 0, sp.Y)
@@ -36188,7 +36491,7 @@ function VehHud.init(G)
     if hp0 and hp < hp0 - 0.5 then hurtT = os.clock() end
     hp0 = hp
     local col = (k > 0.6) and OK or ((k > 0.3) and AMBER or BAD)
-    if os.clock() - hurtT < 0.6 and (os.clock() * 10) % 2 < 1 then col = BAD end
+    if os.clock() - hurtT < 0.6 and (reducedMotion or (os.clock() * 10) % 2 < 1) then col = BAD end
     return k, col
   end
 
@@ -36233,6 +36536,9 @@ function VehHud.init(G)
     end
     TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
     setRing(TK.ring, relK, ready, left)
+    local gear = TK.gear.Text
+    updateCompact(TK.name.Text, TK.spd.Text .. " km/h", tonumber(gear) and ("D" .. gear) or gear, TK.hdg.Text,
+      TK.hp.lab.Text, k, col, TK.rows[st.wi], relK, ready, left)
     stepCompass(hdgOf(st.camYaw), hdgOf((st.yaw or 0) - math.rad(st.ty or 0)))
     local hasGun = d.turret ~= nil and d.gun ~= nil and d.weapons[1] ~= nil
     if not hasGun then
@@ -36300,6 +36606,8 @@ function VehHud.init(G)
     if d.sam then setRow(SH.rows[3], nil, T("vh.sam"), tostring(vs and vs.sam or 0), false) else setRow(SH.rows[3], nil, nil) end
     if d.ciws and #d.ciws > 0 then setRow(SH.rows[4], nil, T("vh.ciws"), T("vh.auto"), false) else setRow(SH.rows[4], nil, nil) end
     setRing(SH.ring, relK, ready, left)
+    updateCompact(SH.name.Text, T("ship.kn", SH.kn.Text), SH.order.Text, SH.hdg.Text,
+      SH.hp.lab.Text, k, col, SH.rows[st.wi], relK, ready, left)
     stepCompass(hdgOf(st.camYaw), hdgOf(st.yaw))
     -- 主炮的落点
     local fp = (st.wi == 1 and G.sailFall and g1) and G.sailFall(1) or nil
@@ -36366,47 +36674,83 @@ function VehHud.init(G)
   SG.ptr.Name = "RangePointer"
   label(SG.scale, "×100m", UD2(0, 60, 0, 12), UD2(0, 0, 1, 6), 10, MUTE, MONO)
   -- 右边跟左边测距尺对称：选中的弹 / 弹药 / 装填（下面 Drive 的测距数字和倍率不挡）
-  SG.ammo = label(sg, "", UD2(0, 220, 0, 18), UD2(0.5, 236, 0.5, -30), 14, TXT, MONO)
+  SG.info = frame(sg, UD2(0, 184, 0, 43), nil, INK, 0.19)
+  SG.info.Name = "SightStatus"
+  stroke(SG.info, WHITE, 1, 0.79)
+  SG.ammo = label(SG.info, "", UD2(1, -74, 0, 18), UD2(0, 10, 0, 4), 13, TXT, MED, nil, LEFT)
   SG.ammo.Name = "SightAmmo"
-  SG.state = label(sg, "", UD2(0, 220, 0, 16), UD2(0.5, 236, 0.5, -8), 12, OK, BOLD)
-  frame(sg, UD2(0, 2, 0, 44), UD2(0.5, 228, 0.5, -30), TXT, 0.45)
+  SG.ammo.TextTruncate = Enum.TextTruncate.AtEnd
+  SG.count = label(SG.info, "", UD2(0, 50, 0, 18), UD2(1, -8, 0, 4), 12, TXT, MONO, V2(1, 0), RIGHT)
+  SG.state = label(SG.info, "", UD2(1, -20, 0, 16), UD2(0, 10, 0, 23), 12, OK, BOLD, nil, LEFT)
   SG.comp = frame(sg, UD2(0, 300, 0, 22), UD2(0.5, 0, 0.5, -215), INK, 1, V2(0.5, 0))
   SG.comp.ClipsDescendants = true
   for i = 1, 24 do
     SG.ticks[i] = { t = frame(SG.comp, UD2(0, 1, 0, 5), UD2(0, 0, 0, 0), TXT, 0.4), l = label(SG.comp, "", UD2(0, 28, 0, 12), UD2(0, 0, 0, 6), 10, TXT, MONO, V2(0.5, 0)) }
   end
-  label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
+  SG.marker = label(sg, "▼", UD2(0, 14, 0, 10), UD2(0.5, 0, 0.5, -226), 9, AMBER, BOLD, V2(0.5, 0))
+  local sightRingScale = Instance.new("UIScale")
+  sightRingScale.Parent = SG.ring
 
-  -- 面板摆放：电脑在右下角（两块并排）；手机右边是一列按键、左下是方向键，放到下面正中间，缩小一点
-  local PAIRS = { { TK.car, TK.arm, 270 }, { SH.car, SH.arm, 296 } }
-  for _, pr in ipairs(PAIRS) do
-    for k = 1, 2 do
-      local u = Instance.new("UIScale")
-      u.Parent = pr[k]
+  -- 触屏左下的方向键最右到 x=250，右侧操作键最下到离底部 120 px。
+  local function compactDock(vp, mobile, width, height)
+    local margin = 14
+    local left = mobile and 262 or margin
+    local room = vp.X - left - margin
+    local top = vp.Y - height - margin
+    if mobile and room < 185 then
+      -- 竖屏保留左上小地图的 122 px 宽度。
+      left, room = 150, vp.X - 150 - margin
+      top = math.min(100, top)
     end
+    width = math.max(1, math.min(width, room))
+    return math.max(left, (vp.X - width) / 2), math.max(0, top), width
+  end
+
+  local PAIRS = { { TK.car, TK.arm }, { SH.car, SH.arm } }
+  for _, pr in ipairs(PAIRS) do
+    pr[3], pr[4] = Instance.new("UIScale"), Instance.new("UIScale")
+    pr[3].Parent, pr[4].Parent = pr[1], pr[2]
   end
   local lastVp, lastMob = nil, nil
-  function layoutPanels()
+  local compact, compassSide = false, false
+  local function layoutPanels()
     local vp = cam.ViewportSize
-    local mob = G.mobile == true
+    local mob = G.mobile == true or UIS.TouchEnabled
     if lastVp == vp and lastMob == mob then return end
     lastVp, lastMob = vp, mob
-    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.55, 1.25)
-    if mob then s = math.min(s, 0.55) end
+    compact = mob or vp.X < 760 or vp.Y < 480
+    local sideWidth = vp.X / 2 - 330
+    compassSide = sideWidth >= 172
+    CW = compassSide and math.min(420, math.floor(sideWidth)) or math.clamp(math.floor(vp.X - 32), 1, 420)
+    compGroup.Size = UD2(0, CW, 0, 51)
+    compGroup.Position = compassSide and UD2(0, 18, 0, 16) or UD2(0.5, -CW / 2, 0, 118)
+
+    local s = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.74, 1.25)
     for _, pr in ipairs(PAIRS) do
-      local car, arm = pr[1], pr[2]
-      car:FindFirstChildOfClass("UIScale").Scale = s
-      arm:FindFirstChildOfClass("UIScale").Scale = s
-      local cw, aw, gap = pr[3] * s, 300 * s, 10 * s
-      car.AnchorPoint, arm.AnchorPoint = V2(1, 1), V2(1, 1)
-      if mob then
-        local total = cw + gap + aw
-        arm.Position = UD2(0.5, total / 2, 1, -6)
-        car.Position = UD2(0.5, total / 2 - aw - gap, 1, -6)
-      else
-        arm.Position = UD2(1, -24 * s, 1, -40 * s)
-        car.Position = UD2(1, -24 * s - aw - gap, 1, -40 * s)
-      end
+      pr[3].Scale, pr[4].Scale = s, s
+      pr[1].Position, pr[2].Position = UD2(1, -334 * s, 1, -40 * s), UD2(1, -24 * s, 1, -40 * s)
+    end
+
+    local x, y, width = compactDock(vp, mob, 342, 72)
+    local split = width >= 232 and 108 or 88
+    MS.box.Position, MS.box.Size = UD2(0, x, 0, y), UD2(0, width, 0, 72)
+    MS.speed.Size, MS.motion.Size = UD2(0, split - 15, 0, 28), UD2(0, split - 15, 0, 16)
+    MS.speed.TextSize = width >= 232 and 20 or 16
+    MS.split.Position = UD2(0, split, 0, 8)
+    MS.selection.Position, MS.selection.Size = UD2(0, split + 10, 0, 6), UD2(1, -split - 18, 0, 16)
+    MS.count.Position, MS.count.Size = UD2(0, split + 10, 0, 24), UD2(1, -split - 74, 0, 16)
+    MS.health.Position, MS.health.Size = UD2(0, split + 10, 0, 42), UD2(1, -split - 18, 0, 16)
+    MS.track.Position, MS.track.Size = UD2(0, split + 10, 1, -10), UD2(1, -split - 18, 0, 2)
+
+    local simpleSight = compact or vp.X < 900 or vp.Y < 520
+    SG.scale.Visible, SG.comp.Visible, SG.marker.Visible = not simpleSight, not simpleSight, not simpleSight
+    sightRingScale.Scale = simpleSight and 0.78 or 1
+    if simpleSight then
+      local sx, sy, sw = compactDock(vp, mob, 184, 43)
+      if mob and vp.X >= 600 then sx = vp.X - sw - 14 end
+      SG.info.Position, SG.info.Size = UD2(0, sx, 0, sy), UD2(0, sw, 0, 43)
+    else
+      SG.info.Position, SG.info.Size = UD2(0.5, 206, 0.5, -26), UD2(0, 184, 0, 43)
     end
   end
 
@@ -36424,7 +36768,7 @@ function VehHud.init(G)
     end
     -- 炮口烟：开炮后 0.06 秒涌上来，一秒多散掉
     local age = os.clock() - (st.fireT or -99)
-    local hz = (age < 2.2) and math.clamp(age / 0.06, 0, 1) * 0.62 * math.exp(-math.max(0, age - 0.06) * 2.1) or 0
+    local hz = (not reducedMotion and age < 2.2) and math.clamp(age / 0.06, 0, 1) * 0.62 * math.exp(-math.max(0, age - 0.06) * 2.1) or 0
     SG.haze.BackgroundTransparency = 1 - hz
     if hz > 0 then
       local cc = G.sightCC
@@ -36436,9 +36780,11 @@ function VehHud.init(G)
       dd.BackgroundColor3 = ready and OK or (i <= lit and AMBER or TXT)
       dd.BackgroundTransparency = ready and 0.25 or (i <= lit and 0.05 or 0.75)
     end
-    SG.ammo.Text = wid and (T("vw." .. wid) .. "  " .. (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞")) or ""
+    SG.ammo.Text = wid and T("vw." .. wid) or ""
+    SG.count.Text = wid and (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞") or ""
     SG.state.Text = ready and T("vh.loaded") or string.format("%s  %.1f", T("vh.reload"), left)
     SG.state.TextColor3 = ready and OK or AMBER
+    if not SG.scale.Visible then return end
     local dist = st.aimPt and (st.aimPt - cam.CFrame.Position).Magnitude / 2.8 or 0
     SG.ptr.Position = UD2(0, 46, 0, 220 - math.clamp(dist / 2000, 0, 1) * 220)
     -- 小罗盘：炮管朝向
@@ -36456,34 +36802,30 @@ function VehHud.init(G)
   end
 
   RunService.RenderStepped:Connect(function()
-    local tank0 = G.myVeh
-    local inSight = tank0 ~= nil and tank0 == G.drive and tank0.sight and tank0.d ~= nil
-    sg.Enabled = inSight
-    if inSight then
-      local ok, err = pcall(stepSight, tank0)
-      if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
-    end
-  end)
-
-  RunService.RenderStepped:Connect(function()
-    local tank = G.myVeh
-    local ship = G.sail
-    local mode = nil
-    if tank and tank == G.drive and not tank.sight and tank.d then
-      mode = "tank"
-    elseif ship and ship == G.drive and not ship.bino and ship.d then
-      mode = "ship"
-    end
-    gui.Enabled = mode ~= nil
-    if not mode then
+    local covered = (G.boardShown and G.boardShown()) or (G.menuOpen and G.menuOpen())
+      or (G.menuShown and G.menuShown()) or (G.coachPanel and G.coachPanel())
+    local tank, ship = G.myVeh, G.sail
+    local driving = not covered and tank ~= nil and tank == G.drive and tank.d ~= nil
+    local sailing = not covered and ship ~= nil and ship == G.drive and ship.d ~= nil and ship.bino ~= true
+    local inSight = driving and tank.sight == true
+    local showTank = driving and not inSight
+    gui.Enabled, sg.Enabled = showTank or sailing, inSight
+    if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
       hp0 = nil
+    end
+    if not gui.Enabled and not inSight then return end
+    layoutPanels()
+    if inSight then
+      local ok, err = pcall(stepSight, tank)
+      if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
       return
     end
-    layoutPanels()
-    TK.car.Visible, TK.arm.Visible = mode == "tank", mode == "tank"
-    SH.car.Visible, SH.arm.Visible = mode == "ship", mode == "ship"
-    local ok, err = pcall(mode == "tank" and stepTank or stepShip, mode == "tank" and tank or ship)
+    compGroup.Visible = not compact and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
+    TK.car.Visible, TK.arm.Visible = showTank and not compact, showTank and not compact
+    SH.car.Visible, SH.arm.Visible = sailing and not compact, sailing and not compact
+    MS.box.Visible = compact
+    local ok, err = pcall(showTank and stepTank or stepShip, showTank and tank or ship)
     if not ok and G.showError then G.showError("驾驶界面：" .. tostring(err)) end
   end)
 end
@@ -37866,9 +38208,9 @@ return View
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
 --   1. 照明弹（服务器 Battle.lua 打的，特效 k = "illum"）：按服务器时间算——
 --      发射：从舰炮 / 迫击炮那里一颗拖着短尾巴的亮点抛物线飞上去（离镜头远的不画）；炸开：一闪、一小团烟、「噗」一声（按距离晚到）；
---      挂着降落伞慢慢落、随风飘，一边烧一边拖出一条往上飘的白烟柱（被它自己照亮），往下掉火星；烧到最后几秒忽明忽暗、熄灭，伞掉得快了、淡掉。
+--      挂着降落伞慢慢落、随风飘，往上冒烟、往下掉火星，最后几秒逐渐熄灭。
 --      照亮：Roblox 的点光源最远 60 格，照明弹在一百多格高——光源放在照明弹正下方离地 40 格的地方跟着走（离镜头最近的那发投影子：
---      影子跟着照明弹慢慢挪），再加上「附近有照明弹，整片地都亮起来」：G.illum = { k 亮度 0～1.2 }，DayNight.lua 按它把环境光往暖白抬、曝光加一点，一闪一闪
+--      影子跟着照明弹慢慢挪），DayNight.lua 按 G.illum 平滑提高附近环境光与曝光。
 --   2. 夜空：一层低云；守方要地的对空探照灯慢慢扫；远处时不时的闷炮声（只有声音）
 --   3. 房子着火、塌（服务器 Battle.lua）：着火的房子冒火、冒烟、火光一闪一闪；塌的时候扬起一大团尘土、碎块乱飞、轰隆一声；废墟冒一阵烟
 --   4. 暴风雨（服务器给强度 StormK）：雨、闪电、雷声，云变厚、浪变大、风变大、雾变近
@@ -37878,6 +38220,15 @@ local Warfx = {}
 function Warfx.init(G)
   local RunService = game:GetService("RunService")
   local Debris = game:GetService("Debris")
+  local Lighting = game:GetService("Lighting")
+  local Players = game:GetService("Players")
+  local GuiService = game:GetService("GuiService")
+  local reducedMotion = false
+  pcall(function()
+    local function readMotion() reducedMotion = GuiService.ReducedMotionEnabled == true end
+    readMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(readMotion)
+  end)
   local V = Vector3.new
   local RGB = Color3.fromRGB
   local NSK, CSK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
@@ -37959,17 +38310,13 @@ function Warfx.init(G)
     return e.p + (e.w or V()) * b - V(0, fall, 0) + sway, (b <= e.burn) and "burn" or "out"
   end
 
-  -- 亮度 0～1：点着的头半秒亮起来，烧着时轻轻闪，最后 4 秒忽明忽暗地暗下去
+  -- 柔和升降亮度，避免把高频闪烁传给整个夜间调色。
   local function flareI(f, b, burn)
     if b < 0 or b > burn then return 0 end
-    local up = math.clamp(b / 0.5, 0, 1)
-    local fl = 0.88 + 0.07 * math.sin(b * 23 + f.ph) + 0.05 * math.sin(b * 37.7 + f.ph * 2)
-    local tail = 1
-    if b > burn - 4 then
-      tail = math.clamp((burn - b) / 4, 0, 1)
-      if math.random() < 0.25 then tail *= 0.45 end   -- 快烧完：噼啪地暗一下
-    end
-    return up * fl * tail
+    local up = math.clamp(b / 0.75, 0, 1)
+    local tail = math.clamp((burn - b) / 4, 0, 1)
+    local glow = reducedMotion and 0.95 or (0.95 + 0.05 * math.sin(b * 2.4 + f.ph))
+    return up * glow * tail
   end
 
   local function popSound(p, d)
@@ -37979,10 +38326,12 @@ function Warfx.init(G)
       p, { delay = d / 960, rmin = 120, rmax = 3200, hiCut = -10 * math.clamp((d - 400) / 2000, 0, 1) })
   end
 
-  local function ignite(f, pos)
+  local function ignite(f, pos, age)
     local d = (pos - camPos()).Magnitude
-    if G.flash and d < 2400 then G.flash(pos, WARM, 50, 6, 0.3) end
-    popSound(pos, d)
+    if age < 0.65 then
+      if not reducedMotion and G.flash and d < 2400 then G.flash(pos, WARM, 50, 2.7, 0.3) end
+      popSound(pos, d)
+    end
     local core = part(Enum.PartType.Ball, V(0.9, 0.9, 0.9), CFrame.new(pos), RGB(255, 246, 228), Enum.Material.Neon, 0)
     core.Name = "Illum"
     f.core = core
@@ -38090,8 +38439,12 @@ function Warfx.init(G)
           f.shell:Destroy()
           f.shell = nil
         end
-        if not f.core and ph == "burn" then ignite(f, pos) end
-        local gy = math.max(0, MapM.ground(pos.X, pos.Z))
+        if not f.core and ph == "burn" then ignite(f, pos, b) end
+        if not f.groundAt or t >= f.groundAt then
+          f.ground = math.max(0, MapM.ground(pos.X, pos.Z))
+          f.groundAt = t + 1 / 20
+        end
+        local gy = f.ground
         local alt = pos.Y - gy
         if f.core and not f.out and (ph == "out" or alt < 3) then extinguish(f) end
         if f.out then
@@ -38122,7 +38475,10 @@ function Warfx.init(G)
     end
     -- 只有离镜头最近的那发投影子（点光源投影子很贵）
     for _, f in ipairs(flares) do
-      if f.groundLight then f.groundLight.Shadows = (f == nearest) and nd < 900 end
+      if f.groundLight then
+        local shadows = f == nearest and nd < 900 and not reducedMotion and (G.perfK or 1) >= 0.8
+        if f.groundLight.Shadows ~= shadows then f.groundLight.Shadows = shadows end
+      end
     end
     illumK = math.min(1.2, k)
   end
@@ -38192,12 +38548,16 @@ function Warfx.init(G)
 
   local function stepLights()
     if #LIGHTS == 0 then return end
-    local t = serverNow()
+    local t = reducedMotion and 0 or serverNow()
     local cp = camPos()
     for _, L in ipairs(LIGHTS) do
       local near = (L.base - cp).Magnitude < 9000
-      for _, b in ipairs(L.beams) do b.Enabled = near end
-      if near then
+      if L.near ~= near then
+        L.near = near
+        for _, b in ipairs(L.beams) do b.Enabled = near end
+      end
+      if near and L.time ~= t then
+        L.time = t
         -- 方位角在朝海方向左右各 50° 里慢慢来回，仰角 35°～72°
         local az = L.az0 + math.rad(50) * math.sin(t * 0.11 + L.ph)
         local el = math.rad(53) + math.rad(19) * math.sin(t * 0.17 + L.ph * 1.3)
@@ -38283,8 +38643,12 @@ function Warfx.init(G)
     if t >= scanAt then
       scanAt = t + 15
       table.clear(bldList)
-      for _, d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+      local map = workspace:FindFirstChild("Map")
+      local scenery = map and map:FindFirstChild("Scenery")
+      if scenery then
+        for _, d in ipairs(scenery:GetDescendants()) do
+          if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+        end
       end
     end
     for _, m in ipairs(bldList) do
@@ -38313,9 +38677,10 @@ function Warfx.init(G)
   local function stepBurn()
     local cp = camPos()
     local t = os.clock()
-    for m, b in pairs(burning) do
+    for _, b in pairs(burning) do
       if b.h.Parent and (b.h.CFrame.Position - cp).Magnitude < 1500 then
-        b.light.Brightness = 2.6 + 0.6 * math.sin(t * 11 + b.ph) + 0.4 * math.sin(t * 23.7 + b.ph * 2)
+        local brightness = reducedMotion and 2.6 or (2.6 + 0.32 * math.sin(t * 3.1 + b.ph))
+        if math.abs(b.light.Brightness - brightness) > 0.025 then b.light.Brightness = brightness end
       end
     end
   end
@@ -38333,7 +38698,7 @@ function Warfx.init(G)
         { id = THUD, vol = 0.9, s = { 0.4, 0.45 }, eq = { 6, 0, -10 }, delay = 0.6 } },
         p, { delay = d / 960, rmin = 80, rmax = 4500, must = true })
     end
-    if d < 400 and G.shake then G.shake(0.55 * (1 - d / 400)) end
+    if d < 400 and G.shake and not reducedMotion then G.shake(0.55 * (1 - d / 400)) end
     if d > 4000 then return end
     local w = math.max(s.X, s.Z)
     local h = part(Enum.PartType.Block, V(1, 1, 1), CFrame.new(p.X, gy + 1.5, p.Z), RGB(0, 0, 0), nil, 1)
@@ -38374,26 +38739,24 @@ function Warfx.init(G)
 
   ---------------------------------------------------------------- 暴风雨（服务器 Battle.lua 给强度：workspace 的属性 StormK）
   -- 雨：镜头上方一块看不见的板子往下撒细长的雨丝（顺着速度方向拉长；受光：照明弹、火光、探照灯附近的雨亮晶晶，黑处几乎看不见）；
-  --   开飞机飞到云上面（700 格以上）不下。闪电：远处一道折线的白光、整个画面亮两下（双闪），雷声按距离晚到、拖着长长的回声；
+  --   开飞机飞到云上面（700 格以上）不下。闪电保留远处的短光与雷声，减少动态效果时只保留雷声；
   --   云变厚变黑、海浪变大、风把草吹得乱晃、雾变近（DayNight.lua 读 G.weather.k）；雨声的「沙——」跟着强度
   local stormK = 0
   local rainPart, rainPE, rainSnd
-  local flashCC = Instance.new("ColorCorrectionEffect")
-  flashCC.Name = "LightningFlash"
-  flashCC.Brightness = 0
-  pcall(function() flashCC.Parent = game:GetService("Lighting") end)
-  local flashT = nil
+  local rainActive, rainSoundOn = false, false
+  local weatherAcc, lastLook = 0, 0
   local nextBolt = 0
   local bolts = 0
   G.boltCount = function() return bolts end   -- 测试用
   G.weather = { k = 0 }
-  local T0 = { cover = clouds and clouds.Cover or 0.6, dens = clouds and clouds.Density or 0.5 }
+  local stormCloud = RGB(40, 44, 54)
+  local T0 = { cover = clouds and clouds.Cover or 0.6, dens = clouds and clouds.Density or 0.5, color = clouds and clouds.Color or RGB(66, 72, 88) }
   local terr = workspace:FindFirstChildOfClass("Terrain")
-  local W0 = { size = terr and terr.WaterWaveSize or 0.15, speed = terr and terr.WaterWaveSpeed or 8 }
+  local waterSize, waterSpeed, wind
 
   local function ensureRain()
     if rainPart then return end
-    rainPart = part(Enum.PartType.Block, V(120, 1, 120), CFrame.new(0, -500, 0), RGB(0, 0, 0), nil, 1)
+    rainPart = part(Enum.PartType.Block, V(86, 1, 86), CFrame.new(0, -500, 0), RGB(0, 0, 0), nil, 1)
     rainPart.Name = "Rain"
     rainPE = emitter(rainPart, { tex = "rbxasset://textures/particles/SquareParticle.png", rate = 0, life = { 0.45, 0.6 }, spd = { 140, 175 }, spread = 6,
       dir = Enum.NormalId.Bottom, size = nseq(0, 0.07, 1, 0.07), tr = nseq(0, 0.45, 1, 0.55), col = cseq(RGB(206, 214, 228), RGB(190, 200, 216)), rot = 0 })
@@ -38402,29 +38765,21 @@ function Warfx.init(G)
     rainPE.Rotation = NumberRange.new(0, 0)
     pcall(function() rainPE.Orientation = Enum.ParticleOrientation.VelocityParallel end)
     pcall(function() rainPE.Squash = NumberSequence.new(3) end)   -- 拉成细长的雨丝
-    if G.makeSound then
-      rainSnd = G.makeSound({ id = WIND, vol = 0.01, s = { 1.25, 1.3 }, loop = { 0.5, 9.5 }, eq = { -24, -4, 5 } }, game:GetService("SoundService"), {})
-    end
   end
 
-  -- 一道闪电：从云底（800 格）往下的折线，几段亮白的细条 + 一条分叉，0.25 秒后没了
-  local function bolt()
-    local cp = camPos()
-    local a = math.random() * 2 * math.pi
-    local dist = 1200 + math.random() * 3800
-    local x, z = cp.X + math.cos(a) * dist, cp.Z + math.sin(a) * dist
-    local gy = math.max(0, MapM.ground(x, z))
-    local pts, y = { V(x, 800, z) }, 800
+  local function drawBolt(x, gy, z)
+    local y = math.max(800, gy + 140)
+    local pts = { V(x, y, z) }
     while y > gy + 1 do
       y = math.max(gy, y - (60 + math.random() * 70))
       local last = pts[#pts]
       table.insert(pts, V(last.X + (math.random() - 0.5) * 70, y, last.Z + (math.random() - 0.5) * 70))
     end
-    local segs = {}
     local function seg(p0, p1, wdt)
       local L = (p1 - p0).Magnitude
-      local s = part(Enum.PartType.Block, V(wdt, wdt, L), CFrame.lookAt((p0 + p1) / 2, p1), RGB(230, 236, 255), Enum.Material.Neon, 0)
-      table.insert(segs, s)
+      local s = part(Enum.PartType.Block, V(wdt, wdt, L), CFrame.lookAt((p0 + p1) / 2, p1), RGB(190, 207, 235), Enum.Material.Neon, 0.25)
+      if G.tween then G.tween(s, 0.28, { Transparency = 1 }) end
+      Debris:AddItem(s, 0.3)
     end
     for i = 1, #pts - 1 do seg(pts[i], pts[i + 1], 1.6) end
     local k0 = math.random(2, math.max(2, #pts - 2))   -- 分叉
@@ -38434,8 +38789,14 @@ function Warfx.init(G)
       seg(bp, nb, 0.9)
       bp = nb
     end
-    for _, s in ipairs(segs) do Debris:AddItem(s, 0.25) end
-    flashT = os.clock()
+  end
+
+  local function bolt(cp)
+    local a = math.random() * 2 * math.pi
+    local dist = 1200 + math.random() * 3800
+    local x, z = cp.X + math.cos(a) * dist, cp.Z + math.sin(a) * dist
+    local gy = math.max(0, MapM.ground(x, z))
+    if not reducedMotion then drawBolt(x, gy, z) end
     local d = (V(x, gy, z) - cp).Magnitude
     if G.sfx then
       G.sfx({ { id = EXP, vol = 1.5, s = { 0.3, 0.36 }, reg = { 0, 2.5 }, eq = { 8, -2, -18 }, echo = { 0.5, 0.5, -6 } },
@@ -38445,59 +38806,84 @@ function Warfx.init(G)
     bolts += 1
   end
 
-  local function stepStorm(dt)
-    local target = workspace:GetAttribute("StormK")
-    target = type(target) == "number" and target or 0
-    stormK += (target - stormK) * math.min(1, dt * 0.8)
-    if math.abs(target - stormK) < 0.005 then stormK = target end
-    G.weather.k = stormK
-    local k = stormK
-    local cp = camPos()
-    if k > 0.01 then
-      ensureRain()
-      local cam = workspace.CurrentCamera
-      local look = cam and cam.CFrame.LookVector or V(0, 0, -1)
-      rainPart.CFrame = CFrame.new(cp + V(0, 38, 0) + V(look.X, 0, look.Z) * 20)
-      local high = cp.Y > 700   -- 云上面不下雨
-      rainPE.Rate = high and 0 or math.floor(1300 * k * math.clamp(G.perfK or 1, 0.4, 1))
-      if rainSnd then rainSnd.Volume = high and 0 or 1.4 * k end
-      if k > 0.4 and os.clock() >= nextBolt then
-        nextBolt = os.clock() + (5 + math.random() * 9) / k
-        bolt()
-      end
-    elseif rainPE then
-      rainPE.Rate = 0
-      if rainSnd then rainSnd.Volume = 0 end
+  local function stepRain(k, cp, look)
+    if k > 0.01 then ensureRain() end
+    if not rainPE then return end
+    local active = k > 0.01 and cp.Y <= 700
+    if active then
+      local target = cp + V(look.X * 20, 38, look.Z * 20)
+      if (rainPart.CFrame.Position - target).Magnitude >= 0.5 then rainPart.CFrame = CFrame.new(target) end
+    elseif rainActive then
+      pcall(function() rainPE:Clear() end)
     end
-    -- 云、浪、风
+    rainActive = active
+    local budget = G.mobile and 100 or 400
+    if reducedMotion then budget = G.mobile and 68 or 120 end
+    local rate = active and math.floor(budget * k * math.clamp(G.perfK or 1, 0.4, 1)) or 0
+    if rainPE.Rate ~= rate then rainPE.Rate = rate end
+
+    if active then
+      if not rainSnd and G.makeSound then
+        rainSnd = G.makeSound({ id = WIND, vol = 0.01, s = { 1.25, 1.3 }, loop = { 0.5, 9.5 }, eq = { -24, -4, 5 } }, game:GetService("SoundService"), {})
+        rainSoundOn = rainSnd ~= nil
+      end
+      if rainSnd then
+        local volume = k * 1.4
+        if math.abs(rainSnd.Volume - volume) >= 0.015 then rainSnd.Volume = volume end
+        if not rainSoundOn then rainSnd:Play() rainSoundOn = true end
+      end
+    elseif rainSoundOn then
+      rainSnd:Stop()
+      rainSoundOn = false
+    end
+  end
+
+  local function setWeatherLook(k)
+    if k == lastLook or (k > 0 and math.abs(k - lastLook) < 0.012) then return end
+    if lastLook == 0 then
+      if terr then waterSize, waterSpeed = terr.WaterWaveSize, terr.WaterWaveSpeed end
+      pcall(function() wind = workspace.GlobalWind end)
+    end
+    lastLook = k
     if clouds then
       clouds.Cover = T0.cover + (0.9 - T0.cover) * k
       clouds.Density = T0.dens + (0.82 - T0.dens) * k
-      clouds.Color = RGB(66, 72, 88):Lerp(RGB(40, 44, 54), k)
+      clouds.Color = T0.color:Lerp(stormCloud, k)
     end
     if terr then
-      pcall(function()
-        terr.WaterWaveSize = W0.size + (0.55 - W0.size) * k
-        terr.WaterWaveSpeed = W0.speed + (18 - W0.speed) * k
-      end)
+      terr.WaterWaveSize = waterSize + (0.55 - waterSize) * k
+      terr.WaterWaveSpeed = waterSpeed + (18 - waterSpeed) * k
     end
-    pcall(function() workspace.GlobalWind = V(20, 0, 10) * k end)
-    -- 闪电的双闪
-    if flashT then
-      local u = os.clock() - flashT
-      local b = 0
-      if u < 0.07 then b = 0.38 elseif u < 0.12 then b = 0.05 elseif u < 0.2 then b = 0.26 elseif u < 0.32 then b = 0.08 * (1 - (u - 0.2) / 0.12) else flashT = nil end
-      flashCC.Brightness = b
-    elseif flashCC.Brightness ~= 0 then
-      flashCC.Brightness = 0
+    if wind then pcall(function() workspace.GlobalWind = wind:Lerp(V(20, 0, 10), k) end) end
+  end
+
+  local function stepStorm(dt)
+    local target = workspace:GetAttribute("StormK")
+    target = type(target) == "number" and math.clamp(target, 0, 1) or 0
+    stormK += (target - stormK) * (1 - math.exp(-dt * 0.8))
+    if math.abs(target - stormK) < 0.005 then stormK = target end
+    G.weather.k = stormK
+    local cam = workspace.CurrentCamera
+    if cam and (stormK > 0 or rainActive) then
+      local cf = cam.CFrame
+      stepRain(stormK, cf.Position, cf.LookVector)
+      if stormK > 0.4 and os.clock() >= nextBolt then
+        nextBolt = os.clock() + (5 + math.random() * 9) / stormK
+        bolt(cf.Position)
+      end
+    elseif rainActive then
+      stepRain(0, V(), V())
+    end
+    weatherAcc += dt
+    if weatherAcc >= 0.12 then
+      weatherAcc %= 0.12
+      setWeatherLook(stormK)
     end
   end
 
   ---------------------------------------------------------------- 阵亡镜头（服务器 Battle.lua 的 G.killcam 发来 killcam）
-  -- 战地那种：死了以后 3 秒，镜头从倒下的地方转向凶手、慢慢拉近（视野收窄到凶手周围十几格），画面去色、景深对准凶手，
-  --   凶手头顶一个红色的标记（名字、多少米），真人还有一圈红色描边。镜头按渲染优先级 Camera + 20 每帧摆（盖过别的镜头逻辑），3.2 秒后放开、视野复原
-  local Lighting = game:GetService("Lighting")
-  local Players = game:GetService("Players")
+  -- 阵亡后短暂转向事件来源。减少动态效果、重新部署、主菜单和镜头切换均优先接管。
+  local player = Players.LocalPlayer
   local kc = nil
   local kcN = 0
   G.killcamCount = function() return kcN end   -- 测试用
@@ -38506,31 +38892,31 @@ function Warfx.init(G)
 
   local function endKillcam()
     if not kc then return end
-    pcall(function() RunService:UnbindFromRenderStep("Killcam") end)
-    local cam = workspace.CurrentCamera
-    if cam then cam.FieldOfView = kc.fov0 end
-    for _, o in ipairs(kc.objs) do if o.Parent then o:Destroy() end end
+    local shot = kc
     kc = nil
+    pcall(function() RunService:UnbindFromRenderStep("Killcam") end)
+    if workspace.CurrentCamera == shot.cam then shot.cam.FieldOfView = shot.fov0 end
+    for _, o in ipairs(shot.objs) do if o.Parent then o:Destroy() end end
   end
 
   local function stepKillcam()
     if not kc then return end
     local u = os.clock() - kc.t0
-    if u > 3.2 then
+    local cam = workspace.CurrentCamera
+    local character = player.Character
+    local round = G.S and G.S.round
+    if u > 3.2 or reducedMotion or cam ~= kc.cam or (character and character ~= kc.character)
+      or (kc.round and round and kc.round ~= round) or (G.menuShown and G.menuShown()) then
       endKillcam()
       return
     end
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    local to = (kc.p - kc.from).Unit
-    local dir = kc.look0:Lerp(to, smooth(u / 0.7))
-    if dir.Magnitude < 0.01 then dir = to end
-    cam.CFrame = CFrame.lookAt(kc.from, kc.from + dir.Unit)
+    local angle = smooth(u / 0.85)
+    cam.CFrame = kc.fromView:Lerp(kc.focusView, angle)
     cam.FieldOfView = kc.fov0 + (kc.fovZ - kc.fov0) * smooth((u - 0.45) / 1.1)
   end
 
   local function startKillcam(e)
-    if type(e) ~= "table" or typeof(e.p) ~= "Vector3" then return end
+    if reducedMotion or (G.menuShown and G.menuShown()) or type(e) ~= "table" or typeof(e.p) ~= "Vector3" then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
     local from = (typeof(e.from) == "Vector3") and e.from or cam.CFrame.Position
@@ -38539,8 +38925,12 @@ function Warfx.init(G)
     endKillcam()
     kcN += 1
     -- 视野收到凶手周围约 14 格（远的拉得多），最窄 8°
-    local fovZ = math.clamp(math.deg(2 * math.atan(14 / d)), 8, cam.FieldOfView)
-    kc = { t0 = os.clock(), from = from + V(0, 0.4, 0), look0 = cam.CFrame.LookVector, p = e.p, d = d, fov0 = cam.FieldOfView, fovZ = fovZ, objs = {} }
+    local fov = cam.FieldOfView
+    local fovZ = math.clamp(math.deg(2 * math.atan(14 / d)), math.min(8, fov), fov)
+    local eye = from + V(0, 0.4, 0)
+    kc = { t0 = os.clock(), cam = cam, character = player.Character, round = G.S and G.S.round,
+      fromView = CFrame.new(eye) * cam.CFrame.Rotation, focusView = CFrame.lookAt(eye, e.p),
+      fov0 = fov, fovZ = fovZ, objs = {} }
     -- 凶手头顶的标记
     local anchor = part(Enum.PartType.Block, V(0.2, 0.2, 0.2), CFrame.new(e.p + V(0, 4.5, 0)), RGB(0, 0, 0), nil, 1)
     anchor.Name = "KillcamTag"
@@ -38606,7 +38996,10 @@ function Warfx.init(G)
   G.onMsg = function(kind, key, ...)
     if kind == "killcam" then
       local ok, err = pcall(startKillcam, key)
-      if not ok and G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      if not ok then
+        endKillcam()
+        if G.showError then G.showError("阵亡镜头：" .. tostring(err)) end
+      end
       return
     end
     if prevMsg then return prevMsg(kind, key, ...) end
@@ -38626,7 +39019,10 @@ function Warfx.init(G)
         stepLights()
         stepRumble()
         stepBurn()
-        if clouds then clouds.Enabled = (G.perfK or 1) >= 0.7 end
+        if clouds then
+          local enabled = (G.perfK or 1) >= 0.7
+          if clouds.Enabled ~= enabled then clouds.Enabled = enabled end
+        end
       end)
       if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
     end
