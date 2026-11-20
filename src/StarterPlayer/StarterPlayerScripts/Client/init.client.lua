@@ -14,6 +14,8 @@
 --   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 --   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
 --   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
+--   GunKit 改枪的配件：自己这把枪的武器表（G.myW）、别人 / 第三人称枪上装的配件模型、激光、手电
+--   Gunsmith 改枪界面（对标三角洲行动：3D 枪、改装位、性能条、推荐改装、方案、改枪码）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -41,7 +43,15 @@ function G.perfWrap(name, f)
 end
 function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
 
-for _, name in ipairs({ "HudArt", "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "Marks", "Perf" }) do
+-- 武器表（自己的枪装了配件以后的那份）：G.W[武器] = G.myW(武器)（GunKit.lua 按背包里工具的 Build 属性算，GunMods.apply）；
+--   Play、Hud、FPSView 开枪、换弹、准星、后坐都按它（服务器 Weapons.lua 按同一套算的那份核对）
+G.W = setmetatable({}, { __index = function(_, id)
+  local f = G.myW
+  if f then return f(id) end
+  return G.Config.Weapons[id]
+end })
+
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "Marks", "Gunsmith", "Perf" }) do
   require(script:WaitForChild(name)).init(G)
 end
 

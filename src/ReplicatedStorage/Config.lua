@@ -79,6 +79,9 @@ Config.Loadout = {
   { id = "throw", opts = { "grenade", "c4" } },                        -- 投掷
 }
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
+-- 改枪（GunMods.lua，用户 11-20：对标三角洲行动）：killXp 用这把枪打死一个人（真人 / 机器人）加多少枪械经验，
+--   unlockAll 配件全部解锁（不用升级），studioAll 在 Studio 里测试时全部解锁（发布到线上照常按等级）
+Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = true }
 
 -- R 币解锁（游戏通行证 Game Pass）：在 Roblox 创作者后台给这个体验建两个通行证（价格照 price），把通行证编号填进 id——
 --   id 还是 0 的时候谁都能用（没上架前不挡人，Studio 里测试也方便）；填了编号就只有买了的人能用，没买的点了弹出购买框
@@ -111,10 +114,13 @@ local G_VS = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.0
 Config.Weapons = {
   m4 = { kind = "gun", dmg = 25, rate = 0.08, mag = 30, reload = 2.6, range = 650, spread = 0.55, adsK = 0.35, moveK = 0.8, bloom = { 0.06, 0.55, 2.2, 0.12 },
     auto = true, vs = G_VS, head = 1.6,
+    -- rc 每发的后坐（度：Fx.lua G.kick）；fall 伤害衰减（从射程的 42% 开始掉，到射程尽头剩 72%：改枪的「有效射程」）
+    rc = { up = 0.3, side = 0.12, punch = 1.0, roll = 0.5 }, fall = { 0.42, 0.72 },
     scope = 3.5, optic = "acog" },   -- 两队都用这一种（第一人称动作照 M4 动作包）；上机匣导轨上一具 ACOG 3.5 倍镜（用户：武器瞄准没有镜子）
   -- 狙击枪：开镜 0.03°（原来不分开不开镜都是这么准），腰射 2.6°（不开镜别指望一枪一个）
   sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 2.6, adsK = 0.0115, moveK = 1.5,
-    vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5 },
+    vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5,
+    rc = { up = 1.8, side = 0.35, punch = 3.4, roll = 1.2 } },
   rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
     vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },
   manpads = { kind = "lock", dmg = 120, rate = 0.5, mag = 1, reserve = 1, reload = 3.5, range = 1400, speed = 320, splash = 9, lockTime = 1.6,

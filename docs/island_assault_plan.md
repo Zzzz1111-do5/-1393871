@@ -763,6 +763,33 @@
   - 合并了 keen-heisenberg 的 29 个提交（手雷弹道用它的 `Nade.lua`，`Marks.lua` 只管炸弹落点）。`tools/build_rbxlx.py` 同时写只换脚本的 `ScriptsUpdate.rbxmx`。
   - 截图核对：`tools/mock/hudshot.lua`（坐进坦克、前面放一辆敌车，把显示着的界面元素按 Roblox 的排版算出屏幕位置）+ `tools/mock/hud_render.py`（画成 1280 × 720 的图，
     认得 HudArt 装的图标）。
+- [x] **改枪系统（2026-11-20，darksword-air-map；用户：「做一整套改枪系统，对标三角洲行动」，给了 Sketchfab 的 API 密钥）**
+  - 配件模型：Sketchfab 上 17 件 CC-BY-4.0 的原模型（`tools/weapons/optics.json` 新加的 `sup_*` 消音器、`muz_*` 枪口件、`opt_*` 瞄具、`grip_*` 握把、
+    `mag_*` 弹匣、`tac_*` 战术件，署名在 `models/credits.txt`）走瞄准镜那条管线：`models/optics/<键>.glb`（Studio 可导入，带原贴图）、`OpticMesh/<键>.lua`
+    （没导入时 EditableMesh 现生成）、`OpticsMeta.lua`。`optics.mjs` 加了 `anchor.y = "max"`（握把、弹匣以顶面为原点）、GLB 贴图最长边缩到 1024；
+    红点瞄具的前镜片和外壳是同一材质（会并成一块挡住视线），`drop` 掉了。密钥只放在本机临时目录、用环境变量传，不进仓库。
+  - 数据和算法 `ReplicatedStorage.GunMods`（服务器、客户端共用）：M4 五个改装位（枪口 6 / 瞄具 6 / 前握把 3 / 弹匣 5 / 战术 3），狙击枪一个（枪口 3）；
+    三角洲那几项 0～100 的分（垂直 / 水平后坐力控制、操控速度、据枪稳定性、腰际射击精度、有效射程、机动性），配件按分加减，
+    `GM.apply` 换成真正起作用的数：每发后坐（`rc`，`Fx.lua` 的 G.kick 用）、连射散布、腰射散布、开镜精度、开镜 / 拔枪快慢（`adsSpd`）、
+    开镜晃动（`swayK`）、射程（M4 新加伤害衰减 `fall`：射程 42% 以外往下掉，到尽头剩 72%）、走路速度（`mobK`），弹匣容量、换弹时间、
+    消音（`quiet`：开枪不上敌人雷达、闷响、没有枪口焰）、瞄具倍率（红点 / 全息开镜看着枪，3.5 / 6 倍进目镜的像）、激光、手电。
+  - 改枪码：`<枪>-<版本><配件编码><两位校验>`（base32），例如默认 M4 是 `M4A1-100CWW`；校验对 1021 取余，抄错任意一位、相邻两位写反都认不出来（单测穷举过）。
+  - 服务器 `Main/Gunsmith.lua`：每人每把枪装的配件、三个方案、枪械经验存档（`P.data.guns` / `P.data.gxp`），写在玩家属性 `Gun_<枪>`、`GunSaves_<枪>`、
+    `GunXp_<枪>`、`GunAll` 上；`gunBuild` / `gunSave` 核对（装得了、等级够）；出击时 `G.gunApply` 按装的算这一条命的武器表，
+    `Weapons.lua` 开枪、换弹、射程按 `G.wOf`，工具带 `Build` 属性（换了瞄具拿掉零件拼的 ACOG、换了弹匣藏起零件弹匣）；部署时走路速度乘主武器的 `mobK`。
+    枪械等级：用这把枪打死真人 +100、机器人 +60（`Config.GunMods`），M4 15 级、狙击枪 5 级，升级提示解锁了什么；`unlockAll` 全开，`studioAll` 在 Studio 里全开。
+  - 客户端：`init.client.lua` 的 `G.W` = 自己装了配件以后的武器表（`GunKit.lua` 的 `G.myW`：工具的 Build 属性，没出击时按 `Gun_<枪>`），Play / Hud / FPSView / Nade 都按它；
+    第一人称（`FPSView.lua`）按 `GM.m4Mount` 把配件装到 M4 上（枪口件套在消焰器上、枪口跟着往前，瞄具对正枪管轴线，Romeo3 垫增高座，握把在护木下，
+    弹匣换掉两条弹匣骨骼上的原装弹匣，战术件在护木左侧——枪身骨骼的 +X 是枪的左边，第一人称看得见那一面），红点 / 全息开镜时屏幕上照光轴画红点 / 全息圈
+    （只在窗口里看得见）、镜片半透明，激光一道光打到前面、手电一盏聚光灯；第三人称（`GunKit.lua`）别人手里的枪按 Build 属性装配件、激光别人看得见。
+    `Scope.lua` 认 6 倍 ACOG，晃动乘据枪稳定性；`Fx.lua` 消音的闷响、没有枪口焰。
+  - 改枪界面（`Client/Gunsmith.lua`，部署界面主武器那格下面的「改枪」按钮进来）：近黑的底加细网格；中间 3D 的枪（真 M4 + 配件原模型，拖动转、滚轮缩放、R 回正），
+    每个改装位一个标签、折线指到装配件的地方；点标签底下一排配件卡片（原模型小图、名字、主要加减、几级解锁、已装备），鼠标停上去枪上先换上、
+    右边性能条变好的一截绿、变差的一截红、写 +5 / −3；左边推荐改装（近战突击、中距离全能、隐蔽渗透、火力压制、精确射手）和三个「我的方案」；
+    顶上改枪码框（选中复制，粘贴别人的点应用）、恢复默认、返回（Esc）、完成（Enter，发给服务器，下次出击生效）。
+  - 核对：`tools/mock/gunmods.lua`（改枪码穷举、clean / apply / 等级）、`tools/mock/gunsmith.lua`（界面 → 服务器存档 → 出击生效 → 开枪 → 第一人称配件 → 经验，44 项）、
+    `tools/mock/gunmount.lua` + `tools/weapons/gunrender.mjs`（照游戏里的装法拼 M4 和配件 GLB，拍左右侧、斜上方、开镜视角）、
+    `tools/mock/hudshot.lua kind=gunsmith` + `hud_render.py ... vp:GunVP=<图>`（改枪界面截图，视口里贴同一镜头拍的枪）。
 
 ## 协作（几个会话一起改这个仓库）
 

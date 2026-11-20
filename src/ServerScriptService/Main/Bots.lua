@@ -376,6 +376,7 @@ function Bots.init(G)
         K.kills += 1
         G.addScore(K, Config.Score.botKill)
         G.msg(K.pl, "kill", "ui.youKilled", B.name)
+        if src.wid and G.gunXp then G.gunXp(K, src.wid, (Config.GunMods and Config.GunMods.botXp) or 60) end   -- 枪械经验（改枪）
       end
       kname = K.pl.DisplayName
     elseif src and src.bot then

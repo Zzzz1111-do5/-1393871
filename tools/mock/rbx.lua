@@ -1115,6 +1115,16 @@ for k, v in pairs(textProps) do tb[k] = v end
 tb.AutoButtonColor = { T.bool, true }
 tb.Modal = { T.bool, false }
 def("TextButton", "GuiObject", tb, { events = { Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true } })
+-- 输入框（改枪界面的改枪码）：只记属性；没人点进去，一直不是焦点
+local tbx = {}
+for k, v in pairs(textProps) do tbx[k] = v end
+tbx.PlaceholderText = { T.string, "" }
+tbx.PlaceholderColor3 = { T.Color3, newC3(0.7, 0.7, 0.7) }
+tbx.ClearTextOnFocus = { T.bool, true }
+tbx.TextEditable = { T.bool, true }
+tbx.MultiLine = { T.bool, false }
+def("TextBox", "GuiObject", tbx, { events = { FocusLost = true, Focused = true }, methods = {
+  IsFocused = function() return false end, CaptureFocus = function() end, ReleaseFocus = function() end } })
 def("UICorner", "Instance", { CornerRadius = { T.UDim, newUDim(0, 8) } })
 def("UIAspectRatioConstraint", "Instance", { AspectRatio = { T.number, 1 }, AspectType = { E("AspectType"), Enum.AspectType.FitWithinMaxSize }, DominantAxis = { E("DominantAxis"), Enum.DominantAxis.Width } })
 def("WeldConstraint", "Instance", { Part0 = { T.Instance, nil }, Part1 = { T.Instance, nil }, Enabled = { T.bool, true } })

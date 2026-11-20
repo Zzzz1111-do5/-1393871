@@ -9,7 +9,7 @@ local Play = {}
 
 function Play.init(G)
   local Config = G.Config
-  local W = Config.Weapons
+  local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local player = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local V = Vector3.new
@@ -351,7 +351,7 @@ function Play.init(G)
       local handle = cur.tool and cur.tool:FindFirstChild("Handle")
       local mz = handle and handle:FindFirstChild("Muzzle")
       local from = (G.fpsMuzzle and G.fpsMuzzle()) or (mz and mz.WorldPosition)   -- 第一人称时曳光从镜头前那支枪的枪口出去
-      if G.gunFx and from then G.gunFx(id, from, p, true) end
+      if G.gunFx and from then G.gunFx(id, from, p, true, nil, w.quiet) end   -- w.quiet：装了消音器（改枪）
       -- 开着镜（镜子已经举到眼前）告诉服务器：散布按开镜算（Config.gunSpread）；镜子还在往上举的那一下按腰射算
       local ads = cur.aiming and not (G.fpsOpticPending and G.fpsOpticPending())
       RShoot:FireServer(id, p, ads and "ads" or nil)
@@ -599,7 +599,7 @@ function Play.init(G)
     local w = cur.id and W[cur.id]
     local zoom = 1
     if armed and cur.aiming and w then
-      if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
+      if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = w.adsZoom or 1.35 end   -- 镜子的倍率滚轮能变；红点、全息按瞄具（改枪）
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
     G.scopeVisible = G.scopeVisible or function() return scope.Visible end

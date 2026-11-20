@@ -142,4 +142,152 @@ return {
     size = { 0.122, 0.155, 0.4 },
     credit = "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1",
   },
+  sup_socom = {
+    parts = {
+      Body = { c = { 0, 0, 0.191 }, s = { 0.085, 0.09, 0.382 }, tri = 1843 },
+    },
+    size = { 0.085, 0.09, 0.382 },
+    credit = "SOCOM 战术消音器：Suppressors 10 Pack，作者 TheWarVet，CC-BY-4.0 https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c",
+  },
+  sup_wrap = {
+    parts = {
+      Body = { c = { 0, 0, 0.186 }, s = { 0.085, 0.089, 0.372 }, tri = 2111 },
+    },
+    size = { 0.085, 0.089, 0.372 },
+    credit = "裹布消音器：Suppressors 10 Pack，作者 TheWarVet，CC-BY-4.0 https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c",
+  },
+  sup_sr8 = {
+    parts = {
+      Body = { c = { 0, 0, 0.28 }, s = { 0.08, 0.08, 0.561 }, tri = 704 },
+    },
+    size = { 0.08, 0.08, 0.561 },
+    credit = "SR8 长消音器：Silencers Pack 1，作者 pedrobelthori，CC-BY-4.0 https://sketchfab.com/models/e96a019757a6440390edfef888f0867e",
+  },
+  muz_comp = {
+    parts = {
+      C333 = { c = { 0, 0, 0.101 }, s = { 0.074, 0.074, 0.202 }, tri = 456, col = { 50, 50, 50 }, met = 1 },
+    },
+    size = { 0.074, 0.074, 0.202 },
+    credit = "战术补偿器：low-poly Muzzle Device Set，作者 DU1701，CC-BY-4.0 https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d",
+  },
+  muz_brake = {
+    parts = {
+      C333 = { c = { 0, 0, 0.091 }, s = { 0.072, 0.072, 0.182 }, tri = 440, col = { 50, 50, 50 }, met = 1 },
+    },
+    size = { 0.072, 0.072, 0.182 },
+    credit = "多孔枪口制退器：low-poly Muzzle Device Set，作者 DU1701，CC-BY-4.0 https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d",
+  },
+  opt_rds = {
+    parts = {
+      Body = { c = { 0, 0.149, 0 }, s = { 0.283, 0.298, 0.423 }, tri = 4990 },
+      Body2 = { c = { 0.037, 0.153, -0.191 }, s = { 0.138, 0.138, 0.008 }, tri = 96 },
+    },
+    eye = { c = { 0.037, 0.153, -0.191 }, r = 0.069 },
+    size = { 0.283, 0.298, 0.423 },
+    credit = "T1 红点瞄具：Generic Red Dot Scope / Rifle Attachment Lowpoly，作者 valterjherson1，CC-BY-4.0 https://sketchfab.com/models/8bf2794c30d04fa0aed1e3df92cd8a9e",
+  },
+  opt_holo = {
+    parts = {
+      Body = { c = { 0, 0.107, 0 }, s = { 0.168, 0.213, 0.281 }, tri = 5778 },
+      Body2 = { c = { 0.004, 0.156, 0.039 }, s = { 0.106, 0.079, 0.046 }, tri = 36 },
+      Body3 = { c = { 0, 0.069, 0.004 }, s = { 0.163, 0.115, 0.271 }, tri = 2661 },
+      Body4 = { c = { 0.004, 0.156, 0.04 }, s = { 0.106, 0.079, 0 }, tri = 18 },
+    },
+    eye = { c = { 0.004, 0.156, 0.016 }, r = 0.053 },
+    obj = { c = { 0.004, 0.156, 0.062 }, r = 0.053 },
+    size = { 0.168, 0.213, 0.281 },
+    credit = "EXPS3 全息瞄具：EoTech EXPS3-0 Holographic Weapon Sight Lowpoly，作者 valterjherson1，CC-BY-4.0 https://sketchfab.com/models/45e4fcdfb1b34756ab9e866564a12f66",
+  },
+  opt_romeo = {
+    parts = {
+      Body = { c = { -0.005, 0.063, 0.03 }, s = { 0.053, 0.045, 0.003 }, tri = 195 },
+      Body2 = { c = { -0.005, 0.063, 0.037 }, s = { 0.053, 0.045, 0.003 }, tri = 195 },
+      C022 = { c = { -0.005, 0.063, 0.031 }, s = { 0.054, 0.045, 0.007 }, tri = 312, col = { 0, 33, 35 }, met = 1 },
+      Body3 = { c = { -0.005, 0.063, 0.029 }, s = { 0.053, 0.045, 0.003 }, tri = 195 },
+      Body4 = { c = { 0, 0.044, 0 }, s = { 0.069, 0.089, 0.126 }, tri = 2172 },
+    },
+    obj = { c = { -0.005, 0.063, 0.031 }, r = 0.027 },
+    size = { 0.069, 0.089, 0.126 },
+    credit = "Romeo3 迷你反射瞄具：Sig Sauer Romeo3 Reflex Sight，作者 ense7en，CC-BY-4.0 https://sketchfab.com/models/a099c1db8ceb457aa5d1a44e967cb941",
+  },
+  opt_acog6 = {
+    parts = {
+      C555 = { c = { 0, 0.115, 0 }, s = { 0.18, 0.23, 0.579 }, tri = 2410, col = { 77, 77, 77 }, met = 0 },
+      Cb22 = { c = { 0, 0.157, -0.221 }, s = { 0.125, 0.069, 0.018 }, tri = 14, col = { 187, 35, 31 }, met = 0 },
+      C222 = { c = { 0, 0.105, -0.051 }, s = { 0.148, 0.196, 0.476 }, tri = 350, col = { 34, 34, 34 }, met = 0 },
+      C666 = { c = { 0, 0.129, -0.159 }, s = { 0.165, 0.106, 0.052 }, tri = 432, col = { 107, 107, 107 }, met = 0 },
+      C9ab = { c = { 0, 0.129, -0.032 }, s = { 0.129, 0.129, 0.475 }, tri = 56, col = { 149, 173, 192 }, met = 0 },
+      Cf00 = { c = { 0, 0.128, -0.077 }, s = { 0.002, 0.003, 0 }, tri = 6, col = { 255, 2, 0 }, met = 0 },
+      C000 = { c = { 0, 0.116, -0.077 }, s = { 0.047, 0.032, 0 }, tri = 42, col = { 0, 0, 0 }, met = 0 },
+    },
+    size = { 0.18, 0.23, 0.579 },
+    credit = "ACOG 6×48 瞄准镜：Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/d7c2a92ba3dc4b02abe03944fc7600d7",
+  },
+  grip_rvg = {
+    parts = {
+      C111 = { c = { -0.002, -0.096, 0 }, s = { 0.076, 0.192, 0.101 }, tri = 462, col = { 14, 14, 14 }, met = 0 },
+      C333 = { c = { 0.006, -0.012, 0 }, s = { 0.067, 0.019, 0.042 }, tri = 72, col = { 56, 56, 56 }, met = 0.941 },
+    },
+    size = { 0.08, 0.192, 0.101 },
+    credit = "RVG 垂直握把：Low-Poly Magpul RVG，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/86b3580a65c441db9d3401712c5c9b6d",
+  },
+  grip_afg = {
+    parts = {
+      C222 = { c = { 0, -0.071, 0 }, s = { 0.08, 0.143, 0.308 }, tri = 446, col = { 39, 39, 39 }, met = 0 },
+      Ceee = { c = { -0.029, -0.02, -0.003 }, s = { 0.002, 0.02, 0.023 }, tri = 18, col = { 233, 233, 233 }, met = 1 },
+      C333 = { c = { 0.001, -0.062, -0.004 }, s = { 0.065, 0.107, 0.288 }, tri = 184, col = { 46, 46, 46 }, met = 0.934 },
+    },
+    size = { 0.08, 0.143, 0.308 },
+    credit = "AFG 斜握把：Low-Poly Magpul AFG，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/a92a52cbb5854f7c8e33507f579073f7",
+  },
+  mag_pmag20 = {
+    parts = {
+      C111 = { c = { 0, -0.183, 0 }, s = { 0.072, 0.366, 0.206 }, tri = 600, col = { 15, 15, 15 }, met = 0 },
+    },
+    size = { 0.072, 0.366, 0.206 },
+    credit = "PMAG 20 发短弹匣：Low-Poly AR-15 magazines，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884",
+  },
+  mag_hex30 = {
+    parts = {
+      C987 = { c = { 0, -0.257, 0 }, s = { 0.074, 0.515, 0.232 }, tri = 3012, col = { 158, 138, 124 }, met = 0 },
+      Cf61 = { c = { 0, -0.251, -0.01 }, s = { 0.045, 0.493, 0.188 }, tri = 84, col = { 255, 103, 17 }, met = 0 },
+    },
+    size = { 0.074, 0.515, 0.232 },
+    credit = "HEXMAG 30 发弹匣：Low-Poly AR-15 magazines，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884",
+  },
+  mag_pmag40 = {
+    parts = {
+      C111 = { c = { 0, -0.324, 0 }, s = { 0.072, 0.649, 0.27 }, tri = 1464, col = { 15, 15, 15 }, met = 0 },
+    },
+    size = { 0.072, 0.649, 0.27 },
+    credit = "PMAG 40 发扩容弹匣：Low-Poly AR-15 magazines，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884",
+  },
+  mag_drum = {
+    parts = {
+      C111 = { c = { 0, -0.271, 0 }, s = { 0.3, 0.541, 0.341 }, tri = 955, col = { 10, 10, 10 }, met = 0 },
+      Ca97 = { c = { -0.028, -0.015, -0.033 }, s = { 0.019, 0.019, 0.025 }, tri = 24, col = { 167, 154, 112 }, met = 1 },
+    },
+    size = { 0.3, 0.541, 0.341 },
+    credit = "D-60 弹鼓：Low-Poly AR-15 magazines，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884",
+  },
+  tac_peq = {
+    parts = {
+      Cca6 = { c = { 0.008, 0.067, -0.004 }, s = { 0.217, 0.119, 0.371 }, tri = 1818, col = { 197, 176, 107 }, met = 0 },
+      C333 = { c = { 0.008, 0.063, -0.017 }, s = { 0.227, 0.127, 0.234 }, tri = 676, col = { 56, 56, 56 }, met = 0 },
+      C235 = { c = { 0.012, 0.06, 0.152 }, s = { 0.162, 0.048, 0.045 }, tri = 18, col = { 38, 45, 87 }, met = 0 },
+      C222 = { c = { 0.008, 0.057, -0.011 }, s = { 0.191, 0.091, 0.27 }, tri = 220, col = { 34, 34, 34 }, met = 0 },
+      C666 = { c = { -0.098, 0.08, -0.127 }, s = { 0.009, 0.016, 0.016 }, tri = 60, col = { 107, 107, 107 }, met = 0 },
+      Cdc4 = { c = { 0, 0.063, 0.002 }, s = { 0.242, 0.119, 0.375 }, tri = 1426, col = { 229, 203, 60 }, met = 0 },
+      C36b = { c = { -0.098, 0.08, -0.108 }, s = { 0.009, 0.016, 0.016 }, tri = 60, col = { 50, 95, 179 }, met = 0 },
+    },
+    size = { 0.243, 0.127, 0.379 },
+    credit = "AN/PEQ-15 激光指示器：ATPIAL AN/PEQ-15 (Low-Poly)，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072",
+  },
+  tac_light = {
+    parts = {
+      Cfff = { c = { 0, 0.066, 0 }, s = { 0.116, 0.132, 0.378 }, tri = 2850, col = { 255, 255, 255 }, met = 1 },
+    },
+    size = { 0.116, 0.132, 0.378 },
+    credit = "M952V 战术手电：Surefire M952V Weapon Light，作者 RedRogueXIII，CC-BY-4.0 https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6",
+  },
 }

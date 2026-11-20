@@ -87,7 +87,7 @@ local function visible(g)
     local cls = o.ClassName
     if cls == "ScreenGui" then return o.Enabled ~= false end
     if cls == "PlayerGui" then return true end
-    if (cls == "Frame" or cls == "TextButton" or cls == "TextLabel" or cls == "ImageButton" or cls == "ImageLabel" or cls == "ScrollingFrame" or cls == "CanvasGroup") and o.Visible == false then return false end
+    if (cls == "Frame" or cls == "TextButton" or cls == "TextLabel" or cls == "TextBox" or cls == "ImageButton" or cls == "ImageLabel" or cls == "ScrollingFrame" or cls == "CanvasGroup" or cls == "ViewportFrame") and o.Visible == false then return false end
     o = o.Parent
   end
   return true

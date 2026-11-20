@@ -10,7 +10,7 @@ function Nade.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local V, CF, RGB = Vector3.new, CFrame.new, Color3.fromRGB
-  local W = G.Config.Weapons
+  local W = G.W or G.Config.Weapons
   local N_DOT = 34
 
   local folder = Instance.new("Folder")

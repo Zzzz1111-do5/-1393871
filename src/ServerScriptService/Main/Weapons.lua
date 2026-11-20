@@ -14,6 +14,8 @@ function Weapons.init(G)
   local GD = require(RS:WaitForChild("GearDefs"))
   local HitSurf = require(RS:WaitForChild("HitSurf"))   -- 子弹打在什么上面（客户端按它画弹着点：钢甲火花、土、水……）
   local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：装的时候转回来
+  local GM = require(RS:WaitForChild("GunMods"))   -- 改枪：这个人这把枪装了配件以后的武器表（G.wOf，Gunsmith.lua）、伤害衰减
+  local function WOF(P, id) return (G.wOf and G.wOf(P, id)) or W[id] end
   local OM = nil   -- 手持装备真模型的元数据（OpticsMeta：块的中心、握把、枪口……）
   do
     local ok, r = pcall(function() return require(RS:WaitForChild("OpticsMeta", 5)) end)
@@ -113,7 +115,11 @@ function Weapons.init(G)
       weld(h, br)
       muzzle = V(0, 0.38, -S.L + 0.6 - S.barrel)
       if S.stock then weld(h, p(tool, V(0.35, 0.55, 1.1), CF(0, 0.2, 1.1), S.color)) end
-      if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
+      if S.mag then
+        local mg = p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)
+        mg.Name = "Mag"   -- 改枪换了弹匣：这块藏起来（giveLoadout）
+        weld(h, mg)
+      end
       if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
       if S.scope then   -- 瞄准镜：Studio 里导入了真模型（models/optics/atacr.glb，Imports.lua 收进 Imported.Optics.atacr）就装它，不然零件拼一根镜筒
         local imp = RS:FindFirstChild("Imported")
@@ -168,9 +174,14 @@ function Weapons.init(G)
           local body = p(tool, V(0.17, 0.17, 0.4), base * CF(0, 0.12, -0.02), DARK, Enum.Material.Metal)
           body.Name = "Scope"
           weld(h, body)
-          weld(h, p(tool, V(0.1, 0.24, 0.24), base * CF(0, 0.12, 0.2) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder))   -- 物镜
-          weld(h, p(tool, V(0.1, 0.06, 0.2), base * CF(0, 0.035, -0.02), DARK, Enum.Material.Metal))   -- 镜座
-          weld(h, p(tool, V(0.035, 0.03, 0.26), base * CF(-0.015, 0.215, 0.07), RGB(200, 40, 30), Enum.Material.Neon))   -- 顶上的红色光纤
+          -- 都叫 Scope_*：改枪换了瞄具时整具拿掉（giveLoadout）
+          local q1 = p(tool, V(0.1, 0.24, 0.24), base * CF(0, 0.12, 0.2) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)   -- 物镜
+          local q2 = p(tool, V(0.1, 0.06, 0.2), base * CF(0, 0.035, -0.02), DARK, Enum.Material.Metal)   -- 镜座
+          local q3 = p(tool, V(0.035, 0.03, 0.26), base * CF(-0.015, 0.215, 0.07), RGB(200, 40, 30), Enum.Material.Neon)   -- 顶上的红色光纤
+          q1.Name, q2.Name, q3.Name = "Scope_Obj", "Scope_Mount", "Scope_Fiber"
+          weld(h, q1)
+          weld(h, q2)
+          weld(h, q3)
         end
       end
     elseif S and S.tube then   -- 发射筒：扛在肩上
@@ -243,7 +254,7 @@ function Weapons.init(G)
   local function ammoOf(P, id)
     P.ammo = P.ammo or {}
     local a = P.ammo[id]
-    local w = W[id]
+    local w = WOF(P, id)
     if not a then
       a = { n = w.mag or 1, res = w.reserve, r = 0 }
       P.ammo[id] = a
@@ -264,7 +275,7 @@ function Weapons.init(G)
   G.ammoOf = ammoOf
 
   local function startReload(P, id)
-    local w = W[id]
+    local w = WOF(P, id)
     local a = ammoOf(P, id)
     if a.r > 0 or a.n >= (w.mag or 1) then return end
     if a.res and a.res <= 0 then return end
@@ -285,6 +296,17 @@ function Weapons.init(G)
     for i, id in ipairs(kit.weapons) do
       local t = (TOOLS[P.team] or TOOLS.def)[id]:Clone()
       t:SetAttribute("Slot", i)
+      local b = P.wBuild and P.wBuild[id]
+      if b then   -- 改枪（Gunsmith.lua）：大家的客户端照这个属性在枪上装配件
+        t:SetAttribute("Build", GM.encode(b))
+        if b.optic and b.optic ~= "acog" then   -- 换了瞄具：工具上原来那具 ACOG 拿掉
+          for _, c in ipairs(t:GetChildren()) do
+            if c:IsA("BasePart") and string.sub(c.Name, 1, 5) == "Scope" then c:Destroy() end
+          end
+        end
+        local mg = b.mag and b.mag ~= "mag_std" and t:FindFirstChild("Mag")
+        if mg then mg.Transparency = 1 end   -- 换了弹匣：零件拼的那个藏起来（客户端装上真模型）
+      end
       t.Parent = bp
     end
   end
@@ -318,7 +340,7 @@ function Weapons.init(G)
 
   -- 用掉一发：射速、弹匣；打空了自动换弹
   local function spend(P, id)
-    local w = W[id]
+    local w = WOF(P, id)
     local a = ammoOf(P, id)
     local t = now()
     P.lastShot = P.lastShot or {}
@@ -384,8 +406,11 @@ function Weapons.init(G)
     local hit = (rw and rw.pos) or (res and res.Position) or (origin + dir * w.range)
     -- t：哪一方开的枪（客户端雷达上闪红圈）；h：打在什么上面（HitSurf：钢甲火花、土、水……；没打中东西是空）
     G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team, h = surfOf(rw, res) })
-    if rw then G.hitRewound(rw, w, w.dmg, src(P), w.head)
-    elseif res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
+    local s = src(P)
+    s.wid = id   -- 哪把枪打的（打死了加这把枪的经验）
+    local dmg = GM.dmgAt(w, (hit - origin).Magnitude)   -- 远了伤害往下掉（改枪的「有效射程」）
+    if rw then G.hitRewound(rw, w, dmg, s, w.head)
+    elseif res and res.Instance then G.hitThing(res.Instance, w, dmg, s, w.head, res.Position) end
   end
 
   KIND.proj = function(P, id, w, char, head, tool, aim)
@@ -613,7 +638,7 @@ function Weapons.init(G)
   end)
 
   function G.shoot(P, id, a, b)
-    local w = W[id]
+    local w = WOF(P, id)
     if not w then return end
     local char, head, tool = holding(P, id)
     if not char then return end

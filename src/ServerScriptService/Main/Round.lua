@@ -533,6 +533,7 @@ function Round.init(G)
         K.kills += 1
         G.addScore(K, Config.Score.kill)
         G.msg(K.pl, "kill", "ui.youKilled", P.pl.DisplayName)
+        if killer.wid and G.gunXp then G.gunXp(K, killer.wid, (Config.GunMods and Config.GunMods.killXp) or 100) end
       end
     end
     for _, A in ipairs(assists) do
@@ -574,7 +575,9 @@ function Round.init(G)
     local S = Config.Soldier
     -- 战况表上的标签：按主武器、发射器挑一个
     local role = (pick.primary == "sniper" and "sniper") or LAUNCH_ROLE[pick.launcher or ""] or "rifle"
-    return { weapons = list, hp = S.hp, speed = pick.launcher and S.heavy or S.speed, role = role, pick = pick }
+    -- 走路速度：主武器上的配件越重越慢一点（改枪的「机动性」：弹鼓、长消音器、6 倍镜）
+    local mob = (P and G.gunMob) and G.gunMob(P, pick.primary) or 1
+    return { weapons = list, hp = S.hp, speed = (pick.launcher and S.heavy or S.speed) * mob, role = role, pick = pick }
   end
   function G.kitOf(P)
     if P.kit and P.kit.role == P.role then return P.kit end   -- 别处直接改了 P.role（测试换成观察员）就按那个兵种
@@ -587,6 +590,7 @@ function Round.init(G)
     local hrp = char:WaitForChild("HumanoidRootPart", 10)
     if not hum or not hrp or G.P[P.pl] ~= P then return end
     local kit = G.kitOf(P)
+    if G.gunApply then G.try("改枪", G.gunApply, P) end   -- 这一条命的武器表按装的配件算（Gunsmith.lua；改了配件下次出击生效）
     hum.MaxHealth = kit.hp
     hum.Health = kit.hp
     hum.WalkSpeed = kit.speed
@@ -692,7 +696,8 @@ function Round.init(G)
     if victim and R.phase ~= "battle" then return false end
     if victim then
       victim.dmgLog = victim.dmgLog or {}
-      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
+      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil,
+        wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
     hum:TakeDamage(amt)
@@ -1032,6 +1037,7 @@ function Round.init(G)
     G.P[pl] = P
     setTeam(P, pickTeam())
     pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
+    if G.gunPublish then G.try("改枪属性", G.gunPublish, P) end   -- 改枪（Gunsmith.lua）：读档前先按默认写上，部署界面一进来就有
     if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end
     G.pushOne(P)
     task.delay(1, function()

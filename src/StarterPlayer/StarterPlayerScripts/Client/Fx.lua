@@ -175,6 +175,11 @@ function Fx.init(G)
       { id = TICK, vol = 0.25, s = { 1.2, 1.35 }, eq = { -4, 2, 0 }, delay = 0.5 },
       { id = EXP, vol = 0.16, s = { 0.7, 0.76 }, reg = { 0.05, 1.8 }, eq = { 4, -2, -14 }, echo = { 0.22, 0.3, -10 }, delay = 0.05 } },
     dry = { { id = TICK, vol = 0.6, s = { 1.45, 1.55 }, eq = { -6, 3, 0 } } },   -- 打空了扣扳机
+    -- 装了消音器（改枪）：自己听到的是一声闷的「噗」加枪机的金属撞击声，没有尾音和回声
+    rifleSdMe = { { id = EXP, vol = 0.16, s = { 3.2, 3.6 }, reg = { 0.02, 0.18 }, eq = { -8, 0, -6 } },
+      { id = TICK, vol = 0.3, s = { 1.7, 2.0 }, eq = { -6, 2, 4 }, delay = 0.01 }, { id = TICK, vol = 0.14, s = { 2.6, 3.0 }, eq = { -8, 0, 6 }, delay = 0.03 } },
+    sniperSdMe = { { id = EXP, vol = 0.3, s = { 2.2, 2.4 }, reg = { 0.02, 0.25 }, eq = { -4, 0, -8 } },
+      { id = TICK, vol = 0.25, s = { 1.2, 1.35 }, eq = { -4, 2, 0 }, delay = 0.5 } },
     brass = { { id = TICK, vol = 0.07, s = { 3.3, 3.9 }, eq = { -14, 0, 4 } }, { id = TICK, vol = 0.05, s = { 3.6, 4.2 }, eq = { -14, 0, 4 }, delay = 0.09 } },   -- 弹壳落地
     -- 弹着点（用户：枪打在坦克上要有火花）：子弹打在钢甲上一声脆的「叮」+ 一下金属的「嚓」；重机枪、航炮打上去低一点、重一点的「当」；
     --   跳弹飞走一声尖细的「啾——」；打在土、石头上闷闷的一下
@@ -360,7 +365,7 @@ function Fx.init(G)
   local burstN, lastShot, driftPh = 0, 0, 0
   function G.kick(w, ads, id)
     local d = w.dmg or 20
-    local rc = RC[id or ""] or { up = d * 0.012, side = d * 0.0045, punch = d * 0.04, roll = 0.5 }
+    local rc = w.rc or RC[id or ""] or { up = d * 0.012, side = d * 0.0045, punch = d * 0.04, roll = 0.5 }   -- w.rc：改枪按后坐力控制改过的
     local t = os.clock()
     if t - lastShot > (w.rate or 0.1) * 2.5 + 0.08 then
       burstN = 0
@@ -391,7 +396,7 @@ function Fx.init(G)
   local impact, probeAt   -- 弹着点（下面「弹着点」一节）
   local IMPK = { hmg = 1.7, coax = 1.4, ciws = 2, agun = 2, ac = 2, sniper = 1.3, lmg = 1.1 }   -- 弹着点的大小（按口径：步枪 1）
   -- h：打在什么上面（HitSurf 代号；别人打的服务器给，nil 是什么都没打中；自己打的不给，本地探一下）
-  function G.gunFx(id, a, b, mine, h)
+  function G.gunFx(id, a, b, mine, h, quiet)
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
@@ -424,11 +429,11 @@ function Fx.init(G)
       tween(gl, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len * 0.4, b + d.Unit) }, Enum.EasingStyle.Linear)
       Debris:AddItem(gl, L / speed + 0.05)
     end
-    if not lite then
+    if not lite and not quiet then   -- 消音器：没有枪口那团火
       local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
       tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
       Debris:AddItem(fl, 0.08)
-      if id ~= "smgsd" then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
+      if id ~= "smgsd" and not quiet then flash(a, RGB(255, 196, 120), 14, 3.2, 0.07) end   -- 枪口焰照亮四周（消音的没有）
     end
     -- 弹着点（原来不管打中什么都是一小团灰，打到天上也有）：按打中的东西画，曳光飞到了才出；
     --   远处只画钢甲上的火花（看得见）。打中的零件记下来，飞到时按它现在的位置画（车在走，火花跟着车身）
@@ -451,11 +456,11 @@ function Fx.init(G)
       end
     end
     if mine and (id == "m4" or id == "sniper" or id == "rifle") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
-      G.sfx((id == "sniper") and "sniperMe" or "rifleMe", nil, { must = true })
+      G.sfx(quiet and ((id == "sniper") and "sniperSdMe" or "rifleSdMe") or ((id == "sniper") and "sniperMe" or "rifleMe"), nil, { must = true })
       if math.random() < 0.35 then G.sfx("brass", nil, { delay = 0.35 + math.random() * 0.25 }) end
       return
     end
-    local snd = (id == "smgsd") and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")
+    local snd = (id == "smgsd" or quiet) and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")   -- 装了消音器的：闷响
     G.playSound(snd, a)
   end
 
@@ -1248,7 +1253,7 @@ function Fx.init(G)
         end
         if e.by ~= me.UserId then
           nearMiss(e)
-          G.gunFx(e.w, e.a, e.b, false, e.h)
+          G.gunFx(e.w, e.a, e.b, false, e.h, e.q)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
       elseif k == "boom" then boom(e.p, e.s, e.c)
