@@ -21,6 +21,12 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
+    - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；
+    - 地图：港口码头修好了（崖下的码头平地、挡土墙、坡道接回崖顶），坡上的工事补了地基；各处据点、海滩加了细节
+      （防爆掩体、HESCO 墙、瞭望塔、沙袋战壕、烧毁的车辆、路口检查站）——都是开服时脚本摆的，不用导；
+    - 驾驶界面的图标、全息准心、卫星图小地图要在游戏设置 → 安全里打开「Mesh / Image API」，没打开就退回方块拼的。
+
   11 月 19 日第二包（坦克爆反、主动拦截、改装）：只要多导一个 veh/kitera.glb，再删掉 15 式轻坦的旧零件；别的都不用动：
     - 新的 veh/kitera.glb：一块做旧的爆反砖（Kontakt-1，evt22，CC-BY），99A 炮塔正面补贴的爆反块用它（不导入也行，脚本用零件拼的做旧砖代替）；
     - 15 式轻坦删掉了（用户：建模非常粗糙），veh/ztq15.glb 不用了。先在命令栏粘下面这一行删掉它的旧零件，再导入 veh/kitera.glb：
