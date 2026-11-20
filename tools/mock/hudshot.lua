@@ -1,6 +1,7 @@
 -- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5]
 --   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
---     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像
+--     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像；
+--     [roll=25]：带坡度；[clean=1]：截图前收起新手卡、作战简报
 --   用户：开坦克要是 MWT 那套驾驶界面（截图），不要叠着旧界面。坐进一辆车、前方放一辆敌车开一会，
 --   把所有显示着的界面元素按 Roblox 的排版算出屏幕上的方框（1280×720，UDim2 + AnchorPoint + UIListLayout + UIScale 的近似），
 --   写成 JSON；tools/mock/hud_render.py 画成图看。也按 ScreenGui 列出各有多少个显示着的元素（找没关掉的旧界面）
@@ -98,6 +99,11 @@ if kind == "jet" or kind == "heli" then
     st2.lockT = lockK * (w.lockTime or 1)
     R.run(1 / 60)
   end
+  local roll = tonumber(TEST_ARGS:match("roll=(%-?[%d%.]+)") or "")
+  if roll and st2 then   -- 带一点坡度（看机头全息准心跟着机身滚转、有透视）
+    st2.cf = st2.cf * R.CFrame.Angles(0, 0, math.rad(-roll))
+    R.run(1 / 60)
+  end
   if TEST_ARGS:find("ir=1", 1, true) and C.airThermal then
     C.airThermal(true)
     R.run(0.2)
@@ -154,6 +160,12 @@ if kind ~= "inf" and kind ~= "jet" and kind ~= "heli" then
   end
 end
 
+-- clean=1：截图前收起新手三步卡、开局的作战简报（只为了截图好看）
+if TEST_ARGS:find("clean=1", 1, true) then
+  for _, d in ipairs(me.PlayerGui:GetDescendants()) do
+    if d.Name == "CoachCard" or d.Name == "OperationBrief" then d.Visible = false end
+  end
+end
 -- 排版：算每个显示着的界面元素在屏幕上的方框
 local VW, VH, INSET = 1280, 720, 36
 local items, perGui = {}, {}
