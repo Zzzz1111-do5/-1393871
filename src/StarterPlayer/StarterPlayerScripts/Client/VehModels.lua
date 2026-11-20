@@ -497,6 +497,33 @@ function VehModels.build(d, team, mods)
     table.insert(dust, pe)
   end
 
+  -- 排气（用户 11-20：载具照 UE5 的水平升级）：车尾两侧两个排气口——柴油机加油门、换挡那一下喷一股浓黑烟，怠速淡淡一缕；
+  --   燃气轮机（M1 系列）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  local exhaust = {}
+  local turbine = d.id == "m1a1" or d.id == "m1a2"
+  for _, s2 in ipairs({ -1, 1 }) do
+    local p = hull(V(0.2, 0.2, 0.2), CF(s2 * W * 0.3, hh * 0.92, L * 0.44), C.base)
+    p.Transparency = 1
+    local pe = Instance.new("ParticleEmitter")
+    pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    pe.Rate = 0
+    pe.Lifetime = NumberRange.new(1.1, 2.4)
+    pe.Speed = NumberRange.new(2.5, 5)
+    pe.SpreadAngle = Vector2.new(18, 18)
+    pe.Acceleration = V(0, 3.2, 0)
+    pe.Drag = 1.2
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-25, 25)
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(0.3, 2.6), NumberSequenceKeypoint.new(1, 6.5) })
+    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, turbine and 0.82 or 0.45), NumberSequenceKeypoint.new(0.5, turbine and 0.9 or 0.7),
+      NumberSequenceKeypoint.new(1, 1) })
+    pe.Color = ColorSequence.new(turbine and RGB(150, 150, 146) or RGB(34, 33, 31))
+    pe.EmissionDirection = Enum.NormalId.Top
+    pe.LightInfluence = 1
+    pe.Parent = p
+    table.insert(exhaust, pe)
+  end
+
   -- 被毁后的火、黑烟（平时关着）
   local fireP = hull(V(0.2, 0.2, 0.2), CF(0, hh + 0.5, 0), C.base)
   fireP.Transparency = 1
@@ -651,7 +678,7 @@ function VehModels.build(d, team, mods)
     end
   end
 
-  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps,
+  return { model = m, parts = parts, wheels = wheels, dust = dust, exhaust = exhaust, fire = fire, black = black, def = d, lamps = lamps,
     imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv,
     era = era, eraL = L, kpiv = kpiv and (kpiv - tp) or nil, mods = mm }
 end

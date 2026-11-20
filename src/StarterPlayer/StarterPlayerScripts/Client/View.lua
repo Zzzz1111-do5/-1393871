@@ -596,7 +596,15 @@ function View.init(G)
       end
     end
     local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
+    if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
+    -- 排气（VehModels）：怠速淡淡一缕；往前加速（踩油门、换挡后那一下）喷浓的；远了不放
+    if M.exhaust and #M.exhaust > 0 then
+      local acc = math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1))
+      local erate = far and 0 or (2 + math.clamp(acc * 0.9, 0, 26) + math.clamp(math.abs(v.speed or 0) * 0.05, 0, 3))
+      for _, pe in ipairs(M.exhaust) do if math.abs(pe.Rate - erate) > 0.4 then pe.Rate = erate end end
+    end
     -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
     --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
     if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
@@ -643,6 +651,7 @@ function View.init(G)
         elseif part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
+      for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
     end
   end
 

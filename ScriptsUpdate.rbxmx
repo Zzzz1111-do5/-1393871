@@ -17803,7 +17803,7 @@ function G.perfWrap(name, f)
 end
 function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
 
-for _, name in ipairs({ "HudArt", "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Perf" }) do
+for _, name in ipairs({ "HudArt", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Perf" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
@@ -22095,7 +22095,7 @@ function Drive.init(G)
   local engine = nil
   local function engineStop()
     if engine then
-      for _, snd in ipairs(engine.s) do snd:Destroy() end
+      for _, snd in pairs(engine.s) do if snd then snd:Destroy() end end
       engine = nil
     end
   end
@@ -22106,7 +22106,11 @@ function Drive.init(G)
     local heavy = d.arch ~= "wheeled"
     local rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
-    engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
+    -- 履带的哗啦声（用户 11-20：载具照 UE5 的水平升级）：咔哒那一下截一小段循环，开得越快一圈越短、越密；
+    --   轮胎侧滑的沙沙声：风声削掉低音，侧滑越厉害越响
+    local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
+    local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
+    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2 }
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -22117,7 +22121,10 @@ function Drive.init(G)
     local g = 0
     if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
     if st then
-      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then engine.shiftT = os.clock() end   -- 升档
+      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
+        engine.shiftT = os.clock()
+        if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
+      end
       st.gearN = g
     end
     local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
@@ -22130,6 +22137,14 @@ function Drive.init(G)
     engine.rumble.Volume = 0.3 + 0.35 * r
     engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
     engine.whine.Volume = 0.6 + 2.6 * r * r
+    local air = st and st.airS ~= nil
+    if engine.clank then   -- 履带：速度越快越密；在天上没有
+      engine.clank.PlaybackSpeed = 0.55 + spd * 1.6
+      engine.clank.Volume = (air or spd < 0.02) and 0 or math.min(0.9, 0.15 + spd * 0.9)
+    end
+    local slip = (st and not air) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
+    engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
+    engine.skid.PlaybackSpeed = 1.4 + slip * 1.2
   end
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -22189,6 +22204,7 @@ function Drive.init(G)
     end
     st = nil
     engineStop()
+    if G.vehCamReset then G.vehCamReset("drive") end
     G.drive, G.myVeh = nil, nil
     CAS:UnbindAction("DriveSight")
     cam.CameraType = Enum.CameraType.Custom
@@ -22259,6 +22275,50 @@ function Drive.init(G)
     return st.root * CF(0, -st.d.H / 2, 0) * CF(0, L.y - L.deck, -2)
   end
 
+  -- 路面（用户 11-20：所有载具操控照虚幻引擎 5 的水平升级）：每 0.25 秒看一次脚下——土路硬、快；草地正常；沙地软（慢、打滑，轮式车更明显）；
+  --   石头地颠、抓地差一点。rough 给镜头的颠簸、grip 给侧滑（Map.material 跟扬尘、小地图用的是同一套）
+  local SURF = {
+    [Enum.Material.Ground] = { speed = 1.06, accel = 1.05, grip = 1.0, rough = 0.55 },
+    [Enum.Material.Grass] = { speed = 1.0, accel = 1.0, grip = 0.92, rough = 0.75 },
+    [Enum.Material.LeafyGrass] = { speed = 0.98, accel = 0.98, grip = 0.9, rough = 0.8 },
+    [Enum.Material.Sand] = { speed = 0.82, accel = 0.76, grip = 0.72, rough = 0.5 },
+    [Enum.Material.Rock] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
+    [Enum.Material.Slate] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
+  }
+  local SURF0 = { speed = 1, accel = 1, grip = 0.9, rough = 0.7 }
+  G.driveSurf = SURF   -- 测试用
+  local SURF_WATER = { speed = 1, accel = 1, grip = 0.55, rough = 0.25 }
+  local function surfAt(p)
+    local h = Map.height(p.X, p.Z)
+    if h < -1.5 then return SURF_WATER end
+    return SURF[Map.material(p.X, p.Z, h, Map.slope(p.X, p.Z))] or SURF0
+  end
+  local GRAV = 9.81 * 2.8 * 1.15   -- 重力（格 / 秒²；1 米 = 2.8 格，稍微沉一点：几十吨的车落得干脆）
+  local function angR(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end   -- a 到 b 转多少（弧度，-π～π）
+  -- 落地：按砸下来的速度——镜头一沉、震屏、一声闷响、车两边扬起一团土、车头往下一点
+  local function land(imp)
+    if imp < 6 then return end
+    local k = math.clamp((imp - 6) / 30, 0, 1)
+    if G.shake then G.shake(0.12 + 0.5 * k) end
+    if G.sfx then G.sfx("vehLand", nil, { vol = 0.45 + 0.9 * k }) end
+    local v = G.views and G.views[st.em]
+    if v and v.M and v.M.dust then
+      for _, pe in ipairs(v.M.dust) do pcall(function() pe:Emit(math.floor(5 + 16 * k)) end) end
+    end
+    if st.sus then st.sus.vp -= 0.5 * k end
+    st.landK = k   -- 测试用
+    st.landT = os.clock()
+  end
+  -- 撞上东西（房子、工事、陡坎）：按撞的速度和正不正——震屏、一声撞击（擦着墙走只响第一下）
+  local function bump(strength)
+    local t = os.clock()
+    if t - (st.bumpT or -9) < 0.45 or strength < 5 then return end
+    st.bumpT = t
+    local k = math.clamp(strength / 45, 0, 1)
+    if G.shake then G.shake(0.1 + 0.5 * k) end
+    if G.sfx then G.sfx("vehHit", nil, { vol = 0.4 + 0.9 * k }) end
+  end
+
   local function physics(dt)
     local d = st.d
     local key = function(k) return UIS:IsKeyDown(k) end
@@ -22284,25 +22344,37 @@ function Drive.init(G)
     if inWater then
       if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
     end
+    -- 路面：极速、加速、抓地（履带车在软地上吃亏少一些）
+    local tracked = d.arch ~= "wheeled"
+    st.surfT = (st.surfT or 0) - dt
+    if st.surfT <= 0 or not st.surf then st.surfT, st.surf = 0.25, surfAt(st.pos) end
+    local sf = st.surf
+    local kS = tracked and (1 - (1 - sf.speed) * 0.55) or sf.speed
+    local kA = tracked and (1 - (1 - sf.accel) * 0.6) or sf.accel
+    if not inWater then maxF, maxR = maxF * kS, maxR * kS end
+    local accel = d.accel * (inWater and 1 or kA)
     -- 驾驶手感（用户：驾驶手感也做到最好）：
     --   油门——发动机低速劲大、接近极速劲小；反着推是刹车（比加速猛得多）；松油门滚着慢下来（履带阻力大停得快）；
     --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
-    local tracked = d.arch ~= "wheeled"
     local v = st.speed
     local slope = inWater and 0 or (st.slopeS or 0)
     local a
-    if thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
+    if st.airS then   -- 在天上：没有抓地，只有一点空气阻力
+      a = -v * 0.05
+    elseif thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
       local vmax = (thr > 0) and maxF or maxR
       local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
-      a = thr * d.accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
-      if math.abs(v) > vmax then a = -math.sign(v) * d.accel * 0.7 end   -- 下坡冲过极速：发动机拖住
+      a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
+      if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
-      a = thr * d.accel * 2.6   -- 刹车
+      a = thr * accel * 2.6   -- 刹车
     else
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), d.accel * (tracked and 1.1 or 0.55))
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.1 or 0.55))
     end
-    if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
-    if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+    if not st.airS then
+      if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
+      if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+    end
     local old = v
     v += a * dt
     if thr == 0 and math.abs(v) < 0.4 then v = 0 end
@@ -22311,20 +22383,37 @@ function Drive.init(G)
     st.accel = (v - old) / math.max(dt, 1e-3)
     -- 转向有惯性：履带车原地能转、越快转得越慢（D 永远往右转车头）；轮式车前轮打角（越快打得越少、打过去要一会儿），
     --   按轴距算转弯半径（走起来才转，倒车反着），侧向抓地有上限（太快转不过来、推头）
-    if tracked then
+    if st.airS then   -- 在天上转不了向：转速慢慢没了
+      st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
+    elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.yr = approach(st.yr or 0, str * math.rad(d.turn) * k, math.rad(d.turn) * ((str ~= 0) and 3.2 or 5.5) * dt)
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
       local want = v / (d.L * 0.55) * math.tan(st.steerA)
-      local grip = 30 / math.max(math.abs(v), 1)
-      st.yr = approach(st.yr or 0, math.clamp(want, -grip, grip), 4 * dt)
+      -- 抓地有上限（太快转不过来、推头）；转得猛的时候车头能比抓地多转一些——多出来的那份是甩尾（下面 travel 跟不上车头）
+      local grip = 30 / math.max(math.abs(v), 1) * sf.grip
+      st.yr = approach(st.yr or 0, math.clamp(want, -grip * 1.45, grip * 1.45), 4 * dt)
     end
     st.yaw -= st.yr * dt
+    -- 车头朝向（yaw）和真正往哪走（travel）分开（UE5 的轮胎侧偏）：抓地有限，转得太猛、太快时车尾往外甩——
+    --   轮式车明显，履带车只有高速急转才滑一点；滑着走掉速、扬尘、轮胎沙沙响；慢下来、停住就对齐
+    st.travel = st.travel or st.yaw
+    if math.abs(v) < 3 then
+      st.travel = st.yaw
+    elseif not st.airS then
+      local gripRate = (tracked and 7.5 or 3.4) * sf.grip
+      st.travel += angR(st.travel, st.yaw) * (1 - math.exp(-gripRate * dt))
+    end
+    st.slipA = angR(st.travel, st.yaw)
+    if not st.airS and math.abs(v) > 3 then
+      v -= v * math.min(1, math.abs(math.sin(st.slipA)) * 2.2 * dt)
+      st.speed = v
+    end
     st.steer = approach(st.steer, str, dt * 4)
-    -- 往前挪：坡太陡、不会游的下水、撞到房子都走不动
-    local fwd = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+    -- 往前挪（顺着 travel：车在侧滑时位置跟着真正的去向走）：坡太陡、不会游的下水、撞到房子都走不动；擦着墙的顺着墙滑过去
+    local fwd = V(-math.sin(st.travel), 0, -math.cos(st.travel))
     local step = st.speed * dt
     if math.abs(step) > 1e-4 then
       local np = st.pos + fwd * step
@@ -22338,10 +22427,38 @@ function Drive.init(G)
       local pa = st.pos + fwd * math.sign(step) * probe
       local ha = Map.height(pa.X, pa.Z)
       if not blocked and ha > 0.5 and (ha - math.max(h0, -0.5)) / probe > 0.85 then blocked = true end
+      local slide = nil
       if not blocked then
         local o = st.pos + V(0, Map.ground(st.pos.X, st.pos.Z) - st.pos.Y + d.hullH * 0.55, 0)
-        local res = workspace:Raycast(o, fwd * math.sign(step) * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
-        if res then blocked = true end
+        local mv = fwd * math.sign(step)
+        local res = workspace:Raycast(o, mv * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
+        if res then
+          -- 撞上房子、码头（UE5 的车擦着墙会顺着墙滑，不是一下钉死）：正着撞停下；斜着蹭上去顺着墙走、掉速、车头往墙的方向扭过去
+          local n = V(res.Normal.X, 0, res.Normal.Z)
+          local head = 1
+          if n.Magnitude > 0.2 then
+            n = n.Unit
+            head = math.clamp(-mv:Dot(n), 0, 1)   -- 1 = 正面撞上
+            local tan = mv - n * mv:Dot(n)
+            if head < 0.62 and tan.Magnitude > 0.05 then
+              tan = tan.Unit
+              local back = workspace:Raycast(o, tan * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
+              if not back then slide = { dir = tan, head = head } end
+            end
+          end
+          bump(math.abs(st.speed) * head)
+          if not slide then blocked = true end
+        end
+      end
+      if slide then
+        np = st.pos + slide.dir * math.abs(step) * (1 - slide.head * 0.6)
+        st.speed -= st.speed * math.min(1, slide.head * 3.5 * dt)
+        local hd = (step > 0) and slide.dir or -slide.dir
+        local tYaw = math.atan2(-hd.X, -hd.Z)
+        local turn = angR(st.yaw, tYaw) * math.min(1, dt * 2.6 * (1 - slide.head))
+        st.yaw += turn
+        st.travel += turn
+        st.wallT = os.clock()
       end
       -- 工事、钢刺猬（FortView 给的）：往里开就停（已经卡在里面的让它开出来）
       if not blocked and G.solidAt then
@@ -22350,13 +22467,82 @@ function Drive.init(G)
       end
       if blocked then
         if math.abs(st.speed) > 12 and G.shake then G.shake(0.25) end
-        st.speed = 0
+        bump(math.abs(st.speed))
+        st.speed = -st.speed * 0.1   -- 顶住了：往回弹一点
+        st.travel = st.yaw
       else
         st.pos = np
+      end
+      -- 侧面别嵌进墙里（擦着墙走、车身转过来贴着墙时前面那条射线就碰不到墙了）：车身两侧前中后各打一条短射线，
+      --   哪边太近就往外推（每边取最深的那一下，不叠加）
+      local fB = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+      local rB = V(-fB.Z, 0, fB.X)
+      local gy = Map.ground(st.pos.X, st.pos.Z)
+      local pushT = V()
+      for _, sd in ipairs({ -1, 1 }) do
+        local best, bestPen = nil, 0
+        for _, u in ipairs({ -0.36, 0, 0.36 }) do
+          local o = V(st.pos.X, gy + d.hullH * 0.55, st.pos.Z) + fB * (u * d.L)
+          local res = workspace:Raycast(o, rB * sd * (d.W / 2 + 0.6), mapParams)
+          if res then
+            local n = V(res.Normal.X, 0, res.Normal.Z)
+            local pen = d.W / 2 + 0.3 - (res.Position - o).Magnitude
+            if pen > bestPen and n.Magnitude > 0.2 then best, bestPen = n.Unit, pen end
+          end
+        end
+        if best then
+          pushT += best * math.min(bestPen, 2)
+          -- 正往墙里走：撞一下（声音、震屏按切进去的角度）、蹭着墙掉速，去向改成顺着墙（不一直往墙里顶）
+          local sg = (st.speed >= 0) and 1 or -1
+          local fT = V(-math.sin(st.travel), 0, -math.cos(st.travel)) * sg
+          local into = -fT:Dot(best)
+          if into > 0 then
+            bump(math.abs(st.speed) * math.max(into, 0.3))
+            st.speed -= st.speed * math.min(1, (0.25 + 1.6 * into) * dt)
+            local nd = fT - best * fT:Dot(best)
+            if nd.Magnitude > 0.05 then
+              nd = nd.Unit * sg
+              local ty = math.atan2(-nd.X, -nd.Z)
+              st.travel = ty
+              st.yaw += angR(st.yaw, ty) * math.min(1, dt * 2.4)   -- 车身被墙掰过去、顺着墙
+            end
+          end
+        end
+      end
+      if pushT.Magnitude > 1e-3 then
+        st.pos += pushT
+        st.wallT = os.clock()
       end
     end
     local base = baseAt(d, st.pos, st.yaw, false)
     st.slopeS = math.clamp(base.LookVector.Y, -1, 1)   -- 车头朝上为正（下一帧的上坡阻力）
+    -- 腾空（UE5 的车冲过坡顶会飞起来）：地面只能托住车、拉不住——车照「上一刻往上的速度 + 重力」走的抛物线比地面高，就离地飞一会儿；
+    --   开下陡坎也一样往下掉。在天上不能加速、转向，车身慢慢往前栽；落地按砸下来的速度：悬挂压一下、镜头一沉、震屏、一声闷响、扬一团土
+    local gY = base.Position.Y
+    local A = st.airS
+    if A then
+      A.vy -= GRAV * dt
+      A.y += A.vy * dt
+      A.t += dt
+      if A.y <= gY or A.t > 4 then
+        st.airS = nil
+        st.gVy = 0
+        land(math.max(0, -A.vy))
+      else
+        base = base + V(0, A.y - gY, 0)
+      end
+    elseif st.gY0 and not inWater and not st.dropT then
+      local gv = st.gVy or 0
+      local fall = st.gY0 + gv * dt - 0.5 * GRAV * dt * dt
+      if gY < fall - 0.06 and (gv > 2.5 or fall - gY > 1.2) and math.abs(st.speed) > 6 then
+        st.airS = { y = fall, vy = gv - GRAV * dt, t = 0, p0 = st.sus and st.sus.p, r0 = st.sus and st.sus.r }
+        st.airN = (st.airN or 0) + 1   -- 测试用：飞起来过几次
+        base = base + V(0, fall - gY, 0)
+      else
+        st.gVy = math.clamp((gY - st.gY0) / math.max(dt, 1e-3), -80, 80)
+      end
+    end
+    st.gY0 = gY
     if st.dropT then   -- 从艇上开下来：车底从甲板高度顺下来
       st.dropT += dt
       local k = math.clamp(st.dropT / 0.6, 0, 1)
@@ -22372,6 +22558,11 @@ function Drive.init(G)
       -- 悬挂：车身跟地形起伏是弹簧阻尼（坑坑洼洼的地上一颠一颠，不是硬贴上去）；加速车头抬、刹车点头、转弯往外侧倾（轮式车软一点）
       local tp = math.asin(math.clamp(base.LookVector.Y, -1, 1))
       local tr = math.asin(math.clamp(base.RightVector.Y, -1, 1))
+      local AS = st.airS
+      if AS and AS.p0 then   -- 在天上：保持起飞时的姿态，车头慢慢往下栽
+        tp = AS.p0 - math.min(0.3, 0.28 * AS.t)
+        tr = AS.r0 or tr
+      end
       local soft = tracked and 1 or 1.4
       local dynP = math.clamp(st.accel * 0.0042 * soft, -0.07, 0.07)
       local dynR = math.clamp(v * (st.yr or 0) * 0.0045 * soft, -0.06, 0.06)
@@ -22599,6 +22790,7 @@ function Drive.init(G)
       st.pos = base.Position
       local look = base.LookVector
       st.yaw = math.atan2(-look.X, -look.Z)
+      st.travel, st.airS = nil, nil
       st.speed = 0
     else
       physics(dt)
@@ -22627,22 +22819,23 @@ function Drive.init(G)
         local L = VD.LCAC
         dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8
       end
-      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, up, 0)
-      -- 镜头别钻进山坡、房子：从车往镜头打一条射线，碰到了就拉近
-      local off = camPos - center
-      if off.Magnitude > 1 then
-        local hit = workspace:Raycast(center, off, camParams)
-        if hit then camPos = center + off.Unit * math.max(4, (hit.Position - center).Magnitude - 1.5) end
-      end
-      -- 越快视野越宽一点、轻轻抖（气垫艇上抖得少）
+      -- 弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）：跟随有惯性、加速往后坠、刹车往前冲、落地一沉，臂碰到山坡房子平滑缩近；
+      --   路面越颠镜头越抖（石头地 > 草地 > 土路），越快视野越宽；镜头跟着车身侧倾歪一点
       local spd = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.3)
-      local amp = 0.0022 * spd * (st.hv and 0.4 or 1)
-      local tt = os.clock()
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector) * CFrame.Angles(math.noise(tt * 9, 0.3) * amp, math.noise(tt * 9, 5.7) * amp, 0)
-      cam.FieldOfView = cam.FieldOfView + ((70 + 7 * spd) - cam.FieldOfView) * math.min(1, dt * 4)
+      local p3 = st.root.Position
+      st.vel3 = st.lastP3 and (p3 - st.lastP3) / math.max(dt, 1e-3) or V()
+      st.lastP3 = p3
+      local rough = (st.surf and st.surf.rough or 0.7) * (st.hv and 0.35 or 1) * (st.airS and 0.2 or 1)
+      local camCF, camShake, fov = G.vehCam({ key = "drive", pivot = center, dir = dirCam, dist = dist, up = up, vel = st.vel3, dt = dt,
+        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = 70, fovK = 7, pushK = 0.055, maxPush = 3 })
+      cam.CFrame = camCF
+      cam.FieldOfView = fov
+      st.camShake = camShake
       st.aimPt = aimPoint()
     end
     aimTurret(dt)
+    -- 路面颠簸的细抖（瞄准、炮塔都按没晃的镜头算过了）
+    if st.camShake and not st.sight then cam.CFrame = cam.CFrame * st.camShake end
     -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
     st.kick = math.max(0, (st.kick or 0) - dt * 2.4)
     if st.kick > 0 then
@@ -26215,6 +26408,12 @@ function Fx.init(G)
     clang = { { id = TICK, vol = 1, s = { 1.45, 1.8 }, eq = { -6, 3, 4 } }, { id = EXP, vol = 0.3, s = { 1.7, 1.95 }, reg = { 0.02, 0.22 }, eq = { -4, 2, 2 } } },
     ric = { { id = WIND, vol = 6, s = { 2.8, 3.5 }, reg = { 2.15, 2.5 }, eq = { -14, 6, 6 } } },
     thud = { { id = THUD, vol = 0.45, s = { 1.6, 2.1 }, eq = { 0, 0, -4 } } },
+    -- 载具（用户 11-20：照 UE5 的水平升级）：落地——放慢的闷响 + 只留低音的一下轰；撞上东西——闷响 + 一截爆炸声的碎响 + 金属咔；
+    --   换挡——咔哒一下（放慢、留低音）+ 很轻的闷响
+    vehLand = { { id = THUD, vol = 1.2, s = { 0.42, 0.5 }, eq = { 10, -2, -14 } }, { id = EXP, vol = 0.35, s = { 0.55, 0.62 }, reg = { 0, 0.5 }, eq = { 10, -4, -16 } } },
+    vehHit = { { id = THUD, vol = 1, s = { 0.55, 0.65 }, eq = { 8, 0, -8 } }, { id = EXP, vol = 0.3, s = { 1.1, 1.3 }, reg = { 0.02, 0.3 }, eq = { 2, 2, -2 } },
+      { id = TICK, vol = 0.5, s = { 0.7, 0.8 }, eq = { 2, 4, -2 } } },
+    gearShift = { { id = TICK, vol = 0.55, s = { 0.5, 0.56 }, eq = { 8, 0, -8 } }, { id = THUD, vol = 0.25, s = { 1.2, 1.3 }, eq = { 6, -2, -10 } } },
     -- 坦克炮（用户：开火动画做的好一点）：起爆那一截拉快的脆响 + 放慢、失真、只留低音的轰隆 + 拖得很长的回声尾巴
     tankGun = { { id = EXP, vol = 0.9, s = { 1.5, 1.65 }, reg = { 0.02, 0.4 }, eq = { -2, 3, 4 } },
       { id = EXP, vol = 1.2, s = { 0.58, 0.64 }, reg = { 0, 2.2 }, eq = { 12, 0, -14 }, dist = 0.4 },
@@ -39694,6 +39893,111 @@ return UI
         </Item>
         <Item class="ModuleScript" referent="112">
           <Properties>
+            <string name="Name">VehCam</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
+--   照 UE5 的弹簧臂（SpringArm：CameraLag / CameraRotationLag / 碰撞探测）做，开车、开船、开直升机共用：
+--   · 跟随点有惯性：车身上下颠、急停急转时，镜头不是死钉在车上——用车速预测、再用临界阻尼弹簧追上，
+--     匀速开时不落后，颠簸、刹车、撞停时车在画面里先晃出去一点再被镜头接住（有重量感）
+--   · 加速度推拉：起步镜头往后坠、刹车往前冲、转弯往外甩、落地往下沉（有上限、平滑）
+--   · 臂长碰到山坡、房子：一下缩近、慢慢放回（不跳）
+--   · 路面颠簸的细抖（速度 × 路面粗糙程度）、发动机的细微震动；大的冲击（落地、撞车、开炮）走 G.shake
+--   · 镜头跟着车身侧倾歪一点（两成）；越快视野越宽
+--   G.vehCam(o) → 镜头 CFrame（没加细抖的，用来算准星）、细抖（乘在后面）、视野
+local VehCam = {}
+
+function VehCam.init(G)
+  local V = Vector3.new
+  local cam = workspace.CurrentCamera
+  local S = {}   -- 每个用的地方一份（key）
+
+  -- 临界阻尼弹簧：x 往 target 走（w 越大越快）
+  local function spring(x, v, target, w, dt)
+    local n = math.max(1, math.ceil(dt / (1 / 120)))
+    local h = dt / n
+    for _ = 1, n do
+      local a = (target - x) * (w * w) - v * (2 * w)
+      v += a * h
+      x += v * h
+    end
+    return x, v
+  end
+
+  function G.vehCamReset(key) S[key] = nil end
+
+  -- o：key, pivot（镜头绕着转的点）, dir（镜头朝向，只取旋转）, dist（臂长）, up（往上抬）, vel（车的速度 Vector3）, dt,
+  --   rough（路面颠簸 0～2）, speedK（速度比例 0～1.3）, up3（车身的「上」，镜头跟着歪两成；不给就不歪）, params（镜头不能钻进去的东西）,
+  --   fov0（基础视野）, fovK（全速多加几度）, pushK（加速度推镜头的比例）, maxPush, follow（跟随弹簧快慢）, minDist
+  function G.vehCam(o)
+    local dt = math.clamp(o.dt or 1 / 60, 1 / 240, 0.1)
+    local s = S[o.key]
+    local pivot = o.pivot
+    local vel = o.vel or V()
+    if not s or (s.p - pivot).Magnitude > 60 then   -- 第一次 / 被挪走了：直接到位
+      s = { p = pivot, pv = V(), lv = vel, acc = V(), push = V(), len = o.dist, fov = o.fov0 or 70, t = 0 }
+      S[o.key] = s
+    end
+    s.t += dt
+    -- 跟随点：先按车速往前挪（匀速时不落后），再用弹簧追真正的位置（颠簸、急停时有一点惯性）
+    s.p += vel * dt
+    local w = o.follow or 9
+    local px, pvx = spring(s.p.X, s.pv.X, pivot.X, w * 1.4, dt)
+    local py, pvy = spring(s.p.Y, s.pv.Y, pivot.Y, w, dt)
+    local pz, pvz = spring(s.p.Z, s.pv.Z, pivot.Z, w * 1.4, dt)
+    s.p, s.pv = V(px, py, pz), V(pvx, pvy, pvz)
+    local lag = s.p - pivot
+    local maxLag = o.maxLag or 2.5
+    if lag.Magnitude > maxLag then s.p = pivot + lag.Unit * maxLag end
+    -- 加速度推拉：起步往后坠、刹车往前冲、转弯往外甩、落地往下沉
+    local acc = (vel - s.lv) / dt
+    s.lv = vel
+    if acc.Magnitude > 400 then acc = acc.Unit * 400 end   -- 瞬移、刚上车那一下不算
+    s.acc = s.acc:Lerp(acc, 1 - math.exp(-dt * 6))
+    local push = -s.acc * (o.pushK or 0.02)
+    local mp = o.maxPush or 2.2
+    if push.Magnitude > mp then push = push.Unit * mp end
+    s.push = s.push:Lerp(push, 1 - math.exp(-dt * 5))
+    -- 臂：从跟随点往后、往上；碰到东西一下缩近、慢慢放回
+    local dir = o.dir
+    local want = dir:VectorToWorldSpace(V(0, 0, o.dist)) + V(0, o.up or 0, 0)
+    local base = s.p + s.push * 0.6
+    local len = o.dist
+    if o.params and want.Magnitude > 1 then
+      local hit = workspace:Raycast(base, want, o.params)
+      if hit then len = math.max(o.minDist or 4, (hit.Position - base).Magnitude - 1.5) * o.dist / want.Magnitude end
+    end
+    if len < s.len then s.len += (len - s.len) * (1 - math.exp(-dt * 22)) else s.len += (len - s.len) * (1 - math.exp(-dt * 2.5)) end
+    local camPos = base + want * (s.len / o.dist) + s.push * 0.4
+    -- 歪：世界的「上」往车身的「上」靠两成
+    local upV = V(0, 1, 0)
+    if o.up3 then
+      local u = V(0, 1, 0):Lerp(o.up3, 0.2)
+      if u.Magnitude > 0.1 then upV = u.Unit end
+    end
+    local look = dir.LookVector
+    local cf = CFrame.lookAt(camPos, camPos + look, upV)
+    -- 细抖：路面颠簸（低频的晃 + 高频的抖）、发动机的细微震动
+    local sk = math.clamp(o.speedK or 0, 0, 1.3)
+    local r = (o.rough or 0.6) * sk
+    local t = s.t
+    local aLo = 0.0016 * r
+    local aHi = 0.0011 * r + 0.00025
+    local shake = CFrame.Angles(math.noise(t * 5.3, 1.7) * aLo + math.noise(t * 23, 4.4) * aHi, math.noise(t * 4.7, 8.1) * aLo * 0.6 + math.noise(t * 21, 2.2) * aHi * 0.6,
+      math.noise(t * 6.1, 5.5) * aLo * 0.8)
+    -- 视野：越快越宽
+    local fovT = (o.fov0 or 70) + (o.fovK or 6) * math.clamp(sk, 0, 1.2)
+    s.fov += (fovT - s.fov) * (1 - math.exp(-dt * 3))
+    s.cf = cf
+    return cf, shake, s.fov
+  end
+  G.vehCamState = function(key) return S[key] end   -- 测试用
+end
+
+return VehCam
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="113">
+          <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
 --   照战雷、战地的样子重做坦克（Drive.lua 的 G.myVeh）和舰艇（Sail.lua 的 G.sail）的驾驶界面；
@@ -41194,7 +41498,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -41696,6 +42000,33 @@ function VehModels.build(d, team, mods)
     table.insert(dust, pe)
   end
 
+  -- 排气（用户 11-20：载具照 UE5 的水平升级）：车尾两侧两个排气口——柴油机加油门、换挡那一下喷一股浓黑烟，怠速淡淡一缕；
+  --   燃气轮机（M1 系列）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  local exhaust = {}
+  local turbine = d.id == "m1a1" or d.id == "m1a2"
+  for _, s2 in ipairs({ -1, 1 }) do
+    local p = hull(V(0.2, 0.2, 0.2), CF(s2 * W * 0.3, hh * 0.92, L * 0.44), C.base)
+    p.Transparency = 1
+    local pe = Instance.new("ParticleEmitter")
+    pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    pe.Rate = 0
+    pe.Lifetime = NumberRange.new(1.1, 2.4)
+    pe.Speed = NumberRange.new(2.5, 5)
+    pe.SpreadAngle = Vector2.new(18, 18)
+    pe.Acceleration = V(0, 3.2, 0)
+    pe.Drag = 1.2
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-25, 25)
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(0.3, 2.6), NumberSequenceKeypoint.new(1, 6.5) })
+    pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, turbine and 0.82 or 0.45), NumberSequenceKeypoint.new(0.5, turbine and 0.9 or 0.7),
+      NumberSequenceKeypoint.new(1, 1) })
+    pe.Color = ColorSequence.new(turbine and RGB(150, 150, 146) or RGB(34, 33, 31))
+    pe.EmissionDirection = Enum.NormalId.Top
+    pe.LightInfluence = 1
+    pe.Parent = p
+    table.insert(exhaust, pe)
+  end
+
   -- 被毁后的火、黑烟（平时关着）
   local fireP = hull(V(0.2, 0.2, 0.2), CF(0, hh + 0.5, 0), C.base)
   fireP.Transparency = 1
@@ -41850,7 +42181,7 @@ function VehModels.build(d, team, mods)
     end
   end
 
-  return { model = m, parts = parts, wheels = wheels, dust = dust, fire = fire, black = black, def = d, lamps = lamps,
+  return { model = m, parts = parts, wheels = wheels, dust = dust, exhaust = exhaust, fire = fire, black = black, def = d, lamps = lamps,
     imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv,
     era = era, eraL = L, kpiv = kpiv and (kpiv - tp) or nil, mods = mm }
 end
@@ -41895,7 +42226,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -42496,7 +42827,15 @@ function View.init(G)
       end
     end
     local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
+    if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
+    -- 排气（VehModels）：怠速淡淡一缕；往前加速（踩油门、换挡后那一下）喷浓的；远了不放
+    if M.exhaust and #M.exhaust > 0 then
+      local acc = math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1))
+      local erate = far and 0 or (2 + math.clamp(acc * 0.9, 0, 26) + math.clamp(math.abs(v.speed or 0) * 0.05, 0, 3))
+      for _, pe in ipairs(M.exhaust) do if math.abs(pe.Rate - erate) > 0.4 then pe.Rate = erate end end
+    end
     -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
     --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
     if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
@@ -42543,6 +42882,7 @@ function View.init(G)
         elseif part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
+      for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
     end
   end
 
@@ -42814,7 +43154,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）

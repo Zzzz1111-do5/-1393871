@@ -41,7 +41,7 @@ function G.perfWrap(name, f)
 end
 function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
 
-for _, name in ipairs({ "HudArt", "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Perf" }) do
+for _, name in ipairs({ "HudArt", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Perf" }) do
   require(script:WaitForChild(name)).init(G)
 end
 
