@@ -152,6 +152,48 @@ function Fly.init(G)
       local every = (own or dist < 1500) and 1 or ((dist < 4000) and 2 or 4)
       if v.frame % every == 0 then AM.pose(M, v.cf, c, os.clock()) end
       if G.aeroStep then G.aeroStep(v, dt, own or nil, camPos) end   -- 机翼凝结雾、翼尖涡流、蒸汽锥、音爆（Aero.lua）
+      -- 旋翼下洗（用户 11-20：载具照 UE5 的水平升级）：直升机离地 / 水面 70 格以内，正下方往四周吹起一圈尘土（陆地）或水雾（海面），越低越浓
+      if d.rotor and dist < 2200 then
+        local p = v.cf.Position
+        local h = Map.height(p.X, p.Z)
+        local gy = math.max(h, 0)
+        local k = math.clamp(rpm / 100, 0, 1) * math.clamp(1 - (p.Y - gy) / 70, 0, 1)
+        local W = v.wash
+        if k > 0.03 and not W then
+          local part = Instance.new("Part")
+          part.Name = "RotorWash"
+          part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = true, false, false, false, false
+          part.Transparency, part.Size = 1, Vector3.new(1, 1, 1)
+          part.Parent = v.model
+          local pe = Instance.new("ParticleEmitter")
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+          pe.Rate = 0
+          pe.Lifetime = NumberRange.new(1.2, 2.6)
+          pe.Speed = NumberRange.new(22, 44)
+          pe.SpreadAngle = Vector2.new(88, 88)   -- 从正上方张开到快水平：往四周吹
+          pe.EmissionDirection = Enum.NormalId.Top
+          pe.Acceleration = V(0, 3, 0)
+          pe.Drag = 2.2
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-40, 40)
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 17) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) })
+          pe.LightInfluence = 1
+          pe.Parent = part
+          W = { part = part, pe = pe }
+          v.wash = W
+        end
+        if W then
+          W.part.CFrame = CF(p.X, gy + 0.6, p.Z)
+          local water = h < 0.4
+          if W.water ~= water then
+            W.water = water
+            W.pe.Color = ColorSequence.new(water and Color3.fromRGB(226, 234, 236) or Color3.fromRGB(170, 150, 118))
+          end
+          W.pe.Rate = (k > 0.03) and (8 + 70 * k) or 0
+          v.washK = k   -- 测试用
+        end
+      end
     end,
   }
 
@@ -632,6 +674,8 @@ function Fly.init(G)
     return nil
   end
 
+  local heliCamParams = RaycastParams.new()   -- 直升机的弹簧臂别钻进山坡、房子（地形也算）
+  heliCamParams.FilterType = Enum.RaycastFilterType.Include
   local mapParams = RaycastParams.new()
   mapParams.FilterType = Enum.RaycastFilterType.Include
   local aimParams = RaycastParams.new()
@@ -645,6 +689,36 @@ function Fly.init(G)
     end)
     if ok then controls = res end
   end)
+
+  -- 接地（用户 11-20：载具照 UE5 的水平升级）：按下沉率——镜头一震、固定翼主轮一声吱（轮胎冒一小团烟）、直升机滑橇一声闷响
+  local Debris = game:GetService("Debris")
+  local function touchdown(sink, wheels)
+    if not st or sink < 3 then return end
+    local k = math.clamp((sink - 3) / 25, 0, 1)
+    if G.shake then G.shake(0.05 + 0.35 * k) end
+    if G.sfx then G.sfx(wheels and "touchdown" or "skidLand", nil, { vol = 0.5 + 0.7 * k }) end
+    st.tdK, st.tdN = k, (st.tdN or 0) + 1   -- 测试用
+    if wheels then
+      local p = st.cf.Position
+      local part = Instance.new("Part")
+      part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch, part.Transparency = true, false, false, false, 1
+      part.Size = Vector3.new(1, 1, 1)
+      part.CFrame = CF(p.X, ground(p.X, p.Z) + 0.4, p.Z)
+      part.Parent = workspace
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+      pe.Rate = 0
+      pe.Lifetime = NumberRange.new(0.8, 1.6)
+      pe.Speed = NumberRange.new(2, 6)
+      pe.SpreadAngle = Vector2.new(60, 60)
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 7) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new(Color3.fromRGB(214, 214, 210))
+      pe.Parent = part
+      pcall(function() pe:Emit(math.floor(6 + 14 * k)) end)
+      Debris:AddItem(part, 3)
+    end
+  end
 
   local function begin(vs)
     local em = findEnt(vs.id)
@@ -686,6 +760,13 @@ function Fly.init(G)
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = st.pilot end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
+    heliCamParams.FilterDescendantsInstances = m and { workspace.Terrain, m } or { workspace.Terrain }
+    -- 抖振的嗡嗡声（固定翼）：音量在镜头那里按抖得多厉害调
+    if d.kind == "jet" and G.makeSound then
+      st.buffetSnd = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 1, s = { 0.34, 0.34 }, loop = { 0.06, 0.5 }, eq = { 10, -4, -18 } },
+        game:GetService("SoundService"), {})
+      if st.buffetSnd then st.buffetSnd.Volume = 0 end
+    end
     if G.playSound then G.playSound("capture") end
   end
 
@@ -715,6 +796,8 @@ function Fly.init(G)
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = false end end
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
+    if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if G.vehCamReset then G.vehCamReset("heli") end
   end
 
   ---------------------------------------------------------------- 武器
@@ -1218,6 +1301,7 @@ function Fly.init(G)
           -- 接地：不按 W 就自动收到慢车（地上油门收到底就自动刹车，五六秒停住、停稳补给）；按住 W 是连续起降
           if not up and st.thr <= 100 then st.thr = 0 end
           if G.shake then G.shake(0.15) end
+          touchdown(-(st.vel.Y or 0), true)
           -- 航母：尾钩放着、落在拦阻索区，被拦阻索拉停（85 格内停住）
           if AD.onDeck(Map, pos.X, pos.Z) == "carrier" and (st.c.hook or 0) > 0.5 and AD.inWires(Map, pos.X, pos.Z) then
             st.trap, st.trapA = true, math.max(20, st.spd * st.spd / (2 * 85))
@@ -1359,6 +1443,7 @@ function Fly.init(G)
     if pos.Y - d.gearH <= g then
       local overSea = g <= 0.4 and not AD.onDeck(Map, pos.X, pos.Z)
       if (st.vy < -30 or overSea) and not st.ground and not st.crashed then crash() end
+      if not st.ground and not st.crashed and st.vy < -5 then touchdown(-st.vy, false) end
       pos = V(pos.X, g + d.gearH, pos.Z)
       st.vy = math.max(st.vy, 0)
       st.ground = upIn <= 0 and Tm * up.Y <= GS * 1.02
@@ -1789,16 +1874,35 @@ function Fly.init(G)
       local gl = acc.Magnitude / GR   -- 大概几个 g
       local amp = math.clamp((gl - 3) * 0.0016, 0, 0.012) + ((st.thrE or 0) > 100 and 0.0012 or 0)
       local t = os.clock()
-      local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp, math.noise(t * 18, 7.1) * amp, 0)
+      -- 抖振（用户 11-20：载具照 UE5 的水平升级）：迎角大（12° 以上）、快失速时机身一阵阵发抖——镜头高频抖、一层低沉的嗡嗡声
+      local buf = 0
+      if not st.ground then
+        local aoaK = math.clamp((math.abs(st.aoaDeg or 0) - 12) / 12, 0, 1)
+        local stallK = math.clamp((d.stall * 1.3 - st.spd) / math.max(d.stall * 0.3, 1), 0, 1)
+        buf = math.max(aoaK, stallK)
+      end
+      st.buffet = buf
+      if st.buffetSnd then
+        st.buffetSnd.Volume = buf * 1.4
+        st.buffetSnd.PlaybackSpeed = 0.32 + buf * 0.12
+      end
+      local ab = buf * 0.006 * (0.6 + 0.4 * math.abs(math.noise(t * 3, 9.9)))
+      local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp + math.noise(t * 34, 2.6) * ab, math.noise(t * 18, 7.1) * amp + math.noise(t * 31, 5.3) * ab,
+        math.noise(t * 29, 3.7) * ab * 0.6)
       local upC = (V(0, 1, 0) * 0.7 + st.cf.UpVector * 0.3)
       cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300, (upC.Magnitude > 0.1) and upC.Unit or V(0, 1, 0)) * shake
     elseif d.kind == "jet" then
       local camPos = (st.cf * CF(0, d.H * 0.5 + 3, math.max(d.L, d.W * 0.7) * 0.65 + 7)).Position   -- 手机 / 坐后面的：也近一点
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))
     else
+      -- 直升机：弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）——跟随有惯性（加速、急停、拉起有推拉），跟着机身坡度歪两成，
+      --   旋翼的细震（越使劲越抖）；臂碰到山坡、房子平滑缩近
       local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
-      local camPos = pos + V(0, d.H * 0.45, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 0.62 + 7))   -- 直升机也近一点（0.8 倍 + 11 → 0.62 倍 + 7）
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
+      local load = math.clamp(math.abs(st.c.col or 0), 0, 1)
+      local camCF, camShake, fov = G.vehCam({ key = "heli", pivot = pos + V(0, d.H * 0.45, 0), dir = dirCam, dist = d.L * 0.62 + 7, up = 0, vel = st.vel, dt = dt,
+        rough = 0.45 + 0.6 * load, speedK = math.clamp(0.35 + st.vel.Magnitude / math.max(d.vMax, 1) * 0.65, 0, 1.2), up3 = st.cf.UpVector, params = heliCamParams,
+        fov0 = 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })
+      cam.CFrame = camCF * camShake
     end
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70

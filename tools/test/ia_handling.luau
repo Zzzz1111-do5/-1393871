@@ -6,6 +6,7 @@
 --   ④ 撞墙：斜着撞上房子顺着墙滑过去（不是钉死），正面撞上才停；撞上那一下有声音
 --   ⑤ 轮式车：高速急转车尾往外甩（车头和真正的去向分开）、轮胎沙沙响
 --   ⑥ 舰艇：全速时船头砸浪（浪花、拍水声）、开船的镜头是弹簧臂、跟着船身现在的样子晃
+--   ⑦ 飞机：直升机的弹簧臂镜头、贴地的旋翼下洗、接地的冲击；固定翼快失速时抖振
 --   用法：lune run tools/test/ia_handling.luau <rbxlx>
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
@@ -367,6 +368,71 @@ if sst and es then
 	check(v ~= nil and v.liveCF ~= nil, "镜头跟着船身现在的样子（随浪起伏、外倾）")
 	check(v ~= nil and (v.slamN or 0) > slam0, string.format("全速：船头砸浪炸起浪花（%d 次）", (v and v.slamN or 0) - slam0))
 	check((played.bowSlam or 0) > snd0, "砸浪拍水一声")
+end
+
+print("⑦ 飞机：直升机的弹簧臂镜头、贴地的旋翼下洗、接地的冲击；固定翼快失速时抖振")
+local function leave()
+	if CD.sail or CD.drive or CD.fly then
+		H.key(def, Enum.KeyCode.Space, true)
+		H.run(0.1)
+		H.key(def, Enum.KeyCode.Space, false)
+		H.run(1.5)
+	end
+end
+leave()
+local hx, hz = flatSpot(camp.X, camp.Z, nil, 40, 2000)
+if hx then
+	local gy = Map.ground(hx, hz)
+	local hcf = CF.new(hx, gy + 6, hz)
+	local he = G.spawnAircraft("def", "ah64e", hcf, nil, G.P[def])
+	def.Character:PivotTo(CF.new(hx + 14, gy + 3.5, hz))
+	H.run(0.3)
+	act(def, "enterVeh", he.id)
+	H.run(1)
+	local hs = CD.fly
+	check(hs ~= nil and hs.d.kind == "heli" and hs.pilot, "坐进 AH-64E")
+	if hs then
+		H.runUntil(function() return (hs.rpm or 0) >= 95 end, 15)
+		H.key(def, Enum.KeyCode.E, true)
+		H.run(1.2)
+		H.key(def, Enum.KeyCode.E, false)
+		H.run(0.4)
+		local v = CD.views and CD.views[hs.em]
+		check(CD.vehCamState and CD.vehCamState("heli") ~= nil, "直升机的镜头是弹簧臂（VehCam）")
+		print(string.format("    离地 %.1f 格，下洗 %.2f", hs.cf.Position.Y - Map.ground(hs.cf.Position.X, hs.cf.Position.Z), v and v.washK or -1))
+		check(v ~= nil and v.wash ~= nil and (v.washK or 0) > 0.2 and v.wash.pe.Rate > 10, "贴着地：旋翼下洗往四周吹起一圈尘土")
+		local td0, sk0 = hs.tdN or 0, played.skidLand or 0
+		for _ = 1, 240 do   -- 一直往下砸（不然定高马上把下沉抹掉）
+			hs.vy = -14
+			H.run(1 / 60)
+			if (hs.tdN or 0) > td0 then break end
+		end
+		print(string.format("    接地次数 %d → %d，闷响 %d → %d", td0, hs.tdN or 0, sk0, played.skidLand or 0))
+		check((hs.tdN or 0) > td0 and (played.skidLand or 0) > sk0, string.format("接地：一下闷响、震一下（冲击 %.2f）", hs.tdK or 0))
+	end
+	leave()
+end
+local p0 = def.Character.HumanoidRootPart.CFrame.Position
+local jcf = CF.new(p0.X, math.max(Map.ground(p0.X, p0.Z), 0) + 600, p0.Z)
+local je = G.spawnAircraft("def", "f35", jcf, nil, G.P[def])
+def.Character:PivotTo(jcf * CF.new(4, 0, 0))
+act(def, "enterVeh", je.id)
+H.run(0.2)
+local js = CD.fly
+check(js ~= nil and js.d.kind == "jet", "空中坐进 F-35")
+if js then
+	js.ground = false
+	js.spd = js.d.stall * 1.04   -- 快失速
+	js.vel = js.cf.LookVector * js.spd
+	js.thr, js.gearWant, js.gear = 40, 0, 0
+	local maxB, maxV = 0, 0
+	for _ = 1, 10 do
+		H.run(0.05)
+		maxB = math.max(maxB, js.buffet or 0)
+		maxV = math.max(maxV, js.buffetSnd and js.buffetSnd.Volume or 0)
+	end
+	check(maxB > 0.3 and maxV > 0.3, string.format("快失速：抖振 %.2f、嗡嗡声 %.2f", maxB, maxV))
+	leave()
 end
 
 print(fails == 0 and "载具操控：全部通过" or ("载具操控：" .. fails .. " 项没过"))
