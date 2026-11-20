@@ -11,7 +11,6 @@ local VehCam = {}
 
 function VehCam.init(G)
   local V = Vector3.new
-  local cam = workspace.CurrentCamera
   local S = {}   -- 每个用的地方一份（key）
 
   -- 临界阻尼弹簧：x 往 target 走（w 越大越快）

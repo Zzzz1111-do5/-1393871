@@ -534,7 +534,28 @@ function ShipView.init(G)
     local bob = math.sin(t * 0.8 + ph) * 0.35 * k
     local pitch = math.sin(t * 0.6 + ph * 1.3) * 0.012 * k + frac * 0.01 * math.clamp(k, 0.3, 1)
     local roll = math.sin(t * 0.5 + ph * 0.7) * 0.025 * k + math.clamp(v.yawRate * math.abs(spd) * 0.00025, -0.09, 0.09)
+    -- 用户 11-20（载具照 UE5 的水平升级）：高速时船头一下一下往浪里砸——快一点的一组纵摇，越快越明显；小艇（巡逻艇）在浪上颠
+    local slamW = 1.25 + 0.6 * frac
+    v.slamPh = (v.slamPh or ph) + dt * slamW
+    local slam = math.sin(v.slamPh) * 0.014 * frac * frac * math.clamp(k, 0.4, 1.4)
+    pitch += slam
+    if d.L < 40 then
+      bob += math.abs(math.sin(t * 3.1 + ph)) * 0.35 * frac
+      pitch += math.sin(t * 2.7 + ph) * 0.02 * frac
+    end
+    -- 船头往下砸到底（纵摇从往下转成往上）：船头炸一团浪花；自己开的船震一下、拍水一声
+    local sp = math.sin(v.slamPh)
+    if v.slamLast and v.slamLast > 0 and sp <= 0 and frac > 0.5 and not wreck and far < 2200 then
+      for _, pe in ipairs(M.spray) do pcall(function() pe:Emit(math.floor(6 + 18 * frac)) end) end
+      v.slamN = (v.slamN or 0) + 1   -- 测试用
+      if own then
+        if G.shake then G.shake(0.05 + 0.08 * frac) end
+        if G.sfx then G.sfx("bowSlam", nil, { vol = 0.4 + 0.6 * frac }) end
+      end
+    end
+    v.slamLast = sp
     local cf = v.base * CF(0, bob, 0) * CFrame.Angles(pitch, 0, roll)
+    v.liveCF = cf   -- 船身现在的样子（随浪起伏、外倾）：开船的镜头跟着它晃
     -- 击沉：慢慢倾覆、下沉（20 多秒）
     if wreck then
       v.sinkT = (v.sinkT or 0) + dt

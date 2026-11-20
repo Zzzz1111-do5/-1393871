@@ -26419,6 +26419,8 @@ function Fx.init(G)
     vehHit = { { id = THUD, vol = 1, s = { 0.55, 0.65 }, eq = { 8, 0, -8 } }, { id = EXP, vol = 0.3, s = { 1.1, 1.3 }, reg = { 0.02, 0.3 }, eq = { 2, 2, -2 } },
       { id = TICK, vol = 0.5, s = { 0.7, 0.8 }, eq = { 2, 4, -2 } } },
     gearShift = { { id = TICK, vol = 0.55, s = { 0.5, 0.56 }, eq = { 8, 0, -8 } }, { id = THUD, vol = 0.25, s = { 1.2, 1.3 }, eq = { 6, -2, -10 } } },
+    -- 船头砸浪：拍水声（放慢、留低音）+ 一下闷响
+    bowSlam = { { id = WATER, vol = 0.9, s = { 0.55, 0.65 }, eq = { 6, 0, -6 } }, { id = THUD, vol = 0.5, s = { 0.5, 0.56 }, eq = { 8, -2, -12 } } },
     -- 坦克炮（用户：开火动画做的好一点）：起爆那一截拉快的脆响 + 放慢、失真、只留低音的轰隆 + 拖得很长的回声尾巴
     tankGun = { { id = EXP, vol = 0.9, s = { 1.5, 1.65 }, reg = { 0.02, 0.4 }, eq = { -2, 3, 4 } },
       { id = EXP, vol = 1.2, s = { 0.58, 0.64 }, reg = { 0, 2.2 }, eq = { 12, 0, -14 }, dist = 0.4 },
@@ -33405,6 +33407,42 @@ function Sail.init(G)
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
+  -- 发动机、破水声（用户 11-20：载具照 UE5 的水平升级；原来开船没有声音）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、只留低音，
+  --   燃气轮机的舰船再加一层高一点的呜呜声）+ 船体破水的哗哗声（风声削掉高音）；航速越快越响、音调越高
+  local engine = nil
+  local function engineStop()
+    if engine then
+      for _, snd in pairs(engine) do if typeof(snd) == "Instance" then snd:Destroy() end end
+      engine = nil
+    end
+  end
+  local function engineStart(d)
+    engineStop()
+    if not G.makeSound then return end
+    local SS = game:GetService("SoundService")
+    local small = (d.L or 60) < 40
+    engine = {
+      rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
+      turb = (not small) and G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0.5, s = { 0.55, 0.55 }, loop = { 1, 9 }, eq = { -10, 4, -4 } }, SS, {}) or nil,
+      water = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 0.6, 0.6 }, loop = { 2, 8 }, eq = { 6, 0, -12 } }, SS, {}),
+    }
+  end
+  local function engineStep(dt, d)
+    if not engine then return end
+    local frac = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.2)
+    local ord = math.abs(SD.ORDERS[st.order] or 0)
+    engine.load = (engine.load or 0) + ((0.2 + 0.8 * ord) - (engine.load or 0)) * math.min(1, dt * 1.5)   -- 车钟一推，转速先上去
+    local small = (d.L or 60) < 40
+    engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
+    engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    if engine.turb then
+      engine.turb.PlaybackSpeed = 0.5 + engine.load * 0.35
+      engine.turb.Volume = 0.25 + 1.1 * engine.load
+    end
+    engine.water.PlaybackSpeed = 0.5 + frac * 0.45
+    engine.water.Volume = frac * (small and 1.6 or 2.6)
+  end
+
   local function begin(vs)
     local em = findEnt(vs.id)
     local d = SD.get(vs.m or "")
@@ -33426,9 +33464,12 @@ function Sail.init(G)
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
     if G.playSound then G.playSound("capture") end
+    engineStart(st.d)
   end
 
   local function stop()
+    engineStop()
+    if G.vehCamReset then G.vehCamReset("sail") end
     if st and st.trigOn then G.R.Drive:FireServer({ op = "trig", on = false, g = st.trigG }) end
     local old = st
     st = nil
@@ -33744,15 +33785,26 @@ function Sail.init(G)
       cam.CFrame = CFrame.lookAt(eye, eye + dirCam.LookVector)
       cam.FieldOfView = cam.FieldOfView + (ZOOMS[st.zoom] - cam.FieldOfView) * math.min(1, dt * 10)
     else
-      local center = st.pos + V(0, d.H * 0.45, 0)
+      -- 弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）：跟着船身现在的样子（随浪起伏、转弯外倾、船头砸浪）晃，起航 / 停车有惯性，
+      --   镜头跟着横摇歪两成；镜头不钻到水下
+      local v = G.views and G.views[st.em]
+      local live = v and v.liveCF or st.cf
+      local center = live.Position + V(0, d.H * 0.45, 0)
       local dist = d.L * 0.75 + d.H * 0.6 + 20
-      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, d.H * 0.5, 0)
-      camPos = V(camPos.X, math.max(camPos.Y, 3), camPos.Z)
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
-      cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * math.min(1, dt * 10)
+      st.vel3 = st.lastP3 and (st.pos - st.lastP3) / math.max(dt, 1e-3) or V()
+      st.lastP3 = st.pos
+      local frac = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.2)
+      local camCF, camShake, fov = G.vehCam({ key = "sail", pivot = center, dir = dirCam, dist = dist, up = d.H * 0.5, vel = st.vel3, dt = dt,
+        rough = 0.35, speedK = frac, up3 = live.UpVector, params = nil, fov0 = 70, fovK = 4, pushK = 0.04, maxPush = 3, follow = 6, maxLag = 4 })
+      if camCF.Position.Y < 3 then camCF = camCF + V(0, 3 - camCF.Position.Y, 0) end
+      cam.CFrame = camCF
+      cam.FieldOfView = fov
+      st.camShake = camShake
     end
     st.aimPt = aimPoint()
     aimGuns(dt)
+    if st.camShake and not st.bino then cam.CFrame = cam.CFrame * st.camShake end   -- 细抖（瞄准按没抖的镜头算过了）
+    engineStep(dt, d)
     if st.firing then tryFire() end
     -- 导弹框：选中导弹时每 0.2 秒重挑（锁住的就一直跟着它，没了才放）
     st.lockT -= dt
@@ -35631,7 +35683,28 @@ function ShipView.init(G)
     local bob = math.sin(t * 0.8 + ph) * 0.35 * k
     local pitch = math.sin(t * 0.6 + ph * 1.3) * 0.012 * k + frac * 0.01 * math.clamp(k, 0.3, 1)
     local roll = math.sin(t * 0.5 + ph * 0.7) * 0.025 * k + math.clamp(v.yawRate * math.abs(spd) * 0.00025, -0.09, 0.09)
+    -- 用户 11-20（载具照 UE5 的水平升级）：高速时船头一下一下往浪里砸——快一点的一组纵摇，越快越明显；小艇（巡逻艇）在浪上颠
+    local slamW = 1.25 + 0.6 * frac
+    v.slamPh = (v.slamPh or ph) + dt * slamW
+    local slam = math.sin(v.slamPh) * 0.014 * frac * frac * math.clamp(k, 0.4, 1.4)
+    pitch += slam
+    if d.L < 40 then
+      bob += math.abs(math.sin(t * 3.1 + ph)) * 0.35 * frac
+      pitch += math.sin(t * 2.7 + ph) * 0.02 * frac
+    end
+    -- 船头往下砸到底（纵摇从往下转成往上）：船头炸一团浪花；自己开的船震一下、拍水一声
+    local sp = math.sin(v.slamPh)
+    if v.slamLast and v.slamLast > 0 and sp <= 0 and frac > 0.5 and not wreck and far < 2200 then
+      for _, pe in ipairs(M.spray) do pcall(function() pe:Emit(math.floor(6 + 18 * frac)) end) end
+      v.slamN = (v.slamN or 0) + 1   -- 测试用
+      if own then
+        if G.shake then G.shake(0.05 + 0.08 * frac) end
+        if G.sfx then G.sfx("bowSlam", nil, { vol = 0.4 + 0.6 * frac }) end
+      end
+    end
+    v.slamLast = sp
     local cf = v.base * CF(0, bob, 0) * CFrame.Angles(pitch, 0, roll)
+    v.liveCF = cf   -- 船身现在的样子（随浪起伏、外倾）：开船的镜头跟着它晃
     -- 击沉：慢慢倾覆、下沉（20 多秒）
     if wreck then
       v.sinkT = (v.sinkT or 0) + dt
@@ -39912,7 +39985,6 @@ local VehCam = {}
 
 function VehCam.init(G)
   local V = Vector3.new
-  local cam = workspace.CurrentCamera
   local S = {}   -- 每个用的地方一份（key）
 
   -- 临界阻尼弹簧：x 往 target 走（w 越大越快）

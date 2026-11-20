@@ -5,6 +5,7 @@
 --   ③ 腾空：冲过坡顶飞起来（在天上不能转向），落地按砸下来的速度震屏、一声闷响
 --   ④ 撞墙：斜着撞上房子顺着墙滑过去（不是钉死），正面撞上才停；撞上那一下有声音
 --   ⑤ 轮式车：高速急转车尾往外甩（车头和真正的去向分开）、轮胎沙沙响
+--   ⑥ 舰艇：全速时船头砸浪（浪花、拍水声）、开船的镜头是弹簧臂、跟着船身现在的样子晃
 --   用法：lune run tools/test/ia_handling.luau <rbxlx>
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
@@ -332,6 +333,40 @@ if wx then
 		H.run(3)
 		check(math.abs(st.slipA or 0) < math.rad(2), "慢下来、回正以后车头和去向又对齐")
 	end
+end
+
+print("⑥ 舰艇：全速时船头一下一下砸浪（浪花、拍水声）、开船的镜头是弹簧臂、发动机和破水声跟着航速")
+if CD.drive then
+	H.key(def, Enum.KeyCode.Space, true)
+	H.run(0.1)
+	H.key(def, Enum.KeyCode.Space, false)
+	H.run(1)
+end
+local pd = H.pad(G, "ddg125")
+local es = pd and H.usePad(G, def, pd)
+H.run(2)
+local sst = CD.sail
+check(sst ~= nil, "坐上了 DDG-125")
+if sst and es then
+	local sfwd = V3.new(-math.sin(sst.yaw), 0, -math.cos(sst.yaw))
+	sst.pos = sst.pos + sfwd * 700   -- 挪到外海
+	sst.cf = CF.lookAt(sst.pos, sst.pos + sfwd)
+	G.moveEnt(es, sst.cf * CF.new(0, es.sd.H / 2 - es.sd.draft, 0))
+	H.run(0.5)
+	for _ = 1, 6 do   -- 车钟推到全速前进
+		H.key(def, Enum.KeyCode.W, true)
+		H.run(0.05)
+		H.key(def, Enum.KeyCode.W, false)
+		H.run(0.1)
+	end
+	local v = CD.views and CD.views[sst.em]
+	local slam0, snd0 = v and v.slamN or 0, played.bowSlam or 0
+	H.run(14)
+	print(string.format("    航速 %.1f（极速 %.1f）", sst.speed, sst.d.speed))
+	check(CD.vehCamState and CD.vehCamState("sail") ~= nil, "开船的镜头是弹簧臂（VehCam）")
+	check(v ~= nil and v.liveCF ~= nil, "镜头跟着船身现在的样子（随浪起伏、外倾）")
+	check(v ~= nil and (v.slamN or 0) > slam0, string.format("全速：船头砸浪炸起浪花（%d 次）", (v and v.slamN or 0) - slam0))
+	check((played.bowSlam or 0) > snd0, "砸浪拍水一声")
 end
 
 print(fails == 0 and "载具操控：全部通过" or ("载具操控：" .. fails .. " 项没过"))

@@ -95,6 +95,42 @@ function Sail.init(G)
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
+  -- 发动机、破水声（用户 11-20：载具照 UE5 的水平升级；原来开船没有声音）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、只留低音，
+  --   燃气轮机的舰船再加一层高一点的呜呜声）+ 船体破水的哗哗声（风声削掉高音）；航速越快越响、音调越高
+  local engine = nil
+  local function engineStop()
+    if engine then
+      for _, snd in pairs(engine) do if typeof(snd) == "Instance" then snd:Destroy() end end
+      engine = nil
+    end
+  end
+  local function engineStart(d)
+    engineStop()
+    if not G.makeSound then return end
+    local SS = game:GetService("SoundService")
+    local small = (d.L or 60) < 40
+    engine = {
+      rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
+      turb = (not small) and G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0.5, s = { 0.55, 0.55 }, loop = { 1, 9 }, eq = { -10, 4, -4 } }, SS, {}) or nil,
+      water = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 0.6, 0.6 }, loop = { 2, 8 }, eq = { 6, 0, -12 } }, SS, {}),
+    }
+  end
+  local function engineStep(dt, d)
+    if not engine then return end
+    local frac = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.2)
+    local ord = math.abs(SD.ORDERS[st.order] or 0)
+    engine.load = (engine.load or 0) + ((0.2 + 0.8 * ord) - (engine.load or 0)) * math.min(1, dt * 1.5)   -- 车钟一推，转速先上去
+    local small = (d.L or 60) < 40
+    engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
+    engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    if engine.turb then
+      engine.turb.PlaybackSpeed = 0.5 + engine.load * 0.35
+      engine.turb.Volume = 0.25 + 1.1 * engine.load
+    end
+    engine.water.PlaybackSpeed = 0.5 + frac * 0.45
+    engine.water.Volume = frac * (small and 1.6 or 2.6)
+  end
+
   local function begin(vs)
     local em = findEnt(vs.id)
     local d = SD.get(vs.m or "")
@@ -116,9 +152,12 @@ function Sail.init(G)
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
     if G.playSound then G.playSound("capture") end
+    engineStart(st.d)
   end
 
   local function stop()
+    engineStop()
+    if G.vehCamReset then G.vehCamReset("sail") end
     if st and st.trigOn then G.R.Drive:FireServer({ op = "trig", on = false, g = st.trigG }) end
     local old = st
     st = nil
@@ -434,15 +473,26 @@ function Sail.init(G)
       cam.CFrame = CFrame.lookAt(eye, eye + dirCam.LookVector)
       cam.FieldOfView = cam.FieldOfView + (ZOOMS[st.zoom] - cam.FieldOfView) * math.min(1, dt * 10)
     else
-      local center = st.pos + V(0, d.H * 0.45, 0)
+      -- 弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）：跟着船身现在的样子（随浪起伏、转弯外倾、船头砸浪）晃，起航 / 停车有惯性，
+      --   镜头跟着横摇歪两成；镜头不钻到水下
+      local v = G.views and G.views[st.em]
+      local live = v and v.liveCF or st.cf
+      local center = live.Position + V(0, d.H * 0.45, 0)
       local dist = d.L * 0.75 + d.H * 0.6 + 20
-      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, d.H * 0.5, 0)
-      camPos = V(camPos.X, math.max(camPos.Y, 3), camPos.Z)
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
-      cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * math.min(1, dt * 10)
+      st.vel3 = st.lastP3 and (st.pos - st.lastP3) / math.max(dt, 1e-3) or V()
+      st.lastP3 = st.pos
+      local frac = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.2)
+      local camCF, camShake, fov = G.vehCam({ key = "sail", pivot = center, dir = dirCam, dist = dist, up = d.H * 0.5, vel = st.vel3, dt = dt,
+        rough = 0.35, speedK = frac, up3 = live.UpVector, params = nil, fov0 = 70, fovK = 4, pushK = 0.04, maxPush = 3, follow = 6, maxLag = 4 })
+      if camCF.Position.Y < 3 then camCF = camCF + V(0, 3 - camCF.Position.Y, 0) end
+      cam.CFrame = camCF
+      cam.FieldOfView = fov
+      st.camShake = camShake
     end
     st.aimPt = aimPoint()
     aimGuns(dt)
+    if st.camShake and not st.bino then cam.CFrame = cam.CFrame * st.camShake end   -- 细抖（瞄准按没抖的镜头算过了）
+    engineStep(dt, d)
     if st.firing then tryFire() end
     -- 导弹框：选中导弹时每 0.2 秒重挑（锁住的就一直跟着它，没了才放）
     st.lockT -= dt
