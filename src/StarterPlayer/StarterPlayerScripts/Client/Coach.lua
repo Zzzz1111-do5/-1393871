@@ -535,6 +535,9 @@ function Coach.init(G)
     local mwt = G.tankHudActive == true
     if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not mwt and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
     card.Visible = cardMode ~= nil and not panelOpen and hudOn and not mwt
+    -- 开飞机（AirHud，用户 11-19 照 MWT 截图改）：圆形雷达挪到了左上，三步卡挪到雷达和「被发现!」下面
+    local airDock = G.airRadarDocked ~= nil and G.airRadarDocked() == true
+    card.Position = airDock and UDim2.fromOffset(16, 330) or UDim2.new(0, 24, 0.28, 0)
     -- 按键提示
     local sub = mode and subOf(mode)
     if sub ~= lastSub then lastSub, subT0 = sub, now end

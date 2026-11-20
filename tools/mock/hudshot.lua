@@ -1,4 +1,6 @@
 -- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5]
+--   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
+--     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像
 --   用户：开坦克要是 MWT 那套驾驶界面（截图），不要叠着旧界面。坐进一辆车、前方放一辆敌车开一会，
 --   把所有显示着的界面元素按 Roblox 的排版算出屏幕上的方框（1280×720，UDim2 + AnchorPoint + UIListLayout + UIScale 的近似），
 --   写成 JSON；tools/mock/hud_render.py 画成图看。也按 ScreenGui 列出各有多少个显示着的元素（找没关掉的旧界面）
@@ -26,7 +28,83 @@ R.run(3)
 check(P.alive, "守方在营地出生")
 if not TEST_ARGS:find("prep", 1, true) then T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10) end
 
-if kind ~= "inf" then
+if kind == "jet" or kind == "heli" then
+  local foeSide = mySide == "def" and "atk" or "def"
+  local id = TEST_ARGS:match("id=(%w+)") or G.Config.Vehicles[mySide][kind][1]
+  local p = me.Character.HumanoidRootPart.Position
+  local alt = tonumber(TEST_ARGS:match("alt=(%d+)") or "") or ((kind == "jet") and 700 or 160)
+  local x, z = p.X, p.Z
+  local cf = CF(x, math.max(G.Map.ground(x, z), 0) + alt, z)   -- 朝 −Z
+  local fe = G.spawnAircraft(foeSide, G.Config.Vehicles[foeSide].jet[1], cf * CF(90, 60, -1000), nil, nil)
+  local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
+  local ft = G.Config.Vehicles[foeSide].tank[1]
+  pcall(function() G.newVehicle(foeSide, ft, G.vehBaseAt(VD.get(ft), x - 160, z - 1500, V3(0, 0, 1))) end)
+  local e = G.spawnAircraft(mySide, id, cf, nil, P)
+  me.Character:PivotTo(cf * CF(4, 0, 0))
+  T.act("enterVeh", e.id)
+  R.run(0.2)
+  local st = C.fly
+  if st then   -- 刚放的飞机算停在地上（零速度、起落架放着）：改成巡航（八成军推速度、收起落架；直升机前飞）
+    st.ground = false
+    if kind == "jet" then
+      st.spd = st.d.vMil * 0.8
+      st.vel = st.cf.LookVector * st.spd
+      st.thr, st.gearWant, st.gear = 85, 0, 0
+    else
+      st.rpm = 100
+      st.hv = st.cf.LookVector * st.d.vMax * 0.5
+      st.vel = st.hv
+    end
+  end
+  R.run(2.5)
+  check(C.fly ~= nil and C.fly.pilot, "坐进 " .. id .. "（离地 " .. alt .. " 格）")
+  check(fe ~= nil, "前方放了一架敌机")
+  local hpK = tonumber(TEST_ARGS:match("hp=([%d%.]+)") or "")
+  if hpK and e and e.alive then
+    G.damageEnt(e, e.maxHp * (1 - hpK), { team = foeSide, name = "test" })
+    R.run(0.6)
+  end
+  local AD = R.require(R.services.ReplicatedStorage:FindFirstChild("AirDefs"))
+  local st2 = C.fly
+  if fe and fe.root and st2 then   -- 没人开的敌机停在原地、自己这架掉了一些高度：截图前把它重新摆到正前方 700 格、稍偏右上
+    fe.root.CFrame = st2.cf * CF(70, 25, -700)
+    R.run(0.3)
+  end
+  local w = st2 and AD.W[st2.wl[st2.wi]]
+  check(st2 ~= nil and st2.lock ~= nil, "锁着前方的敌机：" .. tostring(st2 and st2.lock and st2.lock.em and st2.lock.em:GetAttribute("Model")))
+  local function where(tag)
+    if not (st2 and st2.lock) then return end
+    local rel = st2.cf:PointToObjectSpace(st2.lock.pos)
+    local ang = math.deg(math.acos(math.max(-1, math.min(1, st2.cf.LookVector:Dot((st2.lock.pos - st2.cf.Position).Unit)))))
+    print(string.format("  %s：锁定目标在机身坐标 右 %.0f 上 %.0f 前 %.0f（偏 %.0f°），离开离轴角 %s", tag, rel.X, rel.Y, -rel.Z, ang, tostring(st2.lock.out)))
+  end
+  where("截图前")
+  if fe and fe.model then
+    print(string.format("  敌机实体：Cat=%s Team=%s Hp=%s/%s Kind=%s Root=%s Wreck=%s", tostring(fe.model:GetAttribute("Cat")), tostring(fe.model:GetAttribute("Team")),
+      tostring(fe.model:GetAttribute("Hp")), tostring(fe.model:GetAttribute("MaxHp")), tostring(fe.model:GetAttribute("Kind")), tostring(fe.model:FindFirstChild("Root") ~= nil), tostring(fe.model:GetAttribute("Wreck"))))
+  end
+  if TEST_ARGS:find("outcone=1", 1, true) and fe and st2 and w then   -- 敌机挪到离轴角外（还在跟踪的范围里）
+    local cone = w.cone or 30
+    local a = math.rad(math.min(cone * 1.6, 80))
+    local p0 = st2.cf.Position
+    local dir = (st2.cf.LookVector * math.cos(a) + st2.cf.RightVector * math.sin(a))
+    fe.root.CFrame = CF(p0 + dir * 900)
+    R.run(0.25)
+    where("挪开以后")
+    check(st2.lock ~= nil and st2.lock.out == true, "敌机出了离轴角：锁还在、算在发射角度外")
+  end
+  local lockK = tonumber(TEST_ARGS:match("lock=([%d%.]+)") or "")
+  if lockK and st2 and st2.lock and w then
+    st2.lockT = lockK * (w.lockTime or 1)
+    R.run(1 / 60)
+  end
+  if TEST_ARGS:find("ir=1", 1, true) and C.airThermal then
+    C.airThermal(true)
+    R.run(0.2)
+  end
+end
+
+if kind ~= "inf" and kind ~= "jet" and kind ~= "heli" then
   local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
   local list = G.Config.Vehicles[mySide][kind] or G.Config.Vehicles[mySide].tank
   local foeSide = mySide == "def" and "atk" or "def"
@@ -191,6 +269,26 @@ print("有字的元素：")
 for _, it in ipairs(items) do
   if it.text and it.text ~= "" and (it.tT or 0) < 0.95 and it.x < VW and it.y < VH and it.x + it.w > 0 and it.y + it.h > 0 then
     print(string.format("  [%s] %s (%.0f,%.0f %.0fx%.0f) %q", it.gui, it.name, it.x, it.y, it.w, it.h, it.text:sub(1, 60)))
+  end
+end
+-- 机头的全息标记（AirHud：机头前方 3D 的一块面，不在 ScreenGui 里）：四个角投到屏幕上，hud_render.py 按透视把图贴上去
+do
+  local camO = R.services.Workspace.CurrentCamera
+  local hp = camO and camO:FindFirstChild("NoseHolo")
+  local sg = hp and hp:FindFirstChild("NoseHoloGui")
+  local im = sg and sg:FindFirstChild("NoseHoloArt")
+  if hp and sg and sg.Enabled and im then
+    local cf, sz = hp.CFrame, hp.Size
+    local q = {}
+    for _, c in ipairs({ { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } }) do   -- 背面（朝镜头）看过去：左上、右上、右下、左下
+      local sp = camO:WorldToViewportPoint(cf * V3(c[1] * sz.X / 2, c[2] * sz.Y / 2, sz.Z / 2))
+      q[#q + 1] = { sp.X, sp.Y }
+    end
+    table.insert(items, 1, { quad = q, icon = im:GetAttribute("Icon"), ic = c3(im.ImageColor3), iT = im.ImageTransparency, order = -100,
+      x = q[1][1], y = q[1][2], w = 1, h = 1, gui = "NoseHolo", name = "NoseHolo" })
+    print(string.format("机头全息标记：四个角 (%.0f,%.0f) (%.0f,%.0f) (%.0f,%.0f) (%.0f,%.0f)", q[1][1], q[1][2], q[2][1], q[2][2], q[3][1], q[3][2], q[4][1], q[4][2]))
+  else
+    print("机头全息标记：没显示")
   end
 end
 if out then

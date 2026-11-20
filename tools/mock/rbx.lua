@@ -454,6 +454,8 @@ local ENUMS = {
   AutomaticSize = "None X Y XY",
   ZIndexBehavior = "Global Sibling",
   ApplyStrokeMode = "Contextual Border",
+  LineJoinMode = "Round Bevel Miter",
+  ScaleType = "Stretch Slice Tile Fit Crop",
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
@@ -1109,7 +1111,7 @@ local textProps = {
 def("TextLabel", "GuiObject", textProps)
 -- 图片（小地图的卫星图 MapUI.lua）：只记属性，不画
 def("ImageLabel", "GuiObject", { Image = { T.string, "" }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 },
-  ImageContent = { function() return true end, nil } })
+  ImageContent = { function() return true end, nil }, ScaleType = { E("ScaleType"), Enum.ScaleType.Stretch }, TileSize = { T.UDim2, newUDim2(1, 0, 1, 0) } })
 local tb = {}
 for k, v in pairs(textProps) do tb[k] = v end
 tb.AutoButtonColor = { T.bool, true }
@@ -1120,7 +1122,8 @@ def("UIAspectRatioConstraint", "Instance", { AspectRatio = { T.number, 1 }, Aspe
 def("WeldConstraint", "Instance", { Part0 = { T.Instance, nil }, Part1 = { T.Instance, nil }, Enabled = { T.bool, true } })
 def("BodyColors", "Instance", { HeadColor3 = { T.Color3, newC3(1, 1, 1) }, TorsoColor3 = { T.Color3, newC3(1, 1, 1) }, LeftArmColor3 = { T.Color3, newC3(1, 1, 1) }, RightArmColor3 = { T.Color3, newC3(1, 1, 1) }, LeftLegColor3 = { T.Color3, newC3(1, 1, 1) }, RightLegColor3 = { T.Color3, newC3(1, 1, 1) } })
 def("Team", "Instance", { TeamColor = { function(v) return typeof(v) == "BrickColor" end, nil }, AutoAssignable = { T.bool, true } })
-def("UIStroke", "Instance", { Color = { T.Color3, newC3(0, 0, 0) }, Thickness = { T.number, 1 }, Transparency = { T.number, 0 }, ApplyStrokeMode = { E("ApplyStrokeMode"), Enum.ApplyStrokeMode.Contextual } })
+def("UIStroke", "Instance", { Color = { T.Color3, newC3(0, 0, 0) }, Thickness = { T.number, 1 }, Transparency = { T.number, 0 }, ApplyStrokeMode = { E("ApplyStrokeMode"), Enum.ApplyStrokeMode.Contextual },
+  LineJoinMode = { E("LineJoinMode"), Enum.LineJoinMode.Round } })
 def("UIListLayout", "Instance", {
   FillDirection = { E("FillDirection"), Enum.FillDirection.Vertical }, HorizontalAlignment = { E("HorizontalAlignment"), Enum.HorizontalAlignment.Left },
   VerticalAlignment = { E("VerticalAlignment"), Enum.VerticalAlignment.Top }, Padding = { T.UDim, newUDim(0, 0) }, SortOrder = { E("SortOrder"), Enum.SortOrder.Name },

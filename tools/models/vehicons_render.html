@@ -43,9 +43,14 @@ function shoot(root, flip) {
   return { png: renderer.domElement.toDataURL('image/png'), size: [s.x, s.y, s.z] };
 }
 
-window.renderGLB = async (url, flip) => {
+window.renderGLB = async (url, flip, hide) => {
   const gltf = await new GLTFLoader().loadAsync(url);
   gltf.scene.traverse(o => { if (o.isMesh) { o.material = white; } });
+  if (hide) {   // 飞机：起落架、起落架舱门不拍（图标是收起落架飞着的样子）
+    const re = new RegExp(hide), drop = [];
+    gltf.scene.traverse(o => { if (o !== gltf.scene && re.test(o.name)) drop.push(o); });
+    for (const o of drop) if (o.parent) o.parent.remove(o);
+  }
   return shoot(gltf.scene, flip);
 };
 

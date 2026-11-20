@@ -2,6 +2,7 @@
 --   开着：整个画面都是夜视（本地增亮、绿色荧光调色、灯光强烈泛光、雾变淡一点看得更远、画面轻微闪烁；用户：要全屏的夜视，不要望远镜那样四周一圈黑）；
 --     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
 --   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 是切车上瞄准镜的夜视 / 热成像（Drive.lua），
+--   开飞机时 N 在 夜视 → 热成像 → 关 之间切（热成像在 AirHud.lua；用户 11-19：不用光电吊舱也可以开红外视角），
 --     开着车上的瞄准镜看时夜视仪先让出画面（瞄准镜有自己的调色，叠在一起热成像会发绿、过亮），退出瞄准镜自动恢复；死了关掉
 --   默认开着（用户：视野不管是在什么情况默认夜视仪都是开着的）：每次出生自动打开；按 N 关掉的话这一条命里关着，下次出生又是开的；车上瞄准镜默认也是夜视档
 local Players = game:GetService("Players")
@@ -159,6 +160,18 @@ function Night.init(G)
     if G.drive and not G.fly and not G.sail then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像（开船、开飞机时 N 照样是夜视仪）
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
+    -- 开飞机（用户 11-19：不用光电吊舱也可以开红外视角）：N 在 夜视 → 热成像（AirHud.lua，白热） → 关 之间切
+    if G.fly and G.airThermal then
+      if on then
+        setOn(false)
+        G.airThermal(true)
+      elseif G.airThermal() then
+        G.airThermal(false)
+      else
+        setOn(true)
+      end
+      return
+    end
     setOn(not on)
   end
   UIS.InputBegan:Connect(function(io, gp)

@@ -5,6 +5,9 @@
 --   · 主动防御还剩多少（右下面板上面一行，青色；爆反不显示——用户 11-19）
 --   · 开坦克时（电脑）右上的方形小地图挪到左下角、裁成圆的，外圈 0 / 90 / 180 / 270 的方位刻度；下车、换别的载具恢复
 --   VehHud.lua 每帧调 G.tankHudExtra(st, 血量比例)；准星两边的弹药数、已就绪、测距在 VehHud 里
+--   飞机模式（Fly.lua 调 G.tankHudExtra(st, 血量比例, "air")；用户 11-19：飞机操作界面也照 MWT 的截图改）：
+--     圆形小地图挪到左上（里面一个跟着镜头转的视野扇形），「被发现!」在它下面；名牌多一道血条、远的写「x.x 千米」，飞机直升机也有；
+--     导弹告警也算被发现；车旁的全息 km/h 牌、主动防御那行不要
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 
@@ -50,7 +53,16 @@ function TankHud.init(G)
     f.Parent = gui
     local nm = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 0), 11, RED, BOLD)   -- 字号照 MWT（用户 11-19：文字精简、小一点）
     local dist = label(f, "", UD2(1, 0, 0, 13), UD2(0, 0, 0, 14), 12, Color3.new(1, 1, 1), BOLD)
-    tags[i] = { f = f, nm = nm, dist = dist }
+    -- 飞机模式：名字和距离中间一道红血条
+    local barBg = Instance.new("Frame")
+    barBg.AnchorPoint, barBg.Position, barBg.Size = V2(0.5, 0), UD2(0.5, 0, 0, 14), UDim2.fromOffset(52, 3)
+    barBg.BackgroundColor3, barBg.BackgroundTransparency, barBg.BorderSizePixel = RGB(40, 8, 6), 0.35, 0
+    barBg.Visible = false
+    barBg.Parent = f
+    local bar = Instance.new("Frame")
+    bar.Size, bar.BackgroundColor3, bar.BorderSizePixel = UD2(1, 0, 1, 0), RED, 0
+    bar.Parent = barBg
+    tags[i] = { f = f, nm = nm, dist = dist, barBg = barBg, bar = bar }
   end
 
   -- 「被发现!」：照 MWT 的样子（用户 11-19：和 MWT 的被发现一模一样的效果，换个颜色）——
@@ -181,6 +193,7 @@ function TankHud.init(G)
   ring.BackgroundTransparency = 1
   ring.Visible = false
   ring.Parent = gui
+  local ringStroke, ringLabs = nil, {}   -- 坦克：青色；飞机：白色（照 MWT 截图左上的雷达：白色细圈、白字）
   do
     local edge = Instance.new("Frame")
     edge.Size = UDim2.fromOffset(MS + 6, MS + 6)
@@ -193,16 +206,58 @@ function TankHud.init(G)
     local s = Instance.new("UIStroke")
     s.Color, s.Thickness, s.Transparency = CYAN, 1.5, 0.35
     s.Parent = edge
+    ringStroke = s
     for _, b in ipairs({ { 0, "0" }, { 90, "90" }, { 180, "180" }, { 270, "270" } }) do
       local a = math.rad(b[1])
-      label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5))
+      table.insert(ringLabs, label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5)))
+    end
+  end
+  local function ringLook(air)
+    ringStroke.Color, ringStroke.Thickness, ringStroke.Transparency = air and Color3.new(1, 1, 1) or CYAN, air and 1.4 or 1.5, air and 0.15 or 0.35
+    for _, l in ipairs(ringLabs) do
+      l.TextColor3, l.TextSize = air and Color3.new(1, 1, 1) or CYAN, air and 10 or 9
     end
   end
 
-  -- 小地图挪到左下变圆 / 恢复
-  local docked, saved = false, nil
-  local function dock(on)
+  -- 视野扇形（飞机模式，用户 11-19：照 MWT 截图左上的圆形雷达）：顶点在圆心、朝镜头看的方向（小地图北朝上），放在小地图里（裁成圆）
+  local cone = Instance.new("ImageLabel")
+  cone.Name = "ViewCone"
+  cone.BackgroundTransparency = 1
+  cone.AnchorPoint, cone.Position, cone.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UD2(1, 0, 1, 0)
+  cone.ImageColor3, cone.ImageTransparency = RGB(214, 218, 220), 0.3   -- 淡灰的扇形、中间一根线
+  cone.ZIndex = 19   -- 地图上面、亮点（20）下面
+  cone.Visible = false
+  local coneArt = nil
+  -- 正中间自己那架：白色的小飞机，跟着机头转（Hud 的「▲」在飞机模式里藏起来）
+  local selfIc = Instance.new("ImageLabel")
+  selfIc.Name = "SelfPlane"
+  selfIc.BackgroundTransparency = 1
+  selfIc.AnchorPoint, selfIc.Position, selfIc.Size = V2(0.5, 0.5), UD2(0.5, 0, 0.5, 0), UDim2.fromOffset(17, 17)
+  selfIc.ZIndex = 23
+  selfIc.Visible = false
+  local selfArt, arrowSaved = nil, nil
+  local function hubArrow(box)   -- Hud.lua 小地图正中间的「▲」
+    for _, c in ipairs(box:GetChildren()) do
+      if c:IsA("TextLabel") and c.Text == "▲" then return c end
+    end
+  end
+  -- 小地图挪到左下（开坦克）/ 左上（开飞机）变圆 / 恢复
+  local docked, saved, dockAir = false, nil, false
+  local AIR_X, AIR_Y = 64, 62   -- 飞机：左上，让开 Roblox 自己的按钮那一排、左上角的菜单键（≡）
+  local function dock(on, air)
     if mobile then on = false end
+    air = on and air == true
+    if on and docked and air ~= dockAir then   -- 坦克 ↔ 飞机：只换位置
+      local box = G.hudParts and G.hudParts.miniBox
+      if box then
+        box.AnchorPoint = air and V2(0, 0) or V2(0, 1)
+        box.Position = air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26)
+      end
+      dockAir = air
+      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ringLook(air)
+      return
+    end
     if on == docked then return end
     local box = G.hudParts and G.hudParts.miniBox
     if not box then return end
@@ -219,7 +274,10 @@ function TankHud.init(G)
     if on then
       saved = { a = box.AnchorPoint, p = box.Position, s = box.Size, r = corner and corner.CornerRadius,
         rr = G.hudLayout and G.hudLayout.radarRight, sq = squad and squad.Visible }
-      box.AnchorPoint, box.Position, box.Size = V2(0, 1), UD2(0, 26, 1, -26), UDim2.fromOffset(MS, MS)
+      box.AnchorPoint, box.Position, box.Size = air and V2(0, 0) or V2(0, 1), air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26), UDim2.fromOffset(MS, MS)
+      dockAir = air
+      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ringLook(air)
       if corner then corner.CornerRadius = UDim.new(0.5, 0) end
       if G.hudLayout then G.hudLayout.radarRight = false end
       if squad then squad.Visible = false end
@@ -230,10 +288,12 @@ function TankHud.init(G)
       if G.hudLayout then G.hudLayout.radarRight = saved.rr end
       if squad and saved.sq ~= nil then squad.Visible = saved.sq end
       deco(true)
+      dockAir = false
     end
     ring.Visible = on
   end
   G.tankHudDocked = function() return docked end   -- 测试用
+  G.airRadarDocked = function() return docked and dockAir end   -- 开飞机、小地图在左上（Coach.lua 把三步卡挪到它下面）
 
   ---------------------------------------------------------------- 谁看得见
   local rp = RaycastParams.new()
@@ -266,12 +326,44 @@ function TankHud.init(G)
     return tm ~= nil and tm ~= side
   end
 
-  function G.tankHudExtra(st, hpK)
+  local airT = -9   -- 飞机模式上一次调的时刻（下了飞机 Fly 不调了 → 收起）
+  local CATS = { armor = true, light = true, ship = true }
+  local CATS_AIR = { armor = true, light = true, ship = true, air = true, aa = true }   -- 飞机、直升机的实体类别是 air
+  function G.tankHudExtra(st, hpK, mode)
+    local air = mode == "air"
     gui.Enabled = true
-    dock(true)
+    dock(true, air)
     local t = os.clock()
+    if air then airT = t end
     local side = me:GetAttribute("Side")
-    local myPos = st.root and st.root.Position or cam.CFrame.Position
+    local myPos = (st.root and st.root.Position) or (st.cf and st.cf.Position) or cam.CFrame.Position
+    -- 飞机模式：小地图里的视野扇形跟着镜头转
+    local box = G.hudParts and G.hudParts.miniBox
+    if air and docked and box then
+      if cone.Parent ~= box then cone.Parent = box end
+      if coneArt == nil then coneArt = G.hudIconOn ~= nil and G.hudIconOn(cone, "viewCone") == true end
+      local lv = cam.CFrame.LookVector
+      cone.Rotation = math.deg(math.atan2(lv.X, -lv.Z))
+      cone.Visible = coneArt
+      if selfIc.Parent ~= box then selfIc.Parent = box end
+      if selfArt == nil then selfArt = G.hudIconOn ~= nil and G.hudIconOn(selfIc, "radarJet") == true end
+      local nose = st.cf and st.cf.LookVector or lv
+      selfIc.Rotation = math.deg(math.atan2(nose.X, -nose.Z))
+      selfIc.Visible = selfArt
+      local ar = hubArrow(box)
+      if ar and selfArt then
+        if arrowSaved == nil then arrowSaved = ar.TextTransparency end
+        ar.TextTransparency = 1
+      end
+    else
+      if cone.Visible then cone.Visible = false end
+      if selfIc.Visible then selfIc.Visible = false end
+      if arrowSaved ~= nil and box then
+        local ar = hubArrow(box)
+        if ar then ar.TextTransparency = arrowSaved end
+        arrowSaved = nil
+      end
+    end
     local ents = workspace:FindFirstChild("Ents")
     -- 敌人：每 0.25 秒重新挑一遍（距离、视线），每帧摆牌子
     if t - lastScan > 0.25 then
@@ -279,11 +371,11 @@ function TankHud.init(G)
       cands = {}
       for _, em in ipairs(ents and ents:GetChildren() or {}) do
         local cat = em:GetAttribute("Cat")
-        if (cat == "armor" or cat == "light" or cat == "ship") and enemy(em, side) then
+        if (air and CATS_AIR or CATS)[cat] and enemy(em, side) then
           local r = em:FindFirstChild("Root")
           if r then
             local d = (r.CFrame.Position - myPos).Magnitude   -- CFrame.Position：测试台的零件只认这个
-            if d < 1100 and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
+            if d < (air and 11200 or 1100) and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
           end
         end
       end
@@ -293,16 +385,25 @@ function TankHud.init(G)
     for _, c in ipairs(cands) do
       if n >= #tags then break end
       if c.em.Parent and c.r.Parent then
-        local top = c.r.CFrame.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0)
+        -- 飞机模式：名牌摆在目标中心往上 34 像素（锁定的菱形、四个直角框在目标身上，名字、血条、距离叠在框的上面，照 MWT 截图）
+        local top = air and c.r.CFrame.Position or (c.r.CFrame.Position + V3(0, c.r.Size.Y / 2 + 2.5, 0))
         local sp, on = cam:WorldToViewportPoint(top)
         if on then
           n += 1
           local tg = tags[n]
           tg.f.Visible = true
-          tg.f.Position = UDim2.fromOffset(sp.X, sp.Y)
+          tg.f.Position = UDim2.fromOffset(sp.X, sp.Y - (air and 34 or 0))
           local id = c.em:GetAttribute("Model")
           tg.nm.Text = id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or ""   -- 只写型号
-          tg.dist.Text = T("vh.m", math.floor((c.r.CFrame.Position - myPos).Magnitude / 2.8 + 0.5))
+          local m = (c.r.CFrame.Position - myPos).Magnitude / 2.8
+          tg.dist.Text = (air and m >= 1000) and T("vh.km", string.format("%.1f", m / 1000)) or T("vh.m", math.floor(m + 0.5))
+          -- 飞机模式：名字下面一道血条，距离往下挪
+          tg.barBg.Visible = air
+          tg.dist.Position = air and UD2(0, 0, 0, 19) or UD2(0, 0, 0, 14)
+          if air then
+            local hp, mx = c.em:GetAttribute("Hp") or 1, c.em:GetAttribute("MaxHp") or 1
+            tg.bar.Size = UD2(math.clamp(hp / math.max(mx, 1), 0, 1), 0, 1, 0)
+          end
         end
       end
     end
@@ -314,13 +415,14 @@ function TankHud.init(G)
       lastSpot = t
       spotted = false
       for _, c in ipairs(cands) do
-        if c.d < 500 then spotted = true break end   -- 我看得见它，它也看得见我（同一条视线）
+        if c.d < (air and 2800 or 500) then spotted = true break end   -- 我看得见它，它也看得见我（同一条视线）；飞机：一千米以内
       end
+      if air and st.rwrT and os.clock() < st.rwrT then spotted = true end   -- 被导弹锁了 / 来袭（Fly 的告警）
       if not spotted then
         for _, pl in ipairs(Players:GetPlayers()) do
           if pl ~= me and pl:GetAttribute("Side") and pl:GetAttribute("Side") ~= side then
             local hrp = pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.CFrame.Position - myPos).Magnitude < 500 then
+            if hrp and (hrp.CFrame.Position - myPos).Magnitude < (air and 2800 or 500) then
               rp.FilterDescendantsInstances = excludeList(st)
               local hit = workspace:Raycast(myPos + V3(0, 4, 0), hrp.CFrame.Position - myPos - V3(0, 4, 0), rp)
               if not hit or hit.Instance:IsDescendantOf(pl.Character) then spotted = true break end
@@ -337,7 +439,8 @@ function TankHud.init(G)
       spotTxt.Text = T("vh.spotted")
       local a = math.clamp((t - spotT0) / 0.22, 0, 1)
       local e = 1 - (1 - a) * (1 - a)
-      spot.Position = spotX + UD2(0, -40 * (1 - e), 0, 0)
+      local base = (air and docked) and UD2(0, AIR_X + 4, 0, AIR_Y + MS + 34) or spotX   -- 飞机：左上圆形雷达的正下方（照 MWT 截图）
+      spot.Position = base + UD2(0, -40 * (1 - e), 0, 0)
       streak.Size = UDim2.fromOffset(34 + 60 * (1 - e), 2)
       local pulse = 0.5 + 0.5 * math.sin(t * 5)
       halo.BackgroundTransparency = 0.55 + 0.3 * pulse
@@ -346,7 +449,7 @@ function TankHud.init(G)
       streak.BackgroundTransparency = 0.1 + 0.25 * pulse
     end
     -- 车旁边的全息屏：镜头右边那一侧、炮塔高度，斜一点朝着镜头
-    local root = st.root
+    local root = (not air) and st.root or nil   -- 飞机不要（速度在准星右边的括号里）
     if root then
       local d = st.d or {}
       local cp = cam.CFrame
@@ -368,7 +471,7 @@ function TankHud.init(G)
     local em = st.em
     local parts = {}
     -- 爆反还剩几块不显示了（用户 11-19：不要显示爆反了）；装了主动防御的照旧写还剩几发
-    local aps = em and em:GetAttribute("ApsMax")
+    local aps = (not air) and em and em:GetAttribute("ApsMax")
     if aps then table.insert(parts, T("vh.aps", em:GetAttribute("Aps") or 0, aps)) end
     armLine.Text = table.concat(parts, "   ·   ")
   end
@@ -376,12 +479,21 @@ function TankHud.init(G)
   -- 不在开坦克：收起来，小地图放回去
   G.frameConn("TankHud", function()
     if hsg.Enabled and os.clock() - holoT > 0.15 then hsg.Enabled = false end   -- 开着瞄准镜、下车：全息屏收起
-    if not G.myVeh then
+    if not G.myVeh and os.clock() - airT > 0.2 then   -- 不在开坦克、也不在开飞机
       if gui.Enabled then
         gui.Enabled = false
         for _, tg in ipairs(tags) do tg.f.Visible = false end
       end
       if docked then dock(false) end
+      -- 飞机模式留在小地图里的扇形、小飞机收起来，「▲」放回来
+      if cone.Visible then cone.Visible = false end
+      if selfIc.Visible then selfIc.Visible = false end
+      if arrowSaved ~= nil then
+        local box = G.hudParts and G.hudParts.miniBox
+        local ar = box and hubArrow(box)
+        if ar then ar.TextTransparency = arrowSaved end
+        arrowSaved = nil
+      end
     end
   end)
 end

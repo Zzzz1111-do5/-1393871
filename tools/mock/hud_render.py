@@ -73,6 +73,27 @@ def icon_img(name):
     return Image.frombytes('LA', (w, h), bytes(px))
 
 
+def quad_layer(it):
+    """机头的全息标记：3D 的一块面（hudshot 导出了四个角在屏幕上的位置）——图按透视贴到这四个角上"""
+    src = icon_img(it.get('icon'))
+    if src is None:
+        return None
+    import numpy as np
+    sw, sh = src.size
+    L, A = src.split()
+    tint = rgb(it.get('ic'))
+    rgbI = Image.merge('RGB', [L.point(lambda v, c=c: v * c // 255) for c in tint])
+    rgbI.putalpha(A.point(lambda v: int(v * (1 - (it.get('iT') or 0)))))
+    M, B = [], []
+    for (x, y), (u, v) in zip([tuple(p) for p in it['quad']], [(0, 0), (sw, 0), (sw, sh), (0, sh)]):
+        M.append([x, y, 1, 0, 0, 0, -u * x, -u * y])
+        B.append(u)
+        M.append([0, 0, 0, x, y, 1, -v * x, -v * y])
+        B.append(v)
+    coef = np.linalg.solve(np.array(M, float), np.array(B, float))
+    return rgbI.transform((W, H), Image.PERSPECTIVE, tuple(coef), Image.BILINEAR)
+
+
 def main():
     items = json.load(open(sys.argv[1], encoding='utf-8'))
     out = sys.argv[2]
@@ -88,6 +109,11 @@ def main():
     items.sort(key=lambda it: (it.get('order', 0), it['_i']))
     img = bg
     for it in items:
+        if it.get('quad'):
+            lay = quad_layer(it)
+            if lay is not None:
+                img = Image.alpha_composite(img, lay)
+            continue
         x, y, w, h = it['x'], it['y'], it['w'], it['h']
         if w <= 0 or h <= 0 or x > W or y > H or x + w < 0 or y + h < 0:
             continue
@@ -124,11 +150,20 @@ def main():
                 rgbI = Image.merge('RGB', [L.point(lambda v, c=c: v * c // 255) for c in tint])
                 A = A.point(lambda v: int(v * (1 - (it.get('iT') or 0)) * ga))
                 rgbI.putalpha(A)
-                ov.alpha_composite(rgbI, (int(round(x)), int(round(y))))
+                if abs(rot) > 0.5:   # Roblox 的 Rotation 顺时针、绕自己的中心转
+                    cx, cy = x + w / 2, y + h / 2
+                    rgbI = rgbI.rotate(-rot, resample=Image.BICUBIC, expand=True)
+                    ov.alpha_composite(rgbI, (int(round(cx - rgbI.width / 2)), int(round(cy - rgbI.height / 2))))
+                else:
+                    ov.alpha_composite(rgbI, (int(round(x)), int(round(y))))
         elif it.get('img') and (it.get('iT') or 0) < 0.99:
             a = int(160 * (1 - (it.get('iT') or 0)) * ga)
             d.rectangle(box, outline=rgb(it.get('ic')) + (a,), width=1)
-        if it.get('st') and (it.get('stT') or 0) < 0.99:
+        textGlow = None
+        if it.get('st') and (it.get('stT') or 0) < 0.99 and it.get('text'):
+            # 字上的 UIStroke 在游戏里是贴着字形描一圈（这里当光晕画在字后面），不是方框
+            textGlow = (rgb(it['st']), int(255 * (1 - (it.get('stT') or 0)) * ga), max(1, int(round(it.get('stW') or 1))))
+        elif it.get('st') and (it.get('stT') or 0) < 0.99:
             a = int(255 * (1 - (it.get('stT') or 0)) * ga)
             sw = max(1, int(round(it.get('stW') or 1)))
             if r > 0.5:
@@ -157,6 +192,13 @@ def main():
             else:
                 tx = x + (w - tw) / 2
             ty = y + (h - th) / 2
+            if textGlow:
+                gl = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+                gd = ImageDraw.Draw(gl)
+                for k, ln in enumerate(lines):
+                    gd.text((tx, ty + k * lh), ln, font=f, fill=textGlow[0] + (textGlow[1],), stroke_width=textGlow[2], stroke_fill=textGlow[0] + (textGlow[1],))
+                from PIL import ImageFilter
+                ov.alpha_composite(gl.filter(ImageFilter.GaussianBlur(1.2)))
             for k, ln in enumerate(lines):
                 d.text((tx + 1, ty + k * lh + 1), ln, font=f, fill=(0, 0, 0, int(a * 0.5)))
                 d.text((tx, ty + k * lh), ln, font=f, fill=tc)

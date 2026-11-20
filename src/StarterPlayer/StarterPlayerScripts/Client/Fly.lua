@@ -164,14 +164,20 @@ function Fly.init(G)
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
-  local HUD = RGB(120, 255, 150)
+  local HUD = RGB(110, 226, 240)   -- 青色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色；原来是 DCS 平显的绿）
   local function hud(text, size, pos, ts, anchor, align)
     local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
     l.TextStrokeTransparency = 0.5
-    l.TextStrokeColor3 = RGB(0, 30, 10)
+    l.TextStrokeColor3 = RGB(0, 18, 26)
     l.Visible = false
     return l
   end
+  -- 原来的 DCS 式平显（速度 / 高度框、航向、大圈、右侧武器栏、下面的信息栏、G / α / M、速度矢量、机头十字）收进这个框：
+  --   用户 11-19 要开飞机的界面照 MWT 的截图改（AirHud.lua：右上机型和全息侧影、准星两边高度 / 速度、六边形武器键……），
+  --   只有遥控无人机（画面在战术平板里，四边是平板的外壳）还用原来这一套
+  local dcs = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  dcs.Name = "DcsHud"
+  dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
   local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
@@ -213,7 +219,7 @@ function Fly.init(G)
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
     local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
-    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 30, 10) end
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 18, 26) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
   for i = 1, 11 do ladderPool[i] = ladderLine() end
@@ -264,7 +270,7 @@ function Fly.init(G)
   -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
   --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
   local function box(w, h, pos, anchor)
-    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 24, 10), 0.72, anchor)
+    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 16, 24), 0.72, anchor)
     ui.stroke(f, HUD, 2, 0.1)
     f.Visible = false
     return f
@@ -452,6 +458,7 @@ function Fly.init(G)
   local EO_MODES = { "tv", "whot", "bhot" }
 
   local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList, gText, aText, mText }
+  for _, l in ipairs({ panel, bore, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, fuelText, ring, ringText, wList, gText, aText, mText, fpm }) do l.Parent = dcs end
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -529,7 +536,7 @@ function Fly.init(G)
     local H = 34
     wList.Size = UDim2.fromOffset(260, #items * (H + 4))
     for i, it in ipairs(items) do
-      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 18, 6), 0.6)
+      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 12, 18), 0.6)
       f.Name = "Row_" .. (it.wid or "flare")
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
@@ -674,6 +681,7 @@ function Fly.init(G)
     panel.Position = (st.uav and rect) and UDim2.new(0.5, 0, rect[4], -12) or UDim2.new(0.5, 0, 1, -24)
     if st.uav and G.tabletOpen then G.tabletOpen(st) end
     for _, l in ipairs(HUDS) do l.Visible = st.pilot end
+    dcs.Visible = st.uav == true   -- 无人机：原来那一套；有人开的飞机：AirHud（每帧 G.airHudStep）
     buildList()
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = st.pilot end end
     local m = workspace:FindFirstChild("Map")
@@ -700,6 +708,8 @@ function Fly.init(G)
     if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
     panel.Visible = false
     for _, l in ipairs(HUDS) do l.Visible = false end
+    dcs.Visible = false
+    if G.airHudOff then G.airHudOff() end
     lockBox.Visible, lockText.Visible, pipper.Visible = false, false, false
     landMark.Visible, landText.Visible, restText.Visible = false, false, false
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = false end end
@@ -790,6 +800,17 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(cone))
   end
+  -- 出了导弹的离轴角还能跟多宽（用户 11-19：脱离导弹发射角度锁定的菱形变黄——锁还留着、这时不能发射；再偏更多或者偏太久才丢）
+  local function inTrack(w, c)
+    local fwd = st.cf.LookVector
+    if w.kind == "bomb" then
+      local down = (fwd * 0.6 + V(0, -1, 0)).Unit
+      return down:Dot(c.dir) > math.cos(rad(math.min((w.cone or 60) * 1.5, 89)))
+    end
+    local cone = w.cone or 30
+    if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
+    return fwd:Dot(c.dir) > math.cos(rad(math.min(cone * 2.2, 85)))
+  end
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 瞄准 / 挑目标的方向：固定翼是鼠标瞄准方向（手机上是机头），直升机是镜头（鼠标瞄机头炮塔）
@@ -836,6 +857,7 @@ function Fly.init(G)
     if t < st.nextFire or left(wid) <= 0 then return end
     if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return end
     local locked = st.lock and st.lockT >= (w.lockTime or 1)
+    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
@@ -1440,7 +1462,8 @@ function Fly.init(G)
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
   local function dcsHud(pos, kmh)
     local d = st.d
-    local on = d.kind == "jet" and st.pilot and not st.eo and not st.crashed
+    -- 俯仰梯、速度矢量、G / α / M 只在遥控无人机（原来那一套平显）里画；有人开的飞机是 AirHud 的界面（用户 11-19：中间不要一段段线拼起来的东西）
+    local on = d.kind == "jet" and st.pilot and not st.eo and not st.crashed and st.uav == true
     fpm.Visible, gText.Visible, aText.Visible, mText.Visible = false, on, on, on
     if not on then
       for _, L in ipairs(ladderPool) do L.f.Visible = false end
@@ -1841,7 +1864,20 @@ function Fly.init(G)
         if root then
           local to = root.CFrame.Position - pos
           st.lock.dir, st.lock.dist, st.lock.pos = to.Unit, to.Magnitude, root.CFrame.Position
-          if inCone(w, st.lock) and st.lock.dist < (w.range or 3200) * 1.1 then st.lockT += dt else st.lock, st.lockT = nil, 0 end
+          -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
+          local inside = inCone(w, st.lock)
+          if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
+            st.lock.out = not inside
+            if inside then
+              st.lockT += dt
+              st.lock.outT = 0
+            else
+              st.lock.outT = (st.lock.outT or 0) + dt
+              if st.lock.outT > 4 then st.lock, st.lockT = nil, 0 end
+            end
+          else
+            st.lock, st.lockT = nil, 0
+          end
         else
           st.lock = nil
         end
@@ -1885,6 +1921,8 @@ function Fly.init(G)
       aWpn.Text = T("air.noWeapon")
     end
     st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and "air.helpJet" or "air.helpHeli")) or "air.helpPass"
+    -- 开飞机的界面（AirHud.lua，照 MWT 的截图）要的数：这一帧算出来的塞进 info，最后交给 G.airHudStep
+    local info = { d = d, pilot = st.pilot == true, hp = hp, mx = mx, kmh = kmh, agl = agl }
     if st.pilot then
       spdText.Text = string.format("%d", kmh)
       altText.Text = string.format("%d", math.max(0, agl))
@@ -1897,6 +1935,11 @@ function Fly.init(G)
       local left2 = (secs < 5999) and string.format("%d:%02d", math.floor(secs / 60), math.floor(secs % 60)) or "--:--"
       fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
+      info.fuel = T("air.fuelLeft", math.floor(tot * 100 + 0.5), left2)
+      info.fuelCol = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or nil)
+      info.thr = thrText.Text
+      info.vs = T("air.vs", vsText.Text)
+      info.gear = (d.kind == "jet" and st.gearWant > 0.5) and T("air.gearState.down") or nil
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo
       G.try_(dcsHud, pos, kmh)
@@ -1905,6 +1948,7 @@ function Fly.init(G)
       local hk = math.min(1, st.hitKick or 0)
       bore.TextSize = 34 + 14 * hk
       bore.TextColor3 = Color3.new(1, 1 - 0.7 * hk, 1 - 0.75 * hk)
+      info.hk, info.cf = hk, st.cf
       -- 大圈：圈心在机头指向；大小是选中武器能锁的离轴角（导弹的导引头）/ 航炮、火箭、炸弹的瞄准圈；圈底下写武器和剩几发
       local rdeg = (not w and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
       if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end
@@ -1922,11 +1966,18 @@ function Fly.init(G)
         local n = r.it.flare and st.flares or left(r.it.wid)
         r.cnt.Text = "×" .. n
         local sel = r.it.idx == st.wi
-        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(20, 96, 44) or RGB(0, 18, 6), sel and 0.3 or 0.6
+        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(16, 70, 84) or RGB(0, 12, 18), sel and 0.3 or 0.6
         r.s.Transparency, r.s.Thickness = sel and 0 or 0.7, sel and 2 or 1
-        local col = (n <= 0) and RGB(110, 130, 112) or HUD
+        local col = (n <= 0) and RGB(110, 124, 130) or HUD
         r.cnt.TextColor3, r.nm.TextColor3 = col, col
       end
+      -- 六边形武器键（AirHud）：每种挂载一个（按键号、剩几发、选中的亮），最后一个热诱弹；准星上方写选中的那种
+      local items = {}
+      for i, wid2 in ipairs(st.wl) do items[i] = { key = tostring(i), wid = wid2, w = AD.W[wid2], n = left(wid2), sel = i == st.wi } end
+      items[#items + 1] = { key = "X", flare = true, n = st.flares }
+      info.wl = items
+      local cw, cww = curW()
+      info.wid, info.w, info.cnt = cw, cww, cw and left(cw) or 0
       -- 光电画面的字：模式、倍率、目标距离、吊舱相对机头的方位 / 俯仰
       if st.eo then tgpStep(pos, wid, w) end
       if st.eo or (st.uav and st.dcam == "nose") then
@@ -1991,8 +2042,12 @@ function Fly.init(G)
         lockBox.Size = locked and UDim2.fromOffset(38, 38) or UDim2.fromOffset(52, 52)
         lockText.Position = lp + UDim2.fromOffset(0, 30)
         lockText.Visible = lon
-        lockText.Text = locked and (T("air.locked") .. string.format("  %dm", math.floor(st.lock.dist / AD.M))) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
+        -- 距离：MWT 式界面写在准星左边（AirHud），这里只写锁定的状态；无人机照旧带距离
+        lockText.Text = locked and (T("air.locked") .. (st.uav and string.format("  %dm", math.floor(st.lock.dist / AD.M)) or "")) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
         lockText.TextColor3 = locked and RGB(255, 80, 70) or HUD
+        info.lockDist = st.lock.dist
+        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out }
+        if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false
       end
@@ -2010,6 +2065,17 @@ function Fly.init(G)
       if st.eo then   -- 吊舱画面里：平显的落点、降落菱形、锁定框都收起来（吊舱自己画跟踪框）
         pipper.Visible, landMark.Visible, landText.Visible, lockBox.Visible, lockText.Visible, restText.Visible = false, false, false, false, false, false
       end
+    end
+    -- MWT 式的界面（AirHud.lua）：有人开 / 坐的飞机都用；遥控无人机（战术平板）、光电吊舱的画面不用
+    if not st.uav then dcs.Visible = false end
+    warnText.Position = UDim2.new(0.5, 0, 0.5, st.uav and -130 or -172)   -- 告警：让开准星上方的武器名牌
+    if not st.uav and not st.eo then
+      if st.pilot then info.aim = aimRing.Visible and aimRing.Position or nil end   -- 准星由 AirHud 画（发光的细圈），这里的「◯」字收起来
+      aimRing.Visible = false
+      if G.airHudStep then G.try_(G.airHudStep, st, info) end
+      if G.tankHudExtra then G.try_(G.tankHudExtra, st, clamp(hp / mx, 0, 1), "air") end   -- 左上圆形雷达、「被发现!」、敌人头顶带血条的名牌（TankHud.lua）
+    elseif G.airHudOff then
+      G.airHudOff()
     end
   end
 

@@ -3,6 +3,7 @@
 //   没有原模型、零件拼的车：传一个 JSON（tools/mock/vehparts.lua 导出：{ 车型: { flip, parts: [...] } }）照零件画
 //   再用 tools/models/hudicons.py 做成全息图标、压进 src/ReplicatedStorage/HudIcons.lua
 //   用法：NODE_PATH=$(npm root -g) node tools/models/vehicons.mjs <three.js 包目录> <输出目录> [零件车.json]
+//   SET=air：拍飞机、直升机（models/air，存成 air_<型号>.png；开飞机的界面右上角那张全息侧影，用户 11-19：飞机操作界面也照 MWT 改）
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +24,12 @@ const GLB = {
   plz07: 'pzh2000', m1117: 'matv', hmmwv: 'hmmwv', jltv: 'jltv', m2a3: 'm2a3', stryker: 'stryker', mshorad: 'stryker', m1150: 'm1150',
   m163: 'm163', cram: 'cram', patriot: 'patriot', m109a7: 'm109', m270: 'm270',
 };
+// 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
+const AIR = {
+  j20: 'j20', j35: 'j31', j15t: 'j15t', j16: 'j16', j50: 'j50', h6k: 'h6k', gj11: 'x47b', gj2: 'mq9', a10c: 'a10', f35: 'f35', f22: 'f22a',
+  mq9: 'mq9', b2: 'b2', z10: 'z10w', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
+};
+const SET = process.env.SET || 'veh';
 const FLIP = new Set((process.env.FLIP || '').split(',').filter(Boolean));
 const ONLY = new Set((process.env.ONLY || '').split(',').filter(Boolean));   // 只重拍这几辆（空 = 全部）
 const want = id => ONLY.size === 0 || ONLY.has(id);
@@ -34,6 +41,7 @@ const server = http.createServer((req, res) => {
   if (u === '/' || u === '/render.html') f = path.join(HERE, 'vehicons_render.html');
   else if (u.startsWith('/three/')) f = path.join(threeDir, u.slice('/three/'.length));
   else if (u.startsWith('/veh/')) f = path.join(ROOT, 'models', 'veh', path.basename(u));
+  else if (u.startsWith('/air/')) f = path.join(ROOT, 'models', 'air', path.basename(u));
   if (!f || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
   fs.createReadStream(f).pipe(res);
@@ -51,12 +59,20 @@ const save = (id, r) => {
   fs.writeFileSync(path.join(outDir, id + '.png'), Buffer.from(r.png.split(',')[1], 'base64'));
   console.log(`${id}：模型 ${r.size.map(v => v.toFixed(1)).join(' × ')}`);
 };
-for (const [id, key] of Object.entries(GLB)) {
+if (SET === 'air') {
+  for (const [id, key] of Object.entries(AIR)) {
+    if (!want(id)) continue;
+    const hide = (id === 'z10') ? '__TRotor' : '';   // 起落架照拍（MWT 的侧影带着起落架）；直-10 的尾桨是一大块方片（转起来才像），不要
+    const r = await page.evaluate(async ([u, fl, hd]) => window.renderGLB(u, fl, hd), [`/air/${key}.glb`, FLIP.has(id), hide]);
+    save('air_' + id, r);
+  }
+}
+for (const [id, key] of Object.entries(SET === 'air' ? {} : GLB)) {
   if (!want(id)) continue;
   const r = await page.evaluate(async ([u, fl]) => window.renderGLB(u, fl), [`/veh/${key}.glb`, FLIP.has(id)]);
   save(id, r);
 }
-if (partsJson) {
+if (partsJson && SET !== 'air') {
   const all = JSON.parse(fs.readFileSync(partsJson, 'utf8'));
   for (const [id, v] of Object.entries(all)) {
     if (GLB[id] || !want(id)) continue;
