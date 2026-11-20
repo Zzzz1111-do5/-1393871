@@ -214,7 +214,7 @@ function Navy.init(G)
     local P = Map.PORT
     local zs = Map.coastS(P.x) or P.z
     local d = SD.get("pbr")
-    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), 2, "C") end   -- 码头里头水浅：停在外头那段
+    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), (Map.HARBOR and Map.HARBOR.deck) or 2, "C") end   -- 码头里头水浅：停在外头那段；终端柱站在木码头面上
     f.Parent = root
   end
   local depotsBuild0 = G.depotsBuild

@@ -27,6 +27,8 @@ local COL = {
   Rock = { 100, 98, 92 },
   Slate = { 82, 82, 80 },
   Mud = { 84, 72, 58 },
+  Concrete = { 118, 116, 110 },   -- 港口码头平地
+  Asphalt = { 70, 72, 74 },       -- 港口坡道
 }
 MapPaint.COL = COL
 local HIGH = { 96, 98, 88 }                  -- 高处的草偏灰绿

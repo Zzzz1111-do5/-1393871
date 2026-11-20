@@ -184,6 +184,37 @@ function FortView.init(G)
     v.dirty = true
   end
 
+  -- 地基（用户 11-20：地图有 bug——坡上的工事一边悬空）：工事摆在占地中心的地面高度上，坡上低的那边离地好几格；
+  --   第一次摆好时看一圈占地下面的地面，最低处比底面低就往下补一块（碉堡、高炮：水泥台；岸防炮：圆的炮位基座；榴弹炮：夯土台）
+  local foundation
+  local FOOT = {
+    bunker = { V(16.4, 0, 14.4), CONC2, MAT.Concrete },
+    coastal = { V(0, 23.6, 23.6), CONC2, MAT.Concrete, true },
+    aaa = { V(15, 0, 15), CONC2, MAT.Concrete },
+    howitzer = { V(13, 0, 23), RGB(112, 98, 74), MAT.Ground },
+  }
+  foundation = function(v, base)
+    v.footed = true
+    local spec = FOOT[v.fkind]
+    if not spec or not Map or not Map.ground then return end
+    local sz = spec[4] and V(spec[1].Y, 0, spec[1].Z) or spec[1]
+    local lo = math.huge
+    for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 }, { -0.5, -0.5 }, { 0.5, 0.5 }, { -0.5, 0.5 }, { 0.5, -0.5 } }) do
+      local k = spec[4] and 0.7 or 1   -- 圆的看内接的那圈
+      local w = base:PointToWorldSpace(V(o[1] * sz.X * 0.5 * k, 0, o[2] * sz.Z * 0.5 * k))
+      local ok, g = pcall(Map.ground, w.X, w.Z)
+      if ok and g and g < lo then lo = g end
+    end
+    local drop = base.Position.Y - lo
+    if drop < 0.5 then return end
+    local h = drop + 1.4   -- 往下埋进地里 1 格，往上跟底板齐平
+    local p = newPart(v.model, spec[4] and V(h, sz.X, sz.Z) or V(sz.X, h, sz.Z), spec[2], spec[3], spec[4] and CYL or nil)
+    p.Name = "Foundation"
+    p.CFrame = base * CF(0, 0.4 - h / 2, 0) * (spec[4] and UP or CF())
+    p.CastShadow = true
+    v.foundationPart = p
+  end
+
   local function step(v, dt, camPos)
     local em = v.em
     local root = v.root
@@ -227,6 +258,7 @@ function FortView.init(G)
       else clist[i] = base * off end
     end
     workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+    if not v.footed then foundation(v, base) end
     v.anchor.CFrame = base * CF(0, d.size.Y + 2, 0)
     v.manA.CFrame = base * CF(FD.MAN[v.fkind])
   end

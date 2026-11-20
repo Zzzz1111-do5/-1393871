@@ -118,7 +118,7 @@ function Round.init(G)
         local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
         for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
           local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
             table.insert(covered(x, z) and bad or good, { x = x, z = z })
             break
           end

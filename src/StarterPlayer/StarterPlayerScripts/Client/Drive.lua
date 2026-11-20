@@ -490,6 +490,8 @@ function Drive.init(G)
     [Enum.Material.Sand] = { speed = 0.82, accel = 0.76, grip = 0.72, rough = 0.5 },
     [Enum.Material.Rock] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
     [Enum.Material.Slate] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
+    [Enum.Material.Concrete] = { speed = 1.1, accel = 1.08, grip = 1.04, rough = 0.3 },   -- 港口的码头平地、坡道
+    [Enum.Material.Asphalt] = { speed = 1.1, accel = 1.08, grip = 1.06, rough = 0.25 },
   }
   local SURF0 = { speed = 1, accel = 1, grip = 0.9, rough = 0.7 }
   G.driveSurf = SURF   -- 测试用

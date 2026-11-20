@@ -107,7 +107,7 @@ function AIVeh.init(G)
     for _ = 1, 12 do
       local a, rr = math.random() * math.pi * 2, math.random() * r
       local px, pz = x + math.cos(a) * rr, z + math.sin(a) * rr
-      if Map.isLand(px, pz) and Map.slope(px, pz) < 0.35 and clearAt(V(px, 0, pz), 16) then return px, pz end
+      if Map.isLand(px, pz) and Map.slope(px, pz) < 0.35 and not (Map.inHarbor and Map.inHarbor(px, pz, 10)) and clearAt(V(px, 0, pz), 16) then return px, pz end
     end
     return nil
   end
