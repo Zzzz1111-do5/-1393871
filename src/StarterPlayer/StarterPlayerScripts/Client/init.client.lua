@@ -11,6 +11,9 @@
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
+--   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
+--   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -26,8 +29,33 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice" }) do
-  require(script:WaitForChild(name)).init(G)
+-- 逐帧回调计时（F7 性能面板 Perf.lua 读）：G.perfT[名字] = 这半秒累计的秒数；各模块自己的 RenderStepped 用 G.frameConn(名字, 函数) 连
+G.perfT = {}
+function G.perfWrap(name, f)
+  return function(...)
+    local t0 = os.clock()
+    f(...)
+    local T = G.perfT
+    T[name] = (T[name] or 0) + (os.clock() - t0)
+  end
+end
+function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
+
+-- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
+--   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
+local initErrs = {}
+for _, name in ipairs({ "HudArt", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Perf" }) do
+  local mod = script:WaitForChild(name, 10)
+  if not mod then
+    table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
+  else
+    local ok, err = pcall(function() require(mod).init(G) end)
+    if not ok then table.insert(initErrs, name .. " 初始化出错：" .. tostring(err)) end
+  end
+end
+for _, e in ipairs(initErrs) do
+  warn("[全面大战场] " .. e)
+  if G.showError then G.showError("local " .. e) end
 end
 
 task.delay(25, function()
@@ -73,8 +101,11 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "airfx", function(dt) if G.stepAirFx then G.stepAirFx(dt) end end },   -- 飞机机动的翼尖涡流、机翼水汽、蒸汽锥、音爆
   { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗
 RunService.RenderStepped:Connect(function(dt)
+  local T = G.perfT
   for _, s in ipairs(steps) do
+    local t0 = os.clock()
     local ok, err = pcall(s[2], dt)
+    T[s[1]] = (T[s[1]] or 0) + (os.clock() - t0)
     if not ok then G.showError("local " .. s[1] .. ": " .. tostring(err)) end
   end
 end)

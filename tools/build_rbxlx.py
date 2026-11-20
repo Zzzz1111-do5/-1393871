@@ -114,3 +114,23 @@ body = '\n'.join(s.xml(1) for s in services)
 with open(out, 'w', encoding='utf-8', newline='\n') as f:
     f.write('<roblox version="4">\n' + body + '\n</roblox>\n')
 print(f"写好了 {os.path.relpath(out, ROOT)}：Script {count['Script']}、LocalScript {count['LocalScript']}、ModuleScript {count['ModuleScript']}、Folder {count['Folder']}")
+
+# 只换脚本的更新包（同 tools/build.luau）：ScriptsUpdate.rbxmx，一个 ScriptsUpdate 文件夹，里面按服务分好
+#   ReplicatedStorage / ServerScriptService / StarterPlayerScripts 三个子文件夹，装着 src/ 里全部脚本；用户在自己导入过模型的地点里
+#   「从文件插入」它，再在命令栏粘一行（docs/import_guide.txt「三、只换脚本」）：同名的旧脚本删掉、新的放进去，模型和地图不动
+count0 = dict(count)
+ref[0] = -1
+pack = Item('Folder', 'ScriptsUpdate')
+for svc in sorted(os.listdir(SRC)):
+    if svc == 'StarterPlayer':
+        f = Item('Folder', 'StarterPlayerScripts')
+        build(os.path.join(SRC, 'StarterPlayer', 'StarterPlayerScripts'), f)
+    else:
+        f = Item('Folder', svc)
+        build(os.path.join(SRC, svc), f)
+    pack.kids.append(f)
+count = count0
+pack_out = os.path.join(os.path.dirname(os.path.abspath(out)), 'ScriptsUpdate.rbxmx')
+with open(pack_out, 'w', encoding='utf-8', newline='\n') as f:
+    f.write('<roblox version="4">\n' + pack.xml(1) + '\n</roblox>\n')
+print(f"写好了 {os.path.relpath(pack_out, ROOT)}（只换脚本的更新包）")

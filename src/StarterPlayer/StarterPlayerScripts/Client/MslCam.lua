@@ -159,6 +159,8 @@ function MslCam.init(G)
       end
     end
     if not cur.tgt then groundPlane(e.p) end
+    local L = G.hudLayout   -- 右上是小地图（Hud.lua）：镜头框放到它左边
+    box.Position = (L and L.radarRight) and UDim2.new(1, -(L.radarX + L.radarSize + 12), 0, L.radarY) or UDim2.new(1, -20, 0, 92)
     gui.Enabled = true
   end
 

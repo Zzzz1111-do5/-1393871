@@ -20,7 +20,7 @@ ids = [i for i, v in X.ALIAS.items() if v.rstrip('~') == key]
 if not ids:
     raise SystemExit('ALIAS 里没有型号用 ' + key)
 anim = key in X.A.SURF or key in X.A.GEAR
-kname = key + X.VER if anim else key
+kname = key + X.VERK.get(key, X.VER) if anim else key
 meta, binb, info, out = X.convert(key, AD, ids)
 path = os.path.join(OUTDIR, key + '.glb')
 B.write_glb(kname, meta, binb, info, out, path, prefix='A_')

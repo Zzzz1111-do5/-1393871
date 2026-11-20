@@ -495,6 +495,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airBombStep = guideBomb   -- 测试用（客户端 Marks.lua 的炸弹落点按同一套算）
   local function guideRocket(s, dt)
     s.age += dt
     s.vel += V(0, -GRAV * 0.25, 0) * dt

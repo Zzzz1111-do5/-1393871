@@ -255,6 +255,7 @@ function Play.init(G)
     return ray.Origin + ray.Direction * len, nil
   end
   G.aimPoint = aimPoint
+  G.curWeapon = function() return cur.id, cur.aiming end   -- 手雷抛物线预览（Nade.lua）：拿着什么、按没按右键
 
   -- 防空导弹锁定：准星 12° 以内、射程内最近的敌方飞机直升机
   local function lockCandidate(w)
@@ -409,25 +410,72 @@ function Play.init(G)
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then cur.aiming = false end
   end)
 
-  -- 手机：开火（按住）、瞄准、换弹、换武器、F
+  local touchControls, layoutTouch, touchSpot
+  -- 右手触控区避开右下的跳跃键。横竖屏切换时按实际视口重新排列。
   if UIS.TouchEnabled then
-    local function tbtn(text, pos, size)
-      local b = ui.button(hud, text, UDim2.fromOffset(size or 70, size or 70), pos, RGB(30, 36, 42))
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 15
+    touchControls = ui.frame(hud, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+    touchControls.Name = "InfantryTouch"
+    touchControls.Visible = false
+    local function tbtn(name)
+      local b = ui.button(touchControls, "", UDim2.new(), nil, RGB(18, 29, 37), Vector2.new(1, 1))
+      b.Name = name
+      b.BackgroundTransparency = 0.24
+      b.TextScaled = true
+      local textSize = Instance.new("UITextSizeConstraint")
+      textSize.MinTextSize, textSize.MaxTextSize = 11, 14
+      textSize.Parent = b
+      ui.stroke(b, RGB(184, 208, 220), 1, 0.6)
       return b
     end
-    local fire = tbtn("●", UDim2.new(1, -110, 1, -300), 90)
+    local fire = tbtn("Fire")
     fire.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = true tryFire(false) end end)
     fire.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = false end end)
-    local aim = tbtn("◎", UDim2.new(1, -200, 1, -250))
+    local aim = tbtn("Aim")
     aim.Activated:Connect(function() cur.aiming = not cur.aiming end)
-    local rl = tbtn("R", UDim2.new(1, -200, 1, -330), 56)
+    local rl = tbtn("Reload")
     rl.Activated:Connect(reload)
-    local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
+    local sw = tbtn("Swap")
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
-    fbtn.Activated:Connect(function() tryFire(true) end)
+    touchSpot = tbtn("Support")
+    touchSpot.Activated:Connect(function() tryFire(true) end)
+    local night = tbtn("NightVision")
+    night.Text = "NV"
+    night.Activated:Connect(function() if G.nvgToggle then G.nvgToggle() end end)
+    local tablet = tbtn("Tablet")
+    tablet.Activated:Connect(function() if G.tacToggle then G.tacToggle() end end)
+    local lastWidth, lastHeight, lastLanguage, lastAim
+    function layoutTouch()
+      local camera = workspace.CurrentCamera
+      local viewport = camera and camera.ViewportSize
+      if viewport and viewport.Y > 0 and (viewport.X ~= lastWidth or viewport.Y ~= lastHeight) then
+        lastWidth, lastHeight = viewport.X, viewport.Y
+        local edge, spacing = 18, 8
+        local fireSize = math.floor(math.clamp(viewport.Y * 0.19, 58, 78))
+        local aimSize = math.floor(math.clamp(viewport.Y * 0.155, 48, 65))
+        local bottom = math.floor(math.clamp(viewport.Y * 0.24, 76, 116))
+        local aimX = edge + fireSize + spacing
+        fire.Size, fire.Position = UDim2.fromOffset(fireSize, fireSize), UDim2.new(1, -edge, 1, -bottom)
+        aim.Size, aim.Position = UDim2.fromOffset(aimSize, aimSize), UDim2.new(1, -aimX, 1, -bottom)
+        rl.Size, rl.Position = UDim2.fromOffset(math.max(aimSize, 56), 44), UDim2.new(1, -aimX, 1, -bottom - aimSize - spacing)
+        sw.Size, sw.Position = UDim2.fromOffset(math.max(56, fireSize - 12), 44), UDim2.new(1, -edge, 1, -bottom - fireSize - spacing)
+        touchSpot.Size, touchSpot.Position = UDim2.fromOffset(math.max(56, aimSize), 44), UDim2.new(1, -aimX, 1, -bottom + 52)
+        local utilityY = -bottom - fireSize - 44 - spacing * 2
+        night.Size, night.Position = sw.Size, UDim2.new(1, -edge, 1, utilityY)
+        tablet.Size, tablet.Position = rl.Size, UDim2.new(1, -aimX, 1, utilityY)
+        G.infantryTouchWidth = aimX + math.max(aimSize, 56) + 10
+      end
+      if G.lang ~= lastLanguage then
+        lastLanguage = G.lang
+        fire.Text, aim.Text = T("touch.fire"), T("touch.aim")
+        rl.Text, sw.Text, touchSpot.Text = T("touch.reload"), T("touch.swap"), T("touch.support")
+        tablet.Text = T("tac.key")
+      end
+      if cur.aiming ~= lastAim then
+        lastAim = cur.aiming
+        aim.BackgroundColor3 = cur.aiming and RGB(37, 75, 83) or RGB(18, 29, 37)
+      end
+    end
+    layoutTouch()
   end
 
   ---------------------------------------------------------------- 每帧
@@ -480,10 +528,12 @@ function Play.init(G)
   end
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
+      if touchControls then touchControls.Visible = false end
       cross.Visible, scope.Visible, bar.Visible = false, false, false
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpsAiming = false
       G.fpActive = false
       if G.fpsOff then G.fpsOff() end
       return
@@ -497,8 +547,17 @@ function Play.init(G)
     G.fpActive = fp   -- 步行第一人称（UI 据此藏鼠标指针、底部键位说明）
     local menu = G.menuOpen and G.menuOpen()
     if menu then cur.firing, cur.aiming = false, false end
+    if touchControls then
+      local touchVisible = armed == true and not menu and not (G.boardShown and G.boardShown())
+      if touchControls.Visible and not touchVisible then cur.firing = false end
+      touchControls.Visible = touchVisible
+      if touchVisible then
+        touchSpot.Visible = W[cur.id].kind == "spot"
+        layoutTouch()
+      end
+    end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
-    baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
+    baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
@@ -515,7 +574,9 @@ function Play.init(G)
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
     local wc = cur.id and W[cur.id]
-    cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
+    G.fpsAiming = armed == true and cur.aiming == true   -- 记录仪观感（Bodycam.lua）：开镜时镜头不晃
+    -- 开着镜不画准星（第三人称也是）；第一人称是记录仪的画面（Bodycam.lua）：不画四根线，只有一个淡淡的小点
+    cross.Visible = armed == true and not (fp and cur.aiming) and not (fp and G.bodycamOn) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))
     if cross.Visible and wc and hrp then
       -- 张开多少：这一发的散布在屏幕上有多宽（跑起来、跳起来、连射攒的都算），开枪那一下再弹开一点
       local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)   -- 读不到（测试台）就当站着不动
@@ -541,6 +602,7 @@ function Play.init(G)
       if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    G.scopeVisible = G.scopeVisible or function() return scope.Visible end
     if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
     cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
     -- 连发

@@ -1,8 +1,10 @@
 -- 飞机平显、右侧武器栏、光电吊舱测试（模拟器）：python3 tools/mock/run.py tools/mock/hud.lua [v]
---   用户：驾驶飞机时要有截图那样的界面（绿色、速度 / 高度框、一个大圈）；导弹什么的在右侧显示：按几切换到什么导弹、导弹的图标、剩余数量；
+--   用户 11-19：飞机操作界面照 MWT 的截图改（原来是 DCS 式的绿色平显：速度 / 高度框、大圈、右侧武器栏——现在只有遥控无人机还用）；
 --   飞机驾驶按 P 也要能切换光电视角
---   ① 平显：速度框、高度框、航向、大圈（大小跟着选中的武器：航炮小、红外空空弹大）
---   ② 右侧武器栏：每行按键号、图标、名字、×剩几发，最后一行热诱弹；按 2 选中第二行
+--   ① 准星两边高度 / 速度、右上机型卡（名字、全息侧影、血量）、机头标记、发光的准星细圈；原来的平显（连俯仰梯）收起来；圆形雷达挪到左上
+--   ② 右下六边形武器键：按键号、剩几发，最后一个热诱弹；按 2 选中第二个；准星上方写选中的弹、右边剩几发
+--   ⑤ 空中：机头前方的全息标记（斜放的一块面）、锁定菱形（顺时针画出来、锁上四个直角逆时针转、出了离轴角变黄不能发射）、
+--      N 切 夜视 → 热成像 → 关（进光电吊舱让开、下飞机关掉）
 --   ③ P 进光电：镜头到机腹吊舱、平显的圈收起、吊舱画面（模式、倍率、距离）；鼠标只转吊舱、飞机航向不跟着变；Z 变焦；V 电视 → 白热（热成像高亮）；
 --      自己的飞机藏起来；再按 P 回来
 --   ④ 直升机进光电：不低头往前冲
@@ -39,7 +41,7 @@ local function shown(name)
   return d ~= nil and T.visible(d), d
 end
 
-print("① 平显：速度框、高度框、航向、大圈")
+print("① 开飞机的界面（用户 11-19 照 MWT 截图改）：高度 / 速度括号、右上机型卡、机头标记、原来的 DCS 平显收起、圆形雷达挪到左上")
 local A2 = G.Map.AFIELD2
 local x, z = A2.x + 300, A2.z - A2.wid / 2 - 220
 local gy = G.airSurface(x, z)
@@ -52,49 +54,59 @@ R.run(1.2)
 local st = C.fly
 check(st ~= nil and P.vehicle == e and st.pilot, "坐进了驾驶座")
 if not st then T.summary() return end
-local okS, spd = shown("SpdBox")
-local okA, alt = shown("AltBox")
-local okH, hdg = shown("HdgBox")
-check(okS and okA and okH, "速度框、高度框、航向框都在")
-local function boxText(b)
-  for _, c in ipairs(b:GetChildren()) do if c.ClassName == "TextLabel" then return c.Text end end
+local okAlt, altB = shown("AltBracket")
+local okSpd, spdB = shown("SpdBracket")
+local function val(b) local v = b and b:FindFirstChild("Value") return v and v.Text end
+check(okAlt and okSpd and val(altB) ~= nil and val(altB):match("^%d+$") ~= nil and val(spdB):match("^%d+$") ~= nil,
+  string.format("准星两边：高度 %s、速度 %s", tostring(val(altB)), tostring(val(spdB))))
+check(altB and altB:FindFirstChild("Cap").Text == C.T("air.cap.alt") and spdB:FindFirstChild("Cap").Text == C.T("air.cap.spd"), "左边「高度」、右边「速度」")
+local okCard = shown("AirCard")
+local an, ah = find("AirName"), find("AirHp")
+check(okCard and an and an.Text == C.T("veh.j20") and ah and ah.Text:find("/" .. tostring(math.floor(e.maxHp + 0.5)), 1, true) ~= nil,
+  string.format("右上：机型 %s、血量 %s", tostring(an and an.Text), tostring(ah and ah.Text)))
+local A = C.airHud
+check(A ~= nil and (T.visible(A.icon) or T.visible(A.iconFall)), "右上有这架飞机的全息侧影（用不了 EditableImage 时是一道横线）")
+check(A ~= nil and (T.visible(A.bore) or T.visible(A.boreFall)), "机头指向的小飞机")
+local dcs = find("DcsHud")
+local ring = find("HudRing")
+check(dcs ~= nil and not T.visible(dcs) and not shown("SpdBox") and not shown("HudRing") and not shown("WeaponList") and not shown("GLoad"),
+  "原来的 DCS 平显（速度 / 高度框、大圈、右侧武器栏、G / α / M）收起来了")
+check(C.airRadarDocked ~= nil and C.airRadarDocked(), "圆形雷达挪到了左上")
+local nLad = 0
+for _, d2 in ipairs(me.PlayerGui:GetDescendants()) do
+  if d2.Name == "PitchLadder" and T.visible(d2) then nLad = nLad + 1 end
 end
-check(boxText(spd) and boxText(spd):match("^%d+$") and boxText(alt):match("^%d+$") and boxText(hdg):match("^%d%d%d$"),
-  string.format("框里是数字：速度 %s、高度 %s、航向 %s", tostring(boxText(spd)), tostring(boxText(alt)), tostring(boxText(hdg))))
-local okR, ring = shown("HudRing")
-check(okR, "中间一个大圈")
-local gunPx = ring.Size.X.Offset
-local okW, list = shown("WeaponList")
-check(okW, "右侧武器栏")
+check(nLad == 0, "中间没有俯仰梯那些一段段的线（用户 11-19；只有无人机的老平显还画）：" .. nLad .. " 根")
+local ar = find("AimRing")
+check(ar ~= nil and T.visible(ar), "准星是一个发光的细圈（AirHud）")
 
-print("② 右侧武器栏：按键号、图标、名字、剩几发；最后一行热诱弹；按 2 选中第二行")
-local rows = {}
-for _, r in ipairs(list:GetChildren()) do if r.Name:sub(1, 4) == "Row_" then rows[#rows + 1] = r end end
-table.sort(rows, function(a, b) return a.Position.Y.Offset < b.Position.Y.Offset end)
-check(#rows == #st.wl + 1, string.format("一行一种武器 + 热诱弹（%d 行，武器 %d 种）", #rows, #st.wl))
-local allOk, desc = true, {}
-for i, r in ipairs(rows) do
-  local key = r:FindFirstChild("Key", true)
-  local icon = r:FindFirstChild("Icon")
-  local cnt = r:FindFirstChild("Count")
-  local nm = r:FindFirstChild("Name")
-  local nIcon = icon and #icon:GetChildren() or 0
-  local want = (i <= #st.wl) and tostring(i) or "X"
-  if not (key and key.Text == want and nIcon >= 2 and cnt and cnt.Text:match("^×%d+$") and nm and nm.Text ~= "") then allOk = false end
-  desc[#desc + 1] = string.format("[%s] %s %s（图标 %d 块）", key and key.Text or "?", nm and nm.Text or "?", cnt and cnt.Text or "?", nIcon)
+print("② 右下六边形武器键：按键号、弹的图标、剩几发，最后一个热诱弹；按 2 选中第二个；准星上方写选中的弹、右边剩几发")
+local bar = find("AirWeapons")
+check(bar ~= nil and T.visible(bar), "右下一排武器键")
+local hexes = {}
+for _, c in ipairs(bar and bar:GetChildren() or {}) do
+  if c.Name:sub(1, 3) == "Hex" and T.visible(c) then hexes[#hexes + 1] = c end
 end
-check(allOk, "每行都有按键、图标、名字、数量：" .. table.concat(desc, "  "))
-check(rows[#rows].Name == "Row_flare", "最后一行是热诱弹")
-local function bright(r) return r.BackgroundTransparency end
-check(bright(rows[1]) < bright(rows[2]), "选中的第一行亮（" .. tostring(st.wl[1]) .. "）")
+table.sort(hexes, function(a2, b2) return a2.Position.X.Offset < b2.Position.X.Offset end)
+check(#hexes == #st.wl + 1, string.format("一种挂载一个 + 热诱弹（%d 个，挂载 %d 种）", #hexes, #st.wl))
+local allOk, desc = true, {}
+for i, hx in ipairs(hexes) do
+  local key, cnt = hx:FindFirstChild("Key"), hx:FindFirstChild("Count")
+  local want = (i <= #st.wl) and tostring(i) or "X"
+  if not (key and key.Text == want and cnt and cnt.Text:match("^%d+$")) then allOk = false end
+  desc[#desc + 1] = string.format("[%s] %s ×%s", key and key.Text or "?", tostring(hx:GetAttribute("Wid")), cnt and cnt.Text or "?")
+end
+check(allOk, "每个都有按键号、剩几发：" .. table.concat(desc, "  "))
+check(hexes[#hexes] ~= nil and hexes[#hexes]:GetAttribute("Wid") == "flare", "最后一个是热诱弹")
+check(hexes[2] ~= nil and hexes[1]:GetAttribute("Sel") == true and hexes[2]:GetAttribute("Sel") == false, "选中的第一个发光（" .. tostring(st.wl[1]) .. "）")
+local wn = find("WeaponName")
+check(wn ~= nil and T.visible(wn) and wn.Text == C.T("aw." .. st.wl[1]), "准星上方写着选中的弹：" .. tostring(wn and wn.Text))
 T.tap(Enum.KeyCode.Two)
 R.run(0.2)
-check(st.wi == 2 and bright(rows[2]) < bright(rows[1]), "按 2：第二行亮了（" .. tostring(st.wl[2]) .. "）")
-local aamPx = ring.Size.X.Offset
--- 用户要大圈至少框到画面高度的八成（Fly.lua 夹在八成到九成四之间）：离轴角大的近距弹还是更大一点，但差不了三成了
-check(aamPx > gunPx * 1.05, string.format("大圈跟着武器变（导引头离轴角）：%s %.0f 像素 → %s %.0f 像素", tostring(st.wl[1]), gunPx, tostring(st.wl[2]), aamPx))
-local rt = find("RingText")
-check(rt and T.visible(rt) and rt.Text:find("×", 1, true), "圈底下写着武器和剩几发：" .. tostring(rt and rt.Text))
+check(st.wi == 2 and hexes[2]:GetAttribute("Sel") == true and hexes[1]:GetAttribute("Sel") == false, "按 2：第二个亮了（" .. tostring(st.wl[2]) .. "）")
+check(wn ~= nil and wn.Text == C.T("aw." .. st.wl[2]), "准星上方跟着换：" .. tostring(wn and wn.Text))
+local sc = find("StoreCount")
+check(sc ~= nil and T.visible(sc) and sc.Text:match("^%d+$") ~= nil, "准星右边剩几发：" .. tostring(sc and sc.Text))
 
 print("③ P：光电吊舱")
 local fov0 = cam.FieldOfView
@@ -103,7 +115,7 @@ R.run(0.6)
 check(st.eo == true, "按 P 进了光电")
 local okE = shown("EoView")
 check(okE, "吊舱画面（取景框、十字）出来了")
-check(not T.visible(ring), "平显的大圈收起来了")
+check(not T.visible(ring) and not T.visible(find("AirCenter")), "平显收起来了（开飞机的界面也收起）")
 local belly = st.cf:PointToObjectSpace(cam.CFrame.Position)
 check(belly.Y < 0 and math.abs(belly.X) < 1, string.format("镜头在机腹下面（机身坐标 %.1f, %.1f, %.1f）", belly.X, belly.Y, belly.Z))
 local em = find("EoMode")
@@ -158,6 +170,100 @@ if hs then
   check(hs.eo and hs.tiltP > -0.12 and math.abs(hs.hv:Dot(f)) < 25, string.format("光电里悬停：机头 %.0f°、前进速度 %.0f", math.deg(hs.tiltP), hs.hv:Dot(f)))
   T.tap(Enum.KeyCode.P)
   R.run(0.3)
+end
+
+print("⑤ 空中：机头前方的全息标记、锁定菱形（顺时针画出来、锁上四个直角、出了离轴角变黄不能发射）、N 切 夜视 → 热成像 → 关")
+T.tap(Enum.KeyCode.Space)
+R.run(1.5)
+local AD = R.require(R.services.ReplicatedStorage:FindFirstChild("AirDefs"))
+local p0 = me.Character.HumanoidRootPart.Position
+local acf = CF(p0.X, math.max(G.Map.ground(p0.X, p0.Z), 0) + 700, p0.Z)
+local foe = G.spawnAircraft("def", "a10c", acf * CF(60, 20, -900), nil, nil)
+local jet = G.spawnAircraft("atk", "j20", acf, nil, P)
+me.Character:PivotTo(acf * CF(4, 0, 0))
+T.act("enterVeh", jet.id)
+R.run(0.2)
+local js = C.fly
+check(js ~= nil and js.pilot and js.d.id == "j20", "空中坐进歼-20")
+if js and foe then
+  js.ground = false   -- 刚放的飞机算停在地上：改成巡航
+  js.spd = js.d.vMil * 0.8
+  js.vel = js.cf.LookVector * js.spd
+  js.thr, js.gearWant, js.gear = 85, 0, 0
+  R.run(0.5)
+  foe.root.CFrame = js.cf * CF(60, 20, -700)
+  R.run(0.3)
+  local A2 = C.airHud
+  local back = A2.holoPart.CFrame.LookVector * -1   -- 贴图的那一面（Back，+Z）朝哪
+  check(A2.holoGui.Enabled and back:Dot(js.cf.UpVector) > 0.5 and back:Dot(js.cf.LookVector * -1) > 0.3,
+    string.format("机头前方的全息标记：一块斜放的面、朝机身后上方（往上 %.2f、往后 %.2f）", back:Dot(js.cf.UpVector), back:Dot(js.cf.LookVector * -1)))
+  local ahead = js.cf:PointToObjectSpace(A2.holoPart.CFrame.Position)
+  check(-ahead.Z > 250 and math.abs(ahead.X) < 1 and math.abs(ahead.Y) < 1, string.format("在机头正前方 %.0f 格", -ahead.Z))
+  local w = AD.W[js.wl[js.wi]]
+  check(js.lock ~= nil and w and w.kind == "aam", "锁着前方的 A-10（" .. tostring(js.wl[js.wi]) .. "）")
+  local lm = find("LockMark")
+  if js.lock and lm then
+    js.lockT = 0.5 * (w.lockTime or 1)
+    R.run(1 / 60)
+    local nE = 0
+    for i = 1, 4 do if T.visible(lm.Diamond:FindFirstChild("Edge" .. i)) then nE = nE + 1 end end
+    local nC = 0
+    for _, c in ipairs(lm:GetChildren()) do if c.Name == "Corner" and T.visible(c) then nC = nC + 1 end end
+    check(T.visible(lm) and nE >= 2 and nE <= 3 and nC == 0, string.format("锁定中：菱形顺时针画了一半（%d 条边、进度 %.2f），还没有直角", nE, lm:GetAttribute("Progress") or -1))
+    R.run((w.lockTime or 1) * 0.6)
+    nE, nC = 0, 0
+    for i = 1, 4 do if T.visible(lm.Diamond:FindFirstChild("Edge" .. i)) then nE = nE + 1 end end
+    for _, c in ipairs(lm:GetChildren()) do if c.Name == "Corner" and T.visible(c) then nC = nC + 1 end end
+    check(lm:GetAttribute("Locked") == true and nE == 4 and (nC == 4 or nC == 8), string.format("锁上了：菱形画满（%d 条边）、四个直角（%d 块）", nE, nC))
+    local r1 = lm.Diamond.Rotation
+    R.run(0.1)
+    local r2 = lm.Diamond.Rotation
+    check((r2 < r1 and r1 - r2 < 60) or (r1 - r2 < -300), string.format("菱形逆时针转（%.0f° → %.0f°）", r1, r2))
+    local function colOf(e) return (e.ClassName == "ImageLabel") and e.ImageColor3 or e.BackgroundColor3 end   -- 发光线是图（着色），退回时是方块线
+    local edgeC = colOf(lm.Diamond.Edge1)
+    check(edgeC.B > 0.8 and edgeC.R < 0.6, "在离轴角里：菱形是青色")
+    foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
+    R.run(0.3)
+    edgeC = colOf(lm.Diamond.Edge1)
+    check(js.lock ~= nil and js.lock.out == true and lm:GetAttribute("InCone") == false and edgeC.R > 0.9 and edgeC.G > 0.7 and edgeC.B < 0.4,
+      "出了导弹的离轴角：锁还在、菱形变黄")
+    local function stores() local n = 0 for i, v in ipairs(js.stores or {}) do n = n + v end return n end
+    local s0 = stores()
+    T.tap(Enum.KeyCode.F)
+    R.run(0.3)
+    check(stores() == s0, string.format("这时按 F 不发射（挂载 %d → %d）", s0, stores()))
+    foe.root.CFrame = js.cf * CF(60, 20, -700)
+    R.run(0.3)
+    edgeC = colOf(lm.Diamond.Edge1)
+    check(js.lock ~= nil and not js.lock.out and edgeC.B > 0.8 and edgeC.R < 0.6, "回到离轴角里：菱形变回青色")
+  end
+  -- N：夜视 → 热成像 → 关（不用光电吊舱）
+  local cc = R.services.Lighting:FindFirstChild("AirIrCC")
+  local seen, order = false, {}
+  for _ = 1, 3 do
+    T.tap(Enum.KeyCode.N)
+    R.run(0.2)
+    local nv, ir = C.nvgOn and C.nvgOn(), C.airThermalShown and C.airThermalShown()
+    order[#order + 1] = (ir and "热成像") or (nv and "夜视") or "关"
+    if ir then seen = cc ~= nil and cc.Enabled and not nv and T.visible(find("Scanlines")) end
+  end
+  check(seen, "按 N 能切到热成像（画面调灰、扫描线；夜视关着）：" .. table.concat(order, " → "))
+  if not (C.airThermal and C.airThermal()) then
+    for _ = 1, 3 do
+      if C.airThermal and C.airThermal() then break end
+      T.tap(Enum.KeyCode.N)
+      R.run(0.2)
+    end
+  end
+  T.tap(Enum.KeyCode.P)
+  R.run(0.4)
+  check(js.eo and not cc.Enabled and not C.airThermalShown(), "进光电吊舱：热成像先让开（吊舱有自己的画面）")
+  T.tap(Enum.KeyCode.P)
+  R.run(0.4)
+  check(not js.eo and cc.Enabled and C.airThermalShown(), "出了吊舱：热成像回来")
+  T.tap(Enum.KeyCode.Space)
+  R.run(1)
+  check(C.fly == nil and not cc.Enabled and not C.airThermal(), "下了飞机：热成像关掉")
 end
 
 T.summary()

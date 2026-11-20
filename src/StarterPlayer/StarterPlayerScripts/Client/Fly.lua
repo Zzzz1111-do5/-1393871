@@ -152,6 +152,48 @@ function Fly.init(G)
       local every = (own or dist < 1500) and 1 or ((dist < 4000) and 2 or 4)
       if v.frame % every == 0 then AM.pose(M, v.cf, c, os.clock()) end
       if G.aeroStep then G.aeroStep(v, dt, own or nil, camPos) end   -- 机翼凝结雾、翼尖涡流、蒸汽锥、音爆（Aero.lua）
+      -- 旋翼下洗（用户 11-20：载具照 UE5 的水平升级）：直升机离地 / 水面 70 格以内，正下方往四周吹起一圈尘土（陆地）或水雾（海面），越低越浓
+      if d.rotor and dist < 2200 then
+        local p = v.cf.Position
+        local h = Map.height(p.X, p.Z)
+        local gy = math.max(h, 0)
+        local k = math.clamp(rpm / 100, 0, 1) * math.clamp(1 - (p.Y - gy) / 70, 0, 1)
+        local W = v.wash
+        if k > 0.03 and not W then
+          local part = Instance.new("Part")
+          part.Name = "RotorWash"
+          part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = true, false, false, false, false
+          part.Transparency, part.Size = 1, Vector3.new(1, 1, 1)
+          part.Parent = v.model
+          local pe = Instance.new("ParticleEmitter")
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+          pe.Rate = 0
+          pe.Lifetime = NumberRange.new(1.2, 2.6)
+          pe.Speed = NumberRange.new(22, 44)
+          pe.SpreadAngle = Vector2.new(88, 88)   -- 从正上方张开到快水平：往四周吹
+          pe.EmissionDirection = Enum.NormalId.Top
+          pe.Acceleration = V(0, 3, 0)
+          pe.Drag = 2.2
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-40, 40)
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 17) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) })
+          pe.LightInfluence = 1
+          pe.Parent = part
+          W = { part = part, pe = pe }
+          v.wash = W
+        end
+        if W then
+          W.part.CFrame = CF(p.X, gy + 0.6, p.Z)
+          local water = h < 0.4
+          if W.water ~= water then
+            W.water = water
+            W.pe.Color = ColorSequence.new(water and Color3.fromRGB(226, 234, 236) or Color3.fromRGB(170, 150, 118))
+          end
+          W.pe.Rate = (k > 0.03) and (8 + 70 * k) or 0
+          v.washK = k   -- 测试用
+        end
+      end
     end,
   }
 
@@ -164,14 +206,20 @@ function Fly.init(G)
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
-  local HUD = RGB(120, 255, 150)
+  local HUD = RGB(110, 226, 240)   -- 青色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色；原来是 DCS 平显的绿）
   local function hud(text, size, pos, ts, anchor, align)
     local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
     l.TextStrokeTransparency = 0.5
-    l.TextStrokeColor3 = RGB(0, 30, 10)
+    l.TextStrokeColor3 = RGB(0, 18, 26)
     l.Visible = false
     return l
   end
+  -- 原来的 DCS 式平显（速度 / 高度框、航向、大圈、右侧武器栏、下面的信息栏、G / α / M、速度矢量、机头十字）收进这个框：
+  --   用户 11-19 要开飞机的界面照 MWT 的截图改（AirHud.lua：右上机型和全息侧影、准星两边高度 / 速度、六边形武器键……），
+  --   只有遥控无人机（画面在战术平板里，四边是平板的外壳）还用原来这一套
+  local dcs = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  dcs.Name = "DcsHud"
+  dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
   local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
@@ -198,6 +246,64 @@ function Fly.init(G)
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
   landMark.TextColor3 = RGB(120, 200, 255)
+
+  ---------------------------------------------------------------- 平显的俯仰梯、速度矢量、过载 / 迎角 / 马赫（用户：飞机飞行参考 DCS）
+  -- 固定翼才有：俯仰梯每 5° 一档（正的实线、端头往下，负的虚线、端头往上；地平线一根长的），按真实的方向投到屏幕上（跟着天地转、跟着机头偏）；
+  --   速度矢量（航迹）一个带两翼一尾的小圈；左边 G 过载、α 迎角、M 马赫；过载太大眼前发灰（灰视）、负过载发红（红视）
+  local ladderPool = {}
+  local function ladderLine()
+    local holder = ui.frame(gui, UDim2.fromOffset(10, 10), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+    holder.Name = "PitchLadder"
+    holder.Visible = false
+    local segs = {}
+    for i = 1, 4 do   -- 左右各两段（负的画成虚线：每边两段中间留空；正的两段连成一段）
+      segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
+    end
+    local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 18, 26) end
+    return { f = holder, segs = segs, ticks = ticks, labs = labs }
+  end
+  for i = 1, 11 do ladderPool[i] = ladderLine() end
+  local fpm = ui.frame(gui, UDim2.fromOffset(16, 16), UDim2.new(), HUD, 1, Vector2.new(0.5, 0.5))
+  fpm.Name = "FlightPathMarker"
+  fpm.Visible = false
+  do
+    ui.stroke(fpm, HUD, 1.6, 0.05)
+    ui.round(fpm, 8)
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(0, -14, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(14, 2), UDim2.new(1, 0, 0.5, 0), HUD, 0.05, Vector2.new(0, 0.5))
+    ui.frame(fpm, UDim2.fromOffset(2, 8), UDim2.new(0.5, 0, 0, -8), HUD, 0.05, Vector2.new(0.5, 0))
+  end
+  local gText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 70), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local aText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 90), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  local mText = hud("", UDim2.fromOffset(120, 18), UDim2.new(0.5, -230, 0.5, 110), 15, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+  gText.Name, aText.Name, mText.Name = "GLoad", "AoA", "Mach"
+  -- 灰视 / 红视：四边往里压的渐变 + 整屏一层（过载撑久了越来越重，松杆一两秒缓过来）
+  local gGui = Instance.new("ScreenGui")
+  gGui.Name = "GEffect"
+  gGui.IgnoreGuiInset = true
+  gGui.ResetOnSpawn = false
+  gGui.DisplayOrder = 6   -- 盖在平显上面：灰视、红视连平显一起看不清（跟真的一样）
+  gGui.Parent = me:WaitForChild("PlayerGui")
+  local gVig = {}
+  for _, e in ipairs({ { Vector2.new(0, 0), UDim2.new(1, 0, 0.42, 0), 90 }, { Vector2.new(0, 1), UDim2.new(1, 0, 0.42, 0), -90 },
+    { Vector2.new(0, 0), UDim2.new(0.34, 0, 1, 0), 0 }, { Vector2.new(1, 0), UDim2.new(0.34, 0, 1, 0), 180 } }) do
+    local f = ui.frame(gGui, e[2], UDim2.fromScale(e[1].X, e[1].Y), RGB(0, 0, 0), 0, e[1])
+    local gr = Instance.new("UIGradient")
+    gr.Rotation = e[3]
+    gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+    gr.Parent = f
+    f.Visible = false
+    table.insert(gVig, f)
+  end
+  local gFill = ui.frame(gGui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  gFill.Name = "GFill"
+  local gCC = Instance.new("ColorCorrectionEffect")
+  gCC.Name = "GLocCC"
+  gCC.Enabled = false
+  gCC.Parent = game:GetService("Lighting")
+  local gStress = 0   -- 过载累积（正：灰视，负：红视）
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
   landText.TextColor3 = RGB(120, 200, 255)
   -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
@@ -206,7 +312,7 @@ function Fly.init(G)
   -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
   --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
   local function box(w, h, pos, anchor)
-    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 24, 10), 0.72, anchor)
+    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 16, 24), 0.72, anchor)
     ui.stroke(f, HUD, 2, 0.1)
     f.Visible = false
     return f
@@ -274,21 +380,111 @@ function Fly.init(G)
     end
   end
 
-  -- 光电吊舱的画面（P 键）：四个角的取景框、中间十字、左上模式和倍率、右上目标距离和吊舱指向、底下按键说明
+  -- 光电吊舱的画面（P 键；用户给的参考：F-16 的瞄准吊舱页面 TGP）：
+  --   中间 4:3 的显示器（外面全黑），四边是多功能显示器的按键字（上 A-G / NARO 1.0x / OVRD / CNTL，左 WHOT / SP / CZ，下 SWAP / HSD / SMS / [TGP] / DCLT），
+  --   贯穿全屏、中间留空的细十字；跟踪到车、船、飞机就套一个 POINT 方框，没跟踪是 AREA；右上指北箭头；
+  --   左下激光编码 L 1688、目标斜距 T（海里），右下高度（英尺）、TTI 弹着时间；
+  --   显示器右边一栏：投放方式 · 武器、TTI 大字和进度条、武器状态（投出去了 AWAY、激光 ARM、LST）、一句提示、按键说明
+  local MFD = RGB(232, 234, 230)
+  local MFD_DIM = RGB(150, 154, 150)
+  local MOB = G.mobile == true
   local eoGui = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   eoGui.Name = "EoView"
   eoGui.Visible = false
-  local EOC = RGB(235, 240, 235)
-  for _, c in ipairs({ { 0.3, 0.3, 1, 1 }, { 0.7, 0.3, -1, 1 }, { 0.3, 0.7, 1, -1 }, { 0.7, 0.7, -1, -1 } }) do
-    ui.frame(eoGui, UDim2.fromOffset(46, 2), UDim2.fromScale(c[1], c[2]), EOC, 0.1, Vector2.new((c[3] > 0) and 0 or 1, 0.5))
-    ui.frame(eoGui, UDim2.fromOffset(2, 46), UDim2.fromScale(c[1], c[2]), EOC, 0.1, Vector2.new(0.5, (c[4] > 0) and 0 or 1))
+  eoGui.ZIndex = 10   -- 盖住平显（速度、高度框等）
+  local TG = {}
+  local disp = ui.frame(eoGui, UDim2.fromScale(1, 0.78), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  disp.Name = "TgpDisplay"
+  disp.ZIndex = 10
+  do
+    local a = Instance.new("UIAspectRatioConstraint")
+    a.AspectRatio = 4 / 3
+    a.Parent = disp
+    local mask = Instance.new("UIStroke")   -- 显示器外面全黑
+    mask.Thickness = 3000
+    mask.Color = RGB(0, 0, 0)
+    mask.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    mask.Parent = disp
+    local edge = ui.frame(disp, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+    edge.ZIndex = 11
+    ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
   end
-  for _, a in ipairs({ { -30, 0, 36, 2 }, { 30, 0, 36, 2 }, { 0, -30, 2, 36 }, { 0, 30, 2, 36 } }) do
-    ui.frame(eoGui, UDim2.fromOffset(a[3], a[4]), UDim2.new(0.5, a[1], 0.5, a[2]), EOC, 0.05, Vector2.new(0.5, 0.5))
+  local function mfd(text, pos, anchor, size, col, align)
+    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.Code, anchor or Vector2.new(0.5, 0.5), align)
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
+    l.ZIndex = 12
+    return l
   end
-  local eoMode = ui.label(eoGui, "", UDim2.fromOffset(360, 24), UDim2.new(0, 28, 0, 90), 18, EOC, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
-  local eoInfo = ui.label(eoGui, "", UDim2.fromOffset(360, 24), UDim2.new(1, -300, 0, 90), 16, EOC, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
-  local eoHint = ui.label(eoGui, "", UDim2.fromOffset(760, 22), UDim2.new(0.5, 0, 1, -128), 15, EOC, Enum.Font.Gotham, Vector2.new(0.5, 0.5))
+  local TS = MOB and 12 or 16
+  -- 上排、下排、左列的按键字
+  TG.ag = mfd("A-G", UDim2.new(0.165, 0, 0, 22), nil, TS)
+  TG.fov = mfd("NARO", UDim2.new(0.5, 0, 0, 22), nil, TS)
+  TG.zoom = mfd("1.0x", UDim2.new(0.5, 0, 0, 22 + TS + 4), nil, TS)
+  mfd("OVRD", UDim2.new(0.665, 0, 0, 22), nil, TS)
+  mfd("CNTL", UDim2.new(0.83, 0, 0, 22), nil, TS)
+  local eoMode = mfd("WHOT", UDim2.new(0.1, 0, 0.1, 0), nil, TS)
+  mfd("SP", UDim2.new(0, 10, 0.33, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
+  mfd("CZ", UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
+  for i, tx in ipairs({ "SWAP", "HSD", "SMS", "TGP", "DCLT" }) do
+    local l = mfd(tx, UDim2.new(({ 0.165, 0.33, 0.5, 0.665, 0.83 })[i], 0, 1, -18), nil, TS)
+    if tx == "TGP" then   -- 现在这一页：框起来
+      local b = ui.frame(disp, UDim2.fromOffset(TS * 3 + 10, TS + 10), UDim2.new(0.665, 0, 1, -18), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+      b.ZIndex = 12
+      ui.stroke(b, MFD, 1, 0.15)
+      l.Name = "TgpPage"
+    end
+  end
+  -- 左下、右下的数
+  TG.laser = mfd("L 1688", UDim2.new(0, 46, 1, -76), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
+  TG.rng = mfd("T --", UDim2.new(0, 46, 1, -50), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
+  TG.alt = mfd("", UDim2.new(1, -46, 1, -76), Vector2.new(1, 0.5), TS + 2, nil, Enum.TextXAlignment.Right)
+  TG.tti = mfd("", UDim2.new(1, -46, 1, -50), Vector2.new(1, 0.5), TS + 4, nil, Enum.TextXAlignment.Right)
+  -- 细十字：横竖贯穿，中间留空
+  local GAP = MOB and 22 or 34
+  for _, c in ipairs({ { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0) }, { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 1), Vector2.new(0.5, 1) },
+    { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(0, 0.5), Vector2.new(0, 0.5) }, { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(1, 0.5), Vector2.new(1, 0.5) } }) do
+    local l = ui.frame(disp, c[1], c[2], MFD, 0.35, c[3])
+    l.ZIndex = 11
+  end
+  -- 跟踪框（POINT）/ 区域跟踪的小框（AREA）、跟踪方式字
+  TG.box = ui.frame(disp, UDim2.fromOffset(52, 52), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  TG.box.Name = "TrackBox"
+  TG.box.ZIndex = 12
+  TG.boxStroke = ui.stroke(TG.box, MFD, 1.5, 0)
+  TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
+  TG.track.Name = "TrackMode"
+  -- 指北箭头
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  TG.north.ZIndex = 12
+  TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
+  -- 右边一栏（显示器外面的黑边上）
+  local side = ui.frame(disp, UDim2.fromOffset(MOB and 170 or 236, 300), UDim2.new(1, 18, 0, 0), RGB(0, 0, 0), 1)
+  side.Name = "TgpSide"
+  side.ZIndex = 12
+  local function sl(text, y, size, col, font)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+    l.ZIndex = 12
+    l.TextWrapped = true
+    return l
+  end
+  TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
+  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.Code, nil, Enum.TextXAlignment.Left).ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+  TG.ttiBig.ZIndex = 12
+  local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
+  barBg.ZIndex = 12
+  TG.bar = ui.frame(barBg, UDim2.fromScale(0, 1), nil, MFD, 0)
+  TG.bar.ZIndex = 13
+  local y0 = MOB and 68 or 94
+  TG.away = sl("", y0, MOB and 10 or 11, MFD)
+  TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
+  TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.Garamond)
+  TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
+  local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
+  eoHint.Size = UDim2.new(1, 0, 0, 90)
+  eoHint.TextYAlignment = Enum.TextYAlignment.Top
+  local eoInfo = TG.rng
   eoMode.Name, eoInfo.Name, eoHint.Name = "EoMode", "EoInfo", "EoHint"
   -- 光电的画面效果：电视（黑白、对比高一点）、热成像白热 / 黑热（所有实体高亮成白 / 黑）
   local eoCC = Instance.new("ColorCorrectionEffect")
@@ -303,7 +499,8 @@ function Fly.init(G)
   eoHl.Parent = cam
   local EO_MODES = { "tv", "whot", "bhot" }
 
-  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList }
+  local HUDS = { bore, aimRing, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, warnText, fuelText, ring, ringText, wList, gText, aText, mText }
+  for _, l in ipairs({ panel, bore, spdBox, altBox, hdgBox, spdCap, altCap, thrText, vsText, fuelText, ring, ringText, wList, gText, aText, mText, fpm }) do l.Parent = dcs end
 
   -- 降落引导：自己这边能落的地方（航母拦阻索区、攻方机场岛、主岛机场——据点 D 在自己手里时），返回 接地点、着陆方向
   local function landSites()
@@ -381,7 +578,7 @@ function Fly.init(G)
     local H = 34
     wList.Size = UDim2.fromOffset(260, #items * (H + 4))
     for i, it in ipairs(items) do
-      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 18, 6), 0.6)
+      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 12, 18), 0.6)
       f.Name = "Row_" .. (it.wid or "flare")
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
@@ -416,6 +613,10 @@ function Fly.init(G)
   local function eoApply()
     local on = st ~= nil and st.eo == true
     eoGui.Visible = on
+    if st then   -- 吊舱页面盖满屏幕：平显的速度、高度、航向框、武器栏、下面的信息栏收起来，出来再放回去
+      for _, l in ipairs(HUDS) do if l ~= warnText then l.Visible = st.pilot == true and not on end end
+      panel.Visible = not on
+    end
     local m = on and EO_MODES[st.eoMode or 1] or nil
     eoCC.Enabled = on
     eoHl.Enabled = on and m ~= "tv"
@@ -473,6 +674,8 @@ function Fly.init(G)
     return nil
   end
 
+  local heliCamParams = RaycastParams.new()   -- 直升机的弹簧臂别钻进山坡、房子（地形也算）
+  heliCamParams.FilterType = Enum.RaycastFilterType.Include
   local mapParams = RaycastParams.new()
   mapParams.FilterType = Enum.RaycastFilterType.Include
   local aimParams = RaycastParams.new()
@@ -486,6 +689,36 @@ function Fly.init(G)
     end)
     if ok then controls = res end
   end)
+
+  -- 接地（用户 11-20：载具照 UE5 的水平升级）：按下沉率——镜头一震、固定翼主轮一声吱（轮胎冒一小团烟）、直升机滑橇一声闷响
+  local Debris = game:GetService("Debris")
+  local function touchdown(sink, wheels)
+    if not st or sink < 3 then return end
+    local k = math.clamp((sink - 3) / 25, 0, 1)
+    if G.shake then G.shake(0.05 + 0.35 * k) end
+    if G.sfx then G.sfx(wheels and "touchdown" or "skidLand", nil, { vol = 0.5 + 0.7 * k }) end
+    st.tdK, st.tdN = k, (st.tdN or 0) + 1   -- 测试用
+    if wheels then
+      local p = st.cf.Position
+      local part = Instance.new("Part")
+      part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch, part.Transparency = true, false, false, false, 1
+      part.Size = Vector3.new(1, 1, 1)
+      part.CFrame = CF(p.X, ground(p.X, p.Z) + 0.4, p.Z)
+      part.Parent = workspace
+      local pe = Instance.new("ParticleEmitter")
+      pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+      pe.Rate = 0
+      pe.Lifetime = NumberRange.new(0.8, 1.6)
+      pe.Speed = NumberRange.new(2, 6)
+      pe.SpreadAngle = Vector2.new(60, 60)
+      pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 7) })
+      pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+      pe.Color = ColorSequence.new(Color3.fromRGB(214, 214, 210))
+      pe.Parent = part
+      pcall(function() pe:Emit(math.floor(6 + 14 * k)) end)
+      Debris:AddItem(part, 3)
+    end
+  end
 
   local function begin(vs)
     local em = findEnt(vs.id)
@@ -522,10 +755,18 @@ function Fly.init(G)
     panel.Position = (st.uav and rect) and UDim2.new(0.5, 0, rect[4], -12) or UDim2.new(0.5, 0, 1, -24)
     if st.uav and G.tabletOpen then G.tabletOpen(st) end
     for _, l in ipairs(HUDS) do l.Visible = st.pilot end
+    dcs.Visible = st.uav == true   -- 无人机：原来那一套；有人开的飞机：AirHud（每帧 G.airHudStep）
     buildList()
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = st.pilot end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
+    heliCamParams.FilterDescendantsInstances = m and { workspace.Terrain, m } or { workspace.Terrain }
+    -- 抖振的嗡嗡声（固定翼）：音量在镜头那里按抖得多厉害调
+    if d.kind == "jet" and G.makeSound then
+      st.buffetSnd = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 1, s = { 0.34, 0.34 }, loop = { 0.06, 0.5 }, eq = { 10, -4, -18 } },
+        game:GetService("SoundService"), {})
+      if st.buffetSnd then st.buffetSnd.Volume = 0 end
+    end
     if G.playSound then G.playSound("capture") end
   end
 
@@ -548,11 +789,15 @@ function Fly.init(G)
     if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
     panel.Visible = false
     for _, l in ipairs(HUDS) do l.Visible = false end
+    dcs.Visible = false
+    if G.airHudOff then G.airHudOff() end
     lockBox.Visible, lockText.Visible, pipper.Visible = false, false, false
     landMark.Visible, landText.Visible, restText.Visible = false, false, false
     if touchUI then for _, f in ipairs(touchUI) do f.Visible = false end end
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
+    if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if G.vehCamReset then G.vehCamReset("heli") end
   end
 
   ---------------------------------------------------------------- 武器
@@ -638,6 +883,17 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(cone))
   end
+  -- 出了导弹的离轴角还能跟多宽（用户 11-19：脱离导弹发射角度锁定的菱形变黄——锁还留着、这时不能发射；再偏更多或者偏太久才丢）
+  local function inTrack(w, c)
+    local fwd = st.cf.LookVector
+    if w.kind == "bomb" then
+      local down = (fwd * 0.6 + V(0, -1, 0)).Unit
+      return down:Dot(c.dir) > math.cos(rad(math.min((w.cone or 60) * 1.5, 89)))
+    end
+    local cone = w.cone or 30
+    if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
+    return fwd:Dot(c.dir) > math.cos(rad(math.min(cone * 2.2, 85)))
+  end
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 瞄准 / 挑目标的方向：固定翼是鼠标瞄准方向（手机上是机头），直升机是镜头（鼠标瞄机头炮塔）
@@ -684,6 +940,7 @@ function Fly.init(G)
     if t < st.nextFire or left(wid) <= 0 then return end
     if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return end
     local locked = st.lock and st.lockT >= (w.lockTime or 1)
+    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
@@ -1004,6 +1261,7 @@ function Fly.init(G)
       end
       local n = L / GR
       st.gLoad = n
+      st.aoaDeg = math.deg(aoa)
       st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
       st.sink = 0
       local v0 = st.vel
@@ -1043,6 +1301,7 @@ function Fly.init(G)
           -- 接地：不按 W 就自动收到慢车（地上油门收到底就自动刹车，五六秒停住、停稳补给）；按住 W 是连续起降
           if not up and st.thr <= 100 then st.thr = 0 end
           if G.shake then G.shake(0.15) end
+          touchdown(-(st.vel.Y or 0), true)
           -- 航母：尾钩放着、落在拦阻索区，被拦阻索拉停（85 格内停住）
           if AD.onDeck(Map, pos.X, pos.Z) == "carrier" and (st.c.hook or 0) > 0.5 and AD.inWires(Map, pos.X, pos.Z) then
             st.trap, st.trapA = true, math.max(20, st.spd * st.spd / (2 * 85))
@@ -1184,6 +1443,7 @@ function Fly.init(G)
     if pos.Y - d.gearH <= g then
       local overSea = g <= 0.4 and not AD.onDeck(Map, pos.X, pos.Z)
       if (st.vy < -30 or overSea) and not st.ground and not st.crashed then crash() end
+      if not st.ground and not st.crashed and st.vy < -5 then touchdown(-st.vy, false) end
       pos = V(pos.X, g + d.gearH, pos.Z)
       st.vy = math.max(st.vy, 0)
       st.ground = upIn <= 0 and Tm * up.Y <= GS * 1.02
@@ -1283,7 +1543,203 @@ function Fly.init(G)
   function G.onHitMarker(kind)
     if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
   end
+  -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
+  -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
+  local function dcsHud(pos, kmh)
+    local d = st.d
+    -- 俯仰梯、速度矢量、G / α / M 只在遥控无人机（原来那一套平显）里画；有人开的飞机是 AirHud 的界面（用户 11-19：中间不要一段段线拼起来的东西）
+    local on = d.kind == "jet" and st.pilot and not st.eo and not st.crashed and st.uav == true
+    fpm.Visible, gText.Visible, aText.Visible, mText.Visible = false, on, on, on
+    if not on then
+      for _, L in ipairs(ladderPool) do L.f.Visible = false end
+      return
+    end
+    local camP = cam.CFrame.Position
+    local v = (st.vel.Magnitude > 5) and st.vel.Unit or st.cf.LookVector
+    local hz = Vector3.new(v.X, 0, v.Z)
+    hz = (hz.Magnitude > 1e-3) and hz.Unit or Vector3.new(0, 0, -1)
+    local side = Vector3.new(-hz.Z, 0, hz.X)
+    if not st.ground then
+      local fp, fon = project(camP + v * 1000)
+      fpm.Position, fpm.Visible = fp, fon
+    end
+    -- 俯仰梯：镜头看着的俯仰角上下各 25° 里每 5° 一根
+    local lv = cam.CFrame.LookVector
+    local camPitch = math.deg(math.asin(clamp(lv.Y, -1, 1)))
+    local k0 = math.ceil((camPitch - 25) / 5)
+    local used = 0
+    local vh = cam.ViewportSize.Y
+    for k = k0, k0 + 10 do
+      local pa = k * 5
+      if pa >= -90 and pa <= 90 then
+        local r = rad(pa)
+        local dirC = hz * math.cos(r) + Vector3.new(0, math.sin(r), 0)
+        local c = camP + dirC * 1000
+        local w = (pa == 0) and 260 or 130   -- 半宽（世界里一千格外的长度：地平线长一倍）
+        local pl, onL = project(c - side * w)
+        local pr, onR = project(c + side * w)
+        if onL and onR then
+          used += 1
+          local L = ladderPool[used]
+          if not L then break end
+          local ax, ay = pl.X.Offset + pl.X.Scale * cam.ViewportSize.X, pl.Y.Offset + pl.Y.Scale * vh
+          local bx, by = pr.X.Offset + pr.X.Scale * cam.ViewportSize.X, pr.Y.Offset + pr.Y.Scale * vh
+          local cx, cy = (ax + bx) / 2, (ay + by) / 2
+          local len = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+          L.f.Position = UDim2.fromOffset(cx, cy)
+          L.f.Size = UDim2.fromOffset(len, 2)
+          L.f.Rotation = math.deg(math.atan2(by - ay, bx - ax))
+          L.f.Visible = true
+          local gap = math.min(70, len * 0.22)   -- 中间留空给速度矢量
+          local half = len / 2 - gap
+          local neg = pa < 0
+          for i, sgm in ipairs(L.segs) do
+            local left = i <= 2
+            local inner = (i % 2 == 0)
+            local x0 = left and 0 or (len / 2 + gap)
+            if neg then   -- 虚线：每边两段
+              local sl = half * 0.42
+              local xs = x0 + (inner == left and (half - sl) or 0)
+              if not left then xs = x0 + (inner and 0 or (half - sl)) end
+              sgm.Size = UDim2.fromOffset(sl, 2)
+              sgm.Position = UDim2.fromOffset(xs + sl / 2, 1)
+              sgm.Visible = true
+            else
+              sgm.Size = UDim2.fromOffset(half, 2)
+              sgm.Position = UDim2.fromOffset(x0 + half / 2, 1)
+              sgm.Visible = (i == 1 or i == 3)
+            end
+          end
+          -- 端头的小竖线：正的往下（指地平线），负的往上
+          for i, tk in ipairs(L.ticks) do
+            tk.Visible = pa ~= 0
+            tk.Position = UDim2.fromOffset((i == 1) and 1 or (len - 1), neg and -8 or 1)
+          end
+          for i, lb in ipairs(L.labs) do
+            lb.Text = (pa ~= 0) and tostring(math.abs(pa)) or ""
+            lb.Position = UDim2.fromOffset((i == 1) and -18 or (len + 18), neg and -6 or 6)
+            lb.Rotation = 0
+          end
+        end
+      end
+    end
+    for i = used + 1, #ladderPool do ladderPool[i].f.Visible = false end
+    -- G、α、M
+    local gl = st.gLoad or 1
+    gText.Text = string.format("G %.1f", gl)
+    gText.TextColor3 = (gl > 7.5 or gl < -2.5) and RGB(255, 90, 80) or HUD
+    aText.Text = string.format("α %.1f", st.aoaDeg or 0)
+    mText.Text = string.format("M %.2f", st.vel.Magnitude / AD.M / 340)
+  end
+  -- 灰视 / 红视：正过载超过 6.5g 慢慢变暗、发灰（撑得越久越重，到 9g 几乎全黑），负过载超过 −2.5g 发红；松了一两秒恢复
+  local function gEffect(dt)
+    local gl = (st and st.d and st.d.kind == "jet" and st.pilot and not st.ground and not st.crashed) and (st.gLoad or 1) or 1
+    local want = 0
+    if gl > 6.5 then want = (gl - 6.5) / 2.5 elseif gl < -2.5 then want = (gl + 2.5) / 1.5 end
+    want = clamp(want, -1, 1)
+    local rate = (math.abs(want) > math.abs(gStress)) and 0.55 or 1.4   -- 压上去慢、缓过来快
+    gStress += (want - gStress) * math.min(1, dt * rate)
+    local k = math.abs(gStress)
+    local red = gStress < 0
+    local on = k > 0.02
+    for _, f in ipairs(gVig) do
+      f.Visible = on
+      if on then
+        f.BackgroundColor3 = red and RGB(120, 0, 0) or RGB(0, 0, 0)
+        f.BackgroundTransparency = 1 - math.min(1, k * 1.3)
+      end
+    end
+    gFill.BackgroundColor3 = red and RGB(110, 0, 0) or RGB(0, 0, 0)
+    gFill.BackgroundTransparency = 1 - clamp((k - 0.5) * 1.6, 0, 0.92)
+    gCC.Enabled = on
+    if on then gCC.Saturation, gCC.Brightness = -k * 0.9, red and 0 or -k * 0.12 end
+    G.gStress = gStress   -- 测试用
+  end
+  G.flyGEffect = gEffect
+
+  local tgpStep
+  local REL = { bomb = "CCRP", agm = "PRE", rkt = "RKT", aam = "SRM", gun = "GUN" }
+  local function fmtT(t)
+    if not t or t ~= t or t < 0 or t > 599 then return "-:--" end
+    return string.format("%d:%02d", math.floor(t / 60), math.floor(t % 60))
+  end
+  function tgpStep(pos, wid, w)
+    local m = EO_MODES[st.eoMode or 1]
+    eoMode.Text = T("eo." .. m)
+    TG.fov.Text = (st.zoomS >= 3) and "NARO" or "WIDE"
+    TG.zoom.Text = string.format("%.1fx", st.zoomS)
+    TG.ag.Text = (w and w.kind == "aam") and "A-A" or "A-G"
+    local camP = cam.CFrame.Position
+    local vs = cam.ViewportSize
+    local dispH = vs.Y * 0.78
+    local dispW = math.min(vs.X, dispH * 4 / 3)
+    -- 跟踪：吊舱正看着车、船、飞机 → POINT，框按它在画面里多大；锁着的目标不在中间就框到它那里；都没有是 AREA（中间一个小框）
+    local point, bx, by, bs = false, dispW / 2, dispH / 2, MOB and 18 or 26
+    local function sizeOf(model, at)
+      local root = model and model:FindFirstChild("Root")
+      local sz = root and math.max(root.Size.X, root.Size.Y, root.Size.Z) or 10
+      local dist = math.max(1, (at - camP).Magnitude)
+      local f = (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView / 2))
+      return clamp(sz / dist * f * 1.15, MOB and 20 or 28, MOB and 90 or 150)
+    end
+    if st.aimEnt and st.aimEnt.Parent then
+      point = true
+      local root = st.aimEnt:FindFirstChild("Root")
+      bs = sizeOf(st.aimEnt, root and root.CFrame.Position or st.aimPt)
+    elseif st.lock and st.lock.pos then
+      local sp, on = cam:WorldToViewportPoint(st.lock.pos)
+      local lx, ly = sp.X - (vs.X - dispW) / 2, sp.Y - (vs.Y - dispH) / 2
+      if on and lx > 0 and lx < dispW and ly > 0 and ly < dispH then
+        point, bx, by = true, lx, ly
+        bs = sizeOf(st.lock.em, st.lock.pos)
+      end
+    end
+    TG.box.Position = UDim2.fromOffset(bx, by)
+    TG.box.Size = UDim2.fromOffset(bs, bs)
+    TG.boxStroke.Thickness = point and 1.5 or 1
+    TG.track.Text = point and "POINT" or "AREA"
+    -- 斜距（海里）、高度（英尺）、指北
+    local slant = (st.aimPt - camP).Magnitude / AD.M
+    TG.rng.Text = string.format("T %.1f", slant / 1852)
+    TG.alt.Text = string.format("%d", math.floor(pos.Y / AD.M * 3.281 + 0.5))
+    local lv = cam.CFrame.LookVector
+    TG.north.Rotation = -90 - math.deg(math.atan2(lv.X, -lv.Z))
+    -- 投出去的弹还在飞：TTI 按它离瞄准点多远、多快；没投就按现在投下去要飞多久
+    local live, tti = nil, nil
+    for _, s2 in pairs(G.flyingShots or {}) do
+      if s2.by ~= nil and s2.by == st.id and (s2.kind == "bomb" or s2.kind == "missile" or s2.kind == "rocket") then
+        if not live or s2.t < live.t then live = s2 end
+      end
+    end
+    if live then
+      tti = (st.aimPt - live.p).Magnitude / math.max(live.v.Magnitude, 1)
+      live.tti0 = live.tti0 or math.max(tti, 0.1)
+      TG.bar.Size = UDim2.fromScale(clamp(1 - tti / live.tti0, 0, 1), 1)
+    else
+      TG.bar.Size = UDim2.fromScale(0, 1)
+      if w and w.kind == "bomb" then
+        local h = pos.Y - math.max(ground(pos.X, pos.Z), 0)
+        local vy = -st.vel.Y
+        tti = (vy + math.sqrt(math.max(0, vy * vy + 2 * GR * math.max(h, 0)))) / GR
+      elseif w and (w.kind == "agm" or w.kind == "rkt") then
+        tti = slant * AD.M / math.max(w.speed or 300, 1)
+      end
+    end
+    TG.tti.Text = "TTI " .. fmtT(tti)
+    TG.ttiBig.Text = fmtT(tti)
+    -- 右栏
+    local nm = wid and T("aw." .. wid) or "--"
+    TG.rel.Text = (REL[w and w.kind or "gun"] or "PRE") .. "  ·  " .. nm
+    TG.away.Text = live and (nm .. "  AWAY") or ""
+    local laser = w ~= nil and (w.kind == "bomb" or w.kind == "agm")
+    TG.arm.Text = laser and "LASER ARM" or ""
+    TG.lst.Text = live and string.format("LST %d s  ·  1688", math.max(0, math.floor((tti or 0) - 8))) or (laser and "LST  ·  1688" or "")
+    TG.say.Text = live and T("eo.sayHold") or (point and T("eo.sayPoint") or T("eo.sayArea"))
+    eoHint.Text = T("eo.hint")
+  end
+
   function G.stepFly(dt)
+    G.try_(gEffect, dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
     if vs and not vs.air then vs = nil end
@@ -1418,16 +1874,35 @@ function Fly.init(G)
       local gl = acc.Magnitude / GR   -- 大概几个 g
       local amp = math.clamp((gl - 3) * 0.0016, 0, 0.012) + ((st.thrE or 0) > 100 and 0.0012 or 0)
       local t = os.clock()
-      local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp, math.noise(t * 18, 7.1) * amp, 0)
+      -- 抖振（用户 11-20：载具照 UE5 的水平升级）：迎角大（12° 以上）、快失速时机身一阵阵发抖——镜头高频抖、一层低沉的嗡嗡声
+      local buf = 0
+      if not st.ground then
+        local aoaK = math.clamp((math.abs(st.aoaDeg or 0) - 12) / 12, 0, 1)
+        local stallK = math.clamp((d.stall * 1.3 - st.spd) / math.max(d.stall * 0.3, 1), 0, 1)
+        buf = math.max(aoaK, stallK)
+      end
+      st.buffet = buf
+      if st.buffetSnd then
+        st.buffetSnd.Volume = buf * 1.4
+        st.buffetSnd.PlaybackSpeed = 0.32 + buf * 0.12
+      end
+      local ab = buf * 0.006 * (0.6 + 0.4 * math.abs(math.noise(t * 3, 9.9)))
+      local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp + math.noise(t * 34, 2.6) * ab, math.noise(t * 18, 7.1) * amp + math.noise(t * 31, 5.3) * ab,
+        math.noise(t * 29, 3.7) * ab * 0.6)
       local upC = (V(0, 1, 0) * 0.7 + st.cf.UpVector * 0.3)
       cam.CFrame = CFrame.lookAt(camPos, pos + aim * 300, (upC.Magnitude > 0.1) and upC.Unit or V(0, 1, 0)) * shake
     elseif d.kind == "jet" then
       local camPos = (st.cf * CF(0, d.H * 0.5 + 3, math.max(d.L, d.W * 0.7) * 0.65 + 7)).Position   -- 手机 / 坐后面的：也近一点
       cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(camPos, (st.cf * CF(0, 4, -300)).Position), math.min(1, dt * 8))
     else
+      -- 直升机：弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）——跟随有惯性（加速、急停、拉起有推拉），跟着机身坡度歪两成，
+      --   旋翼的细震（越使劲越抖）；臂碰到山坡、房子平滑缩近
       local dirCam = CFrame.Angles(0, st.camYaw, 0) * CFrame.Angles(st.camPitch, 0, 0)
-      local camPos = pos + V(0, d.H * 0.45, 0) + dirCam:VectorToWorldSpace(V(0, 0, d.L * 0.62 + 7))   -- 直升机也近一点（0.8 倍 + 11 → 0.62 倍 + 7）
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector)
+      local load = math.clamp(math.abs(st.c.col or 0), 0, 1)
+      local camCF, camShake, fov = G.vehCam({ key = "heli", pivot = pos + V(0, d.H * 0.45, 0), dir = dirCam, dist = d.L * 0.62 + 7, up = 0, vel = st.vel, dt = dt,
+        rough = 0.45 + 0.6 * load, speedK = math.clamp(0.35 + st.vel.Magnitude / math.max(d.vMax, 1) * 0.65, 0, 1.2), up3 = st.cf.UpVector, params = heliCamParams,
+        fov0 = 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })
+      cam.CFrame = camCF * camShake
     end
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
@@ -1451,6 +1926,10 @@ function Fly.init(G)
     local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
     local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
     st.aimPt = res and res.Position or (o + adir * far)
+    do   -- 瞄准点打在哪个实体上（吊舱页面的 POINT 跟踪框）
+      local hm = res and res.Instance and res.Instance:FindFirstAncestorOfClass("Model")
+      st.aimEnt = (hm and hm ~= st.em and hm:GetAttribute("EntId") ~= nil) and hm or nil
+    end
     -- 机头炮塔：跟着瞄准点转（鼠标瞄）
     local gid, gw = gunW()
     local wid, w = storeW()
@@ -1489,7 +1968,20 @@ function Fly.init(G)
         if root then
           local to = root.CFrame.Position - pos
           st.lock.dir, st.lock.dist, st.lock.pos = to.Unit, to.Magnitude, root.CFrame.Position
-          if inCone(w, st.lock) and st.lock.dist < (w.range or 3200) * 1.1 then st.lockT += dt else st.lock, st.lockT = nil, 0 end
+          -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
+          local inside = inCone(w, st.lock)
+          if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
+            st.lock.out = not inside
+            if inside then
+              st.lockT += dt
+              st.lock.outT = 0
+            else
+              st.lock.outT = (st.lock.outT or 0) + dt
+              if st.lock.outT > 4 then st.lock, st.lockT = nil, 0 end
+            end
+          else
+            st.lock, st.lockT = nil, 0
+          end
         else
           st.lock = nil
         end
@@ -1533,6 +2025,8 @@ function Fly.init(G)
       aWpn.Text = T("air.noWeapon")
     end
     st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and "air.helpJet" or "air.helpHeli")) or "air.helpPass"
+    -- 开飞机的界面（AirHud.lua，照 MWT 的截图）要的数：这一帧算出来的塞进 info，最后交给 G.airHudStep
+    local info = { d = d, pilot = st.pilot == true, hp = hp, mx = mx, kmh = kmh, agl = agl }
     if st.pilot then
       spdText.Text = string.format("%d", kmh)
       altText.Text = string.format("%d", math.max(0, agl))
@@ -1545,13 +2039,20 @@ function Fly.init(G)
       local left2 = (secs < 5999) and string.format("%d:%02d", math.floor(secs / 60), math.floor(secs % 60)) or "--:--"
       fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
+      info.fuel = T("air.fuelLeft", math.floor(tot * 100 + 0.5), left2)
+      info.fuelCol = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or nil)
+      info.thr = thrText.Text
+      info.vs = T("air.vs", vsText.Text)
+      info.gear = (d.kind == "jet" and st.gearWant > 0.5) and T("air.gearState.down") or nil
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo
+      G.try_(dcsHud, pos, kmh)
       -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
       G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
       local hk = math.min(1, st.hitKick or 0)
       bore.TextSize = 34 + 14 * hk
       bore.TextColor3 = Color3.new(1, 1 - 0.7 * hk, 1 - 0.75 * hk)
+      info.hk, info.cf = hk, st.cf
       -- 大圈：圈心在机头指向；大小是选中武器能锁的离轴角（导弹的导引头）/ 航炮、火箭、炸弹的瞄准圈；圈底下写武器和剩几发
       local rdeg = (not w and 3) or (w.kind == "rkt" and 5) or (w.kind == "bomb" and 9) or (w.cone or 20)
       if d.kind == "heli" and w and w.kind == "agm" then rdeg += 20 end
@@ -1569,19 +2070,20 @@ function Fly.init(G)
         local n = r.it.flare and st.flares or left(r.it.wid)
         r.cnt.Text = "×" .. n
         local sel = r.it.idx == st.wi
-        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(20, 96, 44) or RGB(0, 18, 6), sel and 0.3 or 0.6
+        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(16, 70, 84) or RGB(0, 12, 18), sel and 0.3 or 0.6
         r.s.Transparency, r.s.Thickness = sel and 0 or 0.7, sel and 2 or 1
-        local col = (n <= 0) and RGB(110, 130, 112) or HUD
+        local col = (n <= 0) and RGB(110, 124, 130) or HUD
         r.cnt.TextColor3, r.nm.TextColor3 = col, col
       end
+      -- 六边形武器键（AirHud）：每种挂载一个（按键号、剩几发、选中的亮），最后一个热诱弹；准星上方写选中的那种
+      local items = {}
+      for i, wid2 in ipairs(st.wl) do items[i] = { key = tostring(i), wid = wid2, w = AD.W[wid2], n = left(wid2), sel = i == st.wi } end
+      items[#items + 1] = { key = "X", flare = true, n = st.flares }
+      info.wl = items
+      local cw, cww = curW()
+      info.wid, info.w, info.cnt = cw, cww, cw and left(cw) or 0
       -- 光电画面的字：模式、倍率、目标距离、吊舱相对机头的方位 / 俯仰
-      if st.eo then
-        eoMode.Text = T("eo.title") .. "  " .. T("eo." .. EO_MODES[st.eoMode or 1]) .. string.format("   ×%.1f", st.zoomS)
-        local rel = st.cf:VectorToObjectSpace(eoDir())
-        local az, el = math.deg(math.atan2(rel.X, -rel.Z)), math.deg(math.asin(clamp(rel.Y, -1, 1)))
-        eoInfo.Text = string.format("%s %dm   %+d° %+d°", T("eo.range"), math.floor((st.aimPt - cam.CFrame.Position).Magnitude / AD.M + 0.5), math.floor(az + 0.5), math.floor(el + 0.5))
-        eoHint.Text = T("eo.hint")
-      end
+      if st.eo then tgpStep(pos, wid, w) end
       if st.eo or (st.uav and st.dcam == "nose") then
         aimRing.Visible = false   -- 光电 / 前视光电：镜头就是瞄准方向，画十字线
       elseif d.kind == "jet" and not G.mobile then   -- 固定翼：小十字是机头（bore），圆圈是鼠标瞄准（飞机往圆圈那边转）
@@ -1644,8 +2146,12 @@ function Fly.init(G)
         lockBox.Size = locked and UDim2.fromOffset(38, 38) or UDim2.fromOffset(52, 52)
         lockText.Position = lp + UDim2.fromOffset(0, 30)
         lockText.Visible = lon
-        lockText.Text = locked and (T("air.locked") .. string.format("  %dm", math.floor(st.lock.dist / AD.M))) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
+        -- 距离：MWT 式界面写在准星左边（AirHud），这里只写锁定的状态；无人机照旧带距离
+        lockText.Text = locked and (T("air.locked") .. (st.uav and string.format("  %dm", math.floor(st.lock.dist / AD.M)) or "")) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
         lockText.TextColor3 = locked and RGB(255, 80, 70) or HUD
+        info.lockDist = st.lock.dist
+        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out }
+        if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false
       end
@@ -1660,6 +2166,20 @@ function Fly.init(G)
       else
         pipper.Visible = false
       end
+      if st.eo then   -- 吊舱画面里：平显的落点、降落菱形、锁定框都收起来（吊舱自己画跟踪框）
+        pipper.Visible, landMark.Visible, landText.Visible, lockBox.Visible, lockText.Visible, restText.Visible = false, false, false, false, false, false
+      end
+    end
+    -- MWT 式的界面（AirHud.lua）：有人开 / 坐的飞机都用；遥控无人机（战术平板）、光电吊舱的画面不用
+    if not st.uav then dcs.Visible = false end
+    warnText.Position = UDim2.new(0.5, 0, 0.5, st.uav and -130 or -172)   -- 告警：让开准星上方的武器名牌
+    if not st.uav and not st.eo then
+      if st.pilot then info.aim = aimRing.Visible and aimRing.Position or nil end   -- 准星由 AirHud 画（发光的细圈），这里的「◯」字收起来
+      aimRing.Visible = false
+      if G.airHudStep then G.try_(G.airHudStep, st, info) end
+      if G.tankHudExtra then G.try_(G.tankHudExtra, st, clamp(hp / mx, 0, 1), "air") end   -- 左上圆形雷达、「被发现!」、敌人头顶带血条的名牌（TankHud.lua）
+    elseif G.airHudOff then
+      G.airHudOff()
     end
   end
 

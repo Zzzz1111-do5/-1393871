@@ -356,7 +356,7 @@ function Depots.init(G)
     return true, d
   end
 
-  local function spawnAt(P, p, load, vid, fuel)
+  local function spawnAt(P, p, load, vid, fuel, mods)
     -- R 币解锁的机型（B-2 199 R 币；Config.Passes）：没买的不给生成（客户端列表里画着锁、点了是购买框）
     local want = vid or p.vid
     if want and G.passOkFor and not G.passOkFor(P, want) then
@@ -376,7 +376,7 @@ function Depots.init(G)
     elseif p.kind == "ship" then
       e = G.spawnShip and G.spawnShip(P.team, p.vid, p.base, P)
     else
-      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P)
+      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P, mods)   -- mods：坦克的改装（客户端改装界面选的，Armor 里按 TankMods 校验）
     end
     if e then
       e.padId = p.id
@@ -414,7 +414,11 @@ function Depots.init(G)
   function G.ACT.padSpawn(P, padId, load, vid, fuel)
     local p = type(padId) == "string" and byId[padId] or nil
     if not p or not (p.kind == "air" or (p.kind == "veh" and p.summon)) then return end
-    if p.kind == "veh" then load, fuel = nil, nil end
+    local mods = nil
+    if p.kind == "veh" then   -- 地面车：挂载那一格放的是坦克的改装（{ aps = "hk", roof = "gau8" }）
+      mods = (type(load) == "table") and load or nil
+      load, fuel = nil, nil
+    end
     if p.summon then
       vid = vid or p.vid   -- 没说型号（老客户端、老的一型一位）：这个召唤位的第一型
       local okId = false
@@ -423,7 +427,7 @@ function Depots.init(G)
     else
       vid = nil
     end
-    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil)
+    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil, mods)
   end
 end
 

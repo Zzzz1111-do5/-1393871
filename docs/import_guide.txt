@@ -6,8 +6,8 @@
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 65 个 .glb，按文件夹分：
-  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…；
+  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     7 艘舰艇
@@ -20,6 +20,42 @@
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
+    - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；
+    - 地图：港口码头修好了（崖下的码头平地、挡土墙、坡道接回崖顶），坡上的工事补了地基；各处据点、海滩加了细节
+      （防爆掩体、HESCO 墙、瞭望塔、沙袋战壕、烧毁的车辆、路口检查站）——都是开服时脚本摆的，不用导；
+    - 驾驶界面的图标、全息准心、卫星图小地图要在游戏设置 → 安全里打开「Mesh / Image API」，没打开就退回方块拼的。
+
+  11 月 19 日第二包（坦克爆反、主动拦截、改装）：只要多导一个 veh/kitera.glb，再删掉 15 式轻坦的旧零件；别的都不用动：
+    - 新的 veh/kitera.glb：一块做旧的爆反砖（Kontakt-1，evt22，CC-BY），99A 炮塔正面补贴的爆反块用它（不导入也行，脚本用零件拼的做旧砖代替）；
+    - 15 式轻坦删掉了（用户：建模非常粗糙），veh/ztq15.glb 不用了。先在命令栏粘下面这一行删掉它的旧零件，再导入 veh/kitera.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_ztq15__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块 15 式的旧零件")
+
+    - 爆反、主动拦截、改装界面、加特林炮塔附件都是脚本：打开新的 RobloxTotalBattlefield.rbxlx 就有。
+
+  11 月 19 日这一包：重导 ship/ 里 5 艘、veh/ 里 3 辆坦克（飞机、导弹、瞄准镜、建筑、别的车和船都不用动）：
+    - 舰艇换成 Sketchfab 上的原模型：ship/t055.glb、ddg125.glb、cg47.glb、t054a.glb、t022.glb（055、阿利·伯克、提康德罗加、054A、022；
+      不减面、原贴图，署名在 ship/credits.txt）。主炮的炮塔（块名 S_<型号>__T1_…）、炮管（__B1_…）、近防炮（__C1_…、C2_…）都是单独的块：
+      游戏里炮塔会转、炮管会俯仰和后坐、近防炮转向来袭的导弹；垂发掀舱盖、发射箱出弹是脚本做的，不用导。lcs2.glb、pbr.glb 没变。
+    - 坦克车顶的机枪会转、从机枪口开火：veh/m1a1.glb、ztz96.glb、ztq15.glb 里拆出了枪架和枪身（块名 __Rws_…、__RwsGun_…）；99A2 是脚本加的，不用重导。
+    - 坦克、舰艇的准星（MWT / 现代战舰那样）、右上角卫星图小地图、合并的 GPT 打磨都是脚本：打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx。
+      卫星图小地图要在游戏设置 → 安全里打开「Mesh / Image API」，没打开是暗色的色块。
+    先在命令栏（「视图 → 命令栏」）粘下面这一行回车，只删这 5 艘舰艇、3 辆坦克的旧零件，再照「一、导入」导这 8 个文件：
+
+local K={t055=1,ddg125=1,cg47=1,t054a=1,t022=1,m1a1=1,ztz96=1,ztq15=1} local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do local k=d:IsA("BasePart") and d.Name:match("^[SV]_(%w+)__") if k and K[k] then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件（5 艘舰艇、3 辆坦克），可以重导了")
+
+  11 月 18 日第七包：只换歼-20，重导 air/j20.glb 一个文件，别的都不用动：
+    - 不减面的原模型（23.6 万个三角形，原来 13.5 万），照样是第三包那套真机涂装和会发光的绿色灯带；
+    - 起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
+    - 打开侧弹舱、起落架舱门不再能看穿飞机：舱门里面有封好的深灰色舱（块名 A_j20_v4__Well_1…5），舱门内侧也画出来了；
+    - 从前下方也不能从进气道口看穿了：唇口后面补了深色管道（A_j20_v4__Duct_1、Duct_2）；
+    - 新导进来的块叫 A_j20_v4__…，游戏优先用它；旧的 A_j20_v3__…不删也行（游戏不用了），想删就在命令栏粘下面这一行回车：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20__") or d.Name:match("^A_j20_v[23]__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")
+
+    导入方法同下面「一、导入」：「导入 3D」选 air/j20.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
 
   11 月 18 日第六包：只重导 veh/m1a2dc.glb 一个文件（别的都不用动）：
     - M1A2 改回原模型的颜色（用户：颜色改回原模型的颜色）：原来统一刷成的单色沙黄去掉，换回作者原来的涂装——
@@ -121,7 +157,7 @@ local u=game:GetService("ServerStorage"):FindFirstChild("ScriptsUpdate") or work
 
 四、注意
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
-  - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
+  - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成；右上角小地图的卫星图也要它，没打开是暗色的色块）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。
     只有 wpn/missiles.glb（导弹合集）是 CC BY-NC-SA：只能非商业使用（你说游戏不收费，可以用）——以后要是开了收费（游戏通行证、开发者产品、付费进入），
     得把 W_ 开头的零件删掉（游戏会自动退回零件拼的导弹）。署名在 wpn/credits.txt。

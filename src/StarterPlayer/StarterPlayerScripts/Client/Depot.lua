@@ -226,6 +226,8 @@ function Depot.init(G)
     if pass and G.passOk and not G.passOk(pass) then return pass end
     return nil
   end
+  local TMods = require(RS:WaitForChild("TankMods"))
+  local lastMods = {}   -- 每型坦克上次选的改装
   local function choose(id)
     local pad = pickPad
     local lp = lockedPass(id)
@@ -241,6 +243,14 @@ function Depot.init(G)
         return
       end
       closePick()
+      -- 有改装的坦克（TankMods）：先进改装界面（Garage.lua，像飞机选挂载那样），选好了「出车」才生成；挂载那一格放改装
+      if pad and G.openGarage and TMods.has(id) then
+        G.openGarage(id, lastMods[id], function(mods)
+          lastMods[id] = mods
+          G.R.Act:FireServer("padSpawn", pad, mods, id)
+        end)
+        return
+      end
       if pad then G.R.Act:FireServer("padSpawn", pad, false, id) end   -- 挂载那一格传 false：中间夹着 nil 的参数表有空洞
       return
     end

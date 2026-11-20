@@ -393,6 +393,51 @@ function Map.roadDist(x, z)
   return d or 1e9
 end
 
+-- 港口（用户 11-20：地图有 bug——湾底的码头在 70 多格高的直崖底下，上不去；攻方从湾口冲到码头登陆也卡在崖底）：
+--   湾底沿岸压出一条离水面 4 格的码头平地（码头根上的库房落在上面，靠山的三面是挡土墙，World.lua 贴水泥墙面），
+--   码头北边贴着挡土墙挖一条坡道：西头跟码头一样高，往东爬 350 格、28 格宽、11° 上下，到东头接回崖顶（港口镇东南角）；
+--   不往北挖：往北会把镇子东边那条路（港口镇—白滩）切出一道 30 格深的沟
+local HARBOR = (function()
+  local P = Map.PORT
+  local zs = Map.coastS(P.x) or (P.z + 210)
+  local H = { x = P.x, zs = zs, qx = 210, qd = 70, y = 4.2, rw = 14, deck = 4.6 }   -- deck：木码头面多高（比码头平地高一点）
+  H.a = { x = P.x - 170, z = zs - 84 }   -- 坡道底（码头西北角，跟码头平地一样高）
+  H.b = { x = P.x + 180, z = zs - 84 }   -- 坡道顶（东头，崖顶上）
+  return H
+end)()
+Map.HARBOR = HARBOR
+-- 坡道：离坡道中线多远、走到第几成（0 底～1 顶）
+local function harborRamp(x, z)
+  local H = HARBOR
+  local ax, az, bx, bz = H.a.x, H.a.z, H.b.x, H.b.z
+  local vx, vz = bx - ax, bz - az
+  local L2 = vx * vx + vz * vz
+  local t = ((x - ax) * vx + (z - az) * vz) / L2
+  local cx, cz = ax + vx * t, az + vz * t
+  return math.sqrt((x - cx) ^ 2 + (z - cz) ^ 2), t
+end
+Map.harborRamp = harborRamp
+-- 在不在港口码头那个坑里（码头平地、坡道；m：往外多算几格）：攻击出发阵地、AI 车的出生点别选在这里——离港口镇 70 格高的崖底，机器人的寻路绕不上来
+function Map.inHarbor(x, z, m)
+  local H = HARBOR
+  m = m or 0
+  if math.abs(x - H.x) <= H.qx + m and z >= H.zs - H.qd - 30 - m and z <= H.zs + 40 + m then return true end
+  local d, t = harborRamp(x, z)
+  return d <= H.rw + m and t >= -0.12 and t <= 1.05
+end
+local function harborCut(x, z, y)
+  local H = HARBOR
+  if math.abs(x - H.x) <= H.qx and z >= H.zs - H.qd and z <= H.zs + 40 then   -- 码头平地（只往下削，不把海填起来）
+    return math.min(y, H.y)
+  end
+  local d, t = harborRamp(x, z)
+  if d <= H.rw and t >= -0.1 and t <= 1 then   -- 坡道：挖到坡面的高度（坡顶接上镇子的高度）；西头往外多挖 35 格平的（车从码头拐进来的地方）
+    local top = H.townY or y
+    return math.min(y, H.y + (top - H.y) * math.clamp(t, 0, 1))
+  end
+  return y
+end
+
 function Map.height(x, z)
   local y, d, wf = flatHeight(x, z)
   if y <= 0.3 then return y, d end
@@ -402,6 +447,7 @@ function Map.height(x, z)
     local w = 1 - smooth(half, half + 10, rd)   -- 路面完全压平，两边 10 格慢慢接回地形
     if w > 0 then y = lerp(y, ry, w * (1 - wf) * smooth(0, 20, d)) end
   end
+  y = harborCut(x, z, y)
   return y, d
 end
 -- 这一点在压平的场地（据点、机场、营地、港口）里有多深：0 外面～1 完全压平（摆树、花草时避开）
@@ -410,6 +456,7 @@ function Map.flatW(x, z)
   return w or 0
 end
 for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
+HARBOR.townY = select(1, flatHeight(HARBOR.b.x, HARBOR.b.z))   -- 坡道顶接港口镇东北角那里的地面
 for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "PORT", "AFIELD2" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
 
 ---------------------------------------------------------------- 材质
@@ -418,6 +465,12 @@ function Map.material(x, z, y, slope)
   if y <= 0.4 then
     return (y > -3.5) and Enum.Material.Sand or Enum.Material.Sand
   end
+  do   -- 港口的码头平地：水泥；坡道：柏油
+    local H = HARBOR
+    if math.abs(x - H.x) <= H.qx and z >= H.zs - H.qd and z <= H.zs + 40 and y <= H.y + 0.5 then return Enum.Material.Concrete end
+    local hd, ht = harborRamp(x, z)
+    if hd <= H.rw + 1 and ht >= -0.11 and ht <= 1.02 then return Enum.Material.Asphalt end
+  end
   local rd, _, rw = roadNear(x, z)
   if rd and rd < rw * 0.5 + 1.2 * noise(x / 9, z / 9, 3.3) then return Enum.Material.Ground end   -- 土路（边上毛一点）
   local zs, zn = Map.coastS(x), Map.coastN(x)
@@ -425,11 +478,11 @@ function Map.material(x, z, y, slope)
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
   if slope > 1.15 * HK / K then return (y > 120 * HK) and Enum.Material.Slate or Enum.Material.Rock end
   if y > 232 * HK then return Enum.Material.Rock end
-  if slope > 0.75 * HK / K then return Enum.Material.Ground end
+  if slope > 0.92 * HK / K then return Enum.Material.Ground end   -- 陡一点的坡才露土（原来 0.75：用户 11-19 草多一点）
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
-  if y < 9 and n > 0.28 then return Enum.Material.Ground end   -- 海边低处零星的土地块
-  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18：草多用 Roblox 自带的那种草），深色 LeafyGrass 只留零星几块
-  return (n > 0.45) and Enum.Material.LeafyGrass or Enum.Material.Grass
+  if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
+  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18 / 11-19：草多用 Roblox 自带的那种草、多一点），深色 LeafyGrass 只留很少几块
+  return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
 ---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）

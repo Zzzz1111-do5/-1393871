@@ -54,7 +54,7 @@ local has = false
 for _, id in ipairs(C.S.vehModels or {}) do if id == jetId then has = true end end
 check(has, "能用的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
 check(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap >= 1, "固定翼名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap))
-T.act("deploy", "rifle", (side == "atk") and "af2" or "point.D")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
+T.act("deploy", "rifle", (side == "atk") and "af2" or "afield")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 local jp = T.pad(jetId)
@@ -159,12 +159,51 @@ if e and e.def.id == "j20" then
       end
     end
     check(pil >= 4 and near < 1.5, string.format("座舱里坐着飞行员（%d 块，离原模型的眼位 %.2f 格）", pil, near))
-    local wells = 0
+    -- 起落架（j20_v4：原模型没有，tools/models/j20_gear.py 建的网格，关键帧往前收）、起落架舱门（gdh：放的前 1/4 开门、收的最后 1/4 关门）
+    if byGroup.GearL then
+      local function at(g, c)
+        local s, k = V3(0, 0, 0), 0
+        for _, it in ipairs(byGroup[g] or {}) do
+          if it.kind == "m" then
+            s = s + (it.f(c) * it.cf0).Position
+            k = k + 1
+          end
+        end
+        return k > 0 and s * (1 / k) or nil
+      end
+      local g1, g0, gq = at("GearL", { gear = 1 }), at("GearL", { gear = 0 }), at("GearL", { gear = 0.25 })
+      check(g1 and g0 and g0.Y - g1.Y > 2 and g0.Z < g1.Z - 2,
+        string.format("收起落架：左主起落架往前 %.1f 格、往上 %.1f 格收进机身", g1 and g0 and (g1.Z - g0.Z) or 0, g1 and g0 and (g0.Y - g1.Y) or 0))
+      check(g0 and gq and (g0 - gq).Magnitude < 0.05, "操纵量 0.25 时支柱已经收到底（之后舱门才关）")
+      local n1, n0 = dy("GDoorN1", { gear = 1 }), dy("GDoorN1", { gear = 0 })
+      check(n1 and n0 and n1 < -0.3 and math.abs(n0) < 0.01, "前起落架舱门：放下时往下开（" .. fmt(n1) .. " 格），收起时关上（" .. fmt(n0) .. "）")
+      local mo = 0
+      for _, it in ipairs(byGroup.GDoorML or {}) do
+        local cf0 = it.H * it.off
+        local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f({ gear = 1 })) * it.off
+        mo = mo + (math.abs(cf1.Position.X) - math.abs(cf0.Position.X)) / #byGroup.GDoorML
+      end
+      check(mo > 0.3, "主起落架舱门：放下时往外翻（" .. fmt(mo) .. " 格）")
+      local built = 0
+      for _, it in ipairs(v.M.items) do if it.tag == "gear" then built = built + 1 end end
+      check(built == 0, "原模型自带起落架：零件拼的起落架不画了（" .. built .. " 个零件）")
+    end
+    -- 弹舱 / 起落架舱里：WELL 表的深色方盒子（Part），v4 的侧弹舱、起落架舱换成 tools/models/doorbay.py 做的舱（网格 Well_1…，开口一圈封住，开了舱门看不穿飞机）
+    local wells, cav = 0, 0
     for _, it in ipairs(v.M.items) do
       local col = it.p.Color
       if it.kind == "b" and not it.tag and it.p.ClassName == "Part" and col.R < 0.16 and col.G < 0.16 and col.B < 0.17 then wells = wells + 1 end
+      if it.kind == "b" and string.match(it.p.Name, "__Well_%d+$") then cav = cav + 1 end
     end
-    check(wells >= 3, "弹舱里有深色的舱壁（" .. wells .. " 个）")
+    check(wells + cav >= 3, "弹舱里有深色的舱壁（方盒 " .. wells .. " 个、舱 " .. cav .. " 个）")
+    if IA.m[IKEY].bayfix then
+      check(cav == 5, "侧弹舱、起落架舱是封好的舱（" .. cav .. " 个，应该 5 个：两个侧弹舱、两个主起落架舱、前起落架舱）")
+      local duct = 0
+      for _, it in ipairs(v.M.items) do
+        if it.kind == "b" and string.match(it.p.Name, "__Duct_%d+$") then duct = duct + 1 end
+      end
+      check(duct == 2, "进气道里补了深色管道（" .. duct .. " 个，应该 2 个）")
+    end
   end
 end
 print("④ 降落伞：角色带着 Chute 属性（服务器在跳伞时设）就在头顶张开一顶伞，落地收掉")

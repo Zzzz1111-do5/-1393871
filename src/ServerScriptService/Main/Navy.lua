@@ -214,7 +214,7 @@ function Navy.init(G)
     local P = Map.PORT
     local zs = Map.coastS(P.x) or P.z
     local d = SD.get("pbr")
-    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), 2, "C") end   -- 码头里头水浅：停在外头那段
+    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), (Map.HARBOR and Map.HARBOR.deck) or 2, "C") end   -- 码头里头水浅：停在外头那段；终端柱站在木码头面上
     f.Parent = root
   end
   local depotsBuild0 = G.depotsBuild
@@ -478,10 +478,13 @@ function Navy.init(G)
     e.msl -= 1
     e.mslAt = t + 1.2
     e.model:SetAttribute("Msl", e.msl)
-    local pos = (cfOf(e) * CF(d.missiles.pos)).Position + V(0, 2, 0)
-    G.launch({ kind = "missile", pos = pos, vel = V(0, 60, 0), w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
+    -- 从哪出来（ShipDefs.launch）：有斜置的发射箱从箱口顺着箱子的方向冲出去，没有就从垂发的一个格子竖直窜出来（客户端掀开那一格的舱盖）
+    e.launchN = (e.launchN or 0) + 1
+    local pos, dir, at = SD.launch(d, cfOf(e), "asm", e.launchN)
+    local v0 = at.can and dir * 90 or dir * 60
+    G.launch({ kind = "missile", pos = pos, vel = v0, w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
       step = guideASM, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-    G.fx({ k = "vls", p = pos, id = e.id })
+    G.fx({ k = "vls", p = pos, id = e.id, b = at.b, c = at.c, can = at.can, tube = at.tube })
     if tgt and tgt.driver and tgt.driver.pl then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", w = "asm" }) end
     return true
   end
@@ -565,10 +568,11 @@ function Navy.init(G)
         e.samN -= 1
         e.samAt = t + SD.W.sam.rate
         e.model:SetAttribute("Sam", e.samN)
-        local pos = (cfOf(e) * CF(d.sam.pos)).Position + V(0, 2, 0)
-        G.launch({ kind = "missile", pos = pos, vel = V(0, 140, 0), w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
+        e.launchN = (e.launchN or 0) + 1
+        local pos, dir, at = SD.launch(d, cfOf(e), "sam", e.launchN)
+        G.launch({ kind = "missile", pos = pos, vel = dir * 140, w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
           step = guideSAM, age = 0, tgt = best, tgId = best.id, byEnt = e.id })
-        G.fx({ k = "vls", p = pos, id = e.id, sam = true })
+        G.fx({ k = "vls", p = pos, id = e.id, sam = true, b = at.b, c = at.c })
         if best.driver and best.driver.pl then G.R.Drive:FireClient(best.driver.pl, { op = "rwr", w = "sam" }) end
       end
     end
@@ -577,6 +581,7 @@ function Navy.init(G)
     e.ciwsT += dt
     if e.ciwsT < CW.rate then return end
     e.ciwsT = 0
+    e.ciwsFx = (type(e.ciwsFx) == "table") and e.ciwsFx or {}
     local cf = cfOf(e)
     for mi, mp in ipairs(d.ciws) do
       local m = (cf * CF(mp)).Position
@@ -591,9 +596,10 @@ function Navy.init(G)
             en = { t0 = t, kill = math.random() < CW.kill }
             s.ciws[key] = en
           end
-          if (e.ciwsFx or 0) <= t then
-            e.ciwsFx = t + 0.2
-            G.fx({ k = "gun", w = "ciws", a = m, b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8 })
+          if (e.ciwsFx[mi] or 0) <= t then   -- 每座各自 0.2 秒一串曳光：从这一座的炮口出去，客户端把这一座转过去（id、mi）
+            e.ciwsFx[mi] = t + 0.2
+            local b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8
+            G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
           end
           if en.kill and t - en.t0 > 0.8 then
             table.remove(G.shots, i)
@@ -609,9 +615,10 @@ function Navy.init(G)
           if x.alive and x.team ~= e.team and not x.onGround then
             local p = x.root.CFrame.Position
             if (p - m).Magnitude < CW.range * 0.8 then
-              if (e.ciwsFx or 0) <= t then
-                e.ciwsFx = t + 0.2
-                G.fx({ k = "gun", w = "ciws", a = m, b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10 })
+              if (e.ciwsFx[mi] or 0) <= t then
+                e.ciwsFx[mi] = t + 0.2
+                local b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10
+                G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
               end
               if math.random() < 0.35 then G.damageEnt(x, CW.dmg * (CW.vs.air or 1), srcOf(e)) end
               break

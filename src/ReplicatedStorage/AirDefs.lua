@@ -189,7 +189,8 @@ D.j20 = { kind = "jet", cat = "jet", L = 57, W = 36, H = 12.5, gearH = 6.4, hp =
   canard = { xr = 3.0, zr0 = -15, zr1 = -8.5, xt = 10, zt0 = -9.5, zt1 = -7.5, y = 1.0 },
   vt = { x = 3.6, zr0 = 16, zr1 = 26, zt0 = 22.5, zt1 = 27, h = 8.5, cant = 27, allMove = true },
   eng = { { x = 1.9, y = 0, z = 27.5, r = 1.35 }, { x = -1.9, y = 0, z = 27.5, r = 1.35 } },
-  gear = { nose = { z = -16, len = 5.2 }, main = { x = 3.4, z = 5.5, len = 5.0 }, r = 1.1 },
+  -- 起落架位置照原模型补的那套（tools/models/j20_gear.py：前起落架在座舱下、主起落架在侧弹舱后面，都往前收）；没导入原模型时零件拼的也摆这里
+  gear = { nose = { z = -13.6, len = 5.2 }, main = { x = 3.4, z = 11.6, len = 5.0 }, r = 1.1 },
   bays = { main = { z0 = -3, z1 = 10, w = 4.2 }, sideR = { x = 3.9, z0 = -9, z1 = -2.5, w = 1.3 } },
   st = mirror({
     { name = "bayM1", pos = V(1.0, -2.2, 3.5), bay = "main", opts = { "pl15", "ls6" } },

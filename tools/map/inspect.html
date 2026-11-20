@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- 地图检查用的渲染页（tools/map/inspect.mjs 用 Playwright 打开）：照游戏里的真实坐标画——地形（export_world.luau 导出的高度、材质，按材质上色、
+     带坡面明暗）、海面、所有固定零件（方块 / 圆柱 / 球 / 楔形，原模型的 MeshPart 画成包围盒）；白天光照，看东西摆得对不对、悬空、陷地、穿插 -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#9db4c8}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+const Q = new URLSearchParams(location.search);
+const W = +(Q.get('w') || 1280), H = +(Q.get('h') || 720);
+const eye = (Q.get('eye') || '0,500,800').split(',').map(Number), at = (Q.get('at') || '0,0,0').split(',').map(Number);
+const R0 = +(Q.get('r') || 1400);   // 地形画多大（以 at 为中心的半径，格）
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9db4c8);
+scene.fog = new THREE.Fog(0x9db4c8, R0 * 1.2, R0 * 3.2);
+const cam = new THREE.PerspectiveCamera(+(Q.get('fov') || 55), W / H, 0.5, 60000);
+cam.position.set(...eye); cam.lookAt(...at);
+scene.add(new THREE.HemisphereLight(0xdfe8f0, 0x5a5040, 1.3));
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
+sun.position.set(at[0] + 900, at[1] + 1400, at[2] + 500); sun.target.position.set(...at);
+sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+const sc = sun.shadow.camera; sc.left = sc.bottom = -R0 * 0.8; sc.right = sc.top = R0 * 0.8; sc.near = 10; sc.far = 6000; sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+const MATCOL = { 'Enum.Material.Sand': [205, 189, 150], 'Enum.Material.Grass': [96, 128, 64], 'Enum.Material.LeafyGrass': [74, 104, 52],
+  'Enum.Material.Ground': [136, 114, 84], 'Enum.Material.Rock': [126, 122, 114], 'Enum.Material.Slate': [100, 100, 98],
+  'Enum.Material.Concrete': [160, 158, 150], 'Enum.Material.Asphalt': [74, 76, 80] };
+(async () => {
+  const world = await (await fetch('/data/world.json')).json();
+  const hb = new Float32Array(await (await fetch('/data/height.bin')).arrayBuffer());
+  const mb = new Uint8Array(await (await fetch('/data/mat.bin')).arrayBuffer());
+  const N = world.n, R = world.R, ST = world.step;
+  const hAt = (i, j) => hb[Math.min(N - 1, Math.max(0, j)) * N + Math.min(N - 1, Math.max(0, i))];
+  // 地形：以 at 为中心、半径 R0，每 ST 格一点（近处原样，够看）
+  const i0 = Math.max(0, Math.floor((at[0] - R0 + R) / ST)), i1 = Math.min(N - 1, Math.ceil((at[0] + R0 + R) / ST));
+  const j0 = Math.max(0, Math.floor((at[2] - R0 + R) / ST)), j1 = Math.min(N - 1, Math.ceil((at[2] + R0 + R) / ST));
+  const nx = i1 - i0 + 1, nz = j1 - j0 + 1;
+  const pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const I = i0 + i, J = j0 + j, k = (j * nx + i) * 3, y = hAt(I, J);
+    pos[k] = -R + I * ST; pos[k + 1] = y; pos[k + 2] = -R + J * ST;
+    const m = world.mats[mb[J * N + I] - 1]; const c = MATCOL[m] || [120, 120, 120];
+    const under = y < 0 ? Math.max(0.35, 1 + y / 60) : 1;   // 海底暗一点
+    col[k] = c[0] / 255 * under; col[k + 1] = c[1] / 255 * under; col[k + 2] = c[2] / 255 * under;
+  }
+  const idx = [];
+  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  const terr = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  terr.receiveShadow = terr.castShadow = true; scene.add(terr);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(R0 * 8, R0 * 8), new THREE.MeshLambertMaterial({ color: 0x2c5f7a, transparent: true, opacity: 0.72 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(at[0], 0, at[2]); scene.add(sea);
+  // 零件（离 at 远的不画）
+  const geoBox = new THREE.BoxGeometry(1, 1, 1), geoBall = new THREE.SphereGeometry(0.5, 16, 10);
+  const geoCyl = new THREE.CylinderGeometry(0.5, 0.5, 1, 18); geoCyl.rotateZ(Math.PI / 2);
+  const ws = new THREE.Shape(); ws.moveTo(-0.5, -0.5); ws.lineTo(0.5, -0.5); ws.lineTo(0.5, 0.5); ws.lineTo(-0.5, -0.5);
+  const geoWedge = new THREE.ExtrudeGeometry(ws, { depth: 1, bevelEnabled: false }); geoWedge.translate(0, 0, -0.5); geoWedge.rotateY(-Math.PI / 2);
+  const mats = new Map();
+  const matFor = (c, t, neon) => { const k = c.join(',') + '|' + t + '|' + neon; if (!mats.has(k)) mats.set(k, new THREE.MeshLambertMaterial({ color: new THREE.Color(c[0], c[1], c[2]), transparent: t > 0.02, opacity: 1 - t, emissive: neon ? new THREE.Color(c[0], c[1], c[2]) : 0x000000 })); return mats.get(k); };
+  let shown = 0;
+  for (const p of world.parts) {
+    if (p.t >= 0.98) continue;
+    const e = p.cf;
+    if (Math.hypot(e[0] - at[0], e[2] - at[2]) > R0 * 1.1) continue;
+    const sh = p.sh || '', k = p.k || '';
+    let geo = geoBox, sx = p.s[0], sy = p.s[1], sz = p.s[2];
+    if (k === 'WedgePart' || sh.endsWith('Wedge')) geo = geoWedge;
+    else if (sh.endsWith('Cylinder')) { geo = geoCyl; const d = Math.min(sy, sz); sy = sz = d; }
+    else if (sh.endsWith('Ball')) { geo = geoBall; const d = Math.min(sx, sy, sz); sx = sy = sz = d; }
+    const mesh = new THREE.Mesh(geo, matFor(p.c, p.t, (p.m || '').endsWith('Neon')));
+    const mat4 = new THREE.Matrix4().set(e[3], e[4], e[5], e[0], e[6], e[7], e[8], e[1], e[9], e[10], e[11], e[2], 0, 0, 0, 1);
+    mesh.applyMatrix4(new THREE.Matrix4().makeScale(sx, sy, sz).premultiply(mat4));
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh); shown++;
+  }
+  renderer.render(scene, cam);
+  window.info = { shown, nx, nz };
+  window.ready = true;
+})();
+</script></body></html>
