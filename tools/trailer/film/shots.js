@@ -1018,13 +1018,13 @@ async function shotDawn(env, add) {
     }
   });
   // 天亮：山脊后面透出来的光。先量出这个方向上山脊的仰角，把光团摆在脊线再往上一点，镜头升起来的时候正好露出来
-  const camP0 = V3(304, 34, -598);   // 镜头起点（下面 update 里的 cp 起点）：按它量山脊的仰角
+  const camP0 = gp(318, -676, 3.2);
   let ang = -1;
   for (let d = 600; d < 9000; d += 150) {
     const x = camP0.x + SUN.x * d, z = camP0.z + SUN.z * d;
     ang = Math.max(ang, (env.groundY(x, z) - camP0.y) / d);
   }
-  const sunAt = V3(camP0.x + SUN.x * 9000, camP0.y + ang * 9000 + 430, camP0.z + SUN.z * 9000);   // 脊线再往上一点：镜头抬起来也看得见
+  const sunAt = V3(camP0.x + SUN.x * 9000, camP0.y + ang * 9000 + 110, camP0.z + SUN.z * 9000);
   fx.add((t, f) => {
     const k = smooth(0.6, 6.5, t);
     f.addGlow(sunAt, 900, new THREE.Color(1, 0.66, 0.34), 2.5 + 10 * k, 1, 0);        // 日头本身
@@ -1041,19 +1041,19 @@ async function shotDawn(env, add) {
       }
       // 镜头：低低地架在队伍侧后方，兵斜着穿过画面往山脊那边走（逆光剪影），镜头慢慢升一点、往远处推
       const e = easeIO(u);
-      // 收尾的大全景：镜头从水边抬起来、往后拉，把整个滩头亮出来——烧着的残骸、沙滩上的车和人、晨雾，
-      //   远处山脊后面日头刚出来（贴着地面架机位时近处的坡会堵住大半个画面，抬起来才看得全）
-      const cp = V3(lerp(304, 288, e), lerp(34, 112, e), lerp(-598, -512, e));
-      const look = V3(lerp(352, 376, e), lerp(46, 96, e), lerp(-800, -920, e));   // 往上看一点：地平线压到下半幅，日头和霞光占住上面
-      cam(env, cp, look, lerp(36, 43, e));
+      // 机位压在沙面上、顺着滩头往东北看：天占着上半幅（云、最后几颗星），碉堡、围栏、兵都是逆光剪影（用户：日初用这版）
+      const g1 = groundY(246, -700);
+      const cp = V3(lerp(246, 258, e), g1 + lerp(4.2, 13, e), lerp(-700, -706, e));
+      const look = V3(lerp(500, 512, e), g1 + lerp(16, 34, e), lerp(-790, -830, e));
+      cam(env, cp, look, lerp(34, 39, e));
       env.camera.rotateZ(Math.sin(t * 0.4) * 0.35 * DEG);
       shake(env.camera, t, 0.12, 1.2, 61);
       const dawn = lerp(0.3, 0.95, smooth(0, 7, t));
-      return { exposure: lerp(1.3, 1.12, u), dawn, sunDir: SUN, moonVis: Math.max(0, 1 - dawn * 1.3),
+      return { exposure: lerp(1.08, 0.95, u), dawn, sunDir: SUN, moonVis: Math.max(0, 1 - dawn * 1.3),
         // 雾浓一点：远处的山脊退成一层层的剪影（地形的粗糙就看不出来了）
         fogColor: new THREE.Color().setRGB(lerp(0.05, 0.19, dawn), lerp(0.05, 0.135, dawn), lerp(0.07, 0.125, dawn)), fogDensity: lerp(0.00075, 0.00105, u),
         moonDir: SUN, moonI: lerp(3.0, 6.0, dawn), moonC: 0xffb070, hemiI: lerp(1.1, 1.9, dawn),   // 「月光」当成贴着地平线的晨光：人、车、烟都镶一道暖边
-        shadowAt: V3(336, 10, -760), shadowR: 260, sat: 0.92, contrast: 1.1, bloom: 1.15, tint: 1.04,
+        shadowAt: V3(336, 10, -760), shadowR: 220, sat: 0.9, contrast: 1.12, bloom: 1.5, tint: 1.04,
         dof: { focus: lerp(45, 200, e), range: lerp(120, 360, e), max: 0.38 } };
     },
     titles: t => [{ text: '天亮了', x: 0.5, y: 0.8, size: 0.03, font: SERIF, weight: 700, spacing: 0.4, a: fadeIO(t, 4.6, 7.8, 1.0, 0.7), color: '#f0e2cc' }],
