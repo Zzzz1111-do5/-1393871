@@ -713,6 +713,13 @@ function K.crew(dressKey)
       elseif p:IsA("Decal") then p.Transparency = on and 0 or 1 end
     end
   end
+  -- 整个人（第一人称的自己：用户 11-21「第一人称不要显示我的腿和胳膊」）
+  function f.bodyVisible(on)
+    for _, p in ipairs(m:GetDescendants()) do
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 0 or 1
+      elseif p:IsA("Decal") then p.Transparency = on and 0 or 1 end
+    end
+  end
   return f
 end
 

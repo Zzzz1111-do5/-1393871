@@ -581,8 +581,7 @@ function Interior.init(G)
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
       if cr.headShown ~= (c.mine ~= id) then
         cr.headShown = c.mine ~= id
-        f.headVisible(cr.headShown)
-        f.torsoVisible(cr.headShown)   -- 第一人称：只留手和腿（低头看得见自己握着操纵杆）
+        f.bodyVisible(cr.headShown)   -- 第一人称的自己整个不画（用户 11-21：不要显示我的腿和胳膊）；别的乘员照画
       end
     end
   end

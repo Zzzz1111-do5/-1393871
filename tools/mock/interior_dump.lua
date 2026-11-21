@@ -49,7 +49,7 @@ return function(cur2, hull, dumpCams, path, cam, Enum)
         table.insert(acc, string.format('{"x":%s,"y":%s,"w":%s,"h":%s,"v":%s,"bg":%s,"bt":%s,"rot":%s,"round":%s%s%s}', num(x), num(y), num(w), num(h),
           tostring(v), c3(bg), num(ch.BackgroundTransparency), num(ch.Rotation), tostring(round),
           st and string.format(',"st":%s,"stw":%s', c3(st.Color), num(st.Thickness)) or "",
-          txt and txt ~= "" and string.format(',"text":"%s","tc":%s,"ts":%s,"al":"%s","bold":%s', (txt:gsub('[\\"]', '')), c3(ch.TextColor3), num(ch.TextSize), ch.TextXAlignment.Name, tostring(ch.Font == Enum.Font.GothamBold)) or ""))
+          txt and txt ~= "" and string.format(',"text":"%s","tc":%s,"ts":%s,"al":"%s","bold":%s', (txt:gsub('[\\"]', ''):gsub('%c', ' ')), c3(ch.TextColor3), num(ch.TextSize), ch.TextXAlignment.Name, tostring(ch.Font == Enum.Font.GothamBold)) or ""))
         guiNodes(ch, x, y, w, h, acc, v)
       end
     end

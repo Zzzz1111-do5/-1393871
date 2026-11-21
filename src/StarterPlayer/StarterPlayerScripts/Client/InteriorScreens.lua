@@ -1181,16 +1181,123 @@ P.cdu = function(s, env, zh)
   end
 end
 
+-- 圆形雷达显示（歼-20 参考图大屏左边：一圈圈绿色距离环、扫描线转，目标按方位和距离画：敌红三角、友蓝圆）
+P.rscope = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.ClipsDescendants = true
+  local G = RGB(80, 230, 110)
+  local cx, cy, r = W / 2, H / 2 + 6, math.min(W, H) * 0.42
+  for i = 1, 4 do Ring(R, cx, cy, r * i / 4, 1, (i == 4) and G or RGB(40, 120, 60), 2) end
+  for a = 0, 330, 30 do
+    local ra = math.rad(a)
+    Ln(R, cx + math.sin(ra) * r * 0.25, cy - math.cos(ra) * r * 0.25, cx + math.sin(ra) * r, cy - math.cos(ra) * r, 1, RGB(30, 90, 50), 2)
+  end
+  local _, sweep = Ln(R, cx, cy, cx, cy - r, 2, G, 3)
+  local title = Tx(R, "", 4, 2, W - 8, 14, 11, G, nil, FONTB, 4)
+  local pool = {}
+  local rng = 80   -- 公里
+  return function(d)
+    local t = os.clock() * 1.2
+    sweep(cx, cy, cx + math.sin(t) * r, cy - math.cos(t) * r)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if c.km < rng then
+        n += 1
+        local f = pool[n] or Tx(R, "", 0, 0, 14, 14, 12, G, Enum.TextXAlignment.Center, FONTB, 5)
+        pool[n] = f
+        f.Visible = true
+        local k = c.km / rng * r
+        f.Position = UD2(0, cx + math.sin(math.rad(c.az)) * k - 7, 0, cy - math.cos(math.rad(c.az)) * k - 7)
+        f.Text = c.friend and "●" or ((c.kind == "air") and "▲" or "◆")
+        f.TextColor3 = c.friend and RGB(90, 200, 255) or RGB(255, 90, 70)
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+    title.Text = zh and string.format("雷达  %d 公里  目标 %d", rng, n) or string.format("RDR  %d NM  TGT %d", math.floor(rng * 0.54), n)
+  end
+end
+
+-- 雷达告警（歼-16 参考图：大屏右边一块圆屏、大屏里的「告警」窗口）：两圈圆、中间自己，敌方目标按方位画（越远越靠外）
+P.rwr = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.ClipsDescendants = true
+  local G = RGB(90, 230, 120)
+  local cx, cy, r = W / 2, H / 2, math.min(W, H) * 0.42
+  Ring(R, cx, cy, r, 2, G, 2)
+  Ring(R, cx, cy, r * 0.5, 1, RGB(50, 140, 80), 2)
+  for _, a in ipairs({ 0, 90, 180, 270 }) do
+    local ra = math.rad(a)
+    Ln(R, cx + math.sin(ra) * r * 0.86, cy - math.cos(ra) * r * 0.86, cx + math.sin(ra) * r, cy - math.cos(ra) * r, 2, G, 3)
+  end
+  F(R, cx - 1, cy - 6, 2, 12, G, 0, 4)
+  F(R, cx - 6, cy - 1, 12, 2, G, 0, 4)
+  local pool = {}
+  return function(d)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if not c.friend then
+        n += 1
+        local t = pool[n] or Tx(R, "", 0, 0, 16, 16, 13, RGB(255, 90, 70), Enum.TextXAlignment.Center, FONTB, 5)
+        pool[n] = t
+        t.Visible = true
+        local k = clamp((c.km or 0) / 100, 0.2, 0.9) * r
+        t.Position = UD2(0, cx + math.sin(math.rad(c.az)) * k - 8, 0, cy - math.cos(math.rad(c.az)) * k - 8)
+        t.Text = (c.kind == "air") and "▲" or "◆"
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+  end
+end
+
+-- 正前方控制板的小液晶（歼-20、歼-15T 参考图：一行行电台、导航、方式字）
+P.ufcc = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(120, 240, 160)
+  local L = {}
+  for i = 1, 4 do L[i] = Tx(s.root, "", 3, 1 + (i - 1) * (H - 2) / 4, W - 6, (H - 2) / 4, 10, G, nil, FONT, 3) end
+  return function(d)
+    L[1].Text = zh and "通信1 125.35 话音  120.22 数据" or "COM1 125.35 VOICE 120.22 DATA"
+    L[2].Text = zh and "通信2 305.50 加密  导航 塔康" or "COM2 305.50 SEC  NAV TCN"
+    L[3].Text = string.format(zh and "高度 %d 米  航向 %03d" or "ALT %d FT  HDG %03d",
+      math.floor(zh and (d.altM or 0) or ((d.altM or 0) * 3.281)), math.floor((d.hdg or 0) % 360))
+    L[4].Text = (d.warn and d.warn ~= "") and d.warn or (zh and "自驾 关  敌我 正常" or "A/P OFF  IFF NORM")
+  end
+end
+
+-- F-22 左上前显示器：告警 / 注意 / 提示一列字（ICAWS：红告警、黄注意、绿提示；真机照片上是一列黄绿字）
+P.icaws = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local L = {}
+  for i = 1, 6 do L[i] = Tx(s.root, "", 3, 1 + (i - 1) * (H - 2) / 6, W - 6, (H - 2) / 6, 10, RGB(255, 210, 60), nil, FONTB, 3) end
+  local GN, YL, RD = RGB(110, 240, 140), RGB(255, 210, 60), RGB(255, 70, 60)
+  return function(d)
+    local rows = {}
+    if d.warn and d.warn ~= "" then table.insert(rows, { d.warn, RD }) end
+    if (d.fuel or 1) < 0.3 then table.insert(rows, { "FUEL LOW", YL }) end
+    if (d.gear or 0) > 0.5 then table.insert(rows, { "GEAR DOWN", YL }) end
+    table.insert(rows, { "ECS AUTO", GN })
+    table.insert(rows, { "OBOGS ON", GN })
+    table.insert(rows, { string.format("G %.1f", d.g or 1), GN })
+    for i = 1, 6 do
+      local r = rows[i]
+      L[i].Text = r and r[1] or ""
+      if r then L[i].TextColor3 = r[2] end
+    end
+  end
+end
+
 -- 按键的字 → 页面（多功能显示器、全景屏的触摸菜单共用）：F-22 的 TSD、A-10C 的 TAD / DSMS / STAT、F-35 的 FUEL（docs/cockpit_research.md）
 local KEYPAGE = { PFD = "pfd", RDR = "radar", SA = "sa", SMS = "sms", ENG = "eng", TSD = "tsd", TAD = "sa", DSMS = "sms", STAT = "eng", FUEL = "eng",
   CDU = "cdu", LOAD = "sms", ["姿态"] = "pfd", ["雷达"] = "radar", ["态势"] = "sa", ["武器"] = "sms", ["发动机"] = "eng", ["油量"] = "eng" }
 -- 多功能显示器：几个页面（默认 姿态 / 雷达 / 态势 / 武器 / 发动机），按键换页；names 给这一型有的页面（A-10C 没有雷达页）
-local function mfd(first, names)
+local function mfd(first, names, bg)
   return function(s, env, zh)
     local W, H = s.px.X, s.px.Y
     local subs, ups = {}, {}
     for _, name in ipairs(names or { "pfd", "radar", "sa", "sms", "eng" }) do
-      local f = F(s.root, 0, 0, W, H, RGB(0, 0, 0), 0, 1)
+      local f = F(s.root, 0, 0, W, H, bg or RGB(0, 0, 0), 0, 1)
       local sub = { root = f, px = s.px, page = name }
       ups[name] = P[name](sub, env, zh)
       subs[name] = { f = f, sub = sub }
@@ -1215,8 +1322,13 @@ P.mfd_pfd, P.mfd_sa, P.mfd_sms, P.mfd_eng, P.mfd_rdr = mfd("pfd"), mfd("sa"), mf
 P.mfd_tsd = mfd("tsd", { "tsd", "radar", "pfd", "sms", "eng" })          -- F-22 主显示器：战术态势俯视图
 P.mfd_tad = mfd("sa", { "sa", "pfd", "sms", "eng", "cdu" })              -- A-10C 左 MFCD：TAD（没有雷达）
 P.mfd_dsms = mfd("sms", { "sms", "sa", "pfd", "eng", "cdu" })            -- A-10C 右 MFCD：外挂（DSMS）、CDU 页
+-- F-22（用户 11-21 给的真机照片）：三块主显示器是深蓝底、上面一圈圈距离环
+local NAVY = RGB(10, 22, 62)
+P.f22_tsd = mfd("tsd", { "tsd", "radar", "pfd", "sms", "eng" }, NAVY)
+P.f22_sms = mfd("sms", { "sms", "tsd", "radar", "pfd", "eng" }, NAVY)
+P.f22_eng = mfd("eng", { "eng", "tsd", "radar", "pfd", "sms" }, NAVY)
 
--- 一块宽屏分几个窗口（F-35 的「门户」、歼-20 / 歼-35 的大屏、歼-15T 拼起来的整块屏）：areas = { { 起点, 宽（占屏宽几成）, 页面, 标题 }, … }，
+-- 一块宽屏分几个窗口（F-35 的「门户」、歼-20 / 歼-35 / 歼-16 的大屏）：areas = { { 起点, 宽（占屏宽几成）, 页面, 标题, 底色 }, … }，
 --   map[键] = { 第几个窗口, 页面 }；每个窗口顶上一条窄标题（门户的名字），窗口之间一道暗缝；没在 map 里的键交给第一个窗口自己的页面
 local function multi(areas, map)
   return function(s, env, zh)
@@ -1228,13 +1340,13 @@ local function multi(areas, map)
       local head = a[4] and Tx(s.root, a[4], x0, 0, w0, hh, math.max(9, hh - 3), RGB(150, 210, 190), Enum.TextXAlignment.Center, FONTB, 6)
       if head then F(s.root, x0, hh - 1, w0, 1, RGB(60, 110, 96), 0, 6) end
       local top = head and hh or 0
-      local f = F(s.root, x0, top, w0, H - top, RGB(0, 0, 0), 0, 1)
+      local f = F(s.root, x0, top, w0, H - top, a[5] or RGB(0, 0, 0), 0, 1)
       local sub = { root = f, px = Vector3.new(w0, H - top, 0) }
       subs[i] = { f = f, sub = sub, name = a[3], head = head, up = P[a[3]](sub, env, zh) }
       if i > 1 then F(s.root, W * a[1] - 1, 0, 2, H, RGB(26, 30, 30), 0, 7) end   -- 窗口之间的缝
     end
     local TITLE = { sa = zh and "态势" or "TSD", tsd = zh and "态势" or "TSD", radar = zh and "雷达" or "FCR", pfd = zh and "飞行" or "FLT",
-      sms = zh and "武器" or "SMS", eng = zh and "发动机 燃油" or "FUEL / ENG", cdu = "CDU" }
+      sms = zh and "武器" or "SMS", eng = zh and "发动机 燃油" or "FUEL / ENG", cdu = "CDU", rscope = zh and "雷达" or "FCR", rwr = zh and "告警" or "RWR" }
     local function swap(i, name)
       local it = subs[i]
       if not it or it.name == name then return end
@@ -1258,12 +1370,17 @@ end
 P.pano = multi({ { 0, 0.42, "sa" }, { 0.42, 0.28, "pfd" }, { 0.70, 0.30, "sms" } },
   { SA = { 1, "sa" }, RDR = { 1, "radar" }, SMS = { 3, "sms" }, ENG = { 3, "eng" }, PFD = { 2, "pfd" },
     ["态势"] = { 1, "sa" }, ["雷达"] = { 1, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" }, ["油量"] = { 3, "eng" } })
--- 歼-20 主屏（24 × 9 英寸触摸屏，docs/cockpit_research.md）：态势大窗、中间飞行、右边雷达；触摸菜单换窗口内容
-P.j20_main = multi({ { 0, 0.40, "sa", "态势" }, { 0.40, 0.24, "pfd", "飞行" }, { 0.64, 0.36, "radar", "雷达" } },
-  { ["态势"] = { 1, "sa" }, ["雷达"] = { 3, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的第一人称参考图）：左边圆形雷达、中间飞行、右边挂弹外形；触摸菜单换窗口内容
+P.j20_main = multi({ { 0, 0.36, "rscope", "雷达" }, { 0.36, 0.28, "pfd", "飞行" }, { 0.64, 0.36, "sms", "武器" } },
+  { ["态势"] = { 1, "tsd" }, ["雷达"] = { 1, "rscope" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-16 大屏（用户 11-21 给的「J-16 座舱环视」参考图：一整块横屏分四个窗口）：飞行、雷达、态势、雷达告警
+P.j16_main = multi({ { 0, 0.25, "pfd", "飞行" }, { 0.25, 0.25, "radar", "雷达" }, { 0.5, 0.25, "tsd", "态势" }, { 0.75, 0.25, "rwr", "告警" } },
+  { ["姿态"] = { 1, "pfd" }, ["雷达"] = { 2, "radar" }, ["态势"] = { 3, "tsd" }, ["武器"] = { 4, "sms" }, ["发动机"] = { 4, "eng" }, ["油量"] = { 4, "eng" } })
 -- F-35 全景座舱显示器（20 × 8 英寸，两块 10 × 8 英寸拼成，4 个门户）：左半是大号 TSD（两个门户合成一个），右半两个门户（燃油发动机、外挂）
-P.f35l = multi({ { 0, 1, "tsd", "TSD" } }, { TSD = { 1, "tsd" }, RDR = { 1, "radar" }, FLT = { 1, "pfd" } })
-P.f35r = multi({ { 0, 0.5, "eng", "FUEL / ENG" }, { 0.5, 0.5, "sms", "SMS" } }, { FUEL = { 1, "eng" }, ENG = { 1, "eng" }, SMS = { 2, "sms" }, FLT = { 1, "pfd" }, TSD = { 2, "tsd" } })
+--   真机照片（用户 11-21 给的）：门户是深蓝、绿、紫的色块底，不是全黑
+P.f35l = multi({ { 0, 1, "tsd", "TSD", RGB(14, 20, 60) } }, { TSD = { 1, "tsd" }, RDR = { 1, "radar" }, FLT = { 1, "pfd" } })
+P.f35r = multi({ { 0, 0.5, "eng", "FUEL / ENG", RGB(10, 46, 34) }, { 0.5, 0.5, "sms", "SMS", RGB(40, 18, 66) } },
+  { FUEL = { 1, "eng" }, ENG = { 1, "eng" }, SMS = { 2, "sms" }, FLT = { 1, "pfd" }, TSD = { 2, "tsd" } })
 -- 歼-15T：下方一整块大屏（两块拼起来的，中间一道缝）：左半态势 / 雷达，右半飞行 + 武器
 P.j15l = multi({ { 0, 1, "radar", "雷达" } }, { ["雷达"] = { 1, "radar" }, ["态势"] = { 1, "sa" }, ["姿态"] = { 1, "pfd" } })
 P.j15r = multi({ { 0, 0.5, "pfd", "飞行" }, { 0.5, 0.5, "sms", "武器" } }, { ["武器"] = { 2, "sms" }, ["发动机"] = { 2, "eng" }, ["油量"] = { 2, "eng" }, ["姿态"] = { 1, "pfd" } })
@@ -1367,6 +1484,18 @@ P.hsi = function(s, env, zh)
   F(R, W / 2 - 1, H / 2 - 7, 2, 14, RGB(255, 255, 255), 0, 7)       -- 飞机符号
   F(R, W / 2 - 7, H / 2 - 2, 14, 2, RGB(255, 255, 255), 0, 7)
   return function(d) card.Rotation = -((d.hdg or 0) % 360) end
+end
+-- 过载表（歼-15T 参考图：控制板右边那个指针小表）：1 g 在左边，9 g 转到右下
+P.gmeter = function(s, env, zh)
+  local set = dial(s, 12, zh and "过载" or "G")
+  return function(d) set(-PI / 2 + clamp(((d.g or 1) - 1) / 8, -0.4, 1) * PI * 1.25) end
+end
+-- 发动机小圆表（歼-20 参考图：控制板左边 2 × 2 四个）：左右发动机转速、排气温度，跟着油门
+for _, e in ipairs({ { "n_l", "转速左", "RPM L", 0.6, 3.6 }, { "n_r", "转速右", "RPM R", 0.6, 3.6 }, { "t_l", "排温左", "EGT L", 1.4, 2.6 }, { "t_r", "排温右", "EGT R", 1.4, 2.6 } }) do
+  P[e[1]] = function(s, env, zh)
+    local set = dial(s, 10, zh and e[2] or e[3])
+    return function(d) set(e[4] + clamp((d.thr or 0) / 100, 0, 1.3) * e[5]) end
+  end
 end
 -- A-10 的一排机械仪表（两台发动机转速、涡轮温度、燃油、油压）
 P.gauges = function(s, env)

@@ -35129,8 +35129,7 @@ function Interior.init(G)
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
       if cr.headShown ~= (c.mine ~= id) then
         cr.headShown = c.mine ~= id
-        f.headVisible(cr.headShown)
-        f.torsoVisible(cr.headShown)   -- 第一人称：只留手和腿（低头看得见自己握着操纵杆）
+        f.bodyVisible(cr.headShown)   -- 第一人称的自己整个不画（用户 11-21：不要显示我的腿和胳膊）；别的乘员照画
       end
     end
   end
@@ -37888,7 +37887,9 @@ end
 --   （玻璃有划痕、能反光，Interior.lua 再加迎着日月光时的眩光）、弹射座椅（头靠 / 降落伞箱、坐垫、救生包、弹射拉环、肩带）、
 --   驾驶杆（中央杆 / 侧杆，跟着杆量动）、油门（跟着油门走）、脚蹬（跟着方向舵）、起落架手柄（跟着起落架收放，三个绿灯）、
 --   主告警 / 注意灯、备份仪表（姿态、高度、空速）
---   L = { disp = "j20" / "f35" / "f22" / "j16" / "j15t" / "a10" / "pano", hud = true / false, hudW = 平显组合玻璃宽, stick = "center" / "side",
+--   L = { disp = "j20" / "f35" / "f22" / "j16" / "j15t" / "a10" / "pano", hud = true / false, hudW / hudH = 平显组合玻璃宽高,
+--         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
+--         goldGlass = 座舱盖镀金（隐身机）, stick = "center" / "side",
 --         seats = 1 / 2, cn = 中文标签, frame = 风挡有框, minScreens = 这一型真有几块屏（测试按它查，默认 5）, noRadar = 没有雷达（A-10C） }
 -- 各型的屏幕块数、尺寸、摆法照网上查到的资料（docs/cockpit_research.md，出处写在里面；查不到的歼-35、歼-50 用 pano 整块大屏）
 local PIT = RGB(46, 50, 54)      -- 座舱漆：深灰
@@ -37925,93 +37926,202 @@ function Defs.jet(b, ctx, L)
     b:box(gname, V(0.10, 0.03, 0.10), CF(0, -0.10, 0.04), RGB(60, 62, 64), MAT.DiamondPlate)
   end
   -- 主仪表板 + 遮光罩
+  local disp = L.disp or "pano"
+  -- 平显下面有正前方控制板（UFC / ICP）的机型（用户 11-21 给的歼-20、歼-16、歼-15T 第一人称参考图，F-22 真机照片）：
+  --   遮光罩中间让开控制板那么宽，平显投影仪改浅（原来往后伸到离眼 0.55 米，挡住控制板上半截），主显示器往下挪
+  local UFCW = ({ j20 = 0.21, j16 = 0.20, j15t = 0.21, f22 = 0.17 })[disp]
   b:box(H, V(0.80, 0.46, 0.06), look(V(0, -0.46, -0.77), V(0, -0.1, 0.3)), PIT)
-  bx(0.78, 0.05, 0.26, 0, -0.205, -0.73, GLARE, MAT.Fabric, 4, 0, 0)
+  bx(0.78, 0.05, 0.16, 0, -0.205, -0.78, GLARE, MAT.Fabric, 4, 0, 0)   -- 遮光罩：前沿离眼 0.70 米（原来 0.60，挡住下面小屏的上沿）
+  -- 贴着仪表板面摆（显示器和面板同一个斜度，往外凸 m 米；原来朝着眼睛摆，往下挪了以后上半截埋进面板里）
+  local PN, PU = V(0, 0.319, 0.948), V(0, 0.948, -0.319)   -- 面板法线（朝人）、面板的上
+  local function flush(x, y, m)
+    local p = V(x, y, -0.7416 - (y + 0.4504) * 0.3365) + PN * (m or 0.012)
+    return CFrame.lookAt(p, p + PN, PU)
+  end
+  -- 上控制台（平显下面往人这边凸出来的一块，参考图里控制板、小圆表、备份姿态都装在它上面）：cons(x, y) 是它面上的一点（x 人看来往右）
+  local CONSW = ({ j20 = 0.56, j16 = 0.56, j15t = 0.42, f22 = 0.56, pano = 0.56, a10 = 0.20 })[disp]
+  local CONS = CONSW and CFrame.lookAt(V(0, -0.30, -0.7575), eye)
+  if CONS then b:box(H, V(CONSW, 0.12, 0.085), CONS, PIT) end
+  local function cons(x, y) return CONS * CF(-x, (y + 0.30) / 0.929, -0.0435) end
   bx(0.78, 0.30, 0.04, 0, -0.74, -0.95, PIT2, nil, 30, 0, 0)                   -- 膝下的面板（伸向脚蹬）
   -- 主告警、注意灯（遮光罩上，挨打 / 失速时闪）
-  b:led(H, CF(-0.30, -0.17, -0.66), RGB(255, 40, 30), 0.022, "mwarn")
-  b:led(H, CF(0.30, -0.17, -0.66), RGB(255, 180, 30), 0.022, "mcaut")
-  b:placard(H, 0.07, 0.016, look(V(-0.30, -0.185, -0.645)), cn and "主告警" or "MASTER WARN", { bg = C.black, fg = RGB(255, 80, 70) })
-  b:placard(H, 0.07, 0.016, look(V(0.30, -0.185, -0.645)), cn and "主注意" or "MASTER CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
+  b:led(H, CF(-0.30, -0.17, -0.72), RGB(255, 40, 30), 0.022, "mwarn")
+  b:led(H, CF(0.30, -0.17, -0.72), RGB(255, 180, 30), 0.022, "mcaut")
+  b:placard(H, 0.07, 0.016, look(V(-0.30, -0.205, -0.697)), cn and "主告警" or "MASTER WARN", { bg = C.black, fg = RGB(255, 80, 70) })
+  b:placard(H, 0.07, 0.016, look(V(0.30, -0.205, -0.697)), cn and "主注意" or "MASTER CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
   -- 显示器
   local K = cn and { top = { "姿态", "雷达", "态势", "武器", "发动机" }, bottom = { "油量", "检查", "目标", "通信", "菜单" } }
     or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
-  local disp = L.disp or "pano"
-  -- 按机型照资料摆（docs/cockpit_research.md）；standby = 主显示器下面一排三个小圆表（备份姿态、空速、高度），有独立备份显示器的机型不要
+  -- 按机型照资料和参考图摆（docs/cockpit_research.md）；standby = 主显示器下面一排三个小圆表（备份姿态、空速、高度），有独立备份显示器的机型不要
   local standby = true
   -- 一排带字的键（平显下面的综合控制面板 ICP、正前方控制器 UFC）：rows = { { "COM1", … }, … }
-  local function keypad(c, w, rows)
-    local base = b:box(H, V(w, 0.016 + #rows * 0.019, 0.03), look(c) * CF(0, 0, 0.016), RGB(30, 32, 34), MAT.Metal)
+  local function keypad(cf, w, rows)
+    local base = b:box(H, V(w, 0.016 + #rows * 0.019, 0.03), cf * CF(0, 0, 0.016), RGB(30, 32, 34), MAT.Metal)
     base.CastShadow = false
     for r, row in ipairs(rows) do
       local n = #row
       for i, t in ipairs(row) do
         local kx = w / 2 - (i - 0.5) * w / n   -- 同屏幕边的键：第一个在人看来最左边
-        b:placard(H, w / n * 0.82, 0.015, look(c) * CF(kx, (#rows + 1) / 2 * 0.019 - r * 0.019, -0.002), t, { bg = RGB(52, 55, 58), fg = RGB(225, 228, 222) })
+        b:placard(H, w / n * 0.82, 0.015, cf * CF(kx, (#rows + 1) / 2 * 0.019 - r * 0.019, -0.002), t, { bg = RGB(52, 55, 58), fg = RGB(225, 228, 222) })
       end
     end
   end
-  if disp == "j20" then   -- 歼-20：24 × 9 英寸（610 × 230 毫米）触摸大屏 + 三块小辅助屏（左通信导航、中备份姿态、右告警油量）+ 广角全息平显
+  local KC, KF = RGB(52, 55, 58), RGB(225, 228, 222)
+  -- 正前方控制板（UFC / ICP）：底座 + 一块小液晶 + 四周的键；o = { sw, sh 小屏宽高, sy 小屏中心比底座中心高多少, page,
+  --   top 上排键, left / right 两侧的键（人看来的左右）, cols 每侧几列, pad 小屏下面几排数字键, knobs 最下面几个旋钮 }
+  local function ufcBox(cf, w, h, o)
+    local base = b:box(H, V(w, h, 0.035), cf * CF(0, 0, 0.0175), RGB(30, 32, 34), MAT.SmoothPlastic)
+    base.CastShadow = false
+    local sw, sh, sy = o.sw, o.sh, o.sy or 0
+    b:screen(H, sw, sh, cf * CF(0, sy, -0.0015), o.page or "ufcc", { lightK = 0.18, bezel = 0.004, depth = 0.004, ppm = 1800 })
+    local function key(x, y, kw, kh, t) b:placard(H, kw, kh, cf * CF(x, y, -0.002), t, { bg = KC, fg = KF }) end
+    local top = o.top or {}
+    for i, t in ipairs(top) do key(sw / 2 - (i - 0.5) * sw / #top, sy + sh / 2 + 0.012, sw / #top * 0.8, 0.013, t) end
+    local cols = o.cols or 1
+    for _, side in ipairs({ 1, -1 }) do   -- 局部 +X 是人看来的左边
+      local list = (side == 1) and (o.left or {}) or (o.right or {})
+      local per = math.max(1, math.ceil(#list / cols))
+      for i, t in ipairs(list) do
+        local col, row = math.floor((i - 1) / per), (i - 1) % per
+        key(side * (sw / 2 + 0.013 + col * 0.021), sy + sh / 2 - (row + 0.5) * sh / per, 0.017, math.min(0.012, sh / per * 0.82), t)
+      end
+    end
+    for r, row in ipairs(o.pad or {}) do
+      for i, t in ipairs(row) do key(sw / 2 - (i - 0.5) * sw / #row, sy - sh / 2 - 0.012 - (r - 1) * 0.016, sw / #row * 0.78, 0.013, t) end
+    end
+    local nk = o.knobs or 0
+    for i = 1, nk do b:knob(H, cf * CF(w / 2 - (i - 0.5) * w / nk, -h / 2 + 0.013, 0), 0.015) end
+  end
+  if disp == "j20" then
+    -- 歼-20（用户 11-21 给的第一人称参考图 + 资料：24 × 9 英寸触摸大屏、三块小辅助屏、广角平显）：底下横贯一整块大屏
+    --   （左圆形雷达、中飞行、右挂弹外形）；平显下正前方控制板（小液晶、上排 5 键、左 F1–F4、右 F5–F8、两排数字键）；
+    --   控制板左边 2 × 2 四个发动机小圆表，右边一块备份姿态
     local KT = { top = { "态势", "雷达", "武器", "发动机", "油量" }, bottom = { "姿态", "通信", "导航", "检查", "菜单" } }
-    b:screen(H, 0.61, 0.23, look(V(0, -0.47, -0.745)), "j20_main", { keys = KT, touch = true, touchH = 0.09, lightK = 0.5, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.10, 0.07, look(V(-0.25, -0.29, -0.712)), "ufd", { lightK = 0.2 })
-    b:screen(H, 0.075, 0.075, look(V(0, -0.285, -0.714)), "sfd", { lightK = 0.2, ppm = 2200 })
-    b:screen(H, 0.10, 0.07, look(V(0.25, -0.29, -0.712)), "ufd2", { lightK = 0.2 })
+    b:screen(H, 0.61, 0.23, flush(0, -0.515), "j20_main", { keys = KT, touch = true, touchH = 0.09, lightK = 0.5, lightColor = RGB(140, 180, 220) })
+    ufcBox(cons(0, -0.30), 0.20, 0.135, { sw = 0.11, sh = 0.05, sy = 0.022,
+      top = { "数字", "上档", "控制", "确认", "返回" }, left = { "F1", "F2", "F3", "F4" }, right = { "F5", "F6", "F7", "F8" },
+      pad = { { "1", "2", "3", "4", "5" }, { "6", "7", "8", "9", "0" } } })
+    for i, pg in ipairs({ "n_l", "n_r", "t_l", "t_r" }) do
+      local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+      b:screen(H, 0.04, 0.04, cons(-0.198 + col * 0.048, -0.276 - row * 0.048), pg, { light = false, ppm = 2600, bezel = 0.004 })
+    end
+    b:screen(H, 0.065, 0.065, cons(0.17, -0.30), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.008 })
     standby = false
-  elseif disp == "f35" then   -- F-35：20 × 8 英寸全景屏（两块 10 × 8 英寸拼成，触摸，没有边框键）+ 上方正中一块方的备份飞行显示器；没有平显、没有上前显示器
-    b:screen(H, 0.254, 0.203, look(V(-0.128, -0.47, -0.745)), "f35l", { keys = { top = { "TSD", "RDR", "FLT", "DAS", "TFLIR" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.4, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.254, 0.203, look(V(0.128, -0.47, -0.745)), "f35r", { keys = { top = { "FUEL", "ENG", "SMS", "CNI", "ICAWS" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.4, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.075, 0.075, look(V(0, -0.30, -0.715)), "sfd", { lightK = 0.2, ppm = 2200 })
+  elseif disp == "f35" then
+    -- F-35（用户 11-21 给的真机照片 + 资料：20 × 8 英寸全景屏，两块 10 × 8 英寸拼成，触摸，没有边框键；没有平显）：全景屏在仪表板最上面，
+    --   两边斜的外壳；备份飞行显示器在大屏下面正中的竖立台上（台上还有一排小开关、旋钮、一块 3 × 3 按钮）；大屏正上方三个圆灯；右边黄黑条纹应急手柄
+    b:screen(H, 0.254, 0.203, flush(-0.128, -0.44), "f35l", { keys = { top = { "TSD", "RDR", "FLT", "DAS", "TFLIR" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.4, lightColor = RGB(140, 180, 220) })
+    b:screen(H, 0.254, 0.203, flush(0.128, -0.44), "f35r", { keys = { top = { "FUEL", "ENG", "SMS", "CNI", "ICAWS" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.4, lightColor = RGB(140, 180, 220) })
+    for _, s in ipairs({ -1, 1 }) do
+      b:box(H, V(0.045, 0.21, 0.05), flush(s * 0.283, -0.44, 0.02) * ANG(0, rad(-s * 28), 0), RGB(36, 38, 40), MAT.SmoothPlastic)
+    end
+    b:box(H, V(0.13, 0.28, 0.08), flush(0, -0.69, 0.045), RGB(52, 56, 60), MAT.SmoothPlastic)   -- 竖立台（贴着面板下半截往人这边凸）
+    b:panel(H, 0.12, 0.035, flush(0, -0.575, 0.087), 1, 6, RGB(40, 43, 46), { depth = 0.02, kinds = { "t" } })
+    b:panel(H, 0.045, 0.06, flush(-0.036, -0.635, 0.087), 2, 1, RGB(40, 43, 46), { depth = 0.02, kinds = { "k", "l" } })
+    b:screen(H, 0.058, 0.058, flush(0.03, -0.635, 0.09), "sfd", { lightK = 0.2, ppm = 2400, bezel = 0.006, depth = 0.02 })
+    b:panel(H, 0.10, 0.075, flush(0, -0.725, 0.087), 3, 3, RGB(40, 43, 46), { depth = 0.02, kinds = { "b" }, labels = false })
+    b:box(H, V(0.09, 0.028, 0.03), flush(0, -0.315, 0.015), RGB(30, 32, 34), MAT.SmoothPlastic)   -- 大屏正上方三个圆灯
+    for i = -1, 1 do b:led(H, flush(i * 0.026, -0.315, 0.032), RGB(235, 235, 225), 0.016) end
+    for i = 0, 5 do b:box(H, V(0.03, 0.012, 0.03), flush(0.36, -0.40 - i * 0.012, 0.015), (i % 2 == 0) and C.yellow or C.black, MAT.SmoothPlastic) end
     standby = false
-  elseif disp == "f22" then   -- F-22：中间 8 × 8 英寸主显示器（TSD）、两边和两膝之间三块 6.25 英寸副显示器、平显下面 ICP、两边上前显示器
+  elseif disp == "f22" then
+    -- F-22（用户 11-21 给的真机照片 + 资料）：平显下 ICP（上排功能键、左边数字键、右边一列摇臂开关），两边上前显示器（左告警文字、
+    --   右边就是备份飞行显示，所以没有单独的机械备份表）；下面一排三块：中间 8 × 8 英寸主显示器、两边 6.25 英寸副显示器一样高；膝间第四块
     local K1 = { top = { "TSD", "RDR", "SMS", "ENG", "CHK" }, bottom = { "RNG", "FLT", "FUEL", "COM", "MENU" } }
-    b:screen(H, 0.203, 0.203, look(V(0, -0.45, -0.745)), "mfd_tsd", { keys = K1, lightK = 0.4 })
-    b:screen(H, 0.159, 0.159, look(V(-0.255, -0.47, -0.725)), "mfd_sms", { keys = K, lightK = 0.3 })   -- 左：外挂 / 检查单
-    b:screen(H, 0.159, 0.159, look(V(0.255, -0.47, -0.725)), "mfd_eng", { keys = K, lightK = 0.3 })    -- 右：发动机燃油
-    b:screen(H, 0.159, 0.159, look(V(0, -0.71, -0.82)), "mfd_pfd", { keys = K, lightK = 0.25 })       -- 两膝之间：飞行
-    b:screen(H, 0.09, 0.065, look(V(-0.16, -0.27, -0.708)), "ufd", { lightK = 0.2 })
-    b:screen(H, 0.09, 0.065, look(V(0.16, -0.27, -0.708)), "ufd2", { lightK = 0.2 })
-    keypad(V(0, -0.265, -0.706), 0.17, { { "COM1", "COM2", "NAV", "STPT" }, { "ALT", "A/P", "IFF", "HUD" }, { "1", "2", "3", "4", "5" }, { "6", "7", "8", "9", "0" } })
-    standby = { V(0.18, -0.67, -0.80), V(0.245, -0.67, -0.80), V(0.31, -0.67, -0.80) }   -- 备份仪表挪到右下（膝间那块副显示器占了正中）
-  elseif disp == "j16" then   -- 歼-16 前舱「一平二下」：上面平显，下面两块大尺寸多功能显示器；正前方控制板是加大的液晶屏
-    b:screen(H, 0.16, 0.21, look(V(-0.12, -0.47, -0.745)), "mfd_sa", { keys = K, lightK = 0.35 })
-    b:screen(H, 0.16, 0.21, look(V(0.12, -0.47, -0.745)), "mfd_pfd", { keys = K, lightK = 0.35 })
-    b:screen(H, 0.17, 0.05, look(V(0, -0.275, -0.712)), "ufc", { lightK = 0.2 })
-  elseif disp == "j15t" then   -- 歼-15T：下方一整块大屏（两块拼起来，中间一道缝）+ 液晶 UFC（兼作显示航姿等关键飞参）
-    b:screen(H, 0.20, 0.20, look(V(-0.1005, -0.47, -0.745)), "j15l", { keys = { top = { "雷达", "态势", "姿态", "目标", "菜单" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.35 })
-    b:screen(H, 0.20, 0.20, look(V(0.1005, -0.47, -0.745)), "j15r", { keys = { top = { "武器", "发动机", "油量", "通信", "检查" } }, touch = true, touchH = 0.09, bezel = 0.006, lightK = 0.35 })
-    b:screen(H, 0.17, 0.05, look(V(0, -0.275, -0.712)), "ufc", { lightK = 0.2 })
+    b:screen(H, 0.203, 0.203, flush(0, -0.52), "f22_tsd", { keys = K1, lightK = 0.4 })
+    b:screen(H, 0.159, 0.159, flush(-0.265, -0.50, 0.016), "f22_sms", { keys = K, lightK = 0.3 })   -- 左
+    b:screen(H, 0.159, 0.159, flush(0.265, -0.50, 0.016), "f22_eng", { keys = K, lightK = 0.3 })    -- 右
+    b:box(H, V(0.24, 0.30, 0.09), flush(0, -0.80, 0.05), RGB(40, 42, 44), MAT.SmoothPlastic)              -- 两膝之间的竖立台
+    b:screen(H, 0.159, 0.159, flush(0, -0.775, 0.097), "mfd_pfd", { keys = K, lightK = 0.25 })
+    b:screen(H, 0.085, 0.07, cons(-0.165, -0.30), "icaws", { lightK = 0.2 })
+    b:screen(H, 0.085, 0.07, cons(0.165, -0.30), "sfd", { lightK = 0.2, ppm = 2200 })
+    -- ICP（真机照片：没有屏幕）：上排 5 个功能键，左边 4 × 3 数字键，右边一列 5 个摇臂开关（局部 +X 是人看来的左边）
+    local ic = cons(0, -0.30)
+    local ib = b:box(H, V(0.16, 0.12, 0.035), ic * CF(0, 0, 0.0175), RGB(30, 32, 34), MAT.SmoothPlastic)
+    ib.CastShadow = false
+    for i, t in ipairs({ "COM1", "COM2", "NAV", "STPT", "IFF" }) do b:placard(H, 0.027, 0.013, ic * CF(0.064 - (i - 1) * 0.032, 0.05, -0.002), t, { bg = KC, fg = KF }) end
+    for r, row in ipairs({ { "1", "2", "3" }, { "4", "5", "6" }, { "7", "8", "9" }, { "ENT", "0", "CLR" } }) do
+      for i, t in ipairs(row) do b:placard(H, 0.024, 0.017, ic * CF(0.068 - (i - 1) * 0.028, 0.026 - (r - 1) * 0.022, -0.002), t, { bg = KC, fg = KF }) end
+    end
+    for r = 0, 4 do b:box(H, V(0.05, 0.010, 0.012), ic * CF(-0.045, 0.03 - r * 0.018, -0.006), RGB(60, 62, 64), MAT.SmoothPlastic) end
+    standby = false
+  elseif disp == "j16" then
+    -- 歼-16（用户 11-21 给的「J-16 座舱环视」第一人称参考图；资料：下方几块多功能显示器换成了一整块大屏）：横贯一整块大屏
+    --   （飞行 / 雷达 / 态势 / 告警四个窗口，上下各一条触摸菜单）；平显下面一块方的控制屏；左上开关板、右上备份姿态；
+    --   大屏右边一块圆的告警屏和一块航向表，左边一竖条告警灯
+    b:screen(H, 0.50, 0.215, flush(0, -0.51), "j16_main", { keys = K, touch = true, touchH = 0.085, bezel = 0.014, lightK = 0.45, lightColor = RGB(140, 180, 220) })
+    ufcBox(cons(0, -0.30), 0.19, 0.13, { sw = 0.155, sh = 0.11, sy = 0, page = "ufc" })
+    b:panel(H, 0.14, 0.08, cons(-0.19, -0.30), 2, 4, RGB(40, 43, 46), { depth = 0.03 })
+    b:screen(H, 0.065, 0.065, cons(0.18, -0.30), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.008 })
+    b:screen(H, 0.065, 0.065, flush(0.325, -0.43), "rwr", { lightK = 0.15, ppm = 2200, bezel = 0.01 })
+    b:screen(H, 0.07, 0.07, flush(0.325, -0.55), "hsi", { light = false, ppm = 2200, bezel = 0.01 })
+    b:box(H, V(0.05, 0.17, 0.03), flush(-0.315, -0.50, 0.015), RGB(30, 32, 34), MAT.SmoothPlastic)   -- 告警灯竖条
+    for i = 0, 5 do
+      for j = 0, 1 do
+        b:led(H, flush(-0.315 + (j - 0.5) * 0.02, -0.43 - i * 0.027, 0.033), (i < 2) and RGB(255, 70, 50) or RGB(255, 190, 60), 0.013)
+      end
+    end
+    standby = false
+  elseif disp == "j15t" then
+    -- 歼-15T（用户 11-21 给的第一人称参考图；查到的资料说换了整块大屏，用户给的图是三块屏，照图做）：三块带边框键的多功能显示器
+    --   （左飞行、中雷达、右发动机）；平显下正前方控制板（液晶、两侧各两列键、上排键、5 个旋钮），左右各一个小圆表；
+    --   三块屏下面一排机械备份表；左边竖条开关板（红保险盖），右边告警灯格栅
+    b:screen(H, 0.13, 0.13, flush(-0.21, -0.50), "mfd_pfd", { keys = K, lightK = 0.3 })
+    b:screen(H, 0.13, 0.13, flush(0, -0.50), "mfd_rdr", { keys = K, lightK = 0.3 })
+    b:screen(H, 0.13, 0.13, flush(0.21, -0.50), "mfd_eng", { keys = K, lightK = 0.3 })
+    ufcBox(cons(0, -0.30), 0.20, 0.13, { sw = 0.10, sh = 0.055, sy = 0.012, cols = 2,
+      top = { "通1", "通2", "导航", "敌我", "高度", "自驾" }, left = { "1", "2", "3", "4", "5", "6" }, right = { "7", "8", "9", "0", "清", "输" }, knobs = 5 })
+    b:screen(H, 0.05, 0.05, cons(-0.16, -0.30), "adi", { light = false, ppm = 2400, bezel = 0.008 })
+    b:screen(H, 0.05, 0.05, cons(0.16, -0.30), "gmeter", { light = false, ppm = 2400, bezel = 0.008 })
+    b:panel(H, 0.06, 0.16, flush(-0.36, -0.58), 4, 2, RGB(40, 43, 46), { depth = 0.03, guard = true })
+    b:box(H, V(0.06, 0.16, 0.03), flush(0.36, -0.50, 0.015), RGB(30, 32, 34), MAT.SmoothPlastic)   -- 右边告警灯格栅
+    for i = 0, 7 do b:box(H, V(0.05, 0.006, 0.004), flush(0.36, -0.43 - i * 0.02, 0.032), RGB(70, 72, 70), MAT.SmoothPlastic) end
+    standby = { flush(0.10, -0.635), flush(0.17, -0.635), flush(0.24, -0.635) }
   elseif disp == "a10" then   -- A-10C：两块 4.9 英寸 MFCD（左 TAD、右外挂）、中间一列机械表、右下发动机表、平显下 UFC、右侧 CDU
     local KA = { top = { "TAD", "TGP", "DSMS", "MSG", "STAT" }, bottom = { "CDU", "HUD", "SYS", "LOAD", "MENU" } }
-    b:screen(H, 0.124, 0.124, look(V(-0.245, -0.45, -0.74)), "mfd_tad", { keys = KA, lightK = 0.3 })
-    b:screen(H, 0.124, 0.124, look(V(0.245, -0.45, -0.74)), "mfd_dsms", { keys = KA, lightK = 0.3 })
-    b:screen(H, 0.085, 0.085, look(V(0, -0.40, -0.765)), "adi", { light = false, ppm = 2200 })
-    b:screen(H, 0.085, 0.085, look(V(0, -0.535, -0.775)), "hsi", { light = false, ppm = 2200 })
-    b:screen(H, 0.045, 0.045, look(V(-0.105, -0.38, -0.76)), "asi", { light = false, ppm = 2200 })
-    b:screen(H, 0.045, 0.045, look(V(0.105, -0.38, -0.76)), "alt", { light = false, ppm = 2200 })
-    b:screen(H, 0.045, 0.045, look(V(0.105, -0.50, -0.77)), "vvi", { light = false, ppm = 2200 })
-    b:screen(H, 0.18, 0.09, look(V(0.20, -0.63, -0.79)), "gauges", { lightK = 0.15, light = false })
+    b:screen(H, 0.124, 0.124, flush(-0.245, -0.47), "mfd_tad", { keys = KA, lightK = 0.3 })
+    b:screen(H, 0.124, 0.124, flush(0.245, -0.47), "mfd_dsms", { keys = KA, lightK = 0.3 })
+    b:screen(H, 0.085, 0.085, flush(0, -0.425), "adi", { light = false, ppm = 2200 })
+    b:screen(H, 0.085, 0.085, flush(0, -0.55), "hsi", { light = false, ppm = 2200 })
+    b:screen(H, 0.045, 0.045, flush(-0.105, -0.41), "asi", { light = false, ppm = 2200 })
+    b:screen(H, 0.045, 0.045, flush(0.105, -0.41), "alt", { light = false, ppm = 2200 })
+    b:screen(H, 0.045, 0.045, flush(0.105, -0.52), "vvi", { light = false, ppm = 2200 })
+    b:screen(H, 0.18, 0.09, flush(0.20, -0.635), "gauges", { lightK = 0.15, light = false })
     b:screen(H, 0.09, 0.075, look(V(0.32, -0.52, -0.56)), "cdu", { lightK = 0.15 })
-    keypad(V(0, -0.27, -0.706), 0.16, { { "1", "2", "3", "FUNC", "HACK" }, { "4", "5", "6", "LTR", "MK" }, { "7", "8", "9", "0", "ENT" } })
+    keypad(cons(0, -0.30), 0.16, { { "1", "2", "3", "FUNC", "HACK" }, { "4", "5", "6", "LTR", "MK" }, { "7", "8", "9", "0", "ENT" } })
     standby = false
   else   -- pano（歼-35、歼-50）：整块触摸大屏（资料只到「大横屏」），两边上前显示器照旧
-    b:screen(H, 0.50, 0.21, look(V(0, -0.44, -0.735)), "pano", { keys = K, touch = true, touchH = 0.09, lightK = 0.45, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.10, 0.07, look(V(-0.21, -0.27, -0.71)), "ufd", { lightK = 0.2 })
-    b:screen(H, 0.10, 0.07, look(V(0.21, -0.27, -0.71)), "ufd2", { lightK = 0.2 })
+    b:screen(H, 0.50, 0.21, flush(0, -0.505), "pano", { keys = K, touch = true, touchH = 0.09, lightK = 0.45, lightColor = RGB(140, 180, 220) })
+    b:screen(H, 0.10, 0.07, cons(-0.17, -0.30), "ufd", { lightK = 0.2 })
+    b:screen(H, 0.10, 0.07, cons(0.17, -0.30), "ufd2", { lightK = 0.2 })
   end
   -- 备份仪表（姿态、高度、空速）：主显示器下面一排小圆表
   if standby then
-    local sp = (type(standby) == "table") and standby or { V(-0.08, -0.66, -0.78), V(0.0, -0.66, -0.78), V(0.08, -0.66, -0.78) }
-    b:screen(H, 0.065, 0.065, look(sp[1]), "adi", { light = false, ppm = 2200 })
-    b:screen(H, 0.055, 0.055, look(sp[2]), "asi", { light = false, ppm = 2200 })
-    b:screen(H, 0.055, 0.055, look(sp[3]), "alt", { light = false, ppm = 2200 })
+    local sp = (type(standby) == "table") and standby or { flush(-0.08, -0.635), flush(0.0, -0.635), flush(0.08, -0.635) }
+    b:screen(H, 0.065, 0.065, sp[1], "adi", { light = false, ppm = 2200 })
+    b:screen(H, 0.055, 0.055, sp[2], "asi", { light = false, ppm = 2200 })
+    b:screen(H, 0.055, 0.055, sp[3], "alt", { light = false, ppm = 2200 })
   end
   -- 平显：投影仪 + 组合玻璃（符号按眼睛的位置算，真像在无穷远：Interior 的 hud 页）；歼-20 是广角平显，组合玻璃宽一些
   if L.hud ~= false then
-    local hw = L.hudW or 0.17
-    bx(hw + 0.03, 0.08, 0.22, 0, -0.165, -0.66, RGB(30, 32, 34), MAT.Metal)
-    for _, sx in ipairs({ -1, 1 }) do bx(0.012, 0.15, 0.012, sx * (hw / 2), -0.07, -0.67, RGB(30, 32, 34), MAT.Metal) end
-    local hs = b:screen(H, hw, 0.14, CFrame.lookAt(V(0, -0.055, -0.66), V(0, -0.03, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
+    local hw, hh = L.hudW or 0.17, L.hudH or 0.14
+    local HC = RGB(30, 32, 34)
+    if UFCW then bx(hw + 0.03, 0.08, 0.16, 0, -0.165, -0.70, HC, MAT.Metal)
+    else bx(hw + 0.03, 0.08, 0.22, 0, -0.165, -0.66, HC, MAT.Metal) end
+    local gy = -0.125 + hh / 2   -- 组合玻璃中心（下沿贴着投影仪上面）
+    if L.hudFrame == "box" then   -- 歼-15T 参考图：一圈厚圆角黑框，左边一个小摄像盒
+      local t = 0.022
+      for _, sx in ipairs({ -1, 1 }) do bx(t, hh + t, 0.03, sx * (hw / 2 + t / 2), gy + t / 2, -0.665, HC, MAT.SmoothPlastic) end
+      bx(hw + t * 2, t, 0.03, 0, gy + hh / 2 + t / 2, -0.665, HC, MAT.SmoothPlastic)
+      for _, sx in ipairs({ -1, 1 }) do bx(0.03, 0.03, 0.03, sx * (hw / 2 - 0.004), gy + hh / 2 - 0.004, -0.665, HC, MAT.SmoothPlastic, 0, 0, 45) end   -- 圆角
+      bx(0.022, 0.07, 0.03, -(hw / 2 + 0.04), gy - 0.01, -0.665, RGB(26, 26, 28), MAT.SmoothPlastic)
+    elseif L.hudFrame == "tall" then   -- 歼-16、歼-20 参考图，F-22 真机：两根立柱 + 顶梁
+      for _, sx in ipairs({ -1, 1 }) do bx(0.014, hh + 0.03, 0.014, sx * (hw / 2 + 0.006), gy + 0.008, -0.67, HC, MAT.Metal) end
+      bx(hw + 0.026, 0.012, 0.014, 0, gy + hh / 2 + 0.018, -0.67, HC, MAT.Metal)
+    else
+      for _, sx in ipairs({ -1, 1 }) do bx(0.012, 0.15, 0.012, sx * (hw / 2), -0.07, -0.67, HC, MAT.Metal) end
+    end
+    local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
     hs.part.Material = MAT.Glass
     hs.part.Transparency = 0.86
     hs.part.Color = RGB(150, 200, 170)
@@ -38042,11 +38152,13 @@ function Defs.jet(b, ctx, L)
   b:button("thr", CF(-0.025, 0.13, -0.05) * ANG(0, 0, 0), C.dark, 0.01)
   bx(0.04, 0.012, 0.22, -0.33, -0.565, -0.02, RGB(20, 20, 20))                    -- 油门滑槽
   -- 起落架手柄（主仪表板左边，带轮子形状的头）+ 三个绿灯
-  b:group("gearh", H, CF(-0.37, -0.43, -0.70))
+  --   F-22 两边副显示器占满了仪表板左边，手柄挪到左边那块的左上角外面
+  local gp = (disp == "f22") and V(-0.39, -0.40, -0.745) or V(-0.37, -0.43, -0.735)
+  b:group("gearh", H, CF(gp))
   b:box("gearh", V(0.015, 0.10, 0.015), CF(0, 0.05, 0), C.lgray, MAT.Metal)
   b:cyl("gearh", 0.025, 0.05, CF(0, 0.11, 0), C.white)
-  for i = -1, 1 do b:led(H, CF(-0.33 + i * 0.022, -0.34, -0.705), RGB(80, 255, 110), 0.012, "gear") end
-  b:placard(H, 0.06, 0.016, look(V(-0.37, -0.32, -0.70)), cn and "起落架" or "LDG GEAR", { bg = C.black, fg = C.white })
+  for i = -1, 1 do b:led(H, CF(gp + V(0.04 + i * 0.022, 0.09, -0.005)), RGB(80, 255, 110), 0.012, "gear") end
+  b:placard(H, 0.06, 0.016, look(gp + V(0, 0.11, 0)), cn and "起落架" or "LDG GEAR", { bg = C.black, fg = C.white })
   -- 弹射座椅
   local SC = RGB(54, 58, 54)
   b:seat(H, CF(0, -0.80, 0.14), { w = 0.46, d = 0.44, back = 0.70, recline = 16, head = false, col = RGB(58, 62, 56), frame = RGB(44, 46, 48) })
@@ -38060,26 +38172,80 @@ function Defs.jet(b, ctx, L)
   -- 弹射拉环（黄黑相间，坐垫前面两腿之间）
   for i = 0, 3 do bx(0.025, 0.025, 0.02, -0.04 + i * 0.027, -0.80, -0.11, (i % 2 == 0) and C.yellow or C.black) end
   b:placard(H, 0.10, 0.022, CF(0, -0.765, -0.10) * ANG(rad(-60), 0, 0), cn and "弹射" or "EJECT", { bg = C.yellow, fg = C.black })
-  -- 座舱盖框、玻璃（有划痕；Interior 迎着日月光加眩光）
-  local glass = {}
+  -- 座舱盖玻璃（有划痕；Interior 迎着日月光加眩光）。用户 11-21：原来八条平板拼的，看着是多边形；进游戏像塑料——
+  --   改成截面半圆的管子（一圈 24 条窄条）+ 往前收成弹头形的风挡曲面（5 圈），看不出棱；
+  --   Roblox 画质低时玻璃材质没有折射、按塑料受光，原来的浅灰蓝受光后发白发灰像塑料膜：颜色压暗、更透、加一点反光；
+  --   隐身机的座舱盖镀了一层金（goldGlass），从里面看微微发暖
+  local glass, panes = {}, {}
   local R0, cy0 = 0.52, -0.24
-  for i = 0, 7 do   -- 八条弧形玻璃，从左舱沿翻过头顶到右舱沿
-    local a0, a1 = rad(-82 + i * 20.5), rad(-82 + (i + 1) * 20.5)
-    local am = (a0 + a1) / 2
-    local x, y = math.sin(am) * R0, cy0 + math.cos(am) * R0
-    local wdt = 2 * R0 * math.sin((a1 - a0) / 2) * 1.04
-    local g = b:box(H, V(wdt, 0.006, 1.5), CF(x, y, -0.18) * ANG(0, 0, -am), RGB(170, 190, 200), MAT.Glass)
-    g.Transparency, g.Reflectance, g.CastShadow = 0.9, 0.08, false
-    table.insert(glass, g)
+  local zf, zr, Lf = -0.80, 0.57, 0.30
+  local GC = L.goldGlass and RGB(72, 62, 44) or RGB(54, 62, 68)
+  local function pane(cf, w, l)
+    local g = b:box(H, V(w, 0.006, l), cf, GC, MAT.Glass)
+    g.Transparency, g.Reflectance, g.CastShadow = 0.9, 0.12, false
+    table.insert(panes, g)
+    return g
   end
-  -- 风挡（前面三块斜的）
-  for i = -1, 1 do
-    local g = b:box(H, V(0.30, 0.006, 0.56), CF(i * 0.29, 0.02, -0.98) * ANG(rad(-58), rad(i * 26), 0), RGB(170, 190, 200), MAT.Glass)
-    g.Transparency, g.Reflectance, g.CastShadow = 0.9, 0.1, false
-    table.insert(glass, g)
+  local NG = 24
+  for i = 0, NG - 1 do   -- 管子：从左舱沿翻过头顶到右舱沿
+    local a0, a1 = rad(-90 + i * 180 / NG), rad(-90 + (i + 1) * 180 / NG)
+    local am = (a0 + a1) / 2
+    local rc = R0 * math.cos((a1 - a0) / 2)
+    local g = pane(CF(math.sin(am) * rc, cy0 + math.cos(am) * rc, (zf + zr) / 2) * ANG(0, 0, -am), 2 * R0 * math.sin((a1 - a0) / 2), zr - zf)   -- 正好拼上不重叠（重叠的地方透明度叠两层，看着是一道道细线）
+    if (i - NG / 2) % 3 == 0 then table.insert(glass, 1 + ((i == NG / 2) and 0 or #glass), g) end   -- 带划痕的几条（正上方那条排第一）
+  end
+  -- 风挡：管子前端往前收成弹头形（t = 0 管口，1 尖）；每圈每条一块，四个角取在曲面上
+  local function ring(t) return zf - Lf * math.sin(t * PI / 2), R0 * math.cos(t * PI / 2) ^ 0.6 end
+  local function onRing(a, z, r) return V(math.sin(a) * r, cy0 + math.cos(a) * r, z) end
+  local MG = 5
+  for k = 0, MG - 1 do
+    local z0, r0 = ring(k / MG)
+    local z1, r1 = ring((k + 1) / MG)
+    for i = 0, NG - 1 do
+      local a0, a1 = rad(-90 + i * 180 / NG), rad(-90 + (i + 1) * 180 / NG)
+      local A, B, C2, D = onRing(a0, z0, r0), onRing(a1, z0, r0), onRing(a0, z1, r1), onRing(a1, z1, r1)
+      local xv = ((B - A) + (D - C2)) / 2
+      local mv = (C2 + D) / 2 - (A + B) / 2
+      local X = xv.Unit
+      local Z = (mv - X * mv:Dot(X)).Unit
+      local Y = Z:Cross(X)
+      local w = math.max((B - A).Magnitude, (D - C2).Magnitude)
+      local g = pane(CFrame.fromMatrix((A + B + C2 + D) / 4, X, Y, X:Cross(Y)), w, mv.Magnitude)
+      if k == 1 and math.abs(i - NG / 2 + 0.5) < 3 then table.insert(glass, g) end   -- 正前方几块也带划痕（迎着太阳看得见）
+    end
   end
   b:name("glass", glass)
-  if L.frame then   -- 风挡框、后视镜
+  if L.hoop then
+    local R1, cyh, th, z = 0.50, -0.24, L.hoop.th or 0.05, L.hoop.z or -0.80
+    local n = 16
+    for i = 0, n - 1 do
+      local a0, a1 = rad(-96 + i * 192 / n), rad(-96 + (i + 1) * 192 / n)
+      local am = (a0 + a1) / 2
+      local len = 2 * R1 * math.sin((a1 - a0) / 2) * 1.08
+      bx(len, th, 0.045, math.sin(am) * R1, cyh + math.cos(am) * R1, z, RGB(32, 34, 36), MAT.SmoothPlastic, 0, 0, -math.deg(am))
+    end
+    for _, ad in ipairs(L.hoop.mirrors or {}) do   -- 后视镜：挂在拱框里沿，镜面朝着人
+      local a = rad(ad)
+      local r = R1 - th / 2 - 0.03
+      local pm = V(math.sin(a) * r, cyh + math.cos(a) * r, z + 0.03)
+      b:tube(H, V(math.sin(a) * (R1 - th / 2), cyh + math.cos(a) * (R1 - th / 2), z), pm, 0.01, RGB(40, 42, 44), MAT.Metal)
+      local m = b:box(H, V(0.11, 0.042, 0.008), CFrame.lookAt(pm, eye) * ANG(0, 0, a), RGB(200, 210, 215), MAT.Glass)
+      m.Reflectance, m.CastShadow = 0.6, false
+    end
+    for _, sx in ipairs(L.hoop.struts and { -1, 1 } or {}) do   -- 两根斜撑：遮光罩两角斜着连到拱框
+      local a = rad(sx * 44)
+      b:tube(H, V(sx * 0.13, -0.18, -0.72), V(math.sin(a) * (R1 - th / 2), cyh + math.cos(a) * (R1 - th / 2), z), 0.016, RGB(36, 38, 40), MAT.Metal)
+    end
+    if L.hoop.compass then   -- 备用磁罗盘：吊在拱框右上
+      local a = rad(36)
+      local pc = V(math.sin(a) * (R1 - th / 2 - 0.06), cyh + math.cos(a) * (R1 - th / 2 - 0.06), z + 0.03)
+      b:tube(H, V(math.sin(a) * (R1 - th / 2), cyh + math.cos(a) * (R1 - th / 2), z), pc, 0.012, RGB(40, 42, 44), MAT.Metal)
+      b:cylZ(H, 0.04, 0.056, CF(pc + V(0, -0.035, 0)), RGB(34, 36, 38), MAT.SmoothPlastic)
+      local face = b:cylZ(H, 0.004, 0.044, CF(pc + V(0, -0.035, 0.021)), RGB(225, 222, 200), MAT.SmoothPlastic)
+      face.CastShadow = false
+    end
+  end
+  if L.frame and not L.hoop then   -- 风挡框、后视镜
     for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.55, 0.04, s * 0.30, 0.0, -0.92, RGB(40, 42, 44), MAT.Metal, -40, 0, s * 12) end
     bx(0.62, 0.03, 0.05, 0, 0.26, -0.80, RGB(40, 42, 44), MAT.Metal)
     for i = -1, 1 do
@@ -38120,13 +38286,15 @@ function Defs.jet(b, ctx, L)
 end
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, stick = "center", cn = true }) end
-Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
-Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
-Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j16", hud = true, stick = "center", seats = 2, frame = true, cn = true }) end
-Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { disp = "j15t", hud = true, stick = "center", frame = true, cn = true }) end
-Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3 }) end
-Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, stick = "side" }) end
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "tall", stick = "center", cn = true, goldGlass = true,
+  hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
+Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
+Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
+  hoop = { z = -0.78, th = 0.075, compass = true } }) end
+Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3, goldGlass = true }) end
+Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, hudW = 0.15, hudH = 0.17, hudFrame = "tall", stick = "side", goldGlass = true }) end
 Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true, stick = "center", frame = true, noRadar = true }) end
 
 ---------------------------------------------------------------- 直升机、轰炸机座舱共用件
@@ -39280,6 +39448,13 @@ function K.crew(dressKey)
   end
   function f.headVisible(on)
     for _, p in ipairs(f.headParts) do
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 0 or 1
+      elseif p:IsA("Decal") then p.Transparency = on and 0 or 1 end
+    end
+  end
+  -- 整个人（第一人称的自己：用户 11-21「第一人称不要显示我的腿和胳膊」）
+  function f.bodyVisible(on)
+    for _, p in ipairs(m:GetDescendants()) do
       if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 0 or 1
       elseif p:IsA("Decal") then p.Transparency = on and 0 or 1 end
     end
@@ -40478,16 +40653,123 @@ P.cdu = function(s, env, zh)
   end
 end
 
+-- 圆形雷达显示（歼-20 参考图大屏左边：一圈圈绿色距离环、扫描线转，目标按方位和距离画：敌红三角、友蓝圆）
+P.rscope = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.ClipsDescendants = true
+  local G = RGB(80, 230, 110)
+  local cx, cy, r = W / 2, H / 2 + 6, math.min(W, H) * 0.42
+  for i = 1, 4 do Ring(R, cx, cy, r * i / 4, 1, (i == 4) and G or RGB(40, 120, 60), 2) end
+  for a = 0, 330, 30 do
+    local ra = math.rad(a)
+    Ln(R, cx + math.sin(ra) * r * 0.25, cy - math.cos(ra) * r * 0.25, cx + math.sin(ra) * r, cy - math.cos(ra) * r, 1, RGB(30, 90, 50), 2)
+  end
+  local _, sweep = Ln(R, cx, cy, cx, cy - r, 2, G, 3)
+  local title = Tx(R, "", 4, 2, W - 8, 14, 11, G, nil, FONTB, 4)
+  local pool = {}
+  local rng = 80   -- 公里
+  return function(d)
+    local t = os.clock() * 1.2
+    sweep(cx, cy, cx + math.sin(t) * r, cy - math.cos(t) * r)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if c.km < rng then
+        n += 1
+        local f = pool[n] or Tx(R, "", 0, 0, 14, 14, 12, G, Enum.TextXAlignment.Center, FONTB, 5)
+        pool[n] = f
+        f.Visible = true
+        local k = c.km / rng * r
+        f.Position = UD2(0, cx + math.sin(math.rad(c.az)) * k - 7, 0, cy - math.cos(math.rad(c.az)) * k - 7)
+        f.Text = c.friend and "●" or ((c.kind == "air") and "▲" or "◆")
+        f.TextColor3 = c.friend and RGB(90, 200, 255) or RGB(255, 90, 70)
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+    title.Text = zh and string.format("雷达  %d 公里  目标 %d", rng, n) or string.format("RDR  %d NM  TGT %d", math.floor(rng * 0.54), n)
+  end
+end
+
+-- 雷达告警（歼-16 参考图：大屏右边一块圆屏、大屏里的「告警」窗口）：两圈圆、中间自己，敌方目标按方位画（越远越靠外）
+P.rwr = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.ClipsDescendants = true
+  local G = RGB(90, 230, 120)
+  local cx, cy, r = W / 2, H / 2, math.min(W, H) * 0.42
+  Ring(R, cx, cy, r, 2, G, 2)
+  Ring(R, cx, cy, r * 0.5, 1, RGB(50, 140, 80), 2)
+  for _, a in ipairs({ 0, 90, 180, 270 }) do
+    local ra = math.rad(a)
+    Ln(R, cx + math.sin(ra) * r * 0.86, cy - math.cos(ra) * r * 0.86, cx + math.sin(ra) * r, cy - math.cos(ra) * r, 2, G, 3)
+  end
+  F(R, cx - 1, cy - 6, 2, 12, G, 0, 4)
+  F(R, cx - 6, cy - 1, 12, 2, G, 0, 4)
+  local pool = {}
+  return function(d)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if not c.friend then
+        n += 1
+        local t = pool[n] or Tx(R, "", 0, 0, 16, 16, 13, RGB(255, 90, 70), Enum.TextXAlignment.Center, FONTB, 5)
+        pool[n] = t
+        t.Visible = true
+        local k = clamp((c.km or 0) / 100, 0.2, 0.9) * r
+        t.Position = UD2(0, cx + math.sin(math.rad(c.az)) * k - 8, 0, cy - math.cos(math.rad(c.az)) * k - 8)
+        t.Text = (c.kind == "air") and "▲" or "◆"
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+  end
+end
+
+-- 正前方控制板的小液晶（歼-20、歼-15T 参考图：一行行电台、导航、方式字）
+P.ufcc = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(120, 240, 160)
+  local L = {}
+  for i = 1, 4 do L[i] = Tx(s.root, "", 3, 1 + (i - 1) * (H - 2) / 4, W - 6, (H - 2) / 4, 10, G, nil, FONT, 3) end
+  return function(d)
+    L[1].Text = zh and "通信1 125.35 话音  120.22 数据" or "COM1 125.35 VOICE 120.22 DATA"
+    L[2].Text = zh and "通信2 305.50 加密  导航 塔康" or "COM2 305.50 SEC  NAV TCN"
+    L[3].Text = string.format(zh and "高度 %d 米  航向 %03d" or "ALT %d FT  HDG %03d",
+      math.floor(zh and (d.altM or 0) or ((d.altM or 0) * 3.281)), math.floor((d.hdg or 0) % 360))
+    L[4].Text = (d.warn and d.warn ~= "") and d.warn or (zh and "自驾 关  敌我 正常" or "A/P OFF  IFF NORM")
+  end
+end
+
+-- F-22 左上前显示器：告警 / 注意 / 提示一列字（ICAWS：红告警、黄注意、绿提示；真机照片上是一列黄绿字）
+P.icaws = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local L = {}
+  for i = 1, 6 do L[i] = Tx(s.root, "", 3, 1 + (i - 1) * (H - 2) / 6, W - 6, (H - 2) / 6, 10, RGB(255, 210, 60), nil, FONTB, 3) end
+  local GN, YL, RD = RGB(110, 240, 140), RGB(255, 210, 60), RGB(255, 70, 60)
+  return function(d)
+    local rows = {}
+    if d.warn and d.warn ~= "" then table.insert(rows, { d.warn, RD }) end
+    if (d.fuel or 1) < 0.3 then table.insert(rows, { "FUEL LOW", YL }) end
+    if (d.gear or 0) > 0.5 then table.insert(rows, { "GEAR DOWN", YL }) end
+    table.insert(rows, { "ECS AUTO", GN })
+    table.insert(rows, { "OBOGS ON", GN })
+    table.insert(rows, { string.format("G %.1f", d.g or 1), GN })
+    for i = 1, 6 do
+      local r = rows[i]
+      L[i].Text = r and r[1] or ""
+      if r then L[i].TextColor3 = r[2] end
+    end
+  end
+end
+
 -- 按键的字 → 页面（多功能显示器、全景屏的触摸菜单共用）：F-22 的 TSD、A-10C 的 TAD / DSMS / STAT、F-35 的 FUEL（docs/cockpit_research.md）
 local KEYPAGE = { PFD = "pfd", RDR = "radar", SA = "sa", SMS = "sms", ENG = "eng", TSD = "tsd", TAD = "sa", DSMS = "sms", STAT = "eng", FUEL = "eng",
   CDU = "cdu", LOAD = "sms", ["姿态"] = "pfd", ["雷达"] = "radar", ["态势"] = "sa", ["武器"] = "sms", ["发动机"] = "eng", ["油量"] = "eng" }
 -- 多功能显示器：几个页面（默认 姿态 / 雷达 / 态势 / 武器 / 发动机），按键换页；names 给这一型有的页面（A-10C 没有雷达页）
-local function mfd(first, names)
+local function mfd(first, names, bg)
   return function(s, env, zh)
     local W, H = s.px.X, s.px.Y
     local subs, ups = {}, {}
     for _, name in ipairs(names or { "pfd", "radar", "sa", "sms", "eng" }) do
-      local f = F(s.root, 0, 0, W, H, RGB(0, 0, 0), 0, 1)
+      local f = F(s.root, 0, 0, W, H, bg or RGB(0, 0, 0), 0, 1)
       local sub = { root = f, px = s.px, page = name }
       ups[name] = P[name](sub, env, zh)
       subs[name] = { f = f, sub = sub }
@@ -40512,8 +40794,13 @@ P.mfd_pfd, P.mfd_sa, P.mfd_sms, P.mfd_eng, P.mfd_rdr = mfd("pfd"), mfd("sa"), mf
 P.mfd_tsd = mfd("tsd", { "tsd", "radar", "pfd", "sms", "eng" })          -- F-22 主显示器：战术态势俯视图
 P.mfd_tad = mfd("sa", { "sa", "pfd", "sms", "eng", "cdu" })              -- A-10C 左 MFCD：TAD（没有雷达）
 P.mfd_dsms = mfd("sms", { "sms", "sa", "pfd", "eng", "cdu" })            -- A-10C 右 MFCD：外挂（DSMS）、CDU 页
+-- F-22（用户 11-21 给的真机照片）：三块主显示器是深蓝底、上面一圈圈距离环
+local NAVY = RGB(10, 22, 62)
+P.f22_tsd = mfd("tsd", { "tsd", "radar", "pfd", "sms", "eng" }, NAVY)
+P.f22_sms = mfd("sms", { "sms", "tsd", "radar", "pfd", "eng" }, NAVY)
+P.f22_eng = mfd("eng", { "eng", "tsd", "radar", "pfd", "sms" }, NAVY)
 
--- 一块宽屏分几个窗口（F-35 的「门户」、歼-20 / 歼-35 的大屏、歼-15T 拼起来的整块屏）：areas = { { 起点, 宽（占屏宽几成）, 页面, 标题 }, … }，
+-- 一块宽屏分几个窗口（F-35 的「门户」、歼-20 / 歼-35 / 歼-16 的大屏）：areas = { { 起点, 宽（占屏宽几成）, 页面, 标题, 底色 }, … }，
 --   map[键] = { 第几个窗口, 页面 }；每个窗口顶上一条窄标题（门户的名字），窗口之间一道暗缝；没在 map 里的键交给第一个窗口自己的页面
 local function multi(areas, map)
   return function(s, env, zh)
@@ -40525,13 +40812,13 @@ local function multi(areas, map)
       local head = a[4] and Tx(s.root, a[4], x0, 0, w0, hh, math.max(9, hh - 3), RGB(150, 210, 190), Enum.TextXAlignment.Center, FONTB, 6)
       if head then F(s.root, x0, hh - 1, w0, 1, RGB(60, 110, 96), 0, 6) end
       local top = head and hh or 0
-      local f = F(s.root, x0, top, w0, H - top, RGB(0, 0, 0), 0, 1)
+      local f = F(s.root, x0, top, w0, H - top, a[5] or RGB(0, 0, 0), 0, 1)
       local sub = { root = f, px = Vector3.new(w0, H - top, 0) }
       subs[i] = { f = f, sub = sub, name = a[3], head = head, up = P[a[3]](sub, env, zh) }
       if i > 1 then F(s.root, W * a[1] - 1, 0, 2, H, RGB(26, 30, 30), 0, 7) end   -- 窗口之间的缝
     end
     local TITLE = { sa = zh and "态势" or "TSD", tsd = zh and "态势" or "TSD", radar = zh and "雷达" or "FCR", pfd = zh and "飞行" or "FLT",
-      sms = zh and "武器" or "SMS", eng = zh and "发动机 燃油" or "FUEL / ENG", cdu = "CDU" }
+      sms = zh and "武器" or "SMS", eng = zh and "发动机 燃油" or "FUEL / ENG", cdu = "CDU", rscope = zh and "雷达" or "FCR", rwr = zh and "告警" or "RWR" }
     local function swap(i, name)
       local it = subs[i]
       if not it or it.name == name then return end
@@ -40555,12 +40842,17 @@ end
 P.pano = multi({ { 0, 0.42, "sa" }, { 0.42, 0.28, "pfd" }, { 0.70, 0.30, "sms" } },
   { SA = { 1, "sa" }, RDR = { 1, "radar" }, SMS = { 3, "sms" }, ENG = { 3, "eng" }, PFD = { 2, "pfd" },
     ["态势"] = { 1, "sa" }, ["雷达"] = { 1, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" }, ["油量"] = { 3, "eng" } })
--- 歼-20 主屏（24 × 9 英寸触摸屏，docs/cockpit_research.md）：态势大窗、中间飞行、右边雷达；触摸菜单换窗口内容
-P.j20_main = multi({ { 0, 0.40, "sa", "态势" }, { 0.40, 0.24, "pfd", "飞行" }, { 0.64, 0.36, "radar", "雷达" } },
-  { ["态势"] = { 1, "sa" }, ["雷达"] = { 3, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的第一人称参考图）：左边圆形雷达、中间飞行、右边挂弹外形；触摸菜单换窗口内容
+P.j20_main = multi({ { 0, 0.36, "rscope", "雷达" }, { 0.36, 0.28, "pfd", "飞行" }, { 0.64, 0.36, "sms", "武器" } },
+  { ["态势"] = { 1, "tsd" }, ["雷达"] = { 1, "rscope" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-16 大屏（用户 11-21 给的「J-16 座舱环视」参考图：一整块横屏分四个窗口）：飞行、雷达、态势、雷达告警
+P.j16_main = multi({ { 0, 0.25, "pfd", "飞行" }, { 0.25, 0.25, "radar", "雷达" }, { 0.5, 0.25, "tsd", "态势" }, { 0.75, 0.25, "rwr", "告警" } },
+  { ["姿态"] = { 1, "pfd" }, ["雷达"] = { 2, "radar" }, ["态势"] = { 3, "tsd" }, ["武器"] = { 4, "sms" }, ["发动机"] = { 4, "eng" }, ["油量"] = { 4, "eng" } })
 -- F-35 全景座舱显示器（20 × 8 英寸，两块 10 × 8 英寸拼成，4 个门户）：左半是大号 TSD（两个门户合成一个），右半两个门户（燃油发动机、外挂）
-P.f35l = multi({ { 0, 1, "tsd", "TSD" } }, { TSD = { 1, "tsd" }, RDR = { 1, "radar" }, FLT = { 1, "pfd" } })
-P.f35r = multi({ { 0, 0.5, "eng", "FUEL / ENG" }, { 0.5, 0.5, "sms", "SMS" } }, { FUEL = { 1, "eng" }, ENG = { 1, "eng" }, SMS = { 2, "sms" }, FLT = { 1, "pfd" }, TSD = { 2, "tsd" } })
+--   真机照片（用户 11-21 给的）：门户是深蓝、绿、紫的色块底，不是全黑
+P.f35l = multi({ { 0, 1, "tsd", "TSD", RGB(14, 20, 60) } }, { TSD = { 1, "tsd" }, RDR = { 1, "radar" }, FLT = { 1, "pfd" } })
+P.f35r = multi({ { 0, 0.5, "eng", "FUEL / ENG", RGB(10, 46, 34) }, { 0.5, 0.5, "sms", "SMS", RGB(40, 18, 66) } },
+  { FUEL = { 1, "eng" }, ENG = { 1, "eng" }, SMS = { 2, "sms" }, FLT = { 1, "pfd" }, TSD = { 2, "tsd" } })
 -- 歼-15T：下方一整块大屏（两块拼起来的，中间一道缝）：左半态势 / 雷达，右半飞行 + 武器
 P.j15l = multi({ { 0, 1, "radar", "雷达" } }, { ["雷达"] = { 1, "radar" }, ["态势"] = { 1, "sa" }, ["姿态"] = { 1, "pfd" } })
 P.j15r = multi({ { 0, 0.5, "pfd", "飞行" }, { 0.5, 0.5, "sms", "武器" } }, { ["武器"] = { 2, "sms" }, ["发动机"] = { 2, "eng" }, ["油量"] = { 2, "eng" }, ["姿态"] = { 1, "pfd" } })
@@ -40664,6 +40956,18 @@ P.hsi = function(s, env, zh)
   F(R, W / 2 - 1, H / 2 - 7, 2, 14, RGB(255, 255, 255), 0, 7)       -- 飞机符号
   F(R, W / 2 - 7, H / 2 - 2, 14, 2, RGB(255, 255, 255), 0, 7)
   return function(d) card.Rotation = -((d.hdg or 0) % 360) end
+end
+-- 过载表（歼-15T 参考图：控制板右边那个指针小表）：1 g 在左边，9 g 转到右下
+P.gmeter = function(s, env, zh)
+  local set = dial(s, 12, zh and "过载" or "G")
+  return function(d) set(-PI / 2 + clamp(((d.g or 1) - 1) / 8, -0.4, 1) * PI * 1.25) end
+end
+-- 发动机小圆表（歼-20 参考图：控制板左边 2 × 2 四个）：左右发动机转速、排气温度，跟着油门
+for _, e in ipairs({ { "n_l", "转速左", "RPM L", 0.6, 3.6 }, { "n_r", "转速右", "RPM R", 0.6, 3.6 }, { "t_l", "排温左", "EGT L", 1.4, 2.6 }, { "t_r", "排温右", "EGT R", 1.4, 2.6 } }) do
+  P[e[1]] = function(s, env, zh)
+    local set = dial(s, 10, zh and e[2] or e[3])
+    return function(d) set(e[4] + clamp((d.thr or 0) / 100, 0, 1.3) * e[5]) end
+  end
 end
 -- A-10 的一排机械仪表（两台发动机转速、涡轮温度、燃油、油压）
 P.gauges = function(s, env)
