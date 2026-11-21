@@ -178,7 +178,7 @@ function B:screen(g, w, h, cf, page, opt)
       local list = opt.keys[side] or {}
       local n = #list
       for i, label in ipairs(list) do
-        local x = -w / 2 + (i - 0.5) * w / n
+        local x = w / 2 - (i - 0.5) * w / n   -- 屏幕的 −Z 对着人，人的右手边是局部 −X：第一个键在人看来最左边
         local kw = math.min(0.030, w / n * 0.72)
         local sy = (side == "top") and 1 or -1
         local key = self:box(g, V(kw, 0.011, 0.010), cf * CF(x, sy * (h / 2 + bez * 0.72), -0.005), RGB(62, 64, 66))
@@ -477,6 +477,53 @@ local function partRig(dress)
   end
   return m, hrp, head
 end
+-- 真人比例的小人（车里、座舱里都用它）：R15 的方块小人四肢有 0.34 米粗、胳膊腿太短，坐进座舱够不着杆和脚蹬、低头满眼是方块；
+--   这个按 1.78 米的成年男子量的（肩宽 0.40、上臂 0.29、前臂 0.26、大腿 0.43、小腿 0.42 米），四肢、躯干是椭球（像人体模型），关节名字和层级照 R15
+local function slimRig(dress)
+  local m = Instance.new("Model")
+  m.Name = "Crew"
+  local function P(name, size, color, round)
+    local p = mkPart(m, size * S, color)
+    p.Name = name
+    if round then
+      local sm = Instance.new("SpecialMesh")
+      sm.MeshType = Enum.MeshType.Sphere
+      sm.Parent = p
+    end
+    return p
+  end
+  local function M(name, p0, p1, c0, c1) return motor(name, p0, p1, CF(c0 * S), CF((c1 or V()) * S)) end
+  local hrp = P("HumanoidRootPart", V(0.5, 0.5, 0.3), dress.top)
+  hrp.Transparency, hrp.Anchored = 1, true
+  local lt = P("LowerTorso", V(0.34, 0.18, 0.22), dress.low, true)
+  local ut = P("UpperTorso", V(0.40, 0.52, 0.25), dress.top, true)
+  local head = P("Head", V(0.19, 0.23, 0.21), SKIN)
+  local hm = Instance.new("SpecialMesh")
+  hm.MeshType = Enum.MeshType.Head
+  hm.Parent = head
+  P("Neck", V(0.11, 0.10, 0.11), SKIN, true).Name = "NeckSkin"
+  M("Root", hrp, lt, V(0, -0.05, 0))
+  M("Waist", lt, ut, V(0, 0.07, 0), V(0, -0.24, 0))
+  M("Neck", ut, head, V(0, 0.27, 0), V(0, -0.115, 0))
+  local nk = m:FindFirstChild("NeckSkin")
+  weld(ut, nk, CF(0, 0.25 * S, 0))
+  for _, sd in ipairs({ -1, 1 }) do
+    local side = (sd < 0) and "Left" or "Right"
+    local ua = P(side .. "UpperArm", V(0.105, 0.32, 0.105), dress.top, true)
+    local la = P(side .. "LowerArm", V(0.09, 0.28, 0.09), dress.top, true)
+    local hd = P(side .. "Hand", V(0.085, 0.11, 0.045), dress.glove)
+    M(side .. "Shoulder", ut, ua, V(sd * 0.19, 0.19, 0), V(0, 0.14, 0))
+    M(side .. "Elbow", ua, la, V(0, -0.15, 0), V(0, 0.125, 0))
+    M(side .. "Wrist", la, hd, V(0, -0.13, 0), V(0, 0.05, 0))
+    local ul = P(side .. "UpperLeg", V(0.15, 0.47, 0.15), dress.low, true)
+    local ll = P(side .. "LowerLeg", V(0.11, 0.45, 0.11), dress.low, true)
+    local ft = P(side .. "Foot", V(0.10, 0.09, 0.27), dress.boot)
+    M(side .. "Hip", lt, ul, V(sd * 0.095, -0.05, 0), V(0, 0.215, 0))
+    M(side .. "Knee", ul, ll, V(0, -0.215, 0), V(0, 0.205, 0))
+    M(side .. "Ankle", ll, ft, V(0, -0.21, 0), V(0, 0.035, 0.08))
+  end
+  return m, hrp, head
+end
 -- R15 模板克隆
 local function rigFromTemplate(dress)
   local tpl = RS:FindFirstChild("BotRig")
@@ -544,8 +591,7 @@ local function setJ(Jx, P0, P1) Jx.m.C0 = P0:Inverse() * P1 * Jx.c1 end
 -- 做一个乘员：返回 { model, hrp, J, set(pose) }；dress 见上面的 DRESS
 function K.crew(dressKey)
   local dress = DRESS[dressKey] or DRESS.crew_us
-  local m, hrp, head = rigFromTemplate(dress)
-  if not m then m, hrp, head = partRig(dress) end
+  local m, hrp, head = slimRig(dress)   -- 真人比例（R15 模板 / 方块小人只在调试时用：rigFromTemplate、partRig）
   local J = {}
   for _, d in ipairs(m:GetDescendants()) do
     if d:IsA("Motor6D") then J[d.Name] = { m = d, c0 = d.C0, c1 = d.C1, c1i = d.C1:Inverse() } end
@@ -565,7 +611,7 @@ function K.crew(dressKey)
   -- 头和头上戴的（第一人称时藏起来，自己看得见自己的手和腿）
   f.headParts = { head }
   for _, p in ipairs(m:GetDescendants()) do
-    if p:IsA("BasePart") and (p.Name == "Gear" or p.Name == "Head" or p:IsDescendantOf(head)) then table.insert(f.headParts, p) end
+    if p:IsA("BasePart") and (p.Name == "Gear" or p.Name == "Head" or p.Name == "NeckSkin" or p:IsDescendantOf(head)) then table.insert(f.headParts, p) end
     if p:IsA("Decal") and p.Parent == head then table.insert(f.headParts, p) end
   end
   -- 摆姿势（世界坐标，格）：pelvis 骨盆（下躯干）的姿态；chest 上身相对骨盆的转角（CFrame）；look 头朝哪看（世界方向）；
@@ -595,7 +641,7 @@ function K.crew(dressKey)
     local function arm(Lb, W, side, pole)
       if not W then
         -- 没给手的位置：手臂自然垂下、略往前
-        W = (ut * CF(side * 1.1, -1.5, -0.45)).Position
+        W = (ut * CF(side * 1.1 * k, -1.5 * k, -0.45 * k)).Position
       end
       local e = pole or (rt * side * 0.8 - up * 0.6 + ut.LookVector * 0.1)
       local a, b, c = ik(Lb, ut, W, e, false, nil)
@@ -606,7 +652,7 @@ function K.crew(dressKey)
     arm(f.LA, P.lh, -1, P.lelbow)
     arm(f.RA, P.rh, 1, P.relbow)
     local function leg(Lb, W, side, pole)
-      if not W then W = (lt * CF(side * 0.5, -2.2, -1.2)).Position end
+      if not W then W = (lt * CF(side * 0.5 * k, -2.2 * k, -1.2 * k)).Position end
       local e = pole or (lt.LookVector * 1 + rt * side * 0.15)
       local a, b, c = ik(Lb, lt, W, e, true, P.footRot)
       setJ(Lb.a, lt, a)
@@ -633,4 +679,5 @@ function K.crew(dressKey)
   return f
 end
 
+K.rigFromTemplate, K.partRig = rigFromTemplate, partRig   -- 调试用（R15 模板、方块小人）
 return K

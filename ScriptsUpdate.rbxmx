@@ -28064,6 +28064,7 @@ function Fly.init(G)
     if k == Enum.KeyCode.Space then G.R.Drive:FireServer({ op = "exit" }) return end   -- 用户：空格键脱离载具（在天上就跳伞）
     if not st.pilot then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
@@ -28384,7 +28385,8 @@ function Fly.init(G)
       st.eoYaw -= md.X * SENS
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
-      if d.kind == "jet" and not G.mobile then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
+      local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
+      if d.kind == "jet" and not G.mobile and not pitLook then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
         st.aimYaw -= md.X * SENS
         st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
       end
@@ -34043,6 +34045,7 @@ function Interior.init(G)
   local Defs = require(script.Parent:WaitForChild("InteriorDefs"))
   local Screens = require(script.Parent:WaitForChild("InteriorScreens"))
   local VD = require(RS:WaitForChild("VehDefs"))
+  local AM = require(script.Parent:WaitForChild("AirModels"))
   local V, CF, ANG = Vector3.new, CFrame.new, CFrame.Angles
   local RGB = Color3.fromRGB
   local S = Kit.S
@@ -34070,6 +34073,7 @@ function Interior.init(G)
   local shake = 0
   local stepScope, actions   -- 开镜动画、按键的功能（下面定义）
   local optic, exitOptic, stepOptic, enterOptic   -- 别的观瞄设备（下面定义）
+  local stepAir   -- 飞机座舱（下面定义）
   local scopePhase = function() return false end
 
   ---------------------------------------------------------------- 提示条
@@ -34115,8 +34119,8 @@ function Interior.init(G)
     local pg = me:FindFirstChild("PlayerGui")
     if not pg then return end
     if on then
-      for _, g in ipairs(pg:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Enabled then hidden[g] = true g.Enabled = false end
+      for _, g in ipairs(pg:GetChildren()) do   -- 光学效果（开镜的光圈、瞄准镜画面、座舱盖眩光：属性 Fx）不算界面，照样画
+        if g:IsA("ScreenGui") and g.Enabled and not g:GetAttribute("Fx") then hidden[g] = true g.Enabled = false end
       end
     else
       for g in pairs(hidden) do if g.Parent then g.Enabled = true end end
@@ -34130,6 +34134,11 @@ function Interior.init(G)
 
   local function teardown()
     if optic then exitOptic(nil) end
+    if cur and cur.spec.air then
+      local v = G.viewById and G.viewById(cur.id)
+      if cur.pilotsHidden and v and v.M then pcall(AM.setPilots, v.M, true) end
+      for _, p in ipairs(cur.zone or {}) do p.LocalTransparencyModifier = 0 end
+    end
     if cur then
       if cur.model then cur.model:Destroy() end
       cur = nil
@@ -34178,6 +34187,7 @@ function Interior.init(G)
       end
     end
     c.env.act = actions(c)
+    c.env.zh = spec.air and spec.cn or nil   -- 中文座舱：屏幕写中文（坦克的中文屏幕自己有页面）
     -- 屏幕页面
     for _, s in ipairs(b.screens) do
       s.update = Screens.make(s, c.env)
@@ -34281,6 +34291,14 @@ function Interior.init(G)
 
   local function frames(c, v)
     local b = c.b
+    if c.spec.air then   -- 飞机：座舱的原点在飞行员眼位（机体坐标里，跟着机身俯仰滚转）
+      local w = v.cf * CF(c.eyeBody)
+      b.groups.hull.world, b.groups.turret.world, b.groups.gun.world = w, w, w
+      for _, g in ipairs(b.gorder) do
+        if g.parent then g.world = g.parent.world * g.pivot * g.anim end
+      end
+      return
+    end
     local M, d = v.M, v.def
     local piv = (M and M.tpiv) or d.turret.pivot
     local gpiv = (M and M.gpiv) or d.gun.pivot
@@ -34782,33 +34800,32 @@ function Interior.init(G)
     return A
   end
 
-  -- 镜头正中间那条线对准的按键（射线和按键的方块求交，按键的范围放大一点好对准）
+  -- 镜头正中间那条线对准的按键：视线和按键正面（−Z 那面，对着人）求交，正面的范围放大一点好对准（左右放大得少：
+  --   多功能显示器边上的键只隔 3 厘米）；几个都对得上就挑离键中心最近的（以前按方块求交，斜着看会先碰到旁边那个键的厚度）
   local hover = nil
   local function pickKey(c)
     local o = cam.CFrame.Position
     local dir = cam.CFrame.LookVector
-    local best, bd = nil, 1.6 * S
+    local best, bs = nil, math.huge
     for _, k in ipairs(c.b.softkeys) do
-      local cf, sz = k.part.CFrame, k.part.Size * 0.5 + V(0.012, 0.012, 0.02) * S
+      local cf, sz = k.part.CFrame, k.part.Size * 0.5
       local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
-      local t0, t1 = -math.huge, math.huge
-      local ok = true
-      for _, ax in ipairs({ "X", "Y", "Z" }) do
-        local p0, d0, h = lo[ax], ld[ax], sz[ax]
-        if math.abs(d0) < 1e-6 then
-          if math.abs(p0) > h then ok = false break end
-        else
-          local a, b2 = (-h - p0) / d0, (h - p0) / d0
-          if a > b2 then a, b2 = b2, a end
-          t0, t1 = math.max(t0, a), math.min(t1, b2)
-          if t0 > t1 then ok = false break end
+      if ld.Z > 1e-4 then
+        local t = (-sz.Z - lo.Z) / ld.Z
+        if t > 0 and t < 1.6 * S then
+          local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
+          local mx, my = sz.X + 0.006 * S, sz.Y + 0.010 * S
+          if math.abs(px) <= mx and math.abs(py) <= my then
+            local score = (px / mx) ^ 2 + (py / my) ^ 2
+            if score < bs then best, bs = k, score end
+          end
         end
       end
-      if ok and t1 > 0 and t0 < bd then best, bd = k, math.max(t0, 0) end
     end
     return best
   end
   G.interiorHover = function() return hover ~= nil and mode == "seat" end
+  G.interiorHoverKey = function() return hover end   -- 测试用
   local dot = Instance.new("Frame")
   dot.AnchorPoint = Vector2.new(0.5, 0.5)
   dot.Position = UDim2.fromScale(0.5, 0.5)
@@ -34918,11 +34935,19 @@ function Interior.init(G)
   G.interiorState = function() return { mode = mode, station = station, cur = cur } end   -- 测试用
 
   function G.stepInterior(dt)
+    local fst = G.fly
+    if fst and fst.d then   -- 开飞机：座舱（下面 stepAir）；坐后座不开飞机的、遥控无人机的没有
+      if cur and not cur.spec.air then teardown() end
+      if fst.pilot and not fst.uav and Defs[fst.d.id] then return stepAir(dt, fst) end
+      if cur then teardown() end
+      return
+    end
     local st = G.drive
     if not st or not st.d then
       if cur then teardown() end
       return
     end
+    if cur and cur.spec.air then teardown() end
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.hullF then return end
     if cur and cur.id ~= st.id then teardown() end
@@ -35010,6 +35035,7 @@ function Interior.init(G)
   local sfx = Instance.new("ScreenGui")
   sfx.Name = "ScopeFx"
   sfx.ResetOnSpawn = false
+  sfx:SetAttribute("Fx", true)
   sfx.IgnoreGuiInset = true
   sfx.DisplayOrder = 30
   sfx.Enabled = false
@@ -35163,6 +35189,7 @@ function Interior.init(G)
   local og = Instance.new("ScreenGui")
   og.Name = "Optic"
   og.ResetOnSpawn = false
+  og:SetAttribute("Fx", true)
   og.IgnoreGuiInset = true
   og.DisplayOrder = 24
   og.Enabled = false
@@ -35450,11 +35477,471 @@ function Interior.init(G)
   end
   G.interiorOpticState = function() return optic end   -- 测试用
 
+  ---------------------------------------------------------------- 飞机座舱（对标 DCS）
+  -- V 进出座舱；头跟着鼠标瞄准的方向转（看哪飞哪，同战雷的座舱视角），大过载时头被甩；屏幕、平显都是实时数据；
+  --   座舱盖玻璃：Glass 材质（看出去有轻微折射）、内面一道道划痕和污渍、迎着日月光有眩光和划痕反光的放射纹；
+  --   外面那套 2D 平显、外模型里的飞行员在座舱里时藏起来
+  local function airEye(v, spec)
+    local M = v.M
+    local imp = M and M.imp
+    local seat = (spec and spec.seat) or 1   -- 串列武装直升机：飞行员坐后座（2 号）；美军通用直升机机长坐右座（2 号）
+    if imp and imp.info and imp.info.pit and imp.info.pit[seat] then
+      local e = imp.info.pit[seat]
+      return V(e[1], e[2], e[3]) + (imp.O or V())
+    end
+    local cf = M and (AM.seatCF(M, seat) or AM.seatCF(M, 1))
+    if cf then
+      local e = (cf * CF(0, 0.28, -0.25)).Position   -- 外模型飞行员的头：眼睛在头中心稍前
+      -- 并排座的轰炸机：外模型只在中线摆了一个飞行员，机长坐左座，往左挪半个座舱
+      if spec and spec.eyeShift and math.abs(e.X) < 0.3 then e += V(spec.eyeShift * S, 0, 0) end
+      return e
+    end
+    return V(0, v.def.H * 0.35, -v.def.L * 0.3)
+  end
+  -- 玻璃上的划痕、污渍（内面；受光照，迎着光才看得清）
+  local function scratches(part, seed)
+    local rng = Random.new(seed)
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Bottom
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 120
+    sg.LightInfluence = 1
+    sg.Parent = part
+    local W, H = part.Size.X * 120, part.Size.Z * 120
+    for _ = 1, 26 do
+      local f = Instance.new("Frame")
+      f.AnchorPoint = Vector2.new(0.5, 0.5)
+      f.BorderSizePixel = 0
+      f.BackgroundColor3 = RGB(255, 255, 255)
+      f.BackgroundTransparency = 0.86 + rng:NextNumber() * 0.1
+      f.Position = UDim2.fromOffset(rng:NextNumber() * W, rng:NextNumber() * H)
+      f.Size = UDim2.fromOffset(8 + rng:NextNumber() * 60, 1)
+      f.Rotation = rng:NextNumber() * 180
+      f.Parent = sg
+    end
+    for _ = 1, 3 do   -- 污渍
+      local f = Instance.new("Frame")
+      f.AnchorPoint = Vector2.new(0.5, 0.5)
+      f.BorderSizePixel = 0
+      f.BackgroundColor3 = RGB(230, 230, 220)
+      f.BackgroundTransparency = 0.95
+      f.Position = UDim2.fromOffset(rng:NextNumber() * W, rng:NextNumber() * H)
+      local r = 20 + rng:NextNumber() * 50
+      f.Size = UDim2.fromOffset(r * 1.6, r)
+      f.Parent = sg
+      local cr = Instance.new("UICorner")
+      cr.CornerRadius = UDim.new(0.5, 0)
+      cr.Parent = f
+    end
+  end
+  -- 迎着日月光的眩光：光晕几圈 + 划痕反光的放射纹 + 玻璃整体发白一点
+  local cfx = Instance.new("ScreenGui")
+  cfx.Name = "CanopyFx"
+  cfx.ResetOnSpawn = false
+  cfx:SetAttribute("Fx", true)
+  cfx.IgnoreGuiInset = true
+  cfx.DisplayOrder = 4
+  cfx.Enabled = false
+  cfx.Parent = gui.Parent
+  local haze = Instance.new("Frame")
+  haze.Size = UDim2.fromScale(1, 1)
+  haze.BackgroundColor3 = RGB(255, 250, 235)
+  haze.BackgroundTransparency = 1
+  haze.BorderSizePixel = 0
+  haze.Parent = cfx
+  local glows = {}
+  for i = 1, 4 do
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.BackgroundColor3 = RGB(255, 248, 225)
+    f.BorderSizePixel = 0
+    f.Parent = cfx
+    local cr = Instance.new("UICorner")
+    cr.CornerRadius = UDim.new(0.5, 0)
+    cr.Parent = f
+    glows[i] = { f = f, r = 30 * i * i, t = 0.55 + i * 0.1 }
+  end
+  local streaks = {}
+  for i = 1, 12 do
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.BackgroundColor3 = RGB(255, 252, 240)
+    f.BorderSizePixel = 0
+    f.Parent = cfx
+    streaks[i] = { f = f, a = (i / 12) * 180 + (i % 3) * 7, l = 120 + (i % 4) * 70 }
+  end
+  local function stepGlare()
+    local ok, sun = pcall(function() return Lighting:GetSunDirection() end)
+    local light = (ok and sun and sun.Y > -0.05) and sun or nil
+    local strong = 1
+    if not light then
+      local ok2, moon = pcall(function() return Lighting:GetMoonDirection() end)
+      if ok2 and moon and moon.Y > 0 then light, strong = moon, 0.35 end
+    end
+    if not light then cfx.Enabled = false return end
+    local lv = cam.CFrame.LookVector
+    local k = lv:Dot(light)
+    if k < 0.70 then cfx.Enabled = false return end
+    local sp, onScreen = cam:WorldToViewportPoint(cam.CFrame.Position + light * 1000)
+    if not onScreen then cfx.Enabled = false return end
+    cfx.Enabled = true
+    local a = math.clamp((k - 0.70) / 0.30, 0, 1) * strong
+    for _, g in ipairs(glows) do
+      g.f.Position = UDim2.fromOffset(sp.X, sp.Y)
+      g.f.Size = UDim2.fromOffset(g.r * 2, g.r * 2)
+      g.f.BackgroundTransparency = 1 - (1 - g.t) * a
+    end
+    for _, s2 in ipairs(streaks) do
+      s2.f.Position = UDim2.fromOffset(sp.X, sp.Y)
+      s2.f.Size = UDim2.fromOffset(s2.l * (0.6 + a), 1)
+      s2.f.Rotation = s2.a
+      s2.f.BackgroundTransparency = 1 - 0.32 * a
+    end
+    haze.BackgroundTransparency = 1 - 0.10 * a
+  end
+  -- 外面那套 2D 平显：在座舱里时不画（座舱里有真的平显）；顺手把这一帧的飞行数据留下来
+  do
+    local hud0 = G.airHudStep
+    if hud0 then
+      G.airHudStep = function(st, info)
+        G.airInfo = info
+        if mode and cur and cur.spec.air then return end
+        return hud0(st, info)
+      end
+    end
+    local tx0 = G.tankHudExtra   -- 飞机模式的 MWT 式界面（圆雷达、敌人名牌）：座舱里也不画，看座舱里的屏幕
+    if tx0 then
+      G.tankHudExtra = function(st, k, m)
+        if m == "air" and mode and cur and cur.spec.air then return end
+        return tx0(st, k, m)
+      end
+    end
+  end
+  local airContactsT, airContacts = 0, {}
+  local function gatherAir(c, v, st)
+    local d = c.data
+    local body = v.cf
+    local vel = st.vel or V()
+    local sp = vel.Magnitude
+    d.t = os.clock()
+    d.clock = (Lighting.ClockTime or 0) * 3600
+    d.kmh = sp / S * 3.6
+    d.kt = d.kmh / 1.852
+    d.altM = body.Position.Y / S
+    d.agl = (body.Position.Y - math.max(G.Map.height(body.Position.X, body.Position.Z), 0)) / S
+    d.vs = vel.Y / S
+    local lk, rt, up = body.LookVector, body.RightVector, body.UpVector
+    d.pitch = math.deg(math.asin(clamp(lk.Y, -1, 1)))
+    d.roll = math.deg(math.atan2(-rt.Y, up.Y))
+    d.hdg = math.deg(math.atan2(lk.X, -lk.Z)) % 360
+    d.aoa = st.aoaDeg or 0
+    local acc = st.accV or V()
+    d.g = (acc:Dot(up) + 9.81 * S * up.Y) / (9.81 * S)
+    d.mach = sp / S / 340
+    d.thr = (st.d.kind == "heli") and (st.rpm or 0) or (st.thr or 0)   -- 直升机：发动机页按旋翼转速
+    d.col = st.col
+    d.fuel, d.fuelX = st.fuel or 1, st.fuelX or 0
+    d.gear = st.gear or 0
+    d.fwd = lk
+    d.velDir = (sp > 5) and vel.Unit or lk
+    d.pos = body.Position
+    d.team = G.S and G.S.team
+    d.ents = nearbyEnts(d.pos, st.id)
+    d.points = {}
+    if G.S and G.S.points then
+      for _, p in ipairs(G.S.points) do
+        for _, mp in ipairs(G.Map.POINTS) do
+          if mp.id == p.id then table.insert(d.points, { id = p.id, x = mp.x, z = mp.z, owner = p.owner }) end
+        end
+      end
+    end
+    -- 挂载：每种剩几发（按挂点数加起来），选中的那种
+    local wl = st.wl or {}
+    local list = {}
+    for i, wid in ipairs(wl) do
+      local n = 0
+      if st.d.gun == wid then n = st.gunAmmo or 0
+      else
+        for j, w2 in pairs(st.load or {}) do if w2 == wid then n += (st.stores and st.stores[j]) or 0 end end
+      end
+      local ok, nm = pcall(G.T, "aw." .. wid)
+      table.insert(list, { name = ok and nm or wid, n = n, sel = i == st.wi })
+    end
+    d.weapons = list
+    local selW = list[st.wi or 1]
+    d.wpnText = selW and string.format("%s  ×%d", selW.name, selW.n) or ""
+    d.lockDir = (st.lock and st.lock.pos) and (st.lock.pos - cam.CFrame.Position).Unit or nil
+    d.lockAny = d.lockDir ~= nil
+    -- 雷达：机头前 ±60°、80 公里里的飞机和车（半秒扫一次）
+    if os.clock() - airContactsT > 0.5 then
+      airContactsT = os.clock()
+      airContacts = {}
+      local folder = workspace:FindFirstChild("Ents")
+      if folder then
+        for _, em in ipairs(folder:GetChildren()) do
+          local root = em:FindFirstChild("Root")
+          if root and em:GetAttribute("EntId") ~= st.id and (em:GetAttribute("Hp") or 1) > 0 then
+            local q = root.Position - body.Position
+            local dist = q.Magnitude
+            if dist < 80000 * 2.8 / 2.8 and dist > 30 then
+              local az = math.deg(math.atan2(q:Dot(rt), q:Dot(lk)))
+              if math.abs(az) < 60 then
+                local kind = em:GetAttribute("Kind")
+                if kind == "air" or kind == "veh" or kind == "ship" then
+                  table.insert(airContacts, { az = az, km = dist / S / 1000, friend = em:GetAttribute("Team") == d.team,
+                    locked = st.lock and st.lock.id == em:GetAttribute("EntId") })
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    d.contacts = airContacts
+    -- 告警
+    local w = ""
+    if d.agl < 150 and d.vs < -25 and (st.gear or 0) < 0.5 then w = c.spec.cn and "拉起" or "PULL UP"
+    elseif st.d.stall and (st.spd or 99) < st.d.stall * 0.9 and not st.ground then w = c.spec.cn and "失速" or "STALL"
+    elseif d.fuel + d.fuelX < 0.15 then w = c.spec.cn and "油量低" or "BINGO FUEL" end
+    d.warn = w
+    -- 平显的投影：世界方向 → 组合玻璃上的像素（按现在眼睛的位置算：看着像在无穷远）
+    local hs = c.b.named.hud
+    if hs then
+      local hp = hs.part
+      local P0, n = hp.Position, hp.CFrame.LookVector
+      local C0 = cam.CFrame.Position
+      local sz = hp.Size
+      local W, Hh = hs.px.X, hs.px.Y
+      d.hudProj = function(dir)
+        local dn = dir:Dot(n)
+        if math.abs(dn) < 1e-4 then return nil end
+        local t = (P0 - C0):Dot(n) / dn
+        if t <= 0 then return nil end
+        local q = hp.CFrame:PointToObjectSpace(C0 + dir * t)
+        return (0.5 - q.X / sz.X) * W, (0.5 - q.Y / sz.Y) * Hh
+      end
+    end
+    return d
+  end
+  local function stepAirAnim(c, v, st, dt)
+    local b = c.b
+    local cc = st.c or {}
+    local side = c.b.groups.stick and c.b.groups.stick.pivot.Position.X > 0.5
+    local kp = side and 7 or 14
+    c.sp = (c.sp or 0) + ((cc.pit or 0) - (c.sp or 0)) * math.min(1, dt * 12)
+    c.sr = (c.sr or 0) + ((cc.rol or 0) - (c.sr or 0)) * math.min(1, dt * 12)
+    local yw = cc.yaw or 0
+    local colA = ANG(rad(((cc.col or 0) + 1) * 0.5 * 14 - 2), 0, 0)   -- 总距杆：提起来前端抬高（−1～1 → −2°～12°）
+    for _, q in ipairs({ "", "2" }) do   -- 两座的操纵件联动（另一座带后缀 2）
+      if c.spec.yoke then   -- 驾驶盘：驾驶柱前后推拉（俯仰）、盘绕柱转（滚转）
+        b:setAnim("stick" .. q, ANG(rad(c.sp * 8), 0, 0))
+        b:setAnim("wheel" .. q, ANG(0, 0, rad(-c.sr * 60)))
+      else
+        b:setAnim("stick" .. q, ANG(rad(c.sp * kp), 0, rad(-c.sr * kp)))
+      end
+      b:setAnim("coll" .. q, colA)
+      b:setAnim("pedL" .. q, CF(0, 0, yw * 0.05))
+      b:setAnim("pedR" .. q, CF(0, 0, -yw * 0.05))
+    end
+    b:setAnim("thr", CF(0, 0, -clamp((st.thr or 0) / 130, 0, 1) * 0.14))
+    b:setAnim("gearh", ANG(rad(((st.gear or 0) > 0.5) and 0 or -55), 0, 0))
+    local now = os.clock()
+    local hp = st.em and st.em:GetAttribute("Hp")
+    local mh = st.em and st.em:GetAttribute("MaxHp")
+    local hurt = hp and mh and mh > 0 and hp / mh < 0.4
+    for _, l in ipairs(b.leds) do
+      local on = true
+      if l.role == "gear" then on = (st.gear or 0) > 0.9
+      elseif l.role == "mwarn" then on = (hurt or c.data.warn == "PULL UP" or c.data.warn == "拉起") and math.floor(now * 3) % 2 == 0
+      elseif l.role == "mcaut" then on = (c.data.warn ~= nil and c.data.warn ~= "") and math.floor(now * 2) % 2 == 0 end
+      if c.lampT and now < c.lampT then on = true end
+      l.p.Color = on and l.on or l.off
+    end
+    for _, L in ipairs(b.lights) do
+      if L.role == "dome" then
+        local kk = LIGHTK[lightMode]
+        L.L.Enabled = kk > 0
+        L.L.Brightness = L.bright * kk * 2
+        L.L.Color = (lightMode == 3) and RGB(255, 80, 60) or ((lightMode == 2) and RGB(120, 230, 210) or L.color)
+      elseif L.role == "warn" then
+        local on = hurt and math.floor(now * 3) % 2 == 0
+        L.L.Enabled = on
+        L.L.Brightness = on and 1.2 or 0
+      end
+    end
+  end
+  -- 外模型在座舱里的部分（座舱盖玻璃、外模型自己的平显块、仪表板之类）：坐在座舱里时不画，免得和内饰叠在一起、玻璃隔两层
+  local function zoneParts(c, v)
+    local list = {}
+    local M = v.M
+    if not M or not M.items then return list end
+    local e = c.eyeBody
+    for _, it in ipairs(M.items) do
+      local p = it.p
+      if p and p:IsA("BasePart") and it.tag ~= "pilot" then
+        local cf = it.cf0 or (it.H and it.off and it.H * it.off)
+        local glassy = p.Material == Enum.Material.Glass or (p.Transparency > 0.15 and p.Transparency < 1)
+        local dist = cf and (cf.Position - e).Magnitude or math.huge
+        local near = dist < 2.0 * S and p.Size.Magnitude < 3.2 * S
+        -- 直升机的座舱窗是一整个大玻璃球（不是座舱盖件）：眼睛附近的玻璃都不画，看出去只隔内饰自己那层
+        if (it.canopy and glassy) or near or (glassy and dist < 4.5 * S) then table.insert(list, p) end
+      end
+    end
+    return list
+  end
+  local function zoneHide(c, on)
+    for _, p in ipairs(c.zone or {}) do p.LocalTransparencyModifier = on and 1 or 0 end
+    c.zoneOn = on
+  end
+  stepAir = function(dt, st)
+    local v = G.viewById and G.viewById(st.id)
+    if not v or not v.cf or not v.def then return end
+    if cur and cur.id ~= st.id then teardown() end
+    if mode == nil or st.eo then   -- 车外 / 看光电吊舱（Fly.lua 管镜头）：座舱收起来，外模型放回来
+      if cur and cur.model.Parent then cur.model.Parent = nil end
+      if cur and cur.pilotsHidden and v.M then pcall(AM.setPilots, v.M, true) cur.pilotsHidden = false end
+      if cur and cur.zoneOn then zoneHide(cur, false) end
+      hint.Visible, dot.Visible, tip.Visible = false, false, false
+      cfx.Enabled = false
+      hover = nil
+      return
+    end
+    if not cur then
+      cur = build(st, v)
+      if not cur then mode = nil return end
+      cur.eyeBody = airEye(v, cur.spec)
+      cur.zone = zoneParts(cur, v)
+      if cur.spec.ihadss then   -- 阿帕奇的头盔单目显示（IHADSS）：符号画在眼前一块跟着头走的板上（视场 40°×30°，绿色）
+        local p = Instance.new("Part")
+        p.Name = "IHADSS"
+        p.Size = V(0.364, 0.268, 0.002) * S
+        p.Transparency = 1
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+        p.Parent = cur.model
+        local sg = Kit.gui(p, Enum.NormalId.Front, 1400, 1.6)
+        local root = Instance.new("Frame")
+        root.Size = UDim2.fromScale(1, 1)
+        root.BackgroundTransparency = 1
+        root.Parent = sg
+        local s2 = { part = p, gui = sg, root = root, w = 0.364, h = 0.268, page = "hud", opt = {}, px = V(0.364, 0.268, 0) * 1400 }
+        s2.update = Screens.make(s2, cur.env)
+        s2.nextT = 0
+        table.insert(cur.b.screens, s2)
+        cur.b.named.hud = s2
+        cur.ihadss = s2
+      end
+      for i, g in ipairs(cur.spec.glass or {}) do scratches(g, i * 977 + #st.d.id) end
+      enterStation(cur, station or lastStation[cur.key] or cur.spec.order[1])
+      look.fovT, look.fov = 85, 85
+    end
+    local c = cur
+    if not c.model.Parent then c.model.Parent = workspace end
+    if v.M and not c.pilotsHidden then pcall(AM.setPilots, v.M, false) c.pilotsHidden = true end
+    if mode == "seat" then zoneHide(c, true) elseif c.zoneOn then zoneHide(c, false) end   -- 导演镜头从外面看：外模型完整
+    frames(c, v)
+    stepAirAnim(c, v, st, dt)
+    frames(c, v)
+    pose(c)
+    -- 镜头：头跟着鼠标瞄准的方向（固定翼）/ 镜头方向（直升机），限在脖子转得到的范围；大过载头往下沉、侧向过载歪
+    local base, sp = stationCF(c, station)
+    if base then
+      if mode == "seat" then
+        local aim
+        if st.d.kind == "jet" then
+          -- 按住 Alt 自由看（看下面的屏幕、按屏幕边的键）：鼠标只转头，准心不动（Fly.lua 这时不改准心）；松开头回到准心
+          if UIS:IsKeyDown(Enum.KeyCode.LeftAlt) then
+            local md = UIS:GetMouseDelta()
+            local sens = 0.0035 * (look.fov / 72)
+            c.fl = c.fl or { y = 0, p = 0 }
+            c.fl.y -= md.X * sens
+            c.fl.p = clamp(c.fl.p - md.Y * sens, -1.4, 1.4)
+          else
+            c.fl = nil
+          end
+          local fy, fp = c.fl and c.fl.y or 0, c.fl and c.fl.p or 0
+          aim = (ANG(0, (st.aimYaw or 0) + fy, 0) * ANG(clamp((st.aimPitch or 0) + fp, -1.5, 1.5), 0, 0)).LookVector
+        else aim = (ANG(0, st.camYaw or 0, 0) * ANG(st.camPitch or 0, 0, 0)).LookVector end
+        local l = base:VectorToObjectSpace(aim)
+        local yw = clamp(math.atan2(-l.X, -l.Z), -rad(sp.yaw or 150), rad(sp.yaw or 150))
+        local pt = clamp(math.asin(clamp(l.Y, -1, 1)), -rad(sp.down or 60), rad(sp.up or 80))
+        look.yaw += (yw - look.yaw) * math.min(1, dt * 9)
+        look.pitch += (pt - look.pitch) * math.min(1, dt * 9)
+        local acc = st.accV and base:VectorToObjectSpace(st.accV) / (9.81 * S) or V()
+        c.headOff = (c.headOff or V()):Lerp(V(clamp(-acc.X * 0.012, -0.04, 0.04), clamp(-acc.Y * 0.008, -0.06, 0.03), 0), math.min(1, dt * 6))
+        look.fov += (look.fovT - look.fov) * math.min(1, dt * 10)
+        cam.CFrame = base * CF(c.headOff * S) * ANG(0, look.yaw, 0) * ANG(look.pitch, 0, 0)
+        cam.FieldOfView = look.fov
+      else
+        setCamera(c, dt)
+      end
+    end
+    stepCrew(c, cam.CFrame.LookVector)
+    if c.ihadss then   -- 头盔显示跟着头：眼前半米；导演镜头、换到前座时不画
+      local on = mode == "seat" and station == c.spec.order[1]
+      c.ihadss.gui.Enabled = on
+      c.ihadss.part.CFrame = cam.CFrame * CF(0, 0, -0.5 * S) * ANG(0, math.pi, 0)
+    end
+    -- 屏幕
+    local now = os.clock()
+    local d = nil
+    for _, s2 in ipairs(c.b.screens) do
+      if s2.update and now >= (s2.nextT or 0) then
+        local fast = s2.page == "hud"
+        s2.nextT = now + (fast and 0 or 0.1)
+        d = d or gatherAir(c, v, st)
+        local ok, err = pcall(s2.update, d)
+        if not ok then
+          s2.update = nil
+          warn("[座舱] 屏幕 " .. tostring(s2.page) .. "：" .. tostring(err))
+        end
+      end
+    end
+    stepKeys(c)
+    stepGlare()
+    hint.Visible = not hideUI
+    hint.Text = T("V 出座舱 · 头跟着鼠标瞄准转、按住 Alt 自由看 · 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
+      "V exit cockpit · head follows mouse aim, hold Alt to look around · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
+  end
+
   ---------------------------------------------------------------- 按键
 
   local KEYST = { [Enum.KeyCode.F2] = "driver", [Enum.KeyCode.F3] = "gunner", [Enum.KeyCode.F4] = "commander", [Enum.KeyCode.F5] = "loader" }
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
+    local fst = G.fly
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+      local k = io.KeyCode
+      if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
+        local s2 = hover.screen
+        if s2 and s2.onKey then pcall(s2.onKey, hover.label, cur.env.act) s2.nextT = 0 end
+        hover.part.Color = RGB(255, 255, 255)
+        return
+      end
+      if k == Enum.KeyCode.V then
+        if mode then
+          mode = nil
+          cam.FieldOfView = 70
+        else
+          mode = "seat"
+          if cur then enterStation(cur, lastStation[cur.key] or cur.spec.order[1]) end
+        end
+      elseif (k == Enum.KeyCode.F2 or k == Enum.KeyCode.F3) and cur and mode then   -- 前后座 / 左右座 / 射手座
+        local want = cur.spec.order[(k == Enum.KeyCode.F2) and 1 or 2]
+        if want and cur.spec.stations[want] then enterStation(cur, want) end
+      elseif k == Enum.KeyCode.K and cur and mode then   -- 导演镜头（飞机上 B 是减速板 / 刹车，换成 K）
+        if mode == "free" then enterStation(cur, station or "pilot")
+        else
+          mode = "free"
+          local g = cur.b.groups.hull.world
+          local rel = g:ToObjectSpace(cam.CFrame)
+          free.p = rel.Position
+          local lv = rel.LookVector
+          free.yaw, free.pitch = math.atan2(-lv.X, -lv.Z), math.asin(clamp(lv.Y, -1, 1))
+        end
+      elseif k == Enum.KeyCode.L and cur and mode then lightMode = lightMode % #LIGHTS + 1
+      elseif k == Enum.KeyCode.U and (mode or hideUI) then setHideUI(not hideUI) end
+      return
+    end
     local st = G.drive
     if not st or not st.d or G.myVeh ~= st then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then   -- 按下对准的那个键
@@ -36405,6 +36892,421 @@ Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = false
 Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, stick = "side" }) end
 Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true, stick = "center", frame = true }) end
 
+---------------------------------------------------------------- 直升机、轰炸机座舱共用件
+-- 平显（投影仪 + 组合玻璃，符号按眼睛的位置投：Interior 的 hud 页）；p 是组合玻璃中心，at 是眼睛
+local function hudUnit(b, g, p, at)
+  b:box(g, V(0.18, 0.07, 0.20), CF(p + V(0, -0.11, 0.01)), RGB(30, 32, 34), MAT.Metal)
+  for _, sx in ipairs({ -1, 1 }) do b:box(g, V(0.012, 0.13, 0.012), CF(p + V(sx * 0.08, -0.02, -0.005)), RGB(30, 32, 34), MAT.Metal) end
+  local hs = b:screen(g, 0.15, 0.12, CFrame.lookAt(p, at + V(0, 0.02, 0)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
+  hs.part.Material = MAT.Glass
+  hs.part.Transparency = 0.86
+  hs.part.Color = RGB(150, 200, 170)
+  hs.root.BackgroundTransparency = 1
+  b:name("hud", hs)
+  return hs
+end
+-- 备份仪表（姿态、空速、高度三个小圆表）：c 是中间那个的位置，at 是眼睛
+local function standby(b, g, c, at, dx)
+  dx = dx or 0.075
+  b:screen(g, 0.06, 0.06, CFrame.lookAt(c + V(-dx, 0, 0), at), "adi", { light = false, ppm = 2200 })
+  b:screen(g, 0.05, 0.05, CFrame.lookAt(c, at), "asi", { light = false, ppm = 2200 })
+  b:screen(g, 0.05, 0.05, CFrame.lookAt(c + V(dx, 0, 0), at), "alt", { light = false, ppm = 2200 })
+end
+-- 一块平板玻璃（座舱窗）：四个角 a b c d（顺着转一圈），玻璃按长方形近似；加进 glass 表（Interior 贴划痕）
+local function pane(b, g, glass, ctr, w, h, rot, trans)
+  local p = b:box(g, V(w, h, 0.008), CF(ctr) * rot, RGB(170, 190, 200), MAT.Glass)
+  p.Transparency, p.Reflectance, p.CastShadow = trans or 0.9, 0.08, false
+  table.insert(glass, p)
+  return p
+end
+-- 窗框条：从 a 到 b 的一根方管
+local function bar(b, g, a, c, t, col)
+  local len = (c - a).Magnitude
+  return b:box(g, V(t, t, len), CFrame.lookAt((a + c) / 2, c), col or RGB(40, 42, 44), MAT.Metal)
+end
+-- 一个面朝 n 的窗（中心 ctr、宽 w、高 h、up 是窗的「上」方向），带四边框条
+local function window(b, g, glass, ctr, n, up, w, h, frame, trans)
+  local r = up:Cross(n).Unit
+  local u = n:Cross(r).Unit
+  local rot = CFrame.fromMatrix(V(), r, u, n)
+  pane(b, g, glass, ctr, w, h, rot, trans)
+  if frame then
+    local t = frame
+    local c1, c2 = ctr + r * (w / 2) + u * (h / 2), ctr - r * (w / 2) + u * (h / 2)
+    local c3, c4 = ctr - r * (w / 2) - u * (h / 2), ctr + r * (w / 2) - u * (h / 2)
+    bar(b, g, c1, c2, t) bar(b, g, c2, c3, t) bar(b, g, c3, c4, t) bar(b, g, c4, c1, t)
+  end
+end
+-- 一块雨刷（风挡下沿的转轴 + 刷臂 + 刷片）
+local function wiper(b, g, base, len, ang, n)
+  b:cyl(g, 0.03, 0.03, CF(base) * ANG(0, PI / 2, 0), RGB(30, 30, 30), MAT.Metal)
+  local tip = base + (CFrame.Angles(0, 0, rad(ang)) * V(0, len, 0))
+  local q = base:Lerp(tip, 0.5)
+  b:box(g, V(0.012, len, 0.008), CFrame.lookAt(q, q + n) * ANG(0, 0, rad(-ang)), RGB(30, 30, 30), MAT.Metal)
+end
+-- 一套手柄类操纵件的组名（左右两座各一套：我这一座不带后缀，另一座带 2）
+local function sfx(me) return me and "" or "2" end
+
+---------------------------------------------------------------- 并排双座：通用直升机（黑鹰、直-20、支奴干）、轰炸机（轰-6K、B-2）
+-- 原点在「我」的眼位；另一座在 x = 2·cx（cx 是座舱中线）。
+--   L = { half 座位中心到中线（米）, me = "R"（美军直升机机长坐右座）/ "L"（轰炸机、我军直升机机长坐左座）, ctrl = "heli"（周期变距杆 + 总距杆）/ "yoke"（驾驶盘）/ "stick"（中央杆）,
+--     disp = 显示器布局, hud = 机长前面有平显, cn = 中文, win = "heli"（大风挡 + 门窗 + 顶窗，chin 加下视窗）/ "bomber"（小窗、粗框）, thr = 油门杆数, dress = 着装 }
+-- 资料：UH-60M —— 四块 6×8 英寸多功能显示器横排、中间操纵台两台飞行管理计算机键盘、头顶操纵台上两根发动机功率控制杆和两个灭火 T 形手柄、
+--   下视窗、雨刷、磁罗盘；CH-47F 通用航电座舱（CAAS）—— 五块多功能显示器；直-20 —— 四块大屏 + 中间一块；轰-6K —— 玻璃化座舱、驾驶盘、平显；
+--   B-2 —— 两名机组并排、每人四块彩色多功能显示器、中央杆、四根油门、窗小框粗
+function Defs.side(b, ctx, L)
+  local H = "hull"
+  local hf = L.half or 0.52
+  local sg = (L.me == "L") and 1 or -1   -- 中线在我的哪一边
+  local cx, ox = sg * hf, 2 * sg * hf    -- 中线、另一座的 x
+  local cn = L.cn
+  local heli = L.ctrl == "heli"
+  local W = 2 * hf + (heli and 0.95 or 1.05)   -- 座舱内宽
+  local x0, x1 = cx - W / 2, cx + W / 2
+  local FY = heli and -1.12 or -1.10           -- 地板
+  local eye = V()
+  local function bx(sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
+    return b:box(H, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
+  end
+  local function look(p, at) return CFrame.lookAt(p, at or eye) end
+  local glass = {}
+  local P1, P2 = heli and RGB(52, 56, 58) or PIT, heli and RGB(40, 43, 45) or PIT2
+  -- 地板、下半截侧壁（门的下半）、后隔框
+  bx(W, 0.03, 2.2, cx, FY, -0.30, P2, MAT.DiamondPlate)
+  for _, x in ipairs({ x0, x1 }) do bx(0.04, 0.62, 1.6, x, FY + 0.31, -0.25, P1) end
+  bx(W, 1.5, 0.04, cx, FY + 0.75, 0.62, P2)
+  -- 顶棚
+  local RY = heli and 0.42 or 0.36
+  bx(W, 0.03, 1.2, cx, RY, 0.02, P2)
+  -- 主仪表板 + 遮光罩（横贯两座）
+  local PZ = heli and -0.80 or -0.78
+  b:box(H, V(W - 0.16, 0.46, 0.06), CF(cx, -0.47, PZ) * ANG(rad(-12), 0, 0), P1)
+  bx(W - 0.16, 0.05, 0.28, cx, -0.225, PZ + 0.06, GLARE, MAT.Fabric, 4, 0, 0)
+  bx(W - 0.30, 0.30, 0.04, cx, -0.80, PZ - 0.10, P2, nil, 35, 0, 0)    -- 膝下面板
+  -- 主告警 / 注意灯（遮光罩上两座各一对）、磁罗盘（风挡中间框上）
+  for _, x in ipairs({ 0, ox }) do
+    b:led(H, CF(x - 0.18, -0.19, PZ + 0.10), RGB(255, 40, 30), 0.022, "mwarn")
+    b:led(H, CF(x + 0.18, -0.19, PZ + 0.10), RGB(255, 180, 30), 0.022, "mcaut")
+    b:placard(H, 0.07, 0.016, look(V(x - 0.18, -0.205, PZ + 0.115), V(x, 0, 0)), cn and "主告警" or "MASTER WARN", { bg = C.black, fg = RGB(255, 80, 70) })
+    b:placard(H, 0.07, 0.016, look(V(x + 0.18, -0.205, PZ + 0.115), V(x, 0, 0)), cn and "主注意" or "MASTER CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
+  end
+  bx(0.07, 0.06, 0.07, cx, 0.26, PZ - 0.10, RGB(20, 20, 20))
+  b:ball(H, 0.05, CF(cx, 0.26, PZ - 0.135), RGB(230, 225, 200), MAT.Glass)
+  -- 显示器
+  local K = cn and { top = { "姿态", "雷达", "态势", "武器", "发动机" }, bottom = { "油量", "检查", "目标", "通信", "菜单" } }
+    or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
+  local function mfd(x, y, w, h, page, keys)
+    local p = V(x, y, PZ + 0.035 + (y + 0.47) * math.tan(rad(12)) * -1)
+    b:screen(H, w, h, CFrame.lookAt(p, V(cx, 0, 0.3)) , page, { keys = keys and K or nil, lightK = 0.3 })
+  end
+  local disp = L.disp
+  if disp == "uh60m" then   -- 四块竖着的 6×8 英寸：我 PFD / ND，另一座 ND / PFD
+    for i, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sa", "mfd_pfd" }) do
+      local x = cx + sg * (-0.60 + (i - 1) * 0.40) * -1
+      mfd(x, -0.47, 0.15, 0.20, page, true)
+    end
+  elseif disp == "ch47f" then   -- 五块：两座各两块 + 中间发动机
+    for i, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_eng", "mfd_sa", "mfd_pfd" }) do
+      local x = cx - sg * (-0.68 + (i - 1) * 0.34)
+      mfd(x, -0.47, 0.15, 0.20, page, i ~= 3)
+    end
+  elseif disp == "z20" then   -- 四块横着的大屏 + 中间一块小的
+    for i, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sa", "mfd_pfd" }) do
+      local x = cx - sg * (-0.62 + (i - 1) * 0.36 + ((i > 2) and 0.16 or 0))
+      mfd(x, -0.46, 0.20, 0.15, page, true)
+    end
+    mfd(cx, -0.50, 0.12, 0.10, "mfd_eng", false)
+  elseif disp == "h6k" then   -- 每座三块（姿态 / 导航 / 武器）+ 中间发动机
+    for _, base in ipairs({ 0, ox }) do
+      for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms" }) do
+        mfd(base + (j - 2) * 0.17, -0.47, 0.15, 0.15, page, j ~= 3)
+      end
+    end
+    mfd(cx, -0.60, 0.12, 0.12, "mfd_eng", false)
+  else   -- b2：每人 2×2 四块
+    for _, base in ipairs({ 0, ox }) do
+      for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms", "mfd_eng" }) do
+        local col, row = (j - 1) % 2, math.floor((j - 1) / 2)
+        mfd(base + (col - 0.5) * 0.18, -0.38 - row * 0.18, 0.15, 0.15, page, row == 0)
+      end
+    end
+  end
+  standby(b, H, V(cx, -0.31, PZ + 0.07), eye)
+  if L.hud then hudUnit(b, H, V(0, -0.07, PZ + 0.14), eye) end
+  -- 中间操纵台（两座之间，从仪表板往后伸）：电台、飞行管理计算机键盘（小屏 + 键）、自动驾驶面板；油门杆（固定翼）
+  local CW = heli and 0.30 or 0.36
+  b:box(H, V(CW, 0.40, 0.95), CF(cx, FY + 0.20, PZ + 0.42), P1)
+  b:box(H, V(CW, 0.04, 0.95), CF(cx, FY + 0.42, PZ + 0.42) * ANG(rad(8), 0, 0), P2)
+  for i = 0, 2 do
+    b:panel(H, CW - 0.04, 0.18, CFrame.lookAt(V(cx, FY + 0.445, PZ + 0.18 + i * 0.25), V(cx, FY + 1.4, PZ + 0.5 + i * 0.25)), 3, 4, RGB(54, 58, 62))
+  end
+  for _, s in ipairs({ -1, 1 }) do   -- 两台键盘（中间操纵台前端两边）
+    local p = V(cx + s * 0.075, FY + 0.47, PZ + 0.10)
+    b:screen(H, 0.10, 0.05, CFrame.lookAt(p, V(cx + s * 0.075, 0, 0.2)), "ufd", { lightK = 0.15 })
+  end
+  if not heli then   -- 油门杆（一组，跟着油门推）
+    b:group("thr", H, CF(cx, FY + 0.47, PZ + 0.62))
+    local n = L.thr or 2
+    for i = 1, n do
+      local x = (i - (n + 1) / 2) * 0.05
+      b:box("thr", V(0.014, 0.12, 0.014), CF(x, 0.06, 0) * ANG(rad(-20), 0, 0), C.dark, MAT.Metal)
+      b:box("thr", V(0.04, 0.03, 0.035), CF(x, 0.12, -0.02), C.black)
+    end
+    bx(0.04 * n + 0.04, 0.012, 0.24, cx, FY + 0.455, PZ + 0.62, RGB(20, 20, 20))
+  end
+  -- 头顶操纵台：开关面板朝下，直升机两根发动机功率控制杆、两个灭火 T 形手柄
+  b:box(H, V(0.42, 0.10, 0.70), CF(cx, RY - 0.06, -0.20), P1)
+  for i = 0, 2 do
+    b:panel(H, 0.38, 0.20, CFrame.lookAt(V(cx, RY - 0.115, -0.45 + i * 0.22), V(cx, -0.6, -0.30 + i * 0.22)), 3, 4, RGB(54, 58, 62), { guard = i == 0 })
+  end
+  if heli then
+    for _, s in ipairs({ -1, 1 }) do
+      b:box(H, V(0.016, 0.10, 0.016), CF(cx + s * 0.05, RY - 0.17, -0.60) * ANG(rad(20), 0, 0), C.lgray, MAT.Metal)
+      b:box(H, V(0.05, 0.02, 0.03), CF(cx + s * 0.05, RY - 0.22, -0.62), C.black)
+      b:box(H, V(0.06, 0.018, 0.018), CF(cx + s * 0.13, RY - 0.13, -0.66), C.red)   -- 灭火 T 形手柄
+      b:box(H, V(0.012, 0.04, 0.012), CF(cx + s * 0.13, RY - 0.10, -0.66), C.red)
+    end
+  end
+  -- 两座：座椅、操纵件、脚蹬
+  local dress = L.dress or (heli and (cn and "heli_cn" or "heli_us") or (cn and "pilot_cn" or "pilot_us"))
+  local crew, stations, order = {}, {}, {}
+  for _, mine in ipairs({ true, false }) do
+    local x = mine and 0 or ox
+    local q = sfx(mine)
+    -- 座椅：直升机是防弹座椅（两侧装甲翼板）、轰炸机是弹射座椅
+    b:seat(H, CF(x, -0.80, 0.16), { w = 0.48, d = 0.46, back = 0.72, recline = heli and 12 or 14, head = not heli, col = RGB(64, 66, 58), frame = RGB(44, 46, 48) })
+    if heli then
+      for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.55, 0.40, x + s * 0.27, -0.52, 0.30, RGB(70, 72, 64), MAT.SmoothPlastic, 12, 0, 0) end
+      bx(0.36, 0.20, 0.10, x, 0.02, 0.42, RGB(58, 60, 54), MAT.Fabric, 12, 0, 0)
+    else
+      bx(0.36, 0.28, 0.16, x, 0.06, 0.38, RGB(54, 58, 54), nil, 14, 0, 0)
+      for i = 0, 3 do bx(0.025, 0.025, 0.02, x - 0.04 + i * 0.027, -0.80, -0.10, (i % 2 == 0) and C.yellow or C.black) end
+    end
+    for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.03, 0.30, x + s * 0.20, -0.25, 0.08, RGB(60, 70, 50), MAT.Fabric, -50, 0, 0) end
+    -- 脚蹬
+    for _, s in ipairs({ -1, 1 }) do
+      local gname = ((s < 0) and "pedL" or "pedR") .. q
+      b:group(gname, H, CF(x + s * 0.15, FY + 0.16, -1.02))
+      b:box(gname, V(0.10, 0.20, 0.03), CF() * ANG(rad(-20), 0, 0), RGB(40, 42, 44), MAT.Metal)
+    end
+    local hands
+    if heli then
+      -- 周期变距杆（两腿之间，从地板伸上来，握把上一排按钮）
+      b:group("stick" .. q, H, CF(x, FY + 0.04, -0.36))
+      b:tube("stick" .. q, V(0, 0, 0), V(0, 0.50, 0.04), 0.03, C.dark, MAT.Metal)
+      b:box("stick" .. q, V(0.05, 0.14, 0.05), CF(0, 0.57, 0.05) * ANG(rad(-8), 0, 0), C.black)
+      b:button("stick" .. q, CF(0, 0.645, 0.03) * ANG(rad(-70), 0, 0), C.red, 0.012)
+      b:box("stick" .. q, V(0.012, 0.035, 0.012), CF(0, 0.57, 0.02), RGB(60, 60, 60))
+      b:cylY(H, 0.06, 0.13, CF(x, FY + 0.03, -0.36), RGB(30, 30, 30), MAT.Fabric)
+      -- 总距杆（座椅左边，后端铰链，前端握把上一盒开关；提总距时前端抬起）
+      b:group("coll" .. q, H, CF(x - 0.30, -0.80, 0.18))
+      b:tube("coll" .. q, V(0, 0, 0), V(0, 0.02, -0.46), 0.035, C.dark, MAT.Metal)
+      b:box("coll" .. q, V(0.06, 0.07, 0.12), CF(0, 0.04, -0.50), C.black)
+      b:button("coll" .. q, CF(0.0, 0.08, -0.52) * ANG(rad(-90), 0, 0), C.dark, 0.014)
+      b:cyl("coll" .. q, 0.10, 0.045, CF(0, 0.02, -0.40) * ANG(0, PI / 2, 0), RGB(30, 30, 30), MAT.Fabric)   -- 油门旋转握把
+      hands = { r = { "stick" .. q, V(0, 0.58, 0.05) }, l = { "coll" .. q, V(0, 0.05, -0.48) } }
+    elseif L.ctrl == "yoke" then
+      -- 驾驶盘：驾驶柱从地板伸上来（推拉俯仰），盘绕柱转（滚转）；羊角形两个握把
+      b:group("stick" .. q, H, CF(x, FY + 0.02, -0.58))
+      b:tube("stick" .. q, V(0, 0, 0), V(0, 0.56, 0.02), 0.06, C.dark, MAT.Metal)
+      b:group("wheel" .. q, "stick" .. q, CF(0, 0.60, 0.03))
+      b:box("wheel" .. q, V(0.32, 0.035, 0.04), CF(), C.black)
+      for _, s in ipairs({ -1, 1 }) do
+        b:box("wheel" .. q, V(0.035, 0.11, 0.04), CF(s * 0.16, 0.04, 0) * ANG(0, 0, rad(s * -12)), C.black)
+        b:button("wheel" .. q, CF(s * 0.165, 0.10, -0.02), C.red, 0.01)
+      end
+      b:box("wheel" .. q, V(0.08, 0.05, 0.03), CF(0, 0, -0.025), RGB(60, 62, 64))
+      hands = { r = { "wheel" .. q, V(0.16, 0.06, 0) }, l = { "wheel" .. q, V(-0.16, 0.06, 0) } }
+    else
+      b:group("stick" .. q, H, CF(x, FY + 0.06, -0.38))
+      b:tube("stick" .. q, V(0, 0, 0), V(0, 0.36, -0.04), 0.03, C.dark, MAT.Metal)
+      b:box("stick" .. q, V(0.05, 0.13, 0.055), CF(0, 0.42, -0.05) * ANG(rad(-10), 0, 0), C.black)
+      b:button("stick" .. q, CF(0, 0.49, -0.08) * ANG(rad(-70), 0, 0), C.red, 0.012)
+      hands = { r = { "stick" .. q, V(0, 0.42, -0.05) }, l = { H, V(x - 0.22, -0.55, 0.0) } }
+    end
+    if not heli and mine then hands.l = { "thr", V(0, 0.12, 0) } end
+    local key = mine and "pilot" or "copilot"
+    crew[key] = { dress = dress, g = H, eye = V(x, 0, 0), lean = 2, yaw = 0, look = V(0, -0.05, -1), hands = hands,
+      feet = { l = { "pedL" .. q, V(0, -0.04, 0.06) }, r = { "pedR" .. q, V(0, -0.04, 0.06) } } }
+    stations[key] = { g = H, eye = V(x, 0, 0), look = V(0, -0.03, -1), yaw = 150, up = 70, down = 65, crew = key }
+    table.insert(order, key)
+  end
+  -- 窗：直升机大风挡（每座一块 + 中柱）、门窗、顶窗、下视窗；轰炸机小风挡 + 侧窗，框粗
+  local FR = heli and 0.035 or 0.06
+  if L.win == "heli" then
+    for _, x in ipairs({ 0, ox }) do
+      window(b, H, glass, V(x, 0.07, PZ - 0.26), V(0, -0.45, 1).Unit, V(0, 1, 0.5).Unit, 0.78, 0.66, FR)
+      if L.chin then window(b, H, glass, V(x, FY + 0.10, -1.20), V(0, 0.6, 1).Unit, V(0, 0.5, -1).Unit, 0.46, 0.36, FR) end
+      window(b, H, glass, V(x, RY + 0.01, -0.32), V(0, -1, 0), V(0, 0, -1), 0.40, 0.36, FR, 0.86)   -- 顶窗（带一点茶色）
+      wiper(b, H, V(x, -0.24, PZ - 0.06), 0.36, 18, V(0, 0.45, -1).Unit)
+    end
+    bar(b, H, V(cx, -0.24, PZ - 0.08), V(cx, RY, -0.52), 0.06)                           -- 中柱
+    for _, x in ipairs({ x0, x1 }) do
+      local sgn = (x > cx) and 1 or -1
+      window(b, H, glass, V(x, -0.08, -0.20), V(-sgn, 0, 0), V(0, 1, 0), 0.95, 0.80, FR)   -- 门窗
+      bar(b, H, V(x, -0.50, PZ - 0.10), V(x, RY, -0.55), 0.05)                              -- 风挡边柱
+    end
+  else   -- 轰炸机：每座一块正风挡 + 一块往外斜的侧风挡 + 上面一块眉窗，两边侧窗；框粗
+    for _, x in ipairs({ 0, ox }) do
+      local out = (x - cx > 0) and 1 or -1   -- 这一座在中线哪边（侧风挡往那边斜）
+      window(b, H, glass, V(x - out * 0.05, 0.02, PZ - 0.22), V(0, -0.55, 1).Unit, V(0, 1, 0.55).Unit, 0.46, 0.40, FR)
+      window(b, H, glass, V(x + out * 0.36, 0.02, PZ - 0.10), V(-out * 0.7, -0.4, 0.8).Unit, V(0, 1, 0.4).Unit, 0.30, 0.38, FR)
+      window(b, H, glass, V(x - out * 0.05, RY - 0.02, PZ + 0.02), V(0, -1, 0.35).Unit, V(0, 0.3, -1).Unit, 0.40, 0.18, FR, 0.88)
+    end
+    for _, x in ipairs({ x0, x1 }) do
+      local sgn = (x > cx) and 1 or -1
+      window(b, H, glass, V(x, 0.02, -0.30), V(-sgn, 0, 0.2).Unit, V(0, 1, 0), 0.40, 0.32, FR)
+      bx(0.04, 0.70, 1.2, x, 0.05, 0.20, P1)   -- 窗后面的侧壁
+    end
+    bar(b, H, V(cx, -0.22, PZ - 0.10), V(cx, RY, -0.60), 0.10)
+    -- 起落架手柄 + 三个绿灯（中间仪表板，两个飞行员都够得着）
+    local gx = cx - sg * 0.13
+    b:group("gearh", H, CF(gx, -0.56, PZ + 0.02))
+    b:box("gearh", V(0.015, 0.10, 0.015), CF(0, 0.05, 0), C.lgray, MAT.Metal)
+    b:cyl("gearh", 0.025, 0.05, CF(0, 0.11, 0), C.white)
+    for i = -1, 1 do b:led(H, CF(gx + i * 0.022, -0.47, PZ + 0.0), RGB(80, 255, 110), 0.012, "gear") end
+    b:placard(H, 0.06, 0.016, look(V(gx, -0.45, PZ + 0.005)), cn and "起落架" or "LDG GEAR", { bg = C.black, fg = C.white })
+  end
+  -- 灯：夜视兼容的绿白泛光、告警红灯
+  b:light(H, CF(cx, RY - 0.12, -0.40), "dome", RGB(190, 230, 210), 2.0, 0.28)
+  b:light(H, CF(0, -0.30, PZ + 0.20), "dome", RGB(190, 230, 210), 1.2, 0.18)
+  b:light(H, CF(ox, -0.30, PZ + 0.20), "dome", RGB(190, 230, 210), 1.2, 0.18)
+  b:light(H, CF(cx, -0.10, PZ + 0.20), "warn", RGB(255, 40, 30), 1.6, 0)
+  b:name("glass", glass)
+  return { air = true, heli = heli, yoke = L.ctrl == "yoke", stations = stations, order = order, crew = crew, cn = cn, glass = glass,
+    seat = L.seat, eyeShift = L.eyeShift }
+end
+
+---------------------------------------------------------------- 串列双座武装直升机（阿帕奇、直-10）：我坐后座（飞行员，高一截），前座射手在前下方
+--   L = { cn, hud = 后座有平显（直-10）, ihadss = 头盔单目显示（阿帕奇：Interior 把平显画在眼前） }
+-- 资料：AH-64D/E 后座 —— 两块 6.24 英寸多功能显示器、上前显示器（EUFD）、备份仪表、左边总距杆和两根发动机功率杆、右边通信面板；
+--   座舱盖是平板玻璃（前后座中间一块透明防爆隔板），后座右边是门；前座（AH-64E）的目标截获显示器（TEDAC）带两个握把
+function Defs.tandem(b, ctx, L)
+  local H = "hull"
+  local cn = L.cn
+  local eye = V()
+  local function bx(sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
+    return b:box(H, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
+  end
+  local function look(p, at) return CFrame.lookAt(p, at or eye) end
+  local glass = {}
+  local P1, P2 = RGB(48, 52, 50), RGB(38, 41, 40)
+  local FY = -1.10
+  local FE = V(0, -0.45, -1.70)   -- 前座眼位（外模型两个飞行员差 1.7 米、低 0.43 米）
+  -- 后座：浴盆、侧台
+  bx(0.90, 0.03, 1.5, 0, FY, -0.20, P2, MAT.DiamondPlate)
+  for _, s in ipairs({ -1, 1 }) do
+    bx(0.03, 0.70, 1.5, s * 0.46, FY + 0.35, -0.20, P1)
+    bx(0.16, 0.10, 0.80, s * 0.37, -0.64, -0.05, P1)
+    for i = 0, 3 do
+      b:panel(H, 0.14, 0.17, CFrame.lookAt(V(s * 0.37, -0.585, -0.38 + i * 0.20), V(s * 0.32, 0.4, -0.26 + i * 0.20)), 3, 3, RGB(54, 58, 62), { guard = i == 1 })
+    end
+  end
+  bx(0.90, 1.4, 0.04, 0, -0.42, 0.55, P2)
+  -- 仪表板（窄、高）、遮光罩
+  local PZ = -0.66
+  b:box(H, V(0.62, 0.42, 0.06), CF(0, -0.44, PZ) * ANG(rad(-10), 0, 0), P1)
+  bx(0.62, 0.05, 0.22, 0, -0.215, PZ + 0.05, GLARE, MAT.Fabric, 4, 0, 0)
+  local K = cn and { top = { "姿态", "雷达", "态势", "武器", "发动机" }, bottom = { "油量", "检查", "目标", "通信", "菜单" } }
+    or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
+  b:screen(H, 0.16, 0.16, look(V(-0.135, -0.47, PZ - 0.03)), "mfd_sa", { keys = K, lightK = 0.3 })
+  b:screen(H, 0.16, 0.16, look(V(0.135, -0.47, PZ - 0.03)), cn and "mfd_pfd" or "mfd_rdr", { keys = K, lightK = 0.3 })
+  b:screen(H, 0.12, 0.05, look(V(-0.18, -0.30, PZ + 0.0)), "ufd2", { lightK = 0.15 })   -- 上前显示器（告警、油量、起落）
+  standby(b, H, V(0.12, -0.30, PZ + 0.0), eye, 0.06)
+  b:led(H, CF(-0.06, -0.19, PZ + 0.08), RGB(255, 40, 30), 0.02, "mwarn")
+  b:led(H, CF(0.06, -0.19, PZ + 0.08), RGB(255, 180, 30), 0.02, "mcaut")
+  b:placard(H, 0.07, 0.016, look(V(-0.06, -0.205, PZ + 0.095)), cn and "主告警" or "MSTR WARN", { bg = C.black, fg = RGB(255, 80, 70) })
+  b:placard(H, 0.07, 0.016, look(V(0.06, -0.205, PZ + 0.095)), cn and "主注意" or "MSTR CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
+  if L.hud then hudUnit(b, H, V(0, -0.09, PZ + 0.10), eye) end
+  -- 座椅（防弹座椅，侧翼装甲板）
+  b:seat(H, CF(0, -0.80, 0.14), { w = 0.46, d = 0.44, back = 0.70, recline = 12, col = RGB(66, 68, 60), frame = RGB(44, 46, 48) })
+  for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.55, 0.38, s * 0.26, -0.52, 0.28, RGB(70, 72, 64), nil, 12, 0, 0) end
+  bx(0.34, 0.20, 0.10, 0, 0.02, 0.40, RGB(58, 60, 54), MAT.Fabric, 12, 0, 0)
+  for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.03, 0.30, s * 0.19, -0.25, 0.08, RGB(60, 70, 50), MAT.Fabric, -50, 0, 0) end
+  -- 周期变距杆、总距杆、两根发动机功率杆、脚蹬
+  b:group("stick", H, CF(0, FY + 0.04, -0.34))
+  b:tube("stick", V(0, 0, 0), V(0, 0.50, 0.04), 0.03, C.dark, MAT.Metal)
+  b:box("stick", V(0.05, 0.14, 0.05), CF(0, 0.57, 0.05) * ANG(rad(-8), 0, 0), C.black)
+  b:button("stick", CF(0, 0.645, 0.03) * ANG(rad(-70), 0, 0), C.red, 0.012)
+  b:box("stick", V(0.012, 0.035, 0.012), CF(0, 0.57, 0.02), RGB(60, 60, 60))
+  b:group("coll", H, CF(-0.30, -0.80, 0.16))
+  b:tube("coll", V(0, 0, 0), V(0, 0.02, -0.44), 0.035, C.dark, MAT.Metal)
+  b:box("coll", V(0.06, 0.07, 0.12), CF(0, 0.04, -0.48), C.black)
+  b:button("coll", CF(0, 0.08, -0.50) * ANG(rad(-90), 0, 0), C.dark, 0.014)
+  for _, s in ipairs({ 0, 1 }) do   -- 发动机功率杆（左侧台前端）
+    bx(0.012, 0.07, 0.012, -0.36 + s * 0.03, -0.56, -0.40, C.lgray, MAT.Metal, -20, 0, 0)
+    bx(0.022, 0.02, 0.03, -0.36 + s * 0.03, -0.52, -0.42, C.black)
+  end
+  for _, s in ipairs({ -1, 1 }) do
+    local gname = (s < 0) and "pedL" or "pedR"
+    b:group(gname, H, CF(s * 0.14, FY + 0.16, -0.98))
+    b:box(gname, V(0.10, 0.20, 0.03), CF() * ANG(rad(-20), 0, 0), RGB(40, 42, 44), MAT.Metal)
+  end
+  -- 前座（射手）：从后座越过仪表板、透过防爆隔板看得到——浴盆、两侧台、仪表板、目标截获显示器（TEDAC）和两个握把、侧杆、总距杆、座椅
+  local fz = FE.Z
+  local FF = FE.Y - 1.10   -- 前座地板
+  window(b, H, glass, V(0, 0.06, -0.78), V(0, 0, 1), V(0, 1, 0), 0.82, 0.52, 0.03, 0.88)   -- 防爆隔板（透明，仪表板上沿到座舱盖顶）
+  bx(0.84, 0.03, 1.5, 0, FF, fz - 0.30, P2, MAT.DiamondPlate)
+  for _, s in ipairs({ -1, 1 }) do
+    bx(0.03, 0.70, 1.5, s * 0.43, FF + 0.35, fz - 0.30, P1)
+    bx(0.15, 0.10, 0.70, s * 0.35, FE.Y - 0.64, fz - 0.10, P1)
+    for i = 0, 2 do
+      b:panel(H, 0.13, 0.17, CFrame.lookAt(V(s * 0.35, FE.Y - 0.585, fz - 0.36 + i * 0.20), V(s * 0.30, FE.Y + 0.4, fz - 0.24 + i * 0.20)), 3, 3, RGB(54, 58, 62))
+    end
+  end
+  bx(0.84, 0.60, 0.04, 0, FE.Y - 0.85, fz + 0.50, P2)   -- 前座后面的隔框（后座脚蹬前面）
+  b:seat(H, CF(0, FE.Y - 0.80, fz + 0.14), { w = 0.44, d = 0.42, back = 0.66, recline = 12, col = RGB(66, 68, 60), frame = RGB(44, 46, 48) })
+  bx(0.34, 0.20, 0.10, 0, FE.Y + 0.02, fz + 0.40, RGB(58, 60, 54), MAT.Fabric, 12, 0, 0)
+  b:box(H, V(0.56, 0.36, 0.06), CF(0, FE.Y - 0.42, fz - 0.62) * ANG(rad(-14), 0, 0), P1)
+  b:box(H, V(0.30, 0.22, 0.16), CF(0, FE.Y - 0.16, fz - 0.52), RGB(34, 36, 36))                -- 目标截获显示器机箱
+  b:screen(H, 0.20, 0.15, look(V(0, FE.Y - 0.14, fz - 0.435), FE), "gunsight", { lightK = 0.25 })
+  for _, s in ipairs({ -1, 1 }) do bx(0.05, 0.12, 0.06, s * 0.20, FE.Y - 0.30, fz - 0.42, C.black, nil, -20, 0, 0) end   -- 两个握把
+  bx(0.04, 0.12, 0.05, 0.33, FE.Y - 0.56, fz - 0.10, C.black, nil, -12, 0, 0)                  -- 射手的侧杆（右侧台）
+  bx(0.035, 0.035, 0.40, -0.30, FE.Y - 0.78, fz - 0.10, C.dark, MAT.Metal, 4, 0, 0)            -- 射手的总距杆（左边）
+  for _, s in ipairs({ -1, 1 }) do bx(0.10, 0.20, 0.03, s * 0.13, FF + 0.16, fz - 0.95, RGB(40, 42, 44), MAT.Metal, -20, 0, 0) end
+  -- 座舱盖：平板玻璃。后座：两侧（右边是门）、顶上、前面一块斜的（越过前座看出去）；前座：前风挡（带雨刷）、两侧
+  window(b, H, glass, V(-0.47, -0.02, -0.20), V(1, 0, 0), V(0, 1, 0), 1.10, 0.62, 0.035)
+  window(b, H, glass, V(0.47, -0.02, -0.20), V(-1, 0, 0), V(0, 1, 0), 1.10, 0.62, 0.035)
+  window(b, H, glass, V(0, 0.34, -0.25), V(0, -1, 0), V(0, 0, -1), 0.80, 0.95, 0.035, 0.86)
+  window(b, H, glass, V(0, 0.12, -0.86), V(0, -0.55, 1).Unit, V(0, 1, 0.55).Unit, 0.84, 0.48, 0.035)
+  window(b, H, glass, V(0, FE.Y + 0.05, fz - 0.80), V(0, -0.5, 1).Unit, V(0, 1, 0.5).Unit, 0.72, 0.52, 0.04)
+  wiper(b, H, V(0, FE.Y - 0.18, fz - 0.84), 0.40, 14, V(0, 0.5, -1).Unit)
+  for _, s in ipairs({ -1, 1 }) do
+    window(b, H, glass, V(s * 0.43, FE.Y + 0.02, fz - 0.15), V(-s, 0, 0.15).Unit, V(0, 1, 0), 0.95, 0.60, 0.035)
+    bar(b, H, V(s * 0.45, -0.32, 0.34), V(s * 0.45, 0.34, 0.34), 0.05)
+    bar(b, H, V(s * 0.45, 0.34, 0.34), V(s * 0.42, 0.34, -0.80), 0.05)
+  end
+  -- 灯
+  b:light(H, CF(0, 0.20, -0.30), "dome", RGB(190, 230, 210), 1.6, 0.25)
+  b:light(H, CF(0, -0.30, PZ + 0.18), "dome", RGB(190, 230, 210), 1.0, 0.16)
+  b:light(H, CF(0, FE.Y + 0.20, fz - 0.20), "dome", RGB(190, 230, 210), 1.2, 0.16)
+  b:light(H, CF(0, -0.10, PZ + 0.20), "warn", RGB(255, 40, 30), 1.4, 0)
+  b:name("glass", glass)
+  local dress = cn and "heli_cn" or "heli_us"
+  local crew = {
+    pilot = { dress = dress, g = H, eye = eye, lean = 2, yaw = 0, look = V(0, -0.05, -1),
+      hands = { r = { "stick", V(0, 0.58, 0.05) }, l = { "coll", V(0, 0.05, -0.46) } },
+      feet = { l = { "pedL", V(0, -0.04, 0.06) }, r = { "pedR", V(0, -0.04, 0.06) } } },
+    gunner = { dress = dress, g = H, eye = FE, lean = 6, yaw = 0, look = V(0, -0.25, -1),
+      hands = { l = { H, FE + V(-0.20, -0.26, -0.40) }, r = { H, FE + V(0.20, -0.26, -0.40) } },
+      feet = { l = { H, FE + V(-0.12, -0.95, -0.80) }, r = { H, FE + V(0.12, -0.95, -0.80) } } },
+  }
+  local stations = {
+    pilot = { g = H, eye = eye, look = V(0, -0.03, -1), yaw = 150, up = 70, down = 65, crew = "pilot" },
+    gunner = { g = H, eye = FE, look = V(0, -0.10, -1), yaw = 150, up = 60, down = 60, crew = "gunner" },
+  }
+  return { air = true, heli = true, stations = stations, order = { "pilot", "gunner" }, crew = crew, cn = cn, glass = glass,
+    seat = 2, ihadss = L.ihadss }
+end
+
+Defs.z10 = function(b, ctx) return Defs.tandem(b, ctx, { cn = true, hud = true }) end
+Defs.ah64e = function(b, ctx) return Defs.tandem(b, ctx, { ihadss = true }) end
+Defs.uh60 = function(b, ctx) return Defs.side(b, ctx, { half = 0.50, me = "R", ctrl = "heli", disp = "uh60m", win = "heli", chin = true, seat = 2 }) end
+Defs.ch47 = function(b, ctx) return Defs.side(b, ctx, { half = 0.60, me = "R", ctrl = "heli", disp = "ch47f", win = "heli", chin = true, seat = 2 }) end
+Defs.z20 = function(b, ctx) return Defs.side(b, ctx, { half = 0.50, me = "L", ctrl = "heli", disp = "z20", win = "heli", chin = true, cn = true, seat = 1 }) end
+Defs.h6k = function(b, ctx) return Defs.side(b, ctx, { half = 0.55, me = "L", ctrl = "yoke", disp = "h6k", win = "bomber", cn = true, hud = true, thr = 2, eyeShift = -0.55 }) end
+Defs.b2 = function(b, ctx) return Defs.side(b, ctx, { half = 0.62, me = "L", ctrl = "stick", disp = "b2", win = "bomber", thr = 4, eyeShift = -0.62 }) end
+
 return Defs
 ]]></ProtectedString>
           </Properties>
@@ -36592,7 +37494,7 @@ function B:screen(g, w, h, cf, page, opt)
       local list = opt.keys[side] or {}
       local n = #list
       for i, label in ipairs(list) do
-        local x = -w / 2 + (i - 0.5) * w / n
+        local x = w / 2 - (i - 0.5) * w / n   -- 屏幕的 −Z 对着人，人的右手边是局部 −X：第一个键在人看来最左边
         local kw = math.min(0.030, w / n * 0.72)
         local sy = (side == "top") and 1 or -1
         local key = self:box(g, V(kw, 0.011, 0.010), cf * CF(x, sy * (h / 2 + bez * 0.72), -0.005), RGB(62, 64, 66))
@@ -36891,6 +37793,53 @@ local function partRig(dress)
   end
   return m, hrp, head
 end
+-- 真人比例的小人（车里、座舱里都用它）：R15 的方块小人四肢有 0.34 米粗、胳膊腿太短，坐进座舱够不着杆和脚蹬、低头满眼是方块；
+--   这个按 1.78 米的成年男子量的（肩宽 0.40、上臂 0.29、前臂 0.26、大腿 0.43、小腿 0.42 米），四肢、躯干是椭球（像人体模型），关节名字和层级照 R15
+local function slimRig(dress)
+  local m = Instance.new("Model")
+  m.Name = "Crew"
+  local function P(name, size, color, round)
+    local p = mkPart(m, size * S, color)
+    p.Name = name
+    if round then
+      local sm = Instance.new("SpecialMesh")
+      sm.MeshType = Enum.MeshType.Sphere
+      sm.Parent = p
+    end
+    return p
+  end
+  local function M(name, p0, p1, c0, c1) return motor(name, p0, p1, CF(c0 * S), CF((c1 or V()) * S)) end
+  local hrp = P("HumanoidRootPart", V(0.5, 0.5, 0.3), dress.top)
+  hrp.Transparency, hrp.Anchored = 1, true
+  local lt = P("LowerTorso", V(0.34, 0.18, 0.22), dress.low, true)
+  local ut = P("UpperTorso", V(0.40, 0.52, 0.25), dress.top, true)
+  local head = P("Head", V(0.19, 0.23, 0.21), SKIN)
+  local hm = Instance.new("SpecialMesh")
+  hm.MeshType = Enum.MeshType.Head
+  hm.Parent = head
+  P("Neck", V(0.11, 0.10, 0.11), SKIN, true).Name = "NeckSkin"
+  M("Root", hrp, lt, V(0, -0.05, 0))
+  M("Waist", lt, ut, V(0, 0.07, 0), V(0, -0.24, 0))
+  M("Neck", ut, head, V(0, 0.27, 0), V(0, -0.115, 0))
+  local nk = m:FindFirstChild("NeckSkin")
+  weld(ut, nk, CF(0, 0.25 * S, 0))
+  for _, sd in ipairs({ -1, 1 }) do
+    local side = (sd < 0) and "Left" or "Right"
+    local ua = P(side .. "UpperArm", V(0.105, 0.32, 0.105), dress.top, true)
+    local la = P(side .. "LowerArm", V(0.09, 0.28, 0.09), dress.top, true)
+    local hd = P(side .. "Hand", V(0.085, 0.11, 0.045), dress.glove)
+    M(side .. "Shoulder", ut, ua, V(sd * 0.19, 0.19, 0), V(0, 0.14, 0))
+    M(side .. "Elbow", ua, la, V(0, -0.15, 0), V(0, 0.125, 0))
+    M(side .. "Wrist", la, hd, V(0, -0.13, 0), V(0, 0.05, 0))
+    local ul = P(side .. "UpperLeg", V(0.15, 0.47, 0.15), dress.low, true)
+    local ll = P(side .. "LowerLeg", V(0.11, 0.45, 0.11), dress.low, true)
+    local ft = P(side .. "Foot", V(0.10, 0.09, 0.27), dress.boot)
+    M(side .. "Hip", lt, ul, V(sd * 0.095, -0.05, 0), V(0, 0.215, 0))
+    M(side .. "Knee", ul, ll, V(0, -0.215, 0), V(0, 0.205, 0))
+    M(side .. "Ankle", ll, ft, V(0, -0.21, 0), V(0, 0.035, 0.08))
+  end
+  return m, hrp, head
+end
 -- R15 模板克隆
 local function rigFromTemplate(dress)
   local tpl = RS:FindFirstChild("BotRig")
@@ -36958,8 +37907,7 @@ local function setJ(Jx, P0, P1) Jx.m.C0 = P0:Inverse() * P1 * Jx.c1 end
 -- 做一个乘员：返回 { model, hrp, J, set(pose) }；dress 见上面的 DRESS
 function K.crew(dressKey)
   local dress = DRESS[dressKey] or DRESS.crew_us
-  local m, hrp, head = rigFromTemplate(dress)
-  if not m then m, hrp, head = partRig(dress) end
+  local m, hrp, head = slimRig(dress)   -- 真人比例（R15 模板 / 方块小人只在调试时用：rigFromTemplate、partRig）
   local J = {}
   for _, d in ipairs(m:GetDescendants()) do
     if d:IsA("Motor6D") then J[d.Name] = { m = d, c0 = d.C0, c1 = d.C1, c1i = d.C1:Inverse() } end
@@ -36979,7 +37927,7 @@ function K.crew(dressKey)
   -- 头和头上戴的（第一人称时藏起来，自己看得见自己的手和腿）
   f.headParts = { head }
   for _, p in ipairs(m:GetDescendants()) do
-    if p:IsA("BasePart") and (p.Name == "Gear" or p.Name == "Head" or p:IsDescendantOf(head)) then table.insert(f.headParts, p) end
+    if p:IsA("BasePart") and (p.Name == "Gear" or p.Name == "Head" or p.Name == "NeckSkin" or p:IsDescendantOf(head)) then table.insert(f.headParts, p) end
     if p:IsA("Decal") and p.Parent == head then table.insert(f.headParts, p) end
   end
   -- 摆姿势（世界坐标，格）：pelvis 骨盆（下躯干）的姿态；chest 上身相对骨盆的转角（CFrame）；look 头朝哪看（世界方向）；
@@ -37009,7 +37957,7 @@ function K.crew(dressKey)
     local function arm(Lb, W, side, pole)
       if not W then
         -- 没给手的位置：手臂自然垂下、略往前
-        W = (ut * CF(side * 1.1, -1.5, -0.45)).Position
+        W = (ut * CF(side * 1.1 * k, -1.5 * k, -0.45 * k)).Position
       end
       local e = pole or (rt * side * 0.8 - up * 0.6 + ut.LookVector * 0.1)
       local a, b, c = ik(Lb, ut, W, e, false, nil)
@@ -37020,7 +37968,7 @@ function K.crew(dressKey)
     arm(f.LA, P.lh, -1, P.lelbow)
     arm(f.RA, P.rh, 1, P.relbow)
     local function leg(Lb, W, side, pole)
-      if not W then W = (lt * CF(side * 0.5, -2.2, -1.2)).Position end
+      if not W then W = (lt * CF(side * 0.5 * k, -2.2 * k, -1.2 * k)).Position end
       local e = pole or (lt.LookVector * 1 + rt * side * 0.15)
       local a, b, c = ik(Lb, lt, W, e, true, P.footRot)
       setJ(Lb.a, lt, a)
@@ -37047,6 +37995,7 @@ function K.crew(dressKey)
   return f
 end
 
+K.rigFromTemplate, K.partRig = rigFromTemplate, partRig   -- 调试用（R15 模板、方块小人）
 return K
 ]]></ProtectedString>
           </Properties>
@@ -38281,7 +39230,7 @@ end
 function Screens.make(s, env)
   local fn = P[s.page]
   if not fn then return nil end
-  local ok, up = pcall(fn, s, env)
+  local ok, up = pcall(fn, s, env, env and env.zh)   -- zh：中文座舱（歼-20 等）的页面写中文
   if ok then return up end
   warn("[内饰] 屏幕页面 " .. tostring(s.page) .. " 出错：" .. tostring(up))
   return nil

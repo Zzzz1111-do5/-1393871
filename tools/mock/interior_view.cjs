@@ -30,11 +30,17 @@ srv.listen(0, '127.0.0.1', async () => {
   await p.waitForFunction('window.ready === true', null, { timeout: 180000 });
   const D = await p.evaluate('window.D');
   const shots = [];
-  for (const c of D.cams || []) shots.push({ name: c.name, c: c.c, fov: 75 });
-  shots.push({ name: 'cut_side', pos: [26, 6, 0], look: [0, 4.5, -1], fov: 42, clip: [{ n: [-1, 0, 0], d: 0.02 }], amb: 0.9 });
-  shots.push({ name: 'cut_left', pos: [-26, 6, 0], look: [0, 4.5, -1], fov: 42, clip: [{ n: [1, 0, 0], d: 0.02 }], amb: 0.9 });
-  shots.push({ name: 'cut_top', pos: [0, 30, -1.2], look: [0, 0, -1.25], fov: 40, clip: [{ n: [0, -1, 0], d: 6.4 }], amb: 0.9 });
-  shots.push({ name: 'cut_3q', pos: [10, 12, 8], look: [0, 4, -1], fov: 50, clip: [{ n: [0, -1, 0], d: 6.6 }], amb: 0.7 });
+  for (const c of D.cams || []) shots.push({ name: c.name, c: c.c, fov: D.kind === 'air' ? 85 : 75 });
+  if (D.kind === 'air') {   // 座舱：原点在飞行员眼位（格），座舱只有两三米大
+    shots.push({ name: 'cut_side', pos: [9, -0.8, -0.6], look: [0, -1.2, -0.8], fov: 50, clip: [{ n: [-1, 0, 0], d: 0.25 }], amb: 0.9 });
+    shots.push({ name: 'cut_top', pos: [0, 9, -0.8], look: [0, -1, -0.9], fov: 50, clip: [{ n: [0, -1, 0], d: 0.3 }], amb: 0.9 });
+    shots.push({ name: 'cut_3q', pos: [3.2, 2.4, 2.6], look: [0, -1.0, -1.2], fov: 55, clip: [{ n: [0, -1, 0], d: 0.9 }], amb: 0.7 });
+  } else {
+    shots.push({ name: 'cut_side', pos: [26, 6, 0], look: [0, 4.5, -1], fov: 42, clip: [{ n: [-1, 0, 0], d: 0.02 }], amb: 0.9 });
+    shots.push({ name: 'cut_left', pos: [-26, 6, 0], look: [0, 4.5, -1], fov: 42, clip: [{ n: [1, 0, 0], d: 0.02 }], amb: 0.9 });
+    shots.push({ name: 'cut_top', pos: [0, 30, -1.2], look: [0, 0, -1.25], fov: 40, clip: [{ n: [0, -1, 0], d: 6.4 }], amb: 0.9 });
+    shots.push({ name: 'cut_3q', pos: [10, 12, 8], look: [0, 4, -1], fov: 50, clip: [{ n: [0, -1, 0], d: 6.6 }], amb: 0.7 });
+  }
   for (const s of shots) {
     await p.evaluate(o => window.shot(o), s);
     await p.screenshot({ path: `${outp}_${s.name}.png` });

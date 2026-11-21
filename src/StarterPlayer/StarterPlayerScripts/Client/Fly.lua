@@ -1468,6 +1468,7 @@ function Fly.init(G)
     if k == Enum.KeyCode.Space then G.R.Drive:FireServer({ op = "exit" }) return end   -- 用户：空格键脱离载具（在天上就跳伞）
     if not st.pilot then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
@@ -1788,7 +1789,8 @@ function Fly.init(G)
       st.eoYaw -= md.X * SENS
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
-      if d.kind == "jet" and not G.mobile then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
+      local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
+      if d.kind == "jet" and not G.mobile and not pitLook then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
         st.aimYaw -= md.X * SENS
         st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
       end

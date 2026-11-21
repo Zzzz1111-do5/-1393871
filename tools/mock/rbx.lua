@@ -1676,11 +1676,9 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
       return R.keys[kc.Name] == true
     end,
     GetMouseLocation = function() return R.mouseAt or newV2(640, 400) end,
-    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给，读一次清零，跟真机一样按帧算）
+    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给；跟真机一样按帧算：R.step 开头取走，这一帧里谁读都是同一个数）
     GetMouseDelta = function()
-      local d = R.mouseDelta or newV2(0, 0)
-      R.mouseDelta = nil
-      return d
+      return R.frameDelta or newV2(0, 0)
     end,
     GetFocusedTextBox = function() return nil end,
   },
@@ -2150,6 +2148,7 @@ end
 
 function R.step(dt)
   clock = clock + dt
+  R.frameDelta, R.mouseDelta = R.mouseDelta, nil
   if R.localPlayer then
     local co = newThread(function() R.RenderStepped:Fire(dt) end, "client")
     resume(co)

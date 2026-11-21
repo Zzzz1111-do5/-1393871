@@ -107,77 +107,10 @@ if camAt.driver and camAt.gunner and camAt.commander then
 end
 
 -- 导出给预览图
+local dumpOut = dofile(MOCK_DIR .. "/interior_dump.lua")
 local function dumpJSON(path)
   local v = C.viewById(e.id)
-  local hull = v.hullF
-  local out = { parts = {}, cams = {}, lights = {}, screens = {} }
-  local function num(x) return string.format("%.4f", x) end
-  local function cfStr(cf)
-    local l = hull:ToObjectSpace(cf)
-    local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = l:GetComponents()
-    return table.concat({ num(x), num(y), num(z), num(r00), num(r01), num(r02), num(r10), num(r11), num(r12), num(r20), num(r21), num(r22) }, ",")
-  end
-  local cur2 = C.interiorState().cur
-  for _, p in ipairs(cur2.model:GetDescendants()) do
-    if p:IsA("BasePart") and p.Transparency < 0.99 then
-      local shape = "Block"
-      if p.ClassName == "WedgePart" then shape = "Wedge" elseif p.ClassName == "Part" then shape = p.Shape.Name end
-      local mesh = p:FindFirstChildOfClass("SpecialMesh")
-      if mesh and mesh.MeshType == Enum.MeshType.Sphere then shape = "Sphere" end
-      local col = p.Color
-      table.insert(out.parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%s],"k":[%d,%d,%d],"m":"%s","t":%s}', shape,
-        num(p.Size.X), num(p.Size.Y), num(p.Size.Z), cfStr(p.CFrame), math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255),
-        p.Material.Name, num(math.max(p.Transparency, p.LocalTransparencyModifier))))
-    end
-  end
-  for _, L in ipairs(cur2.b.lights) do
-    local pos = hull:PointToObjectSpace(L.part.Position)
-    local col = L.L.Color
-    table.insert(out.lights, string.format('{"p":[%s,%s,%s],"k":[%d,%d,%d],"r":%s,"b":%s,"role":"%s"}', num(pos.X), num(pos.Y), num(pos.Z),
-      math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255), num(L.L.Range), num(L.L.Enabled and L.L.Brightness or 0), L.role or ""))
-  end
-  -- 屏幕上的界面：自己按 UDim2 排（模拟器不算 SurfaceGui 里的绝对位置）
-  local function c3(c) return string.format("[%d,%d,%d]", math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255)) end
-  local function guiNodes(o, px, py, pw, ph, acc, vis)
-    for _, ch in ipairs(o:GetChildren()) do
-      if ch:IsA("GuiObject") then
-        local sz, pos, ap = ch.Size, ch.Position, ch.AnchorPoint
-        local w = sz.X.Scale * pw + sz.X.Offset
-        local h = sz.Y.Scale * ph + sz.Y.Offset
-        local x = px + pos.X.Scale * pw + pos.X.Offset - ap.X * w
-        local y = py + pos.Y.Scale * ph + pos.Y.Offset - ap.Y * h
-        local v = vis and ch.Visible
-        local round = ch:FindFirstChildOfClass("UICorner") ~= nil and ch:FindFirstChildOfClass("UICorner").CornerRadius.Scale >= 0.3
-        local st = ch:FindFirstChildOfClass("UIStroke")
-        local txt = ch:IsA("TextLabel") and ch.Text or nil
-        local g = ch:FindFirstChildOfClass("UIGradient")
-        local bg = ch.BackgroundColor3
-        if g then
-          local ok, kp = pcall(function() return g.Color.Keypoints end)
-          if ok and kp and #kp > 0 then bg = kp[#kp].Value end
-        end
-        table.insert(acc, string.format('{"x":%s,"y":%s,"w":%s,"h":%s,"v":%s,"bg":%s,"bt":%s,"rot":%s,"round":%s%s%s}', num(x), num(y), num(w), num(h),
-          tostring(v), c3(bg), num(ch.BackgroundTransparency), num(ch.Rotation), tostring(round),
-          st and string.format(',"st":%s,"stw":%s', c3(st.Color), num(st.Thickness)) or "",
-          txt and txt ~= "" and string.format(',"text":"%s","tc":%s,"ts":%s,"al":"%s","bold":%s', (txt:gsub('[\\"]', '')), c3(ch.TextColor3), num(ch.TextSize), ch.TextXAlignment.Name, tostring(ch.Font == Enum.Font.GothamBold)) or ""))
-        guiNodes(ch, x, y, w, h, acc, v)
-      end
-    end
-  end
-  for _, s in ipairs(cur2.b.screens) do
-    local acc = {}
-    local pw, ph = s.px.X, s.px.Y
-    guiNodes(s.gui, 0, 0, pw, ph, acc, true)
-    table.insert(out.screens, string.format('{"page":"%s","z":[%s,%s],"c":[%s],"pw":%s,"ph":%s,"gui":[%s]}', s.page, num(s.part.Size.X), num(s.part.Size.Y), cfStr(s.part.CFrame),
-      num(pw), num(ph), table.concat(acc, ",")))
-  end
-  for name, cf in pairs(dumpCams or {}) do
-    table.insert(out.cams, string.format('{"name":"%s","c":[%s],"fov":%s}', name, cfStr(cf), num(cam.FieldOfView)))
-  end
-  local f = io.open(path, "w")
-  f:write('{"parts":[' .. table.concat(out.parts, ",\n") .. '],\n"lights":[' .. table.concat(out.lights, ",") .. '],\n"screens":[' .. table.concat(out.screens, ",") .. '],\n"cams":[' .. table.concat(out.cams, ",") .. ']}')
-  f:close()
-  print("  写出 " .. path .. "（" .. #out.parts .. " 个零件）")
+  dumpOut(C.interiorState().cur, v.hullF, dumpCams, path, cam, Enum)
 end
 for _, name in ipairs(cur.spec.order) do
   T.tap(KEYS[name])

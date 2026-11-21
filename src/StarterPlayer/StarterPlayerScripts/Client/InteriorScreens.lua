@@ -1225,7 +1225,7 @@ end
 function Screens.make(s, env)
   local fn = P[s.page]
   if not fn then return nil end
-  local ok, up = pcall(fn, s, env)
+  local ok, up = pcall(fn, s, env, env and env.zh)   -- zh：中文座舱（歼-20 等）的页面写中文
   if ok then return up end
   warn("[内饰] 屏幕页面 " .. tostring(s.page) .. " 出错：" .. tostring(up))
   return nil
