@@ -521,7 +521,7 @@ local Region3 = { new = function(a, b)
   return setmetatable({ CFrame = CFrame.new((a + b) / 2), Size = b - a, _min = a, _max = b }, { __type = "Region3" })
 end }
 R.Region3 = Region3
-local BRICK = { ["Bright red"] = { 196, 40, 28 }, ["Bright blue"] = { 13, 105, 172 }, ["Really red"] = { 255, 0, 0 }, ["Really blue"] = { 0, 0, 255 },
+local BRICK = { ["Bright red"] = { 196, 40, 28 }, ["Bright blue"] = { 13, 105, 172 }, ["Bright green"] = { 75, 151, 75 }, ["Really red"] = { 255, 0, 0 }, ["Really blue"] = { 0, 0, 255 },
   ["Medium stone grey"] = { 163, 162, 165 }, ["White"] = { 242, 243, 243 }, ["Black"] = { 27, 42, 53 }, ["Bright orange"] = { 218, 133, 65 }, ["Navy blue"] = { 0, 32, 96 },
   ["Crimson"] = { 151, 0, 0 }, ["Deep orange"] = { 255, 176, 0 }, ["Cyan"] = { 4, 175, 236 }, ["Lime green"] = { 0, 255, 0 }, ["Institutional white"] = { 248, 248, 248 } }
 local BrickColor = { new = function(name)

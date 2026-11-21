@@ -254,9 +254,11 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高）：0.45——用户 11-19：地上草高一点、多一点（Roblox 自带的那种）；
-    --   不回到 0.55（11-18 那样小兵、车轮下半截埋在草里，看着像半截身子在地下）。「多」靠 Map.material 让更多地方是 Grass
-    T.GrassLength = 0.45
+    -- 草叶长度（默认 0.7 约两格高，0.1 格起）：0.28——
+    --   用户 11-19 要草高一点、多一点调到过 0.45（约一格三），用户 11-21：所有东西都是半截身子卡在地里——
+    --   小人腿两格、坦克离地一格多、沙袋一格来高，一格多的草叶把它们下半截都盖住了（11-18 调到 0.55 时也是这样）。
+    --   草叶不超过一格（小人的脚踝、履带下沿那么高）；「多」照旧靠 Map.material 让大片地方是 Grass
+    T.GrassLength = 0.28
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -709,12 +711,12 @@ function World.points(f)
     local m = Instance.new("Model")
     m.Name = "Point_" .. p.id
     local y = Map.ground(p.x, p.z)
-    local ring = part(m, V(0.3, Map.POINT_R * 2, Map.POINT_R * 2), CF(p.x, y + 0.2, p.z) * UP, RGB(60, 120, 230), MAT.Neon, CYL)
+    local ring = part(m, V(0.3, Map.POINT_R * 2, Map.POINT_R * 2), CF(p.x, y + 0.2, p.z) * UP, RGB(64, 186, 92), MAT.Neon, CYL)   -- 开局归守方：守方的绿（同 Config.Teams.def）
     ring.Name = "Ring"
     ring.Transparency = 0.82
     local pole = cyl(m, 34, 0.9, CF(p.x, y + 17, p.z), C.white, MAT.Metal, true)
     pole.Name = "Pole"
-    local flag = part(m, V(10, 6, 0.3), CF(p.x + 5.4, y + 30, p.z), RGB(60, 120, 230), MAT.Fabric)
+    local flag = part(m, V(10, 6, 0.3), CF(p.x + 5.4, y + 30, p.z), RGB(64, 186, 92), MAT.Fabric)
     flag.Name = "Flag"
     local _, lbl = sign(pole, p.id, 24, 9, 9, Color3.new(1, 1, 1), 9000)
     lbl.Name = "Letter"

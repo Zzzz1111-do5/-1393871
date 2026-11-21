@@ -21,6 +21,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 21 日这一包：模型都不用重导，只换游戏文件（新的 RobloxTotalBattlefield.rbxlx，或者「三、只换脚本」用 ScriptsUpdate.rbxmx）：
+    - 界面的蓝色 / 青色全部改成绿色（开飞机、开坦克、改装、简报；守方的队伍色也从蓝换成绿，蓝滩改叫绿滩）；飞机机头前的全息准心、锁定框改小；
+    - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）；
+    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具），配件模型在 optics/ 里，以前导过就不用再导。
+
   11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
     - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；
     - 地图：港口码头修好了（崖下的码头平地、挡土墙、坡道接回崖顶），坡上的工事补了地基；各处据点、海滩加了细节

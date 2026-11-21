@@ -3,7 +3,7 @@
 --   ReplicatedStorage.HudIcons（tools/models/hudicons.py 生成）里是每辆地面载具从原模型正侧面拍的全息图（灰度 + 柔光晕）和
 --   界面图形（六边形、炮弹、机枪弹、烟幕弹、「∧」、小炮弹，4 倍超采样画的，边缘不起锯齿），这里解成 EditableImage：
 --   G.hudIcon(名字) → { content = Content（给 ImageLabel.ImageContent）, w, h }；用不了（游戏设置 → 安全里没打开 Mesh / Image API）返回 nil，
---   界面退回方块拼的。图是白的 / 灰的，界面上用 ImageColor3 染色（全息青、挨打红）。第一次用到时解（一张一两毫秒），之后缓存
+--   界面退回方块拼的。图是白的 / 灰的，界面上用 ImageColor3 染色（全息绿、挨打红）。第一次用到时解（一张一两毫秒），之后缓存
 local RS = game:GetService("ReplicatedStorage")
 
 local HudArt = {}

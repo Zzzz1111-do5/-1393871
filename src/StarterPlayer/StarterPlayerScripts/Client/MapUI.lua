@@ -73,7 +73,7 @@ function MapUI.init(G)
   -- 右上的小地图（用户 11-19：不要黑绿，改成正常的；再要暗淡、拟真）：深蓝的海，暗沙色海滩，暗绿的低地、山坡，高处灰褐；路是土色
   --   （有 EditableImage 时上面盖一张 MapPaint 画的卫星图，这些色块只在用不了时看得到）
   local MINI = { RGB(146, 136, 110), RGB(76, 90, 58), RGB(68, 82, 54), RGB(92, 94, 82), RGB(100, 98, 92), RGB(60, 74, 48) }
-  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }
+  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
   local theme = "map"
   local landBand = {}   -- 陆地块 → 档（换配色用）
   local roads = {}

@@ -78,7 +78,7 @@ function Map.coastN(x) return coastLookup(cN, x) end   -- 北岸线
 Map.BEACHES = {
   { id = "red", x0 = -980 * K, x1 = -820 * K, color = Color3.fromRGB(215, 70, 60) },
   { id = "white", x0 = -200 * K, x1 = -40 * K, color = Color3.fromRGB(235, 235, 235) },
-  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(70, 130, 230) },
+  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(80, 196, 100) },   -- 显示名「绿滩」（用户 11-21：蓝色全部改成绿色；编号还叫 blue，代码里按它找）
   { id = "gold", x0 = 690 * K, x1 = 850 * K, color = Color3.fromRGB(235, 190, 60) },
   { id = "flank", x0 = 820 * K, x1 = 960 * K, north = true, color = Color3.fromRGB(150, 110, 220) },
 }

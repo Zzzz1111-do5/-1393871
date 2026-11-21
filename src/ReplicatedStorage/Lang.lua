@@ -86,7 +86,7 @@ add("point.D", "D 机场", "D Airfield")
 add("point.E", "E 指挥所", "E Command Post")
 add("beach.red", "红滩", "Red Beach")
 add("beach.white", "白滩", "White Beach")
-add("beach.blue", "蓝滩", "Blue Beach")
+add("beach.blue", "绿滩", "Green Beach")   -- 原来叫蓝滩（用户 11-21：蓝色全部改成绿色）
 add("beach.gold", "金滩", "Gold Beach")
 add("beach.flank", "东北滩（侧翼）", "NE Beach (flank)")
 add("beach.outpost", "前哨岛南岸", "Outpost Isle (south)")

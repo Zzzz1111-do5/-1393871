@@ -49,7 +49,7 @@ Config.Capture = {
 
 Config.Teams = {
   atk = { color = Color3.fromRGB(220, 70, 55), brick = "Bright red" },
-  def = { color = Color3.fromRGB(60, 120, 230), brick = "Bright blue" },
+  def = { color = Color3.fromRGB(64, 186, 92), brick = "Bright green" },   -- 用户 11-21：蓝色全部改成绿色（守方原来是蓝）
 }
 
 ---------------------------------------------------------------- 步兵兵种（9 种，无限复活）：主枪统一是 M4（狙击手另有狙击枪），机枪手并进了步枪兵

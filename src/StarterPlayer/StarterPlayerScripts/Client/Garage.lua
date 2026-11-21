@@ -19,7 +19,7 @@ function Garage.init(G)
   local me = Players.LocalPlayer
   local ui = G.ui
   local function T(k, ...) return G.T(k, ...) end
-  local TEXT, MUTE, ACC = RGB(236, 240, 238), RGB(150, 158, 160), RGB(120, 220, 230)
+  local TEXT, MUTE, ACC = RGB(236, 240, 238), RGB(150, 158, 160), RGB(126, 232, 150)
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Garage"
@@ -77,7 +77,7 @@ function Garage.init(G)
   infoD.TextWrapped, infoD.TextYAlignment = true, Enum.TextYAlignment.Top
   local infoS = ui.label(info, "", UD2(1, -28, 0, 18), UD2(0, 14, 1, -28), 13, ACC, Enum.Font.GothamBold)
   local backBtn = square(ui.button(bg, T("gar.back"), UDim2.fromOffset(150, 44), UD2(1, -236, 1, -36), RGB(30, 34, 38), Vector2.new(1, 1)))
-  local goBtn = square(ui.button(bg, T("gar.spawn"), UDim2.fromOffset(180, 44), UD2(1, -36, 1, -36), RGB(54, 150, 160), Vector2.new(1, 1)))
+  local goBtn = square(ui.button(bg, T("gar.spawn"), UDim2.fromOffset(180, 44), UD2(1, -36, 1, -36), RGB(52, 150, 78), Vector2.new(1, 1)))
   goBtn.Name, backBtn.Name = "GarageGo", "GarageBack"
   goBtn.Font, backBtn.Font = Enum.Font.GothamBlack, Enum.Font.GothamBold
   goBtn.TextSize, backBtn.TextSize = 17, 15
@@ -169,7 +169,7 @@ function Garage.init(G)
       local cur = S.mods[slot]
       local fixed = #list <= 1
       order += 1
-      local b = card(T("gar.slot." .. slot), (fixed and (T("gar.fixed") .. " · ") or "") .. T("gar.opt." .. cur), 56, (S.open == slot) and RGB(26, 40, 46) or nil, order)
+      local b = card(T("gar.slot." .. slot), (fixed and (T("gar.fixed") .. " · ") or "") .. T("gar.opt." .. cur), 56, (S.open == slot) and RGB(26, 44, 32) or nil, order)
       b.Activated:Connect(function()
         if not S then return end
         S.open = (S.open == slot) and nil or slot
@@ -180,7 +180,7 @@ function Garage.init(G)
         for _, opt in ipairs(list) do
           order += 1
           local sel = opt == cur
-          local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 92, 100) or RGB(14, 17, 20), order)
+          local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 98, 54) or RGB(14, 17, 20), order)
           t1.TextColor3 = sel and RGB(255, 255, 255) or RGB(206, 212, 214)
           ob.Activated:Connect(function() choose(slot, opt) end)
         end

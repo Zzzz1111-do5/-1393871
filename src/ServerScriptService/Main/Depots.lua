@@ -256,10 +256,10 @@ function Depots.init(G)
     local head = CFrame.lookAt(V(p.term.X, ty + 4.6, p.term.Z), V(p.term.X, ty + 4.6, p.term.Z) - face.Unit) * CFrame.Angles(math.rad(-25), 0, 0)
     local scr = part(m, V(2.6, 1.6, 0.25), head, RGB(20, 22, 24), MAT.SmoothPlastic, true)
     scr.Name = "Screen"
-    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 200, 255), MAT.Neon)
+    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 240, 150), MAT.Neon)   -- 终端灯：绿（原来蓝，用户 11-21）
     lamp.Name = "Lamp"
     local pl = Instance.new("PointLight")
-    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 200, 255)
+    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 240, 160)
     pl.Parent = lamp
     local pr = Instance.new("ProximityPrompt")
     pr.Name = "Spawn"

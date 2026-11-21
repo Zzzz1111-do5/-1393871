@@ -42,7 +42,7 @@ function Depot.init(G)
     f.Parent = bb
     local bar = Instance.new("Frame")
     bar.Size = UDim2.new(0, 2, 1, 0)
-    bar.BackgroundColor3 = (team == "atk") and RGB(232, 84, 72) or RGB(70, 150, 240)
+    bar.BackgroundColor3 = (team == "atk") and RGB(232, 84, 72) or RGB(76, 200, 104)
     bar.BorderSizePixel = 0
     bar.Parent = f
     local function txt(y, h, size, color, font)

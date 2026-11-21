@@ -221,7 +221,7 @@ if js and foe then
     check((r2 < r1 and r1 - r2 < 60) or (r1 - r2 < -300), string.format("菱形逆时针转（%.0f° → %.0f°）", r1, r2))
     local function colOf(e) return (e.ClassName == "ImageLabel") and e.ImageColor3 or e.BackgroundColor3 end   -- 发光线是图（着色），退回时是方块线
     local edgeC = colOf(lm.Diamond.Edge1)
-    check(edgeC.B > 0.8 and edgeC.R < 0.6, "在离轴角里：菱形是青色")
+    check(edgeC.G > 0.8 and edgeC.R < 0.6 and edgeC.B < 0.7, "在离轴角里：菱形是全息绿")   -- 用户 11-21：蓝色全部改成绿色
     foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
     R.run(0.3)
     edgeC = colOf(lm.Diamond.Edge1)
@@ -235,7 +235,7 @@ if js and foe then
     foe.root.CFrame = js.cf * CF(60, 20, -700)
     R.run(0.3)
     edgeC = colOf(lm.Diamond.Edge1)
-    check(js.lock ~= nil and not js.lock.out and edgeC.B > 0.8 and edgeC.R < 0.6, "回到离轴角里：菱形变回青色")
+    check(js.lock ~= nil and not js.lock.out and edgeC.G > 0.8 and edgeC.R < 0.6 and edgeC.B < 0.7, "回到离轴角里：菱形变回全息绿")
   end
   -- N：夜视 → 热成像 → 关（不用光电吊舱）
   local cc = R.services.Lighting:FindFirstChild("AirIrCC")

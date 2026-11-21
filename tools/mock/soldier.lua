@@ -16,7 +16,7 @@ local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local client = R.services.StarterPlayer:FindFirstChild("StarterPlayerScripts"):FindFirstChild("Client")
 local ms = client:FindFirstChild("Soldier")
 local G = {
-  Config = { Teams = { atk = { color = R.Color3.fromRGB(220, 70, 55) }, def = { color = R.Color3.fromRGB(60, 120, 230) } } },
+  Config = { Teams = { atk = { color = R.Color3.fromRGB(220, 70, 55) }, def = { color = R.Color3.fromRGB(64, 186, 92) } } },
   perfK = 1,
 }
 local errs = 0

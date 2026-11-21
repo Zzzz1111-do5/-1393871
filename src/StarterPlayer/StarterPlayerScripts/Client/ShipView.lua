@@ -23,7 +23,7 @@ function ShipView.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local RED_LOW, BOOT, GLASS = RGB(118, 44, 40), RGB(30, 32, 34), RGB(28, 36, 44)
-  local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 96, 190) }
+  local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 150, 72) }   -- 守方：绿（用户 11-21）
   local IS = nil   -- 原模型的元数据（tools/models/ship2glb.py 生成）
   do
     local ok, r = pcall(function() return require(RS:WaitForChild("ImportedShip", 3)) end)

@@ -146,7 +146,7 @@ function Hud.init(G)
 
   local RC = Config.Radar or { range = 520, ping = 3 }
   local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
-  local FRIEND, FOE = RGB(72, 168, 255), RGB(255, 64, 52)
+  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)

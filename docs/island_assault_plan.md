@@ -790,6 +790,13 @@
   - 核对：`tools/mock/gunmods.lua`（改枪码穷举、clean / apply / 等级）、`tools/mock/gunsmith.lua`（界面 → 服务器存档 → 出击生效 → 开枪 → 第一人称配件 → 经验，44 项）、
     `tools/mock/gunmount.lua` + `tools/weapons/gunrender.mjs`（照游戏里的装法拼 M4 和配件 GLB，拍左右侧、斜上方、开镜视角）、
     `tools/mock/hudshot.lua kind=gunsmith` + `hud_render.py ... vp:GunVP=<图>`（改枪界面截图，视口里贴同一镜头拍的枪）。
+- [x] **界面换绿、全息方框改小、草不再盖住东西（2026-11-21，keen-heisenberg；用户：「你把飞机的全息视角那个方形改的小一点 然后 蓝色全部改成绿色包括坦克的 然后 目前所有东西都是半截身子卡在地里」）**
+  - 先合并了 vibrant 的 MWT 界面 / UE5 操控和 darksword-air-map 的改枪系统（光学瞄具：红点、全息、Romeo3、6 倍 ACOG……，用户说的「gpt 实现的光学瞄准」）。
+  - 半截身子卡在地里：地形草叶 0.45（约一格三）把小人的腿、坦克履带下沿、沙袋都盖住了（11-18 调到 0.55 时也是这样）→ `World.lua` 的 `GrassLength` 0.28（不到一格）；草的面积照旧（`Map.material`）。
+  - 全息方框：`AirHud.lua` 机头前方的全息准心 90 → 58 像素高，锁定的菱形 / 四个直角框 56 → 40。
+  - 蓝色全部改成绿色：开飞机（`AirHud` / `Fly`）、开坦克（`VehHud` / `TankHud`）、改装界面（`Garage`）、作战简报（`Operation`）的青色全息换成全息绿（118, 240, 140），选中底色、描边一起换深绿；
+    友军标记（`Hud.lua` FRIEND）绿；守方的队伍色蓝 → 绿（`Config.Teams.def`、Roblox 队伍颜色 Bright green，据点圈和旗、阵营选择、载具终端、舰旗、战术平板空投箱的灯跟着变）；
+    「蓝滩」改名「绿滩」（编号还是 blue）；能击穿的准星从绿改黄绿（跟没瞄着车的绿分开）。没改：小地图的海（用户 11-19 要拟真，海还是深蓝）、机场滑行道和航母甲板的蓝灯（真实就是蓝的）。
 
 ## 协作（几个会话一起改这个仓库）
 

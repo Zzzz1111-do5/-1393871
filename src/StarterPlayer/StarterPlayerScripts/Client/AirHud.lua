@@ -1,16 +1,16 @@
 -- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
 --   之后要求形状、光晕都照截图）。布局、形状、比例、光晕照截图做，图都是自己画的（HudIcons：每架飞机原模型拍的平涂侧影、六边形、弹的图标、
---   机头的全息标记……），配色跟开坦克的界面一套（青色全息）：
---   · 右上：机型名（白）、这架飞机平涂的青色侧影（挨打到一半变黄、三成以下变红）、血量「当前（青）/ 满（白）」
+--   机头的全息标记……），配色跟开坦克的界面一套（绿色全息）：
+--   · 右上：机型名（白）、这架飞机平涂的绿色侧影（挨打到一半变黄、三成以下变红）、血量「当前（绿）/ 满（白）」
 --   · 准星两边：左「高度」右「速度」，字下面一道带一个台阶的细折线、数在折线下面，都带一圈淡淡的光晕；
 --     再下面一行小字：油量和还能飞多久 / 油门（加力、自动油门）、爬升率 / 起落架
---   · 准星上方：选中的弹的名字（实心的青色小牌子）、下面写是什么弹；准星右边剩几发，左边锁定的目标多远（千米）
+--   · 准星上方：选中的弹的名字（实心的绿色小牌子）、下面写是什么弹；准星右边剩几发，左边锁定的目标多远（千米）
 --   · 机头的全息标记（用户：像全息投屏一样、机头指哪它在哪）：只描边的小飞机（直升机是小直升机），机头往前一根线、线头一个亮点；
 --     不是贴在屏幕上的图——是机头前方 300 格一块斜放的面（跟着机身俯仰、滚转），从后面看过去有透视；打中东西时放大一下、变红
 --   · 锁定（用户：锁定过程是一个菱形，线条顺时针画出菱形就代表锁定完成；锁定后出现四个直角的边框，菱形开始逆时针转；
 --     脱离导弹发射角度菱形变黄）：目标身上一个菱形，锁定进度多少就顺时针画多少；锁上后四个直角框住目标（往里一收）、菱形一直逆时针转；
 --     目标出了导弹的离轴角（Fly 里锁还留着、这时不能发射）菱形变黄
---   · 右下：六边形武器键（按键号、弹的图标、剩几发）：没选中的是灰色的金属片，选中的发青光；最后一个是热诱弹（X）
+--   · 右下：六边形武器键（按键号、弹的图标、剩几发）：没选中的是灰色的金属片，选中的发绿光；最后一个是热诱弹（X）
 --   · 热成像（用户：不用光电吊舱也可以开红外视角）：开飞机时 N 在 夜视 → 热成像 → 关 之间切；白热（车、船、飞机、小兵发白），
 --     整个画面灰、对比高，一层横向扫描线、雪花噪点、四边压暗；进光电吊舱时先让开（吊舱有自己的画面），下飞机关掉
 --   · 左上的圆形雷达（白色细圈、灰色视野扇形和中线、正中间白色小飞机）、雷达下面的「被发现!」、敌人头顶带血条的名牌：
@@ -28,7 +28,7 @@ function AirHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local HOLO, TXT, MUTE, INK = RGB(110, 226, 240), RGB(238, 243, 245), RGB(150, 172, 176), RGB(6, 9, 12)
+  local HOLO, TXT, MUTE, INK = RGB(118, 240, 140), RGB(238, 243, 245), RGB(156, 176, 160), RGB(6, 9, 12)   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
   local YEL, BAD = RGB(255, 204, 58), RGB(255, 64, 52)
   local METAL, METAL_EDGE, METAL_ICON = RGB(138, 146, 152), RGB(200, 206, 210), RGB(226, 230, 232)
   local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
@@ -56,7 +56,7 @@ function AirHud.init(G)
     l.BackgroundTransparency = 1
     l.Text, l.TextSize, l.TextColor3, l.Font = text or "", ts or 13, color or HOLO, font or BOLD
     l.TextXAlignment = align or Enum.TextXAlignment.Center
-    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 16, 24)
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 22, 8)
     l.Parent = parent
     return l
   end
@@ -89,7 +89,7 @@ function AirHud.init(G)
     c.Parent = f
     return f
   end
-  -- 光晕：字 / 线外面一圈比本身粗、很淡的同色描边（截图上青色的字和线都微微发光）
+  -- 光晕：字 / 线外面一圈比本身粗、很淡的同色描边（截图上绿色的字和线都微微发光）
   local function glow(o, color, th, tr)
     local s = Instance.new("UIStroke")
     s.Color, s.Thickness, s.Transparency = color or HOLO, th or 2.2, tr or 0.74
@@ -164,7 +164,7 @@ function AirHud.init(G)
   A.alt = bracket(-180, T("air.cap.alt"), "AltBracket", true)
   A.spd = bracket(180, T("air.cap.spd"), "SpdBracket", false)
 
-  -- 准星上方：选中的弹（实心的青色小牌子、白字，下面一行写是什么弹）；准星右边剩几发，左边锁定目标多远
+  -- 准星上方：选中的弹（实心的绿色小牌子、白字，下面一行写是什么弹）；准星右边剩几发，左边锁定目标多远
   A.wTag = frame(root, UDim2.fromOffset(84, 18), UD2(0.5, 0, 0.5, -134), HOLO, 0.5, V2(0.5, 0.5))   -- 平飞时机头标记在准星上方：再往上让开
   A.wTag.Name = "WeaponTag"
   round(A.wTag, UDim.new(0, 2))
@@ -183,9 +183,10 @@ function AirHud.init(G)
   glow(A.rng)
 
   ---------------------------------------------------------------- 机头的全息标记：机头前方一块斜放的面（跟着机身转），上面是只描边的小飞机
-  -- 用户 11-19：要像全息瞄准镜的准心——细、亮、带柔光，跟着机头走（之前那版太大太粗）：两张图叠着（近白的细芯 + 青色光晕），光晕微微闪
-  local HOLO_D, HOLO_TILT, HOLO_PX = 300, math.rad(-55), 90   -- 离机头多远（格）、往后仰多少（面朝后上方，从后面看有透视）、整张图在屏幕上多高（像素）
-  local CORE = RGB(226, 252, 255)
+  -- 用户 11-19：要像全息瞄准镜的准心——细、亮、带柔光，跟着机头走（之前那版太大太粗）：两张图叠着（近白的细芯 + 绿色光晕），光晕微微闪
+  -- 用户 11-21：全息的那块改小一点——整张图 90 → 58 像素高（锁定的菱形 / 直角框也一起缩了三成）
+  local HOLO_D, HOLO_TILT, HOLO_PX = 300, math.rad(-55), 58   -- 离机头多远（格）、往后仰多少（面朝后上方，从后面看有透视）、整张图在屏幕上多高（像素）
+  local CORE = RGB(232, 255, 236)
   local holoPart = Instance.new("Part")
   holoPart.Name = "NoseHolo"
   holoPart.Anchored, holoPart.CanCollide, holoPart.CanQuery, holoPart.CanTouch, holoPart.CastShadow = true, false, false, false, false
@@ -217,18 +218,19 @@ function AirHud.init(G)
   A.aim.Visible = false
 
   ---------------------------------------------------------------- 锁定：菱形（顺时针画出来）、锁上后四个直角、菱形逆时针转
-  A.lock = frame(gui, UDim2.fromOffset(56, 56), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  local LK, DS, CS = 40, 24, 18   -- 锁定框边长、菱形对角线、直角的图（用户 11-21 嫌大：原来 56 / 34 / 24）
+  A.lock = frame(gui, UDim2.fromOffset(LK, LK), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.lock.Name = "LockMark"
   A.lock.Visible = false
-  A.dia = frame(A.lock, UDim2.fromOffset(34, 34), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  A.dia = frame(A.lock, UDim2.fromOffset(DS, DS), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.dia.Name = "Diamond"
-  local DV = { { 17, 0 }, { 34, 17 }, { 17, 34 }, { 0, 17 } }   -- 上 → 右 → 下 → 左：顺时针
+  local DV = { { DS / 2, 0 }, { DS, DS / 2 }, { DS / 2, DS }, { 0, DS / 2 } }   -- 上 → 右 → 下 → 左：顺时针
   -- 四条边各一张发光的线（HudIcons 的 glowLine：细芯 + 柔光、两头圆）：锁定进度多少，这条边就「长」多长（像笔在画）；
   --   用不了 EditableImage 时是细的方块线
   A.diaSeg = {}
   A.lineArt = nil
   for i = 1, 4 do
-    local f = img(A.dia, "Edge" .. i, UDim2.fromOffset(1, 10), UD2(), V2(0.5, 0.5), HOLO, 0)
+    local f = img(A.dia, "Edge" .. i, UDim2.fromOffset(1, 8), UD2(), V2(0.5, 0.5), HOLO, 0)
     A.lineArt = (A.lineArt ~= false) and setIcon(f, "glowLine")
     A.diaSeg[i] = f
   end
@@ -243,11 +245,11 @@ function AirHud.init(G)
   -- 四个直角：一张左上的 L（glowCorner），另外三个转 90° / 180° / 270°（方的图绕中心转，正好落到对角上）
   A.corners = {}
   for _, c in ipairs({ { 0, 0, 0 }, { 1, 0, 90 }, { 1, 1, 180 }, { 0, 1, 270 } }) do
-    local f = img(A.lock, "Corner", UDim2.fromOffset(24, 24), UD2(c[1], 0, c[2], 0), V2(c[1], c[2]), HOLO, 0)
+    local f = img(A.lock, "Corner", UDim2.fromOffset(CS, CS), UD2(c[1], 0, c[2], 0), V2(c[1], c[2]), HOLO, 0)
     f.Rotation = c[3]
     if not setIcon(f, "glowCorner") then
       f:Destroy()
-      for _, sz in ipairs({ { 12, 2 }, { 2, 12 } }) do
+      for _, sz in ipairs({ { 9, 2 }, { 2, 9 } }) do
         local g = frame(A.lock, UDim2.fromOffset(sz[1], sz[2]), UD2(c[1], 0, c[2], 0), HOLO, 0, V2(c[1], c[2]))
         g.Name = "Corner"
         table.insert(A.corners, g)
@@ -481,7 +483,7 @@ function AirHud.init(G)
         local ex, ey = a[1] + (b[1] - a[1]) * fr, a[2] + (b[2] - a[2]) * fr
         local len = math.sqrt((ex - a[1]) ^ 2 + (ey - a[2]) ^ 2)
         if A.lineArt then   -- 图里线占中间 56 / 64，两头留了光晕的空：按这个放大
-          sgm.Size = UDim2.fromOffset(len / 0.875 + 0.5, 10)
+          sgm.Size = UDim2.fromOffset(len / 0.875 + 0.5, 8)
           sgm.ImageColor3 = dcol
         else
           sgm.Size = UDim2.fromOffset(len + 1.5, 2)
@@ -494,12 +496,12 @@ function AirHud.init(G)
       if lk.locked then
         A.lockT0 = A.lockT0 or now
         local e = math.clamp((now - A.lockT0) / 0.18, 0, 1)
-        local sz = 56 + 26 * (1 - e) * (1 - e)   -- 四个直角从外面往里一收
+        local sz = LK + 18 * (1 - e) * (1 - e)   -- 四个直角从外面往里一收
         A.lock.Size = UDim2.fromOffset(sz, sz)
         A.dia.Rotation = -((now - A.lockT0) * 150 % 360)   -- 逆时针
       else
         A.lockT0 = nil
-        A.lock.Size = UDim2.fromOffset(56, 56)
+        A.lock.Size = UDim2.fromOffset(LK, LK)
         A.dia.Rotation = 0
       end
       for _, c in ipairs(A.corners) do c.Visible = lk.locked == true end
@@ -510,7 +512,7 @@ function AirHud.init(G)
       A.lock.Visible = false
       A.lockT0 = nil
     end
-    -- 六边形武器键：没选中的灰色金属片，选中的发青光
+    -- 六边形武器键：没选中的灰色金属片，选中的发绿光
     local items = info.wl or {}
     local n = #items
     while #A.hex < n do A.hex[#A.hex + 1] = hexBtn(#A.hex + 1) end
@@ -528,7 +530,7 @@ function AirHud.init(G)
       h.box:SetAttribute("Wid", it.wid or "flare")
       h.box:SetAttribute("Sel", sel)
       if h.art then
-        h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(38, 150, 162) or METAL, sel and 0.35 or 0.3
+        h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(40, 150, 72) or METAL, sel and 0.35 or 0.3
         h.iGlow.Visible = sel and not empty
         h.iEdge.ImageColor3 = empty and RGB(150, 70, 64) or (sel and HOLO or METAL_EDGE)
         h.iEdge.ImageTransparency = sel and 0 or 0.15
@@ -537,7 +539,7 @@ function AirHud.init(G)
         h.iIcon.ImageColor3 = empty and RGB(120, 100, 98) or (sel and WHITE or METAL_ICON)
       else
         h.plateStroke.Color = empty and RGB(150, 70, 64) or (sel and HOLO or METAL_EDGE)
-        h.plate.BackgroundColor3 = sel and RGB(38, 150, 162) or METAL
+        h.plate.BackgroundColor3 = sel and RGB(40, 150, 72) or METAL
         h.short.Text = it.flare and "X" or T("aw." .. it.wid)
         h.short.TextColor3 = sel and WHITE or METAL_ICON
       end

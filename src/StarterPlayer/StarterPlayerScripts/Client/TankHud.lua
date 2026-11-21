@@ -2,7 +2,7 @@
 --   照那张图的布局和感觉做（不照抄它的图标、配色细节）：
 --   · 敌人头顶：看得见的敌方车辆上面一个小牌子（红色的型号名、距离「183 米」），最多 6 个，离得远的、被挡住的不画
 --   · 「被发现！」：附近有敌人看得见自己（视线没被挡），或者刚挨了打——左边一块琥珀色的牌子，一闪一闪
---   · 主动防御还剩多少（右下面板上面一行，青色；爆反不显示——用户 11-19）
+--   · 主动防御还剩多少（右下面板上面一行，绿色；爆反不显示——用户 11-19）
 --   · 开坦克时（电脑）右上的方形小地图挪到左下角、裁成圆的，外圈 0 / 90 / 180 / 270 的方位刻度；下车、换别的载具恢复
 --   VehHud.lua 每帧调 G.tankHudExtra(st, 血量比例)；准星两边的弹药数、已就绪、测距在 VehHud 里
 --   飞机模式（Fly.lua 调 G.tankHudExtra(st, 血量比例, "air")；用户 11-19：飞机操作界面也照 MWT 的截图改）：
@@ -19,7 +19,7 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED = RGB(110, 226, 240), RGB(255, 78, 64)
+  local CYAN, RED = RGB(118, 240, 140), RGB(255, 78, 64)   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -129,7 +129,7 @@ function TankHud.init(G)
   local spotOn, spotT0 = false, 0
 
   -- 车旁边的全息屏：车速（用户 11-19：坦克旁边也要有个牌子写着 km/h，要有全息屏的感觉，照 MWT）——
-  --   镜头右边那一侧、炮塔高度浮着一块半透明的青色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
+  --   镜头右边那一侧、炮塔高度浮着一块半透明的绿色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
   --   斜着一点朝镜头，跟着车走；只在本机（放在镜头下面），开着瞄准镜、下车就收起
   local holo = Instance.new("Part")
   holo.Name = "SpeedHolo"
@@ -147,7 +147,7 @@ function TankHud.init(G)
   pcall(function() hsg.Brightness = 1.6 end)   -- 测试用的模拟器里没有这个属性
   hsg.Enabled = false
   hsg.Parent = holo
-  local hp = Instance.new("Frame")   -- 屏：上浓下淡的青色
+  local hp = Instance.new("Frame")   -- 屏：上浓下淡的绿色
   hp.Size, hp.BackgroundColor3, hp.BackgroundTransparency, hp.BorderSizePixel = UD2(1, 0, 1, 0), CYAN, 0.8, 0
   hp.Parent = hsg
   do
@@ -193,7 +193,7 @@ function TankHud.init(G)
   ring.BackgroundTransparency = 1
   ring.Visible = false
   ring.Parent = gui
-  local ringStroke, ringLabs = nil, {}   -- 坦克：青色；飞机：白色（照 MWT 截图左上的雷达：白色细圈、白字）
+  local ringStroke, ringLabs = nil, {}   -- 坦克：绿色；飞机：白色（照 MWT 截图左上的雷达：白色细圈、白字）
   do
     local edge = Instance.new("Frame")
     edge.Size = UDim2.fromOffset(MS + 6, MS + 6)

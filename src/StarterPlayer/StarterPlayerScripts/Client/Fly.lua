@@ -206,11 +206,11 @@ function Fly.init(G)
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
-  local HUD = RGB(110, 226, 240)   -- 青色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色；原来是 DCS 平显的绿）
+  local HUD = RGB(118, 240, 140)   -- 绿色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色，那时是青色；用户 11-21：蓝色全部改成绿色）
   local function hud(text, size, pos, ts, anchor, align)
     local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
     l.TextStrokeTransparency = 0.5
-    l.TextStrokeColor3 = RGB(0, 18, 26)
+    l.TextStrokeColor3 = RGB(0, 24, 10)
     l.Visible = false
     return l
   end
@@ -245,7 +245,7 @@ function Fly.init(G)
   local warnText = hud("", UDim2.fromOffset(520, 34), UDim2.new(0.5, 0, 0.5, -130), 26, Vector2.new(0.5, 0.5))
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
-  landMark.TextColor3 = RGB(120, 200, 255)
+  landMark.TextColor3 = RGB(120, 236, 150)
 
   ---------------------------------------------------------------- 平显的俯仰梯、速度矢量、过载 / 迎角 / 马赫（用户：飞机飞行参考 DCS）
   -- 固定翼才有：俯仰梯每 5° 一档（正的实线、端头往下，负的虚线、端头往上；地平线一根长的），按真实的方向投到屏幕上（跟着天地转、跟着机头偏）；
@@ -261,7 +261,7 @@ function Fly.init(G)
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
     local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
-    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 18, 26) end
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 24, 10) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
   for i = 1, 11 do ladderPool[i] = ladderLine() end
@@ -305,14 +305,14 @@ function Fly.init(G)
   gCC.Parent = game:GetService("Lighting")
   local gStress = 0   -- 过载累积（正：灰视，负：红视）
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
-  landText.TextColor3 = RGB(120, 200, 255)
+  landText.TextColor3 = RGB(120, 236, 150)
   -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
   local restText = hud("", UDim2.fromOffset(560, 26), UDim2.new(0.5, 0, 0.5, -96), 20, Vector2.new(0.5, 0.5))
   restText.Name = "RestText"
   -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
   --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
   local function box(w, h, pos, anchor)
-    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 16, 24), 0.72, anchor)
+    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 22, 8), 0.72, anchor)
     ui.stroke(f, HUD, 2, 0.1)
     f.Visible = false
     return f
@@ -578,7 +578,7 @@ function Fly.init(G)
     local H = 34
     wList.Size = UDim2.fromOffset(260, #items * (H + 4))
     for i, it in ipairs(items) do
-      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 12, 18), 0.6)
+      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 16, 6), 0.6)
       f.Name = "Row_" .. (it.wid or "flare")
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
@@ -2070,7 +2070,7 @@ function Fly.init(G)
         local n = r.it.flare and st.flares or left(r.it.wid)
         r.cnt.Text = "×" .. n
         local sel = r.it.idx == st.wi
-        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(16, 70, 84) or RGB(0, 12, 18), sel and 0.3 or 0.6
+        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(18, 78, 36) or RGB(0, 16, 6), sel and 0.3 or 0.6
         r.s.Transparency, r.s.Thickness = sel and 0 or 0.7, sel and 2 or 1
         local col = (n <= 0) and RGB(110, 124, 130) or HUD
         r.cnt.TextColor3, r.nm.TextColor3 = col, col

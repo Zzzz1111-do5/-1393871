@@ -658,7 +658,7 @@ Config.Capture = {
 
 Config.Teams = {
   atk = { color = Color3.fromRGB(220, 70, 55), brick = "Bright red" },
-  def = { color = Color3.fromRGB(60, 120, 230), brick = "Bright blue" },
+  def = { color = Color3.fromRGB(64, 186, 92), brick = "Bright green" },   -- 用户 11-21：蓝色全部改成绿色（守方原来是蓝）
 }
 
 ---------------------------------------------------------------- 步兵兵种（9 种，无限复活）：主枪统一是 M4（狙击手另有狙击枪），机枪手并进了步枪兵
@@ -3925,7 +3925,7 @@ add("point.D", "D 机场", "D Airfield")
 add("point.E", "E 指挥所", "E Command Post")
 add("beach.red", "红滩", "Red Beach")
 add("beach.white", "白滩", "White Beach")
-add("beach.blue", "蓝滩", "Blue Beach")
+add("beach.blue", "绿滩", "Green Beach")   -- 原来叫蓝滩（用户 11-21：蓝色全部改成绿色）
 add("beach.gold", "金滩", "Gold Beach")
 add("beach.flank", "东北滩（侧翼）", "NE Beach (flank)")
 add("beach.outpost", "前哨岛南岸", "Outpost Isle (south)")
@@ -4933,7 +4933,7 @@ function Map.coastN(x) return coastLookup(cN, x) end   -- 北岸线
 Map.BEACHES = {
   { id = "red", x0 = -980 * K, x1 = -820 * K, color = Color3.fromRGB(215, 70, 60) },
   { id = "white", x0 = -200 * K, x1 = -40 * K, color = Color3.fromRGB(235, 235, 235) },
-  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(70, 130, 230) },
+  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(80, 196, 100) },   -- 显示名「绿滩」（用户 11-21：蓝色全部改成绿色；编号还叫 blue，代码里按它找）
   { id = "gold", x0 = 690 * K, x1 = 850 * K, color = Color3.fromRGB(235, 190, 60) },
   { id = "flank", x0 = 820 * K, x1 = 960 * K, north = true, color = Color3.fromRGB(150, 110, 220) },
 }
@@ -5539,8 +5539,8 @@ return {
   { name = "指挥所—机场", w = 11, p = { 260,-1908,260,-1898,261,-1887,261,-1877,261,-1861,262,-1845,262,-1831,262,-1817,263,-1803,261,-1785,259,-1767,255,-1752,250,-1737,244,-1725,237,-1713,228,-1704,219,-1695,206,-1681,199,-1672,197,-1668,200,-1668,201,-1667,201,-1666,200,-1663,197,-1660,196,-1658,197,-1657,201,-1656,207,-1656,199,-1643,188,-1630,176,-1618,164,-1605,152,-1592,140,-1579,127,-1567,114,-1554,101,-1541,89,-1528,76,-1516,64,-1503,51,-1490,39,-1477,27,-1465,17,-1452,20,-1452,21,-1451,21,-1450,20,-1447,17,-1444,15,-1442,15,-1441,17,-1440,20,-1440,21,-1439,21,-1438,20,-1435,17,-1432,14,-1430,11,-1429,8,-1428,5,-1428,3,-1427,3,-1426,5,-1423,8,-1420,9,-1418,9,-1417,8,-1416,5,-1416,3,-1415,3,-1414,5,-1411,8,-1408,9,-1406,9,-1405,8,-1404,5,-1404,3,-1403,3,-1402,5,-1399,8,-1396,2,-1386,-6,-1377,-13,-1368,-25,-1355,-37,-1342,-48,-1331,-59,-1320,-70,-1309,-83,-1296,-95,-1282,-103,-1272,-112,-1261,-120,-1246,-120,-1237,-115,-1226,-106,-1213,-100,-1205,-93,-1197,-84,-1188,-75,-1179,-66,-1174,-57,-1169,-39,-1168,-21,-1174,-12,-1182,-3,-1189,11,-1200,22,-1206,29,-1207,32,-1204,34,-1198,35,-1189,36,-1177,36,-1162,37,-1150,38,-1141,41,-1135,44,-1132,51,-1130,63,-1129,80,-1128,90,-1128,101,-1128,111,-1130,121,-1132,131,-1137,140,-1141,150,-1148,159,-1155,168,-1164,177,-1173,185,-1180,192,-1186,204,-1195,213,-1200,219,-1200,224,-1199,229,-1198,233,-1195,236,-1192,245,-1198,254,-1204,262,-1211,273,-1222,285,-1233,295,-1243,305,-1253,315,-1263,329,-1274,344,-1285,358,-1292,371,-1300,384,-1303,398,-1306,410,-1306,423,-1305,441,-1304,454,-1303,460,-1303 } },
   { name = "红滩—港口镇", w = 10, p = { -900,-831,-898,-830,-895,-830,-891,-830,-885,-829,-881,-829,-880,-830,-880,-832,-883,-835,-874,-838,-862,-838,-851,-839,-834,-840,-816,-840,-800,-840,-784,-840,-768,-840,-754,-842,-739,-844,-725,-847,-706,-853,-688,-860,-672,-870,-655,-880,-642,-894,-628,-907,-618,-922,-608,-937,-601,-952,-595,-968,-591,-985,-588,-1002,-588,-1020,-588,-1038,-588,-1052,-587,-1066,-586,-1085,-583,-1096,-580,-1099,-578,-1102,-577,-1105,-576,-1108,-576,-1111,-571,-1119,-561,-1130,-553,-1138,-546,-1146,-535,-1156,-525,-1166,-518,-1173,-510,-1180,-500,-1190,-495,-1195 } },
   { name = "港口镇—白滩", w = 10, p = { -495,-1195,-491,-1192,-483,-1185,-471,-1175,-463,-1168,-456,-1161,-442,-1150,-431,-1143,-423,-1140,-417,-1140,-412,-1141,-407,-1142,-403,-1144,-400,-1147,-398,-1150,-397,-1153,-396,-1156,-396,-1159,-395,-1161,-394,-1161,-391,-1159,-388,-1156,-386,-1156,-385,-1157,-384,-1161,-384,-1167,-382,-1170,-379,-1170,-375,-1167,-369,-1161,-364,-1153,-361,-1144,-360,-1134,-360,-1122,-359,-1114,-358,-1109,-355,-1108,-352,-1111,-350,-1112,-349,-1111,-348,-1107,-348,-1101,-347,-1097,-346,-1096,-343,-1096,-340,-1099,-338,-1101,-337,-1101,-336,-1099,-336,-1096,-335,-1095,-334,-1095,-331,-1096,-328,-1099,-326,-1096,-325,-1085,-324,-1068,-324,-1056,-324,-1044,-323,-1026,-322,-1014,-319,-1008,-316,-1008,-314,-1007,-313,-1006,-312,-1003,-312,-1000,-310,-1000,-307,-1001,-303,-1005,-297,-1011,-292,-1015,-287,-1016,-283,-1015,-280,-1012,-276,-1010,-270,-1009,-262,-1008,-253,-1008,-247,-1007,-244,-1006,-244,-1003,-247,-1000,-244,-998,-235,-997,-220,-996,-210,-996,-199,-996,-184,-995,-175,-994,-172,-991,-175,-988,-177,-985,-177,-982,-175,-979,-172,-976,-171,-974,-171,-973,-172,-972,-175,-972,-177,-971,-177,-970,-175,-967,-172,-964,-171,-962,-171,-961,-172,-960,-175,-960,-177,-959,-177,-958,-175,-955,-172,-952,-172,-950,-173,-949,-177,-948,-183,-948,-187,-947,-188,-946,-187,-943,-184,-940,-183,-938,-183,-937,-184,-936,-187,-936,-186,-932,-180,-925,-169,-913,-162,-906,-154,-898,-143,-884,-136,-871,-132,-858,-132,-846,-131,-836,-130,-829,-127,-825,-124,-822,-122,-821,-121,-820,-120,-819 } },
-  { name = "白滩—蓝滩", w = 10, p = { -120,-819,-121,-820,-122,-821,-124,-822,-127,-825,-130,-829,-131,-834,-132,-841,-132,-850,-130,-855,-125,-855,-118,-850,-109,-841,-96,-835,-78,-830,-67,-829,-55,-828,-42,-828,-28,-828,-17,-829,-6,-830,12,-835,26,-841,35,-850,50,-857,60,-859,71,-862,84,-863,98,-864,114,-864,131,-864,145,-862,159,-860,171,-856,183,-853,193,-847,203,-841,210,-834,218,-826,233,-815,248,-808,263,-804,278,-804,290,-802,301,-799,309,-795,315,-789,320,-785,324,-783,326,-782,328,-783,329,-784,330,-785,330,-785 } },
-  { name = "蓝滩—金滩", w = 10, p = { 330,-785,330,-785,329,-784,328,-783,326,-782,324,-783,320,-785,315,-789,309,-795,308,-802,311,-811,318,-822,330,-834,339,-844,345,-851,348,-856,348,-859,350,-863,353,-868,357,-873,363,-879,375,-883,393,-886,405,-887,417,-888,432,-888,447,-888,459,-887,472,-886,482,-883,491,-881,506,-874,515,-865,530,-859,540,-856,551,-854,564,-853,578,-852,594,-852,611,-852,623,-852,636,-853,654,-854,665,-856,668,-859,671,-862,676,-863,681,-864,687,-864,692,-863,697,-862,701,-859,704,-856,709,-854,716,-853,726,-852,738,-852,748,-853,756,-855,761,-858,765,-862,767,-865,769,-867,770,-868 } },
+  { name = "白滩—绿滩", w = 10, p = { -120,-819,-121,-820,-122,-821,-124,-822,-127,-825,-130,-829,-131,-834,-132,-841,-132,-850,-130,-855,-125,-855,-118,-850,-109,-841,-96,-835,-78,-830,-67,-829,-55,-828,-42,-828,-28,-828,-17,-829,-6,-830,12,-835,26,-841,35,-850,50,-857,60,-859,71,-862,84,-863,98,-864,114,-864,131,-864,145,-862,159,-860,171,-856,183,-853,193,-847,203,-841,210,-834,218,-826,233,-815,248,-808,263,-804,278,-804,290,-802,301,-799,309,-795,315,-789,320,-785,324,-783,326,-782,328,-783,329,-784,330,-785,330,-785 } },
+  { name = "绿滩—金滩", w = 10, p = { 330,-785,330,-785,329,-784,328,-783,326,-782,324,-783,320,-785,315,-789,309,-795,308,-802,311,-811,318,-822,330,-834,339,-844,345,-851,348,-856,348,-859,350,-863,353,-868,357,-873,363,-879,375,-883,393,-886,405,-887,417,-888,432,-888,447,-888,459,-887,472,-886,482,-883,491,-881,506,-874,515,-865,530,-859,540,-856,551,-854,564,-853,578,-852,594,-852,611,-852,623,-852,636,-853,654,-854,665,-856,668,-859,671,-862,676,-863,681,-864,687,-864,692,-863,697,-862,701,-859,704,-856,709,-854,716,-853,726,-852,738,-852,748,-853,756,-855,761,-858,765,-862,767,-865,769,-867,770,-868 } },
   { name = "金滩—机场", w = 10, p = { 770,-868,770,-875,770,-890,769,-901,769,-911,769,-926,769,-940,775,-954,782,-968,789,-982,799,-996,809,-1009,819,-1023,829,-1037,841,-1050,853,-1063,865,-1077,877,-1090,889,-1104,902,-1117,916,-1130,929,-1144,942,-1157,956,-1170,969,-1183,981,-1195,993,-1207,1005,-1219,1018,-1231,1030,-1243,1043,-1257,1056,-1270,1070,-1283,1080,-1293,1090,-1303 } },
   { name = "营地—侧翼滩", w = 10, p = { 140,-2076,153,-2076,166,-2076,179,-2076,199,-2076,218,-2076,235,-2076,253,-2076,270,-2076,290,-2076,310,-2077,324,-2078,337,-2078,353,-2080,356,-2083,359,-2086,362,-2087,365,-2088,368,-2088,370,-2090,371,-2095,372,-2101,372,-2110,373,-2116,374,-2119,377,-2119,380,-2116,382,-2115,383,-2115,384,-2116,384,-2119,385,-2121,386,-2121,389,-2119,392,-2116,405,-2114,417,-2113,429,-2113,446,-2112,464,-2112,479,-2112,494,-2112,509,-2112,527,-2110,545,-2109,560,-2106,574,-2103,584,-2098,594,-2094,606,-2082,623,-2073,635,-2070,646,-2067,660,-2065,674,-2064,690,-2064,707,-2064,720,-2065,734,-2066,744,-2068,755,-2071,770,-2077,779,-2086,791,-2093,808,-2097,818,-2098,829,-2099,841,-2098,853,-2098,872,-2097,884,-2097,890,-2096 } },
   { name = "营地往西", w = 9, p = { -80,-2151,-80,-2150,-81,-2146,-81,-2141,-82,-2134,-88,-2134,-97,-2139,-111,-2151,-120,-2160,-129,-2169,-139,-2176,-149,-2182,-160,-2187,-172,-2191,-184,-2194,-196,-2196,-210,-2196,-223,-2196,-235,-2195,-246,-2194,-264,-2189,-277,-2182,-286,-2173,-302,-2167,-313,-2164,-325,-2162,-339,-2161,-354,-2160,-372,-2160,-390,-2160,-404,-2160,-418,-2161,-437,-2162,-448,-2164,-451,-2167,-464,-2170,-475,-2170,-487,-2171,-503,-2172,-519,-2172,-533,-2172,-547,-2172,-561,-2172,-578,-2170,-595,-2169,-609,-2166,-622,-2163,-632,-2158,-642,-2154,-654,-2142,-669,-2133,-687,-2127,-697,-2125,-708,-2124,-720,-2124,-732,-2124,-751,-2122,-766,-2119,-777,-2115,-783,-2109,-791,-2104,-802,-2101,-814,-2100,-829,-2100,-844,-2097,-857,-2092,-870,-2084,-882,-2073,-891,-2065,-897,-2059,-900,-2057 } },
@@ -12164,10 +12164,10 @@ function Depots.init(G)
     local head = CFrame.lookAt(V(p.term.X, ty + 4.6, p.term.Z), V(p.term.X, ty + 4.6, p.term.Z) - face.Unit) * CFrame.Angles(math.rad(-25), 0, 0)
     local scr = part(m, V(2.6, 1.6, 0.25), head, RGB(20, 22, 24), MAT.SmoothPlastic, true)
     scr.Name = "Screen"
-    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 200, 255), MAT.Neon)
+    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 240, 150), MAT.Neon)   -- 终端灯：绿（原来蓝，用户 11-21）
     lamp.Name = "Lamp"
     local pl = Instance.new("PointLight")
-    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 200, 255)
+    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 240, 160)
     pl.Parent = lamp
     local pr = Instance.new("ProximityPrompt")
     pr.Name = "Spawn"
@@ -17114,7 +17114,7 @@ function Tactical.init(G)
     piece(m, V(5.9, 0.3, 4.1), base * CFrame.new(0, 2.6, 0), RGB(40, 42, 36), Enum.Material.Fabric)   -- 捆带
     piece(m, V(0.3, 3.5, 4.1), base * CFrame.new(1.4, 2.2, 0), RGB(40, 42, 36), Enum.Material.Fabric)
     piece(m, V(0.3, 3.5, 4.1), base * CFrame.new(-1.4, 2.2, 0), RGB(40, 42, 36), Enum.Material.Fabric)
-    local lamp = piece(m, V(0.5, 0.5, 0.5), base * CFrame.new(0, 4.15, 0), (team == "atk") and RGB(255, 90, 70) or RGB(90, 170, 255), Enum.Material.Neon)
+    local lamp = piece(m, V(0.5, 0.5, 0.5), base * CFrame.new(0, 4.15, 0), (team == "atk") and RGB(255, 90, 70) or RGB(96, 236, 120), Enum.Material.Neon)   -- 守方的灯：绿（原来蓝，用户 11-21 蓝色全改绿）
     lamp.CanCollide = false
     lamp:SetAttribute("Anim", "blink")   -- Night.lua 让它一闪一闪（夜里好找）
     lamp:SetAttribute("Spd", 1)
@@ -18499,9 +18499,11 @@ function World.terrain(onProgress)
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
     T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高）：0.45——用户 11-19：地上草高一点、多一点（Roblox 自带的那种）；
-    --   不回到 0.55（11-18 那样小兵、车轮下半截埋在草里，看着像半截身子在地下）。「多」靠 Map.material 让更多地方是 Grass
-    T.GrassLength = 0.45
+    -- 草叶长度（默认 0.7 约两格高，0.1 格起）：0.28——
+    --   用户 11-19 要草高一点、多一点调到过 0.45（约一格三），用户 11-21：所有东西都是半截身子卡在地里——
+    --   小人腿两格、坦克离地一格多、沙袋一格来高，一格多的草叶把它们下半截都盖住了（11-18 调到 0.55 时也是这样）。
+    --   草叶不超过一格（小人的脚踝、履带下沿那么高）；「多」照旧靠 Map.material 让大片地方是 Grass
+    T.GrassLength = 0.28
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -18954,12 +18956,12 @@ function World.points(f)
     local m = Instance.new("Model")
     m.Name = "Point_" .. p.id
     local y = Map.ground(p.x, p.z)
-    local ring = part(m, V(0.3, Map.POINT_R * 2, Map.POINT_R * 2), CF(p.x, y + 0.2, p.z) * UP, RGB(60, 120, 230), MAT.Neon, CYL)
+    local ring = part(m, V(0.3, Map.POINT_R * 2, Map.POINT_R * 2), CF(p.x, y + 0.2, p.z) * UP, RGB(64, 186, 92), MAT.Neon, CYL)   -- 开局归守方：守方的绿（同 Config.Teams.def）
     ring.Name = "Ring"
     ring.Transparency = 0.82
     local pole = cyl(m, 34, 0.9, CF(p.x, y + 17, p.z), C.white, MAT.Metal, true)
     pole.Name = "Pole"
-    local flag = part(m, V(10, 6, 0.3), CF(p.x + 5.4, y + 30, p.z), RGB(60, 120, 230), MAT.Fabric)
+    local flag = part(m, V(10, 6, 0.3), CF(p.x + 5.4, y + 30, p.z), RGB(64, 186, 92), MAT.Fabric)
     flag.Name = "Flag"
     local _, lbl = sign(pole, p.id, 24, 9, 9, Color3.new(1, 1, 1), 9000)
     lbl.Name = "Letter"
@@ -20125,17 +20127,17 @@ return AirFx
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
 --   之后要求形状、光晕都照截图）。布局、形状、比例、光晕照截图做，图都是自己画的（HudIcons：每架飞机原模型拍的平涂侧影、六边形、弹的图标、
---   机头的全息标记……），配色跟开坦克的界面一套（青色全息）：
---   · 右上：机型名（白）、这架飞机平涂的青色侧影（挨打到一半变黄、三成以下变红）、血量「当前（青）/ 满（白）」
+--   机头的全息标记……），配色跟开坦克的界面一套（绿色全息）：
+--   · 右上：机型名（白）、这架飞机平涂的绿色侧影（挨打到一半变黄、三成以下变红）、血量「当前（绿）/ 满（白）」
 --   · 准星两边：左「高度」右「速度」，字下面一道带一个台阶的细折线、数在折线下面，都带一圈淡淡的光晕；
 --     再下面一行小字：油量和还能飞多久 / 油门（加力、自动油门）、爬升率 / 起落架
---   · 准星上方：选中的弹的名字（实心的青色小牌子）、下面写是什么弹；准星右边剩几发，左边锁定的目标多远（千米）
+--   · 准星上方：选中的弹的名字（实心的绿色小牌子）、下面写是什么弹；准星右边剩几发，左边锁定的目标多远（千米）
 --   · 机头的全息标记（用户：像全息投屏一样、机头指哪它在哪）：只描边的小飞机（直升机是小直升机），机头往前一根线、线头一个亮点；
 --     不是贴在屏幕上的图——是机头前方 300 格一块斜放的面（跟着机身俯仰、滚转），从后面看过去有透视；打中东西时放大一下、变红
 --   · 锁定（用户：锁定过程是一个菱形，线条顺时针画出菱形就代表锁定完成；锁定后出现四个直角的边框，菱形开始逆时针转；
 --     脱离导弹发射角度菱形变黄）：目标身上一个菱形，锁定进度多少就顺时针画多少；锁上后四个直角框住目标（往里一收）、菱形一直逆时针转；
 --     目标出了导弹的离轴角（Fly 里锁还留着、这时不能发射）菱形变黄
---   · 右下：六边形武器键（按键号、弹的图标、剩几发）：没选中的是灰色的金属片，选中的发青光；最后一个是热诱弹（X）
+--   · 右下：六边形武器键（按键号、弹的图标、剩几发）：没选中的是灰色的金属片，选中的发绿光；最后一个是热诱弹（X）
 --   · 热成像（用户：不用光电吊舱也可以开红外视角）：开飞机时 N 在 夜视 → 热成像 → 关 之间切；白热（车、船、飞机、小兵发白），
 --     整个画面灰、对比高，一层横向扫描线、雪花噪点、四边压暗；进光电吊舱时先让开（吊舱有自己的画面），下飞机关掉
 --   · 左上的圆形雷达（白色细圈、灰色视野扇形和中线、正中间白色小飞机）、雷达下面的「被发现!」、敌人头顶带血条的名牌：
@@ -20153,7 +20155,7 @@ function AirHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local HOLO, TXT, MUTE, INK = RGB(110, 226, 240), RGB(238, 243, 245), RGB(150, 172, 176), RGB(6, 9, 12)
+  local HOLO, TXT, MUTE, INK = RGB(118, 240, 140), RGB(238, 243, 245), RGB(156, 176, 160), RGB(6, 9, 12)   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
   local YEL, BAD = RGB(255, 204, 58), RGB(255, 64, 52)
   local METAL, METAL_EDGE, METAL_ICON = RGB(138, 146, 152), RGB(200, 206, 210), RGB(226, 230, 232)
   local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
@@ -20181,7 +20183,7 @@ function AirHud.init(G)
     l.BackgroundTransparency = 1
     l.Text, l.TextSize, l.TextColor3, l.Font = text or "", ts or 13, color or HOLO, font or BOLD
     l.TextXAlignment = align or Enum.TextXAlignment.Center
-    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 16, 24)
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 22, 8)
     l.Parent = parent
     return l
   end
@@ -20214,7 +20216,7 @@ function AirHud.init(G)
     c.Parent = f
     return f
   end
-  -- 光晕：字 / 线外面一圈比本身粗、很淡的同色描边（截图上青色的字和线都微微发光）
+  -- 光晕：字 / 线外面一圈比本身粗、很淡的同色描边（截图上绿色的字和线都微微发光）
   local function glow(o, color, th, tr)
     local s = Instance.new("UIStroke")
     s.Color, s.Thickness, s.Transparency = color or HOLO, th or 2.2, tr or 0.74
@@ -20289,7 +20291,7 @@ function AirHud.init(G)
   A.alt = bracket(-180, T("air.cap.alt"), "AltBracket", true)
   A.spd = bracket(180, T("air.cap.spd"), "SpdBracket", false)
 
-  -- 准星上方：选中的弹（实心的青色小牌子、白字，下面一行写是什么弹）；准星右边剩几发，左边锁定目标多远
+  -- 准星上方：选中的弹（实心的绿色小牌子、白字，下面一行写是什么弹）；准星右边剩几发，左边锁定目标多远
   A.wTag = frame(root, UDim2.fromOffset(84, 18), UD2(0.5, 0, 0.5, -134), HOLO, 0.5, V2(0.5, 0.5))   -- 平飞时机头标记在准星上方：再往上让开
   A.wTag.Name = "WeaponTag"
   round(A.wTag, UDim.new(0, 2))
@@ -20308,9 +20310,10 @@ function AirHud.init(G)
   glow(A.rng)
 
   ---------------------------------------------------------------- 机头的全息标记：机头前方一块斜放的面（跟着机身转），上面是只描边的小飞机
-  -- 用户 11-19：要像全息瞄准镜的准心——细、亮、带柔光，跟着机头走（之前那版太大太粗）：两张图叠着（近白的细芯 + 青色光晕），光晕微微闪
-  local HOLO_D, HOLO_TILT, HOLO_PX = 300, math.rad(-55), 90   -- 离机头多远（格）、往后仰多少（面朝后上方，从后面看有透视）、整张图在屏幕上多高（像素）
-  local CORE = RGB(226, 252, 255)
+  -- 用户 11-19：要像全息瞄准镜的准心——细、亮、带柔光，跟着机头走（之前那版太大太粗）：两张图叠着（近白的细芯 + 绿色光晕），光晕微微闪
+  -- 用户 11-21：全息的那块改小一点——整张图 90 → 58 像素高（锁定的菱形 / 直角框也一起缩了三成）
+  local HOLO_D, HOLO_TILT, HOLO_PX = 300, math.rad(-55), 58   -- 离机头多远（格）、往后仰多少（面朝后上方，从后面看有透视）、整张图在屏幕上多高（像素）
+  local CORE = RGB(232, 255, 236)
   local holoPart = Instance.new("Part")
   holoPart.Name = "NoseHolo"
   holoPart.Anchored, holoPart.CanCollide, holoPart.CanQuery, holoPart.CanTouch, holoPart.CastShadow = true, false, false, false, false
@@ -20342,18 +20345,19 @@ function AirHud.init(G)
   A.aim.Visible = false
 
   ---------------------------------------------------------------- 锁定：菱形（顺时针画出来）、锁上后四个直角、菱形逆时针转
-  A.lock = frame(gui, UDim2.fromOffset(56, 56), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  local LK, DS, CS = 40, 24, 18   -- 锁定框边长、菱形对角线、直角的图（用户 11-21 嫌大：原来 56 / 34 / 24）
+  A.lock = frame(gui, UDim2.fromOffset(LK, LK), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.lock.Name = "LockMark"
   A.lock.Visible = false
-  A.dia = frame(A.lock, UDim2.fromOffset(34, 34), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  A.dia = frame(A.lock, UDim2.fromOffset(DS, DS), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.dia.Name = "Diamond"
-  local DV = { { 17, 0 }, { 34, 17 }, { 17, 34 }, { 0, 17 } }   -- 上 → 右 → 下 → 左：顺时针
+  local DV = { { DS / 2, 0 }, { DS, DS / 2 }, { DS / 2, DS }, { 0, DS / 2 } }   -- 上 → 右 → 下 → 左：顺时针
   -- 四条边各一张发光的线（HudIcons 的 glowLine：细芯 + 柔光、两头圆）：锁定进度多少，这条边就「长」多长（像笔在画）；
   --   用不了 EditableImage 时是细的方块线
   A.diaSeg = {}
   A.lineArt = nil
   for i = 1, 4 do
-    local f = img(A.dia, "Edge" .. i, UDim2.fromOffset(1, 10), UD2(), V2(0.5, 0.5), HOLO, 0)
+    local f = img(A.dia, "Edge" .. i, UDim2.fromOffset(1, 8), UD2(), V2(0.5, 0.5), HOLO, 0)
     A.lineArt = (A.lineArt ~= false) and setIcon(f, "glowLine")
     A.diaSeg[i] = f
   end
@@ -20368,11 +20372,11 @@ function AirHud.init(G)
   -- 四个直角：一张左上的 L（glowCorner），另外三个转 90° / 180° / 270°（方的图绕中心转，正好落到对角上）
   A.corners = {}
   for _, c in ipairs({ { 0, 0, 0 }, { 1, 0, 90 }, { 1, 1, 180 }, { 0, 1, 270 } }) do
-    local f = img(A.lock, "Corner", UDim2.fromOffset(24, 24), UD2(c[1], 0, c[2], 0), V2(c[1], c[2]), HOLO, 0)
+    local f = img(A.lock, "Corner", UDim2.fromOffset(CS, CS), UD2(c[1], 0, c[2], 0), V2(c[1], c[2]), HOLO, 0)
     f.Rotation = c[3]
     if not setIcon(f, "glowCorner") then
       f:Destroy()
-      for _, sz in ipairs({ { 12, 2 }, { 2, 12 } }) do
+      for _, sz in ipairs({ { 9, 2 }, { 2, 9 } }) do
         local g = frame(A.lock, UDim2.fromOffset(sz[1], sz[2]), UD2(c[1], 0, c[2], 0), HOLO, 0, V2(c[1], c[2]))
         g.Name = "Corner"
         table.insert(A.corners, g)
@@ -20606,7 +20610,7 @@ function AirHud.init(G)
         local ex, ey = a[1] + (b[1] - a[1]) * fr, a[2] + (b[2] - a[2]) * fr
         local len = math.sqrt((ex - a[1]) ^ 2 + (ey - a[2]) ^ 2)
         if A.lineArt then   -- 图里线占中间 56 / 64，两头留了光晕的空：按这个放大
-          sgm.Size = UDim2.fromOffset(len / 0.875 + 0.5, 10)
+          sgm.Size = UDim2.fromOffset(len / 0.875 + 0.5, 8)
           sgm.ImageColor3 = dcol
         else
           sgm.Size = UDim2.fromOffset(len + 1.5, 2)
@@ -20619,12 +20623,12 @@ function AirHud.init(G)
       if lk.locked then
         A.lockT0 = A.lockT0 or now
         local e = math.clamp((now - A.lockT0) / 0.18, 0, 1)
-        local sz = 56 + 26 * (1 - e) * (1 - e)   -- 四个直角从外面往里一收
+        local sz = LK + 18 * (1 - e) * (1 - e)   -- 四个直角从外面往里一收
         A.lock.Size = UDim2.fromOffset(sz, sz)
         A.dia.Rotation = -((now - A.lockT0) * 150 % 360)   -- 逆时针
       else
         A.lockT0 = nil
-        A.lock.Size = UDim2.fromOffset(56, 56)
+        A.lock.Size = UDim2.fromOffset(LK, LK)
         A.dia.Rotation = 0
       end
       for _, c in ipairs(A.corners) do c.Visible = lk.locked == true end
@@ -20635,7 +20639,7 @@ function AirHud.init(G)
       A.lock.Visible = false
       A.lockT0 = nil
     end
-    -- 六边形武器键：没选中的灰色金属片，选中的发青光
+    -- 六边形武器键：没选中的灰色金属片，选中的发绿光
     local items = info.wl or {}
     local n = #items
     while #A.hex < n do A.hex[#A.hex + 1] = hexBtn(#A.hex + 1) end
@@ -20653,7 +20657,7 @@ function AirHud.init(G)
       h.box:SetAttribute("Wid", it.wid or "flare")
       h.box:SetAttribute("Sel", sel)
       if h.art then
-        h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(38, 150, 162) or METAL, sel and 0.35 or 0.3
+        h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(40, 150, 72) or METAL, sel and 0.35 or 0.3
         h.iGlow.Visible = sel and not empty
         h.iEdge.ImageColor3 = empty and RGB(150, 70, 64) or (sel and HOLO or METAL_EDGE)
         h.iEdge.ImageTransparency = sel and 0 or 0.15
@@ -20662,7 +20666,7 @@ function AirHud.init(G)
         h.iIcon.ImageColor3 = empty and RGB(120, 100, 98) or (sel and WHITE or METAL_ICON)
       else
         h.plateStroke.Color = empty and RGB(150, 70, 64) or (sel and HOLO or METAL_EDGE)
-        h.plate.BackgroundColor3 = sel and RGB(38, 150, 162) or METAL
+        h.plate.BackgroundColor3 = sel and RGB(40, 150, 72) or METAL
         h.short.Text = it.flare and "X" or T("aw." .. it.wid)
         h.short.TextColor3 = sel and WHITE or METAL_ICON
       end
@@ -23521,7 +23525,7 @@ function Depot.init(G)
     f.Parent = bb
     local bar = Instance.new("Frame")
     bar.Size = UDim2.new(0, 2, 1, 0)
-    bar.BackgroundColor3 = (team == "atk") and RGB(232, 84, 72) or RGB(70, 150, 240)
+    bar.BackgroundColor3 = (team == "atk") and RGB(232, 84, 72) or RGB(76, 200, 104)
     bar.BorderSizePixel = 0
     bar.Parent = f
     local function txt(y, h, size, color, font)
@@ -25911,7 +25915,7 @@ function Faction.init(G)
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
   local TEXT, MUTE, LINE = RGB(238, 240, 242), RGB(138, 146, 154), RGB(255, 255, 255)
-  local COL = { atk = RGB(214, 58, 46), def = RGB(64, 132, 238) }
+  local COL = { atk = RGB(214, 58, 46), def = RGB(64, 186, 92) }   -- 守方：绿（用户 11-21 蓝色全改绿，同 Config.Teams.def）
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Faction"
@@ -26322,11 +26326,11 @@ function Fly.init(G)
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 5
   gui.Parent = me:WaitForChild("PlayerGui")
-  local HUD = RGB(110, 226, 240)   -- 青色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色；原来是 DCS 平显的绿）
+  local HUD = RGB(118, 240, 140)   -- 绿色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色，那时是青色；用户 11-21：蓝色全部改成绿色）
   local function hud(text, size, pos, ts, anchor, align)
     local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
     l.TextStrokeTransparency = 0.5
-    l.TextStrokeColor3 = RGB(0, 18, 26)
+    l.TextStrokeColor3 = RGB(0, 24, 10)
     l.Visible = false
     return l
   end
@@ -26361,7 +26365,7 @@ function Fly.init(G)
   local warnText = hud("", UDim2.fromOffset(520, 34), UDim2.new(0.5, 0, 0.5, -130), 26, Vector2.new(0.5, 0.5))
   warnText.TextColor3 = RGB(255, 80, 70)
   local landMark = hud("◇", UDim2.fromOffset(34, 34), UDim2.new(), 30, Vector2.new(0.5, 0.5))   -- 降落点
-  landMark.TextColor3 = RGB(120, 200, 255)
+  landMark.TextColor3 = RGB(120, 236, 150)
 
   ---------------------------------------------------------------- 平显的俯仰梯、速度矢量、过载 / 迎角 / 马赫（用户：飞机飞行参考 DCS）
   -- 固定翼才有：俯仰梯每 5° 一档（正的实线、端头往下，负的虚线、端头往上；地平线一根长的），按真实的方向投到屏幕上（跟着天地转、跟着机头偏）；
@@ -26377,7 +26381,7 @@ function Fly.init(G)
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
     local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
-    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 18, 26) end
+    for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 24, 10) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
   for i = 1, 11 do ladderPool[i] = ladderLine() end
@@ -26421,14 +26425,14 @@ function Fly.init(G)
   gCC.Parent = game:GetService("Lighting")
   local gStress = 0   -- 过载累积（正：灰视，负：红视）
   local landText = hud("", UDim2.fromOffset(260, 18), UDim2.new(), 14, Vector2.new(0.5, 0))
-  landText.TextColor3 = RGB(120, 200, 255)
+  landText.TextColor3 = RGB(120, 236, 150)
   -- 落地补给的状态（服务器的 Rest 属性）：停稳倒计时 / 维修中 / 可以起飞 / 这里不能补给
   local restText = hud("", UDim2.fromOffset(560, 26), UDim2.new(0.5, 0, 0.5, -96), 20, Vector2.new(0.5, 0.5))
   restText.Name = "RestText"
   -- 用户发的截图那样：速度、高度各在一个绿框里（左、右），顶上航向；中间一个大圈（选中武器能锁的范围：导弹导引头的离轴角、
   --   航炮 / 火箭 / 炸弹的瞄准圈），圈底下写着武器和射程
   local function box(w, h, pos, anchor)
-    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 16, 24), 0.72, anchor)
+    local f = ui.frame(gui, UDim2.fromOffset(w, h), pos, RGB(0, 22, 8), 0.72, anchor)
     ui.stroke(f, HUD, 2, 0.1)
     f.Visible = false
     return f
@@ -26694,7 +26698,7 @@ function Fly.init(G)
     local H = 34
     wList.Size = UDim2.fromOffset(260, #items * (H + 4))
     for i, it in ipairs(items) do
-      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 12, 18), 0.6)
+      local f = ui.frame(wList, UDim2.new(1, 0, 0, H), UDim2.fromOffset(0, (i - 1) * (H + 4)), RGB(0, 16, 6), 0.6)
       f.Name = "Row_" .. (it.wid or "flare")
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
@@ -28186,7 +28190,7 @@ function Fly.init(G)
         local n = r.it.flare and st.flares or left(r.it.wid)
         r.cnt.Text = "×" .. n
         local sel = r.it.idx == st.wi
-        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(16, 70, 84) or RGB(0, 12, 18), sel and 0.3 or 0.6
+        r.f.BackgroundColor3, r.f.BackgroundTransparency = sel and RGB(18, 78, 36) or RGB(0, 16, 6), sel and 0.3 or 0.6
         r.s.Transparency, r.s.Thickness = sel and 0 or 0.7, sel and 2 or 1
         local col = (n <= 0) and RGB(110, 124, 130) or HUD
         r.cnt.TextColor3, r.nm.TextColor3 = col, col
@@ -30003,7 +30007,7 @@ function Garage.init(G)
   local me = Players.LocalPlayer
   local ui = G.ui
   local function T(k, ...) return G.T(k, ...) end
-  local TEXT, MUTE, ACC = RGB(236, 240, 238), RGB(150, 158, 160), RGB(120, 220, 230)
+  local TEXT, MUTE, ACC = RGB(236, 240, 238), RGB(150, 158, 160), RGB(126, 232, 150)
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Garage"
@@ -30061,7 +30065,7 @@ function Garage.init(G)
   infoD.TextWrapped, infoD.TextYAlignment = true, Enum.TextYAlignment.Top
   local infoS = ui.label(info, "", UD2(1, -28, 0, 18), UD2(0, 14, 1, -28), 13, ACC, Enum.Font.GothamBold)
   local backBtn = square(ui.button(bg, T("gar.back"), UDim2.fromOffset(150, 44), UD2(1, -236, 1, -36), RGB(30, 34, 38), Vector2.new(1, 1)))
-  local goBtn = square(ui.button(bg, T("gar.spawn"), UDim2.fromOffset(180, 44), UD2(1, -36, 1, -36), RGB(54, 150, 160), Vector2.new(1, 1)))
+  local goBtn = square(ui.button(bg, T("gar.spawn"), UDim2.fromOffset(180, 44), UD2(1, -36, 1, -36), RGB(52, 150, 78), Vector2.new(1, 1)))
   goBtn.Name, backBtn.Name = "GarageGo", "GarageBack"
   goBtn.Font, backBtn.Font = Enum.Font.GothamBlack, Enum.Font.GothamBold
   goBtn.TextSize, backBtn.TextSize = 17, 15
@@ -30153,7 +30157,7 @@ function Garage.init(G)
       local cur = S.mods[slot]
       local fixed = #list <= 1
       order += 1
-      local b = card(T("gar.slot." .. slot), (fixed and (T("gar.fixed") .. " · ") or "") .. T("gar.opt." .. cur), 56, (S.open == slot) and RGB(26, 40, 46) or nil, order)
+      local b = card(T("gar.slot." .. slot), (fixed and (T("gar.fixed") .. " · ") or "") .. T("gar.opt." .. cur), 56, (S.open == slot) and RGB(26, 44, 32) or nil, order)
       b.Activated:Connect(function()
         if not S then return end
         S.open = (S.open == slot) and nil or slot
@@ -30164,7 +30168,7 @@ function Garage.init(G)
         for _, opt in ipairs(list) do
           order += 1
           local sel = opt == cur
-          local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 92, 100) or RGB(14, 17, 20), order)
+          local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 98, 54) or RGB(14, 17, 20), order)
           t1.TextColor3 = sel and RGB(255, 255, 255) or RGB(206, 212, 214)
           ob.Activated:Connect(function() choose(slot, opt) end)
         end
@@ -32784,7 +32788,7 @@ function Hud.init(G)
 
   local RC = Config.Radar or { range = 520, ping = 3 }
   local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
-  local FRIEND, FOE = RGB(72, 168, 255), RGB(255, 64, 52)
+  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
@@ -33431,7 +33435,7 @@ return Hud
 --   ReplicatedStorage.HudIcons（tools/models/hudicons.py 生成）里是每辆地面载具从原模型正侧面拍的全息图（灰度 + 柔光晕）和
 --   界面图形（六边形、炮弹、机枪弹、烟幕弹、「∧」、小炮弹，4 倍超采样画的，边缘不起锯齿），这里解成 EditableImage：
 --   G.hudIcon(名字) → { content = Content（给 ImageLabel.ImageContent）, w, h }；用不了（游戏设置 → 安全里没打开 Mesh / Image API）返回 nil，
---   界面退回方块拼的。图是白的 / 灰的，界面上用 ImageColor3 染色（全息青、挨打红）。第一次用到时解（一张一两毫秒），之后缓存
+--   界面退回方块拼的。图是白的 / 灰的，界面上用 ImageColor3 染色（全息绿、挨打红）。第一次用到时解（一张一两毫秒），之后缓存
 local RS = game:GetService("ReplicatedStorage")
 
 local HudArt = {}
@@ -33881,7 +33885,7 @@ function MapUI.init(G)
   -- 右上的小地图（用户 11-19：不要黑绿，改成正常的；再要暗淡、拟真）：深蓝的海，暗沙色海滩，暗绿的低地、山坡，高处灰褐；路是土色
   --   （有 EditableImage 时上面盖一张 MapPaint 画的卫星图，这些色块只在用不了时看得到）
   local MINI = { RGB(146, 136, 110), RGB(76, 90, 58), RGB(68, 82, 54), RGB(92, 94, 82), RGB(100, 98, 92), RGB(60, 74, 48) }
-  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }
+  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
   local theme = "map"
   local landBand = {}   -- 陆地块 → 档（换配色用）
   local roads = {}
@@ -35680,7 +35684,7 @@ local INK = RGB(9, 18, 25)
 local SLATE = RGB(28, 47, 61)
 local WHITE = RGB(234, 243, 247)
 local MUTE = RGB(157, 182, 195)
-local TEAL = RGB(121, 220, 213)
+local TEAL = RGB(122, 226, 146)
 local AMBER = RGB(255, 192, 122)
 local CENTER_TOP = Vector2.new(0.5, 0)
 local LEFT = Enum.TextXAlignment.Left
@@ -38821,7 +38825,7 @@ function ShipView.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local RED_LOW, BOOT, GLASS = RGB(118, 44, 40), RGB(30, 32, 34), RGB(28, 36, 44)
-  local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 96, 190) }
+  local TEAMC = { atk = RGB(214, 52, 44), def = RGB(52, 150, 72) }   -- 守方：绿（用户 11-21）
   local IS = nil   -- 原模型的元数据（tools/models/ship2glb.py 生成）
   do
     local ok, r = pcall(function() return require(RS:WaitForChild("ImportedShip", 3)) end)
@@ -41976,7 +41980,7 @@ return TacPad
 --   照那张图的布局和感觉做（不照抄它的图标、配色细节）：
 --   · 敌人头顶：看得见的敌方车辆上面一个小牌子（红色的型号名、距离「183 米」），最多 6 个，离得远的、被挡住的不画
 --   · 「被发现！」：附近有敌人看得见自己（视线没被挡），或者刚挨了打——左边一块琥珀色的牌子，一闪一闪
---   · 主动防御还剩多少（右下面板上面一行，青色；爆反不显示——用户 11-19）
+--   · 主动防御还剩多少（右下面板上面一行，绿色；爆反不显示——用户 11-19）
 --   · 开坦克时（电脑）右上的方形小地图挪到左下角、裁成圆的，外圈 0 / 90 / 180 / 270 的方位刻度；下车、换别的载具恢复
 --   VehHud.lua 每帧调 G.tankHudExtra(st, 血量比例)；准星两边的弹药数、已就绪、测距在 VehHud 里
 --   飞机模式（Fly.lua 调 G.tankHudExtra(st, 血量比例, "air")；用户 11-19：飞机操作界面也照 MWT 的截图改）：
@@ -41993,7 +41997,7 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED = RGB(110, 226, 240), RGB(255, 78, 64)
+  local CYAN, RED = RGB(118, 240, 140), RGB(255, 78, 64)   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -42103,7 +42107,7 @@ function TankHud.init(G)
   local spotOn, spotT0 = false, 0
 
   -- 车旁边的全息屏：车速（用户 11-19：坦克旁边也要有个牌子写着 km/h，要有全息屏的感觉，照 MWT）——
-  --   镜头右边那一侧、炮塔高度浮着一块半透明的青色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
+  --   镜头右边那一侧、炮塔高度浮着一块半透明的绿色屏（细边框、四角亮线、扫描线、偶尔闪一下），大字车速、小字 km/h；
   --   斜着一点朝镜头，跟着车走；只在本机（放在镜头下面），开着瞄准镜、下车就收起
   local holo = Instance.new("Part")
   holo.Name = "SpeedHolo"
@@ -42121,7 +42125,7 @@ function TankHud.init(G)
   pcall(function() hsg.Brightness = 1.6 end)   -- 测试用的模拟器里没有这个属性
   hsg.Enabled = false
   hsg.Parent = holo
-  local hp = Instance.new("Frame")   -- 屏：上浓下淡的青色
+  local hp = Instance.new("Frame")   -- 屏：上浓下淡的绿色
   hp.Size, hp.BackgroundColor3, hp.BackgroundTransparency, hp.BorderSizePixel = UD2(1, 0, 1, 0), CYAN, 0.8, 0
   hp.Parent = hsg
   do
@@ -42167,7 +42171,7 @@ function TankHud.init(G)
   ring.BackgroundTransparency = 1
   ring.Visible = false
   ring.Parent = gui
-  local ringStroke, ringLabs = nil, {}   -- 坦克：青色；飞机：白色（照 MWT 截图左上的雷达：白色细圈、白字）
+  local ringStroke, ringLabs = nil, {}   -- 坦克：绿色；飞机：白色（照 MWT 截图左上的雷达：白色细圈、白字）
   do
     local edge = Instance.new("Frame")
     edge.Size = UDim2.fromOffset(MS + 6, MS + 6)
@@ -43813,7 +43817,7 @@ function VehHud.init(G)
   end)
 
   local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
-  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(128, 214, 255)
+  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(132, 236, 152)
   local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
   local WHITE = Color3.new(1, 1, 1)
 
@@ -44008,7 +44012,7 @@ function VehHud.init(G)
   TK.smoke = label(TK.arm, "", UD2(0, 200, 0, 18), UD2(0, 18, 1, -30), 12, MUTE, MED, nil, LEFT)
   TK.smoke.Name = "Smoke"
   TK.ring = reloadRing(TK.arm, 258, 66)
-  -- 坦克的两块面板换成青色全息（用户 11-19 给的截图那样）：边框、角上的亮线、选中那一行、油门条；血量写「当前 / 满」
+  -- 坦克的两块面板换成绿色全息（用户 11-19 给的截图那样）：边框、角上的亮线、选中那一行、油门条；血量写「当前 / 满」
   for _, pnl in ipairs({ TK.car, TK.arm }) do
     pnl.BackgroundTransparency = 0.32
     for _, c in ipairs(pnl:GetChildren()) do
@@ -44021,12 +44025,12 @@ function VehHud.init(G)
   TK.hp.pct.Size = UD2(0, 110, 0, 14)
 
   ---------------------------------------------------------------- 坦克（电脑）：MWT 那套（用户 11-19 又发了一遍截图：「确保我开坦克是这个驾驶 ui」）
-  --   右下：车名、青色的侧面剪影（挨打闪红、血少变黄 / 红）、血量「当前/满」（当前青色）；最右下：每种武器一个六边形按钮
-  --   （弹种缩写 + 炮弹图标，选中的青色发光）；正下方偏右：烟幕弹的青色全息图标（X、剩几发）；
+  --   右下：车名、绿色的侧面剪影（挨打闪红、血少变黄 / 红）、血量「当前/满」（当前绿色）；最右下：每种武器一个六边形按钮
+  --   （弹种缩写 + 炮弹图标，选中的绿色发光）；正下方偏右：烟幕弹的绿色全息图标（X、剩几发）；
   --   准星（下面 placeTank）：镜头准心一个小圈里「+」、左右两道短刻度；准心左边弹药数、下面「已就绪 / 装填」，右边测距；
   --   炮现在指的地方一个「∧」（颜色 = 打不打得穿）。电脑上开坦克时原来右下两块面板、顶上的罗盘收起（触屏照旧用紧凑读数面板）
   local MW = {}
-  local HOLO = RGB(110, 226, 240)
+  local HOLO = RGB(118, 240, 140)
   MW.root = frame(hud, UD2(1, 0, 1, 0), nil, INK, 1)
   MW.root.Name = "MWT"
   MW.root.Visible = false
@@ -44150,7 +44154,7 @@ function VehHud.init(G)
     h.iFill.Visible, h.iGlow.Visible, h.iEdge.Visible, h.iIcon.Visible = h.art, h.art, h.art, h.art
   end
   -- 正下方中间：视角图（用户 11-19：屏幕下面中心放带着光晕的视角图，照 MWT）——俯视的车：车体按相对镜头的朝向转，
-  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；青色全息，车体外面两圈越来越淡的描边当光晕
+  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；绿色全息，车体外面两圈越来越淡的描边当光晕
   MW.view = frame(MW.root, UD2(0, 100, 0, 100), UD2(0.5, 0, 1, -8), INK, 1, V2(0.5, 1))
   MW.view.Name = "MwtView"
   MW.viewScale = Instance.new("UIScale")
@@ -44408,7 +44412,7 @@ function VehHud.init(G)
     end
     return segs
   end
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(96, 236, 128), RGB(255, 214, 72), RGB(255, 72, 60)
+  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(176, 255, 84), RGB(255, 214, 72), RGB(255, 72, 60)   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
 
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
@@ -44440,7 +44444,7 @@ function VehHud.init(G)
   TR.rel.Name = "ReloadLeft"
   TR.rel.TextStrokeTransparency = 0.6
   TR.rel.Visible = false   -- 用户 11-19（截图）：左边改成弹药数 + 状态（下面两行）
-  -- 准星左边：弹药数（大）、状态（已就绪 / 装填 x.x 秒）；青色全息（用户 11-19 给的手机坦克游戏截图那样）
+  -- 准星左边：弹药数（大）、状态（已就绪 / 装填 x.x 秒）；绿色全息（用户 11-19 给的手机坦克游戏截图那样）
   TR.ammo = label(TR.root, "", UD2(0, 90, 0, 22), UD2(0.5, -46, 0.5, -9), 20, TXT, MONO, V2(1, 0.5), RIGHT)
   TR.ammo.Name = "AmmoLeft"
   TR.ammo.TextStrokeTransparency = 0.55
@@ -44647,7 +44651,7 @@ function VehHud.init(G)
     local kick = reducedMotion and 0 or math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
     TR.scale.Scale = 1 + 0.4 * kick
     TR.root.Position = UD2(0, sp.X, 0, sp.Y)
-    local col = penC or CYAN   -- 没瞄着车：青色（全息的感觉）
+    local col = penC or CYAN   -- 没瞄着车：绿色（全息的感觉）
     local lit = ready and #TR.segs or math.floor(relK * #TR.segs + 0.001)
     for i, sgx in ipairs(TR.segs) do
       local onSeg = i <= lit
@@ -44767,7 +44771,7 @@ function VehHud.init(G)
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
       MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）
       -- 车的图标（全息图、视角图）、血量数字的颜色只看车况（用户 11-19：被打到状态一般改成黄色，状态很差改成红色）：
-      --   六成以上青色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
+      --   六成以上绿色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
       local silCol = (k > 0.6) and HOLO or ((k > 0.3) and RGB(255, 214, 64) or RGB(255, 64, 52))
       if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
         MW.iconId = d.id
@@ -44832,7 +44836,7 @@ function VehHud.init(G)
           e.BackgroundColor3 = edge
           e.BackgroundTransparency = sel and 0 or 0.35
         end
-        for _, f in ipairs(h.fills) do f.BackgroundColor3 = sel and RGB(16, 58, 66) or INK end
+        for _, f in ipairs(h.fills) do f.BackgroundColor3 = sel and RGB(18, 64, 30) or INK end
         h.fillGroup.GroupTransparency = sel and 0.25 or 0.45
         h.icon.body.BackgroundColor3, h.icon.tip.BackgroundColor3 = sel and HOLO or MUTE, sel and WHITE or MUTE
         h.key.Text = tostring(i)
@@ -44840,7 +44844,7 @@ function VehHud.init(G)
         h.tag.Text = ammoTag(w)
         h.tag.TextColor3 = sel and HOLO or MUTE
         if h.art then
-          h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(14, 52, 60) or INK, sel and 0.22 or 0.4
+          h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(16, 58, 26) or INK, sel and 0.22 or 0.4
           h.iGlow.Visible = sel and not empty
           h.iEdge.ImageColor3, h.iEdge.ImageTransparency = edge, sel and 0 or 0.3
           local ic = (w and w.kind == "gun") and "mg" or "shell"

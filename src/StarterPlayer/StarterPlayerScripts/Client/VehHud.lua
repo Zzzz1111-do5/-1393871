@@ -37,7 +37,7 @@ function VehHud.init(G)
   end)
 
   local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
-  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(128, 214, 255)
+  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(132, 236, 152)
   local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
   local WHITE = Color3.new(1, 1, 1)
 
@@ -232,7 +232,7 @@ function VehHud.init(G)
   TK.smoke = label(TK.arm, "", UD2(0, 200, 0, 18), UD2(0, 18, 1, -30), 12, MUTE, MED, nil, LEFT)
   TK.smoke.Name = "Smoke"
   TK.ring = reloadRing(TK.arm, 258, 66)
-  -- 坦克的两块面板换成青色全息（用户 11-19 给的截图那样）：边框、角上的亮线、选中那一行、油门条；血量写「当前 / 满」
+  -- 坦克的两块面板换成绿色全息（用户 11-19 给的截图那样）：边框、角上的亮线、选中那一行、油门条；血量写「当前 / 满」
   for _, pnl in ipairs({ TK.car, TK.arm }) do
     pnl.BackgroundTransparency = 0.32
     for _, c in ipairs(pnl:GetChildren()) do
@@ -245,12 +245,12 @@ function VehHud.init(G)
   TK.hp.pct.Size = UD2(0, 110, 0, 14)
 
   ---------------------------------------------------------------- 坦克（电脑）：MWT 那套（用户 11-19 又发了一遍截图：「确保我开坦克是这个驾驶 ui」）
-  --   右下：车名、青色的侧面剪影（挨打闪红、血少变黄 / 红）、血量「当前/满」（当前青色）；最右下：每种武器一个六边形按钮
-  --   （弹种缩写 + 炮弹图标，选中的青色发光）；正下方偏右：烟幕弹的青色全息图标（X、剩几发）；
+  --   右下：车名、绿色的侧面剪影（挨打闪红、血少变黄 / 红）、血量「当前/满」（当前绿色）；最右下：每种武器一个六边形按钮
+  --   （弹种缩写 + 炮弹图标，选中的绿色发光）；正下方偏右：烟幕弹的绿色全息图标（X、剩几发）；
   --   准星（下面 placeTank）：镜头准心一个小圈里「+」、左右两道短刻度；准心左边弹药数、下面「已就绪 / 装填」，右边测距；
   --   炮现在指的地方一个「∧」（颜色 = 打不打得穿）。电脑上开坦克时原来右下两块面板、顶上的罗盘收起（触屏照旧用紧凑读数面板）
   local MW = {}
-  local HOLO = RGB(110, 226, 240)
+  local HOLO = RGB(118, 240, 140)
   MW.root = frame(hud, UD2(1, 0, 1, 0), nil, INK, 1)
   MW.root.Name = "MWT"
   MW.root.Visible = false
@@ -374,7 +374,7 @@ function VehHud.init(G)
     h.iFill.Visible, h.iGlow.Visible, h.iEdge.Visible, h.iIcon.Visible = h.art, h.art, h.art, h.art
   end
   -- 正下方中间：视角图（用户 11-19：屏幕下面中心放带着光晕的视角图，照 MWT）——俯视的车：车体按相对镜头的朝向转，
-  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；青色全息，车体外面两圈越来越淡的描边当光晕
+  --   炮塔、炮管按炮塔的朝向转，上方淡淡的两条线是镜头看的方向（视野）；绿色全息，车体外面两圈越来越淡的描边当光晕
   MW.view = frame(MW.root, UD2(0, 100, 0, 100), UD2(0.5, 0, 1, -8), INK, 1, V2(0.5, 1))
   MW.view.Name = "MwtView"
   MW.viewScale = Instance.new("UIScale")
@@ -632,7 +632,7 @@ function VehHud.init(G)
     end
     return segs
   end
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(96, 236, 128), RGB(255, 214, 72), RGB(255, 72, 60)
+  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(176, 255, 84), RGB(255, 214, 72), RGB(255, 72, 60)   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
 
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
@@ -664,7 +664,7 @@ function VehHud.init(G)
   TR.rel.Name = "ReloadLeft"
   TR.rel.TextStrokeTransparency = 0.6
   TR.rel.Visible = false   -- 用户 11-19（截图）：左边改成弹药数 + 状态（下面两行）
-  -- 准星左边：弹药数（大）、状态（已就绪 / 装填 x.x 秒）；青色全息（用户 11-19 给的手机坦克游戏截图那样）
+  -- 准星左边：弹药数（大）、状态（已就绪 / 装填 x.x 秒）；绿色全息（用户 11-19 给的手机坦克游戏截图那样）
   TR.ammo = label(TR.root, "", UD2(0, 90, 0, 22), UD2(0.5, -46, 0.5, -9), 20, TXT, MONO, V2(1, 0.5), RIGHT)
   TR.ammo.Name = "AmmoLeft"
   TR.ammo.TextStrokeTransparency = 0.55
@@ -871,7 +871,7 @@ function VehHud.init(G)
     local kick = reducedMotion and 0 or math.clamp(1 - (os.clock() - kickT) / 0.35, 0, 1)
     TR.scale.Scale = 1 + 0.4 * kick
     TR.root.Position = UD2(0, sp.X, 0, sp.Y)
-    local col = penC or CYAN   -- 没瞄着车：青色（全息的感觉）
+    local col = penC or CYAN   -- 没瞄着车：绿色（全息的感觉）
     local lit = ready and #TR.segs or math.floor(relK * #TR.segs + 0.001)
     for i, sgx in ipairs(TR.segs) do
       local onSeg = i <= lit
@@ -991,7 +991,7 @@ function VehHud.init(G)
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
       MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）
       -- 车的图标（全息图、视角图）、血量数字的颜色只看车况（用户 11-19：被打到状态一般改成黄色，状态很差改成红色）：
-      --   六成以上青色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
+      --   六成以上绿色、三到六成黄色、三成以下红色（挨打那一下不再闪红：红色只表示车况很差）
       local silCol = (k > 0.6) and HOLO or ((k > 0.3) and RGB(255, 214, 64) or RGB(255, 64, 52))
       if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
         MW.iconId = d.id
@@ -1056,7 +1056,7 @@ function VehHud.init(G)
           e.BackgroundColor3 = edge
           e.BackgroundTransparency = sel and 0 or 0.35
         end
-        for _, f in ipairs(h.fills) do f.BackgroundColor3 = sel and RGB(16, 58, 66) or INK end
+        for _, f in ipairs(h.fills) do f.BackgroundColor3 = sel and RGB(18, 64, 30) or INK end
         h.fillGroup.GroupTransparency = sel and 0.25 or 0.45
         h.icon.body.BackgroundColor3, h.icon.tip.BackgroundColor3 = sel and HOLO or MUTE, sel and WHITE or MUTE
         h.key.Text = tostring(i)
@@ -1064,7 +1064,7 @@ function VehHud.init(G)
         h.tag.Text = ammoTag(w)
         h.tag.TextColor3 = sel and HOLO or MUTE
         if h.art then
-          h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(14, 52, 60) or INK, sel and 0.22 or 0.4
+          h.iFill.ImageColor3, h.iFill.ImageTransparency = sel and RGB(16, 58, 26) or INK, sel and 0.22 or 0.4
           h.iGlow.Visible = sel and not empty
           h.iEdge.ImageColor3, h.iEdge.ImageTransparency = edge, sel and 0 or 0.3
           local ic = (w and w.kind == "gun") and "mg" or "shell"
