@@ -7,11 +7,11 @@
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 66 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
-                               optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
+                               optics/   31 件：14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）+ 17 件改枪配件（opt_ 瞄具、sup_ 消音器、muz_ 枪口件、grip_ 握把、mag_ 弹匣、tac_ 战术件）
                                scenery/  地图上的石头（11 月 18 日起 scenery.glb 里只有 3 块石头；树、草丛、花丛去掉了，草用 Roblox 地形自带的）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
@@ -21,21 +21,32 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 21 日第四包（瞄准镜）：换游戏文件（或者「三、只换脚本」），再重导 optics/ 里的 4 个：acog.glb、opt_acog6.glb、atacr.glb、qbu88.glb
+    （先在资源管理器里删掉以前导入的 O_acog__、O_opt_acog6__、O_atacr__、O_qbu88__ 开头的零件再导；没重导也能玩，自动用现生成的，没有原贴图）：
+    - 两具 ACOG 的目镜补了正圆的目镜圈（原模型是八边形）；开镜时镜身一直看得见，从正圆的目镜洞里看；
+    - 镜内单独放大（画中画）：镜外只是普通开镜，镜片里是放大的画面。要在「游戏设置 → 安全」里打开 Mesh / Image API，没开就退回整屏放大。
+
+  11 月 21 日第三包（直升机机炮会转了）：只重导 air/ 里两个文件——ah64.glb（阿帕奇）、z10w.glb（直-10），别的都不用动，再换游戏文件：
+    - 原来机头下面的机炮和机身烘焙在同一块网格里，转不了；这一版把机炮拆成单独的块（A_ah64_v2__Gun_1 炮、A_ah64_v2__GunY_1 炮塔座，
+      A_z10w_v2__Gun_1），开直升机时炮管跟着准星转方位、俯仰（炮塔座只转方位）；
+    - 新导进来的块叫 A_ah64_v2__… / A_z10w_v2__…，游戏优先用它；没导新版照旧用老的（炮不转）。旧的 A_ah64__… / A_z10w__… 想删就在命令栏粘这一行回车：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_ah64__") or d.Name:match("^A_z10w__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的阿帕奇、直-10")
+
+    导入方法同下面「一、导入」：「导入 3D」分别选 air/ah64.glb、air/z10w.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
+
   11 月 21 日第二包（航母换成福建舰）：多导一个 ship/fujian.glb（别的模型都不用动），再换游戏文件：
     - ship/fujian.glb：攻方航母福建舰的原模型（Sketchfab，businessyuen，CC-BY），13 块网格、不带贴图——颜色和材质（甲板防滑面、船体金属）
       是开服时脚本按 CarrierMeta 设的，导进来看着是灰白的不要紧；甲板上的停机位、弹射器、拦阻索、灯、舷号 18 都照这个模型的位置摆；
     - 不导入也能玩：脚本照同一个轮廓用零件拼一艘（舰艏窄、斜角甲板、舰岛在右舷后面），只是没有原模型细；
     - 航母上的三个停机位挪到右舷舰岛后面，出生点在舰岛左边；舰艏两条、舰腰一条弹射器，拦阻索在斜角甲板后段。
 
-  11 月 21 日第二包（瞄准镜）：换游戏文件（或者「三、只换脚本」），再重导 optics/ 里的 4 个：acog.glb、opt_acog6.glb、atacr.glb、qbu88.glb
-    （先在资源管理器里删掉以前导入的 O_acog__、O_opt_acog6__、O_atacr__、O_qbu88__ 开头的零件再导；没重导也能玩，自动用现生成的，没有原贴图）：
-    - 两具 ACOG 的目镜补了正圆的目镜圈（原模型是八边形）；开镜时镜身一直看得见，从正圆的目镜洞里看；
-    - 镜内单独放大（画中画）：镜外只是普通开镜，镜片里是放大的画面。要在「游戏设置 → 安全」里打开 Mesh / Image API，没开就退回整屏放大。
-
   11 月 21 日这一包：模型都不用重导，只换游戏文件（新的 RobloxTotalBattlefield.rbxlx，或者「三、只换脚本」用 ScriptsUpdate.rbxmx）：
     - 界面的蓝色 / 青色全部改成绿色（开飞机、开坦克、改装、简报；守方的队伍色也从蓝换成绿，蓝滩改叫绿滩）；飞机机头前的全息准心、锁定框改小；
     - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）；
-    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具），配件模型在 optics/ 里，以前导过就不用再导。
+    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具）：17 件配件的原模型在 optics/ 里（opt_rds、opt_holo、opt_romeo、opt_acog6、sup_socom、sup_wrap、sup_sr8、
+      muz_comp、muz_brake、grip_rvg、grip_afg、mag_pmag20、mag_pmag40、mag_drum、mag_hex30、tac_light、tac_peq，署名在 models/credits.txt）。
+      以前没导过的照「一、导入」把这 17 个 .glb 导进去就行（别的不用动）；不导也能用：游戏开着「Mesh / Image API」时现生成，只是没有原贴图。
 
   11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
     - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；

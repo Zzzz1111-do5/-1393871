@@ -1466,8 +1466,8 @@ function VehHud.init(G)
     local driving = not covered and tank ~= nil and tank == G.drive and tank.d ~= nil
     local sailing = not covered and ship ~= nil and ship == G.drive and ship.d ~= nil and ship.bino ~= true
     local inSight = driving and tank.sight == true
-    local showTank = driving and not inSight
-    gui.Enabled, sg.Enabled = showTank or sailing, inSight
+    local showTank = driving and not inSight and not (G.interiorOn and G.interiorOn())   -- 坐在车里看（Interior.lua）：车里的屏幕就是仪表
+    gui.Enabled, sg.Enabled = showTank or sailing, inSight and not G.interiorOptic
     if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
       hp0 = nil

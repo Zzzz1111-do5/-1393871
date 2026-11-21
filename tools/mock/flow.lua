@@ -239,7 +239,7 @@ local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootP
 check(Pr.alive and hrpR ~= nil and stg.C ~= nil and ((hrpR.Position.X - stg.C.x) ^ 2 + (hrpR.Position.Z - stg.C.z) ^ 2) ^ 0.5 < 40, "在 C 的攻击出发阵地出生")
 R.run(1)
 check(C.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
-check(brief.Visible and brief.Title.Text == C.T("stage.main") and not nearby.Visible, "进入第二阶段显示简报并收起旧据点")
+check(brief.Visible and brief.Title.Text == C.T("stage." .. G.Config.Stages[2].id) and not nearby.Visible, "进入第二阶段显示简报并收起旧据点（" .. brief.Title.Text .. "）")
 R.run(5)
 check(not brief.Visible, "同一阶段持续收战况时简报不会重复显示")
 

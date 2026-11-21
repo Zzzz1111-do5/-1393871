@@ -1184,13 +1184,19 @@ function AM.build(d, team, load)
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
           local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
-          if BLUR[imp.key] and BLUR[imp.key][name] then
+          local bl = BLUR[string.gsub(imp.key, "_v%d+$", "")]   -- 按不带版本号的键查（z10w、z10w_v2 都是这几块）
+          if bl and bl[name] then
             mp.CastShadow = false
             mp.Transparency = 1
             table.insert(M.discs, it)
           else
             table.insert(M.blades, it)
           end
+        elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、直-10：tools/models/air2glb.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
+          local G0 = I[string.lower(g)] or I.gun
+          local piv = G0 and (V(G0.p[1], G0.p[2], G0.p[3]) + O) or c
+          add(mp, cc0, "t", { piv = piv, yawOnly = g == "GunY" })
+          if g == "Gun" then M.gunPiv = piv end   -- Fly.lua 按原模型的耳轴位置算炮塔的方位、俯仰（AirDefs 的 gunPos 是零件拼的模型的）
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
           add(mp, cc0, "f", { fold = (g == "FoldR") and 1 or -1 })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链

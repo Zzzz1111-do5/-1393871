@@ -327,9 +327,9 @@ local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootP
 check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
 H.run(1)
 check(CA.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
-check(briefA.Visible and briefA.Title.Text == CA.T("stage.main") and not nearby.Visible, "进入第二阶段显示简报并收起旧据点")
+check(briefA.Visible and briefA.Title.Text == CA.T("stage." .. G.Config.Stages[2].id) and not nearby.Visible, "进入第二阶段显示简报并收起旧据点（" .. briefA.Title.Text .. "）")
 local briefLate = atk[3].PlayerGui.Main.OperationBrief
-check(briefLate.Title.Text == H.Gs[atk[3].Name].T("stage.main"), "活着进入新阶段的队友也读到了当前目标")
+check(briefLate.Title.Text == H.Gs[atk[3].Name].T("stage." .. G.Config.Stages[2].id), "活着进入新阶段的队友也读到了当前目标")
 H.run(5)
 check(not briefA.Visible, "同一阶段持续收战况时简报不会重复显示")
 

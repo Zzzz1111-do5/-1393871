@@ -459,7 +459,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -1080,6 +1080,7 @@ def("ScreenGui", "LayerCollector", { IgnoreGuiInset = { T.bool, false }, Display
 def("SurfaceGui", "LayerCollector", {
   Face = { E("NormalId"), Enum.NormalId.Front }, SizingMode = { E("SurfaceGuiSizingMode"), Enum.SurfaceGuiSizingMode.FixedSize }, PixelsPerStud = { T.number, 50 },
   LightInfluence = { T.number, 1 }, Adornee = { T.Instance, nil }, AlwaysOnTop = { T.bool, false }, CanvasSize = { T.Vector2, newV2(800, 600) },
+  ClipsDescendants = { T.bool, true }, Brightness = { T.number, 1 }, MaxDistance = { T.number, 0 },   -- 载具内饰的屏幕（Interior.lua）
 })
 def("BillboardGui", "LayerCollector", {
   Size = { T.UDim2, newUDim2(0, 0, 0, 0) }, StudsOffset = { T.Vector3, v3() }, StudsOffsetWorldSpace = { T.Vector3, v3() }, ExtentsOffset = { T.Vector3, v3() },
@@ -1682,11 +1683,9 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
       return R.keys[kc.Name] == true
     end,
     GetMouseLocation = function() return R.mouseAt or newV2(640, 400) end,
-    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给，读一次清零，跟真机一样按帧算）
+    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给；跟真机一样按帧算：R.step 开头取走，这一帧里谁读都是同一个数）
     GetMouseDelta = function()
-      local d = R.mouseDelta or newV2(0, 0)
-      R.mouseDelta = nil
-      return d
+      return R.frameDelta or newV2(0, 0)
     end,
     GetFocusedTextBox = function() return nil end,
   },
@@ -2156,6 +2155,7 @@ end
 
 function R.step(dt)
   clock = clock + dt
+  R.frameDelta, R.mouseDelta = R.mouseDelta, nil
   if R.localPlayer then
     local co = newThread(function() R.RenderStepped:Fire(dt) end, "client")
     resume(co)

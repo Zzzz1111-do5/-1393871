@@ -1468,6 +1468,7 @@ function Fly.init(G)
     if k == Enum.KeyCode.Space then G.R.Drive:FireServer({ op = "exit" }) return end   -- 用户：空格键脱离载具（在天上就跳伞）
     if not st.pilot then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
@@ -1788,7 +1789,8 @@ function Fly.init(G)
       st.eoYaw -= md.X * SENS
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
-      if d.kind == "jet" and not G.mobile then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
+      local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
+      if d.kind == "jet" and not G.mobile and not pitLook then   -- 鼠标瞄准：鼠标转的是想去的方向（飞机自动转过去）
         st.aimYaw -= md.X * SENS
         st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
       end
@@ -1934,7 +1936,8 @@ function Fly.init(G)
     local gid, gw = gunW()
     local wid, w = storeW()
     if d.gunPos and gw and gw.turret then
-      local l = st.cf:PointToObjectSpace(st.aimPt) - d.gunPos
+      local vw = G.views and G.views[st.em]
+      local l = st.cf:PointToObjectSpace(st.aimPt) - ((vw and vw.M and vw.M.gunPiv) or d.gunPos)   -- 原模型拆出了机炮：按它的耳轴算
       st.ty = clamp(deg(math.atan2(l.X, -l.Z)), -110, 110)
       st.gp = clamp(deg(math.atan2(l.Y, math.sqrt(l.X * l.X + l.Z * l.Z))), -60, 11)
     end
