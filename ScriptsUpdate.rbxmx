@@ -50590,6 +50590,7 @@ function UI.init(G)
     return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
       or (G.tacOpen ~= nil and G.tacOpen())   -- 战术平板开着：鼠标放出来点地图、不开枪
       or (G.gunsmithOpen ~= nil and G.gunsmithOpen())   -- 改枪界面
+      or (G.garageOpen ~= nil and G.garageOpen())   -- 坦克改装界面（用户 11-21：鼠标不显示——没算进来，步行第一人称时 stepUI 把鼠标图标藏了）
   end
 
   local function doDeploy()

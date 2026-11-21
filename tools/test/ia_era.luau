@@ -176,6 +176,8 @@ as(def, function() CD.openGarage("ztz99a", { aps = "hk" }, function(m) got = m e
 H.run(0.5)
 local S = CD.garageState and CD.garageState()
 check(S ~= nil and S.M ~= nil and #S.M.parts > 20, "打开了，拼了 3D 模型（" .. (S and S.M and #S.M.parts or 0) .. " 块）")
+-- 用户 11-21：改坦克的界面鼠标不显示——UI.lua 每帧按 G.menuOpen() 决定画不画鼠标指针、锁不锁（步行第一人称时藏起来），原来没算改装界面
+check(CD.menuOpen and CD.menuOpen() == true, "改装界面开着算作菜单：鼠标指针画出来、不锁在屏幕中间")
 local pg = def:FindFirstChildOfClass("PlayerGui")
 local go = nil
 for _, d in pg:GetDescendants() do if d:IsA("TextButton") and d.Name == "GarageGo" then go = d end end
