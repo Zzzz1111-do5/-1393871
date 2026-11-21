@@ -543,15 +543,18 @@ function FPSView.init(G)
         local M = G.opticMeta and G.opticMeta[OD.key]
         for _, x in ipairs(op) do
           x.part.Parent = model
-          table.insert(items, { x.part, "gun", OD.at * x.cf, optic = x.name })
+          -- 镜筒里面的块（OpticsMeta 的 inner）开镜时也要藏：同上面整件真模型那条（af599a2 只改了那条，枪没导入、零件拼的枪 + 真 ATACR 时内壁挡在目镜洞里）
+          table.insert(items, { x.part, "gun", OD.at * x.cf, optic = x.name, inner = (G.opticInner and G.opticInner(OD.key, x.name)) or nil })
         end
         local eye = M and M.eye
         local obj = M and M.obj
+        local sn = id ~= "binoc"
         opticInfo = {
           kind = (id == "binoc") and "binoc" or "scope",
           eyeG = OD.at * (eye and V(eye.c[1], eye.c[2], eye.c[3]) or V()),
           objG = OD.at * (obj and V(obj.c[1], obj.c[2], obj.c[3]) or V(0, 0, 0.5)),
           r = eye and eye.r or 0.03,
+          K = sn and 0.9 or nil, Kp = sn and 0.55 or nil, sniper = sn or nil,   -- 目镜占屏高：整屏放大九成、画中画 0.55（同 gearVM）
         }
       end
       end

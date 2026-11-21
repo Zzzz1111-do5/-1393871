@@ -309,7 +309,7 @@ function ScopePip.init(G)
   end
   local function addStatic(p)
     if not p:IsA("BasePart") or cellOf[p] or p.Transparency >= 0.99 then return end   -- 看不见的命中盒、碰撞板不要
-    local pos = p.Position
+    local pos = p.CFrame.Position   -- 同 p.Position；Lune 测试台读地图文件里的零件读不出 Position（同 TankHud、Night）
     local k = ckey(pos.X, pos.Z)
     local c = cells[k]
     if not c then
