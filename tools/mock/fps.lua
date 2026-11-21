@@ -331,17 +331,19 @@ if hum then
   check(math.abs(hum.WalkSpeed - base) < 0.05, string.format("松开 Shift 回到 %.1f", hum.WalkSpeed))
   hum.MoveDirection = V3()
   local function held() return char:FindFirstChildOfClass("Tool") end
-  T.tap(Enum.KeyCode.One)
-  R.run(0.6)
+  if not held() then   -- 上一段（⑦）结束时一般已经拿着 M4
+    T.tap(Enum.KeyCode.One)
+    R.run(0.6)
+  end
   local t1 = held()
-  check(t1 ~= nil, "按 1：拿着 " .. tostring(t1 and t1.Name))
+  check(t1 ~= nil, "拿着 " .. tostring(t1 and t1.Name))
   T.tap(Enum.KeyCode.One)
   R.run(0.6)
   check(held() == nil, "拿着再按 1：收枪、空手（" .. tostring(held() and held().Name) .. "）")
   T.tap(Enum.KeyCode.One)
-  R.run(0.6)
+  R.run(0.25)
   check(held() ~= nil, "空手按 1：又拿出来")
-  T.tap(Enum.KeyCode.One)
+  T.tap(Enum.KeyCode.One)   -- 拿出来 0.25 秒（过了 0.15 秒的防连发、没到 0.4 秒）
   R.run(0.1)
   check(held() ~= nil, "刚拿出来马上再按：不收（连按不会像卡住）")
 end
