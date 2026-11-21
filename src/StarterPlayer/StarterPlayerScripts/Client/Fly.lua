@@ -771,6 +771,8 @@ function Fly.init(G)
         game:GetService("SoundService"), {})
       if st.buffetSnd then st.buffetSnd.Volume = 0 end
     end
+    -- 发动机声（用户 11-21：声音要真，SoundLib 的真录音；没载上就没有这一层）：固定翼喷气发动机、直升机休伊的旋翼，坐后面的也听得到
+    if G.realLoop then st.engSnd = G.realLoop((d.kind == "jet") and "jetEngine" or "heliRotor", game:GetService("SoundService")) end
     if G.playSound then G.playSound("capture") end
   end
 
@@ -801,6 +803,7 @@ function Fly.init(G)
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
     if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if old and old.engSnd then old.engSnd:Destroy() end
     if G.vehCamReset then G.vehCamReset("heli") end
   end
 
@@ -1994,6 +1997,19 @@ function Fly.init(G)
       if p.Y > 2600 then st.cf = st.cf - V(0, p.Y - 2600, 0) end
     else
       st.cf = st.em.Root.CFrame   -- 坐在后面：跟着服务器
+    end
+    -- 发动机声跟着油门（固定翼：加力更尖更响）、总距（直升机：拉得越狠越沉）
+    if st.engSnd then
+      if d.kind == "jet" then
+        local tq = math.clamp((st.thrE or st.thr or 0) / 100, 0, 1.3)
+        st.engSnd.PlaybackSpeed = 0.75 + 0.45 * tq
+        st.engSnd.Volume = 0.3 + 0.6 * tq
+      else
+        local load = math.clamp(math.abs((st.c and st.c.col) or 0), 0, 1)
+        st.engSnd.PlaybackSpeed = 0.95 + 0.12 * load
+        st.engSnd.Volume = 0.7 + 0.4 * load
+      end
+      if st.crashed then st.engSnd.Volume = 0 end
     end
     -- 航炮后坐：开火时机身高频抖一点（模型跟着抖，用户：飞机机炮要有散布、后坐力和打击感）
     local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed

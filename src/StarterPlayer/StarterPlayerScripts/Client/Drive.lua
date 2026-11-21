@@ -310,13 +310,14 @@ function Drive.init(G)
     if not G.makeSound then return end
     local SS = game:GetService("SoundService")
     local heavy = d.arch ~= "wheeled"
-    local rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
+    local realEng = heavy and G.realLoop and G.realLoop("tankEngine", SS)   -- 真录音的坦克发动机（SoundLib；没载上照旧叠出来的）
+    local rumble = realEng or G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
     -- 履带的哗啦声（用户 11-20：载具照 UE5 的水平升级）：咔哒那一下截一小段循环，开得越快一圈越短、越密；
     --   轮胎侧滑的沙沙声：风声削掉低音，侧滑越厉害越响
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
     local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
-    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2 }
+    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2, realEng = realEng ~= nil }
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -339,10 +340,15 @@ function Drive.init(G)
     if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
-    engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
-    engine.rumble.Volume = 0.3 + 0.35 * r
+    if engine.realEng then   -- 真录音：转速高了放快一点、响一点；叠出来的涡轮尖啸压低（别盖住真录音）
+      engine.rumble.PlaybackSpeed = 0.8 + r * 0.55
+      engine.rumble.Volume = 0.5 + 0.6 * r
+    else
+      engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
+      engine.rumble.Volume = 0.3 + 0.35 * r
+    end
     engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
-    engine.whine.Volume = 0.6 + 2.6 * r * r
+    engine.whine.Volume = (0.6 + 2.6 * r * r) * (engine.realEng and 0.45 or 1)
     local air = st and st.airS ~= nil
     if engine.clank then   -- 履带：速度越快越密；在天上没有
       engine.clank.PlaybackSpeed = 0.55 + spd * 1.6

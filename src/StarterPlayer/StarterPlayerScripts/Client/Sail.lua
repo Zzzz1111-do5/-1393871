@@ -109,8 +109,10 @@ function Sail.init(G)
     if not G.makeSound then return end
     local SS = game:GetService("SoundService")
     local small = (d.L or 60) < 40
+    local realEng = G.realLoop and G.realLoop("shipEngine", SS)   -- 真录音的舰船发动机（SoundLib；没载上照旧叠出来的）
     engine = {
-      rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
+      realEng = realEng ~= nil,
+      rumble = realEng or G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
       turb = (not small) and G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0.5, s = { 0.55, 0.55 }, loop = { 1, 9 }, eq = { -10, 4, -4 } }, SS, {}) or nil,
       water = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 0.6, 0.6 }, loop = { 2, 8 }, eq = { 6, 0, -12 } }, SS, {}),
     }
@@ -121,8 +123,13 @@ function Sail.init(G)
     local ord = math.abs(SD.ORDERS[st.order] or 0)
     engine.load = (engine.load or 0) + ((0.2 + 0.8 * ord) - (engine.load or 0)) * math.min(1, dt * 1.5)   -- 车钟一推，转速先上去
     local small = (d.L or 60) < 40
-    engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
-    engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    if engine.realEng then
+      engine.rumble.PlaybackSpeed = (small and 1.1 or 0.85) + engine.load * 0.3
+      engine.rumble.Volume = 0.3 + 0.5 * engine.load
+    else
+      engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
+      engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    end
     if engine.turb then
       engine.turb.PlaybackSpeed = 0.5 + engine.load * 0.35
       engine.turb.Volume = 0.25 + 1.1 * engine.load

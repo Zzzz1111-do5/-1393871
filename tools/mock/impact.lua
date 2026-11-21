@@ -125,4 +125,30 @@ R.run(0.2)
 check(sk and near(holder("flash3"), sk.p, 8), "客户端：大闪光在弹着点")
 check(sk and near(holder("spark2"), sk.p, 8), "客户端：大火星在弹着点")
 
+-- 真录音（SoundLib.lua，用户 11-21：声音要逼真）：模拟器里没法真的载音频——假装几样载上了，看是不是换成真录音、没载上的照旧叠出来
+print("⑨ 真录音：载上了的换成真录音，没载上的照旧")
+local REAL = C.realSoundState and C.realSoundState()
+check(REAL ~= nil, "有真录音的表")
+if REAL then
+  REAL.tankGun = { "rbxassetid://18221697746" }
+  REAL.boomM = { "rbxassetid://18245316227" }
+  REAL.tankEngine = { "rbxassetid://8213083943" }
+  local function soundsWith(id)
+    local n = 0
+    for _, d in ipairs(R.workspace:GetDescendants()) do if d.ClassName == "Sound" and d.SoundId == id then n = n + 1 end end
+    for _, d in ipairs(R.game:GetService("SoundService"):GetDescendants()) do if d.ClassName == "Sound" and d.SoundId == id then n = n + 1 end end
+    return n
+  end
+  local p0 = R.workspace.CurrentCamera.CFrame.Position + V3(40, 0, 0)
+  C.sfx("tankGun", p0, { must = true })
+  check(soundsWith("rbxassetid://18221697746") > 0, "坦克炮换成了真录音（88mm 车外）")
+  C.sfx("whiz", p0, { must = true })
+  check(soundsWith("rbxassetid://9113634361") == 0 and soundsWith("rbxassetid://9113634444") == 0, "没载上的（子弹呼啸）照旧用叠出来的")
+  local eng = C.realLoop("tankEngine", R.game:GetService("SoundService"))
+  check(eng ~= nil and eng.Looped == true and eng.SoundId == "rbxassetid://8213083943", "坦克发动机的循环真录音")
+  if eng then eng:Destroy() end
+  check(C.realLoop("jetEngine", R.game:GetService("SoundService")) == nil, "没载上的循环（喷气发动机）返回空，照旧叠出来的")
+  REAL.tankGun, REAL.boomM, REAL.tankEngine = nil, nil, nil
+end
+
 T.summary()
