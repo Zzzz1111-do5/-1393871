@@ -59,7 +59,7 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
   rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
   gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
-  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6), noRoofMg = true,   -- 车顶不放机枪（用户 11-21），机枪那一栏是并列机枪
+  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
 D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
@@ -268,9 +268,13 @@ do
         if info.rws and info.rws.p and info.rws.g then
           local rp = V(info.rws.p[1], info.rws.p[2], info.rws.p[3])
           local rg = V(info.rws.g[1], info.rws.g[2], info.rws.g[3])
-          d.rws = { pivot = rp - tur, gun = rg - rp, len = info.rws.muz or 2.5, trav = 120, rate = 90, elev = { -20, 60 } }
-          for i, wid in ipairs(d.weapons) do
-            if wid == "coax" then d.weapons[i] = "hmg" end
+          d.rws = { pivot = rp - tur, gun = rg - rp, len = info.rws.muz or 2.5, trav = 120, rate = 90, elev = { -20, 60 }, mk = info.rws.mk }
+          if info.rws.mk == "manual" then   -- 手动的车长重机枪（99A 的 12.7 毫米，真车上还有一挺 7.62 并列机枪）：并列机枪留着，第 3 栏是车顶重机枪
+            table.insert(d.weapons, "hmg")
+          else
+            for i, wid in ipairs(d.weapons) do
+              if wid == "coax" then d.weapons[i] = "hmg" end
+            end
           end
         end
         d.model = key

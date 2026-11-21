@@ -44,6 +44,7 @@ function Interior.init(G)
   local LIGHTS = { RGB(255, 244, 228), RGB(120, 230, 210), RGB(255, 70, 50), RGB(0, 0, 0) }
   local LIGHTK = { 1, 0.8, 0.7, 0 }
   local hideUI = false
+  local quickOptic = false   -- T：车外直接进车长主观瞄（建好内饰那一帧开镜）
   local look = { yaw = 0, pitch = 0, fov = 72, fovT = 72 }
   local free = { p = V(), yaw = 0, pitch = 0 }
   local shake = 0
@@ -951,6 +952,11 @@ function Interior.init(G)
       local wid = st.d.weapons and st.d.weapons[1]
       local resv = (ammo and wid and ammo[wid]) and (ammo[wid][2] or 0) or 34
       if cur.spec.loader == "carousel" then syncCarousel(cur, math.min(22, resv)) else syncRack(cur, math.min(36, resv)) end
+    end
+    if quickOptic and mode == "seat" and cur then   -- T 从车外直接进车长的主观瞄（下面按键那里记下的）
+      quickOptic = false
+      if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
+      if enterOptic(cur, "primary") and optic then optic.quick = true end
     end
     local c = cur
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
@@ -2016,7 +2022,18 @@ function Interior.init(G)
       return
     end
     local k = io.KeyCode
-    if k == Enum.KeyCode.C then
+    if k == Enum.KeyCode.T and (mode == nil or (optic and optic.quick)) and not st.sight then
+      -- T：车外直接进车长的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱——车长周视瞄准镜，要能第一人称看出去；M1A2 是 CITV）：
+      --   坐到车长位、开他的主镜（镜头在观瞄舱的位置，鼠标转镜头、炮塔不动，Z 变倍、V 换热像）；这样开的镜里再按 T：关镜、回车外
+      if optic and optic.quick then
+        exitOptic(cur)
+        mode = nil
+        if cur and cur.model.Parent then cur.model.Parent = nil end
+        cam.FieldOfView = 70
+      else
+        mode, station, quickOptic = "seat", "commander", true
+      end
+    elseif k == Enum.KeyCode.C then
       if mode == nil then
         mode = "seat"
         if cur then enterStation(cur, lastStation[cur.key] or cur.spec.order[1]) end

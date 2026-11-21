@@ -293,6 +293,15 @@ for _ = 1, 6 do
   R.run(0.2)
 end
 check(not C.interiorOn() and (C.interiorState().cur == nil or C.interiorState().cur.model.Parent == nil), "C 换过最后一个乘员位：回到车外，内饰收起来")
+-- T（车外）：直接坐到车长位、开他的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱要能第一人称看出去；M1A2 是 CITV）；再按 T 回车外
+T.tap(Enum.KeyCode.T)
+R.run(0.6)
+local qs, qo = C.interiorState(), C.interiorOpticState and C.interiorOpticState()
+check(qs.mode == "seat" and qs.station == "commander" and qo ~= nil and qo.quick == true,
+  string.format("车外按 T：坐到车长位、开了车长主镜（位置 %s，镜 %s）", tostring(qs.station), tostring(qo and qo.o and qo.o.name)))
+T.tap(Enum.KeyCode.T)
+R.run(0.4)
+check(not C.interiorOn() and (C.interiorOpticState == nil or C.interiorOpticState() == nil), "再按 T：关镜、回到车外")
 T.tap(Enum.KeyCode.F)
 R.run(1)
 check(C.drive == nil and C.interiorState().cur == nil, "下车：内饰拆掉")

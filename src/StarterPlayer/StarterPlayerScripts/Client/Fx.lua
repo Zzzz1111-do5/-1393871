@@ -1056,6 +1056,14 @@ function Fx.init(G)
     return pe
   end
   G.emitBurst = emitter
+  -- 炮弹打在钢甲上（用户 11-21：打中目标，如果是金属也要有火花）：再迸一大把亮的火星（比子弹的大、飞得远、带重力落下），一下白热的闪光
+  local function hotSparks(p, n, s)
+    if (p - cam.CFrame.Position).Magnitude > 1500 then return end
+    local h = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(p + n * 0.3, p + n * 2), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    emitter(h, { tex = TX.glow, life = { 0.35, 1.1 }, speed = { 40, 120 }, spread = 65, drag = 0.8, acc = V(0, -90, 0), size = { 0.7, 0 }, tr = 0, color = RGB(255, 222, 150), glow = 1, n = math.floor(22 * s) })
+    emitter(h, { tex = TX.glow, life = { 0.08, 0.14 }, speed = { 0, 0 }, spread = 0, size = { 3 * s, 5.5 * s }, tr = 0, color = RGB(255, 245, 220), glow = 1, n = 1 })
+    Debris:AddItem(h, 1.5)
+  end
   local function vfire(e)
     local big = e.f == "tank" or e.f == "arty"
     local dir = (typeof(e.d) == "Vector3") and e.d.Unit or V(0, 0, -1)
@@ -1095,6 +1103,14 @@ function Fx.init(G)
       emitter(holder, { life = { 1.1, 2.4 }, speed = { 16, 40 }, spread = 22, drag = 3.2, size = { 2.5, 11 }, tr = 0.25, color = RGB(214, 208, 196), n = 16 })
       emitter(holder, { life = { 3.5, 6 }, speed = { 2, 9 }, spread = 70, drag = 1.1, acc = V(0, 1.4, 0), size = { 5, 19 }, tr = 0.4, color = RGB(170, 164, 154), n = 10 })
       emitter(holder, { tex = "rbxasset://textures/particles/sparkles_main.dds", life = { 0.15, 0.4 }, speed = { 40, 80 }, spread = 12, size = { 0.5, 0.2 }, tr = 0, color = RGB(255, 210, 130), glow = 1, n = 12 })
+      -- 炮口迸出的火星（用户 11-21：炮弹飞出炮管要有火花）：顺着炮管往前喷一大把白热的火星（带重力往下掉、一下就暗），
+      --   制退器两边也横着喷一点
+      emitter(holder, { tex = TX.glow, life = { 0.25, 0.75 }, speed = { 70, 170 }, spread = 10, drag = 1.2, acc = V(0, -70, 0), size = { 0.6, 0 }, tr = 0, color = RGB(255, 216, 146), glow = 1, n = 36 })
+      for sx = -1, 1, 2 do
+        local side = part(nil, V(0.2, 0.2, 0.2), look * CF(sx * 1.6, 0, -0.6) * CFrame.Angles(0, sx * math.rad(78), 0), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+        emitter(side, { tex = TX.glow, life = { 0.15, 0.45 }, speed = { 40, 95 }, spread = 16, drag = 2, acc = V(0, -60, 0), size = { 0.45, 0 }, tr = 0, color = RGB(255, 196, 120), glow = 1, n = 10 })
+        Debris:AddItem(side, 1)
+      end
       Debris:AddItem(holder, 6.5)
       -- ⑤ 地上一圈掀起来的土（炮口离地不高才有；水上是白的水雾）
       local gy = G.Map and G.Map.ground and G.Map.ground(e.p.X, e.p.Z) or (e.p.Y - 4)
@@ -1273,6 +1289,7 @@ function Fx.init(G)
         if typeof(e.p) == "Vector3" then
           local n = (typeof(e.n) == "Vector3" and e.n.Magnitude > 0.5) and e.n.Unit or V(0, 1, 0)
           impact(e.p, -n, e.h or "a", (e.s or 1) * 1.6, n)
+          if (e.s or 1) >= 1.5 then hotSparks(e.p, n, e.s) end   -- 炮弹打在钢甲上：再迸一大把亮的火星
         end
       elseif k == "shot" then
         newShot(e)
