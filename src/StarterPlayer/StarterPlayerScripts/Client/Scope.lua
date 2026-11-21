@@ -1,18 +1,21 @@
--- Roblox全面大战场——瞄准镜（客户端）：狙击镜、望远镜开镜后的光学目镜（替换原来 Play 里四块黑板围出的方框）
---   用户：瞄准镜第一人称太粗糙、要有光学效果，而且居然不是圆的而是多边形
---   出瞳是正圆：Frame + UICorner 成圆，外面一圈特别粗的黑描边把四周盖住（同夜视仪的镜筒）。狙击镜两个圆叠着——
---     A 是目镜的视场光阑（边利、渐暗带窄），B 是眼睛的出瞳（大一点、渐暗带宽）：眼睛对正时 B 在 A 外面；镜子一晃、转得快、走路、开枪、
---     刚贴上目镜时两个圆错开，看得见的是两圆相交那块，边上一道月牙形的「镜内阴影」
---   边缘渐暗：一圈圈半透明黑描边叠出来（UI 没有径向渐变）；红、蓝两道细圈朝相反方向错开一点，是边上的色散彩边
---   镜片：镀膜的淡色、左上一道反光弧（描边挂渐变，只露一段）、镜头里有月亮时的眩光（光源和画面中心的连线上一串彩色鬼影、一道横向拉丝）
---   开镜：先黑一下（眼睛贴上目镜），出瞳从小变大，画面从糊到清楚（对焦）；滚轮变倍、开枪时也轻轻糊一下
---   分划在第二焦平面（大小不随倍率变）：狙击镜是密位点 + 四根粗柱，中心红点夜里发光（开着夜视仪时调暗）；
---     望远镜：两个圆并排（左右各按半边屏幕裁开，正好是两圆的并集，中间上下两个尖角）、测距框和密位刻度，底下一行琥珀色的距离 / 方位 / 倍率
+-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
+--   使命召唤式（用户 11-21：瞄准镜照使命召唤做，镜子是圆形的不是多边形）：第一人称开镜时镜身（真模型）一直看得见——FPSView 把镜筒里面
+--     挡着视线的块藏掉，从目镜那个正圆的洞里看到放大的画面（两具 ACOG 原模型的目镜是八边形，optics.json 的 ring 补了正圆的目镜圈罩住）；
+--     镜头视角按倍率收窄，镜子跟着往远推、在屏幕上一样大。这里只画镜片上的东西，跟着 3D 目镜走
+--     （FPSView 每帧 G.scopeLensAt(屏幕 x, y, 半径, 举镜进度, 狙击镜?)），全是正圆：
+--     镜片（CanvasGroup + UICorner 按圆裁剪）：镀膜的淡色、分划（在屏幕正中：子弹打这儿）、反光弧、边上一圈暗边、眼盒阴影、色散彩边；
+--       眼盒阴影：眼睛不在光轴上（枪晃、镜头转得快、走路、开枪、刚贴上目镜）时镜片边上一道月牙——两个圆叠着：A 是目镜（镜片的圆），
+--       B 是镜子另一头的光阑（外面一圈特别粗的黑描边）；对正时 B 比 A 大一圈、看不见，偏了 B 朝反方向错开，A 里没被 B 盖住的那块就是月牙
+--     镜片外面一圈圈往外渐暗（目镜圈、镜身、外面的世界压暗，视线集中在镜片里；狙击镜压得很黑）；近处的镜身用景深糊掉（ScopeDOF，
+--     同使命召唤开镜时枪身是糊的）；跟着举镜进度淡入、松开右键跟着淡出；不是第一人称（没有 3D 镜身）时镜片摆在屏幕正中、外面几乎全黑
+--   边缘渐暗：一圈圈半透明黑描边（UI 没有径向渐变），圈和圈挨着不叠；红、蓝两道细圈朝相反方向错开一点，是边上的色散彩边
+--   分划：狙击镜在第一焦平面（刻线跟倍率一起放大缩小，1 密位在目标上永远是 1 米 / 千米），中心红点夜里发光（开着夜视仪时调暗）；
+--     ACOG（步枪上的 3.5 倍、改枪的 6 倍）是 TA31 的红色箭形 + 测距线（第二焦平面：大小按目镜直径），定倍、不屏息、不闪镜片
+--   望远镜：两个圆并排（左右各按半边屏幕裁开，正好是两圆的并集，中间上下两个尖角）、测距框和密位刻度，底下一行琥珀色的距离 / 方位 / 倍率；
+--     开镜先黑一下、出瞳由小变大、对焦
 --   手稳：呼吸晃，按住 Shift 屏住（稳几秒，憋过头晃得更厉害、一会儿屏不了），走动晃得多；晃动加在镜头上（子弹照样打屏幕正中），
---     镜头转得快、开枪时出瞳跟着偏；倍率高时鼠标灵敏度跟着降
+--     倍率高时鼠标灵敏度跟着降；滚轮变倍（狙击镜、望远镜）
 --   别人开着镜对着你（他的视线在你附近 20° 以内）时他的镜片闪光：服务器只记 Scoped / ScopeDir 两个属性，闪光是看的人本地画的、墙挡得住
---   步枪（M4）上装的 ACOG（kind acog）：固定 3.5 倍、TA31 的红色箭形分划和测距线，不屏息、不闪镜片（用户：武器瞄准没有镜子）；
---     改枪装的 6×48 ACOG 也是这一套，倍率按武器表（w.scope = 6）；晃动按据枪稳定性（w.swayK）
 --   Play 调：G.scopeStep(dt, 开没开, 武器表) 每帧、G.scopeZoom(武器表) 现在的倍率、G.scopeFire() 开了一枪
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -82,12 +85,14 @@ function Scope.init(G)
   root.Parent = gui
 
   -- 一个圆形出瞳：容器（D × D）里一个圆，外面 3200 像素的黑描边盖住四周；里面 n 圈半透明黑描边叠成边缘渐暗
-  --   band 渐暗带占直径的比例，k 最外一圈的不透明度，pw 往里衰减的指数
-  local function aperture(parent, z, n, band, k, pw)
+  --   band 渐暗带占直径的比例，k 最外一圈的不透明度，pw 往里衰减的指数；bare 不要外面那圈黑（镜片里的暗边：圆外本来就裁掉了）
+  local function aperture(parent, z, n, band, k, pw, bare)
     local box = fr(parent, z, BLACK, 1)
-    local mask = round(fr(box, z, BLACK, 1))
-    mask.Position, mask.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
-    ring(mask, 3200, BLACK, 0)
+    if not bare then
+      local mask = round(fr(box, z, BLACK, 1))
+      mask.Position, mask.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
+      ring(mask, 3200, BLACK, 0)
+    end
     local rings = {}
     for i = 1, n do
       local f = round(fr(box, z, BLACK, 1))
@@ -109,35 +114,41 @@ function Scope.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 层（从下往上）：镜片 → 分划 → 眩光 → 出瞳 B → 出瞳 A → 色散彩边 → 黑场 → 读数
+  ---------------------------------------------------------------- 镜片（狙击镜、ACOG）：CanvasGroup 按圆裁剪，里面的分划、月牙、彩边出不了这个正圆
+  --   层（从下往上）：镀膜 → 分划 → 反光弧 → 眼盒阴影 B → 边上的暗边 A → 色散彩边
 
-  -- 镜片：镀膜的淡色、反光弧（狙击镜跟着出瞳 A 走）
-  local lens = fr(root, 1, BLACK, 1)
-  local tint = round(fr(lens, 1, RGB(18, 34, 44), 0.93))
-  tint.Position, tint.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
-  grad(tint, 90, { { 0, 0.4 }, { 0.5, 0.75 }, { 1, 0.15 } })   -- 上下边色深一点
-  local glare = round(fr(lens, 1, BLACK, 1))
-  glare.Position, glare.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.9, 0.9)
-  local glareS = ring(glare, 3, RGB(235, 245, 255), 0)
-  grad(glareS, 45, { { 0, 1 }, { 0.1, 0.86 }, { 0.2, 0.8 }, { 0.3, 0.93 }, { 0.4, 1 }, { 1, 1 } })   -- 只左上露一段
-  local glare2 = round(fr(lens, 1, BLACK, 1))   -- 右下一道暖色的弱反光
-  glare2.Position, glare2.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.8, 0.8)
-  local glare2S = ring(glare2, 2, RGB(255, 214, 160), 0)
-  grad(glare2S, 45, { { 0, 1 }, { 0.72, 1 }, { 0.84, 0.9 }, { 0.94, 1 }, { 1, 1 } })
-
-  -- 分划：容器在屏幕正中（子弹打这儿），零件位置按直径的比例，布置在 layoutRet 里
-  local ret = fr(root, 2, BLACK, 1)
-  local retParts = {}   -- { f, x, y, w, h（直径的比例；w / h 小于 0 是像素数）, kind }
-  local function rp(kind, x, y, w, h, color, alpha, isRound)
-    local f = fr(ret, 2, color, alpha)
-    if isRound then round(f) end
-    table.insert(retParts, { f = f, x = x, y = y, w = w, h = h, kind = kind, a0 = alpha })
-    return f
+  local lensG = nil
+  pcall(function() lensG = Instance.new("CanvasGroup") end)
+  local isCG = lensG ~= nil
+  if not lensG then   -- 没有 CanvasGroup：普通 Frame 按方框裁（四个角上的刻线由外面那圈压暗挡住）
+    lensG = Instance.new("Frame")
+    lensG.ClipsDescendants = true
   end
+  lensG.Name = "ScopeLens"
+  lensG.AnchorPoint = V2(0.5, 0.5)
+  lensG.BackgroundTransparency = 1
+  lensG.BorderSizePixel = 0
+  lensG.ZIndex = 1
+  lensG.Visible = false
+  lensG.Parent = root
+  round(lensG)
+  local tint = round(fr(lensG, 1, RGB(18, 34, 44), 0.93))   -- 镀膜的淡色（上下边色深一点）
+  tint.Position, tint.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
+  grad(tint, 90, { { 0, 0.4 }, { 0.5, 0.75 }, { 1, 0.15 } })
+
+  -- 分划：容器（大小 0）摆在屏幕正中在镜片里的位置，零件按容器中心摆
+  local ret = fr(lensG, 2, BLACK, 1)       -- 狙击镜（第一焦平面）
+  ret.Name = "ScopeRet"
+  local acogRet = fr(lensG, 2, BLACK, 1)   -- ACOG
+  acogRet.Name = "AcogRet"
+  local retB = fr(root, 2, BLACK, 1)       -- 望远镜（在镜筒的黑圈下面）
+  sz(ret, 0)
+  sz(acogRet, 0)
+  sz(retB, 0)
   local RC = RGB(6, 6, 6)            -- 刻线
   local RED = RGB(255, 46, 30)       -- 发光的中心
   local AMB = RGB(255, 160, 52)      -- 望远镜的琥珀色读数
-  local RCI = RGB(150, 26, 18)        -- 照明分划：暗红（夜里能看清，不刺眼）
+  local RCI = RGB(150, 26, 18)       -- 照明分划：暗红（夜里能看清，不刺眼）
   -- 狙击镜分划（第一焦平面，同这具 ATACR F1：刻线跟倍率一起放大缩小，1 密位在目标上永远是 1 米 / 千米）：
   --   细十字贯穿；每 1 密位一个刻度（5、10 长一点），倍率高时加半密位；10 密位以外是粗柱；右边、下边标 2 4 6 8；
   --   中心下面一组提前量 / 风偏点（倍率够高才画）；中心 ±2 密位那段细十字和中心点夜里发暗红光
@@ -207,37 +218,8 @@ function Scope.init(G)
       at(n.l, math.floor(n.x * k + 0.5), math.floor(n.y * k + 0.5))
     end
   end
-  -- 望远镜：测距框（四个角）、中心小十字（中间空着）、下面一条密位刻度
-  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
-    rp("ba", c[1] * 0.04 - c[1] * 0.008, c[2] * 0.04, 0.016, -1, AMB, 0.12)
-    rp("ba", c[1] * 0.04, c[2] * 0.04 - c[2] * 0.008, -1, 0.016, AMB, 0.12)
-  end
-  for _, c in ipairs({ { -0.013, 0, 0.012, -1 }, { 0.013, 0, 0.012, -1 }, { 0, -0.013, -1, 0.012 }, { 0, 0.013, -1, 0.012 } }) do
-    rp("b", c[1], c[2], c[3], c[4], AMB, 0.2)
-  end
-  rp("b", 0, 0.1, 0.4, -1, AMB, 0.45)
-  for k = -10, 10 do
-    local big = k % 5 == 0
-    rp("b", k * 0.02, 0.1 - (big and 0.012 or 0.006), -1, big and 0.024 or 0.012, AMB, big and 0.3 or 0.5)
-  end
-  local function layoutRet(D, kind)   -- 望远镜的刻线（按直径的比例）
-    local t1 = math.max(1, math.floor(D / 700 + 0.5))
-    local t2 = math.max(4, math.floor(D / 95 + 0.5))
-    for _, p in ipairs(retParts) do
-      local mine = kind == "binoc"
-      p.f.Visible = mine
-      if mine then
-        local px = function(v) if v >= 0 then return math.max(1, math.floor(v * D + 0.5)) end return (v == -3) and t2 or t1 end
-        local w, h = px(p.w), px(p.h)
-        sz(p.f, w, h)
-        at(p.f, math.floor(p.x * D + 0.5), math.floor(p.y * D + 0.5))
-      end
-    end
-  end
-
-  -- 步枪上的 ACOG（Trijicon TA31 的箭形分划，第二焦平面：大小按出瞳直径的比例，不随倍率变）：中心一个红色发光的箭形（尖是瞄准点），
+  -- 步枪上的 ACOG（Trijicon TA31 的箭形分划，第二焦平面：大小按目镜直径的比例，不随倍率变）：中心一个红色发光的箭形（尖是瞄准点），
   --   下面一根细竖线挂着 400～800 米的测距横线（越远越短，正好是人肩宽），左右各一段横线（不到中心）
-  local acogRet = fr(root, 2, BLACK, 1)
   local acog = {}   -- { f, x, y, w, h（直径的比例；负数是像素），lit 发光的、a0 原来的透明度 }
   local function ae(x, y, w, h, color, alpha, rot, lit)
     local f = fr(acogRet, 2, color or RC, alpha or 0)
@@ -246,16 +228,16 @@ function Scope.init(G)
     return f
   end
   do
-    local CH, CA = 0.042, 50   -- 箭形每边多长（直径的比例）、和竖直方向的夹角（度）
+    local CH, CA = 0.05, 50   -- 箭形每边多长（直径的比例）、和竖直方向的夹角（度）
     local sa, ca = math.sin(math.rad(CA)), math.cos(math.rad(CA))
     local CR = RGB(255, 52, 36)
     for _, k in ipairs({ { -10, 1.16, 0.84 }, { -4, 1, 0.02 } }) do   -- 先画一圈晕光、再画箭形本身
       ae(CH * 0.5 * sa, CH * 0.5 * ca, k[1], CH * k[2], CR, k[3], -CA, true)
       ae(-CH * 0.5 * sa, CH * 0.5 * ca, k[1], CH * k[2], CR, k[3], CA, true)
     end
-    local y0, y1 = CH * ca + 0.012, 0.19
+    local y0, y1 = CH * ca + 0.012, 0.2
     ae(0, (y0 + y1) / 2, -1, y1 - y0, RC, 0.1)
-    for _, v in ipairs({ { 0.07, 0.05 }, { 0.1, 0.041 }, { 0.13, 0.034 }, { 0.16, 0.028 }, { 0.19, 0.023 } }) do ae(0, v[1], v[2], -2, RC, 0.08) end
+    for _, v in ipairs({ { 0.08, 0.05 }, { 0.11, 0.041 }, { 0.14, 0.034 }, { 0.17, 0.028 }, { 0.2, 0.023 } }) do ae(0, v[1], v[2], -2, RC, 0.08) end
     ae(-0.3, 0, 0.4, -2, RC, 0.04)
     ae(0.3, 0, 0.4, -2, RC, 0.04)
   end
@@ -267,10 +249,70 @@ function Scope.init(G)
       at(e.f, math.floor(e.x * D + 0.5), math.floor(e.y * D + 0.5))
     end
   end
+  -- 望远镜：测距框（四个角）、中心小十字（中间空着）、下面一条密位刻度
+  local retParts = {}   -- { f, x, y, w, h（直径的比例；w / h 小于 0 是像素数） }
+  local function rp(x, y, w, h, color, alpha)
+    local f = fr(retB, 2, color, alpha)
+    table.insert(retParts, { f = f, x = x, y = y, w = w, h = h })
+    return f
+  end
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+    rp(c[1] * 0.04 - c[1] * 0.008, c[2] * 0.04, 0.016, -1, AMB, 0.12)
+    rp(c[1] * 0.04, c[2] * 0.04 - c[2] * 0.008, -1, 0.016, AMB, 0.12)
+  end
+  for _, c in ipairs({ { -0.013, 0, 0.012, -1 }, { 0.013, 0, 0.012, -1 }, { 0, -0.013, -1, 0.012 }, { 0, 0.013, -1, 0.012 } }) do
+    rp(c[1], c[2], c[3], c[4], AMB, 0.2)
+  end
+  rp(0, 0.1, 0.4, -1, AMB, 0.45)
+  for k = -10, 10 do
+    local big = k % 5 == 0
+    rp(k * 0.02, 0.1 - (big and 0.012 or 0.006), -1, big and 0.024 or 0.012, AMB, big and 0.3 or 0.5)
+  end
+  local function layoutRet(D)   -- 望远镜的刻线（按直径的比例）
+    local t1 = math.max(1, math.floor(D / 700 + 0.5))
+    for _, p in ipairs(retParts) do
+      local px = function(v) if v >= 0 then return math.max(1, math.floor(v * D + 0.5)) end return t1 end
+      sz(p.f, px(p.w), px(p.h))
+      at(p.f, math.floor(p.x * D + 0.5), math.floor(p.y * D + 0.5))
+    end
+  end
 
-  -- 出瞳：狙击镜 A（视场光阑）、B（眼睛的出瞳）；望远镜左右两个（各在半边屏幕的裁剪框里）
-  local apB = aperture(root, 4, 12, 0.13, 0.95, 1.6)
-  local apA = aperture(root, 5, 10, 0.075, 0.92, 2.2)
+  -- 反光弧（镀膜上左上一道冷色、右下一道暖色，按镜片大小）
+  local glare = round(fr(lensG, 3, BLACK, 1))
+  glare.Position, glare.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.9, 0.9)
+  local glareS = ring(glare, 3, RGB(235, 245, 255), 0)
+  grad(glareS, 45, { { 0, 1 }, { 0.1, 0.86 }, { 0.2, 0.8 }, { 0.3, 0.93 }, { 0.4, 1 }, { 1, 1 } })   -- 只左上露一段
+  local glare2 = round(fr(lensG, 3, BLACK, 1))
+  glare2.Position, glare2.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.8, 0.8)
+  local glare2S = ring(glare2, 2, RGB(255, 214, 160), 0)
+  grad(glare2S, 45, { { 0, 1 }, { 0.72, 1 }, { 0.84, 0.9 }, { 0.94, 1 }, { 1, 1 } })
+  -- 眼盒阴影 B（光阑：对正时比镜片大一圈，偏了往反方向错开、露出月牙）、镜片边上的暗边 A
+  local apB = aperture(lensG, 4, 8, 0.06, 0.95, 1.6)
+  local apA = aperture(lensG, 5, 8, 0.045, 0.72, 2.2, true)
+  -- 色散彩边：镜片边上一红一蓝两道细圈，朝相反方向错开
+  local caR = round(fr(lensG, 6, BLACK, 1))
+  local caRs = ring(caR, 2, RGB(255, 90, 50), 0.55)
+  local caB = round(fr(lensG, 6, BLACK, 1))
+  local caBs = ring(caB, 2, RGB(70, 120, 255), 0.5)
+
+  -- 镜片外面：贴着镜片一圈羽化（OUT_F 圈，落在黑色的目镜圈上，圈和圈之间的接缝看不出来），再往外一圈特别粗的描边整片均匀压暗
+  --   （使命召唤那样；分好几级往外渐暗的话，天空上看得出一圈圈台阶）
+  local OUT_F = 7
+  local outer = {}
+  for i = 1, OUT_F + 1 do
+    local f = round(fr(root, 6, BLACK, 1))
+    f.Name = "ScopeOuter"
+    f.Visible = false
+    outer[i] = { f = f, s = ring(f, 1, BLACK, 1) }
+  end
+  -- 外面压多暗：{ 不透明度, 羽化带宽（屏高的比例） }
+  local OUTK = {
+    sniper = { 0.8, 0.04 },    -- 狙击镜：目镜圈、镜身压得很黑
+    acog = { 0.34, 0.045 },    -- ACOG：还看得清目镜圈、镜身和两边的战场
+    flat = { 0.95, 0.02 },     -- 没有 3D 镜身（第三人称、视图模型还没建好）：外面几乎全黑，像老式的镜筒
+  }
+
+  -- 望远镜：左右两个（各在半边屏幕的裁剪框里）
   local clipL = fr(root, 5, BLACK, 1)
   clipL.AnchorPoint, clipL.ClipsDescendants = V2(0, 0), true
   local clipR = fr(root, 5, BLACK, 1)
@@ -280,17 +322,11 @@ function Scope.init(G)
   local tintL = round(fr(clipL, 4, RGB(40, 34, 18), 0.94))   -- 望远镜的镀膜偏暖
   local tintR = round(fr(clipR, 4, RGB(40, 34, 18), 0.94))
 
-  -- 色散彩边：出瞳 A 边上一红一蓝两道细圈，朝相反方向错开
-  local caR = round(fr(root, 6, BLACK, 1))
-  local caRs = ring(caR, 2, RGB(255, 90, 50), 0.55)
-  local caB = round(fr(root, 6, BLACK, 1))
-  local caBs = ring(caB, 2, RGB(70, 120, 255), 0.5)
-
-  -- 开镜时黑一下
+  -- 望远镜开镜时黑一下
   local blackout = fr(root, 8, BLACK, 1)
   blackout.AnchorPoint, blackout.Size = V2(0, 0), UDim2.fromScale(1, 1)
 
-  -- 读数：狙击镜在出瞳右边的黑处写倍率、下面一条屏息条；望远镜在视野底部写距离 · 方位 · 倍率（琥珀色）
+  -- 读数：狙击镜在镜片左边的暗处写倍率、下面一条屏息条；望远镜在视野底部写距离 · 方位 · 倍率（琥珀色）
   local function txt(z, size, color)
     local l = Instance.new("TextLabel")
     l.AnchorPoint = V2(0.5, 0.5)
@@ -334,7 +370,7 @@ function Scope.init(G)
     zin, zout = zb("+"), zb("−")
   end
 
-  ---------------------------------------------------------------- 本地画面效果：开镜对焦的模糊、镜片调色
+  ---------------------------------------------------------------- 本地画面效果：变倍 / 望远镜对焦的模糊、镜片调色、近处镜身的景深
 
   local blur = Instance.new("BlurEffect")
   blur.Name = "ScopeFocus"
@@ -346,12 +382,22 @@ function Scope.init(G)
   cc.Contrast, cc.Saturation, cc.Brightness, cc.TintColor = 0.07, 0.08, 0.015, RGB(247, 251, 255)
   cc.Enabled = false
   cc.Parent = Lighting
+  -- 景深：3 格以内（镜头前的枪、镜身、目镜圈）糊掉，远处的战场（从目镜的洞里看到的）清楚
+  local dof = nil
+  pcall(function()
+    local d = Instance.new("DepthOfFieldEffect")
+    d.Name = "ScopeDOF"
+    d.FocusDistance, d.InFocusRadius, d.NearIntensity, d.FarIntensity = 40, 37, 0, 0
+    d.Enabled = false
+    d.Parent = Lighting
+    dof = d
+  end)
 
   ---------------------------------------------------------------- 状态
 
   local KINDS = {
-    sniper = { zooms = { 7, 10, 14, 20, 27, 35 }, sway = 0.0017, def = 10 },   -- 这具 ATACR 是 7–35 倍
-    acog = { zooms = { 3.5 }, sway = 0.0008, def = 3.5 },   -- 步枪上的 ACOG：固定 3.5 倍，倍率低、晃得少
+    sniper = { zooms = { 7, 10, 14, 20, 27, 35 }, sway = 0.0017, def = 10, k = 0.9 },   -- 这具 ATACR 是 7–35 倍；k 没有 3D 镜身时镜片占屏高
+    acog = { zooms = { 3.5 }, sway = 0.0008, def = 3.5, k = 0.56 },   -- 步枪上的 ACOG：定倍（3.5 / 6），倍率低、晃得少
     binoc = { zooms = { 4, 6, 8, 10 }, sway = 0.0011, def = 8 },
   }
   local S = {
@@ -359,6 +405,8 @@ function Scope.init(G)
     swayP = 0, swayY = 0, appP = 0, appY = 0, prev = nil, vs = V2(), blurK = 0, sens = nil, sendT = 0, sentDir = nil,
     lrfT = 0, phase = 0,
   }
+  -- 镜片那一层：x, y 圆心、r 半径（像素），f 淡入（0～1），lk 分划（"sniper" / "acog"），fp 有 3D 镜身（第一人称），fpT 上次报目镜位置的时刻
+  local L = { x = 0, y = 0, r = 0, f = 0, lk = nil, fp = false, fpT = -1, shown = false, rA = -1 }
   G.scopeOn = false
 
   local function kindOf(w)
@@ -396,40 +444,136 @@ function Scope.init(G)
     return Enum.ContextActionResult.Sink   -- 别让 Shift 去切 Roblox 的视角锁定
   end
 
-  local D, Db = 0, 0   -- 狙击镜出瞳直径、望远镜每个圆的直径（像素）
+  -- 开着镜（或者镜片那一层还在淡出）才开着这个界面、调色
+  local function refresh()
+    local on = S.kind ~= nil or L.shown
+    if gui.Enabled ~= on then gui.Enabled = on end
+    if cc.Enabled ~= on then cc.Enabled = on end
+  end
+
+  -- 镜片外面一圈圈压暗：圆心 (x, y)、镜片半径 r、淡入 f、prof = OUTK 的一种
+  local function layoutOuter(x, y, r, f, prof)
+    local vs = cam.ViewportSize
+    local a1 = prof[1]
+    local fw = math.max(4, prof[2] * vs.Y)
+    local far = 0   -- 圆心到最远的屏幕角
+    for _, c in ipairs({ V2(0, 0), V2(vs.X, 0), V2(0, vs.Y), V2(vs.X, vs.Y) }) do far = math.max(far, (c - V2(x, y)).Magnitude) end
+    local function put(i, r0, r1, a)   -- 第 i 圈：半径 r0～r1、不透明度 a（半径取整，圈和圈正好接上）
+      local o = outer[i]
+      local d0 = math.floor(r0 + 0.5)
+      sz(o.f, 2 * d0)
+      at(o.f, x, y)
+      o.s.Thickness = math.max(1, math.floor(r1 + 0.5) - d0)
+      o.s.Transparency = 1 - a * f
+    end
+    for k = 1, OUT_F do
+      local u = (k - 0.5) / OUT_F
+      put(k, r + fw * (k - 1) / OUT_F, r + fw * k / OUT_F, a1 * u * u * (3 - 2 * u))
+    end
+    put(OUT_F + 1, r + fw, math.max(far, r + fw) + 400, a1)   -- 一直盖到最远的屏幕角外面
+  end
+
+  local function hideLens()
+    if not L.shown then return end
+    L.shown = false
+    lensG.Visible = false
+    for _, o in ipairs(outer) do o.f.Visible = false end
+    if dof then dof.Enabled = false end
+  end
+
+  -- 镜片那一层摆到 L 记的位置（第一人称：FPSView 报的目镜；不然屏幕正中）
+  local function drawLens()
+    local f = L.f
+    if f <= 0.002 or L.r < 4 then
+      hideLens()
+      refresh()
+      return
+    end
+    local vs = cam.ViewportSize
+    local cx, cy = vs.X / 2, vs.Y / 2
+    local x, y = L.x, L.y
+    local r = math.floor(L.r + 0.5)
+    if not L.shown then
+      L.shown = true
+      lensG.Visible = true
+      for _, o in ipairs(outer) do o.f.Visible = true end
+    end
+    sz(lensG, 2 * r)
+    at(lensG, x, y)
+    if isCG then lensG.GroupTransparency = 1 - f end
+    local lk = L.lk
+    ret.Visible, acogRet.Visible = lk == "sniper", lk == "acog"
+    -- 分划在屏幕正中（子弹打这儿）：镜片晃的时候分划不跟着晃，偏多了就是眼盒没对正
+    local rx, ry = cx - x + r, cy - y + r
+    if lk == "acog" then
+      at(acogRet, rx, ry)
+      if L.rA ~= r then L.rA = r layoutAcog(2 * r) end
+    else
+      at(ret, rx, ry)
+      layoutFfp(0.001 * cy / math.tan(math.rad(cam.FieldOfView) / 2))   -- 第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001
+    end
+    -- 眼盒：目镜偏离屏幕中心（枪晃）+ 镜子相对眼睛的晃（S.eye：转得快、走路、开枪、刚贴上）；B 朝反方向错开
+    local ev = V2(x - cx, y - cy)
+    if S.kind then ev += S.eye end
+    local e = ev * ((lk == "sniper") and 1.8 or 1.25)
+    if e.Magnitude > 0.6 * r then e = e.Unit * 0.6 * r end
+    sizeAp(apB, 2 * r * 1.08)
+    at(apB.box, r - e.X, r - e.Y)
+    sizeAp(apA, 2 * r)
+    at(apA.box, r, r)
+    -- 色散：偏得越多彩边越宽
+    local m = ev.Magnitude
+    local off = (m > 0.5) and ev.Unit * math.min(m * 0.035, 3.5) or V2()
+    local ca = math.min(0.35, m / (2 * r) * 1.6)
+    local dc = 2 * r - 5
+    sz(caR, dc)
+    sz(caB, dc)
+    at(caR, r + off.X + 0.35, r + off.Y + 0.2)
+    at(caB, r - off.X - 0.35, r - off.Y - 0.2)
+    caRs.Transparency = 0.8 - ca
+    caBs.Transparency = 0.78 - ca
+    -- 镜片外面
+    layoutOuter(x, y, r, f, OUTK[L.fp and lk or "flat"])
+    -- 调色、景深跟着淡入
+    cc.Contrast, cc.Saturation, cc.Brightness = 0.07 * f, 0.08 * f, 0.015 * f
+    if dof then
+      dof.Enabled = L.fp
+      dof.NearIntensity = ((lk == "sniper") and 0.6 or 0.45) * f
+    end
+    refresh()
+  end
+
+  -- FPSView 每帧报目镜在屏幕上的位置（第一人称、拿着带瞄准镜的枪时）：举到一半开始淡入，举好时满
+  function G.scopeLensAt(x, y, r, ads, sniper)
+    local f = math.clamp((ads - 0.45) / 0.2, 0, 1)
+    L.x, L.y, L.r, L.f = x, y, r, f * f * (3 - 2 * f)
+    L.lk, L.fp, L.fpT = sniper and "sniper" or "acog", true, now()
+    drawLens()
+  end
+
+  local D0, Db = 0, 0   -- 没有 3D 镜身时镜片的直径、望远镜每个圆的直径（像素）
   local function layout(kind)
     local vs = cam.ViewportSize
     S.vs = vs
-    D = math.min(vs.X, vs.Y) * 0.96
+    D0 = math.min(vs.X, vs.Y) * (KINDS[kind].k or 0.9)
     Db = math.min(vs.Y * 0.86, vs.X * 0.5)
-    local Dr = (kind == "binoc") and Db * 1.1 or D
-    layoutRet(Dr, kind)
-    at(ret, vs.X / 2, vs.Y / 2)
-    sz(ret, 0)
-    ret.Visible = kind ~= "acog"
-    acogRet.Visible = kind == "acog"
-    if kind == "acog" then
-      layoutAcog(D)
-      at(acogRet, vs.X / 2, vs.Y / 2)
-      sz(acogRet, 0)
+    local binoc = kind == "binoc"
+    retB.Visible = binoc
+    if binoc then
+      layoutRet(Db * 1.1)
+      at(retB, vs.X / 2, vs.Y / 2)
+      sz(retB, 0)
     end
-    local big = kind ~= "binoc"
-    apA.box.Visible, apB.box.Visible, lens.Visible, caR.Visible, caB.Visible = big, big, big, big, big
-    clipL.Visible, clipR.Visible = not big, not big
+    clipL.Visible, clipR.Visible = binoc, binoc
     sizeAp(apL, Db)
     sizeAp(apR, Db)
     sz(tintL, Db)
     sz(tintR, Db)
-    zoomT.TextSize = math.max(14, math.floor(D / 48))
+    zoomT.TextSize = math.max(14, math.floor(vs.Y / 52))
     lrfT.TextSize = math.max(14, math.floor(Db / 40))
     zoomT.Visible, breathBg.Visible = kind == "sniper", kind == "sniper"   -- ACOG 是定倍的、也不用屏息
-    lrfT.Visible = not big
-    if zin then   -- 手机：变倍按钮在镜子左边（右边是开火键、小地图）
-      local bx = math.max(36, vs.X / 2 - Dr / 2 - 40)
-      zin.Visible, zout.Visible = kind ~= "acog", kind ~= "acog"
-      at(zin, bx, vs.Y / 2 - 78)
-      at(zout, bx, vs.Y / 2 - 24)
-    end
+    lrfT.Visible = binoc
+    if zin then zin.Visible, zout.Visible = kind ~= "acog", kind ~= "acog" end
   end
 
   local function sendState(on)
@@ -441,12 +585,13 @@ function Scope.init(G)
     S.t0 = now()
     G.scopeOn = true
     layout(kind)
-    S.eye = V2(0, (kind == "binoc" and Db or D) * 0.16)   -- 刚贴上目镜：出瞳从下面进来
+    local vs = cam.ViewportSize
+    S.eye = V2(0, (kind == "binoc") and Db * 0.16 or vs.Y * 0.035)   -- 刚贴上目镜：月牙从下面进来
     S.eyeV = V2()
     S.blurK = 0
     S.prev, S.lastP = nil, nil
-    gui.Enabled = true
-    blur.Enabled, cc.Enabled = true, true
+    blackout.Visible = kind == "binoc"
+    if kind == "binoc" then cc.Contrast, cc.Saturation, cc.Brightness = 0.07, 0.08, 0.015 end
     if G.mapRoot then G.mapRoot.Visible = false end   -- 开着镜不画小地图（手机上它会挡住半个目镜）
     if not S.sens then pcall(function() S.sens = UIS.MouseDeltaSensitivity end) end
     if kind ~= "acog" then   -- 步枪的 ACOG：Shift 留给别的（不屏息）；也不告诉服务器（人人端枪都闪镜片就没意思了，闪光只留给狙击镜、望远镜）
@@ -457,15 +602,19 @@ function Scope.init(G)
       sendState(true)
     end
     if G.playSound then G.playSound("quiet", nil, 1.1) end
+    refresh()
   end
 
   local function exit()
     local was = S.kind
     S.kind = nil
     G.scopeOn = false
-    gui.Enabled = false
-    blur.Enabled, cc.Enabled = false, false
+    blur.Enabled = false
     blur.Size = 0
+    clipL.Visible, clipR.Visible, retB.Visible, blackout.Visible = false, false, false, false
+    zoomT.Visible, breathBg.Visible, lrfT.Visible = false, false, false
+    if zin then zin.Visible, zout.Visible = false, false end
+    if not L.fp then L.f = 0 drawLens() end   -- 没有 3D 镜身的镜片一起收掉（第一人称的跟着举镜进度淡出）
     if G.mapRoot then G.mapRoot.Visible = true end
     S.hold = false
     if S.sens then
@@ -475,13 +624,14 @@ function Scope.init(G)
     end
     pcall(function() CAS:UnbindAction("ScopeHoldBreath") end)
     if was ~= "acog" then sendState(false) end
+    refresh()
   end
 
   function G.scopeFire()
     if not S.kind then return end
-    local d = (S.kind == "binoc") and Db or D
-    S.eyeV += V2((math.random() - 0.5) * 0.5 * d, 2.2 * d)   -- 后坐：镜子往后往上一跳，出瞳往下甩
-    S.blurK = math.max(S.blurK, 5)
+    local d = (S.kind == "binoc") and Db or math.max(40, 2 * L.r)
+    S.eyeV += V2((math.random() - 0.5) * 0.5 * d, 2.2 * d)   -- 后坐：镜子往后往上一跳，月牙从下面闪一下
+    if S.kind == "sniper" then S.blurK = math.max(S.blurK, 2.5) end
   end
 
   ---------------------------------------------------------------- 每帧（Play 调）
@@ -503,21 +653,33 @@ function Scope.init(G)
   rayP.FilterType = Enum.RaycastFilterType.Exclude
 
   function G.scopeStep(dt, on, w)
-    if on and G.fpsOpticPending and G.fpsOpticPending() then on = false end   -- 第一人称还在把真瞄准镜举到眼前：举到了再换成目镜里的像
+    if on and G.fpsOpticPending and G.fpsOpticPending() then on = false end   -- 第一人称还在把镜子举到眼前：举到了再算开着镜
     local kind = on and kindOf(w) or nil
     if kind ~= S.kind then
       if S.kind then exit() end
       if kind then enter(kind) end
     end
+    local t = now()
+    -- 第一人称不再报目镜位置（收枪、换枪、上车、死了）：镜片那一层收掉
+    if L.fp and L.shown and t - L.fpT > 0.15 then
+      L.f, L.fp = 0, false
+      drawLens()
+    end
     if not kind then return end
     dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
-    local t = now()
     local vs = cam.ViewportSize
     if vs ~= S.vs then layout(kind) end
     local K = KINDS[kind]
     local zoom = G.scopeZoom(w)
     local cx, cy = vs.X / 2, vs.Y / 2
-    local d = (kind == "binoc") and Db or D
+    local lensKind = kind == "sniper" or kind == "acog"
+    -- 没有 3D 镜身（第三人称、视图模型还没建好）：镜片摆在屏幕正中，开镜后 0.15 秒淡入
+    if lensKind and t - L.fpT > 0.15 then
+      L.x, L.y, L.r, L.lk, L.fp = cx, cy, D0 / 2, kind, false
+      L.f = math.clamp((t - S.t0) / 0.15, 0, 1)
+      drawLens()
+    end
+    local d = (kind == "binoc") and Db or math.max(40, 2 * L.r)
 
     -- 呼吸、屏息、走动 → 晃动幅度
     local ch = me.Character
@@ -548,9 +710,9 @@ function Scope.init(G)
     S.swayP = amp * (math.sin(tt * 0.21) + 0.9 * math.noise(t * 0.7, 3.1))
     S.swayY = amp * 0.7 * (math.sin(tt * 0.13 + 1.1) + 1.0 * math.noise(t * 0.6, 7.7))
 
-    -- 出瞳的偏移（弹簧）：镜头转得快 → 落后；走路一颠一颠；呼吸带一点
+    -- 镜子相对眼睛的偏移（弹簧）：镜头转得快 → 落后；走路一颠一颠；呼吸带一点（第一人称时枪本身也在晃，这里只补一点）
     S.phase += dt * spd * 0.55
-    local target = V2(-S.ang.X, S.ang.Y) * 0.05 * d
+    local target = V2(-S.ang.X, S.ang.Y) * ((kind == "binoc") and 0.05 or 0.025) * d
       + V2(math.sin(S.phase) * 0.045 * d * move, math.abs(math.cos(S.phase)) * 0.03 * d * move)
       + V2(S.swayY, -S.swayP) * 6 * d
     S.eyeV += ((target - S.eye) * 150 - S.eyeV * 19) * dt
@@ -558,57 +720,38 @@ function Scope.init(G)
     if S.eye.Magnitude > 0.24 * d then S.eye = S.eye.Unit * 0.24 * d end
     local eye = S.eye
 
-    -- 开镜动画：黑一下、出瞳由小变大、对焦
-    local k = math.clamp((t - S.t0) / 0.24, 0, 1)
-    local ease = 1 - (1 - k) ^ 3
-    local scale = 0.8 + 0.2 * ease
-    blackout.BackgroundTransparency = math.clamp((t - S.t0 - 0.04) / 0.13, 0, 1)
+    -- 模糊：变倍、狙击枪开枪时糊一下；望远镜开镜时先黑一下、出瞳由小变大、对焦
     S.blurK = math.max(0, S.blurK - dt * 22)
-    local focus = (1 - math.clamp((t - S.t0) / 0.34, 0, 1)) ^ 2 * 16
+    local focus = 0
+    if kind == "binoc" then
+      blackout.BackgroundTransparency = math.clamp((t - S.t0 - 0.04) / 0.13, 0, 1)
+      focus = (1 - math.clamp((t - S.t0) / 0.34, 0, 1)) ^ 2 * 16
+    end
     blur.Size = math.max(focus, S.blurK)
+    blur.Enabled = blur.Size > 0.05
     -- 鼠标灵敏度随倍率降（高倍时拖一下不会甩出去好远）
     if S.sens then
       local v = S.sens * (1 / zoom) ^ 0.85
       if UIS.MouseDeltaSensitivity ~= v then pcall(function() UIS.MouseDeltaSensitivity = v end) end
     end
 
-    if kind == "sniper" or kind == "acog" then
-      local DA = D * scale
-      local ax, ay = cx + eye.X, cy + eye.Y
-      sizeAp(apA, DA)
-      at(apA.box, ax, ay)
-      sizeAp(apB, DA * 1.06)
-      at(apB.box, cx - eye.X * 0.8, cy - eye.Y * 0.8)
-      at(lens, ax, ay)
-      sz(lens, DA)
-      -- 色散：偏得越多彩边越宽
-      local off = eye.Magnitude > 0.5 and eye.Unit * math.min(eye.Magnitude * 0.035, 3.5) or V2()
-      local ca = math.min(0.35, eye.Magnitude / d * 1.6)   -- 对正时几乎看不出，偏了才明显
-      local dc = DA - 5
-      sz(caR, dc)
-      sz(caB, dc)
-      at(caR, ax + off.X + 0.35, ay + off.Y + 0.2)
-      at(caB, ax - off.X - 0.35, ay - off.Y - 0.2)
-      caRs.Transparency = 0.8 - ca
-      caBs.Transparency = 0.78 - ca
+    if lensKind then
       if kind == "acog" then
-        -- 箭形照明：夜里亮（光纤 + 氚光），开着夜视仪调暗；分划跟着出瞳一起晃（第二焦平面，大小不变）
+        -- 箭形照明：夜里亮（光纤 + 氚光），开着夜视仪调暗
         local nv = G.nvgOn and G.nvgOn()
         for _, e in ipairs(acog) do
           if e.lit then e.f.BackgroundTransparency = nv and math.min(0.92, e.a0 + 0.45) or e.a0 end
         end
       else
-        -- 倍率、屏息条（出瞳左边的黑处；右下角是小地图）
-        local rx = math.max(40, cx - D / 2 - 46)
+        -- 倍率、屏息条（镜片左边的暗处；右下角是小地图）
+        local rx = math.max(40, L.x - L.r - 46)
         zoomT.Text = string.format("%.1f×", zoom)
-        at(zoomT, rx, cy + D * 0.3)
-        sz(breathBg, 3, math.floor(D * 0.12))
-        at(breathBg, rx, cy + D * 0.38)
+        at(zoomT, rx, L.y + L.r * 0.6)
+        sz(breathBg, 3, math.floor(L.r * 0.24))
+        at(breathBg, rx, L.y + L.r * 0.76)
         breathFill.Size = UDim2.new(1, 0, math.clamp(S.breath, 0, 1), 0)
         breathFill.BackgroundColor3 = (S.tired > 0) and RGB(220, 90, 70) or RGB(200, 206, 200)
         breathBg.BackgroundTransparency = (S.breath >= 1 and not S.hold) and 0.75 or 0.35
-        -- 分划按现在的视角摆（第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001）
-        layoutFfp(0.001 * (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView) / 2))
         -- 照明：夜里中心那段细十字和中心点发暗红光；开着夜视仪时画面本来就亮，照明调暗（不然一团光）
         local nv = G.nvgOn and G.nvgOn()
         if S.lit ~= (not nv) then
@@ -620,9 +763,20 @@ function Scope.init(G)
         dot.BackgroundTransparency = nv and 0.5 or 0.08
         glow.BackgroundTransparency = nv and 0.94 or 0.82
       end
+      if zin then   -- 手机：变倍按钮在镜片左边（右边是开火键、小地图）
+        local bx = math.max(36, L.x - L.r - 40)
+        at(zin, bx, cy - 78)
+        at(zout, bx, cy - 24)
+      end
+      -- 杂散光：月亮在镜片里时整块镜片泛白一点
+      local mo = moonOnScreen()
+      local inten = 0
+      if mo and L.r > 1 then inten = math.clamp(1 - (mo - V2(L.x, L.y)).Magnitude / L.r, 0, 1) ^ 1.5 end
+      tint.BackgroundTransparency = 0.93 - 0.05 * inten
     else
-      local s = Db * 0.84 * scale
-      local Dd = Db * scale
+      local k = math.clamp((t - S.t0) / 0.24, 0, 1)
+      local sc = 0.8 + 0.2 * (1 - (1 - k) ^ 3)   -- 出瞳由小变大
+      local s, Dd = Db * 0.84 * sc, Db * sc
       local split = math.floor(cx + eye.X + 0.5)
       clipL.Position, clipL.Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(split, vs.Y)
       clipR.Position, clipR.Size = UDim2.fromOffset(split, 0), UDim2.fromOffset(vs.X - split, vs.Y)
@@ -635,6 +789,11 @@ function Scope.init(G)
       at(tintL, lx, ly)
       at(apR.box, rxx, ly)
       at(tintR, rxx, ly)
+      if zin then
+        local bx = math.max(36, cx - Db * 0.55 - 40)
+        at(zin, bx, cy - 78)
+        at(zout, bx, cy - 24)
+      end
       -- 激光测距、方位（每 0.1 秒量一次）
       if t - S.lrfT > 0.1 then
         S.lrfT = t
@@ -648,16 +807,6 @@ function Scope.init(G)
       at(lrfT, cx, cy + Db * 0.36)
     end
 
-    -- 杂散光：月亮在视野里时整块镜片泛白一点
-    local m = moonOnScreen()
-    local center = V2(cx, cy)
-    local inten = 0
-    if m then
-      local r = (kind == "binoc") and Db * 0.95 or D * 0.5
-      inten = math.clamp(1 - (m - center).Magnitude / r, 0, 1) ^ 1.5
-    end
-    tint.BackgroundTransparency = 0.93 - 0.05 * inten   -- 对着亮处，整块镜片泛白一点（杂散光）
-
     -- 告诉服务器：开着镜、朝哪看（别人那边画镜片闪光；步枪的 ACOG 不发）
     if kind ~= "acog" and t - S.sendT > 0.25 then
       local look = cam.CFrame.LookVector
@@ -669,7 +818,7 @@ function Scope.init(G)
   end
 
   -- 晃动加在镜头上：在 Roblox 镜头更新之后（Camera + 1），只加这一帧的增量（镜头下一帧从当前朝向接着算，加总量会越转越偏）；
-  --   顺便量镜头转得多快（上一帧加完晃动之后 → 这一帧镜头更新完），给出瞳偏移用
+  --   顺便量镜头转得多快（上一帧加完晃动之后 → 这一帧镜头更新完），给眼盒阴影用
   RunService:BindToRenderStep("ScopeSway", Enum.RenderPriority.Camera.Value + 1, function(dt)
     if not S.kind then
       S.prev, S.appP, S.appY = nil, 0, 0

@@ -101,6 +101,21 @@ def main():
             k, v = a[3:].split('=', 1)
             VPIMG[k] = v
     items = json.load(open(sys.argv[1], encoding='utf-8'))
+    # SS=2（环境变量）：按 2 倍大画再缩回来，圆、描边有抗锯齿（Roblox 画的界面本来就是抗锯齿的；不然一圈挨一圈的描边之间露出漏缝）
+    global W, H
+    ss = int(__import__('os').environ.get('SS', '1'))
+    W0, H0 = W, H
+    if ss > 1:
+        W, H = W * ss, H * ss
+        for it in items:
+            for k in ('x', 'y', 'w', 'h', 'corner', 'stW', 'ts'):
+                if isinstance(it.get(k), (int, float)):
+                    it[k] = it[k] * ss
+            if it.get('clip'):
+                c = it['clip']
+                it['clip'] = [v * ss for v in c[:4]] + ([c[4] * ss] if len(c) > 4 else [])
+            if it.get('quad'):
+                it['quad'] = [[q[0] * ss, q[1] * ss] for q in it['quad']]
     out = sys.argv[2]
     if len(sys.argv) > 3 and sys.argv[3] != '-':
         bg = Image.open(sys.argv[3]).convert('RGBA').resize((W, H))
@@ -172,12 +187,24 @@ def main():
             # 字上的 UIStroke 在游戏里是贴着字形描一圈（这里当光晕画在字后面），不是方框
             textGlow = (rgb(it['st']), int(255 * (1 - (it.get('stT') or 0)) * ga), max(1, int(round(it.get('stW') or 1))))
         elif it.get('st') and (it.get('stT') or 0) < 0.99:
+            # Roblox 的 UIStroke（Border）往外描：框往外扩一个描边宽，圆角跟着加大
             a = int(255 * (1 - (it.get('stT') or 0)) * ga)
             sw = max(1, int(round(it.get('stW') or 1)))
-            if r > 0.5:
-                d.rounded_rectangle(box, radius=min(r, w / 2, h / 2), outline=rgb(it['st']) + (a,), width=sw)
-            else:
-                d.rectangle(box, outline=rgb(it['st']) + (a,), width=sw)
+            ob = [x - sw, y - sw, x + w + sw, y + h + sw]
+            ow, oh = w + 2 * sw, h + 2 * sw
+            sl = Image.new('RGBA', (W, H), (0, 0, 0, 0)) if it.get('stGrad') else None
+            dd = ImageDraw.Draw(sl) if sl is not None else d
+            if ob[2] - ob[0] > 0 and ob[3] - ob[1] > 0:
+                if r > 0.5:
+                    dd.rounded_rectangle(ob, radius=min(r + sw, ow / 2, oh / 2), outline=rgb(it['st']) + (a,), width=sw)
+                else:
+                    dd.rectangle(ob, outline=rgb(it['st']) + (a,), width=sw)
+            if sl is not None:   # 描边上的 UIGradient：按描边外框铺透明度渐变
+                m = grad_mask(ow, oh, it['stGrad'])
+                full = Image.new('L', (W, H), 0)
+                full.paste(m, (int(round(ob[0])), int(round(ob[1]))))
+                sl.putalpha(ImageChops.multiply(sl.getchannel('A'), full))
+                ov.alpha_composite(sl)
         t = it.get('text')
         if t and (it.get('tT') or 0) < 0.99:
             ts = it.get('ts') or 14
@@ -223,6 +250,8 @@ def main():
             al = ov.getchannel('A')
             ov.putalpha(ImageChops.multiply(al, m))
         img = Image.alpha_composite(img, ov)
+    if ss > 1:
+        img = img.resize((W0, H0), Image.LANCZOS)
     img.convert('RGB').save(out)
     print('写到', out, '元素', len(items))
 

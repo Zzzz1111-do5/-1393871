@@ -1167,6 +1167,7 @@ def("BloomEffect", "PostEffect", { Intensity = { T.number, 1 }, Size = { T.numbe
 def("ColorCorrectionEffect", "PostEffect", { Brightness = { T.number, 0 }, Contrast = { T.number, 0 }, Saturation = { T.number, 0 }, TintColor = { T.Color3, newC3(1, 1, 1) } })
 def("SunRaysEffect", "PostEffect", { Intensity = { T.number, 0.25 }, Spread = { T.number, 1 } })
 def("BlurEffect", "PostEffect", { Size = { T.number, 24 } })
+def("DepthOfFieldEffect", "PostEffect", { FarIntensity = { T.number, 0.75 }, FocusDistance = { T.number, 0.05 }, InFocusRadius = { T.number, 10 }, NearIntensity = { T.number, 0.75 } })   -- 开镜时近处的镜身糊掉（Scope.lua）
 def("ParticleEmitter", "Instance", {
   Enabled = { T.bool, true }, Rate = { T.number, 5 }, Lifetime = { T.NumberRange, NumberRange.new(5, 10) }, Speed = { T.NumberRange, NumberRange.new(5) },
   SpreadAngle = { T.Vector2, newV2(0, 0) }, Size = { T.NumberSequence, NumberSequence.new(1) }, Transparency = { T.NumberSequence, NumberSequence.new(0) },

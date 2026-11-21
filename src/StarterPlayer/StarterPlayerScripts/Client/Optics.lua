@@ -55,6 +55,9 @@ function Optics.init(G)
     if not f then return nil end
     local n = f:GetAttribute("N")   -- 块还没全复制过来：先当没导入（不然拿到缺块的枪）
     if n and #f:GetChildren() < n then return nil end
+    for name in pairs(META[key].parts) do   -- 元数据里的块缺了（瞄准镜拆出镜筒里面的块以后没重新导入）：用现生成的
+      if not f:FindFirstChild("O_" .. key .. "__" .. name) then return nil end
+    end
     local list = {}
     for name, info in pairs(META[key].parts) do
       local src = f:FindFirstChild("O_" .. key .. "__" .. name)
@@ -140,6 +143,16 @@ function Optics.init(G)
       end
     end)
   end
+
+  -- 镜筒里面的块（OpticsMeta 的 inner：内壁、镜片、分划板）——第一人称开镜时藏起来，从目镜的洞里直接看放大的画面（使命召唤那样）
+  local innerSet = {}
+  for key, M in pairs(META) do
+    if type(M.inner) == "table" then
+      innerSet[key] = {}
+      for _, n in ipairs(M.inner) do innerSet[key][n] = true end
+    end
+  end
+  function G.opticInner(key, name) return innerSet[key] ~= nil and innerSet[key][name] == true end
 
   -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
   function G.opticFailed(key) return failed[key] == true end

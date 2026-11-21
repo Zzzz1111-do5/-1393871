@@ -1,4 +1,6 @@
 -- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5]
+--   kind=ads：步兵开镜（第一人称，M4 + ACOG；[gun=sniper] 狙击枪、[build=改枪码] 换瞄具）——看 Scope.lua 的镜片那一层（用户 11-21：瞄准镜照使命召唤做）；
+--     tools/weapons/gunrender.mjs ads=… 拍同一个开镜画面的 3D 背景，hud_render.py 叠上去
 --   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
 --     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像；
 --     [roll=25]：带坡度；[clean=1]：截图前收起新手卡、作战简报
@@ -24,9 +26,11 @@ me:SetAttribute("Side", mySide)
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", mySide == "def" and "camp" or "fleet")
-R.run(3)
-check(P.alive, "守方在营地出生")
+if kind ~= "ads" then   -- 开镜那种：先存好改枪方案再出击（下面）
+  T.act("deploy", "rifle", mySide == "def" and "camp" or "fleet")
+  R.run(3)
+  check(P.alive, "守方在营地出生")
+end
 if not TEST_ARGS:find("prep", 1, true) then T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10) end
 
 if kind == "jet" or kind == "heli" then
@@ -110,7 +114,31 @@ if kind == "jet" or kind == "heli" then
   end
 end
 
-if kind == "gunsmith" then
+if kind == "ads" then
+  -- 开镜：等真 M4、瞄具生成好，按住右键一秒多（举好镜子），再截界面
+  local GMx = R.require(R.services.ReplicatedStorage:FindFirstChild("GunMods"))
+  local bs = TEST_ARGS:match("build=(%S+)")
+  if bs then R.as("server", function() G.ACT.gunBuild(P, "m4", GMx.decode(bs)) end) end   -- 照改枪界面「完成」那样存到服务器
+  local gun = TEST_ARGS:match("gun=(%a+)") or "m4"
+  T.actAs(me, "deploy", { primary = gun, gadget = "medkit", throw = "grenade" }, mySide == "def" and "camp" or "fleet")
+  R.run(2.5)
+  check(P.alive, "出生了（" .. gun .. (bs and ("，" .. bs) or "") .. "）")
+  T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
+  T.runUntil(function()
+    local v = C.fps
+    return v ~= nil and v.optic ~= nil and v.items[1] ~= nil and v.items[1][1].ClassName == "MeshPart"
+  end, 40)
+  R.run(1)
+  T.mouse(true, nil, nil, Enum.UserInputType.MouseButton2)
+  R.run(tonumber(TEST_ARGS:match("hold=([%d%.]+)") or "") or 1.4)
+  local camA = R.workspace.CurrentCamera
+  print(string.format("开镜：视角 %.2f°，镜片那一层 %s", camA.FieldOfView, tostring(me.PlayerGui:FindFirstChild("Scope") and me.PlayerGui.Scope.Enabled)))
+  local lens = me.PlayerGui:FindFirstChild("Scope") and me.PlayerGui.Scope:FindFirstChild("ScopeLens", true)
+  if lens then print(string.format("镜片：圆心 (%.1f, %.1f)，直径 %d", lens.Position.X.Offset, lens.Position.Y.Offset, lens.Size.X.Offset)) end
+  for _, d in ipairs(me.PlayerGui:GetDescendants()) do   -- 只看镜子：别的界面（弹药、小地图、提示）藏起来
+    if d.ClassName == "ScreenGui" and d.Name ~= "Scope" then d.Enabled = false end
+  end
+elseif kind == "gunsmith" then
   -- 改枪界面：打开、点「瞄具」、鼠标停在全息瞄具的卡片上（预览）；镜头参数写进 <out>.cam.json（tools/weapons/gunrender.mjs 照它拍枪，贴进视口）
   R.as("client", function() C.openGunsmith(TEST_ARGS:match("gun=(%w+)") or "m4") end)
   for _ = 1, 40 do R.run(0.25) end
@@ -143,7 +171,7 @@ if kind == "gunsmith" then
     end)(), ","), table.concat(parts, ",")))
     f:close()
   end
-elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" then
+elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" and kind ~= "ads" then
   local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
   local list = G.Config.Vehicles[mySide][kind] or G.Config.Vehicles[mySide].tank
   local foeSide = mySide == "def" and "atk" or "def"
@@ -252,7 +280,17 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
       x = x, y = y, w = w, h = h, rot = c.Rotation or 0,
       bg = c3(c.BackgroundColor3), bgT = c.BackgroundTransparency, }
     if corner then rec.corner = corner.CornerRadius.Scale * math.min(w, h) + corner.CornerRadius.Offset * sc end
-    if stroke and stroke._p.Enabled ~= false then rec.st = c3(stroke.Color) rec.stT = stroke.Transparency rec.stW = stroke.Thickness end
+    if stroke and stroke._p.Enabled ~= false then
+      rec.st = c3(stroke.Color) rec.stT = stroke.Transparency rec.stW = stroke.Thickness
+      local sg = stroke:FindFirstChildOfClass("UIGradient")
+      if sg then
+        pcall(function()
+          local kp = {}
+          for _, k in ipairs(sg.Transparency.Keypoints) do kp[#kp + 1] = { k.Time, k.Value } end
+          rec.stGrad = { rot = sg.Rotation or 0, kp = kp }
+        end)
+      end
+    end
     if c._cls == "TextLabel" or c._cls == "TextButton" or c._cls == "TextBox" then
       rec.text, rec.tc, rec.tT, rec.ts = c.Text, c3(c.TextColor3), c.TextTransparency, (c.TextSize or 14) * sc
       rec.scaled = c.TextScaled

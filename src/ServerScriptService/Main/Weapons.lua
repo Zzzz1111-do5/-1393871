@@ -51,12 +51,22 @@ function Weapons.init(G)
   -- 真模型（Studio 里导入了 models/optics/<键>.glb，Imports.lua 收进 Imported.Optics.<键>）：块按「握把坐标」（GearDefs）装到把手上——
   --   握把在把手处，工具的枪口朝 −Z、器材坐标朝 +Z：转 180°
   local FLIP = CFrame.Angles(0, math.pi, 0)
+  -- 导入的原模型块齐不齐（元数据里的块都在）：瞄准镜拆出镜筒里面的块以后（11-21），没重新导入的旧模型块名对不上，
+  --   照旧的整块按新的中心摆会歪——当没导入（零件拼的 / 客户端现生成的）
+  local function importOk(f, M)
+    if not f or not M then return false end
+    for name in pairs(M.parts) do
+      if not f:FindFirstChild("O_" .. f.Name .. "__" .. name) then return false end
+    end
+    return true
+  end
+  G.opticImportOk = importOk
   local function attachReal(tool, h, key, base, prefix)
     local imp = RS:FindFirstChild("Imported")
     local f = imp and imp:FindFirstChild("Optics")
     f = f and f:FindFirstChild(key)
     local M = OM and OM[key]
-    if not f or not M then return 0 end
+    if not f or not M or not importOk(f, M) then return 0 end
     local n = 0
     for _, src in ipairs(f:GetChildren()) do
       local name = string.match(src.Name, "__(.+)$")
@@ -126,7 +136,7 @@ function Weapons.init(G)
         local opt = imp and imp:FindFirstChild("Optics")
         opt = opt and opt:FindFirstChild("atacr")
         local real = false
-        if opt and OM and OM.atacr then
+        if opt and OM and OM.atacr and importOk(opt, OM.atacr) then
           for _, src in ipairs(opt:GetChildren()) do
             local name = string.match(src.Name, "__(.+)$")
             local info = name and OM.atacr.parts[name]
@@ -154,7 +164,7 @@ function Weapons.init(G)
         opt = opt and opt:FindFirstChild("acog")
         local base = CF(0, 0.65, -0.5) * CFrame.Angles(0, math.pi, 0)   -- 镜座底面贴导轨顶面；器材 +Z 朝前、工具 −Z 朝前：转 180°
         local real = false
-        if opt and OM and OM.acog then
+        if opt and OM and OM.acog and importOk(opt, OM.acog) then
           for _, src in ipairs(opt:GetChildren()) do
             local name = string.match(src.Name, "__(.+)$")
             local info = name and OM.acog.parts[name]

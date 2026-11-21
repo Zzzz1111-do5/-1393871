@@ -18,6 +18,7 @@ const server = http.createServer((req, res) => {
   const u = decodeURIComponent(req.url.split('?')[0]);
   let f = null;
   if (u === '/' || u === '/render.html') f = path.join(HERE, 'gunrender.html');
+  else if (u === '/ads.html') f = path.join(HERE, 'adsrender.html');
   else if (u.startsWith('/three/')) f = path.join(threeDir, u.slice('/three/'.length));
   else if (u.startsWith('/models/')) f = path.join(ROOT, 'models', path.normalize(u.slice('/models/'.length)).replace(/^(\.\.[/\\])+/, ''));
   if (!f || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
@@ -31,6 +32,21 @@ page.on('pageerror', e => console.error('页面出错：', e.message));
 await page.goto(`http://127.0.0.1:${server.address().port}/render.html`);
 await page.waitForFunction(() => window.ready === true, null, { timeout: 60000 });
 const D = JSON.parse(fs.readFileSync(mountJson, 'utf8'));
+// 开镜画面核对：ads=<JSON 选项>（每套配件拍一张：hideInner 藏镜筒里面的块、overlay 叠 2D 层、K 目镜占屏高、zoom 倍率）
+const adsArg = process.argv.find(a => a.startsWith('ads='));
+if (adsArg) {
+  const opts = JSON.parse(adsArg.slice(4));
+  await page.goto(`http://127.0.0.1:${server.address().port}/ads.html`);
+  await page.waitForFunction(() => window.ready === true, null, { timeout: 60000 });
+  for (let i = 0; i < D.builds.length; i++) {
+    const png = await page.evaluate(([d, i, o]) => window.renderAds(d, i, o), [D, i, opts]);
+    fs.writeFileSync(path.join(outDir, `${D.builds[i].name}_ads${opts.tag || ''}.png`), Buffer.from(png.split(',')[1], 'base64'));
+    console.log(D.builds[i].name);
+  }
+  await browser.close();
+  server.close();
+  process.exit(0);
+}
 const camArg = process.argv.find(a => a.startsWith('cam='));
 if (camArg) {   // 照改枪界面的镜头拍一张（透明底）：cam=<cam.json> [size=宽x高]
   const cam = JSON.parse(fs.readFileSync(camArg.slice(4), 'utf8'));

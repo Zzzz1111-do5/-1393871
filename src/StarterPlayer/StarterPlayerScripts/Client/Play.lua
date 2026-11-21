@@ -604,7 +604,17 @@ function Play.init(G)
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
     G.scopeVisible = G.scopeVisible or function() return scope.Visible end
     if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
-    cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
+    -- 第一人称的瞄准镜（使命召唤那样）：倍率跟着举镜进度放大——枪举到一半以后才开始拉近，镜子贴到眼前时正好放大到位
+    --   （视角收窄得太早，还没举到眼前的枪和手会被放大得很怪）；松开右键照样跟着慢慢退回来
+    local sw = cur.id and W[cur.id]
+    if fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
+      local Z = G.scopeZoom and G.scopeZoom(sw) or sw.scope
+      local e = math.clamp((G.fpsAds() - 0.35) / 0.6, 0, 1)
+      e = e * e * (3 - 2 * e)
+      cam.FieldOfView = baseFov / (1 + (Z - 1) * e)
+    else
+      cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
+    end
     -- 连发
     if cur.firing and armed and w and (w.auto or w.kind == "repair") then tryFire(false) end
     -- 防空导弹锁定：右键按住对准

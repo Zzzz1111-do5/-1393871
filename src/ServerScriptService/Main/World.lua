@@ -1340,28 +1340,28 @@ function World.fleet(f)
       m:SetAttribute("Kind", s.kind)
       m.Parent = f
       table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
-      continue
+    else   -- 别的舰：拼的船体（不用 continue：测试台的 Lua 5.4 没有）
+      part(m, V(D.W, D.H, D.L), base * CF(0, D.deck - D.H / 2 - 1, 0), D.color, MAT.Metal, nil, true)   -- 船体（往下伸进水里）
+      wedge(m, V(D.W, D.H, 40), base * CF(0, D.deck - D.H / 2 - 1, -D.L / 2 - 20) * CFrame.Angles(0, math.pi, 0), D.color, MAT.Metal, true)   -- 船头
+      local deck = part(m, V(D.W + 4, 1.5, D.L), base * CF(0, D.deck - 0.25, 0), C.deck, MAT.Asphalt, nil, true)
+      deck.Name = "Deck"
+      for k = -D.L / 2 + 30, D.L / 2 - 30, 40 do part(m, V(1, 0.1, 16), base * CF(0, D.deck + 0.6, k), C.yellow) end
+      local ix = D.W / 2 - 16
+      local iz = D.L * (D.island[1] - 0.5) + D.L * 0.3
+      part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, iz), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
+      -- 航行灯（照船舶避碰规则的位置）：桅杆顶白灯、舰岛左右两侧红 / 绿舷灯、舰尾白灯；舰岛上往甲板照的探照灯
+      part(m, V(1, 14, 1), base * CF(ix, D.deck + 43, iz), RGB(90, 94, 98), MAT.Metal)
+      light(m, (base * CF(ix, D.deck + 50.5, iz)).Position, RGB(255, 250, 236), 0.9, 18, 1.4, nil, 4)
+      light(m, (base * CF(ix - 9.4, D.deck + 30, iz - 6)).Position, RGB(255, 50, 40), 0.8, 14, 1.4, nil, 4)
+      light(m, (base * CF(ix + 9.4, D.deck + 30, iz - 6)).Position, RGB(60, 255, 120), 0.8, 14, 1.4, nil, 4)
+      light(m, (base * CF(0, D.deck - 2, D.L / 2 + 0.6)).Position, RGB(255, 250, 236), 0.8, 14, 1.2, nil, 4)
+      for _, dz in ipairs({ -D.L * 0.12, D.L * 0.12 }) do
+        light(m, (base * CF(ix - 9.6, D.deck + 22, iz + dz)).Position, RGB(255, 214, 160), 1.1, 140, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
+      end
+      m:SetAttribute("Kind", s.kind)
+      m.Parent = f
+      table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
     end
-    part(m, V(D.W, D.H, D.L), base * CF(0, D.deck - D.H / 2 - 1, 0), D.color, MAT.Metal, nil, true)   -- 船体（往下伸进水里）
-    wedge(m, V(D.W, D.H, 40), base * CF(0, D.deck - D.H / 2 - 1, -D.L / 2 - 20) * CFrame.Angles(0, math.pi, 0), D.color, MAT.Metal, true)   -- 船头
-    local deck = part(m, V(D.W + 4, 1.5, D.L), base * CF(0, D.deck - 0.25, 0), C.deck, MAT.Asphalt, nil, true)
-    deck.Name = "Deck"
-    for k = -D.L / 2 + 30, D.L / 2 - 30, 40 do part(m, V(1, 0.1, 16), base * CF(0, D.deck + 0.6, k), C.yellow) end
-    local ix = D.W / 2 - 16
-    local iz = D.L * (D.island[1] - 0.5) + D.L * 0.3
-    part(m, V(18, 36, D.L * 0.16), base * CF(ix, D.deck + 18, iz), RGB(108, 114, 118), MAT.Metal, nil, true)   -- 舰岛
-    -- 航行灯（照船舶避碰规则的位置）：桅杆顶白灯、舰岛左右两侧红 / 绿舷灯、舰尾白灯；舰岛上往甲板照的探照灯
-    part(m, V(1, 14, 1), base * CF(ix, D.deck + 43, iz), RGB(90, 94, 98), MAT.Metal)
-    light(m, (base * CF(ix, D.deck + 50.5, iz)).Position, RGB(255, 250, 236), 0.9, 18, 1.4, nil, 4)
-    light(m, (base * CF(ix - 9.4, D.deck + 30, iz - 6)).Position, RGB(255, 50, 40), 0.8, 14, 1.4, nil, 4)
-    light(m, (base * CF(ix + 9.4, D.deck + 30, iz - 6)).Position, RGB(60, 255, 120), 0.8, 14, 1.4, nil, 4)
-    light(m, (base * CF(0, D.deck - 2, D.L / 2 + 0.6)).Position, RGB(255, 250, 236), 0.8, 14, 1.2, nil, 4)
-    for _, dz in ipairs({ -D.L * 0.12, D.L * 0.12 }) do
-      light(m, (base * CF(ix - 9.6, D.deck + 22, iz + dz)).Position, RGB(255, 214, 160), 1.1, 140, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
-    end
-    m:SetAttribute("Kind", s.kind)
-    m.Parent = f
-    table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
   end
   return decks
 end

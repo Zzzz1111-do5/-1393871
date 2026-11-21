@@ -37,9 +37,12 @@ GM.ITEM = {
     glass = { Body2 = 0.86 }, eye = { 0.037, 0.153, -0.191, 0.069 }, obj = { 0.037, 0.153, 0.192, 0.071 } },
   opt_holo = { slot = "optic", model = "opt_holo", zoom = 1.5, dot = "holo", adsD = 0.45, st = { hand = -2, stab = 2, hip = 3 },
     glass = { Body2 = 0.86, Body4 = 1 } },
-  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", st = { hand = -7, stab = 4 } },
-  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", st = { hand = -12, stab = 6, mob = -1 },
-    eye = { 0, 0.129, -0.27, 0.03 }, obj = { 0, 0.129, 0.205, 0.064 } },   -- 目镜 / 物镜（器材坐标、半径）：原模型没分出镜片，按镜筒量的
+  --   lensK：开镜时目镜（正圆的洞）在屏幕上占高度的几成——使命召唤那样外面围着一圈目镜、镜身（两具 ACOG 的原模型目镜是八边形的，
+  --     tools/weapons/optics.json 的 ring 补了正圆的目镜圈罩住；目镜 / 物镜的位置、洞的半径在 OpticsMeta 里）
+  --   镜片（glass）半透明：腰射、举镜时从后面看得穿（开镜时整块藏掉，从目镜的洞里直接看放大的画面）
+  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", lensK = 0.5, st = { hand = -7, stab = 4 }, glass = { GlassIn = 0.62 } },
+  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", lensK = 0.55, st = { hand = -12, stab = 6, mob = -1 },
+    glass = { C9ab = 0.62, C9abIn = 0.62 } },
   -- 前握把
   grip_none = { slot = "grip" },
   grip_rvg = { slot = "grip", model = "grip_rvg", st = { vrec = 8, stab = 5, hand = -3 } },

@@ -52,7 +52,7 @@ function Gunsmith.init(G)
     if id == "m4" then
       local magIt = GM.ITEM[b.mag]
       local customMag = magIt and magIt.model and G.opticReady and G.opticReady(magIt.model)
-      local base = G.m4Model and G.m4Model(customMag)
+      local base = G.m4Model and G.m4Model(customMag, b.optic ~= "iron")   -- 装了瞄具：机械瞄具折下去（同第一人称）
       if not base then return nil, { "m4" }, anchors end
       for _, p in ipairs(base:GetChildren()) do p.Parent = m end
       base:Destroy()
