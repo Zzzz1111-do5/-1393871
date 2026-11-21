@@ -271,18 +271,35 @@ if heli then   -- 直升机：头跟着镜头方向（鼠标转的就是它，�
   fst.camYaw, fst.camPitch = math.atan2(-lk3.X, -lk3.Z), 0
   R.run(0.5)
 else
-  -- 用户 11-21：飞机改成 WASD 飞、没有准心——头看前方（航迹），鼠标不转头；按住 Alt 动鼠标转头，松开回到前方
+  -- 用户 11-21：飞机 WASD 飞、没有准心——头看前方（航迹）；用户 11-21（晚）：飞机要允许用鼠标转视角——
+  --   不按 Alt 动鼠标头就转、停在那里；鼠标 2.5 秒不动回到前方；C 立刻回正；按住 Alt 照旧能转头（对准屏幕边的按键），松开回到前方
   local function offFwd() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.vdir or fst.cf.LookVector))))) end
   for _ = 1, 15 do
     R.mouseDelta = R.Vector2.new(-40, 0)
     R.run(1 / 30)
   end
-  check(offFwd() < 12, string.format("不按 Alt 动鼠标：头不转，看着前方（偏 %.1f°）", offFwd()))
+  R.mouseDelta = R.Vector2.new(0, 0)
+  check(offFwd() > 15, string.format("不按 Alt 动鼠标：头转开了（离前方 %.0f°）", offFwd()))
+  R.run(1.2)
+  check(offFwd() > 15, string.format("鼠标停 1.2 秒：头还看着那边（离前方 %.0f°）", offFwd()))
+  R.run(4.5)
+  check(offFwd() < 12, string.format("鼠标停 2.5 秒以上：头回到前方（差 %.1f°）", offFwd()))
+  for _ = 1, 15 do
+    R.mouseDelta = R.Vector2.new(-40, 0)
+    R.run(1 / 30)
+  end
+  R.mouseDelta = R.Vector2.new(0, 0)
+  T.key(Enum.KeyCode.C, true)
+  R.run(1 / 30)
+  T.key(Enum.KeyCode.C, false)
+  R.run(0.6)
+  check(offFwd() < 12, string.format("按 C：头立刻回到前方（差 %.1f°）", offFwd()))
   T.key(Enum.KeyCode.LeftAlt, true)
   for _ = 1, 15 do
     R.mouseDelta = R.Vector2.new(-40, 25)
     R.run(1 / 30)
   end
+  R.mouseDelta = R.Vector2.new(0, 0)
   local diff2 = offFwd()
   check(diff2 > 15, string.format("按住 Alt 动鼠标：头转开了（离前方 %.0f°、相对机头 %.0f°）", diff2, relYaw(cam.CFrame.LookVector)))
   T.key(Enum.KeyCode.LeftAlt, false)

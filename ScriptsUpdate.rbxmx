@@ -4338,8 +4338,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 按住 Alt 鼠标自由看 · 左键 机炮（打机头标记那里）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold Alt to look around · LMB gun (fires at the nose marker) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -28260,6 +28260,8 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
       local lk = (not st.ground and st.vdir) or st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
+    elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then   -- 有人开的固定翼：视角立刻回到身后（座舱里回到正前方）
+      st.lookYaw, st.lookPitch, st.lookT = 0, 0, 0
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -28577,10 +28579,13 @@ function Fly.init(G)
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
       if d.kind == "jet" and not G.mobile and not pitLook then
         if st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；按住 Alt 自由看（镜头绕着飞机转，松开回到身后）
-          if key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt) then
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
+          --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
+          --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
+          if md.X ~= 0 or md.Y ~= 0 then
             st.lookYaw = clamp((st.lookYaw or 0) - md.X * SENS, -2.8, 2.8)
             st.lookPitch = clamp((st.lookPitch or 0) - md.Y * SENS, -1.2, 1.2)
+            st.lookT = os.clock()
           end
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
@@ -28669,10 +28674,11 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
-      -- 按住 Alt 自由看：镜头绕着飞机转到鼠标拨到的方向；松开慢慢回到身后
-      if not (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) or st.uav then
-        st.lookYaw = (st.lookYaw or 0) * math.exp(-dt * 5)
-        st.lookPitch = (st.lookPitch or 0) * math.exp(-dt * 5)
+      -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
+      if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
+        local kk = math.exp(-dt * (st.uav and 5 or 2.2))
+        st.lookYaw = (st.lookYaw or 0) * kk
+        st.lookPitch = (st.lookPitch or 0) * kk
       end
       if math.abs(st.lookYaw or 0) + math.abs(st.lookPitch or 0) > 1e-3 then
         fwd = CFrame.fromAxisAngle(upC, st.lookYaw):VectorToWorldSpace(fwd)
@@ -36165,8 +36171,13 @@ function Interior.init(G)
           aim = (ANG(0, (st.aimYaw or 0) + fy, 0) * ANG(clamp((st.aimPitch or 0) + fp, -1.5, 1.5), 0, 0)).LookVector
         else aim = (ANG(0, st.camYaw or 0, 0) * ANG(st.camPitch or 0, 0, 0)).LookVector end
         local l = base:VectorToObjectSpace(aim)
-        local yw = clamp(math.atan2(-l.X, -l.Z), -rad(sp.yaw or 150), rad(sp.yaw or 150))
-        local pt = clamp(math.asin(clamp(l.Y, -1, 1)), -rad(sp.down or 60), rad(sp.up or 80))
+        local yw, pt = math.atan2(-l.X, -l.Z), math.asin(clamp(l.Y, -1, 1))
+        if st.d.kind == "jet" and st.pilot and not st.uav then   -- 鼠标转头（用户 11-21：飞机要能用鼠标转视角；用 Fly.lua 的 lookYaw / lookPitch，跟车外镜头同一套）
+          yw += st.lookYaw or 0
+          pt += st.lookPitch or 0
+        end
+        yw = clamp(yw, -rad(sp.yaw or 150), rad(sp.yaw or 150))
+        pt = clamp(pt, -rad(sp.down or 60), rad(sp.up or 80))
         look.yaw += (yw - look.yaw) * math.min(1, dt * 9)
         look.pitch += (pt - look.pitch) * math.min(1, dt * 9)
         local acc = st.accV and base:VectorToObjectSpace(st.accV) / (9.81 * S) or V()
@@ -36202,8 +36213,8 @@ function Interior.init(G)
     stepKeys(c)
     stepGlare()
     hint.Visible = not hideUI
-    hint.Text = T("V 出座舱 · 头跟着鼠标瞄准转、按住 Alt 自由看 · 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
-      "V exit cockpit · head follows mouse aim, hold Alt to look around · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
+    hint.Text = T("V 出座舱 · 鼠标转头看（停 2.5 秒回正、C 立刻回正）· 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
+      "V exit cockpit · mouse turns your head (recenters after 2.5 s, C at once) · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
   end
 
   ---------------------------------------------------------------- 按键
@@ -37616,9 +37627,15 @@ function Defs.jet(b, ctx, L)
     or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
   local disp = L.disp or "pano"
   if disp == "pano" then
+    -- 一整块大屏；大屏上面的小辅助屏按型号（用户 11-21：去网上找现实中对应的型号对一对）：
+    --   歼-20 一块大触摸屏 + 三块小辅助屏 + 广角全息平显；F-35 是一整块 20×8 英寸的屏、上沿一条功能键带，没有单独的小屏、也没有平显；歼-35 / 歼-50 照旧两块
     b:screen(H, 0.50, 0.21, look(V(0, -0.44, -0.735)), "pano", { keys = K, lightK = 0.45, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.10, 0.07, look(V(-0.21, -0.27, -0.71)), "ufd", { lightK = 0.2 })
-    b:screen(H, 0.10, 0.07, look(V(0.21, -0.27, -0.71)), "ufd2", { lightK = 0.2 })
+    local nu = L.ufd or 2
+    if nu >= 2 then
+      b:screen(H, 0.10, 0.07, look(V(-0.21, -0.27, -0.71)), "ufd", { lightK = 0.2 })
+      b:screen(H, 0.10, 0.07, look(V(0.21, -0.27, -0.71)), "ufd2", { lightK = 0.2 })
+    end
+    if nu >= 3 then b:screen(H, 0.10, 0.07, look(V(0, -0.27, -0.70)), "ufd3", { lightK = 0.2 }) end
   elseif disp == "f22" then
     b:screen(H, 0.20, 0.20, look(V(0, -0.45, -0.74)), "mfd_sa", { keys = K, lightK = 0.4 })
     b:screen(H, 0.15, 0.15, look(V(-0.24, -0.47, -0.72)), "mfd_pfd", { keys = K, lightK = 0.3 })
@@ -37752,12 +37769,12 @@ function Defs.jet(b, ctx, L)
   return { air = true, stations = stations, order = order, crew = crew, cn = cn, glass = glass }
 end
 
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "center", cn = true }) end
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", ufd = 3, hud = true, stick = "center", cn = true }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
 Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { disp = "mfd4", hud = true, stick = "center", seats = 2, frame = true, cn = true }) end
 Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { disp = "mfd4", hud = true, stick = "center", frame = true, cn = true }) end
-Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = false, stick = "side" }) end
+Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", ufd = 0, hud = false, stick = "side" }) end
 Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, stick = "side" }) end
 Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true, stick = "center", frame = true }) end
 
@@ -37885,13 +37902,12 @@ function Defs.side(b, ctx, L)
       mfd(x, -0.46, 0.20, 0.15, page, true)
     end
     mfd(cx, -0.50, 0.12, 0.10, "mfd_eng", false)
-  elseif disp == "h6k" then   -- 每座三块（姿态 / 导航 / 武器）+ 中间发动机
+  elseif disp == "h6k" then   -- 每座三块（姿态 / 导航 / 武器），一共六块数字多功能显示器（人民日报 2016 年的报道；原来中间多一块发动机屏）
     for _, base in ipairs({ 0, ox }) do
       for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms" }) do
         mfd(base + (j - 2) * 0.17, -0.47, 0.15, 0.15, page, j ~= 3)
       end
     end
-    mfd(cx, -0.60, 0.12, 0.12, "mfd_eng", false)
   else   -- b2：每人 2×2 四块
     for _, base in ipairs({ 0, ox }) do
       for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms", "mfd_eng" }) do
@@ -38337,10 +38353,13 @@ function B:screen(g, w, h, cf, page, opt)
   local bez = opt.bezel or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
-  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.Glass)
+  -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
+  --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
+  --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度
+  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.SmoothPlastic)
   face.CastShadow = false
-  face.Reflectance = 0.04
-  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.6)
+  face.Reflectance = 0
+  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.0)
   local root = Instance.new("Frame")
   root.Name = "Page"
   root.Size = UDim2.fromScale(1, 1)
@@ -39962,6 +39981,19 @@ local function ufd(second)
   end
 end
 P.ufd, P.ufd2 = ufd(false), ufd(true)
+-- 第三块小辅助屏（歼-20：一块大屏 + 三块小屏）：马赫数、攻角、高度、垂直速度
+P.ufd3 = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(90, 230, 120)
+  local L = {}
+  for i = 1, 4 do L[i] = Tx(s.root, "", 4, 2 + (i - 1) * (H - 4) / 4, W - 8, (H - 4) / 4, 11, G, nil, FONT, 3) end
+  return function(d)
+    L[1].Text = string.format(zh and "马赫 %.2f" or "M %.2f", d.mach or 0)
+    L[2].Text = string.format(zh and "攻角 %.1f°" or "AOA %.1f", d.aoa or 0)
+    L[3].Text = string.format(zh and "高度 %d 米" or "ALT %d M", math.floor(d.altM or 0))
+    L[4].Text = string.format(zh and "垂速 %+d" or "VS %+d", math.floor(d.vs or 0))
+  end
+end
 
 -- 备份仪表：姿态球、空速表、高度表（指针）
 local function dial(s, n, label)

@@ -1917,8 +1917,13 @@ function Interior.init(G)
           aim = (ANG(0, (st.aimYaw or 0) + fy, 0) * ANG(clamp((st.aimPitch or 0) + fp, -1.5, 1.5), 0, 0)).LookVector
         else aim = (ANG(0, st.camYaw or 0, 0) * ANG(st.camPitch or 0, 0, 0)).LookVector end
         local l = base:VectorToObjectSpace(aim)
-        local yw = clamp(math.atan2(-l.X, -l.Z), -rad(sp.yaw or 150), rad(sp.yaw or 150))
-        local pt = clamp(math.asin(clamp(l.Y, -1, 1)), -rad(sp.down or 60), rad(sp.up or 80))
+        local yw, pt = math.atan2(-l.X, -l.Z), math.asin(clamp(l.Y, -1, 1))
+        if st.d.kind == "jet" and st.pilot and not st.uav then   -- 鼠标转头（用户 11-21：飞机要能用鼠标转视角；用 Fly.lua 的 lookYaw / lookPitch，跟车外镜头同一套）
+          yw += st.lookYaw or 0
+          pt += st.lookPitch or 0
+        end
+        yw = clamp(yw, -rad(sp.yaw or 150), rad(sp.yaw or 150))
+        pt = clamp(pt, -rad(sp.down or 60), rad(sp.up or 80))
         look.yaw += (yw - look.yaw) * math.min(1, dt * 9)
         look.pitch += (pt - look.pitch) * math.min(1, dt * 9)
         local acc = st.accV and base:VectorToObjectSpace(st.accV) / (9.81 * S) or V()
@@ -1954,8 +1959,8 @@ function Interior.init(G)
     stepKeys(c)
     stepGlare()
     hint.Visible = not hideUI
-    hint.Text = T("V 出座舱 · 头跟着鼠标瞄准转、按住 Alt 自由看 · 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
-      "V exit cockpit · head follows mouse aim, hold Alt to look around · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
+    hint.Text = T("V 出座舱 · 鼠标转头看（停 2.5 秒回正、C 立刻回正）· 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
+      "V exit cockpit · mouse turns your head (recenters after 2.5 s, C at once) · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
   end
 
   ---------------------------------------------------------------- 按键

@@ -710,9 +710,15 @@ function Defs.jet(b, ctx, L)
     or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
   local disp = L.disp or "pano"
   if disp == "pano" then
+    -- 一整块大屏；大屏上面的小辅助屏按型号（用户 11-21：去网上找现实中对应的型号对一对）：
+    --   歼-20 一块大触摸屏 + 三块小辅助屏 + 广角全息平显；F-35 是一整块 20×8 英寸的屏、上沿一条功能键带，没有单独的小屏、也没有平显；歼-35 / 歼-50 照旧两块
     b:screen(H, 0.50, 0.21, look(V(0, -0.44, -0.735)), "pano", { keys = K, lightK = 0.45, lightColor = RGB(140, 180, 220) })
-    b:screen(H, 0.10, 0.07, look(V(-0.21, -0.27, -0.71)), "ufd", { lightK = 0.2 })
-    b:screen(H, 0.10, 0.07, look(V(0.21, -0.27, -0.71)), "ufd2", { lightK = 0.2 })
+    local nu = L.ufd or 2
+    if nu >= 2 then
+      b:screen(H, 0.10, 0.07, look(V(-0.21, -0.27, -0.71)), "ufd", { lightK = 0.2 })
+      b:screen(H, 0.10, 0.07, look(V(0.21, -0.27, -0.71)), "ufd2", { lightK = 0.2 })
+    end
+    if nu >= 3 then b:screen(H, 0.10, 0.07, look(V(0, -0.27, -0.70)), "ufd3", { lightK = 0.2 }) end
   elseif disp == "f22" then
     b:screen(H, 0.20, 0.20, look(V(0, -0.45, -0.74)), "mfd_sa", { keys = K, lightK = 0.4 })
     b:screen(H, 0.15, 0.15, look(V(-0.24, -0.47, -0.72)), "mfd_pfd", { keys = K, lightK = 0.3 })
@@ -846,12 +852,12 @@ function Defs.jet(b, ctx, L)
   return { air = true, stations = stations, order = order, crew = crew, cn = cn, glass = glass }
 end
 
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "center", cn = true }) end
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", ufd = 3, hud = true, stick = "center", cn = true }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
 Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true }) end
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { disp = "mfd4", hud = true, stick = "center", seats = 2, frame = true, cn = true }) end
 Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { disp = "mfd4", hud = true, stick = "center", frame = true, cn = true }) end
-Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = false, stick = "side" }) end
+Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", ufd = 0, hud = false, stick = "side" }) end
 Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, stick = "side" }) end
 Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true, stick = "center", frame = true }) end
 
@@ -979,13 +985,12 @@ function Defs.side(b, ctx, L)
       mfd(x, -0.46, 0.20, 0.15, page, true)
     end
     mfd(cx, -0.50, 0.12, 0.10, "mfd_eng", false)
-  elseif disp == "h6k" then   -- 每座三块（姿态 / 导航 / 武器）+ 中间发动机
+  elseif disp == "h6k" then   -- 每座三块（姿态 / 导航 / 武器），一共六块数字多功能显示器（人民日报 2016 年的报道；原来中间多一块发动机屏）
     for _, base in ipairs({ 0, ox }) do
       for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms" }) do
         mfd(base + (j - 2) * 0.17, -0.47, 0.15, 0.15, page, j ~= 3)
       end
     end
-    mfd(cx, -0.60, 0.12, 0.12, "mfd_eng", false)
   else   -- b2：每人 2×2 四块
     for _, base in ipairs({ 0, ox }) do
       for j, page in ipairs({ "mfd_pfd", "mfd_sa", "mfd_sms", "mfd_eng" }) do

@@ -74,6 +74,17 @@ local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
 check(live == nScreens, string.format("屏幕页面都起来了（%d / %d）", live, nScreens))
 check(nLights >= 4, "车里的灯 " .. nLights .. " 盏")
+-- 屏幕不反光（用户 11-21：坐在车里看，坦克屏幕有一块地方反光、看不清）：显示面哑光、不反射，字的亮度不超过夜里泛光的门槛（1.05）
+local glossy, bright = 0, 0
+if cur then
+  for _, s in ipairs(cur.b.screens) do
+    if s.page ~= "hud" then
+      if s.part.Material == Enum.Material.Glass or (s.part.Reflectance or 0) > 0 then glossy = glossy + 1 end
+      if (s.gui.Brightness or 1) > 1.05 then bright = bright + 1 end
+    end
+  end
+end
+check(glossy == 0 and bright == 0, string.format("屏幕哑光、不泛光（反光的 %d 块、太亮的 %d 块）", glossy, bright))
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 -- 镜头在车体的方框里
 local cam = R.workspace.CurrentCamera

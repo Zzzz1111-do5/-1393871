@@ -342,19 +342,31 @@ if fst and e then
   R.run(0.6)
   T.key(Enum.KeyCode.W, false)
   check(fst.cf.LookVector.Y < -0.02, string.format("按住 W 低头（俯仰 %.1f°）", math.deg(math.asin(fst.cf.LookVector.Y))))
-  -- 按住 Alt 自由看：鼠标拨开镜头，松开回到身后（标记回到正中）
+  -- 鼠标转视角（用户 11-21：飞机要允许用鼠标转视角）：不用按 Alt，拨鼠标镜头转开、停在那里；鼠标 2.5 秒不动慢慢回到身后；C 立刻回正
   level()
   R.run(0.3)
-  T.key(Enum.KeyCode.LeftAlt, true)
+  local function awayDeg() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.cf.LookVector))))) end
   for _ = 1, 10 do
     R.mouseDelta = V2(30, 0)
     R.run(1 / 30)
   end
-  local away = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.cf.LookVector)))))
-  T.key(Enum.KeyCode.LeftAlt, false)
-  check(away > 20, string.format("按住 Alt 拨鼠标：镜头转开 %.0f°", away))
-  R.run(2)
-  check(markOff() <= 3, string.format("松开 Alt：镜头回到身后（标记偏 %.1f 像素）", markOff()))
+  R.mouseDelta = V2(0, 0)
+  local away = awayDeg()
+  check(away > 20, string.format("不按 Alt 拨鼠标：镜头转开 %.0f°", away))
+  R.run(1.5)
+  check(awayDeg() > 15, string.format("鼠标停 1.5 秒：镜头还停在拨到的地方（%.0f°）", awayDeg()))
+  R.run(4)
+  check(markOff() <= 3, string.format("鼠标停 2.5 秒以上：镜头慢慢回到身后（标记偏 %.1f 像素）", markOff()))
+  for _ = 1, 10 do
+    R.mouseDelta = V2(30, 0)
+    R.run(1 / 30)
+  end
+  R.mouseDelta = V2(0, 0)
+  T.key(Enum.KeyCode.C, true)
+  R.run(1 / 30)
+  T.key(Enum.KeyCode.C, false)
+  R.run(0.5)
+  check(markOff() <= 3, string.format("按 C：镜头立刻回到身后（标记偏 %.1f 像素）", markOff()))
   level()
   R.run(0.5)
 end

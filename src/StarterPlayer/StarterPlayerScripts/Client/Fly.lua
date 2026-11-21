@@ -1553,6 +1553,8 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
       local lk = (not st.ground and st.vdir) or st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
+    elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then   -- 有人开的固定翼：视角立刻回到身后（座舱里回到正前方）
+      st.lookYaw, st.lookPitch, st.lookT = 0, 0, 0
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -1870,10 +1872,13 @@ function Fly.init(G)
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
       if d.kind == "jet" and not G.mobile and not pitLook then
         if st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；按住 Alt 自由看（镜头绕着飞机转，松开回到身后）
-          if key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt) then
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
+          --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
+          --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
+          if md.X ~= 0 or md.Y ~= 0 then
             st.lookYaw = clamp((st.lookYaw or 0) - md.X * SENS, -2.8, 2.8)
             st.lookPitch = clamp((st.lookPitch or 0) - md.Y * SENS, -1.2, 1.2)
+            st.lookT = os.clock()
           end
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
@@ -1962,10 +1967,11 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
-      -- 按住 Alt 自由看：镜头绕着飞机转到鼠标拨到的方向；松开慢慢回到身后
-      if not (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) or st.uav then
-        st.lookYaw = (st.lookYaw or 0) * math.exp(-dt * 5)
-        st.lookPitch = (st.lookPitch or 0) * math.exp(-dt * 5)
+      -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
+      if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
+        local kk = math.exp(-dt * (st.uav and 5 or 2.2))
+        st.lookYaw = (st.lookYaw or 0) * kk
+        st.lookPitch = (st.lookPitch or 0) * kk
       end
       if math.abs(st.lookYaw or 0) + math.abs(st.lookPitch or 0) > 1e-3 then
         fwd = CFrame.fromAxisAngle(upC, st.lookYaw):VectorToWorldSpace(fwd)

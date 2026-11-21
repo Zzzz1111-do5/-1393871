@@ -149,10 +149,13 @@ function B:screen(g, w, h, cf, page, opt)
   local bez = opt.bezel or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
-  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.Glass)
+  -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
+  --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
+  --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度
+  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.SmoothPlastic)
   face.CastShadow = false
-  face.Reflectance = 0.04
-  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.6)
+  face.Reflectance = 0
+  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.0)
   local root = Instance.new("Frame")
   root.Name = "Page"
   root.Size = UDim2.fromScale(1, 1)
