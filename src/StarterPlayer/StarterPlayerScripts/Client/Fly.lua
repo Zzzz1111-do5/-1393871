@@ -1936,7 +1936,8 @@ function Fly.init(G)
     local gid, gw = gunW()
     local wid, w = storeW()
     if d.gunPos and gw and gw.turret then
-      local l = st.cf:PointToObjectSpace(st.aimPt) - d.gunPos
+      local vw = G.views and G.views[st.em]
+      local l = st.cf:PointToObjectSpace(st.aimPt) - ((vw and vw.M and vw.M.gunPiv) or d.gunPos)   -- 原模型拆出了机炮：按它的耳轴算
       st.ty = clamp(deg(math.atan2(l.X, -l.Z)), -110, 110)
       st.gp = clamp(deg(math.atan2(l.Y, math.sqrt(l.X * l.X + l.Z * l.Z))), -60, 11)
     end

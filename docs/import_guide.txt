@@ -7,7 +7,7 @@
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 66 个 .glb，按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、别的固定翼是 A_<键>_v3__…；
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
@@ -20,6 +20,15 @@
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 21 日第三包（直升机机炮会转了）：只重导 air/ 里两个文件——ah64.glb（阿帕奇）、z10w.glb（直-10），别的都不用动，再换游戏文件：
+    - 原来机头下面的机炮和机身烘焙在同一块网格里，转不了；这一版把机炮拆成单独的块（A_ah64_v2__Gun_1 炮、A_ah64_v2__GunY_1 炮塔座，
+      A_z10w_v2__Gun_1），开直升机时炮管跟着准星转方位、俯仰（炮塔座只转方位）；
+    - 新导进来的块叫 A_ah64_v2__… / A_z10w_v2__…，游戏优先用它；没导新版照旧用老的（炮不转）。旧的 A_ah64__… / A_z10w__… 想删就在命令栏粘这一行回车：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_ah64__") or d.Name:match("^A_z10w__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的阿帕奇、直-10")
+
+    导入方法同下面「一、导入」：「导入 3D」分别选 air/ah64.glb、air/z10w.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
 
   11 月 21 日第二包（航母换成福建舰）：多导一个 ship/fujian.glb（别的模型都不用动），再换游戏文件：
     - ship/fujian.glb：攻方航母福建舰的原模型（Sketchfab，businessyuen，CC-BY），13 块网格、不带贴图——颜色和材质（甲板防滑面、船体金属）

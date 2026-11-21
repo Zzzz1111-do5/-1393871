@@ -18,6 +18,15 @@ local S = Kit.S
 
 return function(Defs, Hp)
   local window, bar = Hp.window, Hp.bar
+  -- 方向盘的轮缘：在组的 XY 平面上、绕 Z 轴一圈（组的 −Z 对着驾驶员；Defs.ring 是水平的圈，做轮缘会侧着对人）
+  local function zring(b, g, r, n, t, col, mat)
+    local seg = 2 * PI / n
+    local len = 2 * r * math.sin(seg / 2) * 1.05
+    for i = 0, n - 1 do
+      local a = (i + 0.5) * seg
+      b:box(g, V(len, t, t), CF(math.sin(a) * r, math.cos(a) * r, 0) * ANG(0, 0, -a), col, mat)
+    end
+  end
 
   -- 屏幕边的键（同坦克）
   local KEY = {
@@ -108,7 +117,7 @@ return function(Defs, Hp)
     else   -- 方向盘：转向柱斜着伸向驾驶员，方向盘跟着转向转
       local wc = V(dx, eyeD.Y - 0.42, dz - 0.40)
       b:group("swheel", H, look(wc, wc + V(0, -0.55, 1)))
-      Defs.ring(b, "swheel", 0, 0, 0, 0.19, 16, 0.03, 0.03, C.rubber, MAT.Fabric)
+      zring(b, "swheel", 0.19, 16, 0.03, C.rubber, MAT.Fabric)
       b:box("swheel", V(0.36, 0.025, 0.03), CF(0, 0, 0), C.dark, MAT.Metal)
       b:box("swheel", V(0.025, 0.18, 0.03), CF(0, -0.09, 0), C.dark, MAT.Metal)
       b:cyl("swheel", 0.05, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
@@ -418,7 +427,7 @@ return function(Defs, Hp)
     local dX = -hx
     local wc = V(dX, eyeY - 0.40, seatZ - 0.42)
     b:group("swheel", H, look(wc, wc + V(0, -0.6, 1)))
-    Defs.ring(b, "swheel", 0, 0, 0, 0.20, 16, 0.03, 0.03, C.rubber, MAT.Fabric)
+    zring(b, "swheel", 0.20, 16, 0.03, C.rubber, MAT.Fabric)
     b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
     b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
     b:tube(H, wc, wc + V(0, -0.25, -0.35), 0.05, C.gray, MAT.Metal)

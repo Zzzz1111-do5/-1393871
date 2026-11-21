@@ -15,7 +15,7 @@ local Enum = roblox.Enum
 H.quietWarn = process.args[2] ~= "v"
 
 local IA = luau.load(fs.readFile("src/ReplicatedStorage/ImportedAir.lua"), { debugName = "ImportedAir" })()
-local KEYS = { "j15t", "ah64", "j20_v4", "z10w", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
+local KEYS = { "j15t", "ah64_v2", "j20_v4", "z10w_v2", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
 local function count(t) local n = 0 for _ in pairs(t) do n += 1 end return n end
 
 H.boot(process.args[1], { ds = "mock", before = function(game)
@@ -194,7 +194,7 @@ print("③ 阿帕奇：旋翼、尾桨转；挂的弹在原模型短翼下面")
 local dh = AD.get("ah64e")
 local lh = AD.presetLoad(dh, "at")
 local MH = AM.build(dh, "def", lh)
-check(MH.imported == "ah64", "用的是原模型")
+check(MH.imported == "ah64_v2", "用的是原模型（拆出了机炮的 v2）")
 local rotor, trotor
 for _, it in ipairs(MH.items) do
 	if it.p:IsA("MeshPart") and string.find(it.p.Name, "__Rotor_") and not rotor then rotor = it end
@@ -209,9 +209,27 @@ local dist0, dist1 = (V3.new(r0.Position.X, 0, r0.Position.Z) - V3.new(hub.X, 0,
 local turned = select(2, r0:ToObjectSpace(r1):ToAxisAngle())
 check(math.abs(turned - 1.0) < 0.02 and math.abs(dist0 - dist1) < 0.01, string.format("主旋翼绕桨毂转了 %.2f 弧度", turned))
 check((t0.Position - t1.Position).Magnitude > 0.001 or select(2, t0:ToObjectSpace(t1):ToAxisAngle()) > 0.5, "尾桨转了")
+-- 机头炮塔（用户 11-21：直升机炮管不会转动）：原模型拆出来的炮跟着方位、俯仰转，炮塔座只转方位
+local gunIt, gunY
+for _, it in ipairs(MH.items) do
+	if string.find(it.p.Name, "__Gun_") then gunIt = it end
+	if string.find(it.p.Name, "__GunY_") then gunY = it end
+end
+check(gunIt ~= nil and gunIt.kind == "t" and gunY ~= nil and gunY.yawOnly, "机炮、炮塔座是单独的炮塔件")
+if gunIt and gunY then
+	pose(MH, { gear = 1, ty = 0, gp = 0 })
+	local g0, y0 = rel(gunIt.p), rel(gunY.p)
+	pose(MH, { gear = 1, ty = 60, gp = -20 })
+	local g1, y1 = rel(gunIt.p), rel(gunY.p)
+	local _, ga = g0:ToObjectSpace(g1):ToAxisAngle()
+	check(ga > math.rad(50), string.format("方位 60°、俯仰 −20°：炮转了 %.0f°", math.deg(ga)))
+	check(g1.Position.X > g0.Position.X + 0.5, "炮口转到右边")
+	local yl = y0:ToObjectSpace(y1).LookVector
+	check(math.abs(yl.Y) < 0.01, "炮塔座不跟着俯仰")
+end
 local lowOk, lowN = true, 0
 for i, list in pairs(MH.stores) do
-	local adj = IA.m.ah64.pyl.ah64e and IA.m.ah64.pyl.ah64e[i]
+	local adj = IA.m.ah64_v2.pyl.ah64e and IA.m.ah64_v2.pyl.ah64e[i]
 	if #list > 0 and dh.st[i].name ~= "tip" then   -- 翼尖的毒刺挂在翼尖导轨上（不在翼下）
 		lowN += 1
 		local y = 0
@@ -237,7 +255,7 @@ do
 	local d0, b0 = tr(discs), tr(blades)
 	pose(MZ, { gear = 1, spin1 = 2, spinT = 3, rpm = 100 })
 	local d1, b1 = tr(discs), tr(blades)
-	check(MZ.imported == "z10w" and #discs == 2 and #blades == 2, string.format("原模型：桨盘 %d 块、桨叶 %d 块", #discs, #blades))
+	check(MZ.imported == "z10w_v2" and #discs == 2 and #blades == 2, string.format("原模型：桨盘 %d 块、桨叶 %d 块", #discs, #blades))
 	check(#discs == 2 and d0[1] == 1 and d0[2] == 1 and b0[1] == 0 and b0[2] == 0, string.format("停着：桨盘藏起来（%s），桨叶实心（%s）", table.concat(d0, " / "), table.concat(b0, " / ")))
 	check(#discs == 2 and d1[1] < 1 and d1[2] < 1 and b1[1] > 0, string.format("转快了：桨盘出现（透明 %s），桨叶变虚（%s）", table.concat(d1, " / "), table.concat(b1, " / ")))
 	MZ.model:Destroy()
