@@ -842,8 +842,9 @@ function Drive.init(G)
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -d.turret.trav * dt, d.turret.trav * dt)) % 360
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), 35 * dt)
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
+    --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
     if d.rws then
-      local myW, mpW = VD.rwsAim(d, base, st.ty, ap)
+      local myW, mpW = VD.rwsAim(d, base, st.ty, st.rwsPt or ap)
       st.my = st.my + math.clamp(angDiff(st.my, myW), -d.rws.trav * dt, d.rws.trav * dt)
       st.my = (st.my + 180) % 360 - 180
       st.mp = approach(st.mp, mpW, d.rws.rate * dt)
@@ -998,7 +999,8 @@ function Drive.init(G)
     st.locked = vs.locked
     -- 镜头转动（坐在车里看的时候鼠标归内饰的镜头：Interior.lua，炮塔不跟着转）
     UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
-    local inside = G.interiorOn and G.interiorOn() and not st.sight
+    -- 车里的观瞄设备（车长热像仪 / 周视镜、CROWS……）开着时也算在车里：鼠标归那个设备，炮塔守着炮长原来的准星
+    local inside = G.interiorOn and (G.interiorOn() or G.interiorOptic ~= nil) and not st.sight
     local md = UIS:GetMouseDelta()
     local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or 1)
     if not inside then

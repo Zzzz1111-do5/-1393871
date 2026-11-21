@@ -310,7 +310,7 @@ return function(Defs, Hp)
       local mpage = cn and "cnmap" or "cid"
       b:screen(H, 0.20, 0.15, look(V(-0.32, cEye.Y - 0.22, cEye.Z - 0.30), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
       stations.commander = { g = H, eye = cEye, look = V(0, -0.2, -1), yaw = 160, up = 70, down = 70, crew = "commander",
-        optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.45, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect" } } }
+        optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.45, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect", rws = true } } }
       crew.commander = { dress = dress, g = H, eye = cEye, lean = -6, yaw = 0, look = V(0, -0.25, -1),
         hands = { l = { H, cEye + V(-0.15, -0.42, -0.32) }, r = { "cch", V(0, 0.12, 0) } },
         feet = { l = { H, V(-0.10, FY + 0.10, cEye.Z - 0.40) }, r = { H, V(0.10, FY + 0.10, cEye.Z - 0.40) } } }
@@ -499,7 +499,7 @@ return function(Defs, Hp)
     local order = { "driver", "commander" }
     if L.rws then
       crew.commander.hands.r = { "cch", V(0, 0.12, 0) }
-      stations.commander.optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.40, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect" } }
+      stations.commander.optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.40, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect", rws = true } }
     end
     if L.ring then   -- 射手站在后面，上半身伸出炮塔环（吊带座）
       local gE = V(0, RY + 0.35, seatZ + 0.55)
