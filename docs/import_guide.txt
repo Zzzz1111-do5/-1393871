@@ -11,7 +11,7 @@
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
-                               optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
+                               optics/   31 件：14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）+ 17 件改枪配件（opt_ 瞄具、sup_ 消音器、muz_ 枪口件、grip_ 握把、mag_ 弹匣、tac_ 战术件）
                                scenery/  地图上的石头（11 月 18 日起 scenery.glb 里只有 3 块石头；树、草丛、花丛去掉了，草用 Roblox 地形自带的）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
@@ -30,7 +30,9 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
   11 月 21 日这一包：模型都不用重导，只换游戏文件（新的 RobloxTotalBattlefield.rbxlx，或者「三、只换脚本」用 ScriptsUpdate.rbxmx）：
     - 界面的蓝色 / 青色全部改成绿色（开飞机、开坦克、改装、简报；守方的队伍色也从蓝换成绿，蓝滩改叫绿滩）；飞机机头前的全息准心、锁定框改小；
     - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）；
-    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具），配件模型在 optics/ 里，以前导过就不用再导。
+    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具）：17 件配件的原模型在 optics/ 里（opt_rds、opt_holo、opt_romeo、opt_acog6、sup_socom、sup_wrap、sup_sr8、
+      muz_comp、muz_brake、grip_rvg、grip_afg、mag_pmag20、mag_pmag40、mag_drum、mag_hex30、tac_light、tac_peq，署名在 models/credits.txt）。
+      以前没导过的照「一、导入」把这 17 个 .glb 导进去就行（别的不用动）；不导也能用：游戏开着「Mesh / Image API」时现生成，只是没有原贴图。
 
   11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
     - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；

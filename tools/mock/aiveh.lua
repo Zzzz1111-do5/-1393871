@@ -79,19 +79,24 @@ for k = 0, 47 do
   end
 end
 check(spot ~= nil, "找到一块看得见的地方摆靶车")
-local shots, ty0 = 0, D.ty
-local launch0 = G.launch
+-- 炮弹（G.launch）和机枪（G.botShot）都算：AI 出车按随机挑坦克或装甲车，只有机枪的车（M1117 这类）也要对坦克开火
+local shots, mgShots, ty0 = 0, 0, D.ty
+local launch0, botShot0 = G.launch, G.botShot
 G.launch = function(s)
   if s.src and D.ai and s.src.bot == D.ai.crew then shots = shots + 1 end
   return launch0(s)
 end
+G.botShot = function(from, to, w, src, ...)
+  if src and D.ai and src.bot == D.ai.crew then shots, mgShots = shots + 1, mgShots + 1 end
+  return botShot0(from, to, w, src, ...)
+end
 local tgt = spot and G.newVehicle("atk", tid, G.vehBaseAt(tdef, spot.X, spot.Z, V3(1, 0, 0)))
 local hp0 = tgt and tgt.hp
 T.runUntil(function() return shots >= 1 end, 20)
-G.launch = launch0
+G.launch, G.botShot = launch0, botShot0
 check(D.ai and D.ai.tgt ~= nil and D.ai.tgt.ref == tgt, "认出了敌方的车（目标）")
 check(math.abs(((D.ty - ty0 + 180) % 360) - 180) > 1 or shots >= 1, string.format("炮塔转过去了（%.0f° → %.0f°）", ty0, D.ty))
-check(shots >= 1, "开炮了（" .. shots .. " 发）")
+check(shots >= 1, string.format("开火了（%s：炮弹 %d、机枪 %d 发）", D.def.id, shots - mgShots, mgShots))
 
 print("④ 血少了往回撤，撤到出发的地方收走")
 D.hp = D.maxHp * 0.2

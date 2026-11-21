@@ -12,6 +12,9 @@ G.fortsHold = true
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
 local me = T.join("P1", 6301, true)
+-- 像真玩家一样先从主菜单进游戏：没进过的话死了会弹回主菜单，阵亡镜头让主菜单先接管（Warfx.lua）
+R.run(0.5)
+if T.C.menuShown and T.C.menuShown() then T.C.menuEnter() end
 T.runUntil(function() return G.round and G.round.phase == "battle" end, 90)
 check(G.round.phase == "battle", "开战了")
 local Map = G.Map
