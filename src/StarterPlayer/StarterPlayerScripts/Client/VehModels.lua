@@ -95,6 +95,24 @@ function VehModels.build(d, team, mods)
     rg(V(0.11, 0.2, 0.2), CF(0, 0.04, -muz + 0.08), BL)   -- 枪口制退器
     rg(V(0.36, 0.44, 0.62), CF(0.44, -0.04, 0.3), C.base)   -- 弹箱（右边供弹）
   end
+  -- 手动的车长重机枪（99A 的 QJC-88 12.7 毫米，用户 11-21 晚：照真车加回车顶机枪）：车长舱口的座圈、枪架立柱和叉架、
+  --   机匣、粗枪管、枪口制退器、左边弹箱、后面两个握把、环形瞄具——没有遥控武器站的罩子和光电盒子；照样跟着瞄准转、从枪口开火
+  local function manualMg(gunOff, muz)
+    local GM, BL, OD = RGB(52, 54, 50), RGB(28, 29, 28), RGB(76, 82, 58)
+    local function rw(size, off, color, mat, shape) return add("rws", size, off, color or C.base, mat or MAT.Metal, shape) end
+    local function rg(size, off, color, mat, shape) return add("rwg", size, off, color or GM, mat or MAT.Metal, shape) end
+    local gy, gz = gunOff.Y, gunOff.Z
+    rw(V(0.16, 1.6, 1.6), CF(0, 0.08, 0) * UPRIGHT, C.dark, MAT.Metal, CYL)   -- 舱口座圈
+    local postH = math.max(0.3, gy - 0.2)
+    rw(V(0.16, postH, 0.16), CF(0, 0.16 + postH / 2, gz), GM)   -- 枪架立柱
+    rw(V(0.5, 0.1, 0.2), CF(0, gy - 0.2, gz), GM)   -- 叉架
+    rg(V(0.34, 0.36, 1.2), CF(0, 0, 0.32), GM)   -- 机匣
+    for sx = -1, 1, 2 do rg(V(0.07, 0.2, 0.07), CF(sx * 0.11, -0.08, 1.0), BL) end   -- 两个握把
+    tube(rg, 0, 0.03, -0.28, -muz + 0.25, 0.16, BL)   -- 粗枪管
+    rg(V(0.2, 0.2, 0.3), CF(0, 0.03, -muz + 0.12), BL)   -- 枪口制退器
+    rg(V(0.32, 0.4, 0.55), CF(-0.36, -0.06, 0.28), OD)   -- 弹箱（左边供弹）
+    rg(V(0.03, 0.16, 0.16), CF(0, 0.28, -0.25), BL)   -- 环形瞄具
+  end
   -- 一组迷彩斑块（贴在一个面上的薄片）
   local function blotches(fn, cx, cy, cz, w, h, axis, n)
     for _ = 1, n do
@@ -204,7 +222,9 @@ function VehModels.build(d, team, mods)
       gun(V(0.4, 0.5, 0.78), CF(-0.48, -0.06, 0.05), OD)   -- 弹箱（M2 从左边供弹）
     end
     -- 原模型上没有机枪（或者去掉了）的坦克：元数据的 rws.mk——在座圈上拼一个遥控武器站（tools/models/vehrws.py）
-    if info.rws and info.rws.mk and rpiv and rgpiv then rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
+    if info.rws and info.rws.mk and rpiv and rgpiv then
+      if info.rws.mk == "manual" then manualMg(rgpiv - rpiv, info.rws.muz or 2.45) else rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
+    end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
       rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil }
   end

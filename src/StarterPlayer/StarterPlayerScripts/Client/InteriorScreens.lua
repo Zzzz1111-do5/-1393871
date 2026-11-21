@@ -1292,6 +1292,19 @@ local function ufd(second)
   end
 end
 P.ufd, P.ufd2 = ufd(false), ufd(true)
+-- 第三块小辅助屏（歼-20：一块大屏 + 三块小屏）：马赫数、攻角、高度、垂直速度
+P.ufd3 = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(90, 230, 120)
+  local L = {}
+  for i = 1, 4 do L[i] = Tx(s.root, "", 4, 2 + (i - 1) * (H - 4) / 4, W - 8, (H - 4) / 4, 11, G, nil, FONT, 3) end
+  return function(d)
+    L[1].Text = string.format(zh and "马赫 %.2f" or "M %.2f", d.mach or 0)
+    L[2].Text = string.format(zh and "攻角 %.1f°" or "AOA %.1f", d.aoa or 0)
+    L[3].Text = string.format(zh and "高度 %d 米" or "ALT %d M", math.floor(d.altM or 0))
+    L[4].Text = string.format(zh and "垂速 %+d" or "VS %+d", math.floor(d.vs or 0))
+  end
+end
 
 -- 备份仪表：姿态球、空速表、高度表（指针）
 local function dial(s, n, label)

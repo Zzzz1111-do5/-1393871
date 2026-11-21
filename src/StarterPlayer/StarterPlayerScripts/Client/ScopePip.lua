@@ -22,7 +22,7 @@ local ScopePip = {}
 
 -- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）
 local TC = {
-  Grass = { 96, 146, 64 }, LeafyGrass = { 70, 124, 52 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
+  Grass = { 98, 148, 64 }, LeafyGrass = { 98, 148, 64 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
   Ground = { 122, 98, 70 }, Mud = { 54, 47, 40 }, Concrete = { 150, 148, 140 }, Asphalt = { 70, 72, 76 },
 }
 -- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成

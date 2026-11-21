@@ -2424,7 +2424,7 @@ return {
     t625 = { credit = "PGL-625 弹炮结合防空车：Type-625 Anti Aircraft Gun Missile System，作者 Muhamad Mirza Arrafi（https://sketchfab.com/3d-models/type-625-anti-aircraft-gun-missile-system-8b7e85f45b954592bd4bb8e72cdd6312），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0.14, 8.82, -0.84 }, h = 14.961, hull = { 11.553, 11.21, 26.32 }, len = 26.32, muz = 5.144, parts = { Body_1 = { c = { 0, 5.799, 0 }, g = "Body", s = { 11.553, 8.616, 26.32 } }, Body_2 = { c = { 0.036, 4.38, 0.404 }, g = "Body", s = { 11.177, 6.204, 24.979 } }, Body_3 = { c = { 0.137, 2.014, 0.223 }, g = "Body", s = { 11.136, 2.138, 21.184 } }, Body_4 = { c = { 0.137, 8.546, 1.555 }, g = "Body", s = { 10.465, 5.328, 22.779 } }, Gun_1 = { c = { 0.133, 8.691, -3.434 }, g = "Gun", s = { 5.257, 1.774, 5.1 } }, Turret_1 = { c = { 0.145, 11.049, 1.869 }, g = "Turret", s = { 7.74, 7.825, 10.716 } }, W01_1 = { c = { 4.92, 2.014, -9.305 }, g = "W01", s = { 1.296, 4.027, 4.027 } }, W02_1 = { c = { -4.647, 2.014, -9.305 }, g = "W02", s = { 1.296, 4.027, 4.027 } }, W03_1 = { c = { -4.647, 2.014, -4.039 }, g = "W03", s = { 1.296, 4.026, 4.026 } }, W04_1 = { c = { -4.647, 2.014, 4.418 }, g = "W04", s = { 1.296, 4.029, 4.029 } }, W05_1 = { c = { -4.647, 2.014, 9.754 }, g = "W05", s = { 1.296, 4.028, 4.028 } }, W06_1 = { c = { 4.92, 2.014, -4.039 }, g = "W06", s = { 1.296, 4.026, 4.026 } }, W07_1 = { c = { 4.92, 2.014, 4.418 }, g = "W07", s = { 1.296, 4.029, 4.029 } }, W08_1 = { c = { 4.92, 2.014, 9.754 }, g = "W08", s = { 1.296, 4.028, 4.028 } } }, tur = { 0.14, 7.14, 1.82 }, w = 11.553, wheels = { W01 = { c = { 4.92, 2.014, -9.305 }, r = 2.014 }, W02 = { c = { -4.647, 2.014, -9.305 }, r = 2.014 }, W03 = { c = { -4.647, 2.014, -4.039 }, r = 2.013 }, W04 = { c = { -4.647, 2.014, 4.418 }, r = 2.014 }, W05 = { c = { -4.647, 2.014, 9.754 }, r = 2.014 }, W06 = { c = { 4.92, 2.014, -4.039 }, r = 2.013 }, W07 = { c = { 4.92, 2.014, 4.418 }, r = 2.014 }, W08 = { c = { 4.92, 2.014, 9.754 }, r = 2.014 } } },
     zbd97 = { credit = "ZBD-04 步兵战车（原称 97 式）：ZBD-97，作者 42manako（https://sketchfab.com/3d-models/zbd-97-b36e44ca383e4ab296e28321167e5ba4），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -0.062, 6.832, 1.54 }, h = 9.335, hull = { 9.746, 6.191, 18.76 }, len = 18.76, muz = 8.467, parts = { Body_1 = { c = { 0, 3.463, 0 }, g = "Body", s = { 9.746, 5.456, 18.76 } }, Body_2 = { c = { -0.018, 1.407, 0.473 }, g = "Body", s = { 8.828, 2.815, 16.846 } }, Gun_1 = { c = { -0.063, 6.634, -2.515 }, g = "Gun", s = { 1.09, 1.333, 8.823 } }, Turret_1 = { c = { -0.062, 7.525, 2.805 }, g = "Turret", s = { 6.852, 3.619, 5.965 } }, Turret_2 = { c = { 2.782, 8.512, 5.051 }, g = "Turret", s = { 4.383, 1.417, 3.039 } }, W01_1 = { c = { -4.034, 1.782, -7.077 }, g = "W01", s = { 0.659, 1.568, 1.538 } }, W02_1 = { c = { -4.078, 1.966, 8.094 }, g = "W02", s = { 0.653, 1.352, 1.355 } }, W03_1 = { c = { 4.045, 1.787, -7.058 }, g = "W03", s = { 0.659, 1.561, 1.569 } }, W04_1 = { c = { 3.994, 1.97, 8.112 }, g = "W04", s = { 0.653, 1.33, 1.335 } }, W05_1 = { c = { -4.042, 1.086, -4.497 }, g = "W05", s = { 0.66, 1.848, 1.853 } }, W06_1 = { c = { -4.049, 1.088, -1.961 }, g = "W06", s = { 0.66, 1.848, 1.853 } }, W07_1 = { c = { -4.057, 1.09, 0.577 }, g = "W07", s = { 0.661, 1.849, 1.853 } }, W08_1 = { c = { -4.065, 1.092, 3.114 }, g = "W08", s = { 0.661, 1.849, 1.854 } }, W09_1 = { c = { -4.073, 1.094, 5.651 }, g = "W09", s = { 0.661, 1.848, 1.854 } }, W10_1 = { c = { 4.037, 1.089, -4.479 }, g = "W10", s = { 0.66, 1.848, 1.852 } }, W11_1 = { c = { 4.029, 1.09, -1.942 }, g = "W11", s = { 0.661, 1.848, 1.853 } }, W12_1 = { c = { 4.021, 1.093, 0.595 }, g = "W12", s = { 0.661, 1.848, 1.853 } }, W13_1 = { c = { 4.013, 1.095, 3.132 }, g = "W13", s = { 0.661, 1.849, 1.853 } }, W14_1 = { c = { 4.005, 1.097, 5.669 }, g = "W14", s = { 0.661, 1.849, 1.854 } } }, tur = { -0.062, 5.712, 2.8 }, w = 9.846, wheels = { W01 = { c = { -4.034, 1.782, -7.077 }, r = 0.784 }, W02 = { c = { -4.078, 1.966, 8.094 }, r = 0.678 }, W03 = { c = { 4.045, 1.787, -7.058 }, r = 0.784 }, W04 = { c = { 3.994, 1.97, 8.112 }, r = 0.667 }, W05 = { c = { -4.042, 1.086, -4.497 }, r = 0.927 }, W06 = { c = { -4.049, 1.088, -1.961 }, r = 0.927 }, W07 = { c = { -4.057, 1.09, 0.577 }, r = 0.927 }, W08 = { c = { -4.065, 1.092, 3.114 }, r = 0.927 }, W09 = { c = { -4.073, 1.094, 5.651 }, r = 0.927 }, W10 = { c = { 4.037, 1.089, -4.479 }, r = 0.926 }, W11 = { c = { 4.029, 1.09, -1.942 }, r = 0.926 }, W12 = { c = { 4.021, 1.093, 0.595 }, r = 0.927 }, W13 = { c = { 4.013, 1.095, 3.132 }, r = 0.927 }, W14 = { c = { 4.005, 1.097, 5.669 }, r = 0.927 } } },
     ztz96 = { credit = "96 式主战坦克：ZTZ96，作者 jzmhhhhh（https://sketchfab.com/3d-models/ztz96-b0da178e50dc423983445841615d9e80），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0.028, 4.998, -3.966 }, h = 12.786, hull = { 9.864, 5.964, 20.81 }, len = 28.462, muz = 14.091, parts = { Body_1 = { c = { 0.022, 3.508, -9.481 }, g = "Body", s = { 4.821, 0.38, 0.279 } }, Body_10 = { c = { -3.873, 1.685, -0.749 }, g = "Body", s = { 1.582, 3.371, 17.898 } }, Body_11 = { c = { 0.022, 3.786, -0.923 }, g = "Body", s = { 8.958, 4.357, 5.176 } }, Body_12 = { c = { 0.819, 4.317, 5.507 }, g = "Body", s = { 7.039, 0.049, 4.736 } }, Body_13 = { c = { -0.151, 2.477, 8.459 }, g = "Body", s = { 1.624, 0.909, 0.618 } }, Body_14 = { c = { 0.022, 3.508, -9.643 }, g = "Body", s = { 4.821, 0.38, 0.045 } }, Body_15 = { c = { 3.917, 1.685, -0.749 }, g = "Body", s = { 1.582, 3.371, 17.898 } }, Body_16 = { c = { 0, 2.874, -0.951 }, g = "Body", s = { 9.864, 2.084, 18.335 } }, Body_2 = { c = { 0.081, 1.684, -0.652 }, g = "Body", s = { 8.988, 3.039, 17.767 } }, Body_3 = { c = { 0.042, 2.258, 0 }, g = "Body", s = { 9.582, 4.188, 20.81 } }, Body_4 = { c = { 0.037, 2.597, -0.524 }, g = "Body", s = { 9.573, 3.523, 18.533 } }, Body_5 = { c = { 0.024, 2.703, -0.527 }, g = "Body", s = { 9.546, 3.31, 18.526 } }, Body_6 = { c = { 0.127, 3.284, -0.966 }, g = "Body", s = { 9.332, 2.254, 18.878 } }, Body_7 = { c = { 4.046, 5.669, -0.194 }, g = "Body", s = { 0.226, 0.433, 0.869 } }, Body_8 = { c = { -0.132, 4.184, -1.461 }, g = "Body", s = { 1.843, 1.631, 2.744 } }, Body_9 = { c = { 0.022, 3.922, 0.254 }, g = "Body", s = { 8.955, 0.54, 14.865 } }, Gun_1 = { c = { 0.91, 4.809, -3.35 }, g = "Gun", s = { 0.446, 0.336, 2.754 } }, Gun_2 = { c = { 0.885, 7.654, -2.073 }, g = "Gun", s = { 0.029, 0.035, 0.066 } }, Gun_3 = { c = { 0.109, 4.95, -10.018 }, g = "Gun", s = { 1.5, 1.279, 16.077 } }, Gun_4 = { c = { 0.253, 5.232, -4.183 }, g = "Gun", s = { 1.757, 1.678, 1.773 } }, Gun_5 = { c = { 0.022, 5.001, -15.579 }, g = "Gun", s = { 0.35, 0.35, 4.954 } }, Gun_6 = { c = { 0.019, 5.048, -4.65 }, g = "Gun", s = { 1.455, 1.603, 1.748 } }, RwsGun_1 = { c = { 1.611, 7.573, -3.2 }, g = "RwsGun", s = { 0.718, 0.521, 4.208 } }, RwsGun_2 = { c = { 1.53, 7.544, -2.082 }, g = "RwsGun", s = { 0.462, 0.328, 0.411 } }, RwsGun_3 = { c = { 1.772, 7.73, -1.975 }, g = "RwsGun", s = { 0.747, 1.158, 1.346 } }, RwsGun_4 = { c = { 1.676, 7.394, -1.742 }, g = "RwsGun", s = { 0.635, 0.48, 0.287 } }, Rws_1 = { c = { 1.03, 7.328, -2.082 }, g = "Rws", s = { 0.825, 0.68, 0.433 } }, Rws_2 = { c = { 1.732, 6.833, -0.275 }, g = "Rws", s = { 1.844, 0.658, 1.828 } }, Rws_3 = { c = { 1.182, 7.425, -2.082 }, g = "Rws", s = { 0.236, 0.109, 0.411 } }, Rws_4 = { c = { 1.824, 7.652, -1.749 }, g = "Rws", s = { 0.906, 1.287, 1.349 } }, Rws_5 = { c = { 1.684, 7.078, -1.488 }, g = "Rws", s = { 1.418, 1.148, 1.241 } }, Turret_1 = { c = { 1.043, 4.859, -2.641 }, g = "Turret", s = { 0.311, 0.241, 0.96 } }, Turret_10 = { c = { 0.022, 5.666, -0.227 }, g = "Turret", s = { 8.935, 3.496, 9.363 } }, Turret_11 = { c = { 0.077, 5.662, 0.448 }, g = "Turret", s = { 8.296, 3.487, 9.547 } }, Turret_12 = { c = { 0.202, 6.29, 1.879 }, g = "Turret", s = { 4.703, 0.831, 5.14 } }, Turret_13 = { c = { -1.359, 5.278, 4.383 }, g = "Turret", s = { 0.269, 0.099, 0.02 } }, Turret_14 = { c = { -3.575, 5.305, 0.366 }, g = "Turret", s = { 1.512, 1.253, 2.845 } }, Turret_3 = { c = { 2.098, 9.561, 2.011 }, g = "Turret", s = { 0.127, 6.451, 0.127 } }, Turret_4 = { c = { 3.546, 5.592, 0.224 }, g = "Turret", s = { 1.213, 0.588, 1.986 } }, Turret_5 = { c = { 0.139, 4.821, -1.137 }, g = "Turret", s = { 1.934, 1.844, 4.132 } }, Turret_6 = { c = { -1.591, 6.28, -1.449 }, g = "Turret", s = { 0.778, 0.242, 0.02 } }, Turret_7 = { c = { 2.78, 5.475, 3.595 }, g = "Turret", s = { 0.982, 0.931, 1.488 } } }, rws = { g = { 1.7, 7.45, -1.9 }, muz = 3.55, p = { 1.75, 6.55, -0.38 } }, tur = { 0, 4.2, -0.746 }, w = 9.864, wheels = {  } },
-    ztz99a2 = { credit = "ZTZ-99A2 主战坦克：ZTZ-99A2，作者 42manako（https://sketchfab.com/3d-models/ztz-99a2-6d0a293a050347fe81c405b7c0f21e64），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0, 5.04, -4.176 }, h = 7.787, hull = { 9.63, 5.589, 22.168 }, len = 30.8, muz = 15.54, parts = { Body_1 = { c = { 0, 3.249, 0 }, g = "Body", s = { 9.63, 4.68, 22.168 } }, Body_10 = { c = { -0.053, 3.446, -0.032 }, g = "Body", s = { 9.2, 4.157, 22.104 } }, Body_11 = { c = { 0.058, 4.136, -0.038 }, g = "Body", s = { 8.606, 0.724, 16.443 } }, Body_12 = { c = { 0, 3.952, -6.492 }, col = { 163, 134, 203 }, g = "Body", s = { 1.41, 0.147, 0.172 } }, Body_13 = { c = { 0, 3.963, 0.139 }, col = { 231, 110, 110 }, g = "Body", s = { 8.849, 0.777, 17.842 } }, Body_14 = { c = { 0, 3, -9.597 }, g = "Body", s = { 4.45, 0.364, 0.02 } }, Body_15 = { c = { 0, 3.954, 0.135 }, col = { 255, 236, 165 }, g = "Body", s = { 8.466, 0.758, 17.835 } }, Body_2 = { c = { -0.003, 3.696, 0 }, g = "Body", s = { 9.312, 3.785, 22.168 } }, Body_3 = { c = { 0, 3.586, 0.227 }, g = "Body", s = { 8.905, 1.587, 18.017 } }, Body_4 = { c = { 0, 2.008, -1.207 }, col = { 96, 96, 96 }, g = "Body", s = { 9.197, 3.91, 18.8 } }, Body_5 = { c = { 0.014, 1.57, -1.235 }, col = { 96, 96, 96 }, g = "Body", s = { 9.106, 3.137, 18.966 } }, Body_6 = { c = { 0.331, 2.199, -0.991 }, col = { 96, 96, 96 }, g = "Body", s = { 8.417, 4.398, 19.564 } }, Body_7 = { c = { -0.014, 2.199, -0.991 }, col = { 96, 96, 96 }, g = "Body", s = { 9.106, 4.398, 19.564 } }, Body_8 = { c = { -0.384, 1.597, -1.302 }, col = { 96, 96, 96 }, g = "Body", s = { 8.365, 3.193, 18.943 } }, Body_9 = { c = { -0.33, 1.512, -0.126 }, col = { 96, 96, 96 }, g = "Body", s = { 8.257, 3.019, 15.597 } }, Gun_1 = { c = { 0, 5.033, -11.679 }, g = "Gun", s = { 1.514, 1.803, 16.074 } }, Gun_2 = { c = { 0, 5.1, -17.096 }, col = { 96, 96, 96 }, g = "Gun", s = { 0.386, 0.386, 5.24 } }, Turret_1 = { c = { 0, 6.038, -0.094 }, g = "Turret", s = { 8.781, 3.498, 11.004 } }, Turret_2 = { c = { 1.108, 4.764, -4.733 }, col = { 96, 96, 96 }, g = "Turret", s = { 0.213, 0.568, 0.02 } }, Turret_3 = { c = { 1.752, 6.661, 0.043 }, g = "Turret", s = { 1.576, 0.154, 1.246 } }, Turret_4 = { c = { 0.573, 6.656, -0.805 }, col = { 163, 134, 203 }, g = "Turret", s = { 4.283, 0.985, 3.241 } }, Turret_5 = { c = { -0.005, 5.312, -3.195 }, col = { 228, 212, 150 }, g = "Turret", s = { 6.876, 1.473, 1.608 } }, Turret_6 = { c = { -0.005, 5.298, -3.196 }, col = { 231, 110, 110 }, g = "Turret", s = { 6.853, 1.204, 1.326 } }, W01_1 = { c = { 3.837, 1.198, 5.054 }, g = "W01", s = { 1.093, 2.024, 2.024 } }, W01_2 = { c = { 3.837, 1.198, 5.054 }, col = { 96, 96, 96 }, g = "W01", s = { 1.026, 2.024, 2.024 } }, W02_1 = { c = { -3.837, 1.198, -0.037 }, g = "W02", s = { 1.093, 2.024, 2.024 } }, W02_2 = { c = { -3.837, 1.198, -0.037 }, col = { 96, 96, 96 }, g = "W02", s = { 1.026, 2.024, 2.024 } }, W03_1 = { c = { 3.837, 1.198, -2.737 }, g = "W03", s = { 1.093, 2.024, 2.024 } }, W03_2 = { c = { 3.837, 1.198, -2.737 }, col = { 96, 96, 96 }, g = "W03", s = { 1.026, 2.024, 2.024 } }, W04_1 = { c = { -3.837, 1.198, -5.409 }, g = "W04", s = { 1.093, 2.024, 2.024 } }, W04_2 = { c = { -3.837, 1.198, -5.409 }, col = { 96, 96, 96 }, g = "W04", s = { 1.026, 2.024, 2.024 } }, W05_1 = { c = { 3.837, 1.198, -5.409 }, g = "W05", s = { 1.093, 2.024, 2.024 } }, W05_2 = { c = { 3.837, 1.198, -5.409 }, col = { 96, 96, 96 }, g = "W05", s = { 1.026, 2.024, 2.024 } }, W06_1 = { c = { -3.837, 1.198, 2.63 }, g = "W06", s = { 1.093, 2.024, 2.024 } }, W06_2 = { c = { -3.837, 1.198, 2.63 }, col = { 96, 96, 96 }, g = "W06", s = { 1.026, 2.024, 2.024 } }, W07_1 = { c = { 3.837, 1.198, -7.789 }, g = "W07", s = { 1.093, 2.024, 2.024 } }, W07_2 = { c = { 3.837, 1.198, -7.789 }, col = { 96, 96, 96 }, g = "W07", s = { 1.026, 2.024, 2.024 } }, W08_1 = { c = { -3.837, 1.198, -2.737 }, g = "W08", s = { 1.093, 2.024, 2.024 } }, W08_2 = { c = { -3.837, 1.198, -2.737 }, col = { 96, 96, 96 }, g = "W08", s = { 1.026, 2.024, 2.024 } }, W09_1 = { c = { 3.837, 1.198, -0.037 }, g = "W09", s = { 1.093, 2.024, 2.024 } }, W09_2 = { c = { 3.837, 1.198, -0.037 }, col = { 96, 96, 96 }, g = "W09", s = { 1.026, 2.024, 2.024 } }, W10_1 = { c = { -3.837, 1.198, -7.789 }, g = "W10", s = { 1.093, 2.024, 2.024 } }, W10_2 = { c = { -3.837, 1.198, -7.789 }, col = { 96, 96, 96 }, g = "W10", s = { 1.026, 2.024, 2.024 } }, W11_1 = { c = { -3.837, 1.198, 5.054 }, g = "W11", s = { 1.093, 2.024, 2.024 } }, W11_2 = { c = { -3.837, 1.198, 5.054 }, col = { 96, 96, 96 }, g = "W11", s = { 1.026, 2.024, 2.024 } }, W12_1 = { c = { 3.837, 1.198, 2.63 }, g = "W12", s = { 1.093, 2.024, 2.024 } }, W12_2 = { c = { 3.837, 1.198, 2.63 }, col = { 96, 96, 96 }, g = "W12", s = { 1.026, 2.024, 2.024 } }, W13_1 = { c = { -3.837, 2.25, -9.821 }, g = "W13", s = { 1.157, 1.565, 1.574 } }, W14_1 = { c = { 3.837, 2.25, -9.821 }, g = "W14", s = { 1.157, 1.565, 1.574 } }, W15_1 = { c = { -3.837, 2.076, 7.333 }, g = "W15", s = { 1.506, 1.866, 1.847 } }, W15_2 = { c = { -3.837, 2.076, 7.333 }, g = "W15", s = { 1.367, 1.866, 1.847 } }, W16_1 = { c = { 3.837, 2.076, 7.333 }, g = "W16", s = { 1.506, 1.866, 1.847 } }, W16_2 = { c = { 3.837, 2.076, 7.333 }, g = "W16", s = { 1.367, 1.866, 1.847 } }, W17_1 = { c = { -2.737, 1.198, -7.789 }, g = "W17", s = { 1.396, 0.607, 0.607 } }, W18_1 = { c = { -2.737, 1.198, -0.037 }, g = "W18", s = { 1.396, 0.607, 0.607 } }, W19_1 = { c = { -2.737, 1.198, 5.054 }, g = "W19", s = { 1.396, 0.607, 0.607 } }, W20_1 = { c = { -2.737, 1.198, -2.737 }, g = "W20", s = { 1.396, 0.607, 0.607 } }, W21_1 = { c = { -2.737, 1.198, -5.409 }, g = "W21", s = { 1.396, 0.607, 0.607 } }, W22_1 = { c = { -2.737, 1.198, 2.63 }, g = "W22", s = { 1.396, 0.607, 0.607 } }, W23_1 = { c = { 2.737, 1.198, -0.037 }, g = "W23", s = { 1.396, 0.607, 0.607 } }, W24_1 = { c = { 2.737, 1.198, -7.789 }, g = "W24", s = { 1.396, 0.607, 0.607 } }, W25_1 = { c = { 2.737, 1.198, -2.737 }, g = "W25", s = { 1.396, 0.607, 0.607 } }, W26_1 = { c = { 2.737, 1.198, -5.409 }, g = "W26", s = { 1.396, 0.607, 0.607 } }, W27_1 = { c = { 2.737, 1.198, 2.63 }, g = "W27", s = { 1.396, 0.607, 0.607 } }, W28_1 = { c = { 2.737, 1.198, 5.054 }, g = "W28", s = { 1.396, 0.607, 0.607 } }, W29_1 = { c = { 2.688, 2.245, -9.821 }, g = "W29", s = { 1.257, 0.556, 0.559 } }, W30_1 = { c = { -2.688, 2.245, -9.821 }, g = "W30", s = { 1.257, 0.556, 0.559 } } }, tur = { 0, 4.34, -0.536 }, w = 9.63, wheels = { W01 = { c = { 3.837, 1.198, 5.054 }, r = 1.012 }, W02 = { c = { -3.837, 1.198, -0.037 }, r = 1.012 }, W03 = { c = { 3.837, 1.198, -2.737 }, r = 1.012 }, W04 = { c = { -3.837, 1.198, -5.409 }, r = 1.012 }, W05 = { c = { 3.837, 1.198, -5.409 }, r = 1.012 }, W06 = { c = { -3.837, 1.198, 2.63 }, r = 1.012 }, W07 = { c = { 3.837, 1.198, -7.789 }, r = 1.012 }, W08 = { c = { -3.837, 1.198, -2.737 }, r = 1.012 }, W09 = { c = { 3.837, 1.198, -0.037 }, r = 1.012 }, W10 = { c = { -3.837, 1.198, -7.789 }, r = 1.012 }, W11 = { c = { -3.837, 1.198, 5.054 }, r = 1.012 }, W12 = { c = { 3.837, 1.198, 2.63 }, r = 1.012 }, W13 = { c = { -3.837, 2.25, -9.821 }, r = 0.787 }, W14 = { c = { 3.837, 2.25, -9.821 }, r = 0.787 }, W15 = { c = { -3.837, 2.076, 7.333 }, r = 0.933 }, W16 = { c = { 3.837, 2.076, 7.333 }, r = 0.933 }, W17 = { c = { -2.737, 1.198, -7.789 }, r = 0.304 }, W18 = { c = { -2.737, 1.198, -0.037 }, r = 0.304 }, W19 = { c = { -2.737, 1.198, 5.054 }, r = 0.304 }, W20 = { c = { -2.737, 1.198, -2.737 }, r = 0.304 }, W21 = { c = { -2.737, 1.198, -5.409 }, r = 0.304 }, W22 = { c = { -2.737, 1.198, 2.63 }, r = 0.304 }, W23 = { c = { 2.737, 1.198, -0.037 }, r = 0.304 }, W24 = { c = { 2.737, 1.198, -7.789 }, r = 0.304 }, W25 = { c = { 2.737, 1.198, -2.737 }, r = 0.304 }, W26 = { c = { 2.737, 1.198, -5.409 }, r = 0.304 }, W27 = { c = { 2.737, 1.198, 2.63 }, r = 0.304 }, W28 = { c = { 2.737, 1.198, 5.054 }, r = 0.304 }, W29 = { c = { 2.688, 2.245, -9.821 }, r = 0.28 }, W30 = { c = { -2.688, 2.245, -9.821 }, r = 0.28 } } },
+    ztz99a2 = { credit = "ZTZ-99A2 主战坦克：ZTZ-99A2，作者 42manako（https://sketchfab.com/3d-models/ztz-99a2-6d0a293a050347fe81c405b7c0f21e64），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0, 5.04, -4.176 }, h = 7.787, hull = { 9.63, 5.589, 22.168 }, len = 30.8, muz = 15.54, parts = { Body_1 = { c = { 0, 3.249, 0 }, g = "Body", s = { 9.63, 4.68, 22.168 } }, Body_10 = { c = { -0.053, 3.446, -0.032 }, g = "Body", s = { 9.2, 4.157, 22.104 } }, Body_11 = { c = { 0.058, 4.136, -0.038 }, g = "Body", s = { 8.606, 0.724, 16.443 } }, Body_12 = { c = { 0, 3.952, -6.492 }, col = { 163, 134, 203 }, g = "Body", s = { 1.41, 0.147, 0.172 } }, Body_13 = { c = { 0, 3.963, 0.139 }, col = { 231, 110, 110 }, g = "Body", s = { 8.849, 0.777, 17.842 } }, Body_14 = { c = { 0, 3, -9.597 }, g = "Body", s = { 4.45, 0.364, 0.02 } }, Body_15 = { c = { 0, 3.954, 0.135 }, col = { 255, 236, 165 }, g = "Body", s = { 8.466, 0.758, 17.835 } }, Body_2 = { c = { -0.003, 3.696, 0 }, g = "Body", s = { 9.312, 3.785, 22.168 } }, Body_3 = { c = { 0, 3.586, 0.227 }, g = "Body", s = { 8.905, 1.587, 18.017 } }, Body_4 = { c = { 0, 2.008, -1.207 }, col = { 96, 96, 96 }, g = "Body", s = { 9.197, 3.91, 18.8 } }, Body_5 = { c = { 0.014, 1.57, -1.235 }, col = { 96, 96, 96 }, g = "Body", s = { 9.106, 3.137, 18.966 } }, Body_6 = { c = { 0.331, 2.199, -0.991 }, col = { 96, 96, 96 }, g = "Body", s = { 8.417, 4.398, 19.564 } }, Body_7 = { c = { -0.014, 2.199, -0.991 }, col = { 96, 96, 96 }, g = "Body", s = { 9.106, 4.398, 19.564 } }, Body_8 = { c = { -0.384, 1.597, -1.302 }, col = { 96, 96, 96 }, g = "Body", s = { 8.365, 3.193, 18.943 } }, Body_9 = { c = { -0.33, 1.512, -0.126 }, col = { 96, 96, 96 }, g = "Body", s = { 8.257, 3.019, 15.597 } }, Gun_1 = { c = { 0, 5.033, -11.679 }, g = "Gun", s = { 1.514, 1.803, 16.074 } }, Gun_2 = { c = { 0, 5.1, -17.096 }, col = { 96, 96, 96 }, g = "Gun", s = { 0.386, 0.386, 5.24 } }, Turret_1 = { c = { 0, 6.038, -0.094 }, g = "Turret", s = { 8.781, 3.498, 11.004 } }, Turret_2 = { c = { 1.108, 4.764, -4.733 }, col = { 96, 96, 96 }, g = "Turret", s = { 0.213, 0.568, 0.02 } }, Turret_3 = { c = { 1.752, 6.661, 0.043 }, g = "Turret", s = { 1.576, 0.154, 1.246 } }, Turret_4 = { c = { 0.573, 6.656, -0.805 }, col = { 163, 134, 203 }, g = "Turret", s = { 4.283, 0.985, 3.241 } }, Turret_5 = { c = { -0.005, 5.312, -3.195 }, col = { 228, 212, 150 }, g = "Turret", s = { 6.876, 1.473, 1.608 } }, Turret_6 = { c = { -0.005, 5.298, -3.196 }, col = { 231, 110, 110 }, g = "Turret", s = { 6.853, 1.204, 1.326 } }, W01_1 = { c = { 3.837, 1.198, 5.054 }, g = "W01", s = { 1.093, 2.024, 2.024 } }, W01_2 = { c = { 3.837, 1.198, 5.054 }, col = { 96, 96, 96 }, g = "W01", s = { 1.026, 2.024, 2.024 } }, W02_1 = { c = { -3.837, 1.198, -0.037 }, g = "W02", s = { 1.093, 2.024, 2.024 } }, W02_2 = { c = { -3.837, 1.198, -0.037 }, col = { 96, 96, 96 }, g = "W02", s = { 1.026, 2.024, 2.024 } }, W03_1 = { c = { 3.837, 1.198, -2.737 }, g = "W03", s = { 1.093, 2.024, 2.024 } }, W03_2 = { c = { 3.837, 1.198, -2.737 }, col = { 96, 96, 96 }, g = "W03", s = { 1.026, 2.024, 2.024 } }, W04_1 = { c = { -3.837, 1.198, -5.409 }, g = "W04", s = { 1.093, 2.024, 2.024 } }, W04_2 = { c = { -3.837, 1.198, -5.409 }, col = { 96, 96, 96 }, g = "W04", s = { 1.026, 2.024, 2.024 } }, W05_1 = { c = { 3.837, 1.198, -5.409 }, g = "W05", s = { 1.093, 2.024, 2.024 } }, W05_2 = { c = { 3.837, 1.198, -5.409 }, col = { 96, 96, 96 }, g = "W05", s = { 1.026, 2.024, 2.024 } }, W06_1 = { c = { -3.837, 1.198, 2.63 }, g = "W06", s = { 1.093, 2.024, 2.024 } }, W06_2 = { c = { -3.837, 1.198, 2.63 }, col = { 96, 96, 96 }, g = "W06", s = { 1.026, 2.024, 2.024 } }, W07_1 = { c = { 3.837, 1.198, -7.789 }, g = "W07", s = { 1.093, 2.024, 2.024 } }, W07_2 = { c = { 3.837, 1.198, -7.789 }, col = { 96, 96, 96 }, g = "W07", s = { 1.026, 2.024, 2.024 } }, W08_1 = { c = { -3.837, 1.198, -2.737 }, g = "W08", s = { 1.093, 2.024, 2.024 } }, W08_2 = { c = { -3.837, 1.198, -2.737 }, col = { 96, 96, 96 }, g = "W08", s = { 1.026, 2.024, 2.024 } }, W09_1 = { c = { 3.837, 1.198, -0.037 }, g = "W09", s = { 1.093, 2.024, 2.024 } }, W09_2 = { c = { 3.837, 1.198, -0.037 }, col = { 96, 96, 96 }, g = "W09", s = { 1.026, 2.024, 2.024 } }, W10_1 = { c = { -3.837, 1.198, -7.789 }, g = "W10", s = { 1.093, 2.024, 2.024 } }, W10_2 = { c = { -3.837, 1.198, -7.789 }, col = { 96, 96, 96 }, g = "W10", s = { 1.026, 2.024, 2.024 } }, W11_1 = { c = { -3.837, 1.198, 5.054 }, g = "W11", s = { 1.093, 2.024, 2.024 } }, W11_2 = { c = { -3.837, 1.198, 5.054 }, col = { 96, 96, 96 }, g = "W11", s = { 1.026, 2.024, 2.024 } }, W12_1 = { c = { 3.837, 1.198, 2.63 }, g = "W12", s = { 1.093, 2.024, 2.024 } }, W12_2 = { c = { 3.837, 1.198, 2.63 }, col = { 96, 96, 96 }, g = "W12", s = { 1.026, 2.024, 2.024 } }, W13_1 = { c = { -3.837, 2.25, -9.821 }, g = "W13", s = { 1.157, 1.565, 1.574 } }, W14_1 = { c = { 3.837, 2.25, -9.821 }, g = "W14", s = { 1.157, 1.565, 1.574 } }, W15_1 = { c = { -3.837, 2.076, 7.333 }, g = "W15", s = { 1.506, 1.866, 1.847 } }, W15_2 = { c = { -3.837, 2.076, 7.333 }, g = "W15", s = { 1.367, 1.866, 1.847 } }, W16_1 = { c = { 3.837, 2.076, 7.333 }, g = "W16", s = { 1.506, 1.866, 1.847 } }, W16_2 = { c = { 3.837, 2.076, 7.333 }, g = "W16", s = { 1.367, 1.866, 1.847 } }, W17_1 = { c = { -2.737, 1.198, -7.789 }, g = "W17", s = { 1.396, 0.607, 0.607 } }, W18_1 = { c = { -2.737, 1.198, -0.037 }, g = "W18", s = { 1.396, 0.607, 0.607 } }, W19_1 = { c = { -2.737, 1.198, 5.054 }, g = "W19", s = { 1.396, 0.607, 0.607 } }, W20_1 = { c = { -2.737, 1.198, -2.737 }, g = "W20", s = { 1.396, 0.607, 0.607 } }, W21_1 = { c = { -2.737, 1.198, -5.409 }, g = "W21", s = { 1.396, 0.607, 0.607 } }, W22_1 = { c = { -2.737, 1.198, 2.63 }, g = "W22", s = { 1.396, 0.607, 0.607 } }, W23_1 = { c = { 2.737, 1.198, -0.037 }, g = "W23", s = { 1.396, 0.607, 0.607 } }, W24_1 = { c = { 2.737, 1.198, -7.789 }, g = "W24", s = { 1.396, 0.607, 0.607 } }, W25_1 = { c = { 2.737, 1.198, -2.737 }, g = "W25", s = { 1.396, 0.607, 0.607 } }, W26_1 = { c = { 2.737, 1.198, -5.409 }, g = "W26", s = { 1.396, 0.607, 0.607 } }, W27_1 = { c = { 2.737, 1.198, 2.63 }, g = "W27", s = { 1.396, 0.607, 0.607 } }, W28_1 = { c = { 2.737, 1.198, 5.054 }, g = "W28", s = { 1.396, 0.607, 0.607 } }, W29_1 = { c = { 2.688, 2.245, -9.821 }, g = "W29", s = { 1.257, 0.556, 0.559 } }, W30_1 = { c = { -2.688, 2.245, -9.821 }, g = "W30", s = { 1.257, 0.556, 0.559 } } }, rws = { g = { 1.75, 7.38, -0.75 }, mk = "manual", muz = 2.45, p = { 1.75, 6.78, -0.3 } }, tur = { 0, 4.34, -0.536 }, w = 9.63, wheels = { W01 = { c = { 3.837, 1.198, 5.054 }, r = 1.012 }, W02 = { c = { -3.837, 1.198, -0.037 }, r = 1.012 }, W03 = { c = { 3.837, 1.198, -2.737 }, r = 1.012 }, W04 = { c = { -3.837, 1.198, -5.409 }, r = 1.012 }, W05 = { c = { 3.837, 1.198, -5.409 }, r = 1.012 }, W06 = { c = { -3.837, 1.198, 2.63 }, r = 1.012 }, W07 = { c = { 3.837, 1.198, -7.789 }, r = 1.012 }, W08 = { c = { -3.837, 1.198, -2.737 }, r = 1.012 }, W09 = { c = { 3.837, 1.198, -0.037 }, r = 1.012 }, W10 = { c = { -3.837, 1.198, -7.789 }, r = 1.012 }, W11 = { c = { -3.837, 1.198, 5.054 }, r = 1.012 }, W12 = { c = { 3.837, 1.198, 2.63 }, r = 1.012 }, W13 = { c = { -3.837, 2.25, -9.821 }, r = 0.787 }, W14 = { c = { 3.837, 2.25, -9.821 }, r = 0.787 }, W15 = { c = { -3.837, 2.076, 7.333 }, r = 0.933 }, W16 = { c = { 3.837, 2.076, 7.333 }, r = 0.933 }, W17 = { c = { -2.737, 1.198, -7.789 }, r = 0.304 }, W18 = { c = { -2.737, 1.198, -0.037 }, r = 0.304 }, W19 = { c = { -2.737, 1.198, 5.054 }, r = 0.304 }, W20 = { c = { -2.737, 1.198, -2.737 }, r = 0.304 }, W21 = { c = { -2.737, 1.198, -5.409 }, r = 0.304 }, W22 = { c = { -2.737, 1.198, 2.63 }, r = 0.304 }, W23 = { c = { 2.737, 1.198, -0.037 }, r = 0.304 }, W24 = { c = { 2.737, 1.198, -7.789 }, r = 0.304 }, W25 = { c = { 2.737, 1.198, -2.737 }, r = 0.304 }, W26 = { c = { 2.737, 1.198, -5.409 }, r = 0.304 }, W27 = { c = { 2.737, 1.198, 2.63 }, r = 0.304 }, W28 = { c = { 2.737, 1.198, 5.054 }, r = 0.304 }, W29 = { c = { 2.688, 2.245, -9.821 }, r = 0.28 }, W30 = { c = { -2.688, 2.245, -9.821 }, r = 0.28 } } },
   },
 }
 ]]></ProtectedString>
@@ -4338,8 +4338,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 按住 Alt 鼠标自由看 · 左键 机炮（打机头标记那里）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold Alt to look around · LMB gun (fires at the nose marker) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -4477,7 +4477,7 @@ add("coach.card.lcac.2", "开到海滩、冲上沙滩，车会自动放下来", 
 add("coach.card.lcac.3", "接着开车从艇首开下去；空格下车", "Then drive off over the bow; Space to get out")
 add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道上转向，油门收到底按住 Ctrl 倒退", "Shift throttle up (full = afterburner); A / D steer on the runway; hold Ctrl at idle to back up")
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
-add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
+add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
 add("coach.card.heli.2", "按住 E 升、Q 降；机头跟着准心转，W 桨盘前倾往前飞，A / D 侧飞", "Hold E to climb, Q to descend; the nose follows your aim, W tilts the rotor forward, A / D sidestep")
 add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
@@ -5481,7 +5481,8 @@ function Map.material(x, z, y, slope)
   if slope > 0.92 * HK / K then return Enum.Material.Ground end   -- 陡一点的坡才露土（原来 0.75：用户 11-19 草多一点）
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
-  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18 / 11-19：草多用 Roblox 自带的那种草、多一点），深色 LeafyGrass 只留很少几块
+  -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
+  --   写地形时 Grass 都换成 LeafyGrass（World.lua 的 writeChunk；用户 11-21：会动的草叶把车、人的下半截盖住，脚本又关不掉草叶）
   return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
@@ -7348,6 +7349,51 @@ return ShipDefs
       </Item>
       <Item class="ModuleScript" referent="60">
         <Properties>
+          <string name="Name">SoundLib</string>
+          <ProtectedString name="Source"><![CDATA[-- 全面大战场——真录音（用户 11-21：声音要逼真，「你来处理声音找音源」）
+--   都是 Roblox 创作者商店里公开的音频（任何游戏都能直接用，不用自己上传），挑的是认证创作者上传、名字写清楚是什么的：
+--   · ProSoundEffects：Roblox 2022 年买下授权、免费给所有游戏用的专业音效库（步枪、爆炸、子弹呼啸、跳弹、金属撞击、音爆）
+--   · Red Bear Community（认证群组）：坦克炮车外 / 车内的录音、炮弹和航弹爆炸
+--   · 其他认证创作者：坦克发动机、喷气发动机、休伊直升机旋翼、舰船发动机、导弹发射、12.7 毫米机枪
+--   Fx.lua 开局预载：哪个载不下来（被删、被设成私有、没网）就退回原来用 Roblox 自带声音叠出来的那个，不会没声音
+--   每项：ids 几个录音（每次随机挑一个）、vol 音量、s 播放速度范围、loop 循环（true 整段循环；{ 起, 止 } 只循环这一段）、len 大概多长（秒）、src 出处
+return {
+	-- 坦克炮：车外听（别人开炮、第三人称）和车里听（自己在车内 / 炮长镜里开炮：闷、震）
+	tankGun = { ids = { 18221697746, 18245544654 }, vol = 1.8, s = { 0.82, 0.9 }, len = 4,
+		src = "Red Bear Community：88mm_cannon_body_EXT_、76mm_Cannon_Body_EXT_01" },
+	tankGunIn = { ids = { 18221692752, 18221699254 }, vol = 1.6, s = { 0.82, 0.9 }, len = 4,
+		src = "Red Bear Community：88mm_cannon_body_INT_04、88mm_cannon_body_INT" },
+	-- 爆炸：大（航弹、导弹）、中（坦克炮弹、火箭弹）、小（手雷、迫击炮、小口径）
+	boomL = { ids = { 18245339193, 9117876720 }, vol = 2, s = { 0.92, 1.02 }, len = 7,
+		src = "Red Bear Community：500lb_bomb_explosion_close_03；ProSoundEffects：Power Explosions Big Heavy Searing Boom 1" },
+	boomM = { ids = { 18245316227, 9114362266, 9114362264 }, vol = 1.6, s = { 0.95, 1.08 }, len = 6,
+		src = "Red Bear Community：Shell_explosion_large_mid_02；ProSoundEffects：Explosions 4、Explosions 5" },
+	boomS = { ids = { 9119236749, 9119236757 }, vol = 1.3, s = { 0.95, 1.1 }, len = 3,
+		src = "ProSoundEffects：Small Explosion 1、Small Explosion 2" },
+	-- 枪
+	rifle = { ids = { 9118173739, 9118173999, 9118173988, 9118173992 }, vol = 0.9, s = { 0.96, 1.06 }, len = 3,
+		src = "ProSoundEffects：Rifle Single Shots 1–4" },
+	hmg = { ids = { 90006135469253, 133704528245805 }, vol = 1, s = { 0.95, 1.05 }, len = 2.5,
+		src = "Obamacaremathlab：50 Caliber heavy machine gun fire once (2)、50 Caliber HMG fire once sound effect (3)" },
+	missile = { ids = { 509177476, 101663861280893 }, vol = 1.3, s = { 0.95, 1.05 }, len = 5,
+		src = "ZuluCenturion：SeaRAM missile launch；ii1_z：ATGM Launch (Stugna-P) Missile" },
+	-- 子弹从耳边飞过、跳弹、打在金属上、音爆
+	whiz = { ids = { 9113634361, 9113634444 }, vol = 0.8, s = { 0.95, 1.1 }, len = 1, src = "ProSoundEffects：Bullet Whiz 1、Bullet Whiz 2" },
+	ric = { ids = { 9118168320, 9118168273, 9118168291 }, vol = 0.9, s = { 0.92, 1.08 }, len = 1, src = "ProSoundEffects：Rico Bullet Whiz 1–3" },
+	metalHit = { ids = { 9116684733, 9116684830 }, vol = 0.9, s = { 0.9, 1.1 }, len = 1, src = "ProSoundEffects：Metal Impacts 1、Metal Impacts 3" },
+	sonic = { ids = { 9119382258, 9119382493 }, vol = 2, s = { 0.95, 1.02 }, len = 6, src = "ProSoundEffects：Sonic Boom 1" },
+	-- 发动机（循环）：自己开的车 / 飞机 / 船，速度和音量跟着转速、油门、负载变
+	tankEngine = { ids = { 8213083943 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 7, src = "Tankentwerfer：medium tank engine idle loop" },
+	jetEngine = { ids = { 81983731621096 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 3, src = "JunkersJu87B_2Stuk：Jet engine loop" },
+	heliRotor = { ids = { 18630771616, 18630809102 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 10,
+		src = "ChuckNorrisBR1：Helicopter Bell UH-1H \"Huey\" rotor sound, looped" },
+	shipEngine = { ids = { 82255182471237 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 10, src = "iris's workshop：Ship Engine" },
+}
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="61">
+        <Properties>
           <string name="Name">TankMods</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克改装（用户 11-19：给坦克实现爆反和主动拦截系统，可以改坦克，像给飞机选导弹那样选装）
 --   每型坦克三个改装位：爆反（标配——原模型上本来就有，99A 炮塔正面补贴了一片；不能拆）、主动防御（不装 / 硬杀伤拦截系统）、
@@ -7500,7 +7546,7 @@ return TM
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="61">
+      <Item class="ModuleScript" referent="62">
         <Properties>
           <string name="Name">VehDefs</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -7564,7 +7610,7 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
   rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
   gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
-  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6), noRoofMg = true,   -- 车顶不放机枪（用户 11-21），机枪那一栏是并列机枪
+  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
 D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
@@ -7773,9 +7819,13 @@ do
         if info.rws and info.rws.p and info.rws.g then
           local rp = V(info.rws.p[1], info.rws.p[2], info.rws.p[3])
           local rg = V(info.rws.g[1], info.rws.g[2], info.rws.g[3])
-          d.rws = { pivot = rp - tur, gun = rg - rp, len = info.rws.muz or 2.5, trav = 120, rate = 90, elev = { -20, 60 } }
-          for i, wid in ipairs(d.weapons) do
-            if wid == "coax" then d.weapons[i] = "hmg" end
+          d.rws = { pivot = rp - tur, gun = rg - rp, len = info.rws.muz or 2.5, trav = 120, rate = 90, elev = { -20, 60 }, mk = info.rws.mk }
+          if info.rws.mk == "manual" then   -- 手动的车长重机枪（99A 的 12.7 毫米，真车上还有一挺 7.62 并列机枪）：并列机枪留着，第 3 栏是车顶重机枪
+            table.insert(d.weapons, "hmg")
+          else
+            for i, wid in ipairs(d.weapons) do
+              if wid == "coax" then d.weapons[i] = "hmg" end
+            end
           end
         end
         d.model = key
@@ -7862,7 +7912,7 @@ return VehDefs
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="62">
+      <Item class="ModuleScript" referent="63">
         <Properties>
           <string name="Name">WeaponModels</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -8158,11 +8208,11 @@ return WM
         </Properties>
       </Item>
     </Item>
-    <Item class="Folder" referent="63">
+    <Item class="Folder" referent="64">
       <Properties>
         <string name="Name">ServerScriptService</string>
       </Properties>
-      <Item class="Script" referent="64">
+      <Item class="Script" referent="65">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -8390,7 +8440,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">AIVeh</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -8886,7 +8936,7 @@ return AIVeh
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">Air</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -9209,7 +9259,7 @@ function Air.init(G)
     e.syncT, e.syncSlack = now(), 160   -- 位置报告的校验（sync）：从这一刻起算
     e.gunT = 0
     e.trig = false
-    e.aim = nil
+    e.aim, e.stick = nil, nil
     e.bay = 0
     e.model:SetAttribute("Gear", onGround and 1 or 0)
     e.model:SetAttribute("Thr", onGround and 0 or 80)
@@ -9522,7 +9572,12 @@ function Air.init(G)
       end
       return fwd, o
     end
-    return fwd, (cf * CF(e.def.gunPos or V(0, 0, -e.def.L * 0.45))).Position
+    local o = (cf * CF(e.def.gunPos or V(0, 0, -e.def.L * 0.45))).Position
+    if e.driver and e.stick and typeof(e.aim) == "Vector3" then   -- 固定机炮黏住目标（用户 11-21：像 MWT 那样）：客户端给的瞄准点在机头 12° 以内就朝它打
+      local want = e.aim - o
+      if want.Magnitude > 1 and fwd:Dot(want.Unit) > math.cos(math.rad(12)) then return want.Unit, o end
+    end
+    return fwd, o
   end
   -- 近似正态分布（三个均匀分布相加），标准差 1
   local function gauss() return (math.random() + math.random() + math.random() - 1.5) * 2 end
@@ -9637,6 +9692,7 @@ function Air.init(G)
     if e.onGround and d.gd ~= true then e.upAt = now() end   -- 刚离地（AI 舰艇的自动防空导弹 12 秒内不打：Navy.lua）
     e.onGround = d.gd == true
     if typeof(d.aim) == "Vector3" then e.aim = d.aim end
+    e.stick = d.stk == true   -- 机炮黏住了目标（客户端 Fly.lua 的 gunStick）
     local m = e.model
     local function q(name, v, k)
       if type(v) ~= "number" or v ~= v then return end
@@ -9691,6 +9747,7 @@ function Air.init(G)
       e.trig = d.on == true
       e.model:SetAttribute("Fire", e.trig)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
+      e.stick = d.stk == true
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
@@ -9842,7 +9899,7 @@ return Air
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">Aps</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防御系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；改装里选装，TankMods.OPT.hk）
@@ -9944,7 +10001,7 @@ return Aps
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">Armor</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -10530,7 +10587,7 @@ return Armor
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">Battle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -11016,7 +11073,7 @@ return Battle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">Bots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -12144,7 +12201,7 @@ return Bots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">Depots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -12585,7 +12642,7 @@ return Depots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">Ents</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -12937,7 +12994,7 @@ return Ents
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">Era</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -13059,7 +13116,7 @@ return Era
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">Forts</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -14256,7 +14313,7 @@ return Forts
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -14464,7 +14521,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Imports</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -14602,7 +14659,7 @@ return Imports
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -14796,7 +14853,7 @@ return Nav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Navy</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -15791,7 +15848,7 @@ return Navy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">Passes</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -15875,7 +15932,7 @@ return Passes
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">Rewind</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -16110,7 +16167,7 @@ return Rewind
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">Round</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -17177,7 +17234,7 @@ return Round
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">Store</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -17283,7 +17340,7 @@ return Store
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">Tactical</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -17509,7 +17566,7 @@ return Tactical
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">Vehicles</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -17805,7 +17862,7 @@ return Vehicles
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Weapons</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -18493,7 +18550,7 @@ return Weapons
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">World</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -18676,7 +18733,9 @@ end
 ---------------------------------------------------------------- 地形
 
 -- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+-- LeafyGrass：草地（用户 11-21：坦克还是半截身子在地里——Roblox 会动的草叶只长在 Grass 材质上，脚本又改不了 Decoration / GrassLength，
+--   writeChunk 把 Grass 都写成 LeafyGrass，染成原来草地的颜色）
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(98, 148, 64), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
   Mud = RGB(54, 47, 40), Concrete = RGB(150, 148, 140), Asphalt = RGB(70, 72, 76) }   -- 水泥、柏油：港口的码头平地、坡道
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
@@ -18708,6 +18767,7 @@ local function writeChunk(T, x0, z0, n, yFloor)
     M[i], O[i] = Mi, Oi
   end
   local Water, Air, Sand, Ground, Rock = MAT.Water, MAT.Air, MAT.Sand, MAT.Ground, MAT.Rock
+  local Grass, Leafy = MAT.Grass, MAT.LeafyGrass
   for i = 0, N - 1 do
     local x = x0 + (i + 0.5) * RES
     for k = 0, N - 1 do
@@ -18718,6 +18778,9 @@ local function writeChunk(T, x0, z0, n, yFloor)
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
         top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+        -- 草地写成 LeafyGrass（不长草叶）：Roblox 会动的草叶只长在 Grass 上，盖住履带、车轮、小人的腿，看着像半截身子在地里；
+        --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
+        if top == Grass then top = Leafy end
       end
       local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
       for j = 0, NY - 1 do
@@ -18752,10 +18815,9 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    -- 地形草叶关掉（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：
-    --   草叶调过 0.55 / 0.45 / 0.28 / 0.22 几回，用户那边照样盖住履带、车轮、小人的腿、沙袋下半截。
-    --   草地照旧是 Grass 材质（地面的颜色、纹理不变），只是不长会动的草叶；客户端 Perf.lua 也关一遍（这个属性不一定同步到客户端）
-    T.Decoration = false
+    -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来在这里设 GrassLength、Decoration——
+    --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
+    --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -20272,11 +20334,11 @@ return World
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="87">
+    <Item class="Folder" referent="88">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="88">
+      <Item class="LocalScript" referent="89">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -20404,7 +20466,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -20584,7 +20646,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -20804,6 +20866,15 @@ function AirHud.init(G)
   -- 准星（鼠标想去的方向）：一个发光的细圈（HudIcons 的 aimRing），Fly 原来那个「◯」字收起来
   A.aim = img(gui, "AimRing", UDim2.fromOffset(28, 28), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5), WHITE, 0.05)
   A.aimArt = setIcon(A.aim, "aimRing")
+  if not A.aimArt then   -- 用不了 EditableImage（游戏设置里没开 Mesh / Image API）：圆角框 + 描边画一个圈（机炮黏住目标时要看得见）
+    A.aim.BackgroundTransparency = 1
+    local cr = Instance.new("UICorner")
+    cr.CornerRadius = UDim.new(0.5, 0)
+    cr.Parent = A.aim
+    local sk = Instance.new("UIStroke")
+    sk.Thickness, sk.Color, sk.Transparency = 2, WHITE, 0.1
+    sk.Parent = A.aim
+  end
   A.aim.Visible = false
 
   ---------------------------------------------------------------- 锁定：菱形（顺时针画出来）、锁上后四个直角、菱形逆时针转
@@ -21055,8 +21126,11 @@ function AirHud.init(G)
       A.boreFall.Visible = false
     end
     hsg.Enabled = showHolo
-    A.aim.Visible = pilot and A.aimArt and info.aim ~= nil
-    if info.aim then A.aim.Position = info.aim end
+    A.aim.Visible = pilot and info.aim ~= nil
+    if info.aim then
+      A.aim.Position = info.aim
+      A.aim.Rotation = (lastT * 120) % 360   -- 黏在目标上的准星圈转着（MWT 那样）
+    end
     -- 锁定：菱形顺时针画出来；锁上后四个直角往里一收、菱形逆时针转；出了导弹的离轴角菱形变黄
     local lk = info.lock
     if pilot and lk and lk.on then
@@ -21157,7 +21231,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -22609,7 +22683,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -22779,7 +22853,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -23069,7 +23143,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -23226,7 +23300,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -23806,7 +23880,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -23946,7 +24020,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -24341,7 +24415,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -24656,13 +24730,14 @@ function Drive.init(G)
     if not G.makeSound then return end
     local SS = game:GetService("SoundService")
     local heavy = d.arch ~= "wheeled"
-    local rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
+    local realEng = heavy and G.realLoop and G.realLoop("tankEngine", SS)   -- 真录音的坦克发动机（SoundLib；没载上照旧叠出来的）
+    local rumble = realEng or G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
     -- 履带的哗啦声（用户 11-20：载具照 UE5 的水平升级）：咔哒那一下截一小段循环，开得越快一圈越短、越密；
     --   轮胎侧滑的沙沙声：风声削掉低音，侧滑越厉害越响
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
     local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
-    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2 }
+    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2, realEng = realEng ~= nil }
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -24685,10 +24760,15 @@ function Drive.init(G)
     if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
-    engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
-    engine.rumble.Volume = 0.3 + 0.35 * r
+    if engine.realEng then   -- 真录音：转速高了放快一点、响一点；叠出来的涡轮尖啸压低（别盖住真录音）
+      engine.rumble.PlaybackSpeed = 0.8 + r * 0.55
+      engine.rumble.Volume = 0.5 + 0.6 * r
+    else
+      engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
+      engine.rumble.Volume = 0.3 + 0.35 * r
+    end
     engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
-    engine.whine.Volume = 0.6 + 2.6 * r * r
+    engine.whine.Volume = (0.6 + 2.6 * r * r) * (engine.realEng and 0.45 or 1)
     local air = st and st.airS ~= nil
     if engine.clank then   -- 履带：速度越快越密；在天上没有
       engine.clank.PlaybackSpeed = 0.55 + spd * 1.6
@@ -25301,8 +25381,8 @@ function Drive.init(G)
       nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three then   -- 3：改装的车顶加特林
-      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or 3)
+    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three or k == Enum.KeyCode.Four then   -- 3 / 4：车顶重机枪、改装的车顶加特林
+      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or ((k == Enum.KeyCode.Three) and 3 or 4))
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
@@ -25491,7 +25571,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -26487,7 +26567,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -26702,7 +26782,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -27478,6 +27558,8 @@ function Fly.init(G)
         game:GetService("SoundService"), {})
       if st.buffetSnd then st.buffetSnd.Volume = 0 end
     end
+    -- 发动机声（用户 11-21：声音要真，SoundLib 的真录音；没载上就没有这一层）：固定翼喷气发动机、直升机休伊的旋翼，坐后面的也听得到
+    if G.realLoop then st.engSnd = G.realLoop((d.kind == "jet") and "jetEngine" or "heliRotor", game:GetService("SoundService")) end
     if G.playSound then G.playSound("capture") end
   end
 
@@ -27508,6 +27590,7 @@ function Fly.init(G)
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
     if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if old and old.engSnd then old.engSnd:Destroy() end
     if G.vehCamReset then G.vehCamReset("heli") end
   end
 
@@ -27605,6 +27688,62 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(math.min(cone * 2.2, 85)))
   end
+  -- 机炮黏住目标（用户 11-21：机炮也能像 MWT 那样黏在载具上）：机头前方 6° 以内、炮的射程里的敌方载具（车、船、飞机、工事、登陆艇），
+  --   挑离机头最近的（远的稍微吃亏）；黏住以后偏到 9° 才松开（不来回跳）。瞄准点放在提前量上：目标的位置 + 相对速度 × 炮弹飞过去的时间
+  --   （炮弹带着自己飞机的速度出膛，所以用相对速度）+ 下坠；服务器的固定机炮最多偏 12° 朝这一点打（Air.lua 的 gunDir）
+  local STICK_IN, STICK_OUT = math.cos(rad(6)), math.cos(rad(9))
+  local STICK_KINDS = { veh = true, fort = true, lcm = true, lcac = true, ship = true, air = true }
+  local function gunStick()
+    local gw = nil   -- 这架飞机的炮：挂载表里的炮（固定翼），没有就看机型的 gun（歼-20 没有内置机炮，不黏）
+    for _, wid in ipairs(st.wl or {}) do
+      local w = AD.W[wid]
+      if w and w.kind == "gun" then gw = w break end
+    end
+    gw = gw or AD.W[st.d.gun or ""]
+    local f = workspace:FindFirstChild("Ents")
+    if not gw or not f then return nil end
+    local myTeam = me:GetAttribute("Side")
+    local p0, fwd = st.cf.Position, st.cf.LookVector
+    local keep = st.stick and st.stick.em
+    local best, bestS = nil, math.huge
+    for _, em in ipairs(f:GetChildren()) do
+      local root = em:FindFirstChild("Root")
+      if root and em ~= st.em and STICK_KINDS[em:GetAttribute("Kind") or ""] and em:GetAttribute("Team") ~= myTeam
+        and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
+        local p = root.CFrame.Position
+        local to = p - p0
+        local dist = to.Magnitude
+        if dist > 40 and dist < gw.range then
+          local c = fwd:Dot(to / dist)
+          if c > ((em == keep) and STICK_OUT or STICK_IN) then
+            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0)
+            if sc < bestS then best, bestS = { em = em, p = p, dist = dist }, sc end
+          end
+        end
+      end
+    end
+    if not best then st.stickV = nil return nil end
+    -- 目标的速度：两帧位置差，平滑一下
+    local now = os.clock()
+    local sv = st.stickV
+    local vT = V()
+    if sv and sv.em == best.em and now > sv.t + 1e-3 then
+      local raw = (best.p - sv.p) / (now - sv.t)
+      vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
+    elseif sv and sv.em == best.em then
+      vT = sv.v or V()
+    end
+    st.stickV = { em = best.em, p = best.p, t = now, v = vT }
+    local vr = vT - (st.vel or V())
+    local t = best.dist / gw.speed
+    local lead = best.p
+    for _ = 1, 2 do
+      lead = best.p + vr * t
+      t = (lead - p0).Magnitude / gw.speed
+    end
+    best.lead = lead + V(0, 0.5 * workspace.Gravity * 0.08 * t * t, 0)   -- 炮弹的下坠（服务器的 gscale 0.08）
+    return best
+  end
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 镜头跟着机身（用户 11-21：飞机的飞行方向标志动来动去，应该固定位置）：原来镜头顺着鼠标瞄准方向看（战雷那样），
@@ -27688,7 +27827,7 @@ function Fly.init(G)
     end
     if st.trig == on then return end
     st.trig = on
-    G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt })
+    G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt, stk = st.stick ~= nil })
   end
 
   local function fireStore(wid, w)
@@ -28260,6 +28399,8 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
       local lk = (not st.ground and st.vdir) or st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
+    elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then   -- 有人开的固定翼：视角立刻回到身后（座舱里回到正前方）
+      st.lookYaw, st.lookPitch, st.lookT = 0, 0, 0
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -28577,10 +28718,13 @@ function Fly.init(G)
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
       if d.kind == "jet" and not G.mobile and not pitLook then
         if st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；按住 Alt 自由看（镜头绕着飞机转，松开回到身后）
-          if key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt) then
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
+          --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
+          --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
+          if md.X ~= 0 or md.Y ~= 0 then
             st.lookYaw = clamp((st.lookYaw or 0) - md.X * SENS, -2.8, 2.8)
             st.lookPitch = clamp((st.lookPitch or 0) - md.Y * SENS, -1.2, 1.2)
+            st.lookT = os.clock()
           end
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
@@ -28641,6 +28785,19 @@ function Fly.init(G)
     else
       st.cf = st.em.Root.CFrame   -- 坐在后面：跟着服务器
     end
+    -- 发动机声跟着油门（固定翼：加力更尖更响）、总距（直升机：拉得越狠越沉）
+    if st.engSnd then
+      if d.kind == "jet" then
+        local tq = math.clamp((st.thrE or st.thr or 0) / 100, 0, 1.3)
+        st.engSnd.PlaybackSpeed = 0.75 + 0.45 * tq
+        st.engSnd.Volume = 0.3 + 0.6 * tq
+      else
+        local load = math.clamp(math.abs((st.c and st.c.col) or 0), 0, 1)
+        st.engSnd.PlaybackSpeed = 0.95 + 0.12 * load
+        st.engSnd.Volume = 0.7 + 0.4 * load
+      end
+      if st.crashed then st.engSnd.Volume = 0 end
+    end
     -- 航炮后坐：开火时机身高频抖一点（模型跟着抖，用户：飞机机炮要有散布、后坐力和打击感）
     local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed
     st.recoil = approach(st.recoil or 0, gunOn and 1 or 0, dt * (gunOn and 14 or 6))
@@ -28669,10 +28826,29 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
-      -- 按住 Alt 自由看：镜头绕着飞机转到鼠标拨到的方向；松开慢慢回到身后
-      if not (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) or st.uav then
-        st.lookYaw = (st.lookYaw or 0) * math.exp(-dt * 5)
-        st.lookPitch = (st.lookPitch or 0) * math.exp(-dt * 5)
+      -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
+      --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
+      --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
+      do
+        local noseF = fwd
+        local cf2 = noseF
+        if st.camF and st.camF:Dot(noseF) > 0.5 then
+          cf2 = st.camF:Lerp(noseF, 1 - math.exp(-dt * 4.5))
+          cf2 = (cf2.Magnitude > 1e-3) and cf2.Unit or noseF
+          local MAXA = rad(7)
+          if cf2:Dot(noseF) < math.cos(MAXA) then
+            local axis = noseF:Cross(cf2)
+            if axis.Magnitude > 1e-6 then cf2 = CFrame.fromAxisAngle(axis.Unit, MAXA):VectorToWorldSpace(noseF) end
+          end
+        end
+        st.camF = cf2
+        fwd = cf2
+      end
+      -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
+      if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
+        local kk = math.exp(-dt * (st.uav and 5 or 2.2))
+        st.lookYaw = (st.lookYaw or 0) * kk
+        st.lookPitch = (st.lookPitch or 0) * kk
       end
       if math.abs(st.lookYaw or 0) + math.abs(st.lookPitch or 0) > 1e-3 then
         fwd = CFrame.fromAxisAngle(upC, st.lookYaw):VectorToWorldSpace(fwd)
@@ -28746,6 +28922,12 @@ function Fly.init(G)
     local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
     local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
     st.aimPt = res and res.Position or (o + adir * far)
+    if d.kind == "jet" and st.pilot and not st.uav and not st.eo and not st.crashed then   -- 机炮黏住目标：瞄准点换成目标的提前量（发给服务器）
+      st.stick = gunStick()
+      if st.stick then st.aimPt = st.stick.lead end
+    else
+      st.stick = nil
+    end
     do   -- 瞄准点打在哪个实体上（吊舱页面的 POINT 跟踪框）
       local hm = res and res.Instance and res.Instance:FindFirstAncestorOfClass("Model")
       st.aimEnt = (hm and hm ~= st.em and hm:GetAttribute("EntId") ~= nil) and hm or nil
@@ -28824,7 +29006,7 @@ function Fly.init(G)
     if st.sendT <= 0 and st.pilot and not st.crashed then
       st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
-      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
+      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
     end
     -- 平显
@@ -28911,7 +29093,13 @@ function Fly.init(G)
         local ap, aon = project(pos + aimRingDir() * 400)
         aimRing.Position, aimRing.Visible = ap, aon
       elseif d.kind == "jet" then
-        aimRing.Visible = false
+        -- 机炮黏住了目标（用户 11-21：像 MWT 那样）：准星圈画在提前量那一点上、转着；没黏住不画（瞄准就是机头标记）
+        if st.stick and st.stick.lead and st.pilot then
+          local ap, aon = project(st.stick.lead)
+          aimRing.Position, aimRing.Visible = ap, aon
+        else
+          aimRing.Visible = false
+        end
       else
         aimRing.Position, aimRing.Visible = UDim2.fromScale(0.5, 0.5), d.kind == "heli"
       end
@@ -29011,7 +29199,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -29361,7 +29549,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -29445,6 +29633,48 @@ function Fx.init(G)
 
   local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
   local TICK = "rbxasset://sounds/volume_slider.ogg"
+  -- 真录音（SoundLib.lua，用户 11-21：声音要逼真）：开局预载，载上了的才用；载不下来（被删、私有、没网）照旧用下面叠出来的
+  local SL = {}
+  pcall(function() SL = require(game:GetService("ReplicatedStorage"):WaitForChild("SoundLib", 5)) or {} end)
+  local REAL, REALLEN = {}, {}   -- [键] = { 载上了的 SoundId… }；[SoundId] = 秒
+  task.spawn(function()
+    local list, byId = {}, {}
+    for key, cfg in pairs(SL) do
+      for _, id in ipairs(cfg.ids or {}) do
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://" .. tostring(id)
+        table.insert(list, s)
+        byId[s.SoundId] = key
+        REALLEN[s.SoundId] = cfg.len or 3
+      end
+    end
+    if #list == 0 then return end
+    local ok = pcall(function()
+      game:GetService("ContentProvider"):PreloadAsync(list, function(cid, status)
+        local key = byId[cid]
+        if key and status == Enum.AssetFetchStatus.Success then
+          REAL[key] = REAL[key] or {}
+          table.insert(REAL[key], cid)
+        end
+      end)
+    end)
+    for _, s in ipairs(list) do
+      local okL, tl = pcall(function() return s.TimeLength end)
+      if okL and tl and tl > 0 then REALLEN[s.SoundId] = tl end
+      s:Destroy()
+    end
+    G.realLoaded = ok
+  end)
+  local function real(key)   -- 这个声音载上了的真录音（随机挑一个）和它的设置；没有就 nil
+    local l = REAL[key]
+    if not l or #l == 0 then return nil end
+    return l[math.random(#l)], SL[key]
+  end
+  G.realSound = real
+  G.realSoundState = function() return REAL end   -- 测试用
+  -- 简单音效换成真录音：名字 → { SoundLib 的键, 速度倍数, 音量倍数 }
+  local SNDREAL = { rifle = { "rifle", 1, 1 }, lmg = { "hmg", 1.1, 0.9 }, sniper = { "rifle", 0.85, 1.3 }, pistol = { "rifle", 1.25, 0.7 },
+    boom = { "boomM", 1, 1 }, rocket = { "missile", 1.1, 0.9 }, mortar = { "boomS", 0.9, 1 } }
   local SND = {
     boom = { EXP, 0.9, 0.8, 1.0 }, rocket = { EXP, 0.35, 1.7, 2.0 }, rifle = { EXP, 0.16, 2.9, 3.3 }, lmg = { EXP, 0.18, 2.7, 3.0 },
     sniper = { EXP, 0.4, 1.9, 2.1 }, pistol = { EXP, 0.14, 3.3, 3.6 }, quiet = { TICK, 0.25, 0.7, 0.8 }, mortar = { EXP, 0.4, 1.2, 1.4 },
@@ -29461,20 +29691,29 @@ function Fx.init(G)
     if soundN > 8 then return end
     if pos and (pos - cam.CFrame.Position).Magnitude > 1800 then return end
     local snd = Instance.new("Sound")
-    snd.SoundId = def[1]
-    snd.Volume = def[2]
-    snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    local rm = SNDREAL[name]
+    local rid, rcfg = nil, nil
+    if rm then rid, rcfg = real(rm[1]) end
+    if rid then   -- 真录音
+      snd.SoundId = rid
+      snd.Volume = math.min(10, (rcfg.vol or 1) * rm[3])
+      snd.PlaybackSpeed = speed or ((rcfg.s[1] + (rcfg.s[2] - rcfg.s[1]) * math.random()) * rm[2])
+    else
+      snd.SoundId = def[1]
+      snd.Volume = def[2]
+      snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    end
     snd.RollOffMinDistance = 30
     snd.RollOffMaxDistance = 1600
     if pos then
       local p = part(nil, V(0.2, 0.2, 0.2), CFrame.new(pos), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
       snd.Parent = p
       snd:Play()
-      Debris:AddItem(p, 5)
+      Debris:AddItem(p, rid and 8 or 5)
     else
       snd.Parent = SoundService
       snd:Play()
-      Debris:AddItem(snd, 5)
+      Debris:AddItem(snd, rid and 8 or 5)
     end
   end
 
@@ -29512,6 +29751,33 @@ function Fx.init(G)
   local THUD = "rbxasset://sounds/action_jump_land.mp3"
   local WATER = "rbxasset://sounds/impact_water.mp3"
   local LEN = { [EXP] = 2.59, [WIND] = 10, [TICK] = 0.85, [THUD] = 0.27, [WATER] = 2.38 }
+  setmetatable(LEN, { __index = function(_, id) return REALLEN[id] end })   -- 真录音的长度（预载完按实际长度）
+  -- 叠层的音效换成真录音：SFX 的名字 → { SoundLib 的键, 速度倍数, 音量倍数 }（别的照旧叠：落地、换挡、心跳、拉栓……）
+  local SFXREAL = { tankGun = { "tankGun", 1, 1 }, rkt = { "missile", 1.15, 0.8 }, msl = { "missile", 1, 1 }, whiz = { "whiz", 1, 1 }, ric = { "ric", 1, 1 },
+    shellRic = { "ric", 0.8, 1.4 }, ping = { "metalHit", 1.2, 0.8 }, clang = { "metalHit", 0.85, 1.1 }, sonic = { "sonic", 1, 1 },
+    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 } }
+  local function realLayer(key, sp, vol)
+    local id, cfg = real(key)
+    if not id then return nil end
+    sp = sp or 1
+    return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
+  end
+  -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
+  function G.realLoop(key, parent)
+    local id, cfg = real(key)
+    if not id then return nil end
+    local snd = Instance.new("Sound")
+    snd.SoundId = id
+    snd.Volume = cfg.vol or 1
+    snd.Looped = true
+    if type(cfg.loop) == "table" then
+      snd.PlaybackRegionsEnabled = true
+      snd.LoopRegion = NumberRange.new(cfg.loop[1], cfg.loop[2])
+    end
+    snd.Parent = parent
+    snd:Play()
+    return snd
+  end
   local SFX = {
     -- 每层：id 采样、vol 音量、s 速度范围、reg 截取（采样里的秒）、loop 循环区间、eq {低, 中, 高} 分贝、dist 失真、echo {延迟, 反馈, 湿声分贝}、
     --   delay 晚几秒、fade 最后几秒淡出
@@ -29620,7 +29886,15 @@ function Fx.init(G)
   -- 放一个叠层的声音：def 是 SFX 的名字或层表；pos 是世界坐标（nil：耳边）；o：vol 音量倍数、speed、delay 晚几秒、hiCut 高音衰减、rmax 传多远
   local sfxT, sfxN = 0, 0
   function G.sfx(def, pos, o)
-    if type(def) == "string" then def = SFX[def] end
+    if type(def) == "string" then
+      local rm = SFXREAL[def]
+      local L = rm and realLayer(rm[1], rm[2], rm[3])
+      if L and def == "tankGun" and pos and (pos - cam.CFrame.Position).Magnitude < 30
+        and ((G.interiorOn and G.interiorOn()) or (G.drive and G.drive.sight)) then
+        L = realLayer("tankGunIn", 1, 1) or L   -- 自己在车里 / 炮长镜里开炮：车内的录音（闷、震）
+      end
+      def = L and { L } or SFX[def]
+    end
     if not def then return end
     o = o or {}
     local t = os.clock()
@@ -30069,6 +30343,10 @@ function Fx.init(G)
         { id = EXP, vol = 0.9, s = { 0.4, 0.44 }, eq = { 10, -6, -14 }, delay = 0.1 } }
     end
     if water then L = { L[1], { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } end
+    if c ~= "gun" then   -- 真录音的爆炸：按大小挑（水里照旧叠一层水声）
+      local RL = realLayer((r < 13 and "boomS") or (r < 26 and "boomM") or "boomL", (c == "bomb") and 0.92 or 1, 1)
+      if RL then L = water and { RL, { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } or { RL } end
+    end
     local far = math.clamp((d - 300) / 2500, 0, 1)
     G.sfx(L, p, { delay = math.max(0, d - 250) / 960, hiCut = -16 * far, rmin = 40 + r * 6, rmax = (c == "bomb") and 9000 or 4500, must = r >= 18 })
   end
@@ -30422,6 +30700,14 @@ function Fx.init(G)
     return pe
   end
   G.emitBurst = emitter
+  -- 炮弹打在钢甲上（用户 11-21：打中目标，如果是金属也要有火花）：再迸一大把亮的火星（比子弹的大、飞得远、带重力落下），一下白热的闪光
+  local function hotSparks(p, n, s)
+    if (p - cam.CFrame.Position).Magnitude > 1500 then return end
+    local h = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(p + n * 0.3, p + n * 2), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    emitter(h, { tex = TX.glow, life = { 0.35, 1.1 }, speed = { 40, 120 }, spread = 65, drag = 0.8, acc = V(0, -90, 0), size = { 0.7, 0 }, tr = 0, color = RGB(255, 222, 150), glow = 1, n = math.floor(22 * s) })
+    emitter(h, { tex = TX.glow, life = { 0.08, 0.14 }, speed = { 0, 0 }, spread = 0, size = { 3 * s, 5.5 * s }, tr = 0, color = RGB(255, 245, 220), glow = 1, n = 1 })
+    Debris:AddItem(h, 1.5)
+  end
   local function vfire(e)
     local big = e.f == "tank" or e.f == "arty"
     local dir = (typeof(e.d) == "Vector3") and e.d.Unit or V(0, 0, -1)
@@ -30461,6 +30747,14 @@ function Fx.init(G)
       emitter(holder, { life = { 1.1, 2.4 }, speed = { 16, 40 }, spread = 22, drag = 3.2, size = { 2.5, 11 }, tr = 0.25, color = RGB(214, 208, 196), n = 16 })
       emitter(holder, { life = { 3.5, 6 }, speed = { 2, 9 }, spread = 70, drag = 1.1, acc = V(0, 1.4, 0), size = { 5, 19 }, tr = 0.4, color = RGB(170, 164, 154), n = 10 })
       emitter(holder, { tex = "rbxasset://textures/particles/sparkles_main.dds", life = { 0.15, 0.4 }, speed = { 40, 80 }, spread = 12, size = { 0.5, 0.2 }, tr = 0, color = RGB(255, 210, 130), glow = 1, n = 12 })
+      -- 炮口迸出的火星（用户 11-21：炮弹飞出炮管要有火花）：顺着炮管往前喷一大把白热的火星（带重力往下掉、一下就暗），
+      --   制退器两边也横着喷一点
+      emitter(holder, { tex = TX.glow, life = { 0.25, 0.75 }, speed = { 70, 170 }, spread = 10, drag = 1.2, acc = V(0, -70, 0), size = { 0.6, 0 }, tr = 0, color = RGB(255, 216, 146), glow = 1, n = 36 })
+      for sx = -1, 1, 2 do
+        local side = part(nil, V(0.2, 0.2, 0.2), look * CF(sx * 1.6, 0, -0.6) * CFrame.Angles(0, sx * math.rad(78), 0), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+        emitter(side, { tex = TX.glow, life = { 0.15, 0.45 }, speed = { 40, 95 }, spread = 16, drag = 2, acc = V(0, -60, 0), size = { 0.45, 0 }, tr = 0, color = RGB(255, 196, 120), glow = 1, n = 10 })
+        Debris:AddItem(side, 1)
+      end
       Debris:AddItem(holder, 6.5)
       -- ⑤ 地上一圈掀起来的土（炮口离地不高才有；水上是白的水雾）
       local gy = G.Map and G.Map.ground and G.Map.ground(e.p.X, e.p.Z) or (e.p.Y - 4)
@@ -30639,6 +30933,7 @@ function Fx.init(G)
         if typeof(e.p) == "Vector3" then
           local n = (typeof(e.n) == "Vector3" and e.n.Magnitude > 0.5) and e.n.Unit or V(0, 1, 0)
           impact(e.p, -n, e.h or "a", (e.s or 1) * 1.6, n)
+          if (e.s or 1) >= 1.5 then hotSparks(e.p, n, e.s) end   -- 炮弹打在钢甲上：再迸一大把亮的火星
         end
       elseif k == "shot" then
         newShot(e)
@@ -30685,7 +30980,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="105">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -30997,7 +31292,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -31129,7 +31424,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="107">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -31408,7 +31703,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -31947,7 +32242,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -32876,7 +33171,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -33339,7 +33634,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -34129,7 +34424,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -34243,7 +34538,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -34292,6 +34587,7 @@ function Interior.init(G)
   local LIGHTS = { RGB(255, 244, 228), RGB(120, 230, 210), RGB(255, 70, 50), RGB(0, 0, 0) }
   local LIGHTK = { 1, 0.8, 0.7, 0 }
   local hideUI = false
+  local quickOptic = false   -- T：车外直接进车长主观瞄（建好内饰那一帧开镜）
   local look = { yaw = 0, pitch = 0, fov = 72, fovT = 72 }
   local free = { p = V(), yaw = 0, pitch = 0 }
   local shake = 0
@@ -35199,6 +35495,11 @@ function Interior.init(G)
       local wid = st.d.weapons and st.d.weapons[1]
       local resv = (ammo and wid and ammo[wid]) and (ammo[wid][2] or 0) or 34
       if cur.spec.loader == "carousel" then syncCarousel(cur, math.min(22, resv)) else syncRack(cur, math.min(36, resv)) end
+    end
+    if quickOptic and mode == "seat" and cur then   -- T 从车外直接进车长的主观瞄（下面按键那里记下的）
+      quickOptic = false
+      if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
+      if enterOptic(cur, "primary") and optic then optic.quick = true end
     end
     local c = cur
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
@@ -36166,8 +36467,13 @@ function Interior.init(G)
           aim = (ANG(0, (st.aimYaw or 0) + fy, 0) * ANG(clamp((st.aimPitch or 0) + fp, -1.5, 1.5), 0, 0)).LookVector
         else aim = (ANG(0, st.camYaw or 0, 0) * ANG(st.camPitch or 0, 0, 0)).LookVector end
         local l = base:VectorToObjectSpace(aim)
-        local yw = clamp(math.atan2(-l.X, -l.Z), -rad(sp.yaw or 150), rad(sp.yaw or 150))
-        local pt = clamp(math.asin(clamp(l.Y, -1, 1)), -rad(sp.down or 60), rad(sp.up or 80))
+        local yw, pt = math.atan2(-l.X, -l.Z), math.asin(clamp(l.Y, -1, 1))
+        if st.d.kind == "jet" and st.pilot and not st.uav then   -- 鼠标转头（用户 11-21：飞机要能用鼠标转视角；用 Fly.lua 的 lookYaw / lookPitch，跟车外镜头同一套）
+          yw += st.lookYaw or 0
+          pt += st.lookPitch or 0
+        end
+        yw = clamp(yw, -rad(sp.yaw or 150), rad(sp.yaw or 150))
+        pt = clamp(pt, -rad(sp.down or 60), rad(sp.up or 80))
         look.yaw += (yw - look.yaw) * math.min(1, dt * 9)
         look.pitch += (pt - look.pitch) * math.min(1, dt * 9)
         local acc = st.accV and base:VectorToObjectSpace(st.accV) / (9.81 * S) or V()
@@ -36203,8 +36509,8 @@ function Interior.init(G)
     stepKeys(c)
     stepGlare()
     hint.Visible = not hideUI
-    hint.Text = T("V 出座舱 · 头跟着鼠标瞄准转、按住 Alt 自由看 · 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
-      "V exit cockpit · head follows mouse aim, hold Alt to look around · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
+    hint.Text = T("V 出座舱 · 鼠标转头看（停 2.5 秒回正、C 立刻回正）· 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
+      "V exit cockpit · mouse turns your head (recenters after 2.5 s, C at once) · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
   end
 
   ---------------------------------------------------------------- 按键
@@ -36260,7 +36566,18 @@ function Interior.init(G)
       return
     end
     local k = io.KeyCode
-    if k == Enum.KeyCode.C then
+    if k == Enum.KeyCode.T and (mode == nil or (optic and optic.quick)) and not st.sight then
+      -- T：车外直接进车长的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱——车长周视瞄准镜，要能第一人称看出去；M1A2 是 CITV）：
+      --   坐到车长位、开他的主镜（镜头在观瞄舱的位置，鼠标转镜头、炮塔不动，Z 变倍、V 换热像）；这样开的镜里再按 T：关镜、回车外
+      if optic and optic.quick then
+        exitOptic(cur)
+        mode = nil
+        if cur and cur.model.Parent then cur.model.Parent = nil end
+        cam.FieldOfView = 70
+      else
+        mode, station, quickOptic = "seat", "commander", true
+      end
+    elseif k == Enum.KeyCode.C then
       if mode == nil then
         mode = "seat"
         if cur then enterStation(cur, lastStation[cur.key] or cur.spec.order[1]) end
@@ -36341,7 +36658,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -36902,7 +37219,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -38244,7 +38561,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -38400,10 +38717,13 @@ function B:screen(g, w, h, cf, page, opt)
   local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
-  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.Glass)
+  -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
+  --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
+  --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度
+  local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.SmoothPlastic)
   face.CastShadow = false
-  face.Reflectance = 0.04
-  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.6)
+  face.Reflectance = 0
+  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.0)
   local tabT = (touch and opt.keys.top and #opt.keys.top > 0) and (opt.touchH or 0.1) or 0      -- 上、下菜单条各占屏高几成
   local tabB = (touch and opt.keys.bottom and #opt.keys.bottom > 0) and (opt.touchH or 0.1) or 0
   local root = Instance.new("Frame")
@@ -38967,7 +39287,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -40264,6 +40584,19 @@ local function ufd(second)
   end
 end
 P.ufd, P.ufd2 = ufd(false), ufd(true)
+-- 第三块小辅助屏（歼-20：一块大屏 + 三块小屏）：马赫数、攻角、高度、垂直速度
+P.ufd3 = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(90, 230, 120)
+  local L = {}
+  for i = 1, 4 do L[i] = Tx(s.root, "", 4, 2 + (i - 1) * (H - 4) / 4, W - 8, (H - 4) / 4, 11, G, nil, FONT, 3) end
+  return function(d)
+    L[1].Text = string.format(zh and "马赫 %.2f" or "M %.2f", d.mach or 0)
+    L[2].Text = string.format(zh and "攻角 %.1f°" or "AOA %.1f", d.aoa or 0)
+    L[3].Text = string.format(zh and "高度 %d 米" or "ALT %d M", math.floor(d.altM or 0))
+    L[4].Text = string.format(zh and "垂速 %+d" or "VS %+d", math.floor(d.vs or 0))
+  end
+end
 
 -- 备份仪表：姿态球、空速表、高度表（指针）
 local function dial(s, n, label)
@@ -40501,7 +40834,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -40767,7 +41100,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -41167,7 +41500,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -41317,7 +41650,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -41625,7 +41958,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -41947,7 +42280,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -42164,7 +42497,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -42298,7 +42631,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -42632,7 +42965,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -42899,7 +43232,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -43146,7 +43479,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -43216,14 +43549,9 @@ function Perf.init(G)
   end
   local function f1(x) return string.format("%.1f", x) end
 
-  -- 地形草叶不要了（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：服务器 World.lua 关了 Terrain.Decoration，
-  --   这个属性不一定从服务器同步到客户端（前几回服务器把草叶调短，用户那边照样是两格来高的草），客户端每半秒自己对一遍。
-  --   原来自动画质卡了关草、流畅了再开：来回开关时整片草叶重铺，也是「隔一会卡一下」的一个来源，一起去掉
-  local function stepDeco()
-    local T = workspace:FindFirstChildOfClass("Terrain")
-    if not T then return end
-    pcall(function() if T.Decoration then T.Decoration = false end end)
-  end
+  -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来这里每半秒设一遍 Terrain.Decoration = false——
+  --   Roblox 不许脚本改它（一改就报错，被 pcall 吞了），一直没生效；现在服务器写地形不用 Grass 材质（World.lua 的 writeChunk），草叶长不出来。
+  --   原来自动画质卡了关草、流畅了再开也一起去掉了（同样改不了）
 
   local frames, acc, worst, puts0 = 0, 0, 0, 0
   RunService.RenderStepped:Connect(function(dt)
@@ -43234,7 +43562,6 @@ function Perf.init(G)
     local T, n, a, w = G.perfT or {}, frames, acc, worst
     G.perfT = {}
     frames, acc, worst = 0, 0, 0
-    pcall(stepDeco)
     local puts = G.viewPuts or 0
     local dPuts = puts - puts0
     puts0 = puts
@@ -43295,7 +43622,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -43947,7 +44274,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -44061,8 +44388,10 @@ function Sail.init(G)
     if not G.makeSound then return end
     local SS = game:GetService("SoundService")
     local small = (d.L or 60) < 40
+    local realEng = G.realLoop and G.realLoop("shipEngine", SS)   -- 真录音的舰船发动机（SoundLib；没载上照旧叠出来的）
     engine = {
-      rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
+      realEng = realEng ~= nil,
+      rumble = realEng or G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.35, s = { small and 0.42 or 0.26, small and 0.42 or 0.26 }, loop = { 0.06, 0.5 }, eq = { 9, -3, -16 } }, SS, {}),
       turb = (not small) and G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0.5, s = { 0.55, 0.55 }, loop = { 1, 9 }, eq = { -10, 4, -4 } }, SS, {}) or nil,
       water = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 0.6, 0.6 }, loop = { 2, 8 }, eq = { 6, 0, -12 } }, SS, {}),
     }
@@ -44073,8 +44402,13 @@ function Sail.init(G)
     local ord = math.abs(SD.ORDERS[st.order] or 0)
     engine.load = (engine.load or 0) + ((0.2 + 0.8 * ord) - (engine.load or 0)) * math.min(1, dt * 1.5)   -- 车钟一推，转速先上去
     local small = (d.L or 60) < 40
-    engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
-    engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    if engine.realEng then
+      engine.rumble.PlaybackSpeed = (small and 1.1 or 0.85) + engine.load * 0.3
+      engine.rumble.Volume = 0.3 + 0.5 * engine.load
+    else
+      engine.rumble.PlaybackSpeed = (small and 0.42 or 0.26) + engine.load * (small and 0.3 or 0.14)
+      engine.rumble.Volume = 0.25 + 0.35 * engine.load
+    end
     if engine.turb then
       engine.turb.PlaybackSpeed = 0.5 + engine.load * 0.35
       engine.turb.Volume = 0.25 + 1.1 * engine.load
@@ -44537,7 +44871,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -44766,7 +45100,7 @@ function Scenery.init(G)
 
   local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
   local function cellKey(cx, cz) return cx * 100003 + cz end
-  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也关了（用户 11-21：直接把草删掉，World.lua 的 Terrain.Decoration）
+  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也去掉了（用户 11-21：直接把草删掉——World.lua 写地形不用 Grass 材质；Terrain.Decoration 脚本改不了）
   local LAYERS = { "rock" }
   local maxR = 0
   for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
@@ -44996,7 +45330,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -45943,7 +46277,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -45970,7 +46304,7 @@ local ScopePip = {}
 
 -- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）
 local TC = {
-  Grass = { 96, 146, 64 }, LeafyGrass = { 70, 124, 52 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
+  Grass = { 98, 148, 64 }, LeafyGrass = { 98, 148, 64 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
   Ground = { 122, 98, 70 }, Mud = { 54, 47, 40 }, Concrete = { 150, 148, 140 }, Asphalt = { 70, 72, 76 },
 }
 -- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成
@@ -46673,7 +47007,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -47425,7 +47759,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -48174,7 +48508,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -48629,7 +48963,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -49849,7 +50183,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -50356,7 +50690,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -50469,7 +50803,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -51548,7 +51882,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -51652,7 +51986,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -53154,7 +53488,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -53253,6 +53587,24 @@ function VehModels.build(d, team, mods)
     tube(rg, 0, 0.04, -1.25, -muz, 0.14, BL)   -- 枪管
     rg(V(0.11, 0.2, 0.2), CF(0, 0.04, -muz + 0.08), BL)   -- 枪口制退器
     rg(V(0.36, 0.44, 0.62), CF(0.44, -0.04, 0.3), C.base)   -- 弹箱（右边供弹）
+  end
+  -- 手动的车长重机枪（99A 的 QJC-88 12.7 毫米，用户 11-21 晚：照真车加回车顶机枪）：车长舱口的座圈、枪架立柱和叉架、
+  --   机匣、粗枪管、枪口制退器、左边弹箱、后面两个握把、环形瞄具——没有遥控武器站的罩子和光电盒子；照样跟着瞄准转、从枪口开火
+  local function manualMg(gunOff, muz)
+    local GM, BL, OD = RGB(52, 54, 50), RGB(28, 29, 28), RGB(76, 82, 58)
+    local function rw(size, off, color, mat, shape) return add("rws", size, off, color or C.base, mat or MAT.Metal, shape) end
+    local function rg(size, off, color, mat, shape) return add("rwg", size, off, color or GM, mat or MAT.Metal, shape) end
+    local gy, gz = gunOff.Y, gunOff.Z
+    rw(V(0.16, 1.6, 1.6), CF(0, 0.08, 0) * UPRIGHT, C.dark, MAT.Metal, CYL)   -- 舱口座圈
+    local postH = math.max(0.3, gy - 0.2)
+    rw(V(0.16, postH, 0.16), CF(0, 0.16 + postH / 2, gz), GM)   -- 枪架立柱
+    rw(V(0.5, 0.1, 0.2), CF(0, gy - 0.2, gz), GM)   -- 叉架
+    rg(V(0.34, 0.36, 1.2), CF(0, 0, 0.32), GM)   -- 机匣
+    for sx = -1, 1, 2 do rg(V(0.07, 0.2, 0.07), CF(sx * 0.11, -0.08, 1.0), BL) end   -- 两个握把
+    tube(rg, 0, 0.03, -0.28, -muz + 0.25, 0.16, BL)   -- 粗枪管
+    rg(V(0.2, 0.2, 0.3), CF(0, 0.03, -muz + 0.12), BL)   -- 枪口制退器
+    rg(V(0.32, 0.4, 0.55), CF(-0.36, -0.06, 0.28), OD)   -- 弹箱（左边供弹）
+    rg(V(0.03, 0.16, 0.16), CF(0, 0.28, -0.25), BL)   -- 环形瞄具
   end
   -- 一组迷彩斑块（贴在一个面上的薄片）
   local function blotches(fn, cx, cy, cz, w, h, axis, n)
@@ -53363,7 +53715,9 @@ function VehModels.build(d, team, mods)
       gun(V(0.4, 0.5, 0.78), CF(-0.48, -0.06, 0.05), OD)   -- 弹箱（M2 从左边供弹）
     end
     -- 原模型上没有机枪（或者去掉了）的坦克：元数据的 rws.mk——在座圈上拼一个遥控武器站（tools/models/vehrws.py）
-    if info.rws and info.rws.mk and rpiv and rgpiv then rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
+    if info.rws and info.rws.mk and rpiv and rgpiv then
+      if info.rws.mk == "manual" then manualMg(rgpiv - rpiv, info.rws.muz or 2.45) else rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
+    end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
       rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil }
   end
@@ -53882,7 +54236,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -54810,7 +55164,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）

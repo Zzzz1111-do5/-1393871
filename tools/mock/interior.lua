@@ -74,6 +74,17 @@ local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
 check(live == nScreens, string.format("屏幕页面都起来了（%d / %d）", live, nScreens))
 check(nLights >= 4, "车里的灯 " .. nLights .. " 盏")
+-- 屏幕不反光（用户 11-21：坐在车里看，坦克屏幕有一块地方反光、看不清）：显示面哑光、不反射，字的亮度不超过夜里泛光的门槛（1.05）
+local glossy, bright = 0, 0
+if cur then
+  for _, s in ipairs(cur.b.screens) do
+    if s.page ~= "hud" then
+      if s.part.Material == Enum.Material.Glass or (s.part.Reflectance or 0) > 0 then glossy = glossy + 1 end
+      if (s.gui.Brightness or 1) > 1.05 then bright = bright + 1 end
+    end
+  end
+end
+check(glossy == 0 and bright == 0, string.format("屏幕哑光、不泛光（反光的 %d 块、太亮的 %d 块）", glossy, bright))
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 -- 镜头在车体的方框里
 local cam = R.workspace.CurrentCamera
@@ -282,6 +293,15 @@ for _ = 1, 6 do
   R.run(0.2)
 end
 check(not C.interiorOn() and (C.interiorState().cur == nil or C.interiorState().cur.model.Parent == nil), "C 换过最后一个乘员位：回到车外，内饰收起来")
+-- T（车外）：直接坐到车长位、开他的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱要能第一人称看出去；M1A2 是 CITV）；再按 T 回车外
+T.tap(Enum.KeyCode.T)
+R.run(0.6)
+local qs, qo = C.interiorState(), C.interiorOpticState and C.interiorOpticState()
+check(qs.mode == "seat" and qs.station == "commander" and qo ~= nil and qo.quick == true,
+  string.format("车外按 T：坐到车长位、开了车长主镜（位置 %s，镜 %s）", tostring(qs.station), tostring(qo and qo.o and qo.o.name)))
+T.tap(Enum.KeyCode.T)
+R.run(0.4)
+check(not C.interiorOn() and (C.interiorOpticState == nil or C.interiorOpticState() == nil), "再按 T：关镜、回到车外")
 T.tap(Enum.KeyCode.F)
 R.run(1)
 check(C.drive == nil and C.interiorState().cur == nil, "下车：内饰拆掉")

@@ -354,8 +354,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 按住 Alt 鼠标自由看 · 左键 机炮（打机头标记那里）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold Alt to look around · LMB gun (fires at the nose marker) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -493,7 +493,7 @@ add("coach.card.lcac.2", "开到海滩、冲上沙滩，车会自动放下来", 
 add("coach.card.lcac.3", "接着开车从艇首开下去；空格下车", "Then drive off over the bow; Space to get out")
 add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道上转向，油门收到底按住 Ctrl 倒退", "Shift throttle up (full = afterburner); A / D steer on the runway; hold Ctrl at idle to back up")
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
-add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
+add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
 add("coach.card.heli.2", "按住 E 升、Q 降；机头跟着准心转，W 桨盘前倾往前飞，A / D 侧飞", "Hold E to climb, Q to descend; the nose follows your aim, W tilts the rotor forward, A / D sidestep")
 add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")

@@ -1007,8 +1007,10 @@ def("BasePart", "PVInstance", {
   AssemblyLinearVelocity = { T.Vector3, v3() },   -- 模拟器没有物理：只记着（跳伞时服务器给人一个初速度）
 }, { events = { Touched = true, TouchEnded = true }, ro = { Position = function(o) return partCF(o).Position end }, noCreate = true })
 def("Part", "BasePart", { Shape = { E("PartType"), Enum.PartType.Block } })
+-- 没有 Decoration、GrassLength：Roblox 不许脚本读写这两个（文档 Not Scriptable；一碰就报「不是 Terrain 的有效成员」）——
+--   原来模拟器里能设，测试照样过，真游戏里 pcall 吞了报错、草叶一直没关掉（用户 11-21：坦克还是半截身子在地里）
 def("Terrain", "BasePart", {
-  Decoration = { T.bool, false }, WaterColor = { T.Color3, newC3(0.05, 0.33, 0.36) }, WaterTransparency = { T.number, 0.3 }, WaterReflectance = { T.number, 1 },
+  WaterColor = { T.Color3, newC3(0.05, 0.33, 0.36) }, WaterTransparency = { T.number, 0.3 }, WaterReflectance = { T.number, 1 },
   WaterWaveSize = { T.number, 0.15 }, WaterWaveSpeed = { T.number, 10 },
 }, { noCreate = true, methods = {
   WriteVoxels = function(_, region, res, mats, occ)
@@ -1018,6 +1020,21 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
+    -- 写了哪些材质（每隔 3 列抽一列看；测试查地形里没有 Grass——会长草叶）
+    R.voxelMats = R.voxelMats or {}
+    for i = 1, sx, 3 do
+      local Mi = mats[i]
+      for j = 1, sy do
+        local row = Mi[j]
+        for k = 1, sz, 3 do
+          local m = row[k]
+          if m then
+            local n = m.Name
+            R.voxelMats[n] = (R.voxelMats[n] or 0) + 1
+          end
+        end
+      end
+    end
   end,
   FillBlock = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBlock(CFrame, Vector3, Material) 参数不对", 2) end

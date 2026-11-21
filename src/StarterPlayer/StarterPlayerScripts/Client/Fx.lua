@@ -79,6 +79,48 @@ function Fx.init(G)
 
   local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
   local TICK = "rbxasset://sounds/volume_slider.ogg"
+  -- 真录音（SoundLib.lua，用户 11-21：声音要逼真）：开局预载，载上了的才用；载不下来（被删、私有、没网）照旧用下面叠出来的
+  local SL = {}
+  pcall(function() SL = require(game:GetService("ReplicatedStorage"):WaitForChild("SoundLib", 5)) or {} end)
+  local REAL, REALLEN = {}, {}   -- [键] = { 载上了的 SoundId… }；[SoundId] = 秒
+  task.spawn(function()
+    local list, byId = {}, {}
+    for key, cfg in pairs(SL) do
+      for _, id in ipairs(cfg.ids or {}) do
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://" .. tostring(id)
+        table.insert(list, s)
+        byId[s.SoundId] = key
+        REALLEN[s.SoundId] = cfg.len or 3
+      end
+    end
+    if #list == 0 then return end
+    local ok = pcall(function()
+      game:GetService("ContentProvider"):PreloadAsync(list, function(cid, status)
+        local key = byId[cid]
+        if key and status == Enum.AssetFetchStatus.Success then
+          REAL[key] = REAL[key] or {}
+          table.insert(REAL[key], cid)
+        end
+      end)
+    end)
+    for _, s in ipairs(list) do
+      local okL, tl = pcall(function() return s.TimeLength end)
+      if okL and tl and tl > 0 then REALLEN[s.SoundId] = tl end
+      s:Destroy()
+    end
+    G.realLoaded = ok
+  end)
+  local function real(key)   -- 这个声音载上了的真录音（随机挑一个）和它的设置；没有就 nil
+    local l = REAL[key]
+    if not l or #l == 0 then return nil end
+    return l[math.random(#l)], SL[key]
+  end
+  G.realSound = real
+  G.realSoundState = function() return REAL end   -- 测试用
+  -- 简单音效换成真录音：名字 → { SoundLib 的键, 速度倍数, 音量倍数 }
+  local SNDREAL = { rifle = { "rifle", 1, 1 }, lmg = { "hmg", 1.1, 0.9 }, sniper = { "rifle", 0.85, 1.3 }, pistol = { "rifle", 1.25, 0.7 },
+    boom = { "boomM", 1, 1 }, rocket = { "missile", 1.1, 0.9 }, mortar = { "boomS", 0.9, 1 } }
   local SND = {
     boom = { EXP, 0.9, 0.8, 1.0 }, rocket = { EXP, 0.35, 1.7, 2.0 }, rifle = { EXP, 0.16, 2.9, 3.3 }, lmg = { EXP, 0.18, 2.7, 3.0 },
     sniper = { EXP, 0.4, 1.9, 2.1 }, pistol = { EXP, 0.14, 3.3, 3.6 }, quiet = { TICK, 0.25, 0.7, 0.8 }, mortar = { EXP, 0.4, 1.2, 1.4 },
@@ -95,20 +137,29 @@ function Fx.init(G)
     if soundN > 8 then return end
     if pos and (pos - cam.CFrame.Position).Magnitude > 1800 then return end
     local snd = Instance.new("Sound")
-    snd.SoundId = def[1]
-    snd.Volume = def[2]
-    snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    local rm = SNDREAL[name]
+    local rid, rcfg = nil, nil
+    if rm then rid, rcfg = real(rm[1]) end
+    if rid then   -- 真录音
+      snd.SoundId = rid
+      snd.Volume = math.min(10, (rcfg.vol or 1) * rm[3])
+      snd.PlaybackSpeed = speed or ((rcfg.s[1] + (rcfg.s[2] - rcfg.s[1]) * math.random()) * rm[2])
+    else
+      snd.SoundId = def[1]
+      snd.Volume = def[2]
+      snd.PlaybackSpeed = speed or (def[3] + (def[4] - def[3]) * math.random())
+    end
     snd.RollOffMinDistance = 30
     snd.RollOffMaxDistance = 1600
     if pos then
       local p = part(nil, V(0.2, 0.2, 0.2), CFrame.new(pos), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
       snd.Parent = p
       snd:Play()
-      Debris:AddItem(p, 5)
+      Debris:AddItem(p, rid and 8 or 5)
     else
       snd.Parent = SoundService
       snd:Play()
-      Debris:AddItem(snd, 5)
+      Debris:AddItem(snd, rid and 8 or 5)
     end
   end
 
@@ -146,6 +197,33 @@ function Fx.init(G)
   local THUD = "rbxasset://sounds/action_jump_land.mp3"
   local WATER = "rbxasset://sounds/impact_water.mp3"
   local LEN = { [EXP] = 2.59, [WIND] = 10, [TICK] = 0.85, [THUD] = 0.27, [WATER] = 2.38 }
+  setmetatable(LEN, { __index = function(_, id) return REALLEN[id] end })   -- 真录音的长度（预载完按实际长度）
+  -- 叠层的音效换成真录音：SFX 的名字 → { SoundLib 的键, 速度倍数, 音量倍数 }（别的照旧叠：落地、换挡、心跳、拉栓……）
+  local SFXREAL = { tankGun = { "tankGun", 1, 1 }, rkt = { "missile", 1.15, 0.8 }, msl = { "missile", 1, 1 }, whiz = { "whiz", 1, 1 }, ric = { "ric", 1, 1 },
+    shellRic = { "ric", 0.8, 1.4 }, ping = { "metalHit", 1.2, 0.8 }, clang = { "metalHit", 0.85, 1.1 }, sonic = { "sonic", 1, 1 },
+    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 } }
+  local function realLayer(key, sp, vol)
+    local id, cfg = real(key)
+    if not id then return nil end
+    sp = sp or 1
+    return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
+  end
+  -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
+  function G.realLoop(key, parent)
+    local id, cfg = real(key)
+    if not id then return nil end
+    local snd = Instance.new("Sound")
+    snd.SoundId = id
+    snd.Volume = cfg.vol or 1
+    snd.Looped = true
+    if type(cfg.loop) == "table" then
+      snd.PlaybackRegionsEnabled = true
+      snd.LoopRegion = NumberRange.new(cfg.loop[1], cfg.loop[2])
+    end
+    snd.Parent = parent
+    snd:Play()
+    return snd
+  end
   local SFX = {
     -- 每层：id 采样、vol 音量、s 速度范围、reg 截取（采样里的秒）、loop 循环区间、eq {低, 中, 高} 分贝、dist 失真、echo {延迟, 反馈, 湿声分贝}、
     --   delay 晚几秒、fade 最后几秒淡出
@@ -254,7 +332,15 @@ function Fx.init(G)
   -- 放一个叠层的声音：def 是 SFX 的名字或层表；pos 是世界坐标（nil：耳边）；o：vol 音量倍数、speed、delay 晚几秒、hiCut 高音衰减、rmax 传多远
   local sfxT, sfxN = 0, 0
   function G.sfx(def, pos, o)
-    if type(def) == "string" then def = SFX[def] end
+    if type(def) == "string" then
+      local rm = SFXREAL[def]
+      local L = rm and realLayer(rm[1], rm[2], rm[3])
+      if L and def == "tankGun" and pos and (pos - cam.CFrame.Position).Magnitude < 30
+        and ((G.interiorOn and G.interiorOn()) or (G.drive and G.drive.sight)) then
+        L = realLayer("tankGunIn", 1, 1) or L   -- 自己在车里 / 炮长镜里开炮：车内的录音（闷、震）
+      end
+      def = L and { L } or SFX[def]
+    end
     if not def then return end
     o = o or {}
     local t = os.clock()
@@ -703,6 +789,10 @@ function Fx.init(G)
         { id = EXP, vol = 0.9, s = { 0.4, 0.44 }, eq = { 10, -6, -14 }, delay = 0.1 } }
     end
     if water then L = { L[1], { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } end
+    if c ~= "gun" then   -- 真录音的爆炸：按大小挑（水里照旧叠一层水声）
+      local RL = realLayer((r < 13 and "boomS") or (r < 26 and "boomM") or "boomL", (c == "bomb") and 0.92 or 1, 1)
+      if RL then L = water and { RL, { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } or { RL } end
+    end
     local far = math.clamp((d - 300) / 2500, 0, 1)
     G.sfx(L, p, { delay = math.max(0, d - 250) / 960, hiCut = -16 * far, rmin = 40 + r * 6, rmax = (c == "bomb") and 9000 or 4500, must = r >= 18 })
   end
@@ -1056,6 +1146,14 @@ function Fx.init(G)
     return pe
   end
   G.emitBurst = emitter
+  -- 炮弹打在钢甲上（用户 11-21：打中目标，如果是金属也要有火花）：再迸一大把亮的火星（比子弹的大、飞得远、带重力落下），一下白热的闪光
+  local function hotSparks(p, n, s)
+    if (p - cam.CFrame.Position).Magnitude > 1500 then return end
+    local h = part(nil, V(0.2, 0.2, 0.2), CFrame.lookAt(p + n * 0.3, p + n * 2), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    emitter(h, { tex = TX.glow, life = { 0.35, 1.1 }, speed = { 40, 120 }, spread = 65, drag = 0.8, acc = V(0, -90, 0), size = { 0.7, 0 }, tr = 0, color = RGB(255, 222, 150), glow = 1, n = math.floor(22 * s) })
+    emitter(h, { tex = TX.glow, life = { 0.08, 0.14 }, speed = { 0, 0 }, spread = 0, size = { 3 * s, 5.5 * s }, tr = 0, color = RGB(255, 245, 220), glow = 1, n = 1 })
+    Debris:AddItem(h, 1.5)
+  end
   local function vfire(e)
     local big = e.f == "tank" or e.f == "arty"
     local dir = (typeof(e.d) == "Vector3") and e.d.Unit or V(0, 0, -1)
@@ -1095,6 +1193,14 @@ function Fx.init(G)
       emitter(holder, { life = { 1.1, 2.4 }, speed = { 16, 40 }, spread = 22, drag = 3.2, size = { 2.5, 11 }, tr = 0.25, color = RGB(214, 208, 196), n = 16 })
       emitter(holder, { life = { 3.5, 6 }, speed = { 2, 9 }, spread = 70, drag = 1.1, acc = V(0, 1.4, 0), size = { 5, 19 }, tr = 0.4, color = RGB(170, 164, 154), n = 10 })
       emitter(holder, { tex = "rbxasset://textures/particles/sparkles_main.dds", life = { 0.15, 0.4 }, speed = { 40, 80 }, spread = 12, size = { 0.5, 0.2 }, tr = 0, color = RGB(255, 210, 130), glow = 1, n = 12 })
+      -- 炮口迸出的火星（用户 11-21：炮弹飞出炮管要有火花）：顺着炮管往前喷一大把白热的火星（带重力往下掉、一下就暗），
+      --   制退器两边也横着喷一点
+      emitter(holder, { tex = TX.glow, life = { 0.25, 0.75 }, speed = { 70, 170 }, spread = 10, drag = 1.2, acc = V(0, -70, 0), size = { 0.6, 0 }, tr = 0, color = RGB(255, 216, 146), glow = 1, n = 36 })
+      for sx = -1, 1, 2 do
+        local side = part(nil, V(0.2, 0.2, 0.2), look * CF(sx * 1.6, 0, -0.6) * CFrame.Angles(0, sx * math.rad(78), 0), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+        emitter(side, { tex = TX.glow, life = { 0.15, 0.45 }, speed = { 40, 95 }, spread = 16, drag = 2, acc = V(0, -60, 0), size = { 0.45, 0 }, tr = 0, color = RGB(255, 196, 120), glow = 1, n = 10 })
+        Debris:AddItem(side, 1)
+      end
       Debris:AddItem(holder, 6.5)
       -- ⑤ 地上一圈掀起来的土（炮口离地不高才有；水上是白的水雾）
       local gy = G.Map and G.Map.ground and G.Map.ground(e.p.X, e.p.Z) or (e.p.Y - 4)
@@ -1273,6 +1379,7 @@ function Fx.init(G)
         if typeof(e.p) == "Vector3" then
           local n = (typeof(e.n) == "Vector3" and e.n.Magnitude > 0.5) and e.n.Unit or V(0, 1, 0)
           impact(e.p, -n, e.h or "a", (e.s or 1) * 1.6, n)
+          if (e.s or 1) >= 1.5 then hotSparks(e.p, n, e.s) end   -- 炮弹打在钢甲上：再迸一大把亮的火星
         end
       elseif k == "shot" then
         newShot(e)
