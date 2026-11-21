@@ -5,12 +5,14 @@ import { BIG, initBigMap, heightAt, bigTerrainGeo, seaHeightTex, relocateParts }
 import { Post } from './post.js';
 import { FX } from './fx.js';
 import { setMeta, loadGLB } from './models.js';
-import { SHOTS, setupShot } from './shots.js';
+import { SHOTS as FILM_SHOTS, setupShot } from './shots.js';
 import { Titles } from './titles.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const Q = new URLSearchParams(location.search);
 const W = +(Q.get('w') || 1920), H = +(Q.get('h') || 1080), FPS = +(Q.get('fps') || 24), SS = +(Q.get('ss') || 1);
+// 剪辑版本：film（微电影《黎明之前》，宽银幕）/ promo（时代广场宣传片：3 分钟、整幅 16:9、英文字幕，promo.js）
+const CUT = Q.get('cut') || 'film', ASP = +(Q.get('asp') || 0);
 const DATA = '/data', REPO = '/repo';
 const log = (...a) => console.log('[film]', ...a);
 
@@ -49,7 +51,8 @@ function tex(url, srgb = true) {
     T.grime = makeGrimeTex(T.noise);
     for (const k of ['expl', 'fire', 'mzl', 'mzla', 'puff']) { T[k].generateMipmaps = true; T[k].minFilter = THREE.LinearMipmapLinearFilter; }
 
-    const post = new Post(renderer, W, H, { ss: SS, msaa: 4 });
+    const SHOTS = CUT === 'promo' ? (await import('./promo.js')).PROMO : FILM_SHOTS;
+    const post = new Post(renderer, W, H, { ss: SS, msaa: 4, aspect: ASP || (CUT === 'promo' ? W / H : 2.39) });
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x1d2738, 0.00042);
     const camera = new THREE.PerspectiveCamera(35, post.rw / post.rh, 0.5, 120000);
@@ -117,11 +120,12 @@ function tex(url, srgb = true) {
     }
     function frame(sh, t) {
       const P = sh.update(t) || {};
+      const tt = sh.tmap ? sh.tmap(t) : t;   // 宣传片的慢镜头 / 截一段：特效、海浪、天空按原镜头的时间走
       scene.updateMatrixWorld(true);
       // 天空、雾、月亮跟着镜头参数走
       sky.position.copy(camera.position);
       const su = sky.material.uniforms;
-      su.uTime.value = t + (sh.t0 || 0);
+      su.uTime.value = tt + (sh.t0 || 0);
       const fogC = P.fogColor || new THREE.Color(0x1d2738);
       scene.fog.color.copy(fogC); scene.fog.density = P.fogDensity ?? 0.00042;
       su.uFog.value.copy(fogC); su.uDawn.value = P.dawn || 0;
@@ -137,9 +141,9 @@ function tex(url, srgb = true) {
       Object.assign(moon.shadow.camera, { left: -sr, right: sr, top: sr, bottom: -sr, near: 100, far: 7000 });
       moon.shadow.camera.updateProjectionMatrix();
       fx.setFog(scene.fog);
-      fx.update(t, camera);
-      if (sea.visible) sea.userData.prepare(renderer, scene, camera, t + (sh.t0 || 0));
-      post.render(scene, camera, { ...P, time: t + (sh.t0 || 0) });
+      fx.update(tt, camera);
+      if (sea.visible) sea.userData.prepare(renderer, scene, camera, tt + (sh.t0 || 0));
+      post.render(scene, camera, { ...P, time: tt + (sh.t0 || 0) });
       // 画面拷到输出画布、叠字幕
       ctx.drawImage(renderer.domElement, 0, 0);
       titles.draw(ctx, sh.titles ? sh.titles(t) : null, t);
@@ -148,8 +152,22 @@ function tex(url, srgb = true) {
       ready: true, canvas, jpg: true, shots: SHOTS.map(s => ({ id: s.id, dur: s.dur })),
       async renderAt(id, t) { const t0 = performance.now(); const sh = await enter(id); frame(sh, t); return performance.now() - t0; },
       info() { return { W, H, rw: post.rw, rh: post.rh, gl: renderer.getContext().getParameter(renderer.getContext().VERSION), tris: renderer.info.render.triangles, calls: renderer.info.render.calls }; },
-      async renderAudio() { const { renderScore } = await import('./audio.js'); return renderScore(SHOTS); },
+      async renderAudio() {
+        if (CUT === 'promo') { const { renderPromoScore } = await import('./audio_promo.js'); return renderPromoScore(SHOTS); }
+        const { renderScore } = await import('./audio.js'); return renderScore(SHOTS);
+      },
     };
+    // 网页字体：画布写字不等字体加载（第一次用到某个字重、某段字符时先用替代字体画，同一句字幕前后帧字体不一样）。
+    //   开渲之前把字幕可能用到的字都加载好：英文、标点，加上分镜源码里出现的所有中文字
+    {
+      const src = (await Promise.all(['shots.js', 'promo.js', 'promo_shots.js'].map(f => fetch(f).then(r => r.ok ? r.text() : '')))).join('');
+      const cjk = [...new Set(src)].filter(c => c.charCodeAt(0) > 0x2000).join('');
+      const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;!?-—–·“”"\'()&+/%';
+      const faces = ['"Noto Sans SC"', '"Noto Serif SC"'].flatMap(f => [400, 700].map(w => `${w} 32px ${f}`));
+      await Promise.all(faces.map(f => document.fonts.load(f, latin + cjk)));
+      await document.fonts.ready;
+      log('字体', faces.map(f => document.fonts.check(f, 'ISLAND 全面大战场') ? '好' : '缺').join(' '));
+    }
     log('准备好了', W, H);
   } catch (e) {
     console.error('[film] 出错', e && e.stack || e);
