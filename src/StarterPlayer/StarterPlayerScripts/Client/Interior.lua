@@ -33,7 +33,7 @@ function Interior.init(G)
   local function T(zh, en) return (G.lang == "en") and en or zh end
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a2", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -49,7 +49,7 @@ function Interior.init(G)
   local shake = 0
   local stepScope, actions   -- 开镜动画、按键的功能（下面定义）
   local optic, exitOptic, stepOptic, enterOptic   -- 别的观瞄设备（下面定义）
-  local stepAir   -- 飞机座舱（下面定义）
+  local stepAir, scratches   -- 飞机座舱、玻璃划痕（下面定义）
   local scopePhase = function() return false end
 
   ---------------------------------------------------------------- 提示条
@@ -85,6 +85,7 @@ function Interior.init(G)
   local NAMES = {
     driver = { "驾驶员", "DRIVER" }, gunner = { "炮长", "GUNNER" }, commander = { "车长", "COMMANDER" }, loader = { "装填手", "LOADER" },
     pilot = { "飞行员", "PILOT" }, wso = { "武器官", "WSO" }, cpg = { "副驾驶 / 射手", "CPG" },
+    copilot = { "副驾驶", "COPILOT" }, troop = { "载员", "TROOP" },
   }
   local function stationName(k) local n = NAMES[k] return n and T(n[1], n[2]) or tostring(k) end
 
@@ -143,7 +144,9 @@ function Interior.init(G)
     local m = Instance.new("Model")
     m.Name = "Interior_" .. key
     local b = Kit.new(m)
-    local ok, spec = pcall(fn, b, { def = v.def })
+    -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
+    local ok, spec = pcall(fn, b, { def = v.def, piv = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero,
+      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
     if not ok then
       m:Destroy()
       if G.showError then G.showError("local 内饰 " .. key .. "：" .. tostring(spec)) end
@@ -485,8 +488,9 @@ function Interior.init(G)
     c.dty += (dty - c.dty) * math.min(1, dt * 8)
     c.dgp += (dgp - c.dgp) * math.min(1, dt * 8)
     b:setAnim("gch", ANG(rad(clamp(-c.dgp * 0.8, -14, 14)), 0, rad(clamp(-c.dty * 0.35, -16, 16))))
-    -- 驾驶员 T 形把：跟着方向
+    -- 驾驶员 T 形把 / 方向盘：跟着方向
     b:setAnim("tbar", ANG(0, rad(-clamp(v.steer or 0, -1, 1) * 26), 0))
+    b:setAnim("swheel", ANG(0, 0, rad(-clamp(v.steer or 0, -1, 1) * 120)))
     -- 装填手潜望镜慢慢转着看
     b:setAnim("lscope", ANG(0, math.sin(now * 0.21) * 0.6, 0))
     -- 灯、指示灯
@@ -689,6 +693,10 @@ function Interior.init(G)
     local ammo = G.S and G.S.veh and G.S.veh.ammo and wid and G.S.veh.ammo[wid]
     d.ready = c.loaded and (not ammo or (ammo[1] or 0) > 0)
     d.range = st.aimPt and ((st.aimPt - at(c, "gun", V(0, 0, 0))).Magnitude / S) or nil
+    d.fwd = lk   -- 防空雷达（车头朝上）
+    d.turretDeg, d.gunDeg = d.ty, d.gp   -- 火控计算机：方位、射角
+    d.ammo = ammo and ((ammo[1] or 0) + (ammo[2] or 0)) or 0
+    d.ammoName = wid and string.upper(tostring(wid)) or "--"
     d.pol = (st.mode == 4) and "BLK" or "WHT"
     d.zoomTxt = (st.zoom == 2) and "10X" or "3X"
     -- 热像的视线：驾驶员（车头）、主瞄准镜（炮）、独立热像仪（车长看的方向）、遥控武器站
@@ -935,7 +943,10 @@ function Interior.init(G)
     if not cur then
       cur = build(st, v)
       if not cur then mode = nil return end
-      enterStation(cur, station or lastStation[cur.key] or cur.spec.order[1])
+      local want = station or lastStation[cur.key]
+      if not (want and cur.spec.stations[want]) then want = cur.spec.order[1] end   -- 这型车没有那个乘员位
+      enterStation(cur, want)
+      for i, g in ipairs(cur.spec.glass or {}) do scratches(g, i * 613 + #cur.key) end   -- 驾驶室的风挡、侧窗：划痕、污渍
       local ammo = G.S and G.S.veh and G.S.veh.ammo
       local wid = st.d.weapons and st.d.weapons[1]
       local resv = (ammo and wid and ammo[wid]) and (ammo[wid][2] or 0) or 34
@@ -997,8 +1008,14 @@ function Interior.init(G)
       hint.Text = T("导演镜头：方向键移动 · PageUp/PageDown 升降 · Ctrl 慢 · 滚轮变焦 · B 回乘员位 · U 藏界面",
         "FREE CAM: arrows move · PgUp/PgDn up/down · Ctrl slow · wheel zoom · B back to seat · U hide UI")
     else
-      hint.Text = T("C 车外 · F2 驾驶员  F3 炮长  F4 车长  F5 装填手 · 炮长位 Shift 进瞄准镜 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
-        "C exterior · F2 driver  F3 gunner  F4 commander  F5 loader · Shift gunner's sight · B free cam · L lights · U hide UI · wheel zoom")
+      local LB = { driver = { "驾驶员", "driver" }, gunner = { "炮长", "gunner" }, commander = { "车长", "commander" }, loader = { "装填手", "loader" }, troop = { "载员", "troop" } }
+      local fk = {}
+      for i, k2 in ipairs(c.spec.order) do
+        local lb = LB[k2] or { k2, k2 }
+        table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
+      end
+      hint.Text = T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
+        "C exterior · " .. table.concat(fk, "  ") .. " · Shift / G / T optics · B free cam · L lights · U hide UI · wheel zoom")
     end
   end
 
@@ -1332,6 +1349,20 @@ function Interior.init(G)
     rLine(-u * 0.20, u * 0.18, u * 0.20, u * 0.18, 2, RGB(255, 210, 60))
     rLine(-u * 0.16, u * 0.06, u * 0.16, u * 0.06, 2, RGB(80, 230, 110))
   end
+  -- 周视瞄准镜（自行火炮间接瞄准）：十字线、横竖两条米位刻度（每格 10 密位、每 50 一个大刻度带数字）
+  RETS.mil = function(u, col)
+    rLine(-u * 0.42, 0, u * 0.42, 0, 1, col)
+    rLine(0, -u * 0.42, 0, u * 0.42, 1, col)
+    for i = -20, 20 do
+      if i ~= 0 then
+        local x = i * u * 0.02
+        local big = i % 5 == 0
+        rLine(x, -(big and 8 or 4), x, (big and 8 or 4), 1, col)
+        if big then rText(tostring(math.abs(i * 10)), x, 16, 11, col, "c") end
+        rLine(-(big and 8 or 4), x, (big and 8 or 4), x, 1, col)
+      end
+    end
+  end
   RETS.none = function() end
   -- 光学设备的镜头位置、朝向
   local function opticCF(c, o)
@@ -1475,7 +1506,7 @@ function Interior.init(G)
     return V(0, v.def.H * 0.35, -v.def.L * 0.3)
   end
   -- 玻璃上的划痕、污渍（内面；受光照，迎着光才看得清）
-  local function scratches(part, seed)
+  scratches = function(part, seed)
     local rng = Random.new(seed)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Bottom
@@ -1953,6 +1984,10 @@ function Interior.init(G)
       end
     elseif KEYST[k] then
       local want = KEYST[k]
+      if cur then   -- 按这型车的乘员位顺序（F2 第一个、F3 第二个……；坦克正好是驾驶员 / 炮长 / 车长 / 装填手）
+        local idx = ({ [Enum.KeyCode.F2] = 1, [Enum.KeyCode.F3] = 2, [Enum.KeyCode.F4] = 3, [Enum.KeyCode.F5] = 4 })[k]
+        want = cur.spec.order[idx] or want
+      end
       if not cur then
         mode = "seat"
         station = want

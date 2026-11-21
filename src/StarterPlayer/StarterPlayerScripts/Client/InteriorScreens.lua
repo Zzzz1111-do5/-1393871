@@ -1222,6 +1222,67 @@ P.hud = function(s, env, zh)
   end
 end
 
+-- 防空雷达（平面位置显示器 PPI）：一圈圈距离环、扫描线转、空中目标（友军蓝、敌军绿）；地面车辆的雷达（自行高炮、C-RAM、操作员控制台）
+P.ppi = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local G = RGB(80, 230, 110)
+  local cx, cy, r = W / 2, H / 2 + 6, math.min(W, H) * 0.42
+  for i = 1, 4 do Ring(R, cx, cy, r * i / 4, 1, G, 2) end
+  Ln(R, cx - r, cy, cx + r, cy, 1, G, 2)
+  Ln(R, cx, cy - r, cx, cy + r, 1, G, 2)
+  local _, sweep = Ln(R, cx, cy, cx, cy - r, 2, G, 3)
+  local title = Tx(R, "", 4, 2, W - 8, 14, 11, G, nil, FONTB, 4)
+  local pool = {}
+  local rng = 12000   -- 12 公里
+  return function(d)
+    local t = os.clock() * 1.6
+    sweep(cx, cy, cx + math.sin(t) * r, cy - math.cos(t) * r)
+    local pos, fwd = d.pos, d.fwd
+    local n = 0
+    if pos and fwd then
+      local yaw = math.atan2(-fwd.X, -fwd.Z)
+      for _, e in ipairs(d.ents or {}) do
+        if e.kind == "air" then
+          local q = e.pos - pos
+          local dist = Vector3.new(q.X, 0, q.Z).Magnitude / 2.8
+          if dist < rng then
+            local a = math.atan2(-q.X, -q.Z) - yaw
+            local k = dist / rng * r
+            n += 1
+            local f = pool[n] or F(R, 0, 0, 7, 7, G, 0, 5)
+            pool[n] = f
+            f.Visible = true
+            f.Position = UD2(0, cx - math.sin(a) * k - 3, 0, cy - math.cos(a) * k - 3)
+            f.BackgroundColor3 = (e.team == d.team) and RGB(80, 160, 255) or RGB(255, 90, 70)
+          end
+        end
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+    title.Text = zh and string.format("搜索雷达  12 公里  空中目标 %d", n) or string.format("SEARCH RADAR  12 KM  AIR TRACKS %d", n)
+  end
+end
+
+-- 火控计算机（自行火炮、火箭炮、防空车的火控页）：射击诸元——方位、射角、距离、弹种、装药、剩余弹数
+P.afcs = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local G = RGB(90, 230, 120)
+  Tx(R, zh and "火控计算机" or "FIRE CONTROL", 4, 2, W - 8, 14, 12, G, Enum.TextXAlignment.Center, FONTB, 3)
+  local rows = {}
+  for i = 1, 6 do rows[i] = Tx(R, "", 8, 18 + (i - 1) * (H - 24) / 6, W - 16, (H - 24) / 6, 12, G, nil, FONT, 3) end
+  return function(d)
+    local az = d.turretDeg or 0
+    rows[1].Text = string.format(zh and "方位   %04d 密位" or "AZ     %04d MIL", math.floor((az % 360) / 360 * 6400))
+    rows[2].Text = string.format(zh and "射角   %+.1f°" or "QE     %+.1f DEG", d.gunDeg or 0)
+    rows[3].Text = string.format(zh and "距离   %d 米" or "RANGE  %d M", math.floor(d.range or 0))
+    rows[4].Text = (zh and "弹种   " or "AMMO   ") .. tostring(d.ammoName or "--")
+    rows[5].Text = string.format(zh and "剩余   %d" or "RDS    %d", d.ammo or 0)
+    rows[6].Text = (d.ready == false) and (zh and "装填中…" or "LOADING…") or (zh and "可以射击" or "READY")
+  end
+end
+
 function Screens.make(s, env)
   local fn = P[s.page]
   if not fn then return nil end

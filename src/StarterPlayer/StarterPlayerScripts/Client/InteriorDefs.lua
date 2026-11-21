@@ -1269,4 +1269,7 @@ Defs.z20 = function(b, ctx) return Defs.side(b, ctx, { half = 0.50, me = "L", ct
 Defs.h6k = function(b, ctx) return Defs.side(b, ctx, { half = 0.55, me = "L", ctrl = "yoke", disp = "h6k", win = "bomber", cn = true, hud = true, thr = 2, eyeShift = -0.55 }) end
 Defs.b2 = function(b, ctx) return Defs.side(b, ctx, { half = 0.62, me = "L", ctrl = "stick", disp = "b2", win = "bomber", thr = 4, eyeShift = -0.62 }) end
 
+-- 步战车、装甲车、自行火炮、自行高炮、轮式车、卡车（InteriorAFV.lua）
+require(script.Parent:WaitForChild("InteriorAFV"))(Defs, { window = window, pane = pane, bar = bar, wiper = wiper, standby = standby, hudUnit = hudUnit })
+
 return Defs

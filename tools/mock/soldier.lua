@@ -20,6 +20,8 @@ local G = {
   perfK = 1,
 }
 local errs = 0
+-- 各模块的逐帧回调（init.client.lua 的 G.frameConn：带性能计时，这里直接连 RenderStepped）
+function G.frameConn(_, f) return R.RenderStepped:Connect(f) end
 function G.try_(f, ...)
   local ok, e = pcall(f, ...)
   if not ok then errs = errs + 1 print("  出错：" .. tostring(e)) end
