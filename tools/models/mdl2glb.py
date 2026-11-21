@@ -22,9 +22,11 @@ CHUNK = 19500    # 一块网格最多几个三角形
 TEXMAX = 1024    # Roblox 贴图最大边长
 
 # Roblox 里的型号 → 网页版的模型（网页版自己就拿 LAV-25 代 ZSL-92B、PzH 2000 代 PLZ-07、M-ATV 代 M1117……照它）
+#   M1A2 用户 11-18 指定换成 Mirza Arrafi 的「M1A2 SEPV2 Abrams Main Battle Tank DC」（沙漠涂装，Sketchfab CC-BY；原来是 dannzjs 的 SEPv3）
+#   99A 用户 11-18 指定换成 42manako 的「ZTZ-99A2」（Sketchfab，CC-BY；原来是 philano 的低面数 Type 99）：网页版没有，在临时目录里用网页版的 v3gbake.js 烘焙
 ALIAS = {
-    'ztz99a': 'ztz99', 'ztz96': 'ztz96', 'zbd05': 'zbd97', 'zsl92b': 'lav25', 'ptl02': 'ptl02', 'pgl625': 't625', 'plz07': 'pzh2000',
-    'm1a2': 'm1a2v3', 'm1a1': 'm1a1', 'm2a3': 'm2a3', 'stryker': 'stryker', 'mshorad': 'stryker', 'm1150': 'm1150', 'hmmwv': 'hmmwv',
+    'ztz99a': 'ztz99a2', 'ztz96': 'ztz96', 'zbd05': 'zbd97', 'zsl92b': 'lav25', 'ptl02': 'ptl02', 'pgl625': 't625', 'plz07': 'pzh2000',
+    'm1a2': 'm1a2dc', 'm1a1': 'm1a1', 'm2a3': 'm2a3', 'stryker': 'stryker', 'mshorad': 'stryker', 'm1150': 'm1150', 'hmmwv': 'hmmwv',
     'jltv': 'jltv', 'm1117': 'matv', 'm163': 'm163', 'cram': 'cram', 'patriot': 'patriot', 'm109a7': 'm109', 'm270': 'm270',
 }
 # 网页版烘焙出来车头朝后的（网页版游戏里 JLTV 用的是 M-ATV 的模型，这个 JLTV 模型从没开过，方向反了没人发现）：掉头 180°
@@ -69,6 +71,18 @@ SPLIT = {
     # 悍马（M998 软篷）：原模型没有机枪——游戏里在车顶补一挺零件拼的 M2（客户端 VehModels 看 mg）：座圈在篷顶上，
     #   枪架高 0.46 米，耳轴到枪口 1.35 米（muz）
     'hmmwv': {'rules': [], 'tur': [-0.25, 0, 1.84], 'gun': [-0.25, 0, 2.30], 'mg': 'm2', 'muz': 1.35},
+    # M1A2 SEPV2（沙漠涂装）：车长指挥塔上的 CROWS 遥控武器站拆成 Rws（跟着炮塔转、自己再转），上面的 M2 拆成 RwsGun（自己俯仰）——
+    #   用户：机枪也要能转动、开火位置和枪口对上、弹道顺着枪管；rws 底座转轴、rwg M2 的俯仰轴（网页版烘焙坐标，米）；
+    #   sight 炮长主瞄准镜（主炮右边、炮塔前沿那个方盒子）：瞄准镜视角从这里看出去（用户：观瞄系统位置要对）
+    #   W01、W02 是车头首上两侧的车灯组（烘焙时按圆形零件当成了车轮，开车时会跟着转）：并回车身
+    'm1a2dc': {'rules': [{'from': 'Turret', 'to': 'Rws', 'box': [-0.78, 0.95, -1.06, -0.36], 'zmin': 2.60},
+                         {'from': 'Rws', 'to': 'RwsGun', 'box': [-0.78, 0.95, -0.80, -0.60], 'zmin': 3.12},
+                         {'from': 'W01', 'to': 'Body', 'box': [-9, 9, -9, 9]}, {'from': 'W02', 'to': 'Body', 'box': [-9, 9, -9, 9]},
+                         # 炮塔两侧前段的附加装甲块和挂架下沿低于烘焙时炮塔的 zmin（1.75 米），留在了车身：转炮塔时会留在原地
+                         {'from': 'Body', 'to': 'Turret', 'box': [-3.15, 0.85, -1.95, 1.95], 'zmin': 1.66},
+                         # 炮盾上面、两边伸出炮塔正面的零件（炮盾顶甲、并列机枪、炮上那挺 M2 的弹箱）：跟着炮俯仰
+                         {'from': 'Body', 'to': 'Gun', 'box': [1.40, 2.10, -0.50, 0.50], 'zmin': 1.85}],
+               'rws': [-0.30, -0.71, 2.65], 'rwg': [-0.05, -0.71, 3.235], 'sight': [0.93, -0.28, 2.24]},
     'ztz96': {'rules': [{'from': 'Turret', 'to': 'Body', 'box': [-5, 5.2, -2, 2], 'zmax': 1.585},   # 网页版炮塔框带进来的车体甲板零件（挡泥板沿、螺栓）还给车体
                         {'from': 'Turret', 'to': 'Gun', 'box': [-0.66, 5.10, -0.40, 0.27], 'zmin': 1.50}],
               'gun': [0.05, -0.01, 1.785]},
@@ -265,7 +279,7 @@ def convert(key, src=None):
     used = np.unique(np.concatenate([p[2].reshape(-1) for p in pieces]))
     allP = rb(VB[used, 0:3])
     lo, hi = allP.min(0), allP.max(0)
-    hull_ix = [p[2].reshape(-1) for p in pieces if p[0] not in ('Turret', 'Gun')]
+    hull_ix = [p[2].reshape(-1) for p in pieces if p[0] not in ('Turret', 'Gun', 'Rws', 'RwsGun')]
     hP = rb(VB[np.unique(np.concatenate(hull_ix)), 0:3]) if hull_ix else allP
     hlo, hhi = hP.min(0), hP.max(0)
     org = np.array([(hlo[0] + hhi[0]) / 2, lo[1], (hlo[2] + hhi[2]) / 2])
@@ -321,6 +335,20 @@ def convert(key, src=None):
         if G:
             A = np.concatenate(G)
             info['muz'] = round(float(info['gun'][2] - A[:, 2].min()), 3)   # 炮口在耳轴前面多远（−Z 朝前）
+    sp = SPLIT.get(key, {})
+
+    def rbo(p):   # 网页版烘焙坐标（米）→ 这辆车的 Roblox 模型坐标（格）
+        p = [-p[0], -p[1], p[2]] if key in FLIP else p
+        return [round(float(x), 3) for x in (rb(p) - org)]
+    if sp.get('rws'):   # 遥控武器站：底座转轴 p、机枪俯仰轴 g、枪口在俯仰轴前面多远 muz（量拆出来的 RwsGun）
+        R = {'p': rbo(sp['rws']), 'g': rbo(sp['rwg'])}
+        G = [o[3] + np.array(info['parts'][o[0]]['c']) for o in out if o[1] == 'RwsGun']
+        if G:
+            R['muz'] = round(float(R['g'][2] - np.concatenate(G)[:, 2].min()), 3)
+        info['rws'] = R
+    for nm in ('sight', 'coax'):   # 炮长主瞄准镜、并列机枪口：照原模型的位置
+        if sp.get(nm):
+            info[nm] = rbo(sp[nm])
     return meta, binb, info, out
 
 

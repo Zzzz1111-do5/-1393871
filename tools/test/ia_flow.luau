@@ -178,6 +178,13 @@ check(G.round.stage == 1 and math.abs((G.round.endsAt - H.now) - st1.time) < 5, 
 check(G.pointActive("A") and not G.pointActive("C"), "第一阶段只能占 A（C 还没开）")
 H.run(1.5)
 check(boat0 and boat0.state ~= "loading", "开战了艇一起冲滩（" .. tostring(boat0 and boat0.state) .. "）")
+local briefA, briefD = a1.PlayerGui.Main.OperationBrief, d1.PlayerGui.Main.OperationBrief
+check(briefA.Visible and briefA.Orders.Text == CA.T("stage.beach.atk"), "攻方看到抢滩目标")
+check(briefD.Visible and briefD.Orders.Text == CD.T("stage.beach.def"), "守方看到防守目标")
+local sweep = H.workspace.Map.Scenery.Lighthouse.LighthouseSweep
+local look = sweep.CFrame.LookVector
+H.run(0.25)
+check((sweep.CFrame.LookVector - look).Magnitude > 0.01 and sweep.SeaHaze:IsA("Beam"), "灯塔的两层光束随转轴扫动")
 -- 狙击镜（Scope.lua）：换成狙击手的武器、拿狙击枪、按住右键开镜 → 圆形目镜；服务器记下开着镜、朝哪看（对面画镜片闪光）；滚轮变倍；松开收镜
 if a1.Character and PA.alive then
 	local ch = a1.Character
@@ -285,6 +292,9 @@ end
 local tk0 = G.round.tickets
 H.run(2)
 check(A.prog > 0, string.format("占领进度在涨（%.2f）", A.prog))
+local nearby = a1.PlayerGui.Main.ObjectiveStatus
+check(nearby.Visible and nearby.Status.Text == CA.T("operation.capturing"), "占领区内显示服务器的推进状态")
+check(not d1.PlayerGui.Main.ObjectiveStatus.Visible, "离开占领区的玩家不显示据点状态")
 local capOk = H.runUntil(function() return A.owner == "atk" end, G.Config.Capture.fast + 10)
 check(capOk, "15 秒左右拿下 A（攻方多 3 人）")
 check(A.locked, "拿下后锁定")
@@ -317,6 +327,11 @@ local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootP
 check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
 H.run(1)
 check(CA.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
+check(briefA.Visible and briefA.Title.Text == CA.T("stage." .. G.Config.Stages[2].id) and not nearby.Visible, "进入第二阶段显示简报并收起旧据点（" .. briefA.Title.Text .. "）")
+local briefLate = atk[3].PlayerGui.Main.OperationBrief
+check(briefLate.Title.Text == H.Gs[atk[3].Name].T("stage." .. G.Config.Stages[2].id), "活着进入新阶段的队友也读到了当前目标")
+H.run(5)
+check(not briefA.Visible, "同一阶段持续收战况时简报不会重复显示")
 
 print("⑧ 时间到守方赢 → 结算 → 下一局")
 G.round.endsAt = H.now + 1

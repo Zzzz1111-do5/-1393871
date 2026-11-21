@@ -189,7 +189,8 @@ D.j20 = { kind = "jet", cat = "jet", L = 57, W = 36, H = 12.5, gearH = 6.4, hp =
   canard = { xr = 3.0, zr0 = -15, zr1 = -8.5, xt = 10, zt0 = -9.5, zt1 = -7.5, y = 1.0 },
   vt = { x = 3.6, zr0 = 16, zr1 = 26, zt0 = 22.5, zt1 = 27, h = 8.5, cant = 27, allMove = true },
   eng = { { x = 1.9, y = 0, z = 27.5, r = 1.35 }, { x = -1.9, y = 0, z = 27.5, r = 1.35 } },
-  gear = { nose = { z = -16, len = 5.2 }, main = { x = 3.4, z = 5.5, len = 5.0 }, r = 1.1 },
+  -- 起落架位置照原模型补的那套（tools/models/j20_gear.py：前起落架在座舱下、主起落架在侧弹舱后面，都往前收）；没导入原模型时零件拼的也摆这里
+  gear = { nose = { z = -13.6, len = 5.2 }, main = { x = 3.4, z = 11.6, len = 5.0 }, r = 1.1 },
   bays = { main = { z0 = -3, z1 = 10, w = 4.2 }, sideR = { x = 3.9, z0 = -9, z1 = -2.5, w = 1.3 } },
   st = mirror({
     { name = "bayM1", pos = V(1.0, -2.2, 3.5), bay = "main", opts = { "pl15", "ls6" } },
@@ -421,20 +422,56 @@ for id, map in pairs(TANKS) do
 end
 
 -- 攻方舰队的甲板（和 World.fleet 拼的一样大：甲板面高 top）：飞机能停在上面、从上面起飞
-AirDefs.DECKS = { carrier = { L = 620, W = 120, top = 30.5 }, lhd = { L = 480, W = 94, top = 26.5 }, lst = { L = 300, W = 60, top = 18.5 } }
+--   航母（福建舰，用户 11-21：航母不够真）照原模型量出来的甲板轮廓（CarrierMeta.outline：舰艏窄、斜角甲板往左舷伸出去、舰尾收窄），
+--   W 只是最宽处；没有元数据时退回长方形
+AirDefs.DECKS = { carrier = { L = 620, W = 160, top = 30.5 }, lhd = { L = 480, W = 94, top = 26.5 }, lst = { L = 300, W = 60, top = 18.5 } }
+local CM = nil
+pcall(function() CM = require(script.Parent:WaitForChild("CarrierMeta", 3)) end)
+AirDefs.CM = CM
+-- 航母甲板在 lz 处的左舷边、右舷边（相对甲板中心，格）；不在甲板长度里返回 nil
+function AirDefs.cvEdge(lz)
+  local o = CM and CM.outline
+  if not o then
+    if math.abs(lz) > 310 then return nil end
+    return -60, 60
+  end
+  if lz < o[1][1] - 8 or lz > o[#o][1] + 6 then return nil end
+  if lz <= o[1][1] then return o[1][2], o[1][3] end
+  for i = 1, #o - 1 do
+    local a, b = o[i], o[i + 1]
+    if lz <= b[1] then
+      local t = (lz - a[1]) / (b[1] - a[1])
+      return a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t
+    end
+  end
+  return o[#o][2], o[#o][3]
+end
+-- (x, z) 在不在这艘船的甲板上
+local function onShip(s, K, x, z)
+  if s.kind == "carrier" then
+    local r = s.rot or 0
+    local dx, dz = x - s.x, z - s.z
+    local lx, lz = dx * math.cos(r) - dz * math.sin(r), dx * math.sin(r) + dz * math.cos(r)   -- 转到甲板坐标（rot 绕 Y）
+    local xl, xr = AirDefs.cvEdge(lz)
+    return xl ~= nil and lx >= xl and lx <= xr
+  end
+  return math.abs(x - s.x) < K.W / 2 and math.abs(z - s.z) < K.L / 2
+end
 -- (x, z) 处能落地的面多高：地形（海上是海面 0）、甲板
 function AirDefs.ground(Map, x, z)
   local g = Map.ground(x, z)
   for _, s in ipairs(Map.FLEET or {}) do
     local K = AirDefs.DECKS[s.kind]
-    if K and math.abs(x - s.x) < K.W / 2 and math.abs(z - s.z) < K.L / 2 then g = math.max(g, K.top) end
+    if K and onShip(s, K, x, z) then g = math.max(g, K.top) end
   end
   return g
 end
--- 航母：三条弹射器（舰艏两条、斜角甲板一条）、拦阻索区；坐标相对航母甲板中心（舰艏朝 −Z），a 是往左舷偏的角度
---   停机位在右舷后部（Air.lua）：自己滑到弹射器起点，对正了就卡上，油门推满按空格弹射；着舰放尾钩，落在拦阻索区就被拉停
-AirDefs.CATS = { { x = 18, z = -50, len = 240, a = 0 }, { x = -6, z = -50, len = 240, a = 0 }, { x = -30, z = 70, len = 220, a = math.rad(8) } }
-AirDefs.WIRES = { z0 = 150, z1 = 245, x = -20, a = math.rad(8), n = 4 }
+-- 航母：三条弹射器（舰艏两条、舰腰一条在斜角甲板左边）、拦阻索区；坐标相对航母甲板中心（舰艏朝 −Z），a 是往左舷偏的角度
+--   照福建舰原模型（tools/models/fujian.py 量的）：舰艏两条白线就是两条弹射轨道（右边那条往外斜 5°），后端前面是偏流板；
+--   舰腰那条在斜角甲板左边、偏流板后面（原模型没画轨道，World.lua 补）；斜角甲板中线往左偏 9.4°，拦阻索在着舰区后段
+--   停机位在右舷舰岛后面（Depots.lua）：自己滑到弹射器起点，对正了就卡上，油门推满按空格弹射；着舰放尾钩，落在拦阻索区就被拉停
+AirDefs.CATS = { { x = 34.6, z = -94.4, len = 212, a = math.rad(5.09) }, { x = -15, z = -94, len = 212, a = 0 }, { x = -59, z = 112, len = 190, a = 0 } }
+AirDefs.WIRES = { z0 = 175, z1 = 255, x = 0, a = math.rad(9.4), n = 4, hw = 30 }   -- hw：拦阻索区中线两边各多宽（着舰区两条红线之间约 47 格）
 AirDefs.TAXI = 28   -- 甲板上没上弹射器时最快滑多快（格 / 秒）
 function AirDefs.carrierCF(Map)
   for _, s in ipairs(Map.FLEET or {}) do
@@ -449,18 +486,20 @@ function AirDefs.cat(Map, i)
   if not base or not c then return nil end
   return (base * CFrame.new(c.x, 0, c.z)).Position, base:VectorToWorldSpace(Vector3.new(-math.sin(c.a), 0, -math.cos(c.a))), c.len
 end
--- (x, z) 在不在拦阻索区（斜角甲板后半段）
+-- (x, z) 在不在拦阻索区（着舰区后段：顺着斜角甲板中线，中线两边各 hw 格）
 function AirDefs.inWires(Map, x, z)
   local base = AirDefs.carrierCF(Map)
   if not base then return false end
+  local Wd = AirDefs.WIRES
   local l = base:PointToObjectSpace(Vector3.new(x, base.Position.Y, z))
-  return l.Z > AirDefs.WIRES.z0 and l.Z < AirDefs.WIRES.z1 and l.X > -55 and l.X < 20
+  local xc = Wd.x + (l.Z - (Wd.z0 + Wd.z1) / 2) * math.tan(Wd.a)   -- 中线往舰尾偏右舷（斜角甲板往左前方斜出去）
+  return l.Z > Wd.z0 and l.Z < Wd.z1 and math.abs(l.X - xc) < (Wd.hw or 30)
 end
 -- 在不在甲板上
 function AirDefs.onDeck(Map, x, z)
   for _, s in ipairs(Map.FLEET or {}) do
     local K = AirDefs.DECKS[s.kind]
-    if K and math.abs(x - s.x) < K.W / 2 and math.abs(z - s.z) < K.L / 2 then return s.kind end
+    if K and onShip(s, K, x, z) then return s.kind end
   end
   return nil
 end

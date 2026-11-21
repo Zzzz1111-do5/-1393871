@@ -45,4 +45,21 @@
   炸药包（C4）（c4.glb）：「Simple Old C4」，作者 Blender3D，CC-BY-4.0 https://sketchfab.com/3d-models/simple-old-c4-43d3b6a933b04aea8006d790627f9555
   迫击炮（M224）（m224.glb）：「Mortar - M224」，作者 Jan Češnjevar，CC-BY-4.0 https://sketchfab.com/3d-models/mortar-m224-c86a73e40d994431bcdb57dc741cf8be
   步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）（acog.glb）：「Trijicon ACOG 3.5x35 Riflescope (Low-Poly)」，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1
-  改动：几何、材质、贴图都没改，只换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；游戏内嵌的版本贴图缩小并压成 256 色
+  SOCOM 战术消音器（sup_socom.glb）：「Suppressors 10 Pack」，作者 TheWarVet，CC-BY-4.0 https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c
+  裹布消音器（sup_wrap.glb）：「Suppressors 10 Pack」，作者 TheWarVet，CC-BY-4.0 https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c
+  SR8 长消音器（sup_sr8.glb）：「Silencers Pack 1」，作者 pedrobelthori，CC-BY-4.0 https://sketchfab.com/models/e96a019757a6440390edfef888f0867e
+  战术补偿器（muz_comp.glb）：「low-poly Muzzle Device Set」，作者 DU1701，CC-BY-4.0 https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d
+  多孔枪口制退器（muz_brake.glb）：「low-poly Muzzle Device Set」，作者 DU1701，CC-BY-4.0 https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d
+  T1 红点瞄具（opt_rds.glb）：「Generic Red Dot Scope / Rifle Attachment Lowpoly」，作者 valterjherson1，CC-BY-4.0 https://sketchfab.com/models/8bf2794c30d04fa0aed1e3df92cd8a9e
+  EXPS3 全息瞄具（opt_holo.glb）：「EoTech EXPS3-0 Holographic Weapon Sight Lowpoly」，作者 valterjherson1，CC-BY-4.0 https://sketchfab.com/models/45e4fcdfb1b34756ab9e866564a12f66
+  Romeo3 迷你反射瞄具（opt_romeo.glb）：「Sig Sauer Romeo3 Reflex Sight」，作者 ense7en，CC-BY-4.0 https://sketchfab.com/models/a099c1db8ceb457aa5d1a44e967cb941
+  ACOG 6×48 瞄准镜（opt_acog6.glb）：「Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)」，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/d7c2a92ba3dc4b02abe03944fc7600d7
+  RVG 垂直握把（grip_rvg.glb）：「Low-Poly Magpul RVG」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/86b3580a65c441db9d3401712c5c9b6d
+  AFG 斜握把（grip_afg.glb）：「Low-Poly Magpul AFG」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/a92a52cbb5854f7c8e33507f579073f7
+  PMAG 20 发短弹匣（mag_pmag20.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
+  HEXMAG 30 发弹匣（mag_hex30.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
+  PMAG 40 发扩容弹匣（mag_pmag40.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
+  D-60 弹鼓（mag_drum.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
+  AN/PEQ-15 激光指示器（tac_peq.glb）：「ATPIAL AN/PEQ-15 (Low-Poly)」，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072
+  M952V 战术手电（tac_light.glb）：「Surefire M952V Weapon Light」，作者 RedRogueXIII，CC-BY-4.0 https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6
+  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改

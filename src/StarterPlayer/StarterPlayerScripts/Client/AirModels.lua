@@ -60,6 +60,8 @@ local SURF_F = {
   bayS = function(c, _, A) return (c.bayS or 0) * A end,
   canopy = function(c, _, A) return (c.can or 0) * A end,
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
+  -- 起落架舱门（原模型蒙皮上切出来的，歼-20 j20_v4）：放起落架的前 1/4 先开门（之后支柱才放下，kf 关键帧照同一个节奏），收起的最后 1/4 才关上
+  gdh = function(c, _, A) return math.clamp((c.gear or 1) * 4, 0, 1) * A end,
 }
 -- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
@@ -527,18 +529,13 @@ function AM.build(d, team, load)
       it.cf0 = CFrame.lookAt(L0.land, L0.land + V(0, -0.12, -1))   -- 射灯朝前、稍微往下
     end
   end
+  -- 机徽（虚构阵营，评估后改的：原来是照解放军 / 美军的机徽画的）：队伍色菱形里一个白色小菱形；隐身机用低可视的深浅灰
   local function roundel(cf, r)
-    local red, yel, blue, white = RGB(200, 30, 30), RGB(240, 200, 40), RGB(40, 60, 120), RGB(230, 230, 230)
-    if d.stealth then red, yel, blue, white = skinD, skinL, skinD, skinL end
-    if team == "atk" then
-      cylY(0.06, r * 2, cf, yel, MAT.SmoothPlastic)
-      cylY(0.08, r * 1.7, cf, red, MAT.SmoothPlastic)
-      box(V(r * 3.2, 0.07, r * 0.55), cf * CF(0, 0, r * 0.2), red, MAT.SmoothPlastic)
-    else
-      cylY(0.06, r * 2, cf, blue, MAT.SmoothPlastic)
-      cylY(0.08, r * 1.3, cf, white, MAT.SmoothPlastic)
-      box(V(r * 3.6, 0.07, r * 0.6), cf, white, MAT.SmoothPlastic)
-    end
+    local outer, inner = (team == "atk") and RGB(176, 40, 34) or RGB(40, 70, 140), RGB(232, 232, 232)
+    if d.stealth then outer, inner = skinD, skinL end
+    local rot = cf * CFrame.Angles(0, rad(45), 0)
+    box(V(r * 1.5, 0.06, r * 1.5), rot, outer, MAT.SmoothPlastic)
+    box(V(r * 0.7, 0.08, r * 0.7), rot, inner, MAT.SmoothPlastic)
   end
   local nPilot = 0
   local function pilot(cf, helmetColor)
@@ -699,86 +696,56 @@ function AM.build(d, team, load)
         end
       end
       if not E.prop then
-        -- 尾焰（用户：尾部喷口是一根光柱，不真实，也没有立体热浪）——不再拖一根霓虹圆柱：
+        -- 尾焰（用户：尾部喷口是一根光柱，不真实；后来又说上一版的尾喷非常怪——那版拖着几团玻璃球当热浪，看着像一串气泡）：
         --   ① 热芯：喷口里凹进去一点的发光圆片，慢车暗红、军推橙、加力黄白（从后面看喷口里是亮的）
-        --   ② 加力火焰：喷口上两层粒子（锁在零件上跟着飞机走）——里层蓝白的焰芯短，外层橙色的焰舌长、边缘透明、一直在跳
-        --   ③ 马赫节：加力时焰流里几颗发亮的扁椭球，一颗比一颗淡、微微闪
-        --   ④ 热浪（用户 11-18：热浪太假了——原来是喷口后面几团抖动的玻璃球，一个个球的轮廓看得出来）：改成锁在喷口上的一股很淡的气流粒子，
+        --   ② 加力火焰：两条从喷口往后拉的光带（Beam，正对镜头）——外层橙色，粗→细、实→透明，长度跟着加力；里层蓝白的焰芯短一些；
+        --      每帧长短、粗细轻轻抖一点（火焰在跳）；军推以下不画火焰
+        --   ③ 热浪（用户 11-18：热浪太假了——原来是喷口后面几团抖动的玻璃球，一个个球的轮廓看得出来）：改成锁在喷口上的一股很淡的气流粒子，
         --      往后拉长、变粗、散掉，受月光照（不自己发光）；油门过两成半才有、越大越浓，加力时接在火焰后面；离镜头远了关掉
-        local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }
+        local hot = { base = base, r = E.r, cold = E.cold, mild = E.mild, vec = tvcVec }   -- mild：涡扇（A-10），热芯暗一点
         local function hotItem(extra) return setmetatable(extra, { __index = hot }) end
         local core = E.flat and neon(V(0.12, E.r * 0.85, E.r * 2.1), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), Enum.PartType.Block)   -- 二元喷口：扁的
           or neon(V(0.12, E.r * 1.55, E.r * 1.55), base, RGB(150, 40, 20), "ab", hotItem({ core = true }), CYL)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
-          local src = newPart(m, V(E.r * 1.2, E.r * 1.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
           src.Name = "Plume"
           src.CastShadow = false
           local it = add(src, base, "ab", hotItem({ plume = true }))
-          local function emitter(name, tex, life, size, tr, col, bright)
-            local pe = Instance.new("ParticleEmitter")
-            pe.Name = name
-            pe.Texture = tex
-            pe.EmissionDirection = Enum.NormalId.Back   -- 零件的 +Z：从喷口往后
-            pe.LockedToPart = true                      -- 跟着飞机走（几百格每秒，不锁就拖成一长条）
-            pe.LightEmission, pe.LightInfluence, pe.Brightness = 1, 0, bright
-            pe.Lifetime = life
-            pe.Speed = NumberRange.new(E.r * 45, E.r * 55)
-            pe.SpreadAngle = Vector2.new(3, 3)
-            pe.Rotation = NumberRange.new(0, 360)
-            pe.RotSpeed = NumberRange.new(-240, 240)
-            pe.Size = size
-            pe.Transparency = tr
-            pe.Color = col
-            pe.Rate = 0
-            pe.Enabled = false
-            pe.Parent = src
-            return pe
+          local a0 = Instance.new("Attachment")
+          a0.Name = "P0"
+          a0.Parent = src
+          local function beam(name, col, tr, w0, w1)
+            local a1 = Instance.new("Attachment")
+            a1.Name = name .. "End"
+            a1.Position = V(0, 0, 1)
+            a1.Parent = src
+            local bm = Instance.new("Beam")
+            bm.Name = name
+            bm.Attachment0, bm.Attachment1 = a0, a1
+            bm.FaceCamera = true
+            bm.Segments = 1
+            bm.LightEmission, bm.LightInfluence = 1, 0
+            bm.Color, bm.Transparency = col, tr
+            bm.Width0, bm.Width1 = w0, w1
+            bm.Enabled = false
+            bm.Parent = src
+            return bm, a1
           end
           local r = E.r
-          it.outer = emitter("AbFlame", "rbxasset://textures/particles/fire_main.dds", NumberRange.new(0.09, 0.14),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 1.45), NumberSequenceKeypoint.new(0.5, r * 1.25), NumberSequenceKeypoint.new(1, r * 0.45) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.55, 0.45), NumberSequenceKeypoint.new(1, 1) }),
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 205)), ColorSequenceKeypoint.new(0.3, RGB(255, 168, 86)), ColorSequenceKeypoint.new(1, RGB(255, 92, 40)) }), 2.5)
-          it.inner = emitter("AbCore", "rbxasset://textures/particles/explosion01_implosion_main.dds", NumberRange.new(0.05, 0.08),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 1.05), NumberSequenceKeypoint.new(1, r * 0.35) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 0.85) }),
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(205, 222, 255)), ColorSequenceKeypoint.new(0.5, RGB(255, 242, 222)), ColorSequenceKeypoint.new(1, RGB(255, 198, 140)) }), 4)
+          it.outer, it.outerEnd = beam("AbFlame",
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 226, 170)), ColorSequenceKeypoint.new(0.35, RGB(255, 150, 70)), ColorSequenceKeypoint.new(1, RGB(255, 80, 30)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.45, 0.45), NumberSequenceKeypoint.new(1, 1) }),
+            r * 1.8, r * 0.5)
+          it.inner, it.innerEnd = beam("AbCore",
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(214, 228, 255)), ColorSequenceKeypoint.new(0.5, RGB(255, 244, 226)), ColorSequenceKeypoint.new(1, RGB(255, 210, 150)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.6, 0.4), NumberSequenceKeypoint.new(1, 1) }),
+            r * 1.1, r * 0.2)
           table.insert(M.flames, it)
-          for k = 1, 4 do   -- 马赫节
-            local dm = neon(V(r * 0.5, r * 0.62, r * 0.62), base, RGB(255, 238, 205), "ab", hotItem({ diamond = k }), BALL)
-            dm.p.Size = V(r * 0.62, r * 0.62, r * 0.62)   -- 球：三边一样；扁的样子靠前后挨得近
-            dm.p.Transparency = 1
-            table.insert(M.flames, dm)
-          end
         end
-        if not E.cold then   -- 热浪：一股很淡的气流
-          local hs = newPart(m, V(E.r * 1.1, E.r * 1.1, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
-          hs.Name = "Haze"
-          hs.CastShadow = false
-          local hz = add(hs, base, "ab", hotItem({ haze = true }))
-          local r = E.r
-          local pe = Instance.new("ParticleEmitter")
-          pe.Name = "HeatHaze"
-          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
-          pe.EmissionDirection = Enum.NormalId.Back   -- 从喷口往后
-          pe.LockedToPart = true                      -- 跟着飞机走（不锁的话几百格每秒拖成一长条）
-          pe.LightEmission, pe.LightInfluence = 0, 1  -- 不自己发光：只是被照到的一点灰白
-          pe.Lifetime = NumberRange.new(0.18, 0.3)
-          pe.Speed = NumberRange.new(r * 30, r * 40)
-          pe.SpreadAngle = Vector2.new(6, 6)
-          pe.Rotation = NumberRange.new(0, 360)
-          pe.RotSpeed = NumberRange.new(-120, 120)
-          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.8), NumberSequenceKeypoint.new(1, r * 2.8) })
-          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.97), NumberSequenceKeypoint.new(0.25, 0.92), NumberSequenceKeypoint.new(1, 1) })
-          pe.Color = ColorSequence.new(RGB(196, 200, 206))
-          pe.Rate = 0
-          pe.Enabled = false
-          pe.Parent = hs
-          hz.pe = pe
-          table.insert(M.flames, hz)
-        end
+        -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
+        --   之前的玻璃球也是这样）。Roblox 的粒子做不出空气的折射，假的只会像泡泡
       end
     end
     -- 机翼（舵面：后 22% 弦长；有折叠的在折叠线分开）
@@ -866,7 +833,11 @@ function AM.build(d, team, load)
         local top = pt(1, 0.6)
         if Vt.endplate then box(V(1.2, 0.6, 3), CF(top), skinD) end
         table.insert(NL.tails, pt(1, 0.94) + V(0, 0.2, 0))   -- 尾部白灯：垂尾顶端后缘
-        if team == "atk" and not d.stealth then box(V(0.06, Vt.h * 0.22, 2.4), CF(pt(0.6, 0.45)) * CF(s * 0.25, 0, 0), RGB(200, 30, 30), MAT.SmoothPlastic) end   -- 尾翼上的八一标志
+        -- 尾翼上的队徽：队伍色小菱形（虚构阵营，评估后改的：原来攻方是八一标志）
+        if not d.stealth then
+          local k = Vt.h * 0.16
+          box(V(0.06, k, k), CF(pt(0.6, 0.45)) * CF(s * 0.25, 0, 0) * CFrame.Angles(rad(45), 0, 0), (team == "atk") and RGB(176, 40, 34) or RGB(40, 70, 140), MAT.SmoothPlastic)
+        end
       end
     end
     -- V 形 / 倒 V 形尾翼（无人机）：方向升降舵
@@ -1188,6 +1159,12 @@ function AM.build(d, team, load)
           mp.Material = p.met and MAT.Metal or MAT.SmoothPlastic
           if p.a then mp.Transparency = 1 - p.a end
         end
+        local gl = I.glow and I.glow[name]
+        if gl then   -- 自己发光的灯带（歼-20 机头两侧、两片垂尾上的绿色电致发光编队灯，tools/models/airpaint.py）：去掉贴图，Neon
+          for _, sa in ipairs(mp:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+          pcall(function() mp.TextureID = "" end)
+          mp.Color, mp.Material, mp.CastShadow = RGB(gl[1], gl[2], gl[3]), MAT.Neon, false
+        end
         mp.Parent = m
         local c = V(p.c[1], p.c[2], p.c[3]) + O
         local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
@@ -1207,13 +1184,19 @@ function AM.build(d, team, load)
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
           local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
-          if BLUR[imp.key] and BLUR[imp.key][name] then
+          local bl = BLUR[string.gsub(imp.key, "_v%d+$", "")]   -- 按不带版本号的键查（z10w、z10w_v2 都是这几块）
+          if bl and bl[name] then
             mp.CastShadow = false
             mp.Transparency = 1
             table.insert(M.discs, it)
           else
             table.insert(M.blades, it)
           end
+        elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、直-10：tools/models/air2glb.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
+          local G0 = I[string.lower(g)] or I.gun
+          local piv = G0 and (V(G0.p[1], G0.p[2], G0.p[3]) + O) or c
+          add(mp, cc0, "t", { piv = piv, yawOnly = g == "GunY" })
+          if g == "Gun" then M.gunPiv = piv end   -- Fly.lua 按原模型的耳轴位置算炮塔的方位、俯仰（AirDefs 的 gunPos 是零件拼的模型的）
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
           add(mp, cc0, "f", { fold = (g == "FoldR") and 1 or -1 })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链
@@ -1228,6 +1211,22 @@ function AM.build(d, team, load)
       local wp = newPart(m, V(math.max(w.s[1] - 0.1, 0.1), math.max(w.s[2], 0.1), math.max(w.s[3] - 0.1, 0.1)), DARK, MAT.SmoothPlastic)
       wp.CastShadow = false
       add(wp, CF(V(w.c[1], w.c[2], w.c[3]) + O), "b")
+    end
+    -- 贴在蒙皮上的发光灯带（歼-16 的绿色编队灯：模型里没有，tools/models/airpaint.py 在模型表面量出来的位置）：薄薄一条 Neon
+    for _, s in ipairs(I.strips or {}) do
+      local n, dd = V(s.n[1], s.n[2], s.n[3]).Unit, V(s.d[1], s.d[2], s.d[3]).Unit
+      local c = V(s.c[1], s.c[2], s.c[3]) + O + n * 0.03
+      local sp = newPart(m, V(s.w, 0.05, s.l), RGB(s.col[1], s.col[2], s.col[3]), MAT.Neon)
+      sp.CastShadow = false
+      add(sp, CFrame.lookAt(c, c + dd, n), "b")
+    end
+    -- 发动机堵头（H-6、A-10：模型没做风扇、离远了喷管里的零件被 Roblox 减面减掉，从后往前看是空的）：喷口往里一点一块深色圆盘
+    for _, pl in ipairs(I.plugs or {}) do
+      local ax = V(pl.a[1], pl.a[2], pl.a[3]).Unit
+      local c = V(pl.c[1], pl.c[2], pl.c[3]) + O
+      local disc = newPart(m, V(0.12, pl.r * 2, pl.r * 2), RGB(24, 24, 26), MAT.SmoothPlastic, CYL)
+      disc.CastShadow = false
+      add(disc, CFrame.lookAt(c, c + ax) * CFrame.Angles(0, math.pi / 2, 0), "b")   -- 圆柱的轴是 X：转到顺着喷口
     end
     local F = I.fold and I.fold.Fold
     if F then M.foldH = { x = F.x, y = F.y + O.Y, A = F.A } end
@@ -1307,7 +1306,7 @@ function AM.pose(M, cf, c, now, world)
       local piv = CF(it.piv)
       if it.yawOnly then out = cf * piv * CFrame.Angles(0, yaw, 0) * CF(-it.piv) * it.cf0
       else out = cf * piv * CFrame.Angles(0, yaw, 0) * CFrame.Angles(rad(c.gp or 0), 0, 0) * CF(-it.piv) * it.cf0 end
-    elseif k == "ab" then   -- 尾焰：热芯、加力火焰（粒子）、马赫节、热浪，都跟着油门；推力矢量喷口跟着出口偏
+    elseif k == "ab" then   -- 尾焰：喷口里的热芯、加力火焰的光带，都跟着油门；推力矢量喷口跟着出口偏
       local t = c.thr or 0
       local b0 = it.vec and (it.vec(c) * it.base) or it.base
       local ab = (t > 100) and math.min(1, (t - 100) / 25) or 0
@@ -1324,29 +1323,18 @@ function AM.pose(M, cf, c, now, world)
           local col = (ab > 0) and RGB(255, 190, 110):Lerp(RGB(255, 242, 214), ab) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         end
-      elseif it.plume then
-        out = cf * b0 * CF(0, 0, 0.15)
-        local q = math.floor(ab * 10 + 0.5)   -- 分 10 档，变了才改粒子（每帧改属性费）
-        if q ~= it.q then
-          it.q = q
-          local on = q > 0
+      elseif it.plume then   -- 加力火焰的光带：长短、粗细跟着加力，每帧轻轻抖一点
+        out = cf * b0 * CF(0, 0, 0.1)
+        local on = ab > 0.02
+        if on ~= it.on then
+          it.on = on
           it.outer.Enabled, it.inner.Enabled = on, on
-          if on then
-            local a = q / 10
-            it.outer.Rate, it.inner.Rate = 70 + 90 * a, 45 + 55 * a
-            it.outer.Speed = NumberRange.new(r * (38 + 26 * a), r * (48 + 32 * a))
-          end
         end
-      elseif it.diamond then
-        out = cf * b0 * CF(0, 0, r * (1.4 + it.diamond * 1.35) * (0.7 + ab * 0.45))
-        if ab > 0.15 then tr = math.clamp(0.28 + it.diamond * 0.15 + 0.08 * math.sin((now or 0) * 41 + it.diamond * 2.3) - ab * 0.12, 0, 0.95) end
-      else   -- 热浪：气流粒子（加力时接在火焰后面）；油门过两成半、离镜头近才放，分 6 档，变了才改（每帧改粒子属性费）
-        out = cf * b0 * CF(0, 0, (ab > 0) and r * (4.5 + 3 * ab) or r * 0.4)
-        local q = (not it.cold and t > 25 and M.near) and math.clamp(math.floor((math.min(t, 100) - 25) / 15) + 1 + ((ab > 0) and 1 or 0), 1, 6) or 0
-        if q ~= it.q and it.pe then
-          it.q = q
-          it.pe.Enabled = q > 0
-          if q > 0 then it.pe.Rate = (it.mild and 10 or 16) * q end
+        if on then
+          local fl = 1 + 0.06 * math.sin((now or 0) * 37 + r) + 0.04 * math.sin((now or 0) * 61)
+          it.outerEnd.Position = V(0, 0, r * (3.2 + 4.5 * ab) * fl)
+          it.innerEnd.Position = V(0, 0, r * (1.6 + 1.6 * ab) * (2 - fl))
+          it.outer.Width0 = r * (1.55 + 0.25 * ab) * fl
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end

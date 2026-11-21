@@ -76,8 +76,10 @@ function Navy.init(G)
     p.Parent = parent
     return p
   end
-  -- 一段码头：从 a 到 b（水平），宽 w，面高 top；两边黄色护轮坎、一排系船桩，下面一排桩，夜里隔一段一盏灯
-  local function pier(f, a, b, w, top)
+  -- 一段码头：从 a 到 b（水平），宽 w，面高 top；两边黄色护轮坎、一排系船桩，夜里隔一段一盏灯；
+  --   固定码头下面一排桩，一直打到海底（原来 18 格长，深水里够不着底，像悬在水里）；
+  --   浮码头（float）下面是一节节浮箱、两头锚链斜着拉进海里（用户 11-18：这些建筑漂在水里——海中间的码头要看得出是浮着、锚住的）
+  local function pier(f, a, b, w, top, float)
     local mid = (a + b) / 2
     local L = (b - a).Magnitude
     local cf = CFrame.lookAt(V(mid.X, top - 0.75, mid.Z), V(b.X, top - 0.75, b.Z))
@@ -91,10 +93,31 @@ function Navy.init(G)
     end
     local n = math.max(2, math.floor(L / 36))
     local along = V(b.X - a.X, 0, b.Z - a.Z).Unit
-    for i = 0, n do
-      local p = a + (b - a) * (i / n)
-      local pc = CFrame.lookAt(V(p.X, top - 10, p.Z), V(p.X, top - 10, p.Z) + along)
-      for s = -1, 1, 2 do part(f, V(1.8, 18, 1.8), pc * CF(s * (w / 2 - 1.2), 0, 0), RGB(52, 54, 56), MAT.Concrete) end
+    if float then
+      for i = 0, n - 1 do   -- 浮箱：一节一节，中间留一道缝（看得出是拼起来的）
+        local p = a + (b - a) * ((i + 0.5) / n)
+        local pc = CFrame.lookAt(V(p.X, top - 3.3, p.Z), V(p.X, top - 3.3, p.Z) + along)
+        part(f, V(w + 1.6, 3.6, L / n - 0.8), pc, RGB(78, 82, 86), MAT.Metal, true)
+        part(f, V(w + 1.7, 0.7, L / n - 0.7), pc * CF(0, -1.2, 0), RGB(30, 31, 33), MAT.Metal)   -- 水线带
+      end
+      for _, e in ipairs({ { a, -1 }, { b, 1 } }) do   -- 两头的锚链
+        for s = -1, 1, 2 do
+          local p0 = e[1] + V(0, top, 0)
+          local side = V(-along.Z, 0, along.X) * s
+          local p1 = V(p0.X, 0, p0.Z) + along * e[2] * 30 + side * 30 + V(0, -6, 0)
+          part(f, V(0.45, 0.45, (p1 - p0).Magnitude), CFrame.lookAt((p0 + p1) / 2, p1), RGB(46, 44, 40), MAT.Metal)
+        end
+      end
+    else
+      for i = 0, n do
+        local p = a + (b - a) * (i / n)
+        for s = -1, 1, 2 do
+          local q = CFrame.lookAt(V(p.X, 0, p.Z), V(p.X, 0, p.Z) + along) * CF(s * (w / 2 - 1.2), 0, 0)
+          local bed = math.max(Map.height(q.Position.X, q.Position.Z), top - 160)   -- 海底（太深的截在 160 格）
+          local h = math.max(4, top - 1 - bed)
+          part(f, V(1.8, h, 1.8), q * CF(0, top - 1 - h / 2, 0), RGB(52, 54, 56), MAT.Concrete)
+        end
+      end
     end
     local W = G.World
     if W and W.light then
@@ -148,7 +171,7 @@ function Navy.init(G)
     local B = Map.BARGE
     local zP = B.z + B.L / 2 - 13
     local x1 = B.x + B.W / 2
-    G.try("攻方码头", pier, f, V(x1 - 2, 0, zP), V(x1 + 240, 0, zP), 14, B.top)
+    G.try("攻方码头", pier, f, V(x1 - 2, 0, zP), V(x1 + 240, 0, zP), 14, B.top, true)   -- 海中间：浮码头
     local x = x1 + 70
     for _, id in ipairs(Config.Vehicles.atk.ship or {}) do
       local d = SD.get(id)
@@ -191,7 +214,7 @@ function Navy.init(G)
     local P = Map.PORT
     local zs = Map.coastS(P.x) or P.z
     local d = SD.get("pbr")
-    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), 2, "C") end   -- 码头里头水浅：停在外头那段
+    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), (Map.HARBOR and Map.HARBOR.deck) or 2, "C") end   -- 码头里头水浅：停在外头那段；终端柱站在木码头面上
     f.Parent = root
   end
   local depotsBuild0 = G.depotsBuild
@@ -455,10 +478,13 @@ function Navy.init(G)
     e.msl -= 1
     e.mslAt = t + 1.2
     e.model:SetAttribute("Msl", e.msl)
-    local pos = (cfOf(e) * CF(d.missiles.pos)).Position + V(0, 2, 0)
-    G.launch({ kind = "missile", pos = pos, vel = V(0, 60, 0), w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
+    -- 从哪出来（ShipDefs.launch）：有斜置的发射箱从箱口顺着箱子的方向冲出去，没有就从垂发的一个格子竖直窜出来（客户端掀开那一格的舱盖）
+    e.launchN = (e.launchN or 0) + 1
+    local pos, dir, at = SD.launch(d, cfOf(e), "asm", e.launchN)
+    local v0 = at.can and dir * 90 or dir * 60
+    G.launch({ kind = "missile", pos = pos, vel = v0, w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
       step = guideASM, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-    G.fx({ k = "vls", p = pos, id = e.id })
+    G.fx({ k = "vls", p = pos, id = e.id, b = at.b, c = at.c, can = at.can, tube = at.tube })
     if tgt and tgt.driver and tgt.driver.pl then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", w = "asm" }) end
     return true
   end
@@ -542,10 +568,11 @@ function Navy.init(G)
         e.samN -= 1
         e.samAt = t + SD.W.sam.rate
         e.model:SetAttribute("Sam", e.samN)
-        local pos = (cfOf(e) * CF(d.sam.pos)).Position + V(0, 2, 0)
-        G.launch({ kind = "missile", pos = pos, vel = V(0, 140, 0), w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
+        e.launchN = (e.launchN or 0) + 1
+        local pos, dir, at = SD.launch(d, cfOf(e), "sam", e.launchN)
+        G.launch({ kind = "missile", pos = pos, vel = dir * 140, w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
           step = guideSAM, age = 0, tgt = best, tgId = best.id, byEnt = e.id })
-        G.fx({ k = "vls", p = pos, id = e.id, sam = true })
+        G.fx({ k = "vls", p = pos, id = e.id, sam = true, b = at.b, c = at.c })
         if best.driver and best.driver.pl then G.R.Drive:FireClient(best.driver.pl, { op = "rwr", w = "sam" }) end
       end
     end
@@ -554,6 +581,7 @@ function Navy.init(G)
     e.ciwsT += dt
     if e.ciwsT < CW.rate then return end
     e.ciwsT = 0
+    e.ciwsFx = (type(e.ciwsFx) == "table") and e.ciwsFx or {}
     local cf = cfOf(e)
     for mi, mp in ipairs(d.ciws) do
       local m = (cf * CF(mp)).Position
@@ -568,9 +596,10 @@ function Navy.init(G)
             en = { t0 = t, kill = math.random() < CW.kill }
             s.ciws[key] = en
           end
-          if (e.ciwsFx or 0) <= t then
-            e.ciwsFx = t + 0.2
-            G.fx({ k = "gun", w = "ciws", a = m, b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8 })
+          if (e.ciwsFx[mi] or 0) <= t then   -- 每座各自 0.2 秒一串曳光：从这一座的炮口出去，客户端把这一座转过去（id、mi）
+            e.ciwsFx[mi] = t + 0.2
+            local b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8
+            G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
           end
           if en.kill and t - en.t0 > 0.8 then
             table.remove(G.shots, i)
@@ -586,9 +615,10 @@ function Navy.init(G)
           if x.alive and x.team ~= e.team and not x.onGround then
             local p = x.root.CFrame.Position
             if (p - m).Magnitude < CW.range * 0.8 then
-              if (e.ciwsFx or 0) <= t then
-                e.ciwsFx = t + 0.2
-                G.fx({ k = "gun", w = "ciws", a = m, b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10 })
+              if (e.ciwsFx[mi] or 0) <= t then
+                e.ciwsFx[mi] = t + 0.2
+                local b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10
+                G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
               end
               if math.random() < 0.35 then G.damageEnt(x, CW.dmg * (CW.vs.air or 1), srcOf(e)) end
               break

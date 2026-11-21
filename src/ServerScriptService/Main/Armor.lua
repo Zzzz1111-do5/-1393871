@@ -26,7 +26,7 @@ function Armor.init(G)
   local function used(team, cat)
     local n = 0
     for _, e in ipairs(vehicles) do
-      if e.alive and e.team == team and e.vcat == cat then n += 1 end
+      if e.alive and e.team == team and e.vcat == cat and not e.ai then n += 1 end   -- AI 开的车（AIVeh.lua）不占玩家的名额
     end
     local t = now()
     local list = pending[team][cat] or {}
@@ -189,8 +189,10 @@ function Armor.init(G)
 
   ---------------------------------------------------------------- 新车、被毁
 
-  local function newVehicle(team, id, base, P)
-    local d = VD.get(id)
+  local TM = require(RS:WaitForChild("TankMods"))
+  -- mods：改装（TankMods，客户端改装界面选的；AI 的车、没选的用默认）——型号数据按它改一份（车速、武器表），爆反、主动防御按它装
+  local function newVehicle(team, id, base, P, mods)
+    local d = TM.applyDef(VD.get(id), mods)
     local c = CATS[d.cat]
     local mod = Config.VehicleMod[id] or {}
     local hp = math.floor(c.hp * (mod.hp or 1))
@@ -198,6 +200,7 @@ function Armor.init(G)
     local e = G.newEnt({ kind = "veh", team = team, cat = c.tgt, hp = hp, size = V(d.W, d.H, d.L), cf = rootFromBase(d, base), solid = true,
       extra = { def = d, vcat = d.cat } })   -- 占领时不单算车：开车的人照常算一个
     e.model:SetAttribute("Model", id)
+    if d.mods then e.model:SetAttribute("Mods", TM.encode(d.mods)) end   -- 客户端按它画发射器、加特林，改车速、武器表
     e.model:SetAttribute("Ty", 0)
     e.model:SetAttribute("Gp", 0)
     e.model:SetAttribute("Driver", 0)
@@ -210,6 +213,8 @@ function Armor.init(G)
       e.wst[wid] = { mag = w.mag, reserve = w.reserve or 0, next = 0 }
     end
     e.lastSync = now()
+    if G.eraSetup then G.try("爆反", G.eraSetup, e) end   -- Era.lua：原模型上的爆反块
+    if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -217,9 +222,11 @@ function Armor.init(G)
         self.model:SetAttribute("Wreck", true)
         G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4, c = "wreck" })
         G.fx({ k = "wreck", id = self.id, p = self.root.CFrame.Position, life = 25 })
-        local list = pending[self.team][self.vcat] or {}
-        table.insert(list, now() + (CATS[self.vcat].cd or 60))
-        pending[self.team][self.vcat] = list
+        if not self.ai then   -- AI 的车被毁不给玩家记冷却
+          local list = pending[self.team][self.vcat] or {}
+          table.insert(list, now() + (CATS[self.vcat].cd or 60))
+          pending[self.team][self.vcat] = list
+        end
         local D = self.driver
         if D then
           self.driver = nil
@@ -240,6 +247,7 @@ function Armor.init(G)
     table.insert(vehicles, e)
     return e
   end
+  G.newVehicle = newVehicle   -- AIVeh.lua：AI 开的车
 
   ---------------------------------------------------------------- 气垫艇（攻方不会游的车：登陆平台旁边站在气垫艇上生成，开车的人连艇一起开，冲上岸放下车、艇自己回去）
 
@@ -269,6 +277,7 @@ function Armor.init(G)
     table.insert(lcacs, boat)
   end
   -- 车开上岸了：气垫艇放下车，停一会儿自己回去（收走）
+  G.lcacUnder, G.lcacCarry = lcacUnder, carryOn
   local function dropOff(veh)
     local boat = veh.lcac
     veh.lcac = nil
@@ -276,6 +285,7 @@ function Armor.init(G)
     if boat and boat.model then boat.model:SetAttribute("Carry", nil) end
     if boat and boat.alive then boat.veh, boat.state, boat.backAt = nil, "landed", now() + 8 end
   end
+  G.lcacDropOff = dropOff
   local function stepLcacs(dt)
     for i = #lcacs, 1, -1 do
       local boat = lcacs[i]
@@ -298,7 +308,7 @@ function Armor.init(G)
 
   -- 陆地上停在地台上；登陆平台外的水面上站在气垫艇上（两栖车也坐艇：自己游太慢，三千多格要好几分钟）
   --   生成的人 30 秒内独占（别人上不去）；没人上 90 秒收走（不算冷却）
-  function G.spawnGroundVeh(team, id, base, sea, P)
+  function G.spawnGroundVeh(team, id, base, sea, P, mods)
     local d = VD.get(id)
     if not d then return nil end
     local face = V(base.LookVector.X, 0, base.LookVector.Z)
@@ -308,10 +318,10 @@ function Armor.init(G)
     local e
     if sea then
       local b = CFrame.lookAt(V(p.X, LCAC.deck, p.Z), V(p.X, LCAC.deck, p.Z) + face)
-      e = newVehicle(team, id, b)
+      e = newVehicle(team, id, b, nil, mods)
       carryOn(e, b)
     else
-      e = newVehicle(team, id, baseAt(d, p.X, p.Z, face))
+      e = newVehicle(team, id, baseAt(d, p.X, p.Z, face), nil, mods)
     end
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
@@ -331,7 +341,7 @@ function Armor.init(G)
   -- 上自己队的空车（离车 18 格以内）
   function G.ACT.enterVeh(P, entId)
     local e = type(entId) == "string" and G.entById[entId] or nil
-    if not e or not e.alive or not e.def or e.driver or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
+    if not e or not e.alive or not e.def or e.driver or e.ai or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end   -- AI 开着的上不去
     if G.reservedFor(e, P) then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
@@ -378,9 +388,31 @@ function Armor.init(G)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     if type(d.sp) == "number" then e.model:SetAttribute("Sp", math.floor(math.clamp(d.sp, -99, 99) + 0.5)) end
+    if d0.rws then   -- 遥控武器站的转角（别人那边的机枪塔跟着转）
+      if type(d.my) == "number" and d.my == d.my then e.my = (d.my + 180) % 360 - 180 end
+      if type(d.mp) == "number" and d.mp == d.mp then e.mp = math.clamp(d.mp, d0.rws.elev[1], d0.rws.elev[2]) end
+      e.model:SetAttribute("My", math.floor((e.my or 0) * 2 + 0.5) / 2)
+      e.model:SetAttribute("Mp", math.floor((e.mp or 0) * 2 + 0.5) / 2)
+    end
   end
 
-  local function fire(P, e, wid, dir, aim)
+  local function angDiff(a, b) return (a - b + 180) % 360 - 180 end
+
+  -- 开火那一刻客户端的炮塔、炮管、机枪塔角度（用户：弹道要顺着枪管和炮管、开火位置和枪口对上）：
+  --   客户端每秒才报十来次角度，炮塔一转服务器记的就落后几度——开火时把这一刻的角度一起发来，和服务器记的差得不多才用（防作弊）
+  local function fireAngles(e, m)
+    if type(m) ~= "table" then return end
+    local d0 = e.def
+    local function num(x) return type(x) == "number" and x == x end
+    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = m.ty % 360 end
+    if num(m.gp) and math.abs(m.gp - e.gp) < 15 then e.gp = math.clamp(m.gp, d0.turret.elev[1], d0.turret.elev[2]) end
+    if d0.rws then
+      if num(m.my) and math.abs(angDiff(m.my, e.my or 0)) < 40 then e.my = (m.my + 180) % 360 - 180 end
+      if num(m.mp) and math.abs(m.mp - (e.mp or 0)) < 30 then e.mp = math.clamp(m.mp, d0.rws.elev[1], d0.rws.elev[2]) end
+    end
+  end
+
+  local function fire(P, e, wid, dir, aim, msg)
     if G.round.phase ~= "battle" or e.locked then return end
     local d = e.def
     if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
@@ -394,9 +426,13 @@ function Armor.init(G)
       st.mag, st.reserve = n, st.reserve - n
     end
     local base = baseOf(e)
-    local mz = VD.muzzle(d, base, e.ty, e.gp, (w.kind == "gun" and d.coax) and "coax" or nil)
-    local gdir = mz.LookVector
-    if typeof(dir) == "Vector3" and dir.Magnitude > 0.5 and dir.Unit:Dot(gdir) > math.cos(math.rad(8)) then gdir = dir.Unit end
+    fireAngles(e, msg)
+    local mz = VD.muzzle(d, base, e.ty, e.gp, VD.mgWhich(d, wid), e.my, e.mp)
+    if wid == "gau8" then   -- 车顶加特林（改装）：从它自己的炮口出去
+      local L = TM.eraOf(d.id)
+      if L then mz = TM.kitMuzzle(L, base, e.ty, e.gp) end
+    end
+    local gdir = mz.LookVector   -- 顺着炮管 / 枪管出去（原来客户端给的方向和炮管差 8° 以内就用客户端的，弹道会斜着出炮口）
     local S = src(P)
     if w.kind == "shell" then
       G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
@@ -483,7 +519,7 @@ function Armor.init(G)
     local e = P.vehicle
     if not e or not e.alive or e.driver ~= P or type(d) ~= "table" then return end
     if d.op == "state" then sync(P, e, d)
-    elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim)
+    elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
     elseif d.op == "exit" then unseat(P, e, true) end
   end

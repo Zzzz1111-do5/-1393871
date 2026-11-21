@@ -98,13 +98,97 @@
    "author": "GoldbergR",
    "license": "CC-BY-4.0",
    "url": "https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1"
+  },
+  "sup10": {
+   "uid": "3a3c123f94a446589873b1d4df53c83c",
+   "name": "Suppressors 10 Pack",
+   "author": "TheWarVet",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c"
+  },
+  "silpack": {
+   "uid": "e96a019757a6440390edfef888f0867e",
+   "name": "Silencers Pack 1",
+   "author": "pedrobelthori",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/e96a019757a6440390edfef888f0867e"
+  },
+  "muzset": {
+   "uid": "07f62ec5ca604446848d1a0238b11f1d",
+   "name": "low-poly Muzzle Device Set",
+   "author": "DU1701",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d"
+  },
+  "reddot": {
+   "uid": "8bf2794c30d04fa0aed1e3df92cd8a9e",
+   "name": "Generic Red Dot Scope / Rifle Attachment Lowpoly",
+   "author": "valterjherson1",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/8bf2794c30d04fa0aed1e3df92cd8a9e"
+  },
+  "eotech": {
+   "uid": "45e4fcdfb1b34756ab9e866564a12f66",
+   "name": "EoTech EXPS3-0 Holographic Weapon Sight Lowpoly",
+   "author": "valterjherson1",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/45e4fcdfb1b34756ab9e866564a12f66"
+  },
+  "romeo3": {
+   "uid": "a099c1db8ceb457aa5d1a44e967cb941",
+   "name": "Sig Sauer Romeo3 Reflex Sight",
+   "author": "ense7en",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/a099c1db8ceb457aa5d1a44e967cb941"
+  },
+  "acog6": {
+   "uid": "d7c2a92ba3dc4b02abe03944fc7600d7",
+   "name": "Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/d7c2a92ba3dc4b02abe03944fc7600d7"
+  },
+  "rvg": {
+   "uid": "86b3580a65c441db9d3401712c5c9b6d",
+   "name": "Low-Poly Magpul RVG",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/86b3580a65c441db9d3401712c5c9b6d"
+  },
+  "afg": {
+   "uid": "a92a52cbb5854f7c8e33507f579073f7",
+   "name": "Low-Poly Magpul AFG",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/a92a52cbb5854f7c8e33507f579073f7"
+  },
+  "armags": {
+   "uid": "72b06590aa4b4b6ab324dc7e0c11b884",
+   "name": "Low-Poly AR-15 magazines",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884"
+  },
+  "peq15": {
+   "uid": "3758001408b0404592e7e80e7d5b3072",
+   "name": "ATPIAL AN/PEQ-15 (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072"
+  },
+  "light": {
+   "uid": "208f42ab474b40f08453ee8df016a8e6",
+   "name": "Surefire M952V Weapon Light",
+   "author": "RedRogueXIII",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6"
   }
  },
  "items": {
   "atacr": {
    "src": "atacr",
    "title": "狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）",
-   "axes": "x,y,z",
+   "inner": { "cone": 0.6 }, "axes": "x,y,z",
    "scale": 2.8,
    "anchor": {
     "nodes": "mount34"
@@ -190,6 +274,7 @@
   },
   "qbu88": {
    "src": "qbu88",
+   "inner": { "cone": 0.6 },
    "title": "解放军狙击枪（QBU-88）",
    "axes": "-z,y,x",
    "scale": 0.00548,
@@ -463,6 +548,8 @@
   },
   "acog": {
    "src": "acog",
+   "inner": { "cone": 0.19 },
+   "ring": { "rIn": 0.0216, "rOut": 0.0336, "t0": -0.0125, "t1": 0.0135, "bevel": 0.0012, "col": [36, 36, 38] },
    "title": "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）",
    "axes": "x,y,z",
    "scale": 2.8,
@@ -487,6 +574,244 @@
    "eye": "Glass 1_Trijicon",
    "obj": "Glass 1\\.001",
    "embedTex": {}
+  },
+  "sup_socom": {
+   "src": "sup10",
+   "title": "SOCOM 战术消音器",
+   "keep": [
+    4
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.028,
+   "anchor": {
+    "nodes": "^Object_12$",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "sup_wrap": {
+   "src": "sup10",
+   "title": "裹布消音器",
+   "keep": [
+    10
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.028,
+   "anchor": {
+    "nodes": "^Object_24$",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "sup_sr8": {
+   "src": "silpack",
+   "title": "SR8 长消音器",
+   "keep": [
+    10
+   ],
+   "axes": "x,y,z",
+   "scale": 0.000134,
+   "anchor": {
+    "nodes": "^SR8_low",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "muz_comp": {
+   "src": "muzset",
+   "title": "战术补偿器",
+   "keep": [
+    3
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": "^Object_9$",
+    "y": "center",
+    "z": "min"
+   }
+  },
+  "muz_brake": {
+   "src": "muzset",
+   "title": "多孔枪口制退器",
+   "keep": [
+    1,
+    2
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": "^Object_6$",
+    "y": "center",
+    "z": "min"
+   }
+  },
+  "opt_rds": {
+   "src": "reddot",
+   "title": "T1 红点瞄具",
+   "drop": [9], "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "eye": "wSphere\\.002",
+   "obj": "wSphere\\.003",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_holo": {
+   "src": "eotech",
+   "title": "EXPS3 全息瞄具",
+   "axes": "x,y,z",
+   "scale": 0.3395,
+   "anchor": {
+    "nodes": "."
+   },
+   "eye": "1\\.003_Holo",
+   "obj": "1\\.001_Holo",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_romeo": {
+   "src": "romeo3",
+   "title": "Romeo3 迷你反射瞄具",
+   "axes": "-z,y,x",
+   "scale": 0.0294,
+   "anchor": {
+    "nodes": "."
+   },
+   "obj": "^Object_4$",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_acog6": {
+   "src": "acog6",
+   "title": "ACOG 6×48 瞄准镜",
+   "eyePt": [0, 0.129, -0.27], "eyeR": 0.042, "objPt": [0, 0.129, 0.205], "objR": 0.064, "inner": { "cone": 0.55 }, "axes": "x,y,z",
+   "ring": { "rIn": 0.0428, "rOut": 0.0755, "t0": -0.0215, "t1": 0.0855, "bevel": 0.002, "col": [32, 32, 33] },
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "grip_rvg": {
+   "src": "rvg",
+   "title": "RVG 垂直握把",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "max"
+   }
+  },
+  "grip_afg": {
+   "src": "afg",
+   "title": "AFG 斜握把",
+   "keep": [
+    0,
+    1,
+    2
+   ],
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(4|5|6)$",
+    "y": "max"
+   }
+  },
+  "mag_pmag20": {
+   "src": "armags",
+   "title": "PMAG 20 发短弹匣",
+   "keep": [
+    10
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_21$",
+    "y": "max"
+   }
+  },
+  "mag_hex30": {
+   "src": "armags",
+   "title": "HEXMAG 30 发弹匣",
+   "keep": [
+    5,
+    6,
+    7
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(12|13|15)$",
+    "y": "max"
+   }
+  },
+  "mag_pmag40": {
+   "src": "armags",
+   "title": "PMAG 40 发扩容弹匣",
+   "keep": [
+    19
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_37$",
+    "y": "max"
+   }
+  },
+  "mag_drum": {
+   "src": "armags",
+   "title": "D-60 弹鼓",
+   "keep": [
+    20,
+    21
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(39|40)$",
+    "y": "max"
+   }
+  },
+  "tac_peq": {
+   "src": "peq15",
+   "title": "AN/PEQ-15 激光指示器",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "tac_light": {
+   "src": "light",
+   "title": "M952V 战术手电",
+   "axes": "-x,y,-z",
+   "scale": 0.000736,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
   }
  }
 }

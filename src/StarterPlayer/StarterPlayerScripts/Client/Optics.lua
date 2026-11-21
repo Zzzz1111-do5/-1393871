@@ -55,6 +55,9 @@ function Optics.init(G)
     if not f then return nil end
     local n = f:GetAttribute("N")   -- 块还没全复制过来：先当没导入（不然拿到缺块的枪）
     if n and #f:GetChildren() < n then return nil end
+    for name in pairs(META[key].parts) do   -- 元数据里的块缺了（瞄准镜拆出镜筒里面的块以后没重新导入）：用现生成的
+      if not f:FindFirstChild("O_" .. key .. "__" .. name) then return nil end
+    end
     local list = {}
     for name, info in pairs(META[key].parts) do
       local src = f:FindFirstChild("O_" .. key .. "__" .. name)
@@ -141,12 +144,35 @@ function Optics.init(G)
     end)
   end
 
+  -- 镜筒里面的块（OpticsMeta 的 inner：内壁、镜片、分划板）——第一人称开镜时藏起来，从目镜的洞里直接看放大的画面（使命召唤那样）
+  local innerSet = {}
+  for key, M in pairs(META) do
+    if type(M.inner) == "table" then
+      innerSet[key] = {}
+      for _, n in ipairs(M.inner) do innerSet[key][n] = true end
+    end
+  end
+  function G.opticInner(key, name) return innerSet[key] ~= nil and innerSet[key][name] == true end
+
   -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
   function G.opticFailed(key) return failed[key] == true end
 
   -- 有没有现成的（导入的或已经生成好的），不复制
   function G.opticReady(key)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)
+  end
+
+  -- 原模型没贴图的瞄准镜（两具 ACOG：一片平涂的灰，看着像塑料——用户 11-21：镜身、目镜圈太假）：按真东西的料子上 Roblox 自带材质——
+  --   镜身阳极氧化的铝（金属：细纹理、高光），目镜罩橡胶（哑光），镜片玻璃，分划发光；没写的块照旧
+  local SURF = {
+    acog = { default = "Metal", Eyepiece = "Rubber", GlassIn = "Glass", Fiber = "SmoothPlastic", FiberIn = "SmoothPlastic",
+      FiberCover = "SmoothPlastic", FiberCoverIn = "SmoothPlastic", ReticleIn = "Neon" },
+    opt_acog6 = { default = "Metal", Eyepiece = "Rubber", C9ab = "Glass", C9abIn = "Glass", Cb22 = "SmoothPlastic", Cf00In = "Neon" },
+  }
+  local function surface(key, name, p)
+    local sf = SURF[key]
+    local m = sf and (sf[name] or sf.default)
+    if m then pcall(function() p.Material = Enum.Material[m] end) end
   end
 
   function G.opticParts(key)
@@ -162,6 +188,7 @@ function Optics.init(G)
       if ok and p then
         quiet(p)
         if x.src:IsDescendantOf(RS) then Tint.fix(p, x.src) end
+        surface(key, x.name, p)
         table.insert(out, { name = x.name, part = p, c = x.c, cf = x.cf })
       end
     end

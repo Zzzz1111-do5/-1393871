@@ -90,11 +90,11 @@ function Coach.init(G)
     inf = { { "LMB", "coach.fire" }, { "RMB", "coach.aim" }, { "R", "coach.reload" }, { "E", "coach.board" }, { "F1", "coach.allKeys" } },
     veh = { { "W/S", "coach.drive" }, { "A/D", "coach.steer" }, { "LMB", "coach.fire" }, { "Shift", "coach.sight" }, { "Space", "coach.exit" } },
     lcac = { { "W/S", "coach.throttle" }, { "A/D", "coach.steer" }, { nil, "coach.lcacBeach" }, { "Space", "coach.exit" } },
-    jetGround = { { "W", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "Mouse", "coach.rotate" }, { "S", "coach.reverse" } },
-    jet = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
-    jetLand = { { "G", "coach.gearDown" }, { "S", "coach.throttleDown" } },
+    jetGround = { { "Shift", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "S", "coach.rotate" }, { "Ctrl", "coach.reverse" } },   -- 用户 11-21：WASD 控制方向、不要准心
+    jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
+    jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
-    heli = { { "E/Q", "coach.updown" }, { "W/S", "coach.fwdBack" }, { "A/D", "coach.turn" }, { "LMB", "coach.gun" }, { "F", "coach.rockets" } },
+    heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
@@ -204,7 +204,7 @@ function Coach.init(G)
   pBody.Parent = panel
   -- 说明里一格「W/S 前后」拆成键和动作：前面连着的几个「像键的词」（大写字母 / 数字 / 左键 右键 空格 鼠标 滚轮 / 斜杠）算键
   local KEYWORD = { ["左键"] = true, ["右键"] = true, ["空格"] = true, ["鼠标"] = true, ["滚轮"] = true, ["/"] = true,
-    Mouse = true, Wheel = true, wheel = true, Space = true, LMB = true, RMB = true, Tab = true, Enter = true, Shift = true, Ctrl = true, ["Shift/Ctrl"] = true }
+    Mouse = true, Wheel = true, wheel = true, Space = true, LMB = true, RMB = true, Tab = true, Enter = true, Shift = true, Ctrl = true, Alt = true, ["Shift/Ctrl"] = true }
   local function keyPart(entry)
     local toks = {}
     for t in string.gmatch(entry, "%S+") do table.insert(toks, t) end
@@ -358,7 +358,7 @@ function Coach.init(G)
   local function pointPos(id)
     local cam = workspace.CurrentCamera
     local mp = cam:FindFirstChild("Obj_" .. id)   -- Hud.lua 放的据点标记（高度照地面找过）
-    if mp then return mp.Position end
+    if mp then return mp.CFrame.Position end
     for _, p in ipairs(Map.POINTS) do
       if p.id == id then return V3(p.x, (p.y or 40) + 30, p.z) end
     end
@@ -531,14 +531,19 @@ function Coach.init(G)
     if panelOpen and panelMode ~= mode then buildPanel(mode) end
     -- 三步卡：换了状态（下车、阵亡）就收起；第一次进某种载具弹出来；30 秒没关自己收（算看过）
     if cardMode and (cardMode ~= mode or now - cardT0 > 30) then closeCard(now - cardT0 > 30) end
-    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
-    card.Visible = cardMode ~= nil and not panelOpen and hudOn
+    -- 电脑上开坦克（VehHud 的 MWT 那套，G.tankHudActive）：屏幕上只留那一套——三步卡、按键条、目标箭头都不出（F1 照样能开全部按键）
+    local mwt = G.tankHudActive == true
+    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not mwt and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
+    card.Visible = cardMode ~= nil and not panelOpen and hudOn and not mwt
+    -- 开飞机（AirHud，用户 11-19 照 MWT 截图改）：圆形雷达挪到了左上，三步卡挪到雷达和「被发现!」下面
+    local airDock = G.airRadarDocked ~= nil and G.airRadarDocked() == true
+    card.Position = airDock and UDim2.fromOffset(16, 330) or UDim2.new(0, 24, 0.28, 0)
     -- 按键提示
     local sub = mode and subOf(mode)
     if sub ~= lastSub then lastSub, subT0 = sub, now end
     local list, dim = nil, false
     local d = G.drive
-    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo))
+    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo)) or mwt
     if not hidden and mode then
       if mode == "inf" then
         local od = G.objDist and G.objDist()
@@ -561,7 +566,7 @@ function Coach.init(G)
     end
     -- 目标箭头、队友、空车
     local showWorld = hudOn and alive and S.phase ~= "end"
-    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)))
+    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)) and not mwt)
     stepMarks(dt, showWorld)
   end
 end

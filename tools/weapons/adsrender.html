@@ -1,0 +1,185 @@
+<!doctype html>
+<!-- 开镜画面核对（tools/weapons/gunrender.mjs ads=1）：照游戏里的开镜位置摆镜头——眼睛在瞄准镜光轴上、目镜在屏幕上占 K 倍高、
+     视角 = 68° ÷ 倍率；镜筒里面的块（OpticsMeta 的 inner）藏起来；前面摆一片测试靶场（地面、远近几个靶子、一个人形），
+     再在上面用 2D 画一层游戏里 Scope.lua 要画的东西（镜片边缘的暗圈、色散彩边、分划、外面压暗），看整体像不像使命召唤 -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{position:absolute;left:0;top:0}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const W = 1280, H = 720;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const ov = document.createElement('canvas');
+ov.width = W; ov.height = H;
+document.body.appendChild(ov);
+const cache = {};
+async function glb(url) { if (!cache[url]) cache[url] = await new GLTFLoader().loadAsync(url); return cache[url]; }
+function m4(c) { return new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1); }
+const frontOnly = new Map();   // 同 Roblox：MeshPart 不画背面（GLB 里的双面材质照单面画）
+function single(mt) {
+  if (!frontOnly.has(mt)) { const c = mt.clone(); c.side = THREE.FrontSide; frontOnly.set(mt, c); }
+  return frontOnly.get(mt);
+}
+function addScene(scene, g, mat, only) {
+  g.scene.traverse(o => {
+    if (o.isMesh && (!only || only(o.name, o))) {
+      const m = new THREE.Mesh(o.geometry, single(o.material));
+      m.matrixAutoUpdate = false;
+      m.matrix.copy(mat);
+      scene.add(m);
+    }
+  });
+}
+// 测试靶场（枪身骨骼坐标：+Z 朝前，地面在枪下面 5 格）
+function range(scene) {
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false,
+    vertexShader: 'varying vec3 p; void main(){ p = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+    fragmentShader: 'varying vec3 p; void main(){ float h = normalize(p).y; vec3 c = mix(vec3(0.78,0.84,0.9), vec3(0.36,0.55,0.8), clamp(h*2.5,0.,1.)); gl_FragColor = vec4(c,1.); }' }));
+  scene.add(sky);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d');
+  for (let y = 0; y < 256; y += 4) for (let x = 0; x < 256; x += 4) { const v = 70 + Math.random() * 40; g.fillStyle = `rgb(${v * 0.75},${v},${v * 0.55})`; g.fillRect(x, y, 4, 4); }
+  const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(400, 400); tex.colorSpace = THREE.SRGBColorSpace;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshLambertMaterial({ map: tex }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -5;
+  scene.add(ground);
+  const box = (x, z, w, h, d, col) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: col })); b.position.set(x, -5 + h / 2, z); scene.add(b); };
+  box(-30, 160, 30, 18, 20, 0xb9a98c);   // 房子
+  box(-30, 160, 32, 2, 22, 0x6d5a48);
+  box(25, 260, 40, 26, 30, 0xa89f90);
+  for (const [x, z] of [[4, 70], [-6, 120], [10, 220], [0, 400]]) {   // 人形靶
+    box(x, z, 1.6, 4.2, 0.8, 0x3d4a36);
+    const hd = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), new THREE.MeshLambertMaterial({ color: 0x3d4a36 }));
+    hd.position.set(x, -5 + 4.8, z); scene.add(hd);
+  }
+  for (let i = 0; i < 40; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(3, 12, 7), new THREE.MeshLambertMaterial({ color: 0x2f4a2a })); t.position.set(-200 + Math.random() * 400, -5 + 6, 300 + Math.random() * 900); scene.add(t); }
+}
+window.renderAds = async (D, bi, opts) => {
+  const B = D.builds[bi];
+  // dof：近处的枪、镜身另拍一层糊掉（同游戏里开镜时的 ScopeDOF），再叠在战场上
+  const world = new THREE.Scene();
+  const scene = opts.dof ? new THREE.Scene() : world;
+  for (const sc of new Set([world, scene])) {
+    sc.add(new THREE.HemisphereLight(0xdfeaff, 0x506040, 1.3));
+    const sn = new THREE.DirectionalLight(0xfff4e0, 2.0);
+    sn.position.set(-0.4, 1, 0.6);
+    sc.add(sn);
+  }
+  range(world);
+  const m4g = await glb('/models/fps_m4.glb');
+  for (const p of D.m4) {
+    if (B.skipMag && (p.node === 'FPS_M4_Mag1' || p.node === 'FPS_M4_Mag2')) continue;
+    if (p.piece === 'mag2') continue;
+    if (opts.noMain && p.node === 'FPS_M4_Main') continue;
+    if (opts.foldSights && p.node === 'FPS_M4_Main') {   // 装了瞄具：照门、准星折下去（同游戏里 FPSView 的 SIGHT_FOLD）
+      m4g.scene.traverse(o => {
+        if (!o.isMesh || o.name.replace(/_\d+$/, '') !== 'FPS_M4_Main') return;
+        const g = o.geometry, pos = g.attributes.position, idx = g.index.array, keep = [];
+        for (let t = 0; t < idx.length; t += 3) {
+          let cy = 0, cz = 0;
+          for (let q = 0; q < 3; q++) { cy += pos.getY(idx[t + q]) / 3; cz += pos.getZ(idx[t + q]) / 3; }
+          const rear = cz > -0.29 && cz < -0.06 && cy > 0.15;
+          const front = (cz > 0.905 && cz < 1.04 && cy > 0.085) || (cz > 0.875 && cz <= 0.905 && cy > 0.145);
+          if (!rear && !front) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+        }
+        const g2 = g.clone(); g2.setIndex(keep);
+        const m = new THREE.Mesh(g2, single(o.material)); m.matrixAutoUpdate = false; m.matrix.copy(m4(p.cf)); scene.add(m);
+      });
+      continue;
+    }
+    addScene(scene, m4g, m4(p.cf), n => n === p.node || n.replace(/_\d+$/, '') === p.node);
+  }
+  let sight = null;
+  for (const a of B.att) {
+    const g = await glb('/models/optics/' + a.model + '.glb');
+    const inner = (D.meta[a.model] && D.meta[a.model].inner) || [];
+    const hideIn = opts.hideInner && a.slot === 'optic';
+    addScene(scene, g, m4(a.cf), (n) => !(hideIn && inner.some(p => n === 'O_' + a.model + '__' + p || n.startsWith('O_' + a.model + '__' + p + '_'))));
+    if (a.eye) sight = a;
+  }
+  const e = new THREE.Vector3(...sight.eye), o = new THREE.Vector3(...sight.obj);
+  const dir = o.clone().sub(e).normalize();
+  // pip：镜内单独放大（ScopePip.lua）——镜外按 opts.ads（1.25）倍、目镜按 pipK 摆；镜里另拍一张 pip 倍的（只有战场、没有枪）
+  const fov = opts.pip ? 68 / (opts.ads || 1.25) : 68 / (opts.zoom || sight.zoom || 1);
+  const K = opts.K || (opts.pip ? (sight.Kp || 0.3) : (sight.K || 0.6));   // 目镜直径占屏幕高度的比例（GunMods 的 lensK / pipK）
+  // 红点、全息：后窗离眼睛 adsD 格（同 FPSView 的 opticAds）；瞄准镜：目镜在屏幕上占 K 倍高
+  const d = sight.kind === 'dot' ? (sight.adsD || 0.3) : sight.r / (Math.tan(THREE.MathUtils.degToRad(fov) / 2) * K);
+  const cam = new THREE.PerspectiveCamera(fov, W / H, 0.005, 6000);
+  cam.position.copy(e.clone().sub(dir.clone().multiplyScalar(d)));
+  cam.up.set(0, 1, 0);
+  cam.lookAt(e.clone().add(dir.clone().multiplyScalar(100)));
+  const shot = document.createElement('canvas'); shot.width = W; shot.height = H;
+  const sc2 = shot.getContext('2d');
+  renderer.setClearColor(0x000000, 1);
+  renderer.render(world, cam);
+  sc2.drawImage(renderer.domElement, 0, 0);
+  if (opts.dof) {
+    renderer.setClearColor(0x000000, 0);
+    renderer.render(scene, cam);
+    sc2.filter = `blur(${opts.dof}px)`;
+    sc2.drawImage(renderer.domElement, 0, 0);
+    sc2.filter = 'none';
+  }
+  // 2D 层（游戏里 Scope.lua 画的）
+  const c = ov.getContext('2d');
+  c.clearRect(0, 0, W, H);
+  if (opts.overlay) {
+    const cx = W / 2, cy = H / 2, R = K * H / 2;
+    // 外面压暗（镜子外壳以外）
+    const vg = c.createRadialGradient(cx, cy, R * 1.25, cx, cy, Math.hypot(W, H) / 2);
+    vg.addColorStop(0, 'rgba(0,0,0,0.35)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+    c.fillStyle = vg; c.beginPath(); c.rect(0, 0, W, H); c.arc(cx, cy, R * 1.25, 0, Math.PI * 2, true); c.fill();
+    // 镜片边缘的暗圈（眼盒）+ 偏心的月牙
+    const ex = opts.eyeX || 0, ey = opts.eyeY || 0;
+    const ig = c.createRadialGradient(cx + ex, cy + ey, R * 0.78, cx + ex, cy + ey, R * 1.02);
+    ig.addColorStop(0, 'rgba(0,0,0,0)'); ig.addColorStop(0.7, 'rgba(0,0,0,0.45)'); ig.addColorStop(1, 'rgba(0,0,0,0.95)');
+    c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.clip();
+    c.fillStyle = 'rgba(18,34,44,0.08)'; c.fillRect(cx - R, cy - R, 2 * R, 2 * R);   // 镀膜
+    c.fillStyle = ig; c.fillRect(cx - R - 50, cy - R - 50, 2 * R + 100, 2 * R + 100);
+    // 反光弧
+    c.strokeStyle = 'rgba(235,245,255,0.13)'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, R * 0.9, Math.PI * 1.08, Math.PI * 1.42); c.stroke();
+    // 分划（ACOG 箭形 / 狙击镜十字）
+    if (opts.ret === 'acog') {
+      const s = R * 0.085;
+      c.strokeStyle = 'rgba(255,52,36,0.95)'; c.lineWidth = Math.max(2, R * 0.012); c.lineJoin = 'miter';
+      c.shadowColor = 'rgba(255,40,30,0.9)'; c.shadowBlur = 6;
+      c.beginPath(); c.moveTo(cx - s * 0.75, cy + s * 0.65); c.lineTo(cx, cy); c.lineTo(cx + s * 0.75, cy + s * 0.65); c.stroke();
+      c.shadowBlur = 0; c.strokeStyle = 'rgba(10,10,10,0.9)'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(cx, cy + s * 0.9); c.lineTo(cx, cy + R * 0.38); c.stroke();
+      for (const [y, w] of [[0.14, 0.09], [0.2, 0.075], [0.26, 0.062], [0.32, 0.052]]) { c.beginPath(); c.moveTo(cx - R * w / 2, cy + R * y); c.lineTo(cx + R * w / 2, cy + R * y); c.stroke(); }
+      c.beginPath(); c.moveTo(cx - R, cy); c.lineTo(cx - R * 0.35, cy); c.moveTo(cx + R * 0.35, cy); c.lineTo(cx + R, cy); c.stroke();
+    } else {
+      c.strokeStyle = 'rgba(8,8,8,0.95)'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(cx - R, cy); c.lineTo(cx + R, cy); c.moveTo(cx, cy - R); c.lineTo(cx, cy + R); c.stroke();
+      c.lineWidth = Math.max(3, R * 0.02);
+      c.beginPath(); c.moveTo(cx - R, cy); c.lineTo(cx - R * 0.3, cy); c.moveTo(cx + R * 0.3, cy); c.lineTo(cx + R, cy); c.moveTo(cx, cy + R * 0.3); c.lineTo(cx, cy + R); c.stroke();
+      c.fillStyle = 'rgba(255,46,30,0.95)'; c.beginPath(); c.arc(cx, cy, 2.5, 0, Math.PI * 2); c.fill();
+    }
+    // 色散彩边
+    c.lineWidth = 2; c.strokeStyle = 'rgba(255,90,50,0.35)'; c.beginPath(); c.arc(cx + 1, cy, R - 2, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = 'rgba(70,120,255,0.3)'; c.beginPath(); c.arc(cx - 1, cy, R - 3, 0, Math.PI * 2); c.stroke();
+    c.restore();
+  }
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const oc = out.getContext('2d'); oc.drawImage(shot, 0, 0); oc.drawImage(ov, 0, 0);
+  if (opts.pip) {   // 画中画那张：同一个眼睛位置、朝光轴看，视角 = 镜片的角大小 ÷ 倍率；方形、边长 = 镜片直径（像素）
+    const tb = K * Math.tan(THREE.MathUtils.degToRad(fov) / 2) / opts.pip;
+    const S = Math.round(K * H);
+    const pc = new THREE.PerspectiveCamera(2 * THREE.MathUtils.radToDeg(Math.atan(tb)), 1, 0.05, 8000);
+    pc.position.copy(cam.position); pc.up.set(0, 1, 0); pc.lookAt(e.clone().add(dir.clone().multiplyScalar(100)));
+    renderer.setSize(S, S); renderer.setClearColor(0x000000, 1);
+    renderer.render(world, pc);
+    const pcv = document.createElement('canvas'); pcv.width = S; pcv.height = S;
+    pcv.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    renderer.setSize(W, H);
+    return { main: out.toDataURL('image/png'), pip: pcv.toDataURL('image/png') };
+  }
+  return out.toDataURL('image/png');
+};
+window.ready = true;
+</script></body></html>

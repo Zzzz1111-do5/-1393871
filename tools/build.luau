@@ -110,35 +110,60 @@ L.EnvironmentDiffuseScale = 1
 L.EnvironmentSpecularScale = 1
 
 -- Lune 把 Source 写成 <string>，Studio 认的是 <ProtectedString>：逐个改过来（CDATA 里的内容不动）
-local xml = roblox.serializePlace(game, true)
-local parts, pos, fixed = {}, 1, 0
-while true do
-	local a, b = string.find(xml, '<string name="Source">', pos, true)
-	if not a then break end
-	table.insert(parts, string.sub(xml, pos, a - 1))
-	table.insert(parts, '<ProtectedString name="Source">')
-	local i = b + 1
+local function protectSource(xml)
+	local parts, pos, fixed = {}, 1, 0
 	while true do
-		if string.sub(xml, i, i + 8) == "<![CDATA[" then
-			local e = string.find(xml, "]]>", i + 9, true)
-			table.insert(parts, string.sub(xml, i, e + 2))
-			i = e + 3
-		elseif string.sub(xml, i, i + 8) == "</string>" then
-			table.insert(parts, "</ProtectedString>")
-			i += 9
-			break
-		else
-			local nxt = string.find(xml, "<", i, true)
-			table.insert(parts, string.sub(xml, i, nxt - 1))
-			i = nxt
+		local a, b = string.find(xml, '<string name="Source">', pos, true)
+		if not a then break end
+		table.insert(parts, string.sub(xml, pos, a - 1))
+		table.insert(parts, '<ProtectedString name="Source">')
+		local i = b + 1
+		while true do
+			if string.sub(xml, i, i + 8) == "<![CDATA[" then
+				local e = string.find(xml, "]]>", i + 9, true)
+				table.insert(parts, string.sub(xml, i, e + 2))
+				i = e + 3
+			elseif string.sub(xml, i, i + 8) == "</string>" then
+				table.insert(parts, "</ProtectedString>")
+				i += 9
+				break
+			else
+				local nxt = string.find(xml, "<", i, true)
+				table.insert(parts, string.sub(xml, i, nxt - 1))
+				i = nxt
+			end
 		end
+		fixed += 1
+		pos = i
 	end
-	fixed += 1
-	pos = i
+	table.insert(parts, string.sub(xml, pos))
+	return table.concat(parts), fixed
 end
-table.insert(parts, string.sub(xml, pos))
-xml = table.concat(parts)
+local xml, fixed = protectSource(roblox.serializePlace(game, true))
 fs.writeFile(out, xml)
 print("Source 改成 ProtectedString：" .. fixed .. " 处")
 print(string.format("写好了 %s：Script %d、LocalScript %d、ModuleScript %d、Folder %d", out, count.Script, count.LocalScript, count.ModuleScript, count.Folder))
 if nImported > 0 then print("带上了 models/imported 里导入过的原模型：" .. nImported .. " 块") end
+
+-- 只换脚本的更新包（用户：怎么才能只改脚本）：ScriptsUpdate.rbxmx，一个 ScriptsUpdate 文件夹，里面按服务分好
+--   ReplicatedStorage / ServerScriptService / StarterPlayerScripts 三个子文件夹，装着 src/ 里全部脚本。用户在自己的地点（导入过的模型、地图都在）
+--   里「从文件插入」它，再在命令栏粘一行（docs/import_guide.txt「三、只换脚本」）：同名的旧脚本删掉、新的放进去，模型和地图不动
+local count0 = table.clone(count)
+local pack = Instance.new("Folder")
+pack.Name = "ScriptsUpdate"
+for _, svcName in sorted(fs.readDir("src")) do
+	local f = Instance.new("Folder")
+	if svcName == "StarterPlayer" then
+		f.Name = "StarterPlayerScripts"
+		build("src/StarterPlayer/StarterPlayerScripts", f)
+	else
+		f.Name = svcName
+		build("src/" .. svcName, f)
+	end
+	f.Parent = pack
+end
+count = count0
+local packXml = protectSource(roblox.serializeModel({ pack }, true))
+local packOut = string.gsub(out, "[^/\\]+$", "ScriptsUpdate.rbxmx")
+fs.writeFile(packOut, packXml)
+print("写好了 " .. packOut .. "（只换脚本的更新包）")

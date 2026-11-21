@@ -1,6 +1,6 @@
 -- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
 --   镜头：追尾（鼠标绕着车转），Shift / 右键进出炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
---   瞄准镜四种光电模式（V 切换，N 也行）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--   瞄准镜四种光电模式（V 切换，开着镜 N 也行；没开镜 N 是夜视仪）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
 --   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、M 烟幕弹（X 也行）、F 下车
 --   用户：坦克按 Shift 切换开镜；开镜画面上写着「按 V 切换光电模式」「按 M 释放烟雾弹」
@@ -15,6 +15,7 @@ local Drive = {}
 function Drive.init(G)
   local Map = require(RS:WaitForChild("Map"))
   local VD = require(RS:WaitForChild("VehDefs"))
+  local TMods = require(RS:WaitForChild("TankMods"))   -- 坦克改装（用户 11-19）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -175,7 +176,7 @@ function Drive.init(G)
   end
 
   local function applyMode()
-    if not st or not st.sight then
+    if not st or not st.sight or G.interiorOptic then   -- 车里换成别的光学设备（辅助瞄准镜，Interior.lua）：它自己画分划、调颜色
       cc.Enabled = false
       clearHl()
       sight.Visible = false
@@ -300,7 +301,7 @@ function Drive.init(G)
   local engine = nil
   local function engineStop()
     if engine then
-      for _, snd in ipairs(engine.s) do snd:Destroy() end
+      for _, snd in pairs(engine.s) do if snd then snd:Destroy() end end
       engine = nil
     end
   end
@@ -311,31 +312,72 @@ function Drive.init(G)
     local heavy = d.arch ~= "wheeled"
     local rumble = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
     local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
-    engine = { s = { rumble, whine }, rumble = rumble, whine = whine, heavy = heavy, rpm = 0.2 }
+    -- 履带的哗啦声（用户 11-20：载具照 UE5 的水平升级）：咔哒那一下截一小段循环，开得越快一圈越短、越密；
+    --   轮胎侧滑的沙沙声：风声削掉低音，侧滑越厉害越响
+    local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
+    local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
+    engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2 }
   end
+  -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
+  --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
+  local GEARS = 5
   local function engineStep(dt, thr, spd)
     if not engine then return end
-    local want = math.clamp(0.22 + 0.5 * spd + 0.3 * math.abs(thr), 0, 1)   -- 转速：油门一踩先上去，车速跟着
-    engine.rpm += (want - engine.rpm) * math.min(1, dt * 3)
+    local back = st and (st.speed or 0) < -0.4
+    local g = 0
+    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+    if st then
+      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
+        engine.shiftT = os.clock()
+        if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
+      end
+      st.gearN = g
+    end
+    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
+    if shifting then want *= 0.75 end
+    engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
     engine.rumble.Volume = 0.3 + 0.35 * r
     engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
     engine.whine.Volume = 0.6 + 2.6 * r * r
+    local air = st and st.airS ~= nil
+    if engine.clank then   -- 履带：速度越快越密；在天上没有
+      engine.clank.PlaybackSpeed = 0.55 + spd * 1.6
+      engine.clank.Volume = (air or spd < 0.02) and 0 or math.min(0.9, 0.15 + spd * 0.9)
+    end
+    local slip = (st and not air) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
+    engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
+    engine.skid.PlaybackSpeed = 1.4 + slip * 1.2
   end
   local aimParams = RaycastParams.new()
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
   -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
-  local function toggleSight()
-    if not st then return end
-    st.sight = not st.sight
-    ownVisible(not st.sight)
+  local function setSight(on)
+    if not st or st.sight == on then return end
+    st.sight = on
+    ownVisible(not on)
     applyMode()
   end
+  -- 开镜 / 退镜：坐在车里炮长位上时先把头凑到目镜上 / 从目镜上抬起来（Interior.lua 演完再真的切），
+  --   不管在哪都有目镜的光学效果（先黑，亮圆从边上滑进来、变大）——用户 11-21：看倍镜会有的效果
+  G.driveSetSight = function(on) setSight(on) applyMode() end   -- Interior.lua：辅助瞄准镜也要炮跟着鼠标瞄
+  local function toggleSight()
+    if not st then return end
+    local want = not st.sight
+    if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
+    setSight(want)
+  end
+  -- 瞄准镜默认档（用户 11-21：坦克开镜强制锁在夜视）：天黑夜视、白天昼光；自己换过就记住（白天、夜里各记一个）
+  G.sightPref = G.sightPref or {}
+  local function nightNow() return G.isNight ~= nil and G.isNight() end
   local function nextMode()
     if not st then return end
     st.mode = st.mode % #MODES + 1
+    G.sightPref[nightNow() and "night" or "day"] = st.mode
     applyMode()
   end
   local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
@@ -345,13 +387,15 @@ function Drive.init(G)
     if not em then return end
     local d = VD.get(vs.m)
     if not d then return end
+    d = TMods.applyDef(d, em:GetAttribute("Mods"))   -- 坦克改装（TankMods）：车速、武器表（加特林是第 3 件）按选的改一份
     local root = em.Root.CFrame
     local base = root * CF(0, -d.H / 2, 0)
     local look = base.LookVector
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
-      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
-      wi = 1, sendT = 0, next = {}, firing = false, hlT = 0 }
+      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false,
+      mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 2 or 1), zoom = 1,
+      wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0 }
     G.drive, G.myVeh = st, st
     -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
     CAS:BindActionAtPriority("DriveSight", function(_, state)
@@ -359,9 +403,9 @@ function Drive.init(G)
       return Enum.ContextActionResult.Sink
     end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
     cam.CameraType = Enum.CameraType.Scriptable
-    panel.Visible = true
-    cross.Visible = true
-    gunMark.Visible = true
+    panel.Visible = not G.vehHudOn   -- 有新的驾驶界面（VehHud.lua）就不画这块小面板、圆圈、黄十字
+    cross.Visible = not G.vehHudOn
+    gunMark.Visible = not G.vehHudOn
     if G.touchDriveUI then for _, f in ipairs(G.touchDriveUI) do f.Visible = true end end
     local m = workspace:FindFirstChild("Map")
     mapParams.FilterDescendantsInstances = m and { m } or {}
@@ -380,6 +424,7 @@ function Drive.init(G)
     end
     st = nil
     engineStop()
+    if G.vehCamReset then G.vehCamReset("drive") end
     G.drive, G.myVeh = nil, nil
     CAS:UnbindAction("DriveSight")
     cam.CameraType = Enum.CameraType.Custom
@@ -450,6 +495,52 @@ function Drive.init(G)
     return st.root * CF(0, -st.d.H / 2, 0) * CF(0, L.y - L.deck, -2)
   end
 
+  -- 路面（用户 11-20：所有载具操控照虚幻引擎 5 的水平升级）：每 0.25 秒看一次脚下——土路硬、快；草地正常；沙地软（慢、打滑，轮式车更明显）；
+  --   石头地颠、抓地差一点。rough 给镜头的颠簸、grip 给侧滑（Map.material 跟扬尘、小地图用的是同一套）
+  local SURF = {
+    [Enum.Material.Ground] = { speed = 1.06, accel = 1.05, grip = 1.0, rough = 0.55 },
+    [Enum.Material.Grass] = { speed = 1.0, accel = 1.0, grip = 0.92, rough = 0.75 },
+    [Enum.Material.LeafyGrass] = { speed = 0.98, accel = 0.98, grip = 0.9, rough = 0.8 },
+    [Enum.Material.Sand] = { speed = 0.82, accel = 0.76, grip = 0.72, rough = 0.5 },
+    [Enum.Material.Rock] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
+    [Enum.Material.Slate] = { speed = 0.9, accel = 0.92, grip = 0.86, rough = 1.5 },
+    [Enum.Material.Concrete] = { speed = 1.1, accel = 1.08, grip = 1.04, rough = 0.3 },   -- 港口的码头平地、坡道
+    [Enum.Material.Asphalt] = { speed = 1.1, accel = 1.08, grip = 1.06, rough = 0.25 },
+  }
+  local SURF0 = { speed = 1, accel = 1, grip = 0.9, rough = 0.7 }
+  G.driveSurf = SURF   -- 测试用
+  local SURF_WATER = { speed = 1, accel = 1, grip = 0.55, rough = 0.25 }
+  local function surfAt(p)
+    local h = Map.height(p.X, p.Z)
+    if h < -1.5 then return SURF_WATER end
+    return SURF[Map.material(p.X, p.Z, h, Map.slope(p.X, p.Z))] or SURF0
+  end
+  local GRAV = 9.81 * 2.8 * 1.15   -- 重力（格 / 秒²；1 米 = 2.8 格，稍微沉一点：几十吨的车落得干脆）
+  local function angR(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end   -- a 到 b 转多少（弧度，-π～π）
+  -- 落地：按砸下来的速度——镜头一沉、震屏、一声闷响、车两边扬起一团土、车头往下一点
+  local function land(imp)
+    if imp < 6 then return end
+    local k = math.clamp((imp - 6) / 30, 0, 1)
+    if G.shake then G.shake(0.12 + 0.5 * k) end
+    if G.sfx then G.sfx("vehLand", nil, { vol = 0.45 + 0.9 * k }) end
+    local v = G.views and G.views[st.em]
+    if v and v.M and v.M.dust then
+      for _, pe in ipairs(v.M.dust) do pcall(function() pe:Emit(math.floor(5 + 16 * k)) end) end
+    end
+    if st.sus then st.sus.vp -= 0.5 * k end
+    st.landK = k   -- 测试用
+    st.landT = os.clock()
+  end
+  -- 撞上东西（房子、工事、陡坎）：按撞的速度和正不正——震屏、一声撞击（擦着墙走只响第一下）
+  local function bump(strength)
+    local t = os.clock()
+    if t - (st.bumpT or -9) < 0.45 or strength < 5 then return end
+    st.bumpT = t
+    local k = math.clamp(strength / 45, 0, 1)
+    if G.shake then G.shake(0.1 + 0.5 * k) end
+    if G.sfx then G.sfx("vehHit", nil, { vol = 0.4 + 0.9 * k }) end
+  end
+
   local function physics(dt)
     local d = st.d
     local key = function(k) return UIS:IsKeyDown(k) end
@@ -459,6 +550,7 @@ function Drive.init(G)
       if G.touchDrive.thr ~= 0 then thr = G.touchDrive.thr end
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
+    if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
     local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：开的是艇
     if carried then
@@ -475,25 +567,37 @@ function Drive.init(G)
     if inWater then
       if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
     end
+    -- 路面：极速、加速、抓地（履带车在软地上吃亏少一些）
+    local tracked = d.arch ~= "wheeled"
+    st.surfT = (st.surfT or 0) - dt
+    if st.surfT <= 0 or not st.surf then st.surfT, st.surf = 0.25, surfAt(st.pos) end
+    local sf = st.surf
+    local kS = tracked and (1 - (1 - sf.speed) * 0.55) or sf.speed
+    local kA = tracked and (1 - (1 - sf.accel) * 0.6) or sf.accel
+    if not inWater then maxF, maxR = maxF * kS, maxR * kS end
+    local accel = d.accel * (inWater and 1 or kA)
     -- 驾驶手感（用户：驾驶手感也做到最好）：
     --   油门——发动机低速劲大、接近极速劲小；反着推是刹车（比加速猛得多）；松油门滚着慢下来（履带阻力大停得快）；
     --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
-    local tracked = d.arch ~= "wheeled"
     local v = st.speed
     local slope = inWater and 0 or (st.slopeS or 0)
     local a
-    if thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
+    if st.airS then   -- 在天上：没有抓地，只有一点空气阻力
+      a = -v * 0.05
+    elseif thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
       local vmax = (thr > 0) and maxF or maxR
       local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
-      a = thr * d.accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
-      if math.abs(v) > vmax then a = -math.sign(v) * d.accel * 0.7 end   -- 下坡冲过极速：发动机拖住
+      a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
+      if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
-      a = thr * d.accel * 2.6   -- 刹车
+      a = thr * accel * 2.6   -- 刹车
     else
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), d.accel * (tracked and 1.1 or 0.55))
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.1 or 0.55))
     end
-    if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
-    if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+    if not st.airS then
+      if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
+      if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+    end
     local old = v
     v += a * dt
     if thr == 0 and math.abs(v) < 0.4 then v = 0 end
@@ -502,20 +606,37 @@ function Drive.init(G)
     st.accel = (v - old) / math.max(dt, 1e-3)
     -- 转向有惯性：履带车原地能转、越快转得越慢（D 永远往右转车头）；轮式车前轮打角（越快打得越少、打过去要一会儿），
     --   按轴距算转弯半径（走起来才转，倒车反着），侧向抓地有上限（太快转不过来、推头）
-    if tracked then
+    if st.airS then   -- 在天上转不了向：转速慢慢没了
+      st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
+    elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.yr = approach(st.yr or 0, str * math.rad(d.turn) * k, math.rad(d.turn) * ((str ~= 0) and 3.2 or 5.5) * dt)
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
       local want = v / (d.L * 0.55) * math.tan(st.steerA)
-      local grip = 30 / math.max(math.abs(v), 1)
-      st.yr = approach(st.yr or 0, math.clamp(want, -grip, grip), 4 * dt)
+      -- 抓地有上限（太快转不过来、推头）；转得猛的时候车头能比抓地多转一些——多出来的那份是甩尾（下面 travel 跟不上车头）
+      local grip = 30 / math.max(math.abs(v), 1) * sf.grip
+      st.yr = approach(st.yr or 0, math.clamp(want, -grip * 1.45, grip * 1.45), 4 * dt)
     end
     st.yaw -= st.yr * dt
+    -- 车头朝向（yaw）和真正往哪走（travel）分开（UE5 的轮胎侧偏）：抓地有限，转得太猛、太快时车尾往外甩——
+    --   轮式车明显，履带车只有高速急转才滑一点；滑着走掉速、扬尘、轮胎沙沙响；慢下来、停住就对齐
+    st.travel = st.travel or st.yaw
+    if math.abs(v) < 3 then
+      st.travel = st.yaw
+    elseif not st.airS then
+      local gripRate = (tracked and 7.5 or 3.4) * sf.grip
+      st.travel += angR(st.travel, st.yaw) * (1 - math.exp(-gripRate * dt))
+    end
+    st.slipA = angR(st.travel, st.yaw)
+    if not st.airS and math.abs(v) > 3 then
+      v -= v * math.min(1, math.abs(math.sin(st.slipA)) * 2.2 * dt)
+      st.speed = v
+    end
     st.steer = approach(st.steer, str, dt * 4)
-    -- 往前挪：坡太陡、不会游的下水、撞到房子都走不动
-    local fwd = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+    -- 往前挪（顺着 travel：车在侧滑时位置跟着真正的去向走）：坡太陡、不会游的下水、撞到房子都走不动；擦着墙的顺着墙滑过去
+    local fwd = V(-math.sin(st.travel), 0, -math.cos(st.travel))
     local step = st.speed * dt
     if math.abs(step) > 1e-4 then
       local np = st.pos + fwd * step
@@ -529,10 +650,38 @@ function Drive.init(G)
       local pa = st.pos + fwd * math.sign(step) * probe
       local ha = Map.height(pa.X, pa.Z)
       if not blocked and ha > 0.5 and (ha - math.max(h0, -0.5)) / probe > 0.85 then blocked = true end
+      local slide = nil
       if not blocked then
         local o = st.pos + V(0, Map.ground(st.pos.X, st.pos.Z) - st.pos.Y + d.hullH * 0.55, 0)
-        local res = workspace:Raycast(o, fwd * math.sign(step) * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
-        if res then blocked = true end
+        local mv = fwd * math.sign(step)
+        local res = workspace:Raycast(o, mv * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
+        if res then
+          -- 撞上房子、码头（UE5 的车擦着墙会顺着墙滑，不是一下钉死）：正着撞停下；斜着蹭上去顺着墙走、掉速、车头往墙的方向扭过去
+          local n = V(res.Normal.X, 0, res.Normal.Z)
+          local head = 1
+          if n.Magnitude > 0.2 then
+            n = n.Unit
+            head = math.clamp(-mv:Dot(n), 0, 1)   -- 1 = 正面撞上
+            local tan = mv - n * mv:Dot(n)
+            if head < 0.62 and tan.Magnitude > 0.05 then
+              tan = tan.Unit
+              local back = workspace:Raycast(o, tan * (d.L * 0.5 + math.abs(step) + 0.5), mapParams)
+              if not back then slide = { dir = tan, head = head } end
+            end
+          end
+          bump(math.abs(st.speed) * head)
+          if not slide then blocked = true end
+        end
+      end
+      if slide then
+        np = st.pos + slide.dir * math.abs(step) * (1 - slide.head * 0.6)
+        st.speed -= st.speed * math.min(1, slide.head * 3.5 * dt)
+        local hd = (step > 0) and slide.dir or -slide.dir
+        local tYaw = math.atan2(-hd.X, -hd.Z)
+        local turn = angR(st.yaw, tYaw) * math.min(1, dt * 2.6 * (1 - slide.head))
+        st.yaw += turn
+        st.travel += turn
+        st.wallT = os.clock()
       end
       -- 工事、钢刺猬（FortView 给的）：往里开就停（已经卡在里面的让它开出来）
       if not blocked and G.solidAt then
@@ -541,13 +690,82 @@ function Drive.init(G)
       end
       if blocked then
         if math.abs(st.speed) > 12 and G.shake then G.shake(0.25) end
-        st.speed = 0
+        bump(math.abs(st.speed))
+        st.speed = -st.speed * 0.1   -- 顶住了：往回弹一点
+        st.travel = st.yaw
       else
         st.pos = np
+      end
+      -- 侧面别嵌进墙里（擦着墙走、车身转过来贴着墙时前面那条射线就碰不到墙了）：车身两侧前中后各打一条短射线，
+      --   哪边太近就往外推（每边取最深的那一下，不叠加）
+      local fB = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+      local rB = V(-fB.Z, 0, fB.X)
+      local gy = Map.ground(st.pos.X, st.pos.Z)
+      local pushT = V()
+      for _, sd in ipairs({ -1, 1 }) do
+        local best, bestPen = nil, 0
+        for _, u in ipairs({ -0.36, 0, 0.36 }) do
+          local o = V(st.pos.X, gy + d.hullH * 0.55, st.pos.Z) + fB * (u * d.L)
+          local res = workspace:Raycast(o, rB * sd * (d.W / 2 + 0.6), mapParams)
+          if res then
+            local n = V(res.Normal.X, 0, res.Normal.Z)
+            local pen = d.W / 2 + 0.3 - (res.Position - o).Magnitude
+            if pen > bestPen and n.Magnitude > 0.2 then best, bestPen = n.Unit, pen end
+          end
+        end
+        if best then
+          pushT += best * math.min(bestPen, 2)
+          -- 正往墙里走：撞一下（声音、震屏按切进去的角度）、蹭着墙掉速，去向改成顺着墙（不一直往墙里顶）
+          local sg = (st.speed >= 0) and 1 or -1
+          local fT = V(-math.sin(st.travel), 0, -math.cos(st.travel)) * sg
+          local into = -fT:Dot(best)
+          if into > 0 then
+            bump(math.abs(st.speed) * math.max(into, 0.3))
+            st.speed -= st.speed * math.min(1, (0.25 + 1.6 * into) * dt)
+            local nd = fT - best * fT:Dot(best)
+            if nd.Magnitude > 0.05 then
+              nd = nd.Unit * sg
+              local ty = math.atan2(-nd.X, -nd.Z)
+              st.travel = ty
+              st.yaw += angR(st.yaw, ty) * math.min(1, dt * 2.4)   -- 车身被墙掰过去、顺着墙
+            end
+          end
+        end
+      end
+      if pushT.Magnitude > 1e-3 then
+        st.pos += pushT
+        st.wallT = os.clock()
       end
     end
     local base = baseAt(d, st.pos, st.yaw, false)
     st.slopeS = math.clamp(base.LookVector.Y, -1, 1)   -- 车头朝上为正（下一帧的上坡阻力）
+    -- 腾空（UE5 的车冲过坡顶会飞起来）：地面只能托住车、拉不住——车照「上一刻往上的速度 + 重力」走的抛物线比地面高，就离地飞一会儿；
+    --   开下陡坎也一样往下掉。在天上不能加速、转向，车身慢慢往前栽；落地按砸下来的速度：悬挂压一下、镜头一沉、震屏、一声闷响、扬一团土
+    local gY = base.Position.Y
+    local A = st.airS
+    if A then
+      A.vy -= GRAV * dt
+      A.y += A.vy * dt
+      A.t += dt
+      if A.y <= gY or A.t > 4 then
+        st.airS = nil
+        st.gVy = 0
+        land(math.max(0, -A.vy))
+      else
+        base = base + V(0, A.y - gY, 0)
+      end
+    elseif st.gY0 and not inWater and not st.dropT then
+      local gv = st.gVy or 0
+      local fall = st.gY0 + gv * dt - 0.5 * GRAV * dt * dt
+      if gY < fall - 0.06 and (gv > 2.5 or fall - gY > 1.2) and math.abs(st.speed) > 6 then
+        st.airS = { y = fall, vy = gv - GRAV * dt, t = 0, p0 = st.sus and st.sus.p, r0 = st.sus and st.sus.r }
+        st.airN = (st.airN or 0) + 1   -- 测试用：飞起来过几次
+        base = base + V(0, fall - gY, 0)
+      else
+        st.gVy = math.clamp((gY - st.gY0) / math.max(dt, 1e-3), -80, 80)
+      end
+    end
+    st.gY0 = gY
     if st.dropT then   -- 从艇上开下来：车底从甲板高度顺下来
       st.dropT += dt
       local k = math.clamp(st.dropT / 0.6, 0, 1)
@@ -563,6 +781,11 @@ function Drive.init(G)
       -- 悬挂：车身跟地形起伏是弹簧阻尼（坑坑洼洼的地上一颠一颠，不是硬贴上去）；加速车头抬、刹车点头、转弯往外侧倾（轮式车软一点）
       local tp = math.asin(math.clamp(base.LookVector.Y, -1, 1))
       local tr = math.asin(math.clamp(base.RightVector.Y, -1, 1))
+      local AS = st.airS
+      if AS and AS.p0 then   -- 在天上：保持起飞时的姿态，车头慢慢往下栽
+        tp = AS.p0 - math.min(0.3, 0.28 * AS.t)
+        tr = AS.r0 or tr
+      end
       local soft = tracked and 1 or 1.4
       local dynP = math.clamp(st.accel * 0.0042 * soft, -0.07, 0.07)
       local dynR = math.clamp(v * (st.yr or 0) * 0.0045 * soft, -0.06, 0.06)
@@ -623,6 +846,14 @@ function Drive.init(G)
     end
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -d.turret.trav * dt, d.turret.trav * dt)) % 360
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), 35 * dt)
+    -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
+    --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
+    if d.rws then
+      local myW, mpW = VD.rwsAim(d, base, st.ty, st.rwsPt or ap)
+      st.my = st.my + math.clamp(angDiff(st.my, myW), -d.rws.trav * dt, d.rws.trav * dt)
+      st.my = (st.my + 180) % 360 - 180
+      st.mp = approach(st.mp, mpW, d.rws.rate * dt)
+    end
   end
 
   local function weaponId() return st.d.weapons[st.wi] end
@@ -637,11 +868,23 @@ function Drive.init(G)
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
     st.next[wid] = t + w.rate
     local base = st.root * CF(0, -st.d.H / 2, 0)
-    local mz = VD.muzzle(st.d, base, st.ty, st.gp, (w.kind == "gun" and st.d.coax) and "coax" or nil)
-    G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt })
+    local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
+    -- 开火这一刻的炮塔、炮管、机枪塔角度一起发过去：服务器按它摆好炮管再算炮口（用户：弹道顺着枪管和炮管、开火位置和枪口对上）
+    G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp })
+    if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
+      local dir = mz.LookVector
+      local ex = { G.viewFolder, ownBox, st.em }
+      if me.Character then table.insert(ex, me.Character) end
+      aimParams.FilterDescendantsInstances = ex
+      local res = workspace:Raycast(mz.Position, dir * (w.range or 900), aimParams)
+      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
+    end
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+      -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
+      st.kick = (w.dmg > 300) and 1 or 0.35
+      st.fireT = t
     end
     if ammo then   -- 本地先扣（服务器的数半秒后来校正）
       ammo[1] -= 1
@@ -652,6 +895,8 @@ function Drive.init(G)
       end
     end
   end
+
+  G.driveTryFire = tryFire   -- 测试用（tools/test/ia_rws.luau）
 
   ---------------------------------------------------------------- 手机：方向键、开火、烟幕、瞄准镜、模式、下车
 
@@ -701,16 +946,17 @@ function Drive.init(G)
     if gp or not st then return end
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      if G.interiorHover and G.interiorHover() then return end   -- 车里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
       tryFire()
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
       toggleSight()
-    elseif k == Enum.KeyCode.V or k == Enum.KeyCode.N then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热
+    elseif k == Enum.KeyCode.V or (k == Enum.KeyCode.N and st.sight) then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热（没开镜时 N 是夜视仪，Night.lua）
       nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two then
-      local i = (k == Enum.KeyCode.One) and 1 or 2
+    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three then   -- 3：改装的车顶加特林
+      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or 3)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
@@ -756,12 +1002,16 @@ function Drive.init(G)
     local om = ownModel()
     if om and om.Parent ~= ownBox then om.Parent = ownBox end
     st.locked = vs.locked
-    -- 镜头转动
+    -- 镜头转动（坐在车里看的时候鼠标归内饰的镜头：Interior.lua，炮塔不跟着转）
     UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+    -- 车里的观瞄设备（车长热像仪 / 周视镜、CROWS……）开着时也算在车里：鼠标归那个设备，炮塔守着炮长原来的准星
+    local inside = G.interiorOn and (G.interiorOn() or G.interiorOptic ~= nil) and not st.sight
     local md = UIS:GetMouseDelta()
     local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or 1)
-    st.camYaw -= md.X * sens
-    st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
+    if not inside then
+      st.camYaw -= md.X * sens
+      st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
+    end
     -- 车
     if st.locked then   -- 在气垫艇上：跟着服务器
       st.root = st.em.Root.CFrame
@@ -769,6 +1019,7 @@ function Drive.init(G)
       st.pos = base.Position
       local look = base.LookVector
       st.yaw = math.atan2(-look.X, -look.Z)
+      st.travel, st.airS = nil, nil
       st.speed = 0
     else
       physics(dt)
@@ -790,28 +1041,41 @@ function Drive.init(G)
       st.aimPt = res and res.Position or (o + want * 4000)
     else
       local center = st.root.Position + V(0, d.H * 0.4, 0)
-      local dist = d.L * 1.25 + 14
-      local up = d.H * 0.6
+      -- 用户 11-19（MWT 截图）：开坦克时镜头离车近一点、从后上方往下看——车占画面四成来宽、在下半屏（原来 L × 1.25 + 14，车只占两成）
+      local dist = d.L * 0.62 + 8
+      local up = d.H * 0.6 + dist * 0.18
       if st.hv then   -- 开着气垫艇：镜头拉远、抬高，整条艇在画面里
         local L = VD.LCAC
         dist, up = L.size.Z * 1.15 + 18, d.H * 0.6 + 8
       end
-      local camPos = center + dirCam:VectorToWorldSpace(V(0, 0, dist)) + V(0, up, 0)
-      -- 镜头别钻进山坡、房子：从车往镜头打一条射线，碰到了就拉近
-      local off = camPos - center
-      if off.Magnitude > 1 then
-        local hit = workspace:Raycast(center, off, camParams)
-        if hit then camPos = center + off.Unit * math.max(4, (hit.Position - center).Magnitude - 1.5) end
-      end
-      -- 越快视野越宽一点、轻轻抖（气垫艇上抖得少）
+      -- 弹簧臂（VehCam.lua，用户 11-20：照 UE5 的水平升级）：跟随有惯性、加速往后坠、刹车往前冲、落地一沉，臂碰到山坡房子平滑缩近；
+      --   路面越颠镜头越抖（石头地 > 草地 > 土路），越快视野越宽；镜头跟着车身侧倾歪一点
       local spd = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.3)
-      local amp = 0.0022 * spd * (st.hv and 0.4 or 1)
-      local tt = os.clock()
-      cam.CFrame = CFrame.lookAt(camPos, camPos + dirCam.LookVector) * CFrame.Angles(math.noise(tt * 9, 0.3) * amp, math.noise(tt * 9, 5.7) * amp, 0)
-      cam.FieldOfView = cam.FieldOfView + ((70 + 7 * spd) - cam.FieldOfView) * math.min(1, dt * 4)
-      st.aimPt = aimPoint()
+      local p3 = st.root.Position
+      st.vel3 = st.lastP3 and (p3 - st.lastP3) / math.max(dt, 1e-3) or V()
+      st.lastP3 = p3
+      local rough = (st.surf and st.surf.rough or 0.7) * (st.hv and 0.35 or 1) * (st.airS and 0.2 or 1)
+      local camCF, camShake, fov = G.vehCam({ key = "drive", pivot = center, dir = dirCam, dist = dist, up = up, vel = st.vel3, dt = dt,
+        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = 70, fovK = 7, pushK = 0.055, maxPush = 3 })
+      cam.CFrame = camCF
+      cam.FieldOfView = fov
+      st.camShake = camShake
+      if not inside or not st.aimPt then st.aimPt = aimPoint() end
     end
     aimTurret(dt)
+    -- 路面颠簸的细抖（瞄准、炮塔都按没晃的镜头算过了）
+    if st.camShake and not st.sight then cam.CFrame = cam.CFrame * st.camShake end
+    -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
+    st.kick = math.max(0, (st.kick or 0) - dt * 2.4)
+    if st.kick > 0 then
+      local k = st.kick * st.kick
+      local tt = os.clock()
+      if st.sight then
+        cam.CFrame = cam.CFrame * CFrame.Angles(k * 0.05 + math.noise(tt * 26, 1.3) * k * 0.012, math.noise(tt * 26, 4.1) * k * 0.012, math.noise(tt * 21, 8.2) * k * 0.02)
+      else
+        cam.CFrame = cam.CFrame * CF(0, k * 0.5, k * 2.2) * CFrame.Angles(k * 0.035, 0, math.noise(tt * 18, 2.9) * k * 0.02)
+      end
+    end
     do   -- 发动机声
       local thrK = (UIS:IsKeyDown(Enum.KeyCode.W) or UIS:IsKeyDown(Enum.KeyCode.S)) and 1 or ((G.touchDrive and G.touchDrive.thr ~= 0) and 1 or 0)
       engineStep(dt, thrK, math.abs(st.speed) / math.max(d.speed, 1))
@@ -823,16 +1087,16 @@ function Drive.init(G)
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then
       st.sendT = 1 / 15
-      G.R.Drive:FireServer({ op = "state", cf = st.root, ty = st.ty, gp = st.gp, sp = st.speed })
+      G.R.Drive:FireServer({ op = "state", cf = st.root, ty = st.ty, gp = st.gp, sp = st.speed, my = d.rws and st.my or nil, mp = d.rws and st.mp or nil })
     end
     -- 炮现在指着哪（追尾镜头里画一个黄十字）
     local base = st.root * CF(0, -d.H / 2, 0)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
     local sp, on = cam:WorldToViewportPoint(gp)
-    gunMark.Visible = on and not st.sight
+    gunMark.Visible = on and not st.sight and not G.vehHudOn and not inside
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
-    cross.Visible = not st.sight
+    cross.Visible = not st.sight and not G.vehHudOn and not inside
     -- 仪表
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1

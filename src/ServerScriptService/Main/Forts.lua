@@ -55,7 +55,7 @@ function Forts.init(G)
   -- 钢刺猬：三根互相垂直的工字钢，体对角线竖着（三个尖着地、三个尖朝天），高约 4 格（1.4 米）
   local HOG_R = CFrame.fromAxisAngle(V(-1, 0, 1).Unit, math.acos(1 / math.sqrt(3)))
   local function hedgehog(f, x, z, rot)
-    local y = math.max(Map.height(x, z), -1.4)
+    local y = math.max(Map.height(x, z), -2.2)   -- 立在海底（FortDefs 摆的时候已经避开了两格以上的深水）
     local cf = CF(x, y + 2.05, z) * CFrame.Angles(0, rot, 0) * HOG_R
     local col = RGB(84, 70, 60)
     part(f, V(6.4, 0.42, 0.42), cf, col, MAT.CorrodedMetal, true)

@@ -29,7 +29,7 @@ local P = G.P[me]
 local C = T.C
 
 print("① 终端前放出无人机：人原地端起平板，不藏、不挪进机身")
-T.act("deploy", "rifle", (side == "atk") and "af2" or "point.D")
+T.act("deploy", "rifle", (side == "atk") and "af2" or "afield")
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 -- 模拟器的角色没有胳膊：补一副 R15 的上身和胳膊（肩、肘关节），看平板姿势改没改关节

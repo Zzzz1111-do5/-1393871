@@ -36,6 +36,7 @@ local task = {}
 local function newThread(f, sd)
   local co = coroutine.create(f)
   sideOf[co] = sd or side()
+  if R.sampler then debug.sethook(co, R.sampler, "", 997) end   -- 按行采样（tools/mock/perf.lua）
   return co
 end
 R.newThread = newThread
@@ -283,11 +284,47 @@ function CFm.PointToWorldSpace(c, v)
   return c * v
 end
 function CFm.PointToObjectSpace(c, v) return CFm.Inverse(c) * v end
+-- 旋转按四元数球面插值（和真 Roblox 一样；逐分量插值转得多时会把零件压扁）
+local function m2q(m)
+  local tr = m[1] + m[5] + m[9]
+  local w, x, y, z
+  if tr > 0 then
+    local s = math.sqrt(tr + 1) * 2
+    w, x, y, z = 0.25 * s, (m[8] - m[6]) / s, (m[3] - m[7]) / s, (m[4] - m[2]) / s
+  elseif m[1] > m[5] and m[1] > m[9] then
+    local s = math.sqrt(1 + m[1] - m[5] - m[9]) * 2
+    w, x, y, z = (m[8] - m[6]) / s, 0.25 * s, (m[2] + m[4]) / s, (m[3] + m[7]) / s
+  elseif m[5] > m[9] then
+    local s = math.sqrt(1 + m[5] - m[1] - m[9]) * 2
+    w, x, y, z = (m[3] - m[7]) / s, (m[2] + m[4]) / s, 0.25 * s, (m[6] + m[8]) / s
+  else
+    local s = math.sqrt(1 + m[9] - m[1] - m[5]) * 2
+    w, x, y, z = (m[4] - m[2]) / s, (m[3] + m[7]) / s, (m[6] + m[8]) / s, 0.25 * s
+  end
+  return w, x, y, z
+end
+local function q2m(w, x, y, z)
+  return { 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+    2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+    2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y) }
+end
 function CFm.Lerp(a, b, t)
   if not isCF(b) then error("CFrame:Lerp 要 CFrame", 2) end
-  local m = {}
-  for i = 1, 9 do m[i] = a.m[i] + (b.m[i] - a.m[i]) * t end
-  return setmetatable({ p = a.p:Lerp(b.p, t), m = m }, CF)
+  local aw, ax, ay, az = m2q(a.m)
+  local bw, bx, by, bz = m2q(b.m)
+  local d = aw * bw + ax * bx + ay * by + az * bz
+  if d < 0 then bw, bx, by, bz, d = -bw, -bx, -by, -bz, -d end
+  local k0, k1
+  if d > 0.9995 then
+    k0, k1 = 1 - t, t
+  else
+    local th = math.acos(math.min(1, d))
+    local sn = math.sin(th)
+    k0, k1 = math.sin((1 - t) * th) / sn, math.sin(t * th) / sn
+  end
+  local w, x, y, z = aw * k0 + bw * k1, ax * k0 + bx * k1, ay * k0 + by * k1, az * k0 + bz * k1
+  local n = math.sqrt(w * w + x * x + y * y + z * z)
+  return setmetatable({ p = a.p:Lerp(b.p, t), m = q2m(w / n, x / n, y / n, z / n) }, CF)
 end
 function CFm.GetComponents(c) return c.p._x, c.p._y, c.p._z, unpack(c.m) end
 CFm.components = CFm.GetComponents
@@ -330,13 +367,22 @@ local function rotX(a) local c, s = math.cos(a), math.sin(a) return { 1, 0, 0, 0
 local function rotY(a) local c, s = math.cos(a), math.sin(a) return { c, 0, s, 0, 1, 0, -s, 0, c } end
 local function rotZ(a) local c, s = math.cos(a), math.sin(a) return { c, -s, 0, s, c, 0, 0, 0, 1 } end
 local CFrame = {}
-function CFrame.new(a, b, c)
+function CFrame.new(a, b, c, qx, qy, qz, qw)
   if a == nil then return cf(0, 0, 0) end
   if isV3(a) then
     if b ~= nil then error("这个模拟只支持 CFrame.new(Vector3)", 2) end
     return cf(a._x, a._y, a._z)
   end
   if type(a) ~= "number" or type(b) ~= "number" or type(c) ~= "number" then error("CFrame.new 参数不对", 2) end
+  if qx ~= nil then   -- 位置 + 四元数（Roblox 的 CFrame.new(x, y, z, qX, qY, qZ, qW)；原模型关键帧部件 kf 用）
+    if type(qx) ~= "number" or type(qy) ~= "number" or type(qz) ~= "number" or type(qw) ~= "number" then error("CFrame.new 四元数要四个数字", 2) end
+    local n = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    if n < 1e-12 then return cf(a, b, c) end
+    local x, y, z, w = qx / n, qy / n, qz / n, qw / n
+    return cf(a, b, c, { 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+                         2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+                         2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y) })
+  end
   return cf(a, b, c)
 end
 function CFrame.Angles(x, y, z)
@@ -408,10 +454,12 @@ local ENUMS = {
   AutomaticSize = "None X Y XY",
   ZIndexBehavior = "Global Sibling",
   ApplyStrokeMode = "Contextual Border",
+  LineJoinMode = "Round Bevel Miter",
+  ScaleType = "Stretch Slice Tile Fit Crop",
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -473,7 +521,7 @@ local Region3 = { new = function(a, b)
   return setmetatable({ CFrame = CFrame.new((a + b) / 2), Size = b - a, _min = a, _max = b }, { __type = "Region3" })
 end }
 R.Region3 = Region3
-local BRICK = { ["Bright red"] = { 196, 40, 28 }, ["Bright blue"] = { 13, 105, 172 }, ["Really red"] = { 255, 0, 0 }, ["Really blue"] = { 0, 0, 255 },
+local BRICK = { ["Bright red"] = { 196, 40, 28 }, ["Bright blue"] = { 13, 105, 172 }, ["Bright green"] = { 75, 151, 75 }, ["Really red"] = { 255, 0, 0 }, ["Really blue"] = { 0, 0, 255 },
   ["Medium stone grey"] = { 163, 162, 165 }, ["White"] = { 242, 243, 243 }, ["Black"] = { 27, 42, 53 }, ["Bright orange"] = { 218, 133, 65 }, ["Navy blue"] = { 0, 32, 96 },
   ["Crimson"] = { 151, 0, 0 }, ["Deep orange"] = { 255, 176, 0 }, ["Cyan"] = { 4, 175, 236 }, ["Lime green"] = { 0, 255, 0 }, ["Institutional white"] = { 248, 248, 248 } }
 local BrickColor = { new = function(name)
@@ -588,12 +636,50 @@ local function newSig()
     for _, c in ipairs(s.conns) do if c.on then list[#list + 1] = c end end
     for _, c in ipairs(list) do
       local co = newThread(c.f, c.side)
-      resume(co, ...)
+      if R.prof then   -- 测耗时（tools/mock/perf.lua）：按回调函数定义的位置记真实 CPU 时间（射线另算：模拟器的射线逐个零件试，比真的慢几百倍）
+        local t0, r0, n0 = os.clock(), R.rayT, R.rayN
+        resume(co, ...)
+        local key = c.key
+        if not key then
+          local info = debug.getinfo(c.f, "S")
+          key = (((info.source or "?"):match("([^/]+)$")) or "?") .. ":" .. tostring(info.linedefined)
+          for i = 1, 8 do   -- G.frameConn(名字, 函数) 连的：按名字记
+            local n, v = debug.getupvalue(c.f, i)
+            if not n then break end
+            if n == "name" and type(v) == "string" then key = "帧:" .. v break end
+          end
+          c.key = key
+        end
+        R.prof[key] = (R.prof[key] or 0) + (os.clock() - t0) - (R.rayT - r0)
+        R.profRay[key] = (R.profRay[key] or 0) + (R.rayN - n0)
+      else
+        resume(co, ...)
+      end
     end
   end
   return s
 end
 R.newSig = newSig
+
+-- 操作计数（tools/mock/perf.lua）：R.ops 是表时，记每个操作是哪一边、游戏代码哪一行做的
+--   真 Roblox 里贵的是实例的建、删、改属性、射线、远程事件的数据量——模拟器的 CPU 时间不准，数次数
+R.rayT, R.rayN, R.profRay = 0, 0, {}
+local function opAt(kind, w)
+  local ops = R.ops
+  local where = "?"
+  for lv = 3, 18 do
+    local info = debug.getinfo(lv, "Sl")
+    if not info then break end
+    local src = info.source or ""   -- 不用 short_src：只有 60 个字，长路径会被截掉开头的 /src/
+    if src:find("/src/", 1, true) then
+      where = (src:match("([^/]+)$") or src) .. ":" .. tostring(info.currentline)
+      break
+    end
+  end
+  local k = side() .. "\t" .. kind .. "\t" .. where
+  ops[k] = (ops[k] or 0) + (w or 1)
+end
+R.opAt = opAt
 
 local function make(cls)
   local o = setmetatable({ _cls = cls, _p = {}, _kids = {}, _attr = {}, _ev = {}, _chg = {}, _dead = false }, INST)
@@ -604,6 +690,14 @@ end
 local function fire(o, prop)
   local s = o._chg[prop]
   if s then s:Fire() end
+end
+
+local function allBelow(o, out)
+  for _, c in ipairs(o._kids) do
+    out[#out + 1] = c
+    allBelow(c, out)
+  end
+  return out
 end
 
 local function setParent(o, p)
@@ -625,6 +719,16 @@ local function setParent(o, p)
   if p then table.insert(p._kids, o) end
   if old and old._ev.ChildRemoved then old._ev.ChildRemoved:Fire(o) end
   if p and p._ev.ChildAdded then p._ev.ChildAdded:Fire(o) end
+  -- DescendantAdded：新放进来的这个和它的子孙，对每一层祖先各发一次（有人连了才算）
+  local a = p
+  while a do
+    local ev = a._ev.DescendantAdded
+    if ev then
+      ev:Fire(o)
+      for _, d in ipairs(allBelow(o, {})) do ev:Fire(d) end
+    end
+    a = rawget(a, "_parent")
+  end
   if o._ev.AncestryChanged then o._ev.AncestryChanged:Fire(o, p) end
 end
 
@@ -676,6 +780,7 @@ INST.__index = function(o, k)
 end
 
 INST.__newindex = function(o, k, v)
+  if R.ops then opAt((k == "Parent" and (v == nil and "unparent " or "parent ") or ("set " .. k .. " ")) .. o._cls) end
   if k == "Parent" then return setParent(o, v) end
   if k == "Name" then
     if type(v) ~= "string" then error("Name 要字符串", 2) end
@@ -725,8 +830,11 @@ local function descendants(o, out)
 end
 
 local base = {}
+local destroyDepth = 0
 function base.Destroy(o)
   if o._dead then return end
+  if R.ops and destroyDepth == 0 then opAt("destroy " .. o._cls, 1 + #descendants(o, {})) end
+  destroyDepth = destroyDepth + 1
   for _, c in ipairs({ unpack(o._kids) }) do base.Destroy(c) end
   if rawget(o, "_parent") then setParent(o, nil) end
   o._dead = true
@@ -734,9 +842,11 @@ function base.Destroy(o)
     for _, c in ipairs(s.conns) do c.on = false end
   end
   for _, set in pairs(tags) do set[o] = nil end
+  destroyDepth = destroyDepth - 1
 end
 local CLONE_SKIP = { Player = true, Backpack = true, PlayerGui = true }
 function base.Clone(o)
+  if R.ops then opAt("clone " .. o._cls, 1 + #descendants(o, {})) end
   if o._p.Archivable == false or CLONE_SKIP[o._cls] then return nil end
   local map = {}
   local function copy(src)
@@ -766,8 +876,15 @@ end
 function base.ClearAllChildren(o)
   for _, c in ipairs({ unpack(o._kids) }) do base.Destroy(c) end
 end
-function base.GetChildren(o) return { unpack(o._kids) } end
-function base.GetDescendants(o) return descendants(o, {}) end
+function base.GetChildren(o)
+  if R.ops then opAt("GetChildren", #o._kids) end
+  return { unpack(o._kids) }
+end
+function base.GetDescendants(o)
+  local out = descendants(o, {})
+  if R.ops then opAt("GetDescendants", #out) end
+  return out
+end
 function base.FindFirstChild(o, name, rec)
   if type(name) ~= "string" then error("FindFirstChild 要名字字符串", 2) end
   for _, c in ipairs(o._kids) do if c._p.Name == name then return c end end
@@ -860,7 +977,7 @@ function base.GetFullName(o)
   end
   return table.concat(names, ".")
 end
-def("Instance", nil, { Archivable = { T.bool, true } }, { methods = base, noCreate = true, events = { ChildAdded = true, ChildRemoved = true, AncestryChanged = true, Destroying = true } })
+def("Instance", nil, { Archivable = { T.bool, true } }, { methods = base, noCreate = true, events = { ChildAdded = true, ChildRemoved = true, AncestryChanged = true, Destroying = true, DescendantAdded = true, DescendantRemoving = true } })
 
 -- 物体
 local pv = {}
@@ -887,6 +1004,7 @@ def("BasePart", "PVInstance", {
   TopSurface = { E("SurfaceType"), Enum.SurfaceType.Smooth }, BottomSurface = { E("SurfaceType"), Enum.SurfaceType.Smooth },
   Orientation = { T.Vector3, v3() },
   LocalTransparencyModifier = { T.number, 0 },
+  AssemblyLinearVelocity = { T.Vector3, v3() },   -- 模拟器没有物理：只记着（跳伞时服务器给人一个初速度）
 }, { events = { Touched = true, TouchEnded = true }, ro = { Position = function(o) return partCF(o).Position end }, noCreate = true })
 def("Part", "BasePart", { Shape = { E("PartType"), Enum.PartType.Block } })
 def("Terrain", "BasePart", {
@@ -912,6 +1030,15 @@ def("Terrain", "BasePart", {
   end,
   FillCylinder = function(_, c, h, r, mat)
     if not isCF(c) or type(h) ~= "number" or type(r) ~= "number" or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillCylinder(CFrame, 高, 半径, Material) 参数不对", 2) end
+  end,
+  -- 把一块（按 4 格对齐的 Region3）里的某种材质换成另一种（弹坑烧焦：Battle.lua）
+  ReplaceMaterial = function(_, region, res, from, to)
+    if typeof(region) ~= "Region3" or res ~= 4 or typeof(from) ~= "EnumItem" or typeof(to) ~= "EnumItem" then error("ReplaceMaterial(Region3, 4, Material, Material) 参数不对", 2) end
+    local a, b = region._min, region._max
+    for _, v in ipairs({ a._x, a._y, a._z, b._x, b._y, b._z }) do
+      if math.abs(v / 4 - math.floor(v / 4 + 0.5)) > 1e-6 then error("ReplaceMaterial 的区域要按 4 格对齐", 2) end
+    end
+    table.insert(R.terrainFills, { k = "replace", p = region.CFrame.Position, size = region.Size, mat = to.Name, from = from.Name })
   end,
   FillWedge = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillWedge(CFrame, Vector3, Material) 参数不对", 2) end
@@ -953,6 +1080,7 @@ def("ScreenGui", "LayerCollector", { IgnoreGuiInset = { T.bool, false }, Display
 def("SurfaceGui", "LayerCollector", {
   Face = { E("NormalId"), Enum.NormalId.Front }, SizingMode = { E("SurfaceGuiSizingMode"), Enum.SurfaceGuiSizingMode.FixedSize }, PixelsPerStud = { T.number, 50 },
   LightInfluence = { T.number, 1 }, Adornee = { T.Instance, nil }, AlwaysOnTop = { T.bool, false }, CanvasSize = { T.Vector2, newV2(800, 600) },
+  ClipsDescendants = { T.bool, true }, Brightness = { T.number, 1 }, MaxDistance = { T.number, 0 },   -- 载具内饰的屏幕（Interior.lua）
 })
 def("BillboardGui", "LayerCollector", {
   Size = { T.UDim2, newUDim2(0, 0, 0, 0) }, StudsOffset = { T.Vector3, v3() }, StudsOffsetWorldSpace = { T.Vector3, v3() }, ExtentsOffset = { T.Vector3, v3() },
@@ -982,17 +1110,31 @@ local textProps = {
   TextTruncate = { E("TextTruncate"), Enum.TextTruncate.None }, LineHeight = { T.number, 1 }, MaxVisibleGraphemes = { T.number, -1 },
 }
 def("TextLabel", "GuiObject", textProps)
+-- 图片（小地图的卫星图 MapUI.lua）：只记属性，不画
+def("ImageLabel", "GuiObject", { Image = { T.string, "" }, ImageColor3 = { T.Color3, newC3(1, 1, 1) }, ImageTransparency = { T.number, 0 },
+  ImageContent = { function() return true end, nil }, ScaleType = { E("ScaleType"), Enum.ScaleType.Stretch }, TileSize = { T.UDim2, newUDim2(1, 0, 1, 0) } })
 local tb = {}
 for k, v in pairs(textProps) do tb[k] = v end
 tb.AutoButtonColor = { T.bool, true }
 tb.Modal = { T.bool, false }
 def("TextButton", "GuiObject", tb, { events = { Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true } })
+-- 输入框（改枪界面的改枪码）：只记属性；没人点进去，一直不是焦点
+local tbx = {}
+for k, v in pairs(textProps) do tbx[k] = v end
+tbx.PlaceholderText = { T.string, "" }
+tbx.PlaceholderColor3 = { T.Color3, newC3(0.7, 0.7, 0.7) }
+tbx.ClearTextOnFocus = { T.bool, true }
+tbx.TextEditable = { T.bool, true }
+tbx.MultiLine = { T.bool, false }
+def("TextBox", "GuiObject", tbx, { events = { FocusLost = true, Focused = true }, methods = {
+  IsFocused = function() return false end, CaptureFocus = function() end, ReleaseFocus = function() end } })
 def("UICorner", "Instance", { CornerRadius = { T.UDim, newUDim(0, 8) } })
 def("UIAspectRatioConstraint", "Instance", { AspectRatio = { T.number, 1 }, AspectType = { E("AspectType"), Enum.AspectType.FitWithinMaxSize }, DominantAxis = { E("DominantAxis"), Enum.DominantAxis.Width } })
 def("WeldConstraint", "Instance", { Part0 = { T.Instance, nil }, Part1 = { T.Instance, nil }, Enabled = { T.bool, true } })
 def("BodyColors", "Instance", { HeadColor3 = { T.Color3, newC3(1, 1, 1) }, TorsoColor3 = { T.Color3, newC3(1, 1, 1) }, LeftArmColor3 = { T.Color3, newC3(1, 1, 1) }, RightArmColor3 = { T.Color3, newC3(1, 1, 1) }, LeftLegColor3 = { T.Color3, newC3(1, 1, 1) }, RightLegColor3 = { T.Color3, newC3(1, 1, 1) } })
 def("Team", "Instance", { TeamColor = { function(v) return typeof(v) == "BrickColor" end, nil }, AutoAssignable = { T.bool, true } })
-def("UIStroke", "Instance", { Color = { T.Color3, newC3(0, 0, 0) }, Thickness = { T.number, 1 }, Transparency = { T.number, 0 }, ApplyStrokeMode = { E("ApplyStrokeMode"), Enum.ApplyStrokeMode.Contextual } })
+def("UIStroke", "Instance", { Color = { T.Color3, newC3(0, 0, 0) }, Thickness = { T.number, 1 }, Transparency = { T.number, 0 }, ApplyStrokeMode = { E("ApplyStrokeMode"), Enum.ApplyStrokeMode.Contextual },
+  LineJoinMode = { E("LineJoinMode"), Enum.LineJoinMode.Round } })
 def("UIListLayout", "Instance", {
   FillDirection = { E("FillDirection"), Enum.FillDirection.Vertical }, HorizontalAlignment = { E("HorizontalAlignment"), Enum.HorizontalAlignment.Left },
   VerticalAlignment = { E("VerticalAlignment"), Enum.VerticalAlignment.Top }, Padding = { T.UDim, newUDim(0, 0) }, SortOrder = { E("SortOrder"), Enum.SortOrder.Name },
@@ -1026,6 +1168,7 @@ def("BloomEffect", "PostEffect", { Intensity = { T.number, 1 }, Size = { T.numbe
 def("ColorCorrectionEffect", "PostEffect", { Brightness = { T.number, 0 }, Contrast = { T.number, 0 }, Saturation = { T.number, 0 }, TintColor = { T.Color3, newC3(1, 1, 1) } })
 def("SunRaysEffect", "PostEffect", { Intensity = { T.number, 0.25 }, Spread = { T.number, 1 } })
 def("BlurEffect", "PostEffect", { Size = { T.number, 24 } })
+def("DepthOfFieldEffect", "PostEffect", { FarIntensity = { T.number, 0.75 }, FocusDistance = { T.number, 0.05 }, InFocusRadius = { T.number, 10 }, NearIntensity = { T.number, 0.75 } })   -- 开镜时近处的镜身糊掉（Scope.lua）
 def("ParticleEmitter", "Instance", {
   Enabled = { T.bool, true }, Rate = { T.number, 5 }, Lifetime = { T.NumberRange, NumberRange.new(5, 10) }, Speed = { T.NumberRange, NumberRange.new(5) },
   SpreadAngle = { T.Vector2, newV2(0, 0) }, Size = { T.NumberSequence, NumberSequence.new(1) }, Transparency = { T.NumberSequence, NumberSequence.new(0) },
@@ -1042,13 +1185,14 @@ def("Beam", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Width0 = { T.number, 1 }, Width1 = { T.number, 1 }, LightEmission = { T.number, 0 }, FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Segments = { T.number, 10 },
   CurveSize0 = { T.number, 0 }, CurveSize1 = { T.number, 0 }, Texture = { T.string, "" }, TextureSpeed = { T.number, 1 }, TextureLength = { T.number, 1 }, ZOffset = { T.number, 0 },
+  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 },
 })
 def("SpecialMesh", "Instance", { MeshType = { E("MeshType"), Enum.MeshType.Head }, Scale = { T.Vector3, v3(1, 1, 1) }, Offset = { T.Vector3, v3() },
   MeshId = { T.string, "" }, TextureId = { T.string, "" }, VertexColor = { T.Vector3, v3(1, 1, 1) } })
 def("Trail", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Lifetime = { T.number, 2 }, MinLength = { T.number, 0.1 }, MaxLength = { T.number, 0 }, WidthScale = { T.NumberSequence, NumberSequence.new(1) }, LightEmission = { T.number, 0 },
-  FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 },
+  FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 }, LightInfluence = { T.number, 1 },
 }, { methods = { Clear = function() end } })
 def("PointLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 8 }, Color = { T.Color3, newC3(1, 1, 1) }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
 def("Highlight", "Instance", {
@@ -1072,7 +1216,8 @@ def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
-  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false } }, { events = { Died = true, HealthChanged = true }, methods = {
+  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false },
+  FloorMaterial = { E("Material"), Enum.Material.Grass } }, { events = { Died = true, HealthChanged = true }, methods = {   -- 脚下的材质（跳起来是 Air）：模拟器里人总站在地上
   -- 跟真机一样：拿起一件之前，手里原来的放回背包；UnequipTools 把手里的都放回背包
   EquipTool = function(o, t)
     if not t then return end
@@ -1102,6 +1247,24 @@ def("LuaSourceContainer", "Instance", { Source = { T.string, "" } }, { noCreate 
 def("ModuleScript", "LuaSourceContainer", {})
 def("Script", "LuaSourceContainer", { Disabled = { T.bool, false } })
 def("LocalScript", "Script", {})
+local function bytesOf(v, depth)
+  local tv = type(v)
+  if tv == "string" then return #v + 2 end
+  if tv == "number" then return 9 end
+  if tv == "boolean" or tv == "nil" then return 1 end
+  if tv == "table" then
+    if (depth or 0) > 12 then return 4 end
+    local mt = getmetatable(v)
+    if mt == V3 then return 13 end
+    if mt == CF then return 49 end
+    if mt == INST then return 8 end
+    local n = 2
+    for k, x in pairs(v) do n = n + bytesOf(k, (depth or 0) + 1) + bytesOf(x, (depth or 0) + 1) end
+    return n
+  end
+  return 8
+end
+R.bytesOf = bytesOf
 local function ser(v, seen, path, forStore)
   local tv = typeof(v)
   if tv == "function" or tv == "thread" then error("远程事件 / 存档里不能传 " .. tv .. "（" .. path .. "）", 0) end
@@ -1128,6 +1291,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
   FireServer = function(o, ...)
     if side() ~= "client" then error("FireServer 只能在客户端调用", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote↑ " .. o._p.Name) opAt("bytes↑ " .. o._p.Name, bytesOf(args)) end
     local pl = R.localPlayer
     R.up = R.up or {}
     table.insert(R.up, { name = o._p.Name, args = args })
@@ -1137,6 +1301,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
     if side() ~= "server" then error("FireClient 只能在服务器调用", 2) end
     if typeof(pl) ~= "Instance" or pl._cls ~= "Player" then error("FireClient 第一个参数要 Player", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote→1 " .. o._p.Name) opAt("bytes→1 " .. o._p.Name, bytesOf(args)) end
     table.insert(R.sent, { name = o._p.Name, args = args })
     if pl == R.localPlayer then
       local co = newThread(function() o.OnClientEvent:Fire(unpack(args)) end, "client")
@@ -1146,6 +1311,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
   FireAllClients = function(o, ...)
     if side() ~= "server" then error("FireAllClients 只能在服务器调用", 2) end
     local args = ser({ ... }, {}, o._p.Name, false)
+    if R.ops then opAt("remote→all " .. o._p.Name) opAt("bytes→all " .. o._p.Name, bytesOf(args)) end
     table.insert(R.sent, { name = o._p.Name, args = args, all = true })
     if R.localPlayer then
       local co = newThread(function() o.OnClientEvent:Fire(unpack(args)) end, "client")
@@ -1157,6 +1323,7 @@ def("RemoteEvent", "Instance", {}, { events = { OnServerEvent = true, OnClientEv
 ------------------------------------------------------------ 服务和游戏
 
 function Instance.new(cls, parent)
+  if R.ops then opAt("new " .. cls) end
   local c = CLASS[cls]
   if not c or c.noCreate then error("Instance.new：不能创建 " .. tostring(cls), 2) end
   local o = make(cls)
@@ -1242,11 +1409,17 @@ local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity 
     end
   end,
   Raycast = function(_, origin, dir, params)
+    if R.ops and isV3(dir) then opAt("raycast") opAt("raylen", dir.Magnitude) end
     if not isV3(origin) or not isV3(dir) then error("Raycast(Vector3, Vector3, RaycastParams)", 2) end
     if params ~= nil and typeof(params) ~= "RaycastParams" then error("Raycast 第三个参数要 RaycastParams", 2) end
     local hit = R.nextRay
     R.nextRay = nil
-    if not hit then return R.castRay(origin, dir, params) end
+    if not hit then
+      local t0 = os.clock()
+      local res = R.castRay(origin, dir, params)
+      R.rayT, R.rayN = R.rayT + (os.clock() - t0), R.rayN + 1
+      return res
+    end
     if hit and params and params.FilterType == Enum.RaycastFilterType.Include then
       local ok = false
       for _, inst in ipairs(params.FilterDescendantsInstances) do
@@ -1302,7 +1475,7 @@ function R.castRay(origin, dir, params)
   local inc = params and params.FilterType == Enum.RaycastFilterType.Include
   local list = params and params.FilterDescendantsInstances or {}
   for _, o in ipairs(descendants(ws, {})) do
-    if isA(o._cls, "BasePart") and o._cls ~= "Terrain" and o._p.CanQuery ~= false and not (o._p.Transparency == 1 and o._p.CanCollide == false and o._p.Name ~= "Root") then
+    if isA(o._cls, "BasePart") and o._cls ~= "Terrain" and o._p.CanQuery ~= false and not (o._p.Transparency == 1 and o._p.CanCollide == false and o._p.Name ~= "Root" and o._p.Name ~= "Hit") then
       local ok = true
       if params then
         local u = underAny(o, list)
@@ -1406,6 +1579,12 @@ local function editableMesh()
   end
   function m.AddNormal(self, n) if self ~= m or (n ~= nil and not isV3(n)) then error("EditableMesh:AddNormal(Vector3)", 2) end m.nn = m.nn + 1 return m.nn end
   function m.AddUV(self, uv) if self ~= m or typeof(uv) ~= "Vector2" then error("EditableMesh:AddUV(Vector2)", 2) end m.nu = m.nu + 1 return m.nu end
+  m.nc = 0
+  function m.AddColor(self, c, a)   -- 顶点色（瞄准镜画中画的地形网格）
+    if self ~= m or typeof(c) ~= "Color3" or type(a) ~= "number" then error("EditableMesh:AddColor(Color3, 透明度)", 2) end
+    m.nc = m.nc + 1
+    return m.nc
+  end
   function m.AddTriangle(self, a, b, c)
     for _, v in ipairs({ a, b, c }) do if type(v) ~= "number" or v < 1 or v > m.nv then error("EditableMesh:AddTriangle 顶点编号不对：" .. tostring(v), 2) end end
     m.nf = m.nf + 1
@@ -1419,6 +1598,7 @@ local function editableMesh()
   end
   m.SetFaceNormals = faceSet("Normals", "nn")
   m.SetFaceUVs = faceSet("UVs", "nu")
+  m.SetFaceColors = faceSet("Colors", "nc")
   return m
 end
 R.services.AssetService = service("AssetService", {}, { methods = {
@@ -1503,11 +1683,9 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
       return R.keys[kc.Name] == true
     end,
     GetMouseLocation = function() return R.mouseAt or newV2(640, 400) end,
-    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给，读一次清零，跟真机一样按帧算）
+    -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给；跟真机一样按帧算：R.step 开头取走，这一帧里谁读都是同一个数）
     GetMouseDelta = function()
-      local d = R.mouseDelta or newV2(0, 0)
-      R.mouseDelta = nil
-      return d
+      return R.frameDelta or newV2(0, 0)
     end,
     GetFocusedTextBox = function() return nil end,
   },
@@ -1904,7 +2082,7 @@ local function envFor(scriptInst, sd)
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
     ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
-    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end },
+    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,
     print = function(...) if R.verbose then print(...) end end,
     PROBE_SET = function(v) R.lastProbe = v end,
@@ -1977,6 +2155,7 @@ end
 
 function R.step(dt)
   clock = clock + dt
+  R.frameDelta, R.mouseDelta = R.mouseDelta, nil
   if R.localPlayer then
     local co = newThread(function() R.RenderStepped:Fire(dt) end, "client")
     resume(co)
@@ -2012,5 +2191,6 @@ R.Vector3 = Vector3
 R.Vector2 = Vector2
 R.CFrame = CFrame
 R.Instance = Instance
+R.Color3 = Color3
 R.base = base
 return R

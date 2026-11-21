@@ -7,7 +7,9 @@
 --   第一次出生：屏幕上方一块「目标与据点」说明（4 页，回车下一页、退格关掉）
 --   UI.lua 原来的顶栏、血条、兵种字，Play.lua 原来的弹药字交给这里：挪进一个关着的 ScreenGui（照样刷新，只是不画）；小地图框挪到左下
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Hud = {}
 
@@ -18,7 +20,7 @@ function Hud.init(G)
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
-  local W = Config.Weapons
+  local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local WHITE = Color3.new(1, 1, 1)
   local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
   local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
@@ -36,6 +38,12 @@ function Hud.init(G)
   end
   local function line(parent, size, pos, color, alpha, anchor) return ui.frame(parent, size, pos, color or WHITE, alpha or 0, anchor) end
   local mobile = G.mobile == true
+  local reducedMotion = false
+  pcall(function()
+    local function syncMotion() reducedMotion = GuiService.ReducedMotionEnabled end
+    syncMotion()
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(syncMotion)
+  end)
 
   -- 旧的顶栏、血条、兵种字、弹药字：收进一个关着的 ScreenGui
   local stash = Instance.new("ScreenGui")
@@ -51,7 +59,7 @@ function Hud.init(G)
   ---------------------------------------------------------------- 顶部比分
 
   local BW, BH = mobile and 470 or 600, mobile and 62 or 72
-  local top = ui.frame(G.gui, UDim2.fromOffset(BW, BH), UDim2.new(0.5, 0, 0, mobile and 4 or 10), RGB(0, 0, 0), 1, V2(0.5, 0))
+  local top = ui.frame(G.gui, UDim2.fromOffset(BW, BH), UDim2.new(0.5, 0, 0, mobile and 4 or 10), RGB(8, 17, 24), 0.3, V2(0.5, 0))
   top.Name = "ScoreBar"
   top.ZIndex = 12
   for _, a in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do   -- 四角括号
@@ -64,6 +72,7 @@ function Hud.init(G)
     local s = {}
     s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.GothamMedium, V2(left and 0 or 1, 0.5),
       left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right)
+    s.name.TextTruncate = Enum.TextTruncate.AtEnd
     s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
     local lw = mobile and 70 or 120
     s.barBg = line(top, UDim2.fromOffset(lw, 1), UDim2.new(0.5, sx * (46 + lw / 2), 0, 17), WHITE, 0.82, V2(0.5, 0.5))
@@ -72,9 +81,12 @@ function Hud.init(G)
   end
   local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
   local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  mode.TextTruncate = Enum.TextTruncate.AtEnd
   -- 比分条下面一行：现在该干什么（进攻 / 防守哪个据点，用户：玩法不够清晰）
   local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
   goal.RichText = true
+  goal.Size = UDim2.new(1, -8, 0, 18)
+  goal.TextTruncate = Enum.TextTruncate.AtEnd
   -- A～E 小菱形
   local diamonds = {}
   for i, p in ipairs(Map.POINTS) do
@@ -125,27 +137,72 @@ function Hud.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 左下雷达（用户：小地图改成雷达风格的绿色、圆形，能看到范围内的友军和敌军）
-  --   圆（UI.lua 建的 CanvasGroup 按圆角裁）里是染成墨绿的地图（北朝上、跟着人走），三道距离环、十字线、带余辉的扫描线；
-  --   亮点：友军绿、敌军红；步兵圆点、车和船方块、飞机菱形；扫描线扫过时最亮、一圈里慢慢暗下去；敌人开枪的地方闪一个红圈
+  ---------------------------------------------------------------- 右上方形小地图（用户：右上角加个正方形小地图，不要那根绕圈转的扫描线；11-19：不要黑绿，改成正常的）
+  --   方框（UI.lua 建的 CanvasGroup 裁边）里是正常颜色的地图（北朝上、跟着人走）：有 EditableImage 时是 MapPaint 画的卫星图
+  --   （暗淡、拟真：水深、沙滩、草地、土路、岩石、山体阴影，身边每像素 6.25 格），没有就是 MapUI 的「mini」色块，
+  --   淡淡的白网格、四角的取景框、白边；亮点：友军蓝、敌军红；步兵圆点、车和船方块、飞机菱形；敌人开枪的地方闪一个红圈
   --   哪些敌人上雷达见 Config.Radar（车船飞机在范围内就有；步兵要在视线里、开了枪或者被标记）
+  --   手机：右边一列是开火、换枪、夜视、战术平板的按钮，小地图还放左上
 
-  local RC = Config.Radar or { range = 520, sweep = 2.4, ping = 3 }
-  local GREEN, GDIM = RGB(90, 255, 140), RGB(40, 150, 80)
-  local FRIEND, FOE = RGB(110, 255, 150), RGB(255, 72, 58)
-  local MS = mobile and 150 or 210
+  local RC = Config.Radar or { range = 520, ping = 3 }
+  local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
+  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
+  local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
-  box.AnchorPoint = mobile and V2(0, 0) or V2(0, 1)
-  box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(0, 18, 1, -18)   -- 手机：左下是摇杆，放到左上（让开战况表按钮）
+  box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
+  box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(2, 12, 6)
-  box.BackgroundTransparency = 0.15
+  box.BackgroundColor3 = RGB(22, 36, 50)   -- 地图外面也是深海的蓝
+  box.BackgroundTransparency = 0.12
   do
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.5, 0)
+    c.CornerRadius = UDim.new(0, 3)
     c.Parent = box
   end
-  ui.stroke(box, GREEN, 1.5, 0.35)
+  ui.stroke(box, LINE, 1.5, 0.35)
+  local hudLayout = { radarRight = not mobile, radarX = mobile and 16 or 18, radarY = mobile and 118 or 18, radarSize = MS }
+  G.hudLayout = hudLayout
+  local scoreViewport, scoreRight, compactScore
+  local function layoutScore(viewport)
+    local edge = 12
+    local right = hudLayout.radarRight and (hudLayout.radarX + hudLayout.radarSize + edge) or edge
+    if mobile and viewport.Y < 360 and viewport.X > viewport.Y then right = G.infantryTouchWidth or 164 end
+    if (scoreViewport == viewport.X and scoreRight == right) or viewport.X < 1 then return end
+    scoreViewport, scoreRight = viewport.X, right
+    local width = math.max(1, math.min(BW, viewport.X - edge - right))
+    local center = math.max(edge + width / 2, math.min(viewport.X / 2, viewport.X - right - width / 2))
+    compactScore = width < 440
+    top.Size = UDim2.fromOffset(width, BH)
+    top.Position = UDim2.fromOffset(center, mobile and 4 or 10)
+    for _, sx in ipairs({ -1, 1 }) do
+      local s = sides[sx]
+      local scale = sx < 0 and 0 or 1
+      if compactScore then
+        s.name.Size = UDim2.fromOffset(math.clamp((width - 100) / 2 - 10, 0, 70), 14)
+        s.name.Position = UDim2.new(scale, -sx * 10, 0, 11)
+        s.score.Position = UDim2.new(scale, -sx * 32, 0, 31)
+        s.barBg.Visible = false
+      else
+        s.name.Size = UDim2.fromOffset(70, 14)
+        s.name.Position = UDim2.new(scale, -sx * 14, 0, 17)
+        s.score.Position = UDim2.new(scale, -sx * 110, 0, 17)
+        local railWidth = math.min(mobile and 70 or 120, width / 2 - 188)
+        s.barBg.Size = UDim2.fromOffset(railWidth, 1)
+        s.barBg.Position = UDim2.new(0.5, sx * (46 + railWidth / 2), 0, 17)
+        s.barBg.Visible = true
+      end
+    end
+    mode.Size = UDim2.fromOffset(math.max(1, math.min(170, width - 142)), 12)
+    hudLayout.scoreBottom = top.Position.Y.Offset + BH + goal.Position.Y.Offset + goal.Size.Y.Offset
+  end
+  -- 坦克瞄准镜的目镜黑框（Drive，DisplayOrder 5）会盖住半个小地图：开镜时小地图挪到上面一层（像战雷，瞄准镜里也看得到小地图）
+  local radarTop = Instance.new("ScreenGui")
+  radarTop.Name = "RadarTop"
+  radarTop.ResetOnSpawn = false
+  radarTop.IgnoreGuiInset = true
+  radarTop.DisplayOrder = 7
+  radarTop.Parent = me:WaitForChild("PlayerGui")
+  if P.feed and not mobile then P.feed.Position = UDim2.new(1, -16, 0, 18 + MS + 14) end
   -- 雷达范围跟着坐的东西变（用户：飞机的雷达有点近）：步兵 RC.range，地面载具 RC.veh，直升机 RC.heli，固定翼 RC.jet；换的时候慢慢缩放
   local curR = RC.range
   local function wantRange()
@@ -154,41 +211,35 @@ function Hud.init(G)
     if G.drive then return RC.veh or 900 end
     return RC.range
   end
-  local MAPW = 6100 * ((G.Map and G.Map.K) or 1)   -- 整张地图（6100 × K 格见方，MapUI；地图放大了 K 倍）：画多大让半径正好是雷达范围
-  local function ring(k)   -- 距离环
-    local r = ui.frame(box, UDim2.fromScale(k, k), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
-    r.ZIndex = 18
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.5, 0)
-    c.Parent = r
-    ui.stroke(r, GREEN, 1, 0.72)
+  local MAPW = 6100 * ((G.Map and G.Map.K) or 1)   -- 整张地图（6100 × K 格见方，MapUI；地图放大了 K 倍）：画多大让半边正好是雷达范围
+  -- 网格：横竖各三道淡线（四等分），中间两道稍亮；四个角上一对短线的取景框
+  for i = 1, 3 do
+    local k = i / 4
+    local a = (i == 2) and 0.82 or 0.9
+    local lv = line(box, UDim2.new(0, 1, 1, 0), UDim2.fromScale(k, 0.5), LINE, a, V2(0.5, 0.5))
+    lv.ZIndex = 18
+    local lh = line(box, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, k), LINE, a, V2(0.5, 0.5))
+    lh.ZIndex = 18
+    lv.Name, lh.Name = "RadarDeco", "RadarDeco"   -- 开坦克时小地图变圆（TankHud）：方框式的网格、取景框、读数收起
   end
-  ring(1 / 3)
-  ring(2 / 3)
-  for _, vert in ipairs({ true, false }) do   -- 十字线
-    local l = line(box, vert and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1), UDim2.fromScale(0.5, 0.5), GREEN, 0.84, V2(0.5, 0.5))
-    l.ZIndex = 18
-  end
-  -- 扫描线：一根从圆心到边的亮线 + 后面一扇越来越淡的余辉。每根线放在一个和雷达一样大、绕中心转的透明框里，
-  --   线只占框的上半截（圆心到上边），转框就是转线
-  local sweepLines = {}
-  for k = 0, 13 do
-    local holder = ui.frame(box, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), WHITE, 1, V2(0.5, 0.5))
-    holder.ZIndex = 19
-    local l = line(holder, UDim2.new(0, k == 0 and 2 or 3, 0.5, 0), UDim2.fromScale(0.5, 0), GREEN, (k == 0) and 0.05 or (0.55 + k * 0.03), V2(0.5, 0))
-    l.ZIndex = 19
-    sweepLines[k + 1] = holder
+  for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+    local ax = V2(c[1], c[2])
+    local h = line(box, UDim2.fromOffset(12, 2), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
+    local v = line(box, UDim2.fromOffset(2, 12), UDim2.new(c[1], c[1] == 0 and 4 or -4, c[2], c[2] == 0 and 4 or -4), LINE, 0.25, ax)
+    h.ZIndex, v.ZIndex = 22, 22
+    h.Name, v.Name = "RadarDeco", "RadarDeco"
   end
   local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
   blipLayer.ZIndex = 20
   local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 22
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 3), 10, GREEN, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
   north.ZIndex = 22
-  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, GREEN, NUM, V2(0.5, 1), nil, 0.4)
+  local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, LINE, NUM, V2(0.5, 1), nil, 0.4)
   heading.ZIndex = 22
-  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(40, 12), UDim2.new(0.5, MS * 0.33 - 2, 0.5, -10), 9, GDIM, NUM, V2(0, 0.5), Enum.TextXAlignment.Left, 0.6)
+  local rangeL = txt(box, math.floor(RC.range / M_PER + 0.5) .. "m", UDim2.fromOffset(52, 12), UDim2.new(1, -8, 1, -6), 9, LINE_DIM, NUM, V2(1, 1), Enum.TextXAlignment.Right, 0.6)
   rangeL.ZIndex = 22
+  north.Name, heading.Name, rangeL.Name = "RadarDeco", "RadarDeco", "RadarDeco"
 
   -- 亮点（对象池）：kind inf 圆点 / veh 方块 / air 菱形 / ping 红圈
   local pool, used = {}, 0
@@ -238,7 +289,7 @@ function Hud.init(G)
   local pings = {}         -- 敌人开枪的地方：{ pos, t }
   local rayP = RaycastParams.new()
   rayP.FilterType = Enum.RaycastFilterType.Exclude
-  local scanT, sweepA, purgeT = 0, 0, 5
+  local scanT, purgeT = 0, 5
   local function myEnt(m)
     local d = G.drive
     if d and d.em == m then return true end
@@ -247,10 +298,10 @@ function Hud.init(G)
   end
   local function scan(center, mine)
     table.clear(contacts)
-    local R2 = (curR * 1.05) ^ 2
+    local R = curR * 1.04   -- 方框：横竖各在半边宽以内（角上比边上远）
     local function add(pos, team, kind, model)
       local dx, dz = pos.X - center.X, pos.Z - center.Z
-      if dx * dx + dz * dz <= R2 then table.insert(contacts, { pos = pos, team = team, kind = kind, model = model }) end
+      if math.abs(dx) <= R and math.abs(dz) <= R then table.insert(contacts, { pos = pos, team = team, kind = kind, model = model }) end
     end
     for _, pl in ipairs(Players:GetPlayers()) do
       local ch = pl.Character
@@ -290,7 +341,7 @@ function Hud.init(G)
 
   ---------------------------------------------------------------- 小队（小地图右边）
 
-  local squad = ui.frame(P.hud, UDim2.fromOffset(250, 150), UDim2.new(0, 18 + MS + 22, 1, -18), RGB(0, 0, 0), 1, V2(0, 1))
+  local squad = ui.frame(P.hud, UDim2.fromOffset(250, 150), UDim2.new(0, 22, 1, -18), RGB(0, 0, 0), 1, V2(0, 1))   -- 左下角（小地图搬到右上了）
   squad.Name = "Squad"
   squad.Visible = not mobile
   local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 0.6)
@@ -407,6 +458,8 @@ function Hud.init(G)
   end
 
   function G.stepHud(dt)
+    local cam = workspace.CurrentCamera
+    if cam then layoutScore(cam.ViewportSize) end
     local S = G.S
     local deployOn = G.menuOpen ~= nil and G.menuOpen() and not (G.hangarOpen and G.hangarOpen())
     -- 比分条：战斗中和部署界面都有；选阵营、结算、开服加载时不显示
@@ -432,7 +485,7 @@ function Hud.init(G)
         s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
         s.score.Text = tostring(tk)
         s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = (tk <= 30 and os.clock() % 1 < 0.5) and RGB(255, 90, 80) or c:Lerp(WHITE, 0.15)   -- 快打光了：红字闪
+        s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
       else
         s.name.Text = T("hud." .. t)
         s.score.Text = tostring(held[t] or 0)
@@ -442,13 +495,15 @@ function Hud.init(G)
       s.bar.BackgroundColor3 = c
     end
     local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
-    if S.phase == "prep" then timer.Text = fmtTime(S.left) mode.Text = T("hud.prep") .. " · " .. stg
+    if S.phase == "prep" then
+      timer.Text = fmtTime(S.left)
+      mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
     elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
     else timer.Text = fmtTime(S.left) mode.Text = stg end
     -- 现在的目标：当前阶段开放的据点（侧翼另写）
     local main, flank = {}, {}
     for _, s in ipairs(pts) do
-      if s.act and not s.locked then table.insert(s.flank and flank or main, T("point." .. s.id)) end
+      if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
     end
     local gtext = ""
     if #main > 0 then
@@ -466,7 +521,7 @@ function Hud.init(G)
         d.d.BackgroundColor3 = teamColor(s.owner)
         d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (0.1 + 0.6 * (0.5 + 0.5 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
+        d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
         d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
         d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
         local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
@@ -475,10 +530,9 @@ function Hud.init(G)
         d.pf.BackgroundColor3 = teamColor("atk")
       end
     end
-    if not P.hud.Visible then return end
+    if not P.hud.Visible or not cam then return end
     -- 世界里的据点：没拿下的才标
     gT -= dt
-    local cam = workspace.CurrentCamera
     local cp = cam.CFrame.Position
     for _, s in ipairs(pts) do
       local m = marks[s.id]
@@ -511,12 +565,13 @@ function Hud.init(G)
     rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
     local ZOOM = MAPW * (MS / 2) / curR
     if root and root.Parent == box and G.mapUV then
-      if G.mapTheme then G.mapTheme("radar") end
+      if G.mapTheme then G.mapTheme("mini") end
+      if G.mapFocus then G.mapFocus(pos.X, pos.Z, curR) end   -- 身边画细节块（MapUI 的卫星图）
       local u, v = G.mapUV(pos.X, pos.Z)
       root.AnchorPoint = V2(0, 0)
       root.Size = UDim2.fromOffset(ZOOM, ZOOM)
       root.Position = UDim2.new(0.5, -u * ZOOM, 0.5, -v * ZOOM)
-      root.BackgroundTransparency = 0.25   -- 海透一点，看得见后面的战场（部署界面的大地图照旧不透明）
+      root.BackgroundTransparency = 0.1   -- 海稍微透一点（部署界面的大地图照旧不透明）
     elseif root and root.BackgroundTransparency ~= 0 then
       root.BackgroundTransparency = 0
       if G.mapTheme then G.mapTheme("map") end
@@ -525,10 +580,14 @@ function Hud.init(G)
     local hdg = (math.deg(math.atan2(lv.X, -lv.Z)) + 360) % 360   -- 北 = −Z（地图上方）
     heading.Text = string.format("%03d°", math.floor(hdg + 0.5) % 360)
     arrow.Rotation = hdg
-    -- 扫描线
     local now = os.clock()
-    sweepA = (sweepA + dt * 360 / RC.sweep) % 360
-    for k, l in ipairs(sweepLines) do l.Rotation = sweepA - (k - 1) * 3 end
+    do   -- 开着坦克瞄准镜（战况表、战术平板没开）：小地图在目镜黑框上面
+      local dv = G.myVeh
+      local over = dv ~= nil and dv == G.drive and dv.sight == true
+        and not (G.tacOpen and G.tacOpen()) and not (G.boardShown and G.boardShown())
+      local want = over and radarTop or P.hud
+      if box.Parent ~= want then box.Parent = want end
+    end
     -- 亮点：0.1 秒收一次雷达范围里的东西；敌方步兵每个 0.3 秒查一次视线
     scanT -= dt
     local mine = me:GetAttribute("Side")
@@ -554,17 +613,13 @@ function Hud.init(G)
     local function place(b, wpos)
       b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
     end
-    local function fadeAt(wpos)   -- 扫描线刚扫过最亮，一圈里慢慢暗下去
-      local brg = (math.deg(math.atan2(wpos.X - pos.X, -(wpos.Z - pos.Z))) + 360) % 360
-      local age = ((sweepA - brg) % 360) / 360
-      return 0.05 + 0.6 * age
-    end
+    local pulse = 0.08 + 0.14 * (0.5 + 0.5 * math.sin(now * 5))   -- 敌人的亮点轻轻地一明一暗（不靠扫描线也一眼看得到）
     for _, c in ipairs(contacts) do
       local enemy = c.team ~= mine
       local show = not enemy or RC.allEnemies or c.kind ~= "inf" or (c.model and now - (seenT[c.model] or -99) < 2)
       if show then
         local b = blip()
-        shape(b, c.kind, enemy and FOE or FRIEND, fadeAt(c.pos))
+        shape(b, c.kind, enemy and FOE or FRIEND, enemy and pulse or 0.12)
         place(b, c.pos)
         table.insert(G.radarShown, { team = c.team, kind = c.kind, enemy = enemy })
       end
@@ -576,7 +631,7 @@ function Hud.init(G)
         table.remove(pings, i)
       else
         local dx, dz = p.pos.X - pos.X, p.pos.Z - pos.Z
-        if dx * dx + dz * dz <= curR * curR then
+        if math.abs(dx) <= curR and math.abs(dz) <= curR then
           local b = blip()
           shape(b, "ping", FOE, math.clamp(age / RC.ping, 0, 1) * 0.9)
           b.f.Size = UDim2.fromOffset(8 + age * 6, 8 + age * 6)
@@ -634,7 +689,7 @@ function Hud.init(G)
     local boardOn = G.boardShown ~= nil and G.boardShown()
     if not tipDone and S.alive and S.phase ~= "end" then
       tipT0 = tipT0 or t
-      local want = t - tipT0 > 1 and not boardOn
+      local want = t - tipT0 > 1 and not boardOn and not (G.operationHudVisible and G.operationHudVisible()) and not G.tankHudActive
       if want and not tip.Visible then
         tip.Visible = true
         showTip()
@@ -642,43 +697,6 @@ function Hud.init(G)
         tip.Visible = false
       end
     end
-  end
-
-  ---------------------------------------------------------------- 阶段横幅（开战、每打下一个阶段）：屏幕上方三分之一处，大字阶段名 + 这一阶段打 / 守哪儿，四秒多淡出
-  local TweenService = game:GetService("TweenService")
-  local banner = ui.frame(G.gui, UDim2.fromOffset(640, 120), UDim2.fromScale(0.5, 0.3), RGB(0, 0, 0), 1, V2(0.5, 0.5))
-  banner.Name = "StageBanner"
-  banner.ZIndex = 30
-  banner.Visible = false
-  local bTop = txt(banner, "", UDim2.new(1, 0, 0, 18), UDim2.fromOffset(0, 0), 14, MUTE, Enum.Font.GothamBold, nil, nil, 0.6)
-  local bTitle = txt(banner, "", UDim2.new(1, 0, 0, 52), UDim2.fromOffset(0, 22), mobile and 34 or 46, WHITE, Enum.Font.GothamBlack, nil, nil, 0.4)
-  local bSub = txt(banner, "", UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 80), mobile and 15 or 18, TEXT, Enum.Font.GothamMedium, nil, nil, 0.5)
-  local bL = line(banner, UDim2.fromOffset(120, 1), UDim2.new(0, 0, 0, 48), WHITE, 0.3)
-  local bR = line(banner, UDim2.fromOffset(120, 1), UDim2.new(1, -120, 0, 48), WHITE, 0.3)
-  for _, l in ipairs({ bTop, bTitle, bSub }) do l.ZIndex = 31 end
-  local bSeq = 0
-  function G.stageBanner(key, i, n)
-    bSeq += 1
-    local my = bSeq
-    local team = (G.S and G.S.team) or "atk"
-    bTop.Text = T("hud.stageN", i or 1, n or 3)
-    bTitle.Text = T(key)
-    bSub.Text = T(key .. "." .. team)
-    local c = teamColor(team):Lerp(WHITE, 0.2)
-    bL.BackgroundColor3, bR.BackgroundColor3 = c, c
-    banner.Visible = true
-    local parts = { bTop, bTitle, bSub }
-    for _, l in ipairs(parts) do l.TextTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 0 }):Play() end
-    for _, l in ipairs({ bL, bR }) do l.BackgroundTransparency = 1 TweenService:Create(l, TweenInfo.new(0.5), { BackgroundTransparency = 0.3 }):Play() end
-    if G.playSound then G.playSound("capture", nil, 0.55) end
-    task.delay(4.2, function()
-      if my ~= bSeq then return end
-      local d = G.objDist and G.objDist()
-      if d and d > 1200 and G.toast then G.toast(T("hud.redeployTip"), "info") end   -- 新目标在几公里外：提示按 H 重新部署
-      for _, l in ipairs(parts) do TweenService:Create(l, TweenInfo.new(0.9), { TextTransparency = 1 }):Play() end
-      for _, l in ipairs({ bL, bR }) do TweenService:Create(l, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play() end
-      task.delay(1, function() if my == bSeq then banner.Visible = false end end)
-    end)
   end
 
   ---------------------------------------------------------------- 重新部署（H，服务器 Round.lua redeploy）：离当前目标多远（格），活着、开战了才算
@@ -692,7 +710,8 @@ function Hud.init(G)
       if s.act ~= false and not s.locked then
         for _, p in ipairs(Map.POINTS) do
           if p.id == s.id then
-            local d = ((p.x - hrp.Position.X) ^ 2 + (p.z - hrp.Position.Z) ^ 2) ^ 0.5
+            local pos = hrp.CFrame.Position
+            local d = ((p.x - pos.X) ^ 2 + (p.z - pos.Z) ^ 2) ^ 0.5
             if not best or d < best then best = d end
           end
         end
@@ -707,7 +726,6 @@ function Hud.init(G)
   end)
 
   ---------------------------------------------------------------- 压制（Fx.lua 子弹擦身时调 G.suppress）：屏幕四边往里渐暗、微微模糊，两三秒退掉；越近、越密越重
-  local RunService = game:GetService("RunService")
   local vig = {}
   for _, e in ipairs({ { V2(0, 0), UDim2.new(1, 0, 0.32, 0), 90 }, { V2(0, 1), UDim2.new(1, 0, 0.32, 0), -90 },
     { V2(0, 0), UDim2.new(0.26, 0, 1, 0), 0 }, { V2(1, 0), UDim2.new(0.26, 0, 1, 0), 180 } }) do
@@ -729,7 +747,7 @@ function Hud.init(G)
   blur.Parent = workspace.CurrentCamera
   local supp = 0
   function G.suppress(k) supp = math.min(1, supp + (k or 0.3)) end
-  RunService.RenderStepped:Connect(function(dt)
+  G.frameConn("HudFx", function(dt)
     if supp <= 0 and not vig[1].Visible then return end
     supp = math.max(0, supp - dt * 0.45)
     local on = supp > 0.01
@@ -744,7 +762,7 @@ function Hud.init(G)
   ---------------------------------------------------------------- 准星下面弹一行（击杀、占领）：一两秒淡出，新的把旧的往上顶（用户：感受不到激烈对抗）
   local pops = {}
   function G.pop(text, kind)
-    local col = (kind == "kill") and RGB(255, 214, 120) or RGB(140, 230, 160)
+    local col = (kind == "kill") and RGB(255, 214, 120) or (kind == "ric") and RGB(255, 178, 64) or (kind == "ricIn") and RGB(200, 220, 255) or RGB(140, 230, 160)
     local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.45)
     l.ZIndex = 25
     table.insert(pops, 1, l)

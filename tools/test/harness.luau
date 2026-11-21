@@ -391,6 +391,15 @@ roblox.implementMethod("Terrain", "FillWedge", function(self, cf, size, mat)
 	H.terrainFills += 1
 	terrOp({ k = "wedge", cf = cf, size = size, m = mat.Name })
 end)
+-- 把一块（按 4 格对齐的 Region3）里的某种材质换成另一种（弹坑烧焦：Battle.lua）
+roblox.implementMethod("Terrain", "ReplaceMaterial", function(self, region, res, from, to)
+	if typeof(region) ~= "Region3" or res ~= 4 or typeof(from) ~= "EnumItem" or typeof(to) ~= "EnumItem" then error("ReplaceMaterial 参数不对", 2) end
+	local c, sz = region.CFrame.Position, region.Size
+	for _, v in { c.X - sz.X / 2, c.Y - sz.Y / 2, c.Z - sz.Z / 2, c.X + sz.X / 2, c.Y + sz.Y / 2, c.Z + sz.Z / 2 } do
+		if math.abs(v / 4 - math.round(v / 4)) > 1e-6 then error("ReplaceMaterial 的区域要按 4 格对齐", 2) end
+	end
+	terrOp({ k = "replace", cf = region.CFrame, size = sz, m = to.Name, from = from.Name })
+end)
 roblox.implementMethod("Terrain", "Clear", function(self) end)
 -- 写体素：按 Roblox 的规矩检查（分辨率只能是 4、一次最多 4,194,304 个、三维数组的尺寸要和区域对上），记下写了多少
 H.voxelWrites, H.voxelCount = 0, 0
@@ -532,6 +541,7 @@ function raycast0(o, d, params)
 	local list = params and params.FilterDescendantsInstances or {}
 	local ws = H.workspace
 	local best, bt = nil, math.huge
+	local bestCF, bestSize = nil, nil
 	local function consider(p, cf, size)
 		local ok = true
 		if #list > 0 or include then
@@ -540,7 +550,7 @@ function raycast0(o, d, params)
 		end
 		if ok then
 			local t = rayBox(o, d, cf, size)
-			if t and t < bt then bt, best = t, p end
+			if t and t < bt then bt, best, bestCF, bestSize = t, p, cf, size end
 		end
 	end
 	rcRefresh()
@@ -609,7 +619,17 @@ function raycast0(o, d, params)
 	end
 	if not best then return nil end
 	local pos = o + d * bt
-	return { Instance = best, Position = pos, Normal = (best == terrain) and normal or V3.new(0, 1, 0), Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
+	if best ~= terrain and bestCF and bestSize then   -- 零件：打中的是方块的哪一面（离哪个面最近），法线朝那一面（跳弹按它算入射角）
+		local l = bestCF:PointToObjectSpace(pos)
+		local hx, hy, hz = math.max(bestSize.X / 2, 1e-3), math.max(bestSize.Y / 2, 1e-3), math.max(bestSize.Z / 2, 1e-3)
+		local ax, ay, az = math.abs(l.X) / hx, math.abs(l.Y) / hy, math.abs(l.Z) / hz
+		local ln
+		if ax >= ay and ax >= az then ln = V3.new(l.X >= 0 and 1 or -1, 0, 0)
+		elseif ay >= az then ln = V3.new(0, l.Y >= 0 and 1 or -1, 0)
+		else ln = V3.new(0, 0, l.Z >= 0 and 1 or -1) end
+		normal = bestCF:VectorToWorldSpace(ln)
+	end
+	return { Instance = best, Position = pos, Normal = normal, Distance = d.Magnitude * bt, Material = Enum.Material.Plastic }
 end
 
 local function camRay(cam, x, y)
@@ -940,6 +960,7 @@ roblox.implementMethod("UserInputService", "GetFocusedTextBox", function(self) r
 roblox.implementMethod("UserInputService", "GetKeysPressed", function(self) return {} end)
 roblox.implementMethod("UserInputService", "GetLastInputType", function(self) return Enum.UserInputType.Keyboard end)
 roblox.implementMethod("ContextActionService", "BindAction", function(self) end)
+roblox.implementMethod("ContextActionService", "BindActionAtPriority", function(self) end)
 roblox.implementMethod("ContextActionService", "UnbindAction", function(self) end)
 roblox.implementMethod("StarterGui", "SetCoreGuiEnabled", function(self) end)
 roblox.implementMethod("StarterGui", "SetCore", function(self) end)
@@ -1313,7 +1334,7 @@ function H.goPad(G, pl, p)
 	pl.Character:PivotTo(CF.new(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
 	H.run(0.2)
 end
-function H.usePad(G, pl, p)
+function H.usePad(G, pl, p, retried)
 	H.goPad(G, pl, p)
 	local prev = H.ctx
 	H.ctx = nil
@@ -1331,13 +1352,31 @@ function H.usePad(G, pl, p)
 				break
 			end
 		end
-	end
-	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
-		for _, e in ipairs(list) do
-			if e.padId == p.id and e.alive then return e end
+		-- 坦克选了以后先进改装界面（Garage.lua，用户 11-19）：照默认改装直接点「出车」
+		local C = H.Gs[pl.Name]
+		if C and C.garageOpen and C.garageOpen() then
+			for _, d in pg:GetDescendants() do
+				if d:IsA("TextButton") and d.Name == "GarageGo" and visible(d) then
+					H.press(pl, d)
+					H.run(0.4)
+					break
+				end
+			end
 		end
 	end
-	return nil
+	-- 同一个召唤位上可能已经停着先前生成的别的车（守方地面车位：所有车型共用一个）：选了哪一型就找哪一型，最新生成的优先
+	local hit = nil
+	for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
+		for _, e in ipairs(list) do
+			if e.padId == p.id and e.alive and (not vid or (e.def and e.def.id == vid)) then hit = e end
+		end
+	end
+	-- 没生成出来：多半撞上服务器「两次出车至少隔 2 秒」（坦克多了改装界面那一步，前一辆晚生成了一点）——等一下再来一次
+	if not hit and not retried and p.summon then
+		H.run(2.1)
+		return H.usePad(G, pl, p, true)
+	end
+	return hit
 end
 function H.findButton(pl, pattern, all)
 	local pg = pl:FindFirstChildOfClass("PlayerGui")

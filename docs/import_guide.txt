@@ -1,21 +1,145 @@
-Roblox全面大战场 · 原模型导入说明
+全面大战场（Island Assault）· 原模型导入说明
 ==================================
 
 （仓库里这些文件就在 models/ 下面。发给用户的是一个压缩包「Roblox全面大战场_全部.zip」：先解压，再按下面的文件夹分批导里面的 .glb——
   Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
-游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）
-模型一共 64 个 .glb，按文件夹分：
-  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v3__…；
+游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
+模型一共 83 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
+  1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
+  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
-  3. 舰艇、装备、花草          ship/     7 艘舰艇
-                               optics/   14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）
-                               scenery/  地图上的石头（花草树木已经删掉，改用 Roblox 地形自带的草；这个文件里的树不用了，只用石头）
+  3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
+                               optics/   31 件：14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）+ 17 件改枪配件（opt_ 瞄具、sup_ 消音器、muz_ 枪口件、grip_ 握把、mag_ 弹匣、tac_ 战术件）
+                               scenery/  地图上的石头（11 月 18 日起 scenery.glb 里只有 3 块石头；树、草丛、花丛去掉了，草用 Roblox 地形自带的）
                                fps_m4.glb  第一人称的 M4
                                credits.txt 瞄准镜、手持装备、第一人称 M4 的署名
-  11 月 18 日这一包：模型和 11 月 17 日那一批一样，没有新的；17 日那批已经全导过的不用再导，换上新的 RobloxTotalBattlefield.rbxlx 就行。
+  4. 地图建筑                  bld/      buildings.glb 一个文件（17 种建筑），bld/credits.txt 是署名
+  想一次全部换成最新的（所有文件夹都重导，比如歼-20 修好机头镂空那版、舰艇翻正、M1A2 原色、建筑一起换）：
+    先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 21 日第七包（飞机 WASD、坦克夜视、草）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 飞机改成键盘飞：W 低头、S 抬头、A / D 滚转、Q / E 方向舵，Shift 加油门、Ctrl 收油门（地上收到底按住 Ctrl 倒退），按住 Alt 鼠标自由看；
+      没有准星圈了，镜头跟着机身，机头前方的标记一直在屏幕正中（航炮就打那里）；滚转、俯仰、过载都比原来慢、笨重；无人机照旧鼠标飞；
+    - 坦克里没开镜时 N 能开关夜视仪（原来关不掉）；瞄准镜白天默认昼光、夜里默认夜视，换过的会记住；
+    - 地形草叶客户端也设短（以前只在服务器设，可能没同步过来）。
+  11 月 21 日第六包（载具内饰、座舱）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）。内饰全是脚本拼的零件，不用导：
+    - 开坦克 / 装甲车按 C 进车内，F2～F5 换乘员位（驾驶员 / 炮长 / 车长 / 装填手），Shift 主镜、G 备用镜、T 是 M1A2 车长的 CROWS（开着时鼠标转武器站、左键打 M2），
+      B 导演镜头、L 车内灯、U 藏界面；开飞机 / 直升机按 V 进座舱，按住 Alt 自由看。全部按键见包里的「载具内饰按键.md」；
+    - 99A 车顶不放机枪了（机枪那一栏回到并列机枪）。
+  11 月 21 日第五包（瞄准镜做真）：换游戏文件，再重导 optics/ 的 acog.glb、opt_acog6.glb（第四包导过也要再导这两个：目镜罩换了）；
+    第四包还没导的，atacr.glb、qbu88.glb 也一起导。改的东西：
+    - 镜片上去掉了假的效果（反光弧、红蓝彩边圈、偏蓝的镀膜），只留真瞄准镜里会有的边缘变暗、眼睛没对正时的月牙阴影；镜外压暗、镜身虚化调轻；
+    - 镜里的画面：地形按材质分块，贴 Roblox 自带的草 / 沙 / 岩石……材质纹理（原来是一整块光滑的颜色）；亮度、色调跟着主画面的曝光和调色；烟幕改成一团团软边的烟；
+    - 镜身：两具 ACOG 的目镜罩做成带圆角唇边、端面一道槽、外圈防滑纹的橡胶罩；镜身用金属材质、目镜罩橡胶、镜片玻璃（原模型没贴图，原来是一片平涂的灰塑料）。
+
+  11 月 21 日第四包（瞄准镜）：换游戏文件（或者「三、只换脚本」），再重导 optics/ 里的 4 个：acog.glb、opt_acog6.glb、atacr.glb、qbu88.glb
+    （先在资源管理器里删掉以前导入的 O_acog__、O_opt_acog6__、O_atacr__、O_qbu88__ 开头的零件再导；没重导也能玩，自动用现生成的，没有原贴图）：
+    - 两具 ACOG 的目镜补了正圆的目镜圈（原模型是八边形）；开镜时镜身一直看得见，从正圆的目镜洞里看；
+    - 镜内单独放大（画中画）：镜外只是普通开镜，镜片里是放大的画面。要在「游戏设置 → 安全」里打开 Mesh / Image API，没开就退回整屏放大。
+
+  11 月 21 日第三包（直升机机炮会转了）：只重导 air/ 里两个文件——ah64.glb（阿帕奇）、z10w.glb（直-10），别的都不用动，再换游戏文件：
+    - 原来机头下面的机炮和机身烘焙在同一块网格里，转不了；这一版把机炮拆成单独的块（A_ah64_v2__Gun_1 炮、A_ah64_v2__GunY_1 炮塔座，
+      A_z10w_v2__Gun_1），开直升机时炮管跟着准星转方位、俯仰（炮塔座只转方位）；
+    - 新导进来的块叫 A_ah64_v2__… / A_z10w_v2__…，游戏优先用它；没导新版照旧用老的（炮不转）。旧的 A_ah64__… / A_z10w__… 想删就在命令栏粘这一行回车：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_ah64__") or d.Name:match("^A_z10w__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的阿帕奇、直-10")
+
+    导入方法同下面「一、导入」：「导入 3D」分别选 air/ah64.glb、air/z10w.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
+
+  11 月 21 日第二包（航母换成福建舰）：多导一个 ship/fujian.glb（别的模型都不用动），再换游戏文件：
+    - ship/fujian.glb：攻方航母福建舰的原模型（Sketchfab，businessyuen，CC-BY），13 块网格、不带贴图——颜色和材质（甲板防滑面、船体金属）
+      是开服时脚本按 CarrierMeta 设的，导进来看着是灰白的不要紧；甲板上的停机位、弹射器、拦阻索、灯、舷号 18 都照这个模型的位置摆；
+    - 不导入也能玩：脚本照同一个轮廓用零件拼一艘（舰艏窄、斜角甲板、舰岛在右舷后面），只是没有原模型细；
+    - 航母上的三个停机位挪到右舷舰岛后面，出生点在舰岛左边；舰艏两条、舰腰一条弹射器，拦阻索在斜角甲板后段。
+
+  11 月 21 日这一包：模型都不用重导，只换游戏文件（新的 RobloxTotalBattlefield.rbxlx，或者「三、只换脚本」用 ScriptsUpdate.rbxmx）：
+    - 界面的蓝色 / 青色全部改成绿色（开飞机、开坦克、改装、简报；守方的队伍色也从蓝换成绿，蓝滩改叫绿滩）；飞机机头前的全息准心、锁定框改小；
+    - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）；
+    - 合并了改枪系统（红点、全息、ACOG 等光学瞄具）：17 件配件的原模型在 optics/ 里（opt_rds、opt_holo、opt_romeo、opt_acog6、sup_socom、sup_wrap、sup_sr8、
+      muz_comp、muz_brake、grip_rvg、grip_afg、mag_pmag20、mag_pmag40、mag_drum、mag_hex30、tac_light、tac_peq，署名在 models/credits.txt）。
+      以前没导过的照「一、导入」把这 17 个 .glb 导进去就行（别的不用动）；不导也能用：游戏开着「Mesh / Image API」时现生成，只是没有原贴图。
+
+  11 月 20 日这一包：模型都不用重导，只换游戏文件——打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx：
+    - 开坦克、开飞机的界面照 MWT 截图重做（全息准心、锁定菱形、不用吊舱的热成像）；所有载具的操控照虚幻引擎 5 的水平升级（镜头、腾空落地、擦墙、路面抓地）；
+    - 地图：港口码头修好了（崖下的码头平地、挡土墙、坡道接回崖顶），坡上的工事补了地基；各处据点、海滩加了细节
+      （防爆掩体、HESCO 墙、瞭望塔、沙袋战壕、烧毁的车辆、路口检查站）——都是开服时脚本摆的，不用导；
+    - 驾驶界面的图标、全息准心、卫星图小地图要在游戏设置 → 安全里打开「Mesh / Image API」，没打开就退回方块拼的。
+
+  11 月 19 日第二包（坦克爆反、主动拦截、改装）：只要多导一个 veh/kitera.glb，再删掉 15 式轻坦的旧零件；别的都不用动：
+    - 新的 veh/kitera.glb：一块做旧的爆反砖（Kontakt-1，evt22，CC-BY），99A 炮塔正面补贴的爆反块用它（不导入也行，脚本用零件拼的做旧砖代替）；
+    - 15 式轻坦删掉了（用户：建模非常粗糙），veh/ztq15.glb 不用了。先在命令栏粘下面这一行删掉它的旧零件，再导入 veh/kitera.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_ztq15__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块 15 式的旧零件")
+
+    - 爆反、主动拦截、改装界面、加特林炮塔附件都是脚本：打开新的 RobloxTotalBattlefield.rbxlx 就有。
+
+  11 月 19 日这一包：重导 ship/ 里 5 艘、veh/ 里 3 辆坦克（飞机、导弹、瞄准镜、建筑、别的车和船都不用动）：
+    - 舰艇换成 Sketchfab 上的原模型：ship/t055.glb、ddg125.glb、cg47.glb、t054a.glb、t022.glb（055、阿利·伯克、提康德罗加、054A、022；
+      不减面、原贴图，署名在 ship/credits.txt）。主炮的炮塔（块名 S_<型号>__T1_…）、炮管（__B1_…）、近防炮（__C1_…、C2_…）都是单独的块：
+      游戏里炮塔会转、炮管会俯仰和后坐、近防炮转向来袭的导弹；垂发掀舱盖、发射箱出弹是脚本做的，不用导。lcs2.glb、pbr.glb 没变。
+    - 坦克车顶的机枪会转、从机枪口开火：veh/m1a1.glb、ztz96.glb、ztq15.glb 里拆出了枪架和枪身（块名 __Rws_…、__RwsGun_…）；99A2 是脚本加的，不用重导。
+    - 坦克、舰艇的准星（MWT / 现代战舰那样）、右上角卫星图小地图、合并的 GPT 打磨都是脚本：打开新的 RobloxTotalBattlefield.rbxlx，或者照「三、只换脚本」用 ScriptsUpdate.rbxmx。
+      卫星图小地图要在游戏设置 → 安全里打开「Mesh / Image API」，没打开是暗色的色块。
+    先在命令栏（「视图 → 命令栏」）粘下面这一行回车，只删这 5 艘舰艇、3 辆坦克的旧零件，再照「一、导入」导这 8 个文件：
+
+local K={t055=1,ddg125=1,cg47=1,t054a=1,t022=1,m1a1=1,ztz96=1,ztq15=1} local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do local k=d:IsA("BasePart") and d.Name:match("^[SV]_(%w+)__") if k and K[k] then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件（5 艘舰艇、3 辆坦克），可以重导了")
+
+  11 月 18 日第七包：只换歼-20，重导 air/j20.glb 一个文件，别的都不用动：
+    - 不减面的原模型（23.6 万个三角形，原来 13.5 万），照样是第三包那套真机涂装和会发光的绿色灯带；
+    - 起落架会收放（三根都往前收，起落架舱门先开、收好再关），主弹舱、侧弹舱门照旧能开，机翼不折叠；
+    - 打开侧弹舱、起落架舱门不再能看穿飞机：舱门里面有封好的深灰色舱（块名 A_j20_v4__Well_1…5），舱门内侧也画出来了；
+    - 从前下方也不能从进气道口看穿了：唇口后面补了深色管道（A_j20_v4__Duct_1、Duct_2）；
+    - 新导进来的块叫 A_j20_v4__…，游戏优先用它；旧的 A_j20_v3__…不删也行（游戏不用了），想删就在命令栏粘下面这一行回车：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20__") or d.Name:match("^A_j20_v[23]__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")
+
+    导入方法同下面「一、导入」：「导入 3D」选 air/j20.glb；收进 ServerStorage 的话照「二、以后更新游戏不用再导一遍」再粘一次那一段。
+
+  11 月 18 日第六包：只重导 veh/m1a2dc.glb 一个文件（别的都不用动）：
+    - M1A2 改回原模型的颜色（用户：颜色改回原模型的颜色）：原来统一刷成的单色沙黄去掉，换回作者原来的涂装——
+      深一点、旧一点的沙色，机枪和炮口是黑的金属色，背包是绿的，原来的磨损、脏污、标记都在；形状、零件、能动的部件和以前一样。
+    先在命令栏粘下面这一行删掉旧的 M1A2 零件，再导入 veh/m1a2dc.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_m1a2dc__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的 M1A2 零件，可以重导了")
+
+  11 月 18 日第五包：只重导 ship/ 文件夹（7 艘舰艇；车、飞机、建筑都不用动）：
+    - 舰艇模型里还有不少朝里的面（055 约一成、提康德罗加两成多）：Roblox 只画正面，有的角度看不见船身、只剩上层建筑像漂在海上——这次全部翻正了；
+    - 攻方登陆平台（驳船）、浮码头、港口木栈桥是游戏脚本搭的，不用导：驳船有了船身、红色船底、水线、艏艉斜面、护舷轮胎、四根锚链和闪灯浮标，
+      浮码头改成一节节浮箱加锚链，守方码头、港口木栈桥补了打到海底的桩，不再像一块板浮在水面上。
+    先在命令栏粘下面这一行删掉旧的舰艇零件，再导入 ship/ 里的 7 个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^S_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
+  11 月 18 日第三包：新增地图建筑 bld/buildings.glb（一个文件，17 种建筑，约 4.5 万个三角形、带贴图），别的都不用动：
+    港口镇的民房、瓦房、水泥楼，湾边的库房、厂房，两个机场的拱顶机库、塔台、消防站、铁皮营房、小库房，营地的铁皮营房，
+    灯塔看守小屋、炮台营房，导进来以后都换成网页版地图用的写实模型（CC-BY，署名在 bld/credits.txt）；
+    导入方法同下面「一、导入」：「导入 3D」选 bld/buildings.glb，导进 Workspace 就行（块叫 B_<键>__Body_<号>，开服时自动收好、摆到地图上）。
+    不导也行：地图上是零件拼的新房子（坡屋顶、檐口山墙、窗框窗台、门廊、烟囱、平顶楼的楼层线和女儿墙、拱顶机库、八角玻璃塔台），比原来的方块房子细。
+  11 月 18 日第三包：只重导 air/ 里的三个文件——j20.glb、h6k.glb、a10.glb（别的不用动）：
+    - 歼-20：修了机头和前机身「镂空」（一万多个三角形朝反了）；照真机涂装——机身深灰微带青、雷达罩更深、喷管橄榄青铜色、座舱盖茶金色；
+      机头两侧和两片垂尾上的绿色编队灯带会发光（左边那条原模型比右边短一截，补齐了）；
+    - H-6、A-10：同样修了朝反的面；发动机里垫了深色堵头，从后往前看不再是空的（游戏脚本里加的，导入新文件以后才对得上位置）；
+    - 歼-16 的绿色灯带是游戏脚本贴上去的，不用重导；喷口后面那串「泡泡」（热浪粒子）去掉了，也不用重导。
+    先在命令栏粘下面这一行删掉这三架的旧零件，再导入这三个文件：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^A_j20_v3__") or d.Name:match("^A_h6k_v3__") or d.Name:match("^A_a10_v3__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
+  11 月 18 日第二包：要重导 veh/、ship/ 两个文件夹（飞机、导弹、瞄准镜、花草、第一人称 M4 没变，不用动）：
+    - M1A2 换成你指定的沙漠涂装 SEPv2（veh/m1a2dc.glb，Muhamad Mirza Arrafi，CC-BY）：车长位置的 CROWS 遥控武器站自己会转、上面的 M2 会俯仰，
+      开火的曳光弹从 M2 枪口出、顺着枪管飞；炮长瞄准镜视角在炮塔右前方那个瞄准镜盒子的位置；
+    - 99A 换成 ZTZ-99A2（veh/ztz99a2.glb，42manako，CC-BY）；
+    - 涂装统一：解放军的车统一成一套三色林地迷彩（橄榄绿、深绿、土黄），美军的车统一成沙漠黄单色，舰艇统一成海军灰——原来各个模型作者的颜色、深浅、迷彩各不一样；
+    - 旧的 veh/m1a2v3.glb（上一辆 M1A2）、veh/ztz99.glb（旧 99A）不用了，包里已经去掉；
+    - 以前导的舰艇从上往下看有地方透明：重导 ship/ 就好（现在的文件面朝向都翻正了，旧的零件是早先那一版）。
+    先在命令栏（「视图 → 命令栏」）粘下面这一行回车，删掉旧的车、舰艇零件，再照「一、导入」把 veh/、ship/ 重导一遍：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^[VS]_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
+
+  11 月 18 日第一包：模型和 11 月 17 日那一批一样，没有新的。
     推力矢量喷口（用户给的 F-15 SE 可动喷口）是单独一个文件 air/tvc.glb：游戏里自动装到歼-15T、歼-16、歼-20、歼-35、F-35 的两个尾喷口上
     （15 片调节片按油门开合，整只跟着抬头、低头、滚转偏转，加力火焰从它的出口喷）。要看到它，air/tvc.glb 和这几架的
     j15t.glb、j16.glb、j20.glb、j31.glb（歼-35 用它）、f35.glb 都得导进去；只导了飞机、没导 tvc.glb 的，飞机照样是原模型，只是没有可动喷口。
@@ -29,11 +153,17 @@ Roblox全面大战场 · 原模型导入说明
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^[VAS]_[%w_]-__[%w_]+$") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧零件，可以重导了")
 
 
+  11 月 18 日第四包（用户：草用 Roblox 自带的、不要树）：scenery/scenery.glb 换成只有石头的新文件（1.4 MB）。
+    已经导过旧 scenery.glb 的：Workspace 里那一堆树、草丛、花丛游戏不用，在命令栏（「视图 → 命令栏」）粘下面这一行回车删掉（石头留着），
+    或者干脆把 N_ 开头的全删了、重导新的 scenery.glb：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^N_") and not d.Name:match("^N_rock%d__") then d:Destroy() n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("删掉了 "..n.." 块树、草")
+
 一、导入（Roblox Studio，一次就行）
   1. 打开 RobloxTotalBattlefield.rbxlx（或者你自己发布过的那个地点）。
   2. 「主页 → 导入 3D」（Import 3D），选 GLB 文件。文件对话框里可以一次多选；文件多的话按文件夹分几批导。
      导入设置都用默认的，不要勾「合并网格」（Merge Meshes），导进 Workspace 就行。
-     ztz96、m1a2v3、ztq15 这几个大的要等一会儿。
+     ztz96、m1a2dc、ztz99a2、ztq15 这几个大的要等一会儿。
   3. 「测试 → 开始游戏」，打开「视图 → 输出」，有这一行就成功了：
          [全面大战场] 用上了导入的装备模型：……
      车、飞机、船、瞄准镜、树、第一人称 M4 都会自动换上原模型。
@@ -47,14 +177,29 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASONW]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
 
   2. 资源管理器里右键 ServerStorage 下的 ImportedModels →「保存到文件…」（Save to File），存成 Imported.rbxm。
-  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（仓库首页默认显示的分支 claude/keen-heisenberg-6zzaoc——现在最新的游戏在这个分支，别的会话的改动都并进来了；
+  3. 把 Imported.rbxm 传到 GitHub 仓库的 models/imported/ 目录（main 分支——2026-11-18 起各会话的改动都并进 main，GitHub 仓库设置里把默认分支改成 main 以后仓库首页显示的就是它；
      进 models 目录 →「Add file → Upload files」，路径写 imported/Imported.rbxm）。
      以后我生成的 RobloxTotalBattlefield.rbxlx 都会自带这些模型，打开就是原模型。
      （GitHub 网页上传单个文件限 25 MB；超了的话分两次收：先只收 V_ 开头的存一个，再收其余的存一个，都放进 models/imported/。）
 
-三、注意
+三、只换脚本（导入的模型、地图、设置都不动）
+  每次更新我都会同时给两个文件：RobloxTotalBattlefield.rbxlx（整个游戏）和 ScriptsUpdate.rbxmx（只有脚本）。
+  已经在自己的地点里导入过模型、不想重新打开整个游戏文件的，用 ScriptsUpdate.rbxmx：
+  1. 用 Studio 打开你自己的地点（导入过模型的那个）。
+  2. 资源管理器里右键 ServerStorage →「从文件插入…」（Insert from File…），选 ScriptsUpdate.rbxmx。
+     ServerStorage 下面会多一个 ScriptsUpdate 文件夹（放 ServerStorage 里的脚本不会运行，不用担心）。
+  3. 「视图 → 命令栏」，粘下面这一行回车：
+
+local u=game:GetService("ServerStorage"):FindFirstChild("ScriptsUpdate") or workspace:FindFirstChild("ScriptsUpdate") assert(u,"先把 ScriptsUpdate.rbxmx 插入到 ServerStorage") local to={ReplicatedStorage=game:GetService("ReplicatedStorage"),ServerScriptService=game:GetService("ServerScriptService"),StarterPlayerScripts=game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts")} local n=0 for k,svc in pairs(to) do local f=u:FindFirstChild(k) if f then for _,c in ipairs(f:GetChildren()) do local old=svc:FindFirstChild(c.Name) if old then old:Destroy() end c.Parent=svc n+=1 end end end u:Destroy() print("脚本换好了："..n.." 项（导入的模型、地图都没动），记得保存")
+
+     输出里出现「脚本换好了：26 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
+  4. 保存（要上线就「发布到 Roblox」）。
+  注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
+  更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
+
+四、注意
   - 导入时网格、贴图会上传到你的 Roblox 账号；发布游戏要用同一个账号（或同一个群组），线上服务器才加载得出来。
-  - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成）。
+  - 游戏设置 → 安全：打开「Mesh / Image API」（没导入 M4、瞄准镜时，游戏会用内嵌的网格现生成；右上角小地图的卫星图也要它，没打开是暗色的色块）。
   - 模型都是 CC-BY 授权，署名在各文件夹的 credits.txt 和 credits.txt（发布时放进游戏简介）。
     只有 wpn/missiles.glb（导弹合集）是 CC BY-NC-SA：只能非商业使用（你说游戏不收费，可以用）——以后要是开了收费（游戏通行证、开发者产品、付费进入），
     得把 W_ 开头的零件删掉（游戏会自动退回零件拼的导弹）。署名在 wpn/credits.txt。

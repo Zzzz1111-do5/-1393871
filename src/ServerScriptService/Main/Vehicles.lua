@@ -1,5 +1,7 @@
 -- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
---   登陆艇：每处海滩一条在装人的艇，第一个人上来后等 4 秒开船，从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
+--   登陆艇：每处海滩一条在装人的艇，按班次开船（用户：登陆按班次发船，机器人坐满、玩家等船占位置，不再一个人一条船）——
+--     新艇至少等 10 秒凑人、坐满 12 个提前开，同一处海滩两班之间隔 15 秒；真人上来时艇满了，最后上船的机器人让座等下一班；
+--     从离岸约 600 格冲向海滩（十来秒），途中能被打沉（乘客一起阵亡）；
 --     准备阶段上的艇在海上等着，开战那一刻一起冲滩（开局就是抢滩登陆）；同一处海滩同时有几条艇的左右错开排成一排；
 --     到岸放下跳板、把人放到艇头前面的滩上，艇退回去消失。乘客坐艇时角色锚定、每帧跟着艇挪（镜头跟着走）
 --   伞降：从高空落下，降落伞把下落速度压在每秒 18 格以内；个人冷却
@@ -13,10 +15,11 @@ function Vehicles.init(G)
 
   -- hp：岸防炮一发直接命中 728（520 × 打船 1.4），原来 650 一发就沉、一船人全灭（机器人对打 6 分钟被打沉 53 条，攻方一个据点都拿不下）；
   --   现在要中 3 发才沉，被盯上了还有机会冲上滩
-  local BOAT = { start = 620, speed = 48, wait = 4, hp = 1600, size = V(16, 7, 34), seats = 12 }
+  local BOAT = { start = 620, speed = 48, wait = 10, every = 15, hp = 1600, size = V(16, 7, 34), seats = 12 }   -- wait：新艇凑人的时间；every：同一处海滩两班之间
   local boats = {}   -- [beachId] = 正在装人的那条；跑着的在 running 里
   local running = {}
   local laneN = {}   -- [beachId] = 这处海滩开过几条（左右错开排）
+  local nextSlot = {}   -- [beachId] = 下一班最早几点开（上一班开走 + every）
 
   local beachOf = Map.landingOf
 
@@ -42,7 +45,7 @@ function Vehicles.init(G)
     e.lane = lane
     e.dist = BOAT.start
     e.state = "loading"
-    e.leaveAt = now() + BOAT.wait
+    e.leaveAt = math.max(now() + BOAT.wait, nextSlot[b.id] or 0)
     local R = G.round
     if R and R.phase == "prep" then e.leaveAt = math.max(e.leaveAt, (R.prepEnds or 0) + 0.5) end   -- 准备阶段：等开战一起冲
     e.pass = {}   -- 坐着的玩家
@@ -135,12 +138,16 @@ function Vehicles.init(G)
     local b = beachOf(beachId)
     if not b then return CF(0, 50, 0), nil end
     if secured(b) then return onBeach(b), nil end
+    local cur = boats[b.id]   -- 这一班坐满了：最后上船的机器人让座（它等下一班），真人跟这一班走
+    if cur and cur.alive and cur.state == "loading" and #cur.pass + #cur.bots >= BOAT.seats and #cur.bots > 0 and G.botBump then
+      G.try("机器人让座", G.botBump, cur.bots[#cur.bots])
+    end
     local e = boatFor(b)
     table.insert(e.pass, P)
     P.boat = e
     local seat = seatOffset(#e.pass + #e.bots)
     P.seat = seat
-    G.msg(P.pl, "info", "ui.landing")
+    G.msg(P.pl, "info", "ui.boatLeave", math.max(1, math.ceil(e.leaveAt - now())), #e.pass + #e.bots, BOAT.seats)   -- 几秒后开船、船上几个人
     return e.root.CFrame * seat, function(Q, char)
       local hrp = char:FindFirstChild("HumanoidRootPart")
       if hrp then hrp.Anchored = true end
@@ -182,9 +189,11 @@ function Vehicles.init(G)
         table.remove(running, i)
       else
         local t = now()
-        if e.state == "loading" and t >= e.leaveAt and not (G.round and G.round.phase == "prep") then
+        if e.state == "loading" and (t >= e.leaveAt or #e.pass + #e.bots >= BOAT.seats) and not (G.round and G.round.phase == "prep") then
           e.state = "run"
           if boats[e.beach.id] == e then boats[e.beach.id] = nil end
+          nextSlot[e.beach.id] = t + BOAT.every   -- 下一班
+          for _, P in ipairs(e.pass) do G.msg(P.pl, "info", "ui.landing") end
         end
         if e.state == "run" then
           e.dist = math.max(0, e.dist - BOAT.speed * dt)

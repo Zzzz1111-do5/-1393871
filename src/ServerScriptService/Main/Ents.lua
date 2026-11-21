@@ -9,6 +9,7 @@ function Ents.init(G)
   local Config, Map = G.Config, G.Map
   local V = Vector3.new
   local GRAV = V(0, -workspace.Gravity * 0.55, 0)   -- 弹道用的重力（比角色的轻一点，火箭弹、手雷飞得远一点）
+  local HitSurf = require(game:GetService("ReplicatedStorage"):WaitForChild("HitSurf"))
 
   local folder = Instance.new("Folder")
   folder.Name = "Ents"
@@ -78,15 +79,26 @@ function Ents.init(G)
     return nil
   end
 
-  -- 打实体：amt 已经乘过倍数；src = { P, name, team }
-  function G.damageEnt(e, amt, src)
+  -- 打实体：amt 已经乘过倍数；src = { P, name, team }；head：打在小兵头上
+  --   给开枪的真人的命中提示（客户端的命中叉、加分、连杀）：hit / head、打死 kill / headkill、打掉车船 vkill、工事 fkill
+  function G.damageEnt(e, amt, src, head)
     if not e or not e.alive or amt <= 0 then return end
     if src and src.team == e.team then return end
     if e.invuln then return end
+    local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
+    if dk then amt *= dk end
     e.hp -= amt
     e.lastHitBy = src
     e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (e.hp <= 0) and "kill" or "hit") end
+    if src and src.P and src.P.pl then
+      local k
+      if e.hp <= 0 then
+        k = (e.cat == "inf") and (head and "headkill" or "kill") or ((e.cat == "fort") and "fkill" or "vkill")
+      else
+        k = head and "head" or "hit"
+      end
+      G.R.Msg:FireClient(src.P.pl, "hit", k)
+    end
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
@@ -105,8 +117,10 @@ function Ents.init(G)
     local e = G.entOf(inst)
     if e then
       local k = 1
-      if e.headTop and hitPos and hitPos.Y > e.root.CFrame.Position.Y + e.root.Size.Y / 2 - e.headTop then k = headMul or 1 end
-      G.damageEnt(e, dmg * mult(w, e.cat) * k, src)
+      local hb = e.hit or e.root   -- 小兵的命中零件随姿势变（Bots.lua）
+      local head = e.headTop ~= nil and hitPos ~= nil and hitPos.Y > hb.CFrame.Position.Y + hb.Size.Y / 2 - e.headTop
+      if head then k = headMul or 1 end
+      G.damageEnt(e, dmg * mult(w, e.cat) * k, src, head and (headMul or 1) > 1)
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")
@@ -138,13 +152,22 @@ function Ents.init(G)
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
     local r = w.splash or 8
+    local ownK = false
+    if not G.dmgK and G.eraBlast then
+      local m = G.eraBlast(pos, w, G.blastDir)
+      if m then G.dmgK, ownK = m, true end
+    end
     G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hrp and P.alive and not G.inVeh(P) then   -- 在车里的人由车挨炸（遥控无人机的人在地上，照样挨炸）
         local d = (hrp.Position - pos).Magnitude
-        if d < r then G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src) end
+        if d < r then
+          G.boomAt = pos   -- 受伤方向按炸点（Round.lua 的 hurtChar）
+          G.hurtChar(char, w.dmg * mult(w, "inf") * (1 - 0.7 * d / r), src)
+          G.boomAt = nil
+        end
       end
     end
     for _, e in ipairs(table.clone(ents)) do
@@ -162,6 +185,7 @@ function Ents.init(G)
       end
     end
     if G.onExplode then G.onExplode(pos, w, src) end
+    if ownK then G.dmgK = nil end
   end
 
   ---------------------------------------------------------------- 飞行中的弹
@@ -194,8 +218,12 @@ function Ents.init(G)
       local s = shots[i]
       s.t += dt
       local done = false
-      if s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+      if G.apsCheck and (s.kind == "rocket" or s.kind == "missile") and G.apsCheck(s, dt) then   -- 被坦克的主动防御打掉了（Aps.lua）
+        done = true
+      elseif s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+        G.blastDir = s.vel   -- 导引弹自己引爆时（step 里调 G.explode）爆反按这个来向找块
         local ok, r = pcall(s.step, s, dt)
+        G.blastDir = nil
         if not ok then G.reportError("导引", r) done = true elseif r then done = true end
       elseif s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
@@ -203,7 +231,9 @@ function Ents.init(G)
           local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude
           s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
           if (tg.root.CFrame.Position - s.pos).Magnitude < 12 then
+            G.blastDir = s.vel
             G.explode(s.pos, s.w, s.src)
+            G.blastDir = nil
             done = true
           end
         end
@@ -213,15 +243,59 @@ function Ents.init(G)
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
-        if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+        local ricE = res and s.kind == "shell" and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
+        local RIC = G.Config.Ricochet
+        local bounced = false
+        if ricE and RIC and ricE.alive and RIC.a0[ricE.cat] then
+          -- 跳弹（用户：跳弹也做出来）：炮弹打在坦克、装甲车上，入射方向和装甲面的法线夹角越大越容易滑开（a0 度起有可能、a1 度一定）
+          local vd = s.vel.Unit
+          local ang = math.deg(math.acos(math.clamp(math.abs(vd:Dot(res.Normal)), 0, 1)))
+          local k = math.clamp((ang - RIC.a0[ricE.cat]) / math.max(1, RIC.a1[ricE.cat] - RIC.a0[ricE.cat]), 0, 1)
+          if k > 0 and math.random() < k then
+            local n = res.Normal
+            local refl = vd - 2 * vd:Dot(n) * n
+            refl = (refl + V((math.random() - 0.5) * 0.16, math.random() * 0.08, (math.random() - 0.5) * 0.16)).Unit
+            s.vel = refl * s.vel.Magnitude * RIC.keep
+            s.pos = res.Position + n * 0.5
+            s.ricocheted = true
+            s.life = s.t + RIC.life
+            if RIC.dmg > 0 then G.damageEnt(ricE, s.w.dmg * RIC.dmg, s.src) end
+            G.fx({ k = "ricochet", id = s.id, p = s.pos, v = s.vel, n = n })
+            local P = s.src and s.src.P
+            if P and P.pl then G.msg(P.pl, "ric", "hit.ric") end
+            local D = ricE.driver
+            if D and D.pl then G.msg(D.pl, "ric", "hit.ricIn") end
+            G.ricochets = (G.ricochets or 0) + 1   -- 测试用
+            bounced = true
+          end
+        end
+        if bounced then
+          -- 刚跳开：位置、速度上面已经改好了
+        elseif res and s.ricocheted then   -- 跳开过的弹：再碰到东西就没了（不炸、不伤），碰的地方迸一点火星
+          G.fx({ k = "spark", p = res.Position, n = res.Normal, h = "m", s = 1 })
+          done = true
+        elseif res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+          local hitE = res.Instance and G.eraShell and G.entOf(res.Instance)
+          local ek = hitE and G.eraShell(hitE, s, res.Position)   -- 重型爆反挡穿甲弹（Era.lua）
+          if ek then G.dmgK = { [hitE] = ek } end
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
+          local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
+          if hs and HitSurf.METAL[hs] then
+            G.fx({ k = "spark", p = res.Position, n = res.Normal, h = hs, s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+          end
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          if ek then G.dmgK = nil end
           done = true
         elseif res and s.kind ~= "grenade" then
+          -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
+          local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
+          if m then G.dmgK = m end
           G.explode(res.Position, s.w, s.src)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
+          if m then G.dmgK = nil end
           done = true
         elseif res and s.kind == "grenade" then   -- 手雷：落地弹一下、滚一点，等引信
           s.pos = res.Position + res.Normal * 0.6

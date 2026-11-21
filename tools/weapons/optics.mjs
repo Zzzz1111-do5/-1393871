@@ -135,7 +135,8 @@ async function buildItem(key, I) {
   let off = [0, 0, 0];
   if (I.anchor) {
     const b = unite(pick(I.anchor.nodes));
-    off = [-(b.mn[0] + b.mx[0]) / 2, -(I.anchor.y === 'center' ? (b.mn[1] + b.mx[1]) / 2 : b.mn[1]), -(I.anchor.z === 'min' ? b.mn[2] : I.anchor.z === 'max' ? b.mx[2] : (b.mn[2] + b.mx[2]) / 2)];
+    // y：默认取最低（镜座底面贴导轨）；center 取中心（枪口装置的轴线）；max 取最高（握把、弹匣：顶面贴着导轨 / 弹匣井）
+    off = [-(b.mn[0] + b.mx[0]) / 2, -(I.anchor.y === 'center' ? (b.mn[1] + b.mx[1]) / 2 : I.anchor.y === 'max' ? b.mx[1] : b.mn[1]), -(I.anchor.z === 'min' ? b.mn[2] : I.anchor.z === 'max' ? b.mx[2] : (b.mn[2] + b.mx[2]) / 2)];
   }
   if (I.offAdj) off = off.map((v, k) => v + I.offAdj[k]);
   // 新文档：每块一个节点（同材质的图元并成一个）
@@ -192,6 +193,226 @@ async function buildItem(key, I) {
     }
     console.log('   dropBox 去掉三角形', dropped);
   }
+  // inner：镜筒里面（光轴附近、目镜到物镜之间）的三角形——内壁、镜片、分划板——分到「<块名>In」块里（用户 11-21：瞄准镜照使命召唤做）：
+  //   开镜时游戏把这几块藏起来，眼睛从目镜的洞里直接看到放大的战场，外面一圈还是镜子的外壳（不再整屏涂黑）。
+  //   判断：三个顶点都在光轴 R 以内（R 默认取目镜、物镜半径大的那个 × 1.08），沿光轴在目镜往后一点到物镜往前一点之间
+  const lensOf = (re) => {
+    const list = pick(re);
+    if (!list.length) return null;
+    const b = unite(list);
+    return { c: [0, 1, 2].map((k) => (b.mn[k] + b.mx[k]) / 2 + off[k]), r: Math.max(b.mx[0] - b.mn[0], b.mx[1] - b.mn[1]) / 2 };
+  };
+  const eyeL = I.eyePt ? { c: I.eyePt, r: I.eyeR || 0.05 } : (I.eye ? lensOf(I.eye) : null);
+  const objL = I.objPt ? { c: I.objPt, r: I.objR || 0.07 } : (I.obj ? lensOf(I.obj) : null);
+  const innerNames = [];
+  if (I.inner && eyeL && objL) {
+    const A = eyeL.c, B = objL.c;
+    const ax = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+    const L = Math.hypot(...ax);
+    const u = ax.map((v) => v / L);
+    // r：镜片半径以内的一律分出去（镜片、分划板、细镜筒的内壁）；wall：再往外到这个半径，只分「面朝光轴」的（粗的棱镜壳、镜座的内壁），
+    //   朝外、朝后的面（外壳、目镜后端那一圈）留着——开镜时从目镜看过去，外面还是一圈镜子
+    const R = I.inner.r || Math.max(eyeL.r, objL.r) * (I.inner.k || 1.08);
+    const RW = I.inner.wall || 0;
+    const t0 = -(I.inner.back ?? 0.006), t1 = L + (I.inner.front ?? 0.03);
+    const radial = (v) => {   // → [沿光轴的位置, 离光轴多远, 径向单位向量]
+      const d = [v[0] - A[0], v[1] - A[1], v[2] - A[2]];
+      const t = d[0] * u[0] + d[1] * u[1] + d[2] * u[2];
+      const p = [d[0] - u[0] * t, d[1] - u[1] * t, d[2] - u[2] * t];
+      const r = Math.hypot(...p);
+      return [t, r, r > 1e-9 ? p.map((x) => x / r) : [0, 0, 0]];
+    };
+    const inside = (v) => { const [t, r] = radial(v); return t >= t0 && t <= t1 && r <= R; };
+    // cone：从开镜时的眼睛位置（目镜后面 cone 格）穿过目镜那一圈看出去的视锥——锥里挡着视线的三角形都分出去
+    //   （低模的镜子不一定有空心的镜筒：后端的斜面、镜身的大三角形会横在视线上）；目镜平面后面的（外壳、目镜那一圈）留着
+    const DC = I.inner.cone || 0, RE = eyeL.r * (I.inner.coneK || 1.02);
+    const inCone = (v) => { const [t, r] = radial(v); return t >= t0 && r <= RE * (DC + Math.max(0, t)) / DC; };
+    const axisHit = (a, b, c) => {   // 光轴（从眼睛往前）穿过这个三角形
+      const O = [A[0] - u[0] * DC, A[1] - u[1] * DC, A[2] - u[2] * DC];
+      const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const p = [u[1] * e2[2] - u[2] * e2[1], u[2] * e2[0] - u[0] * e2[2], u[0] * e2[1] - u[1] * e2[0]];
+      const det = e1[0] * p[0] + e1[1] * p[1] + e1[2] * p[2];
+      if (Math.abs(det) < 1e-12) return false;
+      const tv = [O[0] - a[0], O[1] - a[1], O[2] - a[2]];
+      const uu = (tv[0] * p[0] + tv[1] * p[1] + tv[2] * p[2]) / det;
+      if (uu < 0 || uu > 1) return false;
+      const q = [tv[1] * e1[2] - tv[2] * e1[1], tv[2] * e1[0] - tv[0] * e1[2], tv[0] * e1[1] - tv[1] * e1[0]];
+      const vv = (u[0] * q[0] + u[1] * q[1] + u[2] * q[2]) / det;
+      if (vv < 0 || uu + vv > 1) return false;
+      const dist = (e2[0] * q[0] + e2[1] * q[1] + e2[2] * q[2]) / det;
+      return dist - DC >= t0;
+    };
+    const triIn = (a, b, c) => {
+      if (DC) {
+        for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4 - i; j++) {   // 三角形上撒 15 个点
+          const w1 = i / 4, w2 = j / 4, w0 = 1 - w1 - w2;
+          if (inCone([a[0] * w0 + b[0] * w1 + c[0] * w2, a[1] * w0 + b[1] * w1 + c[1] * w2, a[2] * w0 + b[2] * w1 + c[2] * w2])) return true;
+        }
+        return axisHit(a, b, c);
+      }
+      if (inside(a) && inside(b) && inside(c)) return true;
+      if (!RW) return false;
+      const ra = radial(a), rb = radial(b), rc = radial(c);
+      for (const q of [ra, rb, rc]) if (q[0] < t0 || q[0] > t1 || q[1] > RW) return false;
+      const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      const nl = Math.hypot(...n);
+      if (nl < 1e-12) return true;
+      const g = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+      const rg = radial(g)[2];
+      return (n[0] * rg[0] + n[1] * rg[1] + n[2] * rg[2]) / nl < -(I.inner.dot ?? 0.25);   // 面朝光轴
+    };
+    const innerMesh = new Map();
+    let moved = 0;
+    for (const P of [...parts]) {
+      for (const prim of P.mesh.listPrimitives()) {
+        const pos = prim.getAttribute('POSITION');
+        let idx = prim.getIndices();
+        if (!idx) {   // 没有下标的图元（三个三个顶点直接排）：补一份顺序下标
+          idx = doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(pos.getCount()).map((_, i) => i)).setBuffer(pos.getBuffer());
+          prim.setIndices(idx);
+        }
+        const ia = idx.getArray();
+        const keep = [], inn = [], e = [0, 0, 0];
+        const at = (i) => pos.getElement(i, e).slice();
+        for (let t = 0; t < ia.length; t += 3) {
+          const isIn = triIn(at(ia[t]), at(ia[t + 1]), at(ia[t + 2]));
+          (isIn ? inn : keep).push(ia[t], ia[t + 1], ia[t + 2]);
+        }
+        if (!inn.length) continue;
+        moved += inn.length / 3;
+        const q = prim.clone();
+        q.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(inn)).setBuffer(idx.getBuffer()));
+        prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(keep)).setBuffer(idx.getBuffer()));
+        const nm = P.part + 'In';
+        if (!innerMesh.has(nm)) {
+          const mesh = doc.createMesh(`O_${key}__${nm}`);
+          scene.addChild(doc.createNode(`O_${key}__${nm}`).setMesh(mesh));
+          innerMesh.set(nm, mesh);
+          parts.push({ part: nm, mesh });
+          innerNames.push(nm);
+        }
+        innerMesh.get(nm).addPrimitive(q);
+      }
+    }
+    // 整块都在里面的（镜片、分划板）：原块空了就去掉
+    for (const P of [...parts]) {
+      for (const prim of P.mesh.listPrimitives()) {
+        if (prim.getIndices() && prim.getIndices().getCount() === 0) { P.mesh.removePrimitive(prim); prim.dispose(); }
+      }
+      if (P.mesh.listPrimitives().length === 0) {
+        parts.splice(parts.indexOf(P), 1);
+        for (const nd of root.listNodes()) if (nd.getMesh() === P.mesh) nd.dispose();
+        P.mesh.dispose();
+      }
+    }
+    console.log(`   ${key} inner：挡着目镜视线的三角形`, moved, '→', innerNames.join('/'), DC ? `（视锥：眼睛在目镜后 ${DC}、目镜半径 ${RE.toFixed(3)}）` : `（R ${R.toFixed(3)}、内壁 ${RW}）`);
+  } else if (I.inner) {
+    console.log(`   ${key} inner：没量到目镜 / 物镜（eye ${!!eyeL}、obj ${!!objL}），不分`);
+  }
+  // ring：正圆的目镜圈（用户 11-21：镜子是圆形的不是多边形）——两具 ACOG 的原模型目镜是八边形的低模筒子，开镜时镜身露出来、
+  //   举镜时从后面看都是八边形。照光轴车一圈 72 边的回转体罩在八边形外面：后端一圈端面（朝眼睛）、内壁（洞，半径 rIn，
+  //   比八边形洞的内切圆小一点，八边形的边藏在端面后面）、外圆柱（半径 rOut，比八边形的外接圆大一点）、前端面；
+  //   t0 / t1 沿光轴（从目镜往物镜为正，格），内壁从后端到目镜镜片那个面（t = 0）——开镜时看出去的那个圆就是它的前沿，
+  //   元数据里目镜半径写成 rIn（游戏按它摆开镜距离、画镜片那一层的正圆）
+  if (I.ring && eyeL && objL) {
+    const G0 = I.ring;
+    const A = eyeL.c, B = objL.c;
+    const ax = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+    const L = Math.hypot(...ax);
+    const u = ax.map((v) => v / L);
+    const up = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    let e1 = cr(up, u);
+    const l1 = Math.hypot(...e1);
+    e1 = e1.map((v) => v / l1);
+    const e2 = cr(u, e1);
+    const rIn = G0.rIn, rOut = G0.rOut, t0 = G0.t0, t1 = G0.t1, rF = (rIn + rOut) / 2;
+    // 截面（t 沿光轴、负的朝眼睛；r 半径）：橡胶目镜罩——用户 11-21：镜身 / 目镜圈太假（原来是个平头的圆筒）。
+    //   内壁 → 内唇圆角 → 后端面（中间一道浅槽）→ 外唇圆角 → 外圈几道防滑纹 → 前端倒角 → 前端面 → 里面一段 → 目镜面上的台阶回到内壁；
+    //   圆角上的点法线取两边的平均（看着是圆的，不是一圈圈折面），转角处是硬边
+    const W0 = rOut - rIn, L0 = t1 - t0;
+    const lip = Math.min(W0 * 0.24, L0 * 0.3), ch = Math.min(W0 * 0.12, L0 * 0.12);
+    const pts = [];   // { t, r, hard }
+    const add = (t, r, hard) => pts.push({ t, r, hard: !!hard });
+    const arc = (ct, cr0, rad, a0, a1, n) => { for (let i = 1; i < n; i++) { const a = a0 + (a1 - a0) * i / n; add(ct + rad * Math.cos(a), cr0 + rad * Math.sin(a)); } };
+    add(0, rIn, true);
+    add(t0 + lip, rIn, true);
+    arc(t0 + lip, rIn + lip, lip, -Math.PI / 2, -Math.PI, 6);   // 内唇圆角
+    add(t0, rIn + lip, true);
+    const gA = rIn + lip + (W0 - 2 * lip) * 0.42, gW = (W0 - 2 * lip) * 0.16, gD = lip * 0.35;   // 后端面的一道浅槽
+    add(t0, gA, true);
+    add(t0 + gD, gA + gW * 0.5, true);
+    add(t0, gA + gW, true);
+    add(t0, rOut - lip, true);
+    arc(t0 + lip, rOut - lip, lip, Math.PI, Math.PI / 2, 6);   // 外唇圆角
+    add(t0 + lip, rOut, true);
+    const ribs = G0.ribs ?? 4, rib = W0 * 0.05, zone = (L0 - lip - ch) * 0.7, pitch = zone / (ribs + 0.5);
+    for (let k = 0; k < ribs; k++) {   // 防滑纹：一道道浅凹槽
+      const ta = t0 + lip + pitch * (k + 0.5);
+      add(ta, rOut, true);
+      add(ta + pitch * 0.18, rOut - rib, true);
+      add(ta + pitch * 0.36, rOut - rib, true);
+      add(ta + pitch * 0.54, rOut, true);
+    }
+    add(t1 - ch, rOut, true);
+    add(t1, rOut - ch, true);
+    add(t1, rF, true);
+    add(0, rF, true);
+    // 每段的外法线（这一圈是绕着截面顺时针走的：(−dr, dt)）
+    const nS = pts.length;
+    const segN = [];
+    for (let i = 0; i < nS; i++) {
+      const p0 = pts[i], p1 = pts[(i + 1) % nS];
+      const dt = p1.t - p0.t, dr = p1.r - p0.r, dl = Math.hypot(dt, dr) || 1;
+      segN.push([-dr / dl, dt / dl]);
+    }
+    const vN = (i, s) => {   // 第 i 个点在第 s 段上用的法线：硬点用这一段的，圆角上的点取前后两段的平均
+      if (pts[i].hard) return segN[s];
+      const a = segN[(i - 1 + nS) % nS], b = segN[i % nS];
+      const l = Math.hypot(a[0] + b[0], a[1] + b[1]) || 1;
+      return [(a[0] + b[0]) / l, (a[1] + b[1]) / l];
+    };
+    const SEG = G0.seg || 96;
+    const P = [], N = [], IDX = [];
+    for (let s0 = 0; s0 < nS; s0++) {
+      const i0 = s0, i1 = (s0 + 1) % nS;
+      const n0 = vN(i0, s0), n1 = vN(i1, s0);
+      const base = P.length / 3;
+      for (let j = 0; j <= SEG; j++) {
+        const th = (j / SEG) * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
+        const rd = [e1[0] * c + e2[0] * sn, e1[1] * c + e2[1] * sn, e1[2] * c + e2[2] * sn];
+        for (const [q, nn] of [[pts[i0], n0], [pts[i1], n1]]) {
+          P.push(A[0] + u[0] * q.t + rd[0] * q.r, A[1] + u[1] * q.t + rd[1] * q.r, A[2] + u[2] * q.t + rd[2] * q.r);
+          N.push(u[0] * nn[0] + rd[0] * nn[1], u[1] * nn[0] + rd[1] * nn[1], u[2] * nn[0] + rd[2] * nn[1]);
+        }
+      }
+      const sn0 = segN[s0];
+      for (let j = 0; j < SEG; j++) {
+        const a = base + j * 2, b = a + 1, c2 = a + 2, d = a + 3;
+        // 绕向：三角形的几何法线要和这一段的法线同向（Roblox 只画正面）
+        const pa = P.slice(a * 3, a * 3 + 3), pb = P.slice(b * 3, b * 3 + 3), pc = P.slice(c2 * 3, c2 * 3 + 3);
+        const g = cr([pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]], [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]]);
+        const th = (j + 0.5) / SEG * Math.PI * 2;
+        const rd = [e1[0] * Math.cos(th) + e2[0] * Math.sin(th), e1[1] * Math.cos(th) + e2[1] * Math.sin(th), e1[2] * Math.cos(th) + e2[2] * Math.sin(th)];
+        const want = [u[0] * sn0[0] + rd[0] * sn0[1], u[1] * sn0[0] + rd[1] * sn0[1], u[2] * sn0[0] + rd[2] * sn0[1]];
+        if (g[0] * want[0] + g[1] * want[1] + g[2] * want[2] >= 0) IDX.push(a, b, c2, b, d, c2);
+        else IDX.push(a, c2, b, b, c2, d);
+      }
+    }
+    const buf = root.listBuffers()[0];
+    const col = (G0.col || [38, 38, 40]).map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+    const mat = doc.createMaterial(`${key}_EyepieceRing`).setBaseColorFactor([col[0], col[1], col[2], 1]).setMetallicFactor(0).setRoughnessFactor(G0.rough ?? 0.9);   // 橡胶：哑光
+    const prim = doc.createPrimitive()
+      .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(P)).setBuffer(buf))
+      .setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(new Float32Array(N)).setBuffer(buf))
+      .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(IDX)).setBuffer(buf))
+      .setMaterial(mat);
+    const mesh = doc.createMesh(`O_${key}__Eyepiece`).addPrimitive(prim);
+    scene.addChild(doc.createNode(`O_${key}__Eyepiece`).setMesh(mesh));
+    parts.push({ part: 'Eyepiece', mesh });
+    console.log(`   ${key} ring：正圆目镜罩 ${SEG} 边、截面 ${nS} 点，洞 ${rIn}、外径 ${rOut}、t ${t0}～${t1}，三角形 ${IDX.length / 3}`);
+  }
   // 一块超过 19500 个三角形：按顺序切成几块（Roblox 导入、EditableMesh 一个网格最多 2 万个三角形），块名 Body、Body_2……
   for (const P of [...parts]) {
     const prim = P.mesh.listPrimitives()[0];
@@ -245,10 +466,24 @@ async function buildItem(key, I) {
   if (I.eyes) meta.eyes = I.eyes.map((re) => lens(re));
   if (I.eyePt) meta.eye = { c: I.eyePt, r: I.eyeR || 0.05 };   // 节点分不出镜片的：直接写（器材坐标）
   if (I.objPt) meta.obj = { c: I.objPt, r: I.objR || 0.07 };
+  if (I.ring && meta.eye) meta.eye = { c: meta.eye.c, r: I.ring.rIn };   // 补了正圆目镜圈：开镜看出去的圆就是它的洞
   meta.pts = I.pts || null;
+  if (innerNames.length) meta.inner = innerNames.filter((nm) => parts.some((P) => P.part === nm));
   const all = Object.values(meta.parts);
   meta.size = [0, 1, 2].map((k) => r3(Math.max(...all.map((p) => p.c[k] + p.s[k] / 2)) - Math.min(...all.map((p) => p.c[k] - p.s[k] / 2))));
-  // 写 glb（贴图原样）
+  // 写 glb（贴图原样；超过 1024 的缩到 1024——Roblox 导入时本来就会缩到这么大，原图 4K 只是让文件大几倍）
+  for (const tex of root.listTextures()) {
+    const img = tex.getImage();
+    if (!img) continue;
+    const meta2 = await sharp(Buffer.from(img)).metadata();
+    const big = Math.max(meta2.width || 0, meta2.height || 0);
+    if (big <= (I.texMax || 1024)) continue;
+    const k2 = (I.texMax || 1024) / big;
+    const w2 = Math.max(1, Math.round(meta2.width * k2)), h2 = Math.max(1, Math.round(meta2.height * k2));
+    const png = tex.getMimeType() === 'image/png';
+    const out2 = await sharp(Buffer.from(img)).resize(w2, h2)[png ? 'png' : 'jpeg'](png ? {} : { quality: 90 }).toBuffer();
+    tex.setImage(new Uint8Array(out2));
+  }
   const out = path.join(ROOT, 'models/optics', key + '.glb');
   await io.write(out, doc);
   console.log(key.padEnd(6), '三角形', meta.tris, '块', parts.map((p) => p.part).join('/'), 'glb', fs.statSync(out).size, '字节');
@@ -421,7 +656,8 @@ for (const [key, I] of Object.entries(CFG.items)) {
 const L = [];
 L.push('-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据');
 L.push('--   坐标是「器材坐标」：格（1 米 = 2.8 格），+Z 朝前（物镜）、+Y 朝上；瞄准镜原点在镜座底面中心（贴在枪的导轨上），望远镜原点在两个目镜中间');
-L.push('--   parts[块名] = { c 包围盒中心, s 大小, tri 三角形数, col / met 没贴图的块的颜色、金属度 }；eye / obj 目镜、物镜的中心 c 和半径 r；pts 握把 grip、导轨 rail 等点；size 总尺寸');
+L.push('--   parts[块名] = { c 包围盒中心, s 大小, tri 三角形数, col / met 没贴图的块的颜色、金属度 }；eye / obj 目镜、物镜的中心 c 和半径 r；pts 握把 grip、导轨 rail 等点；size 总尺寸；');
+L.push('--   inner 镜筒里面的块（内壁、镜片、分划板：第一人称开镜时藏起来，从目镜的洞里直接看放大的画面）');
 L.push('--   导入后 MeshPart 叫 O_<键>__<块名>');
 L.push('return {');
 const lv = (v) => `{ ${v.join(', ')} }`;
@@ -434,6 +670,7 @@ for (const [key, M] of Object.entries(META)) {
   if (M.obj) L.push(`    obj = { c = ${lv(M.obj.c)}, r = ${M.obj.r} },`);
   if (M.eyes) L.push(`    eyes = { ${M.eyes.map((e) => `{ c = ${lv(e.c)}, r = ${e.r} }`).join(', ')} },`);
   if (M.pts) L.push(`    pts = { ${Object.entries(M.pts).map(([k, v]) => `${k} = ${lv(v)}`).join(', ')} },`);
+  if (M.inner && M.inner.length) L.push(`    inner = { ${M.inner.map((n) => `"${n}"`).join(', ')} },`);   // 镜筒里面的块（开镜时藏起来，从目镜的洞里看出去）
   L.push(`    size = ${lv(M.size)},`);
   L.push(`    credit = "${M.credit}",`);
   L.push('  },');
@@ -451,7 +688,7 @@ for (const [key, I] of Object.entries(CFG.items)) {
   const S = CFG.sources[I.src];
   sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}`);
 }
-sec.push('  改动：几何、材质、贴图都没改，只换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；游戏内嵌的版本贴图缩小并压成 256 色');
+sec.push('  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改');
 txt = txt.replace(/\s*$/, '\n\n') + sec.join('\n') + '\n';
 fs.writeFileSync(cf, txt);
 console.log('写好了 OpticsMeta.lua、credits.txt');

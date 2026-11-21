@@ -14,6 +14,15 @@ function Bots.init(G)
   local W = Config.Weapons[BC.weapon] or Config.Weapons.m4
   local SIZE = V(2.2, 5.6, 1.6)   -- 命中盒（脚底到头顶）
   local HALF = SIZE.Y / 2
+  -- 姿势（用户：给小兵加上动画和姿势）：命中零件跟着变——站 5.6 高、蹲 / 跪 4 高、趴 1.5 高 5.4 长；眼睛（看、开枪）的位置也跟着变；
+  --   根零件（位置）还是在脚底上 2.8 格，别的模块照旧用；客户端（Soldier.lua）按属性 St 摆姿势
+  local STANCE = {
+    [0] = { size = SIZE, y = 0, head = 1.4, eye = V(0, HALF - 0.7, 0) },
+    [1] = { size = V(2.2, 4.0, 2.0), y = -0.8, head = 1.2, eye = V(0, 0.8, -0.3) },
+    [2] = { size = V(2.4, 1.8, 5.4), y = -1.9, head = 0.4, eye = V(0, -1.8, -2.0) },
+  }
+  local SQ = BC.squad or 5   -- 一个小队几个人（用户：登陆和防守的按照小队为单位聚在一起）
+  local NADE = Config.Weapons.grenade
 
   -- 机器人的样子用 Roblox 正常小人（用户：士兵建模太粗糙了，就用 Roblox 正常小人的建模）：开服时生成一个默认的 R15 小人当模板
   --   放进 ReplicatedStorage.BotRig，客户端（Soldier.lua）每个机器人克隆一个、按队伍上色、播 Roblox 自带的动作；生成不了（没网）就用零件拼的经典小人
@@ -74,7 +83,10 @@ function Bots.init(G)
     serial[team] += 1
     local n = serial[team]
     local nm = NAMES[(n - 1) % #NAMES + 1] .. "-" .. ((team == "atk") and "1" or "2") .. string.format("%02d", n)
-    local B = { team = team, name = nm, k = 0, d = 0, s = 0, c = 0, e = nil, state = "wait", respawnAt = now() + math.random() * 2, ammo = 30 }
+    local B = { team = team, name = nm, k = 0, d = 0, s = 0, c = 0, e = nil, state = "wait", respawnAt = now() + math.random() * 2, ammo = 30,
+      -- 每个人自己的脾气（用户：每个人要有自己的动作逻辑，不要一堆人一模一样）：反应快慢、枪法、胆子、步子快慢、爱不爱趴着打、带几颗手雷
+      pers = { react = 0.65 + math.random() * 0.8, aim = 0.75 + math.random() * 0.55, brave = math.random(), pace = 0.92 + math.random() * 0.16,
+        prone = math.random(), nades = (math.random() < 0.65) and ((math.random() < 0.3) and 2 or 1) or 0, shift = 14 + math.random() * 22 } }
     table.insert(list, B)
     return B
   end
@@ -95,7 +107,23 @@ function Bots.init(G)
     return { atk = a, def = d }
   end
 
+  -- 小队：{ team, m = { 队员 }, lead = 队长, contactT / contactP（最近一次交火的时间、敌人在哪）, bound（交替掩护：1 / 2 组在冲）、
+  --   boundAt（什么时候换）、adv（推进到哪了）, face（守方：阵地朝哪边） }
+  local squads = {}
+  local function leaveSquad(B)
+    local S = B.sq
+    B.sq = nil
+    if not S then return end
+    for i, x in ipairs(S.m) do if x == B then table.remove(S.m, i) break end end
+    if S.lead == B then S.lead = S.m[1] end
+    if #S.m == 0 then
+      for i, x in ipairs(squads) do if x == S then table.remove(squads, i) break end end
+    end
+  end
+  G.botSquads = function() return squads end   -- 测试用
+
   local function despawn(B)
+    leaveSquad(B)
     if B.boat and G.botOffBoat then G.botOffBoat(B) end
     if B.e then
       local e = B.e
@@ -103,6 +131,14 @@ function Bots.init(G)
       e.onDeath = nil
       if e.alive then G.removeEnt(e) end
     end
+  end
+
+  -- 登陆艇满了、真人要上（Vehicles.lua）：这个机器人让座——收掉，过两秒重新出生（坐下一班）
+  function G.botBump(B)
+    if not B then return end
+    despawn(B)
+    B.state = "wait"
+    B.respawnAt = now() + 2
   end
 
   local function balance()
@@ -272,10 +308,34 @@ function Bots.init(G)
   end
 
   local onDeath
+  -- 挨打：被压制（多半会趴下），客户端那边身子一缩（按 Hp 变化自己画）
+  local function onHit(e, amt, src)
+    local B = e.bot
+    if B then B.supp = math.min(4, (B.supp or 0) + 1.2) end
+  end
   local function makeEnt(B, cf)
     local e = G.newEnt({ kind = "bot", team = B.team, cat = "inf", hp = BC.hp, size = SIZE, cf = cf, extra = { counts = 1, bot = B, headTop = 1.4 } })
     e.model:SetAttribute("Name", B.name)
     e.onDeath = onDeath
+    e.onHit = onHit
+    -- 命中零件（姿势变了跟着变）：焊在根零件上跟着走；根零件本身不挨打
+    e.root.CanQuery = false
+    local hit = Instance.new("Part")
+    hit.Name = "Hit"
+    hit.Transparency = 1
+    hit.CanCollide, hit.CanTouch, hit.CanQuery = false, false, true
+    hit.Massless = true
+    hit.Size = SIZE
+    hit.CFrame = cf
+    local hw = Instance.new("Weld")
+    hw.Part0, hw.Part1, hw.C0 = e.root, hit, CFrame.new()
+    hw.Parent = hit
+    hit.Parent = e.model
+    e.hit, e.hitW, e.stance = hit, hw, 0
+    B.supp, B.nades, B.actN, B.aimSent, B.boundHold, B.stanceT = 0, B.pers.nades, 0, nil, nil, 0
+    local pa = math.random() * math.pi * 2
+    B.pj = V(math.cos(pa), 0, math.sin(pa)) * (1 + math.random() * 2.5)   -- 在队形里自己的那一点偏差
+    B.pjAt = now() + B.pers.shift
     B.e = e
     B.tgt, B.tgtPos, B.goal, B.detour, B.wp, B.navKey = nil, nil, nil, nil, nil, nil
     local ja = math.random() * math.pi * 2
@@ -288,6 +348,26 @@ function Bots.init(G)
     return e
   end
 
+  -- 换姿势：命中零件变大小、往下挪；属性 St 给客户端
+  local function setStance(B, s)
+    local e = B.e
+    if not e or (e.stance or 0) == s then return end
+    local S = STANCE[s]
+    e.stance, e.headTop = s, S.head
+    if e.hit then
+      e.hit.Size = S.size
+      e.hitW.C0 = CFrame.new(0, S.y, 0)
+    end
+    e.model:SetAttribute("St", s)
+    B.stanceT = now()
+  end
+  -- 一次动作给客户端（换弹 r、扔雷 g、打手势 s）：字母后面跟序号，变了才算新的一次
+  local function act(B, k)
+    if not B.e then return end
+    B.actN = (B.actN or 0) + 1
+    B.e.model:SetAttribute("Act", k .. B.actN)
+  end
+
   local function credit(src, B)
     local kname = nil
     if src and src.P and G.P[src.P.pl] == src.P then
@@ -296,6 +376,7 @@ function Bots.init(G)
         K.kills += 1
         G.addScore(K, Config.Score.botKill)
         G.msg(K.pl, "kill", "ui.youKilled", B.name)
+        if src.wid and G.gunXp then G.gunXp(K, src.wid, (Config.GunMods and Config.GunMods.botXp) or 60) end   -- 枪械经验（改枪）
       end
       kname = K.pl.DisplayName
     elseif src and src.bot then
@@ -310,7 +391,21 @@ function Bots.init(G)
 
   onDeath = function(e, src)
     local B = e.bot
+    -- 打死的那一枪从哪边来（度，0 正前、正的在右边）：客户端按它挑倒法——正面中弹往后倒、背后中弹往前扑、侧面中弹往另一边瘫
+    pcall(function()
+      local ap = nil
+      if src and src.P and src.P.char then
+        local h = src.P.char:FindFirstChild("HumanoidRootPart")
+        ap = h and h.Position
+      end
+      if not ap and src and src.bot and src.bot.e then ap = src.bot.e.root.CFrame.Position end
+      if ap then
+        local rel = e.root.CFrame:PointToObjectSpace(ap)
+        e.model:SetAttribute("DieD", math.floor(math.deg(math.atan2(rel.X, -rel.Z)) + 0.5))
+      end
+    end)
     if B then
+      leaveSquad(B)
       B.d += 1
       if B.boat and G.botOffBoat then G.botOffBoat(B) end
       B.e = nil
@@ -330,22 +425,39 @@ function Bots.init(G)
     if not e or not e.alive then return end
     G.moveEnt(e, rootCF(x, z, V(0, 0, -1)))
     B.state = "move"
-    local p = B.target and Map.POINTS[B.targetI or 0]
     B.goal = nil
+    e.model:SetAttribute("Ride", false)
+    setStance(B, 0)
+    if B.sq and B.sq.lead == B then act(B, "s") end   -- 队长：跟我上！
   end
 
-  local function spawnAtk(B)
-    -- 攻击出发阵地能用（第二阶段起、守方没压过来，Round.lua）：八成在那里出生，直接上前线——
-    --   不然拿下港口 C 以后要走 4 分多钟才到机场 D，一路没仗打
+  -- 一个小队一起出生（用户：登陆和防守的按照小队为单位聚在一起）：先按第一个人定在哪，队员在他身边排开——
+  --   攻方：攻击出发阵地（第二阶段起、八成）/ 拿下的据点（四成）/ 坐同一条登陆艇；守方：据点圈里 / 集结点 / 营地，一字排开面朝来敌的方向
+  -- 第 k 个队员（队长是 0）相对队长的位置：楔形，往后两侧散开
+  local function wedge(k, fwd)
+    if k == 0 then return V() end
+    local side = (k % 2 == 1) and -1 or 1
+    local row = math.ceil(k / 2)
+    local rt = V(-fwd.Z, 0, fwd.X)
+    return rt * (side * (4 + 2.5 * row)) - fwd * (4.5 * row)
+  end
+  local function flatUnit(v, def)
+    local f = V(v.X, 0, v.Z)
+    return (f.Magnitude > 0.01) and f.Unit or def
+  end
+  -- 一个据点「来敌的方向」：离它最近的登陆滩
+  local function threatDir(p)
+    local b = landingFor(p)
+    if not b then return V(0, 0, 1) end
+    return flatUnit(V(b.cx - p.x, 0, b.z - p.z), V(0, 0, 1))
+  end
+
+  local function atkPlan()
     local tg0 = pickAtkTarget(nil)
-    local st = tg0 and G.stagingOk and G.stagingOk(tg0.id)
-    if st and math.random() < 0.8 then
-      local sp = spotNear(st.x, st.z, 0, 35)
-      makeEnt(B, rootCF(sp.X, sp.Z, V(tg0.x - sp.X, 0, tg0.z - sp.Z)))
-      B.target = tg0.id
-      B.state = "move"
-      return true
-    end
+    if not tg0 then return nil end
+    -- 攻击出发阵地能用（第二阶段起、守方没压过来，Round.lua）：八成在那里出生，直接上前线
+    local st = G.stagingOk and G.stagingOk(tg0.id)
+    if st and math.random() < 0.8 then return { mode = "land", tg = tg0, at = spotNear(st.x, st.z, 0, 35) } end
     -- 有拿下的据点、同一块陆地上还有要打的：四成在那里出生
     local caps = {}
     for _, p in ipairs(pointList()) do
@@ -355,73 +467,92 @@ function Bots.init(G)
     if #caps > 0 and math.random() < 0.4 then
       local p = caps[math.random(#caps)]
       local tg = pickAtkTarget(p.land)
-      local sp = spotNear(p.x, p.z, 10, 40)
-      makeEnt(B, rootCF(sp.X, sp.Z, V(tg.x - sp.X, 0, tg.z - sp.Z)))
-      B.target = tg.id
-      B.state = "move"
+      if tg then return { mode = "land", tg = tg, at = spotNear(p.x, p.z, 10, 40) } end
+    end
+    local b = landingFor(tg0)
+    if not b or not G.boatBot then return nil end
+    return { mode = "boat", tg = tg0, beach = b.id }
+  end
+  local function spawnAtk(B, plan, k)
+    local tg = plan.tg
+    if plan.mode == "land" then
+      local fwd = flatUnit(V(tg.x - plan.at.X, 0, tg.z - plan.at.Z), V(0, 0, -1))
+      local sp = plan.at + wedge(k, fwd)
+      if not Map.isLand(sp.X, sp.Z) then sp = plan.at end
+      makeEnt(B, rootCF(sp.X, sp.Z, fwd))
+      B.target, B.state = tg.id, "move"
       return true
     end
-    local tg = pickAtkTarget(nil)
-    if not tg then return false end
-    local b = landingFor(tg)
-    if not b or not G.boatBot then return false end
-    local boat, cf = G.boatBot(B, b.id)
-    if boat == false and cf then   -- 登陆场已经建立：直接在滩上出生，朝据点走
+    local boat, cf = G.boatBot(B, plan.beach)
+    if boat == false and cf then   -- 登陆场已经建立：直接在滩上出生（第一个人定位置，后面的在他身后排开）
+      if plan.beachCF then cf = plan.beachCF * CFrame.new(wedge(k, V(0, 0, -1))) else plan.beachCF = cf end
       makeEnt(B, cf)
-      B.target = tg.id
-      B.state = "move"
+      B.target, B.state = tg.id, "move"
       return true
     end
     if not boat then return false end
     makeEnt(B, cf)
-    B.target = tg.id
-    B.state = "boat"
+    B.target, B.state = tg.id, "boat"
+    B.e.model:SetAttribute("Ride", true)
+    setStance(B, 1)   -- 艇上蹲着
     return true
   end
 
-  local function spawnDef(B)
+  local function defPlan()
     local p = pickDefPoint(nil)
-    if not p then
-      local sp = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60)
-      makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
-      B.guard = nil
-      B.state = "guard"
-      return true
-    end
+    if not p then return { at = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60), face = V(0, 0, 1) } end
     local s = pointState(p.id)
     local hot = s and (s.pressed or (G.countAt and select(1, G.countAt(p.x, p.z, Map.ground(p.x, p.z), 160)) > 0))   -- 攻方到了 160 格以内：不在点里刷
     local rp = hot and G.rallyOf and G.rallyOf(p.id)
     if rp then   -- 据点被攻方压着 / 攻方快到了：在据点后方的集结点出生，冲回去
-      local sp = spotNear(rp.x, rp.z, 0, 30)
-      makeEnt(B, rootCF(sp.X, sp.Z, V(p.x - sp.X, 0, p.z - sp.Z)))
-      B.guard = p.id
-      B.state = "guard"
-      return true
+      local at = spotNear(rp.x, rp.z, 0, 30)
+      return { p = p, at = at, face = flatUnit(V(p.x - at.X, 0, p.z - at.Z), V(0, 0, 1)) }
     end
     if s and s.pressed then
       -- 圈里有攻方：不能直接出生在那里——主岛上的据点从营地走过去，小岛上的换一个
       if p.land ~= "main" then
         p = pickDefPoint("main")
-        if not p then return false end
+        if not p then return nil end
       end
-      if pointState(p.id).pressed then
-        local sp = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60)
-        makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
-        B.guard = p.id
-        B.state = "guard"
-        return true
+      if pointState(p.id).pressed then return { p = p, at = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60), face = V(0, 0, 1) } end
+    end
+    return { p = p, at = spotNear(p.x, p.z, 15, Map.POINT_R * 0.8), face = threatDir(p) }
+  end
+  local function spawnDef(B, plan, k)
+    local fwd = plan.face
+    local rt = V(-fwd.Z, 0, fwd.X)
+    local side = (k % 2 == 1) and -1 or 1
+    local sp = plan.at + rt * (side * math.ceil(k / 2) * 6.5) + fwd * ((math.random() - 0.5) * 4)   -- 一字排开
+    if not Map.isLand(sp.X, sp.Z) then sp = plan.at end
+    makeEnt(B, rootCF(sp.X, sp.Z, fwd))
+    B.guard = plan.p and plan.p.id or nil
+    B.state = "guard"
+    return true
+  end
+
+  local function spawnSquad(team, group)
+    local plan = (team == "atk") and atkPlan() or defPlan()
+    if not plan then return false end
+    local S = { team = team, m = {}, bound = 1, boundAt = 0, face = plan.face }
+    for k, B in ipairs(group) do
+      local ok = false
+      if team == "atk" then ok = spawnAtk(B, plan, k - 1) else ok = spawnDef(B, plan, k - 1) end
+      if ok and B.e then
+        B.sq, B.readyT = S, nil
+        table.insert(S.m, B)
+      else
+        B.respawnAt = now() + 2
       end
     end
-    local sp = spotNear(p.x, p.z, 15, Map.POINT_R * 0.8)
-    makeEnt(B, rootCF(sp.X, sp.Z, V(0, 0, 1)))
-    B.guard = p.id
-    B.state = "guard"
+    if #S.m == 0 then return false end
+    S.lead = S.m[1]
+    table.insert(squads, S)
     return true
   end
 
   ---------------------------------------------------------------- 看、打
 
-  local function headOf(e) return e.root.CFrame.Position + V(0, HALF - 0.7, 0) end
+  local function headOf(e) return e.root.CFrame * STANCE[e.stance or 0].eye end   -- 眼睛：站着、跪着、趴着高低不一样（趴着还在前面一截）
 
   -- 找目标：sight 格以内、地形不挡的最近的敌人（玩家或机器人），最多验 3 个视线
   local function findTarget(B)
@@ -475,7 +606,8 @@ function Bots.init(G)
     elseif c.bot then
       local ce = c.bot.e
       if not ce or not ce.alive then return nil end
-      return ce.root.CFrame.Position + V(0, 0.6, 0)
+      local hb = ce.hit or ce.root   -- 瞄命中零件的中间偏上（趴着的人瞄地上那一截）
+      return hb.CFrame.Position + V(0, hb.Size.Y * 0.1, 0)
     end
     return nil
   end
@@ -491,7 +623,13 @@ function Bots.init(G)
     local e = B.e
     local from = headOf(e)
     local d = (tp - from).Magnitude
-    local deg = BC.spread + d * BC.spreadPer
+    -- 散布：基础 + 距离；乘自己的枪法、被压制时抖、趴着 / 跪着稳一些
+    local st = e.stance or 0
+    local deg = (BC.spread + d * BC.spreadPer) * B.pers.aim * (1 + 0.45 * math.min(B.supp or 0, 2)) * ((st == 2) and 0.8 or ((st == 1) and 0.9 or 1))
+    if B.tgt and B.tgt.bot then
+      local C = B.tgt.bot   -- 被人朝着打：压制（打得越近越压得住）
+      C.supp = math.min(4, (C.supp or 0) + ((d < 200) and 0.35 or 0.2))
+    end
     local hit = G.botShot(from, tp, W, { bot = B, team = B.team, name = B.name }, { e.model }, deg)
     -- 连着 6 枪都打在别的东西上（不是打偏到天上）：多半被挡着，这个目标 10 秒内不打了
     if hit and B.tgt and not hitIsTarget(hit, B.tgt) and not G.entOf(hit) then
@@ -509,6 +647,8 @@ function Bots.init(G)
     if B.ammo <= 0 then
       B.ammo = 30
       B.fireAt = now() + W.reload + 0.5
+      B.reloadUntil = B.fireAt
+      act(B, "r")   -- 换弹匣（客户端：左手拔弹匣、掏新的、插上、拉枪机）
     else
       B.fireAt = now() + BC.fireGap * (0.8 + math.random() * 0.5)
     end
@@ -545,7 +685,9 @@ function Bots.init(G)
       if B.detour then B.detour = nil else B.goal = nil B.arrived = now() end
       return
     end
+    local st = e.stance or 0
     local speed = BC.speed * (slow or 1) * (G.wireSlow and G.wireSlow(p.X, p.Z) or 1)   -- 铁丝网里走不快
+      * B.pers.pace * ((st == 1) and 0.55 or ((st == 2) and 0.22 or 1))   -- 每人步子快慢不一样；蹲着走慢、匍匐更慢
     local step = math.min(dist, speed * dt)
     local dir = d / dist
     local np, nd = nil, nil
@@ -553,7 +695,7 @@ function Bots.init(G)
       local dd = (a == 0) and dir or rotY(dir, a)
       local x, z = p.X + dd.X * step, p.Z + dd.Z * step
       local h = Map.height(x, z)
-      if h > 0.3 and (h - (p.Y - HALF)) < step * 1.25 + 0.6 then   -- 不下水、不爬太陡的坡
+      if h > 0.3 and (h - (p.Y - HALF)) < step * 1.25 + 0.6 then   -- 不下水、不爬太陡的坡（根零件一直在脚底上 HALF，趴着也是）
         np, nd = V(x, h + HALF, z), dd
         break
       end
@@ -693,19 +835,185 @@ function Bots.init(G)
     end
   end
 
+  -- 小队里第几个（队长是 0）
+  local function slotOf(S, B)
+    local k = 0
+    for _, x in ipairs(S.m) do
+      if x == S.lead then
+        if x == B then return 0 end
+      else
+        k += 1
+        if x == B then return k end
+      end
+    end
+    return k
+  end
+  local function pointById(id)
+    if not id then return nil end
+    for _, q in ipairs(Map.POINTS) do if q.id == id then return q end end
+    return nil
+  end
+
+  -- 小队怎么走：攻方跟着队长排楔形，交火时交替掩护（一半人停下趴着 / 跪着打，另一半往前冲三十来格，四到七秒换一次，
+  --   换到队长那一组时队长打个「跟上」的手势）；守方在队长两边一字排开、面朝来敌，每人隔一阵自己挪几步
+  local function squadMove(B, S)
+    local L = S.lead
+    local p = B.e.root.CFrame.Position
+    local t = now()
+    local contact = t - (S.contactT or -1e9) < 5
+    B.boundHold, B.rush, B.hurry = nil, nil, nil
+    local k = slotOf(S, B)
+    if B.team == "atk" then
+      local pt = L and pointById(L.target)
+      local lp = L and L.e and L.e.root.CFrame.Position
+      local near = pt and lp and (lp.X - pt.x) ^ 2 + (lp.Z - pt.z) ^ 2 < 110 * 110   -- 离据点 110 格以内：不再交替，全队一起冲进圈
+      if contact and pt and not near then
+        if t >= (S.boundAt or 0) or not S.adv then
+          S.bound = 3 - (S.bound or 1)
+          S.boundAt = t + 3 + math.random() * 2.5
+          local base = S.adv or (L.e and L.e.root.CFrame.Position) or p
+          local to = V(pt.x - base.X, 0, pt.z - base.Z)
+          local dir = flatUnit(to, V(0, 0, -1))
+          S.adv = base + dir * math.min(30, math.max(0, to.Magnitude - 10))
+          S.advDir = dir
+          if S.bound == 1 and L.e then act(L, "s") end
+        end
+        if ((k % 2 == 0) and 1 or 2) == S.bound then
+          local dir = S.advDir or V(0, 0, -1)
+          local rt = V(-dir.Z, 0, dir.X)
+          local side = (k % 2 == 1) and -1 or 1
+          local g = S.adv + rt * (side * math.ceil(k / 2) * 6) + B.pj
+          B.goal, B.detour = Map.isLand(g.X, g.Z) and V(g.X, 0, g.Z) or V(S.adv.X, 0, S.adv.Z), nil
+          B.navKey, B.rush = pt.id, true
+        else
+          B.boundHold, B.goal = true, nil
+        end
+        if B ~= L then B.target = L.target end
+        return
+      end
+      S.adv = nil
+      if B == L or not L or not L.e then return end
+      local lcf = L.e.root.CFrame
+      local fwd = flatUnit(lcf.LookVector, V(0, 0, -1))
+      local slot = lcf.Position + wedge(k, fwd) + B.pj
+      local d = V(slot.X - p.X, 0, slot.Z - p.Z).Magnitude
+      B.target, B.navKey = L.target, L.navKey
+      B.hurry = d > 25   -- 掉队了跑快点
+      if d > 3 and Map.isLand(slot.X, slot.Z) then B.goal, B.detour = V(slot.X, 0, slot.Z), nil else B.goal = nil end
+    else
+      if B == L or not L or not L.e then return end
+      if t >= (B.pjAt or 0) then
+        local pa = math.random() * math.pi * 2
+        B.pj = V(math.cos(pa), 0, math.sin(pa)) * (1 + math.random() * 3)
+        B.pjAt = t + B.pers.shift * (0.7 + math.random() * 0.6)
+      end
+      local face = S.face or V(0, 0, 1)
+      local rt = V(-face.Z, 0, face.X)
+      local side = (k % 2 == 1) and -1 or 1
+      local base = L.goal or L.e.root.CFrame.Position
+      local slot = V(base.X, 0, base.Z) + rt * (side * math.ceil(k / 2) * 7) + B.pj
+      local d = V(slot.X - p.X, 0, slot.Z - p.Z).Magnitude
+      B.guard, B.navKey = L.guard, L.navKey
+      B.hurry = d > 30
+      if d > 2.5 and Map.isLand(slot.X, slot.Z) then B.goal, B.detour = V(slot.X, 0, slot.Z), nil else B.goal = nil end
+    end
+  end
+
+  -- 姿势：赶路站着跑、交火时离得近蹲着走（交替掩护冲的那组站着冲）；停下打的时候按自己的习惯跪着或趴着（远的爱趴着打）；
+  --   被压制的趴下（胆子大的跪着顶住；攻方要往前冲，压得更狠才趴）；
+  --   守方平时有的蹲着有的站着；刚换过姿势一秒半内不来回换
+  local function decideStance(B, S)
+    local e = B.e
+    if B.state == "boat" then return end
+    local P = B.pers
+    local t = now()
+    local td = B.tgtPos and (B.tgtPos - e.root.CFrame.Position).Magnitude or nil
+    local holding = B.boundHold or (td and (B.team == "def" or td < 60))
+    local moving = (B.goal ~= nil or B.detour ~= nil) and not holding
+    local want = 0
+    if (B.supp or 0) > ((B.team == "atk") and 2.2 or 1.4) and P.brave < 0.75 then
+      want = moving and 1 or 2
+    elseif td then
+      if moving then want = (td < 120 and not B.rush) and 1 or 0
+      elseif td < 22 then want = 0
+      elseif td > 160 and P.prone > 0.62 then want = 2
+      else want = (P.prone > 0.2) and 1 or 0 end
+    elseif B.boundHold then
+      want = (P.prone > 0.6) and 2 or 1
+    elseif B.team == "def" and not moving then
+      local hot = S and t - (S.contactT or -1e9) < 20
+      if hot then want = (P.prone > 0.6) and 2 or 1 else want = (P.prone > 0.7) and 1 or 0 end
+    end
+    if moving and want == 2 then want = 1 end   -- 趴着不赶路
+    local cur = e.stance or 0
+    if want ~= cur and (t - (B.stanceT or 0) > 1.5 or moving) then
+      if want == 2 or cur == 2 then B.fireAt = math.max(B.fireAt or 0, t + 0.7) end   -- 趴下 / 起身那一下打不了枪
+      setStance(B, want)
+    end
+  end
+
+  -- 扔手雷：带着雷、敌人在 20～85 格（扔得到又炸不到自己）、不在换弹；目标躲在东西后面（刚才连着打不中）更想扔，胆子大的多扔
+  local function tryNade(B)
+    local e = B.e
+    if not NADE or (B.nades or 0) <= 0 or not B.tgtPos or B.state == "boat" or (e.stance or 0) == 2 then return end
+    local p = e.root.CFrame.Position
+    local d = V(B.tgtPos.X - p.X, 0, B.tgtPos.Z - p.Z).Magnitude
+    if d < 20 or d > 85 or now() < (B.reloadUntil or 0) then return end
+    if math.random() > 0.03 + 0.05 * B.pers.brave + (((B.miss or 0) >= 3) and 0.25 or 0) then return end
+    B.nades -= 1
+    act(B, "g")
+    B.fireAt = math.max(B.fireAt, now() + 1.5)
+    local tp = B.tgtPos + V((math.random() - 0.5) * 8, 0, (math.random() - 0.5) * 8)
+    task.delay(0.62, function()   -- 客户端的扔雷动作 0.62 秒出手
+      if B.e ~= e or not e.alive then return end
+      local m = headOf(e) + V(0, 0.6, 0)
+      local fl = V(tp.X - m.X, 0, tp.Z - m.Z)
+      local dd = math.min(fl.Magnitude, NADE.range)
+      local dir = (fl.Magnitude > 0.1) and fl.Unit or e.root.CFrame.LookVector
+      local sp = math.clamp(math.sqrt(math.max(1, dd) * workspace.Gravity * 0.55), 20, NADE.speed)   -- 45° 抛出去落在目标附近
+      G.launch({ kind = "grenade", pos = m, vel = dir * sp * 0.7071 + V(0, sp * 0.7071, 0), grav = true, fuse = NADE.fuse, w = NADE,
+        src = { bot = B, team = B.team, name = B.name }, ignore = { e.model }, life = NADE.fuse + 0.5 })
+    end)
+  end
+
   local function think(B)
     local battle = G.round and G.round.phase == "battle"
+    local S = B.sq
+    if S and (not S.lead or not S.lead.e or S.lead.sq ~= S) then   -- 队长没了：下一个顶上
+      S.lead = nil
+      for _, x in ipairs(S.m) do if x.e and x.e.alive then S.lead = x break end end
+    end
     if battle then
       local c = findTarget(B)
       if c and (not B.tgt or B.tgt.P ~= c.P or B.tgt.bot ~= c.bot) then
-        B.fireAt = math.max(B.fireAt, now() + BC.reaction * (0.6 + math.random() * 0.8))   -- 新目标：反应一下
+        -- 新目标：反应一下（每人快慢不一样；小队里已经有人在打了的快一些）
+        local alert = S ~= nil and now() - (S.contactT or -1e9) < 6
+        B.fireAt = math.max(B.fireAt, now() + BC.reaction * (0.6 + math.random() * 0.8) * B.pers.react * (alert and 0.6 or 1))
       end
       B.tgt = c
+      if c and S then
+        S.contactT = now()
+        S.contactP = targetPos(c) or S.contactP
+      end
     else
       B.tgt = nil
     end
-    if B.team == "atk" then thinkAtk(B) else thinkDef(B) end
-    if B.e then unstick(B) end
+    B.supp = (B.supp or 0) * 0.8
+    if not S or S.lead == B or not S.lead then
+      if B.team == "atk" then thinkAtk(B) else thinkDef(B) end
+      if S and B.team == "def" and B.e then
+        -- 阵地朝哪：在打的话朝敌人，不然朝来敌的方向（离据点最近的登陆滩）
+        local pt = pointById(B.guard)
+        if S.contactP and now() - (S.contactT or -1e9) < 20 then S.face = flatUnit(S.contactP - B.e.root.CFrame.Position, S.face or V(0, 0, 1))
+        elseif pt then S.face = threatDir(pt) end
+      end
+    end
+    if B.e and S then squadMove(B, S) end
+    if B.e then
+      if battle then tryNade(B) end
+      decideStance(B, S)
+      unstick(B)
+    end
   end
 
   ---------------------------------------------------------------- 每步
@@ -719,14 +1027,18 @@ function Bots.init(G)
       balanceT = 2
       if phase == "prep" or phase == "battle" then balance() end
     end
+    local ready = { atk = {}, def = {} }
     for _, B in ipairs(table.clone(list)) do
-      if B.e and not B.e.alive then B.e = nil end
+      if B.e and not B.e.alive then
+        B.e = nil
+        leaveSquad(B)
+      end
       if not B.e then
         if B.state ~= "boat" and not B.leaving and t >= (B.respawnAt or 0) then
-          local ok = false
-          if B.team == "def" and (phase == "prep" or phase == "battle") then ok = spawnDef(B)
-          elseif B.team == "atk" and (phase == "prep" or phase == "battle") and ((G.round and G.round.tickets) or 1) > 0 then ok = spawnAtk(B) end
-          if not ok then B.respawnAt = t + 2 end
+          if (phase == "prep" or phase == "battle") and (B.team == "def" or ((G.round and G.round.tickets) or 1) > 0) then
+            B.readyT = B.readyT or t
+            table.insert(ready[B.team], B)
+          end
         elseif B.leaving and not B.e then
           dropRecord(B)
         end
@@ -738,15 +1050,31 @@ function Bots.init(G)
         if B.e then
           B.tgtPos = B.tgt and targetPos(B.tgt) or nil
           if not B.tgtPos then B.tgt = nil end
+          -- 枪口俯仰给客户端（端枪瞄准的角度，3° 一档，变了才发）；没目标了收掉（客户端过一会儿放低枪口）
+          if B.tgtPos then
+            local d = B.tgtPos - headOf(B.e)
+            local a = math.floor(math.deg(math.atan2(d.Y, math.max(V(d.X, 0, d.Z).Magnitude, 1))) / 3 + 0.5) * 3
+            if a ~= B.aimSent then
+              B.aimSent = a
+              B.e.model:SetAttribute("Aim", a)
+            end
+          elseif B.aimSent then
+            B.aimSent = nil
+            B.e.model:SetAttribute("Aim", nil)
+          end
           -- 交火：守方一直站住打；攻方 300 格以内边走边打（走慢点）、贴脸（60 格以内）才站住——地图放大到 3 倍以后，
           --   原来「150 格以内站住打」让攻方停在据点外两三百格对射，一直冲不进圈；再远照常走、偶尔打几枪
+          --   小队交替掩护：停下的那一组原地打（boundHold），冲的那一组快一点（rush）；掉队的跑快点（hurry）
           local td = B.tgtPos and (B.tgtPos - B.e.root.CFrame.Position).Magnitude or 1e9
           if B.tgtPos and phase == "battle" and t >= B.fireAt then
             fire(B, B.tgtPos)
             if td > 300 then B.fireAt += BC.fireGap * 2 end
           end
-          local hold = B.tgtPos and (B.team == "def" or td < 60)
-          if not hold then walk(B, dt, (td < 300) and 0.5 or 1) elseif B.tgtPos then
+          local hold = (B.tgtPos and (B.team == "def" or td < 60)) or B.boundHold
+          if not hold then
+            local slow = B.rush and 0.9 or ((td < 300) and 0.5 or 1)
+            walk(B, dt, slow * (B.hurry and 1.25 or 1))
+          elseif B.tgtPos then
             local p = B.e.root.CFrame.Position
             local look = V(B.tgtPos.X - p.X, 0, B.tgtPos.Z - p.Z)
             if look.Magnitude > 0.1 then G.moveEnt(B.e, CFrame.lookAt(p, p + look)) end
@@ -754,12 +1082,34 @@ function Bots.init(G)
         end
       end
     end
+    -- 等着出生的凑成小队一起出来：凑够一队、或者等最久的那个等了 5 秒（准备阶段 2.5 秒）
+    for team, R in pairs(ready) do
+      table.sort(R, function(x, y) return x.readyT < y.readyT end)
+      while #R > 0 do
+        if #R < SQ and t - R[1].readyT < ((phase == "prep") and 2.5 or 5) then break end
+        local g = {}
+        for _ = 1, math.min(SQ, #R) do table.insert(g, table.remove(R, 1)) end
+        local ok, res = G.try("小队出生", spawnSquad, team, g)
+        if not ok or not res then
+          for _, B in ipairs(g) do if not B.e then B.respawnAt = t + 2 end end
+          break
+        end
+      end
+    end
+  end
+
+  -- 测试用：现有的机器人全收掉（把每队人数设成 0 之前开局刷出来的那些也收掉）
+  function G.botsClear()
+    for _, B in ipairs(list) do despawn(B) end
+    list = {}
+    squads = {}
   end
 
   -- 新一局：机器人全清掉，记录（战绩）清零，重新按人数补
   G.on("roundStart", function()
     for _, B in ipairs(list) do despawn(B) end
     list = {}
+    squads = {}
     focus, focusAt = nil, 0
     serial = { atk = 0, def = 0 }
     balance()

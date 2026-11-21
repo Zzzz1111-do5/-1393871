@@ -1,7 +1,7 @@
 --!nocheck
 -- 瞄准镜真模型测试：假装在 Studio 里导入了 models/optics/atacr.glb、binoc.glb（按 OpticsMeta 摆一套同名的 MeshPart 放在 Workspace）→
 --   开服时收进 ReplicatedStorage.Imported.Optics → 服务器发的狙击枪工具上装的是真瞄准镜（别人看到的）→ 第一人称狙击枪装着真瞄准镜 →
---   按住右键：先把镜子举到眼前（目镜里的像还没出来），举到了换成目镜里的像；目镜正对屏幕中心、光轴朝前、在屏幕上占高度的 86% →
+--   按住右键：先把镜子举到眼前，镜身一直看得见（使命召唤那样，镜筒里面的块藏掉、从正圆的目镜洞里看放大的画面）；目镜正对屏幕中心、光轴朝前、在屏幕上占高度的 90% →
 --   滚轮变倍：视角变小、目镜推远（屏幕上一样大）、分划跟着放大（第一焦平面：每密位的像素数跟着倍率涨）→ 松开：收镜、模型又看得见 →
 --   观察员的望远镜也是真模型，举到眼前后换成双圆视野 → 手持装备的真模型（这里还假装导入了 m40a5、rpg7）：服务器按阵营发的工具上装的是它，
 --   美军狙击枪 = M40A5 + 导轨上的 ATACR，第一人称也是这一套、开镜看的是 ATACR 的目镜；解放军 RPG-7 的筒口在弹头尖
@@ -108,14 +108,14 @@ local nOptic = 0
 if vm then for _, it in ipairs(vm.items) do if it.optic then nOptic += 1 if it.optic == "Body" then body = it[1] end end end end
 check(vm and vm.id == "sniper" and nOptic == 4 and vm.optic ~= nil, "第一人称的狙击枪上是真瞄准镜（" .. nOptic .. " 块）")
 
-print("③ 开镜：先举到眼前，再换成目镜里的像")
+print("③ 开镜：举到眼前，镜身看得见，目镜上画镜片那一层")
 local cam = H.workspace.CurrentCamera
 local sg = pl.PlayerGui:FindFirstChild("Scope")
 H.mouseDown(pl, 640, 360, Enum.UserInputType.MouseButton2)
 H.run(0.05)
-check(C.fpsOpticPending() == true and not sg.Enabled, "刚按右键：还在举镜，目镜里的像没出来")
+check(C.fpsOpticPending() == true, "刚按右键：还在举镜")
 H.run(0.8)
-check(C.fpsOpticPending() == false and sg.Enabled, "举到眼前：换成目镜里的像")
+check(C.fpsOpticPending() == false and sg.Enabled, "举到眼前：目镜上画着镜片那一层")
 local function eyeCheck(tag)
 	local bc = OM.atacr.parts.Body.c
 	local e = eyeInfo.c
@@ -125,12 +125,14 @@ local function eyeCheck(tag)
 	local lp = cam.CFrame:PointToObjectSpace(eyeW)
 	local axis = (objW - eyeW).Unit:Dot(cam.CFrame.LookVector)
 	local frac = (eyeInfo.r / -lp.Z) / math.tan(math.rad(cam.FieldOfView) / 2)
-	check(math.abs(lp.X) < 0.02 and math.abs(lp.Y) < 0.02 and lp.Z < 0 and axis > 0.995 and math.abs(frac - 0.86) < 0.08,
+	check(math.abs(lp.X) < 0.02 and math.abs(lp.Y) < 0.02 and lp.Z < 0 and axis > 0.995 and math.abs(frac - 0.9) < 0.08,
 		string.format("%s：目镜正对中心（偏 %.3f, %.3f 格，距离 %.2f 格）、光轴朝前（%.4f）、占屏幕高度 %.0f%%（视角 %.1f°）", tag, lp.X, lp.Y, -lp.Z, axis, frac * 100, cam.FieldOfView))
 	return -lp.Z
 end
 local d1 = eyeCheck("10 倍")
-check(body.LocalTransparencyModifier == 1, "眼睛贴上目镜以后模型藏起来（屏幕上是目镜里的像）")
+local nIn, inHid = 0, true
+for _, it in ipairs(vm.items) do if it.inner then nIn += 1 if it[1].LocalTransparencyModifier ~= 1 then inHid = false end end end
+check(body.LocalTransparencyModifier == 0 and nIn > 0 and inHid, "镜身一直看得见，镜筒里面的块（" .. nIn .. " 块）藏起来")
 local function milPx()
 	local f = sg:FindFirstChild("MilX5", true)
 	return f and f.Position.X.Offset / 5 or 0

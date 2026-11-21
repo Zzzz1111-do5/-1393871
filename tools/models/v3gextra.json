@@ -1,0 +1,289 @@
+{
+ "_说明": [
+  "网页版《暗剑》没有、只给 Roblox 用的车辆模型的烘焙配置（格式同网页版 tools/v3gmodels.json 的 models 项）。",
+  "重烘焙：Sketchfab 下载 glTF 压缩包 → 网页版仓库 python3 -I tools/sfprep.py <zip> <目录>/<键> 1024 →",
+  "把下面这几项并进网页版 tools/v3gmodels.json 的 models（只在临时副本里改，别推网页版）→ node tools/v3gbake.js <目录> <键> →",
+  "本仓库 python3 -I tools/models/mdl2glb.py <网页版目录> models/veh src/ReplicatedStorage/ImportedMeta.lua <键>（拆分规则在 mdl2glb.py 的 SPLIT）→",
+  "python3 -I tools/models/livery.py <键>（统一涂装）→ python3 -I tools/models/tint.py"
+ ],
+ "models": {
+  "ztz99a2": {
+   "name": "ZTZ-99A2 主战坦克",
+   "glb": "ztz99a2/scene.gltf",
+   "fwd": "+x",
+   "up": "+y",
+   "len": 11.0,
+   "roughMin": 0.6,
+   "credit": {
+    "title": "ZTZ-99A2",
+    "author": "42manako",
+    "url": "https://sketchfab.com/3d-models/ztz-99a2-6d0a293a050347fe81c405b7c0f21e64",
+    "license": "CC-BY-4.0",
+    "lurl": "http://creativecommons.org/licenses/by/4.0/"
+   },
+   "parts": [
+    {
+     "name": "gun",
+     "kind": "chain",
+     "any": [
+      {
+       "zmin": 1.45,
+       "box": [
+        0.6,
+        5.6,
+        -0.3,
+        0.3
+       ]
+      }
+     ],
+     "pivot": [
+      -1.35,
+      0,
+      1.55
+     ],
+     "axis": "z",
+     "q": [
+      -0.05,
+      0,
+      1.8
+     ],
+     "a2": [
+      0,
+      -1,
+      0
+     ],
+     "w": [
+      1,
+      0,
+      0,
+      0
+     ],
+     "e": [
+      0,
+      1,
+      0,
+      0
+     ],
+     "w2": [
+      0,
+      0,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "tur",
+     "kind": "rot",
+     "any": [
+      {
+       "zmin": 1.6,
+       "box": [
+        -3.5,
+        0.5,
+        -1.6,
+        1.6
+       ]
+      },
+      {
+       "zmin": 1.5,
+       "box": [
+        -1.8,
+        -1.2,
+        -0.1,
+        0.1
+       ]
+      }
+     ],
+     "pivot": [
+      -1.35,
+      0,
+      1.55
+     ],
+     "axis": "z",
+     "w": [
+      1,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "whl",
+     "kind": "each",
+     "zmax": 1.1,
+     "minTris": 200,
+     "box": [
+      -4.6,
+      2.4,
+      -1.75,
+      1.75
+     ],
+     "axis": "y",
+     "roll": true
+    }
+   ]
+  },
+  "m1a2dc": {
+   "name": "M1A2 SEPv2 艾布拉姆斯（沙漠涂装）",
+   "glb": "m1a2dc/scene.gltf",
+   "fwd": "+x",
+   "up": "+y",
+   "len": 9.77,
+   "roughMin": 0.6,
+   "texMax": 1024,
+   "tri0": 160000,
+   "tri0Flags": [
+    "Permissive"
+   ],
+   "modNote": "近看网格减到约 16 万个三角形、贴图缩到 1024",
+   "credit": {
+    "title": "M1A2 SEPV2 Abrams Main Battle Tank DC",
+    "author": "Muhamad Mirza Arrafi",
+    "url": "https://sketchfab.com/3d-models/m1a2-sepv2-abrams-main-battle-tank-dc-bcc1741c924d4c259dbc801de9b5c1bb",
+    "license": "CC-BY-4.0",
+    "lurl": "http://creativecommons.org/licenses/by/4.0/"
+   },
+   "parts": [
+    {
+     "name": "gun",
+     "kind": "chain",
+     "any": [
+      {
+       "minTris": 1000,
+       "box": [
+        2.0,
+        3.5,
+        -0.3,
+        0.3
+       ],
+       "zmin": 1.6
+      },
+      {
+       "zmin": 1.6,
+       "box": [
+        3.5,
+        5.0,
+        -0.3,
+        0.3
+       ]
+      },
+      {
+       "zmin": 2.1,
+       "box": [
+        1.35,
+        3.1,
+        -0.2,
+        0.2
+       ]
+      },
+      {
+       "zmin": 1.55,
+       "box": [
+        0.5,
+        1.7,
+        -0.45,
+        0.45
+       ]
+      }
+     ],
+     "pivot": [
+      -0.45,
+      0,
+      1.6
+     ],
+     "axis": "z",
+     "q": [
+      0.95,
+      -0.02,
+      1.845
+     ],
+     "a2": [
+      0,
+      -1,
+      0
+     ],
+     "w": [
+      1,
+      0,
+      0,
+      0
+     ],
+     "e": [
+      0,
+      1,
+      0,
+      0
+     ],
+     "w2": [
+      0,
+      0,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "tur",
+     "kind": "rot",
+     "any": [
+      {
+       "zmin": 1.75,
+       "box": [
+        -4.4,
+        1.5,
+        -1.85,
+        1.85
+       ]
+      },
+      {
+       "zmin": 1.4,
+       "minTris": 1000,
+       "box": [
+        -1.2,
+        -0.5,
+        -0.2,
+        0.1
+       ]
+      },
+      {
+       "zmin": 1.45,
+       "ztop": 1.95,
+       "box": [
+        -3.1,
+        0.9,
+        -1.5,
+        1.5
+       ]
+      }
+     ],
+     "pivot": [
+      -0.45,
+      0,
+      1.6
+     ],
+     "axis": "z",
+     "w": [
+      1,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "whl",
+     "kind": "each",
+     "mats": "wheel_l_top",
+     "zmax": 1.3,
+     "minTris": 200,
+     "box": [
+      -4.6,
+      3.0,
+      -1.9,
+      1.9
+     ],
+     "axis": "y",
+     "roll": true
+    }
+   ]
+  }
+ }
+}

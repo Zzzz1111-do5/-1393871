@@ -102,6 +102,12 @@ local actA, actC = G.pointActive("A"), G.pointActive("C")
 check(actA and not actC, "第一阶段只能占 A（C 还没开）")
 R.run(1.5)
 check(boat0 and boat0.state ~= "loading", "开战了艇一起冲滩（" .. tostring(boat0 and boat0.state) .. "）")
+local brief = pls[1].PlayerGui.Main.OperationBrief
+check(brief.Visible and brief.Orders.Text == C.T("stage.beach." .. C.S.team), "开战简报显示本阵营目标")
+local sweep = map.Scenery.Lighthouse.LighthouseSweep
+local look = sweep.CFrame.LookVector
+R.run(0.25)
+check((sweep.CFrame.LookVector - look).Magnitude > 0.01 and sweep.SeaHaze:IsA("Beam"), "灯塔的两层光束随转轴扫动")
 
 print("⑤ 开枪：攻方打死守方，守方等几秒复活")
 local pa = V3(150, G.Map.ground(150, 700) + 3.5, 700)
@@ -145,6 +151,17 @@ local landed = T.runUntil(function()
 end, 40)
 check(landed, "靠滩后人下艇站到了岸上")
 
+print("⑥½ 第一波以后：不能再坐艇，攻方在 A 前面 200～300 格的攻击出发阵地出生")
+T.runUntil(function() return not G.firstWave() end, G.Config.FirstWave + 5)
+local beachLeft, stA = false, nil
+for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do
+  if s.kind == "beach" then beachLeft = true end
+  if s.id == "stage.A" then stA = s end
+end
+local Ap = G.points.A
+local dA = stA and ((stA.x - Ap.x) ^ 2 + (stA.z - Ap.z) ^ 2) ^ 0.5 or -1
+check(not beachLeft and stA ~= nil and dA >= 195 and dA <= 305, string.format("开战 %d 秒后海滩关了，A 的出发阵地离 A %.0f 格", G.Config.FirstWave, dA))
+
 print("⑦ 占领据点 A：攻方 3 人在圈里、没人守")
 local A = G.points.A
 for _, pl in ipairs(atk) do
@@ -173,41 +190,58 @@ end
 local tk0 = G.round.tickets
 R.run(2)
 check(A.prog > 0, string.format("占领进度在涨（%.2f）", A.prog))
+local nearby = pls[1].PlayerGui.Main.ObjectiveStatus
+check(nearby.Visible == (C.S.team == "atk"), "据点状态只在占领区内显示")
+if C.S.team == "atk" then
+  check(nearby.Status.Text == C.T("operation.capturing"), "占领区内显示服务器的推进状态")
+end
 local capOk = T.runUntil(function() return A.owner == "atk" end, G.Config.Capture.fast + 10)
 check(capOk, "15 秒左右拿下 A（攻方多 3 人）")
 check(A.locked, "拿下后锁定")
 local st2 = G.Config.Stages[2]
-check(G.round.stage == 2 and math.abs((G.round.endsAt - R.clock()) - st2.time) < 3, "拿下 A 进入第二阶段（主岛），重新计时 " .. st2.time .. " 秒")
+check(G.round.stage == 2 and math.abs((G.round.endsAt - R.clock()) - st2.time) < 3, "拿下 A 进入第二阶段（港口），重新计时 " .. st2.time .. " 秒")
 check((G.round.tickets or 0) >= tk0 + G.Config.Tickets.perStage - 5, string.format("攻方兵力补了（%d → %d）", tk0 or -1, G.round.tickets or -1))
-check(G.pointActive("C") and G.pointActive("D") and G.pointActive("B") and not G.pointActive("E"), "第二阶段能占 C、D（还有侧翼 B），E 还没开")
-local hasRed = false
-for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do if s.id == "beach.red" and s.ok then hasRed = true end end
-check(hasRed, "第二阶段能在主岛的海滩抢滩")
-local spA = false
-for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do if s.id == "point.A" and s.ok then spA = true end end
-check(spA, "攻方可以在 A 出生")
--- 攻击出发阵地（第二阶段起）：C、D 前面各一处，守方没压过来就能用、推荐它，不在守方碉堡的射界里
+check(G.pointActive("C") and not G.pointActive("D") and not G.pointActive("B") and not G.pointActive("E"), "第二阶段只开港口 C（同一时间一个交战区；D、E 还没开，灯塔岛 B 不开放）")
+-- 交战区外不能出生：攻方没有海滩（第一波以后不坐艇）、不能在拿下的 A 出生；守方只能在 C 和它后面的集结点（还有营地、机场这种开载具的地方）
+local ids = {}
 local stg, recK = {}, nil
 for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do
+  ids[s.id] = s.ok
   if s.kind == "staging" then stg[s.point] = s end
   if s.rec then recK = s.kind end
 end
-check(stg.C ~= nil and stg.C.ok and stg.D ~= nil and stg.D.ok, "第二阶段 C、D 前面各有攻击出发阵地能出生")
+local beachAny = false
+for id in pairs(ids) do if id:sub(1, 6) == "beach." then beachAny = true end end
+check(not beachAny and ids["point.A"] == nil, "攻方：第二阶段没有登陆艇、不能在 A 出生")
+local Cp = G.points.C
+local function dist(s, p) return ((s.x - p.x) ^ 2 + (s.z - p.z) ^ 2) ^ 0.5 end
+check(stg.C ~= nil and stg.C.ok and stg.D == nil, "攻方：港口 C 前面有攻击出发阵地（D 的没有）")
+check(stg.C ~= nil and dist(stg.C, Cp) >= 195 and dist(stg.C, Cp) <= 305, string.format("出发阵地离 C %.0f 格（200～300）", stg.C and dist(stg.C, Cp) or -1))
 check(recK == "staging", "推荐的出生点是攻击出发阵地（" .. tostring(recK) .. "）")
-check(stg.D ~= nil and not G.stagingCovered(stg.D.x, stg.D.z), "机场 D 的出发阵地不在守方碉堡的射界里")
--- 重新部署（H）：不算阵亡、不扣兵力，回部署界面；接着在 D 的出发阵地出生
+local dids, rallyC = {}, nil
+for _, s in ipairs(G.spawnList("def", G.P[def[1]])) do
+  dids[s.id] = true
+  if s.id == "rally.C" then rallyC = s end
+end
+check(dids["point.C"] and rallyC ~= nil and not dids["point.D"] and not dids["point.E"] and not dids["point.B"] and not dids["rally.D"], "守方：只能在 C 和 C 的集结点出生（D、E、B 不行）")
+check(rallyC ~= nil and dist(rallyC, Cp) >= 145 and dist(rallyC, Cp) <= 255, string.format("集结点在 C 后面 %.0f 格（150～250）", rallyC and dist(rallyC, Cp) or -1))
+check(dids["camp"] and dids["afield"], "守方的营地、机场（开载具、飞机）照旧能去")
+-- 重新部署（H）：不算阵亡、不扣兵力，回部署界面；接着在 C 的出发阵地出生
 local Pr = G.P[atk[2]]
 Pr.dmgLog = {}
 local d0, tk1 = Pr.deaths, G.round.tickets
 T.actAsRemote(atk[2], "redeploy")
 R.run(0.5)
 check(not Pr.alive and Pr.deaths == d0 and G.round.tickets == tk1, string.format("按 H 重新部署：回部署界面，不算阵亡（%d → %d）、不扣兵力（%d → %d）", d0, Pr.deaths, tk1, G.round.tickets))
-T.actAsRemote(atk[2], "deploy", "rifle", "stage.D")
+T.actAsRemote(atk[2], "deploy", "rifle", "stage.C")
 R.run(1.5)
 local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootPart")
-check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
+check(Pr.alive and hrpR ~= nil and stg.C ~= nil and ((hrpR.Position.X - stg.C.x) ^ 2 + (hrpR.Position.Z - stg.C.z) ^ 2) ^ 0.5 < 40, "在 C 的攻击出发阵地出生")
 R.run(1)
 check(C.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
+check(brief.Visible and brief.Title.Text == C.T("stage." .. G.Config.Stages[2].id) and not nearby.Visible, "进入第二阶段显示简报并收起旧据点（" .. brief.Title.Text .. "）")
+R.run(5)
+check(not brief.Visible, "同一阶段持续收战况时简报不会重复显示")
 
 print("⑧ 时间到守方赢 → 结算 → 下一局")
 G.round.endsAt = R.clock() + 1

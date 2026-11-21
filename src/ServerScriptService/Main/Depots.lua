@@ -113,17 +113,18 @@ function Depots.init(G)
     local A = Map.AIRFIELD
     runwayPads(A, "def", models("def", "jet"), "D")
 
-    -- 攻方航母：右舷后部停机位（舰岛后面），机头朝舰艏，自己滑到弹射器
+    -- 攻方航母（福建舰）：右舷舰岛后面一列三个停机位（后面那部升降机上也停一个），机头朝舰艏，自己滑到弹射器；
+    --   离着舰区右边那条红线至少 6 格、不压舰岛（舰岛到 z 134），终端柱在右舷甲板边上
     local cv = deckOf("carrier")
     if cv then
       local ids = {}
       for _, id in ipairs(models("atk", "jet")) do if defOf(id).carrier then table.insert(ids, id) end end
       local L, W = biggest(ids)
-      for _, zl in ipairs({ 90, 174, 252 }) do
+      for _, zl in ipairs({ 160, 200, 240 }) do
         if #ids == 0 then break end
-        local p = (cv.cf * CF(26, 0, zl)).Position
+        local p = (cv.cf * CF(53, 0, zl)).Position
         local base = CFrame.lookAt(V(p.X, surface(p.X, p.Z), p.Z), V(p.X, surface(p.X, p.Z), p.Z) + NORTH)
-        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(50, 0, zl + 12)).Position,
+        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(76, 0, zl + 10)).Position,
           r = math.max(L, W) * 0.45, size = V(W + 2, 0, L + 2) })
       end
     end
@@ -183,9 +184,46 @@ function Depots.init(G)
     local m = Instance.new("Model")
     m.Name = "Barge"
     local deckY = B.top - 0.75
-    part(m, V(B.W, 9, B.L), CF(B.x, deckY - 4.5 - 0.75, B.z), RGB(70, 74, 78), MAT.Metal, true)   -- 浮箱（往下伸进水里）
-    local deck = part(m, V(B.W, 1.5, B.L), CF(B.x, deckY, B.z), RGB(58, 62, 66), MAT.DiamondPlate, true)
+    -- 船体（用户 11-18：这些建筑漂在水里——原来是一整块深灰的浮箱，只高出水面两格，夜视里和海面分不出来，上面的终端柱、灯杆像一座座小房子立在海上）：
+    --   做成一条停泊的登陆驳船：水下红色防污漆、黑色水线带、浅灰船舷，北头斜的船艏、南头船艉，两舷挂一排护舷轮胎，四角锚链拉到带灯的浮标
+    part(m, V(B.W, 7, B.L), CF(B.x, -1.2 - 3.5, B.z), RGB(112, 40, 34), MAT.Metal, true)        -- 水下：红色防污漆
+    part(m, V(B.W + 0.1, 1.8, B.L + 0.1), CF(B.x, -0.3, B.z), RGB(30, 31, 33), MAT.Metal, true)  -- 水线带
+    part(m, V(B.W, 1.5, B.L), CF(B.x, 1.35, B.z), RGB(128, 134, 138), MAT.Metal, true)          -- 船舷（露出水面的一截）
+    local deck = part(m, V(B.W, 1.5, B.L), CF(B.x, deckY, B.z), RGB(96, 100, 104), MAT.DiamondPlate, true)
     deck.Name = "Deck"
+    local function rake(zEnd, dir, len)   -- 船艏 / 船艉：斜着收到水线下（楔形的竖面贴着船体那一头）
+      local h = B.top + 1.2
+      local w = Instance.new("WedgePart")
+      w.Anchored, w.CanCollide, w.CanQuery, w.CanTouch = true, true, true, false
+      w.Size = V(B.W, h, len)
+      w.CFrame = CF(B.x, B.top - h / 2, zEnd + dir * len / 2) * CFrame.Angles(0, (dir > 0) and math.pi or 0, 0)
+      w.Color, w.Material = RGB(128, 134, 138), MAT.Metal
+      w.TopSurface, w.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      w.Parent = m
+    end
+    rake(B.z - B.L / 2, -1, 30)   -- 北头（朝岛）：长一点的船艏
+    rake(B.z + B.L / 2, 1, 14)    -- 南头：短船艉
+    for _, s in ipairs({ -1, 1 }) do   -- 护舷轮胎：船舷外面一排（在甲板下面，不挡上下艇）
+      for zz = B.z - B.L / 2 + 20, B.z + B.L / 2 - 20, 24 do
+        local t = part(m, V(1.2, 3, 3), CF(B.x + s * (B.W / 2 + 0.6), 1.1, zz), RGB(24, 24, 24), MAT.Fabric)
+        t.Shape = Enum.PartType.Cylinder   -- 圆柱的轴是 X：轮胎平贴船舷、朝外
+      end
+    end
+    for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do   -- 锚链：甲板四角斜着拉到七十格外的浮标（浮标顶上一盏慢闪的灯）
+      local a = V(B.x + c[1] * (B.W / 2 - 3), B.top + 0.3, B.z + c[2] * (B.L / 2 - 8))
+      local b = V(a.X + c[1] * 52, 0.6, a.Z + c[2] * 46)
+      local L = (b - a).Magnitude
+      part(m, V(0.5, 0.5, L), CFrame.lookAt((a + b) / 2, b), RGB(46, 44, 40), MAT.Metal)
+      local buoy = part(m, V(4.2, 4.2, 4.2), CF(b.X, 0.8, b.Z), RGB(230, 120, 30), MAT.SmoothPlastic, true)
+      buoy.Shape = Enum.PartType.Ball
+      if G.World and G.World.light then
+        local l = G.World.light(m, V(b.X, 3.4, b.Z), (c[1] < 0) and RGB(255, 60, 50) or RGB(70, 255, 110), 0.5, 14, 1.2, nil, 3)
+        if l and l.SetAttribute then
+          l:SetAttribute("Anim", "blink")
+          l:SetAttribute("Spd", 0.5)
+        end
+      end
+    end
     for _, s in ipairs({ -1, 1 }) do   -- 两侧护栏（中间留出上下车的口子，按生成格开）
       part(m, V(0.4, 2.6, B.L), CF(B.x + s * (B.W / 2 - 0.3), B.top + 1.3, B.z), RGB(150, 140, 60), MAT.Metal)
     end
@@ -219,10 +257,10 @@ function Depots.init(G)
     local head = CFrame.lookAt(V(p.term.X, ty + 4.6, p.term.Z), V(p.term.X, ty + 4.6, p.term.Z) - face.Unit) * CFrame.Angles(math.rad(-25), 0, 0)
     local scr = part(m, V(2.6, 1.6, 0.25), head, RGB(20, 22, 24), MAT.SmoothPlastic, true)
     scr.Name = "Screen"
-    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 200, 255), MAT.Neon)
+    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 240, 150), MAT.Neon)   -- 终端灯：绿（原来蓝，用户 11-21）
     lamp.Name = "Lamp"
     local pl = Instance.new("PointLight")
-    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 200, 255)
+    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 240, 160)
     pl.Parent = lamp
     local pr = Instance.new("ProximityPrompt")
     pr.Name = "Spawn"
@@ -319,7 +357,7 @@ function Depots.init(G)
     return true, d
   end
 
-  local function spawnAt(P, p, load, vid, fuel)
+  local function spawnAt(P, p, load, vid, fuel, mods)
     -- R 币解锁的机型（B-2 199 R 币；Config.Passes）：没买的不给生成（客户端列表里画着锁、点了是购买框）
     local want = vid or p.vid
     if want and G.passOkFor and not G.passOkFor(P, want) then
@@ -339,7 +377,7 @@ function Depots.init(G)
     elseif p.kind == "ship" then
       e = G.spawnShip and G.spawnShip(P.team, p.vid, p.base, P)
     else
-      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P)
+      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P, mods)   -- mods：坦克的改装（客户端改装界面选的，Armor 里按 TankMods 校验）
     end
     if e then
       e.padId = p.id
@@ -377,7 +415,11 @@ function Depots.init(G)
   function G.ACT.padSpawn(P, padId, load, vid, fuel)
     local p = type(padId) == "string" and byId[padId] or nil
     if not p or not (p.kind == "air" or (p.kind == "veh" and p.summon)) then return end
-    if p.kind == "veh" then load, fuel = nil, nil end
+    local mods = nil
+    if p.kind == "veh" then   -- 地面车：挂载那一格放的是坦克的改装（{ aps = "hk", roof = "gau8" }）
+      mods = (type(load) == "table") and load or nil
+      load, fuel = nil, nil
+    end
     if p.summon then
       vid = vid or p.vid   -- 没说型号（老客户端、老的一型一位）：这个召唤位的第一型
       local okId = false
@@ -386,7 +428,7 @@ function Depots.init(G)
     else
       vid = nil
     end
-    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil)
+    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil, mods)
   end
 end
 

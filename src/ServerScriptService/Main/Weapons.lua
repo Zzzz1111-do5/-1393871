@@ -12,7 +12,10 @@ function Weapons.init(G)
   local now = os.clock
   local RS = game:GetService("ReplicatedStorage")
   local GD = require(RS:WaitForChild("GearDefs"))
+  local HitSurf = require(RS:WaitForChild("HitSurf"))   -- 子弹打在什么上面（客户端按它画弹着点：钢甲火花、土、水……）
   local TURN = require(RS:WaitForChild("ImportTurn")).TURN   -- 导入的每块网格被 Roblox 转了半圈（ImportTurn.lua）：装的时候转回来
+  local GM = require(RS:WaitForChild("GunMods"))   -- 改枪：这个人这把枪装了配件以后的武器表（G.wOf，Gunsmith.lua）、伤害衰减
+  local function WOF(P, id) return (G.wOf and G.wOf(P, id)) or W[id] end
   local OM = nil   -- 手持装备真模型的元数据（OpticsMeta：块的中心、握把、枪口……）
   do
     local ok, r = pcall(function() return require(RS:WaitForChild("OpticsMeta", 5)) end)
@@ -48,12 +51,22 @@ function Weapons.init(G)
   -- 真模型（Studio 里导入了 models/optics/<键>.glb，Imports.lua 收进 Imported.Optics.<键>）：块按「握把坐标」（GearDefs）装到把手上——
   --   握把在把手处，工具的枪口朝 −Z、器材坐标朝 +Z：转 180°
   local FLIP = CFrame.Angles(0, math.pi, 0)
+  -- 导入的原模型块齐不齐（元数据里的块都在）：瞄准镜拆出镜筒里面的块以后（11-21），没重新导入的旧模型块名对不上，
+  --   照旧的整块按新的中心摆会歪——当没导入（零件拼的 / 客户端现生成的）
+  local function importOk(f, M)
+    if not f or not M then return false end
+    for name in pairs(M.parts) do
+      if not f:FindFirstChild("O_" .. f.Name .. "__" .. name) then return false end
+    end
+    return true
+  end
+  G.opticImportOk = importOk
   local function attachReal(tool, h, key, base, prefix)
     local imp = RS:FindFirstChild("Imported")
     local f = imp and imp:FindFirstChild("Optics")
     f = f and f:FindFirstChild(key)
     local M = OM and OM[key]
-    if not f or not M then return 0 end
+    if not f or not M or not importOk(f, M) then return 0 end
     local n = 0
     for _, src in ipairs(f:GetChildren()) do
       local name = string.match(src.Name, "__(.+)$")
@@ -112,14 +125,18 @@ function Weapons.init(G)
       weld(h, br)
       muzzle = V(0, 0.38, -S.L + 0.6 - S.barrel)
       if S.stock then weld(h, p(tool, V(0.35, 0.55, 1.1), CF(0, 0.2, 1.1), S.color)) end
-      if S.mag then weld(h, p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)) end
+      if S.mag then
+        local mg = p(tool, V(0.3, S.mag, 0.45), CF(0, -0.25, -0.8), DARK)
+        mg.Name = "Mag"   -- 改枪换了弹匣：这块藏起来（giveLoadout）
+        weld(h, mg)
+      end
       if S.box then weld(h, p(tool, V(0.6, 0.6, 0.7), CF(0.35, -0.1, -0.7), OLIVE)) end
       if S.scope then   -- 瞄准镜：Studio 里导入了真模型（models/optics/atacr.glb，Imports.lua 收进 Imported.Optics.atacr）就装它，不然零件拼一根镜筒
         local imp = RS:FindFirstChild("Imported")
         local opt = imp and imp:FindFirstChild("Optics")
         opt = opt and opt:FindFirstChild("atacr")
         local real = false
-        if opt and OM and OM.atacr then
+        if opt and OM and OM.atacr and importOk(opt, OM.atacr) then
           for _, src in ipairs(opt:GetChildren()) do
             local name = string.match(src.Name, "__(.+)$")
             local info = name and OM.atacr.parts[name]
@@ -147,7 +164,7 @@ function Weapons.init(G)
         opt = opt and opt:FindFirstChild("acog")
         local base = CF(0, 0.65, -0.5) * CFrame.Angles(0, math.pi, 0)   -- 镜座底面贴导轨顶面；器材 +Z 朝前、工具 −Z 朝前：转 180°
         local real = false
-        if opt and OM and OM.acog then
+        if opt and OM and OM.acog and importOk(opt, OM.acog) then
           for _, src in ipairs(opt:GetChildren()) do
             local name = string.match(src.Name, "__(.+)$")
             local info = name and OM.acog.parts[name]
@@ -167,9 +184,14 @@ function Weapons.init(G)
           local body = p(tool, V(0.17, 0.17, 0.4), base * CF(0, 0.12, -0.02), DARK, Enum.Material.Metal)
           body.Name = "Scope"
           weld(h, body)
-          weld(h, p(tool, V(0.1, 0.24, 0.24), base * CF(0, 0.12, 0.2) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder))   -- 物镜
-          weld(h, p(tool, V(0.1, 0.06, 0.2), base * CF(0, 0.035, -0.02), DARK, Enum.Material.Metal))   -- 镜座
-          weld(h, p(tool, V(0.035, 0.03, 0.26), base * CF(-0.015, 0.215, 0.07), RGB(200, 40, 30), Enum.Material.Neon))   -- 顶上的红色光纤
+          -- 都叫 Scope_*：改枪换了瞄具时整具拿掉（giveLoadout）
+          local q1 = p(tool, V(0.1, 0.24, 0.24), base * CF(0, 0.12, 0.2) * CFrame.Angles(0, math.pi / 2, 0), DARK, Enum.Material.Metal, Enum.PartType.Cylinder)   -- 物镜
+          local q2 = p(tool, V(0.1, 0.06, 0.2), base * CF(0, 0.035, -0.02), DARK, Enum.Material.Metal)   -- 镜座
+          local q3 = p(tool, V(0.035, 0.03, 0.26), base * CF(-0.015, 0.215, 0.07), RGB(200, 40, 30), Enum.Material.Neon)   -- 顶上的红色光纤
+          q1.Name, q2.Name, q3.Name = "Scope_Obj", "Scope_Mount", "Scope_Fiber"
+          weld(h, q1)
+          weld(h, q2)
+          weld(h, q3)
         end
       end
     elseif S and S.tube then   -- 发射筒：扛在肩上
@@ -242,7 +264,7 @@ function Weapons.init(G)
   local function ammoOf(P, id)
     P.ammo = P.ammo or {}
     local a = P.ammo[id]
-    local w = W[id]
+    local w = WOF(P, id)
     if not a then
       a = { n = w.mag or 1, res = w.reserve, r = 0 }
       P.ammo[id] = a
@@ -263,7 +285,7 @@ function Weapons.init(G)
   G.ammoOf = ammoOf
 
   local function startReload(P, id)
-    local w = W[id]
+    local w = WOF(P, id)
     local a = ammoOf(P, id)
     if a.r > 0 or a.n >= (w.mag or 1) then return end
     if a.res and a.res <= 0 then return end
@@ -284,6 +306,17 @@ function Weapons.init(G)
     for i, id in ipairs(kit.weapons) do
       local t = (TOOLS[P.team] or TOOLS.def)[id]:Clone()
       t:SetAttribute("Slot", i)
+      local b = P.wBuild and P.wBuild[id]
+      if b then   -- 改枪（Gunsmith.lua）：大家的客户端照这个属性在枪上装配件
+        t:SetAttribute("Build", GM.encode(b))
+        if b.optic and b.optic ~= "acog" then   -- 换了瞄具：工具上原来那具 ACOG 拿掉
+          for _, c in ipairs(t:GetChildren()) do
+            if c:IsA("BasePart") and string.sub(c.Name, 1, 5) == "Scope" then c:Destroy() end
+          end
+        end
+        local mg = b.mag and b.mag ~= "mag_std" and t:FindFirstChild("Mag")
+        if mg then mg.Transparency = 1 end   -- 换了弹匣：零件拼的那个藏起来（客户端装上真模型）
+      end
       t.Parent = bp
     end
   end
@@ -317,7 +350,7 @@ function Weapons.init(G)
 
   -- 用掉一发：射速、弹匣；打空了自动换弹
   local function spend(P, id)
-    local w = W[id]
+    local w = WOF(P, id)
     local a = ammoOf(P, id)
     local t = now()
     P.lastShot = P.lastShot or {}
@@ -342,18 +375,52 @@ function Weapons.init(G)
 
   local KIND = {}
 
-  KIND.gun = function(P, id, w, char, head, tool, aim)
+  -- 子弹打在什么上面（客户端画弹着点用）：延迟补偿判中的按补偿到的目标（车按类别、人是 f），不然按射线打中的零件和材质
+  local function surfOf(rw, res)
+    if rw then return (rw.e and rw.e.root and HitSurf.of(rw.e.root)) or "f" end
+    return res and HitSurf.of(res.Instance, res.Material) or nil
+  end
+
+  -- 散布（用户 11-18：提高手感）：开镜（客户端发 "ads"）收紧、跑起来 / 跳在半空变散、连射越打越散（P.bloom），公式在 Config.gunSpread，
+  --   客户端准星照同一个公式画。开镜只会让散布变小，谎报了也就是一直按开镜算，不影响别的
+  local function gunSpread(P, id, w, char, ads)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    -- 读不到（测试台的 Lune 没有这两个属性）就当站着不动、踩在地上：不能让这一枪报错打不出去
+    local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)
+    if not okv or typeof(v) ~= "Vector3" then v = V() end
+    local okf, fm = pcall(function() return hum.FloorMaterial end)
+    local air = okf and fm == Enum.Material.Air and math.abs(v.Y) > 1.5
+    local bl = w.bloom
+    local b = 0
+    if bl then
+      P.bloom = P.bloom or {}
+      local t = now()
+      b = Config.bloomAt(w, P.bloom[id], t)
+      P.bloom[id] = { v = math.min(bl[2], b + bl[1]), t = t }   -- 这一发按打之前攒的算，打完再加
+    end
+    return Config.gunSpread(w, ads, V(v.X, 0, v.Z).Magnitude, air, b)
+  end
+
+  KIND.gun = function(P, id, w, char, head, tool, aim, mode)
     if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
     local origin = head.Position
     local dir = aim - origin
     if dir.Magnitude < 0.5 then return end
     if not spend(P, id) then return end
-    dir = spreadDir(dir.Unit, w.spread)
+    dir = spreadDir(dir.Unit, gunSpread(P, id, w, char, mode == "ads"))
     params.FilterDescendantsInstances = { char }
     local res = workspace:Raycast(origin, dir * w.range, params)
-    local hit = res and res.Position or (origin + dir * w.range)
-    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team })   -- t：哪一方开的枪（客户端雷达上闪红圈）
-    if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, src(P), w.head, res.Position) end
+    -- 按现在的位置没打中人 / 车：按他屏幕上那一刻的位置再判一次（Rewind.lua，延迟补偿）
+    local rw = G.rewindShot and G.rewindShot(P, origin, dir, w.range, res)
+    local hit = (rw and rw.pos) or (res and res.Position) or (origin + dir * w.range)
+    -- t：哪一方开的枪（客户端雷达上闪红圈）；h：打在什么上面（HitSurf：钢甲火花、土、水……；没打中东西是空）
+    G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team, h = surfOf(rw, res) })
+    local s = src(P)
+    s.wid = id   -- 哪把枪打的（打死了加这把枪的经验）
+    local dmg = GM.dmgAt(w, (hit - origin).Magnitude)   -- 远了伤害往下掉（改枪的「有效射程」）
+    if rw then G.hitRewound(rw, w, dmg, s, w.head)
+    elseif res and res.Instance then G.hitThing(res.Instance, w, dmg, s, w.head, res.Position) end
   end
 
   KIND.proj = function(P, id, w, char, head, tool, aim)
@@ -581,7 +648,7 @@ function Weapons.init(G)
   end)
 
   function G.shoot(P, id, a, b)
-    local w = W[id]
+    local w = WOF(P, id)
     if not w then return end
     local char, head, tool = holding(P, id)
     if not char then return end
@@ -596,8 +663,17 @@ function Weapons.init(G)
     dir = spreadDir(dir.Unit, deg or w.spread)
     params.FilterDescendantsInstances = ignore or {}
     local res = workspace:Raycast(from, dir * (w.range or 500), params)
-    local hit = res and res.Position or (from + dir * (w.range or 500))
-    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team })
+    -- 真人在操作（车上的机枪、工事、舰炮）：和步枪一样做延迟补偿（Rewind.lua）；机器人、没人管的工事照旧
+    local P = srcInfo and srcInfo.P
+    local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
+    local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
+    local B = srcInfo and srcInfo.bot
+    G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
+      h = surfOf(rw, res) })
+    if rw then
+      G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)
+      return (rw.e and rw.e.root) or rw.part, rw.pos
+    end
     if res and res.Instance then G.hitThing(res.Instance, w, w.dmg, srcInfo, w.head or 1, res.Position) end
     return res and res.Instance or nil, res and res.Position or nil   -- 打中了什么、打在哪（机器人、工事用来判断是不是被墙挡着）
   end

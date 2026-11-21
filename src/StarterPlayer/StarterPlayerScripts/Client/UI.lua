@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local UI = {}
 
@@ -138,13 +137,13 @@ function UI.init(G)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
   local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  do   -- 左边、下边压暗，右上透出一点战场
+  do   -- 保留远景，限制夜视和照明弹在部署页背后的亮斑
     local g = Instance.new("UIGradient")
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.13), NumberSequenceKeypoint.new(1, 0.24) })
     g.Rotation = -20
     g.Parent = deploy
   end
@@ -244,6 +243,30 @@ function UI.init(G)
     stats[k] = { a = a, bg = bg, fill = fill, v = v }
     a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
   end
+  -- 改枪（用户 11-20：对标三角洲行动，Gunsmith.lua）：主武器那格下面一个「改枪」按钮，旁边一行现在装的配件
+  local GMods = require(game:GetService("ReplicatedStorage"):WaitForChild("GunMods"))
+  local gsY = infoY + (mobile and 84 or 112 + 4 * 24 + 6)
+  local gsBtn = Instance.new("TextButton")
+  gsBtn.Size, gsBtn.Position = UDim2.fromOffset(mobile and 110 or 132, mobile and 30 or 34), UDim2.fromOffset(M0, gsY)
+  gsBtn.BackgroundColor3, gsBtn.BackgroundTransparency, gsBtn.BorderSizePixel, gsBtn.AutoButtonColor = RGB(206, 255, 72), 0, 0, true
+  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.GothamBlack, mobile and 13 or 14, RGB(18, 22, 8), ""
+  gsBtn.Visible = false
+  gsBtn.Parent = kitPage
+  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  gsLine.Visible = false
+  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  gsLv.Visible = false
+
+  gsBtn.Activated:Connect(function()
+    if sel.gsId and G.openGunsmith then
+      G.openGunsmith(sel.gsId, function() if G.refreshDeploy then G.refreshDeploy() end end)
+    end
+  end)
+  -- 服务器改好了配件 / 加了枪械经验（玩家属性）：部署界面开着就刷新
+  for _, a in ipairs({ "Gun_m4", "Gun_sniper", "GunXp_m4", "GunXp_sniper" }) do
+    pcall(function() player:GetAttributeChangedSignal(a):Connect(function() if deploy.Visible and G.refreshDeploy then G.refreshDeploy() end end) end)
+  end
+
   -- 右边的大图（慢慢左右转）
   local big = Instance.new("ViewportFrame")
   big.Name = "GearBig"
@@ -313,7 +336,7 @@ function UI.init(G)
   end
   -- 数据条：枪看伤害 / 射速 / 射程 / 精度；炸的看伤害 / 杀伤半径 / 射程 / 弹药；工具不显示
   local function statRows(id)
-    local w = Config.Weapons[id]
+    local w = (G.W and G.W[id]) or Config.Weapons[id]   -- 枪按装的配件算（改枪；GunKit.lua）
     if not w then return {} end
     local m = function(studs) return math.floor((studs or 0) / 2.8 + 0.5) end
     if w.kind == "gun" then
@@ -321,7 +344,7 @@ function UI.init(G)
         { T("deploy.stat.dmg"), math.clamp(w.dmg / 100, 0, 1), tostring(w.dmg) },
         { T("deploy.stat.rate"), math.clamp((60 / w.rate) / 800, 0, 1), T("deploy.rpm", math.floor(60 / w.rate + 0.5)) },
         { T("deploy.stat.range"), math.clamp(m(w.range) / 550, 0, 1), T("deploy.m", m(w.range)) },
-        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) / 0.8, 0.05, 1), string.format("±%.2f°", w.spread or 0) },
+        { T("deploy.stat.acc"), math.clamp(1 - (w.spread or 0) * (w.adsK or 1) / 0.8, 0.05, 1), string.format("±%.2f°", (w.spread or 0) * (w.adsK or 1)) },   -- 开镜的精度（spread 是腰射）
       }
     elseif w.dmg then
       local rows = {
@@ -345,7 +368,14 @@ function UI.init(G)
       G.viewFit(vp, nil)
       return false
     end
-    local m, wait, real = G.gearModel(id, team)
+    local m, wait, real
+    if G.gunModel and GMods.has(id) and G.myBuild then   -- 改枪：装着现在这一套配件的枪
+      m, wait = G.gunModel(id, team, G.myBuild(id))
+      real = m ~= nil
+      if not m then m, wait, real = G.gearModel(id, team) end
+    else
+      m, wait, real = G.gearModel(id, team)
+    end
     if m and not real then   -- 零件拼的方块不放（粗糙）：等真模型
       m:Destroy()
       m = nil
@@ -396,6 +426,7 @@ function UI.init(G)
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
       or (G.tacOpen ~= nil and G.tacOpen())   -- 战术平板开着：鼠标放出来点地图、不开枪
+      or (G.gunsmithOpen ~= nil and G.gunsmithOpen())   -- 改枪界面
   end
 
   local function doDeploy()
@@ -431,6 +462,7 @@ function UI.init(G)
     if s.kind == "rally" then return T("spawn.rally", T("point." .. s.point)) end   -- 守方前线集结点（据点后方）
     if s.kind == "staging" then return T("spawn.staging", T("point." .. s.point)) end   -- 攻方攻击出发阵地（据点前面）
     if s.kind == "camp" then return T("spawn.camp") end
+    if s.kind == "afield" then return T("spawn.afield") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
     if s.kind == "cv" then return T("spawn.cv") end
@@ -634,9 +666,26 @@ function UI.init(G)
         r.v.Text = d[3]
       end
     end
-    if bigItem ~= (fid or false) then
-      bigItem = fid or false
+    local bkey = fid and (fid .. ((GMods.has(fid) and player:GetAttribute("Gun_" .. fid)) or "")) or false   -- 换了配件也重画大图
+    if bigItem ~= bkey then
+      bigItem = bkey
       bigWait = setModel(big, fid, team)
+    end
+    -- 改枪按钮：看的是装得了配件的枪
+    local canMod = fid ~= nil and GMods.has(fid) and G.openGunsmith ~= nil
+    sel.gsId = canMod and fid or nil
+    gsBtn.Visible, gsLine.Visible, gsLv.Visible = canMod, canMod and not mobile, canMod
+    if canMod then
+      gsBtn.Text = T("gm.open")
+      local b = G.myBuild and G.myBuild(fid) or GMods.default(fid)
+      local names = {}
+      for _, slot in ipairs(GMods.SLOTS) do
+        local it = b[slot] and GMods.ITEM[b[slot]]
+        if it and it.model then table.insert(names, T("gm.item." .. b[slot])) end
+      end
+      gsLine.Text = (#names > 0) and table.concat(names, " · ") or T("gm.stock")
+      local lv, a, nx = GMods.level(fid, player:GetAttribute("GunXp_" .. fid) or 0)
+      gsLv.Text = T("gm.lv", lv) .. (nx and "" or ("  " .. T("gm.max")))
     end
     -- 主按钮
     goSpawnT.Text = T("deploy.pickSpawn")
@@ -677,7 +726,7 @@ function UI.init(G)
     end
   end)
   -- 大图慢慢左右转（绕模型中心：G.viewFit 记在属性 C 里）
-  RunService.RenderStepped:Connect(function()
+  G.frameConn("UI2", function()
     if not deploy.Visible or not kitPage.Visible then return end
     local m = big:FindFirstChildOfClass("Model")
     local c = m and m:GetAttribute("C")
@@ -720,8 +769,7 @@ function UI.init(G)
   local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
   help.TextStrokeTransparency = 0.6
 
-  -- 小地图容器（右下）
-  -- 圆形雷达（Hud.lua 摆、画）：CanvasGroup 才能把里面的地图、亮点按圆角裁成圆
+  -- 小地图容器（Hud.lua 摆到右上、画成方形雷达小地图）：CanvasGroup 才能把里面的地图、亮点按框裁掉
   local miniBox = Instance.new("CanvasGroup")
   miniBox.Name = "Radar"
   miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
@@ -737,6 +785,7 @@ function UI.init(G)
   center.ZIndex = 30
   local centerT = 0
   local feed = frame(gui, UDim2.fromOffset(340, 160), UDim2.new(1, -16, 0, 120), PANEL, 1, Vector2.new(1, 0))
+  G.hudParts.feed = feed   -- 击杀信息：Hud.lua 把小地图放到右上后挪到它下面
   local feedList = Instance.new("UIListLayout")
   feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
   feedList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -783,12 +832,21 @@ function UI.init(G)
       if G.hitMarker then G.hitMarker(key) end
       return
     end
+    if kind == "hurt" then   -- 挨打：伤害从哪来（Juice.lua 在准星周围画红弧），key 是位置
+      if G.juiceHurt and typeof(key) == "Vector3" then G.juiceHurt(key) end
+      return
+    end
+    if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
+    if kind == "ric" then   -- 跳弹（服务器 Ents.lua）：准星下面弹一行黄字（打出去的跳了 / 打过来的被弹开）
+      if G.pop then G.pop(T(key, ...), key == "hit.ricIn" and "ricIn" or "ric") end
+      return
+    end
     if kind == "refill" then   -- 战术平板的补给箱：本地弹药也补满（Play.lua）
       if G.refillAmmo then G.refillAmmo() end
       return
     end
-    if kind == "stage" then   -- 开战 / 打下一个阶段：大横幅（Hud.lua）
-      if G.stageBanner then G.stageBanner(key, ...) else G.centerMsg(T(key)) end
+    if kind == "stage" then   -- Operation.lua 直接从战况读阶段，中途入场也会显示简报。
+      if not G.stepOperation then G.centerMsg(T(key)) end
       return
     end
     local text = T(key, ...)

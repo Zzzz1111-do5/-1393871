@@ -10,6 +10,7 @@ local Air = {}
 function Air.init(G)
   local Config, Map = G.Config, G.Map
   local AD = require(RS:WaitForChild("AirDefs"))
+  G.AirDefs = AD   -- 测试用（ia_carrier：甲板判定）
   local V = Vector3.new
   local CF = CFrame.new
   local now = os.clock
@@ -309,6 +310,7 @@ function Air.init(G)
     e.fuelSel = AD.cleanFuel(fuel)   -- 出发时选的内油（落地加油也加到这么多）
     e.fuel = e.fuelSel
     fillStores(e)
+    e.restT, e.rearmed = 6, true   -- 新飞机本来就是满的：停在停机位上平显直接写「可以起飞」，不再走一遍补给倒计时
     e.vel = vel or V()
     e.onGround = onGround
     e.pass = {}
@@ -494,6 +496,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airBombStep = guideBomb   -- 测试用（客户端 Marks.lua 的炸弹落点按同一套算）
   local function guideRocket(s, dt)
     s.age += dt
     s.vel += V(0, -GRAV * 0.25, 0) * dt
@@ -891,27 +894,41 @@ function Air.init(G)
           G.removeEnt(e)
         end
       end
-      -- 落在自己的地方停稳：5 秒后补满弹药、热诱弹，慢慢修
-      if e.alive and e.onGround and e.vel and e.vel.Magnitude < 4 and landedHome(e) then
-        e.restT = (e.restT or 0) + dt
-        if e.restT > 5 then
-          if not e.rearmed then
-            e.rearmed = true
-            e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
-            fillStores(e)
-            if e.driver then
-              G.msg(e.driver.pl, "good", "ui.rearmed")
-              G.pushOne(e.driver)
+      -- 落在自己的地方停稳：5 秒后加油、补满弹药和热诱弹，接着修（每秒一成，十秒修满）
+      --   Rest 属性给平显看（Fly.lua）：1～5 停稳倒计时、10 在自己的机场 / 甲板上还在滑、−1 修理中、−2 全好了、−3 这里补不了
+      local rest = 0
+      if e.alive and e.onGround then
+        if not landedHome(e) then
+          rest = -3
+          e.restT, e.rearmed = 0, false
+        elseif e.vel and e.vel.Magnitude < 4 then
+          e.restT = (e.restT or 0) + dt
+          if e.restT > 5 then
+            if not e.rearmed then
+              e.rearmed = true
+              e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
+              fillStores(e)
+              if e.driver then
+                G.msg(e.driver.pl, "good", "ui.rearmed")
+                G.pushOne(e.driver)
+              end
             end
+            if e.hp < e.maxHp then
+              e.hp = math.min(e.maxHp, e.hp + e.maxHp * 0.1 * dt)
+              e.model:SetAttribute("Hp", math.floor(e.hp))
+            end
+            rest = (e.hp < e.maxHp) and -1 or -2
+          else
+            rest = math.max(1, math.ceil(5 - e.restT))
           end
-          if e.hp < e.maxHp then
-            e.hp = math.min(e.maxHp, e.hp + e.maxHp * 0.08 * dt)
-            e.model:SetAttribute("Hp", math.floor(e.hp))
-          end
+        else
+          rest = 10
+          e.restT, e.rearmed = 0, false
         end
       else
         e.restT, e.rearmed = 0, false
       end
+      if e.alive and e.model and e.model:GetAttribute("Rest") ~= rest then e.model:SetAttribute("Rest", rest) end
     end
   end)
 

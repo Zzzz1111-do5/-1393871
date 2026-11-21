@@ -194,7 +194,14 @@ function FortDefs.obstacles(Map)
         local rel = math.abs(xx - b.cx)
         if rel >= L.half and not (rel > L.gap0 and rel < L.gap1) and xx <= b.x1 - 4 then
           local zc = coast(xx)
-          if zc then table.insert(hog, { x = xx, z = zc - inland * ((row == 0) and 6 or -7), rot = rng:NextNumber(0, math.pi) }) end
+          if zc then
+            local rot = rng:NextNumber(0, math.pi)
+            -- 前排在水线外 6 格；坡缓的滩那里已经两格多深（原来夹在 −1.4 格高，整个浮在水面上——用户 11-18：这些建筑漂在水里），
+            --   太深就往岸边挪，挪到水深两格以内：立在海底，尖头露出水面
+            local off = (row == 0) and 6 or -7
+            while off > 0 and Map.height(xx, zc - inland * off) < -2 do off -= 1 end
+            table.insert(hog, { x = xx, z = zc - inland * off, rot = rot })
+          end
         end
       end
     end

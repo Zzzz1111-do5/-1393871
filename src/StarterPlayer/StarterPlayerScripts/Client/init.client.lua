@@ -3,11 +3,19 @@
 --   FortView 地图自带工事的样子、走过去的「E 操作 / 上车」提示 · Gunner 操作工事（机枪、岸防炮、高炮、榴弹炮）、工兵的破障器材 ·
 --   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂 · Fly 飞机、直升机的样子和驾驶（AirModels 拼零件）·
 --   ShipView 舰艇的样子 · Sail 开船（车钟、舵、舰炮、反舰导弹）· Hangar 挂载编辑器 ·
---   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）·
+--   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）· ScopePip 瞄准镜画中画（镜内单独放大）·
 --   Depot 地图里的载具生成点（牌子、按键文字、飞机生成前弹挂载界面）· Night 夜视仪（N）· Faction 选阵营（解放军 / 美军）·
 --   Chute 跳伞的人头顶的降落伞 · Tablet 遥控无人机的战术平板（平板外壳、地面站遥测、重连提示）· Soldier 机器人士兵（Roblox 小人）·
 --   TacPad 单兵战术平板（B：呼叫空投载具、空投补给、空中打击，每样一局有次数；飞来的飞机、落下的货盘和炸弹）
 --   Coach 新手指导（最下面按当前状态的几个键、F1 全部按键、第一次上某种载具的三步卡、目标方向箭头、队友和空车标记）
+--   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
+--   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
+--   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
+--   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
+--   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
+--   GunKit 改枪的配件：自己这把枪的武器表（G.myW）、别人 / 第三人称枪上装的配件模型、激光、手电
+--   Gunsmith 改枪界面（对标三角洲行动：3D 枪、改装位、性能条、推荐改装、方案、改枪码）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -23,8 +31,41 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
-for _, name in ipairs({ "Fx", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "Aero", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Coach" }) do
-  require(script:WaitForChild(name)).init(G)
+-- 逐帧回调计时（F7 性能面板 Perf.lua 读）：G.perfT[名字] = 这半秒累计的秒数；各模块自己的 RenderStepped 用 G.frameConn(名字, 函数) 连
+G.perfT = {}
+function G.perfWrap(name, f)
+  return function(...)
+    local t0 = os.clock()
+    f(...)
+    local T = G.perfT
+    T[name] = (T[name] or 0) + (os.clock() - t0)
+  end
+end
+function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
+
+-- 武器表（自己的枪装了配件以后的那份）：G.W[武器] = G.myW(武器)（GunKit.lua 按背包里工具的 Build 属性算，GunMods.apply）；
+--   Play、Hud、FPSView 开枪、换弹、准星、后坐都按它（服务器 Weapons.lua 按同一套算的那份核对）
+G.W = setmetatable({}, { __index = function(_, id)
+  local f = G.myW
+  if f then return f(id) end
+  return G.Config.Weapons[id]
+end })
+
+-- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
+--   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
+local initErrs = {}
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Perf" }) do
+  local mod = script:WaitForChild(name, 10)
+  if not mod then
+    table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
+  else
+    local ok, err = pcall(function() require(mod).init(G) end)
+    if not ok then table.insert(initErrs, name .. " 初始化出错：" .. tostring(err)) end
+  end
+end
+for _, e in ipairs(initErrs) do
+  warn("[全面大战场] " .. e)
+  if G.showError then G.showError("local " .. e) end
 end
 
 task.delay(25, function()
@@ -55,20 +96,28 @@ G.R.Fx.OnClientEvent:Connect(safe(function(list) G.onFx(list) end))
 G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 
 local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function(dt) if G.stepFly then G.stepFly(dt) end end },
-  { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end }, { "play", function(dt) G.stepPlay(dt) end },
+  { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end },
+  { "interior", function(dt) if G.stepInterior then G.stepInterior(dt) end end },   -- 载具内饰：要用 View 这一帧算好的车体、炮塔姿态，镜头最后定
+  { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
-  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
+  { "ui", function(dt) G.stepUI(dt) end }, { "map", function() G.stepMap() end },
+  { "operation", function(dt) G.stepOperation(dt) end }, { "hud", function(dt) if G.stepHud then G.stepHud(dt) end end },
   { "scenery", function(dt) if G.stepScenery then G.stepScenery(dt) end end },
   { "chute", function(dt) if G.stepChute then G.stepChute(dt) end end },
   { "tablet", function(dt) if G.stepTablet then G.stepTablet(dt) end end },
   { "tacpad", function(dt) if G.stepTacPad then G.stepTacPad(dt) end end },
   { "menu", function(dt) if G.stepMenu then G.stepMenu(dt) end end },   -- 主菜单背后的场景（火光、镜头）
   { "coach", function(dt) if G.stepCoach then G.stepCoach(dt) end end },   -- 新手指导：按键提示、三步卡、目标箭头、队友 / 空车标记
-  { "daynight", function(dt) if G.stepDayNight then G.stepDayNight(dt) end end } }   -- 昼夜更替（DayNight.lua）   -- 新手指导：按键提示、三步卡、目标箭头、队友 / 空车标记
+  { "daynight", function(dt) if G.stepDayNight then G.stepDayNight(dt) end end },   -- 昼夜更替（DayNight.lua）
+  { "airfx", function(dt) if G.stepAirFx then G.stepAirFx(dt) end end },   -- 飞机机动的翼尖涡流、机翼水汽、蒸汽锥、音爆
+  { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗
 RunService.RenderStepped:Connect(function(dt)
+  local T = G.perfT
   for _, s in ipairs(steps) do
+    local t0 = os.clock()
     local ok, err = pcall(s[2], dt)
+    T[s[1]] = (T[s[1]] or 0) + (os.clock() - t0)
     if not ok then G.showError("local " .. s[1] .. ": " .. tostring(err)) end
   end
 end)

@@ -44,10 +44,11 @@ function Round.init(G)
   end
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
+  --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
   local function isActive(s)
     if not s or s.locked then return false end
     local k = stageOf[s.id]
-    if not k then return true end
+    if not k then return false end
     if flankOf[s.id] then return R.stage >= k end
     return k == R.stage
   end
@@ -62,27 +63,10 @@ function Round.init(G)
     return out
   end
   G.objectives = objectives
-  -- 守方前线集结点：据点往北（守方后方）Config.RallyBack 格、同一块陆地上能站人的地方（据点被压着时守方在这里出生，不用从几公里外的营地跑过来）
-  local rally = {}
-  for _, p in ipairs(Map.POINTS) do
-    local back = Config.RallyBack or 300
-    local land = p.isle or "main"
-    local best = nil
-    for k = 0, 10 do
-      for _, sx in ipairs({ 0, 1, -1 }) do
-        local x, z = p.x + sx * k * 30, p.z - back * (1 - k * 0.07)
-        if not best and Map.isLand(x, z) and Map.landOf(x, z) == land and Map.slope(x, z) < 0.9 then best = { x = x, z = z } end
-      end
-    end
-    rally[p.id] = best or { x = p.x, z = p.z - 120 }
-  end
-  G.rallyOf = function(id) return rally[id] end
-  -- 攻方攻击出发阵地（第二阶段起）：每个要打的据点往攻方来的方向（同一块陆地上上一阶段的据点；没有就是最近的登陆点）
-  --   退 Config.StageOff 格（来向没那么远就取八成五，至少 260 格），找同一块陆地上能站人的地方。攻方在这里出生，
-  --   不用从几公里外的滩头、上一个据点走过去（机器人对打：拿下港口 C 以后攻方走了 4 分多钟才到机场 D，一路没仗打）。
-  --   和守方集结点一样，对方 150 格以内有人就不能用（不出生在敌人脸上）。
-  --   不放在守方机枪碉堡的射界里（开局照 FortDefs.layout 摆、朝哪、射界多宽、看多远、中间有没有山挡着）：正前方被封锁就往两边挪，
-  --   从侧面接近（机器人对打：机场 D 南边 150 格的碉堡正对着出发阵地，4 分钟打死攻方 60 多人）
+  -- 用户（交战区）：出生点跟着战线走——攻方在离目标 Config.StageOff 格（200～300）的攻击出发阵地出生，守方在目标后面
+  --   Config.RallyBack 格（150～250）的集结点出生；每处算几个备选位置，对方在附近就换下一个（不出生在敌人脸上）
+  local rally = {}   -- [据点] = { {x, z}, … }（在攻方来向的反方向，下面和出发阵地一起算）
+  G.rallyOf = function(id) return rally[id] and rally[id][1] end
   local FD = require(game:GetService("ReplicatedStorage"):WaitForChild("FortDefs"))
   local bunkers = {}
   for _, f in ipairs(FD.layout(Map)) do
@@ -104,13 +88,16 @@ function Round.init(G)
     end
     return false
   end
-  local staging = {}
+  local staging = {}   -- [据点] = { {x, z}, … }（好的在前；都在机枪碉堡射界里时才用射界里的）
+  local OFF = Config.StageOff or 260
+  local BACK = Config.RallyBack or 200
   for _, p in ipairs(Map.POINTS) do
     local k = stageOf[p.id]
-    if k and k >= 2 and not flankOf[p.id] then
+    if k and not flankOf[p.id] then
+      -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
       local fx, fz, fd = nil, nil, math.huge
       for _, q in ipairs(Map.POINTS) do
-        if stageOf[q.id] == k - 1 and not flankOf[q.id] and q.land == p.land then
+        if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
           local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
           if d < fd then fx, fz, fd = q.x, q.z, d end
         end
@@ -123,28 +110,42 @@ function Round.init(G)
           end
         end
       end
-      local ux, uz = 0, 1   -- 没有来向：往南（攻方从南边的海上来）
+      local ux, uz = 0, 1
       if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
-      local off = math.clamp(fx and fd * 0.85 or 400, 260, Config.StageOff or 420)
-      local rp = rally[p.id]
-      local best, fallback = nil, nil
-      for _, ang in ipairs({ 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100 }) do
+      local good, bad = {}, {}
+      for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
         local a = math.rad(ang)
         local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
-        for _, kr in ipairs({ 1, 0.85, 1.15, 0.7, 1.3 }) do
-          local x, z = p.x + dx * off * kr, p.z + dz * off * kr
-          if off * kr >= 230 and Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and (x - rp.x) ^ 2 + (z - rp.z) ^ 2 > 300 * 300 then
-            if not covered(x, z) then best = { x = x, z = z } break end
-            fallback = fallback or { x = x, z = z }
+        for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
+          local x, z = p.x + dx * r, p.z + dz * r
+          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
+            table.insert(covered(x, z) and bad or good, { x = x, z = z })
+            break
           end
         end
-        if best then break end
       end
-      staging[p.id] = best or fallback
+      for _, c in ipairs(bad) do table.insert(good, c) end
+      staging[p.id] = (#good > 0) and good or nil
+      -- 守方集结点：反方向（据点后面）150～250 格
+      local rs = {}
+      for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
+        local a = math.rad(ang)
+        local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
+        for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
+          local x, z = p.x + dx * r, p.z + dz * r
+          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+            table.insert(rs, { x = x, z = z })
+            break
+          end
+        end
+      end
+      rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
+    else
+      rally[p.id] = { { x = p.x, z = p.z - 120 } }
     end
   end
   G.stagingCovered = covered
-  G.stagingOf = function(id) return staging[id] end
+  G.stagingOf = function(id) return staging[id] and staging[id][1] end
 
   ---------------------------------------------------------------- 队伍人数、分队
 
@@ -208,13 +209,27 @@ function Round.init(G)
     end
     return false
   end
-  local function rallyHot(x, z) return hotFor("atk", x, z, 120) end
-  -- 攻击出发阵地现在能不能用（机器人出生也看这个）：开战了、据点是当前阶段的主目标、守方 150 格以内没人；能用返回位置
+  -- 集结点现在能用的那一个（攻方 120 格以内没人）
+  local function rallyFree(id)
+    for _, c in ipairs(rally[id] or {}) do
+      if not hotFor("atk", c.x, c.z, 120) then return c end
+    end
+    return nil
+  end
+  -- 第一波：准备阶段和开战后 Config.FirstWave 秒（第一阶段）能坐登陆艇抢滩；之后只能在攻击出发阵地出生
+  local function firstWave()
+    if R.phase == "prep" then return true end
+    return R.phase == "battle" and R.stage == 1 and now() - (R.battleAt or 0) < (Config.FirstWave or 45)
+  end
+  G.firstWave = firstWave
+  -- 攻击出发阵地现在能不能用（AI 车出生也看这个）：开战了、过了第一波、据点是当前阶段的目标；守方 150 格以内没人的那一个
   local function stagingOk(id)
-    local sp = staging[id]
-    if not sp or R.phase ~= "battle" or flankOf[id] or not isActive(points[id]) then return nil end
-    if hotFor("def", sp.x, sp.z, 150) then return nil end
-    return sp
+    local list = staging[id]
+    if not list or R.phase ~= "battle" or flankOf[id] or not isActive(points[id]) or firstWave() then return nil end
+    for _, c in ipairs(list) do
+      if not hotFor("def", c.x, c.z, 150) then return c end
+    end
+    return nil
   end
   G.stagingOk = stagingOk
 
@@ -223,7 +238,7 @@ function Round.init(G)
     local objs = objectives(false)
     local best, bd = nil, math.huge
     for _, s in ipairs(list) do
-      local kindOk = (team == "atk" and (s.kind == "beach" or s.kind == "point" or s.kind == "staging")) or (team == "def" and (s.kind == "point" or s.kind == "rally"))
+      local kindOk = (team == "atk" and (s.kind == "beach" or s.kind == "staging")) or (team == "def" and (s.kind == "point" or s.kind == "rally"))
       if s.ok and s.x and kindOk then
         for _, o in ipairs(objs) do
           local d = math.sqrt((s.x - o.x) ^ 2 + (s.z - o.z) ^ 2)
@@ -247,37 +262,44 @@ function Round.init(G)
   -- 出生点：{ id, kind, x, z, ok, rec }；每队能选哪些、现在能不能用、推荐哪个（离当前目标最近的）
   --   攻方的登陆点只列当前目标所在的那块陆地上的；守方的集结点只给当前阶段的据点。自己手里的据点都能出生（守方的机场 D 是飞机基地）
   local function spawnList(team, P)
+    -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
+    --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
-    local lands = {}
-    for _, p in ipairs(objectives(true)) do lands[p.land] = true end
+    local objs = objectives(false)
     if team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
       table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
       table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
       table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
-      -- 登陆艇：准备阶段也能上（艇在海上等着，开战一起冲滩）
-      for _, b in ipairs(Map.LANDINGS) do
-        if lands[b.isle or "main"] then table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = R.phase == "battle" or R.phase == "prep" }) end
+      if firstWave() then   -- 第一波：坐登陆艇抢滩（准备阶段上艇，开战一起冲）
+        local lands = {}
+        for _, p in ipairs(objs) do lands[p.land] = true end
+        for _, b in ipairs(Map.LANDINGS) do
+          if lands[b.isle or "main"] then table.insert(out, { id = "beach." .. b.id, kind = "beach", beach = b.id, x = b.cx, z = b.z, ok = true }) end
+        end
       end
-      for _, p in ipairs(Map.POINTS) do
-        local s = points[p.id]
-        if s and s.owner == "atk" then table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = true }) end
-      end
-      for _, p in ipairs(objectives(false)) do   -- 攻击出发阵地：当前阶段的主目标（第二阶段起）
-        local sp = staging[p.id]
-        if sp then table.insert(out, { id = "stage." .. p.id, kind = "staging", point = p.id, x = sp.x, z = sp.z, ok = stagingOk(p.id) ~= nil }) end
+      for _, p in ipairs(objs) do   -- 攻击出发阵地：离目标 200～300 格
+        local list = staging[p.id]
+        if list then
+          local c = stagingOk(p.id)
+          local sp = c or list[1]
+          table.insert(out, { id = "stage." .. p.id, kind = "staging", point = p.id, x = sp.x, z = sp.z, ok = c ~= nil })
+        end
       end
       table.insert(out, { id = "para", kind = "para", ok = R.phase == "battle" and now() >= ((P and P.paraCd) or 0) })
     else
-      table.insert(out, { id = "camp", kind = "camp", x = Map.CAMP.x, z = Map.CAMP.z, ok = true })
-      for _, p in ipairs(Map.POINTS) do
+      table.insert(out, { id = "camp", kind = "camp", x = Map.CAMP.x, z = Map.CAMP.z, ok = true })   -- 后方营地（地面载具、直升机）
+      local D = points.D
+      if Map.AIRFIELD and D and D.owner == "def" then   -- 守方机场（战斗机）：机场 D 还在手里
+        table.insert(out, { id = "afield", kind = "afield", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z, ok = true })
+      end
+      for _, p in ipairs(objs) do
         local s = points[p.id]
         if s and s.owner == "def" then
           table.insert(out, { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = not s.pressed })
-          if isActive(s) then
-            local rp = rally[p.id]
-            table.insert(out, { id = "rally." .. p.id, kind = "rally", point = p.id, x = rp.x, z = rp.z, ok = not rallyHot(rp.x, rp.z) })
-          end
+          local c = rallyFree(p.id)
+          local rp = c or rally[p.id][1]
+          table.insert(out, { id = "rally." .. p.id, kind = "rally", point = p.id, x = rp.x, z = rp.z, ok = c ~= nil })
         end
       end
     end
@@ -307,10 +329,10 @@ function Round.init(G)
       end
       local f = Map.FLEET[2] or Map.FLEET[1]
       return CFrame.new(f.x, 40, f.z)
-    elseif sp.kind == "cv" then   -- 航母：舰岛后面（右舷停机位旁边），别站在弹射器、着舰区上
+    elseif sp.kind == "cv" then   -- 航母（福建舰）：舰岛左边、着舰区右边红线以外，面朝舰尾的停机位；别站在弹射器、着舰区上
       for _, d in ipairs(G.decks or {}) do
         if d.kind == "carrier" then
-          local p = (d.cf * CFrame.new(44 + (math.random() - 0.5) * 6, 2, 46 + (math.random() - 0.5) * 14)).Position
+          local p = (d.cf * CFrame.new(24 + (math.random() - 0.5) * 6, 2, 92 + (math.random() - 0.5) * 20)).Position
           return CFrame.lookAt(p, p + V(0, 0, 1))
         end
       end
@@ -321,6 +343,10 @@ function Round.init(G)
     elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
       local A = Map.AFIELD2
       local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
+      return CFrame.lookAt(p, p + V(0, 0, 1))
+    elseif sp.kind == "afield" then   -- 守方机场：跑道北边
+      local A = Map.AIRFIELD
+      local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 60, 10)
       return CFrame.lookAt(p, p + V(0, 0, 1))
     elseif sp.kind == "point" then
       local p = standAt(sp.x, sp.z, 30)
@@ -340,6 +366,7 @@ function Round.init(G)
     end
     return CFrame.new(0, 60, 0)
   end
+  G.spawnCFOf = spawnCF   -- 测试用（ia_carrier：航母出生点）
 
   ---------------------------------------------------------------- 角色
 
@@ -507,6 +534,7 @@ function Round.init(G)
         K.kills += 1
         G.addScore(K, Config.Score.kill)
         G.msg(K.pl, "kill", "ui.youKilled", P.pl.DisplayName)
+        if killer.wid and G.gunXp then G.gunXp(K, killer.wid, (Config.GunMods and Config.GunMods.killXp) or 100) end
       end
     end
     for _, A in ipairs(assists) do
@@ -517,6 +545,7 @@ function Round.init(G)
       killer.bot.s += Config.Score.kill
     end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
+    if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
     if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
@@ -547,7 +576,9 @@ function Round.init(G)
     local S = Config.Soldier
     -- 战况表上的标签：按主武器、发射器挑一个
     local role = (pick.primary == "sniper" and "sniper") or LAUNCH_ROLE[pick.launcher or ""] or "rifle"
-    return { weapons = list, hp = S.hp, speed = pick.launcher and S.heavy or S.speed, role = role, pick = pick }
+    -- 走路速度：主武器上的配件越重越慢一点（改枪的「机动性」：弹鼓、长消音器、6 倍镜）
+    local mob = (P and G.gunMob) and G.gunMob(P, pick.primary) or 1
+    return { weapons = list, hp = S.hp, speed = (pick.launcher and S.heavy or S.speed) * mob, role = role, pick = pick }
   end
   function G.kitOf(P)
     if P.kit and P.kit.role == P.role then return P.kit end   -- 别处直接改了 P.role（测试换成观察员）就按那个兵种
@@ -560,6 +591,7 @@ function Round.init(G)
     local hrp = char:WaitForChild("HumanoidRootPart", 10)
     if not hum or not hrp or G.P[P.pl] ~= P then return end
     local kit = G.kitOf(P)
+    if G.gunApply then G.try("改枪", G.gunApply, P) end   -- 这一条命的武器表按装的配件算（Gunsmith.lua；改了配件下次出击生效）
     hum.MaxHealth = kit.hp
     hum.Health = kit.hp
     hum.WalkSpeed = kit.speed
@@ -665,11 +697,26 @@ function Round.init(G)
     if victim and R.phase ~= "battle" then return false end
     if victim then
       victim.dmgLog = victim.dmgLog or {}
-      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil })
+      table.insert(victim.dmgLog, { t = now(), amt = amt, by = src and src.P or nil, bot = src and src.bot or nil, name = src and (src.P and src.P.pl.DisplayName or src.name) or nil,
+        wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
     hum:TakeDamage(amt)
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and "kill" or ((part and part.Name == "Head") and "head" or "hit")) end
+    local head = part ~= nil and part.Name == "Head"
+    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
+    if victim and victim.pl then
+      local ap = G.boomAt
+      if ap then   -- 炸的：指向炸点
+      elseif src and src.P and src.P.char then
+        local h = src.P.char:FindFirstChild("HumanoidRootPart")
+        ap = h and h.Position or ap
+      elseif src and src.bot and src.bot.e then
+        ap = src.bot.e.root.CFrame.Position
+      end
+      if typeof(ap) == "Vector3" then pcall(function() G.R.Msg:FireClient(victim.pl, "hurt", ap) end) end
+    end
     return true
   end
 
@@ -710,7 +757,7 @@ function Round.init(G)
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
           local p = hrp.Position
           local dx, dz = p.X - s.x, p.Z - s.z
-          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < 45 then
+          if dx * dx + dz * dz < r2 and math.abs(p.Y - s.y) < CC.height then
             if P.team == "atk" then a += 1 else d += 1 end
             table.insert(who, P)
           end
@@ -750,7 +797,7 @@ function Round.init(G)
     R.endsAt = now() + (st.time or 480)
     R.overtimeEnds = nil
     R.stageAt = now()
-    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 客户端：全屏横幅（第几阶段、这一阶段打哪儿）
+    G.msgAll("stage", "stage." .. st.id, R.stage, #STAGES)   -- 旧客户端的阶段横幅
     G.emit("stage", R.stage, st)
   end
   local function captured(s, who)
@@ -803,6 +850,7 @@ function Round.init(G)
         else
           s.prog = math.max(0, s.prog - dt / CC.decay)
         end
+        s.motion = s.prog > old and 1 or (s.prog < old and -1 or 0)
         if s.prog >= 1 then
           captured(s, who)
         elseif math.abs(s.prog - old) > 1e-6 then
@@ -810,7 +858,7 @@ function Round.init(G)
           paint(s)
         end
       else
-        s.atk, s.def, s.pressed = 0, 0, false
+        s.atk, s.def, s.pressed, s.motion = 0, 0, false, 0
       end
     end
   end
@@ -849,6 +897,7 @@ function Round.init(G)
   local function startBattle()
     R.phase = "battle"
     R.stage = 1
+    R.battleAt = now()   -- 第一波（登陆艇）从这时算
     R.endsAt = now() + ((STAGES[1] and STAGES[1].time) or RC.battle)
     R.overtimeEnds = nil
     R.stageAt = now()
@@ -919,7 +968,7 @@ function Round.init(G)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
-        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil })
+        act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
     end
     return out
   end
@@ -989,6 +1038,7 @@ function Round.init(G)
     G.P[pl] = P
     setTeam(P, pickTeam())
     pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
+    if G.gunPublish then G.try("改枪属性", G.gunPublish, P) end   -- 改枪（Gunsmith.lua）：读档前先按默认写上，部署界面一进来就有
     if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end
     G.pushOne(P)
     task.delay(1, function()

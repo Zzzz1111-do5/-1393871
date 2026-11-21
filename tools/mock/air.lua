@@ -54,7 +54,7 @@ local has = false
 for _, id in ipairs(C.S.vehModels or {}) do if id == jetId then has = true end end
 check(has, "能用的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
 check(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap >= 1, "固定翼名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap))
-T.act("deploy", "rifle", (side == "atk") and "af2" or "point.D")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
+T.act("deploy", "rifle", (side == "atk") and "af2" or "afield")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 local jp = T.pad(jetId)
@@ -159,12 +159,51 @@ if e and e.def.id == "j20" then
       end
     end
     check(pil >= 4 and near < 1.5, string.format("座舱里坐着飞行员（%d 块，离原模型的眼位 %.2f 格）", pil, near))
-    local wells = 0
+    -- 起落架（j20_v4：原模型没有，tools/models/j20_gear.py 建的网格，关键帧往前收）、起落架舱门（gdh：放的前 1/4 开门、收的最后 1/4 关门）
+    if byGroup.GearL then
+      local function at(g, c)
+        local s, k = V3(0, 0, 0), 0
+        for _, it in ipairs(byGroup[g] or {}) do
+          if it.kind == "m" then
+            s = s + (it.f(c) * it.cf0).Position
+            k = k + 1
+          end
+        end
+        return k > 0 and s * (1 / k) or nil
+      end
+      local g1, g0, gq = at("GearL", { gear = 1 }), at("GearL", { gear = 0 }), at("GearL", { gear = 0.25 })
+      check(g1 and g0 and g0.Y - g1.Y > 2 and g0.Z < g1.Z - 2,
+        string.format("收起落架：左主起落架往前 %.1f 格、往上 %.1f 格收进机身", g1 and g0 and (g1.Z - g0.Z) or 0, g1 and g0 and (g0.Y - g1.Y) or 0))
+      check(g0 and gq and (g0 - gq).Magnitude < 0.05, "操纵量 0.25 时支柱已经收到底（之后舱门才关）")
+      local n1, n0 = dy("GDoorN1", { gear = 1 }), dy("GDoorN1", { gear = 0 })
+      check(n1 and n0 and n1 < -0.3 and math.abs(n0) < 0.01, "前起落架舱门：放下时往下开（" .. fmt(n1) .. " 格），收起时关上（" .. fmt(n0) .. "）")
+      local mo = 0
+      for _, it in ipairs(byGroup.GDoorML or {}) do
+        local cf0 = it.H * it.off
+        local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f({ gear = 1 })) * it.off
+        mo = mo + (math.abs(cf1.Position.X) - math.abs(cf0.Position.X)) / #byGroup.GDoorML
+      end
+      check(mo > 0.3, "主起落架舱门：放下时往外翻（" .. fmt(mo) .. " 格）")
+      local built = 0
+      for _, it in ipairs(v.M.items) do if it.tag == "gear" then built = built + 1 end end
+      check(built == 0, "原模型自带起落架：零件拼的起落架不画了（" .. built .. " 个零件）")
+    end
+    -- 弹舱 / 起落架舱里：WELL 表的深色方盒子（Part），v4 的侧弹舱、起落架舱换成 tools/models/doorbay.py 做的舱（网格 Well_1…，开口一圈封住，开了舱门看不穿飞机）
+    local wells, cav = 0, 0
     for _, it in ipairs(v.M.items) do
       local col = it.p.Color
       if it.kind == "b" and not it.tag and it.p.ClassName == "Part" and col.R < 0.16 and col.G < 0.16 and col.B < 0.17 then wells = wells + 1 end
+      if it.kind == "b" and string.match(it.p.Name, "__Well_%d+$") then cav = cav + 1 end
     end
-    check(wells >= 3, "弹舱里有深色的舱壁（" .. wells .. " 个）")
+    check(wells + cav >= 3, "弹舱里有深色的舱壁（方盒 " .. wells .. " 个、舱 " .. cav .. " 个）")
+    if IA.m[IKEY].bayfix then
+      check(cav == 5, "侧弹舱、起落架舱是封好的舱（" .. cav .. " 个，应该 5 个：两个侧弹舱、两个主起落架舱、前起落架舱）")
+      local duct = 0
+      for _, it in ipairs(v.M.items) do
+        if it.kind == "b" and string.match(it.p.Name, "__Duct_%d+$") then duct = duct + 1 end
+      end
+      check(duct == 2, "进气道里补了深色管道（" .. duct .. " 个，应该 2 个）")
+    end
   end
 end
 print("④ 降落伞：角色带着 Chute 属性（服务器在跳伞时设）就在头顶张开一顶伞，落地收掉")
@@ -181,69 +220,143 @@ if me.Character then
   R.run(0.3)
   check(R.services.Workspace:FindFirstChild("Parachute") == nil, "落地收掉了")
 end
-print("⑤a 新键位（用户 11-18）：W 加速、S 减速，地上收到底按住 S 倒退；纯准心控制，A / D 滚转时准心不被拽回")
+print("⑤a 键位（用户 11-21：WASD 控制方向、不要准心）：Shift 加油门、Ctrl 收油门，地上收到底按住 Ctrl 倒退；W / S 不再管油门")
 local fst = C.fly
+local CFr, V2 = R.CFrame, R.Vector2.new
 if fst and e then
   fst.thr = 0
   local p0 = fst.cf.Position
   local lk0 = fst.cf.LookVector
-  T.key(Enum.KeyCode.S, true)
+  T.key(Enum.KeyCode.LeftControl, true)
   R.run(2)
-  T.key(Enum.KeyCode.S, false)
+  T.key(Enum.KeyCode.LeftControl, false)
   local back = (fst.cf.Position - p0):Dot(lk0)
-  check(fst.spd < -3 and back < -3, string.format("地上油门收到底按住 S：倒退（速度 %.1f、往后挪了 %.1f 格）", fst.spd, -back))
-  T.key(Enum.KeyCode.W, true)
+  check(fst.spd < -3 and back < -3, string.format("地上油门收到底按住 Ctrl：倒退（速度 %.1f、往后挪了 %.1f 格）", fst.spd, -back))
+  T.key(Enum.KeyCode.LeftShift, true)
   R.run(1)
+  T.key(Enum.KeyCode.LeftShift, false)
+  check(fst.thr > 40, string.format("按住 Shift 推油门（%.0f）", fst.thr))
+  local t0 = fst.thr
+  T.key(Enum.KeyCode.W, true)
+  R.run(0.4)
   T.key(Enum.KeyCode.W, false)
-  check(fst.thr > 40, string.format("按住 W 推油门（%.0f）", fst.thr))
   T.key(Enum.KeyCode.S, true)
   R.run(0.4)
   T.key(Enum.KeyCode.S, false)
-  check(fst.thr < 40, string.format("按住 S 收油门（%.0f）", fst.thr))
+  check(math.abs(fst.thr - t0) < 0.01, "W / S 不再管油门（是驾驶杆）")
+  T.key(Enum.KeyCode.LeftControl, true)
+  R.run(0.4)
+  T.key(Enum.KeyCode.LeftControl, false)
+  check(fst.thr < 40, string.format("按住 Ctrl 收油门（%.0f）", fst.thr))
 end
-print("⑤ 起飞、拉杆：有重量感——航迹落后于机头（迎角）、角速度慢慢起来、大迎角掉速")
+print("⑤ 起飞、拉杆（键盘当驾驶杆：S 抬头、W 低头、A / D 滚转）：有重量感、不太灵活；机头的全息标记一直在屏幕正中")
+local cam = R.services.Workspace.CurrentCamera
+local function markOff()   -- 机头前方 300 格那一点离屏幕中心多少像素（全息标记就在那里）
+  local sp = cam:WorldToViewportPoint(fst.cf.Position + fst.cf.LookVector * 300)
+  return math.sqrt((sp.X - cam.ViewportSize.X / 2) ^ 2 + (sp.Y - cam.ViewportSize.Y / 2) ^ 2)
+end
+local function bankDeg() return math.deg(math.asin(math.max(-1, math.min(1, fst.cf.RightVector.Y)))) end
 if fst and e then
-  T.key(Enum.KeyCode.W, true)   -- W 推油门；准心往上抬就离地、爬升（纯准心控制）
-  fst.aimPitch = math.rad(12)
-  local up = T.runUntil(function() return not fst.ground end, 40)
-  check(up, string.format("滑跑起飞（离地时速度 %.0f 格 / 秒）", fst.spd or 0))
-  R.run(8.2)
-  fst.aimPitch = math.rad(3)
+  T.key(Enum.KeyCode.LeftShift, true)   -- 推满油门滑跑，速度到了按住 S 抬头离地
+  T.runUntil(function() return fst.spd >= e.def.vRot end, 40)
+  T.key(Enum.KeyCode.S, true)
+  local up = T.runUntil(function() return not fst.ground end, 10)
+  check(up, string.format("滑跑到抬头速度、按住 S 离地（离地时速度 %.0f 格 / 秒）", fst.spd or 0))
+  R.run(2.5)
+  T.key(Enum.KeyCode.S, false)
+  R.run(6)
+  T.key(Enum.KeyCode.LeftShift, false)
   local p = fst.cf.Position
   check(p.Y == p.Y and p.Y > G.Map.ground(p.X, p.Z) + 20, string.format("飞起来了（离地 %.0f 格，速度 %.0f）", p.Y - G.Map.ground(p.X, p.Z), fst.spd))
-  -- 收到军推、平飞稳一下，再把准心猛地往上提：角速度一开始还没起来，航迹慢半拍跟上机头，大迎角掉速
-  T.key(Enum.KeyCode.W, false)
+  -- 收到军推、摆平（测试直接把姿态放平），松着杆飞：保持航向、高度变化不大，标记在正中
   fst.thr = 85
-  local lk = fst.cf.LookVector
-  fst.aimYaw, fst.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(math.max(-1, math.min(1, lk.Y)))
-  R.run(3)
+  local function level()
+    local q = fst.cf.Position
+    local f = fst.cf.LookVector
+    local fl = Vector3 and nil
+    fl = R.Vector3.new(f.X, 0, f.Z).Unit
+    fst.cf = CFr.lookAt(q, q + fl)
+    fst.vdir, fst.pr, fst.rr, fst.yr = fl, 0, 0, 0
+  end
+  level()
+  R.run(1)
+  local y0, h0 = fst.cf.Position.Y, fst.cf.LookVector
+  local worst = 0
+  for _ = 1, 90 do R.run(1 / 30) worst = math.max(worst, markOff()) end
+  local turned = math.deg(math.acos(math.max(-1, math.min(1, fst.cf.LookVector:Dot(h0)))))
+  check(math.abs(fst.cf.Position.Y - y0) < 40 and turned < 3, string.format("松着杆：照直飞（3 秒高度变了 %.0f 格、航向偏了 %.1f°）", fst.cf.Position.Y - y0, turned))
+  check(worst <= 2, string.format("平飞时机头标记在屏幕正中（最远偏 %.1f 像素）", worst))
+  local ring = T.findNamed("AimRing")
+  check(not (ring and T.visible(ring)), "有人开的固定翼不画准星圈（不要准心控制）")
+  -- 拉杆：按住 S——角速度慢慢起来（键 0.3 秒推满 + 转动惯量），航迹慢半拍（迎角），过载不超过收过的上限，拉得狠掉速
   local spd0 = fst.spd
-  fst.aimPitch = math.min(1.4, fst.aimPitch + math.rad(80))
+  local PMAX = math.rad(e.def.pitch) * 0.65
+  T.key(Enum.KeyCode.S, true)
   R.run(0.1)
   local pr1 = fst.pr
-  local aoa = 0
+  local aoa, gMax = 0, 0
+  worst = 0
   for _ = 1, 45 do
     R.run(1 / 30)
     local f = fst.cf.LookVector
     if fst.vdir then aoa = math.max(aoa, math.deg(math.acos(math.max(-1, math.min(1, f:Dot(fst.vdir)))))) end
+    gMax = math.max(gMax, fst.gLoad or 0)
+    worst = math.max(worst, markOff())
   end
-  local lk2 = fst.cf.LookVector
-  fst.aimYaw, fst.aimPitch = math.atan2(-lk2.X, -lk2.Z), math.asin(math.max(-1, math.min(1, lk2.Y)))
-  local prMax = math.rad(e.def.pitch)
-  check(math.abs(pr1) < prMax * 0.6, string.format("拉杆 0.1 秒俯仰角速度才到 %.0f%%（转动有惯性）", 100 * math.abs(pr1) / prMax))
+  T.key(Enum.KeyCode.S, false)
+  check(fst.pr > 0.05, string.format("按住 S 抬头（俯仰角速度 %.0f°/秒）", math.deg(fst.pr)))
+  check(math.abs(pr1) < PMAX * 0.5, string.format("拉杆 0.1 秒俯仰角速度才到 %.0f%%（杆量慢慢推上去、转动有惯性）", 100 * math.abs(pr1) / PMAX))
   check(aoa > 1.5 and aoa < 25, string.format("拉杆时机头比航迹高 %.1f°（飞机「吃」一下才转过去）", aoa))
+  check(gMax <= e.def.g * 0.72 + 0.3, string.format("过载不超过 %.1f g（用户 11-21：太灵活了，上限收到七成；这次最大 %.1f g）", e.def.g * 0.72, gMax))
   check(fst.spd < spd0, string.format("大迎角掉速：%.0f → %.0f", spd0, fst.spd))
+  check(worst <= 2, string.format("拉杆时机头标记还在屏幕正中（最远偏 %.1f 像素）", worst))
   local q = fst.cf.Position
   check(q.X == q.X and q.Y == q.Y and q.Z == q.Z, "位置正常（没有算出 NaN）")
-  -- A / D 滚筒：准心（鼠标给的方向）不被拽回机头；松开以后接着往准心飞
-  local ay, ap = fst.aimYaw, fst.aimPitch
-  local r0 = fst.cf.RightVector
+  -- A / D 滚转：不太灵活（用户 11-21），松开以后小坡度自己慢慢摆平
+  level()
+  R.run(0.5)
+  local b0, rmax = bankDeg(), 0
   T.key(Enum.KeyCode.D, true)
-  R.run(0.8)
-  local rolled = math.deg(math.acos(math.max(-1, math.min(1, fst.cf.RightVector:Dot(r0)))))
+  for _ = 1, 24 do
+    local b1 = bankDeg()
+    R.run(1 / 30)
+    rmax = math.max(rmax, math.abs(bankDeg() - b1) * 30)
+  end
   T.key(Enum.KeyCode.D, false)
-  check(rolled > 40, string.format("按住 D 滚转（0.8 秒滚了 %.0f°）", rolled))
-  check(math.abs(fst.aimYaw - ay) < 1e-6 and math.abs(fst.aimPitch - ap) < 1e-6, "滚转时准心没被拽回机头")
+  local rolled = math.abs(bankDeg() - b0)
+  check(rolled > 20, string.format("按住 D 往右滚（0.8 秒滚了 %.0f°）", rolled))
+  check(rmax < 105, string.format("滚转不太快（最快 %.0f°/秒；原来歼-20 一秒两百多度）", rmax))
+  check(bankDeg() < -5, string.format("往右滚是右翼往下（坡度 %.0f°）", bankDeg()))
+  level()
+  R.run(0.3)
+  T.key(Enum.KeyCode.A, true)
+  R.run(0.25)
+  T.key(Enum.KeyCode.A, false)
+  local bSmall = bankDeg()
+  R.run(4)
+  check(math.abs(bSmall) > 3 and math.abs(bankDeg()) < math.abs(bSmall) * 0.5, string.format("轻点 A 压了 %.0f° 坡度，松开 4 秒自己摆平到 %.1f°", bSmall, bankDeg()))
+  -- W 低头
+  level()
+  R.run(0.3)
+  T.key(Enum.KeyCode.W, true)
+  R.run(0.6)
+  T.key(Enum.KeyCode.W, false)
+  check(fst.cf.LookVector.Y < -0.02, string.format("按住 W 低头（俯仰 %.1f°）", math.deg(math.asin(fst.cf.LookVector.Y))))
+  -- 按住 Alt 自由看：鼠标拨开镜头，松开回到身后（标记回到正中）
+  level()
+  R.run(0.3)
+  T.key(Enum.KeyCode.LeftAlt, true)
+  for _ = 1, 10 do
+    R.mouseDelta = V2(30, 0)
+    R.run(1 / 30)
+  end
+  local away = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.cf.LookVector)))))
+  T.key(Enum.KeyCode.LeftAlt, false)
+  check(away > 20, string.format("按住 Alt 拨鼠标：镜头转开 %.0f°", away))
+  R.run(2)
+  check(markOff() <= 3, string.format("松开 Alt：镜头回到身后（标记偏 %.1f 像素）", markOff()))
+  level()
+  R.run(0.5)
 end
 
 print("⑥ 油量：飞着就烧油（油门越大越费）、平显上有油量；副油箱先烧、烧干自动抛、J 键手动抛；烧干熄火")

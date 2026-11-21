@@ -17,9 +17,14 @@ import mdl2glb as B   # noqa: E402  贴图、材质、GLB 写出、署名、Lua 
 import air_anim as A   # noqa: E402  舵面、弹舱门、座舱盖、起落架支柱
 import air_kf as KF   # noqa: E402  原模型自带关键帧动画的（F-22A）：动画里会动的节点做成部件
 import orient   # noqa: E402  修朝反了的面（Roblox 只画正面）
+import glbvote   # noqa: E402  写完 GLB 再从 26 个方向检查一遍面朝向、法线
+import airpaint   # noqa: E402  重新涂装（歼-20）、发光灯带（歼-20、歼-16）、发动机堵头（H-6、A-10）
+import doorbay   # noqa: E402  舱门里补封好的舱、舱门补反面（歼-20：开了舱门别能看穿飞机）
 
 S = B.S
 CHUNK = B.CHUNK
+# 单独调小的：一块里留出余量，glbfix.py 给单层板补反面时不会顶到 Roblox 一块 2 万个三角形的上限（歼-20 v4 不减面以后有一两千个三角形补不上）
+CHUNKK = {'j20': 15000}
 
 # 游戏里的型号（AirDefs）→ 网页版的模型；后面带 ~ 的去掉原机涂装（我方没有模型的用外形最接近的美军机代，原机的国籍标志、舷号都在底色贴图里），游戏里按我方涂色
 ALIAS = {
@@ -38,6 +43,14 @@ ROTSPLIT = {'z10w': {'c': [1.21, 0, 2.95], 'z': [2.78, 3.17], 'r': 6.1, 'tb': [-
 #   游戏里照选的挂载拼——打掉一枚少一枚、换挂载也对得上。范围是模型坐标（格，|x| 两边对称）：包围盒整个在里面的连通块去掉
 DROP = {'ah64': [{'x': [2.4, 8.6], 'y': [1.0, 4.6], 'z': [-11.5, -4.4]}],
         'z10w': [{'x': [3.0, 6.5], 'y': [1.5, 3.6], 'z': [-3.5, 0.4]}]}
+# 机头炮塔（阿帕奇的 M230 链炮、直-10 的 23 毫米炮）：原模型里和机身烘焙在一块——按连通块挑出来做成部件，游戏里跟着瞄准转（用户 11-21：直升机炮管不会转动）
+#   Gun 炮（方位 + 俯仰，绕耳轴 p 转）、GunY 炮塔座（只转方位，绕 py 的竖轴）。范围是网页版坐标（米：x 前、y 左、z 上），连通块的包围盒中心在范围里的算；
+#   阿帕奇：炮管 1.5 米长挂在机头下面（x 4.6～6.1）、耳轴横杆在 x 4.22 高 0.46、炮塔座顶盘在 x 4.31 高 0.99；直-10：炮管 x 5.5～6.7、炮塔球心 x 4.61 高 0.43
+GUNSPLIT = {
+    'ah64': {'gun': {'x': [3.7, 6.2], 'y': 0.35, 'z': [0.0, 0.6]}, 'yaw': {'x': [3.9, 4.8], 'y': 0.45, 'z': [0.6, 1.1]},
+             'p': [4.27, -0.02, 0.46], 'py': [4.31, -0.02, 0.99]},
+    'z10w': {'gun': {'x': [4.3, 6.8], 'y': 0.35, 'z': [0.0, 0.6]}, 'p': [4.61, 0.0, 0.43]},
+}
 # 直升机短翼（模型坐标）：下表面高 y、弦中间 z、翼尖 x1——挂点挂在这里（按连通块和下表面量的）
 HELI_STUB = {'ah64': {'y': 4.2, 'z': -6.5, 'x1': 8.1}, 'z10w': {'y': 3.75, 'z': -1.5, 'x1': 6.6}}
 # 歼-15T（Jeyhun1985 的模型，用户给的）：按这个模型量的——外翼铰链在 |y| 3.6 米、上表面高 1.8（烘焙坐标，没抬高）；平尾外段 |y| 3.7、高 1.08
@@ -235,6 +248,25 @@ def segment(key):
         tri_g[body[cls == 2]] = 'TRotor'
         rot_piv['Rotor'] = (cf['c'], [0, 0, 1])
         rot_piv['TRotor'] = (cf['tc'], [0, 1, 0])
+    # 机头炮塔：机体里包围盒中心落在炮的范围里的连通块（GUNSPLIT）
+    if key in GUNSPLIT:
+        cf = GUNSPLIT[key]
+        body = np.where(tri_g == 'Body')[0]
+        lab = components(VB[:, 0:3], tris[body])
+        nG = {'Gun': 0, 'GunY': 0}
+        for l in np.unique(lab):
+            sel = body[lab == l]
+            Q = VB[tris[sel].reshape(-1), 0:3]
+            c = (Q.min(axis=0) + Q.max(axis=0)) / 2
+            for g, r in (('Gun', cf.get('gun')), ('GunY', cf.get('yaw'))):
+                if r and r['x'][0] <= c[0] <= r['x'][1] and abs(c[1]) <= r['y'] and r['z'][0] <= c[2] <= r['z'][1]:
+                    tri_g[sel] = g
+                    nG[g] += len(sel)
+                    break
+        rot_piv['Gun'] = (cf['p'], [0, 0, 1])
+        if cf.get('py'):
+            rot_piv['GunY'] = (cf['py'], [0, 0, 1])
+        print('  %s 拆出机头炮塔：炮 %d 个三角形、炮塔座 %d 个' % (key, nG['Gun'], nG['GunY']))
     # 折翼：重心在铰链线外侧的机体三角形（网页版坐标 y 左、x 前、z 上）
     for F in FOLD.get(key, []):
         body = np.where(tri_g == 'Body')[0]
@@ -296,12 +328,13 @@ def convert(key, AD, ids):
     # 按（部件，材质）分块
     out = []
     count = {}
-    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor']
+    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor', 'Gun', 'GunY']
     for g in order:
         for mi in sorted(set(tri_m[tri_g == g].tolist())):
             idx_all = tris[(tri_g == g) & (tri_m == mi)]
-            for c0 in range(0, len(idx_all), CHUNK):
-                tri = idx_all[c0:c0 + CHUNK]
+            ck = CHUNKK.get(key, CHUNK)
+            for c0 in range(0, len(idx_all), ck):
+                tri = idx_all[c0:c0 + ck]
                 u, inv = np.unique(tri.reshape(-1), return_inverse=True)
                 P = Pw[u] - org
                 count[g] = count.get(g, 0) + 1
@@ -421,6 +454,8 @@ def convert(key, AD, ids):
 # 有活动部件（舵面、弹舱门、座舱盖、起落架支柱）的模型换个键名（<键>_v2，块叫 A_<键>_v2__<块名>）：和用户已经导入的老版本（一整块蒙皮）
 #   不会重名、能同时放在 Imported.Air 里；元数据里老版本那一行原样留着（old 表），游戏先找新的、没导入新的照旧用老的（不会动）
 VER = '_v3'   # v2：有活动部件；v3：再修了朝反的面（v2 导入了的照样能用，见 old 表）
+# 单独换过版本的：j20 v4 是 11-18 用原模型不减面重新转的（21.9 万个三角形，原来烘焙时减到 13 万）、补了起落架和起落架舱门（tools/models/j20_gear.py）
+VERK = {'j20': '_v4', 'ah64': '_v2', 'z10w': '_v2'}   # 阿帕奇、直-10 v2：拆出了机头炮塔（GUNSPLIT）
 
 
 if __name__ == '__main__':
@@ -430,8 +465,8 @@ if __name__ == '__main__':
     META = sys.argv[4] if len(sys.argv) > 4 else 'src/ReplicatedStorage/ImportedAir.lua'
     os.makedirs(OUTDIR, exist_ok=True)
     keys = sorted(set(v.rstrip('~') for v in ALIAS.values()))
-    anim = {k for k in keys if k in A.SURF or k in A.GEAR}
-    kname = {k: (k + VER if k in anim else k) for k in keys}   # 导入后的键名
+    anim = {k for k in keys if k in A.SURF or k in A.GEAR or k in GUNSPLIT}
+    kname = {k: (k + VERK.get(k, VER) if k in anim else k) for k in keys}   # 导入后的键名
     old = B.old_lines(META)   # 原来元数据里各模型那一行
     # 老版本：原来元数据里这个模型的别的版本（不带后缀的一整块蒙皮版、_v2……）原样留着，用户导入的是哪一版都能用
     import re
@@ -444,11 +479,19 @@ if __name__ == '__main__':
         m = re.search(r'_v(\d+)$', x)
         return int(m.group(1)) if m else 0
     meta_out, lua_out = {}, {}
+    # 只重转这几个（环境变量 ONLY=ah64,z10w）：别的模型的 GLB 不动、元数据那一行原样留着（网页版仓库里不一定还有它们的源模型）
+    only = set(x for x in os.environ.get('ONLY', '').split(',') if x)
+    kept = {}
     for key in keys:
+        if only and key not in only:
+            if kname[key] in old:
+                kept[kname[key]] = old[kname[key]]
+            continue
         ids = [i for i, v in ALIAS.items() if v.rstrip('~') == key]
         meta, binb, info, out = convert(key, AD, ids)
         path = os.path.join(OUTDIR, key + '.glb')
         B.write_glb(kname[key], meta, binb, info, out, path, prefix='A_')
+        glbvote.vote_file(path, log=lambda m: print('  %s%s' % (kname[key], m)))   # 最后一道面朝向检查（26 个方向看；歼-20 机头镂空就是前两道漏的）
         meta_out[key] = info
         lua_out[kname[key]] = info
         tris = sum(len(o[6]) for o in out)
@@ -478,9 +521,24 @@ if __name__ == '__main__':
         f.write('return {\n  alias = ' + B.lua(alias) + ',\n  old = ' + B.lua(alias0) + ',\n  m = {\n')
         for key in sorted(lua_out):
             f.write('    %s = %s,\n' % (key, B.lua(lua_out[key])))
+        for key in sorted(kept):
+            f.write(kept[key] if kept[key].endswith('\n') else kept[key] + '\n')
         for key in sorted(legacy):
             f.write(legacy[key] if legacy[key].endswith('\n') else legacy[key] + '\n')
         f.write('  },\n}\n')
+    # 重新涂装、灯带、发动机堵头（tools/models/airpaint.py 的 PAINT：歼-20 涂装和绿色灯带、歼-16 灯带、H-6 / A-10 堵头）——改 GLB 和刚写好的元数据那一行
+    for nm, spec in airpaint.PAINT.items():
+        if spec['key'] in lua_out:
+            print('%-8s 涂装 / 灯带 / 堵头' % spec['key'])
+            airpaint.paint(nm, os.path.join(OUTDIR, nm + '.glb'), META)
+    # 舱门开口挤出舱、舱门补反面（tools/models/doorbay.py 的 SPEC）——要在涂装之后
+    for nm, spec in doorbay.SPEC.items():
+        if spec['key'] in lua_out:
+            print('%-8s 舱、舱门反面' % spec['key'])
+            doorbay.run(nm, os.path.join(OUTDIR, nm + '.glb'), META)
+    if only:   # 只重转了几个：署名文件不重写（别的模型的署名信息这次没读）
+        print('写好了 %s 的 GLB 和 %s' % ('、'.join(sorted(only)), META))
+        sys.exit(0)
     B.write_credits(os.path.join(OUTDIR, 'credits.txt'), keys, meta_out,
                     'Roblox全面大战场的飞机、直升机模型（models/air/<模型键>.glb）：从网页版《暗剑》烘焙的模型原样转换（js/mdl/<模型键>.js）\n'
                     '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到机身中心和地面；按部件（机体 / 起落架 / 旋翼 / 尾桨 / 折叠外翼）和材质切成几块，'

@@ -93,6 +93,14 @@ if side == "def" then
   R.run(1.5)
   check(v0 and v0.solidOn == false, "坐进自己开的车：这辆不再挡人（人在里面）")
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
+  -- 用户 11-21：坦克里强制锁着夜视仪视角——没开瞄准镜时 N 照样开关夜视仪（原来地面载具里 N 整个让给瞄准镜，关不掉）
+  local m0 = C.drive and C.drive.mode
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  check(not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil and C.drive and C.drive.mode == m0, "车里（没开镜）按 N 关掉夜视仪，瞄准镜的档没被跟着换")
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 夜视仪又开了")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
   check(e and e.root.CanCollide == false, "服务器的方盒不挡人（只管挨打）")

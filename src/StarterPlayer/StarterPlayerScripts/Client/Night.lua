@@ -1,9 +1,12 @@
 -- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
 --   开着：整个画面都是夜视（本地增亮、绿色荧光调色、灯光强烈泛光、雾变淡一点看得更远、画面轻微闪烁；用户：要全屏的夜视，不要望远镜那样四周一圈黑）；
 --     队友头盔后面的红外频闪一闪一闪（只有夜视里看得见）；镜筒翻下来（服务器改焊接，别人也看得到）
---   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 是切车上瞄准镜的夜视 / 热成像（Drive.lua），
+--   坐进载具（车、飞机、直升机、船、炮位）照样开着（用户：进载具夜视不要取消）；地面载具里 N 照样开关夜视仪
+--     （用户 11-21：坦克里强制锁着夜视仪视角——原来地面载具里 N 整个让给瞄准镜，关不掉），开着车上的瞄准镜时 N 才是切瞄准镜的光电档（Drive.lua），
+--   开飞机时 N 在 夜视 → 热成像 → 关 之间切（热成像在 AirHud.lua；用户 11-19：不用光电吊舱也可以开红外视角），
 --     开着车上的瞄准镜看时夜视仪先让出画面（瞄准镜有自己的调色，叠在一起热成像会发绿、过亮），退出瞄准镜自动恢复；死了关掉
---   默认开着（用户：视野不管是在什么情况默认夜视仪都是开着的）：每次出生自动打开；按 N 关掉的话这一条命里关着，下次出生又是开的；车上瞄准镜默认也是夜视档
+--   默认开着（用户：视野不管是在什么情况默认夜视仪都是开着的）：每次出生自动打开；按 N 关掉的话这一条命里关着，下次出生又是开的；
+--   车上瞄准镜：天黑默认夜视档、白天默认昼光档，自己换过就记住（白天、夜里各记一个，Drive.lua）
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -134,8 +137,8 @@ function Night.init(G)
     if on then hideHint()
     elseif hintUntil ~= 0 and os.clock() > hintUntil then hideHint() end
     if hideAt and os.clock() > hideAt then hint.Visible, hideAt = false, nil end
-    local air = (G.fly ~= nil) or (G.sail ~= nil)   -- 坐上飞机、船：夜视在那里也能开（地面载具里 N 是瞄准镜的，不提示）
-    if air and not wasAir then showHint(8) end
+    local air = (G.fly ~= nil) or (G.sail ~= nil) or (G.drive ~= nil)   -- 坐上飞机、船、车：夜视没开就提示按 N
+    if air and not wasAir and not (G.isNight and not G.isNight()) then showHint(8) end   -- 白天不提示
     wasAir = air
   end)
 
@@ -155,23 +158,39 @@ function Night.init(G)
     end
   end
 
-  UIS.InputBegan:Connect(function(io, gp)
-    if gp or io.KeyCode ~= Enum.KeyCode.N then return end
-    if G.drive and not G.fly and not G.sail then return end   -- 地面载具里 N 是瞄准镜的夜视 / 热成像（开船、开飞机时 N 照样是夜视仪）
+  function G.nvgToggle()
+    if G.drive and not G.fly and not G.sail and G.drive.sight then return end   -- 开着车上的瞄准镜：N 是切瞄准镜的光电档（Drive.lua）
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
-    setOn(not on)
-  end)
-  if UIS.TouchEnabled then   -- 手机：右边一个小按钮
-    local b = G.ui and G.ui.button and G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 40), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
-    if b then
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 14
-      b.Activated:Connect(function() setOn(not on) end)
+    -- 开飞机（用户 11-19：不用光电吊舱也可以开红外视角）：N 在 夜视 → 热成像（AirHud.lua，白热） → 关 之间切
+    if G.fly and G.airThermal then
+      if on then
+        setOn(false)
+        G.airThermal(true)
+      elseif G.airThermal() then
+        G.airThermal(false)
+      else
+        setOn(true)
+      end
+      return
     end
+    setOn(not on)
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if not gp and io.KeyCode == Enum.KeyCode.N then G.nvgToggle() end
+  end)
+  local vehicleTouch
+  if UIS.TouchEnabled then   -- 步兵按键由 Play.lua 排版；飞行和航行继续用各自的夜视入口。
+    vehicleTouch = G.ui.button(G.gui:WaitForChild("Hud"), "NV", UDim2.fromOffset(52, 44), UDim2.new(1, -78, 0, 140), RGB(24, 28, 30))
+    vehicleTouch.Name = "VehicleNightVision"
+    vehicleTouch.Visible = false
+    vehicleTouch.BackgroundTransparency = 0.35
+    vehicleTouch.TextSize = 14
+    vehicleTouch.Activated:Connect(G.nvgToggle)
   end
 
-  RunService.RenderStepped:Connect(function(dt)
+  G.frameConn("Night", function(dt)
+    if vehicleTouch then vehicleTouch.Visible = (G.fly ~= nil or G.sail ~= nil or (G.drive ~= nil and not G.drive.sight)) and not (G.menuOpen and G.menuOpen()) end
     if not on then return end
     local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then setOn(false) return end
@@ -179,6 +198,14 @@ function Night.init(G)
     if not fxOn then return end
     local cc = fx[1]
     if cc then cc.Brightness = 0.04 + (math.random() - 0.5) * 0.018 end   -- 增像管的轻微闪烁
+    -- 夜视一直开着（夜战）：画面卡（自动画质 G.perfK 降下来）先关那层全屏的轻模糊，泛光收小一点
+    local blur, bl = fx[3], fx[2]
+    local hi = (G.perfK or 1) >= 0.8
+    if blur and blur.Enabled ~= hi then blur.Enabled = hi end
+    if bl then
+      local sz = hi and 30 or 18
+      if bl.Size ~= sz then bl.Size = sz end
+    end
     irT += dt
     if irT > 0.05 then
       irT = 0
@@ -188,11 +215,60 @@ function Night.init(G)
 
   ---------------------------------------------------------------- 地图上会动的灯（服务器摆的零件带 Anim 属性）：blink 每秒闪 Spd 下、spin 绕 Pivot 转（灯塔光柱，Spd 圈 / 秒）
 
+  ---------------------------------------------------------------- 光晕分级（用户：游戏非常卡顿）
+  -- 地图上每盏灯（跑道灯、舰灯、营地灯，World.light）带一个 BillboardGui 光晕，全图 600 多个、6000 格内都在画——
+  --   一个光晕就是一组界面（两块圆角方块），几百个一起画很费。按离镜头的距离分级：450 格内全亮，1100 格内亮一半，
+  --   2400 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
+  --   画面卡（G.perfK 低）距离一起缩；同时亮着的超过 GLOW_CAP 就再缩一点。闪烁的灯灭的那一下也关着（下面 anim 用 glowDark）
+  local GLOW_CAP = 150
+  local glows, glowSeen, glowDark, glowAllow = {}, {}, {}, {}   -- glowSeen[光晕] = 它的记录
+  local glowScale, glowAcc = 1, 0
+  local function addGlow(g)
+    if glowSeen[g] or not g:IsA("BillboardGui") or g.Name ~= "Glow" then return end
+    local p = g.Parent
+    if not (p and p:IsA("BasePart")) then return end
+    local i = #glows + 1
+    glows[i] = { g = g, p = p, r = (i * 0.6180339887) % 1, on = g.Enabled }
+    glowSeen[g] = glows[i]
+  end
+  local function stepGlows()
+    local cam = workspace.CurrentCamera
+    if not cam or #glows == 0 then return end
+    local cp = cam.CFrame.Position
+    local k = math.clamp(G.perfK or 1, 0.55, 1.2) / glowScale
+    local d1, d2, d3 = 450 * k, 1100 * k, 2400 * k
+    local n, j = 0, 0
+    for idx = 1, #glows do
+      local x = glows[idx]
+      if x.g.Parent == x.p and x.p.Parent then
+        j += 1
+        glows[j] = x
+        local dv = x.p.CFrame.Position - cp   -- CFrame.Position：跟 Position 一样，测试台也认
+        local dd = dv:Dot(dv)
+        local allow = dd < d1 * d1 or (dd < d2 * d2 and x.r < 0.5) or (dd < d3 * d3 and x.r < 0.25)
+        glowAllow[x.g] = allow
+        if allow then n += 1 end
+        local want = allow and not glowDark[x.g]
+        if x.on ~= want then
+          x.on = want
+          x.g.Enabled = want
+        end
+      else
+        glowSeen[x.g], glowDark[x.g], glowAllow[x.g] = nil, nil, nil
+      end
+    end
+    for idx = #glows, j + 1, -1 do glows[idx] = nil end
+    if n > GLOW_CAP then glowScale = math.min(4, glowScale * 1.15)
+    elseif n < GLOW_CAP * 0.6 and glowScale > 1 then glowScale = math.max(1, glowScale / 1.08) end
+    G.glowLit = n   -- 性能面板、测试用
+  end
+  G.glowCount = function() return #glows end
+
   local anim = {}
   task.spawn(function()
     for _ = 1, 120 do
       local root = workspace:FindFirstChild("Map")
-      if root and G.S then
+      if root and G.S and (G.S.progress or 0) >= 1 then
         task.wait(2)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
@@ -201,14 +277,26 @@ function Night.init(G)
               table.insert(anim, { p = p, a = a, spd = p:GetAttribute("Spd") or 1, cf0 = p.CFrame, pivot = p:GetAttribute("Pivot"),
                 glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light") })
             end
+          elseif p:IsA("BillboardGui") then
+            addGlow(p)
           end
         end
+        root.DescendantAdded:Connect(function(d)   -- 后来摆的（舰艇重建等）
+          if d.Name == "Glow" then task.defer(addGlow, d) end
+        end)
+        stepGlows()
         return
       end
       task.wait(1)
     end
   end)
-  RunService.RenderStepped:Connect(function()
+  G.frameConn("Glow", function(dt)
+    glowAcc += dt or 1 / 60
+    if glowAcc >= 0.25 then
+      glowAcc = 0
+      local ok, err = pcall(stepGlows)
+      if not ok and G.showError then G.showError("光晕：" .. tostring(err)) end
+    end
     if #anim == 0 then return end
     local t = os.clock()
     for _, x in ipairs(anim) do
@@ -218,12 +306,19 @@ function Night.init(G)
           if x.lit ~= lit then
             x.lit = lit
             x.p.Transparency = lit and 0 or 0.85
-            if x.glow then x.glow.Enabled = lit end
+            if x.glow then
+              glowDark[x.glow] = (not lit) or nil
+              local want = lit and glowAllow[x.glow] ~= false
+              x.glow.Enabled = want
+              local gx = glowSeen[x.glow]
+              if gx then gx.on = want end
+            end
             if x.light then x.light.Enabled = lit end
           end
         elseif x.a == "spin" and typeof(x.pivot) == "Vector3" then
           local P = CFrame.new(x.pivot)
-          x.p.CFrame = P * CFrame.Angles(0, -t * x.spd * math.pi * 2, 0) * (P:Inverse() * x.cf0)
+          local angle = (workspace:GetServerTimeNow() * x.spd) % 1
+          x.p.CFrame = P * CFrame.Angles(0, -angle * math.pi * 2, 0) * (P:Inverse() * x.cf0)
         end
       end
     end

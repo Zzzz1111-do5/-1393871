@@ -1,0 +1,163 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script></head>
+<body><script type="module">
+// 载具内饰预览（tools/mock/interior_view.cjs 驱动）：把 tools/mock/interior.lua dump= 写出的零件、灯、屏幕画出来
+//   零件坐标是车体坐标（格）；Roblox 和 three.js 都是右手系、Y 朝上、镜头看 −Z，矩阵照搬
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const P = new URLSearchParams(location.search);
+const W = +(P.get('w') || 1280), H = +(P.get('h') || 720);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.localClippingEnabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0d12);
+const amb = new THREE.HemisphereLight(0x8090a0, 0x202020, 0.35);
+scene.add(amb);
+// 车外（?day=1）：白天的天光 + 太阳，背景浅蓝——看车外加装的零件（车顶机枪、车长）
+const P0 = new URLSearchParams(location.search);
+const DAY = P0.get('day') === '1';
+if (DAY) {
+  scene.background = new THREE.Color(0x9fb8cf);
+  const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+  sun.position.set(30, 60, -20);
+  scene.add(sun);
+}
+const cam = new THREE.PerspectiveCamera(70, W / H, 0.02, 3000);
+window.ready = false;
+
+function wedgeGeo(w, h, l) {
+  const A = [-w / 2, -h / 2, -l / 2], B = [w / 2, -h / 2, -l / 2], C = [-w / 2, -h / 2, l / 2], D = [w / 2, -h / 2, l / 2], E = [-w / 2, h / 2, l / 2], F = [w / 2, h / 2, l / 2];
+  const tris = [A, C, D, A, D, B, C, E, F, C, F, D, A, B, F, A, F, E, A, E, C, B, D, F];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat(), 3));
+  g.computeVertexNormals();
+  return g;
+}
+const MAT = {};
+function mat(m, col, t) {
+  const key = m + col.join(',') + t;
+  if (MAT[key]) return MAT[key];
+  const c = new THREE.Color(col[0] / 255, col[1] / 255, col[2] / 255).convertSRGBToLinear();
+  let o;
+  if (m === 'Neon') o = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.2 });
+  else if (m === 'Glass') o = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.05, metalness: 0, transparent: true, opacity: Math.min(0.55, 1 - t), reflectivity: 0.6 });
+  else o = new THREE.MeshStandardMaterial({ color: c, roughness: m === 'Metal' ? 0.42 : (m === 'Fabric' ? 0.95 : (m === 'DiamondPlate' ? 0.55 : 0.55)), metalness: (m === 'Metal' || m === 'DiamondPlate') ? 0.55 : 0.02 });
+  if (t > 0.01 && m !== 'Glass') { o.transparent = true; o.opacity = 1 - t; }
+  MAT[key] = o;
+  return o;
+}
+function drawGui(ctx, nodes, sx, sy) {
+  for (const n of nodes) {
+    if (!n.v) continue;
+    ctx.save();
+    const x = n.x * sx, y = n.y * sy, w = n.w * sx, h = n.h * sy;
+    ctx.translate(x + w / 2, y + h / 2);
+    if (n.rot) ctx.rotate(n.rot * Math.PI / 180);
+    if (n.bt < 0.99) {
+      ctx.globalAlpha = 1 - n.bt;
+      ctx.fillStyle = `rgb(${n.bg[0]},${n.bg[1]},${n.bg[2]})`;
+      if (n.round) { ctx.beginPath(); ctx.ellipse(0, 0, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2); ctx.fill(); }
+      else ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.globalAlpha = 1;
+    }
+    if (n.st) {
+      ctx.strokeStyle = `rgb(${n.st[0]},${n.st[1]},${n.st[2]})`;
+      ctx.lineWidth = (n.stw || 1) * sx;
+      if (n.round) { ctx.beginPath(); ctx.ellipse(0, 0, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2); ctx.stroke(); }
+      else ctx.strokeRect(-w / 2, -h / 2, w, h);
+    }
+    if (n.text) {
+      ctx.fillStyle = `rgb(${n.tc[0]},${n.tc[1]},${n.tc[2]})`;
+      ctx.font = `${n.bold ? 'bold ' : ''}${Math.max(6, n.ts * sy)}px monospace`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = n.al === 'Right' ? 'right' : (n.al === 'Center' ? 'center' : 'left');
+      const tx = n.al === 'Right' ? w / 2 : (n.al === 'Center' ? 0 : -w / 2);
+      ctx.fillText(n.text, tx, 0);
+    }
+    ctx.restore();
+  }
+}
+fetch(P.get('json')).then(r => r.json()).then(async D => {
+  const root = new THREE.Group();
+  scene.add(root);
+  for (const p of D.parts) {
+    let g;
+    const [sx, sy, sz] = p.z;
+    if (p.s === 'Cylinder') { g = new THREE.CylinderGeometry(sy / 2, sy / 2, sx, 20); g.rotateZ(Math.PI / 2); }
+    else if (p.s === 'Ball') g = new THREE.SphereGeometry(sx / 2, 16, 12);
+    else if (p.s === 'Sphere') { g = new THREE.SphereGeometry(0.5, 16, 12); g.scale(sx, sy, sz); }
+    else if (p.s === 'Wedge') g = wedgeGeo(sx, sy, sz);
+    else g = new THREE.BoxGeometry(sx, sy, sz);
+    const m = new THREE.Mesh(g, mat(p.m, p.k, p.t));
+    const c = p.c;
+    const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+    m.matrixAutoUpdate = false;
+    m.matrix.copy(M);
+    m.castShadow = Math.max(sx, sy, sz) > 0.14;
+    m.receiveShadow = true;
+    root.add(m);
+  }
+  for (const s of (D.screens || [])) {
+    const cv = document.createElement('canvas');
+    const aspect = s.z[0] / s.z[1];
+    cv.width = 512; cv.height = Math.round(512 / aspect);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (s.gui) drawGui(ctx, s.gui, cv.width / s.pw, cv.height / s.ph);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(s.z[0], s.z[1]), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const c = s.c;
+    const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+    // SurfaceGui 的 Front 面是零件的 −Z：平面默认朝 +Z，转半圈，再往前挪一点免得被零件挡住
+    M.multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.004));
+    pl.matrixAutoUpdate = false;
+    pl.matrix.copy(M);
+    root.add(pl);
+  }
+  let nl = 0;
+  for (const L of (D.lights || [])) {
+    if (!(L.b > 0)) continue;
+    const pl = new THREE.PointLight(new THREE.Color(L.k[0] / 255, L.k[1] / 255, L.k[2] / 255), L.b * 9, L.r * 1.25, 1.4);
+    pl.position.set(...L.p);
+    if (nl < 4) { pl.castShadow = true; pl.shadow.mapSize.set(512, 512); pl.shadow.bias = -0.002; }
+    nl++;
+    scene.add(pl);
+  }
+  if (P.get('glb')) {
+    await new Promise(res => new GLTFLoader().load(P.get('glb'), g => {
+      g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) { m.transparent = true; m.opacity = +(P.get('glbop') || 0.25); m.depthWrite = false; } } });
+      const off = (P.get('glboff') || '0,0,0').split(',').map(Number);
+      g.scene.position.set(...off);
+      scene.add(g.scene);
+      res();
+    }, undefined, () => res()));
+  }
+  window.D = D;
+  window.root = root;
+  window.ready = true;
+});
+window.shot = (o) => {
+  cam.fov = o.fov || 70; cam.updateProjectionMatrix();
+  if (o.c) {
+    const c = o.c;
+    const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+    cam.matrixAutoUpdate = false; cam.matrix.copy(M); cam.matrixWorld.copy(M); cam.matrixWorldInverse.copy(M).invert();
+  } else {
+    cam.matrixAutoUpdate = true;
+    cam.position.set(...o.pos); cam.lookAt(new THREE.Vector3(...o.look)); cam.updateMatrixWorld();
+  }
+  amb.intensity = o.amb != null ? o.amb : (DAY ? 1.3 : 0.35);
+  const planes = (o.clip || []).map(c => new THREE.Plane(new THREE.Vector3(...c.n), c.d));
+  window.root.traverse(m => { if (m.isMesh) { m.material.clippingPlanes = planes; } });
+  renderer.render(scene, cam);
+};
+</script></body></html>
