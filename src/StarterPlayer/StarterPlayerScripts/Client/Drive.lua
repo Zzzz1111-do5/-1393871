@@ -176,7 +176,7 @@ function Drive.init(G)
   end
 
   local function applyMode()
-    if not st or not st.sight then
+    if not st or not st.sight or G.interiorOptic then   -- 车里换成别的光学设备（辅助瞄准镜，Interior.lua）：它自己画分划、调颜色
       cc.Enabled = false
       clearHl()
       sight.Visible = false
@@ -356,11 +356,20 @@ function Drive.init(G)
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
   -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
+  local function setSight(on)
+    if not st or st.sight == on then return end
+    st.sight = on
+    ownVisible(not on)
+    applyMode()
+  end
+  -- 开镜 / 退镜：坐在车里炮长位上时先把头凑到目镜上 / 从目镜上抬起来（Interior.lua 演完再真的切），
+  --   不管在哪都有目镜的光学效果（先黑，亮圆从边上滑进来、变大）——用户 11-21：看倍镜会有的效果
+  G.driveSetSight = function(on) setSight(on) applyMode() end   -- Interior.lua：辅助瞄准镜也要炮跟着鼠标瞄
   local function toggleSight()
     if not st then return end
-    st.sight = not st.sight
-    ownVisible(not st.sight)
-    applyMode()
+    local want = not st.sight
+    if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
+    setSight(want)
   end
   local function nextMode()
     if not st then return end
@@ -536,6 +545,7 @@ function Drive.init(G)
       if G.touchDrive.thr ~= 0 then thr = G.touchDrive.thr end
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
+    if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
     local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：开的是艇
     if carried then
@@ -930,6 +940,7 @@ function Drive.init(G)
     if gp or not st then return end
     local k = io.KeyCode
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
+      if G.interiorHover and G.interiorHover() then return end   -- 车里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
       tryFire()
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -985,12 +996,15 @@ function Drive.init(G)
     local om = ownModel()
     if om and om.Parent ~= ownBox then om.Parent = ownBox end
     st.locked = vs.locked
-    -- 镜头转动
+    -- 镜头转动（坐在车里看的时候鼠标归内饰的镜头：Interior.lua，炮塔不跟着转）
     UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+    local inside = G.interiorOn and G.interiorOn() and not st.sight
     local md = UIS:GetMouseDelta()
     local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or 1)
-    st.camYaw -= md.X * sens
-    st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
+    if not inside then
+      st.camYaw -= md.X * sens
+      st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
+    end
     -- 车
     if st.locked then   -- 在气垫艇上：跟着服务器
       st.root = st.em.Root.CFrame
@@ -1039,7 +1053,7 @@ function Drive.init(G)
       cam.CFrame = camCF
       cam.FieldOfView = fov
       st.camShake = camShake
-      st.aimPt = aimPoint()
+      if not inside or not st.aimPt then st.aimPt = aimPoint() end
     end
     aimTurret(dt)
     -- 路面颠簸的细抖（瞄准、炮塔都按没晃的镜头算过了）
@@ -1073,9 +1087,9 @@ function Drive.init(G)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
     local sp, on = cam:WorldToViewportPoint(gp)
-    gunMark.Visible = on and not st.sight and not G.vehHudOn
+    gunMark.Visible = on and not st.sight and not G.vehHudOn and not inside
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
-    cross.Visible = not st.sight and not G.vehHudOn
+    cross.Visible = not st.sight and not G.vehHudOn and not inside
     -- 仪表
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
