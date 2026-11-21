@@ -135,7 +135,8 @@ async function buildItem(key, I) {
   let off = [0, 0, 0];
   if (I.anchor) {
     const b = unite(pick(I.anchor.nodes));
-    off = [-(b.mn[0] + b.mx[0]) / 2, -(I.anchor.y === 'center' ? (b.mn[1] + b.mx[1]) / 2 : b.mn[1]), -(I.anchor.z === 'min' ? b.mn[2] : I.anchor.z === 'max' ? b.mx[2] : (b.mn[2] + b.mx[2]) / 2)];
+    // y：默认取最低（镜座底面贴导轨）；center 取中心（枪口装置的轴线）；max 取最高（握把、弹匣：顶面贴着导轨 / 弹匣井）
+    off = [-(b.mn[0] + b.mx[0]) / 2, -(I.anchor.y === 'center' ? (b.mn[1] + b.mx[1]) / 2 : I.anchor.y === 'max' ? b.mx[1] : b.mn[1]), -(I.anchor.z === 'min' ? b.mn[2] : I.anchor.z === 'max' ? b.mx[2] : (b.mn[2] + b.mx[2]) / 2)];
   }
   if (I.offAdj) off = off.map((v, k) => v + I.offAdj[k]);
   // 新文档：每块一个节点（同材质的图元并成一个）
@@ -248,7 +249,19 @@ async function buildItem(key, I) {
   meta.pts = I.pts || null;
   const all = Object.values(meta.parts);
   meta.size = [0, 1, 2].map((k) => r3(Math.max(...all.map((p) => p.c[k] + p.s[k] / 2)) - Math.min(...all.map((p) => p.c[k] - p.s[k] / 2))));
-  // 写 glb（贴图原样）
+  // 写 glb（贴图原样；超过 1024 的缩到 1024——Roblox 导入时本来就会缩到这么大，原图 4K 只是让文件大几倍）
+  for (const tex of root.listTextures()) {
+    const img = tex.getImage();
+    if (!img) continue;
+    const meta2 = await sharp(Buffer.from(img)).metadata();
+    const big = Math.max(meta2.width || 0, meta2.height || 0);
+    if (big <= (I.texMax || 1024)) continue;
+    const k2 = (I.texMax || 1024) / big;
+    const w2 = Math.max(1, Math.round(meta2.width * k2)), h2 = Math.max(1, Math.round(meta2.height * k2));
+    const png = tex.getMimeType() === 'image/png';
+    const out2 = await sharp(Buffer.from(img)).resize(w2, h2)[png ? 'png' : 'jpeg'](png ? {} : { quality: 90 }).toBuffer();
+    tex.setImage(new Uint8Array(out2));
+  }
   const out = path.join(ROOT, 'models/optics', key + '.glb');
   await io.write(out, doc);
   console.log(key.padEnd(6), '三角形', meta.tris, '块', parts.map((p) => p.part).join('/'), 'glb', fs.statSync(out).size, '字节');
@@ -451,7 +464,7 @@ for (const [key, I] of Object.entries(CFG.items)) {
   const S = CFG.sources[I.src];
   sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}`);
 }
-sec.push('  改动：几何、材质、贴图都没改，只换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；游戏内嵌的版本贴图缩小并压成 256 色');
+sec.push('  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改');
 txt = txt.replace(/\s*$/, '\n\n') + sec.join('\n') + '\n';
 fs.writeFileSync(cf, txt);
 console.log('写好了 OpticsMeta.lua、credits.txt');

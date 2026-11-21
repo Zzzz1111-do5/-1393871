@@ -20,7 +20,7 @@ function Hud.init(G)
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
-  local W = Config.Weapons
+  local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local WHITE = Color3.new(1, 1, 1)
   local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
   local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）

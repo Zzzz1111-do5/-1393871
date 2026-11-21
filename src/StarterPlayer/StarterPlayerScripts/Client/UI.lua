@@ -243,6 +243,30 @@ function UI.init(G)
     stats[k] = { a = a, bg = bg, fill = fill, v = v }
     a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
   end
+  -- 改枪（用户 11-20：对标三角洲行动，Gunsmith.lua）：主武器那格下面一个「改枪」按钮，旁边一行现在装的配件
+  local GMods = require(game:GetService("ReplicatedStorage"):WaitForChild("GunMods"))
+  local gsY = infoY + (mobile and 84 or 112 + 4 * 24 + 6)
+  local gsBtn = Instance.new("TextButton")
+  gsBtn.Size, gsBtn.Position = UDim2.fromOffset(mobile and 110 or 132, mobile and 30 or 34), UDim2.fromOffset(M0, gsY)
+  gsBtn.BackgroundColor3, gsBtn.BackgroundTransparency, gsBtn.BorderSizePixel, gsBtn.AutoButtonColor = RGB(206, 255, 72), 0, 0, true
+  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.GothamBlack, mobile and 13 or 14, RGB(18, 22, 8), ""
+  gsBtn.Visible = false
+  gsBtn.Parent = kitPage
+  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  gsLine.Visible = false
+  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  gsLv.Visible = false
+
+  gsBtn.Activated:Connect(function()
+    if sel.gsId and G.openGunsmith then
+      G.openGunsmith(sel.gsId, function() if G.refreshDeploy then G.refreshDeploy() end end)
+    end
+  end)
+  -- 服务器改好了配件 / 加了枪械经验（玩家属性）：部署界面开着就刷新
+  for _, a in ipairs({ "Gun_m4", "Gun_sniper", "GunXp_m4", "GunXp_sniper" }) do
+    pcall(function() player:GetAttributeChangedSignal(a):Connect(function() if deploy.Visible and G.refreshDeploy then G.refreshDeploy() end end) end)
+  end
+
   -- 右边的大图（慢慢左右转）
   local big = Instance.new("ViewportFrame")
   big.Name = "GearBig"
@@ -312,7 +336,7 @@ function UI.init(G)
   end
   -- 数据条：枪看伤害 / 射速 / 射程 / 精度；炸的看伤害 / 杀伤半径 / 射程 / 弹药；工具不显示
   local function statRows(id)
-    local w = Config.Weapons[id]
+    local w = (G.W and G.W[id]) or Config.Weapons[id]   -- 枪按装的配件算（改枪；GunKit.lua）
     if not w then return {} end
     local m = function(studs) return math.floor((studs or 0) / 2.8 + 0.5) end
     if w.kind == "gun" then
@@ -344,7 +368,14 @@ function UI.init(G)
       G.viewFit(vp, nil)
       return false
     end
-    local m, wait, real = G.gearModel(id, team)
+    local m, wait, real
+    if G.gunModel and GMods.has(id) and G.myBuild then   -- 改枪：装着现在这一套配件的枪
+      m, wait = G.gunModel(id, team, G.myBuild(id))
+      real = m ~= nil
+      if not m then m, wait, real = G.gearModel(id, team) end
+    else
+      m, wait, real = G.gearModel(id, team)
+    end
     if m and not real then   -- 零件拼的方块不放（粗糙）：等真模型
       m:Destroy()
       m = nil
@@ -395,6 +426,7 @@ function UI.init(G)
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
       or (G.tacOpen ~= nil and G.tacOpen())   -- 战术平板开着：鼠标放出来点地图、不开枪
+      or (G.gunsmithOpen ~= nil and G.gunsmithOpen())   -- 改枪界面
   end
 
   local function doDeploy()
@@ -634,9 +666,26 @@ function UI.init(G)
         r.v.Text = d[3]
       end
     end
-    if bigItem ~= (fid or false) then
-      bigItem = fid or false
+    local bkey = fid and (fid .. ((GMods.has(fid) and player:GetAttribute("Gun_" .. fid)) or "")) or false   -- 换了配件也重画大图
+    if bigItem ~= bkey then
+      bigItem = bkey
       bigWait = setModel(big, fid, team)
+    end
+    -- 改枪按钮：看的是装得了配件的枪
+    local canMod = fid ~= nil and GMods.has(fid) and G.openGunsmith ~= nil
+    sel.gsId = canMod and fid or nil
+    gsBtn.Visible, gsLine.Visible, gsLv.Visible = canMod, canMod and not mobile, canMod
+    if canMod then
+      gsBtn.Text = T("gm.open")
+      local b = G.myBuild and G.myBuild(fid) or GMods.default(fid)
+      local names = {}
+      for _, slot in ipairs(GMods.SLOTS) do
+        local it = b[slot] and GMods.ITEM[b[slot]]
+        if it and it.model then table.insert(names, T("gm.item." .. b[slot])) end
+      end
+      gsLine.Text = (#names > 0) and table.concat(names, " · ") or T("gm.stock")
+      local lv, a, nx = GMods.level(fid, player:GetAttribute("GunXp_" .. fid) or 0)
+      gsLv.Text = T("gm.lv", lv) .. (nx and "" or ("  " .. T("gm.max")))
     end
     -- 主按钮
     goSpawnT.Text = T("deploy.pickSpawn")

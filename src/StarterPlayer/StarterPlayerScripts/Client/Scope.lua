@@ -11,7 +11,8 @@
 --   手稳：呼吸晃，按住 Shift 屏住（稳几秒，憋过头晃得更厉害、一会儿屏不了），走动晃得多；晃动加在镜头上（子弹照样打屏幕正中），
 --     镜头转得快、开枪时出瞳跟着偏；倍率高时鼠标灵敏度跟着降
 --   别人开着镜对着你（他的视线在你附近 20° 以内）时他的镜片闪光：服务器只记 Scoped / ScopeDir 两个属性，闪光是看的人本地画的、墙挡得住
---   步枪（M4）上装的 ACOG（kind acog）：固定 3.5 倍、TA31 的红色箭形分划和测距线，不屏息、不闪镜片（用户：武器瞄准没有镜子）
+--   步枪（M4）上装的 ACOG（kind acog）：固定 3.5 倍、TA31 的红色箭形分划和测距线，不屏息、不闪镜片（用户：武器瞄准没有镜子）；
+--     改枪装的 6×48 ACOG 也是这一套，倍率按武器表（w.scope = 6）；晃动按据枪稳定性（w.swayK）
 --   Play 调：G.scopeStep(dt, 开没开, 武器表) 每帧、G.scopeZoom(武器表) 现在的倍率、G.scopeFire() 开了一枪
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -362,7 +363,7 @@ function Scope.init(G)
 
   local function kindOf(w)
     if w and w.kind == "spot" then return "binoc" end
-    if w and w.optic == "acog" then return "acog" end
+    if w and (w.optic == "acog" or w.optic == "acog6") then return "acog" end   -- 改枪的 6 倍 ACOG 也是这一套（倍率按武器表）
     return "sniper"
   end
   local function zoomIndex(kind, want)
@@ -374,6 +375,7 @@ function Scope.init(G)
   end
   function G.scopeZoom(w)
     local kind = kindOf(w)
+    if kind == "acog" then return (w and w.scope) or 3.5 end   -- 定倍：3.5 / 6（改枪选的瞄具）
     if not S.zi[kind] then S.zi[kind] = zoomIndex(kind, KINDS[kind].def) end
     return KINDS[kind].zooms[S.zi[kind]]
   end
@@ -528,7 +530,8 @@ function Scope.init(G)
       spd = math.min(spd, 40)
     end
     local move = math.clamp(spd / 16, 0, 1.5)
-    local amp = K.sway * (1 + move * 2.5)
+    -- 改枪：据枪稳定性（w.swayK）；倍率高的 ACOG 晃得明显一些
+    local amp = K.sway * (1 + move * 2.5) * ((w and w.swayK) or 1) * ((kind == "acog") and math.sqrt(zoom / 3.5) or 1)
     if S.tired > 0 then
       S.tired -= dt
       amp *= 2.2

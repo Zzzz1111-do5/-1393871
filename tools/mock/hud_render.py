@@ -73,6 +73,7 @@ def icon_img(name):
     return Image.frombytes('LA', (w, h), bytes(px))
 
 
+VPIMG = {}   # 视口名 → 图片（命令行 vp:名字=图片.png）
 def quad_layer(it):
     """机头的全息标记：3D 的一块面（hudshot 导出了四个角在屏幕上的位置）——图按透视贴到这四个角上"""
     src = icon_img(it.get('icon'))
@@ -95,9 +96,13 @@ def quad_layer(it):
 
 
 def main():
+    for a in sys.argv[4:]:
+        if a.startswith('vp:') and '=' in a:
+            k, v = a[3:].split('=', 1)
+            VPIMG[k] = v
     items = json.load(open(sys.argv[1], encoding='utf-8'))
     out = sys.argv[2]
-    if len(sys.argv) > 3:
+    if len(sys.argv) > 3 and sys.argv[3] != '-':
         bg = Image.open(sys.argv[3]).convert('RGBA').resize((W, H))
     else:
         bg = Image.new('RGBA', (W, H), (34, 40, 46, 255))
@@ -141,6 +146,9 @@ def main():
                 d.rounded_rectangle(box, radius=min(r, w / 2, h / 2), fill=col)
             else:
                 d.rectangle(box, fill=col)
+        if it.get('vp') and VPIMG.get(it['vp']) and int(w) > 0 and int(h) > 0:   # 视口：贴上另外拍的 3D 画面
+            src = Image.open(VPIMG[it['vp']]).convert('RGBA').resize((int(round(w)), int(round(h))), Image.LANCZOS)
+            ov.alpha_composite(src, (int(round(x)), int(round(y))))
         if it.get('icon') and (it.get('iT') or 0) < 0.99:
             src = icon_img(it['icon'])
             if src is not None and int(w) > 0 and int(h) > 0:

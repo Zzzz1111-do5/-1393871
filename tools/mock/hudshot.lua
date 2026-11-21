@@ -110,7 +110,40 @@ if kind == "jet" or kind == "heli" then
   end
 end
 
-if kind ~= "inf" and kind ~= "jet" and kind ~= "heli" then
+if kind == "gunsmith" then
+  -- 改枪界面：打开、点「瞄具」、鼠标停在全息瞄具的卡片上（预览）；镜头参数写进 <out>.cam.json（tools/weapons/gunrender.mjs 照它拍枪，贴进视口）
+  R.as("client", function() C.openGunsmith(TEST_ARGS:match("gun=(%w+)") or "m4") end)
+  for _ = 1, 40 do R.run(0.25) end
+  local slot = TEST_ARGS:match("slot=(%w+)") or "optic"
+  local hover = TEST_ARGS:match("hover=([%w_]+)") or "opt_holo"
+  local gui = me.PlayerGui:FindFirstChild("Gunsmith")
+  for _, d in ipairs(gui:GetDescendants()) do
+    if d.ClassName == "TextLabel" and d.Text == C.T("gm.slot." .. slot) and d.Parent and d.Parent.ClassName == "TextButton" then T.press(d.Parent) end
+  end
+  for _ = 1, 20 do R.run(0.1) end
+  for _, d in ipairs(gui:GetDescendants()) do
+    if d.ClassName == "TextLabel" and d.Text == C.T("gm.item." .. hover) and d.Parent and d.Parent.ClassName == "TextButton" then
+      R.as("client", function() d.Parent.MouseEnter:Fire() end)
+    end
+  end
+  for _ = 1, 30 do R.run(1 / 30) end
+  if out then
+    local S, vcam = C.gunsmithDebug()
+    local b = {}
+    for k, v in pairs(S.cur) do b[k] = v end
+    if S.hover and S.slot then b[S.slot] = S.hover end
+    local c = { vcam.CFrame:GetComponents() }
+    local f = io.open(out .. ".cam.json", "w")
+    local parts = {}
+    for k, v in pairs(b) do parts[#parts + 1] = string.format('"%s":"%s"', k, v) end
+    f:write(string.format('{"gun":"%s","fov":%.3f,"cf":[%s],"build":{%s}}', S.id, vcam.FieldOfView, table.concat((function()
+      local o = {}
+      for i, v in ipairs(c) do o[i] = string.format("%.5f", v) end
+      return o
+    end)(), ","), table.concat(parts, ",")))
+    f:close()
+  end
+elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" then
   local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
   local list = G.Config.Vehicles[mySide][kind] or G.Config.Vehicles[mySide].tank
   local foeSide = mySide == "def" and "atk" or "def"
@@ -230,6 +263,7 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
     end
     rec.clip, rec.ga = clip, ga
+    if c._cls == "ViewportFrame" then rec.vp = c._p.Name end
     local grad = c:FindFirstChildOfClass("UIGradient")
     if grad then
       pcall(function()
