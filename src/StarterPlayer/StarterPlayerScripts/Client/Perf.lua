@@ -65,14 +65,9 @@ function Perf.init(G)
   end
   local function f1(x) return string.format("%.1f", x) end
 
-  -- 地形草叶不要了（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：服务器 World.lua 关了 Terrain.Decoration，
-  --   这个属性不一定从服务器同步到客户端（前几回服务器把草叶调短，用户那边照样是两格来高的草），客户端每半秒自己对一遍。
-  --   原来自动画质卡了关草、流畅了再开：来回开关时整片草叶重铺，也是「隔一会卡一下」的一个来源，一起去掉
-  local function stepDeco()
-    local T = workspace:FindFirstChildOfClass("Terrain")
-    if not T then return end
-    pcall(function() if T.Decoration then T.Decoration = false end end)
-  end
+  -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来这里每半秒设一遍 Terrain.Decoration = false——
+  --   Roblox 不许脚本改它（一改就报错，被 pcall 吞了），一直没生效；现在服务器写地形不用 Grass 材质（World.lua 的 writeChunk），草叶长不出来。
+  --   原来自动画质卡了关草、流畅了再开也一起去掉了（同样改不了）
 
   local frames, acc, worst, puts0 = 0, 0, 0, 0
   RunService.RenderStepped:Connect(function(dt)
@@ -83,7 +78,6 @@ function Perf.init(G)
     local T, n, a, w = G.perfT or {}, frames, acc, worst
     G.perfT = {}
     frames, acc, worst = 0, 0, 0
-    pcall(stepDeco)
     local puts = G.viewPuts or 0
     local dPuts = puts - puts0
     puts0 = puts
