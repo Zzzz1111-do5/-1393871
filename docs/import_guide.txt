@@ -25,7 +25,7 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
     - 真正的原因是 Roblox 地形自带的会动的草叶（只长在 Grass 材质上，大概两格高），把履带、车轮、小人的腿、沙袋下半截都盖住了。
       前几包在脚本里调草长、关草叶都没用——Roblox 不许脚本改这两个属性（Decoration、GrassLength），改了就报错，游戏里看不出来；
     - 现在开服写地形时草地都用 LeafyGrass 材质（染成原来草地的颜色），这种材质不长草叶：不管你地点里 Terrain 的 Decoration 勾没勾，都没有草叶了；
-    - 想在编辑状态下也看不到草叶：资源管理器点 Workspace 下面的 Terrain，属性里把 Decoration 的勾去掉，再保存（不改也行，开服就没有）。
+    - Studio 里不用改 Terrain 的任何属性（编辑状态下本来就没有地形，地形是开服时脚本生成的）。
   11 月 21 日第七包（飞机 WASD、坦克夜视、草）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
     - 飞机改成键盘飞：W 低头、S 抬头、A / D 滚转、Q / E 方向舵，Shift 加油门、Ctrl 收油门（地上收到底按住 Ctrl 倒退），按住 Alt 鼠标自由看；
       没有准星圈了，镜头跟着机身，机头前方的标记一直在屏幕正中（航炮就打那里）；滚转、俯仰、过载都比原来慢、笨重；无人机照旧鼠标飞；
