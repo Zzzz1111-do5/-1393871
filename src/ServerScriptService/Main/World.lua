@@ -6,6 +6,7 @@
 local RS = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 local Map = require(RS:WaitForChild("Map"))
+local AirDefs = require(RS:WaitForChild("AirDefs"))   -- 航母甲板（弹射器、拦阻索、轮廓）
 
 local World = {}
 
@@ -1073,51 +1074,252 @@ local SHIPS = {
   lhd = { L = 480, W = 90, H = 30, deck = 26, island = { 0.2, 0.4 }, color = C.hull },
   lst = { L = 300, W = 56, H = 22, deck = 18, island = { -0.3, 0.3 }, color = C.hull },
 }
--- 航母甲板：弹射轨道（深色槽 + 黄色中线 + 起点的滑块）、偏流板（起点后面放平的一块）、斜角甲板的白线、拦阻索
---   位置照 AirDefs.CATS / WIRES（飞机端按同一套数判断卡没卡上弹射器、落没落在拦阻索区）
-function World.carrierDeck(m, top)
-  local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
+---------------------------------------------------------------- 攻方航母：福建舰（用户 11-21：航母不够真——原来是一个长方块加一块方舰岛）
+-- 原模型 models/ship/fujian.glb（tools/models/fujian.py：Sketchfab 上 businessyuen 的「Chinese Aircraft Carrier」，CC-BY；
+--   去掉甲板上停着的飞机，按真舰重新分块上色），元数据 CarrierMeta（每块的中心 / 大小 / 颜色 / 材质、量出来的甲板轮廓、舰岛、甲板线）
+--   导入了：每块照元数据摆、补回导入时转掉的半圈，颜色和 Roblox 材质照元数据（甲板 Concrete 的防滑面颗粒、船体 Metal）；网格不参与碰撞——
+--     甲板照轮廓每 10 格铺一块看不见的碰撞板（舰艏窄、斜角甲板往左舷伸出去、舰尾收窄，走到边上会掉下去，不会踩在空气上），舰岛两个碰撞盒
+--   没导入：照同一份轮廓拼——甲板（深灰防滑面）、底下收窄的船体（水线一圈黑、水线下防污红）、舰岛（下层、舰桥、四面相控阵、一体化桅杆）、
+--     舰艏两条弹射轨道的白线、斜角甲板的红白边线和黄色中线
+--   两种都有：弹射器（滑块；舰腰那条原模型没画，补轨道）、拦阻索（四根钢索 + 两头的滑轮座）、灯（着舰区中线 / 边线、舰尾下降灯、
+--     左舷光学着舰指示器、弹射器两侧、舰岛往甲板照的探照灯、桅顶红灯）、航行灯、两舷舷号 18、舰艏甲板上的 18
+local CM = nil
+pcall(function() CM = require(RS:WaitForChild("CarrierMeta", 5)) end)
+World.CM = CM
+local CV = { hull = RGB(140, 146, 150), hullD = RGB(112, 118, 122), deck = RGB(62, 64, 66), island = RGB(168, 174, 178), island2 = RGB(148, 154, 158),
+  dark = RGB(40, 44, 48), boot = RGB(34, 35, 37), bottom = RGB(112, 42, 38), white = RGB(222, 222, 214), yellow = RGB(212, 182, 66), red = RGB(178, 44, 40) }
+local function importedShip(key)
+  local imp = RS:FindFirstChild("Imported")
+  local s = imp and imp:FindFirstChild("Ship")
+  return s and s:FindFirstChild(key)
+end
+-- 甲板上画一道线（a → b，局部坐标 {x, z}）：w 宽，略高出甲板面
+local function deckLine(m, top, a, b, w, color, h)
+  local pa, pb = V(a[1], 0, a[2]), V(b[1], 0, b[2])
+  local len = (pb - pa).Magnitude
+  if len < 0.5 then return end
+  local mid = (pa + pb) / 2
+  part(m, V(w, 0.12, len), top * CFrame.lookAt(mid + V(0, h or 0.07, 0), pb + V(0, h or 0.07, 0)), color, MAT.SmoothPlastic)
+end
+-- 甲板上的大字（舷号）：一块薄板，上面一面贴字
+local function deckText(m, cf, size, text, face)
+  local p = part(m, size, cf, CV.deck, MAT.SmoothPlastic)
+  p.Transparency = 1
+  local sg = Instance.new("SurfaceGui")
+  sg.Face = face or Enum.NormalId.Top
+  sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+  sg.PixelsPerStud = 12
+  sg.LightInfluence = 1
+  sg.Parent = p
+  local t = Instance.new("TextLabel")
+  t.Size = UDim2.fromScale(1, 1)
+  t.BackgroundTransparency = 1
+  t.Font = Enum.Font.GothamBlack
+  t.TextScaled = true
+  t.Text = text
+  t.TextColor3 = CV.white
+  t.TextStrokeColor3 = RGB(20, 22, 24)
+  t.TextStrokeTransparency = 0.35
+  t.Parent = sg
+  return p
+end
+
+-- 原模型 / 零件拼的船体、甲板、舰岛；返回是不是用了原模型
+local function carrierHull(m, base)
+  local deckY = AirDefs.DECKS.carrier.top
+  local src = CM and importedShip("fujian")
+  local n = 0
+  if src then
+    for name, p in pairs(CM.parts) do
+      local s0 = src:FindFirstChild("S_fujian__" .. name)
+      if s0 and s0:IsA("BasePart") then
+        local mp = s0:Clone()
+        mp.Anchored = true
+        mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
+        mp.Color = RGB(p.col[1], p.col[2], p.col[3])
+        mp.Material = MAT[p.mat] or MAT.Metal
+        mp.Parent = m
+        n += 1
+      end
+    end
+  end
+  local real = n > 0
+  local o = CM and CM.outline
+  if not o then   -- 没有元数据（不该发生）：原来那块长方甲板
+    local deck = part(m, V(120, 1.5, 620), base * CF(0, deckY - 0.75, 0), CV.deck, MAT.Concrete, nil, true)
+    deck.Name = "Deck"
+    part(m, V(110, 34, 620), base * CF(0, deckY - 18.5, 0), CV.hull, MAT.Metal, nil, true)
+    return false
+  end
+  -- 甲板：照轮廓每 10 格一块（两行的平均宽度）；导入了原模型就是看不见的碰撞板
+  for i = 1, #o - 1 do
+    local a, b = o[i], o[i + 1]
+    local x0, x1 = (a[2] + b[2]) / 2, (a[3] + b[3]) / 2
+    local zc, len = (a[1] + b[1]) / 2, b[1] - a[1]
+    local p = part(m, V(x1 - x0, 1.5, len + 0.05), base * CF((x0 + x1) / 2, deckY - 0.75, zc), CV.deck, MAT.Concrete, nil, true)
+    p.Name = "Deck"
+    if real then p.Transparency, p.CastShadow = 1, false end
+  end
+  -- 舰岛碰撞盒：下层（到舰桥那么高）整块、上层收窄一点
+  local I = CM.island.base
+  local ix0, ix1, iz0, iz1, iy1 = I[1], I[2], I[3], I[4], I[5]
+  local icx, icz, iw, id = (ix0 + ix1) / 2, (iz0 + iz1) / 2, ix1 - ix0, iz1 - iz0
+  if real then
+    for _, bx in ipairs({ { 0, iw * 0.86, id * 0.8, deckY, iy1 }, { iw * 0.08, iw * 0.55, id * 0.5, iy1, CM.island.top - 8 } }) do
+      local c = part(m, V(bx[2], bx[5] - bx[4], bx[3]), base * CF(icx + bx[1], (bx[4] + bx[5]) / 2, icz), CV.island, MAT.Metal, nil, true)
+      c.Name, c.Transparency, c.CastShadow = "Collision", 1, false
+    end
+    return true
+  end
+  -- 没导入：船体照轮廓收窄（甲板往外伸出去，下面是空的）：水线以上舰体灰、水线一圈黑、水线下防污红
+  for i = 1, #o - 1 do
+    local a, b = o[i], o[i + 1]
+    local zc, len = (a[1] + b[1]) / 2, b[1] - a[1]
+    local hw = math.min(37, ((a[3] - a[2]) + (b[3] - b[2])) / 4 * 0.74)
+    part(m, V(hw * 2, deckY - 1.5 - 2.4, len + 0.05), base * CF(0, (deckY - 1.5 + 2.4) / 2, zc), CV.hull, MAT.Metal, nil, true)
+    part(m, V(hw * 2 - 0.6, 3.2, len + 0.05), base * CF(0, 0.8, zc), CV.boot, MAT.SmoothPlastic)
+    part(m, V(math.max(4, hw * 2 - 6), 12, len + 0.05), base * CF(0, -6.8, zc), CV.bottom, MAT.SmoothPlastic)
+    -- 甲板下沿一圈深色的舷侧走廊
+    local ex0, ex1 = (a[2] + b[2]) / 2, (a[3] + b[3]) / 2
+    part(m, V(ex1 - ex0 + 0.4, 2.2, len + 0.05), base * CF((ex0 + ex1) / 2, deckY - 2.6, zc), CV.hullD, MAT.Metal)
+  end
+  -- 舰岛：下层（宽、圆角的平台）、舰桥层（一圈深色窗）、上层收窄、四面相控阵雷达（深色板）、一体化桅杆、桅顶的球形天线罩
+  local isl = part(m, V(iw * 0.66, iy1 - deckY - 14, id * 0.82), base * CF(icx + iw * 0.08, deckY + (iy1 - deckY - 14) / 2, icz), CV.island, MAT.Metal, nil, true)
+  isl.Name = "Island"
+  local by = iy1 - 14
+  part(m, V(iw * 0.74, 8, id * 0.7), base * CF(icx + iw * 0.06, by + 4, icz - id * 0.04), CV.island2, MAT.Metal, nil, true)
+  part(m, V(iw * 0.75, 2.4, id * 0.71), base * CF(icx + iw * 0.06, by + 5, icz - id * 0.04), CV.dark, MAT.Glass)   -- 舰桥窗
+  local uy = by + 8
+  local uh = CM.island.top - uy - 26
+  part(m, V(iw * 0.5, uh, id * 0.5), base * CF(icx + iw * 0.12, uy + uh / 2, icz - id * 0.06), CV.island, MAT.Metal, nil, true)
+  for _, f in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do   -- 四面相控阵：每面一块深色板
+    local w = (f[1] == 0) and iw * 0.36 or id * 0.36
+    local off = V(f[1] * (iw * 0.25 + 0.15), 0, f[2] * (id * 0.25 + 0.15))
+    local face = base * CF(icx + iw * 0.12, uy + uh * 0.62, icz - id * 0.06) * CF(off) * CFrame.lookAt(V(), V(f[1], 0, f[2]))
+    part(m, V(w, uh * 0.42, 0.3), face, CV.dark, MAT.SmoothPlastic)
+  end
+  local my = uy + uh
+  part(m, V(5, 20, 5), base * CF(icx + iw * 0.12, my + 10, icz - id * 0.06), CV.island2, MAT.Metal)
+  part(m, V(4.4, 4.4, 4.4), base * CF(icx + iw * 0.12, my + 22, icz - id * 0.06), CV.white, MAT.SmoothPlastic, BALL)
+  return false
+end
+
+-- 甲板上的东西（两种都有）：弹射器、拦阻索、标线（没导入时）、灯、舷号
+function World.carrierDeck(m, top, real)
+  local AD = AirDefs
+  -- 弹射器：起点的滑块；舰腰那条原模型没画轨道，补一道深色槽 + 黄色中线；没导入时舰艏两条也画槽、偏流板
   for i, c in ipairs(AD.CATS) do
     local start = top * CF(c.x, 0, c.z) * CFrame.Angles(0, c.a, 0)
-    part(m, V(2.6, 0.12, c.len), start * CF(0, 0.06, -c.len / 2), RGB(40, 42, 46), MAT.Metal)
-    for k = 0, c.len - 10, 20 do part(m, V(0.5, 0.14, 10), start * CF(0, 0.08, -k - 5), C.yellow) end
     local shuttle = part(m, V(1.6, 0.6, 3), start * CF(0, 0.3, 0), RGB(70, 72, 76), MAT.Metal)
     shuttle.Name = "Shuttle" .. i
-    local jbd = part(m, V(16, 0.4, 9), start * CF(0, 0.2, 22), RGB(96, 100, 104), MAT.DiamondPlate)   -- 偏流板（放平）
-    jbd.Name = "JBD" .. i
-    part(m, V(0.4, 0.15, 30), start * CF(-6, 0.08, 8), C.white)
-    part(m, V(0.4, 0.15, 30), start * CF(6, 0.08, 8), C.white)
+    if (not real) or i == 3 then
+      part(m, V(2.6, 0.12, c.len), start * CF(0, 0.06, -c.len / 2), RGB(34, 36, 40), MAT.Metal)
+      for k = 0, c.len - 10, 20 do part(m, V(0.5, 0.14, 10), start * CF(0, 0.08, -k - 5), CV.yellow) end
+    end
+    if not real then
+      local jbd = part(m, V(18, 0.4, 9), start * CF(0, 0.2, 24), RGB(96, 100, 104), MAT.DiamondPlate)   -- 偏流板（放平）
+      jbd.Name = "JBD" .. i
+    end
+    for k = 0, c.len, 40 do   -- 弹射器两侧的嵌入式灯（暖白）
+      for sd = -1, 1, 2 do light(m, (start * CF(sd * 2.4, 0.15, -k)).Position, RGB(255, 236, 196), 0.3, nil, nil, nil, 2) end
+    end
   end
+  -- 拦阻索：横跨着舰区的四根钢索，两头各一个滑轮座
   local Wd = AD.WIRES
-  local deckA = top * CF(Wd.x, 0, (Wd.z0 + Wd.z1) / 2) * CFrame.Angles(0, Wd.a, 0)
-  for k = 0, Wd.n - 1 do   -- 拦阻索：横跨斜角甲板的四根钢索
-    local z = -((Wd.z1 - Wd.z0) / 2) + (k + 0.5) * (Wd.z1 - Wd.z0) / Wd.n
-    part(m, V(70, 0.35, 0.35), deckA * CF(0, 0.25, z), RGB(30, 30, 32), MAT.Metal)
+  local zc = (Wd.z0 + Wd.z1) / 2
+  for k = 0, Wd.n - 1 do
+    local z = Wd.z0 + (k + 0.5) * (Wd.z1 - Wd.z0) / Wd.n
+    local xc = Wd.x + (z - zc) * math.tan(Wd.a)
+    local cf = top * CF(xc, 0, z) * CFrame.Angles(0, Wd.a, 0)
+    part(m, V(Wd.hw * 1.8, 0.35, 0.35), cf * CF(0, 0.3, 0), RGB(30, 30, 32), MAT.Metal)
+    for sd = -1, 1, 2 do part(m, V(1.6, 0.9, 1.6), cf * CF(sd * (Wd.hw * 0.9 + 0.8), 0.45, 0), RGB(150, 120, 40), MAT.Metal) end
   end
-  for s = -1, 1, 2 do   -- 斜角甲板两边的白色虚线
-    local edge = top * CF(Wd.x + s * 34, 0, 60) * CFrame.Angles(0, Wd.a, 0)
-    for k = -240, 240, 24 do part(m, V(0.6, 0.12, 12), edge * CF(0, 0.07, k), C.white) end
+  -- 斜角甲板：着舰区两条红边线、中线（量的：后端 → 前端）
+  local f1, f2 = CM and CM.foul and CM.foul[1], CM and CM.foul and CM.foul[2]
+  local ce = CM and CM.center
+  if not real and CM then
+    for _, b in ipairs(CM.bowCats or {}) do deckLine(m, top, b[1], b[2], 2.6, CV.white) end
+    for _, fl in ipairs({ f1, f2 }) do
+      if fl then
+        deckLine(m, top, fl[1], fl[2], 1.6, CV.red, 0.08)
+        local dx, dz = fl[2][1] - fl[1][1], fl[2][2] - fl[1][2]
+        local L = math.sqrt(dx * dx + dz * dz)
+        local nx = (fl == f1) and 1 or -1   -- 白线在红线外侧
+        local ox, oz = -dz / L * 3.2 * nx, dx / L * 3.2 * nx
+        deckLine(m, top, { fl[1][1] + ox, fl[1][2] + oz }, { fl[2][1] + ox, fl[2][2] + oz }, 2.4, CV.white)
+      end
+    end
+    if ce then
+      local a, b = ce[2], ce[1]   -- 后端 → 前端，每 34 格一段 17 格长的黄线
+      local dx, dz = b[1] - a[1], b[2] - a[2]
+      local L = math.sqrt(dx * dx + dz * dz)
+      for k = 0, L - 17, 34 do
+        local t0, t1 = k / L, (k + 17) / L
+        deckLine(m, top, { a[1] + dx * t0, a[2] + dz * t0 }, { a[1] + dx * t1, a[2] + dz * t1 }, 2.2, CV.yellow, 0.09)
+      end
+    end
+    -- 舰艏甲板上的舷号（从舰尾看过来是正的）
+    deckText(m, top * CF(0, 0.1, -262), V(30, 0.1, 26), "18")
   end
-  part(m, V(1.2, 0.12, 470), top * CF(Wd.x, 0.07, 60) * CFrame.Angles(0, Wd.a, 0), C.yellow)   -- 着舰中线
-  -- 夜间着舰的灯（位置照真航母）：中线嵌入式白灯、斜角甲板两边的边灯、舰尾往下一列琥珀色下降灯（对准中线）、
-  --   左舷着舰区旁边的光学着舰指示器（中间琥珀色「肉球」、两边一排绿色基准灯）、弹射器轨道两侧蓝灯
-  local landLine = top * CF(Wd.x, 0, 60) * CFrame.Angles(0, Wd.a, 0)
-  for k = -230, 230, 26 do light(m, (landLine * CF(0, 0.2, k)).Position, RGB(255, 250, 236), 0.5, nil, nil, nil, 3) end
-  for sd = -1, 1, 2 do
-    for k = -230, 230, 40 do light(m, (landLine * CF(sd * 33, 0.2, k)).Position, RGB(90, 150, 255), 0.5, nil, nil, nil, 3) end
+  -- 着舰区的灯：中线一串嵌入式白灯、两条边线一排白色边灯；舰尾往下一列琥珀色下降灯（对准中线）
+  if ce then
+    local a, b = ce[2], ce[1]
+    local dx, dz = b[1] - a[1], b[2] - a[2]
+    local L = math.sqrt(dx * dx + dz * dz)
+    for k = 0, L, 26 do light(m, (top * CF(a[1] + dx * k / L, 0.2, a[2] + dz * k / L)).Position, RGB(255, 250, 236), 0.5, nil, nil, nil, 3) end
+    local st = top * CF(a[1] - dx / L * 22, 0, a[2] - dz / L * 22)
+    for k = 1, 5 do light(m, (st * CF(0, -k * 2.4, 0)).Position, RGB(255, 170, 60), 0.6, (k == 1) and 12 or nil, 1, nil, 3) end
   end
-  local stern = (landLine * CF(0, 0, 240)).Position
-  for k = 1, 5 do light(m, stern + V(0, -k * 2.4, 3), RGB(255, 170, 60), 0.6, (k == 1) and 12 or nil, 1, nil, 3) end
-  local fl = top * CF(-58, 0, 150)   -- 光学着舰指示器：左舷边上
+  for _, fl in ipairs({ f1, f2 }) do
+    if fl then
+      local dx, dz = fl[2][1] - fl[1][1], fl[2][2] - fl[1][2]
+      local L = math.sqrt(dx * dx + dz * dz)
+      for k = 0, L, 40 do light(m, (top * CF(fl[1][1] + dx * k / L, 0.2, fl[1][2] + dz * k / L)).Position, RGB(236, 240, 255), 0.45, nil, nil, nil, 3) end
+    end
+  end
+  -- 光学着舰指示器：左舷边上、拦阻索旁边——中间琥珀色「肉球」、两边一排绿色基准灯
+  local xl = (AD.cvEdge(Wd.z0 - 20)) or -70
+  local fl = top * CF(xl + 3, 0, Wd.z0 - 20)
   part(m, V(2, 6, 3), fl * CF(0, 3, 0), RGB(40, 42, 46), MAT.Metal)
-  light(m, (fl * CF(0, 6.4, -1.6)).Position, RGB(255, 170, 40), 0.9, 10, 2, nil, 5)
+  light(m, (fl * CF(0, 6.4, 1.6)).Position, RGB(255, 170, 40), 0.9, 10, 2, nil, 5)
   for k = -3, 3 do
-    if k ~= 0 then light(m, (fl * CF(0, 6.4, -1.6 + k * 1.4)).Position, RGB(60, 255, 110), 0.55, nil, nil, nil, 3) end
+    if k ~= 0 then light(m, (fl * CF(0, 6.4, 1.6 + k * 1.4)).Position, RGB(60, 255, 110), 0.55, nil, nil, nil, 3) end
   end
-  for _, c in ipairs(AD.CATS) do
-    local start = top * CF(c.x, 0, c.z) * CFrame.Angles(0, c.a, 0)
-    for k = 0, c.len, 40 do
-      for sd = -1, 1, 2 do light(m, (start * CF(sd * 2.2, 0.15, -k)).Position, RGB(80, 140, 255), 0.35, nil, nil, nil, 2) end
+  -- 舰岛：往甲板照的两盏探照灯（左舷那面）、桅顶红色障碍灯和白色桅灯、左红右绿舷灯；舰尾白灯
+  if CM then
+    local I = CM.island.base
+    local ix0, ix1, iz0, iz1 = I[1], I[2], I[3], I[4]
+    local icx, icz = (ix0 + ix1) / 2, (iz0 + iz1) / 2
+    for _, dz in ipairs({ -(iz1 - iz0) * 0.3, (iz1 - iz0) * 0.3 }) do
+      light(m, (top * CF(ix0 - 0.6, I[5] - AD.DECKS.carrier.top - 6, icz + dz)).Position, RGB(255, 214, 160), 1.1, 150, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
+    end
+    local mtop = CM.island.top - AD.DECKS.carrier.top
+    light(m, (top * CF(icx + (ix1 - ix0) * 0.12, mtop + 1, icz - (iz1 - iz0) * 0.06)).Position, RGB(255, 60, 50), 0.8, 20, 1.2, nil, 5)
+    light(m, (top * CF(icx + (ix1 - ix0) * 0.12, mtop - 6, icz - (iz1 - iz0) * 0.06 - 2.6)).Position, RGB(255, 250, 236), 0.8, 18, 1.4, nil, 4)
+    light(m, (top * CF(ix0 - 0.4, 14, icz - 10)).Position, RGB(255, 50, 40), 0.8, 14, 1.4, nil, 4)
+    light(m, (top * CF(ix1 + 0.4, 14, icz - 10)).Position, RGB(60, 255, 120), 0.8, 14, 1.4, nil, 4)
+    light(m, (top * CF(0, -6, 306)).Position, RGB(255, 250, 236), 0.8, 14, 1.2, nil, 4)
+  end
+  -- 两舷舷号 18（白字黑边，舰艏两侧，水线上 16 格那一圈船舷上）
+  if CM and CM.side then
+    local function sideX(z)
+      local o = CM.side
+      for i = 1, #o - 1 do
+        if z >= o[i][1] and z <= o[i + 1][1] then
+          local t = (z - o[i][1]) / (o[i + 1][1] - o[i][1])
+          return o[i][2] + (o[i + 1][2] - o[i][2]) * t, o[i][3] + (o[i + 1][3] - o[i][3]) * t
+        end
+      end
+      return nil
+    end
+    local z = -246
+    local xa, xb = sideX(z)
+    if xa then
+      local dy = 16 - AD.DECKS.carrier.top
+      deckText(m, top * CF(xb + 0.6, dy, z), V(0.1, 15, 24), "18", Enum.NormalId.Right)
+      deckText(m, top * CF(xa - 0.6, dy, z), V(0.1, 15, 24), "18", Enum.NormalId.Left)
     end
   end
 end
@@ -1129,6 +1331,17 @@ function World.fleet(f)
     local m = Instance.new("Model")
     m.Name = "Ship_" .. s.kind .. i
     local base = CF(s.x, 0, s.z) * CFrame.Angles(0, s.rot or 0, 0)
+    if s.kind == "carrier" then   -- 福建舰：原模型 / 照原模型轮廓拼（上面 carrierHull、carrierDeck）
+      local okH, real = pcall(carrierHull, m, base)
+      if not okH then warn("[全面大战场] 航母船体出错：" .. tostring(real)) real = false end
+      m:SetAttribute("Imported", real == true)
+      local ok, err = pcall(World.carrierDeck, m, base * CF(0, AirDefs.DECKS.carrier.top, 0), real == true)
+      if not ok then warn("[全面大战场] 航母甲板出错：" .. tostring(err)) end
+      m:SetAttribute("Kind", s.kind)
+      m.Parent = f
+      table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
+      continue
+    end
     part(m, V(D.W, D.H, D.L), base * CF(0, D.deck - D.H / 2 - 1, 0), D.color, MAT.Metal, nil, true)   -- 船体（往下伸进水里）
     wedge(m, V(D.W, D.H, 40), base * CF(0, D.deck - D.H / 2 - 1, -D.L / 2 - 20) * CFrame.Angles(0, math.pi, 0), D.color, MAT.Metal, true)   -- 船头
     local deck = part(m, V(D.W + 4, 1.5, D.L), base * CF(0, D.deck - 0.25, 0), C.deck, MAT.Asphalt, nil, true)
@@ -1145,10 +1358,6 @@ function World.fleet(f)
     light(m, (base * CF(0, D.deck - 2, D.L / 2 + 0.6)).Position, RGB(255, 250, 236), 0.8, 14, 1.2, nil, 4)
     for _, dz in ipairs({ -D.L * 0.12, D.L * 0.12 }) do
       light(m, (base * CF(ix - 9.6, D.deck + 22, iz + dz)).Position, RGB(255, 214, 160), 1.1, 140, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
-    end
-    if s.kind == "carrier" then
-      local ok, err = pcall(World.carrierDeck, m, base * CF(0, D.deck + 0.5, 0))
-      if not ok then warn("[全面大战场] 航母甲板出错：" .. tostring(err)) end
     end
     m:SetAttribute("Kind", s.kind)
     m.Parent = f

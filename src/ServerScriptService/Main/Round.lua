@@ -329,10 +329,10 @@ function Round.init(G)
       end
       local f = Map.FLEET[2] or Map.FLEET[1]
       return CFrame.new(f.x, 40, f.z)
-    elseif sp.kind == "cv" then   -- 航母：舰岛后面（右舷停机位旁边），别站在弹射器、着舰区上
+    elseif sp.kind == "cv" then   -- 航母（福建舰）：舰岛左边、着舰区右边红线以外，面朝舰尾的停机位；别站在弹射器、着舰区上
       for _, d in ipairs(G.decks or {}) do
         if d.kind == "carrier" then
-          local p = (d.cf * CFrame.new(44 + (math.random() - 0.5) * 6, 2, 46 + (math.random() - 0.5) * 14)).Position
+          local p = (d.cf * CFrame.new(24 + (math.random() - 0.5) * 6, 2, 92 + (math.random() - 0.5) * 20)).Position
           return CFrame.lookAt(p, p + V(0, 0, 1))
         end
       end
@@ -366,6 +366,7 @@ function Round.init(G)
     end
     return CFrame.new(0, 60, 0)
   end
+  G.spawnCFOf = spawnCF   -- 测试用（ia_carrier：航母出生点）
 
   ---------------------------------------------------------------- 角色
 

@@ -328,9 +328,10 @@ H.runUntil(function() return st.spd < 2 end, 20)
 
 print("⑨ 航母拦阻索着舰")
 local base = AirDefs.carrierCF(G.Map)
-local Wd = { x = -20, z = 200 }
+local Wd0 = AirDefs.WIRES   -- 拦阻索区（福建舰：斜角甲板中线往左偏 9.4°）
+local Wd = { x = Wd0.x, z = (Wd0.z0 + Wd0.z1) / 2 }
 local td = (base * CF.new(Wd.x, 0, Wd.z)).Position + V3.new(0, e.def.gearH, 0)
-local ldir = base:VectorToWorldSpace(V3.new(-math.sin(math.rad(8)), 0, -math.cos(math.rad(8))))
+local ldir = base:VectorToWorldSpace(V3.new(-math.sin(Wd0.a), 0, -math.cos(Wd0.a)))
 local a0 = td - ldir * 140 + V3.new(0, 9, 0)
 teleport(atk, CF.lookAt(a0, a0 + ldir + V3.new(0, -0.06, 0)), e.def.stall * 1.2, false)
 st.gearWant, st.gear = 1, 1

@@ -10,6 +10,7 @@ local Air = {}
 function Air.init(G)
   local Config, Map = G.Config, G.Map
   local AD = require(RS:WaitForChild("AirDefs"))
+  G.AirDefs = AD   -- 测试用（ia_carrier：甲板判定）
   local V = Vector3.new
   local CF = CFrame.new
   local now = os.clock

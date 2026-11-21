@@ -113,17 +113,18 @@ function Depots.init(G)
     local A = Map.AIRFIELD
     runwayPads(A, "def", models("def", "jet"), "D")
 
-    -- 攻方航母：右舷后部停机位（舰岛后面），机头朝舰艏，自己滑到弹射器
+    -- 攻方航母（福建舰）：右舷舰岛后面一列三个停机位（后面那部升降机上也停一个），机头朝舰艏，自己滑到弹射器；
+    --   离着舰区右边那条红线至少 6 格、不压舰岛（舰岛到 z 134），终端柱在右舷甲板边上
     local cv = deckOf("carrier")
     if cv then
       local ids = {}
       for _, id in ipairs(models("atk", "jet")) do if defOf(id).carrier then table.insert(ids, id) end end
       local L, W = biggest(ids)
-      for _, zl in ipairs({ 90, 174, 252 }) do
+      for _, zl in ipairs({ 160, 200, 240 }) do
         if #ids == 0 then break end
-        local p = (cv.cf * CF(26, 0, zl)).Position
+        local p = (cv.cf * CF(53, 0, zl)).Position
         local base = CFrame.lookAt(V(p.X, surface(p.X, p.Z), p.Z), V(p.X, surface(p.X, p.Z), p.Z) + NORTH)
-        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(50, 0, zl + 12)).Position,
+        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(76, 0, zl + 10)).Position,
           r = math.max(L, W) * 0.45, size = V(W + 2, 0, L + 2) })
       end
     end
