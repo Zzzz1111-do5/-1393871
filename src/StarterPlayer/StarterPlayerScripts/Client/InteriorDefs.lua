@@ -387,7 +387,8 @@ function Defs.m1a2(b, ctx)
       commander = { g = T, eye = cEye, look = V(-0.05, -0.30, -1), yaw = 160, up = 70, down = 70, crew = "commander", scope = V(0.56, 0.52, -0.40),
         optics = { primary = { kind = "citv", name = "CITV", g = T, pos = V(-0.45, 1.05, -0.75), dir = "citv", fovs = { 22, 7 }, ret = "citv", look = "whot", shape = "rect" },
           alt = { kind = "gps" },
-          third = { kind = "crows", name = "CROWS-LP  M2", g = T, pos = V(0.62, 1.40, 0.20), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect" } } },
+          third = { kind = "crows", name = "CROWS-LP  M2", g = T, pos = V(0.62, 1.40, 0.20), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect",
+            rws = true, eye = V(-0.75, 0.30, 0.10) } } },   -- 摄像头在 M2 托架左边（格，相对机枪耳轴），跟着武器站转、俯仰
       loader = { g = T, eye = lEye, look = V(0.45, -0.20, -1), yaw = 170, up = 70, down = 75, crew = "loader",
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     },

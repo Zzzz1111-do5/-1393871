@@ -962,7 +962,11 @@ function Interior.init(G)
       gather(c, v, st)
       stepOptic(c, dt)
       hint.Visible = not hideUI
-      hint.Text = T("Shift / G / T 退出观瞄 · 滚轮换视场 · 鼠标转镜子", "Shift / G / T exit optic · wheel FOV · mouse to traverse")
+      if optic.o.rws then
+        hint.Text = T("T 退出 · 鼠标转武器站 · 左键开火（12.7 毫米）· 滚轮换视场", "T exit · mouse to slew the RWS · LMB fire (12.7 mm) · wheel FOV")
+      else
+        hint.Text = T("Shift / G / T 退出观瞄 · 滚轮换视场 · 鼠标转镜子", "Shift / G / T exit optic · wheel FOV · mouse to traverse")
+      end
       dot.Visible, tip.Visible = false, false
       return
     end
@@ -1364,6 +1368,9 @@ function Interior.init(G)
     end
   end
   RETS.none = function() end
+  -- 车长的遥控武器站瞄哪：顺着鼠标给的方向打一条射线（不算画出来的车、自己的车和人）
+  local rayP = RaycastParams.new()
+  rayP.FilterType = Enum.RaycastFilterType.Exclude
   -- 光学设备的镜头位置、朝向
   local function opticCF(c, o)
     local b = c.b
@@ -1377,6 +1384,10 @@ function Interior.init(G)
     elseif o.dir == "citv" then
       local d = c.data
       dir = d.citvF or b.groups.turret.world.LookVector
+    elseif o.rws then   -- 车长的遥控武器站（CROWS 的摄像头装在俯仰的托架上）：镜头跟着机枪转、俯仰
+      local v = G.viewById and G.viewById(c.id)
+      if v and v.rgF then return v.rgF * CF(o.eye or V(-0.6, 0.25, -0.2)) end
+      dir = b.groups.gun.world.LookVector   -- 武器站就是炮塔（斯特赖克、M1150……）：摄像头顺着炮塔上的枪
     else   -- free / free360：鼠标转
       local base = b.groups.turret.world
       dir = (base * ANG(0, optic.yaw, 0) * ANG(optic.pitch, 0, 0)).LookVector
@@ -1394,8 +1405,14 @@ function Interior.init(G)
   exitOptic = function(c)
     if not optic then return end
     local o = optic.o
+    local prevWi = optic.prevWi
     optic = nil
     G.interiorOptic = nil
+    local st = G.drive
+    if st and o.rws then   -- 车长松开武器站：武器换回原来那件，机枪又跟着炮长的准星
+      if prevWi then st.wi = prevWi end
+      st.rwsPt = nil
+    end
     og.Enabled = false
     icc.Enabled = false
     clearOhl()
@@ -1415,6 +1432,18 @@ function Interior.init(G)
     optic = { o = o, zi = 1, yaw = 0, pitch = 0, slot = slot }
     G.interiorOptic = o.kind
     if o.useSight and G.driveSetSight then G.driveSetSight(true) end
+    local st = G.drive
+    if o.rws and st then
+      -- 车长的遥控武器站（M1A2 的 CROWS）：开火打的就是它，鼠标转的也是它（st.rwsPt），炮塔还归炮长的准星；
+      --   武器站就是炮塔的车（斯特赖克……）鼠标转的是炮塔（st.aimPt）
+      for i, wid in ipairs(st.d.weapons) do
+        if wid == "hmg" then optic.prevWi = st.wi st.wi = i end
+      end
+      -- 从机枪现在指的方向接着转；方向记在世界坐标里（武器站有稳定：车身、炮塔怎么转，枪口还指着原来那个方向）
+      local v = G.viewById and G.viewById(c.id)
+      local l = (st.d.rws and v and v.rgF) and v.rgF.LookVector or c.b.groups.gun.world.LookVector
+      optic.yaw, optic.pitch = math.atan2(-l.X, -l.Z), math.asin(clamp(l.Y, -1, 1))
+    end
     ownHide(c, true)
     for _, ch in ipairs(ret:GetChildren()) do ch:Destroy() end
     local vp = cam.ViewportSize
@@ -1454,7 +1483,26 @@ function Interior.init(G)
     local o = optic.o
     local md = UIS:GetMouseDelta()
     local sens = 0.0035 * (look.fov / 72)
-    if o.dir == "free" or o.dir == "free360" then
+    if o.rws then   -- 车长的遥控武器站：鼠标给想打的方向，武器站按自己的转速跟过去，镜头跟着机枪（opticCF）
+      local st = G.drive
+      local R = st and st.d.rws
+      optic.yaw -= md.X * sens
+      local el = (R and R.elev) or (st and st.d.turret and st.d.turret.elev) or { -20, 60 }
+      optic.pitch = clamp(optic.pitch - md.Y * sens, rad(el[1]), rad(el[2]))
+      if st then
+        local v = G.viewById and G.viewById(c.id)
+        local o3 = (v and v.rgF and v.rgF.Position) or c.b.groups.gun.world.Position
+        local dir = (ANG(0, optic.yaw, 0) * ANG(optic.pitch, 0, 0)).LookVector   -- 世界坐标里想打的方向
+        local ex = { c.model, workspace.CurrentCamera }
+        if G.viewFolder then table.insert(ex, G.viewFolder) end
+        if st.em then table.insert(ex, st.em) end
+        if me.Character then table.insert(ex, me.Character) end
+        rayP.FilterDescendantsInstances = ex
+        local hit = workspace:Raycast(o3, dir * 3000, rayP)
+        local pt = hit and hit.Position or (o3 + dir * 3000)
+        if R then st.rwsPt = pt else st.aimPt = pt end
+      end
+    elseif o.dir == "free" or o.dir == "free360" then
       optic.yaw -= md.X * sens
       if o.dir == "free" then optic.yaw = clamp(optic.yaw, -rad(170), rad(170)) end
       optic.pitch = clamp(optic.pitch - md.Y * sens, -rad((o.dir == "free360") and 12 or 20), rad((o.dir == "free360") and 12 or 50))

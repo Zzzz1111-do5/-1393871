@@ -59,7 +59,7 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
   rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
   gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
-  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),
+  sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6), noRoofMg = true,   -- 车顶不放机枪（用户 11-21），机枪那一栏是并列机枪
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
 D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
@@ -282,7 +282,7 @@ end
 -- 零件拼的坦克（没有原模型：M10）：车长位上一个会转的遥控武器站（用户 11-19：坦克的机枪要能转，开火位置要在机枪）——
 --   机枪那一栏从并列机枪（主炮旁边）换成它的 12.7 毫米机枪；有原模型的坦克在元数据里给（tools/models/vehrws.py）
 for _, d in pairs(D) do
-  if d.cat == "tank" and not d.rws and not d.model and d.cupola then
+  if d.cat == "tank" and not d.rws and not d.model and d.cupola and not d.noRoofMg then
     local top = (d.turret and d.turret.size and d.turret.size.Y) or 2.3
     d.rws = { pivot = V(d.cupola.X, top, d.cupola.Z), gun = V(0, 0.62, -0.45), len = 2.45, trav = 120, rate = 90, elev = { -15, 55 }, mk = "rws" }
     for i, wid in ipairs(d.weapons) do
