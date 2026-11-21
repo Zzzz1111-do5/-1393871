@@ -1743,7 +1743,7 @@ function Interior.init(G)
               if math.abs(az) < 60 then
                 local kind = em:GetAttribute("Kind")
                 if kind == "air" or kind == "veh" or kind == "ship" then
-                  table.insert(airContacts, { az = az, km = dist / S / 1000, friend = em:GetAttribute("Team") == d.team,
+                  table.insert(airContacts, { az = az, km = dist / S / 1000, friend = em:GetAttribute("Team") == d.team, kind = kind,   -- kind：态势图分飞机 / 地面目标的符号
                     locked = st.lock and st.lock.id == em:GetAttribute("EntId") })
                 end
               end
@@ -1799,6 +1799,7 @@ function Interior.init(G)
       b:setAnim("pedR" .. q, CF(0, 0, -yw * 0.05))
     end
     b:setAnim("thr", CF(0, 0, -clamp((st.thr or 0) / 130, 0, 1) * 0.14))
+    b:setAnim("thr2", CF(0, 0, -clamp((st.thr or 0) / 130, 0, 1) * 0.14))   -- 另一座那组（B-2）一起推；没有这组时不管
     b:setAnim("gearh", ANG(rad(((st.gear or 0) > 0.5) and 0 or -55), 0, 0))
     local now = os.clock()
     local hp = st.em and st.em:GetAttribute("Hp")

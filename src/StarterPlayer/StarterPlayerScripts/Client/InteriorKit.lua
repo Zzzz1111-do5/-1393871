@@ -146,20 +146,25 @@ end
 -- 屏幕：边框（黑色塑料 / 铝壳）+ 显示面；返回 { part, gui, w, h }，page 是 InteriorScreens 里的页面名
 function B:screen(g, w, h, cf, page, opt)
   opt = opt or {}
-  local bez = opt.bezel or ((type(opt.keys) == "table") and 0.036 or 0.02)
+  -- 触摸屏（F-35 的全景屏、歼-20 / 歼-35 的大屏，docs/cockpit_research.md）：没有边框上凸出来的键，菜单条就画在玻璃上，页面往里让出一条
+  local touch = opt.touch == true and type(opt.keys) == "table"
+  local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
   local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.Glass)
   face.CastShadow = false
   face.Reflectance = 0.04
   local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.6)
+  local tabT = (touch and opt.keys.top and #opt.keys.top > 0) and (opt.touchH or 0.1) or 0      -- 上、下菜单条各占屏高几成
+  local tabB = (touch and opt.keys.bottom and #opt.keys.bottom > 0) and (opt.touchH or 0.1) or 0
   local root = Instance.new("Frame")
   root.Name = "Page"
-  root.Size = UDim2.fromScale(1, 1)
+  root.Position = UDim2.fromScale(0, tabT)
+  root.Size = UDim2.fromScale(1, 1 - tabT - tabB)
   root.BackgroundColor3 = RGB(0, 0, 0)
   root.BorderSizePixel = 0
   root.Parent = sg
-  local s = { part = face, gui = sg, root = root, w = w, h = h, page = page, opt = opt, group = g, px = V(w, h, 0) * (opt.ppm or 1400) }
+  local s = { part = face, gui = sg, root = root, w = w, h = h, page = page, opt = opt, group = g, px = V(w, h * (1 - tabT - tabB), 0) * (opt.ppm or 1400) }
   if opt.light ~= false then   -- 屏幕把前面一小块照亮
     local L = Instance.new("SurfaceLight")
     L.Face = Enum.NormalId.Front
@@ -173,7 +178,36 @@ function B:screen(g, w, h, cf, page, opt)
   end
   -- 按键：屏幕上下各一排（多功能显示器、指挥终端、驾驶员显示器都有），按键旁边边框上印着字；
   --   opt.keys = { top = { "MAP", … }, bottom = { … } }（真实的标签和功能见 InteriorScreens 的 KEYDESC），数字就是不带字的
-  if type(opt.keys) == "table" then
+  if touch then   -- 触摸屏：一格格薄片贴在玻璃前面（对准、按下同实体键：Interior 的 pickKey 按正面求交）
+    for _, side in ipairs({ "top", "bottom" }) do
+      local list = opt.keys[side] or {}
+      local n = #list
+      local th = h * ((side == "top") and tabT or tabB)
+      for i, label in ipairs(list) do
+        local x = w / 2 - (i - 0.5) * w / n
+        local sy = (side == "top") and 1 or -1
+        local key = self:box(g, V(w / n * 0.94, th * 0.84, 0.001), cf * CF(x, sy * (h / 2 - th / 2), -0.0026), RGB(16, 30, 26), MAT.SmoothPlastic)
+        key.CastShadow = false
+        local lg = K.gui(key, Enum.NormalId.Front, opt.ppm or 1400, 1.2)
+        local t = Instance.new("TextLabel")
+        t.Size = UDim2.fromScale(1, 0.86)
+        t.Position = UDim2.fromScale(0, 0.07)
+        t.BackgroundTransparency = 1
+        t.Text = label
+        t.TextColor3 = RGB(190, 236, 214)
+        t.Font = Enum.Font.GothamBold
+        t.TextScaled = true
+        t.Parent = lg
+        local st = Instance.new("UIStroke")   -- 触摸格的细边框（玻璃上画的，不是实体键）
+        st.Color, st.Thickness, st.Transparency = RGB(90, 160, 140), 1, 0.3
+        local bg = Instance.new("Frame")
+        bg.Size, bg.BackgroundTransparency, bg.BorderSizePixel = UDim2.fromScale(1, 1), 1, 0
+        st.Parent = bg
+        bg.Parent = lg
+        table.insert(self.softkeys, { part = key, label = label, screen = s, side = side, idx = i, col = key.Color, touch = true })
+      end
+    end
+  elseif type(opt.keys) == "table" then
     for _, side in ipairs({ "top", "bottom" }) do
       local list = opt.keys[side] or {}
       local n = #list

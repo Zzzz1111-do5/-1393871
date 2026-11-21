@@ -80,7 +80,8 @@ check(C.interiorOn() and cur ~= nil and cur.spec.air and I.mode == "seat", "按 
 if not cur then T.summary() return end
 local nParts, nScreens, nLights, nGlass = #cur.b.parts, #cur.b.screens, #cur.b.lights, #(cur.spec.glass or {})
 check(nParts > 250, "座舱零件 " .. nParts .. " 个")
-check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
+local minS = cur.spec.minScreens or 5   -- F-35 真就三块（全景屏两半 + 备份飞行显示器）
+check(nScreens >= minS, "屏幕 " .. nScreens .. " 块（至少 " .. minS .. "）")
 local live = 0
 for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end
 check(live == nScreens, string.format("屏幕页面都起来了（%d / %d）", live, nScreens))
@@ -112,9 +113,11 @@ print("② 屏幕边的按键：中间小点对准、左键按")
 local keys = cur.b.softkeys
 check(#keys >= 10, "屏幕边有 " .. #keys .. " 个带字的按键")
 local want = nil
+-- 没有雷达的（A-10C）按左边那块的 DSMS，查它换成外挂页
+local KW = cur.spec.noRadar and { DSMS = true } or { RDR = true, ["雷达"] = true }
+local PW = cur.spec.noRadar and { "^STORES", "^外挂" } or { "^RDR", "^雷达" }
 for _, k in ipairs(keys) do
-  local l = k.label
-  if l == "RDR" or l == "雷达" then want = k break end
+  if KW[k.label] then want = k break end
 end
 if want then
   -- 看过去：直升机头跟着镜头方向；固定翼（用户 11-21：WASD 飞、没有准心）按住 Alt 用鼠标转头，中间小点对准按键
@@ -143,15 +146,25 @@ if want then
   T.mouse(false)
   R.run(0.3)
   check(not fired, "左键按的是屏幕键，不开炮")
+  -- 只查按的那块屏，而且字要看得见（父级都没藏起来）
+  local function shown(d, root)
+    local o = d
+    while o and o ~= root do
+      if o.Visible == false then return false end
+      o = o.Parent
+    end
+    return true
+  end
   local radar = false
-  for _, s in ipairs(cur.b.screens) do
-    for _, d in ipairs(s.gui:GetDescendants()) do
-      if d:IsA("TextLabel") and (d.Text:match("^RDR") or d.Text:match("^雷达")) then radar = true end
+  local sc = want.screen or cur.b.screens[1]
+  for _, d in ipairs(sc.gui:GetDescendants()) do
+    if d:IsA("TextLabel") and shown(d, sc.gui) then
+      for _, pat in ipairs(PW) do if d.Text:match(pat) then radar = true end end
     end
   end
-  check(radar, "按「" .. want.label .. "」：左边那块换成雷达页面")
+  check(radar, "按「" .. want.label .. "」：这块屏换成" .. (cur.spec.noRadar and "外挂" or "雷达") .. "页面")
   if not cur.spec.heli then T.key(Enum.KeyCode.LeftAlt, false) end
-else check(false, "找到雷达键") end
+else check(false, cur.spec.noRadar and "找到 DSMS 键" or "找到雷达键") end
 local lk0 = fst.cf.LookVector
 fst.aimYaw, fst.aimPitch = math.atan2(-lk0.X, -lk0.Z), 0
 if cur.spec.heli then fst.camYaw, fst.camPitch = math.atan2(-lk0.X, -lk0.Z), 0 end
