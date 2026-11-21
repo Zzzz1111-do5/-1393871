@@ -135,10 +135,10 @@ function AirFx.init(G)
             n = S.n
           end
           local fly = spd > (d.stall or 60) * 1.2 and near
-          -- 翼尖涡流
-          setOn(S.trails, fly and n > 3.5)
-          -- 机翼水汽：6 g 往上越来越厚
-          local rate = (fly and n > 6) and math.min(180, (n - 6) * 60 + 30) or 0
+          -- 翼尖涡流（用户 11-21：飞机太灵活，玩家开的过载上限收到七成——拖线 3 g、水汽 4.5 g 起，照样拉得出来）
+          setOn(S.trails, fly and n > 3)
+          -- 机翼水汽：4.5 g 往上越来越厚
+          local rate = (fly and n > 4.5) and math.min(180, (n - 4.5) * 60 + 30) or 0
           for _, pe in ipairs(S.vapor or {}) do
             if (rate > 0) ~= pe.Enabled then pe.Enabled = rate > 0 end
             if rate > 0 and math.abs(pe.Rate - rate) > 10 then pe.Rate = rate end

@@ -67,9 +67,14 @@ function Perf.init(G)
 
   -- 地形草：卡了先关它（大片会动的草叶很吃显卡），流畅了再开回来（服务器开着才开）
   local decoServer, decoOff = nil, false
+  -- 草叶长度（用户 11-21：车还是半截卡在地里——前几回都在服务器 World.lua 里把 GrassLength 调短了，用户那边照样是两格来高的草）：
+  --   这个属性不一定从服务器同步到客户端（客户端还是默认的 0.7，草叶两格来高，把履带、车轮、小人的腿、沙袋下半截都盖住），
+  --   客户端自己每半秒对一遍
+  local GRASS = 0.22
   local function stepDeco()
     local T = workspace:FindFirstChildOfClass("Terrain")
     if not T then return end
+    pcall(function() if math.abs(T.GrassLength - GRASS) > 0.01 then T.GrassLength = GRASS end end)
     local k = G.perfK or 1
     if decoServer == nil then
       local ok, v = pcall(function() return T.Decoration end)

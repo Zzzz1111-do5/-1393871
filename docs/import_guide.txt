@@ -21,6 +21,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 21 日第七包（飞机 WASD、坦克夜视、草）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 飞机改成键盘飞：W 低头、S 抬头、A / D 滚转、Q / E 方向舵，Shift 加油门、Ctrl 收油门（地上收到底按住 Ctrl 倒退），按住 Alt 鼠标自由看；
+      没有准星圈了，镜头跟着机身，机头前方的标记一直在屏幕正中（航炮就打那里）；滚转、俯仰、过载都比原来慢、笨重；无人机照旧鼠标飞；
+    - 坦克里没开镜时 N 能开关夜视仪（原来关不掉）；瞄准镜白天默认昼光、夜里默认夜视，换过的会记住；
+    - 地形草叶客户端也设短（以前只在服务器设，可能没同步过来）。
   11 月 21 日第六包（载具内饰、座舱）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）。内饰全是脚本拼的零件，不用导：
     - 开坦克 / 装甲车按 C 进车内，F2～F5 换乘员位（驾驶员 / 炮长 / 车长 / 装填手），Shift 主镜、G 备用镜、T 是 M1A2 车长的 CROWS（开着时鼠标转武器站、左键打 M2），
       B 导演镜头、L 车内灯、U 藏界面；开飞机 / 直升机按 V 进座舱，按住 Alt 自由看。全部按键见包里的「载具内饰按键.md」；

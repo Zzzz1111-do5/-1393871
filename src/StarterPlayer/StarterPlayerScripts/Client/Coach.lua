@@ -90,9 +90,9 @@ function Coach.init(G)
     inf = { { "LMB", "coach.fire" }, { "RMB", "coach.aim" }, { "R", "coach.reload" }, { "E", "coach.board" }, { "F1", "coach.allKeys" } },
     veh = { { "W/S", "coach.drive" }, { "A/D", "coach.steer" }, { "LMB", "coach.fire" }, { "Shift", "coach.sight" }, { "Space", "coach.exit" } },
     lcac = { { "W/S", "coach.throttle" }, { "A/D", "coach.steer" }, { nil, "coach.lcacBeach" }, { "Space", "coach.exit" } },
-    jetGround = { { "W", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "Mouse", "coach.rotate" }, { "S", "coach.reverse" } },
-    jet = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
-    jetLand = { { "G", "coach.gearDown" }, { "S", "coach.throttleDown" } },
+    jetGround = { { "Shift", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "S", "coach.rotate" }, { "Ctrl", "coach.reverse" } },   -- 用户 11-21：WASD 控制方向、不要准心
+    jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
+    jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
     heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },

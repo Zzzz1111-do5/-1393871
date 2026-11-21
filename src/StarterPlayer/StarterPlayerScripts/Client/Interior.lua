@@ -1897,7 +1897,7 @@ function Interior.init(G)
     stepAirAnim(c, v, st, dt)
     frames(c, v)
     pose(c)
-    -- 镜头：头跟着鼠标瞄准的方向（固定翼）/ 镜头方向（直升机），限在脖子转得到的范围；大过载头往下沉、侧向过载歪
+    -- 镜头：头跟着 Fly 的瞄准方向（有人开的固定翼 WASD 飞，瞄准方向就是航迹；无人机是鼠标给的方向）/ 镜头方向（直升机），限在脖子转得到的范围；大过载头往下沉、侧向过载歪
     local base, sp = stationCF(c, station)
     if base then
       if mode == "seat" then

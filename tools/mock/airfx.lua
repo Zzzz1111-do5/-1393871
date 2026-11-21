@@ -1,6 +1,6 @@
 -- 飞机机动的云雾和音爆（模拟器）：python3 tools/mock/run.py tools/mock/airfx.lua
 --   用户：飞机机动的云雾效果和音爆；尾喷非常怪（换成锥形渐隐的火焰光带）；折叠机翼没有动画
---   ① 平飞：没有拖线、没有水汽；拉 4 g 翼尖拖线、拉 7 g 机翼上冒水汽
+--   ① 平飞：没有拖线、没有水汽；拉 3 g 翼尖拖线、拉 4.5 g 机翼上冒水汽（11-21 过载上限收到七成）
 --   ② 推到音障附近有蒸汽锥；冲过音障放一声音爆（自己听到闷的、震一下）
 --   ③ 尾喷：军推没有火焰光带、喷口里发亮；加力有两条光带（外层长、里层短），没有玻璃气泡
 --   ④ 折叠机翼：别人的舰载机折翼属性从 0 变 1，显示是几秒慢慢折起来的
@@ -35,15 +35,16 @@ R.run(1.2)
 local st = C.fly
 check(st ~= nil and st.pilot, "坐进了歼-20")
 if not st then T.summary() return end
--- 真的滑跑起飞（直接把飞机摆到天上，服务器不认会拉回跑道）：W 推油门、准心往上抬（纯准心控制），离地后爬一会儿
-T.key(Enum.KeyCode.W, true)
-st.aimPitch = math.rad(12)
-T.runUntil(function() return not st.ground end, 40)
-R.run(1.5)
-st.aimPitch = math.rad(3)
+-- 真的滑跑起飞（直接把飞机摆到天上，服务器不认会拉回跑道）：Shift 推油门、速度到了按住 S 抬头（用户 11-21：WASD 控制方向），离地后爬一会儿
+T.key(Enum.KeyCode.LeftShift, true)
+T.runUntil(function() return st.spd >= e.def.vRot end, 40)
+T.key(Enum.KeyCode.S, true)
+T.runUntil(function() return not st.ground end, 10)
+R.run(1)
+T.key(Enum.KeyCode.S, false)
 R.run(5)
-T.key(Enum.KeyCode.W, false)
--- 一直按 W 油门推到了加力、快到音障（会冒蒸汽锥）：收到军推、速度放回巡航
+T.key(Enum.KeyCode.LeftShift, false)
+-- 一直按 Shift 油门推到了加力、快到音障（会冒蒸汽锥）：收到军推、速度放回巡航
 st.thr, st.thrE = 90, 90
 st.spd = math.min(st.spd, e.def.vMil * 0.8)
 st.vel = st.vdir * st.spd
@@ -62,20 +63,18 @@ end
 print("① 平飞没有云雾；拉杆有翼尖涡流、机翼水汽")
 check(v ~= nil and v.M ~= nil, "客户端拼好了飞机")
 check(trailsOn() == 0 and vaporOn() == 0, string.format("平飞：没有拖线、没有水汽（拖线 %d、水汽 %d，%.1f g，%.0f 格 / 秒）", trailsOn(), vaporOn(), st.gLoad or 0, st.spd or 0))
--- 准心猛往上抬 80°：教官要大过载拉起来
-local lk = st.cf.LookVector
-st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.min(1.4, math.asin(math.max(-1, math.min(1, lk.Y))) + math.rad(80))
+-- 按住 S 猛拉杆（用户 11-21：WASD 控制方向；过载上限收到七成，歼-20 约 6.5 g）
+T.key(Enum.KeyCode.S, true)
 local got4, got7, gMax = false, false, 0
 for _ = 1, 60 do
   R.run(1 / 20)
   gMax = math.max(gMax, st.gLoad or 0)
-  if (st.gLoad or 0) > 4 and trailsOn() >= 2 then got4 = true end
-  if (st.gLoad or 0) > 7 and vaporOn() >= 2 then got7 = true end
+  if (st.gLoad or 0) > 3.5 and trailsOn() >= 2 then got4 = true end
+  if (st.gLoad or 0) > 5 and vaporOn() >= 2 then got7 = true end
 end
-lk = st.cf.LookVector
-st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(math.max(-1, math.min(1, lk.Y)))
-check(got4, string.format("拉到 4 g 以上：两个翼尖拖出白线（最大 %.1f g）", gMax))
-check(got7, "拉到 7 g 以上：两边机翼上冒水汽")
+T.key(Enum.KeyCode.S, false)
+check(got4, string.format("拉到 3.5 g 以上：两个翼尖拖出白线（最大 %.1f g）", gMax))
+check(got7, "拉到 5 g 以上：两边机翼上冒水汽")
 R.run(3)
 
 print("② 音障：蒸汽锥、音爆")

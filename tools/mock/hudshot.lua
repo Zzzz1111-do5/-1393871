@@ -54,6 +54,7 @@ if kind == "jet" or kind == "heli" then
     if kind == "jet" then
       st.spd = st.d.vMil * 0.8
       st.vel = st.cf.LookVector * st.spd
+      st.vdir = st.cf.LookVector   -- 航迹也摆平（悬在半空的飞机已经往下掉了；WASD 飞以后松杆不会自己拉平）
       st.thr, st.gearWant, st.gear = 85, 0, 0
     else
       st.rpm = 100
@@ -212,6 +213,25 @@ elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" and kind ~= "ads" then
   if hpK and e and e.alive then
     G.damageEnt(e, e.maxHp * (1 - hpK), { team = foeSide, name = "test" })
     R.run(0.6)
+  end
+  -- sight=1：按 Shift 开炮长瞄准镜（用户 11-21 截图：开镜右边一块黑、整屏暗青色）；optic=day|nv|whot|bhot 按 V 换到这一档；night=1 先调到夜里
+  if TEST_ARGS:find("night=1", 1, true) then R.services.Lighting.ClockTime = 1 R.run(1) end
+  if TEST_ARGS:find("sight=1", 1, true) then
+    T.key(Enum.KeyCode.LeftShift, true)
+    T.key(Enum.KeyCode.LeftShift, false)
+    R.run(1.2)
+    check(C.drive and C.drive.sight == true, "开了瞄准镜")
+    local want = TEST_ARGS:match("optic=(%a+)")
+    local MODES = { day = 1, nv = 2, whot = 3, bhot = 4 }
+    if want and MODES[want] and C.drive then
+      for _ = 1, 4 do
+        if C.drive.mode == MODES[want] then break end
+        T.tap(Enum.KeyCode.V)
+        R.run(0.2)
+      end
+      check(C.drive.mode == MODES[want], "瞄准镜换到 " .. want .. "（现在第 " .. tostring(C.drive.mode) .. " 档）")
+    end
+    R.run(1)
   end
   -- erax=1,2,5：这几块爆反算炸掉了（看视角图上爆反的缺口）
   local ex = TEST_ARGS:match("erax=([%d,]+)")

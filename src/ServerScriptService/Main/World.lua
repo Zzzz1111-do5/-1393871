@@ -259,7 +259,8 @@ function World.terrain(onProgress)
     --   用户 11-19 要草高一点、多一点调到过 0.45（约一格三），用户 11-21：所有东西都是半截身子卡在地里——
     --   小人腿两格、坦克离地一格多、沙袋一格来高，一格多的草叶把它们下半截都盖住了（11-18 调到 0.55 时也是这样）。
     --   草叶不超过一格（小人的脚踝、履带下沿那么高）；「多」照旧靠 Map.material 让大片地方是 Grass
-    T.GrassLength = 0.28
+    --   用户 11-21 又说车还是半截卡在地里：0.22，客户端 Perf.lua 也设一遍（这个属性不一定同步到客户端）
+    T.GrassLength = 0.22
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048

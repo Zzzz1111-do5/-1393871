@@ -1,6 +1,6 @@
 -- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
 --   镜头：追尾（鼠标绕着车转），Shift / 右键进出炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
---   瞄准镜四种光电模式（V 切换，N 也行）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--   瞄准镜四种光电模式（V 切换，开着镜 N 也行；没开镜 N 是夜视仪）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
 --   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、M 烟幕弹（X 也行）、F 下车
 --   用户：坦克按 Shift 切换开镜；开镜画面上写着「按 V 切换光电模式」「按 M 释放烟雾弹」
@@ -371,9 +371,13 @@ function Drive.init(G)
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
     setSight(want)
   end
+  -- 瞄准镜默认档（用户 11-21：坦克开镜强制锁在夜视）：天黑夜视、白天昼光；自己换过就记住（白天、夜里各记一个）
+  G.sightPref = G.sightPref or {}
+  local function nightNow() return G.isNight ~= nil and G.isNight() end
   local function nextMode()
     if not st then return end
     st.mode = st.mode % #MODES + 1
+    G.sightPref[nightNow() and "night" or "day"] = st.mode
     applyMode()
   end
   local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
@@ -389,7 +393,8 @@ function Drive.init(G)
     local look = base.LookVector
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
-      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false, mode = 2, zoom = 1,
+      ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false,
+      mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 2 or 1), zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0 }
     G.drive, G.myVeh = st, st
     -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
@@ -946,7 +951,7 @@ function Drive.init(G)
       tryFire()
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
       toggleSight()
-    elseif k == Enum.KeyCode.V or k == Enum.KeyCode.N then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热
+    elseif k == Enum.KeyCode.V or (k == Enum.KeyCode.N and st.sight) then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热（没开镜时 N 是夜视仪，Night.lua）
       nextMode()
     elseif k == Enum.KeyCode.Z then
       st.zoom = st.zoom % #ZOOMS + 1

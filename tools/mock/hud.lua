@@ -78,7 +78,13 @@ for _, d2 in ipairs(me.PlayerGui:GetDescendants()) do
 end
 check(nLad == 0, "中间没有俯仰梯那些一段段的线（用户 11-19；只有无人机的老平显还画）：" .. nLad .. " 根")
 local ar = find("AimRing")
-check(ar ~= nil and T.visible(ar), "准星是一个发光的细圈（AirHud）")
+check(ar == nil or not T.visible(ar), "有人开的固定翼不画准星圈（用户 11-21：WASD 控制方向、不要准心控制）")
+do   -- 机头的全息标记（机头前方 300 格）钉在屏幕正中：镜头跟着机身（用户 11-21：飞行方向标志不要动来动去）
+  local cam = R.services.Workspace.CurrentCamera
+  local sp = cam:WorldToViewportPoint(st.cf.Position + st.cf.LookVector * 300)
+  local off = math.sqrt((sp.X - cam.ViewportSize.X / 2) ^ 2 + (sp.Y - cam.ViewportSize.Y / 2) ^ 2)
+  check(off <= 2, string.format("机头的全息标记在屏幕正中（偏 %.1f 像素）", off))
+end
 
 print("② 右下六边形武器键：按键号、弹的图标、剩几发，最后一个热诱弹；按 2 选中第二个；准星上方写选中的弹、右边剩几发")
 local bar = find("AirWeapons")
@@ -189,6 +195,7 @@ if js and foe then
   js.ground = false   -- 刚放的飞机算停在地上：改成巡航
   js.spd = js.d.vMil * 0.8
   js.vel = js.cf.LookVector * js.spd
+  js.vdir = js.cf.LookVector   -- 航迹也摆平（刚放的飞机算停在地上，悬在半空已经往下掉了；WASD 飞以后松杆不会自己拉平）
   js.thr, js.gearWant, js.gear = 85, 0, 0
   R.run(0.5)
   foe.root.CFrame = js.cf * CF(60, 20, -700)

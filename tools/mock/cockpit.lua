@@ -117,11 +117,19 @@ for _, k in ipairs(keys) do
   if l == "RDR" or l == "雷达" then want = k break end
 end
 if want then
-  -- 看过去：准心对着按键（头跟着准心转），等头转到
-  for _ = 1, 45 do   -- 准心一直对着按键（每帧按眼睛现在的位置重算）
+  -- 看过去：直升机头跟着镜头方向；固定翼（用户 11-21：WASD 飞、没有准心）按住 Alt 用鼠标转头，中间小点对准按键
+  if not cur.spec.heli then T.key(Enum.KeyCode.LeftAlt, true) end
+  for _ = 1, 60 do   -- 每帧按眼睛现在的位置重算
     local dir = (want.part.Position - cam.CFrame.Position).Unit
-    if cur.spec.heli then fst.camYaw, fst.camPitch = math.atan2(-dir.X, -dir.Z), math.asin(dir.Y)   -- 直升机：头跟着镜头方向
-    else fst.aimYaw, fst.aimPitch = math.atan2(-dir.X, -dir.Z), math.asin(dir.Y) end
+    if cur.spec.heli then fst.camYaw, fst.camPitch = math.atan2(-dir.X, -dir.Z), math.asin(dir.Y)
+    else
+      local lk = cam.CFrame.LookVector
+      local dy = math.atan2(-dir.X, -dir.Z) - math.atan2(-lk.X, -lk.Z)
+      dy = (dy + math.pi) % (2 * math.pi) - math.pi
+      local dp = math.asin(math.max(-1, math.min(1, dir.Y))) - math.asin(math.max(-1, math.min(1, lk.Y)))
+      local sens = 0.0035 * (cam.FieldOfView / 72)
+      R.mouseDelta = R.Vector2.new(-dy / sens * 0.5, -dp / sens * 0.5)
+    end
     R.run(1 / 30)
   end
   local dirE = (want.part.Position - cam.CFrame.Position).Unit
@@ -142,6 +150,7 @@ if want then
     end
   end
   check(radar, "按「" .. want.label .. "」：左边那块换成雷达页面")
+  if not cur.spec.heli then T.key(Enum.KeyCode.LeftAlt, false) end
 else check(false, "找到雷达键") end
 local lk0 = fst.cf.LookVector
 fst.aimYaw, fst.aimPitch = math.atan2(-lk0.X, -lk0.Z), 0
@@ -181,10 +190,10 @@ if heli then   -- 直升机：旋翼转起来、E 提总距离地、W 推杆往�
   T.key(Enum.KeyCode.W, false)
 else
   local onDeck = not G.Map.isLand(fst.cf.Position.X, fst.cf.Position.Z)
-  T.key(Enum.KeyCode.W, true)
+  T.key(Enum.KeyCode.LeftShift, true)   -- 用户 11-21：WASD 控制方向，油门是 Shift / Ctrl
   if onDeck then   -- 舰载机停在甲板上：只推一秒油门看油门杆（推满会弹射、没挂上弹射器会滑出甲板），然后直接放到天上
     R.run(1)
-    T.key(Enum.KeyCode.W, false)
+    T.key(Enum.KeyCode.LeftShift, false)
     local thrZ1 = cur.b.groups.thr.anim.Position.Z
     check(thrZ1 < thrZ0 - 0.02 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
     local p = fst.cf.Position
@@ -193,17 +202,23 @@ else
     fst.cf = R.CFrame.lookAt(q, q + lk)
     fst.ground, fst.cat, fst.trap = false, nil, nil
     fst.spd, fst.vel, fst.thr = 190, lk * 190, 110
-    fst.aimYaw, fst.aimPitch = math.atan2(-lk.X, -lk.Z), math.rad(10)
-    for _ = 1, 120 do R.run(1 / 30) stickNow() end
+    fst.vdir = lk
+    T.key(Enum.KeyCode.S, true)   -- 拉一下杆
+    for _ = 1, 40 do R.run(1 / 30) stickNow() end
+    T.key(Enum.KeyCode.S, false)
+    for _ = 1, 80 do R.run(1 / 30) stickNow() end
     fst.thr = 100
   else
-    fst.aimPitch = math.rad(12)
-    local up = T.runUntil(function() stickNow() return not fst.ground end, 40)
+    T.runUntil(function() stickNow() return fst.spd >= fst.d.vRot end, 40)
+    T.key(Enum.KeyCode.S, true)   -- 速度到了按住 S 抬头
+    local up = T.runUntil(function() stickNow() return not fst.ground end, 10)
     check(up, string.format("滑跑起飞（离地时 %.0f 格 / 秒）", fst.spd or 0))
     local thrZ1 = cur.b.groups.thr.anim.Position.Z
     check(thrZ1 < thrZ0 - 0.05 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
-    for _ = 1, 180 do R.run(1 / 30) stickNow() end   -- 加力爬一会儿
-    T.key(Enum.KeyCode.W, false)
+    for _ = 1, 30 do R.run(1 / 30) stickNow() end
+    T.key(Enum.KeyCode.S, false)
+    for _ = 1, 150 do R.run(1 / 30) stickNow() end   -- 加力爬一会儿
+    T.key(Enum.KeyCode.LeftShift, false)
     fst.thr = 100
   end
   check(maxStick > math.rad(1.5), string.format("驾驶杆跟着拉（最大 %.1f°）", math.deg(maxStick)))
@@ -256,28 +271,23 @@ if heli then   -- 直升机：头跟着镜头方向（鼠标转的就是它，�
   fst.camYaw, fst.camPitch = math.atan2(-lk3.X, -lk3.Z), 0
   R.run(0.5)
 else
-  local lk2 = fst.cf.LookVector
-  fst.aimYaw = math.atan2(-lk2.X, -lk2.Z) + math.rad(50)
-  fst.aimPitch = math.asin(math.max(-1, math.min(1, lk2.Y)))
-  R.run(0.6)
-  local aimDir = (R.CFrame.Angles(0, fst.aimYaw, 0) * R.CFrame.Angles(fst.aimPitch, 0, 0)).LookVector
-  local diff = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(aimDir)))))
-  check(diff < 12, string.format("准心往左 50°：头跟过去了（和准心差 %.1f°、相对机头 %.0f°）", diff, relYaw(cam.CFrame.LookVector)))
-  local ay = fst.aimYaw
+  -- 用户 11-21：飞机改成 WASD 飞、没有准心——头看前方（航迹），鼠标不转头；按住 Alt 动鼠标转头，松开回到前方
+  local function offFwd() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.vdir or fst.cf.LookVector))))) end
+  for _ = 1, 15 do
+    R.mouseDelta = R.Vector2.new(-40, 0)
+    R.run(1 / 30)
+  end
+  check(offFwd() < 12, string.format("不按 Alt 动鼠标：头不转，看着前方（偏 %.1f°）", offFwd()))
   T.key(Enum.KeyCode.LeftAlt, true)
   for _ = 1, 15 do
     R.mouseDelta = R.Vector2.new(-40, 25)
     R.run(1 / 30)
   end
-  local diff2 = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot((R.CFrame.Angles(0, fst.aimYaw, 0) * R.CFrame.Angles(fst.aimPitch, 0, 0)).LookVector)))))
-  check(math.abs(fst.aimYaw - ay) < 1e-6, "按住 Alt 动鼠标：准心不动")
-  check(diff2 > 15, string.format("按住 Alt 动鼠标：头转开了（离准心 %.0f°）", diff2))
+  local diff2 = offFwd()
+  check(diff2 > 15, string.format("按住 Alt 动鼠标：头转开了（离前方 %.0f°、相对机头 %.0f°）", diff2, relYaw(cam.CFrame.LookVector)))
   T.key(Enum.KeyCode.LeftAlt, false)
   R.run(0.8)
-  local diff3 = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot((R.CFrame.Angles(0, fst.aimYaw, 0) * R.CFrame.Angles(fst.aimPitch, 0, 0)).LookVector)))))
-  check(diff3 < 12, string.format("松开 Alt：头回到准心（差 %.1f°）", diff3))
-  local lk3 = fst.cf.LookVector
-  fst.aimYaw, fst.aimPitch = math.atan2(-lk3.X, -lk3.Z), math.asin(math.max(-1, math.min(1, lk3.Y)))
+  check(offFwd() < 12, string.format("松开 Alt：头回到前方（差 %.1f°）", offFwd()))
   R.run(0.5)
 end
 
