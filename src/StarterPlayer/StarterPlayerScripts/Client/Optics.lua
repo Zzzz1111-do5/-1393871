@@ -162,6 +162,19 @@ function Optics.init(G)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)
   end
 
+  -- 原模型没贴图的瞄准镜（两具 ACOG：一片平涂的灰，看着像塑料——用户 11-21：镜身、目镜圈太假）：按真东西的料子上 Roblox 自带材质——
+  --   镜身阳极氧化的铝（金属：细纹理、高光），目镜罩橡胶（哑光），镜片玻璃，分划发光；没写的块照旧
+  local SURF = {
+    acog = { default = "Metal", Eyepiece = "Rubber", GlassIn = "Glass", Fiber = "SmoothPlastic", FiberIn = "SmoothPlastic",
+      FiberCover = "SmoothPlastic", FiberCoverIn = "SmoothPlastic", ReticleIn = "Neon" },
+    opt_acog6 = { default = "Metal", Eyepiece = "Rubber", C9ab = "Glass", C9abIn = "Glass", Cb22 = "SmoothPlastic", Cf00In = "Neon" },
+  }
+  local function surface(key, name, p)
+    local sf = SURF[key]
+    local m = sf and (sf[name] or sf.default)
+    if m then pcall(function() p.Material = Enum.Material[m] end) end
+  end
+
   function G.opticParts(key)
     if not META[key] or failed[key] then return nil end
     local list = imported(key) or gen[key]
@@ -175,6 +188,7 @@ function Optics.init(G)
       if ok and p then
         quiet(p)
         if x.src:IsDescendantOf(RS) then Tint.fix(p, x.src) end
+        surface(key, x.name, p)
         table.insert(out, { name = x.name, part = p, c = x.c, cf = x.cf })
       end
     end

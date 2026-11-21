@@ -1,8 +1,9 @@
 -- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
 --   Roblox 一帧只画一次主画面，地形、粒子、光影都只在主画面里。所以镜外照普通开镜（约 1.25 倍）不放大，
 --   镜片那个圆里用 ViewportFrame 另画一份放大的战场（镜头就在眼睛这儿、朝准星看，视角 = 镜片的角大小 ÷ 倍率）：
---   · 地形：按 Map.height / Map.material（开服生成地形用的同一套）车成网格（EditableMesh，顶点色按地形材质的颜色、带一点斑驳）：
---     脚下 6 格一点（约 430 格见方，人走开 110 格重新生成）、20 格一点（1800 格见方）、64 格一点（全岛和小岛，生成一次）；
+--   · 地形：按 Map.height / Map.material（开服生成地形用的同一套）车成网格（EditableMesh），按材质分块、用 Roblox 自带的草 / 沙 / 岩石……
+--     材质（有纹理，UV 按世界坐标铺），颜色同地形、顶点色带一点明暗斑驳（11-21：原来一整块顶点色的光滑塑料，太假）：
+--     脚下 4 格一点（约 380 格见方，人走开 100 格重新生成）、20 格一点（1800 格见方）、64 格一点（全岛和小岛，生成一次）；
 --     细的盖在粗的上面（粗的往下沉一点、每张边上一圈再往下沉，接缝藏在下面）。后台慢慢算，每帧最多 1.5 毫秒
 --   · 海面（半透明，浅滩看得见沙）+ 底下一层深海色、天空（按看的仰角取色）、雾（镜头前几张半透明的大片，越远叠得越多，按大气浓度）、
 --     灯光（太阳 / 月亮的方向、昼夜、夜视仪变绿、照明弹）
@@ -26,7 +27,7 @@ local TC = {
 }
 -- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成
 local LEVELS = {
-  { step = 6, n = 72, drop = 0, edge = 1.8, move = 110 },
+  { step = 4, n = 96, drop = 0, edge = 1.6, move = 100 },
   { step = 20, n = 90, drop = 1, edge = 4, move = 420 },
 }
 local FAR = { step = 64, drop = 2.5, edge = 6 }   -- 全岛（生成一次）
@@ -95,8 +96,8 @@ function ScopePip.init(G)
   -- 海面（半透明：浅滩透出底下的沙）、深海色的底（没有地形网格的地方）：5 × 5 块 2048 见方，跟着镜头挪
   local water, deep = {}, {}
   for i = 1, 25 do
-    water[i] = plate(V(2048, 1, 2048), RGB(30, 100, 120), 0.3)
-    deep[i] = plate(V(2048, 1, 2048), RGB(12, 40, 52), 0)
+    water[i] = plate(V(2048, 1, 2048), RGB(26, 82, 98), 0.32)   -- 同 Terrain.WaterColor（30, 112, 136）透过深水看暗一些
+    deep[i] = plate(V(2048, 1, 2048), RGB(10, 34, 44), 0)
   end
   local waterAt = nil
   local function placeWater(p)
@@ -124,11 +125,15 @@ function ScopePip.init(G)
     warn("[全面大战场] 瞄准镜画中画用不了（" .. tostring(msg) .. "），开镜退回整屏放大")
   end
 
-  -- 一张地形网格：中心 (cx, cz)、每格 step、nx × nz 格；drop 整张往下沉、edge 最外一圈再沉。返回 MeshPart（EditableMesh 用不了返回 nil）
+  -- 一张地形：中心 (cx, cz)、每格 step、nx × nz 格；drop 整张往下沉、edge 最外一圈再沉。
+  --   按地形材质分成几块 MeshPart（草、深色草、沙、土、岩石……各一块），每块用 Roblox 自带的那种材质（有纹理、有法线的起伏，像真的地面，
+  --   用户 11-21：镜里的画面太假——原来是一整块顶点色的光滑塑料），颜色同开服时设的地形颜色；顶点色只带一点明暗斑驳；
+  --   UV 按世界坐标每 TILE 格一个循环（纹理大小和地形上的差不多）。返回一个 Model；EditableMesh 用不了时出错，外面接住
+  local TILE = 12
   local function terrainMesh(cx, cz, step, nx, nz, drop, edge)
     local W = nx + 1
     local N = W * (nz + 1)
-    local hs = table.create(N)
+    local hs, mats, nrm, shade = table.create(N), table.create(N), table.create(N), table.create(N)
     local x0, z0 = cx - nx * step / 2, cz - nz * step / 2
     local t0 = now()
     local function tick()
@@ -141,10 +146,7 @@ function ScopePip.init(G)
       for i = 0, nx do hs[k * W + i + 1] = (Map.height(x0 + i * step, z0 + k * step)) end
       tick()
     end
-    local em = AS:CreateEditableMesh()
-    local vid, nid, cid = table.create(N), table.create(N), table.create(N)
-    local lx, ly, lz, hx, hy, hz = 1e9, 1e9, 1e9, -1e9, -1e9, -1e9   -- 包围盒
-    for k = 0, nz do
+    for k = 0, nz do   -- 每个点：材质（同开服生成地形）、法线、斑驳
       for i = 0, nx do
         local id = k * W + i + 1
         local x, z = x0 + i * step, z0 + k * step
@@ -153,39 +155,70 @@ function ScopePip.init(G)
         local ka, kb = max(k - 1, 0), min(k + 1, nz)
         local dx = (hs[k * W + ib + 1] - hs[k * W + ia + 1]) / ((ib - ia) * step)
         local dz = (hs[kb * W + i + 1] - hs[ka * W + i + 1]) / ((kb - ka) * step)
-        local m = Map.material(x, z, y, sqrt(dx * dx + dz * dz))
-        local c = TC[m.Name] or TC.Grass
-        local v = 0.84 + 0.13 * noise(x / 37, z / 37, 2.7) + 0.06 * noise(x / 9, z / 9, 8.1)   -- 斑驳（不然一大片平涂，像塑料）
-        if y < -0.5 then v *= 0.7 end   -- 水下
-        local yy = y - drop - (((i == 0 or k == 0 or i == nx or k == nz) and edge) or 0)
-        local px, pz = x - cx, z - cz
-        lx, ly, lz, hx, hy, hz = min(lx, px), min(ly, yy), min(lz, pz), max(hx, px), max(hy, yy), max(hz, pz)
-        vid[id] = em:AddVertex(V(px, yy, pz))
-        nid[id] = em:AddNormal(V(-dx, 1, -dz).Unit)
-        cid[id] = em:AddColor(C3(min(1, c[1] / 255 * v), min(1, c[2] / 255 * v), min(1, c[3] / 255 * v)), 1)
+        mats[id] = Map.material(x, z, y, sqrt(dx * dx + dz * dz))
+        nrm[id] = V(-dx, 1, -dz).Unit
+        local v = 0.88 + 0.09 * noise(x / 37, z / 37, 2.7) + 0.04 * noise(x / 9, z / 9, 8.1)   -- 大片的明暗斑驳（纹理管细节）
+        if y < -0.5 then v *= 0.72 end   -- 水下
+        shade[id] = min(1, v)
       end
       tick()
+    end
+    local groups = {}   -- [材质] = { em, vid / nid / uid / cid（点号 → 这块里的编号）, 包围盒 }
+    local function vert(g, id)
+      local v = g.vid[id]
+      if v then return v end
+      local i, k = (id - 1) % W, math.floor((id - 1) / W)
+      local x, z = x0 + i * step, z0 + k * step
+      local yy = hs[id] - drop - (((i == 0 or k == 0 or i == nx or k == nz) and edge) or 0)
+      local px, pz = x - cx, z - cz
+      g.lx, g.ly, g.lz = min(g.lx, px), min(g.ly, yy), min(g.lz, pz)
+      g.hx, g.hy, g.hz = max(g.hx, px), max(g.hy, yy), max(g.hz, pz)
+      local em = g.em
+      v = em:AddVertex(V(px, yy, pz))
+      g.vid[id] = v
+      g.nid[id] = em:AddNormal(nrm[id])
+      g.uid[id] = em:AddUV(Vector2.new(x / TILE, z / TILE))
+      local sh = shade[id]
+      g.cid[id] = em:AddColor(C3(sh, sh, sh), 1)
+      return v
+    end
+    local function tri(a, b, c)
+      local ma, mb, mc = mats[a], mats[b], mats[c]
+      local m = (ma == mb or ma == mc) and ma or ((mb == mc) and mb or ma)   -- 三个点里多数的材质
+      local g = groups[m]
+      if not g then
+        g = { em = AS:CreateEditableMesh(), vid = {}, nid = {}, uid = {}, cid = {}, lx = 1e9, ly = 1e9, lz = 1e9, hx = -1e9, hy = -1e9, hz = -1e9 }
+        groups[m] = g
+      end
+      local va, vb, vc = vert(g, a), vert(g, b), vert(g, c)
+      local em = g.em
+      local f = em:AddTriangle(va, vb, vc)
+      em:SetFaceNormals(f, { g.nid[a], g.nid[b], g.nid[c] })
+      em:SetFaceUVs(f, { g.uid[a], g.uid[b], g.uid[c] })
+      em:SetFaceColors(f, { g.cid[a], g.cid[b], g.cid[c] })
     end
     for k = 0, nz - 1 do
       for i = 0, nx - 1 do
         local a, b, c, d = k * W + i + 1, (k + 1) * W + i + 1, k * W + i + 2, (k + 1) * W + i + 2
         -- 朝上（从上往下看逆时针）：(i, k) → (i, k+1) → (i+1, k)、(i+1, k) → (i, k+1) → (i+1, k+1)
-        local f1 = em:AddTriangle(vid[a], vid[b], vid[c])
-        em:SetFaceNormals(f1, { nid[a], nid[b], nid[c] })
-        em:SetFaceColors(f1, { cid[a], cid[b], cid[c] })
-        local f2 = em:AddTriangle(vid[c], vid[b], vid[d])
-        em:SetFaceNormals(f2, { nid[c], nid[b], nid[d] })
-        em:SetFaceColors(f2, { cid[c], cid[b], cid[d] })
+        tri(a, b, c)
+        tri(c, b, d)
       end
       tick()
     end
-    local mp = AS:CreateMeshPartAsync(Content.fromObject(em))
-    mp.Name = "PipTerrain"
-    mp.Material = Enum.Material.SmoothPlastic
-    mp.Color = C3(1, 1, 1)
-    props(mp)
-    mp.CFrame = CF(cx + (lx + hx) / 2, (ly + hy) / 2, cz + (lz + hz) / 2)   -- 生成的网格原点在包围盒中心
-    return mp
+    local model = Instance.new("Model")
+    model.Name = "PipTerrain"
+    for m, g in pairs(groups) do
+      local mp = AS:CreateMeshPartAsync(Content.fromObject(g.em))
+      mp.Name = "PipTerrain_" .. m.Name
+      mp.Material = m   -- Roblox 自带材质：草、沙、岩石……的纹理按网格的 UV 铺
+      local c = TC[m.Name] or TC.Grass
+      mp.Color = RGB(c[1], c[2], c[3])
+      props(mp)
+      mp.CFrame = CF(cx + (g.lx + g.hx) / 2, (g.ly + g.hy) / 2, cz + (g.lz + g.hz) / 2)   -- 生成的网格原点在包围盒中心
+      mp.Parent = model
+    end
+    return model
   end
 
   -- 后台生成：一次一件（脚下那级优先，再中间那级，最后全岛）
@@ -541,13 +574,19 @@ function ScopePip.init(G)
     if typeof(p) ~= "Vector3" then return end
     r = r or 20
     local e = { t0 = now(), life = life or 30, balls = {} }
+    -- 六团，每团里外三层（越外越大越淡）：边缘是软的，看着像一团烟，不像几个灰球；中间那层不透明，开镜照样看不穿
     for i = 1, 6 do
-      local s = r * (1.0 + 0.5 * math.random())
-      local b = plate(V(s, s, s), RGB(206 - i * 4, 208 - i * 4, 206 - i * 4), 1)
-      b.Shape = Enum.PartType.Ball
       local a = i / 6 * math.pi * 2
-      b.CFrame = CF(p + V(math.cos(a) * r * 0.55, r * (0.2 + 0.4 * math.random()), math.sin(a) * r * 0.55))
-      table.insert(e.balls, b)
+      local c = p + V(math.cos(a) * r * 0.55, r * (0.2 + 0.4 * math.random()), math.sin(a) * r * 0.55)
+      local g = 196 + math.random(0, 18)
+      for layer = 1, 3 do
+        local sz = r * (0.75 + 0.35 * layer) * (0.9 + 0.3 * math.random())
+        local b = plate(V(sz, sz, sz), RGB(g, g + 2, g), 1)
+        b.Shape = Enum.PartType.Ball
+        b.CFrame = CF(c + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * r * 0.15)
+        b:SetAttribute("A", ({ 0.12, 0.45, 0.72 })[layer])   -- 这一层满的时候的透明度
+        table.insert(e.balls, b)
+      end
     end
     table.insert(smokes, e)
   end
@@ -560,7 +599,7 @@ function ScopePip.init(G)
         table.remove(smokes, i)
       else
         local k = math.clamp(age / 2.5, 0, 1) * math.clamp((e.life - age) / 6, 0, 1)   -- 两秒半散开，最后六秒淡掉
-        for _, b in ipairs(e.balls) do b.Transparency = 1 - 0.82 * k end
+        for _, b in ipairs(e.balls) do b.Transparency = 1 - (1 - (b:GetAttribute("A") or 0.2)) * k end
       end
     end
   end
@@ -588,8 +627,19 @@ function ScopePip.init(G)
       amb = lerpC(amb, C3(0.4, 0.52, 0.42), 1 - dk)
       lc = lerpC(lc, C3(0.32, 0.42, 0.34), 1 - dk)
     end
+    -- 跟着主画面的曝光走（DayNight 夜里曝光 +0.55）：不然镜里一片黑、镜外亮着
+    if not nv then
+      local ek = math.clamp(2 ^ ((Lighting.ExposureCompensation or 0) * 0.7), 0.6, 1.6)
+      amb = C3(min(1, amb.R * ek), min(1, amb.G * ek), min(1, amb.B * ek))
+      lc = C3(min(1, lc.R * ek), min(1, lc.G * ek), min(1, lc.B * ek))
+    end
     vpf.Ambient, vpf.LightColor = amb, lc
-    vpf.ImageColor3 = nv and C3(0.74, 1, 0.76) or C3(1, 1, 1)
+    -- 色调跟着主画面的调色（夜里偏冷蓝：DayNight 的 NightGrade），夜视仪变绿
+    local tint = C3(1, 1, 1)
+    local grade = Lighting:FindFirstChild("NightGrade")
+    if grade and grade:IsA("ColorCorrectionEffect") and grade.Enabled then tint = grade.TintColor end
+    if nv then tint = C3(0.74, 1, 0.76) end
+    vpf.ImageColor3 = tint
     -- 天空：地平线是雾的颜色，往上是天顶色（看的范围就几度，整块按仰角取一个颜色）
     local fog = Lighting.FogColor
     local zen = lerpC(C3(0.03, 0.04, 0.07), C3(0.36, 0.53, 0.78), dk)
@@ -600,6 +650,7 @@ function ScopePip.init(G)
     if nv then dens *= 0.55 end
     local Df = 500 / math.max(0.04, dens)
     local hc = atm and lerpC(atm.Color, fog, 0.5) or fog
+    hc = C3(hc.R * 0.88, hc.G * 0.88, hc.B * 0.88)
     local prev = 0
     for i, d in ipairs(HAZE) do
       local h = haze[i]

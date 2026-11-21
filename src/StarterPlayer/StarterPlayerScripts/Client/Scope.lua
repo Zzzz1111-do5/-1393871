@@ -3,12 +3,12 @@
 --     挡着视线的块藏掉，从目镜那个正圆的洞里看到放大的画面（两具 ACOG 原模型的目镜是八边形，optics.json 的 ring 补了正圆的目镜圈罩住）；
 --     镜头视角按倍率收窄，镜子跟着往远推、在屏幕上一样大。这里只画镜片上的东西，跟着 3D 目镜走
 --     （FPSView 每帧 G.scopeLensAt(屏幕 x, y, 半径, 举镜进度, 狙击镜?)），全是正圆：
---     镜片（CanvasGroup + UICorner 按圆裁剪）：镀膜的淡色、分划（在屏幕正中：子弹打这儿）、反光弧、边上一圈暗边、眼盒阴影、色散彩边；
+--     镜片（CanvasGroup + UICorner 按圆裁剪）：透光稍暗一点、分划（在屏幕正中：子弹打这儿）、边上自然变暗、眼盒阴影（11-21 去掉了反光弧、色散彩边圈：太假）；
 --       眼盒阴影：眼睛不在光轴上（枪晃、镜头转得快、走路、开枪、刚贴上目镜）时镜片边上一道月牙——两个圆叠着：A 是目镜（镜片的圆），
 --       B 是镜子另一头的光阑（外面一圈特别粗的黑描边）；对正时 B 比 A 大一圈、看不见，偏了 B 朝反方向错开，A 里没被 B 盖住的那块就是月牙
 --     镜片外面一圈圈往外渐暗（目镜圈、镜身、外面的世界压暗，视线集中在镜片里；狙击镜压得很黑）；近处的镜身用景深糊掉（ScopeDOF，
 --     同使命召唤开镜时枪身是糊的）；跟着举镜进度淡入、松开右键跟着淡出；不是第一人称（没有 3D 镜身）时镜片摆在屏幕正中、外面几乎全黑
---   边缘渐暗：一圈圈半透明黑描边（UI 没有径向渐变），圈和圈挨着不叠；红、蓝两道细圈朝相反方向错开一点，是边上的色散彩边
+--   边缘渐暗：一圈圈半透明黑描边（UI 没有径向渐变），圈和圈挨着不叠
 --   分划：狙击镜在第一焦平面（刻线跟倍率一起放大缩小，1 密位在目标上永远是 1 米 / 千米），中心红点夜里发光（开着夜视仪时调暗）；
 --     ACOG（步枪上的 3.5 倍、改枪的 6 倍）是 TA31 的红色箭形 + 测距线（第二焦平面：大小按目镜直径），定倍、不屏息、不闪镜片
 --   望远镜：两个圆并排（左右各按半边屏幕裁开，正好是两圆的并集，中间上下两个尖角）、测距框和密位刻度，底下一行琥珀色的距离 / 方位 / 倍率；
@@ -136,9 +136,9 @@ function Scope.init(G)
   lensG.Visible = false
   lensG.Parent = root
   round(lensG)
-  local tint = round(fr(lensG, 1, RGB(18, 34, 44), 0.93))   -- 镀膜的淡色（上下边色深一点）
+  -- 透光：镜子透光九成多，像比外面稍暗一点（中性色，不偏蓝——用户 11-21：镜片效果太假）
+  local tint = round(fr(lensG, 1, RGB(6, 7, 8), 0.94))
   tint.Position, tint.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1)
-  grad(tint, 90, { { 0, 0.4 }, { 0.5, 0.75 }, { 1, 0.15 } })
 
   -- 分划：容器（大小 0）摆在屏幕正中在镜片里的位置，零件按容器中心摆
   local ret = fr(lensG, 2, BLACK, 1)       -- 狙击镜（第一焦平面）
@@ -281,23 +281,10 @@ function Scope.init(G)
     end
   end
 
-  -- 反光弧（镀膜上左上一道冷色、右下一道暖色，按镜片大小）
-  local glare = round(fr(lensG, 3, BLACK, 1))
-  glare.Position, glare.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.9, 0.9)
-  local glareS = ring(glare, 3, RGB(235, 245, 255), 0)
-  grad(glareS, 45, { { 0, 1 }, { 0.1, 0.86 }, { 0.2, 0.8 }, { 0.3, 0.93 }, { 0.4, 1 }, { 1, 1 } })   -- 只左上露一段
-  local glare2 = round(fr(lensG, 3, BLACK, 1))
-  glare2.Position, glare2.Size = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.8, 0.8)
-  local glare2S = ring(glare2, 2, RGB(255, 214, 160), 0)
-  grad(glare2S, 45, { { 0, 1 }, { 0.72, 1 }, { 0.84, 0.9 }, { 0.94, 1 }, { 1, 1 } })
-  -- 眼盒阴影 B（光阑：对正时比镜片大一圈，偏了往反方向错开、露出月牙）、镜片边上的暗边 A
-  local apB = aperture(lensG, 4, 8, 0.06, 0.95, 1.6)
-  local apA = aperture(lensG, 5, 8, 0.045, 0.72, 2.2, true)
-  -- 色散彩边：镜片边上一红一蓝两道细圈，朝相反方向错开
-  local caR = round(fr(lensG, 6, BLACK, 1))
-  local caRs = ring(caR, 2, RGB(255, 90, 50), 0.55)
-  local caB = round(fr(lensG, 6, BLACK, 1))
-  local caBs = ring(caB, 2, RGB(70, 120, 255), 0.5)
+  -- 只留真瞄准镜里看得到的（用户 11-21：镜片效果太假——原来的反光弧、红蓝色散彩边圈、偏蓝的镀膜都是假的，去掉）：
+  --   眼盒阴影 B（光阑：对正时比镜片大一圈、看不见，眼睛偏了往反方向错开、边上露出一道软的月牙）、镜片边上自然变暗 A（越靠边越暗，很缓）
+  local apB = aperture(lensG, 4, 10, 0.09, 0.92, 1.5)
+  local apA = aperture(lensG, 5, 10, 0.1, 0.55, 1.8, true)
 
   -- 镜片外面：贴着镜片一圈羽化（OUT_F 圈，落在黑色的目镜圈上，圈和圈之间的接缝看不出来），再往外一圈特别粗的描边整片均匀压暗
   --   （使命召唤那样；分好几级往外渐暗的话，天空上看得出一圈圈台阶）
@@ -314,8 +301,8 @@ function Scope.init(G)
     sniper = { 0.8, 0.04 },    -- 狙击镜：目镜圈、镜身压得很黑
     acog = { 0.34, 0.045 },    -- ACOG：还看得清目镜圈、镜身和两边的战场
     flat = { 0.95, 0.02 },     -- 没有 3D 镜身（第三人称、视图模型还没建好）：外面几乎全黑，像老式的镜筒
-    pipSniper = { 0.5, 0.04 },  -- 画中画：镜外是不放大的战场（普通开镜），只轻轻压暗
-    pipAcog = { 0.2, 0.045 },
+    pipSniper = { 0.3, 0.05 },  -- 画中画：镜外是不放大的战场（普通开镜），只轻轻压暗（压重了像蒙了一层黑纱）
+    pipAcog = { 0.1, 0.05 },
   }
 
   -- 望远镜：左右两个（各在半边屏幕的裁剪框里）
@@ -539,24 +526,14 @@ function Scope.init(G)
     at(apB.box, r - e.X, r - e.Y)
     sizeAp(apA, 2 * r)
     at(apA.box, r, r)
-    -- 色散：偏得越多彩边越宽
-    local m = ev.Magnitude
-    local off = (m > 0.5) and ev.Unit * math.min(m * 0.035, 3.5) or V2()
-    local ca = math.min(0.35, m / (2 * r) * 1.6)
-    local dc = 2 * r - 5
-    sz(caR, dc)
-    sz(caB, dc)
-    at(caR, r + off.X + 0.35, r + off.Y + 0.2)
-    at(caB, r - off.X - 0.35, r - off.Y - 0.2)
-    caRs.Transparency = 0.8 - ca
-    caBs.Transparency = 0.78 - ca
     -- 镜片外面
     layoutOuter(x, y, r, f, OUTK[(not L.fp) and "flat" or (pip and ((lk == "sniper") and "pipSniper" or "pipAcog")) or lk])
     -- 调色、景深跟着淡入
     cc.Contrast, cc.Saturation, cc.Brightness = 0.07 * f, 0.08 * f, 0.015 * f
     if dof then
       dof.Enabled = L.fp
-      dof.NearIntensity = ((lk == "sniper") and 0.6 or 0.45) * f
+      -- 镜身糊一点（画中画时轻一点：镜身就在眼前、清清楚楚的金属才像真的，糊成一团反而假）
+      dof.NearIntensity = (pip and ((lk == "sniper") and 0.3 or 0.2) or ((lk == "sniper") and 0.6 or 0.45)) * f
     end
     refresh()
   end
@@ -802,7 +779,7 @@ function Scope.init(G)
       local mo = moonOnScreen()
       local inten = 0
       if mo and L.r > 1 then inten = math.clamp(1 - (mo - V2(L.x, L.y)).Magnitude / L.r, 0, 1) ^ 1.5 end
-      tint.BackgroundTransparency = 0.93 - 0.05 * inten
+      tint.BackgroundTransparency = 0.94 - 0.04 * inten
     else
       local k = math.clamp((t - S.t0) / 0.24, 0, 1)
       local sc = 0.8 + 0.2 * (1 - (1 - k) ^ 3)   -- 出瞳由小变大

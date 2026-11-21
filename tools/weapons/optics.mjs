@@ -327,37 +327,82 @@ async function buildItem(key, I) {
     const l1 = Math.hypot(...e1);
     e1 = e1.map((v) => v / l1);
     const e2 = cr(u, e1);
-    const rIn = G0.rIn, rOut = G0.rOut, t0 = G0.t0, t1 = G0.t1, bv = G0.bevel ?? 0.0012, rF = (rIn + rOut) / 2;
-    // 截面（t, r）一圈：内壁 → 内倒角 → 后端面 → 外倒角 → 外圆柱 → 前端面 → 里面一段 → 目镜面上的台阶回到内壁
-    const prof = [[0, rIn], [t0 + bv, rIn], [t0, rIn + bv], [t0, rOut - bv], [t0 + bv, rOut], [t1, rOut], [t1, rF], [0, rF], [0, rIn]];
-    const SEG = G0.seg || 72;
+    const rIn = G0.rIn, rOut = G0.rOut, t0 = G0.t0, t1 = G0.t1, rF = (rIn + rOut) / 2;
+    // 截面（t 沿光轴、负的朝眼睛；r 半径）：橡胶目镜罩——用户 11-21：镜身 / 目镜圈太假（原来是个平头的圆筒）。
+    //   内壁 → 内唇圆角 → 后端面（中间一道浅槽）→ 外唇圆角 → 外圈几道防滑纹 → 前端倒角 → 前端面 → 里面一段 → 目镜面上的台阶回到内壁；
+    //   圆角上的点法线取两边的平均（看着是圆的，不是一圈圈折面），转角处是硬边
+    const W0 = rOut - rIn, L0 = t1 - t0;
+    const lip = Math.min(W0 * 0.24, L0 * 0.3), ch = Math.min(W0 * 0.12, L0 * 0.12);
+    const pts = [];   // { t, r, hard }
+    const add = (t, r, hard) => pts.push({ t, r, hard: !!hard });
+    const arc = (ct, cr0, rad, a0, a1, n) => { for (let i = 1; i < n; i++) { const a = a0 + (a1 - a0) * i / n; add(ct + rad * Math.cos(a), cr0 + rad * Math.sin(a)); } };
+    add(0, rIn, true);
+    add(t0 + lip, rIn, true);
+    arc(t0 + lip, rIn + lip, lip, -Math.PI / 2, -Math.PI, 6);   // 内唇圆角
+    add(t0, rIn + lip, true);
+    const gA = rIn + lip + (W0 - 2 * lip) * 0.42, gW = (W0 - 2 * lip) * 0.16, gD = lip * 0.35;   // 后端面的一道浅槽
+    add(t0, gA, true);
+    add(t0 + gD, gA + gW * 0.5, true);
+    add(t0, gA + gW, true);
+    add(t0, rOut - lip, true);
+    arc(t0 + lip, rOut - lip, lip, Math.PI, Math.PI / 2, 6);   // 外唇圆角
+    add(t0 + lip, rOut, true);
+    const ribs = G0.ribs ?? 4, rib = W0 * 0.05, zone = (L0 - lip - ch) * 0.7, pitch = zone / (ribs + 0.5);
+    for (let k = 0; k < ribs; k++) {   // 防滑纹：一道道浅凹槽
+      const ta = t0 + lip + pitch * (k + 0.5);
+      add(ta, rOut, true);
+      add(ta + pitch * 0.18, rOut - rib, true);
+      add(ta + pitch * 0.36, rOut - rib, true);
+      add(ta + pitch * 0.54, rOut, true);
+    }
+    add(t1 - ch, rOut, true);
+    add(t1, rOut - ch, true);
+    add(t1, rF, true);
+    add(0, rF, true);
+    // 每段的外法线（这一圈是绕着截面顺时针走的：(−dr, dt)）
+    const nS = pts.length;
+    const segN = [];
+    for (let i = 0; i < nS; i++) {
+      const p0 = pts[i], p1 = pts[(i + 1) % nS];
+      const dt = p1.t - p0.t, dr = p1.r - p0.r, dl = Math.hypot(dt, dr) || 1;
+      segN.push([-dr / dl, dt / dl]);
+    }
+    const vN = (i, s) => {   // 第 i 个点在第 s 段上用的法线：硬点用这一段的，圆角上的点取前后两段的平均
+      if (pts[i].hard) return segN[s];
+      const a = segN[(i - 1 + nS) % nS], b = segN[i % nS];
+      const l = Math.hypot(a[0] + b[0], a[1] + b[1]) || 1;
+      return [(a[0] + b[0]) / l, (a[1] + b[1]) / l];
+    };
+    const SEG = G0.seg || 96;
     const P = [], N = [], IDX = [];
-    for (let s = 0; s + 1 < prof.length; s++) {
-      const [ta, ra] = prof[s], [tb, rb] = prof[s + 1];
-      const dt = tb - ta, dr = rb - ra, dl = Math.hypot(dt, dr) || 1;
-      const nt = -dr / dl, nr = dt / dl;   // 截面的外法线（这一圈是绕着截面走的：(−dr, dt)）
+    for (let s0 = 0; s0 < nS; s0++) {
+      const i0 = s0, i1 = (s0 + 1) % nS;
+      const n0 = vN(i0, s0), n1 = vN(i1, s0);
       const base = P.length / 3;
       for (let j = 0; j <= SEG; j++) {
         const th = (j / SEG) * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
         const rd = [e1[0] * c + e2[0] * sn, e1[1] * c + e2[1] * sn, e1[2] * c + e2[2] * sn];
-        for (const [t, r] of [[ta, ra], [tb, rb]]) {
-          P.push(A[0] + u[0] * t + rd[0] * r, A[1] + u[1] * t + rd[1] * r, A[2] + u[2] * t + rd[2] * r);
-          N.push(u[0] * nt + rd[0] * nr, u[1] * nt + rd[1] * nr, u[2] * nt + rd[2] * nr);
+        for (const [q, nn] of [[pts[i0], n0], [pts[i1], n1]]) {
+          P.push(A[0] + u[0] * q.t + rd[0] * q.r, A[1] + u[1] * q.t + rd[1] * q.r, A[2] + u[2] * q.t + rd[2] * q.r);
+          N.push(u[0] * nn[0] + rd[0] * nn[1], u[1] * nn[0] + rd[1] * nn[1], u[2] * nn[0] + rd[2] * nn[1]);
         }
       }
+      const sn0 = segN[s0];
       for (let j = 0; j < SEG; j++) {
         const a = base + j * 2, b = a + 1, c2 = a + 2, d = a + 3;
-        // 绕向：三角形的几何法线要和截面法线同向（Roblox 只画正面）
+        // 绕向：三角形的几何法线要和这一段的法线同向（Roblox 只画正面）
         const pa = P.slice(a * 3, a * 3 + 3), pb = P.slice(b * 3, b * 3 + 3), pc = P.slice(c2 * 3, c2 * 3 + 3);
         const g = cr([pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]], [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]]);
-        const want = N.slice(a * 3, a * 3 + 3);
+        const th = (j + 0.5) / SEG * Math.PI * 2;
+        const rd = [e1[0] * Math.cos(th) + e2[0] * Math.sin(th), e1[1] * Math.cos(th) + e2[1] * Math.sin(th), e1[2] * Math.cos(th) + e2[2] * Math.sin(th)];
+        const want = [u[0] * sn0[0] + rd[0] * sn0[1], u[1] * sn0[0] + rd[1] * sn0[1], u[2] * sn0[0] + rd[2] * sn0[1]];
         if (g[0] * want[0] + g[1] * want[1] + g[2] * want[2] >= 0) IDX.push(a, b, c2, b, d, c2);
         else IDX.push(a, c2, b, b, c2, d);
       }
     }
     const buf = root.listBuffers()[0];
     const col = (G0.col || [38, 38, 40]).map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
-    const mat = doc.createMaterial(`${key}_EyepieceRing`).setBaseColorFactor([col[0], col[1], col[2], 1]).setMetallicFactor(0).setRoughnessFactor(G0.rough ?? 0.72);
+    const mat = doc.createMaterial(`${key}_EyepieceRing`).setBaseColorFactor([col[0], col[1], col[2], 1]).setMetallicFactor(0).setRoughnessFactor(G0.rough ?? 0.9);   // 橡胶：哑光
     const prim = doc.createPrimitive()
       .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(P)).setBuffer(buf))
       .setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(new Float32Array(N)).setBuffer(buf))
@@ -366,7 +411,7 @@ async function buildItem(key, I) {
     const mesh = doc.createMesh(`O_${key}__Eyepiece`).addPrimitive(prim);
     scene.addChild(doc.createNode(`O_${key}__Eyepiece`).setMesh(mesh));
     parts.push({ part: 'Eyepiece', mesh });
-    console.log(`   ${key} ring：正圆目镜圈 ${SEG} 边，洞 ${rIn}、外径 ${rOut}、t ${t0}～${t1}，三角形 ${IDX.length / 3}`);
+    console.log(`   ${key} ring：正圆目镜罩 ${SEG} 边、截面 ${nS} 点，洞 ${rIn}、外径 ${rOut}、t ${t0}～${t1}，三角形 ${IDX.length / 3}`);
   }
   // 一块超过 19500 个三角形：按顺序切成几块（Roblox 导入、EditableMesh 一个网格最多 2 万个三角形），块名 Body、Body_2……
   for (const P of [...parts]) {

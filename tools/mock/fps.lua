@@ -199,7 +199,7 @@ check((seen.PipProbeFx or 0) >= 1, "会动的东西（火光、曳光、车、�
 check((seen.PipProbeWall or 0) >= 1, "地图上的东西（锥里的格子）克隆进画中画")
 local balls = 0
 for _, d in ipairs(pwm:GetChildren()) do if d.ClassName == "Part" and d.Shape == Enum.PartType.Ball and d.Transparency < 0.9 then balls = balls + 1 end end
-check(balls >= 6, "烟幕在画中画里是几团灰球（" .. balls .. " 个），透过镜子看不穿")
+check(balls >= 6, "烟幕在画中画里是一团团里外几层的烟（" .. balls .. " 个），透过镜子看不穿")
 fx:Destroy()
 wall:Destroy()
 local nOut = 0
@@ -208,7 +208,23 @@ for _, f in ipairs(scopeGui and scopeGui:GetDescendants() or {}) do
 end
 check(nOut >= 8, "镜片外面：贴着镜片一圈羽化、再往外整片压暗（" .. nOut .. " 圈）")
 local dofE = R.services.Lighting:FindFirstChild("ScopeDOF")
-check(dofE and dofE.Enabled and dofE.NearIntensity > 0.3, "近处的镜身用景深糊掉（ScopeDOF）")
+check(dofE and dofE.Enabled and dofE.NearIntensity > 0.1 and dofE.NearIntensity < 0.3, string.format("近处的镜身轻轻糊一点（ScopeDOF %.2f；画中画时清楚的金属才像真的）", dofE and dofE.NearIntensity or -1))
+-- 镜身、目镜罩、画中画地形都是 Roblox 自带的真材质（用户 11-21：镜片效果太假）
+local eyeP, bodyP = optPart(vm, "Eyepiece"), optPart(vm, "Body")
+check(eyeP and eyeP.Material == Enum.Material.Rubber and bodyP and bodyP.Material == Enum.Material.Metal, "目镜罩是橡胶、镜身是金属材质（不再是平涂的塑料）")
+local terMats = {}
+for _, d in ipairs(pwm:GetDescendants()) do
+  if d.ClassName == "MeshPart" and d.Name:sub(1, 11) == "PipTerrain_" then terMats[d.Material.Name] = true end
+end
+local tm = {}
+for k in pairs(terMats) do tm[#tm + 1] = k end
+table.sort(tm)
+check(#tm >= 2 and not terMats.SmoothPlastic, "画中画的地形按材质分块、贴真材质纹理（" .. table.concat(tm, "、") .. "）")
+local fake = 0
+for _, d in ipairs(scopeGui:GetDescendants()) do
+  if d.ClassName == "UIStroke" and T.visible(d.Parent) and d.Thickness <= 3 and (d.Color.R > 0.6 or d.Color.B > 0.6) and d.Transparency < 0.95 then fake = fake + 1 end
+end
+check(fake == 0, "镜片上没有反光弧、红蓝彩边圈这些假的东西（" .. fake .. " 道）")
 local acogN, retShown = 0, false
 if scopeGui then
   for _, f in ipairs(scopeGui:GetDescendants()) do

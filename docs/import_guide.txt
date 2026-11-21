@@ -21,6 +21,12 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 21 日第五包（瞄准镜做真）：换游戏文件，再重导 optics/ 的 acog.glb、opt_acog6.glb（第四包导过也要再导这两个：目镜罩换了）；
+    第四包还没导的，atacr.glb、qbu88.glb 也一起导。改的东西：
+    - 镜片上去掉了假的效果（反光弧、红蓝彩边圈、偏蓝的镀膜），只留真瞄准镜里会有的边缘变暗、眼睛没对正时的月牙阴影；镜外压暗、镜身虚化调轻；
+    - 镜里的画面：地形按材质分块，贴 Roblox 自带的草 / 沙 / 岩石……材质纹理（原来是一整块光滑的颜色）；亮度、色调跟着主画面的曝光和调色；烟幕改成一团团软边的烟；
+    - 镜身：两具 ACOG 的目镜罩做成带圆角唇边、端面一道槽、外圈防滑纹的橡胶罩；镜身用金属材质、目镜罩橡胶、镜片玻璃（原模型没贴图，原来是一片平涂的灰塑料）。
+
   11 月 21 日第四包（瞄准镜）：换游戏文件（或者「三、只换脚本」），再重导 optics/ 里的 4 个：acog.glb、opt_acog6.glb、atacr.glb、qbu88.glb
     （先在资源管理器里删掉以前导入的 O_acog__、O_opt_acog6__、O_atacr__、O_qbu88__ 开头的零件再导；没重导也能玩，自动用现生成的，没有原贴图）：
     - 两具 ACOG 的目镜补了正圆的目镜圈（原模型是八边形）；开镜时镜身一直看得见，从正圆的目镜洞里看；
