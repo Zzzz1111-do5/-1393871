@@ -411,14 +411,25 @@ function Fx.init(G)
   local climbP, climbY = 0, 0                       -- 还没加上去的上抬、左右飘
   local aP, aY = 0, 0                               -- 步行时已经加进镜头朝向里的「一下就回来的」那份
   local SPR = 30                                    -- 弹簧角频率（临界阻尼）
+  -- 什么时候加（用户 11-21：边走边开枪后坐力是往下的）：步行时在镜头模块之后、记录仪晃动（Bodycam，Camera + 5）之前加——
+  --   原来在最后（Last）加，记录仪下一帧开头还原晃动时发现镜头被动过就不还原，它那份总是往下的低头晃动每帧都留在镜头里，
+  --   边走边打一路往下压。开车、开飞机的脚本镜头每帧重新摆，还是要在最后加（IAShakeLate）
+  local tP, tY, tR, live = 0, 0, 0, false
   pcall(function()
-    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Last.Value, function(dt)
+    RunService:BindToRenderStep("IAShakeLate", Enum.RenderPriority.Last.Value, function()
+      if live and cam.CameraType == Enum.CameraType.Scriptable then cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR) end
+    end)
+  end)
+  pcall(function()
+    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Camera.Value + 2, function(dt)
       dt = math.min(dt, 0.1)
+      live = false
       if trauma <= 0.002 and climbP == 0 and climbY == 0 and math.abs(pp) + math.abs(py) + math.abs(pr) + math.abs(vp) + math.abs(vy) + math.abs(vr) < 1e-5
         and aP == 0 and aY == 0 then
         pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0
         return
       end
+      live = true
       local n = math.max(1, math.ceil(dt / (1 / 240)))   -- 弹簧分小步算（帧率低时不发散）
       local h = dt / n
       for _ = 1, n do
@@ -438,7 +449,7 @@ function Fx.init(G)
       else
         trauma = 0
       end
-      local tP, tY, tR = pp + sP, py + sY, pr + sR
+      tP, tY, tR = pp + sP, py + sY, pr + sR
       local f = 1 - math.exp(-dt * 40)   -- 上抬几帧里加完（60 帧时一帧加一半）
       local cP, cY = climbP * f, climbY * f
       climbP -= cP
@@ -446,8 +457,7 @@ function Fx.init(G)
       if math.abs(climbP) < 1e-6 then climbP = 0 end
       if math.abs(climbY) < 1e-6 then climbY = 0 end
       if cam.CameraType == Enum.CameraType.Scriptable then
-        cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR)
-        aP, aY = 0, 0
+        aP, aY = 0, 0   -- 脚本镜头：IAShakeLate 在最后加全量
       else
         cam.CFrame = cam.CFrame * CFrame.Angles(cP + tP - aP, cY + tY - aY, tR)
         aP, aY = tP, tY

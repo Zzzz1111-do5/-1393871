@@ -475,11 +475,15 @@ local ENUMS = {
   ContextActionResult = "Sink Pass",
 }
 local Enum = {}
+-- 有的枚举 Value 不是 0、1、2…：渲染优先级同 Roblox（First 0、Input 100、Camera 200、Character 300、Last 2000），
+--   BindToRenderStep 按它排先后（原来编成 0～4，「镜头 + 5」排到了「最后」后面）
+local VALUES = { RenderPriority = { First = 0, Input = 100, Camera = 200, Character = 300, Last = 2000 } }
 for ename, list in pairs(ENUMS) do
   local items = {}
   local i = 0
   for name in list:gmatch("%S+") do
-    items[name] = setmetatable({ Name = name, EnumType = ename, Value = i }, { __type = "EnumItem", __tostring = function() return "Enum." .. ename .. "." .. name end })
+    local val = VALUES[ename] and VALUES[ename][name] or i
+    items[name] = setmetatable({ Name = name, EnumType = ename, Value = val }, { __type = "EnumItem", __tostring = function() return "Enum." .. ename .. "." .. name end })
     i = i + 1
   end
   Enum[ename] = setmetatable({}, { __index = function(_, k)
@@ -1229,7 +1233,7 @@ def("EchoSoundEffect", "Instance", { Delay = { T.number, 1 }, Feedback = { T.num
 def("ReverbSoundEffect", "Instance", { DecayTime = { T.number, 1.5 }, Density = { T.number, 1 }, Diffusion = { T.number, 1 }, DryLevel = { T.number, -6 }, WetLevel = { T.number, 0 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
 def("TremoloSoundEffect", "Instance", { Depth = { T.number, 1 }, Duty = { T.number, 0.5 }, Frequency = { T.number, 5 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
 def("PitchShiftSoundEffect", "Instance", { Octave = { T.number, 1.25 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
-def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number, 100 }, WalkSpeed = { T.number, 16 },
+def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number, 100 }, WalkSpeed = { T.number, 16 }, MoveDirection = { T.Vector3, v3() },
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
@@ -1663,14 +1667,27 @@ R.services.RunService = service("RunService", {}, { ro = {
     return R.RenderStepped
   end,
 }, methods = { IsStudio = function() return true end, IsServer = function() return side() == "server" end, IsClient = function() return side() == "client" end,
+  -- 同 Roblox：绑上的按优先级从小到大跑（原来按绑定先后，测不出谁先谁后的问题——记录仪晃动和后坐力的先后就是这样，用户 11-21）
   BindToRenderStep = function(_, name, prio, f)
     if side() ~= "client" then error("BindToRenderStep 只能在客户端用", 2) end
     if type(name) ~= "string" or type(prio) ~= "number" or type(f) ~= "function" then error("BindToRenderStep(名字, 优先级数字, 函数)", 2) end
     R.boundSteps = R.boundSteps or {}
-    R.boundSteps[name] = R.RenderStepped:Connect(f)
+    R.boundSeq = (R.boundSeq or 0) + 1
+    R.boundSteps[name] = { prio = prio, f = f, seq = R.boundSeq }
+    if not R.boundConn then
+      R.boundConn = R.RenderStepped:Connect(function(dt)
+        local list = {}
+        for _, b in pairs(R.boundSteps) do table.insert(list, b) end
+        table.sort(list, function(a, b2) if a.prio ~= b2.prio then return a.prio < b2.prio end return a.seq < b2.seq end)
+        for _, b in ipairs(list) do
+          local ok, e = pcall(b.f, dt)
+          if not ok then report(tostring(e)) end
+        end
+      end)
+    end
   end,
   UnbindFromRenderStep = function(_, name)
-    if R.boundSteps and R.boundSteps[name] then R.boundSteps[name]:Disconnect() R.boundSteps[name] = nil end
+    if R.boundSteps then R.boundSteps[name] = nil end
   end,
 } })
 R.services.Debris = service("Debris", {}, { methods = { AddItem = function(_, inst, t)

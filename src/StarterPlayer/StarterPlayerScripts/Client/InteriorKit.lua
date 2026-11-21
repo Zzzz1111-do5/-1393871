@@ -150,7 +150,8 @@ function B:screen(g, w, h, cf, page, opt)
   local touch = opt.touch == true and type(opt.keys) == "table"
   local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
-  self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
+  -- 屏幕后面的边框底板；平显组合玻璃（noBack）不要：原来平显也垫了一块不透明黑底板，游戏里是一块黑方块上画绿字、挡住正前方（用户 11-21：光学显示屏不够还原）
+  if not opt.noBack then self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic) end
   -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
   --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
   --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度

@@ -4213,8 +4213,8 @@ add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured point
 add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
 add("ui.needPick", "先选一个生成点", "Pick a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
-add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（副武器是战术平板）· Q 上一把 · V 第一 / 第三人称 · E 上车 / 操作 · N 夜视 · Tab 战况 · M 地图",
-  "WASD move · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (secondary = tactical tablet) · Q last weapon · V 1st / 3rd person · E enter / man · N night vision · Tab scoreboard · M map")
+add("ui.help", "WASD 移动 · 按住 Shift 疾跑 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（再按一次收枪、空手；副武器是战术平板）· Q 上一把 · V 第一 / 第三人称 · E 上车 / 操作 · N 夜视 · Tab 战况 · M 地图",
+  "WASD move · hold Shift sprint · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (press again to holster; secondary = tactical tablet) · Q last weapon · V 1st / 3rd person · E enter / man · N night vision · Tab scoreboard · M map")
 -- 载具
 add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
 add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")
@@ -26343,6 +26343,7 @@ function FPSView.init(G)
   -- 举镜进度（0～1；不是第一人称时当举好了）：Play 的倍率跟着它慢慢放大
   function G.fpsAds() return vm and ads or 1 end
   local lastCam, lastPos, bobPhase, speedS, latS = nil, nil, 0, 0, 0
+  local sprintK = 0   -- 疾跑姿势（Play.lua 的 G.sprinting）：0 端枪、1 枪斜着往下
   local hiddenTool = nil
   local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
   local badTool = setmetatable({}, { __mode = "k" })     -- [工具] = 建视图模型出过错（不再重建）
@@ -26467,6 +26468,9 @@ function FPSView.init(G)
         end
       end
     end
+    -- 疾跑：枪往下、往左斜着端（跑起来不瞄准）
+    sprintK += ((G.sprinting and 1 or 0) - sprintK) * math.min(1, dt * 8)
+    if sprintK > 0.001 then extra = extra * CF(0.05 * sprintK, -0.12 * sprintK, 0.05 * sprintK) * CFrame.Angles(-0.38 * sprintK, 0.5 * sprintK, 0.25 * sprintK) end
     local adsT = ADS_CF
     if vm.optic then adsT = opticAds(vm.optic) end
     local adsCF = CF():Lerp(adsT, ads)
@@ -29970,14 +29974,25 @@ function Fx.init(G)
   local climbP, climbY = 0, 0                       -- 还没加上去的上抬、左右飘
   local aP, aY = 0, 0                               -- 步行时已经加进镜头朝向里的「一下就回来的」那份
   local SPR = 30                                    -- 弹簧角频率（临界阻尼）
+  -- 什么时候加（用户 11-21：边走边开枪后坐力是往下的）：步行时在镜头模块之后、记录仪晃动（Bodycam，Camera + 5）之前加——
+  --   原来在最后（Last）加，记录仪下一帧开头还原晃动时发现镜头被动过就不还原，它那份总是往下的低头晃动每帧都留在镜头里，
+  --   边走边打一路往下压。开车、开飞机的脚本镜头每帧重新摆，还是要在最后加（IAShakeLate）
+  local tP, tY, tR, live = 0, 0, 0, false
   pcall(function()
-    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Last.Value, function(dt)
+    RunService:BindToRenderStep("IAShakeLate", Enum.RenderPriority.Last.Value, function()
+      if live and cam.CameraType == Enum.CameraType.Scriptable then cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR) end
+    end)
+  end)
+  pcall(function()
+    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Camera.Value + 2, function(dt)
       dt = math.min(dt, 0.1)
+      live = false
       if trauma <= 0.002 and climbP == 0 and climbY == 0 and math.abs(pp) + math.abs(py) + math.abs(pr) + math.abs(vp) + math.abs(vy) + math.abs(vr) < 1e-5
         and aP == 0 and aY == 0 then
         pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0
         return
       end
+      live = true
       local n = math.max(1, math.ceil(dt / (1 / 240)))   -- 弹簧分小步算（帧率低时不发散）
       local h = dt / n
       for _ = 1, n do
@@ -29997,7 +30012,7 @@ function Fx.init(G)
       else
         trauma = 0
       end
-      local tP, tY, tR = pp + sP, py + sY, pr + sR
+      tP, tY, tR = pp + sP, py + sY, pr + sR
       local f = 1 - math.exp(-dt * 40)   -- 上抬几帧里加完（60 帧时一帧加一半）
       local cP, cY = climbP * f, climbY * f
       climbP -= cP
@@ -30005,8 +30020,7 @@ function Fx.init(G)
       if math.abs(climbP) < 1e-6 then climbP = 0 end
       if math.abs(climbY) < 1e-6 then climbY = 0 end
       if cam.CameraType == Enum.CameraType.Scriptable then
-        cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR)
-        aP, aY = 0, 0
+        aP, aY = 0, 0   -- 脚本镜头：IAShakeLate 在最后加全量
       else
         cam.CFrame = cam.CFrame * CFrame.Angles(cP + tP - aP, cY + tY - aY, tR)
         aP, aY = tP, tY
@@ -37888,7 +37902,7 @@ end
 --   驾驶杆（中央杆 / 侧杆，跟着杆量动）、油门（跟着油门走）、脚蹬（跟着方向舵）、起落架手柄（跟着起落架收放，三个绿灯）、
 --   主告警 / 注意灯、备份仪表（姿态、高度、空速）
 --   L = { disp = "j20" / "f35" / "f22" / "j16" / "j15t" / "a10" / "pano", hud = true / false, hudW / hudH = 平显组合玻璃宽高,
---         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
+--         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）/ "wide"（歼-20：两根粗立柱往外斜）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
 --         goldGlass = 座舱盖镀金（隐身机）, stick = "center" / "side",
 --         seats = 1 / 2, cn = 中文标签, frame = 风挡有框, minScreens = 这一型真有几块屏（测试按它查，默认 5）, noRadar = 没有雷达（A-10C） }
 -- 各型的屏幕块数、尺寸、摆法照网上查到的资料（docs/cockpit_research.md，出处写在里面；查不到的歼-35、歼-50 用 pano 整块大屏）
@@ -37993,19 +38007,30 @@ function Defs.jet(b, ctx, L)
     for i = 1, nk do b:knob(H, cf * CF(w / 2 - (i - 0.5) * w / nk, -h / 2 + 0.013, 0), 0.015) end
   end
   if disp == "j20" then
-    -- 歼-20（用户 11-21 给的第一人称参考图 + 资料：24 × 9 英寸触摸大屏、三块小辅助屏、广角平显）：底下横贯一整块大屏
-    --   （左圆形雷达、中飞行、右挂弹外形）；平显下正前方控制板（小液晶、上排 5 键、左 F1–F4、右 F5–F8、两排数字键）；
-    --   控制板左边 2 × 2 四个发动机小圆表，右边一块备份姿态
+    -- 歼-20（用户 11-21 给的真机座舱照片 + 资料：24 × 9 英寸触摸大屏、广角全息平显）：底下横贯一整块大屏，黑框很厚、上下一排螺钉
+    --   （左窗上面一排小表 + 圆形雷达 + 目标表，中间飞机俯视挂弹，右半地图）；平显下面正中一块触摸屏控制板（蓝紫底 4 × 4 触摸键，
+    --   装在厚黑框里，框两边几个小键）；控制板右边一块方形小屏（下面一排 4 个键），左边一块小开关板（大旋钮、小旋钮、方按钮、拨动开关）
     local KT = { top = { "态势", "雷达", "武器", "发动机", "油量" }, bottom = { "姿态", "通信", "导航", "检查", "菜单" } }
-    b:screen(H, 0.61, 0.23, flush(0, -0.515), "j20_main", { keys = KT, touch = true, touchH = 0.09, lightK = 0.5, lightColor = RGB(140, 180, 220) })
-    ufcBox(cons(0, -0.30), 0.20, 0.135, { sw = 0.11, sh = 0.05, sy = 0.022,
-      top = { "数字", "上档", "控制", "确认", "返回" }, left = { "F1", "F2", "F3", "F4" }, right = { "F5", "F6", "F7", "F8" },
-      pad = { { "1", "2", "3", "4", "5" }, { "6", "7", "8", "9", "0" } } })
-    for i, pg in ipairs({ "n_l", "n_r", "t_l", "t_r" }) do
-      local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
-      b:screen(H, 0.04, 0.04, cons(-0.198 + col * 0.048, -0.276 - row * 0.048), pg, { light = false, ppm = 2600, bezel = 0.004 })
+    local mcf = flush(0, -0.525)
+    b:screen(H, 0.61, 0.23, mcf, "j20_main", { keys = KT, touch = true, touchH = 0.07, bezel = 0.024, frame = RGB(18, 18, 20), lightK = 0.5, lightColor = RGB(140, 180, 220) })
+    for i = 0, 7 do
+      for _, sy in ipairs({ -1, 1 }) do b:cylZ(H, 0.006, 0.009, mcf * CF(-0.29 + i * 0.58 / 7, sy * 0.127, -0.003), RGB(70, 72, 74), MAT.Metal) end
     end
-    b:screen(H, 0.065, 0.065, cons(0.17, -0.30), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.008 })
+    local ucf = cons(0, -0.305)   -- 控制板：厚黑框 + 触摸屏 + 框两边各三个小键（局部 +X 是人看来的左边）
+    b:box(H, V(0.19, 0.135, 0.03), ucf * CF(0, 0, -0.015), RGB(20, 20, 22), MAT.SmoothPlastic)
+    b:screen(H, 0.16, 0.105, ucf * CF(0, 0, -0.031), "ufct", { lightK = 0.25, bezel = 0.002, depth = 0.002, ppm = 1800, lightColor = RGB(150, 140, 230) })
+    for _, sx in ipairs({ -1, 1 }) do
+      for i = 0, 2 do b:button(H, ucf * CF(sx * 0.0875, 0.03 - i * 0.03, -0.031), RGB(44, 46, 48), 0.009) end
+    end
+    b:box(H, V(0.085, 0.10, 0.02), cons(0.175, -0.30) * CF(0, 0, -0.01), RGB(20, 20, 22), MAT.SmoothPlastic)   -- 右边方形小屏 + 4 个键
+    b:screen(H, 0.062, 0.062, cons(0.175, -0.29) * CF(0, 0, -0.021), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.003, depth = 0.003 })
+    for i = 0, 3 do b:button(H, cons(0.175 + (i - 1.5) * 0.017, -0.337) * CF(0, 0, -0.021), RGB(44, 46, 48), 0.011) end
+    local lcf = cons(-0.18, -0.30)   -- 左边小开关板
+    b:box(H, V(0.13, 0.075, 0.015), lcf * CF(0, 0, -0.0075), RGB(26, 27, 29), MAT.SmoothPlastic)
+    b:knob(H, lcf * CF(0.04, -0.008, -0.015), 0.034)
+    b:knob(H, lcf * CF(0.005, -0.008, -0.015), 0.018)
+    b:button(H, lcf * CF(-0.025, -0.008, -0.015), RGB(40, 42, 44), 0.02)
+    b:toggle(H, lcf * CF(-0.05, -0.008, -0.015))
     standby = false
   elseif disp == "f35" then
     -- F-35（用户 11-21 给的真机照片 + 资料：20 × 8 英寸全景屏，两块 10 × 8 英寸拼成，触摸，没有边框键；没有平显）：全景屏在仪表板最上面，
@@ -38115,16 +38140,19 @@ function Defs.jet(b, ctx, L)
       bx(hw + t * 2, t, 0.03, 0, gy + hh / 2 + t / 2, -0.665, HC, MAT.SmoothPlastic)
       for _, sx in ipairs({ -1, 1 }) do bx(0.03, 0.03, 0.03, sx * (hw / 2 - 0.004), gy + hh / 2 - 0.004, -0.665, HC, MAT.SmoothPlastic, 0, 0, 45) end   -- 圆角
       bx(0.022, 0.07, 0.03, -(hw / 2 + 0.04), gy - 0.01, -0.665, RGB(26, 26, 28), MAT.SmoothPlastic)
-    elseif L.hudFrame == "tall" then   -- 歼-16、歼-20 参考图，F-22 真机：两根立柱 + 顶梁
+    elseif L.hudFrame == "wide" then   -- 歼-20 真机照片：广角平显，两根粗立柱往外斜，上面没有顶梁
+      for _, sx in ipairs({ -1, 1 }) do bx(0.022, hh + 0.05, 0.02, sx * (hw / 2 + 0.014), gy + 0.012, -0.672, HC, MAT.SmoothPlastic, 0, 0, -sx * 10) end
+    elseif L.hudFrame == "tall" then   -- 歼-16 参考图，F-22 真机：两根立柱 + 顶梁
       for _, sx in ipairs({ -1, 1 }) do bx(0.014, hh + 0.03, 0.014, sx * (hw / 2 + 0.006), gy + 0.008, -0.67, HC, MAT.Metal) end
       bx(hw + 0.026, 0.012, 0.014, 0, gy + hh / 2 + 0.018, -0.67, HC, MAT.Metal)
     else
       for _, sx in ipairs({ -1, 1 }) do bx(0.012, 0.15, 0.012, sx * (hw / 2), -0.07, -0.67, HC, MAT.Metal) end
     end
-    local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
-    hs.part.Material = MAT.Glass
-    hs.part.Transparency = 0.86
-    hs.part.Color = RGB(150, 200, 170)
+    local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, noBack = true })
+    hs.part.Material = MAT.Glass   -- 组合玻璃：真透明、带一点绿（原来后面垫着一块不透明黑底板）
+    hs.part.Transparency = 0.93   -- 参考图：组合玻璃几乎看不见，只看得见框、一点反光和绿色符号
+    hs.part.Reflectance = 0.06
+    hs.part.Color = RGB(150, 205, 165)
     hs.root.BackgroundTransparency = 1
     b:name("hud", hs)
   end
@@ -38286,7 +38314,7 @@ function Defs.jet(b, ctx, L)
 end
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "tall", stick = "center", cn = true, goldGlass = true,
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
 Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
@@ -38302,10 +38330,11 @@ Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true,
 local function hudUnit(b, g, p, at)
   b:box(g, V(0.18, 0.07, 0.20), CF(p + V(0, -0.11, 0.01)), RGB(30, 32, 34), MAT.Metal)
   for _, sx in ipairs({ -1, 1 }) do b:box(g, V(0.012, 0.13, 0.012), CF(p + V(sx * 0.08, -0.02, -0.005)), RGB(30, 32, 34), MAT.Metal) end
-  local hs = b:screen(g, 0.15, 0.12, CFrame.lookAt(p, at + V(0, 0.02, 0)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
-  hs.part.Material = MAT.Glass
-  hs.part.Transparency = 0.86
-  hs.part.Color = RGB(150, 200, 170)
+  local hs = b:screen(g, 0.15, 0.12, CFrame.lookAt(p, at + V(0, 0.02, 0)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, noBack = true })
+  hs.part.Material = MAT.Glass   -- 组合玻璃：真透明（原来后面垫着一块不透明黑底板）
+  hs.part.Transparency = 0.93
+  hs.part.Reflectance = 0.06
+  hs.part.Color = RGB(150, 205, 165)
   hs.root.BackgroundTransparency = 1
   b:name("hud", hs)
   return hs
@@ -38889,7 +38918,8 @@ function B:screen(g, w, h, cf, page, opt)
   local touch = opt.touch == true and type(opt.keys) == "table"
   local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
-  self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic)
+  -- 屏幕后面的边框底板；平显组合玻璃（noBack）不要：原来平显也垫了一块不透明黑底板，游戏里是一块黑方块上画绿字、挡住正前方（用户 11-21：光学显示屏不够还原）
+  if not opt.noBack then self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic) end
   -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
   --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
   --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度
@@ -40723,7 +40753,42 @@ P.rwr = function(s, env, zh)
   end
 end
 
--- 正前方控制板的小液晶（歼-20、歼-15T 参考图：一行行电台、导航、方式字）
+-- 歼-20 正前方控制板（用户 11-21 给的真机座舱照片）：一块触摸屏，蓝紫底，4 × 4 一格格中文触摸键，下面一排页签、正中一个绿色圆键
+P.ufct = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.BackgroundColor3 = RGB(255, 255, 255)
+  local gr = Instance.new("UIGradient")
+  gr.Color = ColorSequence.new(RGB(78, 68, 176), RGB(28, 34, 92))
+  gr.Rotation = 90
+  gr.Parent = R
+  local labels = zh and { "导航", "通信", "识别", "告警", "雷达", "光电", "电子战", "数据链", "武器", "燃油", "航路", "进场", "自检", "记录", "灯光", "菜单" }
+    or { "NAV", "COM", "IFF", "WARN", "RDR", "EO", "EW", "LINK", "WPN", "FUEL", "ROUTE", "APP", "BIT", "REC", "LIGHT", "MENU" }
+  local gx, gy = W * 0.05, H * 0.05
+  local cw, ch = (W - gx * 2) / 4, (H * 0.76 - gy) / 4
+  local cells = {}
+  for i, t in ipairs(labels) do
+    local c, r = (i - 1) % 4, math.floor((i - 1) / 4)
+    local x, y = gx + c * cw + 3, gy + r * ch + 3
+    F(R, x, y, cw - 6, ch - 6, RGB(16, 22, 64), 0.4, 3)
+    Box(R, x, y, cw - 6, ch - 6, 1, RGB(120, 140, 230), 4)
+    cells[i] = Tx(R, t, x, y, cw - 6, ch - 6, 12, RGB(225, 232, 255), Enum.TextXAlignment.Center, FONTB, 5)
+  end
+  local tabs = zh and { "主页", "飞行", "姿态", "", "外挂", "检查", "设置" } or { "HOME", "FLT", "ATT", "", "STORES", "CHK", "SET" }
+  local tw = W / #tabs
+  for i, t in ipairs(tabs) do
+    if t ~= "" then Tx(R, t, (i - 1) * tw, H * 0.84, tw, H * 0.12, 10, RGB(160, 230, 170), Enum.TextXAlignment.Center, FONT, 5) end
+  end
+  local okR = math.min(tw, H * 0.16) * 0.5
+  Ring(R, W / 2, H * 0.9, okR, 2, RGB(110, 240, 140), 6, RGB(40, 170, 80))
+  Tx(R, zh and "确认" or "OK", W / 2 - okR, H * 0.9 - okR, okR * 2, okR * 2, 10, RGB(240, 255, 240), Enum.TextXAlignment.Center, FONTB, 7)
+  return function(d)
+    local warn = d.warn and d.warn ~= ""   -- 有告警时「告警」格闪红
+    cells[4].TextColor3 = (warn and (math.floor(os.clock() * 3) % 2 == 0)) and RGB(255, 90, 80) or RGB(225, 232, 255)
+  end
+end
+
+-- 正前方控制板的小液晶（歼-15T 参考图：一行行电台、导航、方式字）
 P.ufcc = function(s, env, zh)
   local W, H = s.px.X, s.px.Y
   local G = RGB(120, 240, 160)
@@ -40842,9 +40907,10 @@ end
 P.pano = multi({ { 0, 0.42, "sa" }, { 0.42, 0.28, "pfd" }, { 0.70, 0.30, "sms" } },
   { SA = { 1, "sa" }, RDR = { 1, "radar" }, SMS = { 3, "sms" }, ENG = { 3, "eng" }, PFD = { 2, "pfd" },
     ["态势"] = { 1, "sa" }, ["雷达"] = { 1, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" }, ["油量"] = { 3, "eng" } })
--- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的第一人称参考图）：左边圆形雷达、中间飞行、右边挂弹外形；触摸菜单换窗口内容
-P.j20_main = multi({ { 0, 0.36, "rscope", "雷达" }, { 0.36, 0.28, "pfd", "飞行" }, { 0.64, 0.36, "sms", "武器" } },
-  { ["态势"] = { 1, "tsd" }, ["雷达"] = { 1, "rscope" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的真机座舱照片）：左边一窗上面一排小表 + 圆形雷达 + 目标表，中间飞机俯视挂弹，
+--   右边一半是地图（照片上是卫星图）；触摸菜单换窗口内容
+P.j20_main = multi({ { 0, 0.30, "j20left" }, { 0.30, 0.20, "sms" }, { 0.50, 0.50, "sa" } },
+  { ["态势"] = { 3, "sa" }, ["雷达"] = { 1, "j20left" }, ["武器"] = { 2, "sms" }, ["发动机"] = { 2, "eng" }, ["油量"] = { 2, "eng" }, ["姿态"] = { 2, "pfd" } })
 -- 歼-16 大屏（用户 11-21 给的「J-16 座舱环视」参考图：一整块横屏分四个窗口）：飞行、雷达、态势、雷达告警
 P.j16_main = multi({ { 0, 0.25, "pfd", "飞行" }, { 0.25, 0.25, "radar", "雷达" }, { 0.5, 0.25, "tsd", "态势" }, { 0.75, 0.25, "rwr", "告警" } },
   { ["姿态"] = { 1, "pfd" }, ["雷达"] = { 2, "radar" }, ["态势"] = { 3, "tsd" }, ["武器"] = { 4, "sms" }, ["发动机"] = { 4, "eng" }, ["油量"] = { 4, "eng" } })
@@ -40962,13 +41028,39 @@ P.gmeter = function(s, env, zh)
   local set = dial(s, 12, zh and "过载" or "G")
   return function(d) set(-PI / 2 + clamp(((d.g or 1) - 1) / 8, -0.4, 1) * PI * 1.25) end
 end
--- 发动机小圆表（歼-20 参考图：控制板左边 2 × 2 四个）：左右发动机转速、排气温度，跟着油门
-for _, e in ipairs({ { "n_l", "转速左", "RPM L", 0.6, 3.6 }, { "n_r", "转速右", "RPM R", 0.6, 3.6 }, { "t_l", "排温左", "EGT L", 1.4, 2.6 }, { "t_r", "排温右", "EGT R", 1.4, 2.6 } }) do
-  P[e[1]] = function(s, env, zh)
-    local set = dial(s, 10, zh and e[2] or e[3])
-    return function(d) set(e[4] + clamp((d.thr or 0) / 100, 0, 1.3) * e[5]) end
+-- 歼-20 大屏左边那一窗（真机照片）：上面一排四个小表（左右发动机转速、排温）+ 飞机图标，中间圆形雷达，下面一张目标表
+P.j20left = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local th, bh = H * 0.2, H * 0.2
+  local sets = {}
+  for i = 1, 4 do
+    local f = F(R, (i - 1) * W * 0.16, 0, W * 0.16, th, RGB(0, 0, 0), 0, 2)
+    sets[i] = dial({ root = f, px = Vector3.new(W * 0.16, th, 0) }, 8, "")
+    f.BackgroundTransparency = 1
+  end
+  Tx(R, "✈", W * 0.66, 0, W * 0.14, th, math.floor(th * 0.7), RGB(90, 230, 120), Enum.TextXAlignment.Center, FONTB, 3)
+  local tab = Tx(R, "", W * 0.80, 2, W * 0.2 - 2, th - 4, 9, RGB(90, 230, 120), nil, FONT, 3)
+  local mid = F(R, 0, th, W, H - th - bh, RGB(0, 0, 0), 1, 2)
+  local up = P.rscope({ root = mid, px = Vector3.new(W, H - th - bh, 0) }, env, zh)
+  local rows = {}
+  for i = 1, 3 do rows[i] = Tx(R, "", 4, H - bh + (i - 1) * bh / 3, W - 8, bh / 3, 10, RGB(90, 230, 120), nil, FONT, 3) end
+  return function(d)
+    local k = clamp((d.thr or 0) / 100, 0, 1.3)
+    sets[1](0.6 + k * 3.6) sets[2](0.6 + k * 3.6) sets[3](1.4 + k * 2.6) sets[4](1.4 + k * 2.6)
+    tab.Text = string.format(zh and "油 %d%%\n过载 %.1f" or "FUEL %d%%\nG %.1f", math.floor((d.fuel or 1) * 100), d.g or 1)
+    up(d)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if not c.friend and n < 3 then
+        n += 1
+        rows[n].Text = string.format(zh and "目标%d  方位 %03d  %d 公里" or "TGT%d  BRG %03d  %d KM", n, math.floor((c.az or 0) % 360), math.floor(c.km or 0))
+      end
+    end
+    for i = n + 1, 3 do rows[i].Text = (i == 1) and (zh and "无目标" or "NO TGT") or "" end
   end
 end
+
 -- A-10 的一排机械仪表（两台发动机转速、涡轮温度、燃油、油压）
 P.gauges = function(s, env)
   local W, H = s.px.X, s.px.Y
@@ -44088,17 +44180,24 @@ function Play.init(G)
     if cur0 then lastTool = cur0 end
     hum:EquipTool(t)
   end
-  -- 按数字键拿第几件：已经拿着就不动（原来是收起来、变成空手——用户：切到 2 号武器就卡住，多半是连按 / 按住时收起来了）；
-  --   0.15 秒内只认一次（键盘连发、和别的界面同时收到按键）
+  -- 按数字键拿第几件；已经拿着这一把再按一次就收起来、空手（用户 11-21：持枪按 1 回不到空手）——
+  --   刚拿出来 0.4 秒内再按不收（以前连按两下又收回去、像卡住了：用户说过「切到 2 号武器就卡住」）；0.15 秒内只认一次
   local lastEquipT = 0
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 or G.drive then return end
     local t = tools()[i]
-    if not t or t.Parent == char then return end
+    if not t then return end
     local now = os.clock()
     if now - lastEquipT < 0.15 then return end
+    if t.Parent == char then
+      if now - lastEquipT < 0.4 then return end
+      lastEquipT = now
+      lastTool = t
+      hum:UnequipTools()
+      return
+    end
     lastEquipT = now
     equipTool(t)
   end
@@ -44462,6 +44561,7 @@ function Play.init(G)
       player.CameraMinZoomDistance = 8
     end
   end
+  local sprint = { hum = nil, base = 16, set = nil }   -- 疾跑：基础速度、自己设的那个数
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
       if touchControls then touchControls.Visible = false end
@@ -44493,6 +44593,26 @@ function Play.init(G)
       end
     end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
+    -- 疾跑（用户 11-21：按住 Shift 没法疾跑）：按住 Shift 往前走，速度 × 1.6；开枪、开镜、换弹、开着菜单时不跑。
+    --   基础速度是服务器给的（兵种、铁丝网里减速），这里只在上面乘：服务器改了（不是自己设的那个数）就跟着换基础速度
+    if hum and hum.Health > 0 then
+      local ws = hum.WalkSpeed
+      if sprint.hum ~= hum then sprint.hum, sprint.base, sprint.set = hum, ws, nil end
+      if sprint.set == nil or math.abs(ws - sprint.set) > 0.01 then sprint.base = ws end
+      local shift = (UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)) and UIS:GetFocusedTextBox() == nil
+      local md, lk = hum.MoveDirection, cam.CFrame.LookVector
+      local flat = V(lk.X, 0, lk.Z)
+      local fwd = md.Magnitude > 0.1 and flat.Magnitude > 0.1 and md.Unit:Dot(flat.Unit) > 0.5
+      local am = cur.id and ammoOf(cur.id)
+      local busy = cur.firing or cur.aiming or (am and am.r > 0) or menu
+      local run = shift and fwd and not busy and not (hrp and hrp.Anchored)
+      G.sprinting = run == true
+      local want = sprint.base * (run and 1.6 or 1)
+      if math.abs(ws - want) > 0.01 then hum.WalkSpeed = want end
+      sprint.set = want
+    else
+      G.sprinting = false
+    end
     baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
       hum.AutoRotate = true

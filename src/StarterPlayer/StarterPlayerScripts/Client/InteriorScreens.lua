@@ -1251,7 +1251,42 @@ P.rwr = function(s, env, zh)
   end
 end
 
--- 正前方控制板的小液晶（歼-20、歼-15T 参考图：一行行电台、导航、方式字）
+-- 歼-20 正前方控制板（用户 11-21 给的真机座舱照片）：一块触摸屏，蓝紫底，4 × 4 一格格中文触摸键，下面一排页签、正中一个绿色圆键
+P.ufct = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.BackgroundColor3 = RGB(255, 255, 255)
+  local gr = Instance.new("UIGradient")
+  gr.Color = ColorSequence.new(RGB(78, 68, 176), RGB(28, 34, 92))
+  gr.Rotation = 90
+  gr.Parent = R
+  local labels = zh and { "导航", "通信", "识别", "告警", "雷达", "光电", "电子战", "数据链", "武器", "燃油", "航路", "进场", "自检", "记录", "灯光", "菜单" }
+    or { "NAV", "COM", "IFF", "WARN", "RDR", "EO", "EW", "LINK", "WPN", "FUEL", "ROUTE", "APP", "BIT", "REC", "LIGHT", "MENU" }
+  local gx, gy = W * 0.05, H * 0.05
+  local cw, ch = (W - gx * 2) / 4, (H * 0.76 - gy) / 4
+  local cells = {}
+  for i, t in ipairs(labels) do
+    local c, r = (i - 1) % 4, math.floor((i - 1) / 4)
+    local x, y = gx + c * cw + 3, gy + r * ch + 3
+    F(R, x, y, cw - 6, ch - 6, RGB(16, 22, 64), 0.4, 3)
+    Box(R, x, y, cw - 6, ch - 6, 1, RGB(120, 140, 230), 4)
+    cells[i] = Tx(R, t, x, y, cw - 6, ch - 6, 12, RGB(225, 232, 255), Enum.TextXAlignment.Center, FONTB, 5)
+  end
+  local tabs = zh and { "主页", "飞行", "姿态", "", "外挂", "检查", "设置" } or { "HOME", "FLT", "ATT", "", "STORES", "CHK", "SET" }
+  local tw = W / #tabs
+  for i, t in ipairs(tabs) do
+    if t ~= "" then Tx(R, t, (i - 1) * tw, H * 0.84, tw, H * 0.12, 10, RGB(160, 230, 170), Enum.TextXAlignment.Center, FONT, 5) end
+  end
+  local okR = math.min(tw, H * 0.16) * 0.5
+  Ring(R, W / 2, H * 0.9, okR, 2, RGB(110, 240, 140), 6, RGB(40, 170, 80))
+  Tx(R, zh and "确认" or "OK", W / 2 - okR, H * 0.9 - okR, okR * 2, okR * 2, 10, RGB(240, 255, 240), Enum.TextXAlignment.Center, FONTB, 7)
+  return function(d)
+    local warn = d.warn and d.warn ~= ""   -- 有告警时「告警」格闪红
+    cells[4].TextColor3 = (warn and (math.floor(os.clock() * 3) % 2 == 0)) and RGB(255, 90, 80) or RGB(225, 232, 255)
+  end
+end
+
+-- 正前方控制板的小液晶（歼-15T 参考图：一行行电台、导航、方式字）
 P.ufcc = function(s, env, zh)
   local W, H = s.px.X, s.px.Y
   local G = RGB(120, 240, 160)
@@ -1370,9 +1405,10 @@ end
 P.pano = multi({ { 0, 0.42, "sa" }, { 0.42, 0.28, "pfd" }, { 0.70, 0.30, "sms" } },
   { SA = { 1, "sa" }, RDR = { 1, "radar" }, SMS = { 3, "sms" }, ENG = { 3, "eng" }, PFD = { 2, "pfd" },
     ["态势"] = { 1, "sa" }, ["雷达"] = { 1, "radar" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" }, ["油量"] = { 3, "eng" } })
--- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的第一人称参考图）：左边圆形雷达、中间飞行、右边挂弹外形；触摸菜单换窗口内容
-P.j20_main = multi({ { 0, 0.36, "rscope", "雷达" }, { 0.36, 0.28, "pfd", "飞行" }, { 0.64, 0.36, "sms", "武器" } },
-  { ["态势"] = { 1, "tsd" }, ["雷达"] = { 1, "rscope" }, ["武器"] = { 3, "sms" }, ["发动机"] = { 3, "eng" }, ["油量"] = { 3, "eng" }, ["姿态"] = { 2, "pfd" } })
+-- 歼-20 主屏（24 × 9 英寸触摸屏；用户 11-21 给的真机座舱照片）：左边一窗上面一排小表 + 圆形雷达 + 目标表，中间飞机俯视挂弹，
+--   右边一半是地图（照片上是卫星图）；触摸菜单换窗口内容
+P.j20_main = multi({ { 0, 0.30, "j20left" }, { 0.30, 0.20, "sms" }, { 0.50, 0.50, "sa" } },
+  { ["态势"] = { 3, "sa" }, ["雷达"] = { 1, "j20left" }, ["武器"] = { 2, "sms" }, ["发动机"] = { 2, "eng" }, ["油量"] = { 2, "eng" }, ["姿态"] = { 2, "pfd" } })
 -- 歼-16 大屏（用户 11-21 给的「J-16 座舱环视」参考图：一整块横屏分四个窗口）：飞行、雷达、态势、雷达告警
 P.j16_main = multi({ { 0, 0.25, "pfd", "飞行" }, { 0.25, 0.25, "radar", "雷达" }, { 0.5, 0.25, "tsd", "态势" }, { 0.75, 0.25, "rwr", "告警" } },
   { ["姿态"] = { 1, "pfd" }, ["雷达"] = { 2, "radar" }, ["态势"] = { 3, "tsd" }, ["武器"] = { 4, "sms" }, ["发动机"] = { 4, "eng" }, ["油量"] = { 4, "eng" } })
@@ -1490,13 +1526,39 @@ P.gmeter = function(s, env, zh)
   local set = dial(s, 12, zh and "过载" or "G")
   return function(d) set(-PI / 2 + clamp(((d.g or 1) - 1) / 8, -0.4, 1) * PI * 1.25) end
 end
--- 发动机小圆表（歼-20 参考图：控制板左边 2 × 2 四个）：左右发动机转速、排气温度，跟着油门
-for _, e in ipairs({ { "n_l", "转速左", "RPM L", 0.6, 3.6 }, { "n_r", "转速右", "RPM R", 0.6, 3.6 }, { "t_l", "排温左", "EGT L", 1.4, 2.6 }, { "t_r", "排温右", "EGT R", 1.4, 2.6 } }) do
-  P[e[1]] = function(s, env, zh)
-    local set = dial(s, 10, zh and e[2] or e[3])
-    return function(d) set(e[4] + clamp((d.thr or 0) / 100, 0, 1.3) * e[5]) end
+-- 歼-20 大屏左边那一窗（真机照片）：上面一排四个小表（左右发动机转速、排温）+ 飞机图标，中间圆形雷达，下面一张目标表
+P.j20left = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local th, bh = H * 0.2, H * 0.2
+  local sets = {}
+  for i = 1, 4 do
+    local f = F(R, (i - 1) * W * 0.16, 0, W * 0.16, th, RGB(0, 0, 0), 0, 2)
+    sets[i] = dial({ root = f, px = Vector3.new(W * 0.16, th, 0) }, 8, "")
+    f.BackgroundTransparency = 1
+  end
+  Tx(R, "✈", W * 0.66, 0, W * 0.14, th, math.floor(th * 0.7), RGB(90, 230, 120), Enum.TextXAlignment.Center, FONTB, 3)
+  local tab = Tx(R, "", W * 0.80, 2, W * 0.2 - 2, th - 4, 9, RGB(90, 230, 120), nil, FONT, 3)
+  local mid = F(R, 0, th, W, H - th - bh, RGB(0, 0, 0), 1, 2)
+  local up = P.rscope({ root = mid, px = Vector3.new(W, H - th - bh, 0) }, env, zh)
+  local rows = {}
+  for i = 1, 3 do rows[i] = Tx(R, "", 4, H - bh + (i - 1) * bh / 3, W - 8, bh / 3, 10, RGB(90, 230, 120), nil, FONT, 3) end
+  return function(d)
+    local k = clamp((d.thr or 0) / 100, 0, 1.3)
+    sets[1](0.6 + k * 3.6) sets[2](0.6 + k * 3.6) sets[3](1.4 + k * 2.6) sets[4](1.4 + k * 2.6)
+    tab.Text = string.format(zh and "油 %d%%\n过载 %.1f" or "FUEL %d%%\nG %.1f", math.floor((d.fuel or 1) * 100), d.g or 1)
+    up(d)
+    local n = 0
+    for _, c in ipairs(d.contacts or {}) do
+      if not c.friend and n < 3 then
+        n += 1
+        rows[n].Text = string.format(zh and "目标%d  方位 %03d  %d 公里" or "TGT%d  BRG %03d  %d KM", n, math.floor((c.az or 0) % 360), math.floor(c.km or 0))
+      end
+    end
+    for i = n + 1, 3 do rows[i].Text = (i == 1) and (zh and "无目标" or "NO TGT") or "" end
   end
 end
+
 -- A-10 的一排机械仪表（两台发动机转速、涡轮温度、燃油、油压）
 P.gauges = function(s, env)
   local W, H = s.px.X, s.px.Y

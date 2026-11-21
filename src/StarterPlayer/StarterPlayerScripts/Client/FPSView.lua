@@ -762,6 +762,7 @@ function FPSView.init(G)
   -- 举镜进度（0～1；不是第一人称时当举好了）：Play 的倍率跟着它慢慢放大
   function G.fpsAds() return vm and ads or 1 end
   local lastCam, lastPos, bobPhase, speedS, latS = nil, nil, 0, 0, 0
+  local sprintK = 0   -- 疾跑姿势（Play.lua 的 G.sprinting）：0 端枪、1 枪斜着往下
   local hiddenTool = nil
   local waitTries = setmetatable({}, { __mode = "k" })   -- [工具] = 等真模型、因为「好了」重建过几次
   local badTool = setmetatable({}, { __mode = "k" })     -- [工具] = 建视图模型出过错（不再重建）
@@ -886,6 +887,9 @@ function FPSView.init(G)
         end
       end
     end
+    -- 疾跑：枪往下、往左斜着端（跑起来不瞄准）
+    sprintK += ((G.sprinting and 1 or 0) - sprintK) * math.min(1, dt * 8)
+    if sprintK > 0.001 then extra = extra * CF(0.05 * sprintK, -0.12 * sprintK, 0.05 * sprintK) * CFrame.Angles(-0.38 * sprintK, 0.5 * sprintK, 0.25 * sprintK) end
     local adsT = ADS_CF
     if vm.optic then adsT = opticAds(vm.optic) end
     local adsCF = CF():Lerp(adsT, ads)

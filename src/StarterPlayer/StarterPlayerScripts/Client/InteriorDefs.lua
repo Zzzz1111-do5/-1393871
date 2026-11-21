@@ -660,7 +660,7 @@ end
 --   驾驶杆（中央杆 / 侧杆，跟着杆量动）、油门（跟着油门走）、脚蹬（跟着方向舵）、起落架手柄（跟着起落架收放，三个绿灯）、
 --   主告警 / 注意灯、备份仪表（姿态、高度、空速）
 --   L = { disp = "j20" / "f35" / "f22" / "j16" / "j15t" / "a10" / "pano", hud = true / false, hudW / hudH = 平显组合玻璃宽高,
---         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
+--         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）/ "wide"（歼-20：两根粗立柱往外斜）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
 --         goldGlass = 座舱盖镀金（隐身机）, stick = "center" / "side",
 --         seats = 1 / 2, cn = 中文标签, frame = 风挡有框, minScreens = 这一型真有几块屏（测试按它查，默认 5）, noRadar = 没有雷达（A-10C） }
 -- 各型的屏幕块数、尺寸、摆法照网上查到的资料（docs/cockpit_research.md，出处写在里面；查不到的歼-35、歼-50 用 pano 整块大屏）
@@ -765,19 +765,30 @@ function Defs.jet(b, ctx, L)
     for i = 1, nk do b:knob(H, cf * CF(w / 2 - (i - 0.5) * w / nk, -h / 2 + 0.013, 0), 0.015) end
   end
   if disp == "j20" then
-    -- 歼-20（用户 11-21 给的第一人称参考图 + 资料：24 × 9 英寸触摸大屏、三块小辅助屏、广角平显）：底下横贯一整块大屏
-    --   （左圆形雷达、中飞行、右挂弹外形）；平显下正前方控制板（小液晶、上排 5 键、左 F1–F4、右 F5–F8、两排数字键）；
-    --   控制板左边 2 × 2 四个发动机小圆表，右边一块备份姿态
+    -- 歼-20（用户 11-21 给的真机座舱照片 + 资料：24 × 9 英寸触摸大屏、广角全息平显）：底下横贯一整块大屏，黑框很厚、上下一排螺钉
+    --   （左窗上面一排小表 + 圆形雷达 + 目标表，中间飞机俯视挂弹，右半地图）；平显下面正中一块触摸屏控制板（蓝紫底 4 × 4 触摸键，
+    --   装在厚黑框里，框两边几个小键）；控制板右边一块方形小屏（下面一排 4 个键），左边一块小开关板（大旋钮、小旋钮、方按钮、拨动开关）
     local KT = { top = { "态势", "雷达", "武器", "发动机", "油量" }, bottom = { "姿态", "通信", "导航", "检查", "菜单" } }
-    b:screen(H, 0.61, 0.23, flush(0, -0.515), "j20_main", { keys = KT, touch = true, touchH = 0.09, lightK = 0.5, lightColor = RGB(140, 180, 220) })
-    ufcBox(cons(0, -0.30), 0.20, 0.135, { sw = 0.11, sh = 0.05, sy = 0.022,
-      top = { "数字", "上档", "控制", "确认", "返回" }, left = { "F1", "F2", "F3", "F4" }, right = { "F5", "F6", "F7", "F8" },
-      pad = { { "1", "2", "3", "4", "5" }, { "6", "7", "8", "9", "0" } } })
-    for i, pg in ipairs({ "n_l", "n_r", "t_l", "t_r" }) do
-      local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
-      b:screen(H, 0.04, 0.04, cons(-0.198 + col * 0.048, -0.276 - row * 0.048), pg, { light = false, ppm = 2600, bezel = 0.004 })
+    local mcf = flush(0, -0.525)
+    b:screen(H, 0.61, 0.23, mcf, "j20_main", { keys = KT, touch = true, touchH = 0.07, bezel = 0.024, frame = RGB(18, 18, 20), lightK = 0.5, lightColor = RGB(140, 180, 220) })
+    for i = 0, 7 do
+      for _, sy in ipairs({ -1, 1 }) do b:cylZ(H, 0.006, 0.009, mcf * CF(-0.29 + i * 0.58 / 7, sy * 0.127, -0.003), RGB(70, 72, 74), MAT.Metal) end
     end
-    b:screen(H, 0.065, 0.065, cons(0.17, -0.30), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.008 })
+    local ucf = cons(0, -0.305)   -- 控制板：厚黑框 + 触摸屏 + 框两边各三个小键（局部 +X 是人看来的左边）
+    b:box(H, V(0.19, 0.135, 0.03), ucf * CF(0, 0, -0.015), RGB(20, 20, 22), MAT.SmoothPlastic)
+    b:screen(H, 0.16, 0.105, ucf * CF(0, 0, -0.031), "ufct", { lightK = 0.25, bezel = 0.002, depth = 0.002, ppm = 1800, lightColor = RGB(150, 140, 230) })
+    for _, sx in ipairs({ -1, 1 }) do
+      for i = 0, 2 do b:button(H, ucf * CF(sx * 0.0875, 0.03 - i * 0.03, -0.031), RGB(44, 46, 48), 0.009) end
+    end
+    b:box(H, V(0.085, 0.10, 0.02), cons(0.175, -0.30) * CF(0, 0, -0.01), RGB(20, 20, 22), MAT.SmoothPlastic)   -- 右边方形小屏 + 4 个键
+    b:screen(H, 0.062, 0.062, cons(0.175, -0.29) * CF(0, 0, -0.021), "sfd", { lightK = 0.2, ppm = 2200, bezel = 0.003, depth = 0.003 })
+    for i = 0, 3 do b:button(H, cons(0.175 + (i - 1.5) * 0.017, -0.337) * CF(0, 0, -0.021), RGB(44, 46, 48), 0.011) end
+    local lcf = cons(-0.18, -0.30)   -- 左边小开关板
+    b:box(H, V(0.13, 0.075, 0.015), lcf * CF(0, 0, -0.0075), RGB(26, 27, 29), MAT.SmoothPlastic)
+    b:knob(H, lcf * CF(0.04, -0.008, -0.015), 0.034)
+    b:knob(H, lcf * CF(0.005, -0.008, -0.015), 0.018)
+    b:button(H, lcf * CF(-0.025, -0.008, -0.015), RGB(40, 42, 44), 0.02)
+    b:toggle(H, lcf * CF(-0.05, -0.008, -0.015))
     standby = false
   elseif disp == "f35" then
     -- F-35（用户 11-21 给的真机照片 + 资料：20 × 8 英寸全景屏，两块 10 × 8 英寸拼成，触摸，没有边框键；没有平显）：全景屏在仪表板最上面，
@@ -887,16 +898,19 @@ function Defs.jet(b, ctx, L)
       bx(hw + t * 2, t, 0.03, 0, gy + hh / 2 + t / 2, -0.665, HC, MAT.SmoothPlastic)
       for _, sx in ipairs({ -1, 1 }) do bx(0.03, 0.03, 0.03, sx * (hw / 2 - 0.004), gy + hh / 2 - 0.004, -0.665, HC, MAT.SmoothPlastic, 0, 0, 45) end   -- 圆角
       bx(0.022, 0.07, 0.03, -(hw / 2 + 0.04), gy - 0.01, -0.665, RGB(26, 26, 28), MAT.SmoothPlastic)
-    elseif L.hudFrame == "tall" then   -- 歼-16、歼-20 参考图，F-22 真机：两根立柱 + 顶梁
+    elseif L.hudFrame == "wide" then   -- 歼-20 真机照片：广角平显，两根粗立柱往外斜，上面没有顶梁
+      for _, sx in ipairs({ -1, 1 }) do bx(0.022, hh + 0.05, 0.02, sx * (hw / 2 + 0.014), gy + 0.012, -0.672, HC, MAT.SmoothPlastic, 0, 0, -sx * 10) end
+    elseif L.hudFrame == "tall" then   -- 歼-16 参考图，F-22 真机：两根立柱 + 顶梁
       for _, sx in ipairs({ -1, 1 }) do bx(0.014, hh + 0.03, 0.014, sx * (hw / 2 + 0.006), gy + 0.008, -0.67, HC, MAT.Metal) end
       bx(hw + 0.026, 0.012, 0.014, 0, gy + hh / 2 + 0.018, -0.67, HC, MAT.Metal)
     else
       for _, sx in ipairs({ -1, 1 }) do bx(0.012, 0.15, 0.012, sx * (hw / 2), -0.07, -0.67, HC, MAT.Metal) end
     end
-    local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
-    hs.part.Material = MAT.Glass
-    hs.part.Transparency = 0.86
-    hs.part.Color = RGB(150, 200, 170)
+    local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, noBack = true })
+    hs.part.Material = MAT.Glass   -- 组合玻璃：真透明、带一点绿（原来后面垫着一块不透明黑底板）
+    hs.part.Transparency = 0.93   -- 参考图：组合玻璃几乎看不见，只看得见框、一点反光和绿色符号
+    hs.part.Reflectance = 0.06
+    hs.part.Color = RGB(150, 205, 165)
     hs.root.BackgroundTransparency = 1
     b:name("hud", hs)
   end
@@ -1058,7 +1072,7 @@ function Defs.jet(b, ctx, L)
 end
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "tall", stick = "center", cn = true, goldGlass = true,
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
 Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
@@ -1074,10 +1088,11 @@ Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true,
 local function hudUnit(b, g, p, at)
   b:box(g, V(0.18, 0.07, 0.20), CF(p + V(0, -0.11, 0.01)), RGB(30, 32, 34), MAT.Metal)
   for _, sx in ipairs({ -1, 1 }) do b:box(g, V(0.012, 0.13, 0.012), CF(p + V(sx * 0.08, -0.02, -0.005)), RGB(30, 32, 34), MAT.Metal) end
-  local hs = b:screen(g, 0.15, 0.12, CFrame.lookAt(p, at + V(0, 0.02, 0)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, frame = RGB(30, 32, 34) })
-  hs.part.Material = MAT.Glass
-  hs.part.Transparency = 0.86
-  hs.part.Color = RGB(150, 200, 170)
+  local hs = b:screen(g, 0.15, 0.12, CFrame.lookAt(p, at + V(0, 0.02, 0)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, noBack = true })
+  hs.part.Material = MAT.Glass   -- 组合玻璃：真透明（原来后面垫着一块不透明黑底板）
+  hs.part.Transparency = 0.93
+  hs.part.Reflectance = 0.06
+  hs.part.Color = RGB(150, 205, 165)
   hs.root.BackgroundTransparency = 1
   b:name("hud", hs)
   return hs
