@@ -146,6 +146,12 @@ if vm then
   check(mz.Z > 1.6, string.format("消音器：枪口往前挪到消音器前端（z %.2f）", mz.Z))
   check(vm.optic and vm.optic.kind == "dot" and vm.optic.dot == "holo", "全息瞄具：开镜看着枪、画全息圈")
   check(vm.tac and vm.tac.kind == "laser" and vm.beam ~= nil, "激光：有一道光")
+  -- 用户 11-21：那个指示灯是对着我自己照的——激光原来顺着枪身骨骼的 LookVector（−Z，朝后）打；光束要在出光口前面、顺着镜头朝向
+  if vm.beam and vm.tacWorld then
+    local camCF = R.workspace.CurrentCamera.CFrame
+    local fwd = (vm.beam.CFrame.Position - vm.tacWorld.Position):Dot(camCF.LookVector)
+    check(fwd > 0.5, string.format("激光朝前打出去，不照自己（光束中点在出光口前方 %.1f 格）", fwd))
+  end
   local n = 0
   for _, it in ipairs(vm.items) do if it[1].Name:find("O_mag_drum", 1, true) then n = n + 1 end end
   check(n >= 2, "弹鼓装在两条弹匣骨骼上（枪上的、换弹时手里的）")

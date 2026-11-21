@@ -26088,7 +26088,8 @@ function FPSView.init(G)
       lamp = newPart(model, V(0.05, 0.05, 0.05), RGB(255, 255, 255), MAT.SmoothPlastic)
       lamp.Transparency = 1
       local sl = Instance.new("SpotLight")
-      sl.Brightness, sl.Range, sl.Angle, sl.Face, sl.Shadows = 4, 80, 38, Enum.NormalId.Front, false
+      -- 灯零件按枪身骨骼摆（+Z 朝枪口），所以往 Back（+Z）照；原来 Front（−Z）照的是自己（用户 11-21：那个指示灯是对着我自己照的）
+      sl.Brightness, sl.Range, sl.Angle, sl.Face, sl.Shadows = 4, 80, 38, Enum.NormalId.Back, false
       sl.Color = RGB(255, 246, 228)
       sl.Parent = lamp
     end
@@ -26415,7 +26416,7 @@ function FPSView.init(G)
       vm.tacWorld = tcf
       if vm.beam then
         local o = tcf.Position
-        local dir = gunCF.LookVector
+        local dir = -gunCF.LookVector   -- 枪身骨骼 +Z 朝枪口（LookVector 是 −Z：原来激光朝后、打在自己身上）
         local rp = G.fpsRay or RaycastParams.new()
         G.fpsRay = rp
         rp.FilterType = Enum.RaycastFilterType.Exclude
