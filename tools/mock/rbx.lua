@@ -1578,6 +1578,12 @@ local function editableMesh()
   end
   function m.AddNormal(self, n) if self ~= m or (n ~= nil and not isV3(n)) then error("EditableMesh:AddNormal(Vector3)", 2) end m.nn = m.nn + 1 return m.nn end
   function m.AddUV(self, uv) if self ~= m or typeof(uv) ~= "Vector2" then error("EditableMesh:AddUV(Vector2)", 2) end m.nu = m.nu + 1 return m.nu end
+  m.nc = 0
+  function m.AddColor(self, c, a)   -- 顶点色（瞄准镜画中画的地形网格）
+    if self ~= m or typeof(c) ~= "Color3" or type(a) ~= "number" then error("EditableMesh:AddColor(Color3, 透明度)", 2) end
+    m.nc = m.nc + 1
+    return m.nc
+  end
   function m.AddTriangle(self, a, b, c)
     for _, v in ipairs({ a, b, c }) do if type(v) ~= "number" or v < 1 or v > m.nv then error("EditableMesh:AddTriangle 顶点编号不对：" .. tostring(v), 2) end end
     m.nf = m.nf + 1
@@ -1591,6 +1597,7 @@ local function editableMesh()
   end
   m.SetFaceNormals = faceSet("Normals", "nn")
   m.SetFaceUVs = faceSet("UVs", "nu")
+  m.SetFaceColors = faceSet("Colors", "nc")
   return m
 end
 R.services.AssetService = service("AssetService", {}, { methods = {

@@ -161,8 +161,12 @@ def main():
                 d.rounded_rectangle(box, radius=min(r, w / 2, h / 2), fill=col)
             else:
                 d.rectangle(box, fill=col)
-        if it.get('vp') and VPIMG.get(it['vp']) and int(w) > 0 and int(h) > 0:   # 视口：贴上另外拍的 3D 画面
+        if it.get('vp') and VPIMG.get(it['vp']) and int(w) > 0 and int(h) > 0:   # 视口：贴上另外拍的 3D 画面（有圆角的按圆角裁）
             src = Image.open(VPIMG[it['vp']]).convert('RGBA').resize((int(round(w)), int(round(h))), Image.LANCZOS)
+            if r > 0.5:
+                mk = Image.new('L', src.size, 0)
+                ImageDraw.Draw(mk).rounded_rectangle([0, 0, src.size[0] - 1, src.size[1] - 1], radius=min(r, src.size[0] / 2, src.size[1] / 2), fill=255)
+                src.putalpha(ImageChops.multiply(src.getchannel('A'), mk))
             ov.alpha_composite(src, (int(round(x)), int(round(y))))
         if it.get('icon') and (it.get('iT') or 0) < 0.99:
             src = icon_img(it['icon'])

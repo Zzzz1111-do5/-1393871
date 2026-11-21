@@ -1172,6 +1172,7 @@ function Fx.init(G)
       task.delay(math.max(1, life - 8), function() pe.Rate = 0 end)
     end
     G.playSound("splash", e.p, 1.6)
+    if G.pipSmoke then G.pipSmoke(e.p, e.r or 20, life + 6) end   -- 瞄准镜画中画里补几团灰球（不然开镜能看穿烟）
     Debris:AddItem(holder, life + 12)
   end
 

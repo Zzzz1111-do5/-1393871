@@ -70,6 +70,7 @@ for _, B in ipairs(BUILDS) do
           if sg then a.eye, a.obj, a.r = v3(at * sg.eye), v3(at * sg.obj), sg.r end
           a.zoom = it.zoom
           a.K = it.lensK   -- 开镜时目镜占屏幕高度的几成（瞄准镜）
+          a.Kp = it.pipK   -- 镜内单独放大（画中画）时
           a.kind = it.scope and "scope" or "dot"
         end
         table.insert(e.att, a)

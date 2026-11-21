@@ -78,6 +78,7 @@ Studio 里的「设备模拟」只换屏幕大小，量不出手机的内存和�
 - 配件是 Sketchfab 上 CC-BY 的原模型（署名在 `models/credits.txt`）。不导入也行：客户端开局用 EditableMesh 现生成（要在「游戏设置 → 安全」里打开 Mesh / Image API）；
   想要原贴图就把 `models/optics/` 里新的 17 个 GLB（`sup_*`、`muz_*`、`opt_*`、`grip_*`、`mag_*`、`tac_*`）也导入（同上面的步骤）。
 - 瞄准镜照使命召唤做（11-21）：开镜时镜身、正圆的目镜圈一直看得见，从目镜的洞里看放大的画面。`models/optics/` 里的 `acog.glb`、`opt_acog6.glb`、`atacr.glb`、`qbu88.glb` 改过（补了正圆目镜圈、拆出镜筒里面的块），导入过的话**删掉旧的重新导入**这 4 个；没重导会自动退回现生成的（不贴原贴图）。
+- 镜内单独放大（11-21）：开镜时镜外只是普通开镜（1.25 倍），镜片里是放大的画面（画中画）。要在「游戏设置 → 安全」里打开 Mesh / Image API（改枪的配件现生成也要它）；没开的话自动退回整屏放大。
 - 枪械等级：用这把枪打死人加经验，升级解锁配件。`Config.GunMods`：`killXp` / `botXp` 每次加多少，`unlockAll = true` 全部解锁，
   `studioAll`（默认开）在 Studio 里测试时全部解锁，发布到线上按等级。
 - 配件的数值、能装哪些、几级解锁、推荐改装都在 `src/ReplicatedStorage/GunMods.lua`。

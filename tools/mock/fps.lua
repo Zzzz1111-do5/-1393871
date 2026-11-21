@@ -105,7 +105,7 @@ check(mag and (mag.Position - m0).Magnitude > 0.05, "换弹时弹匣动了")
 R.run(2.5)
 check(vm and vm.act == nil, "换完回到待机")
 
-print("④ 开镜（使命召唤那样）：M4 导轨上的 ACOG 举到眼前、光轴对正屏幕中心，镜身一直看得见；镜筒里面藏掉，从正圆的目镜洞里看 3.5 倍的画面")
+print("④ 开镜：M4 导轨上的 ACOG 举到眼前、光轴对正屏幕中心，镜身一直看得见；镜内单独放大（画中画）：镜外普通开镜，镜片那个圆里是 3.5 倍的战场")
 vm = C.fps
 local nAcog = 0
 if vm then for _, it in ipairs(vm.items) do if it.optic then nAcog = nAcog + 1 end end end
@@ -128,7 +128,7 @@ R.run(0.1)
 local fovMid = cam.FieldOfView
 local ep = optPart(vm, "Eyepiece")
 check(ep and ep.LocalTransparencyModifier == 0, "举镜过程中镜身、目镜圈都看得见")
-check(fovMid > 22 and fovMid < 66, string.format("倍率跟着举镜进度慢慢放大（这会儿视角 %.1f°）", fovMid))
+check(fovMid > 50 and fovMid < 67.9, string.format("镜外跟着举镜进度稍微放大一点（这会儿视角 %.1f°）", fovMid))
 R.run(1.0)
 if vm and vm.optic then
   local gi = itemOf(vm, "gun")
@@ -139,7 +139,7 @@ if vm and vm.optic then
   check(e.Z < -0.1 and e.Z > -0.4, string.format("目镜在眼前（%.2f 格，视角越小推得越远）", -e.Z))
 end
 local fov = cam.FieldOfView
-check(fov > 15 and fov < 20, string.format("3.5 倍（视角 %.1f°）", fov))
+check(math.abs(fov - 68 / 1.25) < 1, string.format("镜外只是普通开镜：1.25 倍（视角 %.1f°），不跟着 3.5 倍放大", fov))
 check(scopeGui and scopeGui.Enabled, "举到眼前：目镜上画着镜片那一层")
 -- 镜身还在（使命召唤那样），镜筒里面挡着视线的块藏起来
 local nIn, inHid, bodyOn = 0, true, false
@@ -161,12 +161,47 @@ if lensF then
   local px, py = lensF.Position.X.Offset, lensF.Position.Y.Offset
   check(lensF.ClassName == "CanvasGroup" and T.visible(lensF) and corner and corner.CornerRadius.Scale == 0.5 and w == h,
     string.format("镜片是正圆（%s，%d×%d，圆角 0.5）", lensF.ClassName, w, h))
-  check(math.abs(px - vs.X / 2) < 2 and math.abs(py - vs.Y / 2) < 2 and math.abs(w / vs.Y - 0.5) < 0.03,
-    string.format("镜片在屏幕正中（%.1f, %.1f）、直径是屏高的 %.2f（GunMods lensK 0.5）", px, py, w / vs.Y))
+  check(math.abs(px - vs.X / 2) < 2 and math.abs(py - vs.Y / 2) < 2 and math.abs(w / vs.Y - 0.3) < 0.03,
+    string.format("镜片在屏幕正中（%.1f, %.1f）、直径是屏高的 %.2f（画中画时 GunMods pipK 0.3）", px, py, w / vs.Y))
   check(lensF.GroupTransparency < 0.02, "举好了：镜片那一层满（淡入完）")
 else
   check(false, "镜片那一层（ScopeLens）")
 end
+-- 画中画：镜片底下一个圆的 ViewportFrame，镜头就在眼睛这儿、朝准星看，视角 = 镜片的角大小 ÷ 3.5；里面有地形网格、海、雾
+local pst, pv, pwm, pcm = C.pipDebug()
+check(pst.ok == true and pv.Visible and pv.Parent and pv.Parent.Parent == scopeGui, "镜片底下是画中画（ViewportFrame）")
+if lensF and pv.Visible then
+  check(pv.Size.X.Offset == lensF.Size.X.Offset and pv.Position.X.Offset == lensF.Position.X.Offset and pv.Position.Y.Offset == lensF.Position.Y.Offset,
+    "画中画正好在镜片那个圆里（" .. pv.Size.X.Offset .. " 像素）")
+  local fm = (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView) / 2)
+  local want = 2 * math.deg(math.atan((lensF.Size.X.Offset / 2 / fm) / 3.5))
+  check(math.abs(pcm.FieldOfView - want) < 0.05 and (pcm.CFrame.Position - cam.CFrame.Position).Magnitude < 1e-3 and pcm.CFrame.LookVector:Dot(cam.CFrame.LookVector) > 0.9999,
+    string.format("画中画的镜头在眼睛这儿、朝准星看，视角 %.2f°（镜片的角大小 ÷ 3.5 = %.2f°）", pcm.FieldOfView, want))
+end
+local nTer = 0
+for _, d in ipairs(pwm:GetChildren()) do if d.Name == "PipTerrain" then nTer = nTer + 1 end end
+check(nTer >= 2 and pst.lv[1] and pst.lv[2], "地形网格：脚下两级都生成好了（" .. nTer .. " 张）")
+-- 正前方放一块火光（ClientFx）、地图上一块墙（Map）：画中画里各有一份；烟幕补灰球
+local look = cam.CFrame.LookVector
+local fx = R.make("Part")
+fx._p.Name = "PipProbeFx"
+fx.Size, fx.CFrame, fx.Anchored = V3(3, 3, 3), CF(cam.CFrame.Position + look * 120), true
+fx.Parent = R.workspace:FindFirstChild("ClientFx")
+local wall = R.make("Part")
+wall._p.Name = "PipProbeWall"
+wall.Size, wall.CFrame, wall.Anchored = V3(20, 12, 2), CF(cam.CFrame.Position + look * 260), true
+wall.Parent = R.workspace:FindFirstChild("Map")
+C.pipSmoke(cam.CFrame.Position + look * 400, 20, 30)
+R.run(0.6)
+local seen = {}
+for _, d in ipairs(pwm:GetDescendants()) do seen[d.Name] = (seen[d.Name] or 0) + 1 end
+check((seen.PipProbeFx or 0) >= 1, "会动的东西（火光、曳光、车、人）镜像进画中画")
+check((seen.PipProbeWall or 0) >= 1, "地图上的东西（锥里的格子）克隆进画中画")
+local balls = 0
+for _, d in ipairs(pwm:GetChildren()) do if d.ClassName == "Part" and d.Shape == Enum.PartType.Ball and d.Transparency < 0.9 then balls = balls + 1 end end
+check(balls >= 6, "烟幕在画中画里是几团灰球（" .. balls .. " 个），透过镜子看不穿")
+fx:Destroy()
+wall:Destroy()
 local nOut = 0
 for _, f in ipairs(scopeGui and scopeGui:GetDescendants() or {}) do
   if f.Name == "ScopeOuter" and T.visible(f) then nOut = nOut + 1 end
@@ -188,6 +223,16 @@ R.run(0.6)
 G.ACT.scope = scope0
 check(scopeGui and not scopeGui.Enabled and not (dofE and dofE.Enabled), "松开右键：镜片那一层跟着淡出、收掉，景深关上")
 check(math.abs(cam.FieldOfView - 68) < 1.5, string.format("视角回到 68°（%.1f°）", cam.FieldOfView))
+check(not pv.Visible, "画中画跟着收起来")
+-- 画中画用不了（游戏没开 EditableMesh、地形网格还没好）：照旧整屏放大 3.5 倍，镜片占屏高五成
+C.pipForceOff = true
+T.mouse(true, nil, nil, Enum.UserInputType.MouseButton2)
+R.run(1.0)
+check(math.abs(cam.FieldOfView - 68 / 3.5) < 1 and not pv.Visible, string.format("画中画用不了：整屏放大 3.5 倍（视角 %.1f°）", cam.FieldOfView))
+if lensF then check(math.abs(lensF.Size.X.Offset / vs.Y - 0.5) < 0.03, string.format("镜片占屏高 %.2f（lensK 0.5）", lensF.Size.X.Offset / vs.Y)) end
+T.mouse(false, nil, nil, Enum.UserInputType.MouseButton2)
+R.run(0.6)
+C.pipForceOff = nil
 
 print("⑤ 换武器：按 2（第二件，不管装备栏哪格空着）、滚轮、Q 切回上一把；同一双手端着")
 local UISv = R.services.UserInputService

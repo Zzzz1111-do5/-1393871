@@ -1786,8 +1786,9 @@ GM.ITEM = {
   --   lensK：开镜时目镜（正圆的洞）在屏幕上占高度的几成——使命召唤那样外面围着一圈目镜、镜身（两具 ACOG 的原模型目镜是八边形的，
   --     tools/weapons/optics.json 的 ring 补了正圆的目镜圈罩住；目镜 / 物镜的位置、洞的半径在 OpticsMeta 里）
   --   镜片（glass）半透明：腰射、举镜时从后面看得穿（开镜时整块藏掉，从目镜的洞里直接看放大的画面）
-  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", lensK = 0.5, st = { hand = -7, stab = 4 }, glass = { GlassIn = 0.62 } },
-  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", lensK = 0.55, st = { hand = -12, stab = 6, mob = -1 },
+  --   pipK：镜内单独放大（画中画，ScopePip.lua）时目镜占屏高——镜外只是普通开镜，目镜离眼睛近一点（再近会被镜头的近裁剪面切掉）
+  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", lensK = 0.5, pipK = 0.3, st = { hand = -7, stab = 4 }, glass = { GlassIn = 0.62 } },
+  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", lensK = 0.55, pipK = 0.36, st = { hand = -12, stab = 6, mob = -1 },
     glass = { C9ab = 0.62, C9abIn = 0.62 } },
   -- 前握把
   grip_none = { slot = "grip" },
@@ -20195,7 +20196,7 @@ return World
 --   FortView 地图自带工事的样子、走过去的「E 操作 / 上车」提示 · Gunner 操作工事（机枪、岸防炮、高炮、榴弹炮）、工兵的破障器材 ·
 --   FPSView 第一人称：镜头前的枪（M4 照动作包的动画）和 Roblox 方块手臂 · Fly 飞机、直升机的样子和驾驶（AirModels 拼零件）·
 --   ShipView 舰艇的样子 · Sail 开船（车钟、舵、舰炮、反舰导弹）· Hangar 挂载编辑器 ·
---   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）·
+--   Optics 瞄准镜、望远镜的真模型（Sketchfab 原模型：导入的或内嵌后现生成的）· Scope 瞄准镜（目镜里的像：圆形出瞳、分划、倍率、别人镜片的闪光）· ScopePip 瞄准镜画中画（镜内单独放大）·
 --   Depot 地图里的载具生成点（牌子、按键文字、飞机生成前弹挂载界面）· Night 夜视仪（N）· Faction 选阵营（解放军 / 美军）·
 --   Chute 跳伞的人头顶的降落伞 · Tablet 遥控无人机的战术平板（平板外壳、地面站遥测、重连提示）· Soldier 机器人士兵（Roblox 小人）·
 --   TacPad 单兵战术平板（B：呼叫空投载具、空投补给、空中打击，每样一局有次数；飞来的飞机、落下的货盘和炸弹）
@@ -20246,7 +20247,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -25539,7 +25540,7 @@ function FPSView.init(G)
     if key == "binoc" then
       info = { kind = "binoc", eyeG = at * V(), objG = at * V(0, 0, 0.5), r = 0.03 }
     elseif E.eye and E.obj then   -- 狙击镜：目镜占屏幕高度九成（使命召唤的狙击镜也是几乎占满）
-      info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r, K = 0.9, sniper = true }
+      info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r, K = 0.9, Kp = 0.55, sniper = true }
     end
     local mz = GD.muzzle(M)
     return { optic = info, mz = mz and (at * CF(mz)) or nil }, nil
@@ -25826,7 +25827,7 @@ function FPSView.init(G)
           local at = railK * mt.cf
           if addAtt(model, items, oi.model, at, "gun", true) then
             local sg = GM.sightOf(bld.optic, M)
-            if sg then opticInfo = { kind = oi.scope and "scope" or "dot", dot = oi.dot, eyeG = at * sg.eye, objG = at * sg.obj, r = sg.r, adsD = oi.adsD, K = oi.lensK } end
+            if sg then opticInfo = { kind = oi.scope and "scope" or "dot", dot = oi.dot, eyeG = at * sg.eye, objG = at * sg.obj, r = sg.r, adsD = oi.adsD, K = oi.lensK, Kp = oi.pipK } end
             if mt.riser then   -- 增高座：迷你红点垫高到和别的瞄具差不多的高度（不然照门挡着）
               local rp = newPart(model, V(0.058, mt.riser, 0.1), RGB(34, 34, 36), MAT.Metal)
               table.insert(items, { rp, "gun", at * CF(0, -mt.riser / 2, 0.01), optic = "Riser" })
@@ -25847,7 +25848,7 @@ function FPSView.init(G)
             table.insert(items, { x.part, "gun", at * x.cf, optic = x.name, inner = (G.opticInner and G.opticInner(M4_OPTIC.key, x.name)) or nil })
           end
           opticInfo = { kind = "scope", eyeG = at * V(M.eye.c[1], M.eye.c[2], M.eye.c[3]), objG = at * V(M.obj.c[1], M.obj.c[2], M.obj.c[3]), r = M.eye.r,
-            K = GM.ITEM.acog.lensK }
+            K = GM.ITEM.acog.lensK, Kp = GM.ITEM.acog.pipK }
         elseif not (G.opticFailed and G.opticFailed(M4_OPTIC.key)) then
           vm0Wait = waitFor(vm0Wait, M4_OPTIC.key)   -- 还在生成：先用光秃秃的 M4，生成好了重建
         end
@@ -26018,7 +26019,11 @@ function FPSView.init(G)
     local d = 0.22
     -- 瞄准镜（使命召唤那样）：目镜在屏幕上占高度的 K 成（ACOG 六成、狙击镜九成），视角收窄时往远推，看起来一样大；
     --   镜身一直看得见，目镜那个洞里是放大的画面（镜筒里面的块藏起来了）
-    if O.kind == "scope" then d = math.max(0.1, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * (O.K or 0.86)))
+    --   镜内单独放大（画中画，G.scopePipMode）：镜外只是普通开镜，目镜占屏高按 Kp（小一些）
+    if O.kind == "scope" then
+      local K = O.K or 0.86
+      if G.scopePipMode and G.scopePipMode() then K = O.Kp or 0.34 end
+      d = math.max(0.1, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * K))
     elseif O.kind == "dot" then d = O.adsD or 0.3 end   -- 红点、全息（改枪）：后窗离眼睛 0.2～0.45 格，看得见枪和窗框
     return CF(V(0, 0, -d) - rot * r) * rot
   end
@@ -26235,7 +26240,8 @@ function FPSView.init(G)
       -- 瞄准镜（镜身一直看得见）：视角收窄了，同样的晃在屏幕上放大好几倍——开镜时平移按目镜大小压小、转动按视角压小，
       --   镜子稳稳停在眼前，只剩一点点晃（Scope.lua 按目镜偏了多少画眼盒阴影的月牙）
       swT = sw * (1 - 0.8 * ads)
-      swR = sw * (1 - ads) + ads * 1.6 * (vm.optic.K or 0.6) * math.tan(math.rad(cam.FieldOfView) / 2)
+      local Ko = (G.scopePipMode and G.scopePipMode()) and (vm.optic.Kp or 0.34) or (vm.optic.K or 0.6)
+      swR = sw * (1 - ads) + ads * 1.6 * Ko * math.tan(math.rad(cam.FieldOfView) / 2)
       walk *= 1 - 0.6 * ads
       breath *= 1 - 0.8 * ads
     end
@@ -30297,6 +30303,7 @@ function Fx.init(G)
       task.delay(math.max(1, life - 8), function() pe.Rate = 0 end)
     end
     G.playSound("splash", e.p, 1.6)
+    if G.pipSmoke then G.pipSmoke(e.p, e.r or 20, life + 6) end   -- 瞄准镜画中画里补几团灰球（不然开镜能看穿烟）
     Debris:AddItem(holder, life + 12)
   end
 
@@ -37402,7 +37409,8 @@ function Play.init(G)
     --   （视角收窄得太早，还没举到眼前的枪和手会被放大得很怪）；松开右键照样跟着慢慢退回来
     local sw = cur.id and W[cur.id]
     if fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
-      local Z = G.scopeZoom and G.scopeZoom(sw) or sw.scope
+      -- 镜内单独放大（画中画，用户 11-21）：镜外只放大一点点（普通开镜），倍率在镜片里那个圆（ScopePip.lua）
+      local Z = (G.scopePipMode and G.scopePipMode()) and (G.PIP_ADS or 1.25) or (G.scopeZoom and G.scopeZoom(sw) or sw.scope)
       local e = math.clamp((G.fpsAds() - 0.35) / 0.6, 0, 1)
       e = e * e * (3 - 2 * e)
       cam.FieldOfView = baseFov / (1 + (Z - 1) * e)
@@ -38510,6 +38518,9 @@ return Scenery
 --   手稳：呼吸晃，按住 Shift 屏住（稳几秒，憋过头晃得更厉害、一会儿屏不了），走动晃得多；晃动加在镜头上（子弹照样打屏幕正中），
 --     倍率高时鼠标灵敏度跟着降；滚轮变倍（狙击镜、望远镜）
 --   别人开着镜对着你（他的视线在你附近 20° 以内）时他的镜片闪光：服务器只记 Scoped / ScopeDir 两个属性，闪光是看的人本地画的、墙挡得住
+--   镜内单独放大（用户 11-21：「改成镜内单独放大」）：第一人称、画中画准备好了（ScopePip.lua）时，镜外只是普通开镜（约 1.25 倍）、不放大，
+--     镜片那个圆里是 ScopePip 另画的放大的战场（镜头朝准星看），分划画在镜片正中；每次举镜时定下用哪种（G.scopePipMode），举到一半不换。
+--     画中画用不了（EditableMesh 没开、地形网格还没生成好）时照旧整屏放大
 --   Play 调：G.scopeStep(dt, 开没开, 武器表) 每帧、G.scopeZoom(武器表) 现在的倍率、G.scopeFire() 开了一枪
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -38611,6 +38622,7 @@ function Scope.init(G)
   ---------------------------------------------------------------- 镜片（狙击镜、ACOG）：CanvasGroup 按圆裁剪，里面的分划、月牙、彩边出不了这个正圆
   --   层（从下往上）：镀膜 → 分划 → 反光弧 → 眼盒阴影 B → 边上的暗边 A → 色散彩边
 
+  if G.pipAttach then G.pipAttach(root) end   -- 画中画（ScopePip.lua）：镜片底下那个圆里画放大的战场
   local lensG = nil
   pcall(function() lensG = Instance.new("CanvasGroup") end)
   local isCG = lensG ~= nil
@@ -38622,7 +38634,7 @@ function Scope.init(G)
   lensG.AnchorPoint = V2(0.5, 0.5)
   lensG.BackgroundTransparency = 1
   lensG.BorderSizePixel = 0
-  lensG.ZIndex = 1
+  lensG.ZIndex = 2   -- 盖在画中画上面（镀膜、分划、暗边都是半透明的）
   lensG.Visible = false
   lensG.Parent = root
   round(lensG)
@@ -38804,6 +38816,8 @@ function Scope.init(G)
     sniper = { 0.8, 0.04 },    -- 狙击镜：目镜圈、镜身压得很黑
     acog = { 0.34, 0.045 },    -- ACOG：还看得清目镜圈、镜身和两边的战场
     flat = { 0.95, 0.02 },     -- 没有 3D 镜身（第三人称、视图模型还没建好）：外面几乎全黑，像老式的镜筒
+    pipSniper = { 0.5, 0.04 },  -- 画中画：镜外是不放大的战场（普通开镜），只轻轻压暗
+    pipAcog = { 0.2, 0.045 },
   }
 
   -- 望远镜：左右两个（各在半边屏幕的裁剪框里）
@@ -38900,7 +38914,8 @@ function Scope.init(G)
     lrfT = 0, phase = 0,
   }
   -- 镜片那一层：x, y 圆心、r 半径（像素），f 淡入（0～1），lk 分划（"sniper" / "acog"），fp 有 3D 镜身（第一人称），fpT 上次报目镜位置的时刻
-  local L = { x = 0, y = 0, r = 0, f = 0, lk = nil, fp = false, fpT = -1, shown = false, rA = -1 }
+  --   pip 这一次举镜用不用画中画（开始举时定下来，放下才清掉：举到一半不换）、Z 倍率
+  local L = { x = 0, y = 0, r = 0, f = 0, lk = nil, fp = false, fpT = -1, shown = false, rA = -1, pip = nil, Z = 3.5 }
   G.scopeOn = false
 
   local function kindOf(w)
@@ -38968,6 +38983,7 @@ function Scope.init(G)
   end
 
   local function hideLens()
+    if G.pipHide then G.pipHide() end
     if not L.shown then return end
     L.shown = false
     lensG.Visible = false
@@ -38997,14 +39013,24 @@ function Scope.init(G)
     if isCG then lensG.GroupTransparency = 1 - f end
     local lk = L.lk
     ret.Visible, acogRet.Visible = lk == "sniper", lk == "acog"
-    -- 分划在屏幕正中（子弹打这儿）：镜片晃的时候分划不跟着晃，偏多了就是眼盒没对正
-    local rx, ry = cx - x + r, cy - y + r
+    local pip = L.fp and L.pip == true and G.pipStep ~= nil
+    local rx, ry, fpx
+    if pip then
+      -- 画中画（镜内单独放大）：镜里那个圆是 ScopePip 另画的放大的战场，它的镜头朝准星看——分划在镜片正中就是子弹打的地方
+      rx, ry = r, r
+      fpx = G.pipStep(x, y, r, L.Z, f)
+    else
+      -- 整屏放大：分划在屏幕正中（子弹打这儿），镜片晃的时候分划不跟着晃，偏多了就是眼盒没对正
+      if G.pipHide then G.pipHide() end
+      rx, ry = cx - x + r, cy - y + r
+      fpx = cy / math.tan(math.rad(cam.FieldOfView) / 2)
+    end
     if lk == "acog" then
       at(acogRet, rx, ry)
       if L.rA ~= r then L.rA = r layoutAcog(2 * r) end
     else
       at(ret, rx, ry)
-      layoutFfp(0.001 * cy / math.tan(math.rad(cam.FieldOfView) / 2))   -- 第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001
+      layoutFfp(0.001 * fpx)   -- 第一焦平面：每密位的像素数 = 焦距（像素）× 0.001
     end
     -- 眼盒：目镜偏离屏幕中心（枪晃）+ 镜子相对眼睛的晃（S.eye：转得快、走路、开枪、刚贴上）；B 朝反方向错开
     local ev = V2(x - cx, y - cy)
@@ -39027,7 +39053,7 @@ function Scope.init(G)
     caRs.Transparency = 0.8 - ca
     caBs.Transparency = 0.78 - ca
     -- 镜片外面
-    layoutOuter(x, y, r, f, OUTK[L.fp and lk or "flat"])
+    layoutOuter(x, y, r, f, OUTK[(not L.fp) and "flat" or (pip and ((lk == "sniper") and "pipSniper" or "pipAcog")) or lk])
     -- 调色、景深跟着淡入
     cc.Contrast, cc.Saturation, cc.Brightness = 0.07 * f, 0.08 * f, 0.015 * f
     if dof then
@@ -39039,10 +39065,18 @@ function Scope.init(G)
 
   -- FPSView 每帧报目镜在屏幕上的位置（第一人称、拿着带瞄准镜的枪时）：举到一半开始淡入，举好时满
   function G.scopeLensAt(x, y, r, ads, sniper)
+    if ads < 0.02 then L.pip = nil
+    elseif L.pip == nil then L.pip = (G.pipReady ~= nil and G.pipReady()) or false end
     local f = math.clamp((ads - 0.45) / 0.2, 0, 1)
     L.x, L.y, L.r, L.f = x, y, r, f * f * (3 - 2 * f)
     L.lk, L.fp, L.fpT = sniper and "sniper" or "acog", true, now()
     drawLens()
+  end
+
+  -- 这一次开镜用不用画中画（Play 的视角、FPSView 的目镜大小跟着它）：举镜时定下的；还没举就看画中画准备好了没有
+  function G.scopePipMode()
+    if L.pip ~= nil then return L.pip end
+    return (G.pipReady ~= nil and G.pipReady()) or false
   end
 
   local D0, Db = 0, 0   -- 没有 3D 镜身时镜片的直径、望远镜每个圆的直径（像素）
@@ -39155,9 +39189,12 @@ function Scope.init(G)
     end
     local t = now()
     -- 第一人称不再报目镜位置（收枪、换枪、上车、死了）：镜片那一层收掉
-    if L.fp and L.shown and t - L.fpT > 0.15 then
-      L.f, L.fp = 0, false
-      drawLens()
+    if L.fp and t - L.fpT > 0.15 then
+      L.pip = nil
+      if L.shown then
+        L.f, L.fp = 0, false
+        drawLens()
+      end
     end
     if not kind then return end
     dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
@@ -39165,6 +39202,7 @@ function Scope.init(G)
     if vs ~= S.vs then layout(kind) end
     local K = KINDS[kind]
     local zoom = G.scopeZoom(w)
+    L.Z = zoom   -- 画中画的倍率（放下镜子淡出时还用这个）
     local cx, cy = vs.X / 2, vs.Y / 2
     local lensKind = kind == "sniper" or kind == "acog"
     -- 没有 3D 镜身（第三人称、视图模型还没建好）：镜片摆在屏幕正中，开镜后 0.15 秒淡入
@@ -39430,6 +39468,685 @@ return Scope
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="127">
+          <Properties>
+            <string name="Name">ScopePip</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
+--   Roblox 一帧只画一次主画面，地形、粒子、光影都只在主画面里。所以镜外照普通开镜（约 1.25 倍）不放大，
+--   镜片那个圆里用 ViewportFrame 另画一份放大的战场（镜头就在眼睛这儿、朝准星看，视角 = 镜片的角大小 ÷ 倍率）：
+--   · 地形：按 Map.height / Map.material（开服生成地形用的同一套）车成网格（EditableMesh，顶点色按地形材质的颜色、带一点斑驳）：
+--     脚下 6 格一点（约 430 格见方，人走开 110 格重新生成）、20 格一点（1800 格见方）、64 格一点（全岛和小岛，生成一次）；
+--     细的盖在粗的上面（粗的往下沉一点、每张边上一圈再往下沉，接缝藏在下面）。后台慢慢算，每帧最多 1.5 毫秒
+--   · 海面（半透明，浅滩看得见沙）+ 底下一层深海色、天空（按看的仰角取色）、雾（镜头前几张半透明的大片，越远叠得越多，按大气浓度）、
+--     灯光（太阳 / 月亮的方向、昼夜、夜视仪变绿、照明弹）
+--   · 地图上的东西（workspace 的 Map、Scenery、Ruins）：按 128 格的格子分好，镜子看过去那一条锥里的格子才克隆进去，克隆过的留着下回直接用
+--     （最多留 6000 块，超了扔掉最久没看的格子）；新加、删掉的跟着加减
+--   · 会动的（实体的样子 EntView：步兵、车、飞机、船；别的玩家；ClientFx 的火光、曳光）：在锥里的克隆一份，每帧照原来的零件摆
+--   · 烟幕（粒子画不进 ViewportFrame）：补几团灰球（G.pipSmoke），透过镜子也看不穿烟
+--   EditableMesh 用不了（游戏设置里没开 Mesh / Image API）时不做画中画：Scope.lua 退回整屏放大
+--   接口：G.pipReady() 能用了；G.pipAttach(父) 把镜片那个 ViewportFrame 放进界面；G.pipStep(镜片圆心 x, y, 半径, 倍率, 淡入) 每帧（Scope 调），
+--     返回画中画的焦距（像素，分划按它摆）；G.pipHide()；G.pipSmoke(位置, 半径, 秒)；G.PIP_ADS 镜外的开镜放大
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+local ScopePip = {}
+
+-- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）
+local TC = {
+  Grass = { 96, 146, 64 }, LeafyGrass = { 70, 124, 52 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
+  Ground = { 122, 98, 70 }, Mud = { 54, 47, 40 }, Concrete = { 150, 148, 140 }, Asphalt = { 70, 72, 76 },
+}
+-- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成
+local LEVELS = {
+  { step = 6, n = 72, drop = 0, edge = 1.8, move = 110 },
+  { step = 20, n = 90, drop = 1, edge = 4, move = 420 },
+}
+local FAR = { step = 64, drop = 2.5, edge = 6 }   -- 全岛（生成一次）
+local CELL = 128            -- 地图上的东西按 128 格的格子分
+local RANGE = 5200          -- 静态的东西画多远
+local DYN_RANGE = 3400      -- 会动的东西画多远
+local MAX_CLONES = 6000     -- 克隆的静态零件最多留多少
+local BUDGET = 0.0015       -- 后台生成每帧最多用多少秒
+local HAZE = { 260, 650, 1200, 1950, 3000, 4500 }   -- 雾的几张大片离镜头多远
+
+-- 克隆过来不要的东西：脚本、声音、粒子、灯、界面、关节（每块零件各自照原来的摆，连着关节会被拖着走）、小人的 Humanoid
+local STRIP = {
+  Script = true, LocalScript = true, ModuleScript = true, Sound = true, ParticleEmitter = true, Beam = true, Trail = true, Fire = true, Smoke = true,
+  Sparkles = true, PointLight = true, SpotLight = true, SurfaceLight = true, BillboardGui = true, SurfaceGui = true, Highlight = true,
+  ProximityPrompt = true, ClickDetector = true, Humanoid = true, AnimationController = true, Animator = true, Explosion = true,
+}
+
+function ScopePip.init(G)
+  local Map = require(RS:WaitForChild("Map"))
+  local AS = game:GetService("AssetService")
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local V, CF, RGB, C3 = Vector3.new, CFrame.new, Color3.fromRGB, Color3.new
+  local now = os.clock
+  local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
+  local noise = math.noise
+  G.PIP_ADS = 1.25
+
+  -- st：ok 能不能用（nil 还不知道）、lv 两级地形（{ mp, cx, cz }）、far 全岛那几张、busy 正在后台生成
+  local st = { ok = nil, lv = {}, far = false, busy = false, started = false, warned = false, nClones = 0, cellT = 0, syncT = 0, dynT = 0, mkBudget = 0, chk = nil }
+
+  ---------------------------------------------------------------- 画中画的窗口（圆的：UICorner 裁成圆）
+
+  local vpf = Instance.new("ViewportFrame")
+  vpf.Name = "ScopePip"
+  vpf.AnchorPoint = Vector2.new(0.5, 0.5)
+  vpf.BackgroundColor3 = RGB(120, 140, 160)
+  vpf.BorderSizePixel = 0
+  vpf.ZIndex = 1
+  vpf.Visible = false
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = vpf
+  end
+  local wm = Instance.new("WorldModel")
+  wm.Parent = vpf
+  local pcam = Instance.new("Camera")
+  pcam.Parent = vpf
+  vpf.CurrentCamera = pcam
+  function G.pipAttach(parent) vpf.Parent = parent end
+
+  local function props(p)
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+  end
+  local function plate(size, color, alpha, mat)
+    local p = Instance.new("Part")
+    p.Size, p.Color, p.Transparency = size, color, alpha or 0
+    p.Material = mat or Enum.Material.SmoothPlastic
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    props(p)
+    p.Parent = wm
+    return p
+  end
+
+  -- 海面（半透明：浅滩透出底下的沙）、深海色的底（没有地形网格的地方）：5 × 5 块 2048 见方，跟着镜头挪
+  local water, deep = {}, {}
+  for i = 1, 25 do
+    water[i] = plate(V(2048, 1, 2048), RGB(30, 100, 120), 0.3)
+    deep[i] = plate(V(2048, 1, 2048), RGB(12, 40, 52), 0)
+  end
+  local waterAt = nil
+  local function placeWater(p)
+    local gx, gz = floor(p.X / 2048 + 0.5) * 2048, floor(p.Z / 2048 + 0.5) * 2048
+    if waterAt and waterAt.X == gx and waterAt.Z == gz then return end
+    waterAt = V(gx, 0, gz)
+    local i = 0
+    for a = -2, 2 do
+      for b = -2, 2 do
+        i += 1
+        water[i].CFrame = CF(gx + a * 2048, -0.5, gz + b * 2048)
+        deep[i].CFrame = CF(gx + a * 2048, -10.5, gz + b * 2048)
+      end
+    end
+  end
+  -- 雾：镜头前几张半透明的大片（不受光的 Neon，颜色按大气）
+  local haze = {}
+  for i = 1, #HAZE do haze[i] = plate(V(10, 10, 0.05), RGB(150, 160, 175), 1, Enum.Material.Neon) end
+
+  ---------------------------------------------------------------- 地形网格
+
+  local function warnOnce(msg)
+    if st.warned then return end
+    st.warned = true
+    warn("[全面大战场] 瞄准镜画中画用不了（" .. tostring(msg) .. "），开镜退回整屏放大")
+  end
+
+  -- 一张地形网格：中心 (cx, cz)、每格 step、nx × nz 格；drop 整张往下沉、edge 最外一圈再沉。返回 MeshPart（EditableMesh 用不了返回 nil）
+  local function terrainMesh(cx, cz, step, nx, nz, drop, edge)
+    local W = nx + 1
+    local N = W * (nz + 1)
+    local hs = table.create(N)
+    local x0, z0 = cx - nx * step / 2, cz - nz * step / 2
+    local t0 = now()
+    local function tick()
+      if now() - t0 > BUDGET then
+        task.wait()
+        t0 = now()
+      end
+    end
+    for k = 0, nz do
+      for i = 0, nx do hs[k * W + i + 1] = (Map.height(x0 + i * step, z0 + k * step)) end
+      tick()
+    end
+    local em = AS:CreateEditableMesh()
+    local vid, nid, cid = table.create(N), table.create(N), table.create(N)
+    local lx, ly, lz, hx, hy, hz = 1e9, 1e9, 1e9, -1e9, -1e9, -1e9   -- 包围盒
+    for k = 0, nz do
+      for i = 0, nx do
+        local id = k * W + i + 1
+        local x, z = x0 + i * step, z0 + k * step
+        local y = hs[id]
+        local ia, ib = max(i - 1, 0), min(i + 1, nx)
+        local ka, kb = max(k - 1, 0), min(k + 1, nz)
+        local dx = (hs[k * W + ib + 1] - hs[k * W + ia + 1]) / ((ib - ia) * step)
+        local dz = (hs[kb * W + i + 1] - hs[ka * W + i + 1]) / ((kb - ka) * step)
+        local m = Map.material(x, z, y, sqrt(dx * dx + dz * dz))
+        local c = TC[m.Name] or TC.Grass
+        local v = 0.84 + 0.13 * noise(x / 37, z / 37, 2.7) + 0.06 * noise(x / 9, z / 9, 8.1)   -- 斑驳（不然一大片平涂，像塑料）
+        if y < -0.5 then v *= 0.7 end   -- 水下
+        local yy = y - drop - (((i == 0 or k == 0 or i == nx or k == nz) and edge) or 0)
+        local px, pz = x - cx, z - cz
+        lx, ly, lz, hx, hy, hz = min(lx, px), min(ly, yy), min(lz, pz), max(hx, px), max(hy, yy), max(hz, pz)
+        vid[id] = em:AddVertex(V(px, yy, pz))
+        nid[id] = em:AddNormal(V(-dx, 1, -dz).Unit)
+        cid[id] = em:AddColor(C3(min(1, c[1] / 255 * v), min(1, c[2] / 255 * v), min(1, c[3] / 255 * v)), 1)
+      end
+      tick()
+    end
+    for k = 0, nz - 1 do
+      for i = 0, nx - 1 do
+        local a, b, c, d = k * W + i + 1, (k + 1) * W + i + 1, k * W + i + 2, (k + 1) * W + i + 2
+        -- 朝上（从上往下看逆时针）：(i, k) → (i, k+1) → (i+1, k)、(i+1, k) → (i, k+1) → (i+1, k+1)
+        local f1 = em:AddTriangle(vid[a], vid[b], vid[c])
+        em:SetFaceNormals(f1, { nid[a], nid[b], nid[c] })
+        em:SetFaceColors(f1, { cid[a], cid[b], cid[c] })
+        local f2 = em:AddTriangle(vid[c], vid[b], vid[d])
+        em:SetFaceNormals(f2, { nid[c], nid[b], nid[d] })
+        em:SetFaceColors(f2, { cid[c], cid[b], cid[d] })
+      end
+      tick()
+    end
+    local mp = AS:CreateMeshPartAsync(Content.fromObject(em))
+    mp.Name = "PipTerrain"
+    mp.Material = Enum.Material.SmoothPlastic
+    mp.Color = C3(1, 1, 1)
+    props(mp)
+    mp.CFrame = CF(cx + (lx + hx) / 2, (ly + hy) / 2, cz + (lz + hz) / 2)   -- 生成的网格原点在包围盒中心
+    return mp
+  end
+
+  -- 后台生成：一次一件（脚下那级优先，再中间那级，最后全岛）
+  local function job(f)
+    st.busy = true
+    task.spawn(function()
+      local ok, err = pcall(f)
+      if not ok then
+        st.ok = false
+        warnOnce(err)
+      end
+      st.busy = false
+    end)
+  end
+  local function here()
+    local ch = me.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    return hrp and hrp.Position or cam.CFrame.Position
+  end
+  local function maintain()
+    if st.busy or st.ok == false then return end
+    local p = here()
+    for i, L in ipairs(LEVELS) do
+      local cur = st.lv[i]
+      if not cur or (V(p.X - cur.cx, 0, p.Z - cur.cz)).Magnitude > L.move then
+        local snap = L.step * 4
+        local cx, cz = floor(p.X / snap + 0.5) * snap, floor(p.Z / snap + 0.5) * snap
+        job(function()
+          local mp = terrainMesh(cx, cz, L.step, L.n, L.n, L.drop, L.edge)
+          st.ok = true
+          mp.Parent = wm
+          if st.lv[i] and st.lv[i].mp then st.lv[i].mp:Destroy() end
+          st.lv[i] = { mp = mp, cx = cx, cz = cz }
+        end)
+        return
+      end
+    end
+    if not st.far then
+      st.far = true
+      job(function()
+        for _, b in ipairs(Map.landBoxes()) do
+          local nx, nz = math.ceil((b[3] - b[1]) / FAR.step), math.ceil((b[4] - b[2]) / FAR.step)
+          local parts = math.ceil(nx * nz * 2 / 18000)   -- 一张网格不超过 1.8 万个三角形
+          local w = math.ceil(nx / parts)
+          for s = 0, parts - 1 do
+            local n = min(w, nx - s * w)
+            if n > 0 then
+              local cx = b[1] + (s * w + n / 2) * FAR.step
+              local mp = terrainMesh(cx, (b[2] + b[4]) / 2, FAR.step, n, nz, FAR.drop, FAR.edge)
+              mp.Parent = wm
+            end
+          end
+        end
+      end)
+    end
+  end
+  -- 能用了：EditableMesh 好用，脚下两级都生成好了、离现在的位置不远
+  function G.pipReady()
+    if st.ok ~= true or G.pipForceOff then return false end   -- pipForceOff：测试 / 调试时关掉画中画（退回整屏放大）
+    local p = here()
+    for i, L in ipairs(LEVELS) do
+      local cur = st.lv[i]
+      if not cur or (V(p.X - cur.cx, 0, p.Z - cur.cz)).Magnitude > L.move * 1.6 then return false end
+    end
+    return true
+  end
+
+  ---------------------------------------------------------------- 地图上的东西：按格子分，锥里的格子才克隆
+
+  local cells, cellOf = {}, setmetatable({}, { __mode = "k" })
+  local function ckey(x, z) return floor(x / CELL) * 65536 + floor(z / CELL) end
+  local function clean(c)
+    for _, d in ipairs(c:GetDescendants()) do
+      if STRIP[d.ClassName] or d:IsA("JointInstance") or d:IsA("Constraint") or d:IsA("WeldConstraint") or d:IsA("GuiBase3d") then d:Destroy() end
+    end
+  end
+  local function cloneStatic(c, p)
+    local ok, q = pcall(function() return p:Clone() end)
+    if not ok or not q then return end
+    for _, d in ipairs(q:GetDescendants()) do   -- 子零件各自另有一份（每块零件都登记了）
+      if d:IsA("BasePart") then d:Destroy() end
+    end
+    clean(q)
+    props(q)
+    q.Parent = c.fold
+    c.clones[p] = q
+    st.nClones += 1
+  end
+  local function addStatic(p)
+    if not p:IsA("BasePart") or cellOf[p] or p.Transparency >= 0.99 then return end   -- 看不见的命中盒、碰撞板不要
+    local pos = p.Position
+    local k = ckey(pos.X, pos.Z)
+    local c = cells[k]
+    if not c then
+      c = { parts = {}, n = 0, x = (floor(pos.X / CELL) + 0.5) * CELL, z = (floor(pos.Z / CELL) + 0.5) * CELL, ylo = pos.Y, yhi = pos.Y, ext = 0, seen = 0 }
+      cells[k] = c
+    end
+    c.parts[p] = true
+    c.n += 1
+    c.ylo, c.yhi = min(c.ylo, pos.Y), max(c.yhi, pos.Y)
+    c.ext = max(c.ext, p.Size.Magnitude / 2)
+    cellOf[p] = k
+    if c.fold then cloneStatic(c, p) end   -- 这格已经克隆过：新来的也克隆一份
+  end
+  local function removeStatic(p)
+    local k = cellOf[p]
+    if not k then return end
+    cellOf[p] = nil
+    local c = cells[k]
+    if not c then return end
+    c.parts[p] = nil
+    c.n -= 1
+    local q = c.clones and c.clones[p]
+    if q then
+      q:Destroy()
+      c.clones[p] = nil
+      st.nClones -= 1
+    end
+  end
+  local SRC = { "Map", "Scenery", "Ruins" }
+  local watched = {}
+  local function watchStatic()
+    for _, name in ipairs(SRC) do
+      local f = workspace:FindFirstChild(name)
+      if f and not watched[f] then
+        watched[f] = true
+        f.DescendantAdded:Connect(addStatic)
+        f.DescendantRemoving:Connect(removeStatic)
+        task.spawn(function()
+          local t0 = now()
+          for i, d in ipairs(f:GetDescendants()) do
+            addStatic(d)
+            if i % 400 == 0 and now() - t0 > BUDGET then
+              task.wait()
+              t0 = now()
+            end
+          end
+        end)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 锥：镜头位置 E、朝向 D、半角 A（弧度）
+
+  local E, D, A = V(), V(0, 0, -1), 0.05
+  local function inCone(p, r, range)
+    local v = p - E
+    local dist = v.Magnitude
+    if dist <= r then return true end
+    if dist - r > range then return false end
+    local c = v:Dot(D) / dist
+    if c >= 1 then return true end
+    return math.acos(math.max(-1, c)) <= A + math.asin(min(1, r / dist))
+  end
+
+  -- 静态格子：锥里的克隆进来（每帧最多克隆 150 块，转得快时一格一格补上）、锥外的收起来；克隆太多扔掉最久没看的
+  local shown = {}
+  local function updateCells(t)
+    local budget = 150
+    local want = {}
+    local Aw = A
+    A = A * 1.6 + 0.02   -- 隔 0.1 秒才挑一次：锥放宽一点，转镜头时边上不缺
+    for k, c in pairs(cells) do
+      if c.n > 0 and inCone(V(c.x, (c.ylo + c.yhi) / 2, c.z), CELL * 0.71 + c.ext + (c.yhi - c.ylo) / 2, RANGE) then want[k] = c end
+    end
+    A = Aw
+    for k, c in pairs(shown) do
+      if not want[k] then
+        if c.fold then c.fold.Parent = nil end
+        shown[k] = nil
+      end
+    end
+    for k, c in pairs(want) do
+      c.seen = t
+      if not c.fold then
+        c.fold = Instance.new("Folder")
+        c.clones = {}
+        c.pending = true
+      end
+      if c.pending and budget > 0 then
+        local done = true
+        for p in pairs(c.parts) do
+          if not c.clones[p] then
+            if budget <= 0 then
+              done = false
+              break
+            end
+            cloneStatic(c, p)
+            budget -= 1
+          end
+        end
+        c.pending = not done
+      end
+      if c.fold.Parent ~= wm then c.fold.Parent = wm end
+      shown[k] = c
+    end
+    if st.nClones > MAX_CLONES then   -- 扔掉最久没看的格子
+      local list = {}
+      for k, c in pairs(cells) do if c.fold and not shown[k] then table.insert(list, { k = k, c = c }) end end
+      table.sort(list, function(a, b) return a.c.seen < b.c.seen end)
+      for _, e in ipairs(list) do
+        if st.nClones <= MAX_CLONES * 0.8 then break end
+        for _ in pairs(e.c.clones) do st.nClones -= 1 end
+        e.c.fold:Destroy()
+        e.c.fold, e.c.clones, e.c.pending = nil, nil, nil
+      end
+    end
+  end
+  -- 静态的也可能动（门、旗、被打坏的工事）：看着的格子每半秒照原来的摆一遍
+  local function syncCells()
+    for _, c in pairs(shown) do
+      if c.clones then
+        for p, q in pairs(c.clones) do
+          if p.Parent then
+            q.CFrame = p.CFrame
+            if q.Transparency ~= p.Transparency then q.Transparency = p.Transparency end
+            if q.Color ~= p.Color then q.Color = p.Color end
+          end
+        end
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 会动的：在锥里的克隆一份，每帧照原来的零件摆
+
+  local dyn = {}                                       -- [原来的] = { m 克隆, sp / dp 两边一一对应的零件, cf, n 零件数, r 半径, root }
+  local rootOf = setmetatable({}, { __mode = "k" })   -- [原来的] = 它的一块零件（量位置用）
+  local function partsOf(src)
+    local list = {}
+    if src:IsA("BasePart") then list[1] = src end
+    for _, d in ipairs(src:GetDescendants()) do if d:IsA("BasePart") then list[#list + 1] = d end end
+    return list
+  end
+  local function makeDyn(src)
+    local was = src.Archivable
+    src.Archivable = true   -- 玩家的小人默认不让克隆
+    local ok, c = pcall(function() return src:Clone() end)
+    src.Archivable = was
+    if not ok or not c then return nil end
+    local sp, cp = partsOf(src), partsOf(c)
+    if #cp ~= #sp then   -- 有不让克隆的零件：按名字对（同名的按先后）
+      local pool = {}
+      for _, q in ipairs(cp) do
+        pool[q.Name] = pool[q.Name] or {}
+        table.insert(pool[q.Name], q)
+      end
+      local s2, d2 = {}, {}
+      for _, p in ipairs(sp) do
+        local l = pool[p.Name]
+        if l and #l > 0 then
+          table.insert(s2, p)
+          table.insert(d2, table.remove(l, 1))
+        end
+      end
+      sp, cp = s2, d2
+    end
+    local m = c
+    if c:IsA("BasePart") then   -- 单块零件（火光、曳光）：包一层 Model
+      m = Instance.new("Model")
+      c.Parent = m
+    end
+    clean(m)
+    for _, q in ipairs(cp) do
+      props(q)
+      for _, d in ipairs(q:GetChildren()) do if d:IsA("BasePart") and not table.find(cp, d) then d:Destroy() end end
+    end
+    local r = 4
+    for _, p in ipairs(sp) do r = max(r, p.Size.Magnitude / 2) end
+    if #sp > 1 then
+      local okE, ext = pcall(function() return src:IsA("Model") and src:GetExtentsSize() or nil end)
+      if okE and ext then r = max(r, ext.Magnitude / 2) end
+    end
+    return { m = m, sp = sp, dp = cp, cf = table.create(#sp), n = #partsOf(src), r = r, tT = 0 }
+  end
+  local function dropDyn(src)
+    local d = dyn[src]
+    if d then
+      d.m:Destroy()
+      dyn[src] = nil
+    end
+  end
+  local function rootPart(src)
+    local r = rootOf[src]
+    if r and r.Parent then return r end
+    if src:IsA("BasePart") then r = src
+    elseif src:IsA("Model") then r = src.PrimaryPart or src:FindFirstChildWhichIsA("BasePart", true) end
+    rootOf[src] = r
+    return r
+  end
+  local function considerDyn(src, t, live)
+    if src == me.Character then return end
+    local root = rootPart(src)
+    if not root then return end
+    local d = dyn[src]
+    live[src] = true
+    if inCone(root.Position, d and d.r or 40, DYN_RANGE) then
+      if not d then
+        -- 每帧克隆的零件有上限（一下子转到一艘几百块零件的舰上不卡那一帧）：这帧的额度用完了下一帧再克隆
+        if st.mkBudget <= 0 then return end
+        d = makeDyn(src)
+        if not d then return end
+        st.mkBudget -= #d.sp
+        dyn[src] = d
+      end
+      local sp, cf = d.sp, d.cf
+      for i = 1, #sp do cf[i] = sp[i].CFrame end
+      wm:BulkMoveTo(d.dp, cf, Enum.BulkMoveMode.FireCFrameChanged)
+      if t - d.tT > 0.25 then   -- 透明度（被打掉、隐身、远了收起来）四分之一秒对一次
+        d.tT = t
+        for i = 1, #sp do
+          local p = sp[i]
+          local a = p.Parent and max(p.Transparency, p.LocalTransparencyModifier) or 1
+          if d.dp[i].Transparency ~= a then d.dp[i].Transparency = a end
+        end
+      end
+      if d.m.Parent ~= wm then d.m.Parent = wm end
+    elseif d and d.m.Parent then
+      d.m.Parent = nil
+    end
+  end
+  local function updateDyn(t)
+    local live = {}
+    st.mkBudget = 160
+    local ev = G.viewFolder
+    if ev then for _, m in ipairs(ev:GetChildren()) do considerDyn(m, t, live) end end
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if pl ~= me and pl.Character then considerDyn(pl.Character, t, live) end
+    end
+    for _, name in ipairs({ "ClientFx", "GunKitFx" }) do
+      local f = workspace:FindFirstChild(name)
+      if f then for _, m in ipairs(f:GetChildren()) do if m:IsA("BasePart") or m:IsA("Model") then considerDyn(m, t, live) end end end
+    end
+    if t - st.dynT > 1 then   -- 一秒查一次：没了的扔掉
+      st.dynT = t
+      for src in pairs(dyn) do
+        if not live[src] or not src.Parent then dropDyn(src) end
+      end
+    end
+    -- 零件多了少了（车被打坏、换了武器）的重建：每帧轮着查一个（大模型数一遍零件也要点时间）
+    local src, d = next(dyn, st.chk)
+    if src == nil then src, d = next(dyn) end
+    st.chk = src
+    if src and d and #partsOf(src) ~= d.n then
+      dropDyn(src)
+      st.chk = nil
+    end
+  end
+
+  ---------------------------------------------------------------- 烟幕：几团灰球（粒子画不进画中画，不补的话开镜能看穿烟）
+
+  local smokes = {}
+  function G.pipSmoke(p, r, life)
+    if typeof(p) ~= "Vector3" then return end
+    r = r or 20
+    local e = { t0 = now(), life = life or 30, balls = {} }
+    for i = 1, 6 do
+      local s = r * (1.0 + 0.5 * math.random())
+      local b = plate(V(s, s, s), RGB(206 - i * 4, 208 - i * 4, 206 - i * 4), 1)
+      b.Shape = Enum.PartType.Ball
+      local a = i / 6 * math.pi * 2
+      b.CFrame = CF(p + V(math.cos(a) * r * 0.55, r * (0.2 + 0.4 * math.random()), math.sin(a) * r * 0.55))
+      table.insert(e.balls, b)
+    end
+    table.insert(smokes, e)
+  end
+  local function updateSmoke(t)
+    for i = #smokes, 1, -1 do
+      local e = smokes[i]
+      local age = t - e.t0
+      if age > e.life then
+        for _, b in ipairs(e.balls) do b:Destroy() end
+        table.remove(smokes, i)
+      else
+        local k = math.clamp(age / 2.5, 0, 1) * math.clamp((e.life - age) / 6, 0, 1)   -- 两秒半散开，最后六秒淡掉
+        for _, b in ipairs(e.balls) do b.Transparency = 1 - 0.82 * k end
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 灯光、天空、雾（跟着昼夜、夜视仪）
+
+  local function lerpC(a, b, k) return a:Lerp(b, math.clamp(k, 0, 1)) end
+  local function lighting(elev)
+    local dk = G.dayK and G.dayK() or 0.7
+    local nv = (G.nvgOn and G.nvgOn()) and dk < 0.6
+    local okS, sun = pcall(function() return Lighting:GetSunDirection() end)
+    local L = (okS and typeof(sun) == "Vector3") and sun or V(0.4, 0.8, 0.3)
+    if L.Y < -0.03 then
+      local okM, moon = pcall(function() return Lighting:GetMoonDirection() end)
+      if okM and typeof(moon) == "Vector3" then L = moon end
+    end
+    vpf.LightDirection = -L.Unit
+    local amb = lerpC(C3(0.06, 0.07, 0.1), C3(0.5, 0.51, 0.54), dk)
+    local lc = lerpC(C3(0.1, 0.12, 0.17), C3(0.82, 0.79, 0.72), dk)
+    local il = G.illum and G.illum.k or 0   -- 照明弹
+    if il > 0.01 then
+      amb = lerpC(amb, C3(0.45, 0.42, 0.38), 0.6 * min(il, 1))
+    end
+    if nv then   -- 夜视仪：夜里增亮、变绿
+      amb = lerpC(amb, C3(0.4, 0.52, 0.42), 1 - dk)
+      lc = lerpC(lc, C3(0.32, 0.42, 0.34), 1 - dk)
+    end
+    vpf.Ambient, vpf.LightColor = amb, lc
+    vpf.ImageColor3 = nv and C3(0.74, 1, 0.76) or C3(1, 1, 1)
+    -- 天空：地平线是雾的颜色，往上是天顶色（看的范围就几度，整块按仰角取一个颜色）
+    local fog = Lighting.FogColor
+    local zen = lerpC(C3(0.03, 0.04, 0.07), C3(0.36, 0.53, 0.78), dk)
+    vpf.BackgroundColor3 = lerpC(fog, zen, (math.clamp(elev / 0.4, 0, 1)) ^ 0.7)
+    -- 雾：按大气浓度换算能见度（白天约 3000 格衰减到 1/e）
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    local dens = atm and atm.Density or 0.17
+    if nv then dens *= 0.55 end
+    local Df = 500 / math.max(0.04, dens)
+    local hc = atm and lerpC(atm.Color, fog, 0.5) or fog
+    local prev = 0
+    for i, d in ipairs(HAZE) do
+      local h = haze[i]
+      h.Color = hc
+      h.Transparency = math.exp(-(d - prev) / Df)
+      prev = d
+    end
+  end
+
+  ---------------------------------------------------------------- 每帧（Scope.lua 调）
+
+  -- 镜片圆心 (x, y)、半径 r（像素），Z 倍率，f 淡入（0～1）；返回画中画的焦距（像素）
+  function G.pipStep(x, y, r, Z, f)
+    local t = now()
+    local vs = cam.ViewportSize
+    local fm = (vs.Y / 2) / math.tan(math.rad(cam.FieldOfView) / 2)   -- 主镜头的焦距（像素）
+    local tb = (r / fm) / math.max(1, Z)   -- 画中画半视角的正切：镜片的角大小 ÷ 倍率
+    local d2 = math.floor(r + 0.5) * 2
+    vpf.Size = UDim2.fromOffset(d2, d2)
+    vpf.Position = UDim2.fromOffset(x, y)
+    vpf.ImageTransparency, vpf.BackgroundTransparency = 1 - f, 1 - f
+    vpf.Visible = true
+    local cf = cam.CFrame
+    pcam.CFrame = cf
+    pcam.FieldOfView = 2 * math.deg(math.atan(tb))
+    E, D, A = cf.Position, cf.LookVector, math.atan(tb * 1.42) + 0.004   -- 方形视口的对角
+    lighting(math.asin(math.clamp(D.Y, -1, 1)))
+    -- 雾的几张大片：正对镜头，盖住视野
+    for i, d in ipairs(HAZE) do
+      local s = math.min(2040, 2.6 * d * tb + 4)
+      haze[i].Size = V(s, s, 0.05)
+      haze[i].CFrame = cf * CF(0, 0, -d)
+    end
+    placeWater(E)
+    if t - st.cellT > 0.1 then
+      st.cellT = t
+      updateCells(t)
+    end
+    if t - st.syncT > 0.5 then
+      st.syncT = t
+      syncCells()
+    end
+    updateDyn(t)
+    updateSmoke(t)
+    return r / tb
+  end
+  function G.pipHide()
+    vpf.Visible = false
+  end
+  function G.pipDebug() return st, vpf, wm, pcam, dyn end   -- 测试用
+
+  -- 后台：第一人称活着时把地形网格准备好、登记地图上的东西（开镜前就弄好，开镜那一下不卡）
+  G.frameConn("ScopePip", function()
+    if st.ok == false then return end
+    local ch = me.Character
+    if not ch or not G.fpActive then return end
+    local v = G.fps   -- 手里是带瞄准镜的枪才准备（拿红点、全息、机械瞄具时不白算）
+    if not (v and v.optic and v.optic.kind == "scope") then return end
+    if not st.started then
+      st.started = true
+      watchStatic()
+    end
+    if now() - (st.watchT or 0) > 5 then   -- Ruins 之类的文件夹可能后来才有
+      st.watchT = now()
+      watchStatic()
+    end
+    maintain()
+  end)
+end
+
+return ScopePip
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -40181,7 +40898,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -40930,7 +41647,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -41385,7 +42102,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -42605,7 +43322,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -43112,7 +43829,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -43225,7 +43942,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -44303,7 +45020,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -44407,7 +45124,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -45909,7 +46626,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -46637,7 +47354,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -47565,7 +48282,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）

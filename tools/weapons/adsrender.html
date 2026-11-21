@@ -104,8 +104,9 @@ window.renderAds = async (D, bi, opts) => {
   }
   const e = new THREE.Vector3(...sight.eye), o = new THREE.Vector3(...sight.obj);
   const dir = o.clone().sub(e).normalize();
-  const fov = 68 / (opts.zoom || sight.zoom || 1);
-  const K = opts.K || sight.K || 0.6;   // 目镜直径占屏幕高度的比例（GunMods 的 lensK）
+  // pip：镜内单独放大（ScopePip.lua）——镜外按 opts.ads（1.25）倍、目镜按 pipK 摆；镜里另拍一张 pip 倍的（只有战场、没有枪）
+  const fov = opts.pip ? 68 / (opts.ads || 1.25) : 68 / (opts.zoom || sight.zoom || 1);
+  const K = opts.K || (opts.pip ? (sight.Kp || 0.3) : (sight.K || 0.6));   // 目镜直径占屏幕高度的比例（GunMods 的 lensK / pipK）
   // 红点、全息：后窗离眼睛 adsD 格（同 FPSView 的 opticAds）；瞄准镜：目镜在屏幕上占 K 倍高
   const d = sight.kind === 'dot' ? (sight.adsD || 0.3) : sight.r / (Math.tan(THREE.MathUtils.degToRad(fov) / 2) * K);
   const cam = new THREE.PerspectiveCamera(fov, W / H, 0.005, 6000);
@@ -166,6 +167,18 @@ window.renderAds = async (D, bi, opts) => {
   }
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const oc = out.getContext('2d'); oc.drawImage(shot, 0, 0); oc.drawImage(ov, 0, 0);
+  if (opts.pip) {   // 画中画那张：同一个眼睛位置、朝光轴看，视角 = 镜片的角大小 ÷ 倍率；方形、边长 = 镜片直径（像素）
+    const tb = K * Math.tan(THREE.MathUtils.degToRad(fov) / 2) / opts.pip;
+    const S = Math.round(K * H);
+    const pc = new THREE.PerspectiveCamera(2 * THREE.MathUtils.radToDeg(Math.atan(tb)), 1, 0.05, 8000);
+    pc.position.copy(cam.position); pc.up.set(0, 1, 0); pc.lookAt(e.clone().add(dir.clone().multiplyScalar(100)));
+    renderer.setSize(S, S); renderer.setClearColor(0x000000, 1);
+    renderer.render(world, pc);
+    const pcv = document.createElement('canvas'); pcv.width = S; pcv.height = S;
+    pcv.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    renderer.setSize(W, H);
+    return { main: out.toDataURL('image/png'), pip: pcv.toDataURL('image/png') };
+  }
   return out.toDataURL('image/png');
 };
 window.ready = true;

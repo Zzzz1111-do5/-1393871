@@ -16,6 +16,9 @@
 --   手稳：呼吸晃，按住 Shift 屏住（稳几秒，憋过头晃得更厉害、一会儿屏不了），走动晃得多；晃动加在镜头上（子弹照样打屏幕正中），
 --     倍率高时鼠标灵敏度跟着降；滚轮变倍（狙击镜、望远镜）
 --   别人开着镜对着你（他的视线在你附近 20° 以内）时他的镜片闪光：服务器只记 Scoped / ScopeDir 两个属性，闪光是看的人本地画的、墙挡得住
+--   镜内单独放大（用户 11-21：「改成镜内单独放大」）：第一人称、画中画准备好了（ScopePip.lua）时，镜外只是普通开镜（约 1.25 倍）、不放大，
+--     镜片那个圆里是 ScopePip 另画的放大的战场（镜头朝准星看），分划画在镜片正中；每次举镜时定下用哪种（G.scopePipMode），举到一半不换。
+--     画中画用不了（EditableMesh 没开、地形网格还没生成好）时照旧整屏放大
 --   Play 调：G.scopeStep(dt, 开没开, 武器表) 每帧、G.scopeZoom(武器表) 现在的倍率、G.scopeFire() 开了一枪
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -117,6 +120,7 @@ function Scope.init(G)
   ---------------------------------------------------------------- 镜片（狙击镜、ACOG）：CanvasGroup 按圆裁剪，里面的分划、月牙、彩边出不了这个正圆
   --   层（从下往上）：镀膜 → 分划 → 反光弧 → 眼盒阴影 B → 边上的暗边 A → 色散彩边
 
+  if G.pipAttach then G.pipAttach(root) end   -- 画中画（ScopePip.lua）：镜片底下那个圆里画放大的战场
   local lensG = nil
   pcall(function() lensG = Instance.new("CanvasGroup") end)
   local isCG = lensG ~= nil
@@ -128,7 +132,7 @@ function Scope.init(G)
   lensG.AnchorPoint = V2(0.5, 0.5)
   lensG.BackgroundTransparency = 1
   lensG.BorderSizePixel = 0
-  lensG.ZIndex = 1
+  lensG.ZIndex = 2   -- 盖在画中画上面（镀膜、分划、暗边都是半透明的）
   lensG.Visible = false
   lensG.Parent = root
   round(lensG)
@@ -310,6 +314,8 @@ function Scope.init(G)
     sniper = { 0.8, 0.04 },    -- 狙击镜：目镜圈、镜身压得很黑
     acog = { 0.34, 0.045 },    -- ACOG：还看得清目镜圈、镜身和两边的战场
     flat = { 0.95, 0.02 },     -- 没有 3D 镜身（第三人称、视图模型还没建好）：外面几乎全黑，像老式的镜筒
+    pipSniper = { 0.5, 0.04 },  -- 画中画：镜外是不放大的战场（普通开镜），只轻轻压暗
+    pipAcog = { 0.2, 0.045 },
   }
 
   -- 望远镜：左右两个（各在半边屏幕的裁剪框里）
@@ -406,7 +412,8 @@ function Scope.init(G)
     lrfT = 0, phase = 0,
   }
   -- 镜片那一层：x, y 圆心、r 半径（像素），f 淡入（0～1），lk 分划（"sniper" / "acog"），fp 有 3D 镜身（第一人称），fpT 上次报目镜位置的时刻
-  local L = { x = 0, y = 0, r = 0, f = 0, lk = nil, fp = false, fpT = -1, shown = false, rA = -1 }
+  --   pip 这一次举镜用不用画中画（开始举时定下来，放下才清掉：举到一半不换）、Z 倍率
+  local L = { x = 0, y = 0, r = 0, f = 0, lk = nil, fp = false, fpT = -1, shown = false, rA = -1, pip = nil, Z = 3.5 }
   G.scopeOn = false
 
   local function kindOf(w)
@@ -474,6 +481,7 @@ function Scope.init(G)
   end
 
   local function hideLens()
+    if G.pipHide then G.pipHide() end
     if not L.shown then return end
     L.shown = false
     lensG.Visible = false
@@ -503,14 +511,24 @@ function Scope.init(G)
     if isCG then lensG.GroupTransparency = 1 - f end
     local lk = L.lk
     ret.Visible, acogRet.Visible = lk == "sniper", lk == "acog"
-    -- 分划在屏幕正中（子弹打这儿）：镜片晃的时候分划不跟着晃，偏多了就是眼盒没对正
-    local rx, ry = cx - x + r, cy - y + r
+    local pip = L.fp and L.pip == true and G.pipStep ~= nil
+    local rx, ry, fpx
+    if pip then
+      -- 画中画（镜内单独放大）：镜里那个圆是 ScopePip 另画的放大的战场，它的镜头朝准星看——分划在镜片正中就是子弹打的地方
+      rx, ry = r, r
+      fpx = G.pipStep(x, y, r, L.Z, f)
+    else
+      -- 整屏放大：分划在屏幕正中（子弹打这儿），镜片晃的时候分划不跟着晃，偏多了就是眼盒没对正
+      if G.pipHide then G.pipHide() end
+      rx, ry = cx - x + r, cy - y + r
+      fpx = cy / math.tan(math.rad(cam.FieldOfView) / 2)
+    end
     if lk == "acog" then
       at(acogRet, rx, ry)
       if L.rA ~= r then L.rA = r layoutAcog(2 * r) end
     else
       at(ret, rx, ry)
-      layoutFfp(0.001 * cy / math.tan(math.rad(cam.FieldOfView) / 2))   -- 第一焦平面：每密位的像素数 = 屏幕半高 ÷ tan(半视角) × 0.001
+      layoutFfp(0.001 * fpx)   -- 第一焦平面：每密位的像素数 = 焦距（像素）× 0.001
     end
     -- 眼盒：目镜偏离屏幕中心（枪晃）+ 镜子相对眼睛的晃（S.eye：转得快、走路、开枪、刚贴上）；B 朝反方向错开
     local ev = V2(x - cx, y - cy)
@@ -533,7 +551,7 @@ function Scope.init(G)
     caRs.Transparency = 0.8 - ca
     caBs.Transparency = 0.78 - ca
     -- 镜片外面
-    layoutOuter(x, y, r, f, OUTK[L.fp and lk or "flat"])
+    layoutOuter(x, y, r, f, OUTK[(not L.fp) and "flat" or (pip and ((lk == "sniper") and "pipSniper" or "pipAcog")) or lk])
     -- 调色、景深跟着淡入
     cc.Contrast, cc.Saturation, cc.Brightness = 0.07 * f, 0.08 * f, 0.015 * f
     if dof then
@@ -545,10 +563,18 @@ function Scope.init(G)
 
   -- FPSView 每帧报目镜在屏幕上的位置（第一人称、拿着带瞄准镜的枪时）：举到一半开始淡入，举好时满
   function G.scopeLensAt(x, y, r, ads, sniper)
+    if ads < 0.02 then L.pip = nil
+    elseif L.pip == nil then L.pip = (G.pipReady ~= nil and G.pipReady()) or false end
     local f = math.clamp((ads - 0.45) / 0.2, 0, 1)
     L.x, L.y, L.r, L.f = x, y, r, f * f * (3 - 2 * f)
     L.lk, L.fp, L.fpT = sniper and "sniper" or "acog", true, now()
     drawLens()
+  end
+
+  -- 这一次开镜用不用画中画（Play 的视角、FPSView 的目镜大小跟着它）：举镜时定下的；还没举就看画中画准备好了没有
+  function G.scopePipMode()
+    if L.pip ~= nil then return L.pip end
+    return (G.pipReady ~= nil and G.pipReady()) or false
   end
 
   local D0, Db = 0, 0   -- 没有 3D 镜身时镜片的直径、望远镜每个圆的直径（像素）
@@ -661,9 +687,12 @@ function Scope.init(G)
     end
     local t = now()
     -- 第一人称不再报目镜位置（收枪、换枪、上车、死了）：镜片那一层收掉
-    if L.fp and L.shown and t - L.fpT > 0.15 then
-      L.f, L.fp = 0, false
-      drawLens()
+    if L.fp and t - L.fpT > 0.15 then
+      L.pip = nil
+      if L.shown then
+        L.f, L.fp = 0, false
+        drawLens()
+      end
     end
     if not kind then return end
     dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
@@ -671,6 +700,7 @@ function Scope.init(G)
     if vs ~= S.vs then layout(kind) end
     local K = KINDS[kind]
     local zoom = G.scopeZoom(w)
+    L.Z = zoom   -- 画中画的倍率（放下镜子淡出时还用这个）
     local cx, cy = vs.X / 2, vs.Y / 2
     local lensKind = kind == "sniper" or kind == "acog"
     -- 没有 3D 镜身（第三人称、视图模型还没建好）：镜片摆在屏幕正中，开镜后 0.15 秒淡入

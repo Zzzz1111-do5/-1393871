@@ -40,7 +40,11 @@ if (adsArg) {
   await page.waitForFunction(() => window.ready === true, null, { timeout: 60000 });
   for (let i = 0; i < D.builds.length; i++) {
     const png = await page.evaluate(([d, i, o]) => window.renderAds(d, i, o), [D, i, opts]);
-    fs.writeFileSync(path.join(outDir, `${D.builds[i].name}_ads${opts.tag || ''}.png`), Buffer.from(png.split(',')[1], 'base64'));
+    const name = `${D.builds[i].name}_ads${opts.tag || ''}`;
+    if (typeof png === 'object') {   // pip：主画面 + 画中画那张
+      fs.writeFileSync(path.join(outDir, name + '.png'), Buffer.from(png.main.split(',')[1], 'base64'));
+      fs.writeFileSync(path.join(outDir, name + '_pip.png'), Buffer.from(png.pip.split(',')[1], 'base64'));
+    } else fs.writeFileSync(path.join(outDir, name + '.png'), Buffer.from(png.split(',')[1], 'base64'));
     console.log(D.builds[i].name);
   }
   await browser.close();

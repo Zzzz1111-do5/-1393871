@@ -608,7 +608,8 @@ function Play.init(G)
     --   （视角收窄得太早，还没举到眼前的枪和手会被放大得很怪）；松开右键照样跟着慢慢退回来
     local sw = cur.id and W[cur.id]
     if fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
-      local Z = G.scopeZoom and G.scopeZoom(sw) or sw.scope
+      -- 镜内单独放大（画中画，用户 11-21）：镜外只放大一点点（普通开镜），倍率在镜片里那个圆（ScopePip.lua）
+      local Z = (G.scopePipMode and G.scopePipMode()) and (G.PIP_ADS or 1.25) or (G.scopeZoom and G.scopeZoom(sw) or sw.scope)
       local e = math.clamp((G.fpsAds() - 0.35) / 0.6, 0, 1)
       e = e * e * (3 - 2 * e)
       cam.FieldOfView = baseFov / (1 + (Z - 1) * e)

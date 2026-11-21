@@ -40,8 +40,9 @@ GM.ITEM = {
   --   lensK：开镜时目镜（正圆的洞）在屏幕上占高度的几成——使命召唤那样外面围着一圈目镜、镜身（两具 ACOG 的原模型目镜是八边形的，
   --     tools/weapons/optics.json 的 ring 补了正圆的目镜圈罩住；目镜 / 物镜的位置、洞的半径在 OpticsMeta 里）
   --   镜片（glass）半透明：腰射、举镜时从后面看得穿（开镜时整块藏掉，从目镜的洞里直接看放大的画面）
-  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", lensK = 0.5, st = { hand = -7, stab = 4 }, glass = { GlassIn = 0.62 } },
-  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", lensK = 0.55, st = { hand = -12, stab = 6, mob = -1 },
+  --   pipK：镜内单独放大（画中画，ScopePip.lua）时目镜占屏高——镜外只是普通开镜，目镜离眼睛近一点（再近会被镜头的近裁剪面切掉）
+  acog = { slot = "optic", model = "acog", zoom = 3.5, scope = "acog", lensK = 0.5, pipK = 0.3, st = { hand = -7, stab = 4 }, glass = { GlassIn = 0.62 } },
+  opt_acog6 = { slot = "optic", model = "opt_acog6", zoom = 6, scope = "acog6", lensK = 0.55, pipK = 0.36, st = { hand = -12, stab = 6, mob = -1 },
     glass = { C9ab = 0.62, C9abIn = 0.62 } },
   -- 前握把
   grip_none = { slot = "grip" },

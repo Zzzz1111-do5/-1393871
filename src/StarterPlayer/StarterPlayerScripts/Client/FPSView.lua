@@ -161,7 +161,7 @@ function FPSView.init(G)
     if key == "binoc" then
       info = { kind = "binoc", eyeG = at * V(), objG = at * V(0, 0, 0.5), r = 0.03 }
     elseif E.eye and E.obj then   -- 狙击镜：目镜占屏幕高度九成（使命召唤的狙击镜也是几乎占满）
-      info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r, K = 0.9, sniper = true }
+      info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r, K = 0.9, Kp = 0.55, sniper = true }
     end
     local mz = GD.muzzle(M)
     return { optic = info, mz = mz and (at * CF(mz)) or nil }, nil
@@ -448,7 +448,7 @@ function FPSView.init(G)
           local at = railK * mt.cf
           if addAtt(model, items, oi.model, at, "gun", true) then
             local sg = GM.sightOf(bld.optic, M)
-            if sg then opticInfo = { kind = oi.scope and "scope" or "dot", dot = oi.dot, eyeG = at * sg.eye, objG = at * sg.obj, r = sg.r, adsD = oi.adsD, K = oi.lensK } end
+            if sg then opticInfo = { kind = oi.scope and "scope" or "dot", dot = oi.dot, eyeG = at * sg.eye, objG = at * sg.obj, r = sg.r, adsD = oi.adsD, K = oi.lensK, Kp = oi.pipK } end
             if mt.riser then   -- 增高座：迷你红点垫高到和别的瞄具差不多的高度（不然照门挡着）
               local rp = newPart(model, V(0.058, mt.riser, 0.1), RGB(34, 34, 36), MAT.Metal)
               table.insert(items, { rp, "gun", at * CF(0, -mt.riser / 2, 0.01), optic = "Riser" })
@@ -469,7 +469,7 @@ function FPSView.init(G)
             table.insert(items, { x.part, "gun", at * x.cf, optic = x.name, inner = (G.opticInner and G.opticInner(M4_OPTIC.key, x.name)) or nil })
           end
           opticInfo = { kind = "scope", eyeG = at * V(M.eye.c[1], M.eye.c[2], M.eye.c[3]), objG = at * V(M.obj.c[1], M.obj.c[2], M.obj.c[3]), r = M.eye.r,
-            K = GM.ITEM.acog.lensK }
+            K = GM.ITEM.acog.lensK, Kp = GM.ITEM.acog.pipK }
         elseif not (G.opticFailed and G.opticFailed(M4_OPTIC.key)) then
           vm0Wait = waitFor(vm0Wait, M4_OPTIC.key)   -- 还在生成：先用光秃秃的 M4，生成好了重建
         end
@@ -640,7 +640,11 @@ function FPSView.init(G)
     local d = 0.22
     -- 瞄准镜（使命召唤那样）：目镜在屏幕上占高度的 K 成（ACOG 六成、狙击镜九成），视角收窄时往远推，看起来一样大；
     --   镜身一直看得见，目镜那个洞里是放大的画面（镜筒里面的块藏起来了）
-    if O.kind == "scope" then d = math.max(0.1, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * (O.K or 0.86)))
+    --   镜内单独放大（画中画，G.scopePipMode）：镜外只是普通开镜，目镜占屏高按 Kp（小一些）
+    if O.kind == "scope" then
+      local K = O.K or 0.86
+      if G.scopePipMode and G.scopePipMode() then K = O.Kp or 0.34 end
+      d = math.max(0.1, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * K))
     elseif O.kind == "dot" then d = O.adsD or 0.3 end   -- 红点、全息（改枪）：后窗离眼睛 0.2～0.45 格，看得见枪和窗框
     return CF(V(0, 0, -d) - rot * r) * rot
   end
@@ -857,7 +861,8 @@ function FPSView.init(G)
       -- 瞄准镜（镜身一直看得见）：视角收窄了，同样的晃在屏幕上放大好几倍——开镜时平移按目镜大小压小、转动按视角压小，
       --   镜子稳稳停在眼前，只剩一点点晃（Scope.lua 按目镜偏了多少画眼盒阴影的月牙）
       swT = sw * (1 - 0.8 * ads)
-      swR = sw * (1 - ads) + ads * 1.6 * (vm.optic.K or 0.6) * math.tan(math.rad(cam.FieldOfView) / 2)
+      local Ko = (G.scopePipMode and G.scopePipMode()) and (vm.optic.Kp or 0.34) or (vm.optic.K or 0.6)
+      swR = sw * (1 - ads) + ads * 1.6 * Ko * math.tan(math.rad(cam.FieldOfView) / 2)
       walk *= 1 - 0.6 * ads
       breath *= 1 - 0.8 * ads
     end
