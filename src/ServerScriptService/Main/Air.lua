@@ -318,7 +318,7 @@ function Air.init(G)
     e.syncT, e.syncSlack = now(), 160   -- 位置报告的校验（sync）：从这一刻起算
     e.gunT = 0
     e.trig = false
-    e.aim = nil
+    e.aim, e.stick = nil, nil
     e.bay = 0
     e.model:SetAttribute("Gear", onGround and 1 or 0)
     e.model:SetAttribute("Thr", onGround and 0 or 80)
@@ -631,7 +631,12 @@ function Air.init(G)
       end
       return fwd, o
     end
-    return fwd, (cf * CF(e.def.gunPos or V(0, 0, -e.def.L * 0.45))).Position
+    local o = (cf * CF(e.def.gunPos or V(0, 0, -e.def.L * 0.45))).Position
+    if e.driver and e.stick and typeof(e.aim) == "Vector3" then   -- 固定机炮黏住目标（用户 11-21：像 MWT 那样）：客户端给的瞄准点在机头 12° 以内就朝它打
+      local want = e.aim - o
+      if want.Magnitude > 1 and fwd:Dot(want.Unit) > math.cos(math.rad(12)) then return want.Unit, o end
+    end
+    return fwd, o
   end
   -- 近似正态分布（三个均匀分布相加），标准差 1
   local function gauss() return (math.random() + math.random() + math.random() - 1.5) * 2 end
@@ -746,6 +751,7 @@ function Air.init(G)
     if e.onGround and d.gd ~= true then e.upAt = now() end   -- 刚离地（AI 舰艇的自动防空导弹 12 秒内不打：Navy.lua）
     e.onGround = d.gd == true
     if typeof(d.aim) == "Vector3" then e.aim = d.aim end
+    e.stick = d.stk == true   -- 机炮黏住了目标（客户端 Fly.lua 的 gunStick）
     local m = e.model
     local function q(name, v, k)
       if type(v) ~= "number" or v ~= v then return end
@@ -800,6 +806,7 @@ function Air.init(G)
       e.trig = d.on == true
       e.model:SetAttribute("Fire", e.trig)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
+      e.stick = d.stk == true
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)

@@ -249,7 +249,7 @@ if fst and e then
   T.key(Enum.KeyCode.LeftControl, false)
   check(fst.thr < 40, string.format("按住 Ctrl 收油门（%.0f）", fst.thr))
 end
-print("⑤ 起飞、拉杆（键盘当驾驶杆：S 抬头、W 低头、A / D 滚转）：有重量感、不太灵活；机头的全息标记一直在屏幕正中")
+print("⑤ 起飞、拉杆（键盘当驾驶杆：S 抬头、W 低头、A / D 滚转）：有重量感、不太灵活；机头的全息标记平飞时在正中、拉杆时挪一点（MWT 那样）")
 local cam = R.services.Workspace.CurrentCamera
 local function markOff()   -- 机头前方 300 格那一点离屏幕中心多少像素（全息标记就在那里）
   local sp = cam:WorldToViewportPoint(fst.cf.Position + fst.cf.LookVector * 300)
@@ -309,7 +309,9 @@ if fst and e then
   check(aoa > 1.5 and aoa < 25, string.format("拉杆时机头比航迹高 %.1f°（飞机「吃」一下才转过去）", aoa))
   check(gMax <= e.def.g * 0.72 + 0.3, string.format("过载不超过 %.1f g（用户 11-21：太灵活了，上限收到七成；这次最大 %.1f g）", e.def.g * 0.72, gMax))
   check(fst.spd < spd0, string.format("大迎角掉速：%.0f → %.0f", spd0, fst.spd))
-  check(worst <= 2, string.format("拉杆时机头标记还在屏幕正中（最远偏 %.1f 像素）", worst))
+  check(worst > 4 and worst < 200, string.format("拉杆时机头标记往上挪了一点（用户 11-21：像 MWT 那样会位移；最远偏 %.1f 像素，原来钉死在正中、再原来乱跑两百多）", worst))
+  R.run(1.5)
+  check(markOff() <= 3, string.format("松杆 1.5 秒：标记回到正中（偏 %.1f 像素）", markOff()))
   local q = fst.cf.Position
   check(q.X == q.X and q.Y == q.Y and q.Z == q.Z, "位置正常（没有算出 NaN）")
   -- A / D 滚转：不太灵活（用户 11-21），松开以后小坡度自己慢慢摆平
@@ -369,6 +371,64 @@ if fst and e then
   check(markOff() <= 3, string.format("按 C：镜头立刻回到身后（标记偏 %.1f 像素）", markOff()))
   level()
   R.run(0.5)
+end
+
+print("⑤½ 机炮黏住目标（用户 11-21：机炮也能像 MWT 那样黏在载具上）")
+if fst and e then
+  R.run(0.5)
+  local ents = R.workspace:FindFirstChild("Ents")
+  local fake = R.Instance.new("Model")
+  fake.Name = "FakeTank"
+  local root = R.Instance.new("Part")
+  root.Name = "Root"
+  root.Size = V3(8, 6, 14)
+  root.Anchored = true
+  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 900 + fst.cf.RightVector * 40)   -- 机头右边 2.5°、900 格
+  root.Parent = fake
+  fake:SetAttribute("Kind", "veh")
+  fake:SetAttribute("Team", (me:GetAttribute("Side") == "atk") and "def" or "atk")
+  fake:SetAttribute("Hp", 100)
+  fake:SetAttribute("EntId", 99901)
+  fake.Parent = ents
+  local gun0 = fst.d.gun
+  fst.d.gun = gun0 or "gsh30"   -- 歼-20 没有内置机炮：这一段借一门 30 毫米炮来测（测完还原）
+  R.run(0.4)
+  check(fst.stick ~= nil and fst.stick.em == fake, "机头前方 2.5° 的敌方坦克：机炮黏上去了")
+  local function aimRingShown()   -- AirHud 的准星圈（ImageLabel，T.findNamed 只找按钮）
+    for _, g in ipairs(R.localPlayer.PlayerGui:GetDescendants()) do
+      if g.Name == "AimRing" and g.ClassName == "ImageLabel" and T.visible(g) then return g end
+    end
+  end
+  local ring = aimRingShown()
+  check(ring ~= nil, "黏住时准星圈画在目标上")
+  if ring and fst.stick then
+    local cam2 = R.workspace.CurrentCamera
+    local sp = cam2:WorldToViewportPoint(fst.stick.lead)
+    local vp = cam2.ViewportSize
+    local pos = ring.Position
+    local dx = pos.X.Scale * vp.X + pos.X.Offset - sp.X
+    local dy = pos.Y.Scale * vp.Y + pos.Y.Offset - sp.Y
+    check(math.sqrt(dx * dx + dy * dy) < 6, string.format("准星圈在提前量那一点上（差 %.1f 像素）", math.sqrt(dx * dx + dy * dy)))
+  end
+  if fst.stick then
+    local to = (fst.stick.lead - fst.cf.Position).Unit
+    local off = math.deg(math.acos(math.max(-1, math.min(1, to:Dot(fst.cf.LookVector)))))
+    check(off > 1 and off < 12, string.format("瞄准点在提前量上（离机头 %.1f°，服务器 12° 以内照着打）", off))
+  end
+  R.run(0.3)
+  check(e.stick == true and e.aim ~= nil, "服务器收到了「黏住了」和瞄准点")
+  -- 偏到 9° 以外松开；队友的车不黏
+  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 600 + fst.cf.RightVector * 150)   -- 约 14°
+  R.run(0.3)
+  check(fst.stick == nil, "目标偏到 9° 以外：松开了")
+  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 900)
+  fake:SetAttribute("Team", me:GetAttribute("Side"))
+  R.run(0.3)
+  check(fst.stick == nil, "自己队的车不黏")
+  fake:Destroy()
+  R.run(0.3)
+  check(aimRingShown() == nil, "没黏住：准星圈收起来")
+  fst.d.gun = gun0
 end
 
 print("⑥ 油量：飞着就烧油（油门越大越费）、平显上有油量；副油箱先烧、烧干自动抛、J 键手动抛；烧干熄火")

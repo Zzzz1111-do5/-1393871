@@ -898,6 +898,62 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(math.min(cone * 2.2, 85)))
   end
+  -- 机炮黏住目标（用户 11-21：机炮也能像 MWT 那样黏在载具上）：机头前方 6° 以内、炮的射程里的敌方载具（车、船、飞机、工事、登陆艇），
+  --   挑离机头最近的（远的稍微吃亏）；黏住以后偏到 9° 才松开（不来回跳）。瞄准点放在提前量上：目标的位置 + 相对速度 × 炮弹飞过去的时间
+  --   （炮弹带着自己飞机的速度出膛，所以用相对速度）+ 下坠；服务器的固定机炮最多偏 12° 朝这一点打（Air.lua 的 gunDir）
+  local STICK_IN, STICK_OUT = math.cos(rad(6)), math.cos(rad(9))
+  local STICK_KINDS = { veh = true, fort = true, lcm = true, lcac = true, ship = true, air = true }
+  local function gunStick()
+    local gw = nil   -- 这架飞机的炮：挂载表里的炮（固定翼），没有就看机型的 gun（歼-20 没有内置机炮，不黏）
+    for _, wid in ipairs(st.wl or {}) do
+      local w = AD.W[wid]
+      if w and w.kind == "gun" then gw = w break end
+    end
+    gw = gw or AD.W[st.d.gun or ""]
+    local f = workspace:FindFirstChild("Ents")
+    if not gw or not f then return nil end
+    local myTeam = me:GetAttribute("Side")
+    local p0, fwd = st.cf.Position, st.cf.LookVector
+    local keep = st.stick and st.stick.em
+    local best, bestS = nil, math.huge
+    for _, em in ipairs(f:GetChildren()) do
+      local root = em:FindFirstChild("Root")
+      if root and em ~= st.em and STICK_KINDS[em:GetAttribute("Kind") or ""] and em:GetAttribute("Team") ~= myTeam
+        and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
+        local p = root.CFrame.Position
+        local to = p - p0
+        local dist = to.Magnitude
+        if dist > 40 and dist < gw.range then
+          local c = fwd:Dot(to / dist)
+          if c > ((em == keep) and STICK_OUT or STICK_IN) then
+            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0)
+            if sc < bestS then best, bestS = { em = em, p = p, dist = dist }, sc end
+          end
+        end
+      end
+    end
+    if not best then st.stickV = nil return nil end
+    -- 目标的速度：两帧位置差，平滑一下
+    local now = os.clock()
+    local sv = st.stickV
+    local vT = V()
+    if sv and sv.em == best.em and now > sv.t + 1e-3 then
+      local raw = (best.p - sv.p) / (now - sv.t)
+      vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
+    elseif sv and sv.em == best.em then
+      vT = sv.v or V()
+    end
+    st.stickV = { em = best.em, p = best.p, t = now, v = vT }
+    local vr = vT - (st.vel or V())
+    local t = best.dist / gw.speed
+    local lead = best.p
+    for _ = 1, 2 do
+      lead = best.p + vr * t
+      t = (lead - p0).Magnitude / gw.speed
+    end
+    best.lead = lead + V(0, 0.5 * workspace.Gravity * 0.08 * t * t, 0)   -- 炮弹的下坠（服务器的 gscale 0.08）
+    return best
+  end
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 镜头跟着机身（用户 11-21：飞机的飞行方向标志动来动去，应该固定位置）：原来镜头顺着鼠标瞄准方向看（战雷那样），
@@ -981,7 +1037,7 @@ function Fly.init(G)
     end
     if st.trig == on then return end
     st.trig = on
-    G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt })
+    G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt, stk = st.stick ~= nil })
   end
 
   local function fireStore(wid, w)
@@ -1967,6 +2023,24 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
+      -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
+      --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
+      --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
+      do
+        local noseF = fwd
+        local cf2 = noseF
+        if st.camF and st.camF:Dot(noseF) > 0.5 then
+          cf2 = st.camF:Lerp(noseF, 1 - math.exp(-dt * 4.5))
+          cf2 = (cf2.Magnitude > 1e-3) and cf2.Unit or noseF
+          local MAXA = rad(7)
+          if cf2:Dot(noseF) < math.cos(MAXA) then
+            local axis = noseF:Cross(cf2)
+            if axis.Magnitude > 1e-6 then cf2 = CFrame.fromAxisAngle(axis.Unit, MAXA):VectorToWorldSpace(noseF) end
+          end
+        end
+        st.camF = cf2
+        fwd = cf2
+      end
       -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
       if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
         local kk = math.exp(-dt * (st.uav and 5 or 2.2))
@@ -2045,6 +2119,12 @@ function Fly.init(G)
     local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
     local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
     st.aimPt = res and res.Position or (o + adir * far)
+    if d.kind == "jet" and st.pilot and not st.uav and not st.eo and not st.crashed then   -- 机炮黏住目标：瞄准点换成目标的提前量（发给服务器）
+      st.stick = gunStick()
+      if st.stick then st.aimPt = st.stick.lead end
+    else
+      st.stick = nil
+    end
     do   -- 瞄准点打在哪个实体上（吊舱页面的 POINT 跟踪框）
       local hm = res and res.Instance and res.Instance:FindFirstAncestorOfClass("Model")
       st.aimEnt = (hm and hm ~= st.em and hm:GetAttribute("EntId") ~= nil) and hm or nil
@@ -2123,7 +2203,7 @@ function Fly.init(G)
     if st.sendT <= 0 and st.pilot and not st.crashed then
       st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
-      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
+      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
     end
     -- 平显
@@ -2210,7 +2290,13 @@ function Fly.init(G)
         local ap, aon = project(pos + aimRingDir() * 400)
         aimRing.Position, aimRing.Visible = ap, aon
       elseif d.kind == "jet" then
-        aimRing.Visible = false
+        -- 机炮黏住了目标（用户 11-21：像 MWT 那样）：准星圈画在提前量那一点上、转着；没黏住不画（瞄准就是机头标记）
+        if st.stick and st.stick.lead and st.pilot then
+          local ap, aon = project(st.stick.lead)
+          aimRing.Position, aimRing.Visible = ap, aon
+        else
+          aimRing.Visible = false
+        end
       else
         aimRing.Position, aimRing.Visible = UDim2.fromScale(0.5, 0.5), d.kind == "heli"
       end

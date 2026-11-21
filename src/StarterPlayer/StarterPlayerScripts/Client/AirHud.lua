@@ -215,6 +215,15 @@ function AirHud.init(G)
   -- 准星（鼠标想去的方向）：一个发光的细圈（HudIcons 的 aimRing），Fly 原来那个「◯」字收起来
   A.aim = img(gui, "AimRing", UDim2.fromOffset(28, 28), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5), WHITE, 0.05)
   A.aimArt = setIcon(A.aim, "aimRing")
+  if not A.aimArt then   -- 用不了 EditableImage（游戏设置里没开 Mesh / Image API）：圆角框 + 描边画一个圈（机炮黏住目标时要看得见）
+    A.aim.BackgroundTransparency = 1
+    local cr = Instance.new("UICorner")
+    cr.CornerRadius = UDim.new(0.5, 0)
+    cr.Parent = A.aim
+    local sk = Instance.new("UIStroke")
+    sk.Thickness, sk.Color, sk.Transparency = 2, WHITE, 0.1
+    sk.Parent = A.aim
+  end
   A.aim.Visible = false
 
   ---------------------------------------------------------------- 锁定：菱形（顺时针画出来）、锁上后四个直角、菱形逆时针转
@@ -466,8 +475,11 @@ function AirHud.init(G)
       A.boreFall.Visible = false
     end
     hsg.Enabled = showHolo
-    A.aim.Visible = pilot and A.aimArt and info.aim ~= nil
-    if info.aim then A.aim.Position = info.aim end
+    A.aim.Visible = pilot and info.aim ~= nil
+    if info.aim then
+      A.aim.Position = info.aim
+      A.aim.Rotation = (lastT * 120) % 360   -- 黏在目标上的准星圈转着（MWT 那样）
+    end
     -- 锁定：菱形顺时针画出来；锁上后四个直角往里一收、菱形逆时针转；出了导弹的离轴角菱形变黄
     local lk = info.lock
     if pilot and lk and lk.on then
