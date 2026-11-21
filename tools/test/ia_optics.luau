@@ -53,15 +53,18 @@ G.Config.Bots.minPerTeam = 0
 H.runUntil(function() return G.worldReady end, 120)
 
 print("① 开服：收好导入的瞄准镜、望远镜；狙击枪工具装的是真瞄准镜")
+-- ATACR 有几块按 OpticsMeta 数（af599a2 把镜筒里面挡视线的三角形拆成了 <块名>In：原来 4 块，现在 6 块）
+local NA = 0
+for _ in pairs(OM.atacr.parts) do NA += 1 end
 local RS = H.game:GetService("ReplicatedStorage")
 local opt = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Optics")
-check(opt and opt:FindFirstChild("atacr") and #opt.atacr:GetChildren() == 4 and opt:FindFirstChild("binoc") ~= nil, "Imported.Optics 里有 atacr（4 块）、binoc")
+check(opt and opt:FindFirstChild("atacr") and #opt.atacr:GetChildren() == NA and opt:FindFirstChild("binoc") ~= nil, "Imported.Optics 里有 atacr（" .. NA .. " 块）、binoc")
 local function count(tool, pat) local n = 0 for _, c in ipairs(tool:GetChildren()) do if string.match(c.Name, pat) then n += 1 end end return n end
 local TA, TD = G.TOOLS.atk, G.TOOLS.def
 local nReal = count(TA.sniper, "^Scope_")
-check(nReal == 4 and TA.sniper:FindFirstChild("Scope") == nil and count(TA.sniper, "^Gear_") == 0,
+check(nReal == NA and TA.sniper:FindFirstChild("Scope") == nil and count(TA.sniper, "^Gear_") == 0,
 	"解放军狙击枪（QBU-88 没导入）：零件拼的枪上装着真瞄准镜（" .. nReal .. " 块），没有零件拼的镜筒")
-check(count(TD.sniper, "^Gear_") == 3 and count(TD.sniper, "^Scope_") == 4 and TD.sniper:GetAttribute("Gear") == "m40a5" and TD.sniper:GetAttribute("GearMount") == "atacr",
+check(count(TD.sniper, "^Gear_") == 3 and count(TD.sniper, "^Scope_") == NA and TD.sniper:GetAttribute("Gear") == "m40a5" and TD.sniper:GetAttribute("GearMount") == "atacr",
 	string.format("美军狙击枪：M40A5 真模型 %d 块 + 导轨上的 ATACR %d 块", count(TD.sniper, "^Gear_"), count(TD.sniper, "^Scope_")))
 -- ATACR 的镜座底面贴在 M40A5 的导轨上（工具坐标：握把在把手处、枪口朝 −Z）
 do
@@ -106,7 +109,7 @@ local vm = C.fps
 local body, eyeInfo = nil, OM.atacr.eye
 local nOptic = 0
 if vm then for _, it in ipairs(vm.items) do if it.optic then nOptic += 1 if it.optic == "Body" then body = it[1] end end end end
-check(vm and vm.id == "sniper" and nOptic == 4 and vm.optic ~= nil, "第一人称的狙击枪上是真瞄准镜（" .. nOptic .. " 块）")
+check(vm and vm.id == "sniper" and nOptic == NA and vm.optic ~= nil, "第一人称的狙击枪上是真瞄准镜（" .. nOptic .. " 块）")
 
 print("③ 开镜：举到眼前，镜身看得见，目镜上画镜片那一层")
 local cam = H.workspace.CurrentCamera
@@ -117,11 +120,12 @@ check(C.fpsOpticPending() == true, "刚按右键：还在举镜")
 H.run(0.8)
 check(C.fpsOpticPending() == false and sg.Enabled, "举到眼前：目镜上画着镜片那一层")
 local function eyeCheck(tag)
-	local bc = OM.atacr.parts.Body.c
-	local e = eyeInfo.c
-	local eyeW = body.CFrame * V3.new(e[1] - bc[1], e[2] - bc[2], e[3] - bc[3])
-	local o = OM.atacr.obj.c
-	local objW = body.CFrame * V3.new(o[1] - bc[1], o[2] - bc[2], o[3] - bc[3])
+	-- 目镜、物镜在世界里的位置：照 tools/mock/fps.lua，枪身骨骼（gun 那一轨第一块零件的 CFrame 去掉它的偏移）× FPSView 记的 eyeG / objG
+	--   （原来拿 Body 零件的 CFrame 直接套 OpticsMeta 的坐标：导入的块每块各转了半圈摆回来以后，算出来的是镜像的点——光轴朝后、离得远）
+	local gi = nil
+	for _, it in ipairs(vm.items) do if it[2] == "gun" then gi = it break end end
+	local gcf = gi[1].CFrame * gi[3]:Inverse()
+	local eyeW, objW = gcf * vm.optic.eyeG, gcf * vm.optic.objG
 	local lp = cam.CFrame:PointToObjectSpace(eyeW)
 	local axis = (objW - eyeW).Unit:Dot(cam.CFrame.LookVector)
 	local frac = (eyeInfo.r / -lp.Z) / math.tan(math.rad(cam.FieldOfView) / 2)
@@ -193,7 +197,7 @@ end
 local vm2 = C2.fps
 local nGun, nOpt = 0, 0
 if vm2 then for _, it in ipairs(vm2.items) do if it.optic then nOpt += 1 elseif string.match(it[1].Name, "^O_m40a5__") then nGun += 1 end end end
-check(P2 and P2.alive and P2.team == "def" and vm2 and vm2.id == "sniper" and nGun == 3 and nOpt == 4 and vm2.optic ~= nil,
+check(P2 and P2.alive and P2.team == "def" and vm2 and vm2.id == "sniper" and nGun == 3 and nOpt == NA and vm2.optic ~= nil,
 	string.format("第一人称：M40A5 %d 块 + ATACR %d 块（开镜用 ATACR 的目镜；活着 %s、%s 队、拿着 %s、视图 %s 共 %d 块）", nGun, nOpt, tostring(P2 and P2.alive), tostring(P2 and P2.team),
 		tostring(P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") and P2.char:FindFirstChildOfClass("Tool"):GetAttribute("Gear")), tostring(vm2 and vm2.id), vm2 and #vm2.items or -1))
 -- 开镜的目镜：ATACR 的目镜中心（装在导轨上）

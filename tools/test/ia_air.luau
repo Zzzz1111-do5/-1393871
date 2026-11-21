@@ -198,7 +198,8 @@ check(e.alive, "飞机还好好的")
 
 print("⑤ 开战后：守方在机场（据点 D）出生、生成一架 F-22 坐上去（摆到天上当靶子），攻方锁定、打霹雳-15")
 H.runUntil(function() return G.round.phase == "battle" end, 60)
-act(def, "deploy", "rifle", "point.D")
+-- 交战区（2f5175d）以后守方只能在当前阶段的据点出生，开战时是 A；机场是开飞机的出生点「afield」（据点 D 还在守方手里就能去，同 mock/air.lua）
+act(def, "deploy", "rifle", "afield")
 H.run(2)
 local fp = H.pad(G, "f22")
 check(fp ~= nil and fp.need == "D", "机场停机坪有 F-22 的生成点（据点 D 在守方手里才能用）")

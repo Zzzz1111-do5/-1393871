@@ -1472,6 +1472,7 @@ function R.castRay(origin, dir, params)
   if len < 1e-9 then return nil end
   local d = dir / len
   local best, bt, bp = nil, len, nil
+  local bpn = nil   -- 打中零件那一面的法线
   local inc = params and params.FilterType == Enum.RaycastFilterType.Include
   local list = params and params.FilterDescendantsInstances or {}
   for _, o in ipairs(descendants(ws, {})) do
@@ -1489,19 +1490,26 @@ function R.castRay(origin, dir, params)
         local h = (o._p.Size or v3(4, 1.2, 2)) / 2
         local t0, t1 = -math.huge, math.huge
         local hit = true
-        for _, ax in ipairs({ { lo._x, ld._x, h._x }, { lo._y, ld._y, h._y }, { lo._z, ld._z, h._z } }) do
+        local nAx, nSg = 0, 0   -- 从哪一面进去的（第几根轴、正面还是反面）：算真的面法线
+        for i, ax in ipairs({ { lo._x, ld._x, h._x }, { lo._y, ld._y, h._y }, { lo._z, ld._z, h._z } }) do
           local p0, dd, hh = ax[1], ax[2], ax[3]
           if math.abs(dd) < 1e-12 then
             if p0 < -hh or p0 > hh then hit = false end
           else
             local a, b = (-hh - p0) / dd, (hh - p0) / dd
-            if a > b then a, b = b, a end
-            t0, t1 = math.max(t0, a), math.min(t1, b)
+            local sg = -1   -- 顺着轴走进去的是 −hh 那一面（法线朝 −轴）
+            if a > b then a, b, sg = b, a, 1 end
+            if a > t0 then t0, nAx, nSg = a, i, sg end
+            t1 = math.min(t1, b)
           end
         end
         if hit and t1 >= math.max(t0, 0) then
           local t = math.max(t0, 0)
-          if t < bt then best, bt, bp = o, t, origin + d * t end
+          if t < bt then
+            best, bt, bp = o, t, origin + d * t
+            -- 零件的面法线（同 Luau 测试台 harness.luau：跳弹按入射方向和装甲面法线的夹角算；原来一律朝上，水平打过去的炮弹全当成擦着打、必定跳弹）
+            bpn = (nAx > 0 and t0 >= 0) and mvec(cfp.m, (nAx == 1 and v3(nSg, 0, 0)) or (nAx == 2 and v3(0, nSg, 0)) or v3(0, 0, nSg)) or nil
+          end
         end
       end
     end
@@ -1515,7 +1523,7 @@ function R.castRay(origin, dir, params)
     if t >= 0 and t < bt then best, bt, bp, tmat = R.terrain, t, origin + d * t, Enum.Material.Grass end
   end
   if not best then return nil end
-  local nrm = v3(0, 1, 0)
+  local nrm = (best ~= R.terrain and bpn) or v3(0, 1, 0)
   if best == R.terrain and R.terrainHeight and tmat ~= Enum.Material.Water then
     local e = 2
     local hx = R.terrainHeight(bp._x + e, bp._z) - R.terrainHeight(bp._x - e, bp._z)

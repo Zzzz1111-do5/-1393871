@@ -152,6 +152,9 @@ end
 print("④ 准星")
 local cross = me.PlayerGui:FindFirstChild("Crosshair", true)
 check(cross ~= nil, "有准星（四条线）")
+-- 第一人称开着记录仪（Bodycam.lua，148647a）时四线准星收起来、只留淡点：量四线准星先把记录仪关掉（第三人称一直是四线准星）
+local bc0 = C.bodycamOn
+C.bodycamOn = false
 if cross and hrp then
   R.run(0.5)
   local function gap()
@@ -171,5 +174,6 @@ if cross and hrp then
   local g1 = gap()
   check(cross.Visible and g0 > 0 and g1 >= g0 + 5, string.format("站着 %d 像素、跑起来张开到 %d 像素", g0, g1))
 end
+C.bodycamOn = bc0
 
 T.summary()

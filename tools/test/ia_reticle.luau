@@ -35,7 +35,8 @@ H.removePlayer((def == p1) and p2 or p1)
 local CD = H.Gs[def.Name]
 H.runUntil(function() return G.round.phase == "battle" end, 120)
 local VD = G.VehDefs or H.require(H.game:GetService("ReplicatedStorage"):FindFirstChild("VehDefs"))
-local GREEN, YELLOW, RED = Color3.fromRGB(96, 236, 128), Color3.fromRGB(255, 214, 72), Color3.fromRGB(255, 72, 60)
+-- 能击穿：黄绿（15e4802 界面蓝改绿以后，跟没瞄着车的绿分开；同 VehHud.lua 的 PEN_OK / PEN_MAYBE / PEN_NO）
+local GREEN, YELLOW, RED = Color3.fromRGB(176, 255, 84), Color3.fromRGB(255, 214, 72), Color3.fromRGB(255, 72, 60)
 
 print("① 坦克：MWT 式准星，打不打得穿")
 local function act(...)
@@ -75,7 +76,7 @@ local function shot(alpha, w)
 	return col, txt
 end
 local c1, t1 = shot(20, gun)
-check(same(c1, GREEN), "主炮正对着打（20°）：绿「" .. tostring(t1) .. "」")
+check(same(c1, GREEN), "主炮正对着打（20°）：黄绿「" .. tostring(t1) .. "」")
 local c2, t2 = shot(68, gun)
 check(same(c2, YELLOW) and tostring(t2):find("%d") ~= nil, "斜 68°：黄「" .. tostring(t2) .. "」")
 local c3, t3 = shot(79, gun)

@@ -12,6 +12,7 @@ local G = T.boot()
 G.fortsHold = true   -- 这里测的不是工事：工事不开火
 check(G ~= nil, "服务器模块起来了")
 G.Config.Bots.minPerTeam = 0
+G.aiVehOff = true   -- 也不要 AI 坦克（同 tools/test/ia_flow.luau：它们在 A 外当火力点，会把⑦站进圈里的攻方打死）
 local ok = T.runUntil(function() return G.worldReady end, 900)
 check(ok, string.format("地图生成完：%s 个地形块、%s 个体素", tostring(G.terrainChunks), tostring(G.terrainVoxels)))
 check(#G.bootErrors == 0, "开服没有报错：" .. table.concat(G.bootErrors, " | "))
