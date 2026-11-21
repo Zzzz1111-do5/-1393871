@@ -254,13 +254,10 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    T.Decoration = true   -- 地形草（Grass 材质上会动的草叶；Map.material 让大片草地用 Grass）
-    -- 草叶长度（默认 0.7 约两格高，0.1 格起）：0.28——
-    --   用户 11-19 要草高一点、多一点调到过 0.45（约一格三），用户 11-21：所有东西都是半截身子卡在地里——
-    --   小人腿两格、坦克离地一格多、沙袋一格来高，一格多的草叶把它们下半截都盖住了（11-18 调到 0.55 时也是这样）。
-    --   草叶不超过一格（小人的脚踝、履带下沿那么高）；「多」照旧靠 Map.material 让大片地方是 Grass
-    --   用户 11-21 又说车还是半截卡在地里：0.22，客户端 Perf.lua 也设一遍（这个属性不一定同步到客户端）
-    T.GrassLength = 0.22
+    -- 地形草叶关掉（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：
+    --   草叶调过 0.55 / 0.45 / 0.28 / 0.22 几回，用户那边照样盖住履带、车轮、小人的腿、沙袋下半截。
+    --   草地照旧是 Grass 材质（地面的颜色、纹理不变），只是不长会动的草叶；客户端 Perf.lua 也关一遍（这个属性不一定同步到客户端）
+    T.Decoration = false
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048

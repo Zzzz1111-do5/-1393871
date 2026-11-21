@@ -3,7 +3,7 @@
 --     客户端每个模块每帧用掉多少毫秒（init.client.lua 的逐帧步骤、各模块自己用 G.frameConn 连的逐帧回调）、
 --     引擎的统计（Stats：实例、零件、会动的零件、物理每步、内存、网络收发，读得到的话还有渲染的 CPU / GPU 时间）、
 --     载具这一帧摆了多少零件、地图光晕亮着几个——截图发过来就知道卡在哪
---   自动画质（Fx.lua 按帧率调 G.perfK）多管两样：地形草（perfK ≤ 0.62 关，回到 0.8 以上再开；夜视的模糊在 Night.lua 按 perfK 关）
+--   地形草叶一直关着（用户 11-21：直接把草删掉；原来自动画质按 G.perfK 开关它）；夜视的模糊在 Night.lua 按 perfK 关
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -65,28 +65,13 @@ function Perf.init(G)
   end
   local function f1(x) return string.format("%.1f", x) end
 
-  -- 地形草：卡了先关它（大片会动的草叶很吃显卡），流畅了再开回来（服务器开着才开）
-  local decoServer, decoOff = nil, false
-  -- 草叶长度（用户 11-21：车还是半截卡在地里——前几回都在服务器 World.lua 里把 GrassLength 调短了，用户那边照样是两格来高的草）：
-  --   这个属性不一定从服务器同步到客户端（客户端还是默认的 0.7，草叶两格来高，把履带、车轮、小人的腿、沙袋下半截都盖住），
-  --   客户端自己每半秒对一遍
-  local GRASS = 0.22
+  -- 地形草叶不要了（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：服务器 World.lua 关了 Terrain.Decoration，
+  --   这个属性不一定从服务器同步到客户端（前几回服务器把草叶调短，用户那边照样是两格来高的草），客户端每半秒自己对一遍。
+  --   原来自动画质卡了关草、流畅了再开：来回开关时整片草叶重铺，也是「隔一会卡一下」的一个来源，一起去掉
   local function stepDeco()
     local T = workspace:FindFirstChildOfClass("Terrain")
     if not T then return end
-    pcall(function() if math.abs(T.GrassLength - GRASS) > 0.01 then T.GrassLength = GRASS end end)
-    local k = G.perfK or 1
-    if decoServer == nil then
-      local ok, v = pcall(function() return T.Decoration end)
-      if ok then decoServer = v end
-    end
-    if not decoServer then return end
-    if not decoOff and k <= 0.62 then
-      decoOff = pcall(function() T.Decoration = false end)
-    elseif decoOff and k >= 0.8 then
-      pcall(function() T.Decoration = true end)
-      decoOff = false
-    end
+    pcall(function() if T.Decoration then T.Decoration = false end end)
   end
 
   local frames, acc, worst, puts0 = 0, 0, 0, 0
@@ -147,8 +132,8 @@ function Perf.init(G)
       lines[#lines + 1] = string.format(L("渲染 CPU %s 毫秒 · GPU %s 毫秒", "render CPU %s ms · GPU %s ms"), ms(rc), ms(rg))
     end
     -- 本游戏自己的
-    lines[#lines + 1] = string.format(L("载具摆零件 %d/帧 · 光晕亮着 %d/%d · 地形草 %s", "vehicle parts moved %d/frame · glows %d/%d · grass %s"),
-      math.floor(dPuts / n + 0.5), G.glowLit or 0, G.glowCount and G.glowCount() or 0, decoOff and L("关", "off") or L("开", "on"))
+    lines[#lines + 1] = string.format(L("载具摆零件 %d/帧 · 光晕亮着 %d/%d", "vehicle parts moved %d/frame · glows %d/%d"),
+      math.floor(dPuts / n + 0.5), G.glowLit or 0, G.glowCount and G.glowCount() or 0)
     lines[#lines + 1] = L("F7 关掉这个面板", "F7 hides this panel")
     box.Text = table.concat(lines, "\n")
     box.Size = UDim2.fromOffset(360, 18 + #lines * 16)

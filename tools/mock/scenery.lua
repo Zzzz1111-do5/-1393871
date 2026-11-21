@@ -128,7 +128,7 @@ local vegN = 0
 for k, v in pairs(st.byKey) do if veg[k] then vegN = vegN + v end end
 check(vegN == 0, string.format("原来的林子里（x %.0f z %.0f，一格 %d 棵）不再摆树、灌木、草丛、花丛：%d 株（石头 %d 株，模拟器里 %.1f 秒）", bx, bz, best, vegN, st.live, dt))
 local terr = R.services.Workspace:FindFirstChildOfClass("Terrain") or R.services.Workspace.Terrain
-check(terr ~= nil and terr.Decoration == true, "地形自带的草开着（Terrain.Decoration）")
+check(terr ~= nil and terr.Decoration == false, "地形自带的草叶关着（用户 11-21：直接把草删掉；Terrain.Decoration）")
 local folder = R.services.Workspace:FindFirstChild("Scenery")
 local collide, query = 0, 0
 for _, p in ipairs(folder:GetChildren()) do
