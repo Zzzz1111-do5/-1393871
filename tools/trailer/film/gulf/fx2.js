@@ -129,14 +129,15 @@ export function decoys(o) {
 }
 // 转管炮：一秒几十发，每 every 发一颗曳光；炮口一直在跳的火光
 export function gatling(o) {
-  const { from, dir, t0, t1, rate = 60, speed = 1100, every = 3, spread = 0.008, seed = 9, col = C(1, 0.5, 0.2), len = 30, maxD = 2600, w = 0.5, bright = 7 } = o;
+  const { from, dir, t0, t1, rate = 60, speed = 1100, every = 3, spread = 0.008, seed = 9, col = C(1, 0.5, 0.2), len = 30, maxD = 2600, w = 0.5, bright = 7, flash = 1 } = o;
   const R = rng(seed);
   const shots = [];
   for (let ti = t0; ti < t1; ti += 1 / rate) shots.push({ t: ti, j: new THREE.Vector3(R.gauss(), R.gauss(), R.gauss()).multiplyScalar(spread), tr: shots.length % every === 0 });
   return (t, f) => {
     const F = fcall(from, t), D = fcall(dir, t);
     if (t >= t0 && t <= t1) {
-      const k = 0.7 + 0.3 * Math.sin(t * 91);
+      // 炮口火光：轻轻闪（原来 sin(91t) 按每秒 24 帧采样成忽亮忽暗的频闪）；flash 整体亮度
+      const k = (0.82 + 0.1 * Math.sin(t * 13.7) + 0.08 * Math.sin(t * 29.3 + 1.3)) * flash;
       f.addGlow(F.clone().addScaledVector(D, 1.2), 2.4, FLASH, 9 * k, 1, 0.0016);
       f.addLight(F.clone().addScaledVector(D, 2), FIRE, 4 * k, 160);
       f.sprite('mzl', F.clone().addScaledVector(D, 1.4), 3.2, (t * 60) % 9, 0.9, 1.6, [0.6, 0.58, 0.55], t * 33, D);
@@ -195,16 +196,25 @@ export function rotorWash(o) {
 }
 // 夜里的高炮：几门炮各自往天上泼曳光（弧线、一段段），每门有自己的节奏
 export function aaa(o) {
+  // 高炮往夜空里泼曳光：每门炮的炮口慢慢来回扫（几秒一个来回、每秒十几到三十度），长点射接短停顿——
+  //   炮在扫，一串曳光连起来就是一条弯弯的「水龙」（1991 年巴格达夜空那样）；原来每个点射随机换方向，几道曳光乱跳（用户 11-22：防空炮在蹦迪）
   const { guns, t0 = 0, t1 = 10, seed = 11 } = o;
   const R = rng(seed);
   const shots = [];
   for (const g of guns) {
-    let tt = t0 + R() * 0.8;
+    const ph = R() * 6.28, ph2 = R() * 6.28, sw = R.range(0.07, 0.13), amp = R.range(0.22, 0.4), p0 = R.range(0.85, 1.15);
+    const yawAt = s => g.yaw + Math.sin(s * sw * 6.28 + ph) * amp;
+    const pitchAt = s => p0 + Math.sin(s * sw * 0.7 * 6.28 + ph2) * 0.12;
+    let tt = t0 + R() * 0.6;
     while (tt < t1) {
-      const burst = R.range(0.6, 1.6);
-      const yaw = g.yaw + R.range(-0.6, 0.6), pitch = R.range(0.5, 1.2);
-      for (let s = tt; s < tt + burst; s += 1 / (g.rate || 18)) shots.push({ t: s, p: g.p, d: new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)).add(new THREE.Vector3(R.gauss(), R.gauss(), R.gauss()).multiplyScalar(0.01)).normalize(), col: g.col || C(1, 0.4, 0.15) });
-      tt += burst + R.range(0.4, 1.5);
+      const burst = R.range(1.4, 3.2);
+      for (let s = tt; s < Math.min(t1, tt + burst); s += 1 / (g.rate || 18)) {
+        const yaw = yawAt(s), pitch = pitchAt(s);
+        const d = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+        d.add(new THREE.Vector3(R.gauss(), R.gauss(), R.gauss()).multiplyScalar(0.006)).normalize();
+        shots.push({ t: s, p: g.p, d, col: g.col || C(1, 0.4, 0.15) });
+      }
+      tt += burst + R.range(0.3, 0.9);
     }
   }
   return (t, f) => {
@@ -213,8 +223,9 @@ export function aaa(o) {
       if (u < 0 || u > 4.5) continue;
       const v = 950;
       const at = b => s.p.clone().addScaledVector(s.d, v * b).add(new THREE.Vector3(0, -0.5 * 27 * b * b, 0));
-      f.addStreak(at(Math.max(0, u - 0.035)), at(u), 0.9, s.col, 5 * (1 - u / 4.5), 0.5, 0.0009);
-      if (u < 0.04) f.addGlow(s.p, 4, FLASH, 5, 1, 0.002);
+      const k = u < 3.2 ? 1 : 1 - (u - 3.2) / 1.3;   // 曳光剂烧完前慢慢暗下去
+      f.addStreak(at(Math.max(0, u - 0.035)), at(u), 0.9, s.col, 4.2 * k, 0.5, 0.0009);
+      if (u < 0.04) f.addGlow(s.p, 4, FLASH, 3.5, 1, 0.002);
     }
   };
 }

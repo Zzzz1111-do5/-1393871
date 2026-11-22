@@ -42,10 +42,11 @@ function ground(obj, x, z, hd, lift = 0.15) {
   obj.updateMatrixWorld(true);
   return y;
 }
-// 飞机：位置、速度方向、横滚
+// 飞机：位置、机头朝向（速度方向）、横滚（正数往左压坡度）。模型的机头是 −Z（kit.js plane：炮口、机头都在 −Z），
+//   lookAt(0, dir) 让 −Z 对着 dir（原来写成 lookAt(0, −dir)，整架飞机倒着飞：用户 11-22「J35 为什么是倒着飞」）
 function fly(A, p, dir, roll = 0) {
   A.root.position.copy(p);
-  const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), dir.clone().negate(), new THREE.Vector3(0, 1, 0));
+  const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), dir.clone(), new THREE.Vector3(0, 1, 0));
   A.root.quaternion.setFromRotationMatrix(m);
   A.root.rotateZ(roll);
   A.root.updateMatrixWorld(true);
@@ -103,17 +104,17 @@ async function shotNvgAAA(env, add) {
   const p0 = gp(TOWNC.x + 420, TOWNC.z + 260);
   ground(V.root, p0.x, p0.z, 2.6);
   add(town(TOWNC.x, TOWNC.z, { n: 60 }));
-  const aim = t => { const y = Math.sin(t * 0.7) * 0.4 + 0.3; const p = 0.75 + Math.sin(t * 0.9) * 0.12; return [y, p]; };
+  const aim = t => { const y = Math.sin(t * 0.45) * 0.3 + 0.3; const p = 0.78 + Math.sin(t * 0.6) * 0.08; return [y, p]; };   // 跟着目标慢慢转
   const dir = t => { const [y, p] = aim(t); V.aim(y, p); V.root.updateMatrixWorld(true); return V.muzzleDir(); };
-  fx.add(gatling({ from: t => { dir(t); return V.muzzle(); }, dir, t0: 0.3, t1: 3.6, rate: 50, speed: 1050, every: 5, spread: 0.007, col: new THREE.Color(1, 0.42, 0.15), len: 26, maxD: 3200, w: 0.7 }));
+  fx.add(gatling({ from: t => { dir(t); return V.muzzle(); }, dir, t0: 0.3, t1: 3.6, rate: 50, speed: 1050, every: 5, spread: 0.007, col: new THREE.Color(1, 0.42, 0.15), len: 26, maxD: 3200, w: 0.7, bright: 5, flash: 0.35 }));   // 炮口闪光压暗：夜视里原来像频闪灯
   return {
     update(t) {
       const [y, p] = aim(t); V.aim(y, p);
       V.root.updateMatrixWorld(true);
       const c = V.root.localToWorld(V3(-13, 3.5, 21));
       cam(env, c, V.root.localToWorld(V3(0, 22, -70)), 44);
-      shake(env.camera, t, (t > 0.3 && t < 3.6) ? 0.6 : 0.15, 6, 5);
-      return { ...night({ exposure: 1.5 }), nvg: 1, grain: 0.03, vignette: 0.9, bloom: 1.4, shadowAt: p0, shadowR: 80 };
+      shake(env.camera, t, (t > 0.3 && t < 3.6) ? 0.28 : 0.12, 4, 5);
+      return { ...night({ exposure: 1.5 }), nvg: 1, grain: 0.03, vignette: 0.9, bloom: 0.8, shadowAt: p0, shadowR: 80 };
     },
     titles: t => caption('蓝方 · M163 火神防空炮', '镇子外围 · 夜视仪画面', fadeIO(t, 0.4, 3.7, 0.4, 0.4)),
     events: [{ t: 0, k: 'nvgWhine' }, { t: 0.3, k: 'vulcan', d: 3.3 }],
@@ -361,7 +362,7 @@ async function shotDrone(env, add) {
       const a = 0.9 + t * 0.03;
       const p = c0.clone().add(V3(Math.cos(a) * 1200, 0, Math.sin(a) * 1200));
       const d = V3(-Math.sin(a), 0, Math.cos(a));
-      fly(A, p, d, 0.18);
+      fly(A, p, d, -0.18);   // 顺时针盘旋（往右转）：往右压坡度
       A.spin && A.spin(t, 0.6);
       const cp = A.root.localToWorld(V3(30, 3, 26));
       cam(env, cp, A.root.localToWorld(V3(-12, -3, -50)), 34);
@@ -623,7 +624,18 @@ async function shotMuzzle99(env, add) {
     events: [{ t: 0, k: 'tankIdle' }, { t: fireT, k: 'tankFire', v: 1 }],
   };
 }
-// G18 99A 炮长热像仪：沙梁后面露出来的 M1A2 炮塔，测距 2410，开火——几秒后炮塔被掀飞（白热里一团亮）
+// 炮塔被殉爆顶起来（G18、G19 共用）：初速往上 23 格 / 秒（顶起 3.5 米左右）、往旁边一点，慢慢翻（每秒 1.3 弧度），
+//   落到车旁边的地上就停住、歪着（用户 11-22：掀盖有点尴尬——原来往上 34～38 格 / 秒、每秒翻 3 弧度多，在 12 倍瞄准镜里像气球一样飘上天）
+function tossAt(p0, q0, u, groundY, axis, side) {
+  const vy = 23, g = 27, vx = side.x, vz = side.z;
+  const yf = p0.y - groundY - 1.2;   // 落到离地 1.2 格（炮塔底面着地）
+  const tl = (vy + Math.sqrt(vy * vy + 2 * g * yf)) / g;   // 落地时刻
+  const w = Math.min(u, tl);
+  const pos = p0.clone().add(V3(vx * w, vy * w - 0.5 * g * w * w, vz * w));
+  const rot = new THREE.Quaternion().setFromAxisAngle(axis, Math.min(u, tl) * 1.3);
+  return { pos, quat: q0.clone().multiply(rot), landed: u >= tl };
+}
+// G18 99A 炮长热像仪：沙梁后面露出来的 M1A2 炮塔，测距 2410，开火——弹药殉爆，一团白热的火球，炮塔被顶起来翻落到车旁
 async function shotSight99(env, add) {
   const { fx } = env;
   const L = await tanks(env, add, 'm1a2dc', 4, { thermal: true });
@@ -631,19 +643,32 @@ async function shotSight99(env, add) {
   const fireT = 1.3, hitT = 1.85;
   const victim = 1;
   const turret = () => L[victim].root.localToWorld(V3(0, 5.2, -1));
-  fx.add(explosion({ p: turret(), t0: hitT, s: 26, seed: 640, debris: 20, ember: 30 }));
+  fx.add(explosion({ p: turret(), t0: hitT, s: 30, seed: 640, debris: 20, ember: 30 }));                          // 穿甲弹打进去
+  fx.add(explosion({ p: turret().add(V3(0, 2, 0)), t0: hitT + 0.12, s: 52, seed: 642, debris: 28, ember: 60 }));   // 弹药殉爆：一大团火球
   fx.add(cookoff({ p: () => L[victim].root.localToWorld(V3(0, 4.6, 0)), t0: hitT + 0.2, seed: 641 }));
+  fx.add(bigFire({ p: L[victim].root.localToWorld(V3(0, 4.2, 0)), s: 12, t0: hitT + 0.35, seed: 643, dark: 0.12 }));   // 炮塔座圈里往上喷的火柱
+  fx.add((t, f) => {   // 热像里殉爆是一大团白：一圈白热的光，慢慢收成座圈上那根火柱
+    const u = t - hitT - 0.12;
+    if (u < 0 || u > 2.5) return;
+    const c = L[victim].root.localToWorld(V3(0, 7 + u * 3, 0));
+    f.addGlow(c, 22 + 18 * (1 - Math.exp(-u * 4)), new THREE.Color(1, 0.95, 0.85), 26 * Math.exp(-u * 2.2) + 4, 1, 0.0006);
+    f.addLight(c, new THREE.Color(1, 0.7, 0.4), 30 * Math.exp(-u * 2), 260);
+  });
   let toss = null;
   return {
     update(t) {
       L.forEach((V, i) => { ground(V.root, P[i].x, P[i].z, Math.PI + 0.08 * (i - 1.5)); V.aim(0, 0.015); });
-      if (t > hitT && !toss) { toss = { g: L[victim].tur, p0: new THREE.Vector3(), q0: new THREE.Quaternion() }; L[victim].tur.updateMatrixWorld(true); env.scene.attach(L[victim].tur); toss.p0.copy(L[victim].tur.position); toss.q0.copy(L[victim].tur.quaternion); }
-      if (toss) { const u = t - hitT; toss.g.position.copy(toss.p0).add(V3(u * 6, u * 34 - 0.5 * 27 * u * u, u * 4)); toss.g.quaternion.copy(toss.q0).multiply(new THREE.Quaternion().setFromAxisAngle(V3(0.6, 0.3, 0.7).normalize(), u * 3.2)); }
+      if (t > hitT + 0.1 && !toss) { toss = { g: L[victim].tur, p0: new THREE.Vector3(), q0: new THREE.Quaternion() }; L[victim].tur.updateMatrixWorld(true); env.scene.attach(L[victim].tur); toss.p0.copy(L[victim].tur.position); toss.q0.copy(L[victim].tur.quaternion); }
+      if (toss) {
+        const r = tossAt(toss.p0, toss.q0, t - hitT - 0.1, heightAt(toss.p0.x + 3, toss.p0.z + 2), V3(0.7, 0.15, 0.7).normalize(), V3(2.4, 0, 1.6));
+        toss.g.position.copy(r.pos); toss.g.quaternion.copy(r.quat);
+      }
       const me = redAt(3, 13).clone(); me.y = heightAt(me.x, me.z) + 6.5;
       const tgt = turret();
       const k = t > fireT ? Math.exp(-(t - fireT) * 5) : 0;
       cam(env, me, tgt.clone().add(V3(0, k * 25 + Math.sin(t * 1.1) * 0.5, 0)), 1.5);
-      return { ...DAY({ heat: 1.6 }), thermal: 1, therK: 0.7, grain: 0.02, vignette: 0.2, bloom: 0.5, flash: t > fireT ? 0.5 * Math.exp(-(t - fireT) * 12) : 0, shadowAt: tgt, shadowR: 200, fogDensity: 0.00002 };
+      const fl = (t > fireT ? 0.5 * Math.exp(-(t - fireT) * 12) : 0) + (t > hitT + 0.12 ? 0.3 * Math.exp(-(t - hitT - 0.12) * 7) : 0);
+      return { ...DAY({ heat: 1.6 }), thermal: 1, therK: 0.7, grain: 0.02, vignette: 0.2, bloom: 0.9, flash: fl, shadowAt: tgt, shadowR: 200, fogDensity: 0.00002 };
     },
     overlay: (g, t, W, H, ah) => drawSight99(g, W, H, ah, { t, range: t > 0.5 ? 2410 : 0, ready: t < fireT, ammo: '穿甲弹', msg: t > hitT + 0.3 ? '击毁' : '' }),
     events: [{ t: 0.5, k: 'laser' }, { t: fireT, k: 'tankFire', v: 1 }, { t: hitT, k: 'bigboom', v: 0.6 }],
@@ -660,19 +685,21 @@ async function shotToss(env, add) {
   ground(L[1].root, P[0].x, P[0].z, Math.PI);
   const tm = t => 0.25 + t * 0.32;   // 慢动作：片子里 1 秒 = 0.32 秒
   const hit = 0.3;
-  fx.add(explosion({ p: V.root.localToWorld(V3(0, 5.5, -1)), t0: hit, s: 30, seed: 650, debris: 26, ember: 50 }));
+  fx.add(explosion({ p: V.root.localToWorld(V3(0, 5.5, -1)), t0: hit, s: 32, seed: 650, debris: 26, ember: 50 }));
+  fx.add(explosion({ p: V.root.localToWorld(V3(0, 7.5, 0)), t0: hit + 0.1, s: 50, seed: 652, debris: 30, ember: 70 }));   // 殉爆的大火球把炮塔大半吞住
   fx.add(cookoff({ p: V.root.localToWorld(V3(0, 4.5, 0)), t0: hit + 0.1, seed: 651, s: 1.3 }));
+  fx.add(bigFire({ p: V.root.localToWorld(V3(0, 4.2, 0)), s: 13, t0: hit + 0.25, seed: 653, dark: 0.1 }));   // 座圈里往上喷火
   V.tur.updateMatrixWorld(true);
   env.scene.attach(V.tur); add(V.tur);
   const p0 = V.tur.position.clone(), q0 = V.tur.quaternion.clone();
   return {
     tmap: tm,
     update(t) {
-      const tt = tm(t), u = Math.max(0, tt - hit);
-      V.tur.position.copy(p0).add(V3(u * 7, u * 38 - 0.5 * 27 * u * u, u * 5));
-      V.tur.quaternion.copy(q0).multiply(new THREE.Quaternion().setFromAxisAngle(V3(0.7, 0.2, 0.6).normalize(), u * 3.4));
+      const tt = tm(t), u = Math.max(0, tt - hit - 0.08);
+      const r = tossAt(p0, q0, u, heightAt(p0.x + 3, p0.z + 2), V3(0.7, 0.2, 0.6).normalize(), V3(2.6, 0, 1.8));
+      V.tur.position.copy(r.pos); V.tur.quaternion.copy(r.quat);
       const c = P[1].clone().add(V3(130, 0, -70)); c.y = heightAt(c.x, c.z) + 8;
-      cam(env, c, P[1].clone().add(V3(0, 12 + u * 10, 0)), 26);
+      cam(env, c, P[1].clone().add(V3(0, 10 + u * 4, 0)), 26);
       shake(env.camera, t, 0.2 + (tt > hit ? 0.9 * Math.exp(-(tt - hit) * 3) : 0), 4, 13);
       return { ...DAY({ heat: 0.6 }), shadowAt: P[1], shadowR: 120 };
     },
@@ -894,7 +921,7 @@ async function shotEvade(env, add) {
       const tau = T0 + t;
       const p = hp(t);
       const bank = smooth(0.2, 0.9, t) * 0.75;
-      fly(A, p, V3(-0.6, -0.12, 0.8).normalize(), bank);
+      fly(A, p, V3(-0.6, -0.12, 0.8).normalize(), -bank);   // 往右急转规避：往右压坡度
       A.spin(t, 0.95); A.gunAim(0, -0.05);
       const c = p.clone().add(V3(60, 10, 40));
       cam(env, c, p.clone().add(V3(-20, -6, -10)), 40);
