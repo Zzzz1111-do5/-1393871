@@ -203,7 +203,14 @@ return function(Defs, Hp)
       bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
       bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
       for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
-      b:screen(T, 0.16, 0.12, look(V(gx - gs * 0.20, gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      -- 屏幕别放到炮尾和黄色防护栏里边、别穿出炮塔壁（用户 11-22：「坦克内部屏幕会被挡住」，tools/mock/interior_occ.lua 查出来的）：
+      --   自行火炮（大口径）的防护栏离炮轴快半米，原来炮长、车长那两块屏在栏里边，隔着栏杆看——挪到人这边；窄炮塔（M-SHORAD、ZSL-92B）
+      --   车长的地图屏跑到炮塔壁外面去了——收在壁里面
+      local railX = (tur ~= "spaag") and (cal * 1.2 + 0.04) or 0
+      local wallIn = tw - 0.16
+      local function inX(x) return math.clamp(x, -wallIn, wallIn) end
+      local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
+      b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
       b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
       bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
       for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
@@ -215,9 +222,12 @@ return function(Defs, Hp)
         b:periscope(T, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.14, 0.08, 0.09, { pad = false })
       end
       local cpage = (L.opt and L.opt.cpage) or (cn and "citvcn" or "citv")
-      b:screen(T, 0.18, 0.13, look(V(cxp + gs * 0.10, cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
+      -- 车长的热像屏：自行火炮挪到防护栏外边；自行高炮挪到车长外侧（原来正好挡在下面那块雷达屏前面）
+      local cvx = cxp + gs * 0.10
+      if big then cvx = -gs * math.max(0.32, railX + 0.14) elseif tur == "spaag" then cvx = cxp - gs * 0.12 end
+      b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
       local mpage = cn and "cnmap" or "cid"
-      b:screen(T, 0.20, 0.15, look(V(cxp - gs * 0.30, cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+      b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
       b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
       bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
       b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
