@@ -401,113 +401,110 @@ export function makeTerrain(D, tex, box = [-3300, -2700, 3300, 3600]) {
 //   岩：平顶、台地顶按碎石地画；陡的崖面三向投影岩石、颜色按一层层的砂岩（不用游戏顶点色）、竖的「沙漠漆」暗纹、岩石法线
 function terrainMaterialPBR(tex) {
   const P = tex.pbr;
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93, metalness: 0 });
   mat.userData.wet = 0;
   mat.onBeforeCompile = sh => {
     const U = sh.uniforms;
-    for (const k of ['sand', 'gravel', 'crack', 'rock']) {
-      U[`t_${k}D`] = { value: P[k].d }; U[`t_${k}N`] = { value: P[k].n }; U[`t_${k}A`] = { value: P[k].a }; U[`u_${k}M`] = { value: P[k].mean };
-    }
+    for (const k of ['sand', 'crack', 'rock']) { U[`t_${k}D`] = { value: P[k].d }; U[`t_${k}N`] = { value: P[k].n }; U[`u_${k}M`] = { value: P[k].mean }; }
     U.tNoise = { value: tex.noise };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aW; varying vec4 vW; varying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvW = aW; vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
+    // 性能（SwiftShader 是 CPU 渲染，每个像素多采一次贴图都算数）：沙、砾石共用一套贴图只采一次；AO 载入时烘进底色（不采 arm）；
+    //   两个尺度、随机错开的两份都按权重只采用得上的（过渡区才采两份）；梯度在分支外先算好（分支里隐式求导不可靠）；远了不采法线
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform sampler2D tNoise, t_sandD, t_sandN, t_sandA, t_gravelD, t_gravelN, t_gravelA, t_crackD, t_crackN, t_crackA, t_rockD, t_rockN, t_rockA;
-uniform vec3 u_sandM, u_gravelM, u_crackM, u_rockM;
+uniform sampler2D tNoise, t_sandD, t_sandN, t_crackD, t_crackN, t_rockD, t_rockN;
+uniform vec3 u_sandM, u_crackM, u_rockM;
 varying vec4 vW; varying vec3 vWP;
-vec3 gNw, gCliffP; float gAO, gRough, gFar, gVeryFar;
-// 不重复的采样（Quilez 的办法）：大块噪声选 8 种偏移里的两种，按噪声在两者之间过渡
-vec4 gOff, gOff2; float gBl, gBl2;
-void noTile(vec2 uv, vec2 uv2) {
-  float l = texture2D(tNoise, uv * 0.0137).r * 8.0, ia = floor(l);
-  gOff = vec4(sin(vec2(3.0, 7.0) * ia), sin(vec2(3.0, 7.0) * (ia + 1.0)));
-  gBl = smoothstep(0.25, 0.75, fract(l));
-  float l2 = texture2D(tNoise, uv2 * 0.031 + 0.37).g * 8.0, ib = floor(l2);
-  gOff2 = vec4(sin(vec2(5.0, 11.0) * ib), sin(vec2(5.0, 11.0) * (ib + 1.0)));
-  gBl2 = smoothstep(0.25, 0.75, fract(l2));
+vec3 gNw, gCliffP; float gFar, gVeryFar; bool gNormOn;
+vec2 gDx, gDy;
+vec4 sampNT(sampler2D T, vec2 uv, vec4 off, float bl, vec2 dx, vec2 dy) {
+  if (bl < 0.02) return textureGrad(T, uv + off.xy, dx, dy);
+  if (bl > 0.98) return textureGrad(T, uv + off.zw, dx, dy);
+  return mix(textureGrad(T, uv + off.xy, dx, dy), textureGrad(T, uv + off.zw, dx, dy), bl);
 }
-vec4 tex2(sampler2D T, vec2 uv) {
-  vec2 dx = dFdx(uv), dy = dFdy(uv);
-  return mix(textureGrad(T, uv + gOff.xy, dx, dy), textureGrad(T, uv + gOff.zw, dx, dy), gBl);
-}
-vec4 tex2b(sampler2D T, vec2 uv) {
-  vec2 dx = dFdx(uv), dy = dFdy(uv);
-  return mix(textureGrad(T, uv + gOff2.xy, dx, dy), textureGrad(T, uv + gOff2.zw, dx, dy), gBl2);
-}
-// 一层地表：两个尺度按大块噪声混；返回底色（除过平均色），法线（切线空间）、arm 累加进 nT / arm
-vec3 layer2(sampler2D D, sampler2D N, sampler2D A, vec3 M, vec2 uv, float mixK, inout vec3 nT, inout vec3 arm, float w) {
-  vec2 uv2 = mat2(0.7986, -0.6018, 0.6018, 0.7986) * uv * 0.29 + vec2(0.37, 0.11);
+// 一层地表：2.5 米、11 米两个尺度（后者转 37 度），各自按大块噪声在 8 种偏移里挑两种错开（不重复）；返回底色 / 平均色，法线累加进 nT
+vec3 layer2(sampler2D D, sampler2D N, vec3 M, vec2 uv, float mixK, inout vec3 nT, float w, float sc) {
+  const mat2 R37 = mat2(0.7986, -0.6018, 0.6018, 0.7986);
+  vec2 u1 = uv * sc, u2 = R37 * u1 * 0.29 + vec2(0.37, 0.11);
+  vec2 dx1 = gDx * sc, dy1 = gDy * sc, dx2 = R37 * dx1 * 0.29, dy2 = R37 * dy1 * 0.29;
+  float l = texture2D(tNoise, u1 * 0.0137).r * 8.0, ia = floor(l);
+  vec4 o1 = vec4(sin(vec2(3.0, 7.0) * ia), sin(vec2(3.0, 7.0) * (ia + 1.0))); float b1 = smoothstep(0.25, 0.75, fract(l));
+  float l2 = texture2D(tNoise, u2 * 0.031 + 0.37).g * 8.0, ib = floor(l2);
+  vec4 o2 = vec4(sin(vec2(5.0, 11.0) * ib), sin(vec2(5.0, 11.0) * (ib + 1.0))); float b2 = smoothstep(0.25, 0.75, fract(l2));
   float k = mix(mixK, 1.0, gFar);
-  noTile(uv, uv2);
-  vec3 d = mix(mix(tex2(D, uv).rgb, tex2b(D, uv2).rgb, k), M, gVeryFar);
-  vec3 n = mix(mix(tex2(N, uv).xyz, tex2b(N, uv2).xyz, k) * 2.0 - 1.0, vec3(0.0, 0.0, 1.0), gVeryFar);
-  vec3 a = mix(tex2(A, uv).rgb, tex2b(A, uv2).rgb, k);
-  nT += n * w; arm += a * w;
+  vec3 d = vec3(0.0), n = vec3(0.0);
+  if (k < 0.99) { d += sampNT(D, u1, o1, b1, dx1, dy1).rgb * (1.0 - k); if (gNormOn) n += sampNT(N, u1, o1, b1, dx1, dy1).xyz * (1.0 - k); }
+  if (k > 0.01) { d += sampNT(D, u2, o2, b2, dx2, dy2).rgb * k; if (gNormOn) n += sampNT(N, u2, o2, b2, dx2, dy2).xyz * k; }
+  d = mix(d, M, gVeryFar);
+  nT += (gNormOn ? mix(n * 2.0 - 1.0, vec3(0.0, 0.0, 1.0), gVeryFar) : vec3(0.0, 0.0, 1.0)) * w;
   return d / max(M, vec3(0.02)) * w;
 }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
   {
     vec2 uv = vec2(vWP.x, -vWP.z) / 9.0;   // 2.5 米一块（1 米 = 2.8 格）
+    gDx = dFdx(uv); gDy = dFdy(uv);
+    vec3 wcr = cross(dFdx(vWP), dFdy(vWP));
     float camD = distance(vWP, cameraPosition);
-    gFar = smoothstep(120.0, 520.0, camD); gVeryFar = smoothstep(700.0, 2000.0, camD);
+    gFar = smoothstep(120.0, 520.0, camD); gVeryFar = smoothstep(700.0, 2000.0, camD); gNormOn = camD < 1400.0;
     vec4 nA = texture2D(tNoise, vWP.xz / 61.0), nC = texture2D(tNoise, vWP.xz / 330.0);
     float mixK = smoothstep(0.3, 0.7, nA.r * 0.6 + nC.g * 0.4);
-    vec3 nT = vec3(0.0), arm = vec3(0.0), det = vec3(0.0);
+    vec3 nT = vec3(0.0), det = vec3(0.0);
     gCliffP = vec3(0.0);
     float wsum = 0.0;
     vec4 w = max(vW, 0.0);
-    if (w.x > 0.01) { det += layer2(t_sandD, t_sandN, t_sandA, u_sandM, uv, mixK, nT, arm, w.x); wsum += w.x; }
-    if (w.w > 0.01) { det += layer2(t_gravelD, t_gravelN, t_gravelA, u_gravelM, uv * 1.15 + 0.23, 1.0 - mixK, nT, arm, w.w); wsum += w.w; }
+    float wg = w.x + w.w;   // 沙 + 砾石土：同一套扫描贴图（颜色深浅由顶点色给）
+    if (wg > 0.01) { det += layer2(t_sandD, t_sandN, u_sandM, uv, mixK, nT, wg, 1.0); wsum += wg; }
     if (w.y > 0.01) {   // 盐壳、柏油、水泥：亮的（盐碱滩）照龟裂地，暗的（柏油）细碎的斑
       float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
       float ck = smoothstep(0.25, 0.45, lum);
-      vec3 nn = vec3(0.0), aa = vec3(0.0);
-      vec3 dc = layer2(t_crackD, t_crackN, t_crackA, u_crackM, uv * 0.6, mixK, nn, aa, 1.0);
+      vec3 nn = vec3(0.0);
+      vec3 dc = layer2(t_crackD, t_crackN, u_crackM, uv, mixK, nn, 1.0, 0.6);
       det += mix(vec3(0.93 + 0.14 * nA.b), mix(vec3(1.0), dc, 0.85), ck) * w.y;
-      nT += mix(vec3(0.0, 0.0, 1.0), nn, ck) * w.y; arm += mix(vec3(1.0, 0.75, 0.0), aa, ck) * w.y; wsum += w.y;
+      nT += mix(vec3(0.0, 0.0, 1.0), nn, ck) * w.y; wsum += w.y;
     }
     if (w.z > 0.01) {   // 岩：平的地方（方山顶、台地顶）是碎石地，陡的崖面是岩石
-      vec3 cr = cross(dFdx(vWP), dFdy(vWP));
-      vec3 Nw = dot(cr, cr) > 1e-12 ? normalize(cr) : vec3(0.0, 1.0, 0.0);   // 轮廓边上屏幕导数可能是零
+      vec3 Nw = dot(wcr, wcr) > 1e-12 ? normalize(wcr) : vec3(0.0, 1.0, 0.0);   // 轮廓边上屏幕导数可能是零
       float cliff = smoothstep(0.82, 0.55, abs(Nw.y));
-      vec3 nn = vec3(0.0), aa = vec3(0.0);
-      vec3 flatD = layer2(t_gravelD, t_gravelN, t_gravelA, u_gravelM, uv * 1.07 + 0.61, mixK, nn, aa, 1.0) * vec3(0.645, 0.64, 0.59);
-      vec3 bw = pow(abs(Nw), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
-      vec2 px = vWP.zy, py = vec2(vWP.x, -vWP.z), pz = vWP.xy;
-      vec3 d1 = texture2D(t_rockD, px / 46.0).rgb * bw.x + texture2D(t_rockD, py / 46.0).rgb * bw.y + texture2D(t_rockD, pz / 46.0).rgb * bw.z;
-      vec3 d2 = texture2D(t_rockD, px / 137.0 + 0.31).rgb * bw.x + texture2D(t_rockD, py / 137.0 + 0.31).rgb * bw.y + texture2D(t_rockD, pz / 137.0 + 0.31).rgb * bw.z;
-      vec3 dr = mix(d1, d2, 0.45) / max(u_rockM, vec3(0.02));
-      dr = mix(vec3(dot(dr, vec3(0.333))), dr, 0.45);   // 岩石贴图本身橙一块黑一块，颜色收一大半
-      vec3 ar = texture2D(t_rockA, px / 46.0).rgb * bw.x + texture2D(t_rockA, py / 46.0).rgb * bw.y + texture2D(t_rockA, pz / 46.0).rgb * bw.z;
-      // 沙漠漆：崖面上从上往下一道道的暗褐色（雨水顺着流下来的痕迹），沿等高线方向变、竖着拉长
-      float hz = dot(vWP.xz, normalize(vec2(-Nw.z, Nw.x) + 1e-4));
-      float streak = smoothstep(0.42, 0.85, texture2D(tNoise, vec2(hz / 23.0, vWP.y / 260.0)).r * 0.7 + texture2D(tNoise, vec2(hz / 7.0, vWP.y / 90.0)).g * 0.3);
-      dr *= mix(vec3(1.0), vec3(0.62, 0.55, 0.5), streak * cliff);
-      // 崖面颜色不用游戏的顶点色（石灰岩一道道发白）：一层层深浅交替的黄褐色砂岩
-      float yw = vWP.y + 6.0 * texture2D(tNoise, vWP.xz / 210.0).r;
-      float lay = smoothstep(0.2, 0.8, fract(yw / (7.0 + 4.0 * texture2D(tNoise, vec2(yw / 90.0, 0.3)).g)));
-      vec3 cliffC = mix(vec3(0.19, 0.135, 0.085), vec3(0.3, 0.215, 0.135), lay) * (0.85 + 0.3 * texture2D(tNoise, vec2(hz / 300.0, vWP.y / 400.0)).b);
-      cliffC = mix(cliffC, cliffC * vec3(1.12, 0.95, 0.8), smoothstep(0.4, 0.8, texture2D(tNoise, vec2(hz / 180.0, vWP.y / 70.0)).r));   // 一片片偏红的铁锈色
-      vec3 dl = vec3(mix(dot(dr, vec3(0.333)), 1.0, 0.35));
-      det += mix(flatD, cliffC * mix(dl, dr, 0.3) / max(diffuseColor.rgb, vec3(0.03)), cliff) * w.z;
-      vec3 tx = texture2D(t_rockN, px / 46.0).xyz * 2.0 - 1.0, tz = texture2D(t_rockN, pz / 46.0).xyz * 2.0 - 1.0;
-      gCliffP += (vec3(0.0, tx.y, tx.x) * bw.x + vec3(tz.x, tz.y, 0.0) * bw.z) * cliff * w.z * 1.4;
-      nT += mix(nn, vec3(0.0, 0.0, 1.0), cliff) * w.z; arm += mix(aa, ar, cliff) * w.z; wsum += w.z;
+      vec3 nn = vec3(0.0, 0.0, 1.0), flatD = vec3(1.0);
+      if (cliff < 0.99) { nn = vec3(0.0); flatD = layer2(t_sandD, t_sandN, u_sandM, uv, mixK, nn, 1.0, 1.07) * vec3(0.645, 0.64, 0.59); }
+      vec3 cl = vec3(1.0);
+      if (cliff > 0.01) {
+        vec3 bw = pow(abs(Nw), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
+        vec2 px = vWP.zy, py = vec2(vWP.x, -vWP.z), pz = vWP.xy;
+        vec3 d1 = texture2D(t_rockD, px / 46.0).rgb * bw.x + texture2D(t_rockD, py / 46.0).rgb * bw.y + texture2D(t_rockD, pz / 46.0).rgb * bw.z;
+        vec3 d2 = texture2D(t_rockD, px / 137.0 + 0.31).rgb * bw.x + texture2D(t_rockD, pz / 137.0 + 0.31).rgb * bw.z + d1 * bw.y;
+        vec3 dr = mix(d1, d2, 0.45) / max(u_rockM, vec3(0.02));
+        dr = mix(vec3(dot(dr, vec3(0.333))), dr, 0.45);   // 岩石贴图本身橙一块黑一块，颜色收一大半
+        // 沙漠漆：崖面上从上往下一道道的暗褐色（雨水顺着流下来的痕迹），沿等高线方向变、竖着拉长
+        float hz = dot(vWP.xz, normalize(vec2(-Nw.z, Nw.x) + 1e-4));
+        float streak = smoothstep(0.42, 0.85, texture2D(tNoise, vec2(hz / 23.0, vWP.y / 260.0)).r * 0.7 + texture2D(tNoise, vec2(hz / 7.0, vWP.y / 90.0)).g * 0.3);
+        dr *= mix(vec3(1.0), vec3(0.62, 0.55, 0.5), streak * cliff);
+        // 崖面颜色不用游戏的顶点色（石灰岩一道道发白）：一层层厚薄不一、深浅交替的黄褐色砂岩，一片片铁锈色
+        float yw = vWP.y + 6.0 * texture2D(tNoise, vWP.xz / 210.0).r;
+        float lay = smoothstep(0.2, 0.8, fract(yw / (7.0 + 4.0 * texture2D(tNoise, vec2(yw / 90.0, 0.3)).g)));
+        vec3 cliffC = mix(vec3(0.19, 0.135, 0.085), vec3(0.3, 0.215, 0.135), lay) * (0.85 + 0.3 * texture2D(tNoise, vec2(hz / 300.0, vWP.y / 400.0)).b);
+        cliffC = mix(cliffC, cliffC * vec3(1.12, 0.95, 0.8), smoothstep(0.4, 0.8, texture2D(tNoise, vec2(hz / 180.0, vWP.y / 70.0)).r));
+        cl = cliffC * mix(vec3(mix(dot(dr, vec3(0.333)), 1.0, 0.35)), dr, 0.3) / max(diffuseColor.rgb, vec3(0.03));
+        if (gNormOn) {
+          vec3 tx = texture2D(t_rockN, px / 46.0).xyz * 2.0 - 1.0, tz = texture2D(t_rockN, pz / 46.0).xyz * 2.0 - 1.0;
+          gCliffP += (vec3(0.0, tx.y, tx.x) * bw.x + vec3(tz.x, tz.y, 0.0) * bw.z) * cliff * w.z * 1.4;
+        }
+      }
+      det += mix(flatD, cl, cliff) * w.z;
+      nT += mix(nn, vec3(0.0, 0.0, 1.0), cliff) * w.z; wsum += w.z;
     }
-    float sw = (w.x + w.w) / max(wsum, 1e-3);
-    det /= max(wsum, 1e-3); nT /= max(wsum, 1e-3); arm /= max(wsum, 1e-3);
-    if (wsum < 0.01) { det = vec3(1.0); nT = vec3(0.0, 0.0, 1.0); arm = vec3(1.0, 0.95, 0.0); }
+    float sw = wg / max(wsum, 1e-3);
+    det /= max(wsum, 1e-3); nT /= max(wsum, 1e-3);
+    if (wsum < 0.01) { det = vec3(1.0); nT = vec3(0.0, 0.0, 1.0); }
     // 沙、砾石的反照率压到真实沙地（线性约 0.40 / 0.30 / 0.17）：顶点色是游戏材质的颜色，偏亮（原来的旧贴图本身暗，乘出来正好）
     det *= mix(vec3(1.0), vec3(0.645, 0.64, 0.59), sw);
     diffuseColor.rgb *= det * (0.86 + 0.28 * nC.r);
-    gAO = mix(1.0, arm.r, 0.7); gRough = clamp(arm.g, 0.86, 1.0); gNw = nT;   // 沙地哑光（太光滑的话低角度看过去整片反天光、发白）
+    gNw = nT;
   }`)
-      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-  roughnessFactor = gRough;`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-  {   // 世界 xz 铺的切线空间：T = +x、B = −z（uv.y 朝 −z），N = 几何法线；崖面的岩石法线另外按世界空间加上去
+  if (gNormOn) {   // 世界 xz 铺的切线空间：T = +x、B = −z（uv.y 朝 −z），N = 几何法线；崖面的岩石法线另外按世界空间加上去
     vec3 Nw = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
-    // 竖直的面（陡坡、崖壁、掩体墙）上 x 轴和法线几乎平行，Gram-Schmidt 出来是零向量、normalize 成 NaN（泛光里扩成一片片黑条）：换 z 轴
+    // 竖直的面上 x 轴和法线几乎平行，Gram-Schmidt 出来是零向量、normalize 成 NaN：换 z 轴
     vec3 t0 = vec3(1.0, 0.0, 0.0) - Nw * Nw.x;
     if (dot(t0, t0) < 1e-4) t0 = vec3(0.0, 0.0, 1.0) - Nw * Nw.z;
     vec3 Tw = normalize(t0), Bw = cross(Nw, Tw);
@@ -515,11 +512,9 @@ vec3 layer2(sampler2D D, sampler2D N, sampler2D A, vec3 M, vec2 uv, float mixK, 
     float fade = 1.0 - smoothstep(250.0, 1400.0, dcam);   // 远了贴图的起伏糊成一片，不要它把整片地压暗
     vec3 gn = dot(gNw, gNw) > 1e-8 ? normalize(gNw) : vec3(0.0, 0.0, 1.0);
     vec3 tn = normalize(mix(vec3(0.0, 0.0, 1.0), gn, fade * 0.9));
-    vec3 pw = normalize(Tw * tn.x + Bw * tn.y + Nw * tn.z + gCliffP * (1.0 - smoothstep(400.0, 2500.0, dcam)));
+    vec3 pw = normalize(Tw * tn.x + Bw * tn.y + Nw * tn.z + gCliffP * fade);
     normal = normalize((viewMatrix * vec4(pw, 0.0)).xyz);
-  }`)
-      .replace('#include <aomap_fragment>', `#include <aomap_fragment>
-  reflectedLight.indirectDiffuse *= gAO; reflectedLight.directDiffuse *= mix(1.0, gAO, 0.45);`);
+  }`);
   };
   return mat;
 }

@@ -106,11 +106,14 @@ export async function loadSkies(renderer, DATA) {
 
 // 扫描贴图里大尺度的明暗（拍的时候光照、湿度不匀：sandy_gravel_02 上半张亮、下半张暗）一铺开就是一道道条纹——
 //   除以它自己的低频部分（8×8 格子平均、按平铺包边双线性放大），只留碎石、沙粒的细节，平均颜色不变
-function flattenTex(t) {
+//   AO（arm 的 R 通道）也在这里乘进底色：着色器里就不用再采 arm 贴图（SwiftShader 每多采一次都慢）
+function flattenTex(t, arm) {
   const img = t.image, W = img.width, H = img.height;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
   const src = g.getImageData(0, 0, W, H);
+  let ao = null;
+  if (arm) { const c2 = document.createElement('canvas'); c2.width = W; c2.height = H; const g2 = c2.getContext('2d', { willReadFrequently: true }); g2.drawImage(arm.image, 0, 0, W, H); ao = g2.getImageData(0, 0, W, H).data; }
   const N = 8, cell = new Float32Array(N * N * 3);
   const d = src.data;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -126,7 +129,7 @@ function flattenTex(t) {
       const fx = x * N / W - 0.5, x0 = Math.floor(fx), ax = fx - x0, o = (y * W + x) * 4;
       for (let k = 0; k < 3; k++) {
         const low = (c(x0, y0, k) * (1 - ax) + c(x0 + 1, y0, k) * ax) * (1 - ay) + (c(x0, y0 + 1, k) * (1 - ax) + c(x0 + 1, y0 + 1, k) * ax) * ay;
-        d[o + k] = Math.max(0, Math.min(255, d[o + k] * mean[k] / Math.max(low, 1)));
+        d[o + k] = Math.max(0, Math.min(255, d[o + k] * mean[k] / Math.max(low, 1) * (ao ? 0.3 + 0.7 * ao[o] / 255 : 1)));
       }
     }
   }
@@ -137,20 +140,20 @@ function flattenTex(t) {
   return t2;
 }
 // 地表贴图（PBR：底色、法线、arm）
-export const GROUND_SETS = { sand: 'sandy_gravel_02', gravel: 'gravelly_sand', crack: 'dry_ground_01', rock: 'rock_06' };
+export const GROUND_SETS = { sand: 'sandy_gravel_02', crack: 'dry_ground_01', rock: 'rock_06' };
 export async function loadGround(DATA, loadTex) {
   const out = {};
   for (const [k, f] of Object.entries(GROUND_SETS)) {
     try {
       let [d, n, a] = await Promise.all([loadTex(`${DATA}/assets/ph/${f}_Diffuse_2k.jpg`, true), loadTex(`${DATA}/assets/ph/${f}_nor_gl_2k.jpg`, false), loadTex(`${DATA}/assets/ph/${f}_arm_2k.jpg`, false)]);
-      d = flattenTex(d);
-      for (const t of [d, n, a]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.needsUpdate = true; }
+      d = flattenTex(d, a); a.dispose();
+      for (const t of [d, n]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 2; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.needsUpdate = true; }
       // 底色的平均值（贴图除以它当细节，大块的颜色还照游戏的材质）
       const cv = document.createElement('canvas'); cv.width = cv.height = 16;
       const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(d.image, 0, 0, 16, 16);
       const px = g.getImageData(0, 0, 16, 16).data; const m = [0, 0, 0];
       for (let i = 0; i < px.length; i += 4) for (let c = 0; c < 3; c++) m[c] += Math.pow(px[i + c] / 255, 2.2);
-      out[k] = { d, n, a, mean: new THREE.Vector3(m[0], m[1], m[2]).multiplyScalar(1 / 256) };
+      out[k] = { d, n, mean: new THREE.Vector3(m[0], m[1], m[2]).multiplyScalar(1 / 256) };
     } catch (e) { console.log('[film] 地表贴图没有：', f, e && e.message); return null; }
   }
   return out;
