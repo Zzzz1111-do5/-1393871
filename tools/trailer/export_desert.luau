@@ -1,5 +1,5 @@
 --!nocheck
--- 宣传片（海湾战争版，tools/trailer/film/gulf）用的沙漠地图数据：直接载入 ReplicatedStorage/MapDesert.lua（纯数学，不用开服），导出
+-- 宣传片（海湾战争版，tools/trailer/film/gulf）用的沙漠地图数据：直接载入 ReplicatedStorage/MapSands.lua（地图「沙海」，id sands；原名 MapDesert.lua）（纯数学，不用开服），导出
 --   height.bin / mat.bin       近处细网格：±FR、每 8 格一个（Float32 / Uint8，(N+1) × (N+1)，按 z 行 x 列）
 --   height2.bin / mat2.bin     整张图粗网格：±SEA_R、每 32 格一个
 --   world.json                 网格参数、材质表、锚点（据点、基地、机场、镇子、油田、油井、路、干河谷、沙墙、断崖……）
@@ -14,7 +14,7 @@ local outDir = assert(process.args[1], "用法：lune run tools/trailer/export_d
 local FR = tonumber(process.args[2] or "14336")
 if not fs.isDir(outDir) then fs.writeDir(outDir) end
 local env = setmetatable({ Color3 = roblox.Color3, Enum = roblox.Enum, Vector3 = roblox.Vector3, CFrame = roblox.CFrame }, { __index = _G })
-local Map = luau.load(fs.readFile("src/ReplicatedStorage/MapDesert.lua"), { debugName = "MapDesert", environment = env })()
+local Map = luau.load(fs.readFile("src/ReplicatedStorage/MapSands.lua"), { debugName = "MapSands", environment = env })()
 
 local mats, matId = {}, {}
 local function mid(m)

@@ -23,7 +23,12 @@ function Operation.init(G)
   local stages = G.Config.Stages or {}
   local capture = G.Config.Capture
   local pointById = {}
-  for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
+  local function indexPoints()
+    table.clear(pointById)
+    for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
+  end
+  indexPoints()
+  if G.onMap then G.onMap(indexPoints) end
 
   local reducedMotion = false
   pcall(function()

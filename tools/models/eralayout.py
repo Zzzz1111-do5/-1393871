@@ -19,8 +19,9 @@ SPEC = {
     'ztz96': {'kind': 'fy2', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.9, 1.15, 0.32)},
     # 15 式轻坦 11-19 删掉了（用户：建模非常粗糙）
     # M1A2 SEPv2、M1A1 这两个模型侧裙板本来就挂着 ARAT 爆反块（TUSK）：own = 用模型自带的，游戏里平时不另画砖，炸掉了才补焦黑的空位
-    'm1a2dc': {'kind': 'arat', 'zones': ['skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},
-    'm1a1': {'kind': 'arat', 'zones': ['skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},   # 用户 11-19：M1A1 也自带
+    #   用户 11-22：「坦克我能选择在哪个地方贴爆反」——再算炮塔正面、炮塔侧面、首上能补贴的位置（改装界面里每个区自己选贴不贴）
+    'm1a2dc': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},
+    'm1a1': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},   # 用户 11-19：M1A1 也自带
 }
 GAP = 0.12        # 砖缝
 FLAT = 0.2        # 四个角和中心离拟合平面最多差多少（格），超了说明跨在棱上 / 有东西挡着，不放

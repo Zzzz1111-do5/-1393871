@@ -29,6 +29,8 @@ local COL = {
   Mud = { 84, 72, 58 },
   Concrete = { 118, 116, 110 },   -- 港口码头平地
   Asphalt = { 70, 72, 74 },       -- 港口坡道
+  Sandstone = { 150, 118, 86 },   -- 沙漠：台地、古城
+  Salt = { 170, 166, 154 },       -- 沙漠：盐碱地
 }
 MapPaint.COL = COL
 local HIGH = { 96, 98, 88 }                  -- 高处的草偏灰绿
@@ -124,7 +126,7 @@ function MapPaint.paint(Map, P, r0, r1, buf)
           c = TARMAC
         else
           local m
-          if P.detail then
+          if P.detail or Map.desert then   -- 沙漠：底图也按材质（不然平地全按「草地」画成绿的）
             local ok, mat = pcall(Map.material, x, z, y, slope)
             m = ok and mat and mat.Name or guessMat(Map, y, slope)
           else

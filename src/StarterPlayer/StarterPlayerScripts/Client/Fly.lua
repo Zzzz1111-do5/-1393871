@@ -547,6 +547,11 @@ function Fly.init(G)
         table.insert(out, { p = V(td.X, AD.ground(Map, td.X, td.Z), td.Z), dir = V(-s, 0, 0) })
       end
     end
+    if Map.desert then   -- 沙漠（征服）：只落自己基地的跑道
+      local B = Map.BASES and Map.BASES[team]
+      if B and B.airfield then runway(B.airfield) end
+      return out
+    end
     if team == "atk" then
       local base = AD.carrierCF(Map)
       if base and st.d.carrier then
@@ -1079,8 +1084,8 @@ function Fly.init(G)
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
-    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）
-      if st.load[i] == wid and (st.stores[i] or 0) > 0 then
+    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
+      if not w.nuke and st.load[i] == wid and (st.stores[i] or 0) > 0 then
         st.stores[i] -= 1
         break
       end
@@ -1556,7 +1561,15 @@ function Fly.init(G)
     st.yr = approach(st.yr or 0, yrWant, maxR * 2.6 * dt)
     st.yaw += st.yr * dt
     -- 驾驶杆 → 桨盘想要的倾角（俯仰：负的是低头 = 往前倾）；松杆桨盘回平
+    --   用户 11-22：「准心决定机头对准哪里——鼠标准心往下，螺旋桨对准前面，往前飞；准心突然往上，直升机受力往后和往上」：
+    --   电脑上俯仰跟着准心（镜头的俯仰）：准心比平常那个略往下看的角度（AIM0）低多少，机头、桨盘就往前倾多少（到型号的最大倾角为止），
+    --   高多少就往后仰多少；W / S 照样能前推后拉（加在准心上，合起来不超过最大倾角）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
     local tP = -fwdIn * maxT
+    if not G.mobile then
+      local AIM0 = -0.15   -- 坐进来时镜头的俯仰（略往下看）：这时桨盘是平的
+      local aimP = st.nosePitch or st.camPitch or AIM0
+      tP = (aimP - AIM0) * 1.15 - fwdIn * maxT
+    end
     local tR = sideIn * maxT * 0.8
     -- 往前飞得快时转机头：桨盘自动压坡度——要的侧向加速度 = 转弯的向心那份（速度 × 角速度）+ 消掉侧滑的那份（没按 A / D 时），
     --   tan 坡度 = 侧向加速度 / g；坡度给的侧向力把航迹拉着跟机头弯过去（压不过来的那一截就是侧滑，靠侧面阻力慢慢吃掉）
@@ -1594,7 +1607,12 @@ function Fly.init(G)
     local acc = V(up.X, 0, up.Z) * Tm - f * (vf * (clF + cq * math.abs(vf))) - r * (vr * (clF * 2 + cq * 3 * math.abs(vr)))
     if st.ground then acc = V() hv *= math.max(0, 1 - 5 * dt) end
     st.hv = hv + acc * dt
-    st.vy += (Tm * up.Y - GS - st.vy * 0.5) * dt
+    -- 拉平（flare）：往前飞时桨盘往后仰，迎面的气流从下往上穿过桨盘、拉力变大——速度换成高度（往后、往上顶）
+    local flare = 0
+    if lift and not st.ground and st.tiltP > 0 and vf > 0 then
+      flare = GS * 2.2 * math.sin(math.min(st.tiltP, maxT)) * smooth(4, 45, vf)
+    end
+    st.vy += (Tm * up.Y + flare - GS - st.vy * 0.5) * dt
     -- 合速度不超过服务器认的（往下冲时重力也在加速）
     local v3 = st.hv + V(0, st.vy, 0)
     local cap = d.vMax * 1.3
@@ -2000,10 +2018,10 @@ function Fly.init(G)
         local alt = st.pilot and not G.mobile and key(Enum.KeyCode.LeftAlt)
         if alt and not st.freeLook then
           st.freeLook = { st.camYaw, st.camPitch }
-          st.noseYaw = st.camYaw
+          st.noseYaw, st.nosePitch = st.camYaw, st.camPitch   -- 机头的方位、俯仰都停在按下那一刻
         elseif not alt and st.freeLook then
           st.camYaw, st.camPitch = st.freeLook[1], st.freeLook[2]
-          st.freeLook, st.noseYaw = nil, nil
+          st.freeLook, st.noseYaw, st.nosePitch = nil, nil, nil
         end
       end
       st.yawSeen = st.yaw
@@ -2208,10 +2226,24 @@ function Fly.init(G)
       local gunOn = gid ~= nil and ((st.firing and not G.mobile) or touchGun or false)
       if gid then setTrig(gunOn) end
       local fireS = st.missile or (st.firing and not gid) or (touch and touch.fire and not touchGun)
-      if w and fireS then
+      if w and w.nuke then   -- 核导弹（惊雷-1）：要按住 1.2 秒才发（免得手滑）；HUD 中间一条解锁进度（客户端 Nuke.lua）
+        local HOLD = 1.2
+        if fireS and left(wid) > 0 and not st.fireLatch then
+          st.nukeHold = (st.nukeHold or 0) + dt
+          if st.nukeHold >= HOLD then
+            fireStore(wid, w)
+            st.fireLatch, st.nukeHold = true, 0
+          end
+        elseif not fireS then
+          st.nukeHold, st.fireLatch = 0, false
+        end
+        if G.nukeArmUI then G.nukeArmUI(left(wid) > 0, (st.nukeHold or 0) / HOLD) end
+      elseif w and fireS then
+        if G.nukeArmUI then G.nukeArmUI(false) end
         if w.kind == "rkt" or not st.fireLatch then fireStore(wid, w) end
         st.fireLatch = true
       else
+        if G.nukeArmUI then G.nukeArmUI(false) end
         st.fireLatch = false
       end
     end

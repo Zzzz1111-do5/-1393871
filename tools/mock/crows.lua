@@ -1,10 +1,9 @@
--- 车长遥控武器站（模拟器）：python3 tools/mock/run.py tools/mock/crows.lua
---   M1A2 车长位按 T 看 CROWS 屏：鼠标转的是武器站（M2），炮塔不跟着转（还归炮长的准星）；开火打的是 12.7 毫米机枪，从 M2 枪口出；
---   摄像头装在托架上，画面跟着 M2 转、俯仰（以前画面转了、M2 不动）
---   ① 坐上 M1A2、进车内、换到车长位，按 T：开的是 CROWS，武器换成 12.7 毫米机枪，画面顺着 M2
---   ② 鼠标往右、往上：M2 转过去、抬起来，炮塔不动；抬到头不超过俯仰范围
---   ③ 开火：服务器那发从 M2 枪口出、顺着枪管
---   ④ 再按 T：退出，武器换回来，M2 交回炮长的准星
+-- 坦克不带机枪（模拟器；用户 11-22：「坦克不要弄哪个机枪」）：python3 tools/mock/run.py tools/mock/crows.lua
+--   以前这里测 M1A2 车长的 CROWS 遥控武器站；现在主战坦克一挺机枪都不带（VehDefs.TANK_MG = false）：
+--   ① 型号表：所有坦克只剩主炮（没有并列机枪、车顶遥控武器站 / 手动重机枪）；步战车、轮式车、轻型车的机枪照旧
+--   ② M1A2 画出来：车顶没有 M2（原模型拆出来的机枪零件不画、没有会转的武器站），车长指挥塔（座圈、观察镜）还在、焊在炮塔上
+--   ③ 进车内、换到车长位，按 T：CROWS 这一位空着（不开机枪屏、不换武器）；车里那块 CROWS 屏只剩摄像头（NO WPN、没有弹数）
+--   ④ 开火：打出去的是 120 毫米主炮，从炮口出；按 2 / 滚轮换不到机枪
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -34,8 +33,28 @@ local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 local Map = G.Map
 local def = VD.get(VEH)
 
-print("① 坐上 M1A2、进车内、换到车长位，按 T")
-check(def.rws ~= nil, string.format("M1A2 有遥控武器站（俯仰 %d°～%d°）", def.rws and def.rws.elev[1] or 0, def.rws and def.rws.elev[2] or 0))
+print("① 型号表：坦克只剩主炮，别的车机枪照旧")
+check(VD.TANK_MG == false, "坦克不带机枪的开关是关的（VehDefs.TANK_MG）")
+local bad, tanks = {}, 0
+for id, d in pairs(VD.D) do
+  if d.cat == "tank" then
+    tanks = tanks + 1
+    local mg = d.rws ~= nil
+    for _, wid in ipairs(d.weapons or {}) do if wid == "coax" or wid == "hmg" then mg = true end end
+    if mg or not d.noRoofMg or #(d.weapons or {}) ~= 1 then table.insert(bad, id .. "（" .. table.concat(d.weapons or {}, "+") .. "）") end
+  end
+end
+check(tanks >= 5 and #bad == 0, string.format("%d 辆坦克都只剩主炮%s", tanks, #bad > 0 and ("：没去干净 " .. table.concat(bad, "、")) or ""))
+check(def.rws == nil and #def.weapons == 1 and def.weapons[1] == "gun120", "M1A2：只有 120 毫米炮（" .. table.concat(def.weapons, "+") .. "）")
+local function has(id, wid)
+  local d = VD.get(id)
+  for _, w in ipairs(d and d.weapons or {}) do if w == wid then return true end end
+  return false
+end
+check(has("stryker", "hmg") and has("jltv", "hmg") and has("hmmwv", "hmg"), "斯特赖克、JLTV、悍马的 12.7 毫米机枪还在")
+check(has("zbd05", "coax") and has("m2a3", "coax"), "步战车的并列机枪还在")
+
+print("② M1A2 画出来：车顶没有 M2，指挥塔还在")
 local hrp = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
 local hp = hrp and hrp.Position or V3(Map.CAMP.x, 0, Map.CAMP.z)
 local cx, cz = hp.X + 16, hp.Z
@@ -44,8 +63,59 @@ for k = 0, 23 do
   local x, z = hp.X + math.cos(a) * 18, hp.Z + math.sin(a) * 18
   if Map.isLand(x, z) and Map.slope(x, z) < 0.25 then cx, cz = x, z break end
 end
+-- 模拟器里没有 Studio 导入的原模型：照元数据摆一套同名的块（ReplicatedStorage.Imported.Veh.m1a2dc），走原模型那条路
+local IM = R.require(R.services.ReplicatedStorage:FindFirstChild("ImportedMeta"))
+local ikey = IM.alias and IM.alias[VEH]
+local info = ikey and IM.m[ikey]
+if info then
+  local RS = R.services.ReplicatedStorage
+  local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
+  imp.Name = "Imported"
+  imp.Parent = RS
+  local vf = imp:FindFirstChild("Veh") or R.Instance.new("Folder")
+  vf.Name = "Veh"
+  vf.Parent = imp
+  if not vf:FindFirstChild(ikey) then
+    local f = R.Instance.new("Folder")
+    f.Name = ikey
+    local n = 0
+    for name, p in pairs(info.parts) do
+      local b = R.Instance.new("MeshPart")
+      b.Name = "V_" .. ikey .. "__" .. name
+      b.Size = V3(p.s[1], p.s[2], p.s[3])
+      b.Parent = f
+      n = n + 1
+    end
+    f:SetAttribute("N", n)
+    f.Parent = vf
+  end
+end
 local e = G.newVehicle("def", VEH, G.vehBaseAt(def, cx, cz, V3(0, 0, -1)))
-R.run(0.5)
+R.run(0.8)
+local v
+for em, vv in pairs(C.views or {}) do if em == e.model then v = vv end end
+check(v ~= nil, "客户端画出了这辆车")
+check(v and v.rF == nil and v.rgF == nil, "没有会转的武器站（rF / rgF 都没有）")
+local nGun, nRing, nTur = 0, 0, 0
+local mdl = v and (v.model or v.m)
+if mdl then
+  for _, p in ipairs(mdl:GetDescendants()) do
+    if p:IsA("BasePart") then
+      if p.Name:find("__RwsGun_", 1, true) then nGun = nGun + 1
+      elseif p.Name:find("__Rws_", 1, true) then nRing = nRing + 1
+      elseif p.Name:find("__Turret_", 1, true) then nTur = nTur + 1 end
+    end
+  end
+end
+if nTur > 0 then   -- 模拟器里有原模型的零件：机枪那几块不画，座圈那几块还在
+  check(nGun == 0, "原模型里的 M2 不画（剩 " .. nGun .. " 块）")
+  check(nRing > 0, "车长指挥塔（座圈、观察镜）还在（" .. nRing .. " 块）")
+else
+  print("  （模拟器里没有原模型零件，跳过零件检查）")
+end
+
+print("③ 进车内、换到车长位，按 T：CROWS 这一位空着")
+R.run(0.3)
 T.act("enterVeh", e.id)
 R.run(1)
 local st = C.drive
@@ -62,65 +132,47 @@ if not ci then T.summary() return end
 T.tap(Enum.KeyCode["F" .. (ci + 1)])
 R.run(0.4)
 check(C.interiorState().station == "commander", "换到车长位")
-local wi0, ty0 = st.wi, st.ty
+local wi0 = st.wi
 T.tap(Enum.KeyCode.T)
 R.run(0.8)
-local os_ = C.interiorOpticState()
-check(os_ ~= nil and os_.o.kind == "crows", "开的是 CROWS（" .. tostring(os_ and os_.o.kind) .. "）")
-check(st.d.weapons[st.wi] == "hmg", "武器换成 12.7 毫米机枪：" .. tostring(st.d.weapons[st.wi]))
-local v
-for em, vv in pairs(C.views or {}) do if em == e.model then v = vv end end
-check(v ~= nil and v.rgF ~= nil, "画出来的车有遥控武器站（会转、会俯仰）")
-local cam = R.workspace.CurrentCamera
-if v and v.rgF then
-  local ang = math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(v.rgF.LookVector)))))
-  check(ang < 3, string.format("CROWS 画面顺着 M2 看（差 %.1f°）", ang))
-end
+check(C.interiorOpticState() == nil, "按 T 没开 CROWS（" .. tostring(C.interiorOpticState() and C.interiorOpticState().o.kind) .. "）")
+check(st.wi == wi0 and st.d.weapons[st.wi] == "gun120", "武器还是主炮：" .. tostring(st.d.weapons[st.wi]))
+check(st.rwsPt == nil, "鼠标没交给武器站")
+-- 车里那块 CROWS 屏：只剩车顶摄像头
+R.run(0.6)
+local noWpn = T.texts("NO WPN")
+local m2 = T.texts("CROWS  M2")
+check(#m2 == 0, "车里没有「CROWS  M2」的机枪屏（" .. #m2 .. " 处）")
+if #noWpn == 0 then print("  （模拟器里没摆出 CROWS 屏，跳过屏幕文字检查）") else check(true, "CROWS 屏写着「" .. noWpn[1] .. "」") end
+T.tap(Enum.KeyCode.C)   -- 出车内
+R.run(0.6)
 
-print("② 鼠标往右、往上：M2 转过去、抬起来，炮塔不跟着转")
-local my0, mp0 = st.my, st.mp
--- 鼠标灵敏度跟着视场走（Interior：0.0035 弧度 / 像素 × 视场 / 72）：CROWS 宽视场 30°
-local fov = os_ and os_.o.fovs[1] or 30
-local perPx = math.deg(0.0035 * fov / 72)
-for _ = 1, 10 do R.mouseDelta = R.Vector2.new(30, 0) R.run(1 / 30) end   -- 往右一共 300 像素
-R.run(1.2)
-local dTy = math.abs(((st.ty - ty0 + 180) % 360) - 180)
-check(st.my - my0 > 300 * perPx * 0.85, string.format("M2 往右转了 %.0f°（鼠标给了 %.0f°）", st.my - my0, 300 * perPx))
-check(dTy < 3, string.format("炮塔没跟着转（%.1f°）", dTy))
-for _ = 1, 10 do R.mouseDelta = R.Vector2.new(0, -40) R.run(1 / 30) end   -- 往上 400 像素
-R.run(1.2)
-local wantUp = math.min(400 * perPx, def.rws.elev[2] - mp0)
-check(st.mp - mp0 > wantUp * 0.85 and st.mp <= def.rws.elev[2] + 0.1, string.format("M2 抬起来 %.0f°（鼠标给了 %.0f°，上限 %d°）", st.mp, 400 * perPx, def.rws.elev[2]))
-for _ = 1, 60 do R.mouseDelta = R.Vector2.new(0, -60) R.run(1 / 30) end
-R.run(1.5)
-check(st.mp <= def.rws.elev[2] + 0.1 and st.mp > def.rws.elev[2] - 3, string.format("抬到头是 %.0f°（上限 %d°）", st.mp, def.rws.elev[2]))
-for _ = 1, 60 do R.mouseDelta = R.Vector2.new(0, 60) R.run(1 / 30) end   -- 放平
-R.run(1.5)
-
-print("③ 开火：子弹从 M2 枪口出、顺着枪管")
-local shots = {}
-local bs0 = G.botShot
-G.botShot = function(from, to, w, ...) table.insert(shots, { from = from, to = to }) return bs0(from, to, w, ...) end
-R.as("client", function() C.driveTryFire() end)
+print("④ 开火：打出去的是主炮；换武器换不到机枪")
+T.tap(Enum.KeyCode.Two)
 R.run(0.3)
-G.botShot = bs0
-local sh = shots[#shots]
-check(sh ~= nil, "服务器开了一枪（" .. #shots .. " 发）")
-if sh then
+check(st.d.weapons[st.wi] == "gun120", "按 2 还是主炮（" .. tostring(st.d.weapons[st.wi]) .. "）")
+local shots, shells = {}, {}
+local bs0, la0 = G.botShot, G.launch
+G.botShot = function(from, to, w, ...) table.insert(shots, { from = from, to = to, w = w }) return bs0(from, to, w, ...) end
+G.launch = function(s, ...) s.p0 = s.pos table.insert(shells, s) return la0(s, ...) end   -- 发射那一刻的位置（之后 pos 跟着飞）
+R.as("client", function() C.driveTryFire() end)
+R.run(0.4)
+G.botShot, G.launch = bs0, la0
+local mgShots = 0
+for _, s in ipairs(shots) do if s.w == VD.W.hmg or s.w == VD.W.coax then mgShots = mgShots + 1 end end
+for _, s in ipairs(shells) do if s.w == VD.W.hmg or s.w == VD.W.coax then mgShots = mgShots + 1 end end
+local main = nil
+for _, s in ipairs(shells) do if s.w == VD.W.gun120 then main = s end end
+check(mgShots == 0, "没有机枪子弹（" .. mgShots .. " 发）")
+check(main ~= nil, string.format("开了一炮 120 毫米（炮弹 %d 发）", #shells))
+if main then
   local bse = G.vehBaseOf and G.vehBaseOf(e) or (e.root.CFrame * CF(0, -def.H / 2, 0))
-  local mz = VD.muzzle(def, bse, e.ty, e.gp, "rws", e.my, e.mp)
-  local off = (sh.from - mz.Position).Magnitude
-  local dir = (sh.to - sh.from).Unit
-  local ang = math.deg(math.acos(math.max(-1, math.min(1, dir:Dot(mz.LookVector)))))
-  check(off < 0.6, string.format("子弹从 M2 枪口出（差 %.2f 格）", off))
-  check(ang < 1.5, string.format("顺着枪管（差 %.2f°）", ang))
+  local mz = VD.muzzle(def, bse, e.ty, e.gp, "gun")
+  local p0 = main.p0
+  if p0 then
+    local off = (p0 - mz.Position).Magnitude
+    check(off < 1.5, string.format("炮弹从主炮炮口出（差 %.2f 格）", off))
+  end
 end
-
-print("④ 再按 T：退出")
-T.tap(Enum.KeyCode.T)
-R.run(0.5)
-check(C.interiorOpticState() == nil, "退出了")
-check(st.wi == wi0, "武器换回原来那件（" .. tostring(st.d.weapons[st.wi]) .. "）")
-check(st.rwsPt == nil, "M2 交回炮长的准星")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

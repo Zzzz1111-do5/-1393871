@@ -14,6 +14,23 @@ local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local AIR = TEST_ARGS:match("air=(%w+)") or "j20"
 local US = { f35 = true, f22 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
 local side = US[AIR] and "def" or "atk"
+-- imp=1：假装 Studio 里导入了这型飞机的原模型（照 ImportedAir 元数据摆一套同名的 MeshPart，开服时收进 Imported），走原模型那条路
+local IMP = nil
+if TEST_ARGS:match("imp=1") then
+  local f = assert(io.open(SRC_DIR .. "/ReplicatedStorage/ImportedAir.lua"))
+  local IA = load(f:read("a"))()
+  f:close()
+  IMP = IA.alias[AIR] or AIR
+  local info = IA.m[IMP]
+  assert(info, "ImportedAir 里没有 " .. tostring(IMP))
+  for name, p in pairs(info.parts) do
+    local mp = R.Instance.new("MeshPart")
+    mp.Name = "A_" .. IMP .. "__" .. name
+    mp.Size = V3(p.s[1], p.s[2], p.s[3])
+    mp.CFrame = T.CF(900 + p.c[1], 200 + p.c[2], 900 + p.c[3])
+    mp.Parent = R.services.Workspace
+  end
+end
 
 local G = T.boot()
 G.fortsHold = true
@@ -113,6 +130,13 @@ check((cam.CFrame.Position - eyeW.Position).Magnitude < 0.25 * 2.8, string.forma
 local q = v.cf:PointToObjectSpace(cam.CFrame.Position)
 local sideOk = (cur.spec.heli or cur.spec.eyeShift) and 0.8 * 2.8 or v.def.W * 0.1   -- 并排座：机长坐一边
 check(math.abs(q.X) < sideOk and q.Z < 0, string.format("眼位在机身中线（并排座在一边）、机头那半边（机体坐标 %.1f, %.1f, %.1f）", q.X, q.Y, q.Z))
+-- 双座（歼-16）：驾驶员的眼位在前座——座舱盖的前半段、后座飞行员的前面（用户 11-22：「j16 驾驶位第一人称不能坐在后座」）
+local Cn = v.def.canopy
+if v.def.twoSeat and Cn then
+  local s2 = C.AM and C.AM.seatCF and C.AM.seatCF(v.M, 2)
+  local zr = s2 and s2.Position.Z or (Cn.z + Cn.len * 0.2)
+  check(q.Z < Cn.z and q.Z < zr - 0.8 * 2.8, string.format("双座：驾驶员坐前座（眼位 z %.1f，座舱盖中点 %.1f，后座 %.1f）", q.Z, Cn.z, zr))
+end
 check(v.M.pilotsOn == false, "外模型里的飞行员不画（第一人称）")
 local hid = 0
 for _, p in ipairs(cur.zone or {}) do if p.LocalTransparencyModifier == 1 then hid = hid + 1 end end

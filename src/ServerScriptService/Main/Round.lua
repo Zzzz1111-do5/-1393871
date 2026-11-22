@@ -45,7 +45,11 @@ function Round.init(G)
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
+  -- 征服模式（沙漠地图，用户 11-22）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
+  local function conquest() return Map.desert == true end
+  G.conquest = conquest
   local function isActive(s)
+    if conquest() then return s ~= nil end
     if not s or s.locked then return false end
     local k = stageOf[s.id]
     if not k then return false end
@@ -263,6 +267,24 @@ function Round.init(G)
   -- 出生点：{ id, kind, x, z, ok, rec }；每队能选哪些、现在能不能用、推荐哪个（离当前目标最近的）
   --   攻方的登陆点只列当前目标所在的那块陆地上的；守方的集结点只给当前阶段的据点。自己手里的据点都能出生（守方的机场 D 是飞机基地）
   local function spawnList(team, P)
+    if conquest() then   -- 征服：自己的基地（营地；车场、机场、直升机坪的召唤位在基地里）+ 本队占着的据点（没被压着才行）
+      local out = {}
+      local B = Map.BASES and Map.BASES[team]
+      if B then table.insert(out, { id = "base", kind = "base", x = B.camp.x, z = B.camp.z, ok = true }) end
+      local best, bd = nil, math.huge
+      for _, p in ipairs(Map.POINTS) do
+        local s = points[p.id]
+        if s and s.owner == team then
+          local sp = { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = not s.pressed }
+          table.insert(out, sp)
+          -- 推荐：离中线最近（最靠前）的自己的据点
+          local d = math.abs(p.x)
+          if sp.ok and d < bd then best, bd = sp, d end
+        end
+      end
+      if best then best.rec = true elseif out[1] then out[1].rec = true end
+      return out
+    end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
     --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
@@ -334,7 +356,14 @@ function Round.init(G)
         return CFrame.lookAt(d.cf.Position + off, d.cf.Position + off + face)
       end
       local f = Map.FLEET[2] or Map.FLEET[1]
-      return CFrame.new(f.x, 40, f.z)
+      if f then return CFrame.new(f.x, 40, f.z) end
+      local B = Map.BASES and Map.BASES[P.team]   -- 没有舰队的地图（沙漠）：回自己基地
+      if B then
+        local c = B.camp or B
+        local p = standAt(c.x, c.z, 45)
+        return CFrame.lookAt(p, p + V(B.face or 1, 0, 0))
+      end
+      return CFrame.new(0, 60, 0)
     elseif sp.kind == "cv" then   -- 航母（福建舰）：舰岛左边、着舰区右边红线以外，面朝舰尾的停机位；别站在弹射器、着舰区上
       for _, d in ipairs(G.decks or {}) do
         if d.kind == "carrier" then
@@ -360,10 +389,15 @@ function Round.init(G)
       return CFrame.lookAt(p, p + V(0, 0, 1))
     elseif sp.kind == "point" then
       local p = standAt(sp.x, sp.z, 30)
+      if conquest() then face = V(-math.sign(sp.x ~= 0 and sp.x or (P.team == "atk" and -1 or 1)), 0, 0) end   -- 征服：朝中线
       return CFrame.lookAt(p, p + face)
     elseif sp.kind == "camp" then
       local p = standAt(sp.x, sp.z, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "base" then   -- 征服：自己基地的营地，面朝战场（中线）
+      local B = Map.BASES and Map.BASES[P.team]
+      local p = standAt(sp.x, sp.z, 45)
+      return CFrame.lookAt(p, p + V(B and B.face or 1, 0, 0))
     elseif sp.kind == "rally" or sp.kind == "staging" then   -- 守方前线集结点、攻方攻击出发阵地：面朝据点
       local p = standAt(sp.x, sp.z, 25)
       local pt = nil
@@ -636,9 +670,10 @@ function Round.init(G)
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
-    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true }   -- redbase：沙漠图的前进基地
+    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true, base = true }   -- redbase：沙海的前进基地；base：沙漠风暴两边的基地
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     if P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
+    if conquest() and P.team == "def" and R.phase == "battle" and (R.ticketsDef or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 征服：守方也按兵力
     P.lastChoice = choice   -- 快速部署照上次的装备
     P.role = kit.role
     P.kit = kit
@@ -652,6 +687,14 @@ function Round.init(G)
     end
     P.canDeployAt = now() + 2
     P.pl:LoadCharacter()
+  end
+
+  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就按他选的开（init.server.lua 的 G.pickMap）；定过了就记下他想要哪张
+  function G.ACT.pickMap(P, id)
+    if type(id) ~= "string" then return end
+    P.wantMap = id
+    if G.pickMap then G.pickMap(id) end
+    G.pushOne(P)
   end
 
   -- 快速加入（主菜单的大按钮）/ 快速部署（部署界面）：没选阵营的按人数自动分；装备照上次出击的（没有就默认）；
@@ -733,10 +776,12 @@ function Round.init(G)
   ---------------------------------------------------------------- 据点
 
   local function resetPoints()
+    for k in pairs(points) do points[k] = nil end   -- 换了地图（据点不一样）：旧的清掉
+    local own = conquest() and "none" or "def"
     for _, p in ipairs(Map.POINTS) do
-      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = "def", prog = 0, locked = false, atk = 0, def = 0, pressed = false }
+      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = own, prog = 0, cap = 0, locked = false, atk = 0, def = 0, pressed = false }
       local m = G.pointModels and G.pointModels[p.id]
-      if m then m:SetAttribute("Owner", "def") m:SetAttribute("Prog", 0) end
+      if m then m:SetAttribute("Owner", own) m:SetAttribute("Prog", 0) end
     end
   end
   resetPoints()
@@ -746,8 +791,16 @@ function Round.init(G)
     if not m then return end
     m:SetAttribute("Owner", s.owner)
     m:SetAttribute("Prog", s.prog)
-    local col = Config.Teams[s.owner].color
-    if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+    m:SetAttribute("Cap", s.cap or 0)
+    local NEUTRAL = Color3.fromRGB(200, 200, 200)
+    local col
+    if conquest() then   -- 征服：中立灰，往哪边推就往那边的颜色渐变
+      local c = s.cap or 0
+      col = (c >= 0) and NEUTRAL:Lerp(Config.Teams.atk.color, c) or NEUTRAL:Lerp(Config.Teams.def.color, -c)
+    else
+      col = Config.Teams[s.owner] and Config.Teams[s.owner].color or NEUTRAL
+      if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+    end
     for _, n in ipairs({ "Ring", "Flag" }) do
       local p = m:FindFirstChild(n)
       if p then p.Color = col end
@@ -841,7 +894,75 @@ function Round.init(G)
     stageCleared()
   end
 
+  -- 征服模式的占领：s.cap 从 −1（守方占满）经 0（中立）到 +1（攻方占满）；圈里哪边人多往哪边推（同 capRate，机器人算 CC.botW 个人）；
+  --   推过 0 变中立、推满归那边；没人 / 人一样多：往原来的主人那边慢慢回
+  local function conqStep(dt)
+    for _, p in ipairs(Map.POINTS) do
+      local s = points[p.id]
+      if s then
+        local a, d, who, ra, rd = countIn(s)
+        s.atk, s.def = a, d
+        local effA = ra + (a - ra) * (CC.botW or 1)
+        local effD = rd + (d - rd) * (CC.botW or 1)
+        local diff = effA - effD
+        local old = s.cap or 0
+        local cap = old
+        if diff > 0.01 then cap = math.min(1, cap + capRate(diff) * dt)
+        elseif diff < -0.01 then cap = math.max(-1, cap - capRate(-diff) * dt)
+        elseif s.owner == "atk" then cap = math.min(1, cap + dt / CC.decay)
+        elseif s.owner == "def" then cap = math.max(-1, cap - dt / CC.decay)
+        elseif cap > 0 then cap = math.max(0, cap - dt / CC.decay)
+        elseif cap < 0 then cap = math.min(0, cap + dt / CC.decay) end
+        s.cap = cap
+        local owner = s.owner
+        if cap >= 1 then owner = "atk"
+        elseif cap <= -1 then owner = "def"
+        elseif (s.owner == "atk" and cap <= 0) or (s.owner == "def" and cap >= 0) then owner = "none" end
+        if owner ~= s.owner then
+          local lost = s.owner
+          s.owner = owner
+          if owner == "none" then
+            if lost ~= "none" then G.msgTeam(lost, "bad", "ui.lostPoint", { k = "point." .. s.id }) end
+          else
+            for _, P in ipairs(who) do
+              if P.team == owner then
+                P.caps += 1
+                G.addScore(P, Config.Score.capture)
+                G.msg(P.pl, "good", "ui.capturedYou", { k = "point." .. s.id })
+              end
+            end
+            G.msgTeam(owner, "good", "ui.weTook", { k = "point." .. s.id })
+            G.msgTeam((owner == "atk") and "def" or "atk", "bad", "ui.lostPoint", { k = "point." .. s.id })
+            G.fx({ k = "capture", id = s.id })
+            G.emit("captured", s)
+          end
+        end
+        s.prog = math.abs(cap)
+        s.pressed = (s.owner == "atk" and d > a) or (s.owner == "def" and a > d)
+        s.motion = (cap > old) and 1 or ((cap < old) and -1 or 0)
+        if math.abs(cap - old) > 1e-6 then paint(s) end
+      end
+    end
+  end
+  -- 征服模式的兵力：据点少的一边按差几个、每秒掉 BLEED（两边一样多不掉）
+  local BLEED = (Config.Tickets and Config.Tickets.bleed) or 0.3
+  local bleedAcc = { atk = 0, def = 0 }
+  local function conqBleed(dt)
+    local nA, nD = 0, 0
+    for _, s in pairs(points) do
+      if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+    end
+    local lose = (nA > nD) and "def" or ((nD > nA) and "atk" or nil)
+    if not lose then return end
+    bleedAcc[lose] += BLEED * math.abs(nA - nD) * dt
+    while bleedAcc[lose] >= 1 do
+      bleedAcc[lose] -= 1
+      if lose == "atk" then R.tickets = math.max(0, R.tickets - 1) else R.ticketsDef = math.max(0, (R.ticketsDef or 0) - 1) end
+    end
+  end
+
   local function capStep(dt)
+    if conquest() then conqStep(dt) conqBleed(dt) return end
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       if isActive(s) then
@@ -895,6 +1016,7 @@ function Round.init(G)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets
+    if conquest() then R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800 end
     resetPoints()
     clearChars()
     for _, P in pairs(G.P) do
@@ -915,12 +1037,24 @@ function Round.init(G)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)
     R.ticketsMax = R.tickets
+    if conquest() then
+      R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800
+      R.endsAt = now() + (RC.conquest or 2400)
+      G.msgAll("center", "ui.conquestStart")
+      G.pushAll()
+      return
+    end
     G.msgAll("stage", "stage." .. ((STAGES[1] and STAGES[1].id) or "all"), 1, #STAGES)
     G.pushAll()
   end
   -- 攻方阵亡一个（真人、机器人都算）：兵力扣 1；剩 50、20 的时候喊一声
   local function ticketLoss(team)
-    if team ~= "atk" or R.phase ~= "battle" then return end
+    if R.phase ~= "battle" then return end
+    if conquest() then   -- 征服：两边阵亡都扣自己的兵力
+      if team == "def" then R.ticketsDef = math.max(0, (R.ticketsDef or 0) - 1) elseif team == "atk" then R.tickets = math.max(0, (R.tickets or 0) - 1) end
+      return
+    end
+    if team ~= "atk" then return end
     R.tickets = math.max(0, (R.tickets or 0) - 1)
     if R.tickets == 50 or R.tickets == 20 then G.msgAll("center", "ui.ticketsLow", R.tickets) end
   end
@@ -950,7 +1084,11 @@ function Round.init(G)
       if t >= R.prepEnds then startBattle() end
     elseif R.phase == "battle" then
       capStep(dt)
-      if R.phase == "battle" and ((R.tickets or 1) <= 0 or t >= R.endsAt) then   -- 兵力扣光、这一阶段时间到：守方赢
+      if conquest() then   -- 征服：哪边兵力先扣光哪边输；时间到兵力多的赢
+        if (R.tickets or 1) <= 0 then finish("def")
+        elseif (R.ticketsDef or 1) <= 0 then finish("atk")
+        elseif t >= R.endsAt then finish(((R.tickets or 0) >= (R.ticketsDef or 0)) and "atk" or "def") end
+      elseif R.phase == "battle" and ((R.tickets or 1) <= 0 or t >= R.endsAt) then   -- 兵力扣光、这一阶段时间到：守方赢
         local active = false   -- 有据点正在被占（攻方人多、进度在涨）：加时
         for _, s in pairs(points) do if isActive(s) and s.prog > 0 and s.atk > s.def then active = true end end
         if active then
@@ -977,7 +1115,7 @@ function Round.init(G)
     local out = {}
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
-      table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
+      table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, cap = math.floor((s.cap or 0) * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
         act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
     end
     return out
@@ -998,7 +1136,11 @@ function Round.init(G)
       phase = R.phase, left = math.max(0, math.floor(left + 0.5)), ot = R.overtimeEnds and math.max(0, math.floor(R.overtimeEnds - t + 0.5)) or nil,
       points = pointsState(), nAtk = teamCount("atk"), nDef = teamCount("def"), winner = R.winner, mvp = R.mvp, round = R.n,
       stage = R.stage, stages = #STAGES, stageId = STAGES[R.stage] and STAGES[R.stage].id, tickets = R.tickets, ticketsMax = R.ticketsMax,
-      progress = G.worldReady and 1 or (G.worldProgress or 0),
+      ticketsDef = conquest() and R.ticketsDef or nil, mode = conquest() and "conquest" or "assault",
+      -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
+      progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
+      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上两张都能点）
+      mapReady = G.worldReady == true,
     }
   end
   local function personal(P, C)

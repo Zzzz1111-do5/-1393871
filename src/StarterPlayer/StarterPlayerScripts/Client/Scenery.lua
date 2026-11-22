@@ -390,7 +390,8 @@ function Scenery.init(G)
   -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（11 × 11 块，每块 2048 格，镜头外一万格以上，盖过雾的尽头 8500）：飞到哪都看得到海一直铺到天边，
   --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
   local Map = G.Map
-  local OS, ON = 2048, 7   -- 15 × 15 块：镜头外一万五千格（地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
+  -- 21 × 21 块：镜头外两万一千格（用户 11-22：视野改成无限远，大气放淡以后原来一万五千格的边看得出来；地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
+  local OS, ON = 2048, 10
   local ocean = Instance.new("Folder")
   ocean.Name = "Ocean"
   ocean.Parent = workspace
@@ -404,38 +405,77 @@ function Scenery.init(G)
     p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
     p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
-    if Map.DESERT then   -- 沙漠图没有海：这圈平面换成沙地，顶面和平原一样高（地形外面一直是沙漠，铺到天边）
-      p.Material, p.Color, p.Reflectance = Enum.Material.Sand, (Map.COLORS and Map.COLORS.Sand) or RGB(206, 174, 124), 0
-    end
+    p.CFrame = CF(0, -60000, 0)
+    p.Parent = ocean
     tiles[i] = p
   end
-  local seaY = Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6
   local seaKey = nil
-  local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
+  local shown, moveL, moveCF = {}, {}, {}
+  local RI, SEA_Y = 0, -0.6
+  -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
+  --   沙漠没有海，地形 ±R 外面接一圈沙色的平面（飞出地形边上看着还是戈壁一直铺到天边）
+  --   沙海（Map.DESERT）也没有海：地形一直写到 ±SEA_R（外面一圈平地），再往外这圈平面是沙地，顶面和平原一样高
+  local function oceanStyle()
+    local desert = Map.desert or Map.DESERT
+    RI = math.floor(((Map.desert and Map.R) or Map.SEA_R or Map.R or 4096) / OS)
+    SEA_Y = Map.desert and ((Map.BASE_Y or 8) - 0.5) or (Map.DESERT and ((Map.PLAIN or 12) - 0.5)) or -0.6
+    local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)
+    for _, p in ipairs(tiles) do
+      p.Color = desert and sand or RGB(24, 84, 102)
+      p.Material = desert and Enum.Material.Sand or Enum.Material.SmoothPlastic
+      p.Reflectance = desert and 0 or 0.22
+      p.Name = desert and "FarSand" or "Sea"
+    end
+    seaKey = nil
+  end
+  oceanStyle()
   local function stepOcean()
     local c = cam.CFrame.Position
     local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)
     local key = gx * 65536 + gz
     if key == seaKey then return end
     seaKey = key
+    -- 一直挂在 Ocean 下面，一次 BulkMoveTo 挪完（原来过一块就把几百块零件摘下、挂上，开飞机每过两千格画面顿一下）；
+    --   落在地形海水那片里的沉到底下（不和地形水面打架）
     local n = 0
     for i = gx - ON, gx + ON do
       for k = gz - ON, gz + ON do
         n += 1
-        local p = tiles[n]
-        if i >= -RI and i < RI and k >= -RI and k < RI then
-          p.Parent = nil
-        else
-          p.CFrame = CF((i + 0.5) * OS, seaY, (k + 0.5) * OS)
-          p.Parent = ocean
-        end
+        local inT = i >= -RI and i < RI and k >= -RI and k < RI
+        moveL[n] = tiles[n]
+        moveCF[n] = CF((i + 0.5) * OS, inT and -60000 or SEA_Y, (k + 0.5) * OS)
+        shown[n] = not inT
       end
     end
+    workspace:BulkMoveTo(moveL, moveCF, Enum.BulkMoveMode.FireCFrameChanged)
   end
   G.oceanTiles = function()
     local n = 0
-    for _, p in ipairs(tiles) do if p.Parent then n += 1 end end
+    for i = 1, #tiles do if shown[i] then n += 1 end end
     return n
+  end
+
+  -- 换地图：石头全收回重算（Flora 按新地图的高度、坡度、路摆），远处那圈换成海或沙
+  local function resetCells()
+    for key, c in pairs(cells) do
+      for _, layer in ipairs(LAYERS) do
+        for _, it in ipairs(c[layer] or {}) do if it.inst then give(it.inst) it.inst = nil end end
+      end
+      cells[key] = nil
+    end
+    if #moveP > 0 then
+      workspace:BulkMoveTo(moveP, moveC, Enum.BulkMoveMode.FireCFrameChanged)
+      table.clear(moveP)
+      table.clear(moveC)
+    end
+    lastPos = nil
+  end
+  if G.onMap then
+    G.onMap(function()
+      if Flora.reset then Flora.reset() end
+      resetCells()
+      oceanStyle()
+    end)
   end
 
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）

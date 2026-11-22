@@ -173,6 +173,14 @@ function Interior.init(G)
     -- 「开镜」= 炮长主瞄准镜（用户 11-22：「第一人称开镜视角移动不了」「坦克第一人称视角开镜有时候会是绿色的」）：一坐进车里是驾驶员位，
     --   原来 Shift 开的是驾驶员的热像 / 微光潜望镜——跟着车体、鼠标转不动，99A、国产装甲车的还是绿色微光。现在主镜跟着车体固定的位置（驾驶员），
     --   Shift 跟车外一样进炮长主瞄准镜（镜头在炮长镜里、鼠标 / 方向键转炮）；那个位置自己的镜子挪到 G、T
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：遥控武器站的观瞄（M1A2 车长的 CROWS）从乘员位上拿掉，T 那一位空着
+    if not spec.air and v.def.noRoofMg then
+      for _, sp in pairs(spec.stations or {}) do
+        for slot, o in pairs(sp.optics or {}) do
+          if o.rws then sp.optics[slot] = nil end
+        end
+      end
+    end
     if not spec.air and v.def.turret and v.def.sight then
       for _, sp in pairs(spec.stations or {}) do
         local o = sp.optics
@@ -789,6 +797,8 @@ function Interior.init(G)
     d.ammoKind = c.ammoKind
     if v.rF then d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(v.rgF or v.rF) else d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(tW * CF(V(0.6, 1.3, 0.2) * S)) end
     d.rwsAmmo = 400
+    -- 坦克不带机枪（VehDefs.TANK_MG）：CROWS 屏只剩车顶摄像头，没有 M2、没有弹数
+    if st and st.d and st.d.noRoofMg then d.rwsAmmo, d.rwsNoGun = nil, true end
     return d
   end
 
@@ -865,7 +875,32 @@ function Interior.init(G)
     end
     return best
   end
-  G.interiorHover = function() return hover ~= nil and mode == "seat" end
+  -- 准心对着的有按键的屏幕（显示面 + 外面一圈边框、按键、按键下面印的字）：左键当成在操作屏幕，不开炮
+  --   （用户 11-22：「我操控显示屏的时候坦克会开炮，因为我点了鼠标左键」——原来只有小点正好落在某个键上才不开炮，
+  --   点在键旁边、键下面的字上、屏幕上，炮就打出去了）；平显的组合玻璃不算（透过它瞄准开火）
+  local hoverScr = nil
+  local function pickScreen(c)
+    local o = cam.CFrame.Position
+    local dir = cam.CFrame.LookVector
+    for _, s in ipairs(c.b.screens) do
+      local p = s.part
+      if p and s.opt and s.opt.keys and not s.opt.noBack then
+        local cf, sz = p.CFrame, p.Size * 0.5
+        local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
+        if ld.Z > 1e-4 then
+          local t = (-sz.Z - lo.Z) / ld.Z
+          if t > 0 and t < 1.6 * S then
+            local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
+            local m = ((s.opt.bezel or 0.036) + 0.02) * S
+            if math.abs(px) <= sz.X + m and math.abs(py) <= sz.Y + m then return s end
+          end
+        end
+      end
+    end
+    return nil
+  end
+  -- 开着观瞄设备（武器站左键就是开火）、瞄准镜的时候不算：hover 停在进镜前那一帧的值
+  G.interiorHover = function() return (hover ~= nil or hoverScr ~= nil) and mode == "seat" and optic == nil and not (G.drive and G.drive.sight) end
   G.interiorHoverKey = function() return hover end   -- 测试用
   local dot = Instance.new("Frame")
   dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -897,11 +932,15 @@ function Interior.init(G)
     local k = (mode == "seat" and not scopePhase()) and pickKey(c) or nil
     if hover and hover ~= k then hover.part.Color = hover.col end
     hover = k
+    hoverScr = (mode == "seat" and not scopePhase() and not k) and pickScreen(c) or nil
     dot.Visible = mode == "seat" and not hideUI
     if k then
       k.part.Color = RGB(255, 190, 60)
       local id = Screens.canon(k.label)
       tip.Text = k.label .. "  ——  " .. (Screens.KEYDESC[id] or "")
+      tip.Visible = not hideUI
+    elseif hoverScr then   -- 对着屏幕、没对准键：提示怎么按（这时左键不开炮）
+      tip.Text = T("小点对准屏幕边的按键再按左键（对着屏幕时左键不开炮）", "put the dot on a key to press it (no firing while looking at a screen)")
       tip.Visible = not hideUI
     else
       tip.Visible = false
@@ -1308,9 +1347,14 @@ function Interior.init(G)
   local LOOKS = {
     day = { -0.1, 0.10, 0.0, RGB(255, 255, 255) }, whot = { -1, 0.45, -0.32, RGB(225, 225, 225), Color3.new(1, 1, 1) },
     bhot = { -1, 0.25, 0.22, RGB(235, 235, 235), Color3.new(0, 0, 0) }, nv = { -1, 0.35, 0.10, RGB(120, 255, 140) },
+    -- 昼光镜（CROWS 摄像头、辅助瞄准镜、潜望镜）夜里用（用户 11-22：「坦克第三人称驾驶开镜全屏都是黄色」——夜视仪的增亮还留着、
+    --   昼光档颜色照原样，沙漠的沙子过曝成满屏的黄）：夜里看出去暗、发灰、偏冷，跟真的昼光镜在夜里一样只看得清个轮廓
+    dayN = { -0.7, 0.12, -0.05, RGB(212, 220, 236) },
   }
   local function applyLook(look)
     clearOhl()
+    G.opticNv = look == "nv"   -- 夜视档：昼夜（DayNight.lua）照夜视仪那样增亮
+    if look == "day" and G.isNight and G.isNight() then look = "dayN" end
     local L = LOOKS[look]
     if not L then icc.Enabled = false return end
     icc.Enabled = true
@@ -1473,6 +1517,7 @@ function Interior.init(G)
     end
     og.Enabled = false
     icc.Enabled = false
+    G.opticNv = false
     clearOhl()
     if o.useSight and G.driveSetSight then G.driveSetSight(false) end
     if c then ownHide(c, false) end
@@ -1482,6 +1527,8 @@ function Interior.init(G)
     local sp = c.spec.stations[station]
     local o = sp and sp.optics and sp.optics[slot]
     if not o then return false end
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：车长的遥控武器站这一位空着，按 T 没反应
+    if o.rws and G.drive and G.drive.d and G.drive.d.noRoofMg then return false end
     if o.kind == "gps" then   -- 炮长主瞄准镜（车长看就是延伸目镜）：照常的瞄准镜，头先凑过去
       scope.phase, scope.t, scope.cb = "in", 0, function() if G.driveSetSight then G.driveSetSight(true) end end
       return true
@@ -1506,9 +1553,11 @@ function Interior.init(G)
     for _, ch in ipairs(ret:GetChildren()) do ch:Destroy() end
     local vp = cam.ViewportSize
     local u = math.min(vp.X, vp.Y)
-    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or ((o.look == "day") and RGB(30, 30, 30) or RGB(235, 240, 235)))
+    -- 昼光镜的黑分划、黑字：夜里画面是暗的（LOOKS.dayN），黑的看不见，换成浅色
+    local dayLit = o.look == "day" and not (G.isNight and G.isNight())
+    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or (dayLit and RGB(30, 30, 30) or RGB(235, 240, 235)))
     if o.ret == "crows" or o.ret == "rear" then col = RGB(240, 240, 240) end
-    if o.ret == "gas" or o.ret == "gascn" then col = RGB(20, 20, 20) end
+    if (o.ret == "gas" or o.ret == "gascn") and dayLit then col = RGB(20, 20, 20) end
     ret.Size = UDim2.fromOffset(0, 0)
     ;(RETS[o.ret] or RETS.none)(u, col)
     -- 镜框形状：圆的目镜、长方形的屏幕、装填手潜望镜的长条
@@ -1525,7 +1574,7 @@ function Interior.init(G)
     oName.Position = UDim2.new(0.5, -hole.Size.X.Offset / 2 + 10, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oName.Size = UDim2.fromOffset(300, 20)
     oName.Text = o.name or ""
-    oName.TextColor3 = (o.look == "day" and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
+    oName.TextColor3 = (dayLit and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
     oInfo.Position = UDim2.new(0.5, hole.Size.X.Offset / 2 - 310, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oInfo.Size = UDim2.fromOffset(300, 20)
     oInfo.TextColor3 = oName.TextColor3
@@ -2106,7 +2155,7 @@ function Interior.init(G)
       if cur and cur.zoneOn then zoneHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       cfx.Enabled = false
-      hover = nil
+      hover, hoverScr = nil, nil
       return
     end
     if not cur then

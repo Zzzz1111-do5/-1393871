@@ -151,6 +151,8 @@ if side == "def" then
   check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.whot"), 1, true), "镜里写着（天黑默认热成像白热，不是绿色的夜视）：" .. tostring(hv))
   check(hm and hm:find("M", 1, true) and hm:find(tostring(e.smoke or e.def.smoke.n * #e.def.smoke.banks), 1, true) ~= nil or (hm and hm:find("M", 1, true)), "镜里写着：" .. tostring(hm))
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
+  local fb = lighting:FindFirstChild("FarBlur")
+  check(fb ~= nil and not fb.Enabled, "瞄准镜里远处不糊（远处景深模糊关掉）")
   local modes = {}
   for _ = 1, 3 do
     T.tap(Enum.KeyCode.V)
@@ -158,6 +160,9 @@ if side == "def" then
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
   check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "nv", "瞄准镜默认白热档，V 依次切黑热、昼光、夜视：" .. table.concat(modes, " → "))
+  R.run(0.3)
+  check(C.sightNv == true and lighting.ExposureCompensation > 2.5,
+    string.format("镜里的夜视档照夜视仪那样增亮（曝光 %.2f；原来夜视仪让出画面时增亮也撤了，一片墨绿）", lighting.ExposureCompensation))
   local hv2 = shown("HintOptic")
   check(hv2 and hv2:find(C.T("sight.nv"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
   T.tap(Enum.KeyCode.LeftShift)
@@ -165,6 +170,7 @@ if side == "def" then
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
   check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
+  check(fb ~= nil and fb.Enabled and not C.sightNv, "退出瞄准镜：远处景深模糊又开了，镜里夜视档的增亮撤掉")
 
   print("④ 开战后开炮、放烟幕弹")
   T.runUntil(function() return G.round.phase == "battle" end, 40)

@@ -1650,7 +1650,7 @@ function H.boot(placePath, opts)
 	local ws = game:GetService("Workspace")
 	H.workspace = ws
 	genv.workspace = ws
-	do   -- 环境变量 IA_MAP=desert / island：换地图（同 Studio 里给 Workspace 设属性 MapName），全部测试都能在沙漠图上跑
+	do   -- 环境变量 IA_MAP=island / desert（沙漠风暴）/ sands（沙海）：换地图（同 Studio 里给 Workspace 设属性 MapName），全部测试都能在沙漠图上跑
 		local mn = require("@lune/process").env.IA_MAP
 		if mn and mn ~= "" then ws:SetAttribute("MapName", mn) end
 	end

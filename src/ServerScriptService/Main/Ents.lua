@@ -151,6 +151,7 @@ function Ents.init(G)
 
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
+    if w and w.nuke and G.nukeAt then return G.nukeAt(pos, w, src) end   -- 核导弹撞到地面 / 房子：照样核爆（Nuke.lua）
     local r = w.splash or 8
     local ownK = false
     if not G.dmgK and G.eraBlast then

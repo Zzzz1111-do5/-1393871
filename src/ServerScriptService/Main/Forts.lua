@@ -900,8 +900,9 @@ function Forts.init(G)
 
   local function newFort(L)
     local d = FD.D[L.kind]
-    local e = G.newEnt({ kind = "fort", team = "def", cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
-      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = "def" } })
+    local team = (L.home == "atk" or L.home == "def") and L.home or "def"   -- 沙漠：两边基地各有自己的工事（FortDefs.layout 的 home）
+    local e = G.newEnt({ kind = "fort", team = team, cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
+      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = team } })
     e.model:SetAttribute("Model", L.kind)
     e.model:SetAttribute("Ty", 0)
     e.model:SetAttribute("Gp", 0)
@@ -1138,6 +1139,7 @@ function Forts.init(G)
 
   -- 据点被攻方拿下：挨着它的工事归攻方（还能用的）
   G.on("captured", function(s)
+    if Map.desert then return end   -- 征服：工事都在两边基地里，不跟据点走
     for _, e in ipairs(forts) do
       if e.alive and e.pt == s.id and e.team ~= "atk" then
         if e.gunner then unman(e, true) end

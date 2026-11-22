@@ -84,6 +84,23 @@ add("point.B", "B 灯塔岛", "B Lighthouse Isle")
 add("point.C", "C 港口镇", "C Harbor Town")
 add("point.D", "D 机场", "D Airfield")
 add("point.E", "E 指挥所", "E Command Post")
+-- 沙漠地图「沙漠风暴」的据点（MapDesert.lua）
+add("point.A@desert", "A 绿洲镇", "A Oasis Town")
+add("point.B@desert", "B 油田", "B Oil Field")
+add("point.C@desert", "C 古城", "C Old Citadel")
+add("point.D@desert", "D 十字路口镇", "D Crossroads")
+add("point.E@desert", "E 雷达站", "E Radar Station")
+add("point.F@desert", "F 干河谷桥", "F Wadi Bridge")
+add("point.G@desert", "G 炼油厂", "G Refinery")
+add("faction.atk.role@desert", "西线  ·  征服", "WEST  ·  CONQUEST")
+add("faction.def.role@desert", "东线  ·  征服", "EAST  ·  CONQUEST")
+add("faction.def.name@desert", "沙漠守备军", "DGC")
+add("spawn.base", "本方基地", "Home Base")
+add("ui.lostPoint", "{1} 丢了", "{1} was lost")
+add("ui.weTook", "我方拿下了 {1}", "We took {1}")
+add("ui.conquestStart", "开战！占领据点，打光敌人的兵力", "Battle! Capture the points and drain the enemy's tickets")
+add("ui.win.atk@desert", "西线胜利：敌人的兵力打光了", "WEST WINS: the enemy ran out of tickets")
+add("ui.win.def@desert", "东线胜利：敌人的兵力打光了", "EAST WINS: the enemy ran out of tickets")
 add("beach.red", "红滩", "Red Beach")
 add("beach.white", "白滩", "White Beach")
 add("beach.blue", "绿滩", "Green Beach")   -- 原来叫蓝滩（用户 11-21：蓝色全部改成绿色）
@@ -128,7 +145,7 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
-  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
   a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
   t055 = { "055 型驱逐舰", "Type 055 Destroyer" }, t054a = { "054A 型护卫舰", "Type 054A Frigate" }, t022 = { "022 型导弹艇", "Type 022 Missile Boat" },
@@ -289,6 +306,7 @@ local PRESET = {
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
   bomb = { "炸弹", "Bombs" }, kd88 = { "KD-88 远程打击", "KD-88 standoff" }, cas = { "近距支援", "Close air support" }, hk = { "猎杀", "Hunter-killer" },
   jdam = { "联合直接攻击弹药", "JDAM" }, mk82 = { "Mk 82 炸弹", "Mk 82 bombs" }, antiship = { "反舰", "Anti-ship" },
+  nuke = { "核打击", "Nuclear strike" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
@@ -301,8 +319,25 @@ local AW = {
   pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, yj83k = { "鹰击-83K 反舰导弹", "YJ-83K anti-ship missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
   gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
   gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
+  hn1 = { "惊雷-1 核导弹", "HN-1 nuke" },
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
+-- 高超音速战术核导弹（Nuke.lua / 客户端 Nuke.lua）
+add("nuke.short", "惊雷-1 核", "HN-1 NUKE")
+add("nuke.btn", "开火键", "Fire")
+add("nuke.hold", "按住 {1} 发射核导弹", "Hold {1} to launch the nuke")
+add("nuke.arming", "核导弹解锁中…… {1}%", "Arming nuke… {1}%")
+add("nuke.cd", "核打击还要等 {1} 秒（每队发射后要冷却）", "Nuclear strike available in {1}s (team cooldown)")
+add("nuke.early", "开战 {1} 秒后才能发射核导弹", "Nukes unlock {1}s after the battle starts")
+add("nuke.launched", "核导弹已发射", "Nuke launched")
+add("nuke.launchedSub", "惊雷-1 · 预计 {1} 秒后命中 · 我方不受伤害", "HN-1 · impact in about {1}s · friendly units are safe")
+add("nuke.incoming", "⚠ 核打击来袭 ⚠", "⚠ NUCLEAR STRIKE INBOUND ⚠")
+add("nuke.incomingSub", "敌方高超音速核导弹 · 预计 {1} 秒 · 立刻远离红圈", "Enemy hypersonic nuke · impact in about {1}s · get out of the red circle")
+add("nuke.dive", "核导弹进入末段俯冲", "Nuke in terminal dive")
+add("nuke.det", "核爆", "Nuclear detonation")
+add("nuke.fallout", "辐射区：快离开", "Radiation zone: get out")
+add("nuke.feed", "核打击", "nuclear strike")
+add("nuke.tag", "☢ 爆心", "☢ Ground zero")
 add("preset.sead", "防空压制", "SEAD")
 add("hangar.empty", "不挂", "Empty")
 add("hangar.pick", "点白圈选一个挂点", "Pick a hardpoint")
@@ -356,8 +391,8 @@ add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
 add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
   "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
+add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -495,7 +530,7 @@ add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道�
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
 add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；机头跟着准心转，W 桨盘前倾往前飞，A / D 侧飞", "Hold E to climb, Q to descend; the nose follows your aim, W tilts the rotor forward, A / D sidestep")
+add("coach.card.heli.2", "按住 E 升、Q 降；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞", "Hold E to climb, Q to descend; aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep")
 add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
@@ -583,8 +618,8 @@ add("menu.rankLine", "{1}   ·   下一级 {2}", "{1}   ·   NEXT {2}")
 add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
 add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
 add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
-add("menu.c1.title", "快速加入", "QUICK JOIN")
-add("menu.c1.sub", "自动分队 · 默认装备 · 直接上前线（回车）", "AUTO TEAM · DEFAULT KIT · STRAIGHT TO THE FRONT (ENTER)")
+add("menu.c1.title", "开始游戏", "PLAY")
+add("menu.c1.sub", "选地图 · 自动分队 · 直接上前线（回车）", "PICK A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
 add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
@@ -598,6 +633,27 @@ add("menu.c4.cat", "制作人员", "CREDITS")
 add("menu.c4.title", "模型与授权", "MODELS & LICENSES")
 add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-BY)")
 add("menu.beta", "测试版", "BETA")
+-- 选地图（MapPick.lua，用户 11-22：「界面直接写 play，然后进入界面点地图」）
+add("map.cat", "开始游戏", "PLAY")
+add("map.title", "选择地图", "SELECT MAP")
+add("map.sub", "第一个选的定这个服务器打哪张，后进来的直接加入", "The first pick sets this server's map — later players join it")
+add("map.back", "返回", "BACK")
+add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
+add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
+add("map.island.desc", "登陆联军从海上抢滩，岛屿守备军守住岛上的据点 · 舰队、登陆艇、机场岛 · 夜战", "The coalition storms the beaches from the sea; the garrison holds the island · fleet, landing craft, island airfield · night")
+add("map.desert.name", "沙漠风暴", "DESERT STORM")
+add("map.desert.mode", "征服", "CONQUEST")
+add("map.desert.desc", "两边各有自己的军事基地和机场，抢中间的据点 · 大纵深坦克战、空战、远程打击", "Each side has its own military base and airfield; fight over the points in between · deep armour thrusts, air war, long-range strikes")
+add("map.sands.name", "沙海", "SEA OF SAND")
+add("map.sands.mode", "突破", "BREAKTHROUGH")
+add("map.sands.desc", "海湾战争式的纯陆地沙漠（约 28 公里见方）：从南边的前进基地北上，五个阶段一个一个打 · 沙墙、油田、镇子、空军基地、岭上指挥部", "A Gulf War desert with no sea (about 28 km across): push north from the forward base through five stages · border berm, oilfield, town, airbase, ridge command")
+add("map.size", "{1} × {1} 公里", "{1} × {1} KM")
+add("map.pick", "选这张", "SELECT")
+add("map.join", "加入", "JOIN")
+add("map.now", "这个服务器正在打", "NOW PLAYING")
+add("map.other", "这个服务器在打「{1}」", "This server is playing {1}")
+add("map.loading", "正在生成地图……{1}%", "Building the map… {1}%")
+add("map.players", "{1} 名玩家", "{1} PLAYERS")
 add("menu.close", "关闭", "CLOSE")
 add("menu.open", "菜单", "MENU")
 add("menu.h.inf", "步兵", "INFANTRY")
@@ -793,6 +849,16 @@ add("gar.speed", "车速 {1} 公里 / 时", "Speed {1} km/h")
 add("gar.spawn", "出车", "DEPLOY")
 add("gar.back", "返回", "BACK")
 add("gar.fixed", "标配", "STANDARD")
+-- 爆反分区（用户 11-22：「坦克我能选择在哪个地方贴爆反」）
+add("gar.zone.tf", "炮塔正面", "Turret front")
+add("gar.zone.ts", "炮塔侧面", "Turret sides")
+add("gar.zone.gl", "首上装甲", "Upper glacis")
+add("gar.zone.sk", "侧裙板", "Side skirts")
+add("gar.zoneOn", "装 ✓", "Fitted ✓")
+add("gar.zoneOff", "不装", "Not fitted")
+add("gar.zoneOwn", "原车自带（拆不掉）", "Factory fitted (fixed)")
+add("gar.d.eraZones", "点左边的区（或者车上的白圈）选在哪里贴爆反：炮塔正面、炮塔侧面、首上、侧裙板。火箭弹、导弹打在贴了爆反的地方，那一块炸开、伤害只剩两三成；没贴的地方直接挨。每少贴一个区车轻一点、快 1% 多。",
+  "Pick where to fit reactive armour (cards on the left or the circles on the tank): turret front, turret sides, upper glacis, side skirts. Rockets and missiles hitting a fitted area set off that brick and lose most of their damage; bare areas take the full hit. Each area left bare makes the tank a little lighter and faster.")
 add("vh.m", "{1} 米", "{1} m")
 add("vh.rdy", "已就绪", "READY")
 add("vh.loading", "装填 {1}", "LOADING {1}")
@@ -840,8 +906,16 @@ function Lang.pick(localeId)
   return "en"
 end
 
+-- 地图专用的说法（据点名、阵营名……）：键后面加「@地图」（"point.A@desert"）；客户端换地图时设 Lang.mapId（init.client.lua）
+Lang.mapId = nil
 local function tr(lang, key)
   local T = (lang == "zh") and ZH or EN
+  local mid = Lang.mapId
+  if mid and type(key) == "string" then
+    local k2 = key .. "@" .. mid
+    local v = T[k2] or ZH[k2]
+    if v then return v end
+  end
   return T[key] or ZH[key] or EN[key] or tostring(key)
 end
 
@@ -1007,43 +1081,38 @@ add("gm.desc.tac_none", "不装", "None")
 add("gm.desc.tac_light", "战术手电：照亮前面，夜里好用；腰射稍稳", "Weapon light: lights the way at night; steadier hip-fire")
 add("gm.desc.tac_peq", "可见激光：腰射准很多，但别人也看得见那道光", "Visible laser: far better hip-fire, but enemies see the beam")
 
----------------------------------------------------------------- 沙漠图「沙海」（MapDesert.lua）：据点、阶段、出生点、阵营说明换成沙漠的说法
-do
-  local okM, M = pcall(function() return require(script.Parent:FindFirstChild("Map")) end)
-  if okM and type(M) == "table" and M.DESERT then
-    add("faction.sub", "海湾风暴 · 沙漠装甲突击", "DESERT STORM · ARMORED ASSAULT")
-    add("faction.atk.role", "进攻  ·  装甲突击", "ATTACK  ·  ARMORED ASSAULT")
-    add("faction.def.role", "防守  ·  纵深防御", "DEFEND  ·  DEFENSE IN DEPTH")
-    add("faction.atk.desc", "从南边的前进基地、前进机场北上：越过边境沙墙拿下哨所 A，再打油田 B、镇子 C、空军基地 D，最后攻下岩岭上的指挥部 E。每个阶段都能在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
-      "Push north from the forward base and airstrip: breach the border berm and take Outpost A, then the Oilfield B, Town C and Airbase D, and finally Command E on the ridge. Spawn at the assault position in front of each objective. Every death costs one reinforcement; run out and you lose.")
-    add("point.A", "A 边境哨所", "A Border Post")
-    add("point.B", "B 油田", "B Oilfield")
-    add("point.C", "C 镇子", "C Town")
-    add("point.D", "D 空军基地", "D Airbase")
-    add("point.E", "E 岭上指挥部", "E Ridge Command")
-    add("spawn.redbase", "前进基地（车场、直升机）", "Forward Base (vehicles, helos)")
-    add("spawn.af2", "前进机场（固定翼）", "Forward Airstrip (jets)")
-    add("spawn.camp", "后方营地（岭北）", "Rear Camp (north of ridge)")
-    add("spawn.afield", "空军基地（战斗机）", "Airbase (jets)")
-    add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
-    add("operation.opening", "夜间突击", "NIGHT ASSAULT")   -- 照旧锁定晚上（Config.DayNight.lockNight）
-    add("stage.border", "突破边境", "BREACH THE BORDER")
-    add("stage.border.atk", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
-    add("stage.border.def", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
-    add("stage.border.short", "边境", "BORDER")
-    add("stage.oil", "夺取油田", "TAKE THE OILFIELD")
-    add("stage.oil.atk", "拿下油田 B（油井在烧，小心烟里的敌人）", "Take Oilfield B (wells burning: watch the smoke)")
-    add("stage.oil.def", "守住油田 B", "Hold Oilfield B")
-    add("stage.oil.short", "油田", "OILFIELD")
-    add("stage.town", "攻入镇子", "TAKE THE TOWN")
-    add("stage.town.atk", "打进镇子，拿下据点 C", "Fight into the town and take C")
-    add("stage.town.def", "守住镇子 C，巷战拖住敌人", "Hold Town C street by street")
-    add("stage.town.short", "镇子", "TOWN")
-    add("stage.airfield.atk", "拿下空军基地 D", "Take Airbase D")
-    add("stage.airfield.def", "守住空军基地 D", "Hold Airbase D")
-    add("stage.hq.atk", "翻上岩岭，攻下指挥部 E，结束战斗", "Climb the ridge and take Command E to win")
-    add("stage.hq.def", "最后一道防线：死守岭上指挥部 E", "Last line: hold Ridge Command E at all costs")
-  end
-end
+---------------------------------------------------------------- 沙漠图「沙海」（MapSands.lua，地图 id sands）：据点、阶段、出生点、阵营说明换成沙漠的说法（键后面加 @sands）
+add("faction.sub@sands", "海湾风暴 · 沙漠装甲突击", "SEA OF SAND · ARMORED ASSAULT")   -- 英文别叫 DESERT STORM：另一张沙漠图叫这个
+add("faction.atk.role@sands", "进攻  ·  装甲突击", "ATTACK  ·  ARMORED ASSAULT")
+add("faction.def.role@sands", "防守  ·  纵深防御", "DEFEND  ·  DEFENSE IN DEPTH")
+add("faction.atk.desc@sands", "从南边的前进基地、前进机场北上：越过边境沙墙拿下哨所 A，再打油田 B、镇子 C、空军基地 D，最后攻下岩岭上的指挥部 E。每个阶段都能在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
+  "Push north from the forward base and airstrip: breach the border berm and take Outpost A, then the Oilfield B, Town C and Airbase D, and finally Command E on the ridge. Spawn at the assault position in front of each objective. Every death costs one reinforcement; run out and you lose.")
+add("point.A@sands", "A 边境哨所", "A Border Post")
+add("point.B@sands", "B 油田", "B Oilfield")
+add("point.C@sands", "C 镇子", "C Town")
+add("point.D@sands", "D 空军基地", "D Airbase")
+add("point.E@sands", "E 岭上指挥部", "E Ridge Command")
+add("spawn.redbase@sands", "前进基地（车场、直升机）", "Forward Base (vehicles, helos)")
+add("spawn.af2@sands", "前进机场（固定翼）", "Forward Airstrip (jets)")
+add("spawn.camp@sands", "后方营地（岭北）", "Rear Camp (north of ridge)")
+add("spawn.afield@sands", "空军基地（战斗机）", "Airbase (jets)")
+add("hud.tip.3@sands", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
+add("operation.opening@sands", "夜间突击", "NIGHT ASSAULT")   -- 照旧锁定晚上（Config.DayNight.lockNight）
+add("stage.border@sands", "突破边境", "BREACH THE BORDER")
+add("stage.border.atk@sands", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
+add("stage.border.def@sands", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
+add("stage.border.short@sands", "边境", "BORDER")
+add("stage.oil@sands", "夺取油田", "TAKE THE OILFIELD")
+add("stage.oil.atk@sands", "拿下油田 B（油井在烧，小心烟里的敌人）", "Take Oilfield B (wells burning: watch the smoke)")
+add("stage.oil.def@sands", "守住油田 B", "Hold Oilfield B")
+add("stage.oil.short@sands", "油田", "OILFIELD")
+add("stage.town@sands", "攻入镇子", "TAKE THE TOWN")
+add("stage.town.atk@sands", "打进镇子，拿下据点 C", "Fight into the town and take C")
+add("stage.town.def@sands", "守住镇子 C，巷战拖住敌人", "Hold Town C street by street")
+add("stage.town.short@sands", "镇子", "TOWN")
+add("stage.airfield.atk@sands", "拿下空军基地 D", "Take Airbase D")
+add("stage.airfield.def@sands", "守住空军基地 D", "Hold Airbase D")
+add("stage.hq.atk@sands", "翻上岩岭，攻下指挥部 E，结束战斗", "Climb the ridge and take Command E to win")
+add("stage.hq.def@sands", "最后一道防线：死守岭上指挥部 E", "Last line: hold Ridge Command E at all costs")
 
 return Lang

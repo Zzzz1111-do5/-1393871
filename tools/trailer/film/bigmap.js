@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smooth, rng } from './lib.js';
 
 export const BIG = { fx: 345, fz: -770, R0: 320, K: 5, L: 520, V: 4.0, VW: 1700, BASE: 40, id: false, desert: false };
-// desert：海湾战争版的沙漠地图（MapDesert.lua）——没有海、不补远处的岛和大陆；高度两级网格（近处细 D.height、整张图粗 D.height2）
+// desert：海湾战争版的沙漠地图「沙海」（MapSands.lua）——没有海、不补远处的岛和大陆；高度两级网格（近处细 D.height、整张图粗 D.height2）
 // 剪辑版本可以换配置（第三版 v3 用游戏现在的地图：已经放大 3 倍，id = true 原样用，不再放大、不扭岸线、不加山脊）
 export function bigConfig(o) { Object.assign(BIG, o); }
 
@@ -119,7 +119,7 @@ function bicub(g, x, z) {
   return cub(r(j - 1), r(j), r(j + 1), r(j + 2), v);
 }
 const cub = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
-// 沙漠图的断崖线（照 MapDesert.lua escRaw 抄的）：地图数据外接着铺北边的台地，不在图边上一刀切成直线
+// 沙漠图的断崖线（照 MapSands.lua escRaw 抄的）：地图数据外接着铺北边的台地，不在图边上一刀切成直线
 const ESC_R0 = 38912;
 const escRaw = x => -24500 + 1300 * Math.sin(x / 6600 + 0.9) + 460 * Math.sin(x / 2300 + 2.6) + 170 * Math.sin(x / 770 + 4.4) - 24000 * smooth(ESC_R0 - 12000, ESC_R0 + 3000, Math.abs(x));
 const outH = (x, z) => 12 + 60 * smooth(-200, 300, escRaw(x) - z);

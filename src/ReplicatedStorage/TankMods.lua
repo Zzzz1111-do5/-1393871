@@ -16,6 +16,18 @@ TM.OPT = {
   gau8 = { slot = "roof", weapon = "gau8", spd = 0.95 },   -- 车顶的 GAU-8 加特林炮塔附件（Daniel Skomorovsky 设计的虚构加装件）
 }
 TM.SLOTS = { "era", "aps", "roof" }
+-- 用户 11-22：「坦克不要弄哪个机枪」——坦克不带机枪（VehDefs.TANK_MG）：车顶武器这一位（原装机枪 / GAU-8 加特林）也去掉
+do
+  local okV, VD = pcall(function() return require(RS:WaitForChild("VehDefs", 3)) end)
+  if okV and type(VD) == "table" and VD.TANK_MG == false then TM.SLOTS = { "era", "aps" } end
+end
+-- 爆反分区（用户 11-22：「坦克我能选择在哪个地方贴爆反」）：tf 炮塔正面、ts 炮塔侧面、gl 首上、sk 侧裙板（EraMeta 每块的第 17 项）；
+--   改装界面里每个区一个开关：装 / 不装；原模型上本来就有的区（EraMeta 的 own）拆不掉；少装一个区车轻一点（车速多 1.2%）
+--   选的区写成 "tf+gl+sk"（改装串里 era=tf+gl+sk；一个都不装是 none）
+TM.ZONES = { "tf", "ts", "gl", "sk" }
+TM.ZSPD = 0.012
+-- 没选过时贴哪些区：艾布拉姆斯出厂只有侧裙板的 ARAT（模型自带），炮塔、首上的补贴块要自己在改装界面里加；别的（99A、96）照原来全贴
+TM.ERADEF = { m1a1 = "sk", m1a2 = "sk" }
 -- 每型能选的（第一个是默认）
 TM.FOR = {
   ztz99a = { era = { "era" }, aps = { "none", "hk" }, roof = { "stock" } },
@@ -32,15 +44,52 @@ TM.ERA = {
 
 function TM.has(id) return TM.FOR[id] ~= nil end
 
+-- 这型坦克有哪些爆反区（有块的）、哪些是原模型自带的（拆不掉）；按 TM.ZONES 的顺序
+function TM.eraZones(id)
+  local L = TM.eraOf and TM.eraOf(id)
+  if not L or not L.b then return {}, {} end
+  local have, own = {}, {}
+  for _, b in ipairs(L.b) do if b[17] then have[b[17]] = true end end
+  for _, z in ipairs(L.own or {}) do own[z] = true end
+  local list = {}
+  for _, z in ipairs(TM.ZONES) do if have[z] then table.insert(list, z) end end
+  return list, own
+end
+-- 装了哪些区（集合）：s 是 "tf+gl" / "none" / nil（nil、"era" 是默认：全装，同原来）
+function TM.eraSet(s, id)
+  local on = {}
+  if (type(s) ~= "string" or s == "era") and id and TM.ERADEF[id] then s = TM.ERADEF[id] end
+  if type(s) ~= "string" or s == "era" then
+    for _, z in ipairs((TM.eraZones(id))) do on[z] = true end
+    if not id then for _, z in ipairs(TM.ZONES) do on[z] = true end end
+  elseif s ~= "none" then
+    for z in string.gmatch(s, "%a+") do on[z] = true end
+  end
+  return on
+end
+local function cleanEra(id, want)
+  local list, own = TM.eraZones(id)
+  local on = TM.eraSet(want, id)
+  for z in pairs(own) do on[z] = true end
+  local out = {}
+  for _, z in ipairs(list) do if on[z] then table.insert(out, z) end end
+  return (#out > 0) and table.concat(out, "+") or "none"
+end
+TM.cleanEra = cleanEra
+
 -- 选的改装（表）整理成合法的：没选的、不合法的用默认
 function TM.clean(id, m)
   local F = TM.FOR[id]
   if not F then return nil end
   local out = {}
   for _, slot in ipairs(TM.SLOTS) do
-    local list = F[slot] or {}
     local want = type(m) == "table" and m[slot] or nil
-    out[slot] = (want and table.find(list, want)) and want or list[1]
+    if slot == "era" then
+      out.era = cleanEra(id, want)
+    else
+      local list = F[slot] or {}
+      out[slot] = (want and table.find(list, want)) and want or list[1]
+    end
   end
   return out
 end
@@ -57,7 +106,7 @@ end
 function TM.decode(s)
   local m = {}
   if type(s) ~= "string" then return m end
-  for k, v in string.gmatch(s, "(%w+)=(%w+)") do m[k] = v end
+  for k, v in string.gmatch(s, "(%w+)=([%w%+]+)") do m[k] = v end
   return m
 end
 
@@ -73,6 +122,13 @@ function TM.applyDef(d, m)
       k *= o.spd or 1
       if o.weapon then table.insert(weapons, o.weapon) end
     end
+  end
+  do   -- 爆反：比全装少几个区就轻几分
+    local list = TM.eraZones(d.id)
+    local on = TM.eraSet(m.era, d.id)
+    local n = 0
+    for _, z in ipairs(list) do if on[z] then n += 1 end end
+    k *= 1 + TM.ZSPD * (#list - n)
   end
   local c = table.clone(d)
   c.speed, c.accel = d.speed * k, (d.accel or 10) * k

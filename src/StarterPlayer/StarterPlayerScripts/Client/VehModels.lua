@@ -135,6 +135,10 @@ function VehModels.build(d, team, mods)
     -- 遥控武器站（M1A2 的 CROWS）：底座转轴、M2 俯仰轴（用户：机枪也要能转动）
     local rpiv = info.rws and info.rws.p and v3(info.rws.p) or nil
     local rgpiv = info.rws and info.rws.g and v3(info.rws.g) or nil
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：原模型里拆出来的机枪（RwsGun）不画，
+    --   座圈、观察镜、舱盖（Rws）照旧画、焊死在炮塔上；元数据要求拼的机枪（mk）也不拼
+    local noMg = d.noRoofMg == true and d.cat == "tank"
+    if noMg then rpiv, rgpiv = nil, nil end
     -- 车轮：每个轮一个弹簧（中心、半径照原模型）；轮式车最前面 d.steer 排转向
     local wix, names = {}, {}
     for g in pairs(info.wheels or {}) do table.insert(names, g) end
@@ -176,7 +180,7 @@ function VehModels.build(d, team, mods)
     end
     for name, p in pairs(info.parts) do
       local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
-      if src and src:IsA("BasePart") then
+      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") then
         local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = v3(p.s)
@@ -189,7 +193,7 @@ function VehModels.build(d, team, mods)
         end
         local c = v3(p.c)
         local grp, off, wi = "hull", CF(c), nil
-        if p.g == "Turret" then grp, off = "turret", CF(c - tpiv)
+        if p.g == "Turret" or (noMg and p.g == "Rws") then grp, off = "turret", CF(c - tpiv)
         elseif p.g == "Gun" then grp, off = "gun", CF(c - gpiv)
         elseif p.g == "Rws" and rpiv then grp, off = "rws", CF(c - rpiv)
         elseif p.g == "RwsGun" and rgpiv then grp, off = "rwg", CF(c - rgpiv)
@@ -600,12 +604,14 @@ function VehModels.build(d, team, mods)
     local kit = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Veh") and RS.Imported.Veh:FindFirstChild("kitera")
     local brickMesh = kit and kit:FindFirstChild("V_kitera__Body_1")
     local function rel(g, cf) if g == "t" then return CF(-tp) * cf end return cf end
+    local zon = TM.eraSet(mm and mm.era or nil, d.id)   -- 装了哪些区（用户 11-22：「坦克我能选择在哪个地方贴爆反」）
     for i, b in ipairs(L.b) do
       local cf, w, h, t = TM.blockCF(L, b, CF(), 0)
       local g = (b[1] == "t") and "turret" or "hull"
       local own = TM.own(L, b)
-      local e = { g = g, off = rel(b[1], cf), w = w, h = h, t = t, own = own, parts = {} }
-      if not own and extra.imported then
+      local fitted = own or not b[17] or zon[b[17]] == true
+      local e = { g = g, off = rel(b[1], cf), w = w, h = h, t = t, own = own, parts = {}, off2 = not fitted }   -- off2：这一区没装（不画、炸不着）
+      if fitted and not own and extra.imported then
         local col = RGB(b[14], b[15], b[16])
         local base = rel(b[1], cf)
         local function put(size, o, color, mat, shape, tr)

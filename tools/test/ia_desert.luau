@@ -1,12 +1,12 @@
 --!nocheck
--- 沙漠图「沙海」（MapDesert.lua）测试：开服写地形、没有海上那一套、出生点、生成点、工事、建筑、玩家部署、开战后攻击出发阵地、机器人
+-- 沙漠图「沙海」（MapSands.lua，地图 id sands）测试：开服写地形、没有海上那一套、出生点、生成点、工事、建筑、玩家部署、开战后攻击出发阵地、机器人
 -- 用法（仓库根目录）：lune run tools/test/ia_desert.luau <rbxlx> [v]
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local H = require("./harness")
 H.quietWarn = process.args[2] ~= "v"
 local clock0 = os.clock()
-H.boot(process.args[1], { ds = "mock", before = function(game) game:GetService("Workspace"):SetAttribute("MapName", "desert") end })
+H.boot(process.args[1], { ds = "mock", before = function(game) game:GetService("Workspace"):SetAttribute("MapName", "sands") end })
 
 local fails = 0
 local function check(ok, what)
@@ -38,7 +38,7 @@ check(ok, string.format("地图生成完（模拟 %.0f 秒，实际 %.1f 秒）�
 	tostring(G.terrainChunks), tostring(G.terrainVoxels), tostring(G.terrainRest)))
 check(#G.bootErrors == 0, "开服没有报错：" .. table.concat(G.bootErrors, " | "))
 local M = G.Map
-check(G.Config.Map == "desert" and G.Config.Stages[1].id == "border" and #G.Config.Stages == 5, "沙漠版的五个阶段（边境 → 油田 → 镇子 → 空军基地 → 指挥部）")
+check(G.Config.Map == "sands" and G.Config.Stages[1].id == "border" and #G.Config.Stages == 5, "沙漠版的五个阶段（边境 → 油田 → 镇子 → 空军基地 → 指挥部）")
 local mapF = H.workspace:FindFirstChild("Map")
 local scen = mapF and mapF:FindFirstChild("Scenery")
 check(scen and scen:FindFirstChild("Harbor", true) == nil and scen:FindFirstChild("Lighthouse", true) == nil, "没有港口、灯塔")

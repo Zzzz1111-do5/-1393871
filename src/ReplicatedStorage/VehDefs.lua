@@ -295,6 +295,22 @@ for _, d in pairs(D) do
   end
 end
 
+-- 用户 11-22：「坦克不要弄哪个机枪」——主战坦克（cat = "tank"）不要机枪：并列机枪、车顶的遥控武器站 / 手动重机枪都去掉，只剩主炮
+--   （机器人开的坦克打步兵也用主炮）；步战车、轻型车、防空车照旧。想加回来把 VehDefs.TANK_MG 改成 true
+VehDefs.TANK_MG = false
+if not VehDefs.TANK_MG then
+  for _, d in pairs(D) do
+    if d.cat == "tank" then
+      d.rws, d.noRoofMg = nil, true
+      local keep = {}
+      for _, wid in ipairs(d.weapons or {}) do
+        if wid ~= "coax" and wid ~= "hmg" then table.insert(keep, wid) end
+      end
+      d.weapons = keep
+    end
+  end
+end
+
 function VehDefs.get(id) return D[id] end
 
 -- 炮塔、炮的坐标系：base 是车底（着地中心）的 CFrame
