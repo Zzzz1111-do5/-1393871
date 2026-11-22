@@ -1,6 +1,6 @@
 -- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
 --   镜头：追尾（鼠标绕着车转），Shift / 右键进出炮长瞄准镜（镜头在瞄准镜的位置、顺着炮管看，滚轮 / Z 换倍率）；
---   瞄准镜四种光电模式（V 切换，开着镜 N 也行；没开镜 N 是夜视仪）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
+--   瞄准镜四种光电模式（V 切换，开着镜 N 也行；没开镜 N 是 夜视 → 热成像 → 关，Night.lua）：昼光、夜视（绿色、颗粒、圆形目镜）、热成像白热（背景压暗、人和车发白光）、热成像黑热（反过来）——
 --     热的东西用 Highlight 标出来：所有实体的样子在一个 Model 里（一个高亮），玩家角色各一个（最多 24 个，挑近的）
 --   炮塔跟着准星转（有回转速度上限，炮有俯仰范围），炮弹有下坠（自动按距离抬一点）；左键开火、1 / 2 换武器、M 烟幕弹（X 也行）、F 下车
 --   用户：坦克按 Shift 切换开镜；开镜画面上写着「按 V 切换光电模式」「按 M 释放烟雾弹」
@@ -409,7 +409,8 @@ function Drive.init(G)
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
     setSight(want)
   end
-  -- 瞄准镜默认档（用户 11-21：坦克开镜强制锁在夜视）：天黑夜视、白天昼光；自己换过就记住（白天、夜里各记一个）
+  -- 瞄准镜默认档（用户 11-21：坦克开镜强制锁在夜视；11-22：「坦克第一人称视角开镜有时候会是绿色的」）：天黑热成像（白热，现代坦克夜里就用这个）、
+  --   白天昼光；自己换过就记住（白天、夜里各记一个）
   G.sightPref = G.sightPref or {}
   local function nightNow() return G.isNight ~= nil and G.isNight() end
   local function nextMode()
@@ -432,7 +433,7 @@ function Drive.init(G)
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false,
-      mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 2 or 1), zoom = 1,
+      mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 3 or 1), zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0 }
     G.drive, G.myVeh = st, st
     -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
@@ -887,7 +888,7 @@ function Drive.init(G)
     local horiz = math.sqrt(rel.X * rel.X + rel.Z * rel.Z)
     local wantYaw = math.deg(math.atan2(rel.X, -rel.Z))
     local wantPitch = math.deg(math.atan2(rel.Y, math.max(horiz, 1)))
-    if w and w.kind == "shell" then   -- 炮弹下坠：按飞行时间抬一点
+    if w and w.kind == "shell" and not st.aimNoDrop then   -- 炮弹下坠：按飞行时间抬一点（防空火控给的点已经算过下坠）
       local tFly = horiz / w.speed
       local drop = 0.5 * workspace.Gravity * 0.55 * (w.drop / 0.55) * tFly * tFly
       wantPitch += math.deg(math.atan2(drop, math.max(horiz, 1)))
@@ -905,6 +906,55 @@ function Drive.init(G)
       st.mp = approach(st.mp, mpW, d.rws.rate * dt)
     end
   end
+
+  -- 坐在车里（第一人称）：方向键转炮塔、抬压炮（用户 11-22：「坦克第一人称的话，炮管转动用上下左右键，然后 WASD 继续管车体移动」）
+  --   瞄准线记在世界坐标里（炮塔有稳定：车身怎么转、怎么颠，炮还指着原来的方向）；← → 最快按炮塔的转速、↑ ↓ 最快每秒 10°，
+  --   刚按下去慢（点一下动零点几度，好细瞄），按住 0.6 秒到全速；火控照常按距离抬炮（aimTurret 的弹道修正，瞄准线打到哪炮弹落到哪）。
+  --   别处改了瞄准点（猎-歼：车长把炮塔调到热像仪看的方向；武器站就是炮塔的车，鼠标转的就是炮塔），瞄准线从那儿接着转
+  local function arrows()
+    return (UIS:IsKeyDown(Enum.KeyCode.Left) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.Right) and 1 or 0),
+      (UIS:IsKeyDown(Enum.KeyCode.Up) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.Down) and 1 or 0)
+  end
+  local function keyAim(dt)
+    local d = st.d
+    if not d.turret or not d.gun then return false end
+    local kx, ky = arrows()
+    local base = st.root * CF(0, -d.H / 2, 0)
+    local piv = (base * CF(d.turret.pivot) * CF(d.gun.pivot)).Position
+    local k = st.kAim
+    if not k or (st.aimPt and k.pt and (st.aimPt - k.pt).Magnitude > 0.5) then
+      local dv = st.aimPt and (st.aimPt - piv) or VD.gunCF(d, base, st.ty, st.gp).LookVector
+      dv = (dv.Magnitude > 1e-3) and dv.Unit or base.LookVector
+      k = { yaw = math.atan2(-dv.X, -dv.Z), pitch = math.asin(math.clamp(dv.Y, -1, 1)), hold = 0 }
+      st.kAim = k
+    end
+    k.hold = (kx ~= 0 or ky ~= 0) and math.min(1, k.hold + dt / 0.6) or 0
+    local ramp = 0.25 + 0.75 * k.hold
+    k.yaw += kx * math.rad(d.turret.trav) * ramp * dt
+    k.pitch += ky * math.rad(10) * ramp * dt
+    local dirW = (CFrame.Angles(0, k.yaw, 0) * CFrame.Angles(k.pitch, 0, 0)).LookVector
+    -- 炮俯仰到头了，瞄准线也停在那儿（不然一直按着，松开以后炮还要往回走一大段）
+    local rel = base:VectorToObjectSpace(dirW)
+    local ry = math.atan2(rel.X, -rel.Z)
+    local rp = math.atan2(rel.Y, math.sqrt(rel.X * rel.X + rel.Z * rel.Z))
+    local lo, hi = math.rad(d.turret.elev[1]), math.rad(d.turret.elev[2])
+    if rp < lo or rp > hi then
+      rp = math.clamp(rp, lo, hi)
+      dirW = base:VectorToWorldSpace(V(math.sin(ry) * math.cos(rp), math.sin(rp), -math.cos(ry) * math.cos(rp)))
+      k.yaw, k.pitch = math.atan2(-dirW.X, -dirW.Z), math.asin(math.clamp(dirW.Y, -1, 1))
+    end
+    local ex = { G.viewFolder, ownBox }
+    if me.Character then table.insert(ex, me.Character) end
+    if st.em then table.insert(ex, st.em) end
+    aimParams.FilterDescendantsInstances = ex
+    -- 瞄准点只管方向和距离（火控按距离抬炮）：炮管长度以内碰到的（贴着工事、石头、屋檐停车）不算，不然 aimTurret 按一格远的点算出来的俯仰角不对
+    local res = workspace:Raycast(piv, dirW * 4000, aimParams)
+    local dist = res and (res.Position - piv).Magnitude or 4000
+    st.aimPt = piv + dirW * math.max(dist, 10)
+    k.pt, k.hit = st.aimPt, res and res.Instance
+    return true
+  end
+  G.driveKeyAim = function() return st and st.kAim end   -- 测试用
 
   local function weaponId() return st.d.weapons[st.wi] end
 
@@ -933,7 +983,8 @@ function Drive.init(G)
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
       -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
-      st.kick = (w.dmg > 300) and 1 or 0.35
+      st.kickA, st.kickT = (w.dmg > 300) and 1 or 0.35, 0
+      st.kick = st.kickA * 0.3
       st.fireT = t
     end
     if ammo then   -- 本地先扣（服务器的数半秒后来校正）
@@ -1062,6 +1113,13 @@ function Drive.init(G)
       st.camYaw -= md.X * sens
       st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.75, 0.6)
     end
+    if st.sight and d.turret then   -- 炮长瞄准镜里（第一人称）方向键也能转炮、抬压炮（细瞄：刚按下去慢，按住 0.6 秒到全速）
+      local kx, ky = arrows()
+      st.sightHold = (kx ~= 0 or ky ~= 0) and math.min(1, (st.sightHold or 0) + dt / 0.6) or 0
+      local ramp = 0.25 + 0.75 * st.sightHold
+      st.camYaw += kx * math.rad(d.turret.trav) * ramp * dt
+      st.camPitch = math.clamp(st.camPitch + ky * math.rad(10) * ramp * dt, -0.75, 0.6)
+    end
     -- 车
     if st.locked then   -- 在气垫艇上：跟着服务器
       st.root = st.em.Root.CFrame
@@ -1110,13 +1168,38 @@ function Drive.init(G)
       cam.CFrame = camCF
       cam.FieldOfView = fov
       st.camShake = camShake
-      if not inside or not st.aimPt then st.aimPt = aimPoint() end
+      local im = inside and G.interiorState and G.interiorState().mode
+      if inside and im ~= "free" and keyAim(dt) then   -- 车里：方向键转炮（导演镜头里方向键挪镜头，炮塔守着原来的准星）
+      elseif not inside or not st.aimPt then st.aimPt = aimPoint() end
+    end
+    -- 防空车（Cat = aa、用炮打的）：防空火控显示（AaFcs.lua，用户 11-22：「高射炮加一个电子屏标记点位然后打」）——
+    --   敌机标框、提前量圈；准星压在圈上、或者 Q 雷达锁定以后，炮按火控算的点打（已经含弹道下坠，aimTurret 不再加）
+    st.aimNoDrop = nil
+    do
+      local wa = VD.W[weaponId() or ""]
+      if d.cat == "aa" and wa and wa.kind == "shell" and d.turret and d.gun and G.aaFcs then
+        local base = st.root * CF(0, -d.H / 2, 0)
+        local piv = (base * CF(d.turret.pivot) * CF(d.gun.pivot)).Position
+        local gl = VD.gunCF(d, base, st.ty, st.gp).LookVector
+        local r = G.aaFcs({ origin = piv, speed = wa.speed, g = workspace.Gravity * (wa.drop or 0.55), range = wa.range or 2000,
+          look = cam.CFrame.LookVector, side = me:GetAttribute("Side"), hullYaw = st.yaw, gunYaw = math.atan2(-gl.X, -gl.Z) })
+        if r.aimPt then st.aimPt, st.aimNoDrop = r.aimPt, true end
+      end
     end
     aimTurret(dt)
     -- 路面颠簸的细抖（瞄准、炮塔都按没晃的镜头算过了）
     if st.camShake and not st.sight then cam.CFrame = cam.CFrame * st.camShake end
     -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
-    st.kick = math.max(0, (st.kick or 0) - dt * 2.4)
+    -- 镜头后坐：0.05 秒冲到最大（先快后慢；原来开炮那一帧一下子跳过去），再按原来的速度回来
+    if st.kickT then
+      st.kickT += dt
+      local t = st.kickT
+      local e = (t < 0.05) and (1 - (1 - t / 0.05) ^ 2) or math.max(0, 1 - (t - 0.05) * 2.4)
+      st.kick = (st.kickA or 0) * e
+      if e <= 0 and t > 0.05 then st.kickT = nil end
+    else
+      st.kick = 0
+    end
     if st.kick > 0 then
       local k = st.kick * st.kick
       local tt = os.clock()

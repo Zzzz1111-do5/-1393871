@@ -96,7 +96,7 @@ H.run(1.5)
 H.key(def, Enum.KeyCode.A, false)
 check(CD.drive and math.abs(CD.drive.steer) > 0, "按 A 转向")
 
-print("③ 瞄准镜：默认夜视 → 热成像白热 → 黑热 → 昼光")
+print("③ 瞄准镜：天黑默认热成像白热 → 黑热 → 昼光 → 夜视（用户 11-22：开镜有时候是绿的）")
 -- 进出瞄准镜是 Shift / 右键（Shift 走 ContextActionService，测试台不派发，这里用右键）；V / N 换光电模式
 local function rclick() H.mouseDown(def, 640, 360, Enum.UserInputType.MouseButton2) H.mouseUp(def, 640, 360, Enum.UserInputType.MouseButton2) end
 rclick()
@@ -112,7 +112,7 @@ for i = 1, 3 do
 	table.insert(modes, string.format("%s 饱和度 %.1f 亮度 %.2f 高亮 %d", tostring(({ "day", "nv", "whot", "bhot" })[CD.drive.mode]), cc.Saturation, cc.Brightness, nh))
 end
 print("    " .. table.concat(modes, " | "))
-check(modes[1]:find("whot") and modes[2]:find("bhot") and modes[3]:find("day"), "瞄准镜默认夜视档，N 依次切白热、黑热、昼光")
+check(modes[1]:find("bhot") and modes[2]:find("day") and modes[3]:find("nv"), "瞄准镜天黑默认白热档，N 依次切黑热、昼光、夜视")
 check(modes[1]:find("高亮 [1-9]") ~= nil, "热成像有高亮（热的东西发白）")
 rclick()
 H.run(0.3)

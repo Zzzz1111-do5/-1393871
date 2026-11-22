@@ -260,20 +260,7 @@ D.j16 = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp =
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "kd88", duct = "ls6" }),
     preset("strike", { tip = "pl10", outer = "pl15", mid = "b250", inner = "b250", duct = "ls6" }),
     preset("sead", { tip = "pl10", outer = "pl12", mid = "yj91", inner = "yj91", duct = "pl15" }) } }
-D.j50 = { kind = "jet", cat = "jet", L = 62, W = 36, H = 9.5, gearH = 6.2, hp = 720, stall = 110, vMil = 370, vAB = 480, accel = 54, abAccel = 34,
-  pitch = 44, roll = 200, yaw = 14, g = 8.5, flares = 32, ab = true, stealth = true, tailless = true,
-  fus = { len = 58, w = 7.6, h = 4.2, y = 0 }, nose = 12, canopy = { z = -16, len = 9.5, w = 3.0, h = 2.2, y = 2.2 },
-  intake = "dorsal", intakeZ = -2, intakeW = 3.0,
-  wing = { xr = 3.8, zr0 = -13, zr1 = 22, xt = 18, zt0 = 9, zt1 = 15, y = 0.1, lambda = { x = 10, z = 18 } }, elevon = true, wingtipRudder = true,
-  eng = { { x = 2.6, y = 0.4, z = 27.5, r = 1.3, flat = true }, { x = -2.6, y = 0.4, z = 27.5, r = 1.3, flat = true } },
-  gear = { nose = { z = -18, len = 5.0 }, main = { x = 3.8, z = 6.5, len = 4.8 }, r = 1.1 },
-  bays = { main = { z0 = -6, z1 = 10, w = 5.4 }, sideR = { x = 4.6, z0 = -10, z1 = -3, w = 1.4 } },
-  st = mirror({
-    { name = "bayM1", pos = V(1.2, -2.0, 2.0), bay = "main", opts = { "pl15", "ls6" } },
-    { name = "bayM2", pos = V(3.3, -1.8, 2.0), bay = "main", opts = { "pl15", "ls6" } },
-    { name = "bayS", pos = V(4.6, -1.5, -6.5), bay = "sideR", opts = { "pl10" } },
-  }),
-  presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "ls6", bayS = "pl10" }) } }
+-- 歼-50 11-22 删掉了（用户：j50 删掉）
 D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 1150, stall = 85, vMil = 240, accel = 22, pitch = 16, roll = 50, yaw = 10, g = 3,
   flares = 60, bomber = true,
   fus = { len = 92, w = 8.6, h = 8.6, y = 0 }, nose = 12, canopy = { z = -36, len = 10, w = 6.0, h = 3.2, y = 4.0 },
@@ -550,7 +537,7 @@ end
 
 -- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
-local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j50 = 500, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
   gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
 -- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；

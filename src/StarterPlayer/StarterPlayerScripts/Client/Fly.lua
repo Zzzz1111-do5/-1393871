@@ -427,6 +427,33 @@ function Fly.init(G)
   mfd("OVRD", UDim2.new(0.665, 0, 0, 22), nil, TS)
   mfd("CNTL", UDim2.new(0.83, 0, 0, 22), nil, TS)
   local eoMode = mfd("WHOT", UDim2.new(0.1, 0, 0.1, 0), nil, TS)
+  -- 飞机航向（用户 11-22：「那个飞机图标不应该放在屏幕下面，用来在电子吊舱的时候知道飞机航向嘛」）：吊舱画面下面正中一个俯视的小飞机，
+  --   机头朝哪 = 飞机往哪飞（相对吊舱现在看的方向：朝上就是吊舱顺着机头看），下面一行写航向度数
+  do
+    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, 0, 1, -64), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    hb.Name = "EoHeading"
+    hb.ZIndex = 12
+    local ring = ui.frame(hb, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    ring.ZIndex = 12
+    local rc = Instance.new("UICorner")
+    rc.CornerRadius = UDim.new(0.5, 0)
+    rc.Parent = ring
+    ui.stroke(ring, MFD, 1.5, 0.35)
+    local plane = ui.frame(hb, UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    plane.Name = "Plane"
+    plane.ZIndex = 13
+    local function bar(w, h, x, y)   -- 机身、机翼、平尾：几条亮线拼成俯视的飞机
+      local f = ui.frame(plane, UDim2.fromOffset(w, h), UDim2.new(0.5, x, 0.5, y), MFD, 0, Vector2.new(0.5, 0.5))
+      f.ZIndex = 13
+      return f
+    end
+    bar(4, 34, 0, 0)        -- 机身
+    bar(30, 4, 0, -2)       -- 机翼
+    bar(14, 3, 0, 13)       -- 平尾
+    bar(6, 6, 0, -16)       -- 机头
+    TG.plane = plane
+    TG.hdg = mfd("000", UDim2.new(0.5, 0, 1, -28), nil, TS - 2)
+  end
   mfd("SP", UDim2.new(0, 10, 0.33, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
   mfd("CZ", UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
   for i, tx in ipairs({ "SWAP", "HSD", "SMS", "TGP", "DCLT" }) do
@@ -1809,6 +1836,18 @@ function Fly.init(G)
     TG.fov.Text = (st.zoomS >= 3) and "NARO" or "WIDE"
     TG.zoom.Text = string.format("%.1fx", st.zoomS)
     TG.ag.Text = (w and w.kind == "aam") and "A-A" or "A-G"
+    -- 下面的小飞机：机头朝向相对吊舱镜头转（镜头朝北、飞机朝东：小飞机机头朝右）
+    do
+      local acf = st and st.cf
+      local al = acf and acf.LookVector
+      local cl = cam.CFrame.LookVector
+      if al and (al.X * al.X + al.Z * al.Z) > 1e-6 and (cl.X * cl.X + cl.Z * cl.Z) > 1e-6 then
+        local ya = math.atan2(-al.X, -al.Z)
+        local yc = math.atan2(-cl.X, -cl.Z)
+        TG.plane.Rotation = -math.deg(ya - yc)
+        TG.hdg.Text = string.format("%03d", math.floor((math.deg(-ya) % 360) + 0.5) % 360)
+      end
+    end
     local camP = cam.CFrame.Position
     local vs = cam.ViewportSize
     local dispH = vs.Y * 0.78

@@ -91,6 +91,89 @@ local function grad(f, c0, c1, rot)
   return g
 end
 -- 方框（只描边）
+-- 军标（用户 11-22：「电子屏地图要能显示敌单位，坦克、车之类的要有不同符号」）：照北约 APP-6 的样子简化——
+--   友军蓝色长方框、敌军红色菱形框；框里的图形分兵种：坦克（装甲）一个椭圆（履带）、装甲车 / 步战车一个叉加椭圆（机械化步兵）、步兵一个叉、
+--   自行火炮 / 岸炮一个实心圆点（炮兵）、防空车 / 高炮一道拱（防空）、直升机一个蝴蝶结（旋翼）、飞机一个尖头（固定翼）、军舰一条船身、工事一排垛口。
+--   sym(parent, z) 返回一个能反复用的军标：set(x, y, typ, hostile, size)
+local SYM_TYPES = { tank = true, apc = true, inf = true, arty = true, aa = true, heli = true, jet = true, ship = true, fort = true }
+local function Sym(parent, z)
+  local o = { typ = nil, hostile = nil }
+  o.f = F(parent, 0, 0, 20, 20, RGB(0, 0, 0), 1, z)
+  o.rect = F(o.f, 2, 4.5, 16, 11, RGB(70, 140, 255), 0.45, z + 1)
+  o.rectS = Instance.new("UIStroke")
+  o.rectS.Thickness, o.rectS.Color = 1.4, RGB(150, 200, 255)
+  o.rectS.Parent = o.rect
+  o.dia = F(o.f, 4, 4, 12, 12, RGB(230, 60, 50), 0.4, z + 1)
+  o.dia.Rotation = 45
+  o.diaS = Instance.new("UIStroke")
+  o.diaS.Thickness, o.diaS.Color = 1.4, RGB(255, 150, 140)
+  o.diaS.Parent = o.dia
+  o.icon = F(o.f, 0, 0, 20, 20, RGB(0, 0, 0), 1, z + 2)
+  local INK = RGB(250, 250, 250)
+  local function line(x0, y0, x1, y1, t) return (Ln(o.icon, x0, y0, x1, y1, t or 1.3, INK, z + 3)) end
+  local function ellipse(w, h)
+    local e = F(o.icon, 10 - w / 2, 10 - h / 2, w, h, INK, 1, z + 3)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = e
+    local st = Instance.new("UIStroke")
+    st.Thickness, st.Color = 1.2, INK
+    st.Parent = e
+    return e
+  end
+  local function build(typ, hostile)
+    for _, ch in ipairs(o.icon:GetChildren()) do ch:Destroy() end
+    local k = hostile and 0.72 or 1   -- 菱形框里能画的地方小一点
+    local a, b = 10 - 6 * k, 10 + 6 * k   -- 叉、线的左右端
+    local u, v = 10 - 4 * k, 10 + 4 * k   -- 上下
+    if typ == "tank" then ellipse(10 * k, 5 * k)
+    elseif typ == "apc" then line(a, u, b, v) line(a, v, b, u) ellipse(8 * k, 4 * k)
+    elseif typ == "inf" then line(a, u, b, v) line(a, v, b, u)
+    elseif typ == "arty" then
+      local d = F(o.icon, 10 - 2.2, 10 - 2.2, 4.4, 4.4, INK, 0, z + 3)
+      local c = Instance.new("UICorner")
+      c.CornerRadius = UDim.new(0.5, 0)
+      c.Parent = d
+    elseif typ == "aa" then   -- 一道拱：一个圆只露上半截
+      local clip = F(o.icon, 10 - 5 * k, 10 - 3 * k, 10 * k, 5 * k, INK, 1, z + 3)
+      clip.ClipsDescendants = true
+      local r = F(clip, 0, 0, 10 * k, 10 * k, INK, 1, z + 3)
+      local c = Instance.new("UICorner")
+      c.CornerRadius = UDim.new(0.5, 0)
+      c.Parent = r
+      local st = Instance.new("UIStroke")
+      st.Thickness, st.Color = 1.2, INK
+      st.Parent = r
+      line(10 - 5 * k, 10 + 2 * k, 10 + 5 * k, 10 + 2 * k, 1)
+    elseif typ == "heli" then line(a, u, b, v) line(a, v, b, u) line(a, u, a, v) line(b, u, b, v)
+    elseif typ == "jet" then line(a, v, 10, u) line(10, u, b, v) line(10, u, 10, v + 1)
+    elseif typ == "ship" then line(a, 10 + 1, b, 10 + 1) line(a + 1.5 * k, v, b - 1.5 * k, v) line(a, 10 + 1, a + 1.5 * k, v) line(b, 10 + 1, b - 1.5 * k, v) line(10, u, 10, 10 + 1)
+    else   -- 工事：一排垛口
+      line(a, v, b, v)
+      for i = 0, 2 do F(o.icon, a + (i * 2 + 0.5) * (b - a) / 6 - 1, 10 - 1 * k, (b - a) / 6, 3 * k + 1, INK, 0, z + 3) end
+    end
+  end
+  function o.set(x, y, typ, hostile, size)
+    typ = SYM_TYPES[typ] and typ or "apc"
+    if typ ~= o.typ or hostile ~= o.hostile then
+      o.typ, o.hostile = typ, hostile
+      o.rect.Visible, o.dia.Visible = not hostile, hostile
+      build(typ, hostile)
+    end
+    local sc = (size or 20) / 20
+    o.f.Size = UD2(0, 20, 0, 20)
+    o.f.Position = UD2(0, x - 10, 0, y - 10)
+    if not o.scale then
+      o.scale = Instance.new("UIScale")
+      o.scale.Parent = o.f
+    end
+    o.scale.Scale = sc
+    o.f.Visible = true
+  end
+  return o
+end
+Screens.Sym = Sym
+
 local function Box(parent, x, y, w, h, t, col, z)
   local f = F(parent, x, y, w, h, RGB(0, 0, 0), 1, z)
   local s = Instance.new("UIStroke")
@@ -692,6 +775,7 @@ P.cid = function(s, env, zh)
   end
   local gridF = F(view, 0, 0, W, H, RGB(0, 0, 0), 1, 3)
   local objs = {}
+  local units = {}   -- 军标（Sym）
   local function obj(i)
     local o = objs[i]
     if not o then
@@ -757,7 +841,7 @@ P.cid = function(s, env, zh)
     hdgSet(vx, vz, vx + math.sin(h) * 22, vz - math.cos(h) * 22)
     local tg = math.rad((d.hdg or 0) + (d.ty or 0))
     gunSet(vx, vz, vx + math.sin(tg) * 34, vz - math.cos(tg) * 34)
-    local n = 0
+    local n, nu = 0, 0
     if st.ovly then
       for _, pt in ipairs(d.points or {}) do
         n += 1
@@ -772,25 +856,23 @@ P.cid = function(s, env, zh)
         o.t.Text = pt.id
         o.t.Rotation = -45
       end
+      -- 友军、看得见的敌人：按兵种画军标（坦克、装甲车、步兵、炮兵、防空、直升机、飞机、军舰、工事）
       for _, e in ipairs(d.ents or {}) do
         local friend = e.team == d.team
         if friend or e.seen then
-          n += 1
-          local o = obj(n)
           local x, z = vx + (e.pos.X - p.X) * scale, vz + (e.pos.Z - p.Z) * scale
-          o.f.Visible = x > -10 and x < W + 10 and z > -10 and z < H
-          local sz = (e.kind == "veh") and 9 or ((e.kind == "air") and 8 or 5)
-          o.f.Position = UD2(0, x - sz / 2, 0, z - sz / 2)
-          o.f.Size = UD2(0, sz, 0, sz)
-          o.f.BackgroundColor3 = friend and RGB(80, 160, 255) or RGB(255, 70, 60)
-          o.f.BackgroundTransparency = 0
-          o.f.Rotation = friend and 0 or 45
-          o.t.Text = ""
-          o.t.Rotation = 0
+          if x > -12 and x < W + 12 and z > -12 and z < H - 24 then
+            nu += 1
+            local u = units[nu]
+            if not u then u = Sym(view, 9) units[nu] = u end
+            local typ = e.typ or ((e.kind == "air") and "jet" or ((e.kind == "inf") and "inf" or "apc"))
+            u.set(x, z, typ, not friend, (typ == "inf") and 15 or 19)
+          end
         end
       end
     end
     for i = n + 1, #objs do objs[i].f.Visible = false end
+    for i = nu + 1, #units do units[i].f.Visible = false end
     local t = d.clock or 0
     clock.Text = string.format("%02d:%02d:%02dZ  %s", math.floor(t / 3600) % 24, math.floor(t / 60) % 60, math.floor(t) % 60, d.callsign or (zh and "01 号车" or "A-12"))
     local gx, gz = math.floor((p.X + 20000) / 2.8) % 100000, math.floor((20000 - p.Z) / 2.8) % 100000
@@ -1029,7 +1111,7 @@ P.tsd = function(s, env, zh)
   Box(R, W / 2 - 24, 2, 48, 15, 1, RGB(200, 200, 200), 6)
   local rngT = Tx(R, "", 4, H - 15, W * 0.5, 13, 10, LINE, nil, FONT, 6)
   local cntT = Tx(R, "", W * 0.5, H - 15, W * 0.5 - 4, 13, 10, LINE, Enum.TextXAlignment.Right, FONT, 6)
-  local pool, ppool = {}, {}
+  local pool, ppool, gpool = {}, {}, {}
   local lockB = Box(R, 0, 0, 18, 18, 2, RGB(255, 220, 60), 7)
   lockB.Visible = false
   local function sym(list, i, size)
@@ -1051,17 +1133,25 @@ P.tsd = function(s, env, zh)
     for i = 1, 3 do lbl[i].Text = tostring(math.floor(rng * u * i / 3 + 0.5)) end
     hdgT.Text = string.format("%03d", math.floor((d.hdg or 0) % 360))
     rngT.Text = zh and string.format("量程 %d 公里", rng) or string.format("RNG %d NM", math.floor(rng * u + 0.5))
-    local n, nh = 0, 0
+    local n, nh, ng = 0, 0, 0
     lockB.Visible = false
     for _, c in ipairs(d.contacts or {}) do
       if c.km < rng then
         n += 1
         local x, y = at(c.az, c.km, rng)
-        local t = sym(pool, n, 16)
-        t.Position = UD2(0, x - 8, 0, y - 8)
-        if c.friend then t.Text, t.TextColor3 = "●", RGB(90, 230, 120)
-        elseif c.kind == "air" then t.Text, t.TextColor3 = "▲", RGB(255, 70, 60) nh += 1
-        else t.Text, t.TextColor3 = "◆", RGB(255, 120, 70) nh += 1 end
+        if c.kind == "air" then   -- 飞机：F-22 的符号（敌机红三角、友机绿圆）
+          local t = sym(pool, n, 16)
+          t.Position = UD2(0, x - 8, 0, y - 8)
+          if c.friend then t.Text, t.TextColor3 = "●", RGB(90, 230, 120)
+          else t.Text, t.TextColor3 = "▲", RGB(255, 70, 60) nh += 1 end
+        else   -- 地面、海上目标：按兵种画军标（用户 11-22：坦克、车之类的要有不同符号）
+          if pool[n] then pool[n].Visible = false end
+          ng += 1
+          local u = gpool[ng]
+          if not u then u = Sym(R, 5) gpool[ng] = u end
+          u.set(x, y, c.typ or "apc", not c.friend, 17)
+          if not c.friend then nh += 1 end
+        end
         if c.locked then
           lockB.Visible = true
           lockB.Position = UD2(0, x - 9, 0, y - 9)
@@ -1069,6 +1159,7 @@ P.tsd = function(s, env, zh)
       end
     end
     for i = n + 1, #pool do pool[i].Visible = false end
+    for i = ng + 1, #gpool do gpool[i].f.Visible = false end
     local m = 0
     if d.pos and d.points then
       for _, p in ipairs(d.points) do

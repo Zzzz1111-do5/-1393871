@@ -181,7 +181,10 @@ function B:screen(g, w, h, cf, page, opt)
   local face = self:box(g, V(w, h, 0.004), cf, K.C.screen, MAT.SmoothPlastic)
   face.CastShadow = false
   face.Reflectance = 0
-  local sg = K.gui(face, Enum.NormalId.Front, opt.ppm or 1400, opt.glow or 1.0)
+  -- 清晰度（用户 11-22：「载具内部显示屏像素太少，看不清字」）：页面照旧按每米 ppm 个「设计像素」排版（字号、位置都是这个单位），
+  --   实际按 QK 倍的像素画（SurfaceGui 每米 ppm × QK 个像素），页面根上挂一个 UIScale（QK 倍）放大回来——字、线的大小不变，像素多了 QK² 倍
+  local QK = (page ~= "hud") and 2 or 1   -- 平显本来就是每米 3000，不用再加
+  local sg = K.gui(face, Enum.NormalId.Front, (opt.ppm or 1400) * QK, opt.glow or 1.0)
   local tabT = (touch and opt.keys.top and #opt.keys.top > 0) and (opt.touchH or 0.1) or 0      -- 上、下菜单条各占屏高几成
   local tabB = (touch and opt.keys.bottom and #opt.keys.bottom > 0) and (opt.touchH or 0.1) or 0
   local root = Instance.new("Frame")
@@ -191,6 +194,14 @@ function B:screen(g, w, h, cf, page, opt)
   root.BackgroundColor3 = RGB(0, 0, 0)
   root.BorderSizePixel = 0
   root.Parent = sg
+  if QK ~= 1 then
+    root.Size = UDim2.fromOffset(w * (opt.ppm or 1400), h * (opt.ppm or 1400) * (1 - tabT - tabB))   -- 设计像素
+    pcall(function()
+      local sc = Instance.new("UIScale")
+      sc.Scale = QK
+      sc.Parent = root
+    end)
+  end
   local s = { part = face, gui = sg, root = root, w = w, h = h, page = page, opt = opt, group = g, px = V(w, h * (1 - tabT - tabB), 0) * (opt.ppm or 1400) }
   if opt.light ~= false then   -- 屏幕把前面一小块照亮
     local L = Instance.new("SurfaceLight")
