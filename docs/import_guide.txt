@@ -185,14 +185,14 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
   2. 「主页 → 导入 3D」（Import 3D），选 GLB 文件。文件对话框里可以一次多选；文件多的话按文件夹分几批导。
      导入设置都用默认的，不要勾「合并网格」（Merge Meshes），导进 Workspace 就行。
      ztz96、m1a2dc、ztz99a2、ztq15 这几个大的要等一会儿。
-  3. 「测试 → 开始游戏」，打开「视图 → 输出」，有这一行就成功了：
+  3. 「测试 → 开始游戏」，打开输出窗口（新版 Studio「Window → Output」，旧版「视图 → 输出」），有这一行就成功了：
          [全面大战场] 用上了导入的装备模型：……
      车、飞机、船、瞄准镜、树、第一人称 M4 都会自动换上原模型。
      导进来的零件名字别改（V_…__…、A_…__…、S_…__…、O_…、N_…、W_…__…、FPS_M4_…），游戏是按名字认的。
   4. 保存（「文件 → 保存」，要上线就「发布到 Roblox」）。
 
 二、以后更新游戏不用再导一遍（推荐）
-  1. 「视图 → 命令栏」（Command Bar），把下面一整段粘进去回车。它把导入的零件都收进 ServerStorage.ImportedModels，
+  1. 打开命令栏（Command Bar：新版 Studio「Window → Script → Command Bar」或 ⌘9 / Ctrl+9，旧版「视图 → 命令栏」），把下面一整段粘进去回车。它把导入的零件都收进 ServerStorage.ImportedModels，
      顺手把空了的外壳 Model 删掉、碰撞改成方盒（文件小很多，这些零件只看不碰）：
 
 local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModels") or Instance.new("Folder") f.Name="ImportedModels" f.Parent=S local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),S}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and not d:IsDescendantOf(f) and (d.Name:match("^[VASONW]_[%w_]-__[%w_]+$") or d.Name:match("^FPS_M4_%w+$")) then pcall(function() d.CollisionFidelity=Enum.CollisionFidelity.Box end) d.Parent=f n+=1 end end end for _,m in ipairs(workspace:GetChildren()) do if m:IsA("Model") and #m:GetDescendants()==0 then m:Destroy() end end print("收好了 "..n.." 块：右键 ServerStorage → ImportedModels → 保存到文件")
@@ -209,11 +209,15 @@ local S=game:GetService("ServerStorage") local f=S:FindFirstChild("ImportedModel
   1. 用 Studio 打开你自己的地点（导入过模型的那个）。
   2. 资源管理器里右键 ServerStorage →「从文件插入…」（Insert from File…），选 ScriptsUpdate.rbxmx。
      ServerStorage 下面会多一个 ScriptsUpdate 文件夹（放 ServerStorage 里的脚本不会运行，不用担心）。
-  3. 「视图 → 命令栏」，粘下面这一行回车：
+     一定插到 ServerStorage，别插到 ServerScriptService：放在那里面，文件夹里那份服务器脚本会跟着运行，等于游戏同时跑好几遍
+     （11-22 用户截图里 ServerScriptService 下面插了 3 个——下面这一行会先把这种放错地方的删掉）。
+  3. 打开命令栏（Command Bar）：新版 Studio 是顶上菜单「Window → Script → Command Bar」，或者工具栏「Script」标签里的 Command Bar，
+     或者按 ⌘9（Mac）/ Ctrl+9（Windows）；旧版 Studio 是「视图 → 命令栏」。命令栏是窗口最下面一长条输入框，要在编辑状态下用（不是测试运行中）。
+     粘下面这一行回车：
 
-local u=game:GetService("ServerStorage"):FindFirstChild("ScriptsUpdate") or workspace:FindFirstChild("ScriptsUpdate") assert(u,"先把 ScriptsUpdate.rbxmx 插入到 ServerStorage") local to={ReplicatedStorage=game:GetService("ReplicatedStorage"),ServerScriptService=game:GetService("ServerScriptService"),StarterPlayerScripts=game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts")} local n=0 for k,svc in pairs(to) do local f=u:FindFirstChild(k) if f then for _,c in ipairs(f:GetChildren()) do local old=svc:FindFirstChild(c.Name) if old then old:Destroy() end c.Parent=svc n+=1 end end end u:Destroy() print("脚本换好了："..n.." 项（导入的模型、地图都没动），记得保存")
+local SSS=game:GetService("ServerScriptService") local SS=game:GetService("ServerStorage") local bad=0 for _,c in ipairs(SSS:GetChildren()) do if c.Name=="ScriptsUpdate" then c:Destroy() bad+=1 end end if bad>0 then print("删掉了放错地方（ServerScriptService 里）的 ScriptsUpdate："..bad.." 个") end local u=SS:FindFirstChild("ScriptsUpdate") or workspace:FindFirstChild("ScriptsUpdate") assert(u,"先右键 ServerStorage → Insert from File… 插入新的 ScriptsUpdate.rbxmx，再运行这一行") local to={ReplicatedStorage=game:GetService("ReplicatedStorage"),ServerScriptService=SSS,StarterPlayerScripts=game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts")} local n=0 for k,svc in pairs(to) do local f=u:FindFirstChild(k) if f then for _,c in ipairs(f:GetChildren()) do local old=svc:FindFirstChild(c.Name) if old then old:Destroy() end c.Parent=svc n+=1 end end end u:Destroy() print("脚本换好了："..n.." 项（导入的模型、地图都没动），记得保存")
 
-     输出里出现「脚本换好了：26 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
+     输出（Window → Output）里出现「脚本换好了：33 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
   4. 保存（要上线就「发布到 Roblox」）。
   注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
   更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
