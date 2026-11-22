@@ -5161,7 +5161,7 @@ do
     add("spawn.camp", "后方营地（岭北）", "Rear Camp (north of ridge)")
     add("spawn.afield", "空军基地（战斗机）", "Airbase (jets)")
     add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
-    add("operation.opening", "拂晓突击", "DAWN ASSAULT")
+    add("operation.opening", "夜间突击", "NIGHT ASSAULT")   -- 照旧锁定晚上（Config.DayNight.lockNight）
     add("stage.border", "突破边境", "BREACH THE BORDER")
     add("stage.border.atk", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
     add("stage.border.def", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
@@ -6176,17 +6176,20 @@ Map.wadiNear = wadiNear
 -- 返回高度、主要起伏的种类（材质用）
 local function natural(x, z)
   local L = baseLevel(x, z)
-  local kind, bump, cut = nil, 0, 0
+  local kind, bump, cut, kmax = nil, 0, 0, nil
   local l = fgrid[fkey(floor(x / FCELL), floor(z / FCELL))]
   if l then
     for _, f in ipairs(l) do
       if x >= f.x0 and x <= f.x1 and z >= f.z0 and z <= f.z1 then
         local h = f.fn(f, x, z)
-        if h > bump then bump, kind = h, f.k
+        if h > bump then bump, kmax = h, f.k
         elseif f.signed and h < cut then cut = h if bump <= 0 then kind = f.k end end
       end
     end
   end
+  -- 地貌种类（定材质用）：起伏够高（1 格上下，边缘按噪声抖开）才算——不然岩岭、方山脚下高度几乎为零的一圈也换成土，
+  --   在地图上是一道道笔直的材质边（包围盒的边）
+  if kmax and bump > 1.2 + 0.8 * noise(x / 90, z / 90, 8.8) then kind = kmax end
   local y = L + bump + cut
   local wd, ww, wdep = wadiNear(x, z)
   if wd and wd < ww * 0.5 + 40 then
@@ -21932,7 +21935,7 @@ local function highwayOfDeath(f)
       local dx, dz = road.x[i + 1] - x, road.z[i + 1] - z
       local l = math.max(0.01, math.sqrt(dx * dx + dz * dz))
       local ux, uz = dx / l, dz / l
-      local off = (R() - 0.5) * 34   -- 路面（22 宽）上、路肩上都有
+      local off = ((R() < 0.5) and -1 or 1) * (6 + R() * 13)   -- 多数在路面两边、路肩上：路中间留一条车道（AI 的车沿路开不至于卡住）
       local px, pz = x - uz * off, z + ux * off
       local rot = math.atan2(-ux, -uz) + (R() - 0.5) * 1.2
       local r = R()

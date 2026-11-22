@@ -2291,7 +2291,7 @@ local function highwayOfDeath(f)
       local dx, dz = road.x[i + 1] - x, road.z[i + 1] - z
       local l = math.max(0.01, math.sqrt(dx * dx + dz * dz))
       local ux, uz = dx / l, dz / l
-      local off = (R() - 0.5) * 34   -- 路面（22 宽）上、路肩上都有
+      local off = ((R() < 0.5) and -1 or 1) * (6 + R() * 13)   -- 多数在路面两边、路肩上：路中间留一条车道（AI 的车沿路开不至于卡住）
       local px, pz = x - uz * off, z + ux * off
       local rot = math.atan2(-ux, -uz) + (R() - 0.5) * 1.2
       local r = R()

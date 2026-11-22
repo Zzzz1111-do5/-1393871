@@ -1026,7 +1026,7 @@ do
     add("spawn.camp", "后方营地（岭北）", "Rear Camp (north of ridge)")
     add("spawn.afield", "空军基地（战斗机）", "Airbase (jets)")
     add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
-    add("operation.opening", "拂晓突击", "DAWN ASSAULT")
+    add("operation.opening", "夜间突击", "NIGHT ASSAULT")   -- 照旧锁定晚上（Config.DayNight.lockNight）
     add("stage.border", "突破边境", "BREACH THE BORDER")
     add("stage.border.atk", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
     add("stage.border.def", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")

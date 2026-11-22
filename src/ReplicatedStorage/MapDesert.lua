@@ -453,17 +453,20 @@ Map.wadiNear = wadiNear
 -- 返回高度、主要起伏的种类（材质用）
 local function natural(x, z)
   local L = baseLevel(x, z)
-  local kind, bump, cut = nil, 0, 0
+  local kind, bump, cut, kmax = nil, 0, 0, nil
   local l = fgrid[fkey(floor(x / FCELL), floor(z / FCELL))]
   if l then
     for _, f in ipairs(l) do
       if x >= f.x0 and x <= f.x1 and z >= f.z0 and z <= f.z1 then
         local h = f.fn(f, x, z)
-        if h > bump then bump, kind = h, f.k
+        if h > bump then bump, kmax = h, f.k
         elseif f.signed and h < cut then cut = h if bump <= 0 then kind = f.k end end
       end
     end
   end
+  -- 地貌种类（定材质用）：起伏够高（1 格上下，边缘按噪声抖开）才算——不然岩岭、方山脚下高度几乎为零的一圈也换成土，
+  --   在地图上是一道道笔直的材质边（包围盒的边）
+  if kmax and bump > 1.2 + 0.8 * noise(x / 90, z / 90, 8.8) then kind = kmax end
   local y = L + bump + cut
   local wd, ww, wdep = wadiNear(x, z)
   if wd and wd < ww * 0.5 + 40 then

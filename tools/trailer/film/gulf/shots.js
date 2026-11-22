@@ -279,27 +279,51 @@ async function shotSamHit(env, add) {
     events: hits.map((h, i) => ({ t: h, k: i === 0 ? 'bigboom' : 'boom', v: 0.9 })).concat([{ t: 1.9, k: 'missileWhoosh' }]),
   };
 }
-// G08 编队拉起、从头顶掠过：后面整片阵地在烧
+// G08 四机编队从烧着的阵地上空低空冲出来，从镜头左上方掠过，接着拉起爬升、一路放红外诱饵弹；镜头跟着转过去
 async function shotJetsAway(env, add) {
   const { fx } = env;
   const K = await samKit(env, add);
   K.targets.forEach((p, i) => fx.add(bigFire({ p: p.clone().add(V3(0, -2, 0)), s: 10, t0: -3 - i, seed: 340 + i, dark: 0.08 })));
   const J = [];
   for (let i = 0; i < 4; i++) { const A = await plane('j31', env); add(A.root); afterburners(A, fx, () => 1, 0.4); J.push(A); }
-  const c = V3(SAM.x - 300, heightAt(SAM.x - 300, SAM.z + 500) + 4, SAM.z + 500);
+  const c = V3(SAM.x - 300, heightAt(SAM.x - 300, SAM.z + 500) + 3, SAM.z + 500);
+  const SPD = 480, TP = 1.3, W = 0.55, AMAX = 0.9;   // 速度（格 / 秒，约 170 米 / 秒）、掠过镜头的时刻、拉起角速度（约 7 g）、最大爬升角
+  const fwd = c.clone().sub(SAM).setY(0).normalize();
+  const side = new THREE.Vector3().crossVectors(fwd, V3(0, 1, 0)).normalize();
+  const start = c.clone().addScaledVector(fwd, -SPD * TP).addScaledVector(side, -90);   // 正好从阵地上空出来
+  start.y = heightAt(start.x, start.z) + 40;
+  const center = t => {   // 编队中心：先贴地平飞，掠过镜头前开始拉起（沿圆弧转成爬升）
+    const tp = TP - 0.15;
+    let dx = SPD * Math.min(t, tp), dy = 0;
+    if (t > tp) {
+      const p = t - tp, pc = AMAX / W, a = Math.min(p, pc);
+      dx += SPD / W * Math.sin(W * a);
+      dy += SPD / W * (1 - Math.cos(W * a));
+      if (p > pc) { dx += SPD * Math.cos(AMAX) * (p - pc); dy += SPD * Math.sin(AMAX) * (p - pc); }
+    }
+    return start.clone().addScaledVector(fwd, dx).add(V3(0, dy, 0));
+  };
+  const OFF = [[0, 0], [-1, 1], [1, 1], [2, 2]];   // 指尖四机：长机、左僚、右僚、右后
+  const posOf = (i, t) => center(t).addScaledVector(side, OFF[i][0] * 20).addScaledVector(fwd, -OFF[i][1] * 26).add(V3(0, OFF[i][1] * 2.5, 0));
+  // 拉起以后每架放一串诱饵弹（火球往后下方散开、拖着白烟）
+  for (let i = 0; i < 4; i++) fx.add(decoys({ from: t => posOf(i, t).addScaledVector(fwd, -6), vel: t => posOf(i, t + 0.05).sub(posOf(i, t)).multiplyScalar(5), t0: TP + 0.3 + (i % 2) * 0.12, n: 10, every: 0.07, spread: 40, seed: 70 + i }));
+  const look = V3();
   return {
     update(t) {
-      const look = V3(SAM.x + 200, heightAt(SAM.x, SAM.z) + 120 + t * 30, SAM.z - 200);
-      const fwd = look.clone().sub(c).setY(0).normalize(), side = new THREE.Vector3().crossVectors(fwd, V3(0, 1, 0));
       J.forEach((A, i) => {
-        const p = c.clone().addScaledVector(fwd, -90 + t * 420 - i * 38).add(V3(0, 7 + t * 10 + i * 3.5, 0)).addScaledVector(side, i * 16 - 26);
-        fly(A, p, fwd.clone().add(V3(0, 0.12, 0)).normalize(), 0.12 * (i - 1.5));
+        const p = posOf(i, t), q = posOf(i, t + 0.02);
+        fly(A, p, q.sub(p).normalize(), 0.06 * (i - 1.5) * (1 - smooth(TP - 0.2, TP + 0.4, t)));
       });
-      cam(env, c, look.clone().add(V3(0, -40, 0)), 54);
-      shake(env.camera, t, 0.3 + 0.9 * Math.exp(-(((t - 0.35) / 0.35) ** 2)), 8, 17);
+      // 镜头跟着编队中心转（仰角收在 65° 以内，不翻过头顶）
+      const dv = center(t).sub(c);
+      const hz = Math.max(1, Math.hypot(dv.x, dv.z)), el = Math.min(Math.atan2(dv.y, hz), 1.13);
+      look.set(c.x + dv.x / hz * Math.cos(el) * 100, c.y + Math.sin(el) * 100, c.z + dv.z / hz * Math.cos(el) * 100);
+      cam(env, c, look, lerp(22, 56, smooth(TP - 0.75, TP + 0.15, t)));   // 远的时候长焦（飞机大），掠过时广角
+      shake(env.camera, t, 0.3 + 1.6 * Math.exp(-(((t - TP) / 0.3) ** 2)), 9, 17);
       return { ...night({ moonI: 2.0, exposure: 1.15 }), shadowAt: SAM, shadowR: 300 };
     },
-    events: [{ t: 0.6, k: 'jetPass', v: 1 }, { t: 0, k: 'fireRoar' }],
+    titles: t => caption('任务完成', '四机编队脱离 · 放红外诱饵弹', fadeIO(t, 1.9, 3.0, 0.3, 0.2)),
+    events: [{ t: 0, k: 'fireRoar' }, { t: TP - 0.6, k: 'jetPass', v: 1.2 }, { t: TP + 0.3, k: 'flares' }],
   };
 }
 
@@ -448,18 +472,27 @@ async function shotBreach(env, add) {
     events: [{ t: 0, k: 'tankColumn' }, { t: 0.5, k: 'desertWind' }],
   };
 }
-// G13 白天：99A 楔形队形压过开阔的平原，一路扬尘，长焦压缩、热浪抖动
+// G13 白天：一个坦克排（6 辆 99A）楔形队形压过开阔的平原，一路扬尘；镜头从右后上方跟着队形一起往前飞（像跟拍的无人机）
+//   车间距照条令（排内 45～55 米 ≈ 140 格，往后错开 90 格）；这是镜头里的一个排，不是全营那条 600 格间距的大楔形（RED）
+const WEDGE = [[0, 0], [-1, 1], [1, 1], [-2, 2], [2, 2], [3, 3]];
 async function shotWedge(env, add) {
   const { fx } = env;
   const L = await tanks(env, add, 'ztz99a2', 6);
-  L.forEach((V, i) => fx.add(dustTrail({ path: tt => { const p = redAt(i, tt); p.y = heightAt(p.x, p.z); return p.add(V3(0, 0, 14)); }, t0: -5, s: 1.6, gap: 8, life: 8, alpha: 0.45, seed: 520 + i })));
+  const O = V3(-1300, 0, 5400), SP = 17;   // 长机起点、速度（格 / 秒，约 22 公里 / 时）
+  const at = (i, t) => V3(O.x + WEDGE[i][0] * 140 + Math.sin(t * 0.4 + i) * 3, 0, O.z + WEDGE[i][1] * 90 - t * SP);
+  L.forEach((V, i) => fx.add(dustTrail({ path: tt => { const p = at(i, tt); p.y = heightAt(p.x, p.z); return p.add(V3(0, 0, 14)); }, t0: -6, s: 1.7, gap: 7, life: 9, alpha: 0.5, col: [1.15, 1.0, 0.78], seed: 520 + i })));
+  add(clutter(O.x, O.z, 520, { seed: 53 }));
   return {
     update(t) {
-      L.forEach((V, i) => { const p = redAt(i, t); ground(V.root, p.x, p.z, -0.1); V.roll(-p.z); V.aim(0, 0.01); });
-      const c = V3(-2600, 0, 5250); c.y = heightAt(c.x, c.z) + 12;
-      cam(env, c, V3(-950 + t * 2, 17, 6130 - t * 15), 13);
-      return { ...DAY({ heat: 1.4, dust: 0.2, fog: 0.000018 }), shadowAt: V3(-800, 12, 6200), shadowR: 1700 };
+      L.forEach((V, i) => { const p = at(i, t); ground(V.root, p.x, p.z, 0); V.roll(-p.z); V.aim(0.04 * (i - 2.5), 0.015); });
+      const lead = at(0, t);
+      const c = V3(lead.x + 330 - t * 8, 0, lead.z + 420 - t * 5); c.y = heightAt(c.x, c.z) + 22;   // 右翼后面、低一点：右边两辆就在跟前
+      const look = V3(lead.x + 50, heightAt(lead.x, lead.z) + 3, lead.z + 40);
+      cam(env, c, look, 27);
+      shake(env.camera, t, 0.12, 1.2, 9);
+      return { ...DAY({ heat: 0.5, dust: 0.15, fog: 0.000012 }), shadowAt: V3(lead.x, 12, lead.z + 150), shadowR: 420 };
     },
+    titles: t => caption('红方 · 99A 坦克排', '楔形队形 · 车距 50 米', fadeIO(t, 0.5, 3.3, 0.4, 0.3)),
     events: [{ t: 0, k: 'tankEngines' }],
   };
 }
