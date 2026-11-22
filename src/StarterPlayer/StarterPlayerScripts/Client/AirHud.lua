@@ -207,6 +207,48 @@ function AirHud.init(G)
   hsg.Parent = holoPart
   A.holoGlow = img(hsg, "NoseHoloGlow", UD2(1, 0, 1, 0), nil, nil, HOLO, 0.1)
   A.holo = img(hsg, "NoseHoloArt", UD2(1, 0, 1, 0), nil, nil, CORE, 0)
+  -- 准星（用户 11-22：「准心很奇怪，为什么是个飞机图标」——飞机图标挪到光电吊舱画面下面当航向指示了，Fly.lua）：
+  --   全息的一个圈 + 中心点 + 上下左右四道短刻度，外面一圈柔光；照旧投在机头前方 300 格（全息：跟着机头走、看着在远处）
+  A.holo.Visible, A.holoGlow.Visible = false, false
+  do
+    local R0 = 30   -- 圈的半径（画布 128 × 192 里的像素）
+    local ret = Instance.new("Frame")
+    ret.Name = "Reticle"
+    ret.BackgroundTransparency = 1
+    ret.Size = UD2(1, 0, 1, 0)
+    ret.Parent = hsg
+    local function piece(w, h, x, y, round)
+      local f = Instance.new("Frame")
+      f.AnchorPoint = V2(0.5, 0.5)
+      f.Size = UDim2.fromOffset(w, h)
+      f.Position = UD2(0.5, x, 0.5, y)
+      f.BorderSizePixel = 0
+      f.BackgroundColor3 = CORE
+      f.Parent = ret
+      if round then
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0.5, 0)
+        c.Parent = f
+      end
+      return f
+    end
+    local glow = piece(R0 * 2 + 10, R0 * 2 + 10, 0, 0, true)
+    glow.BackgroundTransparency = 1
+    local gs = Instance.new("UIStroke")
+    gs.Thickness, gs.Color, gs.Transparency = 9, HOLO, 0.7
+    gs.Parent = glow
+    local ring = piece(R0 * 2, R0 * 2, 0, 0, true)
+    ring.BackgroundTransparency = 1
+    local rs = Instance.new("UIStroke")
+    rs.Thickness, rs.Color, rs.Transparency = 3, CORE, 0
+    rs.Parent = ring
+    local ticks = {
+      piece(4, 4 + 10, 0, -(R0 + 12)), piece(4, 4 + 10, 0, R0 + 12),
+      piece(14, 4, -(R0 + 12), 0), piece(14, 4, R0 + 12, 0),
+    }
+    local dot = piece(7, 7, 0, 0, true)
+    A.ret = { frame = ret, ring = rs, glow = gs, ticks = ticks, dot = dot }
+  end
   A.holoPart, A.holoGui = holoPart, hsg
   A.boreFall = label(gui, "+", UDim2.fromOffset(40, 40), UD2(0.5, 0, 0.5, 0), 34, HOLO, Enum.Font.Code, V2(0.5, 0.5))   -- 用不了 EditableImage
   A.boreFall.Name = "BoreMark"
@@ -450,7 +492,7 @@ function AirHud.init(G)
     local showHolo = false
     if pilot and cf then
       local pre = (d.kind == "heli") and "holoHeli" or "holoJet"
-      local okArt = setIcon(A.holo, pre .. "Core") and setIcon(A.holoGlow, pre .. "Glow")
+      local okArt = true   -- 准星是框拼的（不用 EditableImage 的图）：一直能投到机头前面
       local pos = cf.Position + cf.LookVector * HOLO_D
       local cp = cam.CFrame
       local rel = pos - cp.Position
@@ -460,9 +502,12 @@ function AirHud.init(G)
         local hgt = rel.Magnitude * HOLO_PX * (1 + 0.3 * hk) / f   -- 离镜头越远做得越大：屏幕上看着一样大
         holoPart.Size = V3(hgt * 128 / 192, hgt, 0.05)
         holoPart.CFrame = CFrame.new(pos) * (cf - cf.Position) * CFrame.Angles(HOLO_TILT, 0, 0)
-        A.holoGlow.ImageColor3 = hcol
-        A.holo.ImageColor3 = CORE:Lerp(RGB(255, 150, 130), hk * 0.7)
-        A.holoGlow.ImageTransparency = 0.12 + 0.12 * math.noise(lastT * 6, 3.3)   -- 全息的光晕微微闪
+        local core = CORE:Lerp(RGB(255, 150, 130), hk * 0.7)
+        A.ret.ring.Color = core
+        A.ret.dot.BackgroundColor3 = core
+        for _, t in ipairs(A.ret.ticks) do t.BackgroundColor3 = core end
+        A.ret.glow.Color = hcol
+        A.ret.glow.Transparency = 0.62 + 0.12 * math.noise(lastT * 6, 3.3)   -- 全息的光晕微微闪
         showHolo = rel:Dot(cp.LookVector) > 1
         A.boreFall.Visible = false
       else   -- 用不了 EditableImage：屏幕上一个十字

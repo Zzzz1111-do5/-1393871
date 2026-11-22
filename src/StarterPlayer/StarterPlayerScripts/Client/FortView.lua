@@ -238,7 +238,13 @@ function FortView.init(G)
       v.ty = v.ty + angDiff(v.ty, ty) * k
       v.gp = v.gp + (gp - v.gp) * k
     end
-    if v.recoil > 0 then v.recoil = math.max(0, v.recoil - dt * 2.2) v.dirty = true end
+    if v.recoilT then   -- 后坐（同坦克：View 的 G.recoilCurve，先快后慢坐到底、再慢慢复进；原来开炮那一帧一下子到底）
+      v.recoilT += dt
+      local big = v.fkind == "howitzer" or v.fkind == "coastal"
+      v.recoil = G.recoilCurve and G.recoilCurve(v.recoilT, big) or math.max(0, 1 - v.recoilT * 2.2)
+      if v.recoilT > 0.7 then v.recoilT, v.recoil = nil, 0 end
+      v.dirty = true
+    end
     local moved = math.abs(angDiff(oty, v.ty)) > 0.02 or math.abs(ogp - v.gp) > 0.02
     -- 离得远、没动：不用重摆
     if not v.dirty and not moved then return end
@@ -263,7 +269,7 @@ function FortView.init(G)
     v.manA.CFrame = base * CF(FD.MAN[v.fkind])
   end
 
-  local function recoil(v) v.recoil = 1 v.dirty = true end
+  local function recoil(v) v.recoilT = 0 v.recoil = G.recoilCurve and G.recoilCurve(0.25 / 60, v.fkind == "howitzer" or v.fkind == "coastal") or 1 v.dirty = true end
   local function remove(v) views[v.id] = nil end
 
   G.viewKind = G.viewKind or {}

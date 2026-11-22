@@ -672,7 +672,7 @@ end
 --         hudFrame = "tall"（两根立柱 + 顶梁）/ "box"（厚圆角黑框）/ "wide"（歼-20：两根粗立柱往外斜）, hoop = { z, th, mirrors, struts, compass } 座舱盖前面那道拱框,
 --         goldGlass = 座舱盖镀金（隐身机）, stick = "center" / "side",
 --         seats = 1 / 2, cn = 中文标签, frame = 风挡有框, minScreens = 这一型真有几块屏（测试按它查，默认 5）, noRadar = 没有雷达（A-10C） }
--- 各型的屏幕块数、尺寸、摆法照网上查到的资料（docs/cockpit_research.md，出处写在里面；查不到的歼-35、歼-50 用 pano 整块大屏）
+-- 各型的屏幕块数、尺寸、摆法照网上查到的资料（docs/cockpit_research.md，出处写在里面；查不到的歼-35 用 pano 整块大屏）
 local PIT = RGB(46, 50, 54)      -- 座舱漆：深灰
 local PIT2 = RGB(36, 39, 42)
 local GLARE = RGB(24, 25, 27)
@@ -682,7 +682,8 @@ function Defs.jet(b, ctx, L)
   local function bx(sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
     return b:box(H, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
   end
-  local eye = V(0, 0, 0)
+  -- 眼睛往前挪 6 厘米（用户 11-22：第一人称开飞机离电子屏不够近）：屏、平显照旧摆在原来的地方（对着这个眼位转）
+  local eye = V(0, -0.01, -0.06)
   local function look(p, at) return CFrame.lookAt(p, at or eye) end
   local cn = L.cn
   -- 浴盆
@@ -882,7 +883,7 @@ function Defs.jet(b, ctx, L)
     b:screen(H, 0.09, 0.075, look(V(0.32, -0.52, -0.56)), "cdu", { lightK = 0.15 })
     keypad(cons(0, -0.30), 0.16, { { "1", "2", "3", "FUNC", "HACK" }, { "4", "5", "6", "LTR", "MK" }, { "7", "8", "9", "0", "ENT" } })
     standby = false
-  else   -- pano（歼-35、歼-50）：整块触摸大屏（资料只到「大横屏」），两边上前显示器照旧
+  else   -- pano（歼-35）：整块触摸大屏（资料只到「大横屏」），两边上前显示器照旧
     b:screen(H, 0.50, 0.21, flush(0, -0.505), "pano", { keys = K, touch = true, touchH = 0.09, lightK = 0.45, lightColor = RGB(140, 180, 220) })
     b:screen(H, 0.10, 0.07, cons(-0.17, -0.30), "ufd", { lightK = 0.2 })
     b:screen(H, 0.10, 0.07, cons(0.17, -0.30), "ufd2", { lightK = 0.2 })
@@ -1038,6 +1039,17 @@ function Defs.jet(b, ctx, L)
     end
   end
   b:name("glass", glass)
+  -- 光滑的座舱盖（用户 11-22：「飞机不要搞多边形的座舱盖，一反光看着太难受了，就要弧形」）：同一个曲面（半圆管子 + 弹头形风挡）
+  --   一圈圈截面（z、半径）交给 Interior，用 EditableMesh 拼成一整块光滑的网格（法线按曲面算、两面都有，从里面也看得见）；
+  --   拼成了上面这些平板就不画了（带划痕的几块只留划痕）。没开 Mesh API 拼不成：还用平板，反光调弱（棱上的反光不那么扎眼）
+  local rows = {}
+  for i = 0, 4 do table.insert(rows, { z = zr + (zf - zr) * i / 4, r = R0 }) end
+  local MR = 12
+  for k = 1, MR do
+    local z, r = ring(k / MR)
+    table.insert(rows, { z = z, r = math.max(r, 0.004) })
+  end
+  local canopy = { rows = rows, cy = cy0, cols = 48, color = GC, panes = panes, refl = 0.1, trans = L.goldGlass and 0.86 or 0.88 }
   if L.hoop then
     local R1, cyh, th, z = 0.50, -0.24, L.hoop.th or 0.05, L.hoop.z or -0.80
     local n = 16
@@ -1105,14 +1117,14 @@ function Defs.jet(b, ctx, L)
     stations.wso = { g = H, eye = V(0, ry, rz), look = V(0, -0.05, -1), yaw = 150, up = 80, down = 60, crew = "wso" }
     table.insert(order, "wso")
   end
-  return { air = true, stations = stations, order = order, crew = crew, cn = cn, glass = glass, minScreens = L.minScreens, noRadar = L.noRadar }
+  return { air = true, stations = stations, order = order, crew = crew, cn = cn, glass = glass, canopy = canopy, minScreens = L.minScreens, noRadar = L.noRadar }
 end
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
 Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
-Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+-- 歼-50 11-22 删掉了（用户：j50 删掉）
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
 Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
   hoop = { z = -0.78, th = 0.075, compass = true } }) end
@@ -1211,14 +1223,15 @@ function Defs.side(b, ctx, L)
   -- 主仪表板 + 遮光罩（横贯两座）
   local PZ = heli and -0.80 or -0.78
   b:box(H, V(W - 0.16, 0.46, 0.06), CF(cx, -0.47, PZ) * ANG(rad(-12), 0, 0), P1)
-  bx(W - 0.16, 0.05, 0.28, cx, -0.225, PZ + 0.06, GLARE, MAT.Fabric, 4, 0, 0)
+  -- 遮光罩：往后只伸到离眼 0.64 米（原来 0.58：下沿挡住下面三个备份仪表；用户 11-22：「飞机的电子屏会被挡住」）
+  bx(W - 0.16, 0.05, 0.22, cx, -0.225, PZ + 0.03, GLARE, MAT.Fabric, 4, 0, 0)
   bx(W - 0.30, 0.30, 0.04, cx, -0.80, PZ - 0.10, P2, nil, 35, 0, 0)    -- 膝下面板
-  -- 主告警 / 注意灯（遮光罩上两座各一对）、磁罗盘（风挡中间框上）
+  -- 主告警 / 注意灯（遮光罩上两座各一对，字牌贴在遮光罩后沿：原来埋在遮光罩里面）、磁罗盘（风挡中间框上）
   for _, x in ipairs({ 0, ox }) do
     b:led(H, CF(x - 0.18, -0.19, PZ + 0.10), RGB(255, 40, 30), 0.022, "mwarn")
     b:led(H, CF(x + 0.18, -0.19, PZ + 0.10), RGB(255, 180, 30), 0.022, "mcaut")
-    b:placard(H, 0.07, 0.016, look(V(x - 0.18, -0.205, PZ + 0.115), V(x, 0, 0)), cn and "主告警" or "MASTER WARN", { bg = C.black, fg = RGB(255, 80, 70) })
-    b:placard(H, 0.07, 0.016, look(V(x + 0.18, -0.205, PZ + 0.115), V(x, 0, 0)), cn and "主注意" or "MASTER CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
+    b:placard(H, 0.07, 0.016, look(V(x - 0.18, -0.233, PZ + 0.143), V(x, 0, 0)), cn and "主告警" or "MASTER WARN", { bg = C.black, fg = RGB(255, 80, 70) })
+    b:placard(H, 0.07, 0.016, look(V(x + 0.18, -0.233, PZ + 0.143), V(x, 0, 0)), cn and "主注意" or "MASTER CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
   end
   bx(0.07, 0.06, 0.07, cx, 0.26, PZ - 0.10, RGB(20, 20, 20))
   b:ball(H, 0.05, CF(cx, 0.26, PZ - 0.135), RGB(230, 225, 200), MAT.Glass)
@@ -1446,20 +1459,24 @@ function Defs.tandem(b, ctx, L)
   end
   bx(0.90, 1.4, 0.04, 0, -0.42, 0.55, P2)
   -- 仪表板（窄、高）、遮光罩
+  --   用户 11-22：「飞机的电子屏会被挡住」——两块主显示器原来摆在仪表板正面后面 6 厘米（整块被仪表板盖住），上面一排小屏和备份仪表被遮光罩下沿、
+  --   平显投影仪挡住。现在屏幕都贴在仪表板正面、跟面平行；遮光罩往前收到离眼 0.61 米；平显投影仪往前挪；主告警 / 注意灯挪到投影仪两边
   local PZ = -0.66
-  b:box(H, V(0.62, 0.42, 0.06), CF(0, -0.44, PZ) * ANG(rad(-10), 0, 0), P1)
-  bx(0.62, 0.05, 0.22, 0, -0.215, PZ + 0.05, GLARE, MAT.Fabric, 4, 0, 0)
+  local PC = CF(0, -0.44, PZ) * ANG(rad(-10), 0, 0)   -- 仪表板（上沿往前倒 10°）
+  b:box(H, V(0.62, 0.42, 0.06), PC, P1)
+  local function onPanel(x, y, lift) return PC * CF(x, y, 0.03 + (lift or 0.004)) * ANG(0, PI, 0) end   -- 仪表板正面上（板面坐标）、正面朝人
+  bx(0.62, 0.05, 0.14, 0, -0.215, PZ - 0.02, GLARE, MAT.Fabric, 4, 0, 0)
   local K = cn and { top = { "姿态", "雷达", "态势", "武器", "发动机" }, bottom = { "油量", "检查", "目标", "通信", "菜单" } }
     or { top = { "PFD", "RDR", "SA", "SMS", "ENG" }, bottom = { "FUEL", "CHK", "TGT", "COM", "MENU" } }
-  b:screen(H, 0.16, 0.16, look(V(-0.135, -0.47, PZ - 0.03)), "mfd_sa", { keys = K, lightK = 0.3 })
-  b:screen(H, 0.16, 0.16, look(V(0.135, -0.47, PZ - 0.03)), cn and "mfd_pfd" or "mfd_rdr", { keys = K, lightK = 0.3 })
-  b:screen(H, 0.12, 0.05, look(V(-0.18, -0.30, PZ + 0.0)), "ufd2", { lightK = 0.15 })   -- 上前显示器（告警、油量、起落）
-  standby(b, H, V(0.12, -0.30, PZ + 0.0), eye, 0.06)
-  b:led(H, CF(-0.06, -0.19, PZ + 0.08), RGB(255, 40, 30), 0.02, "mwarn")
-  b:led(H, CF(0.06, -0.19, PZ + 0.08), RGB(255, 180, 30), 0.02, "mcaut")
-  b:placard(H, 0.07, 0.016, look(V(-0.06, -0.205, PZ + 0.095)), cn and "主告警" or "MSTR WARN", { bg = C.black, fg = RGB(255, 80, 70) })
-  b:placard(H, 0.07, 0.016, look(V(0.06, -0.205, PZ + 0.095)), cn and "主注意" or "MSTR CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
-  if L.hud then hudUnit(b, H, V(0, -0.09, PZ + 0.10), eye) end
+  b:screen(H, 0.16, 0.16, onPanel(-0.135, -0.03), "mfd_sa", { keys = K, lightK = 0.3 })
+  b:screen(H, 0.16, 0.16, onPanel(0.135, -0.03), cn and "mfd_pfd" or "mfd_rdr", { keys = K, lightK = 0.3 })
+  b:screen(H, 0.12, 0.05, onPanel(-0.17, 0.15), "ufd2", { lightK = 0.15 })   -- 上前显示器（告警、油量、起落）
+  standby(b, H, onPanel(0.19, 0.15, 0.012).Position, eye, 0.06)
+  b:led(H, CF(-0.15, -0.19, PZ + 0.0), RGB(255, 40, 30), 0.02, "mwarn")
+  b:led(H, CF(0.15, -0.19, PZ + 0.0), RGB(255, 180, 30), 0.02, "mcaut")
+  b:placard(H, 0.07, 0.016, look(V(-0.15, -0.222, PZ + 0.053)), cn and "主告警" or "MSTR WARN", { bg = C.black, fg = RGB(255, 80, 70) })   -- 贴在遮光罩后沿
+  b:placard(H, 0.07, 0.016, look(V(0.15, -0.222, PZ + 0.053)), cn and "主注意" or "MSTR CAUT", { bg = C.black, fg = RGB(255, 190, 60) })
+  if L.hud then hudUnit(b, H, V(0, -0.09, PZ + 0.02), eye) end
   -- 座椅（防弹座椅，侧翼装甲板）
   b:seat(H, CF(0, -0.80, 0.14), { w = 0.46, d = 0.44, back = 0.70, recline = 12, col = RGB(66, 68, 60), frame = RGB(44, 46, 48) })
   for _, s in ipairs({ -1, 1 }) do bx(0.03, 0.55, 0.38, s * 0.26, -0.52, 0.28, RGB(70, 72, 64), nil, 12, 0, 0) end

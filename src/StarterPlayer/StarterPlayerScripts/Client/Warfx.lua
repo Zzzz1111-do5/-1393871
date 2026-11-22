@@ -215,6 +215,7 @@ function Warfx.init(G)
   local function stepFlares()
     if #flares == 0 then
       illumK = 0
+      G.illum.pos = nil
       return
     end
     local t = os.clock()
@@ -274,9 +275,11 @@ function Warfx.init(G)
       end
     end
     illumK = math.min(1.2, k)
+    G.illum.pos = (nearest and nearest.core and nd < 1500) and nearest.core.Position or nil   -- 座舱盖上的划痕迎着它反光（Interior.lua）
   end
 
   G.illum = { k = 0, col = WARM }
+  G.brightFlare = function() return G.illum.pos end   -- 离镜头最近、还在烧的照明弹在哪（没有就 nil）
   G.fxExtra = G.fxExtra or {}
   G.fxExtra.illum = newIllum
 

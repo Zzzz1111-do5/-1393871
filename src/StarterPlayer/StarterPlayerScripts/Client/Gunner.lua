@@ -308,6 +308,21 @@ function Gunner.init(G)
       if gs.sight then o = tPivot + V(0, 1.4, 0) end
       cam.CFrame = CFrame.lookAt(o, o + look)
       gs.aimPt = aimRay(cam.CFrame.Position, look, w.range)
+      -- 高炮：防空火控显示（AaFcs.lua，用户 11-22：「高射炮加一个电子屏标记点位然后打」）——敌机标框、提前量圈；Q 雷达锁定以后炮自己跟提前量点
+      if gs.kind == "aaa" and G.aaFcs then
+        local mz = (base * CF(Tt.pivot) * CF(d.gun.pivot)).Position
+        local gl = dirOf(base, gs.ty, gs.gp)
+        local r = G.aaFcs({ origin = mz, speed = w.speed, g = SHELL_G * (w.gscale or 0), range = w.range, look = look, side = me:GetAttribute("Side"),
+          hullYaw = math.atan2(-base.LookVector.X, -base.LookVector.Z), gunYaw = math.atan2(-gl.X, -gl.Z) })
+        if r.aimPt then
+          gs.aimPt = r.aimPt
+          if r.locked then   -- 锁定：炮（和镜头）跟着提前量点转
+            local ay, ap = anglesOf(base, r.aimPt - mz)
+            if full then gs.ay = ay else gs.ay = math.clamp(ay, -Tt.arc, Tt.arc) end
+            gs.ap = math.clamp(ap, Tt.elev[1], Tt.elev[2])
+          end
+        end
+      end
     else
       -- 岸防炮、榴弹炮：镜头绕着炮转，准星指哪儿炮算到哪儿
       gs.camYaw -= md.X * sens
@@ -357,7 +372,7 @@ function Gunner.init(G)
     gunMark.Visible = on and w.kind ~= "arty" and not gs.sight
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
     leadMark.Visible = false
-    if w.kind == "flak" then
+    if w.kind == "flak" and not G.aaFcs then   -- 有防空火控显示（AaFcs）就用它的提前量圈
       local lp = leadFor(gF.Position)
       if lp then
         local p2, on2 = cam:WorldToViewportPoint(lp)

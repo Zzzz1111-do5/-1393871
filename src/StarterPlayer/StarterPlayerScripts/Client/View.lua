@@ -206,11 +206,25 @@ function View.init(G)
   end
 
   -- 开炮：这辆车的炮往后坐一下；坦克、自行火炮的车体还被后坐力推得一晃（炮朝前开就抬头、朝侧面开就往另一边歪，弹簧摆两下才停——战雷那样）
+  -- 炮的后坐曲线（用户 11-22：「坦克开炮，第一人称的时候那个炮管会瞬间往后」——原来开炮那一帧整段后坐一下子到位，再直线滑回去）：
+  --   大炮 0.08 秒往后坐到底（先快后慢），顶住一下，到 0.62 秒复进完（两头慢中间快）；机关炮短：0.02 秒坐到底、0.14 秒回来。返回 0～1
+  local function recoilCurve(t, big)
+    if not t or t < 0 then return 0 end
+    local a, h, e = 0.08, 0.11, 0.62
+    if not big then a, h, e = 0.02, 0.025, 0.14 end
+    if t < a then local u = t / a return 1 - (1 - u) * (1 - u) end
+    if t < h then return 1 end
+    if t < e then local u = (t - h) / (e - h) return 1 - u * u * (3 - 2 * u) end
+    return 0
+  end
+  G.recoilCurve = recoilCurve
   function G.vehRecoil(id, g)   -- g：第几门炮（舰艇有前后两门的）
     local v = byId[id]
     if v and v.kind == "veh" then
       local big = v.def.cat == "tank" or v.def.cat == "arty"
-      v.recoil = big and 1.7 or 0.35
+      v.recoilA, v.recoilT, v.recoilBig = big and 1.7 or 0.35, 0, big
+      v.shots = (v.shots or 0) + 1   -- 开了第几炮（Interior 按这个数接着放炮闩、装填手的动作）
+      v.recoil = v.recoilA * recoilCurve(0.25 / 60, big)
       if big and not v.wrecked then
         local a = math.rad(v.ty or 0)
         local k = (v.def.cat == "arty") and 0.95 or 0.8
@@ -462,7 +476,13 @@ function View.init(G)
       v.ty = v.ty + angDiff(v.ty, ty) * math.min(1, dt * 10)
       v.gp = v.gp + (gp - v.gp) * math.min(1, dt * 10)
     end
-    v.recoil = math.max(0, v.recoil - dt * 2.6)
+    if v.recoilT then
+      v.recoilT += dt
+      v.recoil = (v.recoilA or 0) * recoilCurve(v.recoilT, v.recoilBig)
+      if v.recoilT > 0.7 then v.recoilT, v.recoil = nil, 0 end
+    else
+      v.recoil = 0
+    end
     -- 遥控武器站：自己开的用本地算的转角，别人的读属性再平滑跟（用户：机枪也要能转动）
     if M.rpiv then
       local my, mp = em:GetAttribute("My") or 0, em:GetAttribute("Mp") or 0

@@ -1,4 +1,4 @@
--- 飞机座舱测试（模拟器）：python3 tools/mock/run.py tools/mock/cockpit.lua [air=j20|j35|j50|j16|j15t|f35|f22|a10c] [dump=<目录>]
+-- 飞机座舱测试（模拟器）：python3 tools/mock/run.py tools/mock/cockpit.lua [air=j20|j35|j16|j15t|f35|f22|a10c] [dump=<目录>]
 --   用户 11-21：第一人称开飞机要有和 DCS 一样的视觉细节；座舱盖玻璃要有畸变、划痕、反光折射
 --   ① 召唤、坐上，V 进座舱：座舱拼出来了（零件、屏幕、平显、座舱盖玻璃和划痕），镜头在飞行员眼位；外模型的飞行员、座舱盖玻璃不画；外面的 2D 平显不画
 --   ② 屏幕边的按键：中间小点对准、左键按（换页，不开炮）
@@ -95,6 +95,17 @@ for _, g in ipairs(cur.spec.glass or {}) do
   break
 end
 check(scr == 1, "玻璃上有划痕、污渍")
+-- 用户 11-22：「飞机不要搞多边形的座舱盖，一反光看着太难受了，就要弧形」——一整块光滑网格（EditableMesh），平板不画（带划痕的只剩划痕）
+if cur.spec.canopy then
+  local cm = cur.canopyMesh
+  local panesOff = 0
+  for _, p in ipairs(cur.spec.canopy.panes or {}) do if p.Transparency >= 1 then panesOff = panesOff + 1 end end
+  check(cm ~= nil and cm.Parent == cur.model and cm.Material == Enum.Material.Glass and cm.Transparency < 0.95,
+    string.format("光滑座舱盖：一整块网格（%s，%d 个三角形）", cm and cm.ClassName or "没有", R.editStats.tris))
+  check(panesOff == #(cur.spec.canopy.panes or {}), string.format("原来的平板玻璃不画了（%d / %d）", panesOff, #(cur.spec.canopy.panes or {})))
+  local scr2 = cur.spec.glass[1] and cur.spec.glass[1]:FindFirstChildOfClass("SurfaceGui")
+  check(scr2 ~= nil, "带划痕的那几块只剩划痕（划痕还在）")
+end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 local v = C.viewById(e.id)
 local eyeW = v.cf * CF(cur.eyeBody)

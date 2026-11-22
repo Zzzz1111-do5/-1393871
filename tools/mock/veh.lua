@@ -100,10 +100,16 @@ if side == "def" then
   check(v0 and v0.solidOn == false, "坐进自己开的车：这辆不再挡人（人在里面）")
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
   -- 用户 11-21：坦克里强制锁着夜视仪视角——没开瞄准镜时 N 照样开关夜视仪（原来地面载具里 N 整个让给瞄准镜，关不掉）
+  -- 用户 11-22：「坦克第三人称不光夜视，还要加一个红外，第一人称也是」——地面载具里 N 在 夜视 → 热成像（白热）→ 关 之间切（同飞机）
   local m0 = C.drive and C.drive.mode
   T.tap(Enum.KeyCode.N)
   R.run(0.5)
-  check(not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil and C.drive and C.drive.mode == m0, "车里（没开镜）按 N 关掉夜视仪，瞄准镜的档没被跟着换")
+  local irc = lighting:FindFirstChild("VehIrCC")
+  check(not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil and C.vehThermalShown and C.vehThermalShown() and irc ~= nil and irc.Enabled
+    and C.drive and C.drive.mode == m0, "车里（没开镜）按 N：夜视仪关掉、换成热成像（白热、整个画面），瞄准镜的档没被跟着换")
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  check(not C.nvgOn() and not C.vehThermalShown() and not (irc and irc.Enabled), "再按 N：热成像也关掉")
   T.tap(Enum.KeyCode.N)
   R.run(0.5)
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 夜视仪又开了")
@@ -142,7 +148,7 @@ if side == "def" then
     end
   end
   local hv, hm = shown("HintOptic"), shown("HintSmoke")
-  check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.nv"), 1, true), "镜里写着：" .. tostring(hv))
+  check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.whot"), 1, true), "镜里写着（天黑默认热成像白热，不是绿色的夜视）：" .. tostring(hv))
   check(hm and hm:find("M", 1, true) and hm:find(tostring(e.smoke or e.def.smoke.n * #e.def.smoke.banks), 1, true) ~= nil or (hm and hm:find("M", 1, true)), "镜里写着：" .. tostring(hm))
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
   local modes = {}
@@ -151,9 +157,9 @@ if side == "def" then
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
-  check(modes[1] == "whot" and modes[2] == "bhot" and modes[3] == "day", "瞄准镜默认夜视档，V 依次切白热、黑热、昼光：" .. table.concat(modes, " → "))
+  check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "nv", "瞄准镜默认白热档，V 依次切黑热、昼光、夜视：" .. table.concat(modes, " → "))
   local hv2 = shown("HintOptic")
-  check(hv2 and hv2:find(C.T("sight.day"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
+  check(hv2 and hv2:find(C.T("sight.nv"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
   T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
