@@ -15582,7 +15582,7 @@ return Imports
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
 --   从目的地往外做 Dijkstra（八方向，边的代价 = 长度 ×（1 + 坡度 × 3），坡太陡、中间下水的边不通），
---   每格记「下一步去哪格」；走的时候看前面几格（顺一点、少拐）。开服地图生成完后在后台慢慢算（每算一批让出一帧）
+--   每格记「下一步去哪格」；走的时候看前面几格（顺一点、少拐）。开服地图生成完后在后台慢慢算（每帧最多算 4 毫秒就让）
 local Nav = {}
 
 function Nav.init(G)
@@ -15621,6 +15621,7 @@ function Nav.init(G)
   end
 
   local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }
+  local REV = { 2, 1, 4, 3, 8, 7, 6, 5 }   -- 反方向（原来每算一条边新建一张表）
   local edge = {}   -- [格号 * 8 + 方向] = 代价（false 不通）
   local function edgeCost(c, dIdx)
     local key = c * 8 + dIdx
@@ -15629,16 +15630,18 @@ function Nav.init(G)
     local i, k = ik(c)
     local d = DIRS[dIdx]
     local j, l = i + d[1], k + d[2]
+    local inside = j >= 0 and l >= 0 and j < NX and l < NZ
+    local o = inside and id(j, l)
     local res = false
-    if j >= 0 and l >= 0 and j < NX and l < NZ and H[id(j, l)] then
+    if inside and H[o] then
       local x0, z0 = center(c)
-      local x1, z1 = center(id(j, l))
+      local x1, z1 = center(o)
       local L = math.sqrt((x1 - x0) ^ 2 + (z1 - z0) ^ 2)
       local prev = H[c]
       local worst, sum = 0, 0
       for q = 1, 4 do
         local t = q / 4
-        local h = (q == 4) and H[id(j, l)] or Map.height(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t)
+        local h = (q == 4) and H[o] or Map.height(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t)
         if h < 0.4 then worst = 99 break end   -- 中间下水
         local sl = math.abs(h - prev) / (L / 4)
         if sl > worst then worst = sl end
@@ -15648,40 +15651,8 @@ function Nav.init(G)
       if worst <= MAXSLOPE then res = L * (1 + 3 * sum / 4) end
     end
     edge[key] = res
-    -- 反方向一样
-    local rev = { [1] = 2, [2] = 1, [3] = 4, [4] = 3, [5] = 8, [6] = 7, [7] = 6, [8] = 5 }
-    if j and l and j >= 0 and l >= 0 and j < NX and l < NZ then edge[id(j, l) * 8 + rev[dIdx]] = res end
+    if inside then edge[o * 8 + REV[dIdx]] = res end   -- 反方向一样
     return res
-  end
-
-  -- 最小堆
-  local function push(hp, c, d)
-    local n = #hp + 1
-    hp[n] = { c, d }
-    while n > 1 do
-      local p = n // 2
-      if hp[p][2] <= hp[n][2] then break end
-      hp[p], hp[n] = hp[n], hp[p]
-      n = p
-    end
-  end
-  local function pop(hp)
-    local top = hp[1]
-    local last = table.remove(hp)
-    if #hp > 0 then
-      hp[1] = last
-      local n, m = 1, #hp
-      while true do
-        local l, r = n * 2, n * 2 + 1
-        local s = n
-        if l <= m and hp[l][2] < hp[s][2] then s = l end
-        if r <= m and hp[r][2] < hp[s][2] then s = r end
-        if s == n then break end
-        hp[s], hp[n] = hp[n], hp[s]
-        n = s
-      end
-    end
-    return top
   end
 
   -- 离 (x, z) 最近的陆地格（自己那格不是陆地就往外找两圈）
@@ -15700,16 +15671,44 @@ function Nav.init(G)
     return nil
   end
 
+  -- 后台算的时候每帧最多占 SLICE 秒（用户 11-22：加载地图的时候坦克飞机抽搐——沙漠图 655 × 655 格、一张流场九万多格，
+  --   原来流场每出堆 1500 次才让一帧（主要花在算边的代价、压堆上，Map.height 本身不贵），开局那十几秒服务器每帧卡几十上百毫秒，
+  --   车和飞机的物理同步跟着一顿一顿的）。只改让帧的时机，算出来的流场不变（tools/mock/navslice.lua 比指纹）
+  local SLICE, sliceT, work = 0.004, 0, 0   -- work：上次让帧以后干了多少（按次数兜底：时钟不准的时候也不会一口气算太多）
+  local function yieldMaybe(cost, cap)
+    work += cost
+    if work >= cap or os.clock() - sliceT > SLICE then
+      task.wait()
+      sliceT, work = os.clock(), 0
+    end
+  end
+  -- 从目的地往外做 Dijkstra。最小堆拆成格号、距离两张表（原来每压一个就新建一张 { c, d } 小表：沙漠图一张流场压几十万次）；
+  --   上浮、下沉的比较和原来一模一样（同样距离的格出堆先后不变），算出来的流场不变
   local function buildFlow(key, x, z)
     local src = landCellNear(x, z)
     if not src then return end
     local dist, nxt = { [src] = 0 }, {}
-    local hp = {}
-    push(hp, src, 0)
+    local hc, hd, m = { src }, { 0 }, 1
     local n = 0
-    while #hp > 0 do
-      local top = pop(hp)
-      local c, d = top[1], top[2]
+    while m > 0 do
+      local c, d = hc[1], hd[1]
+      -- 出堆：最后一个挪到堆顶往下沉
+      local lc, ld = hc[m], hd[m]
+      hc[m], hd[m] = nil, nil
+      m -= 1
+      if m > 0 then
+        local p = 1
+        while true do
+          local l = p * 2
+          local s, sd = p, ld
+          if l <= m and hd[l] < sd then s, sd = l, hd[l] end
+          if l + 1 <= m and hd[l + 1] < sd then s, sd = l + 1, hd[l + 1] end
+          if s == p then break end
+          hc[p], hd[p] = hc[s], sd
+          p = s
+        end
+        hc[p], hd[p] = lc, ld
+      end
       if d <= (dist[c] or math.huge) then
         local i, k = ik(c)
         for dIdx = 1, 8 do
@@ -15721,12 +15720,21 @@ function Nav.init(G)
             if nd < (dist[o] or math.huge) then
               dist[o] = nd
               nxt[o] = c
-              push(hp, o, nd)
+              -- 进堆：放到最后往上浮
+              m += 1
+              local q = m
+              while q > 1 do
+                local p = q // 2
+                if hd[p] <= nd then break end
+                hc[q], hd[q] = hc[p], hd[p]
+                q = p
+              end
+              hc[q], hd[q] = o, nd
             end
           end
         end
         n += 1
-        if n % 1500 == 0 then task.wait() end
+        if n % 100 == 0 then yieldMaybe(100, 1500) end
       end
     end
     flows[key] = { dist = dist, nxt = nxt }
@@ -15736,15 +15744,14 @@ function Nav.init(G)
   function G.navBuild()
     setGrid()
     task.spawn(function()
-      local n = 0
+      sliceT = os.clock()
       for k = 0, NZ - 1 do
         for i = 0, NX - 1 do
           local x, z = X0 + (i + 0.5) * CELL, Z0 + (k + 0.5) * CELL
           local h = Map.height(x, z)
           if h > 0.4 then H[id(i, k)] = h end
+          if i % 64 == 63 then yieldMaybe(64, 2000) end
         end
-        n += 1
-        if n % 20 == 0 then task.wait() end
       end
       for _, p in ipairs(Map.POINTS) do buildFlow(p.id, p.x, p.z) end
       buildFlow("camp", Map.CAMP.x, Map.CAMP.z)
@@ -15752,6 +15759,21 @@ function Nav.init(G)
       ready = true
       G.navReady = true
     end)
+  end
+
+  -- 测试用：流场指纹（改算法、改让帧前后比，应一样）
+  function G.navFinger()
+    local list = {}
+    for k, F in pairs(flows) do table.insert(list, { tostring(k), F }) end
+    table.sort(list, function(a, b) return a[1] < b[1] end)
+    local out = {}
+    for _, e in ipairs(list) do
+      local h, s, n = 0, 0, 0
+      for c, m in pairs(e[2].nxt) do h = (h + c * 7919 + m * 104729) % 2147483647 n += 1 end
+      for _, d in pairs(e[2].dist) do s = (s + math.floor(d * 1000)) % 2147483647 end
+      table.insert(out, string.format("%s:%d/%d/%d", e[1], n, h, s))
+    end
+    return table.concat(out, " ")
   end
 
   -- 往 key（据点编号 / "camp"）去：返回下一个要走到的点（看前面 3 格），到不了（不在同一块陆地、还没算好）返回 nil
@@ -20077,16 +20099,16 @@ function World.lighting()
     Lighting.ExposureCompensation = 0.55
     Lighting.FogColor = RGB(16, 20, 30)
     Lighting.FogStart = 900
-    Lighting.FogEnd = 12000   -- 地图放大了：看得远一点（远海客户端铺到镜头外一万格）
+    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的看不清改成客户端的景深模糊，DayNight.lua）
   end)
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.21   -- 原来 0.3（用户：视野很短）：远处的岛、舰、飞机看得更远
+    atm.Density = 0.085   -- 原来 0.3、0.21（用户：视野很短；11-22 改成无限远）：客户端昼夜（DayNight.lua）按这个量级再调
     atm.Offset = 0.06
     atm.Color = RGB(44, 54, 76)
     atm.Decay = RGB(12, 15, 24)
     atm.Glare = 0.15
-    atm.Haze = 1.1
+    atm.Haze = 0.5
     atm.Parent = Lighting
   end)
   pcall(function()   -- 星空、大一点的月亮
@@ -26281,12 +26303,18 @@ function DayNight.init(G)
   end
 
   -- 夜里 / 白天两套（夜里照 World.lighting 原来那套）
+  -- 大气（用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：原来夜里 0.21、白天 0.17，几公里外就灰成一片；
+  --   放淡到 0.085 / 0.07、霾减半，远处的山、岛、舰队看得见，远处的「看不清」改成下面的景深模糊（FarBlur）
   local NIGHT = { bright = 2.2, amb = RGB(14, 17, 24), oamb = RGB(38, 45, 62), top = RGB(140, 160, 210), bot = RGB(8, 10, 16), diff = 0.35, spec = 0.9, exp = 0.55,
-    fog = RGB(16, 20, 30), dens = 0.21, acol = RGB(44, 54, 76), adec = RGB(12, 15, 24), glare = 0.15, haze = 1.1,
+    fog = RGB(16, 20, 30), dens = 0.085, acol = RGB(44, 54, 76), adec = RGB(12, 15, 24), glare = 0.15, haze = 0.5,
     bloomI = 1.1, bloomT = 1.05, ccSat = -0.12, ccCon = 0.14, ccTint = RGB(222, 232, 255) }
   local DAY = { bright = 3.0, amb = RGB(78, 80, 86), oamb = RGB(132, 134, 140), top = RGB(255, 248, 236), bot = RGB(42, 38, 32), diff = 1, spec = 1, exp = 0,
-    fog = RGB(176, 194, 214), dens = 0.17, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.25, haze = 0.7,
+    fog = RGB(176, 194, 214), dens = 0.07, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.25, haze = 0.3,
     bloomI = 0.35, bloomT = 1.6, ccSat = 0.04, ccCon = 0.07, ccTint = RGB(255, 255, 255) }
+  -- 夜视增亮多少档曝光（用户 11-22：「夜视仪视角沙漠的地面全是白色的」）：海岛的地面是草（亮度约 0.23），沙漠全是沙（约 0.5，亮一倍多），
+  --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）；沙漠少加 1.2 档，沙地落在跟海岛草地差不多的亮度
+  local Map = require(RS:WaitForChild("Map"))
+  local function nvEv() return Map.desert and 1.5 or 2.7 end
   local DUSK = { top = RGB(255, 168, 108), fog = RGB(206, 150, 120), acol = RGB(228, 160, 120), adec = RGB(170, 86, 58) }
 
   local dayK, clock = 0, 2.3
@@ -26323,15 +26351,16 @@ function DayNight.init(G)
     -- 开飞机飞得越高大气越淡、雾越远（用户：飞机视野有点近）
     local cam = workspace.CurrentCamera
     local hk = (G.fly and cam) and smooth(150, 1800, cam.CFrame.Position.Y) or 0
-    local nv = G.nvLight == true
+    -- 夜视仪、热成像（G.nvLight），坦克瞄准镜、车里观瞄设备的夜视档（G.sightNv / G.opticNv：原来开着瞄准镜时夜视仪让出画面、增亮也跟着撤了，镜里的夜视档一片墨绿）
+    local nv = G.nvLight == true or G.sightNv == true or G.opticNv == true
     local nk = 1 - dayK
     pcall(function()
       put(Lighting, "ClockTime", clock)
       put(Lighting, "Brightness", lerp(NIGHT.bright, DAY.bright, dayK))
       local amb, oamb = lc(NIGHT.amb, DAY.amb, dayK), lc(NIGHT.oamb, DAY.oamb, dayK)
       local exp = lerp(NIGHT.exp, DAY.exp, dayK)
-      if nv then   -- 夜视：本地增亮（白天只亮一点点）
-        exp += 2.7 * nk + 0.25 * dayK
+      if nv then   -- 夜视：本地增亮（白天只亮一点点；沙漠少加，见 nvEv）
+        exp += nvEv() * nk + 0.25 * dayK
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
       end
       -- 照明弹（Warfx.lua 的 G.illum）：附近有照明弹在烧，整片地亮起来——环境光往暖白抬、曝光加一点，跟着它一闪一闪
@@ -26351,11 +26380,12 @@ function DayNight.init(G)
       put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
       put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
       local wk = G.weather and G.weather.k or 0   -- 暴风雨（Warfx.lua）：雾变近、大气变浑
-      put(Lighting, "FogEnd", (12000 + 18000 * hk) * (1 - 0.45 * wk))
+      -- 老式的雾放到十万格（有 Atmosphere 时 Roblox 按大气算远处，这个基本不起作用；没有大气的时候也别挡）
+      put(Lighting, "FogEnd", 100000 * (1 - 0.7 * wk))
       local atm = Lighting:FindFirstChildOfClass("Atmosphere")
       if atm then
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
-        if nv then dens = math.max(0.06, dens * 0.55) end
+        if nv then dens = math.max(0.035, dens * 0.6) end
         put(atm, "Density", dens + 0.12 * wk)
         put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
         put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
@@ -26377,6 +26407,25 @@ function DayNight.init(G)
   end
   G.stepDayNight = step
   step(1)
+
+  -- 远处模糊（景深，用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：近处清楚、越远越糊（Roblox 景深的对焦距离、清楚范围最多 200 + 50 格）；
+  --   要看清远处的时候关掉：步兵开镜 / 举枪瞄准、望远镜、坦克瞄准镜、车里的观瞄设备、飞机光电吊舱、阵亡镜头（它自己有景深）；画面卡（自动画质低）也关
+  local far = Instance.new("DepthOfFieldEffect")
+  far.Name = "FarBlur"
+  far.FocusDistance, far.InFocusRadius, far.NearIntensity, far.FarIntensity = 200, 50, 0, 0.2
+  far.Parent = Lighting
+  G.farBlur = far   -- 测试用
+  G.frameConn("FarBlur", function()
+    local dr, fl = G.drive, G.fly
+    local sharp = G.scopeOn == true or G.fpsAiming == true or (dr ~= nil and (dr.sight or dr.eo)) or G.interiorOptic ~= nil
+      or (fl ~= nil and fl.eo == true) or (G.killcamOn ~= nil and G.killcamOn()) or (G.perfK or 1) < 0.7
+    local want = not sharp
+    if far.Enabled ~= want then far.Enabled = want end
+    if want then
+      local k = fl and 0.1 or 0.2   -- 开飞机看的本来就是几公里外：糊得轻一点
+      if math.abs(far.FarIntensity - k) > 0.005 then far.FarIntensity = k end
+    end
+  end)
 end
 
 return DayNight
@@ -26963,10 +27012,12 @@ function Drive.init(G)
       cc.Enabled = false
       clearHl()
       sight.Visible = false
+      G.sightNv = false
       return
     end
     sight.Visible = true
     local m = MODES[st.mode]
+    G.sightNv = m == "nv"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
     local thermal = m == "whot" or m == "bhot"
     eyepiece.Visible = not thermal
     screenBox.Visible = thermal
@@ -27127,7 +27178,8 @@ function Drive.init(G)
     local heavy = d.arch ~= "wheeled"
     local realEng = heavy and G.realLoop and G.realLoop("tankEngine", SS)   -- 真录音的坦克发动机（SoundLib；没载上照旧叠出来的）
     local rumble = realEng or G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 0.45, s = { 0.3, 0.3 }, loop = { 0.06, 0.5 }, eq = { 8, -2, -14 } }, SS, {})
-    local whine = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {})
+    -- 涡轮呜呜声（Roblox 自带「下坠呼啸」改调出来的）：有真录音时不要（用户 11-22：坦克移动声音很奇怪——卡通味的呼啸叠在真发动机上）
+    local whine = (not realEng) and G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1.5, s = { 0.7, 0.7 }, loop = { 1, 9 }, eq = { -8, 6, heavy and -2 or 3 } }, SS, {}) or nil
     -- 履带的哗啦声（用户 11-20：载具照 UE5 的水平升级）：咔哒那一下截一小段循环，开得越快一圈越短、越密；
     --   轮胎侧滑的沙沙声：风声削掉低音，侧滑越厉害越响
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
@@ -27162,12 +27214,15 @@ function Drive.init(G)
       engine.rumble.PlaybackSpeed = (engine.heavy and 0.24 or 0.32) + r * (engine.heavy and 0.22 or 0.32)
       engine.rumble.Volume = 0.3 + 0.35 * r
     end
-    engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
-    engine.whine.Volume = (0.6 + 2.6 * r * r) * (engine.realEng and 0.45 or 1)
+    if engine.whine then
+      engine.whine.PlaybackSpeed = (engine.heavy and 0.5 or 0.65) + r * 0.6
+      engine.whine.Volume = 0.6 + 2.6 * r * r
+    end
     local air = st and st.airS ~= nil
     if engine.clank then   -- 履带：速度越快越密；在天上没有
-      engine.clank.PlaybackSpeed = 0.55 + spd * 1.6
-      engine.clank.Volume = (air or spd < 0.02) and 0 or math.min(0.9, 0.15 + spd * 0.9)
+      -- 原来 0.55～2.15 倍速：一秒三十来下、连成一片电子嗡嗡声；放慢、放轻，听得出一节节的咔哒（有真录音时再轻一点）
+      engine.clank.PlaybackSpeed = 0.35 + spd * 0.8
+      engine.clank.Volume = (air or spd < 0.02) and 0 or math.min(0.5, 0.1 + spd * 0.45) * (engine.realEng and 0.6 or 1)
     end
     local slip = (st and not air) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
     engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
@@ -36978,7 +37033,8 @@ function Hud.init(G)
     local eye = (head and not G.drive) and head.CFrame.Position or cp
     curR += (wantRange() - curR) * math.min(1, dt * 3)
     rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
-    local ZOOM = MAPW * (MS / 2) / curR
+    -- 整张图多宽按 MapUI 现在的范围（G.mapSpan）：沙漠 ±EXT 比海岛宽两倍多，原来按海岛的 6100 × K 算，沙漠的小地图比雷达范围小了一截、亮点和地图对不上
+    local ZOOM = (G.mapSpan or MAPW) * (MS / 2) / curR
     if root and root.Parent == box and G.mapUV then
       if G.mapTheme then G.mapTheme("mini") end
       if G.mapFocus then G.mapFocus(pos.X, pos.Z, curR) end   -- 身边画细节块（MapUI 的卫星图）
@@ -38194,7 +38250,32 @@ function Interior.init(G)
     end
     return best
   end
-  G.interiorHover = function() return hover ~= nil and mode == "seat" end
+  -- 准心对着的有按键的屏幕（显示面 + 外面一圈边框、按键、按键下面印的字）：左键当成在操作屏幕，不开炮
+  --   （用户 11-22：「我操控显示屏的时候坦克会开炮，因为我点了鼠标左键」——原来只有小点正好落在某个键上才不开炮，
+  --   点在键旁边、键下面的字上、屏幕上，炮就打出去了）；平显的组合玻璃不算（透过它瞄准开火）
+  local hoverScr = nil
+  local function pickScreen(c)
+    local o = cam.CFrame.Position
+    local dir = cam.CFrame.LookVector
+    for _, s in ipairs(c.b.screens) do
+      local p = s.part
+      if p and s.opt and s.opt.keys and not s.opt.noBack then
+        local cf, sz = p.CFrame, p.Size * 0.5
+        local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
+        if ld.Z > 1e-4 then
+          local t = (-sz.Z - lo.Z) / ld.Z
+          if t > 0 and t < 1.6 * S then
+            local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
+            local m = ((s.opt.bezel or 0.036) + 0.02) * S
+            if math.abs(px) <= sz.X + m and math.abs(py) <= sz.Y + m then return s end
+          end
+        end
+      end
+    end
+    return nil
+  end
+  -- 开着观瞄设备（武器站左键就是开火）、瞄准镜的时候不算：hover 停在进镜前那一帧的值
+  G.interiorHover = function() return (hover ~= nil or hoverScr ~= nil) and mode == "seat" and optic == nil and not (G.drive and G.drive.sight) end
   G.interiorHoverKey = function() return hover end   -- 测试用
   local dot = Instance.new("Frame")
   dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -38226,11 +38307,15 @@ function Interior.init(G)
     local k = (mode == "seat" and not scopePhase()) and pickKey(c) or nil
     if hover and hover ~= k then hover.part.Color = hover.col end
     hover = k
+    hoverScr = (mode == "seat" and not scopePhase() and not k) and pickScreen(c) or nil
     dot.Visible = mode == "seat" and not hideUI
     if k then
       k.part.Color = RGB(255, 190, 60)
       local id = Screens.canon(k.label)
       tip.Text = k.label .. "  ——  " .. (Screens.KEYDESC[id] or "")
+      tip.Visible = not hideUI
+    elseif hoverScr then   -- 对着屏幕、没对准键：提示怎么按（这时左键不开炮）
+      tip.Text = T("小点对准屏幕边的按键再按左键（对着屏幕时左键不开炮）", "put the dot on a key to press it (no firing while looking at a screen)")
       tip.Visible = not hideUI
     else
       tip.Visible = false
@@ -38637,9 +38722,14 @@ function Interior.init(G)
   local LOOKS = {
     day = { -0.1, 0.10, 0.0, RGB(255, 255, 255) }, whot = { -1, 0.45, -0.32, RGB(225, 225, 225), Color3.new(1, 1, 1) },
     bhot = { -1, 0.25, 0.22, RGB(235, 235, 235), Color3.new(0, 0, 0) }, nv = { -1, 0.35, 0.10, RGB(120, 255, 140) },
+    -- 昼光镜（CROWS 摄像头、辅助瞄准镜、潜望镜）夜里用（用户 11-22：「坦克第三人称驾驶开镜全屏都是黄色」——夜视仪的增亮还留着、
+    --   昼光档颜色照原样，沙漠的沙子过曝成满屏的黄）：夜里看出去暗、发灰、偏冷，跟真的昼光镜在夜里一样只看得清个轮廓
+    dayN = { -0.7, 0.12, -0.05, RGB(212, 220, 236) },
   }
   local function applyLook(look)
     clearOhl()
+    G.opticNv = look == "nv"   -- 夜视档：昼夜（DayNight.lua）照夜视仪那样增亮
+    if look == "day" and G.isNight and G.isNight() then look = "dayN" end
     local L = LOOKS[look]
     if not L then icc.Enabled = false return end
     icc.Enabled = true
@@ -38802,6 +38892,7 @@ function Interior.init(G)
     end
     og.Enabled = false
     icc.Enabled = false
+    G.opticNv = false
     clearOhl()
     if o.useSight and G.driveSetSight then G.driveSetSight(false) end
     if c then ownHide(c, false) end
@@ -38837,9 +38928,11 @@ function Interior.init(G)
     for _, ch in ipairs(ret:GetChildren()) do ch:Destroy() end
     local vp = cam.ViewportSize
     local u = math.min(vp.X, vp.Y)
-    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or ((o.look == "day") and RGB(30, 30, 30) or RGB(235, 240, 235)))
+    -- 昼光镜的黑分划、黑字：夜里画面是暗的（LOOKS.dayN），黑的看不见，换成浅色
+    local dayLit = o.look == "day" and not (G.isNight and G.isNight())
+    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or (dayLit and RGB(30, 30, 30) or RGB(235, 240, 235)))
     if o.ret == "crows" or o.ret == "rear" then col = RGB(240, 240, 240) end
-    if o.ret == "gas" or o.ret == "gascn" then col = RGB(20, 20, 20) end
+    if (o.ret == "gas" or o.ret == "gascn") and dayLit then col = RGB(20, 20, 20) end
     ret.Size = UDim2.fromOffset(0, 0)
     ;(RETS[o.ret] or RETS.none)(u, col)
     -- 镜框形状：圆的目镜、长方形的屏幕、装填手潜望镜的长条
@@ -38856,7 +38949,7 @@ function Interior.init(G)
     oName.Position = UDim2.new(0.5, -hole.Size.X.Offset / 2 + 10, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oName.Size = UDim2.fromOffset(300, 20)
     oName.Text = o.name or ""
-    oName.TextColor3 = (o.look == "day" and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
+    oName.TextColor3 = (dayLit and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
     oInfo.Position = UDim2.new(0.5, hole.Size.X.Offset / 2 - 310, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oInfo.Size = UDim2.fromOffset(300, 20)
     oInfo.TextColor3 = oName.TextColor3
@@ -39437,7 +39530,7 @@ function Interior.init(G)
       if cur and cur.zoneOn then zoneHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       cfx.Enabled = false
-      hover = nil
+      hover, hoverScr = nil, nil
       return
     end
     if not cur then
@@ -47017,7 +47110,7 @@ function Night.init(G)
   ---------------------------------------------------------------- 光晕分级（用户：游戏非常卡顿）
   -- 地图上每盏灯（跑道灯、舰灯、营地灯，World.light）带一个 BillboardGui 光晕，全图 600 多个、6000 格内都在画——
   --   一个光晕就是一组界面（两块圆角方块），几百个一起画很费。按离镜头的距离分级：450 格内全亮，1100 格内亮一半，
-  --   2400 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
+  --   4000 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
   --   画面卡（G.perfK 低）距离一起缩；同时亮着的超过 GLOW_CAP 就再缩一点。闪烁的灯灭的那一下也关着（下面 anim 用 glowDark）
   local GLOW_CAP = 150
   local glows, glowSeen, glowDark, glowAllow = {}, {}, {}, {}   -- glowSeen[光晕] = 它的记录
@@ -47035,7 +47128,7 @@ function Night.init(G)
     if not cam or #glows == 0 then return end
     local cp = cam.CFrame.Position
     local k = math.clamp(G.perfK or 1, 0.55, 1.2) / glowScale
-    local d1, d2, d3 = 450 * k, 1100 * k, 2400 * k
+    local d1, d2, d3 = 450 * k, 1100 * k, 4000 * k   -- 最远一档原来 2400（视野改成无限远以后远处的灯一截就没了）；亮着的太多照样按 GLOW_CAP 往回缩
     local n, j = 0, 0
     for idx = 1, #glows do
       local x = glows[idx]
@@ -50081,7 +50174,8 @@ function Scenery.init(G)
   -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（11 × 11 块，每块 2048 格，镜头外一万格以上，盖过雾的尽头 8500）：飞到哪都看得到海一直铺到天边，
   --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
   local Map = G.Map
-  local OS, ON = 2048, 7   -- 15 × 15 块：镜头外一万五千格（地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
+  -- 21 × 21 块：镜头外两万一千格（用户 11-22：视野改成无限远，大气放淡以后原来一万五千格的边看得出来；地形海水铺到 ±SEA_R 以后，这圈平面只在作战区边上才看得到）
+  local OS, ON = 2048, 10
   local ocean = Instance.new("Folder")
   ocean.Name = "Ocean"
   ocean.Parent = workspace
@@ -50095,9 +50189,12 @@ function Scenery.init(G)
     p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
     p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    p.CFrame = CF(0, -60000, 0)
+    p.Parent = ocean
     tiles[i] = p
   end
   local seaKey = nil
+  local shown, moveL, moveCF = {}, {}, {}
   local RI, SEA_Y = 0, -0.6
   -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
   --   沙漠没有海，地形 ±R 外面接一圈沙色的平面（飞出地形边上看着还是戈壁一直铺到天边）
@@ -50120,23 +50217,23 @@ function Scenery.init(G)
     local key = gx * 65536 + gz
     if key == seaKey then return end
     seaKey = key
+    -- 一直挂在 Ocean 下面，一次 BulkMoveTo 挪完（原来过一块就把几百块零件摘下、挂上，开飞机每过两千格画面顿一下）；
+    --   落在地形海水那片里的沉到底下（不和地形水面打架）
     local n = 0
     for i = gx - ON, gx + ON do
       for k = gz - ON, gz + ON do
         n += 1
-        local p = tiles[n]
-        if i >= -RI and i < RI and k >= -RI and k < RI then
-          p.Parent = nil
-        else
-          p.CFrame = CF((i + 0.5) * OS, SEA_Y, (k + 0.5) * OS)
-          p.Parent = ocean
-        end
+        local inT = i >= -RI and i < RI and k >= -RI and k < RI
+        moveL[n] = tiles[n]
+        moveCF[n] = CF((i + 0.5) * OS, inT and -60000 or SEA_Y, (k + 0.5) * OS)
+        shown[n] = not inT
       end
     end
+    workspace:BulkMoveTo(moveL, moveCF, Enum.BulkMoveMode.FireCFrameChanged)
   end
   G.oceanTiles = function()
     local n = 0
-    for _, p in ipairs(tiles) do if p.Parent then n += 1 end end
+    for i = 1, #tiles do if shown[i] then n += 1 end end
     return n
   end
 
@@ -53265,9 +53362,10 @@ function Soldier.init(G)
     step = function(v, dt, camPos)
       local target = v.root.CFrame
       local p = target.Position
-      -- 远了（1500 格外，跟着自动画质 G.perfK 缩放）：整个人收起来（不画、动作也不算）；回到范围里再摆回去
+      -- 远了（2600 格外，跟着自动画质 G.perfK 缩放；原来 1500，用户 11-22 视野改成无限远：狙击镜、望远镜里一公里外的人也看得见）：
+      --   整个人收起来（不画、动作也不算）；回到范围里再摆回去（700 格外的动作本来就四分之一秒才算一次）
       local dist = (p - camPos).Magnitude
-      local hideD = 1500 * (G.perfK or 1)
+      local hideD = 2600 * (G.perfK or 1)
       if dist > hideD then
         if not v.hidden then
           v.hidden, v.home = true, v.model.Parent

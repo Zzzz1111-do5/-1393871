@@ -133,6 +133,21 @@ end
 check(sand > 0 and sea == 0, string.format("飞到地形边上：外面接沙色平面 %d 块，没有海", sand))
 local errs0 = #R.errors
 
+print("⑥b 夜视、视野（用户 11-22：「夜视仪视角沙漠的地面全是白色的」「视野给我改成无限远好了，然后远处模糊这样」）")
+do
+  local L = R.services.Lighting
+  T.runUntil(function() return C.nvgOn and C.nvgOn() end, 12)
+  R.run(0.5)   -- 昼夜（DayNight.lua）一秒更新十次
+  local ev = L.ExposureCompensation
+  check(C.nvgOn() and ev > 1.6 and ev < 2.4, string.format("沙漠开着夜视：曝光加到 %.2f（海岛 3.25；沙子亮一倍多，少加 1.2 档不过曝）", ev))
+  local atm = L:FindFirstChildOfClass("Atmosphere")
+  check(atm ~= nil and atm.Density < 0.07, string.format("大气放淡（夜视里 %.3f；原来夜里 0.21、开夜视 0.12）", atm and atm.Density or -1))
+  check(L.FogEnd >= 90000, string.format("老式的雾放到 %d 格", L.FogEnd))
+  local fb = L:FindFirstChild("FarBlur")
+  check(fb ~= nil and fb.Enabled and fb.FarIntensity > 0.05 and fb.NearIntensity == 0 and fb.FocusDistance <= 200 and fb.InFocusRadius <= 50,
+    "远处景深模糊开着：近处不糊，对焦距离、清楚范围在 Roblox 的上限以内（200、50 格）")
+end
+
 print("⑦ 开战：征服——占点、据点少的一边掉兵力")
 local okB = T.runUntil(function() return G.round.phase == "battle" end, G.Config.Round.prep + 30)
 check(okB, "准备阶段过了开战")

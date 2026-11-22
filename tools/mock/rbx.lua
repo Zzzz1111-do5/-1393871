@@ -2186,7 +2186,7 @@ local function envFor(scriptInst, sd)
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
     ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
-    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）
+    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() local hk = R.clockHook if hk then local v = hk() if v then return v end end return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）；clockHook：测试临时让某个协程看真时间（寻路后台按 CPU 时间让帧，navslice.lua）
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,
     print = function(...) if R.verbose then print(...) end end,
     PROBE_SET = function(v) R.lastProbe = v end,

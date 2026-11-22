@@ -145,16 +145,16 @@ function World.lighting()
     Lighting.ExposureCompensation = 0.55
     Lighting.FogColor = RGB(16, 20, 30)
     Lighting.FogStart = 900
-    Lighting.FogEnd = 12000   -- 地图放大了：看得远一点（远海客户端铺到镜头外一万格）
+    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的看不清改成客户端的景深模糊，DayNight.lua）
   end)
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.21   -- 原来 0.3（用户：视野很短）：远处的岛、舰、飞机看得更远
+    atm.Density = 0.085   -- 原来 0.3、0.21（用户：视野很短；11-22 改成无限远）：客户端昼夜（DayNight.lua）按这个量级再调
     atm.Offset = 0.06
     atm.Color = RGB(44, 54, 76)
     atm.Decay = RGB(12, 15, 24)
     atm.Glare = 0.15
-    atm.Haze = 1.1
+    atm.Haze = 0.5
     atm.Parent = Lighting
   end)
   pcall(function()   -- 星空、大一点的月亮
