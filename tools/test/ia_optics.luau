@@ -11,6 +11,20 @@ local roblox = require("@lune/roblox")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local H = require("./harness")
+-- 拿第 i 件（同 Play.lua 的 tools()：按 Slot 属性排）：已经拿着就不按——再按一次同一个数字键是收枪（11-21 起）
+local function slotTool(pl, i)
+	local list = {}
+	for _, holder in ipairs({ pl:FindFirstChildOfClass("Backpack"), pl.Character }) do
+		if holder then for _, t in ipairs(holder:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("Slot") then table.insert(list, t) end end end
+	end
+	table.sort(list, function(a, b) return a:GetAttribute("Slot") < b:GetAttribute("Slot") end)
+	return list[i]
+end
+local function pressSlot(pl, i, key)
+	local t = slotTool(pl, i)
+	if t and pl.Character and t.Parent == pl.Character then return end
+	H.key(pl, key, true) H.key(pl, key, false)
+end
 local V3, CF, Enum, Inst = roblox.Vector3, roblox.CFrame, roblox.Enum, roblox.Instance
 H.quietWarn = process.args[2] ~= "v"
 H.realProjection = true
@@ -96,7 +110,7 @@ H.run(2)
 local C = H.Gs[pl.Name]
 local P = G.P[pl]
 check(P and P.alive, "狙击手在舰上出生")
-H.key(pl, Enum.KeyCode.One, true) H.key(pl, Enum.KeyCode.One, false)
+pressSlot(pl, 1, Enum.KeyCode.One)
 H.run(1)
 if not (P.char and P.char:FindFirstChildOfClass("Tool")) then
 	local prev = H.ctx
@@ -184,7 +198,7 @@ act(p2, "deploy", "sniper", "camp")
 H.run(3)
 local C2 = H.Gs[p2.Name]
 local P2 = G.P[p2]
-H.key(p2, Enum.KeyCode.One, true) H.key(p2, Enum.KeyCode.One, false)
+pressSlot(p2, 1, Enum.KeyCode.One)
 H.run(1)
 for _ = 1, 3 do
 	if P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") then break end

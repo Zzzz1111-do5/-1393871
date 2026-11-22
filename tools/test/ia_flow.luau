@@ -5,6 +5,20 @@
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local H = require("./harness")
+-- 拿第 i 件（同 Play.lua 的 tools()：按 Slot 属性排）：已经拿着就不按——再按一次同一个数字键是收枪（11-21 起）
+local function slotTool(pl, i)
+	local list = {}
+	for _, holder in ipairs({ pl:FindFirstChildOfClass("Backpack"), pl.Character }) do
+		if holder then for _, t in ipairs(holder:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("Slot") then table.insert(list, t) end end end
+	end
+	table.sort(list, function(a, b) return a:GetAttribute("Slot") < b:GetAttribute("Slot") end)
+	return list[i]
+end
+local function pressSlot(pl, i, key)
+	local t = slotTool(pl, i)
+	if t and pl.Character and t.Parent == pl.Character then return end
+	H.key(pl, key, true) H.key(pl, key, false)
+end
 local V3, CF = roblox.Vector3, roblox.CFrame
 H.quietWarn = process.args[2] ~= "v"
 local clock0 = os.clock()
@@ -198,7 +212,7 @@ if a1.Character and PA.alive then
 		H.run(0.3)
 	end
 	regive("sniper")
-	H.key(a1, Enum.KeyCode.One, true) H.key(a1, Enum.KeyCode.One, false)
+	pressSlot(a1, 1, Enum.KeyCode.One)
 	H.run(0.5)
 	H.mouseDown(a1, 640, 360, Enum.UserInputType.MouseButton2)
 	H.run(0.8)

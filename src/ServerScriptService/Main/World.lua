@@ -183,6 +183,119 @@ end
 local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(98, 148, 64), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
   Mud = RGB(54, 47, 40), Concrete = RGB(150, 148, 140), Asphalt = RGB(70, 72, 76) }   -- 水泥、柏油：港口的码头平地、坡道
 
+---------------------------------------------------------------- 地形网格器校准
+-- 用户 11-22：「无数个 AI 修了半天修不好，坦克半截身子卡在地里」。
+--   车、机器人小兵、沙袋、工事全按 Map.height（一个数）摆；地形是 4 格见方的体素，最上面那个体素填几成（占有率）是我们写的，
+--   画出来的地面到底在哪是 Roblox 的网格器定的——它不是「填几成，地面就在几成高」（2017 年有人试过一块全是一成满的体素，看着是满的；
+--   2024 年有人把占有率乘 10 才去掉棱）。画出来的地面比 Map.height 高一截，车就像半截陷在地里，草叶去掉了也一样。
+--   办法：开服写地图之前，在地图外面很深的地方（谁也看不见）写两排试验平台，最上面一层体素分别填 0、5%、10%……100%，
+--   用射线量每块的地面实际在哪，得到「占有率 → 地面在这一层体素里几成高」的对照表；写地图时倒过来查：想让地面在 Map.height，
+--   就填对照表里对应的占有率。量不出来（射线打不到、数不对）就照原来的写法，Output 里说一声。
+--   量出来的表写在 Terrain 的属性 SurfCal 上（客户端性能面板、测试看），Output 里也打一行
+local CAL_OCC = { 0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 }
+local CAL_PAD, CAL_GAP = 6, 4   -- 每块试验平台 6 × 6 列，平台之间空 4 列（边上的斜坡不影响中间）
+local CAL = {}                  -- [材质名] = { o = {…}, s = {…} }：s 单调不减，s[1] 是全空（下面一层满）、s[#] 是这一层也满
+local function calibrate(T, mats)
+  local RES = Map.RES
+  local SR = Map.SEA_R or Map.R
+  local x0 = math.floor((SR + 2048) / RES) * RES   -- 地图外面
+  local y0 = -2048                                  -- 很深：海底下面空着
+  local z0 = 0
+  local n = #CAL_OCC
+  local NX, NY, NZ = n * (CAL_PAD + CAL_GAP), 5, #mats * (CAL_PAD + CAL_GAP)
+  local M, O = table.create(NX), table.create(NX)
+  for i = 1, NX do
+    local Mi, Oi = table.create(NY), table.create(NY)
+    for j = 1, NY do
+      local mr, orow = table.create(NZ, MAT.Air), table.create(NZ, 0)
+      Mi[j], Oi[j] = mr, orow
+    end
+    M[i], O[i] = Mi, Oi
+  end
+  -- 第 0、1 层满（底座），第 2 层是试验的那层（占有率按平台），第 3、4 层空
+  for a = 0, n - 1 do
+    for b = 0, #mats - 1 do
+      for di = 0, CAL_PAD - 1 do
+        for dk = 0, CAL_PAD - 1 do
+          local i, k = a * (CAL_PAD + CAL_GAP) + di + 1, b * (CAL_PAD + CAL_GAP) + dk + 1
+          M[i][1][k], O[i][1][k] = MAT.Ground, 1
+          M[i][2][k], O[i][2][k] = mats[b + 1], 1
+          local oc = CAL_OCC[a + 1]
+          if oc > 0 then M[i][3][k], O[i][3][k] = mats[b + 1], oc end
+        end
+      end
+    end
+  end
+  local reg = Region3.new(V(x0, y0, z0), V(x0 + NX * RES, y0 + NY * RES, z0 + NZ * RES))
+  local okW = pcall(function() T:WriteVoxels(reg, RES, M, O) end)
+  if not okW then return false, "写试验平台失败" end
+  local params = RaycastParams.new()
+  params.FilterType = Enum.RaycastFilterType.Include
+  params.FilterDescendantsInstances = { T }
+  params.IgnoreWater = true
+  local ybT = y0 + 2 * RES   -- 试验那层的底
+  local res, why = nil, "射线打不到试验平台"
+  for _ = 1, 40 do   -- 刚写的体素物理那边可能还没好：最多等两秒左右
+    local all = {}
+    local ok = true
+    for b = 1, #mats do
+      local o, sv = {}, {}
+      for a = 1, n do
+        local cx = x0 + ((a - 1) * (CAL_PAD + CAL_GAP) + CAL_PAD / 2) * RES
+        local cz = z0 + ((b - 1) * (CAL_PAD + CAL_GAP) + CAL_PAD / 2) * RES
+        local hit = workspace:Raycast(V(cx, y0 + NY * RES + 6, cz), V(0, -(NY * RES + 12), 0), params)
+        if not hit then ok = false break end
+        o[a], sv[a] = CAL_OCC[a], (hit.Position.Y - ybT) / RES
+      end
+      if not ok then break end
+      all[mats[b].Name] = { o = o, s = sv }
+    end
+    if ok then res = all break end
+    task.wait(0.05)
+  end
+  pcall(function() T:FillBlock(CFrame.new(reg.CFrame.Position), reg.Size + V(8, 8, 8), MAT.Air) end)   -- 量完拆掉
+  if not res then return false, why end
+  -- 检查：全空那块的地面在层底附近、全满那块正好高一层（换个位置的同一种摆法）；数值整理成单调不减
+  for name, t in pairs(res) do
+    local s0, s1 = t.s[1], t.s[#t.s]
+    if math.abs(s0) > 0.8 or math.abs(s1 - s0 - 1) > 0.2 then
+      return false, string.format("%s 量出来不对：全空 %.2f、全满 %.2f", name, s0, s1)
+    end
+    for a = 2, #t.s do t.s[a] = math.max(t.s[a], t.s[a - 1]) end
+    t.s[#t.s] = t.s[1] + 1   -- 全满就是上一层全空：按定义对齐
+  end
+  return true, res
+end
+-- 想让地面在高度 h：返回最上面那层体素的序号（y / RES 向下取整的那种）和它的占有率；这层下面全满、上面全空。
+--   没校准：同原来的写法（地面在几成高就填几成，最少 5%）
+local function surfAt(h, t)
+  local x = h / Map.RES
+  if not t then
+    local j = math.floor(x)
+    local f = x - j
+    if f <= 1e-6 then return j, 0 end
+    return j, math.max(f, 0.05)
+  end
+  local s, o = t.s, t.o
+  local j = math.floor(x - s[1])
+  local g = x - j   -- 在 [s0, s0 + 1) 里
+  if g <= s[1] then return j, 0 end
+  for a = 2, #s do
+    if g <= s[a] then
+      local s0, s1 = s[a - 1], s[a]
+      if a == 2 and s1 - s0 > 0.1 then   -- 全空和最小的一档之间差得多（网格器画不出这么薄）：挑近的那个
+        return j, ((g - s0) < (s1 - g)) and 0 or o[2]
+      end
+      if s1 - s0 < 1e-4 then return j, o[a] end
+      return j, o[a - 1] + (g - s0) / (s1 - s0) * (o[a] - o[a - 1])
+    end
+  end
+  return j, 1
+end
+local function calFor(mat) return CAL[mat.Name] or CAL.LeafyGrass end
+World.surfAt = function(h, matName) return surfAt(h, matName and (CAL[matName] or CAL.LeafyGrass) or CAL.LeafyGrass) end   -- 测试用
+World.terrainCal = function() return CAL end
+
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
 --   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
 local function writeChunk(T, x0, z0, n, yFloor)
@@ -228,13 +341,16 @@ local function writeChunk(T, x0, z0, n, yFloor)
         if top == Grass then top = Leafy end
       end
       local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
+      -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
+      local jT, oT = surfAt(h, calFor(top))
       for j = 0, NY - 1 do
-        local yb = (yb0 + j) * RES
+        local ja = yb0 + j
+        local yb = ja * RES
         local m, o
-        if yb + RES <= h then
+        if ja < jT then
           m, o = (yb + RES > h - 5) and top or under, 1
-        elseif yb < h then
-          m, o = top, math.clamp((h - yb) / RES, 0.05, 1)
+        elseif ja == jT and oT > 0 then
+          m, o = top, math.min(oT, 1)
         elseif yb + RES <= 0 then
           m, o = Water, 1
         else
@@ -265,6 +381,29 @@ function World.terrain(onProgress)
     --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
+  -- 先量网格器（见上面 calibrate）：量出来的对照表写地图时用
+  do
+    local okC, res = calibrate(T, { MAT.LeafyGrass, MAT.Sand })
+    if okC then
+      CAL = res
+      local parts = {}
+      for _, name in ipairs({ "LeafyGrass", "Sand" }) do
+        local t = res[name]
+        if t then
+          local bits = {}
+          for a = 1, #t.o do table.insert(bits, string.format("%g:%.2f", t.o[a], t.s[a])) end
+          table.insert(parts, name .. "=" .. table.concat(bits, ","))
+        end
+      end
+      local str = table.concat(parts, ";")
+      pcall(function() T:SetAttribute("SurfCal", str) end)
+      print("[地形] 网格器校准：占有率 → 地面在体素里几成高（" .. str .. "）")
+    else
+      CAL = {}
+      pcall(function() T:SetAttribute("SurfCal", "fail:" .. tostring(res)) end)
+      warn("[地形] 网格器校准没做成（" .. tostring(res) .. "）：照原来的写法")
+    end
+  end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do

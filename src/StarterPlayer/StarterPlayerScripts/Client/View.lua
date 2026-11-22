@@ -476,11 +476,26 @@ function View.init(G)
     local W = M.wheels
     local rough = 1
     local onWater = Map.height(pos.X, pos.Z) < -1.5
+    -- 真地形（用户 11-22：坦克半截身子卡在地里）：别人的车（服务器按 Map.height 放的）0.2 秒左右量一次车底的真地面（Drive.lua 的 terrainLift），
+    --   平滑着抬高 / 放低；自己开的车 Drive 已经算进去了。轮子、履带印也按同一个地面
+    local lift = 0
+    if own then lift = own.tLift or 0
+    elseif not v.wrecked then
+      v.tpT = (v.tpT or 0) - dt
+      if v.tpT <= 0 then
+        v.tpT = 0.18 + ((tonumber(v.id) or 0) % 7) * 0.01
+        local _, yawB = base:ToEulerAnglesYXZ()
+        v.tLiftT = (not far and not onWater and G.terrainLift) and (G.terrainLift(d, pos, yawB) or 0) or 0
+      end
+      v.tLift = (v.tLift or 0) + ((v.tLiftT or 0) - (v.tLift or 0)) * math.min(1, dt * 5)
+      lift = v.tLift
+      if math.abs(lift) > 1e-3 then base = base + V(0, lift, 0) end
+    end
     local sF, nF, sB, nB, sL, nL, sR, nR, sum = 0, 0, 0, 0, 0, 0, 0, 0, 0
     if not far then
       for _, w in ipairs(W) do
         local wp = (base * CF(w.x, 0, w.z)).Position
-        local gy = Map.height(wp.X, wp.Z)
+        local gy = Map.height(wp.X, wp.Z) + lift
         local tgt
         local trv = M.travel or d.travel   -- 原模型的履带车：履带是死的，负重轮只能动一点
         if gy < -0.5 and onWater then tgt = -trv   -- 在水里：轮子垂下去
@@ -619,7 +634,7 @@ function View.init(G)
         for sgn = -1, 1, 2 do
           local o = base.RightVector * (sgn * trackX)
           local p = mid + o
-          local gy = Map.height(p.X, p.Z)
+          local gy = Map.height(p.X, p.Z) + lift
           trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
         end
         v.markPos = pos

@@ -285,11 +285,43 @@ function Drive.init(G)
       end
       if lift > 0.2 then y += math.min(lift - 0.2, 4) end
     end
+    if st and st.tLift then y += st.tLift end   -- 真地形比算的高度高 / 低多少（terrainLift，平滑过的；baseAt 只给自己开的车用）
     local fwd = (V(f.X, yf, f.Z) - V(b.X, yb, b.Z)).Unit
     local side = (V(r.X, yr, r.Z) - V(l.X, yl, l.Z)).Unit
     local up = side:Cross(fwd).Unit
     return CFrame.fromMatrix(V(c.X, y, c.Z), side, up, -fwd)
   end
+
+  -- 车底下真的地形在哪（用户 11-22：「无数个 AI 修了半天修不好，坦克半截身子卡在地里」）：车底五个点往下打射线（只打地形、不管水），
+  --   真地面比 Map.height 平均高（低）多少就把车抬高（放低）多少——Roblox 地形网格器画出来的地面和算的高度对不上时，车照样落在看得见的地面上。
+  --   服务器开服时已经按量出来的网格器对照表写地形（World.lua 的 calibrate），对上了这里就是 0；没对上、弹坑挖低了也跟着。
+  --   打不着（地形还没复制过来、在水里）就当 0；最多抬 4 格、放 1.5 格。View.lua 给别人的车也用它
+  local groundParams = RaycastParams.new()
+  groundParams.FilterType = Enum.RaycastFilterType.Include
+  groundParams.IgnoreWater = true
+  local LIFT_PTS = { { 0, 0 }, { 0.35, 0 }, { -0.35, 0 }, { 0, 0.35 }, { 0, -0.35 } }
+  local function terrainLift(d, pos, yaw)
+    local T = workspace:FindFirstChildOfClass("Terrain")
+    if not T then return nil end
+    groundParams.FilterDescendantsInstances = { T }
+    local face = V(-math.sin(yaw), 0, -math.cos(yaw))
+    local right = V(-face.Z, 0, face.X)
+    local sum, n = 0, 0
+    for _, o in ipairs(LIFT_PTS) do
+      local p = pos + face * (o[1] * d.L) + right * (o[2] * d.W)
+      local h = Map.height(p.X, p.Z)
+      if h > 0.5 then
+        local r = workspace:Raycast(V(p.X, h + 8, p.Z), V(0, -16, 0), groundParams)
+        if r then
+          sum += r.Position.Y - h
+          n += 1
+        end
+      end
+    end
+    if n < 3 then return nil end
+    return math.clamp(sum / n, -1.5, 4)
+  end
+  G.terrainLift = terrainLift
 
   local mapParams = RaycastParams.new()
   mapParams.FilterType = Enum.RaycastFilterType.Include
@@ -743,6 +775,18 @@ function Drive.init(G)
         st.wallT = os.clock()
       end
     end
+    -- 真地形（terrainLift）：0.15 秒量一次，平滑着跟（量一下差太多就在 Output 说一声，好对照）
+    st.tProbeT = (st.tProbeT or 0) - dt
+    if st.tProbeT <= 0 then
+      st.tProbeT = 0.15
+      local L = terrainLift(d, st.pos, st.yaw)
+      st.tLiftT = L or 0
+      if L and math.abs(L) > 0.75 and not st.tLiftSaid then
+        st.tLiftSaid = true
+        print(string.format("[地形] 车底下看得见的地面比算的高度%s %.2f 格：车已经按看得见的地面摆", (L > 0) and "高" or "低", math.abs(L)))
+      end
+    end
+    st.tLift = (st.tLift or 0) + ((st.tLiftT or 0) - (st.tLift or 0)) * math.min(1, dt * 6)
     local base = baseAt(d, st.pos, st.yaw, false)
     st.slopeS = math.clamp(base.LookVector.Y, -1, 1)   -- 车头朝上为正（下一帧的上坡阻力）
     -- 腾空（UE5 的车冲过坡顶会飞起来）：地面只能托住车、拉不住——车照「上一刻往上的速度 + 重力」走的抛物线比地面高，就离地飞一会儿；

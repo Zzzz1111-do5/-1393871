@@ -5,6 +5,12 @@
 --     看不到的地方按同类车的通常做法补（标了「推测」）
 local Kit = require(script.Parent:WaitForChild("InteriorKit"))
 local V, CF, ANG = Vector3.new, CFrame.new, CFrame.Angles
+-- 平显原模型的元数据（tools/weapons/hud.mjs 生成：每块的中心、大小，组合玻璃多大）
+local HUDM = nil
+do
+  local ok, r = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("HudMeta", 3)) end)
+  if ok and type(r) == "table" then HUDM = r end
+end
 local RGB = Color3.fromRGB
 local MAT = Enum.Material
 local C = Kit.C
@@ -889,9 +895,36 @@ function Defs.jet(b, ctx, L)
   if L.hud ~= false then
     local hw, hh = L.hudW or 0.17, L.hudH or 0.14
     local HC = RGB(30, 32, 34)
+    local gy = -0.125 + hh / 2   -- 组合玻璃中心（下沿贴着投影仪上面）
+    -- 平显原模型（用户 11-22：「把飞机驾驶舱的光学瞄准屏直接搬来用」「j15t 原模型自带内饰」）：歼-15T 原模型自带座舱里的那套——
+    --   黑色弧形框、上下两层组合玻璃、底座（tools/weapons/hud.mjs 抠出来，models/optics/hud15.glb）。L.hudModel 的机型导入了就换上，
+    --   按组合玻璃的宽高对上符号那块屏（符号屏照旧正对着人、在玻璃中间：符号不变形）；底座沉进仪表板太多就整个往上挪一点
+    local hm = L.hudModel and HUDM and HUDM[L.hudModel]
+    local hf = hm and Kit.imported(L.hudModel)
+    if hm and hf then
+      local k = math.clamp(math.max(hw * 1.1 / hm.glass.w, hh * 1.05 / hm.glass.h), 0.7, 1.2)
+      local fr = hm.parts.Frame
+      local low = gy + (fr.c[2] - fr.s[2] / 2) * k
+      if low < -0.23 then gy += -0.23 - low end
+      local hcf = CF(0, gy, -0.66)
+      for name, p in pairs(hm.parts) do
+        local src = hf:FindFirstChild("O_" .. L.hudModel .. "__" .. name)
+        if src and src:IsA("BasePart") then
+          local mp = b:mesh(H, src, V(p.s[1], p.s[2], p.s[3]) * k, hcf * CF(V(p.c[1], p.c[2], p.c[3]) * k))
+          if name == "Glass" then   -- 组合玻璃：几乎透明、一点绿（原模型的玻璃是半透明的黑，在 Roblox 里太暗）
+            mp.CastShadow = false
+            mp.Transparency = 0.9
+            mp.Color = RGB(150, 205, 165)
+          end
+          b.hudModel = (b.hudModel or 0) + 1
+        end
+      end
+    end
+    if b.hudModel then
+      -- 原模型：零件拼的投影仪、框不要
+    else
     if UFCW then bx(hw + 0.03, 0.08, 0.16, 0, -0.165, -0.70, HC, MAT.Metal)
     else bx(hw + 0.03, 0.08, 0.22, 0, -0.165, -0.66, HC, MAT.Metal) end
-    local gy = -0.125 + hh / 2   -- 组合玻璃中心（下沿贴着投影仪上面）
     if L.hudFrame == "box" then   -- 歼-15T 参考图：一圈厚圆角黑框，左边一个小摄像盒
       local t = 0.022
       for _, sx in ipairs({ -1, 1 }) do bx(t, hh + t, 0.03, sx * (hw / 2 + t / 2), gy + t / 2, -0.665, HC, MAT.SmoothPlastic) end
@@ -905,6 +938,7 @@ function Defs.jet(b, ctx, L)
       bx(hw + 0.026, 0.012, 0.014, 0, gy + hh / 2 + 0.018, -0.67, HC, MAT.Metal)
     else
       for _, sx in ipairs({ -1, 1 }) do bx(0.012, 0.15, 0.012, sx * (hw / 2), -0.07, -0.67, HC, MAT.Metal) end
+    end
     end
     local hs = b:screen(H, hw, hh, CFrame.lookAt(V(0, gy, -0.66), V(0, gy + 0.025, 0.2)), "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.004, depth = 0.004, noBack = true })
     hs.part.Material = MAT.Glass   -- 组合玻璃：真透明、带一点绿（原来后面垫着一块不透明黑底板）
@@ -1072,12 +1106,12 @@ function Defs.jet(b, ctx, L)
 end
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
-Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
+Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
-Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
-Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
-Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
-Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
+Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+Defs.j50 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
+Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
   hoop = { z = -0.78, th = 0.075, compass = true } }) end
 Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3, goldGlass = true }) end
 Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, hudW = 0.15, hudH = 0.17, hudFrame = "tall", stick = "side", goldGlass = true }) end

@@ -375,6 +375,14 @@ roblox.implementMethod("Terrain", "FillBlock", function(self, cf, size, mat)
 	if typeof(cf) ~= "CFrame" or typeof(size) ~= "Vector3" or typeof(mat) ~= "EnumItem" then error("FillBlock 参数不对", 2) end
 	H.terrainFills += 1
 	terrOp({ k = "block", cf = cf, size = size, m = mat.Name })
+	if H.voxCols and mat == Enum.Material.Air then   -- 拆掉校准平台：记的列一起清掉
+		local p0 = cf.Position
+		for key in H.voxCols do
+			local ix, iz = string.match(key, "^(%-?%d+),(%-?%d+)$")
+			local x, z = tonumber(ix) * 4 + 2, tonumber(iz) * 4 + 2
+			if math.abs(x - p0.X) <= size.X / 2 and math.abs(z - p0.Z) <= size.Z / 2 then H.voxCols[key] = nil end
+		end
+	end
 end)
 roblox.implementMethod("Terrain", "FillBall", function(self, center, radius, mat)
 	if typeof(center) ~= "Vector3" or type(radius) ~= "number" or typeof(mat) ~= "EnumItem" then error("FillBall 参数不对", 2) end
@@ -417,7 +425,33 @@ roblox.implementMethod("Terrain", "WriteVoxels", function(self, region, res, mat
 	if typeof(m) ~= "EnumItem" then error("WriteVoxels 材质要是 Enum.Material", 2) end
 	H.voxelWrites += 1
 	H.voxelCount += nx * ny * nz
+	-- 地图下面很深的小块（开服的网格器校准平台，World.lua 的 calibrate）：每一列记下各层占有率，射线照「几成满地面就在几成高」算
+	--   （同 tools/mock/rbx.lua；地图本身的块不记，射线照 Map.height）
+	local mn = region.CFrame.Position - sz / 2
+	if nx * ny * nz <= 60000 and mn.Y < -1000 then
+		H.voxCols = H.voxCols or {}
+		for i = 1, nx do
+			for k = 1, nz do
+				local col = { y0 = mn.Y, occ = {} }
+				for j = 1, ny do
+					local mm = mats[i][j][k]
+					col.occ[j] = (mm ~= Enum.Material.Air and mm ~= Enum.Material.Water) and (occ[i][j][k] or 0) or 0
+				end
+				H.voxCols[math.floor((mn.X + (i - 1) * 4) / 4 + 0.5) .. "," .. math.floor((mn.Z + (k - 1) * 4) / 4 + 0.5)] = col
+			end
+		end
+	end
 end)
+-- 记下的校准平台那一列的地面高度（没记就 nil）
+local function voxColTop(x, z)
+	local c = H.voxCols and H.voxCols[math.floor(x / 4) .. "," .. math.floor(z / 4)]
+	if not c then return nil end
+	for j = #c.occ, 1, -1 do
+		local o = c.occ[j]
+		if o > 0 then return c.y0 + (j - 1) * 4 + 4 * math.min(o, 1) end
+	end
+	return -1e9
+end
 roblox.implementMethod("Terrain", "SetMaterialColor", function(self, mat, color) end)
 
 -- 射线：零件按长方体（球按外接盒）算，地面是 y = 0 的地形
@@ -587,8 +621,15 @@ function raycast0(o, d, params)
 	if include then terrainOK = terrain ~= nil and inList(terrain, list) elseif terrain and inList(terrain, list) then terrainOK = false end
 	local normal = V3.new(0, 1, 0)
 	if terrainOK and H.terrainHeight then   -- 有地图高度（ReplicatedStorage.Map）：沿射线一步步找打到地面 / 水面的地方
-		local hf, water = H.terrainHeight, not (params and params.IgnoreWater)
-		local function surf(x, z) local y = hf(x, z) if water and y < 0 then y = 0 end return y end
+		local hf0, water = H.terrainHeight, not (params and params.IgnoreWater)
+		local function hf(x, z) return voxColTop(x, z) or hf0(x, z) end
+		local function surf(x, z)
+			local c = voxColTop(x, z)
+			if c then return c end
+			local y = hf0(x, z)
+			if water and y < 0 then y = 0 end
+			return y
+		end
 		local L = d.Magnitude
 		local n = math.clamp(math.ceil(L / 3), 1, 400)
 		local prev = 0
@@ -957,6 +998,10 @@ roblox.implementMethod("UserInputService", "IsMouseButtonPressed", function(self
 	return s ~= nil and s.keys[b] == true
 end)
 roblox.implementMethod("UserInputService", "GetFocusedTextBox", function(self) return nil end)
+-- Humanoid.MoveDirection（往哪走）：Lune 的实例没有它的默认值、一读就报错（implementProperty 盖不住 API 表里本来就有的属性）——
+--   Play.lua 的疾跑（11-21 起）每帧读它，报错后整个 stepPlay 后半截不跑（第一人称没开、枪的视图模型不建：ia_optics、ia_flow 的狙击镜、
+--   ia_ui_layout 的触控开镜都挂了）。照真 Roblox 给个可读的值：H.step 每帧给玩家角色的 Humanoid 写一个零（写过就能读）
+H.mdSet = setmetatable({}, { __mode = "k" })
 roblox.implementMethod("UserInputService", "GetKeysPressed", function(self) return {} end)
 roblox.implementMethod("UserInputService", "GetLastInputType", function(self) return Enum.UserInputType.Keyboard end)
 roblox.implementMethod("ContextActionService", "BindAction", function(self) end)
@@ -1477,6 +1522,12 @@ function H.step(dt)
 	local rs = H.RunService
 	for _, pl in PlayersSvc:GetChildren() do
 		if pl:IsA("Player") then
+			local ch = pl.Character
+			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+			if hum and not H.mdSet[hum] then
+				H.mdSet[hum] = true
+				pcall(function() hum.MoveDirection = V3.zero end)
+			end
 			local sig = evStore[rs] and evStore[rs]["RenderStepped@" .. pl.Name]
 			if sig then sig:Fire(dt) end
 		end

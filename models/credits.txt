@@ -62,4 +62,6 @@
   D-60 弹鼓（mag_drum.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
   AN/PEQ-15 激光指示器（tac_peq.glb）：「ATPIAL AN/PEQ-15 (Low-Poly)」，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072
   M952V 战术手电（tac_light.glb）：「Surefire M952V Weapon Light」，作者 RedRogueXIII，CC-BY-4.0 https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6
+  飞机座舱平显（光学瞄准屏）（hud15.glb）：「J-15T with YJ-83K」原模型自带座舱里的平显，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/b416034f0cde4e46b37cf3e5445bd1b7
+    （只抠了平显那一套：弧形黑框、组合玻璃、底座；坐标换成以组合玻璃为原点、单位换成格；tools/weapons/hud.mjs）
   改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改

@@ -1024,6 +1024,22 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
+    -- 小块的写入（开服的网格器校准平台）：每一列记下各层的占有率，射线按 R.surfFrac（假装的网格器）算地面在哪
+    if sx * sy * sz <= 60000 and region._min._y < -1000 then   -- 只有地图下面很深的试验平台（地图本身的块不记）
+      R.voxCols = R.voxCols or {}
+      local mn = region._min
+      for i = 1, sx do
+        for k = 1, sz do
+          local col = { y0 = mn._y, occ = {} }
+          for j = 1, sy do
+            local m = mats[i][j][k]
+            local nm = m and m.Name or "Air"
+            col.occ[j] = (nm ~= "Air" and nm ~= "Water") and (occ[i][j][k] or 0) or 0
+          end
+          R.voxCols[math.floor((mn._x + (i - 1) * 4) / 4 + 0.5) .. "," .. math.floor((mn._z + (k - 1) * 4) / 4 + 0.5)] = col
+        end
+      end
+    end
     -- 写了哪些材质（每隔 3 列抽一列看；测试查地形里没有 Grass——会长草叶）
     R.voxelMats = R.voxelMats or {}
     for i = 1, sx, 3 do
@@ -1044,6 +1060,14 @@ def("Terrain", "BasePart", {
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBlock(CFrame, Vector3, Material) 参数不对", 2) end
     if size._x > 2048 * 4 or size._z > 2048 * 4 then error("FillBlock 区域太大", 2) end
     table.insert(R.terrainFills, { k = "block", p = c.Position, size = size, mat = mat.Name })   -- 宣传片录场景用
+    if R.voxCols and mat.Name == "Air" then   -- 拆掉校准平台：记的列一起清掉
+      local p0 = c.Position
+      for key in pairs(R.voxCols) do
+        local ix, iz = string.match(key, "^(%-?%d+),(%-?%d+)$")
+        local x, z = tonumber(ix) * 4 + 2, tonumber(iz) * 4 + 2
+        if math.abs(x - p0._x) <= size._x / 2 and math.abs(z - p0._z) <= size._z / 2 then R.voxCols[key] = nil end
+      end
+    end
   end,
   FillBall = function(_, c, r, mat)
     if not isV3(c) or type(r) ~= "number" or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBall(Vector3, 半径, Material) 参数不对", 2) end
@@ -1457,9 +1481,25 @@ local function underAny(o, list)
   end
   return false
 end
+-- 记下来的小块地形（校准平台）：最上面有东西的那层按 R.surfFrac(占有率) 算地面（没给就是「几成满地面就在几成高」）；
+--   整层满的就在这层顶上。不在记下的列里：照测试给的高度函数
+local function voxColTop(x, z)
+  local c = R.voxCols and R.voxCols[math.floor(x / 4) .. "," .. math.floor(z / 4)]
+  if not c then return nil end
+  for j = #c.occ, 1, -1 do
+    local o = c.occ[j]
+    if o > 0 then
+      local f = (o >= 1) and 1 or (R.surfFrac and R.surfFrac(o) or o)
+      return c.y0 + (j - 1) * 4 + 4 * f
+    end
+  end
+  return -1e9
+end
+R.voxColTop = voxColTop
 local function terrainHit(origin, dir, len, params)
-  local H = R.terrainHeight
-  if not H then return nil end
+  local H0 = R.terrainHeight
+  if not H0 then return nil end
+  local H = function(x, z) return voxColTop(x, z) or H0(x, z) end
   local water = not (params and params.IgnoreWater)
   local function below(t)
     local p = origin + dir * t
@@ -1536,10 +1576,12 @@ function R.castRay(origin, dir, params)
     end
   end
   local tmat
-  if not inc and R.terrainHeight then   -- 地形：按测试给的高度函数（项目自己的 Map.height），海面 y = 0
+  -- 同 Roblox：Include 名单里有 Terrain 才打地形；Exclude 名单里有 Terrain 就不打（原来 Include 一律不打地形，Exclude 一律打）
+  local terrOK = (inc and underAny(R.terrain, list)) or (not inc and not (params and underAny(R.terrain, list)))
+  if terrOK and R.terrainHeight then   -- 地形：按测试给的高度函数（项目自己的 Map.height），海面 y = 0
     local t, kind = terrainHit(origin, d, bt, params)
     if t and t < bt then best, bt, bp, tmat = R.terrain, t, origin + d * t, (kind == "water") and Enum.Material.Water or Enum.Material.Grass end
-  elseif d._y < -1e-6 and not inc then   -- 没给高度函数：y = 0 的平面
+  elseif d._y < -1e-6 and terrOK then   -- 没给高度函数：y = 0 的平面
     local t = -origin._y / d._y
     if t >= 0 and t < bt then best, bt, bp, tmat = R.terrain, t, origin + d * t, Enum.Material.Grass end
   end

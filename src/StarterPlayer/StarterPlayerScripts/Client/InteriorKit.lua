@@ -77,6 +77,29 @@ function B:add(gname, cls, size, cf, color, mat, shape)
   return p
 end
 function B:box(g, size, cf, col, mat) return self:add(g, "Part", size, cf, col, mat) end
+-- 导入的原模型网格（MeshPart）：克隆一块摆进内饰；size、cf 是米（同 add）。导入时 Roblox 把每块网格绕它自己的中心转了半圈（ImportTurn）：摆的时候转回来
+local TURN = require(RS:WaitForChild("ImportTurn")).TURN
+function B:mesh(g, src, size, cf)
+  local p = src:Clone()
+  p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+  p.Size = size * S
+  local off = toS(cf) * TURN
+  p.CFrame = off
+  p.Parent = self.model
+  local gg = self.groups[g] or self.groups.hull
+  table.insert(self.parts, { p, gg, off })
+  return p
+end
+-- Imports.lua 收好的原模型（ReplicatedStorage.Imported.Optics.<键>）：块都复制到客户端了才用（文件夹上的 N 是服务器那边的块数）
+function K.imported(key)
+  local imp = RS:FindFirstChild("Imported")
+  local opt = imp and imp:FindFirstChild("Optics")
+  local f = opt and opt:FindFirstChild(key)
+  if not f then return nil end
+  local n = f:GetAttribute("N")
+  if n and #f:GetChildren() < n then return nil end
+  return f
+end
 function B:wedge(g, size, cf, col, mat) return self:add(g, "WedgePart", size, cf, col, mat) end
 function B:cwedge(g, size, cf, col, mat) return self:add(g, "CornerWedgePart", size, cf, col, mat) end
 -- 圆柱：轴沿 cf 的 X
