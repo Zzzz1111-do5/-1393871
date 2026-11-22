@@ -107,6 +107,25 @@ local function crewOf(p)
   for id, cr in pairs(cur.crew) do if p:IsDescendantOf(cr.f.model) then return id end end
   return nil
 end
+-- 先过一遍各乘员位，记下每个位置的眼睛（车体坐标）：一块屏幕算离它最近的那个位置的（双人炮塔里车长看不见炮长那块屏、隔着炮，真车也是）
+local eyes = {}
+for i, name in ipairs(cur.spec.order) do
+  if FK[i] then
+    T.tap(FK[i])
+    R.run(0.3)
+    eyes[name] = C.viewById(e.id).hullF:PointToObjectSpace(cam.CFrame.Position)
+  end
+end
+local function ownerOf(pos)
+  local hull = C.viewById(e.id).hullF
+  local q = hull:PointToObjectSpace(pos)
+  local best, bd = nil, math.huge
+  for name, ey in pairs(eyes) do
+    local d = (q - ey).Magnitude
+    if d < bd then best, bd = name, d end
+  end
+  return best
+end
 local blockedAll, total = 0, 0
 for i, name in ipairs(cur.spec.order) do
   if FK[i] then
@@ -121,7 +140,7 @@ for i, name in ipairs(cur.spec.order) do
       local c = s.part.Position
       local to = c - eye
       local dist = to.Magnitude
-      if dist < 1.0 * SC and dist > 0.05 and to.Unit:Dot(look) > 0.25 then
+      if dist < 1.0 * SC and dist > 0.05 and to.Unit:Dot(look) > 0.25 and ownerOf(c) == name then
         nS = nS + 1
         local d = to.Unit
         local len = dist - 0.03 * SC
