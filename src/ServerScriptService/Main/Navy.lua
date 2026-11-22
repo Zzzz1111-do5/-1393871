@@ -153,7 +153,7 @@ function Navy.init(G)
 
   local built = false
   local function buildPiers()
-    if built then return end
+    if built or Map.desert then return end   -- 沙漠没有海、没有码头
     built = true
     local root = workspace:FindFirstChild("Map") or workspace
     local f = Instance.new("Folder")
@@ -949,7 +949,7 @@ function Navy.init(G)
     -- AI 舰艇：开战后没有就出来一艘（被击沉 150 秒后再来）
     if aiT >= 1 then
       aiT = 0
-      if G.round and G.round.phase == "battle" and not G.navyNoAI then
+      if G.round and G.round.phase == "battle" and not G.navyNoAI and not Map.desert then   -- 沙漠没有海：不出 AI 舰艇
         for _, team in ipairs({ "atk", "def" }) do
           local have = false
           for _, e in ipairs(ships) do if e.alive and e.ai and e.team == team then have = true end end

@@ -208,6 +208,8 @@ function Fx.init(G)
     sp = sp or 1
     return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
   end
+  G.realLayer = realLayer   -- 核爆（Nuke.lua）叠自己的声音用
+  G.sndIds = { EXP = EXP, TICK = TICK, WIND = WIND, THUD = THUD, WATER = WATER }
   -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
   function G.realLoop(key, parent)
     local id, cfg = real(key)
@@ -951,9 +953,30 @@ function Fx.init(G)
         glow = part(BALL, V(1.1, 1.1, 1.1) * math.max(1, aw.shape and aw.shape.d * 1.6 or 1), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
         glowOn(glow, RGB(255, 180, 100), 22, 4)   -- 尾焰照亮弹体和周围
       end
-      if not mine(e) then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
+      if not mine(e) and not aw.hyper then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
         burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+      if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
+        local fs = flying[e.id]
+        fs.hyper, fs.lit = true, false
+        glow.Size = V(5, 5, 5)
+        local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+        a0.Position, a1.Position = V(0, 1.6, 0), V(0, -1.6, 0)
+        a0.Parent, a1.Parent = glow, glow
+        local tr = Instance.new("Trail")
+        tr.Attachment0, tr.Attachment1 = a0, a1
+        tr.Lifetime = 3.2
+        tr.MinLength = 2
+        tr.FaceCamera = true
+        tr.LightEmission = 0.6
+        tr.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 200)), ColorSequenceKeypoint.new(0.15, RGB(255, 170, 90)), ColorSequenceKeypoint.new(1, RGB(210, 210, 214)) })
+        tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.3, 0.45), NumberSequenceKeypoint.new(1, 1) })
+        tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 3.2) })
+        tr.Enabled = false
+        tr.Parent = glow
+        fs.trail = tr
+        glow.Transparency = 1
+      end
       if glow then addRoar(flying[e.id], glow, e.p) end
       if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：导弹视角小窗（MslCam.lua）
       return
@@ -1000,23 +1023,45 @@ function Fx.init(G)
       flying[id] = nil
     end
   end
+  -- 核导弹的弹道（同服务器 Nuke.lua：三次贝塞尔曲线，进度 u = 0.55x + 0.45x²）：按收到 nukePath 以后过了多久算位置、速度
+  local function pathAt(s)
+    local P = s.path
+    local x = math.clamp((os.clock() - s.pathT0) / s.pathTf, 0, 1)
+    local u = 0.55 * x + 0.45 * x * x
+    local a = 1 - u
+    local pos = P[1] * (a * a * a) + P[2] * (3 * a * a * u) + P[3] * (3 * a * u * u) + P[4] * (u * u * u)
+    local d = (P[2] - P[1]) * (3 * a * a) + (P[3] - P[2]) * (6 * a * u) + (P[4] - P[3]) * (3 * u * u)
+    return pos, d * ((0.55 + 0.9 * x) / s.pathTf)
+  end
   local function stepShots(dt)
     for id, s in pairs(flying) do
       s.t += dt
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
       if s.gb then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹：AirDefs.GRAV
       s.p += s.v * dt
+      if s.path then
+        local pv, vv = pathAt(s)
+        s.p = pv
+        if vv.Magnitude > 1 then s.v = vv end
+      end
       if s.wm then   -- 按型号拼的弹：整枚一起挪，导弹尾焰烧完就灭、尾烟跟着淡
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
         local burning = s.t < s.burn
+        if s.hyper then burning = s.lit end
         if not burning and s.roar then stopRoar(s) end
         if s.glow then
-          s.glow.CFrame = cf * CFrame.new(0, 0, s.half + 0.5)
+          s.glow.CFrame = cf * CFrame.new(0, 0, s.half + (s.hyper and 2.5 or 0.5))
           s.glow.Transparency = burning and 0 or 1
         end
-        if s.kind == "missile" then
+        if s.hyper then   -- 高超音速：尾迹交给 Trail；俯冲时弹头烧得发红（等离子体）
+          if s.trail then s.trail.Enabled = s.lit end
+          if s.lit and s.v.Y < -1500 and not s.plasma and s.wm.parts[1] then
+            s.plasma = true
+            for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
+          end
+        elseif s.kind == "missile" then
           s.trailT += dt
           if s.trailT > (burning and 0.035 or 0.12) then
             s.trailT = 0
@@ -1054,7 +1099,7 @@ function Fx.init(G)
           Debris:AddItem(sm, 1.25 * k)
         end
       end
-      if s.t > ((s.kind == "bomb") and 40 or 15) then endShot(id) end
+      if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or 15)) then endShot(id) end
     end
   end
   -- 抛副油箱：照挂着的样子拼一个（WeaponModels 的外形），带着飞机的速度往下掉——空箱子阻力大很快慢下来，重心靠前机头往下栽、绕纵轴慢慢转；
@@ -1093,7 +1138,7 @@ function Fx.init(G)
   -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
   local function fixShot(e)
     local s = flying[e.id]
-    if not s or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
+    if not s or s.path or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
     if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
     s.v = e.v
   end
@@ -1395,6 +1440,20 @@ function Fx.init(G)
         newShot(e)
         local fs = flying[e.id]
         if fs then fs.by = e.by end   -- 谁打的（飞机的吊舱页面算自己投的弹的 TTI）
+      elseif k == "nukeIgn" then   -- 核导弹助推器点火（服务器 Nuke.lua）
+        local fs = flying[e.id]
+        if fs then
+          fs.lit = true
+          if fs.glow then addRoar(fs, fs.glow, e.p, 1.6) end
+        end
+        if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
+      elseif k == "nukePath" then   -- 核导弹点火后的弹道（按同一条曲线算，不用校正）
+        local fs = flying[e.id]
+        if fs and typeof(e.a) == "Vector3" and typeof(e.d) == "Vector3" then
+          fs.path, fs.pathT0, fs.pathTf, fs.lit = { e.a, e.b, e.c, e.d }, os.clock(), e.tf or 5, true
+        end
+      elseif k == "nuke" or k == "nukeWarn" or k == "nukeDive" then
+        if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
       elseif k == "shotEnd" then endShot(e.id)
       elseif k == "shotFix" then fixShot(e)
       elseif k == "flares" then flares(e)

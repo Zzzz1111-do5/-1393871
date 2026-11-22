@@ -530,13 +530,53 @@ function Bots.init(G)
     return true
   end
 
+  -- 征服模式（沙漠，Round.lua 的 G.conquest）：两边都一样——挑一个据点去打（敌人的、中立的先；自己的被压着就回去守；自己的没人碰就少派人），
+  --   离自己基地越远越不想去、已经有很多队友去的少派；出生在离目标最近、没被压着的自己的据点，没有就在自己基地
+  local function conquestOn() return G.conquest ~= nil and G.conquest() end
+  local function conqPick(team, from, self)
+    local best, bs = nil, -1e9
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s then
+        local n = 0
+        for _, x in ipairs(list) do if x ~= self and x.team == team and x.e and x.target == p.id then n += 1 end end
+        local want
+        if s.owner == team then want = s.pressed and 1.5 or 0.12
+        elseif s.owner == "none" then want = 1.0
+        else want = 1.25 end
+        local d = math.sqrt((p.x - from.X) ^ 2 + (p.z - from.Z) ^ 2)
+        local sc = want / (1 + n * 0.35) - d / 9000 + math.random() * 0.15
+        if sc > bs then best, bs = p, sc end
+      end
+    end
+    return best
+  end
+  local function conqPlan(team)
+    local B0 = Map.BASES and Map.BASES[team]
+    if not B0 then return nil end
+    local home = V(B0.camp.x, 0, B0.camp.z)
+    local tg = conqPick(team, home, nil)
+    if not tg then return nil end
+    local at, bd = nil, math.huge
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and s.owner == team and not s.pressed and p.id ~= tg.id then
+        local d = (p.x - tg.x) ^ 2 + (p.z - tg.z) ^ 2
+        if d < bd then at, bd = p, d end
+      end
+    end
+    local spot = at and spotNear(at.x, at.z, 20, Map.POINT_R * 0.9) or spotNear(B0.camp.x, B0.camp.z, 10, 80)
+    return { mode = "land", tg = tg, at = spot }
+  end
   local function spawnSquad(team, group)
-    local plan = (team == "atk") and atkPlan() or defPlan()
+    local conq = conquestOn()
+    local plan
+    if conq then plan = conqPlan(team) else plan = (team == "atk") and atkPlan() or defPlan() end
     if not plan then return false end
     local S = { team = team, m = {}, bound = 1, boundAt = 0, face = plan.face }
     for k, B in ipairs(group) do
       local ok = false
-      if team == "atk" then ok = spawnAtk(B, plan, k - 1) else ok = spawnDef(B, plan, k - 1) end
+      if team == "atk" or conq then ok = spawnAtk(B, plan, k - 1) else ok = spawnDef(B, plan, k - 1) end
       if ok and B.e then
         B.sq, B.readyT = S, nil
         table.insert(S.m, B)
@@ -976,6 +1016,39 @@ function Bots.init(G)
     end)
   end
 
+  local function thinkConq(B)
+    local e = B.e
+    local p = e.root.CFrame.Position
+    local s = B.target and pointState(B.target)
+    -- 目标拿下了、又没人来抢：守一会儿（20～45 秒）再挑下一个
+    if s and s.owner == B.team and not s.pressed then
+      B.holdUntil = B.holdUntil or (now() + 20 + math.random() * 25)
+      if now() >= B.holdUntil then
+        B.holdUntil = nil
+        local q = conqPick(B.team, p, B)
+        if q and q.id ~= B.target then B.target, B.goal = q.id, nil end
+      end
+    elseif not s then
+      local q = conqPick(B.team, p, B)
+      B.target, B.goal = q and q.id or nil, nil
+    else
+      B.holdUntil = nil
+    end
+    local pt = pointById(B.target)
+    if not pt then return end
+    if farHop(B, pt) then return end
+    local dx, dz = p.X - pt.x, p.Z - pt.z
+    local inside = dx * dx + dz * dz < (Map.POINT_R * 0.8) ^ 2
+    B.navKey = pt.id
+    if not B.goal and not B.detour then
+      if inside then
+        if not B.arrived or now() - B.arrived > 8 + math.random() * 10 then B.goal = spotNear(pt.x, pt.z, 5, Map.POINT_R * 0.75) end
+      else
+        B.goal = spotNear(pt.x, pt.z, 5, 45)
+      end
+    end
+  end
+
   local function think(B)
     local battle = G.round and G.round.phase == "battle"
     local S = B.sq
@@ -1000,8 +1073,9 @@ function Bots.init(G)
     end
     B.supp = (B.supp or 0) * 0.8
     if not S or S.lead == B or not S.lead then
-      if B.team == "atk" then thinkAtk(B) else thinkDef(B) end
-      if S and B.team == "def" and B.e then
+      if conquestOn() then thinkConq(B)
+      elseif B.team == "atk" then thinkAtk(B) else thinkDef(B) end
+      if S and B.team == "def" and B.e and not conquestOn() then
         -- 阵地朝哪：在打的话朝敌人，不然朝来敌的方向（离据点最近的登陆滩）
         local pt = pointById(B.guard)
         if S.contactP and now() - (S.contactT or -1e9) < 20 then S.face = flatUnit(S.contactP - B.e.root.CFrame.Position, S.face or V(0, 0, 1))

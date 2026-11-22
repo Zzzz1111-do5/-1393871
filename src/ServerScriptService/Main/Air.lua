@@ -597,7 +597,21 @@ function Air.init(G)
     local tgt = (w.kind == "aam" or w.kind == "agm" or w.kind == "bomb") and validTarget(e, w, tid) or nil
     local aimPt = (typeof(aim) == "Vector3" and aim.Magnitude < 1e6) and aim or nil
     local base = e.vel or V()
-    if w.kind == "aam" or w.kind == "agm" then
+    if w.nuke then   -- 「惊雷-1」高超音速战术核导弹（Nuke.lua）：先看这一队能不能发（冷却、开战多久），再按空射弹道导弹的弹道飞
+      local ok, why, n = true, nil, nil
+      if G.nukeCheck then ok, why, n = G.nukeCheck(e.team) end
+      if not ok or not G.nukeArm then
+        if P and P.pl and why then G.msg(P.pl, "bad", why, n) end
+        return
+      end
+      local launch = scf.Position - scf.UpVector * 2.5
+      local H = G.nukeArm(e.team, launch, aimPt or (launch + fwd * 9000))
+      S = S or { team = e.team, name = "H-6K" }
+      S.wid = "hn1"
+      G.launch({ kind = "missile", pos = launch, vel = base - scf.UpVector * 10, w = w, src = S, ignore = ignoreOf(e), life = w.life or 90,
+        step = G.nukeGuide, age = 0, hyper = H, byEnt = e.id })
+      e.nextStore = t + 1
+    elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
       local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
         step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id })
@@ -780,6 +794,15 @@ function Air.init(G)
     -- 停在自己的机场 / 甲板 / 停机坪附近：能补弹修理
     local p = e.root.CFrame.Position
     local function near(x, z, r) return (V(p.X, 0, p.Z) - V(x, 0, z)).Magnitude < r end
+    if Map.desert then   -- 沙漠：自己基地的跑道、直升机坪、营地
+      local B = Map.BASES and Map.BASES[e.team]
+      if not B then return false end
+      local A = B.airfield
+      if A and near(A.x, A.z, A.len * 0.6) then return true end
+      if B.heli and near(B.heli.x, B.heli.z, 260) then return true end
+      if B.camp and near(B.camp.x, B.camp.z, 260) then return true end
+      return false
+    end
     if e.team == "atk" then
       local dk = deckOf("carrier")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end

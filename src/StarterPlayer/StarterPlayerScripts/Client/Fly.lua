@@ -547,6 +547,11 @@ function Fly.init(G)
         table.insert(out, { p = V(td.X, AD.ground(Map, td.X, td.Z), td.Z), dir = V(-s, 0, 0) })
       end
     end
+    if Map.desert then   -- 沙漠（征服）：只落自己基地的跑道
+      local B = Map.BASES and Map.BASES[team]
+      if B and B.airfield then runway(B.airfield) end
+      return out
+    end
     if team == "atk" then
       local base = AD.carrierCF(Map)
       if base and st.d.carrier then
@@ -1079,8 +1084,8 @@ function Fly.init(G)
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
-    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）
-      if st.load[i] == wid and (st.stores[i] or 0) > 0 then
+    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
+      if not w.nuke and st.load[i] == wid and (st.stores[i] or 0) > 0 then
         st.stores[i] -= 1
         break
       end
@@ -2208,10 +2213,24 @@ function Fly.init(G)
       local gunOn = gid ~= nil and ((st.firing and not G.mobile) or touchGun or false)
       if gid then setTrig(gunOn) end
       local fireS = st.missile or (st.firing and not gid) or (touch and touch.fire and not touchGun)
-      if w and fireS then
+      if w and w.nuke then   -- 核导弹（惊雷-1）：要按住 1.2 秒才发（免得手滑）；HUD 中间一条解锁进度（客户端 Nuke.lua）
+        local HOLD = 1.2
+        if fireS and left(wid) > 0 and not st.fireLatch then
+          st.nukeHold = (st.nukeHold or 0) + dt
+          if st.nukeHold >= HOLD then
+            fireStore(wid, w)
+            st.fireLatch, st.nukeHold = true, 0
+          end
+        elseif not fireS then
+          st.nukeHold, st.fireLatch = 0, false
+        end
+        if G.nukeArmUI then G.nukeArmUI(left(wid) > 0, (st.nukeHold or 0) / HOLD) end
+      elseif w and fireS then
+        if G.nukeArmUI then G.nukeArmUI(false) end
         if w.kind == "rkt" or not st.fireLatch then fireStore(wid, w) end
         st.fireLatch = true
       else
+        if G.nukeArmUI then G.nukeArmUI(false) end
         st.fireLatch = false
       end
     end

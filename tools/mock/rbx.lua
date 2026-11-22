@@ -960,9 +960,29 @@ local ATTR_OK = { ["nil"] = true, boolean = true, number = true, string = true, 
 function base.SetAttribute(o, k, v)
   if type(k) ~= "string" then error("SetAttribute 名字要字符串", 2) end
   if not ATTR_OK[typeof(v)] then error("SetAttribute 不能存 " .. typeof(v), 2) end
+  local old = o._attr[k]
   o._attr[k] = v
+  if old ~= v then
+    local m = rawget(o, "_achg")
+    local s = m and m[k]
+    if s then s:Fire() end
+  end
 end
 function base.GetAttribute(o, k) return o._attr[k] end
+function base.GetAttributeChangedSignal(o, k)
+  if type(k) ~= "string" then error("GetAttributeChangedSignal 名字要字符串", 2) end
+  local m = rawget(o, "_achg")
+  if not m then
+    m = {}
+    rawset(o, "_achg", m)
+  end
+  local s = m[k]
+  if not s then
+    s = newSig()
+    m[k] = s
+  end
+  return s
+end
 function base.GetPropertyChangedSignal(o, prop)
   if not lookup(o._cls, "props", prop) and lookup(o._cls, "ro", prop) == nil then error(prop .. " 不是 " .. o._cls .. " 的属性", 2) end
   local s = o._chg[prop]

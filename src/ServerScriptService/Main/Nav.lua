@@ -10,6 +10,16 @@ function Nav.init(G)
   local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
   local X0, Z0, X1, Z1 = -3200 * K, -3000 * K, 3200 * K, 1200 * K   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
+  -- 选了地图以后（navBuild）按那张图重新定范围：沙漠 ±EXT、100 格一格（地图大了五六倍，格子数跟岛差不多）
+  local function setGrid()
+    if Map.desert then
+      local E = Map.EXT or 15500
+      CELL = 100
+      X0, Z0, X1, Z1 = -E, -E, E, E
+    end
+    NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
+    G.navCell = CELL
+  end
   local MAXSLOPE = 0.9   -- 比这陡（约 42°）走不了
   local H = {}           -- [格号] = 高度（只记陆地）
   local flows = {}       -- [目的地] = { nxt = {}, dist = {} }
@@ -142,6 +152,7 @@ function Nav.init(G)
 
   -- 地图好了以后在后台算：先记陆地格的高度，再挨个目的地算流场
   function G.navBuild()
+    setGrid()
     task.spawn(function()
       local n = 0
       for k = 0, NZ - 1 do
@@ -155,6 +166,7 @@ function Nav.init(G)
       end
       for _, p in ipairs(Map.POINTS) do buildFlow(p.id, p.x, p.z) end
       buildFlow("camp", Map.CAMP.x, Map.CAMP.z)
+      if Map.CAMP_ATK then buildFlow("camp_atk", Map.CAMP_ATK.x, Map.CAMP_ATK.z) end
       ready = true
       G.navReady = true
     end)

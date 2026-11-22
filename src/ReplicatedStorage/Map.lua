@@ -512,4 +512,45 @@ function Map.lineClear(a, b, step)
   return true
 end
 
+---------------------------------------------------------------- 几张地图（用户 11-22：「加一个沙漠地图」「进入界面点地图」）
+-- 上面算的是「岛屿突击」；沙漠在 MapDesert（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
+--   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
+--   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
+Map.id = "island"
+Map.ids = { "island", "desert" }
+-- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
+Map.info = {
+  island = { km = 8.8, mode = "assault", sea = true },
+  desert = { km = 23.4, mode = "conquest", sea = false },
+}
+local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
+local PROFILES = { island = {} }
+for k, v in pairs(Map) do
+  if not KEEP[k] then PROFILES.island[k] = v end
+end
+function Map.profile(id)
+  if PROFILES[id] == nil then
+    local ok, mod = pcall(function()
+      local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
+      return require(script.Parent:WaitForChild(name, 5))
+    end)
+    PROFILES[id] = (ok and type(mod) == "table") and mod or false
+    if not ok then warn("[地图] " .. tostring(id) .. " 加载不了：" .. tostring(mod)) end
+  end
+  return PROFILES[id] or nil
+end
+function Map.use(id)
+  if Map.id == id then return true end
+  local P = Map.profile(id)
+  if not P then return false end
+  for k in pairs(Map) do
+    if not KEEP[k] then Map[k] = nil end
+  end
+  for k, v in pairs(P) do
+    if not KEEP[k] then Map[k] = v end
+  end
+  Map.id = id
+  return true
+end
+
 return Map

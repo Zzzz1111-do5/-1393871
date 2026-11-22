@@ -275,4 +275,12 @@ Config.Battle = {
   storm = { chance = 0.85, at = { 150, 420 }, dur = { 150, 230 }, ramp = 25 },
 }
 
+-- 高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」；Nuke.lua）：
+--   cd 一队发射以后多少秒内不能再发、first 开战多少秒后才能发；kill 致死半径、hurt 重伤半径（格，1 米约 2.8 格）、air 天上的飞机挨冲击波的半径、
+--   bld 房子全塌、scorch 焦土半径（中心 melt 以内烧成熔岩壳）、crater 弹坑；burst 离地多高空爆；speed 滑翔、dive 俯冲的速度（格 / 秒，6～7 马赫）；
+--   fallout 辐射区（半径、每秒伤害、持续秒）
+Config.Nuke = { cd = 420, first = 90, kill = 950, hurt = 2000, air = 2600, bld = 1350, scorch = 560, melt = 140, crater = 64, burst = 120,
+  speed = 5800, dive = 6800, apo = 7200, drop = 0.8, life = 90,
+  fallout = { r = 420, dps = 9, dur = 45 } }
+
 return Config

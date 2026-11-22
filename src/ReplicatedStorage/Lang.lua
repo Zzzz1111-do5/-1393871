@@ -84,6 +84,23 @@ add("point.B", "B 灯塔岛", "B Lighthouse Isle")
 add("point.C", "C 港口镇", "C Harbor Town")
 add("point.D", "D 机场", "D Airfield")
 add("point.E", "E 指挥所", "E Command Post")
+-- 沙漠地图「沙漠风暴」的据点（MapDesert.lua）
+add("point.A@desert", "A 绿洲镇", "A Oasis Town")
+add("point.B@desert", "B 油田", "B Oil Field")
+add("point.C@desert", "C 古城", "C Old Citadel")
+add("point.D@desert", "D 十字路口镇", "D Crossroads")
+add("point.E@desert", "E 雷达站", "E Radar Station")
+add("point.F@desert", "F 干河谷桥", "F Wadi Bridge")
+add("point.G@desert", "G 炼油厂", "G Refinery")
+add("faction.atk.role@desert", "西线  ·  征服", "WEST  ·  CONQUEST")
+add("faction.def.role@desert", "东线  ·  征服", "EAST  ·  CONQUEST")
+add("faction.def.name@desert", "沙漠守备军", "DGC")
+add("spawn.base", "本方基地", "Home Base")
+add("ui.lostPoint", "{1} 丢了", "{1} was lost")
+add("ui.weTook", "我方拿下了 {1}", "We took {1}")
+add("ui.conquestStart", "开战！占领据点，打光敌人的兵力", "Battle! Capture the points and drain the enemy's tickets")
+add("ui.win.atk@desert", "西线胜利：敌人的兵力打光了", "WEST WINS: the enemy ran out of tickets")
+add("ui.win.def@desert", "东线胜利：敌人的兵力打光了", "EAST WINS: the enemy ran out of tickets")
 add("beach.red", "红滩", "Red Beach")
 add("beach.white", "白滩", "White Beach")
 add("beach.blue", "绿滩", "Green Beach")   -- 原来叫蓝滩（用户 11-21：蓝色全部改成绿色）
@@ -289,6 +306,7 @@ local PRESET = {
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
   bomb = { "炸弹", "Bombs" }, kd88 = { "KD-88 远程打击", "KD-88 standoff" }, cas = { "近距支援", "Close air support" }, hk = { "猎杀", "Hunter-killer" },
   jdam = { "联合直接攻击弹药", "JDAM" }, mk82 = { "Mk 82 炸弹", "Mk 82 bombs" }, antiship = { "反舰", "Anti-ship" },
+  nuke = { "核打击", "Nuclear strike" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
@@ -301,8 +319,25 @@ local AW = {
   pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, yj83k = { "鹰击-83K 反舰导弹", "YJ-83K anti-ship missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
   gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
   gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
+  hn1 = { "惊雷-1 核导弹", "HN-1 nuke" },
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
+-- 高超音速战术核导弹（Nuke.lua / 客户端 Nuke.lua）
+add("nuke.short", "惊雷-1 核", "HN-1 NUKE")
+add("nuke.btn", "开火键", "Fire")
+add("nuke.hold", "按住 {1} 发射核导弹", "Hold {1} to launch the nuke")
+add("nuke.arming", "核导弹解锁中…… {1}%", "Arming nuke… {1}%")
+add("nuke.cd", "核打击还要等 {1} 秒（每队发射后要冷却）", "Nuclear strike available in {1}s (team cooldown)")
+add("nuke.early", "开战 {1} 秒后才能发射核导弹", "Nukes unlock {1}s after the battle starts")
+add("nuke.launched", "核导弹已发射", "Nuke launched")
+add("nuke.launchedSub", "惊雷-1 · 预计 {1} 秒后命中 · 我方不受伤害", "HN-1 · impact in about {1}s · friendly units are safe")
+add("nuke.incoming", "⚠ 核打击来袭 ⚠", "⚠ NUCLEAR STRIKE INBOUND ⚠")
+add("nuke.incomingSub", "敌方高超音速核导弹 · 预计 {1} 秒 · 立刻远离红圈", "Enemy hypersonic nuke · impact in about {1}s · get out of the red circle")
+add("nuke.dive", "核导弹进入末段俯冲", "Nuke in terminal dive")
+add("nuke.det", "核爆", "Nuclear detonation")
+add("nuke.fallout", "辐射区：快离开", "Radiation zone: get out")
+add("nuke.feed", "核打击", "nuclear strike")
+add("nuke.tag", "☢ 爆心", "☢ Ground zero")
 add("preset.sead", "防空压制", "SEAD")
 add("hangar.empty", "不挂", "Empty")
 add("hangar.pick", "点白圈选一个挂点", "Pick a hardpoint")
@@ -583,8 +618,8 @@ add("menu.rankLine", "{1}   ·   下一级 {2}", "{1}   ·   NEXT {2}")
 add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
 add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
 add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
-add("menu.c1.title", "快速加入", "QUICK JOIN")
-add("menu.c1.sub", "自动分队 · 默认装备 · 直接上前线（回车）", "AUTO TEAM · DEFAULT KIT · STRAIGHT TO THE FRONT (ENTER)")
+add("menu.c1.title", "开始游戏", "PLAY")
+add("menu.c1.sub", "选地图 · 自动分队 · 直接上前线（回车）", "PICK A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
 add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
@@ -598,6 +633,24 @@ add("menu.c4.cat", "制作人员", "CREDITS")
 add("menu.c4.title", "模型与授权", "MODELS & LICENSES")
 add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-BY)")
 add("menu.beta", "测试版", "BETA")
+-- 选地图（MapPick.lua，用户 11-22：「界面直接写 play，然后进入界面点地图」）
+add("map.cat", "开始游戏", "PLAY")
+add("map.title", "选择地图", "SELECT MAP")
+add("map.sub", "第一个选的定这个服务器打哪张，后进来的直接加入", "The first pick sets this server's map — later players join it")
+add("map.back", "返回", "BACK")
+add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
+add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
+add("map.island.desc", "登陆联军从海上抢滩，岛屿守备军守住岛上的据点 · 舰队、登陆艇、机场岛 · 夜战", "The coalition storms the beaches from the sea; the garrison holds the island · fleet, landing craft, island airfield · night")
+add("map.desert.name", "沙漠风暴", "DESERT STORM")
+add("map.desert.mode", "征服", "CONQUEST")
+add("map.desert.desc", "两边各有自己的军事基地和机场，抢中间的据点 · 大纵深坦克战、空战、远程打击", "Each side has its own military base and airfield; fight over the points in between · deep armour thrusts, air war, long-range strikes")
+add("map.size", "{1} × {1} 公里", "{1} × {1} KM")
+add("map.pick", "选这张", "SELECT")
+add("map.join", "加入", "JOIN")
+add("map.now", "这个服务器正在打", "NOW PLAYING")
+add("map.other", "这个服务器在打「{1}」", "This server is playing {1}")
+add("map.loading", "正在生成地图……{1}%", "Building the map… {1}%")
+add("map.players", "{1} 名玩家", "{1} PLAYERS")
 add("menu.close", "关闭", "CLOSE")
 add("menu.open", "菜单", "MENU")
 add("menu.h.inf", "步兵", "INFANTRY")
@@ -840,8 +893,16 @@ function Lang.pick(localeId)
   return "en"
 end
 
+-- 地图专用的说法（据点名、阵营名……）：键后面加「@地图」（"point.A@desert"）；客户端换地图时设 Lang.mapId（init.client.lua）
+Lang.mapId = nil
 local function tr(lang, key)
   local T = (lang == "zh") and ZH or EN
+  local mid = Lang.mapId
+  if mid and type(key) == "string" then
+    local k2 = key .. "@" .. mid
+    local v = T[k2] or ZH[k2]
+    if v then return v end
+  end
   return T[key] or ZH[key] or EN[key] or tostring(key)
 end
 

@@ -31,6 +31,29 @@ for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "B
   G.R[name] = Remotes:WaitForChild(name)
 end
 
+-- 地图（用户 11-22：选地图）：服务器定了哪张，ReplicatedStorage 的 MapId 属性就是哪张——进服时已经定了就先换好再初始化各模块；
+--   进服以后才定（自己在选地图界面点的）：换过来，再挨个通知存了地图数据的模块（G.onMap 登记：小地图、据点条、远海……）重算
+local mapHooks = {}
+function G.onMap(f) table.insert(mapHooks, f) end
+do
+  local mid = RS:GetAttribute("MapId")
+  if type(mid) == "string" then G.Map.use(mid) end
+  Lang.mapId = G.Map.id   -- 地图专用的说法（据点名……）
+  local applied = G.Map.id   -- 各模块是按哪张初始化的（Studio 单机测试服务器、客户端共用一份 Map 表时 Map.id 可能已经先换了：按这个比）
+  RS:GetAttributeChangedSignal("MapId"):Connect(function()
+    local id = RS:GetAttribute("MapId")
+    if type(id) ~= "string" or id == applied then return end
+    if G.Map.use(id) then
+      applied = id
+      Lang.mapId = id
+      for _, f in ipairs(mapHooks) do
+        local ok, err = pcall(f, id)
+        if not ok then warn("[全面大战场] 换地图（" .. id .. "）出错：" .. tostring(err)) end
+      end
+    end
+  end)
+end
+
 -- 逐帧回调计时（F7 性能面板 Perf.lua 读）：G.perfT[名字] = 这半秒累计的秒数；各模块自己的 RenderStepped 用 G.frameConn(名字, 函数) 连
 G.perfT = {}
 function G.perfWrap(name, f)
@@ -54,7 +77,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")

@@ -26,7 +26,11 @@ function Hud.init(G)
   local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
   local M_PER = 2.8            -- 1 米多少格（同 AirDefs.M）
   local function T(k, ...) return G.T(k, ...) end
-  local function teamColor(t) return Config.Teams[t or "atk"].color end
+  local NEUTRAL = Color3.fromRGB(200, 200, 200)   -- 征服模式的中立据点
+  local function teamColor(t)
+    local T0 = Config.Teams[t or "atk"]
+    return T0 and T0.color or NEUTRAL
+  end
   local function other(t) return (t == "atk") and "def" or "atk" end
   local function hex(c) return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local function txt(parent, s, size, pos, ts, color, font, anchor, align, stroke)
@@ -87,23 +91,36 @@ function Hud.init(G)
   goal.RichText = true
   goal.Size = UDim2.new(1, -8, 0, 18)
   goal.TextTruncate = Enum.TextTruncate.AtEnd
-  -- A～E 小菱形
+  -- A～E 小菱形（换地图时重摆：沙漠 A～G）
   local diamonds = {}
-  for i, p in ipairs(Map.POINTS) do
-    local cx = (i - (#Map.POINTS + 1) / 2) * (mobile and 30 or 34)
-    local d = ui.frame(top, UDim2.fromOffset(13, 13), UDim2.new(0.5, cx, 0, BH - 20), WHITE, 1, V2(0.5, 0.5))
-    d.Rotation = 45
-    local st = ui.stroke(d, WHITE, 1, 0.15)
-    local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 1)
-    local pb = line(top, UDim2.fromOffset(18, 1), UDim2.new(0.5, cx, 0, BH - 8), WHITE, 0.82, V2(0.5, 0))
-    local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
-    diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
+  local function buildDiamonds()
+    for _, d in pairs(diamonds) do
+      for _, k in ipairs({ "d", "l", "pb" }) do if d[k] then d[k]:Destroy() end end
+    end
+    table.clear(diamonds)
+    for i, p in ipairs(Map.POINTS) do
+      local cx = (i - (#Map.POINTS + 1) / 2) * (mobile and 30 or 34)
+      local d = ui.frame(top, UDim2.fromOffset(13, 13), UDim2.new(0.5, cx, 0, BH - 20), WHITE, 1, V2(0.5, 0.5))
+      d.Rotation = 45
+      local st = ui.stroke(d, WHITE, 1, 0.15)
+      local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 1)
+      local pb = line(top, UDim2.fromOffset(18, 1), UDim2.new(0.5, cx, 0, BH - 8), WHITE, 0.82, V2(0.5, 0))
+      local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
+      diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
+    end
   end
+  buildDiamonds()
 
   ---------------------------------------------------------------- 世界里的据点：字母 + 距离
 
   local pg = me:WaitForChild("PlayerGui")
   local marks = {}
+  local function buildMarks()
+  for _, m in pairs(marks) do
+    if m.part then m.part:Destroy() end
+    if m.bb then m.bb:Destroy() end
+  end
+  table.clear(marks)
   for _, p in ipairs(Map.POINTS) do
     local a = Instance.new("Part")
     a.Name = "Obj_" .. p.id
@@ -125,6 +142,9 @@ function Hud.init(G)
     local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 37), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
     marks[p.id] = { part = a, bb = bb, l = l, dist = dist, verb = verb, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
   end
+  end
+  buildMarks()
+  if G.onMap then G.onMap(function() buildDiamonds() buildMarks() end) end
   -- 据点高度：Map 里没写的照地面找（地形生成好以前找不到，过一会儿再试）
   local rp = RaycastParams.new()
   rp.FilterType = Enum.RaycastFilterType.Include
@@ -152,7 +172,9 @@ function Hud.init(G)
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
   box.Size = UDim2.fromOffset(MS, MS)
-  box.BackgroundColor3 = RGB(22, 36, 50)   -- 地图外面也是深海的蓝
+  local function boxBg() box.BackgroundColor3 = Map.desert and RGB(86, 70, 50) or RGB(22, 36, 50) end   -- 地图外面：海岛是深海的蓝，沙漠是暗沙色
+  boxBg()
+  if G.onMap then G.onMap(boxBg) end
   box.BackgroundTransparency = 0.12
   do
     local c = Instance.new("UICorner")
@@ -478,10 +500,17 @@ function Hud.init(G)
     local n = math.max(1, #pts)
     -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
     local tk = S.tickets
+    local conq = S.mode == "conquest"
     for sx, t in pairs({ [-1] = mine, [1] = foe }) do
       local s = sides[sx]
       local c = teamColor(t)
-      if t == "atk" and tk then
+      if conq then   -- 征服：两边都是兵力
+        local v = (t == "atk") and (S.tickets or 0) or (S.ticketsDef or 0)
+        s.name.Text = T("hud." .. t) .. " · " .. T("hud.tickets")
+        s.score.Text = tostring(v)
+        s.bar.Size = UDim2.new(math.clamp(v / math.max(S.ticketsMax or v, 1), 0, 1), 0, 0, 2)
+        s.score.TextColor3 = v <= 60 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
+      elseif t == "atk" and tk then
         s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
         s.score.Text = tostring(tk)
         s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
@@ -525,9 +554,16 @@ function Hud.init(G)
         d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
         d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
         local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
+        local pc = teamColor("atk")
+        if conq then   -- 征服：往哪边推、推了几成（推满就是那边的了）
+          local c = s.cap or 0
+          pr = (s.owner == "none" or (s.owner == "atk" and c < 1) or (s.owner == "def" and c > -1)) and math.abs(c) or 0
+          pc = teamColor((c >= 0) and "atk" or "def")
+          if s.owner == "none" then d.d.BackgroundColor3 = NEUTRAL d.d.BackgroundTransparency = 0.6 end
+        end
         d.pb.Visible = pr > 0
         d.pf.Size = UDim2.fromScale(pr, 1)
-        d.pf.BackgroundColor3 = teamColor("atk")
+        d.pf.BackgroundColor3 = pc
       end
     end
     if not P.hud.Visible or not cam then return end
@@ -547,7 +583,9 @@ function Hud.init(G)
           m.l.TextColor3 = (s.owner == mine) and WHITE or teamColor(s.owner):Lerp(WHITE, 0.2)
           local dd = (Vector3.new(m.x, cp.Y, m.z) - cp).Magnitude
           m.dist.Text = math.floor(dd / M_PER + 0.5) .. "m"
-          m.verb.Text = T((mine == "atk") and "hud.markAtk" or "hud.markDef") .. (s.flank and (" · " .. T("hud.flank")) or "")
+          local atkVerb = (mine == "atk")
+          if conq then atkVerb = s.owner ~= mine end   -- 征服：自己的据点「防守」，别的「进攻」
+          m.verb.Text = T(atkVerb and "hud.markAtk" or "hud.markDef") .. (s.flank and (" · " .. T("hud.flank")) or "")
           m.verb.TextColor3 = teamColor(mine):Lerp(WHITE, 0.35)
         end
       end

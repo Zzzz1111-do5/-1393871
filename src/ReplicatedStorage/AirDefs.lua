@@ -58,6 +58,11 @@ AirDefs.W = {
   agm65 = { kind = "agm", dmg = 1150, splash = 14, speed = 480, range = 3000, lockTime = 1.4, cone = 20, turn = 30, burn = 6, life = 10, vs = VS_AGM,
     shape = { L = 7.0, d = 0.85, fin = 1.4 } },
 
+  -- 「惊雷-1」高超音速战术核导弹（虚构型号；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载」；服务器 Nuke.lua）：空射弹道导弹——
+  --   投放后自由落体一下、助推器点火往上爬、6 马赫以上滑翔、7 马赫俯冲，离地 burst 格空爆（Config.Nuke）；只打瞄准点（不锁实体，cone = 0）
+  --   弹长约 7 米、弹径约 0.9 米：轰-6K 弹舱里半埋挂一枚（照轰-6N 腹部凹槽挂空射弹道导弹的挂法）
+  hn1 = { kind = "agm", nuke = true, hyper = true, dmg = 0, splash = 950, speed = 5800, range = 70000, lockTime = 0, cone = 0, turn = 22, burn = 30, life = 90,
+    vs = { inf = 1, light = 1, armor = 1, air = 1, ship = 1, fort = 1 }, shape = { L = 19.5, d = 2.5, fin = 1.6 } },
   ls6 = { kind = "bomb", guided = true, dmg = 1500, splash = 32, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 10.8, d = 1.0, fin = 1.0, wing = 3.6 } },
   gbu12 = { kind = "bomb", guided = true, dmg = 1300, splash = 30, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 9.2, d = 0.9, fin = 1.2 } },
   gbu31 = { kind = "bomb", guided = true, dmg = 2600, splash = 48, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 10.6, d = 1.4, fin = 1.6 } },
@@ -271,12 +276,13 @@ D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 
   gear = { nose = { z = -32, len = 8.5 }, main = { x = 16, z = 6, len = 8.0, bogie = true }, r = 1.6 },
   bays = { main = { z0 = -6, z1 = 14, w = 6.4 } },
   st = mirror({
-    { name = "bay", pos = V(0, -3.6, 4), bay = "main", opts = { "b250" }, n = N({ b250 = 12 }) },
+    { name = "bay", pos = V(0, -3.6, 4), bay = "main", opts = { "b250", "hn1" }, n = N({ b250 = 12, hn1 = 1 }) },   -- 弹舱：12 枚 250 公斤炸弹，或者一枚「惊雷-1」核导弹
     { name = "pylI", pos = V(13, -3.4, 1.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
     { name = "pylM", pos = V(21, -3.2, 4.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
     { name = "pylO", pos = V(29, -3.0, 7.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
   }),
-  presets = { preset("bomb", { bay = "b250", pylI = "b250", pylM = "b250", pylO = "b250" }), preset("kd88", { bay = "b250", pylI = "kd88", pylM = "kd88", pylO = "kd88" }) } }
+  presets = { preset("bomb", { bay = "b250", pylI = "b250", pylM = "b250", pylO = "b250" }), preset("kd88", { bay = "b250", pylI = "kd88", pylM = "kd88", pylO = "kd88" }),
+    preset("nuke", { bay = "hn1", pylI = "kd88", pylM = "kd88", pylO = "kd88" }) } }
 D.gj11 = { kind = "jet", cat = "jet", L = 28, W = 39, H = 6.0, gearH = 4.8, hp = 420, stall = 85, vMil = 280, accel = 36, pitch = 34, roll = 120, yaw = 10, g = 6,
   flares = 16, drone = true, stealth = true, flyingWing = true,
   fus = { len = 26, w = 6.0, h = 3.0, y = 0.4 }, nose = 6,

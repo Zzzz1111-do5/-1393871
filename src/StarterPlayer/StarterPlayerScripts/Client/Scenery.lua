@@ -407,7 +407,22 @@ function Scenery.init(G)
     tiles[i] = p
   end
   local seaKey = nil
-  local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
+  local RI, SEA_Y = 0, -0.6
+  -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
+  --   沙漠没有海，地形 ±R 外面接一圈沙色的平面（飞出地形边上看着还是戈壁一直铺到天边）
+  local function oceanStyle()
+    local desert = Map.desert
+    RI = math.floor(((desert and Map.R) or Map.SEA_R or Map.R or 4096) / OS)
+    SEA_Y = desert and ((Map.BASE_Y or 8) - 0.5) or -0.6
+    for _, p in ipairs(tiles) do
+      p.Color = desert and RGB(176, 142, 100) or RGB(24, 84, 102)
+      p.Material = desert and Enum.Material.Sand or Enum.Material.SmoothPlastic
+      p.Reflectance = desert and 0 or 0.22
+      p.Name = desert and "FarSand" or "Sea"
+    end
+    seaKey = nil
+  end
+  oceanStyle()
   local function stepOcean()
     local c = cam.CFrame.Position
     local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)
@@ -422,7 +437,7 @@ function Scenery.init(G)
         if i >= -RI and i < RI and k >= -RI and k < RI then
           p.Parent = nil
         else
-          p.CFrame = CF((i + 0.5) * OS, -0.6, (k + 0.5) * OS)
+          p.CFrame = CF((i + 0.5) * OS, SEA_Y, (k + 0.5) * OS)
           p.Parent = ocean
         end
       end
@@ -432,6 +447,29 @@ function Scenery.init(G)
     local n = 0
     for _, p in ipairs(tiles) do if p.Parent then n += 1 end end
     return n
+  end
+
+  -- 换地图：石头全收回重算（Flora 按新地图的高度、坡度、路摆），远处那圈换成海或沙
+  local function resetCells()
+    for key, c in pairs(cells) do
+      for _, layer in ipairs(LAYERS) do
+        for _, it in ipairs(c[layer] or {}) do if it.inst then give(it.inst) it.inst = nil end end
+      end
+      cells[key] = nil
+    end
+    if #moveP > 0 then
+      workspace:BulkMoveTo(moveP, moveC, Enum.BulkMoveMode.FireCFrameChanged)
+      table.clear(moveP)
+      table.clear(moveC)
+    end
+    lastPos = nil
+  end
+  if G.onMap then
+    G.onMap(function()
+      if Flora.reset then Flora.reset() end
+      resetCells()
+      oceanStyle()
+    end)
   end
 
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）

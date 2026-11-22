@@ -39,6 +39,11 @@ function AIVeh.init(G)
   --   比如第一阶段的前哨岛）下一阶段的（纵深，先在那里等着）。land：车在哪块陆地上（车过不了海，只挑这块陆地上的）
   local function eligible(team, p, land)
     local s = G.points and G.points[p.id]
+    if G.conquest and G.conquest() then   -- 征服（沙漠）：两边一样——敌人的、中立的据点去打，自己的被压着回去守
+      if not s then return 0 end
+      if s.owner == team then return s.pressed and 3 or 0 end
+      return (s.owner == "none") and 2 or 2.4
+    end
     if not s or s.locked or (land and p.land ~= land) or (G.flankOf and G.flankOf[p.id]) then return 0 end
     local active = not G.pointActive or G.pointActive(p.id)
     if team == "atk" then return (active and s.owner ~= "atk") and 2 or 0 end
@@ -129,6 +134,15 @@ function AIVeh.init(G)
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
+    if G.conquest and G.conquest() then   -- 征服：从自己基地车场的空车位出车
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == team and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, p.base.LookVector))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
+    end
     if team == "def" then
       -- 用户（出生点跟着战线走）：目标后面的集结点出车；那里有敌人（或找不到平地）才从营地车场出
       local rp = G.rallyOf and G.rallyOf(goal.id)

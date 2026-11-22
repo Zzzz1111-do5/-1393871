@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
+for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -124,7 +124,37 @@ end)
 
 ---------------------------------------------------------------- 开服：先生成地图，再开局
 
+-- 选地图（用户 11-22：「界面直接写 play，然后进入界面点地图」）：开服先不造世界，等第一个玩家在主菜单「开始游戏」→ 选地图里点一张
+--   （ACT.pickMap，Round.lua）；服务器里一个人也没有（测试台、空服）就等几秒按默认的岛开；后进来的直接加入当前这张。
+--   定下来以后 ReplicatedStorage 的 MapId 属性告诉客户端（客户端照着 Map.use）
+G.mapId = nil
+function G.pickMap(id)
+  if G.mapId then return G.mapId == id end
+  if not Map.profile(id) then return false end
+  G.mapId = id
+  return true
+end
+local function waitMap()
+  local t0 = os.clock()
+  -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
+  local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
+  while not G.mapId do
+    local anyone = #Players:GetPlayers() > 0
+    local waited = os.clock() - t0
+    if (not anyone and waited > emptyWait) or waited > (Config.MapWaitMax or 900) then G.mapId = Config.MapDefault or "island" end
+    task.wait(0.1)
+  end
+  if not Map.use(G.mapId) then
+    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
+    G.mapId = "island"
+    Map.use("island")
+  end
+  RS:SetAttribute("MapId", G.mapId)
+  print("[全面大战场] 地图：" .. G.mapId)
+end
+
 task.spawn(function()
+  waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
