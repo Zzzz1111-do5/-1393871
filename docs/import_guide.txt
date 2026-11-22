@@ -21,6 +21,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 22 日这一包（几个 AI 一起做的，合在一起了）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 飞机座舱照真机照片和网上资料重做（歼-20、歼-16、歼-15T、F-35、F-22、A-10C 等，出处见 docs/cockpit_research.md）：屏幕块数、尺寸、摆法、
+      平显下面的控制板；平显的组合玻璃是真透明的（原来后面垫着一块黑板挡住正前方）；第一人称不画自己的胳膊和腿；
+    - 步兵：按住 Shift 疾跑；拿着枪再按一次同一个数字键收枪（空手）；边走边开枪准心不再一路往下压；
+    - 上一包的「地形草叶去掉」也在里面（坦克、小人不再半截身子在地里）。
   11 月 21 日晚（坦克、小人「半截身子在地里」）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
     - 真正的原因是 Roblox 地形自带的会动的草叶（只长在 Grass 材质上，大概两格高），把履带、车轮、小人的腿、沙袋下半截都盖住了。
       前几包在脚本里调草长、关草叶都没用——Roblox 不许脚本改这两个属性（Decoration、GrassLength），改了就报错，游戏里看不出来；
