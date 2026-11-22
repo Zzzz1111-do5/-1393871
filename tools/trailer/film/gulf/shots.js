@@ -368,7 +368,7 @@ async function shotJetsAway(env, add) {
 
 
 // ———————————————————————————— 第二幕：无人机远程察打（天快亮） ————————————————————————————
-const DAWN0 = () => ({ ...dusk({ el: -2, az: 95, exposure: 0.95, sunI: 2.0, hemiI: 0.6 }), day: 0.55, dawn: 1, moonVis: 0.3, stars: 0.4, cloud: 0.2, heat: 0, fogDensity: 0.00005 });
+const DAWN0 = () => ({ ...dusk({ el: -2, az: 95, exposure: 0.95, sunI: 2.0, hemiI: 0.6, sky: 'dawn', skyLum: 0.16 }), day: 0.55, dawn: 1, moonVis: 0.3, stars: 0.4, cloud: 0.2, heat: 0, fogDensity: 0.00005 });
 // 一门 M109 的炮口焰、后坐
 function m109Fire(fx, V, times, seed) {
   for (const [i, t0] of times.entries()) fx.add(muzzle({ p: () => V.muzzle(), dir: () => V.muzzleDir(), t0, kind: 'gun', seed: seed + i }));
@@ -924,7 +924,7 @@ async function shotAAFire(env, add) {
   const mzl = t => { t625Aim(V, t, tgt(t)); return V.muzzle(); };
   fx.add(gatling({ from: mzl, dir: t => { t625Aim(V, t, tgt(t)); return V.muzzleDir(); }, t0: 0.1, t1: 2.4, rate: 55, speed: 1150, every: 2, spread: 0.01, col: new THREE.Color(1, 0.55, 0.2), len: 40, maxD: 4200, w: 1.3, bright: 22 }));
   EVADE.tL.forEach((t0, k) => {
-    const start = () => V.root.localToWorld(V3(k ? 2.6 : -2.6, 9.4, 0.5));
+    const start = () => V.gunPt([k ? 4.66 : -4.39, k ? 9.48 : 8.48, -4.1]);   // 炮塔两侧导弹管的管口（跟着炮塔转、炮抬头）
     fx.add(missile({ path: tau => { const u = Math.max(0, tau - t0); const s = start(); const to = tgt(Math.min(tau, EVADE.tHit[k])); return s.lerp(to, clamp(u / (EVADE.tHit[k] - t0), 0, 1) ** 1.2).add(V3(0, Math.sin(clamp(u / (EVADE.tHit[k] - t0), 0, 1) * Math.PI) * 60, 0)); }, t0, t1: t0 + 3, size: 0.8, smokeLife: 4 }));
   });
   return {
@@ -1283,13 +1283,13 @@ export const SHOTS = [
   { id: 'G18', dur: 3.6, ...T(-300, 4600), setup: shotSight99 },
   { id: 'G19', dur: 3.8, ...T(-500, 3300), setup: shotToss },
   { id: 'G20', dur: 4.0, ...T(0, 4600), setup: shotMelee },
-  { id: 'G21', dur: 3.4, ...T(-8300, -3600), setup: shotApacheUp },
-  { id: 'G22', dur: 2.4, ...T(-8300, -3600), setup: shotHellfire },
+  { id: 'G21', dur: 3.4, ...T(-8340, -3950, { a: 300 }), setup: shotApacheUp },
+  { id: 'G22', dur: 2.4, ...T(-8340, -3950, { a: 300 }), setup: shotHellfire },
   { id: 'G22B', dur: 3.0, ...T(-8700, -200), setup: shotColumnHit },
   { id: 'G23', dur: 2.8, ...T(-8700, -200), setup: shotLock },
   { id: 'G24', dur: 2.6, ...T(-8700, -200), setup: shotAAFire },
-  { id: 'G25', dur: 3.0, ...T(-8500, -3600), setup: shotEvade },
-  { id: 'G26', dur: 4.6, ...T(-8500, -3500), setup: shotCrash },
+  { id: 'G25', dur: 3.0, ...T(-8440, -3950, { a: 300 }), setup: shotEvade },
+  { id: 'G26', dur: 4.6, ...T(-8440, -3900, { a: 300 }), setup: shotCrash },
   { id: 'G27', dur: 3.8, ...T(...j16Ahead(-3000), { ext: 100000, cap: 1500 }), setup: shotJ16 },
   { id: 'G28', dur: 4.2, ...T(COL6.x, COL6.z), setup: shotEO16 },
   { id: 'G29', dur: 2.8, ...T(...j16Ahead(20000), { ext: 100000, cap: 1500 }), setup: shotRelease },

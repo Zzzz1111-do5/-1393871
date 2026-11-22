@@ -21,6 +21,14 @@ async function bin(url, T) { return new T(await (await fetch(url)).arrayBuffer()
 function tex(url, srgb = true) {
   return new Promise((res, rej) => new THREE.TextureLoader().load(url, t => { t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; res(t); }, undefined, rej));
 }
+// 可缺的旧贴图（网页版仓库的沙地、岩石、海面法线）：没有就给一张纯色的（沙漠版地表、天空都换成 Poly Haven 的了，海也不画）
+function texOr(url, srgb, rgb) {
+  return tex(url, srgb).catch(() => {
+    console.log('[film] 没有', url, '，用纯色代替');
+    const t = new THREE.DataTexture(new Uint8Array([rgb[0], rgb[1], rgb[2], 255]), 1, 1); t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.needsUpdate = true;
+    return t;
+  });
+}
 
 (async () => {
   try {
@@ -51,14 +59,22 @@ function tex(url, srgb = true) {
     initBigMap(D);
     world.parts = relocateParts(world.parts);
     const T = {
-      noise: makeNoiseTex(256, 3), sand: await tex(`${DATA}/assets/terrain/sand.jpg`), water: await tex(`${DATA}/assets/water/normals.jpg`, false),
-      rock: await tex(`${DATA}/assets/terrain/rock.jpg`),
+      noise: makeNoiseTex(256, 3), sand: await texOr(`${DATA}/assets/terrain/sand.jpg`, true, [158, 140, 110]), water: await texOr(`${DATA}/assets/water/normals.jpg`, false, [128, 128, 255]),
+      rock: await texOr(`${DATA}/assets/terrain/rock.jpg`, true, [95, 90, 86]),
       expl: await tex(`${DATA}/assets/vfx/expl.webp`, false), fire: await tex(`${DATA}/assets/vfx/fire.webp`, false), mzl: await tex(`${DATA}/assets/vfx/mzl.webp`, false),
       mzla: await tex(`${DATA}/assets/vfx/mzla.webp`, false), puff: await tex(`${DATA}/assets/vfx/puff.webp`),
     };
     T.sand.wrapS = T.sand.wrapT = THREE.RepeatWrapping; T.sand.anisotropy = 8;
     T.rock.wrapS = T.rock.wrapT = THREE.RepeatWrapping; T.rock.anisotropy = 8;
     T.desert = DESERT;
+    // 写实化（gulf/real.js）：沙漠版用真实天空 HDRI（天穹 + 环境光照）、扫描的地表贴图；素材没下载（fetch_cc0.sh）就照旧
+    let REAL = null;
+    if (DESERT) {
+      const R = await import('./gulf/real.js');
+      T.pbr = await R.loadGround(DATA, tex);
+      REAL = await R.loadSkies(renderer, DATA);
+      log('写实素材', T.pbr ? '地表好' : '地表缺', Object.keys(R.SKY_FILES).map(k => REAL.has(k) ? k : '缺' + k).join(' '));
+    }
     T.grime = makeGrimeTex(T.noise);
     for (const k of ['expl', 'fire', 'mzl', 'mzla', 'puff']) { T[k].generateMipmaps = true; T[k].minFilter = THREE.LinearMipmapLinearFilter; }
 
@@ -77,8 +93,9 @@ function tex(url, srgb = true) {
       scene.environment = pm.fromScene(new RoomEnvironment(renderer), 0.04).texture;
       pm.dispose();
     }
+    const roomEnv = scene.environment;
     const terrain = new THREE.Mesh(new THREE.BufferGeometry(), terrainMaterial(T));
-    terrain.receiveShadow = terrain.castShadow = true; terrain.frustumCulled = false;
+    terrain.receiveShadow = true; terrain.castShadow = !DESERT; terrain.frustumCulled = false;   // 沙漠：地形不给自己投影（崖的影子小，阴影相机只罩镜头附近一小块）
     terrain.material.envMapIntensity = 0.04;
     scene.add(terrain);
     const parts = makeParts(D, T);
@@ -164,6 +181,20 @@ function tex(url, srgb = true) {
       moon.intensity = P.moonI ?? 3.0; hemi.intensity = P.hemiI ?? 1.15;
       moon.color.set(P.moonC ?? 0xa6badf);
       hemi.color.set(P.hemiSky ?? 0x3c5078); hemi.groundColor.set(P.hemiGround ?? 0x16120e);
+      // 真实天空：天穹贴 HDRI（按太阳方位转），环境光照用同一张（去掉太阳、下半球是沙地），亮度对上原来的半球光，半球光减半（另一半由环境光给）
+      if (REAL && P.sky && REAL.has(P.sky) && sky.visible) {
+        const S = REAL.sky(P.sky), lum = (r, g, b) => r * 0.2126 + g * 0.7152 + b * 0.0722;
+        const sd = P.sky === 'night' ? null : (P.sunDir || P.moonDir);
+        const rot = P.skyRot ?? (sd ? REAL.rotFor(P.sky, sd) : 0);
+        su.tHdr.value = S.tex; su.uHdrOn.value = 1; su.uHdrRot.value = rot;
+        su.uHdrK.value = (P.skyLum ?? 0.4) / Math.max(lum(...S.avg), 1e-6);
+        su.uHdrHaze.value = P.skyHaze ?? 0.6;
+        scene.environment = REAL.env(P.sky, rot, lum(hemi.color.r, hemi.color.g, hemi.color.b) * hemi.intensity / Math.PI);
+        hemi.intensity *= P.hemiKeep ?? 0.5;
+        terrain.material.envMapIntensity = P.terrainEnv ?? 0.5;
+      } else {
+        su.uHdrOn.value = 0; scene.environment = roomEnv; terrain.material.envMapIntensity = 0.04;
+      }
       terrain.material.userData.wet = DESERT ? 0 : 1;
       sea.userData.mat.uniforms.uMoon.value.copy(su.uMoon.value);
       moon.position.copy(su.uMoon.value).multiplyScalar(3000).add(P.shadowAt || camera.position);

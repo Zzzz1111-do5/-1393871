@@ -137,6 +137,32 @@ export function scrubInsignia(model) {
 
 // 拍片以后游戏里换过的模型（11-18 起）：99A 换成 99A2、M1A2 换成沙漠涂装 SEPv2——分镜里还按老键写，这里换成现在的文件
 const VEH_KEY = { ztz99: 'ztz99a2', m1a2v3: 'm1a2dc' };
+// 原模型里分错块的：PGL-625 炮塔两侧的四联导弹管、发射架烘焙在车体那块网格（Body_1）里，炮塔转、导弹不转（用户 11-22）——
+//   按三角形位置（车体坐标）拆出来挂到炮塔的俯仰架上（跟着炮转、跟着炮抬头）
+const VEH_MOVE = {
+  t625: [{ mesh: '__Body_1', to: 'gun', test: (x, y, z) => y > 7.75 && Math.abs(x - 0.14) > 3.2 && Math.abs(x - 0.14) < 5.8 && z > -4.6 && z < 5.6 }],
+};
+function moveTris(root, model, key, groups) {
+  for (const R of VEH_MOVE[key] || []) {
+    let src = null;
+    model.traverse(o => { if (!src && o.isMesh && (o.name.endsWith(R.mesh) || (o.parent && o.parent.name.endsWith(R.mesh)))) src = o; });
+    if (!src || !src.geometry.index) continue;
+    root.updateMatrixWorld(true);
+    const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(src.matrixWorld);
+    const pos = src.geometry.attributes.position, idx = src.geometry.index.array;
+    const v = new THREE.Vector3(), keep = [], take = [];
+    const inside = i => { v.fromBufferAttribute(pos, i).applyMatrix4(toRoot); return R.test(v.x, v.y, v.z); };
+    for (let t = 0; t < idx.length; t += 3) (inside(idx[t]) && inside(idx[t + 1]) && inside(idx[t + 2]) ? take : keep).push(idx[t], idx[t + 1], idx[t + 2]);
+    if (!take.length) continue;
+    const g2 = src.geometry.clone();
+    g2.setIndex(take); g2.clearGroups();
+    src.geometry = src.geometry.clone(); src.geometry.setIndex(keep); src.geometry.clearGroups();
+    const m2 = new THREE.Mesh(g2, src.material);
+    m2.castShadow = m2.receiveShadow = true;
+    src.parent.add(m2); m2.position.copy(src.position); m2.quaternion.copy(src.quaternion); m2.scale.copy(src.scale);
+    groups[R.to].attach(m2);
+  }
+}
 // —— 地面载具：炮塔、炮管、车轮各挂一个转轴 ——
 // 车上的星徽是单独的几块小网格（纯色贴图：红星、黄字），贴图里擦不掉（整张都是红的），整块藏起来
 const EMB_MESH = { ztz99a2: ['__Body_13', '__Body_15', '__Turret_5', '__Turret_6'] };
@@ -169,8 +195,11 @@ export async function vehicle(key, base) {
       w.piv.attach(o);
     }
   }
+  moveTris(root, model, key, { tur, gun, recoil });
   const V = {
     root, M, tur, gun, recoil, wheels, len: M.len,
+    // 车体坐标里的一点（炮塔、炮都在零位时）→ 跟着炮塔转、炮抬头以后的世界坐标（导弹管口之类）
+    gunPt: p => gun.localToWorld(new THREE.Vector3(p[0] - (M.gun ? M.gun[0] : 0), p[1] - (M.gun ? M.gun[1] : 0), p[2] - (M.gun ? M.gun[2] : 0))),
     muzzle: () => recoil.localToWorld(new THREE.Vector3(0, 0, -(M.muz || 8))),
     muzzleDir: () => new THREE.Vector3(0, 0, -1).transformDirection(recoil.matrixWorld),
     aim(yaw, pitch) { tur.rotation.y = yaw; gun.rotation.x = pitch; },

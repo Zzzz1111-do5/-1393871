@@ -187,10 +187,30 @@ function srcPos(x, z) {
   const k = sOf(D) / D, far = smooth(BIG.R0, BIG.R0 + BIG.VW, D), wq = far * 150;
   return [BIG.fx + dx * k + wq * fbm(x / 2900 + 7.1, z / 2900, 3), BIG.fz + dz * k + wq * fbm(x / 2900, z / 2900 - 3.7, 3), far, D];
 }
+// 沙漠的崖壁、方山（用户 11-22：那个山很奇怪）：游戏里的方山是一圈光滑的 S 形崖面 + 凹的坡脚，放大看像一块蛋糕。
+//   片子里在高出平原、陡的地方加：顺坡往下的冲沟（噪声沿等高线方向密、顺坡方向拉长）、一级级的岩层台阶、坡脚的碎石堆；
+//   平顶、平原、矮的沙墙沙丘、柏油路面不动（零件、车都照原来的高度摆）
+function cliffDetail(x, z, h0) {
+  const e = h0 - 12;
+  if (e < 0.8) return 0;
+  const k = 6;
+  const gx = (srcH(x + k, z) - srcH(x - k, z)) / (2 * k), gz = (srcH(x, z + k) - srcH(x, z - k)) / (2 * k);
+  const s = Math.hypot(gx, gz);
+  if (s < 0.05) return 0;
+  const ux = -gz / s, uz = gx / s;   // 沿等高线
+  const u = x * ux + z * uz, v = (x * gx + z * gz) / s;   // 沿坡向
+  const steep = smooth(0.1, 0.65, s) * smooth(4, 26, e) * (1 - matW(x, z)[1]);
+  const gully = (ridged(u / 19 + 3.1, v / 64 - 1.7, 4) - 0.5) * 11 + perlin(u / 7, v / 23) * 2.2;   // 冲沟、沟里沟外的小起伏
+  const L = 7.5, q = e / L, f = q - Math.floor(q);
+  const strata = (Math.floor(q) + smooth(0.55, 1, f) - q) * L * 0.55;   // 岩层：每 7.5 格（2.7 米）一级台阶
+  const talus = smooth(0.04, 0.2, s) * (1 - smooth(0.45, 0.85, s)) * (1 - smooth(20, 45, e));
+  return (gully + strata) * steep + (fbm(x / 8, z / 8, 3) * 1.8 + fbm(x / 31, z / 31, 2) * 2.4) * talus;
+}
 // —— 世界里一点的高度 ——
 export function heightAt(x, z) {
   const [sx, sz, far] = srcPos(x, z);
   const h0 = srcH(sx, sz);
+  if (BIG.desert) return h0 + cliffDetail(x, z, h0);
   let h;
   if (h0 <= 0) h = h0 * (1 + 2.5 * far);   // 海底：远处深一些（海水颜色、浪花按水深）
   else {
@@ -206,7 +226,7 @@ export function heightAt(x, z) {
 // 地面的材质权重（沙、草、岩、土）和颜色
 const MATC = { Sand: [0.70, 0.62, 0.45], Rock: [0.36, 0.34, 0.32], Ground: [0.36, 0.28, 0.2], Grass: [0.24, 0.3, 0.17], LeafyGrass: [0.19, 0.25, 0.14], Slate: [0.3, 0.3, 0.32], Asphalt: [0.12, 0.12, 0.13], Concrete: [0.42, 0.42, 0.4] };
 // 沙漠（线性色）：暖沙、砾石、赭红砂岩、灰白石灰岩台地、白盐壳、黑柏油
-const MATD = { Sand: [0.62, 0.47, 0.29], Ground: [0.42, 0.33, 0.23], Rock: [0.27, 0.21, 0.17], Slate: [0.24, 0.2, 0.17], Sandstone: [0.5, 0.29, 0.17], Limestone: [0.6, 0.53, 0.41],
+const MATD = { Sand: [0.62, 0.47, 0.29], Ground: [0.42, 0.33, 0.23], Rock: [0.27, 0.21, 0.17], Slate: [0.24, 0.2, 0.17], Sandstone: [0.44, 0.33, 0.21], Limestone: [0.6, 0.53, 0.41],
   Salt: [0.7, 0.64, 0.52], Asphalt: [0.07, 0.068, 0.07], Concrete: [0.4, 0.39, 0.36], Mud: [0.3, 0.24, 0.17] };
 const WCLS = nm => nm === 'Sand' ? 0 : (nm === 'Salt' || nm === 'Asphalt' || nm === 'Concrete') ? 1 : (nm === 'Rock' || nm === 'Slate' || nm === 'Sandstone' || nm === 'Limestone') ? 2 : 3;
 // 台地顶上平的石灰岩是砾漠（hamada：碎石铺的平地），不是崖面那种亮的岩石——夜里高空看，整块台地亮成一片灰白
@@ -232,7 +252,8 @@ function srcMatAdd(x, z, wt, A) {
   matAdd(names[mat[o + n] - 1] || 'Sand', wt * (1 - u) * v, A);
   matAdd(names[mat[o + n + 1] - 1] || 'Sand', wt * u * v, A);
 }
-const MACC = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 };
+const MACC = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 }, MW = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 };
+function matW(x, z) { MW.c[0] = MW.c[1] = MW.c[2] = 0; MW.w[0] = MW.w[1] = MW.w[2] = MW.w[3] = 0; MW.lime = 0; srcMatAdd(x, z, 1, MW); return MW.w; }   // 一点的四类权重（沙、平的、岩、砾）
 // 远处网格疏（最疏一格一千多），一个顶点只取一点的材质，边界就成了一级级的台阶：按这个顶点管的那一块（fx × fz）多取几点平均
 function surfaceDesert(x, z, h, slope, out, o, fx = 0, fz = 0) {
   const A = MACC;

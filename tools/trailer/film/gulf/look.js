@@ -20,8 +20,9 @@ export function day(o = {}) {
     day: 1, dawn: warm, sunDir: sun, moonDir: sun, moonVis: 0, moonI: (o.sunI ?? 7.5) * (0.45 + 0.55 * bright), moonC: sunC.getHex(),
     hemiI: o.hemiI ?? lerp(1.35, 2.2, bright), hemiSky: new THREE.Color().setRGB(0.42, 0.52, 0.72).lerp(haze, 0.35).getHex(), hemiGround: new THREE.Color(0.5, 0.39, 0.26).getHex(),
     fogColor: haze.clone(), haze: haze.clone(), fogDensity: o.fog ?? (0.000034 + dust * 0.00005),
-    exposure: o.exposure ?? 0.55, bloom: o.bloom ?? 0.55, bloomTh: o.bloomTh ?? 1.6, sat: o.sat ?? 1.0, contrast: o.contrast ?? 1.05,
+    exposure: (o.exposure ?? 0.55) * 0.86, bloom: o.bloom ?? 0.55,   // ×0.86：写实地表（gulf/real.js）比原来的旧贴图亮、还多了天光 bloomTh: o.bloomTh ?? 1.6, sat: o.sat ?? 1.0, contrast: o.contrast ?? 1.05,
     heat: o.heat ?? 0.6, grain: o.grain ?? 0.008, lift: 0.006, tint: o.tint ?? 0.6, cloud: o.cloud ?? 0.35, stars: 0,
+    sky: o.sky ?? 'day', skyLum: o.skyLum ?? 0.42, skyHaze: o.skyHaze ?? 0.62,   // 真实天空（gulf/real.js）：哪张 HDRI、平均亮度、地平线的沙尘霾
     fxAmb: new THREE.Color().setRGB(0.2, 0.185, 0.16).multiplyScalar(0.45 + 0.55 * bright).lerp(new THREE.Color(0.2, 0.13, 0.08), warm * 0.4),
   };
 }
@@ -31,6 +32,7 @@ export function dusk(o = {}) {
   P.hemiI = o.hemiI ?? 1.05;
   P.hemiSky = new THREE.Color(0.38, 0.36, 0.48).getHex();
   P.bloom = o.bloom ?? 0.8; P.bloomTh = 1.3;
+  P.sky = o.sky ?? 'dusk'; P.skyLum = o.skyLum ?? 0.2; P.skyHaze = o.skyHaze ?? 0.5;
   return P;
 }
 // 夜里：月光（偏冷、暗），沙漠的夜空很清
@@ -41,5 +43,6 @@ export function night(o = {}) {
     hemiI: o.hemiI ?? 0.55, hemiSky: 0x2b3b5e, hemiGround: 0x15110c, cloud: o.cloud ?? 0.12,
     fogColor: new THREE.Color(0.035, 0.045, 0.07), fogDensity: o.fog ?? 0.00007, exposure: (o.exposure ?? 1.25) * 0.85, bloom: o.bloom ?? 1.15, heat: 0, grain: o.grain ?? 0.016,
     contrast: 1.1, sat: 0.85,
+    sky: o.sky ?? 'night', skyLum: o.skyLum ?? 0.012, skyHaze: o.skyHaze ?? 0.75,
   };
 }
