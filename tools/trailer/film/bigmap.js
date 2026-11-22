@@ -200,9 +200,12 @@ function cliffDetail(x, z, h0) {
   const ux = -gz / s, uz = gx / s;   // 沿等高线
   const u = x * ux + z * uz, v = (x * gx + z * gz) / s;   // 沿坡向
   const steep = smooth(0.1, 0.65, s) * smooth(4, 26, e) * (1 - matW(x, z)[1]);
-  const gully = (ridged(u / 19 + 3.1, v / 64 - 1.7, 4) - 0.5) * 11 + perlin(u / 7, v / 23) * 2.2;   // 冲沟、沟里沟外的小起伏
-  const L = 7.5, q = e / L, f = q - Math.floor(q);
-  const strata = (Math.floor(q) + smooth(0.55, 1, f) - q) * L * 0.55;   // 岩层：每 7.5 格（2.7 米）一级台阶
+  // 冲沟：大的十几米一道、小的几米一道，深浅不一（原来一样粗细、一样间距，像一排排草垛）
+  const gully = (ridged(u / 47 + 3.1, v / 90 - 1.7, 3) - 0.5) * 10 + (ridged(u / 13 - 7.3, v / 40 + 2.2, 3) - 0.5) * 3.5 * (0.5 + 0.5 * perlin(u / 120, v / 60)) + perlin(u / 6, v / 19) * 1.6;
+  // 岩层：厚薄不一（4～11 格）、高度随位置起伏一点（原来每 7.5 格一级、整整齐齐一圈圈）
+  const ew = e + perlin(u / 160, 0.37) * 5;
+  const L = 7.5 + 3.5 * perlin(ew / 23, 1.7), q = ew / L, f = q - Math.floor(q);
+  const strata = (Math.floor(q) + smooth(0.6, 1, f) - q) * L * 0.32;
   const talus = smooth(0.04, 0.2, s) * (1 - smooth(0.45, 0.85, s)) * (1 - smooth(20, 45, e));
   return (gully + strata) * steep + (fbm(x / 8, z / 8, 3) * 1.8 + fbm(x / 31, z / 31, 2) * 2.4) * talus;
 }

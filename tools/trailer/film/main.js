@@ -77,6 +77,8 @@ function texOr(url, srgb, rgb) {
     }
     T.grime = makeGrimeTex(T.noise);
     for (const k of ['expl', 'fire', 'mzl', 'mzla', 'puff']) { T[k].generateMipmaps = true; T[k].minFilter = THREE.LinearMipmapLinearFilter; }
+    // 彩色烟团（sRGB 带透明）不用 mipmap：新版 SwiftShader 对这种贴图按 mipmap 采样会坏（烟团一大就一片片黑条），只采原图
+    T.puff.generateMipmaps = false; T.puff.minFilter = THREE.LinearFilter;
 
     const SHOTS = CUT === 'promo' ? (await import('./promo.js')).PROMO : (V3MOD ? V3MOD.SHOTS : FILM_SHOTS);
     const post = new Post(renderer, W, H, { ss: SS, msaa: 4, aspect: ASP || (CUT === 'promo' ? W / H : 2.39) });

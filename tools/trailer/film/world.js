@@ -467,7 +467,8 @@ vec3 layer2(sampler2D D, sampler2D N, sampler2D A, vec3 M, vec2 uv, float mixK, 
       nT += mix(vec3(0.0, 0.0, 1.0), nn, ck) * w.y; arm += mix(vec3(1.0, 0.75, 0.0), aa, ck) * w.y; wsum += w.y;
     }
     if (w.z > 0.01) {   // 岩：平的地方（方山顶、台地顶）是碎石地，陡的崖面是岩石
-      vec3 Nw = normalize(cross(dFdx(vWP), dFdy(vWP)));
+      vec3 cr = cross(dFdx(vWP), dFdy(vWP));
+      vec3 Nw = dot(cr, cr) > 1e-12 ? normalize(cr) : vec3(0.0, 1.0, 0.0);   // 轮廓边上屏幕导数可能是零
       float cliff = smoothstep(0.82, 0.55, abs(Nw.y));
       vec3 nn = vec3(0.0), aa = vec3(0.0);
       vec3 flatD = layer2(t_gravelD, t_gravelN, t_gravelA, u_gravelM, uv * 1.07 + 0.61, mixK, nn, aa, 1.0) * vec3(0.645, 0.64, 0.59);
@@ -483,9 +484,11 @@ vec3 layer2(sampler2D D, sampler2D N, sampler2D A, vec3 M, vec2 uv, float mixK, 
       float streak = smoothstep(0.42, 0.85, texture2D(tNoise, vec2(hz / 23.0, vWP.y / 260.0)).r * 0.7 + texture2D(tNoise, vec2(hz / 7.0, vWP.y / 90.0)).g * 0.3);
       dr *= mix(vec3(1.0), vec3(0.62, 0.55, 0.5), streak * cliff);
       // 崖面颜色不用游戏的顶点色（石灰岩一道道发白）：一层层深浅交替的黄褐色砂岩
-      float lay = smoothstep(0.25, 0.75, fract(vWP.y / 7.5 + 0.35 * texture2D(tNoise, vWP.xz / 140.0).r));
-      vec3 cliffC = mix(vec3(0.25, 0.18, 0.115), vec3(0.37, 0.28, 0.18), lay) * (0.9 + 0.2 * texture2D(tNoise, vec2(hz / 300.0, vWP.y / 400.0)).b);
-      vec3 dl = vec3(dot(dr, vec3(0.333)));
+      float yw = vWP.y + 6.0 * texture2D(tNoise, vWP.xz / 210.0).r;
+      float lay = smoothstep(0.2, 0.8, fract(yw / (7.0 + 4.0 * texture2D(tNoise, vec2(yw / 90.0, 0.3)).g)));
+      vec3 cliffC = mix(vec3(0.19, 0.135, 0.085), vec3(0.3, 0.215, 0.135), lay) * (0.85 + 0.3 * texture2D(tNoise, vec2(hz / 300.0, vWP.y / 400.0)).b);
+      cliffC = mix(cliffC, cliffC * vec3(1.12, 0.95, 0.8), smoothstep(0.4, 0.8, texture2D(tNoise, vec2(hz / 180.0, vWP.y / 70.0)).r));   // 一片片偏红的铁锈色
+      vec3 dl = vec3(mix(dot(dr, vec3(0.333)), 1.0, 0.35));
       det += mix(flatD, cliffC * mix(dl, dr, 0.3) / max(diffuseColor.rgb, vec3(0.03)), cliff) * w.z;
       vec3 tx = texture2D(t_rockN, px / 46.0).xyz * 2.0 - 1.0, tz = texture2D(t_rockN, pz / 46.0).xyz * 2.0 - 1.0;
       gCliffP += (vec3(0.0, tx.y, tx.x) * bw.x + vec3(tz.x, tz.y, 0.0) * bw.z) * cliff * w.z * 1.4;
@@ -504,10 +507,14 @@ vec3 layer2(sampler2D D, sampler2D N, sampler2D A, vec3 M, vec2 uv, float mixK, 
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
   {   // 世界 xz 铺的切线空间：T = +x、B = −z（uv.y 朝 −z），N = 几何法线；崖面的岩石法线另外按世界空间加上去
     vec3 Nw = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
-    vec3 Tw = normalize(vec3(1.0, 0.0, 0.0) - Nw * Nw.x), Bw = normalize(vec3(0.0, 0.0, -1.0) - Nw * (-Nw.z));
+    // 竖直的面（陡坡、崖壁、掩体墙）上 x 轴和法线几乎平行，Gram-Schmidt 出来是零向量、normalize 成 NaN（泛光里扩成一片片黑条）：换 z 轴
+    vec3 t0 = vec3(1.0, 0.0, 0.0) - Nw * Nw.x;
+    if (dot(t0, t0) < 1e-4) t0 = vec3(0.0, 0.0, 1.0) - Nw * Nw.z;
+    vec3 Tw = normalize(t0), Bw = cross(Nw, Tw);
     float dcam = distance(vWP, cameraPosition);
     float fade = 1.0 - smoothstep(250.0, 1400.0, dcam);   // 远了贴图的起伏糊成一片，不要它把整片地压暗
-    vec3 tn = normalize(mix(vec3(0.0, 0.0, 1.0), normalize(gNw), fade * 0.9));
+    vec3 gn = dot(gNw, gNw) > 1e-8 ? normalize(gNw) : vec3(0.0, 0.0, 1.0);
+    vec3 tn = normalize(mix(vec3(0.0, 0.0, 1.0), gn, fade * 0.9));
     vec3 pw = normalize(Tw * tn.x + Bw * tn.y + Nw * tn.z + gCliffP * (1.0 - smoothstep(400.0, 2500.0, dcam)));
     normal = normalize((viewMatrix * vec4(pw, 0.0)).xyz);
   }`)

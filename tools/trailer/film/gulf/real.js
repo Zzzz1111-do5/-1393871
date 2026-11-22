@@ -16,6 +16,9 @@ const SAND = [0.46, 0.37, 0.26];   // 沙地反照率（线性）
 async function loadOne(url) {
   const t = await new Promise((res, rej) => new RGBELoader().setDataType(THREE.HalfFloatType).load(url, res, undefined, rej));
   const { width: w, height: h, data } = t.image;   // RGBA 半精度，第 0 行是天顶
+  // 太阳、远处灯光的像素超过半精度上限（65504）就成了无穷大：烟、云叠在上面混出 NaN（一块块黑条），泛光、环境光也跟着坏——钳到 3 万以内
+  const CAP = toHalf(30000);
+  for (let i = 0; i < data.length; i++) if ((data[i] & 0x7c00) === 0x7c00 || (data[i] & 0x7fff) > CAP) data[i] = (data[i] & 0x8000) ? 0 : CAP;
   let best = -1, bi = 0, bj = 0;
   for (let j = 0; j < h / 2; j++) for (let i = 0; i < w; i += 2) {
     const o = (j * w + i) * 4;
