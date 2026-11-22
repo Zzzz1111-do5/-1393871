@@ -663,7 +663,11 @@ function Interior.init(G)
   local ADm = nil
   local FORT_TYP = { aaa = "aa", howitzer = "arty", coastal = "arty", bunker = "fort" }
   local function entTyp(kind, cat, mid)
-    if kind == "veh" then return (cat == "tank" or cat == "aa" or cat == "arty") and cat or "apc" end
+    if kind == "veh" then   -- 实体的 Cat 是挨打的类别（armor / light……），兵种按型号表（VehDefs 的 cat）
+      local vd = mid and VD.get(mid)
+      local c2 = vd and vd.cat or cat
+      return (c2 == "tank" or c2 == "aa" or c2 == "arty") and c2 or "apc"
+    end
     if kind == "air" then
       if ADm == nil then
         local ok, m = pcall(function() return require(RS:WaitForChild("AirDefs")) end)
