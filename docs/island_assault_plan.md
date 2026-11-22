@@ -974,6 +974,14 @@
     宣传片的空战（用户：飞行不符合空气动力学、为什么飞那么低那么近，不都是远程打击么）：飞机姿态按轨迹的受力算（`gulf/shots.js` 的 `flyAero` / `turnPath`：
     升力方向定坡度、过载定迎角，协调转弯），距离、高度用真的（1 米 = 2.8 格）——歼-35 9000 米高、离阵地 46 公里投雷石-6，歼-16 8000 米高、38 公里外发 KD-88，
     攻击-2 7600 米、11 公里；高空镜头的地形网格铺 10 万格、外面一圈沙地，地图数据外照断崖线接着铺台地（`film/bigmap.js`）。
+    写实化（用户：太假了这个视频；那个山很奇怪；防空车炮塔转导弹发射器不转）：`film/gulf/real.js`——Poly Haven 的 CC0 素材（`bash tools/trailer/fetch_cc0.sh <数据目录>`
+    下载到 `assets/ph/`：qwantani 纯天空 HDRI 五个时刻、sandy_gravel_02 / gravelly_sand / dry_ground_01 / rock_06 地表贴图）。天穹贴 HDRI（按镜头的太阳方位转），
+    环境光照用同一张（去掉太阳、下半球填成被照亮的沙地，亮度对上原来的半球光）；地表按扫描贴图 + 法线，贴图先滤掉大尺度明暗、两个尺度都按区域随机错开采样（不出条纹）；
+    方山崖面在片子里加冲沟、岩层台阶、坡脚碎石，按一层层砂岩着色；PGL-625 的导弹管、发射架从车体网格里按三角形位置拆出来挂到俯仰架上（`film/models.js` VEH_MOVE）。
+    游戏的沙梁（`MapDesert.lua` ergH）也改了：顶线弯曲、一段高一段低、相邻两道高矮不一。
+    数据目录要重建时：`lune run tools/trailer/export_desert.luau <目录>`、`lune run tools/trailer/export_meta.luau <目录>/meta.json`、
+    `python3 -I tools/trailer/vfx_gen.py <目录>/assets/vfx`、`bash tools/trailer/fetch_cc0.sh <目录>`（网页版仓库的旧沙地、岩石、海面贴图可缺）。
+    新版 Chromium 的 SwiftShader 对带透明的 sRGB 贴图按 mipmap 采样会坏（烟团一片片黑条）：彩色烟团不用 mipmap。
 
 ## 协作（几个会话一起改这个仓库）
 
