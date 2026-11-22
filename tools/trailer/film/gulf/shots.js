@@ -642,6 +642,7 @@ async function shotSight99(env, add) {
   const P = M1POS();
   const fireT = 1.3, hitT = 1.85;
   const victim = 1;
+  L.forEach((V, i) => ground(V.root, P[i].x, P[i].z, Math.PI + 0.08 * (i - 1.5)));   // 先摆好：下面爆炸、火柱的位置开头就算（原来车还在原点，火球炸到地图原点去了）
   const turret = () => L[victim].root.localToWorld(V3(0, 5.2, -1));
   fx.add(explosion({ p: turret(), t0: hitT, s: 30, seed: 640, debris: 20, ember: 30 }));                          // 穿甲弹打进去
   fx.add(explosion({ p: turret().add(V3(0, 2, 0)), t0: hitT + 0.12, s: 52, seed: 642, debris: 28, ember: 60 }));   // 弹药殉爆：一大团火球
@@ -914,7 +915,15 @@ async function shotEvade(env, add) {
   fx.add(missile({ path: tl => { const tau = T0 + tl; if (tau > 1.45) return mis(0, 1.45).lerp(decoyP, clamp((tau - 1.45) / 0.35, 0, 1)); return mis(0, tau); }, t0: EVADE.tL[0] - T0, t1: 1.8 - T0, size: 0.8, smokeLife: 3 }));
   fx.add(explosion({ p: decoyP, t0: 1.8 - T0, s: 14, seed: 760, debris: 0, ember: 20, dust: false, air: { v: V3(0, 0, 0) } }));
   fx.add(missile({ path: tl => mis(1, T0 + tl), t0: EVADE.tL[1] - T0, t1: EVADE.tHit[1] - T0, size: 0.8, smokeLife: 3 }));
-  const tailP = () => A.root.localToWorld(V3(0, 7, 15));
+  // 第二枚打中尾梁：爆炸特效要一个固定的点（给函数会崩：p.clone is not a function）——按中弹那一刻直升机的姿态算出尾梁的位置
+  const tailP = (() => {
+    const tl = EVADE.tHit[1] - T0, o = new THREE.Object3D();
+    o.position.copy(hp(tl));
+    o.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), V3(-0.6, -0.12, 0.8).normalize(), V3(0, 1, 0)));
+    o.rotateZ(-smooth(0.2, 0.9, tl) * 0.75);
+    o.updateMatrixWorld(true);
+    return o.localToWorld(V3(0, 7, 15));
+  })();
   fx.add(explosion({ p: tailP, t0: EVADE.tHit[1] - T0, s: 12, seed: 761, debris: 14, ember: 30, dust: false, air: { v: V3(-20, -10, 10) } }));
   return {
     update(t) {
