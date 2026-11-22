@@ -710,6 +710,11 @@ P.crows = function(s, env)
     local eye, f, r, u = d.rwsEye, d.rwsF, d.rwsR, d.rwsU
     if st.slave and d.citvEye then eye, f, r, u = d.citvEye, d.citvF, d.citvR, d.citvU end
     if eye then th.render({ eye = eye, f = f, r = r, u = u, hfov = st.zoom and 9 or 30, pal = st.therm and PAL.WHT or PAL.DAY, ents = d.ents, Map = env.Map, range = 2500 }) end
+    if d.rwsNoGun then   -- 坦克不带机枪：只剩摄像头（看、测距），没有武器、没有弹数
+      t.Text = string.format("CROWS  CAM  NO WPN  %s%s", st.therm and "TI" or "DAY", st.slave and "  SLAVE" or "")
+      am.Text = (st.lase and os.clock() - st.lase < 3 and d.range) and string.format("%04d", math.floor(d.range)) or "---"
+      return
+    end
     t.Text = string.format("CROWS  M2  %s  %s%s", st.armed and "ARMED" or "SAFE", st.therm and "TI" or "DAY", st.slave and "  SLAVE" or "")
     am.Text = (st.lase and os.clock() - st.lase < 3 and d.range) and string.format("%04d", math.floor(d.range)) or tostring(d.rwsAmmo or 400)
   end

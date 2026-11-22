@@ -5,10 +5,10 @@
   Studio 的「导入 3D」只认 .glb，不认压缩包本身。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
-模型一共 83 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
+模型一共 85 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
-  2. 飞机直升机                air/      19 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
-                                         f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
+  2. 飞机直升机                air/      21 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
+                                         f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、j11.glb / j10.glb 是 11-22 加的歼-11B / 歼-10C、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
                                optics/   31 件：14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）+ 17 件改枪配件（opt_ 瞄具、sup_ 消音器、muz_ 枪口件、grip_ 握把、mag_ 弹匣、tac_ 战术件）
@@ -21,6 +21,14 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 22 日第三包（歼-11B / 歼-10C、直升机准心操控、坦克去机枪、爆反自己选）：换游戏文件（或者「三、只换脚本」），再导入两个新文件 air/j11.glb、air/j10.glb（别的模型都不用动）：
+    - 两架新飞机（攻方战斗机）：歼-11B（Sketchfab 上 Rhine_Lab_Muelsyse 做的 Shenyang J-11，CC-BY）、歼-10C（andertan 做的 Chengdu J10，CC-BY），
+      零件叫 A_j11__… / A_j10__…。会动的：歼-11 全动平尾、襟副翼、两片方向舵、背上的减速板、座舱盖、起落架舱门；歼-10 鸭翼、升降副翼、方向舵、座舱盖；
+      起落架两架都会收放。没导入也能开，用零件拼的；
+    - 直升机（鼠标）：E 升、Q 降，机头跟着准心——准心往下压机身前倾往前飞，准心突然往上抬就往后、往上飘；机炮比机身先转到准心；
+    - 歼-16 第一人称坐前座（原来坐到后座去了）；
+    - 坦克不带机枪了（并列机枪、车顶机枪、M1A2 的 CROWS 都去掉，只剩主炮）；步战车、悍马这些的机枪照旧；
+    - 车库「爆反」改装：炮塔正面、炮塔侧面、首上、侧裙板四个位置自己点开 / 关掉（车模上也有圆点可以点），少贴一处稍快一点；原车自带的那一处锁着。
   11 月 22 日第二包（坦克半截身子在地里、座舱平显换原模型）：换游戏文件（或者「三、只换脚本」），再导入一个新文件 optics/hud15.glb（别的模型都不用动）：
     - 坦克、小兵「半截身子在地里」：草叶去掉以后还是这样——查出来是 Roblox 地形画地面的办法：最上面那层体素填得再少，画出来也有大半层高，
       地面就比游戏算的高度高出零到两格。现在开服时先在地图外面很深的地方写几块试验平台、用射线量出 Roblox 到底把地面画在哪，

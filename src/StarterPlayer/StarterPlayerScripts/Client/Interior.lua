@@ -173,6 +173,14 @@ function Interior.init(G)
     -- 「开镜」= 炮长主瞄准镜（用户 11-22：「第一人称开镜视角移动不了」「坦克第一人称视角开镜有时候会是绿色的」）：一坐进车里是驾驶员位，
     --   原来 Shift 开的是驾驶员的热像 / 微光潜望镜——跟着车体、鼠标转不动，99A、国产装甲车的还是绿色微光。现在主镜跟着车体固定的位置（驾驶员），
     --   Shift 跟车外一样进炮长主瞄准镜（镜头在炮长镜里、鼠标 / 方向键转炮）；那个位置自己的镜子挪到 G、T
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：遥控武器站的观瞄（M1A2 车长的 CROWS）从乘员位上拿掉，T 那一位空着
+    if not spec.air and v.def.noRoofMg then
+      for _, sp in pairs(spec.stations or {}) do
+        for slot, o in pairs(sp.optics or {}) do
+          if o.rws then sp.optics[slot] = nil end
+        end
+      end
+    end
     if not spec.air and v.def.turret and v.def.sight then
       for _, sp in pairs(spec.stations or {}) do
         local o = sp.optics
@@ -789,6 +797,8 @@ function Interior.init(G)
     d.ammoKind = c.ammoKind
     if v.rF then d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(v.rgF or v.rF) else d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(tW * CF(V(0.6, 1.3, 0.2) * S)) end
     d.rwsAmmo = 400
+    -- 坦克不带机枪（VehDefs.TANK_MG）：CROWS 屏只剩车顶摄像头，没有 M2、没有弹数
+    if st and st.d and st.d.noRoofMg then d.rwsAmmo, d.rwsNoGun = nil, true end
     return d
   end
 
@@ -1482,6 +1492,8 @@ function Interior.init(G)
     local sp = c.spec.stations[station]
     local o = sp and sp.optics and sp.optics[slot]
     if not o then return false end
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：车长的遥控武器站这一位空着，按 T 没反应
+    if o.rws and G.drive and G.drive.d and G.drive.d.noRoofMg then return false end
     if o.kind == "gps" then   -- 炮长主瞄准镜（车长看就是延伸目镜）：照常的瞄准镜，头先凑过去
       scope.phase, scope.t, scope.cb = "in", 0, function() if G.driveSetSight then G.driveSetSight(true) end end
       return true

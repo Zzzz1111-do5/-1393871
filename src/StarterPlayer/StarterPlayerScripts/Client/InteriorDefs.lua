@@ -1126,6 +1126,10 @@ Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp =
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
+-- 歼-11B：苏-27 那种单座座舱（大圆形仪表板换成三块下视显示器、平显框高）
+Defs.j11 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", frame = true, cn = true }) end
+-- 歼-10C：三块大下视显示器 + 宽视场平显的玻璃座舱
+Defs.j10 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.17, hudH = 0.16, hudFrame = "box", stick = "center", frame = true, cn = true }) end
 Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
   hoop = { z = -0.78, th = 0.075, compass = true } }) end
 Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3, goldGlass = true }) end

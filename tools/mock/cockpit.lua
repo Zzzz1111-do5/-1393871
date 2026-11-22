@@ -113,6 +113,13 @@ check((cam.CFrame.Position - eyeW.Position).Magnitude < 0.25 * 2.8, string.forma
 local q = v.cf:PointToObjectSpace(cam.CFrame.Position)
 local sideOk = (cur.spec.heli or cur.spec.eyeShift) and 0.8 * 2.8 or v.def.W * 0.1   -- 并排座：机长坐一边
 check(math.abs(q.X) < sideOk and q.Z < 0, string.format("眼位在机身中线（并排座在一边）、机头那半边（机体坐标 %.1f, %.1f, %.1f）", q.X, q.Y, q.Z))
+-- 双座（歼-16）：驾驶员的眼位在前座——座舱盖的前半段、后座飞行员的前面（用户 11-22：「j16 驾驶位第一人称不能坐在后座」）
+local Cn = v.def.canopy
+if v.def.twoSeat and Cn then
+  local s2 = C.AM and C.AM.seatCF and C.AM.seatCF(v.M, 2)
+  local zr = s2 and s2.Position.Z or (Cn.z + Cn.len * 0.2)
+  check(q.Z < Cn.z and q.Z < zr - 0.8 * 2.8, string.format("双座：驾驶员坐前座（眼位 z %.1f，座舱盖中点 %.1f，后座 %.1f）", q.Z, Cn.z, zr))
+end
 check(v.M.pilotsOn == false, "外模型里的飞行员不画（第一人称）")
 local hid = 0
 for _, p in ipairs(cur.zone or {}) do if p.LocalTransparencyModifier == 1 then hid = hid + 1 end end

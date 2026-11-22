@@ -18,8 +18,16 @@ function Era.init(G)
   function G.eraSetup(e)
     local L = e.def and TM.eraOf(e.def.id)
     if not L or not L.b or #L.b == 0 then return end
-    e.era = { L = L, dead = {}, n = #L.b, left = #L.b, kind = TM.ERA[L.kind] or TM.ERA.fy2, list = {} }
-    e.model:SetAttribute("Era", #L.b)
+    -- 只有装了的区的块起作用（用户 11-22：「坦克我能选择在哪个地方贴爆反」；改装界面选的在 e.def.mods.era，没选按全装）
+    local on = TM.eraSet(e.def.mods and e.def.mods.era or nil, e.def.id)
+    for _, z in ipairs(L.own or {}) do on[z] = true end
+    local off, n = {}, 0
+    for i, b in ipairs(L.b) do
+      if b[17] and not on[b[17]] then off[i] = true else n += 1 end
+    end
+    if n == 0 then return end
+    e.era = { L = L, dead = {}, off = off, n = n, left = n, kind = TM.ERA[L.kind] or TM.ERA.fy2, list = {} }
+    e.model:SetAttribute("Era", n)
     e.model:SetAttribute("EraX", "")
   end
 
@@ -29,7 +37,7 @@ function Era.init(G)
     local base = baseOf(e)
     local best, bt, bcf = nil, maxT, nil
     for i, b in ipairs(E.L.b) do
-      if not E.dead[i] then
+      if not E.dead[i] and not (E.off and E.off[i]) then
         local cf, w, h, t = TM.blockCF(E.L, b, base, e.ty or 0)
         -- 射线进块的局部坐标，和放大一点（0.35 格）的盒子求交（slab 法）
         local lo = cf:PointToObjectSpace(o)
