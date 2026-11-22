@@ -135,6 +135,18 @@ export function scrubInsignia(model) {
   });
 }
 
+let BLOB = null;
+function blobMat() {
+  if (!BLOB) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(cv);
+    BLOB = new THREE.MeshBasicMaterial({ map: t, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  }
+  return BLOB;
+}
 // 拍片以后游戏里换过的模型（11-18 起）：99A 换成 99A2、M1A2 换成沙漠涂装 SEPv2——分镜里还按老键写，这里换成现在的文件
 const VEH_KEY = { ztz99: 'ztz99a2', m1a2v3: 'm1a2dc' };
 // 原模型里分错块的：PGL-625 炮塔两侧的四联导弹管、发射架烘焙在车体那块网格（Body_1）里，炮塔转、导弹不转（用户 11-22）——
@@ -196,6 +208,15 @@ export async function vehicle(key, base) {
     }
   }
   moveTris(root, model, key, { tur, gun, recoil });
+  // 车底的接触阴影（环境光遮蔽）：车和地面贴着的地方一圈暗（只有太阳的影子时车像飘在沙上）
+  if (M.hull) {
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), blobMat());
+    blob.rotation.x = -Math.PI / 2;
+    blob.scale.set(M.hull[0] * 1.3, M.hull[2] * 1.12, 1);
+    blob.position.set(0, 0.06, 0);
+    blob.renderOrder = -1; blob.name = 'contactShadow';
+    root.add(blob);
+  }
   const V = {
     root, M, tur, gun, recoil, wheels, len: M.len,
     // 车体坐标里的一点（炮塔、炮都在零位时）→ 跟着炮塔转、炮抬头以后的世界坐标（导弹管口之类）

@@ -12,8 +12,18 @@ const mesh = (g, m, cast = true) => { const o = new THREE.Mesh(g, m); o.castShad
 export function clutter(cx, cz, r = 420, o = {}) {
   const g = new THREE.Group();
   const R = rng(o.seed || 7);
-  const rockG = new THREE.DodecahedronGeometry(1, 0);
-  const rockM = M(0x8a7458, 0.95);
+  // 碎石：二十面体细分一次、顶点按噪声推一推（不规则的块，不是一颗颗一样的十二面体），颜色混着灰白的石灰岩、黄褐的砂岩、发黑的沙漠漆石头
+  const rockG = new THREE.IcosahedronGeometry(1, 1);
+  {
+    const pa = rockG.attributes.position, v = new THREE.Vector3();
+    for (let i = 0; i < pa.count; i++) {
+      v.fromBufferAttribute(pa, i);
+      const f = 0.72 + 0.28 * Math.sin(v.x * 4.1 + 1.3) * Math.cos(v.y * 3.7 - 0.4) + 0.18 * Math.sin(v.z * 7.3 + v.x * 2.1);
+      v.multiplyScalar(f); pa.setXYZ(i, v.x, v.y * 0.8, v.z);
+    }
+    rockG.computeVertexNormals();
+  }
+  const rockM = M(0xffffff, 0.92);
   const n = o.rocks ?? 1600;
   const rocks = new THREE.InstancedMesh(rockG, rockM, n);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
@@ -29,8 +39,11 @@ export function clutter(cx, cz, r = 420, o = {}) {
     s.set(sz * (0.8 + R() * 0.6), sz * (0.45 + R() * 0.4), sz * (0.8 + R() * 0.6));
     m4.compose(p, q, s);
     rocks.setMatrixAt(k, m4);
-    const lv = 0.5 + R() * 0.25;
-    col.setRGB(lv, lv * 0.86, lv * 0.7);
+    const kind = R(), lv = 0.85 + R() * 0.3;
+    // 线性反照率：比沙地（约 0.40 / 0.30 / 0.17）略暗、偏灰；沙漠漆的石头更暗
+    if (kind < 0.45) col.setRGB(0.23 * lv, 0.195 * lv, 0.15 * lv);       // 灰白石灰岩（朝太阳的面比平地多吃一倍多的光，反照率要比沙低）
+    else if (kind < 0.8) col.setRGB(0.2 * lv, 0.14 * lv, 0.09 * lv);     // 黄褐砂岩
+    else col.setRGB(0.085 * lv, 0.065 * lv, 0.05 * lv);                  // 沙漠漆：晒黑的石头
     rocks.setColorAt(k, col);
     k++;
   }

@@ -56,8 +56,8 @@ void main() {
   }
   gl_FragColor = vec4(acc / wsum, c0 / max(uMax, 1e-4));
 }`, { tSrc: { value: null }, tDepth: { value: null }, uFocus: { value: 100 }, uRange: { value: 100 }, uMax: { value: 0 }, uFar: { value: 1e5 }, uAsp: { value: 2.39 }, uRadial: { value: 0 } });
-    this.mFinal = pass(`uniform sampler2D tSrc, tDof, tB0, tB1, tB2, tB3, tB4, tB5;
-uniform float uExp, uBloom, uTime, uGrain, uVig, uCA, uFade, uFlash, uNvg, uAsp, uBar, uSat, uContrast, uDofOn, uLift, uTint, uThermal, uHeat, uTherK;
+    this.mFinal = pass(`uniform sampler2D tSrc, tDof, tB0, tB1, tB2, tB3, tB4, tB5, tDepth;
+uniform float uExp, uBloom, uTime, uGrain, uVig, uCA, uFade, uFlash, uNvg, uAsp, uBar, uSat, uContrast, uDofOn, uLift, uTint, uThermal, uHeat, uTherK, uFar;
 uniform vec3 uShadowTint, uHighTint;
 varying vec2 vUv;
 vec3 aces(vec3 x) { const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14; return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0); }
@@ -70,9 +70,10 @@ void main() {
   vec2 cc = uv - 0.5;
   // 色散：边缘红蓝错开一点
   vec2 ca = cc * uCA * dot(cc, cc);
-  // 热浪：地平线附近（画面中下部）横向抖动，越远（越靠地平线）越明显
+  // 热浪：按深度——远处的地面才抖（越远越明显），天空、近处的车不抖（原来是画面上固定一条带，地平线不在那儿时抖错地方）
   if (uHeat > 0.0) {
-    float band = exp(-pow((uv.y - 0.47) / 0.06, 2.0));
+    float dd = texture2D(tDepth, uv).r, vz = pow(uFar + 1.0, dd) - 1.0;
+    float band = smoothstep(160.0, 2400.0, vz) * step(dd, 0.99995) * (0.45 + 0.55 * exp(-pow((uv.y - 0.47) / 0.1, 2.0)));
     uv.x += uHeat * band * 0.0009 * (sin(uv.y * 210.0 + uTime * 7.0 + uv.x * 9.0) + 0.5 * sin(uv.y * 380.0 - uTime * 11.0 + uv.x * 17.0));
     uv.y += uHeat * band * 0.0004 * sin(uv.x * 140.0 + uTime * 5.0);
   }
@@ -121,7 +122,7 @@ void main() {
       uExp: { value: 1 }, uBloom: { value: 1 }, uTime: { value: 0 }, uGrain: { value: 0.045 }, uVig: { value: 0.6 }, uCA: { value: 0.012 }, uFade: { value: 0 }, uFlash: { value: 0 }, uNvg: { value: 0 },
       uAsp: { value: this.aspect }, uBar: { value: this.ah / H }, uSat: { value: 0.92 }, uContrast: { value: 1.06 }, uDofOn: { value: 0 }, uLift: { value: 0.012 }, uTint: { value: 1 },
       uShadowTint: { value: new THREE.Vector3(0.88, 1.0, 1.1) }, uHighTint: { value: new THREE.Vector3(1.08, 1.0, 0.9) },
-      uThermal: { value: 0 }, uTherK: { value: 1 }, uHeat: { value: 0 } });
+      uThermal: { value: 0 }, uTherK: { value: 1 }, uHeat: { value: 0 }, tDepth: { value: null }, uFar: { value: 1e5 } });
     this.set = {};
   }
   run(m) { this.quad.material = m; this.r.render(this.qs, this.qc); }
@@ -154,6 +155,7 @@ void main() {
     F.uExp.value = P.exposure ?? 1; F.uBloom.value = P.bloom ?? 0.9; F.uTime.value = P.time || 0; F.uGrain.value = P.grain ?? 0.010;   // 颗粒淡一点：每帧都变的颗粒最占码率
     F.uVig.value = P.vignette ?? 0.55;
     F.uThermal.value = P.thermal || 0; F.uTherK.value = P.therK ?? 1; F.uHeat.value = P.heat || 0;
+    F.tDepth.value = this.scene.depthTexture; F.uFar.value = camera.far;
     F.uCA.value = P.ca ?? 0.012; F.uFade.value = P.fade || 0; F.uFlash.value = P.flash || 0; F.uNvg.value = P.nvg || 0; F.uSat.value = P.sat ?? 0.92; F.uContrast.value = P.contrast ?? 1.06;
     F.uLift.value = P.lift ?? 0.012; F.uTint.value = P.tint ?? 1;
     r.setRenderTarget(null);
