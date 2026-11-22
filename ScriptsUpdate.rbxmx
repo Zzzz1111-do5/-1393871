@@ -5481,7 +5481,8 @@ function Map.material(x, z, y, slope)
   if slope > 0.92 * HK / K then return Enum.Material.Ground end   -- 陡一点的坡才露土（原来 0.75：用户 11-19 草多一点）
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
-  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18 / 11-19：草多用 Roblox 自带的那种草、多一点），深色 LeafyGrass 只留很少几块
+  -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
+  --   写地形时 Grass 都换成 LeafyGrass（World.lua 的 writeChunk；用户 11-21：会动的草叶把车、人的下半截盖住，脚本又关不掉草叶）
   return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
@@ -18732,7 +18733,9 @@ end
 ---------------------------------------------------------------- 地形
 
 -- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+-- LeafyGrass：草地（用户 11-21：坦克还是半截身子在地里——Roblox 会动的草叶只长在 Grass 材质上，脚本又改不了 Decoration / GrassLength，
+--   writeChunk 把 Grass 都写成 LeafyGrass，染成原来草地的颜色）
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(98, 148, 64), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
   Mud = RGB(54, 47, 40), Concrete = RGB(150, 148, 140), Asphalt = RGB(70, 72, 76) }   -- 水泥、柏油：港口的码头平地、坡道
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
@@ -18764,6 +18767,7 @@ local function writeChunk(T, x0, z0, n, yFloor)
     M[i], O[i] = Mi, Oi
   end
   local Water, Air, Sand, Ground, Rock = MAT.Water, MAT.Air, MAT.Sand, MAT.Ground, MAT.Rock
+  local Grass, Leafy = MAT.Grass, MAT.LeafyGrass
   for i = 0, N - 1 do
     local x = x0 + (i + 0.5) * RES
     for k = 0, N - 1 do
@@ -18774,6 +18778,9 @@ local function writeChunk(T, x0, z0, n, yFloor)
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
         top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+        -- 草地写成 LeafyGrass（不长草叶）：Roblox 会动的草叶只长在 Grass 上，盖住履带、车轮、小人的腿，看着像半截身子在地里；
+        --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
+        if top == Grass then top = Leafy end
       end
       local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
       for j = 0, NY - 1 do
@@ -18808,10 +18815,9 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    -- 地形草叶关掉（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：
-    --   草叶调过 0.55 / 0.45 / 0.28 / 0.22 几回，用户那边照样盖住履带、车轮、小人的腿、沙袋下半截。
-    --   草地照旧是 Grass 材质（地面的颜色、纹理不变），只是不长会动的草叶；客户端 Perf.lua 也关一遍（这个属性不一定同步到客户端）
-    T.Decoration = false
+    -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来在这里设 GrassLength、Decoration——
+    --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
+    --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048
@@ -43220,14 +43226,9 @@ function Perf.init(G)
   end
   local function f1(x) return string.format("%.1f", x) end
 
-  -- 地形草叶不要了（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：服务器 World.lua 关了 Terrain.Decoration，
-  --   这个属性不一定从服务器同步到客户端（前几回服务器把草叶调短，用户那边照样是两格来高的草），客户端每半秒自己对一遍。
-  --   原来自动画质卡了关草、流畅了再开：来回开关时整片草叶重铺，也是「隔一会卡一下」的一个来源，一起去掉
-  local function stepDeco()
-    local T = workspace:FindFirstChildOfClass("Terrain")
-    if not T then return end
-    pcall(function() if T.Decoration then T.Decoration = false end end)
-  end
+  -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来这里每半秒设一遍 Terrain.Decoration = false——
+  --   Roblox 不许脚本改它（一改就报错，被 pcall 吞了），一直没生效；现在服务器写地形不用 Grass 材质（World.lua 的 writeChunk），草叶长不出来。
+  --   原来自动画质卡了关草、流畅了再开也一起去掉了（同样改不了）
 
   local frames, acc, worst, puts0 = 0, 0, 0, 0
   RunService.RenderStepped:Connect(function(dt)
@@ -43238,7 +43239,6 @@ function Perf.init(G)
     local T, n, a, w = G.perfT or {}, frames, acc, worst
     G.perfT = {}
     frames, acc, worst = 0, 0, 0
-    pcall(stepDeco)
     local puts = G.viewPuts or 0
     local dPuts = puts - puts0
     puts0 = puts
@@ -44777,7 +44777,7 @@ function Scenery.init(G)
 
   local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
   local function cellKey(cx, cz) return cx * 100003 + cz end
-  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也关了（用户 11-21：直接把草删掉，World.lua 的 Terrain.Decoration）
+  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也去掉了（用户 11-21：直接把草删掉——World.lua 写地形不用 Grass 材质；Terrain.Decoration 脚本改不了）
   local LAYERS = { "rock" }
   local maxR = 0
   for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
@@ -45981,7 +45981,7 @@ local ScopePip = {}
 
 -- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）
 local TC = {
-  Grass = { 96, 146, 64 }, LeafyGrass = { 70, 124, 52 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
+  Grass = { 98, 148, 64 }, LeafyGrass = { 98, 148, 64 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
   Ground = { 122, 98, 70 }, Mud = { 54, 47, 40 }, Concrete = { 150, 148, 140 }, Asphalt = { 70, 72, 76 },
 }
 -- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成

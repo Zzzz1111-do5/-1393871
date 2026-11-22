@@ -178,7 +178,9 @@ end
 ---------------------------------------------------------------- 地形
 
 -- Mud：弹坑烧焦的地面（Battle.lua 把坑里坑边的草、土、沙换成它；地图别处不用泥）——焦黑偏褐
-local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(70, 124, 52), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
+-- LeafyGrass：草地（用户 11-21：坦克还是半截身子在地里——Roblox 会动的草叶只长在 Grass 材质上，脚本又改不了 Decoration / GrassLength，
+--   writeChunk 把 Grass 都写成 LeafyGrass，染成原来草地的颜色）
+local TERRAIN_COLORS = { Grass = RGB(96, 146, 64), LeafyGrass = RGB(98, 148, 64), Sand = RGB(226, 208, 160), Rock = RGB(124, 118, 110), Slate = RGB(98, 98, 104), Ground = RGB(122, 98, 70),
   Mud = RGB(54, 47, 40), Concrete = RGB(150, 148, 140), Asphalt = RGB(70, 72, 76) }   -- 水泥、柏油：港口的码头平地、坡道
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
@@ -210,6 +212,7 @@ local function writeChunk(T, x0, z0, n, yFloor)
     M[i], O[i] = Mi, Oi
   end
   local Water, Air, Sand, Ground, Rock = MAT.Water, MAT.Air, MAT.Sand, MAT.Ground, MAT.Rock
+  local Grass, Leafy = MAT.Grass, MAT.LeafyGrass
   for i = 0, N - 1 do
     local x = x0 + (i + 0.5) * RES
     for k = 0, N - 1 do
@@ -220,6 +223,9 @@ local function writeChunk(T, x0, z0, n, yFloor)
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
         top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+        -- 草地写成 LeafyGrass（不长草叶）：Roblox 会动的草叶只长在 Grass 上，盖住履带、车轮、小人的腿，看着像半截身子在地里；
+        --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
+        if top == Grass then top = Leafy end
       end
       local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
       for j = 0, NY - 1 do
@@ -254,10 +260,9 @@ function World.terrain(onProgress)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    -- 地形草叶关掉（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：
-    --   草叶调过 0.55 / 0.45 / 0.28 / 0.22 几回，用户那边照样盖住履带、车轮、小人的腿、沙袋下半截。
-    --   草地照旧是 Grass 材质（地面的颜色、纹理不变），只是不长会动的草叶；客户端 Perf.lua 也关一遍（这个属性不一定同步到客户端）
-    T.Decoration = false
+    -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来在这里设 GrassLength、Decoration——
+    --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
+    --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
   for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   local TILE = 2048

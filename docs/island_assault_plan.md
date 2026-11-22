@@ -900,6 +900,15 @@
     ProSoundEffects（Roblox 授权的专业音效库：步枪、爆炸、子弹呼啸、跳弹、金属撞击、音爆）、Red Bear Community（坦克炮车外 / 车内、炮弹和航弹爆炸）、
     其他认证创作者（坦克 / 喷气 / 舰船发动机、休伊旋翼、导弹发射、12.7 毫米机枪）；出处在 `docs/sound_credits.md`。`Fx.lua` 开局预载，载上的才用，
     载不下来照旧用叠出来的；坦克炮在车里 / 炮长镜里换车内录音；飞机原来没有发动机声，现在有（跟着油门 / 总距变）。测试：`impact.lua` ⑨。
+  - 用户：「怎么弄完坦克还是半截身子带地里啊」——查清了：Roblox 不许脚本改 `Terrain.Decoration`、`Terrain.GrassLength`（官方文档 GrassLength 写着 Not Scriptable；
+    DevForum 上 2022、2026 年都有人问，Roblox 员工说「不能脚本改是故意的」；一改就报「不是 Terrain 的有效成员」）。前几回 `World.lua` / `Perf.lua` 调草长
+    0.55 / 0.45 / 0.28 / 0.22、关 Decoration 都包在 pcall 里，报错被吞了、一直没生效——用户那边一直是默认两格来高的草叶，盖住履带、车轮、小人的腿、沙袋。
+    模拟器的 Terrain 原来能设 Decoration，所以测试照样过（`tools/mock/rbx.lua` 去掉了这两个属性：脚本一碰就报错，同 Roblox）。
+    改成 `World.lua` 的 writeChunk 不写 Grass 材质（会动的草叶只长在 Grass 上），草地都写成 LeafyGrass、染成原来草地的颜色（98, 148, 64）——
+    不管地点里 Decoration 勾没勾都没有草叶；`Map.material` 照旧分 Grass / LeafyGrass（小地图、路面、扬尘用），瞄准镜画中画两种草同色。
+    车放的高度也核对过：服务器（`Armor.lua`、`AIVeh.lua`）、客户端（`Drive.lua`、`View.lua`）都按 `Map.ground` 放车底，原模型原点在车底，写地形的占有率按同一个高度，
+    Roblox 网格器（Surface Nets：占有率插值）画出来的地面和这个高度差不到半格。测试：`veh.lua`（抽样：地形里 Grass 0 个、LeafyGrass 63 万个体素）、
+    `scenery.lua`（Decoration 脚本读不了）、`battle.lua`（弹坑烧焦、新一局重写）都过。
 
 ## 协作（几个会话一起改这个仓库）
 

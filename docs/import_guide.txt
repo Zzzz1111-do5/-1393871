@@ -21,11 +21,16 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 21 日晚（坦克、小人「半截身子在地里」）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 真正的原因是 Roblox 地形自带的会动的草叶（只长在 Grass 材质上，大概两格高），把履带、车轮、小人的腿、沙袋下半截都盖住了。
+      前几包在脚本里调草长、关草叶都没用——Roblox 不许脚本改这两个属性（Decoration、GrassLength），改了就报错，游戏里看不出来；
+    - 现在开服写地形时草地都用 LeafyGrass 材质（染成原来草地的颜色），这种材质不长草叶：不管你地点里 Terrain 的 Decoration 勾没勾，都没有草叶了；
+    - Studio 里不用改 Terrain 的任何属性（编辑状态下本来就没有地形，地形是开服时脚本生成的）。
   11 月 21 日第七包（飞机 WASD、坦克夜视、草）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
     - 飞机改成键盘飞：W 低头、S 抬头、A / D 滚转、Q / E 方向舵，Shift 加油门、Ctrl 收油门（地上收到底按住 Ctrl 倒退），按住 Alt 鼠标自由看；
       没有准星圈了，镜头跟着机身，机头前方的标记一直在屏幕正中（航炮就打那里）；滚转、俯仰、过载都比原来慢、笨重；无人机照旧鼠标飞；
     - 坦克里没开镜时 N 能开关夜视仪（原来关不掉）；瞄准镜白天默认昼光、夜里默认夜视，换过的会记住；
-    - 地形草叶客户端也设短（以前只在服务器设，可能没同步过来）。
+    - 地形草叶客户端也设短（以前只在服务器设，可能没同步过来）——后来查清楚这个脚本改不了，见上面 11 月 21 日晚那条。
   11 月 21 日：声音换成真录音（坦克炮、爆炸、枪、导弹、发动机、旋翼……）——都是 Roblox 创作者商店里公开的音频，不用上传、不用导，换游戏文件就有；
     出处见 docs/sound_credits.md。哪个声音在你的地点里载不下来，游戏会自动退回原来的声音。
 
@@ -61,7 +66,7 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 
   11 月 21 日这一包：模型都不用重导，只换游戏文件（新的 RobloxTotalBattlefield.rbxlx，或者「三、只换脚本」用 ScriptsUpdate.rbxmx）：
     - 界面的蓝色 / 青色全部改成绿色（开飞机、开坦克、改装、简报；守方的队伍色也从蓝换成绿，蓝滩改叫绿滩）；飞机机头前的全息准心、锁定框改小；
-    - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）；
+    - 地上的草叶调短（原来一格多高，把小人、车、沙袋的下半截都盖住了，看着像半截身子卡在地里）——其实没生效，见 11 月 21 日晚那条；
     - 合并了改枪系统（红点、全息、ACOG 等光学瞄具）：17 件配件的原模型在 optics/ 里（opt_rds、opt_holo、opt_romeo、opt_acog6、sup_socom、sup_wrap、sup_sr8、
       muz_comp、muz_brake、grip_rvg、grip_afg、mag_pmag20、mag_pmag40、mag_drum、mag_hex30、tac_light、tac_peq，署名在 models/credits.txt）。
       以前没导过的照「一、导入」把这 17 个 .glb 导进去就行（别的不用动）；不导也能用：游戏开着「Mesh / Image API」时现生成，只是没有原贴图。

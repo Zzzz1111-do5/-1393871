@@ -224,7 +224,7 @@ function Scenery.init(G)
 
   local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
   local function cellKey(cx, cz) return cx * 100003 + cz end
-  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也关了（用户 11-21：直接把草删掉，World.lua 的 Terrain.Decoration）
+  -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也去掉了（用户 11-21：直接把草删掉——World.lua 写地形不用 Grass 材质；Terrain.Decoration 脚本改不了）
   local LAYERS = { "rock" }
   local maxR = 0
   for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
