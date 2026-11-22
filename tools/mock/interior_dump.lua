@@ -15,9 +15,11 @@ return function(cur2, hull, dumpCams, path, cam, Enum)
       local mesh = p:FindFirstChildOfClass("SpecialMesh")
       if mesh and mesh.MeshType == Enum.MeshType.Sphere then shape = "Sphere" end
       local col = p.Color
-      table.insert(out.parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%s],"k":[%d,%d,%d],"m":"%s","t":%s}', shape,
+      -- 真模型部件（MeshPart，名字 O_<键>__<块>）：记下键和块名，预览图按 models/optics/<键>.glb 里的那一块画（不画成方块）
+      local mk, mp = string.match(p.Name, "^O_(.-)__(.+)$")
+      table.insert(out.parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%s],"k":[%d,%d,%d],"m":"%s","t":%s%s}', shape,
         num(p.Size.X), num(p.Size.Y), num(p.Size.Z), cfStr(p.CFrame), math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255),
-        p.Material.Name, num(math.max(p.Transparency, p.LocalTransparencyModifier))))
+        p.Material.Name, num(math.max(p.Transparency, p.LocalTransparencyModifier)), (p:IsA("MeshPart") and mk) and string.format(',"mk":"%s","mp":"%s"', mk, mp) or ""))
     end
   end
   for _, L in ipairs(cur2.b.lights) do

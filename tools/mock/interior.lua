@@ -68,7 +68,7 @@ if cur then
   nLights = #cur.b.lights
 end
 check(nParts > 400, "内饰零件 " .. nParts .. " 个")
-check(nCrew == #cur.spec.order, string.format("乘员 %d 个（%d 个乘员位）", nCrew, #cur.spec.order))
+check(nCrew == 0, string.format("车里不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）：%d 个", nCrew))
 check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
 local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
@@ -110,15 +110,7 @@ for _, name in ipairs(cur.spec.order) do
   local _, q = inside(name)
   camAt[name] = q
   local cr = st.cur and st.cur.crew[name]
-  check(cr ~= nil and cr.headShown == false, name .. "：自己这个乘员不画头（第一人称）")
-  local hidden, total = 0, 0   -- 手和腿也不画（用户 11-21：第一人称不要显示我的腿和胳膊）
-  for _, p in ipairs(cr and cr.f.model:GetDescendants() or {}) do
-    if p:IsA("BasePart") then
-      total = total + 1
-      if p.LocalTransparencyModifier == 1 then hidden = hidden + 1 end
-    end
-  end
-  check(total > 0 and hidden == total, string.format("%s：自己整个人都不画（%d / %d 块）", name, hidden, total))
+  check(cr == nil, name .. "：这个位置没有乘员小人（自己的手脚、别的乘员都不画）")
 end
 if camAt.driver and camAt.gunner and camAt.commander then
   check(camAt.driver.Z < camAt.gunner.Z - 1 and camAt.commander.Y > camAt.gunner.Y - 0.5,

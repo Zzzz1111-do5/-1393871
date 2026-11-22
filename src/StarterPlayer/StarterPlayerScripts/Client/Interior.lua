@@ -32,6 +32,15 @@ function Interior.init(G)
   local function sm(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
   local function T(zh, en) return (G.lang == "en") and en or zh end
 
+  -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
+  Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
+  local IP_KEYS = { "ip_m829", "ip_m829lo", "ip_r125", "ip_he125", "ip_chg125", "ip_ext", "ip_radio", "ip_radio2", "ip_cvc", "ip_tsh",
+    "ip_cdu", "ip_tab", "ip_mon", "ip_yoke", "ip_stick", "ip_asq", "ip_sw", "ip_lamp", "ip_can" }   -- 后面九件：照用户发来的 M1A2 车长位照片找的显示器、握把、电子箱、开关面板、顶灯、弹箱
+  local prewarmed = false
+
+  local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
+  G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
+
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
   local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a2", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
   G.interiorDefs = Defs   -- 测试用
@@ -194,8 +203,9 @@ function Interior.init(G)
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
-    -- 乘员
-    for id, cs in pairs(spec.crew or {}) do
+    -- 乘员：用户 11-22 晚「驾驶室不要显示人了」——车里、座舱里不建乘员小人（哪个视角都没有人，导演镜头也没有）；
+    --   SHOW_CREW 打开就照原来画（乘员位视角时也藏着）
+    for id, cs in pairs(SHOW_CREW and spec.crew or {}) do
       local f = Kit.crew(cs.dress)
       if f then
         f.model.Parent = m
@@ -210,8 +220,8 @@ function Interior.init(G)
       s.update = Screens.make(s, c.env)
       s.nextT = 0
     end
-    -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来
-    if spec.loader == "m256" then
+    -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来（没有乘员小人时不建：不然那发弹自己在空中飞）
+    if spec.loader == "m256" and SHOW_CREW then
       b:group("hround", "turret", CF())
       local parts0 = #b.parts
       Defs.round120(b, "hround", CF(0, 0, 0.49), { len = 0.98 })
@@ -884,14 +894,14 @@ function Interior.init(G)
     local dir = cam.CFrame.LookVector
     for _, s in ipairs(c.b.screens) do
       local p = s.part
-      if p and s.opt and s.opt.keys and not s.opt.noBack then
+      if p and s.opt and s.opt.keys and (not s.opt.noBack or s.opt.propShell) then   -- 真模型外壳的屏幕（B:propScreen）也算
         local cf, sz = p.CFrame, p.Size * 0.5
         local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
         if ld.Z > 1e-4 then
           local t = (-sz.Z - lo.Z) / ld.Z
           if t > 0 and t < 1.6 * S then
             local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
-            local m = ((s.opt.bezel or 0.036) + 0.02) * S
+            local m = ((s.opt.propShell and 0.05 or s.opt.bezel or 0.036) + 0.02) * S   -- 真模型外壳：键在玻璃外面好几厘米
             if math.abs(px) <= sz.X + m and math.abs(py) <= sz.Y + m then return s end
           end
         end
@@ -1028,9 +1038,27 @@ function Interior.init(G)
       return
     end
     if cur and cur.spec.air then teardown() end
+    if not prewarmed and G.opticPrewarm then prewarmed = true G.opticPrewarm(IP_KEYS) end   -- 一上车就在后台把真模型部件生成好
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.hullF then return end
     if cur and cur.id ~= st.id then teardown() end
+    -- 进车时真模型部件还没生成好（用了零件拼的）：等它们都好了重建一次内饰（只在没开观瞄设备的时候换，换完回到原来的乘员位）
+    if cur and not cur.propsDone and (cur.b.propMiss or cur.headMiss) and not optic then
+      local ready = true
+      for k in pairs(cur.b.propMiss or {}) do if not (G.opticReady and G.opticReady(k)) then ready = false break end end
+      if ready and cur.headMiss then
+        for _, k in ipairs({ "ip_cvc", "ip_tsh" }) do if G.opticFailed and not G.opticFailed(k) and not (G.opticReady and G.opticReady(k)) then ready = false end end
+      end
+      if ready then
+        local keepM, keepS = mode, station
+        teardown()
+        mode, station = keepM, keepS   -- 下一帧照原来的乘员位重建
+        return
+      else
+        cur.propCheckT = (cur.propCheckT or 0) + dt
+        if cur.propCheckT > 60 then cur.propsDone = true end   -- 一分钟还没好（没开 Mesh API、生成失败）：不等了
+      end
+    end
     if mode == nil then
       if cur and cur.model.Parent then cur.model.Parent = nil end
       if cur then extHide(cur, false) end
@@ -1038,8 +1066,11 @@ function Interior.init(G)
       return
     end
     if not cur then
+      Kit.headMiss = nil
       cur = build(st, v)
       if not cur then mode = nil return end
+      cur.headMiss = Kit.headMiss
+      if not cur.b.propMiss and not cur.headMiss then cur.propsDone = true end
       local want = station or lastStation[cur.key]
       if not (want and cur.spec.stations[want]) then want = cur.spec.order[1] end   -- 这型车没有那个乘员位
       enterStation(cur, want)
@@ -2159,8 +2190,11 @@ function Interior.init(G)
       return
     end
     if not cur then
+      Kit.headMiss = nil
       cur = build(st, v)
       if not cur then mode = nil return end
+      cur.headMiss = Kit.headMiss
+      if not cur.b.propMiss and not cur.headMiss then cur.propsDone = true end
       cur.eyeBody = airEye(v, cur.spec)
       cur.zone = zoneParts(cur, v)
       if cur.spec.ihadss then   -- 阿帕奇的头盔单目显示（IHADSS）：符号画在眼前一块跟着头走的板上（视场 40°×30°，绿色）

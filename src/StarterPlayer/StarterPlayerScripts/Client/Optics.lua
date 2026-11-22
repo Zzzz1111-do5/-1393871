@@ -157,6 +157,16 @@ function Optics.init(G)
   -- 现生成失败了（没开 Mesh / Image API）：用的地方别一直等
   function G.opticFailed(key) return failed[key] == true end
 
+  -- 先在后台生成好（车内饰的真模型部件：进车之前就开始，进车的时候大多已经好了）；导入了的不用生成
+  function G.opticPrewarm(keys)
+    task.spawn(function()
+      for _, k in ipairs(keys) do
+        if META[k] and not failed[k] and not gen[k] and not imported(k) then build(k) end
+        task.wait(0.2)
+      end
+    end)
+  end
+
   -- 有没有现成的（导入的或已经生成好的），不复制
   function G.opticReady(key)
     return META[key] ~= nil and (imported(key) ~= nil or gen[key] ~= nil)

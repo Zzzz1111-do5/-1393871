@@ -62,6 +62,23 @@
   D-60 弹鼓（mag_drum.glb）：「Low-Poly AR-15 magazines」，作者 notcplkerry，CC-BY-4.0 https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884
   AN/PEQ-15 激光指示器（tac_peq.glb）：「ATPIAL AN/PEQ-15 (Low-Poly)」，作者 GoldbergR，CC-BY-4.0 https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072
   M952V 战术手电（tac_light.glb）：「Surefire M952V Weapon Light」，作者 RedRogueXIII，CC-BY-4.0 https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6
-  飞机座舱平显（光学瞄准屏）（hud15.glb）：「J-15T with YJ-83K」原模型自带座舱里的平显，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/b416034f0cde4e46b37cf3e5445bd1b7
-    （只抠了平显那一套：弧形黑框、组合玻璃、底座；坐标换成以组合玻璃为原点、单位换成格；tools/weapons/hud.mjs）
+  车内饰：车载电台（现代数字电台，带安装架、手持话筒）（ip_radio.glb）：「Military Radio」，作者 curichenkow，CC-BY-4.0 https://sketchfab.com/3d-models/military-radio-f5c8f0420f054b32a2e977fbcd248d84
+  车内饰：车载电台（老式箱体）（ip_radio2.glb）：「Military Radio - Low Poly」，作者 Camille Barral，CC-BY-4.0 https://sketchfab.com/3d-models/military-radio-low-poly-6647f257eb384c108ecf440bb161d91a
+  车内饰：120 毫米 M829A1 尾翼稳定脱壳穿甲弹（整发，装填手手上那一发）（ip_m829.glb）：「M829A1 OBJ」，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30
+  车内饰：120 毫米 M829A1（尾舱弹架里那 36 发，减面版）（ip_m829lo.glb）：「M829A1 OBJ」，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30
+  车内饰：125 毫米 3BK18 破甲弹弹丸（转盘装弹机）（ip_r125.glb）：「Tank ammo HEAT 3BK18」，作者 VladIG_CG，CC-BY-4.0 https://sketchfab.com/3d-models/tank-ammo-heat-3bk18-98087179c6ae4a63a09d017d87945888
+  车内饰：125 毫米杀爆弹弹丸（转盘装弹机）（ip_he125.glb）：「HE shell 125mm」，作者 dichevk，CC-BY-4.0 https://sketchfab.com/3d-models/he-shell-125mm-61532bea91314025b5d3a5eaa63d389b
+  车内饰：125 毫米发射药筒（转盘装弹机）（ip_chg125.glb）：「GunPowder shell 125mm」，作者 dichevk，CC-BY-4.0 https://sketchfab.com/3d-models/gunpowder-shell-125mm-ffeec6c6b381415fbf001a3e3dea2004
+  车内饰：二氧化碳手提灭火瓶（ip_ext.glb）：「Fire Extinguisher」，作者 Sir Erdees，CC-BY-4.0 https://sketchfab.com/3d-models/fire-extinguisher-0253bc18de06471e8413ad24ea49ce92
+  车内饰：美军坦克乘员头盔（CVC）（ip_cvc.glb）：「Combat Vehicle Crewman (CVC) Helmet, Vietnam Era」，作者 olmopotums，CC-BY-4.0 https://sketchfab.com/3d-models/combat-vehicle-crewman-cvc-helmet-vietnam-era-c1516dc3d0ea420b9246334a94e5681e
+  车内饰：坦克乘员皮帽（带耳机）（ip_tsh.glb）：「Tank Helmet」，作者 denj666，CC-BY-4.0 https://sketchfab.com/3d-models/tank-helmet-e0a6ed324a514c57bc05ffd365ac0eb0
+  车内饰：带边键的显示控制单元（车长热像仪显示器 CITV、炮长控制显示面板 GCDP）（ip_cdu.glb）：「Aircraft instrument/module thingy」，作者 LuddePudde，CC-BY-4.0 https://sketchfab.com/3d-models/aircraft-instrumentmodule-thingy-797da922b1724a2fbdcf5b6379525b49
+  车内饰：车长战术显示器（JBC-P 加固显示终端）（ip_tab.glb）：「Rugged Sci-Fi Tactical Military Tablet」，作者 3DMOAN，CC-BY-4.0 https://sketchfab.com/3d-models/rugged-sci-fi-tactical-military-tablet-f7d8e3c008e24e0c9b32748b3d6105f1
+  车内饰：带侧键的显示器（CROWS 遥控武器站显示器）（ip_mon.glb）：「Computer Box Monitor」，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a
+  车内饰：炮长双握把（凯迪拉克）（ip_yoke.glb）：「ANIMATED KC-135 YOKE」，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/animated-kc-135-yoke-2d96da0d802746fcb30044bfba87e968
+  车内饰：车长操纵握把 CCH（ip_stick.glb）：「B-8 Fighter Control Stick (Low Poly)」，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/b-8-fighter-control-stick-low-poly-8d85a47465c94c629c9e6cc60f9106d0
+  车内饰：火控计算机（带操纵杆、键盘）（ip_asq.glb）：「ASQ-155 Ballistic Computer」，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7
+  车内饰：拨动开关面板（带护盖）（ip_sw.glb）：「Industrial Switches Apollo Command Module」，作者 ntilted，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-switches-apollo-command-module-b01232380685412a8485c5dd3be4265a
+  车内饰：车内顶灯（防爆壁灯）（ip_lamp.glb）：「Industrial Bulkhead Wall Lamp Lowpoly」，作者 iwanPlays，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-bulkhead-wall-lamp-lowpoly-4c50439bcbc247629fe2194862d7acc9
+  车内饰：弹药箱（12.7 毫米 M2A1 弹箱）（ip_can.glb）：「Ammuntion box」，作者 jaiharitheking，CC-BY-4.0 https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c
   改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改

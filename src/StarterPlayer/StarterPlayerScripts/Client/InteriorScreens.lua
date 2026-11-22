@@ -573,8 +573,11 @@ P.gcdp = function(s, env, zh)
   local G = RGB(100, 240, 130)
   local A = RGB(255, 190, 60)
   local function L(en, cn) return zh and cn or en end
+  -- 竖屏（真模型的显示控制单元 ip_cdu：玻璃高比宽大）：画面在上，弹种两列在下，再下面待发、距离、方式各一行；横屏照旧
+  local portrait = H > W * 1.1
   local vw, vh = math.floor(W * 0.56), math.floor(H * 0.70)
-  local view = F(R, W - vw - 4, 4, vw, vh, RGB(0, 0, 0), 0, 1)
+  if portrait then vw, vh = W - 8, math.floor(H * 0.46) end
+  local view = F(R, portrait and 4 or (W - vw - 4), 4, vw, vh, RGB(0, 0, 0), 0, 1)
   view.ClipsDescendants = true
   local th = Screens.thermal(view, vw, vh, { cols = 24 })
   reticleTank(view, vw, vh, G)
@@ -582,13 +585,28 @@ P.gcdp = function(s, env, zh)
     or { { "SABOT", "SABOT" }, { "HEAT", "HEAT" }, { "MPAT", "MPAT" }, { "AMP", "AMP" }, { "CAN", "CAN" } }
   local ammo = {}
   for i, a in ipairs(LIST) do
-    local f = F(R, 4, 4 + (i - 1) * ((vh - 4) / #LIST), W - vw - 12, (vh - 4) / #LIST - 3, RGB(18, 26, 20), 0, 2)
-    ammo[a[1]] = { f = f, t = Tx(f, a[2], 4, 0, W - vw - 16, (vh - 4) / #LIST - 3, 12, G, Enum.TextXAlignment.Left, FONTB) }
+    if portrait then
+      local cw, rh = (W - 12) / 2, 15
+      local f = F(R, 4 + ((i - 1) % 2) * (cw + 4), vh + 8 + math.floor((i - 1) / 2) * (rh + 2), cw, rh, RGB(18, 26, 20), 0, 2)
+      ammo[a[1]] = { f = f, t = Tx(f, a[2], 3, 0, cw - 4, rh, 11, G, Enum.TextXAlignment.Left, FONTB) }
+    else
+      local f = F(R, 4, 4 + (i - 1) * ((vh - 4) / #LIST), W - vw - 12, (vh - 4) / #LIST - 3, RGB(18, 26, 20), 0, 2)
+      ammo[a[1]] = { f = f, t = Tx(f, a[2], 4, 0, W - vw - 16, (vh - 4) / #LIST - 3, 12, G, Enum.TextXAlignment.Left, FONTB) }
+    end
   end
-  local ready = F(R, 4, vh + 8, W * 0.42, H - vh - 12, RGB(18, 26, 20), 0, 2)
-  local readyT = Tx(ready, "", 0, 0, W * 0.42, H - vh - 12, 13, G, Enum.TextXAlignment.Center, FONTB)
-  local rng = Tx(R, "", W * 0.46, vh + 8, W * 0.52, (H - vh - 12) / 2, 13, G, nil, FONTB)
-  local mode = Tx(R, "", W * 0.46, vh + 8 + (H - vh - 12) / 2, W * 0.52, (H - vh - 12) / 2, 11, G)
+  local ready, readyT, rng, mode
+  if portrait then
+    local by = vh + 8 + math.ceil(#LIST / 2) * 17 + 2
+    ready = F(R, 4, by, W - 8, 14, RGB(18, 26, 20), 0, 2)
+    readyT = Tx(ready, "", 0, 0, W - 8, 14, 11, G, Enum.TextXAlignment.Center, FONTB)
+    rng = Tx(R, "", 4, by + 16, W - 8, 13, 11, G, nil, FONTB)
+    mode = Tx(R, "", 4, by + 30, W - 8, 12, 9, G)
+  else
+    ready = F(R, 4, vh + 8, W * 0.42, H - vh - 12, RGB(18, 26, 20), 0, 2)
+    readyT = Tx(ready, "", 0, 0, W * 0.42, H - vh - 12, 13, G, Enum.TextXAlignment.Center, FONTB)
+    rng = Tx(R, "", W * 0.46, vh + 8, W * 0.52, (H - vh - 12) / 2, 13, G, nil, FONTB)
+    mode = Tx(R, "", W * 0.46, vh + 8 + (H - vh - 12) / 2, W * 0.52, (H - vh - 12) / 2, 11, G)
+  end
   local pages = { MAIN = textPage(s, L("MAIN MENU", "主菜单"), 7, G), ADJUST = textPage(s, L("ADJUST", "调整"), 6, G), BSGT = textPage(s, L("BORESIGHT", "校炮"), 6, G) }
   local st = { page = nil, ammo = LIST[1][1], manRange = nil, last = false, fcs = 1, msg = nil, msgT = 0, bs = { 0, 0 } }
   local FCS = zh and { "自动", "应急", "手动" } or { "NORMAL", "EMERGENCY", "MANUAL" }

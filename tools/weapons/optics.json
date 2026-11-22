@@ -182,13 +182,142 @@
    "author": "RedRogueXIII",
    "license": "CC-BY-4.0",
    "url": "https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6"
+  },
+  "ip_radio": {
+   "uid": "f5c8f0420f054b32a2e977fbcd248d84",
+   "name": "Military Radio",
+   "author": "curichenkow",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/military-radio-f5c8f0420f054b32a2e977fbcd248d84"
+  },
+  "ip_radio2": {
+   "uid": "6647f257eb384c108ecf440bb161d91a",
+   "name": "Military Radio - Low Poly",
+   "author": "Camille Barral",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/military-radio-low-poly-6647f257eb384c108ecf440bb161d91a"
+  },
+  "ip_m829": {
+   "uid": "08c469c62c4e4a2794fd6135ff674b30",
+   "name": "M829A1 OBJ",
+   "author": "Jeyhun1985",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30"
+  },
+  "ip_r125": {
+   "uid": "98087179c6ae4a63a09d017d87945888",
+   "name": "Tank ammo HEAT 3BK18",
+   "author": "VladIG_CG",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/tank-ammo-heat-3bk18-98087179c6ae4a63a09d017d87945888"
+  },
+  "ip_he125": {
+   "uid": "61532bea91314025b5d3a5eaa63d389b",
+   "name": "HE shell 125mm",
+   "author": "dichevk",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/he-shell-125mm-61532bea91314025b5d3a5eaa63d389b"
+  },
+  "ip_chg125": {
+   "uid": "ffeec6c6b381415fbf001a3e3dea2004",
+   "name": "GunPowder shell 125mm",
+   "author": "dichevk",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/gunpowder-shell-125mm-ffeec6c6b381415fbf001a3e3dea2004"
+  },
+  "ip_ext": {
+   "uid": "0253bc18de06471e8413ad24ea49ce92",
+   "name": "Fire Extinguisher",
+   "author": "Sir Erdees",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/fire-extinguisher-0253bc18de06471e8413ad24ea49ce92"
+  },
+  "ip_cvc": {
+   "uid": "c1516dc3d0ea420b9246334a94e5681e",
+   "name": "Combat Vehicle Crewman (CVC) Helmet, Vietnam Era",
+   "author": "olmopotums",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/combat-vehicle-crewman-cvc-helmet-vietnam-era-c1516dc3d0ea420b9246334a94e5681e"
+  },
+  "ip_tsh": {
+   "uid": "e0a6ed324a514c57bc05ffd365ac0eb0",
+   "name": "Tank Helmet",
+   "author": "denj666",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/tank-helmet-e0a6ed324a514c57bc05ffd365ac0eb0"
+  },
+  "ip_cdu": {
+   "uid": "797da922b1724a2fbdcf5b6379525b49",
+   "name": "Aircraft instrument/module thingy",
+   "author": "LuddePudde",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/aircraft-instrumentmodule-thingy-797da922b1724a2fbdcf5b6379525b49"
+  },
+  "ip_tab": {
+   "uid": "f7d8e3c008e24e0c9b32748b3d6105f1",
+   "name": "Rugged Sci-Fi Tactical Military Tablet",
+   "author": "3DMOAN",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/rugged-sci-fi-tactical-military-tablet-f7d8e3c008e24e0c9b32748b3d6105f1"
+  },
+  "ip_mon": {
+   "uid": "894a096d447e4dcaa8869f4c01917f6a",
+   "name": "Computer Box Monitor",
+   "author": "SUrusso613",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a"
+  },
+  "ip_yoke": {
+   "uid": "2d96da0d802746fcb30044bfba87e968",
+   "name": "ANIMATED KC-135 YOKE",
+   "author": "StratoArt",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/animated-kc-135-yoke-2d96da0d802746fcb30044bfba87e968"
+  },
+  "ip_stick": {
+   "uid": "8d85a47465c94c629c9e6cc60f9106d0",
+   "name": "B-8 Fighter Control Stick (Low Poly)",
+   "author": "StratoArt",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/b-8-fighter-control-stick-low-poly-8d85a47465c94c629c9e6cc60f9106d0"
+  },
+  "ip_asq": {
+   "uid": "b8d6bd36d6a446038931b76374a835e7",
+   "name": "ASQ-155 Ballistic Computer",
+   "author": "TwilightFox",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7"
+  },
+  "ip_sw": {
+   "uid": "b01232380685412a8485c5dd3be4265a",
+   "name": "Industrial Switches Apollo Command Module",
+   "author": "ntilted",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/industrial-switches-apollo-command-module-b01232380685412a8485c5dd3be4265a"
+  },
+  "ip_lamp": {
+   "uid": "4c50439bcbc247629fe2194862d7acc9",
+   "name": "Industrial Bulkhead Wall Lamp Lowpoly",
+   "author": "iwanPlays",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/industrial-bulkhead-wall-lamp-lowpoly-4c50439bcbc247629fe2194862d7acc9"
+  },
+  "ip_can": {
+   "uid": "6fb5bbb064b649cc92780fad0036db9c",
+   "name": "Ammuntion box",
+   "author": "jaiharitheking",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c"
   }
  },
  "items": {
   "atacr": {
    "src": "atacr",
    "title": "狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）",
-   "inner": { "cone": 0.6 }, "axes": "x,y,z",
+   "inner": {
+    "cone": 0.6
+   },
+   "axes": "x,y,z",
    "scale": 2.8,
    "anchor": {
     "nodes": "mount34"
@@ -274,7 +403,9 @@
   },
   "qbu88": {
    "src": "qbu88",
-   "inner": { "cone": 0.6 },
+   "inner": {
+    "cone": 0.6
+   },
    "title": "解放军狙击枪（QBU-88）",
    "axes": "-z,y,x",
    "scale": 0.00548,
@@ -548,8 +679,21 @@
   },
   "acog": {
    "src": "acog",
-   "inner": { "cone": 0.19 },
-   "ring": { "rIn": 0.0216, "rOut": 0.0336, "t0": -0.0125, "t1": 0.0135, "bevel": 0.0012, "col": [36, 36, 38] },
+   "inner": {
+    "cone": 0.19
+   },
+   "ring": {
+    "rIn": 0.0216,
+    "rOut": 0.0336,
+    "t0": -0.0125,
+    "t1": 0.0135,
+    "bevel": 0.0012,
+    "col": [
+     36,
+     36,
+     38
+    ]
+   },
    "title": "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）",
    "axes": "x,y,z",
    "scale": 2.8,
@@ -658,7 +802,10 @@
   "opt_rds": {
    "src": "reddot",
    "title": "T1 红点瞄具",
-   "drop": [9], "axes": "x,y,z",
+   "drop": [
+    9
+   ],
+   "axes": "x,y,z",
    "scale": 2.8,
    "anchor": {
     "nodes": "."
@@ -699,8 +846,34 @@
   "opt_acog6": {
    "src": "acog6",
    "title": "ACOG 6×48 瞄准镜",
-   "eyePt": [0, 0.129, -0.27], "eyeR": 0.042, "objPt": [0, 0.129, 0.205], "objR": 0.064, "inner": { "cone": 0.55 }, "axes": "x,y,z",
-   "ring": { "rIn": 0.0428, "rOut": 0.0755, "t0": -0.0215, "t1": 0.0855, "bevel": 0.002, "col": [32, 32, 33] },
+   "eyePt": [
+    0,
+    0.129,
+    -0.27
+   ],
+   "eyeR": 0.042,
+   "objPt": [
+    0,
+    0.129,
+    0.205
+   ],
+   "objR": 0.064,
+   "inner": {
+    "cone": 0.55
+   },
+   "axes": "x,y,z",
+   "ring": {
+    "rIn": 0.0428,
+    "rOut": 0.0755,
+    "t0": -0.0215,
+    "t1": 0.0855,
+    "bevel": 0.002,
+    "col": [
+     32,
+     32,
+     33
+    ]
+   },
    "scale": 2.8,
    "anchor": {
     "nodes": "."
@@ -812,6 +985,314 @@
    "embedTex": {
     "Body": 128
    }
+  },
+  "ip_radio": {
+   "src": "ip_radio",
+   "title": "车内饰：车载电台（现代数字电台，带安装架、手持话筒）",
+   "axes": "x,y,z",
+   "scale": 0.01553,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 9000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_radio2": {
+   "src": "ip_radio2",
+   "title": "车内饰：车载电台（老式箱体）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 9000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_m829": {
+   "src": "ip_m829",
+   "title": "车内饰：120 毫米 M829A1 尾翼稳定脱壳穿甲弹（整发，装填手手上那一发）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 6000
+  },
+  "ip_m829lo": {
+   "src": "ip_m829",
+   "title": "车内饰：120 毫米 M829A1（尾舱弹架里那 36 发，减面版）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 1400
+  },
+  "ip_r125": {
+   "src": "ip_r125",
+   "title": "车内饰：125 毫米 3BK18 破甲弹弹丸（转盘装弹机）",
+   "keep": [
+    2
+   ],
+   "rot": [
+    [
+     "x",
+     -15.13
+    ],
+    [
+     "y",
+     180
+    ]
+   ],
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_he125": {
+   "src": "ip_he125",
+   "title": "车内饰：125 毫米杀爆弹弹丸（转盘装弹机）",
+   "keep": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "axes": "x,-z,y",
+   "scale": 0.2464,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000
+  },
+  "ip_chg125": {
+   "src": "ip_chg125",
+   "title": "车内饰：125 毫米发射药筒（转盘装弹机）",
+   "axes": "x,-z,y",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000
+  },
+  "ip_ext": {
+   "src": "ip_ext",
+   "title": "车内饰：二氧化碳手提灭火瓶",
+   "axes": "x,y,z",
+   "scale": 1.134,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_cvc": {
+   "src": "ip_cvc",
+   "title": "车内饰：美军坦克乘员头盔（CVC）",
+   "axes": "x,y,z",
+   "scale": 0.0056,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_tsh": {
+   "src": "ip_tsh",
+   "title": "车内饰：坦克乘员皮帽（带耳机）",
+   "axes": "x,y,z",
+   "scale": 0.924,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_cdu": {
+   "src": "ip_cdu",
+   "title": "车内饰：带边键的显示控制单元（车长热像仪显示器 CITV、炮长控制显示面板 GCDP）",
+   "axes": "x,y,z",
+   "scale": 0.1416,
+   "anchor": {
+    "nodes": "defaultMaterial",
+    "y": "center"
+   },
+   "tris": 5000,
+   "embedTex": {
+    "Body": 256
+   },
+   "sq": [
+    1,
+    1,
+    0.35
+   ],
+   "front": true
+  },
+  "ip_tab": {
+   "src": "ip_tab",
+   "title": "车内饰：车长战术显示器（JBC-P 加固显示终端）",
+   "axes": "-z,y,x",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 6000,
+   "embedTex": {
+    "Body": 256
+   },
+   "dropBox": [
+    -1,
+    0.235,
+    -1,
+    1,
+    1,
+    1
+   ],
+   "front": true
+  },
+  "ip_mon": {
+   "src": "ip_mon",
+   "title": "车内饰：带侧键的显示器（CROWS 遥控武器站显示器）",
+   "axes": "x,y,z",
+   "scale": 0.72,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "sq": [
+    1,
+    1,
+    0.45
+   ],
+   "front": true
+  },
+  "ip_yoke": {
+   "src": "ip_yoke",
+   "title": "车内饰：炮长双握把（凯迪拉克）",
+   "axes": "-x,y,-z",
+   "scale": 14.6,
+   "anchor": {
+    "nodes": "^Object_12$",
+    "y": "center"
+   },
+   "tris": 5000,
+   "clipBox": [
+    -1,
+    -2,
+    -1,
+    1,
+    -0.36,
+    1
+   ],
+   "front": true
+  },
+  "ip_stick": {
+   "src": "ip_stick",
+   "title": "车内饰：车长操纵握把 CCH",
+   "axes": "-z,y,x",
+   "scale": 0.1213,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 4000,
+   "front": true
+  },
+  "ip_asq": {
+   "src": "ip_asq",
+   "title": "车内饰：火控计算机（带操纵杆、键盘）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "opaque": true,
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_sw": {
+   "src": "ip_sw",
+   "title": "车内饰：拨动开关面板（带护盖）",
+   "axes": "x,y,z",
+   "scale": 0.14,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 7000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_lamp": {
+   "src": "ip_lamp",
+   "title": "车内饰：车内顶灯（防爆壁灯）",
+   "axes": "-x,y,-z",
+   "scale": 0.0013,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   },
+   "front": true
+  },
+  "ip_can": {
+   "src": "ip_can",
+   "title": "车内饰：弹药箱（12.7 毫米 M2A1 弹箱）",
+   "axes": "x,y,z",
+   "scale": 0.448,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 2500,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
   }
  }
 }

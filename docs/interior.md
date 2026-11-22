@@ -103,4 +103,29 @@
 
 - 按键的标签和功能出自公开的美军训练资料、Steel Beasts 社区说明、陆军研究报告（CITV 的手动 / 自动扫描、随炮、指示，DID 的起动 / 熄火 / 主菜单 / 维护 / 诊断，GCDP 的主菜单 / 调整 / 归零 / 校炮 / 炮口基准）
 - 美军手册原文（TM 9-2350-388 系列）和几个学习卡片站有机器人验证，没法直接读；屏幕的具体排版、99A 的车内布局（照 T-72 / 96 系一脉相承的做法和公开镜头）有推测
-- 内饰全是程序拼的零件（不用导入）；M1A1 暂时用 M1A2 的内饰，96 式用 99A 的
+- 内饰原来全是程序拼的零件；11-22 起一部分换成 Sketchfab 上的 CC-BY 原模型（下一节），没生成好 / 生成不了时照旧用零件拼；M1A1 暂时用 M1A2 的内饰，96 式用 99A 的
+
+## 真模型部件（Sketchfab CC-BY，用户 11-22：「不要自己建模，去找每一个部件的替代品」「图片里摇杆、计算机、屏幕……识别到了就去找类似的」「差不多的可以自己改一下」）
+
+- 管线：`tools/weapons/optics.json` 的 `ip_*` 件 → `node tools/weapons/optics.mjs` 转成 `models/optics/<键>.glb`（Studio 导入用）和
+  `src/ReplicatedStorage/OpticMesh/<键>.lua`（没导入时客户端用 EditableMesh 现生成）；器材坐标：格、真实尺寸，+Z 是正面（面板、屏幕、对着人的一面）、+Y 朝上。
+  调方向、比例时 `ONLY=键1,键2 node tools/weapons/optics.mjs` 只出预览（`tools/weapons/preview/<键>_front|side|top.png` 和同名 GLB），不写任何输出。
+  新选项：`sq`（换到器材坐标后各轴再压扁 / 拉长，比如飞机座舱里很深的机箱装进炮塔壁）、`opaque`（作者误设成半透明的材质按不透明）、
+  `clipBox`（按三角形切掉一块，比如驾驶杆下面的长杆子）、`front`（预览多出正视、俯视图）
+- 内饰里：`B:prop(组, 键, cf, 缩放)` 摆一件；`B:propScreen`（InteriorDefs 的 `scr()`）摆带屏幕的件——原模型外壳摆好，屏幕玻璃前面 3 毫米贴我们的动态显示面，
+  原模型的实体键上盖一层能对准、按下的键帽（印这个键的字，背光）；每件的版面（玻璃中心、宽高、每个键在哪）在 `InteriorDefs.PSCR`，量的是带贴图的正视图
+- M1A2（照用户发来的车长位照片：延伸目镜正前方，右边一块左侧一排背光键的竖屏显示器，再右边沙色的指挥终端，右手下面带操纵杆和键盘的电子箱）：
+  | 件 | 原模型 | 用在 |
+  |---|---|---|
+  | ip_cdu | 「Aircraft instrument/module thingy」（LuddePudde）：左右各 5 个边键 + 整块键盘的显示控制单元 | 车长热像仪显示器 CITV、炮长控制显示面板 GCDP（竖屏版面） |
+  | ip_tab | 「Rugged Sci-Fi Tactical Military Tablet」（3DMOAN）：沙色加固战术终端 | 车长的指挥地图（JBC-P），去掉了天线 |
+  | ip_mon | 「Computer Box Monitor」（SUrusso613）：两边带按键板、U 形支架的显示器 | CROWS 遥控武器站显示器 |
+  | ip_asq | 「ASQ-155 Ballistic Computer」（TwilightFox）：A-6E 的弹道计算机，白色铸壳、铭牌、顶上键盘和操纵杆 | 车长右手边的电子箱 + 车长操纵握把 |
+  | ip_yoke | 「ANIMATED KC-135 YOKE」（StratoArt）：去掉长杆，只留两只羊角握把和毂 | 炮长"凯迪拉克"双握把（跟着炮塔转、炮俯仰摆） |
+  | ip_stick | 「B-8 Fighter Control Stick」（StratoArt） | CROWS 的手柄 |
+  | ip_sw | 「Industrial Switches Apollo Command Module」（ntilted）：带护盖的拨动开关面板 | 驾驶员主开关面板、辅助面板、炮长面板、装填手面板 |
+  | ip_lamp | 「Industrial Bulkhead Wall Lamp Lowpoly」（iwanPlays）：带铁丝护罩的顶灯 | 炮塔两盏、驾驶舱一盏顶灯 |
+  | ip_can | 「Ammuntion box」（jaiharitheking）：12.7 毫米 M2A1 铁皮弹箱 | 装填手脚边四个机枪弹箱 |
+  另外原来就有的：电台（ip_radio / ip_radio2）、灭火瓶（ip_ext）、120 毫米弹（ip_m829 / ip_m829lo）、125 毫米弹丸和药筒（ip_r125 / ip_he125 / ip_chg125）、乘员头盔（ip_cvc / ip_tsh，现在不画乘员）
+- 测试：`python3 tools/mock/run.py tools/mock/interior_props.lua [dump=<目录>]`（等真模型生成好、内饰重建一次：九件都摆上、四块屏是真模型外壳、显示面和键帽都在外壳里、键按得动）；
+  预览图里真模型部件按 GLB 画（`AMB=1.0` 亮一点）：`AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_props.json <输出前缀>`

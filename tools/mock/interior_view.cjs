@@ -30,7 +30,7 @@ srv.listen(0, '127.0.0.1', async () => {
   await p.waitForFunction('window.ready === true', null, { timeout: 180000 });
   const D = await p.evaluate('window.D');
   const shots = [];
-  for (const c of D.cams || []) shots.push({ name: c.name, c: c.c, fov: D.kind === 'air' ? 85 : 75 });
+  for (const c of D.cams || []) shots.push({ name: c.name, c: c.c, fov: D.kind === 'air' ? 85 : 75, amb: process.env.AMB ? +process.env.AMB : undefined });   // AMB=0.9：镜头图亮一点（看清部件）
   if (D.kind === 'air') {   // 座舱：原点在飞行员眼位（格），座舱只有两三米大
     shots.push({ name: 'cut_side', pos: [9, -0.8, -0.6], look: [0, -1.2, -0.8], fov: 50, clip: [{ n: [-1, 0, 0], d: 0.25 }], amb: 0.9 });
     shots.push({ name: 'cut_top', pos: [0, 9, -0.8], look: [0, -1, -0.9], fov: 50, clip: [{ n: [0, -1, 0], d: 0.3 }], amb: 0.9 });
