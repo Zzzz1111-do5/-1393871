@@ -5,6 +5,13 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
+-- 地图：desert（海湾战争式的纯陆地沙漠「沙海」，MapDesert.lua，岛图 10 倍面积）/ island（棕榈岛，Map.lua）。Studio 里 Workspace 的属性 MapName 优先
+Config.Map = "island"
+do
+  local w
+  pcall(function() w = workspace:GetAttribute("MapName") end)
+  if w == "desert" or w == "island" then Config.Map = w end
+end
 
 ---------------------------------------------------------------- 回合
 
@@ -28,6 +35,16 @@ Config.Stages = {   -- 用户：同一时间只开一个交战区（像 Battlefi
   { id = "airfield", points = { "D" }, time = 6 * 60 },  -- 第三阶段：机场
   { id = "hq", points = { "E" }, time = 7 * 60 },        -- 第四阶段：指挥部决战
 }
+-- 沙漠图（没有海、没有登陆艇）：五个阶段一个一个打——突破边境沙墙拿下哨所 A → 油田 B → 镇子 C → 空军基地 D → 岭上指挥部 E
+if Config.Map == "desert" then
+  Config.Stages = {
+    { id = "border", points = { "A" }, time = 6 * 60 },     -- 第一阶段：越过沙墙和反坦克壕，拿下边境哨所
+    { id = "oil", points = { "B" }, time = 6 * 60 },        -- 第二阶段：油田（油井在烧）
+    { id = "town", points = { "C" }, time = 6 * 60 },       -- 第三阶段：镇子（巷战）
+    { id = "airfield", points = { "D" }, time = 6 * 60 },   -- 第四阶段：空军基地（加固机库）
+    { id = "hq", points = { "E" }, time = 7 * 60 },         -- 第五阶段：岩岭上的指挥部
+  }
+end
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒

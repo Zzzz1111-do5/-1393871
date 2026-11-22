@@ -51,9 +51,26 @@ local function runwayAt(Map, x, z)
   return false
 end
 
+-- 沙漠图（MapDesert）：底色照它的 Map.COLORS 压暗（卫星图那样）；没有的材质用沙色
+local DCOL = {}
+local function desertCol(Map, m)
+  local c = DCOL[m]
+  if c then return c end
+  local c3 = Map.COLORS and (Map.COLORS[m] or Map.COLORS.Sand)
+  c = c3 and { c3.R * 255 * 0.74, c3.G * 255 * 0.74, c3.B * 255 * 0.74 } or COL.Sand
+  DCOL[m] = c
+  return c
+end
+
 -- 底图（没按材质）：按高度、坡度估一个材质（跟 Map.material 的规则差不多）
 local function guessMat(Map, y, slope)
   local K, HK = Map.K or 1, Map.HK or 1
+  if Map.DESERT then   -- 沙漠：低洼的盐滩、平原的沙、台地的石灰岩、陡坡的岩石
+    if slope > 0.9 then return "Rock" end
+    if y > 60 then return "Limestone" end
+    if y < 10 then return "Salt" end
+    return "Sand"
+  end
   if y < 2.2 then return "Sand" end
   if slope > 1.15 * HK / K then return (y > 120 * HK) and "Slate" or "Rock" end
   if y > 232 * HK then return "Rock" end
@@ -113,8 +130,8 @@ function MapPaint.paint(Map, P, r0, r1, buf)
           else
             m = guessMat(Map, y, slope)
           end
-          c = COL[m] or COL.Grass
-          if P.detail and Map.flatW and m ~= "Sand" and Map.flatW(x, z) > 0.92 then c = PAD end
+          if Map.DESERT then c = desertCol(Map, m) else c = COL[m] or COL.Grass end
+          if P.detail and Map.flatW and m ~= "Sand" and not Map.DESERT and Map.flatW(x, z) > 0.92 then c = PAD end
         end
         R, Gc, B = c[1], c[2], c[3]
         if c == COL.Grass or c == COL.LeafyGrass then   -- 高处的草偏灰

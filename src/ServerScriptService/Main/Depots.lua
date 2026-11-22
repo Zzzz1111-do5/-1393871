@@ -142,10 +142,31 @@ function Depots.init(G)
     end
     -- 攻方机场岛：陆基飞机（同守方机场，停在跑道上顺着跑道）
     local land = {}
-    for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
+    for _, id in ipairs(models("atk", "jet")) do if Map.LANDONLY or not defOf(id).carrier then table.insert(land, id) end end   -- 沙漠图没有航母：舰载机也从前进机场起飞
     runwayPads(Map.AFIELD2, "atk", land, nil)
+    -- 沙漠图：红方前进基地（Map.REDBASE）——北面一排地面车位（车头朝北、朝着战线，终端柱在车尾），东边三个直升机停机坪
+    local RB = Map.REDBASE
+    if RB then
+      list = groundIds("atk")
+      local gL, gW = biggest(list)
+      local n = math.min(GROUND_PADS, #list)
+      local gap = math.max(22, gW + 10)
+      local x0 = RB.x - (n - 1) * gap / 2
+      for i = 1, n do
+        local x, z = x0 + (i - 1) * gap, RB.z - 90
+        addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 4, 0, z + gL / 2 + 4), r = 12, size = V(gW + 2, 0, gL + 2) })
+      end
+      local ah = models("atk", "heli")
+      for i = 1, math.min(3, #ah) do
+        local x, z = RB.x + 260 + (i - 1) * 70, RB.z + 40
+        addPad({ team = "atk", vid = ah[1], vids = ah, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
+      end
+    end
     -- 攻方登陆平台：两侧水面一格一个地面车位（车头朝北，朝着岛；车站在气垫艇上），终端柱在平台边上；哪个位都能召唤任何一型
     local B = Map.BARGE
+    if not B then return end   -- 沙漠图没有登陆平台
     list = groundIds("atk")
     local n2 = math.min(GROUND_PADS, #list)
     local half = math.ceil(n2 / 2)
@@ -181,6 +202,7 @@ function Depots.init(G)
   -- 登陆平台：浮在海上的一大块钢平台（四周护栏、几盏灯、两侧画出每个生成格）
   local function buildBarge(f)
     local B = Map.BARGE
+    if not B then return end
     local m = Instance.new("Model")
     m.Name = "Barge"
     local deckY = B.top - 0.75

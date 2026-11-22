@@ -101,8 +101,101 @@ local function faceCF(Map, x, z, tx, tz)
   return CFrame.lookAt(p, p + look.Unit)
 end
 
+-- 沙漠图（MapDesert，没有海）：攻方从南边来（+Z），工事都朝南。边境沙墙开口（据点 A 南边）两侧碉堡交叉火力，
+--   各据点南面碉堡、高炮；没有岸防炮；三处 M777 阵地各在一个据点北边约 600 格（够得着自己据点南面的攻击出发阵地，又在最小射程外）
+local function layoutDesert(Map)
+  local out = {}
+  local n = 0
+  local function add(kind, x, z, tx, tz, pt, tag, r)
+    local d = FortDefs.D[kind]
+    local sx, sz = siteNear(Map, x, z, r or 26, d.size)
+    n += 1
+    table.insert(out, { id = "f" .. n, kind = kind, cf = faceCF(Map, sx, sz, tx, tz), pt = pt, tag = tag })
+  end
+  local P = {}
+  for _, p in ipairs(Map.POINTS) do P[p.id] = p end
+  -- 边境：沙墙开口（x = A.x）北侧左右各一座，躲在 11 格高的沙墙后面、斜着封住开口的出口（交叉火力；隔着沙墙往南打不着）；据点 A 南面再两座
+  local bz = Map.bermZ(P.A.x)
+  add("bunker", P.A.x - 130, bz - 90, P.A.x + 40, bz - 10, "A", "border")
+  add("bunker", P.A.x + 130, bz - 90, P.A.x - 40, bz - 10, "A", "border")
+  add("bunker", P.A.x - 70, P.A.z + 90, P.A.x - 40, P.A.z + 500, "A", "outpost")
+  add("bunker", P.A.x + 70, P.A.z + 90, P.A.x + 40, P.A.z + 500, "A", "outpost")
+  add("bunker", P.B.x - 90, P.B.z + 110, P.B.x - 120, P.B.z + 520, "B", "oil")
+  add("bunker", P.B.x + 80, P.B.z + 115, P.B.x + 100, P.B.z + 520, "B", "oil")
+  add("bunker", P.C.x - 110, P.C.z + 230, P.C.x - 140, P.C.z + 700, "C", "town")
+  add("bunker", P.C.x + 120, P.C.z + 225, P.C.x + 150, P.C.z + 700, "C", "town")
+  add("bunker", P.D.x, P.D.z + 150, P.D.x, P.D.z + 600, "D", "airfield")
+  add("bunker", P.E.x - 70, P.E.z + 70, P.E.x - 120, P.E.z + 500, "E", "command")
+  add("bunker", P.E.x + 70, P.E.z + 70, P.E.x + 120, P.E.z + 500, "E", "command")
+  -- 高炮：机场两座，各据点一座，后方营地一座
+  local A = Map.AIRFIELD
+  local ax = math.min(1100, A.len * 0.3) + 60
+  add("aaa", A.x - ax, A.z - A.wid / 2 - 70, A.x - ax, A.z + 400, "D", "airfield")
+  add("aaa", A.x + ax, A.z - A.wid / 2 - 70, A.x + ax, A.z + 400, "D", "airfield")
+  add("aaa", P.E.x + 55, P.E.z - 45, P.E.x, P.E.z + 400, "E", "command")
+  add("aaa", P.C.x + 95, P.C.z - 55, P.C.x, P.C.z + 400, "C", "town")
+  add("aaa", P.A.x + 55, P.A.z - 40, P.A.x, P.A.z + 400, "A", "outpost")
+  add("aaa", P.B.x - 60, P.B.z - 55, P.B.x, P.B.z + 400, "B", "oil")
+  add("aaa", Map.CAMP.x - 95, Map.CAMP.z + 15, Map.CAMP.x, Map.CAMP.z + 400, nil, "camp")
+  -- M777：A、C、E 北边各两门，炮口朝南
+  for _, id in ipairs({ "A", "C", "E" }) do
+    local p = P[id]
+    local x, z = p.x + 160, p.z - 600
+    add("howitzer", x, z, x, z + 1000, id, "battery", 40)
+    add("howitzer", x + 36, z + 8, x + 36, z + 1008, id, "battery", 40)
+  end
+  return out
+end
+
+-- 沙漠图的障碍：边境沙墙开口里一排钢刺猬（留两条车道）、开口北边两道铁丝网、开口两侧沙墙后面各一片雷区；据点 B、C 南面也各一道铁丝网
+local function obstaclesDesert(Map)
+  local rng = Random.new(20261122)
+  local hog, wire, mines, signs = {}, {}, {}, {}
+  local A
+  for _, p in ipairs(Map.POINTS) do if p.id == "A" then A = p end end
+  local bx = A.x
+  local bz = Map.bermZ(bx)
+  -- 钢刺猬：开口（沙墙缺口约 ±60 格）里两排，中间和 ±33 留车道
+  for x = bx - 54, bx + 54, 12 do
+    for row = 0, 1 do
+      local xx = x + row * 6
+      local rel = math.abs(xx - bx)
+      if rel >= 15 and not (rel > 22 and rel < 42) then table.insert(hog, { x = xx, z = bz + 6 - row * 13, rot = rng:NextNumber(0, math.pi) }) end
+    end
+  end
+  -- 铁丝网：开口北边 45、72 格两道（隔段留缺口）；B、C 南面 160 格一道
+  local function wireLine(x0, x1, z, skip, tag)
+    local i, x = 0, x0
+    while x + FortDefs.WIRE.len <= x1 do
+      i += 1
+      if i % 3 ~= skip then table.insert(wire, { a = V(x, 0, z), b = V(x + FortDefs.WIRE.len, 0, z), beach = tag }) end
+      x += FortDefs.WIRE.len
+    end
+  end
+  wireLine(bx - 120, bx + 120, bz - 45, 2, "border")
+  wireLine(bx - 112, bx + 128, bz - 72, 0, "border")
+  for _, p in ipairs(Map.POINTS) do
+    if p.id == "B" or p.id == "C" then wireLine(p.x - 160, p.x + 160, p.z + 160, 1, p.id) end
+  end
+  -- 雷区：开口两侧、沙墙北边（离开口 90～150 格），四角警示牌朝南
+  for fi, side in ipairs({ -1, 1 }) do
+    local cx, cz = bx + side * 120, bz - 40
+    local field = { w = 50, d = 36 }
+    for _ = 1, 10 do
+      local x = cx + rng:NextNumber(-field.w / 2, field.w / 2)
+      local z = cz + rng:NextNumber(-field.d / 2, field.d / 2)
+      table.insert(mines, { x = x, z = z, at = rng:NextNumber() < 0.4, field = fi })
+    end
+    for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+      table.insert(signs, { x = cx + c[1] * (field.w / 2 + 3), z = cz + c[2] * (field.d / 2 + 3), face = 1 })
+    end
+  end
+  return { hog = hog, wire = wire, mines = mines, signs = signs }
+end
+
 -- 全部工事：{ id, kind（bunker / coastal / aaa）, cf（底面中心，−Z 朝前）, pt（附近的据点：据点被攻方拿下后这处工事就废了）, tag（位置名） }
 function FortDefs.layout(Map)
+  if Map.LANDONLY then return layoutDesert(Map) end
   local out = {}
   local n = 0
   local function add(kind, x, z, tx, tz, pt, tag, r)
@@ -181,6 +274,7 @@ end
 
 -- 滩头障碍：钢刺猬（水线一带两排，留出通道和缺口）、铁丝网（两道、隔段留缺口）、雷区（滩的两翼各一片）；用固定种子，每局一样
 function FortDefs.obstacles(Map)
+  if Map.LANDONLY then return obstaclesDesert(Map) end
   local rng = Random.new(20240611)
   local L = FortDefs.LANE
   local hog, wire, mines, signs = {}, {}, {}, {}

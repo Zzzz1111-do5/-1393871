@@ -57,7 +57,7 @@ void main() {
   gl_FragColor = vec4(acc / wsum, c0 / max(uMax, 1e-4));
 }`, { tSrc: { value: null }, tDepth: { value: null }, uFocus: { value: 100 }, uRange: { value: 100 }, uMax: { value: 0 }, uFar: { value: 1e5 }, uAsp: { value: 2.39 }, uRadial: { value: 0 } });
     this.mFinal = pass(`uniform sampler2D tSrc, tDof, tB0, tB1, tB2, tB3, tB4, tB5;
-uniform float uExp, uBloom, uTime, uGrain, uVig, uCA, uFade, uFlash, uNvg, uAsp, uBar, uSat, uContrast, uDofOn, uLift, uTint;
+uniform float uExp, uBloom, uTime, uGrain, uVig, uCA, uFade, uFlash, uNvg, uAsp, uBar, uSat, uContrast, uDofOn, uLift, uTint, uThermal, uHeat, uTherK;
 uniform vec3 uShadowTint, uHighTint;
 varying vec2 vUv;
 vec3 aces(vec3 x) { const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14; return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0); }
@@ -70,13 +70,27 @@ void main() {
   vec2 cc = uv - 0.5;
   // 色散：边缘红蓝错开一点
   vec2 ca = cc * uCA * dot(cc, cc);
+  // 热浪：地平线附近（画面中下部）横向抖动，越远（越靠地平线）越明显
+  if (uHeat > 0.0) {
+    float band = exp(-pow((uv.y - 0.47) / 0.06, 2.0));
+    uv.x += uHeat * band * 0.0009 * (sin(uv.y * 210.0 + uTime * 7.0 + uv.x * 9.0) + 0.5 * sin(uv.y * 380.0 - uTime * 11.0 + uv.x * 17.0));
+    uv.y += uHeat * band * 0.0004 * sin(uv.x * 140.0 + uTime * 5.0);
+  }
   vec3 col = vec3(texture2D(tSrc, uv - ca).r, texture2D(tSrc, uv).g, texture2D(tSrc, uv + ca).b);
   if (uDofOn > 0.5) { vec4 d = texture2D(tDof, uv); col = mix(col, d.rgb, smoothstep(0.02, 0.25, d.a)); }
   vec3 bl = texture2D(tB0, uv).rgb * 0.30 + texture2D(tB1, uv).rgb * 0.26 + texture2D(tB2, uv).rgb * 0.2 + texture2D(tB3, uv).rgb * 0.13 + texture2D(tB4, uv).rgb * 0.07 + texture2D(tB5, uv).rgb * 0.04;
   col += bl * uBloom;
   col *= uExp;
-  // 夜视仪：亮度 → 绿色荧光、颗粒更粗、镜筒圈
-  if (uNvg > 0.0) {
+  // 热成像（白热）：亮度 → 灰度，曲线压一下（热的东西发白、冷的地面、天空发黑），细的扫描噪声；uTherK 整体增益
+  if (uThermal > 0.0) {
+    float l = dot(col, vec3(0.33, 0.45, 0.22)) * uTherK;
+    float g = l / (1.0 + l);
+    g = smoothstep(0.02, 0.98, g);
+    float nz = h12(uv * vec2(1717.0, 931.0) + fract(uTime * 7.31) * 97.0) - 0.5;
+    float scan = 0.97 + 0.03 * sin(gl_FragCoord.y * 3.14159);
+    vec3 th = vec3(g * scan + nz * 0.05);
+    col = mix(aces(col), th, uThermal);
+  } else if (uNvg > 0.0) {
     float l = dot(col, vec3(0.3, 0.55, 0.15)) * 9.0;
     vec3 nv = vec3(0.25, 1.0, 0.35) * (l / (1.0 + l)) * 1.25 + vec3(0.02, 0.06, 0.03);
     float g = h12(uv * vec2(1717.0, 931.0) + fract(uTime * 7.31) * 97.0) - 0.5;
@@ -96,7 +110,8 @@ void main() {
   // 暗角
   col *= mix(1.0, smoothstep(0.95, 0.25, length(cc * vec2(uAsp * 0.62, 1.0))), uVig);
   // 胶片颗粒（中间调最明显，24 帧跳动）
-  float gr = h12(gl_FragCoord.xy + floor(uTime * 24.0) * 61.7) + h12(gl_FragCoord.xy * 0.71 + floor(uTime * 24.0) * 13.1) - 1.0;
+  float fr = mod(floor(uTime * 24.0), 61.0);   // 帧号取模：时间大了（片子后半段）哈希的输入太大，浮点精度不够，颗粒变成一排排规则的纹路
+  float gr = h12(gl_FragCoord.xy + fr * 61.7) + h12(gl_FragCoord.xy * 0.71 + fr * 13.1) - 1.0;
   col += gr * uGrain * (0.35 + 0.65 * (1.0 - abs(L - 0.45) * 2.0));
   col = mix(col, vec3(1.0, 0.97, 0.92), uFlash);
   col *= 1.0 - uFade;
@@ -105,7 +120,8 @@ void main() {
 }`, { tSrc: { value: null }, tDof: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, tB3: { value: null }, tB4: { value: null }, tB5: { value: null },
       uExp: { value: 1 }, uBloom: { value: 1 }, uTime: { value: 0 }, uGrain: { value: 0.045 }, uVig: { value: 0.6 }, uCA: { value: 0.012 }, uFade: { value: 0 }, uFlash: { value: 0 }, uNvg: { value: 0 },
       uAsp: { value: this.aspect }, uBar: { value: this.ah / H }, uSat: { value: 0.92 }, uContrast: { value: 1.06 }, uDofOn: { value: 0 }, uLift: { value: 0.012 }, uTint: { value: 1 },
-      uShadowTint: { value: new THREE.Vector3(0.88, 1.0, 1.1) }, uHighTint: { value: new THREE.Vector3(1.08, 1.0, 0.9) } });
+      uShadowTint: { value: new THREE.Vector3(0.88, 1.0, 1.1) }, uHighTint: { value: new THREE.Vector3(1.08, 1.0, 0.9) },
+      uThermal: { value: 0 }, uTherK: { value: 1 }, uHeat: { value: 0 } });
     this.set = {};
   }
   run(m) { this.quad.material = m; this.r.render(this.qs, this.qc); }
@@ -135,7 +151,9 @@ void main() {
     }
     F.tSrc.value = this.scene.texture; F.tDof.value = this.dof.texture; F.uDofOn.value = dofOn;
     for (let i = 0; i < 6; i++) F['tB' + i].value = L[i].a.texture;
-    F.uExp.value = P.exposure ?? 1; F.uBloom.value = P.bloom ?? 0.9; F.uTime.value = P.time || 0; F.uGrain.value = P.grain ?? 0.010;   // 颗粒淡一点：每帧都变的颗粒最占码率 F.uVig.value = P.vignette ?? 0.55;
+    F.uExp.value = P.exposure ?? 1; F.uBloom.value = P.bloom ?? 0.9; F.uTime.value = P.time || 0; F.uGrain.value = P.grain ?? 0.010;   // 颗粒淡一点：每帧都变的颗粒最占码率
+    F.uVig.value = P.vignette ?? 0.55;
+    F.uThermal.value = P.thermal || 0; F.uTherK.value = P.therK ?? 1; F.uHeat.value = P.heat || 0;
     F.uCA.value = P.ca ?? 0.012; F.uFade.value = P.fade || 0; F.uFlash.value = P.flash || 0; F.uNvg.value = P.nvg || 0; F.uSat.value = P.sat ?? 0.92; F.uContrast.value = P.contrast ?? 1.06;
     F.uLift.value = P.lift ?? 0.012; F.uTint.value = P.tint ?? 1;
     r.setRenderTarget(null);

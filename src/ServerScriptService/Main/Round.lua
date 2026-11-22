@@ -219,6 +219,7 @@ function Round.init(G)
   -- 第一波：准备阶段和开战后 Config.FirstWave 秒（第一阶段）能坐登陆艇抢滩；之后只能在攻击出发阵地出生
   local function firstWave()
     if R.phase == "prep" then return true end
+    if Map.LANDONLY then return false end   -- 沙漠图没有登陆艇：一开战就在攻击出发阵地出生
     return R.phase == "battle" and R.stage == 1 and now() - (R.battleAt or 0) < (Config.FirstWave or 45)
   end
   G.firstWave = firstWave
@@ -253,7 +254,7 @@ function Round.init(G)
     end
     if not best then
       for _, s in ipairs(list) do
-        if s.ok and ((team == "atk" and s.kind == "barge") or (team == "def" and s.kind == "camp")) then best = s end
+        if s.ok and ((team == "atk" and (s.kind == "barge" or s.kind == "redbase")) or (team == "def" and s.kind == "camp")) then best = s end
       end
     end
     if best then best.rec = true end
@@ -266,11 +267,16 @@ function Round.init(G)
     --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
     local objs = objectives(false)
-    if team == "atk" then
+    if team == "atk" and Map.LANDONLY then   -- 沙漠图：南边的前进基地（地面载具、直升机）、前进机场（飞机）
+      table.insert(out, { id = "redbase", kind = "redbase", x = Map.REDBASE.x, z = Map.REDBASE.z, ok = true })
+      table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })
+    elseif team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
       table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
       table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
       table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
+    end
+    if team == "atk" then
       if firstWave() then   -- 第一波：坐登陆艇抢滩（准备阶段上艇，开战一起冲）
         local lands = {}
         for _, p in ipairs(objs) do lands[p.land] = true end
@@ -340,6 +346,10 @@ function Round.init(G)
       local B = Map.BARGE
       local p = V(B.x + (math.random() - 0.5) * B.W * 0.5, B.top + 3, B.z + (math.random() - 0.5) * B.L * 0.6)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "redbase" then   -- 沙漠图的前进基地：车场北边（面朝北，朝着战线）
+      local B = Map.REDBASE
+      local p = standAt(B.x + (math.random() - 0.5) * 160, B.z - 150, 20)
+      return CFrame.lookAt(p, p + V(0, 0, -1))
     elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
       local A = Map.AFIELD2
       local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
@@ -626,7 +636,7 @@ function Round.init(G)
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
-    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true }
+    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true }   -- redbase：沙漠图的前进基地
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     if P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
     P.lastChoice = choice   -- 快速部署照上次的装备

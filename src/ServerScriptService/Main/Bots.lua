@@ -469,6 +469,15 @@ function Bots.init(G)
       local tg = pickAtkTarget(p.land)
       if tg then return { mode = "land", tg = tg, at = spotNear(p.x, p.z, 10, 40) } end
     end
+    if Map.LANDONLY then   -- 沙漠图没有登陆艇：出发阵地被守方压着也在那里（或拿下的据点）出生
+      local sp = G.stagingOf and G.stagingOf(tg0.id)
+      if sp then return { mode = "land", tg = tg0, at = spotNear(sp.x, sp.z, 0, 35) } end
+      if #caps > 0 then
+        local p = caps[math.random(#caps)]
+        return { mode = "land", tg = tg0, at = spotNear(p.x, p.z, 10, 40) }
+      end
+      return nil
+    end
     local b = landingFor(tg0)
     if not b or not G.boatBot then return nil end
     return { mode = "boat", tg = tg0, beach = b.id }

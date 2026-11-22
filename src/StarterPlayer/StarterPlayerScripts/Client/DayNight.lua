@@ -40,6 +40,13 @@ function DayNight.init(G)
     fog = RGB(176, 194, 214), dens = 0.17, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.25, haze = 0.7,
     bloomI = 0.35, bloomT = 1.6, ccSat = 0.04, ccCon = 0.07, ccTint = RGB(255, 255, 255) }
   local DUSK = { top = RGB(255, 168, 108), fog = RGB(206, 150, 120), acol = RGB(228, 160, 120), adec = RGB(170, 86, 58) }
+  local okM, MapM = pcall(function() return require(RS:WaitForChild("Map", 5)) end)
+  if okM and type(MapM) == "table" and MapM.DESERT then   -- 沙漠图：夜里的天光、雾偏暖褐（沙尘），白天是发白的黄沙天、看得没那么远
+    NIGHT.fog, NIGHT.acol, NIGHT.adec, NIGHT.oamb = RGB(26, 22, 20), RGB(70, 60, 54), RGB(22, 17, 14), RGB(50, 46, 48)
+    NIGHT.ccTint = RGB(240, 234, 236)
+    DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze = RGB(214, 196, 168), RGB(222, 206, 178), RGB(168, 132, 96), 0.22, 1.4
+    DAY.ccTint, DAY.ccSat = RGB(255, 246, 232), 0
+  end
 
   local dayK, clock = 0, 2.3
   G.dayK = function() return dayK end

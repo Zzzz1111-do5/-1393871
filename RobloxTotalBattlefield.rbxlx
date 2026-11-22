@@ -648,6 +648,13 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
+-- 地图：desert（海湾战争式的纯陆地沙漠「沙海」，MapDesert.lua，岛图 10 倍面积）/ island（棕榈岛，Map.lua）。Studio 里 Workspace 的属性 MapName 优先
+Config.Map = "island"
+do
+  local w
+  pcall(function() w = workspace:GetAttribute("MapName") end)
+  if w == "desert" or w == "island" then Config.Map = w end
+end
 
 ---------------------------------------------------------------- 回合
 
@@ -671,6 +678,16 @@ Config.Stages = {   -- 用户：同一时间只开一个交战区（像 Battlefi
   { id = "airfield", points = { "D" }, time = 6 * 60 },  -- 第三阶段：机场
   { id = "hq", points = { "E" }, time = 7 * 60 },        -- 第四阶段：指挥部决战
 }
+-- 沙漠图（没有海、没有登陆艇）：五个阶段一个一个打——突破边境沙墙拿下哨所 A → 油田 B → 镇子 C → 空军基地 D → 岭上指挥部 E
+if Config.Map == "desert" then
+  Config.Stages = {
+    { id = "border", points = { "A" }, time = 6 * 60 },     -- 第一阶段：越过沙墙和反坦克壕，拿下边境哨所
+    { id = "oil", points = { "B" }, time = 6 * 60 },        -- 第二阶段：油田（油井在烧）
+    { id = "town", points = { "C" }, time = 6 * 60 },       -- 第三阶段：镇子（巷战）
+    { id = "airfield", points = { "D" }, time = 6 * 60 },   -- 第四阶段：空军基地（加固机库）
+    { id = "hq", points = { "E" }, time = 7 * 60 },         -- 第五阶段：岩岭上的指挥部
+  }
+end
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
@@ -1327,7 +1344,7 @@ local function site(x, z, roadPad, flatMax)
   if rd and rd < rw * 0.5 + roadPad then return nil end
   if Map.flatW(x, z) > (flatMax or 0.02) then return nil end
   local zs, zn = Map.coastS(x), Map.coastN(x)
-  if zs and (zs - z < 70 or z - zn < 50) and h < 14 then return nil end   -- 海滩后面的沙丘
+  if zs and zn and (zs - z < 70 or z - zn < 50) and h < 14 then return nil end   -- 海滩后面的沙丘
   return h, Map.slope(x, z)
 end
 
@@ -1337,7 +1354,44 @@ local BUSH = { "cshrub", "dshrub", "holly", "sapling" }
 
 local function pick(list, r) return list[floor(r * #list) + 1] end
 
+-- 沙漠图（MapDesert）：不长树、草、花；平原上零星几丛枯灌木，岩坡、方山脚下多石头
+local function desertCell(cx, cz, layer)
+  local out = {}
+  if layer ~= "bush" and layer ~= "rock" then return out end
+  local step = Flora.LAYERS[layer]
+  local R = rng(cx, cz, SALT[layer] + 40)
+  local n = floor(CELL / step + 0.5)
+  local x0, z0 = cx * CELL, cz * CELL
+  for i = 0, n - 1 do
+    for k = 0, n - 1 do
+      local x = x0 + (i + 0.15 + R() * 0.7) * step
+      local z = z0 + (k + 0.15 + R() * 0.7) * step
+      local roll, roll2, yaw, sc = R(), R(), R() * math.pi * 2, 0.7 + R() * 0.4
+      if layer == "bush" then
+        if roll < 0.035 then
+          local h, sl = site(x, z, 4)
+          if h and sl < 0.4 and not nearFort(x, z, 24) and not nearPoint(x, z, Map.POINT_R) then
+            table.insert(out, { k = "dshrub", x = x, y = h - 0.3, z = z, yaw = yaw, s = sc * 0.8 })
+          end
+        end
+      else
+        local sl = Map.slope(x, z)
+        local p = 0.012 + 0.6 * smooth(0.35, 1.0, sl)
+        if roll < p then
+          local h = site(x, z, 3)
+          if h and not nearFort(x, z, 20) then
+            local k2 = (sl > 0.6 and roll2 < 0.6) and "rock3" or ((roll2 < 0.5) and "rock1" or "rock2")
+            table.insert(out, { k = k2, x = x, y = h - 1.2, z = z, yaw = yaw, s = sc * ((k2 == "rock3") and 1.1 or 0.8) })
+          end
+        end
+      end
+    end
+  end
+  return out
+end
+
 function Flora.cell(cx, cz, layer)
+  if Map.DESERT then return desertCell(cx, cz, layer) end
   local out = {}
   local step = Flora.LAYERS[layer]
   local R = rng(cx, cz, SALT[layer])
@@ -1518,8 +1572,101 @@ local function faceCF(Map, x, z, tx, tz)
   return CFrame.lookAt(p, p + look.Unit)
 end
 
+-- 沙漠图（MapDesert，没有海）：攻方从南边来（+Z），工事都朝南。边境沙墙开口（据点 A 南边）两侧碉堡交叉火力，
+--   各据点南面碉堡、高炮；没有岸防炮；三处 M777 阵地各在一个据点北边约 600 格（够得着自己据点南面的攻击出发阵地，又在最小射程外）
+local function layoutDesert(Map)
+  local out = {}
+  local n = 0
+  local function add(kind, x, z, tx, tz, pt, tag, r)
+    local d = FortDefs.D[kind]
+    local sx, sz = siteNear(Map, x, z, r or 26, d.size)
+    n += 1
+    table.insert(out, { id = "f" .. n, kind = kind, cf = faceCF(Map, sx, sz, tx, tz), pt = pt, tag = tag })
+  end
+  local P = {}
+  for _, p in ipairs(Map.POINTS) do P[p.id] = p end
+  -- 边境：沙墙开口（x = A.x）北侧左右各一座，躲在 11 格高的沙墙后面、斜着封住开口的出口（交叉火力；隔着沙墙往南打不着）；据点 A 南面再两座
+  local bz = Map.bermZ(P.A.x)
+  add("bunker", P.A.x - 130, bz - 90, P.A.x + 40, bz - 10, "A", "border")
+  add("bunker", P.A.x + 130, bz - 90, P.A.x - 40, bz - 10, "A", "border")
+  add("bunker", P.A.x - 70, P.A.z + 90, P.A.x - 40, P.A.z + 500, "A", "outpost")
+  add("bunker", P.A.x + 70, P.A.z + 90, P.A.x + 40, P.A.z + 500, "A", "outpost")
+  add("bunker", P.B.x - 90, P.B.z + 110, P.B.x - 120, P.B.z + 520, "B", "oil")
+  add("bunker", P.B.x + 80, P.B.z + 115, P.B.x + 100, P.B.z + 520, "B", "oil")
+  add("bunker", P.C.x - 110, P.C.z + 230, P.C.x - 140, P.C.z + 700, "C", "town")
+  add("bunker", P.C.x + 120, P.C.z + 225, P.C.x + 150, P.C.z + 700, "C", "town")
+  add("bunker", P.D.x, P.D.z + 150, P.D.x, P.D.z + 600, "D", "airfield")
+  add("bunker", P.E.x - 70, P.E.z + 70, P.E.x - 120, P.E.z + 500, "E", "command")
+  add("bunker", P.E.x + 70, P.E.z + 70, P.E.x + 120, P.E.z + 500, "E", "command")
+  -- 高炮：机场两座，各据点一座，后方营地一座
+  local A = Map.AIRFIELD
+  local ax = math.min(1100, A.len * 0.3) + 60
+  add("aaa", A.x - ax, A.z - A.wid / 2 - 70, A.x - ax, A.z + 400, "D", "airfield")
+  add("aaa", A.x + ax, A.z - A.wid / 2 - 70, A.x + ax, A.z + 400, "D", "airfield")
+  add("aaa", P.E.x + 55, P.E.z - 45, P.E.x, P.E.z + 400, "E", "command")
+  add("aaa", P.C.x + 95, P.C.z - 55, P.C.x, P.C.z + 400, "C", "town")
+  add("aaa", P.A.x + 55, P.A.z - 40, P.A.x, P.A.z + 400, "A", "outpost")
+  add("aaa", P.B.x - 60, P.B.z - 55, P.B.x, P.B.z + 400, "B", "oil")
+  add("aaa", Map.CAMP.x - 95, Map.CAMP.z + 15, Map.CAMP.x, Map.CAMP.z + 400, nil, "camp")
+  -- M777：A、C、E 北边各两门，炮口朝南
+  for _, id in ipairs({ "A", "C", "E" }) do
+    local p = P[id]
+    local x, z = p.x + 160, p.z - 600
+    add("howitzer", x, z, x, z + 1000, id, "battery", 40)
+    add("howitzer", x + 36, z + 8, x + 36, z + 1008, id, "battery", 40)
+  end
+  return out
+end
+
+-- 沙漠图的障碍：边境沙墙开口里一排钢刺猬（留两条车道）、开口北边两道铁丝网、开口两侧沙墙后面各一片雷区；据点 B、C 南面也各一道铁丝网
+local function obstaclesDesert(Map)
+  local rng = Random.new(20261122)
+  local hog, wire, mines, signs = {}, {}, {}, {}
+  local A
+  for _, p in ipairs(Map.POINTS) do if p.id == "A" then A = p end end
+  local bx = A.x
+  local bz = Map.bermZ(bx)
+  -- 钢刺猬：开口（沙墙缺口约 ±60 格）里两排，中间和 ±33 留车道
+  for x = bx - 54, bx + 54, 12 do
+    for row = 0, 1 do
+      local xx = x + row * 6
+      local rel = math.abs(xx - bx)
+      if rel >= 15 and not (rel > 22 and rel < 42) then table.insert(hog, { x = xx, z = bz + 6 - row * 13, rot = rng:NextNumber(0, math.pi) }) end
+    end
+  end
+  -- 铁丝网：开口北边 45、72 格两道（隔段留缺口）；B、C 南面 160 格一道
+  local function wireLine(x0, x1, z, skip, tag)
+    local i, x = 0, x0
+    while x + FortDefs.WIRE.len <= x1 do
+      i += 1
+      if i % 3 ~= skip then table.insert(wire, { a = V(x, 0, z), b = V(x + FortDefs.WIRE.len, 0, z), beach = tag }) end
+      x += FortDefs.WIRE.len
+    end
+  end
+  wireLine(bx - 120, bx + 120, bz - 45, 2, "border")
+  wireLine(bx - 112, bx + 128, bz - 72, 0, "border")
+  for _, p in ipairs(Map.POINTS) do
+    if p.id == "B" or p.id == "C" then wireLine(p.x - 160, p.x + 160, p.z + 160, 1, p.id) end
+  end
+  -- 雷区：开口两侧、沙墙北边（离开口 90～150 格），四角警示牌朝南
+  for fi, side in ipairs({ -1, 1 }) do
+    local cx, cz = bx + side * 120, bz - 40
+    local field = { w = 50, d = 36 }
+    for _ = 1, 10 do
+      local x = cx + rng:NextNumber(-field.w / 2, field.w / 2)
+      local z = cz + rng:NextNumber(-field.d / 2, field.d / 2)
+      table.insert(mines, { x = x, z = z, at = rng:NextNumber() < 0.4, field = fi })
+    end
+    for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+      table.insert(signs, { x = cx + c[1] * (field.w / 2 + 3), z = cz + c[2] * (field.d / 2 + 3), face = 1 })
+    end
+  end
+  return { hog = hog, wire = wire, mines = mines, signs = signs }
+end
+
 -- 全部工事：{ id, kind（bunker / coastal / aaa）, cf（底面中心，−Z 朝前）, pt（附近的据点：据点被攻方拿下后这处工事就废了）, tag（位置名） }
 function FortDefs.layout(Map)
+  if Map.LANDONLY then return layoutDesert(Map) end
   local out = {}
   local n = 0
   local function add(kind, x, z, tx, tz, pt, tag, r)
@@ -1598,6 +1745,7 @@ end
 
 -- 滩头障碍：钢刺猬（水线一带两排，留出通道和缺口）、铁丝网（两道、隔段留缺口）、雷区（滩的两翼各一片）；用固定种子，每局一样
 function FortDefs.obstacles(Map)
+  if Map.LANDONLY then return obstaclesDesert(Map) end
   local rng = Random.new(20240611)
   local L = FortDefs.LANE
   local hog, wire, mines, signs = {}, {}, {}, {}
@@ -4994,6 +5142,45 @@ add("gm.desc.tac_none", "不装", "None")
 add("gm.desc.tac_light", "战术手电：照亮前面，夜里好用；腰射稍稳", "Weapon light: lights the way at night; steadier hip-fire")
 add("gm.desc.tac_peq", "可见激光：腰射准很多，但别人也看得见那道光", "Visible laser: far better hip-fire, but enemies see the beam")
 
+---------------------------------------------------------------- 沙漠图「沙海」（MapDesert.lua）：据点、阶段、出生点、阵营说明换成沙漠的说法
+do
+  local okM, M = pcall(function() return require(script.Parent:FindFirstChild("Map")) end)
+  if okM and type(M) == "table" and M.DESERT then
+    add("faction.sub", "海湾风暴 · 沙漠装甲突击", "DESERT STORM · ARMORED ASSAULT")
+    add("faction.atk.role", "进攻  ·  装甲突击", "ATTACK  ·  ARMORED ASSAULT")
+    add("faction.def.role", "防守  ·  纵深防御", "DEFEND  ·  DEFENSE IN DEPTH")
+    add("faction.atk.desc", "从南边的前进基地、前进机场北上：越过边境沙墙拿下哨所 A，再打油田 B、镇子 C、空军基地 D，最后攻下岩岭上的指挥部 E。每个阶段都能在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
+      "Push north from the forward base and airstrip: breach the border berm and take Outpost A, then the Oilfield B, Town C and Airbase D, and finally Command E on the ridge. Spawn at the assault position in front of each objective. Every death costs one reinforcement; run out and you lose.")
+    add("point.A", "A 边境哨所", "A Border Post")
+    add("point.B", "B 油田", "B Oilfield")
+    add("point.C", "C 镇子", "C Town")
+    add("point.D", "D 空军基地", "D Airbase")
+    add("point.E", "E 岭上指挥部", "E Ridge Command")
+    add("spawn.redbase", "前进基地（车场、直升机）", "Forward Base (vehicles, helos)")
+    add("spawn.af2", "前进机场（固定翼）", "Forward Airstrip (jets)")
+    add("spawn.camp", "后方营地（岭北）", "Rear Camp (north of ridge)")
+    add("spawn.afield", "空军基地（战斗机）", "Airbase (jets)")
+    add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
+    add("operation.opening", "拂晓突击", "DAWN ASSAULT")
+    add("stage.border", "突破边境", "BREACH THE BORDER")
+    add("stage.border.atk", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
+    add("stage.border.def", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
+    add("stage.border.short", "边境", "BORDER")
+    add("stage.oil", "夺取油田", "TAKE THE OILFIELD")
+    add("stage.oil.atk", "拿下油田 B（油井在烧，小心烟里的敌人）", "Take Oilfield B (wells burning: watch the smoke)")
+    add("stage.oil.def", "守住油田 B", "Hold Oilfield B")
+    add("stage.oil.short", "油田", "OILFIELD")
+    add("stage.town", "攻入镇子", "TAKE THE TOWN")
+    add("stage.town.atk", "打进镇子，拿下据点 C", "Fight into the town and take C")
+    add("stage.town.def", "守住镇子 C，巷战拖住敌人", "Hold Town C street by street")
+    add("stage.town.short", "镇子", "TOWN")
+    add("stage.airfield.atk", "拿下空军基地 D", "Take Airbase D")
+    add("stage.airfield.def", "守住空军基地 D", "Hold Airbase D")
+    add("stage.hq.atk", "翻上岩岭，攻下指挥部 E，结束战斗", "Climb the ridge and take Command E to win")
+    add("stage.hq.def", "最后一道防线：死守岭上指挥部 E", "Last line: hold Ridge Command E at all costs")
+  end
+end
+
 return Lang
 ]]></ProtectedString>
       </Properties>
@@ -5008,7 +5195,19 @@ return Lang
 --   主岛「棕榈岛」照网页版《暗剑》js/isle.js 的虚构热带岛：南岸宽而平缓（四处海滩）、东西两个岬角、西南向南开口的 U 形港湾（湾底港口镇）、
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
+-- 选图（用户 11-22 加了海湾战争式的沙漠地图「沙海」，MapDesert.lua）：Config.Map 定默认；Studio 里给 Workspace 设属性 MapName（"island" / "desert"）可以临时换
+do
+  local which
+  pcall(function() which = workspace:GetAttribute("MapName") end)
+  if which == nil and script and script.Parent then
+    local okC, Cfg = pcall(function() return require(script.Parent:FindFirstChild("Config")) end)
+    if okC and type(Cfg) == "table" then which = Cfg.Map end
+  end
+  local desert = (which == "desert") and script and script.Parent and script.Parent:FindFirstChild("MapDesert")
+  if desert then return require(desert) end
+end
 local Map = {}
+Map.NAME = "island"
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 
@@ -5521,6 +5720,809 @@ return Map
     </Item>
     <Item class="ModuleScript" referent="23">
       <Properties>
+        <string name="Name">MapDesert</string>
+        <ProtectedString name="Source"><![CDATA[--!native
+-- 全面大战场地图「沙海」（ReplicatedStorage.MapDesert）：海湾战争式的纯陆地沙漠，纯数学，服务器、客户端算出来一样（Map.lua 按 Config.Map 选它）
+--   用户 11-22：「要一个比它大十倍的沙漠地图」「沙漠怎么可能有水」「整个重做，纯地面和空军对战的海湾战争」——
+--   地形范围 ±38912 格（约 27.8 公里见方，岛图 ±12288 的 10 倍面积），没有海、没有水：红方（攻方）从南边的前进基地、前进机场北上，
+--   越过边境沙墙和反坦克壕，打边境哨所 A、油田 B、镇子 C、蓝方空军基地 D、山岭上的指挥部 E；蓝方后方营地在岭北。
+--   地貌照科威特—伊拉克南部：大片平的沙砾平原、一道东西向的岩岭（山口过公路）、西边一条大干河谷和西沙海、东边的干盐碱滩、
+--   南边、东南的新月形沙丘、北边远处一道断崖台地；公路：南北向的 80 号公路（穿过镇子、翻过山口）、东西向的 6 号公路。
+--   开服写地形（World.lua）：平原、台地、盐碱滩是正好落在体素边界上的平地，整块 FillBlock（便宜、省内存）；
+--   有起伏的块（Map.chunkKind 说是 relief 的）才逐列写体素，先写核心区，外面的在后台慢慢写
+local Map = {}
+local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
+local atan2 = math.atan2
+local noise = math.noise
+
+local function clamp(v, a, b) return v < a and a or (v > b and b or v) end
+local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
+local function lerp(a, b, t) return a + (b - a) * t end
+Map.clamp, Map.smooth, Map.lerp = clamp, smooth, lerp
+
+Map.NAME = "desert"
+Map.DESERT = true
+Map.LANDONLY = true     -- 没有海：舰艇、登陆艇、海滩那一套都不用（各模块按它跳过）
+local K, HK = 3, 2      -- 同岛图（别的模块按 K 定网格、范围：核心区和岛图差不多大）
+Map.K, Map.HK = K, HK
+Map.R = 38912           -- 地形范围 ±R：岛图 ±12288 的 √10 倍，面积 10 倍
+Map.PLAY = 36864        -- 飞机的作战区（再往外自动掉头）
+Map.SEA_R = 45056       -- 地形再往外铺一圈平地（只是远景）：作战区边上往外看不到地形的尽头（名字沿用岛图的）
+Map.SEA_LIM = 0
+Map.SEA_DEPTH = 0
+Map.SHELF = 0
+Map.MAXH = 290 * HK
+Map.RES = 4
+-- 平地的高度（都是 4 的倍数：最上面一层体素正好满，FillBlock 填出来和逐列写的一样高）
+local PLAIN, PLATEAU, LOW = 12, 72, 8
+Map.PLAIN, Map.PLATEAU, Map.LOW = PLAIN, PLATEAU, LOW
+local MAT = Enum.Material
+local LEVEL_MAT = { [PLAIN] = MAT.Sand, [PLATEAU] = MAT.Limestone, [LOW] = MAT.Salt }
+-- 地形颜色（World.lua 写地形前 SetMaterialColor）：暖沙色的平原、赭红的砂岩、灰白的石灰岩台地、白的盐壳
+Map.COLORS = {
+  Sand = Color3.fromRGB(206, 174, 124), Ground = Color3.fromRGB(156, 128, 96), Rock = Color3.fromRGB(108, 90, 76),
+  Sandstone = Color3.fromRGB(176, 118, 80), Limestone = Color3.fromRGB(198, 182, 150), Salt = Color3.fromRGB(226, 220, 204),
+  Slate = Color3.fromRGB(96, 84, 74), Asphalt = Color3.fromRGB(56, 55, 56), Concrete = Color3.fromRGB(152, 148, 140),
+}
+
+---------------------------------------------------------------- 随机数（定死的种子：服务器、客户端、每局都一样）
+
+local function rng(seed)
+  local s = seed % 2147483647
+  if s <= 0 then s += 2147483646 end
+  return function()
+    s = (s * 48271) % 2147483647
+    return s / 2147483647
+  end
+end
+
+---------------------------------------------------------------- 锚点
+
+Map.REDBASE = { x = 0, z = 15500 }                                   -- 红方前进基地（攻方出生、地面载具）
+Map.AFIELD2 = { x = 0, z = 17600, len = 3300, wid = 90, rot = 0 }   -- 红方前进机场（陆基飞机）
+Map.AIRFIELD = { x = 3400, z = -5200, len = 3600, wid = 90, rot = 0 } -- 蓝方空军基地（据点 D）
+Map.CAMP = { x = -200, z = -15000 }                                  -- 蓝方后方营地（岭北）
+Map.TOWN = { x = -3800, z = -600 }                                   -- 镇子（据点 C）
+Map.OILFIELD = { x = 5200, z = 2600 }                                -- 油田（据点 B）
+Map.PORT = Map.TOWN   -- 岛图的「港口镇」那一套（据点 C）读这个
+
+-- 穆特拉式岩岭：东西向，南坡陡（崖）、北坡缓；80 号公路从山口翻过去，指挥部在山口西边的岭顶上
+local function ridgeZ(x) return -9300 + 500 * sin(x / 4100 + 0.6) + 160 * sin(x / 1300 + 2.0) end
+Map.ridgeZ = ridgeZ
+Map.COMMAND = { x = -600, z = ridgeZ(-600) - 120 }
+-- 边境沙墙（东西向一道 3 米多高的沙堤，南边一条反坦克壕）：公路、几条土路的地方开口
+local function bermZ(x) return 7600 + 120 * sin(x / 3100 + 1.1) + 40 * sin(x / 900 + 0.3) end
+Map.bermZ = bermZ
+local BREACH = { -1200, 6200, -9000, 13500, -22000, 24000 }
+Map.BREACH = BREACH
+
+Map.POINTS = {
+  { id = "A", x = -1200, z = 7050 },                                -- 边境哨所：沙墙开口北边
+  { id = "B", x = Map.OILFIELD.x, z = Map.OILFIELD.z },
+  { id = "C", x = Map.TOWN.x, z = Map.TOWN.z },
+  { id = "D", x = Map.AIRFIELD.x, z = Map.AIRFIELD.z - 360 },       -- 机场北面的停机坪、塔台一带
+  { id = "E", x = Map.COMMAND.x, z = Map.COMMAND.z },
+}
+Map.POINT_R = 80
+for _, p in ipairs(Map.POINTS) do p.land = "main" end
+-- 岛图的海上那一套：这张图没有
+Map.FLEET, Map.BEACHES, Map.LANDINGS, Map.ISLES, Map.CAPES = {}, {}, {}, {}, {}
+Map.BARGE = nil
+function Map.landingOf() return nil end
+function Map.landOf() return "main" end
+function Map.beachAt() return nil end
+function Map.coastS() return nil end
+function Map.coastN() return nil end
+function Map.inHarbor() return false end
+-- 红方地面部队的出发阵地（岛图的登陆点那一层意思）：前进基地北边一排
+Map.STARTS = {}
+for i, x in ipairs({ -3600, -1200, 1200, 3600 }) do table.insert(Map.STARTS, { id = "s" .. i, x = x, z = 12500 }) end
+
+---------------------------------------------------------------- 起伏（各自一个外包盒，按 1024 格的格子登记：查高度只看这一格里的）
+
+local FEAT = {}
+Map.FEAT = FEAT
+local FCELL = 1024
+local fgrid = {}
+local function fkey(gx, gz) return (gx + 256) * 1024 + (gz + 256) end
+local function addFeat(f)
+  table.insert(FEAT, f)
+  for gx = floor(f.x0 / FCELL), floor(f.x1 / FCELL) do
+    for gz = floor(f.z0 / FCELL), floor(f.z1 / FCELL) do
+      local k = fkey(gx, gz)
+      local l = fgrid[k]
+      if not l then l = {} fgrid[k] = l end
+      table.insert(l, f)
+    end
+  end
+  return f
+end
+local function featIn(x0, z0, x1, z1)
+  for gx = floor(x0 / FCELL), floor(x1 / FCELL) do
+    for gz = floor(z0 / FCELL), floor(z1 / FCELL) do
+      local l = fgrid[fkey(gx, gz)]
+      if l then
+        for _, f in ipairs(l) do
+          if f.x1 >= x0 and f.x0 <= x1 and f.z1 >= z0 and f.z0 <= z1 then return true end
+        end
+      end
+    end
+  end
+  return false
+end
+local ZERO = function() return 0 end
+
+-- 岩岭
+local function ridgeH(f, x, z)
+  local ends = smooth(-15500, -12500, x) * (1 - smooth(11000, 14000, x))
+  if ends <= 0 then return 0 end
+  local s = ridgeZ(x) - z            -- 正 = 岭线北边
+  local W = (s < 0) and 210 or 800   -- 南坡陡、北坡缓
+  local q = s / W
+  local q2 = q * q
+  if q2 > 5 then return 0 end
+  local pass = 1 - 0.78 * exp(-((x - 300) / 520) ^ 2)
+  local H = 150 * ends * pass * (0.85 + 0.25 * noise(x / 2600, 0.5, 4.4))
+  local core = exp(-q2) * (1 - smooth(3.4, 5, q2))
+  local gully = (s < 0) and (1 - abs(noise(x / 140, z / 140, 7.3))) or 0.5   -- 南坡上一道道冲沟
+  return H * core * (0.86 + 0.22 * gully) + H * core * 0.06 * noise(x / 60, z / 60, 2.2)
+end
+addFeat({ k = "rock", fn = ridgeH, x0 = -15600, z0 = -12200, x1 = 14100, z1 = -8200 })
+
+-- 边境沙墙 + 反坦克壕（负的高度：壕沟）；开口处没有
+local function bermH(f, x, z)
+  local zb = bermZ(x)
+  local dz = z - zb
+  if dz < -40 or dz > 80 then return 0 end
+  local gap = 1
+  for _, bx in ipairs(BREACH) do
+    local q = (x - bx) / 70
+    if q * q < 9 then gap = min(gap, 1 - exp(-q * q * q * q)) end
+  end
+  if gap <= 0.001 then return 0 end
+  local h = 0
+  if dz < 22 then h = 11 * max(0, 1 - (dz / 22) ^ 2) end                -- 沙堤：底宽 44 格
+  local dd = (dz - 46) / 13
+  if dd * dd < 1 then h -= 6.5 * (1 - dd * dd) end                     -- 壕沟：沙堤南边，宽 26、深 6.5（V 形）
+  return h * gap
+end
+for x = -Map.R, Map.R - 512, 512 do
+  local za, zb = bermZ(x), bermZ(x + 512)
+  addFeat({ k = "berm", fn = bermH, signed = true, x0 = x, z0 = min(za, zb) - 50, x1 = x + 512, z1 = max(za, zb) + 90 })
+end
+
+-- 方山 / 残丘：平顶、陡崖、崖脚一圈碎石坡
+local function mesaH(f, x, z)
+  local dx, dz = x - f.x, z - f.z
+  local rho = sqrt(dx * dx + dz * dz)
+  if rho > f.R then return 0 end
+  local th = atan2(dz, dx)
+  local r = f.r * (1 + 0.16 * sin(3 * th + f.ph) + 0.08 * sin(5 * th + 2 * f.ph) + 0.05 * sin(11 * th + 3 * f.ph)) + f.r * 0.05 * noise(x / 90, z / 90, f.ph)
+  local top = f.h * (1 - 0.05 * (rho / max(r, 1)) ^ 2)
+  if rho <= r then return top end
+  local c = rho - r
+  if c < f.cliff then return top * (1 - 0.74 * smooth(0, f.cliff, c)) end
+  local t = (c - f.cliff) / f.talus
+  if t >= 1 then return 0 end
+  return top * 0.26 * (1 - t) ^ 1.6
+end
+local function addMesa(x, z, r, h, ph)
+  local cliff, talus = max(14, h * 0.32), h * 1.25
+  local R = r * 1.35 + cliff + talus + 20
+  return addFeat({ k = "mesa", fn = mesaH, x = x, z = z, r = r, h = h, ph = ph or (x * 0.001 + z * 0.0007) % 6.28, cliff = cliff, talus = talus, R = R,
+    x0 = x - R, z0 = z - R, x1 = x + R, z1 = z + R })
+end
+-- 岩丘（平原上零星的风化岩包）
+local function rockH(f, x, z)
+  local dx, dz = x - f.x, z - f.z
+  local q = (dx * dx + dz * dz) / (f.r * f.r)
+  if q >= 1 then return 0 end
+  local n = noise(x / (f.r * 0.45), z / (f.r * 0.45), f.ph)
+  return f.h * (1 - q) ^ 0.7 * (0.75 + 0.35 * n)
+end
+local function addRock(x, z, r, h, ph)
+  return addFeat({ k = "rock", fn = rockH, x = x, z = z, r = r, h = h, ph = ph or 0.9, x0 = x - r, z0 = z - r, x1 = x + r, z1 = z + r })
+end
+-- 沙丘带：纵向沙垄（顺着西北风「沙马尔风」，走向西北—东南），垄距 sp、高 H；迎风坡缓、落沙坡陡，弯曲、分叉，越到边上越矮
+local function ergH(f, x, z)
+  local dx, dz = x - f.x, z - f.z
+  local ex, ez = (dx * f.ec + dz * f.es) / f.ax, (-dx * f.es + dz * f.ec) / f.az
+  local q = ex * ex + ez * ez
+  if q >= 1 then return 0 end
+  local mask = 1 - smooth(0.5, 1, q)
+  local u = dx * f.uc + dz * f.us
+  local v = -dx * f.us + dz * f.uc
+  local w = noise(v / 2600, u / 2600, f.ph) * 0.45 + noise(v / 900, u / 900, f.ph + 3) * 0.12
+  local t = u / f.sp + w
+  t -= floor(t)
+  local c = 0.68
+  local p = (t < c) and (t / c) ^ 1.35 or (1 - (t - c) / (1 - c)) ^ 0.75
+  p = p * p * (3 - 2 * p)
+  local amp = 0.6 + 0.4 * noise(v / 1700, u / 3100, f.ph + 7)
+  return f.H * mask * p * amp * (0.86 + 0.14 * noise(x / 160, z / 160, f.ph + 11))
+end
+local function addErg(x, z, ax, az, rot, H, sp, crest, ph)
+  local R = max(ax, az) + 40
+  local cr = crest or 0.75   -- 沙垄走向（弧度，0 = 正南北）
+  return addFeat({ k = "dune", fn = ergH, x = x, z = z, ax = ax, az = az, ec = cos(rot), es = sin(rot), H = H, sp = sp,
+    uc = cos(cr), us = sin(cr), ph = ph or 2.2, x0 = x - R, z0 = z - R, x1 = x + R, z1 = z + R })
+end
+local function starH(f, x, z)
+  local dx, dz = x - f.x, z - f.z
+  local rho = sqrt(dx * dx + dz * dz)
+  if rho > f.r then return 0 end
+  local th = atan2(dz, dx)
+  local arms = 0.5 + 0.5 * cos(f.n * th + f.ph + 0.7 * sin(rho / 240 + f.ph))
+  local k = rho / f.r
+  return f.H * (1 - k) ^ 1.6 * (0.42 + 0.58 * arms * arms) * (0.9 + 0.1 * noise(x / 120, z / 120, f.ph))
+end
+local function addStar(x, z, r, H, n, ph)
+  return addFeat({ k = "dune", fn = starH, x = x, z = z, r = r, H = H, n = n or 4, ph = ph or 0.4, x0 = x - r, z0 = z - r, x1 = x + r, z1 = z + r })
+end
+-- 新月形沙丘：两角朝下风（东南：沙马尔风从西北吹来），迎风坡缓、落沙坡陡
+local WIND = math.rad(135)
+local function barchanH(f, x, z)
+  local dx, dz = x - f.x, z - f.z
+  local a = dx * f.c + dz * f.s
+  local b = -dx * f.s + dz * f.c
+  local an = a / f.w
+  if an > 1 or an < -1 then return 0 end
+  local bn = (b - f.l * 0.55 * an * an) / f.l
+  if bn < -1 or bn > 0.42 then return 0 end
+  local prof = (bn < 0) and (1 + bn) ^ 1.3 or (1 - bn / 0.42) ^ 0.6
+  return f.H * prof * (1 - an * an) ^ 0.8
+end
+local function addBarchan(x, z, w, l, H)
+  local ang = WIND + math.pi / 2
+  local R = max(w, l * 1.6) + 20
+  return addFeat({ k = "dune", fn = barchanH, x = x, z = z, w = w, l = l, H = H, c = cos(ang), s = sin(ang), x0 = x - R, z0 = z - R, x1 = x + R, z1 = z + R })
+end
+
+---------------------------------------------------------------- 断崖台地（远处北边）、盐碱滩
+
+local R0 = Map.R
+local function escRaw(x) return -24500 + 1300 * sin(x / 6600 + 0.9) + 460 * sin(x / 2300 + 2.6) + 170 * sin(x / 770 + 4.4) - 24000 * smooth(R0 - 12000, R0 + 3000, abs(x)) end
+local EX0, ESTEP = -Map.SEA_R - 64, 16
+local EN = floor((2 * Map.SEA_R + 128) / ESTEP)
+local e1 = table.create(EN + 1)
+for i = 0, EN do e1[i + 1] = escRaw(EX0 + i * ESTEP) end
+local function escAt(x)
+  local f = clamp((x - EX0) / ESTEP, 0, EN - 1e-6)
+  local i = floor(f)
+  local a = f - i
+  return e1[i + 1] * (1 - a) + e1[i + 2] * a
+end
+Map.escZ = escAt
+local E1 = { H = PLATEAU - PLAIN, cliff = 70, talus = 260 }
+local PASSES = { -12000, -700, 15000, 27000 }   -- 断崖上的坡道（崖面拉成一公里多的缓坡，车开得上去）
+Map.PASSES = PASSES
+local function cliffW(x)
+  local w = E1.cliff
+  for _, px in ipairs(PASSES) do
+    local q = (x - px) / 420
+    if q * q < 16 then w += 1250 * exp(-q * q) end
+  end
+  return w
+end
+local ESC_PAD = 420
+local function escProf(s, cw)
+  local tal = E1.talus * (1 - 0.8 * smooth(E1.cliff, E1.cliff + 600, cw))
+  if s <= -tal then return 0 end
+  if s < 0 then return 0.3 * (1 - (-s / tal)) ^ 1.5 end
+  if s < cw then return 0.3 + 0.7 * ((cw > 200) and (s / cw) or smooth(0, cw, s)) end
+  return 1
+end
+for x = -Map.SEA_R, Map.SEA_R, 512 do
+  local za, zb = escAt(x), escAt(x + 512)
+  if min(za, zb) > -Map.SEA_R - 600 then
+    local cw = max(cliffW(x), cliffW(x + 512), cliffW(x + 256))
+    addFeat({ k = "esc", fn = ZERO, x0 = x, z0 = min(za, zb) - ESC_PAD - cw, x1 = x + 512, z1 = max(za, zb) + ESC_PAD })
+  end
+end
+
+-- 盐碱滩（干的：一层白盐壳，比平原低 4 格，边上一圈缓坡）
+local SAB = { x = 16500, z = -2500, ax = 5200, az = 2800, rot = 0.2 }
+SAB.c, SAB.s = cos(SAB.rot), sin(SAB.rot)
+Map.SABKHA = SAB
+local function sabQ(x, z)
+  local dx, dz = x - SAB.x, z - SAB.z
+  local u, v = (dx * SAB.c + dz * SAB.s) / SAB.ax, (-dx * SAB.s + dz * SAB.c) / SAB.az
+  local th = atan2(v, u)
+  local wob = 1 + 0.07 * sin(3 * th + 1.1) + 0.04 * sin(7 * th + 2.3) + 0.02 * sin(13 * th + 0.4)
+  return sqrt(u * u + v * v) / wob
+end
+do
+  local steps = 120
+  for i = 0, steps - 1 do
+    local a = i / steps * math.pi * 2
+    local px, pz = cos(a) * SAB.ax, sin(a) * SAB.az
+    local x = SAB.x + px * SAB.c - pz * SAB.s
+    local z = SAB.z + px * SAB.s + pz * SAB.c
+    addFeat({ k = "sab", fn = ZERO, x0 = x - 560, z0 = z - 560, x1 = x + 560, z1 = z + 560 })
+  end
+end
+
+-- 平地的高度（断崖、盐碱滩），第二个返回值：在哪一级（PLAIN / PLATEAU / LOW；在崖上、滩边返回 nil）
+local function baseLevel(x, z)
+  local L, flat = PLAIN, PLAIN
+  local s1 = escAt(x) - z
+  if s1 > -E1.talus - 160 then
+    local cw = cliffW(x)
+    local en = (70 * noise(x / 380, z / 380, 6.6) + 30 * noise(x / 120, z / 120, 2.4)) * (1 - smooth(E1.cliff, E1.cliff + 400, cw))
+    local p = escProf(s1 + en, cw)
+    L += E1.H * p
+    if p >= 1 then flat = PLATEAU elseif p > 0 then flat = nil end
+  else
+    local q = sabQ(x, z)
+    if q < 1.1 then
+      local k = 1 - smooth(0.88, 1.08, q)
+      L -= (PLAIN - LOW) * k
+      if k >= 1 then flat = LOW elseif k > 0 then flat = nil end
+    end
+  end
+  return L, flat
+end
+Map.baseLevel = baseLevel
+
+---------------------------------------------------------------- 布局
+
+-- 核心区：坦克交战的低沙梁（车能藏在后面露个炮塔）、岩丘
+addErg(200, 3700, 3000, 950, 0.05, 15, 270, 0.75, 5.1)     -- 边境哨所和镇子、油田之间的一片低沙梁
+addErg(-5600, 9800, 1800, 900, -0.1, 12, 240, 0.75, 6.3)   -- 沙墙南边（红方的进攻出发阵地西边）
+for _, r in ipairs({ { 1900, 5600, 130, 30 }, { -2900, 5200, 160, 36 }, { 3700, 600, 110, 26 }, { -6200, 2500, 170, 40 },
+  { 7800, -1500, 150, 34 }, { -1500, -3200, 120, 28 }, { 6200, -8200, 180, 44 }, { -7000, -6800, 200, 48 },
+  { 9400, 5200, 140, 30 }, { -4300, 11800, 120, 24 } }) do
+  addRock(r[1], r[2], r[3], r[4], r[1] * 0.01)
+end
+addMesa(-8400, -4300, 420, 96, 0.8)    -- 镇子西北的方山（侦察兵、狙击手的高地）
+addMesa(9800, -7200, 360, 88, 2.4)
+-- 西沙海（巴廷干河西边：纵向沙垄 + 星状沙丘）
+addErg(-25500, -7000, 5000, 3300, 0.6, 62, 720, 0.75, 2.2)
+addStar(-26000, -7800, 900, 150, 4, 0.4)
+addStar(-23600, -5900, 760, 120, 5, 1.9)
+addStar(-27800, -5600, 700, 112, 3, 3.1)
+addStar(-24800, -9600, 820, 132, 4, 4.6)
+-- 东南的新月形沙丘、南边沙墙前零星几个
+do
+  local R = rng(77001)
+  for _ = 1, 54 do
+    local s = 0.6 + R() * 1.1
+    addBarchan(11000 + R() * 22000, 7000 + R() * 19000, 150 * s, 190 * s, 11 + 15 * s)
+  end
+  for _ = 1, 16 do
+    local s = 0.5 + R() * 0.8
+    local x, z = -7000 + R() * 14000, 9200 + R() * 4500
+    if abs(x - Map.REDBASE.x) > 1600 or abs(z - Map.REDBASE.z) > 1100 then addBarchan(x, z, 130 * s, 160 * s, 9 + 10 * s) end
+  end
+end
+-- 东北、西南远处的方山群（飞机上看得见的地标）
+do
+  local R = rng(20261122)
+  local placed = {}
+  local function field(x0, z0, w, d, n)
+    local cnt, tries = 0, 0
+    while cnt < n and tries < 400 do
+      tries += 1
+      local x, z = x0 + R() * w, z0 + R() * d
+      local r = 140 + R() ^ 1.8 * 760
+      local h = 70 + R() * 170 * (0.6 + r / 1200)
+      local ok = abs(z - escAt(x)) > r * 1.6 + 900
+      for _, p in ipairs(placed) do
+        if (x - p[1]) ^ 2 + (z - p[2]) ^ 2 < (r + p[3] + 900) ^ 2 then ok = false break end
+      end
+      if ok then table.insert(placed, { x, z, r, h }) cnt += 1 end
+    end
+  end
+  field(14000, -21000, 15000, 11000, 12)
+  field(-36000, 16000, 12000, 14000, 8)
+  for _, p in ipairs(placed) do addMesa(p[1], p[2], p[3], p[4]) end
+  Map.MESAFIELD = placed
+end
+for _, b in ipairs({ { -5200, -23400, 280, 90 }, { 4400, -23900, 300, 104 }, { 11200, -22600, 220, 80 }, { -15800, -23000, 340, 96 } }) do
+  addMesa(b[1], b[2], b[3], b[4])   -- 断崖前面孤立的残丘
+end
+
+---------------------------------------------------------------- 干河谷（折线：宽、深；按 512 格的格子登记线段）
+
+local WADIS = {
+  -- 巴廷干河：西南往东北斜穿过来，再往北收进断崖
+  { name = "巴廷干河", w = 520, d = 26, p = { -38500, 31000, -30000, 22000, -24000, 14200, -19200, 7200, -15600, 200, -13900, -7000,
+    -13600, -14000, -14600, -21500, -15000, -25500 } },
+  { name = "西干河", w = 210, d = 12, p = { -5000, -8700, -6400, -6500, -6000, -4000, -7400, -1500, -7000, 1800, -8600, 5000, -9200, 7700, -10200, 11200 } },
+}
+Map.WADIS = WADIS
+local WCELL = 512
+local wgrid = {}
+for wi, W in ipairs(WADIS) do
+  local p = W.p
+  for i = 1, #p / 2 - 1 do
+    local ax, az, bx, bz = p[2 * i - 1], p[2 * i], p[2 * i + 1], p[2 * i + 2]
+    local s = { ax, az, bx, bz, W.w, W.d, wi }
+    local pad = W.w + 60
+    for gx = floor((min(ax, bx) - pad) / WCELL), floor((max(ax, bx) + pad) / WCELL) do
+      for gz = floor((min(az, bz) - pad) / WCELL), floor((max(az, bz) + pad) / WCELL) do
+        local k = (gx + 512) * 2048 + gz + 512
+        local l = wgrid[k]
+        if not l then l = {} wgrid[k] = l end
+        table.insert(l, s)
+      end
+    end
+    addFeat({ k = "wadi", fn = ZERO, x0 = min(ax, bx) - pad, z0 = min(az, bz) - pad, x1 = max(ax, bx) + pad, z1 = max(az, bz) + pad })
+  end
+end
+local function wadiNear(x, z)
+  local l = wgrid[(floor(x / WCELL) + 512) * 2048 + floor(z / WCELL) + 512]
+  if not l then return nil end
+  local best, bw, bd = 1e18, 0, 0
+  for _, s in ipairs(l) do
+    local ax, az, bx, bz = s[1], s[2], s[3], s[4]
+    local dx, dz = bx - ax, bz - az
+    local L2 = dx * dx + dz * dz
+    local t = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1)
+    local px, pz = ax + dx * t, az + dz * t
+    local L = sqrt(L2)
+    local nx, nz = -dz / L, dx / L
+    local m = s[5] * 0.9 * noise((px + pz) / 700, s[7] * 3.1, 0.5)   -- 河道摆动
+    px += nx * m pz += nz * m
+    local dd = (x - px) ^ 2 + (z - pz) ^ 2
+    if dd < best then best, bw, bd = dd, s[5], s[6] end
+  end
+  return sqrt(best), bw, bd
+end
+Map.wadiNear = wadiNear
+
+---------------------------------------------------------------- 自然高度
+
+-- 返回高度、主要起伏的种类（材质用）
+local function natural(x, z)
+  local L = baseLevel(x, z)
+  local kind, bump, cut = nil, 0, 0
+  local l = fgrid[fkey(floor(x / FCELL), floor(z / FCELL))]
+  if l then
+    for _, f in ipairs(l) do
+      if x >= f.x0 and x <= f.x1 and z >= f.z0 and z <= f.z1 then
+        local h = f.fn(f, x, z)
+        if h > bump then bump, kind = h, f.k
+        elseif f.signed and h < cut then cut = h if bump <= 0 then kind = f.k end end
+      end
+    end
+  end
+  local y = L + bump + cut
+  local wd, ww, wdep = wadiNear(x, z)
+  if wd and wd < ww * 0.5 + 40 then
+    local floorW = ww * 0.32
+    local c = wdep * (1 - smooth(floorW, ww * 0.5 + 40, wd))
+    y -= c
+    if c > 1 then kind = (wd < floorW + 10) and "wadi" or "wadibank" end
+  end
+  return max(y, 1.5), kind
+end
+
+---------------------------------------------------------------- 压平的场地
+
+local FLAT = {}
+local function addFlat(x, z, r, r2, y) table.insert(FLAT, { x = x, z = z, r = r, r2 = r2, y = y, x0 = x - r2, z0 = z - r2, x1 = x + r2, z1 = z + r2 }) end
+local function addRect(x, z, hx, hz, m, y) table.insert(FLAT, { x = x, z = z, hx = hx, hz = hz, m = m, y = y, rect = true, x0 = x - hx - m, z0 = z - hz - m, x1 = x + hx + m, z1 = z + hz + m }) end
+Map.FLAT = FLAT
+
+local function flatHeight(x, z)
+  local y, kind = natural(x, z)
+  local wmax = 0
+  for _, F in ipairs(FLAT) do
+    if x >= F.x0 and x <= F.x1 and z >= F.z0 and z <= F.z1 then
+      local dx, dz = x - F.x, z - F.z
+      local w = 0
+      if F.rect then
+        local qx, qz = max(0, abs(dx) - F.hx), max(0, abs(dz) - F.hz)
+        if qx < F.m and qz < F.m then w = 1 - smooth(0, F.m, sqrt(qx * qx + qz * qz)) end
+      else
+        local q = dx * dx + dz * dz
+        if q < F.r2 * F.r2 then w = 1 - smooth(F.r, F.r2, sqrt(q)) end
+      end
+      if w > 0 then
+        y = lerp(y, F.y, w)
+        if w > wmax then wmax = w end
+      end
+    end
+  end
+  return y, wmax, kind
+end
+
+local function avgNatural(x, z, r)
+  local sum, n = natural(x, z), 1
+  for k = 0, 11 do
+    local a = k * math.pi / 6
+    for _, rr in ipairs({ r * 0.5, r }) do
+      sum += natural(x + cos(a) * rr, z + sin(a) * rr)
+      n += 1
+    end
+  end
+  return sum / n
+end
+for _, p in ipairs(Map.POINTS) do
+  if p.id == "C" then addFlat(p.x, p.z, 420, 820, avgNatural(p.x, p.z, 420))   -- 镇子大一些
+  elseif p.id ~= "D" then addFlat(p.x, p.z, 165, 330, avgNatural(p.x, p.z, 165)) end
+end
+do local A = Map.AIRFIELD addRect(A.x, A.z - 120, A.len / 2 + 50, 380, 240, avgNatural(A.x, A.z - 120, 600)) end   -- 跑道 + 北面停机坪、机库
+do local C = Map.CAMP addRect(C.x, C.z + 45, 600, 255, 300, avgNatural(C.x, C.z, 210)) end
+do local A = Map.AFIELD2 addRect(A.x, A.z, A.len / 2 + 20, 210, 180, avgNatural(A.x, A.z, 400)) end
+do local B = Map.REDBASE addRect(B.x, B.z, 700, 400, 300, avgNatural(B.x, B.z, 300)) end
+
+---------------------------------------------------------------- 路网（手画的折线）
+
+local ROADDEF = {
+  -- 80 号公路（「死亡公路」）：红方前进基地 → 沙墙开口 → 镇子 → 山口 → 蓝方营地 → 断崖坡道
+  { name = "80号公路", w = 22, p = { 0, 23000, -300, 17000, -1200, 13000, -1200, 7600, -1800, 4500, -3000, 1500, -3800, -600, -2600, -4000,
+    -600, -7200, 300, -9200, 100, -11500, -200, -14700, -500, -19000, -700, -23400, -700, -26400 } },
+  -- 6 号公路：东西向，穿过镇子、油田
+  { name = "6号公路", w = 22, p = { -40000, 900, -26000, 700, -18000, 300, -8000, -300, -3800, -600, 1500, 1200, 5200, 2600, 12000, 3200,
+    24000, 2400, 40000, 3600 } },
+  { name = "机场公路", w = 16, p = { -2600, -4000, 500, -4400, 1550, -4900 } },
+  { name = "油田—前进基地", w = 12, p = { 5200, 2600, 5800, 4800, 6200, 7600, 5000, 11800, 2200, 15400, 700, 15500 } },
+  { name = "指挥部", w = 12, p = { 300, -9200, -200, -9150, -600, -9100 } },
+  { name = "前进机场", w = 16, p = { 0, 15500, 0, 16700 } },
+  { name = "西干河土路", w = 10, p = { -3800, -600, -6000, -900, -9000, 7700, -10500, 12500, -3000, 15000, -700, 15400 } },
+  { name = "东边土路", w = 10, p = { 5200, 2600, 9800, -1500, 13500, 7600, 17000, 12000 } },
+}
+local SX0, SZ0, SX1, SZ1, SY0, SY1, SW = {}, {}, {}, {}, {}, {}, {}
+local RCELL = 48
+local rgrid = {}
+local ROADS = {}
+Map.ROADS = ROADS
+local RBIG = 512
+local rbig = {}
+for _, r in ipairs(ROADDEF) do
+  local xs, zs = {}, {}
+  local p = r.p
+  for i = 1, #p / 2 - 1 do
+    local ax, az, bx, bz = p[2 * i - 1], p[2 * i], p[2 * i + 1], p[2 * i + 2]
+    local L = sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+    local n = max(1, floor(L / 40))
+    for k = 0, n - 1 do
+      table.insert(xs, ax + (bx - ax) * k / n)
+      table.insert(zs, az + (bz - az) * k / n)
+    end
+  end
+  table.insert(xs, p[#p - 1]) table.insert(zs, p[#p])
+  local n = #xs
+  local ys = table.create(n)
+  for i = 1, n do ys[i] = (flatHeight(xs[i], zs[i])) end
+  local base = table.clone(ys)
+  for _ = 1, 14 do
+    local nys = table.clone(ys)
+    for i = 2, n - 1 do nys[i] = ys[i - 1] * 0.25 + ys[i] * 0.5 + ys[i + 1] * 0.25 end
+    ys = nys
+  end
+  for i = 1, n do ys[i] = clamp(ys[i], base[i] - 10, base[i] + 10) end
+  table.insert(ROADS, { name = r.name, w = r.w, x = xs, z = zs, y = ys })
+  for i = 1, n - 1 do
+    local k = #SX0 + 1
+    SX0[k], SZ0[k], SX1[k], SZ1[k], SY0[k], SY1[k], SW[k] = xs[i], zs[i], xs[i + 1], zs[i + 1], ys[i], ys[i + 1], r.w
+    local pad = r.w * 0.5 + 12
+    for gx = floor((min(xs[i], xs[i + 1]) - pad) / RCELL), floor((max(xs[i], xs[i + 1]) + pad) / RCELL) do
+      for gz = floor((min(zs[i], zs[i + 1]) - pad) / RCELL), floor((max(zs[i], zs[i + 1]) + pad) / RCELL) do
+        local key = (gx + 2048) * 4096 + gz + 2048
+        local list = rgrid[key]
+        if not list then list = {} rgrid[key] = list end
+        table.insert(list, k)
+      end
+    end
+    for gx = floor((min(xs[i], xs[i + 1]) - pad) / RBIG), floor((max(xs[i], xs[i + 1]) + pad) / RBIG) do
+      for gz = floor((min(zs[i], zs[i + 1]) - pad) / RBIG), floor((max(zs[i], zs[i + 1]) + pad) / RBIG) do
+        rbig[(gx + 512) * 2048 + gz + 512] = true
+      end
+    end
+  end
+end
+local function roadNear(x, z)
+  local list = rgrid[(floor(x / RCELL) + 2048) * 4096 + floor(z / RCELL) + 2048]
+  if not list then return nil end
+  local best, bw = 1e18, 0
+  local sw, sy = 0, 0
+  for _, k in ipairs(list) do
+    local ax, az = SX0[k], SZ0[k]
+    local dx, dz = SX1[k] - ax, SZ1[k] - az
+    local L2 = dx * dx + dz * dz
+    local t = (L2 > 0) and clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1) or 0
+    local px, pz = ax + dx * t - x, az + dz * t - z
+    local dd = px * px + pz * pz
+    if dd < best then best, bw = dd, SW[k] end
+    local reach = SW[k] * 0.5 + 12
+    if dd < reach * reach then
+      local dist = sqrt(dd)
+      local w = (1 - dist / reach) ^ 2 / (1 + dist)
+      sw += w
+      sy += w * (SY0[k] + (SY1[k] - SY0[k]) * t)
+    end
+  end
+  if best >= 1e18 then return nil end
+  return sqrt(best), (sw > 0) and sy / sw or 0, bw
+end
+Map.roadNear = roadNear
+function Map.roadDist(x, z)
+  local d = roadNear(x, z)
+  return d or 1e9
+end
+
+---------------------------------------------------------------- 高度、地面
+
+-- 写地形时的列缓存（World.lua 的 writeChunk 先算一块里每列的高度，再一列列定材质）：height 记下压平系数、地貌种类、离路多远，
+--   material 就不用把整列高度再算一遍（开服写地形省一半多时间）；只在 Map.colCache(true) 和 (false) 之间开着
+local CC = nil
+function Map.colCache(on) CC = on and {} or nil end
+function Map.height(x, z)
+  local y, wf, kind = flatHeight(x, z)
+  local rd, ry, rw = roadNear(x, z)
+  if CC then CC[x * 131072 + z] = { wf, kind, rd or false, rw } end
+  if rd then
+    local half = rw * 0.5
+    local w = 1 - smooth(half, half + 10, rd)
+    if w > 0 then y = lerp(y, ry, w * (1 - wf)) end
+  end
+  return y, 1e9
+end
+function Map.ground(x, z) return (Map.height(x, z)) end
+function Map.isLand() return true end
+function Map.slope(x, z)
+  local e = 4
+  local a, b = Map.height(x + e, z), Map.height(x - e, z)
+  local c, d = Map.height(x, z + e), Map.height(x, z - e)
+  return sqrt(((a - b) / (2 * e)) ^ 2 + ((c - d) / (2 * e)) ^ 2)
+end
+function Map.flatW(x, z)
+  local _, w = flatHeight(x, z)
+  return w or 0
+end
+for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
+for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "TOWN", "OILFIELD", "AFIELD2", "REDBASE" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
+for _, s in ipairs(Map.STARTS) do s.y = Map.ground(s.x, s.z) end
+
+-- 油井（油田据点 B 一带、南油田）：位置定死，工事 / 场景按它摆井口、着火的井
+Map.OILWELLS = {}
+do
+  local R = rng(31337)
+  local function wells(cx, cz, w, d, n)
+    local cnt, tries = 0, 0
+    while cnt < n and tries < 600 do
+      tries += 1
+      local x, z = cx + (R() - 0.5) * w, cz + (R() - 0.5) * d
+      local ok = Map.roadDist(x, z) > 40 and Map.flatW(x, z) < 0.05
+      for _, q in ipairs(Map.OILWELLS) do if (q.x - x) ^ 2 + (q.z - z) ^ 2 < 180 * 180 then ok = false break end end
+      if ok and Map.slope(x, z) < 0.12 then
+        cnt += 1
+        table.insert(Map.OILWELLS, { x = x, z = z, y = Map.ground(x, z), field = (cz > 6000) and "south" or "B" })
+      end
+    end
+  end
+  wells(Map.OILFIELD.x + 700, Map.OILFIELD.z - 300, 2800, 2000, 14)
+  wells(-9500, 12800, 5200, 3600, 22)
+end
+
+---------------------------------------------------------------- 材质
+
+function Map.material(x, z, y, slope)
+  local c = CC and CC[x * 131072 + z]
+  local rd, rw, wf, kind, _
+  if c then
+    wf, kind, rd, rw = c[1], c[2], c[3] or nil, c[4]
+  else
+    rd, _, rw = roadNear(x, z)
+  end
+  if rd and rd < rw * 0.5 + 1.2 * noise(x / 9, z / 9, 3.3) then return (rw >= 20) and MAT.Asphalt or MAT.Ground end
+  if not c then _, wf, kind = flatHeight(x, z) end
+  if wf and wf > 0.6 then return MAT.Ground end   -- 据点、机场、营地、基地：压实的土
+  if kind == "dune" then return MAT.Sand end
+  if kind == "berm" then return (y < PLAIN - 1) and MAT.Ground or MAT.Sand end
+  if kind == "wadi" then return MAT.Ground end
+  if kind == "wadibank" then
+    if slope > 0.75 then return ((y + 3 * noise(x / 40, z / 40, 1.1)) % 9 < 3) and MAT.Limestone or MAT.Sandstone end
+    return MAT.Ground
+  end
+  local L, flat = baseLevel(x, z)
+  if kind == "mesa" or (kind == nil and flat == nil and slope > 0.7) then
+    -- 方山、断崖的崖面：一层层的砂岩、石灰岩（水平的条带）；顶上砂岩
+    if slope > 0.9 then return ((y + 3 * noise(x / 40, z / 40, 1.1)) % 22 < 8) and MAT.Limestone or MAT.Sandstone end
+    if slope > 0.45 then return MAT.Ground end
+    if kind == "mesa" then return MAT.Sandstone end
+  end
+  if kind == "rock" then
+    if slope > 0.85 or y > 140 then return MAT.Rock end
+    if slope > 0.4 then return MAT.Slate end
+    return MAT.Ground
+  end
+  if flat == nil then
+    if L < PLAIN then return MAT.Salt end
+    return MAT.Ground
+  end
+  return LEVEL_MAT[flat] or MAT.Sand
+end
+
+---------------------------------------------------------------- 写地形（World.lua 用）
+
+-- 一块 256 × 256 格（x0、z0 是西北角）："flat" 整块是同一级平地（返回高度、材质：FillBlock）；"relief" 要逐列写体素
+local CH = 256
+local function anyRoadBig(x0, z0, x1, z1)
+  for gx = floor((x0 - 40) / RBIG), floor((x1 + 40) / RBIG) do
+    for gz = floor((z0 - 40) / RBIG), floor((z1 + 40) / RBIG) do
+      if rbig[(gx + 512) * 2048 + gz + 512] then return true end
+    end
+  end
+  return false
+end
+local function anyFlatIn(x0, z0, x1, z1)
+  for _, F in ipairs(FLAT) do
+    if F.x1 >= x0 and F.x0 <= x1 and F.z1 >= z0 and F.z0 <= z1 then return true end
+  end
+  return false
+end
+function Map.chunkKind(x0, z0)
+  local x1, z1 = x0 + CH, z0 + CH
+  local cx, cz = x0 + CH / 2, z0 + CH / 2
+  local candidate = featIn(x0 - 4, z0 - 4, x1 + 4, z1 + 4) or anyRoadBig(x0, z0, x1, z1) or anyFlatIn(x0, z0, x1, z1)
+  local _, f0 = baseLevel(cx, cz)
+  if not f0 then return "relief" end
+  if not candidate then
+    for _, c in ipairs({ { x0, z0 }, { x1, z0 }, { x0, z1 }, { x1, z1 } }) do
+      local _, f = baseLevel(c[1], c[2])
+      if f ~= f0 then return "relief" end
+    end
+    return "flat", f0, LEVEL_MAT[f0]
+  end
+  -- 外包盒碰上了起伏、路、场地：按 9 × 9 个点（间距 32 格，比路网的格子 48 小，细的土路、小沙丘都漏不掉）看是不是真的平
+  local step = CH / 8
+  for i = 0, 8 do
+    for k = 0, 8 do
+      local x, z = x0 + i * step, z0 + k * step
+      local y, wf, kind = flatHeight(x, z)
+      if abs(y - f0) > 0.01 or kind ~= nil or (wf and wf > 0) then return "relief" end
+      local _, f = baseLevel(x, z)
+      if f ~= f0 then return "relief" end
+      local rd = roadNear(x, z)
+      if rd and rd < 48 then return "relief" end
+    end
+  end
+  return "flat", f0, LEVEL_MAT[f0]
+end
+-- 写地形的顺序：离核心区（据点、两边的基地和机场）近的先写；核心区（各处 3500 格以内，约一千块）写完才让人出生，其余的后台写
+Map.CORE = { x = 0, z = -1000, r = 12000 }
+Map.CORES = {}
+for _, p in ipairs(Map.POINTS) do table.insert(Map.CORES, { x = p.x, z = p.z, r = 3500 }) end
+for _, a in ipairs({ Map.REDBASE, Map.AFIELD2, Map.AIRFIELD, Map.CAMP }) do table.insert(Map.CORES, { x = a.x, z = a.z, r = 3500 }) end
+function Map.underMat(top)   -- 最上面一层下面填什么
+  if top == MAT.Sand or top == MAT.Salt then return MAT.Sand end
+  if top == MAT.Rock or top == MAT.Slate then return MAT.Rock end
+  if top == MAT.Sandstone or top == MAT.Limestone then return MAT.Sandstone end
+  return MAT.Ground
+end
+function Map.farSeaOk() return false end   -- 远海平面（Scenery.lua）一块都不铺
+
+---------------------------------------------------------------- 有陆地的范围（画中画瞄准镜的远景网格只生成核心区）
+
+function Map.landBoxes() return { { -12000, -16500, 12000, 18500 } } end
+
+function Map.lineClear(a, b, step)
+  step = step or 12
+  local dv = b - a
+  local L = dv.Magnitude
+  local n = max(1, floor(L / step))
+  for i = 1, n - 1 do
+    local p = a + dv * (i / n)
+    if Map.height(p.X, p.Z) > p.Y then return false end
+  end
+  return true
+end
+
+-- 小地图、部署界面画多大一块（MapUI.lua）、机器人寻路网格的范围（Nav.lua）
+Map.UIBOX = { x0 = -16000, z0 = -19000, x1 = 16000, z1 = 21000 }
+Map.NAVBOX = { x0 = -9600, z0 = -16800, x1 = 9600, z1 = 17600 }
+Map.NAVCELL = 80   -- 寻路网格（Nav.lua）：80 格一格
+
+return Map
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="24">
+      <Properties>
         <string name="Name">MapPaint</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——地图的「卫星图」：按 Map.lua 的高度、材质一个像素一个像素算颜色（客户端 MapUI 用 EditableImage 画小地图、部署地图）
 --   用户 11-19：右上角小地图显示内容更精细、颜色更暗淡、更拟真（原来是按高度分几档的色块，110 × 110 格）
@@ -5575,9 +6577,26 @@ local function runwayAt(Map, x, z)
   return false
 end
 
+-- 沙漠图（MapDesert）：底色照它的 Map.COLORS 压暗（卫星图那样）；没有的材质用沙色
+local DCOL = {}
+local function desertCol(Map, m)
+  local c = DCOL[m]
+  if c then return c end
+  local c3 = Map.COLORS and (Map.COLORS[m] or Map.COLORS.Sand)
+  c = c3 and { c3.R * 255 * 0.74, c3.G * 255 * 0.74, c3.B * 255 * 0.74 } or COL.Sand
+  DCOL[m] = c
+  return c
+end
+
 -- 底图（没按材质）：按高度、坡度估一个材质（跟 Map.material 的规则差不多）
 local function guessMat(Map, y, slope)
   local K, HK = Map.K or 1, Map.HK or 1
+  if Map.DESERT then   -- 沙漠：低洼的盐滩、平原的沙、台地的石灰岩、陡坡的岩石
+    if slope > 0.9 then return "Rock" end
+    if y > 60 then return "Limestone" end
+    if y < 10 then return "Salt" end
+    return "Sand"
+  end
   if y < 2.2 then return "Sand" end
   if slope > 1.15 * HK / K then return (y > 120 * HK) and "Slate" or "Rock" end
   if y > 232 * HK then return "Rock" end
@@ -5637,8 +6656,8 @@ function MapPaint.paint(Map, P, r0, r1, buf)
           else
             m = guessMat(Map, y, slope)
           end
-          c = COL[m] or COL.Grass
-          if P.detail and Map.flatW and m ~= "Sand" and Map.flatW(x, z) > 0.92 then c = PAD end
+          if Map.DESERT then c = desertCol(Map, m) else c = COL[m] or COL.Grass end
+          if P.detail and Map.flatW and m ~= "Sand" and not Map.DESERT and Map.flatW(x, z) > 0.92 then c = PAD end
         end
         R, Gc, B = c[1], c[2], c[3]
         if c == COL.Grass or c == COL.LeafyGrass then   -- 高处的草偏灰
@@ -5677,7 +6696,7 @@ return MapPaint
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="24">
+    <Item class="ModuleScript" referent="25">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -5697,11 +6716,11 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="25">
+    <Item class="Folder" referent="26">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -5784,7 +6803,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -5804,7 +6823,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -5859,7 +6878,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -5879,7 +6898,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -5899,7 +6918,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">grip_afg</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul AFG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -5933,7 +6952,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">grip_rvg</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul RVG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -5960,7 +6979,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -5980,7 +6999,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -6007,7 +7026,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -6041,7 +7060,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -6061,7 +7080,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">mag_drum</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -6088,7 +7107,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">mag_hex30</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -6115,7 +7134,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">mag_pmag20</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -6135,7 +7154,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">mag_pmag40</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -6155,7 +7174,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">muz_brake</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -6175,7 +7194,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">muz_comp</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -6195,7 +7214,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">opt_acog6</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -6278,7 +7297,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">opt_holo</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：EoTech EXPS3-0 Holographic Weapon Sight Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -6319,7 +7338,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">opt_rds</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Generic Red Dot Scope / Rifle Attachment Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -6346,7 +7365,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="46">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">opt_romeo</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Sig Sauer Romeo3 Reflex Sight（ense7en，CC-BY-4.0）的网格和底色贴图
@@ -6394,7 +7413,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -6463,7 +7482,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -6525,7 +7544,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -6545,7 +7564,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -6579,7 +7598,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">sup_socom</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -6599,7 +7618,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="53">
         <Properties>
           <string name="Name">sup_sr8</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Silencers Pack 1（pedrobelthori，CC-BY-4.0）的网格和底色贴图
@@ -6619,7 +7638,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="54">
         <Properties>
           <string name="Name">sup_wrap</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -6639,7 +7658,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="54">
+      <Item class="ModuleScript" referent="55">
         <Properties>
           <string name="Name">tac_light</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Surefire M952V Weapon Light（RedRogueXIII，CC-BY-4.0）的网格和底色贴图
@@ -6659,7 +7678,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="55">
+      <Item class="ModuleScript" referent="56">
         <Properties>
           <string name="Name">tac_peq</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ATPIAL AN/PEQ-15 (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -6721,7 +7740,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="56">
+      <Item class="ModuleScript" referent="57">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -6742,7 +7761,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="57">
+    <Item class="ModuleScript" referent="58">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -7059,7 +8078,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="58">
+    <Item class="ModuleScript" referent="59">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -7103,7 +8122,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="59">
+    <Item class="ModuleScript" referent="60">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -7350,7 +8369,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="60">
+    <Item class="ModuleScript" referent="61">
       <Properties>
         <string name="Name">SoundLib</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——真录音（用户 11-21：声音要逼真，「你来处理声音找音源」）
@@ -7395,7 +8414,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="61">
+    <Item class="ModuleScript" referent="62">
       <Properties>
         <string name="Name">TankMods</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克改装（用户 11-19：给坦克实现爆反和主动拦截系统，可以改坦克，像给飞机选导弹那样选装）
@@ -7549,7 +8568,7 @@ return TM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="62">
+    <Item class="ModuleScript" referent="63">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -7915,7 +8934,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="63">
+    <Item class="ModuleScript" referent="64">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -8210,17 +9229,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="64">
+    <Item class="Folder" referent="65">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="65">
+  <Item class="ServerScriptService" referent="66">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="66">
+    <Item class="Script" referent="67">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -8448,7 +9467,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="67">
+      <Item class="ModuleScript" referent="68">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -8621,6 +9640,17 @@ function AIVeh.init(G)
           return setup(e, team, goal, V(x, 0, z), "go")
         end
       end
+    end
+    -- 沙漠图：南边前进基地的车场出车，自己开上去（没有气垫艇）
+    if Map.LANDONLY then
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == "atk" and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local face = p.base.LookVector
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, face))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
     end
     -- 坐气垫艇冲滩：登陆平台旁的水面车位
     local LC = G.LCAC
@@ -8944,7 +9974,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="68">
+      <Item class="ModuleScript" referent="69">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -9735,6 +10765,7 @@ function Air.init(G)
       dk = deckOf("lhd")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end
       if near(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len * 0.6) then return true end
+      if Map.REDBASE and near(Map.REDBASE.x, Map.REDBASE.z, 500) then return true end   -- 沙漠图：前进基地的直升机坪
       if pointOk("atk", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end
     else
       if pointOk("def", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end
@@ -9907,7 +10938,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="69">
+      <Item class="ModuleScript" referent="70">
         <Properties>
           <string name="Name">Aps</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防御系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；改装里选装，TankMods.OPT.hk）
@@ -10009,7 +11040,7 @@ return Aps
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="70">
+      <Item class="ModuleScript" referent="71">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -10595,7 +11626,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="71">
+      <Item class="ModuleScript" referent="72">
         <Properties>
           <string name="Name">Battle</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -11081,7 +12112,7 @@ return Battle
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="72">
+      <Item class="ModuleScript" referent="73">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -11554,6 +12585,15 @@ function Bots.init(G)
       local p = caps[math.random(#caps)]
       local tg = pickAtkTarget(p.land)
       if tg then return { mode = "land", tg = tg, at = spotNear(p.x, p.z, 10, 40) } end
+    end
+    if Map.LANDONLY then   -- 沙漠图没有登陆艇：出发阵地被守方压着也在那里（或拿下的据点）出生
+      local sp = G.stagingOf and G.stagingOf(tg0.id)
+      if sp then return { mode = "land", tg = tg0, at = spotNear(sp.x, sp.z, 0, 35) } end
+      if #caps > 0 then
+        local p = caps[math.random(#caps)]
+        return { mode = "land", tg = tg0, at = spotNear(p.x, p.z, 10, 40) }
+      end
+      return nil
     end
     local b = landingFor(tg0)
     if not b or not G.boatBot then return nil end
@@ -12209,7 +13249,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="73">
+      <Item class="ModuleScript" referent="74">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -12356,10 +13396,31 @@ function Depots.init(G)
     end
     -- 攻方机场岛：陆基飞机（同守方机场，停在跑道上顺着跑道）
     local land = {}
-    for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
+    for _, id in ipairs(models("atk", "jet")) do if Map.LANDONLY or not defOf(id).carrier then table.insert(land, id) end end   -- 沙漠图没有航母：舰载机也从前进机场起飞
     runwayPads(Map.AFIELD2, "atk", land, nil)
+    -- 沙漠图：红方前进基地（Map.REDBASE）——北面一排地面车位（车头朝北、朝着战线，终端柱在车尾），东边三个直升机停机坪
+    local RB = Map.REDBASE
+    if RB then
+      list = groundIds("atk")
+      local gL, gW = biggest(list)
+      local n = math.min(GROUND_PADS, #list)
+      local gap = math.max(22, gW + 10)
+      local x0 = RB.x - (n - 1) * gap / 2
+      for i = 1, n do
+        local x, z = x0 + (i - 1) * gap, RB.z - 90
+        addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 4, 0, z + gL / 2 + 4), r = 12, size = V(gW + 2, 0, gL + 2) })
+      end
+      local ah = models("atk", "heli")
+      for i = 1, math.min(3, #ah) do
+        local x, z = RB.x + 260 + (i - 1) * 70, RB.z + 40
+        addPad({ team = "atk", vid = ah[1], vids = ah, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
+      end
+    end
     -- 攻方登陆平台：两侧水面一格一个地面车位（车头朝北，朝着岛；车站在气垫艇上），终端柱在平台边上；哪个位都能召唤任何一型
     local B = Map.BARGE
+    if not B then return end   -- 沙漠图没有登陆平台
     list = groundIds("atk")
     local n2 = math.min(GROUND_PADS, #list)
     local half = math.ceil(n2 / 2)
@@ -12395,6 +13456,7 @@ function Depots.init(G)
   -- 登陆平台：浮在海上的一大块钢平台（四周护栏、几盏灯、两侧画出每个生成格）
   local function buildBarge(f)
     local B = Map.BARGE
+    if not B then return end
     local m = Instance.new("Model")
     m.Name = "Barge"
     local deckY = B.top - 0.75
@@ -12650,7 +13712,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="74">
+      <Item class="ModuleScript" referent="75">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -13002,7 +14064,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="75">
+      <Item class="ModuleScript" referent="76">
         <Properties>
           <string name="Name">Era</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -13124,7 +14186,7 @@ return Era
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="76">
+      <Item class="ModuleScript" referent="77">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -14321,7 +15383,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="77">
+      <Item class="ModuleScript" referent="78">
         <Properties>
           <string name="Name">Gunsmith</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -14529,7 +15591,7 @@ return Gunsmith
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="78">
+      <Item class="ModuleScript" referent="79">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -14667,7 +15729,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="79">
+      <Item class="ModuleScript" referent="80">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -14681,6 +15743,11 @@ function Nav.init(G)
   local CELL = 40 * math.max(1, (Map.K or 1) / 2)   -- 地图放大了：网格跟着变粗一点（3 倍时 60 格一格），格子数别涨太多
   local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
   local X0, Z0, X1, Z1 = -3200 * K, -3000 * K, 3200 * K, 1200 * K   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
+  if Map.NAVBOX then   -- 沙漠图：战区南北长（红方基地到蓝方营地三万多格），网格粗一点（大片平地，80 格一格够用）
+    X0, Z0, X1, Z1 = Map.NAVBOX.x0, Map.NAVBOX.z0, Map.NAVBOX.x1, Map.NAVBOX.z1
+    CELL = Map.NAVCELL or CELL
+    G.navCell = CELL
+  end
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
   local MAXSLOPE = 0.9   -- 比这陡（约 42°）走不了
   local H = {}           -- [格号] = 高度（只记陆地）
@@ -14861,7 +15928,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="80">
+      <Item class="ModuleScript" referent="81">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -14887,6 +15954,7 @@ function Navy.init(G)
   local ships = {}
   G.ships = ships
   G.ShipDefs = SD   -- 测试、别的模块查型号用
+  if Map.LANDONLY then return end   -- 沙漠图没有海：不建码头、不出舰艇（G.ships 留个空表给别的模块查）
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -15856,7 +16924,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="81">
+      <Item class="ModuleScript" referent="82">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -15940,7 +17008,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="82">
+      <Item class="ModuleScript" referent="83">
         <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -16175,7 +17243,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="83">
+      <Item class="ModuleScript" referent="84">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -16399,6 +17467,7 @@ function Round.init(G)
   -- 第一波：准备阶段和开战后 Config.FirstWave 秒（第一阶段）能坐登陆艇抢滩；之后只能在攻击出发阵地出生
   local function firstWave()
     if R.phase == "prep" then return true end
+    if Map.LANDONLY then return false end   -- 沙漠图没有登陆艇：一开战就在攻击出发阵地出生
     return R.phase == "battle" and R.stage == 1 and now() - (R.battleAt or 0) < (Config.FirstWave or 45)
   end
   G.firstWave = firstWave
@@ -16433,7 +17502,7 @@ function Round.init(G)
     end
     if not best then
       for _, s in ipairs(list) do
-        if s.ok and ((team == "atk" and s.kind == "barge") or (team == "def" and s.kind == "camp")) then best = s end
+        if s.ok and ((team == "atk" and (s.kind == "barge" or s.kind == "redbase")) or (team == "def" and s.kind == "camp")) then best = s end
       end
     end
     if best then best.rec = true end
@@ -16446,11 +17515,16 @@ function Round.init(G)
     --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
     local objs = objectives(false)
-    if team == "atk" then
+    if team == "atk" and Map.LANDONLY then   -- 沙漠图：南边的前进基地（地面载具、直升机）、前进机场（飞机）
+      table.insert(out, { id = "redbase", kind = "redbase", x = Map.REDBASE.x, z = Map.REDBASE.z, ok = true })
+      table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })
+    elseif team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
       table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
       table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
       table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
+    end
+    if team == "atk" then
       if firstWave() then   -- 第一波：坐登陆艇抢滩（准备阶段上艇，开战一起冲）
         local lands = {}
         for _, p in ipairs(objs) do lands[p.land] = true end
@@ -16520,6 +17594,10 @@ function Round.init(G)
       local B = Map.BARGE
       local p = V(B.x + (math.random() - 0.5) * B.W * 0.5, B.top + 3, B.z + (math.random() - 0.5) * B.L * 0.6)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "redbase" then   -- 沙漠图的前进基地：车场北边（面朝北，朝着战线）
+      local B = Map.REDBASE
+      local p = standAt(B.x + (math.random() - 0.5) * 160, B.z - 150, 20)
+      return CFrame.lookAt(p, p + V(0, 0, -1))
     elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
       local A = Map.AFIELD2
       local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
@@ -16806,7 +17884,7 @@ function Round.init(G)
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
-    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true }
+    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true }   -- redbase：沙漠图的前进基地
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     if P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
     P.lastChoice = choice   -- 快速部署照上次的装备
@@ -17242,7 +18320,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="84">
+      <Item class="ModuleScript" referent="85">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -17348,7 +18426,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="85">
+      <Item class="ModuleScript" referent="86">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -17574,7 +18652,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="86">
+      <Item class="ModuleScript" referent="87">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -17870,7 +18948,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="87">
+      <Item class="ModuleScript" referent="88">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -18558,7 +19636,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="88">
+      <Item class="ModuleScript" referent="89">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -18713,8 +19791,8 @@ function World.lighting()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
     atm.Density = 0.21   -- 原来 0.3（用户：视野很短）：远处的岛、舰、飞机看得更远
     atm.Offset = 0.06
-    atm.Color = RGB(44, 54, 76)
-    atm.Decay = RGB(12, 15, 24)
+    atm.Color = Map.DESERT and RGB(70, 60, 54) or RGB(44, 54, 76)   -- 沙漠图：暖褐的沙尘夜空
+    atm.Decay = Map.DESERT and RGB(22, 17, 14) or RGB(12, 15, 24)
     atm.Glare = 0.15
     atm.Haze = 1.1
     atm.Parent = Lighting
@@ -18861,8 +19939,9 @@ World.terrainCal = function() return CAL end
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
 --   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
-local function writeChunk(T, x0, z0, n, yFloor)
+local function writeChunk(T, x0, z0, n, yFloor, baseY)
   local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
+  if Map.colCache then Map.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -18876,11 +19955,17 @@ local function writeChunk(T, x0, z0, n, yFloor)
   end
   -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
   local DW = math.min(D, 30)
-  if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
+  if ymax <= -DW + 0.5 then   -- 整块都比 30 格深（海水、海底已经铺了）
+    if Map.colCache then Map.colCache(false) end
+    return 0
+  end
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
   if yFloor then yb0 = math.min(yb0, math.floor(yFloor / RES)) end
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
+  if baseY and yb0 * RES > baseY then   -- 沙漠：下面没灌海水，补一块实心的底（弹坑挖不穿）
+    T:FillBlock(CFrame.new(x0 + N * RES / 2, (baseY + yb0 * RES) / 2, z0 + N * RES / 2), V(N * RES, yb0 * RES - baseY, N * RES), MAT.Sand)
+  end
   local M, O = table.create(N), table.create(N)
   for i = 1, N do
     local Mi, Oi = table.create(NY), table.create(NY)
@@ -18903,7 +19988,7 @@ local function writeChunk(T, x0, z0, n, yFloor)
         --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
         if top == Grass then top = Leafy end
       end
-      local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
+      local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
       local jT, oT = surfAt(h, calFor(top))
       for j = 0, NY - 1 do
@@ -18924,13 +20009,93 @@ local function writeChunk(T, x0, z0, n, yFloor)
       end
     end
   end
+  if Map.colCache then Map.colCache(false) end
   local region = Region3.new(V(x0, yb0 * RES, z0), V(x0 + N * RES, yb1 * RES, z0 + N * RES))
   T:WriteVoxels(region, RES, M, O)
   return N * N * NY
 end
 
+-- 沙漠地图（MapDesert：没有海）：按 2048 格一大块看，整块都是同一级平地的一次 FillBlock；不是的按 256 格的小块，
+--   平地 FillBlock、有起伏的逐列写体素。核心区（据点、基地一带）先写完才让人出生，外面的在后台接着写（每块让一帧）
+local DESERT_BASE = -40
+local function terrainDesert(T, onProgress, G)
+  local SR, TILE, CH = Map.SEA_R, 2048, 256
+  local relief = {}
+  local t0 = os.clock()
+  local function fill(x0, z0, w, d, y, mat)
+    local yb = DESERT_BASE
+    while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层
+      local h = math.min(60, y - yb)
+      T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
+      yb += h
+    end
+  end
+  local nTiles = (2 * SR / TILE) ^ 2
+  local done = 0
+  for tx = -SR, SR - TILE, TILE do
+    for tz = -SR, SR - TILE, TILE do
+      local kinds, allFlat, L0, M0 = {}, true, nil, nil
+      for i = 0, 7 do
+        for k = 0, 7 do
+          local kind, L, M = Map.chunkKind(tx + i * CH, tz + k * CH)
+          kinds[i * 8 + k] = { kind, L, M }
+          if kind ~= "flat" then allFlat = false
+          elseif L0 == nil then L0, M0 = L, M
+          elseif L ~= L0 or M ~= M0 then allFlat = false end
+        end
+      end
+      if allFlat then
+        fill(tx, tz, TILE, TILE, L0, M0)
+      else
+        for i = 0, 7 do
+          for k = 0, 7 do
+            local e = kinds[i * 8 + k]
+            local x0, z0 = tx + i * CH, tz + k * CH
+            if e[1] == "flat" then fill(x0, z0, CH, CH, e[2], e[3]) else table.insert(relief, { x0, z0 }) end
+          end
+        end
+      end
+      done += 1
+      if onProgress then onProgress(0.25 * done / nTiles) end
+      if os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end
+    end
+  end
+  -- 有起伏的块：离核心区近的先写（Map.CORES 一组圈：到最近那个圈的圈边多远；没有就是一个大圈 Map.CORE）
+  local cores = Map.CORES or { Map.CORE or { x = 0, z = 0, r = 12000 } }
+  local function dist(c)
+    local best = math.huge
+    for _, C in ipairs(cores) do
+      best = math.min(best, math.sqrt((c[1] + CH / 2 - C.x) ^ 2 + (c[2] + CH / 2 - C.z) ^ 2) - C.r)
+    end
+    return best
+  end
+  for _, c in ipairs(relief) do c[3] = dist(c) end
+  table.sort(relief, function(a, b) return a[3] < b[3] end)
+  local core, rest = {}, {}
+  for _, c in ipairs(relief) do table.insert(c[3] <= 0 and core or rest, c) end
+  local total = 0
+  for n, c in ipairs(core) do
+    total += writeChunk(T, c[1], c[2], nil, nil, DESERT_BASE)
+    if onProgress then onProgress(0.25 + 0.75 * n / #core) end
+    if n % 2 == 0 or os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end   -- 也按块数让：测试台里 os.clock 是模拟时钟，同一步里不走
+  end
+  if G then G.terrainRest = #rest end
+  task.spawn(function()   -- 外面的：后台慢慢写（飞机飞得到，坦克一时半会开不过去）；一块拆成四个 128 格的小块写，每帧最多 8 毫秒，开打以后服务器不卡
+    local t1, k = os.clock(), 0
+    for n, c in ipairs(rest) do
+      for q = 0, 3 do
+        writeChunk(T, c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32, nil, DESERT_BASE)
+        k += 1
+        if k % 2 == 0 or os.clock() - t1 > 0.008 then task.wait() t1 = os.clock() end
+      end
+      if G then G.terrainRest = #rest - n end
+    end
+  end)
+  return total, #core + #rest
+end
+
 -- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素
-function World.terrain(onProgress)
+function World.terrain(onProgress, G)
   local T = workspace.Terrain
   local R, D = Map.R, Map.SEA_DEPTH
   pcall(function()
@@ -18943,7 +20108,7 @@ function World.terrain(onProgress)
     --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
     --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
-  for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
+  for m, c in pairs(Map.COLORS or TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   -- 先量网格器（见上面 calibrate）：量出来的对照表写地图时用
   do
     local okC, res = calibrate(T, { MAT.LeafyGrass, MAT.Sand })
@@ -18967,6 +20132,7 @@ function World.terrain(onProgress)
       warn("[地形] 网格器校准没做成（" .. tostring(res) .. "）：照原来的写法")
     end
   end
+  if Map.chunkKind then return terrainDesert(T, onProgress, G) end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do
@@ -20439,6 +21605,368 @@ local function checkpoints(f)
   end
 end
 
+---------------------------------------------------------------- 沙漠图（MapDesert）：镇子、清真寺、油田、边境沙墙、红方前进基地、空军基地的加固机库、死亡公路
+--   用户 11-22「整个重做 纯地面和空军对战的海湾战争」：照科威特、伊拉克南部的样子——平顶土坯房（带女儿墙、院墙），镇中心一座清真寺；
+--   油田里抽油机一下一下点头（客户端 Night.lua 的 rock 动画），几口井在烧；80 号公路镇子北边一路烧毁的车（「死亡公路」）。
+--   都是锚定零件：房子、院墙、残骸挡子弹挡人；占领圈（80 格）里不摆能钻进去的东西
+local ADOBE = { RGB(200, 176, 134), RGB(190, 162, 120), RGB(210, 188, 150), RGB(178, 152, 114), RGB(218, 202, 168), RGB(196, 168, 128) }
+local function drng(seed)   -- 定死种子的随机数（每局一样）
+  local s = seed
+  return function()
+    s = (s * 48271) % 2147483647
+    return s / 2147483647
+  end
+end
+
+-- 平顶土坯房：墙身、女儿墙、深色门洞、小窗、屋顶水箱 / 卫星锅；yard 带一圈院墙（正门那面留口）
+local function adobe(f, x, z, w, d, h, rot, col, R, yard)
+  local y = footY(x, z, w, d, rot) - 0.3
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Adobe"
+  slab(m, V(w, h, d), base * CF(0, h / 2, 0), col, MAT.Concrete)
+  local par = col:Lerp(RGB(150, 128, 96), 0.25)
+  for _, p in ipairs({ { 0, -d / 2, w, 0.8 }, { 0, d / 2, w, 0.8 }, { -w / 2, 0, 0.8, d }, { w / 2, 0, 0.8, d } }) do
+    slab(m, V(p[3], 1.4, p[4]), base * CF(p[1], h + 0.7, p[2]), par, MAT.Concrete)
+  end
+  local F = faces(base, w, d)
+  deco(m, V(3.4, 6.2, 0.3), F[1].cf * CF((R() - 0.5) * (w - 7), 3.1, 0.12), RGB(52, 40, 30), MAT.Wood)   -- 门
+  for _, fc in ipairs(F) do
+    local n = math.max(1, math.floor(fc.len / 9))
+    for i = 1, n do
+      if R() < 0.65 then deco(m, V(2.2, 2.4, 0.3), fc.cf * CF(-fc.len / 2 + (i - 0.5) * fc.len / n, h * 0.62, 0.12), RGB(34, 30, 26), MAT.SmoothPlastic) end
+    end
+  end
+  local r = R()
+  if r < 0.45 then
+    deco(m, V(3, 2.4, 3), base * CF(w * 0.22, h + 1.2, d * 0.18), RGB(206, 206, 200), MAT.Metal, CYL)   -- 水箱（圆柱轴是 X：躺着）
+  elseif r < 0.7 then
+    local c = base * CF(-w * 0.25, h + 1.6, -d * 0.2) * CFrame.Angles(0, R() * 6.28, 0) * CFrame.Angles(math.rad(-50), 0, 0)
+    deco(m, V(0.3, 3.2, 3.2), c * CFrame.Angles(0, math.pi / 2, 0), RGB(224, 224, 220), MAT.SmoothPlastic, CYL)   -- 卫星锅
+  end
+  if yard then   -- 院墙：房子前面围一个院子，正门对着的那面开口
+    local yd = 10 + R() * 8
+    local wc = col:Lerp(RGB(170, 146, 108), 0.35)
+    local hw, wh = w / 2 + 3, 6.5
+    local z0, z1 = -d / 2, -d / 2 - yd
+    slab(m, V(0.9, wh, yd), base * CF(-hw, wh / 2, (z0 + z1) / 2), wc, MAT.Concrete)
+    slab(m, V(0.9, wh, yd), base * CF(hw, wh / 2, (z0 + z1) / 2), wc, MAT.Concrete)
+    local gap = 5
+    local seg = (2 * hw - gap) / 2
+    slab(m, V(seg, wh, 0.9), base * CF(-hw + seg / 2, wh / 2, z1), wc, MAT.Concrete)
+    slab(m, V(seg, wh, 0.9), base * CF(hw - seg / 2, wh / 2, z1), wc, MAT.Concrete)
+  end
+  m.Parent = f
+  return base
+end
+
+-- 清真寺：方形礼拜殿 + 大圆顶（鼓座、新月）、一座宣礼塔（阳台、小圆顶）
+local function mosque(f, x, z, rot)
+  local w, d, h = 46, 46, 18
+  local y = footY(x, z, w + 30, d, rot) - 0.3
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Mosque"
+  local wall, trim = RGB(226, 214, 186), RGB(190, 172, 136)
+  slab(m, V(w, h, d), base * CF(0, h / 2, 0), wall, MAT.Concrete)
+  for _, p in ipairs({ { 0, -d / 2, w, 1 }, { 0, d / 2, w, 1 }, { -w / 2, 0, 1, d }, { w / 2, 0, 1, d } }) do
+    slab(m, V(p[3], 2, p[4]), base * CF(p[1], h + 1, p[2]), trim, MAT.Concrete)
+  end
+  slab(m, V(4, 30, 30), base * CF(0, h + 4, 0) * CFrame.Angles(0, 0, math.pi / 2), trim, MAT.Concrete, CYL)   -- 鼓座（圆柱轴竖着）
+  slab(m, V(30, 30, 30), base * CF(0, h + 6, 0), RGB(64, 118, 128), MAT.SmoothPlastic, BALL)   -- 圆顶（青绿）
+  deco(m, V(0.5, 4, 0.5), base * CF(0, h + 23, 0), RGB(214, 180, 70), MAT.Metal)
+  deco(m, V(0.4, 2.2, 1.6), base * CF(0, h + 25.6, 0), RGB(214, 180, 70), MAT.Metal)   -- 新月（简化成一片）
+  local F = faces(base, w, d)
+  for _, fc in ipairs(F) do   -- 拱窗（深色竖长条）
+    for i = -2, 2 do deco(m, V(2.6, 6.5, 0.3), fc.cf * CF(i * 8, h * 0.55, 0.12), RGB(40, 52, 58), MAT.SmoothPlastic) end
+  end
+  deco(m, V(7, 11, 0.4), F[1].cf * CF(0, 5.5, 0.15), RGB(58, 46, 34), MAT.Wood)   -- 大门
+  -- 宣礼塔：礼拜殿东北角外
+  local mt = base * CF(w / 2 + 9, 0, -d / 2 + 2)
+  slab(m, V(6.5, 52, 6.5), mt * CF(0, 26, 0), wall, MAT.Concrete)
+  slab(m, V(10, 1.4, 10), mt * CF(0, 40, 0), trim, MAT.Concrete)   -- 阳台
+  slab(m, V(5, 8, 5), mt * CF(0, 56, 0), wall, MAT.Concrete)
+  slab(m, V(6, 6, 6), mt * CF(0, 61, 0), RGB(64, 118, 128), MAT.SmoothPlastic, BALL)
+  deco(m, V(0.4, 3.5, 0.4), mt * CF(0, 65.5, 0), RGB(214, 180, 70), MAT.Metal)
+  light(m, (mt * CF(0, 41.5, -5.2)).Position, RGB(140, 255, 170), 0.6, 18, 1.1, nil, 3)   -- 宣礼塔阳台的绿灯
+  m.Parent = f
+end
+
+-- 镇子（据点 C）：围着镇中心一圈一圈摆土坯房（占领圈外、躲开公路），镇中心北边清真寺，路边几排两层的水泥楼和集市棚子
+local function desertTown(f)
+  local T = Map.TOWN
+  local R = drng(90210)
+  local bf = folder("Town", f)
+  local placed = {}
+  local function free(x, z, r)
+    if Map.roadDist(x, z) < r + 14 then return false end
+    if (x - T.x) ^ 2 + (z - T.z) ^ 2 < (Map.POINT_R + 40 + r) ^ 2 then return false end
+    if Map.slope(x, z) > 0.18 then return false end
+    for _, q in ipairs(placed) do
+      if (q[1] - x) ^ 2 + (q[2] - z) ^ 2 < (q[3] + r + 7) ^ 2 then return false end
+    end
+    return true
+  end
+  -- 清真寺：镇中心往北 190 格（路的东边）
+  local mx, mz = T.x + 120, T.z - 200
+  for _ = 1, 12 do
+    if free(mx, mz, 40) then break end
+    mx += 30
+  end
+  mosque(bf, mx, mz, 0)
+  table.insert(placed, { mx, mz, 42 })
+  -- 土坯房：按螺旋往外找空地（大约九十座），朝向大致对着最近的路
+  local n, tries = 0, 0
+  while n < 92 and tries < 2400 do
+    tries += 1
+    local a = tries * 2.39996
+    local rr = 150 + 470 * math.sqrt(tries / 2400) + (R() - 0.5) * 40
+    local x, z = T.x + math.cos(a) * rr * 1.15, T.z + math.sin(a) * rr * 0.9
+    local w, d = 14 + math.floor(R() * 4) * 3, 12 + math.floor(R() * 4) * 3
+    local h = (R() < 0.18) and 15 or (8.5 + R() * 2)
+    local rad = math.sqrt(w * w + d * d) / 2 + 4
+    if free(x, z, rad) then
+      -- 朝向：正门对着镇中心（一条条巷子往中间走），再随机歪一点
+      local rot = math.atan2(-(T.x - x), -(T.z - z)) + (R() - 0.5) * 0.5
+      adobe(bf, x, z, w, d, h, rot, ADOBE[1 + math.floor(R() * #ADOBE)], R, R() < 0.45)
+      table.insert(placed, { x, z, rad + ((R() < 0.45) and 10 or 0) })
+      n += 1
+    end
+  end
+  -- 公路边：两层水泥楼（商店）、集市棚子
+  for _, s in ipairs({ { -260, 40 }, { -200, -60 }, { 230, 60 }, { 300, -30 }, { 40, 240 }, { -60, 300 } }) do
+    local x, z = T.x + s[1], T.z + s[2]
+    if free(x, z, 18) then
+      building(bf, (R() < 0.5) and "conc1" or "conc2", x, z, math.atan2(-(T.x - x), -(T.z - z)))
+      table.insert(placed, { x, z, 20 })
+    end
+  end
+  for k = 0, 5 do   -- 集市：镇中心东南、圈外，一排彩色遮阳棚
+    local x, z = T.x + 150 + k * 13, T.z + 120
+    if free(x, z, 6) then
+      local y = gy(x, z)
+      local col = ({ RGB(170, 60, 50), RGB(60, 90, 140), RGB(200, 170, 70), RGB(80, 120, 70) })[1 + k % 4]
+      for _, o in ipairs({ { -5, -4 }, { 5, -4 }, { -5, 4 }, { 5, 4 } }) do part(bf, V(0.4, 7, 0.4), CF(x + o[1], y + 3.5, z + o[2]), DET.wood, MAT.Wood) end
+      part(bf, V(11, 0.3, 9), CF(x, y + 7.1, z) * CFrame.Angles(0.1, 0, 0), col, MAT.Fabric)
+      crates(bf, x - 2, z + 1, 2, k)
+      table.insert(placed, { x, z, 7 })
+    end
+  end
+  -- 镇口两个油桶路障、烧毁的车
+  truck(bf, T.x - 330, T.z + 210, 2.2, "wreck")
+  drums(bf, T.x + 260, T.z + 160, 5, RGB(150, 60, 40))
+end
+
+-- 抽油机（磕头机）：底座、A 字架、游梁（前头驴头、后头连杆曲柄配重）、电机房；游梁和驴头带 rock 动画（绕支点上下点头）
+local function pumpjack(f, x, z, rot, phase)
+  local y = gy(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Pumpjack"
+  local steel, dark = RGB(58, 62, 66), RGB(40, 40, 42)
+  slab(m, V(5, 1.2, 22), base * CF(0, 0.6, 0), RGB(150, 146, 136), MAT.Concrete)
+  for _, sx in ipairs({ -1.6, 1.6 }) do   -- A 字架：两根斜撑
+    deco(m, V(0.5, 12.5, 0.5), base * CF(sx, 6.2, 1.5) * CFrame.Angles(0.2, 0, 0), steel, MAT.Metal)
+    deco(m, V(0.5, 12.5, 0.5), base * CF(sx, 6.2, -1.2) * CFrame.Angles(-0.2, 0, 0), steel, MAT.Metal)
+  end
+  local pivot = (base * CF(0, 12.3, 0.2)).Position
+  local beam = part(m, V(1.1, 1.4, 18), base * CF(0, 12.9, 0.2), RGB(170, 140, 40), MAT.Metal)   -- 游梁（黄）
+  local head = part(m, V(1.4, 5.5, 2.2), base * CF(0, 11.8, -9.2) * CFrame.Angles(-0.25, 0, 0), RGB(170, 140, 40), MAT.Metal)   -- 驴头
+  local rod = part(m, V(0.25, 9, 0.25), base * CF(0, 6, -10), dark, MAT.Metal)   -- 光杆（往井口里拉）
+  rod.Name = "Rod"
+  for _, p in ipairs({ beam, head }) do
+    p:SetAttribute("Anim", "rock")
+    p:SetAttribute("Spd", 0.16)
+    p:SetAttribute("Pivot", pivot)
+    p:SetAttribute("Axis", (base - base.Position) * V(1, 0, 0))
+    p:SetAttribute("Amp", 0.24)
+    p:SetAttribute("Ph", phase)
+  end
+  slab(m, V(4, 4.5, 4.5), base * CF(0, 3.4, 8.2), dark, MAT.Metal)   -- 曲柄配重
+  slab(m, V(4.4, 3.6, 4), base * CF(0, 1.8, 11.6), RGB(120, 124, 116), MAT.Metal)   -- 电机房
+  cyl(m, 1.6, 1.4, base * CF(0, 1.2, -10), RGB(90, 96, 92), MAT.Metal)   -- 井口
+  m.Parent = f
+end
+-- 采油树（没装抽油机的自喷井）：一截立管、阀门、管汇
+local function wellhead(f, x, z)
+  local y = gy(x, z)
+  local m = Instance.new("Model")
+  m.Name = "Wellhead"
+  cyl(m, 0.8, 7, CF(x, y + 0.4, z), RGB(150, 146, 136), MAT.Concrete, true)
+  part(m, V(1.2, 7, 1.2), CF(x, y + 3.5, z), RGB(170, 60, 40), MAT.Metal, nil, true)
+  for _, k in ipairs({ 2.4, 4.6 }) do part(m, V(3.2, 0.9, 0.9), CF(x, y + k, z), RGB(200, 180, 60), MAT.Metal) end
+  part(m, V(0.6, 0.6, 9), CF(x, y + 1.2, z + 4.8), RGB(120, 120, 116), MAT.Metal)
+  m.Parent = f
+end
+
+-- 油田：每口井一台抽油机或一棵采油树，十二分之一的井在烧（大火 + 黑烟柱）；据点 B 东边的集油站（储罐、分离器、管线、火炬）
+local function oilfield(f)
+  local of = folder("Oilfield", f)
+  local R = drng(4242)
+  for i, wl in ipairs(Map.OILWELLS or {}) do
+    local x, z = wl.x, wl.z
+    if i % 12 == 5 then   -- 着火的井（伊拉克撤退时点的那种）：火很大，烟柱很高
+      wellhead(of, x, z)
+      burning(of, V(x, gy(x, z) + 6, z), 22)
+      local sm = burning(of, V(x, gy(x, z) + 30, z), 30, true)
+      local s = sm:FindFirstChildOfClass("Smoke")
+      if s then s.Color, s.Opacity, s.RiseVelocity = RGB(20, 18, 16), 0.45, 18 end
+    elseif R() < 0.7 then
+      pumpjack(of, x, z, R() * math.pi * 2, R())
+    else
+      wellhead(of, x, z)
+    end
+  end
+  -- 集油站：B 东北 380 格
+  local O = Map.OILFIELD
+  local gx, gz = O.x + 330, O.z - 260
+  if Map.roadDist(gx, gz) < 60 then gx += 120 end
+  for k = 0, 2 do fuelTank(of, gx + k * 34, gz, 26, 18) end
+  for k = 0, 1 do
+    local y = gy(gx + k * 30, gz + 46)
+    part(of, V(16, 6, 6), CF(gx + k * 30, y + 4, gz + 46), RGB(176, 178, 172), MAT.Metal, CYL, true)   -- 卧式分离器
+    part(of, V(2, 3, 5), CF(gx + k * 30 - 6, y + 1.5, gz + 46), RGB(120, 120, 116), MAT.Concrete, nil, true)
+    part(of, V(2, 3, 5), CF(gx + k * 30 + 6, y + 1.5, gz + 46), RGB(120, 120, 116), MAT.Concrete, nil, true)
+  end
+  local fy = gy(gx + 110, gz + 20)
+  cyl(of, 46, 2.2, CF(gx + 110, fy + 23, gz + 20), RGB(150, 150, 146), MAT.Metal, true)   -- 火炬塔
+  local fl = burning(of, V(gx + 110, fy + 48, gz + 20), 9)
+  fl.Name = "Flare"
+  for _, wl in ipairs(Map.OILWELLS or {}) do   -- 管线：近处几口井拉一根地面管道到集油站
+    if wl.field == "B" and (wl.x - gx) ^ 2 + (wl.z - gz) ^ 2 < 1100 ^ 2 then
+      local a, b = V(wl.x, gy(wl.x, wl.z) + 1, wl.z), V(gx, gy(gx, gz) + 1, gz + 30)
+      local L = (b - a).Magnitude
+      if L > 40 and L < 1100 then
+        local nseg = math.ceil(L / 400)
+        for s = 0, nseg - 1 do
+          local p0, p1 = a:Lerp(b, s / nseg), a:Lerp(b, (s + 1) / nseg)
+          p0 = V(p0.X, gy(p0.X, p0.Z) + 1, p0.Z)
+          p1 = V(p1.X, gy(p1.X, p1.Z) + 1, p1.Z)
+          part(of, V(0.9, 0.9, (p1 - p0).Magnitude), CFrame.lookAt((p0 + p1) / 2, p1), RGB(96, 92, 86), MAT.Metal)
+        end
+      end
+    end
+  end
+end
+
+-- 边境：沙墙开口两边的哨塔、开口北边的检查站和水泥岗楼；整条沙墙每隔约 1.5 公里一座哨塔（远处看得到一串）
+local function border(f)
+  local bf = folder("Border", f)
+  local A = Map.POINTS[1]
+  local bz = Map.bermZ(A.x)
+  watchtower(bf, A.x - 70, bz - 34, math.pi)
+  watchtower(bf, A.x + 70, bz - 34, math.pi)
+  building(bf, "conc1", A.x + 150, bz - 150, math.pi)   -- 边检站
+  checkpoint(bf, A.x + 16, bz - 110, 0, -1)
+  for x = -Map.R + 1200, Map.R - 1200, 1500 do
+    local near = math.abs(x - A.x) < 600
+    for _, bx in ipairs(Map.BREACH or {}) do if math.abs(x - bx) < 160 then near = true end end
+    if not near then watchtower(bf, x, Map.bermZ(x) - 36, math.pi) end
+  end
+end
+
+-- 红方前进基地（Map.REDBASE）：外面一圈 HESCO、几排帐篷、铁皮营房、油罐区、弹药堆（沙袋围着）、探照灯；车场、直升机坪是 Depots 摆的生成点
+local function redBase(f)
+  local B = Map.REDBASE
+  local rf = folder("RedBase", f)
+  local x0, x1, z0, z1 = B.x - 460, B.x + 460, B.z - 230, B.z + 260
+  hesco(rf, x0, z0, B.x - 150, z0)   -- 北墙中间开一个宽口（车场的车直接往北开出去）
+  hesco(rf, B.x + 150, z0, x1, z0)
+  hesco(rf, x1, z0, x1, z1)
+  hesco(rf, x1, z1, x0, z1)
+  hesco(rf, x0, z1, x0, z0)
+  for _, c in ipairs({ { x0 + 12, z0 + 12, math.pi * 0.25 }, { x1 - 12, z0 + 12, -math.pi * 0.25 }, { x0 + 12, z1 - 12, math.pi * 0.75 }, { x1 - 12, z1 - 12, -math.pi * 0.75 } }) do
+    watchtower(rf, c[1], c[2], c[3])
+  end
+  -- 车场地面：一大块压实的沙砾（车位在 B.z − 90 一排）
+  local y = gy(B.x, B.z - 90)
+  part(rf, V(360, 0.4, 60), CF(B.x, y + 0.05, B.z - 90), RGB(150, 132, 104), MAT.Ground)
+  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 60, 0, RGB(170, 150, 110)) end   -- 沙色帐篷
+  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 100, 0, RGB(170, 150, 110)) end
+  local bf = folder("Buildings", rf)
+  for k = 0, 2 do building(bf, "quonset", B.x - 120 + k * 60, B.z + 150, math.pi / 2) end
+  building(bf, "smallwh", B.x + 120, B.z + 160, math.pi)
+  for k = -1, 1 do fuelTank(rf, B.x + 380, B.z + 150 + k * 30, 18, 10) end
+  for k = 0, 2 do truck(rf, B.x + 330 + k * 9, B.z + 80, math.pi, "fuel") end
+  for k = 0, 3 do truck(rf, B.x - 400 + k * 9, B.z - 20, 0, "cargo") end
+  sandbags(rf, V(B.x - 380, 0, B.z + 170), 18, 0, math.pi * 2, 3)   -- 弹药堆
+  crates(rf, B.x - 380, B.z + 170, 6, 7)
+  mast(rf, B.x + 40, B.z + 120, 40)
+  for i = -2, 2 do floodPole(rf, B.x + i * 150, gy(B.x + i * 150, B.z - 130), B.z - 130, 18, RGB(255, 222, 172), 110) end
+end
+
+-- 加固机库（HAS）：空军基地跑道北边一排，半圆拱的混凝土壳（埋一半），机库口朝南对着滑行道、门洞是黑的；顶上覆土长了点沙
+local function shelters(f, A)
+  local sf = folder("Shelters", f)
+  for k = 0, 3 do
+    local x, z = A.x - A.len * 0.38 + k * 140, A.z - A.wid / 2 - 240
+    if Map.roadDist(x, z) > 50 then
+      local y = gy(x, z)
+      local L, R0 = 40, 15
+      part(sf, V(L, R0 * 2, R0 * 2), CF(x, y, z) * CFrame.Angles(0, math.pi / 2, 0), RGB(150, 140, 120), MAT.Concrete, CYL, true)   -- 拱壳（圆柱轴南北、中心在地面上：露出一半）
+      part(sf, V(R0 * 1.6, R0 * 0.9, 0.6), CF(x, y + R0 * 0.45, z + L / 2 + 0.2), RGB(24, 24, 26), MAT.SmoothPlastic)   -- 门洞
+      part(sf, V(R0 * 2 + 6, 3, 3), CF(x, y + 1.5, z + L / 2 + 1.5), RGB(140, 136, 126), MAT.Concrete, nil, true)   -- 门槛前的护墙
+    end
+  end
+end
+
+-- 死亡公路：80 号公路镇子北边到山口那一段，一路烧毁的车（卡车、坦克、民用小车），横七竖八堵在路上和路边，有的还在冒烟
+local function carWreck(f, x, z, rot, col)
+  local y = gy(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0) * CFrame.Angles(0.03, 0, 0.05)
+  part(f, V(6.2, 2.6, 13), base * CF(0, 1.9, 0), col, MAT.CorrodedMetal, nil, true)
+  part(f, V(5.6, 1.8, 6), base * CF(0, 4, 0.8), col:Lerp(RGB(20, 18, 16), 0.4), MAT.CorrodedMetal, nil, true)
+  for _, o in ipairs({ { -2.6, -4 }, { 2.6, -4 }, { -2.6, 4 }, { 2.6, 4 } }) do part(f, V(0.9, 2.2, 2.2), base * CF(o[1], 0.9, o[2]), RGB(24, 22, 20), MAT.SmoothPlastic, CYL) end
+end
+local function highwayOfDeath(f)
+  local hf = folder("HighwayOfDeath", f)
+  local R = drng(1991)
+  local road
+  for _, r in ipairs(Map.ROADS or {}) do if r.name == "80号公路" then road = r end end
+  if not road then return end
+  local smoke = 0
+  local last = nil
+  for i = 1, #road.x - 1 do
+    local x, z = road.x[i], road.z[i]
+    if z < -2600 and z > -8600 and (not last or (x - last[1]) ^ 2 + (z - last[2]) ^ 2 > 34 ^ 2) and R() < 0.55 then
+      local dx, dz = road.x[i + 1] - x, road.z[i + 1] - z
+      local l = math.max(0.01, math.sqrt(dx * dx + dz * dz))
+      local ux, uz = dx / l, dz / l
+      local off = (R() - 0.5) * 34   -- 路面（22 宽）上、路肩上都有
+      local px, pz = x - uz * off, z + ux * off
+      local rot = math.atan2(-ux, -uz) + (R() - 0.5) * 1.2
+      local r = R()
+      if r < 0.16 then tankWreck(hf, px, pz, rot, false)
+      elseif r < 0.5 then
+        if smoke < 6 and R() < 0.5 then truck(hf, px, pz, rot, "wreck") smoke += 1 else carWreck(hf, px, pz, rot, RGB(60, 52, 44)) end
+      else carWreck(hf, px, pz, rot, ({ RGB(70, 60, 50), RGB(54, 50, 46), RGB(84, 70, 54), RGB(46, 42, 40) })[1 + math.floor(R() * 4)]) end
+      last = { x, z }
+    end
+  end
+end
+
+-- 游牧民的黑帐篷：西干河边几处（沙漠里有人住的痕迹）
+local function bedouin(f)
+  local R = drng(777)
+  for _, c in ipairs({ { -7400, -1700 }, { -8900, 6900 }, { 9200, -2600 } }) do
+    for k = 0, 2 do
+      local x, z = c[1] + (R() - 0.5) * 60, c[2] + (R() - 0.5) * 60
+      if Map.slope(x, z) < 0.2 then tent(f, x, z, R() * 3, RGB(40, 34, 30)) end
+    end
+  end
+end
+
+function World.desert(f)
+  local df = folder("Desert", f)
+  local ok, err
+  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "前进基地", redBase }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin } }) do
+    ok, err = pcall(s[2], df)
+    if not ok then warn("[沙漠] " .. s[1] .. "出错：" .. tostring(err)) end
+  end
+  ok, err = pcall(shelters, df, Map.AIRFIELD)
+  if not ok then warn("[沙漠] 加固机库出错：" .. tostring(err)) end
+end
+
 function World.details(f)
   local ef = folder("Details", f)
   local bf = folder("Buildings", f)
@@ -20458,18 +21986,26 @@ function World.build(G)
   World.lighting()
   local root = folder("Map")
   local deco = folder("Scenery", root)
-  local n, chunks = World.terrain(function(p) G.worldProgress = p end)
+  local n, chunks = World.terrain(function(p) G.worldProgress = p end, G)
   G.terrainVoxels, G.terrainChunks = n, chunks
   -- 远海改在客户端跟着镜头铺（Scenery.lua）：地图放大以后服务器这一圈不够远，飞机飞出去看得到海的尽头
   G.try("机场", airfield, deco, Map.AIRFIELD, "def")
-  G.try("港口镇", portTown, deco)
-  G.try("指挥所", commandPost, deco)
-  G.try("营地", camp, deco)
-  G.try("灯塔", lighthouse, deco)
-  G.try("岸防炮台", battery, deco)
-  G.try("攻方机场岛", attackerAirfield, deco)
-  G.try("海滩标杆", World.beaches, deco)
-  G.try("细节", World.details, deco)
+  if Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
+    G.try("指挥所", commandPost, deco)
+    G.try("营地", camp, deco)
+    G.try("攻方前进机场", attackerAirfield, deco)
+    G.try("沙漠", World.desert, deco)
+    G.try("细节", World.details, deco)
+  else
+    G.try("港口镇", portTown, deco)
+    G.try("指挥所", commandPost, deco)
+    G.try("营地", camp, deco)
+    G.try("灯塔", lighthouse, deco)
+    G.try("岸防炮台", battery, deco)
+    G.try("攻方机场岛", attackerAirfield, deco)
+    G.try("海滩标杆", World.beaches, deco)
+    G.try("细节", World.details, deco)
+  end
   G.pointModels = World.points(folder("Points", root))
   G.decks = World.fleet(folder("Fleet", root))
   G.worldReady = true
@@ -20481,15 +22017,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="89">
+  <Item class="StarterPlayer" referent="90">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="90">
+    <Item class="StarterPlayerScripts" referent="91">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="91">
+      <Item class="LocalScript" referent="92">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -20617,7 +22153,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -20985,7 +22521,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="93">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -21165,7 +22701,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="94">
+        <Item class="ModuleScript" referent="95">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -21795,7 +23331,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="96">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -23247,7 +24783,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -23417,7 +24953,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -23707,7 +25243,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -23864,7 +25400,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -24444,7 +25980,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -24489,6 +26025,13 @@ function DayNight.init(G)
     fog = RGB(176, 194, 214), dens = 0.17, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.25, haze = 0.7,
     bloomI = 0.35, bloomT = 1.6, ccSat = 0.04, ccCon = 0.07, ccTint = RGB(255, 255, 255) }
   local DUSK = { top = RGB(255, 168, 108), fog = RGB(206, 150, 120), acol = RGB(228, 160, 120), adec = RGB(170, 86, 58) }
+  local okM, MapM = pcall(function() return require(RS:WaitForChild("Map", 5)) end)
+  if okM and type(MapM) == "table" and MapM.DESERT then   -- 沙漠图：夜里的天光、雾偏暖褐（沙尘），白天是发白的黄沙天、看得没那么远
+    NIGHT.fog, NIGHT.acol, NIGHT.adec, NIGHT.oamb = RGB(26, 22, 20), RGB(70, 60, 54), RGB(22, 17, 14), RGB(50, 46, 48)
+    NIGHT.ccTint = RGB(240, 234, 236)
+    DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze = RGB(214, 196, 168), RGB(222, 206, 178), RGB(168, 132, 96), 0.22, 1.4
+    DAY.ccTint, DAY.ccSat = RGB(255, 246, 232), 0
+  end
 
   local dayK, clock = 0, 2.3
   G.dayK = function() return dayK end
@@ -24584,7 +26127,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -24979,7 +26522,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -26262,7 +27805,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -27262,7 +28805,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="105">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -27477,7 +29020,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -29933,7 +31476,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="107">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -30289,7 +31832,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -31730,7 +33273,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -32042,7 +33585,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -32174,7 +33717,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -32453,7 +33996,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -33007,7 +34550,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -33936,7 +35479,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -34399,7 +35942,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -35189,7 +36732,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -35303,7 +36846,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -37671,7 +39214,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -38242,7 +39785,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -39822,7 +41365,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -40590,7 +42133,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -42419,7 +43962,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -42685,7 +44228,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -42705,6 +44248,7 @@ function MapUI.init(G)
   -- 地图范围（世界坐标）：所有岛和舰队都在里面
   local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
   local X0, X1, Z0, Z1 = -3000 * K, 3000 * K, -2500 * K, 3600 * K
+  if Map.UIBOX then X0, X1, Z0, Z1 = Map.UIBOX.x0, Map.UIBOX.x1, Map.UIBOX.z0, Map.UIBOX.z1 end   -- 沙漠图：战区那一片（整张图太大，看不清据点）
   local SPAN = math.max(X1 - X0, Z1 - Z0)
   local function toUV(x, z) return (x - X0) / SPAN, (z - Z0) / SPAN end
   G.mapUV = toUV
@@ -42750,6 +44294,13 @@ function MapUI.init(G)
 
   -- 陆地：按高度分几档颜色
   local function band(y)
+    if Map.DESERT then   -- 沙漠：盐滩、平原、沙丘 / 沙墙、台地、方山顶
+      if y < 10 then return 1 end
+      if y < 20 then return 2 end
+      if y < 50 then return 3 end
+      if y < 90 then return 4 end
+      return 5
+    end
     if y <= 0.3 then return nil end
     if y < 4 then return 1 end
     if y < 40 then return 2 end
@@ -42763,7 +44314,13 @@ function MapUI.init(G)
   -- 右上的小地图（用户 11-19：不要黑绿，改成正常的；再要暗淡、拟真）：深蓝的海，暗沙色海滩，暗绿的低地、山坡，高处灰褐；路是土色
   --   （有 EditableImage 时上面盖一张 MapPaint 画的卫星图，这些色块只在用不了时看得到）
   local MINI = { RGB(146, 136, 110), RGB(76, 90, 58), RGB(68, 82, 54), RGB(92, 94, 82), RGB(100, 98, 92), RGB(60, 74, 48) }
-  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
+  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }
+  if Map.DESERT then   -- 沙漠图的色块：暗沙色（盐滩发白、台地灰、方山顶偏红褐）
+    BAND = { RGB(150, 146, 132), RGB(128, 110, 84), RGB(140, 118, 86), RGB(124, 116, 98), RGB(116, 88, 70), RGB(128, 110, 84) }
+    MINI = { RGB(160, 156, 142), RGB(138, 118, 90), RGB(150, 126, 92), RGB(134, 126, 106), RGB(126, 96, 76), RGB(138, 118, 90) }
+    SEA.map, SEA.mini = RGB(128, 110, 84), RGB(138, 118, 90)
+    root.BackgroundColor3 = SEA.map
+  end   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
   local theme = "map"
   local landBand = {}   -- 陆地块 → 档（换配色用）
   local roads = {}
@@ -43085,7 +44642,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -43235,7 +44792,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -43543,7 +45100,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -43865,7 +45422,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -44082,7 +45639,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -44216,7 +45773,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -44658,9 +46215,10 @@ function Night.init(G)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
             local a = p:GetAttribute("Anim")
-            if a == "blink" or a == "spin" then
+            if a == "blink" or a == "spin" or a == "rock" then
               table.insert(anim, { p = p, a = a, spd = p:GetAttribute("Spd") or 1, cf0 = p.CFrame, pivot = p:GetAttribute("Pivot"),
-                glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light") })
+                glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light"),
+                axis = p:GetAttribute("Axis"), amp = p:GetAttribute("Amp") or 0.2, ph = p:GetAttribute("Ph") or 0 })
             end
           elseif p:IsA("BillboardGui") then
             addGlow(p)
@@ -44704,6 +46262,12 @@ function Night.init(G)
           local P = CFrame.new(x.pivot)
           local angle = (workspace:GetServerTimeNow() * x.spd) % 1
           x.p.CFrame = P * CFrame.Angles(0, -angle * math.pi * 2, 0) * (P:Inverse() * x.cf0)
+        elseif x.a == "rock" and typeof(x.pivot) == "Vector3" and typeof(x.axis) == "Vector3" then   -- 沙漠油田的抽油机：游梁绕支点上下点头
+          if (x.pivot - workspace.CurrentCamera.CFrame.Position).Magnitude < 1500 then   -- 远了看不出来，不动
+            local P = CFrame.new(x.pivot)
+            local angle = math.sin((workspace:GetServerTimeNow() * x.spd + x.ph) * math.pi * 2) * x.amp
+            x.p.CFrame = P * CFrame.fromAxisAngle(x.axis, angle) * (P:Inverse() * x.cf0)
+          end
         end
       end
     end
@@ -44714,7 +46278,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -44981,7 +46545,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -45228,7 +46792,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -45371,7 +46935,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -46051,7 +47615,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -46648,7 +48212,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -47057,8 +48621,12 @@ function Scenery.init(G)
     p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
     p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    if Map.DESERT then   -- 沙漠图没有海：这圈平面换成沙地，顶面和平原一样高（地形外面一直是沙漠，铺到天边）
+      p.Material, p.Color, p.Reflectance = Enum.Material.Sand, (Map.COLORS and Map.COLORS.Sand) or RGB(206, 174, 124), 0
+    end
     tiles[i] = p
   end
+  local seaY = Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6
   local seaKey = nil
   local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
   local function stepOcean()
@@ -47075,7 +48643,7 @@ function Scenery.init(G)
         if i >= -RI and i < RI and k >= -RI and k < RI then
           p.Parent = nil
         else
-          p.CFrame = CF((i + 0.5) * OS, -0.6, (k + 0.5) * OS)
+          p.CFrame = CF((i + 0.5) * OS, seaY, (k + 0.5) * OS)
           p.Parent = ocean
         end
       end
@@ -47107,7 +48675,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -48054,7 +49622,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -48784,7 +50352,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -49536,7 +51104,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -50285,7 +51853,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -50740,7 +52308,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -51960,7 +53528,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -52467,7 +54035,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -52580,7 +54148,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -53054,6 +54622,7 @@ function UI.init(G)
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "redbase" then return T("spawn.redbase") end   -- 沙漠图：红方前进基地
     return s.id
   end
 
@@ -53659,7 +55228,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -53763,7 +55332,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -55265,7 +56834,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -56013,7 +57582,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -56976,7 +58545,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -57819,13 +59388,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="149">
+  <Item class="Workspace" referent="150">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="150">
+  <Item class="Lighting" referent="151">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

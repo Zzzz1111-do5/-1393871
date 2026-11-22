@@ -84,14 +84,15 @@ float filmFog2(vec3 wp, float dens) {
 export function makeSky() {
   const mat = new THREE.ShaderMaterial({
     uniforms: { uMoon: { value: new THREE.Vector3(0.3, 0.28, -0.91).normalize() }, uSun: { value: new THREE.Vector3(0.9, -0.15, -0.3).normalize() },
-      uDawn: { value: 0 }, uTime: { value: 0 }, uFog: { value: new THREE.Color(0x0c1018) }, uStars: { value: 1 }, uCloud: { value: 0.55 }, uMoonI: { value: 1 } },
+      uDawn: { value: 0 }, uTime: { value: 0 }, uFog: { value: new THREE.Color(0x0c1018) }, uStars: { value: 1 }, uCloud: { value: 0.55 }, uMoonI: { value: 1 },
+      uDay: { value: 0 }, uHaze: { value: new THREE.Color(0.7, 0.62, 0.5) } },
     vertexShader: `varying vec3 vDir;
 #include <common>
 #include <logdepthbuf_pars_vertex>
 void main() { vDir = (modelMatrix * vec4(position, 0.0)).xyz; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
 }`,
-    fragmentShader: `uniform vec3 uMoon, uSun, uFog; uniform float uDawn, uTime, uStars, uCloud, uMoonI; varying vec3 vDir;
+    fragmentShader: `uniform vec3 uMoon, uSun, uFog, uHaze; uniform float uDawn, uTime, uStars, uCloud, uMoonI, uDay; varying vec3 vDir;
 #include <common>
 #include <logdepthbuf_pars_fragment>
 float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -118,11 +119,11 @@ void main() {
       float tw = 0.65 + 0.35 * sin(uTime * (2.0 + 6.0 * h3(c + 5.0)) + r * 40.0);
       float b = pow(max(0.0, 1.0 - dd * 2.4), 6.0) * (r - 0.86) * 40.0 * tw;
       vec3 sc = mix(vec3(0.75, 0.85, 1.0), vec3(1.0, 0.9, 0.75), h3(c + 11.0));
-      col += sc * b * 0.9 * smoothstep(0.0, 0.25, h) * uStars * (1.0 - uDawn);
+      col += sc * b * 0.9 * smoothstep(0.0, 0.25, h) * uStars * (1.0 - uDawn) * (1.0 - uDay);
     }
     // 银河：一条淡淡的带子
     float band = exp(-pow(dot(d, normalize(vec3(0.35, 0.6, -0.72))) / 0.16, 2.0));
-    col += vec3(0.05, 0.055, 0.075) * 0.25 * band * fbm(d * 18.0) * smoothstep(0.05, 0.4, h) * uStars * (1.0 - uDawn);
+    col += vec3(0.05, 0.055, 0.075) * 0.25 * band * fbm(d * 18.0) * smoothstep(0.05, 0.4, h) * uStars * (1.0 - uDawn) * (1.0 - uDay);
   }
   // 云：天上一层，被月光照亮靠月亮那一侧的边
   float cloudOcc = 0.0;
@@ -142,12 +143,32 @@ void main() {
     float mare = fbm(vec3(q * 2.2, 3.0)) * 0.55 + fbm(vec3(q * 6.0, 9.0)) * 0.25;
     float limb = sqrt(max(0.0, 1.0 - dot(q, q)));
     vec3 mc = vec3(1.0, 0.97, 0.9) * (0.62 + 0.55 * (1.0 - mare)) * (0.55 + 0.45 * limb);
-    col = mix(col, mc * 5.0 * uMoonI, smoothstep(1.0, 0.94, length(q)) * (1.0 - 0.75 * cloudOcc));
+    col = mix(col, mc * 5.0 * uMoonI, smoothstep(1.0, 0.94, length(q)) * (1.0 - 0.75 * cloudOcc) * step(0.001, uMoonI));
   }
 
   // 天亮：东边地平线一抹暖光
   float sd = max(dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(uSun.x, 0.0, uSun.z))), 0.0);
-  col += uDawn * (vec3(1.0, 0.45, 0.16) * 0.55 * pow(sd, 3.0) + vec3(0.9, 0.55, 0.35) * 0.18) * exp(-max(h, 0.0) * 6.0);
+  col += uDawn * (1.0 - uDay) * (vec3(1.0, 0.45, 0.16) * 0.55 * pow(sd, 3.0) + vec3(0.9, 0.55, 0.35) * 0.18) * exp(-max(h, 0.0) * 6.0);
+  // 白天（沙漠）：天顶蓝、地平线一圈沙尘的暖灰，太阳四周一大团亮（米氏散射）、太阳盘；太阳低的时候整片天往橙红走
+  if (uDay > 0.001) {
+    vec3 sD = normalize(uSun);
+    float se = clamp(sD.y, 0.0, 1.0);
+    float cs = max(dot(d, sD), 0.0);
+    vec3 zen = mix(vec3(0.05, 0.1, 0.24), vec3(0.11, 0.24, 0.5), smoothstep(0.02, 0.5, se));
+    vec3 dayc = mix(uHaze, zen, pow(clamp(h, 0.0, 1.0), 0.5));
+    dayc = mix(dayc, uHaze * vec3(1.15, 0.8, 0.55), uDawn * pow(sd, 2.0) * exp(-max(h, 0.0) * 3.5));
+    dayc += vec3(1.0, 0.8, 0.58) * (0.35 * pow(cs, 5.0) + 1.1 * pow(cs, 48.0) + 6.0 * pow(cs, 900.0)) * mix(1.0, 1.7, uDawn);
+    float disc = smoothstep(0.99994, 0.99997, cs);
+    dayc += mix(vec3(60.0, 54.0, 44.0), vec3(40.0, 22.0, 9.0), uDawn) * disc;
+    if (h > 0.0) {   // 天上一层薄云（卷云）
+      vec2 uv = d.xz / (h + 0.12) * 1.1 + vec2(uTime * 0.003, uTime * 0.001);
+      float c1 = fbm(vec3(uv * vec2(3.0, 0.9), 2.5));
+      float cov = smoothstep(0.62 - uCloud * 0.2, 0.95, c1) * smoothstep(0.0, 0.18, h);
+      dayc = mix(dayc, mix(uHaze * 1.2, vec3(1.0, 0.75, 0.55), uDawn * pow(cs, 2.0)) * (0.85 + 0.6 * pow(cs, 3.0)), cov * 0.7);
+    }
+    if (h < 0.0) dayc = uHaze;
+    col = mix(col, dayc, uDay);
+  }
   if (h < 0.0) col = mix(col, uFog, smoothstep(0.0, -0.06, h));
   gl_FragColor = vec4(col, 1.0);
 }`,
@@ -366,12 +387,16 @@ export function makeTerrain(D, tex, box = [-3300, -2700, 3300, 3600]) {
 // 地形材质：顶点色（游戏材质）× 细节贴图（沙、草、岩、土按权重 aW）、湿沙
 export function terrainMaterial(tex) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  mat.userData.wet = 1;
   mat.onBeforeCompile = sh => {
     sh.uniforms.tSand = { value: tex.sand };
     sh.uniforms.tNoise = { value: tex.noise };
+    sh.uniforms.tRock = { value: tex.rock || tex.sand };
+    sh.uniforms.uDesert = { value: tex.desert ? 1 : 0 };
+    sh.uniforms.uWet = { get value() { return mat.userData.wet; } };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aW; varying vec4 vW; varying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvW = aW; vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tSand, tNoise; varying vec4 vW; varying vec3 vWP;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tSand, tNoise, tRock; uniform float uDesert, uWet; varying vec4 vW; varying vec3 vWP;')
       .replace('#include <color_fragment>', `#include <color_fragment>
   {
     vec2 uv = vWP.xz;
@@ -379,12 +404,25 @@ export function terrainMaterial(tex) {
     sa /= vec3(0.62, 0.55, 0.45);
     vec4 nA = texture2D(tNoise, uv / 37.0), nB = texture2D(tNoise, uv / 9.0), nC = texture2D(tNoise, uv / 260.0);
     vec3 det = vW.x * sa + vW.y * vec3(0.62 + 0.75 * nA.r * nB.g) * mix(vec3(1.0), vec3(1.12, 1.05, 0.8), nC.b) + vW.z * vec3(0.6 + 0.8 * nB.r) + vW.w * vec3(0.7 + 0.6 * nA.g * nB.b);
+    if (uDesert > 0.5) {
+      // 沙漠：沙（贴图 + 近处的风成沙纹）、盐壳 / 柏油（几乎平的，细碎的斑）、岩石（岩石贴图）、砾石（碎点）
+      float dist = distance(vWP, cameraPosition);
+      float rip = sin(dot(vWP.xz, vec2(0.83, 0.56)) * 2.6 + 7.0 * texture2D(tNoise, vWP.xz / 70.0).r + 3.0 * nB.g);
+      float nearK = 1.0 - smoothstep(25.0, 180.0, dist);
+      vec3 rk = texture2D(tRock, uv / 26.0).rgb * 0.6 + texture2D(tRock, uv.yx / 83.0 + 0.21).rgb * 0.4;
+      float rkL = dot(rk, vec3(0.333)) / 0.42;
+      vec3 sandD = sa * (1.0 + 0.035 * rip * nearK);
+      vec3 flatD = vec3(0.93 + 0.14 * nA.r * nB.g);
+      vec3 rockD = vec3(0.55 + 0.55 * rkL) * mix(vec3(1.0), vec3(1.06, 0.97, 0.9), nA.b);
+      vec3 gravD = vec3(0.72 + 0.5 * nB.r * nA.g) * (0.9 + 0.2 * step(0.72, texture2D(tNoise, uv / 3.0).g));
+      det = vW.x * sandD + vW.y * flatD + vW.z * rockD + vW.w * gravD;
+    }
     diffuseColor.rgb *= det * (0.82 + 0.36 * nC.r);
-    float wet = smoothstep(2.2, 0.2, vWP.y);
+    float wet = smoothstep(2.2, 0.2, vWP.y) * uWet;
     diffuseColor.rgb *= 1.0 - 0.45 * wet;
   }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-  roughnessFactor = mix(roughnessFactor, 0.62, smoothstep(2.2, 0.2, vWP.y));   // 湿沙有一点光泽（太光滑的话月亮低时整条水线发白）`);
+  roughnessFactor = mix(roughnessFactor, 0.62, smoothstep(2.2, 0.2, vWP.y) * uWet);   // 湿沙有一点光泽（太光滑的话月亮低时整条水线发白）`);
   };
   return mat;
 }

@@ -5,7 +5,19 @@
 --   主岛「棕榈岛」照网页版《暗剑》js/isle.js 的虚构热带岛：南岸宽而平缓（四处海滩）、东西两个岬角、西南向南开口的 U 形港湾（湾底港口镇）、
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
+-- 选图（用户 11-22 加了海湾战争式的沙漠地图「沙海」，MapDesert.lua）：Config.Map 定默认；Studio 里给 Workspace 设属性 MapName（"island" / "desert"）可以临时换
+do
+  local which
+  pcall(function() which = workspace:GetAttribute("MapName") end)
+  if which == nil and script and script.Parent then
+    local okC, Cfg = pcall(function() return require(script.Parent:FindFirstChild("Config")) end)
+    if okC and type(Cfg) == "table" then which = Cfg.Map end
+  end
+  local desert = (which == "desert") and script and script.Parent and script.Parent:FindFirstChild("MapDesert")
+  if desert then return require(desert) end
+end
 local Map = {}
+Map.NAME = "island"
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 

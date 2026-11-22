@@ -786,6 +786,7 @@ function Air.init(G)
       dk = deckOf("lhd")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end
       if near(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len * 0.6) then return true end
+      if Map.REDBASE and near(Map.REDBASE.x, Map.REDBASE.z, 500) then return true end   -- 沙漠图：前进基地的直升机坪
       if pointOk("atk", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end
     else
       if pointOk("def", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end

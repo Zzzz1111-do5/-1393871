@@ -9,6 +9,11 @@ function Nav.init(G)
   local CELL = 40 * math.max(1, (Map.K or 1) / 2)   -- 地图放大了：网格跟着变粗一点（3 倍时 60 格一格），格子数别涨太多
   local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
   local X0, Z0, X1, Z1 = -3200 * K, -3000 * K, 3200 * K, 1200 * K   -- 主岛和前哨岛、灯塔岛、西礁岛（攻方机场岛不用）
+  if Map.NAVBOX then   -- 沙漠图：战区南北长（红方基地到蓝方营地三万多格），网格粗一点（大片平地，80 格一格够用）
+    X0, Z0, X1, Z1 = Map.NAVBOX.x0, Map.NAVBOX.z0, Map.NAVBOX.x1, Map.NAVBOX.z1
+    CELL = Map.NAVCELL or CELL
+    G.navCell = CELL
+  end
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
   local MAXSLOPE = 0.9   -- 比这陡（约 42°）走不了
   local H = {}           -- [格号] = 高度（只记陆地）

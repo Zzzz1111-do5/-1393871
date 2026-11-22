@@ -404,8 +404,12 @@ function Scenery.init(G)
     p.Color = RGB(24, 84, 102)   -- 往地形海水的颜色靠（Terrain.WaterColor 30, 112, 136 透过深水看暗一些）
     p.Reflectance = 0.22
     p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    if Map.DESERT then   -- 沙漠图没有海：这圈平面换成沙地，顶面和平原一样高（地形外面一直是沙漠，铺到天边）
+      p.Material, p.Color, p.Reflectance = Enum.Material.Sand, (Map.COLORS and Map.COLORS.Sand) or RGB(206, 174, 124), 0
+    end
     tiles[i] = p
   end
+  local seaY = Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6
   local seaKey = nil
   local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)   -- 地形海水占了 [−RI, RI) 这些格（近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）
   local function stepOcean()
@@ -422,7 +426,7 @@ function Scenery.init(G)
         if i >= -RI and i < RI and k >= -RI and k < RI then
           p.Parent = nil
         else
-          p.CFrame = CF((i + 0.5) * OS, -0.6, (k + 0.5) * OS)
+          p.CFrame = CF((i + 0.5) * OS, seaY, (k + 0.5) * OS)
           p.Parent = ocean
         end
       end

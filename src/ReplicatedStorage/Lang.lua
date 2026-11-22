@@ -1007,4 +1007,43 @@ add("gm.desc.tac_none", "不装", "None")
 add("gm.desc.tac_light", "战术手电：照亮前面，夜里好用；腰射稍稳", "Weapon light: lights the way at night; steadier hip-fire")
 add("gm.desc.tac_peq", "可见激光：腰射准很多，但别人也看得见那道光", "Visible laser: far better hip-fire, but enemies see the beam")
 
+---------------------------------------------------------------- 沙漠图「沙海」（MapDesert.lua）：据点、阶段、出生点、阵营说明换成沙漠的说法
+do
+  local okM, M = pcall(function() return require(script.Parent:FindFirstChild("Map")) end)
+  if okM and type(M) == "table" and M.DESERT then
+    add("faction.sub", "海湾风暴 · 沙漠装甲突击", "DESERT STORM · ARMORED ASSAULT")
+    add("faction.atk.role", "进攻  ·  装甲突击", "ATTACK  ·  ARMORED ASSAULT")
+    add("faction.def.role", "防守  ·  纵深防御", "DEFEND  ·  DEFENSE IN DEPTH")
+    add("faction.atk.desc", "从南边的前进基地、前进机场北上：越过边境沙墙拿下哨所 A，再打油田 B、镇子 C、空军基地 D，最后攻下岩岭上的指挥部 E。每个阶段都能在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
+      "Push north from the forward base and airstrip: breach the border berm and take Outpost A, then the Oilfield B, Town C and Airbase D, and finally Command E on the ridge. Spawn at the assault position in front of each objective. Every death costs one reinforcement; run out and you lose.")
+    add("point.A", "A 边境哨所", "A Border Post")
+    add("point.B", "B 油田", "B Oilfield")
+    add("point.C", "C 镇子", "C Town")
+    add("point.D", "D 空军基地", "D Airbase")
+    add("point.E", "E 岭上指挥部", "E Ridge Command")
+    add("spawn.redbase", "前进基地（车场、直升机）", "Forward Base (vehicles, helos)")
+    add("spawn.af2", "前进机场（固定翼）", "Forward Airstrip (jets)")
+    add("spawn.camp", "后方营地（岭北）", "Rear Camp (north of ridge)")
+    add("spawn.afield", "空军基地（战斗机）", "Airbase (jets)")
+    add("hud.tip.3", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
+    add("operation.opening", "拂晓突击", "DAWN ASSAULT")
+    add("stage.border", "突破边境", "BREACH THE BORDER")
+    add("stage.border.atk", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
+    add("stage.border.def", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
+    add("stage.border.short", "边境", "BORDER")
+    add("stage.oil", "夺取油田", "TAKE THE OILFIELD")
+    add("stage.oil.atk", "拿下油田 B（油井在烧，小心烟里的敌人）", "Take Oilfield B (wells burning: watch the smoke)")
+    add("stage.oil.def", "守住油田 B", "Hold Oilfield B")
+    add("stage.oil.short", "油田", "OILFIELD")
+    add("stage.town", "攻入镇子", "TAKE THE TOWN")
+    add("stage.town.atk", "打进镇子，拿下据点 C", "Fight into the town and take C")
+    add("stage.town.def", "守住镇子 C，巷战拖住敌人", "Hold Town C street by street")
+    add("stage.town.short", "镇子", "TOWN")
+    add("stage.airfield.atk", "拿下空军基地 D", "Take Airbase D")
+    add("stage.airfield.def", "守住空军基地 D", "Hold Airbase D")
+    add("stage.hq.atk", "翻上岩岭，攻下指挥部 E，结束战斗", "Climb the ridge and take Command E to win")
+    add("stage.hq.def", "最后一道防线：死守岭上指挥部 E", "Last line: hold Ridge Command E at all costs")
+  end
+end
+
 return Lang

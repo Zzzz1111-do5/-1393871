@@ -437,9 +437,10 @@ function Night.init(G)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
             local a = p:GetAttribute("Anim")
-            if a == "blink" or a == "spin" then
+            if a == "blink" or a == "spin" or a == "rock" then
               table.insert(anim, { p = p, a = a, spd = p:GetAttribute("Spd") or 1, cf0 = p.CFrame, pivot = p:GetAttribute("Pivot"),
-                glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light") })
+                glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light"),
+                axis = p:GetAttribute("Axis"), amp = p:GetAttribute("Amp") or 0.2, ph = p:GetAttribute("Ph") or 0 })
             end
           elseif p:IsA("BillboardGui") then
             addGlow(p)
@@ -483,6 +484,12 @@ function Night.init(G)
           local P = CFrame.new(x.pivot)
           local angle = (workspace:GetServerTimeNow() * x.spd) % 1
           x.p.CFrame = P * CFrame.Angles(0, -angle * math.pi * 2, 0) * (P:Inverse() * x.cf0)
+        elseif x.a == "rock" and typeof(x.pivot) == "Vector3" and typeof(x.axis) == "Vector3" then   -- 沙漠油田的抽油机：游梁绕支点上下点头
+          if (x.pivot - workspace.CurrentCamera.CFrame.Position).Magnitude < 1500 then   -- 远了看不出来，不动
+            local P = CFrame.new(x.pivot)
+            local angle = math.sin((workspace:GetServerTimeNow() * x.spd + x.ph) * math.pi * 2) * x.amp
+            x.p.CFrame = P * CFrame.fromAxisAngle(x.axis, angle) * (P:Inverse() * x.cf0)
+          end
         end
       end
     end

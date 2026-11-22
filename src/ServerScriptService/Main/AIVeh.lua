@@ -169,6 +169,17 @@ function AIVeh.init(G)
         end
       end
     end
+    -- 沙漠图：南边前进基地的车场出车，自己开上去（没有气垫艇）
+    if Map.LANDONLY then
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == "atk" and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local face = p.base.LookVector
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, face))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
+    end
     -- 坐气垫艇冲滩：登陆平台旁的水面车位
     local LC = G.LCAC
     if not (LC and G.lcacCarry) then return nil end

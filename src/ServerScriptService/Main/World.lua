@@ -150,8 +150,8 @@ function World.lighting()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
     atm.Density = 0.21   -- 原来 0.3（用户：视野很短）：远处的岛、舰、飞机看得更远
     atm.Offset = 0.06
-    atm.Color = RGB(44, 54, 76)
-    atm.Decay = RGB(12, 15, 24)
+    atm.Color = Map.DESERT and RGB(70, 60, 54) or RGB(44, 54, 76)   -- 沙漠图：暖褐的沙尘夜空
+    atm.Decay = Map.DESERT and RGB(22, 17, 14) or RGB(12, 15, 24)
     atm.Glare = 0.15
     atm.Haze = 1.1
     atm.Parent = Lighting
@@ -298,8 +298,9 @@ World.terrainCal = function() return CAL end
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
 --   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
-local function writeChunk(T, x0, z0, n, yFloor)
+local function writeChunk(T, x0, z0, n, yFloor, baseY)
   local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
+  if Map.colCache then Map.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -313,11 +314,17 @@ local function writeChunk(T, x0, z0, n, yFloor)
   end
   -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
   local DW = math.min(D, 30)
-  if ymax <= -DW + 0.5 then return 0 end   -- 整块都比 30 格深（海水、海底已经铺了）
+  if ymax <= -DW + 0.5 then   -- 整块都比 30 格深（海水、海底已经铺了）
+    if Map.colCache then Map.colCache(false) end
+    return 0
+  end
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
   if yFloor then yb0 = math.min(yb0, math.floor(yFloor / RES)) end
   local yb1 = math.ceil((math.max(ymax, 0) + RES) / RES)
   local NY = yb1 - yb0
+  if baseY and yb0 * RES > baseY then   -- 沙漠：下面没灌海水，补一块实心的底（弹坑挖不穿）
+    T:FillBlock(CFrame.new(x0 + N * RES / 2, (baseY + yb0 * RES) / 2, z0 + N * RES / 2), V(N * RES, yb0 * RES - baseY, N * RES), MAT.Sand)
+  end
   local M, O = table.create(N), table.create(N)
   for i = 1, N do
     local Mi, Oi = table.create(NY), table.create(NY)
@@ -340,7 +347,7 @@ local function writeChunk(T, x0, z0, n, yFloor)
         --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
         if top == Grass then top = Leafy end
       end
-      local under = (h > 20) and Rock or (h > 0.3 and Ground or Sand)
+      local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
       local jT, oT = surfAt(h, calFor(top))
       for j = 0, NY - 1 do
@@ -361,13 +368,93 @@ local function writeChunk(T, x0, z0, n, yFloor)
       end
     end
   end
+  if Map.colCache then Map.colCache(false) end
   local region = Region3.new(V(x0, yb0 * RES, z0), V(x0 + N * RES, yb1 * RES, z0 + N * RES))
   T:WriteVoxels(region, RES, M, O)
   return N * N * NY
 end
 
+-- 沙漠地图（MapDesert：没有海）：按 2048 格一大块看，整块都是同一级平地的一次 FillBlock；不是的按 256 格的小块，
+--   平地 FillBlock、有起伏的逐列写体素。核心区（据点、基地一带）先写完才让人出生，外面的在后台接着写（每块让一帧）
+local DESERT_BASE = -40
+local function terrainDesert(T, onProgress, G)
+  local SR, TILE, CH = Map.SEA_R, 2048, 256
+  local relief = {}
+  local t0 = os.clock()
+  local function fill(x0, z0, w, d, y, mat)
+    local yb = DESERT_BASE
+    while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层
+      local h = math.min(60, y - yb)
+      T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
+      yb += h
+    end
+  end
+  local nTiles = (2 * SR / TILE) ^ 2
+  local done = 0
+  for tx = -SR, SR - TILE, TILE do
+    for tz = -SR, SR - TILE, TILE do
+      local kinds, allFlat, L0, M0 = {}, true, nil, nil
+      for i = 0, 7 do
+        for k = 0, 7 do
+          local kind, L, M = Map.chunkKind(tx + i * CH, tz + k * CH)
+          kinds[i * 8 + k] = { kind, L, M }
+          if kind ~= "flat" then allFlat = false
+          elseif L0 == nil then L0, M0 = L, M
+          elseif L ~= L0 or M ~= M0 then allFlat = false end
+        end
+      end
+      if allFlat then
+        fill(tx, tz, TILE, TILE, L0, M0)
+      else
+        for i = 0, 7 do
+          for k = 0, 7 do
+            local e = kinds[i * 8 + k]
+            local x0, z0 = tx + i * CH, tz + k * CH
+            if e[1] == "flat" then fill(x0, z0, CH, CH, e[2], e[3]) else table.insert(relief, { x0, z0 }) end
+          end
+        end
+      end
+      done += 1
+      if onProgress then onProgress(0.25 * done / nTiles) end
+      if os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end
+    end
+  end
+  -- 有起伏的块：离核心区近的先写（Map.CORES 一组圈：到最近那个圈的圈边多远；没有就是一个大圈 Map.CORE）
+  local cores = Map.CORES or { Map.CORE or { x = 0, z = 0, r = 12000 } }
+  local function dist(c)
+    local best = math.huge
+    for _, C in ipairs(cores) do
+      best = math.min(best, math.sqrt((c[1] + CH / 2 - C.x) ^ 2 + (c[2] + CH / 2 - C.z) ^ 2) - C.r)
+    end
+    return best
+  end
+  for _, c in ipairs(relief) do c[3] = dist(c) end
+  table.sort(relief, function(a, b) return a[3] < b[3] end)
+  local core, rest = {}, {}
+  for _, c in ipairs(relief) do table.insert(c[3] <= 0 and core or rest, c) end
+  local total = 0
+  for n, c in ipairs(core) do
+    total += writeChunk(T, c[1], c[2], nil, nil, DESERT_BASE)
+    if onProgress then onProgress(0.25 + 0.75 * n / #core) end
+    if n % 2 == 0 or os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end   -- 也按块数让：测试台里 os.clock 是模拟时钟，同一步里不走
+  end
+  if G then G.terrainRest = #rest end
+  task.spawn(function()   -- 外面的：后台慢慢写（飞机飞得到，坦克一时半会开不过去）；一块拆成四个 128 格的小块写，每帧最多 8 毫秒，开打以后服务器不卡
+    local t1, k = os.clock(), 0
+    for n, c in ipairs(rest) do
+      for q = 0, 3 do
+        writeChunk(T, c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32, nil, DESERT_BASE)
+        k += 1
+        if k % 2 == 0 or os.clock() - t1 > 0.008 then task.wait() t1 = os.clock() end
+      end
+      if G then G.terrainRest = #rest - n end
+    end
+  end)
+  return total, #core + #rest
+end
+
 -- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素
-function World.terrain(onProgress)
+function World.terrain(onProgress, G)
   local T = workspace.Terrain
   local R, D = Map.R, Map.SEA_DEPTH
   pcall(function()
@@ -380,7 +467,7 @@ function World.terrain(onProgress)
     --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
     --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
   end)
-  for m, c in pairs(TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
+  for m, c in pairs(Map.COLORS or TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   -- 先量网格器（见上面 calibrate）：量出来的对照表写地图时用
   do
     local okC, res = calibrate(T, { MAT.LeafyGrass, MAT.Sand })
@@ -404,6 +491,7 @@ function World.terrain(onProgress)
       warn("[地形] 网格器校准没做成（" .. tostring(res) .. "）：照原来的写法")
     end
   end
+  if Map.chunkKind then return terrainDesert(T, onProgress, G) end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do
@@ -1876,6 +1964,368 @@ local function checkpoints(f)
   end
 end
 
+---------------------------------------------------------------- 沙漠图（MapDesert）：镇子、清真寺、油田、边境沙墙、红方前进基地、空军基地的加固机库、死亡公路
+--   用户 11-22「整个重做 纯地面和空军对战的海湾战争」：照科威特、伊拉克南部的样子——平顶土坯房（带女儿墙、院墙），镇中心一座清真寺；
+--   油田里抽油机一下一下点头（客户端 Night.lua 的 rock 动画），几口井在烧；80 号公路镇子北边一路烧毁的车（「死亡公路」）。
+--   都是锚定零件：房子、院墙、残骸挡子弹挡人；占领圈（80 格）里不摆能钻进去的东西
+local ADOBE = { RGB(200, 176, 134), RGB(190, 162, 120), RGB(210, 188, 150), RGB(178, 152, 114), RGB(218, 202, 168), RGB(196, 168, 128) }
+local function drng(seed)   -- 定死种子的随机数（每局一样）
+  local s = seed
+  return function()
+    s = (s * 48271) % 2147483647
+    return s / 2147483647
+  end
+end
+
+-- 平顶土坯房：墙身、女儿墙、深色门洞、小窗、屋顶水箱 / 卫星锅；yard 带一圈院墙（正门那面留口）
+local function adobe(f, x, z, w, d, h, rot, col, R, yard)
+  local y = footY(x, z, w, d, rot) - 0.3
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Adobe"
+  slab(m, V(w, h, d), base * CF(0, h / 2, 0), col, MAT.Concrete)
+  local par = col:Lerp(RGB(150, 128, 96), 0.25)
+  for _, p in ipairs({ { 0, -d / 2, w, 0.8 }, { 0, d / 2, w, 0.8 }, { -w / 2, 0, 0.8, d }, { w / 2, 0, 0.8, d } }) do
+    slab(m, V(p[3], 1.4, p[4]), base * CF(p[1], h + 0.7, p[2]), par, MAT.Concrete)
+  end
+  local F = faces(base, w, d)
+  deco(m, V(3.4, 6.2, 0.3), F[1].cf * CF((R() - 0.5) * (w - 7), 3.1, 0.12), RGB(52, 40, 30), MAT.Wood)   -- 门
+  for _, fc in ipairs(F) do
+    local n = math.max(1, math.floor(fc.len / 9))
+    for i = 1, n do
+      if R() < 0.65 then deco(m, V(2.2, 2.4, 0.3), fc.cf * CF(-fc.len / 2 + (i - 0.5) * fc.len / n, h * 0.62, 0.12), RGB(34, 30, 26), MAT.SmoothPlastic) end
+    end
+  end
+  local r = R()
+  if r < 0.45 then
+    deco(m, V(3, 2.4, 3), base * CF(w * 0.22, h + 1.2, d * 0.18), RGB(206, 206, 200), MAT.Metal, CYL)   -- 水箱（圆柱轴是 X：躺着）
+  elseif r < 0.7 then
+    local c = base * CF(-w * 0.25, h + 1.6, -d * 0.2) * CFrame.Angles(0, R() * 6.28, 0) * CFrame.Angles(math.rad(-50), 0, 0)
+    deco(m, V(0.3, 3.2, 3.2), c * CFrame.Angles(0, math.pi / 2, 0), RGB(224, 224, 220), MAT.SmoothPlastic, CYL)   -- 卫星锅
+  end
+  if yard then   -- 院墙：房子前面围一个院子，正门对着的那面开口
+    local yd = 10 + R() * 8
+    local wc = col:Lerp(RGB(170, 146, 108), 0.35)
+    local hw, wh = w / 2 + 3, 6.5
+    local z0, z1 = -d / 2, -d / 2 - yd
+    slab(m, V(0.9, wh, yd), base * CF(-hw, wh / 2, (z0 + z1) / 2), wc, MAT.Concrete)
+    slab(m, V(0.9, wh, yd), base * CF(hw, wh / 2, (z0 + z1) / 2), wc, MAT.Concrete)
+    local gap = 5
+    local seg = (2 * hw - gap) / 2
+    slab(m, V(seg, wh, 0.9), base * CF(-hw + seg / 2, wh / 2, z1), wc, MAT.Concrete)
+    slab(m, V(seg, wh, 0.9), base * CF(hw - seg / 2, wh / 2, z1), wc, MAT.Concrete)
+  end
+  m.Parent = f
+  return base
+end
+
+-- 清真寺：方形礼拜殿 + 大圆顶（鼓座、新月）、一座宣礼塔（阳台、小圆顶）
+local function mosque(f, x, z, rot)
+  local w, d, h = 46, 46, 18
+  local y = footY(x, z, w + 30, d, rot) - 0.3
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Mosque"
+  local wall, trim = RGB(226, 214, 186), RGB(190, 172, 136)
+  slab(m, V(w, h, d), base * CF(0, h / 2, 0), wall, MAT.Concrete)
+  for _, p in ipairs({ { 0, -d / 2, w, 1 }, { 0, d / 2, w, 1 }, { -w / 2, 0, 1, d }, { w / 2, 0, 1, d } }) do
+    slab(m, V(p[3], 2, p[4]), base * CF(p[1], h + 1, p[2]), trim, MAT.Concrete)
+  end
+  slab(m, V(4, 30, 30), base * CF(0, h + 4, 0) * CFrame.Angles(0, 0, math.pi / 2), trim, MAT.Concrete, CYL)   -- 鼓座（圆柱轴竖着）
+  slab(m, V(30, 30, 30), base * CF(0, h + 6, 0), RGB(64, 118, 128), MAT.SmoothPlastic, BALL)   -- 圆顶（青绿）
+  deco(m, V(0.5, 4, 0.5), base * CF(0, h + 23, 0), RGB(214, 180, 70), MAT.Metal)
+  deco(m, V(0.4, 2.2, 1.6), base * CF(0, h + 25.6, 0), RGB(214, 180, 70), MAT.Metal)   -- 新月（简化成一片）
+  local F = faces(base, w, d)
+  for _, fc in ipairs(F) do   -- 拱窗（深色竖长条）
+    for i = -2, 2 do deco(m, V(2.6, 6.5, 0.3), fc.cf * CF(i * 8, h * 0.55, 0.12), RGB(40, 52, 58), MAT.SmoothPlastic) end
+  end
+  deco(m, V(7, 11, 0.4), F[1].cf * CF(0, 5.5, 0.15), RGB(58, 46, 34), MAT.Wood)   -- 大门
+  -- 宣礼塔：礼拜殿东北角外
+  local mt = base * CF(w / 2 + 9, 0, -d / 2 + 2)
+  slab(m, V(6.5, 52, 6.5), mt * CF(0, 26, 0), wall, MAT.Concrete)
+  slab(m, V(10, 1.4, 10), mt * CF(0, 40, 0), trim, MAT.Concrete)   -- 阳台
+  slab(m, V(5, 8, 5), mt * CF(0, 56, 0), wall, MAT.Concrete)
+  slab(m, V(6, 6, 6), mt * CF(0, 61, 0), RGB(64, 118, 128), MAT.SmoothPlastic, BALL)
+  deco(m, V(0.4, 3.5, 0.4), mt * CF(0, 65.5, 0), RGB(214, 180, 70), MAT.Metal)
+  light(m, (mt * CF(0, 41.5, -5.2)).Position, RGB(140, 255, 170), 0.6, 18, 1.1, nil, 3)   -- 宣礼塔阳台的绿灯
+  m.Parent = f
+end
+
+-- 镇子（据点 C）：围着镇中心一圈一圈摆土坯房（占领圈外、躲开公路），镇中心北边清真寺，路边几排两层的水泥楼和集市棚子
+local function desertTown(f)
+  local T = Map.TOWN
+  local R = drng(90210)
+  local bf = folder("Town", f)
+  local placed = {}
+  local function free(x, z, r)
+    if Map.roadDist(x, z) < r + 14 then return false end
+    if (x - T.x) ^ 2 + (z - T.z) ^ 2 < (Map.POINT_R + 40 + r) ^ 2 then return false end
+    if Map.slope(x, z) > 0.18 then return false end
+    for _, q in ipairs(placed) do
+      if (q[1] - x) ^ 2 + (q[2] - z) ^ 2 < (q[3] + r + 7) ^ 2 then return false end
+    end
+    return true
+  end
+  -- 清真寺：镇中心往北 190 格（路的东边）
+  local mx, mz = T.x + 120, T.z - 200
+  for _ = 1, 12 do
+    if free(mx, mz, 40) then break end
+    mx += 30
+  end
+  mosque(bf, mx, mz, 0)
+  table.insert(placed, { mx, mz, 42 })
+  -- 土坯房：按螺旋往外找空地（大约九十座），朝向大致对着最近的路
+  local n, tries = 0, 0
+  while n < 92 and tries < 2400 do
+    tries += 1
+    local a = tries * 2.39996
+    local rr = 150 + 470 * math.sqrt(tries / 2400) + (R() - 0.5) * 40
+    local x, z = T.x + math.cos(a) * rr * 1.15, T.z + math.sin(a) * rr * 0.9
+    local w, d = 14 + math.floor(R() * 4) * 3, 12 + math.floor(R() * 4) * 3
+    local h = (R() < 0.18) and 15 or (8.5 + R() * 2)
+    local rad = math.sqrt(w * w + d * d) / 2 + 4
+    if free(x, z, rad) then
+      -- 朝向：正门对着镇中心（一条条巷子往中间走），再随机歪一点
+      local rot = math.atan2(-(T.x - x), -(T.z - z)) + (R() - 0.5) * 0.5
+      adobe(bf, x, z, w, d, h, rot, ADOBE[1 + math.floor(R() * #ADOBE)], R, R() < 0.45)
+      table.insert(placed, { x, z, rad + ((R() < 0.45) and 10 or 0) })
+      n += 1
+    end
+  end
+  -- 公路边：两层水泥楼（商店）、集市棚子
+  for _, s in ipairs({ { -260, 40 }, { -200, -60 }, { 230, 60 }, { 300, -30 }, { 40, 240 }, { -60, 300 } }) do
+    local x, z = T.x + s[1], T.z + s[2]
+    if free(x, z, 18) then
+      building(bf, (R() < 0.5) and "conc1" or "conc2", x, z, math.atan2(-(T.x - x), -(T.z - z)))
+      table.insert(placed, { x, z, 20 })
+    end
+  end
+  for k = 0, 5 do   -- 集市：镇中心东南、圈外，一排彩色遮阳棚
+    local x, z = T.x + 150 + k * 13, T.z + 120
+    if free(x, z, 6) then
+      local y = gy(x, z)
+      local col = ({ RGB(170, 60, 50), RGB(60, 90, 140), RGB(200, 170, 70), RGB(80, 120, 70) })[1 + k % 4]
+      for _, o in ipairs({ { -5, -4 }, { 5, -4 }, { -5, 4 }, { 5, 4 } }) do part(bf, V(0.4, 7, 0.4), CF(x + o[1], y + 3.5, z + o[2]), DET.wood, MAT.Wood) end
+      part(bf, V(11, 0.3, 9), CF(x, y + 7.1, z) * CFrame.Angles(0.1, 0, 0), col, MAT.Fabric)
+      crates(bf, x - 2, z + 1, 2, k)
+      table.insert(placed, { x, z, 7 })
+    end
+  end
+  -- 镇口两个油桶路障、烧毁的车
+  truck(bf, T.x - 330, T.z + 210, 2.2, "wreck")
+  drums(bf, T.x + 260, T.z + 160, 5, RGB(150, 60, 40))
+end
+
+-- 抽油机（磕头机）：底座、A 字架、游梁（前头驴头、后头连杆曲柄配重）、电机房；游梁和驴头带 rock 动画（绕支点上下点头）
+local function pumpjack(f, x, z, rot, phase)
+  local y = gy(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  local m = Instance.new("Model")
+  m.Name = "Pumpjack"
+  local steel, dark = RGB(58, 62, 66), RGB(40, 40, 42)
+  slab(m, V(5, 1.2, 22), base * CF(0, 0.6, 0), RGB(150, 146, 136), MAT.Concrete)
+  for _, sx in ipairs({ -1.6, 1.6 }) do   -- A 字架：两根斜撑
+    deco(m, V(0.5, 12.5, 0.5), base * CF(sx, 6.2, 1.5) * CFrame.Angles(0.2, 0, 0), steel, MAT.Metal)
+    deco(m, V(0.5, 12.5, 0.5), base * CF(sx, 6.2, -1.2) * CFrame.Angles(-0.2, 0, 0), steel, MAT.Metal)
+  end
+  local pivot = (base * CF(0, 12.3, 0.2)).Position
+  local beam = part(m, V(1.1, 1.4, 18), base * CF(0, 12.9, 0.2), RGB(170, 140, 40), MAT.Metal)   -- 游梁（黄）
+  local head = part(m, V(1.4, 5.5, 2.2), base * CF(0, 11.8, -9.2) * CFrame.Angles(-0.25, 0, 0), RGB(170, 140, 40), MAT.Metal)   -- 驴头
+  local rod = part(m, V(0.25, 9, 0.25), base * CF(0, 6, -10), dark, MAT.Metal)   -- 光杆（往井口里拉）
+  rod.Name = "Rod"
+  for _, p in ipairs({ beam, head }) do
+    p:SetAttribute("Anim", "rock")
+    p:SetAttribute("Spd", 0.16)
+    p:SetAttribute("Pivot", pivot)
+    p:SetAttribute("Axis", (base - base.Position) * V(1, 0, 0))
+    p:SetAttribute("Amp", 0.24)
+    p:SetAttribute("Ph", phase)
+  end
+  slab(m, V(4, 4.5, 4.5), base * CF(0, 3.4, 8.2), dark, MAT.Metal)   -- 曲柄配重
+  slab(m, V(4.4, 3.6, 4), base * CF(0, 1.8, 11.6), RGB(120, 124, 116), MAT.Metal)   -- 电机房
+  cyl(m, 1.6, 1.4, base * CF(0, 1.2, -10), RGB(90, 96, 92), MAT.Metal)   -- 井口
+  m.Parent = f
+end
+-- 采油树（没装抽油机的自喷井）：一截立管、阀门、管汇
+local function wellhead(f, x, z)
+  local y = gy(x, z)
+  local m = Instance.new("Model")
+  m.Name = "Wellhead"
+  cyl(m, 0.8, 7, CF(x, y + 0.4, z), RGB(150, 146, 136), MAT.Concrete, true)
+  part(m, V(1.2, 7, 1.2), CF(x, y + 3.5, z), RGB(170, 60, 40), MAT.Metal, nil, true)
+  for _, k in ipairs({ 2.4, 4.6 }) do part(m, V(3.2, 0.9, 0.9), CF(x, y + k, z), RGB(200, 180, 60), MAT.Metal) end
+  part(m, V(0.6, 0.6, 9), CF(x, y + 1.2, z + 4.8), RGB(120, 120, 116), MAT.Metal)
+  m.Parent = f
+end
+
+-- 油田：每口井一台抽油机或一棵采油树，十二分之一的井在烧（大火 + 黑烟柱）；据点 B 东边的集油站（储罐、分离器、管线、火炬）
+local function oilfield(f)
+  local of = folder("Oilfield", f)
+  local R = drng(4242)
+  for i, wl in ipairs(Map.OILWELLS or {}) do
+    local x, z = wl.x, wl.z
+    if i % 12 == 5 then   -- 着火的井（伊拉克撤退时点的那种）：火很大，烟柱很高
+      wellhead(of, x, z)
+      burning(of, V(x, gy(x, z) + 6, z), 22)
+      local sm = burning(of, V(x, gy(x, z) + 30, z), 30, true)
+      local s = sm:FindFirstChildOfClass("Smoke")
+      if s then s.Color, s.Opacity, s.RiseVelocity = RGB(20, 18, 16), 0.45, 18 end
+    elseif R() < 0.7 then
+      pumpjack(of, x, z, R() * math.pi * 2, R())
+    else
+      wellhead(of, x, z)
+    end
+  end
+  -- 集油站：B 东北 380 格
+  local O = Map.OILFIELD
+  local gx, gz = O.x + 330, O.z - 260
+  if Map.roadDist(gx, gz) < 60 then gx += 120 end
+  for k = 0, 2 do fuelTank(of, gx + k * 34, gz, 26, 18) end
+  for k = 0, 1 do
+    local y = gy(gx + k * 30, gz + 46)
+    part(of, V(16, 6, 6), CF(gx + k * 30, y + 4, gz + 46), RGB(176, 178, 172), MAT.Metal, CYL, true)   -- 卧式分离器
+    part(of, V(2, 3, 5), CF(gx + k * 30 - 6, y + 1.5, gz + 46), RGB(120, 120, 116), MAT.Concrete, nil, true)
+    part(of, V(2, 3, 5), CF(gx + k * 30 + 6, y + 1.5, gz + 46), RGB(120, 120, 116), MAT.Concrete, nil, true)
+  end
+  local fy = gy(gx + 110, gz + 20)
+  cyl(of, 46, 2.2, CF(gx + 110, fy + 23, gz + 20), RGB(150, 150, 146), MAT.Metal, true)   -- 火炬塔
+  local fl = burning(of, V(gx + 110, fy + 48, gz + 20), 9)
+  fl.Name = "Flare"
+  for _, wl in ipairs(Map.OILWELLS or {}) do   -- 管线：近处几口井拉一根地面管道到集油站
+    if wl.field == "B" and (wl.x - gx) ^ 2 + (wl.z - gz) ^ 2 < 1100 ^ 2 then
+      local a, b = V(wl.x, gy(wl.x, wl.z) + 1, wl.z), V(gx, gy(gx, gz) + 1, gz + 30)
+      local L = (b - a).Magnitude
+      if L > 40 and L < 1100 then
+        local nseg = math.ceil(L / 400)
+        for s = 0, nseg - 1 do
+          local p0, p1 = a:Lerp(b, s / nseg), a:Lerp(b, (s + 1) / nseg)
+          p0 = V(p0.X, gy(p0.X, p0.Z) + 1, p0.Z)
+          p1 = V(p1.X, gy(p1.X, p1.Z) + 1, p1.Z)
+          part(of, V(0.9, 0.9, (p1 - p0).Magnitude), CFrame.lookAt((p0 + p1) / 2, p1), RGB(96, 92, 86), MAT.Metal)
+        end
+      end
+    end
+  end
+end
+
+-- 边境：沙墙开口两边的哨塔、开口北边的检查站和水泥岗楼；整条沙墙每隔约 1.5 公里一座哨塔（远处看得到一串）
+local function border(f)
+  local bf = folder("Border", f)
+  local A = Map.POINTS[1]
+  local bz = Map.bermZ(A.x)
+  watchtower(bf, A.x - 70, bz - 34, math.pi)
+  watchtower(bf, A.x + 70, bz - 34, math.pi)
+  building(bf, "conc1", A.x + 150, bz - 150, math.pi)   -- 边检站
+  checkpoint(bf, A.x + 16, bz - 110, 0, -1)
+  for x = -Map.R + 1200, Map.R - 1200, 1500 do
+    local near = math.abs(x - A.x) < 600
+    for _, bx in ipairs(Map.BREACH or {}) do if math.abs(x - bx) < 160 then near = true end end
+    if not near then watchtower(bf, x, Map.bermZ(x) - 36, math.pi) end
+  end
+end
+
+-- 红方前进基地（Map.REDBASE）：外面一圈 HESCO、几排帐篷、铁皮营房、油罐区、弹药堆（沙袋围着）、探照灯；车场、直升机坪是 Depots 摆的生成点
+local function redBase(f)
+  local B = Map.REDBASE
+  local rf = folder("RedBase", f)
+  local x0, x1, z0, z1 = B.x - 460, B.x + 460, B.z - 230, B.z + 260
+  hesco(rf, x0, z0, B.x - 150, z0)   -- 北墙中间开一个宽口（车场的车直接往北开出去）
+  hesco(rf, B.x + 150, z0, x1, z0)
+  hesco(rf, x1, z0, x1, z1)
+  hesco(rf, x1, z1, x0, z1)
+  hesco(rf, x0, z1, x0, z0)
+  for _, c in ipairs({ { x0 + 12, z0 + 12, math.pi * 0.25 }, { x1 - 12, z0 + 12, -math.pi * 0.25 }, { x0 + 12, z1 - 12, math.pi * 0.75 }, { x1 - 12, z1 - 12, -math.pi * 0.75 } }) do
+    watchtower(rf, c[1], c[2], c[3])
+  end
+  -- 车场地面：一大块压实的沙砾（车位在 B.z − 90 一排）
+  local y = gy(B.x, B.z - 90)
+  part(rf, V(360, 0.4, 60), CF(B.x, y + 0.05, B.z - 90), RGB(150, 132, 104), MAT.Ground)
+  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 60, 0, RGB(170, 150, 110)) end   -- 沙色帐篷
+  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 100, 0, RGB(170, 150, 110)) end
+  local bf = folder("Buildings", rf)
+  for k = 0, 2 do building(bf, "quonset", B.x - 120 + k * 60, B.z + 150, math.pi / 2) end
+  building(bf, "smallwh", B.x + 120, B.z + 160, math.pi)
+  for k = -1, 1 do fuelTank(rf, B.x + 380, B.z + 150 + k * 30, 18, 10) end
+  for k = 0, 2 do truck(rf, B.x + 330 + k * 9, B.z + 80, math.pi, "fuel") end
+  for k = 0, 3 do truck(rf, B.x - 400 + k * 9, B.z - 20, 0, "cargo") end
+  sandbags(rf, V(B.x - 380, 0, B.z + 170), 18, 0, math.pi * 2, 3)   -- 弹药堆
+  crates(rf, B.x - 380, B.z + 170, 6, 7)
+  mast(rf, B.x + 40, B.z + 120, 40)
+  for i = -2, 2 do floodPole(rf, B.x + i * 150, gy(B.x + i * 150, B.z - 130), B.z - 130, 18, RGB(255, 222, 172), 110) end
+end
+
+-- 加固机库（HAS）：空军基地跑道北边一排，半圆拱的混凝土壳（埋一半），机库口朝南对着滑行道、门洞是黑的；顶上覆土长了点沙
+local function shelters(f, A)
+  local sf = folder("Shelters", f)
+  for k = 0, 3 do
+    local x, z = A.x - A.len * 0.38 + k * 140, A.z - A.wid / 2 - 240
+    if Map.roadDist(x, z) > 50 then
+      local y = gy(x, z)
+      local L, R0 = 40, 15
+      part(sf, V(L, R0 * 2, R0 * 2), CF(x, y, z) * CFrame.Angles(0, math.pi / 2, 0), RGB(150, 140, 120), MAT.Concrete, CYL, true)   -- 拱壳（圆柱轴南北、中心在地面上：露出一半）
+      part(sf, V(R0 * 1.6, R0 * 0.9, 0.6), CF(x, y + R0 * 0.45, z + L / 2 + 0.2), RGB(24, 24, 26), MAT.SmoothPlastic)   -- 门洞
+      part(sf, V(R0 * 2 + 6, 3, 3), CF(x, y + 1.5, z + L / 2 + 1.5), RGB(140, 136, 126), MAT.Concrete, nil, true)   -- 门槛前的护墙
+    end
+  end
+end
+
+-- 死亡公路：80 号公路镇子北边到山口那一段，一路烧毁的车（卡车、坦克、民用小车），横七竖八堵在路上和路边，有的还在冒烟
+local function carWreck(f, x, z, rot, col)
+  local y = gy(x, z)
+  local base = CF(x, y, z) * CFrame.Angles(0, rot, 0) * CFrame.Angles(0.03, 0, 0.05)
+  part(f, V(6.2, 2.6, 13), base * CF(0, 1.9, 0), col, MAT.CorrodedMetal, nil, true)
+  part(f, V(5.6, 1.8, 6), base * CF(0, 4, 0.8), col:Lerp(RGB(20, 18, 16), 0.4), MAT.CorrodedMetal, nil, true)
+  for _, o in ipairs({ { -2.6, -4 }, { 2.6, -4 }, { -2.6, 4 }, { 2.6, 4 } }) do part(f, V(0.9, 2.2, 2.2), base * CF(o[1], 0.9, o[2]), RGB(24, 22, 20), MAT.SmoothPlastic, CYL) end
+end
+local function highwayOfDeath(f)
+  local hf = folder("HighwayOfDeath", f)
+  local R = drng(1991)
+  local road
+  for _, r in ipairs(Map.ROADS or {}) do if r.name == "80号公路" then road = r end end
+  if not road then return end
+  local smoke = 0
+  local last = nil
+  for i = 1, #road.x - 1 do
+    local x, z = road.x[i], road.z[i]
+    if z < -2600 and z > -8600 and (not last or (x - last[1]) ^ 2 + (z - last[2]) ^ 2 > 34 ^ 2) and R() < 0.55 then
+      local dx, dz = road.x[i + 1] - x, road.z[i + 1] - z
+      local l = math.max(0.01, math.sqrt(dx * dx + dz * dz))
+      local ux, uz = dx / l, dz / l
+      local off = (R() - 0.5) * 34   -- 路面（22 宽）上、路肩上都有
+      local px, pz = x - uz * off, z + ux * off
+      local rot = math.atan2(-ux, -uz) + (R() - 0.5) * 1.2
+      local r = R()
+      if r < 0.16 then tankWreck(hf, px, pz, rot, false)
+      elseif r < 0.5 then
+        if smoke < 6 and R() < 0.5 then truck(hf, px, pz, rot, "wreck") smoke += 1 else carWreck(hf, px, pz, rot, RGB(60, 52, 44)) end
+      else carWreck(hf, px, pz, rot, ({ RGB(70, 60, 50), RGB(54, 50, 46), RGB(84, 70, 54), RGB(46, 42, 40) })[1 + math.floor(R() * 4)]) end
+      last = { x, z }
+    end
+  end
+end
+
+-- 游牧民的黑帐篷：西干河边几处（沙漠里有人住的痕迹）
+local function bedouin(f)
+  local R = drng(777)
+  for _, c in ipairs({ { -7400, -1700 }, { -8900, 6900 }, { 9200, -2600 } }) do
+    for k = 0, 2 do
+      local x, z = c[1] + (R() - 0.5) * 60, c[2] + (R() - 0.5) * 60
+      if Map.slope(x, z) < 0.2 then tent(f, x, z, R() * 3, RGB(40, 34, 30)) end
+    end
+  end
+end
+
+function World.desert(f)
+  local df = folder("Desert", f)
+  local ok, err
+  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "前进基地", redBase }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin } }) do
+    ok, err = pcall(s[2], df)
+    if not ok then warn("[沙漠] " .. s[1] .. "出错：" .. tostring(err)) end
+  end
+  ok, err = pcall(shelters, df, Map.AIRFIELD)
+  if not ok then warn("[沙漠] 加固机库出错：" .. tostring(err)) end
+end
+
 function World.details(f)
   local ef = folder("Details", f)
   local bf = folder("Buildings", f)
@@ -1895,18 +2345,26 @@ function World.build(G)
   World.lighting()
   local root = folder("Map")
   local deco = folder("Scenery", root)
-  local n, chunks = World.terrain(function(p) G.worldProgress = p end)
+  local n, chunks = World.terrain(function(p) G.worldProgress = p end, G)
   G.terrainVoxels, G.terrainChunks = n, chunks
   -- 远海改在客户端跟着镜头铺（Scenery.lua）：地图放大以后服务器这一圈不够远，飞机飞出去看得到海的尽头
   G.try("机场", airfield, deco, Map.AIRFIELD, "def")
-  G.try("港口镇", portTown, deco)
-  G.try("指挥所", commandPost, deco)
-  G.try("营地", camp, deco)
-  G.try("灯塔", lighthouse, deco)
-  G.try("岸防炮台", battery, deco)
-  G.try("攻方机场岛", attackerAirfield, deco)
-  G.try("海滩标杆", World.beaches, deco)
-  G.try("细节", World.details, deco)
+  if Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
+    G.try("指挥所", commandPost, deco)
+    G.try("营地", camp, deco)
+    G.try("攻方前进机场", attackerAirfield, deco)
+    G.try("沙漠", World.desert, deco)
+    G.try("细节", World.details, deco)
+  else
+    G.try("港口镇", portTown, deco)
+    G.try("指挥所", commandPost, deco)
+    G.try("营地", camp, deco)
+    G.try("灯塔", lighthouse, deco)
+    G.try("岸防炮台", battery, deco)
+    G.try("攻方机场岛", attackerAirfield, deco)
+    G.try("海滩标杆", World.beaches, deco)
+    G.try("细节", World.details, deco)
+  end
   G.pointModels = World.points(folder("Points", root))
   G.decks = World.fleet(folder("Fleet", root))
   G.worldReady = true

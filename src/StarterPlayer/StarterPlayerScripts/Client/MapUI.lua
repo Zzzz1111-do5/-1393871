@@ -15,6 +15,7 @@ function MapUI.init(G)
   -- 地图范围（世界坐标）：所有岛和舰队都在里面
   local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
   local X0, X1, Z0, Z1 = -3000 * K, 3000 * K, -2500 * K, 3600 * K
+  if Map.UIBOX then X0, X1, Z0, Z1 = Map.UIBOX.x0, Map.UIBOX.x1, Map.UIBOX.z0, Map.UIBOX.z1 end   -- 沙漠图：战区那一片（整张图太大，看不清据点）
   local SPAN = math.max(X1 - X0, Z1 - Z0)
   local function toUV(x, z) return (x - X0) / SPAN, (z - Z0) / SPAN end
   G.mapUV = toUV
@@ -60,6 +61,13 @@ function MapUI.init(G)
 
   -- 陆地：按高度分几档颜色
   local function band(y)
+    if Map.DESERT then   -- 沙漠：盐滩、平原、沙丘 / 沙墙、台地、方山顶
+      if y < 10 then return 1 end
+      if y < 20 then return 2 end
+      if y < 50 then return 3 end
+      if y < 90 then return 4 end
+      return 5
+    end
     if y <= 0.3 then return nil end
     if y < 4 then return 1 end
     if y < 40 then return 2 end
@@ -73,7 +81,13 @@ function MapUI.init(G)
   -- 右上的小地图（用户 11-19：不要黑绿，改成正常的；再要暗淡、拟真）：深蓝的海，暗沙色海滩，暗绿的低地、山坡，高处灰褐；路是土色
   --   （有 EditableImage 时上面盖一张 MapPaint 画的卫星图，这些色块只在用不了时看得到）
   local MINI = { RGB(146, 136, 110), RGB(76, 90, 58), RGB(68, 82, 54), RGB(92, 94, 82), RGB(100, 98, 92), RGB(60, 74, 48) }
-  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
+  local SEA = { map = RGB(14, 24, 32), radar = RGB(3, 14, 8), mini = RGB(22, 36, 50) }
+  if Map.DESERT then   -- 沙漠图的色块：暗沙色（盐滩发白、台地灰、方山顶偏红褐）
+    BAND = { RGB(150, 146, 132), RGB(128, 110, 84), RGB(140, 118, 86), RGB(124, 116, 98), RGB(116, 88, 70), RGB(128, 110, 84) }
+    MINI = { RGB(160, 156, 142), RGB(138, 118, 90), RGB(150, 126, 92), RGB(134, 126, 106), RGB(126, 96, 76), RGB(138, 118, 90) }
+    SEA.map, SEA.mini = RGB(128, 110, 84), RGB(138, 118, 90)
+    root.BackgroundColor3 = SEA.map
+  end   -- 海是地图本身的颜色，不跟着界面改绿（用户 11-19：小地图不要黑绿、要拟真）
   local theme = "map"
   local landBand = {}   -- 陆地块 → 档（换配色用）
   local roads = {}
