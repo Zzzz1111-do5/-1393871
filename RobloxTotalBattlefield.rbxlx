@@ -34875,8 +34875,23 @@ function Interior.init(G)
 
   ---------------------------------------------------------------- 建 / 拆
 
+  -- 自己这辆车的外模型（View 摆的那套）：坐在车里（乘员位）时不画（用户 11-22：「坦克内部屏幕会被挡住」——
+  --   外模型的车体、炮塔块和内饰叠在一起，驾驶员眼前 4 厘米就是外模型车体的面，车长的显示屏前面是外模型的炮塔件）。
+  --   看观瞄设备时（ownHide）也是它；车外、导演镜头、下车放回来
+  local function extHide(c, on)
+    if not c or c.extHidden == on then return end
+    local v = G.viewById and G.viewById(c.id)
+    if not v or not v.M then return end
+    for _, it in ipairs(v.M.parts) do
+      local p = it[1]
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
+    end
+    c.extHidden = on
+  end
+
   local function teardown()
     if optic then exitOptic(nil) end
+    if cur and not cur.spec.air then extHide(cur, false) end
     if cur and cur.spec.air then
       local v = G.viewById and G.viewById(cur.id)
       if cur.pilotsHidden and v and v.M then pcall(AM.setPilots, v.M, true) end
@@ -35702,6 +35717,7 @@ function Interior.init(G)
     if cur and cur.id ~= st.id then teardown() end
     if mode == nil then
       if cur and cur.model.Parent then cur.model.Parent = nil end
+      if cur then extHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       return
     end
@@ -35723,6 +35739,7 @@ function Interior.init(G)
       if enterOptic(cur, "primary") and optic then optic.quick = true end
     end
     local c = cur
+    extHide(c, mode == "seat" or optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画；导演镜头：画
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -36164,14 +36181,7 @@ function Interior.init(G)
     end
     return CFrame.lookAt(p, p + dir, up)
   end
-  local function ownHide(c, on)
-    local v = G.viewById and G.viewById(c.id)
-    if not v or not v.M then return end
-    for _, it in ipairs(v.M.parts) do
-      local p = it[1]
-      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
-    end
-  end
+  local function ownHide(c, on) extHide(c, on) end
   exitOptic = function(c)
     if not optic then return end
     local o = optic.o
@@ -38041,7 +38051,9 @@ function Defs.ztz99a(b, ctx)
   b:led(T, CF(-0.55, 0.33, -0.74), RGB(80, 255, 120), 0.014, "gpsEye")
   b:placard(T, 0.14, 0.04, CF(-0.62, 0.56, -0.755) * ANG(0, PI, 0), "主瞄准镜", { bg = C.black, fg = C.white })
   b:screen(T, 0.20, 0.15, look(V(-0.86, 0.22, -0.80), gEye + V(0, -0.1, 0.1)), "fcscn", { keys = { top = { "主菜单", "弹种", "测距", "校炮", "激光" }, bottom = { "极性", "倍率", "火控", "自检", "复位" } }, lightK = 0.28 })   -- 火控计算机面板
-  b:screen(T, 0.18, 0.13, look(V(-0.30, 0.52, -0.92), gEye), "gunsight", { lightK = 0.25 })                          -- 炮长显示器（热像）
+  -- 炮长显示器（热像）：原来在 (-0.30, 0.52)，跑到了炮闩左边那块防护板（x = -0.38，顶到 0.55 以上）里边，炮长隔着防护板看不见
+  --   （用户 11-22：屏幕会被挡住）——挪到炮长这边、主瞄准镜目镜下面（tools/mock/interior_occ.lua 查：眼睛到屏幕中间没有东西）
+  b:screen(T, 0.18, 0.13, look(V(-0.50, 0.10, -0.92), gEye), "gunsight", { lightK = 0.25 })
   b:tube(T, V(-0.55, FY + 0.40, -0.66), V(-0.55, -0.15, -0.68), 0.06, C.gray, MAT.Metal)
   bx(T, 0.30, 0.09, 0.12, -0.55, -0.10, -0.70, RGB(46, 48, 50))
   b:group("gch", T, CF(-0.55, -0.08, -0.70))
@@ -38058,7 +38070,8 @@ function Defs.ztz99a(b, ctx)
   b:cylZ(T, 0.07, 0.06, CF(0.56, 0.52, -0.30), C.rubber, MAT.Fabric)
   b:led(T, CF(0.56, 0.52, -0.26), RGB(80, 255, 120), 0.014, "gpsEye")
   b:screen(T, 0.26, 0.19, look(V(0.82, 0.30, -0.42), cEye), "cnmap", { keys = { top = { "地图", "消息", "态势", "导航", "坐标" }, bottom = { "放大", "缩小", "标绘", "亮+", "亮-" } }, lightColor = RGB(150, 190, 230), lightK = 0.35 })   -- 综合显示终端
-  b:screen(T, 0.18, 0.13, look(V(0.36, 0.28, -0.46), cEye), "citvcn", { keys = { top = { "白热", "黑热", "宽视场", "窄视场" }, bottom = { "手动", "扫描", "随炮", "指示" } }, lightK = 0.25 })                                    -- 周视镜热像
+  -- 周视镜热像：原来 x = 0.36，在炮闩右边防护板（x = 0.38）里边，车长隔着防护板看（用户 11-22：屏幕会被挡住）——挪到车长这边
+  b:screen(T, 0.18, 0.13, look(V(0.50, 0.28, -0.46), cEye), "citvcn", { keys = { top = { "白热", "黑热", "宽视场", "窄视场" }, bottom = { "手动", "扫描", "随炮", "指示" } }, lightK = 0.25 })
   b:group("cch", T, CF(0.86, 0.02, -0.18))
   b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
   b:tube(T, V(0.86, -0.40, -0.18), V(0.86, 0.0, -0.18), 0.04, C.gray, MAT.Metal)

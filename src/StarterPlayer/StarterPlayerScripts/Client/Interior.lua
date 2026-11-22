@@ -110,8 +110,23 @@ function Interior.init(G)
 
   ---------------------------------------------------------------- 建 / 拆
 
+  -- 自己这辆车的外模型（View 摆的那套）：坐在车里（乘员位）时不画（用户 11-22：「坦克内部屏幕会被挡住」——
+  --   外模型的车体、炮塔块和内饰叠在一起，驾驶员眼前 4 厘米就是外模型车体的面，车长的显示屏前面是外模型的炮塔件）。
+  --   看观瞄设备时（ownHide）也是它；车外、导演镜头、下车放回来
+  local function extHide(c, on)
+    if not c or c.extHidden == on then return end
+    local v = G.viewById and G.viewById(c.id)
+    if not v or not v.M then return end
+    for _, it in ipairs(v.M.parts) do
+      local p = it[1]
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
+    end
+    c.extHidden = on
+  end
+
   local function teardown()
     if optic then exitOptic(nil) end
+    if cur and not cur.spec.air then extHide(cur, false) end
     if cur and cur.spec.air then
       local v = G.viewById and G.viewById(cur.id)
       if cur.pilotsHidden and v and v.M then pcall(AM.setPilots, v.M, true) end
@@ -937,6 +952,7 @@ function Interior.init(G)
     if cur and cur.id ~= st.id then teardown() end
     if mode == nil then
       if cur and cur.model.Parent then cur.model.Parent = nil end
+      if cur then extHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       return
     end
@@ -958,6 +974,7 @@ function Interior.init(G)
       if enterOptic(cur, "primary") and optic then optic.quick = true end
     end
     local c = cur
+    extHide(c, mode == "seat" or optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画；导演镜头：画
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -1399,14 +1416,7 @@ function Interior.init(G)
     end
     return CFrame.lookAt(p, p + dir, up)
   end
-  local function ownHide(c, on)
-    local v = G.viewById and G.viewById(c.id)
-    if not v or not v.M then return end
-    for _, it in ipairs(v.M.parts) do
-      local p = it[1]
-      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
-    end
-  end
+  local function ownHide(c, on) extHide(c, on) end
   exitOptic = function(c)
     if not optic then return end
     local o = optic.o

@@ -3,6 +3,14 @@
 --   python3 tools/mock/run.py tools/mock/bots.lua [分钟，默认 6] [v]
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R = T.R
+-- 换随机种子（看结果是不是只是随机数的运气）：seed=<数>
+do
+  local sd = tonumber(TEST_ARGS:match("seed=(%d+)") or "")
+  if sd then
+    local s = sd
+    R.rng = function() s = (s * 16807) % 2147483647 return s / 2147483647 end
+  end
+end
 local check = T.check
 local Enum = T.Enum
 local minutes = tonumber(TEST_ARGS:match("%d+%.?%d*") or "") or 6
