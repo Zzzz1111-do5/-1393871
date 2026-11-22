@@ -8,7 +8,8 @@
 //     frames [镜头号,…]                 逐帧渲染（每个镜头一个目录，已有的帧跳过：中断了接着渲）；PART=i/n 只渲第 i 份（几个进程分头渲）
 //     audio                             配乐、音效离线合成 → audio.wav
 //     edit                              各镜头的帧 + 声音 → film.mp4
-//   环境变量：W、H（画面大小，默认 1920 × 1080；宽银幕黑边在画面里）、SS（内部渲染倍率，默认 1）、FPS（默认 24）
+//   环境变量：W、H（画面大小，默认 1920 × 1080；宽银幕黑边在画面里）、SS（内部渲染倍率，默认 1）、FPS（默认 24）、
+//     CUT（film 微电影 / promo 时代广场宣传片，promo.js：整幅 16:9、英文字幕、3 分钟）、ASP（画面宽高比，0 = 按剪辑版本）
 'use strict';
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
@@ -41,7 +42,7 @@ async function open(b, port) {
   const p = await b.newPage({ viewport: { width: W, height: H } });
   p.on('pageerror', e => console.log('页面出错：', e.message));
   p.on('console', m => { if (m.type() === 'error' || m.type() === 'warning' || /^\[film\]/.test(m.text())) console.log('[页面]', m.text()); });
-  await p.goto(`http://127.0.0.1:${port}/repo/tools/trailer/film/index.html?w=${W}&h=${H}&fps=${FPS}&ss=${process.env.SS || 1}`);
+  await p.goto(`http://127.0.0.1:${port}/repo/tools/trailer/film/index.html?w=${W}&h=${H}&fps=${FPS}&ss=${process.env.SS || 1}&cut=${process.env.CUT || 'film'}&asp=${process.env.ASP || 0}`);
   await p.waitForFunction(() => window.FILM && window.FILM.ready, null, { timeout: 600000 });
   return p;
 }
