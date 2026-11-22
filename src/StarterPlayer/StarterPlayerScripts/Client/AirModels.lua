@@ -50,6 +50,8 @@ local SURF_F = {
   flap = function(c) return (c.flap or 0) * rad(30) end,
   flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) + (c.brk or 0) * rad(22) end,   -- 襟副翼：放襟翼 + 差动滚转；减速时往下
   elevon = function(c, s) return math.clamp(-(c.pit or 0) * rad(15) - s * (c.rol or 0) * rad(15), -rad(25), rad(25)) end,   -- 升降副翼：抬头时后缘往上
+  -- 无尾机最外一段（歼-36）：升降副翼兼管偏航——右偏时右边后缘往上、左边往下（差动阻力）；减速时两边一起往上
+  elvy = function(c, s) return math.clamp(-(c.pit or 0) * rad(12) - s * (c.rol or 0) * rad(15) - s * (c.yaw or 0) * rad(16) - (c.brk or 0) * rad(20), -rad(30), rad(30)) end,
   stab = function(c, s) return -(c.pit or 0) * rad(18) - s * (c.rol or 0) * rad(6) end,          -- 全动平尾：带一点差动帮滚转
   elev = function(c) return -(c.pit or 0) * rad(20) end,
   can = function(c) return (c.pit or 0) * rad(16) end,                                          -- 鸭翼：抬头时前缘往上（后缘往下）

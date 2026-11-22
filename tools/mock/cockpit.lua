@@ -14,6 +14,23 @@ local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local AIR = TEST_ARGS:match("air=(%w+)") or "j20"
 local US = { f35 = true, f22 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
 local side = US[AIR] and "def" or "atk"
+-- imp=1：假装 Studio 里导入了这型飞机的原模型（照 ImportedAir 元数据摆一套同名的 MeshPart，开服时收进 Imported），走原模型那条路
+local IMP = nil
+if TEST_ARGS:match("imp=1") then
+  local f = assert(io.open(SRC_DIR .. "/ReplicatedStorage/ImportedAir.lua"))
+  local IA = load(f:read("a"))()
+  f:close()
+  IMP = IA.alias[AIR] or AIR
+  local info = IA.m[IMP]
+  assert(info, "ImportedAir 里没有 " .. tostring(IMP))
+  for name, p in pairs(info.parts) do
+    local mp = R.Instance.new("MeshPart")
+    mp.Name = "A_" .. IMP .. "__" .. name
+    mp.Size = V3(p.s[1], p.s[2], p.s[3])
+    mp.CFrame = T.CF(900 + p.c[1], 200 + p.c[2], 900 + p.c[3])
+    mp.Parent = R.services.Workspace
+  end
+end
 
 local G = T.boot()
 G.fortsHold = true

@@ -1124,6 +1124,8 @@ end
 Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+-- 歼-36：大尺寸全景触摸屏（同歼-35 那套）、侧杆，没有平显（头盔显示）——没有公开的座舱照片，照第六代机的说法
+Defs.j36 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = false, stick = "side", cn = true, goldGlass = true }) end
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
 -- 歼-11B：苏-27 那种单座座舱（大圆形仪表板换成三块下视显示器、平显框高）

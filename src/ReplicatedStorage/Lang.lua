@@ -145,7 +145,7 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
-  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
   a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
   t055 = { "055 型驱逐舰", "Type 055 Destroyer" }, t054a = { "054A 型护卫舰", "Type 054A Frigate" }, t022 = { "022 型导弹艇", "Type 022 Missile Boat" },

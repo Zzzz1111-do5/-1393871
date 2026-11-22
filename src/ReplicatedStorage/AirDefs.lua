@@ -310,6 +310,24 @@ D.j10 = { kind = "jet", cat = "jet", L = 47, W = 28, H = 13, gearH = 6.4, hp = 6
     preset("ag", { outer = "pl10", mid = "ls6", inner = "kd88", body = "pl12", ctr = "ls6" }),
     preset("sead", { outer = "pl10", mid = "yj91", inner = "pl15", body = "pl12", ctr = "pl15" }),
     preset("strike", { outer = "pl10", mid = "b250", inner = "b250", body = "pl12", ctr = "b250" }) } }
+-- 歼-36：成飞的三发无尾「双三角 / 菱形翼」第六代战斗机（2024 年 12 月首飞）；原模型 positivevubez4eva 的「J36 v2」（CC-BY，models/air/j36.glb）：
+--   全长 23 米、翼展 24 米（模型）、全高约 4.2 米；没有垂尾——后缘三段升降副翼（最外一段兼管偏航）；两侧 DSI 进气道加机背一个进气口、
+--   三个喷口藏在机背的槽里；主弹舱 7.2 米长（两扇门）、两边侧弹舱各一扇门；小车式主起落架（一边前后两个轮）往前收、双轮前起落架往后收；只挂内弹舱
+D.j36 = { kind = "jet", cat = "jet", L = 64, W = 68, H = 12, gearH = 7.0, hp = 820, stall = 100, vMil = 360, vAB = 480, accel = 50, abAccel = 36,
+  pitch = 40, roll = 170, yaw = 14, g = 8.5, flares = 40, gun = nil, ab = true, stealth = true, flyingWing = true,
+  fus = { len = 62, w = 8.4, h = 5.0, y = 0 }, nose = 12, canopy = { z = -18.8, len = 7.7, w = 4.8, h = 2.0, y = 2.8 },
+  intake = "dsi", intakeZ = -10, intakeW = 2.6,
+  wing = { xr = 8.4, zr0 = -14.7, zr1 = 30.8, xt = 34, zt0 = 17.1, zt1 = 22.1, y = 0 },
+  eng = { { x = 4.5, y = 0.4, z = 19.8, r = 1.2 }, { x = -4.5, y = 0.4, z = 19.8, r = 1.2 }, { x = 0, y = 0.4, z = 19.8, r = 1.2 } },
+  gear = { nose = { z = -17.1, len = 5.6 }, main = { x = 7.3, z = 8.1, len = 5.2, bogie = true }, r = 1.2 },
+  bays = { main = { z0 = -11.4, z1 = 8.8, w = 6.6 }, sideR = { x = 4.5, z0 = -5.0, z1 = 8.8, w = 2.4 } },
+  st = mirror({
+    { name = "bayM1", pos = V(1.4, -1.7, -5.0), bay = "main", opts = { "pl15", "pl12", "ls6", "lt2" } },
+    { name = "bayM2", pos = V(2.4, -1.9, 3.5), bay = "main", opts = { "pl15", "pl12", "ls6", "kd88" } },
+    { name = "bayS", pos = V(4.5, -1.7, 1.8), bay = "sideR", opts = { "pl10" } },
+  }),
+  presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
+    preset("strike", { bayM1 = "lt2", bayM2 = "kd88", bayS = "pl10" }) } }
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 1150, stall = 85, vMil = 240, accel = 22, pitch = 16, roll = 50, yaw = 10, g = 3,
   flares = 60, bomber = true,
@@ -588,7 +606,7 @@ end
 
 -- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
-local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
   gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
 -- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；

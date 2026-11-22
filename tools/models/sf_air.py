@@ -70,6 +70,45 @@ SPEC = {
         'surf': [{'g': 'Rud', 'k': 'rud', 't': 'te', 'sp': 'z', 'mir': False, 'r': [2.45, 4.35], 'x': [-9.5, -6.0], 'w': [-0.15, 0.15], 'c': 0.9}],
         'noz': [[-7.89, 0.0, 1.16, 0.53]],
     },
+    # 歼-36（positivevubez4eva 的 J36 v2，CC-BY）：在模拟飞行沙盒里用零件拼的，导出时按材质合并——节点名都是 Object_N，活动部件全靠连通块 / 切法挑。
+    #   Object_2～17 是字（机徽、编号、座舱仪表上的字，十万个三角形）和一层看不见的座舱盖（DoNothing 材质，不透明度 0）：去掉（两边阵营是虚构的）；
+    #   弹舱里装着导弹（细长的连通块）：去掉，游戏按挂载另画；起落架放着（小车式主起落架一边前后两个轮、双轮前起落架），开着的舱门收起一半时藏起来；
+    #   三台发动机的喷口在机背的槽里；无尾——后缘三段升降副翼，最外一段兼管偏航
+    'j36': {
+        'ids': ['j36'],
+        'credit': credit('歼-36', 'J36, J-36, J 36 ,v2 Chengdu Aircraft Corporation', 'positivevubez4eva', '0f7f57092bbd438fb788302e47279fc0',
+                         'j36-j-36-j-36-v2-chengdu-aircraft-corporation'),
+        'fwd': '+z', 'up': '+y', 'len': 22.98, 'pitch': 0.57,   # 前轮比主轮低 0.09 米：摆平让三个轮子一起着地
+        'drop': [r'^Object_([2-9]|1[0-7])$'],
+        'comp': [
+            # 前起落架两个轮子中间一个 12 个三角形的方块（比轮子还低 8 厘米）
+            {'node': r'^Object_', 'sel': {'x': [6.0, 6.2], 'ay': [0, 0.02], 'zlomax': 2.65}, 'drop': True},
+            # 弹舱里的导弹（主弹舱一枚 6 米多长的远程弹、两排中距弹，侧弹舱两层近距弹）：横截面都不到 0.6 米
+            {'node': r'^Object_', 'sel': {'x': [-3.3, 3.8], 'ay': [0, 2.1], 'z': [4.25, 5.3], 'wmax': 0.6}, 'drop': True},
+            # 主起落架外侧斜挂着的舱门（连下沿那条边）、前起落架两边竖着的舱门
+            {'node': r'^Object_', 'sel': {'x': [-2.4, -0.8], 'ay': [3.2, 3.9], 'z': [3.9, 4.9]}, 'g': 'GDoorM', 'k': 'gdoor', 'split': 'y'},
+            {'node': r'^Object_', 'sel': {'x': [4.2, 6.6], 'ay': [0.35, 0.5], 'zmax': 4.3}, 'g': 'GDoorN', 'k': 'gdoor', 'split': 'y'},
+            # 起落架：机腹以下的支柱、轮子、螺栓（主起落架在 x −4～−2、|y| 2～3；前起落架 x 5.6～6.7）
+            {'node': r'^Object_', 'sel': {'x': [-4.2, -1.7], 'ay': [1.95, 2.95], 'zlomax': 4.05}, 'gear': True},
+            {'node': r'^Object_', 'sel': {'x': [5.6, 6.7], 'ay': [0, 0.3], 'zlomax': 4.12}, 'gear': True},
+        ],
+        # 主起落架往前收进 4 米长的轮舱，前起落架往后收
+        'gear_mode': {'nx': 2.0, 'n': 'a', 'm': 'f', 'hi': 0.99},
+        # 下面这些是网页版坐标（地面 z = 0，轮子最低点）：机翼在 2.5～2.9 米高、后缘一级一级往外前移；comp 的 sel 是原模型坐标（z 没减地面）
+        'surf': [
+            {'g': 'ElvI', 'k': 'elevon', 't': 'te', 'r': [3.7, 6.3], 'x': [-11.6, -8.0], 'w': [2.35, 3.4], 'c': 1.0},
+            {'g': 'ElvM', 'k': 'elevon', 't': 'te', 'r': [6.5, 9.4], 'x': [-11.0, -7.0], 'w': [2.35, 3.2], 'c': 1.0},
+            {'g': 'ElvO', 'k': 'elvy', 't': 'te', 'r': [9.6, 11.8], 'x': [-10.0, -6.0], 'w': [2.35, 3.2], 'c': 0.8},
+            # 主弹舱两扇门（铰链在外侧）、两边侧弹舱各一扇
+            {'g': 'BayML', 'k': 'bay', 't': 'bay', 'x': [-3.15, 4.08], 'y': [0.0, 1.18], 'zc': 1.70, 'hy': 1.17, 'A': 1.7},
+            {'g': 'BayMR', 'k': 'bay', 't': 'bay', 'x': [-3.15, 4.08], 'y': [-1.18, 0.0], 'zc': 1.70, 'hy': -1.17, 'A': 1.7},
+            {'g': 'BaySL', 'k': 'bayS', 't': 'bay', 'x': [-3.15, 1.75], 'y': [1.18, 2.05], 'zc': 1.70, 'hy': 2.05, 'A': 1.7},
+            {'g': 'BaySR', 'k': 'bayS', 't': 'bay', 'x': [-3.15, 1.75], 'y': [-2.05, -1.18], 'zc': 1.70, 'hy': -2.05, 'A': 1.7},
+            # 座舱盖：玻璃（PartTransparentZWrite 材质），后铰链
+            {'g': 'Canopy', 'k': 'canopy', 't': 'can', 'mats': ['PartTransparentZWriteClone'], 'x': [5.2, 8.2], 'hx': 5.35, 'A': 0.8},
+        ],
+        'noz': [[-7.07, 1.61, 2.64, 0.42], [-7.07, 0.0, 2.64, 0.42]],
+    },
 }
 
 
@@ -273,6 +312,10 @@ def inbox(lo, hi, sel):
         return False
     if 'zmax' in sel and not (hi[2] < sel['zmax']):
         return False
+    if 'zlomax' in sel and not (lo[2] < sel['zlomax']):   # 最低点低于它（伸到机腹以下的起落架）
+        return False
+    if 'wmax' in sel and not (max(hi[1] - lo[1], hi[2] - lo[2]) < sel['wmax']):   # 横截面（左右、上下）都小于它：细长的导弹
+        return False
     return True
 
 
@@ -309,6 +352,9 @@ def build(key, path):
                         continue
                     rest[m] = False
                     if r.get('drop'):
+                        break
+                    if r.get('gear'):   # 起落架（pi 0：air_anim.GEAR 按连通块分前 / 左 / 右）
+                        groups.setdefault((p['mat'], 0), []).append((P, N, p['UV'], p['T'][m]))
                         break
                     g = r['g'] + (('L' if (lo_[1] + hi_[1]) / 2 >= 0 else 'R') if r.get('split') == 'y' else '')
                     if g not in pidx:
@@ -433,6 +479,8 @@ def hinge(g, spec, Q):
     k = spec[1]
     extra = spec[2] if len(spec) > 2 else {}
     side = 0 if abs(Q[:, 1].mean()) < 0.15 else (1 if Q[:, 1].mean() < 0 else -1)   # y < 0 是右边
+    if k == 'gdoor':   # 原模型里开着的起落架舱门：不转，起落架收到一半藏起来
+        return {'k': 'gdoor', 's': 0, 'a': [0.0, 0.0, 0.0], 'b': [1.0, 0.0, 0.0], 'sg': 1}
     if k in ('rud', 'fin'):
         lo_, hi_ = Q[:, 2].min(), Q[:, 2].max()
         e0 = Q[Q[:, 2] < lo_ + 0.15 * (hi_ - lo_)]
