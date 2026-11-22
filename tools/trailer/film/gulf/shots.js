@@ -165,8 +165,13 @@ async function shotNvgAAA(env, add) {
 // ———————————————————————————— 第一幕：定点清除防空阵地（夜） ————————————————————————————
 // 歼-35 编队（用户 11-22：为什么飞那么低、那么近，不都是远程打击么）：9000 米高空、内埋弹舱隐身突防，
 //   在阵地外 46 公里投雷石-6（滑翔增程制导炸弹，高空投放射程 60 公里上下），投完压坡度掉头——整个过程离阵地远远的。
-//   片子里的距离按比例缩了（地形只铺到镜头外 15 公里左右）：屏幕上的读数照真实的写
-const JET = { v: 640, alt: 21000 };   // 速度（格 / 秒，约 230 米 / 秒）、高度（离地格数，7500 米上下）
+//   距离、高度都是真的（1 米 = 2.8 格）：飞机在地图外头的沙漠上空，地形网格铺到镜头外 10 万格、再外面一圈平沙地，看得到天边
+const MPS = 2.8;   // 1 米几格
+const JET = { v: 640, alt: 9000 * MPS };   // 速度（格 / 秒，约 230 米 / 秒）、高度（离地 9000 米）
+const UIN = V3(-0.63, 0, 0.777).normalize();   // 从阵地看，编队在哪个方向（西南偏南）
+const RREL = Math.sqrt(46.2 ** 2 - 9 ** 2) * 1000 * MPS;   // 投弹点离阵地的水平距离（吊舱读数斜距 46.2 公里、高 9 公里）
+const samXZ = d => [SAM.x + UIN.x * d, SAM.z + UIN.z * d];
+const samOff = (d, lift = 0) => { const [x, z] = samXZ(d); return V3(x, heightAt(x, z) + lift, z); };
 let SAMKIT = null;   // 阵地（几个镜头共用一份位置）
 async function samKit(env, add) {
   const L = [];
@@ -198,8 +203,8 @@ async function shotJets(env, add) {
   const { fx } = env;
   const J = [];
   for (let i = 0; i < 4; i++) { const A = await plane('j31', env); add(A.root); A.gearDown && A.gearDown(false); afterburners(A, fx, () => 0.06, 0.05); J.push(A); }
-  // 往东北飞向阵地，压一点坡度慢慢修正航向（8 度坡度的协调转弯）
-  const p0 = V3(SAM.x - 21000, 0, SAM.z + 15000); p0.y = heightAt(p0.x, p0.z) + JET.alt;
+  // 往东北飞向阵地（离投弹点还有 8 公里，离阵地 54 公里），压一点坡度慢慢修正航向（8 度坡度的协调转弯）
+  const p0 = samOff(RREL + 22000, JET.alt);
   const hd0 = Math.atan2(SAM.x - p0.x, -(SAM.z - p0.z)) - 0.06;
   const OFF = [[0, 0, 0], [-150, -12, 110], [160, 10, 120], [310, 4, 230]];   // 长机、左僚、右僚、右后（疏开）
   const paths = OFF.map(o => turnPath(p0, hd0, JET.v, 0.14, 0, o));
@@ -271,10 +276,10 @@ async function shotEO35(env, add) {
   const cv = V3();
   return {
     update(t) {
-      // 光电瞄准系统从西南方远远地斜着往下看（真实 46 公里外、9000 米高；片子里按比例缩），长焦慢慢推近
-      const c = V3(SAM.x - 19000, heightAt(SAM.x, SAM.z) + 9500, SAM.z + 24000);
+      // 光电瞄准系统从西南方 46 公里外、9000 米高斜着往下看（真实的距离、角度：俯角 11 度），长焦慢慢推近
+      const c = samOff(RREL, JET.alt);
       const look = V3(SAM.x + Math.sin(t * 0.3) * 6, heightAt(SAM.x, SAM.z), SAM.z - 30);
-      cam(env, c, look, lerp(0.62, 0.44, ease(t / 4)));
+      cam(env, c, look, lerp(0.154, 0.109, ease(t / 4)));
       env.camera.updateMatrixWorld(true);
       const band = env.post.ah / env.H;
       boxes = K.targets.map((p, i) => {
@@ -325,19 +330,22 @@ async function shotJetsAway(env, add) {
   const { fx } = env;
   const K = await samKit(env, add);
   K.targets.forEach((p, i) => fx.add(bigFire({ p: p.clone().add(V3(0, -2, 0)), s: 10, t0: -3 - i, seed: 340 + i, dark: 0.08 })));
-  fx.add((t, f) => {   // 远处看：阵地上一团团火光（单个火太小，远了看不见，画一圈光晕）
+  const SAMg = V3(SAM.x, heightAt(SAM.x, SAM.z), SAM.z);
+  fx.add((t, f) => {   // 46 公里外看：阵地上一个个火点（一辆车的火远了不到一个像素，按角度给光晕最小尺寸），上面一大团被火映红的烟
     K.targets.forEach((p, i) => {
       const k = 0.85 + 0.15 * Math.sin(t * 7 + i * 2.1) * Math.sin(t * 3.3 + i);
-      f.addGlow(p.clone().add(V3(0, 6, 0)), 70 + i * 6, new THREE.Color(1, 0.55, 0.22), 2.2 * k, 1, 0.0004);
+      f.addGlow(p.clone().add(V3(0, 6, 0)), 70 + i * 6, new THREE.Color(1, 0.55, 0.22), 3.6 * k, 1, 0.0034);
     });
+    f.addGlow(SAMg.clone().add(V3(0, 500, 0)), 3200, new THREE.Color(1, 0.42, 0.18), 0.55 * (0.9 + 0.1 * Math.sin(t * 2.3)), 0, 0);
+    f.addGlow(SAMg.clone().add(V3(0, 120, 0)), 900, new THREE.Color(1, 0.5, 0.2), 0.9, 0, 0);
   });
   const R = rng(808);
-  const flashes = [];
-  for (let i = 0; i < 6; i++) flashes.push({ p: V3(SAM.x - 6000 + R() * 26000, 30 + R() * 60, SAM.z - 9000 - R() * 9000), t: 0.3 + i * 0.45 + R() * 0.2, s: 0.5 + R() * 0.6 });
+  const flashes = [];   // 阵地后面更远的地方，别的机群在打：天边一下下闪
+  for (let i = 0; i < 6; i++) flashes.push({ p: V3(SAM.x - 6000 + R() * 26000, 30 + R() * 60, SAM.z - 9000 - R() * 9000), t: 0.3 + i * 0.45 + R() * 0.2, s: 0.8 + R() * 0.8 });
   fx.add(skyFlashes({ list: flashes }));
   const J = [];
   for (let i = 0; i < 4; i++) { const A = await plane('j31', env); add(A.root); A.gearDown && A.gearDown(false); afterburners(A, fx, () => 0.08, 0.05); J.push(A); }
-  const p0 = V3(SAM.x - 17000, 0, SAM.z + 21000); p0.y = heightAt(p0.x, p0.z) + JET.alt;
+  const p0 = samOff(RREL, JET.alt);   // 投弹点：离阵地 46 公里
   const hdT = Math.atan2(SAM.x - p0.x, -(SAM.z - p0.z));   // 对着阵地的航向
   const OFF = [[0, 0, 0], [-140, -10, 100], [150, 8, 110], [300, 2, 220]];
   const paths = OFF.map(o => turnPath(p0, hdT - 0.45, JET.v, -0.96, 0, o));   // 已经转开 26 度，接着往左转
@@ -346,9 +354,10 @@ async function shotJetsAway(env, add) {
       J.forEach((A, i) => flyAero(A, paths[i], t));
       const L = paths[0](t), Ln = paths[0](t + 0.1).sub(L).normalize();
       const side = new THREE.Vector3().crossVectors(Ln, V3(0, 1, 0)).normalize();   // 右
-      // 镜头在转弯内侧（左后上方）：看得到压着坡度的飞机背，越过它们往右下看远处着火的阵地
+      // 镜头在转弯内侧（左后上方）：看得到压着坡度的飞机背，越过它们往右前方看——天边那一簇火光就是阵地（俯角 11 度）
       const c = L.clone().addScaledVector(side, -230).addScaledVector(Ln, -150 + t * 10).add(V3(0, 70, 0));
-      cam(env, c, L.clone().addScaledVector(side, 170).addScaledVector(Ln, 140).add(V3(0, -95, 0)), 46);
+      const dJ = L.clone().sub(c).normalize(), dS = SAMg.clone().sub(c).normalize();
+      cam(env, c, c.clone().add(dJ.multiplyScalar(0.55).add(dS.multiplyScalar(0.45))), 46);
       shake(env.camera, t, 0.12, 0.6, 17);
       return { ...night({ moonI: 2.4, exposure: 1.25 }), shadowAt: L, shadowR: 500, fogDensity: 0.00003 };
     },
@@ -1027,9 +1036,13 @@ async function j16(env, add) {
   return A;
 }
 // 歼-16 在纵队西南方 8000 米高空（用户 11-22：都是远程打击）：KD-88 是防区外空地导弹（射程上百公里），吊舱 38 公里外就锁定了；
-//   片子里的距离按比例缩（水平 11 公里），屏幕读数照真实的写
-const PJ16 = () => { const p = V3(COL6.x - 19500, 0, COL6.z + 25400); p.y = heightAt(p.x, p.z) + 22400; return p; };
+//   距离、高度都是真的（吊舱读数斜距 38.6 公里 → 水平 37.8 公里），飞机在地图外头的沙漠上空
+const U16 = V3(-19500, 0, 25400).normalize();   // 从纵队看，歼-16 在哪个方向
+const R16 = km => Math.sqrt(km ** 2 - 8 ** 2) * 1000 * MPS;   // 斜距（公里）→ 水平距离（格）
+const j16XZ = (km = 38.6) => [COL6.x + U16.x * R16(km), COL6.z + U16.z * R16(km)];
+const PJ16 = (km = 38.6) => { const [x, z] = j16XZ(km); return V3(x, heightAt(x, z) + 8000 * MPS, z); };
 const HD16 = Math.atan2(19500, 25400);   // 对着纵队的航向（往东北）
+const j16Ahead = d => { const [x, z] = j16XZ(); return [x - U16.x * d, z - U16.z * d]; };   // 歼-16 往纵队那边 d 格（地形网格的中心）
 // G27 歼-16 挂满对地武器压坡度转弯：4 枚 KD-88、2 枚雷石-6、霹雳-15 / 10 自卫
 async function shotJ16(env, add) {
   const { fx } = env;
@@ -1068,7 +1081,7 @@ async function shotEO16(env, add) {
       const look = BCOL(2, t).add(V3(lerp(-900, 0, smooth(0, 1.4, t)), 0, lerp(400, 0, smooth(0, 1.4, t))));
       look.y = heightAt(look.x, look.z);
       const c = PJ16().add(V3(t * 12, 0, -t * 16));   // 吊舱在歼-16 上（慢慢往前飞）
-      cam(env, c, look, lerp(0.86, 0.5, smooth(1.2, 2.6, t)));
+      cam(env, c, look, lerp(0.311, 0.181, smooth(1.2, 2.6, t)));   // 38 公里外的长焦（视场角照距离算：纵队占的画面和原来一样）
       env.camera.updateMatrixWorld(true);
       boxes = L.slice(0, 4).map((V, i) => {
         cv.copy(V.root.position).add(V3(0, 3, 0)).project(env.camera);
@@ -1135,8 +1148,8 @@ async function shotEOHit(env, add) {
     update(t) {
       L.forEach((V, i) => { const stop = i < 4 ? hits[i] : 99; const p = BCOL(i, T0 + Math.min(t, stop)); ground(V.root, p.x, p.z, Math.PI / 2); });
       const look = BCOL(2, T0 + Math.min(t, hits[2])); look.y = heightAt(look.x, look.z);
-      const c = PJ16().add(V3(50 + t * 12, 0, -66 - t * 16));
-      cam(env, c, look, 0.5);
+      const c = PJ16(36.9).add(V3(t * 12, 0, -t * 16));   // 导弹飞了一阵，飞机又往前飞近了 1.7 公里
+      cam(env, c, look, 0.189);
       env.camera.updateMatrixWorld(true);
       boxes = L.slice(0, 4).map((V, i) => { cv.copy(V.root.position).add(V3(0, 3, 0)).project(env.camera); return { x: 0.5 + cv.x / 2, y: 0.5 - cv.y / 2, s: 0.02, st: t > hits[i] ? 'hit' : 'lock', label: `${i + 1}` }; });
       return { ...DAY({ az: 140, el: 34, heat: 0.4 }), thermal: 1, therK: 0.8, grain: 0.02, vignette: 0.25, bloom: 0.7, shadowAt: look, shadowR: 300, fogDensity: 0.00001 };
@@ -1252,11 +1265,11 @@ export const SHOTS = [
   { id: 'G01', dur: 6.5, ...T(TOWNC.x, TOWNC.z), setup: shotOpen },
   { id: 'G02', dur: 3.8, ...T(TOWNC.x + 420, TOWNC.z + 260), setup: shotNvgAAA },
   { id: 'G03', dur: 4.5, ...T(SAM.x, SAM.z), setup: shotSam },
-  { id: 'G04', dur: 3.8, ...T(SAM.x - 20000, SAM.z + 14000, { ext: 100000, cap: 1500 }), setup: shotJets },   // 高空镜头：地形铺到 10 万格
+  { id: 'G04', dur: 3.8, ...T(...samXZ(RREL - 8000), { ext: 100000, cap: 1500 }), setup: shotJets },   // 高空镜头：地形铺到 10 万格
   { id: 'G05', dur: 3.2, ...T(SAM.x, SAM.z), setup: shotPatriotFire },
   { id: 'G06', dur: 4.0, ...T(SAM.x, SAM.z), setup: shotEO35 },
   { id: 'G07', dur: 4.6, ...T(SAM.x, SAM.z), setup: shotSamHit },
-  { id: 'G08', dur: 3.0, ...T(SAM.x - 9000, SAM.z + 11000, { ext: 100000, cap: 1500 }), setup: shotJetsAway },
+  { id: 'G08', dur: 3.0, ...T(...samXZ(RREL * 0.5), { ext: 100000, cap: 1500 }), setup: shotJetsAway },
   { id: 'G09', dur: 3.2, ...T(BATT.x - 15000, BATT.z + 17000, { ext: 100000, cap: 1500 }), setup: shotDrone },
   { id: 'G10', dur: 3.6, ...T(BATT.x, BATT.z), setup: shotDroneEO },
   { id: 'G11', dur: 2.6, ...T(BATT.x, BATT.z), setup: shotDroneHit },
@@ -1277,9 +1290,9 @@ export const SHOTS = [
   { id: 'G24', dur: 2.6, ...T(-8700, -200), setup: shotAAFire },
   { id: 'G25', dur: 3.0, ...T(-8500, -3600), setup: shotEvade },
   { id: 'G26', dur: 4.6, ...T(-8500, -3500), setup: shotCrash },
-  { id: 'G27', dur: 3.8, ...T(COL6.x - 21000, COL6.z + 27000, { ext: 100000, cap: 1500 }), setup: shotJ16 },
+  { id: 'G27', dur: 3.8, ...T(...j16Ahead(-3000), { ext: 100000, cap: 1500 }), setup: shotJ16 },
   { id: 'G28', dur: 4.2, ...T(COL6.x, COL6.z), setup: shotEO16 },
-  { id: 'G29', dur: 2.8, ...T(COL6.x - 19500, COL6.z + 25400, { ext: 100000, cap: 1500 }), setup: shotRelease },
+  { id: 'G29', dur: 2.8, ...T(...j16Ahead(20000), { ext: 100000, cap: 1500 }), setup: shotRelease },
   { id: 'G30', dur: 3.6, ...T(COL6.x, COL6.z), setup: shotEOHit },
   { id: 'G31', dur: 6.0, ...T(OIL.x, OIL.z), setup: shotOilfield },
   { id: 'G32', dur: 6.0, setup: shotTitle },
