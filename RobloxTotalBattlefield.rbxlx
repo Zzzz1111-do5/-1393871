@@ -5932,13 +5932,15 @@ local function ergH(f, x, z)
   local mask = 1 - smooth(0.5, 1, q)
   local u = dx * f.uc + dz * f.us
   local v = -dx * f.us + dz * f.uc
-  local w = noise(v / 2600, u / 2600, f.ph) * 0.45 + noise(v / 900, u / 900, f.ph + 3) * 0.12
+  local w = noise(v / 2600, u / 2600, f.ph) * 0.45 + noise(v / 900, u / 900, f.ph + 3) * 0.12 + noise(v / 420, u / 560, f.ph + 5) * 0.3   -- 沙梁顶线弯弯曲曲
   local t = u / f.sp + w
   t -= floor(t)
   local c = 0.68
   local p = (t < c) and (t / c) ^ 1.35 or (1 - (t - c) / (1 - c)) ^ 0.75
   p = p * p * (3 - 2 * p)
-  local amp = 0.6 + 0.4 * noise(v / 1700, u / 3100, f.ph + 7)
+  -- 沿走向一段高一段低、有的地方断开，相邻两道高矮不一（原来间距、高度都匀，看着像一道道条纹）
+  local seg = smooth(-0.3, 0.35, noise(v / 620, u / 880, f.ph + 7))
+  local amp = (0.35 + 0.65 * seg) * clamp(0.8 + 0.5 * noise(u / 640, v / 2200, f.ph + 9), 0.45, 1.15)
   return f.H * mask * p * amp * (0.86 + 0.14 * noise(x / 160, z / 160, f.ph + 11))
 end
 local function addErg(x, z, ax, az, rot, H, sp, crest, ph)
