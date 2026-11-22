@@ -66,7 +66,7 @@ function tex(url, srgb = true) {
     const post = new Post(renderer, W, H, { ss: SS, msaa: 4, aspect: ASP || (CUT === 'promo' ? W / H : 2.39) });
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x1d2738, 0.00042);
-    const camera = new THREE.PerspectiveCamera(35, post.rw / post.rh, 0.5, 120000);
+    const camera = new THREE.PerspectiveCamera(35, post.rw / post.rh, 0.5, 320000);   // 高空镜头看得到很远（地面在 7 万～30 万格之间融进雾里）
     const sky = makeSky();
     scene.add(sky);
     scene.userData.sky = sky;
@@ -99,6 +99,19 @@ function tex(url, srgb = true) {
     const ctx = canvas.getContext('2d');
 
     if (DESERT) sea.visible = false;
+    // 沙漠：地形网格只铺到镜头中心外 4.2 万格；高空镜头往远看会看到地面的边——外面再铺一圈平的沙地（比最低的地形还低，地形网格里低洼的地方不会被盖住：内圈 4 万格）
+    let farGround = null;
+    if (DESERT) {
+      const g = new THREE.RingGeometry(40000, 420000, 96, 4);
+      g.rotateX(-Math.PI / 2);
+      const nv = g.attributes.position.count, col = new Float32Array(nv * 3), w = new Float32Array(nv * 4);
+      for (let i = 0; i < nv; i++) { col.set([0.62, 0.47, 0.29], i * 3); w[i * 4] = 1; }   // 平原的沙（同 bigmap MATD.Sand）
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      g.setAttribute('aW', new THREE.BufferAttribute(w, 4));
+      farGround = new THREE.Mesh(g, terrain.material);
+      farGround.receiveShadow = false; farGround.frustumCulled = false;
+      scene.add(farGround);
+    }
     const env = { THREE, renderer, scene, camera, sky, sea, terrain, parts, moon, hemi, fx, D, T, post, titles, REPO, groundY: heightAt, FPS, W, H, log, DESERT };
     // 地形网格、水深贴图按镜头搭（离镜头近的地方密）：terrainAt(中心 x, z, 网格参数)，同一个中心不重搭
     let tKey = null;
@@ -109,6 +122,7 @@ function tex(url, srgb = true) {
       const t0 = performance.now();
       terrain.geometry.dispose();
       terrain.geometry = bigTerrainGeo(x, z, o);
+      if (farGround) farGround.position.set(x, -60, z);   // 压在所有地形底下（原来 11 格，盐碱滩底 8 格，4 万格外整块被它盖住、只剩一圈白边）
       if (!DESERT) {   // 沙漠没有海
         const nr = o.seaR ?? 2048;
         const old = sea.userData.depthTex;
@@ -121,7 +135,7 @@ function tex(url, srgb = true) {
     };
     env.terrainAt(BIG.fx, BIG.fz);
     // 片名、片尾那几个镜头不要地形、海、天
-    env.worldVisible = on => { for (const o of [sky, sea, terrain, parts.group]) o.visible = on; moon.visible = on; hemi.visible = on; if (DESERT) sea.visible = false; };
+    env.worldVisible = on => { for (const o of [sky, sea, terrain, parts.group]) o.visible = on; moon.visible = on; hemi.visible = on; if (DESERT) sea.visible = false; if (farGround) farGround.visible = on; };
     let cur = null;   // 当前搭好的镜头
     async function enter(id) {
       if (cur && cur.id === id) return cur;

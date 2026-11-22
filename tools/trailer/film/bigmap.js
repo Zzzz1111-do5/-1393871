@@ -119,10 +119,14 @@ function bicub(g, x, z) {
   return cub(r(j - 1), r(j), r(j + 1), r(j + 2), v);
 }
 const cub = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
+// 沙漠图的断崖线（照 MapDesert.lua escRaw 抄的）：地图数据外接着铺北边的台地，不在图边上一刀切成直线
+const ESC_R0 = 38912;
+const escRaw = x => -24500 + 1300 * Math.sin(x / 6600 + 0.9) + 460 * Math.sin(x / 2300 + 2.6) + 170 * Math.sin(x / 770 + 4.4) - 24000 * smooth(ESC_R0 - 12000, ESC_R0 + 3000, Math.abs(x));
+const outH = (x, z) => 12 + 60 * smooth(-200, 300, escRaw(x) - z);
 function srcH(x, z) {   // 抹平海底后的游戏高度（双三次）
   if (G2) {
     const w = fineW(x, z);
-    const c = w < 1 ? (bicub(G2, x, z) ?? 12) : 0;
+    const c = w < 1 ? (bicub(G2, x, z) ?? outH(x, z)) : 0;
     if (w <= 0) return c;
     const f = bicub(G, x, z) ?? c;
     return lerp(c, f, w);
@@ -203,31 +207,47 @@ export function heightAt(x, z) {
 const MATC = { Sand: [0.70, 0.62, 0.45], Rock: [0.36, 0.34, 0.32], Ground: [0.36, 0.28, 0.2], Grass: [0.24, 0.3, 0.17], LeafyGrass: [0.19, 0.25, 0.14], Slate: [0.3, 0.3, 0.32], Asphalt: [0.12, 0.12, 0.13], Concrete: [0.42, 0.42, 0.4] };
 // 沙漠（线性色）：暖沙、砾石、赭红砂岩、灰白石灰岩台地、白盐壳、黑柏油
 const MATD = { Sand: [0.62, 0.47, 0.29], Ground: [0.42, 0.33, 0.23], Rock: [0.27, 0.21, 0.17], Slate: [0.24, 0.2, 0.17], Sandstone: [0.5, 0.29, 0.17], Limestone: [0.6, 0.53, 0.41],
-  Salt: [0.8, 0.77, 0.7], Asphalt: [0.07, 0.068, 0.07], Concrete: [0.4, 0.39, 0.36], Mud: [0.3, 0.24, 0.17] };
+  Salt: [0.7, 0.64, 0.52], Asphalt: [0.07, 0.068, 0.07], Concrete: [0.4, 0.39, 0.36], Mud: [0.3, 0.24, 0.17] };
 const WCLS = nm => nm === 'Sand' ? 0 : (nm === 'Salt' || nm === 'Asphalt' || nm === 'Concrete') ? 1 : (nm === 'Rock' || nm === 'Slate' || nm === 'Sandstone' || nm === 'Limestone') ? 2 : 3;
-// 材质按周围 4 个格点双线性混（边界软，不出锯齿）
-function srcMatSoft(x, z) {
+// 台地顶上平的石灰岩是砾漠（hamada：碎石铺的平地），不是崖面那种亮的岩石——夜里高空看，整块台地亮成一片灰白
+const HAMADA = [0.55, 0.41, 0.24];   // 和平原的沙一个色调（偏冷的话月光一照发蓝灰，一大块很扎眼），暗一点
+function matAdd(nm, wt, A) {
+  const cc = MATD[nm] || MATD.Sand;
+  A.c[0] += cc[0] * wt; A.c[1] += cc[1] * wt; A.c[2] += cc[2] * wt;
+  A.w[WCLS(nm)] += wt;
+  if (nm === 'Limestone') A.lime += wt;
+}
+// 一点的材质按周围 4 个格点双线性混（边界软，不出锯齿），乘权重 wt 累加进 A
+function srcMatAdd(x, z, wt, A) {
   const g = (G2 && fineW(x, z) < 0.5) ? G2 : G;
   const { n, R, step, mat, names } = g;
-  const fx = clamp((x + R) / step, 0, n - 1.001), fz = clamp((z + R) / step, 0, n - 1.001);
-  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
-  const out = { c: [0, 0, 0], w: [0, 0, 0, 0], main: 'Sand', mw: 0 };
-  const acc = {};
-  for (const [di, dj, wt] of [[0, 0, (1 - u) * (1 - v)], [1, 0, u * (1 - v)], [0, 1, (1 - u) * v], [1, 1, u * v]]) {
-    const nm = names[mat[(j + dj) * n + i + di] - 1] || 'Sand';
-    const cc = MATD[nm] || MATD.Sand;
-    out.c[0] += cc[0] * wt; out.c[1] += cc[1] * wt; out.c[2] += cc[2] * wt;
-    out.w[WCLS(nm)] += wt;
-    acc[nm] = (acc[nm] || 0) + wt;
+  if (Math.max(Math.abs(x), Math.abs(z)) > R - 2 * step) {   // 地图数据外（高空镜头往远看）：断崖线以北接着是台地，别处是平原的沙地（原来把边上那一圈拉过来，出一道道白斑）
+    matAdd(z < escRaw(x) ? 'Limestone' : 'Sand', wt, A);
+    return;
   }
-  for (const k in acc) if (acc[k] > out.mw) { out.mw = acc[k]; out.main = k; }
-  return out;
+  const fx = clamp((x + R) / step, 0, n - 1.001), fz = clamp((z + R) / step, 0, n - 1.001);
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, o = j * n + i;
+  matAdd(names[mat[o] - 1] || 'Sand', wt * (1 - u) * (1 - v), A);
+  matAdd(names[mat[o + 1] - 1] || 'Sand', wt * u * (1 - v), A);
+  matAdd(names[mat[o + n] - 1] || 'Sand', wt * (1 - u) * v, A);
+  matAdd(names[mat[o + n + 1] - 1] || 'Sand', wt * u * v, A);
 }
-function surfaceDesert(x, z, h, slope, out, o) {
-  const sm = srcMatSoft(x, z), nm = sm.main;
-  let c = sm.c.slice();
+const MACC = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 };
+// 远处网格疏（最疏一格一千多），一个顶点只取一点的材质，边界就成了一级级的台阶：按这个顶点管的那一块（fx × fz）多取几点平均
+function surfaceDesert(x, z, h, slope, out, o, fx = 0, fz = 0) {
+  const A = MACC;
+  A.c[0] = A.c[1] = A.c[2] = 0; A.w[0] = A.w[1] = A.w[2] = A.w[3] = 0; A.lime = 0;
+  const nx = fx > 40 ? Math.min(4, Math.ceil(fx / 40)) : 1, nz = fz > 40 ? Math.min(4, Math.ceil(fz / 40)) : 1;
+  const wt = 1 / (nx * nz);
+  for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) srcMatAdd(x + ((a + 0.5) / nx - 0.5) * fx, z + ((b + 0.5) / nz - 0.5) * fz, wt, A);
+  let c = A.c.slice();
   // 权重：0 沙（沙纹）、1 盐壳 / 柏油（平的）、2 岩石、3 砾石土
-  let w = sm.w.slice();
+  let w = A.w.slice();
+  const ham = A.lime * (1 - smooth(0.2, 0.4, slope));
+  if (ham > 0) {
+    for (let k = 0; k < 3; k++) c[k] += ham * (HAMADA[k] - MATD.Limestone[k]);
+    w[2] -= ham; w[0] += ham * 0.65; w[3] += ham * 0.35;   // 大半按沙画（沙的贴图带暖色；全按砾石画是中性灰，月光下发蓝）
+  }
   // 平原上大块的深浅（砾石滩、风吹出来的沙带），沙丘背风坡暗一点
   const big = fbm(x / 2600, z / 2600, 3), mid = fbm(x / 420, z / 420, 2);
   if (w[0] > 0.5) {
@@ -235,12 +255,13 @@ function surfaceDesert(x, z, h, slope, out, o) {
     c = [lerp(c[0], 0.47, gravel * 0.55), lerp(c[1], 0.37, gravel * 0.55), lerp(c[2], 0.25, gravel * 0.55)];
     w = [w[0] - gravel * 0.5, w[1], w[2], w[3] + gravel * 0.5];
   }
+  if (ham > 0) { const k = 1 + ham * 0.14 * big; c = [c[0] * k, c[1] * k, c[2] * k]; }   // 砾漠也有大块的深浅（风化程度、碎石疏密）
   const lv = 0.9 + 0.2 * (mid * 0.5 + 0.5);
   out.c[o * 3] = c[0] * lv; out.c[o * 3 + 1] = c[1] * lv; out.c[o * 3 + 2] = c[2] * lv;
   out.w[o * 4] = w[0]; out.w[o * 4 + 1] = w[1]; out.w[o * 4 + 2] = w[2]; out.w[o * 4 + 3] = w[3];
 }
-function surface(x, z, h, slope, out, o) {
-  if (BIG.desert) return surfaceDesert(x, z, h, slope, out, o);
+function surface(x, z, h, slope, out, o, fx, fz) {
+  if (BIG.desert) return surfaceDesert(x, z, h, slope, out, o, fx, fz);
   const [sx, sz, , D] = srcPos(x, z);
   let nm = srcMat(sx, sz);
   const inGame = Math.abs(sx) < G.R - 8 && Math.abs(sz) < G.R - 8 && srcH(sx, sz) > -1;
@@ -282,7 +303,7 @@ export function bigTerrainGeo(cx, cz, o = {}) {
     const gx = (H[j * nx + i1] - H[j * nx + i0]) / (xs[i1] - xs[i0]), gz = (H[j1 * nx + i] - H[j0 * nx + i]) / (zs[j1] - zs[j0]);
     const l = Math.hypot(gx, 1, gz);
     nor[v * 3] = -gx / l; nor[v * 3 + 1] = 1 / l; nor[v * 3 + 2] = -gz / l;
-    surface(x, z, h, Math.hypot(gx, gz), out, v);
+    surface(x, z, h, Math.hypot(gx, gz), out, v, (xs[i1] - xs[i0]) / (i1 - i0), (zs[j1] - zs[j0]) / (j1 - j0));
   }
   const idx = [];
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {

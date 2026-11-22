@@ -69,7 +69,7 @@ float filmFog(vec3 wp) {
 }
 #endif`;
   C.fog_fragment = `#ifdef USE_FOG
-gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, filmFog(vFogW));
+gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, max(filmFog(vFogW), smoothstep(70000.0, 300000.0, length(vFogW))));
 #endif`;
 }
 export const FOG_GLSL = (H = 220) => `
