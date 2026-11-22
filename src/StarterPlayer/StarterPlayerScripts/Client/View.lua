@@ -575,7 +575,20 @@ function View.init(G)
       for _, it in ipairs(M.parts) do if it[1]:GetAttribute("Radar") then v.radar[it[1]] = true end end
       v.hasRadar = next(v.radar) ~= nil
     end
-    local still = not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
+    -- 扫雷犁（坦克改装，Kit.lua）：模型属性 Plow 1 放下、0.5 正在升、0 收好——放下是 0°，收好往上抬 14°（升起要 11 秒，这里按它慢慢抬）
+    local plowMoving = false
+    if M.plowPiv then
+      local pa = em:GetAttribute("Plow")
+      local want = (pa == 1) and 0 or math.rad(14)
+      local cur = v.plowA or want
+      local step = math.rad(14) / ((pa == 0.5) and 11 or 2.5) * dt
+      if math.abs(want - cur) > 1e-4 then
+        cur = cur + math.clamp(want - cur, -step, step)
+        plowMoving = true
+      end
+      v.plowA = cur
+    end
+    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
       and math.abs(v.steer - (v.putSteer or 1e9)) < 1e-4
       and sameCF(hullF, v.putH) and sameCF(tF, v.putT) and sameCF(gF, v.putG) and sameCF(rF, v.putR) and sameCF(rgF, v.putRG)
     if still then
@@ -596,6 +609,7 @@ function View.init(G)
         elseif grp == "rws" then cf = (rF or tF) * off
         elseif grp == "rwg" then cf = (rgF or rF or tF) * off
         elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
+        elseif grp == "plow" then cf = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) * off   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
         elseif grp == "wheel" then
           local w = W[it[4]]
           local wcf = base * CF(w.x, w.r + w.dy, w.z)

@@ -214,6 +214,7 @@ function Armor.init(G)
     end
     e.lastSync = now()
     if G.eraSetup then G.try("爆反", G.eraSetup, e) end   -- Era.lua：原模型上的爆反块
+    if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
@@ -366,7 +367,7 @@ function Armor.init(G)
     local dt = math.max(0.02, t - (e.lastSync or t))
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
-    local maxD = math.max(e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6
+    local maxD = math.max((G.kitSpeedCap and G.kitSpeedCap(e)) or e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6   -- 扫雷犁放着：限 15 公里 / 时
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
@@ -512,8 +513,10 @@ function Armor.init(G)
         G.fx({ k = "smokeCloud", p = it.b, r = SM.r, life = SM.life })
       end
     end)
-    G.pushOne(P)
+    if P then G.pushOne(P) end
   end
+  -- 激光告警自动打烟幕（Kit.lua）：没人开也能打
+  function G.vehSmoke(e) smoke(e.driver, e) end
 
   function G.driveInput(P, d)
     local e = P.vehicle
@@ -521,6 +524,7 @@ function Armor.init(G)
     if d.op == "state" then sync(P, e, d)
     elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
+    elseif d.op == "plow" then if G.kitPlow then G.kitPlow(P, e, d.down == true) end   -- 扫雷犁放下 / 升起（Kit.lua）
     elseif d.op == "exit" then unseat(P, e, true) end
   end
 

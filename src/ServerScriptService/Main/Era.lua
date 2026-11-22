@@ -1,8 +1,9 @@
 -- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
 --   每型的块在 EraMeta.lua（tools/models/eralayout.py 在原模型表面量的：车体首上、炮塔正面 / 侧面、侧裙板），出车时 G.eraSetup 记下来
+--   用户 11-22 晚：「坦克要能自己选位置贴爆反」——贴了哪几格按改装（TankMods.cellsOn：改装界面里一格格点的 + 原车自带的），爆反型号也按改装选的
 --   挨打（Ents.lua 问这里）：
 --     破甲类（火箭弹、导弹：boomKind 是 rkt / msl）——从炸点顺着来向往车里找第一块还在的块（命中盒是个大方块，真的块在里面一两格），
---       找到就炸掉它，这一下对这辆车的伤害（直接命中 + 爆炸）只剩 TankMods.ERA[型号].k 成；
+--       找到就炸掉它，这一下对这辆车的伤害（直接命中 + 爆炸）只剩 TankMods.ERA[型号].k 成（火箭弹，单装药）/ kt 成（导弹，串联装药：前级先把爆反引爆）；
 --     坦克炮弹（动能弹）——只有重型爆反（FY-4）会起爆、削掉一些（ke 成）；小口径、榴弹不管
 --   炸掉的块号写进模型属性 EraX（"3,7,12"），客户端（VehModels / View）把那块藏起来、换成焦黑的空位；特效 { k = "era" }（ArmorFx.lua）
 --   块自己爆开也会伤到贴着车的步兵（不多）
@@ -18,15 +19,16 @@ function Era.init(G)
   function G.eraSetup(e)
     local L = e.def and TM.eraOf(e.def.id)
     if not L or not L.b or #L.b == 0 then return end
-    -- 只有装了的区的块起作用（用户 11-22：「坦克我能选择在哪个地方贴爆反」；改装界面选的在 e.def.mods.era，没选按全装）
-    local on = TM.eraSet(e.def.mods and e.def.mods.era or nil, e.def.id)
-    for _, z in ipairs(L.own or {}) do on[z] = true end
+    -- 只有贴了的格起作用（改装界面一格格选的 e.def.mods.ep + 原车自带的；没选按出厂）
+    local m = e.def.mods
+    local on = TM.cellsOn(e.def.id, m)
     local off, n = {}, 0
-    for i, b in ipairs(L.b) do
-      if b[17] and not on[b[17]] then off[i] = true else n += 1 end
+    for i in ipairs(L.b) do
+      if on[i] then n += 1 else off[i] = true end
     end
     if n == 0 then return end
-    e.era = { L = L, dead = {}, off = off, n = n, left = n, kind = TM.ERA[L.kind] or TM.ERA.fy2, list = {} }
+    local kind = TM.ERA[m and m.era or ""] or TM.ERA[L.kind] or TM.ERA.fy2
+    e.era = { L = L, dead = {}, off = off, n = n, left = n, kind = kind, list = {} }
     e.model:SetAttribute("Era", n)
     e.model:SetAttribute("EraX", "")
   end
@@ -38,7 +40,7 @@ function Era.init(G)
     local best, bt, bcf = nil, maxT, nil
     for i, b in ipairs(E.L.b) do
       if not E.dead[i] and not (E.off and E.off[i]) then
-        local cf, w, h, t = TM.blockCF(E.L, b, base, e.ty or 0)
+        local cf, w, h, t = TM.blockCF(E.L, b, base, e.ty or 0, TM.own(E.L, b) and 1 or E.kind.th)
         -- 射线进块的局部坐标，和放大一点（0.35 格）的盒子求交（slab 法）
         local lo = cf:PointToObjectSpace(o)
         local ld = cf:VectorToObjectSpace(d)
@@ -112,7 +114,7 @@ function Era.init(G)
           if i then
             detonate(e, i, cf)
             out = out or {}
-            out[e] = E.kind.k
+            out[e] = (bk == "msl") and (E.kind.kt or E.kind.k) or E.kind.k   -- 导弹多是串联装药：前级先引爆爆反，主装药照样往里钻
           end
         end
       end

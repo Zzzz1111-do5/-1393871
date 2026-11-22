@@ -290,6 +290,9 @@ function Ents.init(G)
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
           if ek then G.dmgK = nil end
           done = true
+        elseif res and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then
+          -- 火箭弹打在坦克的栅栏装甲上、引信被卡坏：哑火（Kit.lua），不炸
+          done = true
         elseif res and s.kind ~= "grenade" then
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)

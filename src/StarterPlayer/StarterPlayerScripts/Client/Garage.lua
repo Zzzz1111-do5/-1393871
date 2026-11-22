@@ -139,17 +139,23 @@ function Garage.init(G)
     end
     return n > 0 and sum / n or nil
   end
+  -- 区开关（老界面）：按区改贴哪几格（TankMods.cellsInZones），型号不动
+  local function setZones(zs)
+    local L = TM.eraOf(S.id)
+    if not L then return end
+    S.mods.ep = TM.epEncode(TM.cellsInZones(S.id, zs), #L.b)
+    S.mods = TM.clean(S.id, S.mods)
+  end
   local refresh
   local function toggleZone(z)
     if not S then return end
     local list, own = TM.eraZones(S.id)
     if own[z] then return end
-    local on = TM.eraSet(S.mods.era, S.id)
+    local on = TM.eraSet(S.mods, S.id)
     on[z] = not on[z]
     local out = {}
     for _, q in ipairs(list) do if on[q] or own[q] then table.insert(out, q) end end
-    S.mods.era = (#out > 0) and table.concat(out, "+") or "none"
-    S.mods = TM.clean(S.id, S.mods)
+    setZones(out)
     S.focus, S.open = "era", "era"
     refresh(true)
   end
@@ -189,13 +195,15 @@ function Garage.init(G)
     local F = TM.FOR[S.id]
     local order = 0
     for _, slot in ipairs(TM.SLOTS) do
-      if slot == "era" then   -- 爆反：每个区一个开关
+      if slot == "ep" then
+        -- 爆反贴在哪几格：在下面爆反那一位里按区开关（逐格点车身的界面还在做）
+      elseif slot == "era" then   -- 爆反：型号 + 每个区一个开关
         local zl, own = TM.eraZones(S.id)
-        local on = TM.eraSet(S.mods.era, S.id)
+        local on = TM.eraSet(S.mods, S.id)
         local names = {}
         for _, z in ipairs(zl) do if on[z] then table.insert(names, T("gar.zone." .. z)) end end
         order += 1
-        local eb = card(T("gar.slot.era"), (#names > 0) and table.concat(names, " · ") or T("gar.opt.none"), 56, (S.open == "era") and RGB(26, 44, 32) or nil, order)
+        local eb = card(T("gar.slot.era") .. " · " .. T("gar.opt." .. (S.mods.era or "none")), (#names > 0) and table.concat(names, " · ") or T("gar.opt.none"), 56, (S.open == "era") and RGB(26, 44, 32) or nil, order)
         eb.Activated:Connect(function()
           if not S then return end
           S.open = (S.open == "era") and nil or "era"
@@ -203,6 +211,13 @@ function Garage.init(G)
           refresh(false)
         end)
         if S.open == "era" then
+          for _, opt in ipairs(F.era or {}) do   -- 爆反型号（FY-2 / FY-4、ARAT-1 / ARAT-2）
+            order += 1
+            local sel = S.mods.era == opt
+            local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 98, 54) or RGB(14, 17, 20), order)
+            t1.TextColor3 = sel and RGB(255, 255, 255) or RGB(206, 212, 214)
+            ob.Activated:Connect(function() choose("era", opt) end)
+          end
           for _, z in ipairs(zl) do
             order += 1
             local sel = on[z] == true
@@ -313,7 +328,7 @@ function Garage.init(G)
         local ny = lp.Y / (-lp.Z * tanY)
         b.Visible = true
         b.Position = UDim2.fromOffset((nx + 1) / 2 * vs.X, (1 - ny) / 2 * vs.Y)
-        local on = TM.eraSet(S.mods.era, S.id)[zk]
+        local on = TM.eraSet(S.mods, S.id)[zk]
         b.Size = UDim2.fromOffset(22, 22)
         b.BackgroundColor3 = on and ACC or RGB(255, 255, 255)
         b.BackgroundTransparency = on and 0.15 or 0.85

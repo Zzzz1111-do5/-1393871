@@ -440,6 +440,10 @@ function Air.init(G)
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
     local tp = tgtPos(t)
+    -- 激光制导的弹冲着装了激光告警的坦克去：报警、自动烟幕；烟幕挡住照射点（或 JD-3 把照射干扰掉）就丢了目标（Kit.lua）
+    if tp and t and not t.decoy and w.guide == "laser" and G.kitLaser and G.kitLaser(s, t, dt) then
+      s.tgt, s.aimPt, t, tp = nil, nil, nil, nil
+    end
     if not tp then
       s.tgt, t = nil, nil
       tp = s.aimPt

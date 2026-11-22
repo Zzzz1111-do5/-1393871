@@ -416,14 +416,13 @@ function VehHud.init(G)
     MW.era = {}
     local ok, L = pcall(function() return TMods.eraOf and TMods.eraOf(d.id) end)
     if not ok or not L or not L.b then return end
-    -- 只画装了的区（用户 11-22：「坦克我能选择在哪个地方贴爆反」；自己开的车 d 是按改装改过的那份，d.mods.era 是选的区）
-    local zon = TMods.eraSet and TMods.eraSet(d.mods and d.mods.era or nil, d.id) or {}
-    for _, z in ipairs(L.own or {}) do zon[z] = true end
+    -- 只画贴了的格（用户 11-22 晚：「坦克要能自己选位置贴爆反」；自己开的车 d 是按改装改过的那份，d.mods.ep 是一格格选的）
+    local onCell = TMods.cellsOn and TMods.cellsOn(d.id, d.mods) or {}
     local sx, sz = 22 * VK / ((d.W or 10) / 2), 45 * VK / ((d.L or 20) / 2)   -- 车的格 → 框里的像素
     local tur = L.tur or { 0, 0, 0 }
     local cols, order = {}, {}
     for i, b in ipairs(L.b) do
-      if b[17] and not zon[b[17]] then b = nil end   -- 这一区没装
+      if not onCell[i] then b = nil end   -- 这一格没贴
       if b then
       local turret = b[1] == "t"
       local x, z = b[2], b[4]

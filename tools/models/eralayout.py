@@ -13,15 +13,17 @@ ROOT = os.getcwd()
 OUT = os.path.join(ROOT, 'src', 'ReplicatedStorage', 'EraMeta.lua')
 
 # 每型：kind 爆反型号（fy4 重型、fy2 中型、arat 轻型），zones 铺哪些区域，brick 砖的宽 × 高 × 厚（格），skirt 侧裙板的砖（大一点）
+#   more：自选位置（用户 11-22 晚：「坦克要能自己选位置贴爆反」）多给的候选格——炮塔顶 tr、炮塔侧面后半 tb、侧裙板后半 sr、下首 lf；
+#     接在原来那些块后面（原来的块号不变），和已有的格重叠的不要
 SPEC = {
     # 用户 11-19：这些坦克都自带爆反（包括 99A）——四个区都用模型自带的，游戏里平时不另画砖
-    'ztz99a2': {'kind': 'fy4', 'zones': ['tfront', 'troof', 'tside', 'glacis', 'skirt'], 'own': ['ts', 'gl', 'sk'], 'brick': (1.25, 0.78, 0.3), 'skirt': (1.9, 1.15, 0.34)},   # 99A 炮塔正面原模型没有：贴（用户 11-19）
-    'ztz96': {'kind': 'fy2', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.9, 1.15, 0.32)},
+    'ztz99a2': {'kind': 'fy4', 'zones': ['tfront', 'troof', 'tside', 'glacis', 'skirt'], 'own': ['ts', 'gl', 'sk'], 'brick': (1.25, 0.78, 0.3), 'skirt': (1.9, 1.15, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},   # 99A 炮塔正面原模型没有：贴（用户 11-19）
+    'ztz96': {'kind': 'fy2', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.9, 1.15, 0.32), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     # 15 式轻坦 11-19 删掉了（用户：建模非常粗糙）
     # M1A2 SEPv2、M1A1 这两个模型侧裙板本来就挂着 ARAT 爆反块（TUSK）：own = 用模型自带的，游戏里平时不另画砖，炸掉了才补焦黑的空位
     #   用户 11-22：「坦克我能选择在哪个地方贴爆反」——再算炮塔正面、炮塔侧面、首上能补贴的位置（改装界面里每个区自己选贴不贴）
-    'm1a2dc': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},
-    'm1a1': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34)},   # 用户 11-19：M1A1 也自带
+    'm1a2dc': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34), 'roofz': 0.68, 'dep': 9, 'more': ['tback', 'skirt2', 'lfp']},
+    'm1a1': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34), 'roofz': 0.68, 'dep': 9, 'more': ['tback', 'skirt2', 'lfp']},   # 用户 11-19：M1A1 也自带
 }
 GAP = 0.12        # 砖缝
 FLAT = 0.2        # 四个角和中心离拟合平面最多差多少（格），超了说明跨在棱上 / 有东西挡着，不放
@@ -342,8 +344,157 @@ def layout(key, sp, log=print):
             w2 = halfw(zq, roof - 1.0, roof - 0.15, side)
             aps['r'].append({'c': np.array([cx + side * (w2 + 0.12), roof - 0.5, zq]), 'n': unit(np.array([side * 0.7, 0, sz * 0.7]))})
     log(f'    主动防御：炮塔顶 {roof:.2f}，半宽 {hw0:.2f}')
-    log(f'    共 {len(blocks)} 块爆反；发射器 {len(aps["l"])}、雷达板 {len(aps["r"])}')
-    return {'kind': sp['kind'], 'blocks': blocks, 'aps': aps, 'tlo': tlo, 'thi': thi}
+    # 自选位置的候选格（用户 11-22 晚：「坦克要能自己选位置贴爆反」）：接在原来那些块后面（原来的块号不变）；
+    #   和已经有的块重叠的不要（同一个朝向的面上两块的矩形叠上了，或者朝向不同但中心挨得太近——棱上两面各放一块会穿插）
+    def clash(nb):
+        for b in blocks:
+            dd = nb['c'] - b['c']
+            if float(b['n'] @ nb['n']) > 0.5:
+                vv = np.cross(b['n'], b['u'])
+                if abs(dd @ b['u']) < (b['w'] + nb['w']) / 2 * 0.9 and abs(dd @ vv) < (b['h'] + nb['h']) / 2 * 0.9 and abs(dd @ b['n']) < 1.2:
+                    return True
+            elif np.linalg.norm(dd) < 0.45 * min(b['w'], b['h'], nb['w'], nb['h']) + 0.3:
+                return True
+        return False
+    nold = len(blocks)
+    for z in sp.get('more', []):
+        new = []
+        if z == 'troofall':
+            # 炮塔顶：从上往下打，只要平的顶面（比炮塔主体顶面高不过 0.7 格：机枪架、天线座、瞄具头上不放），让开炮盾上方
+            x0, x1 = tlo[0] + 0.4, thi[0] - 0.4
+            z0, z1 = tlo[2] + tlen * 0.1, tlo[2] + tlen * sp.get('roofz', 0.92)   # 艾布拉姆斯炮塔后面一大截是尾舱篮筐（铁丝筐），不算装甲顶面
+            o0 = np.array([x0, thi[1] + 4, z0])
+            acc_ = (lambda p, n: n[1] > 0.8 and p[1] < roof + 0.7 and abs(p[0] - gx) > mant * 0.55)
+            new = tile(mesh, T, o0, X, Z, -Y, x1 - x0, z1 - z0, sp['brick'], acc_, log, 'tr')
+        elif z == 'tback':
+            fs = sp.get('side', (bw * 0.9, bh * 0.78, bt))
+            for side in (-1, 1):
+                z0, z1 = tlo[2] + tlen * 0.5, tlo[2] + tlen * 0.97
+                xo = abs(thi[0] if side > 0 else tlo[0]) + 6
+                o0 = np.array([side * xo, tlo[1], z0])
+                acc_ = (lambda p, n, s=side: n[0] * s > 0.55 and abs(n[1]) < 0.7)
+                new += tile(mesh, T, o0, Z, Y, -side * X, z1 - z0, thi[1] - tlo[1], fs, acc_, log, 'tb')
+        elif z == 'skirt2':
+            sk = sp.get('skirt', sp['brick'])
+            for side in (-1, 1):
+                edge = hhi[0] if side > 0 else -hlo[0]
+                z0, z1 = hlo[2] + hlen * 0.58, hhi[2] - 0.6
+                o0 = np.array([side * (edge + 6), 0.6, z0])
+                acc_ = (lambda p, n, s=side, e=edge: n[0] * s > 0.8 and abs(p[0]) > e - 1.3)
+                new += tile(mesh, Bd, o0, Z, Y, -side * X, z1 - z0, min(hhi[1], tlo[1]) - 0.6, sk, acc_, log, 'sr')
+        elif z == 'lfp':
+            # 下首（首下装甲）：从正前方往后打，两条履带中间、朝前的陡面
+            x0, x1 = hlo[0] + 2.4, hhi[0] - 2.4
+            o0 = np.array([x0, 0.7, hlo[2] - 6])
+            acc_ = (lambda p, n: n[2] < -0.55 and n[1] < 0.4 and p[2] < hlo[2] + hlen * 0.15)
+            new = tile(mesh, Bd, o0, X, Y, Z, x1 - x0, hhi[1] * 0.75 - 0.7, sp['brick'], acc_, log, 'lf')
+        kept = 0
+        for nb in new:
+            if not clash(nb):
+                blocks.append(nb)
+                kept += 1
+        log(f'    {z}: 候选 {len(new)}，不和已有的重叠 {kept}')
+    # 用户 11-22 晚：「坦克上面就别贴了」「别挡住一些部位」——不是原车自带的块（自带的是模型本身的样子，不动），一块块再查一遍：
+    #   ① 朝上的面（法线 y > 0.8：炮塔顶、平的车体顶）不贴；
+    #   ② 砖底下 5 × 5 个点从外面往里打，有东西比面凸出来（观瞄头、潜望镜、车灯、烟幕弹发射器、挂钩、把手……）就不贴，打空的（边、缝）超过三个也不贴；
+    #   ③ 玻璃、车灯、观瞄窗、潜望镜、反光标志这类小块的材质（名字带 glass / gls / int / lamp / light / lens / screen，半透明的，占全车面积不到千分之四的）在砖的范围里（外扩 0.25 格）就不贴；
+    #   ④ 车体上的：炮塔转一圈扫过的地方（炮塔下沿往外 0.3 格以内、比炮塔下沿低不到 0.2 格）、炮压到最低（俯角 dep）时炮管扫过的地方不贴
+    glassy = ('glass', 'gls', 'int.', '_int', 'lamp', 'light', 'lens', 'screen')
+    area = np.linalg.norm(np.cross(mesh.B - mesh.A, mesh.C - mesh.A), axis=1) / 2
+    tot = area.sum()
+    fmask = np.zeros(len(area), bool)
+    for mi, mt in enumerate(mesh.mats):
+        sel = mesh.M == mi
+        if not sel.any():
+            continue
+        nm = mt.get('name', '').lower()
+        alpha = ((mt.get('pbrMetallicRoughness', {}) or {}).get('baseColorFactor') or [1, 1, 1, 1])[3]
+        frac = area[sel].sum() / tot
+        if any(w in nm for w in glassy) or alpha < 0.95 or (mt.get('alphaMode') == 'BLEND' and frac < 0.01) or frac < 0.004:
+            fmask |= sel
+    fmask &= mesh.G != 'Gun'
+    FC = ((mesh.A + mesh.B + mesh.C) / 3)[fmask]
+    ALL = np.arange(len(mesh.A))
+    allc = (mesh.A + mesh.B + mesh.C) / 3
+    tur_ax = np.array([0.0, 0.0, sp.get('turz', 0.0)])
+    gun = np.array(sp.get('gun', (0.0, tlo[1] + 1.0, tlo[2])))
+    muz = sp.get('muz', 12.0)
+    dep = np.radians(sp.get('dep', 6))
+    rt = float(np.hypot(gun[0] - tur_ax[0], gun[2] - tur_ax[2]))
+    # 炮塔下沿那一圈：炮塔最低 0.8 格里的顶点，离转轴最远多远
+    kt = mesh.G == 'Turret'
+    Pt2 = np.concatenate([mesh.A[kt], mesh.B[kt], mesh.C[kt]])
+    low = Pt2[:, 1] < tlo[1] + 0.8
+    tsw = float(np.max(np.hypot(Pt2[low, 0] - tur_ax[0], Pt2[low, 2] - tur_ax[2]))) if low.any() else 0.0
+    own_z = set(sp.get('own', []))
+    def why_not(b):
+        c, n, u = b['c'], b['n'], b['u']
+        v = unit(np.cross(n, u))
+        if n[1] > 0.8:
+            return 'top'
+        # ③ 玻璃、灯
+        if len(FC):
+            d = FC - c
+            du, dv, dn = d @ u, d @ v, d @ n
+            hitg = (np.abs(du) < b['w'] / 2 + 0.25) & (np.abs(dv) < b['h'] / 2 + 0.25) & (dn > -1.2) & (dn < 1.5)
+            if np.any(hitg):
+                mi = int(mesh.M[np.nonzero(fmask)[0][np.argmax(hitg)]])
+                return 'glass:' + (mesh.mats[mi].get('name', '?') if 0 <= mi < len(mesh.mats) else '?')
+        # ② 5 × 5 根射线
+        near = ALL[np.linalg.norm(allc - c, axis=1) < max(b['w'], b['h']) + 3.0]
+        miss = 0
+        for a in np.linspace(-0.45, 0.45, 5):
+            for bb in np.linspace(-0.45, 0.45, 5):
+                o = c + u * (a * b['w']) + v * (bb * b['h']) + n * 2.5
+                r = mesh.ray(near, o, -n)
+                if r is None or r[0] > 3.0:
+                    miss += 1
+                    continue
+                if r[0] < 2.5 - (0.15 if b['z'] in ('tf', 'ts', 'tb') else 0.22):   # 车体、裙板上的螺栓、挂钩矮一点的不算
+                    return 'bump'
+        if miss > (7 if b['z'] in ('sk', 'sr') else 3):   # 裙板一节一节的，节与节之间的缝打空了不算（砖跨在缝上，真车也是）
+            return 'edge'
+        # ④ 车体上的：炮塔扫过、炮管扫过
+        if b['z'] in ('gl', 'sk', 'sr', 'lf'):
+            corners = [c + u * (sx * b['w'] / 2) + v * (sy * b['h'] / 2) + n * b['t'] for sx in (-1, 1) for sy in (-1, 1)]
+            for q in corners:
+                rq = float(np.hypot(q[0] - tur_ax[0], q[2] - tur_ax[2]))
+                if rq < tsw + 0.3 and q[1] > tlo[1] - 0.2:
+                    return 'turret'
+                if rt <= rq <= rt + muz and q[1] > gun[1] - (rq - rt) * np.tan(dep) - 0.45:
+                    return 'gun'
+        return None
+    kept, gone = [], {}
+    for b in blocks:
+        if b['z'] in own_z:
+            kept.append(b)
+            continue
+        w = why_not(b)
+        if w:
+            w = w + '@' + b['z']
+            gone[w] = gone.get(w, 0) + 1
+        else:
+            kept.append(b)
+    log(f'    筛掉会挡东西的：{gone}（炮塔下沿扫过半径 {tsw:.2f}、炮耳轴 {np.round(gun, 2)}、俯角 {np.degrees(dep):.0f}°）')
+    blocks[:] = kept
+    log(f'    共 {len(blocks)} 块爆反（原来的 {nold}）；发射器 {len(aps["l"])}、雷达板 {len(aps["r"])}')
+    return {'kind': sp['kind'], 'blocks': blocks, 'aps': aps, 'tlo': tlo, 'thi': thi, 'hlo': hlo, 'hhi': hhi, 'roof': roof}
+
+
+def mirrors(blocks):
+    """每块左右对称的那一块（同一个区、中心按 X 镜像后最近、差不过 0.5 格）：Lua 的块号（从 1 数），没有 0；正中间的就是自己"""
+    out = []
+    for b in blocks:
+        m = b['c'] * np.array([-1.0, 1.0, 1.0])
+        best, bd = 0, 0.5
+        for j, c in enumerate(blocks):
+            if c['z'] != b['z']:
+                continue
+            dd = float(np.linalg.norm(c['c'] - m))
+            if dd < bd:
+                best, bd = j + 1, dd
+        out.append(best)
+    return out
 
 
 def f3(v):
@@ -352,24 +503,46 @@ def f3(v):
 
 def write(res, tur):
     L = ['-- 自动生成（python3 -I tools/models/eralayout.py），别手改：每型坦克原模型上的爆反块、主动防御的发射器和雷达板（车的坐标，格；炮塔上的按炮塔转角 0 摆）',
-         '--   b 每块 { 组 "t" 炮塔 / "h" 车体, 中心 x y z, 朝外法线 x y z, 宽方向 x y z, 宽, 高, 厚, 颜色 r g b, 区 }；区：tf 炮塔正面、ts 炮塔侧面、gl 首上、sk 侧裙板',
-         '--   tur 炮塔转轴；aps.l 发射器 { 中心, 朝外 }、aps.r 雷达板 { 中心, 朝外 }；tb 炮塔的包围盒；own 这些区的块原模型上本来就有（平时不另画，炸了补焦黑空位）',
+         '--   b 每块 { 组 "t" 炮塔 / "h" 车体, 中心 x y z, 朝外法线 x y z, 宽方向 x y z, 宽, 高, 厚, 颜色 r g b, 区, 左右对称的那块的块号（0 没有） }；',
+         '--     区：tf 炮塔正面、ts 炮塔侧面、gl 首上、sk 侧裙板；自选位置多给的候选格：tr 炮塔顶、tb 炮塔侧面后半、sr 侧裙板后半、lf 下首',
+         '--   tur 炮塔转轴；aps.l 发射器 { 中心, 朝外 }、aps.r 雷达板 { 中心, 朝外 }；tb 炮塔的包围盒、hb 车体的包围盒、roof 炮塔主体顶面高；',
+         '--   own 这些区的块原模型上本来就有（平时不另画，炸了补焦黑空位）',
          'return {']
     for key in sorted(res):
         r = res[key]
         own = ', '.join('"%s"' % z for z in SPEC[key].get('own', []))
-        L.append('  %s = { kind = "%s", tur = { %s }, tb = { %s, %s }, own = { %s },' % (key, r['kind'], f3(tur[key]), f3(r['tlo']), f3(r['thi']), own))
+        L.append('  %s = { kind = "%s", tur = { %s }, tb = { %s, %s }, hb = { %s, %s }, roof = %.3f, own = { %s },' % (
+            key, r['kind'], f3(tur[key]), f3(r['tlo']), f3(r['thi']), f3(r['hlo']), f3(r['hhi']), r['roof'], own))
         L.append('    b = {')
-        for b in r['blocks']:
-            g = 't' if b['z'] in ('tf', 'ts') else 'h'
+        mir = mirrors(r['blocks'])
+        for b, mi in zip(r['blocks'], mir):
+            g = 't' if b['z'] in ('tf', 'ts', 'tr', 'tb') else 'h'
             c = b['col']
-            L.append('      { "%s", %s, %s, %s, %.2f, %.2f, %.2f, %d, %d, %d, "%s" },' % (g, f3(b['c']), f3(b['n']), f3(b['u']), b['w'], b['h'], b['t'], c[0], c[1], c[2], b['z']))
+            L.append('      { "%s", %s, %s, %s, %.2f, %.2f, %.2f, %d, %d, %d, "%s", %d },' % (g, f3(b['c']), f3(b['n']), f3(b['u']), b['w'], b['h'], b['t'], c[0], c[1], c[2], b['z'], mi))
         L.append('    },')
         L.append('    aps = { l = { %s }, r = { %s } } },' % (
             ', '.join('{ %s, %s }' % (f3(a['c']), f3(a['n'])) for a in r['aps']['l']),
             ', '.join('{ %s, %s }' % (f3(a['c']), f3(a['n'])) for a in r['aps']['r'])))
     L.append('}')
     open(OUT, 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+
+
+def gunmeta():
+    """ImportedMeta.lua 里每型的炮耳轴 gun、炮口在耳轴前多远 muz"""
+    import re
+    s = open(os.path.join(ROOT, 'src', 'ReplicatedStorage', 'ImportedMeta.lua'), encoding='utf-8').read()
+    out = {}
+    for key in SPEC:
+        i = s.find('    %s = {' % key)
+        line = s[i:s.find('\n', i)]
+        g = re.search(r'[ ,{]gun = \{ ([\d.\-]+), ([\d.\-]+), ([\d.\-]+) \}', line)
+        m = re.search(r'[ ,{]muz = ([\d.\-]+)', line)
+        out[key] = {}
+        if g:
+            out[key]['gun'] = (float(g.group(1)), float(g.group(2)), float(g.group(3)))
+        if m:
+            out[key]['muz'] = float(m.group(1))
+    return out
 
 
 def turpiv():
@@ -394,6 +567,10 @@ if __name__ == '__main__':
         args = args[:i] + args[i + 2:]
     keys = args or list(SPEC)
     tur = turpiv()
+    gm = gunmeta()
+    for k in SPEC:
+        SPEC[k].update(gm.get(k, {}))
+        SPEC[k]['turz'] = tur[k][2]
     res = {}
     for k in keys:
         res[k] = layout(k, SPEC[k])

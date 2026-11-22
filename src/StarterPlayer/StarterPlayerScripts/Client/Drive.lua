@@ -609,6 +609,12 @@ function Drive.init(G)
       st.hv = nil
     end
     local maxF, maxR = d.speed, d.rev
+    -- 扫雷犁放着（或正在升）：车速不超过 15 公里 / 时（Pearson 全宽扫雷犁犁地 1–15 公里 / 时；按这型车真车公路速度的比例换成游戏车速）
+    local plowA = st.em and st.em:GetAttribute("Plow")
+    if plowA and plowA > 0 then
+      local sp = TMods.SPEC[d.id]
+      maxF = math.min(maxF, d.speed * TMods.KIT.plow.vcap / ((sp and sp.vmax) or 65))
+    end
     if inWater then
       if carried then maxF, maxR = VD.LCAC.speed, 12 else maxF, maxR = d.speed * 0.32, d.rev * 0.3 end
     end
@@ -1067,6 +1073,8 @@ function Drive.init(G)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
+    elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
+      G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
       G.R.Drive:FireServer({ op = "exit" })
     end

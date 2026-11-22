@@ -298,6 +298,7 @@ function AIVeh.init(G)
     local function consider(pos, kind, ref)
       local dd = (pos - eye).Magnitude
       local range = (kind == "inf") and ((mg and MG_R) or GUN_R * 0.6) or (main and GUN_R or MG_R)
+      if kind == "veh" and G.sigK then range *= G.sigK(ref) end   -- 披了多光谱伪装网的车近了才发现（Kit.lua）
       if dd > range then return end
       local sc = dd * ((kind == "veh") and 0.5 or ((kind == "fort") and 0.8 or 1))
       if sc >= bs then return end
