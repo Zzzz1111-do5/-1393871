@@ -23,6 +23,12 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 23 日第八包（坦克车里只锁在炮长位）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 用户：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」——开坦克（99A、96、M1A2、M1A1、M10）按 C 进车里直接是炮长位，
+      F2～F5 不再换到驾驶员 / 车长 / 装填手，车里再按 C 就出车；Shift 炮长主瞄准镜、G 辅助瞄准镜照旧
+    - 车长的主观瞄（99A 周视镜、M1A2 的 CITV）挪到炮长位的 T 上；车外按 T 照旧直接开它（人在炮长位）
+    - 步战车、装甲车、自行火炮这些不是坦克的照旧能换乘员位
+
   11 月 23 日第七包（99A / 96 车里自己拼的零件换成 Sketchfab 上的真模型）：换游戏文件（或者「三、只换脚本」）；再导 optics/ 里 6 个新文件：
       ip_dseat.glb（驾驶座）、ip_swheel.glb（方向盘）、ip_lever.glb（操纵杆 / 换挡杆）、ip_gauges.glb（指针式仪表）、ip_pedals.glb（踏板）、ip_grip.glb（操纵握把）
     - 用户：「很粗糙 你从 sketchfeb 找模型去替代不要自己建模 然后用 blender」——都是 Sketchfab 上 CC-BY 的原模型，用 Blender 截取（卡车驾驶座去掉气囊底座、

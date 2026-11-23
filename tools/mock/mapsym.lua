@@ -76,14 +76,9 @@ for i, it in ipairs(list) do
 end
 R.run(1)
 
-print("② 车长位：指挥地图上的军标")
+print("② 车里（坦克锁在炮长位）：指挥地图上的军标")
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
-for _ = 1, 4 do
-  if C.interiorState().station == "commander" then break end
-  T.tap(Enum.KeyCode.F4)
-  R.run(0.3)
-end
 local I = C.interiorState()
 check(I.mode == "seat" and I.cur ~= nil, "坐进车里（" .. tostring(I.station) .. "）")
 R.run(1.0)

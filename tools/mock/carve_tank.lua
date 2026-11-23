@@ -2,7 +2,7 @@
 --   python3 tools/mock/run.py tools/mock/carve_tank.lua [veh=ztz99a] [dump=<目录>]
 --   假装 Studio 里重新导入了 carve.py 改过的 GLB（照 ImportedMeta 摆一套同名的块，含 Cav 内壁、Inside 原模型自带的简易内饰），开一辆坦克：
 --   ① 车外：内壁藏着；② C 进车里：走挖了内腔的那套（不再摆车体、炮塔的壳板），内壁显示、简易内饰藏起来、外壳照画；
---      舱盖在原车外面看得见的那个位置（炮塔顶），地板高度是内腔量的；③ 换到炮长位、车长位；④ C 出来：内壁又藏起来
+--      舱盖在原车外面看得见的那个位置（炮塔顶），地板高度是内腔量的；③ 锁在炮长位（F2～F5 都不换）；④ C 出来：内壁又藏起来
 --   dump=：写 interior_<型号>_carve.json（CARVE=1 node tools/mock/interior_view.cjs 叠原车 GLB 画成图）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
@@ -135,17 +135,18 @@ local function snap(name) dumpCams[name] = cam.CFrame end
 snap(tostring(I.station))
 local seen = { [tostring(I.station)] = true }
 
-print("③ 换乘员位")
-for _, k in ipairs({ Enum.KeyCode.F2, Enum.KeyCode.F3, Enum.KeyCode.F4 }) do   -- 坦克：F2 驾驶员、F3 炮长、F4 车长（Interior.lua 的 KEYST）
+print("③ 坦克锁在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：F2～F5 都停在炮长位")
+check(tostring(I.station) == "gunner", "一进车里就是炮长位（" .. tostring(I.station) .. "）")
+for _, k in ipairs({ Enum.KeyCode.F2, Enum.KeyCode.F3, Enum.KeyCode.F4, Enum.KeyCode.F5 }) do
   T.tap(k)
-  R.run(0.5)
+  R.run(0.4)
   local st = C.interiorState().station
+  check(st == "gunner", k.Name .. "：还是炮长位（" .. tostring(st) .. "）")
   if st and not seen[st] then
     seen[st] = true
     snap(st)
   end
 end
-check(seen.driver and seen.gunner and seen.commander, "三个乘员位都坐过：驾驶员、炮长、车长")
 check(#R.errors == 0, "换位没有报错：" .. table.concat(R.errors, " | "))
 if dumpDir then
   local dumpOut = dofile(MOCK_DIR .. "/interior_dump.lua")

@@ -163,16 +163,19 @@ T.tap(Enum.KeyCode.B)
 R.run(0.3)
 check(C.interiorState().mode == "seat", "再按 B：回到乘员位")
 
-print("⑦½ 驾驶员位按 Shift「开镜」：进的是炮长主瞄准镜（鼠标 / 方向键转得动），驾驶员自己的潜望镜挪到 G")
-T.tap(Enum.KeyCode.F2)
-R.run(0.4)
-check(C.interiorState().station == "driver", "F2：驾驶员位")
-local dsp = C.interiorState().cur.spec.stations.driver
-check(dsp.optics and dsp.optics.primary and dsp.optics.primary.kind == "gps" and dsp.optics.alt ~= nil and dsp.optics.alt.dir == "hull",
-  "驾驶员位：主镜是炮长瞄准镜、潜望镜在 G（" .. tostring(dsp.optics and dsp.optics.alt and dsp.optics.alt.name) .. "）")
+print("⑦½ 坦克锁在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：F2～F5 都停在炮长位；Shift 进主瞄准镜、T 是车长的主观瞄")
+for _, k in ipairs({ Enum.KeyCode.F2, Enum.KeyCode.F4, Enum.KeyCode.F5 }) do
+  T.tap(k)
+  R.run(0.3)
+  check(C.interiorState().station == "gunner", k.Name .. "：还是炮长位（" .. tostring(C.interiorState().station) .. "）")
+end
+local gsp = C.interiorState().cur.spec.stations.gunner
+check(#C.interiorState().cur.spec.order == 1, "乘员位只有炮长一个")
+check(gsp.optics and gsp.optics.third ~= nil and gsp.optics.third.kind ~= "gps",
+  "车长的主观瞄挪到炮长位的 T（" .. tostring(gsp.optics and gsp.optics.third and (gsp.optics.third.name or gsp.optics.third.kind)) .. "）")
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.6)
-check(st.sight == true and C.interiorOptic == nil, "Shift：进了炮长主瞄准镜（不是驾驶员的潜望镜）")
+check(st.sight == true and C.interiorOptic == nil, "Shift：进了炮长主瞄准镜")
 local lk0 = cam.CFrame.LookVector
 for _ = 1, 30 do
   R.mouseDelta = R.Vector2.new(25, 0)
@@ -191,16 +194,17 @@ local sm = C.drive and C.drive.mode
 check(sightCC and sightCC.Enabled and sm == 3, "天黑默认热成像白热档（不是绿色的夜视）：档 " .. tostring(sm))
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.6)
-check(not st.sight and C.interiorState().mode == "seat" and C.interiorState().station == "driver", "再按 Shift：回到驾驶员位")
-T.tap(Enum.KeyCode.G)
+check(not st.sight and C.interiorState().mode == "seat" and C.interiorState().station == "gunner", "再按 Shift：回到炮长位")
+T.tap(Enum.KeyCode.T)
 R.run(0.6)
 local dop = C.interiorOpticState and C.interiorOpticState()
-check(dop ~= nil and dop.o.dir == "hull", "G：驾驶员自己的潜望镜（" .. tostring(dop and dop.o.name) .. "）")
+check(dop ~= nil and dop.o.kind == gsp.optics.third.kind, "T：车长的主观瞄（" .. tostring(dop and dop.o.name) .. "）")
 local nvg = R.services.Lighting:FindFirstChild("NVGrade")
 check(not (C.nvgOn() and nvg and nvg.Enabled), "开着车里的观瞄设备：夜视仪的绿色调色让开")
-T.tap(Enum.KeyCode.G)
+T.tap(Enum.KeyCode.T)
 R.run(0.5)
-check((C.interiorOpticState and C.interiorOpticState()) == nil, "再按 G 关掉")
+check((C.interiorOpticState and C.interiorOpticState()) == nil, "再按 T 关掉")
+check(C.interiorState().station == "gunner", "关了还在炮长位")
 
 print("⑦¾ 车里第一人称 N：夜视 → 热成像 → 关")
 if not C.nvgOn() then T.tap(Enum.KeyCode.N) R.run(0.4) end

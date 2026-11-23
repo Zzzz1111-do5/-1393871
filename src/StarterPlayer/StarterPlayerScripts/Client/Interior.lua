@@ -212,6 +212,18 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         end
       end
     end
+    -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：内饰函数返回 lock = "gunner"——
+    --   一进车里就是炮长位，F2～F5 都停在炮长位，C 再按一下直接出车（乘员位只有这一个）；
+    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）挪到炮长位的 T（第三个），车外按 T 也是开它（原来要先坐到车长位）
+    if spec.lock and spec.stations and spec.stations[spec.lock] then
+      local sp = spec.stations[spec.lock]
+      local cm = spec.stations.commander
+      sp.optics = sp.optics or {}
+      if cm and cm.optics and cm.optics.primary and cm.optics.primary.kind ~= "gps" and not sp.optics.third then
+        sp.optics.third = cm.optics.primary
+      end
+      spec.order = { spec.lock }
+    end
     local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = cav ~= nil and spec.carved == true,
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
@@ -998,6 +1010,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   end
 
   local function enterStation(c, k)
+    if c.spec.lock then k = c.spec.lock end   -- 坦克：不管要换哪个位置，都是炮长位
     if not c.spec.stations[k] then return end
     station = k
     mode = "seat"
@@ -1112,8 +1125,15 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     end
     if quickOptic and mode == "seat" and cur then   -- T 从车外直接进车长的主观瞄（下面按键那里记下的）
       quickOptic = false
-      if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
-      if enterOptic(cur, "primary") and optic then optic.quick = true end
+      if cur.spec.lock then   -- 坦克锁在炮长位：车长的主观瞄在炮长位的 T（第三个）上
+        if station ~= cur.spec.lock then enterStation(cur, cur.spec.lock) end   -- 车外按 T 记下的是车长位（内饰早就建好时不经过 enterStation）
+        local sp = cur.spec.stations[cur.spec.lock]
+        local slot = (sp and sp.optics and sp.optics.third) and "third" or "primary"
+        if enterOptic(cur, slot) and optic then optic.quick = true end
+      else
+        if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
+        if enterOptic(cur, "primary") and optic then optic.quick = true end
+      end
     end
     local c = cur
     extHide(c, mode == "seat" or optic ~= nil, optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画
@@ -1178,9 +1198,14 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     else
       local LB = { driver = { "驾驶员", "driver" }, gunner = { "炮长", "gunner" }, commander = { "车长", "commander" }, loader = { "装填手", "loader" }, troop = { "载员", "troop" } }
       local fk = {}
-      for i, k2 in ipairs(c.spec.order) do
-        local lb = LB[k2] or { k2, k2 }
-        table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
+      if c.spec.lock then   -- 坦克锁在炮长位：不列换位键
+        local lb = LB[c.spec.lock] or { c.spec.lock, c.spec.lock }
+        table.insert(fk, T(lb[1] .. "位", lb[2] .. " seat"))
+      else
+        for i, k2 in ipairs(c.spec.order) do
+          local lb = LB[k2] or { k2, k2 }
+          table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
+        end
       end
       local tk = (st and st.d and st.d.turret) and T("方向键转炮塔、抬压炮 · WASD 开车 · ", "arrows traverse / elevate · WASD drive · ") or ""
       hint.Text = tk .. T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
