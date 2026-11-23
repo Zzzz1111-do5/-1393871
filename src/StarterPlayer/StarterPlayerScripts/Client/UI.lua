@@ -990,10 +990,12 @@ function UI.init(G)
     loading.Visible = false
     if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
-    local showDeploy = not S.alive and S.phase ~= "end"
+    -- 阵亡效果（DeathFx.lua，用户 11-23：死亡不要瞬间切到部署画面）放着的时候部署界面、平显都先不出来
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    local showDeploy = not S.alive and S.phase ~= "end" and not dying
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
-    hud.Visible = not showDeploy
+    hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniBox

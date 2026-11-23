@@ -4601,6 +4601,9 @@ add("ui.downedBy", "你被 {1} 击倒了", "Downed by {1}")
 add("ui.youRevived", "救起了 {1}", "Revived {1}")
 add("ui.revivedBy", "{1} 把你救起来了", "{1} revived you")
 add("down.title", "倒地 · 等待救援", "DOWNED · WAITING FOR REVIVE")
+add("death.title", "阵　亡", "WASTED")
+add("death.by", "被 {1} 击杀 · {2} 米", "Killed by {1} · {2} m")
+add("death.byNear", "被 {1} 击杀", "Killed by {1}")
 add("down.bleed", "{1} 秒后阵亡", "Bleeding out in {1} s")
 add("down.giveUp", "按住 空格 放弃（重新部署）", "Hold SPACE to give up (redeploy)")
 add("down.giveUpTouch", "按住这里放弃", "Hold to give up")
@@ -26514,7 +26517,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -30754,6 +30757,309 @@ return DayNight
         </Item>
         <Item class="ModuleScript" referent="133">
           <Properties>
+            <string name="Name">DeathFx</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
+--   自己死了：部署界面先不出来（UI.lua 看 G.deathFxOn()），先放四秒多的阵亡效果，跟 GTA5 的「WASTED」一个路数——
+--   ① 一下低沉的闷响加呼的一声、画面一白；之后新响起的声音都发闷（接在 Shock.lua 的 G.muffle 上）、心跳两下
+--   ② 画面一秒里褪成黑白，对比加大、一点模糊、四边压暗
+--   ③ 镜头留在倒下的地方：从死的那一刻的位置慢慢升高、往后拉，一直看着身体（越来越慢，像慢动作）；在车里死的看着那辆车
+--   ④ 屏幕正中一道暗的横条，红色大字「阵亡」从稍大缩回原大、淡进来；下面一行小字：被谁打死、多远（服务器 Battle.lua 的 killcam 消息，
+--      阵亡效果开着时这条消息归这里用，原来转镜头看凶手的那一段让给它）
+--   ⑤ 最后半秒淡黑，部署界面出来以后黑幕再淡开
+--   系统设置里开了「减少动态效果」：不动镜头，只有褪色、字和淡出；主菜单打开、新角色出生、回合结束都马上停
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService")
+
+local DeathFx = {}
+
+function DeathFx.init(G)
+  local player = Players.LocalPlayer
+  local V, RGB = Vector3.new, Color3.fromRGB
+  local T = G.T or function(k) return k end
+  local DC = (G.Config and G.Config.DeathFx) or {}
+  local DUR = DC.dur or 4.4          -- 整段多长（秒），最后 FADE 秒淡黑
+  local DUR_DOWN = DC.durDown or 2.8 -- 倒地以后才死的（流血到时间、放弃、补枪）：已经看了半天倒地画面，短一点
+  local FADE = 0.5
+  local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
+  local function smooth(x) x = clamp(x, 0, 1) return x * x * (3 - 2 * x) end
+  local function easeOut(x) x = clamp(x, 0, 1) return 1 - (1 - x) ^ 3 end
+  local reducedMotion = false
+  pcall(function()
+    reducedMotion = GuiService.ReducedMotionEnabled == true
+    GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function() reducedMotion = GuiService.ReducedMotionEnabled == true end)
+  end)
+
+  ---------------------------------------------------------------- 画面：四边压暗、横条、大字、小字、黑幕
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "DeathFx"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 40   -- 盖在部署界面、倒地界面上面
+  gui.Enabled = false
+  gui.Parent = player:WaitForChild("PlayerGui")
+  local function frame(parent, size, pos, color, tr, anchor)
+    local f = Instance.new("Frame")
+    f.Size, f.Position = size, pos or UDim2.new()
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = color or RGB(0, 0, 0), tr or 0, 0
+    if anchor then f.AnchorPoint = anchor end
+    f.Parent = parent
+    return f
+  end
+  local edges = {}
+  for _, e in ipairs({ { UDim2.fromScale(1, 0.34), UDim2.fromScale(0, 0), 90 }, { UDim2.fromScale(1, 0.34), UDim2.fromScale(0, 0.66), -90 },
+    { UDim2.fromScale(0.26, 1), UDim2.fromScale(0, 0), 0 }, { UDim2.fromScale(0.26, 1), UDim2.fromScale(0.74, 0), 180 } }) do
+    local f = frame(gui, e[1], e[2], RGB(0, 0, 0), 0)
+    local g = Instance.new("UIGradient")
+    g.Rotation = e[3]
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = f
+    table.insert(edges, f)
+  end
+  local band = frame(gui, UDim2.new(1, 0, 0, 132), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  band.Name = "Band"
+  local bandG = Instance.new("UIGradient")   -- 横条两头淡掉
+  bandG.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.18, 0), NumberSequenceKeypoint.new(0.82, 0), NumberSequenceKeypoint.new(1, 1) })
+  bandG.Parent = band
+  local title = Instance.new("TextLabel")
+  title.Name = "Title"
+  title.AnchorPoint = Vector2.new(0.5, 0.5)
+  title.Position = UDim2.fromScale(0.5, 0.5)
+  title.Size = UDim2.fromOffset(900, 110)
+  title.BackgroundTransparency = 1
+  title.Font = Enum.Font.GothamBlack
+  title.TextSize = 92
+  title.TextColor3 = RGB(196, 26, 22)
+  title.TextStrokeColor3 = RGB(0, 0, 0)
+  title.TextStrokeTransparency = 0.15
+  title.Text = ""
+  title.Parent = gui
+  local titleScale = Instance.new("UIScale")
+  titleScale.Parent = title
+  local sub = Instance.new("TextLabel")
+  sub.Name = "Sub"
+  sub.AnchorPoint = Vector2.new(0.5, 0)
+  sub.Position = UDim2.new(0.5, 0, 0.5, 74)
+  sub.Size = UDim2.fromOffset(900, 28)
+  sub.BackgroundTransparency = 1
+  sub.Font = Enum.Font.GothamMedium
+  sub.TextSize = 20
+  sub.TextColor3 = RGB(236, 232, 226)
+  sub.TextStrokeTransparency = 0.5
+  sub.Text = ""
+  sub.Parent = gui
+  -- 黑幕单独一层：效果结束以后还要盖在部署界面上淡开
+  local blackGui = Instance.new("ScreenGui")
+  blackGui.Name = "DeathFade"
+  blackGui.ResetOnSpawn = false
+  blackGui.IgnoreGuiInset = true
+  blackGui.DisplayOrder = 41
+  blackGui.Enabled = false
+  blackGui.Parent = player:WaitForChild("PlayerGui")
+  local black = frame(blackGui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  black.Name = "Black"
+
+  ---------------------------------------------------------------- 状态
+
+  local S = { on = false, n = 0 }
+  G.deathFxOn = function() return S.on end
+  G.deathFxState = function() return S end   -- 测试用
+  local cc, blur = nil, nil
+  local killer = nil   -- 这次是谁打死的（killcam 消息：name、d 距离）
+
+  -- 声音发闷：接在 Shock.lua 的 G.muffle 上（Fx.lua 新放的声音按它切高频、压音量）
+  local muffle0 = G.muffle
+  G.muffle = function()
+    local m = muffle0 and muffle0() or 0
+    if S.on then
+      local u = os.clock() - S.t0
+      m = math.max(m, 0.85 * (1 - smooth((u - (S.dur - 1.2)) / 1.2)))
+    end
+    return m
+  end
+
+  local function subText()
+    if type(killer) ~= "table" or type(killer.name) ~= "string" then return "" end
+    local d = tonumber(killer.d)
+    if d and d > 0 then return T("death.by", killer.name, math.floor(d / 2.8 + 0.5)) end
+    return T("death.byNear", killer.name)
+  end
+
+  local function focusPoint()
+    local ch = S.char
+    local hrp = ch and ch.Parent and (ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("Head"))
+    if hrp and hrp:IsA("BasePart") then return hrp.Position end
+    return S.focus0
+  end
+
+  local fadeOutT = nil   -- 效果结束以后黑幕淡开（部署界面已经出来了）
+  local function finish(instant)
+    if not S.on then return end
+    S.on = false
+    pcall(function() RunService:UnbindFromRenderStep("DeathFxCam") end)
+    if cc then cc:Destroy() cc = nil end
+    if blur then blur:Destroy() blur = nil end
+    gui.Enabled = false
+    local cam = workspace.CurrentCamera
+    if cam and S.camType0 and cam.CameraType == Enum.CameraType.Scriptable then
+      pcall(function() cam.CameraType = S.camType0 end)
+      if S.fov0 then cam.FieldOfView = S.fov0 end
+    end
+    if instant then blackGui.Enabled = false black.BackgroundTransparency = 1 fadeOutT = nil
+    else fadeOutT = os.clock() end
+    if G.refresh then pcall(G.refresh) end   -- 部署界面马上出来（不用等服务器下一次推状态）
+  end
+
+  local function camStep()
+    if not S.on then return end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local u = os.clock() - S.t0
+    if reducedMotion then return end
+    local f = focusPoint() + V(0, 0.8, 0)
+    -- 越来越慢地升高、往后拉（像慢动作）：从死的那一刻的镜头位置出发
+    local k = easeOut(u / (S.dur * 0.95))
+    local want = S.from:Lerp(f + S.back * (S.dist + 9 * k) + V(0, 3 + 7 * k, 0), smooth(u / 0.9) * 0.35 + 0.65 * k)
+    -- 别穿进墙里、地里
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    local ex = {}
+    if S.char then table.insert(ex, S.char) end
+    if S.veh then table.insert(ex, S.veh) end
+    rp.FilterDescendantsInstances = ex
+    local okR, hit = pcall(function() return workspace:Raycast(f, want - f, rp) end)
+    if okR and hit then want = f + (want - f).Unit * math.max(2, (hit.Position - f).Magnitude - 0.8) end
+    cam.CFrame = CFrame.lookAt(want, f)
+    cam.FieldOfView = S.fov0 + (S.fov0 * 0.78 - S.fov0) * smooth(u / S.dur)   -- 慢慢推近一点
+  end
+
+  local function start(ch, wasDown)
+    if S.on or (G.menuShown and G.menuShown()) then return end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    if G.S and G.S.phase == "end" then return end
+    S.n += 1
+    S.on, S.t0, S.char, S.dur = true, os.clock(), ch, wasDown and DUR_DOWN or DUR
+    S.beat = 0
+    S.camType0, S.fov0 = cam.CameraType, cam.FieldOfView
+    local hrp = ch and (ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("Head"))
+    S.focus0 = (hrp and hrp:IsA("BasePart") and hrp.Position) or cam.Focus.Position
+    S.veh = nil
+    -- 在车里死的：看着车（Drive / Fly 的车模型），不看人
+    local seat = nil
+    pcall(function() local hum = ch and ch:FindFirstChildOfClass("Humanoid") seat = hum and hum.SeatPart end)
+    if seat then
+      local m = seat:FindFirstAncestorOfClass("Model")
+      if m and m ~= ch then S.veh = m S.focus0 = m:GetPivot().Position end
+    end
+    S.from = cam.CFrame.Position
+    local flat = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+    S.back = (flat.Magnitude > 0.05) and -flat.Unit or V(0, 0, 1)
+    S.dist = clamp((S.from - S.focus0).Magnitude, 4, S.veh and 40 or 14)
+    if G.killcamStop then pcall(G.killcamStop) end   -- 原来那段转镜头看凶手的（Warfx.lua）先停掉，凶手写在小字里
+    if not reducedMotion then pcall(function() cam.CameraType = Enum.CameraType.Scriptable end) end
+    -- 褪色、模糊
+    cc = Instance.new("ColorCorrectionEffect")
+    cc.Name = "DeathGrade"
+    cc.Parent = Lighting
+    blur = Instance.new("BlurEffect")
+    blur.Name = "DeathBlur"
+    blur.Size = 0
+    blur.Parent = Lighting
+    title.Text = T("death.title")
+    sub.Text = subText()
+    gui.Enabled = true
+    blackGui.Enabled = true
+    black.BackgroundTransparency = 1
+    fadeOutT = nil
+    -- 一下闷响加呼的一声
+    if G.sfx then pcall(G.sfx, "death", nil, { must = true, dry = true }) end
+    pcall(function() RunService:BindToRenderStep("DeathFxCam", Enum.RenderPriority.Camera.Value + 40, camStep) end)
+  end
+
+  local function step(dt)
+    if fadeOutT then   -- 部署界面出来了：黑幕淡开
+      local v = (os.clock() - fadeOutT) / 0.45
+      black.BackgroundTransparency = clamp(v, 0, 1)
+      if v >= 1 then fadeOutT = nil blackGui.Enabled = false end
+    end
+    if not S.on then return end
+    local u = os.clock() - S.t0
+    -- 打断：主菜单开了、新角色出来了、回合结束了
+    local ch = player.Character
+    if (G.menuShown and G.menuShown()) or (ch and ch ~= S.char) or (G.S and G.S.phase == "end") then finish(true) return end
+    if G.S and G.S.alive and ch and ch ~= S.char then finish(true) return end
+    if u >= S.dur then finish(false) return end
+    -- 画面：一白 → 黑白、对比、模糊
+    if cc then
+      cc.Saturation = -1 * smooth(u / 1.0)
+      cc.Contrast = 0.28 * smooth(u / 1.0)
+      cc.Brightness = 0.35 * math.exp(-u * 7) - 0.06 * smooth(u / 1.5)
+      cc.TintColor = RGB(255, 255, 255)
+    end
+    if blur then blur.Size = 2 + 4 * smooth(u / 1.4) + 10 * math.exp(-u * 9) end
+    for _, e in ipairs(edges) do e.BackgroundTransparency = 1 - 0.85 * smooth(u / 0.8) end
+    -- 横条、大字（0.55 秒起淡进来、从 1.25 倍缩回）、小字
+    local a = smooth((u - 0.55) / 0.3)
+    band.BackgroundTransparency = 1 - 0.55 * a
+    title.TextTransparency = 1 - a
+    title.TextStrokeTransparency = 1 - 0.85 * a
+    titleScale.Scale = 1 + 0.25 * (1 - easeOut((u - 0.55) / 0.45))
+    if sub.Text == "" then sub.Text = subText() end
+    local b = smooth((u - 1.0) / 0.4)
+    sub.TextTransparency = 1 - b
+    sub.TextStrokeTransparency = 1 - 0.5 * b
+    -- 心跳两下
+    if S.beat < 2 and u > 0.5 + S.beat * 0.9 then
+      S.beat += 1
+      if G.sfx then pcall(G.sfx, "heart", nil, { vol = 1.2, must = true }) end
+    end
+    -- 最后半秒淡黑
+    black.BackgroundTransparency = 1 - smooth((u - (S.dur - FADE)) / FADE)
+  end
+  if G.frameConn then G.frameConn("DeathFx", step) else RunService.RenderStepped:Connect(step) end
+
+  -- 自己的角色死了：开始（倒地的人流血到时间、放弃、被补枪也是这里——短一点）
+  local function watch(ch)
+    local hum = ch:WaitForChild("Humanoid", 10)
+    if not hum then return end
+    hum.Died:Connect(function()
+      local ok, err = pcall(start, ch, ch:GetAttribute("Downed") == true or G.downed == true)
+      if not ok then
+        finish(true)
+        if G.showError then G.showError("阵亡效果：" .. tostring(err)) end
+      end
+    end)
+  end
+  if player.Character then task.spawn(watch, player.Character) end
+  player.CharacterAdded:Connect(function(ch)
+    if S.on then finish(true) end
+    killer = nil
+    task.spawn(watch, ch)
+  end)
+
+  -- 凶手（服务器 Battle.lua 的 killcam）：阵亡效果开着就归这里（写在小字里），原来那段转镜头看凶手的不放了
+  local prevMsg = G.onMsg
+  G.onMsg = function(kind, key, ...)
+    if kind == "killcam" then
+      killer = key
+      if S.on then
+        sub.Text = subText()
+        return
+      end
+    end
+    if prevMsg then return prevMsg(kind, key, ...) end
+  end
+end
+
+return DeathFx
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="134">
+          <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
 --   按语言写按键文字（「生成」+ 型号名），只给自己队的生成点开按键；柱子上方一块小牌子：型号名、类别、名额 / 冷却（G.S.vehAvail）
@@ -31202,7 +31508,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -31656,7 +31962,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -33073,7 +33379,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -34073,7 +34379,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -34288,7 +34594,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -36776,7 +37082,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -37132,7 +37438,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -37381,6 +37687,9 @@ function Fx.init(G)
     streak = { { id = TICK, vol = 0.8, s = { 1.6, 1.6 } }, { id = TICK, vol = 0.8, s = { 2.0, 2.0 }, delay = 0.09 }, { id = TICK, vol = 0.9, s = { 2.5, 2.5 }, delay = 0.18 },
       { id = EXP, vol = 0.25, s = { 1.6, 1.7 }, reg = { 0.02, 0.3 }, eq = { 6, 0, -8 } } },
     heart = { { id = THUD, vol = 1.6, s = { 0.5, 0.52 }, eq = { 10, -4, -24 } }, { id = THUD, vol = 1.1, s = { 0.47, 0.49 }, eq = { 10, -4, -24 }, delay = 0.24 } },
+    -- 阵亡（DeathFx.lua，GTA5 那一下「WASTED」）：放慢的低沉爆炸（只留低音、一点失真）+ 放慢的风声呼一下
+    death = { { id = EXP, vol = 1.1, s = { 0.42, 0.45 }, reg = { 0, 2.4 }, eq = { 10, -3, -20 }, dist = 0.3 },
+      { id = WIND, vol = 7, s = { 0.62, 0.66 }, reg = { 2, 4.2 }, eq = { 6, 4, -10 }, fade = 1.4 } },
     -- 自己开枪（耳边，用户 11-18：提高手感；原来是一层拉快的爆炸声，薄）：脆的一下（起爆那一截拉快）+ 低沉的一下（放慢、只留低音）
     --   + 枪机的咔哒 + 很短的回声尾巴；狙击枪更重、尾巴更长
     rifleMe = { { id = EXP, vol = 0.3, s = { 2.5, 2.8 }, reg = { 0.02, 0.3 }, eq = { -3, 2, 4 } },
@@ -38668,7 +38977,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -39078,7 +39387,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -39210,7 +39519,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -39489,7 +39798,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -40043,7 +40352,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -40994,7 +41303,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -41457,7 +41766,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -42286,7 +42595,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -42400,7 +42709,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -44868,7 +45177,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -45439,7 +45748,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -47219,7 +47528,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -48217,7 +48526,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -50364,7 +50673,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -50630,7 +50939,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -50792,7 +51101,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -51274,7 +51583,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -51799,7 +52108,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -51949,7 +52258,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -52262,7 +52571,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -52584,7 +52893,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -52801,7 +53110,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -52935,7 +53244,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -53440,7 +53749,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -54059,7 +54368,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -54340,7 +54649,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -54597,7 +54906,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -54740,7 +55049,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -55434,7 +55743,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -56031,7 +56340,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -56534,7 +56843,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -57481,7 +57790,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -58211,7 +58520,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -58963,7 +59272,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -59047,7 +59356,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -59797,7 +60106,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -60007,7 +60316,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -60462,7 +60771,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -61682,7 +61991,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -62189,7 +62498,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -62302,7 +62611,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -63297,10 +63606,12 @@ function UI.init(G)
     loading.Visible = false
     if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
-    local showDeploy = not S.alive and S.phase ~= "end"
+    -- 阵亡效果（DeathFx.lua，用户 11-23：死亡不要瞬间切到部署画面）放着的时候部署界面、平显都先不出来
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    local showDeploy = not S.alive and S.phase ~= "end" and not dying
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
-    hud.Visible = not showDeploy
+    hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniBox
@@ -63388,7 +63699,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -63492,7 +63803,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -65000,7 +65311,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -65880,7 +66191,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -66857,7 +67168,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -67556,6 +67867,7 @@ function Warfx.init(G)
     if workspace.CurrentCamera == shot.cam then shot.cam.FieldOfView = shot.fov0 end
     for _, o in ipairs(shot.objs) do if o.Parent then o:Destroy() end end
   end
+  G.killcamStop = endKillcam   -- 阵亡效果（DeathFx.lua）开始时先停掉
 
   local function stepKillcam()
     if not kc then return end
