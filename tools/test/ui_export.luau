@@ -174,6 +174,19 @@ H.run(0.3)
 -- 选阵营（进服先看这个）
 H.run(0.5)
 snap("menu")
+-- 选地图（主菜单「开始游戏」打开）：服务器已经在打岛的样子；再看一张还没定地图时的样子（三张都能点）
+if C.showMapPick then
+	as(atk, function() C.showMapPick() end)
+	H.run(0.5)
+	snap("mappick")
+	local S2 = table.clone(C.S)
+	S2.map, S2.mapReady = nil, false
+	as(atk, function() C.refreshMapPick(S2) end)
+	snap("mappick_new")
+	local mp = atk:FindFirstChildOfClass("PlayerGui"):FindFirstChild("MapPick")
+	if mp then mp.Enabled = false end
+	H.run(0.3)
+end
 if C.menuEnter then
 	local prev = H.ctx
 	H.ctx = atk

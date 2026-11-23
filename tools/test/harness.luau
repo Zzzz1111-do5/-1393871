@@ -64,6 +64,7 @@ local function setCtx(c)
 	end
 end
 
+H.screenErrs, H.screenSeen = {}, {}   -- 画面报错条（见下面 require 里包的 G.showError）
 local function report(where, err, co)
 	local msg = tostring(err)
 	local tb = co and debug.traceback(co, msg) or msg
@@ -1181,7 +1182,21 @@ local function hrequire(m)
 		local init = value.init
 		value.init = function(G, ...)
 			H.Gs[side] = G
-			return init(G, ...)
+			local r = table.pack(init(G, ...))
+			-- 游戏画面上的红色报错条（UI.lua G.showError：每帧 pcall 包着的步骤出错就写在那里）：原来测试台看不见，这里另记一份、第一次出现时打印
+			if side ~= "server" and type(rawget(G, "showError")) == "function" and not rawget(G, "_hSE") then
+				local se = G.showError
+				G._hSE = true
+				G.showError = function(m, ...)
+					local msg = tostring(m)
+					table.insert(H.screenErrs, { msg = msg, t = H.now, side = sideName(H.ctx) })
+					local key = msg:sub(1, 160)
+					H.screenSeen[key] = (H.screenSeen[key] or 0) + 1
+					if H.screenSeen[key] == 1 then print(string.format("[画面报错条 %.2f 秒 %s] %s", H.now, sideName(H.ctx), msg)) end
+					return se(m, ...)
+				end
+			end
+			return table.unpack(r, 1, r.n)
 		end
 	end
 	c.loading = false
@@ -1708,7 +1723,8 @@ function H.boot(placePath, opts)
 end
 
 function H.summary()
-	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns, H.netStats.s, H.netStats.c))
+	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，画面报错条 %d 次（%d 种），远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns,
+		#H.screenErrs, (function() local n = 0 for _ in H.screenSeen do n += 1 end return n end)(), H.netStats.s, H.netStats.c))
 end
 
 return H

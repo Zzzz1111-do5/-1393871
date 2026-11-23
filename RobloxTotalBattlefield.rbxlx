@@ -48978,8 +48978,9 @@ return Juice
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
---   主菜单「开始游戏」打开：两张大卡片并排（岛屿突击 · 沙漠风暴）——上面一块缩略图（按那张图自己的高度、材质现画：EditableImage；用不了画几道色带），
---   下面名字、模式、尺寸、一行说明；服务器正在打的那张标「这个服务器正在打」和人数。
+--   主菜单「开始游戏」打开：Map.ids 有几张就并排几张大卡片（岛屿突击 · 沙漠风暴 · 沙海；原来按两张排，第三张整个排到了屏幕外）——
+--   上面一块缩略图（按那张图自己的高度、材质现画：EditableImage；用不了就一行一条渐变拼出低分辨率的缩略图），
+--   下面名字、模式、尺寸、一行说明；服务器正在打的那张标「这个服务器正在打」和人数。开着时主菜单的字先藏起来（原来从卡片后面透出来）。
 --   点一张：告诉服务器（ACT.pickMap；还没定地图就按这张开）→ 地图生成好（S.mapReady）就快速加入（自动分队、默认装备、推荐出生点）、关掉菜单；
 --   服务器已经在打另一张：那张卡写「这个服务器在打 X」，按钮变「加入 X」
 local Players = game:GetService("Players")
@@ -48994,7 +48995,8 @@ function MapPick.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local Map = G.Map
   local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), RGB(156, 162, 168), RGB(104, 110, 116)
-  local ACCENT = { island = RGB(70, 160, 200), desert = RGB(214, 160, 84) }
+  local ACCENT = { island = RGB(70, 160, 200), desert = RGB(214, 160, 84), sands = RGB(222, 116, 70) }
+  local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- 手机：整体缩到一半多，字放大一点
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "MapPick"
@@ -49055,19 +49057,34 @@ function MapPick.init(G)
   back.Parent = content
   frame(content, UDim2.new(1, 0, 0, 1), UDim2.fromOffset(0, 124), WHITE, 0.88)
 
+  ---------------------------------------------------------------- 卡片的尺寸：Map.ids 有几张排几张（原来写死两张 600 宽，第三张「沙海」排在 1264 格开外、整个出了屏幕）
+
+  local N = #Map.ids
+  local GAP = 24
+  local CW, CH = math.floor((1232 - (N - 1) * GAP) / N), 520
+  local PH = N >= 3 and 248 or 300   -- 缩略图多高（三张并排时窄一些，矮一点给字留地方）
+
   ---------------------------------------------------------------- 缩略图：按那张图自己的高度、材质画（海蓝、沙黄、草绿、岩灰、跑道）
 
-  local PREV = 112
-  local function previewColors(id)
+  -- 材质的颜色：那张图自己有配色表（沙海的 Map.COLORS：石灰岩台地、板岩……）就照它的，没有的按这张表（原来石灰岩、板岩都落到草绿上）
+  local MATC = {
+    Sand = { 206, 182, 132 }, Sandstone = { 190, 140, 96 }, Salt = { 226, 222, 206 }, Limestone = { 198, 182, 150 },
+    Rock = { 128, 122, 114 }, Basalt = { 128, 122, 114 }, Slate = { 104, 96, 88 }, Ground = { 150, 124, 88 }, Mud = { 150, 124, 88 },
+    Asphalt = { 70, 72, 74 }, Concrete = { 120, 118, 112 }, CrackedLava = { 170, 120, 80 },
+    Grass = { 96, 136, 72 }, LeafyGrass = { 84, 124, 64 },
+  }
+  -- 取 cols × rows 个点：横向整张图，竖向 v0～v1 那一段（缩略图按 Crop 摆，只看得到中间一段）；每算几行让一帧（别一下卡住）
+  local function previewColors(id, cols, rows, v0, v1)
     local P = Map.profile(id)
     if not P or not P.height then return nil end
     local info = Map.info[id] or {}
     local half = (info.km or 8) * 1000 * 2.8 / 2
+    local own = type(P.COLORS) == "table" and P.COLORS or nil
     local px = {}
-    for j = 0, PREV - 1 do
-      for i = 0, PREV - 1 do
-        local x = -half + (i + 0.5) / PREV * 2 * half
-        local z = -half + (j + 0.5) / PREV * 2 * half
+    for j = 0, rows - 1 do
+      local z = -half + (v0 + (j + 0.5) / rows * (v1 - v0)) * 2 * half
+      for i = 0, cols - 1 do
+        local x = -half + (i + 0.5) / cols * 2 * half
         local h = P.height(x, z)
         local c
         if h <= 0.3 and info.sea ~= false then
@@ -49076,28 +49093,24 @@ function MapPick.init(G)
         else
           local m = P.material and P.material(x, z, h, 0)
           local name = m and m.Name or ""
-          if name == "Sand" then c = { 206, 182, 132 }
-          elseif name == "Sandstone" then c = { 190, 140, 96 }
-          elseif name == "Salt" then c = { 226, 222, 206 }
-          elseif name == "Rock" or name == "Basalt" then c = { 128, 122, 114 }
-          elseif name == "Ground" or name == "Mud" then c = { 150, 124, 88 }
-          elseif name == "Asphalt" or name == "Concrete" then c = { 70, 72, 74 }
-          elseif name == "Cracked Lava" or name == "CrackedLava" then c = { 170, 120, 80 }
-          else c = { 96, 136, 72 } end
+          local oc = own and own[name]
+          if oc then c = { oc.R * 255, oc.G * 255, oc.B * 255 } else c = MATC[name] or MATC.Grass end
           local k = 0.82 + math.clamp(h / 600, 0, 0.3)   -- 高的地方亮一点（看得出山）
           c = { c[1] * k, c[2] * k, c[3] * k }
         end
         px[#px + 1] = c
       end
+      if j % 8 == 7 then task.wait() end
     end
     return px
   end
-  local function paint(label, id)
-    local px = previewColors(id)
+  local PREV = 112
+  local function paintImage(label, id)
+    local okI, img = pcall(function() return game:GetService("AssetService"):CreateEditableImage({ Size = V2(PREV, PREV) }) end)
+    if not okI or not img then return false end   -- 没开 Mesh / Image API：画色带
+    local px = previewColors(id, PREV, PREV, 0, 1)
     if not px then return false end
-    local ok = pcall(function()
-      local AS = game:GetService("AssetService")
-      local img = AS:CreateEditableImage({ Size = V2(PREV, PREV) })
+    return (pcall(function()
       local buf = buffer.create(PREV * PREV * 4)
       for i, c in ipairs(px) do
         local o = (i - 1) * 4
@@ -49108,19 +49121,44 @@ function MapPick.init(G)
       end
       img:WritePixelsBuffer(Vector2.zero, V2(PREV, PREV), buf)
       label.ImageContent = Content.fromObject(img)
-    end)
-    return ok
+    end))
+  end
+  -- 色带：一行一条 Frame，横向用 UIGradient 的色点（最多 20 个）渐变过去——低分辨率，但看得出海岸、沙丘、台地
+  local BCOLS, BROWS = 20, 44
+  local function paintBands(label, id)
+    local cut = math.clamp(PH / CW, 0, 1)   -- Crop：方图横向撑满，竖向只露中间这一段
+    local px = previewColors(id, BCOLS, BROWS, (1 - cut) / 2, (1 + cut) / 2)
+    if not px then return false end
+    local holder = Instance.new("Frame")
+    holder.Name = "Bands"
+    holder.Size = UDim2.fromScale(1, 1)
+    holder.BackgroundTransparency = 1
+    holder.ZIndex = 1
+    for r = 0, BROWS - 1 do
+      local kp = {}
+      for c = 0, BCOLS - 1 do
+        local v = px[r * BCOLS + c + 1]
+        kp[#kp + 1] = ColorSequenceKeypoint.new(c / (BCOLS - 1), RGB(math.clamp(math.floor(v[1]), 0, 255), math.clamp(math.floor(v[2]), 0, 255), math.clamp(math.floor(v[3]), 0, 255)))
+      end
+      local f = frame(holder, UDim2.new(1, 0, 1 / BROWS, 1), UDim2.fromScale(0, r / BROWS), WHITE, 0)
+      f.ZIndex = 1
+      local g = Instance.new("UIGradient")
+      g.Color = ColorSequence.new(kp)
+      g.Parent = f
+    end
+    holder.Parent = label
+    return true
   end
 
-  ---------------------------------------------------------------- 两张卡
+  ---------------------------------------------------------------- 卡片
 
   local cards = {}
-  local CW, CH = 600, 520
+  local TS = touch and 3 or 0   -- 手机上小字各大一点
   for i, id in ipairs(Map.ids) do
     local b = Instance.new("TextButton")
     b.Name = "Map_" .. id
     b.Size = UDim2.fromOffset(CW, CH)
-    b.Position = UDim2.fromOffset((i - 1) * (CW + 32), 148)
+    b.Position = UDim2.fromOffset((i - 1) * (CW + GAP), 148)
     b.BackgroundColor3 = RGB(10, 12, 14)
     b.BackgroundTransparency = 0.2
     b.BorderSizePixel = 0
@@ -49133,41 +49171,51 @@ function MapPick.init(G)
     -- 缩略图（地图正上方俯视）+ 一层压暗的渐变（字压在上面看得清）
     local pv = Instance.new("ImageLabel")
     pv.Name = "Preview"
-    pv.Size = UDim2.new(1, 0, 0, 300)
+    pv.Size = UDim2.new(1, 0, 0, PH)
     pv.BackgroundColor3 = ACCENT[id] or RGB(60, 70, 80)
     pv.BackgroundTransparency = 0.55
     pv.BorderSizePixel = 0
     pv.ScaleType = Enum.ScaleType.Crop
+    pv.ZIndex = 1
     pv.Parent = b
     K.pv = pv
     local fade = frame(pv, UDim2.new(1, 0, 0, 120), UDim2.new(0, 0, 1, -120), RGB(10, 12, 14), 0)
+    fade.ZIndex = 2   -- 压在色带上面
     local g = Instance.new("UIGradient")
     g.Rotation = 90
     g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) })
     g.Parent = fade
     K.bar = frame(b, UDim2.new(1, 0, 0, 3), nil, ACCENT[id] or WHITE, 0)
-    K.mode = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(24, 272), 11, ACCENT[id] or MUTE, Enum.Font.GothamBold)
-    K.name = text(b, "", UDim2.fromOffset(CW - 48, 34), UDim2.fromOffset(22, 316), 30, WHITE, Enum.Font.GothamBold)
-    K.size = text(b, "", UDim2.fromOffset(300, 16), UDim2.fromOffset(24, 356), 13, MUTE, Enum.Font.GothamMedium)
-    K.desc = text(b, "", UDim2.fromOffset(CW - 48, 64), UDim2.fromOffset(24, 382), 13, RGB(214, 218, 222), Enum.Font.GothamMedium)
+    K.mode = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH - 30), 11 + TS, ACCENT[id] or MUTE, Enum.Font.GothamBold)
+    K.name = text(b, "", UDim2.fromOffset(CW - 46, 34), UDim2.fromOffset(22, PH + 12), 30, WHITE, Enum.Font.GothamBold)
+    K.size = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH + 52), 13 + TS, MUTE, Enum.Font.GothamMedium)
+    -- 说明到「正在打」那一行之间都给它（三张并排时一行 26 个字左右，沙海的说明要三行）
+    local nowY = CH - 24 - 40 - 12 - 16
+    K.desc = text(b, "", UDim2.fromOffset(CW - 48, nowY - 8 - (PH + 78)), UDim2.fromOffset(24, PH + 78), 13 + TS, RGB(214, 218, 222), Enum.Font.GothamMedium)
     K.desc.TextYAlignment = Enum.TextYAlignment.Top
-    K.now = text(b, "", UDim2.fromOffset(CW - 48, 14), UDim2.fromOffset(24, 452), 11, MUTE, Enum.Font.GothamMedium)
+    K.now = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, nowY), 11 + TS, MUTE, Enum.Font.GothamMedium)
+    -- 按钮横跨整张卡的底边（原来 180 宽靠右，窄卡上和「正在打 · 几名玩家」那行挤在一起）
     K.go = Instance.new("TextLabel")
-    K.go.Size, K.go.Position, K.go.AnchorPoint = UDim2.fromOffset(180, 40), UDim2.new(1, -24, 1, -24), V2(1, 1)
+    K.go.Size, K.go.Position = UDim2.new(1, -48, 0, 40), UDim2.new(0, 24, 1, -64)
     K.go.BackgroundColor3, K.go.BorderSizePixel = WHITE, 0
-    K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15, Enum.Font.GothamBold
+    K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15 + TS, Enum.Font.GothamBold
+    K.go.TextTruncate = Enum.TextTruncate.AtEnd
     K.go.Parent = b
+    for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go }) do l.ZIndex = 3 end   -- 字在缩略图上面
     b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
     cards[id] = K
   end
-  -- 缩略图慢慢画（一张一百多乘一百多个点，算一次就留着）
+  -- 缩略图慢慢画（算一次就留着）：先试 EditableImage，用不了画色带
   local painted = {}
   local function paintAll()
     for id, K in pairs(cards) do
       if not painted[id] then
         painted[id] = true
-        task.spawn(function() if not paint(K.pv, id) then painted[id] = "fail" end end)
+        task.spawn(function()
+          local ok = paintImage(K.pv, id) or paintBands(K.pv, id)
+          if not ok then painted[id] = "fail" end
+        end)
       end
     end
   end
@@ -49176,9 +49224,12 @@ function MapPick.init(G)
 
   local want = nil      -- 自己点的哪张
   local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
+  -- 主菜单的字藏起来 / 放回来（Menu.lua 的 refreshMenu 看 G.mapPickShown）
+  local function menuSync() if G.refreshMenu and G.S then G.refreshMenu(G.S) end end
   local function close()
     gui.Enabled = false
     want = nil
+    menuSync()
   end
   local function choose(id)
     local S = G.S
@@ -49198,6 +49249,7 @@ function MapPick.init(G)
   function G.showMapPick()
     gui.Enabled = true
     paintAll()
+    menuSync()
     if G.S then G.refreshMapPick(G.S) end
   end
   G.mapPickShown = function() return gui.Enabled end
@@ -50186,6 +50238,7 @@ function Menu.init(G)
     local live = Stage.active()
     bg.BackgroundTransparency = live and 1 or 0
     shade.BackgroundTransparency = live and 0.4 or 0
+    content.Visible = not (G.mapPickShown and G.mapPickShown())   -- 选地图开着：菜单的字先藏起来（原来从地图卡片后面透出来）
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName
