@@ -8,7 +8,7 @@
 模型一共 108 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
   2. 飞机直升机                air/      22 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
-                                         f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、j11.glb / j10.glb / j36.glb 是 11-22 加的歼-11B / 歼-10C / 歼-36、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
+                                         f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、j11.glb / j10.glb / j36.glb 是 11-22 加的歼-11B / 歼-10C / 歼-36（11-23 起 j36.glb 里是 A_j36_v2__…）、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
                                optics/   53 件：14 件手持装备、瞄准镜、望远镜（含 M4 上的 ACOG：acog.glb）+ 17 件改枪配件（opt_ 瞄具、sup_ 消音器、muz_ 枪口件、grip_ 握把、mag_ 弹匣、tac_ 战术件）
@@ -21,6 +21,14 @@
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 23 日第二包（歼-36 换成 28 万个三角形的完整版）：换游戏文件（或者「三、只换脚本」），再重导 air/j36.glb：
+    - 用户：「j36 你给我用那个 30w 个三角形的模型」——就是 Sketchfab 上 positivevubez4eva 的 J36 v2（原模型 31.5 万个面）。11-22 那版去掉了机徽、编号、
+      座舱仪表上的字（十万个三角形），这一版都放回来了：白色的标识、编号、座舱里的字都在，一共 28 万个三角形、44 块（每块不到两万，Roblox 导得进）；
+      只去掉一层透明度是 0 的座舱盖（导进 Roblox 会变成不透明的罩子）和弹舱里自带的导弹（游戏按挂载另画）。升降副翼、弹舱门、座舱盖、起落架照样会动。
+    - 新的块叫 A_j36_v2__…，和以前导入的 A_j36__… 不重名：没重导的照旧用老的；导了新的，游戏优先用新的。老的想删就在命令栏粘这一行：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^A_j36__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的歼-36")
 
   11 月 23 日这一包（M1A2 SEPv2 车里：照钢铁猛兽截图做的车长显示单元、八边形指挥塔、真实弹道火控）：换游戏文件（或者「三、只换脚本」）；
     想要车内饰部件的原贴图，再导入 optics/ 里 21 个 ip_ 开头的 .glb（不导也行：游戏开着「Mesh / Image API」时自己现生成，只是没有原贴图）：

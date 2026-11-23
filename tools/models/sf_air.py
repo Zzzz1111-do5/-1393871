@@ -71,15 +71,19 @@ SPEC = {
         'noz': [[-7.89, 0.0, 1.16, 0.53]],
     },
     # 歼-36（positivevubez4eva 的 J36 v2，CC-BY）：在模拟飞行沙盒里用零件拼的，导出时按材质合并——节点名都是 Object_N，活动部件全靠连通块 / 切法挑。
-    #   Object_2～17 是字（机徽、编号、座舱仪表上的字，十万个三角形）和一层看不见的座舱盖（DoNothing 材质，不透明度 0）：去掉（两边阵营是虚构的）；
+    #   Object_2～17 是字（机徽、编号、座舱仪表上的字，十万个三角形，都是几何体、不带贴图）：用户 11-23「j36 你给我用那个 30w 个三角形的模型」——
+    #   v2（键名 j36_v2）把字都放回来（原来 11-22 那版去掉了，键名 j36，留在 old 表里给已经导入过的人）；
+    #   只去掉 Object_4：一层看不见的座舱盖（DoNothing 材质，不透明度 0——导进 Roblox 会变成不透明的罩子）；
     #   弹舱里装着导弹（细长的连通块）：去掉，游戏按挂载另画；起落架放着（小车式主起落架一边前后两个轮、双轮前起落架），开着的舱门收起一半时藏起来；
     #   三台发动机的喷口在机背的槽里；无尾——后缘三段升降副翼，最外一段兼管偏航
     'j36': {
         'ids': ['j36'],
         'credit': credit('歼-36', 'J36, J-36, J 36 ,v2 Chengdu Aircraft Corporation', 'positivevubez4eva', '0f7f57092bbd438fb788302e47279fc0',
-                         'j36-j-36-j-36-v2-chengdu-aircraft-corporation'),
+                         'j36-j-36-j-36-v2-chengdu-aircraft-corporation')
+                  + '（改动：转成 Roblox 坐标，升降副翼、弹舱门、座舱盖、起落架切成会动的块；去掉一层看不见的座舱盖和弹舱里自带的导弹）',
         'fwd': '+z', 'up': '+y', 'len': 22.98, 'pitch': 0.57,   # 前轮比主轮低 0.09 米：摆平让三个轮子一起着地
-        'drop': [r'^Object_([2-9]|1[0-7])$'],
+        'kname': 'j36_v2',   # 导入后的键名（块叫 A_j36_v2__…）；文件还是 models/air/j36.glb
+        'drop': [r'^Object_4$'],
         'comp': [
             # 前起落架两个轮子中间一个 12 个三角形的方块（比轮子还低 8 厘米）
             {'node': r'^Object_', 'sel': {'x': [6.0, 6.2], 'ay': [0, 0.02], 'zlomax': 2.65}, 'drop': True},
@@ -614,7 +618,8 @@ def main(argv):
     if dry:
         return
     path = os.path.join('models/air', key + '.glb')
-    B.write_glb(key, meta2, binb2, info, out, path, prefix='A_')
+    kname = S.get('kname', key)   # 换过版本的：导入后的块叫 A_<kname>__…（和用户已经导入的老版本不重名），文件名不变
+    B.write_glb(kname, meta2, binb2, info, out, path, prefix='A_')
     print('  写好了 %s（%.1f MB）' % (path, os.path.getsize(path) / 1e6))
     # 元数据：同 air_one.py
     META = 'src/ReplicatedStorage/ImportedAir.lua'
@@ -631,8 +636,10 @@ def main(argv):
     alias = parse_tbl(m_alias.group(1))
     oldt = parse_tbl(m_old.group(1))
     for i in S['ids']:
-        alias[i] = key
-    old[key] = '    %s = %s,\n' % (key, B.lua(info))
+        alias[i] = kname
+        if kname != key and key in old:   # 老版本（原来的键名）那一行留着，old 表里记上：没导入新版本的照旧用老的
+            oldt[i] = [key] + [k for k in (oldt.get(i) or []) if k not in (key, kname)]
+    old[kname] = '    %s = %s,\n' % (kname, B.lua(info))
     body = '\n  alias = ' + B.lua(alias) + ',\n  old = ' + B.lua(oldt) + ',\n  m = {\n'
     for k_ in sorted(old):
         line = old[k_]
