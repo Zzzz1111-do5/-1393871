@@ -5,6 +5,7 @@
 --   投票（用户 11-23）：还没定图时点一张就是投一票（能改票，ACT.pickMap → init.server.lua 的 G.voteMap），每张卡显示票数，底下倒计时；
 --   第一票投出后 Config.MapVote.time 秒（在场的人都投了就提前）按票数最多的开 → 地图生成好（S.mapReady）投过票的人自动快速加入、关掉菜单；
 --   服务器已经在打另一张：那张卡写「这个服务器在打 X」，按钮变「加入 X」
+--   右上角「对战 / 关卡」两个页签：关卡页是 PvE 关卡（Pve.lua，用户 11-23：「你搞一些关卡吧」），一关一张卡，打过上一关才解锁，点了服务器换成这一关
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 
@@ -232,6 +233,65 @@ function MapPick.init(G)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
     cards[id] = K
   end
+  ---------------------------------------------------------------- PvE 关卡页（Pve.lua，用户 11-23：「你搞一些关卡吧」）
+
+  local tab = "pvp"
+  local tabs = {}
+  for i, k in ipairs({ "pvp", "pve" }) do
+    local b = Instance.new("TextButton")
+    b.Name = "Tab_" .. k
+    b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), UDim2.new(1, -150 - (2 - i) * 160 - 140, 0, 50), V2(0, 0)
+    b.BackgroundColor3, b.BorderSizePixel = RGB(16, 18, 20), 0
+    b.TextSize, b.Font = 13, Enum.Font.GothamBold
+    b.AutoButtonColor = true
+    b.Parent = content
+    tabs[k] = { b = b, st = stroke(b, 0.8) }
+  end
+  local pveGrid = frame(content, UDim2.fromOffset(1232, 520), UDim2.fromOffset(0, 148), RGB(0, 0, 0), 1)
+  pveGrid.Name = "PveGrid"
+  pveGrid.Visible = false
+  local PC = G.Config.Pve or { levels = {} }
+  local lcards = {}
+  local LW, LH = 296, 250
+  for n, L in ipairs(PC.levels) do
+    local col, row = (n - 1) % 4, math.floor((n - 1) / 4)
+    local b = Instance.new("TextButton")
+    b.Name = "Pve_" .. n
+    b.Size = UDim2.fromOffset(LW, LH)
+    b.Position = UDim2.fromOffset(col * (LW + 16), row * (LH + 16))
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(10, 12, 14), 0.2, 0
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Parent = pveGrid
+    local st = stroke(b, 0.86)
+    frame(b, UDim2.new(1, 0, 0, 3), nil, ACCENT[L.map] or WHITE, 0)
+    local K = { b = b, st = st, L = L, n = n }
+    K.num = text(b, "", UDim2.fromOffset(LW - 32, 14), UDim2.fromOffset(16, 16), 11, ACCENT[L.map] or MUTE, Enum.Font.GothamBold)
+    K.name = text(b, "", UDim2.fromOffset(LW - 32, 30), UDim2.fromOffset(16, 34), 24, WHITE, Enum.Font.GothamBold)
+    K.map = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 74), 12, MUTE)
+    K.goal = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 100), 13, RGB(214, 218, 222))
+    K.forces = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 122), 13, RGB(214, 218, 222))
+    K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.GothamBold)
+    K.reward.TextYAlignment = Enum.TextYAlignment.Top
+    K.state = Instance.new("TextLabel")
+    K.state.Size, K.state.Position, K.state.AnchorPoint = UDim2.fromOffset(150, 34), UDim2.new(1, -16, 1, -16), V2(1, 1)
+    K.state.BackgroundColor3, K.state.BorderSizePixel = WHITE, 0
+    K.state.TextSize, K.state.Font = 14, Enum.Font.GothamBold
+    K.state.Parent = b
+    b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
+    b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
+    lcards[n] = K
+  end
+  local function setTab(k)
+    tab = k
+    for id, K in pairs(cards) do K.b.Visible = (k == "pvp") end
+    pveGrid.Visible = (k == "pve")
+    if G.S then G.refreshMapPick(G.S) end
+  end
+  tabs.pvp.b.Activated:Connect(function() setTab("pvp") end)
+  tabs.pve.b.Activated:Connect(function() setTab("pve") end)
+  G.mapPickTab = function(k) if k then setTab(k) end return tab end   -- 测试用
+
   -- 缩略图慢慢画（算一次就留着）：先试 EditableImage，用不了画色带
   local painted = {}
   local function paintAll()
@@ -255,9 +315,11 @@ function MapPick.init(G)
   local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13 + TS, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
   -- 主菜单的字藏起来 / 放回来（Menu.lua 的 refreshMenu 看 G.mapPickShown）
   local function menuSync() if G.refreshMenu and G.S then G.refreshMenu(G.S) end end
+  local wantPve = nil   -- 自己点的第几关（PvE）
   local function close()
     gui.Enabled = false
     want = nil
+    wantPve = nil
     menuSync()
   end
   local function choose(id)
@@ -269,6 +331,19 @@ function MapPick.init(G)
     if G.refreshMapPick and S then G.refreshMapPick(S) end   -- 先高亮自己投的（服务器的票数随后到）
   end
   for id, K in pairs(cards) do K.b.Activated:Connect(function() choose(id) end) end
+  local function pveCleared() return me:GetAttribute("PveCleared") or 0 end
+  local function choosePve(n)
+    local L = PC.levels[n]
+    if not L then return end
+    if n > pveCleared() + 1 then
+      if G.toast then G.toast(T("pve.lockedMsg", n - 1), "bad") end
+      return
+    end
+    want, wantPve = L.map, n
+    G.R.Act:FireServer("pickPve", n)
+    status.Text = T("map.loading", 0)
+  end
+  for n, K in pairs(lcards) do K.b.Activated:Connect(function() choosePve(n) end) end
   back.Activated:Connect(close)
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
@@ -308,6 +383,7 @@ function MapPick.init(G)
     gui.Enabled = true
     paintAll()
     menuSync()
+    if G.S and G.S.pve and tab ~= "pve" then setTab("pve") end   -- 这个服务器在打关卡（比如传送过来的）：直接开关卡页
     if G.S then G.refreshMapPick(G.S) end
   end
   G.mapPickShown = function() return gui.Enabled end
@@ -325,7 +401,37 @@ function MapPick.init(G)
     sub.Text = T("map.sub")
     back.Text = T("map.back")
     local n = (S.rAtk or 0) + (S.rDef or 0)
-    local voting = S.map == nil
+    tabs.pvp.b.Text, tabs.pve.b.Text = T("pve.tabPvp"), T("pve.tabPve")
+    for k, tb in pairs(tabs) do
+      local on = tab == k
+      tb.b.TextColor3 = on and RGB(10, 10, 12) or MUTE
+      tb.b.BackgroundColor3 = on and WHITE or RGB(16, 18, 20)
+      tb.st.Transparency = on and 0.2 or 0.8
+    end
+    if tab == "pve" then
+      head.Text = T("pve.title")
+      sub.Text = T("pve.sub")
+      local cl = pveCleared()
+      for i, K in pairs(lcards) do
+        local L = K.L
+        K.num.Text = string.upper(T("pve.level", i))
+        K.name.Text = T("pve.n" .. i)
+        K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
+        K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
+        K.forces.Text = T("pve.forces", L.enemies, L.allies)
+        K.reward.Text = (i > cl) and T("pve.rewardFirst", math.floor(L.reward * (PC.firstBonus or 1))) or T("pve.rewardReplay", math.floor(L.reward * (PC.replay or 1)))
+        local locked = i > cl + 1
+        local done = i <= cl
+        local cur = S.pve == i and S.map == L.map
+        K.state.Text = locked and T("pve.locked", i - 1) or (cur and T("map.join") or (done and (T("pve.cleared") .. "  ·  " .. T("pve.start")) or T("pve.start")))
+        K.state.BackgroundColor3 = locked and RGB(40, 42, 46) or (done and RGB(120, 214, 130) or WHITE)
+        K.state.TextColor3 = locked and MUTE or RGB(10, 10, 12)
+        K.b.BackgroundTransparency = locked and 0.55 or 0.2
+        K.st.Color = (wantPve == i) and (ACCENT[L.map] or WHITE) or WHITE
+        K.st.Transparency = (wantPve == i) and 0.2 or 0.86
+      end
+    end
+    local voting = S.map == nil and not S.pve
     for id, K in pairs(cards) do
       local info = Map.info[id] or {}
       local acc = ACCENT[id] or WHITE
@@ -337,6 +443,7 @@ function MapPick.init(G)
       local other = S.map ~= nil and not cur
       local mine = voting and want == id
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
+      if cur and S.pve then K.now.Text = T("pve.nowPve", S.pve, T("pve.n" .. S.pve)) .. "   ·   " .. T("map.players", n) end   -- 在打关卡：一个人点就退出关卡改打对战（Round.lua 的 ACT.pickMap）
       K.now.TextColor3 = cur and acc or MUTE
       if voting then
         K.go.Text = mine and T("map.voted") or T("map.vote")
@@ -356,8 +463,10 @@ function MapPick.init(G)
       K.st.Transparency = hi and 0.2 or 0.86
     end
     status.Text = statusLine(S)
-    -- 投过票 / 点过加入的：地图定了、生成好了就快速加入（主菜单关掉、自动分队、推荐出生点）——不管最后定的是不是自己投的那张
-    if want and S.map and S.mapReady then
+    if wantPve and S.pve ~= wantPve then   -- 点了关卡：等服务器换成这一关
+      status.Text = T("map.loading", math.floor((S.progress or 0) * 100))
+    elseif want and S.map and S.mapReady then
+      -- 投过票 / 点过加入 / 点过关卡的：地图定了、生成好了就快速加入（主菜单关掉、自动分队、推荐出生点）——不管最后定的是不是自己投的那张
       close()
       if G.quickJoin then G.quickJoin() end
     end

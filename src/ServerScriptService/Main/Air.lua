@@ -66,7 +66,7 @@ function Air.init(G)
     local out = vehModels0 and vehModels0(team) or {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if AIRCATS[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do if AD.get(id) then table.insert(out, id) end end
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do if AD.get(id) then table.insert(out, id) end end   -- 两边的型号都能开
       end
     end
     return out

@@ -98,6 +98,10 @@ function Bots.init(G)
 
   -- 每队要几个机器人：保底人数减真人，两队加起来不超过 maxTotal
   local function wanted()
+    if G.botWanted then   -- PvE 关卡（Pve.lua）：按关卡要的人数
+      local w = G.botWanted()
+      if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
+    end
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then
@@ -610,7 +614,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) then   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
+      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) and not P.downed then   -- 倒地的不补枪   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then
@@ -648,7 +652,7 @@ function Bots.init(G)
   local function targetPos(c)
     if c.P then
       local P = c.P
-      if not P.alive or not P.char or not c.part.Parent then return nil end
+      if not P.alive or not P.char or not c.part.Parent or P.downed then return nil end
       local hum = P.char:FindFirstChildOfClass("Humanoid")
       if not hum or hum.Health <= 0 then return nil end
       return c.part.Position + V(0, 0.8, 0)

@@ -149,16 +149,30 @@ function T.actAsRemote(pl, ...) T.remoteAs(pl, "Act", ...) end
 
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E；返回生成出来的那一辆
 --   召唤位（飞机、直升机、地面载具都是：一个位上好几型，Depots.lua 的 summon、vids）：记下要的型号，usePad 时在弹出的卡片里点这一型
+--   两边都能用对方的载具（Config.CrossVehicles）以后，对面的召唤位上也有这一型：先找本来就是这一边的型号的那边的召唤位（同以前），没有再随便哪个
 T.padVid = {}
-function T.pad(vid)
+local function nativeOf(team, vid)
+  for _, list in pairs((T.G.Config.Vehicles or {})[team] or {}) do
+    if type(list) == "table" then
+      for _, id in ipairs(list) do if id == vid then return true end end
+    end
+  end
+  return false
+end
+function T.pad(vid, team)
   for _, p in ipairs(T.G.pads or {}) do
     if p.vid == vid and not p.summon then return p end
   end
-  for _, p in ipairs(T.G.pads or {}) do
-    for _, id in ipairs(p.vids or {}) do
-      if id == vid then
-        T.padVid[p] = vid
-        return p
+  for pass = 1, 2 do
+    for _, p in ipairs(T.G.pads or {}) do
+      local ok = (pass == 2) or (team and p.team == team) or (not team and nativeOf(p.team, vid))
+      if ok then
+        for _, id in ipairs(p.vids or {}) do
+          if id == vid then
+            T.padVid[p] = vid
+            return p
+          end
+        end
       end
     end
   end

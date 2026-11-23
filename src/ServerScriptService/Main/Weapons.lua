@@ -334,7 +334,7 @@ function Weapons.init(G)
     local char = P.char
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local head = char and char:FindFirstChild("Head")
-    if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
+    if not hum or hum.Health <= 0 or not head or P.vehicle or P.downed then return nil end   -- 倒地的不能开枪（Revive.lua）
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
     local kit = G.kitOf(P)
@@ -487,7 +487,7 @@ function Weapons.init(G)
     if not hrp then return end
     local healed = 0
     for _, Q in pairs(G.P) do
-      if Q.team == P.team and Q.alive and Q.char then
+      if Q.team == P.team and Q.alive and Q.char and not Q.downed then   -- 倒地的要「救起」（按住 E），急救包回血不管
         local h2 = Q.char:FindFirstChild("HumanoidRootPart")
         local hum = Q.char:FindFirstChildOfClass("Humanoid")
         if h2 and hum and hum.Health > 0 and (h2.Position - hrp.Position).Magnitude <= w.r then
@@ -589,13 +589,19 @@ function Weapons.init(G)
     end
     if t < (P.cd.spot or 0) then return end
     P.cd.spot = t + w.cd
+    G.spotFrom(P, char, head, aim, w)
+  end
+  -- 标记：从头那里顺着瞄的方向，w.range 格以内、w.cone 度（默认 4°）锥里、看得见的敌人（玩家、车、船、工事）标记 w.spotTime 秒
+  function G.spotFrom(P, char, head, aim, w)
+    local t = now()
     local o = head.Position
     local look = (aim - o).Unit
     local list = {}
+    local cosC = math.cos(math.rad(w.cone or 4))
     local function consider(pos, key)
       local to = pos - o
       local d = to.Magnitude
-      if d < 4 or d > w.range or to.Unit:Dot(look) < math.cos(math.rad(4)) then return end
+      if d < 4 or d > w.range or to.Unit:Dot(look) < cosC then return end
       params.FilterDescendantsInstances = { char }
       local res = workspace:Raycast(o, to * 0.98, params)
       if res and (res.Position - pos).Magnitude > 6 then return end
@@ -615,6 +621,23 @@ function Weapons.init(G)
       G.addScore(P, Config.Score.spot * #list)
       G.msg(P.pl, "good", "ui.spotted", #list)
     end
+    return #list
+  end
+  -- 人人都能标记（用户 11-23「按你想的来弄」：战地那样按 Z 标记看到的敌人，队友那边地图、屏幕上都看得见）：
+  --   比望远镜近、锥窄、标记时间短（Config.QuickSpot）；望远镜（观察员）照旧更远更久
+  G.ACT.spot = function(P, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    if not P.alive or P.downed or (G.inVeh and G.inVeh(P)) then return end
+    if not G.round or G.round.phase ~= "battle" then return end
+    local char = P.char
+    local head = char and char:FindFirstChild("Head")
+    if not head or (aim - head.Position).Magnitude < 1 then return end
+    local Q = Config.QuickSpot
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.qspot or 0) then return end
+    P.cd.qspot = t + Q.cd
+    G.spotFrom(P, char, head, aim, Q)
   end
 
   -- 每半秒把还在标记期里的敌人位置发给那一队

@@ -474,6 +474,7 @@ function UI.init(G)
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
     if s.kind == "redbase" then return T("spawn.redbase") end   -- 沙漠图：红方前进基地
+    if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id
   end
 

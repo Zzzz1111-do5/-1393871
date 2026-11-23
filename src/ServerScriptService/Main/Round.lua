@@ -192,9 +192,11 @@ function Round.init(G)
     P.pl.Neutral = false
     P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
   end
+  G.setTeamOf = setTeam   -- PvE（Pve.lua）：真人都换到攻方
 
   -- 新来的人先放到真人少的一方（临时的），进服先看选阵营界面：自己选解放军（攻）还是美军（守）
   local function pickTeam()
+    if G.pve then return "atk" end   -- PvE 关卡：真人都在攻方（Pve.lua）
     local a, d = teamCount("atk", true), teamCount("def", true)
     if a < d then return "atk" elseif d < a then return "def" end
     return (math.random() < 0.5) and "atk" or "def"
@@ -203,6 +205,7 @@ function Round.init(G)
   -- 能不能进这一队：不算自己，这一队的真人不比另一队多（人多的一边「人数已满」）
   local function canJoin(P, team)
     if team ~= "atk" and team ~= "def" then return false end
+    if G.pve then return team == "atk" end   -- PvE 关卡：只能进攻方
     local other = (team == "atk") and "def" or "atk"
     local a, b = teamCount(team, true), teamCount(other, true)
     if P.team == team then a -= 1 elseif P.team == other then b -= 1 end
@@ -308,6 +311,7 @@ function Round.init(G)
         end
       end
       if best then best.rec = true elseif out[1] then out[1].rec = true end
+      if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
       return out
     end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
@@ -357,6 +361,7 @@ function Round.init(G)
       end
     end
     recommend(team, out)
+    if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
     return out
   end
   G.spawnList = spawnList
@@ -432,6 +437,13 @@ function Round.init(G)
     elseif sp.kind == "beach" then   -- 没有登陆艇模块时直接站在滩上
       local p = standAt(sp.x, sp.z - 40, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "squad" then   -- 小队队友身后（Squads.lua）；刚好不行了（挨打了、上车了）就在他最后报的位置附近
+      local cf = G.squadSpawnCF and G.squadSpawnCF(P, sp)
+      if cf then return cf end
+      if sp.x then
+        local p = standAt(sp.x, sp.z, 8)
+        return CFrame.lookAt(p, p + face)
+      end
     end
     return CFrame.new(0, 60, 0)
   end
@@ -573,15 +585,9 @@ function Round.init(G)
     end
   end
 
-  local function onDied(P, char)
-    if P.char ~= char then return end
-    P.alive = false
-    P.deaths += 1
-    P.deadAt = now()
-    P.canDeployAt = now() + Config.RespawnDelay
-    P.vehicle = nil
-    G.emit("died", P)
-    -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻
+  -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻；击杀信息发给所有人。
+  --   倒地的那一下就记（Revive.lua 的 G.downPlayer 调）；没倒地直接死的在 onDied 里记。返回凶手那条伤害记录和名字（阵亡镜头用）
+  local function creditDeath(P)
     local log, t = P.dmgLog or {}, now()
     local killer, assists = nil, {}
     for i = #log, 1, -1 do
@@ -613,9 +619,32 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
+    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    return killer, kname
+  end
+  G.creditDeath = creditDeath
+
+  local function onDied(P, char)
+    if P.char ~= char then return end
+    local down = P.downed   -- 倒地以后才死的（流血、放弃、补枪）：击杀在倒地时已经记过了
+    P.downed = nil
+    P.revT = nil
+    P.alive = false
+    P.deaths += 1
+    P.deadAt = now()
+    -- 倒着等过救援了：不用再等复活时间（等的那几秒已经在地上过了）
+    P.canDeployAt = now() + ((down and (Config.Revive and Config.Revive.afterDown)) or Config.RespawnDelay)
+    P.vehicle = nil
+    G.emit("died", P)
+    local killer, kname
+    if down and down.credited then
+      killer, kname = down.killer, down.kname
+      P.dmgLog = {}
+    else
+      killer, kname = creditDeath(P)
+    end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
 
@@ -723,6 +752,16 @@ function Round.init(G)
       G.pushAll()
       return
     end
+    -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
+    if G.pve and G.mapId then
+      if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
+        G.pveExit()
+        G.msg(P.pl, "info", "pve.left")
+        G.roundStart()
+        return
+      end
+      G.msg(P.pl, "info", "pve.joined", G.pve.n)
+    end
     G.pushOne(P)
   end
 
@@ -783,10 +822,20 @@ function Round.init(G)
         wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
-    hum:TakeDamage(amt)
     local head = part ~= nil and part.Name == "Head"
-    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 倒地（Revive.lua）：已经倒着的再挨一下就没了（补枪，不再记一次击杀）；这一下会打死、又不是打得太狠：倒地等人救（击杀现在就记）
+    local lethal = false
+    if victim and victim.downed then
+      hum.Health = 0
+    elseif victim and G.downOk and hum.Health - amt <= 0 and G.downOk(victim, hum, amt) then
+      G.downPlayer(victim, hum, src, part)
+      lethal = true
+    else
+      hum:TakeDamage(amt)
+      lethal = hum.Health <= 0
+    end
+    -- 打死（打倒）真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", lethal and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
     -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
     if victim and victim.pl then
       local ap = G.boomAt
@@ -843,7 +892,7 @@ function Round.init(G)
     local who = {}
     local r2 = CC.r * CC.r
     for _, P in pairs(G.P) do
-      if P.alive and P.char then
+      if P.alive and P.char and not P.downed then   -- 倒地的不算占领人数
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
@@ -905,6 +954,7 @@ function Round.init(G)
     G.msgAll("center", "ui.captured", { k = "point." .. s.id })
     G.fx({ k = "capture", id = s.id })
     G.emit("captured", s)
+    if R.phase ~= "battle" then return end   -- PvE 关卡拿够了据点、这一局已经结束了（Pve.lua）：不再推下一阶段
     local TK = Config.Tickets or {}
     if flankOf[s.id] then   -- 侧翼：补兵力，不影响推进
       R.tickets += TK.flank or 0
@@ -1069,6 +1119,7 @@ function Round.init(G)
     R.ticketsMax = R.tickets
     if conquest() then
       R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800
+      if G.pveTickets then G.pveTickets(R) end   -- PvE 关卡：两边的兵力按关卡（Pve.lua）
       R.endsAt = now() + (RC.conquest or 2400)
       G.msgAll("center", "ui.conquestStart")
       G.pushAll()
@@ -1097,9 +1148,11 @@ function Round.init(G)
     R.winner = winner
     R.nextAt = now() + RC.results
     local best = nil
+    if G.pveFinish then G.try("PvE 结算", G.pveFinish, winner) end   -- PvE 关卡：打通的奖励、进度（Pve.lua），先于存档
     for _, P in pairs(G.P) do
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
+      if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil
@@ -1107,6 +1160,7 @@ function Round.init(G)
     G.emit("roundEnd", winner)
     G.pushAll()
   end
+  G.roundFinish = function(w) return finish(w) end   -- PvE：拿下要求的据点数就提前结束（Pve.lua）
 
   function G.roundStep(dt)
     local t = now()
@@ -1170,6 +1224,7 @@ function Round.init(G)
       -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
       progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
       map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上三张都能投）
+      pve = G.pve and G.pve.n or nil,   -- PvE 关卡：第几关（Pve.lua）
       mapReady = G.worldReady == true,
       vote = G.mapVoteState and G.mapVoteState() or nil,   -- 还在投票：{ n = 各张票数, left = 还剩几秒（第一票投出后才有）, voters, players }
     }

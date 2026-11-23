@@ -264,7 +264,7 @@ function Forts.init(G)
     -- 先收集一遍攻方在地上的人和车（每步一次），再按雷区的范围粗筛
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) then
+      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) and not P.downed then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, { x = hrp.Position.X, z = hrp.Position.Z, veh = false, r = 0 }) end
       end
@@ -538,7 +538,7 @@ function Forts.init(G)
     end
     if Tg.inf then
       for _, P in pairs(G.P) do
-        if P.team == foe and P.alive and P.char and not G.inVeh(P) then
+        if P.team == foe and P.alive and P.char and not G.inVeh(P) and not P.downed then
           local hrp = P.char:FindFirstChild("HumanoidRootPart")
           local hum = P.char:FindFirstChildOfClass("Humanoid")
           if hrp and hum and hum.Health > 0 then consider(nil, P, hrp.Position, 1) end
@@ -655,7 +655,7 @@ function Forts.init(G)
     local w = e.w
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == foe and P.alive and P.char and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
+      if P.team == foe and P.alive and P.char and not P.downed and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, hrp.Position) end
       end
@@ -1123,6 +1123,7 @@ function Forts.init(G)
 
   local enter0 = G.ACT.enterVeh
   G.ACT.enterVeh = function(P, entId)
+    if P.downed then return end   -- 倒地的不能上车、操作工事（Revive.lua）
     local e = (type(entId) == "string") and G.entById[entId] or nil
     if e and e.fort then
       if man(P, e) then G.msg(P.pl, "info", "ui.manned", { k = "fort." .. e.fkind }) end

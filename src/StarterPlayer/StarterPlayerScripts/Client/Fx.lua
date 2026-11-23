@@ -201,7 +201,7 @@ function Fx.init(G)
   -- 叠层的音效换成真录音：SFX 的名字 → { SoundLib 的键, 速度倍数, 音量倍数 }（别的照旧叠：落地、换挡、心跳、拉栓……）
   local SFXREAL = { tankGun = { "tankGun", 1, 1 }, rkt = { "missile", 1.15, 0.8 }, msl = { "missile", 1, 1 }, whiz = { "whiz", 1, 1 }, ric = { "ric", 1, 1 },
     shellRic = { "ric", 0.8, 1.4 }, ping = { "metalHit", 1.2, 0.8 }, clang = { "metalHit", 0.85, 1.1 }, sonic = { "sonic", 1, 1 },
-    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 } }
+    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 }, earRing = { "earRing", 1, 1 } }
   local function realLayer(key, sp, vol)
     local id, cfg = real(key)
     if not id then return nil end
@@ -292,7 +292,9 @@ function Fx.init(G)
   local function makeSound(L, parent, o)
     local snd = Instance.new("Sound")
     snd.SoundId = L.id
-    snd.Volume = math.min(10, L.vol * (o.vol or 1))
+    -- 震荡（Shock.lua）：近处刚炸过，别的声音发闷、变小（耳鸣本身 o.dry 不闷）
+    local muf = (not o.dry and G.muffle) and G.muffle() or 0
+    snd.Volume = math.min(10, L.vol * (o.vol or 1)) * (1 - 0.55 * muf)
     local sp = (L.s[1] + (L.s[2] - L.s[1]) * math.random()) * (o.speed or 1)
     snd.PlaybackSpeed = sp
     snd.RollOffMinDistance = o.rmin or 40
@@ -305,7 +307,7 @@ function Fx.init(G)
         snd.LoopRegion = NumberRange.new(L.loop[1], L.loop[2])
       end
     end
-    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0)
+    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) - 34 * muf
     if L.eq or hi ~= 0 then
       local e = Instance.new("EqualizerSoundEffect")
       e.LowGain, e.MidGain, e.HighGain = L.eq and L.eq[1] or 0, L.eq and L.eq[2] or 0, math.max(-80, hi)
@@ -826,6 +828,7 @@ function Fx.init(G)
     if c ~= "gun" then   -- 离得近震一下
       local shR = r * 12 + 60
       if d < shR then G.shake(math.clamp(r / 32, 0.12, 0.85) * (1 - d / shR)) end
+      if G.concuss then G.concuss(d, r, c) end   -- 近处：耳鸣、发闷、一白一糊（Shock.lua）
     end
     local t = os.clock()
     if t - boomT > 0.25 then boomT, boomN = t, 0 end

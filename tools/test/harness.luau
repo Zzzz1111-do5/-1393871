@@ -1182,6 +1182,8 @@ local function hrequire(m)
 		local init = value.init
 		value.init = function(G, ...)
 			H.Gs[side] = G
+			-- 金币解锁（Economy.lua）：测试里载具默认全开（老的测试直接召唤各型车）；测金币的测试自己关掉（G.econAll = false）
+			if side == "server" and G.econAll == nil then G.econAll = true end
 			local r = table.pack(init(G, ...))
 			-- 游戏画面上的红色报错条（UI.lua G.showError：每帧 pcall 包着的步骤出错就写在那里）：原来测试台看不见，这里另记一份、第一次出现时打印
 			if side ~= "server" and type(rawget(G, "showError")) == "function" and not rawget(G, "_hSE") then
@@ -1379,16 +1381,30 @@ end
 H.visible = visible
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E（触发服务器那边的 ProximityPrompt）；生成出来的那一辆
 -- 飞机 / 直升机召唤位（Depots.lua 的 summon）：一个位上好几型（p.vids）；按型号找到的召唤位记下型号，usePad 时在弹出的机型卡片里点这一型
+-- 两边都能用对方的载具（Config.CrossVehicles）以后，对面的召唤位上也有这一型：先找本来就是这一边的型号的那边的召唤位（同以前），没有再随便哪个
 H.padVid = {}
-function H.pad(G, vid)
+local function nativeOf(G, team, vid)
+	for _, list in pairs((G.Config.Vehicles or {})[team] or {}) do
+		if type(list) == "table" then
+			for _, id in ipairs(list) do if id == vid then return true end end
+		end
+	end
+	return false
+end
+function H.pad(G, vid, team)
 	for _, p in ipairs(G.pads or {}) do
 		if p.vid == vid and not p.summon then return p end
 	end
-	for _, p in ipairs(G.pads or {}) do
-		for _, id in ipairs(p.vids or {}) do
-			if id == vid then
-				H.padVid[p] = vid
-				return p
+	for pass = 1, 2 do
+		for _, p in ipairs(G.pads or {}) do
+			local ok = (pass == 2) or (team ~= nil and p.team == team) or (team == nil and nativeOf(G, p.team, vid))
+			if ok then
+				for _, id in ipairs(p.vids or {}) do
+					if id == vid then
+						H.padVid[p] = vid
+						return p
+					end
+				end
 			end
 		end
 	end
