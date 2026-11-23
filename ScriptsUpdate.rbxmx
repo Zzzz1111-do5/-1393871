@@ -27507,9 +27507,9 @@ return AirFx
 --   · 准星上方：选中的弹的名字（实心的绿色小牌子）、下面写是什么弹；准星右边剩几发，左边锁定的目标多远（千米）
 --   · 机头的全息标记（用户：像全息投屏一样、机头指哪它在哪）：只描边的小飞机（直升机是小直升机），机头往前一根线、线头一个亮点；
 --     不是贴在屏幕上的图——是机头前方 300 格一块斜放的面（跟着机身俯仰、滚转），从后面看过去有透视；打中东西时放大一下、变红
---   · 锁定（用户：锁定过程是一个菱形，线条顺时针画出菱形就代表锁定完成；锁定后出现四个直角的边框，菱形开始逆时针转；
---     脱离导弹发射角度菱形变黄）：目标身上一个菱形，锁定进度多少就顺时针画多少；锁上后四个直角框住目标（往里一收）、菱形一直逆时针转；
---     目标出了导弹的离轴角（Fly 里锁还留着、这时不能发射）菱形变黄
+--   · 锁定（用户 11-23：「飞机驾驶锁定改成战雷的 UI」，给了战雷里歼-20 锁定米格-15 的截图）：目标上一个细的绿方框，
+--     框上面写目标型号、右边写距离和接近速度；雷达弹 / 空地弹锁定中方框一闪一闪、锁上常亮；红外弹的导引头圈从机头滑到目标上，锁上了方框也出来；
+--     机炮黏住目标时提前量那一点一个小圈、一根细线连到目标；目标出了导弹的离轴角（锁还在、不能发射）框和字变黄
 --   · 右下：六边形武器键（按键号、弹的图标、剩几发）：没选中的是灰色的金属片，选中的发绿光；最后一个是热诱弹（X）
 --   · 热成像（用户：不用光电吊舱也可以开红外视角）：开飞机时 N 在 夜视 → 热成像 → 关 之间切；白热（车、船、飞机、小兵发白），
 --     整个画面灰、对比高，一层横向扫描线、雪花噪点、四边压暗；进光电吊舱时先让开（吊舱有自己的画面），下飞机关掉
@@ -27767,49 +27767,33 @@ function AirHud.init(G)
     sk.Parent = A.aim
   end
   A.aim.Visible = false
+  A.aim.Size = UDim2.fromOffset(18, 18)   -- 战雷的提前量小圈
+  A.leadLine = frame(gui, UDim2.fromOffset(10, 1.5), UD2(), WHITE, 0.1, V2(0.5, 0.5))
+  A.leadLine.Name = "LeadLine"
+  A.leadLine.Visible = false
 
-  ---------------------------------------------------------------- 锁定：菱形（顺时针画出来）、锁上后四个直角、菱形逆时针转
-  local LK, DS, CS = 40, 24, 18   -- 锁定框边长、菱形对角线、直角的图（用户 11-21 嫌大：原来 56 / 34 / 24）
+  ---------------------------------------------------------------- 锁定（战雷式）：细的绿方框、框上型号、右边距离和接近速度；红外弹的导引头圈
+  local WT = RGB(86, 255, 118)   -- 战雷平显的绿（比全息绿更亮、更纯）
+  local LK = 40
   A.lock = frame(gui, UDim2.fromOffset(LK, LK), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.lock.Name = "LockMark"
   A.lock.Visible = false
-  A.dia = frame(A.lock, UDim2.fromOffset(DS, DS), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
-  A.dia.Name = "Diamond"
-  local DV = { { DS / 2, 0 }, { DS, DS / 2 }, { DS / 2, DS }, { 0, DS / 2 } }   -- 上 → 右 → 下 → 左：顺时针
-  -- 四条边各一张发光的线（HudIcons 的 glowLine：细芯 + 柔光、两头圆）：锁定进度多少，这条边就「长」多长（像笔在画）；
-  --   用不了 EditableImage 时是细的方块线
-  A.diaSeg = {}
-  A.lineArt = nil
-  for i = 1, 4 do
-    local f = img(A.dia, "Edge" .. i, UDim2.fromOffset(1, 8), UD2(), V2(0.5, 0.5), HOLO, 0)
-    A.lineArt = (A.lineArt ~= false) and setIcon(f, "glowLine")
-    A.diaSeg[i] = f
+  A.lockBox = stroke(A.lock, WT, 1.6, 0)   -- 方框就是这个框的描边
+  local function wtLabel(parent, size, pos, anchor, align)
+    local l = label(parent, "", size, pos, 13, WT, BOLD, anchor, align)
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.3, RGB(0, 0, 0)
+    return l
   end
-  if not A.lineArt then
-    for i, f in ipairs(A.diaSeg) do
-      f:Destroy()
-      local g = frame(A.dia, UDim2.fromOffset(1, 2), UD2(), HOLO, 0, V2(0.5, 0.5))
-      g.Name = "Edge" .. i
-      A.diaSeg[i] = g
-    end
-  end
-  -- 四个直角：一张左上的 L（glowCorner），另外三个转 90° / 180° / 270°（方的图绕中心转，正好落到对角上）
-  A.corners = {}
-  for _, c in ipairs({ { 0, 0, 0 }, { 1, 0, 90 }, { 1, 1, 180 }, { 0, 1, 270 } }) do
-    local f = img(A.lock, "Corner", UDim2.fromOffset(CS, CS), UD2(c[1], 0, c[2], 0), V2(c[1], c[2]), HOLO, 0)
-    f.Rotation = c[3]
-    if not setIcon(f, "glowCorner") then
-      f:Destroy()
-      for _, sz in ipairs({ { 9, 2 }, { 2, 9 } }) do
-        local g = frame(A.lock, UDim2.fromOffset(sz[1], sz[2]), UD2(c[1], 0, c[2], 0), HOLO, 0, V2(c[1], c[2]))
-        g.Name = "Corner"
-        table.insert(A.corners, g)
-      end
-    else
-      table.insert(A.corners, f)
-    end
-  end
-  A.lockT0 = nil
+  A.lkName = wtLabel(A.lock, UDim2.fromOffset(170, 16), UD2(0.5, 0, 0, -4), V2(0.5, 1))
+  A.lkName.Name = "TargetName"
+  A.lkDist = wtLabel(A.lock, UDim2.fromOffset(90, 15), UD2(1, 8, 0, 1), V2(0, 0), Enum.TextXAlignment.Left)
+  A.lkDist.Name = "TargetRange"
+  A.lkVc = wtLabel(A.lock, UDim2.fromOffset(90, 15), UD2(1, 8, 0, 18), V2(0, 0), Enum.TextXAlignment.Left)
+  A.lkVc.Name = "Closure"
+  A.seek = round(frame(gui, UDim2.fromOffset(36, 36), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))   -- 红外导引头的圈
+  A.seek.Name = "Seeker"
+  A.seekStroke = stroke(A.seek, WT, 1.6, 0)
+  A.seek.Visible = false
 
   ---------------------------------------------------------------- 右下：六边形武器键
   local HEX_R = 28
@@ -27978,13 +27962,7 @@ function AirHud.init(G)
       A.wTag.Visible, A.wKind.Visible = false, false
       A.cnt.Text, A.cntIcon.Visible = "", false
     end
-    if info.lockDist then
-      local m = info.lockDist / 2.8
-      A.rng.Text = (m >= 1000) and T("vh.km", string.format("%.1f", m / 1000)) or T("vh.m", math.floor(m + 0.5))
-      A.rng.Visible = true
-    else
-      A.rng.Visible = false
-    end
+    A.rng.Visible = false   -- 战雷式：距离写在锁定框右边
     -- 机头的全息标记
     local hk = math.min(1, info.hk or 0)
     local hcol = HOLO:Lerp(RGB(255, 90, 70), hk * 0.8)
@@ -28020,55 +27998,64 @@ function AirHud.init(G)
       A.boreFall.Visible = false
     end
     hsg.Enabled = showHolo
+    -- 机炮提前量：一个小圈（不转），锁着目标时一根细线连到目标（战雷）
     A.aim.Visible = pilot and info.aim ~= nil
     if info.aim then
       A.aim.Position = info.aim
-      A.aim.Rotation = (lastT * 120) % 360   -- 黏在目标上的准星圈转着（MWT 那样）
+      A.aim.Rotation = 0
+      A.aim.ImageColor3 = WT
     end
-    -- 锁定：菱形顺时针画出来；锁上后四个直角往里一收、菱形逆时针转；出了导弹的离轴角菱形变黄
+    -- 锁定（战雷式）
     local lk = info.lock
     if pilot and lk and lk.on then
+      local col = lk.inCone and WT or YEL
+      local ir = lk.seeker == "ir"
+      local k = lk.locked and 1 or math.clamp(lk.k or 0, 0, 1)
       A.lock.Visible = true
       A.lock.Position = lk.p
-      local dcol = lk.inCone and HOLO or YEL
-      local total = (lk.locked and 1 or math.clamp(lk.k or 0, 0, 1)) * 4
-      for i = 1, 4 do
-        local a, b = DV[i], DV[i % 4 + 1]
-        local fr = math.clamp(total - (i - 1), 0, 1)
-        local sgm = A.diaSeg[i]
-        sgm.Visible = fr > 0.001
-        local ex, ey = a[1] + (b[1] - a[1]) * fr, a[2] + (b[2] - a[2]) * fr
-        local len = math.sqrt((ex - a[1]) ^ 2 + (ey - a[2]) ^ 2)
-        if A.lineArt then   -- 图里线占中间 56 / 64，两头留了光晕的空：按这个放大
-          sgm.Size = UDim2.fromOffset(len / 0.875 + 0.5, 8)
-          sgm.ImageColor3 = dcol
-        else
-          sgm.Size = UDim2.fromOffset(len + 1.5, 2)
-          sgm.BackgroundColor3 = dcol
-        end
-        sgm.Position = UDim2.fromOffset((a[1] + ex) / 2, (a[2] + ey) / 2)
-        sgm.Rotation = math.deg(math.atan2(b[2] - a[2], b[1] - a[1]))
-      end
-      local now = os.clock()
-      if lk.locked then
-        A.lockT0 = A.lockT0 or now
-        local e = math.clamp((now - A.lockT0) / 0.18, 0, 1)
-        local sz = LK + 18 * (1 - e) * (1 - e)   -- 四个直角从外面往里一收
-        A.lock.Size = UDim2.fromOffset(sz, sz)
-        A.dia.Rotation = -((now - A.lockT0) * 150 % 360)   -- 逆时针
+      local blink = (lastT * 4) % 1 < 0.6   -- 雷达弹锁定中：方框一秒闪四下
+      A.lockBox.Transparency = (lk.locked or (not ir and blink)) and 0 or 1
+      A.lockBox.Color = col
+      A.lkName.Text = lk.name or ""
+      local m = (lk.dist or info.lockDist or 0) / 2.8
+      A.lkDist.Text = (m >= 1000) and string.format("%.1f km", m / 1000) or string.format("%d m", math.floor(m + 0.5))
+      A.lkVc.Text = lk.vc and string.format("%d m/s", math.floor(lk.vc + 0.5)) or ""
+      A.lkName.TextColor3, A.lkDist.TextColor3, A.lkVc.TextColor3 = col, col, col
+      if ir then   -- 红外：导引头圈从机头滑到目标上，锁上了收小一点套住目标
+        A.seek.Visible = true
+        A.seek.Position = (lk.bore or UD2(0.5, 0, 0.5, 0)):Lerp(lk.p, k)
+        local sz = lk.locked and 30 or 36
+        A.seek.Size = UDim2.fromOffset(sz, sz)
+        A.seekStroke.Color = col
       else
-        A.lockT0 = nil
-        A.lock.Size = UDim2.fromOffset(LK, LK)
-        A.dia.Rotation = 0
+        A.seek.Visible = false
       end
-      for _, c in ipairs(A.corners) do c.Visible = lk.locked == true end
-      A.lock:SetAttribute("Progress", lk.locked and 1 or (lk.k or 0))
+      A.lock:SetAttribute("Progress", k)
       A.lock:SetAttribute("Locked", lk.locked == true)
       A.lock:SetAttribute("InCone", lk.inCone == true)
+      A.lock:SetAttribute("Seeker", lk.seeker or "")
     else
       A.lock.Visible = false
-      A.lockT0 = nil
+      A.seek.Visible = false
     end
+    -- 提前量小圈到目标的细线：两头各让开圈和框
+    local showLine = false
+    if pilot and info.aim and lk and lk.on then
+      local ax, ay = info.aim.X.Offset, info.aim.Y.Offset
+      local bx, by = lk.p.X.Offset, lk.p.Y.Offset
+      local dx, dy = bx - ax, by - ay
+      local len = math.sqrt(dx * dx + dy * dy)
+      if len > 40 then
+        local ux, uy = dx / len, dy / len
+        local x0, y0, x1, y1 = ax + ux * 10, ay + uy * 10, bx - ux * 24, by - uy * 24
+        A.leadLine.Position = UDim2.fromOffset((x0 + x1) / 2, (y0 + y1) / 2)
+        A.leadLine.Size = UDim2.fromOffset(len - 34, 1.5)
+        A.leadLine.Rotation = math.deg(math.atan2(dy, dx))
+        A.leadLine.BackgroundColor3 = WT
+        showLine = true
+      end
+    end
+    A.leadLine.Visible = showLine
     -- 六边形武器键：没选中的灰色金属片，选中的发绿光
     local items = info.wl or {}
     local n = #items
