@@ -35,7 +35,7 @@ function Interior.init(G)
   -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
   Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
   local IP_KEYS = { "ip_m829", "ip_m829lo", "ip_r125", "ip_he125", "ip_chg125", "ip_ext", "ip_radio", "ip_radio2", "ip_cvc", "ip_tsh",
-    "ip_cdu", "ip_mon2", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }   -- 后面八件：照用户发来的 M1A2 车长位照片、插图找的显示器、握把、电子箱、开关面板、顶灯、弹箱
+    "ip_cdu", "ip_cdus", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }   -- 后面八件：照用户发来的 M1A2 车长位照片、插图、钢铁猛兽截图找的 / 做的显示器、握把、电子箱、开关面板、顶灯、弹箱
   local prewarmed = false
 
   local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
@@ -568,6 +568,7 @@ function Interior.init(G)
       local on = true
       if l.role == "ready" then on = c.loaded
       elseif l.role == "radio" then on = math.noise(now * 3, l.p.Position.X) > -0.1
+      elseif l.role == "key" then on = (l.s and l.s.ledOn and l.s.ledOn(l.k)) and true or false   -- 键上的灯：屏幕页面说了算（选中的那个键亮）
       elseif l.role == "domeLamp" then
         l.p.Color = (lightMode == 4) and RGB(40, 40, 40) or LIGHTS[lightMode]
         on = nil
@@ -786,9 +787,13 @@ function Interior.init(G)
     local citvDir
     if cm == "GUN LOS" or cm == "GPS LOS" then
       citvDir = gW.LookVector
-    elseif cm == "AUTO" then
-      c.citvA = math.sin(os.clock() * 0.35) * math.rad(60)
+    elseif cm == "AUTO" then   -- 扇区：默认炮塔正面 ±60°，SCAN L / SCAN R 键把左右边设在按键时热像仪指的方向；角速度一样（大约每秒 21°）
+      local sec = c.citvSec or { -60, 60 }
+      local mid, half = (sec[1] + sec[2]) / 2, math.max(5, math.abs(sec[2] - sec[1]) / 2)
+      c.citvA = -math.rad(mid + math.sin(os.clock() * 0.35 * 60 / half) * half)
       citvDir = (tW * ANG(0, c.citvA, 0)).LookVector
+    elseif cm == "STOW" then   -- 收回：朝炮塔正前
+      citvDir = tW.LookVector
     elseif mode == "seat" and station == "commander" and not scopePhase() then
       citvDir = cam.CFrame.LookVector
       c.citvMan = tW:VectorToObjectSpace(citvDir)
@@ -803,6 +808,8 @@ function Interior.init(G)
     d.citvFov = c.citvFov or 22
     d.citvMode = cm
     d.engineOff = G.interiorEngineOff == true
+    local fc = st.fcs   -- 火控（Drive.lua）：弹种、激光测的距离、测距的时刻——CITV 屏下面的弹种字母和距离
+    d.fcsAm, d.fcsR, d.fcsLaseT = fc and fc.am, fc and fc.R, fc and fc.laseT
     d.ammoAll = G.S and G.S.veh and G.S.veh.ammo or {}
     d.ammoKind = c.ammoKind
     if v.rF then d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(v.rgF or v.rF) else d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(tW * CF(V(0.6, 1.3, 0.2) * S)) end
@@ -862,6 +869,11 @@ function Interior.init(G)
       if G.driveAmmo and BAL.PANEL[kind] then G.driveAmmo(BAL.PANEL[kind]) end
     end
     function A.citvFov(f) c.citvFov = f end
+    function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）
+      c.citvSec = c.citvSec or { -60, 60 }
+      c.citvSec[side] = deg
+      if c.citvSec[1] > c.citvSec[2] then c.citvSec[1], c.citvSec[2] = c.citvSec[2], c.citvSec[1] end
+    end
     function A.citvMode(m) c.citvMode = m end
     return A
   end
@@ -906,7 +918,7 @@ function Interior.init(G)
           local t = (-sz.Z - lo.Z) / ld.Z
           if t > 0 and t < 1.6 * S then
             local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
-            local m = ((s.opt.propShell and 0.05 or s.opt.bezel or 0.036) + 0.02) * S   -- 真模型外壳：键在玻璃外面好几厘米
+            local m = (s.opt.pickM or ((s.opt.propShell and 0.05 or s.opt.bezel or 0.036) + 0.02)) * S   -- 真模型外壳：键在玻璃外面好几厘米；pickM 自己给（车长显示单元的键盘离屏幕十几厘米）
             if math.abs(px) <= sz.X + m and math.abs(py) <= sz.Y + m then return s end
           end
         end

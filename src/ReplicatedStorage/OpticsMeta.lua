@@ -421,13 +421,6 @@ return {
     size = { 0.561, 0.416, 0.18 },
     credit = "车内饰：带侧键的显示器（CROWS 遥控武器站显示器）：Computer Box Monitor，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a",
   },
-  ip_mon2 = {
-    parts = {
-      Body = { c = { 0, 0.03, -0.001 }, s = { 0.453, 0.355, 0.177 }, tri = 2460 },
-    },
-    size = { 0.453, 0.355, 0.177 },
-    credit = "车内饰：带侧键的显示器（去掉 U 形支架和两边的旋钮）——车长面前上下连一体的两块显示器：Computer Box Monitor，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a",
-  },
   ip_yoke = {
     parts = {
       C222 = { c = { 0.002, 0.022, -0.093 }, s = { 0.979, 0.593, 0.456 }, tri = 4654, col = { 37, 37, 37 }, met = 0.678 },
@@ -488,5 +481,17 @@ return {
     },
     size = { 0.854, 0.596, 0.454 },
     credit = "车内饰：弹药箱（12.7 毫米 M2A1 弹箱）：Ammuntion box，作者 jaiharitheking，CC-BY-4.0 https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c",
+  },
+  ip_cdus = {
+    parts = {
+      Housing = { c = { 0, 0, -0.105 }, s = { 1.148, 1.316, 0.21 }, tri = 216, col = { 44, 48, 66 }, met = 0.05 },
+      Bezel = { c = { -0.041, 0.049, 0.017 }, s = { 0.876, 1.207, 0.034 }, tri = 432, col = { 170, 172, 180 }, met = 0.35 },
+      Glass = { c = { -0.036, 0.04, 0.01 }, s = { 0.745, 1.144, 0 }, tri = 72, col = { 7, 8, 10 }, met = 0.05 },
+      Wells = { c = { -0.021, 0.001, 0.002 }, s = { 1.106, 1.287, 0.004 }, tri = 420, col = { 27, 29, 38 }, met = 0.05 },
+      LedStrip = { c = { 0.44, 0.364, 0.004 }, s = { 0.067, 0.42, 0.008 }, tri = 60, col = { 20, 22, 28 }, met = 0.05 },
+      Handles = { c = { -0.012, 0.052, 0.049 }, s = { 1.113, 1.044, 0.05 }, tri = 168, col = { 92, 96, 106 }, met = 0.35 },
+      Posts = { c = { -0.017, 0.058, 0.031 }, s = { 1.126, 1.061, 0.062 }, tri = 336, col = { 60, 62, 70 }, met = 0.05 },
+    },
+    size = { 1.154, 1.316, 0.284 },
   },
 }

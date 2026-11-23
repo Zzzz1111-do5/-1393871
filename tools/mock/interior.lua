@@ -362,7 +362,7 @@ for _, name in ipairs(C.interiorState().cur.spec.order) do
 end
 T.tap(KEYS[C.interiorState().cur.spec.order[1]])
 R.run(0.2)
-local mapK = (VEH == "m1a2") and "STAT" or "态势"
+local mapK = (VEH == "m1a2") and "VEH SYS" or "态势"   -- M1A2 SEPv2 车长显示单元（11-23）：本车状态在下屏左边的 VEH SYS 键
 check(press(mapK), "地图换到本车状态页（" .. mapK .. "）")
 if dumpDir then dumpJSON(dumpDir .. "/interior_" .. VEH .. ".json") end
 

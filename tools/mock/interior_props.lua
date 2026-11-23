@@ -52,7 +52,7 @@ T.runUntil(function() return G.round.phase == "battle" end, 60)
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
 check(C.interiorOn() and C.interiorState().cur ~= nil, "按 C：坐进车里")
-local NEW = { "ip_cdu", "ip_mon2", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }
+local NEW = { "ip_cdu", "ip_cdus", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }
 local waited = 0
 T.runUntil(function()
   waited = waited + 1
@@ -72,13 +72,13 @@ for _, p in ipairs(cur.model:GetDescendants()) do
   local k = p:IsA("BasePart") and string.match(p.Name, "^O_(.-)__")
   if k then byKey[k] = (byKey[k] or 0) + 1 end
 end
-local WANT = { ip_cdu = 2, ip_mon2 = 2, ip_yoke = 1, ip_stick = 1, ip_asq2 = 1, ip_sw = 4, ip_lamp = 3, ip_can = 4 }
+local WANT = { ip_cdu = 2, ip_cdus = 1, ip_yoke = 1, ip_stick = 1, ip_asq2 = 1, ip_sw = 4, ip_lamp = 3, ip_can = 4 }
 local META = R.require(R.services.ReplicatedStorage:FindFirstChild("OpticsMeta"))
 for _, k in ipairs(NEW) do
   local nParts = 0
   for _ in pairs(META[k].parts) do nParts = nParts + 1 end
   local n = math.floor((byKey[k] or 0) / nParts + 0.5)
-  check(n == WANT[k], string.format("%s 摆了 %d 件（要 %d 件；%s）", k, n, WANT[k], string.match(META[k].credit, "^([^：]+)")))
+  check(n == WANT[k], string.format("%s 摆了 %d 件（要 %d 件；%s）", k, n, WANT[k], META[k].credit and string.match(META[k].credit, "^([^：]+)") or "本项目照截图做的"))
 end
 
 print("③ 真模型外壳的屏幕：显示面、键帽在外壳里")
@@ -109,7 +109,9 @@ end
 local function inBox(p, mn, mx, pad)
   return p.X > mn.X - pad and p.X < mx.X + pad and p.Y > mn.Y - pad and p.Y < mx.Y + pad and p.Z > mn.Z - pad and p.Z < mx.Z + pad
 end
-local SHELL = { gcdp = "ip_cdu", citv = "ip_mon2", cid = "ip_mon2", crows = "ip_cdu" }
+-- 车长显示单元（用户 11-23 钢铁猛兽截图）：上屏 CITV 左边 5 个 + 两屏之间 10 个键，下屏地图 VEH SYS、C3 + 4 个方向键 + 8 个横杠键 + 16 个键盘键
+local SHELL = { gcdp = "ip_cdu", citv = "ip_cdus", cid = "ip_cdus", crows = "ip_cdu" }
+local KEYN = { citv = 15, cid = 30 }
 for page, key in pairs(SHELL) do
   local s
   for _, x in ipairs(cur.b.screens) do if x.page == page then s = x end end
@@ -125,7 +127,7 @@ for page, key in pairs(SHELL) do
         if inBox(hull:PointToObjectSpace(k.part.Position), mn, mx, 0.06) then nin = nin + 1 end
       end
     end
-    local want = #(s.opt.keys.top or {}) + #(s.opt.keys.bottom or {})
+    local want = KEYN[page] or (#(s.opt.keys.top or {}) + #(s.opt.keys.bottom or {}))
     check(nk == want and nin == nk, string.format("  %d 个键帽都盖在外壳的实体键上（在外壳里的 %d 个）", nk, nin))
   end
 end
@@ -147,11 +149,65 @@ do
     local a, c = sU.part.CFrame, sL.part.CFrame
     local rel = a:ToObjectSpace(c)
     local same = a.LookVector:Dot(c.LookVector) > 0.999
-    check(same and math.abs(rel.X) < 0.02 and rel.Y < -0.3 and rel.Y > -0.8 and math.abs(rel.Z) < 0.02,
+    check(same and math.abs(rel.X) < 0.15 and rel.Y < -0.3 and rel.Y > -0.8 and math.abs(rel.Z) < 0.02,
       string.format("车长两块屏上下连一体：同一个朝向（%s）、下面那块在正下方 %.2f 格（左右差 %.3f、前后差 %.3f）", tostring(same), -rel.Y, rel.X, rel.Z))
   else
     check(false, "车长的热像仪屏、指挥地图屏都在")
   end
+end
+print("④ 车长显示单元的键：键盘打坐标设目标点、字母发消息、方向键挪地图；上屏选中的键亮灯、扫描扇区、收回")
+do
+  local sU, sL
+  for _, x in ipairs(cur.b.screens) do if x.page == "citv" then sU = x elseif x.page == "cid" then sL = x end end
+  local function pressOn(scr, label)
+    for _, k in ipairs(cur.b.softkeys) do
+      if k.label == label and k.screen == scr then return (pcall(scr.onKey, label, cur.env.act)) end
+    end
+    return false
+  end
+  R.run(0.6)
+  local ms = sL and sL.mapState
+  check(ms ~= nil, "下屏地图页有状态")
+  if ms then
+    local p = cur.b.groups.hull.world.Position
+    local gx, gz = math.floor((p.X + 20000) / 2.8) % 100000, math.floor((20000 - p.Z) / 2.8) % 100000
+    local dg = string.format("%05d%05d", gx, gz)
+    for i = 1, #dg do pressOn(sL, string.sub(dg, i, i)) end
+    check(ms.entry == dg, "键盘打了本车坐标 " .. tostring(ms.entry))
+    pressOn(sL, "ENT")
+    check(ms.wp ~= nil and math.abs(ms.wp.x - p.X) < 4 and math.abs(ms.wp.z - p.Z) < 4,
+      string.format("ENT：目标点设在本车这里（差 %.1f、%.1f 格）", ms.wp and ms.wp.x - p.X or -1, ms.wp and ms.wp.z - p.Z or -1))
+    pressOn(sL, "LTR")
+    pressOn(sL, "3") pressOn(sL, "3") pressOn(sL, "NEXT") pressOn(sL, "3") pressOn(sL, "3") pressOn(sL, "3")
+    check(ms.entry == "HI", "字母模式：3 连按两下 H、> 结束、再连按三下 I（" .. tostring(ms.entry) .. "）")
+    pressOn(sL, "ENT")
+    check(ms.sent[1] and ms.sent[1].txt == "HI" and ms.page == "MSG", "ENT：消息发出去了，翻到消息页")
+    pressOn(sL, "UP") pressOn(sL, "RIGHT")
+    check(ms.pan[2] < 0 and ms.pan[1] > 0 and ms.page == "MAP", "方向键：地图往北、往东挪了")
+    pressOn(sL, "MAP")
+    check(ms.pan[1] == 0 and ms.pan[2] == 0, "MAP 键：回到本车")
+    pressOn(sL, "CLR")
+    check(ms.wp == nil, "CLR（没字时）：清掉目标点")
+    R.run(0.5)
+  end
+  local led = {}
+  for _, l in ipairs(cur.b.leds) do if l.role == "key" and l.s == sU then led[l.k] = l end end
+  pressOn(sU, "WFOV")
+  R.run(0.3)
+  check(led.WFOV and led.NFOV and led._PWR and sU.ledOn("WFOV") and not sU.ledOn("NFOV") and led.WFOV.p.Color == led.WFOV.on, "上屏键角上的绿灯：按 WFOV，宽视场的灯亮")
+  pressOn(sU, "NFOV")
+  R.run(0.3)
+  check(sU.ledOn("NFOV") and not sU.ledOn("WFOV") and led.NFOV.p.Color == led.NFOV.on, "按 NFOV：窄视场的灯亮了、宽视场的灭了")
+  pressOn(sU, "AUTO")
+  R.run(0.3)
+  local c = C.interiorState().cur
+  local rel0 = c.data.citvRel or 0
+  pressOn(sU, "SCAN L")
+  check(c.citvSec and math.abs(c.citvSec[1] - math.min(rel0, 60)) < 30, "SCAN L：扫描扇区左边设好了")
+  pressOn(sU, "STOW")
+  R.run(0.4)
+  check(math.abs(c.data.citvRel or 99) < 1, string.format("STOW：热像仪收回朝炮塔正前（%.1f°）", c.data.citvRel or 99))
+  pressOn(sU, "MAN") pressOn(sU, "WFOV")
 end
 check(#R.errors == 0, "全程没有报错：" .. table.concat(R.errors, " | "))
 if dumpDir then
@@ -171,6 +227,8 @@ if dumpDir then
   cams.cmdr_right = at({ 0.45, 0.45, 0.25 }, { 0.92, -0.05, -0.12 })
   cams.cmdr_front = at({ 0.56, 0.62, 0.15 }, { 0.62, 0.35, -0.40 })
   cams.cmdr_eye = at({ 0.56, 0.60, 0.02 }, { 0.82, 0.38, -0.36 })
+  cams.cmdr_cdu = at({ 0.62, 0.58, -0.04 }, { 0.80, 0.39, -0.46 })
+  cams.cmdr_up = at({ 0.56, 0.60, 0.06 }, { 0.57, 1.05, 0.40 })   -- 车长位往上看：八边形指挥塔（用户 11-23）
   cams.gunner_eye = at({ 0.54, 0.36, -0.60 }, { 0.72, 0.02, -0.84 })
   cams.loader_cans = at({ -0.35, 0.10, -0.20 }, { -0.95, -0.55, -0.70 })
   local dumpOut = dofile(MOCK_DIR .. "/interior_dump.lua")

@@ -35,6 +35,8 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 async function sourceFile(key) {
   const S = CFG.sources[key];
   const f = path.join(CACHE, key, 'model.glb');
+  // gen：本项目自己按图做的壳子（Sketchfab 上找不到的，比如 M1A2 SEPv2 车长显示单元）——每次现生成（脚本改了版面就跟着变）
+  if (S.gen) return (await import(path.join(HERE, S.gen))).build(f);
   if (fs.existsSync(f)) return f;
   const tok = process.env.SKETCHFAB_TOKEN;
   if (!tok) throw new Error(`缓存里没有 ${key}（${S.name}）：设好环境变量 SKETCHFAB_TOKEN 再运行，或者把下载的 model.glb 放进 ${path.dirname(f)}`);
@@ -763,7 +765,7 @@ for (const [key, I] of Object.entries(CFG.items)) {
   await embed(key, B, I);
   await preview(key, B, I);
   const S = CFG.sources[I.src];
-  META[key] = { ...B.meta, credit: `${I.title}：${S.name}，作者 ${S.author}，${S.license} ${S.url}` };
+  META[key] = { ...B.meta, credit: S.gen ? null : `${I.title}：${S.name}，作者 ${S.author}，${S.license} ${S.url}` };   // 自己做的不进署名
 }
 // OpticsMeta.lua
 const L = [];
@@ -785,7 +787,7 @@ for (const [key, M] of Object.entries(META)) {
   if (M.pts) L.push(`    pts = { ${Object.entries(M.pts).map(([k, v]) => `${k} = ${lv(v)}`).join(', ')} },`);
   if (M.inner && M.inner.length) L.push(`    inner = { ${M.inner.map((n) => `"${n}"`).join(', ')} },`);   // 镜筒里面的块（开镜时藏起来，从目镜的洞里看出去）
   L.push(`    size = ${lv(M.size)},`);
-  L.push(`    credit = "${M.credit}",`);
+  if (M.credit) L.push(`    credit = "${M.credit}",`);
   L.push('  },');
 }
 L.push('}');
@@ -799,6 +801,7 @@ if (i0 >= 0) { const i1 = txt.indexOf('\n\n', i0); txt = txt.slice(0, i0) + (i1 
 const sec = [HEAD];
 for (const [key, I] of Object.entries(CFG.items)) {
   const S = CFG.sources[I.src];
+  if (S.gen) continue;   // 本项目自己做的，不是别人的模型
   sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}`);
 }
 sec.push('  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改');

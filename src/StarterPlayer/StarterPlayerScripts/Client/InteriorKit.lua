@@ -382,12 +382,80 @@ function B:light(g, cf, role, color, range, bright, spotAngle, face)
   table.insert(self.lights, { L = L, role = role, color = color, bright = bright, part = p })
   return L
 end
--- 指示灯（霓虹，会发光）：role 由 Interior 按状态点亮 / 熄灭 / 闪
-function B:led(g, cf, color, dia, role)
+-- 指示灯（霓虹，会发光）：role 由 Interior 按状态点亮 / 熄灭 / 闪；ext 并进这一项（role = "key" 的：s 屏幕、k 键名——亮不亮问 s.ledOn(k)）
+function B:led(g, cf, color, dia, role, ext)
   local p = self:add(g, "Part", V(dia or 0.008, dia or 0.008, dia or 0.008), cf, color, MAT.Neon, BALL)
   p.CastShadow = false
-  table.insert(self.leds, { p = p, role = role, on = color, off = color:Lerp(RGB(0, 0, 0), 0.82) })
+  local e = { p = p, role = role, on = color, off = color:Lerp(RGB(0, 0, 0), 0.82) }
+  if ext then for a, v in pairs(ext) do e[a] = v end end
+  table.insert(self.leds, e)
   return p
+end
+-- 一个能按的键（用户 11-23 发来钢铁猛兽 M1A2 车长显示单元截图：屏边蓝色背光键、橙色横杠键、橙色描边的字母数字键盘、橙色方向键）：
+--   s 是它管的那块屏幕（按下去调 s.onKey(label)）；cf 键帽正面中心（−Z 对着人，米），w / h 宽高；style：
+--   "blue" 蓝色背光键（淡蓝的字）、"dark" 深色键、"dash" 一道橙色横杠（功能名画在屏幕边上）、"pad" 键盘键（橙色描边，上面字母、下面数字）、
+--   "arrow" 橙色箭头（opt.dir 0 上、90 右、180 下、270 左）、"orange" 橙色字的键；opt.text 印在键上的字（不给就用 label）、opt.sub 键盘键上面那行字母
+local KEYCOL = { blue = RGB(36, 56, 128), dark = RGB(30, 32, 42), dash = RGB(42, 36, 34), pad = RGB(40, 34, 32), arrow = RGB(40, 34, 32), orange = RGB(60, 42, 32) }
+local ORANGE = RGB(255, 138, 40)
+function B:keyCap(g, s, cf, w, h, label, style, opt)
+  opt = opt or {}
+  local d = opt.d or 0.004
+  local key = self:box(g, V(w, h, d), cf * CF(0, 0, d / 2), KEYCOL[style] or KEYCOL.dark, MAT.SmoothPlastic)
+  key.CastShadow = false
+  local lg = K.gui(key, Enum.NormalId.Front, opt.ppm or 2600, 1.1)
+  local function txt(t, x, y, sw, sh, col, align)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Position, l.Size = UDim2.fromScale(x, y), UDim2.fromScale(sw, sh)
+    l.Text = t
+    l.TextColor3 = col
+    l.Font = Enum.Font.GothamBold
+    l.TextScaled = true
+    l.TextXAlignment = align or Enum.TextXAlignment.Center
+    l.Parent = lg
+    return l
+  end
+  local function bar(parent, x, y, sw, sh, col, rot)
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position, f.Size = UDim2.fromScale(x, y), UDim2.fromScale(sw, sh)
+    f.BackgroundColor3 = col
+    f.BorderSizePixel = 0
+    f.Rotation = rot or 0
+    f.Parent = parent
+    return f
+  end
+  local function edge(col, th, tr)   -- 键帽一圈细边（背光键的透光边、键盘键的橙色描边）
+    local f = Instance.new("Frame")
+    f.Size, f.BackgroundTransparency = UDim2.fromScale(1, 1), 1
+    f.Parent = lg
+    local st = Instance.new("UIStroke")
+    st.Color, st.Thickness, st.Transparency = col, th, tr or 0
+    st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st.Parent = f
+  end
+  if style == "blue" or style == "dark" then
+    edge(style == "blue" and RGB(90, 120, 210) or RGB(64, 68, 84), 2, 0.25)
+    txt(opt.text or label, 0.06, 0.18, 0.88, 0.64, style == "blue" and RGB(170, 196, 255) or RGB(150, 156, 176))
+  elseif style == "dash" then
+    bar(lg, 0.5, 0.24, 0.72, 0.13, ORANGE)
+  elseif style == "pad" then
+    edge(ORANGE, 2.5, 0)
+    if opt.sub then txt(opt.sub, 0.05, 0.06, 0.9, 0.34, ORANGE) end
+    txt(opt.text or label, 0.08, opt.sub and 0.5 or 0.2, opt.sub and 0.5 or 0.84, opt.sub and 0.42 or 0.6, ORANGE, opt.sub and Enum.TextXAlignment.Left or nil)
+  elseif style == "arrow" then
+    local box = Instance.new("Frame")
+    box.AnchorPoint = Vector2.new(0.5, 0.5)
+    box.Position, box.Size, box.BackgroundTransparency = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.8, 0.8), 1
+    box.Rotation = opt.dir or 0
+    box.Parent = lg
+    bar(box, 0.34, 0.5, 0.48, 0.14, ORANGE, -42)   -- 「^」的两笔
+    bar(box, 0.66, 0.5, 0.48, 0.14, ORANGE, 42)
+  else
+    txt(opt.text or label, 0.06, 0.2, 0.88, 0.6, ORANGE)
+  end
+  table.insert(self.softkeys, { part = key, label = label, screen = s, side = opt.side or "key", idx = opt.idx or 0, col = key.Color })
+  return key
 end
 function B:name(key, x) self.named[key] = x return x end
 

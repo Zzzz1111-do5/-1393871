@@ -35,12 +35,23 @@
     NAV（指向下一个目标点）、MAINT（机内自检）；下排：PUSH TO START（起动）、SHUT OFF（熄火——熄了车开不动）、TAC IDLE（战术怠速）、
     LAMP TEST（所有指示灯亮一遍）、ALARM ACK（确认告警）
 - 炮长（炮塔右前）：主瞄准镜 GPS（目镜、护额垫）、"凯迪拉克" 双握把（跟着炮塔转、炮俯仰的速度摆）、辅助瞄准镜 GAS、手动方向 / 高低机、炮长控制显示面板 GCDP
-  - GCDP 上排：MAIN（主菜单）、AMMO（弹种：SABOT / HEAT / MPAT / AMP / CAN）、RANGE（手动装定距离）、ADJUST（校炮 / 归零）、LRF（激光首 / 末回波）；
+  - GCDP 上排：MAIN（主菜单）、AMMO（弹种：SABOT / HEAT / MPAT / CAN，SEPv2 没有 AMP）、RANGE（手动装定距离）、ADJUST（校炮 / 归零）、LRF（激光首 / 末回波）；
     下排：WHT/BLK（热像极性，真的切瞄准镜的白热 / 黑热）、3X/10X（真的切倍率）、FCS（正常 / 应急 / 手动）、BSGT（校炮）、MRS（炮口基准更新）
-- 车长（右后，坐得高）：六具观察镜的指挥塔、独立热像仪显示器 CITV、指挥综合显示器（JBC-P 战术地图）、CROWS 屏幕和握把、车长操纵握把、主瞄准镜延伸目镜
-  - CITV 上排：WHT / BLK、WFOV / NFOV（宽 3 倍 / 窄 13 倍）、SYM（符号开关）；下排：MAN（手动扫描：跟着车长的视线）、AUTO（扇区自动扫描）、
-    GUN LOS（随炮）、GPS LOS（看炮长主瞄准镜画面）、DESIG（指示 / 猎-歼：炮塔自动转到热像仪看的方向）
-  - 战术地图上排：MAP / MSG（敌情、据点通报）/ STAT（本车弹药、油、损伤）/ NAV / POS；下排：ZOOM+ / ZOOM- / OVLY（标绘开关）/ BRT+ / BRT-
+- 车长（右后，坐得高）：八边形指挥塔（用户 11-23：「坐的那个位置往上看就是 8 边形观瞄舱」——八块白漆内壁、每块一具观察镜和一条防撞垫，上下两圈边框，顶上圆舱盖）、车长显示单元（上 CITV、下指挥地图）、CROWS 屏幕和握把、车长操纵握把、主瞄准镜延伸目镜
+- 车长显示单元（用户 11-23 发来钢铁猛兽 M1A2 SEP 车长位截图：「严格按照这个图，上面是一块 CITV」「两个屏幕中间的横排按钮是对应上面的屏幕的」）：
+  一整台深蓝灰机壳，银色倒角屏框；主瞄准镜延伸目镜（宽的黑橡胶护眼罩、右下红色 T 形手柄）就在它左边。机壳是本项目照截图量的比例做的网格
+  （ip_cdus，`tools/weapons/gen_cdus.mjs`：Sketchfab 上搜不到能下载的 CITV / 车长显示器模型）；键、屏幕、指示灯按同一张版面表
+  `ReplicatedStorage.CdusLayout`（生成器写出来的）现做，都能对准、左键按
+  - 上屏 CITV：绿色热像（WHT 白热 / BLK 黑热），右上角倍率（宽视场 3X、窄视场 13X），中间四个角的框，下面黑底一块：↓ / ↑（热像仪比炮低 / 高）、
+    方框里的弹种字母（K 穿甲、H 破甲、M 多用途、C 霰弹）、距离（10 秒内激光测过用测的，没测按这种弹的战斗瞄准距离，穿甲弹 1200），右下角车体 / 炮 / 热像仪方向的小图
+  - 两屏之间一排 10 个键（管上屏）：SYM、DESIG（猎-歼：炮塔转到热像仪看的方向）、WHT / BLK、WFOV / NFOV、MAN（跟着车长的视线）/ AUTO（扇区扫描）、
+    GUN LOS（随炮）/ GPS LOS（看炮长主瞄准镜，最右一对深色）；选中的键左下角绿灯亮；上屏右边灯条三个绿灯：电源、自动扫描、刚指示过
+  - 上屏左边一列：BRT+ / BRT-、SCAN L / SCAN R（自动扫描扇区的左右边设在按下时热像仪指的方向）、STOW（收回朝炮塔正前）
+  - 下屏指挥地图：白底、水面淡蓝、红色双线道路（Map.ROADS）、网格、据点、友军 / 看得见的敌人军标；左边 VEH SYS（本车状态）、C3（消息，发现敌人时旁边绿灯亮）；
+    左下四个方向键挪地图；下边 8 个橙色横杠键（功能名写在屏幕下沿）：MAP（回到本车）/ NAV / POS / ZOOM+ / ZOOM- / OVLY / BRT+ / BRT-
+  - 右边 4 × 4 橙色字母数字键盘（ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、> / .、0、-、ENT）：
+    打偶数位数字（4 / 6 / 8 / 10 位，前一半东、后一半北，和 POS 页的坐标同一个格式）按 ENT 设目标点（地图上一个红三角，NAV 页指过去）；
+    LTR 切字母（同一个键 1.5 秒内连按换字母，> 结束这个字母），打的是字按 ENT 当消息发出去（C3 页看得到）；CLR 删一个字，没字了再按清掉目标点
 - 装填手（左）：折叠座椅、装填手潜望镜（能转）、电台、装填手面板（待发灯）、膝动开门开关
 - 尾舱两扇装甲滑门后各 18 发待发弹（弹底朝乘员舱），弹架上的弹按剩下的弹数少下去
 - 开炮：炮闩后坐 0.305 米（M256 真实行程）、复进时立楔式炮闩自动打开；装填手转身、膝盖顶开舱门、抽弹、转回来翻过弹头推进炮膛、关闩、拨待发，按这门炮的装填时间走完
@@ -114,20 +125,22 @@
   `clipBox`（按三角形切掉一块，比如驾驶杆下面的长杆子）、`front`（预览多出正视、俯视图）
 - 内饰里：`B:prop(组, 键, cf, 缩放)` 摆一件；`B:propScreen`（InteriorDefs 的 `scr()`）摆带屏幕的件——原模型外壳摆好，屏幕玻璃前面 3 毫米贴我们的动态显示面，
   原模型的实体键上盖一层能对准、按下的键帽（印这个键的字，背光）；每件的版面（玻璃中心、宽高、每个键在哪）在 `InteriorDefs.PSCR`，量的是带贴图的正视图
-- M1A2（照用户发来的车长位照片和车长位插图（11-23）：延伸目镜正前方，右边一个浅灰色、上下两块屏连成一体的大显示单元，下面一块小的带键盘的显示器，
-  右下是白色机箱上一根黑色带红按钮的握杆）：
+- M1A2（照用户发来的车长位照片、车长位插图和钢铁猛兽截图（11-23）：延伸目镜正前方，紧挨着右边一整台上下两块屏的车长显示单元，
+  右下是 CROWS 小显示器、白色机箱上一根黑色带红按钮的握杆）：
   | 件 | 原模型 | 用在 |
   |---|---|---|
-  | ip_mon2 | 「Computer Box Monitor」（SUrusso613）：两边带按键条的浅灰色显示器，去掉 U 形支架和两边旋钮 | 车长面前上下连一体的显示单元：摞两个、后面一整块背板（上：热像仪 CITV，下：指挥地图 FBCB2 / 蓝军跟踪） |
-  | ip_cdu | 「Aircraft instrument/module thingy」（LuddePudde）：左右各 5 个边键 + 整块键盘的显示控制单元 | 炮长控制显示面板 GCDP、车长 CROWS 遥控武器站的小显示器（大显示单元下面） |
+  | ip_cdus | 本项目自己做的（`tools/weapons/gen_cdus.mjs` 照钢铁猛兽截图量的比例生成：机壳、银色倒角屏框、黑玻璃、按键槽、灯条、三根把手） | 车长显示单元（上 CITV、下指挥地图、右边键盘），见上面「车长显示单元」 |
+  | ip_cdu | 「Aircraft instrument/module thingy」（LuddePudde）：左右各 5 个边键 + 整块键盘的显示控制单元 | 炮长控制显示面板 GCDP、车长 CROWS 遥控武器站的小显示器（显示单元右下） |
   | ip_asq2 | 「ASQ-155 Ballistic Computer」（TwilightFox）：A-6E 的弹道计算机，白色铸壳、铭牌、顶上键盘，去掉原来那根杆 | 车长操纵握把底下的白色电子箱，杆座上装 ip_stick |
   | ip_stick | 「B-8 Fighter Control Stick」（StratoArt） | 车长操纵握把（黑色、红色扳机和按钮） |
   | ip_yoke | 「ANIMATED KC-135 YOKE」（StratoArt）：去掉长杆，只留两只羊角握把和毂 | 炮长"凯迪拉克"双握把（跟着炮塔转、炮俯仰摆） |
   | ip_sw | 「Industrial Switches Apollo Command Module」（ntilted）：带护盖的拨动开关面板 | 驾驶员主开关面板、辅助面板、炮长面板、装填手面板 |
   | ip_lamp | 「Industrial Bulkhead Wall Lamp Lowpoly」（iwanPlays）：带铁丝护罩的顶灯 | 炮塔两盏、驾驶舱一盏顶灯 |
   | ip_can | 「Ammuntion box」（jaiharitheking）：12.7 毫米 M2A1 铁皮弹箱 | 装填手脚边四个机枪弹箱 |
-  暂时没用上、留着给别的车的：ip_tab（沙色加固战术终端）、ip_mon（带 U 形支架的原件）、ip_asq（带原来那根杆的原件）。
-  optics.mjs 新选项：`cutBelow`（按平面真切开、插值 UV 和法线，切掉下面一截）；`dropBox` 可以给几个盒子
+  暂时没用上、留着给别的车的：ip_tab（沙色加固战术终端）、ip_mon（带 U 形支架的显示器）、ip_asq（带原来那根杆的原件）。
+  optics.mjs 新选项：`cutBelow`（按平面真切开、插值 UV 和法线，切掉下面一截）；`dropBox` 可以给几个盒子；
+  sources 里写 `gen`（本项目自己的生成脚本，比如 gen_cdus.mjs）的件每次现生成，不进署名
   另外原来就有的：电台（ip_radio / ip_radio2）、灭火瓶（ip_ext）、120 毫米弹（ip_m829 / ip_m829lo）、125 毫米弹丸和药筒（ip_r125 / ip_he125 / ip_chg125）、乘员头盔（ip_cvc / ip_tsh，现在不画乘员）
-- 测试：`python3 tools/mock/run.py tools/mock/interior_props.lua [dump=<目录>]`（等真模型生成好、内饰重建一次：九件都摆上、四块屏是真模型外壳、显示面和键帽都在外壳里、键按得动）；
+- 测试：`python3 tools/mock/run.py tools/mock/interior_props.lua [dump=<目录>]`（等真模型生成好、内饰重建一次：八件都摆上、四块屏是真模型外壳、显示面和键帽都在外壳里、键按得动；
+  车长显示单元：键盘打本车坐标设目标点、字母模式发消息、方向键挪地图、MAP 回本车、CLR 清目标点，上屏选中的键亮灯、SCAN L 设扇区、STOW 收回）；
   预览图里真模型部件按 GLB 画（`AMB=1.0` 亮一点）：`AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_props.json <输出前缀>`

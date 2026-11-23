@@ -75,7 +75,6 @@
   车内饰：带边键的显示控制单元（车长热像仪显示器 CITV、炮长控制显示面板 GCDP）（ip_cdu.glb）：「Aircraft instrument/module thingy」，作者 LuddePudde，CC-BY-4.0 https://sketchfab.com/3d-models/aircraft-instrumentmodule-thingy-797da922b1724a2fbdcf5b6379525b49
   车内饰：车长战术显示器（JBC-P 加固显示终端）（ip_tab.glb）：「Rugged Sci-Fi Tactical Military Tablet」，作者 3DMOAN，CC-BY-4.0 https://sketchfab.com/3d-models/rugged-sci-fi-tactical-military-tablet-f7d8e3c008e24e0c9b32748b3d6105f1
   车内饰：带侧键的显示器（CROWS 遥控武器站显示器）（ip_mon.glb）：「Computer Box Monitor」，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a
-  车内饰：带侧键的显示器（去掉 U 形支架和两边的旋钮）——车长面前上下连一体的两块显示器（ip_mon2.glb）：「Computer Box Monitor」，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a
   车内饰：炮长双握把（凯迪拉克）（ip_yoke.glb）：「ANIMATED KC-135 YOKE」，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/animated-kc-135-yoke-2d96da0d802746fcb30044bfba87e968
   车内饰：车长操纵握把 CCH（ip_stick.glb）：「B-8 Fighter Control Stick (Low Poly)」，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/b-8-fighter-control-stick-low-poly-8d85a47465c94c629c9e6cc60f9106d0
   车内饰：火控计算机（带操纵杆、键盘）（ip_asq.glb）：「ASQ-155 Ballistic Computer」，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7

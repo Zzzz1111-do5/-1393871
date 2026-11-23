@@ -192,6 +192,7 @@ local PAL = {
   BLK = { sky0 = RGB(236, 236, 230), sky1 = RGB(200, 200, 194), g0 = RGB(170, 170, 164), g1 = RGB(120, 120, 116), hot = RGB(12, 12, 12), warm = RGB(60, 60, 58), ridge = RGB(110, 110, 106) },
   DAY = { sky0 = RGB(18, 26, 38), sky1 = RGB(52, 64, 78), g0 = RGB(46, 54, 40), g1 = RGB(66, 72, 52), hot = RGB(30, 32, 30), warm = RGB(60, 62, 56), ridge = RGB(70, 80, 60) },
   GRN = { sky0 = RGB(4, 16, 6), sky1 = RGB(20, 60, 26), g0 = RGB(40, 110, 50), g1 = RGB(80, 170, 90), hot = RGB(210, 255, 210), warm = RGB(150, 230, 160), ridge = RGB(110, 200, 120) },
+  GRNB = { sky0 = RGB(168, 236, 168), sky1 = RGB(128, 206, 132), g0 = RGB(92, 168, 98), g1 = RGB(58, 126, 64), hot = RGB(6, 26, 8), warm = RGB(26, 72, 30), ridge = RGB(70, 140, 76) },   -- 绿色黑热（M1A2 CITV）
 }
 Screens.PAL = PAL
 
@@ -384,6 +385,14 @@ Screens.KEYDESC = {
   ["ZOOM+"] = "地图放大", ["ZOOM-"] = "地图缩小", OVLY = "叠加层：目标点 / 单位标号开关", ["BRT+"] = "屏幕调亮", ["BRT-"] = "屏幕调暗",
   ARM = "遥控武器站：解除保险", SAFE = "遥控武器站：保险", THERM = "遥控武器站：白天 / 热像", ZOOM = "遥控武器站：变倍", LASE = "遥控武器站：激光测距",
   SLAVE = "遥控武器站跟着车长热像仪转",
+  -- M1A2 SEPv2 车长显示单元（用户 11-23 发来钢铁猛兽截图）：上屏左边一列、下屏键盘、方向键
+  ["SCAN L"] = "自动扫描扇区的左边：设在热像仪现在指的方向", ["SCAN R"] = "自动扫描扇区的右边：设在热像仪现在指的方向", STOW = "热像仪收回、朝炮塔正前",
+  ["VEH SYS"] = "本车状态：弹药、油、损伤", C3 = "指挥通信：上级通报、敌情报告、自己发出的消息",
+  UP = "地图往北挪", DOWN = "地图往南挪", LEFT = "地图往西挪", RIGHT = "地图往东挪",
+  ["1"] = "1（字母模式：A B C 连按换字母）", ["2"] = "2（字母模式：D E F）", ["3"] = "3（字母模式：G H I）", ["4"] = "4（字母模式：J K L）", ["5"] = "5（字母模式：M N O）",
+  ["6"] = "6（字母模式：P Q R）", ["7"] = "7（字母模式：S T U）", ["8"] = "8（字母模式：V W X）", ["9"] = "9（字母模式：Y Z）", ["0"] = "0（字母模式：空格）",
+  ["."] = "小数点", ["-"] = "横杠", CLR = "删掉最后一个字；没字了再按：清掉目标点", LTR = "切换字母 / 数字", NEXT = "这个字母打完了（连按同一个键打下一个字母）",
+  ENT = "确定：偶数位数字（4 / 6 / 8 / 10 位，前一半东、后一半北）设目标点；打的是字就当消息发出去",
 }
 local KM = Screens.KEYMAP
 local function canon(k) return KM[k] or k end
@@ -659,8 +668,8 @@ P.gcdp = function(s, env, zh)
   end
 end
 
--- 车长独立热像仪（CITV / 99A 车长周视镜）：手动扫描跟着车长的视线、自动扫描扇区、随炮、看主瞄准镜画面；指示键让炮塔转过去（猎-歼）
-P.citv = function(s, env, zh)
+-- 车长独立热像仪（99A 车长周视镜；以前 M1A2 也用这一版）：手动扫描跟着车长的视线、自动扫描扇区、随炮、看主瞄准镜画面；指示键让炮塔转过去（猎-歼）
+P.citvClassic = function(s, env, zh)
   local W, H = s.px.X, s.px.Y
   local R = s.root
   local th = Screens.thermal(R, W, H, { cols = 32 })
@@ -709,6 +718,132 @@ P.citv = function(s, env, zh)
   end
 end
 
+-- M1A2 SEPv2 车长显示单元的上屏：独立热像仪 CITV（用户 11-23 发来钢铁猛兽截图：「严格按照这个图，上面是一块 CITV」「两个屏幕中间的横排按钮是对应上面的屏幕的」）：
+--   绿色热像铺满整块屏（白热：热的亮；黑热反过来），右上角倍率（宽视场 3X、窄视场 13X），中间四个角的框（截图里的位置），
+--   下面一块黑底：↓ / ↑（热像仪看得比炮低 / 高）、方框里的弹种字母（K 穿甲、H 破甲、M 多用途、C 霰弹）、距离（10 秒内测过距用测的，没测按这种弹的战斗瞄准距离，穿甲弹 1200），
+--   右下角小图：车头朝上，炮（实线）和热像仪视场（开口）的方向；左上角小字：扫描方式
+--   键：两屏之间一排 SYM、DESIG、WHT / BLK、WFOV / NFOV、MAN / AUTO、GUN LOS / GPS LOS；左边一列 BRT+、BRT-、SCAN L、SCAN R（自动扫描扇区的左右边：按下时热像仪指的方向）、STOW（收回朝正前）
+--   s.ledOn(k)：键角上的绿灯（选中的亮）和右边灯条（_PWR 电源、_SCAN 自动扫描、_DES 刚指示过）
+local AMMO_LETTER = { SABOT = "K", HEAT = "H", MPAT = "M", CAN = "C" }
+local BALM = nil
+P.citv = function(s, env, zh)
+  if zh then return P.citvClassic(s, env, zh) end
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local th = Screens.thermal(R, W, H, { cols = 36 })
+  local G = RGB(206, 255, 206)
+  local GT = RGB(72, 236, 104)
+  local sym = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 6)
+  local bx0, bx1, by0, by1 = W * 0.34, W * 0.665, H * 0.45, H * 0.69
+  local aw, ah = W * 0.04, H * 0.05
+  for _, c in ipairs({ { bx0, by0, 1, 1 }, { bx1, by0, -1, 1 }, { bx0, by1, 1, -1 }, { bx1, by1, -1, -1 } }) do
+    Ln(sym, c[1], c[2], c[1] + c[3] * aw, c[2], 1.5, G, 7)
+    Ln(sym, c[1], c[2], c[1], c[2] + c[4] * ah, 1.5, G, 7)
+  end
+  local mag = Tx(sym, "3X", W * 0.78, H * 0.09, W * 0.19, H * 0.09, 15, GT, Enum.TextXAlignment.Right, Enum.Font.GothamBlack, 8)
+  local modeT = Tx(sym, "", W * 0.03, H * 0.04, W * 0.5, H * 0.07, 9, GT, nil, FONTB, 8)
+  -- 下面黑底的数据框：箭头、弹种、距离
+  local dw, dh = W * 0.26, H * 0.11
+  local dbox = F(sym, W * 0.29, H * 0.85, dw, dh, RGB(0, 0, 0), 0, 7)
+  local _, aS = Ln(dbox, 0, 0, 1, 1, 1.5, G, 8)
+  local _, aL = Ln(dbox, 0, 0, 1, 1, 1.5, G, 8)
+  local _, aR = Ln(dbox, 0, 0, 1, 1, 1.5, G, 8)
+  local amB = F(dbox, dw * 0.2, dh * 0.16, dh * 0.68, dh * 0.68, RGB(0, 0, 0), 1, 8)
+  do
+    local st0 = Instance.new("UIStroke")
+    st0.Color, st0.Thickness = G, 1.2
+    st0.Parent = amB
+  end
+  local amT = Tx(amB, "K", 0, 0, dh * 0.68, dh * 0.68, 11, G, Enum.TextXAlignment.Center, FONTB, 9)
+  local rngT = Tx(dbox, "", dw * 0.45, dh * 0.12, dw * 0.5, dh * 0.8, 11, G, Enum.TextXAlignment.Right, FONT, 9)
+  -- 右下角：车体方框（车头朝上）、炮、热像仪视场
+  local iw, ih = W * 0.085, H * 0.135
+  local ibox = F(sym, W * 0.895, H * 0.825, iw, ih, RGB(0, 0, 0), 0, 7)
+  local hullF = F(ibox, iw * 0.3, ih * 0.22, iw * 0.4, ih * 0.66, RGB(0, 0, 0), 1, 8)
+  do
+    local st0 = Instance.new("UIStroke")
+    st0.Color, st0.Thickness = G, 1.2
+    st0.Parent = hullF
+  end
+  local icx, icy = iw * 0.5, ih * 0.55
+  local _, gunL = Ln(ibox, icx, icy, icx, icy - 1, 1.5, G, 9)
+  local _, cvL = Ln(ibox, icx, icy, icx, icy - 1, 1, GT, 9)
+  local _, cvR = Ln(ibox, icx, icy, icx, icy - 1, 1, GT, 9)
+  local flash = Tx(R, "", 0, H * 0.24, W, 18, 13, RGB(255, 214, 96), Enum.TextXAlignment.Center, FONTB, 9)
+  local dim = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 30)
+  local st = { pol = "WHT", nfov = false, sym = true, fT = 0, brt = 0, rel = 0, mode = "MAN", desT = nil }
+  local MODE = { MAN = "MAN SCAN", AUTO = "AUTO SCAN", ["GUN LOS"] = "GUN LOS", ["GPS LOS"] = "GPS LOS", STOW = "STOW" }
+  s.onKey = function(k, act)
+    k = canon(k)
+    if k == "WHT" or k == "BLK" then st.pol = k
+    elseif k == "WFOV" or k == "NFOV" then st.nfov = k == "NFOV" act.citvFov(st.nfov and 7 or 22)
+    elseif k == "SYM" then st.sym = not st.sym
+    elseif k == "BRT+" then st.brt = math.max(0, st.brt - 0.15)
+    elseif k == "BRT-" then st.brt = math.min(0.75, st.brt + 0.15)
+    elseif k == "SCAN L" or k == "SCAN R" then
+      if act.citvSector then act.citvSector((k == "SCAN L") and 1 or 2, st.rel) end
+      flash.Text = string.format("%s  %+d", (k == "SCAN L") and "SCAN LEFT LIMIT" or "SCAN RIGHT LIMIT", math.floor(st.rel + 0.5))
+      st.fT = os.clock()
+    elseif MODE[k] then act.citvMode(k) st.mode = k
+    elseif k == "DESIG" then
+      act.designate()
+      flash.Text = "DESIGNATE  -  TURRET SLEWING"
+      st.fT, st.desT = os.clock(), os.clock()
+    end
+  end
+  s.ledOn = function(k)
+    if k == "WHT" or k == "BLK" then return st.pol == k end
+    if k == "WFOV" then return not st.nfov end
+    if k == "NFOV" then return st.nfov end
+    if MODE[k] then return st.mode == k end
+    if k == "SYM" then return st.sym end
+    if k == "DESIG" or k == "_DES" then return st.desT ~= nil and os.clock() - st.desT < 3 and math.floor(os.clock() * 4) % 2 == 0 end
+    if k == "_SCAN" then return st.mode == "AUTO" end
+    return k == "_PWR"
+  end
+  return function(d)
+    st.mode = d.citvMode or st.mode
+    st.rel = d.citvRel or st.rel
+    local pal = (st.pol == "BLK") and PAL.GRNB or PAL.GRN
+    if st.mode == "GPS LOS" and d.gunEye then
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = (d.zoomTxt == "10X") and 7 or 20, pal = pal, ents = d.ents, Map = env.Map, range = 4000 })
+    elseif d.citvEye then
+      th.render({ eye = d.citvEye, f = d.citvF, r = d.citvR, u = d.citvU, hfov = d.citvFov or 22, pal = pal, ents = d.ents, Map = env.Map, range = 4000 })
+    end
+    sym.Visible = st.sym
+    dim.BackgroundTransparency = 1 - st.brt
+    mag.Text = ((d.citvFov or 22) < 10) and "13X" or "3X"
+    modeT.Text = MODE[st.mode] or ""
+    -- 箭头：热像仪比炮低 → 朝下，高 → 朝上
+    local de = 0
+    if d.citvF and d.gunF then de = math.deg(math.asin(clamp(d.citvF.Y, -1, 1)) - math.asin(clamp(d.gunF.Y, -1, 1))) end
+    local ax, y0, y1 = dw * 0.09, dh * 0.18, dh * 0.82
+    local tip = (de > 0.5) and y0 or y1
+    local sg = (de > 0.5) and 1 or -1
+    aS(ax, y0, ax, y1)
+    aL(ax, tip, ax - dh * 0.16, tip + sg * dh * 0.22)
+    aR(ax, tip, ax + dh * 0.16, tip + sg * dh * 0.22)
+    -- 弹种、距离（火控 Drive.lua 的 st.fcs）
+    if BALM == nil then
+      local ok, m = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics", 2)) end)
+      BALM = ok and m or false
+    end
+    local a = BALM and d.wid and BALM.ammo(d.wid, d.fcsAm)
+    amT.Text = a and (AMMO_LETTER[a.sym] or string.sub(a.sym, 1, 1)) or "-"
+    local r = (d.fcsR and d.fcsLaseT and os.clock() - d.fcsLaseT < 10) and d.fcsR or (a and a.bs)
+    rngT.Text = r and string.format("%d", math.floor(r)) or "----"
+    -- 右下角：炮、热像仪相对车头的方向
+    local L0 = ih * 0.42
+    local tg = math.rad(d.ty or 0)
+    gunL(icx, icy, icx + math.sin(tg) * L0, icy - math.cos(tg) * L0)
+    local cv = math.rad((d.ty or 0) + (d.citvRel or 0))
+    local half = math.rad(((d.citvFov or 22) < 10) and 8 or 20)
+    cvL(icx, icy, icx + math.sin(cv - half) * L0 * 0.9, icy - math.cos(cv - half) * L0 * 0.9)
+    cvR(icx, icy, icx + math.sin(cv + half) * L0 * 0.9, icy - math.cos(cv + half) * L0 * 0.9)
+    if os.clock() - st.fT > 2.5 then flash.Text = "" end
+  end
+end
+
 -- 车长遥控武器站（CROWS-LP）的屏幕
 P.crows = function(s, env)
   local W, H = s.px.X, s.px.Y
@@ -739,46 +874,101 @@ P.crows = function(s, env)
 end
 
 -- 指挥地图（M1A2 的战术显示 / JBC-P；99A 的综合显示终端）：地图 / 消息 / 本车状态 / 导航 / 坐标页，放大缩小、叠加层、亮度
+--   M1A2 SEPv2 显示单元的下屏（s.opt.paper，用户 11-23 发来钢铁猛兽截图）：白底地图、水面淡蓝、红色双线道路（Map.ROADS），
+--   左边 VEH SYS（本车状态）、C3（消息）两个键，左下四个方向键挪地图（MAP 键回到本车），下边 8 个橙色横杠键（功能名写在屏幕下沿 s.opt.dash），
+--   右边字母数字键盘：打偶数位数字（4 / 6 / 8 / 10 位，前一半东、后一半北，同坐标页的格式）按 ENT 设目标点（地图上一个三角，导航页指过去）；
+--   LTR 切字母（同一个键连按换字母，> 结束这个字母）、打的是字按 ENT 当消息发出去（消息页看得到）；CLR 删一个字，没字了再按清掉目标点
+local PADLET = { ["1"] = "ABC", ["2"] = "DEF", ["3"] = "GHI", ["4"] = "JKL", ["5"] = "MNO", ["6"] = "PQR", ["7"] = "STU", ["8"] = "VWX", ["9"] = "YZ", ["0"] = " " }
 P.cid = function(s, env, zh)
   local W, H = s.px.X, s.px.Y
   local R = s.root
   local function L(en, cn) return zh and cn or en end
-  R.BackgroundColor3 = RGB(18, 34, 52)
-  local view = F(R, 0, 18, W, H - 36, RGB(18, 34, 52), 0, 1)
+  local paper = s.opt and s.opt.paper
+  local BAR = paper and 14 or 18
+  local VH = H - BAR * 2
+  local WATER = paper and RGB(184, 210, 232) or RGB(18, 34, 52)
+  local TXT = paper and RGB(26, 30, 36) or RGB(200, 220, 240)
+  local BARC = paper and RGB(212, 212, 204) or RGB(10, 14, 20)
+  R.BackgroundColor3 = WATER
+  local view = F(R, 0, BAR, W, VH, WATER, 0, 1)
   view.ClipsDescendants = true
   local land = F(view, 0, 0, W, H, RGB(0, 0, 0), 1, 2)
-  local top = F(R, 0, 0, W, 18, RGB(10, 14, 20), 0, 5)
-  local clock = Tx(top, "", 4, 0, W * 0.4, 18, 11, RGB(200, 220, 240), nil, FONT, 6)
-  local grid = Tx(top, "", W * 0.4, 0, W * 0.6 - 4, 18, 11, RGB(200, 220, 240), Enum.TextXAlignment.Right, FONT, 6)
-  local bot = F(R, 0, H - 18, W, 18, RGB(10, 14, 20), 0, 5)
-  local scaleT = Tx(bot, "", 4, 0, W - 8, 18, 10, RGB(160, 200, 230), nil, FONTB, 6)
+  local top = F(R, 0, 0, W, BAR, BARC, 0, 5)
+  local clock = Tx(top, "", 4, 0, W * 0.45, BAR, paper and 10 or 11, TXT, nil, FONT, 6)
+  local grid = Tx(top, "", W * 0.4, 0, W * 0.6 - 4, BAR, paper and 10 or 11, TXT, Enum.TextXAlignment.Right, FONT, 6)
+  local bot = F(R, 0, H - BAR, W, BAR, BARC, 0, 5)
+  local scaleT = Tx(bot, "", 4, 0, W - 8, BAR, 10, paper and TXT or RGB(160, 200, 230), nil, FONTB, 6)
+  if paper and s.opt.dash then   -- 下边橙色横杠键的功能名（键在屏幕正下方）
+    scaleT.Visible = false
+    for _, k in ipairs(s.opt.dash) do Tx(bot, k[1], clamp(W * k[2] - 18, 0, W - 36), 0, 36, BAR, 8, RGB(16, 16, 16), Enum.TextXAlignment.Center, FONTB, 6) end
+  end
   local dim = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 30)
-  local S = { cx = nil, cz = nil, span = (env.zooms or { 0, 3200 })[2], cell = 64, job = nil }
-  S.cell = S.span / 50
-  local scale = (H - 36) / S.span
+  -- 键盘打的字、提示（MAP 页左下角、正上方）
+  local entF = F(R, 4, H - BAR - 17, W * 0.62, 15, RGB(255, 255, 255), 0.08, 12)
+  local entT = Tx(entF, "", 4, 0, W * 0.62 - 8, 15, 10, RGB(0, 0, 0), nil, FONT, 13)
+  local noteT = Tx(R, "", 0, BAR + 2, W, 14, 10, RGB(200, 40, 30), Enum.TextXAlignment.Center, FONTB, 13)
+  local S = { cx = nil, cz = nil, span = (env.zooms or { 0, 3200 })[2], cell = 64, job = nil, w = 0, h = 0 }
+  S.cell = S.span / (paper and 44 or 50)
+  local scale = VH / S.span
   local function landCol(h)
-    if h < 0.3 then return nil end
+    if h < 0.3 then return nil end   -- 水：底色
+    if paper then   -- 纸地图：几乎白，越高越灰、稍带绿（截图那种白底地图）
+      if h < 6 then return RGB(240, 236, 222) end
+      if h < 40 then return RGB(238, 240, 232) end
+      if h < 110 then return RGB(228, 234, 220) end
+      if h < 220 then return RGB(226, 224, 214) end
+      return RGB(216, 212, 204)
+    end
     if h < 6 then return RGB(196, 186, 140) end
     if h < 40 then return RGB(120, 150, 96) end
     if h < 110 then return RGB(104, 128, 84) end
     if h < 220 then return RGB(132, 122, 96) end
     return RGB(160, 152, 136)
   end
+  -- 重画底图的范围：纸地图横向按屏幕宽高比放宽、再各留半屏（挪地图、开车时边上不露底色）
   local function rebuild(cx, cz)
-    S.job = { cx = cx, cz = cz, n = math.floor(S.span / S.cell), j = 0, frames = {} }
+    local sw = S.span * (paper and math.max(1, W / VH) * 1.5 or 1)
+    local sh = S.span * (paper and 1.5 or 1)
+    S.job = { cx = cx, cz = cz, nx = math.floor(sw / S.cell), nz = math.floor(sh / S.cell), w = sw, h = sh, j = 0, frames = {} }
+  end
+  -- 道路：红色双线（纸地图）；每段至少 7 像素，路线上的点太密就跳着连
+  local function drawRoads()
+    local RD = paper and env.Map and env.Map.ROADS
+    if not RD then return end
+    local x0, z0 = S.cx - S.w / 2, S.cz - S.h / 2
+    local minL = 7 / scale
+    local function seg(ax, az, bx, bz)
+      local inA = ax > x0 and ax < x0 + S.w and az > z0 and az < z0 + S.h
+      local inB = bx > x0 and bx < x0 + S.w and bz > z0 and bz < z0 + S.h
+      if not (inA or inB) then return end
+      local px0, pz0, px1, pz1 = (ax - x0) * scale, (az - z0) * scale, (bx - x0) * scale, (bz - z0) * scale
+      Ln(land, px0, pz0, px1, pz1, 3, RGB(204, 72, 70), 3)
+      Ln(land, px0, pz0, px1, pz1, 1, RGB(248, 226, 222), 4)
+    end
+    for _, r in ipairs(RD) do
+      local xs, zs = r.x, r.z
+      local lx, lz = xs[1], zs[1]
+      for i = 2, #xs do
+        local x, z = xs[i], zs[i]
+        if i == #xs or (x - lx) ^ 2 + (z - lz) ^ 2 >= minL * minL then
+          seg(lx, lz, x, z)
+          lx, lz = x, z
+        end
+      end
+    end
   end
   local function stepJob()
     local J = S.job
     local Map = env.Map
     local calls = 0
-    while J.j < J.n and calls < 160 do
+    while J.j < J.nz and calls < 400 do
       local j = J.j
-      local z = J.cz - S.span / 2 + (j + 0.5) * S.cell
+      local z = J.cz - J.h / 2 + (j + 0.5) * S.cell
       local run, runCol = nil, nil
-      for i = 0, J.n do
+      for i = 0, J.nx do
         local col = nil
-        if i < J.n then
-          col = landCol(Map.height(J.cx - S.span / 2 + (i + 0.5) * S.cell, z))
+        if i < J.nx then
+          col = landCol(Map.height(J.cx - J.w / 2 + (i + 0.5) * S.cell, z))
           calls += 1
         end
         if col ~= runCol then
@@ -788,12 +978,13 @@ P.cid = function(s, env, zh)
       end
       J.j += 1
     end
-    if J.j < J.n then return false end
+    if J.j < J.nz then return false end
     for _, c in ipairs(land:GetChildren()) do c:Destroy() end
     local px = S.cell * scale
     for _, fr in ipairs(J.frames) do F(land, fr[1] * px, fr[2] * px, fr[3] * px + 1, px + 1, fr[4], 0, 2) end
-    S.cx, S.cz = J.cx, J.cz
+    S.cx, S.cz, S.w, S.h = J.cx, J.cz, J.w, J.h
     S.scale = scale
+    drawRoads()
     return true
   end
   local gridF = F(view, 0, 0, W, H, RGB(0, 0, 0), 1, 3)
@@ -803,7 +994,7 @@ P.cid = function(s, env, zh)
     local o = objs[i]
     if not o then
       local f = F(view, 0, 0, 10, 10, RGB(80, 160, 255), 0, 6)
-      local t = Tx(f, "", -20, -14, 50, 12, 10, RGB(255, 255, 255), Enum.TextXAlignment.Center, FONTB, 7)
+      local t = Tx(f, "", -20, -14, 50, 12, 10, paper and RGB(20, 20, 20) or RGB(255, 255, 255), Enum.TextXAlignment.Center, FONTB, 7)
       o = { f = f, t = t }
       objs[i] = o
     end
@@ -813,64 +1004,155 @@ P.cid = function(s, env, zh)
   local meC = Instance.new("UICorner")
   meC.CornerRadius = UDim.new(0.5, 0)
   meC.Parent = me
-  local _, hdgSet = Ln(view, 0, 0, 0, 0, 2, RGB(80, 170, 255), 8)
-  local _, gunSet = Ln(view, 0, 0, 0, 0, 2, RGB(255, 200, 60), 8)
+  local _, hdgSet = Ln(view, 0, 0, 0, 0, 2, paper and RGB(20, 70, 200) or RGB(80, 170, 255), 8)
+  local _, gunSet = Ln(view, 0, 0, 0, 0, 2, paper and RGB(220, 120, 0) or RGB(255, 200, 60), 8)
+  -- 目标点（键盘打坐标设的）：一个三角加中心点
+  local wpL = {}
+  for i = 1, 3 do local f, set = Ln(view, 0, 0, 1, 1, 2, RGB(210, 40, 30), 9) wpL[i] = { f = f, set = set } end
+  local wpDot = F(view, 0, 0, 4, 4, RGB(210, 40, 30), 0, 9)
   local gl = {}
-  for i = 1, 8 do gl[i] = F(gridF, 0, 0, 1, H, RGB(255, 255, 255), 0.82, 3) end
-  for i = 9, 16 do gl[i] = F(gridF, 0, 0, W, 1, RGB(255, 255, 255), 0.82, 3) end
+  local GLC, GLT = paper and RGB(120, 120, 120) or RGB(255, 255, 255), paper and 0.55 or 0.82
+  for i = 1, 8 do gl[i] = F(gridF, 0, 0, 1, H, GLC, GLT, 3) end
+  for i = 9, 16 do gl[i] = F(gridF, 0, 0, W, 1, GLC, GLT, 3) end
   local pages = { MSG = textPage(s, L("MESSAGES", "消息"), 7, RGB(200, 225, 245)), STAT = textPage(s, L("VEHICLE STATUS", "本车状态"), 7, RGB(200, 225, 245)),
     NAV = textPage(s, L("NAVIGATION", "导航"), 4, RGB(200, 225, 245)), POS = textPage(s, L("POSITION", "坐标"), 5, RGB(200, 225, 245)) }
   local navArrow = arrow(pages.NAV.f, W * 0.75, H * 0.6, math.min(W, H) * 0.22, RGB(255, 200, 60))
   local ZOOMS = env.zooms or { 1600, 3200, 6400 }
-  local st = { page = "MAP", z = 2, ovly = true, brt = 0 }
+  local st = { page = "MAP", z = 2, ovly = true, brt = 0, pan = { 0, 0 }, entry = "", ltr = false, tapK = nil, tapN = 0, tapT = 0, wp = nil, sent = {}, note = nil, noteT = 0, newMsg = false }
+  local function note(t) st.note, st.noteT = t, os.clock() end
+  -- 坐标页的格式：东 = (X + 20000) / 2.8 米、北 = (20000 − Z) / 2.8 米，各 5 位；打 2n 位数字 = 前 n 位东、后 n 位北（精度 10^(5−n) 米，取格子中心）
+  local function gridToWorld(dg)
+    local n = #dg
+    if n < 4 or n > 10 or n % 2 == 1 then return nil end
+    local h = n / 2
+    local unit = 10 ^ (5 - h)
+    local e = tonumber(string.sub(dg, 1, h)) * unit + unit / 2
+    local nn = tonumber(string.sub(dg, h + 1)) * unit + unit / 2
+    return e * 2.8 - 20000, 20000 - nn * 2.8
+  end
   s.onKey = function(k)
     k = canon(k)
-    if k == "MAP" or k == "MSG" or k == "STAT" or k == "NAV" or k == "POS" then st.page = k
+    if k == "MAP" then st.page = "MAP" st.pan = { 0, 0 }   -- 地图键：回到地图页、以本车为中心
+    elseif k == "MSG" or k == "C3" then st.page = "MSG"
+    elseif k == "STAT" or k == "VEH SYS" then st.page = "STAT"
+    elseif k == "NAV" or k == "POS" then st.page = k
     elseif k == "ZOOM+" then st.z = math.max(1, st.z - 1) elseif k == "ZOOM-" then st.z = math.min(3, st.z + 1)
     elseif k == "OVLY" then st.ovly = not st.ovly
-    elseif k == "BRT+" then st.brt = math.max(0, st.brt - 0.15) elseif k == "BRT-" then st.brt = math.min(0.75, st.brt + 0.15) end
+    elseif k == "BRT+" then st.brt = math.max(0, st.brt - 0.15) elseif k == "BRT-" then st.brt = math.min(0.75, st.brt + 0.15)
+    elseif k == "UP" or k == "DOWN" or k == "LEFT" or k == "RIGHT" then   -- 地图上北下南：往北挪 = 中心往 −Z
+      st.page = "MAP"
+      local q = S.span * 0.25
+      if k == "UP" then st.pan[2] -= q elseif k == "DOWN" then st.pan[2] += q elseif k == "LEFT" then st.pan[1] -= q else st.pan[1] += q end
+    elseif PADLET[k] then
+      if st.ltr then   -- 字母：同一个键 1.5 秒内连按换下一个字母
+        local lt = PADLET[k]
+        if st.tapK == k and os.clock() - st.tapT < 1.5 then
+          st.tapN = st.tapN % #lt + 1
+          st.entry = string.sub(st.entry, 1, -2) .. string.sub(lt, st.tapN, st.tapN)
+        else
+          st.tapN = 1
+          st.entry = st.entry .. string.sub(lt, 1, 1)
+        end
+        st.tapK, st.tapT = k, os.clock()
+      else
+        st.entry = st.entry .. k
+      end
+      if #st.entry > 24 then st.entry = string.sub(st.entry, 1, 24) end
+    elseif k == "." or k == "-" then st.entry = st.entry .. k st.tapK = nil
+    elseif k == "NEXT" then
+      if st.tapK then st.tapK = nil else st.entry = st.entry .. " " end
+    elseif k == "LTR" then st.ltr = not st.ltr st.tapK = nil
+    elseif k == "CLR" then
+      st.tapK = nil
+      if #st.entry > 0 then st.entry = string.sub(st.entry, 1, -2)
+      elseif st.wp then st.wp = nil note(L("WAYPOINT CLEARED", "目标点已清除")) end
+    elseif k == "ENT" then
+      local e = st.entry
+      st.entry, st.tapK = "", nil
+      local dg = string.gsub(e, "[%s%.%-]", "")
+      local x, z = nil, nil
+      if string.match(dg, "^%d+$") then x, z = gridToWorld(dg) end
+      if x then
+        st.wp = { x = x, z = z, txt = dg }
+        st.page = "MAP"
+        note(string.format(L("WAYPOINT  %s", "目标点  %s"), dg))
+      elseif string.match(dg, "^%d+$") then
+        note(L("GRID NEEDS 4/6/8/10 DIGITS", "坐标要 4 / 6 / 8 / 10 位"))
+      elseif #e > 0 then
+        table.insert(st.sent, 1, { t = os.clock(), txt = e })
+        if #st.sent > 3 then table.remove(st.sent) end
+        st.page = "MSG"
+        note(L("MESSAGE SENT", "消息已发出"))
+      end
+    end
   end
+  s.ledOn = function(k)
+    if k == "_MSG" then return st.newMsg end
+    if k == "LTR" then return st.ltr end
+    return k == "_PWR"
+  end
+  s.mapState = st   -- 测试用
   return function(d)
     if not d.pos then return end
     for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
     dim.BackgroundTransparency = 1 - st.brt
     local p = d.pos
     local want = ZOOMS[st.z]
-    if want ~= S.span and not S.job then S.span, S.cx = want, nil scale = (H - 36) / S.span end
-    if not S.job and (not S.cx or math.abs(p.X - S.cx) > S.span * 0.22 or math.abs(p.Z - S.cz) > S.span * 0.22) then
-      S.cell = S.span / 50
-      rebuild(math.floor(p.X / S.cell) * S.cell, math.floor(p.Z / S.cell) * S.cell)
+    if want ~= S.span and not S.job then
+      S.span, S.cx = want, nil
+      S.cell = S.span / (paper and 44 or 50)
+      scale = VH / S.span
+    end
+    local cxw, czw = p.X + st.pan[1], p.Z + st.pan[2]   -- 地图中心（挪过就不是本车）
+    if not S.job and (not S.cx or math.abs(cxw - S.cx) > S.span * 0.22 or math.abs(czw - S.cz) > S.span * 0.22) then
+      rebuild(math.floor(cxw / S.cell) * S.cell, math.floor(czw / S.cell) * S.cell)
     end
     if S.job and stepJob() then S.job = nil end
-    local vx, vz = W / 2, (H - 36) / 2
+    local vx, vz = W / 2, VH / 2
     if S.cx then
-      land.Position = UD2(0, vx - (p.X - (S.cx - S.span / 2)) * scale, 0, vz - (p.Z - (S.cz - S.span / 2)) * scale)
-      land.Size = UD2(0, S.span * scale, 0, S.span * scale)
+      land.Position = UD2(0, vx - (cxw - (S.cx - S.w / 2)) * scale, 0, vz - (czw - (S.cz - S.h / 2)) * scale)
+      land.Size = UD2(0, S.w * scale, 0, S.h * scale)
     end
-    local g0x = math.floor((p.X - S.span / 2) / 1000) * 1000
-    local g0z = math.floor((p.Z - S.span / 2) / 1000) * 1000
+    local g0x = math.floor((cxw - W / 2 / scale) / 1000) * 1000   -- 从屏幕左边起（纸地图横向比竖向宽）
+    local g0z = math.floor((czw - S.span / 2) / 1000) * 1000
     for i = 1, 8 do
-      local x = vx + (g0x + i * 1000 - p.X) * scale
+      local x = vx + (g0x + i * 1000 - cxw) * scale
       gl[i].Position = UD2(0, x, 0, 0)
       gl[i].Visible = x > 0 and x < W
     end
     for i = 9, 16 do
-      local z = vz + (g0z + (i - 8) * 1000 - p.Z) * scale
+      local z = vz + (g0z + (i - 8) * 1000 - czw) * scale
       gl[i].Position = UD2(0, 0, 0, z)
-      gl[i].Visible = z > 0 and z < H - 36
+      gl[i].Visible = z > 0 and z < VH
     end
-    me.Position = UD2(0, vx - 6, 0, vz - 6)
+    local mx, mz = vx + (p.X - cxw) * scale, vz + (p.Z - czw) * scale
+    me.Position = UD2(0, mx - 6, 0, mz - 6)
+    me.Visible = mx > -6 and mx < W + 6 and mz > -6 and mz < VH + 6
     local h = math.rad(d.hdg or 0)
-    hdgSet(vx, vz, vx + math.sin(h) * 22, vz - math.cos(h) * 22)
+    hdgSet(mx, mz, mx + math.sin(h) * 22, mz - math.cos(h) * 22)
     local tg = math.rad((d.hdg or 0) + (d.ty or 0))
-    gunSet(vx, vz, vx + math.sin(tg) * 34, vz - math.cos(tg) * 34)
+    gunSet(mx, mz, mx + math.sin(tg) * 34, mz - math.cos(tg) * 34)
+    -- 目标点
+    local wp = st.wp
+    for _, q in ipairs(wpL) do q.f.Visible = wp ~= nil end
+    wpDot.Visible = wp ~= nil
+    if wp then
+      local x, z = vx + (wp.x - cxw) * scale, vz + (wp.z - czw) * scale
+      local r = 9
+      local P3 = { { x, z - r }, { x - r * 0.87, z + r * 0.5 }, { x + r * 0.87, z + r * 0.5 } }
+      for i = 1, 3 do local a, b2 = P3[i], P3[i % 3 + 1] wpL[i].set(a[1], a[2], b2[1], b2[2]) end
+      wpDot.Position = UD2(0, x - 2, 0, z - 2)
+    end
     local n, nu = 0, 0
+    local nE = 0
+    for _, e in ipairs(d.ents or {}) do if e.seen and e.team ~= d.team then nE += 1 end end
+    st.newMsg = nE > 0
     if st.ovly then
       for _, pt in ipairs(d.points or {}) do
         n += 1
         local o = obj(n)
-        local x, z = vx + (pt.x - p.X) * scale, vz + (pt.z - p.Z) * scale
-        o.f.Visible = x > -10 and x < W + 10 and z > -10 and z < H
+        local x, z = vx + (pt.x - cxw) * scale, vz + (pt.z - czw) * scale
+        o.f.Visible = x > -10 and x < W + 10 and z > -10 and z < VH + 10
         o.f.Position = UD2(0, x - 8, 0, z - 8)
         o.f.Size = UD2(0, 16, 0, 16)
         o.f.BackgroundColor3 = (pt.owner == d.team) and RGB(70, 140, 255) or ((pt.owner == nil) and RGB(200, 200, 200) or RGB(230, 70, 60))
@@ -883,8 +1165,8 @@ P.cid = function(s, env, zh)
       for _, e in ipairs(d.ents or {}) do
         local friend = e.team == d.team
         if friend or e.seen then
-          local x, z = vx + (e.pos.X - p.X) * scale, vz + (e.pos.Z - p.Z) * scale
-          if x > -12 and x < W + 12 and z > -12 and z < H - 24 then
+          local x, z = vx + (e.pos.X - cxw) * scale, vz + (e.pos.Z - czw) * scale
+          if x > -12 and x < W + 12 and z > -12 and z < VH + 12 then
             nu += 1
             local u = units[nu]
             if not u then u = Sym(view, 9) units[nu] = u end
@@ -901,10 +1183,15 @@ P.cid = function(s, env, zh)
     local gx, gz = math.floor((p.X + 20000) / 2.8) % 100000, math.floor((20000 - p.Z) / 2.8) % 100000
     grid.Text = string.format("52S  %05d %05d", gx, gz)
     scaleT.Text = string.format(L("SCALE 1:%dK   %s", "比例 1:%dK   %s"), math.floor(S.span / 2.8 / 100), st.ovly and L("OVERLAY ON", "标绘 开") or L("OVERLAY OFF", "标绘 关"))
+    entF.Visible = #st.entry > 0 or st.ltr
+    entT.Text = (st.ltr and "LTR> " or "> ") .. st.entry .. ((math.floor(os.clock() * 2) % 2 == 0) and "_" or " ")
+    noteT.Text = (st.note and os.clock() - st.noteT < 3) and st.note or ""
     if st.page == "MSG" then
       local lines = {}
-      local nE = 0
-      for _, e in ipairs(d.ents or {}) do if e.seen and e.team ~= d.team then nE += 1 end end
+      for _, m in ipairs(st.sent) do
+        local tt = t - (os.clock() - m.t)
+        table.insert(lines, string.format(L("%02d%02dZ  SENT: %s", "%02d%02d  已发：%s"), math.floor(tt / 3600) % 24, math.floor(tt / 60) % 60, m.txt))
+      end
       table.insert(lines, string.format(L("%02d%02dZ  SPOT RPT: %d ENEMY IN SECTOR", "%02d%02d  敌情：本区发现敌 %d 个"), math.floor(t / 3600) % 24, math.floor(t / 60) % 60, nE))
       for _, pt in ipairs(d.points or {}) do
         if pt.owner == d.team then table.insert(lines, string.format(L("OBJ %s SECURED", "据点 %s 已控制"), pt.id))
@@ -919,12 +1206,20 @@ P.cid = function(s, env, zh)
       table.insert(lines, d.ready and L("MAIN GUN  READY", "主炮  待发") or L("MAIN GUN  LOADING", "主炮  装填中"))
       pages.STAT.set(lines)
     elseif st.page == "NAV" then
-      local o, dist, brg = navText(d)
-      if o then
-        pages.NAV.set({ string.format(L("WAYPOINT  OBJ %s", "目标点  据点 %s"), o.id), string.format(L("DIST  %5d M", "距离  %5d 米"), math.floor(dist / 2.8)),
+      if wp then   -- 键盘设的目标点优先
+        local dist = math.sqrt((wp.x - p.X) ^ 2 + (wp.z - p.Z) ^ 2)
+        local brg = math.deg(math.atan2(wp.x - p.X, -(wp.z - p.Z))) % 360
+        pages.NAV.set({ string.format(L("WAYPOINT  GRID %s", "目标点  坐标 %s"), wp.txt), string.format(L("DIST  %5d M", "距离  %5d 米"), math.floor(dist / 2.8)),
           string.format(L("BRG   %03d", "方位  %03d°"), math.floor(brg)), string.format(L("HDG   %03d", "车头  %03d°"), math.floor(d.hdg or 0)) })
         navArrow(math.rad(brg - (d.hdg or 0)))
-      else pages.NAV.set({ L("NO WAYPOINT", "没有目标点") }) end
+      else
+        local o, dist, brg = navText(d)
+        if o then
+          pages.NAV.set({ string.format(L("WAYPOINT  OBJ %s", "目标点  据点 %s"), o.id), string.format(L("DIST  %5d M", "距离  %5d 米"), math.floor(dist / 2.8)),
+            string.format(L("BRG   %03d", "方位  %03d°"), math.floor(brg)), string.format(L("HDG   %03d", "车头  %03d°"), math.floor(d.hdg or 0)) })
+          navArrow(math.rad(brg - (d.hdg or 0)))
+        else pages.NAV.set({ L("NO WAYPOINT", "没有目标点") }) end
+      end
     elseif st.page == "POS" then
       pages.POS.set({ string.format(L("GRID  52S %05d %05d", "坐标  52S %05d %05d"), gx, gz), string.format(L("ALT   %4d M", "高度  %4d 米"), math.floor(p.Y / 2.8)),
         string.format(L("HDG   %03d", "车头  %03d°"), math.floor(d.hdg or 0)), string.format(L("TURRET %03d", "炮塔  %03d°"), math.floor(((d.hdg or 0) + (d.ty or 0)) % 360)),
