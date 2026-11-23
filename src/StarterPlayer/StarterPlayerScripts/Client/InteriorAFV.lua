@@ -537,10 +537,128 @@ return function(Defs, Hp)
     return { stations = stations, order = order, crew = crew, gunK = 0.05, cn = cn, glass = glass, cab = true }
   end
 
+  ---------------------------------------------------------------- 挖了内腔的驾驶室（原车模型挖出来的内壁 + 原车的车窗玻璃，用户 11-23「在原车内部雕刻出来内饰」）
+  --   车壳（地板、车顶、车门内板、仪表台的外形、风挡、侧窗）都是原车模型的：这里不画自己的壳和玻璃，只摆东西——
+  --   乘员位按 carve.json 里在原模型上量的眼位（anchors），地板高、风挡下沿按内腔查（ctx.cav），窗户就是外面看到的那几块玻璃
+  function Defs.cabCarved(b, ctx, L)
+    local cav = ctx.cav
+    local A = cav.anchors
+    local H, T = "hull", "turret"
+    local cn = L.cn
+    local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
+      return b:box(g, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
+    end
+    local function look(p, at) return CFrame.lookAt(p, at) end
+    local DASH = RGB(34, 36, 34)
+    local eyeL, eyeR = A.drv, A.cmd or V(-A.drv.X, A.drv.Y, A.drv.Z)
+    local seatY = A.seat and A.seat.Y or (eyeL.Y - 0.80)
+    local function floorAt(x, z) return cav:floor(x, z) or (seatY - 0.30) end
+    local function roofAt(x, z) return cav:roof(x, z) or (eyeL.Y + 0.25) end
+    -- 风挡：朝前的那几块玻璃，下沿就是仪表台顶
+    local wsZ, wsY = nil, nil
+    for _, w in ipairs(cav.win) do
+      if w.n.Z < -0.55 then
+        local bot = w.c - w.up * (w.h / 2)
+        wsZ = wsZ and math.max(wsZ, bot.Z) or bot.Z
+        wsY = wsY and math.min(wsY, bot.Y) or bot.Y
+      end
+    end
+    wsZ = wsZ or (eyeL.Z - 0.80)
+    wsY = wsY or (eyeL.Y - 0.25)
+    local zD = wsZ + 0.05   -- 仪表台的面（风挡下沿往里一点）
+    local xl, xr = cav:walls(zD + 0.25, wsY - 0.15)
+    xl, xr = (xl or -0.95) + 0.06, (xr or 0.95) - 0.06
+    -- 仪表台：黑色的面板盖在内腔（原车仪表台外形）上——顶面、斜面
+    bx(H, xr - xl, 0.03, 0.30, (xl + xr) / 2, wsY - 0.02, zD + 0.15, DASH, MAT.SmoothPlastic)
+    bx(H, xr - xl, 0.28, 0.03, (xl + xr) / 2, wsY - 0.17, zD + 0.31, DASH, MAT.SmoothPlastic, -12, 0, 0)
+    b:panel(H, 0.16, 0.10, look(V(eyeL.X - 0.22, wsY - 0.20, zD + 0.33), eyeL), 3, 2, RGB(54, 56, 54))
+    -- 驾驶员：机械仪表、方向盘（跟着转向转）、踏板、换挡杆
+    b:screen(H, 0.28, 0.07, look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL), "gauges", { light = false, ppm = 1800 })
+    local wc = A.wheel or (eyeL + V(0.05, -0.55, -0.62))
+    local wdir = (eyeL - wc).Unit
+    b:group("swheel", H, look(wc, wc - V(wdir.X, wdir.Y * 0.4 - 0.55, wdir.Z).Unit))
+    zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
+    b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
+    b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
+    b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
+    b:tube(H, wc + V(0, -0.02, -0.04), V(wc.X, wsY - 0.22, zD + 0.30), 0.05, C.gray, MAT.Metal)
+    local fyD = floorAt(eyeL.X, eyeL.Z - 0.70)
+    bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    local tz = eyeL.Z - 0.15
+    local tyY = floorAt(0, tz)
+    bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)   -- 换挡杆（中间通道上）
+    b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    -- 中间通道上的两部电台、仪表台中间的指挥终端（美军 JBC-P / 我军北斗终端）
+    local rz = (eyeL.Z + eyeR.Z) / 2 + 0.25
+    local ry = floorAt(0, rz)
+    b:radio(H, 0.26, 0.18, 0.30, CF(0, ry + 0.10, rz), cn and RGB(74, 92, 70) or RGB(84, 90, 66))
+    b:radio(H, 0.26, 0.14, 0.30, CF(0, ry + 0.27, rz), cn and RGB(74, 92, 70) or RGB(84, 90, 66))
+    local mid = (eyeL + eyeR) / 2
+    local mp = cn and "cnmap" or "cid"
+    b:screen(H, 0.22, 0.15, look(V(0, wsY - 0.16, zD + 0.36), mid), mp, { keys = KEY[mp], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+    -- 车长：仪表台上的扶手、操作员控制台 / 遥控武器站
+    b:grab(H, V(eyeR.X - 0.15, wsY - 0.08, zD + 0.36), V(eyeR.X + 0.15, wsY - 0.08, zD + 0.36), V(0, 0.06, 0), 0.025, C.black)
+    if L.console then
+      b:screen(H, 0.24, 0.18, look(V(eyeR.X, wsY - 0.12, zD + 0.38), eyeR), L.console, { lightColor = RGB(120, 230, 140), lightK = 0.3 })
+      b:screen(H, 0.16, 0.12, look(V(eyeR.X - 0.26, wsY - 0.16, zD + 0.40), eyeR), "afcs", { lightK = 0.2 })
+    end
+    if L.rws then
+      b:screen(H, 0.22, 0.16, look(V(eyeR.X, wsY - 0.14, zD + 0.38), eyeR), "crows", { keys = KEY.crows, lightK = 0.3 })
+      b:group("cch", H, CF(eyeR.X + 0.18, seatY + 0.22, eyeR.Z - 0.30))
+      bx("cch", 0.06, 0.14, 0.06, 0, 0.06, 0, C.black)
+    end
+    -- 座椅（坐垫在原模型座椅的高度）、安全带
+    local SC = cn and RGB(64, 76, 60) or RGB(92, 86, 66)
+    local seats = { eyeL, eyeR }
+    if A.rl then table.insert(seats, A.rl) end
+    if A.rr then table.insert(seats, A.rr) end
+    for _, e in ipairs(seats) do
+      b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })   -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）
+      local s = (e.X < 0) and -1 or 1
+      b:cable(H, { V(e.X + s * 0.22, e.Y - 0.05, e.Z + 0.20), V(e.X - s * 0.06, e.Y - 0.40, e.Z - 0.08), V(e.X - s * 0.22, seatY + 0.06, e.Z + 0.05) }, 0.035, RGB(40, 44, 36))
+    end
+    b:extinguisher(H, CF(eyeL.X - 0.18, floorAt(eyeL.X - 0.18, eyeL.Z - 0.25) + 0.20, eyeL.Z - 0.25), 0.36, 0.11)   -- 驾驶座左前、车门边
+    b:light(H, CF(0, roofAt(0, mid.Z + 0.3) - 0.05, mid.Z + 0.3), "dome", RGB(255, 240, 220), 2.4, 0.6)
+    local dress = cn and "crew_cn" or "crew_us"
+    local stations = {
+      driver = { g = H, eye = eyeL, look = V(0, -0.05, -1), yaw = 150, up = 50, down = 60, crew = "driver" },
+      commander = { g = H, eye = eyeR, look = V(0, -0.05, -1), yaw = 150, up = 50, down = 60, crew = "commander" },
+    }
+    local crew = {
+      driver = { dress = dress, g = H, eye = eyeL, lean = 6, yaw = 0, look = V(0, -0.05, -1),
+        hands = { l = { "swheel", V(-0.18, 0.04, 0) }, r = { "swheel", V(0.18, 0.04, 0) } },
+        feet = { l = { H, V(eyeL.X - 0.06, fyD + 0.10, eyeL.Z - 0.80) }, r = { H, V(eyeL.X + 0.12, fyD + 0.10, eyeL.Z - 0.78) } } },
+      commander = { dress = dress, g = H, eye = eyeR, lean = 4, yaw = 0, look = V(0, -0.08, -1),
+        hands = { l = { H, eyeR + V(-0.18, -0.52, -0.30) }, r = { H, eyeR + V(0.18, -0.52, -0.30) } },
+        feet = { l = { H, V(eyeR.X - 0.12, floorAt(eyeR.X, eyeR.Z - 0.7) + 0.10, eyeR.Z - 0.70) }, r = { H, V(eyeR.X + 0.12, floorAt(eyeR.X, eyeR.Z - 0.7) + 0.10, eyeR.Z - 0.70) } } },
+    }
+    local order = { "driver", "commander" }
+    if L.rws then
+      crew.commander.hands.r = { "cch", V(0, 0.12, 0) }
+      stations.commander.optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.40, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect", rws = true } }
+    end
+    if A.rl then   -- 后座：能坐过去看侧窗外面
+      stations.rear = { g = H, eye = A.rl, look = V(-0.3, -0.05, -1), yaw = 160, up = 50, down = 60 }
+      table.insert(order, "rear")
+    end
+    if L.ring and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画
+      Defs.ring(b, H, A.ring.X, A.ring.Y - 0.02, A.ring.Z, 0.42, 20, 0.06, 0.06, C.steel, MAT.Metal)
+      local fy = floorAt(A.ring.X, A.ring.Z)
+      bx(H, 0.30, 0.04, 0.20, A.ring.X, fy + 0.70, A.ring.Z, RGB(40, 40, 40), MAT.Fabric)
+      for _, sx in ipairs({ -1, 1 }) do b:tube(H, V(A.ring.X + sx * 0.14, fy + 0.70, A.ring.Z), V(A.ring.X + sx * 0.30, A.ring.Y - 0.05, A.ring.Z), 0.02, C.black, MAT.Fabric) end
+    end
+    return { stations = stations, order = order, crew = crew, gunK = 0.05, cn = cn, glass = {}, cab = true, carved = true }
+  end
+
   ---------------------------------------------------------------- 各型
   local US, CN = false, true
   local function afv(o) return function(b, ctx) return Defs.afv(b, ctx, o) end end
-  local function cab(o) return function(b, ctx) return Defs.cab(b, ctx, o) end end
+  -- 驾驶室：重新导入过挖了内腔的原车（ctx.cav 有乘员位）走 cabCarved，没有照旧
+  local function cab(o) return function(b, ctx)
+    if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
+    return Defs.cab(b, ctx, o)
+  end end
   Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })

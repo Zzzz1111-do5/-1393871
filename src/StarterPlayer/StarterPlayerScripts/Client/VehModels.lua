@@ -178,9 +178,17 @@ function VehModels.build(d, team, mods)
       local lim = axles[math.min(#axles, d.steer or 1)] + 0.75
       for _, w in ipairs(wheels) do w.steer = w.z <= lim end
     end
+    local carve = { cav = {}, glass = {}, inside = {} }
+    -- carve.py 改过的块换了新名字（rep = 它顶替的旧块）：导入了新块就不用旧块；没重新导入的照旧用旧块
+    local replaced = {}
+    for name, p in pairs(info.parts) do
+      if p.rep and folder:FindFirstChild("V_" .. ikey .. "__" .. name) then
+        for _, old in ipairs(p.rep) do replaced[old] = true end
+      end
+    end
     for name, p in pairs(info.parts) do
       local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
-      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") then
+      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") and not replaced[name] then
         local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = v3(p.s)
@@ -204,6 +212,21 @@ function VehModels.build(d, team, mods)
         end
         off = off * TURN   -- 绕这块自己的中心补回导入时转掉的半圈
         mp.CFrame = off
+        -- 从原车挖出来的内腔（tools/models/carve.py，用户 11-23「在原车内部雕刻出来内饰」）：k = cav 内壁（平时藏着，坐进车里 Interior 显示）、
+        --   glass 车窗玻璃（透明：车里看出去、车外看进来）、inside 原模型自带的简易内饰（坐进车里时藏起来，换成真内饰）
+        if p.k == "cav" then
+          if p.col then mp.Color = Color3.fromRGB(p.col[1], p.col[2], p.col[3]) end
+          mp.Material = (p.m and Enum.Material[p.m]) or MAT.SmoothPlastic
+          mp.CastShadow = false
+          mp.Transparency = 1
+          table.insert(carve.cav, mp)
+        elseif p.k == "glass" then
+          mp.Transparency = math.max(mp.Transparency, 1 - (p.a or 0.35))
+          mp.CastShadow = false
+          table.insert(carve.glass, mp)
+        elseif p.k == "inside" then
+          table.insert(carve.inside, mp)
+        end
         mp.Parent = m
         table.insert(parts, { mp, grp, off, wi })
       end
@@ -230,7 +253,7 @@ function VehModels.build(d, team, mods)
       if info.rws.mk == "manual" then manualMg(rgpiv - rpiv, info.rws.muz or 2.45) else rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
     end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
-      rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil }
+      rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil, carve = (#carve.cav > 0) and carve or nil }
   end
 
   if not ikey then
@@ -831,7 +854,7 @@ function VehModels.build(d, team, mods)
   end
 
   return { model = m, parts = parts, wheels = wheels, dust = dust, exhaust = exhaust, fire = fire, black = black, def = d, lamps = lamps,
-    imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv,
+    imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv, carve = extra.carve,
     era = era, eraL = L, kpiv = kpiv and (kpiv - tp) or nil, plowPiv = plowPiv, mods = mm }
 end
 

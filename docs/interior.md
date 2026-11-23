@@ -144,3 +144,23 @@
 - 测试：`python3 tools/mock/run.py tools/mock/interior_props.lua [dump=<目录>]`（等真模型生成好、内饰重建一次：八件都摆上、四块屏是真模型外壳、显示面和键帽都在外壳里、键按得动；
   车长显示单元：键盘打本车坐标设目标点、字母模式发消息、方向键挪地图、MAP 回本车、CLR 清目标点，上屏选中的键亮灯、SCAN L 设扇区、STOW 收回）；
   预览图里真模型部件按 GLB 画（`AMB=1.0` 亮一点）：`AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_props.json <输出前缀>`
+
+## 从原车挖内腔（用户 11-23：「改成在原车内部雕刻出来内饰」「这样各种载具的从外面可以看得见的窗户跟内部的内饰就能对得上了」）
+
+- 工具：`python3 -I tools/models/carve.py <模型键> [preview=<目录>] [nowrite | metaonly]`，配置 `tools/models/carve.json`；永远从原样开始（第一次挖时记下 git 里原 GLB 的 blob 号 `orig`、
+  元数据那一行存 `tools/models/carve_orig/<键>.lua`），所以可以反复调参重跑
+  1. 原车三角形体素化（`vox`，默认 0.06 格），封住小缝（`close`），外面灌不进去的是车的实体；敞口的地方（炮塔底、座圈下面没有甲板的车体）先补盖（`seal`）
+  2. 从乘员眼位（`seeds`）在空气里灌水：碰到原模型的任何一面就停（离面 `gap` 格）——内壁贴着原模型自己的里面（悍马的车门内板、仪表台、中间通道），
+     原模型没做里面的（坦克外壳）就贴着外壳；`ignore` 盒子里的三角形（原模型自带的简易座椅、方向盘）不挡水；`solidOnly` 的组（会动的炮）只封实体不挡水；
+     `box` / `cut` / `carveOut` / 车轮、履带让开的地方截一截
+  3. 距离场高斯磨平、Marching Cubes 抽面（朝里：车里看得见、车外看不见）、窗户后面那层挖开（窗框的侧面留着）、Taubin 平滑、减面（`tris`），按朝向分地板 / 墙顶两块
+  4. 写出：GLB 里改过的块换新名字（元数据 `rep` = 它顶替的旧块；旧块元数据留着——没重新导入的照旧用旧块），`Glass_*` 车窗玻璃（`k = "glass"`，透明）、
+     `Inside_*` 原模型自带的简易内饰和贴着内腔的面（`k = "inside"`，坐进车里时藏起来）、`Cav<空间><Floor|Wall>_1` 内壁（`k = "cav"`，平时藏着）；
+     `src/ReplicatedStorage/CavityMeta.lua`：每个空间的地板 / 顶高度表、窗户（玻璃块的中心、朝向、宽高）、`anchors` 乘员位
+- 游戏里：`VehModels` 按 `k` 处理（内壁藏着、玻璃透明、`rep` 顶替）；`Interior` 看到车有内壁（`M.carve`）又有 CavityMeta：`ctx.cav`（`InteriorCav`：
+  `floor` / `roof` / `walls` / `win` / `anchors`，内饰用的米）交给各型的内饰函数；函数返回 `carved = true` 才算挖了内腔的那套——坐在乘员位上外壳照样画
+  （车窗看出去是自己的车），只藏 `Inside_*`、显示内壁；看观瞄设备时照旧整车不画
+- 已做：悍马（`Defs.cabCarved`：仪表台盖在原车仪表台外形上、方向盘 / 座椅在原模型的位置、电台在中间通道上、射手的炮塔环）
+- 测试：`python3 tools/mock/run.py tools/mock/carve.lua veh=hmmwv [dump=<目录>]`（假装重新导入了改过的 GLB）；
+  画图：`CARVE=1 DAY=1 AMB=0.9 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_hmmwv_carve.json <输出前缀> models/veh/hmmwv.glb`
+  （外壳不透明、背面剔除，跟 Roblox 一样只从正面看得见）；挖的过程看 `preview=` 出的 `<键>_eye_<眼位>.png`（carve.json 的 `eyes`）

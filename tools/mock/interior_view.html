@@ -165,6 +165,21 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   }
   if (P.get('glb')) {
     await new Promise(res => new GLTFLoader().load(P.get('glb'), g => {
+      if (P.get('carve')) {   // 挖了内腔的原车（carve.py）：坐在车里看到的样子——外壳不透明（背面剔除，从里面看不见）、内壁显示、玻璃透明、原模型的简易内饰（Inside_）藏起来
+        g.scene.traverse(o => {
+          if (!o.isMesh) return;
+          const nm = (o.name || '') + ' ' + ((o.parent && o.parent.name) || '');
+          const ms = Array.isArray(o.material) ? o.material : [o.material];
+          if (nm.includes('__Inside_')) { o.visible = false; return; }
+          for (const m of ms) {
+            m.side = THREE.FrontSide;
+            if (nm.includes('__Glass_')) { m.transparent = true; m.opacity = 0.28; m.depthWrite = false; m.color = new THREE.Color(0.55, 0.68, 0.74); m.map = null; }
+            else { m.transparent = false; m.opacity = 1; m.depthWrite = true; }
+            m.needsUpdate = true;
+          }
+          o.castShadow = false; o.receiveShadow = true;
+        });
+      } else
       g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) { m.transparent = true; m.opacity = +(P.get('glbop') || 0.25); m.depthWrite = false; } } });
       const off = (P.get('glboff') || '0,0,0').split(',').map(Number);
       g.scene.position.set(...off);

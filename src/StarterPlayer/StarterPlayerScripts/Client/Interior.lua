@@ -18,6 +18,7 @@ local Interior = {}
 
 function Interior.init(G)
   local Kit = require(script.Parent:WaitForChild("InteriorKit"))
+local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖出来的内腔（CavityMeta）
   local Defs = require(script.Parent:WaitForChild("InteriorDefs"))
   local Screens = require(script.Parent:WaitForChild("InteriorScreens"))
   local VD = require(RS:WaitForChild("VehDefs"))
@@ -123,15 +124,23 @@ function Interior.init(G)
   -- 自己这辆车的外模型（View 摆的那套）：坐在车里（乘员位）时不画（用户 11-22：「坦克内部屏幕会被挡住」——
   --   外模型的车体、炮塔块和内饰叠在一起，驾驶员眼前 4 厘米就是外模型车体的面，车长的显示屏前面是外模型的炮塔件）。
   --   看观瞄设备时（ownHide）也是它；车外、导演镜头、下车放回来
-  local function extHide(c, on)
-    if not c or c.extHidden == on then return end
+  --   从原车挖了内腔的（VehModels 的 M.carve，tools/models/carve.py；用户 11-23「在原车内部雕刻出来内饰」）：坐在乘员位上外壳照样画——
+  --   车窗看出去是自己的车头、引擎盖、车门，跟车外看到的同一块玻璃；只藏原模型自带的简易内饰（inside），显示挖出来的内壁（cav）
+  local function extHide(c, on, inOptic)
+    local key = on and ((inOptic or not c or not c.carved) and "all" or "seat") or "off"
+    if not c or c.extHidden == key then return end
     local v = G.viewById and G.viewById(c.id)
     if not v or not v.M then return end
+    local cv = c.carved and v.M.carve
     for _, it in ipairs(v.M.parts) do
       local p = it[1]
-      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = (key == "all") and 1 or 0 end
     end
-    c.extHidden = on
+    if cv then
+      for _, p in ipairs(cv.inside) do p.LocalTransparencyModifier = (key == "off") and 0 or 1 end
+      for _, p in ipairs(cv.cav) do p.Transparency = (key == "seat") and 0 or 1 end
+    end
+    c.extHidden = key
   end
 
   local function teardown()
@@ -172,7 +181,10 @@ function Interior.init(G)
     m.Name = "Interior_" .. key
     local b = Kit.new(m)
     -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
-    local ok, spec = pcall(fn, b, { def = v.def, piv = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero,
+    -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
+    local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
+    local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
+    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
       gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
     if not ok then
       m:Destroy()
@@ -199,7 +211,7 @@ function Interior.init(G)
         end
       end
     end
-    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {},
+    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = cav ~= nil and spec.carved == true,
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
@@ -1103,7 +1115,7 @@ function Interior.init(G)
       if enterOptic(cur, "primary") and optic then optic.quick = true end
     end
     local c = cur
-    extHide(c, mode == "seat" or optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画；导演镜头：画
+    extHide(c, mode == "seat" or optic ~= nil, optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -1551,7 +1563,7 @@ function Interior.init(G)
     end
     return CFrame.lookAt(p, p + dir, up)
   end
-  local function ownHide(c, on) extHide(c, on) end
+  local function ownHide(c, on) extHide(c, on, true) end
   exitOptic = function(c)
     if not optic then return end
     local o = optic.o
