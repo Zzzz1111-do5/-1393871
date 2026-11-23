@@ -14,6 +14,7 @@ import { day, dusk, night, dirAzEl } from './look.js';
 import { sabot, armorHit, cookoff, bigFire, decoys, gatling, dustTrail, rotorWash, aaa, skyFlashes } from './fx2.js';
 import { clutter, poles, pumpjack, wellhead, samSite, town, shelter, burnt, thermalize, dusty } from './scenery.js';
 import { drawEO, drawDrone, drawSight99, drawSightM1, drawWarn, caption, plane, interior, drawHud } from './kit.js';
+import { drawMap } from './story.js';
 
 export const BIGCFG = { id: true, desert: true, fx: 0, fz: 0 };
 export function prepWorld(world) { for (const k of ['parts', 'lights']) if (!Array.isArray(world[k])) world[k] = []; }
@@ -1187,6 +1188,28 @@ async function shotOilfield(env, add) {
     events: [{ t: 0, k: 'fireField' }, { t: 0, k: 'dawnMusic' }],
   };
 }
+// GMAP 电子沙盘（短剧版的作战简报，gulf/story.js 的 MAP）：整张沙漠图从南边高空斜着往北看（北在上），白天、压饱和、偏冷，
+//   上面的网格、两军分界、三颗钉子、箭头都是叠加层（story.js drawMap）按这个镜头投影上去的
+const MAPCAM = t => {
+  const u = t / 9.8;
+  const h = lerp(24300, 23100, u);   // 南边 2.4 万格高空、俯角 52 度（沙墙南边的红方出发阵地到岭北的炮兵都在画里，远处不挤），慢慢往前推
+  const look = V3(1000, 0, 615);
+  return { c: V3(1000, h, 615 + h * 0.7813), look, fov: 36 };
+};
+async function shotMap(env, add) {
+  const cv = V3();
+  const P = (x, z) => { cv.set(x, heightAt(x, z), z).project(env.camera); return cv.z > 1 ? null : [(0.5 + cv.x / 2) * env.W, (0.5 - cv.y / 2) * env.post.ah + (env.H - env.post.ah) / 2]; };
+  return {
+    update(t) {
+      const m = MAPCAM(t);
+      cam(env, m.c, m.look, m.fov);
+      env.camera.updateMatrixWorld(true);
+      return { ...DAY({ el: 38, az: 125, heat: 0, dust: 0.05, fog: 0.000006, exposure: 0.62 }), sat: 0.5, contrast: 1.18, tint: 0, bloom: 0.25, vignette: 0.3, grain: 0.006, shadowAt: m.look, shadowR: 14000 };
+    },
+    overlay: (g, t, W, H, ah) => drawMap(g, W, H, ah, t, P),
+    events: [],
+  };
+}
 // G32 片名
 async function shotTitle(env, add) {
   env.worldVisible(false);
@@ -1243,7 +1266,7 @@ async function shotFeatures(env, add) {
 // G34 片尾
 async function shotEnd(env, add) {
   env.worldVisible(false);
-  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames'];
+  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames', '地表贴图、天空：Poly Haven（CC0）'];
   return {
     update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.010, lift: 0 }; },
     titles: t => {
@@ -1298,7 +1321,10 @@ export const SHOTS = [
   { id: 'G32', dur: 6.0, setup: shotTitle },
   { id: 'G33', dur: 7.5, setup: shotFeatures },
   { id: 'G34', dur: 5.5, setup: shotEnd },
+  { id: 'GMAP', dur: 9.8, ...T(1200, -1500, { ext: 100000, cap: 1500 }), setup: shotMap },   // 短剧版的电子沙盘（只在剪辑表 EDIT 里用）
 ];
+// 短剧版剪辑表（gulf/story.js）：成片按它来，SHOTS 只是素材
+export { EDIT, plateIndex, clipEvents, storyEvents, drawStory, storyFlash } from './story.js';
 let T0 = 0;
 for (const s of SHOTS) { s.t0 = T0; T0 += s.dur; }
 export const TOTAL = T0;

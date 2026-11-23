@@ -1030,6 +1030,16 @@
     「沙漠风暴」留在 `MapDesert.lua`（地图 id `desert`，征服），「沙海」改名 `MapSands.lua`（id `sands`，五个阶段的突破），一起走 `Map.use(id)` 选图（开始游戏 → 选地图有三张卡）；
     沙海原来开服按 `Config.Map` 整个换模块，现在改成：阶段表 `Config.StagesByMap` + `Config.useMap(id)`（服务器定图后、客户端换图时调），据点、阶段、出生点的说法改成 `@sands` 键（`Lang.mapId`），
     天色（DayNight）、小地图色块（MapUI）换图时再套一次；Workspace 属性 `MapName`（"island" / "desert" / "sands"）在 Studio、测试台里直接定图。两张图的标志分开：沙漠风暴 `Map.desert`，沙海 `Map.DESERT` / `Map.LANDONLY` / `Map.chunkKind`；「没有海」的判断两个都认（码头、AI 舰艇、远处那圈沙地）。
+  - 11-23：宣传片改成短剧结构（用户：动作逻辑上连不起来、看得一头雾水、要爽点，照 AI 短剧的剧本逻辑；接着：配文太尴尬）：
+    `film/gulf/story.js` 是剪辑表 EDIT——每条从一个原镜头（`gulf/shots.js` SHOTS，现在只当素材）截一段（可定格），叠对白（下面黑边里、带呼号名牌）、
+    部队字卡、平显式结果、时间戳、任务清单、警报、说明。剧情：钩子（领头 99A 被 M1A2 打中、定格）→ 6 小时前 → 下任务（日落前控制油田）→ 电子沙盘（GMAP 镜头）
+    讲先清除的三处和派谁去 → 爱国者 / 炮兵 / 沙梁 M1A2 → 阿帕奇偷袭后续梯队、防空车击落 → 歼-16 打增援 → 日落控制油田 → 片名。
+    台词照真实无线电：冷静、短，不嘲讽、不喊口号、不用大字煽情。
+    渲染分两步：`… render.cjs <数据> <输出> plates`（只渲剪辑表要的原镜头帧，`plates/<原镜头>/`，可 PART 分头渲）→ `… comp`（净画面 + 平显 + 字幕层，
+    改字幕只重跑这一步）→ `… audio` → `… edit`。原镜头的音效事件以前没进成片（写在 setup 的返回值里，配乐拿不到），现在按截取段平移进去。
+    页面等字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）。
+  - Lune 要 0.11 以上（README 也这么写）：0.8.9 跑测试台一启动就崩（`registry.rs` cannot mutably borrow app data container），build 出来的 rbxlx 两个版本一样。
+    容器重置后装 Lune：`curl -sfL -o lune.zip https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip`，解压放到 `/usr/local/bin`。
 
 ## 协作（几个会话一起改这个仓库）
 
