@@ -90,6 +90,37 @@ function B:mesh(g, src, size, cf)
   table.insert(self.parts, { p, gg, off })
   return p
 end
+-- 真模型部件（用户 11-22：「不要自己建模，去 Sketchfab 找」「去模型网站找每一个部件的替代品」）：Sketchfab 上 CC-BY 的原模型
+--   （tools/weapons/optics.json 的 ip_* 件：电台、灭火瓶、120 / 125 毫米弹、乘员头盔……，几何贴图原样，只减了面、换了单位方向），
+--   Interior 设好 K.props（= Optics.lua 的 G.opticParts：导入的 GLB，没导入就开局后台现生成的网格）；拿不到返回 nil，调用的地方照旧用零件拼
+--   件的坐标（器材坐标）：格、真实尺寸，+Z 朝前（弹头、电台面板）、+Y 朝上；cf 是米（同 add），k 缩放
+K.props = nil
+function B:prop(g, key, cf, k)
+  local list = K.props and K.props(key)
+  if not list then
+    self.propMiss = self.propMiss or {}
+    self.propMiss[key] = true   -- 还没生成好：Interior 等它好了重建一次内饰
+    return nil
+  end
+  local gg = self.groups[g] or self.groups.hull
+  local base = toS(cf)
+  local out = {}
+  for _, it in ipairs(list) do
+    local p = it.part
+    local off = base * it.cf
+    if k and k ~= 1 then
+      p.Size = p.Size * k
+      off = base * CF(it.cf.Position * k) * it.cf.Rotation
+    end
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+    p.CFrame = off
+    p.Parent = self.model
+    table.insert(self.parts, { p, gg, off })
+    table.insert(out, p)
+  end
+  self.propN = (self.propN or 0) + 1
+  return out
+end
 -- Imports.lua 收好的原模型（ReplicatedStorage.Imported.Optics.<键>）：块都复制到客户端了才用（文件夹上的 N 是服务器那边的块数）
 function K.imported(key)
   local imp = RS:FindFirstChild("Imported")
@@ -245,6 +276,31 @@ function B:screen(g, w, h, cf, page, opt)
         table.insert(self.softkeys, { part = key, label = label, screen = s, side = side, idx = i, col = key.Color, touch = true })
       end
     end
+  elseif opt.keyPos and type(opt.keys) == "table" then
+    -- 真模型外壳上原有的实体键（B:propScreen）：每个键一块和原键帽一样大的薄键帽盖在上面，印上这个键的字（背光，照片里车长显示器的键是蓝白色背光），
+    --   对准、按下同普通键；keyPos[side][i] = { x, y, 宽, 高, z }（米，屏幕 cf 里）
+    for _, side in ipairs({ "top", "bottom" }) do
+      local list = opt.keys[side] or {}
+      local pos = opt.keyPos[side] or {}
+      for i, label in ipairs(list) do
+        local p = pos[i]
+        if p then
+          local key = self:box(g, V(p[3], p[4], 0.003), cf * CF(p[1], p[2], p[5] or -0.004), opt.keyCol or RGB(34, 36, 38))
+          key.CastShadow = false
+          local lg = K.gui(key, Enum.NormalId.Front, 2600, 1.1)
+          local t = Instance.new("TextLabel")
+          t.Size = UDim2.fromScale(0.92, 0.8)
+          t.Position = UDim2.fromScale(0.04, 0.1)
+          t.BackgroundTransparency = 1
+          t.Text = label
+          t.TextColor3 = opt.keyFg or RGB(176, 214, 255)
+          t.Font = Enum.Font.GothamBold
+          t.TextScaled = true
+          t.Parent = lg
+          table.insert(self.softkeys, { part = key, label = label, screen = s, side = side, idx = i, col = key.Color })
+        end
+      end
+    end
   elseif type(opt.keys) == "table" then
     for _, side in ipairs({ "top", "bottom" }) do
       local list = opt.keys[side] or {}
@@ -280,6 +336,32 @@ function B:screen(g, w, h, cf, page, opt)
   table.insert(self.screens, s)
   return s
 end
+-- 真模型外壳的屏幕（用户 11-22 发来 M1A2 车长位照片：「图片里摇杆、计算机、屏幕……识别到了就去 Sketchfab 找类似的」）：
+--   原模型（器材坐标：格，+Z 是正面）摆好，屏幕玻璃前面贴我们的动态显示面，原模型的实体键上盖一层能按的键帽（印这个键的字）；
+--   P 是这件模型的版面（器材坐标，格）：c 玻璃中心 { x, y, z }、w / h 玻璃宽高、kz 键帽正面的 z、
+--   keys = { top = { { x, y, 宽, 高 }, … }, bottom = … }（opt.keys 里 top、bottom 两组键各盖在哪几个实体键上）；k 缩放（真实尺寸的倍数）
+--   cf 是屏幕中心（米，−Z 对着人，同 B:screen）；模型还没生成好返回 nil，调用的地方照旧画普通屏幕
+function B:propScreen(g, key, cf, k, page, P, opt)
+  k = k or 1
+  local c = P.c
+  local m = k / S   -- 器材坐标的格 → 米
+  if not self:prop(g, key, cf * ANG(0, PI, 0) * CF(-c[1] * m, -c[2] * m, -c[3] * m), k) then return nil end
+  local o = {}
+  for a, v in pairs(opt or {}) do o[a] = v end
+  o.noBack, o.bezel, o.propShell = true, 0.006, true
+  local face = cf * CF(0, 0, -0.003)   -- 显示面贴在玻璃前面 3 毫米（不和原模型的玻璃抢深度）
+  if P.keys and type(o.keys) == "table" then
+    o.keyPos = {}
+    for side, list in pairs(P.keys) do
+      o.keyPos[side] = {}
+      for i, q in ipairs(list) do
+        -- 器材坐标（人看过去 +X 在右手边）→ 屏幕 cf（人的右手边是 −X）；键帽贴在原键帽正面前面 1.5 毫米
+        o.keyPos[side][i] = { -(q[1] - c[1]) * m, (q[2] - c[2]) * m, q[3] * m, q[4] * m, -((q[5] or P.kz or c[3]) - c[3]) * m + 0.0015 }   -- q[5]：这个键自己的键帽 z（旋钮比按键高）
+      end
+    end
+  end
+  return self:screen(g, P.w * m, P.h * m, face, page, o)
+end
 -- 灯：一个看不见的小零件挂 PointLight / SpotLight；role 给 Interior 分组控制（dome 车内照明、flash 炮口火光透进来、warn 告警红灯……）
 function B:light(g, cf, role, color, range, bright, spotAngle, face)
   local p = self:box(g, V(0.02, 0.02, 0.02), cf, color, MAT.SmoothPlastic)
@@ -300,34 +382,137 @@ function B:light(g, cf, role, color, range, bright, spotAngle, face)
   table.insert(self.lights, { L = L, role = role, color = color, bright = bright, part = p })
   return L
 end
--- 指示灯（霓虹，会发光）：role 由 Interior 按状态点亮 / 熄灭 / 闪
-function B:led(g, cf, color, dia, role)
+-- 指示灯（霓虹，会发光）：role 由 Interior 按状态点亮 / 熄灭 / 闪；ext 并进这一项（role = "key" 的：s 屏幕、k 键名——亮不亮问 s.ledOn(k)）
+function B:led(g, cf, color, dia, role, ext)
   local p = self:add(g, "Part", V(dia or 0.008, dia or 0.008, dia or 0.008), cf, color, MAT.Neon, BALL)
   p.CastShadow = false
-  table.insert(self.leds, { p = p, role = role, on = color, off = color:Lerp(RGB(0, 0, 0), 0.82) })
+  local e = { p = p, role = role, on = color, off = color:Lerp(RGB(0, 0, 0), 0.82) }
+  if ext then for a, v in pairs(ext) do e[a] = v end end
+  table.insert(self.leds, e)
   return p
 end
+-- 一个能按的键（用户 11-23 发来钢铁猛兽 M1A2 车长显示单元截图：屏边蓝色背光键、橙色横杠键、橙色描边的字母数字键盘、橙色方向键）：
+--   s 是它管的那块屏幕（按下去调 s.onKey(label)）；cf 键帽正面中心（−Z 对着人，米），w / h 宽高；style：
+--   "blue" 蓝色背光键（淡蓝的字）、"dark" 深色键、"dash" 一道橙色横杠（功能名画在屏幕边上）、"pad" 键盘键（橙色描边，上面字母、下面数字）、
+--   "arrow" 橙色箭头（opt.dir 0 上、90 右、180 下、270 左）、"orange" 橙色字的键；opt.text 印在键上的字（不给就用 label）、opt.sub 键盘键上面那行字母
+local KEYCOL = { blue = RGB(36, 56, 128), dark = RGB(30, 32, 42), dash = RGB(42, 36, 34), pad = RGB(40, 34, 32), arrow = RGB(40, 34, 32), orange = RGB(60, 42, 32) }
+local ORANGE = RGB(255, 138, 40)
+function B:keyCap(g, s, cf, w, h, label, style, opt)
+  opt = opt or {}
+  local d = opt.d or 0.004
+  local key = self:box(g, V(w, h, d), cf * CF(0, 0, d / 2), KEYCOL[style] or KEYCOL.dark, MAT.SmoothPlastic)
+  key.CastShadow = false
+  local lg = K.gui(key, Enum.NormalId.Front, opt.ppm or 2600, 1.1)
+  local function txt(t, x, y, sw, sh, col, align)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Position, l.Size = UDim2.fromScale(x, y), UDim2.fromScale(sw, sh)
+    l.Text = t
+    l.TextColor3 = col
+    l.Font = Enum.Font.GothamBold
+    l.TextScaled = true
+    l.TextXAlignment = align or Enum.TextXAlignment.Center
+    l.Parent = lg
+    return l
+  end
+  local function bar(parent, x, y, sw, sh, col, rot)
+    local f = Instance.new("Frame")
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position, f.Size = UDim2.fromScale(x, y), UDim2.fromScale(sw, sh)
+    f.BackgroundColor3 = col
+    f.BorderSizePixel = 0
+    f.Rotation = rot or 0
+    f.Parent = parent
+    return f
+  end
+  local function edge(col, th, tr)   -- 键帽一圈细边（背光键的透光边、键盘键的橙色描边）
+    local f = Instance.new("Frame")
+    f.Size, f.BackgroundTransparency = UDim2.fromScale(1, 1), 1
+    f.Parent = lg
+    local st = Instance.new("UIStroke")
+    st.Color, st.Thickness, st.Transparency = col, th, tr or 0
+    st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st.Parent = f
+  end
+  if style == "blue" or style == "dark" then
+    edge(style == "blue" and RGB(90, 120, 210) or RGB(64, 68, 84), 2, 0.25)
+    txt(opt.text or label, 0.06, 0.18, 0.88, 0.64, style == "blue" and RGB(170, 196, 255) or RGB(150, 156, 176))
+  elseif style == "dash" then
+    bar(lg, 0.5, 0.24, 0.72, 0.13, ORANGE)
+  elseif style == "pad" then
+    edge(ORANGE, 2.5, 0)
+    if opt.sub then txt(opt.sub, 0.05, 0.06, 0.9, 0.34, ORANGE) end
+    txt(opt.text or label, 0.08, opt.sub and 0.5 or 0.2, opt.sub and 0.5 or 0.84, opt.sub and 0.42 or 0.6, ORANGE, opt.sub and Enum.TextXAlignment.Left or nil)
+  elseif style == "arrow" then
+    local box = Instance.new("Frame")
+    box.AnchorPoint = Vector2.new(0.5, 0.5)
+    box.Position, box.Size, box.BackgroundTransparency = UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.8, 0.8), 1
+    box.Rotation = opt.dir or 0
+    box.Parent = lg
+    bar(box, 0.34, 0.5, 0.48, 0.14, ORANGE, -42)   -- 「^」的两笔
+    bar(box, 0.66, 0.5, 0.48, 0.14, ORANGE, 42)
+  else
+    txt(opt.text or label, 0.06, 0.2, 0.88, 0.6, ORANGE)
+  end
+  table.insert(self.softkeys, { part = key, label = label, screen = s, side = opt.side or "key", idx = opt.idx or 0, col = key.Color })
+  return key
+end
 function B:name(key, x) self.named[key] = x return x end
+
+---------------------------------------------------------------- 可动部件（用户 11-22：「所有可动部件都要能动 我准心移动到哪点一下就能动」）
+
+-- 子组 gname 就是能动的那个东西（舱盖、弹药门、手柄、拨动开关、旋钮、按钮……）：准心（屏幕中间的小点）对准它的点选盒、左键——
+--   hinge 绕 axis（子组坐标里的轴）从 a0 转到 a1 度，两档；slide 沿 axis 移 d 米，两档；knob 每点一下绕 axis 转 step 度，n 档循环；
+--   push 按下去 d 米、自己弹回来；fn(u) 自己给姿态（u 0~1，返回米的 CFrame：舱盖先抬起再转开这种）；custom 不动画，只调 on
+--   hit = { size = V(米), cf = CF(子组坐标里，米) }（点选盒）；label = { 中文, 英文 }；t 动一次几秒；on 动完以后 Interior 做什么（动作名）；snd 声音
+function B:mov(gname, spec)
+  local g = self.groups[gname]
+  if not g then return nil end
+  spec.g, spec.name = g, gname
+  spec.state = spec.state or 0
+  spec.p = spec.state
+  spec.t = spec.t or 0.35
+  spec.axis = (spec.axis or V(1, 0, 0)).Unit
+  self.movs = self.movs or {}
+  table.insert(self.movs, spec)
+  return spec
+end
+local function movName(self)
+  self.movN = (self.movN or 0) + 1
+  return "mv" .. self.movN
+end
 
 ---------------------------------------------------------------- 常用件
 
 -- 面板上的小件：cf 是面板表面上的一点，cf 的 −Z（LookVector）朝着看面板的人；东西往 −Z 凸出来，面板本体在 +Z 后面
--- 拨动开关（底座 + 拨杆，可带护盖）
+-- 拨动开关（底座 + 拨杆，可带护盖）：拨杆是能点的（上下两档）
 function B:toggle(g, cf, guard)
   self:box(g, V(0.012, 0.012, 0.008), cf * CF(0, 0, -0.004), K.C.steel, MAT.Metal)
-  self:tube(g, (cf * CF(0, 0, -0.006)).Position, (cf * CF(0, 0.008, -0.022)).Position, 0.004, K.C.lgray, MAT.Metal)
+  local gn = movName(self)
+  self:group(gn, g, cf * CF(0, 0, -0.006))
+  self:tube(gn, V(0, 0, 0), V(0, 0.008, -0.016), 0.004, K.C.lgray, MAT.Metal)
+  self:mov(gn, { kind = "hinge", axis = V(1, 0, 0), a0 = 0, a1 = -62, t = 0.1, snd = "toggle",
+    hit = { size = V(0.022, 0.03, 0.03), cf = CF(0, 0.002, -0.009) }, label = { "拨动开关", "Toggle switch" } })
   if guard then self:box(g, V(0.018, 0.026, 0.004), cf * CF(0, 0.004, -0.02) * ANG(rad(60), 0, 0), K.C.red, MAT.SmoothPlastic) end
 end
--- 旋钮（带指示线）
+-- 旋钮（带指示线）：能点，每点一下转一档（6 档）
 function B:knob(g, cf, dia, col)
   dia = dia or 0.022
-  self:cylZ(g, 0.014, dia, cf * CF(0, 0, -0.007), col or K.C.black, MAT.SmoothPlastic)
-  self:box(g, V(0.002, dia * 0.45, 0.002), cf * CF(0, dia * 0.22, -0.0145), K.C.white)
+  local gn = movName(self)
+  self:group(gn, g, cf)
+  self:cylZ(gn, 0.014, dia, CF(0, 0, -0.007), col or K.C.black, MAT.SmoothPlastic)
+  self:box(gn, V(0.002, dia * 0.45, 0.002), CF(0, dia * 0.22, -0.0145), K.C.white)
+  self:mov(gn, { kind = "knob", axis = V(0, 0, 1), step = 40, n = 6, t = 0.12, snd = "knob",
+    hit = { size = V(dia * 1.3, dia * 1.3, 0.026), cf = CF(0, 0, -0.008) }, label = { "旋钮", "Rotary knob" } })
 end
--- 按钮
+-- 按钮：能点，按下去、弹回来
 function B:button(g, cf, col, w)
   w = w or 0.014
-  self:box(g, V(w, w, 0.008), cf * CF(0, 0, -0.004), col or K.C.dark, MAT.SmoothPlastic)
+  local gn = movName(self)
+  self:group(gn, g, cf)
+  self:box(gn, V(w, w, 0.008), CF(0, 0, -0.004), col or K.C.dark, MAT.SmoothPlastic)
+  self:mov(gn, { kind = "push", axis = V(0, 0, 1), d = 0.004, t = 0.06, snd = "button",
+    hit = { size = V(w * 1.4, w * 1.4, 0.022), cf = CF(0, 0, -0.006) }, label = { "按钮", "Push button" } })
 end
 -- 一块开关面板：底板 + 一格格的开关 / 旋钮 / 按钮 / 指示灯，标签条（rows × cols 格）；kinds 不给就按位置轮着放
 function B:panel(g, w, h, cf, rows, cols, col, opt)
@@ -356,19 +541,37 @@ function B:panel(g, w, h, cf, rows, cols, col, opt)
   end
 end
 -- 观察镜（潜望镜下半截）：钢壳 + 一块玻璃（玻璃是透的：外面的东西就从这里看得见）+ 上面的护额垫
+--   opt.model：用真车潜望镜的扫描模型（ip_peri：Sketchfab 上 renalds_rs 的 FV105 Sultan 潜望镜，CC-BY，只取车里的下半截、减面重烘贴图，
+--   tools/weapons/periscope.mjs；用户 11-22：「坦克第一人称驾驶舱那个潜望镜，你从 Sketchfab 自己找模型截取下来套用」）——
+--   器材坐标原点在观察窗中心、+Z 朝看的人（同 cf 的 +Z），按观察窗宽（原件 23.7 厘米）缩放；没生成好照旧画零件拼的
 function B:periscope(g, cf, w, h, d, opt)
   opt = opt or {}
+  if opt.model and self:prop(g, "ip_peri", cf * CF(0, 0, -d / 2 + 0.012), w / 0.237) then
+    if opt.pad ~= false then   -- 护额垫（黑橡胶）
+      self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.05, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
+    end
+    return nil
+  end
   local col = opt.col or K.C.dark
   self:box(g, V(w + 0.03, 0.02, d + 0.02), cf * CF(0, h / 2 + 0.01, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(-w / 2 - 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(w / 2 + 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(w + 0.03, 0.015, d + 0.02), cf * CF(0, -h / 2 - 0.0075, 0), col, MAT.Metal)
-  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(110, 140, 150), MAT.Glass)
-  gl.Transparency = 0.72
+  -- 玻璃：原来蓝绿色、只透 72%，夜里看着像一块发绿的板（用户 11-22：「现实中不带绿光」）——改成几乎无色、透 86%、一点点反光
+  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(176, 184, 188), MAT.Glass)
+  gl.Transparency = 0.86
+  gl.Reflectance = 0.06
   gl.CastShadow = false
   if opt.pad ~= false then   -- 护额垫（黑橡胶）
     self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.035, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
   end
+  return gl
+end
+-- 目镜的镜片：一块暗的玻璃、映一点天光（用户 11-22 发的车长位截图：GPSE 目镜里是暗的、映着一点蓝；「现实中不带绿光」——
+--   原来这里是一颗发绿光的霓虹小球「热像是绿的」）。cf 是镜片中心，镜片的面朝 cf 的 ±Z
+function B:lens(g, cf, dia)
+  local gl = self:cylZ(g, 0.003, dia, cf, RGB(14, 20, 30), MAT.Glass)
+  gl.Reflectance, gl.CastShadow = 0.32, false
   return gl
 end
 -- 座椅：坐垫 + 靠背 + 钢架 + 调节手柄；cf 是坐垫上表面中心，−Z 朝前
@@ -404,6 +607,8 @@ end
 -- 灭火瓶（红瓶 + 阀头 + 卡箍）
 function B:extinguisher(g, cf, len, dia)
   len, dia = len or 0.42, dia or 0.13
+  -- 真模型：二氧化碳手提灭火瓶（Sir Erdees，CC-BY），原点在瓶底，高 0.6 米；按这里要的瓶身长度缩放
+  if self:prop(g, "ip_ext", cf * CF(0, -len / 2, 0), (len + dia * 0.6) / 0.6) then return end
   self:cylY(g, len, dia, cf, K.C.red, MAT.SmoothPlastic)
   self:ball(g, dia, cf * CF(0, len / 2, 0), K.C.red, MAT.SmoothPlastic)
   self:cylY(g, 0.06, 0.03, cf * CF(0, len / 2 + dia * 0.45, 0), K.C.steel, MAT.Metal)
@@ -411,8 +616,14 @@ function B:extinguisher(g, cf, len, dia)
   for _, y in ipairs({ -len * 0.25, len * 0.25 }) do self:cylY(g, 0.02, dia + 0.01, cf * CF(0, y, 0), K.C.dark, MAT.Metal) end
 end
 -- 电台 / 电子盒（一个机箱 + 前面板上的旋钮、接头、指示灯、提手）
-function B:radio(g, w, h, d, cf, col)
+function B:radio(g, w, h, d, cf, col, prop)
   col = col or RGB(70, 76, 58)
+  -- 真模型：面板朝 +Z，转半圈朝着看的人（cf 的 −Z）；按宽度缩放（ip_radio 宽 0.42 米、ip_radio2 宽 0.27 米），底面贴在 cf 下沿
+  if prop then
+    local W0 = (prop == "ip_radio") and 0.42 or 0.27
+    local k = w / W0
+    if self:prop(g, prop, cf * CF(0, -h / 2, d / 2) * ANG(0, PI, 0), k) then return end
+  end
   self:box(g, V(w, h, d), cf * CF(0, 0, d / 2), col, MAT.SmoothPlastic)
   for i = 1, 3 do self:knob(g, cf * CF(-w / 2 + w * (i / 4), h * 0.18, 0), math.min(w, h) * 0.18, K.C.black) end
   for i = 1, 4 do self:cylZ(g, 0.02, 0.026, cf * CF(-w / 2 + w * (i / 5), -h * 0.25, -0.01), K.C.dark, MAT.Metal) end
@@ -484,6 +695,25 @@ local function headgear(m, head, dress, k)
     weld(head, p, CF(cf.Position * k) * cf.Rotation)
     p.Name = "Gear"
     return p
+  end
+  -- 真模型头盔（K.props 拿得到就用）：原点在头盔中心，真实尺寸；头 1.2 格高按 k 缩放，比例照真人的头
+  local hp = (dress.kind == "cvc") and "ip_cvc" or ((dress.kind == "soft") and "ip_tsh" or nil)
+  local list = hp and K.props and K.props(hp)
+  if hp and not list then K.headMiss = true end
+  if list then
+    local hk = head.Size.Y / (0.23 * S)   -- 真人头高约 0.23 米：小人的头是真人比例时头盔不缩放（头盔模型本来就是真实尺寸）
+    local base = CF(0, head.Size.Y * 0.18, head.Size.Z * 0.04) * ((hp == "ip_tsh") and ANG(0, PI, 0) or CF())
+    for _, it in ipairs(list) do
+      local p = it.part
+      p.Size = p.Size * hk
+      p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = false, false, false, false, false
+      p.Massless = true
+      p.Name = "Gear"
+      p.CFrame = head.CFrame * base * CF(it.cf.Position * hk) * it.cf.Rotation
+      weld(head, p, base * CF(it.cf.Position * hk) * it.cf.Rotation)
+      p.Parent = m
+    end
+    return
   end
   if dress.kind == "cvc" then   -- 美军 DH-132：圆头壳、两侧大耳罩、左边伸出来的送话器
     P(V(1.46, 0.95, 1.52), CF(0, 0.38, 0.06), col, MAT.SmoothPlastic, nil, true)

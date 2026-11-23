@@ -88,7 +88,37 @@ function drawGui(ctx, nodes, sx, sy) {
 fetch(P.get('json')).then(r => r.json()).then(async D => {
   const root = new THREE.Group();
   scene.add(root);
+  // 真模型部件（dump 里带 mk 键、mp 块名的 MeshPart）：按 models/optics/<键>.glb 里那一块画——块的几何在器材坐标里，
+  //   零件的 CFrame 在块的包围盒中心：矩阵 = 零件 CFrame × 缩放 k（零件大小 / 块的包围盒）× 挪回包围盒中心
+  const GLBS = {};
+  for (const k of [...new Set(D.parts.filter(p => p.mk).map(p => p.mk))]) {
+    GLBS[k] = await new Promise(res => new GLTFLoader().load(`/repo/models/optics/${k}.glb`, g => {
+      const nodes = {};
+      g.scene.updateMatrixWorld(true);
+      g.scene.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); nodes[o.name] = o; if (o.parent && o.parent.name) nodes[o.parent.name] = nodes[o.parent.name] || o; } });
+      res(nodes);
+    }, undefined, () => res(null)));
+  }
   for (const p of D.parts) {
+    if (p.mk && GLBS[p.mk]) {
+      const src = GLBS[p.mk][`O_${p.mk}__${p.mp}`];
+      if (src) {
+        const bb = src.geometry.boundingBox, c0 = new THREE.Vector3(), s0 = new THREE.Vector3();
+        bb.getCenter(c0); bb.getSize(s0);
+        const ks = [0, 1, 2].filter(i => s0.getComponent(i) > 1e-3).map(i => p.z[i] / s0.getComponent(i));
+        const k = ks.length ? ks.reduce((a, b) => a + b) / ks.length : 1;
+        const m = new THREE.Mesh(src.geometry, src.material);
+        const c = p.c;
+        const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+        M.multiply(new THREE.Matrix4().makeScale(k, k, k)).multiply(new THREE.Matrix4().makeTranslation(-c0.x, -c0.y, -c0.z));
+        m.matrixAutoUpdate = false;
+        m.matrix.copy(M);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        root.add(m);
+        continue;
+      }
+    }
     let g;
     const [sx, sy, sz] = p.z;
     if (p.s === 'Cylinder') { g = new THREE.CylinderGeometry(sy / 2, sy / 2, sx, 20); g.rotateZ(Math.PI / 2); }

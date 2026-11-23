@@ -50,6 +50,8 @@ local SURF_F = {
   flap = function(c) return (c.flap or 0) * rad(30) end,
   flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) + (c.brk or 0) * rad(22) end,   -- 襟副翼：放襟翼 + 差动滚转；减速时往下
   elevon = function(c, s) return math.clamp(-(c.pit or 0) * rad(15) - s * (c.rol or 0) * rad(15), -rad(25), rad(25)) end,   -- 升降副翼：抬头时后缘往上
+  -- 无尾机最外一段（歼-36）：升降副翼兼管偏航——右偏时右边后缘往上、左边往下（差动阻力）；减速时两边一起往上
+  elvy = function(c, s) return math.clamp(-(c.pit or 0) * rad(12) - s * (c.rol or 0) * rad(15) - s * (c.yaw or 0) * rad(16) - (c.brk or 0) * rad(20), -rad(30), rad(30)) end,
   stab = function(c, s) return -(c.pit or 0) * rad(18) - s * (c.rol or 0) * rad(6) end,          -- 全动平尾：带一点差动帮滚转
   elev = function(c) return -(c.pit or 0) * rad(20) end,
   can = function(c) return (c.pit or 0) * rad(16) end,                                          -- 鸭翼：抬头时前缘往上（后缘往下）
@@ -62,6 +64,7 @@ local SURF_F = {
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
   -- 起落架舱门（原模型蒙皮上切出来的，歼-20 j20_v4）：放起落架的前 1/4 先开门（之后支柱才放下，kf 关键帧照同一个节奏），收起的最后 1/4 才关上
   gdh = function(c, _, A) return math.clamp((c.gear or 1) * 4, 0, 1) * A end,
+  abrk = function(c, _, A) return (c.brk or 0) * A end,   -- 减速板（歼-11 背上那块大的）：按减速量掀开
 }
 -- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
@@ -581,8 +584,11 @@ function AM.build(d, team, load)
       local ex = { hp = hinge, ax = V(1, 0, 0), f = canF, canopy = true }   -- canopy：弹射时抛掉
       ball(V(Cn.w, Cn.h * 1.7, Cn.len), CF(0, Cn.y, Cn.z), glass, MAT.Glass, "h", table.clone(ex), 0.35)
       box(V(Cn.w * 0.9, 0.18, 0.35), CF(0, Cn.y + Cn.h * 0.62, Cn.z + Cn.len * 0.1), skinD, MAT.Metal, "h", table.clone(ex))   -- 盖框
-      pilot(CF(0, Cn.y - 0.2, Cn.z + Cn.len * 0.05), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96))
-      if d.twoSeat then pilot(CF(0, Cn.y - 0.05, Cn.z + Cn.len * 0.38), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96)) end
+      -- 双座（歼-16）：前座飞行员在座舱盖中点往前 17%（用户 11-22：「j16 驾驶位第一人称不能坐在后座」——原来前座摆在盖子正中，
+      --   两个座位中间，第一人称眼位跟着它，看着像坐在后座）；后座武器官在中点往后 20%
+      local fz = d.twoSeat and (Cn.z - Cn.len * 0.17) or (Cn.z + Cn.len * 0.05)
+      pilot(CF(0, Cn.y - 0.2, fz), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96))
+      if d.twoSeat then pilot(CF(0, Cn.y - 0.05, Cn.z + Cn.len * 0.2), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96)) end
       box(V(Cn.w * 0.6, 0.6, 1.2), CF(0, Cn.y - 0.3, Cn.z - Cn.len * 0.42), DARK, MAT.SmoothPlastic)   -- 平显
     end
     if d.drone and d.sat then ball(V(w * 1.05, h * 0.9, 7), CF(0, y0 + h * 0.3, noseZ + 5), skinL) end   -- 卫星通信天线的鼓包

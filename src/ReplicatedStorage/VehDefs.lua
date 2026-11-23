@@ -8,12 +8,13 @@ local V = Vector3.new
 
 -- 武器（载具用）：kind shell 有弹道的炮弹（打到就炸）、gun 机枪（直射判定）、arty 曲射（准星下的地面）、
 --   rate 两发间隔（秒）、mag 一个弹匣 / 弹舱、reload 换弹、reserve 备弹（不算弹匣里的）；speed 弹速（格 / 秒）、drop 下坠（重力倍数）
+--   坦克炮（gun125 / gun120 / gun105）真正打出去按 Ballistics.lua 的弹种（初速、阻力、真实重力）；这里的 speed、drop 是默认弹种的值（别处估飞行时间用）
 VehDefs.W = {
-  gun125 = { kind = "shell", dmg = 640, speed = 1500, drop = 0.12, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 30, range = 3000,
+  gun125 = { kind = "shell", dmg = 640, speed = 4872, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 30, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
-  gun120 = { kind = "shell", dmg = 640, speed = 1550, drop = 0.12, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 30, range = 3000,
+  gun120 = { kind = "shell", dmg = 640, speed = 4354, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 30, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
-  gun105 = { kind = "shell", dmg = 480, speed = 1400, drop = 0.14, splash = 6, rate = 5.0, mag = 1, reload = 0, reserve = 36, range = 2600,
+  gun105 = { kind = "shell", dmg = 480, speed = 4214, drop = 0.14, splash = 6, rate = 5.0, mag = 1, reload = 0, reserve = 36, range = 2600,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },
   ac30 = { kind = "shell", dmg = 60, speed = 1150, drop = 0.2, splash = 4, rate = 0.19, mag = 50, reload = 4.5, reserve = 400, range = 2000,
     vs = { inf = 1, light = 1, armor = 0.22, air = 1.4, ship = 0.35, fort = 0.6 }, fx = "ac", cal = 0.2 },
@@ -73,21 +74,21 @@ D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear =
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
   gun = { pivot = V(0, 0.95, -4.0), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.1),
-  sight = V(-2.0, 2.2, -2.8), cupola = V(1.8, 2.4, 0.8), citv = V(-1.4, 2.6, -0.4),
+  sight = V(1.75, 2.2, -2.8), cupola = V(1.8, 2.4, 0.8), citv = V(-1.4, 2.6, -0.4),   -- 主瞄准镜在炮右边（炮长坐右边）
   smoke = { banks = { { at = V(3.5, 1.6, -2.4), yaw = 35 }, { at = V(-3.5, 1.6, -2.4), yaw = -35 } }, n = 6 },
   weapons = { "gun120", "coax" } })
 D.m1a1 = tracked({ cat = "tank", L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.6, 2.3, 9.0), style = "abrams", trav = 40, elev = { -9, 20 }, bustle = 2.6 },
   gun = { pivot = V(0, 0.95, -3.9), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.0),
-  sight = V(-2.0, 2.1, -2.7), cupola = V(1.8, 2.3, 0.8),
+  sight = V(1.75, 2.1, -2.7), cupola = V(1.8, 2.3, 0.8),
   smoke = { banks = { { at = V(3.4, 1.5, -2.3), yaw = 35 }, { at = V(-3.4, 1.5, -2.3), yaw = -35 } }, n = 6 },
   weapons = { "gun120", "coax" } })
 D.m10 = tracked({ cat = "tank", L = 22, W = 9.6, H = 7.4, hullH = 4.3, clear = 1.4, speed = 37, accel = 11, turn = 40,
   rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.2, z1 = 7.0 }, skirt = true,
   turret = { pivot = V(0, 4.3, 0.6), size = V(7.0, 2.3, 7.6), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 2.0 },
   gun = { pivot = V(0, 0.9, -3.4), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.1, 0.9, -3.5),
-  sight = V(-1.8, 2.1, -2.4), cupola = V(1.7, 2.3, 0.6),
+  sight = V(1.7, 2.1, -2.4), cupola = V(1.7, 2.3, 0.6),
   smoke = { banks = { { at = V(3.2, 1.5, -1.8), yaw = 35 }, { at = V(-3.2, 1.5, -1.8), yaw = -35 } }, n = 4 },
   weapons = { "gun105", "coax" } })
 
@@ -291,6 +292,22 @@ for _, d in pairs(D) do
     d.rws = { pivot = V(d.cupola.X, top, d.cupola.Z), gun = V(0, 0.62, -0.45), len = 2.45, trav = 120, rate = 90, elev = { -15, 55 }, mk = "rws" }
     for i, wid in ipairs(d.weapons) do
       if wid == "coax" then d.weapons[i] = "hmg" end
+    end
+  end
+end
+
+-- 用户 11-22：「坦克不要弄哪个机枪」——主战坦克（cat = "tank"）不要机枪：并列机枪、车顶的遥控武器站 / 手动重机枪都去掉，只剩主炮
+--   （机器人开的坦克打步兵也用主炮）；步战车、轻型车、防空车照旧。想加回来把 VehDefs.TANK_MG 改成 true
+VehDefs.TANK_MG = false
+if not VehDefs.TANK_MG then
+  for _, d in pairs(D) do
+    if d.cat == "tank" then
+      d.rws, d.noRoofMg = nil, true
+      local keep = {}
+      for _, wid in ipairs(d.weapons or {}) do
+        if wid ~= "coax" and wid ~= "hmg" then table.insert(keep, wid) end
+      end
+      d.weapons = keep
     end
   end
 end

@@ -68,7 +68,7 @@ if cur then
   nLights = #cur.b.lights
 end
 check(nParts > 400, "内饰零件 " .. nParts .. " 个")
-check(nCrew == #cur.spec.order, string.format("乘员 %d 个（%d 个乘员位）", nCrew, #cur.spec.order))
+check(nCrew == 0, string.format("车里不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）：%d 个", nCrew))
 check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
 local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
@@ -110,15 +110,7 @@ for _, name in ipairs(cur.spec.order) do
   local _, q = inside(name)
   camAt[name] = q
   local cr = st.cur and st.cur.crew[name]
-  check(cr ~= nil and cr.headShown == false, name .. "：自己这个乘员不画头（第一人称）")
-  local hidden, total = 0, 0   -- 手和腿也不画（用户 11-21：第一人称不要显示我的腿和胳膊）
-  for _, p in ipairs(cr and cr.f.model:GetDescendants() or {}) do
-    if p:IsA("BasePart") then
-      total = total + 1
-      if p.LocalTransparencyModifier == 1 then hidden = hidden + 1 end
-    end
-  end
-  check(total > 0 and hidden == total, string.format("%s：自己整个人都不画（%d / %d 块）", name, hidden, total))
+  check(cr == nil, name .. "：这个位置没有乘员小人（自己的手脚、别的乘员都不画）")
 end
 if camAt.driver and camAt.gunner and camAt.commander then
   check(camAt.driver.Z < camAt.gunner.Z - 1 and camAt.commander.Y > camAt.gunner.Y - 0.5,
@@ -136,6 +128,8 @@ for _, name in ipairs(cur.spec.order) do
   R.run(0.2)
   dumpCams[name] = cam.CFrame
 end
+-- 炮塔还没转（后面「指示」会把炮塔转走）：先导一份，镜头和零件对得上（预览图对照截图用这份）
+if dumpDir then dumpJSON(dumpDir .. "/interior_" .. VEH .. "_0.json") end
 
 print("③ 开一炮：后坐、开闩、装填手装弹")
 local st0 = C.interiorState()
@@ -261,6 +255,77 @@ T.key(Enum.KeyCode.W, false)
 check((C.drive.pos - p0e).Magnitude < 1, string.format("熄火了按 W 开不动（挪了 %.1f 格）", (C.drive.pos - p0e).Magnitude))
 press(on)
 check(C.interiorEngineOff == false, "按「" .. on .. "」：起动")
+print("⑤⅝ 真的用鼠标点：小点对准键按左键是按键；对着屏幕点不开炮（用户 11-22：「我操控显示屏的时候坦克会开炮」）")
+do
+  local function fires()
+    local n = 0
+    for _, x in ipairs(R.up or {}) do   -- 客户端发给服务器的（R.sent 是服务器发下来的）
+      local a = x.args and x.args[1]
+      if x.name == "Drive" and type(a) == "table" and a.op == "fire" then n = n + 1 end
+    end
+    return n
+  end
+  -- 闭环对准：按镜头里的偏差给鼠标位移（Interior 的乘员位镜头按鼠标位移转头）
+  local function aimAt(p)
+    for _ = 1, 16 do
+      local rel = cam.CFrame:PointToObjectSpace(p)
+      local yawE = math.atan2(-rel.X, -rel.Z)
+      local pitE = math.atan2(rel.Y, math.sqrt(rel.X ^ 2 + rel.Z ^ 2))
+      if math.abs(yawE) < 0.0015 and math.abs(pitE) < 0.0015 then break end
+      local sens = 0.0035 * (cam.FieldOfView / 72)
+      R.mouseDelta = R.Vector2.new(-yawE / sens, -pitE / sens)
+      R.run(1 / 30)
+    end
+    R.run(1 / 30)
+  end
+  local function click()
+    T.mouse(true)
+    R.run(0.05)
+    T.mouse(false)
+    R.run(0.3)
+  end
+  -- 眼前（离视线最近、手够得着）能按的键（不挑熄火、起动、指示这种会改车况的）
+  local cur = C.interiorState().cur
+  local skip = { [off] = true, [on] = true, [desig] = true }
+  local best, bd = nil, math.huge
+  for _, k in ipairs(cur.b.softkeys) do
+    local rel = cam.CFrame:PointToObjectSpace(k.part.Position)
+    local ang = math.acos(math.max(-1, math.min(1, -rel.Z / math.max(rel.Magnitude, 1e-6))))
+    if not skip[k.label] and k.screen.onKey and rel.Z < 0 and rel.Magnitude < 3.5 and ang < bd then best, bd = k, ang end
+  end
+  check(best ~= nil, string.format("找到眼前的键「%s」（偏 %.0f°）", tostring(best and best.label), math.deg(bd)))
+  if best then
+    local called = nil
+    local orig = best.screen.onKey
+    best.screen.onKey = function(l, a) called = l return orig(l, a) end
+    aimAt(best.part.Position)
+    check(C.interiorHoverKey() == best, "小点对准了「" .. best.label .. "」")
+    local n0 = fires()
+    click()
+    check(called == best.label and fires() == n0, string.format("左键：按了「%s」，没开炮（开炮 %d 次）", best.label, fires() - n0))
+    -- 对着屏幕中间（不是键）点：也不开炮
+    local face = best.screen.part
+    aimAt(face.Position)
+    check(C.interiorHoverKey() == nil and C.interiorHover(), "小点对着屏幕中间（没对准键）：算在操作屏幕")
+    n0 = fires()
+    click()
+    check(fires() == n0, "对着屏幕点左键不开炮")
+    best.screen.onKey = orig
+    -- 对照：转开到没有屏幕的地方点，照常开炮
+    local away = false
+    for _, d in ipairs({ { 60, 0 }, { -60, 0 }, { 0, 25 }, { 90, 20 }, { -90, 20 }, { 0, -40 } }) do
+      local sens = 0.0035 * (cam.FieldOfView / 72)
+      R.mouseDelta = R.Vector2.new(-math.rad(d[1]) / sens, -math.rad(d[2]) / sens)
+      R.run(0.1)
+      if not C.interiorHover() then away = true break end
+    end
+    check(away, "转开到没有屏幕的地方")
+    R.run(7)   -- 等装填（120 毫米炮 6 秒一发）
+    n0 = fires()
+    click()
+    check(fires() > n0, string.format("没对着屏幕：左键照常开炮（%d 次）", fires() - n0))
+  end
+end
 print("⑤¾ 各乘员位的观瞄设备：Shift 主镜、G 备用镜、T 第三个")
 local KEYS2 = { primary = Enum.KeyCode.LeftShift, alt = Enum.KeyCode.G, third = Enum.KeyCode.T }
 for _, name in ipairs(C.interiorState().cur.spec.order) do
@@ -281,6 +346,15 @@ for _, name in ipairs(C.interiorState().cur.spec.order) do
         local op = C.interiorOpticState()
         check(op ~= nil and op.o.kind == o.kind and C.interiorOptic == o.kind, string.format("%s 的%s：%s（%s）", name, slot, o.name or o.kind, op and op.o.kind or "没开"))
         if o.useSight then check(C.drive.sight == true, "  辅助瞄准镜：炮跟着鼠标瞄（瞄准镜状态开着）") end
+        local fb = R.services.Lighting:FindFirstChild("FarBlur")
+        check(fb == nil or not fb.Enabled, "  观瞄设备里远处不糊（远处景深模糊关掉）")
+        if o.look == "day" then   -- 用户 11-22：「坦克第三人称驾驶开镜全屏都是黄色」——夜里昼光镜照原色、又有夜视仪的增亮，沙子过曝成满屏黄
+          local icc
+          for _, e in ipairs(R.services.Workspace.CurrentCamera:GetChildren()) do
+            if e:IsA("ColorCorrectionEffect") and e.Enabled then icc = e end
+          end
+          check(icc ~= nil and icc.Saturation < -0.5, string.format("  昼光镜夜里发灰、偏冷，不是满屏的颜色（饱和度 %.2f）", icc and icc.Saturation or 0))
+        end
         T.tap(KEYS2[slot])
         R.run(0.4)
         check(C.interiorOpticState() == nil and C.interiorOptic == nil and not C.drive.sight, "  再按一次退出")
@@ -290,7 +364,7 @@ for _, name in ipairs(C.interiorState().cur.spec.order) do
 end
 T.tap(KEYS[C.interiorState().cur.spec.order[1]])
 R.run(0.2)
-local mapK = (VEH == "m1a2") and "STAT" or "态势"
+local mapK = (VEH == "m1a2") and "VEH SYS" or "态势"   -- M1A2 SEPv2 车长显示单元（11-23）：本车状态在下屏左边的 VEH SYS 键
 check(press(mapK), "地图换到本车状态页（" .. mapK .. "）")
 if dumpDir then dumpJSON(dumpDir .. "/interior_" .. VEH .. ".json") end
 

@@ -31,7 +31,10 @@ function Coach.init(G)
   local mobile = G.mobile == true
   local clock = os.clock
   local function T(k, ...) return G.T(k, ...) end
-  local function teamColor(t) return Config.Teams[(t == "def") and "def" or "atk"].color end
+  local function teamColor(t)
+    if t == "none" then return Color3.fromRGB(200, 200, 200) end   -- 征服模式的中立据点
+    return Config.Teams[(t == "def") and "def" or "atk"].color
+  end
   G.coachOn = not mobile   -- UI.lua：有按键提示就不画最下面那一整行说明（手机上是触屏按钮，本来就不画）
 
   -- 字的大概宽度（中日韩字一个字号宽，其余半个多）：按键格子、提示条按它排

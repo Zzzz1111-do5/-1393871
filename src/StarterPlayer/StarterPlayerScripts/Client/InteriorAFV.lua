@@ -100,7 +100,7 @@ return function(Defs, Hp)
     for i = -1, 1 do
       local a = rad(i * 30)
       local p = V(dx + math.sin(a) * 0.20, RY - 0.10, dz - 0.16 - math.cos(a) * 0.05)
-      b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.15, 0.08, 0.09)
+      b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.15, 0.08, 0.09, { model = true })
     end
     b:cylY(H, 0.04, 0.56, CF(dx, RY - 0.01, dz + 0.20), WALL, MAT.SmoothPlastic)
     b:grab(H, V(dx - 0.10, RY - 0.05, dz + 0.24), V(dx + 0.10, RY - 0.05, dz + 0.24), V(0, -0.05, 0), 0.02, C.black)

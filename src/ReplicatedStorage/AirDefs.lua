@@ -58,6 +58,11 @@ AirDefs.W = {
   agm65 = { kind = "agm", dmg = 1150, splash = 14, speed = 480, range = 3000, lockTime = 1.4, cone = 20, turn = 30, burn = 6, life = 10, vs = VS_AGM,
     shape = { L = 7.0, d = 0.85, fin = 1.4 } },
 
+  -- 「惊雷-1」高超音速战术核导弹（虚构型号；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载」；服务器 Nuke.lua）：空射弹道导弹——
+  --   投放后自由落体一下、助推器点火往上爬、6 马赫以上滑翔、7 马赫俯冲，离地 burst 格空爆（Config.Nuke）；只打瞄准点（不锁实体，cone = 0）
+  --   弹长约 7 米、弹径约 0.9 米：轰-6K 弹舱里半埋挂一枚（照轰-6N 腹部凹槽挂空射弹道导弹的挂法）
+  hn1 = { kind = "agm", nuke = true, hyper = true, dmg = 0, splash = 950, speed = 5800, range = 70000, lockTime = 0, cone = 0, turn = 22, burn = 30, life = 90,
+    vs = { inf = 1, light = 1, armor = 1, air = 1, ship = 1, fort = 1 }, shape = { L = 19.5, d = 2.5, fin = 1.6 } },
   ls6 = { kind = "bomb", guided = true, dmg = 1500, splash = 32, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 10.8, d = 1.0, fin = 1.0, wing = 3.6 } },
   gbu12 = { kind = "bomb", guided = true, dmg = 1300, splash = 30, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 9.2, d = 0.9, fin = 1.2 } },
   gbu31 = { kind = "bomb", guided = true, dmg = 2600, splash = 48, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 10.6, d = 1.4, fin = 1.6 } },
@@ -260,6 +265,69 @@ D.j16 = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp =
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "kd88", duct = "ls6" }),
     preset("strike", { tip = "pl10", outer = "pl15", mid = "b250", inner = "b250", duct = "ls6" }),
     preset("sead", { tip = "pl10", outer = "pl12", mid = "yj91", inner = "yj91", duct = "pl15" }) } }
+-- 歼-11B（用户 11-22：「sketchfeb 有个 j36 j10 j11……全部下载下来做进去」）：沈飞照苏-27 做的单座重型战斗机；原模型 Rhine_Lab_Muelsyse 的「Shenyang J-11」
+--   （CC-BY，models/air/j11.glb，tools/models/sf_air.py）：全长 21.9 米、翼展 14.7 米、全高 5.9 米；全动平尾、襟副翼、双垂尾方向舵、背上的大减速板、
+--   起落架舱门是原模型的（放起落架时打开），支柱、机轮用零件拼的（原模型是收着起落架的飞行状态）；普通喷口，没有推力矢量
+D.j11 = { kind = "jet", cat = "jet", L = 61, W = 39, H = 14, gearH = 10, hp = 760, stall = 98, vMil = 330, vAB = 445, accel = 45, abAccel = 35,
+  pitch = 44, roll = 200, yaw = 18, g = 9, flares = 48, gun = "gsh30", gunAmmo = 150, gunPos = V(2.6, 0.6, -9), ab = true,
+  fus = { len = 58, w = 5.0, h = 4.4, y = 0 }, nose = 11, canopy = { z = -13.1, len = 6.2, w = 2.8, h = 1.9, y = 1.8 },
+  intake = "box", intakeZ = -4, intakeW = 3.0, nacelle = { x = 2.6, w = 3.4, h = 3.4 },
+  wing = { xr = 4.0, zr0 = -8, zr1 = 12, xt = 19.3, zt0 = 9, zt1 = 13, y = 0.0, lerx = true },
+  htail = { xr = 4.6, zr0 = 17, zr1 = 25, xt = 12.5, zt0 = 22.5, zt1 = 26, y = -0.2 },
+  vt = { x = 5.5, zr0 = 12, zr1 = 23, zt0 = 19, zt1 = 23.5, h = 9.5, cant = 0 },
+  eng = { { x = 2.4, y = -0.1, z = 27.7, r = 1.65 }, { x = -2.4, y = -0.1, z = 27.7, r = 1.65 } },
+  gear = { nose = { z = -11.5, len = 7.8 }, main = { x = 5.3, z = 6.0, len = 8.2 }, r = 1.45 },
+  st = mirror({
+    { name = "tip", pos = V(19.3, -0.2, 11.5), opts = { "pl10" } },
+    { name = "outer", pos = V(14.5, -1.0, 8.0), opts = { "pl10", "pl12" } },
+    { name = "mid", pos = V(10.5, -1.2, 5.0), opts = { "pl12", "pl15", "kd88", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
+    { name = "duct", pos = V(2.6, -3.0, 2.0), opts = { "pl12", "pl15" } },
+    { name = "ctr", pos = V(0, -2.6, -3.0), opts = { "pl12", "pl15", "ls6", "b250" }, n = N({ b250 = 2 }) },
+  }),
+  presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl12", duct = "pl12", ctr = "pl15" }),
+    preset("ag", { tip = "pl10", outer = "pl12", mid = "kd88", duct = "pl12", ctr = "ls6" }),
+    preset("strike", { tip = "pl10", outer = "pl12", mid = "b250", duct = "pl12", ctr = "b250" }) } }
+-- 歼-10C：成飞的单发鸭式三角翼多用途战斗机；原模型 andertan 的「Chengdu J10 "Vigorous Dragon"」（CC-BY，models/air/j10.glb）：
+--   全长 16.9 米、翼展 9.8 米、全高 5.43 米；全动鸭翼、内外两段升降副翼、方向舵、座舱盖（前风挡不动）；腹部进气道、单个喷口（不带推力矢量）；
+--   原模型是飞行状态，起落架用零件拼的
+D.j10 = { kind = "jet", cat = "jet", L = 47, W = 28, H = 13, gearH = 6.4, hp = 620, stall = 92, vMil = 330, vAB = 450, accel = 48, abAccel = 38,
+  pitch = 48, roll = 230, yaw = 20, g = 9, flares = 32, gun = "gsh30", gunAmmo = 200, gunPos = V(-1.5, -2.6, -4), ab = true,
+  fus = { len = 45, w = 4.4, h = 4.2, y = 0 }, nose = 9, canopy = { z = -10.1, len = 5.0, w = 2.2, h = 2.0, y = 2.1 },
+  intake = "box", intakeZ = -2, intakeW = 2.4,
+  wing = { xr = 2.4, zr0 = -2, zr1 = 14.5, xt = 13.8, zt0 = 12.3, zt1 = 14.2, y = -2.0 },
+  canard = { xr = 1.6, zr0 = -8.5, zr1 = -3.5, xt = 6.6, zt0 = -5.0, zt1 = -3.6, y = 0.6 },
+  vt = { x = 0, zr0 = 11, zr1 = 23.5, zt0 = 20.5, zt1 = 24, h = 9.4, cant = 0 },
+  eng = { { x = 0, y = -2.5, z = 22.1, r = 1.48 } },
+  gear = { nose = { z = -9, len = 5.8 }, main = { x = 4.0, z = 6.5, len = 6.0 }, r = 1.1 },
+  st = mirror({
+    { name = "outer", pos = V(11.0, -2.8, 9.5), opts = { "pl10", "pl12" } },
+    { name = "mid", pos = V(8.0, -2.9, 7.0), opts = { "pl10", "pl12", "pl15", "ls6", "lt2", "b250", "yj91" } },
+    { name = "inner", pos = V(5.0, -3.0, 5.0), opts = { "pl12", "pl15", "ls6", "lt2", "b250", "kd88" } },
+    { name = "body", pos = V(2.0, -3.8, 3.0), opts = { "pl12", "pl15" } },
+    { name = "ctr", pos = V(0, -4.2, 0), opts = { "pl15", "ls6", "b250" } },
+  }),
+  presets = { preset("aa", { outer = "pl10", mid = "pl12", inner = "pl15", body = "pl15", ctr = "pl15" }),
+    preset("ag", { outer = "pl10", mid = "ls6", inner = "kd88", body = "pl12", ctr = "ls6" }),
+    preset("sead", { outer = "pl10", mid = "yj91", inner = "pl15", body = "pl12", ctr = "pl15" }),
+    preset("strike", { outer = "pl10", mid = "b250", inner = "b250", body = "pl12", ctr = "b250" }) } }
+-- 歼-36：成飞的三发无尾「双三角 / 菱形翼」第六代战斗机（2024 年 12 月首飞）；原模型 positivevubez4eva 的「J36 v2」（CC-BY，models/air/j36.glb）：
+--   全长 23 米、翼展 24 米（模型）、全高约 4.2 米；没有垂尾——后缘三段升降副翼（最外一段兼管偏航）；两侧 DSI 进气道加机背一个进气口、
+--   三个喷口藏在机背的槽里；主弹舱 7.2 米长（两扇门）、两边侧弹舱各一扇门；小车式主起落架（一边前后两个轮）往前收、双轮前起落架往后收；只挂内弹舱
+D.j36 = { kind = "jet", cat = "jet", L = 64, W = 68, H = 12, gearH = 7.0, hp = 820, stall = 100, vMil = 360, vAB = 480, accel = 50, abAccel = 36,
+  pitch = 40, roll = 170, yaw = 14, g = 8.5, flares = 40, gun = nil, ab = true, stealth = true, flyingWing = true,
+  fus = { len = 62, w = 8.4, h = 5.0, y = 0 }, nose = 12, canopy = { z = -18.8, len = 7.7, w = 4.8, h = 2.0, y = 2.8 },
+  intake = "dsi", intakeZ = -10, intakeW = 2.6,
+  wing = { xr = 8.4, zr0 = -14.7, zr1 = 30.8, xt = 34, zt0 = 17.1, zt1 = 22.1, y = 0 },
+  eng = { { x = 4.5, y = 0.4, z = 19.8, r = 1.2 }, { x = -4.5, y = 0.4, z = 19.8, r = 1.2 }, { x = 0, y = 0.4, z = 19.8, r = 1.2 } },
+  gear = { nose = { z = -17.1, len = 5.6 }, main = { x = 7.3, z = 8.1, len = 5.2, bogie = true }, r = 1.2 },
+  bays = { main = { z0 = -11.4, z1 = 8.8, w = 6.6 }, sideR = { x = 4.5, z0 = -5.0, z1 = 8.8, w = 2.4 } },
+  st = mirror({
+    { name = "bayM1", pos = V(1.4, -1.7, -5.0), bay = "main", opts = { "pl15", "pl12", "ls6", "lt2" } },
+    { name = "bayM2", pos = V(2.4, -1.9, 3.5), bay = "main", opts = { "pl15", "pl12", "ls6", "kd88" } },
+    { name = "bayS", pos = V(4.5, -1.7, 1.8), bay = "sideR", opts = { "pl10" } },
+  }),
+  presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
+    preset("strike", { bayM1 = "lt2", bayM2 = "kd88", bayS = "pl10" }) } }
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 1150, stall = 85, vMil = 240, accel = 22, pitch = 16, roll = 50, yaw = 10, g = 3,
   flares = 60, bomber = true,
@@ -271,12 +339,13 @@ D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 
   gear = { nose = { z = -32, len = 8.5 }, main = { x = 16, z = 6, len = 8.0, bogie = true }, r = 1.6 },
   bays = { main = { z0 = -6, z1 = 14, w = 6.4 } },
   st = mirror({
-    { name = "bay", pos = V(0, -3.6, 4), bay = "main", opts = { "b250" }, n = N({ b250 = 12 }) },
+    { name = "bay", pos = V(0, -3.6, 4), bay = "main", opts = { "b250", "hn1" }, n = N({ b250 = 12, hn1 = 1 }) },   -- 弹舱：12 枚 250 公斤炸弹，或者一枚「惊雷-1」核导弹
     { name = "pylI", pos = V(13, -3.4, 1.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
     { name = "pylM", pos = V(21, -3.2, 4.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
     { name = "pylO", pos = V(29, -3.0, 7.5), opts = { "kd88", "b250" }, n = N({ b250 = 3 }) },
   }),
-  presets = { preset("bomb", { bay = "b250", pylI = "b250", pylM = "b250", pylO = "b250" }), preset("kd88", { bay = "b250", pylI = "kd88", pylM = "kd88", pylO = "kd88" }) } }
+  presets = { preset("bomb", { bay = "b250", pylI = "b250", pylM = "b250", pylO = "b250" }), preset("kd88", { bay = "b250", pylI = "kd88", pylM = "kd88", pylO = "kd88" }),
+    preset("nuke", { bay = "hn1", pylI = "kd88", pylM = "kd88", pylO = "kd88" }) } }
 D.gj11 = { kind = "jet", cat = "jet", L = 28, W = 39, H = 6.0, gearH = 4.8, hp = 420, stall = 85, vMil = 280, accel = 36, pitch = 34, roll = 120, yaw = 10, g = 6,
   flares = 16, drone = true, stealth = true, flyingWing = true,
   fus = { len = 26, w = 6.0, h = 3.0, y = 0.4 }, nose = 6,
@@ -537,7 +606,7 @@ end
 
 -- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
-local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
   gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
 -- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；

@@ -63,7 +63,7 @@ local foe = G.spawnGroundVeh("atk", "ztz99a", CF.lookAt(fp, fp + base.LookVector
 check(foe ~= nil, "前方 160 格放一辆攻方 99A，车头朝我")
 H.run(1)
 local gun = VD.W[st.d.weapons[1]]
-local mg = VD.W[st.d.weapons[2]]
+local mg = st.d.weapons[2] and VD.W[st.d.weapons[2]]   -- 主战坦克现在不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）
 local r = foe.root.CFrame
 local fc = (r * CF.new(0, 0, -foe.root.Size.Z / 2)).Position
 local function shot(alpha, w)
@@ -81,8 +81,12 @@ local c2, t2 = shot(68, gun)
 check(same(c2, YELLOW) and tostring(t2):find("%d") ~= nil, "斜 68°：黄「" .. tostring(t2) .. "」")
 local c3, t3 = shot(79, gun)
 check(same(c3, RED), "斜 79°：红「" .. tostring(t3) .. "」")
-local c4, t4 = shot(10, mg)
-check(same(c4, RED), "机枪打坦克：红「" .. tostring(t4) .. "」")
+if mg then
+	local c4, t4 = shot(10, mg)
+	check(same(c4, RED), "机枪打坦克：红「" .. tostring(t4) .. "」")
+else
+	print("  （坦克没有机枪：机枪打坦克那条跳过）")
+end
 local c5 = select(1, (function()
 	H.ctx = def
 	local c = CD.tankPen(gun, fc + V3.new(0, 80, 0), fc + V3.new(0, 80, -40), e.model)

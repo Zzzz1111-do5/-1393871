@@ -36,6 +36,8 @@ local function forts()
   end
   return fortPts
 end
+-- 换地图（Map.use）：工事的位置重新按新地图的 FortDefs 算
+function Flora.reset() fortPts = nil end
 local function nearFort(x, z, r)
   for _, f in ipairs(forts()) do
     local dx, dz = x - f[1], z - f[2]

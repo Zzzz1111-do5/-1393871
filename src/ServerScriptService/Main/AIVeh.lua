@@ -14,6 +14,7 @@ local AIVeh = {}
 function AIVeh.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
   local V, CF = Vector3.new, CFrame.new
   local now = os.clock
   local A = Config.AIVeh or {}
@@ -39,6 +40,11 @@ function AIVeh.init(G)
   --   比如第一阶段的前哨岛）下一阶段的（纵深，先在那里等着）。land：车在哪块陆地上（车过不了海，只挑这块陆地上的）
   local function eligible(team, p, land)
     local s = G.points and G.points[p.id]
+    if G.conquest and G.conquest() then   -- 征服（沙漠）：两边一样——敌人的、中立的据点去打，自己的被压着回去守
+      if not s then return 0 end
+      if s.owner == team then return s.pressed and 3 or 0 end
+      return (s.owner == "none") and 2 or 2.4
+    end
     if not s or s.locked or (land and p.land ~= land) or (G.flankOf and G.flankOf[p.id]) then return 0 end
     local active = not G.pointActive or G.pointActive(p.id)
     if team == "atk" then return (active and s.owner ~= "atk") and 2 or 0 end
@@ -129,6 +135,15 @@ function AIVeh.init(G)
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
+    if G.conquest and G.conquest() then   -- 征服：从自己基地车场的空车位出车
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == team and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, p.base.LookVector))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
+    end
     if team == "def" then
       -- 用户（出生点跟着战线走）：目标后面的集结点出车；那里有敌人（或找不到平地）才从营地车场出
       local rp = G.rallyOf and G.rallyOf(goal.id)
@@ -284,6 +299,7 @@ function AIVeh.init(G)
     local function consider(pos, kind, ref)
       local dd = (pos - eye).Magnitude
       local range = (kind == "inf") and ((mg and MG_R) or GUN_R * 0.6) or (main and GUN_R or MG_R)
+      if kind == "veh" and G.sigK then range *= G.sigK(ref) end   -- 披了多光谱伪装网的车近了才发现（Kit.lua）
       if dd > range then return end
       local sc = dd * ((kind == "veh") and 0.5 or ((kind == "fort") and 0.8 or 1))
       if sc >= bs then return end
@@ -332,8 +348,16 @@ function AIVeh.init(G)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     if w.kind == "shell" then
       local dir = spread(mz.LookVector, 0.25)
-      G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
-        life = w.range / w.speed + 0.5 })
+      local ww, a = w, nil
+      if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
+      if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
+        local v0, drag, gs = BAL.launchArgs(a)
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model },
+          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+      else
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
+          life = w.range / w.speed + 0.5 })
+      end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6) * (w.range or 600), w, S, { e.model }, 0)
@@ -369,12 +393,18 @@ function AIVeh.init(G)
     local horiz = math.sqrt(l.X * l.X + l.Z * l.Z)
     local wantYaw = math.deg(math.atan2(l.X, -l.Z))
     local drop = 0
+    local se = 0
     if w.kind == "shell" then
-      local tf = horiz / w.speed
-      drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      if BAL.GUN[wid] then   -- 坦克炮：车长、炮长有激光测距，按真实弹道算超高角（Ballistics.lua；默认弹种）
+        local dist = math.sqrt(horiz * horiz + l.Y * l.Y) / BAL.S
+        se = BAL.aimFor(wid, dist, math.atan2(l.Y, math.max(horiz, 1)), e.ai.ammo)
+      else
+        local tf = horiz / w.speed
+        drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      end
     end
     local el = d.turret.elev or { -6, 18 }
-    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1))), el[1], el[2])
+    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
     e.ty = (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360
     e.gp = approach(e.gp, wantPitch, 22 * dt)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)

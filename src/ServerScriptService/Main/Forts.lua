@@ -206,7 +206,33 @@ function Forts.init(G)
     if not m.alive then return end
     m.alive = false
     local w = m.at and FD.MINE.at or FD.MINE.ap
-    G.explode(V(m.x, m.y + 0.5, m.z), w, MINE_SRC, m.at and 1.2 or 0.8)
+    local p = V(m.x, m.y + 0.5, m.z)
+    -- 车底防雷板（坦克改装，Kit.lua）：压上雷的车挨的减半
+    local bk = G.kitMineK and G.kitMineK(p)
+    local own = false
+    if bk and not G.dmgK then G.dmgK, own = bk, true end
+    G.explode(p, w, MINE_SRC, m.at and 1.2 or 0.8)
+    if own then G.dmgK = nil end
+  end
+  -- 扫雷犁（Kit.lua）用：(x, z) 附近 r 格里还在的雷；把一颗雷翻到一边（不炸）
+  function G.minesNear(x, z, r)
+    local out = {}
+    for _, F in pairs(fields) do
+      if x > F.x0 - r - 12 and x < F.x1 + r + 12 and z > F.z0 - r - 12 and z < F.z1 + r + 12 then
+        for _, m in ipairs(F.list) do
+          if m.alive and not m.arming then
+            local dx, dz = m.x - x, m.z - z
+            if dx * dx + dz * dz < r * r then table.insert(out, m) end
+          end
+        end
+      end
+    end
+    return out
+  end
+  function G.mineClear(m, how)
+    if not m.alive then return end
+    m.alive = false
+    G.fx({ k = (how == "plow") and "plowMine" or "defuse", p = V(m.x, m.y, m.z) })
   end
 
   -- 爆炸：炸断附近的铁丝网、引爆附近的雷（隔一小会儿，一串一串地炸）
@@ -900,8 +926,9 @@ function Forts.init(G)
 
   local function newFort(L)
     local d = FD.D[L.kind]
-    local e = G.newEnt({ kind = "fort", team = "def", cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
-      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = "def" } })
+    local team = (L.home == "atk" or L.home == "def") and L.home or "def"   -- 沙漠：两边基地各有自己的工事（FortDefs.layout 的 home）
+    local e = G.newEnt({ kind = "fort", team = team, cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
+      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = team } })
     e.model:SetAttribute("Model", L.kind)
     e.model:SetAttribute("Ty", 0)
     e.model:SetAttribute("Gp", 0)
@@ -1138,6 +1165,7 @@ function Forts.init(G)
 
   -- 据点被攻方拿下：挨着它的工事归攻方（还能用的）
   G.on("captured", function(s)
+    if Map.desert then return end   -- 征服：工事都在两边基地里，不跟据点走
     for _, e in ipairs(forts) do
       if e.alive and e.pt == s.id and e.team ~= "atk" then
         if e.gunner then unman(e, true) end

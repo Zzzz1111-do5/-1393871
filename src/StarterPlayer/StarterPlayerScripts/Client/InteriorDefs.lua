@@ -11,6 +11,8 @@ do
   local ok, r = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("HudMeta", 3)) end)
   if ok and type(r) == "table" then HUDM = r end
 end
+-- M1A2 SEPv2 车长显示单元的版面（tools/weapons/gen_cdus.mjs 生成：机壳网格和这里现做的键、屏幕用同一张表）
+local CDUS = require(game:GetService("ReplicatedStorage"):WaitForChild("CdusLayout"))
 local RGB = Color3.fromRGB
 local MAT = Enum.Material
 local C = Kit.C
@@ -44,6 +46,11 @@ end
 -- 120 毫米 / 125 毫米炮弹（米，弹底朝 +Z 的话 dir = 1）：可燃药筒 + 金属底缘 + 底火；长弹（脱壳穿甲弹）多一截弹芯
 local function round120(b, g, cf, opt)
   opt = opt or {}
+  -- 真模型：M829A1 整发（Jeyhun1985，CC-BY）——弹底在原点、弹头朝 +Z，这里弹底朝 +Z，转半圈；弹架里的用减面版
+  if opt.prop ~= false then
+    local list = b:prop(g, opt.lo and "ip_m829lo" or "ip_m829", cf * ANG(0, PI, 0), (opt.len or 0.98) / 0.93)
+    if list then return list end
+  end
   local L = opt.len or 0.98
   local caseL = L * 0.68
   local base = b:cylZ(g, 0.045, 0.152, cf * CF(0, 0, -0.022), RGB(150, 128, 82), MAT.Metal)   -- 金属底缘（钢 / 黄铜色）
@@ -57,10 +64,10 @@ local function round120(b, g, cf, opt)
 end
 Defs.round120 = round120
 
----------------------------------------------------------------- M1A2 SEPv3（艾布拉姆斯）
--- 美国陆军 M1A2C（SEPv3）：四人车组。驾驶员在车体前部中间，扣上舱盖时半躺（三具潜望镜 + 驾驶员视觉增强器 DVE）；
+---------------------------------------------------------------- M1A2 SEPv2（艾布拉姆斯）
+-- 美国陆军 M1A2 SEPv2（用户 11-23：「我这个 M1A2 是 SEPv2」）：四人车组。驾驶员在车体前部中间，扣上舱盖时半躺（三具潜望镜 + 驾驶员视觉增强器 DVE）；
 --   炮塔里炮长在右前（主瞄准镜 GPS 的目镜和护额垫、"凯迪拉克" 双握把 GCH、炮长控制显示面板 GCDP、辅助瞄准镜 GAS），
---   车长在右后高位（六具观察镜的指挥塔、独立热像仪 CITV 的显示器、指挥综合显示器 CID / 联合作战指挥平台 JBC-P、车长操纵握把 CCH、
+--   车长在右后高位（八边形、八具观察镜的指挥塔、独立热像仪 CITV 的显示器、指挥综合显示器 CID / 联合作战指挥平台 JBC-P、车长操纵握把 CCH、
 --   主瞄准镜延伸目镜 GPSE、CROWS-LP 遥控武器站的屏幕和握把），装填手在左（折叠座椅、装填手潜望镜、电台、膝动开门开关）；
 --   炮塔尾舱用装甲滑门隔开，左右各 18 发待发弹（弹底朝乘员舱），M256 120 毫米炮立楔式炮闩、后坐 0.305 米，右边并列 M240 机枪
 local WHITE = RGB(226, 226, 218)   -- 艾布拉姆斯车内是白漆
@@ -69,12 +76,47 @@ local FLOOR = RGB(56, 58, 56)
 local OD = RGB(84, 90, 66)
 local GBOX = RGB(64, 68, 62)
 
+-- 真模型显示器的版面（用户 11-22 发来 M1A2 车长位照片：「图片里摇杆、计算机、屏幕……识别到了就去 Sketchfab 找类似的」「差不多的可以自己改一下」）：
+--   器材坐标（格，+Z 正面、人看过去 +X 在右手边，tools/weapons/optics.json 的 ip_* 件），量的是带贴图的正视图；
+--   c 玻璃中心、w / h 玻璃宽高、kz 键帽正面、keys.top / keys.bottom：屏幕的两组键各盖在哪几个原模型的实体键上（{ x, y, 宽, 高 [, 键帽正面 z] }）
+local PSCR = {
+  -- 带边键的显示控制单元（左右各 5 个边键，下面整块键盘）：车长热像仪显示器、炮长控制显示面板——照片里车长面前那块左边一排背光键的显示器
+  ip_cdu = { c = { 0, 0, 0 }, w = 0.232, h = 0.336, kz = 0.004, keys = {
+    top = { { -0.164, 0.0763, 0.044, 0.024 }, { -0.164, 0.0356, 0.044, 0.024 }, { -0.164, -0.0052, 0.044, 0.024 }, { -0.164, -0.048, 0.044, 0.024 }, { -0.164, -0.0874, 0.044, 0.024 } },
+    bottom = { { 0.163, 0.0763, 0.044, 0.024 }, { 0.163, 0.0356, 0.044, 0.024 }, { 0.163, -0.0052, 0.044, 0.024 }, { 0.163, -0.048, 0.044, 0.024 }, { 0.163, -0.0874, 0.044, 0.024 } } } },
+  -- 加固战术显示终端（沙色，左边 Menu / Mode / Lock / Enter / Rec 五个键，右边 Fire / Comm / Back 三个键和两个旋钮）：现在没用上（留着给别的车）
+  ip_tab = { c = { -0.001, -0.048, 0.042 }, w = 0.484, h = 0.342, kz = 0.063, keys = {
+    top = { { -0.338, -0.124, 0.034, 0.024 }, { -0.291, -0.124, 0.034, 0.024 }, { -0.338, -0.161, 0.034, 0.024 }, { -0.291, -0.161, 0.034, 0.024 }, { -0.291, -0.197, 0.034, 0.024 } },
+    bottom = { { 0.286, -0.045, 0.034, 0.024 }, { 0.286, -0.080, 0.034, 0.024 }, { 0.286, -0.118, 0.034, 0.024 }, { 0.2875, -0.180, 0.03, 0.03, 0.095 }, { 0.341, -0.180, 0.03, 0.03, 0.095 } } } },
+  -- 带侧键的显示器（两边各一条按键板）：车长的 CROWS 遥控武器站显示器
+  ip_mon = { c = { 0, 0.0425, 0.079 }, w = 0.25, h = 0.222, kz = 0.070, keys = {   -- 显像管玻璃是鼓的（中间 0.067、四周的框到 0.077）：显示面贴在最外面
+    top = { { -0.1886, 0.152, 0.030, 0.034 }, { -0.1886, 0.102, 0.036, 0.022 }, { -0.1886, 0.076, 0.036, 0.022 }, { -0.1886, 0.0105, 0.036, 0.022 }, { -0.1886, -0.0164, 0.036, 0.022 } },
+    bottom = { { 0.188, 0.140, 0.036, 0.022 }, { 0.188, 0.114, 0.036, 0.022 }, { 0.188, 0.088, 0.036, 0.022 }, { 0.188, 0.0616, 0.036, 0.022 }, { 0.188, -0.012, 0.030, 0.034, 0.082 } } } },
+}
+-- 屏幕：有真模型就用真模型外壳（B:propScreen），还没生成好就照旧画普通屏幕（Interior 等模型好了会重建一次）
+local function scr(b, g, key, k, w, h, cf, page, opt)
+  local s = b.propScreen and b:propScreen(g, key, cf, k, page, PSCR[key], opt)
+  return s or b:screen(g, w, h, cf, page, opt)
+end
+Defs.PSCR, Defs.scr = PSCR, scr
+
 function Defs.m1a2(b, ctx)
   local T, H, G = "turret", "hull", "gun"
   local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
     return b:box(g, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
   end
   local function look(p, at) return CFrame.lookAt(p, at) end
+  -- 真模型的拨动开关面板（带护盖的拨杆，ip_sw）：cf 的 −Z 对着人（同 b:panel），没生成好就照旧拼面板
+  local function swPanel(g, cf, k, w, h, rows, cols, col, opt)
+    if b:prop(g, "ip_sw", cf * ANG(0, PI, 0), k) then return end
+    b:panel(g, w, h, cf, rows, cols, col, opt)
+  end
+  -- 真模型的车内顶灯（防爆灯罩，ip_lamp）：贴在顶上、灯罩朝下（p 是安装面的点）；没生成好就照旧一个小灯盒
+  local function domeLamp(g, p, k)
+    k = k or 0.9
+    if not b:prop(g, "ip_lamp", CF(p) * ANG(rad(90), 0, 0), k) then b:box(g, V(0.14, 0.04, 0.10), CF(p - V(0, 0.02, 0)), C.dark, MAT.Metal) end
+    b:led(g, CF(p - V(0, 0.035 * k, 0)), RGB(255, 236, 210), 0.05, "domeLamp")
+  end
 
   ---------------- 车体（不随炮塔转）
   local FY = -1.05   -- 车底地板（座圈平面下 1.05 米）
@@ -130,7 +172,7 @@ function Defs.m1a2(b, ctx)
   for i = -1, 1 do
     local a = rad(i * 32)
     local p = V(math.sin(a) * 0.22, -0.13, DZ - 0.18 - math.cos(a) * 0.06)
-    b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.17, 0.09, 0.10)
+    b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.17, 0.09, 0.10, { model = true })
   end
   local dve = b:screen(H, 0.16, 0.12, look(V(0, -0.36, DZ - 0.30), eyeD), "dve", { lightColor = RGB(200, 200, 200), lightK = 0.25 })
   bx(H, 0.20, 0.04, 0.10, 0, -0.27, DZ - 0.32, C.black)
@@ -149,14 +191,15 @@ function Defs.m1a2(b, ctx)
   bx(H, 0.14, 0.04, 0.12, -0.12, FY + 0.06, -2.98, C.dark, MAT.DiamondPlate, -25, 0, 0)  -- 搁脚板
   -- 驾驶员综合显示器 DID（左前）+ 主开关面板（左）+ 右边的辅助面板
   b:screen(H, 0.20, 0.15, look(V(-0.33, -0.48, -2.42), eyeD), "did", { keys = { top = { "MAIN MENU", "STATUS", "W/C/A", "NAV", "MAINT" }, bottom = { "PUSH TO START", "SHUT OFF", "TAC IDLE", "LAMP TEST", "ALARM ACK" } }, lightK = 0.3 })
-  b:panel(H, 0.16, 0.30, look(V(-0.44, -0.66, -2.10), V(0, -0.6, -2.0)), 4, 2, RGB(70, 72, 70), { guard = true })
-  b:panel(H, 0.14, 0.22, look(V(0.44, -0.62, -2.15), V(0, -0.6, -2.05)), 3, 2, RGB(70, 72, 70))
+  swPanel(H, look(V(-0.44, -0.66, -2.10), V(0, -0.6, -2.0)), 1.7, 0.16, 0.30, 4, 2, RGB(70, 72, 70), { guard = true })   -- 主开关面板（带护盖的拨杆）
+  swPanel(H, look(V(0.44, -0.62, -2.15), V(0, -0.6, -2.05)), 1.4, 0.14, 0.22, 3, 2, RGB(70, 72, 70))
   b:placard(H, 0.10, 0.03, look(V(-0.44, -0.48, -2.10), V(0, -0.48, -2.0)) * CF(0, 0, -0.002), "MASTER", { bg = C.black, fg = C.white })
   -- 灭火瓶（哈龙，驾驶员后面两瓶）
   b:extinguisher(H, CF(-0.36, FY + 0.25, -1.30), 0.48, 0.15)
   b:extinguisher(H, CF(0.36, FY + 0.25, -1.30), 0.48, 0.15)
   b:placard(H, 0.12, 0.05, CF(-0.36, FY + 0.40, -1.22) * ANG(0, PI, 0), "HALON", { bg = C.red, fg = C.white })
   b:light(H, CF(0, -0.10, -1.40), "dome", RGB(255, 240, 220), 2.8, 0.9)
+  domeLamp(H, V(0.39, -0.062, -1.48), 0.8)   -- 驾驶舱顶灯（舱盖右边的顶板上）
 
   ---------------- 炮塔（随炮塔转）
   local RY = 0.80   -- 炮塔顶内表面（座圈平面上 0.8 米）
@@ -188,18 +231,27 @@ function Defs.m1a2(b, ctx)
   end
   bx(T, 0.92, RY, 0.05, 0, RY / 2, -1.62, WHITE2)                                            -- 炮槽前壁（炮从这里穿出去）
   -- 炮塔顶：几块板，留出车长指挥塔、装填手舱盖、炮长主瞄准镜的口子
+  -- 车长指挥塔中心（用户 11-23：「把那个八边形观察舱全部往前移」）：原来在 z 0.34，车长眼睛（z 0.02）后面 32 厘米，抬头看到的是天花板、
+  --   观察窗都在头顶后面；挪到车长头顶正上方（z −0.02）——抬头 40° 左右前面三块观察窗正好在眼前（同截图）。炮塔顶的开口、座板跟着挪
+  local CZ = -0.02
   bx(T, 2.56, 0.05, 0.62, 0, RY + 0.025, 0.86, WHITE)                                        -- 后段
   bx(T, 0.46, 0.05, 0.60, -0.05, RY + 0.025, 0.28, WHITE)                                    -- 中段（两个舱口之间）
   bx(T, 0.34, 0.05, 0.60, 1.11, RY + 0.025, 0.28, WHITE)
   bx(T, 0.34, 0.05, 0.60, -1.11, RY + 0.025, 0.28, WHITE)
-  bx(T, 2.56, 0.05, 0.50, 0, RY + 0.025, -0.27, WHITE)                                       -- 中前段
+  -- 中前段（z −0.52 ～ −0.02）：指挥塔开口（x 0.18 ～ 0.94、z CZ − 0.30 ～ CZ + 0.30）那一块让出来
+  bx(T, 1.46, 0.05, 0.50, -0.55, RY + 0.025, -0.27, WHITE)
+  bx(T, 0.34, 0.05, 0.50, 1.11, RY + 0.025, -0.27, WHITE)
+  bx(T, 0.76, 0.05, 0.20, 0.56, RY + 0.025, -0.42, WHITE)                                    -- 开口前面一条
+  bx(T, 0.76, 0.05, 0.30, 0.56, RY + 0.025, 0.43, WHITE)                                     -- 开口后面（原来的开口挪走了，补上）
   bx(T, 1.70, 0.05, 0.78, -0.43, RY + 0.025, -0.91, WHITE)                                   -- 前段（左）
   bx(T, 0.86, 0.05, 0.78, 0.85, RY + 0.025, -0.91, WHITE)                                    -- 前段（右，主瞄准镜从这里穿上去）
-  ring(b, T, 0.56, RY + 0.035, 0.34, 0.47, 16, 0.24, 0.03, WHITE2)                           -- 指挥塔、装填手舱口四周的座板（盖住方口子的四个角）
+  ring(b, T, 0.56, RY + 0.035, CZ, 0.50, 16, 0.24, 0.03, WHITE2)                             -- 指挥塔、装填手舱口四周的座板（盖住方口子的四个角；指挥塔这圈让开八边形的壁）
   ring(b, T, -0.62, RY + 0.035, 0.28, 0.42, 16, 0.22, 0.03, WHITE2)
   bx(T, 0.92, 0.05, 0.38, 0, RY + 0.025, -1.43, WHITE)                                       -- 炮槽顶
-  -- 加强筋、螺栓排（车内到处是）
-  for _, z in ipairs({ -0.55, 0.0, 0.55 }) do bx(T, 2.5, 0.04, 0.05, 0, RY - 0.02, z, WHITE2) end
+  -- 加强筋、螺栓排（车内到处是）；中间那根让开指挥塔的开口（不横在头顶上）
+  for _, z in ipairs({ -0.55, 0.55 }) do bx(T, 2.5, 0.04, 0.05, 0, RY - 0.02, z, WHITE2) end
+  bx(T, 1.43, 0.04, 0.05, -0.535, RY - 0.02, 0.0, WHITE2)
+  bx(T, 0.31, 0.04, 0.05, 1.095, RY - 0.02, 0.0, WHITE2)
   for i = 0, 9 do b:ball(T, 0.018, CF(-1.235, 0.72, -0.6 + i * 0.2), C.lgray, MAT.Metal) b:ball(T, 0.018, CF(1.235, 0.72, -0.6 + i * 0.2), C.lgray, MAT.Metal) end
 
   -- 尾舱隔板 + 两扇装甲滑门（左：装填手的待发弹 18 发，右：18 发）
@@ -227,7 +279,7 @@ function Defs.m1a2(b, ctx)
     for r = 0, 2 do
       for c = 0, 5 do
         local p = V(cx - 0.375 + c * 0.15, 0.18 + r * 0.21, BZ + 0.07)
-        local rd = round120(b, T, CF(p) * ANG(0, PI, 0), { len = 0.98, caseCol = (r == 0 and c < 2) and RGB(150, 150, 140) or RGB(176, 160, 118) })
+        local rd = round120(b, T, CF(p) * ANG(0, PI, 0), { len = 0.98, lo = true, caseCol = (r == 0 and c < 2) and RGB(150, 150, 140) or RGB(176, 160, 118) })
         table.insert(racks[side], rd)
       end
     end
@@ -260,9 +312,9 @@ function Defs.m1a2(b, ctx)
   -- 防危板 / 后坐防护栏（跟着炮俯仰，不跟着后坐）：两侧挡板、后横杆、底下的药筒底盘收集袋
   for _, s in ipairs({ -1, 1 }) do
     b:box(G, V(0.04, 0.56, 0.86), CF(s * 0.40, -0.06, 0.88), RGB(96, 100, 86), MAT.Metal)
-    b:box(G, V(0.05, 0.08, 0.86), CF(s * 0.40, 0.24, 0.88), RGB(230, 196, 40), MAT.SmoothPlastic)
+    b:box(G, V(0.05, 0.08, 0.86), CF(s * 0.40, 0.24, 0.88), WHITE, MAT.SmoothPlastic)   -- 顶边（原来整条黄色，用户 11-23 的车长位截图里这片是白的）
   end
-  b:tube(G, V(-0.40, 0.18, 1.30), V(0.40, 0.18, 1.30), 0.04, RGB(230, 196, 40), MAT.Metal)
+  b:tube(G, V(-0.40, 0.18, 1.30), V(0.40, 0.18, 1.30), 0.04, C.lgray, MAT.Metal)
   b:tube(G, V(-0.40, -0.30, 1.30), V(0.40, -0.30, 1.30), 0.04, C.lgray, MAT.Metal)
   b:box(G, V(0.70, 0.12, 0.50), CF(0, -0.40, 1.02), RGB(86, 84, 66), MAT.Fabric)                -- 底盘收集袋
   b:placard(G, 0.34, 0.07, CF(-0.425, -0.02, 0.88) * ANG(0, PI / 2, 0), "DANGER  RECOIL AREA", { bg = RGB(230, 196, 40) })
@@ -286,20 +338,29 @@ function Defs.m1a2(b, ctx)
   bx(T, 0.24, 0.20, 0.14, 0.55, 0.36, -0.92, RGB(40, 42, 44))
   for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.06, 0.05, CF(0.55 + s * 0.035, 0.33, -0.845), C.rubber, MAT.Fabric) end
   b:box(T, V(0.26, 0.06, 0.08), CF(0.55, 0.43, -0.86), C.rubber, MAT.Fabric)                     -- 护额垫
-  b:led(T, CF(0.55 + 0.035, 0.33, -0.81), RGB(80, 255, 120), 0.012, "gpsEye")                   -- 目镜里的光（热像是绿的）
-  b:led(T, CF(0.55 - 0.035, 0.33, -0.81), RGB(80, 255, 120), 0.012, "gpsEye")
+  -- 目镜镜片：暗的、映一点天光（原来两颗发绿光的霓虹小球「热像是绿的」，用户 11-22：现实中不带绿光）
+  for _, s in ipairs({ -1, 1 }) do b:lens(T, CF(0.55 + s * 0.035, 0.33, -0.814), 0.034) end
   b:placard(T, 0.12, 0.04, CF(0.62, 0.56, -0.805) * ANG(0, PI, 0), "GPS", { bg = C.black, fg = C.white })
   -- 炮长控制显示面板 GCDP（右边斜着对炮长）
-  b:screen(T, 0.20, 0.15, look(V(0.88, 0.20, -0.86), gEye + V(0, -0.1, 0.1)), "gcdp", { keys = { top = { "MAIN", "AMMO", "RANGE", "ADJUST", "LRF" }, bottom = { "WHT/BLK", "3X/10X", "FCS", "BSGT", "MRS" } }, lightK = 0.28 })
-  b:panel(T, 0.22, 0.12, look(V(0.92, 0.00, -0.78), gEye + V(0, -0.3, 0.1)), 2, 5, RGB(66, 68, 66), { kinds = { "b", "b", "b", "l", "t" } })
+  -- 真模型：带左右各 5 个边键和整块键盘的显示控制单元（ip_cdu，键帽上印着这块面板的键）；没生成好就照旧画屏幕 + 面板
+  local gcdpCF = look(V(0.88, 0.23, -0.86), gEye + V(0, -0.1, 0.1))
+  local gcdp = scr(b, T, "ip_cdu", 1.25, 0.20, 0.15, gcdpCF, "gcdp", { keys = { top = { "MAIN", "AMMO", "RANGE", "ADJUST", "LRF" }, bottom = { "WHT/BLK", "3X/10X", "FCS", "BSGT", "MRS" } }, lightK = 0.28 })
+  if gcdp and gcdp.opt and gcdp.opt.propShell then
+    swPanel(T, look(V(0.95, -0.08, -0.74), gEye + V(0, -0.3, 0.1)) * ANG(0, 0, PI / 2), 1.3, 0.22, 0.12, 2, 5, RGB(66, 68, 66), { kinds = { "b", "b", "b", "l", "t" } })
+  else
+    b:panel(T, 0.22, 0.12, look(V(0.92, 0.00, -0.78), gEye + V(0, -0.3, 0.1)), 2, 5, RGB(66, 68, 66), { kinds = { "b", "b", "b", "l", "t" } })
+  end
   -- "凯迪拉克" 双握把 GCH（底座立柱 + 左右两个握把；握把跟着炮塔转、炮俯仰的速度转动）
   b:tube(T, V(0.55, FY + 0.06, -0.70), V(0.55, -0.15, -0.72), 0.06, C.gray, MAT.Metal)
   bx(T, 0.30, 0.09, 0.12, 0.55, -0.10, -0.74, RGB(54, 56, 58))
   b:group("gch", T, CF(0.55, -0.08, -0.74))
-  for _, s in ipairs({ -1, 1 }) do
-    b:box("gch", V(0.05, 0.14, 0.05), CF(s * 0.14, 0.08, 0.0) * ANG(rad(-20), 0, 0), C.black, MAT.SmoothPlastic)
-    b:box("gch", V(0.055, 0.03, 0.06), CF(s * 0.14, 0.16, -0.01), RGB(40, 40, 40), MAT.SmoothPlastic)
-    b:button("gch", CF(s * 0.14, 0.155, -0.04) * ANG(rad(-70), 0, 0), C.red, 0.012)             -- 激光测距按钮
+  -- 真模型：飞机驾驶盘的两只羊角握把和中间的毂（ip_yoke，去掉了下面的长杆），装在握把底座上——两边握把朝上、按钮在拇指下，最像艾布拉姆斯的双握把
+  if not b:prop("gch", "ip_yoke", CF(0, 0.075, 0), 0.9) then
+    for _, s in ipairs({ -1, 1 }) do
+      b:box("gch", V(0.05, 0.14, 0.05), CF(s * 0.14, 0.08, 0.0) * ANG(rad(-20), 0, 0), C.black, MAT.SmoothPlastic)
+      b:box("gch", V(0.055, 0.03, 0.06), CF(s * 0.14, 0.16, -0.01), RGB(40, 40, 40), MAT.SmoothPlastic)
+      b:button("gch", CF(s * 0.14, 0.155, -0.04) * ANG(rad(-70), 0, 0), C.red, 0.012)             -- 激光测距按钮
+    end
   end
   -- 辅助瞄准镜 GAS（装在炮的摇架上，跟着炮俯仰）
   b:cylZ(G, 0.55, 0.07, CF(0.24, 0.12, 0.10), RGB(46, 48, 50), MAT.Metal)
@@ -315,32 +376,149 @@ function Defs.m1a2(b, ctx)
 
   ---------------- 车长位（右后，坐得高）
   local cEye = V(0.56, 0.60, 0.02)
-  -- 指挥塔：座圈、六具观察镜、舱盖内面
-  ring(b, T, 0.56, RY + 0.02, 0.34, 0.36, 18, 0.06, 0.06, WHITE2, MAT.Metal)
-  for i = 0, 5 do
-    local a = rad(i * 60)
-    local d = V(math.sin(a), 0, -math.cos(a))
-    local p = V(0.56, RY - 0.03, 0.34) + d * 0.30
-    b:periscope(T, look(p, p + d), 0.13, 0.07, 0.08, { pad = false })
+  -- 指挥塔（用户 11-23：「坐的那个位置往上看就是 8 边形观瞄舱」）：M1A2 SEP 的车长指挥塔是八边形的，一圈八具观察镜（360° 都看得见）——
+  --   从车长位往上看：八块白漆内壁围成八边形，每块壁上一具观察镜（深色框、玻璃）、下面一条黑橡胶防撞垫，上下各一圈八边形的边框，顶上是圆舱盖的内面
+  local CUP = V(0.56, RY, CZ)                   -- 指挥塔中心（炮塔顶开口；CZ 见上面炮塔顶：挪到车长头顶正上方）
+  local AP, WT, HB, HT = 0.30, 0.04, -0.05, 0.20   -- 内壁到中心的距离（边心距）、壁厚、壁的下沿 / 上沿（相对炮塔顶）
+  local fw = 2 * (AP + WT / 2) * math.tan(PI / 8) * 1.04   -- 每块壁板宽（壁厚中线处；稍微搭接，角上不露缝）
+  for i = 0, 7 do
+    local a = rad(i * 45)
+    local d = V(math.sin(a), 0, -math.cos(a))   -- 这块壁朝外的方向（第一块朝正前）
+    local function at(r, y) local q = CUP + d * r + V(0, y, 0) return CFrame.lookAt(q, q + d) end
+    b:box(T, V(fw, HT - HB, WT), at(AP + WT / 2, (HB + HT) / 2), WHITE, MAT.SmoothPlastic)              -- 内壁
+    b:box(T, V(fw * 0.97, 0.025, 0.035), at(AP - 0.012, HB + 0.0125), WHITE2, MAT.Metal)                 -- 下边一圈边框
+    b:box(T, V(fw * 0.97, 0.025, 0.035), at(AP - 0.012, HT - 0.0125), WHITE2, MAT.Metal)                 -- 上边一圈边框
+    -- 观察镜（用户 11-23 又发来车长位插图：每块壁上一大块浅蓝玻璃、细黑框，八块连成一圈，玻璃上两道斜的反光）
+    local vb = at(AP - 0.004, 0.10)
+    local gw, gh = fw * 0.80, 0.095
+    local gl = b:box(T, V(gw, gh, 0.006), vb, RGB(166, 220, 236), MAT.Glass)
+    gl.Transparency, gl.CastShadow = 0.12, false
+    for _, e in ipairs({ { 0, gh / 2 + 0.003, gw + 0.012, 0.006 }, { 0, -gh / 2 - 0.003, gw + 0.012, 0.006 }, { gw / 2 + 0.003, 0, 0.006, gh }, { -gw / 2 - 0.003, 0, 0.006, gh } }) do
+      b:box(T, V(e[3], e[4], 0.012), vb * CF(e[1], e[2], 0), C.black)                                  -- 细黑框
+    end
+    local sg = Kit.gui(gl, Enum.NormalId.Back, 900)   -- 朝里那面（Back：at() 的 −Z 朝外）
+    for _, q in ipairs({ { 0.36, 0.09 }, { 0.50, 0.04 } }) do   -- 两道斜的反光（插图那样）
+      local f = Instance.new("Frame")
+      f.AnchorPoint = Vector2.new(0.5, 0.5)
+      f.Position, f.Size = UDim2.fromScale(q[1], 0.5), UDim2.fromScale(q[2], 1.8)
+      f.Rotation = 35
+      f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = RGB(255, 255, 255), 0.35, 0
+      f.Parent = sg
+    end
+    b:box(T, V(0.15, 0.022, 0.028), at(AP - 0.016, 0.026), C.rubber, MAT.Fabric)                          -- 防撞垫
+    b:box(T, V(fw * 1.12, 0.03, 0.06), at(AP + WT + 0.025, 0.03), WHITE2, MAT.Metal)                      -- 外面一圈座板（壁和炮塔顶开口之间不露缝）
   end
-  b:group("chatch", T, CF(0.56, RY + 0.10, 0.34))
-  b:cylY("chatch", 0.05, 0.62, CF(), WHITE, MAT.SmoothPlastic)
-  b:grab("chatch", V(-0.12, -0.03, 0.10), V(0.12, -0.03, 0.10), V(0, -0.05, 0), 0.02, C.black)
+  b:light(T, CF(CUP.X, RY + 0.10, CUP.Z), "dome", RGB(255, 244, 228), 0.9, 0.5)                    -- 指挥塔里面也照得到（往上看不是一团黑）
+  b:group("chatch", T, CF(CUP.X, RY + HT + 0.02, CUP.Z))
+  b:cylY("chatch", 0.04, 0.70, CF(), WHITE, MAT.SmoothPlastic)                                         -- 圆舱盖（盖住八边形口）
+  b:cylY("chatch", 0.02, 0.50, CF(0, -0.03, 0), WHITE2, MAT.Metal)                                     -- 舱盖内面的加强圈
+  b:grab("chatch", V(-0.12, -0.04, 0.10), V(0.12, -0.04, 0.10), V(0, -0.05, 0), 0.02, C.black)
   -- 独立热像仪显示器（CITV）、指挥综合显示器（CID / JBC-P）、CROWS 遥控武器站屏幕和握把、车长操纵握把 CCH、主瞄准镜延伸目镜 GPSE
-  bx(T, 0.70, 0.30, 0.06, 0.62, 0.36, -0.40, RGB(58, 60, 58), nil, -12, 0, 0)                     -- 显示器支架板
-  b:screen(T, 0.21, 0.16, look(V(0.42, 0.42, -0.34), cEye), "citv", { keys = { top = { "WHT", "BLK", "WFOV", "NFOV", "SYM" }, bottom = { "MAN", "AUTO", "GUN LOS", "GPS LOS", "DESIG" } }, lightK = 0.3 })
-  b:screen(T, 0.26, 0.20, look(V(0.76, 0.40, -0.33), cEye), "cid", { keys = { top = { "MAP", "MSG", "STAT", "NAV", "POS" }, bottom = { "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" } }, lightColor = RGB(150, 190, 230), lightK = 0.35 })
-  b:screen(T, 0.17, 0.13, look(V(1.02, 0.50, -0.06), cEye), "crows", { keys = { top = { "ARM", "SAFE", "THERM" }, bottom = { "ZOOM", "LASE", "SLAVE" } }, lightK = 0.25 })
-  b:tube(T, V(1.04, 0.22, 0.06), V(0.98, 0.32, 0.02), 0.03, C.dark, MAT.Metal)
-  b:box(T, V(0.06, 0.12, 0.06), CF(0.97, 0.38, 0.01) * ANG(rad(-15), 0, 0), C.black)             -- CROWS 握把
-  b:group("cch", T, CF(0.78, 0.12, -0.12))
-  b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
-  b:button("cch", CF(0, 0.14, -0.03) * ANG(rad(-70), 0, 0), C.yellow, 0.012)
-  b:tube(T, V(0.78, -0.30, -0.12), V(0.78, 0.10, -0.12), 0.04, C.gray, MAT.Metal)
-  b:cylZ(T, 0.10, 0.07, CF(0.56, 0.52, -0.42), RGB(42, 44, 46), MAT.Metal)                        -- GPSE 目镜
-  b:cylZ(T, 0.05, 0.075, CF(0.56, 0.52, -0.36), C.rubber, MAT.Fabric)
-  b:led(T, CF(0.56, 0.52, -0.33), RGB(80, 255, 120), 0.014, "gpsEye")
-  b:tube(T, V(0.56, 0.52, -0.47), V(0.60, 0.56, -0.82), 0.06, RGB(52, 54, 56), MAT.Metal)
+  -- 车长显示单元（用户 11-23 发来钢铁猛兽 M1A2 SEP 车长位截图：「严格按照这个图，上面是一块 CITV」「两个屏幕中间的横排按钮是对应上面的屏幕的」）：
+  --   一整台深蓝灰机壳：上屏独立热像仪 CITV，左边一列 5 个、两屏之间一排 10 个蓝色背光键都管上屏（选中的键角上绿灯亮），上屏右边一条三个绿灯；
+  --   下屏指挥地图（白底、红色道路），左边 VEH SYS、C3 两个键，左下四个方向键，下边 8 个橙色横杠键，右边 4 × 4 橙色字母数字键盘；三根把手
+  --   机壳、银色倒角屏框是本项目照截图做的网格（ip_cdus，tools/weapons/gen_cdus.mjs——Sketchfab 上搜不到能下载的 CITV / 车长显示器模型），
+  --   键、屏幕、指示灯按同一张版面表（ReplicatedStorage.CdusLayout）现做
+  local LY = CDUS
+  -- 机壳正面中心（−Z 对着车长）：在主瞄准镜延伸目镜右边，从车长眼睛看过去不被护眼罩挡（截图里也是挨着）；
+  --   用户 11-23 再对截图：原来在 (0.88, 0.42, −0.46)，离眼睛 0.6 米、偏右 34°、上屏比眼睛低，显得又小又远——挪近、抬高、往中间靠
+  local uCF = look(V(0.80, 0.44, -0.40), cEye)
+  local function uAt(x, y, z) return uCF * CF(-x, y, -(z or 0)) end   -- 版面坐标（米，X 人看过去向右、Z 朝人）→ 炮塔里
+  if not b:prop(T, "ip_cdus", uCF * ANG(0, PI, 0), 1) then   -- 网格还没生成好：先拼个方壳子、四条框（Interior 等它好了重建一次）
+    local U0 = LY.unit
+    b:box(T, V(U0.w, U0.h, U0.d), uAt(0, 0, -U0.d / 2), RGB(44, 48, 66))
+    for _, Q in ipairs({ LY.up, LY.low }) do
+      local fw, fh = (Q.ow - Q.gw) / 2, (Q.oh - Q.gh) / 2
+      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy + Q.oh / 2 - fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy - Q.oh / 2 + fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx - Q.ow / 2 + fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx + Q.ow / 2 - fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+      b:box(T, V(Q.gw, Q.gh, 0.0035), uAt(Q.cx, Q.cy, 0.00175), RGB(7, 8, 10))
+    end
+  end
+  -- 两块屏的显示面：贴在黑玻璃前面 1.5 毫米，比玻璃小一圈（圆角那里不露出方角）
+  local zF = LY.zGlass + 0.0015
+  local sUp = b:screen(T, LY.up.gw - 0.008, LY.up.gh - 0.008, uAt(LY.up.cx, LY.up.cy, zF), "citv",
+    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.07, lightK = 0.3, lightColor = RGB(110, 230, 130) })
+  local DASH = { "MAP", "NAV", "POS", "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" }   -- 下屏下边 8 个橙色横杠键（功能名写在屏幕下沿）
+  local lw = LY.low.gw - 0.008
+  local dash = {}
+  for i, nm in ipairs(DASH) do dash[i] = { nm, (LY.bot.x0 + (i - 1) * LY.bot.dx - (LY.low.cx - lw / 2)) / lw } end
+  local sLow = b:screen(T, lw, LY.low.gh - 0.008, uAt(LY.low.cx, LY.low.cy, zF), "cid",
+    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.16, paper = true, dash = dash, lightK = 0.3, lightColor = RGB(220, 226, 232) })
+  -- 键：键帽正面在键槽上面 4 毫米（键槽顶 1.5 毫米）
+  local KZ = 0.0055
+  local LED = RGB(70, 255, 110)
+  local UPL = { "BRT+", "BRT-", "SCAN L", "SCAN R", "STOW" }   -- 上屏左边一列
+  for i, q in ipairs(LY.upL) do b:keyCap(T, sUp, uAt(q[1], q[2], KZ), LY.upLw, LY.upLh, UPL[i], "blue", { side = "left", idx = i }) end
+  local ROW = { "SYM", "DESIG", "WHT", "BLK", "WFOV", "NFOV", "MAN", "AUTO", "GUN LOS", "GPS LOS" }   -- 两屏之间一排（管上屏）：单、单、双、双、双、双（最右一对深色）
+  for i, q in ipairs(LY.row) do
+    b:keyCap(T, sUp, uAt(q[1], LY.rowY, KZ), q[2], LY.rowH, ROW[i], (i >= 9) and "dark" or "blue", { side = "row", idx = i })
+    b:led(T, uAt(q[1] - q[2] / 2 + 0.0045, LY.rowY - LY.rowH / 2 + 0.0045, KZ + 0.0008), LED, 0.004, "key", { s = sUp, k = ROW[i] })   -- 键左下角的绿灯：选中的亮
+  end
+  for i, q in ipairs(LY.leds) do b:led(T, uAt(q[1], q[2], 0.0035), LED, 0.005, "key", { s = sUp, k = ({ "_PWR", "_SCAN", "_DES" })[i] }) end   -- 灯条：电源、自动扫描、指示
+  local LOWL = { "VEH SYS", "C3" }   -- 下屏左边：本车状态、消息
+  for i, q in ipairs(LY.lowL) do b:keyCap(T, sLow, uAt(q[1], q[2], KZ), LY.lowLw, LY.lowLh, LOWL[i], "orange", { side = "left", idx = i }) end
+  b:led(T, uAt(LY.lowL[2][1] - 0.008, LY.lowL[2][2] - 0.011, KZ + 0.0008), LED, 0.004, "key", { s = sLow, k = "_MSG" })
+  local A = LY.arrows   -- 左下四个方向键：挪地图
+  for _, q in ipairs({ { "UP", 0, 0, 1 }, { "DOWN", 180, 0, -1 }, { "LEFT", 270, -1, 0 }, { "RIGHT", 90, 1, 0 } }) do
+    b:keyCap(T, sLow, uAt(A.cx + q[3] * A.d, A.cy + q[4] * A.d, KZ), A.s, A.s, q[1], "arrow", { dir = q[2], side = "arrow" })
+  end
+  for i, nm in ipairs(DASH) do b:keyCap(T, sLow, uAt(LY.bot.x0 + (i - 1) * LY.bot.dx, LY.bot.y, KZ), LY.bot.w, LY.bot.h, nm, "dash", { side = "bot", idx = i }) end
+  -- 字母数字键盘（截图：ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、▶ / •、0、—、ENT）
+  local PAD = { { "1", "ABC" }, { "2", "DEF" }, { "3", "GHI" }, { "CLR" }, { "4", "JKL" }, { "5", "MNO" }, { "6", "PQR" }, { "LTR" },
+    { "7", "STU" }, { "8", "VWX" }, { "9", "YZ" }, { "NEXT", nil, ">" }, { "." }, { "0" }, { "-" }, { "ENT" } }
+  local KP = LY.pad
+  for i, q in ipairs(PAD) do
+    local cI, rI = (i - 1) % 4, math.floor((i - 1) / 4)
+    b:keyCap(T, sLow, uAt(KP.x0 + cI * KP.dx, KP.y0 + rI * KP.dy, KZ), KP.w, KP.h, q[1], "pad", { sub = q[2], text = q[3], side = "pad", idx = i })
+  end
+  b:led(T, uAt(LY.ledLow[1], LY.ledLow[2], 0.002), LED, 0.004, "key", { s = sLow, k = "_PWR" })
+  -- 显示单元下面：CROWS 遥控武器站的显示控制单元（真模型是带边键和键盘的显示控制单元 ip_cdu），挪到右下、不挡大显示单元
+  scr(b, T, "ip_cdu", 0.95, 0.17, 0.13, look(V(0.92, -0.04, -0.30), cEye + V(0, 0.25, 0)), "crows", { keys = { top = { "ARM", "SAFE", "THERM" }, bottom = { "ZOOM", "LASE", "SLAVE" } }, lightK = 0.25 })
+  -- 车长操纵握把（插图右下：白色机箱上一根黑色、带红色扳机和按钮的握杆）：
+  --   真模型：A-6E 的 AN/ASQ-155 弹道计算机的白色铸壳机箱（ip_asq2，去掉了原来那根杆，顶上留着键盘和杆座）+ 杆座上装 B-8 握杆（ip_stick）
+  local asqAt = V(1.00, -0.24, -0.22)
+  local asqCF = CF(asqAt) * ANG(0, rad(-55), 0)   -- 有键盘、杆座的那面（+Z）朝着车长
+  local KA = 0.6
+  b:group("cch", T, asqCF * CF(0.03 * KA / 2.8, 1.12 * KA / 2.8, 0.26 * KA / 2.8))   -- 杆座（器材坐标 0.03, 1.12, 0.26 格）
+  if b:prop(T, "ip_asq2", asqCF, KA) then
+    bx(T, 0.20, 0.03, 0.28, asqAt.X, asqAt.Y - 0.015, asqAt.Z, C.gray, MAT.Metal, 0, -55, 0)            -- 托架
+    b:tube(T, asqAt + V(0, -0.03, 0), V(asqAt.X, FY + 0.06, asqAt.Z), 0.04, C.gray, MAT.Metal)
+    if not b:prop("cch", "ip_stick", CF(), 0.75) then
+      b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
+    end
+  else
+    b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
+    b:button("cch", CF(0, 0.14, -0.03) * ANG(rad(-70), 0, 0), C.yellow, 0.012)
+    b:tube(T, V(0.78, -0.30, -0.12), V(0.78, 0.10, -0.12), 0.04, C.gray, MAT.Metal)
+  end
+  -- 主瞄准镜延伸目镜 GPSE（截图左边）：目镜筒、暗的镜片（用户 11-22：现实中不带绿光——原来是一颗发绿光的霓虹球），
+  --   外面一圈宽的黑橡胶护眼罩（上边、两边包着眼眶，两边往脸这边弯，下边空出目镜），
+  --   右下一个红色 T 形手柄
+  -- 延伸目镜的横向位置：用户 11-23 的截图里在视线中间偏左一点（原来 x 0.56 正对眼睛），显示单元挨在它右边
+  local GX = 0.47
+  b:cylZ(T, 0.10, 0.07, CF(GX, 0.52, -0.42), RGB(42, 44, 46), MAT.Metal)                        -- GPSE 目镜
+  b:cylZ(T, 0.03, 0.074, CF(GX, 0.52, -0.36), C.rubber, MAT.Fabric)
+  b:lens(T, CF(GX, 0.52, -0.346), 0.05)
+  b:tube(T, V(GX, 0.52, -0.47), V(0.60, 0.56, -0.82), 0.06, RGB(52, 54, 56), MAT.Metal)
+  do
+    -- 护眼罩：一圈圆角方形的粗橡胶管（宽 16 厘米、高 10 厘米），下边中间断开让出目镜，两头往里弯；两边往脸这边弯
+    local gp = V(GX, 0.52, -0.345)
+    local ring = {}
+    for i = 0, 20 do
+      local t = math.rad(-112 + i * (224 / 20))   -- 从左下（-112°）绕上面到右下（112°），0° 在正上方
+      local sx, sy = math.sin(t), math.cos(t)
+      local x = 0.080 * math.sign(sx) * math.abs(sx) ^ 0.6   -- 圆角方形（超椭圆）
+      local y = 0.050 * math.sign(sy) * math.abs(sy) ^ 0.6 + 0.008
+      table.insert(ring, gp + V(x, y, 0.010 + x * x * 2.4))
+    end
+    table.insert(ring, 1, gp + V(-0.030, -0.046, 0.012))   -- 下边两头往目镜那边收
+    table.insert(ring, gp + V(0.030, -0.046, 0.012))
+    b:cable(T, ring, 0.030, C.rubber, MAT.Fabric)
+    b:tube(T, V(GX + 0.07, 0.405, -0.46), V(GX + 0.085, 0.43, -0.40), 0.012, C.gray, MAT.Metal)        -- 红色 T 形手柄
+    b:tube(T, V(GX + 0.065, 0.44, -0.395), V(GX + 0.11, 0.425, -0.40), 0.016, RGB(190, 32, 30))
+  end
   b:seat(T, CF(0.58, -0.08, 0.30), { w = 0.38, d = 0.34, back = 0.34, recline = 6, post = 0.80, col = RGB(52, 50, 44) })
   bx(T, 0.36, 0.04, 0.30, 0.58, -0.52, 0.02, C.dark, MAT.DiamondPlate)                            -- 车长搁脚台
   b:radio(T, 0.22, 0.12, 0.18, look(V(1.20, 0.30, 0.45), V(0, 0.3, 0.45)), RGB(60, 64, 56))      -- 车长车内通话盒（推测）
@@ -353,31 +531,39 @@ function Defs.m1a2(b, ctx)
   b:grab("lhatch", V(-0.11, -0.03, 0.10), V(0.11, -0.03, 0.10), V(0, -0.05, 0), 0.02, C.black)
   -- 装填手潜望镜（能转）
   b:group("lscope", T, CF(-0.62, RY - 0.05, -0.12))
-  b:periscope("lscope", CF(0, 0, 0) * ANG(0, 0, 0), 0.18, 0.09, 0.12)
+  b:periscope("lscope", CF(0, 0, 0) * ANG(0, 0, 0), 0.18, 0.09, 0.12, { model = true })
   b:grab("lscope", V(-0.10, -0.06, 0.06), V(0.10, -0.06, 0.06), V(0, -0.06, 0), 0.016, C.black)
   -- 装填手面板（主炮状态：READY / ARMED，炮塔动力）、电台架、灭火器、折叠座椅
   b:panel(T, 0.26, 0.20, look(V(-1.21, 0.36, -0.22), V(0, 0.36, -0.22)), 3, 4, RGB(66, 68, 66), { ledRole = "ready" })
   b:placard(T, 0.20, 0.04, look(V(-1.215, 0.48, -0.22), V(0, 0.48, -0.22)), "LOADER'S PANEL", { bg = C.black, fg = C.white })
-  b:radio(T, 0.36, 0.16, 0.30, look(V(-1.21, 0.30, 0.62), V(0, 0.30, 0.62)), RGB(70, 76, 58))      -- SINCGARS 电台 ×2
-  b:radio(T, 0.36, 0.16, 0.30, look(V(-1.21, 0.48, 0.62), V(0, 0.48, 0.62)), RGB(70, 76, 58))
+  swPanel(T, look(V(-1.215, 0.34, 0.0), V(0, 0.34, 0.0)), 1.2, 0.10, 0.16, 3, 2, RGB(66, 68, 66), { guard = true })   -- 弹药门 / 炮塔动力开关（带护盖的拨杆）
+  b:radio(T, 0.36, 0.16, 0.30, look(V(-1.21, 0.30, 0.62), V(0, 0.30, 0.62)), RGB(70, 76, 58), "ip_radio")      -- SINCGARS 电台 ×2
+  b:radio(T, 0.36, 0.16, 0.30, look(V(-1.21, 0.48, 0.62), V(0, 0.48, 0.62)), RGB(70, 76, 58), "ip_radio")
   b:harness(T, { V(-1.05, 0.62, 0.62), V(-0.95, 0.74, 0.40), V(-0.20, 0.74, 0.35), V(0.40, 0.74, 0.05) }, 3, 0.022)
   b:extinguisher(T, CF(-1.18, 0.12, 0.05), 0.36, 0.12)
   b:seat(T, CF(-1.12, 0.10, 0.40) * ANG(0, PI / 2, 0) * ANG(rad(-80), 0, 0), { w = 0.34, d = 0.30, back = 0, col = RGB(52, 50, 44) })   -- 折起来的座椅
-  b:box(T, V(0.30, 0.22, 0.44), CF(-0.95, -0.48, -0.70), OD)                                      -- 机枪弹箱
-  b:box(T, V(0.30, 0.22, 0.44), CF(-0.95, -0.72, -0.70), OD)
+  -- 机枪弹箱：真模型是 12.7 毫米 M2A1 铁皮弹箱（ip_can，30.5 × 15.5 厘米、带提手和扣盖），两排两层；没生成好就照旧两个方箱
+  local canN = 0
+  for _, y in ipairs({ -0.83, -0.61 }) do
+    for _, z in ipairs({ -0.79, -0.61 }) do
+      if b:prop(T, "ip_can", CF(-0.95, y, z), 1) then canN += 1 end
+    end
+  end
+  if canN == 0 then
+    b:box(T, V(0.30, 0.22, 0.44), CF(-0.95, -0.48, -0.70), OD)
+    b:box(T, V(0.30, 0.22, 0.44), CF(-0.95, -0.72, -0.70), OD)
+  end
   -- 炮塔里的电缆
   b:harness(T, { V(0.10, RY - 0.06, -1.10), V(0.40, RY - 0.06, -0.60), V(0.95, RY - 0.06, -0.40), V(1.10, 0.40, -0.30) }, 4, 0.02)
   b:harness(T, { V(0, FY + 0.30, 0.05), V(0.30, -0.40, 0.20), V(0.95, -0.10, 0.40), V(1.10, 0.25, 0.40) }, 3, 0.025)
   b:harness(T, { V(-0.95, -0.20, 0.95), V(-1.15, 0.05, 0.70), V(-1.18, 0.20, 0.40) }, 3, 0.02)
   -- 灯：炮塔两盏顶灯（白 / 夜里红或蓝绿）、开炮时从观察镜透进来的火光、挨打时的红色告警
   b:light(T, CF(-0.25, RY - 0.06, 0.55), "dome", RGB(255, 244, 228), 3.4, 1.1)
-  b:light(T, CF(0.70, RY - 0.06, -0.30), "dome", RGB(255, 244, 228), 3.2, 1.0)
-  b:light(T, CF(0.56, RY - 0.05, 0.34), "flash", RGB(255, 196, 120), 4.0, 0)
+  b:light(T, CF(1.00, RY - 0.06, -0.30), "dome", RGB(255, 244, 228), 3.2, 1.0)   -- 原来在 x 0.70（现在是指挥塔开口），挪到开口右边；没有灯具，只留照明
+  b:light(T, CF(CUP.X, RY - 0.05, CUP.Z), "flash", RGB(255, 196, 120), 4.0, 0)
   b:light(T, CF(-0.30, 0.40, -0.50), "warn", RGB(255, 40, 30), 3.0, 0)
-  for _, p in ipairs({ V(-0.25, RY - 0.02, 0.55), V(0.70, RY - 0.02, -0.30) }) do
-    b:box(T, V(0.14, 0.04, 0.10), CF(p), C.dark, MAT.Metal)
-    b:led(T, CF(p - V(0, 0.025, 0)), RGB(255, 236, 210), 0.05, "domeLamp")
-  end
+  -- 顶灯灯具：真模型是带铁丝护罩的防爆顶灯（ip_lamp）；车长前上方那盏去掉（用户 11-23：「把那个天花板上的灯去掉」——车长抬头看观察窗时正挡在前面）
+  domeLamp(T, V(-0.25, RY, 0.55))
 
   return {
     gunK = 0.305,   -- M256 后坐行程
@@ -390,7 +576,7 @@ function Defs.m1a2(b, ctx)
       gunner = { g = T, eye = gEye + V(0.02, 0.06, 0.16), look = V(0, -0.18, -1), yaw = 120, up = 45, down = 60, crew = "gunner", sight = true, scope = V(0.55, 0.33, -0.80),
         optics = { primary = { kind = "gps" },
           alt = { kind = "gas", name = "GAS  M920  8X", g = G, pos = V(0.24, 0.12, 0.40), dir = "gun", fovs = { 8.5 }, ret = "gas", look = "day", shape = "circle", useSight = true } } },
-      commander = { g = T, eye = cEye, look = V(-0.05, -0.30, -1), yaw = 160, up = 70, down = 70, crew = "commander", scope = V(0.56, 0.52, -0.40),
+      commander = { g = T, eye = cEye, look = V(-0.05, -0.30, -1), yaw = 160, up = 70, down = 70, crew = "commander", scope = V(0.47, 0.52, -0.40),
         optics = { primary = { kind = "citv", name = "CITV", g = T, pos = V(-0.45, 1.05, -0.75), dir = "citv", fovs = { 22, 7 }, ret = "citv", look = "whot", shape = "rect" },
           alt = { kind = "gps" },
           third = { kind = "crows", name = "CROWS-LP  M2", g = T, pos = V(0.62, 1.40, 0.20), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect",
@@ -472,7 +658,7 @@ function Defs.ztz99a(b, ctx)
   for i = -1, 1 do
     local a = rad(i * 32)
     local p = V(math.sin(a) * 0.22, -0.13, DZ - 0.18 - math.cos(a) * 0.06)
-    b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.16, 0.09, 0.10)
+    b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.16, 0.09, 0.10, { model = true })
   end
   b:seat(H, CF(0, FY + 0.22, -2.24) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.58, recline = 32, head = true, col = RGB(46, 50, 44) })
   -- 方向盘（99 式起用的方向盘操纵、液力机械综合传动）
@@ -509,9 +695,17 @@ function Defs.ztz99a(b, ctx)
     table.insert(parts, b:box("carousel", V(0.15, 0.025, 0.70), tray, RGB(84, 90, 82), MAT.Metal))
     local kind = (i % 11 < 5) and "ap" or ((i % 11 < 8) and "heat" or ((i % 11 < 10) and "he" or "gl"))
     local tip = (kind == "ap") and RGB(40, 40, 40) or ((kind == "heat") and RGB(70, 80, 60) or ((kind == "he") and RGB(80, 86, 64) or RGB(60, 70, 80)))
-    table.insert(parts, b:cylZ("carousel", 0.58, 0.125, tray * CF(0, 0.07, -0.02), tip, MAT.Metal))                     -- 下层：弹丸
-    table.insert(parts, b:cylZ("carousel", 0.52, 0.125, tray * CF(0, 0.20, 0.01), RGB(170, 156, 112), MAT.SmoothPlastic)) -- 上层：药筒
-    table.insert(parts, b:cylZ("carousel", 0.03, 0.13, tray * CF(0, 0.20, 0.28), RGB(150, 128, 82), MAT.Metal))          -- 药筒底盘
+    -- 下层弹丸、上层药筒：真模型（125 毫米杀爆弹 / 发射药筒 dichevk、3BK18 破甲弹 VladIG_CG，CC-BY；弹底在原点、弹头朝 +Z → 转半圈，弹底朝转盘中间）
+    local pk = (kind == "heat") and "ip_r125" or ((kind == "he") and "ip_he125" or nil)
+    local proj = pk and b:prop("carousel", pk, tray * CF(0, 0.07, 0.27) * ANG(0, PI, 0), 0.58 / 0.71)
+    if proj then for _, p in ipairs(proj) do table.insert(parts, p) end
+    else table.insert(parts, b:cylZ("carousel", 0.58, 0.125, tray * CF(0, 0.07, -0.02), tip, MAT.Metal)) end                -- 下层：弹丸
+    local chg = b:prop("carousel", "ip_chg125", tray * CF(0, 0.20, 0.29) * ANG(0, PI, 0), 0.52 / 0.43)
+    if chg then for _, p in ipairs(chg) do table.insert(parts, p) end
+    else
+      table.insert(parts, b:cylZ("carousel", 0.52, 0.125, tray * CF(0, 0.20, 0.01), RGB(170, 156, 112), MAT.SmoothPlastic)) -- 上层：药筒
+      table.insert(parts, b:cylZ("carousel", 0.03, 0.13, tray * CF(0, 0.20, 0.28), RGB(150, 128, 82), MAT.Metal))          -- 药筒底盘
+    end
     cassettes[i + 1] = { parts = parts, a = a, kind = kind }
   end
   b:name("cassettes", cassettes)
@@ -593,7 +787,7 @@ function Defs.ztz99a(b, ctx)
   bx(T, 0.22, 0.18, 0.14, -0.55, 0.36, -0.86, RGB(36, 38, 40))
   b:cylZ(T, 0.07, 0.06, CF(-0.55, 0.33, -0.78), C.rubber, MAT.Fabric)
   b:box(T, V(0.24, 0.06, 0.08), CF(-0.55, 0.43, -0.80), C.rubber, MAT.Fabric)
-  b:led(T, CF(-0.55, 0.33, -0.74), RGB(80, 255, 120), 0.014, "gpsEye")
+  b:lens(T, CF(-0.55, 0.33, -0.744), 0.042)   -- 暗的镜片（不发绿光）
   b:placard(T, 0.14, 0.04, CF(-0.62, 0.56, -0.755) * ANG(0, PI, 0), "主瞄准镜", { bg = C.black, fg = C.white })
   b:screen(T, 0.20, 0.15, look(V(-0.86, 0.22, -0.80), gEye + V(0, -0.1, 0.1)), "fcscn", { keys = { top = { "主菜单", "弹种", "测距", "校炮", "激光" }, bottom = { "极性", "倍率", "火控", "自检", "复位" } }, lightK = 0.28 })   -- 火控计算机面板
   -- 炮长显示器（热像）：原来在 (-0.30, 0.52)，跑到了炮闩左边那块防护板（x = -0.38，顶到 0.55 以上）里边，炮长隔着防护板看不见
@@ -613,7 +807,7 @@ function Defs.ztz99a(b, ctx)
   local cEye = V(0.56, 0.52, -0.10)
   bx(T, 0.30, 0.38, 0.34, 0.62, 0.62, -0.50, RGB(46, 50, 48))                     -- 周视瞄准镜下部
   b:cylZ(T, 0.07, 0.06, CF(0.56, 0.52, -0.30), C.rubber, MAT.Fabric)
-  b:led(T, CF(0.56, 0.52, -0.26), RGB(80, 255, 120), 0.014, "gpsEye")
+  b:lens(T, CF(0.56, 0.52, -0.264), 0.042)   -- 暗的镜片（不发绿光）
   b:screen(T, 0.26, 0.19, look(V(0.82, 0.30, -0.42), cEye), "cnmap", { keys = { top = { "地图", "消息", "态势", "导航", "坐标" }, bottom = { "放大", "缩小", "标绘", "亮+", "亮-" } }, lightColor = RGB(150, 190, 230), lightK = 0.35 })   -- 综合显示终端
   -- 周视镜热像：原来 x = 0.36，在炮闩右边防护板（x = 0.38）里边，车长隔着防护板看（用户 11-22：屏幕会被挡住）——挪到车长这边
   b:screen(T, 0.18, 0.13, look(V(0.50, 0.28, -0.46), cEye), "citvcn", { keys = { top = { "白热", "黑热", "宽视场", "窄视场" }, bottom = { "手动", "扫描", "随炮", "指示" } }, lightK = 0.25 })
@@ -621,7 +815,7 @@ function Defs.ztz99a(b, ctx)
   b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
   b:tube(T, V(0.86, -0.40, -0.18), V(0.86, 0.0, -0.18), 0.04, C.gray, MAT.Metal)
   b:panel(T, 0.24, 0.18, look(V(1.15, 0.36, 0.10), V(0, 0.36, 0.10)), 3, 4, RGB(60, 66, 60))
-  b:radio(T, 0.34, 0.15, 0.28, look(V(1.15, 0.18, 0.55), V(0, 0.18, 0.55)), RGB(64, 72, 60))
+  b:radio(T, 0.34, 0.15, 0.28, look(V(1.15, 0.18, 0.55), V(0, 0.18, 0.55)), RGB(64, 72, 60), "ip_radio2")
   b:seat(T, CF(0.58, -0.16, 0.30), { w = 0.38, d = 0.34, back = 0.34, recline = 6, post = 0.30, col = RGB(46, 50, 44) })
   b:extinguisher(T, CF(-1.12, 0.10, 0.50), 0.36, 0.12)
   b:harness(T, { V(0.10, RY - 0.06, -1.05), V(0.40, RY - 0.06, -0.55), V(0.95, RY - 0.06, -0.35), V(1.10, 0.40, -0.25) }, 4, 0.02)
@@ -1124,8 +1318,14 @@ end
 Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
   hoop = { z = -0.80, th = 0.05, mirrors = { 0, -52, 52 }, struts = true } }) end
 Defs.j35 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "pano", hud = true, stick = "side", cn = true, goldGlass = true }) end
+-- 歼-36：大尺寸全景触摸屏（同歼-35 那套）、侧杆，没有平显（头盔显示）——没有公开的座舱照片，照第六代机的说法
+Defs.j36 = function(b, ctx) return Defs.jet(b, ctx, { disp = "pano", hud = false, stick = "side", cn = true, goldGlass = true }) end
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 Defs.j16 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", seats = 2, frame = true, cn = true }) end
+-- 歼-11B：苏-27 那种单座座舱（大圆形仪表板换成三块下视显示器、平显框高）
+Defs.j11 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j16", hud = true, hudW = 0.16, hudH = 0.17, hudFrame = "tall", stick = "center", frame = true, cn = true }) end
+-- 歼-10C：三块大下视显示器 + 宽视场平显的玻璃座舱
+Defs.j10 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.17, hudH = 0.16, hudFrame = "box", stick = "center", frame = true, cn = true }) end
 Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j15t", hud = true, hudW = 0.16, hudH = 0.15, hudFrame = "box", stick = "center", frame = true, cn = true,
   hoop = { z = -0.78, th = 0.075, compass = true } }) end
 Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3, goldGlass = true }) end

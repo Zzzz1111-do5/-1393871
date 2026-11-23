@@ -43,6 +43,8 @@ local D = {
   yj83k = { nose = "radar", col = LGREY, bands = { { 0.22, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.07, s = 1.5 }, wing = { at = 0.42, c = 0.11, span = 3.4 } },   -- 鹰击-83K：十字形弹翼在中段、尾翼在最后
   yj91 = { nose = "arm", col = GREY, bands = { { 0.26, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.09, s = 1.6 }, mid = { at = 0.45, c = 0.14, s = 1.4 }, can = { at = 0.18, c = 0.06, s = 1.2 } },
   agm88 = { nose = "arm", col = WHITE, bands = { { 0.24, 0.025, YELLOW }, { 0.55, 0.025, BROWN } }, tail = { at = 0.94, c = 0.08, s = 1.8 }, mid = { at = 0.38, c = 0.18, s = 2.0 } },
+  -- 惊雷-1 高超音速战术核导弹（虚构）：白色弹体、深色烧蚀弹头、红黄两道警示带、尾部四片小舵（空射弹道导弹的样子）
+  hn1 = { nose = "arm", col = WHITE, bands = { { 0.24, 0.018, RED }, { 0.285, 0.018, YELLOW }, { 0.72, 0.012, DARK } }, tail = { at = 0.93, c = 0.1, s = 1.25 } },
   -- 炸弹
   mk82 = { nose = "bomb", col = OLIVE, bands = { { 0.18, 0.025, YELLOW } }, kit = "mk" },
   b250 = { nose = "bomb", col = DGREEN, bands = { { 0.2, 0.025, YELLOW } }, kit = "mk" },

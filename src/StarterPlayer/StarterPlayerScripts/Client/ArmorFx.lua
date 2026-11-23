@@ -159,6 +159,34 @@ function ArmorFx.init(G)
     end)
     G.apsFxCount = (G.apsFxCount or 0) + 1   -- 测试用
   end
+
+  -- 栅栏装甲卡住火箭弹（Kit.lua）：引信被栅条压坏、弹头没炸——一串火星、弹体碎片掉在地上、一点灰
+  G.fxExtra.slat = function(e)
+    local p = e.p
+    if typeof(p) ~= "Vector3" then return end
+    local n = (typeof(e.n) == "Vector3" and e.n.Magnitude > 0.1) and e.n.Unit or V(0, 1, 0)
+    sparks(p, n, 16, 14, RGB(255, 200, 120))
+    debris(p, n + V(0, 0.6, 0), 4, RGB(62, 66, 54), 0.25)
+    smokeAt(p, n, RGB(150, 146, 136), 1.4, 1.4, 5)
+    if G.playSound then G.playSound("ric", p, 1.1) end
+  end
+  -- 扫雷犁把雷翻到一边（Kit.lua）：一团土、一颗雷滚出去
+  G.fxExtra.plowMine = function(e)
+    local p = e.p
+    if typeof(p) ~= "Vector3" then return end
+    smokeAt(p + V(0, 0.5, 0), V(0, 1, 0), RGB(150, 128, 96), 2.2, 1.8, 10)
+    local mine = part(CYL, V(0.35, 1.2, 1.2), CF(p + V(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2), RGB(70, 76, 58), Enum.Material.Metal, 0)
+    local side = (math.random() < 0.5) and -1 or 1
+    tween(mine, 0.6, { CFrame = CF(p + V(side * 4, 0.3, 0)) * CFrame.Angles(math.rad(80), 0, math.pi / 2) })
+    Debris:AddItem(mine, 6)
+  end
+  -- 激光压制（JD-3）：车上的干扰头一闪红光
+  G.fxExtra.dazzle = function(e)
+    local v = e.id and G.viewById and G.viewById(e.id)
+    local cf = v and (v.tF or v.hullF)
+    local p = cf and cf.Position
+    if p and G.flash then G.flash(p + V(0, 2.5, 0), RGB(255, 60, 40), 26, 4, 0.25) end
+  end
 end
 
 return ArmorFx

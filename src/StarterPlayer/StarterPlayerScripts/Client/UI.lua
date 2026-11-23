@@ -103,7 +103,10 @@ function UI.init(G)
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
-  local function teamColor(t) return Config.Teams[t or "atk"].color end
+  local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
+    local T0 = Config.Teams[t or "atk"]
+    return T0 and T0.color or RGB(200, 200, 200)
+  end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
     return string.format("%d:%02d", s // 60, s % 60)
@@ -220,6 +223,7 @@ function UI.init(G)
   local langBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   local sideBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0 - 118, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
+  sideBtn.Visible = false   -- 用户 11-22：「界面就不要写 switch side 了」——自动分队，不再从部署界面换阵营
   local menuBtn = link(deploy, "", UDim2.fromOffset(80, 26), UDim2.new(1, -M0 - 236, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   menuBtn.Activated:Connect(function() if G.showMenu then G.showMenu() end end)
   hair(deploy, UDim2.new(1, -M0 * 2, 0, 1), UDim2.fromOffset(M0, topY + 34), 0.9)
@@ -976,6 +980,7 @@ function UI.init(G)
   function G.refresh()
     local S = G.S
     if not S then return end
+    if G.refreshMapPick then G.refreshMapPick(S) end   -- 选地图界面（MapPick.lua）：生成地图时也要刷进度、生成好了快速加入
     if (S.progress or 1) < 1 then
       loading.Visible = true
       loadText.Text = T("ui.serverStarting", math.floor((S.progress or 0) * 100))

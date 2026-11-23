@@ -174,6 +174,22 @@ H.run(0.3)
 -- 选阵营（进服先看这个）
 H.run(0.5)
 snap("menu")
+-- 选地图（主菜单「开始游戏」打开）：服务器已经在打岛的样子；再看一张还没定地图、正在投票的样子
+if C.showMapPick then
+	as(atk, function() C.showMapPick() end)
+	H.run(0.5)
+	snap("mappick")
+	local S2 = table.clone(C.S)
+	S2.map, S2.mapReady = nil, false
+	-- 投票中：岛 1 票、沙海 2 票（自己投的沙海），还剩 18 秒，4 个人里 3 个投了
+	S2.vote = { n = { island = 1, sands = 2 }, left = 18, voters = 3, players = 4 }
+	S2.myVote = "sands"
+	as(atk, function() C.refreshMapPick(S2) end)
+	snap("mappick_new")
+	local mp = atk:FindFirstChildOfClass("PlayerGui"):FindFirstChild("MapPick")
+	if mp then mp.Enabled = false end
+	H.run(0.3)
+end
 if C.menuEnter then
 	local prev = H.ctx
 	H.ctx = atk

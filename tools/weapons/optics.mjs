@@ -15,7 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NodeIO, Document } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { join, prune, compactPrimitive } from '@gltf-transform/functions';
+import { join, prune, compactPrimitive, simplifyPrimitive, weldPrimitive, normals } from '@gltf-transform/functions';
+import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +35,11 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 async function sourceFile(key) {
   const S = CFG.sources[key];
   const f = path.join(CACHE, key, 'model.glb');
+  // gen：本项目自己按图做的壳子（Sketchfab 上找不到的，比如 M1A2 SEPv2 车长显示单元）——每次现生成（脚本改了版面就跟着变）
+  if (S.gen) return (await import(path.join(HERE, S.gen))).build(f);
   if (fs.existsSync(f)) return f;
+  // prep：原模型要先加工的（潜望镜的三维扫描件要截取、减面、重烘贴图）——缓存是那个脚本出的，不直接下载原件
+  if (S.prep) throw new Error(`缓存里没有 ${key}：先运行 node tools/weapons/${S.prep}`);
   const tok = process.env.SKETCHFAB_TOKEN;
   if (!tok) throw new Error(`缓存里没有 ${key}（${S.name}）：设好环境变量 SKETCHFAB_TOKEN 再运行，或者把下载的 model.glb 放进 ${path.dirname(f)}`);
   const r = await fetch(`https://api.sketchfab.com/v3/models/${S.uid}/download`, { headers: { Authorization: 'Token ' + tok } });
@@ -64,11 +69,15 @@ function axesMat(axes, scale, rot) {
 
 // ---------------------------------------------------------------- 一件：烘变换、按材质并块、挪原点
 
-async function buildItem(key, I) {
+async function buildItem(key, I, dry) {
   const doc = await io.read(await sourceFile(I.src));
   const root = doc.getRoot();
+  // opaque：作者设成半透明（BLEND）、贴图其实不透明的材质按不透明画（Roblox 导入时整块会变成半透明）
+  if (I.opaque) for (const m of root.listMaterials()) if (m.getAlphaMode() !== 'OPAQUE') m.setAlphaMode('OPAQUE');
   const scene = root.getDefaultScene() || root.listScenes()[0];
   const { R, s } = axesMat(I.axes || 'x,y,z', I.scale || 1, I.rot);
+  // sq：换到器材坐标以后各轴再压扁 / 拉长（[x, y, z] 倍数；比如飞机座舱里那种很深的机箱装进炮塔壁，只要前面那一截）；法线按逆比例改
+  const SQ = I.sq || [1, 1, 1];
   const nodeBox = {};   // 节点名 → 包围盒（换到器材坐标、还没挪原点）
   const byMat = new Map();
   const meshNodes = [];
@@ -79,12 +88,12 @@ async function buildItem(key, I) {
     const M = n.getWorldMatrix();
     const tp = (v) => {   // 原模型坐标 → 世界 → 器材坐标（没挪原点）
       const w = [M[0] * v[0] + M[4] * v[1] + M[8] * v[2] + M[12], M[1] * v[0] + M[5] * v[1] + M[9] * v[2] + M[13], M[2] * v[0] + M[6] * v[1] + M[10] * v[2] + M[14]];
-      return [0, 1, 2].map((r) => (R[r][0] * w[0] + R[r][1] * w[1] + R[r][2] * w[2]) * s);
+      return [0, 1, 2].map((r) => (R[r][0] * w[0] + R[r][1] * w[1] + R[r][2] * w[2]) * s * SQ[r]);
     };
     // 法线：世界矩阵 3×3 的逆转置（这些模型只有旋转、均匀缩放，直接用旋转部分再归一）
     const tn = (v) => {
       const w = [M[0] * v[0] + M[4] * v[1] + M[8] * v[2], M[1] * v[0] + M[5] * v[1] + M[9] * v[2], M[2] * v[0] + M[6] * v[1] + M[10] * v[2]];
-      const o = [0, 1, 2].map((r) => R[r][0] * w[0] + R[r][1] * w[1] + R[r][2] * w[2]);
+      const o = [0, 1, 2].map((r) => (R[r][0] * w[0] + R[r][1] * w[1] + R[r][2] * w[2]) / SQ[r]);
       const l = Math.hypot(...o) || 1;
       return o.map((x) => x / l);
     };
@@ -155,9 +164,38 @@ async function buildItem(key, I) {
     parts.push({ part, mesh, node });
   }
   await doc.transform(join({ keepNamed: false }), prune());
+  // tris：网格太细的（Roblox 导入一块最多两万个三角形；车内饰一摆几十发弹也吃不消）用 meshoptimizer 简化：
+  //   整件（所有块加起来）不超过 I.tris，各块按同一个比例减；单块也不超过 19000
+  if (I.tris) {   // 只有写了 tris 的件才减（以前的瞄准镜、手持装备照原样，不用重导）
+    const cap = I.tris;
+    const tri = (prim) => { const ix = prim.getIndices(); return (ix ? ix.getCount() : prim.getAttribute('POSITION').getCount()) / 3; };
+    let total = 0;
+    for (const P of parts) for (const prim of P.mesh.listPrimitives()) total += tri(prim);
+    let k = Math.min(1, cap / total);
+    // keepSmall：小块（不到总数的 small 成）不减，预算都给大块（开关面板：护盖、拨杆那一块六万个三角形，面板本身才一千）
+    let small = 0;
+    if (I.keepSmall) {
+      for (const P of parts) for (const prim of P.mesh.listPrimitives()) if (tri(prim) <= cap * I.keepSmall) small += tri(prim);
+      k = Math.min(1, Math.max(0.01, (cap - small) / Math.max(1, total - small)));
+    }
+    let stripped = false;
+    for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
+      const t = tri(prim);
+      const want = (I.keepSmall && t <= cap * I.keepSmall) ? t : Math.min(19000, t * k);
+      if (t <= want * 1.02 || t < 60) continue;
+      await MeshoptSimplifier.ready;
+      // 没贴图的块：法线、UV 拆开的接缝会把顶点锁住、减不下去——先去掉法线 / UV（不用贴图，UV 没用），只按位置焊、减，最后重算平滑法线
+      const m0 = prim.getMaterial();
+      const tex = m0 && (m0.getBaseColorTexture() || m0.getNormalTexture());
+      if (!tex) for (const a of ['NORMAL', 'TANGENT', 'TEXCOORD_0', 'TEXCOORD_1', 'COLOR_0']) if (prim.getAttribute(a)) { prim.setAttribute(a, null); stripped = true; }
+      weldPrimitive(prim);
+      simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio: (want / t) * 0.95, error: I.simpErr || 0.08 });
+      console.log(`   ${key} ${P.part} 简化 ${t} → ${tri(prim)} 个三角形`);
+    }
+    if (stripped) await doc.transform(normals({ overwrite: false }));   // 只在去掉过法线的件上重算（别的件输出不变，不用重导）
+  }
   // dropBox：去掉中心落在这个盒子里的连通块（器材坐标 [x0, y0, z0, x1, y1, z1]；比如 M40A5 自带的瞄准镜，换装别的镜子）
-  if (I.dropBox) {
-    const B = I.dropBox;
+  for (const B of I.dropBox ? (Array.isArray(I.dropBox[0]) ? I.dropBox : [I.dropBox]) : []) {   // 一个盒子或者几个盒子
     let dropped = 0;
     for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
       const pos = prim.getAttribute('POSITION'), idx = prim.getIndices();
@@ -192,6 +230,67 @@ async function buildItem(key, I) {
       prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(keep)).setBuffer(idx.getBuffer()));
     }
     console.log('   dropBox 去掉三角形', dropped);
+  }
+  // clipBox：去掉重心落在盒子里的三角形（按三角形切，不管连通；比如飞机驾驶杆的长杆子，只留握把那一截装到坦克的底座上）
+  for (const B of I.clipBox ? (Array.isArray(I.clipBox[0]) ? I.clipBox : [I.clipBox]) : []) {
+    let cut = 0;
+    for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION'), idx = prim.getIndices();
+      // 没有索引的图元（三个顶点一个三角形）：按顺序补一份索引
+      const ia = idx ? idx.getArray() : Uint32Array.from({ length: pos.getCount() }, (_, i) => i), keep = [], e = [0, 0, 0];
+      for (let t = 0; t < ia.length; t += 3) {
+        const c = [0, 0, 0];
+        for (let q = 0; q < 3; q++) { pos.getElement(ia[t + q], e); c[0] += e[0] / 3; c[1] += e[1] / 3; c[2] += e[2] / 3; }
+        if (c[0] >= B[0] && c[0] <= B[3] && c[1] >= B[1] && c[1] <= B[4] && c[2] >= B[2] && c[2] <= B[5]) { cut++; continue; }
+        keep.push(ia[t], ia[t + 1], ia[t + 2]);
+      }
+      prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(keep)).setBuffer(pos.getBuffer()));
+    }
+    console.log('   clipBox 去掉三角形', cut);
+  }
+  // cutBelow：按平面 y = cutBelow（器材坐标，格）真切开——跨过这个面的三角形切成留在上面的那一截（位置、法线、UV 按比例插值），
+  //   下面的全去掉（clipBox 按重心整块去，侧板、背板那种大三角形会留下长长的尖角）；比如显示控制单元去掉下面的键盘，上面摞成两块屏连一体
+  if (I.cutBelow != null) {
+    const y0 = I.cutBelow;
+    let cutN = 0;
+    for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION'), nor = prim.getAttribute('NORMAL'), uv = prim.getAttribute('TEXCOORD_0'), tan = prim.getAttribute('TANGENT');
+      const idx = prim.getIndices();
+      const n = idx ? idx.getCount() : pos.getCount();
+      const vtx = (i) => ({ p: pos.getElement(i, [0, 0, 0]).slice(), n: nor ? nor.getElement(i, [0, 0, 0]).slice() : null,
+        u: uv ? uv.getElement(i, [0, 0]).slice() : null, t: tan ? tan.getElement(i, [0, 0, 0, 0]).slice() : null });
+      const lerp = (a, b, t) => a.map((x, k) => x + (b[k] - x) * t);
+      const mix = (A, B, t) => ({ p: lerp(A.p, B.p, t), n: A.n && lerp(A.n, B.n, t), u: A.u && lerp(A.u, B.u, t), t: A.t && [...lerp(A.t.slice(0, 3), B.t.slice(0, 3), t), A.t[3]] });
+      const oP = [], oN = [], oU = [], oT = [];
+      const put = (v) => {
+        oP.push(...v.p);
+        if (nor) { const l = Math.hypot(...v.n) || 1; oN.push(v.n[0] / l, v.n[1] / l, v.n[2] / l); }
+        if (uv) oU.push(...v.u);
+        if (tan) oT.push(...v.t);
+      };
+      for (let f = 0; f + 2 < n; f += 3) {
+        const V = [0, 1, 2].map((q) => vtx(idx ? idx.getScalar(f + q) : f + q));
+        const ins = V.map((v) => v.p[1] >= y0);
+        if (ins[0] && ins[1] && ins[2]) { V.forEach(put); continue; }
+        cutN++;
+        if (!ins[0] && !ins[1] && !ins[2]) continue;
+        const poly = [];   // 按原来的顶点顺序沿边走一圈（绕向不变），留下面上的点和跨过平面的交点
+        for (let q = 0; q < 3; q++) {
+          const A = V[q], B = V[(q + 1) % 3], ia = ins[q], ib = ins[(q + 1) % 3];
+          if (ia) poly.push(A);
+          if (ia !== ib) poly.push(mix(A, B, (y0 - A.p[1]) / (B.p[1] - A.p[1])));
+        }
+        for (let q = 1; q + 1 < poly.length; q++) { put(poly[0]); put(poly[q]); put(poly[q + 1]); }
+      }
+      const buf = pos.getBuffer();
+      prim.setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(oP)).setBuffer(buf));
+      if (nor) prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(new Float32Array(oN)).setBuffer(buf));
+      if (uv) prim.setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(new Float32Array(oU)).setBuffer(buf));
+      if (tan) prim.setAttribute('TANGENT', doc.createAccessor().setType('VEC4').setArray(new Float32Array(oT)).setBuffer(buf));
+      for (const sem of prim.listSemantics()) if (!['POSITION', 'NORMAL', 'TEXCOORD_0', 'TANGENT'].includes(sem)) prim.setAttribute(sem, null);
+      prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(Uint32Array.from({ length: oP.length / 3 }, (_, i) => i)).setBuffer(buf));
+    }
+    console.log('   cutBelow 切到的三角形', cutN);
   }
   // inner：镜筒里面（光轴附近、目镜到物镜之间）的三角形——内壁、镜片、分划板——分到「<块名>In」块里（用户 11-21：瞄准镜照使命召唤做）：
   //   开镜时游戏把这几块藏起来，眼睛从目镜的洞里直接看到放大的战场，外面一圈还是镜子的外壳（不再整屏涂黑）。
@@ -484,6 +583,11 @@ async function buildItem(key, I) {
     const out2 = await sharp(Buffer.from(img)).resize(w2, h2)[png ? 'png' : 'jpeg'](png ? {} : { quality: 90 }).toBuffer();
     tex.setImage(new Uint8Array(out2));
   }
+  if (dry) {   // 只出预览：GLB 写到预览目录（看贴图、量位置用），不动 models/optics
+    await io.write(path.join(PREV, key + '.glb'), doc);
+    console.log(key.padEnd(6), '三角形', meta.tris, '（只出预览）');
+    return { doc, parts, meta };
+  }
   const out = path.join(ROOT, 'models/optics', key + '.glb');
   await io.write(out, doc);
   console.log(key.padEnd(6), '三角形', meta.tris, '块', parts.map((p) => p.part).join('/'), 'glb', fs.statSync(out).size, '字节');
@@ -584,7 +688,7 @@ async function embed(key, B, I) {
 
 // ---------------------------------------------------------------- 预览（平均色、正交）
 
-async function preview(key, B) {
+async function preview(key, B, I = {}) {
   const tris = [];
   for (const P of B.parts) for (const p of P.mesh.listPrimitives()) {
     const pos = p.getAttribute('POSITION'), idx = p.getIndices();
@@ -597,9 +701,11 @@ async function preview(key, B) {
   }
   // 局部放大（校准握把等）：环境变量 ZOOM="键:z0,y0,z1,y1"（侧视，器材坐标），出 <键>_zoom.png，格子 0.02
   const zoom = (process.env.ZOOM || '').split(';').map((z) => z.split(':')).find((z) => z[0] === key);
-  for (const view of zoom ? ['side', 'eye', 'zoom'] : ['side', 'eye']) {
-    // side / zoom：从 +X 看（横 Z、竖 Y）；eye：从目镜往前看（横 −X、竖 Y，深度 Z）
-    const U = (v) => (view === 'eye' ? -v[0] : v[2]), Vv = (v) => v[1], Dd = (v) => (view === 'eye' ? -v[2] : v[0]);
+  for (const view of (zoom ? ['side', 'eye', 'zoom'] : ['side', 'eye']).concat(I.front ? ['front', 'top'] : [])) {
+    // side / zoom：从 +X 看（横 Z、竖 Y）；eye：从目镜往前看（横 −X、竖 Y，深度 Z）；front：从正前方（+Z）往后看（横 X、竖 Y）；top：从上往下看（横 X、竖 −Z）
+    const U = (v) => (view === 'eye' ? -v[0] : (view === 'front' || view === 'top') ? v[0] : v[2]);
+    const Vv = (v) => (view === 'top' ? -v[2] : v[1]);
+    const Dd = (v) => (view === 'eye' ? -v[2] : view === 'front' ? v[2] : view === 'top' ? v[1] : v[0]);
     let mn = [1e9, 1e9], mx = [-1e9, -1e9];
     for (const t of tris) for (let k = 0; k < 3; k++) { mn = [Math.min(mn[0], U(t[k])), Math.min(mn[1], Vv(t[k]))]; mx = [Math.max(mx[0], U(t[k])), Math.max(mx[1], Vv(t[k]))]; }
     const pad = 0.1 * Math.max(mx[0] - mn[0], mx[1] - mn[1]);
@@ -645,12 +751,27 @@ async function preview(key, B) {
 // ---------------------------------------------------------------- 全部
 
 const META = {};
+// 环境变量 ONLY="键1,键2"：只做这几件的预览（调方向、比例），模型、元数据、署名都不写
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
+if (ONLY) {
+  for (const key of ONLY) {
+    const I = CFG.items[key];
+    const B = await buildItem(key, I, true);
+    await preview(key, B, I);
+    console.log(key, '尺寸（格）', B.meta.size.join(', '), '块', Object.keys(B.meta.parts).join(' '));
+  }
+  process.exit(0);
+}
+// 环境变量 BUILD="键1,键2"：只重做这几件（模型、内嵌网格、预览都写；OpticsMeta.lua 里别的件照原文件留着，署名整节照 items 重写）——
+//   加一件新的不用把别的几十件原模型都下载下来
+const BUILD = process.env.BUILD ? process.env.BUILD.split(',') : null;
 for (const [key, I] of Object.entries(CFG.items)) {
+  if (BUILD && !BUILD.includes(key)) continue;
   const B = await buildItem(key, I);
   await embed(key, B, I);
-  await preview(key, B);
+  await preview(key, B, I);
   const S = CFG.sources[I.src];
-  META[key] = { ...B.meta, credit: `${I.title}：${S.name}，作者 ${S.author}，${S.license} ${S.url}` };
+  META[key] = { ...B.meta, credit: S.gen ? null : `${I.title}：${S.name}，作者 ${S.author}，${S.license} ${S.url}` };   // 自己做的不进署名
 }
 // OpticsMeta.lua
 const L = [];
@@ -661,7 +782,20 @@ L.push('--   inner 镜筒里面的块（内壁、镜片、分划板：第一人�
 L.push('--   导入后 MeshPart 叫 O_<键>__<块名>');
 L.push('return {');
 const lv = (v) => `{ ${v.join(', ')} }`;
-for (const [key, M] of Object.entries(META)) {
+// BUILD 只重做了一部分：原文件里每件一段（「  键 = {」到「  },」），没重做的照抄；按 items 的顺序排
+const OLD = {};
+if (BUILD) {
+  const f0 = path.join(ROOT, 'src/ReplicatedStorage/OpticsMeta.lua');
+  let cur = null;
+  for (const ln of (fs.existsSync(f0) ? fs.readFileSync(f0, 'utf8').split('\n') : [])) {
+    const m = ln.match(/^  (\w+) = \{$/);
+    if (m) { cur = m[1]; OLD[cur] = [ln]; continue; }
+    if (cur) { OLD[cur].push(ln); if (ln === '  },') cur = null; }
+  }
+}
+for (const key of Object.keys(CFG.items)) {
+  const M = META[key];
+  if (!M) { if (OLD[key]) L.push(...OLD[key]); continue; }
   L.push(`  ${key} = {`);
   L.push('    parts = {');
   for (const [p, d] of Object.entries(M.parts)) L.push(`      ${p} = { c = ${lv(d.c)}, s = ${lv(d.s)}, tri = ${d.tri}${d.col ? `, col = ${lv(d.col)}, met = ${d.met}` : ''} },`);
@@ -672,7 +806,7 @@ for (const [key, M] of Object.entries(META)) {
   if (M.pts) L.push(`    pts = { ${Object.entries(M.pts).map(([k, v]) => `${k} = ${lv(v)}`).join(', ')} },`);
   if (M.inner && M.inner.length) L.push(`    inner = { ${M.inner.map((n) => `"${n}"`).join(', ')} },`);   // 镜筒里面的块（开镜时藏起来，从目镜的洞里看出去）
   L.push(`    size = ${lv(M.size)},`);
-  L.push(`    credit = "${M.credit}",`);
+  if (M.credit) L.push(`    credit = "${M.credit}",`);
   L.push('  },');
 }
 L.push('}');
@@ -686,7 +820,8 @@ if (i0 >= 0) { const i1 = txt.indexOf('\n\n', i0); txt = txt.slice(0, i0) + (i1 
 const sec = [HEAD];
 for (const [key, I] of Object.entries(CFG.items)) {
   const S = CFG.sources[I.src];
-  sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}`);
+  if (S.gen) continue;   // 本项目自己做的，不是别人的模型
+  sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}${S.note ? `；改动：${S.note}` : ''}`);
 }
 sec.push('  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改');
 txt = txt.replace(/\s*$/, '\n\n') + sec.join('\n') + '\n';

@@ -61,7 +61,7 @@ local live = 0
 for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end
 check(#cur.b.parts > 150, "内饰零件 " .. #cur.b.parts .. " 个")
 check(#cur.b.screens >= 2 and live == #cur.b.screens, string.format("屏幕 %d 块、页面都起来了（%d）", #cur.b.screens, live))
-check(nCrew >= #cur.spec.order - 1, string.format("乘员 %d 个（%d 个乘员位）", nCrew, #cur.spec.order))
+check(nCrew == 0, string.format("车里不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）：%d 个", nCrew))
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 local cam = R.workspace.CurrentCamera
 local function inside(tag)

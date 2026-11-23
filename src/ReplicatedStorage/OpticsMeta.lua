@@ -308,4 +308,197 @@ return {
     size = { 0.116, 0.132, 0.378 },
     credit = "M952V 战术手电：Surefire M952V Weapon Light，作者 RedRogueXIII，CC-BY-4.0 https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6",
   },
+  ip_radio = {
+    parts = {
+      Body = { c = { -0.001, 0.319, 0 }, s = { 1.174, 0.636, 1.373 }, tri = 8541 },
+    },
+    size = { 1.174, 0.636, 1.373 },
+    credit = "车内饰：车载电台（现代数字电台，带安装架、手持话筒）：Military Radio，作者 curichenkow，CC-BY-4.0 https://sketchfab.com/3d-models/military-radio-f5c8f0420f054b32a2e977fbcd248d84",
+  },
+  ip_radio2 = {
+    parts = {
+      Body = { c = { 0, 0.138, 0 }, s = { 0.757, 0.277, 0.82 }, tri = 8548 },
+    },
+    size = { 0.757, 0.277, 0.82 },
+    credit = "车内饰：车载电台（老式箱体）：Military Radio - Low Poly，作者 Camille Barral，CC-BY-4.0 https://sketchfab.com/3d-models/military-radio-low-poly-6647f257eb384c108ecf440bb161d91a",
+  },
+  ip_m829 = {
+    parts = {
+      Caec = { c = { -0.001, 0, 1.418 }, s = { 0.291, 0.289, 0.415 }, tri = 100, col = { 170, 231, 203 }, met = 0 },
+      Cfaa = { c = { 0, 0.003, 0.96 }, s = { 0.048, 0.049, 0.068 }, tri = 13, col = { 255, 170, 170 }, met = 0 },
+      C999 = { c = { 0, 0, 2.365 }, s = { 0.086, 0.086, 0.195 }, tri = 636, col = { 158, 158, 158 }, met = 0.15 },
+      Caa7 = { c = { 0, 0, 0.017 }, s = { 0.067, 0.067, 0.028 }, tri = 60, col = { 170, 170, 124 }, met = 0 },
+      Ccb6 = { c = { 0.002, 0.002, 0.792 }, s = { 0.468, 0.477, 1.584 }, tri = 982, col = { 203, 179, 108 }, met = 1 },
+      C000 = { c = { -0.001, 0, 1.144 }, s = { 0.441, 0.443, 1.97 }, tri = 1274, col = { 0, 0, 0 }, met = 0 },
+      Cbbb = { c = { 0, 0, 1.309 }, s = { 0.425, 0.431, 2.531 }, tri = 2150, col = { 189, 189, 189 }, met = 0.17 },
+      Ceee = { c = { 0, 0, 1.307 }, s = { 0.335, 0.34, 0.763 }, tri = 52, col = { 237, 237, 237 }, met = 0.17 },
+      Cddd = { c = { 0, 0, 0.602 }, s = { 0.195, 0.223, 1.204 }, tri = 466, col = { 215, 215, 215 }, met = 0.15 },
+    },
+    size = { 0.468, 0.477, 2.575 },
+    credit = "车内饰：120 毫米 M829A1 尾翼稳定脱壳穿甲弹（整发，装填手手上那一发）：M829A1 OBJ，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30",
+  },
+  ip_m829lo = {
+    parts = {
+      Caec = { c = { 0.016, -0.025, 1.418 }, s = { 0.223, 0.239, 0.415 }, tri = 28, col = { 170, 231, 203 }, met = 0 },
+      Cfaa = { c = { -0.002, 0.003, 0.96 }, s = { 0.051, 0.049, 0.068 }, tri = 13, col = { 255, 170, 170 }, met = 0 },
+      C999 = { c = { 0, 0, 2.365 }, s = { 0.086, 0.086, 0.195 }, tri = 148, col = { 158, 158, 158 }, met = 0.15 },
+      Caa7 = { c = { 0, 0, 0.017 }, s = { 0.067, 0.067, 0.028 }, tri = 52, col = { 170, 170, 124 }, met = 0 },
+      Ccb6 = { c = { -0.007, 0, 0.789 }, s = { 0.457, 0.471, 1.573 }, tri = 223, col = { 203, 179, 108 }, met = 1 },
+      C000 = { c = { -0.001, 0.004, 1.144 }, s = { 0.441, 0.436, 1.97 }, tri = 297, col = { 0, 0, 0 }, met = 0 },
+      Cbbb = { c = { 0, 0, 1.407 }, s = { 0.425, 0.431, 2.334 }, tri = 501, col = { 189, 189, 189 }, met = 0.17 },
+      Ceee = { c = { 0, -0.02, 1.582 }, s = { 0.335, 0.3, 0.213 }, tri = 10, col = { 237, 237, 237 }, met = 0.17 },
+      Cddd = { c = { 0, 0, 0.602 }, s = { 0.195, 0.223, 1.204 }, tri = 108, col = { 215, 215, 215 }, met = 0.15 },
+    },
+    size = { 0.457, 0.471, 2.574 },
+    credit = "车内饰：120 毫米 M829A1（尾舱弹架里那 36 发，减面版）：M829A1 OBJ，作者 Jeyhun1985，CC-BY-4.0 https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30",
+  },
+  ip_r125 = {
+    parts = {
+      Body = { c = { 0, 0, 1.044 }, s = { 0.358, 0.359, 2.089 }, tri = 2848 },
+    },
+    size = { 0.358, 0.359, 2.089 },
+    credit = "车内饰：125 毫米 3BK18 破甲弹弹丸（转盘装弹机）：Tank ammo HEAT 3BK18，作者 VladIG_CG，CC-BY-4.0 https://sketchfab.com/3d-models/tank-ammo-heat-3bk18-98087179c6ae4a63a09d017d87945888",
+  },
+  ip_he125 = {
+    parts = {
+      Cbbb = { c = { 0, 0, 0.85 }, s = { 0.351, 0.351, 1.7 }, tri = 1217, col = { 181, 181, 181 }, met = 0 },
+      C575 = { c = { -0.002, 0, 0.224 }, s = { 0.342, 0.353, 0.369 }, tri = 468, col = { 90, 125, 89 }, met = 0 },
+      C888 = { c = { 0, 0, 0.343 }, s = { 0.351, 0.351, 0.498 }, tri = 471, col = { 132, 132, 132 }, met = 0 },
+      C997 = { c = { 0, 0, 1.787 }, s = { 0.141, 0.141, 0.175 }, tri = 256, col = { 147, 145, 113 }, met = 0 },
+      Ca52 = { c = { 0, 0, 0.453 }, s = { 0.351, 0.351, 0.879 }, tri = 434, col = { 175, 86, 39 }, met = 0 },
+    },
+    size = { 0.351, 0.353, 1.874 },
+    credit = "车内饰：125 毫米杀爆弹弹丸（转盘装弹机）：HE shell 125mm，作者 dichevk，CC-BY-4.0 https://sketchfab.com/3d-models/he-shell-125mm-61532bea91314025b5d3a5eaa63d389b",
+  },
+  ip_chg125 = {
+    parts = {
+      Ca62 = { c = { 0, 0, 0.8 }, s = { 0.435, 0.435, 0.745 }, tri = 354, col = { 167, 104, 41 }, met = 0 },
+      C888 = { c = { 0, 0, 0.214 }, s = { 0.464, 0.464, 0.427 }, tri = 2494, col = { 140, 140, 140 }, met = 0 },
+    },
+    size = { 0.464, 0.464, 1.172 },
+    credit = "车内饰：125 毫米发射药筒（转盘装弹机）：GunPowder shell 125mm，作者 dichevk，CC-BY-4.0 https://sketchfab.com/3d-models/gunpowder-shell-125mm-ffeec6c6b381415fbf001a3e3dea2004",
+  },
+  ip_ext = {
+    parts = {
+      Body = { c = { 0, 0.839, 0 }, s = { 1.281, 1.679, 0.487 }, tri = 3278 },
+    },
+    size = { 1.281, 1.679, 0.487 },
+    credit = "车内饰：二氧化碳手提灭火瓶：Fire Extinguisher，作者 Sir Erdees，CC-BY-4.0 https://sketchfab.com/3d-models/fire-extinguisher-0253bc18de06471e8413ad24ea49ce92",
+  },
+  ip_cvc = {
+    parts = {
+      Body = { c = { 0, 0, 0 }, s = { 0.825, 0.852, 0.919 }, tri = 7599 },
+    },
+    size = { 0.825, 0.852, 0.919 },
+    credit = "车内饰：美军坦克乘员头盔（CVC）：Combat Vehicle Crewman (CVC) Helmet, Vietnam Era，作者 olmopotums，CC-BY-4.0 https://sketchfab.com/3d-models/combat-vehicle-crewman-cvc-helmet-vietnam-era-c1516dc3d0ea420b9246334a94e5681e",
+  },
+  ip_tsh = {
+    parts = {
+      Body = { c = { 0, -0.001, 0 }, s = { 0.606, 0.923, 0.775 }, tri = 7600 },
+    },
+    size = { 0.606, 0.923, 0.775 },
+    credit = "车内饰：坦克乘员皮帽（带耳机）：Tank Helmet，作者 denj666，CC-BY-4.0 https://sketchfab.com/3d-models/tank-helmet-e0a6ed324a514c57bc05ffd365ac0eb0",
+  },
+  ip_cdu = {
+    parts = {
+      Body = { c = { 0, -0.119, -0.108 }, s = { 0.448, 0.671, 0.225 }, tri = 4739 },
+      Body2 = { c = { 0, 0, 0 }, s = { 0.24, 0.348, 0.001 }, tri = 16 },
+    },
+    size = { 0.448, 0.671, 0.225 },
+    credit = "车内饰：带边键的显示控制单元（车长热像仪显示器 CITV、炮长控制显示面板 GCDP）：Aircraft instrument/module thingy，作者 LuddePudde，CC-BY-4.0 https://sketchfab.com/3d-models/aircraft-instrumentmodule-thingy-797da922b1724a2fbdcf5b6379525b49",
+  },
+  ip_tab = {
+    parts = {
+      Body = { c = { 0, -0.049, 0 }, s = { 0.846, 0.527, 0.19 }, tri = 5151 },
+    },
+    size = { 0.846, 0.527, 0.19 },
+    credit = "车内饰：车长战术显示器（JBC-P 加固显示终端）：Rugged Sci-Fi Tactical Military Tablet，作者 3DMOAN，CC-BY-4.0 https://sketchfab.com/3d-models/rugged-sci-fi-tactical-military-tablet-f7d8e3c008e24e0c9b32748b3d6105f1",
+  },
+  ip_mon = {
+    parts = {
+      Body = { c = { 0, 0, 0 }, s = { 0.561, 0.416, 0.18 }, tri = 3708 },
+    },
+    size = { 0.561, 0.416, 0.18 },
+    credit = "车内饰：带侧键的显示器（CROWS 遥控武器站显示器）：Computer Box Monitor，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a",
+  },
+  ip_yoke = {
+    parts = {
+      C222 = { c = { 0.002, 0.022, -0.093 }, s = { 0.979, 0.593, 0.456 }, tri = 4654, col = { 37, 37, 37 }, met = 0.678 },
+    },
+    size = { 0.979, 0.593, 0.456 },
+    credit = "车内饰：炮长双握把（凯迪拉克）：ANIMATED KC-135 YOKE，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/animated-kc-135-yoke-2d96da0d802746fcb30044bfba87e968",
+  },
+  ip_stick = {
+    parts = {
+      Ce10 = { c = { -0.035, 0.501, -0.012 }, s = { 0.079, 0.359, 0.143 }, tri = 289, col = { 231, 11, 0 }, met = 0.954 },
+      C000 = { c = { 0, 0.346, 0 }, s = { 0.183, 0.693, 0.225 }, tri = 1807, col = { 0, 0, 0 }, met = 0.558 },
+      Ceee = { c = { -0.025, 0.557, -0.007 }, s = { 0.118, 0.279, 0.146 }, tri = 363, col = { 231, 231, 231 }, met = 0.926 },
+      C222 = { c = { 0.006, 0.674, 0.014 }, s = { 0.061, 0.052, 0.046 }, tri = 1338, col = { 39, 39, 39 }, met = 0.265 },
+    },
+    size = { 0.183, 0.701, 0.225 },
+    credit = "车内饰：车长操纵握把 CCH：B-8 Fighter Control Stick (Low Poly)，作者 StratoArt，CC-BY-4.0 https://sketchfab.com/3d-models/b-8-fighter-control-stick-low-poly-8d85a47465c94c629c9e6cc60f9106d0",
+  },
+  ip_asq = {
+    parts = {
+      Body = { c = { 0, 0.765, 0.001 }, s = { 0.741, 1.529, 1.144 }, tri = 7599 },
+    },
+    size = { 0.741, 1.529, 1.144 },
+    credit = "车内饰：火控计算机（带操纵杆、键盘）：ASQ-155 Ballistic Computer，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7",
+  },
+  ip_asq2 = {
+    parts = {
+      Body = { c = { 0, 0.629, 0.001 }, s = { 0.741, 1.258, 1.144 }, tri = 7071 },
+    },
+    size = { 0.741, 1.258, 1.144 },
+    credit = "车内饰：弹道计算机的机箱（去掉原来的操纵杆，上面装 B-8 握杆）——车长操纵握把底下的白色电子箱：ASQ-155 Ballistic Computer，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7",
+  },
+  ip_sw = {
+    parts = {
+      Body = { c = { 0, 0, -0.008 }, s = { 0.249, 0.411, 0.011 }, tri = 94 },
+      Body2 = { c = { 0, 0.134, -0.008 }, s = { 0.039, 0.062, 0 }, tri = 14 },
+      Caaa = { c = { 0, 0.134, -0.009 }, s = { 0.04, 0.063, 0.007 }, tri = 14, col = { 173, 173, 173 }, met = 0 },
+      Body3 = { c = { 0, 0, -0.035 }, s = { 0.249, 0.411, 0.045 }, tri = 140 },
+      Body4 = { c = { 0, 0.134, -0.013 }, s = { 0.045, 0.073, 0.006 }, tri = 8 },
+      Body5 = { c = { 0, 0, -0.006 }, s = { 0.251, 0.413, 0.014 }, tri = 281 },
+      Body6 = { c = { -0.001, 0.008, -0.006 }, s = { 0.197, 0.334, 0.018 }, tri = 217 },
+      Body7 = { c = { 0, -0.049, 0.006 }, s = { 0.195, 0.262, 0.104 }, tri = 576 },
+      Body8 = { c = { 0, -0.049, 0.003 }, s = { 0.194, 0.232, 0.1 }, tri = 5312 },
+    },
+    size = { 0.251, 0.413, 0.115 },
+    credit = "车内饰：拨动开关面板（带护盖）：Industrial Switches Apollo Command Module，作者 ntilted，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-switches-apollo-command-module-b01232380685412a8485c5dd3be4265a",
+  },
+  ip_lamp = {
+    parts = {
+      Body = { c = { 0, 0, 0.076 }, s = { 0.274, 0.449, 0.152 }, tri = 180 },
+      Body2 = { c = { 0.001, 0, 0.078 }, s = { 0.236, 0.419, 0.13 }, tri = 52, col = { 255, 221, 116 }, met = 0 },
+    },
+    size = { 0.274, 0.449, 0.152 },
+    credit = "车内饰：车内顶灯（防爆壁灯）：Industrial Bulkhead Wall Lamp Lowpoly，作者 iwanPlays，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-bulkhead-wall-lamp-lowpoly-4c50439bcbc247629fe2194862d7acc9",
+  },
+  ip_can = {
+    parts = {
+      Body = { c = { 0, 0.302, 0 }, s = { 0.854, 0.596, 0.454 }, tri = 2375 },
+    },
+    size = { 0.854, 0.596, 0.454 },
+    credit = "车内饰：弹药箱（12.7 毫米 M2A1 弹箱）：Ammuntion box，作者 jaiharitheking，CC-BY-4.0 https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c",
+  },
+  ip_cdus = {
+    parts = {
+      Housing = { c = { 0, 0, -0.105 }, s = { 1.148, 1.316, 0.21 }, tri = 216, col = { 44, 48, 66 }, met = 0.05 },
+      Bezel = { c = { -0.041, 0.049, 0.017 }, s = { 0.876, 1.207, 0.034 }, tri = 432, col = { 170, 172, 180 }, met = 0.35 },
+      Glass = { c = { -0.036, 0.04, 0.01 }, s = { 0.745, 1.144, 0 }, tri = 72, col = { 7, 8, 10 }, met = 0.05 },
+      Wells = { c = { -0.021, 0.001, 0.002 }, s = { 1.106, 1.287, 0.004 }, tri = 420, col = { 27, 29, 38 }, met = 0.05 },
+      LedStrip = { c = { 0.44, 0.364, 0.004 }, s = { 0.067, 0.42, 0.008 }, tri = 60, col = { 20, 22, 28 }, met = 0.05 },
+      Handles = { c = { -0.012, 0.052, 0.049 }, s = { 1.113, 1.044, 0.05 }, tri = 168, col = { 92, 96, 106 }, met = 0.35 },
+      Posts = { c = { -0.017, 0.058, 0.031 }, s = { 1.126, 1.061, 0.062 }, tri = 336, col = { 60, 62, 70 }, met = 0.05 },
+    },
+    size = { 1.154, 1.316, 0.284 },
+  },
+  ip_peri = {
+    parts = {
+      Body = { c = { -0.023, 0.004, -0.082 }, s = { 0.791, 0.398, 0.274 }, tri = 1995 },
+    },
+    size = { 0.791, 0.398, 0.274 },
+    credit = "车内饰：坦克潜望镜（车里看得见的下半截）：FV105 Sultan periscop，作者 renalds_rs，CC-BY-4.0 https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+  },
 }

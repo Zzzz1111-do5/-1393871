@@ -135,6 +135,10 @@ function VehModels.build(d, team, mods)
     -- 遥控武器站（M1A2 的 CROWS）：底座转轴、M2 俯仰轴（用户：机枪也要能转动）
     local rpiv = info.rws and info.rws.p and v3(info.rws.p) or nil
     local rgpiv = info.rws and info.rws.g and v3(info.rws.g) or nil
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：原模型里拆出来的机枪（RwsGun）不画，
+    --   座圈、观察镜、舱盖（Rws）照旧画、焊死在炮塔上；元数据要求拼的机枪（mk）也不拼
+    local noMg = d.noRoofMg == true and d.cat == "tank"
+    if noMg then rpiv, rgpiv = nil, nil end
     -- 车轮：每个轮一个弹簧（中心、半径照原模型）；轮式车最前面 d.steer 排转向
     local wix, names = {}, {}
     for g in pairs(info.wheels or {}) do table.insert(names, g) end
@@ -176,7 +180,7 @@ function VehModels.build(d, team, mods)
     end
     for name, p in pairs(info.parts) do
       local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
-      if src and src:IsA("BasePart") then
+      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") then
         local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = v3(p.s)
@@ -189,7 +193,7 @@ function VehModels.build(d, team, mods)
         end
         local c = v3(p.c)
         local grp, off, wi = "hull", CF(c), nil
-        if p.g == "Turret" then grp, off = "turret", CF(c - tpiv)
+        if p.g == "Turret" or (noMg and p.g == "Rws") then grp, off = "turret", CF(c - tpiv)
         elseif p.g == "Gun" then grp, off = "gun", CF(c - gpiv)
         elseif p.g == "Rws" and rpiv then grp, off = "rws", CF(c - rpiv)
         elseif p.g == "RwsGun" and rgpiv then grp, off = "rwg", CF(c - rgpiv)
@@ -589,9 +593,17 @@ function VehModels.build(d, team, mods)
   end
 
   ---------------------------------------------------------------- 改装（TankMods / EraMeta）
-  --   爆反块：原模型上本来就有的区（own）平时不画，只记位置（被炸掉时 View 补焦黑的空位）；没有的（99A 炮塔正面）照 EraMeta 贴上做旧的砖
-  --   主动防御：两侧发射器、四角雷达板；车顶加特林（kit 组：跟着炮塔转、跟着炮俯仰，转轴 kpiv）
-  local era, kpiv = {}, nil
+  --   用户 11-22 晚：「坦克要能自己选位置贴爆反」「要能有一整套的坦克改装体系」「坦克上面就别贴了」「别挡住一些部位」
+  --   爆反：一格一格按改装（TankMods.cellsOn）贴；原模型上本来就有的格（own）平时不画，只记位置（被炸掉时 View 补焦黑的空位）；
+  --     型号：FY-2 / FY-4 是砖（导入的 Kontakt-1 砖网格，重型的盒子厚 1.35 倍）、ARAT-1（M19）是方盒子瓦、ARAT-2（M32）叠在 M19 外面的弯瓦（原车自带的 M19 外面也叠）
+  --   主动防护：GL5 炮塔四角各一个发射单元（带毫米波雷达）；Trophy 两侧各一个能转的发射器 + 四角四块雷达平板
+  --   激光告警：炮塔前角、后角的告警探头（JD-3 多一个激光干扰头）
+  --   栅栏装甲：车尾、侧面后段（发动机舱外）、炮塔尾部后面，离车身约半米的一排扁钢条
+  --   扫雷犁：车头前面一整排犁齿 + 犁板 + 两侧滑橇，两根臂挂在车头下沿；组 plow，按模型属性 Plow 放下 / 升起（View 摆）
+  --   多光谱伪装网：炮塔两侧、后面，车体侧面、后面一片片的网（不盖车顶、不挡观瞄）
+  --   车底防雷板：车底一整块（从侧面低处才看得到）
+  --   车顶加特林（kit 组）：坦克不带机枪以后不用了，代码留着
+  local era, kpiv, plowPiv = {}, nil, nil
   local mm = TM.applyDef(d, mods)
   mm = mm and mm.mods
   local L = TM.eraOf(d.id)
@@ -600,12 +612,17 @@ function VehModels.build(d, team, mods)
     local kit = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Veh") and RS.Imported.Veh:FindFirstChild("kitera")
     local brickMesh = kit and kit:FindFirstChild("V_kitera__Body_1")
     local function rel(g, cf) if g == "t" then return CF(-tp) * cf end return cf end
+    local on = TM.cellsOn(d.id, mm)
+    local ET = mm and TM.ERA[mm.era] or nil
+    local th = (ET and ET.th) or 1
+    local arat = mm and (mm.era == "arat" or mm.era == "arat2")
     for i, b in ipairs(L.b) do
-      local cf, w, h, t = TM.blockCF(L, b, CF(), 0)
-      local g = (b[1] == "t") and "turret" or "hull"
       local own = TM.own(L, b)
-      local e = { g = g, off = rel(b[1], cf), w = w, h = h, t = t, own = own, parts = {} }
-      if not own and extra.imported then
+      local fitted = on[i] == true
+      local cf, w, h, t = TM.blockCF(L, b, CF(), 0, own and 1 or th)
+      local g = (b[1] == "t") and "turret" or "hull"
+      local e = { g = g, off = rel(b[1], cf), w = w, h = h, t = t, own = own, parts = {}, off2 = not fitted }   -- off2：这一格没贴（不画、炸不着）
+      if fitted and extra.imported then
         local col = RGB(b[14], b[15], b[16])
         local base = rel(b[1], cf)
         local function put(size, o, color, mat, shape, tr)
@@ -615,7 +632,17 @@ function VehModels.build(d, team, mods)
           table.insert(e.parts, p)
           return p
         end
-        if brickMesh and brickMesh:IsA("MeshPart") then   -- 导入了砖的模型（models/veh/kitera.glb：Kontakt-1，evt22，CC-BY；贴图做旧过）
+        if not own and arat then
+          -- ARAT-1（M19）：扁方盒，外面一圈压边、四颗固定螺栓，漆成车身色
+          local c0 = col:Lerp(RGB(176, 158, 116), 0.35)
+          put(V(w, h, t), CF(), c0, MAT.Metal)
+          put(V(w * 0.86, h * 0.8, 0.04), CF(0, 0, t / 2 + 0.02), c0:Lerp(RGB(0, 0, 0), 0.08), MAT.SmoothPlastic)
+          for sx = -1, 1, 2 do
+            for sy = -1, 1, 2 do
+              put(V(0.06, 0.13, 0.13), CF(sx * (w / 2 - 0.16), sy * (h / 2 - 0.14), t / 2 + 0.04) * CFrame.Angles(0, math.pi / 2, 0), RGB(70, 66, 56), MAT.Metal, CYL)
+            end
+          end
+        elseif not own and brickMesh and brickMesh:IsA("MeshPart") then   -- 导入了砖的模型（models/veh/kitera.glb：Kontakt-1，evt22，CC-BY；贴图做旧过）
           local mp = Tint.fix(brickMesh:Clone(), brickMesh)
           mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
           mp.Size = V(w, h, t)
@@ -624,7 +651,7 @@ function VehModels.build(d, team, mods)
           mp.Parent = m
           table.insert(parts, { mp, g, off })
           table.insert(e.parts, mp)
-        else
+        elseif not own then
           -- 零件拼的做旧砖：漆面（比车身暗一点、金属纹理）、底下三成积灰、上沿一道掉漆露出的钢、一两道锈迹、两颗螺栓
           put(V(w, h, t), CF(), col:Lerp(RGB(40, 44, 34), 0.18), MAT.Metal)
           put(V(w * 1.004, h * 0.36, t * 1.02), CF(0, -h * 0.32, 0), RGB(92, 80, 60), MAT.Sand, nil, 0.5)
@@ -637,70 +664,175 @@ function VehModels.build(d, team, mods)
             put(V(0.07, 0.17, 0.17), CF(sx * (w / 2 - 0.2), h / 2 - 0.17, t / 2 + 0.03) * CFrame.Angles(0, math.pi / 2, 0), RGB(48, 46, 40), MAT.Metal, CYL)
           end
         end
+        if mm and mm.era == "arat2" then
+          -- ARAT-2（M32）：叠在 M19 外面的弯瓦（中间往里凹，像屋顶的筒瓦）——两片斜板拼出弯度，上下两道边筋
+          local c2 = col:Lerp(RGB(150, 134, 98), 0.4)
+          local z0 = t / 2 + 0.16
+          for sx = -1, 1, 2 do
+            put(V(w * 0.52, h * 0.94, 0.12), CF(sx * w * 0.24, 0, z0 + 0.04) * CFrame.Angles(0, math.rad(-sx * 12), 0), c2, MAT.Metal)
+          end
+          for sy = -1, 1, 2 do put(V(w * 0.98, 0.07, 0.24), CF(0, sy * h * 0.47, z0), c2:Lerp(RGB(0, 0, 0), 0.12), MAT.Metal) end
+        end
       end
       era[i] = e
     end
-    -- 主动防御：发射器（炮塔两侧中段）、雷达板（四角）
-    if mm and mm.aps == "hk" and L.aps then
-      local dark, olive = RGB(34, 36, 34), C.base:Lerp(RGB(50, 54, 44), 0.35)
-      local function frameAt(c, n)
-        local up = V(0, 1, 0)
-        local rt = up:Cross(n)
-        if rt.Magnitude < 0.1 then rt = V(1, 0, 0) end
-        rt = rt.Unit
-        return CFrame.fromMatrix(c, rt, n:Cross(rt).Unit, n)   -- Z 朝外
-      end
-      for _, a in ipairs(L.aps.l or {}) do
+    local dark, olive = RGB(34, 36, 34), C.base:Lerp(RGB(50, 54, 44), 0.35)
+    local function frameAt(c, n)
+      local up = V(0, 1, 0)
+      local rt = up:Cross(n)
+      if rt.Magnitude < 0.1 then rt = V(1, 0, 0) end
+      rt = rt.Unit
+      return CFrame.fromMatrix(c, rt, n:Cross(rt).Unit, n)   -- Z 朝外
+    end
+    local tb, hb = L.tb, L.hb
+    local roofY = L.roof or (tb and tb[5] - 0.8) or (tp.Y + 2)
+    -- 主动防护
+    if mm and mm.aps == "trophy" and L.aps then
+      for _, a in ipairs(L.aps.l or {}) do   -- 两侧能转的发射器（带圆顶的弹仓、两根朝外上斜的发射管、探测窗）
         local f = CF(-tp) * frameAt(V(a[1], a[2], a[3]), V(a[4], a[5], a[6]).Unit)
         tur(V(0.5, 0.42, 1.0), f * CF(0, 0, 0.2), dark)   -- 支架
         tur(V(1.2, 0.95, 1.55), f * CF(0, 0.05, 0.95), olive)   -- 发射器
         tur(V(1.1, 0.48, 1.45), f * CF(0, 0.52, 0.95), olive:Lerp(RGB(0, 0, 0), 0.15), MAT.Metal, BALL)   -- 圆顶盖
-        for k = -1, 1, 2 do   -- 两个发射管（朝外上斜）
+        for k = -1, 1, 2 do
           tur(V(0.62, 0.34, 0.34), f * CF(k * 0.3, 0.2, 1.75) * CFrame.Angles(math.rad(-30), math.pi / 2, 0), dark, MAT.Metal, CYL)
         end
-        tur(V(0.5, 0.22, 0.04), f * CF(0, -0.18, 1.74), RGB(10, 12, 14), MAT.Glass)   -- 探测窗
+        tur(V(0.5, 0.22, 0.04), f * CF(0, -0.18, 1.74), RGB(10, 12, 14), MAT.Glass)
       end
-      for _, a in ipairs(L.aps.r or {}) do
+      for _, a in ipairs(L.aps.r or {}) do   -- EL/M-2133 四块平板天线（四角各一块，斜着朝外）
         local f = CF(-tp) * frameAt(V(a[1], a[2], a[3]), V(a[4], a[5], a[6]).Unit)
-        tur(V(1.4, 1.0, 0.2), f * CF(0, 0, 0.12), olive)   -- 雷达板外框
-        tur(V(1.18, 0.8, 0.05), f * CF(0, 0, 0.24), RGB(20, 22, 24), MAT.SmoothPlastic)   -- 天线面
-        tur(V(0.3, 0.3, 0.5), f * CF(0, -0.6, -0.05), dark)   -- 托架
+        tur(V(1.4, 1.0, 0.2), f * CF(0, 0, 0.12), olive)
+        tur(V(1.18, 0.8, 0.05), f * CF(0, 0, 0.24), RGB(20, 22, 24), MAT.SmoothPlastic)
+        tur(V(0.3, 0.3, 0.5), f * CF(0, -0.6, -0.05), dark)
+      end
+    elseif mm and mm.aps == "gl5" and L.aps then
+      for _, a in ipairs(L.aps.r or {}) do   -- GL5：四角各一个方盒（前面一块毫米波雷达面、上面斜着一个发射筒）
+        local f = CF(-tp) * frameAt(V(a[1], a[2] - 0.15, a[3]), V(a[4], a[5], a[6]).Unit)
+        tur(V(1.3, 1.0, 1.1), f * CF(0, 0, 0.35), olive)
+        tur(V(1.08, 0.72, 0.05), f * CF(0, 0.02, 0.92), RGB(24, 26, 28), MAT.SmoothPlastic)   -- 雷达面
+        tur(V(0.9, 0.46, 0.46), f * CF(0, 0.62, 0.3) * CFrame.Angles(math.rad(-25), math.pi / 2, 0), dark, MAT.Metal, CYL)   -- 发射筒（朝外上）
+        tur(V(0.06, 0.5, 0.5), f * CF(0, 0.82, 0.72) * CFrame.Angles(math.rad(-25), math.pi / 2, 0), RGB(60, 62, 58), MAT.Metal, CYL)   -- 筒口盖
+        tur(V(0.4, 0.3, 0.6), f * CF(0, -0.55, -0.05), dark)   -- 托架
       end
     end
-    -- 车顶 GAU-8 加特林炮塔附件：转轴在炮塔顶左侧（装填手那边），跟着炮俯仰
+    -- 激光告警探头（四个角的侧墙上，不在车顶）；JD-3 多一个激光干扰头（炮塔左前侧墙）
+    if mm and (mm.ew == "lws" or mm.ew == "jd3") and L.aps then
+      for _, a in ipairs(L.aps.r or {}) do
+        local f = CF(-tp) * frameAt(V(a[1], a[2] - 0.85, a[3]), V(a[4], a[5], a[6]).Unit)
+        tur(V(0.42, 0.34, 0.3), f * CF(0, 0, 0.15), dark)
+        tur(V(0.3, 0.2, 0.04), f * CF(0, 0.02, 0.31), RGB(30, 40, 60), MAT.Glass)
+      end
+      if mm.ew == "jd3" and L.aps.r[1] then
+        local a = L.aps.r[1]
+        local f = CF(-tp) * frameAt(V(a[1], a[2] - 0.2, a[3] + 0.9), V(a[4], 0, a[6]).Unit)
+        tur(V(0.6, 0.6, 0.55), f * CF(0, 0, 0.3), dark, MAT.Metal, CYL)
+        tur(V(0.04, 0.42, 0.42), f * CF(0, 0, 0.6) * CFrame.Angles(0, math.pi / 2, 0), RGB(90, 20, 18), MAT.Glass, CYL)
+      end
+    end
+    -- 栅栏装甲：扁钢条竖着排（间距约 0.9 格 ≈ 32 厘米），上下两道横框、几根撑杆；离车身 1.4 格（半米）
+    if mm and mm.slat == "slat" and hb then
+      local SC = C.base:Lerp(RGB(60, 62, 56), 0.25)
+      local function grille(group, o, along, wid, hei, depth)
+        local fn = (group == "turret") and tur or hull
+        local n = math.max(2, math.floor(wid / 0.9))
+        for k = 0, n do
+          local x = -wid / 2 + wid * k / n
+          fn(V(0.07, hei, 0.32), o * CF(along * x, 0, 0), SC, MAT.Metal)
+        end
+        for sy = -1, 1, 2 do fn(V(wid + 0.1, 0.12, 0.12), o * CF(0, sy * hei / 2, 0), SC, MAT.Metal) end
+        for k = -1, 1, 2 do fn(V(0.12, 0.12, depth), o * CF(k * wid * 0.42, hei * 0.3, -depth / 2), SC, MAT.Metal) end   -- 撑杆（往车身那边）
+      end
+      local rz = hb[6] + 1.4
+      local y0, y1 = 1.4, hb[5] - 0.2
+      grille("hull", CF(0, (y0 + y1) / 2, rz), 1, hb[4] - hb[1] - 0.6, y1 - y0, 1.4)   -- 车尾
+      local sl = (hb[6] - hb[3]) * 0.3
+      for sx = -1, 1, 2 do   -- 侧面后段（发动机舱外，裙板外面）
+        local x = (sx > 0) and (hb[4] + 1.2) or (hb[1] - 1.2)
+        grille("hull", CF(x, (y0 + 1.1 + y1) / 2, hb[6] - sl / 2) * CFrame.Angles(0, math.pi / 2, 0), 1, sl, y1 - y0 - 1.1, 1.2)
+      end
+      if tb then   -- 炮塔尾部后面
+        local tz = tb[6] + 1.0
+        local ty0, ty1 = tb[2] + 0.3, roofY - 0.25
+        grille("turret", CF(-tp) * CF((tb[1] + tb[4]) / 2, (ty0 + ty1) / 2, tz), 1, (tb[4] - tb[1]) * 0.78, ty1 - ty0, 1.0)
+      end
+    end
+    -- 车底防雷板：车底一整块，四角加强筋
+    if mm and mm.belly == "belly" and hb then
+      local y = (d.clear or 1.3) * 0.62
+      hull(V((hb[4] - hb[1]) * 0.62, 0.18, (hb[6] - hb[3]) * 0.72), CF(0, y, (hb[3] + hb[6]) / 2), RGB(52, 54, 50), MAT.DiamondPlate)
+      for sx = -1, 1, 2 do hull(V(0.2, 0.3, (hb[6] - hb[3]) * 0.7), CF(sx * (hb[4] - hb[1]) * 0.3, y + 0.15, (hb[3] + hb[6]) / 2), RGB(46, 48, 44), MAT.Metal) end
+    end
+    -- 扫雷犁（全宽扫雷犁）：组 plow，转轴在车头下沿；放下时犁齿入土、升起时绕转轴往上抬 14°
+    if mm and mm.eng == "plow" and hb then
+      plowPiv = V(0, 1.7, hb[3] + 0.6)
+      local PC, PD = C.base:Lerp(RGB(70, 72, 64), 0.3), RGB(46, 46, 44)
+      local function pl(size, o, color, mat, shape) return add("plow", size, o, color or PC, mat or MAT.Metal, shape) end
+      local bw = (hb[4] - hb[1]) * 1.0
+      local zb = -3.4   -- 犁板在转轴前面多远
+      for sx = -1, 1, 2 do   -- 两根臂
+        pl(V(0.45, 0.55, 3.6), CF(sx * bw * 0.32, -0.4, -1.7) * CFrame.Angles(math.rad(10), 0, 0), PD)
+      end
+      pl(V(bw, 1.6, 0.25), CF(0, 0.2, zb) * CFrame.Angles(math.rad(-18), 0, 0))   -- 犁板（往后仰）
+      pl(V(bw, 0.5, 0.25), CF(0, -0.75, zb - 0.45) * CFrame.Angles(math.rad(-48), 0, 0))   -- 犁板下沿往前卷
+      pl(V(bw + 0.1, 0.18, 0.8), CF(0, 1.02, zb + 0.15), PD)   -- 顶梁
+      local nT = math.max(6, math.floor(bw / 0.75))
+      for k = 0, nT - 1 do   -- 犁齿（往前下插）
+        local x = -bw / 2 + bw * (k + 0.5) / nT
+        pl(V(0.16, 0.16, 1.15), CF(x, -1.05, zb - 0.85) * CFrame.Angles(math.rad(28), 0, 0), RGB(58, 56, 52), MAT.Metal)
+      end
+      for sx = -1, 1, 2 do   -- 两侧滑橇（控制犁地深度）
+        pl(V(0.3, 0.35, 1.6), CF(sx * (bw / 2 + 0.2), -1.15, zb + 0.2), PD)
+      end
+    end
+    -- 多光谱伪装网（梭鱼 MCS 那一类）：炮塔两侧、后面，车体侧面、后面一片片的网——三种颜色的斑块交错，不盖车顶、不挡观瞄、不盖车灯
+    if mm and mm.cam == "mcs" and hb and tb then
+      local NC = (team == "def") and { RGB(170, 150, 108), RGB(128, 112, 80), RGB(196, 180, 140) } or { RGB(76, 92, 60), RGB(58, 66, 46), RGB(104, 112, 78) }
+      local function patch(fn, size, o, k)
+        local p = fn(size, o, NC[(k % 3) + 1], MAT.Fabric)
+        p.CastShadow = false
+        return p
+      end
+      local k = 0
+      for sx = -1, 1, 2 do
+        -- 炮塔侧面后半（错开几片）
+        local x = (sx > 0) and (tb[4] + 0.18) or (tb[1] - 0.18)
+        local z0, z1 = tb[3] + (tb[6] - tb[3]) * 0.45, tb[6] - 0.3
+        for j = 0, 3 do
+          k += 1
+          local zc = z0 + (z1 - z0) * (j + 0.5) / 4
+          patch(tur, V(0.08, (roofY - tb[2]) * (0.55 + (j % 2) * 0.2), (z1 - z0) / 3.4), CF(-tp) * CF(x + sx * 0.02 * (j % 2), tb[2] + (roofY - tb[2]) * 0.45, zc), k + (sx > 0 and 1 or 0))
+        end
+        -- 车体侧面后段（裙板外）
+        local hx = (sx > 0) and (hb[4] + 0.22) or (hb[1] - 0.22)
+        for j = 0, 4 do
+          k += 1
+          local zc = hb[3] + (hb[6] - hb[3]) * (0.45 + 0.11 * j)
+          patch(hull, V(0.08, 1.6 + (j % 2) * 0.5, (hb[6] - hb[3]) * 0.12), CF(hx + sx * 0.02 * (j % 2), hb[5] * 0.55, zc), k)
+        end
+      end
+      for j = 0, 3 do   -- 车尾
+        k += 1
+        patch(hull, V((hb[4] - hb[1]) / 4.2, 1.8, 0.08), CF(hb[1] + (hb[4] - hb[1]) * (j + 0.5) / 4, hb[5] * 0.6 + (j % 2) * 0.3, hb[6] + 0.25), k)
+      end
+    end
+    -- 车顶 GAU-8 加特林炮塔附件：转轴在炮塔顶左侧（装填手那边），跟着炮俯仰（坦克不带机枪以后不用了）
     if mm and mm.roof == "gau8" then
       kpiv = TM.kitPivot(L)
       local kp = kpiv - tp
       local GM, BL, OD = RGB(52, 54, 50), RGB(28, 29, 28), C.base
-      tur(V(0.3, 2.7, 2.7), CF(kp.X, kp.Y - 0.85, kp.Z) * UPRIGHT, BL, MAT.Metal, CYL)   -- 座圈
-      tur(V(1.6, 0.7, 1.9), CF(kp.X, kp.Y - 0.45, kp.Z + 0.2), OD)   -- 底座
+      tur(V(0.3, 2.7, 2.7), CF(kp.X, kp.Y - 0.85, kp.Z) * UPRIGHT, BL, MAT.Metal, CYL)
+      tur(V(1.6, 0.7, 1.9), CF(kp.X, kp.Y - 0.45, kp.Z + 0.2), OD)
       local function kg(size, off, color, mat, shape) return add("kit", size, off, color or GM, mat or MAT.Metal, shape) end
-      kg(V(1.1, 1.0, 2.5), CF(0, 0, 0.3), OD)   -- 机匣
-      kg(V(0.12, 1.2, 2.2), CF(0.62, 0.05, 0.2), OD)   -- 侧护板
-      kg(V(0.12, 1.2, 2.2), CF(-0.62, 0.05, 0.2), OD)
-      kg(V(0.5, 0.36, 0.6), CF(0.25, 0.68, 0.1), BL)   -- 遥控瞄具
-      kg(V(0.3, 0.2, 0.04), CF(0.25, 0.68, -0.21), RGB(14, 16, 20), MAT.Glass)
-      for k = 0, 6 do   -- 七根炮管
+      kg(V(1.1, 1.0, 2.5), CF(0, 0, 0.3), OD)
+      for k = 0, 6 do
         local a = k / 7 * math.pi * 2
-        local x, y = math.cos(a) * 0.27, math.sin(a) * 0.27
-        tube(kg, x, y, -0.95, -TM.KIT_MUZ, 0.16, BL)
+        tube(kg, math.cos(a) * 0.27, math.sin(a) * 0.27, -0.95, -TM.KIT_MUZ, 0.16, BL)
       end
-      for _, z in ipairs({ -1.25, -3.4, -TM.KIT_MUZ + 0.25 }) do kg(V(0.14, 0.82, 0.82), CF(0, 0, z) * CFrame.Angles(0, math.pi / 2, 0), GM, MAT.Metal, CYL) end   -- 箍
-      -- 两个弹鼓（炮塔左侧的架子上）、输弹槽
-      local tb = L.tb
-      local dx = tb[1] - 0.95 - tp.X
-      for _, z in ipairs({ 2.2, 4.6 }) do
-        tur(V(2.6, 1.7, 1.7), CF(dx, kp.Y - 1.6, kp.Z + z) * CFrame.Angles(0, 0, 0), RGB(60, 64, 58), MAT.Metal, CYL)
-        tur(V(0.12, 1.85, 1.85), CF(dx + 1.3, kp.Y - 1.6, kp.Z + z), BL, MAT.Metal, CYL)
-      end
-      tur(V(2.6, 0.18, 4.2), CF(dx, kp.Y - 2.5, kp.Z + 3.4), BL)   -- 架子
-      tur(V(0.5, 0.35, 2.8), CF((dx + kp.X) / 2, kp.Y - 0.75, kp.Z + 1.6) * CFrame.Angles(0, math.atan2(kp.X - dx, 2.8) * 0.5, 0), GM)   -- 输弹槽
     end
   end
 
   return { model = m, parts = parts, wheels = wheels, dust = dust, exhaust = exhaust, fire = fire, black = black, def = d, lamps = lamps,
     imported = extra.imported, tpiv = extra.tpiv, gpiv = extra.gpiv, travel = extra.travel, rpiv = extra.rpiv, rgpiv = extra.rgpiv,
-    era = era, eraL = L, kpiv = kpiv and (kpiv - tp) or nil, mods = mm }
+    era = era, eraL = L, kpiv = kpiv and (kpiv - tp) or nil, plowPiv = plowPiv, mods = mm }
 end
 
 -- 爆反块被炸掉的样子（View 调）：砖藏起来，原地一块焦黑的底板、几片翻卷的钢皮、一圈熏黑——返回新加的零件 { 零件, 组, 相对位置 }

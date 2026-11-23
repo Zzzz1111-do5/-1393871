@@ -5,13 +5,13 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
--- 地图：desert（海湾战争式的纯陆地沙漠「沙海」，MapDesert.lua，岛图 10 倍面积）/ island（棕榈岛，Map.lua）。Studio 里 Workspace 的属性 MapName 优先
+-- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
+--   desert（「沙漠风暴」，MapDesert.lua，征服）、sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。
+--   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 Config.Map = "island"
-do
-  local w
-  pcall(function() w = workspace:GetAttribute("MapName") end)
-  if w == "desert" or w == "island" then Config.Map = w end
-end
+-- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
+--   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
+Config.MapVote = { time = 25, grace = 3 }
 
 ---------------------------------------------------------------- 回合
 
@@ -35,15 +35,21 @@ Config.Stages = {   -- 用户：同一时间只开一个交战区（像 Battlefi
   { id = "airfield", points = { "D" }, time = 6 * 60 },  -- 第三阶段：机场
   { id = "hq", points = { "E" }, time = 7 * 60 },        -- 第四阶段：指挥部决战
 }
--- 沙漠图（没有海、没有登陆艇）：五个阶段一个一个打——突破边境沙墙拿下哨所 A → 油田 B → 镇子 C → 空军基地 D → 岭上指挥部 E
-if Config.Map == "desert" then
-  Config.Stages = {
+-- 各张图的阶段表：沙海（没有海、没有登陆艇）五个阶段一个一个打——突破边境沙墙拿下哨所 A → 油田 B → 镇子 C → 空军基地 D → 岭上指挥部 E；
+--   沙漠风暴是征服模式（Round.lua conquest：据点一直都开着），阶段表不用、留岛上的
+Config.StagesByMap = {
+  island = Config.Stages,
+  sands = {
     { id = "border", points = { "A" }, time = 6 * 60 },     -- 第一阶段：越过沙墙和反坦克壕，拿下边境哨所
     { id = "oil", points = { "B" }, time = 6 * 60 },        -- 第二阶段：油田（油井在烧）
     { id = "town", points = { "C" }, time = 6 * 60 },       -- 第三阶段：镇子（巷战）
     { id = "airfield", points = { "D" }, time = 6 * 60 },   -- 第四阶段：空军基地（加固机库）
     { id = "hq", points = { "E" }, time = 7 * 60 },         -- 第五阶段：岩岭上的指挥部
-  }
+  },
+}
+function Config.useMap(id)
+  Config.Map = id or "island"
+  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.island
 end
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
@@ -181,7 +187,7 @@ Config.Vehicles = {
     aa = { "pgz07", "pgl625", "ld2000" },
     arty = { "plz07" },
     heli = { "z10", "z20" },
-    jet = { "j15t", "j35", "j20", "j16", "h6k", "gj11", "gj2" },   -- 歼-50 11-22 删掉了（用户：j50 删掉）
+    jet = { "j15t", "j35", "j20", "j36", "j16", "j11", "j10", "h6k", "gj11", "gj2" },   -- 歼-50 11-22 删掉了（用户：j50 删掉）
     ship = { "t055", "t054a", "t022" },
   },
   def = {
@@ -291,5 +297,13 @@ Config.Battle = {
   -- storm 暴风雨：开战后 at 秒（随机范围）有 chance 的机会来一场、持续 dur 秒、前后 ramp 秒变大变小
   storm = { chance = 0.85, at = { 150, 420 }, dur = { 150, 230 }, ramp = 25 },
 }
+
+-- 高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」；Nuke.lua）：
+--   cd 一队发射以后多少秒内不能再发、first 开战多少秒后才能发；kill 致死半径、hurt 重伤半径（格，1 米约 2.8 格）、air 天上的飞机挨冲击波的半径、
+--   bld 房子全塌、scorch 焦土半径（中心 melt 以内烧成熔岩壳）、crater 弹坑；burst 离地多高空爆；speed 滑翔、dive 俯冲的速度（格 / 秒，6～7 马赫）；
+--   fallout 辐射区（半径、每秒伤害、持续秒）
+Config.Nuke = { cd = 420, first = 90, kill = 950, hurt = 2000, air = 2600, bld = 1350, scorch = 560, melt = 140, crater = 64, burst = 120,
+  speed = 5800, dive = 6800, apo = 7200, drop = 0.8, life = 90,
+  fallout = { r = 420, dps = 9, dur = 45 } }
 
 return Config

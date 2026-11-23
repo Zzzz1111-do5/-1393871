@@ -382,7 +382,7 @@ function Night.init(G)
   ---------------------------------------------------------------- 光晕分级（用户：游戏非常卡顿）
   -- 地图上每盏灯（跑道灯、舰灯、营地灯，World.light）带一个 BillboardGui 光晕，全图 600 多个、6000 格内都在画——
   --   一个光晕就是一组界面（两块圆角方块），几百个一起画很费。按离镜头的距离分级：450 格内全亮，1100 格内亮一半，
-  --   2400 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
+  --   4000 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
   --   画面卡（G.perfK 低）距离一起缩；同时亮着的超过 GLOW_CAP 就再缩一点。闪烁的灯灭的那一下也关着（下面 anim 用 glowDark）
   local GLOW_CAP = 150
   local glows, glowSeen, glowDark, glowAllow = {}, {}, {}, {}   -- glowSeen[光晕] = 它的记录
@@ -400,7 +400,7 @@ function Night.init(G)
     if not cam or #glows == 0 then return end
     local cp = cam.CFrame.Position
     local k = math.clamp(G.perfK or 1, 0.55, 1.2) / glowScale
-    local d1, d2, d3 = 450 * k, 1100 * k, 2400 * k
+    local d1, d2, d3 = 450 * k, 1100 * k, 4000 * k   -- 最远一档原来 2400（视野改成无限远以后远处的灯一截就没了）；亮着的太多照样按 GLOW_CAP 往回缩
     local n, j = 0, 0
     for idx = 1, #glows do
       local x = glows[idx]
