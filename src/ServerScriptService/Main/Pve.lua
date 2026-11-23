@@ -139,7 +139,7 @@ function Pve.init(G)
       for _, P in pairs(G.P) do
         if P.team == "atk" and P.data then
           local first = (P.data.pve or 0) < n
-          local reward = L.reward * (first and (PC.firstBonus or 1) or 1)
+          local reward = math.floor(L.reward * (first and (PC.firstBonus or 1) or (PC.replay or 1)))   -- 第一次翻倍、再打一半
           if G.addCoins then G.addCoins(P, reward, "eco.pve") end
           if first then P.data.pve = n end
           if G.econPublish then G.econPublish(P) end

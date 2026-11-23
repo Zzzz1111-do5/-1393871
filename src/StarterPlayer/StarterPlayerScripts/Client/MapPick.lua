@@ -293,6 +293,7 @@ function MapPick.init(G)
   function G.showMapPick()
     gui.Enabled = true
     paintAll()
+    if G.S and G.S.pve and tab ~= "pve" then setTab("pve") end   -- 这个服务器在打关卡（比如传送过来的）：直接开关卡页
     if G.S then G.refreshMapPick(G.S) end
   end
   G.mapPickShown = function() return gui.Enabled end
@@ -323,7 +324,7 @@ function MapPick.init(G)
         K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
         K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
         K.forces.Text = T("pve.forces", L.enemies, L.allies)
-        K.reward.Text = T("pve.reward", L.reward)
+        K.reward.Text = (i > cl) and T("pve.rewardFirst", math.floor(L.reward * (PC.firstBonus or 1))) or T("pve.rewardReplay", math.floor(L.reward * (PC.replay or 1)))
         local locked = i > cl + 1
         local done = i <= cl
         local cur = S.pve == i and S.map == L.map

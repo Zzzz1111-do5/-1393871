@@ -913,7 +913,9 @@ end
 --   startCoins 新玩家的金币；一局打完：得分 × perScore + 赢了 win / 输了 lose；PvE 关卡打通另有奖励（Config.Pve）
 --   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
 --   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
+--   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
 Config.Economy = {
+  unlockAll = false,
   startCoins = 1500,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
@@ -937,7 +939,7 @@ Config.Economy = {
 --   map 哪张图（岛：登陆战，拿下 caps 个据点就赢；沙漠：征服，敌方兵力 tickets 扣光就赢）；enemies 敌方电脑几个、allies 友军电脑几个
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
-  firstBonus = 2, perPlayer = 2,
+  firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
   levels = {
     { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
     { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
@@ -4312,6 +4314,8 @@ add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
 add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
 add("pve.forces", "敌军 {1} · 友军 {2}", "Enemies {1} · Allies {2}")
 add("pve.reward", "奖励 {1} 金币（第一次翻倍）", "Reward {1} coins (doubled first time)")
+add("pve.rewardFirst", "首次通关奖励 ◉ {1}", "First clear reward ◉ {1}")
+add("pve.rewardReplay", "再次通关奖励 ◉ {1}", "Replay reward ◉ {1}")
 add("pve.locked", "先打通第 {1} 关", "Clear mission {1} first")
 add("pve.cleared", "✓ 已通关", "✓ CLEARED")
 add("pve.start", "开始", "START")
@@ -13726,6 +13730,7 @@ function Economy.init(G)
   local Config = G.Config
   local E = Config.Economy
   local GM = require(RS:WaitForChild("GunMods"))
+  if E.unlockAll then G.econAll = true end   -- 自己测试用：载具全开（Config.Economy.unlockAll）
 
   local function setList(t)
     local out = {}
@@ -13838,7 +13843,9 @@ function Economy.init(G)
   -- 一局打完（Round.lua 结算，先于存档）：得分 × perScore + 赢 / 输；PvE 模式（Pve.lua）照这个算一份，打通关卡另外加
   function G.awardCoins(P, won)
     if not P.data then return end
-    local n = math.floor((P.roundXp or 0) * E.perScore) + (won and E.win or E.lose)
+    -- PvE 关卡（Pve.lua）：输赢的固定数不发，关卡奖励顶替它（不然反复刷第 1 关比打对战挣得多）
+    local flat = G.pve and 0 or (won and E.win or E.lose)
+    local n = math.floor((P.roundXp or 0) * E.perScore) + flat
     if n > 0 then G.addCoins(P, n, "eco.round") end
   end
 end
@@ -17609,7 +17616,7 @@ function Pve.init(G)
       for _, P in pairs(G.P) do
         if P.team == "atk" and P.data then
           local first = (P.data.pve or 0) < n
-          local reward = L.reward * (first and (PC.firstBonus or 1) or 1)
+          local reward = math.floor(L.reward * (first and (PC.firstBonus or 1) or (PC.replay or 1)))   -- 第一次翻倍、再打一半
           if G.addCoins then G.addCoins(P, reward, "eco.pve") end
           if first then P.data.pve = n end
           if G.econPublish then G.econPublish(P) end
@@ -46717,6 +46724,7 @@ function MapPick.init(G)
   function G.showMapPick()
     gui.Enabled = true
     paintAll()
+    if G.S and G.S.pve and tab ~= "pve" then setTab("pve") end   -- 这个服务器在打关卡（比如传送过来的）：直接开关卡页
     if G.S then G.refreshMapPick(G.S) end
   end
   G.mapPickShown = function() return gui.Enabled end
@@ -46747,7 +46755,7 @@ function MapPick.init(G)
         K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
         K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
         K.forces.Text = T("pve.forces", L.enemies, L.allies)
-        K.reward.Text = T("pve.reward", L.reward)
+        K.reward.Text = (i > cl) and T("pve.rewardFirst", math.floor(L.reward * (PC.firstBonus or 1))) or T("pve.rewardReplay", math.floor(L.reward * (PC.replay or 1)))
         local locked = i > cl + 1
         local done = i <= cl
         local cur = S.pve == i and S.map == L.map

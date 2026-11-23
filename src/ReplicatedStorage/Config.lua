@@ -197,7 +197,9 @@ end
 --   startCoins 新玩家的金币；一局打完：得分 × perScore + 赢了 win / 输了 lose；PvE 关卡打通另有奖励（Config.Pve）
 --   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
 --   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
+--   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
 Config.Economy = {
+  unlockAll = false,
   startCoins = 1500,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
@@ -221,7 +223,7 @@ Config.Economy = {
 --   map 哪张图（岛：登陆战，拿下 caps 个据点就赢；沙漠：征服，敌方兵力 tickets 扣光就赢）；enemies 敌方电脑几个、allies 友军电脑几个
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
-  firstBonus = 2, perPlayer = 2,
+  firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
   levels = {
     { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
     { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },

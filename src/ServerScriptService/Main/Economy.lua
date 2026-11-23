@@ -12,6 +12,7 @@ function Economy.init(G)
   local Config = G.Config
   local E = Config.Economy
   local GM = require(RS:WaitForChild("GunMods"))
+  if E.unlockAll then G.econAll = true end   -- 自己测试用：载具全开（Config.Economy.unlockAll）
 
   local function setList(t)
     local out = {}
@@ -124,7 +125,9 @@ function Economy.init(G)
   -- 一局打完（Round.lua 结算，先于存档）：得分 × perScore + 赢 / 输；PvE 模式（Pve.lua）照这个算一份，打通关卡另外加
   function G.awardCoins(P, won)
     if not P.data then return end
-    local n = math.floor((P.roundXp or 0) * E.perScore) + (won and E.win or E.lose)
+    -- PvE 关卡（Pve.lua）：输赢的固定数不发，关卡奖励顶替它（不然反复刷第 1 关比打对战挣得多）
+    local flat = G.pve and 0 or (won and E.win or E.lose)
+    local n = math.floor((P.roundXp or 0) * E.perScore) + flat
     if n > 0 then G.addCoins(P, n, "eco.round") end
   end
 end
