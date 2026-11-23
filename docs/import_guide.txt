@@ -22,6 +22,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 23 日第三包（召唤界面带图标）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 用户：「召唤坦克和飞机、舰船的界面，选择的界面名字下面要带图标」——召唤地面载具、召唤飞机 / 直升机的选择卡片，名字下面一张这一型的侧影
+      （原模型正侧面拍的，地面载具、舰艇是带明暗的全息图，飞机是平涂的剪影）；舰艇码头终端柱上的牌子，船名下面也有这型船的侧影。
+      卡片加高了，放不下的往下滚。补拍了歼-10C、歼-11B、歼-36 和 7 型舰艇的侧影。
+    - 图标要在「游戏设置 → 安全」里打开「Mesh / Image API」（和驾驶界面的图标一样）；没打开就只有字、没有图。
   11 月 23 日第二包（歼-36 换成 28 万个三角形的完整版）：换游戏文件（或者「三、只换脚本」），再重导 air/j36.glb：
     - 用户：「j36 你给我用那个 30w 个三角形的模型」——就是 Sketchfab 上 positivevubez4eva 的 J36 v2（原模型 31.5 万个面）。11-22 那版去掉了机徽、编号、
       座舱仪表上的字（十万个三角形），这一版都放回来了：白色的标识、编号、座舱里的字都在，一共 28 万个三角形、44 块（每块不到两万，Roblox 导得进）；

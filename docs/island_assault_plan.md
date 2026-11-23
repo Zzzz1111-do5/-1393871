@@ -1029,6 +1029,9 @@
   - 11-23：用户「j36 你给我用那个 30w 个三角形的模型」——同一个 J36 v2（原模型 31.5 万个面），把 11-22 去掉的字（机徽、编号、座舱仪表字，十万个三角形，几何体、白色）放回来，
     只去掉透明度 0 的那层座舱盖和弹舱里的导弹：28 万个三角形、44 块。键名换成 j36_v2（块叫 A_j36_v2__…，`sf_air.py` 的 SPEC 新字段 kname），
     老的 j36 那一行留在 ImportedAir 的 old 表里（没重导的照旧用）。重新转要 AirDefs 的 JSON：没有 Lune 时用模拟器跑 `tools/models/airdefs_mock.lua`。
+  - 11-23（续）：用户「召唤坦克和飞机、舰船的界面，选择的界面名字下面要带图标」——Depot.lua：vehPick / airPick 卡片名字下面放 HudIcons 的侧影
+    （veh_ / air_<型号>），卡片加高、列表改成 ScrollingFrame；一型一位的码位（舰艇码头）牌子船名下面放 ship_<型号>、牌子加高。
+    `tools/models/vehicons.mjs` 加 SET=ship（models/ship）和歼-10 / 11 / 36，`hudicons.py` 认 ship_（明暗同地面载具）。测试：veh.lua、air.lua、navy.lua 查图标。
   - 11-22（合并）：两个会话同一天各做了一张沙漠图（这边「沙海」、affectionate-pasteur 的「沙漠风暴」），文件同名 MapDesert.lua。用户说两张都留：
     「沙漠风暴」留在 `MapDesert.lua`（地图 id `desert`，征服），「沙海」改名 `MapSands.lua`（id `sands`，五个阶段的突破），一起走 `Map.use(id)` 选图（开始游戏 → 选地图有三张卡）；
     沙海原来开服按 `Config.Map` 整个换模块，现在改成：阶段表 `Config.StagesByMap` + `Config.useMap(id)`（服务器定图后、客户端换图时调），据点、阶段、出生点的说法改成 `@sands` 键（`Lang.mapId`），
