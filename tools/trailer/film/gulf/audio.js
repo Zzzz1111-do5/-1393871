@@ -169,7 +169,7 @@ export async function renderGulfScore(SHOTS) {
   pad([E, G, B], at.MAP + 2.5, at.A1 + 0.4, 0.024, 1300);
   // 第一颗钉子：弦乐顿弓 104 拍，一小节一小节加厚，6 发命中时铜管（大字 hitWord）
   {
-    const [a0, a1] = sec('A1', 'B1'), b = 60 / 104 / 2;
+    const [a0, a1] = sec('A1', 'B0'), b = 60 / 104 / 2;
     for (let t = a0, i = 0; t < a1 - 0.1; t += b, i++) {
       const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - a0) / 14);
       stacc(r - 12, t, 0.15, 0.045 + 0.035 * k, (i % 2) ? 0.25 : -0.25);
@@ -183,7 +183,7 @@ export async function renderGulfScore(SHOTS) {
   }
   // 第二颗钉子：静下来，电子脉冲、远处的低音
   {
-    const [b0, b1] = sec('B1', 'C1');
+    const [b0, b1] = sec('B0', 'C1');
     for (let t = b0, i = 0; t < b1 - 0.2; t += 60 / 112 / 2, i++) pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.045 + 0.02 * Math.min(1, (t - b0) / 6));
     drone(E - 12, b0 - 0.3, b1 + 0.3, 0.07, 320);
     pad([E, G, B], b0, b1, 0.022, 1300);
@@ -216,11 +216,11 @@ export async function renderGulfScore(SHOTS) {
   {
     const [d0, d1] = sec('D1', 'E1');
     drone(E - 12, d0, d1 + 0.3, 0.08, 300);
-    pad([E, G, Fs + 12], d0, at.D4, 0.02, 1100);
-    for (let t = d0 + 0.3; t < at.D4; t += 60 / 128 * 2) taiko(t, 0.3, 75);
+    pad([E, G, Fs + 12], d0, at.D3B, 0.02, 1100);
+    for (let t = d0 + 0.3; t < at.D3B; t += 60 / 128 * 2) taiko(t, 0.3, 75);
     const b = 60 / 128 / 2;
-    for (let t = at.D4, i = 0; t < d1 - 0.05; t += b, i++) {
-      const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - at.D4) / 5);
+    for (let t = at.D3B, i = 0; t < d1 - 0.05; t += b, i++) {
+      const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - at.D3B) / 5);
       stacc(r - 12, t, 0.12, 0.05 + 0.025 * k, (i % 2) ? 0.3 : -0.3);
       if (i % 2 === 0) stacc(r, t, 0.1, 0.025 * k, (i % 2) ? -0.35 : 0.35);
       if (i % 4 === 0) taiko(t, 0.38 + 0.12 * k, 88);
@@ -330,6 +330,9 @@ export async function renderGulfScore(SHOTS) {
         case 'heart': heart(t, 0.32); break;
         case 'mapOn': { const g = ctx.createGain(); g.connect(out(SFX)); env(g, t, 0.01, 0.03, 0.3, 0.3); const o = osc('sine', 300, t, t + 0.8); o.frequency.exponentialRampToValueAtTime(2400, t + 0.55); o.connect(g); whoosh(t, 0.8, 0.06, 2000, 6000, -0.5, 0.5); } break;
         case 'mark': taiko(t, 0.4, 78); beep(t, 1400, 0.03, 0.08); beep(t + 0.12, 1900, 0.025, 0.06); break;
+        case 'shellWhistle': { const g = ctx.createGain(); g.connect(out(SFX, (R() - 0.5) * 0.6)); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.045, t + 0.62); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8); const o = osc('sine', 2300, t, t + 0.82); o.frequency.exponentialRampToValueAtTime(650, t + 0.8); o.connect(g); } break;
+        case 'chainGun': for (let x = 0; x < d; x += 0.1) shot(t + x, 0.34, 0.1, 0.75); roar(t, t + d + 0.2, 0.05, 900, 0.1, 10); break;
+        case 'impacts': for (let x = 0; x < d; x += 0.1) { boom(t + x, 0.1 + R() * 0.06, (R() - 0.5) * 0.8, 0.6); shot(t + x, 0.1, (R() - 0.5) * 0.8, 1.6); } break;
         case 'endTail': break;
         default: break;
       }
