@@ -98,10 +98,20 @@ R.run(1)
 check(booms == 1, "一直在音障上面不再响")
 C.sfx = sfx0
 
-print("③ 尾喷：军推只有喷口里的热芯，加力两条渐隐的火焰光带，没有玻璃气泡")
+print("③ 尾喷（照战雷）：军推只有喷口里的热芯；加力是蓝边的紫色焰身（ForceField 管子 + 淡紫的光）、一节一节的马赫环，没有玻璃气泡")
 local function beams()
   local n = 0
-  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and (d.Name == "AbFlame" or d.Name == "AbCore") and d.Enabled then n = n + 1 end end
+  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and d.Name == "AbFill" and d.Enabled then n = n + 1 end end
+  return n
+end
+local function shown(name)   -- 看得见的（不全透明）这种零件有几块
+  local n = 0
+  for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Name == name and d.Transparency < 0.95 then n = n + 1 end end
+  return n
+end
+local function machBeams()
+  local n = 0
+  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and string.match(d.Name, "^Mach%d") and d.Enabled then n = n + 1 end end
   return n
 end
 local glass = 0
@@ -112,10 +122,24 @@ for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "ParticleEmi
 check(haze == 0, "喷口后面没有热浪粒子（用户：喷口有怪异的泡泡）")
 st.thr, st.thrE = 100, 100
 R.run(0.3)
-check(beams() == 0, "军推：没有火焰光带")
+check(beams() == 0 and shown("AbTube") == 0 and shown("MachRing") == 0, "军推：没有焰身、没有马赫环")
 st.thr, st.thrE = 130, 130
 R.run(0.3)
-check(beams() >= 2, "加力：火焰光带亮了（" .. beams() .. " 条）")
+check(beams() >= 2, "加力：焰身里淡紫的光亮了（" .. beams() .. " 条，两个喷口）")
+local tubes, ff = shown("AbTube"), 0
+for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Name == "AbTube" and d.Material == Enum.Material.ForceField then ff = ff + 1 end end
+check(tubes >= 4 and ff == tubes, "加力：蓝边的焰身管子（ForceField，" .. tubes .. " 段）")
+check(shown("MachRing") >= 6, "加力推满：每个喷口后面一串马赫环（" .. shown("MachRing") .. " 个）")
+check(machBeams() >= 12, "马赫环外面的菱形光（" .. machBeams() .. " 条）")
+local z1, z2 = nil, nil   -- 马赫环一个接一个往后排
+for _, d in ipairs(v.M.model:GetDescendants()) do
+  if d:IsA("BasePart") and d.Name == "MachRing" and d.Transparency < 0.95 then
+    local zz = v.M.model:GetPivot():PointToObjectSpace(d.Position).Z
+    if not z1 or zz < z1 then z1 = zz end
+    if not z2 or zz > z2 then z2 = zz end
+  end
+end
+check(z1 and z2 and z2 - z1 > 3, string.format("马赫环沿着焰身往后排开（前后相距 %.1f 格）", (z1 and z2) and (z2 - z1) or 0))
 
 print("⑤ 导弹视角小窗：自己打出去的弹，右上角从弹上看目标；命中写「命中」，停一会儿关掉")
 do

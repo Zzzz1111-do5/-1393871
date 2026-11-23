@@ -137,13 +137,42 @@ if e and e.def.id == "j20" then
     local b = dy("BayM1", { bay = 1 })
     check(b and b < -0.3, "开弹舱：主弹舱门往下翻（" .. fmt(b) .. " 格）")
     -- 侧弹舱门在进气道下侧 45° 的斜面上、铰链在外上沿：打开是往外翻（中心高度差不多，往外挪）
-    local out = nil
-    for _, it in ipairs(byGroup.BaySL or {}) do
-      local cf0 = it.H * it.off
-      local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f({ bayS = 1 })) * it.off
-      out = (out or 0) + (math.abs(cf1.Position.X) - math.abs(cf0.Position.X)) / #byGroup.BaySL
+    --   歼-20 照真机「闭门」（bayC）：bayS 一半时门开着（挂架正把弹转出去），到 1 时门又关上、弹挂在舱外
+    local function doorOut(c)
+      local o = nil
+      for _, it in ipairs(byGroup.BaySL or {}) do
+        local cf0 = it.H * it.off
+        local cf1 = it.H * R.CFrame.fromAxisAngle(it.ax, it.f(c)) * it.off
+        o = (o or 0) + (math.abs(cf1.Position.X) - math.abs(cf0.Position.X)) / #byGroup.BaySL
+      end
+      return o
     end
-    check(out and out > 0.3, "开侧弹舱：左侧弹舱门往外翻（" .. fmt(out) .. " 格）")
+    local closing = IA.m[IKEY].surf.BaySL and IA.m[IKEY].surf.BaySL.k == "bayC"
+    local oMid, oEnd = doorOut({ bayS = closing and 0.5 or 1 }), doorOut({ bayS = 1 })
+    check(oMid and oMid > 0.3, "开侧弹舱：左侧弹舱门往外翻（" .. fmt(oMid) .. " 格）")
+    if closing then
+      check(oEnd and math.abs(oEnd) < 0.02, "侧弹舱：挂架把霹雳-10 转出去以后舱门又关上（" .. fmt(oEnd) .. " 格）")
+    end
+    -- 挂的弹：主弹舱四枚霹雳-15 在舱里（门关着的时候在机身里面）；侧弹舱的霹雳-10 收在舱里，转出去以后在机身外面
+    local function storeAt(i, c)
+      local s, k = V3(0, 0, 0), 0
+      for _, it in ipairs(v.M.stores[i] or {}) do
+        if it.k == 1 then
+          s = s + ((it.kind == "m") and (it.f(c) * it.cf0) or it.cf0).Position
+          k = k + 1
+        end
+      end
+      return k > 0 and s * (1 / k) or nil
+    end
+    local inMain, sideIn, sideOut = 0, nil, nil
+    for i, s in ipairs(e.def.st) do
+      local q = storeAt(i, { bayS = 0 })
+      if q and s.bay == "main" and math.abs(q.X) < 2.1 and q.Y > -2.5 and q.Y < -1.3 then inMain = inMain + 1 end
+      if q and s.bay == "sideL" then sideIn, sideOut = q, storeAt(i, { bayS = 1 }) end
+    end
+    check(inMain == 4, "主弹舱：四枚弹都在舱里（" .. inMain .. " 枚）")
+    check(sideIn and math.abs(sideIn.X) < 3.7, "侧弹舱：霹雳-10 收在舱里（x " .. fmt(sideIn and sideIn.X) .. "）")
+    check(sideOut and math.abs(sideOut.X) > 4.0, "侧弹舱：挂架把霹雳-10 转到机身外面（x " .. fmt(sideOut and sideOut.X) .. "）")
     local cn = dy("Canopy", { can = 1 })
     check(cn and cn > 1, "停机掀座舱盖：往上掀（" .. fmt(cn) .. " 格）")
     local rz = 0
@@ -200,6 +229,18 @@ if e and e.def.id == "j20" then
     check(wells + cav >= 3, "弹舱里有深色的舱壁（方盒 " .. wells .. " 个、舱 " .. cav .. " 个）")
     if IA.m[IKEY].bayfix then
       check(cav == 5, "侧弹舱、起落架舱是封好的舱（" .. cav .. " 个，应该 5 个：两个侧弹舱、两个主起落架舱、前起落架舱）")
+      if IA.m[IKEY].parts.BayCav_1 then   -- j20_v5（tools/models/mainbay.py）：主弹舱挖出真实深度的白色舱，门里面是卷帘门那样的横肋
+        local mb = 0
+        for _, it in ipairs(v.M.items) do
+          if it.kind == "b" and string.match(it.p.Name, "__BayCav_%d+$") then mb = mb + 1 end
+        end
+        check(mb == 2, "主弹舱：舱壁舱顶、隔框龙骨发射架（" .. mb .. " 块，应该 2 块）")
+        local inner = 0
+        for _, it in ipairs(byGroup.BayM1 or {}) do
+          if string.match(it.p.Name, "__BayM1_[34]$") and it.kind == "h" then inner = inner + 1 end
+        end
+        check(inner == 2, "主弹舱门里面的白板、横肋跟着门转（" .. inner .. " 块）")
+      end
       local duct = 0
       for _, it in ipairs(v.M.items) do
         if it.kind == "b" and string.match(it.p.Name, "__Duct_%d+$") then duct = duct + 1 end

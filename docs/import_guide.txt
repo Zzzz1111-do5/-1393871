@@ -7,7 +7,7 @@
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
 模型一共 115 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
   1. 地面载具                  veh/      21 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了）
-  2. 飞机直升机                air/      22 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v4__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
+  2. 飞机直升机                air/      22 个（文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v5__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、j11.glb / j10.glb / j36.glb 是 11-22 加的歼-11B / 歼-10C / 歼-36（11-23 起 j36.glb 里是 A_j36_v2__…）、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
   3. 舰艇、装备、花草          ship/     8 艘舰艇（fujian.glb 是 11 月 21 日加的攻方航母福建舰）
@@ -22,6 +22,18 @@
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+
+  11 月 23 日第九包（歼-20 弹舱照真机、加力尾焰照战雷带马赫环）：换游戏文件（或者「三、只换脚本」）；再重导 air/j20.glb 一个文件：
+    - 用户：「检查一下 j20 弹仓打开是不是跟现实一样」「主弹仓上类似卷帘门的那种」「弹仓的开合边缘是建模的锯齿线」——照 2018 年珠海航展歼-20 开舱的照片改：
+      · 主弹舱：门里面白色、一道道横肋（像卷帘门）；舱里白色，舱顶横隔框、中间龙骨、四个弹射发射架；舱挖到 0.46 米深，四枚霹雳-15 一排挂在舱里；
+        门的前后端切成锯齿边（每扇门 3 个齿）
+      · 侧弹舱：先开门 → 挂架把霹雳-10 连发射轨转出舱外 → 舱门关上（真机的「闭门」），收回时倒着走；舱加深、里面白色
+      · 原来挂弹位置是按零件拼的旧机身定的：外侧两枚霹雳-15 藏在机身里、霹雳-10 挂在进气道旁边——都改到原模型的弹舱里；霹雳-10 / 15 的尾翼改成真弹的比例
+    - 加力尾焰照战雷：蓝边的紫色焰身、一节一节的马赫环（加力越大越多），开加力时喷口里是深紫的
+    - 新导进来的块叫 A_j20_v5__…，游戏优先用它；没重导的照旧用 A_j20_v4__…（挂弹位置、侧弹舱闭门这些照样是新的，只是没有白色的舱和锯齿门）。
+      旧的 v4 想删就在命令栏粘这一行（删完再导）：
+
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^A_j20_v4__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧歼-20")
 
   11 月 23 日第八包（坦克车里只锁在炮长位）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
     - 用户：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」——开坦克（99A、96、M1A2、M1A1、M10）按 C 进车里直接是炮长位，

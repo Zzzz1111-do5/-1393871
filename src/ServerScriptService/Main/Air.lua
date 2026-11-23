@@ -508,7 +508,16 @@ function Air.init(G)
   end
 
   -- 挂点的世界位置
-  local function stationWorld(e, s) return e.root.CFrame * CF(s.pos) end
+  --   歼-20 侧弹舱（AirDefs 的 sideArm）：霹雳-10 在挂架转出舱外的位置发射（s.pos 是收在舱里的位置）
+  local function stationWorld(e, s)
+    local arm = e.def.sideArm
+    if arm and s.bay and s.bay ~= "main" then
+      local sd = (s.pos.X >= 0) and 1 or -1
+      local P = Vector3.new(sd * arm.p.X, arm.p.Y, s.pos.Z)
+      return e.root.CFrame * CF((CF(P) * CFrame.Angles(0, 0, -sd * arm.A) * CF(s.pos - P)).Position)
+    end
+    return e.root.CFrame * CF(s.pos)
+  end
   -- 选一个还有这种弹的挂点（左右交替）
   local function pickStation(e, wid)
     local d = e.def

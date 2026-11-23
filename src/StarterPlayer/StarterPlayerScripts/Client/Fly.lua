@@ -1176,6 +1176,7 @@ function Fly.init(G)
     local locked = st.lock and st.lockT >= (w.lockTime or 1)
     if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
+    if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
     for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
@@ -2310,7 +2311,7 @@ function Fly.init(G)
     local bm, bs = false, false
     if wid then bm, bs = bayOf(wid) end
     st.bay = approach(st.bay, bm and 1 or 0, dt * 2.5)
-    st.bayS = approach(st.bayS, bs and 1 or 0, dt * 2.5)
+    st.bayS = approach(st.bayS, bs and 1 or 0, dt * (d.sideArm and 0.9 or 2.5))   -- 歼-20 侧弹舱：开门、转出、关门三段，一秒多一点
     st.c.bay, st.c.bayS = st.bay, st.bayS
     -- 开火：鼠标左键 机炮按住连发（扳机发给服务器）；F 挂的弹一下一发（火箭按住连发）。没有炮的飞机左键也发挂的弹
     --   手机：开火键按选中的那种（选的是炮就打炮）
@@ -2348,7 +2349,12 @@ function Fly.init(G)
         local root = st.lock.em:FindFirstChild("Root")
         if root then
           local to = root.CFrame.Position - pos
+          local d0 = st.lock.dist
           st.lock.dir, st.lock.dist, st.lock.pos = to.Unit, to.Magnitude, root.CFrame.Position
+          if d0 and dt > 0 then   -- 接近速度（米 / 秒，近了为正）：战雷式锁定框右边写的那个，平滑一下
+            local vc = (d0 - st.lock.dist) / dt / AD.M
+            st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
+          end
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock)
           if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
@@ -2537,7 +2543,18 @@ function Fly.init(G)
         lockText.Text = locked and (T("air.locked") .. (st.uav and string.format("  %dm", math.floor(st.lock.dist / AD.M)) or "")) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
         lockText.TextColor3 = locked and RGB(255, 80, 70) or HUD
         info.lockDist = st.lock.dist
-        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out }
+        -- 战雷式锁定（AirHud）：目标型号写在框上面，距离、接近速度写在右边；红外弹的导引头圈从机头滑到目标上
+        local mdl = st.lock.em and st.lock.em:GetAttribute("Model")
+        local nm = nil
+        if mdl then
+          for _, pre in ipairs({ "veh.", "ship.", "fort." }) do
+            local tx = T(pre .. mdl)
+            if tx ~= pre .. mdl then nm = tx break end
+          end
+          nm = nm or string.upper(mdl)
+        end
+        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out,
+          name = nm, dist = st.lock.dist, vc = st.lock.vc, seeker = w.seeker or w.guide, bore = bp }
         if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false

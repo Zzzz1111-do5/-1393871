@@ -196,11 +196,16 @@ D.j20 = { kind = "jet", cat = "jet", L = 57, W = 36, H = 12.5, gearH = 6.4, hp =
   eng = { { x = 1.9, y = 0, z = 27.5, r = 1.35 }, { x = -1.9, y = 0, z = 27.5, r = 1.35 } },
   -- 起落架位置照原模型补的那套（tools/models/j20_gear.py：前起落架在座舱下、主起落架在侧弹舱后面，都往前收）；没导入原模型时零件拼的也摆这里
   gear = { nose = { z = -13.6, len = 5.2 }, main = { x = 3.4, z = 11.6, len = 5.0 }, r = 1.1 },
-  bays = { main = { z0 = -3, z1 = 10, w = 4.2 }, sideR = { x = 3.9, z0 = -9, z1 = -2.5, w = 1.3 } },
+  -- 弹舱照原模型（j20_v5，tools/models/mainbay.py）和真机（用户 11-23：「检查一下 j20 弹仓打开是不是跟现实一样」）：
+  --   主弹舱 x ±2.18、z −6.16～5.88，四枚霹雳-15 一排挂在舱顶的弹射发射架下（中间龙骨分开左右两半，外侧两枚往后错一点）；pos 是挂点（弹背），弹体中心再往下半个弹径
+  --   侧弹舱在机身下侧的斜面上：霹雳-10 收在舱里，sideArm 是挂架的转轴（右侧，机体坐标）和转多少——挂架绕转轴把弹连发射轨一起转出舱外、
+  --   舱门随后关上（AirModels.lua：先开门、再转出、再关门）；侧弹舱的 pos 是收在舱里时的弹体中心
+  bays = { main = { z0 = -6.16, z1 = 5.88, w = 4.37 }, sideR = { x = 3.9, z0 = -5.29, z1 = 4.34, w = 1.3 } },
+  sideArm = { p = V(3.2435, -1.7543, 0), A = math.rad(86) },
   st = mirror({
-    { name = "bayM1", pos = V(1.0, -2.2, 3.5), bay = "main", opts = { "pl15", "ls6" } },
-    { name = "bayM2", pos = V(2.8, -1.9, 3.5), bay = "main", opts = { "pl15", "ls6" } },
-    { name = "bayS", pos = V(3.9, -1.6, -5.5), bay = "sideR", opts = { "pl10" } },
+    { name = "bayM1", pos = V(0.55, -1.51, -0.42), bay = "main", opts = { "pl15", "ls6" } },
+    { name = "bayM2", pos = V(1.55, -1.51, 0.12), bay = "main", opts = { "pl15", "ls6" } },
+    { name = "bayS", pos = V(3.493, -0.6915, -0.476), bay = "sideR", opts = { "pl10" } },
     { name = "wing", pos = V(9.5, -1.0, 7.5), opts = { "pl15", "pl10", "kd88", "ls6", "lt2" } },
   }),
   presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
