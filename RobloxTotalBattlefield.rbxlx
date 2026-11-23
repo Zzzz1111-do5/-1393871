@@ -1,9 +1,9 @@
 <roblox version="4">
-  <Item class="ReplicatedStorage" referent="1">
+  <Item class="ReplicatedStorage" referent="0">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="ModuleScript" referent="2">
+    <Item class="ModuleScript" referent="1">
       <Properties>
         <string name="Name">AirDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机的型号数据（服务器、客户端共用）：尺寸、飞行性能、航炮、挂点与可选挂载、预设方案、外形
@@ -671,7 +671,7 @@ return AirDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="3">
+    <Item class="ModuleScript" referent="2">
       <Properties>
         <string name="Name">Ballistics</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克炮的真实外弹道和火控计算（服务器、客户端共用）
@@ -764,7 +764,7 @@ return B
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="4">
+    <Item class="ModuleScript" referent="3">
       <Properties>
         <string name="Name">BuildingMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/bld2glb.py），别手改：地图建筑的原模型（models/bld/buildings.glb，网页版地图用的写实模型）的元数据
@@ -792,7 +792,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="5">
+    <Item class="ModuleScript" referent="4">
       <Properties>
         <string name="Name">CarrierMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/fujian.py），别手改：攻方航母（福建舰）原模型 models/ship/fujian.glb 的元数据
@@ -805,7 +805,7 @@ return { scale = 19.08, tris = 12570, parts = { Hull_1 = { c = { 0.53, 20.45, 0.
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="6">
+    <Item class="ModuleScript" referent="5">
       <Properties>
         <string name="Name">CavityMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/carve.py），别手改：从原车模型挖出来的内腔（用户 11-23「在原车内部雕刻出来内饰」），内饰代码按它摆东西
@@ -813,13 +813,14 @@ return { scale = 19.08, tris = 12570, parts = { Hull_1 = { c = { 0.53, 20.45, 0.
 --   高度表：x0 / z0 第一列的位置、d 列距、nx × nz 列（x 外层、z 内层），每列内腔的地板 lo、顶 hi（16 位，y0..y1 线性，65535 = 这一列没有内腔），base64
 --   坐标同 ImportedMeta：格，原点车底中心，X 右、Y 上、−Z 朝前
 return {
-  hmmwv = { anchors = { cmd = { 2.05, 4.55, -0.45 }, drv = { -2.05, 4.55, -0.45 }, ring = { 0, 5.05, 0.7 }, rl = { -2.05, 4.5, 1.9 }, rr = { 2.05, 4.5, 1.9 }, seat = { 0, 2.45, 0 }, wheel = { -1.98, 3.66, -1.86 } }, spaces = { Cab = { g = "Body", hm = { d = 0.25, hi = "///////////////////////////////////////////////////////////////////////////////////////////////////iZ5drUOJQ4lDiUOJQ4lDiUOJQ4kWJDcxQ4lDiUOJQ4lDiUOJQ4uzA//8VsuTaJ/En8SfxJ/En8SfxJ/Fx7XHtce3k2hWy///iZ3HtSPyS+JL4SPxI/JL4kvhI/Ej8SPyS+JL4SPxI/JL4kviS+Cfx/v+S+JL4kviS+JL4kviS+JL4kviS+JL4kviS+Da9//8sZHHtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/+zA///iZ3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/+zA/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/6LE//9Nb3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/6LE/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/6LE/////1DiSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm////////SPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm////////SPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30/v+S+Ej8SPxI/Ej8SPxI/Ej8SPxI/Ej8SPxI/Abm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/wbm/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/5re/////3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/6LE///iZ3HtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/6LE///AXAbmSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8/v/+/+zA///AXHHtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8SPz+/+zA//92YHHtSPyS+Ej8SPxI/Ej8SPxI/P7/SPxI/Ej8SPxI/Ej8SPxI/N30SPyS+Ej8SPxI/Ej8/v/+//7//v9I/Ej8SPz+/za9//92YEWJUOJQ4lDiUOJQ4lDiUOJQ4su1UOJQ4lDiUOJQ4lDiUOJQ4sPPkvgn8ZL4kviS+Ej8SPxI/Ej8SPyS+JL4SPxI/Da9//////////9XyFfIV8hXyFfIV8j////////swFfIV8hXyFfIV8j/////////////////////////////////////////////", lo = "//////////////////////////////////////////////////////////////////////////////////////////////////+NEo0SjRKNEo0SGiUaJRolGiWNEjNKhSz4GfgZzyjPKM8oAAC2A64d//8cmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SAAC2A2QhsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SAAC2AzswsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SAAC2A/EzsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY/////zNKjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SAAC2Azswn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC2A2Qhn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u1n1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u1iJ+fUZdrn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u19KZ2YPSmwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u19KZ2YHZgwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU////////9KZ2YHZgwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU////////9KZ2YHZgwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u1PqN2YHZgwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u19KZ2YHZgwFyfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u19KbAXPSmn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u1l2ufUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU/////8u16U3pTelN6U3pTelN6U3pTelN6U3pTRI/pzfxM4UszyjPKPEzn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SQxYaJfEzn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUZ9Rn1GfUWeU//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SQxYaJc8osZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SQxYaJRolsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEs8o8TPPKM8ozygaJY0SjRKNEo0ShSyNEo0SQxYaJa4dsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//+NEo0SjRKNEo0SzyjPKM8ozyiNElw7jRKNEo0ShSyNEo0SzyjPKK4dsZAcmByYHJgcmByYHJgcmByYHJgcmByYHJgcmByY//////////9frl+uX65frl+uX67///////9frl+uX65frl+uX67/////////////////////////////////////////////", nx = 24, nz = 36, x0 = -2.913, y0 = 1.501, y1 = 4.951, z0 = -2.823 }, vol = 105.43 } }, win = { { c = { 1.417, 4.344, -2.426 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.628 }, { c = { -1.406, 4.345, -2.425 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.627 }, { c = { 1.417, 4.344, -2.41 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.628 }, { c = { -1.406, 4.345, -2.409 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.627 }, { c = { -2.836, 4.397, -1.036 }, h = 1.791, n = { -0.074, -0.856, -0.511 }, up = { -0.123, 0.517, -0.847 }, w = 0.325 }, { c = { 2.854, 4.397, -1.036 }, h = 1.791, n = { 0.074, -0.856, -0.511 }, up = { 0.123, 0.516, -0.848 }, w = 0.325 }, { c = { -2.814, 4.434, 1.019 }, h = 1.443, n = { 0.12, 0.969, -0.217 }, up = { -0.468, 0.248, 0.848 }, w = 0.827 }, { c = { 2.832, 4.434, 1.019 }, h = 1.443, n = { -0.12, 0.969, -0.217 }, up = { 0.468, 0.248, 0.848 }, w = 0.827 }, { c = { 0.011, 4.268, 6.044 }, h = 0.784, n = { 0, 0.093, 0.996 }, up = { -0, 0.996, -0.093 }, w = 2.245 }, { c = { 0.011, 4.261, 6.05 }, h = 0.784, n = { 0, 0.093, 0.996 }, up = { -0, 0.996, -0.093 }, w = 2.245 } } },
+  hmmwv = { anchors = { cmd = { 2.05, 4.55, -0.45 }, drv = { -2.05, 4.55, -0.45 }, ring = { 0, 5.05, 0.7 }, rl = { -2.05, 4.5, 1.9 }, rr = { 2.05, 4.5, 1.9 }, seat = { 0, 2.45, 0 }, wheel = { -1.98, 3.66, -1.86 } }, spaces = { Cab = { g = "Body", hm = { d = 0.24, hi = "////////////////////////////////////////////////////////////////////////////////////////////////////////AAAAAJHikeKR4pHikeKR4pHikeJphGmEzNaR4pHikeKR4pHioN+R4putvtkQlr7ZkeKR4oPlkeKR4pHikeKg36/coN/b04Pl/////+5pZesb+hv6G/ob+ir3G/ob+hv6G/oN/Rv6G/ob+ir3G/ob+hv6KvdI8Q39Kvcq9yr3Kvcq9yr3Kvcq9yr3Kvcq9yr3Kvcq9//////uaVbuG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfT+/yr3Df0N/Q39Df0N/f7//v/+/w39Df0N/Q39Df3/////C2RW7hv6G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39/////+5pVu4b+hv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+//7/Df0N/Q39Df0N/f/////jBVbuG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3Df0N/Q39Df0N/f7//v/+/w39Df0N/Q39Df3/////0G9W7hv6G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39////////g+Ub+hv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+//7/Df0N/Q39Df0N/f///////1buG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3Df0N/Q39Df0N/f7//v/+/w39Df0N/Q39Df3///////9W7g39G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39////////Vu4N/Rv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+//7/Df0N/Q39Df0N/f//////////Df0b+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3G/ob+hv6G/ob+hv6G/ob+hv6G/oN/Q39Df3//////////w39G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39////////Vu4N/Rv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+//7/Df0N/Q39Df0N/f///////1buG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3Df0N/Q39Df0N/f7//v/+/w39Df0N/Q39Df3///////9W7hv6G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39////////Vu4b+hv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+//7/Df0N/Q39Df0N/f////8AAFbuG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3Df0N/Q39Df0N/f7//v/+/w39Df0N/Q39Df3/////7mlW7hv6G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7//v8N/Q39Df0N/Q39/////yhekeIb+hv6G/oN/Q39G/ob+hv6Df0N/Rv6G/ob+hv6G/ob+hv6Kvc59A39KvcN/Q39Df0N/Q39/v/+/w39Df0N/Q39Df0N/f////8oXlbuG/ob+hv6Df0N/Rv6G/ob+g39Df0b+hv6G/ob+hv6G/ob+ir3OfQN/Sr3Df0N/Q39Df0N/f7//v8N/Q39Df0N/Q39Df3/////GmFW7hv6G/ob+g39Df0b+hv6G/oN/Q39G/ob+hv6G/ob+hv6G/oq9zn0Df0q9w39Df0N/Q39Df3+//7/Df0N/Q39Df0N/Q39/////xphfbOR4pHikeKR4pHikeKR4pHi6tCbrZHikeKR4pHikeKR4pHikeKg3xv6SPEb+hv6G/ob+g39Df0N/Q39G/ob+hv6Df0b+v////8AAAAA1qGv3K/cr9yv3K/coN9Cvz2NH5Pknq/cr9yv3K/cr9zb07inuKf/////EJYQlhCWEJYQlv///////xCWEJYQlgKZEJb//w==", lo = "////////////////////////////////////////////////////////////////////////////////////////////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxAm0dvtkfkx+TH5Mfkx+TH5MCmR+TH5Mfkx+TH5Mfkx+T/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8QJeID2NH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfk/////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPECIyw9jR+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5P/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxAtk6PY0fkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+T/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8QLoN3iBPY09jT2NPY09jT2NPY09jT2NPY09jT2NPY09jf////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPECQCaBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUz/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxApkUgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFM////////jLDfbIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTP///////4ywx6Q3W8ekgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUz///////+MsMekKF4oXihegUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFM////////jLDHpCheKF4oXoFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTP//////////x6QoXiheKF6BTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUz//////////8ekKF4oXihegUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFM////////jLDHpCheKF4oXoFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTP///////4ywx6QoXiheKF6BTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUz///////+MsNahck/WoYFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFM////////jLDoN+g36DfoN+g36DfoN+g36DfoN+g36DfoN+g3gUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTP////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPEC2TqBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUz/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxAgUygUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFMgUyBTIFM/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8QIjLD2NH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfk/////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPECXiA9jR+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5P/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxAnsaPY0fkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+T/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8QK2Dj2NH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfkx+TH5Mfk/////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPECyz3/////H5Mfkx+TH5Mfk////////x+TH5Mfkx+TH5P//w==", nx = 25, nz = 38, x0 = -2.949, y0 = 1.506, y1 = 4.986, z0 = -2.818 }, vol = 111.17 } }, win = { { c = { 1.417, 4.344, -2.426 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.628 }, { c = { -1.406, 4.345, -2.425 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.627 }, { c = { 1.417, 4.344, -2.41 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.628 }, { c = { -1.406, 4.345, -2.409 }, h = 1.152, n = { -0, 0.112, -0.994 }, up = { 0, 0.994, 0.112 }, w = 2.627 }, { c = { -2.836, 4.397, -1.036 }, h = 1.791, n = { -0.074, -0.856, -0.511 }, up = { -0.123, 0.517, -0.847 }, w = 0.325 }, { c = { 2.854, 4.397, -1.036 }, h = 1.791, n = { 0.074, -0.856, -0.511 }, up = { 0.123, 0.516, -0.848 }, w = 0.325 }, { c = { -2.814, 4.434, 1.019 }, h = 1.443, n = { 0.12, 0.969, -0.217 }, up = { -0.468, 0.248, 0.848 }, w = 0.827 }, { c = { 2.832, 4.434, 1.019 }, h = 1.443, n = { -0.12, 0.969, -0.217 }, up = { 0.468, 0.248, 0.848 }, w = 0.827 }, { c = { 0.011, 4.268, 6.044 }, h = 0.784, n = { 0, 0.093, 0.996 }, up = { -0, 0.996, -0.093 }, w = 2.245 }, { c = { 0.011, 4.261, 6.05 }, h = 0.784, n = { 0, 0.093, 0.996 }, up = { -0, 0.996, -0.093 }, w = 2.245 } } },
+  jltv = { anchors = { cmd = { 1.65, 5.6, -0.55 }, drv = { -1.65, 5.6, -0.55 }, rl = { -1.65, 5.6, 2.1 }, rr = { 1.65, 5.6, 2.1 }, seat = { 0, 3.6, 0 }, wheel = { -1.65, 4.7, -1.75 } }, spaces = { Cab = { g = "Body", hm = { d = 0.245, hi = "//////////////////////////////////////////////////////////////////////////++iOmCQFfpov//QRdAV1WUVZRVlFWUVZRVlFWUK1rpgumCvoi+iIGO/5/Tpb6ogK7/n/9f///UhSqa6aJrsenCgM6Azj/XP9c/1z/XKtoU3RTdatEU3f7f/t/+3/7f6eLp4uni6eLp4uni///Uhf+fgK4UvYDOatHp4uni6eLp4uni6eLp4v7fFN3p4uni6eLp4uni6eLp4uni6eLp4uni///Uhf+fgK4UvYDOgM7p4uni6eLp4uni6eLp4hTdFN3p4uni6eLp4uni6eLp4uni6eLp4uni///Uhf+fgK4UvYDOgM7p4uni6eLp4uni6eIU3RTdFN3p4uni6eLp4uni6eLp4uni6eLp4uni//++iP+fgK4UvYDOgM7p4uni6eLp4uni6eIU3eniFN3p4uni6eLp4uni6eLp4uni6eLp4uni//++iP+fgK4UvYDOgM7p4uni6eLp4uniFN3p4uniFN3p4uni/t/+3/7f/t8U3f7f6eLp4uni//+Bjv+fgK4UvYDOatHp4uni6eLp4mrRatFq0WrRatHp4v7f/v/+//7//v/+//7//t/p4uni//+Bjv+fgK4UvVXUgM7p4uni6eLp4mrRgM6AzoDO/t/+3/7//v/+//7//v/+//7/FP3p4uni//+Bjv+fgK4UvVXUatHp4uni6eLp4mrRgM6AzoDOatEU3f7//v/+//7//v/+//7//v/+3+ni//+BjumCgK4UvVXUgM7+3+ni6eLp4v7fFN0U3f7f/t8U/f7//v/+//7//v/+//7//v8U3eni//+BjhSdgK4UvVXUgM4U3RTd6eLp4mrRgM6AzoDOatEU/f7//v/+//7//v/+//7//v/+3+ni//+Bjv+fgK4UvVXUatH+3z/X/t8q2mrRgM6AzoDO/t/+3/7//v/+//7//v/+//7//v/+3+ni//+Bjv+fgK4UvVXUqMs/1z/X6eLp4lXUatFq0WrRatHp4v7f/v/+//7//v/+//7//t/p4uni//++iOmCgK4UvVXUvshV1D/X6eLp4uniFN3p4uniFN3p4uni/t8U/f7//v/+//7f6eLp4uni//++iOmCgK4UvVXUvshV1Oni6eLp4uni/t8U3eniFN3p4uni6eLp4uni/t/p4uni6eLp4uni//++iOmCgK4UvVXUvshV1Oni6eLp4uni6eIU3RTdFN3p4uni6eLp4uni6eLp4uni6eLp4uni//++iOmCgK4UvVXUvshV1Oni6eLp4uni6eLp4hTdFN3p4uni6eLp4uni6eLp4uni6eLp4uni//++iOmCgK4UvVXUgM4/1+ni6eLp4uni6eLp4v7fFN3p4uni6eLp4uni6eLp4uni6eLp4uni//++iOmC6aJrsenCatE/1z/XKtoq2iraFN0U3f7fatH+3/7f6eLp4uni6eLp4uni6eLp4uni//+oi+mCFJ3pooCuVhSpa0CXVZRVlFWUa5FrkWuR/////+mC1IW+iKiLgY6+qECXvqgU3b8o////////////////////////////////VnRrcf//////////////////////////////////", lo = "//////////////////////////////////////////////////////////////////////////+BToFObDHpov//lwuXC5cL1QXVBb8IvwiXCysa1CUVfeoilwuXC5cL1QW/CJcL1QXVBZcL//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8rGgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8VHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8VHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8VHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8VHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO///qAgAAvmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAABWFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAACXKwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAADqQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8VPVY0/z++aAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAADqAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIO//9rUWtR6YL/n4Cu1QXVBdUF1QXVBdUF1QVWFBU9/////2wx1QXVBdUF1QXVBdUF1QXVBYIO////////////////////////////////a3Frcf//////////////////////////////////", nx = 23, nz = 27, x0 = -2.713, y0 = 3.266, y1 = 6.866, z0 = -3.381 }, vol = 91.09 } }, win = { { c = { -2.353, 4.147, -3.259 }, h = 0.368, n = { 0.256, 0.064, -0.965 }, up = { -0.017, 0.998, 0.062 }, w = 0.089 }, { c = { -1.451, 5.248, -3.017 }, h = 0.022, n = { -0.001, -0.116, -0.993 }, up = { -0, 0.993, -0.116 }, w = 0.594 }, { c = { 1.456, 5.248, -3.017 }, h = 0.022, n = { 0.001, -0.116, -0.993 }, up = { 0, 0.993, -0.116 }, w = 0.594 }, { c = { -0.631, 5.392, -2.924 }, h = 0.132, n = { 0.01, 0.778, -0.628 }, up = { -0.013, 0.628, 0.778 }, w = 0.083 }, { c = { -2.367, 4.897, -2.687 }, h = 0.402, n = { -0.842, 0, 0.539 }, up = { 0, 1, 0 }, w = 0.276 }, { c = { 0.002, 5.816, -2.613 }, h = 1.402, n = { 0, 0.758, -0.652 }, up = { -0, 0.652, 0.758 }, w = 4.399 }, { c = { 2.697, 4.501, -2.426 }, h = 0.876, n = { 0, 0.56, -0.829 }, up = { 0, 0.829, 0.56 }, w = 0.018 }, { c = { 2.762, 5.15, -2.375 }, h = 0.256, n = { 0.99, 0.134, -0.053 }, up = { -0.134, 0.991, 0.007 }, w = 0.249 }, { c = { 2.726, 4.102, -2.37 }, h = 0.122, n = { 0.953, -0.296, 0.058 }, up = { 0.296, 0.955, 0.018 }, w = 0.107 }, { c = { 2.727, 3.836, -2.367 }, h = 0.269, n = { 0.992, -0.094, -0.083 }, up = { 0.094, 0.996, -0.008 }, w = 0.235 }, { c = { 2.726, 4.904, -2.349 }, h = 0.108, n = { 0.816, 0.576, 0.051 }, up = { -0.575, 0.818, -0.036 }, w = 0.114 }, { c = { 2.698, 3.836, -2.339 }, h = 0.304, n = { 1, -0.029, 0.001 }, up = { 0.029, 1, 0 }, w = 0.192 }, { c = { 2.699, 5.149, -2.339 }, h = 0.303, n = { 1, -0.03, 0.001 }, up = { 0.03, 1, 0 }, w = 0.192 }, { c = { -1.314, 6.238, -1.911 }, h = 0.021, n = { 0, -0.508, -0.862 }, up = { 0, 0.862, -0.508 }, w = 1.087 }, { c = { 1.318, 6.237, -1.909 }, h = 0.021, n = { -0, -0.465, -0.885 }, up = { -0, 0.885, -0.465 }, w = 1.087 }, { c = { -0.474, 6.251, -1.901 }, h = 0.351, n = { 0, 0.695, -0.719 }, up = { 0, 0.719, 0.695 }, w = 0.38 }, { c = { 0.237, 6.357, -1.786 }, h = 0.519, n = { 0, 0.99, -0.144 }, up = { 0, 0.144, 0.99 }, w = 0.818 }, { c = { -1.35, 6.457, -1.559 }, h = 0.071, n = { 0.032, 0.439, -0.898 }, up = { -0.015, 0.899, 0.439 }, w = 1.16 }, { c = { -0.093, 6.458, -1.552 }, h = 0.11, n = { -0.999, 0.014, -0.045 }, up = { 0.014, 1, 0.001 }, w = 0.11 }, { c = { 1.354, 6.435, -1.548 }, h = 0.071, n = { -0.017, 0.495, -0.869 }, up = { 0.01, 0.869, 0.495 }, w = 1.158 }, { c = { 1.151, 6.45, -1.526 }, h = 0.205, n = { -0.241, 0.412, -0.879 }, up = { 0.109, 0.911, 0.397 }, w = 1.028 }, { c = { 0.438, 6.464, -1.468 }, h = 0.228, n = { 0.247, 0.479, -0.842 }, up = { -0.135, 0.878, 0.46 }, w = 0.407 }, { c = { 0.288, 6.488, -1.463 }, h = 0.321, n = { -0.255, -0.75, -0.61 }, up = { -0.289, 0.661, -0.692 }, w = 0.754 }, { c = { 0.481, 6.409, -1.416 }, h = 0.251, n = { 0.282, 0.823, -0.494 }, up = { -0.408, 0.568, 0.715 }, w = 0.276 }, { c = { -0.515, 6.473, -1.36 }, h = 0.282, n = { -0.499, 0.806, -0.318 }, up = { 0.68, 0.591, 0.433 }, w = 0.553 }, { c = { -2.36, 5.835, -1.285 }, h = 1.43, n = { -1, -0, -0 }, up = { 0, 1, 0 }, w = 2.67 }, { c = { 2.36, 5.835, -1.285 }, h = 1.43, n = { 1, 0, 0 }, up = { 0, 1, 0 }, w = 2.67 }, { c = { -0.396, 6.465, -1.266 }, h = 0.157, n = { -0.939, 0.235, -0.249 }, up = { 0.227, 0.972, 0.06 }, w = 0.771 }, { c = { 0.441, 6.47, -1.244 }, h = 0.172, n = { -0.905, -0.208, -0.371 }, up = { -0.192, 0.978, -0.079 }, w = 0.618 }, { c = { 0.369, 6.492, -1.209 }, h = 0.103, n = { 0.723, -0.667, 0.181 }, up = { 0.647, 0.745, 0.162 }, w = 0.6 }, { c = { 0.396, 6.531, -1.195 }, h = 0.082, n = { -0.023, -0.36, -0.933 }, up = { -0.009, 0.933, -0.359 }, w = 0.155 }, { c = { 2.657, 4.438, -1.174 }, h = 2.223, n = { 0.999, -0.044, -0.016 }, up = { 0.044, 0.999, -0.001 }, w = 2.522 }, { c = { 0.005, 6.443, -0.735 }, h = 0.25, n = { 0.022, 0.001, -1 }, up = { -0, 1, 0.001 }, w = 1.565 }, { c = { 0.025, 4.942, -0.467 }, h = 6.802, n = { 0.034, 0.537, -0.843 }, up = { -0.021, 0.844, 0.536 }, w = 5.469 }, { c = { 2.416, 3.666, -0.352 }, h = 1.799, n = { 1, 0.006, 0.003 }, up = { -0.006, 1, -0 }, w = 0.783 }, { c = { 2.853, 4.884, -0.338 }, h = 0.175, n = { 0.958, 0.238, 0.16 }, up = { -0.235, 0.971, -0.039 }, w = 0.62 }, { c = { 2.734, 4.875, -0.306 }, h = 0.318, n = { 1, 0, 0 }, up = { -0, 1, -0 }, w = 0.736 }, { c = { -2.19, 5.315, -0.227 }, h = 0.891, n = { -0.869, 0.266, -0.417 }, up = { 0.24, 0.964, 0.115 }, w = 0.326 }, { c = { 2.194, 5.315, -0.227 }, h = 0.891, n = { 0.869, 0.266, -0.417 }, up = { -0.24, 0.964, 0.115 }, w = 0.326 }, { c = { -1.669, 6.515, -0.219 }, h = 1.292, n = { -0.652, 0.637, -0.411 }, up = { 0.539, 0.771, 0.34 }, w = 1.594 }, { c = { -1.164, 6.538, -0.218 }, h = 0.061, n = { -0.737, -0, -0.676 }, up = { -0, 1, -0 }, w = 0.852 }, { c = { 1.168, 6.538, -0.218 }, h = 0.061, n = { 0.737, -0, -0.676 }, up = { 0, 1, -0 }, w = 0.852 }, { c = { 1.67, 6.508, -0.217 }, h = 1.277, n = { 0.654, 0.628, -0.422 }, up = { -0.528, 0.778, 0.34 }, w = 1.603 }, { c = { 2.71, 3.831, -0.092 }, h = 0.132, n = { 0.884, -0.459, -0.092 }, up = { 0.456, 0.888, -0.048 }, w = 0.135 }, { c = { 2.819, 4.847, 0.02 }, h = 0.289, n = { 0.976, -0.143, 0.162 }, up = { 0.141, 0.99, 0.023 }, w = 0.319 }, { c = { -2.28, 5.782, 0.29 }, h = 0.835, n = { -0.346, -0.847, -0.404 }, up = { -0.551, 0.532, -0.643 }, w = 0.258 }, { c = { -2.36, 5.835, 1.47 }, h = 1.43, n = { -1, -0, -0 }, up = { 0, 1, 0 }, w = 2.38 }, { c = { 2.36, 5.835, 1.47 }, h = 1.43, n = { 1, 0, 0 }, up = { 0, 1, 0 }, w = 2.38 }, { c = { -0.011, 6.781, 1.848 }, h = 1.719, n = { -0.036, 0.811, 0.585 }, up = { 0.049, 0.586, -0.809 }, w = 2.233 }, { c = { -0.373, 6.676, 2.875 }, h = 0.101, n = { -0.271, 0.221, 0.937 }, up = { 0.062, 0.975, -0.212 }, w = 0.779 } } },
   ztz99a2 = { anchors = {  }, spaces = { Hull = { g = "Body", hm = { d = 0.24, hi = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////9S1lLWRtxG3EbcRtxG3EbcRtw64jriOuIu6C7oLugu6C7oLugu6CLuIu4i7iLuFvQW9Bb0FvQW9Ar6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6////////////////////////UtZS1lLWRtxG3EbcRtxG3EbcRtw64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6/////////////////////////////1LWRtxG3EbcRtxG3EbcRtw64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6////////////////////////UtZS1lLWRtxG3EbcRtxG3DriOuI64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6/////////////////////////////////////////////1LWUtZS1lLWUtZS1kbcRtxG3EbcOuL///////////////////////8i7iLuIu4i7iLuIu4W9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//81ZR1x4Y7hjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcRtxG3JmysaalrI24jbg64i7oLuiNuI24payxppmyIu4i7iLuFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcRtylrKWsjbg64jriOuI64i7oLugu6C7oLuiNuJmypawi7iLuFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcsaaZskbcOuI64jriOuI64i7oLugu6C7oLugi7iLujbixpo24FvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3LGmjbhG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7rGmFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtalrJmyRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7o24pawW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWmbKlrEbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLumbKZshb0FvQK+gr6CvoK+gr6CvoK+gr6//9BXzVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWpayNuEbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSxphb0FvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1o24paxG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSlrJmyFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1pmymbJG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSNuKWsFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1qWsjbhG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSNuKWsFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1qWsjbhG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvQW9LGmFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1rGmUtZG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvQW9LGmFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1qWsjbhG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvQW9LGmFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1qWsjbhG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSNuKWsFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1pmymbJG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSNuKWsFvQK+gr6CvoK+gr6CvoK+gr6//8dcTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1o24saZG3EbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLuFvSlrI24FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWpayNuEbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLujbixphb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWjbilrEbcRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7iLupayZshb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtaZspmyRtxG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu4i7pmypawW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3KWsjbhG3EbcOuI64jriOuI64i7oLugu6C7oLugi7iLuIu6NuLGmFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcpayZskbcOuI64jriOuI64i7oLugu6C7oLugi7iLumbKxpiLuFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//9NWTVl7YjhjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcRtyZsqWsjbg64jriOuI64i7oLugu6C7oLuiNuKWspawi7iLuFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6//8pa9WU4Y7hjsmavaCxpqWsjbiBvnbEXtBe0F7QXtBe0FLWUtZS1lLWUtZG3EbcRtxG3I24payxppmyjbiNuC7ojbiNuJmypaylrJmyIu4i7iLuFvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6////////////////////////////////UtZS1lLWUtZS1kbcRtxG3EbcRtw64kbcOuI64jriLuj///////////////////////8W9Bb0FvQW9Bb0FvQK+gr6CvoK+gr6CvoK+gr6CvoK+gr6////////////////////////UtZS1lLWRtxG3EbcRtxG3DriOuI64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6//////////////////////////9S1lLWRtxG3EbcRtxG3DriOuI64jriOuIu6C7oLugu6C7oLugi7iLuIu4i7iLuFvQW9Bb0CvoW9Ar6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6////////////////////////UtZS1lLWRtxG3EbcRtxG3DriOuI64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6CvoK+gr6////////////////////////UtZS1lLWRtxG3EbcRtxG3DriOuI64jriOuIu6C7oLugu6CLuIu4i7iLuIu4W9Bb0FvQW9Bb0CvoK+gr6CvoK+v7//v/+//7//v/+//7//v/+//7//v/+//7/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////", lo = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////9S1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW/////////////////////////////1LWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW/////////////////////////////////////////////1LWUtZS1lLWUtZS1lLWUtZS1lLWUtb///////////////////////9S1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//+4I9wRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////////////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtb///////////////////////9S1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW//////////////////////////9S1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////UtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLWUtZS1lLW////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////", nx = 35, nz = 54, x0 = -4.065, y0 = 1.53, y1 = 4.11, z0 = -9.494 }, vol = 162.16 }, Tur = { g = "Turret", hm = { d = 0.24, hi = "//////////////////////////////////////////////////////////////////////////////////////////904k3sJfb+//7//v/+//7//v/+/////////////////////////////////////////////////////////3TiTewl9v7//v/+//7//v/+//7//v/+//7//v/+////////////////////////////////////////////dOIl9v7//v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7////////////////////////////rxJzYTexN7E3s/v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7//////////////+vEw86c2JzYnNhN7P7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v//////////68TDzpzYnNic2E3s/v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2///////////DzsPOnNic2JzYTez+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb//////////8POw86c2JzYnNhN7P7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v//////////w87DzpzYnNic2E3s/v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2///////////DzsPOnNic2JzYTez+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb/////68TDzsPOnNh04nTidOIl9v7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v////904k3sJfb+//7//v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2/////+vEw86c2E3sJfb+//7//v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb/////68TDzpzYTewl9v7//v/+//7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v/////rxMPOnNhN7CX2/v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2/////3TiTewl9v7//v/+//7//v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb/////dOJN7CX2/v/+//7//v/+//7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v//////////Jfb+//7//v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2//////////8l9v7//v/+//7//v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb//////////yX2/v/+//7//v/+//7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v//////////Jfb+//7//v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v/+/yX2//////////9N7P7//v/+//7//v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//v/+//7//v/+//7/Jfb//////////03sJfb+//7//v/+//7//v/+//7//v/+//7//v/+//7//v9N7E3s/v/+//7//v/+//7//v8l9v//////////Tewl9v7//v/+//7//v/+//7//v/+//7//v/+//7//v/+/03sTez+//7//v/+//7//v////////////////904iX2/v/+//7//v/+//7//v/+//7//v/+//7//v/+//7/TexN7P7//////////////////////////////3TiTewl9v7//v/+//7//v/+//7//v/+//7//v/+////////////////////////////////////////////dOJN7CX2/v/+//7//v/+//7//v///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==", lo = "//////////////////////////////////////////////////////////////////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAP///////////////////////////////////////////////////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHf//////////////////////////////////////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7//////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/////////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f///////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9///////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3///////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f///////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9///////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3//////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f/////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9//////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3//////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f/////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9//////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3//////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f///////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9///////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3///////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f///////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7ETv9///////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsxEzsTO+xE7ETETsRO/3///////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHYodYidiJzsxOzETOxM77ETsRMROxE7/f///////////AAAAAAAAAAAAAAAAAAAAAAAAAADZCdkJsROxE4odih1iJ2InOzE7MRM7EzvsROxExE7///////////////8AAAAAAAAAAAAAAAAAAAAAAAAAANkJ2QmxE7ETih2KHWInYic7MTsx/////////////////////////////wAAAAAAAAAAAAAAAAAAAAAAAAAA2QnZCbETsROKHf//////////////////////////////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAD//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==", nx = 29, nz = 31, x0 = -3.34, y0 = 4.582, y1 = 6.142, z0 = -3.546 }, vol = 53.66 } }, win = {  } },
 }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="7">
+    <Item class="ModuleScript" referent="6">
       <Properties>
         <string name="Name">CdusLayout</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/gen_cdus.mjs），别手改：M1A2 SEPv2 车长显示单元的版面（米，X 人看过去向右、Y 上、Z 朝人，原点在机壳正面中心）
@@ -828,7 +829,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="8">
+    <Item class="ModuleScript" referent="7">
       <Properties>
         <string name="Name">Config</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——数值（服务器、客户端共用）
@@ -1224,7 +1225,7 @@ return Config
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="9">
+    <Item class="ModuleScript" referent="8">
       <Properties>
         <string name="Name">EraMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（python3 -I tools/models/eralayout.py），别手改：每型坦克原模型上的爆反块、主动防御的发射器和雷达板（车的坐标，格；炮塔上的按炮塔转角 0 摆）
@@ -1436,7 +1437,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="10">
+    <Item class="ModuleScript" referent="9">
       <Properties>
         <string name="Name">FPSAnim</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称持枪动作，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）抽出来
@@ -1546,7 +1547,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="11">
+    <Item class="ModuleScript" referent="10">
       <Properties>
         <string name="Name">FPSMesh</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/fps/fps_bake.py），别手改：第一人称 M4 的网格和贴图，从「M4 - FPS Weapon Animations Pack (v.1)」（BarcodeGames，CC-BY-4.0）转来
@@ -1604,7 +1605,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="12">
+    <Item class="ModuleScript" referent="11">
       <Properties>
         <string name="Name">Flora</string>
         <ProtectedString name="Source"><![CDATA[-- 地图上长什么（ReplicatedStorage.Flora）：树林、灌木、石头、草丛、花丛的摆放，纯按 Map 算——同一个格子谁算都一样（每个客户端看到的树在同一个地方）
@@ -1811,7 +1812,7 @@ return Flora
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="13">
+    <Item class="ModuleScript" referent="12">
       <Properties>
         <string name="Name">FortDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——守方工事的型号与摆放（服务器、客户端共用）：地图自带，每局开局时系统摆好，玩家不用（也不能）自己部署
@@ -2171,7 +2172,7 @@ return FortDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="14">
+    <Item class="ModuleScript" referent="13">
       <Properties>
         <string name="Name">GearDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——手持装备用哪件真模型（Sketchfab 原模型：tools/weapons/optics.json → OpticsMeta / OpticMesh / models/optics/<键>.glb）
@@ -2231,7 +2232,7 @@ return GD
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="15">
+    <Item class="ModuleScript" referent="14">
       <Properties>
         <string name="Name">GunMods</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（用户 11-20：「做一整套改枪系统，对标三角洲行动」；服务器、客户端共用）
@@ -2664,7 +2665,7 @@ return GM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="15">
       <Properties>
         <string name="Name">HitSurf</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——子弹打在什么上面（弹着点的样子、声音按它出；用户：枪打在坦克上要有火花）：
@@ -2714,7 +2715,7 @@ return HitSurf
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="17">
+    <Item class="ModuleScript" referent="16">
       <Properties>
         <string name="Name">HudIcons</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/hudicons.py），别手改：驾驶界面的图标——每辆地面载具的侧面全息图标（原模型正侧面拍的，灰度、带柔光晕，
@@ -2811,7 +2812,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="18">
+    <Item class="ModuleScript" referent="17">
       <Properties>
         <string name="Name">HudMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/hud.mjs），别手改：飞机座舱平显（光学瞄准屏）原模型的元数据
@@ -2831,7 +2832,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="19">
+    <Item class="ModuleScript" referent="18">
       <Properties>
         <string name="Name">ImportTurn</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -2848,7 +2849,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="20">
+    <Item class="ModuleScript" referent="19">
       <Properties>
         <string name="Name">ImportedAir</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -2921,7 +2922,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="21">
+    <Item class="ModuleScript" referent="20">
       <Properties>
         <string name="Name">ImportedMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -2933,8 +2934,8 @@ return {
   alias = { cram = "cram", hmmwv = "hmmwv", jltv = "jltv", m109a7 = "m109", m1117 = "matv", m1150 = "m1150", m163 = "m163", m1a1 = "m1a1", m1a2 = "m1a2dc", m270 = "m270", m2a3 = "m2a3", mshorad = "stryker", patriot = "patriot", pgl625 = "t625", plz07 = "pzh2000", ptl02 = "ptl02", stryker = "stryker", zbd05 = "zbd97", zsl92b = "lav25", ztz96 = "ztz96", ztz99a = "ztz99a2" },
   m = {
     cram = { credit = "C-RAM 陆基密集阵（百人队长）：Centurion C-RAM，作者 Muhamad Mirza Arrafi（https://sketchfab.com/3d-models/centurion-c-ram-10ea7349c7574ca7a43991eece92c9a9），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -2.354, 12.32, 0.212 }, h = 23.466, hull = { 16.864, 6.462, 12.184 }, len = 16.8, muz = 8.924, parts = { Body_1 = { c = { 0, 3.231, 0 }, g = "Body", s = { 16.864, 6.462, 12.184 } }, Gun_1 = { c = { -2.129, 17.042, -2.947 }, g = "Gun", s = { 5.267, 12.848, 11.53 } }, Turret_1 = { c = { -2.694, 13.06, -3.442 }, g = "Turret", s = { 11.594, 13.418, 14.531 } } }, tur = { -2.354, 6.44, 0.212 }, w = 16.924, wheels = {  } },
-    hmmwv = { cav = true, credit = "M998 悍马（代复仇者防空车底盘）：HMMWV M998A1 (soft top)，作者 42manako（https://sketchfab.com/3d-models/hmmwv-m998a1-soft-top-ffbc4b053628413fb84acf5b89595d96），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0, 6.44, 0.7 }, h = 5.113, hull = { 6.977, 5.113, 12.796 }, len = 12.796, mg = "m2", muz = 3.78, parts = { Body_1 = { c = { 0, 2.901, 0.043 }, g = "Body", s = { 6.977, 4.35, 12.71 } }, Body_10 = { c = { 0.009, 2.602, -0.417 }, g = "Body", rep = { "Body_2" }, s = { 5.581, 2.965, 8.995 } }, Body_11 = { c = { 0.017, 2.477, -0.085 }, g = "Body", rep = { "Body_3" }, s = { 5.936, 2.482, 12.516 } }, Body_12 = { c = { 0.005, 1.973, -0.065 }, g = "Body", rep = { "Body_4" }, s = { 5.86, 2.075, 12.385 } }, Body_13 = { c = { 0.009, 3.429, 1.841 }, g = "Body", rep = { "Body_7" }, s = { 6.208, 3.368, 8.62 } }, Body_14 = { c = { 0.009, 4.197, 2.363 }, col = { 218, 218, 218 }, g = "Body", rep = { "Body_8" }, s = { 5.795, 1.798, 7.201 } }, Body_2 = { c = { 0.009, 2.619, -0.417 }, g = "Body", s = { 5.581, 2.999, 8.995 } }, Body_3 = { c = { 0.017, 2.477, -0.085 }, g = "Body", s = { 5.936, 2.482, 12.516 } }, Body_4 = { c = { 0.005, 2.926, -0.065 }, g = "Body", s = { 5.86, 3.982, 12.385 } }, Body_5 = { c = { 0.005, 2.499, -6.201 }, g = "Body", s = { 5.732, 1.734, 0.394 } }, Body_6 = { c = { 0.009, 4.212, 2.024 }, g = "Body", s = { 5.831, 0.964, 8.123 } }, Body_7 = { c = { 0.009, 3.429, 1.841 }, g = "Body", s = { 6.208, 3.368, 8.62 } }, Body_8 = { c = { 0.009, 4.197, 2.363 }, col = { 218, 218, 218 }, g = "Body", s = { 5.795, 1.798, 7.201 } }, Body_9 = { c = { 0, 2.901, 0.043 }, g = "Body", rep = { "Body_1" }, s = { 6.977, 4.35, 12.71 } }, CavCabFloor_1 = { c = { 0.012, 2.882, 1.622 }, col = { 72, 68, 58 }, g = "Body", k = "cav", m = "DiamondPlate", s = { 5.629, 2.777, 8.738 } }, CavCabWall_1 = { c = { 0.003, 3.246, 1.622 }, col = { 168, 152, 114 }, g = "Body", k = "cav", s = { 5.649, 3.498, 8.745 } }, Glass_1 = { a = 0.35, c = { 0.005, 4.345, -2.417 }, g = "Body", k = "glass", rep = { "Body_4" }, s = { 5.45, 1.145, 0.147 } }, Glass_2 = { a = 0.35, c = { 0.009, 4.212, 2.024 }, g = "Body", k = "glass", rep = { "Body_6" }, s = { 5.831, 0.964, 8.123 } }, Inside_1 = { c = { 0.007, 3.159, -0.119 }, g = "Body", k = "inside", rep = { "Body_1" }, s = { 5.856, 3.734, 6.071 } }, Inside_2 = { c = { 0.009, 2.865, -0.147 }, g = "Body", k = "inside", rep = { "Body_2" }, s = { 5.581, 2.507, 5.131 } }, Inside_3 = { c = { 0.008, 2.506, 1.412 }, g = "Body", k = "inside", rep = { "Body_3" }, s = { 5.858, 2.424, 9.399 } }, Inside_4 = { c = { 0.009, 3.447, 1.883 }, g = "Body", k = "inside", rep = { "Body_7" }, s = { 5.949, 3.331, 8.536 } }, Inside_5 = { c = { 0.009, 4.188, 2.363 }, col = { 218, 218, 218 }, g = "Body", k = "inside", rep = { "Body_8" }, s = { 5.76, 1.779, 7.201 } }, W01_1 = { c = { -2.508, 1.208, 3.965 }, g = "W01", s = { 0.818, 2.415, 2.386 } }, W02_1 = { c = { -2.511, 1.208, -4.802 }, g = "W02", s = { 0.818, 2.415, 2.386 } }, W03_1 = { c = { 2.527, 1.208, 3.965 }, g = "W03", s = { 0.818, 2.415, 2.386 } }, W04_1 = { c = { 2.529, 1.208, -4.802 }, g = "W04", s = { 0.818, 2.415, 2.386 } } }, tur = { 0, 5.152, 0.7 }, w = 6.977, wheels = { W01 = { c = { -2.508, 1.208, 3.965 }, r = 1.208 }, W02 = { c = { -2.511, 1.208, -4.802 }, r = 1.208 }, W03 = { c = { 2.527, 1.208, 3.965 }, r = 1.208 }, W04 = { c = { 2.529, 1.208, -4.802 }, r = 1.208 } } },
-    jltv = { credit = "JLTV 联合轻型战术车：JLTV，作者 ALI1388（https://sketchfab.com/3d-models/jltv-429bf4a57386462db28781d910511e40），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -0, 7.896, -0.283 }, h = 11.272, hull = { 7.623, 11.272, 17.466 }, len = 17.466, muz = 3.343, parts = { Body_1 = { c = { -0.115, 4.825, 6.05 }, col = { 162, 149, 124 }, g = "Body", s = { 7.392, 3.81, 5.365 } }, Body_10 = { c = { -1.757, 6.806, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.455, 0.267, 0.417 } }, Body_11 = { c = { -2.423, 4.627, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.329, 2.594, 2.241 } }, Body_12 = { c = { -2.425, 4.439, -1.17 }, col = { 162, 149, 124 }, g = "Body", s = { 0.326, 2.217, 2.471 } }, Body_13 = { c = { 2.43, 4.44, -1.172 }, col = { 162, 149, 124 }, g = "Body", s = { 0.326, 2.217, 2.471 } }, Body_14 = { c = { 2.429, 4.628, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.329, 2.594, 2.241 } }, Body_15 = { c = { -1.775, 6.811, -2.085 }, col = { 162, 149, 124 }, g = "Body", s = { 1.403, 0.21, 0.046 } }, Body_16 = { c = { 1.77, 6.811, -2.085 }, col = { 162, 149, 124 }, g = "Body", s = { 1.403, 0.21, 0.046 } }, Body_17 = { c = { 1.715, 6.831, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.379, 0.052, 0.208 } }, Body_18 = { c = { -1.738, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.379, 0.052, 0.208 } }, Body_19 = { c = { -2.551, 5.606, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.257, 0.714, 2.241 } }, Body_2 = { c = { -2.727, 4.623, 1.479 }, col = { 162, 149, 124 }, g = "Body", s = { 0.356, 2.64, 2.448 } }, Body_20 = { c = { -2.542, 5.407, -1.177 }, col = { 162, 149, 124 }, g = "Body", s = { 0.278, 0.315, 2.459 } }, Body_21 = { c = { 2.547, 5.408, -1.168 }, col = { 162, 149, 124 }, g = "Body", s = { 0.278, 0.315, 2.438 } }, Body_22 = { c = { 2.557, 5.591, 1.503 }, col = { 162, 149, 124 }, g = "Body", s = { 0.257, 0.682, 2.265 } }, Body_23 = { c = { 1.755, 6.831, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.205, 0.405 } }, Body_24 = { c = { -1.774, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.488, 0.205, 0.405 } }, Body_25 = { c = { -0, 3.257, 1.117 }, col = { 162, 149, 124 }, g = "Body", s = { 6.326, 4.958, 14.961 } }, Body_26 = { c = { 0.072, 4.139, -0.019 }, col = { 162, 149, 124 }, g = "Body", s = { 6.362, 5.601, 17.423 } }, Body_27 = { c = { 0.002, 3.525, -2.565 }, col = { 162, 149, 124 }, g = "Body", s = { 6.661, 3.663, 11.866 } }, Body_28 = { c = { -0.005, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.05, 0.205, 0.201 } }, Body_29 = { c = { -0.009, 6.79, -0.467 }, col = { 162, 149, 124 }, g = "Body", s = { 6.724, 8.965, 16.532 } }, Body_3 = { c = { -2.732, 4.419, -1.146 }, col = { 162, 149, 124 }, g = "Body", s = { 0.385, 2.291, 2.668 } }, Body_30 = { c = { 0.005, 6.392, 5.47 }, col = { 162, 149, 124 }, g = "Body", s = { 6.491, 0.76, 4.299 } }, Body_31 = { c = { -0.006, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.009, 0.052, 0.208 } }, Body_32 = { c = { 0.947, 5.008, -2.632 }, col = { 162, 149, 124 }, g = "Body", s = { 2.062, 0.571, 0.258 } }, Body_33 = { c = { 0.002, 2.526, -7.466 }, col = { 162, 149, 124 }, g = "Body", s = { 4.338, 0.407, 0.266 } }, Body_34 = { c = { 0.012, 3.218, 1.591 }, col = { 162, 149, 124 }, g = "Body", s = { 5.343, 0.346, 2.961 } }, Body_35 = { c = { -0.005, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.05, 0.199, 0.405 } }, Body_36 = { c = { -1.525, 4.777, 8.058 }, col = { 162, 149, 124 }, g = "Body", s = { 3.088, 3.088, 1.112 } }, Body_37 = { c = { 0.002, 2.216, -0.599 }, col = { 39, 39, 41 }, g = "Body", s = { 6.645, 4.432, 15.175 } }, Body_38 = { a = 0.42, c = { 0.098, 4.49, -0.169 }, col = { 48, 60, 66 }, g = "Body", s = { 5.663, 4.522, 15.166 } }, Body_4 = { c = { -3.308, 5.493, -2.164 }, col = { 162, 149, 124 }, g = "Body", s = { 0.992, 1.052, 0.548 } }, Body_5 = { c = { 2.733, 4.624, 1.471 }, col = { 162, 149, 124 }, g = "Body", s = { 0.356, 2.64, 2.487 } }, Body_6 = { c = { 3.316, 5.493, -2.164 }, col = { 162, 149, 124 }, g = "Body", s = { 0.992, 1.053, 0.548 } }, Body_7 = { c = { -1.775, 6.811, -1.916 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.278, 0.353 } }, Body_8 = { c = { 1.77, 6.811, -1.916 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.278, 0.353 } }, Body_9 = { c = { 1.755, 6.803, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.261, 0.417 } }, Gun_1 = { c = { -0.002, 7.778, -0.559 }, col = { 162, 149, 124 }, g = "Gun", s = { 1.695, 1.162, 1.397 } }, Gun_2 = { c = { -0.279, 7.769, -0.597 }, col = { 162, 149, 124 }, g = "Gun", s = { 1.059, 0.579, 1.473 } }, Gun_3 = { c = { 0.002, 8.036, -0.135 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.435, 0.491, 1.828 } }, Gun_4 = { c = { 0.14, 8.084, -1.58 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.533, 0.401, 4.092 } }, Gun_5 = { c = { -0.412, 7.988, -0.799 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.836, 0.293, 0.371 } }, Gun_6 = { c = { -0.4, 8.036, -0.71 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.791, 0.2, 0.17 } }, Turret_1 = { c = { 0.002, 7.641, 1.207 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.887, 1.78, 5.127 } }, Turret_2 = { c = { -0.681, 7.792, -0.783 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.629, 0.487, 0.452 } }, Turret_3 = { c = { -0.375, 6.802, 0.588 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.291, 0.151, 4.627 } }, Turret_4 = { c = { -0.761, 7.788, -0.795 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.759, 0.463, 0.412 } }, Turret_5 = { c = { -0.955, 7.849, -0.746 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.255, 0.02, 0.266 } }, Turret_6 = { c = { 0.002, 7.83, 3.057 }, col = { 162, 149, 124 }, g = "Turret", s = { 1.402, 0.664, 0.229 } }, Turret_7 = { c = { 0.002, 7.56, 0.642 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.769, 1.196, 3.972 } } }, tur = { -0, 6.86, 1.635 }, w = 7.623, wheels = {  } },
+    hmmwv = { cav = true, credit = "M998 悍马（代复仇者防空车底盘）：HMMWV M998A1 (soft top)，作者 42manako（https://sketchfab.com/3d-models/hmmwv-m998a1-soft-top-ffbc4b053628413fb84acf5b89595d96），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0, 6.44, 0.7 }, h = 5.113, hull = { 6.977, 5.113, 12.796 }, len = 12.796, mg = "m2", muz = 3.78, parts = { Body_1 = { c = { 0, 2.901, 0.043 }, g = "Body", s = { 6.977, 4.35, 12.71 } }, Body_10 = { c = { 0.009, 2.618, -0.417 }, g = "Body", rep = { "Body_2" }, s = { 5.581, 2.998, 8.995 } }, Body_11 = { c = { 0.017, 2.477, -0.085 }, g = "Body", rep = { "Body_3" }, s = { 5.936, 2.482, 12.516 } }, Body_12 = { c = { 0.005, 1.973, -0.065 }, g = "Body", rep = { "Body_4" }, s = { 5.86, 2.075, 12.385 } }, Body_13 = { c = { 0.009, 3.429, 1.841 }, g = "Body", rep = { "Body_7" }, s = { 6.208, 3.368, 8.62 } }, Body_14 = { c = { 0.009, 4.197, 2.363 }, col = { 218, 218, 218 }, g = "Body", rep = { "Body_8" }, s = { 5.795, 1.798, 7.201 } }, Body_2 = { c = { 0.009, 2.619, -0.417 }, g = "Body", s = { 5.581, 2.999, 8.995 } }, Body_3 = { c = { 0.017, 2.477, -0.085 }, g = "Body", s = { 5.936, 2.482, 12.516 } }, Body_4 = { c = { 0.005, 2.926, -0.065 }, g = "Body", s = { 5.86, 3.982, 12.385 } }, Body_5 = { c = { 0.005, 2.499, -6.201 }, g = "Body", s = { 5.732, 1.734, 0.394 } }, Body_6 = { c = { 0.009, 4.212, 2.024 }, g = "Body", s = { 5.831, 0.964, 8.123 } }, Body_7 = { c = { 0.009, 3.429, 1.841 }, g = "Body", s = { 6.208, 3.368, 8.62 } }, Body_8 = { c = { 0.009, 4.197, 2.363 }, col = { 218, 218, 218 }, g = "Body", s = { 5.795, 1.798, 7.201 } }, Body_9 = { c = { 0, 2.901, 0.043 }, g = "Body", rep = { "Body_1" }, s = { 6.977, 4.35, 12.71 } }, CavCabFloor_1 = { c = { -0.002, 3.211, 1.632 }, col = { 72, 68, 58 }, g = "Body", k = "cav", m = "DiamondPlate", s = { 5.685, 3.444, 8.763 } }, CavCabWall_1 = { c = { -0.005, 3.249, 1.632 }, col = { 168, 152, 114 }, g = "Body", k = "cav", s = { 5.698, 3.519, 8.766 } }, Glass_1 = { a = 0.35, c = { 0.005, 4.345, -2.417 }, g = "Body", k = "glass", rep = { "Body_4" }, s = { 5.45, 1.145, 0.147 } }, Glass_2 = { a = 0.35, c = { 0.009, 4.212, 2.024 }, g = "Body", k = "glass", rep = { "Body_6" }, s = { 5.831, 0.964, 8.123 } }, Inside_1 = { c = { 0.007, 3.159, -0.272 }, g = "Body", k = "inside", rep = { "Body_1" }, s = { 5.856, 3.734, 6.377 } }, Inside_2 = { c = { 0.009, 2.865, -0.506 }, g = "Body", k = "inside", rep = { "Body_2" }, s = { 5.581, 2.507, 5.848 } }, Inside_3 = { c = { 0.008, 2.506, 1.412 }, g = "Body", k = "inside", rep = { "Body_3" }, s = { 5.858, 2.425, 9.399 } }, Inside_4 = { c = { 0.013, 3.447, 1.883 }, g = "Body", k = "inside", rep = { "Body_7" }, s = { 5.941, 3.331, 8.536 } }, Inside_5 = { c = { 0.009, 4.188, 2.363 }, col = { 218, 218, 218 }, g = "Body", k = "inside", rep = { "Body_8" }, s = { 5.76, 1.781, 7.201 } }, W01_1 = { c = { -2.508, 1.208, 3.965 }, g = "W01", s = { 0.818, 2.415, 2.386 } }, W02_1 = { c = { -2.511, 1.208, -4.802 }, g = "W02", s = { 0.818, 2.415, 2.386 } }, W03_1 = { c = { 2.527, 1.208, 3.965 }, g = "W03", s = { 0.818, 2.415, 2.386 } }, W04_1 = { c = { 2.529, 1.208, -4.802 }, g = "W04", s = { 0.818, 2.415, 2.386 } } }, tur = { 0, 5.152, 0.7 }, w = 6.977, wheels = { W01 = { c = { -2.508, 1.208, 3.965 }, r = 1.208 }, W02 = { c = { -2.511, 1.208, -4.802 }, r = 1.208 }, W03 = { c = { 2.527, 1.208, 3.965 }, r = 1.208 }, W04 = { c = { 2.529, 1.208, -4.802 }, r = 1.208 } } },
+    jltv = { cav = true, credit = "JLTV 联合轻型战术车：JLTV，作者 ALI1388（https://sketchfab.com/3d-models/jltv-429bf4a57386462db28781d910511e40），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { 0, 7.896, -0.283 }, h = 11.272, hull = { 7.623, 11.272, 17.466 }, len = 17.466, muz = 3.343, parts = { Body_1 = { c = { -0.115, 4.825, 6.05 }, col = { 162, 149, 124 }, g = "Body", s = { 7.392, 3.81, 5.365 } }, Body_10 = { c = { -1.757, 6.806, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.455, 0.267, 0.417 } }, Body_11 = { c = { -2.423, 4.627, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.329, 2.594, 2.241 } }, Body_12 = { c = { -2.425, 4.439, -1.17 }, col = { 162, 149, 124 }, g = "Body", s = { 0.326, 2.217, 2.471 } }, Body_13 = { c = { 2.43, 4.44, -1.172 }, col = { 162, 149, 124 }, g = "Body", s = { 0.326, 2.217, 2.471 } }, Body_14 = { c = { 2.429, 4.628, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.329, 2.594, 2.241 } }, Body_15 = { c = { -1.775, 6.811, -2.085 }, col = { 162, 149, 124 }, g = "Body", s = { 1.403, 0.21, 0.046 } }, Body_16 = { c = { 1.77, 6.811, -2.085 }, col = { 162, 149, 124 }, g = "Body", s = { 1.403, 0.21, 0.046 } }, Body_17 = { c = { 1.715, 6.831, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.379, 0.052, 0.208 } }, Body_18 = { c = { -1.738, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.379, 0.052, 0.208 } }, Body_19 = { c = { -2.551, 5.606, 1.491 }, col = { 162, 149, 124 }, g = "Body", s = { 0.257, 0.714, 2.241 } }, Body_2 = { c = { -2.727, 4.623, 1.479 }, col = { 162, 149, 124 }, g = "Body", s = { 0.356, 2.64, 2.448 } }, Body_20 = { c = { -2.542, 5.407, -1.177 }, col = { 162, 149, 124 }, g = "Body", s = { 0.278, 0.315, 2.459 } }, Body_21 = { c = { 2.547, 5.408, -1.168 }, col = { 162, 149, 124 }, g = "Body", s = { 0.278, 0.315, 2.438 } }, Body_22 = { c = { 2.557, 5.591, 1.503 }, col = { 162, 149, 124 }, g = "Body", s = { 0.257, 0.682, 2.265 } }, Body_23 = { c = { 1.755, 6.831, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.205, 0.405 } }, Body_24 = { c = { -1.774, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 1.488, 0.205, 0.405 } }, Body_25 = { c = { 0, 3.257, 1.117 }, col = { 162, 149, 124 }, g = "Body", s = { 6.326, 4.958, 14.961 } }, Body_26 = { c = { 0.072, 4.139, -0.019 }, col = { 162, 149, 124 }, g = "Body", s = { 6.362, 5.601, 17.423 } }, Body_27 = { c = { 0.002, 3.525, -2.565 }, col = { 162, 149, 124 }, g = "Body", s = { 6.661, 3.663, 11.866 } }, Body_28 = { c = { -0.005, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.05, 0.205, 0.201 } }, Body_29 = { c = { -0.009, 6.79, -0.467 }, col = { 162, 149, 124 }, g = "Body", s = { 6.724, 8.965, 16.532 } }, Body_3 = { c = { -2.732, 4.419, -1.146 }, col = { 162, 149, 124 }, g = "Body", s = { 0.385, 2.291, 2.668 } }, Body_30 = { c = { 0.005, 6.392, 5.47 }, col = { 162, 149, 124 }, g = "Body", s = { 6.491, 0.76, 4.299 } }, Body_31 = { c = { -0.006, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.009, 0.052, 0.208 } }, Body_32 = { c = { 0.947, 5.008, -2.632 }, col = { 162, 149, 124 }, g = "Body", s = { 2.062, 0.571, 0.258 } }, Body_33 = { c = { 0.002, 2.526, -7.466 }, col = { 162, 149, 124 }, g = "Body", s = { 4.338, 0.407, 0.266 } }, Body_34 = { c = { 0.012, 3.218, 1.591 }, col = { 162, 149, 124 }, g = "Body", s = { 5.343, 0.346, 2.961 } }, Body_35 = { c = { -0.005, 6.831, -1.958 }, col = { 162, 149, 124 }, g = "Body", s = { 2.05, 0.199, 0.405 } }, Body_36 = { c = { -1.525, 4.777, 8.058 }, col = { 162, 149, 124 }, g = "Body", s = { 3.088, 3.088, 1.112 } }, Body_37 = { c = { 0.002, 2.216, -0.599 }, col = { 39, 39, 41 }, g = "Body", s = { 6.645, 4.432, 15.175 } }, Body_38 = { a = 0.42, c = { 0.098, 4.49, -0.169 }, col = { 48, 60, 66 }, g = "Body", s = { 5.663, 4.522, 15.166 } }, Body_39 = { c = { -2.727, 4.623, 1.479 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_2" }, s = { 0.356, 2.64, 2.448 } }, Body_4 = { c = { -3.308, 5.493, -2.164 }, col = { 162, 149, 124 }, g = "Body", s = { 0.992, 1.052, 0.548 } }, Body_40 = { c = { -2.732, 4.419, -1.146 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_3" }, s = { 0.385, 2.291, 2.668 } }, Body_41 = { c = { 2.733, 4.624, 1.471 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_5" }, s = { 0.356, 2.64, 2.487 } }, Body_42 = { c = { -2.423, 4.339, 0.583 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_11" }, s = { 0.328, 2, 0.426 } }, Body_43 = { c = { -2.486, 4.441, -1.991 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_12" }, s = { 0.205, 2.213, 0.83 } }, Body_44 = { c = { 2.502, 4.442, -2.019 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_13" }, s = { 0.182, 2.213, 0.777 } }, Body_45 = { c = { 2.429, 4.34, 0.583 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_14" }, s = { 0.328, 2, 0.426 } }, Body_46 = { c = { -2.553, 5.606, 1.491 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_19" }, s = { 0.253, 0.714, 2.241 } }, Body_47 = { c = { -2.544, 5.423, -1.177 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_20" }, s = { 0.275, 0.284, 2.459 } }, Body_48 = { c = { 2.547, 5.424, -1.168 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_21" }, s = { 0.278, 0.283, 2.438 } }, Body_49 = { c = { 2.559, 5.591, 1.503 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_22" }, s = { 0.253, 0.682, 2.265 } }, Body_5 = { c = { 2.733, 4.624, 1.471 }, col = { 162, 149, 124 }, g = "Body", s = { 0.356, 2.64, 2.487 } }, Body_50 = { c = { 0.072, 4.139, -0.019 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_26" }, s = { 6.362, 5.601, 17.423 } }, Body_51 = { c = { 0.002, 3.525, -2.565 }, col = { 162, 149, 124 }, g = "Body", rep = { "Body_27" }, s = { 6.661, 3.663, 11.866 } }, Body_52 = { c = { 0.002, 2.216, -0.599 }, col = { 39, 39, 41 }, g = "Body", rep = { "Body_37" }, s = { 6.645, 4.432, 15.175 } }, Body_53 = { a = 0.42, c = { 0.098, 4.49, -0.169 }, col = { 48, 60, 66 }, g = "Body", rep = { "Body_38" }, s = { 5.663, 4.522, 15.166 } }, Body_6 = { c = { 3.316, 5.493, -2.164 }, col = { 162, 149, 124 }, g = "Body", s = { 0.992, 1.053, 0.548 } }, Body_7 = { c = { -1.775, 6.811, -1.916 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.278, 0.353 } }, Body_8 = { c = { 1.77, 6.811, -1.916 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.278, 0.353 } }, Body_9 = { c = { 1.755, 6.803, -1.957 }, col = { 162, 149, 124 }, g = "Body", s = { 1.471, 0.261, 0.417 } }, CavCabFloor_1 = { c = { 0.004, 4.995, -0.094 }, col = { 70, 68, 62 }, g = "Body", k = "cav", m = "DiamondPlate", s = { 5.222, 3.493, 6.418 } }, CavCabWall_1 = { c = { 0.018, 5.074, -0.096 }, col = { 176, 168, 142 }, g = "Body", k = "cav", s = { 5.25, 3.648, 6.43 } }, Glass_1 = { a = 0.35, c = { 0.148, 4.759, -0.036 }, col = { 48, 60, 66 }, g = "Body", k = "glass", rep = { "Body_38" }, s = { 5.564, 3.984, 6.514 } }, Gun_1 = { c = { -0.002, 7.778, -0.559 }, col = { 162, 149, 124 }, g = "Gun", s = { 1.695, 1.162, 1.397 } }, Gun_2 = { c = { -0.279, 7.769, -0.597 }, col = { 162, 149, 124 }, g = "Gun", s = { 1.059, 0.579, 1.473 } }, Gun_3 = { c = { 0.002, 8.036, -0.135 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.435, 0.491, 1.828 } }, Gun_4 = { c = { 0.14, 8.084, -1.58 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.533, 0.401, 4.092 } }, Gun_5 = { c = { -0.412, 7.988, -0.799 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.836, 0.293, 0.371 } }, Gun_6 = { c = { -0.4, 8.036, -0.71 }, col = { 162, 149, 124 }, g = "Gun", s = { 0.791, 0.2, 0.17 } }, Inside_1 = { c = { -2.643, 4.629, 1.506 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_2" }, s = { 0.189, 2.599, 2.3 } }, Inside_10 = { c = { 2.533, 5.402, -1.147 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_21" }, s = { 0.251, 0.303, 2.395 } }, Inside_11 = { c = { 2.544, 5.585, 1.461 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_22" }, s = { 0.231, 0.671, 2.038 } }, Inside_12 = { c = { 0.012, 4.807, -0.081 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_26" }, s = { 5.359, 3.188, 6.817 } }, Inside_13 = { c = { 0.002, 2.992, 0.358 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_27" }, s = { 5.337, 0.443, 4.099 } }, Inside_14 = { c = { 0.947, 5.008, -2.632 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_32" }, s = { 2.062, 0.571, 0.258 } }, Inside_15 = { c = { 2.639, 3.547, -1.082 }, col = { 39, 39, 41 }, g = "Body", k = "inside", rep = { "Body_37" }, s = { 0.189, 0.431, 1.915 } }, Inside_16 = { a = 0.42, c = { 0.055, 4.758, -0.079 }, col = { 48, 60, 66 }, g = "Body", k = "inside", rep = { "Body_38" }, s = { 5.378, 3.986, 6.6 } }, Inside_2 = { c = { -2.639, 4.336, -1.07 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_3" }, s = { 0.199, 2.011, 2.318 } }, Inside_3 = { c = { 2.639, 4.63, 1.513 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_5" }, s = { 0.168, 2.599, 2.285 } }, Inside_4 = { c = { -2.423, 4.627, 1.495 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_11" }, s = { 0.329, 2.594, 2.233 } }, Inside_5 = { c = { -2.425, 4.439, -1.145 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_12" }, s = { 0.326, 2.217, 2.421 } }, Inside_6 = { c = { 2.43, 4.44, -1.147 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_13" }, s = { 0.326, 2.217, 2.421 } }, Inside_7 = { c = { 2.429, 4.628, 1.494 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_14" }, s = { 0.329, 2.594, 2.235 } }, Inside_8 = { c = { -2.538, 5.584, 1.492 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_19" }, s = { 0.231, 0.671, 2.102 } }, Inside_9 = { c = { -2.528, 5.401, -1.145 }, col = { 162, 149, 124 }, g = "Body", k = "inside", rep = { "Body_20" }, s = { 0.251, 0.303, 2.395 } }, Turret_1 = { c = { 0.002, 7.641, 1.207 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.887, 1.78, 5.127 } }, Turret_2 = { c = { -0.681, 7.792, -0.783 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.629, 0.487, 0.452 } }, Turret_3 = { c = { -0.375, 6.802, 0.588 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.291, 0.151, 4.627 } }, Turret_4 = { c = { -0.761, 7.788, -0.795 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.759, 0.463, 0.412 } }, Turret_5 = { c = { -0.955, 7.849, -0.746 }, col = { 162, 149, 124 }, g = "Turret", s = { 0.255, 0.02, 0.266 } }, Turret_6 = { c = { 0.002, 7.83, 3.057 }, col = { 162, 149, 124 }, g = "Turret", s = { 1.402, 0.664, 0.229 } }, Turret_7 = { c = { 0.002, 7.56, 0.642 }, col = { 162, 149, 124 }, g = "Turret", s = { 3.769, 1.196, 3.972 } } }, tur = { 0, 6.86, 1.635 }, w = 7.623, wheels = {  } },
     lav25 = { credit = "LAV-25 轮式装甲车（代 ZSL-92B、08 式）：LAV-25，作者 42manako（https://sketchfab.com/3d-models/lav-25-968b0681119a4b3e82d94bb085a790be），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -0.084, 6.048, 0.7 }, h = 9.99, hull = { 9.465, 5.474, 17.892 }, len = 17.892, muz = 5.467, parts = { Body_1 = { c = { -0.283, 4.98, 2.228 }, g = "Body", s = { 4.539, 0.963, 4.543 } }, Body_2 = { c = { -3.64, 4.071, 6.585 }, g = "Body", s = { 2.185, 2.596, 2.66 } }, Body_3 = { c = { 0.615, 3.29, 0 }, g = "Body", s = { 8.235, 4.369, 17.892 } }, Body_4 = { c = { 0.237, 3.539, -0.164 }, g = "Body", s = { 6.428, 3.377, 17.005 } }, Gun_1 = { c = { 0.043, 6.236, -1.855 }, g = "Gun", s = { 1.312, 1.291, 5.825 } }, Turret_1 = { c = { -0.079, 7.4, 2.206 }, g = "Turret", s = { 1.19, 1.187, 0.802 } }, Turret_2 = { c = { -0.148, 7.784, 2.392 }, g = "Turret", s = { 0.531, 0.36, 0.243 } }, Turret_3 = { c = { 0.319, 7.868, 2.221 }, g = "Turret", s = { 0.117, 0.371, 3.546 } }, Turret_4 = { c = { 0.324, 7.815, 1.962 }, g = "Turret", s = { 0.332, 0.654, 2.597 } }, Turret_5 = { c = { -0.291, 7.666, 3.082 }, g = "Turret", s = { 5.504, 4.647, 8.441 } }, W01_1 = { c = { -2.729, 1.327, 5.063 }, g = "W01", s = { 1.006, 2.655, 2.66 } }, W02_1 = { c = { 3.204, 1.327, 2.241 }, g = "W02", s = { 1.006, 2.655, 2.657 } }, W03_1 = { c = { 3.204, 1.327, 5.063 }, g = "W03", s = { 1.006, 2.655, 2.66 } }, W04_1 = { c = { -2.729, 1.327, 2.241 }, g = "W04", s = { 1.006, 2.655, 2.657 } }, W05_1 = { c = { -2.729, 1.327, -4.434 }, g = "W05", s = { 1.006, 2.655, 2.658 } }, W06_1 = { c = { 3.204, 1.327, -4.434 }, g = "W06", s = { 1.006, 2.655, 2.658 } }, W07_1 = { c = { 3.204, 1.327, -1.423 }, g = "W07", s = { 1.006, 2.655, 2.658 } }, W08_1 = { c = { -2.729, 1.327, -1.423 }, g = "W08", s = { 1.006, 2.655, 2.658 } } }, tur = { -0.28, 5.46, 2.94 }, w = 9.465, wheels = { W01 = { c = { -2.729, 1.327, 5.063 }, r = 1.33 }, W02 = { c = { 3.204, 1.327, 2.241 }, r = 1.329 }, W03 = { c = { 3.204, 1.327, 5.063 }, r = 1.33 }, W04 = { c = { -2.729, 1.327, 2.241 }, r = 1.329 }, W05 = { c = { -2.729, 1.327, -4.434 }, r = 1.329 }, W06 = { c = { 3.204, 1.327, -4.434 }, r = 1.329 }, W07 = { c = { 3.204, 1.327, -1.423 }, r = 1.329 }, W08 = { c = { -2.729, 1.327, -1.423 }, r = 1.329 } } },
     m109 = { credit = "M109A7 帕拉丁自行榴弹炮：M109 PALADIN ARTILLERY，作者 Muhamad Mirza Arrafi（https://sketchfab.com/3d-models/m109-paladin-artillery-3de0572475d54f7b9da18d6ed26b4a10），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -0, 5.88, -0.035 }, h = 8.17, hull = { 8.775, 5.074, 17.105 }, len = 19.46, muz = 10.71, parts = { Body_1 = { c = { 0, 1.333, 0.216 }, g = "Body", s = { 8.669, 2.666, 16.657 } }, Body_2 = { c = { 0, 2.268, 0.769 }, g = "Body", s = { 7.476, 2.794, 14.588 } }, Body_3 = { c = { 0, 3.053, 0 }, g = "Body", s = { 8.775, 4.04, 17.105 } }, Gun_1 = { c = { 0.003, 5.709, -4.574 }, g = "Gun", s = { 2.526, 2.744, 12.342 } }, Turret_1 = { c = { 0, 6.327, 3.591 }, g = "Turret", s = { 9.055, 3.688, 10.248 } }, W01_1 = { c = { -3.826, 1.82, -7.283 }, g = "W01", s = { 0.966, 1.613, 1.599 } }, W02_1 = { c = { -3.87, 1.06, -5.261 }, g = "W02", s = { 0.711, 1.812, 1.812 } }, W03_1 = { c = { -3.87, 1.049, -3.406 }, g = "W03", s = { 0.711, 1.812, 1.809 } }, W04_1 = { c = { -3.87, 1.049, -1.504 }, g = "W04", s = { 0.711, 1.812, 1.812 } }, W05_1 = { c = { -3.87, 1.049, 0.381 }, g = "W05", s = { 0.711, 1.812, 1.812 } }, W06_1 = { c = { -3.87, 1.049, 2.307 }, g = "W06", s = { 0.711, 1.812, 1.812 } }, W07_1 = { c = { -3.87, 1.049, 4.2 }, g = "W07", s = { 0.711, 1.812, 1.812 } }, W08_1 = { c = { -3.87, 1.049, 6.076 }, g = "W08", s = { 0.711, 1.812, 1.812 } }, W09_1 = { c = { -3.902, 1.672, 7.794 }, g = "W09", s = { 0.703, 1.238, 1.238 } }, W10_1 = { c = { 3.86, 1.824, -7.241 }, g = "W10", s = { 0.966, 1.616, 1.599 } }, W11_1 = { c = { 3.87, 1.06, -5.261 }, g = "W11", s = { 0.711, 1.812, 1.812 } }, W12_1 = { c = { 3.87, 1.049, -3.406 }, g = "W12", s = { 0.711, 1.812, 1.809 } }, W13_1 = { c = { 3.87, 1.049, -1.504 }, g = "W13", s = { 0.711, 1.812, 1.812 } }, W14_1 = { c = { 3.87, 1.049, 0.381 }, g = "W14", s = { 0.711, 1.812, 1.812 } }, W15_1 = { c = { 3.87, 1.049, 2.307 }, g = "W15", s = { 0.711, 1.812, 1.812 } }, W16_1 = { c = { 3.87, 1.049, 4.2 }, g = "W16", s = { 0.711, 1.812, 1.812 } }, W17_1 = { c = { 3.87, 1.049, 6.076 }, g = "W17", s = { 0.711, 1.812, 1.812 } }, W18_1 = { c = { 3.902, 1.672, 7.794 }, g = "W18", s = { 0.703, 1.238, 1.238 } } }, tur = { -0, 4.48, 3.605 }, w = 9.055, wheels = { W01 = { c = { -3.826, 1.82, -7.283 }, r = 0.806 }, W02 = { c = { -3.87, 1.06, -5.261 }, r = 0.906 }, W03 = { c = { -3.87, 1.049, -3.406 }, r = 0.906 }, W04 = { c = { -3.87, 1.049, -1.504 }, r = 0.906 }, W05 = { c = { -3.87, 1.049, 0.381 }, r = 0.906 }, W06 = { c = { -3.87, 1.049, 2.307 }, r = 0.906 }, W07 = { c = { -3.87, 1.049, 4.2 }, r = 0.906 }, W08 = { c = { -3.87, 1.049, 6.076 }, r = 0.906 }, W09 = { c = { -3.902, 1.672, 7.794 }, r = 0.619 }, W10 = { c = { 3.86, 1.824, -7.241 }, r = 0.808 }, W11 = { c = { 3.87, 1.06, -5.261 }, r = 0.906 }, W12 = { c = { 3.87, 1.049, -3.406 }, r = 0.906 }, W13 = { c = { 3.87, 1.049, -1.504 }, r = 0.906 }, W14 = { c = { 3.87, 1.049, 0.381 }, r = 0.906 }, W15 = { c = { 3.87, 1.049, 2.307 }, r = 0.906 }, W16 = { c = { 3.87, 1.049, 4.2 }, r = 0.906 }, W17 = { c = { 3.87, 1.049, 6.076 }, r = 0.906 }, W18 = { c = { 3.902, 1.672, 7.794 }, r = 0.619 } } },
     m1150 = { credit = "M1150 突击破障车：M1150 ABV，作者 Kalibrovshik（https://sketchfab.com/3d-models/m1150-abv-26eaeb6a7dbf498db16e02b1c232de33），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 docs/credits.md", gun = { -0, 6.776, 1.69 }, h = 10.979, hull = { 11.188, 10.979, 29.66 }, len = 29.66, muz = 2.94, parts = { Body_1 = { c = { 0, 2.974, 0 }, g = "Body", s = { 11.188, 5.697, 29.66 } }, Body_2 = { c = { -0.003, 1.574, 5.005 }, col = { 125, 125, 125 }, g = "Body", s = { 8.845, 3.148, 17.633 } }, Body_3 = { c = { 0, 1.541, 3.11 }, col = { 125, 125, 125 }, g = "Body", s = { 8.838, 3.08, 13.844 } }, Body_4 = { c = { 0, 7.408, 5.236 }, g = "Body", s = { 10.083, 7.143, 13.702 } }, Body_5 = { c = { -0.004, 1.69, 5.132 }, col = { 231, 231, 231 }, g = "Body", s = { 8.724, 2.974, 17.307 } }, Gun_1 = { c = { 0.389, 6.772, 0.708 }, g = "Gun", s = { 1.207, 0.648, 3.917 } }, Turret_1 = { c = { 0.031, 6.155, 2.651 }, g = "Turret", s = { 2.65, 1.352, 3.244 } } }, tur = { -0, 5.6, 2.978 }, w = 11.188, wheels = {  } },
@@ -2957,7 +2958,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="22">
+    <Item class="ModuleScript" referent="21">
       <Properties>
         <string name="Name">ImportedShip</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py、tools/models/sfship.py），别手改：舰艇模型（models/ship/<型号>.glb）的元数据
@@ -2983,7 +2984,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="23">
+    <Item class="ModuleScript" referent="22">
       <Properties>
         <string name="Name">ImportedTint</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -4604,7 +4605,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="24">
+    <Item class="ModuleScript" referent="23">
       <Properties>
         <string name="Name">ImportedWpn</string>
         <ProtectedString name="Source"><![CDATA[-- 导弹合集（models/wpn/missiles.glb，tools/models/wpn2glb.py 生成）：署名（主菜单「致谢」）和导入了的型号
@@ -4615,7 +4616,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="25">
+    <Item class="ModuleScript" referent="24">
       <Properties>
         <string name="Name">Lang</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -5860,7 +5861,7 @@ return Lang
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="26">
+    <Item class="ModuleScript" referent="25">
       <Properties>
         <string name="Name">Map</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -6424,7 +6425,7 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="27">
+    <Item class="ModuleScript" referent="26">
       <Properties>
         <string name="Name">MapDesert</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——沙漠地图「沙漠风暴」（ReplicatedStorage.MapDesert）：跟 Map.lua 同一套接口（Map.use("desert") 换进 Map 表）；纯数学，服务器、客户端算出来一样
@@ -6785,7 +6786,7 @@ return M
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="28">
+    <Item class="ModuleScript" referent="27">
       <Properties>
         <string name="Name">MapPaint</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——地图的「卫星图」：按 Map.lua 的高度、材质一个像素一个像素算颜色（客户端 MapUI 用 EditableImage 画小地图、部署地图）
@@ -6962,7 +6963,7 @@ return MapPaint
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="29">
+    <Item class="ModuleScript" referent="28">
       <Properties>
         <string name="Name">MapRoads</string>
         <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -6982,7 +6983,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="30">
+    <Item class="ModuleScript" referent="29">
       <Properties>
         <string name="Name">MapSands</string>
         <ProtectedString name="Source"><![CDATA[--!native
@@ -7791,11 +7792,11 @@ return Map
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="31">
+    <Item class="Folder" referent="30">
       <Properties>
         <string name="Name">OpticMesh</string>
       </Properties>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">acog</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -7878,7 +7879,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">at4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -7898,7 +7899,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">atacr</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -7953,7 +7954,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">binoc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -7973,7 +7974,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">c4</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -7993,7 +7994,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">grip_afg</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul AFG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -8027,7 +8028,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">grip_rvg</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul RVG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -8054,7 +8055,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">ifak</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -8074,7 +8075,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">ip_asq</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ASQ-155 Ballistic Computer（TwilightFox，CC-BY-4.0）的网格和底色贴图
@@ -8094,7 +8095,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">ip_asq2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ASQ-155 Ballistic Computer（TwilightFox，CC-BY-4.0）的网格和底色贴图
@@ -8114,7 +8115,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">ip_can</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Ammuntion box（jaiharitheking，CC-BY-4.0）的网格和底色贴图
@@ -8134,7 +8135,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="43">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">ip_cdu</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Aircraft instrument/module thingy（LuddePudde，CC-BY-4.0）的网格和底色贴图
@@ -8161,7 +8162,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="44">
+      <Item class="ModuleScript" referent="43">
         <Properties>
           <string name="Name">ip_cdus</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M1A2 SEPv2 车长显示单元的机壳和屏框（本项目，自制（照用户发来的钢铁猛兽截图量的比例，tools/weapons/gen_cdus.mjs 程序生成））的网格和底色贴图
@@ -8223,7 +8224,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="45">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">ip_chg125</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：GunPowder shell 125mm（dichevk，CC-BY-4.0）的网格和底色贴图
@@ -8250,7 +8251,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="46">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">ip_cvc</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Combat Vehicle Crewman (CVC) Helmet, Vietnam Era（olmopotums，CC-BY-4.0）的网格和底色贴图
@@ -8270,7 +8271,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="47">
+      <Item class="ModuleScript" referent="46">
         <Properties>
           <string name="Name">ip_dseat</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Driver seat "Pilot" with air suspension.（dewolfepilot，CC-BY-4.0）的网格和底色贴图
@@ -8290,7 +8291,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="48">
+      <Item class="ModuleScript" referent="47">
         <Properties>
           <string name="Name">ip_ext</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Fire Extinguisher（Sir Erdees，CC-BY-4.0）的网格和底色贴图
@@ -8310,7 +8311,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="49">
+      <Item class="ModuleScript" referent="48">
         <Properties>
           <string name="Name">ip_gauges</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Dashboard Gauges（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -8358,7 +8359,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="50">
+      <Item class="ModuleScript" referent="49">
         <Properties>
           <string name="Name">ip_grip</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：F-4 Phantom II Flight Stick (Joystick)-Low Poly（alpertheronin，CC-BY-4.0）的网格和底色贴图
@@ -8378,7 +8379,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="51">
+      <Item class="ModuleScript" referent="50">
         <Properties>
           <string name="Name">ip_he125</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：HE shell 125mm（dichevk，CC-BY-4.0）的网格和底色贴图
@@ -8426,7 +8427,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="52">
+      <Item class="ModuleScript" referent="51">
         <Properties>
           <string name="Name">ip_lamp</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Industrial Bulkhead Wall Lamp Lowpoly（iwanPlays，CC-BY-4.0）的网格和底色贴图
@@ -8453,7 +8454,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="53">
+      <Item class="ModuleScript" referent="52">
         <Properties>
           <string name="Name">ip_lever</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Classic Shift Lever（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -8480,7 +8481,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="54">
+      <Item class="ModuleScript" referent="53">
         <Properties>
           <string name="Name">ip_m829</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M829A1 OBJ（Jeyhun1985，CC-BY-4.0）的网格和底色贴图
@@ -8556,7 +8557,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="55">
+      <Item class="ModuleScript" referent="54">
         <Properties>
           <string name="Name">ip_m829lo</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M829A1 OBJ（Jeyhun1985，CC-BY-4.0）的网格和底色贴图
@@ -8632,7 +8633,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="56">
+      <Item class="ModuleScript" referent="55">
         <Properties>
           <string name="Name">ip_mon</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Computer Box Monitor（SUrusso613，CC-BY-4.0）的网格和底色贴图
@@ -8652,7 +8653,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="57">
+      <Item class="ModuleScript" referent="56">
         <Properties>
           <string name="Name">ip_pedals</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Pedals Sets（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -8679,7 +8680,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="58">
+      <Item class="ModuleScript" referent="57">
         <Properties>
           <string name="Name">ip_peri</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FV105 Sultan periscop（renalds_rs，CC-BY-4.0）的网格和底色贴图
@@ -8699,7 +8700,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="59">
+      <Item class="ModuleScript" referent="58">
         <Properties>
           <string name="Name">ip_r125</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tank ammo HEAT 3BK18（VladIG_CG，CC-BY-4.0）的网格和底色贴图
@@ -8719,7 +8720,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="60">
+      <Item class="ModuleScript" referent="59">
         <Properties>
           <string name="Name">ip_radio</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Military Radio（curichenkow，CC-BY-4.0）的网格和底色贴图
@@ -8739,7 +8740,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="61">
+      <Item class="ModuleScript" referent="60">
         <Properties>
           <string name="Name">ip_radio2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Military Radio - Low Poly（Camille Barral，CC-BY-4.0）的网格和底色贴图
@@ -8759,7 +8760,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="62">
+      <Item class="ModuleScript" referent="61">
         <Properties>
           <string name="Name">ip_stick</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：B-8 Fighter Control Stick (Low Poly)（StratoArt，CC-BY-4.0）的网格和底色贴图
@@ -8800,7 +8801,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="63">
+      <Item class="ModuleScript" referent="62">
         <Properties>
           <string name="Name">ip_sw</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Industrial Switches Apollo Command Module（ntilted，CC-BY-4.0）的网格和底色贴图
@@ -8876,7 +8877,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="64">
+      <Item class="ModuleScript" referent="63">
         <Properties>
           <string name="Name">ip_swheel</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：car bus truck steering wheel interior control（kopofx，CC-BY-4.0）的网格和底色贴图
@@ -8896,7 +8897,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="65">
+      <Item class="ModuleScript" referent="64">
         <Properties>
           <string name="Name">ip_tab</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Rugged Sci-Fi Tactical Military Tablet（3DMOAN，CC-BY-4.0）的网格和底色贴图
@@ -8916,7 +8917,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="66">
+      <Item class="ModuleScript" referent="65">
         <Properties>
           <string name="Name">ip_tsh</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tank Helmet（denj666，CC-BY-4.0）的网格和底色贴图
@@ -8936,7 +8937,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="67">
+      <Item class="ModuleScript" referent="66">
         <Properties>
           <string name="Name">ip_yoke</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ANIMATED KC-135 YOKE（StratoArt，CC-BY-4.0）的网格和底色贴图
@@ -8956,7 +8957,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="68">
+      <Item class="ModuleScript" referent="67">
         <Properties>
           <string name="Name">m224</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -8983,7 +8984,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="69">
+      <Item class="ModuleScript" referent="68">
         <Properties>
           <string name="Name">m40a5</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -9017,7 +9018,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="70">
+      <Item class="ModuleScript" referent="69">
         <Properties>
           <string name="Name">m67</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -9037,7 +9038,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="71">
+      <Item class="ModuleScript" referent="70">
         <Properties>
           <string name="Name">mag_drum</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9064,7 +9065,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="72">
+      <Item class="ModuleScript" referent="71">
         <Properties>
           <string name="Name">mag_hex30</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9091,7 +9092,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="73">
+      <Item class="ModuleScript" referent="72">
         <Properties>
           <string name="Name">mag_pmag20</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9111,7 +9112,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="74">
+      <Item class="ModuleScript" referent="73">
         <Properties>
           <string name="Name">mag_pmag40</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9131,7 +9132,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="75">
+      <Item class="ModuleScript" referent="74">
         <Properties>
           <string name="Name">muz_brake</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -9151,7 +9152,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="76">
+      <Item class="ModuleScript" referent="75">
         <Properties>
           <string name="Name">muz_comp</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -9171,7 +9172,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="77">
+      <Item class="ModuleScript" referent="76">
         <Properties>
           <string name="Name">opt_acog6</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -9254,7 +9255,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="78">
+      <Item class="ModuleScript" referent="77">
         <Properties>
           <string name="Name">opt_holo</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：EoTech EXPS3-0 Holographic Weapon Sight Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -9295,7 +9296,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="79">
+      <Item class="ModuleScript" referent="78">
         <Properties>
           <string name="Name">opt_rds</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Generic Red Dot Scope / Rifle Attachment Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -9322,7 +9323,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="80">
+      <Item class="ModuleScript" referent="79">
         <Properties>
           <string name="Name">opt_romeo</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Sig Sauer Romeo3 Reflex Sight（ense7en，CC-BY-4.0）的网格和底色贴图
@@ -9370,7 +9371,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="81">
+      <Item class="ModuleScript" referent="80">
         <Properties>
           <string name="Name">qbu88</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -9439,7 +9440,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="82">
+      <Item class="ModuleScript" referent="81">
         <Properties>
           <string name="Name">qw2</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -9501,7 +9502,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="83">
+      <Item class="ModuleScript" referent="82">
         <Properties>
           <string name="Name">rpg7</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -9521,7 +9522,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="84">
+      <Item class="ModuleScript" referent="83">
         <Properties>
           <string name="Name">stinger</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -9555,7 +9556,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="85">
+      <Item class="ModuleScript" referent="84">
         <Properties>
           <string name="Name">sup_socom</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -9575,7 +9576,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="86">
+      <Item class="ModuleScript" referent="85">
         <Properties>
           <string name="Name">sup_sr8</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Silencers Pack 1（pedrobelthori，CC-BY-4.0）的网格和底色贴图
@@ -9595,7 +9596,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="87">
+      <Item class="ModuleScript" referent="86">
         <Properties>
           <string name="Name">sup_wrap</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -9615,7 +9616,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="88">
+      <Item class="ModuleScript" referent="87">
         <Properties>
           <string name="Name">tac_light</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Surefire M952V Weapon Light（RedRogueXIII，CC-BY-4.0）的网格和底色贴图
@@ -9635,7 +9636,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="89">
+      <Item class="ModuleScript" referent="88">
         <Properties>
           <string name="Name">tac_peq</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ATPIAL AN/PEQ-15 (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -9697,7 +9698,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="90">
+      <Item class="ModuleScript" referent="89">
         <Properties>
           <string name="Name">wrench</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -9718,7 +9719,7 @@ return {
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="91">
+    <Item class="ModuleScript" referent="90">
       <Properties>
         <string name="Name">OpticsMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -10276,7 +10277,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="92">
+    <Item class="ModuleScript" referent="91">
       <Properties>
         <string name="Name">SceneryMeta</string>
         <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -10320,7 +10321,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="93">
+    <Item class="ModuleScript" referent="92">
       <Properties>
         <string name="Name">ShipDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -10567,7 +10568,7 @@ return ShipDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="94">
+    <Item class="ModuleScript" referent="93">
       <Properties>
         <string name="Name">SoundLib</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——真录音（用户 11-21：声音要逼真，「你来处理声音找音源」）
@@ -10614,7 +10615,7 @@ return {
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="95">
+    <Item class="ModuleScript" referent="94">
       <Properties>
         <string name="Name">TankMods</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克改装（用户 11-19：给坦克实现爆反和主动拦截系统，像给飞机选导弹那样选装；
@@ -11101,7 +11102,7 @@ return TM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="96">
+    <Item class="ModuleScript" referent="95">
       <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -11484,7 +11485,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="97">
+    <Item class="ModuleScript" referent="96">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -11783,17 +11784,17 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="98">
+    <Item class="Folder" referent="97">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="99">
+  <Item class="ServerScriptService" referent="98">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="100">
+    <Item class="Script" referent="99">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -12121,7 +12122,7 @@ end)
 print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="101">
+      <Item class="ModuleScript" referent="100">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -12658,7 +12659,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="102">
+      <Item class="ModuleScript" referent="101">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -13658,7 +13659,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="103">
+      <Item class="ModuleScript" referent="102">
         <Properties>
           <string name="Name">Aps</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防护系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；用户 11-22 晚：改装体系照真实的系统做）
@@ -13796,7 +13797,7 @@ return Aps
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="104">
+      <Item class="ModuleScript" referent="103">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -14419,7 +14420,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="105">
+      <Item class="ModuleScript" referent="104">
         <Properties>
           <string name="Name">Battle</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -14905,7 +14906,7 @@ return Battle
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="106">
+      <Item class="ModuleScript" referent="105">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -16120,7 +16121,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="107">
+      <Item class="ModuleScript" referent="106">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -16632,7 +16633,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="108">
+      <Item class="ModuleScript" referent="107">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——金币（用户 11-23：「把很多坦克飞机直升机搞成金币解锁吧 然后两边都可以用对方的载具 然后金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
@@ -16773,7 +16774,7 @@ return Economy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="109">
+      <Item class="ModuleScript" referent="108">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -17131,7 +17132,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="110">
+      <Item class="ModuleScript" referent="109">
         <Properties>
           <string name="Name">Era</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -17267,7 +17268,7 @@ return Era
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="111">
+      <Item class="ModuleScript" referent="110">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -18493,7 +18494,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="112">
+      <Item class="ModuleScript" referent="111">
         <Properties>
           <string name="Name">Gunsmith</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -18700,7 +18701,7 @@ return Gunsmith
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="113">
+      <Item class="ModuleScript" referent="112">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -18838,7 +18839,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="114">
+      <Item class="ModuleScript" referent="113">
         <Properties>
           <string name="Name">Kit</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克加装件（TankMods 的 slat / belly / eng / ew / cam，用户 11-22 晚：「要能有一整套的坦克改装体系」「用现实中的标准」）
@@ -18992,7 +18993,7 @@ return Kit
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="115">
+      <Item class="ModuleScript" referent="114">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -19228,7 +19229,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="116">
+      <Item class="ModuleScript" referent="115">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -20230,7 +20231,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="117">
+      <Item class="ModuleScript" referent="116">
         <Properties>
           <string name="Name">Nuke</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -20535,7 +20536,7 @@ return Nuke
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="118">
+      <Item class="ModuleScript" referent="117">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -20619,7 +20620,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="119">
+      <Item class="ModuleScript" referent="118">
         <Properties>
           <string name="Name">Pve</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——PvE 关卡（用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）
@@ -20794,7 +20795,7 @@ return Pve
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="120">
+      <Item class="ModuleScript" referent="119">
         <Properties>
           <string name="Name">Revive</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
@@ -20985,7 +20986,7 @@ return Revive
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="121">
+      <Item class="ModuleScript" referent="120">
         <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -21220,7 +21221,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="122">
+      <Item class="ModuleScript" referent="121">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -22531,7 +22532,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="123">
+      <Item class="ModuleScript" referent="122">
         <Properties>
           <string name="Name">Squads</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
@@ -22663,7 +22664,7 @@ return Squads
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="124">
+      <Item class="ModuleScript" referent="123">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -22770,7 +22771,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="125">
+      <Item class="ModuleScript" referent="124">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -22996,7 +22997,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="126">
+      <Item class="ModuleScript" referent="125">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -23292,7 +23293,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="127">
+      <Item class="ModuleScript" referent="126">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -24003,7 +24004,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="128">
+      <Item class="ModuleScript" referent="127">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -26786,15 +26787,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="129">
+  <Item class="StarterPlayer" referent="128">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="130">
+    <Item class="StarterPlayerScripts" referent="129">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="131">
+      <Item class="LocalScript" referent="130">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -26952,7 +26953,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -27320,7 +27321,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -27500,7 +27501,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -28117,7 +28118,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -29675,7 +29676,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -29873,7 +29874,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -30163,7 +30164,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -30320,7 +30321,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -30903,7 +30904,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -31027,7 +31028,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -31208,7 +31209,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -31512,7 +31513,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -32005,7 +32006,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -32459,7 +32460,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -33876,7 +33877,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -34876,7 +34877,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -35091,7 +35092,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -37690,7 +37691,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -38046,7 +38047,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -39585,7 +39586,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -39995,7 +39996,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -40127,7 +40128,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -40406,7 +40407,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -40960,7 +40961,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -41911,7 +41912,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -42374,7 +42375,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -43203,7 +43204,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -43317,7 +43318,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -45823,7 +45824,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -46378,6 +46379,8 @@ return function(Defs, Hp)
     end
     local function look(p, at) return CFrame.lookAt(p, at) end
     local DASH = RGB(34, 36, 34)
+    -- 真模型件（用户 11-23：「不要自己建模」——Sketchfab 原模型经 Blender 加工的 ip_ 件，tools/weapons/blprep.py）；没导入、没生成好时照旧拼
+    local function prop(g, key, cf, k) return b:prop(g, key, cf, k) ~= nil end
     local eyeL, eyeR = A.drv, A.cmd or V(-A.drv.X, A.drv.Y, A.drv.Z)
     local seatY = A.seat and A.seat.Y or (eyeL.Y - 0.80)
     local function floorAt(x, z) return cav:floor(x, z) or (seatY - 0.30) end
@@ -46401,22 +46404,34 @@ return function(Defs, Hp)
     bx(H, xr - xl, 0.28, 0.03, (xl + xr) / 2, wsY - 0.17, zD + 0.31, DASH, MAT.SmoothPlastic, -12, 0, 0)
     b:panel(H, 0.16, 0.10, look(V(eyeL.X - 0.22, wsY - 0.20, zD + 0.33), eyeL), 3, 2, RGB(54, 56, 54))
     -- 驾驶员：机械仪表、方向盘（跟着转向转）、踏板、换挡杆
-    b:screen(H, 0.28, 0.07, look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL), "gauges", { light = false, ppm = 1800 })
+    local gcf = look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL)
+    if not (L.analog and prop(H, "ip_gauges", gcf * ANG(0, PI, 0), 0.9)) then   -- 悍马：指针式仪表（真模型）；JLTV 这些：数字仪表页
+      b:screen(H, 0.28, 0.07, gcf, "gauges", { light = false, ppm = 1800 })
+    end
+    -- 方向盘：组的 −Z 顺着转向柱往下伸进仪表台，盘面（+Z）对着驾驶员；跟着转向转（Interior 让 swheel 绕自己的 Z 轴转）
     local wc = A.wheel or (eyeL + V(0.05, -0.55, -0.62))
-    local wdir = (eyeL - wc).Unit
-    b:group("swheel", H, look(wc, wc - V(wdir.X, wdir.Y * 0.4 - 0.55, wdir.Z).Unit))
-    zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
-    b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
-    b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
-    b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
-    b:tube(H, wc + V(0, -0.02, -0.04), V(wc.X, wsY - 0.22, zD + 0.30), 0.05, C.gray, MAT.Metal)
+    local base = V(wc.X, wsY - 0.24, zD + 0.30)
+    b:group("swheel", H, look(wc, wc + (base - wc).Unit))
+    if prop("swheel", "ip_swheel", CF(), 1.0) then
+      b:tube(H, wc + (base - wc).Unit * 0.26, base, 0.06, C.gray, MAT.Metal)
+    else
+      zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
+      b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
+      b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
+      b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
+      b:tube(H, wc, base, 0.05, C.gray, MAT.Metal)
+    end
     local fyD = floorAt(eyeL.X, eyeL.Z - 0.70)
-    bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
-    bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    if not prop(H, "ip_pedals", CF(eyeL.X + 0.03, fyD + 0.02, eyeL.Z - 0.78), 0.85) then
+      bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
+      bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    end
     local tz = eyeL.Z - 0.15
     local tyY = floorAt(0, tz)
-    bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)   -- 换挡杆（中间通道上）
-    b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    if not prop(H, "ip_lever", CF(-0.08, tyY, tz) * ANG(rad(-12), 0, 0), 0.5) then   -- 换挡杆（中间通道上）
+      bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)
+      b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    end
     -- 中间通道上的两部电台、仪表台中间的指挥终端（美军 JBC-P / 我军北斗终端）
     local rz = (eyeL.Z + eyeR.Z) / 2 + 0.25
     local ry = floorAt(0, rz)
@@ -46442,7 +46457,10 @@ return function(Defs, Hp)
     if A.rl then table.insert(seats, A.rl) end
     if A.rr then table.insert(seats, A.rr) end
     for _, e in ipairs(seats) do
-      b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })   -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）
+      -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）；真模型是卡车驾驶座（坐垫顶面中心为原点、人朝 −Z），往后仰 6°
+      if not prop(H, "ip_dseat", CF(e.X, seatY, e.Z - 0.03) * ANG(rad(6), 0, 0), L.seatK or 0.9) then
+        b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })
+      end
       local s = (e.X < 0) and -1 or 1
       b:cable(H, { V(e.X + s * 0.22, e.Y - 0.05, e.Z + 0.20), V(e.X - s * 0.06, e.Y - 0.40, e.Z - 0.08), V(e.X - s * 0.22, seatY + 0.06, e.Z + 0.05) }, 0.035, RGB(40, 44, 36))
     end
@@ -46470,7 +46488,7 @@ return function(Defs, Hp)
       stations.rear = { g = H, eye = A.rl, look = V(-0.3, -0.05, -1), yaw = 160, up = 50, down = 60 }
       table.insert(order, "rear")
     end
-    if L.ring and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画
+    if (L.ring or L.gunnerTurret) and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画（M1117 用的 M-ATV 原模型是敞开的炮塔环）
       Defs.ring(b, H, A.ring.X, A.ring.Y - 0.02, A.ring.Z, 0.42, 20, 0.06, 0.06, C.steel, MAT.Metal)
       local fy = floorAt(A.ring.X, A.ring.Z)
       bx(H, 0.30, 0.04, 0.20, A.ring.X, fy + 0.70, A.ring.Z, RGB(40, 40, 40), MAT.Fabric)
@@ -46500,7 +46518,7 @@ return function(Defs, Hp)
   Defs.plz07 = afv({ cn = CN, tur = "sph", gunL = true, eng = 1.7, gunK = 0.55, gunCal = 0.36 })
   Defs.m109a7 = afv({ cn = US, tur = "sph", gunL = true, eng = 1.7, gunK = 0.60, gunCal = 0.40, drv = { ctrl = "tbar" } })
   Defs.m163 = afv({ cn = US, tur = "vulcan", eng = 1.5, drv = { ctrl = "tbar" } })
-  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25 })
+  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25, analog = true })
   Defs.jltv = cab({ cn = US, seats = 4, rws = true, armored = true, hood = 1.35 })
   Defs.m1117 = cab({ cn = US, seats = 2, armored = true, gunnerTurret = true, hood = 1.10 })
   Defs.pgl625 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })
@@ -46512,7 +46530,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -46523,6 +46541,7 @@ end
 --     q:walls(z, y)                   这个前后位置、这个高度上内腔左右两边的墙（x 最小、最大，米）
 --     q.win                           窗户：{ c 中心, n 朝外, up, w 宽, h 高 }（米、相对座圈中心）
 --     q.anchors                       carve.json 里点的乘员位（眼位、座椅……，米）
+--     q.ring                          座圈半径（米）
 local RS = game:GetService("ReplicatedStorage")
 local S = 2.8
 
@@ -46628,7 +46647,7 @@ end
 function Q:space(name)
   local t = self.byName[name]
   if not t then return nil end
-  return setmetatable({ piv = self.piv, list = { t }, byName = self.byName, win = self.win, anchors = self.anchors }, Q)
+  return setmetatable({ piv = self.piv, list = { t }, byName = self.byName, win = self.win, anchors = self.anchors, ring = self.ring }, Q)
 end
 
 function Cav.get(mkey, piv)
@@ -46654,14 +46673,16 @@ function Cav.get(mkey, piv)
   end
   local anchors = {}
   for k, p in pairs(e.anchors or {}) do anchors[k] = m(p) end
-  return setmetatable({ piv = piv, list = c.list, byName = c.byName, win = win, anchors = anchors }, Q)
+  local ring = nil   -- 座圈半径（米；挖的时候座圈开口的半径）
+  for _, sp in pairs(e.spaces or {}) do if sp.ring then ring = math.max(ring or 0, sp.ring / S) end end
+  return setmetatable({ piv = piv, list = c.list, byName = c.byName, win = win, anchors = anchors, ring = ring }, Q)
 end
 
 return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -48628,7 +48649,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -49626,7 +49647,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -51773,7 +51794,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -52039,7 +52060,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -52201,7 +52222,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -52683,7 +52704,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -53208,7 +53229,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -53358,7 +53379,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -53671,7 +53692,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -53993,7 +54014,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -54210,7 +54231,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -54344,7 +54365,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -54849,7 +54870,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -55468,7 +55489,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -55749,7 +55770,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -56006,7 +56027,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -56149,7 +56170,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -56843,7 +56864,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -57440,7 +57461,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -57943,7 +57964,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -58890,7 +58911,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -59620,7 +59641,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -60372,7 +60393,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -60456,7 +60477,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -61206,7 +61227,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -61416,7 +61437,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -61871,7 +61892,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -63091,7 +63112,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -63598,7 +63619,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -63711,7 +63732,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -64799,7 +64820,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -64903,7 +64924,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -66411,7 +66432,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -67314,7 +67335,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -68295,7 +68316,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -69139,13 +69160,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="198">
+  <Item class="Workspace" referent="197">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="199">
+  <Item class="Lighting" referent="198">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
