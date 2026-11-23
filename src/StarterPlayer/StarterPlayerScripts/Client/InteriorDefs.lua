@@ -43,6 +43,16 @@ local function hring(b, g, cf, r, n, t, col, mat)
   end
 end
 
+-- 一圈环（组自己的 XY 平面上，绕 Z 轴）：方向盘的轮缘——Interior.lua 让 swheel 组绕自己的 Z 轴转
+local function zring(b, g, r, n, t, col, mat)
+  local seg = 2 * PI / n
+  local len = 2 * r * math.sin(seg / 2) * 1.05
+  for i = 0, n - 1 do
+    local a = (i + 0.5) * seg
+    b:box(g, V(len, t, t), CF(math.sin(a) * r, math.cos(a) * r, 0) * ANG(0, 0, -a), col, mat)
+  end
+end
+
 -- 120 毫米 / 125 毫米炮弹（米，弹底朝 +Z 的话 dir = 1）：可燃药筒 + 金属底缘 + 底火；长弹（脱壳穿甲弹）多一截弹芯
 local function round120(b, g, cf, opt)
   opt = opt or {}
@@ -620,75 +630,185 @@ function Defs.ztz99a(b, ctx)
   local function look(p, at) return CFrame.lookAt(p, at) end
   local FY = -1.05
   local RY = 0.78
-
-  ---------------- 车体
-  bx(H, 1.90, 0.04, 4.20, 0, FY - 0.02, -1.0, FLOOR, MAT.DiamondPlate)
-  for _, s in ipairs({ -1, 1 }) do
-    bx(H, 0.04, 0.50, 4.20, s * 0.97, FY + 0.25, -1.0, CNW2)
-    bx(H, 0.62, 0.04, 2.30, s * 1.28, -0.55, -0.02, CNW2)
-    bx(H, 0.04, 0.55, 2.30, s * 1.58, -0.28, -0.02, CNW2)
-    -- 侧凸台上：油箱、蓄电池、电台（推测）
-    bx(H, 0.52, 0.44, 1.00, s * 1.30, -0.31, -0.55, CNG)
-    bx(H, 0.50, 0.38, 0.80, s * 1.30, -0.34, 0.62, (s < 0) and RGB(60, 64, 60) or CNG)
+  -- 挖了内腔的原车（tools/models/carve.py，重新导入过 veh/ztz99a2.glb；用户 11-23「在原载具上挖出来」）：墙、顶、地板就是从原车挖出来的内壁，
+  --   跟车外一比一——这里不再摆车体、炮塔的壳板；地板 / 顶按内腔量，舱盖、驾驶员舱盖、抛壳窗挪到原车外面看得见的那个位置
+  --   （原车炮塔顶：炮长舱盖在座圈中心左 0.48、后 0.16 米，车长舱盖右 0.63、后 0.23 米，抛壳窗左 0.43、后 0.94 米；驾驶员舱盖在前 1.81 米）
+  local cav = ctx.cav
+  local carved = cav ~= nil
+  local hullQ = cav and (cav:space("Hull") or cav)
+  local turQ = cav and (cav:space("Tur") or cav)
+  local function hullFloor(x, z, d) return (hullQ and hullQ:floor(x, z)) or d end
+  local function turRoof(x, z, d) return (turQ and turQ:roof(x, z)) or d end
+  if carved then
+    FY = hullFloor(0, -0.30, FY)
+    RY = turRoof(0, 0.20, RY)
   end
-  b:placard(H, 0.20, 0.07, CF(-1.03, -0.22, -0.55) * ANG(0, -PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
-  b:placard(H, 0.20, 0.07, CF(1.03, -0.22, -0.55) * ANG(0, PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
-  bx(H, 3.20, 1.05, 0.05, 0, FY + 0.525, 1.20, CNW2)                 -- 动力舱隔板
-  for i = -2, 2 do bx(H, 0.40, 0.05, 0.02, i * 0.48, -0.45, 1.175, C.dark) end
-  for i = 0, 15 do
-    local a = (i + 0.5) * PI / 8
-    bx(H, 0.50, 0.04, 0.64, math.sin(a) * 1.36, -0.02, math.cos(a) * 1.36, CNW2, nil, 0, math.deg(a) + 90, 0)
+  local HATCH = carved and { g = V(-0.48, 0, 0.16), c = V(0.63, 0, 0.23), stub = V(-0.43, 0, 0.94), dz = -1.81 }
+    or { g = V(-0.58, 0, 0.40), c = V(0.58, 0, 0.40), stub = V(0, 0, 0.95), dz = -1.58 }
+  -- 一块地方（x0～x1、z0～z1 里九个点）内腔最高的地板、最低的顶：挖了内腔的，箱子按它截，不戳出内腔（戳出去的会从车外露出来）
+  local function span(q, x0, x1, z0, z1)
+    local lo, hi = nil, nil
+    if q then
+      for _, x in ipairs({ x0, (x0 + x1) / 2, x1 }) do
+        for _, z in ipairs({ z0, (z0 + z1) / 2, z1 }) do
+          local f, r = q:floor(x, z), q:roof(x, z)
+          if f then lo = lo and math.max(lo, f) or f end
+          if r then hi = hi and math.min(hi, r) or r end
+        end
+      end
+    end
+    return lo, hi
+  end
+  -- 炮塔里挂在顶上的东西（瞄准镜镜体、线束、顶灯）贴着这一点的顶：挖了内腔的按内腔量，没挖的照旧 RY
+  local function roofT(x, z) return carved and turRoof(x, z, RY) or RY end
+  -- 96 式（同 T-72 一系）驾驶员用两根转向操纵杆，99A 起才换成方向盘（新浪军事 2017-02-10「中国 99A 坦克驾驶竟用上方向盘」）
+  local is96 = ctx.def and ctx.def.id == "ztz96"
+
+  ---------------- 车体（真车布局：驾驶员在车体前部正中、两边是油箱弹架，中间炮塔底下是转盘式自动装弹机，后面隔板外是动力舱——
+  --   转向机构在动力舱的综合传动里，驾驶员的方向盘 / 操纵杆只是远程操纵它，人不坐在它上面）
+  if not carved then
+    bx(H, 1.90, 0.04, 4.20, 0, FY - 0.02, -1.0, FLOOR, MAT.DiamondPlate)
+  else   -- 挖出来的地板是平涂的：走人的那一条铺花纹钢板
+    bx(H, 1.30, 0.02, 3.40, 0, FY + 0.01, -0.90, FLOOR, MAT.DiamondPlate)
+  end
+  for _, s in ipairs({ -1, 1 }) do
+    if not carved then
+      bx(H, 0.04, 0.50, 4.20, s * 0.97, FY + 0.25, -1.0, CNW2)
+      bx(H, 0.62, 0.04, 2.30, s * 1.28, -0.55, -0.02, CNW2)
+      bx(H, 0.04, 0.55, 2.30, s * 1.58, -0.28, -0.02, CNW2)
+    end
+    -- 侧凸台上（履带上面那块）：油箱、蓄电池、电台（推测）——挖了内腔的：这台车履带上面的车体里只有几厘米的空（地板到顶），放不下就不摆
+    for _, it in ipairs({ { 0.52, 0.44, 1.00, -0.55, CNG }, { 0.50, 0.38, 0.80, 0.62, (s < 0) and RGB(60, 64, 60) or CNG } }) do
+      local w, h, l, zc, col = it[1], it[2], it[3], it[4], it[5]
+      local f, fits = -0.53, true
+      if carved then
+        local lo, hi = span(hullQ, s * (1.30 - w / 2), s * (1.30 + w / 2), zc - l / 2, zc + l / 2)
+        fits = lo ~= nil and hi ~= nil and hi - lo > h + 0.02
+        f = lo or f
+      end
+      if fits then bx(H, w, h, l, s * 1.30, f + h / 2, zc, col) end
+    end
+  end
+  if not carved then
+    b:placard(H, 0.20, 0.07, CF(-1.03, -0.22, -0.55) * ANG(0, -PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
+    b:placard(H, 0.20, 0.07, CF(1.03, -0.22, -0.55) * ANG(0, PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
+  else   -- 挖了内腔的：牌子贴在驾驶员两边的油箱弹架上
+    b:placard(H, 0.20, 0.07, CF(-0.478, FY + 0.40, -2.55) * ANG(0, -PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
+    b:placard(H, 0.20, 0.07, CF(0.478, FY + 0.40, -2.55) * ANG(0, PI / 2, 0), "燃油箱", { bg = RGB(230, 210, 60) })
+  end
+  -- 动力舱隔板：挖了内腔的就是内腔的后壁（量出来在哪），隔板上的百叶条贴在那上面
+  local FZ = 1.20
+  if carved then
+    for z = 1.0, 2.2, 0.04 do if hullFloor(0, z, nil) then FZ = z end end
+  else
+    bx(H, 3.20, 1.05, 0.05, 0, FY + 0.525, 1.20, CNW2)                 -- 动力舱隔板
+  end
+  for i = -2, 2 do bx(H, 0.40, 0.05, 0.02, i * 0.48, -0.45, FZ - 0.025, C.dark) end
+  if not carved then
+    for i = 0, 15 do
+      local a = (i + 0.5) * PI / 8
+      bx(H, 0.50, 0.04, 0.64, math.sin(a) * 1.36, -0.02, math.cos(a) * 1.36, CNW2, nil, 0, math.deg(a) + 90, 0)
+    end
   end
   ring(b, H, 0, -0.05, 0, 1.10, 32, 0.06, 0.08, C.steel, MAT.Metal)
-  -- 驾驶舱
-  local DZ = -1.80
-  for _, s in ipairs({ -1, 1 }) do
-    bx(H, 0.50, 1.00, 1.90, s * 0.74, FY + 0.50, -2.15, CNG)
-    bx(H, 0.02, 0.80, 1.50, s * 0.49, FY + 0.50, -2.15, RGB(96, 110, 92))
+  if carved then   -- 座圈这一圈车体内腔的顶、炮塔内腔的底挖开了（carve.py 的 ring），中间那一截车顶装甲的厚度用座圈钢圈封上，不然隔着缝看得见车外
+    ring(b, H, 0, -0.06, 0, 1.13, 40, 0.05, 0.38, RGB(150, 156, 146), MAT.Metal)
   end
-  bx(H, 0.98, 0.05, 1.20, 0, -0.38, -2.72, CNW2, nil, -32, 0, 0)
-  bx(H, 0.98, 0.70, 0.05, 0, FY + 0.35, -3.18, CNW2)
-  bx(H, 0.98, 0.04, 0.28, 0, -0.04, -2.02, CNW2)
-  bx(H, 0.98, 0.04, 0.12, 0, -0.04, -1.24, CNW2)
-  for _, s in ipairs({ -1, 1 }) do bx(H, 0.22, 0.04, 0.62, s * 0.38, -0.04, -1.58, CNW2) end
-  b:group("dhatch", H, CF(0, -0.02, -1.58))
+  -- 驾驶舱：驾驶员在车体前部正中，两边是油箱弹架（夹着驾驶员），前面是首上装甲；扣上舱盖时半躺着开，头顶就是舱盖
+  local DZ = -1.80
+  -- 挖了内腔的：99A 车体矮，驾驶员这儿的顶只比地板高 0.75 米——原来写死的眼位（顶下 0.01 米）卡进了顶板（驾驶员视角正中一条黑带），
+  --   改成眼睛在顶下 0.1 米、座椅放低、靠背更斜
+  local dRoof = carved and hullQ and hullQ:roof(0, DZ) or nil
+  local eyeD = dRoof and V(0, math.min(-0.24, dRoof - 0.10), DZ + 0.02) or V(0, -0.24, DZ)
+  for _, s in ipairs({ -1, 1 }) do
+    if carved then   -- 顺着首上装甲往前变矮：切成五段，每段截到那一段的顶
+      for k = 0, 4 do
+        local z0 = -3.10 + k * 0.38
+        local lo, hi = span(hullQ, s * 0.50, s * 0.94, z0, z0 + 0.38)
+        local f = lo or FY
+        local h = (hi or -0.25) - f - 0.012
+        if h > 0.12 then
+          bx(H, 0.50, h, 0.38, s * 0.74, f + h / 2, z0 + 0.19, CNG)
+          bx(H, 0.02, math.max(0.05, h - 0.18), 0.34, s * 0.49, f + h / 2, z0 + 0.19, RGB(96, 110, 92))
+        end
+      end
+    else
+      bx(H, 0.50, 1.00, 1.90, s * 0.74, FY + 0.50, -2.15, CNG)
+      bx(H, 0.02, 0.80, 1.50, s * 0.49, FY + 0.50, -2.15, RGB(96, 110, 92))
+    end
+  end
+  if not carved then
+    bx(H, 0.98, 0.05, 1.20, 0, -0.38, -2.72, CNW2, nil, -32, 0, 0)
+    bx(H, 0.98, 0.70, 0.05, 0, FY + 0.35, -3.18, CNW2)
+    bx(H, 0.98, 0.04, 0.28, 0, -0.04, -2.02, CNW2)
+    bx(H, 0.98, 0.04, 0.12, 0, -0.04, -1.24, CNW2)
+    for _, s in ipairs({ -1, 1 }) do bx(H, 0.22, 0.04, 0.62, s * 0.38, -0.04, -1.58, CNW2) end
+  end
+  -- 驾驶员舱盖：挖了内腔的在原车舱盖底下（盖板嵌在内腔的顶里，不往下凸：驾驶员抬头不会一下顶进盖板）
+  local dhY = carved and ((hullQ and hullQ:roof(0, HATCH.dz)) or 0) + 0.02 or -0.02
+  b:group("dhatch", H, CF(0, dhY, HATCH.dz))
   b:cylY("dhatch", 0.05, 0.56, CF(0, -0.03, 0), CNW, MAT.SmoothPlastic)
   b:grab("dhatch", V(-0.12, -0.06, 0.05), V(0.12, -0.06, 0.05), V(0, -0.06, 0), 0.02, C.black)
-  local eyeD = V(0, -0.24, DZ)
+  -- 三具观察潜望镜（舱盖前面：正前一具、两边各斜 32°）——挖了内腔的：观察窗上沿顶着内腔的顶
+  local pY = dRoof and ((hullQ:roof(0, DZ - 0.24) or dRoof) - 0.08) or -0.13
   for i = -1, 1 do
     local a = rad(i * 32)
-    local p = V(math.sin(a) * 0.22, -0.13, DZ - 0.18 - math.cos(a) * 0.06)
+    local p = V(math.sin(a) * 0.22, pY, DZ - 0.18 - math.cos(a) * 0.06)
     b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.16, 0.09, 0.10, { model = true })
   end
-  b:seat(H, CF(0, FY + 0.22, -2.24) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.58, recline = 32, head = true, col = RGB(46, 50, 44) })
-  -- 方向盘（99 式起用的方向盘操纵、液力机械综合传动）
-  b:group("wheel", H, CF(0, FY + 0.50, -2.66) * ANG(rad(-55), 0, 0))
-  Defs.ring(b, "wheel", 0, 0, 0, 0.17, 16, 0.03, 0.03, C.black, MAT.SmoothPlastic)
-  b:tube("wheel", V(-0.17, 0, 0), V(0.17, 0, 0), 0.025, C.black)
-  b:cylY("wheel", 0.04, 0.08, CF(), C.dark, MAT.Metal)
-  b:tube(H, V(0, FY + 0.50, -2.66), V(0, FY + 0.05, -2.95), 0.06, C.gray, MAT.Metal)
+  b:seat(H, CF(0, FY + (dRoof and 0.12 or 0.22), -2.24) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.58, recline = dRoof and 40 or 32, head = true, col = RGB(46, 50, 44) })
+  local hands
+  if is96 then
+    -- 96 式：两根转向操纵杆（拉左杆往左转、拉右杆往右转）+ 离合器踏板，换挡杆在右手边（同 T-72）
+    for _, s in ipairs({ -1, 1 }) do
+      local nm = (s < 0) and "lvL" or "lvR"
+      b:group(nm, H, CF(s * 0.24, FY + 0.10, -2.62))
+      b:tube(nm, V(0, 0, 0), V(0, 0.46, 0.14), 0.035, C.gray, MAT.Metal)
+      b:cylY(nm, 0.13, 0.045, CF(0, 0.52, 0.16), C.rubber, MAT.Fabric)
+      bx(H, 0.10, 0.06, 0.10, s * 0.24, FY + 0.06, -2.62, C.dark, MAT.Metal)
+    end
+    bx(H, 0.12, 0.04, 0.12, -0.12, FY + 0.06, -2.98, C.dark, MAT.DiamondPlate, -25, 0, 0)  -- 离合器
+    hands = { l = { "lvL", V(0, 0.52, 0.16) }, r = { "lvR", V(0, 0.52, 0.16) } }
+  else
+    -- 方向盘（99A 起：方向盘操纵、手自动一体的液力机械综合传动）——盘面对着转向柱，跟着转向转（Interior.lua 让 swheel 绕自己的 Z 轴转）
+    local wy = FY + 0.50
+    if dRoof then wy = math.min(wy, (hullQ:roof(0, -2.66) or wy) - 0.17) end   -- 挖了内腔的：轮缘不顶出首上装甲的内壁
+    local wc, base = V(0, wy, -2.66), V(0, FY + 0.05, -2.95)
+    b:group("swheel", H, look(wc, wc + (base - wc).Unit))   -- 组的 −Z 顺着转向柱往下：盘面跟转向柱垂直
+    zring(b, "swheel", 0.17, 16, 0.03, C.black, MAT.SmoothPlastic)
+    b:box("swheel", V(0.34, 0.025, 0.025), CF(), C.black)
+    b:box("swheel", V(0.025, 0.17, 0.025), CF(0, -0.085, 0), C.black)
+    b:cyl("swheel", 0.05, 0.08, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.dark, MAT.Metal)
+    b:tube(H, wc, base, 0.06, C.gray, MAT.Metal)
+    hands = { l = { "swheel", V(-0.16, 0, 0) }, r = { "swheel", V(0.16, 0, 0) } }
+  end
   bx(H, 0.16, 0.04, 0.12, 0.12, FY + 0.06, -2.95, C.dark, MAT.DiamondPlate, -25, 0, 0)   -- 油门
-  bx(H, 0.16, 0.04, 0.12, -0.10, FY + 0.06, -2.97, C.dark, MAT.DiamondPlate, -25, 0, 0)  -- 制动
+  bx(H, 0.16, 0.04, 0.12, is96 and 0.0 or -0.10, FY + 0.06, -2.97, C.dark, MAT.DiamondPlate, -25, 0, 0)  -- 制动
   bx(H, 0.05, 0.16, 0.05, 0.30, FY + 0.30, -2.40, C.dark, MAT.Metal, -20, 0, 0)          -- 挡位手柄
   b:ball(H, 0.05, CF(0.30, FY + 0.40, -2.43), C.red)
-  b:screen(H, 0.22, 0.14, look(V(-0.05, -0.42, -2.48), eyeD), "drvcn", { keys = { top = { "主菜单", "状态", "故障", "导航", "维护" }, bottom = { "起动", "熄火", "怠速", "灯检", "消音" } }, lightK = 0.3 })   -- 驾驶员数字仪表
+  -- 挖了内腔的：仪表挪到方向盘左上方（车顶矮，摆在正中会挡住方向盘），贴着顶
+  local dX, dZ = carved and -0.28 or -0.05, carved and -2.40 or -2.48
+  local dY = dRoof and math.min(-0.42, (hullQ:roof(dX, dZ) or -0.42) - 0.10) or -0.42
+  b:screen(H, 0.22, 0.14, look(V(dX, dY, dZ), eyeD), "drvcn", { keys = { top = { "主菜单", "状态", "故障", "导航", "维护" }, bottom = { "起动", "熄火", "怠速", "灯检", "消音" } }, lightK = 0.3 })   -- 驾驶员数字仪表
   b:panel(H, 0.16, 0.28, look(V(-0.44, -0.64, -2.08), V(0, -0.6, -2.0)), 4, 2, RGB(60, 66, 60), { guard = true })
   b:placard(H, 0.10, 0.03, look(V(-0.44, -0.48, -2.08), V(0, -0.48, -2.0)) * CF(0, 0, -0.002), "电源", { bg = C.black, fg = C.white })
   b:extinguisher(H, CF(-0.34, FY + 0.25, -1.30), 0.46, 0.14)
   b:extinguisher(H, CF(0.34, FY + 0.25, -1.30), 0.46, 0.14)
   b:placard(H, 0.12, 0.05, CF(0.34, FY + 0.40, -1.22) * ANG(0, PI, 0), "灭火瓶", { bg = C.red, fg = C.white })
-  b:light(H, CF(0, -0.10, -1.40), "dome", RGB(255, 240, 220), 2.8, 0.9)
+  b:light(H, CF(0, dRoof and ((hullQ:roof(0, -1.40) or -0.10) - 0.04) or -0.10, -1.40), "dome", RGB(255, 240, 220), 2.8, 0.9)
 
-  ---------------- 转盘式自动装弹机（跟着炮塔转，自己还能转）
+  ---------------- 转盘式自动装弹机（跟着炮塔转，自己还能转）：车体底板上，22 个弹盒（下层弹丸、上层药筒），同 T-72 的 AZ 系列
+  --   挖了内腔的：这台车两条履带之间的车体内宽只有 1.88 米，转盘半径收到 0.93 米以内（弹丸、药筒不缩，弹盒往里收）
+  local CR = carved and 0.57 or 0.66
   b:group("carousel", T, CF(0, FY + 0.03, 0))
   bx("carousel", 0.05, 0.05, 0.05, 0, 0, 0, C.dark)
-  b:cylY("carousel", 0.03, 2.10, CF(0, 0.0, 0), RGB(60, 64, 60), MAT.Metal)        -- 转盘底盘
+  b:cylY("carousel", 0.03, carved and 1.86 or 2.10, CF(0, 0.0, 0), RGB(60, 64, 60), MAT.Metal)        -- 转盘底盘
   b:cylY("carousel", 0.30, 0.50, CF(0, 0.15, 0), C.dark, MAT.Metal)               -- 中间的轴、电机
   local cassettes = {}
   for i = 0, 21 do
     local a = (i + 0.5) / 22 * 2 * PI
     local cf = ANG(0, a, 0) * CF(0, 0, 0)
-    local rr = 0.66
+    local rr = CR
     -- 弹盒：径向摆，弹底朝中间
     local tray = cf * CF(0, 0.07, -rr)
     local parts = {}
@@ -710,11 +830,12 @@ function Defs.ztz99a(b, ctx)
   end
   b:name("cassettes", cassettes)
   -- 炮塔篮地板（盖在转盘上面，中间有口子：从里面能看见弹盒）
+  local PR = carved and 0.68 or 0.80   -- 挖了内腔的：盖板、栏杆也收进车体内宽里（跟着炮塔转，转到侧面不戳进车体侧壁）
   for i = 0, 11 do
     local a = (i + 0.5) * PI / 6
-    if i % 3 ~= 1 then bx(T, 0.52, 0.03, 0.56, math.sin(a) * 0.80, FY + 0.38, math.cos(a) * 0.80, FLOOR, MAT.DiamondPlate, 0, math.deg(a) + 90, 0) end
+    if i % 3 ~= 1 then bx(T, 0.52, 0.03, carved and 0.48 or 0.56, math.sin(a) * PR, FY + 0.38, math.cos(a) * PR, FLOOR, MAT.DiamondPlate, 0, math.deg(a) + 90, 0) end
   end
-  ring(b, T, 0, -0.38, 0, 1.02, 12, 0.03, 0.03, C.lgray, MAT.Metal, -PI * 0.80, PI * 0.80)
+  ring(b, T, 0, -0.38, 0, carved and 0.90 or 1.02, 12, 0.03, 0.03, C.lgray, MAT.Metal, -PI * 0.80, PI * 0.80)
   -- 提弹机（炮尾后面）：竖着的导轨、提弹架（子组 lift），链式推弹机
   bx(T, 0.06, 1.10, 0.06, -0.20, -0.45, 0.95, C.steel, MAT.Metal)
   bx(T, 0.06, 1.10, 0.06, 0.20, -0.45, 0.95, C.steel, MAT.Metal)
@@ -727,40 +848,44 @@ function Defs.ztz99a(b, ctx)
   b:box("rammer", V(0.08, 0.08, 0.50), CF(), RGB(60, 60, 58), MAT.Metal)
   b:cylZ("rammer", 0.04, 0.12, CF(0, 0, -0.26), C.steel, MAT.Metal)
 
-  ---------------- 炮塔壳
-  for i = 0, 15 do
-    local a = (i + 0.5) * PI / 8
-    bx(T, 0.52, 0.03, 0.60, math.sin(a) * 1.30, 0.0, math.cos(a) * 1.30, CNW2, nil, 0, math.deg(a) + 90, 0)
+  ---------------- 炮塔壳（挖了内腔的：壁、顶就是原车炮塔挖出来的内壁，这里只摆舱盖、抛壳窗）
+  if not carved then
+    for i = 0, 15 do
+      local a = (i + 0.5) * PI / 8
+      bx(T, 0.52, 0.03, 0.60, math.sin(a) * 1.30, 0.0, math.cos(a) * 1.30, CNW2, nil, 0, math.deg(a) + 90, 0)
+    end
+    for _, s in ipairs({ -1, 1 }) do
+      bx(T, 0.05, RY, 1.70, s * 1.20, RY / 2, 0.25, CNW)
+      local p0, p1 = V(s * 1.20, 0, -0.60), V(s * 0.46, 0, -1.18)
+      local mid = (p0 + p1) / 2
+      b:box(T, V((p1 - p0).Magnitude, RY, 0.05), CF(mid.X, RY / 2, mid.Z) * ANG(0, math.atan2(-(p1.Z - p0.Z), p1.X - p0.X), 0), CNW)
+      bx(T, 0.05, RY, 0.36, s * 0.44, RY / 2, -1.36, CNW2)
+    end
+    bx(T, 0.92, RY, 0.05, 0, RY / 2, -1.55, CNW2)
+    bx(T, 2.44, RY, 0.05, 0, RY / 2, 1.10, CNW2)                          -- 炮塔后壁
+    -- 顶：车长舱口（右）、炮长舱口（左），后部的抛壳窗（子组 stubport）
+    bx(T, 2.44, 0.05, 0.40, 0, RY + 0.025, 0.90, CNW)
+    bx(T, 0.40, 0.05, 0.60, 0, RY + 0.025, 0.40, CNW)
+    bx(T, 0.30, 0.05, 0.60, 1.07, RY + 0.025, 0.40, CNW)
+    bx(T, 0.30, 0.05, 0.60, -1.07, RY + 0.025, 0.40, CNW)
+    bx(T, 2.44, 0.05, 0.50, 0, RY + 0.025, -0.15, CNW)
+    bx(T, 2.44, 0.05, 0.80, 0, RY + 0.025, -0.80, CNW)
+    bx(T, 0.92, 0.05, 0.38, 0, RY + 0.025, -1.37, CNW)
+    for _, z in ipairs({ -0.45, 0.10, 0.65 }) do bx(T, 2.4, 0.04, 0.05, 0, RY - 0.02, z, CNW2) end
   end
-  for _, s in ipairs({ -1, 1 }) do
-    bx(T, 0.05, RY, 1.70, s * 1.20, RY / 2, 0.25, CNW)
-    local p0, p1 = V(s * 1.20, 0, -0.60), V(s * 0.46, 0, -1.18)
-    local mid = (p0 + p1) / 2
-    b:box(T, V((p1 - p0).Magnitude, RY, 0.05), CF(mid.X, RY / 2, mid.Z) * ANG(0, math.atan2(-(p1.Z - p0.Z), p1.X - p0.X), 0), CNW)
-    bx(T, 0.05, RY, 0.36, s * 0.44, RY / 2, -1.36, CNW2)
-  end
-  bx(T, 0.92, RY, 0.05, 0, RY / 2, -1.55, CNW2)
-  bx(T, 2.44, RY, 0.05, 0, RY / 2, 1.10, CNW2)                          -- 炮塔后壁
-  -- 顶：车长舱口（右）、炮长舱口（左），后部的抛壳窗（子组 stubport）
-  bx(T, 2.44, 0.05, 0.40, 0, RY + 0.025, 0.90, CNW)
-  bx(T, 0.40, 0.05, 0.60, 0, RY + 0.025, 0.40, CNW)
-  bx(T, 0.30, 0.05, 0.60, 1.07, RY + 0.025, 0.40, CNW)
-  bx(T, 0.30, 0.05, 0.60, -1.07, RY + 0.025, 0.40, CNW)
-  bx(T, 2.44, 0.05, 0.50, 0, RY + 0.025, -0.15, CNW)
-  bx(T, 2.44, 0.05, 0.80, 0, RY + 0.025, -0.80, CNW)
-  bx(T, 0.92, 0.05, 0.38, 0, RY + 0.025, -1.37, CNW)
-  ring(b, T, 0.58, RY + 0.035, 0.40, 0.44, 16, 0.24, 0.03, CNW2)
-  ring(b, T, -0.58, RY + 0.035, 0.40, 0.42, 16, 0.22, 0.03, CNW2)
   for _, s in ipairs({ -1, 1 }) do
     local hn = (s > 0) and "chatch" or "ghatch"
-    ring(b, T, s * 0.58, RY + 0.02, 0.40, 0.33, 16, 0.06, 0.06, CNW2, MAT.Metal)
-    b:group(hn, T, CF(s * 0.58, RY + 0.10, 0.40))
+    local hp = (s > 0) and HATCH.c or HATCH.g
+    local hy = carved and turRoof(hp.X, hp.Z, RY) or RY   -- 挖了内腔的：舱盖贴着这一点的炮塔顶
+    if not carved then ring(b, T, hp.X, hy + 0.035, hp.Z, (s > 0) and 0.44 or 0.42, 16, (s > 0) and 0.24 or 0.22, 0.03, CNW2) end
+    ring(b, T, hp.X, hy + 0.02, hp.Z, 0.33, 16, 0.06, 0.06, CNW2, MAT.Metal)
+    b:group(hn, T, CF(hp.X, hy + 0.10, hp.Z))
     b:cylY(hn, 0.05, 0.58, CF(), CNW, MAT.SmoothPlastic)
     b:grab(hn, V(-0.11, -0.03, 0.10), V(0.11, -0.03, 0.10), V(0, -0.05, 0), 0.02, C.black)
   end
-  b:group("stubport", T, CF(0, RY + 0.03, 0.95))
+  local sy = carved and turRoof(HATCH.stub.X, HATCH.stub.Z, RY) or RY
+  b:group("stubport", T, CF(HATCH.stub.X, sy + 0.03, HATCH.stub.Z))
   b:box("stubport", V(0.26, 0.03, 0.22), CF(), RGB(170, 176, 166), MAT.Metal)
-  for _, z in ipairs({ -0.45, 0.10, 0.65 }) do bx(T, 2.4, 0.04, 0.05, 0, RY - 0.02, z, CNW2) end
 
   ---------------- 主炮：ZPT-98A 125 毫米
   b:box(G, V(0.40, 0.36, 0.80), CF(0, 0, -0.10), RGB(100, 106, 98), MAT.Metal)
@@ -783,16 +908,19 @@ function Defs.ztz99a(b, ctx)
 
   ---------------- 炮长位（左）
   local gEye = V(-0.52, 0.30, -0.70)
-  bx(T, 0.30, 0.44, 0.40, -0.62, 0.56, -0.96, RGB(46, 50, 48))                    -- 主瞄准镜镜体
+  -- 主瞄准镜镜体：从目镜上沿一直到炮塔顶（镜头在顶上，镜体穿顶）——挖了内腔的截到这一块的顶（原来按 0.78 的顶画，戳出了挖出来的炮塔顶）
+  local gTop = carved and math.min(0.78, (select(2, span(turQ, -0.77, -0.47, -0.88, -0.76))) or 0.78) - 0.005 or 0.78
+  bx(T, 0.30, gTop - 0.34, 0.40, -0.62, (gTop + 0.34) / 2, -0.96, RGB(46, 50, 48))
   bx(T, 0.22, 0.18, 0.14, -0.55, 0.36, -0.86, RGB(36, 38, 40))
   b:cylZ(T, 0.07, 0.06, CF(-0.55, 0.33, -0.78), C.rubber, MAT.Fabric)
   b:box(T, V(0.24, 0.06, 0.08), CF(-0.55, 0.43, -0.80), C.rubber, MAT.Fabric)
   b:lens(T, CF(-0.55, 0.33, -0.744), 0.042)   -- 暗的镜片（不发绿光）
-  b:placard(T, 0.14, 0.04, CF(-0.62, 0.56, -0.755) * ANG(0, PI, 0), "主瞄准镜", { bg = C.black, fg = C.white })
+  b:placard(T, 0.14, 0.04, CF(-0.62, math.max(0.47, (gTop + 0.34) / 2 + 0.06), -0.755) * ANG(0, PI, 0), "主瞄准镜", { bg = C.black, fg = C.white })
   b:screen(T, 0.20, 0.15, look(V(-0.86, 0.22, -0.80), gEye + V(0, -0.1, 0.1)), "fcscn", { keys = { top = { "主菜单", "弹种", "测距", "校炮", "激光" }, bottom = { "极性", "倍率", "火控", "自检", "复位" } }, lightK = 0.28 })   -- 火控计算机面板
   -- 炮长显示器（热像）：原来在 (-0.30, 0.52)，跑到了炮闩左边那块防护板（x = -0.38，顶到 0.55 以上）里边，炮长隔着防护板看不见
   --   （用户 11-22：屏幕会被挡住）——挪到炮长这边、主瞄准镜目镜下面（tools/mock/interior_occ.lua 查：眼睛到屏幕中间没有东西）
-  b:screen(T, 0.18, 0.13, look(V(-0.50, 0.10, -0.92), gEye), "gunsight", { lightK = 0.25 })
+  --   挖了内腔的：炮塔前壁在 z ≈ −0.88（真车前装甲厚），z = −0.92 那块埋进了前壁——往后挪到壁前面
+  b:screen(T, 0.18, 0.13, look(V(-0.50, 0.10, carved and -0.80 or -0.92), gEye), "gunsight", { lightK = 0.25 })
   b:tube(T, V(-0.55, FY + 0.40, -0.66), V(-0.55, -0.15, -0.68), 0.06, C.gray, MAT.Metal)
   bx(T, 0.30, 0.09, 0.12, -0.55, -0.10, -0.70, RGB(46, 48, 50))
   b:group("gch", T, CF(-0.55, -0.08, -0.70))
@@ -805,7 +933,8 @@ function Defs.ztz99a(b, ctx)
 
   ---------------- 车长位（右）
   local cEye = V(0.56, 0.52, -0.10)
-  bx(T, 0.30, 0.38, 0.34, 0.62, 0.62, -0.50, RGB(46, 50, 48))                     -- 周视瞄准镜下部
+  local cTop = carved and math.min(0.81, (select(2, span(turQ, 0.47, 0.77, -0.67, -0.33))) or 0.81) - 0.005 or 0.81
+  bx(T, 0.30, cTop - 0.43, 0.34, 0.62, (cTop + 0.43) / 2, -0.50, RGB(46, 50, 48))   -- 周视瞄准镜下部（穿顶）
   b:cylZ(T, 0.07, 0.06, CF(0.56, 0.52, -0.30), C.rubber, MAT.Fabric)
   b:lens(T, CF(0.56, 0.52, -0.264), 0.042)   -- 暗的镜片（不发绿光）
   b:screen(T, 0.26, 0.19, look(V(0.82, 0.30, -0.42), cEye), "cnmap", { keys = { top = { "地图", "消息", "态势", "导航", "坐标" }, bottom = { "放大", "缩小", "标绘", "亮+", "亮-" } }, lightColor = RGB(150, 190, 230), lightK = 0.35 })   -- 综合显示终端
@@ -814,17 +943,31 @@ function Defs.ztz99a(b, ctx)
   b:group("cch", T, CF(0.86, 0.02, -0.18))
   b:box("cch", V(0.05, 0.13, 0.05), CF(0, 0.07, 0) * ANG(rad(-15), 0, 0), C.black)
   b:tube(T, V(0.86, -0.40, -0.18), V(0.86, 0.0, -0.18), 0.04, C.gray, MAT.Metal)
-  b:panel(T, 0.24, 0.18, look(V(1.15, 0.36, 0.10), V(0, 0.36, 0.10)), 3, 4, RGB(60, 66, 60))
-  b:radio(T, 0.34, 0.15, 0.28, look(V(1.15, 0.18, 0.55), V(0, 0.18, 0.55)), RGB(64, 72, 60), "ip_radio2")
+  -- 车长右手边的面板、电台挂在炮塔右壁上，灭火瓶在左后——挖了内腔的：贴着量出来的侧壁、坐在量出来的炮塔地板上
+  --   （原来 x = ±1.12～1.15，在挖出来的侧装甲里边；电台底下低过炮塔地板）
+  local function wallX(s, z, y, d)
+    if not carved then return d end
+    local xl, xr = turQ:walls(z, y)
+    local xm = (s > 0) and xr or (xl and -xl)
+    return xm and math.min(d, xm - 0.02) or d
+  end
+  local pX = wallX(1, 0.10, 0.36, 1.15)
+  b:panel(T, 0.24, 0.18, look(V(pX, 0.36, 0.10), V(0, 0.36, 0.10)), 3, 4, RGB(60, 66, 60))
+  local rX = carved and wallX(1, 0.55, 0.30, 1.29) - 0.14 or 1.15
+  local rY = carved and ((turQ:floor(rX, 0.55) or 0.10) + 0.085) or 0.18
+  b:radio(T, 0.34, 0.15, 0.28, look(V(rX, rY, 0.55), V(0, rY, 0.55)), RGB(64, 72, 60), "ip_radio2")
   b:seat(T, CF(0.58, -0.16, 0.30), { w = 0.38, d = 0.34, back = 0.34, recline = 6, post = 0.30, col = RGB(46, 50, 44) })
-  b:extinguisher(T, CF(-1.12, 0.10, 0.50), 0.36, 0.12)
-  b:harness(T, { V(0.10, RY - 0.06, -1.05), V(0.40, RY - 0.06, -0.55), V(0.95, RY - 0.06, -0.35), V(1.10, 0.40, -0.25) }, 4, 0.02)
-  b:harness(T, { V(-0.10, RY - 0.06, -1.05), V(-0.40, RY - 0.06, -0.55), V(-0.95, RY - 0.06, -0.35), V(-1.10, 0.40, -0.25) }, 3, 0.02)
-  b:light(T, CF(0, RY - 0.06, 0.40), "dome", RGB(255, 244, 228), 3.4, 1.1)
-  b:light(T, CF(-0.60, RY - 0.06, -0.30), "dome", RGB(255, 244, 228), 3.0, 0.9)
-  b:light(T, CF(0.58, RY - 0.05, 0.40), "flash", RGB(255, 196, 120), 4.0, 0)
+  local eX = carved and -(wallX(-1, 0.50, 0.30, 1.20) - 0.08) or -1.12
+  b:extinguisher(T, CF(eX, carved and ((turQ:floor(eX, 0.50) or 0.0) + 0.19) or 0.10, 0.50), 0.36, 0.12)
+  local function hr(x, z) return roofT(x, z) - 0.06 end   -- 线束、顶灯贴着那一点的顶
+  local hz = carved and -0.80 or -1.05   -- 挖了内腔的：炮塔前壁在 −0.88，线束从壁前面起
+  b:harness(T, { V(0.10, hr(0.10, hz), hz), V(0.40, hr(0.40, -0.55), -0.55), V(0.95, hr(0.95, -0.35), -0.35), V(1.10, 0.40, -0.25) }, 4, 0.02)
+  b:harness(T, { V(-0.10, hr(-0.10, hz), hz), V(-0.40, hr(-0.40, -0.55), -0.55), V(-0.95, hr(-0.95, -0.35), -0.35), V(-1.10, 0.40, -0.25) }, 3, 0.02)
+  b:light(T, CF(0, hr(0, 0.40), 0.40), "dome", RGB(255, 244, 228), 3.4, 1.1)
+  b:light(T, CF(-0.60, hr(-0.60, -0.30), -0.30), "dome", RGB(255, 244, 228), 3.0, 0.9)
+  b:light(T, CF(0.58, hr(0.58, 0.40) + 0.01, 0.40), "flash", RGB(255, 196, 120), 4.0, 0)
   b:light(T, CF(0.30, 0.40, -0.40), "warn", RGB(255, 40, 30), 3.0, 0)
-  for _, p in ipairs({ V(0, RY - 0.02, 0.40), V(-0.60, RY - 0.02, -0.30) }) do
+  for _, p in ipairs({ V(0, roofT(0, 0.40) - 0.02, 0.40), V(-0.60, roofT(-0.60, -0.30) - 0.02, -0.30) }) do
     b:box(T, V(0.14, 0.04, 0.10), CF(p), C.dark, MAT.Metal)
     b:led(T, CF(p - V(0, 0.025, 0)), RGB(255, 236, 210), 0.05, "domeLamp")
   end
@@ -843,9 +986,10 @@ function Defs.ztz99a(b, ctx)
           alt = { kind = "gps" } } },
     },
     order = { "driver", "gunner", "commander" },
+    carved = carved,   -- 挖了内腔的那套：坐在车里外壳照样画（从里面看不见外壳的背面），显示内壁
     crew = {
-      driver = { dress = "tank_cn", g = H, eye = eyeD, lean = 32, yaw = 0, look = V(0, 0.1, -1),
-        hands = { l = { "wheel", V(-0.16, 0.0, 0) }, r = { "wheel", V(0.16, 0.0, 0) } },
+      driver = { dress = "tank_cn", g = H, eye = eyeD, lean = dRoof and 40 or 32, yaw = 0, look = V(0, 0.1, -1),
+        hands = hands,
         feet = { l = { H, V(-0.10, FY + 0.10, -2.92) }, r = { H, V(0.12, FY + 0.10, -2.90) } } },
       gunner = { dress = "tank_cn", g = T, eye = gEye + V(0, -0.02, 0.02), lean = -24, yaw = 0, look = V(0, -0.12, -1),
         hands = { l = { "gch", V(-0.14, 0.12, 0.0) }, r = { "gch", V(0.14, 0.12, 0.0) } },

@@ -22,6 +22,19 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 23 日第六包（99A 车里也从原车挖出来、各型坦克按真车的乘员布局）：换游戏文件（或者「三、只换脚本」）；模型重导 veh/ztz99a2.glb：
+    - 99A 车里的墙、顶、地板换成从原车模型挖出来的内腔（同悍马那一包）：炮长、车长舱盖就在车外看得见的那两个舱盖底下，
+      驾驶员舱盖在原车驾驶员舱盖底下，瞄准镜镜体穿出车顶的位置跟着原车
+    - 照真车布局（查的资料见 docs/interior.md「各型坦克真实的乘员布局」）：驾驶员在车体前部正中、半躺着开，两边是油箱弹架；
+      99A 用方向盘（99A 是国产坦克第一个用方向盘的，手自动一体），方向盘现在跟着转向转；96 式还是两根操纵杆（改了，原来也画成方向盘）；
+      转向机构在车尾动力舱的综合传动里，驾驶员只是远程操纵它；炮长在炮左、车长在炮右，转盘式自动装弹机在车底（22 发）
+    - 修：挖出来的车体比原来手搭的矮，驾驶员视角正中一条黑带（眼睛卡在车顶里）、瞄准镜镜体和电台戳进车顶 / 侧壁——都按挖出来的尺寸重新摆了
+    - 重导前先在命令栏（编辑状态下）粘这一行删掉旧的 99A 零件，再照「一、导入」只导 veh/ztz99a2.glb：
+
+for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_ztz99a2__") then d:Destroy() end end end
+
+      不重导也能玩：游戏照旧用老的那套零件和原来的内饰（96 式的操纵杆不用重导）
+
   11 月 23 日第五包（车内饰改成在原车里面挖出来）：换游戏文件（或者「三、只换脚本」）；模型重导 veh/hmmwv.glb：
     - 用户：「改成在原车内部雕刻出来内饰」「这样各种载具的从外面可以看得见的窗户跟内部的内饰就能对得上了」——
       车里的墙、顶、地板不再是按车的长宽高摆的平板，而是从原车模型本身挖出来的内腔：贴着原车自己的车门内板、仪表台、中间通道、车顶；
