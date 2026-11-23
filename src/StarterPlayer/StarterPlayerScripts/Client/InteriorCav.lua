@@ -6,6 +6,7 @@
 --     q:walls(z, y)                   这个前后位置、这个高度上内腔左右两边的墙（x 最小、最大，米）
 --     q.win                           窗户：{ c 中心, n 朝外, up, w 宽, h 高 }（米、相对座圈中心）
 --     q.anchors                       carve.json 里点的乘员位（眼位、座椅……，米）
+--     q.ring                          座圈半径（米）
 local RS = game:GetService("ReplicatedStorage")
 local S = 2.8
 
@@ -111,7 +112,7 @@ end
 function Q:space(name)
   local t = self.byName[name]
   if not t then return nil end
-  return setmetatable({ piv = self.piv, list = { t }, byName = self.byName, win = self.win, anchors = self.anchors }, Q)
+  return setmetatable({ piv = self.piv, list = { t }, byName = self.byName, win = self.win, anchors = self.anchors, ring = self.ring }, Q)
 end
 
 function Cav.get(mkey, piv)
@@ -137,7 +138,9 @@ function Cav.get(mkey, piv)
   end
   local anchors = {}
   for k, p in pairs(e.anchors or {}) do anchors[k] = m(p) end
-  return setmetatable({ piv = piv, list = c.list, byName = c.byName, win = win, anchors = anchors }, Q)
+  local ring = nil   -- 座圈半径（米；挖的时候座圈开口的半径）
+  for _, sp in pairs(e.spaces or {}) do if sp.ring then ring = math.max(ring or 0, sp.ring / S) end end
+  return setmetatable({ piv = piv, list = c.list, byName = c.byName, win = win, anchors = anchors, ring = ring }, Q)
 end
 
 return Cav

@@ -550,6 +550,8 @@ return function(Defs, Hp)
     end
     local function look(p, at) return CFrame.lookAt(p, at) end
     local DASH = RGB(34, 36, 34)
+    -- 真模型件（用户 11-23：「不要自己建模」——Sketchfab 原模型经 Blender 加工的 ip_ 件，tools/weapons/blprep.py）；没导入、没生成好时照旧拼
+    local function prop(g, key, cf, k) return b:prop(g, key, cf, k) ~= nil end
     local eyeL, eyeR = A.drv, A.cmd or V(-A.drv.X, A.drv.Y, A.drv.Z)
     local seatY = A.seat and A.seat.Y or (eyeL.Y - 0.80)
     local function floorAt(x, z) return cav:floor(x, z) or (seatY - 0.30) end
@@ -573,22 +575,34 @@ return function(Defs, Hp)
     bx(H, xr - xl, 0.28, 0.03, (xl + xr) / 2, wsY - 0.17, zD + 0.31, DASH, MAT.SmoothPlastic, -12, 0, 0)
     b:panel(H, 0.16, 0.10, look(V(eyeL.X - 0.22, wsY - 0.20, zD + 0.33), eyeL), 3, 2, RGB(54, 56, 54))
     -- 驾驶员：机械仪表、方向盘（跟着转向转）、踏板、换挡杆
-    b:screen(H, 0.28, 0.07, look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL), "gauges", { light = false, ppm = 1800 })
+    local gcf = look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL)
+    if not (L.analog and prop(H, "ip_gauges", gcf * ANG(0, PI, 0), 0.9)) then   -- 悍马：指针式仪表（真模型）；JLTV 这些：数字仪表页
+      b:screen(H, 0.28, 0.07, gcf, "gauges", { light = false, ppm = 1800 })
+    end
+    -- 方向盘：组的 −Z 顺着转向柱往下伸进仪表台，盘面（+Z）对着驾驶员；跟着转向转（Interior 让 swheel 绕自己的 Z 轴转）
     local wc = A.wheel or (eyeL + V(0.05, -0.55, -0.62))
-    local wdir = (eyeL - wc).Unit
-    b:group("swheel", H, look(wc, wc - V(wdir.X, wdir.Y * 0.4 - 0.55, wdir.Z).Unit))
-    zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
-    b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
-    b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
-    b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
-    b:tube(H, wc + V(0, -0.02, -0.04), V(wc.X, wsY - 0.22, zD + 0.30), 0.05, C.gray, MAT.Metal)
+    local base = V(wc.X, wsY - 0.24, zD + 0.30)
+    b:group("swheel", H, look(wc, wc + (base - wc).Unit))
+    if prop("swheel", "ip_swheel", CF(), 1.0) then
+      b:tube(H, wc + (base - wc).Unit * 0.26, base, 0.06, C.gray, MAT.Metal)
+    else
+      zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
+      b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
+      b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
+      b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
+      b:tube(H, wc, base, 0.05, C.gray, MAT.Metal)
+    end
     local fyD = floorAt(eyeL.X, eyeL.Z - 0.70)
-    bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
-    bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    if not prop(H, "ip_pedals", CF(eyeL.X + 0.03, fyD + 0.02, eyeL.Z - 0.78), 0.85) then
+      bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
+      bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    end
     local tz = eyeL.Z - 0.15
     local tyY = floorAt(0, tz)
-    bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)   -- 换挡杆（中间通道上）
-    b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    if not prop(H, "ip_lever", CF(-0.08, tyY, tz) * ANG(rad(-12), 0, 0), 0.5) then   -- 换挡杆（中间通道上）
+      bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)
+      b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    end
     -- 中间通道上的两部电台、仪表台中间的指挥终端（美军 JBC-P / 我军北斗终端）
     local rz = (eyeL.Z + eyeR.Z) / 2 + 0.25
     local ry = floorAt(0, rz)
@@ -614,7 +628,10 @@ return function(Defs, Hp)
     if A.rl then table.insert(seats, A.rl) end
     if A.rr then table.insert(seats, A.rr) end
     for _, e in ipairs(seats) do
-      b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })   -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）
+      -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）；真模型是卡车驾驶座（坐垫顶面中心为原点、人朝 −Z），往后仰 6°
+      if not prop(H, "ip_dseat", CF(e.X, seatY, e.Z - 0.03) * ANG(rad(6), 0, 0), L.seatK or 0.9) then
+        b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })
+      end
       local s = (e.X < 0) and -1 or 1
       b:cable(H, { V(e.X + s * 0.22, e.Y - 0.05, e.Z + 0.20), V(e.X - s * 0.06, e.Y - 0.40, e.Z - 0.08), V(e.X - s * 0.22, seatY + 0.06, e.Z + 0.05) }, 0.035, RGB(40, 44, 36))
     end
@@ -642,7 +659,7 @@ return function(Defs, Hp)
       stations.rear = { g = H, eye = A.rl, look = V(-0.3, -0.05, -1), yaw = 160, up = 50, down = 60 }
       table.insert(order, "rear")
     end
-    if L.ring and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画
+    if (L.ring or L.gunnerTurret) and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画（M1117 用的 M-ATV 原模型是敞开的炮塔环）
       Defs.ring(b, H, A.ring.X, A.ring.Y - 0.02, A.ring.Z, 0.42, 20, 0.06, 0.06, C.steel, MAT.Metal)
       local fy = floorAt(A.ring.X, A.ring.Z)
       bx(H, 0.30, 0.04, 0.20, A.ring.X, fy + 0.70, A.ring.Z, RGB(40, 40, 40), MAT.Fabric)
@@ -672,7 +689,7 @@ return function(Defs, Hp)
   Defs.plz07 = afv({ cn = CN, tur = "sph", gunL = true, eng = 1.7, gunK = 0.55, gunCal = 0.36 })
   Defs.m109a7 = afv({ cn = US, tur = "sph", gunL = true, eng = 1.7, gunK = 0.60, gunCal = 0.40, drv = { ctrl = "tbar" } })
   Defs.m163 = afv({ cn = US, tur = "vulcan", eng = 1.5, drv = { ctrl = "tbar" } })
-  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25 })
+  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25, analog = true })
   Defs.jltv = cab({ cn = US, seats = 4, rws = true, armored = true, hood = 1.35 })
   Defs.m1117 = cab({ cn = US, seats = 2, armored = true, gunnerTurret = true, hood = 1.10 })
   Defs.pgl625 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })

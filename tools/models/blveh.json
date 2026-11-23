@@ -1,0 +1,104 @@
+{
+ "m3a3": {
+  "_说明": "M3 布雷德利骑兵战车（mansoorsajidp，Sketchfab 99ab5c2396784da49e26adac2626548d，CC-BY-4.0，作者自己用 Blender 做的）；原模型车头朝 +Z，转半圈",
+  "uid": "99ab5c2396784da49e26adac2626548d",
+  "rotZ": 180,
+  "length": 6.55,
+  "texMax": 1024,
+  "gunBack": 0.15,
+  "groups": {
+   "Turret": [
+    "Object_10",
+    "Object_11",
+    "Object_13",
+    "Object_15",
+    "Object_17",
+    "Object_18",
+    "Object_51",
+    "Object_53",
+    "Object_55"
+   ],
+   "Gun": [
+    "Object_42",
+    "Object_49"
+   ],
+   "Tow": [
+    "Object_20",
+    "Object_21"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_29",
+    "Object_30"
+   ],
+   [
+    "Object_61",
+    "Object_62"
+   ],
+   [
+    "Object_66",
+    "Object_67"
+   ],
+   [
+    "Object_71",
+    "Object_72"
+   ],
+   [
+    "Object_76",
+    "Object_77"
+   ],
+   [
+    "Object_81",
+    "Object_82"
+   ],
+   [
+    "Object_32"
+   ],
+   [
+    "Object_57"
+   ],
+   [
+    "Object_96",
+    "Object_97"
+   ],
+   [
+    "Object_111",
+    "Object_112"
+   ],
+   [
+    "Object_108",
+    "Object_109"
+   ],
+   [
+    "Object_105",
+    "Object_106"
+   ],
+   [
+    "Object_102",
+    "Object_103"
+   ],
+   [
+    "Object_99",
+    "Object_100"
+   ],
+   [
+    "Object_36"
+   ],
+   [
+    "Object_34"
+   ]
+  ],
+  "decimate": {
+   "Object_23": 0.12,
+   "Object_38": 0.12,
+   "Object_24": 0.3,
+   "Object_39": 0.3,
+   "Object_25": 0.4,
+   "Object_40": 0.4,
+   "Object_4": 0.45,
+   "Object_5": 0.45,
+   "Object_6": 0.1
+  }
+ }
+}

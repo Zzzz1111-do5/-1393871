@@ -138,6 +138,18 @@ def tri_samples(T, spacing):
     return np.concatenate(P), np.concatenate(I)
 
 
+def seal_tris(b):
+    """补盖：一块轴对齐的平板（x0,x1,y0,y1,z0,z1 里有一对相等的就是那个方向的平面）"""
+    x0, x1, y0, y1, z0, z1 = b
+    if abs(y1 - y0) < 1e-6:
+        c = np.array([[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], dtype=np.float64)
+    elif abs(x1 - x0) < 1e-6:
+        c = np.array([[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]], dtype=np.float64)
+    else:
+        c = np.array([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], dtype=np.float64)
+    return np.array([[c[0], c[1], c[2]], [c[0], c[2], c[3]]])
+
+
 def open_windows(gspec):
     """glass.open：每个窗口一圈角点（格，顺着转一圈），扇形三角化"""
     out = []
@@ -303,7 +315,7 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     ignore 盒子里的三角形（原模型自带的简易座椅、方向盘）不挡水，跟内腔里面的三角形一起挪到 Inside 块"""
     src = np.concatenate([tris_by_group[g] for g in sp['from'] if g in tris_by_group])
     ign = in_boxes(src.mean(axis=1), sp.get('ignore', []))
-    so = [tris_by_group[g] for g in sp.get('solidOnly', []) if g in tris_by_group]   # 只封实体、不挡水的组（会动的炮：炮尾伸进炮塔，按 0° 挖会挖出一个炮形的坑）
+    so = [tris_by_group[g] for g in sp.get('solidOnly', []) + ['__ign__'] if g in tris_by_group]   # 只封实体、不挡水的组（会动的炮：炮尾伸进炮塔，按 0° 挖会挖出一个炮形的坑；玻璃块里的简易内饰）
     if so:
         src = np.concatenate([src] + so)
         ign = np.concatenate([ign, np.ones(sum(len(x) for x in so), dtype=bool)])
@@ -318,14 +330,7 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     log('  %s：体素 %.3f 格（%d × %d × %d），三角形 %d（不挡水 %d）' % (sp['name'], h, shape[0], shape[1], shape[2], len(src), int(ign.sum())))
     allT = srcB if not len(glass_tris) else np.concatenate([srcB, glass_tris])
     for b in sp.get('seal', []):   # 补盖：敞口的地方（敞篷、敞开的炮塔顶）先盖一块平板
-        x0, x1, y0, y1, z0, z1 = b
-        if abs(y1 - y0) < 1e-6:
-            c = np.array([[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], dtype=np.float64)
-        elif abs(x1 - x0) < 1e-6:
-            c = np.array([[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]], dtype=np.float64)
-        else:
-            c = np.array([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], dtype=np.float64)
-        allT = np.concatenate([allT, np.array([[c[0], c[1], c[2]], [c[0], c[2], c[3]]])])
+        allT = np.concatenate([allT, seal_tris(b)])
     surf = raster(allT, lo, h, shape)
     gvox = raster(glass_tris, lo, h, shape) if len(glass_tris) else None
     close = int(sp.get('close', 3))
@@ -373,6 +378,24 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
         return None
     region = np.isin(lab, list(keep))
     del lab
+    ko = int(sp.get('open', 2))
+    if ko > 0:   # 细缝连着的小气泡（仪表台里面、车门夹层）切断，只留乘员所在的那一大块
+        reg2 = ndimage.binary_opening(region, structure=st, iterations=ko)
+        lab2, _ = ndimage.label(reg2, structure=st)
+        keep2 = set()
+        for sd in sp.get('seeds', []):
+            q = np.clip(np.floor((np.array(sd) - lo) / h).astype(int), 0, np.array(shape) - 1)
+            sl = lab2[max(0, q[0] - 8):q[0] + 9, max(0, q[1] - 8):q[1] + 9, max(0, q[2] - 8):q[2] + 9]
+            nz = sl[sl > 0]
+            if len(nz):
+                keep2.add(int(np.bincount(nz).argmax()))
+        if keep2:
+            before = int(region.sum())
+            region = np.isin(lab2, list(keep2))
+            # 开运算把墙角也磨圆了一点：胀回去（只在原来的内腔里）
+            region = ndimage.binary_dilation(region, structure=st, iterations=ko) & free
+            log('    切掉细缝连着的小气泡：%.1f%%' % (100.0 * (before - int(region.sum())) / max(before, 1)))
+        del lab2, reg2
     if sp.get('fill', 0):   # 小东西留下的窟窿（细杆子、扶手）补上：先胀再缩
         k = int(sp['fill'])
         region = ndimage.binary_erosion(ndimage.binary_dilation(region, structure=st, iterations=k), structure=st, iterations=k) & solid & (C > 0)
@@ -444,6 +467,18 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     v, f = compact_mesh(v, f)
     target = int(sp.get('tris', 5000))
     v, f = decimate(v, f, target)
+    # 减面、磨平以后个别面翻过来了（车里看是背面，游戏里就是个洞）：沿面法线两边取距离场比一比，朝外的翻回来
+    n = face_normals(v, f)
+    cc = v[f].mean(axis=1)
+
+    def sampF(P):
+        q = np.clip(np.round((P - lo2) / h).astype(np.int64), 0, np.array(F.shape) - 1)
+        return F[q[:, 0], q[:, 1], q[:, 2]]
+    dlt = sampF(cc + n * 1.5 * h) - sampF(cc - n * 1.5 * h)
+    flip = dlt < -1e-6
+    if flip.any():
+        f[flip] = f[flip][:, ::-1]
+        log('    翻回来 %d 个朝外的面' % int(flip.sum()))
     n = face_normals(v, f)
     floor = n[:, 1] > float(sp.get('floorNy', 0.72))
     out = {}
@@ -662,6 +697,10 @@ def run(key, preview_dir=None, write=True):
             lum = col @ np.array([0.2126, 0.7152, 0.0722])
             sat = col.max(1) - col.min(1)
             isg |= (lum < tc.get('lum', 0.05)) & (sat < tc.get('sat', 0.06))
+        if isg.any() and not pn.startswith('Glass'):   # 水平的（车顶、地板上的玻璃材质面）不是窗户——窗户是竖的或斜的
+            nn = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])
+            nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-12)
+            isg &= np.abs(nn[:, 1]) <= float(gspec.get('maxNy', 0.85))
         if gbox is not None and not pn.startswith('Glass'):
             c = T.mean(axis=1)
             inb = (c[:, 0] >= gbox[0]) & (c[:, 0] <= gbox[1]) & (c[:, 1] >= gbox[2]) & (c[:, 1] <= gbox[3]) & (c[:, 2] >= gbox[4]) & (c[:, 2] <= gbox[5])
@@ -673,6 +712,12 @@ def run(key, preview_dir=None, write=True):
     if glass_by_part and gspec.get('maxDepth', 0.35) is not None:
         allT = [m.P[m.idx] for m in ms if not is_wheel(parts.get(glbio.part_name(m.node), {}).get('g') or group_of(glbio.part_name(m.node)))
                 and not glbio.part_name(m.node).startswith('Cav')]
+        op0 = open_windows(gspec)   # 摇下来的车窗、补盖也算上（不然驾驶室是漏的，里面全算「车外」）
+        if len(op0):
+            allT.append(op0)
+        for sp0 in cfg.get('spaces', []):
+            for b0 in sp0.get('seal', []):
+                allT.append(seal_tris(b0))
         allT = np.concatenate(allT)
         h0 = 0.08
         lo0 = allT.reshape(-1, 3).min(0) - 0.6
@@ -696,10 +741,13 @@ def run(key, preview_dir=None, write=True):
                 glass_by_part[pn] = g0 & ~deep
                 if not glass_by_part[pn].any():
                     del glass_by_part[pn]
-                # 刚才按「全是玻璃」分组的，把车里面那部分放回普通三角形
+                # 刚才按「全是玻璃」分组的，把车里面那部分放回普通三角形；ignoreRest：只封实体、不挡水（原模型的简易内饰，墙贴着外壳挖）
                 g = parts.get(pn, {}).get('g') or group_of(pn)
                 T = m.P[m.idx]
-                tris_by_group[g].append(T[g0 & deep])
+                if gspec.get('ignoreRest'):
+                    tris_by_group.setdefault('__ign__', []).append(T[g0 & deep])
+                else:
+                    tris_by_group[g].append(T[g0 & deep])
                 # 原来放进 tris_by_group 的是 T[~g0]，补上的这部分是 T[g0 & deep]
     tris_by_group = {g: np.concatenate(v) for g, v in tris_by_group.items() if len(v)}
     glass_tris = np.concatenate([m.P[m.idx][glass_by_part[glbio.part_name(m.node)]] for m in ms if glbio.part_name(m.node) in glass_by_part]) if glass_by_part else np.zeros((0, 3, 3))
@@ -940,6 +988,8 @@ def write_meta(key, results, aux, cfg):
     for spn, (sp, r) in results.items():
         grp = sp.get('group') or ('Turret' if 'Turret' in sp['from'] else sp['from'][0])
         entry['spaces'][spn] = {'g': grp, 'vol': round(r['vol'], 2), 'hm': hmap_lua(r['hmap'])}
+        if sp.get('ring'):
+            entry['spaces'][spn]['ring'] = round(float(sp['ring']['r']), 3)   # 座圈半径（格）
     try:
         old = subprocess.run(['lune', 'run', os.path.join(HERE, 'meta2json.luau'), CAVMETA_LUA], capture_output=True, text=True, cwd=ROOT)
         allm = json.loads(old.stdout) if old.returncode == 0 else {}
