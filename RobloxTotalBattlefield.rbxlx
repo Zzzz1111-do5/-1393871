@@ -44140,8 +44140,23 @@ function Defs.m1a2(b, ctx)
     b:box(T, V(fw, HT - HB, WT), at(AP + WT / 2, (HB + HT) / 2), WHITE, MAT.SmoothPlastic)              -- 内壁
     b:box(T, V(fw * 0.97, 0.025, 0.035), at(AP - 0.012, HB + 0.0125), WHITE2, MAT.Metal)                 -- 下边一圈边框
     b:box(T, V(fw * 0.97, 0.025, 0.035), at(AP - 0.012, HT - 0.0125), WHITE2, MAT.Metal)                 -- 上边一圈边框
-    local gl = b:periscope(T, at(AP - 0.035, 0.09), 0.16, 0.075, 0.07, { pad = false })                -- 观察镜（玻璃贴在内壁前面，不埋进壁里）
-    gl.Color, gl.Transparency = RGB(150, 186, 206), 0.3                                                   -- 透进来的天光：亮的浅蓝
+    -- 观察镜（用户 11-23 又发来车长位插图：每块壁上一大块浅蓝玻璃、细黑框，八块连成一圈，玻璃上两道斜的反光）
+    local vb = at(AP - 0.004, 0.10)
+    local gw, gh = fw * 0.80, 0.095
+    local gl = b:box(T, V(gw, gh, 0.006), vb, RGB(166, 220, 236), MAT.Glass)
+    gl.Transparency, gl.CastShadow = 0.12, false
+    for _, e in ipairs({ { 0, gh / 2 + 0.003, gw + 0.012, 0.006 }, { 0, -gh / 2 - 0.003, gw + 0.012, 0.006 }, { gw / 2 + 0.003, 0, 0.006, gh }, { -gw / 2 - 0.003, 0, 0.006, gh } }) do
+      b:box(T, V(e[3], e[4], 0.012), vb * CF(e[1], e[2], 0), C.black)                                  -- 细黑框
+    end
+    local sg = Kit.gui(gl, Enum.NormalId.Back, 900)   -- 朝里那面（Back：at() 的 −Z 朝外）
+    for _, q in ipairs({ { 0.36, 0.09 }, { 0.50, 0.04 } }) do   -- 两道斜的反光（插图那样）
+      local f = Instance.new("Frame")
+      f.AnchorPoint = Vector2.new(0.5, 0.5)
+      f.Position, f.Size = UDim2.fromScale(q[1], 0.5), UDim2.fromScale(q[2], 1.8)
+      f.Rotation = 35
+      f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = RGB(255, 255, 255), 0.35, 0
+      f.Parent = sg
+    end
     b:box(T, V(0.15, 0.022, 0.028), at(AP - 0.016, 0.026), C.rubber, MAT.Fabric)                          -- 防撞垫
     b:box(T, V(fw * 1.12, 0.03, 0.06), at(AP + WT + 0.025, 0.03), WHITE2, MAT.Metal)                      -- 外面一圈座板（壁和炮塔顶开口之间不露缝）
   end
