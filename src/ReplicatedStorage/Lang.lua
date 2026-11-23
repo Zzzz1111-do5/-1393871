@@ -266,7 +266,7 @@ add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武�
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
-add("drv.hintLine", "Shift 退出瞄准镜 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · Z / Wheel zoom · 1/2 weapon · LMB fire")
+add("drv.hintLine", "Shift 退出瞄准镜 · R 激光测距 · Q 换弹种 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · R lase · Q ammo · Z / Wheel zoom · 1/2 weapon · LMB fire")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")

@@ -855,7 +855,12 @@ function Interior.init(G)
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
     end
     function A.lampTest() c.lampT = os.clock() + 3 end
-    function A.ammo(kind) c.ammoKind = kind end
+    function A.ammo(kind)
+      c.ammoKind = kind
+      -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
+      local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
+      if G.driveAmmo and BAL.PANEL[kind] then G.driveAmmo(BAL.PANEL[kind]) end
+    end
     function A.citvFov(f) c.citvFov = f end
     function A.citvMode(m) c.citvMode = m end
     return A

@@ -204,7 +204,7 @@ function Ents.init(G)
     s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
-      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt })
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer })   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）
     return s
   end
 
@@ -241,6 +241,8 @@ function Ents.init(G)
       end
       if not done then
         if s.grav then s.vel += GRAV * (s.gscale or 1) * dt end
+        -- 空气阻力（坦克炮弹，Ballistics.lua：a = −k·v·|v|，k 每格）：脱壳穿甲弹每公里掉五六十米 / 秒，破甲弹掉一百多
+        if s.drag then s.vel -= s.vel * math.min(0.5, s.drag * s.vel.Magnitude * dt) end
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)

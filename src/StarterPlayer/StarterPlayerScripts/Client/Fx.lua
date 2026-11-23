@@ -986,7 +986,34 @@ function Fx.init(G)
       local big = e.f == "tank"
       body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
       if big then glowOn(body, RGB(255, 220, 170), 10, 2) end
-      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, t = 0, kind = kind, trailT = 0 }
+      -- 坦克炮弹的曳光管（用户 11-22 晚：开镜开炮看得见炮弹从左上方落下去）：一两公里外弹体不到一个像素，
+      --   曳光管是一个一直这么大的亮点（屏幕上几个像素，越远越看得见光点、看不出大小），被地形、车挡住就看不见；飞两三秒烧完
+      if big and e.tr then
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.fromOffset(9, 9)
+        bb.LightInfluence = 0
+        bb.AlwaysOnTop = false
+        bb.MaxDistance = 20000
+        pcall(function() bb.Brightness = 3 end)
+        bb.Adornee = body
+        local dotF = Instance.new("Frame")
+        dotF.AnchorPoint = Vector2.new(0.5, 0.5)
+        dotF.Position = UDim2.fromScale(0.5, 0.5)
+        dotF.Size = UDim2.fromScale(1, 1)
+        dotF.BackgroundColor3 = RGB(255, 132, 70)
+        dotF.BorderSizePixel = 0
+        local cr = Instance.new("UICorner")
+        cr.CornerRadius = UDim.new(0.5, 0)
+        cr.Parent = dotF
+        local core = dotF:Clone()
+        core.Size = UDim2.fromScale(0.45, 0.45)
+        core.BackgroundColor3 = RGB(255, 236, 200)
+        core.Parent = dotF
+        dotF.Parent = bb
+        bb.Parent = body
+      end
+      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, dr = e.dr, t = 0, kind = kind, trailT = 0, tracer = big and e.tr or nil }
+      if G.onTankShot and big then pcall(G.onTankShot, e, flying[e.id]) end   -- 测试用：火控测试看曳光弹在镜里怎么走
       return
     elseif kind == "grenade" then
       body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
@@ -1037,6 +1064,7 @@ function Fx.init(G)
     for id, s in pairs(flying) do
       s.t += dt
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
+      if s.dr then s.v -= s.v * math.min(0.5, s.dr * s.v.Magnitude * dt) end   -- 空气阻力（同服务器 Ents.lua，坦克炮弹）
       if s.gb then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹：AirDefs.GRAV
       s.p += s.v * dt
       if s.path then
@@ -1074,6 +1102,11 @@ function Fx.init(G)
         s.body.CFrame = CFrame.new(s.p)
       elseif s.kind == "shell" or s.kind == "bomb" then
         s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+        if s.tracer and not s.burnt and s.t > 3.2 then   -- 曳光管烧完了（约 3 秒、四五公里）
+          s.burnt = true
+          local g = s.body:FindFirstChildOfClass("BillboardGui")
+          if g then g.Enabled = false end
+        end
       elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
         s.body.CFrame = CFrame.new(s.p)
         s.trailT += dt

@@ -10,6 +10,24 @@ function Armor.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
   local FD = require(RS:WaitForChild("FortDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
+  -- 坦克炮按弹种的一份武器表（伤害倍数、爆炸半径按弹种改；Ballistics.AMMO 的 vs / splash）
+  local ammoW = {}
+  local function weaponOf(wid, w, key)
+    local a, k = BAL.ammo(wid, key)
+    if not a then return w, nil, nil end
+    local id = wid .. ":" .. k
+    if not ammoW[id] then
+      local c = table.clone(w)
+      c.vs = table.clone(w.vs or {})
+      for t, m in pairs(a.vs or {}) do c.vs[t] = (c.vs[t] or 1) * m end
+      c.splash = (w.splash or 6) * (a.splash or 1)
+      c.ammo, c.base = k, w   -- base：原来那门炮的武器表（比较是哪门炮用）
+      ammoW[id] = c
+    end
+    return ammoW[id], a, k
+  end
+  G.tankWeaponOf = weaponOf   -- AIVeh.lua 也用
   local V = Vector3.new
   local CF = CFrame.new
   local now = os.clock
@@ -436,8 +454,16 @@ function Armor.init(G)
     local gdir = mz.LookVector   -- 顺着炮管 / 枪管出去（原来客户端给的方向和炮管差 8° 以内就用客户端的，弹道会斜着出炮口）
     local S = src(P)
     if w.kind == "shell" then
-      G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-        life = w.range / w.speed + 0.5 })
+      -- 坦克炮（Ballistics.lua 认得的炮）：按客户端选的弹种（msg.am，这门炮能打的才认）用真实初速、重力、空气阻力，带曳光
+      local ww, a = weaponOf(wid, w, type(msg) == "table" and msg.am or nil)
+      if a then
+        local v0, drag, gs = BAL.launchArgs(a)
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
+          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+      else
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
+          life = w.range / w.speed + 0.5 })
+      end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)

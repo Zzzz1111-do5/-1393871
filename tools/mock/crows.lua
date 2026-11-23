@@ -162,7 +162,7 @@ local mgShots = 0
 for _, s in ipairs(shots) do if s.w == VD.W.hmg or s.w == VD.W.coax then mgShots = mgShots + 1 end end
 for _, s in ipairs(shells) do if s.w == VD.W.hmg or s.w == VD.W.coax then mgShots = mgShots + 1 end end
 local main = nil
-for _, s in ipairs(shells) do if s.w == VD.W.gun120 then main = s end end
+for _, s in ipairs(shells) do if s.w == VD.W.gun120 or (s.w and s.w.base == VD.W.gun120) then main = s end end   -- 坦克炮按弹种另有一份武器表（base 指回原来的）
 check(mgShots == 0, "没有机枪子弹（" .. mgShots .. " 发）")
 check(main ~= nil, string.format("开了一炮 120 毫米（炮弹 %d 发）", #shells))
 if main then

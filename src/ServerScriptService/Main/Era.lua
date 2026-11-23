@@ -13,6 +13,7 @@ local Era = {}
 
 function Era.init(G)
   local TM = require(RS:WaitForChild("TankMods"))
+  local BAL = require(RS:WaitForChild("Ballistics"))   -- 坦克炮的弹种（破甲弹按聚能装药挡）
   local V, CF = Vector3.new, CFrame.new
   local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end   -- 同 Armor.lua 的 baseOf：车底中心
 
@@ -90,12 +91,15 @@ function Era.init(G)
   function G.eraShell(e, s, pos)
     local E = e and e.era
     if not E or not e.alive or E.left <= 0 or not s.w or s.w.fx ~= "tank" then return nil end
-    if (E.kind.ke or 1) >= 1 then return nil end
+    -- 坦克炮的破甲弹、多用途弹（Ballistics 的 ce：聚能装药）：爆反照挡破甲弹那样挡（k）；穿甲弹只有重型爆反削得动（ke）
+    local am = s.w.ammo and BAL.AMMO[s.w.ammo]
+    local mult = (am and am.ce) and (E.kind.k or 1) or (E.kind.ke or 1)
+    if mult >= 1 then return nil end
     local d = s.vel.Magnitude > 1e-3 and s.vel.Unit or (e.root.CFrame.Position - pos).Unit
     local i, _, cf = rayBlock(e, pos - d * 1.5, d, 14)
     if not i then return nil end
     detonate(e, i, cf)
-    return E.kind.ke
+    return mult
   end
 
   -- 破甲类的爆炸（火箭弹、导弹）：炸点附近带爆反的车，顺着来向（没有就朝车中心）找块；返回 { [车] = 伤害倍数 }，没有 nil

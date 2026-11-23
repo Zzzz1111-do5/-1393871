@@ -14,6 +14,7 @@ local AIVeh = {}
 function AIVeh.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
   local V, CF = Vector3.new, CFrame.new
   local now = os.clock
   local A = Config.AIVeh or {}
@@ -347,8 +348,16 @@ function AIVeh.init(G)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     if w.kind == "shell" then
       local dir = spread(mz.LookVector, 0.25)
-      G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
-        life = w.range / w.speed + 0.5 })
+      local ww, a = w, nil
+      if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
+      if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
+        local v0, drag, gs = BAL.launchArgs(a)
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model },
+          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+      else
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
+          life = w.range / w.speed + 0.5 })
+      end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6) * (w.range or 600), w, S, { e.model }, 0)
@@ -384,12 +393,18 @@ function AIVeh.init(G)
     local horiz = math.sqrt(l.X * l.X + l.Z * l.Z)
     local wantYaw = math.deg(math.atan2(l.X, -l.Z))
     local drop = 0
+    local se = 0
     if w.kind == "shell" then
-      local tf = horiz / w.speed
-      drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      if BAL.GUN[wid] then   -- 坦克炮：车长、炮长有激光测距，按真实弹道算超高角（Ballistics.lua；默认弹种）
+        local dist = math.sqrt(horiz * horiz + l.Y * l.Y) / BAL.S
+        se = BAL.aimFor(wid, dist, math.atan2(l.Y, math.max(horiz, 1)), e.ai.ammo)
+      else
+        local tf = horiz / w.speed
+        drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      end
     end
     local el = d.turret.elev or { -6, 18 }
-    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1))), el[1], el[2])
+    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
     e.ty = (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360
     e.gp = approach(e.gp, wantPitch, 22 * dt)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
