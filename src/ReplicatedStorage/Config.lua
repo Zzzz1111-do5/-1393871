@@ -232,7 +232,25 @@ Config.TacPad = {
 }
 
 Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200,
-  fortKill = 250, defuse = 30, wireCut = 15 }
+  fortKill = 250, defuse = 30, wireCut = 15, revive = 60, reviveAlly = 40 }   -- 救起队友：带急救包 / 没带
+-- 倒地与救援（Revive.lua，用户 11-23「按你想的来弄」）：致命的一下先倒地，队友按住 E 救起来
+-- 人人都能按 Z 标记看到的敌人（Weapons.lua 的 ACT.spot）：比望远镜近、锥窄、标记时间短
+Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
+-- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
+Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
+Config.Revive = {
+  on = true,
+  bleed = 20,        -- 倒地多久没人救就阵亡（秒）
+  overkill = 70,     -- 一下打掉的比剩下的血多这么多：直接阵亡（爆炸、炮弹、狙击爆头）
+  range = 8,         -- 离多近能救（格）
+  hold = 4.0,        -- 没带急救包：按住 E 多久
+  medicHold = 1.6,   -- 带着急救包
+  hp = 0.35,         -- 没带急救包救起来几成血
+  medicHp = 1.0,     -- 带着急救包：满血
+  giveUp = 1.0,      -- 按住空格多久放弃
+  afterDown = 1,     -- 倒地以后阵亡：再等几秒能重新部署（等救援的时间已经过了）
+  markR = 220,       -- 倒地的队友头顶的救援标记多远看得见（格）
+}
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1

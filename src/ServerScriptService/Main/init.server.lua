@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
+for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)

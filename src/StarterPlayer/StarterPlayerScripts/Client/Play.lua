@@ -146,7 +146,7 @@ function Play.init(G)
   local function equipTool(t)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive or not t then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed or not t then return end   -- 倒地（Downed.lua）拿不了枪
     if t.Parent == char then return end   -- 已经拿着
     local cur0 = char:FindFirstChildOfClass("Tool")
     if cur0 then lastTool = cur0 end
@@ -158,7 +158,7 @@ function Play.init(G)
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed then return end
     local t = tools()[i]
     if not t then return end
     local now = os.clock()
@@ -305,7 +305,7 @@ function Play.init(G)
   local function tryFire(alt)
     local id = cur.id
     local char = player.Character
-    if not id or not char or G.drive then return end
+    if not id or not char or G.drive or G.downed then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     local S = G.S
@@ -395,6 +395,10 @@ function Play.init(G)
       if cur.id and (W[cur.id].kind == "place") then tryFire(true) end
     elseif k == Enum.KeyCode.R then reload()
     elseif k == Enum.KeyCode.V then G.firstPerson = not (G.firstPerson ~= false)   -- 第一 / 第三人称
+    elseif k == Enum.KeyCode.Z then   -- 标记敌人（服务器 Weapons.lua 的 ACT.spot：准星方向几度以内、看得见的敌人，队友那边标出来）
+      local p = aimPoint(Config.QuickSpot and Config.QuickSpot.range or 620, true)
+      if p then G.R.Act:FireServer("spot", p) end
+      if G.sfx then G.sfx("dry", nil, { vol = 0.45, speed = 1.7 }) end   -- 轻轻「嗒」一下
     elseif k == Enum.KeyCode.F then
       if cur.id and W[cur.id].kind == "spot" then tryFire(true) end
     elseif k == Enum.KeyCode.One then equip(1)
@@ -541,6 +545,16 @@ function Play.init(G)
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpsAiming = false
+      G.fpActive = false
+      if G.fpsOff then G.fpsOff() end
+      return
+    end
+    if G.downed then   -- 倒地（Downed.lua）：准星、镜头前的枪都收起来，开不了火
+      if touchControls then touchControls.Visible = false end
+      cross.Visible, scope.Visible = false, false
+      if G.scopeStep then G.scopeStep(dt, false) end
+      cur.firing, cur.aiming = false, false
       G.fpsAiming = false
       G.fpActive = false
       if G.fpsOff then G.fpsOff() end

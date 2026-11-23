@@ -30,6 +30,8 @@ return {
 	ric = { ids = { 9118168320, 9118168273, 9118168291 }, vol = 0.9, s = { 0.92, 1.08 }, len = 1, src = "ProSoundEffects：Rico Bullet Whiz 1–3" },
 	metalHit = { ids = { 9116684733, 9116684830 }, vol = 0.9, s = { 0.9, 1.1 }, len = 1, src = "ProSoundEffects：Metal Impacts 1、Metal Impacts 3" },
 	sonic = { ids = { 9119382258, 9119382493 }, vol = 2, s = { 0.95, 1.02 }, len = 6, src = "ProSoundEffects：Sonic Boom 1" },
+	-- 近处爆炸以后的耳鸣（Shock.lua）：创作者商店里没有认证创作者的耳鸣，挑了名字写清楚、自带淡出的这一条；载不下来就不响
+	earRing = { ids = { 9069161602 }, vol = 0.7, s = { 0.98, 1.02 }, len = 8, src = "Lvaic：Ear Ringing (Fade)" },
 	-- 发动机（循环）：自己开的车 / 飞机 / 船，速度和音量跟着转速、油门、负载变
 	tankEngine = { ids = { 8213083943 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 7, src = "Tankentwerfer：medium tank engine idle loop" },
 	jetEngine = { ids = { 81983731621096 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 3, src = "JunkersJu87B_2Stuk：Jet engine loop" },

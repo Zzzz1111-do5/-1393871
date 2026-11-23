@@ -459,12 +459,13 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
   NormalId = "Right Top Back Left Bottom Front",
   ProximityPromptStyle = "Default Custom",
+  ProximityPromptExclusivity = "OnePerButton OneGlobally AlwaysShow",
   SurfaceGuiSizingMode = "FixedSize PixelsPerStud",
   SortDirection = "Ascending Descending",
   CoreGuiType = "PlayerList Health Backpack Chat All EmotesMenu SelfView Captures",
@@ -1219,8 +1220,8 @@ def("UITextSizeConstraint", "Instance", { MaxTextSize = { T.number, 100 }, MinTe
 def("ProximityPrompt", "Instance", {
   ActionText = { T.string, "Interact" }, ObjectText = { T.string, "" }, HoldDuration = { T.number, 0 }, MaxActivationDistance = { T.number, 10 },
   RequiresLineOfSight = { T.bool, true }, KeyboardKeyCode = { E("KeyCode"), Enum.KeyCode.E }, Enabled = { T.bool, true }, Style = { E("ProximityPromptStyle"), Enum.ProximityPromptStyle.Default },
-  UIOffset = { T.Vector2, newV2(0, 0) },
-}, { events = { Triggered = true, TriggerEnded = true } })
+  UIOffset = { T.Vector2, newV2(0, 0) }, GamepadKeyCode = { E("KeyCode"), Enum.KeyCode.ButtonX }, Exclusivity = { E("ProximityPromptExclusivity"), Enum.ProximityPromptExclusivity.OnePerButton },
+}, { events = { Triggered = true, TriggerEnded = true, PromptButtonHoldBegan = true, PromptButtonHoldEnded = true } })
 def("Smoke", "Instance", { Color = { T.Color3, newC3(1, 1, 1) }, Opacity = { T.number, 0.5 }, RiseVelocity = { T.number, 1 }, Size = { T.number, 1 }, Enabled = { T.bool, true } })
 def("Fire", "Instance", { Color = { T.Color3, newC3(1, 0.5, 0) }, SecondaryColor = { T.Color3, newC3(1, 0, 0) }, Heat = { T.number, 9 }, Size = { T.number, 5 }, Enabled = { T.bool, true } })
 def("Sky", "Instance", {
@@ -1281,7 +1282,7 @@ def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
-  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false },
+  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false }, Jump = { T.bool, false },
   FloorMaterial = { E("Material"), Enum.Material.Grass } }, { events = { Died = true, HealthChanged = true }, methods = {   -- 脚下的材质（跳起来是 Air）：模拟器里人总站在地上
   -- 跟真机一样：拿起一件之前，手里原来的放回背包；UnequipTools 把手里的都放回背包
   EquipTool = function(o, t)

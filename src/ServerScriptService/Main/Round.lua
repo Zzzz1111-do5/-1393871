@@ -282,6 +282,7 @@ function Round.init(G)
         end
       end
       if best then best.rec = true elseif out[1] then out[1].rec = true end
+      if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
       return out
     end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
@@ -326,6 +327,7 @@ function Round.init(G)
       end
     end
     recommend(team, out)
+    if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
     return out
   end
   G.spawnList = spawnList
@@ -397,6 +399,13 @@ function Round.init(G)
     elseif sp.kind == "beach" then   -- 没有登陆艇模块时直接站在滩上
       local p = standAt(sp.x, sp.z - 40, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "squad" then   -- 小队队友身后（Squads.lua）；刚好不行了（挨打了、上车了）就在他最后报的位置附近
+      local cf = G.squadSpawnCF and G.squadSpawnCF(P, sp)
+      if cf then return cf end
+      if sp.x then
+        local p = standAt(sp.x, sp.z, 8)
+        return CFrame.lookAt(p, p + face)
+      end
     end
     return CFrame.new(0, 60, 0)
   end
@@ -538,15 +547,9 @@ function Round.init(G)
     end
   end
 
-  local function onDied(P, char)
-    if P.char ~= char then return end
-    P.alive = false
-    P.deaths += 1
-    P.deadAt = now()
-    P.canDeployAt = now() + Config.RespawnDelay
-    P.vehicle = nil
-    G.emit("died", P)
-    -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻
+  -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻；击杀信息发给所有人。
+  --   倒地的那一下就记（Revive.lua 的 G.downPlayer 调）；没倒地直接死的在 onDied 里记。返回凶手那条伤害记录和名字（阵亡镜头用）
+  local function creditDeath(P)
     local log, t = P.dmgLog or {}, now()
     local killer, assists = nil, {}
     for i = #log, 1, -1 do
@@ -578,9 +581,32 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
+    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    return killer, kname
+  end
+  G.creditDeath = creditDeath
+
+  local function onDied(P, char)
+    if P.char ~= char then return end
+    local down = P.downed   -- 倒地以后才死的（流血、放弃、补枪）：击杀在倒地时已经记过了
+    P.downed = nil
+    P.revT = nil
+    P.alive = false
+    P.deaths += 1
+    P.deadAt = now()
+    -- 倒着等过救援了：不用再等复活时间（等的那几秒已经在地上过了）
+    P.canDeployAt = now() + ((down and (Config.Revive and Config.Revive.afterDown)) or Config.RespawnDelay)
+    P.vehicle = nil
+    G.emit("died", P)
+    local killer, kname
+    if down and down.credited then
+      killer, kname = down.killer, down.kname
+      P.dmgLog = {}
+    else
+      killer, kname = creditDeath(P)
+    end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
 
@@ -744,10 +770,20 @@ function Round.init(G)
         wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
-    hum:TakeDamage(amt)
     local head = part ~= nil and part.Name == "Head"
-    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 倒地（Revive.lua）：已经倒着的再挨一下就没了（补枪，不再记一次击杀）；这一下会打死、又不是打得太狠：倒地等人救（击杀现在就记）
+    local lethal = false
+    if victim and victim.downed then
+      hum.Health = 0
+    elseif victim and G.downOk and hum.Health - amt <= 0 and G.downOk(victim, hum, amt) then
+      G.downPlayer(victim, hum, src, part)
+      lethal = true
+    else
+      hum:TakeDamage(amt)
+      lethal = hum.Health <= 0
+    end
+    -- 打死（打倒）真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", lethal and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
     -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
     if victim and victim.pl then
       local ap = G.boomAt
@@ -804,7 +840,7 @@ function Round.init(G)
     local who = {}
     local r2 = CC.r * CC.r
     for _, P in pairs(G.P) do
-      if P.alive and P.char then
+      if P.alive and P.char and not P.downed then   -- 倒地的不算占领人数
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then

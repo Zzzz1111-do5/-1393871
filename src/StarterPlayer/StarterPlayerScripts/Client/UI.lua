@@ -473,6 +473,7 @@ function UI.init(G)
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id
   end
 

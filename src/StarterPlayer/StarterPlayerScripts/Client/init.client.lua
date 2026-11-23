@@ -16,6 +16,10 @@
 --   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
 --   GunKit 改枪的配件：自己这把枪的武器表（G.myW）、别人 / 第三人称枪上装的配件模型、激光、手电
 --   Gunsmith 改枪界面（对标三角洲行动：3D 枪、改装位、性能条、推荐改装、方案、改枪码）
+--   Downed 倒地与救援（自己倒地的界面、镜头、放弃；队友头顶的救援标记、按住 E 救起；倒地的姿势）
+--   Shock 震荡（近处爆炸：耳鸣、别的声音发闷、画面一白一糊）
+--   Mantle 翻越 / 攀爬（步行时按空格：矮墙、沙袋翻过去，台子、窗台爬上去）
+--   SquadHud 小队面板（队友血条、倒地、阵亡、距离）和小队队友头顶的绿色标记
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -77,7 +81,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "Mantle", "SquadHud", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")

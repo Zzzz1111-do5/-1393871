@@ -944,7 +944,25 @@ Config.TacPad = {
 }
 
 Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200,
-  fortKill = 250, defuse = 30, wireCut = 15 }
+  fortKill = 250, defuse = 30, wireCut = 15, revive = 60, reviveAlly = 40 }   -- 救起队友：带急救包 / 没带
+-- 倒地与救援（Revive.lua，用户 11-23「按你想的来弄」）：致命的一下先倒地，队友按住 E 救起来
+-- 人人都能按 Z 标记看到的敌人（Weapons.lua 的 ACT.spot）：比望远镜近、锥窄、标记时间短
+Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
+-- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
+Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
+Config.Revive = {
+  on = true,
+  bleed = 20,        -- 倒地多久没人救就阵亡（秒）
+  overkill = 70,     -- 一下打掉的比剩下的血多这么多：直接阵亡（爆炸、炮弹、狙击爆头）
+  range = 8,         -- 离多近能救（格）
+  hold = 4.0,        -- 没带急救包：按住 E 多久
+  medicHold = 1.6,   -- 带着急救包
+  hp = 0.35,         -- 没带急救包救起来几成血
+  medicHp = 1.0,     -- 带着急救包：满血
+  giveUp = 1.0,      -- 按住空格多久放弃
+  afterDown = 1,     -- 倒地以后阵亡：再等几秒能重新部署（等救援的时间已经过了）
+  markR = 220,       -- 倒地的队友头顶的救援标记多远看得见（格）
+}
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1
@@ -4208,7 +4226,29 @@ add("role.mg.desc", "百发弹链的机枪，压制冲上来的人", "100-round 
 add("role.sniper.desc", "远距离一枪一个，爆头双倍；另带一支 M4", "One shot from far away, headshots deal double; carries an M4 too")
 add("role.at.desc", "火箭筒打坦克、装甲车、碉堡", "Rocket launcher against tanks, APCs and bunkers")
 add("role.aa.desc", "单兵防空导弹，锁定直升机、飞机", "Shoulder SAM that locks onto helicopters and jets")
-add("role.medic.desc", "M4 + 急救包，给身边的队友回血", "M4 and a medkit that heals nearby teammates")
+add("role.medic.desc", "M4 + 急救包，给身边的队友回血、快速救起倒地的队友", "M4 and a medkit that heals nearby teammates and quickly revives downed ones")
+-- 小队（Squads.lua 服务器 / 客户端）
+add("spawn.squad", "小队：{1}", "Squad: {1}")
+add("squad.title", "{1} 小队", "SQUAD {1}")
+add("squad.down", "倒地", "DOWN")
+add("squad.dead", "阵亡", "KIA")
+add("squad.veh", "载具", "VEHICLE")
+add("squad.alone", "等队友加入", "Waiting for squadmates")
+-- 倒地与救援（Revive.lua / Downed.lua）
+add("ui.downed", "你倒下了", "You're down")
+add("ui.downedBy", "你被 {1} 击倒了", "Downed by {1}")
+add("ui.youRevived", "救起了 {1}", "Revived {1}")
+add("ui.revivedBy", "{1} 把你救起来了", "{1} revived you")
+add("down.title", "倒地 · 等待救援", "DOWNED · WAITING FOR REVIVE")
+add("down.bleed", "{1} 秒后阵亡", "Bleeding out in {1} s")
+add("down.giveUp", "按住 空格 放弃（重新部署）", "Hold SPACE to give up (redeploy)")
+add("down.giveUpTouch", "按住这里放弃", "Hold to give up")
+add("down.near", "最近的队友 {1} 米", "Nearest teammate {1} m")
+add("down.none", "附近没有队友", "No teammates nearby")
+add("down.coming", "{1} 正在救你", "{1} is reviving you")
+add("revive.act", "救起", "Revive")
+add("revive.medic", "急救（满血）", "Revive (full health)")
+add("revive.tag", "需要救援", "NEEDS REVIVE")
 add("role.engineer.desc", "修车、修工事；探雷、排雷、剪铁丝网", "Repairs vehicles and forts; finds and clears mines, cuts wire")
 add("role.mortar.desc", "迫击炮：点准星下的地面，炮弹几秒后落下", "Mortar: shells land where you aim a few seconds later")
 add("role.spec.desc", "跑得最快，M4 + 炸药包 + 手雷", "The fastest runner, with an M4, C4 charges and a grenade")
@@ -4403,8 +4443,8 @@ add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured point
 add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
 add("ui.needPick", "先选一个生成点", "Pick a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
-add("ui.help", "WASD 移动 · 按住 Shift 疾跑 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（再按一次收枪、空手；副武器是战术平板）· Q 上一把 · V 第一 / 第三人称 · E 上车 / 操作 · N 夜视 · Tab 战况 · M 地图",
-  "WASD move · hold Shift sprint · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (press again to holster; secondary = tactical tablet) · Q last weapon · V 1st / 3rd person · E enter / man · N night vision · Tab scoreboard · M map")
+add("ui.help", "WASD 移动 · 按住 Shift 疾跑 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（再按一次收枪、空手；副武器是战术平板）· Q 上一把 · Z 标记敌人 · 空格 跳 / 翻越矮墙 · E 上车 / 操作 / 按住救起倒地的队友 · V 第一 / 第三人称 · N 夜视 · Tab 战况 · M 地图",
+  "WASD move · hold Shift sprint · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (press again to holster; secondary = tactical tablet) · Q last weapon · Z spot enemy · Space jump / vault low walls · E enter / man / hold to revive a downed teammate · V 1st / 3rd person · N night vision · Tab scoreboard · M map")
 -- 载具
 add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
 add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")
@@ -4758,7 +4798,7 @@ add("gear.sniper.desc", "远距离一枪一个，爆头双倍", "Long-range prec
 add("gear.rpg.desc", "打坦克、装甲车、碉堡", "For tanks, armor and bunkers")
 add("gear.manpads.desc", "锁定直升机、飞机后发射", "Lock on to helicopters and jets, then fire")
 add("gear.mortar.desc", "点准星下的地面，炮弹几秒后落下", "Aim at the ground; shells land a few seconds later")
-add("gear.medkit.desc", "给身边的队友回血", "Heals teammates around you")
+add("gear.medkit.desc", "给身边的队友回血；救倒地的队友快一倍多、救起来满血", "Heals teammates around you; revives downed teammates much faster and to full health")
 add("gear.repair.desc", "修车、修工事", "Repairs vehicles and fortifications")
 add("gear.breach.desc", "探雷、排雷、剪铁丝网", "Detects and clears mines, cuts wire")
 add("gear.binoc.desc", "标记敌人给全队看，呼叫炮火覆盖", "Spots enemies for the team and calls in artillery")
@@ -8026,6 +8066,8 @@ return {
 	ric = { ids = { 9118168320, 9118168273, 9118168291 }, vol = 0.9, s = { 0.92, 1.08 }, len = 1, src = "ProSoundEffects：Rico Bullet Whiz 1–3" },
 	metalHit = { ids = { 9116684733, 9116684830 }, vol = 0.9, s = { 0.9, 1.1 }, len = 1, src = "ProSoundEffects：Metal Impacts 1、Metal Impacts 3" },
 	sonic = { ids = { 9119382258, 9119382493 }, vol = 2, s = { 0.95, 1.02 }, len = 6, src = "ProSoundEffects：Sonic Boom 1" },
+	-- 近处爆炸以后的耳鸣（Shock.lua）：创作者商店里没有认证创作者的耳鸣，挑了名字写清楚、自带淡出的这一条；载不下来就不响
+	earRing = { ids = { 9069161602 }, vol = 0.7, s = { 0.98, 1.02 }, len = 8, src = "Lvaic：Ear Ringing (Fade)" },
 	-- 发动机（循环）：自己开的车 / 飞机 / 船，速度和音量跟着转速、油门、负载变
 	tankEngine = { ids = { 8213083943 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 7, src = "Tankentwerfer：medium tank engine idle loop" },
 	jetEngine = { ids = { 81983731621096 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 3, src = "JunkersJu87B_2Stuk：Jet engine loop" },
@@ -9029,7 +9071,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
+for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -12469,7 +12511,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) then   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
+      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) and not P.downed then   -- 倒地的不补枪   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then
@@ -12507,7 +12549,7 @@ function Bots.init(G)
   local function targetPos(c)
     if c.P then
       local P = c.P
-      if not P.alive or not P.char or not c.part.Parent then return nil end
+      if not P.alive or not P.char or not c.part.Parent or P.downed then return nil end
       local hum = P.char:FindFirstChildOfClass("Humanoid")
       if not hum or hum.Health <= 0 then return nil end
       return c.part.Position + V(0, 0.8, 0)
@@ -14276,7 +14318,7 @@ function Forts.init(G)
     -- 先收集一遍攻方在地上的人和车（每步一次），再按雷区的范围粗筛
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) then
+      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) and not P.downed then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, { x = hrp.Position.X, z = hrp.Position.Z, veh = false, r = 0 }) end
       end
@@ -14550,7 +14592,7 @@ function Forts.init(G)
     end
     if Tg.inf then
       for _, P in pairs(G.P) do
-        if P.team == foe and P.alive and P.char and not G.inVeh(P) then
+        if P.team == foe and P.alive and P.char and not G.inVeh(P) and not P.downed then
           local hrp = P.char:FindFirstChild("HumanoidRootPart")
           local hum = P.char:FindFirstChildOfClass("Humanoid")
           if hrp and hum and hum.Health > 0 then consider(nil, P, hrp.Position, 1) end
@@ -14667,7 +14709,7 @@ function Forts.init(G)
     local w = e.w
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == foe and P.alive and P.char and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
+      if P.team == foe and P.alive and P.char and not P.downed and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, hrp.Position) end
       end
@@ -15135,6 +15177,7 @@ function Forts.init(G)
 
   local enter0 = G.ACT.enterVeh
   G.ACT.enterVeh = function(P, entId)
+    if P.downed then return end   -- 倒地的不能上车、操作工事（Revive.lua）
     local e = (type(entId) == "string") and G.entById[entId] or nil
     if e and e.fort then
       if man(P, e) then G.msg(P.pl, "info", "ui.manned", { k = "fort." .. e.fkind }) end
@@ -17170,6 +17213,197 @@ return Passes
       </Item>
       <Item class="ModuleScript" referent="85">
         <Properties>
+          <string name="Name">Revive</string>
+          <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
+--   挨了致命的一下、又不是打得太狠（爆炸、炮弹、狙击爆头这种一下打掉比剩下的血多 Config.Revive.overkill 以上的直接死）：倒地——
+--     人瘫在地上（Humanoid.PlatformStand：身体按物理倒下去），不能动、不能开枪、不能上车；击杀在这一下就记给打倒你的人（战况、加分、击杀信息）
+--   倒地以后：Config.Revive.bleed 秒没人救就阵亡（不再算一次击杀）；再挨一下（补枪）马上阵亡；按住空格 giveUp 秒放弃，直接回部署界面
+--   救人：同队的人走到旁边按住 E（客户端 Downed.lua 在倒地的队友身上放 ProximityPrompt）——带着急救包 medicHold 秒、救起来满血，
+--     没带 hold 秒、救起来 hp 成血；服务器按「开始按」到「按完」的时间核对（ACT.reviveBegin / ACT.revive），离得太远、自己也倒着、在车里都不行
+--   在载具里、登陆艇上、跳伞中、水里挨打照旧直接死；机器人照旧直接死（机器人默认关着：Config.Bots.minPerTeam = 0）
+local Revive = {}
+
+function Revive.init(G)
+  local Config = G.Config
+  local RC = Config.Revive or {}
+  local now = os.clock
+  local Players = game:GetService("Players")
+
+  local function serverNow()
+    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
+    return (ok and type(t) == "number") and t or os.clock()
+  end
+  local function rootOf(P)
+    return P and P.char and P.char:FindFirstChild("HumanoidRootPart")
+  end
+  local function humOf(P)
+    return P and P.char and P.char:FindFirstChildOfClass("Humanoid")
+  end
+  local function byUid(uid)
+    if type(uid) ~= "number" then return nil end
+    local pl = Players:GetPlayerByUserId(uid)
+    return pl and G.P[pl] or nil
+  end
+  local function hasMedkit(P)
+    local kit = G.kitOf and G.kitOf(P)
+    return kit ~= nil and table.find(kit.weapons or {}, "medkit") ~= nil
+  end
+  G.hasMedkit = hasMedkit
+
+  -- 这一下能不能倒地（而不是直接死）
+  function G.downOk(P, hum, amt)
+    if not RC.on or P.downed or not P.alive or not P.char then return false end
+    if not G.round or G.round.phase ~= "battle" then return false end
+    if P.vehicle or P.boat or P.chute then return false end   -- 车里、登陆艇上、伞下：直接死
+    if amt - hum.Health > (RC.overkill or 70) then return false end   -- 打得太狠
+    local hrp = rootOf(P)
+    if not hrp then return false end
+    local p = hrp.Position
+    if G.Map and G.Map.isLand and not G.Map.isLand(p.X, p.Z) then return false end   -- 水里
+    return true
+  end
+
+  -- 倒地：击杀现在就记（G.creditDeath，Round.lua），人瘫下去
+  function G.downPlayer(P, hum, src, part)
+    local char = P.char
+    hum.Health = 1
+    local killer, kname = nil, nil
+    if G.creditDeath then
+      local ok, k, n = G.try("倒地记功", G.creditDeath, P)
+      if ok then killer, kname = k, n end
+    end
+    local D = { t = now(), til = now() + (RC.bleed or 20), killer = killer, kname = kname, credited = true,
+      ws = hum.WalkSpeed, jp = hum.JumpPower }
+    pcall(function() D.jh = hum.JumpHeight end)
+    P.downed = D
+    P.revT = nil
+    char:SetAttribute("Downed", true)
+    char:SetAttribute("DownT", serverNow() + (RC.bleed or 20))   -- 客户端的倒计时（服务器时间）
+    pcall(function() hum:UnequipTools() end)
+    hum.WalkSpeed = 0
+    hum.JumpPower = 0
+    pcall(function() hum.JumpHeight = 0 end)
+    pcall(function() hum.PlatformStand = true end)
+    G.msg(P.pl, "center", kname and "ui.downedBy" or "ui.downed", kname)
+    G.emit("downed", P)
+    G.pushOne(P)
+  end
+
+  -- 倒地的人死掉（流血、放弃、补枪）：血一清，Humanoid.Died → Round.lua 的 onDied 照常收尾（不再记一次击杀）
+  local function finish(P)
+    local hum = humOf(P)
+    if hum and hum.Health > 0 then hum.Health = 0 end
+  end
+  G.downFinish = finish
+
+  local function clearDown(P)
+    local char = P.char
+    P.downed = nil
+    if char then
+      char:SetAttribute("Downed", nil)
+      char:SetAttribute("DownT", nil)
+      char:SetAttribute("RevBy", nil)
+      char:SetAttribute("RevT", nil)
+    end
+  end
+
+  -- 救起来
+  function G.revivePlayer(T, by, medic)
+    local D = T.downed
+    local hum = humOf(T)
+    if not D or not hum or hum.Health <= 0 then return false end
+    clearDown(T)
+    T.dmgLog = {}
+    pcall(function() hum.PlatformStand = false end)
+    local kit = G.kitOf and G.kitOf(T)
+    hum.WalkSpeed = (T.kit and T.kit.speed) or (kit and kit.speed) or D.ws or 16
+    hum.JumpPower = D.jp or 50
+    if D.jh then pcall(function() hum.JumpHeight = D.jh end) end
+    hum.Health = math.max(1, math.floor(hum.MaxHealth * (medic and (RC.medicHp or 1) or (RC.hp or 0.35))))
+    pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
+    if by then
+      G.addScore(by, (medic and Config.Score.revive or Config.Score.reviveAlly) or 50)
+      by.revives = (by.revives or 0) + 1
+      G.msg(by.pl, "kill", "ui.youRevived", T.pl.DisplayName)
+      G.msg(T.pl, "center", "ui.revivedBy", by.pl.DisplayName)
+    end
+    G.emit("revived", T, by)
+    G.pushOne(T)
+    if by then G.pushOne(by) end
+    return true
+  end
+
+  -- 能不能救：自己活着、没倒、不在车里；对方同队、倒着；离得够近
+  local function canRevive(P, T)
+    if not P or not T or P == T then return false end
+    if not P.alive or P.downed or (G.inVeh and G.inVeh(P)) then return false end
+    if not T.alive or not T.downed or T.team ~= P.team then return false end
+    local a, b = rootOf(P), rootOf(T)
+    if not a or not b then return false end
+    return (a.Position - b.Position).Magnitude <= (RC.range or 8) + 3
+  end
+  G.canRevive = canRevive
+
+  G.ACT.reviveBegin = function(P, uid)
+    local T = byUid(uid)
+    if not canRevive(P, T) then return end
+    P.revT = { uid = uid, t = now() }
+    -- 倒着的人那边显示「某某正在救你」（客户端按服务器时间判断还在不在按）
+    T.char:SetAttribute("RevBy", P.pl.DisplayName)
+    T.char:SetAttribute("RevT", serverNow())
+  end
+  G.ACT.revive = function(P, uid)
+    local T = byUid(uid)
+    if not canRevive(P, T) then return end
+    local rt = P.revT
+    if not rt or rt.uid ~= uid then return end
+    local medic = hasMedkit(P)
+    local need = (medic and (RC.medicHold or 1.6) or (RC.hold or 4)) - 0.35   -- 网络抖动留一点余量
+    if now() - rt.t < need then return end
+    P.revT = nil
+    G.revivePlayer(T, P, medic)
+  end
+  -- 放弃：倒地满 0.8 秒以后才认（刚倒下手还按着空格跳）
+  G.ACT.giveUp = function(P)
+    local D = P.downed
+    if not D or now() - D.t < 0.8 then return end
+    finish(P)
+  end
+
+  -- 流血：到时间没人救就阵亡；角色没了（换角色、离开）就清掉
+  local acc = 0
+  G.onFrame(function(dt)
+    acc += dt
+    if acc < 0.2 then return end
+    acc = 0
+    local t = now()
+    for _, P in pairs(G.P) do
+      local D = P.downed
+      if D then
+        local hum = humOf(P)
+        if not hum or hum.Health <= 0 or not P.alive then
+          P.downed = nil
+        elseif t >= D.til then
+          finish(P)
+        end
+      end
+    end
+  end)
+  -- 新一局：倒着的都清掉（角色会被收掉重新部署）
+  G.on("roundStart", function()
+    for _, P in pairs(G.P) do
+      if P.downed then clearDown(P) end
+      P.revT = nil
+    end
+  end)
+end
+
+return Revive
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="86">
+        <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
 --   真人开枪（步枪、狙击枪，车上 / 工事 / 船上自己操作的机枪）时，按「他屏幕上看到的那一刻」的位置再判一次打没打中。
@@ -17403,7 +17637,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="86">
+      <Item class="ModuleScript" referent="87">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -17690,6 +17924,7 @@ function Round.init(G)
         end
       end
       if best then best.rec = true elseif out[1] then out[1].rec = true end
+      if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
       return out
     end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
@@ -17734,6 +17969,7 @@ function Round.init(G)
       end
     end
     recommend(team, out)
+    if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
     return out
   end
   G.spawnList = spawnList
@@ -17805,6 +18041,13 @@ function Round.init(G)
     elseif sp.kind == "beach" then   -- 没有登陆艇模块时直接站在滩上
       local p = standAt(sp.x, sp.z - 40, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "squad" then   -- 小队队友身后（Squads.lua）；刚好不行了（挨打了、上车了）就在他最后报的位置附近
+      local cf = G.squadSpawnCF and G.squadSpawnCF(P, sp)
+      if cf then return cf end
+      if sp.x then
+        local p = standAt(sp.x, sp.z, 8)
+        return CFrame.lookAt(p, p + face)
+      end
     end
     return CFrame.new(0, 60, 0)
   end
@@ -17946,15 +18189,9 @@ function Round.init(G)
     end
   end
 
-  local function onDied(P, char)
-    if P.char ~= char then return end
-    P.alive = false
-    P.deaths += 1
-    P.deadAt = now()
-    P.canDeployAt = now() + Config.RespawnDelay
-    P.vehicle = nil
-    G.emit("died", P)
-    -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻
+  -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻；击杀信息发给所有人。
+  --   倒地的那一下就记（Revive.lua 的 G.downPlayer 调）；没倒地直接死的在 onDied 里记。返回凶手那条伤害记录和名字（阵亡镜头用）
+  local function creditDeath(P)
     local log, t = P.dmgLog or {}, now()
     local killer, assists = nil, {}
     for i = #log, 1, -1 do
@@ -17986,9 +18223,32 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
+    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    return killer, kname
+  end
+  G.creditDeath = creditDeath
+
+  local function onDied(P, char)
+    if P.char ~= char then return end
+    local down = P.downed   -- 倒地以后才死的（流血、放弃、补枪）：击杀在倒地时已经记过了
+    P.downed = nil
+    P.revT = nil
+    P.alive = false
+    P.deaths += 1
+    P.deadAt = now()
+    -- 倒着等过救援了：不用再等复活时间（等的那几秒已经在地上过了）
+    P.canDeployAt = now() + ((down and (Config.Revive and Config.Revive.afterDown)) or Config.RespawnDelay)
+    P.vehicle = nil
+    G.emit("died", P)
+    local killer, kname
+    if down and down.credited then
+      killer, kname = down.killer, down.kname
+      P.dmgLog = {}
+    else
+      killer, kname = creditDeath(P)
+    end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
 
@@ -18152,10 +18412,20 @@ function Round.init(G)
         wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
-    hum:TakeDamage(amt)
     local head = part ~= nil and part.Name == "Head"
-    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 倒地（Revive.lua）：已经倒着的再挨一下就没了（补枪，不再记一次击杀）；这一下会打死、又不是打得太狠：倒地等人救（击杀现在就记）
+    local lethal = false
+    if victim and victim.downed then
+      hum.Health = 0
+    elseif victim and G.downOk and hum.Health - amt <= 0 and G.downOk(victim, hum, amt) then
+      G.downPlayer(victim, hum, src, part)
+      lethal = true
+    else
+      hum:TakeDamage(amt)
+      lethal = hum.Health <= 0
+    end
+    -- 打死（打倒）真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", lethal and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
     -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
     if victim and victim.pl then
       local ap = G.boomAt
@@ -18212,7 +18482,7 @@ function Round.init(G)
     local who = {}
     local r2 = CC.r * CC.r
     for _, P in pairs(G.P) do
-      if P.alive and P.char then
+      if P.alive and P.char and not P.downed then   -- 倒地的不算占领人数
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
@@ -18612,7 +18882,139 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="87">
+      <Item class="ModuleScript" referent="88">
+        <Properties>
+          <string name="Name">Squads</string>
+          <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
+--   进了阵营就自动分进本队的小队（每队 A、B、C……，一队 Config.Squad.size 人，先把没满的填满）；换了阵营重新分；走了腾出位置。
+--   小队号写在玩家的属性 Squad 上（所有客户端都看得见：小队面板、队友头顶的绿色标记，Squads.lua 客户端）
+--   在小队队友身边出生（部署界面的「小队：某某」，Round.lua 的出生点表）：队友活着、没倒地、不在载具里、站在陆地上、
+--     Config.Squad.safe 秒内没挨过打（交火中不能往他身边出）；出生在他身后几格（墙挡着就在他脚边）
+local Squads = {}
+
+function Squads.init(G)
+  local Config = G.Config
+  local SC = Config.Squad or { size = 4, safe = 6 }
+  local now = os.clock
+  local V = Vector3.new
+  local LETTERS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L" }
+  local squads = { atk = {}, def = {} }   -- [队][小队号] = { P, … }
+  G.squadsOf = function(team) return squads[team] end   -- 测试用
+
+  local function leave(P)
+    local team, id = P.sqTeam, P.squad
+    if team and id and squads[team] and squads[team][id] then
+      local list = squads[team][id]
+      for i, Q in ipairs(list) do if Q == P then table.remove(list, i) break end end
+      if #list == 0 then squads[team][id] = nil end
+    end
+    P.squad, P.sqTeam = nil, nil
+    pcall(function() P.pl:SetAttribute("Squad", nil) end)
+  end
+  local function join(P, team)
+    local best, bn = nil, math.huge
+    for _, id in ipairs(LETTERS) do
+      local list = squads[team][id]
+      if list and #list < SC.size and #list < bn then best, bn = id, #list end
+    end
+    if not best then
+      for _, id in ipairs(LETTERS) do
+        if not squads[team][id] then best = id squads[team][id] = {} break end
+      end
+    end
+    if not best then return end
+    table.insert(squads[team][best], P)
+    P.squad, P.sqTeam = best, team
+    pcall(function() P.pl:SetAttribute("Squad", best) end)
+  end
+  -- 同一个小队的另外几个人
+  function G.squadMates(P)
+    local list = P.squad and P.sqTeam and squads[P.sqTeam] and squads[P.sqTeam][P.squad] or {}
+    local out = {}
+    for _, Q in ipairs(list) do if Q ~= P and G.P[Q.pl] == Q then table.insert(out, Q) end end
+    return out
+  end
+
+  -- 每秒对一次：没分的分进去、换了阵营的重新分、走了的去掉
+  local acc = 0
+  G.onFrame(function(dt)
+    acc += dt
+    if acc < 1 then return end
+    acc = 0
+    for team, set in pairs(squads) do
+      for id, list in pairs(set) do
+        for i = #list, 1, -1 do
+          local Q = list[i]
+          if G.P[Q.pl] ~= Q or Q.team ~= team then table.remove(list, i) if G.P[Q.pl] == Q then Q.squad, Q.sqTeam = nil, nil end end
+        end
+        if #list == 0 then set[id] = nil end
+      end
+    end
+    for _, P in pairs(G.P) do
+      if P.team == "atk" or P.team == "def" then
+        if P.sqTeam ~= P.team or not P.squad then
+          if P.squad then leave(P) end
+          join(P, P.team)
+        end
+      end
+    end
+  end)
+
+  -- 能不能往这个队友身边出生
+  local function mateOk(Q)
+    if not Q.alive or Q.downed or not Q.char then return false end
+    if G.inVeh and G.inVeh(Q) then return false end
+    if Q.boat or Q.chute then return false end
+    local hrp = Q.char:FindFirstChild("HumanoidRootPart")
+    local hum = Q.char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then return false end
+    local p = hrp.Position
+    if G.Map and G.Map.isLand and not G.Map.isLand(p.X, p.Z) then return false end
+    local log = Q.dmgLog
+    local last = log and log[#log]
+    if last and now() - last.t < (SC.safe or 6) then return false end   -- 交火中
+    return true, hrp
+  end
+  -- 出生点表里加上小队队友（Round.lua 的 spawnList 调）
+  function G.squadSpawns(team, P)
+    local out = {}
+    if not P or not G.round or G.round.phase ~= "battle" then return out end
+    for _, Q in ipairs(G.squadMates(P)) do
+      if Q.team == team then
+        local ok, hrp = mateOk(Q)
+        local p = hrp and hrp.Position
+        table.insert(out, { id = "sq." .. Q.pl.UserId, kind = "squad", name = Q.pl.DisplayName, uid = Q.pl.UserId,
+          x = p and p.X or nil, z = p and p.Z or nil, ok = ok == true })
+      end
+    end
+    return out
+  end
+  -- 出生在队友身后几格（打一条线看看身后有没有墙；挡着就站他脚边）
+  function G.squadSpawnCF(P, sp)
+    local Q = nil
+    for _, M in ipairs(G.squadMates(P)) do if M.pl.UserId == sp.uid then Q = M end end
+    local ok, hrp = false, nil
+    if Q then ok, hrp = mateOk(Q) end
+    if not ok or not hrp then return nil end
+    local cf = hrp.CFrame
+    local back = V(-cf.LookVector.X, 0, -cf.LookVector.Z)
+    back = (back.Magnitude > 0.01) and back.Unit or V(0, 0, 1)
+    local from = cf.Position
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    rp.FilterDescendantsInstances = { Q.char }
+    local to = from + back * 4
+    if workspace:Raycast(from, back * 4.5, rp) then to = from + V(0.8, 0, 0) end
+    to += V(0, 0.4, 0)
+    return CFrame.lookAt(to, to + V(cf.LookVector.X, 0, cf.LookVector.Z))
+  end
+end
+
+return Squads
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="89">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -18718,7 +19120,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="88">
+      <Item class="ModuleScript" referent="90">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -18944,7 +19346,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="89">
+      <Item class="ModuleScript" referent="91">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -19240,7 +19642,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="90">
+      <Item class="ModuleScript" referent="92">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -19579,7 +19981,7 @@ function Weapons.init(G)
     local char = P.char
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local head = char and char:FindFirstChild("Head")
-    if not hum or hum.Health <= 0 or not head or P.vehicle then return nil end
+    if not hum or hum.Health <= 0 or not head or P.vehicle or P.downed then return nil end   -- 倒地的不能开枪（Revive.lua）
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or tool:GetAttribute("Weapon") ~= id then return nil end
     local kit = G.kitOf(P)
@@ -19732,7 +20134,7 @@ function Weapons.init(G)
     if not hrp then return end
     local healed = 0
     for _, Q in pairs(G.P) do
-      if Q.team == P.team and Q.alive and Q.char then
+      if Q.team == P.team and Q.alive and Q.char and not Q.downed then   -- 倒地的要「救起」（按住 E），急救包回血不管
         local h2 = Q.char:FindFirstChild("HumanoidRootPart")
         local hum = Q.char:FindFirstChildOfClass("Humanoid")
         if h2 and hum and hum.Health > 0 and (h2.Position - hrp.Position).Magnitude <= w.r then
@@ -19834,13 +20236,19 @@ function Weapons.init(G)
     end
     if t < (P.cd.spot or 0) then return end
     P.cd.spot = t + w.cd
+    G.spotFrom(P, char, head, aim, w)
+  end
+  -- 标记：从头那里顺着瞄的方向，w.range 格以内、w.cone 度（默认 4°）锥里、看得见的敌人（玩家、车、船、工事）标记 w.spotTime 秒
+  function G.spotFrom(P, char, head, aim, w)
+    local t = now()
     local o = head.Position
     local look = (aim - o).Unit
     local list = {}
+    local cosC = math.cos(math.rad(w.cone or 4))
     local function consider(pos, key)
       local to = pos - o
       local d = to.Magnitude
-      if d < 4 or d > w.range or to.Unit:Dot(look) < math.cos(math.rad(4)) then return end
+      if d < 4 or d > w.range or to.Unit:Dot(look) < cosC then return end
       params.FilterDescendantsInstances = { char }
       local res = workspace:Raycast(o, to * 0.98, params)
       if res and (res.Position - pos).Magnitude > 6 then return end
@@ -19860,6 +20268,23 @@ function Weapons.init(G)
       G.addScore(P, Config.Score.spot * #list)
       G.msg(P.pl, "good", "ui.spotted", #list)
     end
+    return #list
+  end
+  -- 人人都能标记（用户 11-23「按你想的来弄」：战地那样按 Z 标记看到的敌人，队友那边地图、屏幕上都看得见）：
+  --   比望远镜近、锥窄、标记时间短（Config.QuickSpot）；望远镜（观察员）照旧更远更久
+  G.ACT.spot = function(P, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    if not P.alive or P.downed or (G.inVeh and G.inVeh(P)) then return end
+    if not G.round or G.round.phase ~= "battle" then return end
+    local char = P.char
+    local head = char and char:FindFirstChild("Head")
+    if not head or (aim - head.Position).Magnitude < 1 then return end
+    local Q = Config.QuickSpot
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.qspot or 0) then return end
+    P.cd.qspot = t + Q.cd
+    G.spotFrom(P, char, head, aim, Q)
   end
 
   -- 每半秒把还在标记期里的敌人位置发给那一队
@@ -19928,7 +20353,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="91">
+      <Item class="ModuleScript" referent="93">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -22253,15 +22678,15 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="92">
+  <Item class="StarterPlayer" referent="94">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="93">
+    <Item class="StarterPlayerScripts" referent="95">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="94">
+      <Item class="LocalScript" referent="96">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -22282,6 +22707,10 @@ return World
 --   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
 --   GunKit 改枪的配件：自己这把枪的武器表（G.myW）、别人 / 第三人称枪上装的配件模型、激光、手电
 --   Gunsmith 改枪界面（对标三角洲行动：3D 枪、改装位、性能条、推荐改装、方案、改枪码）
+--   Downed 倒地与救援（自己倒地的界面、镜头、放弃；队友头顶的救援标记、按住 E 救起；倒地的姿势）
+--   Shock 震荡（近处爆炸：耳鸣、别的声音发闷、画面一白一糊）
+--   Mantle 翻越 / 攀爬（步行时按空格：矮墙、沙袋翻过去，台子、窗台爬上去）
+--   SquadHud 小队面板（队友血条、倒地、阵亡、距离）和小队队友头顶的绿色标记
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -22343,7 +22772,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "Mantle", "SquadHud", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -22412,7 +22841,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -22780,7 +23209,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -22960,7 +23389,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -23590,7 +24019,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -25048,7 +25477,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -25218,7 +25647,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -25508,7 +25937,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -25665,7 +26094,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -26248,7 +26677,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="105">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -26388,7 +26817,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -26783,7 +27212,461 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="107">
+          <Properties>
+            <string name="Name">Downed</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
+--   自己倒地：画面去色、发暗、发红、心跳；镜头离开身体绕着自己转（鼠标转着看有没有队友过来）；中间一条流血倒计时、最近的队友多远、
+--     谁正在救你；按住空格（手机按住按钮）放弃 → 直接回部署界面；手里的枪收起来、开不了火（Play.lua 看 G.downed）
+--   队友倒地：头顶一个白底红十字的救援标记（隔着墙也看得见，markR 格以内），写着多远、还剩几秒；走到旁边出现「按住 E 救起」
+--     （ProximityPrompt：带着急救包 medicHold 秒、没带 hold 秒；开始按、按完都告诉服务器，服务器核对时间）
+--   倒地的人（所有人、包括自己）：身子瘫在地上（服务器 PlatformStand 让它倒下去），这里再把姿势摆成受伤的样子——一条腿蜷起来、一只手捂着肚子、头歪着
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+
+local Downed = {}
+
+function Downed.init(G)
+  local Config = G.Config
+  local RC = Config.Revive or {}
+  if not RC.on then return end
+  local T = G.T or function(k) return k end
+  local player = Players.LocalPlayer
+  local V, RGB, CF = Vector3.new, Color3.fromRGB, CFrame.new
+  local ANG = CFrame.Angles
+  local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
+  local function serverNow()
+    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
+    return (ok and type(t) == "number") and t or os.clock()
+  end
+  local function isDown(ch)
+    if not ch or ch:GetAttribute("Downed") ~= true then return false end
+    local hum = ch:FindFirstChildOfClass("Humanoid")
+    return hum ~= nil and hum.Health > 0
+  end
+  local function act(op, ...) G.R.Act:FireServer(op, ...) end
+  local function myTeam()
+    local me = G.S and G.S.me
+    if me and me.team then return me.team end
+    local ch = player.Character
+    return ch and ch:GetAttribute("Team") or nil
+  end
+  -- 自己带没带急救包（背包里、手上的工具）
+  local function haveMedkit()
+    for _, holder in ipairs({ player:FindFirstChildOfClass("Backpack"), player.Character }) do
+      if holder then
+        for _, t in ipairs(holder:GetChildren()) do
+          if t:IsA("Tool") and t:GetAttribute("Weapon") == "medkit" then return true end
+        end
+      end
+    end
+    return false
+  end
+
+  ---------------------------------------------------------------- 自己倒地的界面
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Downed"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 30
+  gui.Enabled = false
+  gui.Parent = player:WaitForChild("PlayerGui")
+  -- 四边压暗发红（四块渐变）
+  local function edge(size, pos, rot)
+    local f = Instance.new("Frame")
+    f.BorderSizePixel = 0
+    f.BackgroundColor3 = RGB(70, 0, 0)
+    f.Size, f.Position = size, pos
+    f.Parent = gui
+    local g = Instance.new("UIGradient")
+    g.Rotation = rot
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = f
+    return f
+  end
+  edge(UDim2.fromScale(1, 0.32), UDim2.fromScale(0, 0), 90)
+  edge(UDim2.fromScale(1, 0.32), UDim2.fromScale(0, 0.68), -90)
+  edge(UDim2.fromScale(0.25, 1), UDim2.fromScale(0, 0), 0)
+  edge(UDim2.fromScale(0.25, 1), UDim2.fromScale(0.75, 0), 180)
+  local panel = Instance.new("Frame")
+  panel.AnchorPoint = Vector2.new(0.5, 0)
+  panel.Position = UDim2.new(0.5, 0, 0.62, 0)
+  panel.Size = UDim2.fromOffset(460, 150)
+  panel.BackgroundTransparency = 1
+  panel.Parent = gui
+  local function label(text, y, size, color, font)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Size = UDim2.new(1, 0, 0, size + 6)
+    l.Position = UDim2.fromOffset(0, y)
+    l.Font = font or Enum.Font.GothamBold
+    l.TextSize = size
+    l.TextColor3 = color
+    l.TextStrokeTransparency = 0.55
+    l.Text = text
+    l.Parent = panel
+    return l
+  end
+  local title = label(T("down.title"), 0, 22, RGB(255, 236, 230))
+  local bleedBar = Instance.new("Frame")
+  bleedBar.Position = UDim2.fromOffset(80, 34)
+  bleedBar.Size = UDim2.new(1, -160, 0, 4)
+  bleedBar.BackgroundColor3 = RGB(30, 10, 10)
+  bleedBar.BackgroundTransparency = 0.3
+  bleedBar.BorderSizePixel = 0
+  bleedBar.Parent = panel
+  local bleedFill = Instance.new("Frame")
+  bleedFill.Size = UDim2.fromScale(1, 1)
+  bleedFill.BackgroundColor3 = RGB(226, 56, 48)
+  bleedFill.BorderSizePixel = 0
+  bleedFill.Parent = bleedBar
+  local bleedText = label("", 42, 16, RGB(255, 200, 190), Enum.Font.Gotham)
+  local nearText = label("", 66, 15, RGB(230, 230, 225), Enum.Font.Gotham)
+  local hint = label(T("down.giveUp"), 96, 14, RGB(200, 200, 195), Enum.Font.Gotham)
+  local giveBar = Instance.new("Frame")
+  giveBar.Position = UDim2.fromOffset(150, 120)
+  giveBar.Size = UDim2.new(1, -300, 0, 3)
+  giveBar.BackgroundColor3 = RGB(255, 255, 255)
+  giveBar.BackgroundTransparency = 0.8
+  giveBar.BorderSizePixel = 0
+  giveBar.Parent = panel
+  local giveFill = Instance.new("Frame")
+  giveFill.Size = UDim2.fromScale(0, 1)
+  giveFill.BackgroundColor3 = RGB(255, 255, 255)
+  giveFill.BorderSizePixel = 0
+  giveFill.Parent = giveBar
+  -- 手机：按住这个按钮放弃
+  local giveBtn = Instance.new("TextButton")
+  giveBtn.AnchorPoint = Vector2.new(0.5, 0)
+  giveBtn.Position = UDim2.new(0.5, 0, 0, 132)
+  giveBtn.Size = UDim2.fromOffset(200, 40)
+  giveBtn.BackgroundColor3 = RGB(20, 20, 20)
+  giveBtn.BackgroundTransparency = 0.35
+  giveBtn.BorderSizePixel = 0
+  giveBtn.Font = Enum.Font.GothamBold
+  giveBtn.TextSize = 15
+  giveBtn.TextColor3 = RGB(240, 240, 235)
+  giveBtn.Text = T("down.giveUpTouch")
+  giveBtn.Visible = false
+  giveBtn.Parent = panel
+  local touchHold = false
+  giveBtn.InputBegan:Connect(function(io)
+    if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then touchHold = true end
+  end)
+  giveBtn.InputEnded:Connect(function(io)
+    if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then touchHold = false end
+  end)
+
+  ---------------------------------------------------------------- 自己倒地：进、出、每帧
+
+  local S = { on = false }
+  G.downed = false
+  G.downedState = function() return S end   -- 测试用
+  local function camStep()
+    if not S.on then return end
+    local ch = player.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local cam = workspace.CurrentCamera
+    if not hrp or not cam then return end
+    local ok, d = pcall(function() return UIS:GetMouseDelta() end)
+    if ok and typeof(d) == "Vector2" then
+      S.yaw -= d.X * 0.004
+      S.pitch = clamp(S.pitch - d.Y * 0.004, -1.25, 0.25)
+    end
+    pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end)
+    local focus = hrp.Position + V(0, 0.6, 0)
+    local rot = ANG(0, S.yaw, 0) * ANG(S.pitch, 0, 0)
+    local want = focus - rot.LookVector * 9
+    -- 别穿进墙里：从身体往镜头那边打一条线，挡住了就拉近
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    rp.FilterDescendantsInstances = { ch }
+    local hit = workspace:Raycast(focus, want - focus, rp)
+    if hit then want = focus + (want - focus).Unit * math.max(1.5, (hit.Position - focus).Magnitude - 0.6) end
+    cam.CFrame = CFrame.lookAt(want, focus)
+  end
+  local promptsWereOn = true
+  local function enter()
+    S.on, S.t0, S.giveK, S.sent, S.beatT = true, os.clock(), 0, false, 0
+    G.downed = true
+    gui.Enabled = true
+    giveBtn.Visible = UIS.TouchEnabled
+    local cam = workspace.CurrentCamera
+    local lv = cam and cam.CFrame.LookVector or V(0, 0, -1)
+    S.yaw = math.atan2(-lv.X, -lv.Z)
+    S.pitch = -0.45
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Name = "DownedGrade"
+    cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.8, 0.12, -0.06, RGB(255, 214, 206)
+    cc.Parent = Lighting
+    local blur = Instance.new("BlurEffect")
+    blur.Name = "DownedBlur"
+    blur.Size = 5
+    blur.Parent = Lighting
+    S.cc, S.blur = cc, blur
+    pcall(function()
+      local PPS = game:GetService("ProximityPromptService")
+      promptsWereOn = PPS.Enabled
+      PPS.Enabled = false   -- 倒着不能操作工事、上车、生成载具
+    end)
+    pcall(function() RunService:BindToRenderStep("DownedCam", Enum.RenderPriority.Camera.Value + 25, camStep) end)
+  end
+  local function leave()
+    if not S.on then return end
+    S.on = false
+    G.downed = false
+    gui.Enabled = false
+    touchHold = false
+    if S.cc then S.cc:Destroy() end
+    if S.blur then S.blur:Destroy() end
+    S.cc, S.blur = nil, nil
+    pcall(function() game:GetService("ProximityPromptService").Enabled = promptsWereOn end)
+    pcall(function() RunService:UnbindFromRenderStep("DownedCam") end)
+  end
+  local function stepMe(dt)
+    local ch = player.Character
+    local d = isDown(ch)
+    if d and not S.on then enter() elseif not d and S.on then leave() end
+    if not S.on then return end
+    local hum = ch:FindFirstChildOfClass("Humanoid")
+    if hum and ch:FindFirstChildOfClass("Tool") then pcall(function() hum:UnequipTools() end) end   -- 倒着拿不了枪
+    -- 流血倒计时
+    local til = ch:GetAttribute("DownT")
+    local left = (type(til) == "number") and math.max(0, til - serverNow()) or RC.bleed
+    bleedFill.Size = UDim2.fromScale(clamp(left / RC.bleed, 0, 1), 1)
+    bleedText.Text = T("down.bleed", math.ceil(left))
+    -- 谁在救我；不然最近的队友多远
+    local rb, rt = ch:GetAttribute("RevBy"), ch:GetAttribute("RevT")
+    if type(rb) == "string" and type(rt) == "number" and serverNow() - rt < RC.hold + 0.6 then
+      nearText.Text = T("down.coming", rb)
+      nearText.TextColor3 = RGB(150, 235, 150)
+    else
+      local hrp = ch:FindFirstChild("HumanoidRootPart")
+      local best = nil
+      local team = myTeam()
+      for _, pl in ipairs(Players:GetPlayers()) do
+        local c2 = pl.Character
+        if pl ~= player and c2 and c2:GetAttribute("Team") == team and not isDown(c2) then
+          local h2 = c2:FindFirstChild("HumanoidRootPart")
+          local hm = c2:FindFirstChildOfClass("Humanoid")
+          if h2 and hrp and hm and hm.Health > 0 then
+            local dd = (h2.Position - hrp.Position).Magnitude
+            if not best or dd < best then best = dd end
+          end
+        end
+      end
+      nearText.Text = best and T("down.near", math.floor(best / 2.8 + 0.5)) or T("down.none")
+      nearText.TextColor3 = RGB(230, 230, 225)
+    end
+    -- 心跳（越到最后越快）
+    local gap = 0.7 + 0.6 * clamp(left / RC.bleed, 0, 1)
+    if os.clock() - S.beatT > gap then
+      S.beatT = os.clock()
+      if G.sfx then G.sfx("heart", nil, { vol = 1.1 }) end
+    end
+    -- 按住空格放弃
+    local holding = touchHold or (UIS:GetFocusedTextBox() == nil and UIS:IsKeyDown(Enum.KeyCode.Space))
+    if holding and os.clock() - S.t0 > 0.8 then S.giveK += dt / RC.giveUp else S.giveK = math.max(0, S.giveK - dt * 2) end
+    giveFill.Size = UDim2.fromScale(clamp(S.giveK, 0, 1), 1)
+    if S.giveK >= 1 and not S.sent then
+      S.sent = true
+      act("giveUp")
+    end
+    title.TextTransparency = 0.1 + 0.15 * math.sin(os.clock() * 3)
+  end
+
+  ---------------------------------------------------------------- 倒地的队友：救援标记、按住 E 救起
+
+  local tracked = {}   -- [Player] = { ch, bb, dist, timer, prompt, conns }
+  local function drop(pl)
+    local tr = tracked[pl]
+    if not tr then return end
+    tracked[pl] = nil
+    for _, c in ipairs(tr.conns) do c:Disconnect() end
+    if tr.bb then tr.bb:Destroy() end
+    if tr.prompt then tr.prompt:Destroy() end
+  end
+  local function cross(parent)
+    local disc = Instance.new("Frame")
+    disc.Size = UDim2.fromOffset(30, 30)
+    disc.AnchorPoint = Vector2.new(0.5, 0)
+    disc.Position = UDim2.new(0.5, 0, 0, 0)
+    disc.BackgroundColor3 = RGB(245, 245, 240)
+    disc.BorderSizePixel = 0
+    disc.Parent = parent
+    local cr = Instance.new("UICorner")
+    cr.CornerRadius = UDim.new(0.5, 0)
+    cr.Parent = disc
+    for _, sz in ipairs({ UDim2.fromOffset(18, 6), UDim2.fromOffset(6, 18) }) do
+      local b = Instance.new("Frame")
+      b.AnchorPoint = Vector2.new(0.5, 0.5)
+      b.Position = UDim2.fromScale(0.5, 0.5)
+      b.Size = sz
+      b.BackgroundColor3 = RGB(214, 40, 36)
+      b.BorderSizePixel = 0
+      b.Parent = disc
+    end
+    return disc
+  end
+  local function ensure(pl, ch)
+    local tr = tracked[pl]
+    if tr and tr.ch == ch then return tr end
+    drop(pl)
+    local head = ch:FindFirstChild("Head") or ch:FindFirstChild("HumanoidRootPart")
+    local hrp = ch:FindFirstChild("HumanoidRootPart")
+    if not head or not hrp then return nil end
+    tr = { ch = ch, conns = {} }
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "ReviveMark"
+    bb.Size = UDim2.fromOffset(120, 64)
+    bb.StudsOffset = V(0, 2.4, 0)
+    bb.AlwaysOnTop = true
+    bb.LightInfluence = 0
+    bb.MaxDistance = RC.markR
+    bb.Adornee = head
+    tr.disc = cross(bb)
+    local tag = Instance.new("TextLabel")
+    tag.BackgroundTransparency = 1
+    tag.Position = UDim2.fromOffset(0, 32)
+    tag.Size = UDim2.new(1, 0, 0, 16)
+    tag.Font = Enum.Font.GothamBold
+    tag.TextSize = 13
+    tag.TextColor3 = RGB(255, 240, 236)
+    tag.TextStrokeTransparency = 0.4
+    tag.Parent = bb
+    tr.tag = tag
+    local tb = Instance.new("Frame")
+    tb.AnchorPoint = Vector2.new(0.5, 0)
+    tb.Position = UDim2.new(0.5, 0, 0, 50)
+    tb.Size = UDim2.fromOffset(44, 3)
+    tb.BackgroundColor3 = RGB(40, 10, 10)
+    tb.BorderSizePixel = 0
+    tb.Parent = bb
+    local tf = Instance.new("Frame")
+    tf.Size = UDim2.fromScale(1, 1)
+    tf.BackgroundColor3 = RGB(226, 56, 48)
+    tf.BorderSizePixel = 0
+    tf.Parent = tb
+    tr.timer = tf
+    bb.Parent = gui.Parent   -- 放在 PlayerGui 里（Adornee 指过去），不改别人的角色
+    tr.bb = bb
+    local medic = haveMedkit()
+    local pr = Instance.new("ProximityPrompt")
+    pr.Name = "Revive"
+    pr.ActionText = medic and T("revive.medic") or T("revive.act")
+    pr.ObjectText = pl.DisplayName
+    pr.HoldDuration = medic and RC.medicHold or RC.hold
+    pr.MaxActivationDistance = RC.range
+    pr.RequiresLineOfSight = false
+    pr.KeyboardKeyCode = Enum.KeyCode.E
+    pcall(function() pr.GamepadKeyCode = Enum.KeyCode.ButtonX end)
+    pcall(function() pr.Exclusivity = Enum.ProximityPromptExclusivity.OneGlobally end)
+    pr.Parent = hrp
+    tr.prompt, tr.medic = pr, medic
+    table.insert(tr.conns, pr.PromptButtonHoldBegan:Connect(function() act("reviveBegin", pl.UserId) end))
+    table.insert(tr.conns, pr.Triggered:Connect(function() act("revive", pl.UserId) end))
+    tracked[pl] = tr
+    return tr
+  end
+  local scanT = 0
+  local function stepMates(dt)
+    scanT -= dt
+    local myCh = player.Character
+    local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
+    if scanT <= 0 then
+      scanT = 0.25
+      local team = myTeam()
+      local seen = {}
+      for _, pl in ipairs(Players:GetPlayers()) do
+        local ch = pl.Character
+        if pl ~= player and ch and team and ch:GetAttribute("Team") == team and isDown(ch) then
+          if ensure(pl, ch) then seen[pl] = true end
+        end
+      end
+      for pl in pairs(tracked) do if not seen[pl] then drop(pl) end end
+      -- 带没带急救包换了（换了装备重新部署）：提示和按多久跟着变
+      local medic = haveMedkit()
+      for _, tr in pairs(tracked) do
+        if tr.medic ~= medic and tr.prompt then
+          tr.medic = medic
+          tr.prompt.HoldDuration = medic and RC.medicHold or RC.hold
+          tr.prompt.ActionText = medic and T("revive.medic") or T("revive.act")
+        end
+      end
+    end
+    local now = serverNow()
+    local pulse = 0.5 + 0.5 * math.sin(os.clock() * 5)
+    for _, tr in pairs(tracked) do
+      local hrp = tr.ch:FindFirstChild("HumanoidRootPart")
+      if tr.prompt then tr.prompt.Enabled = not G.downed and not G.drive end
+      if hrp and myHrp then
+        local dd = (hrp.Position - myHrp.Position).Magnitude
+        tr.tag.Text = string.format("%s  %d m", T("revive.tag"), math.floor(dd / 2.8 + 0.5))
+      end
+      local til = tr.ch:GetAttribute("DownT")
+      if type(til) == "number" then tr.timer.Size = UDim2.fromScale(clamp((til - now) / RC.bleed, 0, 1), 1) end
+      if tr.disc then tr.disc.BackgroundTransparency = 0.15 * pulse end
+    end
+  end
+  Players.PlayerRemoving:Connect(drop)
+
+  ---------------------------------------------------------------- 倒地的人的姿势（瘫着、一条腿蜷起来、一只手捂着肚子、头歪着）
+
+  -- 关节角同 Soldier.lua 的 fkSet（同一套 R15 关节：膝盖往负的弯、髋往正的是大腿往前）
+  local POSE = {
+    LeftHip = ANG(0.85, 0, -0.1), LeftKnee = ANG(-1.45, 0, 0),
+    RightHip = ANG(0.15, 0, 0.12), RightKnee = ANG(-0.35, 0, 0),
+    RightShoulder = ANG(0.55, 0, 0.45), RightElbow = ANG(1.35, 0, 0),
+    LeftShoulder = ANG(0.2, 0, -0.35), LeftElbow = ANG(0.4, 0, 0),
+    Neck = ANG(0.3, 0.45, 0), Waist = ANG(0.12, 0.1, 0),
+  }
+  local posed = {}   -- [角色] = { motors = { [名字] = Motor6D }, t0 }
+  local function poseStep()
+    for ch, ps in pairs(posed) do
+      if not ch.Parent or not isDown(ch) then
+        for _, m in pairs(ps.motors) do pcall(function() m.Transform = CF() end) end
+        posed[ch] = nil
+      end
+    end
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      if ch and isDown(ch) then
+        local ps = posed[ch]
+        if not ps then
+          ps = { motors = {}, t0 = os.clock() }
+          for name in pairs(POSE) do
+            local m = ch:FindFirstChild(name, true)
+            if m and m:IsA("Motor6D") then ps.motors[name] = m end
+          end
+          posed[ch] = ps
+        end
+        local k = clamp((os.clock() - ps.t0) / 0.6, 0, 1)
+        k = k * k * (3 - 2 * k)
+        local br = math.sin(os.clock() * 2.2) * 0.04   -- 喘气
+        for name, m in pairs(ps.motors) do
+          local target = POSE[name]
+          if name == "Waist" then target = target * ANG(br, 0, 0) end
+          pcall(function() m.Transform = CF():Lerp(target, k) end)
+        end
+      end
+    end
+  end
+
+  G.frameConn("Downed", function(dt)
+    stepMe(dt)
+    stepMates(dt)
+    poseStep()
+  end)
+end
+
+return Downed
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -28066,7 +28949,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -28959,7 +29842,7 @@ function FPSView.init(G)
       end
     end
     -- 疾跑：枪往下、往左斜着端（跑起来不瞄准）
-    sprintK += ((G.sprinting and 1 or 0) - sprintK) * math.min(1, dt * 8)
+    sprintK += (((G.sprinting or G.mantling) and 1 or 0) - sprintK) * math.min(1, dt * ((G.mantling and 14) or 8))   -- 翻越（Mantle.lua）时枪也收下去
     if sprintK > 0.001 then extra = extra * CF(0.05 * sprintK, -0.12 * sprintK, 0.05 * sprintK) * CFrame.Angles(-0.38 * sprintK, 0.5 * sprintK, 0.25 * sprintK) end
     local adsT = ADS_CF
     if vm.optic then adsT = opticAds(vm.optic) end
@@ -29066,7 +29949,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -29281,7 +30164,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -31769,7 +32652,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -32125,7 +33008,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -32331,7 +33214,7 @@ function Fx.init(G)
   -- 叠层的音效换成真录音：SFX 的名字 → { SoundLib 的键, 速度倍数, 音量倍数 }（别的照旧叠：落地、换挡、心跳、拉栓……）
   local SFXREAL = { tankGun = { "tankGun", 1, 1 }, rkt = { "missile", 1.15, 0.8 }, msl = { "missile", 1, 1 }, whiz = { "whiz", 1, 1 }, ric = { "ric", 1, 1 },
     shellRic = { "ric", 0.8, 1.4 }, ping = { "metalHit", 1.2, 0.8 }, clang = { "metalHit", 0.85, 1.1 }, sonic = { "sonic", 1, 1 },
-    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 } }
+    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 }, earRing = { "earRing", 1, 1 } }
   local function realLayer(key, sp, vol)
     local id, cfg = real(key)
     if not id then return nil end
@@ -32422,7 +33305,9 @@ function Fx.init(G)
   local function makeSound(L, parent, o)
     local snd = Instance.new("Sound")
     snd.SoundId = L.id
-    snd.Volume = math.min(10, L.vol * (o.vol or 1))
+    -- 震荡（Shock.lua）：近处刚炸过，别的声音发闷、变小（耳鸣本身 o.dry 不闷）
+    local muf = (not o.dry and G.muffle) and G.muffle() or 0
+    snd.Volume = math.min(10, L.vol * (o.vol or 1)) * (1 - 0.55 * muf)
     local sp = (L.s[1] + (L.s[2] - L.s[1]) * math.random()) * (o.speed or 1)
     snd.PlaybackSpeed = sp
     snd.RollOffMinDistance = o.rmin or 40
@@ -32435,7 +33320,7 @@ function Fx.init(G)
         snd.LoopRegion = NumberRange.new(L.loop[1], L.loop[2])
       end
     end
-    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0)
+    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) - 34 * muf
     if L.eq or hi ~= 0 then
       local e = Instance.new("EqualizerSoundEffect")
       e.LowGain, e.MidGain, e.HighGain = L.eq and L.eq[1] or 0, L.eq and L.eq[2] or 0, math.max(-80, hi)
@@ -32956,6 +33841,7 @@ function Fx.init(G)
     if c ~= "gun" then   -- 离得近震一下
       local shR = r * 12 + 60
       if d < shR then G.shake(math.clamp(r / 32, 0.12, 0.85) * (1 - d / shR)) end
+      if G.concuss then G.concuss(d, r, c) end   -- 近处：耳鸣、发闷、一白一糊（Shock.lua）
     end
     local t = os.clock()
     if t - boomT > 0.25 then boomT, boomN = t, 0 end
@@ -33625,7 +34511,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -34020,7 +34906,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -34152,7 +35038,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -34431,7 +35317,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -34985,7 +35871,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -35914,7 +36800,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -36377,7 +37263,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -37205,7 +38091,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -37319,7 +38205,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -39699,7 +40585,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -40270,7 +41156,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -41856,7 +42742,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -42624,7 +43510,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -44458,7 +45344,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -44724,7 +45610,163 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="128">
+          <Properties>
+            <string name="Name">Mantle</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
+--   步行时按空格：前面 3 格以内有挡着的东西（墙面），它的顶面比脚高 0.4～2.7 米、顶上有站人的空间，就不跳了改成翻：
+--   · 矮的、薄的（沙袋、矮墙、栏杆：顶面往前 2.4 格又掉下去了）：一撑就翻到另一边（约 0.4 秒）；
+--   · 高的、厚的（台子、集装箱、窗台）：先往上撑、再往前爬上去（0.45～0.7 秒，越高越慢）
+--   动作用速度推（每帧把根零件的速度设成「这一帧该走到哪」）：角色是自己的客户端在算物理，速度这样推别人那边看着也是顺的；
+--   最后差一点就直接摆到终点。翻的时候枪往下收（FPSView 看 G.mantling，同疾跑的姿势），起手、落地镜头各晃一下
+local UIS = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Mantle = {}
+
+function Mantle.init(G)
+  local player = Players.LocalPlayer
+  local V = Vector3.new
+  local busy = nil
+  G.mantling = false
+  G.mantleState = function() return busy end   -- 测试用
+  local MIN_H, MAX_H = 1.1, 7.6   -- 顶面比脚高多少格能翻（约 0.4～2.7 米）
+
+  local function flat(v)
+    local f = V(v.X, 0, v.Z)
+    return f.Magnitude > 0.01 and f.Unit or nil
+  end
+
+  -- 看前面能不能翻：返回这次翻越的路径
+  local function probe()
+    local ch = player.Character
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp or hum.Health <= 0 or busy then return nil end
+    if G.drive or G.fly or G.downed or hum.Sit or hrp.Anchored or ch:GetAttribute("Downed") then return nil end
+    local dir = flat(hum.MoveDirection) or flat(hrp.CFrame.LookVector)
+    if not dir then return nil end
+    local feet = hrp.Position.Y - hum.HipHeight - hrp.Size.Y / 2
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    rp.FilterDescendantsInstances = { ch }
+    -- ① 前面有墙面（膝盖、腰、胸三个高度打线）
+    local wall = nil
+    for _, hgt in ipairs({ 0.9, 2.0, 3.2, 4.6 }) do
+      local o = V(hrp.Position.X, feet + hgt, hrp.Position.Z)
+      local r = workspace:Raycast(o, dir * 3.2, rp)
+      if r and r.Normal.Y < 0.5 then wall = r break end
+    end
+    if not wall then return nil end
+    -- ② 墙面后面一点的顶面（从上往下打）
+    local over = wall.Position + dir * 1.0
+    local top = workspace:Raycast(V(over.X, feet + MAX_H + 1.5, over.Z), V(0, -(MAX_H + 1.5) + 0.4, 0), rp)
+    if not top or top.Normal.Y < 0.7 then return nil end
+    local h = top.Position.Y - feet
+    if h < MIN_H or h > MAX_H then return nil end
+    -- ③ 顶上有站人的空间；从头顶到顶面上方的路上没有天花板
+    if workspace:Raycast(top.Position + V(0, 0.2, 0), V(0, 5.2, 0), rp) then return nil end
+    local headY = feet + 5.2
+    local reach = math.max(headY, top.Position.Y + 5)
+    if workspace:Raycast(V(hrp.Position.X, headY, hrp.Position.Z), V(0, reach - headY + 0.5, 0), rp) then return nil end
+    -- ④ 薄的、矮的：往前 2.4 格又掉下去了 → 翻到另一边落地；不然爬上顶面
+    local far = top.Position + dir * 2.4
+    local beyond = workspace:Raycast(V(far.X, top.Position.Y + 2, far.Z), V(0, -3.0, 0), rp)
+    local thin = (beyond == nil or beyond.Position.Y < top.Position.Y - 0.9) and h < 4.6
+    local hipOff = hum.HipHeight + hrp.Size.Y / 2
+    local land
+    if thin then
+      local lx = top.Position + dir * 3.4
+      local g = workspace:Raycast(V(lx.X, top.Position.Y + 2, lx.Z), V(0, -(h + 6), 0), rp)
+      if not g or g.Normal.Y < 0.6 then return nil end
+      if workspace:Raycast(g.Position + V(0, 0.2, 0), V(0, 5, 0), rp) then return nil end
+      land = g.Position + V(0, hipOff, 0)
+    else
+      land = top.Position + dir * 1.3 + V(0, hipOff, 0)
+    end
+    local start = hrp.Position
+    local apex = V(top.Position.X, top.Position.Y + hipOff + (thin and 0.5 or 0.25), top.Position.Z) - dir * (thin and 0.1 or 0.6)
+    local dur = thin and 0.42 or math.clamp(0.38 + 0.045 * h, 0.45, 0.72)
+    return { hum = hum, hrp = hrp, dir = dir, h = h, thin = thin, p0 = start, p1 = apex, p2 = land, dur = dur, t0 = os.clock() }
+  end
+
+  -- 路径：先往上（贝塞尔的控制点在起点正上方），再往前落下
+  local function at(M, u)
+    u = math.clamp(u, 0, 1)
+    local up = V(M.p0.X, M.p1.Y + 0.4, M.p0.Z)
+    if u < 0.55 then
+      local s = u / 0.55
+      local a = M.p0:Lerp(up, s)
+      local b = up:Lerp(M.p1, s)
+      return a:Lerp(b, s)
+    end
+    local s = (u - 0.55) / 0.45
+    s = s * s * (3 - 2 * s)
+    return M.p1:Lerp(M.p2, s)
+  end
+
+  local function finish(M, ok)
+    busy = nil
+    G.mantling = false
+    local hrp = M.hrp
+    if ok and hrp and hrp.Parent then
+      if (hrp.Position - M.p2).Magnitude < 4 then hrp.CFrame = CFrame.lookAt(M.p2, M.p2 + M.dir) end   -- 差一点：直接摆到终点
+      hrp.AssemblyLinearVelocity = M.dir * (M.thin and 12 or 6)
+      if G.shake then G.shake(M.thin and 0.08 or 0.12) end
+    end
+    if M.hum and M.hum.Parent then pcall(function() M.hum.AutoRotate = true end) end
+  end
+
+  local function start(M)
+    busy = M
+    G.mantling = true
+    pcall(function() M.hum.AutoRotate = false end)
+    M.hum.Jump = false
+    if G.shake then G.shake(0.06) end
+    if G.sfx then G.sfx("thud", nil, { vol = 0.35, speed = 1.3 }) end
+  end
+  G.tryMantle = function()
+    local M = probe()
+    if not M then return false end
+    start(M)
+    return true
+  end
+
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp then return end
+    if io.KeyCode == Enum.KeyCode.Space or io.KeyCode == Enum.KeyCode.ButtonA then G.tryMantle() end
+  end)
+  -- 手机：跳跃按钮按下时也看一下（Humanoid.Jump 变成 true）
+  local lastJump = false
+  RunService.Heartbeat:Connect(function()
+    local M = busy
+    if not M then
+      local ch = player.Character
+      local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+      local j = hum ~= nil and hum.Jump == true
+      if j and not lastJump and UIS.TouchEnabled then G.tryMantle() end
+      lastJump = j
+      return
+    end
+    local hrp, hum = M.hrp, M.hum
+    if not hrp.Parent or not hum.Parent or hum.Health <= 0 or G.downed then finish(M, false) return end
+    local u = (os.clock() - M.t0) / M.dur
+    if u >= 1 then finish(M, true) return end
+    hum.Jump = false
+    local want = at(M, u + 1 / 60 / M.dur)
+    local v = (want - hrp.Position) * 60
+    if v.Magnitude > 70 then v = v.Unit * 70 end
+    hrp.AssemblyLinearVelocity = v
+    hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + M.dir)
+  end)
+end
+
+return Mantle
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -44993,7 +46035,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -45500,7 +46542,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -45650,7 +46692,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -45962,7 +47004,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -46284,7 +47326,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -46501,7 +47543,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -46635,7 +47677,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -47133,7 +48175,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -47752,7 +48794,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -48024,7 +49066,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -48271,7 +49313,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -48414,7 +49456,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -48565,7 +49607,7 @@ function Play.init(G)
   local function equipTool(t)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive or not t then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed or not t then return end   -- 倒地（Downed.lua）拿不了枪
     if t.Parent == char then return end   -- 已经拿着
     local cur0 = char:FindFirstChildOfClass("Tool")
     if cur0 then lastTool = cur0 end
@@ -48577,7 +49619,7 @@ function Play.init(G)
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed then return end
     local t = tools()[i]
     if not t then return end
     local now = os.clock()
@@ -48724,7 +49766,7 @@ function Play.init(G)
   local function tryFire(alt)
     local id = cur.id
     local char = player.Character
-    if not id or not char or G.drive then return end
+    if not id or not char or G.drive or G.downed then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     local S = G.S
@@ -48814,6 +49856,10 @@ function Play.init(G)
       if cur.id and (W[cur.id].kind == "place") then tryFire(true) end
     elseif k == Enum.KeyCode.R then reload()
     elseif k == Enum.KeyCode.V then G.firstPerson = not (G.firstPerson ~= false)   -- 第一 / 第三人称
+    elseif k == Enum.KeyCode.Z then   -- 标记敌人（服务器 Weapons.lua 的 ACT.spot：准星方向几度以内、看得见的敌人，队友那边标出来）
+      local p = aimPoint(Config.QuickSpot and Config.QuickSpot.range or 620, true)
+      if p then G.R.Act:FireServer("spot", p) end
+      if G.sfx then G.sfx("dry", nil, { vol = 0.45, speed = 1.7 }) end   -- 轻轻「嗒」一下
     elseif k == Enum.KeyCode.F then
       if cur.id and W[cur.id].kind == "spot" then tryFire(true) end
     elseif k == Enum.KeyCode.One then equip(1)
@@ -48965,6 +50011,16 @@ function Play.init(G)
       if G.fpsOff then G.fpsOff() end
       return
     end
+    if G.downed then   -- 倒地（Downed.lua）：准星、镜头前的枪都收起来，开不了火
+      if touchControls then touchControls.Visible = false end
+      cross.Visible, scope.Visible = false, false
+      if G.scopeStep then G.scopeStep(dt, false) end
+      cur.firing, cur.aiming = false, false
+      G.fpsAiming = false
+      G.fpActive = false
+      if G.fpsOff then G.fpsOff() end
+      return
+    end
     bar.Visible = true
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -49094,7 +50150,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -49691,7 +50747,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -50188,7 +51244,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -51135,7 +52191,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -51865,7 +52921,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -52617,7 +53673,91 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="147">
+          <Properties>
+            <string name="Name">Shock</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
+--   爆炸离得近（杀伤半径 r 的三倍多一点以内，Fx.lua 的 boom 调 G.concuss）：
+--   · 耳鸣（SoundLib.earRing，自带淡出）——离得越近越响；
+--   · 别的声音一下子发闷、变小（Fx.lua 的 makeSound 看 G.muffle()：高频切掉、音量压低），几秒里慢慢回来；
+--   · 画面一白、发糊、去一点色，跟着淡回来；
+--   在车里挡掉大半（装甲），开飞机不算；同一时刻挨了好几下取最重的那一下，余震叠上去一点
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local Shock = {}
+
+function Shock.init(G)
+  local S = { k = 0, flash = 0, t0 = -1e9, dur = 1, ringT = -1e9 }
+  G.shockState = function() return S end   -- 测试用
+  -- 现在的闷的程度（0～1）：Fx.lua 新放的声音按它切高频、压音量
+  function G.muffle()
+    local u = os.clock() - S.t0
+    if u >= S.dur then return 0 end
+    local fade = 1 - u / S.dur
+    return S.k * fade * fade
+  end
+  function G.concuss(d, r, c)
+    if G.fly then return end   -- 座舱里不算
+    if c == "flak" then return end   -- 天上的高炮空炸：地上的人不震
+    local R = r * 3 + 16
+    if d >= R then return end
+    local k = (1 - d / R) ^ 1.3
+    if G.drive then k = k * 0.45 end   -- 车里：装甲挡掉大半
+    if k < 0.08 then return end
+    local now = os.clock()
+    local cur = G.muffle()
+    S.k = math.min(1, math.max(cur, k) + 0.25 * math.min(cur, k))   -- 余震叠上去一点
+    S.t0 = now
+    S.dur = 1.2 + 4.0 * S.k
+    S.flash = math.max(S.flash, 0.35 + 0.65 * k)
+    -- 耳鸣：近的（k 大）才响；刚响过 2 秒内不重复起头
+    if k > 0.3 and now - S.ringT > 2 and G.sfx then
+      S.ringT = now
+      G.sfx("earRing", nil, { vol = 0.4 + 0.9 * k, dry = true, must = true })
+    end
+  end
+
+  local blur, cc = nil, nil
+  local function ensure()
+    if not blur or not blur.Parent then
+      blur = Instance.new("BlurEffect")
+      blur.Name = "ShockBlur"
+      blur.Size = 0
+      blur.Parent = Lighting
+    end
+    if not cc or not cc.Parent then
+      cc = Instance.new("ColorCorrectionEffect")
+      cc.Name = "ShockGrade"
+      cc.Parent = Lighting
+    end
+  end
+  local idle = true
+  G.frameConn("Shock", function(dt)
+    local m = G.muffle()
+    S.flash = S.flash * math.exp(-dt * 3.2)
+    if m < 0.005 and S.flash < 0.01 then
+      if not idle then
+        idle = true
+        if blur then blur.Size = 0 end
+        if cc then cc.Brightness, cc.Saturation, cc.Contrast = 0, 0, 0 end
+      end
+      return
+    end
+    idle = false
+    ensure()
+    blur.Size = 2 + 14 * math.max(m, S.flash * 0.8)
+    cc.Brightness = 0.32 * S.flash
+    cc.Saturation = -0.45 * m
+    cc.Contrast = -0.15 * S.flash
+  end)
+end
+
+return Shock
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -53366,7 +54506,216 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="149">
+          <Properties>
+            <string name="Name">SquadHud</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
+--   左边一块小队面板：「A 小队」，下面每个队友一行——名字、血条、状态（倒地红字、阵亡灰字、在载具里）、离我多远；只有自己一个人时写「等队友加入」
+--   小队队友头顶：绿色的倒三角 + 名字（隔着墙也看得见，600 格以内），倒地的由 Downed.lua 画救援标记、这里不画
+--   小队号在玩家属性 Squad 上（服务器分好的），队伍在属性 Side 上
+local Players = game:GetService("Players")
+
+local SquadHud = {}
+
+function SquadHud.init(G)
+  local T = G.T or function(k) return k end
+  local player = Players.LocalPlayer
+  local RGB, V = Color3.fromRGB, Vector3.new
+  local GREEN = RGB(116, 232, 120)
+  local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "SquadHud"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 6
+  gui.Parent = player:WaitForChild("PlayerGui")
+  local panel = Instance.new("Frame")
+  panel.Name = "Panel"
+  panel.Position = UDim2.new(0, 16, 0.36, 0)
+  panel.Size = UDim2.fromOffset(190, 20)
+  panel.BackgroundTransparency = 1
+  panel.Visible = false
+  panel.Parent = gui
+  local title = Instance.new("TextLabel")
+  title.BackgroundTransparency = 1
+  title.Size = UDim2.new(1, 0, 0, 18)
+  title.Font = Enum.Font.GothamBold
+  title.TextSize = 13
+  title.TextColor3 = GREEN
+  title.TextXAlignment = Enum.TextXAlignment.Left
+  title.TextStrokeTransparency = 0.5
+  title.Parent = panel
+  local rows = {}
+  local function row(i)
+    if rows[i] then return rows[i] end
+    local f = Instance.new("Frame")
+    f.BackgroundColor3 = RGB(6, 8, 10)
+    f.BackgroundTransparency = 0.45
+    f.BorderSizePixel = 0
+    f.Size = UDim2.new(1, 0, 0, 30)
+    f.Position = UDim2.fromOffset(0, 20 + (i - 1) * 33)
+    f.Parent = panel
+    local edge = Instance.new("Frame")
+    edge.Size = UDim2.new(0, 2, 1, 0)
+    edge.BackgroundColor3 = GREEN
+    edge.BorderSizePixel = 0
+    edge.Parent = f
+    local name = Instance.new("TextLabel")
+    name.BackgroundTransparency = 1
+    name.Position = UDim2.fromOffset(8, 2)
+    name.Size = UDim2.new(1, -70, 0, 16)
+    name.Font = Enum.Font.GothamMedium
+    name.TextSize = 13
+    name.TextColor3 = RGB(236, 240, 236)
+    name.TextXAlignment = Enum.TextXAlignment.Left
+    name.TextTruncate = Enum.TextTruncate.AtEnd
+    name.Parent = f
+    local info = Instance.new("TextLabel")
+    info.BackgroundTransparency = 1
+    info.AnchorPoint = Vector2.new(1, 0)
+    info.Position = UDim2.new(1, -6, 0, 2)
+    info.Size = UDim2.fromOffset(64, 16)
+    info.Font = Enum.Font.GothamBold
+    info.TextSize = 11
+    info.TextColor3 = RGB(190, 196, 190)
+    info.TextXAlignment = Enum.TextXAlignment.Right
+    info.Parent = f
+    local bar = Instance.new("Frame")
+    bar.Position = UDim2.fromOffset(8, 21)
+    bar.Size = UDim2.new(1, -16, 0, 3)
+    bar.BackgroundColor3 = RGB(40, 44, 40)
+    bar.BorderSizePixel = 0
+    bar.Parent = f
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.fromScale(1, 1)
+    fill.BackgroundColor3 = GREEN
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+    rows[i] = { f = f, edge = edge, name = name, info = info, fill = fill }
+    return rows[i]
+  end
+
+  -- 头顶的标记
+  local marks = {}   -- [Player] = { bb, ch }
+  local function dropMark(pl)
+    local m = marks[pl]
+    if m then m.bb:Destroy() marks[pl] = nil end
+  end
+  local function mark(pl, ch)
+    local m = marks[pl]
+    if m and m.ch == ch then return m end
+    dropMark(pl)
+    local head = ch:FindFirstChild("Head")
+    if not head then return nil end
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "SquadMark"
+    bb.Size = UDim2.fromOffset(110, 34)
+    bb.StudsOffset = V(0, 2.2, 0)
+    bb.AlwaysOnTop = true
+    bb.LightInfluence = 0
+    bb.MaxDistance = 600
+    bb.Adornee = head
+    local nm = Instance.new("TextLabel")
+    nm.BackgroundTransparency = 1
+    nm.Size = UDim2.new(1, 0, 0, 14)
+    nm.Font = Enum.Font.GothamBold
+    nm.TextSize = 12
+    nm.TextColor3 = GREEN
+    nm.TextStrokeTransparency = 0.45
+    nm.Text = pl.DisplayName
+    nm.Parent = bb
+    local tri = Instance.new("TextLabel")
+    tri.BackgroundTransparency = 1
+    tri.Position = UDim2.fromOffset(0, 13)
+    tri.Size = UDim2.new(1, 0, 0, 16)
+    tri.Font = Enum.Font.GothamBold
+    tri.TextSize = 14
+    tri.TextColor3 = GREEN
+    tri.TextStrokeTransparency = 0.45
+    tri.Text = "▼"
+    tri.Parent = bb
+    bb.Parent = gui
+    m = { bb = bb, ch = ch, nm = nm, tri = tri }
+    marks[pl] = m
+    return m
+  end
+  Players.PlayerRemoving:Connect(dropMark)
+
+  -- 小队队友（同一边、同一个小队号；按名字排好）
+  local function mates()
+    local sq, side = player:GetAttribute("Squad"), player:GetAttribute("Side")
+    local out = {}
+    if not sq then return out, nil end
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if pl ~= player and pl:GetAttribute("Squad") == sq and pl:GetAttribute("Side") == side then table.insert(out, pl) end
+    end
+    table.sort(out, function(a, b) return a.DisplayName < b.DisplayName end)
+    return out, sq
+  end
+  G.squadMatesOf = mates   -- 测试用
+
+  local acc = 0
+  G.frameConn("SquadHud", function(dt)
+    acc += dt
+    if acc < 0.2 then return end
+    acc = 0
+    local list, sq = mates()
+    local menu = (G.menuShown and G.menuShown()) or false
+    local myCh = player.Character
+    local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil
+    title.Text = sq and T("squad.title", sq) or ""
+    local seen = {}
+    for i, pl in ipairs(list) do
+      local r = row(i)
+      r.f.Visible = true
+      r.name.Text = pl.DisplayName
+      local ch = pl.Character
+      local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      local alive = hum ~= nil and hum.Health > 0
+      local down = alive and ch:GetAttribute("Downed") == true
+      local hp = (alive and not down) and clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 0
+      r.fill.Size = UDim2.fromScale(hp, 1)
+      r.fill.BackgroundColor3 = (hp < 0.35) and RGB(236, 170, 60) or GREEN
+      local seated = hum ~= nil and hum.Sit
+      if not alive then
+        r.info.Text, r.info.TextColor3 = T("squad.dead"), RGB(140, 140, 140)
+        r.name.TextColor3, r.edge.BackgroundColor3 = RGB(140, 144, 140), RGB(90, 90, 90)
+      elseif down then
+        r.info.Text, r.info.TextColor3 = T("squad.down"), RGB(236, 70, 60)
+        r.name.TextColor3, r.edge.BackgroundColor3 = RGB(255, 210, 205), RGB(236, 70, 60)
+      else
+        local d = (hrp and myHrp) and math.floor((hrp.Position - myHrp.Position).Magnitude / 2.8 + 0.5) or nil
+        r.info.Text = seated and T("squad.veh") or (d and (d .. " m") or "")
+        r.info.TextColor3 = RGB(190, 196, 190)
+        r.name.TextColor3, r.edge.BackgroundColor3 = RGB(236, 240, 236), GREEN
+      end
+      -- 头顶标记：活着、没倒地、不是自己
+      if alive and not down and ch then
+        local m = mark(pl, ch)
+        if m then seen[pl] = true end
+      end
+    end
+    for i = #list + 1, #rows do rows[i].f.Visible = false end
+    if #list == 0 and sq then
+      local r = row(1)
+      r.f.Visible = true
+      r.name.Text = T("squad.alone")
+      r.name.TextColor3 = RGB(170, 176, 170)
+      r.info.Text = ""
+      r.fill.Size = UDim2.fromScale(0, 1)
+    end
+    for pl in pairs(marks) do if not seen[pl] then dropMark(pl) end end
+  end)
+end
+
+return SquadHud
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -53821,7 +55170,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -55041,7 +56390,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -55548,7 +56897,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -55661,7 +57010,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -56139,6 +57488,7 @@ function UI.init(G)
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id
   end
 
@@ -56745,7 +58095,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -56849,7 +58199,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -58358,7 +59708,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -59112,7 +60462,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -60075,7 +61425,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -60918,13 +62268,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="154">
+  <Item class="Workspace" referent="160">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="155">
+  <Item class="Lighting" referent="161">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

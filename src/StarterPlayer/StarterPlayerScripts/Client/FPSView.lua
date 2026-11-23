@@ -888,7 +888,7 @@ function FPSView.init(G)
       end
     end
     -- 疾跑：枪往下、往左斜着端（跑起来不瞄准）
-    sprintK += ((G.sprinting and 1 or 0) - sprintK) * math.min(1, dt * 8)
+    sprintK += (((G.sprinting or G.mantling) and 1 or 0) - sprintK) * math.min(1, dt * ((G.mantling and 14) or 8))   -- 翻越（Mantle.lua）时枪也收下去
     if sprintK > 0.001 then extra = extra * CF(0.05 * sprintK, -0.12 * sprintK, 0.05 * sprintK) * CFrame.Angles(-0.38 * sprintK, 0.5 * sprintK, 0.25 * sprintK) end
     local adsT = ADS_CF
     if vm.optic then adsT = opticAds(vm.optic) end

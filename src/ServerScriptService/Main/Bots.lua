@@ -601,7 +601,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) then   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
+      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) and not P.downed then   -- 倒地的不补枪   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then
@@ -639,7 +639,7 @@ function Bots.init(G)
   local function targetPos(c)
     if c.P then
       local P = c.P
-      if not P.alive or not P.char or not c.part.Parent then return nil end
+      if not P.alive or not P.char or not c.part.Parent or P.downed then return nil end
       local hum = P.char:FindFirstChildOfClass("Humanoid")
       if not hum or hum.Health <= 0 then return nil end
       return c.part.Position + V(0, 0.8, 0)
