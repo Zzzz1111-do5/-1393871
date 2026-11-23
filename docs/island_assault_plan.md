@@ -1042,6 +1042,17 @@
     页面等字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）。
   - Lune 要 0.11 以上（README 也这么写）：0.8.9 跑测试台一启动就崩（`registry.rs` cannot mutably borrow app data container），build 出来的 rbxlx 两个版本一样。
     容器重置后装 Lune：`curl -sfL -o lune.zip https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip`，解压放到 `/usr/local/bin`。
+  - 11-23（darksword-forts-navy，续）：用户「把几个 ai 弄的游戏合并给我」「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」「在游戏里实现动画里的动画」：
+    ① 合并：affectionate-pasteur（含 darksword-air-map）、vibrant-ramanujan 都合进来（keen-heisenberg、codex/claude-playability-polish、island-assault-cinematic-operation 早就在里面）。
+    冲突：服务器模块表（Kit + Economy / Revive / Squads / Pve 都要）、选地图（投票 + PvE 关卡页签）、出生点名字（红方前进基地 + 小队）、测试台初始化、文档。
+    ② 阵亡效果（客户端 `DeathFx.lua`）：死了先放 4.4 秒（倒地以后才死的 2.8 秒）——闷响、画面一白再褪成黑白、模糊、四边压暗、新放的声音发闷（接在 `G.muffle` 上）、心跳两下；
+    镜头留在倒下的地方慢慢升高拉远看着身体（车里死的看车）；正中红色「阵亡」、下面写凶手和距离（killcam 消息，原来 Warfx 转镜头看凶手那段这时让出来，`G.killcamStop`）；
+    最后半秒淡黑，部署界面（UI.lua 看 `G.deathFxOn()`）出来后黑幕淡开。测试 `tools/mock/deathfx.lua`。
+    ③ 宣传片的动画进游戏：炮塔掀飞照片子调好的参数（View.lua：往上 20～27 格 / 秒、慢慢翻、落在车旁）；飞机被打掉（Fly.lua `wreckStart` / `wreckMove`）：
+    直升机尾桨没了越转越快、机头往下栽、尾梁拖火和黑烟，固定翼顺着速度栽下去，砸地炸开、残骸烧十几秒；服务器 4 秒后收实体，客户端 `falling` 接着演完。测试 `tools/mock/wreckfx.lua`。
+    PGL-625 发射架：`tools/models/t625_split.py` 把 t625.glb 的 Body_1 拆成 Body_5 + Gun_2（ImportedMeta 留着 Body_1，没重导照旧）；导入说明写了重导步骤。
+    宣传片数据目录的 meta.json 要重新导一次（`export_meta.luau`）才认得 Gun_2——片子里原来加载时按三角形挪（VEH_MOVE）的那套在新 GLB 上不起作用了。
+    测试：两处有意的改动之前没跟上——ia_import（坦克不画车顶机枪的枪身，VehDefs.TANK_MG）、interior_props（顶灯 2 盏）。
   - 11-23（affectionate-pasteur）：用户「三张地图改成投票制，进去投票选地图」。选地图不再是第一个人点的定：`ACT.pickMap` → `G.voteMap`（init.server.lua，能改票），
     第一票投出后 `Config.MapVote.time`（25）秒按票数最多的开（平票随机），在场的人都投了再等 `grace`（3）秒；投票中服务器半秒推一次状态（`S.vote` 各张票数、还剩几秒、几人投了，
     `S.myVote`）；MapPick.lua 每张卡显示票数、自己投的高亮「已投这张」、底下倒计时，定了以后投过票的人生成好了自动快速加入。
