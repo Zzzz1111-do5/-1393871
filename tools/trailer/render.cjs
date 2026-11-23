@@ -129,18 +129,26 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
         for (const k of e.plates) if (k != null) need.get(e.src).add(k);
       }
       await p.evaluate(() => { window.FILM.jpg = true; });
-      for (const [src, set] of need) {
+      // REV=1：倒着渲（另开一个进程帮同一份从后往前渲，两头往中间赶）；每帧先占一个锁文件，几个进程不会撞到同一帧
+      const order = [...need];
+      if (process.env.REV) order.reverse();
+      for (const [src, set] of order) {
         const dir = path.join(OUT, 'plates', src);
         fs.mkdirSync(dir, { recursive: true });
         const ks = [...set].sort((a, b) => a - b).filter((k, j) => j % pn === pi);
+        if (process.env.REV) ks.reverse();
         const t0 = Date.now();
         let done = 0;
         for (const k of ks) {
           const f = path.join(dir, String(k).padStart(4, '0') + '.jpg');
           if (fs.existsSync(f)) continue;
-          await p.evaluate(([src, k]) => window.FILM.renderPlate(src, k), [src, k]);
-          await grab(p, f + '.part');
-          fs.renameSync(f + '.part', f);
+          let lock;
+          try { lock = fs.openSync(f + '.lock', 'wx'); } catch (e) { continue; }   // 别的进程正在渲这一帧
+          try {
+            await p.evaluate(([src, k]) => window.FILM.renderPlate(src, k), [src, k]);
+            await grab(p, f + '.part');
+            fs.renameSync(f + '.part', f);
+          } finally { fs.closeSync(lock); fs.rmSync(f + '.lock', { force: true }); }
           done++;
           if (done % 24 === 0) console.log(`  ${src} ${done}/${ks.length}（每帧 ${((Date.now() - t0) / done / 1000).toFixed(2)} 秒）`);
         }
