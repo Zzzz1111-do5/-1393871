@@ -102,6 +102,9 @@ check(P.vehicle == e and C.drive ~= nil, "坐上了 " .. VEH)
 T.runUntil(function() return G.round.phase == "battle" end, 60)
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
+-- 等真模型件（座椅、方向盘、踏板、握把……）在后台生成好、内饰重建一次（用户 11-23：不要自己建模，用 Sketchfab 的）
+T.runUntil(function() local c = C.interiorState().cur return c ~= nil and c.propsDone == true end, 240)
+R.run(0.5)
 local I = C.interiorState()
 local cur = I.cur
 check(C.interiorOn() and cur ~= nil and I.mode == "seat", "坐进车里（" .. tostring(I.station) .. "）")

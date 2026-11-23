@@ -806,7 +806,8 @@ for (const key of Object.keys(CFG.items)) {
   if (M.pts) L.push(`    pts = { ${Object.entries(M.pts).map(([k, v]) => `${k} = ${lv(v)}`).join(', ')} },`);
   if (M.inner && M.inner.length) L.push(`    inner = { ${M.inner.map((n) => `"${n}"`).join(', ')} },`);   // 镜筒里面的块（开镜时藏起来，从目镜的洞里看出去）
   L.push(`    size = ${lv(M.size)},`);
-  if (M.credit) L.push(`    credit = "${M.credit}",`);
+  // 原模型名字里可能带英文双引号（「Driver seat "Pilot" …」）：转义，不然 OpticsMeta.lua 整个读不进来、所有真模型件都失效
+  if (M.credit) L.push(`    credit = "${M.credit.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",`);
   L.push('  },');
 }
 L.push('}');

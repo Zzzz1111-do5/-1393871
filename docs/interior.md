@@ -181,3 +181,18 @@
 - 测试：`python3 tools/mock/run.py tools/mock/carve.lua veh=hmmwv [dump=<目录>]`（假装重新导入了改过的 GLB）；
   画图：`CARVE=1 DAY=1 AMB=0.9 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_hmmwv_carve.json <输出前缀> models/veh/hmmwv.glb`
   （外壳不透明、背面剔除，跟 Roblox 一样只从正面看得见）；挖的过程看 `preview=` 出的 `<键>_eye_<眼位>.png`（carve.json 的 `eyes`）
+
+## 车内零件用 Sketchfab 真模型、Blender 加工（用户 11-23：「很粗糙 你从sketchfeb找模型去替代不要自己建模 然后用blender」）
+
+- 管线：Sketchfab 原模型（CC-BY / CC0，不收游戏里扒的、不收 "not my model"）→ `blender -b -P tools/weapons/blprep.py -- <键>`（optics.json 的
+  `sources[<键>].blprep`：keep / drop / box 挑块，rot 摆正，fit / scale 缩到真实尺寸，origin 定原点（"seat"：坐垫顶面），cut 截掉用不上的（bisect），
+  colors 给没贴图的上色，tris 减面，texMax 缩贴图）→ 缓存 `tools/weapons/cache/<键>/model.glb` → `BUILD=<键> node tools/weapons/optics.mjs`
+  → `models/optics/<键>.glb`（给 Studio 导入）、`OpticMesh/<键>.lua`（没导入时后台现生成）、`OpticsMeta.lua`、署名
+- 11-23 这一批（器材坐标：格、真实尺寸，+Y 上）：`ip_dseat` 驾驶座（卡车气囊座椅去掉底座，乘员朝 −Z，原点坐垫顶面；坦克里往后仰，炮长 / 车长用 0.72 倍）、
+  `ip_swheel` 方向盘（三辐，盘面朝 +Z，直径 0.40 米，挂在 swheel 组上跟着转向转）、`ip_lever` 操纵杆 / 换挡杆（高 0.5 米，96 式两根转向杆、换挡杆 0.56 倍）、
+  `ip_gauges` 指针式仪表三块（96 式驾驶员）、`ip_pedals` 刹车 + 油门、`ip_grip` 操纵握把（炮长两个、车长一个）；
+  99A 的显示器外壳、开关面板、顶灯改用已有的 ip_cdu、ip_sw、ip_lamp（同 M1A2）
+- 找过没用上的：T-90M（mansoorsajidp）车里只有转盘和几块壳子；T-62A / M1A1（MirzaArrafiERV_45）材质名是游戏资源那套（chassis_vlo、misc_a），来源说不清；
+  坦克炮闩、坦克瞄准镜镜体 Sketchfab 上没有合适的（只有野战炮、枪用瞄准镜）——炮闩、瞄准镜镜体、油箱还是零件拼的
+- 测试：`python3 tools/mock/run.py tools/mock/interior_props_cn.lua veh=ztz99a|ztz96 [dump=<目录>]`（等真模型件生成好、内饰重建一次，每件摆了几个、方向盘打满转 120°）；
+  画图：`AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_ztz99a_props.json <输出前缀>`

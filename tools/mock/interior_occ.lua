@@ -146,7 +146,9 @@ for i, name in ipairs(cur.spec.order) do
         local len = dist - 0.03 * SC
         local hits = {}
         for _, p in ipairs(cur.model:GetDescendants()) do
-          if p:IsA("BasePart") and not screenParts[p] and p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 then
+          -- 座椅真模型（ip_dseat，一整块网格）不算：这里按定向包围盒判，往后仰的座椅（驾驶员半躺）包围盒的顶面罩在脸前，
+          --   实际的坐垫、靠背、头枕都在眼睛后下方，挡不住屏幕
+          if p:IsA("BasePart") and not screenParts[p] and p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 and not string.match(p.Name, "^O_ip_dseat__") then
             local t = rayOBB(eye, d, len, p)
             if t then
               local who = crewOf(p)

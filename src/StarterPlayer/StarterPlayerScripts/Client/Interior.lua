@@ -36,7 +36,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
   Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
   local IP_KEYS = { "ip_m829", "ip_m829lo", "ip_r125", "ip_he125", "ip_chg125", "ip_ext", "ip_radio", "ip_radio2", "ip_cvc", "ip_tsh",
-    "ip_cdu", "ip_cdus", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }   -- 后面八件：照用户发来的 M1A2 车长位照片、插图、钢铁猛兽截图找的 / 做的显示器、握把、电子箱、开关面板、顶灯、弹箱
+    "ip_cdu", "ip_cdus", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can",   -- 这八件：照用户发来的 M1A2 车长位照片、插图、钢铁猛兽截图找的 / 做的显示器、握把、电子箱、开关面板、顶灯、弹箱
+    "ip_dseat", "ip_swheel", "ip_lever", "ip_gauges", "ip_pedals", "ip_grip" }   -- 用户 11-23「很粗糙…不要自己建模 然后用 blender」：座椅、方向盘、操纵杆、仪表、踏板、握把（tools/weapons/blprep.py）
   local prewarmed = false
 
   local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
