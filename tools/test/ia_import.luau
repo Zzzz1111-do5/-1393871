@@ -102,7 +102,7 @@ do
 	local d15, i15 = VD.get("ztz96"), IM.m.ztz96
 	local Mz = VM.build(d15, "atk")
 	local n15, nT, nG, front = 0, 0, 0, 1e9
-	for _ in pairs(i15.parts) do n15 += 1 end
+	for _, p in pairs(i15.parts) do if VD.TANK_MG ~= false or p.g ~= "RwsGun" then n15 += 1 end end   -- 坦克不带机枪（用户 11-22，VehDefs.TANK_MG）：车顶机枪的枪身不画
 	local cnt = 0
 	for _, it in ipairs(Mz.parts) do
 		if it[1]:IsA("MeshPart") then
@@ -169,7 +169,10 @@ if M then
 		end
 	end
 end
-check(meshes == nParts, string.format("原模型 %d 块全用上：车体 %d、炮塔 %d、炮 %d、车轮 %d", meshes, meshes - turret - gun - wheels, turret, gun, wheels))
+local VDm = H.require(RS.VehDefs)
+local nUse = 0
+for _, p in pairs(info.parts) do if VDm.TANK_MG ~= false or p.g ~= "RwsGun" then nUse += 1 end end   -- 坦克不带机枪（用户 11-22，VehDefs.TANK_MG）：车顶机枪的枪身不画
+check(meshes == nUse, string.format("原模型 %d / %d 块全用上（坦克不画车顶机枪的枪身）：车体 %d、炮塔 %d、炮 %d、车轮 %d", meshes, nUse, meshes - turret - gun - wheels, turret, gun, wheels))
 local nW = 0
 for _ in pairs(info.wheels) do nW += 1 end
 check(M and #M.wheels == nW and nW >= 18, string.format("原模型的负重轮 / 主动轮 / 诱导轮 / 托带轮各自一个弹簧：%d（元数据 %d 个轮）", M and #M.wheels or 0, nW))

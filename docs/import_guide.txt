@@ -22,6 +22,19 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 23 日第四包（几个 AI 的分支合在一起、阵亡效果、飞机坠毁动画、防空车发射架）：换游戏文件（或者「三、只换脚本」）；模型只要重导一个 veh/t625.glb：
+    - 合并：投票选三张地图 + 关卡 PvE 页签、金币解锁载具、倒地救援、小队、翻越、震荡、标记、M1A2 SEPv2 车长位、真实火控……都在一个游戏里了
+    - 阵亡效果（像 GTA5）：死了不再一下子切到部署界面——先一下闷响、画面褪成黑白、镜头慢慢升高拉远看着自己倒下的地方，
+      正中红色「阵亡」和凶手、距离，四秒多以后淡黑再出部署界面（倒地以后才死的短一点）
+    - 飞机直升机被打掉：直升机尾桨没了越转越快、拖着火和黑烟栽下去，飞机顺着速度栽下去；砸到地上炸开、残骸烧十几秒（原来停在半空 4 秒就没了）
+    - 坦克被打爆炮塔掀飞改成真实的高度：顶起三米上下、慢慢翻、落在车旁边（原来飞十几米高）
+    - PGL-625 防空车：炮塔两侧的导弹发射架原来和车体是一整块，炮塔转、炮抬头时发射架不动——t625.glb 里拆开了（新的两块 V_t625__Body_5、V_t625__Gun_2）。
+      重导前先在命令栏（编辑状态下）粘这一行删掉旧的 PGL-625 零件，再照「一、导入」只导 veh/t625.glb：
+
+for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_t625__") then d:Destroy() end end end
+
+      不重导也能玩：游戏照旧用老的那块车体（发射架不跟着转）
+
   11 月 23 日第三包（投票选地图、沙海的几处 bug）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
     - 选地图改成投票：进服在主菜单「开始游戏」→「投票选地图」里点一张就是投一票（再点别的就是改票），每张卡上写着几票，底下倒计时；
       第一票投出后 25 秒按票数最多的开（平票随机挑一张），在场的人都投了再等 3 秒（还能改）就开；投过票的人地图生成好了自动进战场
