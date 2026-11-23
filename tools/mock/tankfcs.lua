@@ -236,5 +236,16 @@ else
   check(true, "靶车不够远（" .. math.floor(trueR) .. " 米），战斗瞄准距离照样打得中")
 end
 check(tgt.hp <= hpB, "（剩 " .. math.floor(tgt.hp) .. "）")
+print("⑥ SEPv2 的第四种弹：M1028 霰弹（没有弹药数据链，没有 AMP）")
+for _ = 1, 3 do T.tap(Enum.KeyCode.Q) R.run(0.05) end   -- 穿甲 → 破甲 → 多用途 → 霰弹
+check(st.fcs.am == "m1028", "Q 换到 " .. tostring(st.fcs.am))
+for _ = 1, 17 do aimAt(tc) R.run(0.4) end
+local nb, ns0 = 0, #G.shots
+local bs0 = G.botShot
+G.botShot = function(...) nb = nb + 1 return bs0(...) end
+R.as("client", function() C.driveTryFire() end)
+R.run(0.2)
+G.botShot = bs0
+check(nb == BAL.AMMO.m1028.pellets and #G.shots == ns0, string.format("霰弹打出去一锥 %d 道弹丸，没有飞炮弹（%d 发）", nb, #G.shots - ns0))
 check(#R.errors == 0, "全程没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

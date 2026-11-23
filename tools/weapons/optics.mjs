@@ -191,8 +191,7 @@ async function buildItem(key, I, dry) {
     if (stripped) await doc.transform(normals({ overwrite: false }));   // 只在去掉过法线的件上重算（别的件输出不变，不用重导）
   }
   // dropBox：去掉中心落在这个盒子里的连通块（器材坐标 [x0, y0, z0, x1, y1, z1]；比如 M40A5 自带的瞄准镜，换装别的镜子）
-  if (I.dropBox) {
-    const B = I.dropBox;
+  for (const B of I.dropBox ? (Array.isArray(I.dropBox[0]) ? I.dropBox : [I.dropBox]) : []) {   // 一个盒子或者几个盒子
     let dropped = 0;
     for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
       const pos = prim.getAttribute('POSITION'), idx = prim.getIndices();
@@ -244,6 +243,50 @@ async function buildItem(key, I, dry) {
       prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(keep)).setBuffer(pos.getBuffer()));
     }
     console.log('   clipBox 去掉三角形', cut);
+  }
+  // cutBelow：按平面 y = cutBelow（器材坐标，格）真切开——跨过这个面的三角形切成留在上面的那一截（位置、法线、UV 按比例插值），
+  //   下面的全去掉（clipBox 按重心整块去，侧板、背板那种大三角形会留下长长的尖角）；比如显示控制单元去掉下面的键盘，上面摞成两块屏连一体
+  if (I.cutBelow != null) {
+    const y0 = I.cutBelow;
+    let cutN = 0;
+    for (const P of parts) for (const prim of P.mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION'), nor = prim.getAttribute('NORMAL'), uv = prim.getAttribute('TEXCOORD_0'), tan = prim.getAttribute('TANGENT');
+      const idx = prim.getIndices();
+      const n = idx ? idx.getCount() : pos.getCount();
+      const vtx = (i) => ({ p: pos.getElement(i, [0, 0, 0]).slice(), n: nor ? nor.getElement(i, [0, 0, 0]).slice() : null,
+        u: uv ? uv.getElement(i, [0, 0]).slice() : null, t: tan ? tan.getElement(i, [0, 0, 0, 0]).slice() : null });
+      const lerp = (a, b, t) => a.map((x, k) => x + (b[k] - x) * t);
+      const mix = (A, B, t) => ({ p: lerp(A.p, B.p, t), n: A.n && lerp(A.n, B.n, t), u: A.u && lerp(A.u, B.u, t), t: A.t && [...lerp(A.t.slice(0, 3), B.t.slice(0, 3), t), A.t[3]] });
+      const oP = [], oN = [], oU = [], oT = [];
+      const put = (v) => {
+        oP.push(...v.p);
+        if (nor) { const l = Math.hypot(...v.n) || 1; oN.push(v.n[0] / l, v.n[1] / l, v.n[2] / l); }
+        if (uv) oU.push(...v.u);
+        if (tan) oT.push(...v.t);
+      };
+      for (let f = 0; f + 2 < n; f += 3) {
+        const V = [0, 1, 2].map((q) => vtx(idx ? idx.getScalar(f + q) : f + q));
+        const ins = V.map((v) => v.p[1] >= y0);
+        if (ins[0] && ins[1] && ins[2]) { V.forEach(put); continue; }
+        cutN++;
+        if (!ins[0] && !ins[1] && !ins[2]) continue;
+        const poly = [];   // 按原来的顶点顺序沿边走一圈（绕向不变），留下面上的点和跨过平面的交点
+        for (let q = 0; q < 3; q++) {
+          const A = V[q], B = V[(q + 1) % 3], ia = ins[q], ib = ins[(q + 1) % 3];
+          if (ia) poly.push(A);
+          if (ia !== ib) poly.push(mix(A, B, (y0 - A.p[1]) / (B.p[1] - A.p[1])));
+        }
+        for (let q = 1; q + 1 < poly.length; q++) { put(poly[0]); put(poly[q]); put(poly[q + 1]); }
+      }
+      const buf = pos.getBuffer();
+      prim.setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(oP)).setBuffer(buf));
+      if (nor) prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(new Float32Array(oN)).setBuffer(buf));
+      if (uv) prim.setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(new Float32Array(oU)).setBuffer(buf));
+      if (tan) prim.setAttribute('TANGENT', doc.createAccessor().setType('VEC4').setArray(new Float32Array(oT)).setBuffer(buf));
+      for (const sem of prim.listSemantics()) if (!['POSITION', 'NORMAL', 'TEXCOORD_0', 'TANGENT'].includes(sem)) prim.setAttribute(sem, null);
+      prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(Uint32Array.from({ length: oP.length / 3 }, (_, i) => i)).setBuffer(buf));
+    }
+    console.log('   cutBelow 切到的三角形', cutN);
   }
   // inner：镜筒里面（光轴附近、目镜到物镜之间）的三角形——内壁、镜片、分划板——分到「<块名>In」块里（用户 11-21：瞄准镜照使命召唤做）：
   //   开镜时游戏把这几块藏起来，眼睛从目镜的洞里直接看到放大的战场，外面一圈还是镜子的外壳（不再整屏涂黑）。

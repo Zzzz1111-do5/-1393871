@@ -22,8 +22,9 @@ B.AMMO = {
     vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
   m830a1 = { name = "M830A1 MPAT", sym = "MPAT", v0 = 1410, k = 8.5e-5, bs = 900, tr = true, ce = true,    -- 120 毫米多用途反坦克弹（能打直升机）
     vs = { inf = 1.0, light = 1.3, armor = 0.85, fort = 1.2, air = 1.4 }, splash = 1.1 },
-  m1147 = { name = "M1147 AMP", sym = "AMP", v0 = 1410, k = 9.0e-5, bs = 900, tr = true, ce = true,        -- 120 毫米高爆多用途弹（破障、打步兵、工事）
-    vs = { inf = 1.3, light = 1.1, armor = 0.6, fort = 1.6 }, splash = 1.5 },
+  m1028 = { name = "M1028 CAN", sym = "CAN", v0 = 1410, k = 1.5e-4, bs = 300, tr = false,       -- 120 毫米霰弹：1150 颗钨珠，近距离打步兵（500 米内）
+    pellets = 24, coneDeg = 1.8, range = 600, pdmg = 0.12,   -- 游戏里按 24 道弹丸射线算（每道 = 一小把钨珠），锥角 ±1.8°、打 600 米
+    vs = { inf = 1.6, light = 0.4, armor = 0.02, fort = 0.15, air = 0.6 } },
   m900 = { name = "M900", sym = "SABOT", v0 = 1505, k = 4.0e-5, bs = 1200, tr = true,           -- 105 毫米尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m456 = { name = "M456 HEAT", sym = "HEAT", v0 = 1173, k = 1.0e-4, bs = 900, tr = true, ce = true,         -- 105 毫米破甲弹
@@ -37,11 +38,11 @@ B.AMMO = {
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
-  gun120 = { "m829a3", "m830", "m830a1", "m1147" },
+  gun120 = { "m829a3", "m830", "m830a1", "m1028" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
   gun125 = { "dtc10", "heat125", "he125" },
   gun105 = { "m900", "m456" },
 }
-B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", AMP = "m1147", CAN = "m1147",
+B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
 B.MAXR = 5000   -- 激光测距、弹在空中最多飞的距离（米）
 

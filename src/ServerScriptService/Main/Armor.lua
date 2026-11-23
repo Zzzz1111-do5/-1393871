@@ -456,7 +456,14 @@ function Armor.init(G)
     if w.kind == "shell" then
       -- 坦克炮（Ballistics.lua 认得的炮）：按客户端选的弹种（msg.am，这门炮能打的才认）用真实初速、重力、空气阻力，带曳光
       local ww, a = weaponOf(wid, w, type(msg) == "table" and msg.am or nil)
-      if a then
+      if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
+        local pw = ww.pelletW
+        if not pw then
+          pw = { dmg = w.dmg * a.pdmg, range = a.range * BAL.S, vs = ww.vs, fx = "lmg", spread = a.coneDeg }
+          ww.pelletW = pw
+        end
+        for _ = 1, a.pellets do G.botShot(mz.Position, mz.Position + gdir * pw.range, pw, S, { e.model, P.char }, a.coneDeg) end
+      elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })

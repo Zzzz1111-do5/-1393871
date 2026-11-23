@@ -35,7 +35,7 @@ function Interior.init(G)
   -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
   Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
   local IP_KEYS = { "ip_m829", "ip_m829lo", "ip_r125", "ip_he125", "ip_chg125", "ip_ext", "ip_radio", "ip_radio2", "ip_cvc", "ip_tsh",
-    "ip_cdu", "ip_tab", "ip_mon", "ip_yoke", "ip_stick", "ip_asq", "ip_sw", "ip_lamp", "ip_can" }   -- 后面九件：照用户发来的 M1A2 车长位照片找的显示器、握把、电子箱、开关面板、顶灯、弹箱
+    "ip_cdu", "ip_mon2", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }   -- 后面八件：照用户发来的 M1A2 车长位照片、插图找的显示器、握把、电子箱、开关面板、顶灯、弹箱
   local prewarmed = false
 
   local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
@@ -1317,7 +1317,7 @@ function Interior.init(G)
   G.interiorScopeState = function() return scope end   -- 测试用
 
   ---------------------------------------------------------------- 其他观瞄设备（各乘员位的主镜 / 备用镜）
-  -- 资料对照：M1A2 SEPv3——炮长主瞄准镜 GPS（Drive.lua）、炮长辅助瞄准镜 GAS（M920，8 倍直瞄望远镜，主镜坏了用，分划按弹种刻距离）、
+  -- 资料对照：M1A2 SEPv2——炮长主瞄准镜 GPS（Drive.lua）、炮长辅助瞄准镜 GAS（M920，8 倍直瞄望远镜，主镜坏了用，分划按弹种刻距离）、
   --   车长独立热像仪 CITV（宽 / 窄视场，能自己转，猎-歼）、主瞄准镜延伸目镜 GPSE（车长看炮长的画面）、CROWS-LP 遥控武器站摄像头、
   --   驾驶员视觉增强器 DVE（AN/VAS-5 非制冷热像，车头方向）、后视热像摄像头 RVSS、装填手潜望镜（能 360° 转）；
   --   99A——炮长主镜 / 备用瞄准镜、车长周视瞄准镜（昼夜两用，独立转，猎-歼）、驾驶员微光夜视潜望镜

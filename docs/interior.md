@@ -28,7 +28,7 @@
 
 开镜：镜头先凑到目镜上，切进去以后先黑、亮的圆从边上滑进来变大（眼睛找出瞳），猛转时一边露出黑月牙。
 
-## M1A2 SEPv3
+## M1A2 SEPv2（用户 11-23：「我这个 M1A2 是 SEPv2」）
 
 - 驾驶员（车体前部中间，半躺）：三具潜望镜、DVE 显示器、驾驶员综合显示器 DID、T 形把（跟着方向转）、两个哈龙灭火瓶
   - DID 上排：MAIN MENU（主页：车速、转速、挡位、油量、炮塔方位、告警）、STATUS（发动机 / 传动 / 液压 / 电气读数）、W/C/A（告警 / 注意 / 提示）、
@@ -114,18 +114,20 @@
   `clipBox`（按三角形切掉一块，比如驾驶杆下面的长杆子）、`front`（预览多出正视、俯视图）
 - 内饰里：`B:prop(组, 键, cf, 缩放)` 摆一件；`B:propScreen`（InteriorDefs 的 `scr()`）摆带屏幕的件——原模型外壳摆好，屏幕玻璃前面 3 毫米贴我们的动态显示面，
   原模型的实体键上盖一层能对准、按下的键帽（印这个键的字，背光）；每件的版面（玻璃中心、宽高、每个键在哪）在 `InteriorDefs.PSCR`，量的是带贴图的正视图
-- M1A2（照用户发来的车长位照片：延伸目镜正前方，右边一块左侧一排背光键的竖屏显示器，再右边沙色的指挥终端，右手下面带操纵杆和键盘的电子箱）：
+- M1A2（照用户发来的车长位照片和车长位插图（11-23）：延伸目镜正前方，右边一个浅灰色、上下两块屏连成一体的大显示单元，下面一块小的带键盘的显示器，
+  右下是白色机箱上一根黑色带红按钮的握杆）：
   | 件 | 原模型 | 用在 |
   |---|---|---|
-  | ip_cdu | 「Aircraft instrument/module thingy」（LuddePudde）：左右各 5 个边键 + 整块键盘的显示控制单元 | 车长热像仪显示器 CITV、炮长控制显示面板 GCDP（竖屏版面） |
-  | ip_tab | 「Rugged Sci-Fi Tactical Military Tablet」（3DMOAN）：沙色加固战术终端 | 车长的指挥地图（JBC-P），去掉了天线 |
-  | ip_mon | 「Computer Box Monitor」（SUrusso613）：两边带按键板、U 形支架的显示器 | CROWS 遥控武器站显示器 |
-  | ip_asq | 「ASQ-155 Ballistic Computer」（TwilightFox）：A-6E 的弹道计算机，白色铸壳、铭牌、顶上键盘和操纵杆 | 车长右手边的电子箱 + 车长操纵握把 |
+  | ip_mon2 | 「Computer Box Monitor」（SUrusso613）：两边带按键条的浅灰色显示器，去掉 U 形支架和两边旋钮 | 车长面前上下连一体的显示单元：摞两个、后面一整块背板（上：热像仪 CITV，下：指挥地图 FBCB2 / 蓝军跟踪） |
+  | ip_cdu | 「Aircraft instrument/module thingy」（LuddePudde）：左右各 5 个边键 + 整块键盘的显示控制单元 | 炮长控制显示面板 GCDP、车长 CROWS 遥控武器站的小显示器（大显示单元下面） |
+  | ip_asq2 | 「ASQ-155 Ballistic Computer」（TwilightFox）：A-6E 的弹道计算机，白色铸壳、铭牌、顶上键盘，去掉原来那根杆 | 车长操纵握把底下的白色电子箱，杆座上装 ip_stick |
+  | ip_stick | 「B-8 Fighter Control Stick」（StratoArt） | 车长操纵握把（黑色、红色扳机和按钮） |
   | ip_yoke | 「ANIMATED KC-135 YOKE」（StratoArt）：去掉长杆，只留两只羊角握把和毂 | 炮长"凯迪拉克"双握把（跟着炮塔转、炮俯仰摆） |
-  | ip_stick | 「B-8 Fighter Control Stick」（StratoArt） | CROWS 的手柄 |
   | ip_sw | 「Industrial Switches Apollo Command Module」（ntilted）：带护盖的拨动开关面板 | 驾驶员主开关面板、辅助面板、炮长面板、装填手面板 |
   | ip_lamp | 「Industrial Bulkhead Wall Lamp Lowpoly」（iwanPlays）：带铁丝护罩的顶灯 | 炮塔两盏、驾驶舱一盏顶灯 |
   | ip_can | 「Ammuntion box」（jaiharitheking）：12.7 毫米 M2A1 铁皮弹箱 | 装填手脚边四个机枪弹箱 |
+  暂时没用上、留着给别的车的：ip_tab（沙色加固战术终端）、ip_mon（带 U 形支架的原件）、ip_asq（带原来那根杆的原件）。
+  optics.mjs 新选项：`cutBelow`（按平面真切开、插值 UV 和法线，切掉下面一截）；`dropBox` 可以给几个盒子
   另外原来就有的：电台（ip_radio / ip_radio2）、灭火瓶（ip_ext）、120 毫米弹（ip_m829 / ip_m829lo）、125 毫米弹丸和药筒（ip_r125 / ip_he125 / ip_chg125）、乘员头盔（ip_cvc / ip_tsh，现在不画乘员）
 - 测试：`python3 tools/mock/run.py tools/mock/interior_props.lua [dump=<目录>]`（等真模型生成好、内饰重建一次：九件都摆上、四块屏是真模型外壳、显示面和键帽都在外壳里、键按得动）；
   预览图里真模型部件按 GLB 画（`AMB=1.0` 亮一点）：`AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_props.json <输出前缀>`

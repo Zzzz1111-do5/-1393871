@@ -52,7 +52,7 @@ T.runUntil(function() return G.round.phase == "battle" end, 60)
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
 check(C.interiorOn() and C.interiorState().cur ~= nil, "按 C：坐进车里")
-local NEW = { "ip_cdu", "ip_tab", "ip_mon", "ip_yoke", "ip_stick", "ip_asq", "ip_sw", "ip_lamp", "ip_can" }
+local NEW = { "ip_cdu", "ip_mon2", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can" }
 local waited = 0
 T.runUntil(function()
   waited = waited + 1
@@ -62,17 +62,17 @@ T.runUntil(function()
 end, 240)
 local fails = {}
 for _, k in ipairs(NEW) do if not C.opticReady(k) then table.insert(fails, k .. (C.opticFailed(k) and "（生成失败）" or "（还没好）")) end end
-check(#fails == 0, "九件新部件都生成好了" .. (#fails > 0 and ("：没好的 " .. table.concat(fails, "、")) or ""))
+check(#fails == 0, "新部件都生成好了" .. (#fails > 0 and ("：没好的 " .. table.concat(fails, "、")) or ""))
 R.run(1)
 
-print("② 九件都摆上了")
+print("② 都摆上了")
 local cur = C.interiorState().cur
 local byKey = {}
 for _, p in ipairs(cur.model:GetDescendants()) do
   local k = p:IsA("BasePart") and string.match(p.Name, "^O_(.-)__")
   if k then byKey[k] = (byKey[k] or 0) + 1 end
 end
-local WANT = { ip_cdu = 2, ip_tab = 1, ip_mon = 1, ip_yoke = 1, ip_stick = 1, ip_asq = 1, ip_sw = 4, ip_lamp = 3, ip_can = 4 }
+local WANT = { ip_cdu = 2, ip_mon2 = 2, ip_yoke = 1, ip_stick = 1, ip_asq2 = 1, ip_sw = 4, ip_lamp = 3, ip_can = 4 }
 local META = R.require(R.services.ReplicatedStorage:FindFirstChild("OpticsMeta"))
 for _, k in ipairs(NEW) do
   local nParts = 0
@@ -109,7 +109,7 @@ end
 local function inBox(p, mn, mx, pad)
   return p.X > mn.X - pad and p.X < mx.X + pad and p.Y > mn.Y - pad and p.Y < mx.Y + pad and p.Z > mn.Z - pad and p.Z < mx.Z + pad
 end
-local SHELL = { gcdp = "ip_cdu", citv = "ip_cdu", cid = "ip_tab", crows = "ip_mon" }
+local SHELL = { gcdp = "ip_cdu", citv = "ip_mon2", cid = "ip_mon2", crows = "ip_cdu" }
 for page, key in pairs(SHELL) do
   local s
   for _, x in ipairs(cur.b.screens) do if x.page == page then s = x end end
@@ -139,6 +139,20 @@ local function press(label)
   return false
 end
 check(press("NFOV"), "车长热像仪显示器上的 NFOV 键按得动")
+-- 车长面前两块屏上下连一体（用户 11-23）：热像仪在上、指挥地图在下，同一个朝向、左右对齐，上下贴着
+do
+  local sU, sL
+  for _, x in ipairs(cur.b.screens) do if x.page == "citv" then sU = x elseif x.page == "cid" then sL = x end end
+  if sU and sL then
+    local a, c = sU.part.CFrame, sL.part.CFrame
+    local rel = a:ToObjectSpace(c)
+    local same = a.LookVector:Dot(c.LookVector) > 0.999
+    check(same and math.abs(rel.X) < 0.02 and rel.Y < -0.3 and rel.Y > -0.8 and math.abs(rel.Z) < 0.02,
+      string.format("车长两块屏上下连一体：同一个朝向（%s）、下面那块在正下方 %.2f 格（左右差 %.3f、前后差 %.3f）", tostring(same), -rel.Y, rel.X, rel.Z))
+  else
+    check(false, "车长的热像仪屏、指挥地图屏都在")
+  end
+end
 check(#R.errors == 0, "全程没有报错：" .. table.concat(R.errors, " | "))
 if dumpDir then
   -- 预览图的镜头：每块真模型外壳的屏幕正前方 0.55 米、炮长看双握把、车长看右手边的电子箱和握杆

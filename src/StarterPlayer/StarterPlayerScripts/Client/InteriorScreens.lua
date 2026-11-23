@@ -582,7 +582,7 @@ P.gcdp = function(s, env, zh)
   local th = Screens.thermal(view, vw, vh, { cols = 24 })
   reticleTank(view, vw, vh, G)
   local LIST = zh and { { "ap", "穿甲弹" }, { "heat", "破甲弹" }, { "he", "榴弹" }, { "gl", "炮射导弹" } }
-    or { { "SABOT", "SABOT" }, { "HEAT", "HEAT" }, { "MPAT", "MPAT" }, { "AMP", "AMP" }, { "CAN", "CAN" } }
+    or { { "SABOT", "SABOT" }, { "HEAT", "HEAT" }, { "MPAT", "MPAT" }, { "CAN", "CAN" } }   -- M1A2 SEPv2（没有弹药数据链，没有 AMP）
   local ammo = {}
   for i, a in ipairs(LIST) do
     if portrait then

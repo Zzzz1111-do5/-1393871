@@ -421,6 +421,13 @@ return {
     size = { 0.561, 0.416, 0.18 },
     credit = "车内饰：带侧键的显示器（CROWS 遥控武器站显示器）：Computer Box Monitor，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a",
   },
+  ip_mon2 = {
+    parts = {
+      Body = { c = { 0, 0.03, -0.001 }, s = { 0.453, 0.355, 0.177 }, tri = 2460 },
+    },
+    size = { 0.453, 0.355, 0.177 },
+    credit = "车内饰：带侧键的显示器（去掉 U 形支架和两边的旋钮）——车长面前上下连一体的两块显示器：Computer Box Monitor，作者 SUrusso613，CC-BY-4.0 https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a",
+  },
   ip_yoke = {
     parts = {
       C222 = { c = { 0.002, 0.022, -0.093 }, s = { 0.979, 0.593, 0.456 }, tri = 4654, col = { 37, 37, 37 }, met = 0.678 },
@@ -444,6 +451,13 @@ return {
     },
     size = { 0.741, 1.529, 1.144 },
     credit = "车内饰：火控计算机（带操纵杆、键盘）：ASQ-155 Ballistic Computer，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7",
+  },
+  ip_asq2 = {
+    parts = {
+      Body = { c = { 0, 0.629, 0.001 }, s = { 0.741, 1.258, 1.144 }, tri = 7071 },
+    },
+    size = { 0.741, 1.258, 1.144 },
+    credit = "车内饰：弹道计算机的机箱（去掉原来的操纵杆，上面装 B-8 握杆）——车长操纵握把底下的白色电子箱：ASQ-155 Ballistic Computer，作者 TwilightFox，CC-BY-4.0 https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7",
   },
   ip_sw = {
     parts = {
