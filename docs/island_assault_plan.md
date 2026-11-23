@@ -982,6 +982,16 @@
     数据目录要重建时：`lune run tools/trailer/export_desert.luau <目录>`、`lune run tools/trailer/export_meta.luau <目录>/meta.json`、
     `python3 -I tools/trailer/vfx_gen.py <目录>/assets/vfx`、`bash tools/trailer/fetch_cc0.sh <目录>`（网页版仓库的旧沙地、岩石、海面贴图可缺）。
     新版 Chromium 的 SwiftShader 对带透明的 sRGB 贴图按 mipmap 采样会坏（烟团一片片黑条）：彩色烟团不用 mipmap。
+  - 11-23：宣传片改成短剧结构（用户：动作逻辑上连不起来、看得一头雾水、要爽点，照 AI 短剧的剧本逻辑；接着：配文太尴尬）：
+    `film/gulf/story.js` 是剪辑表 EDIT——每条从一个原镜头（`gulf/shots.js` SHOTS，现在只当素材）截一段（可定格），叠对白（下面黑边里、带呼号名牌）、
+    部队字卡、平显式结果、时间戳、任务清单、警报、说明。剧情：钩子（领头 99A 被 M1A2 打中、定格）→ 6 小时前 → 下任务（日落前控制油田）→ 电子沙盘（GMAP 镜头）
+    讲先清除的三处和派谁去 → 爱国者 / 炮兵 / 沙梁 M1A2 → 阿帕奇偷袭后续梯队、防空车击落 → 歼-16 打增援 → 日落控制油田 → 片名。
+    台词照真实无线电：冷静、短，不嘲讽、不喊口号、不用大字煽情。
+    渲染分两步：`… render.cjs <数据> <输出> plates`（只渲剪辑表要的原镜头帧，`plates/<原镜头>/`，可 PART 分头渲）→ `… comp`（净画面 + 平显 + 字幕层，
+    改字幕只重跑这一步）→ `… audio` → `… edit`。原镜头的音效事件以前没进成片（写在 setup 的返回值里，配乐拿不到），现在按截取段平移进去。
+    页面等字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）。
+  - Lune 要 0.11 以上（README 也这么写）：0.8.9 跑测试台一启动就崩（`registry.rs` cannot mutably borrow app data container），build 出来的 rbxlx 两个版本一样。
+    容器重置后装 Lune：`curl -sfL -o lune.zip https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip`，解压放到 `/usr/local/bin`。
 
 ## 协作（几个会话一起改这个仓库）
 
