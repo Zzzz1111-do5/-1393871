@@ -30886,6 +30886,7 @@ function DeathFx.init(G)
   end
 
   local function subText()
+    S.killerName = (type(killer) == "table" and type(killer.name) == "string") and killer.name or nil   -- 测试用
     if type(killer) ~= "table" or type(killer.name) ~= "string" then return "" end
     local d = tonumber(killer.d)
     if d and d > 0 then return T("death.by", killer.name, math.floor(d / 2.8 + 0.5)) end

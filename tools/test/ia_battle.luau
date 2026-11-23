@@ -204,7 +204,7 @@ do
 	G.Config.Battle.storm.ramp = 25
 end
 
-print("⑦ 阵亡镜头：死了以后镜头转向凶手、拉近，3 秒后复原")
+print("⑦ 阵亡效果（用户 11-23：死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果）：黑白、镜头拉开看着倒下的地方、正中「阵亡」和凶手，4 秒多以后复原")
 do
 	local C = H.Gs.P1
 	local WS = H.game:GetService("Workspace")
@@ -217,19 +217,21 @@ do
 		root.CFrame = CF.new(hrp.CFrame.Position + V3.new(60, 0, 0))
 		root.Parent = WS
 		local bot = { e = { root = root }, team = (P.team == "atk") and "def" or "atk", name = "神枪手", k = 0, s = 0 }
-		local n0 = C.killcamCount()
+		local cam = WS.CurrentCamera
+		local fov0 = cam.FieldOfView
+		local n0 = C.deathFxState().n
 		G.hurtChar(P.char, 999, { bot = bot, team = bot.team, name = bot.name })
 		H.run(0.3)
-		check(C.killcamCount() > n0, "阵亡：镜头转向凶手")
-		H.run(1.6)
-		local cam = WS.CurrentCamera
-		local look = cam.CFrame.LookVector
-		local want = (root.CFrame.Position - cam.CFrame.Position).Unit
-		check(look:Dot(want) > 0.97, string.format("镜头对着凶手（夹角 %.0f°）", math.deg(math.acos(math.min(1, look:Dot(want))))))
-		local zoomed = cam.FieldOfView
-		check(zoomed < 40, string.format("视野拉近（%.0f°）", zoomed))
-		H.run(2)
-		check(not C.killcamOn() and cam.FieldOfView > zoomed + 20, "3 秒后放开镜头、视野复原")
+		check(C.deathFxOn() and C.deathFxState().n > n0, "阵亡：放阵亡效果")
+		H.run(1.4)
+		local grade = H.game:GetService("Lighting"):FindFirstChild("DeathGrade")
+		check(grade ~= nil and grade.Saturation < -0.9, "画面黑白")
+		check(C.deathFxState().killerName == "神枪手", "下面写着凶手（" .. tostring(C.deathFxState().killerName) .. "）")
+		check(not C.killcamOn(), "原来转镜头看凶手那段让给阵亡效果")
+		H.runUntil(function() return not C.deathFxOn() end, 6)
+		H.run(0.2)
+		check(not C.deathFxOn() and cam.CameraType ~= Enum.CameraType.Scriptable and cam.FieldOfView >= math.min(fov0, 70) - 1,
+			string.format("放完：镜头还回去、视野不再收窄（死前 %.0f°，现在 %.0f°）", fov0, cam.FieldOfView))
 		root:Destroy()
 	end
 end
