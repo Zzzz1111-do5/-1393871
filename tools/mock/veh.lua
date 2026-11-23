@@ -60,6 +60,14 @@ if side == "def" then
     local n = 0
     for _, id in ipairs(tp.vids) do if T.findNamed("Pick_" .. id) then n = n + 1 end end
     check(n == #tp.vids and n >= 10, string.format("按 E 弹出了本队全部 %d 型地面载具的卡片（看得见 %d 张）", #tp.vids, n))
+    -- 用户 11-23：召唤界面名字下面带图标——每张卡片名字下面一张这一型的侧影（HudIcons 的 veh_<型号>）
+    local ni = 0
+    for _, id in ipairs(tp.vids) do
+      local c = T.findNamed("Pick_" .. id)
+      local ic = c and c:FindFirstChild("Icon")
+      if ic and ic:GetAttribute("Icon") == "veh_" .. id then ni = ni + 1 end
+    end
+    check(ni == #tp.vids, string.format("每张卡片名字下面都有侧影图标（%d / %d）", ni, #tp.vids))
     local cancel = T.findNamed("Cancel")
     if cancel then T.press(cancel) end
     R.run(0.2)

@@ -5,6 +5,8 @@
 --     舰载 / 隐身 / 航炮 / 挂点数 / 内油），点一架 → 有挂点的进挂载编辑器（可以挂副油箱），选好发 padSpawn(召唤位, 挂载, 机型)
 --   地面载具的召唤位（用户：召唤点里自己选哪种车，不要固定）：牌子写「召唤地面载具」；按 E 服务器发 { op = "vehPick" } → 弹出本队全部车型
 --     （按坦克 / 装甲车 / 防空 / 火炮分组，每张卡片：名字、类别和名额 / 冷却、履带 / 轮式、主炮、两栖），点一辆 → padSpawn(召唤位, nil, 型号)
+--   图标（用户 11-23：「召唤坦克和飞机、舰船的界面，选择的界面名字下面要带图标」）：卡片的名字下面、一型一位的码位（舰艇码头）牌子的名字下面
+--     放这一型的侧影（HudIcons：原模型正侧面拍的 veh_ / air_ / ship_<型号>，HudArt 解成 EditableImage；游戏设置里没开 Mesh / Image API 时不画）
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -18,6 +20,26 @@ function Depot.init(G)
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
   local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
+  -- 这一型的侧影图标名（HudIcons）
+  local function iconName(id)
+    if VD.get(id) then return "veh_" .. id end
+    if AD.get(id) then return "air_" .. id end
+    if SD.get(id) then return "ship_" .. id end
+    return nil
+  end
+  -- 名字下面的侧影：灰度图按 col 染色、等比缩进框里；用不了 EditableImage 时是空的（不挡字）
+  local function iconAt(parent, id, size, pos, col)
+    local im = Instance.new("ImageLabel")
+    im.Name = "Icon"
+    im.BackgroundTransparency = 1
+    im.Size, im.Position = size, pos
+    im.ScaleType = Enum.ScaleType.Fit
+    im.ImageColor3 = col or RGB(226, 232, 238)
+    im.Parent = parent
+    local n = id and iconName(id)
+    if n and G.hudIconOn then G.hudIconOn(im, n) end
+    return im
+  end
 
   local pads = {}       -- [生成点 Model] = { prompt, bb, name, info, bar }
   local lastLoad = {}   -- [飞机型号] = 上次选的挂载
@@ -60,7 +82,9 @@ function Depot.init(G)
     end
     local name = txt(6, 20, 17, RGB(240, 242, 244), Enum.Font.GothamBold)
     local info = txt(28, 16, 12, RGB(150, 156, 162), Enum.Font.GothamMedium)
-    return bb, name, info, bar
+    local icon = iconAt(f, nil, UDim2.new(1, -24, 0, 44), UDim2.fromOffset(12, 28), RGB(220, 228, 234))   -- 名字下面的侧影（refresh 里按型号装上）
+    icon.Visible = false
+    return bb, name, info, bar, icon
   end
 
   local function add(m)
@@ -68,8 +92,8 @@ function Depot.init(G)
     local post = m:FindFirstChild("Post")
     local prompt = post and post:FindFirstChildOfClass("ProximityPrompt")
     if not prompt then return end
-    local bb, name, info, bar = sign(post, m:GetAttribute("Team"))
-    pads[m] = { prompt = prompt, bb = bb, name = name, info = info, bar = bar }
+    local bb, name, info, bar, icon = sign(post, m:GetAttribute("Team"))
+    pads[m] = { prompt = prompt, bb = bb, name = name, info = info, bar = bar, icon = icon }
   end
 
   local function pointOwner(id)
@@ -110,6 +134,16 @@ function Depot.init(G)
         x.prompt.ObjectText = title
         x.bb.Enabled = mine
         x.name.Text = title
+        -- 一型一位（舰艇码头、老的单型车位）：名字下面放这一型的侧影，牌子加高、类别那行挪到图下面；召唤位（能选好几型）不放
+        local iconId = (not summon) and id or nil
+        if x.iconId ~= iconId then
+          x.iconId = iconId
+          local n = iconId and iconName(iconId)
+          local ok = n and G.hudIconOn and G.hudIconOn(x.icon, n)
+          x.icon.Visible = ok == true
+          x.bb.Size = UDim2.fromOffset(210, ok and 96 or 50)
+          x.info.Position = UDim2.fromOffset(12, ok and 74 or 28)
+        end
         if ground then
           x.info.Text = open and T("pad.vehKinds") or T("pad.need" .. need)
           x.info.TextColor3 = open and RGB(150, 156, 162) or RGB(214, 120, 96)
@@ -157,7 +191,7 @@ function Depot.init(G)
   modal.Parent = pick
   local panel = Instance.new("Frame")
   panel.Name = "Panel"
-  panel.Size = UDim2.fromOffset(820, 470)
+  panel.Size = UDim2.fromOffset(820, 540)   -- 卡片带了图标、高一些：面板也高一点，放不下的往下滚
   panel.AnchorPoint = Vector2.new(0.5, 0.5)
   panel.Position = UDim2.fromScale(0.5, 0.5)
   panel.BackgroundColor3 = RGB(10, 12, 14)
@@ -189,9 +223,14 @@ function Depot.init(G)
   end
   local pTitle = label(panel, "", UDim2.new(1, -40, 0, 28), UDim2.fromOffset(24, 18), 22, RGB(240, 242, 244), Enum.Font.GothamBlack)
   local pSub = label(panel, "", UDim2.new(1, -40, 0, 16), UDim2.fromOffset(24, 50), 12, RGB(150, 156, 162), Enum.Font.GothamMedium)
-  local grid = Instance.new("Frame")
-  grid.Size, grid.Position = UDim2.new(1, -48, 1, -140), UDim2.fromOffset(24, 80)
-  grid.BackgroundTransparency = 1
+  local grid = Instance.new("ScrollingFrame")   -- 守方地面载具 15 型、攻方喷气机 10 型：一屏放不下的往下滚
+  grid.Size, grid.Position = UDim2.new(1, -40, 1, -140), UDim2.fromOffset(24, 80)
+  grid.BackgroundTransparency, grid.BorderSizePixel = 1, 0
+  grid.ScrollingDirection = Enum.ScrollingDirection.Y
+  grid.ScrollBarThickness = 5
+  grid.ScrollBarImageColor3 = RGB(200, 206, 212)
+  grid.CanvasSize = UDim2.new()
+  grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
   grid.Parent = panel
   local gl = Instance.new("UIGridLayout")
   gl.CellSize, gl.CellPadding = UDim2.fromOffset(250, 104), UDim2.fromOffset(10, 10)
@@ -313,7 +352,7 @@ function Depot.init(G)
   -- 地面载具的卡片（比飞机的小一号：一个召唤位能选十几型）
   local CAT_ORDER = { tank = 1, apc = 2, aa = 3, arty = 4 }
   local function vehCards(ids)
-    gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 74), UDim2.fromOffset(8, 8)
+    gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 116), UDim2.fromOffset(8, 8)
     pTitle.Text = T("pad.summonVeh")
     pSub.Text = T("pick.subVeh") .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
     local list = {}
@@ -339,12 +378,13 @@ function Depot.init(G)
       b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
       label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.GothamBlack)
       coinTag(b, stroke, id, 96)
-      local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 29), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
+      iconAt(b, id, UDim2.new(1, -20, 0, 42), UDim2.fromOffset(10, 29), ok and RGB(226, 232, 238) or RGB(110, 114, 118))   -- 名字下面的侧影
+      local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 74), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
       cl.Name = "Quota"
       local tags = { T((d.arch == "wheeled") and "pick.wheeled" or "pick.tracked") }
       if d.weapons and d.weapons[1] then table.insert(tags, T("vw." .. d.weapons[1])) end
       if d.amphib then table.insert(tags, T("pick.amphib")) end
-      label(b, table.concat(tags, " · "), UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 48), 11, RGB(170, 176, 182), Enum.Font.GothamMedium)
+      label(b, table.concat(tags, " · "), UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 93), 11, RGB(170, 176, 182), Enum.Font.GothamMedium)
       b.Activated:Connect(function() choose(id) end)
       table.insert(cards, b)
     end
@@ -356,13 +396,14 @@ function Depot.init(G)
     for _, c in ipairs(cards) do c:Destroy() end
     cards = {}
     pickPad = padId
+    grid.CanvasPosition = Vector2.zero
     cancel.Text = T("pick.cancel")
     if ground then
       vehCards(ids)
       pick.Enabled = true
       return
     end
-    gl.CellSize, gl.CellPadding = UDim2.fromOffset(250, 104), UDim2.fromOffset(10, 10)
+    gl.CellSize, gl.CellPadding = UDim2.fromOffset(250, 152), UDim2.fromOffset(10, 10)
     pTitle.Text = T(heli and "pad.summonHeli" or "pad.summonJet")
     local S = G.S
     local av = S and S.vehAvail and S.vehAvail[heli and "heli" or "jet"]
@@ -385,7 +426,8 @@ function Depot.init(G)
         b.MouseEnter:Connect(function() stroke.Transparency = 0.4 end)
         b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
         label(b, T("veh." .. id), UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 10), 18, RGB(240, 242, 244), Enum.Font.GothamBlack)
-        label(b, T("arole." .. (ROLE[id] or (d.kind == "heli" and "uheli" or "fighter"))), UDim2.new(1, -24, 0, 16), UDim2.fromOffset(12, 36), 12, RGB(214, 190, 120), Enum.Font.GothamBold)
+        local ic = iconAt(b, id, UDim2.new(1, -24, 0, 50), UDim2.fromOffset(12, 36))   -- 名字下面的侧影
+        label(b, T("arole." .. (ROLE[id] or (d.kind == "heli" and "uheli" or "fighter"))), UDim2.new(1, -24, 0, 16), UDim2.fromOffset(12, 88), 12, RGB(214, 190, 120), Enum.Font.GothamBold)
         local lp = lockedPass(id)
         if lp then   -- 右上角：解锁 R$ 价钱（琥珀色），卡片暗一点
           local pt = label(b, T("pass.lockTag", G.Config.Passes[lp].price), UDim2.fromOffset(120, 18), UDim2.new(1, -132, 0, 12), 12, RGB(255, 196, 92), Enum.Font.GothamBlack,
@@ -393,6 +435,7 @@ function Depot.init(G)
           pt.Name = "PassTag"
           b.BackgroundTransparency = 0.3
           stroke.Color, stroke.Transparency = RGB(255, 196, 92), 0.55
+          if ic then ic.ImageColor3 = RGB(150, 140, 118) end   -- 没解锁的：侧影暗一点、偏琥珀
         else
           coinTag(b, stroke, id, 130)
         end
@@ -402,7 +445,7 @@ function Depot.init(G)
         if d.gun then table.insert(tags, T("pick.gun")) end
         if d.st and #d.st > 0 then table.insert(tags, T("pick.st", #d.st)) end
         if AD.fuelMin then table.insert(tags, T("pick.fuel", AD.fuelMin(d))) end
-        local tl = label(b, table.concat(tags, " · "), UDim2.new(1, -24, 0, 32), UDim2.fromOffset(12, 56), 12, RGB(170, 176, 182), Enum.Font.GothamMedium)
+        local tl = label(b, table.concat(tags, " · "), UDim2.new(1, -24, 0, 32), UDim2.fromOffset(12, 108), 12, RGB(170, 176, 182), Enum.Font.GothamMedium)
         tl.TextWrapped = true
         tl.TextTruncate = Enum.TextTruncate.None
         tl.TextYAlignment = Enum.TextYAlignment.Top

@@ -4,6 +4,7 @@
 //   再用 tools/models/hudicons.py 做成全息图标、压进 src/ReplicatedStorage/HudIcons.lua
 //   用法：NODE_PATH=$(npm root -g) node tools/models/vehicons.mjs <three.js 包目录> <输出目录> [零件车.json]
 //   SET=air：拍飞机、直升机（models/air，存成 air_<型号>.png；开飞机的界面右上角那张全息侧影，用户 11-19：飞机操作界面也照 MWT 改）
+//   SET=ship：拍舰艇（models/ship，存成 ship_<型号>.png；用户 11-23：「召唤坦克和飞机、舰船的界面，选择的界面名字下面要带图标」——码位牌子上的侧影）
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,7 +29,10 @@ const GLB = {
 const AIR = {
   j20: 'j20', j35: 'j31', j15t: 'j15t', j16: 'j16', j50: 'j50', h6k: 'h6k', gj11: 'x47b', gj2: 'mq9', a10c: 'a10', f35: 'f35', f22: 'f22a',
   mq9: 'mq9', b2: 'b2', z10: 'z10w', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
+  j10: 'j10', j11: 'j11', j36: 'j36',   // 11-22 加的歼-10C、歼-11B、歼-36（sf_air.py 转的）
 };
+// 舰艇（ShipDefs 的型号）→ models/ship 的原模型（文件名同型号）
+const SHIP = { t055: 't055', t054a: 't054a', t022: 't022', ddg125: 'ddg125', cg47: 'cg47', lcs2: 'lcs2', pbr: 'pbr' };
 const SET = process.env.SET || 'veh';
 const FLIP = new Set((process.env.FLIP || '').split(',').filter(Boolean));
 const ONLY = new Set((process.env.ONLY || '').split(',').filter(Boolean));   // 只重拍这几辆（空 = 全部）
@@ -42,6 +46,7 @@ const server = http.createServer((req, res) => {
   else if (u.startsWith('/three/')) f = path.join(threeDir, u.slice('/three/'.length));
   else if (u.startsWith('/veh/')) f = path.join(ROOT, 'models', 'veh', path.basename(u));
   else if (u.startsWith('/air/')) f = path.join(ROOT, 'models', 'air', path.basename(u));
+  else if (u.startsWith('/ship/')) f = path.join(ROOT, 'models', 'ship', path.basename(u));
   if (!f || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
   fs.createReadStream(f).pipe(res);
@@ -67,7 +72,14 @@ if (SET === 'air') {
     save('air_' + id, r);
   }
 }
-for (const [id, key] of Object.entries(SET === 'air' ? {} : GLB)) {
+if (SET === 'ship') {
+  for (const [id, key] of Object.entries(SHIP)) {
+    if (!want(id)) continue;
+    const r = await page.evaluate(async ([u, fl]) => window.renderGLB(u, fl), [`/ship/${key}.glb`, FLIP.has(id)]);
+    save('ship_' + id, r);
+  }
+}
+for (const [id, key] of Object.entries((SET === 'air' || SET === 'ship') ? {} : GLB)) {
   if (!want(id)) continue;
   const r = await page.evaluate(async ([u, fl]) => window.renderGLB(u, fl), [`/veh/${key}.glb`, FLIP.has(id)]);
   save(id, r);

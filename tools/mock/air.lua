@@ -62,6 +62,8 @@ check(jp ~= nil and jp.kind == "air" and jp.summon == true, "有能召唤 " .. j
 if jp then T.usePad(me, jp) end
 local card = T.findNamed("Pick_" .. jetId)
 check(card ~= nil, "弹出了选机型的卡片")
+local cic = card and card:FindFirstChild("Icon")
+check(cic ~= nil and cic:GetAttribute("Icon") == "air_" .. jetId, "卡片名字下面是这架飞机的侧影图标（" .. tostring(cic and cic:GetAttribute("Icon")) .. "）")
 if card then T.press(card) end
 R.run(0.3)
 local f75 = T.findNamed("Fuel75")
