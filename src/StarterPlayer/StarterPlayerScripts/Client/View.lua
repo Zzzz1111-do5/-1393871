@@ -348,11 +348,15 @@ function View.init(G)
     local seed = tonumber(v.id) or 0
     if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
     local rng = Random.new(seed * 7919 + 17)
+    -- 照宣传片里调好的样子（用户 11-22 看片子：掀盖有点尴尬——原来往上 36～54 格 / 秒、乱转，飞七到十五米高像气球）：
+    --   往上 20～27 格 / 秒（顶起三米上下）、往旁边 3～6 格 / 秒，绕一根横着的轴慢慢翻（每秒 1～1.6 弧度），落在车旁边歪着停住
     local ang = rng:NextNumber() * 2 * math.pi
-    local hv = V(math.cos(ang), 0, math.sin(ang)) * (5 + rng:NextNumber() * 10)
+    local side = V(math.cos(ang), 0, math.sin(ang))
+    local hv = side * (3 + rng:NextNumber() * 3)
+    local axis = V(-side.Z, (rng:NextNumber() - 0.5) * 0.4, side.X).Unit   -- 横轴：往哪边飞就朝哪边翻下去
     v.toss = {
-      cf = tF, vel = V(hv.X, 36 + rng:NextNumber() * 18, hv.Z),
-      w = V((rng:NextNumber() - 0.5) * 5, (rng:NextNumber() - 0.5) * 7, (rng:NextNumber() - 0.5) * 5),   -- 角速度（弧度/秒，世界坐标）
+      cf = tF, vel = V(hv.X, 20 + rng:NextNumber() * 7, hv.Z),
+      w = axis * (1 + rng:NextNumber() * 0.6),   -- 角速度（弧度/秒，世界坐标）
       bounce = 0, rest = false,
       restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
     }
@@ -372,7 +376,7 @@ function View.init(G)
       p = V(p.X, gy + 0.4, p.Z)
       T.bounce += 1
       landFx(p)
-      if T.bounce >= 3 or math.abs(T.vel.Y) < 9 then
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 14 then   -- 砸下来顶多再颠一下就停住（原来弹三下）
         T.rest = true
         -- 停住：保留水平朝向，歪一点躺着（随机的倾角）
         local look = T.cf.LookVector

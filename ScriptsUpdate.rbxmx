@@ -34662,9 +34662,138 @@ function Fly.init(G)
   local CH = { thr = "Thr", gear = "Gear", flap = "Flap", pit = "Pit", rol = "Rol", yaw = "Yaw", bay = "Bay", bayS = "BayS", rpm = "Rpm", col = "Col", can = "Can",
     hook = "Hook", brk = "Brk", ty = "Ty", gp = "Gp", fold = "Fold" }
 
+  ---------------------------------------------------------------- 被击毁的飞机：坠落（用户 11-23：把宣传片里的动画做进游戏）
+  --   照片子里阿帕奇被防空车打中的样子——直升机：尾桨没了，机身越转越快（一开始每秒 2 弧度多、往上加到 9）、机头往下栽、左右晃，
+  --     尾梁上一团火、拖着一长条黑烟往下掉；固定翼：顺着速度栽下去、慢慢滚转，发动机那里拖着火和黑烟；砸到地上炸开，残骸躺在地上接着烧十几秒。
+  --   原来服务器 4 秒后就把实体收了，高处打下来的掉到一半凭空没了：收了以后这里接着演完（viewKind.air.remove 留下、falling 每帧接着动）
+  local falling = {}
+  G.airFalling = falling   -- 测试用
+  local function wreckStart(v, vel)
+    local d, M = v.def, v.M
+    local heli = d.kind == "heli"
+    local lv = v.cf.LookVector
+    v.wreck = { vel = vel, t = 0, heli = heli, spin = (math.random() - 0.5) * 3, yaw = math.atan2(-lv.X, -lv.Z),
+      pitch = math.asin(clamp(lv.Y, -1, 1)) }
+    local W = v.wreck
+    if M then M.dark = true end   -- 被击毁：灯全灭
+    for _, it in ipairs(M.items) do
+      local p = it.p
+      if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+        for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+        pcall(function() p.TextureID = "" end)
+        if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
+      elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
+    end
+    -- 火、黑烟：挂在尾梁（直升机）/ 尾喷口（固定翼）上的一个看不见的零件，粒子留在世界里，自然拖成一条
+    local h = Instance.new("Part")
+    h.Name = "WreckFire"
+    h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.CastShadow = true, false, false, false, false
+    h.Transparency, h.Size = 1, V(0.4, 0.4, 0.4)
+    h.Parent = v.model
+    local fire = Instance.new("ParticleEmitter")
+    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+    fire.Rate = 70
+    fire.Lifetime = NumberRange.new(0.25, 0.6)
+    fire.Speed = NumberRange.new(2, 7)
+    fire.SpreadAngle = Vector2.new(35, 35)
+    fire.LightEmission = 1
+    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(0.4, 5.5), NumberSequenceKeypoint.new(1, 1.5) })
+    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
+    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 180)), ColorSequenceKeypoint.new(0.45, RGB(255, 140, 50)), ColorSequenceKeypoint.new(1, RGB(90, 30, 15)) })
+    fire.Parent = h
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    smoke.Rate = 26
+    smoke.Lifetime = NumberRange.new(3.5, 6)
+    smoke.Speed = NumberRange.new(1, 4)
+    smoke.SpreadAngle = Vector2.new(25, 25)
+    smoke.Drag = 0.6
+    smoke.Acceleration = V(0, 2.5, 0)
+    smoke.Rotation = NumberRange.new(0, 360)
+    smoke.RotSpeed = NumberRange.new(-25, 25)
+    smoke.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 24) })
+    smoke.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+    smoke.Color = ColorSequence.new(RGB(38, 34, 30))
+    smoke.Parent = h
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness, light.Shadows = RGB(255, 140, 60), 34, 4, false
+    light.Parent = h
+    W.h, W.fire, W.smoke, W.light = h, fire, smoke, light
+    W.hold = heli and CF(0, d.H * 0.18, d.L * 0.36) or CF(0, 0, d.L * 0.46)   -- 尾梁 / 尾喷口（机头是 −Z）
+  end
+  local function wreckMove(v, dt)
+    local W, d = v.wreck, v.def
+    if not W then return end
+    W.t += dt
+    if W.down then   -- 躺在地上烧：火慢慢小下去
+      W.burn = (W.burn or 0) + dt
+      local k = math.max(0, 1 - W.burn / 15)
+      if W.fire then W.fire.Rate = 45 * k end
+      if W.smoke then W.smoke.Rate = 6 + 14 * k end
+      if W.light then W.light.Brightness = 3 * k * (0.8 + 0.2 * math.sin(os.clock() * 13)) end
+      return
+    end
+    W.vel += V(0, -GR, 0) * dt
+    W.vel = V(W.vel.X * (1 - (W.heli and 0.35 or 0.1) * dt), W.vel.Y * (1 - 0.06 * dt), W.vel.Z * (1 - (W.heli and 0.35 or 0.1) * dt))
+    local p = v.cf.Position + W.vel * dt
+    local g = ground(p.X, p.Z)
+    if p.Y < g + 1 then   -- 砸到地上：炸开，残骸躺下、歪着
+      W.down = true
+      p = V(p.X, g + 1, p.Z)
+      if G.boom then G.boom(p, W.heli and 2.6 or 3, "wreck") end
+      if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 160, 70), 90, 18, 1.1) end
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(0.1, 0, W.heli and 0.5 or 0.2)
+      if W.h then W.h.CFrame = v.cf * (W.heli and CF(0, 0, 0) or W.hold) end
+      return
+    end
+    if W.heli then
+      -- 尾桨没了：机身越转越快、机头往下栽、左右晃
+      local rate = math.min(9, 2.2 + 3.2 * W.t)
+      W.yaw += rate * dt
+      local pitch = math.max(-0.6, -(0.12 + 0.08 * W.t))
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(pitch, 0, math.sin(W.t * 3) * 0.25)
+    else
+      local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
+      v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
+      W.yaw = math.atan2(-look.X, -look.Z)
+    end
+    if W.h then W.h.CFrame = v.cf * W.hold end
+  end
+  -- 服务器收了实体以后接着演：落地烧够了再删
+  G.frameConn("AirWreck", function(dt)
+    if #falling == 0 then return end
+    local now = os.clock()
+    for i = #falling, 1, -1 do
+      local v = falling[i]
+      local ok = pcall(function()
+        wreckMove(v, dt)
+        local d = v.def
+        if d.rotor and v.c and not (v.wreck and v.wreck.down) then   -- 主旋翼还在转（尾桨没了）
+          v.spin1 = ((v.spin1 or 0) + 0.7 * d.rotor.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2)
+          v.c.spin1 = v.spin1
+        end
+        if v.M then AM.pose(v.M, v.cf, v.c or {}, now) end
+      end)
+      local W = v.wreck
+      if not ok or not W or (W.down and (W.burn or 0) > 16) or W.t > 60 then
+        if v.model then v.model:Destroy() end
+        table.remove(falling, i)
+      end
+    end
+  end)
+
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
     importReady = function(v) return v.M ~= nil and not v.M.imported and v.def ~= nil and AM.importedFor(v.def) ~= nil end,   -- 原模型后来才复制齐：View 重建
+    -- 实体被服务器收走：被击毁、还在往下掉 / 躺着烧的留下来接着演（上面的 falling），别的照常删
+    remove = function(v)
+      if v.wreck and not (v.wreck.down and (v.wreck.burn or 0) > 16) then
+        if v.bb then v.bb:Destroy() v.bb = nil end
+        table.insert(falling, v)
+        return true
+      end
+      return false
+    end,
     build = function(v, em, team)
       local d = AD.get(em:GetAttribute("Model") or "")
       if not d then return false end
@@ -34680,44 +34809,9 @@ function Fly.init(G)
       local em, d, M = v.em, v.def, v.M
       local own = st and st.em == em and st
       local target = v.root.CFrame
-      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下（别人的飞机：速度按收到的位置快照算，View.lua G.follow）
-        if not v.wreck then
-          v.wreck = { vel = (own and own.vel) or (v.fl and v.fl.vel) or V(), spin = (math.random() - 0.5) * 3, t = 0 }
-          if v.M then v.M.dark = true end   -- 被击毁：灯全灭
-          for _, it in ipairs(M.items) do
-            local p = it.p
-            if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
-              for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
-              pcall(function() p.TextureID = "" end)
-              if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
-            elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
-          end
-        end
-        local W = v.wreck
-        W.t += dt
-        if not W.down then
-          W.vel += V(0, -GR, 0) * dt
-          W.vel *= (1 - 0.1 * dt)
-          local p = v.cf.Position + W.vel * dt
-          local g = ground(p.X, p.Z)
-          if p.Y < g + 1 then
-            W.down = true
-            p = V(p.X, g + 1, p.Z)
-            if G.boom then G.boom(p, 2, "wreck") end
-          end
-          local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
-          v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
-          W.smokeT = (W.smokeT or 0) - dt
-          if W.smokeT <= 0 and G.fxPart then
-            W.smokeT = 0.06
-            local s = G.fxPart(Enum.PartType.Ball, V(4, 4, 4), CFrame.new(p), RGB(40, 38, 36), Enum.Material.SmoothPlastic, 0.3)
-            if G.tween then G.tween(s, 2.4, { Size = V(16, 16, 16), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(s, 2.5)
-            local f = G.fxPart(Enum.PartType.Ball, V(3, 3, 3), CFrame.new(p), RGB(255, 140, 40), Enum.Material.Neon, 0.1)
-            if G.tween then G.tween(f, 0.4, { Size = V(6, 6, 6), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(f, 0.45)
-          end
-        end
+      if em:GetAttribute("Wreck") then   -- 被击毁：坠落（wreckStart / wreckMove 在上面）
+        if not v.wreck then wreckStart(v, (own and own.vel) or (v.fl and v.fl.vel) or V()) end
+        wreckMove(v, dt)
       elseif own then
         v.cf = own.cf
       else   -- 别人的飞机：快照插值（匀速，不一顿一顿；跳太远直接过去）
@@ -66544,11 +66638,15 @@ function View.init(G)
     local seed = tonumber(v.id) or 0
     if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
     local rng = Random.new(seed * 7919 + 17)
+    -- 照宣传片里调好的样子（用户 11-22 看片子：掀盖有点尴尬——原来往上 36～54 格 / 秒、乱转，飞七到十五米高像气球）：
+    --   往上 20～27 格 / 秒（顶起三米上下）、往旁边 3～6 格 / 秒，绕一根横着的轴慢慢翻（每秒 1～1.6 弧度），落在车旁边歪着停住
     local ang = rng:NextNumber() * 2 * math.pi
-    local hv = V(math.cos(ang), 0, math.sin(ang)) * (5 + rng:NextNumber() * 10)
+    local side = V(math.cos(ang), 0, math.sin(ang))
+    local hv = side * (3 + rng:NextNumber() * 3)
+    local axis = V(-side.Z, (rng:NextNumber() - 0.5) * 0.4, side.X).Unit   -- 横轴：往哪边飞就朝哪边翻下去
     v.toss = {
-      cf = tF, vel = V(hv.X, 36 + rng:NextNumber() * 18, hv.Z),
-      w = V((rng:NextNumber() - 0.5) * 5, (rng:NextNumber() - 0.5) * 7, (rng:NextNumber() - 0.5) * 5),   -- 角速度（弧度/秒，世界坐标）
+      cf = tF, vel = V(hv.X, 20 + rng:NextNumber() * 7, hv.Z),
+      w = axis * (1 + rng:NextNumber() * 0.6),   -- 角速度（弧度/秒，世界坐标）
       bounce = 0, rest = false,
       restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
     }
@@ -66568,7 +66666,7 @@ function View.init(G)
       p = V(p.X, gy + 0.4, p.Z)
       T.bounce += 1
       landFx(p)
-      if T.bounce >= 3 or math.abs(T.vel.Y) < 9 then
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 14 then   -- 砸下来顶多再颠一下就停住（原来弹三下）
         T.rest = true
         -- 停住：保留水平朝向，歪一点躺着（随机的倾角）
         local look = T.cf.LookVector
