@@ -34,14 +34,22 @@ function Round.init(G)
   local now = os.clock
 
   -- 阶段：每个据点属于第几阶段、是不是侧翼（没写进 Config.Stages 的据点一直开着）
+  --   开服时地图还没定（等大家投票），Map / Config.Stages 还是岛的：定了图以后开局前 buildMapTables() 按那张图重算（就地改，G.stageOf 这些引用不变）
   local STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
   local stageOf, flankOf = {}, {}
-  for i, st in ipairs(STAGES) do
-    for _, id in ipairs(st.points) do stageOf[id] = i end
-    for _, id in ipairs(st.flank or {}) do
-      if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+  local function buildStages()
+    STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
+    table.clear(stageOf)
+    table.clear(flankOf)
+    for i, st in ipairs(STAGES) do
+      for _, id in ipairs(st.points) do stageOf[id] = i end
+      for _, id in ipairs(st.flank or {}) do
+        if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+      end
     end
+    G.STAGES = STAGES
   end
+  buildStages()
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
@@ -73,11 +81,14 @@ function Round.init(G)
   G.rallyOf = function(id) return rally[id] and rally[id][1] end
   local FD = require(game:GetService("ReplicatedStorage"):WaitForChild("FortDefs"))
   local bunkers = {}
-  for _, f in ipairs(FD.layout(Map)) do
-    if f.kind == "bunker" then
-      local d = FD.D.bunker
-      local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
-      table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+  local function buildBunkers()
+    table.clear(bunkers)
+    for _, f in ipairs(FD.layout(Map)) do
+      if f.kind == "bunker" then
+        local d = FD.D.bunker
+        local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
+        table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+      end
     end
   end
   local function covered(x, z)
@@ -95,59 +106,73 @@ function Round.init(G)
   local staging = {}   -- [据点] = { {x, z}, … }（好的在前；都在机枪碉堡射界里时才用射界里的）
   local OFF = Config.StageOff or 260
   local BACK = Config.RallyBack or 200
-  for _, p in ipairs(Map.POINTS) do
-    local k = stageOf[p.id]
-    if k and not flankOf[p.id] then
-      -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
-      local fx, fz, fd = nil, nil, math.huge
-      for _, q in ipairs(Map.POINTS) do
-        if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
-          local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
-          if d < fd then fx, fz, fd = q.x, q.z, d end
-        end
-      end
-      if not fx then
-        for _, b in ipairs(Map.LANDINGS) do
-          if (b.isle or "main") == p.land then
-            local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
-            if d < fd then fx, fz, fd = b.cx, b.z, d end
+  local function buildStaging()
+    table.clear(staging)
+    table.clear(rally)
+    for _, p in ipairs(Map.POINTS) do
+      local k = stageOf[p.id]
+      if k and not flankOf[p.id] then
+        -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
+        local fx, fz, fd = nil, nil, math.huge
+        for _, q in ipairs(Map.POINTS) do
+          if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
+            local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
+            if d < fd then fx, fz, fd = q.x, q.z, d end
           end
         end
-      end
-      local ux, uz = 0, 1
-      if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
-      local good, bad = {}, {}
-      for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
-        local a = math.rad(ang)
-        local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
-        for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
-            table.insert(covered(x, z) and bad or good, { x = x, z = z })
-            break
+        if not fx then
+          for _, b in ipairs(Map.LANDINGS) do
+            if (b.isle or "main") == p.land then
+              local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
+              if d < fd then fx, fz, fd = b.cx, b.z, d end
+            end
           end
         end
-      end
-      for _, c in ipairs(bad) do table.insert(good, c) end
-      staging[p.id] = (#good > 0) and good or nil
-      -- 守方集结点：反方向（据点后面）150～250 格
-      local rs = {}
-      for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
-        local a = math.rad(ang)
-        local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
-        for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
-            table.insert(rs, { x = x, z = z })
-            break
+        local ux, uz = 0, 1
+        if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
+        local good, bad = {}, {}
+        for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
+          local a = math.rad(ang)
+          local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
+          for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
+              table.insert(covered(x, z) and bad or good, { x = x, z = z })
+              break
+            end
           end
         end
+        for _, c in ipairs(bad) do table.insert(good, c) end
+        staging[p.id] = (#good > 0) and good or nil
+        -- 守方集结点：反方向（据点后面）150～250 格
+        local rs = {}
+        for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
+          local a = math.rad(ang)
+          local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
+          for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+              table.insert(rs, { x = x, z = z })
+              break
+            end
+          end
+        end
+        rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
+      else
+        rally[p.id] = { { x = p.x, z = p.z - 120 } }
       end
-      rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
-    else
-      rally[p.id] = { { x = p.x, z = p.z - 120 } }
     end
   end
+  -- 按现在这张图算：阶段表、碉堡射界、攻方出发阵地、守方集结点（原来只在开服时按岛算一次——沙海的 A 出发阵地落在岛的坐标上，跑到了据点北边敌人那一侧）
+  local tablesFor = nil
+  local function buildMapTables()
+    tablesFor = Map.id
+    buildStages()
+    buildBunkers()
+    buildStaging()
+  end
+  buildMapTables()
+  G.mapTablesFor = function() return tablesFor end   -- 测试用
   G.stagingCovered = covered
   G.stagingOf = function(id) return staging[id] and staging[id][1] end
 
@@ -689,11 +714,15 @@ function Round.init(G)
     P.pl:LoadCharacter()
   end
 
-  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就按他选的开（init.server.lua 的 G.pickMap）；定过了就记下他想要哪张
+  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就是投一票（init.server.lua 的 G.voteMap，能改票），大家都看到票数；
+  --   定过了就记下他想要哪张（界面上是「加入」）
   function G.ACT.pickMap(P, id)
     if type(id) ~= "string" then return end
     P.wantMap = id
-    if G.pickMap then G.pickMap(id) end
+    if not G.mapId and G.voteMap and G.voteMap(P.pl, id) then
+      G.pushAll()
+      return
+    end
     G.pushOne(P)
   end
 
@@ -1006,6 +1035,7 @@ function Round.init(G)
   end
 
   function G.roundStart()
+    if tablesFor ~= Map.id then buildMapTables() end   -- 地图是开服以后投票定的：第一局开局前按那张图重算阶段、出发阵地、集结点
     R.n += 1
     R.phase = "prep"
     R.t0 = now()
@@ -1139,8 +1169,9 @@ function Round.init(G)
       ticketsDef = conquest() and R.ticketsDef or nil, mode = conquest() and "conquest" or "assault",
       -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
       progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
-      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上两张都能点）
+      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上三张都能投）
       mapReady = G.worldReady == true,
+      vote = G.mapVoteState and G.mapVoteState() or nil,   -- 还在投票：{ n = 各张票数, left = 还剩几秒（第一票投出后才有）, voters, players }
     }
   end
   local function personal(P, C)
@@ -1148,6 +1179,7 @@ function Round.init(G)
     C.team = P.team
     C.round = R.n
     C.picked = P.picked == true
+    C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
     C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")
     C.role = P.role
@@ -1202,6 +1234,11 @@ function Round.init(G)
   Players.PlayerAdded:Connect(onPlayer)
   for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
   Players.PlayerRemoving:Connect(function(pl)
+    -- 投了票走了：票不算了，大家的票数刷新
+    if G.mapVotes and G.mapVotes[pl] then
+      G.mapVotes[pl] = nil
+      task.defer(function() if G.pushAll then G.pushAll() end end)
+    end
     local P = G.P[pl]
     if not P then return end
     G.emit("left", P)

@@ -1040,6 +1040,14 @@
     页面等字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）。
   - Lune 要 0.11 以上（README 也这么写）：0.8.9 跑测试台一启动就崩（`registry.rs` cannot mutably borrow app data container），build 出来的 rbxlx 两个版本一样。
     容器重置后装 Lune：`curl -sfL -o lune.zip https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip`，解压放到 `/usr/local/bin`。
+  - 11-23（affectionate-pasteur）：用户「三张地图改成投票制，进去投票选地图」。选地图不再是第一个人点的定：`ACT.pickMap` → `G.voteMap`（init.server.lua，能改票），
+    第一票投出后 `Config.MapVote.time`（25）秒按票数最多的开（平票随机），在场的人都投了再等 `grace`（3）秒；投票中服务器半秒推一次状态（`S.vote` 各张票数、还剩几秒、几人投了，
+    `S.myVote`）；MapPick.lua 每张卡显示票数、自己投的高亮「已投这张」、底下倒计时，定了以后投过票的人生成好了自动快速加入。
+    顺带修了投票（地图在开服以后才定）暴露的老问题——服务器各模块初始化时 `Map` 还是岛：Round.lua 的阶段表、碉堡射界、攻方出发阵地、守方集结点开局前按定下来的图重算
+    （`buildMapTables`；原来沙海的 A 出发阵地在岛的坐标上），Nav.lua 的 `setGrid` 认 `Map.NAVBOX`（沙海的寻路网格原来按岛的范围），Navy.lua 不在初始化时按 `LANDONLY` 直接 return、
+    各入口按现在的图判断（`noSea`），Vehicles.lua 每次查 `Map.landingOf`；客户端 Operation.lua 的战役路线条登记 `G.onMap` 重摆。
+    测试：`tools/mock/mappick.lua`（三人投票改票、`timer` 到点、`bands` 缩略图色带）、`tools/mock/sands.lua` 加了出发阵地、寻路网格、路线条的检查；
+    Lune 测试台把游戏画面上的红色报错条（`G.showError`）也记下来（测试台读不到派生属性的 `missing default value` 不算）。
 
 ## 协作（几个会话一起改这个仓库）
 

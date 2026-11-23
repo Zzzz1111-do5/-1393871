@@ -2,7 +2,8 @@
 --   主菜单「开始游戏」打开：Map.ids 有几张就并排几张大卡片（岛屿突击 · 沙漠风暴 · 沙海；原来按两张排，第三张整个排到了屏幕外）——
 --   上面一块缩略图（按那张图自己的高度、材质现画：EditableImage；用不了就一行一条渐变拼出低分辨率的缩略图），
 --   下面名字、模式、尺寸、一行说明；服务器正在打的那张标「这个服务器正在打」和人数。开着时主菜单的字先藏起来（原来从卡片后面透出来）。
---   点一张：告诉服务器（ACT.pickMap；还没定地图就按这张开）→ 地图生成好（S.mapReady）就快速加入（自动分队、默认装备、推荐出生点）、关掉菜单；
+--   投票（用户 11-23）：还没定图时点一张就是投一票（能改票，ACT.pickMap → init.server.lua 的 G.voteMap），每张卡显示票数，底下倒计时；
+--   第一票投出后 Config.MapVote.time 秒（在场的人都投了就提前）按票数最多的开 → 地图生成好（S.mapReady）投过票的人自动快速加入、关掉菜单；
 --   服务器已经在打另一张：那张卡写「这个服务器在打 X」，按钮变「加入 X」
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -222,7 +223,11 @@ function MapPick.init(G)
     K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15 + TS, Enum.Font.GothamBold
     K.go.TextTruncate = Enum.TextTruncate.AtEnd
     K.go.Parent = b
-    for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go }) do l.ZIndex = 3 end   -- 字在缩略图上面
+    -- 票数（投票中才有）：缩略图右上角一块深色小牌
+    K.votes = text(b, "", UDim2.fromOffset(96, 26), UDim2.new(1, -14, 0, 16), 13 + TS, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Center)
+    K.votes.BackgroundColor3, K.votes.BackgroundTransparency = RGB(8, 10, 12), 0.25
+    K.votes.Visible = false
+    for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go, K.votes }) do l.ZIndex = 3 end   -- 字在缩略图上面
     b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
     cards[id] = K
@@ -241,10 +246,13 @@ function MapPick.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 点一张：告诉服务器，生成好了就快速加入
+  ---------------------------------------------------------------- 投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：
+  --   还没定图：点一张就是投一票（再点别的是改票），每张卡上是票数，底下是倒计时；投票结束定了哪张，生成好了投过票的人自动快速加入。
+  --   已经定了：卡片按钮是「加入」那张（同原来）
 
-  local want = nil      -- 自己点的哪张
-  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
+  local want = nil      -- 自己投的 / 要加入的哪张（投过票就有）
+  local voteLeft, voteAt = nil, 0   -- 服务器说投票还剩几秒（收到时的本地时间）：本地往下数
+  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13 + TS, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
   -- 主菜单的字藏起来 / 放回来（Menu.lua 的 refreshMenu 看 G.mapPickShown）
   local function menuSync() if G.refreshMenu and G.S then G.refreshMenu(G.S) end end
   local function close()
@@ -257,15 +265,44 @@ function MapPick.init(G)
     if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
     want = id
     G.R.Act:FireServer("pickMap", id)
-    status.Text = T("map.loading", 0)
+    if S and S.map then status.Text = T("map.loading", 0) end
+    if G.refreshMapPick and S then G.refreshMapPick(S) end   -- 先高亮自己投的（服务器的票数随后到）
   end
   for id, K in pairs(cards) do K.b.Activated:Connect(function() choose(id) end) end
   back.Activated:Connect(close)
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
     if io.KeyCode == Enum.KeyCode.Escape then close()
-    elseif io.KeyCode == Enum.KeyCode.Return then choose((G.S and G.S.map) or Map.ids[1]) end
+    elseif io.KeyCode == Enum.KeyCode.Return then choose((G.S and G.S.map) or want or Map.ids[1]) end
   end)
+
+  -- 底下那行：投票中写倒计时、几个人投了；定了写打哪张、生成进度
+  local function statusLine(S)
+    local V = S.vote
+    if not S.map and V then
+      local MV = G.Config and G.Config.MapVote or {}
+      if voteLeft then
+        local left = math.max(0, math.ceil(voteLeft - (os.clock() - voteAt)))
+        return T("map.voteLeft", left, V.voters or 0, math.max(V.players or 0, V.voters or 0))
+      end
+      return T("map.voteIdle", MV.time or 25)
+    end
+    if S.map and want then
+      local pre = (want ~= S.map) and (T("map.decided", T("map." .. S.map .. ".name")) .. "   ·   ") or ""
+      return pre .. T("map.loading", math.floor((S.mapReady and 1 or (S.progress or 0)) * 100))
+    end
+    return ""
+  end
+  -- 倒计时每帧往下数（服务器半秒左右才推一次）
+  local tick = 0
+  local function stepStatus(dt)
+    if not gui.Enabled or not G.S then return end
+    tick += dt or 0
+    if tick < 0.2 then return end
+    tick = 0
+    status.Text = statusLine(G.S)
+  end
+  if G.frameConn then G.frameConn("MapPick", stepStatus) else game:GetService("RunService").RenderStepped:Connect(stepStatus) end
 
   function G.showMapPick()
     gui.Enabled = true
@@ -277,37 +314,52 @@ function MapPick.init(G)
   G.mapPickWant = function() return want end   -- 测试用
 
   function G.refreshMapPick(S)
-    if not S or not gui.Enabled then return end
+    if not S then return end
+    -- 投票的倒计时：每次收到都对一下（界面关着也记着，打开就是对的）
+    local V = (not S.map) and S.vote or nil
+    if V and V.left then voteLeft, voteAt = V.left, os.clock() else voteLeft = nil end
+    if not S.map and S.myVote then want = S.myVote end   -- 自己投的哪张以服务器为准（换了设备、重进都对得上）
+    if not gui.Enabled then return end
     cat.Text = T("map.cat")
     head.Text = T("map.title")
     sub.Text = T("map.sub")
     back.Text = T("map.back")
     local n = (S.rAtk or 0) + (S.rDef or 0)
+    local voting = S.map == nil
     for id, K in pairs(cards) do
       local info = Map.info[id] or {}
+      local acc = ACCENT[id] or WHITE
       K.mode.Text = string.upper(T("map." .. id .. ".mode"))
       K.name.Text = T("map." .. id .. ".name")
       K.size.Text = T("map.size", string.format("%.0f", info.km or 0))
       K.desc.Text = T("map." .. id .. ".desc")
       local cur = S.map == id
       local other = S.map ~= nil and not cur
+      local mine = voting and want == id
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
-      K.now.TextColor3 = cur and (ACCENT[id] or WHITE) or MUTE
-      K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or (cur and T("map.join") or T("map.pick"))
-      K.b.BackgroundTransparency = other and 0.45 or 0.2
-      K.st.Color = (want == id) and (ACCENT[id] or WHITE) or WHITE
-      K.st.Transparency = (want == id) and 0.2 or 0.86
-    end
-    if want then
-      if S.map == want and S.mapReady then
-        -- 地图好了：快速加入（主菜单关掉、自动分队、推荐出生点）
-        close()
-        if G.quickJoin then G.quickJoin() end
-      elseif S.map == want then
-        status.Text = T("map.loading", math.floor((S.progress or 0) * 100))
+      K.now.TextColor3 = cur and acc or MUTE
+      if voting then
+        K.go.Text = mine and T("map.voted") or T("map.vote")
+        K.go.BackgroundColor3, K.go.TextColor3 = mine and acc or WHITE, RGB(10, 10, 12)
+        local nv = (V and V.n and V.n[id]) or 0
+        K.votes.Visible = true
+        K.votes.Text = T("map.votes", nv)
+        K.votes.TextColor3 = (nv > 0) and acc or MUTE
+      else
+        K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or T("map.join")
+        K.go.BackgroundColor3, K.go.TextColor3 = WHITE, RGB(10, 10, 12)
+        K.votes.Visible = false
       end
-    else
-      status.Text = ""
+      K.b.BackgroundTransparency = other and 0.45 or 0.2
+      local hi = mine or (cur and want ~= nil)
+      K.st.Color = hi and acc or WHITE
+      K.st.Transparency = hi and 0.2 or 0.86
+    end
+    status.Text = statusLine(S)
+    -- 投过票 / 点过加入的：地图定了、生成好了就快速加入（主菜单关掉、自动分队、推荐出生点）——不管最后定的是不是自己投的那张
+    if want and S.map and S.mapReady then
+      close()
+      if G.quickJoin then G.quickJoin() end
     end
   end
 end

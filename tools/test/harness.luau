@@ -1189,6 +1189,11 @@ local function hrequire(m)
 				G._hSE = true
 				G.showError = function(m, ...)
 					local msg = tostring(m)
+					-- 测试台读不到的派生属性（新建零件的 Position、附件的 WorldPosition：Lune 报「missing default value」）真 Roblox 里不会出错：不算
+					if msg:find("missing default value", 1, true) then
+						H.screenLune = (H.screenLune or 0) + 1
+						return se(m, ...)
+					end
 					table.insert(H.screenErrs, { msg = msg, t = H.now, side = sideName(H.ctx) })
 					local key = msg:sub(1, 160)
 					H.screenSeen[key] = (H.screenSeen[key] or 0) + 1
@@ -1723,8 +1728,8 @@ function H.boot(placePath, opts)
 end
 
 function H.summary()
-	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，画面报错条 %d 次（%d 种），远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns,
-		#H.screenErrs, (function() local n = 0 for _ in H.screenSeen do n += 1 end return n end)(), H.netStats.s, H.netStats.c))
+	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，画面报错条 %d 次（%d 种；测试台读不到属性的另有 %d 次不算），远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns,
+		#H.screenErrs, (function() local n = 0 for _ in H.screenSeen do n += 1 end return n end)(), H.screenLune or 0, H.netStats.s, H.netStats.c))
 end
 
 return H

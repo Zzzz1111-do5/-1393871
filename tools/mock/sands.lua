@@ -29,7 +29,7 @@ check(#T.texts(C.T("map.sands.name")) > 0 and #T.texts(C.T("map.desert.name")) >
 
 print("② 点沙海 → 服务器按沙海建")
 T.press(cards.sands)
-R.run(0.5)
+R.run((G.Config.MapVote.grace or 3) + 0.6)   -- 投票：在场的人都投了，再等几秒（还能改票）就开
 check(G.mapId == "sands", "服务器按沙海开（" .. tostring(G.mapId) .. "）")
 local t0 = os.clock()
 T.runUntil(function() return G.worldReady end, 900)
@@ -47,10 +47,28 @@ local ids = {}
 for _, p in ipairs(Map.POINTS or {}) do ids[#ids + 1] = p.id end
 check(#ids == 5, "五个据点：" .. table.concat(ids, " "))
 
+-- 地图是开服以后投票定的：服务器各模块初始化时 Map 还是岛，定了图以后要按沙海重算（原来没重算：A 的攻击出发阵地在岛的坐标上、寻路网格盖不住南边的红方基地）
+T.runUntil(function() return G.mapTablesFor and G.mapTablesFor() == "sands" end, 60)
+check(G.mapTablesFor and G.mapTablesFor() == "sands", "开局前按沙海重算了阶段、出发阵地、集结点")
+check(G.STAGES and #G.STAGES == 5 and G.stageOf.E == 5, "服务器的阶段表是沙海的五个阶段（E 是第 5 阶段）")
+local pA
+for _, p in ipairs(Map.POINTS) do if p.id == "A" then pA = p end end
+local sA = G.stagingOf and G.stagingOf("A")
+local dA = (pA and sA) and math.sqrt((sA.x - pA.x) ^ 2 + (sA.z - pA.z) ^ 2) or 0
+check(pA and sA and sA.z > pA.z and dA > 150 and dA < 350, string.format("A 的攻击出发阵地在 A 南边（攻方那一侧，离 A %.0f 格；碉堡射界外的侧边优先）：A (%.0f, %.0f)，出发阵地 (%.0f, %.0f)",
+  dA, pA and pA.x or 0, pA and pA.z or 0, sA and sA.x or 0, sA and sA.z or 0))
+T.runUntil(function() return G.navCell == Map.NAVCELL end, 60)
+check(G.navCell == Map.NAVCELL, "寻路网格按沙海的范围、格子大小（" .. tostring(G.navCell) .. " 格一格）")
+
 print("③ 客户端跟着换")
 R.run(2)
 check(C.Map.id == "sands", "客户端的 Map 也换成沙海")
 check(C.Config.Map == "sands" and C.Config.Stages[1].id == "border", "客户端的阶段表也换了")
+local route
+for _, d in ipairs(p1.PlayerGui:GetDescendants()) do if d.Name == "Route" then route = d end end
+local stopIds = {}
+for _, c in ipairs(route and route:GetChildren() or {}) do if c.ClassName == "Frame" then stopIds[#stopIds + 1] = c.Name end end
+check(#stopIds == 5 and route:FindFirstChild("hq") ~= nil, "战役路线条换成沙海的五个阶段（" .. table.concat(stopIds, " ") .. "；原来留着岛的）")
 local a = C.T("point.A")
 check(a ~= "point.A" and (a:find("边境") or a:find("Border")), "据点 A 叫「" .. a .. "」（@sands 的说法）")
 local st = C.T("stage.border")

@@ -823,10 +823,13 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
--- 地图：开服以后第一个玩家在选地图界面点一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
+-- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   desert（「沙漠风暴」，MapDesert.lua，征服）、sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 Config.Map = "island"
+-- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
+--   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
+Config.MapVote = { time = 25, grace = 3 }
 
 ---------------------------------------------------------------- 回合
 
@@ -5017,7 +5020,7 @@ add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
 add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
 add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
 add("menu.c1.title", "开始游戏", "PLAY")
-add("menu.c1.sub", "选地图 · 自动分队 · 直接上前线（回车）", "PICK A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
+add("menu.c1.sub", "投票选地图 · 自动分队 · 直接上前线（回车）", "VOTE FOR A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
 add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
@@ -5033,8 +5036,8 @@ add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-B
 add("menu.beta", "测试版", "BETA")
 -- 选地图（MapPick.lua，用户 11-22：「界面直接写 play，然后进入界面点地图」）
 add("map.cat", "开始游戏", "PLAY")
-add("map.title", "选择地图", "SELECT MAP")
-add("map.sub", "第一个选的定这个服务器打哪张，后进来的直接加入", "The first pick sets this server's map — later players join it")
+add("map.title", "投票选地图", "VOTE FOR A MAP")
+add("map.sub", "大家投票选这个服务器打哪张（能改票），票最多的开；后进来的直接加入", "Everyone votes for this server's map (you can change your vote) — most votes wins; later players join it")
 add("map.back", "返回", "BACK")
 add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
 add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
@@ -5047,6 +5050,12 @@ add("map.sands.mode", "突破", "BREAKTHROUGH")
 add("map.sands.desc", "海湾战争式的纯陆地沙漠（约 28 公里见方）：从南边的前进基地北上，五个阶段一个一个打 · 沙墙、油田、镇子、空军基地、岭上指挥部", "A Gulf War desert with no sea (about 28 km across): push north from the forward base through five stages · border berm, oilfield, town, airbase, ridge command")
 add("map.size", "{1} × {1} 公里", "{1} × {1} KM")
 add("map.pick", "选这张", "SELECT")
+add("map.vote", "投这张", "VOTE")
+add("map.voted", "已投这张", "VOTED")
+add("map.votes", "{1} 票", "{1} VOTES")
+add("map.voteLeft", "投票中 · 还剩 {1} 秒 · {2} / {3} 人已投", "VOTING · {1}s LEFT · {2} / {3} VOTED")
+add("map.voteIdle", "投一票就开始倒计时：{1} 秒后按票数最多的开（平票随机）", "The first vote starts a {1}s countdown — most votes wins (ties are random)")
+add("map.decided", "投票结束：打「{1}」", "VOTE OVER: {1}")
 add("map.join", "加入", "JOIN")
 add("map.now", "这个服务器正在打", "NOW PLAYING")
 add("map.other", "这个服务器在打「{1}」", "This server is playing {1}")
@@ -11402,15 +11411,57 @@ end)
 
 ---------------------------------------------------------------- 开服：先生成地图，再开局
 
--- 选地图（用户 11-22：「界面直接写 play，然后进入界面点地图」）：开服先不造世界，等第一个玩家在主菜单「开始游戏」→ 选地图里点一张
---   （ACT.pickMap，Round.lua）；服务器里一个人也没有（测试台、空服）就等几秒按默认的岛开；后进来的直接加入当前这张。
+-- 选地图（用户 11-22：「界面直接写 play，然后进入界面点地图」；11-23：「三张地图改成投票制，进去投票选地图」）：开服先不造世界，
+--   进来的人在主菜单「开始游戏」→ 选地图界面投票（ACT.pickMap，Round.lua；能改票）：第一票投出后 Config.MapVote.time 秒按票数最多的开（平票随机），
+--   在场的人都投了就再等 grace 秒提前结束；服务器里一个人也没有（测试台、空服）就等几秒按默认的岛开；后进来的直接加入当前这张。
 --   定下来以后 ReplicatedStorage 的 MapId 属性告诉客户端（客户端照着 Map.use）
 G.mapId = nil
+G.mapVotes = {}   -- [Player] = 地图 id
+local voteEnds, allInAt = nil, nil   -- 投票到什么时候截止（os.clock）；在场的人什么时候都投完了
+local function validMap(id)
+  for _, m in ipairs(Map.ids) do if m == id then return true end end
+  return false
+end
+-- 直接定一张（Studio 的 MapName、测试用）；已经定了就看是不是同一张
 function G.pickMap(id)
   if G.mapId then return G.mapId == id end
-  if not Map.profile(id) then return false end
+  if not validMap(id) or not Map.profile(id) then return false end
   G.mapId = id
   return true
+end
+-- 投一票（改票就是再投一次）；地图已经定了就不算
+function G.voteMap(pl, id)
+  if G.mapId or type(id) ~= "string" or not validMap(id) or not Map.profile(id) then return false end
+  G.mapVotes[pl] = id
+  voteEnds = voteEnds or (os.clock() + ((Config.MapVote and Config.MapVote.time) or 25))
+  return true
+end
+local function voteCounts()
+  local counts, voters = {}, 0
+  for pl, id in pairs(G.mapVotes) do
+    if pl.Parent == Players then
+      counts[id] = (counts[id] or 0) + 1
+      voters += 1
+    end
+  end
+  return counts, voters
+end
+-- 发给客户端的投票情况（Round.lua 的 common()）：还没定图才有
+function G.mapVoteState()
+  if G.mapId then return nil end
+  local counts, voters = voteCounts()
+  return { n = counts, left = voteEnds and math.max(0, voteEnds - os.clock()) or nil, voters = voters, players = #Players:GetPlayers() }
+end
+-- 票数最多的那张（平票随机挑一张）；没人投返回 nil
+local function voteWinner()
+  local counts = voteCounts()
+  local best, list = 0, {}
+  for _, id in ipairs(Map.ids) do
+    local n = counts[id] or 0
+    if n > best then best, list = n, { id } elseif n == best and n > 0 then table.insert(list, id) end
+  end
+  if #list == 0 then return nil end
+  return list[math.random(1, #list)]
 end
 local function waitMap()
   local t0 = os.clock()
@@ -11422,12 +11473,31 @@ local function waitMap()
   end
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
+  local grace = (Config.MapVote and Config.MapVote.grace) or 3
+  local pushAt = 0
   while not G.mapId do
+    -- 投票中半秒发一次状态（票数、倒计时、在场人数：有人进来、走了也跟着变）
+    if os.clock() >= pushAt and #Players:GetPlayers() > 0 and G.pushAll then
+      pushAt = os.clock() + 0.5
+      pcall(G.pushAll)
+    end
     local anyone = #Players:GetPlayers() > 0
     local waited = os.clock() - t0
-    if (not anyone and waited > emptyWait) or waited > (Config.MapWaitMax or 900) then G.mapId = Config.MapDefault or "island" end
+    if voteEnds then
+      -- 在场的人都投了：再等 grace 秒（还能改票）就开
+      local _, voters = voteCounts()
+      if anyone and voters >= #Players:GetPlayers() then
+        allInAt = allInAt or os.clock()
+        voteEnds = math.min(voteEnds, allInAt + grace)
+      end
+      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "island" end
+    end
+    if not G.mapId and ((not anyone and not voteEnds and waited > emptyWait) or waited > (Config.MapWaitMax or 900)) then
+      G.mapId = voteWinner() or Config.MapDefault or "island"
+    end
     task.wait(0.1)
   end
+  if G.pushAll then pcall(G.pushAll) end   -- 选地图界面马上看到定了哪张
   if not Map.use(G.mapId) then
     bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
     G.mapId = "island"
@@ -18274,7 +18344,10 @@ function Nav.init(G)
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
   -- 选了地图以后（navBuild）按那张图重新定范围：沙漠 ±EXT、100 格一格（地图大了五六倍，格子数跟岛差不多）
   local function setGrid()
-    if Map.desert then
+    if Map.NAVBOX then   -- 沙海：自己给了范围、格子大小（原来只在开服时看——那时地图还没定、是岛，沙海的网格盖不住南边的红方基地）
+      X0, Z0, X1, Z1 = Map.NAVBOX.x0, Map.NAVBOX.z0, Map.NAVBOX.x1, Map.NAVBOX.z1
+      CELL = Map.NAVCELL or CELL
+    elseif Map.desert then
       local E = Map.EXT or 15500
       CELL = 100
       X0, Z0, X1, Z1 = -E, -E, E, E
@@ -18511,7 +18584,9 @@ function Navy.init(G)
   local ships = {}
   G.ships = ships
   G.ShipDefs = SD   -- 测试、别的模块查型号用
-  if Map.LANDONLY then return end   -- 沙漠图没有海：不建码头、不出舰艇（G.ships 留个空表给别的模块查）
+  -- 没有海的图（沙海 LANDONLY、沙漠风暴 desert）：不建码头、不出舰艇（G.ships 留个空表给别的模块查）。
+  --   地图是开服以后投票定的，初始化时 Map 还是岛：不能在这里直接 return，下面每个入口按现在这张图判断
+  local function noSea() return Map.LANDONLY == true or Map.desert == true end
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -18535,6 +18610,7 @@ function Navy.init(G)
   local vehAvail0, vehModels0 = G.vehAvail, G.vehModels
   function G.vehAvail(team)
     local out = vehAvail0 and vehAvail0(team) or {}
+    if noSea() then return out end
     local cap = Config.VehicleCap("ship", G.teamCount(team))
     local u = used(team)
     local cd = 0
@@ -18548,6 +18624,7 @@ function Navy.init(G)
   end
   function G.vehModels(team)
     local out = vehModels0 and vehModels0(team) or {}
+    if noSea() then return out end
     for _, id in ipairs(Config.Vehicles[team].ship or {}) do if SD.get(id) then table.insert(out, id) end end
     return out
   end
@@ -18711,6 +18788,7 @@ function Navy.init(G)
   local depotsBuild0 = G.depotsBuild
   function G.depotsBuild()
     if depotsBuild0 then depotsBuild0() end
+    if noSea() then return end
     G.try("码头", buildPiers)
   end
 
@@ -19386,6 +19464,7 @@ function Navy.init(G)
 
   local acc, aiT = 0, 0
   G.onFrame(function(dt)
+    if noSea() then return end
     acc += dt
     aiT += dt
     local t = now()
@@ -20144,14 +20223,22 @@ function Round.init(G)
   local now = os.clock
 
   -- 阶段：每个据点属于第几阶段、是不是侧翼（没写进 Config.Stages 的据点一直开着）
+  --   开服时地图还没定（等大家投票），Map / Config.Stages 还是岛的：定了图以后开局前 buildMapTables() 按那张图重算（就地改，G.stageOf 这些引用不变）
   local STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
   local stageOf, flankOf = {}, {}
-  for i, st in ipairs(STAGES) do
-    for _, id in ipairs(st.points) do stageOf[id] = i end
-    for _, id in ipairs(st.flank or {}) do
-      if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+  local function buildStages()
+    STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
+    table.clear(stageOf)
+    table.clear(flankOf)
+    for i, st in ipairs(STAGES) do
+      for _, id in ipairs(st.points) do stageOf[id] = i end
+      for _, id in ipairs(st.flank or {}) do
+        if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+      end
     end
+    G.STAGES = STAGES
   end
+  buildStages()
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
@@ -20183,11 +20270,14 @@ function Round.init(G)
   G.rallyOf = function(id) return rally[id] and rally[id][1] end
   local FD = require(game:GetService("ReplicatedStorage"):WaitForChild("FortDefs"))
   local bunkers = {}
-  for _, f in ipairs(FD.layout(Map)) do
-    if f.kind == "bunker" then
-      local d = FD.D.bunker
-      local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
-      table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+  local function buildBunkers()
+    table.clear(bunkers)
+    for _, f in ipairs(FD.layout(Map)) do
+      if f.kind == "bunker" then
+        local d = FD.D.bunker
+        local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
+        table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+      end
     end
   end
   local function covered(x, z)
@@ -20205,59 +20295,73 @@ function Round.init(G)
   local staging = {}   -- [据点] = { {x, z}, … }（好的在前；都在机枪碉堡射界里时才用射界里的）
   local OFF = Config.StageOff or 260
   local BACK = Config.RallyBack or 200
-  for _, p in ipairs(Map.POINTS) do
-    local k = stageOf[p.id]
-    if k and not flankOf[p.id] then
-      -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
-      local fx, fz, fd = nil, nil, math.huge
-      for _, q in ipairs(Map.POINTS) do
-        if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
-          local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
-          if d < fd then fx, fz, fd = q.x, q.z, d end
-        end
-      end
-      if not fx then
-        for _, b in ipairs(Map.LANDINGS) do
-          if (b.isle or "main") == p.land then
-            local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
-            if d < fd then fx, fz, fd = b.cx, b.z, d end
+  local function buildStaging()
+    table.clear(staging)
+    table.clear(rally)
+    for _, p in ipairs(Map.POINTS) do
+      local k = stageOf[p.id]
+      if k and not flankOf[p.id] then
+        -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
+        local fx, fz, fd = nil, nil, math.huge
+        for _, q in ipairs(Map.POINTS) do
+          if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
+            local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
+            if d < fd then fx, fz, fd = q.x, q.z, d end
           end
         end
-      end
-      local ux, uz = 0, 1
-      if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
-      local good, bad = {}, {}
-      for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
-        local a = math.rad(ang)
-        local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
-        for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
-            table.insert(covered(x, z) and bad or good, { x = x, z = z })
-            break
+        if not fx then
+          for _, b in ipairs(Map.LANDINGS) do
+            if (b.isle or "main") == p.land then
+              local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
+              if d < fd then fx, fz, fd = b.cx, b.z, d end
+            end
           end
         end
-      end
-      for _, c in ipairs(bad) do table.insert(good, c) end
-      staging[p.id] = (#good > 0) and good or nil
-      -- 守方集结点：反方向（据点后面）150～250 格
-      local rs = {}
-      for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
-        local a = math.rad(ang)
-        local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
-        for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
-            table.insert(rs, { x = x, z = z })
-            break
+        local ux, uz = 0, 1
+        if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
+        local good, bad = {}, {}
+        for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
+          local a = math.rad(ang)
+          local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
+          for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
+              table.insert(covered(x, z) and bad or good, { x = x, z = z })
+              break
+            end
           end
         end
+        for _, c in ipairs(bad) do table.insert(good, c) end
+        staging[p.id] = (#good > 0) and good or nil
+        -- 守方集结点：反方向（据点后面）150～250 格
+        local rs = {}
+        for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
+          local a = math.rad(ang)
+          local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
+          for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+              table.insert(rs, { x = x, z = z })
+              break
+            end
+          end
+        end
+        rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
+      else
+        rally[p.id] = { { x = p.x, z = p.z - 120 } }
       end
-      rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
-    else
-      rally[p.id] = { { x = p.x, z = p.z - 120 } }
     end
   end
+  -- 按现在这张图算：阶段表、碉堡射界、攻方出发阵地、守方集结点（原来只在开服时按岛算一次——沙海的 A 出发阵地落在岛的坐标上，跑到了据点北边敌人那一侧）
+  local tablesFor = nil
+  local function buildMapTables()
+    tablesFor = Map.id
+    buildStages()
+    buildBunkers()
+    buildStaging()
+  end
+  buildMapTables()
+  G.mapTablesFor = function() return tablesFor end   -- 测试用
   G.stagingCovered = covered
   G.stagingOf = function(id) return staging[id] and staging[id][1] end
 
@@ -20799,11 +20903,15 @@ function Round.init(G)
     P.pl:LoadCharacter()
   end
 
-  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就按他选的开（init.server.lua 的 G.pickMap）；定过了就记下他想要哪张
+  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就是投一票（init.server.lua 的 G.voteMap，能改票），大家都看到票数；
+  --   定过了就记下他想要哪张（界面上是「加入」）
   function G.ACT.pickMap(P, id)
     if type(id) ~= "string" then return end
     P.wantMap = id
-    if G.pickMap then G.pickMap(id) end
+    if not G.mapId and G.voteMap and G.voteMap(P.pl, id) then
+      G.pushAll()
+      return
+    end
     G.pushOne(P)
   end
 
@@ -21116,6 +21224,7 @@ function Round.init(G)
   end
 
   function G.roundStart()
+    if tablesFor ~= Map.id then buildMapTables() end   -- 地图是开服以后投票定的：第一局开局前按那张图重算阶段、出发阵地、集结点
     R.n += 1
     R.phase = "prep"
     R.t0 = now()
@@ -21249,8 +21358,9 @@ function Round.init(G)
       ticketsDef = conquest() and R.ticketsDef or nil, mode = conquest() and "conquest" or "assault",
       -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
       progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
-      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上两张都能点）
+      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上三张都能投）
       mapReady = G.worldReady == true,
+      vote = G.mapVoteState and G.mapVoteState() or nil,   -- 还在投票：{ n = 各张票数, left = 还剩几秒（第一票投出后才有）, voters, players }
     }
   end
   local function personal(P, C)
@@ -21258,6 +21368,7 @@ function Round.init(G)
     C.team = P.team
     C.round = R.n
     C.picked = P.picked == true
+    C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
     C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")
     C.role = P.role
@@ -21312,6 +21423,11 @@ function Round.init(G)
   Players.PlayerAdded:Connect(onPlayer)
   for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
   Players.PlayerRemoving:Connect(function(pl)
+    -- 投了票走了：票不算了，大家的票数刷新
+    if G.mapVotes and G.mapVotes[pl] then
+      G.mapVotes[pl] = nil
+      task.defer(function() if G.pushAll then G.pushAll() end end)
+    end
     local P = G.P[pl]
     if not P then return end
     G.emit("left", P)
@@ -21682,7 +21798,7 @@ function Vehicles.init(G)
   local laneN = {}   -- [beachId] = 这处海滩开过几条（左右错开排）
   local nextSlot = {}   -- [beachId] = 下一班最早几点开（上一班开走 + every）
 
-  local beachOf = Map.landingOf
+  local function beachOf(id) return Map.landingOf(id) end   -- 每次按现在这张图查（地图是开服以后投票定的，初始化时 Map 还是岛）
 
   -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
   local function boatCF(b, d, lane)
@@ -48976,7 +49092,8 @@ return Juice
 --   主菜单「开始游戏」打开：Map.ids 有几张就并排几张大卡片（岛屿突击 · 沙漠风暴 · 沙海；原来按两张排，第三张整个排到了屏幕外）——
 --   上面一块缩略图（按那张图自己的高度、材质现画：EditableImage；用不了就一行一条渐变拼出低分辨率的缩略图），
 --   下面名字、模式、尺寸、一行说明；服务器正在打的那张标「这个服务器正在打」和人数。开着时主菜单的字先藏起来（原来从卡片后面透出来）。
---   点一张：告诉服务器（ACT.pickMap；还没定地图就按这张开）→ 地图生成好（S.mapReady）就快速加入（自动分队、默认装备、推荐出生点）、关掉菜单；
+--   投票（用户 11-23）：还没定图时点一张就是投一票（能改票，ACT.pickMap → init.server.lua 的 G.voteMap），每张卡显示票数，底下倒计时；
+--   第一票投出后 Config.MapVote.time 秒（在场的人都投了就提前）按票数最多的开 → 地图生成好（S.mapReady）投过票的人自动快速加入、关掉菜单；
 --   服务器已经在打另一张：那张卡写「这个服务器在打 X」，按钮变「加入 X」
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -49196,7 +49313,11 @@ function MapPick.init(G)
     K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15 + TS, Enum.Font.GothamBold
     K.go.TextTruncate = Enum.TextTruncate.AtEnd
     K.go.Parent = b
-    for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go }) do l.ZIndex = 3 end   -- 字在缩略图上面
+    -- 票数（投票中才有）：缩略图右上角一块深色小牌
+    K.votes = text(b, "", UDim2.fromOffset(96, 26), UDim2.new(1, -14, 0, 16), 13 + TS, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Center)
+    K.votes.BackgroundColor3, K.votes.BackgroundTransparency = RGB(8, 10, 12), 0.25
+    K.votes.Visible = false
+    for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go, K.votes }) do l.ZIndex = 3 end   -- 字在缩略图上面
     b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
     cards[id] = K
@@ -49215,10 +49336,13 @@ function MapPick.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 点一张：告诉服务器，生成好了就快速加入
+  ---------------------------------------------------------------- 投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：
+  --   还没定图：点一张就是投一票（再点别的是改票），每张卡上是票数，底下是倒计时；投票结束定了哪张，生成好了投过票的人自动快速加入。
+  --   已经定了：卡片按钮是「加入」那张（同原来）
 
-  local want = nil      -- 自己点的哪张
-  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
+  local want = nil      -- 自己投的 / 要加入的哪张（投过票就有）
+  local voteLeft, voteAt = nil, 0   -- 服务器说投票还剩几秒（收到时的本地时间）：本地往下数
+  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13 + TS, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
   -- 主菜单的字藏起来 / 放回来（Menu.lua 的 refreshMenu 看 G.mapPickShown）
   local function menuSync() if G.refreshMenu and G.S then G.refreshMenu(G.S) end end
   local function close()
@@ -49231,15 +49355,44 @@ function MapPick.init(G)
     if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
     want = id
     G.R.Act:FireServer("pickMap", id)
-    status.Text = T("map.loading", 0)
+    if S and S.map then status.Text = T("map.loading", 0) end
+    if G.refreshMapPick and S then G.refreshMapPick(S) end   -- 先高亮自己投的（服务器的票数随后到）
   end
   for id, K in pairs(cards) do K.b.Activated:Connect(function() choose(id) end) end
   back.Activated:Connect(close)
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
     if io.KeyCode == Enum.KeyCode.Escape then close()
-    elseif io.KeyCode == Enum.KeyCode.Return then choose((G.S and G.S.map) or Map.ids[1]) end
+    elseif io.KeyCode == Enum.KeyCode.Return then choose((G.S and G.S.map) or want or Map.ids[1]) end
   end)
+
+  -- 底下那行：投票中写倒计时、几个人投了；定了写打哪张、生成进度
+  local function statusLine(S)
+    local V = S.vote
+    if not S.map and V then
+      local MV = G.Config and G.Config.MapVote or {}
+      if voteLeft then
+        local left = math.max(0, math.ceil(voteLeft - (os.clock() - voteAt)))
+        return T("map.voteLeft", left, V.voters or 0, math.max(V.players or 0, V.voters or 0))
+      end
+      return T("map.voteIdle", MV.time or 25)
+    end
+    if S.map and want then
+      local pre = (want ~= S.map) and (T("map.decided", T("map." .. S.map .. ".name")) .. "   ·   ") or ""
+      return pre .. T("map.loading", math.floor((S.mapReady and 1 or (S.progress or 0)) * 100))
+    end
+    return ""
+  end
+  -- 倒计时每帧往下数（服务器半秒左右才推一次）
+  local tick = 0
+  local function stepStatus(dt)
+    if not gui.Enabled or not G.S then return end
+    tick += dt or 0
+    if tick < 0.2 then return end
+    tick = 0
+    status.Text = statusLine(G.S)
+  end
+  if G.frameConn then G.frameConn("MapPick", stepStatus) else game:GetService("RunService").RenderStepped:Connect(stepStatus) end
 
   function G.showMapPick()
     gui.Enabled = true
@@ -49251,37 +49404,52 @@ function MapPick.init(G)
   G.mapPickWant = function() return want end   -- 测试用
 
   function G.refreshMapPick(S)
-    if not S or not gui.Enabled then return end
+    if not S then return end
+    -- 投票的倒计时：每次收到都对一下（界面关着也记着，打开就是对的）
+    local V = (not S.map) and S.vote or nil
+    if V and V.left then voteLeft, voteAt = V.left, os.clock() else voteLeft = nil end
+    if not S.map and S.myVote then want = S.myVote end   -- 自己投的哪张以服务器为准（换了设备、重进都对得上）
+    if not gui.Enabled then return end
     cat.Text = T("map.cat")
     head.Text = T("map.title")
     sub.Text = T("map.sub")
     back.Text = T("map.back")
     local n = (S.rAtk or 0) + (S.rDef or 0)
+    local voting = S.map == nil
     for id, K in pairs(cards) do
       local info = Map.info[id] or {}
+      local acc = ACCENT[id] or WHITE
       K.mode.Text = string.upper(T("map." .. id .. ".mode"))
       K.name.Text = T("map." .. id .. ".name")
       K.size.Text = T("map.size", string.format("%.0f", info.km or 0))
       K.desc.Text = T("map." .. id .. ".desc")
       local cur = S.map == id
       local other = S.map ~= nil and not cur
+      local mine = voting and want == id
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
-      K.now.TextColor3 = cur and (ACCENT[id] or WHITE) or MUTE
-      K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or (cur and T("map.join") or T("map.pick"))
-      K.b.BackgroundTransparency = other and 0.45 or 0.2
-      K.st.Color = (want == id) and (ACCENT[id] or WHITE) or WHITE
-      K.st.Transparency = (want == id) and 0.2 or 0.86
-    end
-    if want then
-      if S.map == want and S.mapReady then
-        -- 地图好了：快速加入（主菜单关掉、自动分队、推荐出生点）
-        close()
-        if G.quickJoin then G.quickJoin() end
-      elseif S.map == want then
-        status.Text = T("map.loading", math.floor((S.progress or 0) * 100))
+      K.now.TextColor3 = cur and acc or MUTE
+      if voting then
+        K.go.Text = mine and T("map.voted") or T("map.vote")
+        K.go.BackgroundColor3, K.go.TextColor3 = mine and acc or WHITE, RGB(10, 10, 12)
+        local nv = (V and V.n and V.n[id]) or 0
+        K.votes.Visible = true
+        K.votes.Text = T("map.votes", nv)
+        K.votes.TextColor3 = (nv > 0) and acc or MUTE
+      else
+        K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or T("map.join")
+        K.go.BackgroundColor3, K.go.TextColor3 = WHITE, RGB(10, 10, 12)
+        K.votes.Visible = false
       end
-    else
-      status.Text = ""
+      K.b.BackgroundTransparency = other and 0.45 or 0.2
+      local hi = mine or (cur and want ~= nil)
+      K.st.Color = hi and acc or WHITE
+      K.st.Transparency = hi and 0.2 or 0.86
+    end
+    status.Text = statusLine(S)
+    -- 投过票 / 点过加入的：地图定了、生成好了就快速加入（主菜单关掉、自动分队、推荐出生点）——不管最后定的是不是自己投的那张
+    if want and S.map and S.mapReady then
+      close()
+      if G.quickJoin then G.quickJoin() end
     end
   end
 end
@@ -52166,15 +52334,25 @@ function Operation.init(G)
   local route = ui.frame(brief, UDim2.new(), nil, INK, 1)
   route.Name = "Route"
   local stops = {}
-  for i, stage in ipairs(stages) do
-    local width = 1 / #stages
-    local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
-    stop.Name = stage.id
-    local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
-    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
-    text.TextWrapped = false
-    stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
+  local shownRound, shownStage, shownTeam, startedAt, renderedLanguage   -- 简报现在显示的是哪一局、哪个阶段（换了地图要重写）
+  -- 阶段路线条：地图是进服以后投票定的（定之前 Config.Stages 还是岛的四个阶段），换了图按那张图的阶段重摆（沙海五个阶段）
+  local function buildStops()
+    for _, st in ipairs(stops) do st.frame:Destroy() end
+    table.clear(stops)
+    stages = G.Config.Stages or {}
+    for i, stage in ipairs(stages) do
+      local width = 1 / #stages
+      local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
+      stop.Name = stage.id
+      local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
+      local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
+      text.TextWrapped = false
+      stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
+    end
+    shownRound, shownStage = nil, nil   -- 简报按新的阶段表重写
   end
+  buildStops()
+  if G.onMap then G.onMap(buildStops) end
 
   local localPanel = panel("Frame", "ObjectiveStatus")
   localPanel.BackgroundTransparency = 0.08
@@ -52185,7 +52363,6 @@ function Operation.init(G)
   local track = ui.frame(localPanel, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -9), MUTE, 0.72)
   local fill = ui.frame(track, UDim2.fromScale(0, 1), nil, AMBER, 0)
 
-  local shownRound, shownStage, shownTeam, startedAt, renderedLanguage
   local baseX, baseY, viewportW, viewportH, touchWidth, routeNames, canFit
   local redeployHint = false
   local lastPoint, meter = nil, 0

@@ -21,7 +21,9 @@ function Navy.init(G)
   local ships = {}
   G.ships = ships
   G.ShipDefs = SD   -- 测试、别的模块查型号用
-  if Map.LANDONLY then return end   -- 沙漠图没有海：不建码头、不出舰艇（G.ships 留个空表给别的模块查）
+  -- 没有海的图（沙海 LANDONLY、沙漠风暴 desert）：不建码头、不出舰艇（G.ships 留个空表给别的模块查）。
+  --   地图是开服以后投票定的，初始化时 Map 还是岛：不能在这里直接 return，下面每个入口按现在这张图判断
+  local function noSea() return Map.LANDONLY == true or Map.desert == true end
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -45,6 +47,7 @@ function Navy.init(G)
   local vehAvail0, vehModels0 = G.vehAvail, G.vehModels
   function G.vehAvail(team)
     local out = vehAvail0 and vehAvail0(team) or {}
+    if noSea() then return out end
     local cap = Config.VehicleCap("ship", G.teamCount(team))
     local u = used(team)
     local cd = 0
@@ -58,6 +61,7 @@ function Navy.init(G)
   end
   function G.vehModels(team)
     local out = vehModels0 and vehModels0(team) or {}
+    if noSea() then return out end
     for _, id in ipairs(Config.Vehicles[team].ship or {}) do if SD.get(id) then table.insert(out, id) end end
     return out
   end
@@ -221,6 +225,7 @@ function Navy.init(G)
   local depotsBuild0 = G.depotsBuild
   function G.depotsBuild()
     if depotsBuild0 then depotsBuild0() end
+    if noSea() then return end
     G.try("码头", buildPiers)
   end
 
@@ -896,6 +901,7 @@ function Navy.init(G)
 
   local acc, aiT = 0, 0
   G.onFrame(function(dt)
+    if noSea() then return end
     acc += dt
     aiT += dt
     local t = now()
