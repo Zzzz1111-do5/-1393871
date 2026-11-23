@@ -29,7 +29,7 @@ function Depots.init(G)
   local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
   local function models(team, cat)
     local out = {}
-    for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+    for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都有（Config.CrossVehicles；舰艇还是各用各的）
       local d = defOf(id)
       if d and not d.needsAir then table.insert(out, id) end
     end
@@ -406,6 +406,11 @@ function Depots.init(G)
     local want = vid or p.vid
     if want and G.passOkFor and not G.passOkFor(P, want) then
       G.msg(P.pl, "bad", "pass.locked", { k = "veh." .. want })
+      return
+    end
+    -- 金币解锁（Economy.lua，用户 11-23）：没买的型号不给生成（客户端卡片上画着锁和价钱，点两下买）
+    if want and G.vehUnlocked and not G.vehUnlocked(P, want) then
+      G.msg(P.pl, "bad", "eco.needVeh", Config.VehPrice(want) or 0)
       return
     end
     vid = vid or p.vid

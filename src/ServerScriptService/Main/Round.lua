@@ -167,9 +167,11 @@ function Round.init(G)
     P.pl.Neutral = false
     P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
   end
+  G.setTeamOf = setTeam   -- PvE（Pve.lua）：真人都换到攻方
 
   -- 新来的人先放到真人少的一方（临时的），进服先看选阵营界面：自己选解放军（攻）还是美军（守）
   local function pickTeam()
+    if G.pve then return "atk" end   -- PvE 关卡：真人都在攻方（Pve.lua）
     local a, d = teamCount("atk", true), teamCount("def", true)
     if a < d then return "atk" elseif d < a then return "def" end
     return (math.random() < 0.5) and "atk" or "def"
@@ -178,6 +180,7 @@ function Round.init(G)
   -- 能不能进这一队：不算自己，这一队的真人不比另一队多（人多的一边「人数已满」）
   local function canJoin(P, team)
     if team ~= "atk" and team ~= "def" then return false end
+    if G.pve then return team == "atk" end   -- PvE 关卡：只能进攻方
     local other = (team == "atk") and "def" or "atk"
     local a, b = teamCount(team, true), teamCount(other, true)
     if P.team == team then a -= 1 elseif P.team == other then b -= 1 end
@@ -710,6 +713,16 @@ function Round.init(G)
     if type(id) ~= "string" then return end
     P.wantMap = id
     if G.pickMap then G.pickMap(id) end
+    -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
+    if G.pve and G.mapId then
+      if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
+        G.pveExit()
+        G.msg(P.pl, "info", "pve.left")
+        G.roundStart()
+        return
+      end
+      G.msg(P.pl, "info", "pve.joined", G.pve.n)
+    end
     G.pushOne(P)
   end
 
@@ -902,6 +915,7 @@ function Round.init(G)
     G.msgAll("center", "ui.captured", { k = "point." .. s.id })
     G.fx({ k = "capture", id = s.id })
     G.emit("captured", s)
+    if R.phase ~= "battle" then return end   -- PvE 关卡拿够了据点、这一局已经结束了（Pve.lua）：不再推下一阶段
     local TK = Config.Tickets or {}
     if flankOf[s.id] then   -- 侧翼：补兵力，不影响推进
       R.tickets += TK.flank or 0
@@ -1065,6 +1079,7 @@ function Round.init(G)
     R.ticketsMax = R.tickets
     if conquest() then
       R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800
+      if G.pveTickets then G.pveTickets(R) end   -- PvE 关卡：两边的兵力按关卡（Pve.lua）
       R.endsAt = now() + (RC.conquest or 2400)
       G.msgAll("center", "ui.conquestStart")
       G.pushAll()
@@ -1093,9 +1108,11 @@ function Round.init(G)
     R.winner = winner
     R.nextAt = now() + RC.results
     local best = nil
+    if G.pveFinish then G.try("PvE 结算", G.pveFinish, winner) end   -- PvE 关卡：打通的奖励、进度（Pve.lua），先于存档
     for _, P in pairs(G.P) do
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
+      if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil
@@ -1103,6 +1120,7 @@ function Round.init(G)
     G.emit("roundEnd", winner)
     G.pushAll()
   end
+  G.roundFinish = function(w) return finish(w) end   -- PvE：拿下要求的据点数就提前结束（Pve.lua）
 
   function G.roundStep(dt)
     local t = now()
@@ -1166,6 +1184,7 @@ function Round.init(G)
       -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
       progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
       map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上两张都能点）
+      pve = G.pve and G.pve.n or nil,   -- PvE 关卡：第几关（Pve.lua）
       mapReady = G.worldReady == true,
     }
   end

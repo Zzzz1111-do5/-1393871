@@ -1181,6 +1181,8 @@ local function hrequire(m)
 		local init = value.init
 		value.init = function(G, ...)
 			H.Gs[side] = G
+			-- 金币解锁（Economy.lua）：测试里载具默认全开（老的测试直接召唤各型车）；测金币的测试自己关掉（G.econAll = false）
+			if side == "server" and G.econAll == nil then G.econAll = true end
 			return init(G, ...)
 		end
 	end

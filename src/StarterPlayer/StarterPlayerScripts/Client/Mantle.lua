@@ -17,6 +17,12 @@ function Mantle.init(G)
   G.mantling = false
   G.mantleState = function() return busy end   -- 测试用
   local MIN_H, MAX_H = 1.1, 7.6   -- 顶面比脚高多少格能翻（约 0.4～2.7 米）
+  -- Humanoid 的 Jump / Sit：Lune 测试台的 Humanoid 读不到（没有默认值会报错）——包一层
+  local function getP(o, k)
+    local ok, v = pcall(function() return o[k] end)
+    return ok and v or nil
+  end
+  local function setJump(hum, v) pcall(function() hum.Jump = v end) end
 
   local function flat(v)
     local f = V(v.X, 0, v.Z)
@@ -29,7 +35,7 @@ function Mantle.init(G)
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp or hum.Health <= 0 or busy then return nil end
-    if G.drive or G.fly or G.downed or hum.Sit or hrp.Anchored or ch:GetAttribute("Downed") then return nil end
+    if G.drive or G.fly or G.downed or getP(hum, "Sit") == true or hrp.Anchored or ch:GetAttribute("Downed") then return nil end
     local dir = flat(hum.MoveDirection) or flat(hrp.CFrame.LookVector)
     if not dir then return nil end
     local feet = hrp.Position.Y - hum.HipHeight - hrp.Size.Y / 2
@@ -107,7 +113,7 @@ function Mantle.init(G)
     busy = M
     G.mantling = true
     pcall(function() M.hum.AutoRotate = false end)
-    M.hum.Jump = false
+    setJump(M.hum, false)
     if G.shake then G.shake(0.06) end
     if G.sfx then G.sfx("thud", nil, { vol = 0.35, speed = 1.3 }) end
   end
@@ -129,7 +135,7 @@ function Mantle.init(G)
     if not M then
       local ch = player.Character
       local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-      local j = hum ~= nil and hum.Jump == true
+      local j = hum ~= nil and getP(hum, "Jump") == true
       if j and not lastJump and UIS.TouchEnabled then G.tryMantle() end
       lastJump = j
       return
@@ -138,7 +144,7 @@ function Mantle.init(G)
     if not hrp.Parent or not hum.Parent or hum.Health <= 0 or G.downed then finish(M, false) return end
     local u = (os.clock() - M.t0) / M.dur
     if u >= 1 then finish(M, true) return end
-    hum.Jump = false
+    setJump(hum, false)
     local want = at(M, u + 1 / 60 / M.dur)
     local v = (want - hrp.Position) * 60
     if v.Magnitude > 70 then v = v.Unit * 70 end

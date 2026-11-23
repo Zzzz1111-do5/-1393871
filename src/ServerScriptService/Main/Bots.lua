@@ -98,6 +98,10 @@ function Bots.init(G)
 
   -- 每队要几个机器人：保底人数减真人，两队加起来不超过 maxTotal
   local function wanted()
+    if G.botWanted then   -- PvE 关卡（Pve.lua）：按关卡要的人数
+      local w = G.botWanted()
+      if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
+    end
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then

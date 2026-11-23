@@ -168,7 +168,8 @@ function SquadHud.init(G)
       local hp = (alive and not down) and clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 0
       r.fill.Size = UDim2.fromScale(hp, 1)
       r.fill.BackgroundColor3 = (hp < 0.35) and RGB(236, 170, 60) or GREEN
-      local seated = hum ~= nil and hum.Sit
+      local okS, seated = pcall(function() return hum ~= nil and hum.Sit end)   -- Lune 测试台的 Humanoid 读不到 Sit
+      seated = okS and seated == true
       if not alive then
         r.info.Text, r.info.TextColor3 = T("squad.dead"), RGB(140, 140, 140)
         r.name.TextColor3, r.edge.BackgroundColor3 = RGB(140, 144, 140), RGB(90, 90, 90)

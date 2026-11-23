@@ -59,7 +59,7 @@ function Armor.init(G)
     local out = {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if GROUND[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都能开（Config.CrossVehicles）
           local d = VD.get(id)
           if d and not d.needsAir then table.insert(out, id) end
         end

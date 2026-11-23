@@ -797,7 +797,8 @@ Config.Loadout = {
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
 -- 改枪（GunMods.lua，用户 11-20：对标三角洲行动）：killXp 用这把枪打死一个人（真人 / 机器人）加多少枪械经验，
 --   unlockAll 配件全部解锁（不用升级），studioAll 在 Studio 里测试时全部解锁（发布到线上照常按等级）
-Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = true }
+-- 11-23 起配件要解锁（升到等级、或者拿金币买，Economy.lua）：Studio 里测试也照样上锁（studioAll 改成 false），想看全部配件改回 true
+Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = false }
 
 -- R 币解锁（游戏通行证 Game Pass）：在 Roblox 创作者后台给这个体验建两个通行证（价格照 price），把通行证编号填进 id——
 --   id 还是 0 的时候谁都能用（没上架前不挡人，Studio 里测试也方便）；填了编号就只有买了的人能用，没买的点了弹出购买框
@@ -893,6 +894,66 @@ Config.Vehicles = {
     ship = { "ddg125", "cg47", "lcs2", "pbr" },
   },
 }
+-- 两边都能用对方的载具（用户 11-23：「两边都可以用对方的载具」）：坦克、装甲车、防空、火炮、直升机、飞机的召唤点上两边的型号都有
+--   （自己这一边的排前面）；舰艇还是各用各的（码头、舰队不一样）。召唤点（Depots.lua）、生成点牌子（Armor / Air 的 vehModels）按 TeamVehicles 列
+Config.CrossVehicles = { tank = true, apc = true, aa = true, arty = true, heli = true, jet = true }
+function Config.TeamVehicles(team, cat)
+  local own = (Config.Vehicles[team] or {})[cat] or {}
+  if not Config.CrossVehicles[cat] then return own end
+  local other = (team == "atk") and "def" or "atk"
+  local out, seen = {}, {}
+  for _, list in ipairs({ own, (Config.Vehicles[other] or {})[cat] or {} }) do
+    for _, id in ipairs(list) do
+      if not seen[id] then seen[id] = true table.insert(out, id) end
+    end
+  end
+  return out
+end
+-- 金币（Economy.lua，用户 11-23：「把很多坦克飞机直升机搞成金币解锁……金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
+--   startCoins 新玩家的金币；一局打完：得分 × perScore + 赢了 win / 输了 lose；PvE 关卡打通另有奖励（Config.Pve）
+--   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
+--   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
+Config.Economy = {
+  startCoins = 1500,
+  perScore = 0.1, win = 200, lose = 60,
+  veh = {
+    -- 坦克
+    ztz96 = 0, m10 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000,
+    -- 装甲车
+    ztd05 = 0, m1117 = 0, hmmwv = 0, zsl92b = 600, jltv = 600, zbd05 = 900, stryker = 1000, ptl02 = 1200, m2a3 = 1200, m1150 = 1500,
+    -- 防空
+    pgz07 = 0, m163 = 0, pgl625 = 1200, mshorad = 1500, ld2000 = 1800, cram = 1800, patriot = 3500,
+    -- 火炮
+    plz07 = 0, m109a7 = 0, m270 = 2500,
+    -- 直升机
+    z20 = 0, uh60 = 0, ch47 = 600, z10 = 2200, ah64e = 2800,
+    -- 飞机
+    j10 = 0, a10c = 0, mq9 = 1200, j11 = 1500, gj2 = 1500, j15t = 1800, gj11 = 2200, j16 = 2600, f35 = 3200, j35 = 3500,
+    f22 = 4500, j20 = 4500, h6k = 5000, j36 = 6500,
+  },
+  attBase = 100, attPerLv = 80,
+}
+-- PvE 关卡（Pve.lua，用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）：真人都在攻方，跟电脑打；一关一关解锁
+--   map 哪张图（岛：登陆战，拿下 caps 个据点就赢；沙漠：征服，敌方兵力 tickets 扣光就赢）；enemies 敌方电脑几个、allies 友军电脑几个
+--   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
+Config.Pve = {
+  firstBonus = 2, perPlayer = 2,
+  levels = {
+    { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
+    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },
+    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
+    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
+    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
+    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
+  },
+}
+function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）
+function Config.AttPrice(lv)
+  if (lv or 0) <= 1 then return 0 end
+  return Config.Economy.attBase + Config.Economy.attPerLv * lv
+end
 Config.VehicleMod = {
   m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
@@ -2028,8 +2089,9 @@ GM.find = find
 
 function GM.has(id) return GM.DEF[id] ~= nil end
 
--- 选的配件（表）整理成合法的：没选的、这把枪装不了的用默认；lv 给了的话，没解锁的也换成默认（all = true 全部解锁）
-function GM.clean(id, b, lv, all)
+-- 选的配件（表）整理成合法的：没选的、这把枪装不了的用默认；lv 给了的话，没解锁的也换成默认（all = true 全部解锁）；
+--   owned(位, 配件) 返回 true 的是拿金币买过的（Economy.lua）：没到等级也算解锁
+function GM.clean(id, b, lv, all, owned)
   local D = GM.DEF[id]
   if not D then return nil end
   local out = {}
@@ -2039,7 +2101,7 @@ function GM.clean(id, b, lv, all)
       local want = type(b) == "table" and b[slot] or nil
       local i, x = nil, nil
       if type(want) == "string" then i, x = find(list, want) end
-      if x and lv and not all and x[2] > lv then x = nil end
+      if x and lv and not all and x[2] > lv and not (owned and owned(slot, x[1])) then x = nil end
       out[slot] = x and x[1] or D.def[slot]
     end
   end
@@ -2055,7 +2117,8 @@ end
 function GM.unlockLv(id, slot, item)
   local D = GM.DEF[id]
   local list = D and D.slots[slot]
-  local _, x = list and find(list, item)
+  if not list then return nil end
+  local _, x = find(list, item)   -- 原来写成 list and find(...)：and 只留第一个返回值，x 一直是 nil（改枪界面从来不画等级锁）
   return x and x[2] or nil
 end
 
@@ -4231,6 +4294,52 @@ add("role.sniper.desc", "远距离一枪一个，爆头双倍；另带一支 M4"
 add("role.at.desc", "火箭筒打坦克、装甲车、碉堡", "Rocket launcher against tanks, APCs and bunkers")
 add("role.aa.desc", "单兵防空导弹，锁定直升机、飞机", "Shoulder SAM that locks onto helicopters and jets")
 add("role.medic.desc", "M4 + 急救包，给身边的队友回血、快速救起倒地的队友", "M4 and a medkit that heals nearby teammates and quickly revives downed ones")
+-- PvE 关卡（Pve.lua、选地图界面）
+add("pve.tabPvp", "对战 PVP", "PVP")
+add("pve.tabPve", "关卡 PVE", "PVE MISSIONS")
+add("pve.title", "关卡", "MISSIONS")
+add("pve.sub", "跟电脑打，一关一关解锁；打通拿金币（第一次翻倍），金币解锁载具和配件", "Fight the AI and unlock missions one by one; clears pay coins (double the first time) for vehicles and attachments")
+add("pve.level", "第 {1} 关", "MISSION {1}")
+add("pve.n1", "滩头阵地", "Beachhead")
+add("pve.n2", "港口突袭", "Harbour Raid")
+add("pve.n3", "夜袭机场", "Airfield Night Strike")
+add("pve.n4", "沙海遭遇", "Desert Encounter")
+add("pve.n5", "纵深突破", "Breakthrough")
+add("pve.n6", "钢铁洪流", "Steel Tide")
+add("pve.n7", "全岛攻略", "Island Sweep")
+add("pve.n8", "沙漠风暴", "Desert Storm")
+add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
+add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
+add("pve.forces", "敌军 {1} · 友军 {2}", "Enemies {1} · Allies {2}")
+add("pve.reward", "奖励 {1} 金币（第一次翻倍）", "Reward {1} coins (doubled first time)")
+add("pve.locked", "先打通第 {1} 关", "Clear mission {1} first")
+add("pve.cleared", "✓ 已通关", "✓ CLEARED")
+add("pve.start", "开始", "START")
+add("pve.hud", "PvE 第 {1} 关 · {2} · {3}", "PvE {1} · {2} · {3}")
+add("pve.win", "关卡完成！", "Mission complete!")
+add("pve.next", "下一局：第 {1} 关", "Next round: mission {1}")
+add("pve.nextMap", "下一关换地图了：回主菜单「开始游戏 → 关卡」选第 {1} 关", "The next mission is on another map: open PLAY → MISSIONS and pick mission {1}")
+add("pve.allClear", "全部关卡都打通了！", "All missions cleared!")
+add("pve.retry", "没打下来，再来一次第 {1} 关", "Mission failed — retrying mission {1}")
+add("pve.needNew", "这个服务器在打别的：在 Studio 里请重新开始测试再选关卡", "This server is busy with another mode — restart the test in Studio to pick a mission")
+add("pve.teleport", "正在带你去新的关卡服务器……", "Taking you to a new mission server…")
+add("pve.lockedMsg", "这一关还没解锁（先打通第 {1} 关）", "That mission is locked (clear mission {1} first)")
+add("pve.botTeam", "PvE：真人都在进攻方", "PvE: all players are on the attacking side")
+add("pve.nowPve", "这个服务器在打 PvE 第 {1} 关 · {2}", "This server is playing PvE mission {1} · {2}")
+add("pve.joined", "这个服务器有人在打 PvE 第 {1} 关：你加入了他们（进攻方）", "Other players are on PvE mission {1} here — you joined them on the attacking side")
+add("pve.left", "退出关卡：这个服务器改打对战", "Mission ended — this server is back to PvP")
+-- 金币（Economy.lua）
+add("eco.coins", "金币 {1}", "{1} coins")
+add("eco.round", "这一局 +{1} 金币", "+{1} coins this round")
+add("eco.pve", "关卡奖励 +{1} 金币", "Level reward +{1} coins")
+add("eco.notLoaded", "存档还没读好，稍等一下", "Your profile is still loading")
+add("eco.poor", "金币不够，还差 {1}", "Not enough coins ({1} short)")
+add("eco.boughtVeh", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
+add("eco.boughtAtt", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
+add("eco.lockVeh", "{1} 金币解锁", "{1} coins to unlock")
+add("eco.confirm", "再点一次：用 {1} 金币解锁 {2}", "Click again to unlock {2} for {1} coins")
+add("eco.needVeh", "这型还没解锁（{1} 金币）", "Not unlocked yet ({1} coins)")
+add("eco.attLock", "Lv.{1} 解锁 · 或 {2} 金币", "Lv.{1} or {2} coins")
 -- 小队（Squads.lua 服务器 / 客户端）
 add("spawn.squad", "小队：{1}", "Squad: {1}")
 add("squad.title", "{1} 小队", "SQUAD {1}")
@@ -9070,7 +9179,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
+for _, name in ipairs({ "Imports", "Store", "Economy", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -9815,7 +9924,7 @@ function Air.init(G)
     local out = vehModels0 and vehModels0(team) or {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if AIRCATS[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do if AD.get(id) then table.insert(out, id) end end
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do if AD.get(id) then table.insert(out, id) end end   -- 两边的型号都能开
       end
     end
     return out
@@ -10896,7 +11005,7 @@ function Armor.init(G)
     local out = {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if GROUND[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都能开（Config.CrossVehicles）
           local d = VD.get(id)
           if d and not d.needsAir then table.insert(out, id) end
         end
@@ -12007,6 +12116,10 @@ function Bots.init(G)
 
   -- 每队要几个机器人：保底人数减真人，两队加起来不超过 maxTotal
   local function wanted()
+    if G.botWanted then   -- PvE 关卡（Pve.lua）：按关卡要的人数
+      local w = G.botWanted()
+      if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
+    end
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then
@@ -13140,7 +13253,7 @@ function Depots.init(G)
   local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
   local function models(team, cat)
     local out = {}
-    for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+    for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都有（Config.CrossVehicles；舰艇还是各用各的）
       local d = defOf(id)
       if d and not d.needsAir then table.insert(out, id) end
     end
@@ -13519,6 +13632,11 @@ function Depots.init(G)
       G.msg(P.pl, "bad", "pass.locked", { k = "veh." .. want })
       return
     end
+    -- 金币解锁（Economy.lua，用户 11-23）：没买的型号不给生成（客户端卡片上画着锁和价钱，点两下买）
+    if want and G.vehUnlocked and not G.vehUnlocked(P, want) then
+      G.msg(P.pl, "bad", "eco.needVeh", Config.VehPrice(want) or 0)
+      return
+    end
     vid = vid or p.vid
     local ok, d = check(P, p, vid)
     if not ok then return nil end
@@ -13592,6 +13710,144 @@ return Depots
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="75">
+          <Properties>
+            <string name="Name">Economy</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场——金币（用户 11-23：「把很多坦克飞机直升机搞成金币解锁吧 然后两边都可以用对方的载具 然后金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
+--   存档 P.data：coins 金币、ownVeh 买过的载具、ownAtt 买过的配件（"枪.位.配件"）、pve 打通到第几关（Store.lua 读档时调 G.econFromSave）
+--   写在玩家属性上给客户端（召唤点的机型卡片、改枪界面、部署界面）：Coins、OwnVeh（逗号隔开）、OwnAtt、PveCleared
+--   载具（Config.Economy.veh）：价钱是 0 或不在表里的直接能开；别的买了才能召唤（Depots.lua 的 padSpawn 查 G.vehUnlocked）
+--   配件：到了这把枪的解锁等级照旧白给；没到也能拿金币买（Config.AttPrice；Gunsmith.lua 整理配件时查 G.attOwned）
+--   挣：一局打完按得分、输赢发（G.awardCoins，Round.lua 结算时调）；PvE 关卡打通另有奖励（Pve.lua 调 G.addCoins）
+local RS = game:GetService("ReplicatedStorage")
+
+local Economy = {}
+
+function Economy.init(G)
+  local Config = G.Config
+  local E = Config.Economy
+  local GM = require(RS:WaitForChild("GunMods"))
+
+  local function setList(t)
+    local out = {}
+    for k in pairs(t or {}) do table.insert(out, k) end
+    table.sort(out)
+    return table.concat(out, ",")
+  end
+  local function publish(P)
+    local d = P.data
+    if not d then return end
+    pcall(function()
+      P.pl:SetAttribute("Coins", d.coins)
+      P.pl:SetAttribute("OwnVeh", setList(d.ownVeh))
+      P.pl:SetAttribute("OwnAtt", setList(d.ownAtt))
+      P.pl:SetAttribute("PveCleared", d.pve or 0)
+      P.pl:SetAttribute("EconAll", G.econAll == true)   -- 测试台全开：客户端的卡片不画锁
+    end)
+  end
+  G.econPublish = publish
+
+  -- 读档：没有金币字段的（新玩家、老存档）给开局的金币
+  local function toSet(v, ok)
+    local out = {}
+    if type(v) == "table" then
+      for k, x in pairs(v) do
+        if type(k) == "string" and x == true and ok(k) then out[k] = true
+        elseif type(x) == "string" and ok(x) then out[x] = true end
+      end
+    end
+    return out
+  end
+  local function attKeyOk(k)
+    local gun, slot, item = string.match(k, "^([%w_]+)%.([%w_]+)%.([%w_]+)$")
+    return gun ~= nil and GM.unlockLv(gun, slot, item) ~= nil
+  end
+  function G.econFromSave(P, d)
+    local D = P.data
+    D.coins = math.max(0, math.floor(tonumber(d.coins) or E.startCoins))
+    D.ownVeh = toSet(d.ownVeh, function(k) return Config.VehPrice(k) ~= nil end)
+    D.ownAtt = toSet(d.ownAtt, attKeyOk)
+    D.pve = math.max(0, math.floor(tonumber(d.pve) or 0))
+    publish(P)
+  end
+
+  function G.coinsOf(P) return (P.data and P.data.coins) or 0 end
+  -- 加 / 扣金币；why：给客户端的那一行字（nil 不提示）
+  function G.addCoins(P, n, why, ...)
+    local d = P.data
+    if not d or n == 0 then return false end
+    d.coins = math.max(0, d.coins + math.floor(n))
+    publish(P)
+    if why then G.msg(P.pl, (n > 0) and "good" or "info", why, math.abs(math.floor(n)), ...) end
+    return true
+  end
+  local function save(P) if G.saveData then task.spawn(G.saveData, P) end end
+
+  ---------------------------------------------------------------- 载具
+
+  function G.vehUnlocked(P, id)
+    if G.econAll then return true end   -- 测试台：载具全开（tools/mock、tools/test 的启动设的）
+    local price = Config.VehPrice(id)
+    if price == nil or price <= 0 then return true end
+    local d = P.data
+    return d ~= nil and d.ownVeh[id] == true
+  end
+  G.ACT.buyVeh = function(P, id)
+    if type(id) ~= "string" then return end
+    local price = Config.VehPrice(id)
+    if not price or price <= 0 then return end
+    local d = P.data
+    if not d then G.msg(P.pl, "bad", "eco.notLoaded") return end
+    if d.ownVeh[id] then return end
+    if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
+    d.coins -= price
+    d.ownVeh[id] = true
+    publish(P)
+    G.msg(P.pl, "good", "eco.boughtVeh", { k = "veh." .. id }, price)
+    save(P)
+    G.pushOne(P)
+  end
+
+  ---------------------------------------------------------------- 配件
+
+  function G.attOwned(P, gun, slot, item)
+    local d = P.data
+    return d ~= nil and d.ownAtt[gun .. "." .. slot .. "." .. item] == true
+  end
+  G.ACT.buyAtt = function(P, gun, slot, item)
+    if type(gun) ~= "string" or type(slot) ~= "string" or type(item) ~= "string" then return end
+    local lv = GM.unlockLv(gun, slot, item)
+    if not lv then return end
+    local d = P.data
+    if not d then G.msg(P.pl, "bad", "eco.notLoaded") return end
+    local key = gun .. "." .. slot .. "." .. item
+    if d.ownAtt[key] then return end
+    if G.gunLevel and G.gunLevel(P, gun) >= lv then return end   -- 等级已经到了：本来就能用
+    local price = Config.AttPrice(lv)
+    if price <= 0 then return end
+    if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
+    d.coins -= price
+    d.ownAtt[key] = true
+    publish(P)
+    G.msg(P.pl, "good", "eco.boughtAtt", { k = "gm.item." .. item }, price)
+    if G.gunPublish then G.gunPublish(P) end
+    save(P)
+  end
+
+  ---------------------------------------------------------------- 挣
+
+  -- 一局打完（Round.lua 结算，先于存档）：得分 × perScore + 赢 / 输；PvE 模式（Pve.lua）照这个算一份，打通关卡另外加
+  function G.awardCoins(P, won)
+    if not P.data then return end
+    local n = math.floor((P.roundXp or 0) * E.perScore) + (won and E.win or E.lose)
+    if n > 0 then G.addCoins(P, n, "eco.round") end
+  end
+end
+
+return Economy
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">Ents</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -13944,7 +14200,7 @@ return Ents
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">Era</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -14074,7 +14330,7 @@ return Era
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">Forts</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -15274,7 +15530,7 @@ return Forts
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -15296,8 +15552,7 @@ function Gunsmith.init(G)
   local C = Config.GunMods or {}
   local studio = false
   pcall(function() studio = RunService:IsStudio() end)
-  local ALL = C.unlockAll == true or (C.studioAll ~= false and studio)
-  G.gunAll = ALL
+  G.gunAll = C.unlockAll == true or (C.studioAll ~= false and studio)   -- 全开：按这个值现查（测试里可以改）
   local now = os.clock
 
   -- 存档里的改枪数据整理成合法的（Store.lua 读档时调）：认不得的枪、太长的字串都不要
@@ -15356,7 +15611,7 @@ function Gunsmith.init(G)
     if not GM.DEF[id] then return nil end
     local guns = gunsOf(P)
     local g = guns[id]
-    return GM.clean(id, (g and g.b) and GM.decode(g.b) or GM.default(id), G.gunLevel(P, id), ALL)
+    return GM.clean(id, (g and g.b) and GM.decode(g.b) or GM.default(id), G.gunLevel(P, id), G.gunAll, function(slot, item) return G.attOwned ~= nil and G.attOwned(P, id, slot, item) end)
   end
 
   -- 写在玩家属性上（客户端的改枪界面、部署界面读）
@@ -15371,7 +15626,7 @@ function Gunsmith.init(G)
   end
   function G.gunPublish(P)
     for id in pairs(GM.DEF) do publish(P, id) end
-    pcall(function() P.pl:SetAttribute("GunAll", ALL) end)
+    pcall(function() P.pl:SetAttribute("GunAll", G.gunAll == true) end)
   end
 
   -- 改了配件、加了经验：过一会儿存一次档（DataStore 一个键几秒才能写一次；一局结束、退出时本来也存）
@@ -15423,7 +15678,7 @@ function Gunsmith.init(G)
     local req = cleanReq(id, b)
     if not req then return end
     local lv = G.gunLevel(P, id)
-    local got = GM.clean(id, req, lv, ALL)
+    local got = GM.clean(id, req, lv, G.gunAll, function(slot, item) return G.attOwned ~= nil and G.attOwned(P, id, slot, item) end)   -- 金币买过的也算（Economy.lua）
     local locked = 0
     for _, slot in ipairs(GM.SLOTS) do
       if req[slot] and got[slot] and req[slot] ~= got[slot] then locked += 1 end
@@ -15462,7 +15717,7 @@ function Gunsmith.init(G)
     if lv > old then
       G.msg(P.pl, "good", "gm.lvUp", { k = "weapon." .. id }, lv)
       local un = GM.unlocksBetween(id, old, lv)
-      if #un > 0 and not ALL then
+      if #un > 0 and not G.gunAll then
         local names = {}
         for k = 1, math.min(3, #un) do names[k] = { k = "gm.item." .. un[k] } end
         -- 最多写三样（参数是表的会按各人的语言翻译）
@@ -15482,7 +15737,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">Imports</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -15620,7 +15875,7 @@ return Imports
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -15826,7 +16081,7 @@ return Nav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">Navy</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -16821,7 +17076,7 @@ return Navy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -17126,7 +17381,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">Passes</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -17210,7 +17465,182 @@ return Passes
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
+          <Properties>
+            <string name="Name">Pve</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场——PvE 关卡（用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）
+--   选地图界面的「关卡 PVE」页点一关（ACT.pickPve）：这个服务器还没定地图 → 按这一关开（那一关的地图）；
+--     已经在打别的（对战、别的关）：只有自己一个人、同一张图 → 直接换成这一关重开；不然开一个新的私人服务器把他传过去（线上才行；
+--     传送数据里带着关卡号，新服务器第一个进来的人按它开）
+--   这一关：真人都在攻方（Round.lua 的分队看 G.pve）；电脑人数按关卡（G.botWanted，Bots.lua）：敌方 enemies（多一个真人多 perPlayer 个）、
+--     友军 allies（真人多了少补）；电脑的枪法和反应按 skill 缩放（Config.Bots 的反应时间、散布）；aiVeh：敌方开不开 AI 坦克、飞机
+--   赢：岛——拿下 caps 个据点（G.on("captured")）；沙漠——敌方兵力（tickets）扣光（照征服的规则）
+--   结算（Round.lua 的 finish 先调 G.pveFinish）：赢了每个真人发这一关的奖励（第一次打通 × firstBonus），记进存档（P.data.pve）；
+--     下一关同一张图就接着打下一关，不是就提示回菜单选；输了再来这一关
+local Players = game:GetService("Players")
+
+local Pve = {}
+
+function Pve.init(G)
+  local Config = G.Config
+  local PC = Config.Pve
+  local BC = Config.Bots
+  local base = { reaction = BC.reaction, spread = BC.spread, spreadPer = BC.spreadPer }
+  G.pve = nil
+
+  local function realN()
+    local n = 0
+    for _ in pairs(G.P) do n += 1 end
+    return math.max(1, n)
+  end
+  -- 换成第 n 关（不重开地图：地图在开服时定）
+  local function apply(n)
+    local L = PC.levels[n]
+    if not L then return false end
+    if not G.pve then base.aiVehOff = G.aiVehOff end   -- 对战时的设置（测试台可能关了 AI 载具），退出关卡时还原
+    G.pve = { n = n, L = L }
+    local k = L.skill or 1
+    BC.reaction = base.reaction / k
+    BC.spread = base.spread / k
+    BC.spreadPer = base.spreadPer / k
+    G.aiVehOff = not L.aiVeh
+    pcall(function() workspace:SetAttribute("Pve", n) end)
+    -- 电脑人数：敌方按关卡 + 每多一个真人多几个；友军补到 allies（真人也算友军）
+    G.botWanted = function()
+      local P = G.pve
+      if not P then return nil end
+      local r = realN()
+      return { def = P.L.enemies + (PC.perPlayer or 2) * (r - 1), atk = math.max(0, P.L.allies - (r - 1)) }
+    end
+    -- 真人都去攻方
+    for _, P in pairs(G.P) do
+      if P.team ~= "atk" and not P.alive and G.setTeamOf then G.setTeamOf(P, "atk") end
+    end
+    return true
+  end
+  G.pveApply = apply   -- 测试用
+  -- 退出关卡（只剩自己的时候在对战页点地图，Round.lua 的 ACT.pickMap）：电脑的水平、人数、AI 载具都回到对战的
+  function G.pveExit()
+    if not G.pve then return false end
+    G.pve = nil
+    BC.reaction, BC.spread, BC.spreadPer = base.reaction, base.spread, base.spreadPer
+    G.botWanted = nil
+    G.aiVehOff = base.aiVehOff
+    pcall(function() workspace:SetAttribute("Pve", nil) end)
+    return true
+  end
+  G.pveRealN = realN
+
+  -- 这个人能不能打第 n 关：打通了第 n-1 关（第 1 关谁都能打）
+  local function unlocked(P, n)
+    if n <= 1 then return true end
+    local d = P.data
+    return d ~= nil and (d.pve or 0) >= n - 1
+  end
+
+  G.ACT.pickPve = function(P, n)
+    n = tonumber(n)
+    if not n or not PC.levels[n] then return end
+    n = math.floor(n)
+    if not unlocked(P, n) then G.msg(P.pl, "bad", "pve.lockedMsg", n - 1) return end
+    local L = PC.levels[n]
+    -- 还没定地图：按这一关开
+    if not G.mapId then
+      apply(n)
+      P.wantMap = L.map
+      if G.pickMap then G.pickMap(L.map) end
+      G.pushAll()
+      return
+    end
+    if G.pve and G.pve.n == n then G.pushOne(P) return end   -- 已经在打这一关：直接加入
+    -- 只有自己一个人、同一张图：直接换成这一关，重新开一局
+    if G.mapId == L.map and realN() <= 1 then
+      apply(n)
+      if G.roundStart then G.roundStart() end
+      return
+    end
+    -- 开一个新的私人服务器，把他传过去（Studio 里传不了）
+    local ok = pcall(function()
+      local TS = game:GetService("TeleportService")
+      local code = TS:ReserveServer(game.PlaceId)
+      G.msg(P.pl, "info", "pve.teleport")
+      TS:TeleportToPrivateServer(game.PlaceId, code, { P.pl }, nil, { pve = n })
+    end)
+    if not ok then G.msg(P.pl, "bad", "pve.needNew") end
+  end
+
+  -- 传过来的人：传送数据里带着关卡号，这个服务器还没定地图就按它开
+  local function fromTeleport(pl)
+    if G.mapId then return end
+    local ok, jd = pcall(function() return pl:GetJoinData() end)
+    local td = ok and type(jd) == "table" and jd.TeleportData or nil
+    local n = type(td) == "table" and tonumber(td.pve) or nil
+    if n and PC.levels[n] then
+      apply(n)
+      if G.pickMap then G.pickMap(PC.levels[n].map) end
+    end
+  end
+  Players.PlayerAdded:Connect(fromTeleport)
+  for _, pl in ipairs(Players:GetPlayers()) do task.spawn(fromTeleport, pl) end
+
+  -- 岛：拿下 caps 个据点就赢
+  G.on("captured", function()
+    local P = G.pve
+    if not P or not P.L.caps or not G.round or G.round.phase ~= "battle" then return end
+    local n = 0
+    for _, s in pairs(G.points or {}) do if s.owner == "atk" and s.locked then n += 1 end end
+    if n >= P.L.caps and G.roundFinish then G.roundFinish("atk") end
+  end)
+  -- 沙漠：开战时的兵力（Round.lua 的 startBattle 调）
+  function G.pveTickets(R)
+    local P = G.pve
+    if not P or not P.L.tickets then return end
+    R.ticketsDef = P.L.tickets
+    R.tickets = P.L.ticketsAtk or P.L.tickets
+    R.ticketsMax = math.max(R.tickets, R.ticketsDef)
+  end
+
+  -- 结算（Round.lua 的 finish 调，先于发金币、经验、存档）
+  function G.pveFinish(winner)
+    local P0 = G.pve
+    if not P0 then return end
+    local n, L = P0.n, P0.L
+    if winner == "atk" then
+      for _, P in pairs(G.P) do
+        if P.team == "atk" and P.data then
+          local first = (P.data.pve or 0) < n
+          local reward = L.reward * (first and (PC.firstBonus or 1) or 1)
+          if G.addCoins then G.addCoins(P, reward, "eco.pve") end
+          if first then P.data.pve = n end
+          if G.econPublish then G.econPublish(P) end
+        end
+      end
+      G.msgAll("center", "pve.win")
+      local nx = PC.levels[n + 1]
+      if not nx then
+        G.msgAll("good", "pve.allClear")
+      elseif nx.map == G.mapId then
+        P0.next = n + 1
+        G.msgAll("good", "pve.next", n + 1)
+      else
+        G.msgAll("good", "pve.nextMap", n + 1)
+      end
+    else
+      G.msgAll("bad", "pve.retry", n)
+    end
+  end
+  -- 新一局：打通了就换下一关
+  G.on("roundStart", function()
+    local P = G.pve
+    if P and P.next then apply(P.next) end
+  end)
+end
+
+return Pve
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">Revive</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
@@ -17401,7 +17831,7 @@ return Revive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">Rewind</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -17636,7 +18066,7 @@ return Rewind
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">Round</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -17808,9 +18238,11 @@ function Round.init(G)
     P.pl.Neutral = false
     P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
   end
+  G.setTeamOf = setTeam   -- PvE（Pve.lua）：真人都换到攻方
 
   -- 新来的人先放到真人少的一方（临时的），进服先看选阵营界面：自己选解放军（攻）还是美军（守）
   local function pickTeam()
+    if G.pve then return "atk" end   -- PvE 关卡：真人都在攻方（Pve.lua）
     local a, d = teamCount("atk", true), teamCount("def", true)
     if a < d then return "atk" elseif d < a then return "def" end
     return (math.random() < 0.5) and "atk" or "def"
@@ -17819,6 +18251,7 @@ function Round.init(G)
   -- 能不能进这一队：不算自己，这一队的真人不比另一队多（人多的一边「人数已满」）
   local function canJoin(P, team)
     if team ~= "atk" and team ~= "def" then return false end
+    if G.pve then return team == "atk" end   -- PvE 关卡：只能进攻方
     local other = (team == "atk") and "def" or "atk"
     local a, b = teamCount(team, true), teamCount(other, true)
     if P.team == team then a -= 1 elseif P.team == other then b -= 1 end
@@ -18351,6 +18784,16 @@ function Round.init(G)
     if type(id) ~= "string" then return end
     P.wantMap = id
     if G.pickMap then G.pickMap(id) end
+    -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
+    if G.pve and G.mapId then
+      if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
+        G.pveExit()
+        G.msg(P.pl, "info", "pve.left")
+        G.roundStart()
+        return
+      end
+      G.msg(P.pl, "info", "pve.joined", G.pve.n)
+    end
     G.pushOne(P)
   end
 
@@ -18543,6 +18986,7 @@ function Round.init(G)
     G.msgAll("center", "ui.captured", { k = "point." .. s.id })
     G.fx({ k = "capture", id = s.id })
     G.emit("captured", s)
+    if R.phase ~= "battle" then return end   -- PvE 关卡拿够了据点、这一局已经结束了（Pve.lua）：不再推下一阶段
     local TK = Config.Tickets or {}
     if flankOf[s.id] then   -- 侧翼：补兵力，不影响推进
       R.tickets += TK.flank or 0
@@ -18706,6 +19150,7 @@ function Round.init(G)
     R.ticketsMax = R.tickets
     if conquest() then
       R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800
+      if G.pveTickets then G.pveTickets(R) end   -- PvE 关卡：两边的兵力按关卡（Pve.lua）
       R.endsAt = now() + (RC.conquest or 2400)
       G.msgAll("center", "ui.conquestStart")
       G.pushAll()
@@ -18734,9 +19179,11 @@ function Round.init(G)
     R.winner = winner
     R.nextAt = now() + RC.results
     local best = nil
+    if G.pveFinish then G.try("PvE 结算", G.pveFinish, winner) end   -- PvE 关卡：打通的奖励、进度（Pve.lua），先于存档
     for _, P in pairs(G.P) do
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
+      if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil
@@ -18744,6 +19191,7 @@ function Round.init(G)
     G.emit("roundEnd", winner)
     G.pushAll()
   end
+  G.roundFinish = function(w) return finish(w) end   -- PvE：拿下要求的据点数就提前结束（Pve.lua）
 
   function G.roundStep(dt)
     local t = now()
@@ -18807,6 +19255,7 @@ function Round.init(G)
       -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
       progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
       map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上两张都能点）
+      pve = G.pve and G.pve.n or nil,   -- PvE 关卡：第几关（Pve.lua）
       mapReady = G.worldReady == true,
     }
   end
@@ -18881,7 +19330,7 @@ return Round
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">Squads</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
@@ -19013,7 +19462,7 @@ return Squads
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">Store</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -19076,6 +19525,7 @@ function Store.init(G)
     end
     for k in pairs(P.seenEarly or {}) do P.data.seen[k] = true end
     P.seenEarly = nil
+    if G.econFromSave then G.econFromSave(P, d) end   -- 金币、买过的载具和配件、PvE 打到第几关（Economy.lua）
     seenAttr(P)
     P.canSave = ok and store ~= nil
     if G.gunPublish then G.gunPublish(P) end
@@ -19119,7 +19569,7 @@ return Store
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">Tactical</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -19345,7 +19795,7 @@ return Tactical
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="92">
           <Properties>
             <string name="Name">Vehicles</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -19641,7 +20091,7 @@ return Vehicles
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="91">
+        <Item class="ModuleScript" referent="93">
           <Properties>
             <string name="Name">Weapons</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -20352,7 +20802,7 @@ return Weapons
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="92">
+        <Item class="ModuleScript" referent="94">
           <Properties>
             <string name="Name">World</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -22677,11 +23127,11 @@ return World
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="93">
+    <Item class="Folder" referent="95">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="94">
+      <Item class="LocalScript" referent="96">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -22706,6 +23156,7 @@ return World
 --   Shock 震荡（近处爆炸：耳鸣、别的声音发闷、画面一白一糊）
 --   Mantle 翻越 / 攀爬（步行时按空格：矮墙、沙袋翻过去，台子、窗台爬上去）
 --   SquadHud 小队面板（队友血条、倒地、阵亡、距离）和小队队友头顶的绿色标记
+--   Coins 左上角的金币牌子（菜单里一直显示，打仗时金币变了亮几秒）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalizationService = game:GetService("LocalizationService")
@@ -22767,7 +23218,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "Mantle", "SquadHud", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -22836,7 +23287,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="95">
+        <Item class="ModuleScript" referent="97">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -23204,7 +23655,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="96">
+        <Item class="ModuleScript" referent="98">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -23384,7 +23835,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="97">
+        <Item class="ModuleScript" referent="99">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -24014,7 +24465,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="98">
+        <Item class="ModuleScript" referent="100">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -25472,7 +25923,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="99">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -25642,7 +26093,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -25932,7 +26383,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -26089,7 +26540,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -26672,7 +27123,131 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="105">
+          <Properties>
+            <string name="Name">Coins</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
+--   左上角一个小牌子「◉ 1,250 金币」：开着菜单（主菜单、部署界面、召唤点的机型列表、改枪……）时一直显示；打仗时金币变了亮几秒，
+--   旁边弹一下「+350」/「-1500」
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Coins = {}
+
+function Coins.init(G)
+  local T = G.T or function(k) return k end
+  local player = Players.LocalPlayer
+  local RGB = Color3.fromRGB
+  local GOLD = RGB(255, 206, 96)
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Coins"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 45
+  gui.Parent = player:WaitForChild("PlayerGui")
+  local badge = Instance.new("Frame")
+  badge.Name = "Badge"
+  badge.Position = UDim2.fromOffset(16, 10)
+  badge.Size = UDim2.fromOffset(150, 28)
+  badge.BackgroundColor3 = RGB(8, 9, 11)
+  badge.BackgroundTransparency = 0.3
+  badge.BorderSizePixel = 0
+  badge.Visible = false
+  badge.Parent = gui
+  local st = Instance.new("UIStroke")
+  st.Color, st.Transparency, st.Thickness = GOLD, 0.6, 1
+  st.Parent = badge
+  local txt = Instance.new("TextLabel")
+  txt.Name = "Amount"
+  txt.BackgroundTransparency = 1
+  txt.Position = UDim2.fromOffset(10, 0)
+  txt.Size = UDim2.new(1, -16, 1, 0)
+  txt.Font = Enum.Font.GothamBold
+  txt.TextSize = 14
+  txt.TextColor3 = GOLD
+  txt.TextXAlignment = Enum.TextXAlignment.Left
+  txt.Parent = badge
+  local pop = Instance.new("TextLabel")
+  pop.Name = "Delta"
+  pop.BackgroundTransparency = 1
+  pop.Position = UDim2.fromOffset(170, 4)
+  pop.Size = UDim2.fromOffset(120, 20)
+  pop.Font = Enum.Font.GothamBlack
+  pop.TextSize = 16
+  pop.TextXAlignment = Enum.TextXAlignment.Left
+  pop.TextTransparency = 1
+  pop.TextStrokeTransparency = 1
+  pop.Parent = gui
+
+  -- PvE 关卡（Pve.lua）：左上角一行「PvE 第 3 关 · 夜袭机场 · 拿下 3 个据点」
+  local pveTag = Instance.new("TextLabel")
+  pveTag.Name = "PveTag"
+  pveTag.BackgroundTransparency = 1
+  pveTag.Position = UDim2.fromOffset(18, 42)
+  pveTag.Size = UDim2.fromOffset(420, 18)
+  pveTag.Font = Enum.Font.GothamBold
+  pveTag.TextSize = 13
+  pveTag.TextColor3 = RGB(236, 240, 236)
+  pveTag.TextStrokeTransparency = 0.5
+  pveTag.TextXAlignment = Enum.TextXAlignment.Left
+  pveTag.Visible = false
+  pveTag.Parent = gui
+
+  local function fmt(n)
+    local s = tostring(math.floor(n))
+    local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+    if out:sub(1, 1) == "," then out = out:sub(2) end
+    return out
+  end
+  local shownUntil = 0
+  local last = nil
+  local function refresh()
+    local c = player:GetAttribute("Coins")
+    if type(c) ~= "number" then return end
+    txt.Text = "◉ " .. T("eco.coins", fmt(c))
+    if last ~= nil and c ~= last then
+      local d = c - last
+      pop.Text = (d > 0 and "+" or "-") .. fmt(math.abs(d))
+      pop.TextColor3 = (d > 0) and GOLD or RGB(230, 120, 100)
+      pop.TextTransparency, pop.TextStrokeTransparency = 0, 0.5
+      pop.Position = UDim2.fromOffset(170, 4)
+      pcall(function()
+        TweenService:Create(pop, TweenInfo.new(2.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+          { TextTransparency = 1, TextStrokeTransparency = 1, Position = UDim2.fromOffset(170, -14) }):Play()
+      end)
+      shownUntil = os.clock() + 5
+    end
+    last = c
+  end
+  player:GetAttributeChangedSignal("Coins"):Connect(refresh)
+  refresh()
+  G.coinsShown = function() return badge.Visible end   -- 测试用
+
+  local acc = 0
+  G.frameConn("Coins", function(dt)
+    acc += dt
+    if acc < 0.15 then return end
+    acc = 0
+    local has = type(player:GetAttribute("Coins")) == "number"
+    local menu = (G.menuShown and G.menuShown()) or (G.menuOpen and G.menuOpen()) or false
+    badge.Visible = has and (menu or os.clock() < shownUntil)
+    local n = G.S and G.S.pve
+    local L = n and G.Config.Pve and G.Config.Pve.levels[n]
+    pveTag.Visible = L ~= nil and not (G.menuShown and G.menuShown())
+    if L then
+      local goal = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
+      pveTag.Text = T("pve.hud", n, T("pve.n" .. n), goal)
+      pveTag.Position = UDim2.fromOffset(18, badge.Visible and 42 or 12)
+    end
+  end)
+end
+
+return Coins
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -26812,7 +27387,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="107">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -27043,6 +27618,44 @@ function Depot.init(G)
     if pass and G.passOk and not G.passOk(pass) then return pass end
     return nil
   end
+  -- 金币解锁的型号（Economy.lua，用户 11-23）：没买的卡片上写价钱；点一下提示、4 秒内再点一下就买（金币够的话）
+  local function ownedVeh(id)
+    local s = me:GetAttribute("OwnVeh")
+    return type(s) == "string" and string.find("," .. s .. ",", "," .. id .. ",", 1, true) ~= nil
+  end
+  local function lockedCoin(id)
+    if me:GetAttribute("EconAll") == true then return nil end
+    local price = G.Config.VehPrice and G.Config.VehPrice(id)
+    if price and price > 0 and not ownedVeh(id) then return price end
+    return nil
+  end
+  G.vehLockedCoin = lockedCoin
+  local confirm = { id = nil, t = 0 }
+  local function tryBuy(id, price)
+    local coins = me:GetAttribute("Coins") or 0
+    if coins < price then
+      if G.toast then G.toast(T("eco.poor", price - coins), "bad") end
+      return
+    end
+    if confirm.id == id and os.clock() - confirm.t < 4 then
+      confirm.id = nil
+      G.R.Act:FireServer("buyVeh", id)
+      return
+    end
+    confirm.id, confirm.t = id, os.clock()
+    if G.toast then G.toast(T("eco.confirm", price, T("veh." .. id)), "info") end
+  end
+  -- 卡片右上角的锁（金币）
+  local function coinTag(b, stroke, id, w)
+    local price = lockedCoin(id)
+    if not price then return end
+    local pt = label(b, "◉ " .. T("eco.lockVeh", price), UDim2.fromOffset(w or 140, 16), UDim2.new(1, -(w or 140) - 10, 0, 9), 11, RGB(255, 206, 96), Enum.Font.GothamBlack,
+      Enum.TextXAlignment.Right)
+    pt.Name = "CoinTag"
+    b.BackgroundTransparency = 0.3
+    stroke.Color, stroke.Transparency = RGB(255, 206, 96), 0.55
+  end
+
   local TMods = require(RS:WaitForChild("TankMods"))
   local lastMods = {}   -- 每型坦克上次选的改装
   local function choose(id)
@@ -27050,6 +27663,11 @@ function Depot.init(G)
     local lp = lockedPass(id)
     if lp then
       if G.buyPass then G.buyPass(lp) end
+      return
+    end
+    local cp = lockedCoin(id)
+    if cp then
+      tryBuy(id, cp)
       return
     end
     local vd = VD.get(id)
@@ -27089,7 +27707,7 @@ function Depot.init(G)
   local function vehCards(ids)
     gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 74), UDim2.fromOffset(8, 8)
     pTitle.Text = T("pad.summonVeh")
-    pSub.Text = T("pick.subVeh")
+    pSub.Text = T("pick.subVeh") .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
     local list = {}
     for i, id in ipairs(ids) do
       local d = VD.get(id)
@@ -27112,6 +27730,7 @@ function Depot.init(G)
       b.MouseEnter:Connect(function() stroke.Transparency = ok and 0.4 or 0.8 end)
       b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
       label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.GothamBlack)
+      coinTag(b, stroke, id, 96)
       local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 29), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
       cl.Name = "Quota"
       local tags = { T((d.arch == "wheeled") and "pick.wheeled" or "pick.tracked") }
@@ -27123,7 +27742,9 @@ function Depot.init(G)
     end
   end
 
+  local lastPick = nil
   local function openPick(padId, ids, heli, ground)
+    lastPick = { padId, ids, heli, ground }
     for _, c in ipairs(cards) do c:Destroy() end
     cards = {}
     pickPad = padId
@@ -27139,7 +27760,7 @@ function Depot.init(G)
     local av = S and S.vehAvail and S.vehAvail[heli and "heli" or "jet"]
     local st = ""
     if av then st = (av.u >= av.cap) and ((av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)) or T("pad.ready", av.u, av.cap) end
-    pSub.Text = T("pick.sub") .. "   ·   " .. st
+    pSub.Text = T("pick.sub") .. "   ·   " .. st .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
     for i, id in ipairs(ids) do
       local d = AD.get(id)
       if d then
@@ -27164,6 +27785,8 @@ function Depot.init(G)
           pt.Name = "PassTag"
           b.BackgroundTransparency = 0.3
           stroke.Color, stroke.Transparency = RGB(255, 196, 92), 0.55
+        else
+          coinTag(b, stroke, id, 130)
         end
         local tags = {}
         if d.carrier then table.insert(tags, T("pick.carrier")) end
@@ -27180,6 +27803,13 @@ function Depot.init(G)
       end
     end
     pick.Enabled = true
+  end
+
+  -- 买了一型（OwnVeh 变了）、金币变了：开着的机型列表重画（锁去掉）
+  for _, a in ipairs({ "OwnVeh", "Coins" }) do
+    me:GetAttributeChangedSignal(a):Connect(function()
+      if pick.Enabled and lastPick then openPick(lastPick[1], lastPick[2], lastPick[3], lastPick[4]) end
+    end)
   end
 
   -- 服务器：有挂点的飞机开挂载界面（老的一型一个生成点）；召唤位先选机型
@@ -27207,7 +27837,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -27661,7 +28291,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -28944,7 +29574,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -29944,7 +30574,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -30159,7 +30789,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -32647,7 +33277,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -33003,7 +33633,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -34506,7 +35136,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -34901,7 +35531,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -35033,7 +35663,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -35312,7 +35942,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -35866,7 +36496,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -36188,10 +36818,31 @@ function Gunsmith.init(G)
     end
     return S.cur
   end
+  -- 拿金币买过的配件（Economy.lua：玩家属性 OwnAtt，「枪.位.配件」逗号隔开）
+  local function ownedAtt(slot, item)
+    local s = me:GetAttribute("OwnAtt")
+    return type(s) == "string" and string.find("," .. s .. ",", "," .. S.id .. "." .. slot .. "." .. item .. ",", 1, true) ~= nil
+  end
   local function locked(slot, item)
     if S.all then return false end
     local lv = GM.unlockLv(S.id, slot, item)
-    return lv ~= nil and lv > S.lv
+    return lv ~= nil and lv > S.lv and not ownedAtt(slot, item)
+  end
+  -- 没到等级的配件：点一下提示价钱、4 秒内再点一下拿金币买（用户 11-23：改枪配件也要解锁）
+  local buyAsk = { key = nil, t = 0 }
+  local function tryBuyAtt(slot, item, lv)
+    local price = G.Config.AttPrice and G.Config.AttPrice(lv) or 0
+    if price <= 0 then return end
+    local coins = me:GetAttribute("Coins") or 0
+    if coins < price then G.toast(T("gm.lock", lv) .. "  ·  " .. T("eco.poor", price - coins), "bad") return end
+    local key = slot .. "." .. item
+    if buyAsk.key == key and os.clock() - buyAsk.t < 4 then
+      buyAsk.key = nil
+      G.R.Act:FireServer("buyAtt", S.id, slot, item)
+      return
+    end
+    buyAsk.key, buyAsk.t = key, os.clock()
+    G.toast(T("eco.confirm", price, T("gm.item." .. item)), "info")
   end
 
   ---------------------------------------------------------------- 3D：装模型、镜头
@@ -36468,7 +37119,8 @@ function Gunsmith.init(G)
       local eq = fr(b, UD2(0, 50, 0, 16), UD2(1, -6, 0, 6), ACC, 0, V2(1, 0))
       local eqT = tx(eq, T("gm.equipped"), UD2(1, 0, 1, 0), nil, 10, ACC2, F_K, nil, Enum.TextXAlignment.Center)
       local lk = fr(b, UD2(1, 0, 1, 0), nil, RGB(0, 0, 0), 0.35)
-      local lkT = tx(lk, T("gm.lock", x[2]), UD2(1, 0, 0, 20), UD2(0, 0, 0.5, -10), 13, TEXT, F_B, nil, Enum.TextXAlignment.Center)
+      local ap = G.Config.AttPrice and G.Config.AttPrice(x[2]) or 0
+      local lkT = tx(lk, (ap > 0) and T("eco.attLock", x[2], ap) or T("gm.lock", x[2]), UD2(1, 0, 0, 20), UD2(0, 0, 0.5, -10), 13, TEXT, F_B, nil, Enum.TextXAlignment.Center)
       local c = { b = b, st = st, vp = v, item = item, eq = eq, eqT = eqT, lk = lk, lkT = lkT, none = none, nm = nm, ready = stock }
       c.ready = cardModel(c)
       b.MouseEnter:Connect(function()
@@ -36484,7 +37136,7 @@ function Gunsmith.init(G)
       end)
       b.MouseButton1Click:Connect(function()
         if locked(S.slot, item) then
-          G.toast(T("gm.lock", x[2]), "bad")
+          tryBuyAtt(S.slot, item, x[2])
           return
         end
         S.cur[S.slot] = item
@@ -36779,7 +37431,7 @@ function Gunsmith.init(G)
     return true
   end
   -- 等级、方案、存好的配件变了（服务器写属性）：开着就刷新
-  for _, a in ipairs({ "GunXp_m4", "GunXp_sniper", "GunSaves_m4", "GunSaves_sniper", "GunAll" }) do
+  for _, a in ipairs({ "GunXp_m4", "GunXp_sniper", "GunSaves_m4", "GunSaves_sniper", "GunAll", "OwnAtt", "Coins" }) do   -- OwnAtt / Coins：拿金币买了配件（Economy.lua）
     pcall(function()
       me:GetAttributeChangedSignal(a):Connect(function()
         if gui.Enabled then
@@ -36795,7 +37447,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -37258,7 +37910,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -38086,7 +38738,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -38200,7 +38852,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -40580,7 +41232,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -41151,7 +41803,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -42737,7 +43389,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -43505,7 +44157,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -45339,7 +45991,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -45605,7 +46257,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -45627,6 +46279,12 @@ function Mantle.init(G)
   G.mantling = false
   G.mantleState = function() return busy end   -- 测试用
   local MIN_H, MAX_H = 1.1, 7.6   -- 顶面比脚高多少格能翻（约 0.4～2.7 米）
+  -- Humanoid 的 Jump / Sit：Lune 测试台的 Humanoid 读不到（没有默认值会报错）——包一层
+  local function getP(o, k)
+    local ok, v = pcall(function() return o[k] end)
+    return ok and v or nil
+  end
+  local function setJump(hum, v) pcall(function() hum.Jump = v end) end
 
   local function flat(v)
     local f = V(v.X, 0, v.Z)
@@ -45639,7 +46297,7 @@ function Mantle.init(G)
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp or hum.Health <= 0 or busy then return nil end
-    if G.drive or G.fly or G.downed or hum.Sit or hrp.Anchored or ch:GetAttribute("Downed") then return nil end
+    if G.drive or G.fly or G.downed or getP(hum, "Sit") == true or hrp.Anchored or ch:GetAttribute("Downed") then return nil end
     local dir = flat(hum.MoveDirection) or flat(hrp.CFrame.LookVector)
     if not dir then return nil end
     local feet = hrp.Position.Y - hum.HipHeight - hrp.Size.Y / 2
@@ -45717,7 +46375,7 @@ function Mantle.init(G)
     busy = M
     G.mantling = true
     pcall(function() M.hum.AutoRotate = false end)
-    M.hum.Jump = false
+    setJump(M.hum, false)
     if G.shake then G.shake(0.06) end
     if G.sfx then G.sfx("thud", nil, { vol = 0.35, speed = 1.3 }) end
   end
@@ -45739,7 +46397,7 @@ function Mantle.init(G)
     if not M then
       local ch = player.Character
       local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-      local j = hum ~= nil and hum.Jump == true
+      local j = hum ~= nil and getP(hum, "Jump") == true
       if j and not lastJump and UIS.TouchEnabled then G.tryMantle() end
       lastJump = j
       return
@@ -45748,7 +46406,7 @@ function Mantle.init(G)
     if not hrp.Parent or not hum.Parent or hum.Health <= 0 or G.downed then finish(M, false) return end
     local u = (os.clock() - M.t0) / M.dur
     if u >= 1 then finish(M, true) return end
-    hum.Jump = false
+    setJump(hum, false)
     local want = at(M, u + 1 / 60 / M.dur)
     local v = (want - hrp.Position) * 60
     if v.Magnitude > 70 then v = v.Unit * 70 end
@@ -45761,7 +46419,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -45948,6 +46606,65 @@ function MapPick.init(G)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
     cards[id] = K
   end
+  ---------------------------------------------------------------- PvE 关卡页（Pve.lua，用户 11-23：「你搞一些关卡吧」）
+
+  local tab = "pvp"
+  local tabs = {}
+  for i, k in ipairs({ "pvp", "pve" }) do
+    local b = Instance.new("TextButton")
+    b.Name = "Tab_" .. k
+    b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), UDim2.new(1, -150 - (2 - i) * 160 - 140, 0, 50), V2(0, 0)
+    b.BackgroundColor3, b.BorderSizePixel = RGB(16, 18, 20), 0
+    b.TextSize, b.Font = 13, Enum.Font.GothamBold
+    b.AutoButtonColor = true
+    b.Parent = content
+    tabs[k] = { b = b, st = stroke(b, 0.8) }
+  end
+  local pveGrid = frame(content, UDim2.fromOffset(1232, 520), UDim2.fromOffset(0, 148), RGB(0, 0, 0), 1)
+  pveGrid.Name = "PveGrid"
+  pveGrid.Visible = false
+  local PC = G.Config.Pve or { levels = {} }
+  local lcards = {}
+  local LW, LH = 296, 250
+  for n, L in ipairs(PC.levels) do
+    local col, row = (n - 1) % 4, math.floor((n - 1) / 4)
+    local b = Instance.new("TextButton")
+    b.Name = "Pve_" .. n
+    b.Size = UDim2.fromOffset(LW, LH)
+    b.Position = UDim2.fromOffset(col * (LW + 16), row * (LH + 16))
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(10, 12, 14), 0.2, 0
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Parent = pveGrid
+    local st = stroke(b, 0.86)
+    frame(b, UDim2.new(1, 0, 0, 3), nil, ACCENT[L.map] or WHITE, 0)
+    local K = { b = b, st = st, L = L, n = n }
+    K.num = text(b, "", UDim2.fromOffset(LW - 32, 14), UDim2.fromOffset(16, 16), 11, ACCENT[L.map] or MUTE, Enum.Font.GothamBold)
+    K.name = text(b, "", UDim2.fromOffset(LW - 32, 30), UDim2.fromOffset(16, 34), 24, WHITE, Enum.Font.GothamBold)
+    K.map = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 74), 12, MUTE)
+    K.goal = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 100), 13, RGB(214, 218, 222))
+    K.forces = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 122), 13, RGB(214, 218, 222))
+    K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.GothamBold)
+    K.reward.TextYAlignment = Enum.TextYAlignment.Top
+    K.state = Instance.new("TextLabel")
+    K.state.Size, K.state.Position, K.state.AnchorPoint = UDim2.fromOffset(150, 34), UDim2.new(1, -16, 1, -16), V2(1, 1)
+    K.state.BackgroundColor3, K.state.BorderSizePixel = WHITE, 0
+    K.state.TextSize, K.state.Font = 14, Enum.Font.GothamBold
+    K.state.Parent = b
+    b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
+    b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
+    lcards[n] = K
+  end
+  local function setTab(k)
+    tab = k
+    for id, K in pairs(cards) do K.b.Visible = (k == "pvp") end
+    pveGrid.Visible = (k == "pve")
+    if G.S then G.refreshMapPick(G.S) end
+  end
+  tabs.pvp.b.Activated:Connect(function() setTab("pvp") end)
+  tabs.pve.b.Activated:Connect(function() setTab("pve") end)
+  G.mapPickTab = function(k) if k then setTab(k) end return tab end   -- 测试用
+
   -- 缩略图慢慢画（一张一百多乘一百多个点，算一次就留着）
   local painted = {}
   local function paintAll()
@@ -45963,9 +46680,11 @@ function MapPick.init(G)
 
   local want = nil      -- 自己点的哪张
   local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Center)
+  local wantPve = nil   -- 自己点的第几关（PvE）
   local function close()
     gui.Enabled = false
     want = nil
+    wantPve = nil
   end
   local function choose(id)
     local S = G.S
@@ -45975,6 +46694,19 @@ function MapPick.init(G)
     status.Text = T("map.loading", 0)
   end
   for id, K in pairs(cards) do K.b.Activated:Connect(function() choose(id) end) end
+  local function pveCleared() return me:GetAttribute("PveCleared") or 0 end
+  local function choosePve(n)
+    local L = PC.levels[n]
+    if not L then return end
+    if n > pveCleared() + 1 then
+      if G.toast then G.toast(T("pve.lockedMsg", n - 1), "bad") end
+      return
+    end
+    want, wantPve = L.map, n
+    G.R.Act:FireServer("pickPve", n)
+    status.Text = T("map.loading", 0)
+  end
+  for n, K in pairs(lcards) do K.b.Activated:Connect(function() choosePve(n) end) end
   back.Activated:Connect(close)
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
@@ -45997,6 +46729,36 @@ function MapPick.init(G)
     sub.Text = T("map.sub")
     back.Text = T("map.back")
     local n = (S.rAtk or 0) + (S.rDef or 0)
+    tabs.pvp.b.Text, tabs.pve.b.Text = T("pve.tabPvp"), T("pve.tabPve")
+    for k, tb in pairs(tabs) do
+      local on = tab == k
+      tb.b.TextColor3 = on and RGB(10, 10, 12) or MUTE
+      tb.b.BackgroundColor3 = on and WHITE or RGB(16, 18, 20)
+      tb.st.Transparency = on and 0.2 or 0.8
+    end
+    if tab == "pve" then
+      head.Text = T("pve.title")
+      sub.Text = T("pve.sub")
+      local cl = pveCleared()
+      for i, K in pairs(lcards) do
+        local L = K.L
+        K.num.Text = string.upper(T("pve.level", i))
+        K.name.Text = T("pve.n" .. i)
+        K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
+        K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
+        K.forces.Text = T("pve.forces", L.enemies, L.allies)
+        K.reward.Text = T("pve.reward", L.reward)
+        local locked = i > cl + 1
+        local done = i <= cl
+        local cur = S.pve == i and S.map == L.map
+        K.state.Text = locked and T("pve.locked", i - 1) or (cur and T("map.join") or (done and (T("pve.cleared") .. "  ·  " .. T("pve.start")) or T("pve.start")))
+        K.state.BackgroundColor3 = locked and RGB(40, 42, 46) or (done and RGB(120, 214, 130) or WHITE)
+        K.state.TextColor3 = locked and MUTE or RGB(10, 10, 12)
+        K.b.BackgroundTransparency = locked and 0.55 or 0.2
+        K.st.Color = (wantPve == i) and (ACCENT[L.map] or WHITE) or WHITE
+        K.st.Transparency = (wantPve == i) and 0.2 or 0.86
+      end
+    end
     for id, K in pairs(cards) do
       local info = Map.info[id] or {}
       K.mode.Text = string.upper(T("map." .. id .. ".mode"))
@@ -46006,6 +46768,7 @@ function MapPick.init(G)
       local cur = S.map == id
       local other = S.map ~= nil and not cur
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
+      if cur and S.pve then K.now.Text = T("pve.nowPve", S.pve, T("pve.n" .. S.pve)) .. "   ·   " .. T("map.players", n) end   -- 在打关卡：一个人点就退出关卡改打对战（Round.lua 的 ACT.pickMap）
       K.now.TextColor3 = cur and (ACCENT[id] or WHITE) or MUTE
       K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or (cur and T("map.join") or T("map.pick"))
       K.b.BackgroundTransparency = other and 0.45 or 0.2
@@ -46013,7 +46776,9 @@ function MapPick.init(G)
       K.st.Transparency = (want == id) and 0.2 or 0.86
     end
     if want then
-      if S.map == want and S.mapReady then
+      if wantPve and S.pve ~= wantPve then   -- 点了关卡：等服务器换成这一关
+        status.Text = T("map.loading", math.floor((S.progress or 0) * 100))
+      elseif S.map == want and S.mapReady then
         -- 地图好了：快速加入（主菜单关掉、自动分队、推荐出生点）
         close()
         if G.quickJoin then G.quickJoin() end
@@ -46030,7 +46795,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -46537,7 +47302,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -46687,7 +47452,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -46999,7 +47764,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -47321,7 +48086,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -47538,7 +48303,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -47672,7 +48437,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -48170,7 +48935,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -48789,7 +49554,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -49061,7 +49826,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -49308,7 +50073,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -49451,7 +50216,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -50145,7 +50910,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -50742,7 +51507,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -51239,7 +52004,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -52186,7 +52951,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -52916,7 +53681,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -53668,7 +54433,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -53752,7 +54517,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -54501,7 +55266,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -54674,7 +55439,8 @@ function SquadHud.init(G)
       local hp = (alive and not down) and clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 0
       r.fill.Size = UDim2.fromScale(hp, 1)
       r.fill.BackgroundColor3 = (hp < 0.35) and RGB(236, 170, 60) or GREEN
-      local seated = hum ~= nil and hum.Sit
+      local okS, seated = pcall(function() return hum ~= nil and hum.Sit end)   -- Lune 测试台的 Humanoid 读不到 Sit
+      seated = okS and seated == true
       if not alive then
         r.info.Text, r.info.TextColor3 = T("squad.dead"), RGB(140, 140, 140)
         r.name.TextColor3, r.edge.BackgroundColor3 = RGB(140, 144, 140), RGB(90, 90, 90)
@@ -54710,7 +55476,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -55165,7 +55931,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -56385,7 +57151,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -56892,7 +57658,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -57005,7 +57771,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -58090,7 +58856,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -58194,7 +58960,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -59703,7 +60469,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -60457,7 +61223,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -61420,7 +62186,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）

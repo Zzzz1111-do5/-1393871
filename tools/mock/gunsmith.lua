@@ -12,6 +12,8 @@ local G = T.boot()
 G.fortsHold = true
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 900)
+-- 11-23 起 Studio 里配件也要解锁（Config.GunMods.studioAll = false）：这里测的是改枪界面本身，先全开（⑩ 再关掉）
+G.gunAll = true
 local me = T.join("P1", 7301, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)
 local P = G.P[me]
