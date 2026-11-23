@@ -228,8 +228,16 @@ scn.collection.objects.link(co)
 scn.camera = co
 cam.sensor_fit = 'VERTICAL'
 cam.clip_start = 0.02
+def cam_mat(c):
+    """镜头：Blender 的相机跟 Roblox 一样是 X 右、Y 上、看 −Z，局部轴不用换，只换世界坐标"""
+    R = Matrix(((c[3], c[4], c[5]), (c[6], c[7], c[8]), (c[9], c[10], c[11])))
+    M = (C @ R).to_4x4()
+    M.translation = rb_pos(c[0], c[1], c[2])
+    return M
+
+
 for c in D.get('cams', []):
-    co.matrix_world = rb_mat(c['c'])
+    co.matrix_world = cam_mat(c['c'])
     cam.angle = math.radians(c.get('fov', 70))
     scn.render.filepath = '%s_%s.png' % (OUT, c['name'])
     bpy.ops.render.render(write_still=True)

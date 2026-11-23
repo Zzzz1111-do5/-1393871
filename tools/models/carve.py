@@ -29,7 +29,7 @@ META_LUA = os.path.join(ROOT, 'src/ReplicatedStorage/ImportedMeta.lua')
 CAVMETA_LUA = os.path.join(ROOT, 'src/ReplicatedStorage/CavityMeta.lua')
 CAVMESH_DIR = os.path.join(ROOT, 'src/ReplicatedStorage/CavityMesh')
 CFG = json.load(open(os.path.join(HERE, 'carve.json'), encoding='utf-8'))
-MAXVOX = 14e6
+MAXVOX = 30e6
 
 
 def log(*a):
@@ -138,6 +138,16 @@ def tri_samples(T, spacing):
     return np.concatenate(P), np.concatenate(I)
 
 
+def open_windows(gspec):
+    """glass.open：每个窗口一圈角点（格，顺着转一圈），扇形三角化"""
+    out = []
+    for poly in gspec.get('open', []):
+        P = np.array(poly, dtype=np.float64)
+        for i in range(1, len(P) - 1):
+            out.append([P[0], P[i], P[i + 1]])
+    return np.array(out, dtype=np.float64).reshape(-1, 3, 3)
+
+
 # ---------------------------------------------------------------- 约束（正 = 允许内腔在这里）
 def box_sd(X, Y, Z, b):
     return np.minimum.reduce([X - b[0], b[1] - X, Y - b[2], b[3] - Y, Z - b[4], b[5] - Z])
@@ -194,6 +204,32 @@ def mc(F, lo, h):
     if np.sum(up < 0) > np.sum(up > 0):
         f = f[:, ::-1].copy()
     return v + lo, f
+
+
+def smooth_boundary(v, f, iters, lam=0.5, mu=-0.53):
+    """开口的边（窗口、座圈口）沿着边线 Taubin 平滑：体素的锯齿拉直，口子不缩"""
+    if iters <= 0 or not len(f):
+        return v
+    from scipy.sparse import coo_matrix, diags
+    e = np.sort(np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]]), axis=1)
+    uniq, cnt = np.unique(e, axis=0, return_counts=True)
+    be = uniq[cnt == 1]
+    if not len(be):
+        return v
+    n = len(v)
+    E = np.concatenate([be, be[:, ::-1]])
+    A = coo_matrix((np.ones(len(E)), (E[:, 0], E[:, 1])), shape=(n, n)).tocsr()
+    A.data[:] = 1.0
+    deg = np.asarray(A.sum(axis=1)).ravel()
+    bm = deg == 2   # 只动正常的边线点（交叉点不动）
+    W = diags(1.0 / np.maximum(deg, 1)) @ A
+    v = v.copy()
+    for _ in range(iters):
+        d = W @ v - v
+        v[bm] += lam * d[bm]
+        d = W @ v - v
+        v[bm] += mu * d[bm]
+    return v
 
 
 def taubin(v, f, iters, lam=0.5, mu=-0.53):
@@ -385,7 +421,8 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
         keepf &= ~cut
     f = f[keepf]
     v, f = compact_mesh(v, f)
-    v = taubin(v, f, int(sp.get('taubin', 12)))   # 窗口边、座圈边的锯齿磨圆
+    v = smooth_boundary(v, f, int(sp.get('edgeSmooth', 30)))   # 窗口边、座圈边的锯齿拉直
+    v = taubin(v, f, int(sp.get('taubin', 12)))   # 整个面再磨一遍
     # 去掉碎片（很小的连通块）
     import collections
     parent = np.arange(len(v))
@@ -666,6 +703,10 @@ def run(key, preview_dir=None, write=True):
                 # 原来放进 tris_by_group 的是 T[~g0]，补上的这部分是 T[g0 & deep]
     tris_by_group = {g: np.concatenate(v) for g, v in tris_by_group.items() if len(v)}
     glass_tris = np.concatenate([m.P[m.idx][glass_by_part[glbio.part_name(m.node)]] for m in ms if glbio.part_name(m.node) in glass_by_part]) if glass_by_part else np.zeros((0, 3, 3))
+    openT = open_windows(gspec)
+    if len(openT):   # 原模型没装玻璃的窗口（摇下来的车窗）：封住灌水、内壁在这里开口，但不出玻璃块
+        glass_tris = np.concatenate([glass_tris, openT]) if len(glass_tris) else openT
+        log('  没装玻璃的窗口 %d 个' % len(gspec.get('open', [])))
     log('%s：玻璃 %d 个三角形（%s）' % (key, len(glass_tris), ', '.join('%s:%d' % (k, v.sum()) for k, v in glass_by_part.items())))
     wheels = M.get('wheels', {})
     results = {}
@@ -892,6 +933,9 @@ def write_meta(key, results, aux, cfg):
     J0, BIN0, ms, glass_by_part, inside_by_part, M, src_glb, meta_line = aux
     # 内腔元数据（内饰代码用）
     gl = np.concatenate([m.P[m.idx][glass_by_part[glbio.part_name(m.node)]] for m in ms if glbio.part_name(m.node) in glass_by_part]) if glass_by_part else np.zeros((0, 3, 3))
+    openT = open_windows(cfg.get('glass', {}))
+    if len(openT):
+        gl = np.concatenate([gl, openT]) if len(gl) else openT
     entry = {'spaces': {}, 'win': win_rects(gl), 'anchors': cfg.get('anchors', {})}
     for spn, (sp, r) in results.items():
         grp = sp.get('group') or ('Turret' if 'Turret' in sp['from'] else sp['from'][0])
