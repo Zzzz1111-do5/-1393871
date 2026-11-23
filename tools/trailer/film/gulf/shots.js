@@ -1266,7 +1266,7 @@ async function shotFeatures(env, add) {
 // G34 片尾
 async function shotEnd(env, add) {
   env.worldVisible(false);
-  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames'];
+  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames', '地表贴图、天空：Poly Haven（CC0）'];
   return {
     update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.010, lift: 0 }; },
     titles: t => {
