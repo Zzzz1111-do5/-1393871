@@ -315,6 +315,15 @@
    "author": "本项目",
    "license": "自制（照用户发来的钢铁猛兽截图量的比例，tools/weapons/gen_cdus.mjs 程序生成）",
    "url": ""
+  },
+  "ip_peri": {
+   "uid": "52c930bb607f4ae69aab580992e7449e",
+   "name": "FV105 Sultan periscop",
+   "author": "renalds_rs",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+   "prep": "periscope.mjs",
+   "note": "三维扫描件只取车里看得见的下半截（观察窗 + 外壳，截到安装法兰），从 155 万面简化到约 2000 面，贴图按新的网格重新烘焙，观察窗玻璃调成中性灰"
   }
  },
  "items": {
@@ -1342,6 +1351,15 @@
     "post": "Posts"
    },
    "front": true
+  },
+  "ip_peri": {
+   "src": "ip_peri",
+   "title": "车内饰：坦克潜望镜（车里看得见的下半截）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "embedTex": {
+    "Body": 512
+   }
   }
  }
 }

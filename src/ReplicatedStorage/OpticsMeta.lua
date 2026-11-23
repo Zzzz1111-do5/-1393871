@@ -494,4 +494,11 @@ return {
     },
     size = { 1.154, 1.316, 0.284 },
   },
+  ip_peri = {
+    parts = {
+      Body = { c = { -0.023, 0.004, -0.082 }, s = { 0.791, 0.398, 0.274 }, tri = 1995 },
+    },
+    size = { 0.791, 0.398, 0.274 },
+    credit = "车内饰：坦克潜望镜（车里看得见的下半截）：FV105 Sultan periscop，作者 renalds_rs，CC-BY-4.0 https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+  },
 }

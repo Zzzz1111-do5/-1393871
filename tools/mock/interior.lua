@@ -128,6 +128,8 @@ for _, name in ipairs(cur.spec.order) do
   R.run(0.2)
   dumpCams[name] = cam.CFrame
 end
+-- 炮塔还没转（后面「指示」会把炮塔转走）：先导一份，镜头和零件对得上（预览图对照截图用这份）
+if dumpDir then dumpJSON(dumpDir .. "/interior_" .. VEH .. "_0.json") end
 
 print("③ 开一炮：后坐、开闩、装填手装弹")
 local st0 = C.interiorState()

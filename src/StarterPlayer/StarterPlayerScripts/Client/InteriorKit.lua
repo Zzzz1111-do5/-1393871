@@ -541,19 +541,37 @@ function B:panel(g, w, h, cf, rows, cols, col, opt)
   end
 end
 -- 观察镜（潜望镜下半截）：钢壳 + 一块玻璃（玻璃是透的：外面的东西就从这里看得见）+ 上面的护额垫
+--   opt.model：用真车潜望镜的扫描模型（ip_peri：Sketchfab 上 renalds_rs 的 FV105 Sultan 潜望镜，CC-BY，只取车里的下半截、减面重烘贴图，
+--   tools/weapons/periscope.mjs；用户 11-22：「坦克第一人称驾驶舱那个潜望镜，你从 Sketchfab 自己找模型截取下来套用」）——
+--   器材坐标原点在观察窗中心、+Z 朝看的人（同 cf 的 +Z），按观察窗宽（原件 23.7 厘米）缩放；没生成好照旧画零件拼的
 function B:periscope(g, cf, w, h, d, opt)
   opt = opt or {}
+  if opt.model and self:prop(g, "ip_peri", cf * CF(0, 0, -d / 2 + 0.012), w / 0.237) then
+    if opt.pad ~= false then   -- 护额垫（黑橡胶）
+      self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.05, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
+    end
+    return nil
+  end
   local col = opt.col or K.C.dark
   self:box(g, V(w + 0.03, 0.02, d + 0.02), cf * CF(0, h / 2 + 0.01, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(-w / 2 - 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(w / 2 + 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(w + 0.03, 0.015, d + 0.02), cf * CF(0, -h / 2 - 0.0075, 0), col, MAT.Metal)
-  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(110, 140, 150), MAT.Glass)
-  gl.Transparency = 0.72
+  -- 玻璃：原来蓝绿色、只透 72%，夜里看着像一块发绿的板（用户 11-22：「现实中不带绿光」）——改成几乎无色、透 86%、一点点反光
+  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(176, 184, 188), MAT.Glass)
+  gl.Transparency = 0.86
+  gl.Reflectance = 0.06
   gl.CastShadow = false
   if opt.pad ~= false then   -- 护额垫（黑橡胶）
     self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.035, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
   end
+  return gl
+end
+-- 目镜的镜片：一块暗的玻璃、映一点天光（用户 11-22 发的车长位截图：GPSE 目镜里是暗的、映着一点蓝；「现实中不带绿光」——
+--   原来这里是一颗发绿光的霓虹小球「热像是绿的」）。cf 是镜片中心，镜片的面朝 cf 的 ±Z
+function B:lens(g, cf, dia)
+  local gl = self:cylZ(g, 0.003, dia, cf, RGB(14, 20, 30), MAT.Glass)
+  gl.Reflectance, gl.CastShadow = 0.32, false
   return gl
 end
 -- 座椅：坐垫 + 靠背 + 钢架 + 调节手柄；cf 是坐垫上表面中心，−Z 朝前

@@ -82,4 +82,5 @@
   车内饰：拨动开关面板（带护盖）（ip_sw.glb）：「Industrial Switches Apollo Command Module」，作者 ntilted，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-switches-apollo-command-module-b01232380685412a8485c5dd3be4265a
   车内饰：车内顶灯（防爆壁灯）（ip_lamp.glb）：「Industrial Bulkhead Wall Lamp Lowpoly」，作者 iwanPlays，CC-BY-4.0 https://sketchfab.com/3d-models/industrial-bulkhead-wall-lamp-lowpoly-4c50439bcbc247629fe2194862d7acc9
   车内饰：弹药箱（12.7 毫米 M2A1 弹箱）（ip_can.glb）：「Ammuntion box」，作者 jaiharitheking，CC-BY-4.0 https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c
+  车内饰：坦克潜望镜（车里看得见的下半截）（ip_peri.glb）：「FV105 Sultan periscop」，作者 renalds_rs，CC-BY-4.0 https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e；改动：三维扫描件只取车里看得见的下半截（观察窗 + 外壳，截到安装法兰），从 155 万面简化到约 2000 面，贴图按新的网格重新烘焙，观察窗玻璃调成中性灰
   改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改
