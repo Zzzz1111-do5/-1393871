@@ -2,7 +2,7 @@
 --   以前这里测 M1A2 车长的 CROWS 遥控武器站；现在主战坦克一挺机枪都不带（VehDefs.TANK_MG = false）：
 --   ① 型号表：所有坦克只剩主炮（没有并列机枪、车顶遥控武器站 / 手动重机枪）；步战车、轮式车、轻型车的机枪照旧
 --   ② M1A2 画出来：车顶没有 M2（原模型拆出来的机枪零件不画、没有会转的武器站），车长指挥塔（座圈、观察镜）还在、焊在炮塔上
---   ③ 进车内、换到车长位，按 T：CROWS 这一位空着（不开机枪屏、不换武器）；车里那块 CROWS 屏只剩摄像头（NO WPN、没有弹数）
+--   ③ 进车内（坦克锁在炮长位），按 T：开的是车长的 CITV、不是 CROWS（不开机枪屏、不换武器）；车里那块 CROWS 屏只剩摄像头（NO WPN、没有弹数）
 --   ④ 开火：打出去的是 120 毫米主炮，从炮口出；按 2 / 滚轮换不到机枪
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
@@ -125,19 +125,16 @@ T.runUntil(function() return G.round.phase == "battle" end, 60)
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
 local I = C.interiorState()
-local ci
-for i, k in ipairs(I.cur and I.cur.spec.order or {}) do if k == "commander" then ci = i end end
-check(ci ~= nil, "有车长位（F" .. tostring(ci and ci + 1) .. "）")
-if not ci then T.summary() return end
-T.tap(Enum.KeyCode["F" .. (ci + 1)])
-R.run(0.4)
-check(C.interiorState().station == "commander", "换到车长位")
+-- 坦克默认炮长位（用户 11-24 起 F2～F5 能换别的位置）：炮长位的 T 是车长的主观瞄（CITV），不是 CROWS
+check(I.station == "gunner" and I.cur ~= nil and I.cur.spec.order[1] == "gunner", "坐进车里就是炮长位（默认）")
 local wi0 = st.wi
 T.tap(Enum.KeyCode.T)
 R.run(0.8)
-check(C.interiorOpticState() == nil, "按 T 没开 CROWS（" .. tostring(C.interiorOpticState() and C.interiorOpticState().o.kind) .. "）")
+local op = C.interiorOpticState()
+check(op == nil or op.o.kind ~= "crows", "按 T 没开 CROWS（" .. tostring(op and op.o.kind) .. "）")
 check(st.wi == wi0 and st.d.weapons[st.wi] == "gun120", "武器还是主炮：" .. tostring(st.d.weapons[st.wi]))
 check(st.rwsPt == nil, "鼠标没交给武器站")
+if op then T.tap(Enum.KeyCode.T) R.run(0.5) end
 -- 车里那块 CROWS 屏：只剩车顶摄像头
 R.run(0.6)
 local noWpn = T.texts("NO WPN")

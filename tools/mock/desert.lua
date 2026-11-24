@@ -37,6 +37,8 @@ local names = T.texts(C.T("map.desert.name"))
 check(#names > 0, "卡片上写「" .. C.T("map.desert.name") .. "」")
 T.press(card)
 R.run(0.5)
+check(G.mapId == nil and G.mapVotes[p1] == "desert", "点了是投一票（还没定：在场的人都投了也再等几秒、能改票）")
+R.run((G.Config.MapVote.grace or 3) + 0.5)
 check(G.mapId == "desert", "服务器按沙漠开（" .. tostring(G.mapId) .. "）")
 check(C.mapPickWant() == "desert", "选地图界面记着自己点的沙漠")
 

@@ -494,4 +494,59 @@ return {
     },
     size = { 1.154, 1.316, 0.284 },
   },
+  ip_peri = {
+    parts = {
+      Body = { c = { -0.023, 0.004, -0.082 }, s = { 0.791, 0.398, 0.274 }, tri = 1995 },
+    },
+    size = { 0.791, 0.398, 0.274 },
+    credit = "车内饰：坦克潜望镜（车里看得见的下半截）：FV105 Sultan periscop，作者 renalds_rs，CC-BY-4.0 https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+  },
+  ip_dseat = {
+    parts = {
+      Body = { c = { 0.029, 0.908, 0.439 }, s = { 1.458, 2.545, 1.662 }, tri = 4000 },
+    },
+    size = { 1.458, 2.545, 1.662 },
+    credit = "车内饰：驾驶员座椅（坐垫 + 靠背 + 头枕，乘员朝 −Z，原点在坐垫顶面中心）：Driver seat \"Pilot\" with air suspension.，作者 dewolfepilot，CC-BY-4.0 https://sketchfab.com/3d-models/driver-seat-pilot-with-air-suspension-b6cd4493fff547af8a87316952a51e82",
+  },
+  ip_swheel = {
+    parts = {
+      C222 = { c = { 0, 0, -0.39 }, s = { 1.12, 1.121, 0.857 }, tri = 2998, col = { 39, 39, 39 }, met = 0 },
+    },
+    size = { 1.12, 1.121, 0.857 },
+    credit = "车内饰：方向盘（盘面朝 +Z 对着驾驶员，原点在轮缘中心，直径 0.40 米）：car bus truck steering wheel interior control，作者 kopofx，CC-BY-4.0 https://sketchfab.com/3d-models/car-bus-truck-steering-wheel-interior-control-bd3d964b2ba8425197ef1a76acf131f3",
+  },
+  ip_lever = {
+    parts = {
+      C000 = { c = { 0, 0.7, 0 }, s = { 0.393, 1.401, 0.393 }, tri = 2368, col = { 0, 0, 0 }, met = 0 },
+      C222 = { c = { -0.021, 0.762, 0.001 }, s = { 0.208, 0.984, 0.241 }, tri = 1630, col = { 37, 37, 37 }, met = 0.506 },
+    },
+    size = { 0.393, 1.401, 0.393 },
+    credit = "车内饰：操纵杆 / 换挡杆（原点在底座中心，高 0.50 米）：Classic Shift Lever，作者 kryoxshade，CC-BY-4.0 https://sketchfab.com/3d-models/classic-shift-lever-ed7ce8e75f9f44dc9a60a499c7fdaf0b",
+  },
+  ip_gauges = {
+    parts = {
+      Ceee = { c = { 0, 0, 0.024 }, s = { 0.728, 0.508, 0.024 }, tri = 2172, col = { 231, 231, 231 }, met = 1 },
+      Body = { c = { -0.009, 0.109, 0.036 }, s = { 0.267, 0.268, 0 }, tri = 4 },
+      C999 = { c = { 0, -0.001, 0.011 }, s = { 0.711, 0.489, 0.022 }, tri = 3809, col = { 150, 150, 150 }, met = 1 },
+      Body2 = { c = { 0.25, -0.14, 0.036 }, s = { 0.201, 0.201, 0 }, tri = 4 },
+      Body3 = { c = { -0.255, -0.137, 0.036 }, s = { 0.208, 0.202, 0 }, tri = 4 },
+    },
+    size = { 0.728, 0.508, 0.036 },
+    credit = "车内饰：指针式仪表三块（表盘朝 +Z，原点在背面中心）：Dashboard Gauges，作者 kryoxshade，CC-BY-4.0 https://sketchfab.com/3d-models/dashboard-gauges-05288d08679d4cb195217a3477ae10ad",
+  },
+  ip_pedals = {
+    parts = {
+      Cbbb = { c = { 0, 0.347, -0.571 }, s = { 0.896, 0.695, 1.101 }, tri = 2451, col = { 188, 188, 188 }, met = 1 },
+      C222 = { c = { -0.003, 0.313, -0.212 }, s = { 0.901, 0.499, 0.428 }, tri = 1545, col = { 38, 38, 38 }, met = 0 },
+    },
+    size = { 0.902, 0.695, 1.124 },
+    credit = "车内饰：刹车、油门踏板（踏板面朝 +Z 对着驾驶员，原点在踏板底边中点）：Pedals Sets，作者 kryoxshade，CC-BY-4.0 https://sketchfab.com/3d-models/pedals-sets-aed5b969daad4f2086468869b06a4f84",
+  },
+  ip_grip = {
+    parts = {
+      Body = { c = { 0, 0.178, 0 }, s = { 0.144, 0.355, 0.216 }, tri = 812 },
+    },
+    size = { 0.144, 0.355, 0.216 },
+    credit = "车内饰：操纵握把（扳机朝 −Z，原点在握把底面中心，高 0.13 米）：F-4 Phantom II Flight Stick (Joystick)-Low Poly，作者 alpertheronin，CC-BY-4.0 https://sketchfab.com/3d-models/f-4-phantom-ii-flight-stick-joystick-low-poly-b53fdc25c8cc43aba8fdf6c40bb709e3",
+  },
 }

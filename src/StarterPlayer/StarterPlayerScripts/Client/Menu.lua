@@ -263,6 +263,7 @@ function Menu.init(G)
     local live = Stage.active()
     bg.BackgroundTransparency = live and 1 or 0
     shade.BackgroundTransparency = live and 0.4 or 0
+    content.Visible = not (G.mapPickShown and G.mapPickShown())   -- 选地图开着：菜单的字先藏起来（原来从地图卡片后面透出来）
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName

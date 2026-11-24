@@ -1036,6 +1036,75 @@
     「沙漠风暴」留在 `MapDesert.lua`（地图 id `desert`，征服），「沙海」改名 `MapSands.lua`（id `sands`，五个阶段的突破），一起走 `Map.use(id)` 选图（开始游戏 → 选地图有三张卡）；
     沙海原来开服按 `Config.Map` 整个换模块，现在改成：阶段表 `Config.StagesByMap` + `Config.useMap(id)`（服务器定图后、客户端换图时调），据点、阶段、出生点的说法改成 `@sands` 键（`Lang.mapId`），
     天色（DayNight）、小地图色块（MapUI）换图时再套一次；Workspace 属性 `MapName`（"island" / "desert" / "sands"）在 Studio、测试台里直接定图。两张图的标志分开：沙漠风暴 `Map.desert`，沙海 `Map.DESERT` / `Map.LANDONLY` / `Map.chunkKind`；「没有海」的判断两个都认（码头、AI 舰艇、远处那圈沙地）。
+  - 11-23：宣传片改成短剧结构（用户：动作逻辑上连不起来、看得一头雾水、要爽点，照 AI 短剧的剧本逻辑；接着：配文太尴尬）：
+    `film/gulf/story.js` 是剪辑表 EDIT——每条从一个原镜头（`gulf/shots.js` SHOTS，现在只当素材）截一段（可定格），叠对白（下面黑边里、带呼号名牌）、
+    部队字卡、平显式结果、时间戳、任务清单、警报、说明。剧情：钩子（领头 99A 被 M1A2 打中、定格）→ 6 小时前 → 下任务（日落前控制油田）→ 电子沙盘（GMAP 镜头）
+    讲先清除的三处和派谁去 → 爱国者 / 炮兵 / 沙梁 M1A2 → 阿帕奇偷袭后续梯队、防空车击落 → 歼-16 打增援 → 日落控制油田 → 片名。
+    台词照真实无线电：冷静、短，不嘲讽、不喊口号、不用大字煽情。
+    用户又说「两边打戏多一点」：加了蓝方还手、红方也有损失的交火——拦截弹打爆诱饵（G05B）、炮弹砸进 99A 集结地（G09B）、
+    M1A2 全排开火（G14B）、一辆 99A 被打穿殉爆（G16B）、99A 行进间还击（G13B）、阿帕奇链炮扫射纵队（G22C、G22D），全片约 170 秒。
+    渲染分两步：`… render.cjs <数据> <输出> plates`（只渲剪辑表要的原镜头帧，`plates/<原镜头>/`，可 PART 分头渲）→ `… comp`（净画面 + 平显 + 字幕层，
+    改字幕只重跑这一步）→ `… audio` → `… edit`。原镜头的音效事件以前没进成片（写在 setup 的返回值里，配乐拿不到），现在按截取段平移进去。
+    页面等字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）。
+  - Lune 要 0.11 以上（README 也这么写）：0.8.9 跑测试台一启动就崩（`registry.rs` cannot mutably borrow app data container），build 出来的 rbxlx 两个版本一样。
+    容器重置后装 Lune：`curl -sfL -o lune.zip https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip`，解压放到 `/usr/local/bin`。
+  - 11-23（darksword-forts-navy，续）：用户「把几个 ai 弄的游戏合并给我」「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」「在游戏里实现动画里的动画」：
+    ① 合并：affectionate-pasteur（含 darksword-air-map）、vibrant-ramanujan 都合进来（keen-heisenberg、codex/claude-playability-polish、island-assault-cinematic-operation 早就在里面）。
+    冲突：服务器模块表（Kit + Economy / Revive / Squads / Pve 都要）、选地图（投票 + PvE 关卡页签）、出生点名字（红方前进基地 + 小队）、测试台初始化、文档。
+    ② 阵亡效果（客户端 `DeathFx.lua`）：死了先放 4.4 秒（倒地以后才死的 2.8 秒）——闷响、画面一白再褪成黑白、模糊、四边压暗、新放的声音发闷（接在 `G.muffle` 上）、心跳两下；
+    镜头留在倒下的地方慢慢升高拉远看着身体（车里死的看车）；正中红色「阵亡」、下面写凶手和距离（killcam 消息，原来 Warfx 转镜头看凶手那段这时让出来，`G.killcamStop`）；
+    最后半秒淡黑，部署界面（UI.lua 看 `G.deathFxOn()`）出来后黑幕淡开。测试 `tools/mock/deathfx.lua`。
+    ③ 宣传片的动画进游戏：炮塔掀飞照片子调好的参数（View.lua：往上 20～27 格 / 秒、慢慢翻、落在车旁）；飞机被打掉（Fly.lua `wreckStart` / `wreckMove`）：
+    直升机尾桨没了越转越快、机头往下栽、尾梁拖火和黑烟，固定翼顺着速度栽下去，砸地炸开、残骸烧十几秒；服务器 4 秒后收实体，客户端 `falling` 接着演完。测试 `tools/mock/wreckfx.lua`。
+    PGL-625 发射架：`tools/models/t625_split.py` 把 t625.glb 的 Body_1 拆成 Body_5 + Gun_2（ImportedMeta 留着 Body_1，没重导照旧）；导入说明写了重导步骤。
+    宣传片数据目录的 meta.json 要重新导一次（`export_meta.luau`）才认得 Gun_2——片子里原来加载时按三角形挪（VEH_MOVE）的那套在新 GLB 上不起作用了。
+    测试：两处有意的改动之前没跟上——ia_import（坦克不画车顶机枪的枪身，VehDefs.TANK_MG）、interior_props（顶灯 2 盏）。
+  - 11-23（affectionate-pasteur）：用户「三张地图改成投票制，进去投票选地图」。选地图不再是第一个人点的定：`ACT.pickMap` → `G.voteMap`（init.server.lua，能改票），
+    第一票投出后 `Config.MapVote.time`（25）秒按票数最多的开（平票随机），在场的人都投了再等 `grace`（3）秒；投票中服务器半秒推一次状态（`S.vote` 各张票数、还剩几秒、几人投了，
+    `S.myVote`）；MapPick.lua 每张卡显示票数、自己投的高亮「已投这张」、底下倒计时，定了以后投过票的人生成好了自动快速加入。
+    顺带修了投票（地图在开服以后才定）暴露的老问题——服务器各模块初始化时 `Map` 还是岛：Round.lua 的阶段表、碉堡射界、攻方出发阵地、守方集结点开局前按定下来的图重算
+    （`buildMapTables`；原来沙海的 A 出发阵地在岛的坐标上），Nav.lua 的 `setGrid` 认 `Map.NAVBOX`（沙海的寻路网格原来按岛的范围），Navy.lua 不在初始化时按 `LANDONLY` 直接 return、
+    各入口按现在的图判断（`noSea`），Vehicles.lua 每次查 `Map.landingOf`；客户端 Operation.lua 的战役路线条登记 `G.onMap` 重摆。
+    测试：`tools/mock/mappick.lua`（三人投票改票、`timer` 到点、`bands` 缩略图色带）、`tools/mock/sands.lua` 加了出发阵地、寻路网格、路线条的检查；
+    Lune 测试台把游戏画面上的红色报错条（`G.showError`）也记下来（测试台读不到派生属性的 `missing default value` 不算）。
+  - 11-23：用户「你看其他 ai 弄的，不考虑 token，这个游戏按你想的来弄」——别的分支都已经合进来了；照战地的团队玩法补了这几样：
+    ① 倒地与救援（服务器 `Revive.lua`、客户端 `Downed.lua`）：致命又不太狠的一下先倒地（击杀这一下就记），20 秒没人救就阵亡、再挨一下马上阵亡、按住空格放弃直接回部署；
+    倒地的人瘫在地上（PlatformStand）、拿不了枪、上不了车、不算占领人数，机器人和工事不补枪；画面去色发红、心跳、镜头绕着自己转、显示流血倒计时、最近的队友多远、谁在救你。
+    队友头顶白底红十字救援标记（隔墙可见），走近按住 E 救起：带急救包 1.6 秒满血，没带 4 秒三成半血；救人加分。急救包回血不管倒地的人。
+    ② 翻越 / 攀爬（`Mantle.lua`）：步行按空格，面前 0.4～2.7 米的矮墙、沙袋翻过去，台子、窗台爬上去；用速度推（自己的客户端算物理，别人看着顺），翻的时候枪收下去。
+    ③ 震荡（`Shock.lua`）：近处爆炸耳鸣（SoundLib.earRing）、别的声音发闷变小、画面一白一糊，几秒后恢复；车里挡掉大半、座舱里不算。
+    ④ 小队（服务器 `Squads.lua`、客户端 `SquadHud.lua`）：进了阵营自动分进四人小队（A、B、C……）；部署界面能选「小队：队友」在他身后出生（他活着、没倒、不在车里、6 秒内没挨打）；
+    左边小队面板（血条、倒地、阵亡、距离），队友头顶绿色标记。
+    ⑤ 人人都能按 Z 标记敌人（Weapons.lua 的 ACT.spot，同观察员望远镜那套）：620 格、3° 锥、7 秒，队友那边标出来、加分。
+    测试：`tools/mock/revive.lua`、`mantle.lua`（翻越 + 震荡）、`squads.lua`、`spot.lua`。
+  - 11-23（续）：用户「把很多坦克飞机直升机搞成金币解锁吧，然后两边都可以用对方的载具，然后金币 pvp 或者打 pve 来，你搞一些关卡吧，然后改枪配件也是需要解锁」：
+    ① 金币（服务器 `Economy.lua`，存进 DataStore 的档：coins / ownVeh / ownAtt / pve）：新玩家 1500；对战每局结算按得分 ×0.1 + 胜 200 / 负 60（`Config.Economy`）；
+    PvE 打通发关卡奖励（第一次 ×2）。玩家属性 Coins / OwnVeh / OwnAtt / PveCleared 给客户端看；左上角金币牌子（`Coins.lua`），开菜单时一直显示、金币变了亮几秒并弹「+350」。
+    ② 载具解锁（`Config.Economy.veh` 的价格；0 / 没写 = 免费）：每类各留免费的入门型（96 式、M10、05 式两栖、M1117、悍马、07 式自行高炮、M163、07 式榴弹炮、M109A7、
+    直-20、UH-60、歼-10、A-10C），越新越贵（歼-36 6500）。召唤点的机型卡写着价格，点一下提示、4 秒内再点一下买（`ACT.buyVeh`）；没买的服务器拒绝生成（`Depots.lua`）。
+    B-2 照旧 Robux 通行证。
+    ③ 两边都能用对方的载具（`Config.CrossVehicles` + `Config.TeamVehicles`）：坦克、装甲车、防空、火炮、直升机、战斗机——自己这边的排前面，对面的接在后面；舰船还是各用各的。
+    ④ 改枪配件：枪的等级到了自动解锁（原来就有），也可以拿金币直接买（`ACT.buyAtt`，价格 100 + 80 × 解锁等级）；`Config.GunMods.studioAll` 改成 false（Studio 里也要解锁）。
+    顺手修了 `GunMods.unlockLv` 永远返回空（`list and find(...)` 只取到第一个返回值）——改枪界面原来从不显示等级锁。
+    ⑤ PvE 关卡（服务器 `Pve.lua`，`Config.Pve`）：选地图界面加了「对战 PVP / 关卡 PVE」两页，关卡页 8 关（滩头阵地、港口突袭、夜袭机场、沙海遭遇、纵深突破、钢铁洪流、
+    全岛攻略、沙漠风暴），打通上一关才解锁下一关。真人都在攻方；电脑人数按关卡（敌方 enemies，每多一个真人 +2；友军 allies，真人多了少补）；电脑的反应时间、散布按 skill 缩放；
+    后面几关敌方开 AI 坦克飞机。岛：拿下 caps 个据点就赢；沙漠：征服规则，敌方兵力按关卡。打通了下一关同一张图就接着开、换图就提示回菜单选。
+    服务器已经在打别的：只有自己就直接换、不然开私人服务器传过去（线上）；只有自己时在对战页点地图就退出关卡改打对战。左上角一行「PvE 第 N 关 · 名字 · 目标」。
+    测试：`tools/mock/economy.lua`（新玩家金币、两边载具表、没买的拒绝生成、买车、结算金币、买配件）、`tools/mock/pve.lua`（锁关、选关、电脑人数和水平、赢了发奖记进度、
+    下一关、关卡页、左上角、退出关卡）。测试台默认全解锁（`G.econAll = true`，在 `tools/mock/rbx.lua` 和 `tools/test/harness.luau` 的初始化里），经济测试自己关掉。
+  - 11-24：用户「另一个 ai 提交了东西，关于内饰得把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里，然后你负责续作，自己找 m1a2sepv2 内饰截图，应该和目前 a1 大差不差，
+    然后按钮什么的实现功能，实现现实中那几块屏幕所有的功能」：
+    ① 拆块（`tools/models/intsplit.py` + `intsplit.json`）：m1a1i.glb 炮塔内饰那一整块（Int_2）按连通块拆成 15 块，ImportedMeta 里 `rep = { "Int_2" }`；
+    炮尾开炮后坐、摇架跟着俯仰、炮长双握把跟着炮塔转动摆。用户要重导 veh/m1a1i.glb。
+    ② `InteriorAbrams.lua`：A1、A2（SEPv2）整套用原模型的块；布雷德利（`Defs.donorIfv`，InteriorAFV 的步战车炮塔调它）借炮长 / 车长位那几件；没导入的照旧零件拼。
+    ③ Interior 的可动部件运行时（`B:mov`：旋钮、选择开关、拨动开关、按钮，左键拨、悬停写档位、每帧照火控状态同步）；Drive 的火控补全：激光首 / 末回波和多回波、
+    激光保险、火控方式（正常 / 应急 / 手动）、稳定器开关、每种弹的战斗瞄准距离、炮管热弯曲和炮口基准更新、校炮、多档倍率（VehDefs 的 sightZoom）、
+    分划 / 符号亮度、热像增益 / 电平、红分划；布雷德利射速（高 / 低 / 单发）、武器选择、武器总开关。
+    ④ 屏幕：GCDP（`P.gcdp2`，主画面 + MAIN / AMMO / RANGE / ADJUST / BIT 页）、CCP 接真功能、CITV 五档视场、车长握把热像仪激光测距 + 敌情报告（服务器 `ACT.vspot`）。
+    ⑤ 测试：`tools/mock/interior_abrams.lua veh=m1a2|m1a1`、`interior_bradley.lua`、`interior_occ.lua … imp=m1a1i`（`T.fakeImport`）。细节见 `docs/interior.md`。
+  - 11-24：用户「为什么给我默认炮长位控不了 我要能开别的位置」「你先让坦克能用不同视角」：坦克不再锁死在炮长位（Interior.lua）——一进车默认炮长位，
+    F2 驾驶员、F3 炮长、F4 车长、F5 装填手，C 依次换位、最后一个之后回车外；M1A2 挖了内腔（m1a2dc）以后加了驾驶员位（InteriorAbrams.lua：车体前部半躺的座椅、
+    三块潜望镜、视觉增强器屏 DVE / 后视 RVSS、T 形把、DID 屏）；M1A1 原模型内饰只有炮塔，没有驾驶员位。
 
 ## 协作（几个会话一起改这个仓库）
 

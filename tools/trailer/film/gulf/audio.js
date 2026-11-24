@@ -151,73 +151,114 @@ export async function renderGulfScore(SHOTS) {
   }
   function whine(t0, t1, f = 9500, k = 0.012) { const g = ctx.createGain(); g.connect(out(SFX)); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(k, t0 + 0.4); g.gain.setValueAtTime(k, t1 - 0.2); g.gain.linearRampToValueAtTime(0, t1); const o = osc('sine', f, t0, t1); o.connect(g); }
 
-  // —— 时间线 ——
+  // —— 时间线（短剧版剪辑表 gulf/story.js：H 钩子、S/MAP 下任务、A 爱国者、B 炮兵、C 坦克战、D 阿帕奇、E 歼-16、F 结局、T 片名）——
   const at = {}; let T = 0;
   for (const s of SHOTS) { at[s.id] = T; T += s.dur; }
   const end = T;
-  const E = 52, G = 55, B = 59, C = 48, D = 50, A = 57, Fs = 54;   // E 小调（MIDI）
+  const E = 52, G = 55, B = 59, C = 48, D = 50, A = 57, Fs = 54, Gs = 56;   // E 小调（MIDI）
   const prog = [[E, B], [C, G], [D, A], [B - 12, Fs]];
-  // 夜：低音、风、心跳
-  drone(E - 12, 0.2, at.G03 + 0.6, 0.1, 360);
-  pad([E + 12, G + 12, B + 12], 2.2, at.G03 + 1, 0.018, 2000, 0.2);
-  for (let t = at.G02 + 0.3; t < at.G03 + 0.5; t += 0.9) heart(t, 0.28);
-  // 空袭：弦乐顿弓 104 拍，一小节一小节加厚；命中时铜管
-  const b104 = 60 / 104 / 2;
-  for (let t = at.G03, i = 0; t < at.G09 - 0.1; t += b104, i++) {
-    const bar = Math.floor(i / 8) % 4, [r] = prog[bar];
-    const k = Math.min(1, (t - at.G03) / 14);
-    stacc(r - 12, t, 0.15, 0.045 + 0.035 * k, (i % 2) ? 0.25 : -0.25);
-    if (t > at.G04) stacc(r, t, 0.12, 0.03 + 0.01 * k, (i % 2) ? -0.3 : 0.3);
-    if (i % 8 === 0) taiko(t, 0.26 + 0.24 * k, 85);
-    if (t > at.G06 && i % 4 === 2) snare(t, 0.05);
+  const sec = (a, b) => [at[a], at[b]];
+  // 钩子：低音、越跳越快的心跳、一路往上冲，冲到击中那一下（定格的重击、耳鸣在音效 freezeHit 里）；黑场倒带
+  drone(E - 12, 0, at.H3 + 0.2, 0.09, 340);
+  for (let t = 0.05, k = 0; t < at.H2 + 0.55; k++) { heart(t, 0.2 + 0.015 * k); t += Math.max(0.36, 0.78 - k * 0.08); }
+  riser(0.1, at.H2 + 0.63, 0.12);
+  // 下任务：夜里的低音、高处一层弦；沙盘：电子脉冲（八分音符）、慢慢加厚
+  drone(E - 12, at.S1, at.A1 + 0.5, 0.085, 320);
+  pad([E + 12, G + 12, B + 12], at.S1 + 0.3, at.MAP + 1, 0.018, 2000, 0.2);
+  for (let t = at.MAP + 0.4, i = 0; t < at.A1 - 0.15; t += 60 / 112 / 2, i++) pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.04 + 0.03 * Math.min(1, (t - at.MAP) / 8));
+  pad([E, G, B], at.MAP + 2.5, at.A1 + 0.4, 0.024, 1300);
+  // 第一颗钉子：弦乐顿弓 104 拍，一小节一小节加厚，6 发命中时铜管（大字 hitWord）
+  {
+    const [a0, a1] = sec('A1', 'B0'), b = 60 / 104 / 2;
+    for (let t = a0, i = 0; t < a1 - 0.1; t += b, i++) {
+      const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - a0) / 14);
+      stacc(r - 12, t, 0.15, 0.045 + 0.035 * k, (i % 2) ? 0.25 : -0.25);
+      if (t > at.A2) stacc(r, t, 0.12, 0.03 + 0.01 * k, (i % 2) ? -0.3 : 0.3);
+      if (i % 8 === 0) taiko(t, 0.26 + 0.24 * k, 85);
+      if (t > at.A4 && i % 4 === 2) snare(t, 0.05);
+    }
+    drone(E - 12, a0, a1 + 0.4, 0.075, 300);
+    pad([E, B, E + 12], at.A2, at.A6 + 0.5, 0.028, 1800);
+    riser(at.A5 + 0.8, at.A6 + 0.6, 0.11);
   }
-  drone(E - 24 + 12, at.G03, at.G09 + 0.6, 0.075, 300);
-  pad([E, B, E + 12], at.G04, at.G07 + 0.5, 0.028, 1800);
-  riser(at.G06 + 1.2, at.G07 + 0.6, 0.12);
-  braam([E - 12, B - 12, E], at.G07 + 0.6, 3.4, 0.2); cymbal(at.G07 + 0.6, 0.06, 4);
-  // 无人机：安静下来，电子脉冲（八分音符）、远处的低音
-  for (let t = at.G09, i = 0; t < at.G12 - 0.2; t += 60 / 112 / 2, i++) pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.045 + 0.02 * Math.min(1, (t - at.G09) / 6));
-  drone(E - 12, at.G09 - 0.4, at.G12 + 0.4, 0.07, 320);
-  pad([E, G, B], at.G09, at.G12, 0.022, 1300);
-  braam([E - 12, B - 12], at.G11 + 1.1, 2.6, 0.11);
-  // 坦克战：120 拍，太鼓、弦乐、铜管
-  const b120 = 60 / 120 / 2;
-  const battle0 = at.G12, battle1 = at.G31;
-  for (let t = battle0, i = 0; t < battle1 - 0.05; t += b120, i++) {
-    const bar = Math.floor(i / 8) % 4, [r] = prog[bar];
-    const inten = Math.min(1, (t - battle0) / 12) * (t > at.G27 ? 0.75 : 1);
-    stacc(r - 12, t, 0.12, 0.045 + 0.03 * inten, (i % 2) ? 0.3 : -0.3);
-    if (i % 2 === 0) stacc(r - 24 + 12, t, 0.18, 0.038);
-    if (t > at.G13) stacc((i % 4 < 2 ? r + 12 : r + 7 + 12), t, 0.1, 0.022 * inten, (i % 2) ? -0.4 : 0.4);
-    if (i % 4 === 0) taiko(t, 0.34 + 0.18 * inten, 85, -0.2);
-    if (i % 8 === 6 && t > at.G14) taiko(t, 0.28, 110, 0.2);
-    if (i % 8 === 4 && t > at.G15) snare(t, 0.07);
-    if (t > at.G20 && i % 16 === 15) for (let k = 0; k < 4; k++) snare(t + k * b120 / 4, 0.05 + k * 0.015);
+  // 第二颗钉子：静下来，电子脉冲、远处的低音
+  {
+    const [b0, b1] = sec('B0', 'C1');
+    for (let t = b0, i = 0; t < b1 - 0.2; t += 60 / 112 / 2, i++) pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.045 + 0.02 * Math.min(1, (t - b0) / 6));
+    drone(E - 12, b0 - 0.3, b1 + 0.3, 0.07, 320);
+    pad([E, G, B], b0, b1, 0.022, 1300);
   }
-  for (const [id, dt, notes, dur] of [['G13', 0.02, [E - 12, B - 12], 3.4], ['G16', 0.9, [C - 12, G - 12], 3.0], ['G18', 1.85, [D - 12, A - 12, D], 3.0],
-    ['G20', 0.02, [B - 24, Fs - 12], 3.5], ['G21', 0.02, [E - 12, B - 12], 3.0], ['G26', 2.6, [E - 12, B - 12, E, G], 4.0], ['G27', 0.02, [C - 12, G - 12], 3.0], ['G30', 0.6, [D - 12, A - 12], 3.0]]) braam(notes, at[id] + dt, dur, 0.13);
-  pad([E, G, B, E + 12], battle0, at.G16, 0.028, 1600);
-  pad([C - 12, G, C, E + 12], at.G16, at.G21, 0.032, 1700);
-  pad([D, A, D + 12, Fs + 12], at.G21, at.G27, 0.032, 1900);
-  pad([E, B, E + 12, G + 12], at.G27, battle1 + 0.3, 0.03, 1700);
-  drone(E - 24, battle0, battle1 + 0.2, 0.085, 260);
-  riser(at.G25, at.G26 + 2.6, 0.11);
-  riser(at.G30, battle1, 0.1);
-  // 油田大火：一下静下来（耳鸣），独奏
-  whine(battle1, battle1 + 2.4, 7400, 0.018);
-  pad([E, G, B], battle1 + 0.8, at.G32 + 0.4, 0.042, 1300);
-  drone(E - 12, battle1 + 0.5, at.G32 + 0.5, 0.07, 300);
-  cello(battle1 + 1.2, 0.62, [[0, 59, 2], [2, 60, 1], [3, 59, 1], [4, 55, 2], [6, 57, 1], [7, 59, 1.6]], 0.075);   // B C B G A B
-  // 片名
-  const th = at.G32 + 0.55;
+  // 坦克战：120 拍，太鼓、弦乐、铜管；毒蛇出场到挨打那一段压下去（只剩低音、太鼓，心跳），挡住了以后全开
+  {
+    const [c0, c1] = sec('C1', 'D1'), b = 60 / 120 / 2;
+    const dip0 = at.C3, dip1 = at.C5 + 1.45;
+    for (let t = c0, i = 0; t < c1 - 0.05; t += b, i++) {
+      const [r] = prog[Math.floor(i / 8) % 4];
+      const dip = t > dip0 && t < dip1;
+      const inten = Math.min(1, (t - c0) / 10) * (dip ? 0.4 : 1);
+      if (!dip || i % 2 === 0) stacc(r - 12, t, 0.12, 0.045 + 0.03 * inten, (i % 2) ? 0.3 : -0.3);
+      if (i % 2 === 0) stacc(r - 24 + 12, t, 0.18, 0.038 * (dip ? 0.7 : 1));
+      if (!dip && t > at.C2) stacc((i % 4 < 2 ? r + 12 : r + 7 + 12), t, 0.1, 0.022 * inten, (i % 2) ? -0.4 : 0.4);
+      if (i % 4 === 0) taiko(t, 0.34 + 0.18 * inten, 85, -0.2);
+      if (!dip && i % 8 === 6 && t > at.C2) taiko(t, 0.28, 110, 0.2);
+      if (!dip && i % 8 === 4 && t > at.C6) snare(t, 0.07);
+      if (t > at.C10 && i % 16 === 15) for (let k = 0; k < 4; k++) snare(t + k * b / 4, 0.05 + k * 0.015);
+    }
+    for (let t = dip0 + 0.2; t < at.C5 + 0.85; t += 0.62) heart(t, 0.22);
+    braam([E - 12, B - 12], at.C1 + 2.2, 3.0, 0.12);   // 全营——出发！
+    pad([E, G, B, E + 12], c0, at.C3, 0.028, 1600);
+    pad([C - 12, G, C], at.C3, at.C5 + 1.5, 0.022, 900);
+    pad([D, A, D + 12, Fs + 12], at.C5 + 1.5, c1 + 0.3, 0.032, 1900);
+    drone(E - 24, c0, c1 + 0.2, 0.085, 260);
+    riser(at.C6, at.C8 + 0.3, 0.1);
+  }
+  // 阿帕奇：先是低音、旋翼（嚣张），偷袭一响警报；盾牌出场以后 128 拍
+  {
+    const [d0, d1] = sec('D1', 'E1');
+    drone(E - 12, d0, d1 + 0.3, 0.08, 300);
+    pad([E, G, Fs + 12], d0, at.D3B, 0.02, 1100);
+    for (let t = d0 + 0.3; t < at.D3B; t += 60 / 128 * 2) taiko(t, 0.3, 75);
+    const b = 60 / 128 / 2;
+    for (let t = at.D3B, i = 0; t < d1 - 0.05; t += b, i++) {
+      const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - at.D3B) / 5);
+      stacc(r - 12, t, 0.12, 0.05 + 0.025 * k, (i % 2) ? 0.3 : -0.3);
+      if (i % 2 === 0) stacc(r, t, 0.1, 0.025 * k, (i % 2) ? -0.35 : 0.35);
+      if (i % 4 === 0) taiko(t, 0.38 + 0.12 * k, 88);
+      if (i % 8 === 4) snare(t, 0.07);
+    }
+    pad([D, A, D + 12], at.D4, d1, 0.03, 1800);
+    riser(at.D5, at.D6 + 2.35, 0.1);
+  }
+  // 歼-16：脉冲加厚，往上冲到 4 发命中
+  {
+    const [e0, e1] = sec('E1', 'F1'), b = 60 / 120 / 2;
+    for (let t = e0, i = 0; t < e1 - 0.1; t += b, i++) {
+      const [r] = prog[Math.floor(i / 8) % 4], k = Math.min(1, (t - e0) / 8);
+      pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.05 + 0.02 * k);
+      if (t > at.E2) stacc(r, t, 0.1, 0.02 + 0.02 * k, (i % 2) ? -0.3 : 0.3);
+      if (i % 4 === 0) taiko(t, 0.25 + 0.2 * k, 90);
+    }
+    drone(E - 24, e0, e1 + 0.2, 0.08, 260);
+    pad([E, B, E + 12, G + 12], e0, e1 + 0.3, 0.03, 1700);
+    riser(at.E3, at.E4 + 2.6, 0.1);
+  }
+  // 结局：一下静下来，大提琴独奏；「任务完成」金色大字（hitGold）
+  {
+    const f0 = at.F1;
+    whine(f0, f0 + 2.0, 7400, 0.014);
+    pad([E, G, B], f0 + 0.6, at.T1 + 0.4, 0.042, 1300);
+    drone(E - 12, f0 + 0.3, at.T1 + 0.5, 0.07, 300);
+    cello(f0 + 1.0, 0.6, [[0, 59, 2], [2, 60, 1], [3, 59, 1], [4, 55, 2], [6, 57, 1]], 0.07);   // B C B G A
+  }
+  // 片名、卖点、片尾
+  const th = at.T1 + 0.55;
   braam([E - 12, B - 12, E, G], th, 5, 0.24); taiko(th, 0.7, 60); taiko(th + 0.02, 0.4, 120); cymbal(th, 0.1, 5);
-  pad([E, B, E + 12, G + 12], th + 0.3, at.G33 + 1, 0.033, 1500);
-  // 卖点：脉冲
-  for (let t = at.G33 + 0.3, i = 0; t < at.G34 - 0.2; t += b120, i++) { pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.065); if (i % 4 === 0) taiko(t, 0.22, 95); }
-  pad([E, G, B], at.G33, at.G34 + 1.5, 0.028, 1400);
-  braam([E - 12, B - 12], at.G33 + 3.75, 2.5, 0.09);
-  drone(E - 12, at.G34, end + 1.2, 0.08, 280);
-  pad([E, B, E + 12], at.G34, end + 1.2, 0.028, 1200);
+  pad([E, B, E + 12, G + 12], th + 0.3, at.T2 + 1, 0.033, 1500);
+  { const b = 60 / 120 / 2; for (let t = at.T2 + 0.3, i = 0; t < at.T3 - 0.2; t += b, i++) { pulse((i % 8 < 6 ? E - 12 : D - 12), t, 0.065); if (i % 4 === 0) taiko(t, 0.22, 95); } }
+  pad([E, G, B], at.T2, at.T3 + 1.5, 0.028, 1400);
+  braam([E - 12, B - 12], at.T2 + 3.75, 2.5, 0.09);
+  drone(E - 12, at.T3, end + 1.2, 0.08, 280);
+  pad([E, B, E + 12], at.T3, end + 1.2, 0.028, 1200);
 
   // —— 音效 ——
   function beep(t, f = 1600, k = 0.03, d = 0.07) { const g = ctx.createGain(); g.connect(out(SFX, 0.1)); env(g, t, 0.003, k, d, 0.03); const o = osc('square', f, t, t + d + 0.1); const lp = filt('lowpass', 3200); o.connect(lp); lp.connect(g); }
@@ -226,18 +267,18 @@ export async function renderGulfScore(SHOTS) {
   for (const s of SHOTS) {
     const t0 = at[s.id];
     for (const e of (s.events || [])) {
-      const t = t0 + e.t, v = e.v ?? 1, d = e.d ?? 2;
+      const t = t0 + e.t, v = e.v ?? 1, d = e.d ?? 2, sd = s.adur ?? s.dur;
       switch (e.k) {
-        case 'desertWind': desertWind(t, t + s.dur + 0.3); break;
-        case 'aaaFar': mg(t, t0 + s.dur, 9, 0.05, 0.3, 0.7); mg(t + 0.3, t0 + s.dur, 6, 0.04, -0.4, 0.6); break;
+        case 'desertWind': desertWind(t, t + sd + 0.3); break;
+        case 'aaaFar': mg(t, t0 + sd, 9, 0.05, 0.3, 0.7); mg(t + 0.3, t0 + sd, 6, 0.04, -0.4, 0.6); break;
         case 'distantBoom': boom(t, 0.35 * v + 0.1, (R() - 0.5) * 0.8, 0.9); break;
         case 'vulcan': gatlingSnd(t, t + d, 50, 0.3, 0.2, 1.3); break;
-        case 'nvgWhine': whine(t, t + s.dur, 9800, 0.01); break;
-        case 'radarHum': roar(t, t + s.dur, 0.04, 260, 0, 1.6); whine(t, t + s.dur, 3200, 0.004); break;
+        case 'nvgWhine': whine(t, t + sd, 9800, 0.01); break;
+        case 'radarHum': roar(t, t + sd, 0.04, 260, 0, 1.6); whine(t, t + sd, 3200, 0.004); break;
         case 'radio': radio(t, 1.6, 0.06); break;
-        case 'jetLow': roar(t, t + s.dur, 0.18, 900, 0, 0); break;
-        case 'jetCabin': roar(t, t + s.dur, 0.16, 800, 0); break;
-        case 'jetCruise': roar(t, t + s.dur, 0.14, 700, 0); whoosh(t, s.dur, 0.05, 600, 1800, -0.3, 0.3); break;
+        case 'jetLow': roar(t, t + sd, 0.18, 900, 0, 0); break;
+        case 'jetCabin': roar(t, t + sd, 0.16, 800, 0); break;
+        case 'jetCruise': roar(t, t + sd, 0.14, 700, 0); whoosh(t, sd, 0.05, 600, 1800, -0.3, 0.3); break;
         case 'samLaunch': roar(t, t + 3.2, 0.38 * v, 700, 0); whoosh(t, 2.8, 0.14, 200, 2500, 0, 0.3); boom(t, 0.7 * v, 0); break;
         case 'beepSoft': beep(t, 1700, 0.028); break;
         case 'lockTone': { const g = ctx.createGain(); g.connect(out(SFX, 0.1)); env(g, t, 0.005, 0.045, 0.9, 0.1); const o = osc('square', 1240, t, t + 1.1); const lp = filt('lowpass', 3000); o.connect(lp); lp.connect(g); } break;
@@ -247,22 +288,22 @@ export async function renderGulfScore(SHOTS) {
         case 'boomFar': boom(t, 0.55 * v, (R() - 0.5) * 0.6, 0.6); break;
         case 'missileWhoosh': whoosh(t, 2.2, 0.16, 400, 3500, 0.4, -0.4); break;
         case 'jetPass': whoosh(t, 2.4, 0.32 * v, 300, 2800, -0.8, 0.8); roar(t, t + 2.4, 0.16, 1200, 0); break;
-        case 'fireRoar': roar(t, t + s.dur, 0.08, 420, 0, 3); break;
-        case 'fireField': roar(t, t + s.dur, 0.1, 380, 0, 2); desertWind(t, t + s.dur, 0.04); break;
-        case 'droneHum': roar(t, t + s.dur, 0.08, 520, 0, 34); desertWind(t, t + s.dur, 0.03); break;
+        case 'fireRoar': roar(t, t + sd, 0.08, 420, 0, 3); break;
+        case 'fireField': roar(t, t + sd, 0.1, 380, 0, 2); desertWind(t, t + sd, 0.04); break;
+        case 'droneHum': roar(t, t + sd, 0.08, 520, 0, 34); desertWind(t, t + sd, 0.03); break;
         case 'artyFar': boom(t, 0.4, -0.3, 0.8); break;
         case 'cookoff': for (let i = 0; i < 6; i++) boom(t + i * 0.35 + R() * 0.2, 0.25, (R() - 0.5), 0.4); roar(t, t + 2.5, 0.12, 900, 0, 7); break;
-        case 'tankColumn': roar(t, t + s.dur, 0.18, 300, -0.1, 11); roar(t, t + s.dur, 0.06, 1800, 0.2, 23); break;
-        case 'tankEngines': roar(t, t + s.dur, 0.14, 280, 0, 9); break;
-        case 'tankIdle': roar(t, t + s.dur, 0.12, 260, 0, 8); break;
+        case 'tankColumn': roar(t, t + sd, 0.18, 300, -0.1, 11); roar(t, t + sd, 0.06, 1800, 0.2, 23); break;
+        case 'tankEngines': roar(t, t + sd, 0.14, 280, 0, 9); break;
+        case 'tankIdle': roar(t, t + sd, 0.12, 260, 0, 8); break;
         case 'turretWhine': roar(t, t + 1.6, 0.05, 1900, 0.2, 0); whine(t, t + 1.4, 2600, 0.006); break;
         case 'laser': beep(t, 2400, 0.03, 0.18); break;
         case 'tankFire': cannon(t, 1.05 * v, -0.1); break;
         case 'tankFireFar': cannon(t, 0.55 * v, (R() - 0.5) * 0.8); break;
         case 'sabotWhizz': whoosh(t, 0.32, 0.18, 2200, 7000, 0.7, -0.7); break;
         case 'eraBlast': boom(t, 0.9, 0.1); shot(t, 0.5, 0.1, 0.5); clank(t + 0.02, 0.3, 0.1); break;
-        case 'slowBoom': boom(t + 0.05, 1.4, 0); roar(t, t + s.dur, 0.12, 300, 0, 1.2); break;
-        case 'rotor': roar(t, t + s.dur, 0.22, 380, 0, 18); break;
+        case 'slowBoom': boom(t + 0.05, 1.4, 0); roar(t, t + sd, 0.12, 300, 0, 1.2); break;
+        case 'rotor': roar(t, t + sd, 0.22, 380, 0, 18); break;
         case 'hellfire': whoosh(t, 1.6, 0.2, 500, 3800, 0, 0.4); roar(t, t + 1.4, 0.14, 1500, 0.2); break;
         case 'rwrLock': for (let i = 0; i < 10; i++) beep(t + i * 0.13, 1100, 0.04, 0.07); break;
         case 'gatling25': gatlingSnd(t, t + d, 55, 0.34, 0, 1.0); break;
@@ -272,6 +313,26 @@ export async function renderGulfScore(SHOTS) {
         case 'airboom': boom(t, 1.4, 0); boom(t + 0.05, 0.8, -0.4, 0.3); break;
         case 'heliSpin': roar(t, t + d, 0.24, 420, 0, 30); whoosh(t, d, 0.1, 300, 900, -0.6, 0.6); for (let i = 0; i < 5; i++) clank(t + 0.3 + i * 0.4, 0.06, (R() - 0.5)); break;
         case 'missileLaunch': whoosh(t, 2.0, 0.18 * v, 400, 3500, -0.2, 0.6); roar(t, t + 1.6, 0.13 * v, 1400, 0.3); break;
+        // —— 字幕层（gulf/story.js storyEvents）——
+        case 'radioIn': { const g = ctx.createGain(); g.connect(out(SFX, 0)); env(g, t, 0.001, 0.05, 0.02, 0.06); const n = nz(t, t + 0.15), hp = filt('highpass', 2500); n.connect(hp); hp.connect(g);
+          const g2 = ctx.createGain(); g2.connect(out(SFX, 0)); env(g2, t + 0.01, 0.005, 0.03, 0.06, 0.08); const n2 = nz(t, t + 0.25), bp = filt('bandpass', e.side === 'blue' ? 1500 : 1900, 3); n2.connect(bp); bp.connect(g2);
+          const o = osc('sine', e.side === 'blue' ? 1250 : 1480, t, t + 0.07), og = ctx.createGain(); og.connect(out(SFX, 0)); env(og, t, 0.002, 0.012, 0.03, 0.02); o.connect(og); } break;
+        case 'radioOut': { const g = ctx.createGain(); g.connect(out(SFX, 0)); env(g, t, 0.001, 0.03, 0.01, 0.04); const n = nz(t, t + 0.1), hp = filt('highpass', 3000); n.connect(hp); hp.connect(g); } break;
+        case 'cardIn': whoosh(t - 0.05, 0.45, 0.12, 500, 4200, -0.6, 0.2); clank(t + 0.22, 0.05, -0.3); break;
+        case 'hitWord': braam([E - 12, B - 12], t, 2.4, 0.15); taiko(t, 0.6, 68); taiko(t + 0.01, 0.3, 130); cymbal(t, 0.045, 2.4); break;
+        case 'hitGold': braam([E - 12, B - 12, E, Gs], t, 4, 0.17); taiko(t, 0.55, 64); cymbal(t, 0.06, 4); break;
+        case 'listIn': whoosh(t, 0.4, 0.07, 800, 5000, 0.6, 0.2); break;
+        case 'ding': for (const [f, k] of [[1568, 0.05], [2349, 0.03], [3136, 0.015]]) { const g = ctx.createGain(); g.connect(out(SFX, 0.5)); env(g, t, 0.002, k, 0.02, 1.3); const o = osc('sine', f, t, t + 1.6); o.connect(g); } break;
+        case 'alarm': for (let x = 0; x < d; x += 0.36) { beep(t + x, 880, 0.035, 0.16); beep(t + x + 0.18, 660, 0.035, 0.16); } break;
+        case 'type': for (let i = 0; i < (e.n || 6); i++) { const tt = t + i * 0.055; const g = ctx.createGain(); g.connect(out(SFX, -0.4)); env(g, tt, 0.0005, 0.03, 0.004, 0.025); const n = nz(tt, tt + 0.05), bp = filt('bandpass', 3800, 2); n.connect(bp); bp.connect(g); } break;
+        case 'rewind': { whoosh(t, 0.9, 0.16, 5000, 300, 0.6, -0.6); const g = ctx.createGain(), lp = filt('lowpass', 1600); g.connect(out(SFX)); lp.connect(g); env(g, t, 0.01, 0.07, 0.4, 0.3); const o = osc('sawtooth', 420, t, t + 0.8); o.frequency.exponentialRampToValueAtTime(40, t + 0.7); o.connect(lp); boom(t + 1.2, 0.5, 0, 0.3); } break;
+        case 'freezeHit': boom(t, 1.1, 0); braam([E - 12, B - 12, E], t, 3.2, 0.2); whine(t, t + 1.8, 6800, 0.02); break;
+        case 'heart': heart(t, 0.32); break;
+        case 'mapOn': { const g = ctx.createGain(); g.connect(out(SFX)); env(g, t, 0.01, 0.03, 0.3, 0.3); const o = osc('sine', 300, t, t + 0.8); o.frequency.exponentialRampToValueAtTime(2400, t + 0.55); o.connect(g); whoosh(t, 0.8, 0.06, 2000, 6000, -0.5, 0.5); } break;
+        case 'mark': taiko(t, 0.4, 78); beep(t, 1400, 0.03, 0.08); beep(t + 0.12, 1900, 0.025, 0.06); break;
+        case 'shellWhistle': { const g = ctx.createGain(); g.connect(out(SFX, (R() - 0.5) * 0.6)); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.045, t + 0.62); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8); const o = osc('sine', 2300, t, t + 0.82); o.frequency.exponentialRampToValueAtTime(650, t + 0.8); o.connect(g); } break;
+        case 'chainGun': for (let x = 0; x < d; x += 0.1) shot(t + x, 0.34, 0.1, 0.75); roar(t, t + d + 0.2, 0.05, 900, 0.1, 10); break;
+        case 'impacts': for (let x = 0; x < d; x += 0.1) { boom(t + x, 0.1 + R() * 0.06, (R() - 0.5) * 0.8, 0.6); shot(t + x, 0.1, (R() - 0.5) * 0.8, 1.6); } break;
         case 'endTail': break;
         default: break;
       }

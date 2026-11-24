@@ -92,7 +92,8 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   //   零件的 CFrame 在块的包围盒中心：矩阵 = 零件 CFrame × 缩放 k（零件大小 / 块的包围盒）× 挪回包围盒中心
   const GLBS = {};
   for (const k of [...new Set(D.parts.filter(p => p.mk).map(p => p.mk))]) {
-    GLBS[k] = await new Promise(res => new GLTFLoader().load(`/repo/models/optics/${k}.glb`, g => {
+    const url = k.startsWith('veh/') ? `/repo/models/${k}.glb` : `/repo/models/optics/${k}.glb`;   // veh/<键>：原车模型的块（V_<键>__<块>）
+    GLBS[k] = await new Promise(res => new GLTFLoader().load(url, g => {
       const nodes = {};
       g.scene.updateMatrixWorld(true);
       g.scene.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); nodes[o.name] = o; if (o.parent && o.parent.name) nodes[o.parent.name] = nodes[o.parent.name] || o; } });
@@ -101,7 +102,7 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   }
   for (const p of D.parts) {
     if (p.mk && GLBS[p.mk]) {
-      const src = GLBS[p.mk][`O_${p.mk}__${p.mp}`];
+      const src = p.mk.startsWith('veh/') ? GLBS[p.mk][p.mp] : GLBS[p.mk][`O_${p.mk}__${p.mp}`];
       if (src) {
         const bb = src.geometry.boundingBox, c0 = new THREE.Vector3(), s0 = new THREE.Vector3();
         bb.getCenter(c0); bb.getSize(s0);
@@ -149,7 +150,7 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
     const c = s.c;
     const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
     // SurfaceGui 的 Front 面是零件的 −Z：平面默认朝 +Z，转半圈，再往前挪一点免得被零件挡住
-    M.multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.004));
+    M.multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.0075));
     pl.matrixAutoUpdate = false;
     pl.matrix.copy(M);
     root.add(pl);
@@ -165,6 +166,21 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   }
   if (P.get('glb')) {
     await new Promise(res => new GLTFLoader().load(P.get('glb'), g => {
+      if (P.get('carve')) {   // 挖了内腔的原车（carve.py）：坐在车里看到的样子——外壳不透明（背面剔除，从里面看不见）、内壁显示、玻璃透明、原模型的简易内饰（Inside_）藏起来
+        g.scene.traverse(o => {
+          if (!o.isMesh) return;
+          const nm = (o.name || '') + ' ' + ((o.parent && o.parent.name) || '');
+          const ms = Array.isArray(o.material) ? o.material : [o.material];
+          if (nm.includes('__Inside_')) { o.visible = false; return; }
+          for (const m of ms) {
+            m.side = THREE.FrontSide;
+            if (nm.includes('__Glass_')) { m.transparent = true; m.opacity = 0.28; m.depthWrite = false; m.color = new THREE.Color(0.55, 0.68, 0.74); m.map = null; }
+            else { m.transparent = false; m.opacity = 1; m.depthWrite = true; }
+            m.needsUpdate = true;
+          }
+          o.castShadow = false; o.receiveShadow = true;
+        });
+      } else
       g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) { m.transparent = true; m.opacity = +(P.get('glbop') || 0.25); m.depthWrite = false; } } });
       const off = (P.get('glboff') || '0,0,0').split(',').map(Number);
       g.scene.position.set(...off);

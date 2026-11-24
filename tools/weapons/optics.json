@@ -315,6 +315,171 @@
    "author": "本项目",
    "license": "自制（照用户发来的钢铁猛兽截图量的比例，tools/weapons/gen_cdus.mjs 程序生成）",
    "url": ""
+  },
+  "ip_peri": {
+   "uid": "52c930bb607f4ae69aab580992e7449e",
+   "name": "FV105 Sultan periscop",
+   "author": "renalds_rs",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+   "prep": "periscope.mjs",
+   "note": "三维扫描件只取车里看得见的下半截（观察窗 + 外壳，截到安装法兰），从 155 万面简化到约 2000 面，贴图按新的网格重新烘焙，观察窗玻璃调成中性灰"
+  },
+  "ip_dseat": {
+   "uid": "b6cd4493fff547af8a87316952a51e82",
+   "name": "Driver seat \"Pilot\" with air suspension.",
+   "author": "dewolfepilot",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/driver-seat-pilot-with-air-suspension-b6cd4493fff547af8a87316952a51e82",
+   "prep": "blprep.py",
+   "note": "Blender：去掉气囊减震底座（坐垫下面那一截），转成乘员朝 −Z，原点放在坐垫顶面中心，厘米换成米",
+   "blprep": {
+    "rot": [
+     [
+      "z",
+      180
+     ]
+    ],
+    "scale": 0.01,
+    "origin": "seat",
+    "cut": [
+     {
+      "axis": "z",
+      "below": -0.13
+     }
+    ],
+    "tris": 4000
+   }
+  },
+  "ip_swheel": {
+   "uid": "bd3d964b2ba8425197ef1a76acf131f3",
+   "name": "car bus truck steering wheel interior control",
+   "author": "kopofx",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/car-bus-truck-steering-wheel-interior-control-bd3d964b2ba8425197ef1a76acf131f3",
+   "prep": "blprep.py",
+   "note": "Blender：盘面转成朝 +Z（对着驾驶员）、转向柱朝 −Z，轮缘直径缩到 0.40 米，原点在轮缘中心；原模型没贴图，涂成黑色",
+   "blprep": {
+    "rot": [
+     [
+      "x",
+      125
+     ]
+    ],
+    "fit": {
+     "axis": "x",
+     "size": 0.4,
+     "of": "Torus"
+    },
+    "origin": {
+     "of": "Torus"
+    },
+    "colors": {
+     "volante": [
+      0.02,
+      0.02,
+      0.02,
+      0.55
+     ]
+    },
+    "tris": 3000
+   }
+  },
+  "ip_lever": {
+   "uid": "ed7ce8e75f9f44dc9a60a499c7fdaf0b",
+   "name": "Classic Shift Lever",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/classic-shift-lever-ed7ce8e75f9f44dc9a60a499c7fdaf0b",
+   "prep": "blprep.py",
+   "note": "Blender：高度缩到 0.50 米，原点在防尘套底面中心",
+   "blprep": {
+    "fit": {
+     "axis": "z",
+     "size": 0.5
+    },
+    "origin": {
+     "z": "min"
+    },
+    "tris": 4000
+   }
+  },
+  "ip_gauges": {
+   "uid": "05288d08679d4cb195217a3477ae10ad",
+   "name": "Dashboard Gauges",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/dashboard-gauges-05288d08679d4cb195217a3477ae10ad",
+   "prep": "blprep.py",
+   "note": "Blender：三块表整组宽缩到 0.26 米，表盘朝 +Z，原点在背面中心",
+   "blprep": {
+    "fit": {
+     "axis": "x",
+     "size": 0.26
+    },
+    "origin": {
+     "y": "max"
+    },
+    "tris": 6000
+   }
+  },
+  "ip_pedals": {
+   "uid": "aed5b969daad4f2086468869b06a4f84",
+   "name": "Pedals Sets",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/pedals-sets-aed5b969daad4f2086468869b06a4f84",
+   "prep": "blprep.py",
+   "note": "Blender：只留四套里的一套（黑胶刹车 + 银色油门），截掉伸出去的长转轴和踏板臂后段（只留 0.4 米深），高度缩到 0.30 米，踏板面朝 +Z（对着驾驶员），原点在两块踏板底边的中点",
+   "blprep": {
+    "keep": [
+     "^Object_(17|22|14|20|15|18|28|26|24)$"
+    ],
+    "fit": {
+     "axis": "z",
+     "size": 0.3
+    },
+    "origin": {
+     "of": "^Object_(17|22|14|20|15)$",
+     "y": "min",
+     "z": "min"
+    },
+    "cut": [
+     {
+      "axis": "x",
+      "below": -0.16
+     },
+     {
+      "axis": "x",
+      "above": 0.16
+     },
+     {
+      "axis": "y",
+      "above": 0.4
+     }
+    ],
+    "tris": 4000
+   }
+  },
+  "ip_grip": {
+   "uid": "b53fdc25c8cc43aba8fdf6c40bb709e3",
+   "name": "F-4 Phantom II Flight Stick (Joystick)-Low Poly",
+   "author": "alpertheronin",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/f-4-phantom-ii-flight-stick-joystick-low-poly-b53fdc25c8cc43aba8fdf6c40bb709e3",
+   "prep": "blprep.py",
+   "note": "Blender：扳机转成朝 −Z（朝前），原点在握把底面中心（原模型就是米）",
+   "blprep": {
+    "rot": [
+     [
+      "z",
+      90
+     ]
+    ],
+    "origin": {
+     "z": "min"
+    }
+   }
   }
  },
  "items": {
@@ -1340,6 +1505,77 @@
     "strip": "LedStrip",
     "handle": "Handles",
     "post": "Posts"
+   },
+   "front": true
+  },
+  "ip_peri": {
+   "src": "ip_peri",
+   "title": "车内饰：坦克潜望镜（车里看得见的下半截）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "embedTex": {
+    "Body": 512
+   }
+  },
+  "ip_dseat": {
+   "src": "ip_dseat",
+   "title": "车内饰：驾驶员座椅（坐垫 + 靠背 + 头枕，乘员朝 −Z，原点在坐垫顶面中心）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 512
+   },
+   "front": true
+  },
+  "ip_swheel": {
+   "src": "ip_swheel",
+   "title": "车内饰：方向盘（盘面朝 +Z 对着驾驶员，原点在轮缘中心，直径 0.40 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 3000,
+   "front": true
+  },
+  "ip_lever": {
+   "src": "ip_lever",
+   "title": "车内饰：操纵杆 / 换挡杆（原点在底座中心，高 0.50 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256,
+    "Body2": 256
+   }
+  },
+  "ip_gauges": {
+   "src": "ip_gauges",
+   "title": "车内饰：指针式仪表三块（表盘朝 +Z，原点在背面中心）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 6000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_pedals": {
+   "src": "ip_pedals",
+   "title": "车内饰：刹车、油门踏板（踏板面朝 +Z 对着驾驶员，原点在踏板底边中点）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_grip": {
+   "src": "ip_grip",
+   "title": "车内饰：操纵握把（扳机朝 −Z，原点在握把底面中心，高 0.13 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "embedTex": {
+    "Body": 256
    },
    "front": true
   }

@@ -205,7 +205,36 @@ function B:screen(g, w, h, cf, page, opt)
   local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   -- 屏幕后面的边框底板；平显组合玻璃（noBack）不要：原来平显也垫了一块不透明黑底板，游戏里是一块黑方块上画绿字、挡住正前方（用户 11-21：光学显示屏不够还原）
-  if not opt.noBack then self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic) end
+  if not opt.noBack then
+    -- 机壳（用户 11-24：「边框过于粗糙」——原来是一整块方方正正的黑板子）：圆角的机壳（中间一块、上下两条、四个角的圆柱），
+    --   玻璃四周凸起一圈边框（比机壳亮一点；屏幕上下有实体键时不凸，免得盖住印在边框上的键名）、贴着玻璃一道细亮边（倒角的反光）
+    local col = opt.frame or RGB(38, 40, 44)
+    local W2, H2 = w + bez * 2, h + bez * 2
+    local r = math.max(0.002, math.min(bez * 0.8, W2 * 0.1, H2 * 0.1, 0.018))
+    local zc = d / 2 + 0.002
+    self:box(g, V(W2, H2 - 2 * r, d), cf * CF(0, 0, zc), col, MAT.SmoothPlastic)
+    self:box(g, V(W2 - 2 * r, r, d), cf * CF(0, H2 / 2 - r / 2, zc), col, MAT.SmoothPlastic)
+    self:box(g, V(W2 - 2 * r, r, d), cf * CF(0, -H2 / 2 + r / 2, zc), col, MAT.SmoothPlastic)
+    for _, sx in ipairs({ -1, 1 }) do
+      for _, sy in ipairs({ -1, 1 }) do
+        self:cylZ(g, d, 2 * r, cf * CF(sx * (W2 / 2 - r), sy * (H2 / 2 - r), zc), col, MAT.SmoothPlastic)
+      end
+    end
+    local keyed = type(opt.keys) == "table" and not touch
+    if not keyed then
+      local fw = math.min(bez * 0.55, 0.012)
+      local FC = col:Lerp(RGB(255, 255, 255), 0.1)
+      for _, e in ipairs({ { 0, h / 2 + fw / 2, w + fw * 2, fw }, { 0, -h / 2 - fw / 2, w + fw * 2, fw }, { w / 2 + fw / 2, 0, fw, h }, { -w / 2 - fw / 2, 0, fw, h } }) do
+        local p = self:box(g, V(e[3], e[4], 0.006), cf * CF(e[1], e[2], -0.001), FC, MAT.SmoothPlastic)
+        p.CastShadow = false
+      end
+    end
+    local hw = 0.0016
+    for _, e in ipairs({ { 0, h / 2 + hw / 2, w + hw * 2, hw }, { 0, -h / 2 - hw / 2, w + hw * 2, hw }, { w / 2 + hw / 2, 0, hw, h }, { -w / 2 - hw / 2, 0, hw, h } }) do
+      local p = self:box(g, V(e[3], e[4], 0.0065), cf * CF(e[1], e[2], -0.0012), RGB(118, 122, 128), MAT.Metal)
+      p.CastShadow = false
+    end
+  end
   -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
   --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
   --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度
@@ -547,20 +576,77 @@ function B:panel(g, w, h, cf, rows, cols, col, opt)
   end
 end
 -- 观察镜（潜望镜下半截）：钢壳 + 一块玻璃（玻璃是透的：外面的东西就从这里看得见）+ 上面的护额垫
+--   opt.model：用真车潜望镜的扫描模型（ip_peri：Sketchfab 上 renalds_rs 的 FV105 Sultan 潜望镜，CC-BY，只取车里的下半截、减面重烘贴图，
+--   tools/weapons/periscope.mjs；用户 11-22：「坦克第一人称驾驶舱那个潜望镜，你从 Sketchfab 自己找模型截取下来套用」）——
+--   器材坐标原点在观察窗中心、+Z 朝看的人（同 cf 的 +Z），按观察窗宽（原件 23.7 厘米）缩放；没生成好照旧画零件拼的
 function B:periscope(g, cf, w, h, d, opt)
   opt = opt or {}
+  if opt.model and self:prop(g, "ip_peri", cf * CF(0, 0, -d / 2 + 0.012), w / 0.237) then
+    if opt.pad ~= false then   -- 护额垫（黑橡胶）
+      self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.05, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
+    end
+    return nil
+  end
   local col = opt.col or K.C.dark
   self:box(g, V(w + 0.03, 0.02, d + 0.02), cf * CF(0, h / 2 + 0.01, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(-w / 2 - 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(0.015, h, d), cf * CF(w / 2 + 0.0075, 0, 0), col, MAT.Metal)
   self:box(g, V(w + 0.03, 0.015, d + 0.02), cf * CF(0, -h / 2 - 0.0075, 0), col, MAT.Metal)
-  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(110, 140, 150), MAT.Glass)
-  gl.Transparency = 0.72
+  -- 玻璃：原来蓝绿色、只透 72%，夜里看着像一块发绿的板（用户 11-22：「现实中不带绿光」）——改成几乎无色、透 86%、一点点反光
+  local gl = self:box(g, V(w, h, 0.006), cf * CF(0, 0, -d / 2 + 0.003), RGB(176, 184, 188), MAT.Glass)
+  gl.Transparency = 0.86
+  gl.Reflectance = 0.06
   gl.CastShadow = false
   if opt.pad ~= false then   -- 护额垫（黑橡胶）
     self:box(g, V(w + 0.02, 0.03, 0.03), cf * CF(0, h / 2 + 0.035, d / 2 - 0.01), K.C.rubber, MAT.Fabric)
   end
   return gl
+end
+-- 目镜的镜片（用户 11-24 指着 M1A1 车长延伸目镜：「这个圆圈里面是一个镜片 要有光学效果的凸透镜 反光和镀膜做出来」；
+--   11-22：GPSE 目镜里是暗的、映着一点蓝，「现实中不带绿光」）：
+--   · 凸透镜：压扁的椭球（SpecialMesh 球，前后厚 = 直径 × k），深色光学玻璃，Glass 材质（后面的东西有折射）+ 映环境
+--   · 镀膜：外面再包一层薄薄的半透明椭球，增透膜的颜色（紫红，边上带一点绿）——真镜头斜着看泛紫光
+--   · 反光：车里顶灯在凸面上的倒影——左上一块柔和的大高光、旁边一颗小而亮的；右下边缘一抹淡淡的镀膜反光（贴在椭球面上、按面的法线摆）
+--   · 出瞳：正中一个很小很淡的亮点（瞄准镜里的光从这里出来；离远了看目镜就是这样一个小亮点）
+--   cf 是镜片中心，凸面朝 cf 的 ±Z（opt.face = 1：看的人在 +Z 那边，高光、出瞳画在那面；−1 反过来）；返回镜片本体
+local LENS_COAT = RGB(150, 70, 190)    -- 增透膜反光：紫红
+local LENS_COAT2 = RGB(70, 190, 140)   -- 边缘那一抹：偏绿
+function B:lens(g, cf, dia, opt)
+  opt = opt or {}
+  local k = opt.k or 0.28           -- 凸度：前后厚 / 直径
+  local f = opt.face or 1
+  local a, c = dia / 2, dia * k / 2   -- 椭球的半径、半厚（米）
+  local function ell(sz, at, col, mat, tr, refl)
+    local p = self:add(g, "Part", sz, at, col, mat)
+    local m = Instance.new("SpecialMesh")
+    m.MeshType = Enum.MeshType.Sphere
+    m.Parent = p
+    p.Transparency, p.Reflectance, p.CastShadow = tr or 0, refl or 0, false
+    return p
+  end
+  local glass = ell(V(dia, dia, dia * k), cf, opt.col or RGB(10, 13, 22), MAT.Glass, 0.12, 0.30)
+  ell(V(dia * 1.012, dia * 1.012, dia * k * 1.08), cf, opt.coat or LENS_COAT, MAT.SmoothPlastic, 0.86, 0.45)
+  -- 椭球面上一点（u 右、v 上，−1 ~ 1，看的人看过去）和那里的法线：高光贴着面摆
+  local function on(u, v, lift)
+    local x, y = -f * u * a, v * a   -- 看的人在 +Z（f = 1）时，他的右手边是 +X；在 −Z 时反过来
+    local zz = c * math.sqrt(math.max(0, 1 - u * u - v * v))
+    local n = V(x / (a * a), y / (a * a), f * zz / (c * c)).Unit
+    local p = V(x, y, f * zz) + n * (lift or 0.0004)
+    return cf * CFrame.lookAt(p, p + n)
+  end
+  local function glint(u, v, w, h, col, tr, rot)
+    local p = self:add(g, "Part", V(w, h, 0.0006), on(u, v) * ANG(0, 0, rad(rot or 0)), col, MAT.Neon)
+    local m = Instance.new("SpecialMesh")
+    m.MeshType = Enum.MeshType.Sphere
+    m.Parent = p
+    p.Transparency, p.CastShadow = tr, false
+    return p
+  end
+  glint(-0.30, 0.32, dia * 0.26, dia * 0.16, RGB(235, 240, 255), 0.62, -35)   -- 顶灯的倒影：柔和的一大块
+  glint(-0.40, 0.42, dia * 0.07, dia * 0.05, RGB(255, 255, 255), 0.12, -35)   -- 最亮的那一点
+  glint(0.52, -0.48, dia * 0.20, dia * 0.06, LENS_COAT2, 0.70, 45)            -- 右下边缘：镀膜泛绿的一抹
+  glint(0, 0, dia * 0.10, dia * 0.10, opt.pupil or RGB(190, 200, 205), 0.78)   -- 出瞳：正中很淡的小亮点
+  return glass
 end
 -- 座椅：坐垫 + 靠背 + 钢架 + 调节手柄；cf 是坐垫上表面中心，−Z 朝前
 function B:seat(g, cf, opt)

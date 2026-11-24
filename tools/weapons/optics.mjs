@@ -38,6 +38,8 @@ async function sourceFile(key) {
   // gen：本项目自己按图做的壳子（Sketchfab 上找不到的，比如 M1A2 SEPv2 车长显示单元）——每次现生成（脚本改了版面就跟着变）
   if (S.gen) return (await import(path.join(HERE, S.gen))).build(f);
   if (fs.existsSync(f)) return f;
+  // prep：原模型要先加工的（潜望镜的三维扫描件要截取、减面、重烘贴图）——缓存是那个脚本出的，不直接下载原件
+  if (S.prep) throw new Error(`缓存里没有 ${key}：先运行 node tools/weapons/${S.prep}`);
   const tok = process.env.SKETCHFAB_TOKEN;
   if (!tok) throw new Error(`缓存里没有 ${key}（${S.name}）：设好环境变量 SKETCHFAB_TOKEN 再运行，或者把下载的 model.glb 放进 ${path.dirname(f)}`);
   const r = await fetch(`https://api.sketchfab.com/v3/models/${S.uid}/download`, { headers: { Authorization: 'Token ' + tok } });
@@ -760,7 +762,11 @@ if (ONLY) {
   }
   process.exit(0);
 }
+// 环境变量 BUILD="键1,键2"：只重做这几件（模型、内嵌网格、预览都写；OpticsMeta.lua 里别的件照原文件留着，署名整节照 items 重写）——
+//   加一件新的不用把别的几十件原模型都下载下来
+const BUILD = process.env.BUILD ? process.env.BUILD.split(',') : null;
 for (const [key, I] of Object.entries(CFG.items)) {
+  if (BUILD && !BUILD.includes(key)) continue;
   const B = await buildItem(key, I);
   await embed(key, B, I);
   await preview(key, B, I);
@@ -776,7 +782,20 @@ L.push('--   inner 镜筒里面的块（内壁、镜片、分划板：第一人�
 L.push('--   导入后 MeshPart 叫 O_<键>__<块名>');
 L.push('return {');
 const lv = (v) => `{ ${v.join(', ')} }`;
-for (const [key, M] of Object.entries(META)) {
+// BUILD 只重做了一部分：原文件里每件一段（「  键 = {」到「  },」），没重做的照抄；按 items 的顺序排
+const OLD = {};
+if (BUILD) {
+  const f0 = path.join(ROOT, 'src/ReplicatedStorage/OpticsMeta.lua');
+  let cur = null;
+  for (const ln of (fs.existsSync(f0) ? fs.readFileSync(f0, 'utf8').split('\n') : [])) {
+    const m = ln.match(/^  (\w+) = \{$/);
+    if (m) { cur = m[1]; OLD[cur] = [ln]; continue; }
+    if (cur) { OLD[cur].push(ln); if (ln === '  },') cur = null; }
+  }
+}
+for (const key of Object.keys(CFG.items)) {
+  const M = META[key];
+  if (!M) { if (OLD[key]) L.push(...OLD[key]); continue; }
   L.push(`  ${key} = {`);
   L.push('    parts = {');
   for (const [p, d] of Object.entries(M.parts)) L.push(`      ${p} = { c = ${lv(d.c)}, s = ${lv(d.s)}, tri = ${d.tri}${d.col ? `, col = ${lv(d.col)}, met = ${d.met}` : ''} },`);
@@ -787,7 +806,8 @@ for (const [key, M] of Object.entries(META)) {
   if (M.pts) L.push(`    pts = { ${Object.entries(M.pts).map(([k, v]) => `${k} = ${lv(v)}`).join(', ')} },`);
   if (M.inner && M.inner.length) L.push(`    inner = { ${M.inner.map((n) => `"${n}"`).join(', ')} },`);   // 镜筒里面的块（开镜时藏起来，从目镜的洞里看出去）
   L.push(`    size = ${lv(M.size)},`);
-  if (M.credit) L.push(`    credit = "${M.credit}",`);
+  // 原模型名字里可能带英文双引号（「Driver seat "Pilot" …」）：转义，不然 OpticsMeta.lua 整个读不进来、所有真模型件都失效
+  if (M.credit) L.push(`    credit = "${M.credit.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",`);
   L.push('  },');
 }
 L.push('}');
@@ -802,7 +822,7 @@ const sec = [HEAD];
 for (const [key, I] of Object.entries(CFG.items)) {
   const S = CFG.sources[I.src];
   if (S.gen) continue;   // 本项目自己做的，不是别人的模型
-  sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}`);
+  sec.push(`  ${I.title}（${key}.glb）：「${S.name}」，作者 ${S.author}，${S.license} ${S.url}${S.note ? `；改动：${S.note}` : ''}`);
 }
 sec.push('  改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改');
 txt = txt.replace(/\s*$/, '\n\n') + sec.join('\n') + '\n';

@@ -694,6 +694,7 @@ function Warfx.init(G)
     if workspace.CurrentCamera == shot.cam then shot.cam.FieldOfView = shot.fov0 end
     for _, o in ipairs(shot.objs) do if o.Parent then o:Destroy() end end
   end
+  G.killcamStop = endKillcam   -- 阵亡效果（DeathFx.lua）开始时先停掉
 
   local function stepKillcam()
     if not kc then return end

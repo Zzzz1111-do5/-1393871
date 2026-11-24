@@ -24,6 +24,8 @@ SPEC = {
     #   用户 11-22：「坦克我能选择在哪个地方贴爆反」——再算炮塔正面、炮塔侧面、首上能补贴的位置（改装界面里每个区自己选贴不贴）
     'm1a2dc': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34), 'roofz': 0.68, 'dep': 9, 'more': ['tback', 'skirt2', 'lfp']},
     'm1a1': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34), 'roofz': 0.68, 'dep': 9, 'more': ['tback', 'skirt2', 'lfp']},   # 用户 11-19：M1A1 也自带
+    # 用户 11-23「原模型也换成这个」：M1A1 从 Sketchfab 原文件直接转的（m1a1i，带炮塔内饰）——几何和 m1a1 一样，炮塔转轴按座圈重新量过
+    'm1a1i': {'kind': 'arat', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['sk'], 'brick': (1.3, 0.85, 0.3), 'skirt': (1.7, 1.25, 0.34), 'roofz': 0.68, 'dep': 9, 'more': ['tback', 'skirt2', 'lfp']},
 }
 GAP = 0.12        # 砖缝
 FLAT = 0.2        # 四个角和中心离拟合平面最多差多少（格），超了说明跨在棱上 / 有东西挡着，不放
@@ -501,14 +503,37 @@ def f3(v):
     return '%.3f, %.3f, %.3f' % (v[0], v[1], v[2])
 
 
+def old_blocks():
+    """现有 EraMeta.lua 里每型那一段（只重算一部分型号时，其余原样抄回去）"""
+    import re
+    out, cur, buf = {}, None, []
+    try:
+        for ln in open(OUT, encoding='utf-8'):
+            m = re.match(r'  (\w+) = \{ kind = ', ln)
+            if m:
+                cur, buf = m.group(1), [ln.rstrip('\n')]
+                continue
+            if cur:
+                buf.append(ln.rstrip('\n'))
+                if ln.startswith('    aps = '):
+                    out[cur], cur = buf, None
+    except OSError:
+        pass
+    return out
+
+
 def write(res, tur):
+    old = old_blocks()
     L = ['-- 自动生成（python3 -I tools/models/eralayout.py），别手改：每型坦克原模型上的爆反块、主动防御的发射器和雷达板（车的坐标，格；炮塔上的按炮塔转角 0 摆）',
          '--   b 每块 { 组 "t" 炮塔 / "h" 车体, 中心 x y z, 朝外法线 x y z, 宽方向 x y z, 宽, 高, 厚, 颜色 r g b, 区, 左右对称的那块的块号（0 没有） }；',
          '--     区：tf 炮塔正面、ts 炮塔侧面、gl 首上、sk 侧裙板；自选位置多给的候选格：tr 炮塔顶、tb 炮塔侧面后半、sr 侧裙板后半、lf 下首',
          '--   tur 炮塔转轴；aps.l 发射器 { 中心, 朝外 }、aps.r 雷达板 { 中心, 朝外 }；tb 炮塔的包围盒、hb 车体的包围盒、roof 炮塔主体顶面高；',
          '--   own 这些区的块原模型上本来就有（平时不另画，炸了补焦黑空位）',
          'return {']
-    for key in sorted(res):
+    for key in sorted(set(res) | (set(old) & set(SPEC))):
+        if key not in res:
+            L += old[key]
+            continue
         r = res[key]
         own = ', '.join('"%s"' % z for z in SPEC[key].get('own', []))
         L.append('  %s = { kind = "%s", tur = { %s }, tb = { %s, %s }, hb = { %s, %s }, roof = %.3f, own = { %s },' % (
@@ -578,8 +603,5 @@ if __name__ == '__main__':
         js = {k: {'blocks': [{kk: (vv.tolist() if hasattr(vv, 'tolist') else vv) for kk, vv in b.items()} for b in r['blocks']],
                   'aps': {g: [{kk: vv.tolist() for kk, vv in a.items()} for a in r['aps'][g]] for g in r['aps']}} for k, r in res.items()}
         json.dump(js, open(dump, 'w'))
-    if len(keys) == len(SPEC):
-        write(res, tur)
-        print('写好了', OUT)
-    else:
-        print('（只算了一部分，没写文件）')
+    write(res, tur)   # 只算了一部分的：其余型号照旧（old_blocks）
+    print('写好了', OUT, '' if len(keys) == len(SPEC) else '（重算了 %s，其余照旧）' % '、'.join(keys))

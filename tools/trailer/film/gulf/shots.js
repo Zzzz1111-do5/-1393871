@@ -14,6 +14,7 @@ import { day, dusk, night, dirAzEl } from './look.js';
 import { sabot, armorHit, cookoff, bigFire, decoys, gatling, dustTrail, rotorWash, aaa, skyFlashes } from './fx2.js';
 import { clutter, poles, pumpjack, wellhead, samSite, town, shelter, burnt, thermalize, dusty } from './scenery.js';
 import { drawEO, drawDrone, drawSight99, drawSightM1, drawWarn, caption, plane, interior, drawHud } from './kit.js';
+import { drawMap } from './story.js';
 
 export const BIGCFG = { id: true, desert: true, fx: 0, fz: 0 };
 export function prepWorld(world) { for (const k of ['parts', 'lights']) if (!Array.isArray(world[k])) world[k] = []; }
@@ -1187,6 +1188,253 @@ async function shotOilfield(env, add) {
     events: [{ t: 0, k: 'fireField' }, { t: 0, k: 'dawnMusic' }],
   };
 }
+// ———————————————————————————— 短剧版加的打戏（用户 11-23：两边打戏多一点）：蓝方也还手、红方也有损失 ————————————————————————————
+// 炮口冲击波掀起的一圈沙（G17 那一套抽出来）
+function blastDust(fx, V, fireT, col = [0.95, 0.82, 0.6], n = 14) {
+  fx.add((t, f) => {
+    const u = t - fireT;
+    if (u < 0 || u > 4) return;
+    const m = V.muzzle(), d = V.muzzleDir().setY(0).normalize();
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, r = 4 + 26 * (1 - Math.exp(-u * 3)) * (0.7 + 0.3 * Math.sin(i * 2.7));
+      const c = m.clone().addScaledVector(d, 6 + 10 * (1 - Math.exp(-u * 2)));
+      const size = 8 + u * 7;
+      c.add(V3(Math.cos(a) * r, 0, Math.sin(a) * r));
+      c.y = heightAt(c.x, c.z) + size * 0.46 + u * 1.5;
+      f.sprite('puff', c.addScaledVector(f.wind, u), size, 8 + u * 10, 0.5 * (1 - u / 4) * smooth(0, 0.06, u), 0, col, a);
+    }
+  });
+}
+const recoilK = (t, f) => t > f ? Math.exp(-(t - f) * 6) * (1 - Math.exp(-(t - f) * 60)) : 0;
+// G05B 两枚拦截弹从头顶飞过去、拐向西南高空，在夜空里接连炸开——打中的是诱饵（蓝方还以为打中了）
+async function shotIntercept(env, add) {
+  const { fx } = env;
+  const K = await samKit(env, add);
+  const P = K.L[1], NO = patriotNoses(P);
+  [3, 2].forEach(w => NO.noses[w].meshes.forEach(m => { m.visible = false; }));
+  P.root.updateMatrixWorld(true);
+  const axis = NO.axis.clone().applyQuaternion(P.root.quaternion).normalize();
+  const exit = w => P.root.localToWorld(NO.noses[w].p.clone());
+  const tgt = [V3(SAM.x + UIN.x * 2900 - 500, 1500, SAM.z + UIN.z * 2900), V3(SAM.x + UIN.x * 3200 + 450, 1750, SAM.z + UIN.z * 3200 - 250)];
+  const L0 = [-1.3, -0.5], TB = [1.55, 2.35];
+  const path = k => tau => {
+    const u = clamp((tau - L0[k]) / (TB[k] - L0[k]), 0, 1);
+    const a = exit([3, 2][k]), c = a.clone().addScaledVector(axis, 1400).add(V3(0, 500, 0));
+    return a.clone().multiplyScalar((1 - u) ** 2).addScaledVector(c, 2 * u * (1 - u)).addScaledVector(tgt[k], u * u);
+  };
+  [0, 1].forEach(k => {
+    fx.add(missile({ path: path(k), t0: L0[k], t1: TB[k], size: 2.0, smokeLife: 6 }));
+    fx.add(explosion({ p: tgt[k].clone(), t0: TB[k], s: 95, seed: 260 + k, debris: 0, ember: 60, dust: false, air: { v: V3(0, 0, 0) } }));
+    fx.add((t, f) => { const u = t - TB[k]; if (u < 0 || u > 1.8) return; f.addGlow(tgt[k], 420, new THREE.Color(1, 0.72, 0.42), 7 * Math.exp(-u * 2.6), 1, 0.006); f.addLight(tgt[k], new THREE.Color(1, 0.7, 0.4), 60 * Math.exp(-u * 2.6), 9000); });
+  });
+  return {
+    update(t) {
+      const c = V3(SAM.x - 160, 0, SAM.z + 380); c.y = heightAt(c.x, c.z) + 3;
+      cam(env, c, V3(SAM.x + UIN.x * 2900, 1350 + t * 60, SAM.z + UIN.z * 2900), 36);
+      shake(env.camera, t, 0.08, 0.8, 21);
+      const fl = TB.reduce((a, b) => a + (t > b ? 0.05 * Math.exp(-(t - b) * 10) : 0), 0);
+      return { ...night({ moonI: 2.4, exposure: 1.25 }), shadowAt: SAM, shadowR: 300, flash: fl };
+    },
+    events: [{ t: 0, k: 'radarHum' }, { t: 0, k: 'missileWhoosh' }, { t: TB[0], k: 'airboom' }, { t: TB[1], k: 'airboom' }],
+  };
+}
+// G09B 天快亮：M109 的炮弹落进 99A 坦克营的集结地（沙墙南边），车一辆辆散开（后面无人机就是去找这个炮兵阵地）
+async function shotShelled(env, add) {
+  const { fx } = env;
+  const L = await tanks(env, add, 'ztz99a2', 5);
+  const O = V3(-900, 0, 9500);
+  const POS = [[0, 0, 0.05], [95, 40, -0.1], [-110, 70, 0.12], [40, 150, 0], [-60, -120, -0.06]];
+  const drive = (i, t) => { const [dx, dz, hd] = POS[i]; const go = (i === 1 || i === 3 || i === 2) ? Math.max(0, t - 0.8) * 7 : 0; return [O.x + dx - Math.sin(hd) * go, O.z + dz - Math.cos(hd) * go, hd]; };
+  const hits = [[0.45, 60, -30, 26], [1.15, -50, 110, 22], [1.85, 150, 90, 28], [2.6, -25, 25, 30]];
+  for (const [t0, dx, dz, s] of hits) fx.add(explosion({ p: gp(O.x + dx, O.z + dz, 1), t0, s, seed: 480 + Math.round(t0 * 10), debris: 22, ember: 20 }));
+  L.forEach((V, i) => fx.add(dustTrail({ path: tt => { const [x, z] = drive(i, tt); return gp(x, z).add(V3(0, 0, 12)); }, t0: -3, s: 1.2, gap: 8, life: 6, alpha: 0.3, col: [1.05, 0.86, 0.6], seed: 490 + i })));
+  add(clutter(O.x, O.z, 360, { seed: 49 }));
+  return {
+    update(t) {
+      L.forEach((V, i) => { const [x, z, hd] = drive(i, t); ground(V.root, x, z, hd); V.roll(z); V.aim(0.1 * i - 0.2, 0.02); });
+      L[0].root.rotateZ(hits.reduce((a, [t0]) => a + (t > t0 ? Math.exp(-(t - t0) * 6) * 0.012 : 0), 0));   // 近处那辆被冲击波震一下
+      L[0].root.updateMatrixWorld(true);
+      const c = V3(O.x - 140, 0, O.z + 210); c.y = heightAt(c.x, c.z) + 5;
+      cam(env, c, V3(O.x + 20, heightAt(O.x, O.z) + 8, O.z + 20), 34);
+      shake(env.camera, t, 0.12 + hits.reduce((a, [t0]) => a + (t > t0 ? 1.0 * Math.exp(-(t - t0) * 4) : 0), 0), 6, 51);
+      return { ...dusk({ el: 1.5, az: 95, exposure: 0.95, sunI: 4.5 }), shadowAt: O, shadowR: 300 };
+    },
+    events: [{ t: 0, k: 'tankIdle' }, ...hits.map(([t0]) => ({ t: t0 - 0.8, k: 'shellWhistle' })), ...hits.map(([t0]) => ({ t: t0, k: 'boom', v: 0.9 }))],
+  };
+}
+// G14B 沙梁上的 M1A2 排一辆接一辆开火：炮口冲击波掀起车前的沙，曳光往南飞向压过来的红方扬尘；镜头在车后低低地往南看
+async function shotVolley(env, add) {
+  const { fx } = env;
+  const L = await tanks(env, add, 'm1a2dc', 4);
+  const R0 = await tanks(env, add, 'ztz99a2', 4);
+  const P = M1POS(), HD = i => Math.PI + 0.08 * (i - 1.5);
+  const fireT = [0.35, 0.85, 1.35, 1.9];
+  const red = (i, t) => redAt(i + 1, 11 + t);
+  L.forEach((V, i) => ground(V.root, P[i].x, P[i].z, HD(i)));
+  R0.forEach((V, i) => { const p = red(i, 0); ground(V.root, p.x, p.z, -0.1); });
+  L.forEach((V, i) => {
+    fx.add(muzzle({ p: () => V.muzzle(), dir: () => V.muzzleDir(), t0: fireT[i], kind: 'tank', seed: 560 + i }));
+    fx.add(sabot({ from: () => V.muzzle(), to: () => R0[i].root.position.clone().add(V3(0, 4, 0)), t0: fireT[i], bright: 14, w: 0.7 }));
+    blastDust(fx, V, fireT[i], [0.92, 0.8, 0.6], 12);
+  });
+  R0.forEach((V, i) => fx.add(dustTrail({ path: tt => { const p = red(i, tt); p.y = heightAt(p.x, p.z); return p.add(V3(0, 0, 14)); }, t0: -5, s: 1.6, gap: 8, life: 8, alpha: 0.45, seed: 570 + i })));
+  return {
+    update(t) {
+      R0.forEach((V, i) => { const p = red(i, t); ground(V.root, p.x, p.z, -0.1); V.roll(-p.z); });
+      L.forEach((V, i) => {
+        ground(V.root, P[i].x, P[i].z, HD(i));
+        V.aim(headingTo(V.root.position, R0[i].root.position) - HD(i), 0.01);
+        V.kick(recoilK(t, fireT[i])); V.root.updateMatrixWorld(true);
+      });
+      // 从排的东北边稍高处斜着看：四辆车一字排开，炮朝南一门接一门打，火光沿着车列一路闪过去
+      const mid = P[1].clone().lerp(P[2], 0.5);
+      const c = P[3].clone().add(V3(75 - t * 3, 0, -70)); c.y = heightAt(c.x, c.z) + 15;
+      cam(env, c, mid.clone().add(V3(-10, 3, 40)), 34);
+      shake(env.camera, t, 0.12 + fireT.reduce((a, f) => a + (t > f ? 0.9 * Math.exp(-(t - f) * 5) : 0), 0), 5, 57);
+      return { ...DAY({ heat: 1.0 }), shadowAt: mid, shadowR: 200 };
+    },
+    events: [{ t: 0, k: 'tankIdle' }, ...fireT.map(f => ({ t: f, k: 'tankFire', v: 0.85 }))],
+  };
+}
+// G16B 一辆 99A 被打穿：弹药殉爆，炮塔顶起来翻到一边，车里往上喷火；旁边两辆接着往前冲
+async function shot99Killed(env, add) {
+  const { fx } = env;
+  const L = await tanks(env, add, 'ztz99a2', 3);
+  const tHit = 0.75, V = L[1];
+  const pos = (i, t) => redAt(i + 3, 10.5 + (i === 1 ? Math.min(t, tHit) : t));
+  const hp = pos(1, tHit); ground(V.root, hp.x, hp.z, -0.1);
+  const hitP = V.root.localToWorld(V3(0, 5.6, -1.5)), boomP = V.root.localToWorld(V3(0, 7, 0)), ring = V.root.localToWorld(V3(0, 4.4, 0));
+  fx.add(sabot({ from: () => hitP.clone().add(V3(-200, 8, -2500)), to: () => hitP, t0: tHit - 0.5, bright: 14, w: 0.7 }));
+  fx.add(explosion({ p: hitP.clone(), t0: tHit, s: 26, seed: 690, debris: 22, ember: 30 }));
+  fx.add(explosion({ p: boomP.clone(), t0: tHit + 0.12, s: 44, seed: 692, debris: 28, ember: 60 }));
+  fx.add(cookoff({ p: ring.clone(), t0: tHit + 0.2, seed: 691 }));
+  fx.add(bigFire({ p: ring.clone().add(V3(0, -0.2, 0)), s: 11, t0: tHit + 0.35, seed: 693, dark: 0.12 }));
+  L.forEach((W, i) => { if (i !== 1) fx.add(dustTrail({ path: tt => { const p = pos(i, tt); p.y = heightAt(p.x, p.z); return p.add(V3(0, 0, 14)); }, t0: -5, s: 1.5, gap: 8, life: 7, alpha: 0.42, seed: 695 + i })); });
+  let toss = null, burned = false;
+  return {
+    update(t) {
+      L.forEach((W, i) => { const p = pos(i, t); ground(W.root, p.x, p.z, -0.1); W.roll(-p.z); W.aim(-0.05, 0.02); });
+      if (t > tHit + 0.3 && !burned) { burnt(V); burned = true; }
+      if (t > tHit + 0.1 && !toss) { V.tur.updateMatrixWorld(true); env.scene.attach(V.tur); toss = { p0: V.tur.position.clone(), q0: V.tur.quaternion.clone() }; }
+      if (toss) { const r = tossAt(toss.p0, toss.q0, t - tHit - 0.1, heightAt(toss.p0.x + 3, toss.p0.z + 2), V3(0.6, 0.2, 0.7).normalize(), V3(2.2, 0, 1.4)); V.tur.position.copy(r.pos); V.tur.quaternion.copy(r.quat); }
+      const c = hp.clone().add(V3(115 - t * 4, 0, 30)); c.y = heightAt(c.x, c.z) + 6;
+      cam(env, c, hp.clone().add(V3(0, 7, -6)), 30);
+      shake(env.camera, t, 0.2 + (t > tHit ? 1.3 * Math.exp(-(t - tHit) * 3.5) : 0), 6, 63);
+      return { ...DAY({ heat: 0.7 }), shadowAt: hp, shadowR: 140 };
+    },
+    events: [{ t: 0, k: 'tankEngines' }, { t: tHit - 0.3, k: 'sabotWhizz' }, { t: tHit, k: 'bigboom', v: 0.9 }, { t: tHit + 0.2, k: 'cookoff' }],
+    dispose: () => { if (toss) env.scene.remove(V.tur); },
+  };
+}
+// G13B 99A 一线排开、行进间开炮还击：炮口焰、冲击波掀起的沙、车身一坐，后面拖着扬尘；镜头在右前方跟着往前
+async function shotFireMove(env, add) {
+  const { fx } = env;
+  const L = await tanks(env, add, 'ztz99a2', 3);
+  const SP = 15, X0 = [-980, -860, -740], Z0 = 4950;
+  const at = (i, t) => V3(X0[i] + Math.sin(t * 0.5 + i) * 2, 0, Z0 + i * 25 - t * SP);
+  const fireT = [0.45, 1.05, 1.7];
+  L.forEach((V, i) => {
+    fx.add(muzzle({ p: () => V.muzzle(), dir: () => V.muzzleDir(), t0: fireT[i], kind: 'tank', seed: 580 + i }));
+    fx.add(sabot({ from: () => V.muzzle(), to: () => V.muzzle().addScaledVector(V.muzzleDir(), 2600), t0: fireT[i], bright: 14, w: 0.7 }));
+    blastDust(fx, V, fireT[i]);
+    fx.add(dustTrail({ path: tt => { const p = at(i, tt); p.y = heightAt(p.x, p.z); return p.add(V3(0, 0, 14)); }, t0: -6, s: 1.6, gap: 7, life: 8, alpha: 0.5, col: [1.1, 0.95, 0.72], seed: 585 + i }));
+  });
+  add(clutter(-860, 4800, 420, { seed: 58 }));
+  return {
+    update(t) {
+      L.forEach((V, i) => {
+        const p = at(i, t); ground(V.root, p.x, p.z, 0); V.roll(-p.z);
+        const k = recoilK(t, fireT[i]);
+        V.kick(k); V.aim(0.03 * (i - 1), 0.025); V.root.rotateX(k * 0.02); V.root.updateMatrixWorld(true);
+      });
+      const m = at(1, t);
+      const c = V3(m.x + 100, 0, m.z - 70 + t * 4); c.y = heightAt(c.x, c.z) + 3.2;
+      cam(env, c, V3(m.x - 25, heightAt(m.x, m.z) + 4, m.z + 10), 36);
+      shake(env.camera, t, 0.18 + fireT.reduce((a, f) => a + (t > f ? 0.9 * Math.exp(-(t - f) * 5) : 0), 0), 3, 59);
+      return { ...DAY({ heat: 0.6, dust: 0.3 }), shadowAt: m, shadowR: 200 };
+    },
+    events: [{ t: 0, k: 'tankEngines' }, ...fireT.map(f => ({ t: f, k: 'tankFire', v: 0.9 }))],
+  };
+}
+// G22C 阿帕奇机头的 30 毫米链炮朝纵队开火：炮口一闪一闪，曳光一串串往前飞
+async function shotApacheGun(env, add) {
+  const { fx } = env;
+  const A = (await apache(env, add, 1))[0];
+  const tgt = t => { const p = COL(4, 11.5 + t); p.y = heightAt(p.x, p.z) + 2; return p; };
+  const inv = new THREE.Matrix4();
+  const pose = t => {
+    fly(A, heliPos(0, 3.6 + t), V3(-0.15, -0.08, 1).normalize(), 0.01);
+    A.spin(t, 0.9);
+    inv.copy(A.root.matrixWorld).invert();
+    const loc = tgt(t).sub(A.gunMuzzle(0)).normalize().transformDirection(inv);
+    A.gunAim(Math.atan2(-loc.x, -loc.z), Math.atan2(loc.y, Math.hypot(loc.x, loc.z)));
+    A.root.updateMatrixWorld(true);
+  };
+  fx.add(gatling({ from: t => { pose(t); return A.gunMuzzle(); }, dir: t => { pose(t); return A.gunDir(); }, t0: 0.25, t1: 1.95, rate: 10, speed: 800, every: 1, spread: 0.006, col: new THREE.Color(1, 0.6, 0.25), len: 18, maxD: 3800, w: 0.5, bright: 10, flash: 0.9 }));
+  return {
+    update(t) {
+      pose(t);
+      // 镜头在机头左前方，看着机头下面的炮塔往右前方开火
+      const g0 = A.gunMuzzle(0), fw = V3(0, 0, -1).transformDirection(A.root.matrixWorld), lf = V3(-1, 0, 0).transformDirection(A.root.matrixWorld);
+      cam(env, g0.clone().addScaledVector(lf, 13).addScaledVector(fw, 11).add(V3(0, 2.5, 0)), g0.clone().addScaledVector(fw, -6).add(V3(0, 1, 0)), 42);
+      shake(env.camera, t, 0.3 + (t > 0.25 && t < 1.95 ? 0.45 : 0), 9, 61);
+      return { ...DAY({ az: 140, el: 34, heat: 0.6 }), shadowAt: A.root.position, shadowR: 60 };
+    },
+    events: [{ t: 0, k: 'rotor' }, { t: 0.25, k: 'chainGun', d: 1.7 }],
+  };
+}
+// G22D 机炮打进纵队：30 毫米弹沿公路一路扬起沙，走到一辆 97 式步战车上炸开；前面挨了地狱火的两辆还在烧
+async function shotStrafe(env, add) {
+  const { fx } = env;
+  const L = await column(env, add);
+  const T0 = 11.5, victim = 4, tKill = 1.7;
+  const stopAt = i => i === 1 ? 8.9 : (i === 2 ? 9.9 : null);
+  const colAt = (i, t) => { const s = stopAt(i); const p = COL(i, s ?? (T0 + (i === victim ? Math.min(t, tKill) : t))); p.y = heightAt(p.x, p.z); return p; };
+  [1, 2].forEach(i => { burnt(L[i]); fx.add(bigFire({ p: colAt(i, 0).add(V3(0, 3, 0)), s: 9, t0: -3 - i, seed: 930 + i, dark: 0.1 })); });
+  const src = heliPos(0, 4.5);
+  const pv = colAt(victim, tKill);
+  for (let k = 0; k < 16; k++) {
+    const t0 = 0.12 + k * 0.1, u = k / 15;
+    const p = V3(lerp(pv.x - 170, pv.x, u) + Math.sin(k * 3.1) * 4, 0, lerp(pv.z - 45, pv.z, u) + Math.cos(k * 2.3) * 5); p.y = heightAt(p.x, p.z) + 0.5;
+    fx.add((t, f) => { const v = (t - (t0 - 0.14)) / 0.14; if (v < 0 || v > 1) return; const a = src.clone().lerp(p, 0.86 + 0.14 * v), b = src.clone().lerp(p, Math.min(1, 0.9 + 0.14 * v)); f.addStreak(a, b, 0.45, new THREE.Color(1, 0.6, 0.25), 10, 0.5, 0.0015); });
+    fx.add(explosion({ p, t0, s: 5, seed: 900 + k, debris: 6, ember: 6 }));
+  }
+  const vp = pv.clone().add(V3(0, 3, 0));
+  fx.add(explosion({ p: vp.clone(), t0: tKill, s: 26, seed: 950, debris: 24 }));
+  fx.add(cookoff({ p: vp.clone(), t0: tKill + 0.2, seed: 951 }));
+  return {
+    update(t) {
+      L.forEach((V, i) => { const p = colAt(i, t); ground(V.root, p.x, p.z, -Math.PI / 2); if (stopAt(i) == null) V.roll(p.x); });
+      const c = V3(pv.x + 75, 0, pv.z + 205); c.y = heightAt(c.x, c.z) + 5;
+      cam(env, c, pv.clone().add(V3(-70, 8, -30)), 30);
+      shake(env.camera, t, 0.2 + (t > tKill ? 0.8 * Math.exp(-(t - tKill) * 3) : 0), 5, 67);
+      return { ...DAY({ az: 140, el: 34, heat: 0.9 }), shadowAt: pv, shadowR: 300 };
+    },
+    events: [{ t: 0, k: 'tankColumn' }, { t: 0.12, k: 'impacts', d: 1.6 }, { t: tKill, k: 'boom', v: 0.9 }, { t: tKill + 0.2, k: 'cookoff' }],
+  };
+}
+// GMAP 电子沙盘（短剧版的作战简报，gulf/story.js 的 MAP）：整张沙漠图从南边高空斜着往北看（北在上），白天、压饱和、偏冷，
+//   上面的网格、两军分界、三颗钉子、箭头都是叠加层（story.js drawMap）按这个镜头投影上去的
+const MAPCAM = t => {
+  const u = t / 9.8;
+  const h = lerp(24300, 23100, u);   // 南边 2.4 万格高空、俯角 52 度（沙墙南边的红方出发阵地到岭北的炮兵都在画里，远处不挤），慢慢往前推
+  const look = V3(1000, 0, 615);
+  return { c: V3(1000, h, 615 + h * 0.7813), look, fov: 36 };
+};
+async function shotMap(env, add) {
+  const cv = V3();
+  const P = (x, z) => { cv.set(x, heightAt(x, z), z).project(env.camera); return cv.z > 1 ? null : [(0.5 + cv.x / 2) * env.W, (0.5 - cv.y / 2) * env.post.ah + (env.H - env.post.ah) / 2]; };
+  return {
+    update(t) {
+      const m = MAPCAM(t);
+      cam(env, m.c, m.look, m.fov);
+      env.camera.updateMatrixWorld(true);
+      return { ...DAY({ el: 38, az: 125, heat: 0, dust: 0.05, fog: 0.000006, exposure: 0.62 }), sat: 0.5, contrast: 1.18, tint: 0, bloom: 0.25, vignette: 0.3, grain: 0.006, shadowAt: m.look, shadowR: 14000 };
+    },
+    overlay: (g, t, W, H, ah) => drawMap(g, W, H, ah, t, P),
+    events: [],
+  };
+}
 // G32 片名
 async function shotTitle(env, add) {
   env.worldVisible(false);
@@ -1243,7 +1491,7 @@ async function shotFeatures(env, add) {
 // G34 片尾
 async function shotEnd(env, add) {
   env.worldVisible(false);
-  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames'];
+  const credits = ['ZTZ-99A：philano', 'M1A2：dannzjs', '歼-16、歼-35：andertan', 'AH-64：Muhamad Mirza Arrafi', 'MQ-9：IProZenoN', '爱国者：Muhamad Mirza Arrafi', 'M4：BarcodeGames', '地表贴图、天空：Poly Haven（CC0）'];
   return {
     update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.010, lift: 0 }; },
     titles: t => {
@@ -1298,7 +1546,18 @@ export const SHOTS = [
   { id: 'G32', dur: 6.0, setup: shotTitle },
   { id: 'G33', dur: 7.5, setup: shotFeatures },
   { id: 'G34', dur: 5.5, setup: shotEnd },
+  { id: 'GMAP', dur: 9.8, ...T(1200, -1500, { ext: 100000, cap: 1500 }), setup: shotMap },   // 短剧版的电子沙盘（只在剪辑表 EDIT 里用）
+  // 短剧版加的打戏
+  { id: 'G05B', dur: 3.2, ...T(SAM.x, SAM.z), setup: shotIntercept },
+  { id: 'G09B', dur: 3.6, ...T(-900, 9500), setup: shotShelled },
+  { id: 'G14B', dur: 3.0, ...T(-300, 3800), setup: shotVolley },
+  { id: 'G16B', dur: 3.4, ...T(100, 6100), setup: shot99Killed },
+  { id: 'G13B', dur: 3.0, ...T(-860, 4900), setup: shotFireMove },
+  { id: 'G22C', dur: 2.2, ...T(-8340, -3950, { a: 300 }), setup: shotApacheGun },
+  { id: 'G22D', dur: 2.8, ...T(-8900, -200), setup: shotStrafe },
 ];
+// 短剧版剪辑表（gulf/story.js）：成片按它来，SHOTS 只是素材
+export { EDIT, plateIndex, clipEvents, storyEvents, drawStory, storyFlash } from './story.js';
 let T0 = 0;
 for (const s of SHOTS) { s.t0 = T0; T0 += s.dur; }
 export const TOTAL = T0;

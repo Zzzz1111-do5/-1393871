@@ -165,7 +165,7 @@ function texOr(url, srgb, rgb) {
       cur.id = id;
       return cur;
     }
-    function frame(sh, t) {
+    function frame(sh, t, o = {}) {
       const P = sh.update(t) || {};
       const tt = sh.tmap ? sh.tmap(t) : t;   // 宣传片的慢镜头 / 截一段：特效、海浪、天空按原镜头的时间走
       scene.updateMatrixWorld(true);
@@ -209,33 +209,103 @@ function texOr(url, srgb, rgb) {
       fx.update(tt, camera);
       if (sea.visible) sea.userData.prepare(renderer, scene, camera, tt + (sh.t0 || 0));
       post.render(scene, camera, { ...P, time: tt + (sh.t0 || 0) });
-      // 画面拷到输出画布、叠字幕
+      // 画面拷到输出画布、叠字幕（clean：只要净画面，平显、字幕留给合成那一步）
       ctx.drawImage(renderer.domElement, 0, 0);
+      if (o.clean) return P;
       if (sh.overlay) sh.overlay(ctx, t, W, H, post.ah, P);   // 第三版：平显、瞄准镜、游戏界面画在字幕下面
       titles.draw(ctx, sh.titles ? sh.titles(t) : null, t);
+      return P;
+    }
+    // —— 短剧版（gulf/story.js 的剪辑表 EDIT）：先渲净画面（原镜头的帧，plates/<原镜头>/<帧号>.jpg），再合成（截哪一段、定格、调色、平显、字幕层）——
+    //   改字幕、改剪辑不用重渲三维画面：只要重跑合成
+    const EDIT = V3MOD && V3MOD.EDIT;
+    const imgCache = new Map();
+    function loadImg(url) {
+      return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('读不到 ' + url)); im.src = url; });
+    }
+    // 一帧成片：src 是净画面（图片或画布）；e 剪辑条目，i 第几帧
+    async function comp(e, i, src) {
+      const t = (i + 0.5) / FPS, top = (H - post.ah) / 2;
+      ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.restore();
+      const k = V3MOD.plateIndex(e, i);
+      if (k != null) {
+        const sh = await enter(e.src), ts = (k + 0.5) / FPS;
+        const P = sh.update(ts) || {};   // 摆好镜头：平显的目标框、沙盘的标记要按这一刻的镜头投影
+        scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+        const L = e.look ? e.look(t) : {};
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, top, W, post.ah); ctx.clip();   // 只在宽银幕画面里画（推镜头放大了也不盖到黑边上）
+        if (L.filter) ctx.filter = L.filter;
+        const s = L.scale || 1;
+        ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
+        ctx.drawImage(src, 0, 0, W, H);
+        ctx.restore();
+        const fl = (L.flash || 0) + V3MOD.storyFlash(e, t);
+        if (fl > 0.002) { ctx.save(); ctx.globalAlpha = Math.min(1, fl); ctx.fillStyle = '#fff'; ctx.fillRect(0, top, W, post.ah); ctx.restore(); }
+        if (sh.overlay && e.overlay !== false) sh.overlay(ctx, ts, W, H, post.ah, P);
+        if (e.keepTitles && sh.titles) titles.draw(ctx, sh.titles(ts), ts);
+      }
+      V3MOD.drawStory(ctx, W, H, post.ah, e, t);
     }
     window.FILM = {
-      ready: true, canvas, jpg: true, shots: SHOTS.map(s => ({ id: s.id, dur: s.dur })),
-      async renderAt(id, t) { const t0 = performance.now(); const sh = await enter(id); frame(sh, t); return performance.now() - t0; },
+      ready: false, canvas, jpg: true, shots: SHOTS.map(s => ({ id: s.id, dur: s.dur })),   // 字体全部加载完才 ready（原来一开始就 ready，渲染进程头几帧的字可能是替代字体）
+      // 剪辑表：每一条多少帧、每一帧用哪个原镜头的第几帧
+      edit: EDIT ? EDIT.map(e => ({ id: e.id, src: e.src, dur: e.dur, n: Math.round(e.dur * FPS), plates: Array.from({ length: Math.round(e.dur * FPS) }, (_, i) => V3MOD.plateIndex(e, i)) })) : null,
+      async renderPlate(src, k) { const t0 = performance.now(); const sh = await enter(src); frame(sh, (k + 0.5) / FPS, { clean: true }); return performance.now() - t0; },
+      async compAt(id, i, url) {
+        const t0 = performance.now(), e = EDIT.find(x => x.id === id);
+        let im = null;
+        if (url) { im = imgCache.get(url); if (!im) { im = await loadImg(url); imgCache.clear(); imgCache.set(url, im); } }
+        await comp(e, i, im);
+        return performance.now() - t0;
+      },
+      // 看一帧：剪辑表里的条目（现渲净画面再合成）或者原镜头（老样子整帧渲）
+      async renderAt(id, t) {
+        const t0 = performance.now();
+        const e = EDIT && EDIT.find(x => x.id === id);
+        if (e) {
+          const i = Math.max(0, Math.min(Math.round(e.dur * FPS) - 1, Math.floor(t * FPS)));
+          const k = V3MOD.plateIndex(e, i);
+          if (k != null) { const sh = await enter(e.src); frame(sh, (k + 0.5) / FPS, { clean: true }); }
+          const plate = document.createElement('canvas'); plate.width = W; plate.height = H; plate.getContext('2d').drawImage(canvas, 0, 0);
+          await comp(e, i, plate);
+          return performance.now() - t0;
+        }
+        const sh = await enter(id); frame(sh, t); return performance.now() - t0;
+      },
       info() { return { W, H, rw: post.rw, rh: post.rh, gl: renderer.getContext().getParameter(renderer.getContext().VERSION), tris: renderer.info.render.triangles, calls: renderer.info.render.calls }; },
       async renderAudio() {
         if (CUT === 'promo') { const { renderPromoScore } = await import('./audio_promo.js'); return renderPromoScore(SHOTS); }
         if (CUT === 'v3') { const { renderV3Score } = await import('./v3/audio.js'); return renderV3Score(SHOTS); }
-        if (CUT === 'gulf') { const { renderGulfScore } = await import('./gulf/audio.js'); return renderGulfScore(SHOTS); }
+        if (CUT === 'gulf') {
+          // 短剧版：每一条剪辑的音效 = 原镜头的音效事件（按截的那一段平移，镜头 setup 里才有，所以挨个搭一遍）+ 字幕层的音效
+          const { renderGulfScore } = await import('./gulf/audio.js');
+          const list = [];
+          for (const e of EDIT) {
+            let ev = [];
+            if (e.src) { const sh = await enter(e.src); ev = V3MOD.clipEvents(sh.events, e); }
+            list.push({ id: e.id, dur: e.dur, adur: e.freeze ?? e.dur, events: ev.concat(V3MOD.storyEvents(e)) });
+          }
+          return renderGulfScore(list);
+        }
         const { renderScore } = await import('./audio.js'); return renderScore(SHOTS);
       },
     };
     // 网页字体：画布写字不等字体加载（第一次用到某个字重、某段字符时先用替代字体画，同一句字幕前后帧字体不一样）。
     //   开渲之前把字幕可能用到的字都加载好：英文、标点，加上分镜源码里出现的所有中文字
     {
-      const src = (await Promise.all(['shots.js', 'promo.js', 'promo_shots.js', 'v3/shots.js', 'gulf/shots.js', 'gulf/kit.js'].map(f => fetch(f).then(r => r.ok ? r.text() : '')))).join('');
+      const src = (await Promise.all(['shots.js', 'promo.js', 'promo_shots.js', 'v3/shots.js', 'gulf/shots.js', 'gulf/kit.js', 'gulf/story.js'].map(f => fetch(f).then(r => r.ok ? r.text() : '')))).join('');
       const cjk = [...new Set(src)].filter(c => c.charCodeAt(0) > 0x2000).join('');
       const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;!?-—–·“”"\'()&+/%';
-      const faces = ['"Noto Sans SC"', '"Noto Serif SC"'].flatMap(f => [400, 700].map(w => `${w} 32px ${f}`));
+      const faces = ['"Noto Sans SC"', '"Noto Serif SC"'].flatMap(f => [400, 700, 900].map(w => `${w} 32px ${f}`));
       await Promise.all(faces.map(f => document.fonts.load(f, latin + cjk)));
       await document.fonts.ready;
-      log('字体', faces.map(f => document.fonts.check(f, 'ISLAND 全面大战场') ? '好' : '缺').join(' '));
+      // 每种字重在画布上先写一遍（画布自己的字体缓存也热一下）
+      { const c = document.createElement('canvas').getContext('2d'); for (const f of faces) { c.font = f; c.fillText(latin + cjk.slice(0, 200), 0, 20); } }
+      let n = 0; document.fonts.forEach(f => { if (f.status === 'loaded') n++; });
+      log('字体', faces.map(f => document.fonts.check(f, 'ISLAND 全面大战场') ? '好' : '缺').join(' '), `已加载 ${n} 个子集`);
     }
+    window.FILM.ready = true;
     log('准备好了', W, H);
   } catch (e) {
     console.error('[film] 出错', e && e.stack || e);

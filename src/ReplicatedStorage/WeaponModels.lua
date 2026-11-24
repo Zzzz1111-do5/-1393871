@@ -28,9 +28,11 @@ local GLASS = RGB(60, 80, 96)
 -- 型号的外形描述（比例都按弹长 L、弹径 d）
 local D = {
   -- 空空导弹
-  pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 2.2 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
+  -- 霹雳-10 / 霹雳-15 的尾翼照真弹的比例（用户 11-23 核对歼-20 弹舱：原来的尾翼翼展快一米，四枚霹雳-15 塞不进主弹舱、霹雳-10 收不进侧弹舱）：
+  --   霹雳-15 歼-20 用的是切短的尾翼，尾翼尖离弹轴约 0.18 米；霹雳-10 的舵面大一点，约 0.2 米
+  pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 0.75 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
   aim9x = { nose = "ir", col = GREY, bands = { { 0.2, 0.025, YELLOW }, { 0.3, 0.025, BROWN } }, tail = { at = 0.93, c = 0.09, s = 2.4 }, mid = { at = 0.24, c = 0.035, s = 1.2 } },
-  pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 1.9 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
+  pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 0.6 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
   pl12 = { nose = "radar", col = WHITE, bands = { { 0.24, 0.025, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 2.0 }, mid = { at = 0.42, c = 0.12, s = 1.6 } },
   aim120 = { nose = "radar", col = WHITE, bands = { { 0.22, 0.025, YELLOW }, { 0.34, 0.025, BROWN } }, tail = { at = 0.94, c = 0.075, s = 2.1 }, mid = { at = 0.4, c = 0.1, s = 1.5 } },
   aim54 = { nose = "radar", col = WHITE, bands = { { 0.2, 0.02, YELLOW }, { 0.3, 0.02, BROWN } }, tail = { at = 0.9, c = 0.11, s = 1.5 }, mid = { at = 0.42, c = 0.22, s = 1.2 } },   -- 不死鸟：粗、四片长弦弹翼

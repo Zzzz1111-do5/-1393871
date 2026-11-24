@@ -5,10 +5,13 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
--- 地图：开服以后第一个玩家在选地图界面点一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
+-- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   desert（「沙漠风暴」，MapDesert.lua，征服）、sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 Config.Map = "island"
+-- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
+--   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
+Config.MapVote = { time = 25, grace = 3 }
 
 ---------------------------------------------------------------- 回合
 
@@ -101,7 +104,8 @@ Config.Loadout = {
 Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
 -- 改枪（GunMods.lua，用户 11-20：对标三角洲行动）：killXp 用这把枪打死一个人（真人 / 机器人）加多少枪械经验，
 --   unlockAll 配件全部解锁（不用升级），studioAll 在 Studio 里测试时全部解锁（发布到线上照常按等级）
-Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = true }
+-- 11-23 起配件要解锁（升到等级、或者拿金币买，Economy.lua）：Studio 里测试也照样上锁（studioAll 改成 false），想看全部配件改回 true
+Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = false }
 
 -- R 币解锁（游戏通行证 Game Pass）：在 Roblox 创作者后台给这个体验建两个通行证（价格照 price），把通行证编号填进 id——
 --   id 还是 0 的时候谁都能用（没上架前不挡人，Studio 里测试也方便）；填了编号就只有买了的人能用，没买的点了弹出购买框
@@ -197,6 +201,68 @@ Config.Vehicles = {
     ship = { "ddg125", "cg47", "lcs2", "pbr" },
   },
 }
+-- 两边都能用对方的载具（用户 11-23：「两边都可以用对方的载具」）：坦克、装甲车、防空、火炮、直升机、飞机的召唤点上两边的型号都有
+--   （自己这一边的排前面）；舰艇还是各用各的（码头、舰队不一样）。召唤点（Depots.lua）、生成点牌子（Armor / Air 的 vehModels）按 TeamVehicles 列
+Config.CrossVehicles = { tank = true, apc = true, aa = true, arty = true, heli = true, jet = true }
+function Config.TeamVehicles(team, cat)
+  local own = (Config.Vehicles[team] or {})[cat] or {}
+  if not Config.CrossVehicles[cat] then return own end
+  local other = (team == "atk") and "def" or "atk"
+  local out, seen = {}, {}
+  for _, list in ipairs({ own, (Config.Vehicles[other] or {})[cat] or {} }) do
+    for _, id in ipairs(list) do
+      if not seen[id] then seen[id] = true table.insert(out, id) end
+    end
+  end
+  return out
+end
+-- 金币（Economy.lua，用户 11-23：「把很多坦克飞机直升机搞成金币解锁……金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
+--   startCoins 新玩家的金币；一局打完：得分 × perScore + 赢了 win / 输了 lose；PvE 关卡打通另有奖励（Config.Pve）
+--   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
+--   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
+--   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
+Config.Economy = {
+  unlockAll = false,
+  startCoins = 1500,
+  perScore = 0.1, win = 200, lose = 60,
+  veh = {
+    -- 坦克
+    ztz96 = 0, m10 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000,
+    -- 装甲车
+    ztd05 = 0, m1117 = 0, hmmwv = 0, zsl92b = 600, jltv = 600, zbd05 = 900, stryker = 1000, ptl02 = 1200, m2a3 = 1200, m1150 = 1500,
+    -- 防空
+    pgz07 = 0, m163 = 0, pgl625 = 1200, mshorad = 1500, ld2000 = 1800, cram = 1800, patriot = 3500,
+    -- 火炮
+    plz07 = 0, m109a7 = 0, m270 = 2500,
+    -- 直升机
+    z20 = 0, uh60 = 0, ch47 = 600, z10 = 2200, ah64e = 2800,
+    -- 飞机
+    j10 = 0, a10c = 0, mq9 = 1200, j11 = 1500, gj2 = 1500, j15t = 1800, gj11 = 2200, j16 = 2600, f35 = 3200, j35 = 3500,
+    f22 = 4500, j20 = 4500, h6k = 5000, j36 = 6500,
+  },
+  attBase = 100, attPerLv = 80,
+}
+-- PvE 关卡（Pve.lua，用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）：真人都在攻方，跟电脑打；一关一关解锁
+--   map 哪张图（岛：登陆战，拿下 caps 个据点就赢；沙漠：征服，敌方兵力 tickets 扣光就赢）；enemies 敌方电脑几个、allies 友军电脑几个
+--   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
+Config.Pve = {
+  firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
+  levels = {
+    { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
+    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },
+    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
+    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
+    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
+    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
+  },
+}
+function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）
+function Config.AttPrice(lv)
+  if (lv or 0) <= 1 then return 0 end
+  return Config.Economy.attBase + Config.Economy.attPerLv * lv
+end
 Config.VehicleMod = {
   m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
@@ -252,7 +318,27 @@ Config.TacPad = {
 }
 
 Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAssist = 120, heal = 10, repair = 10, spot = 15, win = 500, lose = 150, vehicleKill = 200,
-  fortKill = 250, defuse = 30, wireCut = 15 }
+  fortKill = 250, defuse = 30, wireCut = 15, revive = 60, reviveAlly = 40 }   -- 救起队友：带急救包 / 没带
+-- 倒地与救援（Revive.lua，用户 11-23「按你想的来弄」）：致命的一下先倒地，队友按住 E 救起来
+-- 人人都能按 Z 标记看到的敌人（Weapons.lua 的 ACT.spot）：比望远镜近、锥窄、标记时间短
+Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
+-- 车里激光测距后报告敌情（M1A2 SEPv2 的 CITV、布雷德利的 CIV：Weapons.lua 的 ACT.vspot）：4 公里、锥 1.2°、标 20 秒
+Config.VehSpot = { range = 11200, cone = 1.2, spotTime = 20, cd = 2 }
+-- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
+Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
+Config.Revive = {
+  on = true,
+  bleed = 20,        -- 倒地多久没人救就阵亡（秒）
+  overkill = 70,     -- 一下打掉的比剩下的血多这么多：直接阵亡（爆炸、炮弹、狙击爆头）
+  range = 8,         -- 离多近能救（格）
+  hold = 4.0,        -- 没带急救包：按住 E 多久
+  medicHold = 1.6,   -- 带着急救包
+  hp = 0.35,         -- 没带急救包救起来几成血
+  medicHp = 1.0,     -- 带着急救包：满血
+  giveUp = 1.0,      -- 按住空格多久放弃
+  afterDown = 1,     -- 倒地以后阵亡：再等几秒能重新部署（等救援的时间已经过了）
+  markR = 220,       -- 倒地的队友头顶的救援标记多远看得见（格）
+}
 Config.Ranks = { 0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000, 110000, 160000, 230000, 330000, 480000 }   -- 累计经验门槛（Lang 里有军衔名）
 function Config.RankOf(xp)
   local i = 1

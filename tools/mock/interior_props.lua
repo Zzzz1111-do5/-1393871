@@ -72,7 +72,7 @@ for _, p in ipairs(cur.model:GetDescendants()) do
   local k = p:IsA("BasePart") and string.match(p.Name, "^O_(.-)__")
   if k then byKey[k] = (byKey[k] or 0) + 1 end
 end
-local WANT = { ip_cdu = 2, ip_cdus = 1, ip_yoke = 1, ip_stick = 1, ip_asq2 = 1, ip_sw = 4, ip_lamp = 3, ip_can = 4 }
+local WANT = { ip_cdu = 2, ip_cdus = 1, ip_yoke = 1, ip_stick = 1, ip_asq2 = 1, ip_sw = 4, ip_lamp = 2, ip_can = 4 }   -- 顶灯 2 盏：车长前上方那盏用户 11-23 叫去掉了（「把那个天花板上的灯去掉」）
 local META = R.require(R.services.ReplicatedStorage:FindFirstChild("OpticsMeta"))
 for _, k in ipairs(NEW) do
   local nParts = 0

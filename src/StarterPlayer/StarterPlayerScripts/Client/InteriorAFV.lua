@@ -47,8 +47,8 @@ return function(Defs, Hp)
     local T, H, G = "turret", "hull", "gun"
     local piv = ctx.piv or d.turret.pivot   -- 座圈中心（同 Interior 的 frames）
     local cn = L.cn
-    local WALL = cn and RGB(178, 196, 178) or RGB(222, 222, 212)
-    local WALL2 = cn and RGB(152, 170, 152) or RGB(196, 196, 186)
+    local WALL = (L.paint and L.paint[1]) or (cn and RGB(178, 196, 178) or RGB(222, 222, 212))
+    local WALL2 = (L.paint and L.paint[2]) or (cn and RGB(152, 170, 152) or RGB(196, 196, 186))
     local OD = cn and RGB(74, 92, 70) or RGB(84, 90, 66)
     local FLOOR = RGB(56, 58, 56)
     local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
@@ -100,7 +100,7 @@ return function(Defs, Hp)
     for i = -1, 1 do
       local a = rad(i * 30)
       local p = V(dx + math.sin(a) * 0.20, RY - 0.10, dz - 0.16 - math.cos(a) * 0.05)
-      b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.15, 0.08, 0.09)
+      b:periscope(H, look(p, p + V(math.sin(a), 0, -math.cos(a))), 0.15, 0.08, 0.09, { model = true })
     end
     b:cylY(H, 0.04, 0.56, CF(dx, RY - 0.01, dz + 0.20), WALL, MAT.SmoothPlastic)
     b:grab(H, V(dx - 0.10, RY - 0.05, dz + 0.24), V(dx + 0.10, RY - 0.05, dz + 0.24), V(0, -0.05, 0), 0.02, C.black)
@@ -179,13 +179,15 @@ return function(Defs, Hp)
       bx("recoil", cal * 1.3, cal * 1.3, blen, 0, 0, blen / 2 + 0.10, C.gun, MAT.Metal)
       bx("recoil", cal * 1.5, cal * 0.5, blen * 0.4, 0, -cal * 0.85, blen * 0.55, C.dark, MAT.Metal)   -- 反后坐装置
       if tur ~= "spaag" then   -- 炮尾防护栏（黄色钢管框：后坐时人别站在里面）
+        -- 布雷德利（用户 11-24 的 M3 截图）：25 毫米炮的炮尾窄，护栏收到 ±0.95 倍口径格数，给炮长目镜旁的 IBAS 显示器腾地方
+        local gk = (tur == "ifv" and L.donor) and 0.95 or 1.2
         for _, s in ipairs({ -1, 1 }) do
-          local x = s * cal * 1.2
+          local x = s * cal * gk
           b:tube(G, V(x, cal * 0.9, 0.15), V(x, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, -cal * 0.9, 0.15), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, cal * 0.9, blen + 0.45), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
         end
-        b:tube(G, V(-cal * 1.2, cal * 0.9, blen + 0.45), V(cal * 1.2, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
+        b:tube(G, V(-cal * gk, cal * 0.9, blen + 0.45), V(cal * gk, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
       end
       if tur == "ifv" then   -- 机关炮：两边的弹箱、供弹槽（双向供弹）
         for _, s in ipairs({ -1, 1 }) do
@@ -199,10 +201,15 @@ return function(Defs, Hp)
       local gEye = V(gx, math.min(TH - 0.16, 0.42), -0.20)
       local cEye = V(cxp, math.min(TH - 0.10, 0.52), 0.05)
       if big then gEye, cEye = V(gs * 0.55, math.min(TH - 0.20, 0.50), -0.55), V(-gs * 0.58, math.min(TH - 0.12, 0.62), -0.40) end
+      -- M2A3 布雷德利（用户 11-24「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」）：炮长目镜、目镜旁的面板、双握把、座椅，车长延伸目镜、两块屏、握把、座椅
+      --   用 M1A1 原模型的件（InteriorAbrams 的 Defs.donorIfv）；没导入拆好的 m1a1i 照旧零件拼
+      local dn = L.donor and Defs.donorIfv and Defs.donorIfv(b, ctx, { gs = gs, gx = gx, gEye = gEye, cxp = cxp, cEye = cEye, TH = TH, tw = tw }) or nil
       -- 炮长：瞄准镜目镜（护额垫 + 橡胶眼罩）、炮长显示器、双握把
-      bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
-      bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
-      for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      if not dn then
+        bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
+        bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
+        for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      end
       -- 屏幕别放到炮尾和黄色防护栏里边、别穿出炮塔壁（用户 11-22：「坦克内部屏幕会被挡住」，tools/mock/interior_occ.lua 查出来的）：
       --   自行火炮（大口径）的防护栏离炮轴快半米，原来炮长、车长那两块屏在栏里边，隔着栏杆看——挪到人这边；窄炮塔（M-SHORAD、ZSL-92B）
       --   车长的地图屏跑到炮塔壁外面去了——收在壁里面
@@ -210,11 +217,15 @@ return function(Defs, Hp)
       local wallIn = tw - 0.16
       local function inX(x) return math.clamp(x, -wallIn, wallIn) end
       local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
-      b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
-      b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
-      bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
-      for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
-      b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then   -- 有原模型件的布雷德利：炮长那块是 IBAS 显示器（InteriorAbrams 的 donorIfv）
+        b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      end
+      if not dn then
+        b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
+        bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
+        for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
+        b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       -- 车长：观察镜一圈、显示器、握把
       for i = 0, 5 do
         local a = (i - 2.5) * rad(40)
@@ -225,24 +236,26 @@ return function(Defs, Hp)
       -- 车长的热像屏：自行火炮挪到防护栏外边；自行高炮挪到车长外侧（原来正好挡在下面那块雷达屏前面）
       local cvx = cxp + gs * 0.10
       if big then cvx = -gs * math.max(0.32, railX + 0.14) elseif tur == "spaag" then cvx = cxp - gs * 0.12 end
-      b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
-      local mpage = cn and "cnmap" or "cid"
-      b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
-      b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
-      bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
-      b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then
+        b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
+        local mpage = cn and "cnmap" or "cid"
+        b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+        b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
+        bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
+        b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       b:radio(T, 0.24, 0.18, 0.20, CF(-gs * (tw - 0.14), 0.22, tl - 0.15) * ANG(0, PI, 0), OD)
       -- 车长、炮长的舱盖（从里面看）
       b:cylY(T, 0.04, 0.54, CF(cxp, TH + 0.01, cEye.Z), WALL, MAT.SmoothPlastic)
       b:light(T, CF(0, TH - 0.10, 0.10), "dome", RGB(255, 240, 220), 2.4, 0.7)
       b:light(T, CF(0, 0.10, -0.40), "flash", RGB(255, 170, 80), 4, 0)
-      stations.gunner = { g = T, eye = gEye + V(0, 0.04, 0.14), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.gunner = { g = T, eye = dn and (dn.gScope + V(0, 0.06, 0.26)) or (gEye + V(0, 0.04, 0.14)), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
+        scope = dn and dn.gScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = { kind = "gps" }, alt = (L.opt and L.opt.gunnerAlt) or nil } }
-      stations.commander = { g = T, eye = cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.commander = { g = T, eye = dn and (dn.cScope + V(0, 0.05, 0.24)) or cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
+        scope = dn and dn.cScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = (L.opt and L.opt.commander) or { kind = "citv", name = cn and "车长周视热像仪" or "CIV", g = T, pos = V(cxp, TH + 0.35, cEye.Z - 0.20),
-          dir = "citv", fovs = { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
+          dir = "citv", fovs = dn and { 23.3, 11.7, 5.4, 2.8, 1.4 } or { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
           alt = { kind = "gps" } } }
       crew.gunner = { dress = dress, g = T, eye = gEye, lean = -18, yaw = 0, look = V(0, -0.12, -1),
         hands = { l = { "gch", V(-0.15, 0.08, 0) }, r = { "gch", V(0.15, 0.08, 0) } },
@@ -537,11 +550,147 @@ return function(Defs, Hp)
     return { stations = stations, order = order, crew = crew, gunK = 0.05, cn = cn, glass = glass, cab = true }
   end
 
+  ---------------------------------------------------------------- 挖了内腔的驾驶室（原车模型挖出来的内壁 + 原车的车窗玻璃，用户 11-23「在原车内部雕刻出来内饰」）
+  --   车壳（地板、车顶、车门内板、仪表台的外形、风挡、侧窗）都是原车模型的：这里不画自己的壳和玻璃，只摆东西——
+  --   乘员位按 carve.json 里在原模型上量的眼位（anchors），地板高、风挡下沿按内腔查（ctx.cav），窗户就是外面看到的那几块玻璃
+  function Defs.cabCarved(b, ctx, L)
+    local cav = ctx.cav
+    local A = cav.anchors
+    local H, T = "hull", "turret"
+    local cn = L.cn
+    local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
+      return b:box(g, V(sx, sy, sz), CF(x, y, z) * ANG(rad(rx or 0), rad(ry or 0), rad(rz or 0)), col, mat)
+    end
+    local function look(p, at) return CFrame.lookAt(p, at) end
+    local DASH = RGB(34, 36, 34)
+    -- 真模型件（用户 11-23：「不要自己建模」——Sketchfab 原模型经 Blender 加工的 ip_ 件，tools/weapons/blprep.py）；没导入、没生成好时照旧拼
+    local function prop(g, key, cf, k) return b:prop(g, key, cf, k) ~= nil end
+    local eyeL, eyeR = A.drv, A.cmd or V(-A.drv.X, A.drv.Y, A.drv.Z)
+    local seatY = A.seat and A.seat.Y or (eyeL.Y - 0.80)
+    local function floorAt(x, z) return cav:floor(x, z) or (seatY - 0.30) end
+    local function roofAt(x, z) return cav:roof(x, z) or (eyeL.Y + 0.25) end
+    -- 风挡：朝前的那几块玻璃，下沿就是仪表台顶
+    local wsZ, wsY = nil, nil
+    for _, w in ipairs(cav.win) do
+      if w.n.Z < -0.55 then
+        local bot = w.c - w.up * (w.h / 2)
+        wsZ = wsZ and math.max(wsZ, bot.Z) or bot.Z
+        wsY = wsY and math.min(wsY, bot.Y) or bot.Y
+      end
+    end
+    wsZ = wsZ or (eyeL.Z - 0.80)
+    wsY = wsY or (eyeL.Y - 0.25)
+    local zD = wsZ + 0.05   -- 仪表台的面（风挡下沿往里一点）
+    local xl, xr = cav:walls(zD + 0.25, wsY - 0.15)
+    xl, xr = (xl or -0.95) + 0.06, (xr or 0.95) - 0.06
+    -- 仪表台：黑色的面板盖在内腔（原车仪表台外形）上——顶面、斜面
+    bx(H, xr - xl, 0.03, 0.30, (xl + xr) / 2, wsY - 0.02, zD + 0.15, DASH, MAT.SmoothPlastic)
+    bx(H, xr - xl, 0.28, 0.03, (xl + xr) / 2, wsY - 0.17, zD + 0.31, DASH, MAT.SmoothPlastic, -12, 0, 0)
+    b:panel(H, 0.16, 0.10, look(V(eyeL.X - 0.22, wsY - 0.20, zD + 0.33), eyeL), 3, 2, RGB(54, 56, 54))
+    -- 驾驶员：机械仪表、方向盘（跟着转向转）、踏板、换挡杆
+    local gcf = look(V(eyeL.X, wsY - 0.10, zD + 0.30), eyeL)
+    if not (L.analog and prop(H, "ip_gauges", gcf * ANG(0, PI, 0), 0.9)) then   -- 悍马：指针式仪表（真模型）；JLTV 这些：数字仪表页
+      b:screen(H, 0.28, 0.07, gcf, "gauges", { light = false, ppm = 1800 })
+    end
+    -- 方向盘：组的 −Z 顺着转向柱往下伸进仪表台，盘面（+Z）对着驾驶员；跟着转向转（Interior 让 swheel 绕自己的 Z 轴转）
+    local wc = A.wheel or (eyeL + V(0.05, -0.55, -0.62))
+    local base = V(wc.X, wsY - 0.24, zD + 0.30)
+    b:group("swheel", H, look(wc, wc + (base - wc).Unit))
+    if prop("swheel", "ip_swheel", CF(), 1.0) then
+      b:tube(H, wc + (base - wc).Unit * 0.26, base, 0.06, C.gray, MAT.Metal)
+    else
+      zring(b, "swheel", 0.20, 18, 0.032, C.rubber, MAT.Fabric)
+      b:box("swheel", V(0.38, 0.025, 0.03), CF(), C.dark, MAT.Metal)
+      b:box("swheel", V(0.025, 0.19, 0.03), CF(0, -0.095, 0), C.dark, MAT.Metal)
+      b:cyl("swheel", 0.06, 0.07, CF(0, 0, 0.02) * ANG(0, PI / 2, 0), C.black)
+      b:tube(H, wc, base, 0.05, C.gray, MAT.Metal)
+    end
+    local fyD = floorAt(eyeL.X, eyeL.Z - 0.70)
+    if not prop(H, "ip_pedals", CF(eyeL.X + 0.03, fyD + 0.02, eyeL.Z - 0.78), 0.85) then
+      bx(H, 0.10, 0.04, 0.14, eyeL.X + 0.12, fyD + 0.06, eyeL.Z - 0.78, C.dark, MAT.DiamondPlate, -30, 0, 0)
+      bx(H, 0.12, 0.04, 0.14, eyeL.X - 0.06, fyD + 0.06, eyeL.Z - 0.80, C.dark, MAT.DiamondPlate, -30, 0, 0)
+    end
+    local tz = eyeL.Z - 0.15
+    local tyY = floorAt(0, tz)
+    if not prop(H, "ip_lever", CF(-0.08, tyY, tz) * ANG(rad(-12), 0, 0), 0.5) then   -- 换挡杆（中间通道上）
+      bx(H, 0.025, 0.20, 0.025, -0.08, tyY + 0.10, tz, C.black, MAT.Metal, -15, 0, 0)
+      b:ball(H, 0.05, CF(-0.08, tyY + 0.21, tz - 0.03), C.black)
+    end
+    -- 中间通道上的两部电台、仪表台中间的指挥终端（美军 JBC-P / 我军北斗终端）
+    local rz = (eyeL.Z + eyeR.Z) / 2 + 0.25
+    local ry = floorAt(0, rz)
+    b:radio(H, 0.26, 0.18, 0.30, CF(0, ry + 0.10, rz), cn and RGB(74, 92, 70) or RGB(84, 90, 66))
+    b:radio(H, 0.26, 0.14, 0.30, CF(0, ry + 0.27, rz), cn and RGB(74, 92, 70) or RGB(84, 90, 66))
+    local mid = (eyeL + eyeR) / 2
+    local mp = cn and "cnmap" or "cid"
+    b:screen(H, 0.22, 0.15, look(V(0, wsY - 0.16, zD + 0.36), mid), mp, { keys = KEY[mp], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+    -- 车长：仪表台上的扶手、操作员控制台 / 遥控武器站
+    b:grab(H, V(eyeR.X - 0.15, wsY - 0.08, zD + 0.36), V(eyeR.X + 0.15, wsY - 0.08, zD + 0.36), V(0, 0.06, 0), 0.025, C.black)
+    if L.console then
+      b:screen(H, 0.24, 0.18, look(V(eyeR.X, wsY - 0.12, zD + 0.38), eyeR), L.console, { lightColor = RGB(120, 230, 140), lightK = 0.3 })
+      b:screen(H, 0.16, 0.12, look(V(eyeR.X - 0.26, wsY - 0.16, zD + 0.40), eyeR), "afcs", { lightK = 0.2 })
+    end
+    if L.rws then
+      b:screen(H, 0.22, 0.16, look(V(eyeR.X, wsY - 0.14, zD + 0.38), eyeR), "crows", { keys = KEY.crows, lightK = 0.3 })
+      b:group("cch", H, CF(eyeR.X + 0.18, seatY + 0.22, eyeR.Z - 0.30))
+      bx("cch", 0.06, 0.14, 0.06, 0, 0.06, 0, C.black)
+    end
+    -- 座椅（坐垫在原模型座椅的高度）、安全带
+    local SC = cn and RGB(64, 76, 60) or RGB(92, 86, 66)
+    local seats = { eyeL, eyeR }
+    if A.rl then table.insert(seats, A.rl) end
+    if A.rr then table.insert(seats, A.rr) end
+    for _, e in ipairs(seats) do
+      -- 坐垫中心在眼睛正下方稍前（靠背在眼睛后面 0.2 米）；真模型是卡车驾驶座（坐垫顶面中心为原点、人朝 −Z），往后仰 6°
+      if not prop(H, "ip_dseat", CF(e.X, seatY, e.Z - 0.03) * ANG(rad(6), 0, 0), L.seatK or 0.9) then
+        b:seat(H, CF(e.X, seatY, e.Z - 0.03), { w = 0.46, d = 0.44, back = 0.62, recline = 12, head = true, col = SC })
+      end
+      local s = (e.X < 0) and -1 or 1
+      b:cable(H, { V(e.X + s * 0.22, e.Y - 0.05, e.Z + 0.20), V(e.X - s * 0.06, e.Y - 0.40, e.Z - 0.08), V(e.X - s * 0.22, seatY + 0.06, e.Z + 0.05) }, 0.035, RGB(40, 44, 36))
+    end
+    b:extinguisher(H, CF(eyeL.X - 0.18, floorAt(eyeL.X - 0.18, eyeL.Z - 0.25) + 0.20, eyeL.Z - 0.25), 0.36, 0.11)   -- 驾驶座左前、车门边
+    b:light(H, CF(0, roofAt(0, mid.Z + 0.3) - 0.05, mid.Z + 0.3), "dome", RGB(255, 240, 220), 2.4, 0.6)
+    local dress = cn and "crew_cn" or "crew_us"
+    local stations = {
+      driver = { g = H, eye = eyeL, look = V(0, -0.05, -1), yaw = 150, up = 50, down = 60, crew = "driver" },
+      commander = { g = H, eye = eyeR, look = V(0, -0.05, -1), yaw = 150, up = 50, down = 60, crew = "commander" },
+    }
+    local crew = {
+      driver = { dress = dress, g = H, eye = eyeL, lean = 6, yaw = 0, look = V(0, -0.05, -1),
+        hands = { l = { "swheel", V(-0.18, 0.04, 0) }, r = { "swheel", V(0.18, 0.04, 0) } },
+        feet = { l = { H, V(eyeL.X - 0.06, fyD + 0.10, eyeL.Z - 0.80) }, r = { H, V(eyeL.X + 0.12, fyD + 0.10, eyeL.Z - 0.78) } } },
+      commander = { dress = dress, g = H, eye = eyeR, lean = 4, yaw = 0, look = V(0, -0.08, -1),
+        hands = { l = { H, eyeR + V(-0.18, -0.52, -0.30) }, r = { H, eyeR + V(0.18, -0.52, -0.30) } },
+        feet = { l = { H, V(eyeR.X - 0.12, floorAt(eyeR.X, eyeR.Z - 0.7) + 0.10, eyeR.Z - 0.70) }, r = { H, V(eyeR.X + 0.12, floorAt(eyeR.X, eyeR.Z - 0.7) + 0.10, eyeR.Z - 0.70) } } },
+    }
+    local order = { "driver", "commander" }
+    if L.rws then
+      crew.commander.hands.r = { "cch", V(0, 0.12, 0) }
+      stations.commander.optics = { primary = { kind = "crows", name = "CROWS  M153", g = T, pos = V(0, 0.40, -0.10), dir = "free", fovs = { 30, 9 }, ret = "crows", look = "day", shape = "rect", rws = true } }
+    end
+    if A.rl then   -- 后座：能坐过去看侧窗外面
+      stations.rear = { g = H, eye = A.rl, look = V(-0.3, -0.05, -1), yaw = 160, up = 50, down = 60 }
+      table.insert(order, "rear")
+    end
+    if (L.ring or L.gunnerTurret) and A.ring then   -- 射手的炮塔环（车顶的圆口）和吊带座；射手身子大半在车外，车里不画（M1117 用的 M-ATV 原模型是敞开的炮塔环）
+      Defs.ring(b, H, A.ring.X, A.ring.Y - 0.02, A.ring.Z, 0.42, 20, 0.06, 0.06, C.steel, MAT.Metal)
+      local fy = floorAt(A.ring.X, A.ring.Z)
+      bx(H, 0.30, 0.04, 0.20, A.ring.X, fy + 0.70, A.ring.Z, RGB(40, 40, 40), MAT.Fabric)
+      for _, sx in ipairs({ -1, 1 }) do b:tube(H, V(A.ring.X + sx * 0.14, fy + 0.70, A.ring.Z), V(A.ring.X + sx * 0.30, A.ring.Y - 0.05, A.ring.Z), 0.02, C.black, MAT.Fabric) end
+    end
+    return { stations = stations, order = order, crew = crew, gunK = 0.05, cn = cn, glass = {}, cab = true, carved = true }
+  end
+
   ---------------------------------------------------------------- 各型
   local US, CN = false, true
   local function afv(o) return function(b, ctx) return Defs.afv(b, ctx, o) end end
-  local function cab(o) return function(b, ctx) return Defs.cab(b, ctx, o) end end
-  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
+  -- 驾驶室：重新导入过挖了内腔的原车（ctx.cav 有乘员位）走 cabCarved，没有照旧
+  local function cab(o) return function(b, ctx)
+    if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
+    return Defs.cab(b, ctx, o)
+  end end
+  -- 布雷德利：车内漆成用户 11-24 发来的 M3 车内截图那样的浅橄榄绿
+  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, paint = { RGB(158, 168, 128), RGB(132, 142, 106) }, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
   Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })
@@ -554,7 +703,7 @@ return function(Defs, Hp)
   Defs.plz07 = afv({ cn = CN, tur = "sph", gunL = true, eng = 1.7, gunK = 0.55, gunCal = 0.36 })
   Defs.m109a7 = afv({ cn = US, tur = "sph", gunL = true, eng = 1.7, gunK = 0.60, gunCal = 0.40, drv = { ctrl = "tbar" } })
   Defs.m163 = afv({ cn = US, tur = "vulcan", eng = 1.5, drv = { ctrl = "tbar" } })
-  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25 })
+  Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25, analog = true })
   Defs.jltv = cab({ cn = US, seats = 4, rws = true, armored = true, hood = 1.35 })
   Defs.m1117 = cab({ cn = US, seats = 2, armored = true, gunnerTurret = true, hood = 1.10 })
   Defs.pgl625 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })

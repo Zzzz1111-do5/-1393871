@@ -1,4 +1,4 @@
--- 内饰里的屏幕有没有被挡住（模拟器）：python3 tools/mock/run.py tools/mock/interior_occ.lua veh=<型号>
+-- 内饰里的屏幕有没有被挡住（模拟器）：python3 tools/mock/run.py tools/mock/interior_occ.lua veh=<型号> [imp=m1a1i]
 --   用户 11-22：「坦克内部屏幕会被挡住」。每个乘员位：眼睛 → 眼前 1 米以内（自己这个位置的屏幕）、在视野里的每块屏幕正中打一条线，
 --   看中间隔着什么（别的乘员、内饰零件、车外模型），挡住的列出来
 -- （下面开服、坐进车里同 interior_all.lua）
@@ -10,6 +10,7 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "m2a3"
 local dumpDir = TEST_ARGS:match("dump=(%S+)")
+local IMP = TEST_ARGS:match("imp=(%w+)")   -- imp=m1a1i：假装导入了拆好的 M1A1 原模型（A1 / A2 整套、布雷德利借的那几件）
 
 local G = T.boot()
 G.fortsHold = true
@@ -31,6 +32,7 @@ local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
 T.actAs(me, "deploy", "rifle", "camp")
 R.run(1.5)
+if IMP then check(T.fakeImport(IMP) > 0, "假装导入了 " .. IMP) end
 local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 local Map = G.Map
 local def = VD.get(VEH)
@@ -146,7 +148,9 @@ for i, name in ipairs(cur.spec.order) do
         local len = dist - 0.03 * SC
         local hits = {}
         for _, p in ipairs(cur.model:GetDescendants()) do
-          if p:IsA("BasePart") and not screenParts[p] and p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 then
+          -- 座椅真模型（ip_dseat，一整块网格）不算：这里按定向包围盒判，往后仰的座椅（驾驶员半躺）包围盒的顶面罩在脸前，
+          --   实际的坐垫、靠背、头枕都在眼睛后下方，挡不住屏幕
+          if p:IsA("BasePart") and not screenParts[p] and p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 and not string.match(p.Name, "^O_ip_dseat__") then
             local t = rayOBB(eye, d, len, p)
             if t then
               local who = crewOf(p)

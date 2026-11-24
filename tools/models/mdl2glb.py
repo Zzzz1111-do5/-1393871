@@ -575,16 +575,37 @@ if __name__ == '__main__':
             print('%-8s 没转、原来也没有：游戏里用零件拼的' % key)
             continue
         have.add(key)
+    # tools/models/blveh.py（Blender 直接转 Sketchfab 原文件）管的模型：这里不转，元数据那一行、alias、old（没重新导入时退回的旧模型键）照旧
+    olds = {}
+    try:
+        BL = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blveh.json'), encoding='utf-8'))
+    except OSError:
+        BL = {}
+    for bkey, bc in sorted(BL.items()):
+        if bkey in old and bkey not in have:
+            rows.append(old[bkey])
+            have.add(bkey)
+            for a in bc.get('alias', []):
+                alias[a] = bkey
+                if bc.get('old') and bc['old'] in have:
+                    olds[a] = bc['old']
+            print('%-8s blveh.py 转的，元数据照旧' % bkey)
     with open(META, 'w', encoding='utf-8') as f:
         f.write('-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）\n')
         f.write('--   alias：游戏里的型号 → 模型键；m[模型键] = { len 长 / w 宽 / h 高（格，真实尺寸：1 米 = 2.8 格；含炮管、天线）, hull 车身的宽高长（不含炮塔、炮）,\n')
         f.write('--     parts[块名] = { g 部件（Body / Turret / Gun / W01…）, c 中心, s 大小,\n')
         f.write('--       col 没有底色贴图的块的颜色（sRGB 0–255）, a 不透明度（半透明的才有）, met 金属 }（原点在车底中心，−Z 朝前）,\n')
         f.write('--     tur 炮塔转轴, gun 炮耳轴, muz 炮口在耳轴前多远, wheels[部件] = { c 中心, r 半径 }, credit 署名 }；导入后 MeshPart 叫 V_<模型键>__<块名>\n')
-        f.write('return {\n  alias = ' + lua({a: k for a, k in alias.items() if k in have}) + ',\n  m = {\n')
+        f.write('--     old：游戏里的型号 → 旧模型键（alias 那个模型没导入时退回旧的，tools/models/blveh_meta.py）；int：原模型自带车内（块的 k = "int"）；'
+                'src：原模型 glTF 坐标 → 这里的坐标（tools/models/blveh.py）；pts：原模型上量的点（格）\n')
+        f.write('return {\n  alias = ' + lua({a: k for a, k in alias.items() if k in have}) + ',\n')
+        if olds:
+            f.write('  old = ' + lua(olds) + ',\n')
+        f.write('  m = {\n')
         f.writelines(rows)
         f.write('  },\n}\n')
     extra = [(c['name'], key, sfveh.credit(key)) for key, c in sorted(sfveh.SF.items()) if key in have]
+    extra += [(bc['title'], bkey, '%s（%s）' % (bc['creditEn'], bc.get('changes', ''))) for bkey, bc in sorted(BL.items()) if bkey in have and 'creditEn' in bc]   # blveh.py 转的
     write_credits(os.path.join(OUTDIR, 'credits.txt'), [k for k in webkeys if k in have], meta_out,
                   'Roblox全面大战场的地面载具模型（models/veh/<模型键>.glb）：从网页版《暗剑》烘焙的装备模型原样转换（js/mdl/<模型键>.js）\n'
                   '  这里的改动：坐标换成 Roblox 的轴向、按 1 米 = 2.8 格缩放、原点挪到车底中心；按部件（车体 / 炮塔 / 炮 / 每个车轮）和材质切成几块，'

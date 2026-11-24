@@ -63,9 +63,138 @@ function Fly.init(G)
   local CH = { thr = "Thr", gear = "Gear", flap = "Flap", pit = "Pit", rol = "Rol", yaw = "Yaw", bay = "Bay", bayS = "BayS", rpm = "Rpm", col = "Col", can = "Can",
     hook = "Hook", brk = "Brk", ty = "Ty", gp = "Gp", fold = "Fold" }
 
+  ---------------------------------------------------------------- 被击毁的飞机：坠落（用户 11-23：把宣传片里的动画做进游戏）
+  --   照片子里阿帕奇被防空车打中的样子——直升机：尾桨没了，机身越转越快（一开始每秒 2 弧度多、往上加到 9）、机头往下栽、左右晃，
+  --     尾梁上一团火、拖着一长条黑烟往下掉；固定翼：顺着速度栽下去、慢慢滚转，发动机那里拖着火和黑烟；砸到地上炸开，残骸躺在地上接着烧十几秒。
+  --   原来服务器 4 秒后就把实体收了，高处打下来的掉到一半凭空没了：收了以后这里接着演完（viewKind.air.remove 留下、falling 每帧接着动）
+  local falling = {}
+  G.airFalling = falling   -- 测试用
+  local function wreckStart(v, vel)
+    local d, M = v.def, v.M
+    local heli = d.kind == "heli"
+    local lv = v.cf.LookVector
+    v.wreck = { vel = vel, t = 0, heli = heli, spin = (math.random() - 0.5) * 3, yaw = math.atan2(-lv.X, -lv.Z),
+      pitch = math.asin(clamp(lv.Y, -1, 1)) }
+    local W = v.wreck
+    if M then M.dark = true end   -- 被击毁：灯全灭
+    for _, it in ipairs(M.items) do
+      local p = it.p
+      if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+        for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+        pcall(function() p.TextureID = "" end)
+        if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
+      elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
+    end
+    -- 火、黑烟：挂在尾梁（直升机）/ 尾喷口（固定翼）上的一个看不见的零件，粒子留在世界里，自然拖成一条
+    local h = Instance.new("Part")
+    h.Name = "WreckFire"
+    h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.CastShadow = true, false, false, false, false
+    h.Transparency, h.Size = 1, V(0.4, 0.4, 0.4)
+    h.Parent = v.model
+    local fire = Instance.new("ParticleEmitter")
+    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+    fire.Rate = 70
+    fire.Lifetime = NumberRange.new(0.25, 0.6)
+    fire.Speed = NumberRange.new(2, 7)
+    fire.SpreadAngle = Vector2.new(35, 35)
+    fire.LightEmission = 1
+    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(0.4, 5.5), NumberSequenceKeypoint.new(1, 1.5) })
+    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
+    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 180)), ColorSequenceKeypoint.new(0.45, RGB(255, 140, 50)), ColorSequenceKeypoint.new(1, RGB(90, 30, 15)) })
+    fire.Parent = h
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    smoke.Rate = 26
+    smoke.Lifetime = NumberRange.new(3.5, 6)
+    smoke.Speed = NumberRange.new(1, 4)
+    smoke.SpreadAngle = Vector2.new(25, 25)
+    smoke.Drag = 0.6
+    smoke.Acceleration = V(0, 2.5, 0)
+    smoke.Rotation = NumberRange.new(0, 360)
+    smoke.RotSpeed = NumberRange.new(-25, 25)
+    smoke.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 24) })
+    smoke.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+    smoke.Color = ColorSequence.new(RGB(38, 34, 30))
+    smoke.Parent = h
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness, light.Shadows = RGB(255, 140, 60), 34, 4, false
+    light.Parent = h
+    W.h, W.fire, W.smoke, W.light = h, fire, smoke, light
+    W.hold = heli and CF(0, d.H * 0.18, d.L * 0.36) or CF(0, 0, d.L * 0.46)   -- 尾梁 / 尾喷口（机头是 −Z）
+  end
+  local function wreckMove(v, dt)
+    local W, d = v.wreck, v.def
+    if not W then return end
+    W.t += dt
+    if W.down then   -- 躺在地上烧：火慢慢小下去
+      W.burn = (W.burn or 0) + dt
+      local k = math.max(0, 1 - W.burn / 15)
+      if W.fire then W.fire.Rate = 45 * k end
+      if W.smoke then W.smoke.Rate = 6 + 14 * k end
+      if W.light then W.light.Brightness = 3 * k * (0.8 + 0.2 * math.sin(os.clock() * 13)) end
+      return
+    end
+    W.vel += V(0, -GR, 0) * dt
+    W.vel = V(W.vel.X * (1 - (W.heli and 0.35 or 0.1) * dt), W.vel.Y * (1 - 0.06 * dt), W.vel.Z * (1 - (W.heli and 0.35 or 0.1) * dt))
+    local p = v.cf.Position + W.vel * dt
+    local g = ground(p.X, p.Z)
+    if p.Y < g + 1 then   -- 砸到地上：炸开，残骸躺下、歪着
+      W.down = true
+      p = V(p.X, g + 1, p.Z)
+      if G.boom then G.boom(p, W.heli and 2.6 or 3, "wreck") end
+      if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 160, 70), 90, 18, 1.1) end
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(0.1, 0, W.heli and 0.5 or 0.2)
+      if W.h then W.h.CFrame = v.cf * (W.heli and CF(0, 0, 0) or W.hold) end
+      return
+    end
+    if W.heli then
+      -- 尾桨没了：机身越转越快、机头往下栽、左右晃
+      local rate = math.min(9, 2.2 + 3.2 * W.t)
+      W.yaw += rate * dt
+      local pitch = math.max(-0.6, -(0.12 + 0.08 * W.t))
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(pitch, 0, math.sin(W.t * 3) * 0.25)
+    else
+      local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
+      v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
+      W.yaw = math.atan2(-look.X, -look.Z)
+    end
+    if W.h then W.h.CFrame = v.cf * W.hold end
+  end
+  -- 服务器收了实体以后接着演：落地烧够了再删
+  G.frameConn("AirWreck", function(dt)
+    if #falling == 0 then return end
+    local now = os.clock()
+    for i = #falling, 1, -1 do
+      local v = falling[i]
+      local ok = pcall(function()
+        wreckMove(v, dt)
+        local d = v.def
+        if d.rotor and v.c and not (v.wreck and v.wreck.down) then   -- 主旋翼还在转（尾桨没了）
+          v.spin1 = ((v.spin1 or 0) + 0.7 * d.rotor.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2)
+          v.c.spin1 = v.spin1
+        end
+        if v.M then AM.pose(v.M, v.cf, v.c or {}, now) end
+      end)
+      local W = v.wreck
+      if not ok or not W or (W.down and (W.burn or 0) > 16) or W.t > 60 then
+        if v.model then v.model:Destroy() end
+        table.remove(falling, i)
+      end
+    end
+  end)
+
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
     importReady = function(v) return v.M ~= nil and not v.M.imported and v.def ~= nil and AM.importedFor(v.def) ~= nil end,   -- 原模型后来才复制齐：View 重建
+    -- 实体被服务器收走：被击毁、还在往下掉 / 躺着烧的留下来接着演（上面的 falling），别的照常删
+    remove = function(v)
+      if v.wreck and not (v.wreck.down and (v.wreck.burn or 0) > 16) then
+        if v.bb then v.bb:Destroy() v.bb = nil end
+        table.insert(falling, v)
+        return true
+      end
+      return false
+    end,
     build = function(v, em, team)
       local d = AD.get(em:GetAttribute("Model") or "")
       if not d then return false end
@@ -81,44 +210,9 @@ function Fly.init(G)
       local em, d, M = v.em, v.def, v.M
       local own = st and st.em == em and st
       local target = v.root.CFrame
-      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下（别人的飞机：速度按收到的位置快照算，View.lua G.follow）
-        if not v.wreck then
-          v.wreck = { vel = (own and own.vel) or (v.fl and v.fl.vel) or V(), spin = (math.random() - 0.5) * 3, t = 0 }
-          if v.M then v.M.dark = true end   -- 被击毁：灯全灭
-          for _, it in ipairs(M.items) do
-            local p = it.p
-            if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
-              for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
-              pcall(function() p.TextureID = "" end)
-              if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
-            elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
-          end
-        end
-        local W = v.wreck
-        W.t += dt
-        if not W.down then
-          W.vel += V(0, -GR, 0) * dt
-          W.vel *= (1 - 0.1 * dt)
-          local p = v.cf.Position + W.vel * dt
-          local g = ground(p.X, p.Z)
-          if p.Y < g + 1 then
-            W.down = true
-            p = V(p.X, g + 1, p.Z)
-            if G.boom then G.boom(p, 2, "wreck") end
-          end
-          local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
-          v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
-          W.smokeT = (W.smokeT or 0) - dt
-          if W.smokeT <= 0 and G.fxPart then
-            W.smokeT = 0.06
-            local s = G.fxPart(Enum.PartType.Ball, V(4, 4, 4), CFrame.new(p), RGB(40, 38, 36), Enum.Material.SmoothPlastic, 0.3)
-            if G.tween then G.tween(s, 2.4, { Size = V(16, 16, 16), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(s, 2.5)
-            local f = G.fxPart(Enum.PartType.Ball, V(3, 3, 3), CFrame.new(p), RGB(255, 140, 40), Enum.Material.Neon, 0.1)
-            if G.tween then G.tween(f, 0.4, { Size = V(6, 6, 6), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(f, 0.45)
-          end
-        end
+      if em:GetAttribute("Wreck") then   -- 被击毁：坠落（wreckStart / wreckMove 在上面）
+        if not v.wreck then wreckStart(v, (own and own.vel) or (v.fl and v.fl.vel) or V()) end
+        wreckMove(v, dt)
       elseif own then
         v.cf = own.cf
       else   -- 别人的飞机：快照插值（匀速，不一顿一顿；跳太远直接过去）
@@ -821,6 +915,7 @@ function Fly.init(G)
     st = nil
     G.fly = nil
     G.hitMarkerAt = nil
+    if G.airAudioOff then G.airAudioOff() end
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -1082,6 +1177,7 @@ function Fly.init(G)
     local locked = st.lock and st.lockT >= (w.lockTime or 1)
     if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
+    if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
     st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
     G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
     for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
@@ -1664,6 +1760,7 @@ function Fly.init(G)
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
+        if G.airAudioEvent then G.airAudioEvent("flare") end
       end
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
@@ -1726,7 +1823,10 @@ function Fly.init(G)
 
   -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
   function G.onHitMarker(kind)
-    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+    if st and st.pilot then
+      st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45))
+      if G.airAudioEvent then G.airAudioEvent((kind == "kill") and "kill" or "hit") end   -- 战雷式命中「叮」、击落两声
+    end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
@@ -2216,7 +2316,7 @@ function Fly.init(G)
     local bm, bs = false, false
     if wid then bm, bs = bayOf(wid) end
     st.bay = approach(st.bay, bm and 1 or 0, dt * 2.5)
-    st.bayS = approach(st.bayS, bs and 1 or 0, dt * 2.5)
+    st.bayS = approach(st.bayS, bs and 1 or 0, dt * (d.sideArm and 0.9 or 2.5))   -- 歼-20 侧弹舱：开门、转出、关门三段，一秒多一点
     st.c.bay, st.c.bayS = st.bay, st.bayS
     -- 开火：鼠标左键 机炮按住连发（扳机发给服务器）；F 挂的弹一下一发（火箭按住连发）。没有炮的飞机左键也发挂的弹
     --   手机：开火键按选中的那种（选的是炮就打炮）
@@ -2254,7 +2354,12 @@ function Fly.init(G)
         local root = st.lock.em:FindFirstChild("Root")
         if root then
           local to = root.CFrame.Position - pos
+          local d0 = st.lock.dist
           st.lock.dir, st.lock.dist, st.lock.pos = to.Unit, to.Magnitude, root.CFrame.Position
+          if d0 and dt > 0 then   -- 接近速度（米 / 秒，近了为正）：战雷式锁定框右边写的那个，平滑一下
+            local vc = (d0 - st.lock.dist) / dt / AD.M
+            st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
+          end
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock)
           if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
@@ -2285,6 +2390,7 @@ function Fly.init(G)
     if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
       st.flareNext = os.clock() + 0.3
       G.R.Drive:FireServer({ op = "flare" })
+      if G.airAudioEvent then G.airAudioEvent("flare") end
     end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
@@ -2398,6 +2504,16 @@ function Fly.init(G)
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 提示音、告警音（AirAudio.lua，用户 11-24：「把开飞机的各种 ui 声音做成战雷」）：导引头声、雷达弹锁定、导弹来袭、失速、拉起、油少、熄火、起落架
+      if G.airAudioStep then
+        local lk = st.lock
+        G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
+          locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
+          pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
+          gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
+      end
       -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
       --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
       local rest = st.ground and em:GetAttribute("Rest") or 0
@@ -2443,7 +2559,18 @@ function Fly.init(G)
         lockText.Text = locked and (T("air.locked") .. (st.uav and string.format("  %dm", math.floor(st.lock.dist / AD.M)) or "")) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
         lockText.TextColor3 = locked and RGB(255, 80, 70) or HUD
         info.lockDist = st.lock.dist
-        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out }
+        -- 战雷式锁定（AirHud）：目标型号写在框上面，距离、接近速度写在右边；红外弹的导引头圈从机头滑到目标上
+        local mdl = st.lock.em and st.lock.em:GetAttribute("Model")
+        local nm = nil
+        if mdl then
+          for _, pre in ipairs({ "veh.", "ship.", "fort." }) do
+            local tx = T(pre .. mdl)
+            if tx ~= pre .. mdl then nm = tx break end
+          end
+          nm = nm or string.upper(mdl)
+        end
+        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out,
+          name = nm, dist = st.lock.dist, vc = st.lock.vc, seeker = w.seeker or w.guide, bore = bp }
         if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false

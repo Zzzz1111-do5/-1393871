@@ -89,15 +89,32 @@ function Drive.init(G)
   ss.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   ss.Parent = screenBox
   -- 分划：中心十字、两边的横线、测距刻度（照截图的样子）
-  local RET = RGB(235, 235, 235)
+  --   用户 11-24：「坦克开镜视角……带着光晕的红色准心，像钢铁猛兽一样」——LED 照明的红分划：每条线后面垫两层更宽、更透明的红色（光晕），
+  --   数字也带一圈红色的发光描边；昼光、夜视、热像都是红的（车里的分划照明旋钮：白天亮红、夜间暗红）
+  local RET = RGB(255, 46, 32)
+  local RET_DIM = RGB(190, 34, 24)
   local reticle = Instance.new("Frame")
   reticle.Size = UDim2.fromOffset(300, 120)
   reticle.AnchorPoint = Vector2.new(0.5, 0.5)
   reticle.Position = UDim2.fromScale(0.5, 0.5)
   reticle.BackgroundTransparency = 1
   reticle.Parent = sight
-  local retParts = {}
-  local function rl(size, pos) local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5)) table.insert(retParts, f) return f end
+  local retParts, retHalo = {}, {}
+  local function halo(size, pos, grow, tr)
+    local h = ui.frame(reticle, UDim2.new(size.X.Scale, size.X.Offset + grow, size.Y.Scale, size.Y.Offset + grow), pos, RET, tr, Vector2.new(0.5, 0.5))
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, math.ceil(grow / 2) + 1)
+    c.Parent = h
+    table.insert(retHalo, { f = h, t = tr })
+    return h
+  end
+  local function rl(size, pos)
+    halo(size, pos, 12, 0.9)
+    halo(size, pos, 5, 0.68)
+    local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5))
+    table.insert(retParts, f)
+    return f
+  end
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, -110, 0.5, 0))
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, 110, 0.5, 0))
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, -56, 0.5, -10))
@@ -106,8 +123,18 @@ function Drive.init(G)
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, 56, 0.5, 10))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, -26))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, 26))
-  local dot = rl(UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5))
-  dot.BackgroundTransparency = 1
+  -- 中心的小圈：一圈细线 + 外面一圈更粗、更透明的（光晕），圈里面不填（别挡住瞄的东西）
+  local dotHalo = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  local dhs = Instance.new("UIStroke")
+  dhs.Color = RET
+  dhs.Thickness = 5
+  dhs.Transparency = 0.75
+  dhs.Parent = dotHalo
+  local dhc = Instance.new("UICorner")
+  dhc.CornerRadius = UDim.new(0.5, 0)
+  dhc.Parent = dotHalo
+  local dot = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  table.insert(retParts, dot)
   local dotStroke = Instance.new("UIStroke")
   dotStroke.Color = RET
   dotStroke.Thickness = 1.5
@@ -124,6 +151,13 @@ function Drive.init(G)
   rangeText.Name = "FcsRange"
   local readyBox = ui.frame(sight, UDim2.fromOffset(15, 15), UDim2.new(0.5, 118, 0.5, 150), RET, 0, Vector2.new(0.5, 0.5))
   readyBox.Name = "FcsReady"
+  -- 多回波指示（真车主瞄准镜：一次激光打到好几个东西——草丛、烟、树后面的车——距离数字上面一道横杠；首 / 末回波开关选用哪一个）
+  local multiBar = ui.frame(sight, UDim2.fromOffset(64, 3), UDim2.new(0.5, 0, 0.5, 133), RET, 0, Vector2.new(0.5, 0.5))
+  multiBar.Name = "FcsMulti"
+  multiBar.Visible = false
+  -- 火控状态（方式不是正常、稳定器关、激光保险、炮口基准该更新了）：分划上方一行
+  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  fcsText.Name = "FcsStatus"
   local readyStroke = Instance.new("UIStroke")
   readyStroke.Color = RET
   readyStroke.Thickness = 1.5
@@ -154,6 +188,27 @@ function Drive.init(G)
   cc.Parent = Lighting
   G.sightCC = cc
   local MODES = { "day", "nv", "whot", "bhot" }
+  local ZOOMS0 = { 20, 7 }   -- 瞄准镜视场（度）：约 3.5×、10×
+  -- 各型的视场（VehDefs 的 sightZoom：昼光、热像各几档倍率）：M1A2 SEPv2 第二代前视红外热像 3 / 6 / 13 / 25 / 50 倍、昼光 3 / 10 倍
+  local ZOOMS = ZOOMS0
+  local function zoomList()
+    local z = st and st.d and st.d.sightZoom
+    if not z then return ZOOMS0 end
+    local th = st.mode == 3 or st.mode == 4
+    local mags = (th and z.th) or z.day or { 3.5, 10 }
+    local key = (th and "th" or "day")
+    z._fov = z._fov or {}
+    if not z._fov[key] then
+      local t = {}
+      for i, m in ipairs(mags) do t[i] = 70 / m end
+      z._fov[key] = t
+    end
+    return z._fov[key]
+  end
+  local function syncZooms()
+    ZOOMS = zoomList()
+    if st then st.zoom = math.clamp(st.zoom or 1, 1, #ZOOMS) end
+  end
   local hl = {}   -- 热成像的高亮
   local function clearHl()
     for _, h in ipairs(hl) do h:Destroy() end
@@ -195,6 +250,7 @@ function Drive.init(G)
       return
     end
     sight.Visible = true
+    syncZooms()
     local m = MODES[st.mode]
     G.sightNv = m == "nv"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
     local thermal = m == "whot" or m == "bhot"
@@ -202,25 +258,45 @@ function Drive.init(G)
     screenBox.Visible = thermal
     grain.Visible = m ~= "day"
     cc.Enabled = true
-    local retCol = RET
+    local retCol = st.retNight and RET_DIM or RET   -- 红分划（钢铁猛兽那样）：分划照明旋钮白天亮红、夜间暗红
     if m == "day" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.1, 0.08, 0, Color3.new(1, 1, 1)
       clearHl()
     elseif m == "nv" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.35, 0.06, RGB(120, 255, 140)
-      retCol = RGB(190, 255, 190)
       clearHl()
     elseif m == "whot" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
       refreshHl(Color3.new(1, 1, 1))
     else
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
-      retCol = RGB(20, 20, 20)
       refreshHl(Color3.new(0, 0, 0))
     end
-    for _, f in ipairs(retParts) do f.BackgroundColor3 = retCol end
+    -- 热像仪的增益（对比度）、电平（亮度）：炮长控制面板上的两个旋钮（车里 Interior：st.thGain / st.thLevel，0～4，2 是中间）
+    if m == "whot" or m == "bhot" then
+      cc.Contrast += ((st.thGain or 2) - 2) * 0.12
+      cc.Brightness += ((st.thLevel or 2) - 2) * 0.07
+    end
+    -- 分划照明（白天的光学通道：夜里拨到红色照明）、分划亮度、符号亮度（面板上的旋钮：0 最亮 … 3 最暗 / 关）
+    local RB = ({ 0, 0.25, 0.5, 0.75 })[(st.retLvl or 0) + 1] or 0
+    local SB = ({ 0, 0.3, 0.6, 1 })[(st.symLvl or 0) + 1] or 0
+    for _, f in ipairs(retParts) do f.BackgroundColor3 = retCol f.BackgroundTransparency = (f == dot) and 1 or RB end
+    -- 光晕跟着分划亮度：调暗了光晕也淡；夜间照明（暗红）光晕再淡一点
+    local hk = (1 - RB) * (st.retNight and 0.7 or 1)
+    for _, h in ipairs(retHalo) do
+      h.f.BackgroundColor3 = retCol
+      h.f.BackgroundTransparency = 1 - (1 - h.t) * hk
+    end
+    dhs.Color, dhs.Transparency = retCol, 1 - 0.25 * hk
     dotStroke.Color = retCol
+    dotStroke.Transparency = RB
+    for _, l in ipairs({ rangeText, modeText, zoomText, ammoText, fcsText }) do   -- 字也带一圈红色的光
+      l.TextStrokeColor3 = retCol
+      l.TextStrokeTransparency = 1 - (1 - SB) * 0.45 * (st.retNight and 0.7 or 1)
+    end
     rangeText.TextColor3, modeText.TextColor3, zoomText.TextColor3, ammoText.TextColor3 = retCol, retCol, retCol, retCol
+    rangeText.TextTransparency, modeText.TextTransparency, zoomText.TextTransparency, ammoText.TextTransparency, fcsText.TextTransparency = SB, SB, SB, SB, SB
+    fcsText.TextColor3, multiBar.BackgroundColor3, multiBar.BackgroundTransparency = retCol, retCol, SB
     readyBox.BackgroundColor3, readyStroke.Color = retCol, retCol
     modeText.Text = T("sight." .. m)
     for _, g in ipairs(dots) do g.BackgroundColor3 = (m == "nv") and RGB(200, 255, 200) or Color3.new(1, 1, 1) end
@@ -345,9 +421,24 @@ function Drive.init(G)
   -- 发动机声（开车的人自己听）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、削掉高音）+ 涡轮 / 履带的呜呜声（风声循环），
   --   油门越大、开得越快音调越高、越响；坦克沉一点，轮式车尖一点
   local engine = nil
+  -- 一次性的真录音（起动、熄火、加速）：放在 SoundService，播完自己删
+  local function realOnce(key, vol, speed)
+    local id, cfg = nil, nil
+    if G.realSound then id, cfg = G.realSound(key) end
+    if not id then return nil end
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = (cfg and cfg.vol or 1) * (vol or 1)
+    s.PlaybackSpeed = speed or 1
+    s.Parent = game:GetService("SoundService")
+    s:Play()
+    game:GetService("Debris"):AddItem(s, ((cfg and cfg.len) or 4) / (speed or 1) + 0.5)
+    return s
+  end
   local function engineStop()
     if engine then
       for _, snd in pairs(engine.s) do if snd then snd:Destroy() end end
+      if engine.layered and not engine.layered.turb then realOnce("tankStop", 0.9) end   -- 柴油机熄火一声
       engine = nil
     end
   end
@@ -365,6 +456,33 @@ function Drive.init(G)
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
     local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
     engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2, realEng = realEng ~= nil }
+    -- 战雷式分层（用户 11-24：「坦克的发动机声音、加速声音」）：有行驶循环的录音就分层——
+    --   柴油机：怠速层（转速低为主）和行驶层（转速上去、负载大更响更沉）交叉淡入淡出，上车先一声起动、下车一声熄火，猛踩油门叠一声加速；
+    --   M1 系列（AGT1500 燃气轮机）：喷气发动机录音放慢当轰鸣、1000 赫兹纯音升调当尖啸，上车 2.5 秒从低转速爬上来，底下垫一层放慢的行驶录音；
+    --   履带：真录音循环，车速越快越密越响；车里 / 镜里每层削掉高音（闷）
+    if realEng and G.realLoop then
+      local drive = G.realLoop("tankDrive", SS)
+      if drive then
+        local turb = d.id == "m1a1" or d.id == "m1a2"
+        local jet = turb and G.realLoop("jetEngine", SS) or nil
+        local tone = (turb and jet) and G.realLoop("toneSine", SS) or nil
+        local tracks = G.realLoop("tankTracks", SS)
+        local L = { drive = drive, jet = jet, tone = tone, tracks = tracks, turb = turb and jet ~= nil and tone ~= nil, load = 0, t0 = os.clock() }
+        for _, snd in pairs({ realEng, drive, jet, tone, tracks }) do
+          snd.Volume = 0
+          local e = Instance.new("EqualizerSoundEffect")
+          e.Name = "Muffle"
+          e.Parent = snd
+          table.insert(engine.s, snd)
+        end
+        if not L.turb then
+          if jet then jet:Destroy() L.jet = nil end
+          if tone then tone:Destroy() L.tone = nil end
+          realOnce("tankStart", 0.85)
+        end
+        engine.layered = L
+      end
+    end
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -387,6 +505,58 @@ function Drive.init(G)
     if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
+    local L = engine.layered
+    if L then
+      local function smooth(a, b, x)
+        local k = math.clamp((x - a) / (b - a), 0, 1)
+        return k * k * (3 - 2 * k)
+      end
+      -- 负载：踩着油门、车还没跑起来（加速中）大；松油门、匀速小——大负载更响、音色更沉
+      local want2 = math.abs(thr) * math.clamp(1 - spd * 0.85, 0.15, 1)
+      L.load += (want2 - L.load) * math.min(1, dt * 4)
+      local load = L.load
+      local now = os.clock()
+      if L.turb then
+        local spool = math.clamp((now - L.t0) / 2.5, 0, 1)   -- 起动：转速从低往上爬
+        local rr = r * spool
+        L.jet.PlaybackSpeed = 0.30 + 0.22 * spool + rr * 0.42 + load * 0.05
+        L.jet.Volume = (0.30 + 0.45 * rr + 0.25 * load) * (0.4 + 0.6 * spool)
+        L.tone.PlaybackSpeed = 1.35 + rr * 1.35 + load * 0.08   -- 尖啸 1350～2800 赫兹
+        L.tone.Volume = (0.018 + 0.03 * rr + 0.02 * load) * spool
+        engine.rumble.Volume = 0
+        L.drive.PlaybackSpeed = 0.55 + r * 0.25
+        L.drive.Volume = (0.12 + 0.25 * r) * smooth(0.02, 0.2, spd + load * 0.3)
+      else
+        local fadeIn = math.clamp((now - L.t0 - 1.1) / 1.0, 0, 1)   -- 起动声放完才进怠速
+        local idleW = 1 - smooth(0.25, 0.62, r)
+        engine.rumble.PlaybackSpeed = 0.9 + r * 0.35
+        engine.rumble.Volume = (0.25 + 0.55 * idleW) * (0.35 + 0.65 * fadeIn)
+        L.drive.PlaybackSpeed = 0.72 + r * 0.52 + load * 0.04
+        L.drive.Volume = (smooth(0.12, 0.5, r) * (0.45 + 0.55 * load) + 0.12 * r) * 1.15 * fadeIn
+        -- 猛踩油门（起步、刹停再走）：叠一声加速（3 秒内不重复）
+        if math.abs(thr) > 0.7 and (L.prevThr or 0) < 0.35 and now - (L.accT or -9) > 3 and fadeIn >= 1 then
+          L.accT = now
+          realOnce("tankAccel", 0.75 + 0.25 * (1 - spd))
+        end
+      end
+      L.prevThr = math.abs(thr)
+      local airL = st and st.airS ~= nil
+      if L.tracks then
+        L.tracks.PlaybackSpeed = 0.55 + spd * 0.75
+        L.tracks.Volume = airL and 0 or smooth(0.01, 0.18, spd) * (0.25 + 0.5 * spd)
+      end
+      if engine.clank then engine.clank.Volume = 0 end
+      -- 车里 / 镜里：闷（削高音、低音厚一点）
+      local inside = (st and st.sight) or (G.interiorOn and G.interiorOn())
+      for _, snd in pairs({ engine.rumble, L.drive, L.jet, L.tone, L.tracks }) do
+        local e = snd and snd:FindFirstChild("Muffle")
+        if e then e.LowGain, e.MidGain, e.HighGain = inside and 3 or 0, inside and -4 or 0, inside and -16 or 0 end
+      end
+      local slip = (st and not airL) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
+      engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
+      engine.skid.PlaybackSpeed = 1.4 + slip * 1.2
+      return
+    end
     if engine.realEng then   -- 真录音：转速高了放快一点、响一点；叠出来的涡轮尖啸压低（别盖住真录音）
       engine.rumble.PlaybackSpeed = 0.8 + r * 0.55
       engine.rumble.Volume = 0.5 + 0.6 * r
@@ -453,7 +623,13 @@ function Drive.init(G)
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false,
       mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 3 or 1), zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0,
-      fcs = { am = nil, R = nil, laseT = nil, ry = 0, rp = 0 } }   -- 火控：弹种、测的距离（米）、测距的时刻、瞄准线跟踪的角速度
+      fcs = { am = nil, R = nil, laseT = nil, ry = 0, rp = 0,   -- 火控：弹种、测的距离（米）、测距的时刻、瞄准线跟踪的角速度
+        lrf = "LAST", arm = true, multi = false,   -- 激光：末回波 / 首回波（真车开机默认末回波）、待命 / 保险、上一次是不是多回波
+        mode = 1,                                  -- 火控方式：1 正常、2 应急（没有提前量）、3 手动（没有弹道计算机、没有稳定、手摇方向高低机）
+        bsR = {},                                  -- 各弹种的战斗瞄准距离（调整页改过的；没改是弹种自己的）
+        droop = 0, mrs = 0,                        -- 炮管热弯曲（毫弧度：开炮炮管发热往下弯，慢慢冷回来）、上次炮口基准更新时量的弯曲
+        bore = { 0, 0 } },                         -- 校炮偏差（密位：方向、高低）
+      stab = true, retLvl = 0, symLvl = 0, retNight = false, thGain = 2, thLevel = 2 }   -- 稳定器、分划亮度、符号亮度、分划夜间照明、热像增益、电平
     G.drive, G.myVeh = st, st
     -- Shift 进出瞄准镜：高优先级绑定，吃掉这一下（不然 Roblox 自带的 Shift 锁定视角也会动）
     CAS:BindActionAtPriority("DriveSight", function(_, state)
@@ -914,10 +1090,16 @@ function Drive.init(G)
     local wantYaw = math.deg(math.atan2(rel.X, -rel.Z))
     local wantPitch = math.deg(math.atan2(rel.Y, math.max(horiz, 1)))
     local am = w and w.kind == "shell" and not st.aimNoDrop and BAL.GUN[d.weapons[st.wi] or ""] and BAL.ammo(d.weapons[st.wi], st.fcs.am)
+    local f = st.fcs
     if am then   -- 坦克炮：弹道计算机按到瞄准点的距离、弹种算超高角（瞄准镜里瞄准点在测的距离上；车外是准星打到的地方——自动测距）
-      local se = BAL.superElev(am, math.sqrt(horiz * horiz + rel.Y * rel.Y) / BAL.S, math.atan2(rel.Y, math.max(horiz, 1)))
+      -- 手动方式（火控方式开关拨到 MANUAL：弹道计算机不工作）：炮管不抬超高角，要炮长自己用分划往上留
+      local se = (f.mode == 3) and 0 or BAL.superElev(am, math.sqrt(horiz * horiz + rel.Y * rel.Y) / BAL.S, math.atan2(rel.Y, math.max(horiz, 1)))
       wantPitch += math.deg(se)
       st.fcsSE = se
+      -- 炮管热弯曲没修正的那部分（开炮炮管上热下凉往下弯；炮口基准更新以后的变化计算机不知道）：炮比瞄准线低一点；校炮偏差（密位）
+      wantPitch -= (f.droop - f.mrs) * 0.0573
+      wantPitch += (f.bore[2] or 0) * 0.05625
+      wantYaw += (f.bore[1] or 0) * 0.05625
     elseif w and w.kind == "shell" and not st.aimNoDrop then   -- 炮弹下坠：按飞行时间抬一点（防空火控给的点已经算过下坠）
       local tFly = horiz / w.speed
       local drop = 0.5 * workspace.Gravity * 0.55 * (w.drop / 0.55) * tFly * tFly
@@ -925,8 +1107,11 @@ function Drive.init(G)
     elseif w and w.kind == "arty" then   -- 曲射：炮管抬到大约 45°（只是好看，落点按准星算）
       wantPitch = math.clamp(25 + horiz / 120, 25, 60)
     end
-    st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -d.turret.trav * dt, d.turret.trav * dt)) % 360
-    st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), 35 * dt)
+    -- 手动方式：炮塔动力关了，手摇方向机、高低机（每秒十来度、几度）
+    local manual = f.mode == 3
+    local trav = d.turret.trav * (manual and 0.22 or 1)
+    st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
+    st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
     --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
     if d.rws then
@@ -1005,24 +1190,60 @@ function Drive.init(G)
     local base = st.root * CF(0, -d.H / 2, 0)
     return (VD.turretCF(d, base, st.ty) * CF(d.sight or V(0, d.H * 0.3, 0))).Position
   end
+  -- 激光一路上打到的东西：草丛、烟、玻璃、细杆子、半透明的这些挡不住，光接着往前走——每碰到一个就是一个回波（最多三个，真车的测距机也是三个）
+  local function porous(inst)
+    if not inst or not inst:IsA("BasePart") then return false end
+    if inst.Transparency >= 0.3 then return true end
+    local mt = inst.Material
+    if mt == Enum.Material.Glass or mt == Enum.Material.ForceField or mt == Enum.Material.Fabric or mt == Enum.Material.LeafyGrass or mt == Enum.Material.Grass then return true end
+    local sz = inst.Size
+    return math.min(sz.X, sz.Y, sz.Z) < 0.5 and math.max(sz.X, sz.Y, sz.Z) < 12
+  end
   local function lase()
     local a = fcsAmmo()
     if not a then return end
+    local f = st.fcs
+    if f.arm == false then   -- 激光测距机拨在保险上：不出光
+      if G.sfx then pcall(G.sfx, "dry") end
+      return
+    end
     local eye = sightEye()
     local dir = st.sight and cam.CFrame.LookVector or ((st.aimPt and (st.aimPt - eye).Magnitude > 1) and (st.aimPt - eye).Unit or cam.CFrame.LookVector)
     local ex = { G.viewFolder, ownBox, st.em }
     if me.Character then table.insert(ex, me.Character) end
-    aimParams.FilterDescendantsInstances = ex
-    local res = workspace:Raycast(eye, dir * (BAL.MAXR * BAL.S), aimParams)
-    local f = st.fcs
+    local rets = {}
+    local o = eye
+    local left = BAL.MAXR * BAL.S
+    for _ = 1, 3 do
+      aimParams.FilterDescendantsInstances = ex
+      local res = workspace:Raycast(o, dir * left, aimParams)
+      if not res then break end
+      local m = (res.Position - eye).Magnitude / BAL.S
+      if m >= 50 then table.insert(rets, m) end
+      if not porous(res.Instance) then break end
+      table.insert(ex, res.Instance)
+      local step = (res.Position - o).Magnitude + 0.05
+      o = o + dir * step
+      left -= step
+      if left <= 0 then break end
+    end
     f.laseT = os.clock()
-    local m = res and (res.Position - eye).Magnitude / BAL.S
-    if m and m >= 50 then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
+    f.multi = #rets > 1
+    local m = rets[1] and ((f.lrf == "FIRST") and rets[1] or rets[#rets]) or nil
+    if m then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
     else f.R, f.noRet = nil, true end
+    f.man = nil
     f.leadY, f.leadP = f.ry or 0, f.rp or 0   -- 测距那一刻跟踪的角速度（弧度 / 秒）：提前量
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
-  G.driveLase = function() if st then lase() end end   -- 测试用
+  G.driveLase = function() if st then lase() end end   -- 测试用；车里计算机控制面板的 LRF 键（Interior.lua）也走这里
+  -- 手动装定距离（M1A1 计算机控制面板 CCP 的 RANGE 键，Interior.lua）：弹道计算机按这个距离算超高角（没有提前量）；nil 清掉、回到战斗瞄准距离
+  G.driveRange = function(m)
+    if not st then return end
+    local f = st.fcs
+    if m then f.R, f.noRet, f.laseT, f.man = math.clamp(math.floor(m / 5 + 0.5) * 5, 50, BAL.MAXR), false, nil, true
+    else f.R, f.noRet, f.laseT, f.man = nil, false, nil, nil end
+  end
   local function cycleAmmo(key)
     local wid = weaponId()
     local list = wid and BAL.GUN[wid]
@@ -1039,16 +1260,72 @@ function Drive.init(G)
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
   G.driveAmmo = function(key) if st then cycleAmmo(key) end end   -- 车里炮长控制面板的弹种键（Interior.lua）也走这里
+  -- 战斗瞄准距离：这个弹种调过的（调整页）或者弹种自己的（穿甲 1200、破甲 / 多用途 900……）
+  local function bsRange(am)
+    local f = st and st.fcs
+    return (f and f.am and f.bsR[f.am]) or (am and am.bs) or 1000
+  end
+  -- 车里的炮长面板（Interior.lua 的动作）：都改 st 上的火控状态，开着镜的马上重画
+  G.driveFcs = function() return st and st.fcs, st end   -- 读状态（面板页面、测试）
+  G.driveBattlesight = function()   -- 战斗瞄准：清掉测的 / 手动的距离，回到这个弹种的战斗瞄准距离
+    if not st then return end
+    local f = st.fcs
+    f.R, f.noRet, f.laseT, f.man, f.multi = nil, false, nil, nil, false
+  end
+  G.driveBsRange = function(key, m)   -- 调整页：改一个弹种的战斗瞄准距离（米；nil 回到默认）
+    if not st then return end
+    st.fcs.bsR[key] = m and math.clamp(math.floor(m / 50 + 0.5) * 50, 200, 2500) or nil
+  end
+  G.driveBsOf = function(key)
+    if not st then return nil end
+    local list = BAL.GUN[weaponId() or ""]
+    local am = key and BAL.AMMO and BAL.AMMO[key]
+    return st.fcs.bsR[key] or (am and am.bs), list
+  end
+  G.driveMrs = function()   -- 炮口基准更新：量一下现在炮管弯了多少，弹道计算机按它修正（之后再热、再冷又会差）
+    if st then st.fcs.mrs = st.fcs.droop end
+  end
+  G.driveBore = function(daz, del)   -- 校炮偏差（密位）：调整页的四向键；都给 nil 是归零
+    if not st then return end
+    local b = st.fcs.bore
+    if daz == nil and del == nil then b[1], b[2] = 0, 0 return end
+    b[1] = math.clamp(b[1] + (daz or 0), -5, 5)
+    b[2] = math.clamp(b[2] + (del or 0), -5, 5)
+  end
+  G.driveSetFcs = function(k)   -- 火控方式 1 正常 / 2 应急 / 3 手动
+    if not st then return end
+    st.fcs.mode = math.clamp(math.floor(k or 1), 1, 3)
+  end
+  G.driveSet = function(field, value)   -- 稳定器、分划 / 符号亮度、分划照明、热像增益 / 电平、激光回波 / 保险
+    if not st then return end
+    if field == "lrf" or field == "arm" then st.fcs[field] = value else st[field] = value end
+    syncZooms()
+    applyMode()
+  end
+  G.driveZoomStep = function(i)   -- 视场：给第几档（1 起），不给就下一档
+    if not st then return end
+    syncZooms()
+    st.zoom = i and math.clamp(i, 1, #ZOOMS) or (st.zoom % #ZOOMS + 1)
+  end
+  G.driveZooms = function() syncZooms() return ZOOMS, st and st.zoom end
+  G.driveWeapon = function(i)   -- 武器选择（布雷德利：25 毫米炮 / 并列机枪）
+    if st and st.d.weapons[i] then st.wi = i end
+  end
+  G.driveApplySight = function() if st then syncZooms() applyMode() end end
 
   local function tryFire()
     local wid = weaponId()
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
+    if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
     local t = os.clock()
     if t < (st.next[wid] or 0) then return end
     local ammo = G.S and G.S.veh and G.S.veh.ammo and G.S.veh.ammo[wid]
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
-    st.next[wid] = t + w.rate
+    -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
+    local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
+    st.next[wid] = t + w.rate * rofK
+    if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
     -- 开火这一刻的炮塔、炮管、机枪塔角度一起发过去：服务器按它摆好炮管再算炮口（用户：弹道顺着枪管和炮管、开火位置和枪口对上）
@@ -1125,7 +1402,6 @@ function Drive.init(G)
 
   ---------------------------------------------------------------- 输入
 
-  local ZOOMS = { 20, 7 }   -- 瞄准镜视场（度）：约 3.5×、10×
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
     local k = io.KeyCode
@@ -1138,6 +1414,7 @@ function Drive.init(G)
     elseif k == Enum.KeyCode.V or (k == Enum.KeyCode.N and st.sight) then   -- 光电模式：昼光 → 夜视 → 热成像白热 → 黑热（没开镜时 N 是夜视仪，Night.lua）
       nextMode()
     elseif k == Enum.KeyCode.Z then
+      syncZooms()
       st.zoom = st.zoom % #ZOOMS + 1
     elseif k == Enum.KeyCode.R then   -- 激光测距（坦克炮的火控）
       lase()
@@ -1159,6 +1436,7 @@ function Drive.init(G)
   end)
   UIS.InputChanged:Connect(function(io)
     if st and st.sight and io.UserInputType == Enum.UserInputType.MouseWheel then
+      syncZooms()
       st.zoom = math.clamp(st.zoom + ((io.Position.Z > 0) and 1 or -1), 1, #ZOOMS)
     end
   end)
@@ -1189,6 +1467,20 @@ function Drive.init(G)
     if not st then return end
     if not st.em.Parent then stop() return end
     local d = st.d
+    st.fcs.droop = math.max(0, st.fcs.droop - dt * 0.0012)   -- 炮管慢慢凉回来（打满了十来分钟凉透）
+    -- 稳定器关（面板上的开关，或者手动方式）：瞄准线不再稳在世界里，跟着车体转、颠（车身转多少，镜里的画面、炮就跟着偏多少）
+    do
+      local lv = st.root.LookVector
+      local hy, hp = math.atan2(-lv.X, -lv.Z), math.asin(math.clamp(lv.Y, -1, 1))
+      if st.lastHy and (st.stab == false or st.fcs.mode == 3) then
+        local dy = (hy - st.lastHy + math.pi) % (2 * math.pi) - math.pi
+        local dp = hp - st.lastHp
+        st.camYaw += dy
+        st.camPitch = math.clamp(st.camPitch + dp, -0.75, 0.6)
+        if st.kAim then st.kAim.yaw += dy st.kAim.pitch += dp st.kAim.pt = nil end
+      end
+      st.lastHy, st.lastHp = hy, hp
+    end
     local om = ownModel()
     if om and om.Parent ~= ownBox then om.Parent = ownBox end
     st.locked = vs.locked
@@ -1253,9 +1545,10 @@ function Drive.init(G)
         end
         f.ly, f.lp = st.camYaw, st.camPitch
         -- 炮对准瞄准线上测出的那个距离的点（视差：炮在瞄准镜旁边，往里收到那一点），提前量按飞行时间
-        local R = f.R or am.bs
+        local R = f.R or bsRange(am)
         local tof = BAL.flight(am, R)
-        local lead = f.R ~= nil and f.laseT ~= nil and (os.clock() - f.laseT < 10)
+        -- 提前量：只有正常方式（应急、手动方式没有角速度传感器给的提前量）
+        local lead = f.mode == 1 and f.R ~= nil and f.laseT ~= nil and (os.clock() - f.laseT < 10)
         local ly = st.camYaw + (lead and (f.leadY or 0) * tof or 0)
         local lp = st.camPitch + (lead and (f.leadP or 0) * tof or 0)
         local dirL = (CFrame.Angles(0, ly, 0) * CFrame.Angles(lp, 0, 0)).LookVector
@@ -1338,7 +1631,7 @@ function Drive.init(G)
     end
     -- 连发
     local w = VD.W[weaponId() or ""]
-    if st.firing and w and w.rate < 0.5 then tryFire() end
+    if st.firing and w and w.rate < 0.5 and not (st.rof == "SS" and w.kind == "shell") then tryFire() end   -- 单发：按住不连发
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then
@@ -1377,13 +1670,23 @@ function Drive.init(G)
       local am = fcsAmmo()
       if am then   -- 火控：弹种、测的距离（没测是 BS 战斗瞄准距离，没回波 ----）、待发
         local f = st.fcs
-        rangeText.Text = f.R and string.format("%04d", f.R) or (f.noRet and "----" or string.format("BS %04d", am.bs))
+        rangeText.Text = f.R and ((f.lrf == "FIRST" and "F " or "") .. string.format("%04d", f.R)) or (f.noRet and "----" or string.format("BS %04d", bsRange(am)))
+        multiBar.Visible = f.R ~= nil and f.multi == true
+        local parts = {}
+        if f.mode == 2 then table.insert(parts, "EMER") elseif f.mode == 3 then table.insert(parts, "MAN") end
+        if st.stab == false then table.insert(parts, "STAB OFF") end
+        if f.arm == false then table.insert(parts, "LRF SAFE") end
+        if math.abs(f.droop - f.mrs) > 0.25 then table.insert(parts, "MRS") end
+        if f.man then table.insert(parts, "MAN RNG") end
+        fcsText.Text = table.concat(parts, "   ")
         ammoText.Text = am.sym
         readyBox.Visible = true
         readyBox.BackgroundTransparency = (rel >= 0.999) and 0 or 1
       else
         local dist = (st.aimPt - cam.CFrame.Position).Magnitude
         rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
+        multiBar.Visible = false
+        fcsText.Text = ""
         ammoText.Text = ""
         readyBox.Visible = false
       end

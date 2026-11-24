@@ -58,6 +58,7 @@ function Store.init(G)
     end
     for k in pairs(P.seenEarly or {}) do P.data.seen[k] = true end
     P.seenEarly = nil
+    if G.econFromSave then G.econFromSave(P, d) end   -- 金币、买过的载具和配件、PvE 打到第几关（Economy.lua）
     seenAttr(P)
     P.canSave = ok and store ~= nil
     if G.gunPublish then G.gunPublish(P) end

@@ -266,6 +266,44 @@ function Depot.init(G)
     if pass and G.passOk and not G.passOk(pass) then return pass end
     return nil
   end
+  -- 金币解锁的型号（Economy.lua，用户 11-23）：没买的卡片上写价钱；点一下提示、4 秒内再点一下就买（金币够的话）
+  local function ownedVeh(id)
+    local s = me:GetAttribute("OwnVeh")
+    return type(s) == "string" and string.find("," .. s .. ",", "," .. id .. ",", 1, true) ~= nil
+  end
+  local function lockedCoin(id)
+    if me:GetAttribute("EconAll") == true then return nil end
+    local price = G.Config.VehPrice and G.Config.VehPrice(id)
+    if price and price > 0 and not ownedVeh(id) then return price end
+    return nil
+  end
+  G.vehLockedCoin = lockedCoin
+  local confirm = { id = nil, t = 0 }
+  local function tryBuy(id, price)
+    local coins = me:GetAttribute("Coins") or 0
+    if coins < price then
+      if G.toast then G.toast(T("eco.poor", price - coins), "bad") end
+      return
+    end
+    if confirm.id == id and os.clock() - confirm.t < 4 then
+      confirm.id = nil
+      G.R.Act:FireServer("buyVeh", id)
+      return
+    end
+    confirm.id, confirm.t = id, os.clock()
+    if G.toast then G.toast(T("eco.confirm", price, T("veh." .. id)), "info") end
+  end
+  -- 卡片右上角的锁（金币）
+  local function coinTag(b, stroke, id, w)
+    local price = lockedCoin(id)
+    if not price then return end
+    local pt = label(b, "◉ " .. T("eco.lockVeh", price), UDim2.fromOffset(w or 140, 16), UDim2.new(1, -(w or 140) - 10, 0, 9), 11, RGB(255, 206, 96), Enum.Font.GothamBlack,
+      Enum.TextXAlignment.Right)
+    pt.Name = "CoinTag"
+    b.BackgroundTransparency = 0.3
+    stroke.Color, stroke.Transparency = RGB(255, 206, 96), 0.55
+  end
+
   local TMods = require(RS:WaitForChild("TankMods"))
   local lastMods = {}   -- 每型坦克上次选的改装
   local function choose(id)
@@ -273,6 +311,11 @@ function Depot.init(G)
     local lp = lockedPass(id)
     if lp then
       if G.buyPass then G.buyPass(lp) end
+      return
+    end
+    local cp = lockedCoin(id)
+    if cp then
+      tryBuy(id, cp)
       return
     end
     local vd = VD.get(id)
@@ -312,7 +355,7 @@ function Depot.init(G)
   local function vehCards(ids)
     gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 116), UDim2.fromOffset(8, 8)
     pTitle.Text = T("pad.summonVeh")
-    pSub.Text = T("pick.subVeh")
+    pSub.Text = T("pick.subVeh") .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
     local list = {}
     for i, id in ipairs(ids) do
       local d = VD.get(id)
@@ -335,6 +378,7 @@ function Depot.init(G)
       b.MouseEnter:Connect(function() stroke.Transparency = ok and 0.4 or 0.8 end)
       b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
       label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.GothamBlack)
+      coinTag(b, stroke, id, 96)
       iconAt(b, id, UDim2.new(1, -20, 0, 42), UDim2.fromOffset(10, 29), ok and RGB(226, 232, 238) or RGB(110, 114, 118))   -- 名字下面的侧影
       local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 74), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
       cl.Name = "Quota"
@@ -347,7 +391,9 @@ function Depot.init(G)
     end
   end
 
+  local lastPick = nil
   local function openPick(padId, ids, heli, ground)
+    lastPick = { padId, ids, heli, ground }
     for _, c in ipairs(cards) do c:Destroy() end
     cards = {}
     pickPad = padId
@@ -364,7 +410,7 @@ function Depot.init(G)
     local av = S and S.vehAvail and S.vehAvail[heli and "heli" or "jet"]
     local st = ""
     if av then st = (av.u >= av.cap) and ((av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)) or T("pad.ready", av.u, av.cap) end
-    pSub.Text = T("pick.sub") .. "   ·   " .. st
+    pSub.Text = T("pick.sub") .. "   ·   " .. st .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
     for i, id in ipairs(ids) do
       local d = AD.get(id)
       if d then
@@ -390,7 +436,9 @@ function Depot.init(G)
           pt.Name = "PassTag"
           b.BackgroundTransparency = 0.3
           stroke.Color, stroke.Transparency = RGB(255, 196, 92), 0.55
-          ic.ImageColor3 = RGB(150, 140, 118)   -- 没解锁的：侧影暗一点、偏琥珀
+          if ic then ic.ImageColor3 = RGB(150, 140, 118) end   -- 没解锁的：侧影暗一点、偏琥珀
+        else
+          coinTag(b, stroke, id, 130)
         end
         local tags = {}
         if d.carrier then table.insert(tags, T("pick.carrier")) end
@@ -407,6 +455,13 @@ function Depot.init(G)
       end
     end
     pick.Enabled = true
+  end
+
+  -- 买了一型（OwnVeh 变了）、金币变了：开着的机型列表重画（锁去掉）
+  for _, a in ipairs({ "OwnVeh", "Coins" }) do
+    me:GetAttributeChangedSignal(a):Connect(function()
+      if pick.Enabled and lastPick then openPick(lastPick[1], lastPick[2], lastPick[3], lastPick[4]) end
+    end)
   end
 
   -- 服务器：有挂点的飞机开挂载界面（老的一型一个生成点）；召唤位先选机型

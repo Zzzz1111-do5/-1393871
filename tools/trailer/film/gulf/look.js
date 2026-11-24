@@ -20,7 +20,8 @@ export function day(o = {}) {
     day: 1, dawn: warm, sunDir: sun, moonDir: sun, moonVis: 0, moonI: (o.sunI ?? 7.5) * (0.45 + 0.55 * bright), moonC: sunC.getHex(),
     hemiI: o.hemiI ?? lerp(1.35, 2.2, bright), hemiSky: new THREE.Color().setRGB(0.42, 0.52, 0.72).lerp(haze, 0.35).getHex(), hemiGround: new THREE.Color(0.5, 0.39, 0.26).getHex(),
     fogColor: haze.clone(), haze: haze.clone(), fogDensity: o.fog ?? (0.000034 + dust * 0.00005),
-    exposure: (o.exposure ?? 0.55) * 0.86, bloom: o.bloom ?? 0.55,   // ×0.86：写实地表（gulf/real.js）比原来的旧贴图亮、还多了天光 bloomTh: o.bloomTh ?? 1.6, sat: o.sat ?? 1.0, contrast: o.contrast ?? 1.05,
+    exposure: (o.exposure ?? 0.55) * 0.86, bloom: o.bloom ?? 0.55,   // ×0.86：写实地表（gulf/real.js）比原来的旧贴图亮、还多了天光
+    bloomTh: o.bloomTh ?? 1.6, sat: o.sat ?? 1.0, contrast: o.contrast ?? 1.05,   // 这一行原来被上一行的注释吞了（写实化那次），白天镜头泛光阈值掉到 1.1、整片发灰发雾
     heat: o.heat ?? 0.6, grain: o.grain ?? 0.008, lift: 0.006, tint: o.tint ?? 0.6, cloud: o.cloud ?? 0.35, stars: 0,
     sky: o.sky ?? 'day', skyLum: o.skyLum ?? 0.42, skyHaze: o.skyHaze ?? 0.62,   // 真实天空（gulf/real.js）：哪张 HDRI、平均亮度、地平线的沙尘霾
     fxAmb: new THREE.Color().setRGB(0.2, 0.185, 0.16).multiplyScalar(0.45 + 0.55 * bright).lerp(new THREE.Color(0.2, 0.13, 0.08), warm * 0.4),

@@ -1,7 +1,7 @@
 -- 载具内饰测试（模拟器）：python3 tools/mock/run.py tools/mock/interior.lua [dump=<目录>]
 --   用户 11-21：所有载具一比一还原内饰和里面所有功能性的东西（屏幕等），对标 Steel Beasts，要拿去拍电影
 --   ① 坐上 M1A2，按 C 进车内：内饰拼出来了（零件、四个乘员、屏幕、灯），镜头在车体里
---   ② F2～F5 换四个乘员位：镜头在各自的位置、都在车里；自己坐的那个乘员不画头
+--   ② 坦克默认炮长位，F2～F5 换驾驶员 / 炮长 / 车长 / 装填手（用户 11-24：「我要能开别的位置」）、镜头在车里；自己不画头
 --   ③ 开一炮：炮闩后坐、落下；装填手转身开弹药舱门、抽弹、推弹入膛、关闩，按装填时间走完；弹架上少一发
 --   ④ Shift 进主瞄准镜：内饰收起来、镜头归瞄准镜；再按回来
 --   ⑤ B 导演镜头：方向键挪得动、还跟着车走；U 藏界面、再按放回来
@@ -128,6 +128,8 @@ for _, name in ipairs(cur.spec.order) do
   R.run(0.2)
   dumpCams[name] = cam.CFrame
 end
+-- 炮塔还没转（后面「指示」会把炮塔转走）：先导一份，镜头和零件对得上（预览图对照截图用这份）
+if dumpDir then dumpJSON(dumpDir .. "/interior_" .. VEH .. "_0.json") end
 
 print("③ 开一炮：后坐、开闩、装填手装弹")
 local st0 = C.interiorState()
@@ -373,12 +375,14 @@ for _ = 1, 6 do
   R.run(0.2)
 end
 check(not C.interiorOn() and (C.interiorState().cur == nil or C.interiorState().cur.model.Parent == nil), "C 换过最后一个乘员位：回到车外，内饰收起来")
--- T（车外）：直接坐到车长位、开他的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱要能第一人称看出去；M1A2 是 CITV）；再按 T 回车外
+-- T（车外）：直接开车长的主观瞄（用户 11-21：99A 模型上那个多边形的观瞄舱要能第一人称看出去；M1A2 是 CITV）；再按 T 回车外
+--   坦克锁在炮长位（用户 11-23）：人坐在炮长位，车长的主观瞄挂在炮长位的 T 上
 T.tap(Enum.KeyCode.T)
 R.run(0.6)
 local qs, qo = C.interiorState(), C.interiorOpticState and C.interiorOpticState()
-check(qs.mode == "seat" and qs.station == "commander" and qo ~= nil and qo.quick == true,
-  string.format("车外按 T：坐到车长位、开了车长主镜（位置 %s，镜 %s）", tostring(qs.station), tostring(qo and qo.o and qo.o.name)))
+local cmdPrimary = qs.cur and qs.cur.spec.stations.commander and qs.cur.spec.stations.commander.optics.primary
+check(qs.mode == "seat" and qs.station == "gunner" and qo ~= nil and qo.quick == true and cmdPrimary ~= nil and qo.o.kind == cmdPrimary.kind,
+  string.format("车外按 T：开了车长主镜（人在 %s 位，镜 %s）", tostring(qs.station), tostring(qo and qo.o and qo.o.name)))
 T.tap(Enum.KeyCode.T)
 R.run(0.4)
 check(not C.interiorOn() and (C.interiorOpticState == nil or C.interiorOpticState() == nil), "再按 T：关镜、回到车外")
