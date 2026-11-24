@@ -1034,7 +1034,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 21:40 94acc53"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 22:08 77017fe"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -5853,7 +5853,7 @@ add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
 add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
   "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 鼠标只转视角（不管飞行方向；停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
   "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
@@ -41100,7 +41100,9 @@ function Fly.init(G)
   --   鼠标转的是想去的方向（屏幕正中的小圈），镜头顺着它看，教官自动压坡度、拉杆把机头追过去（机头的「+」在画面里跟着走）；
   --   按着 W / S / A / D / Q / E 就是直接操纵（松开教官又追回鼠标那里）；按住 C 自由看（飞机照旧往鼠标那里飞）。
   --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
-  local mouseAim = true
+  -- 默认纯键盘驾驶（用户 11-24 夜：「我不想让准心控制飞机飞行方向」——11-21 就要过「飞机改成 WASD 控制方向、不要准心控制」，
+  --   早上照战雷改的时候默认换成了鼠标瞄准，又成了准心带着飞）：鼠标只转视角；想要战雷鼠标瞄准的按 M
+  local mouseAim = false
   G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
   -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
   --   F7 轰炸瞄准镜（战雷的「轰炸机视角」）；Alt + 中键在镜头中心对着的地面标目标点（战雷的「兴趣点」）：落点走到目标点自动投
