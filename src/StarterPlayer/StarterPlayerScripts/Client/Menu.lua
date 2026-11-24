@@ -224,17 +224,20 @@ function Menu.init(G)
     G.R.Act:FireServer("quickJoin")
   end
   G.quickJoin = quick
-  card(1, quick)
-  card(2, function()
-    enter()
-    if G.showFaction then G.showFaction() end
-  end)
-  card(3, function() showPanel("help") end)
-  card(4, function() showPanel("credits") end)
-  -- 回车：快速加入
+  -- 第一张卡「开始游戏」（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）：打开选地图界面（MapPick.lua），
+  --   点了地图、地图生成好就快速加入；原来第二张「选择阵营」去掉（自动分队）
+  local function play()
+    panel.Visible = false
+    if G.showMapPick then G.showMapPick() else quick() end
+  end
+  G.menuPlay = play
+  card(1, play)
+  card(2, function() showPanel("help") end)
+  card(3, function() showPanel("credits") end)
+  -- 回车：开始游戏
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not gui.Enabled then return end
-    if io.KeyCode == Enum.KeyCode.Return then quick() end
+    if io.KeyCode == Enum.KeyCode.Return then play() end
   end)
 
   -- 右下：游戏名、测试版、版本号
@@ -260,6 +263,7 @@ function Menu.init(G)
     local live = Stage.active()
     bg.BackgroundTransparency = live and 1 or 0
     shade.BackgroundTransparency = live and 0.4 or 0
+    content.Visible = not (G.mapPickShown and G.mapPickShown())   -- 选地图开着：菜单的字先藏起来（原来从地图卡片后面透出来）
     if not show then return end
     local mine = S.me or {}
     who.Text = me.DisplayName
@@ -276,16 +280,17 @@ function Menu.init(G)
       xpFill.Size = UDim2.fromScale(1, 1)
     end
     local team = S.team or "atk"
+    local KEYS = { "c1", "c3", "c4" }   -- 开始游戏 · 操作说明 · 模型与授权
     for i, K in ipairs(cards) do
-      K.cat.Text = T("menu.c" .. i .. ".cat")
-      K.title.Text = T("menu.c" .. i .. ".title")
-      K.sub.Text = T("menu.c" .. i .. ".sub")
+      local c = KEYS[i] or ("c" .. i)
+      K.cat.Text = T("menu." .. c .. ".cat")
+      K.title.Text = T("menu." .. c .. ".title")
+      K.sub.Text = T("menu." .. c .. ".sub")
       K.tag.Text, K.subtag.Text = "", ""
     end
     cards[1].tag.Text = T("menu.c1.tag")
     cards[1].subtag.Text = T("menu.c1.subtag", (S.rAtk or 0) + (S.rDef or 0))
-    cards[2].tag.Text = S.picked and T("faction." .. team .. ".name") or T("menu.c2.none")
-    cards[2].subtag.Text = (S.rAtk or 0) .. " : " .. (S.rDef or 0)
+    local _ = team
     gTitle.Text = T("game.title")
     gSub.Text = T("menu.beta")
     gVer.Text = tostring(Config.Version or "") .. ((Config.Build and Config.Build ~= "dev") and ("  ·  " .. Config.Build) or "")

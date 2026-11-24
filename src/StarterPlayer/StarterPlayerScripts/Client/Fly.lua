@@ -63,9 +63,138 @@ function Fly.init(G)
   local CH = { thr = "Thr", gear = "Gear", flap = "Flap", pit = "Pit", rol = "Rol", yaw = "Yaw", bay = "Bay", bayS = "BayS", rpm = "Rpm", col = "Col", can = "Can",
     hook = "Hook", brk = "Brk", ty = "Ty", gp = "Gp", fold = "Fold" }
 
+  ---------------------------------------------------------------- 被击毁的飞机：坠落（用户 11-23：把宣传片里的动画做进游戏）
+  --   照片子里阿帕奇被防空车打中的样子——直升机：尾桨没了，机身越转越快（一开始每秒 2 弧度多、往上加到 9）、机头往下栽、左右晃，
+  --     尾梁上一团火、拖着一长条黑烟往下掉；固定翼：顺着速度栽下去、慢慢滚转，发动机那里拖着火和黑烟；砸到地上炸开，残骸躺在地上接着烧十几秒。
+  --   原来服务器 4 秒后就把实体收了，高处打下来的掉到一半凭空没了：收了以后这里接着演完（viewKind.air.remove 留下、falling 每帧接着动）
+  local falling = {}
+  G.airFalling = falling   -- 测试用
+  local function wreckStart(v, vel)
+    local d, M = v.def, v.M
+    local heli = d.kind == "heli"
+    local lv = v.cf.LookVector
+    v.wreck = { vel = vel, t = 0, heli = heli, spin = (math.random() - 0.5) * 3, yaw = math.atan2(-lv.X, -lv.Z),
+      pitch = math.asin(clamp(lv.Y, -1, 1)) }
+    local W = v.wreck
+    if M then M.dark = true end   -- 被击毁：灯全灭
+    for _, it in ipairs(M.items) do
+      local p = it.p
+      if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
+        for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
+        pcall(function() p.TextureID = "" end)
+        if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
+      elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
+    end
+    -- 火、黑烟：挂在尾梁（直升机）/ 尾喷口（固定翼）上的一个看不见的零件，粒子留在世界里，自然拖成一条
+    local h = Instance.new("Part")
+    h.Name = "WreckFire"
+    h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.CastShadow = true, false, false, false, false
+    h.Transparency, h.Size = 1, V(0.4, 0.4, 0.4)
+    h.Parent = v.model
+    local fire = Instance.new("ParticleEmitter")
+    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+    fire.Rate = 70
+    fire.Lifetime = NumberRange.new(0.25, 0.6)
+    fire.Speed = NumberRange.new(2, 7)
+    fire.SpreadAngle = Vector2.new(35, 35)
+    fire.LightEmission = 1
+    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(0.4, 5.5), NumberSequenceKeypoint.new(1, 1.5) })
+    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
+    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 180)), ColorSequenceKeypoint.new(0.45, RGB(255, 140, 50)), ColorSequenceKeypoint.new(1, RGB(90, 30, 15)) })
+    fire.Parent = h
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    smoke.Rate = 26
+    smoke.Lifetime = NumberRange.new(3.5, 6)
+    smoke.Speed = NumberRange.new(1, 4)
+    smoke.SpreadAngle = Vector2.new(25, 25)
+    smoke.Drag = 0.6
+    smoke.Acceleration = V(0, 2.5, 0)
+    smoke.Rotation = NumberRange.new(0, 360)
+    smoke.RotSpeed = NumberRange.new(-25, 25)
+    smoke.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 4), NumberSequenceKeypoint.new(1, 24) })
+    smoke.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+    smoke.Color = ColorSequence.new(RGB(38, 34, 30))
+    smoke.Parent = h
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness, light.Shadows = RGB(255, 140, 60), 34, 4, false
+    light.Parent = h
+    W.h, W.fire, W.smoke, W.light = h, fire, smoke, light
+    W.hold = heli and CF(0, d.H * 0.18, d.L * 0.36) or CF(0, 0, d.L * 0.46)   -- 尾梁 / 尾喷口（机头是 −Z）
+  end
+  local function wreckMove(v, dt)
+    local W, d = v.wreck, v.def
+    if not W then return end
+    W.t += dt
+    if W.down then   -- 躺在地上烧：火慢慢小下去
+      W.burn = (W.burn or 0) + dt
+      local k = math.max(0, 1 - W.burn / 15)
+      if W.fire then W.fire.Rate = 45 * k end
+      if W.smoke then W.smoke.Rate = 6 + 14 * k end
+      if W.light then W.light.Brightness = 3 * k * (0.8 + 0.2 * math.sin(os.clock() * 13)) end
+      return
+    end
+    W.vel += V(0, -GR, 0) * dt
+    W.vel = V(W.vel.X * (1 - (W.heli and 0.35 or 0.1) * dt), W.vel.Y * (1 - 0.06 * dt), W.vel.Z * (1 - (W.heli and 0.35 or 0.1) * dt))
+    local p = v.cf.Position + W.vel * dt
+    local g = ground(p.X, p.Z)
+    if p.Y < g + 1 then   -- 砸到地上：炸开，残骸躺下、歪着
+      W.down = true
+      p = V(p.X, g + 1, p.Z)
+      if G.boom then G.boom(p, W.heli and 2.6 or 3, "wreck") end
+      if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 160, 70), 90, 18, 1.1) end
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(0.1, 0, W.heli and 0.5 or 0.2)
+      if W.h then W.h.CFrame = v.cf * (W.heli and CF(0, 0, 0) or W.hold) end
+      return
+    end
+    if W.heli then
+      -- 尾桨没了：机身越转越快、机头往下栽、左右晃
+      local rate = math.min(9, 2.2 + 3.2 * W.t)
+      W.yaw += rate * dt
+      local pitch = math.max(-0.6, -(0.12 + 0.08 * W.t))
+      v.cf = CF(p) * CFrame.Angles(0, W.yaw, 0) * CFrame.Angles(pitch, 0, math.sin(W.t * 3) * 0.25)
+    else
+      local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
+      v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
+      W.yaw = math.atan2(-look.X, -look.Z)
+    end
+    if W.h then W.h.CFrame = v.cf * W.hold end
+  end
+  -- 服务器收了实体以后接着演：落地烧够了再删
+  G.frameConn("AirWreck", function(dt)
+    if #falling == 0 then return end
+    local now = os.clock()
+    for i = #falling, 1, -1 do
+      local v = falling[i]
+      local ok = pcall(function()
+        wreckMove(v, dt)
+        local d = v.def
+        if d.rotor and v.c and not (v.wreck and v.wreck.down) then   -- 主旋翼还在转（尾桨没了）
+          v.spin1 = ((v.spin1 or 0) + 0.7 * d.rotor.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2)
+          v.c.spin1 = v.spin1
+        end
+        if v.M then AM.pose(v.M, v.cf, v.c or {}, now) end
+      end)
+      local W = v.wreck
+      if not ok or not W or (W.down and (W.burn or 0) > 16) or W.t > 60 then
+        if v.model then v.model:Destroy() end
+        table.remove(falling, i)
+      end
+    end
+  end)
+
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
     importReady = function(v) return v.M ~= nil and not v.M.imported and v.def ~= nil and AM.importedFor(v.def) ~= nil end,   -- 原模型后来才复制齐：View 重建
+    -- 实体被服务器收走：被击毁、还在往下掉 / 躺着烧的留下来接着演（上面的 falling），别的照常删
+    remove = function(v)
+      if v.wreck and not (v.wreck.down and (v.wreck.burn or 0) > 16) then
+        if v.bb then v.bb:Destroy() v.bb = nil end
+        table.insert(falling, v)
+        return true
+      end
+      return false
+    end,
     build = function(v, em, team)
       local d = AD.get(em:GetAttribute("Model") or "")
       if not d then return false end
@@ -81,44 +210,9 @@ function Fly.init(G)
       local em, d, M = v.em, v.def, v.M
       local own = st and st.em == em and st
       local target = v.root.CFrame
-      if em:GetAttribute("Wreck") then   -- 被击毁：带着速度往下掉、翻滚、冒烟，落地炸一下（别人的飞机：速度按收到的位置快照算，View.lua G.follow）
-        if not v.wreck then
-          v.wreck = { vel = (own and own.vel) or (v.fl and v.fl.vel) or V(), spin = (math.random() - 0.5) * 3, t = 0 }
-          if v.M then v.M.dark = true end   -- 被击毁：灯全灭
-          for _, it in ipairs(M.items) do
-            local p = it.p
-            if p:IsA("MeshPart") then   -- 原模型：贴图盖住颜色，烧黑要先把贴图去掉
-              for _, sa in ipairs(p:GetChildren()) do if sa:IsA("SurfaceAppearance") then sa:Destroy() end end
-              pcall(function() p.TextureID = "" end)
-              if p.Transparency < 1 then p.Color = Color3.fromRGB(40, 38, 36) end
-            elseif p:IsA("BasePart") and p.Transparency < 1 then p.Color = p.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.6) end
-          end
-        end
-        local W = v.wreck
-        W.t += dt
-        if not W.down then
-          W.vel += V(0, -GR, 0) * dt
-          W.vel *= (1 - 0.1 * dt)
-          local p = v.cf.Position + W.vel * dt
-          local g = ground(p.X, p.Z)
-          if p.Y < g + 1 then
-            W.down = true
-            p = V(p.X, g + 1, p.Z)
-            if G.boom then G.boom(p, 2, "wreck") end
-          end
-          local look = (W.vel.Magnitude > 5) and W.vel.Unit or v.cf.LookVector
-          v.cf = CFrame.lookAt(p, p + look) * CFrame.Angles(0, 0, W.t * W.spin)
-          W.smokeT = (W.smokeT or 0) - dt
-          if W.smokeT <= 0 and G.fxPart then
-            W.smokeT = 0.06
-            local s = G.fxPart(Enum.PartType.Ball, V(4, 4, 4), CFrame.new(p), RGB(40, 38, 36), Enum.Material.SmoothPlastic, 0.3)
-            if G.tween then G.tween(s, 2.4, { Size = V(16, 16, 16), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(s, 2.5)
-            local f = G.fxPart(Enum.PartType.Ball, V(3, 3, 3), CFrame.new(p), RGB(255, 140, 40), Enum.Material.Neon, 0.1)
-            if G.tween then G.tween(f, 0.4, { Size = V(6, 6, 6), Transparency = 1 }) end
-            game:GetService("Debris"):AddItem(f, 0.45)
-          end
-        end
+      if em:GetAttribute("Wreck") then   -- 被击毁：坠落（wreckStart / wreckMove 在上面）
+        if not v.wreck then wreckStart(v, (own and own.vel) or (v.fl and v.fl.vel) or V()) end
+        wreckMove(v, dt)
       elseif own then
         v.cf = own.cf
       else   -- 别人的飞机：快照插值（匀速，不一顿一顿；跳太远直接过去）
@@ -427,6 +521,33 @@ function Fly.init(G)
   mfd("OVRD", UDim2.new(0.665, 0, 0, 22), nil, TS)
   mfd("CNTL", UDim2.new(0.83, 0, 0, 22), nil, TS)
   local eoMode = mfd("WHOT", UDim2.new(0.1, 0, 0.1, 0), nil, TS)
+  -- 飞机航向（用户 11-22：「那个飞机图标不应该放在屏幕下面，用来在电子吊舱的时候知道飞机航向嘛」）：吊舱画面下面正中一个俯视的小飞机，
+  --   机头朝哪 = 飞机往哪飞（相对吊舱现在看的方向：朝上就是吊舱顺着机头看），下面一行写航向度数
+  do
+    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, 0, 1, -64), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    hb.Name = "EoHeading"
+    hb.ZIndex = 12
+    local ring = ui.frame(hb, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    ring.ZIndex = 12
+    local rc = Instance.new("UICorner")
+    rc.CornerRadius = UDim.new(0.5, 0)
+    rc.Parent = ring
+    ui.stroke(ring, MFD, 1.5, 0.35)
+    local plane = ui.frame(hb, UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    plane.Name = "Plane"
+    plane.ZIndex = 13
+    local function bar(w, h, x, y)   -- 机身、机翼、平尾：几条亮线拼成俯视的飞机
+      local f = ui.frame(plane, UDim2.fromOffset(w, h), UDim2.new(0.5, x, 0.5, y), MFD, 0, Vector2.new(0.5, 0.5))
+      f.ZIndex = 13
+      return f
+    end
+    bar(4, 34, 0, 0)        -- 机身
+    bar(30, 4, 0, -2)       -- 机翼
+    bar(14, 3, 0, 13)       -- 平尾
+    bar(6, 6, 0, -16)       -- 机头
+    TG.plane = plane
+    TG.hdg = mfd("000", UDim2.new(0.5, 0, 1, -28), nil, TS - 2)
+  end
   mfd("SP", UDim2.new(0, 10, 0.33, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
   mfd("CZ", UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
   for i, tx in ipairs({ "SWAP", "HSD", "SMS", "TGP", "DCLT" }) do
@@ -519,6 +640,11 @@ function Fly.init(G)
         local td = V(A.x + s * (A.len / 2 - 60), (A.y or 0), A.z)
         table.insert(out, { p = V(td.X, AD.ground(Map, td.X, td.Z), td.Z), dir = V(-s, 0, 0) })
       end
+    end
+    if Map.desert then   -- 沙漠（征服）：只落自己基地的跑道
+      local B = Map.BASES and Map.BASES[team]
+      if B and B.airfield then runway(B.airfield) end
+      return out
     end
     if team == "atk" then
       local base = AD.carrierCF(Map)
@@ -645,6 +771,7 @@ function Fly.init(G)
     on = on and st.pilot and not st.crashed
     if on == (st.eo == true) then return end
     st.eo = on
+    if on then st.bsight = false end   -- 轰炸瞄准镜和吊舱只开一个（自己的飞机照旧藏着，吊舱关了再放出来）
     if on then
       local look = cam.CFrame.LookVector
       st.eoYaw = math.atan2(-look.X, -look.Z)
@@ -780,15 +907,17 @@ function Fly.init(G)
     pcall(function() game:GetService("ProximityPromptService").Enabled = true end)
     if st and st.trig then G.R.Drive:FireServer({ op = "trig", on = false }) end
     if G.gunLoop then G.gunLoop("me", nil, nil, false) end
-    if st and st.eo then
+    if st and (st.eo or st.bsight) then
       ownHide(false)
-      st.eo = false
+      st.eo, st.bsight = false, false
     end
+    if G.bsOff then G.bsOff() end   -- 轰炸瞄准镜、目标点的画面
     eoGui.Visible, eoCC.Enabled, eoHl.Enabled = false, false, false
     local old = st
     st = nil
     G.fly = nil
     G.hitMarkerAt = nil
+    if G.airAudioOff then G.airAudioOff() end
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -840,6 +969,82 @@ function Fly.init(G)
       if st.load[i] == wid then n += (st.stores and st.stores[i]) or 0 end
     end
     return n
+  end
+  -- 挂着的炸弹：选中的是炸弹就用它，不然挂载里第一种还有的炸弹（CCRP 自动投、轰炸瞄准镜用；F 照旧投选中的那种）
+  local function bombW()
+    local wid, w = curW()
+    if w and w.kind == "bomb" and left(wid) > 0 then return wid, w end
+    for _, wid2 in ipairs(st.wl) do
+      local w2 = AD.W[wid2]
+      if w2 and w2.kind == "bomb" and left(wid2) > 0 then return wid2, w2 end
+    end
+    return nil
+  end
+  -- 炸弹现在投下去落在哪、落下要几秒：按服务器的炸弹物理往前推（Marks.lua 的 G.bombImpact）
+  local function bombNow()
+    local cf = st.cf
+    local p0 = (cf * CF(0, -(st.d.H or 4) * 0.35 - 1.5, 0)).Position
+    local v0 = (st.vel or V()) - cf.UpVector * 4
+    if G.bombImpact then return G.bombImpact(p0, v0) end
+    local h = p0.Y - math.max(ground(p0.X, p0.Z), 0)
+    local vy = -v0.Y
+    local tf = (vy + math.sqrt(math.max(0, vy * vy + 2 * GR * math.max(h, 0)))) / GR
+    local hit = p0 + V(v0.X, 0, v0.Z) * tf * 0.97
+    return V(hit.X, math.max(ground(hit.X, hit.Z), 0), hit.Z), tf
+  end
+  -- F7 轰炸瞄准镜（战雷的「轰炸机视角」）：镜头到机腹往下看炸弹的落点；选上炸弹；鼠标瞄准时教官改成平飞、照现在的航向飞
+  local function setBS(on)
+    if not st then return end
+    local bw = bombW()
+    on = on and st.pilot and not st.crashed and not st.ground and st.d.kind == "jet" and bw ~= nil
+    if on == (st.bsight == true) then return false end
+    if on and st.eo then setEO(false) end
+    st.bsight = on
+    if on then
+      for i, wid2 in ipairs(st.wl) do
+        if wid2 == bw and st.wi ~= i then
+          st.wi = i
+          st.lock, st.lockT = nil, 0
+        end
+      end
+      st.bsZoom, st.bsAim = 1, nil
+      local v = (st.vel.Magnitude > 1) and st.vel.Unit or st.cf.LookVector
+      st.aimYaw = math.atan2(-v.X, -v.Z)
+      st.aimPitch = clamp(math.asin(clamp(v.Y, -1, 1)), -0.06, 0.12)
+    end
+    if not on then st.bsOffT = os.clock() end
+    ownHide(on)
+    if G.playSound then G.playSound("quiet", nil, on and 1.5 or 1.2) end
+    return true
+  end
+  G.flyBombsight = setBS
+  -- Alt + 中键（战雷默认）：在镜头中心对着的地面标目标点（兴趣点）；对着天上按就取消
+  local function markPoi()
+    if not st or not st.pilot then return end
+    local o, dir = cam.CFrame.Position, cam.CFrame.LookVector
+    local res = workspace:Raycast(o, dir * 12000, aimParams)
+    local p = res and res.Position
+    if not p and dir.Y < -0.02 then   -- 射线没碰到东西（地形还没加载）：按地面高度一步步找
+      for i = 1, 240 do
+        local q = o + dir * (i * 50)
+        local g = math.max(ground(q.X, q.Z), 0)
+        if q.Y <= g then p = V(q.X, g, q.Z) break end
+      end
+    end
+    if p and (p - st.cf.Position).Magnitude > 30 then
+      st.poi, st.ccrpArm, st.ccrpRelT = p, nil, nil
+      G.toast(T("air.poiSet"), "info")
+    else
+      st.poi = nil
+      G.toast(T("air.poiOff"), "info")
+    end
+  end
+  G.flyMarkPoi = markPoi
+  -- F7 归不归轰炸瞄准镜（Perf.lua 的性能面板也用 F7）：开着挂炸弹的固定翼（或者瞄准镜开着）、没按 Ctrl
+  function G.flyWantsF7()
+    if not st or not st.pilot or st.d.kind ~= "jet" or st.uav then return false end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl) then return false end
+    return st.bsight == true or os.clock() - (st.bsOffT or -9) < 0.1 or bombW() ~= nil
   end
   function G.flyNextWeapon()
     if not st or #st.wl == 0 then return end
@@ -957,6 +1162,18 @@ function Fly.init(G)
     best.lead = lead + V(0, 0.5 * workspace.Gravity * 0.08 * t * t, 0)   -- 炮弹的下坠（服务器的 gscale 0.08）
     return best
   end
+  -- 战雷式鼠标瞄准（用户 11-24：「飞机锁定敌目标改成战雷一模一样的 包括投弹以及各方面操作细节和手感」）：
+  --   鼠标转的是想去的方向（屏幕正中的小圈），镜头顺着它看，教官自动压坡度、拉杆把机头追过去（机头的「+」在画面里跟着走）；
+  --   按着 W / S / A / D / Q / E 就是直接操纵（松开教官又追回鼠标那里）；按住 C 自由看（飞机照旧往鼠标那里飞）。
+  --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
+  local mouseAim = true
+  G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
+  -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
+  --   F7 轰炸瞄准镜（战雷的「轰炸机视角」）；Alt + 中键在镜头中心对着的地面标目标点（战雷的「兴趣点」）：落点走到目标点自动投
+  --   （航向偏太多这一趟不投）。画面在 Bombsight.lua，地上的红方框在 Marks.lua
+  local bombSeries = 1   -- 1 单投、2 双投、0 齐投（这种炸弹全部，一枚接一枚）
+  G.flyBombSeries = function(v) if v ~= nil then bombSeries = v end return bombSeries end
+  local SERIES_GAP = 0.08   -- 齐投一枚接一枚的间隔（秒，跟服务器 Air.lua 的 BOMB_GAP 一样）
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 镜头跟着机身（用户 11-21：飞机的飞行方向标志动来动去，应该固定位置）：原来镜头顺着鼠标瞄准方向看（战雷那样），
@@ -1043,23 +1260,31 @@ function Fly.init(G)
     G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt, stk = st.stick ~= nil })
   end
 
-  local function fireStore(wid, w)
+  -- aimAt：CCRP 自动投弹给的目标点（制导炸弹照这个坐标飞，像杰达姆；不管锁没锁别的）；投出去了返回 true
+  local function fireStore(wid, w, aimAt)
     local t = os.clock()
-    if t < st.nextFire or left(wid) <= 0 then return end
-    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return end
-    local locked = st.lock and st.lockT >= (w.lockTime or 1)
-    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
-    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
-    st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
-    G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
-    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）
-      if st.load[i] == wid and (st.stores[i] or 0) > 0 then
+    if t < st.nextFire or left(wid) <= 0 then return false end
+    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return false end
+    local locked = (not aimAt) and st.lock and st.lockT >= (w.lockTime or 1)
+    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return false end   -- 出了发射角度：锁着也不能打（菱形是黄的）
+    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return false end
+    if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return false end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
+    -- 炸弹按投弹数量（Shift + B）：单投一枚、双投两枚一起、齐投这种全部一枚接一枚
+    local n = 1
+    if w.kind == "bomb" then n = (bombSeries == 0) and left(wid) or math.min(bombSeries, left(wid)) end
+    local rip = w.kind == "bomb" and bombSeries == 0 and n > 1
+    st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4) + (rip and (n - 1) * SERIES_GAP or 0)
+    G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = aimAt or st.aimPt, n = (n > 1) and n or nil, rip = rip or nil })
+    local need = w.nuke and 0 or n   -- 本地先扣（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
+    for i in ipairs(st.d.st or {}) do
+      while need > 0 and st.load[i] == wid and (st.stores[i] or 0) > 0 do
         st.stores[i] -= 1
-        break
+        need -= 1
       end
     end
     -- 开火声按武器（Fx.lua 的 G.sfx）：导弹低沉的点火 + 呼啸、火箭弹「噗」一声 + 呼的一下、炸弹挂架弹开「咣」一声
     if G.sfx then G.sfx((w.kind == "rkt") and "rkt" or ((w.kind == "bomb") and "bombRel" or "msl"), nil, { vol = (w.kind == "rkt") and 0.7 or 0.8 }) end
+    return true
   end
 
   ---------------------------------------------------------------- 物理：固定翼
@@ -1080,6 +1305,7 @@ function Fly.init(G)
     --   地上油门收到底按住 Ctrl 倒退。键是开关量：杆量 0.3 秒推满、松开 0.2 秒回中，不会一按就猛地一转。
     --   无人机（平板上飞）照旧鼠标给方向、W / S 油门；开着光电吊舱、飞出作战区自动掉头时照旧按给的方向自动飞（下面的教官）
     local kb = not st.uav and not G.mobile
+    local mAim = kb and mouseAim   -- 战雷式：鼠标给方向（教官飞），按方向键时直接操纵
     local up, dn
     if kb then
       up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or key(Enum.KeyCode.Up) or (touch and touch.up)
@@ -1162,7 +1388,8 @@ function Fly.init(G)
     local bank = math.asin(clamp(right.Y, -1, 1))
     local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
     local nCmd, rc, yc
-    if G.mobile or (kb and not st.eo and not st.oob) then
+    local stickHeld = math.abs(st.kP or 0) + math.abs(st.kR or 0) + math.abs(st.kY or 0) > 0.02
+    if G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld)) then
       -- 驾驶杆（键盘 / 手机摇杆）：往后拉要过载、松杆 1 g，坡度 33° 以内补一点杆保高度；没压 A / D、坡度 20° 以内机翼慢慢自己摆平
       local pull = -pitchIn   -- 往后拉为正
       nCmd = (pull >= 0) and (1 + pull * (GMAX - 1)) or (1 + pull * 3)   -- 推杆到 −2 g
@@ -1173,7 +1400,9 @@ function Fly.init(G)
       rc, yc = rollIn * ROLL, yawIn * rad(d.yaw) * 0.6
       if rollIn == 0 and upright and not st.ground and math.abs(bank) < rad(20) then rc = clamp(bank * 2.5, -1, 1) * ROLL * 0.3 end
       if landAid and rollIn == 0 then rc = clamp(bank * 2.5, -1, 1) * ROLL end   -- 贴着跑道 / 甲板：机翼自动摆平
-      if kb then setAim((not st.ground and st.vdir) or fwd) end   -- 鼠标瞄准方向跟着航迹（开光电吊舱、自动掉头时从现在的航向接着飞）
+      if kb and not mAim then setAim((not st.ground and st.vdir) or fwd) end   -- 鼠标瞄准方向跟着航迹（开光电吊舱、自动掉头时从现在的航向接着飞）；
+      --   战雷式按着方向键时不动它：松开以后教官追回鼠标那里
+      if mAim and st.ground then setAim(fwd) end   -- 地上滑跑：鼠标圈跟着机头（离地以后再交给鼠标）
     else
       local aim = autoDir()
       local l = cf:VectorToObjectSpace(aim)
@@ -1529,7 +1758,15 @@ function Fly.init(G)
     st.yr = approach(st.yr or 0, yrWant, maxR * 2.6 * dt)
     st.yaw += st.yr * dt
     -- 驾驶杆 → 桨盘想要的倾角（俯仰：负的是低头 = 往前倾）；松杆桨盘回平
+    --   用户 11-22：「准心决定机头对准哪里——鼠标准心往下，螺旋桨对准前面，往前飞；准心突然往上，直升机受力往后和往上」：
+    --   电脑上俯仰跟着准心（镜头的俯仰）：准心比平常那个略往下看的角度（AIM0）低多少，机头、桨盘就往前倾多少（到型号的最大倾角为止），
+    --   高多少就往后仰多少；W / S 照样能前推后拉（加在准心上，合起来不超过最大倾角）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
     local tP = -fwdIn * maxT
+    if not G.mobile then
+      local AIM0 = -0.15   -- 坐进来时镜头的俯仰（略往下看）：这时桨盘是平的
+      local aimP = st.nosePitch or st.camPitch or AIM0
+      tP = (aimP - AIM0) * 1.15 - fwdIn * maxT
+    end
     local tR = sideIn * maxT * 0.8
     -- 往前飞得快时转机头：桨盘自动压坡度——要的侧向加速度 = 转弯的向心那份（速度 × 角速度）+ 消掉侧滑的那份（没按 A / D 时），
     --   tan 坡度 = 侧向加速度 / g；坡度给的侧向力把航迹拉着跟机头弯过去（压不过来的那一截就是侧滑，靠侧面阻力慢慢吃掉）
@@ -1567,7 +1804,12 @@ function Fly.init(G)
     local acc = V(up.X, 0, up.Z) * Tm - f * (vf * (clF + cq * math.abs(vf))) - r * (vr * (clF * 2 + cq * 3 * math.abs(vr)))
     if st.ground then acc = V() hv *= math.max(0, 1 - 5 * dt) end
     st.hv = hv + acc * dt
-    st.vy += (Tm * up.Y - GS - st.vy * 0.5) * dt
+    -- 拉平（flare）：往前飞时桨盘往后仰，迎面的气流从下往上穿过桨盘、拉力变大——速度换成高度（往后、往上顶）
+    local flare = 0
+    if lift and not st.ground and st.tiltP > 0 and vf > 0 then
+      flare = GS * 2.2 * math.sin(math.min(st.tiltP, maxT)) * smooth(4, 45, vf)
+    end
+    st.vy += (Tm * up.Y + flare - GS - st.vy * 0.5) * dt
     -- 合速度不超过服务器认的（往下冲时重力也在加速）
     local v3 = st.hv + V(0, st.vy, 0)
     local cap = d.vMax * 1.3
@@ -1607,6 +1849,8 @@ function Fly.init(G)
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
+    elseif io.UserInputType == Enum.UserInputType.MouseButton3 and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) and st.d.kind == "jet" then
+      markPoi()   -- 战雷：Alt + 中键 标目标点（兴趣点）
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
@@ -1619,7 +1863,20 @@ function Fly.init(G)
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
+        if G.airAudioEvent then G.airAudioEvent("flare") end
       end
+    elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
+      mouseAim = not mouseAim
+      setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
+      st.lookYaw, st.lookPitch = 0, 0
+      if G.toast then G.toast(T(mouseAim and "air.mouseAimOn" or "air.mouseAimOff"), "info") end
+    elseif k == Enum.KeyCode.B and (key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift)) and st.d.kind == "jet" then   -- 战雷：Shift + B 投弹数量
+      bombSeries = (bombSeries == 1) and 2 or ((bombSeries == 2) and 0 or 1)
+      G.toast(T("air.bombN" .. bombSeries), "info")
+    elseif k == Enum.KeyCode.F7 and G.flyWantsF7() then   -- 战雷：F7 轰炸机视角（没挂炸弹的飞机 F7 照旧是性能面板，Ctrl + F7 一直是）
+      setBS(not st.bsight)
+    elseif st.bsight and k == Enum.KeyCode.Z then   -- 瞄准镜变焦 1 → 2 → 4 倍
+      st.bsZoom = ((st.bsZoom or 1) == 1) and 2 or ((st.bsZoom == 2) and 4 or 1)
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
@@ -1668,6 +1925,9 @@ function Fly.init(G)
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
       if G.playSound then G.playSound("capture", nil, 2.2) end
+    elseif m.op == "rwrLock" then   -- 被敌机的雷达锁着（战雷的 RWR）：对方半秒报一次，停了一秒多就算丢了
+      st.rwrLockT = os.clock() + 1.1
+      st.rwrLockFull = m.full == true
     end
   end)
 
@@ -1681,7 +1941,10 @@ function Fly.init(G)
 
   -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
   function G.onHitMarker(kind)
-    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+    if st and st.pilot then
+      st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45))
+      if G.airAudioEvent then G.airAudioEvent((kind == "kill") and "kill" or "hit") end   -- 战雷式命中「叮」、击落两声
+    end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
@@ -1809,6 +2072,18 @@ function Fly.init(G)
     TG.fov.Text = (st.zoomS >= 3) and "NARO" or "WIDE"
     TG.zoom.Text = string.format("%.1fx", st.zoomS)
     TG.ag.Text = (w and w.kind == "aam") and "A-A" or "A-G"
+    -- 下面的小飞机：机头朝向相对吊舱镜头转（镜头朝北、飞机朝东：小飞机机头朝右）
+    do
+      local acf = st and st.cf
+      local al = acf and acf.LookVector
+      local cl = cam.CFrame.LookVector
+      if al and (al.X * al.X + al.Z * al.Z) > 1e-6 and (cl.X * cl.X + cl.Z * cl.Z) > 1e-6 then
+        local ya = math.atan2(-al.X, -al.Z)
+        local yc = math.atan2(-cl.X, -cl.Z)
+        TG.plane.Rotation = -math.deg(ya - yc)
+        TG.hdg.Text = string.format("%03d", math.floor((math.deg(-ya) % 360) + 0.5) % 360)
+      end
+    end
     local camP = cam.CFrame.Position
     local vs = cam.ViewportSize
     local dispH = vs.Y * 0.78
@@ -1929,8 +2204,18 @@ function Fly.init(G)
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
-      if d.kind == "jet" and not G.mobile and not pitLook then
-        if st.pilot and not st.uav then
+      if st.bsight and d.kind == "jet" and st.pilot then
+        -- 轰炸瞄准镜里（战雷）：鼠标左右只细细地修航向（教官带着转、保持平飞），上下不管；纯键盘驾驶时鼠标不管飞
+        if mouseAim and not G.mobile then
+          st.aimYaw -= md.X * SENS * 0.15
+          st.aimPitch += (0 - st.aimPitch) * math.min(1, dt * 1.2)
+        end
+      elseif d.kind == "jet" and not G.mobile and not pitLook then
+        if st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
+          -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
+          st.aimYaw -= md.X * SENS
+          st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
+        elseif st.pilot and not st.uav then
           -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
           --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
           --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
@@ -1961,10 +2246,10 @@ function Fly.init(G)
         local alt = st.pilot and not G.mobile and key(Enum.KeyCode.LeftAlt)
         if alt and not st.freeLook then
           st.freeLook = { st.camYaw, st.camPitch }
-          st.noseYaw = st.camYaw
+          st.noseYaw, st.nosePitch = st.camYaw, st.camPitch   -- 机头的方位、俯仰都停在按下那一刻
         elseif not alt and st.freeLook then
           st.camYaw, st.camPitch = st.freeLook[1], st.freeLook[2]
-          st.freeLook, st.noseYaw = nil, nil
+          st.freeLook, st.noseYaw, st.nosePitch = nil, nil, nil
         end
       end
       st.yawSeen = st.yaw
@@ -2031,6 +2316,28 @@ function Fly.init(G)
       local eye = (st.cf * CF(0, -d.H * 0.22, -d.L * 0.5 - 0.8)).Position
       local look = G.mobile and st.cf.LookVector or aimDirNow()
       cam.CFrame = CFrame.lookAt(eye, eye + look * 100)
+    elseif st.bsight and d.kind == "jet" and st.pilot then
+      -- 轰炸瞄准镜（F7）：机腹下面往下看，稳定地对着炸弹现在投下去的落点（十字中心）；画面的上方是航迹方向，
+      --   地面从上往下滑过十字（目标走到十字中心就投）；不画抖动
+      local imp, tf = bombNow()
+      st.bsImp, st.bsTf = imp, tf
+      st.bsAim = st.bsAim and st.bsAim:Lerp(imp, 1 - math.exp(-dt * 12)) or imp
+      local eye = (st.cf * CF(0, -d.H * 0.5 - 0.8, -d.L * 0.15)).Position
+      local look = st.bsAim - eye
+      look = (look.Magnitude > 1) and look.Unit or V(0, -1, 0)
+      local hv = V(st.vel.X, 0, st.vel.Z)
+      local lk0 = V(st.cf.LookVector.X, 0, st.cf.LookVector.Z)
+      local trk = (hv.Magnitude > 1 and hv.Unit) or (lk0.Magnitude > 1e-3 and lk0.Unit) or V(0, 0, -1)
+      local sK = clamp(-look.Y, 0, 1)
+      cam.CFrame = CFrame.lookAt(eye, eye + look * 100, (trk * sK + V(0, 1, 0) * (1 - sK)).Unit)
+      -- 视野：镜片（屏幕高的 92%）从十字到上边框住落点前方 4.5 秒的地面（目标提前几秒就看得见滑过来），
+      --   慢的时候至少框住三倍杀伤半径；Z 变焦 1 → 2 → 4 倍
+      local _, bww = bombW()
+      local slant = math.max((st.bsAim - eye).Magnitude, 1)
+      local ahead = st.bsAim + trk * (hv.Magnitude * 4.5)
+      local a1 = math.acos(clamp(look:Dot((ahead - eye).Unit), -1, 1))
+      local a2 = math.atan(((bww and bww.splash) or 30) * 3 / slant)
+      st.bsFov = clamp(2 * deg(math.max(a1, a2)) / 0.92, 6, 75) / (st.bsZoom or 1)
     elseif d.kind == "jet" and st.pilot then
       -- 镜头钉在飞机后上方、顺着机头看（用户 11-21：飞行方向标志应该固定位置）：机头前方的全息标记一直在屏幕正中，
       --   鼠标推的准星圈在画面里走（原来镜头顺着鼠标瞄准方向看，标记跟着机头在画面里到处跑）；手机上一样
@@ -2039,10 +2346,17 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
+      local wtCam = mouseAim and not st.uav and not G.mobile and not st.ground
+      if wtCam then   -- 战雷式：镜头顺着鼠标想去的方向（飞机在画面里追过去），镜头的上方就是天上（地平线不歪）
+        local a = autoDir()
+        st.camF = st.camF and st.camF:Lerp(a, 1 - math.exp(-dt * 14)) or a
+        if st.camF.Magnitude > 1e-3 then st.camF = st.camF.Unit end
+        fwd, upC = st.camF, V(0, 1, 0)
+      end
       -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
       --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
       --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
-      do
+      if not wtCam then
         local noseF = fwd
         local cf2 = noseF
         if st.camF and st.camF:Dot(noseF) > 0.5 then
@@ -2058,7 +2372,8 @@ function Fly.init(G)
         fwd = cf2
       end
       -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
-      if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
+      if wtCam and key(Enum.KeyCode.C) then st.lookT = os.clock() end
+      if st.uav or os.clock() - (st.lookT or 0) > ((wtCam and not key(Enum.KeyCode.C)) and 0 or 2.5) then
         local kk = math.exp(-dt * (st.uav and 5 or 2.2))
         st.lookYaw = (st.lookYaw or 0) * kk
         st.lookPitch = (st.lookPitch or 0) * kk
@@ -2116,15 +2431,16 @@ function Fly.init(G)
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
     if (st.uav and st.dcam == "nose") or st.eo then fovT = 70 / st.zoomS end
+    if st.bsight and st.bsFov then fovT = st.bsFov end
     st.fov = st.fov or cam.FieldOfView
     st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
-    local kick = (st.eo and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
+    local kick = ((st.eo or st.bsight) and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
     if kick > 0.01 then
       local t = os.clock()
       local a = math.rad(0.32) * kick
       cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t * 31, 1.3) * a, math.noise(t * 27, 7.1) * a, math.noise(t * 23, 4.7) * a * 0.5)
     end
-    cam.FieldOfView = st.fov - (st.eo and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
+    cam.FieldOfView = st.fov - ((st.eo or st.bsight) and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
@@ -2159,7 +2475,7 @@ function Fly.init(G)
     local bm, bs = false, false
     if wid then bm, bs = bayOf(wid) end
     st.bay = approach(st.bay, bm and 1 or 0, dt * 2.5)
-    st.bayS = approach(st.bayS, bs and 1 or 0, dt * 2.5)
+    st.bayS = approach(st.bayS, bs and 1 or 0, dt * (d.sideArm and 0.9 or 2.5))   -- 歼-20 侧弹舱：开门、转出、关门三段，一秒多一点
     st.c.bay, st.c.bayS = st.bay, st.bayS
     -- 开火：鼠标左键 机炮按住连发（扳机发给服务器）；F 挂的弹一下一发（火箭按住连发）。没有炮的飞机左键也发挂的弹
     --   手机：开火键按选中的那种（选的是炮就打炮）
@@ -2169,11 +2485,65 @@ function Fly.init(G)
       local gunOn = gid ~= nil and ((st.firing and not G.mobile) or touchGun or false)
       if gid then setTrig(gunOn) end
       local fireS = st.missile or (st.firing and not gid) or (touch and touch.fire and not touchGun)
-      if w and fireS then
+      if w and w.nuke then   -- 核导弹（惊雷-1）：要按住 1.2 秒才发（免得手滑）；HUD 中间一条解锁进度（客户端 Nuke.lua）
+        local HOLD = 1.2
+        if fireS and left(wid) > 0 and not st.fireLatch then
+          st.nukeHold = (st.nukeHold or 0) + dt
+          if st.nukeHold >= HOLD then
+            fireStore(wid, w)
+            st.fireLatch, st.nukeHold = true, 0
+          end
+        elseif not fireS then
+          st.nukeHold, st.fireLatch = 0, false
+        end
+        if G.nukeArmUI then G.nukeArmUI(left(wid) > 0, (st.nukeHold or 0) / HOLD) end
+      elseif w and fireS then
+        if G.nukeArmUI then G.nukeArmUI(false) end
         if w.kind == "rkt" or not st.fireLatch then fireStore(wid, w) end
         st.fireLatch = true
       else
+        if G.nukeArmUI then G.nukeArmUI(false) end
         st.fireLatch = false
+      end
+    end
+    -- 战雷的 CCRP（Alt + 中键标的目标点）：落点顺着航迹走到目标点就自动投（按投弹数量；齐投让一串的中间落在目标上）；
+    --   航向偏得多（落点从目标旁边超过七成杀伤半径走过）这一趟不投，掉头再来。在地上、瞄准镜外面也照样算（屏幕上的箭头在 Bombsight.lua）
+    st.ccrp = nil
+    if st.bsight and (st.ground or st.crashed or not st.pilot) then setBS(false) end
+    if st.poi and st.pilot and d.kind == "jet" and not st.ground and not st.crashed then
+      local bw, bww = bombW()
+      if bw then
+        local imp, tf
+        if st.bsight and st.bsImp then imp, tf = st.bsImp, st.bsTf else imp, tf = bombNow() end
+        local hv = V(st.vel.X, 0, st.vel.Z)
+        local gs = hv.Magnitude
+        if gs > 10 then
+          local dir = hv / gs
+          local rel = V(st.poi.X - imp.X, 0, st.poi.Z - imp.Z)
+          local along = rel:Dot(dir)
+          local crossM = (rel - dir * along).Magnitude
+          -- 要转多少度：航迹穿过目标点落点才走得到——从飞机正下方看目标点的方向和航迹差的角（正的往右转）
+          local to = V(st.poi.X - pos.X, 0, st.poi.Z - pos.Z)
+          local dev = 0
+          if to.Magnitude > 1 then
+            local tu = to.Unit
+            dev = -deg(math.atan2(dir:Cross(tu).Y, dir:Dot(tu)))
+          end
+          local nb = (bombSeries == 0) and left(bw) or math.min(bombSeries, left(bw))
+          local lead = (bombSeries == 0) and (nb - 1) * 0.5 * SERIES_GAP * gs or 0
+          local ttr = (along - lead) / gs
+          local ok = crossM <= math.max(14, (bww.splash or 24) * 0.7)
+          if ttr > 0.3 then st.ccrpArm = true end
+          if st.ccrpArm and ttr <= 0 then
+            if not ok or ttr < -0.6 then
+              st.ccrpArm = false   -- 偏了 / 投不出去（上一串还没投完）：这一趟算了
+            elseif fireStore(bw, bww, st.poi) then   -- 制导炸弹照目标点的坐标飞（像杰达姆）
+              st.ccrpArm = false
+              st.ccrpRelT = os.clock()
+            end
+          end
+          st.ccrp = { ttr = ttr, dev = dev, ok = ok, cross = crossM, tf = tf, passed = ttr < 0 and not st.ccrpArm }
+        end
       end
     end
     -- 锁定：选中的弹要锁的话，目标在视场里待够锁定时间
@@ -2183,7 +2553,12 @@ function Fly.init(G)
         local root = st.lock.em:FindFirstChild("Root")
         if root then
           local to = root.CFrame.Position - pos
+          local d0 = st.lock.dist
           st.lock.dir, st.lock.dist, st.lock.pos = to.Unit, to.Magnitude, root.CFrame.Position
+          if d0 and dt > 0 then   -- 接近速度（米 / 秒，近了为正）：战雷式锁定框右边写的那个，平滑一下
+            local vc = (d0 - st.lock.dist) / dt / AD.M
+            st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
+          end
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock)
           if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
@@ -2214,6 +2589,7 @@ function Fly.init(G)
     if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
       st.flareNext = os.clock() + 0.3
       G.R.Drive:FireServer({ op = "flare" })
+      if G.airAudioEvent then G.airAudioEvent("flare") end
     end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
@@ -2240,7 +2616,7 @@ function Fly.init(G)
     else
       aWpn.Text = T("air.noWeapon")
     end
-    st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and "air.helpJet" or "air.helpHeli")) or "air.helpPass"
+    st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and (mouseAim and "air.helpJet" or "air.helpJetKb") or "air.helpHeli")) or "air.helpPass"
     -- 开飞机的界面（AirHud.lua，照 MWT 的截图）要的数：这一帧算出来的塞进 info，最后交给 G.airHudStep
     local info = { d = d, pilot = st.pilot == true, hp = hp, mx = mx, kmh = kmh, agl = agl }
     if st.pilot then
@@ -2319,6 +2695,7 @@ function Fly.init(G)
       -- 警告
       local warn = nil
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
+      elseif st.rwrLockT and os.clock() < st.rwrLockT then warn = ((os.clock() * 2) % 1 < 0.7) and T(st.rwrLockFull and "air.radarLock" or "air.radarTrack") or ""
       elseif st.out and not st.ground then warn = T("air.flameout")
       elseif st.oob then warn = T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
@@ -2327,6 +2704,17 @@ function Fly.init(G)
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 提示音、告警音（AirAudio.lua，用户 11-24：「把开飞机的各种 ui 声音做成战雷」）：导引头声、雷达弹锁定、导弹来袭、失速、拉起、油少、熄火、起落架
+      if G.airAudioStep then
+        local lk = st.lock
+        G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
+          locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          rwrLock = st.rwrLockT ~= nil and os.clock() < st.rwrLockT, rwrFull = st.rwrLockFull == true,   -- 被敌机雷达锁着（A 加的，服务器转告）
+          stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
+          pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
+          gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
+      end
       -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
       --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
       local rest = st.ground and em:GetAttribute("Rest") or 0
@@ -2372,36 +2760,72 @@ function Fly.init(G)
         lockText.Text = locked and (T("air.locked") .. (st.uav and string.format("  %dm", math.floor(st.lock.dist / AD.M)) or "")) or T("air.locking", math.floor(st.lockT / (w.lockTime or 1) * 100))
         lockText.TextColor3 = locked and RGB(255, 80, 70) or HUD
         info.lockDist = st.lock.dist
-        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out }
+        -- 战雷式锁定（AirHud）：目标型号写在框上面，距离、接近速度写在右边；红外弹的导引头圈从机头滑到目标上
+        local mdl = st.lock.em and st.lock.em:GetAttribute("Model")
+        local nm = nil
+        if mdl then
+          for _, pre in ipairs({ "veh.", "ship.", "fort." }) do
+            local tx = T(pre .. mdl)
+            if tx ~= pre .. mdl then nm = tx break end
+          end
+          nm = nm or string.upper(mdl)
+        end
+        info.lock = { p = lp, on = lon, k = st.lockT / (w.lockTime or 1), locked = locked, inCone = not st.lock.out,
+          name = nm, dist = st.lock.dist, vc = st.lock.vc, seeker = w.seeker or w.guide, bore = bp }
         if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false
       end
+      -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
+      -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
+      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0) then
+        st.lockPingT = os.clock() + 0.5
+        G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
+      end
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
-        local h = pos.Y - math.max(ground(pos.X, pos.Z), 0)
-        local vy = -st.vel.Y
-        local tf = (vy + math.sqrt(math.max(0, vy * vy + 2 * GR * math.max(h, 0)))) / GR
-        local hit = pos + V(st.vel.X, 0, st.vel.Z) * tf * 0.97
-        local gp2, gon = project(V(hit.X, ground(hit.X, hit.Z), hit.Z))
+        local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）
         pipper.Position, pipper.Visible = gp2, gon
       else
         pipper.Visible = false
       end
-      if st.eo then   -- 吊舱画面里：平显的落点、降落菱形、锁定框都收起来（吊舱自己画跟踪框）
+      if st.eo or st.bsight then   -- 吊舱 / 轰炸瞄准镜画面里：平显的落点、降落菱形、锁定框、机头标记、大圈都收起来（各自画自己的）
         pipper.Visible, landMark.Visible, landText.Visible, lockBox.Visible, lockText.Visible, restText.Visible = false, false, false, false, false, false
+        bore.Visible, ring.Visible, ringText.Visible, aimRing.Visible = false, false, false, false
       end
     end
     -- MWT 式的界面（AirHud.lua）：有人开 / 坐的飞机都用；遥控无人机（战术平板）、光电吊舱的画面不用
     if not st.uav then dcs.Visible = false end
     warnText.Position = UDim2.new(0.5, 0, 0.5, st.uav and -130 or -172)   -- 告警：让开准星上方的武器名牌
-    if not st.uav and not st.eo then
+    if not st.uav and not st.eo and not st.bsight then
       if st.pilot then info.aim = aimRing.Visible and aimRing.Position or nil end   -- 准星由 AirHud 画（发光的细圈），这里的「◯」字收起来
+      -- 战雷式鼠标瞄准的小圈（屏幕上鼠标想去的方向）：AirHud 画白色细圈
+      info.maim = nil
+      if st.pilot and d.kind == "jet" and mouseAim and not st.uav and not G.mobile and not st.eo and not st.ground then
+        local mp, mon = project(pos + aimRingDir() * 400)
+        if mon then info.maim = mp end
+      end
       aimRing.Visible = false
       if G.airHudStep then G.try_(G.airHudStep, st, info) end
       if G.tankHudExtra then G.try_(G.tankHudExtra, st, clamp(hp / mx, 0, 1), "air") end   -- 左上圆形雷达、「被发现!」、敌人头顶带血条的名牌（TankHud.lua）
     elseif G.airHudOff then
       G.airHudOff()
+    end
+    -- 战雷的轰炸瞄准镜画面、CCRP 目标点的方框和箭头（Bombsight.lua）
+    if G.bsDraw then
+      local s2 = { on = st.bsight == true, poi = (st.pilot and not st.crashed) and st.poi or nil, ccrp = st.ccrp, relT = st.ccrpRelT }
+      if s2.poi and not st.ccrp then s2.noBomb = bombW() == nil end
+      if s2.on and st.bsImp then
+        local bw = bombW() or curW()
+        local hv = V(st.vel.X, 0, st.vel.Z)
+        s2.imp, s2.tf, s2.gs = st.bsImp, st.bsTf, hv.Magnitude
+        s2.dir = (hv.Magnitude > 1) and hv.Unit or nil
+        s2.agl = (pos.Y - st.bsImp.Y) / AD.M
+        s2.kmh = hv.Magnitude / AD.M * 3.6
+        s2.mode, s2.zoom = bombSeries, st.bsZoom
+        s2.wname, s2.left = bw and T("aw." .. bw) or "", bw and left(bw) or 0
+      end
+      G.try_(G.bsDraw, s2)
     end
   end
 

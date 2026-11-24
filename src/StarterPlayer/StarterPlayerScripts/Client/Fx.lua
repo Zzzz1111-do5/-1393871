@@ -201,13 +201,15 @@ function Fx.init(G)
   -- 叠层的音效换成真录音：SFX 的名字 → { SoundLib 的键, 速度倍数, 音量倍数 }（别的照旧叠：落地、换挡、心跳、拉栓……）
   local SFXREAL = { tankGun = { "tankGun", 1, 1 }, rkt = { "missile", 1.15, 0.8 }, msl = { "missile", 1, 1 }, whiz = { "whiz", 1, 1 }, ric = { "ric", 1, 1 },
     shellRic = { "ric", 0.8, 1.4 }, ping = { "metalHit", 1.2, 0.8 }, clang = { "metalHit", 0.85, 1.1 }, sonic = { "sonic", 1, 1 },
-    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 } }
+    rifleMe = { "rifle", 1, 1.1 }, sniperMe = { "rifle", 0.85, 1.3 }, earRing = { "earRing", 1, 1 } }
   local function realLayer(key, sp, vol)
     local id, cfg = real(key)
     if not id then return nil end
     sp = sp or 1
     return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
   end
+  G.realLayer = realLayer   -- 核爆（Nuke.lua）叠自己的声音用
+  G.sndIds = { EXP = EXP, TICK = TICK, WIND = WIND, THUD = THUD, WATER = WATER }
   -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
   function G.realLoop(key, parent)
     local id, cfg = real(key)
@@ -242,6 +244,9 @@ function Fx.init(G)
     streak = { { id = TICK, vol = 0.8, s = { 1.6, 1.6 } }, { id = TICK, vol = 0.8, s = { 2.0, 2.0 }, delay = 0.09 }, { id = TICK, vol = 0.9, s = { 2.5, 2.5 }, delay = 0.18 },
       { id = EXP, vol = 0.25, s = { 1.6, 1.7 }, reg = { 0.02, 0.3 }, eq = { 6, 0, -8 } } },
     heart = { { id = THUD, vol = 1.6, s = { 0.5, 0.52 }, eq = { 10, -4, -24 } }, { id = THUD, vol = 1.1, s = { 0.47, 0.49 }, eq = { 10, -4, -24 }, delay = 0.24 } },
+    -- 阵亡（DeathFx.lua，GTA5 那一下「WASTED」）：放慢的低沉爆炸（只留低音、一点失真）+ 放慢的风声呼一下
+    death = { { id = EXP, vol = 1.1, s = { 0.42, 0.45 }, reg = { 0, 2.4 }, eq = { 10, -3, -20 }, dist = 0.3 },
+      { id = WIND, vol = 7, s = { 0.62, 0.66 }, reg = { 2, 4.2 }, eq = { 6, 4, -10 }, fade = 1.4 } },
     -- 自己开枪（耳边，用户 11-18：提高手感；原来是一层拉快的爆炸声，薄）：脆的一下（起爆那一截拉快）+ 低沉的一下（放慢、只留低音）
     --   + 枪机的咔哒 + 很短的回声尾巴；狙击枪更重、尾巴更长
     rifleMe = { { id = EXP, vol = 0.3, s = { 2.5, 2.8 }, reg = { 0.02, 0.3 }, eq = { -3, 2, 4 } },
@@ -290,7 +295,9 @@ function Fx.init(G)
   local function makeSound(L, parent, o)
     local snd = Instance.new("Sound")
     snd.SoundId = L.id
-    snd.Volume = math.min(10, L.vol * (o.vol or 1))
+    -- 震荡（Shock.lua）：近处刚炸过，别的声音发闷、变小（耳鸣本身 o.dry 不闷）
+    local muf = (not o.dry and G.muffle) and G.muffle() or 0
+    snd.Volume = math.min(10, L.vol * (o.vol or 1)) * (1 - 0.55 * muf)
     local sp = (L.s[1] + (L.s[2] - L.s[1]) * math.random()) * (o.speed or 1)
     snd.PlaybackSpeed = sp
     snd.RollOffMinDistance = o.rmin or 40
@@ -303,7 +310,7 @@ function Fx.init(G)
         snd.LoopRegion = NumberRange.new(L.loop[1], L.loop[2])
       end
     end
-    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0)
+    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) - 34 * muf
     if L.eq or hi ~= 0 then
       local e = Instance.new("EqualizerSoundEffect")
       e.LowGain, e.MidGain, e.HighGain = L.eq and L.eq[1] or 0, L.eq and L.eq[2] or 0, math.max(-80, hi)
@@ -411,14 +418,25 @@ function Fx.init(G)
   local climbP, climbY = 0, 0                       -- 还没加上去的上抬、左右飘
   local aP, aY = 0, 0                               -- 步行时已经加进镜头朝向里的「一下就回来的」那份
   local SPR = 30                                    -- 弹簧角频率（临界阻尼）
+  -- 什么时候加（用户 11-21：边走边开枪后坐力是往下的）：步行时在镜头模块之后、记录仪晃动（Bodycam，Camera + 5）之前加——
+  --   原来在最后（Last）加，记录仪下一帧开头还原晃动时发现镜头被动过就不还原，它那份总是往下的低头晃动每帧都留在镜头里，
+  --   边走边打一路往下压。开车、开飞机的脚本镜头每帧重新摆，还是要在最后加（IAShakeLate）
+  local tP, tY, tR, live = 0, 0, 0, false
   pcall(function()
-    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Last.Value, function(dt)
+    RunService:BindToRenderStep("IAShakeLate", Enum.RenderPriority.Last.Value, function()
+      if live and cam.CameraType == Enum.CameraType.Scriptable then cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR) end
+    end)
+  end)
+  pcall(function()
+    RunService:BindToRenderStep("IAShake", Enum.RenderPriority.Camera.Value + 2, function(dt)
       dt = math.min(dt, 0.1)
+      live = false
       if trauma <= 0.002 and climbP == 0 and climbY == 0 and math.abs(pp) + math.abs(py) + math.abs(pr) + math.abs(vp) + math.abs(vy) + math.abs(vr) < 1e-5
         and aP == 0 and aY == 0 then
         pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0
         return
       end
+      live = true
       local n = math.max(1, math.ceil(dt / (1 / 240)))   -- 弹簧分小步算（帧率低时不发散）
       local h = dt / n
       for _ = 1, n do
@@ -438,7 +456,7 @@ function Fx.init(G)
       else
         trauma = 0
       end
-      local tP, tY, tR = pp + sP, py + sY, pr + sR
+      tP, tY, tR = pp + sP, py + sY, pr + sR
       local f = 1 - math.exp(-dt * 40)   -- 上抬几帧里加完（60 帧时一帧加一半）
       local cP, cY = climbP * f, climbY * f
       climbP -= cP
@@ -446,8 +464,7 @@ function Fx.init(G)
       if math.abs(climbP) < 1e-6 then climbP = 0 end
       if math.abs(climbY) < 1e-6 then climbY = 0 end
       if cam.CameraType == Enum.CameraType.Scriptable then
-        cam.CFrame = cam.CFrame * CFrame.Angles(tP, tY, tR)
-        aP, aY = 0, 0
+        aP, aY = 0, 0   -- 脚本镜头：IAShakeLate 在最后加全量
       else
         cam.CFrame = cam.CFrame * CFrame.Angles(cP + tP - aP, cY + tY - aY, tR)
         aP, aY = tP, tY
@@ -814,6 +831,7 @@ function Fx.init(G)
     if c ~= "gun" then   -- 离得近震一下
       local shR = r * 12 + 60
       if d < shR then G.shake(math.clamp(r / 32, 0.12, 0.85) * (1 - d / shR)) end
+      if G.concuss then G.concuss(d, r, c) end   -- 近处：耳鸣、发闷、一白一糊（Shock.lua）
     end
     local t = os.clock()
     if t - boomT > 0.25 then boomT, boomN = t, 0 end
@@ -941,9 +959,30 @@ function Fx.init(G)
         glow = part(BALL, V(1.1, 1.1, 1.1) * math.max(1, aw.shape and aw.shape.d * 1.6 or 1), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
         glowOn(glow, RGB(255, 180, 100), 22, 4)   -- 尾焰照亮弹体和周围
       end
-      if not mine(e) then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
+      if not mine(e) and not aw.hyper then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
         burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+      if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
+        local fs = flying[e.id]
+        fs.hyper, fs.lit = true, false
+        glow.Size = V(5, 5, 5)
+        local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+        a0.Position, a1.Position = V(0, 1.6, 0), V(0, -1.6, 0)
+        a0.Parent, a1.Parent = glow, glow
+        local tr = Instance.new("Trail")
+        tr.Attachment0, tr.Attachment1 = a0, a1
+        tr.Lifetime = 3.2
+        tr.MinLength = 2
+        tr.FaceCamera = true
+        tr.LightEmission = 0.6
+        tr.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 200)), ColorSequenceKeypoint.new(0.15, RGB(255, 170, 90)), ColorSequenceKeypoint.new(1, RGB(210, 210, 214)) })
+        tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.3, 0.45), NumberSequenceKeypoint.new(1, 1) })
+        tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 3.2) })
+        tr.Enabled = false
+        tr.Parent = glow
+        fs.trail = tr
+        glow.Transparency = 1
+      end
       if glow then addRoar(flying[e.id], glow, e.p) end
       if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：导弹视角小窗（MslCam.lua）
       return
@@ -953,7 +992,34 @@ function Fx.init(G)
       local big = e.f == "tank"
       body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
       if big then glowOn(body, RGB(255, 220, 170), 10, 2) end
-      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, t = 0, kind = kind, trailT = 0 }
+      -- 坦克炮弹的曳光管（用户 11-22 晚：开镜开炮看得见炮弹从左上方落下去）：一两公里外弹体不到一个像素，
+      --   曳光管是一个一直这么大的亮点（屏幕上几个像素，越远越看得见光点、看不出大小），被地形、车挡住就看不见；飞两三秒烧完
+      if big and e.tr then
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.fromOffset(9, 9)
+        bb.LightInfluence = 0
+        bb.AlwaysOnTop = false
+        bb.MaxDistance = 20000
+        pcall(function() bb.Brightness = 3 end)
+        bb.Adornee = body
+        local dotF = Instance.new("Frame")
+        dotF.AnchorPoint = Vector2.new(0.5, 0.5)
+        dotF.Position = UDim2.fromScale(0.5, 0.5)
+        dotF.Size = UDim2.fromScale(1, 1)
+        dotF.BackgroundColor3 = RGB(255, 132, 70)
+        dotF.BorderSizePixel = 0
+        local cr = Instance.new("UICorner")
+        cr.CornerRadius = UDim.new(0.5, 0)
+        cr.Parent = dotF
+        local core = dotF:Clone()
+        core.Size = UDim2.fromScale(0.45, 0.45)
+        core.BackgroundColor3 = RGB(255, 236, 200)
+        core.Parent = dotF
+        dotF.Parent = bb
+        bb.Parent = body
+      end
+      flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, dr = e.dr, t = 0, kind = kind, trailT = 0, tracer = big and e.tr or nil }
+      if G.onTankShot and big then pcall(G.onTankShot, e, flying[e.id]) end   -- 测试用：火控测试看曳光弹在镜里怎么走
       return
     elseif kind == "grenade" then
       body = part(BALL, V(0.7, 0.7, 0.7), CFrame.new(e.p), RGB(70, 80, 60), Enum.Material.Metal, 0)
@@ -990,23 +1056,46 @@ function Fx.init(G)
       flying[id] = nil
     end
   end
+  -- 核导弹的弹道（同服务器 Nuke.lua：三次贝塞尔曲线，进度 u = 0.55x + 0.45x²）：按收到 nukePath 以后过了多久算位置、速度
+  local function pathAt(s)
+    local P = s.path
+    local x = math.clamp((os.clock() - s.pathT0) / s.pathTf, 0, 1)
+    local u = 0.55 * x + 0.45 * x * x
+    local a = 1 - u
+    local pos = P[1] * (a * a * a) + P[2] * (3 * a * a * u) + P[3] * (3 * a * u * u) + P[4] * (u * u * u)
+    local d = (P[2] - P[1]) * (3 * a * a) + (P[3] - P[2]) * (6 * a * u) + (P[4] - P[3]) * (3 * u * u)
+    return pos, d * ((0.55 + 0.9 * x) / s.pathTf)
+  end
   local function stepShots(dt)
     for id, s in pairs(flying) do
       s.t += dt
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
+      if s.dr then s.v -= s.v * math.min(0.5, s.dr * s.v.Magnitude * dt) end   -- 空气阻力（同服务器 Ents.lua，坦克炮弹）
       if s.gb then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹：AirDefs.GRAV
       s.p += s.v * dt
+      if s.path then
+        local pv, vv = pathAt(s)
+        s.p = pv
+        if vv.Magnitude > 1 then s.v = vv end
+      end
       if s.wm then   -- 按型号拼的弹：整枚一起挪，导弹尾焰烧完就灭、尾烟跟着淡
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
         local burning = s.t < s.burn
+        if s.hyper then burning = s.lit end
         if not burning and s.roar then stopRoar(s) end
         if s.glow then
-          s.glow.CFrame = cf * CFrame.new(0, 0, s.half + 0.5)
+          s.glow.CFrame = cf * CFrame.new(0, 0, s.half + (s.hyper and 2.5 or 0.5))
           s.glow.Transparency = burning and 0 or 1
         end
-        if s.kind == "missile" then
+        if s.hyper then   -- 高超音速：尾迹交给 Trail；俯冲时弹头烧得发红（等离子体）
+          if s.trail then s.trail.Enabled = s.lit end
+          if s.lit and s.v.Y < -1500 and not s.plasma and s.wm.parts[1] then
+            s.plasma = true
+            for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
+          end
+        elseif s.kind == "missile" then
           s.trailT += dt
           if s.trailT > (burning and 0.035 or 0.12) then
             s.trailT = 0
@@ -1019,6 +1108,11 @@ function Fx.init(G)
         s.body.CFrame = CFrame.new(s.p)
       elseif s.kind == "shell" or s.kind == "bomb" then
         s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+        if s.tracer and not s.burnt and s.t > 3.2 then   -- 曳光管烧完了（约 3 秒、四五公里）
+          s.burnt = true
+          local g = s.body:FindFirstChildOfClass("BillboardGui")
+          if g then g.Enabled = false end
+        end
       elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
         s.body.CFrame = CFrame.new(s.p)
         s.trailT += dt
@@ -1044,7 +1138,7 @@ function Fx.init(G)
           Debris:AddItem(sm, 1.25 * k)
         end
       end
-      if s.t > ((s.kind == "bomb") and 40 or 15) then endShot(id) end
+      if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or 15)) then endShot(id) end
     end
   end
   -- 抛副油箱：照挂着的样子拼一个（WeaponModels 的外形），带着飞机的速度往下掉——空箱子阻力大很快慢下来，重心靠前机头往下栽、绕纵轴慢慢转；
@@ -1083,7 +1177,7 @@ function Fx.init(G)
   -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
   local function fixShot(e)
     local s = flying[e.id]
-    if not s or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
+    if not s or s.path or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
     if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
     s.v = e.v
   end
@@ -1385,6 +1479,20 @@ function Fx.init(G)
         newShot(e)
         local fs = flying[e.id]
         if fs then fs.by = e.by end   -- 谁打的（飞机的吊舱页面算自己投的弹的 TTI）
+      elseif k == "nukeIgn" then   -- 核导弹助推器点火（服务器 Nuke.lua）
+        local fs = flying[e.id]
+        if fs then
+          fs.lit = true
+          if fs.glow then addRoar(fs, fs.glow, e.p, 1.6) end
+        end
+        if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
+      elseif k == "nukePath" then   -- 核导弹点火后的弹道（按同一条曲线算，不用校正）
+        local fs = flying[e.id]
+        if fs and typeof(e.a) == "Vector3" and typeof(e.d) == "Vector3" then
+          fs.path, fs.pathT0, fs.pathTf, fs.lit = { e.a, e.b, e.c, e.d }, os.clock(), e.tf or 5, true
+        end
+      elseif k == "nuke" or k == "nukeWarn" or k == "nukeDive" then
+        if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
       elseif k == "shotEnd" then endShot(e.id)
       elseif k == "shotFix" then fixShot(e)
       elseif k == "flares" then flares(e)

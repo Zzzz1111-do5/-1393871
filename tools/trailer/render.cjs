@@ -6,9 +6,12 @@
 //     still <镜头号> <秒> [文件名]      渲一张（调画面用）
 //     bench <镜头号> [帧数]             量每帧多久
 //     frames [镜头号,…]                 逐帧渲染（每个镜头一个目录，已有的帧跳过：中断了接着渲）；PART=i/n 只渲第 i 份（几个进程分头渲）
+//     plates [条目,…]                   有剪辑表的版本（gulf 短剧版）：只渲剪辑表要用到的原镜头净画面（不带平显、字幕）→ plates/<原镜头>/<帧号>.jpg；PART 同上
+//     comp [条目,…]                     有剪辑表的版本：净画面 + 截取 / 定格 / 调色 + 平显 + 字幕层 → final/<条目>/<帧号>.jpg（改字幕只要重跑这一步，几分钟）
 //     audio                             配乐、音效离线合成 → audio.wav
-//     edit                              各镜头的帧 + 声音 → film.mp4
-//   环境变量：W、H（画面大小，默认 1920 × 1080；宽银幕黑边在画面里）、SS（内部渲染倍率，默认 1）、FPS（默认 24）
+//     edit                              各镜头的帧（有剪辑表就按剪辑表拿 final/ 里的）+ 声音 → film.mp4
+//   环境变量：W、H（画面大小，默认 1920 × 1080；宽银幕黑边在画面里）、SS（内部渲染倍率，默认 1）、FPS（默认 24）、
+//     CUT（film 微电影 / promo 时代广场宣传片，promo.js：整幅 16:9、英文字幕、3 分钟）、ASP（画面宽高比，0 = 按剪辑版本）
 'use strict';
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
@@ -29,6 +32,7 @@ function serve() {
       let f = null;
       if (u.startsWith('/repo/')) f = path.join(ROOT, u.slice(6));
       else if (u.startsWith('/data/')) f = path.join(path.resolve(DATA), u.slice(6));
+      else if (u.startsWith('/out/')) f = path.join(path.resolve(OUT), u.slice(5));   // 合成那一步读净画面
       if (!f || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
       r.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
       fs.createReadStream(f).pipe(r);
@@ -41,7 +45,7 @@ async function open(b, port) {
   const p = await b.newPage({ viewport: { width: W, height: H } });
   p.on('pageerror', e => console.log('页面出错：', e.message));
   p.on('console', m => { if (m.type() === 'error' || m.type() === 'warning' || /^\[film\]/.test(m.text())) console.log('[页面]', m.text()); });
-  await p.goto(`http://127.0.0.1:${port}/repo/tools/trailer/film/index.html?w=${W}&h=${H}&fps=${FPS}&ss=${process.env.SS || 1}`);
+  await p.goto(`http://127.0.0.1:${port}/repo/tools/trailer/film/index.html?w=${W}&h=${H}&fps=${FPS}&ss=${process.env.SS || 1}&cut=${process.env.CUT || 'film'}&asp=${process.env.ASP || 0}`);
   await p.waitForFunction(() => window.FILM && window.FILM.ready, null, { timeout: 600000 });
   return p;
 }
@@ -65,7 +69,7 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
       console.log(`${f}：${ms.toFixed(0)} 毫秒`);
     } else if (STEP === 'stills') {   // 每个镜头渲一张（看分镜）：stills S01:2.5,S02:3 …；不给就每个镜头取中间
       const p = await open(b, port);
-      const list = await p.evaluate(() => window.FILM.shots.map(s => ({ id: s.id, dur: s.dur })));
+      const list = await p.evaluate(() => (window.FILM.edit || window.FILM.shots).map(s => ({ id: s.id, dur: s.dur })));
       const want = ARGS[0] ? ARGS[0].split(',').map(a => a.split(':')) : list.map(s => [s.id, (s.dur / 2).toFixed(2)]);
       await p.evaluate(() => { window.FILM.jpg = true; });
       for (const [id, t] of want) {
@@ -110,6 +114,68 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
         }
         console.log(`镜头 ${s.id}：${n} 帧，新渲 ${done} 帧，${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
       }
+    } else if (STEP === 'plates') {
+      const p = await open(b, port);
+      const edit = await p.evaluate(() => window.FILM.edit);
+      if (!edit) throw new Error('这个版本没有剪辑表（只有 gulf 短剧版有）');
+      const only = ARGS[0] ? ARGS[0].split(',') : null;
+      const [pi, pn] = (process.env.PART || '0/1').split('/').map(Number);
+      // 每个原镜头要哪些帧（几条剪辑共用的只渲一次），按原镜头在剪辑表里第一次出现的顺序渲
+      const need = new Map();
+      for (const e of edit) {
+        if (only && !only.includes(e.id)) continue;
+        if (!e.src) continue;
+        if (!need.has(e.src)) need.set(e.src, new Set());
+        for (const k of e.plates) if (k != null) need.get(e.src).add(k);
+      }
+      await p.evaluate(() => { window.FILM.jpg = true; });
+      // REV=1：倒着渲（另开一个进程帮同一份从后往前渲，两头往中间赶）；每帧先占一个锁文件，几个进程不会撞到同一帧
+      const order = [...need];
+      if (process.env.REV) order.reverse();
+      for (const [src, set] of order) {
+        const dir = path.join(OUT, 'plates', src);
+        fs.mkdirSync(dir, { recursive: true });
+        const ks = [...set].sort((a, b) => a - b).filter((k, j) => j % pn === pi);
+        if (process.env.REV) ks.reverse();
+        const t0 = Date.now();
+        let done = 0;
+        for (const k of ks) {
+          const f = path.join(dir, String(k).padStart(4, '0') + '.jpg');
+          if (fs.existsSync(f)) continue;
+          let lock;
+          try { lock = fs.openSync(f + '.lock', 'wx'); } catch (e) { continue; }   // 别的进程正在渲这一帧
+          try {
+            await p.evaluate(([src, k]) => window.FILM.renderPlate(src, k), [src, k]);
+            await grab(p, f + '.part');
+            fs.renameSync(f + '.part', f);
+          } finally { fs.closeSync(lock); fs.rmSync(f + '.lock', { force: true }); }
+          done++;
+          if (done % 24 === 0) console.log(`  ${src} ${done}/${ks.length}（每帧 ${((Date.now() - t0) / done / 1000).toFixed(2)} 秒）`);
+        }
+        console.log(`原镜头 ${src}：要 ${ks.length} 帧，新渲 ${done} 帧，${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+      }
+    } else if (STEP === 'comp') {
+      const p = await open(b, port);
+      const edit = await p.evaluate(() => window.FILM.edit);
+      if (!edit) throw new Error('这个版本没有剪辑表');
+      const only = ARGS[0] ? ARGS[0].split(',') : null;
+      const [pi, pn] = (process.env.PART || '0/1').split('/').map(Number);
+      await p.evaluate(() => { window.FILM.jpg = true; });
+      for (const e of edit) {
+        if (only && !only.includes(e.id)) continue;
+        const dir = path.join(OUT, 'final', e.id);
+        fs.mkdirSync(dir, { recursive: true });   // 合成总是整条重做（字幕改了），旧帧直接盖掉
+        const t0 = Date.now();
+        for (let i = 0; i < e.n; i++) {
+          if (i % pn !== pi) continue;
+          const k = e.plates[i];
+          const rel = k == null ? null : `plates/${e.src}/${String(k).padStart(4, '0')}.jpg`;
+          if (rel && !fs.existsSync(path.join(OUT, rel))) throw new Error('少一张净画面：' + rel + '（先跑 plates）');
+          await p.evaluate(([id, i, url]) => window.FILM.compAt(id, i, url), [e.id, i, rel && '/out/' + rel]);
+          await grab(p, path.join(dir, String(i).padStart(4, '0') + '.jpg'));
+        }
+        console.log(`条目 ${e.id}：${e.n} 帧，${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+      }
     } else if (STEP === 'audio') {
       const p = await open(b, port);
       const b64 = await p.evaluate(() => window.FILM.renderAudio());
@@ -117,8 +183,9 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
       console.log('写好了 audio.wav');
     } else if (STEP === 'edit') {
       const p = await open(b, port);
-      const list = await p.evaluate(() => window.FILM.shots.map(s => ({ id: s.id, dur: s.dur })));
-      // 每个镜头的帧连起来（帧号连续），交给 ffmpeg
+      const edit = await p.evaluate(() => window.FILM.edit);
+      const list = edit || await p.evaluate(() => window.FILM.shots.map(s => ({ id: s.id, dur: s.dur })));
+      // 每个镜头的帧连起来（帧号连续），交给 ffmpeg；有剪辑表就拿合成好的 final/
       const all = path.join(OUT, 'all');
       fs.rmSync(all, { recursive: true, force: true });
       fs.mkdirSync(all);
@@ -126,7 +193,7 @@ async function grab(p, file) {   // 渲完一帧从画布取出来（JPEG 质量
       for (const s of list) {
         const n = Math.round(s.dur * FPS);
         for (let i = 0; i < n; i++) {
-          const src = path.join(OUT, 'frames', s.id, String(i).padStart(4, '0') + '.jpg');
+          const src = path.join(OUT, edit ? 'final' : 'frames', s.id, String(i).padStart(4, '0') + '.jpg');
           if (!fs.existsSync(src)) throw new Error('少一帧：' + src);
           fs.symlinkSync(src, path.join(all, String(k++).padStart(5, '0') + '.jpg'));
         }

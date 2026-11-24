@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Air", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle" }) do
+for _, name in ipairs({ "Imports", "Store", "Economy", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Kit", "Air", "Nuke", "Depots", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -124,7 +124,107 @@ end)
 
 ---------------------------------------------------------------- 开服：先生成地图，再开局
 
+-- 选地图（用户 11-22：「界面直接写 play，然后进入界面点地图」；11-23：「三张地图改成投票制，进去投票选地图」）：开服先不造世界，
+--   进来的人在主菜单「开始游戏」→ 选地图界面投票（ACT.pickMap，Round.lua；能改票）：第一票投出后 Config.MapVote.time 秒按票数最多的开（平票随机），
+--   在场的人都投了就再等 grace 秒提前结束；服务器里一个人也没有（测试台、空服）就等几秒按默认的岛开；后进来的直接加入当前这张。
+--   定下来以后 ReplicatedStorage 的 MapId 属性告诉客户端（客户端照着 Map.use）
+G.mapId = nil
+G.mapVotes = {}   -- [Player] = 地图 id
+local voteEnds, allInAt = nil, nil   -- 投票到什么时候截止（os.clock）；在场的人什么时候都投完了
+local function validMap(id)
+  for _, m in ipairs(Map.ids) do if m == id then return true end end
+  return false
+end
+-- 直接定一张（Studio 的 MapName、测试用）；已经定了就看是不是同一张
+function G.pickMap(id)
+  if G.mapId then return G.mapId == id end
+  if not validMap(id) or not Map.profile(id) then return false end
+  G.mapId = id
+  return true
+end
+-- 投一票（改票就是再投一次）；地图已经定了就不算
+function G.voteMap(pl, id)
+  if G.mapId or type(id) ~= "string" or not validMap(id) or not Map.profile(id) then return false end
+  G.mapVotes[pl] = id
+  voteEnds = voteEnds or (os.clock() + ((Config.MapVote and Config.MapVote.time) or 25))
+  return true
+end
+local function voteCounts()
+  local counts, voters = {}, 0
+  for pl, id in pairs(G.mapVotes) do
+    if pl.Parent == Players then
+      counts[id] = (counts[id] or 0) + 1
+      voters += 1
+    end
+  end
+  return counts, voters
+end
+-- 发给客户端的投票情况（Round.lua 的 common()）：还没定图才有
+function G.mapVoteState()
+  if G.mapId then return nil end
+  local counts, voters = voteCounts()
+  return { n = counts, left = voteEnds and math.max(0, voteEnds - os.clock()) or nil, voters = voters, players = #Players:GetPlayers() }
+end
+-- 票数最多的那张（平票随机挑一张）；没人投返回 nil
+local function voteWinner()
+  local counts = voteCounts()
+  local best, list = 0, {}
+  for _, id in ipairs(Map.ids) do
+    local n = counts[id] or 0
+    if n > best then best, list = n, { id } elseif n == best and n > 0 then table.insert(list, id) end
+  end
+  if #list == 0 then return nil end
+  return list[math.random(1, #list)]
+end
+local function waitMap()
+  local t0 = os.clock()
+  -- Studio、测试台：Workspace 的属性 MapName 直接定（"island" / "desert" / "sands"），不等人选
+  do
+    local forced
+    pcall(function() forced = workspace:GetAttribute("MapName") end)
+    if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
+  end
+  -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
+  local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
+  local grace = (Config.MapVote and Config.MapVote.grace) or 3
+  local pushAt = 0
+  while not G.mapId do
+    -- 投票中半秒发一次状态（票数、倒计时、在场人数：有人进来、走了也跟着变）
+    if os.clock() >= pushAt and #Players:GetPlayers() > 0 and G.pushAll then
+      pushAt = os.clock() + 0.5
+      pcall(G.pushAll)
+    end
+    local anyone = #Players:GetPlayers() > 0
+    local waited = os.clock() - t0
+    if voteEnds then
+      -- 在场的人都投了：再等 grace 秒（还能改票）就开
+      local _, voters = voteCounts()
+      if anyone and voters >= #Players:GetPlayers() then
+        allInAt = allInAt or os.clock()
+        voteEnds = math.min(voteEnds, allInAt + grace)
+      end
+      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "island" end
+    end
+    if not G.mapId and ((not anyone and not voteEnds and waited > emptyWait) or waited > (Config.MapWaitMax or 900)) then
+      G.mapId = voteWinner() or Config.MapDefault or "island"
+    end
+    task.wait(0.1)
+  end
+  if G.pushAll then pcall(G.pushAll) end   -- 选地图界面马上看到定了哪张
+  if not Map.use(G.mapId) then
+    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
+    G.mapId = "island"
+    Map.use("island")
+  end
+  Config.useMap(G.mapId)   -- 跟着地图变的数（沙海的五个阶段……）
+  local okL, Lang = pcall(function() return require(RS:WaitForChild("Lang")) end)
+  if okL and type(Lang) == "table" then Lang.mapId = G.mapId end   -- 服务器发的提示也用这张图的说法（据点名……）
+  RS:SetAttribute("MapId", G.mapId)
+  print("[全面大战场] 地图：" .. G.mapId)
+end
+
 task.spawn(function()
+  waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）

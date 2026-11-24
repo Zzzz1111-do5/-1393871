@@ -6,6 +6,10 @@
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
 local Map = {}
+Map.NAME = "island"
+-- 地形长 Roblox 会动的草叶（用户 11-24 发了截图：「这个 roblox 的这种草你给海岛地图加上吧」）：World.lua 写地形时草地照写 Grass（草叶只长在 Grass 上）；
+--   草叶开关 Terrain.Decoration、草长 GrassLength 脚本改不了，写在地点文件的 Terrain 上（tools/build.luau）
+Map.GRASS = true
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 
@@ -490,7 +494,7 @@ function Map.material(x, z, y, slope)
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
   -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
-  --   写地形时 Grass 都换成 LeafyGrass（World.lua 的 writeChunk；用户 11-21：会动的草叶把车、人的下半截盖住，脚本又关不掉草叶）
+  --   Grass 上长 Roblox 会动的草叶（Map.GRASS，用户 11-24 要回来的；11-21 时嫌草叶盖住车、人的下半截，写地形时换成过 LeafyGrass）
   return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
@@ -517,6 +521,48 @@ function Map.lineClear(a, b, step)
     local p = a + d * (i / n)
     if Map.height(p.X, p.Z) > p.Y then return false end
   end
+  return true
+end
+
+---------------------------------------------------------------- 几张地图（用户 11-22：「加一个沙漠地图」「进入界面点地图」）
+-- 上面算的是「岛屿突击」；沙漠在 MapDesert（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
+--   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
+--   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
+Map.id = "island"
+Map.ids = { "island", "desert", "sands" }
+-- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
+Map.info = {
+  island = { km = 8.8, mode = "assault", sea = true },
+  desert = { km = 23.4, mode = "conquest", sea = false },
+  sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
+}
+local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
+local PROFILES = { island = {} }
+for k, v in pairs(Map) do
+  if not KEEP[k] then PROFILES.island[k] = v end
+end
+function Map.profile(id)
+  if PROFILES[id] == nil then
+    local ok, mod = pcall(function()
+      local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
+      return require(script.Parent:WaitForChild(name, 5))
+    end)
+    PROFILES[id] = (ok and type(mod) == "table") and mod or false
+    if not ok then warn("[地图] " .. tostring(id) .. " 加载不了：" .. tostring(mod)) end
+  end
+  return PROFILES[id] or nil
+end
+function Map.use(id)
+  if Map.id == id then return true end
+  local P = Map.profile(id)
+  if not P then return false end
+  for k in pairs(Map) do
+    if not KEEP[k] then Map[k] = nil end
+  end
+  for k, v in pairs(P) do
+    if not KEEP[k] then Map[k] = v end
+  end
+  Map.id = id
   return true
 end
 

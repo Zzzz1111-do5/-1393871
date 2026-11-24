@@ -416,10 +416,14 @@ function VehHud.init(G)
     MW.era = {}
     local ok, L = pcall(function() return TMods.eraOf and TMods.eraOf(d.id) end)
     if not ok or not L or not L.b then return end
+    -- 只画贴了的格（用户 11-22 晚：「坦克要能自己选位置贴爆反」；自己开的车 d 是按改装改过的那份，d.mods.ep 是一格格选的）
+    local onCell = TMods.cellsOn and TMods.cellsOn(d.id, d.mods) or {}
     local sx, sz = 22 * VK / ((d.W or 10) / 2), 45 * VK / ((d.L or 20) / 2)   -- 车的格 → 框里的像素
     local tur = L.tur or { 0, 0, 0 }
     local cols, order = {}, {}
     for i, b in ipairs(L.b) do
+      if not onCell[i] then b = nil end   -- 这一格没贴
+      if b then
       local turret = b[1] == "t"
       local x, z = b[2], b[4]
       local nx, nz = b[5], b[7]
@@ -451,6 +455,7 @@ function VehHud.init(G)
         if turret then c.px, c.py = VWD / 2 + (x - tur[1]) * sx, 60 * VK + (z - tur[3]) * sz
         else c.px, c.py = VWD / 2 + x * sx, 69 * VK + z * sz end
         if nl > 0.3 then c.px, c.py = c.px + nx / nl * 1.4, c.py + nz / nl * 1.4 end
+      end
       end
     end
     for _, c in ipairs(order) do
@@ -1010,8 +1015,9 @@ function VehHud.init(G)
       for _, q in ipairs(MW.vFall) do
         if q.s then q.s.Color = silCol else q.f.BackgroundColor3 = silCol end   -- 边框染色；炮管是实心的细条
       end
-      if MW.eraId ~= d.id then
-        MW.eraId = d.id
+      local eraKey = d.id .. ":" .. tostring(d.mods and d.mods.era or "")
+      if MW.eraId ~= eraKey then
+        MW.eraId = eraKey
         buildEra(d)
       end
       if #MW.era > 0 then

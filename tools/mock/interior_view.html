@@ -88,7 +88,38 @@ function drawGui(ctx, nodes, sx, sy) {
 fetch(P.get('json')).then(r => r.json()).then(async D => {
   const root = new THREE.Group();
   scene.add(root);
+  // 真模型部件（dump 里带 mk 键、mp 块名的 MeshPart）：按 models/optics/<键>.glb 里那一块画——块的几何在器材坐标里，
+  //   零件的 CFrame 在块的包围盒中心：矩阵 = 零件 CFrame × 缩放 k（零件大小 / 块的包围盒）× 挪回包围盒中心
+  const GLBS = {};
+  for (const k of [...new Set(D.parts.filter(p => p.mk).map(p => p.mk))]) {
+    const url = k.startsWith('veh/') ? `/repo/models/${k}.glb` : `/repo/models/optics/${k}.glb`;   // veh/<键>：原车模型的块（V_<键>__<块>）
+    GLBS[k] = await new Promise(res => new GLTFLoader().load(url, g => {
+      const nodes = {};
+      g.scene.updateMatrixWorld(true);
+      g.scene.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); nodes[o.name] = o; if (o.parent && o.parent.name) nodes[o.parent.name] = nodes[o.parent.name] || o; } });
+      res(nodes);
+    }, undefined, () => res(null)));
+  }
   for (const p of D.parts) {
+    if (p.mk && GLBS[p.mk]) {
+      const src = p.mk.startsWith('veh/') ? GLBS[p.mk][p.mp] : GLBS[p.mk][`O_${p.mk}__${p.mp}`];
+      if (src) {
+        const bb = src.geometry.boundingBox, c0 = new THREE.Vector3(), s0 = new THREE.Vector3();
+        bb.getCenter(c0); bb.getSize(s0);
+        const ks = [0, 1, 2].filter(i => s0.getComponent(i) > 1e-3).map(i => p.z[i] / s0.getComponent(i));
+        const k = ks.length ? ks.reduce((a, b) => a + b) / ks.length : 1;
+        const m = new THREE.Mesh(src.geometry, src.material);
+        const c = p.c;
+        const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+        M.multiply(new THREE.Matrix4().makeScale(k, k, k)).multiply(new THREE.Matrix4().makeTranslation(-c0.x, -c0.y, -c0.z));
+        m.matrixAutoUpdate = false;
+        m.matrix.copy(M);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        root.add(m);
+        continue;
+      }
+    }
     let g;
     const [sx, sy, sz] = p.z;
     if (p.s === 'Cylinder') { g = new THREE.CylinderGeometry(sy / 2, sy / 2, sx, 20); g.rotateZ(Math.PI / 2); }
@@ -110,15 +141,16 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
     const aspect = s.z[0] / s.z[1];
     cv.width = 512; cv.height = Math.round(512 / aspect);
     const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+    const glass = s.page === 'hud';   // 平显组合玻璃：透明的，只画符号（原来一律涂黑，预览里平显成了黑方块）
+    if (!glass) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height); }
     if (s.gui) drawGui(ctx, s.gui, cv.width / s.pw, cv.height / s.ph);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(s.z[0], s.z[1]), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(s.z[0], s.z[1]), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, transparent: glass, depthWrite: !glass }));
     const c = s.c;
     const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
     // SurfaceGui 的 Front 面是零件的 −Z：平面默认朝 +Z，转半圈，再往前挪一点免得被零件挡住
-    M.multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.004));
+    M.multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.0075));
     pl.matrixAutoUpdate = false;
     pl.matrix.copy(M);
     root.add(pl);
@@ -134,11 +166,27 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   }
   if (P.get('glb')) {
     await new Promise(res => new GLTFLoader().load(P.get('glb'), g => {
-      const op = +(P.get('glbop') || 0.25);
-      g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material];
-        // GLBOP=1：照游戏里座舱视角——外模型不透明、只画正面，玻璃（半透明材质，座舱里藏起来的）不画
-        if (op >= 1) { if (ms.some(m => m.transparent || m.opacity < 1)) o.visible = false; return; }
-        for (const m of ms) { m.transparent = true; m.opacity = op; m.depthWrite = false; } } });
+      if (P.get('carve')) {   // 挖了内腔的原车（carve.py）：坐在车里看到的样子——外壳不透明（背面剔除，从里面看不见）、内壁显示、玻璃透明、原模型的简易内饰（Inside_）藏起来
+        g.scene.traverse(o => {
+          if (!o.isMesh) return;
+          const nm = (o.name || '') + ' ' + ((o.parent && o.parent.name) || '');
+          const ms = Array.isArray(o.material) ? o.material : [o.material];
+          if (nm.includes('__Inside_')) { o.visible = false; return; }
+          for (const m of ms) {
+            m.side = THREE.FrontSide;
+            if (nm.includes('__Glass_')) { m.transparent = true; m.opacity = 0.28; m.depthWrite = false; m.color = new THREE.Color(0.55, 0.68, 0.74); m.map = null; }
+            else { m.transparent = false; m.opacity = 1; m.depthWrite = true; }
+            m.needsUpdate = true;
+          }
+          o.castShadow = false; o.receiveShadow = true;
+        });
+      } else {
+        const op = +(P.get('glbop') || 0.25);
+        g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material];
+          // GLBOP=1：照游戏里座舱视角——外模型不透明、只画正面，玻璃（半透明材质，进座舱时藏起来的）不画
+          if (op >= 1) { if (ms.some(m => m.transparent || m.opacity < 1)) o.visible = false; return; }
+          for (const m of ms) { m.transparent = true; m.opacity = op; m.depthWrite = false; } } });
+      }
       const off = (P.get('glboff') || '0,0,0').split(',').map(Number);
       g.scene.position.set(...off);
       scene.add(g.scene);

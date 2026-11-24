@@ -29,7 +29,7 @@ function Depots.init(G)
   local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
   local function models(team, cat)
     local out = {}
-    for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+    for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都有（Config.CrossVehicles；舰艇还是各用各的）
       local d = defOf(id)
       if d and not d.needsAir then table.insert(out, id) end
     end
@@ -142,10 +142,31 @@ function Depots.init(G)
     end
     -- 攻方机场岛：陆基飞机（同守方机场，停在跑道上顺着跑道）
     local land = {}
-    for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
+    for _, id in ipairs(models("atk", "jet")) do if Map.LANDONLY or not defOf(id).carrier then table.insert(land, id) end end   -- 沙漠图没有航母：舰载机也从前进机场起飞
     runwayPads(Map.AFIELD2, "atk", land, nil)
+    -- 沙漠图：红方前进基地（Map.REDBASE）——北面一排地面车位（车头朝北、朝着战线，终端柱在车尾），东边三个直升机停机坪
+    local RB = Map.REDBASE
+    if RB then
+      list = groundIds("atk")
+      local gL, gW = biggest(list)
+      local n = math.min(GROUND_PADS, #list)
+      local gap = math.max(22, gW + 10)
+      local x0 = RB.x - (n - 1) * gap / 2
+      for i = 1, n do
+        local x, z = x0 + (i - 1) * gap, RB.z - 90
+        addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 4, 0, z + gL / 2 + 4), r = 12, size = V(gW + 2, 0, gL + 2) })
+      end
+      local ah = models("atk", "heli")
+      for i = 1, math.min(3, #ah) do
+        local x, z = RB.x + 260 + (i - 1) * 70, RB.z + 40
+        addPad({ team = "atk", vid = ah[1], vids = ah, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
+      end
+    end
     -- 攻方登陆平台：两侧水面一格一个地面车位（车头朝北，朝着岛；车站在气垫艇上），终端柱在平台边上；哪个位都能召唤任何一型
     local B = Map.BARGE
+    if not B then return end   -- 沙漠图没有登陆平台
     list = groundIds("atk")
     local n2 = math.min(GROUND_PADS, #list)
     local half = math.ceil(n2 / 2)
@@ -157,6 +178,46 @@ function Depots.init(G)
       local tx = west and (B.x - B.W / 2 + 5) or (B.x + B.W / 2 - 5)
       addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", sea = true, base = CFrame.lookAt(V(sx, 0, z), V(sx, 0, z) + NORTH),
         term = V(tx, B.top, z + 16), r = 16 })
+    end
+  end
+
+  -- 沙漠地图（征服，MapDesert.lua）：两边基地一样——车场一排地面车位（并排、车头朝战场）、三个直升机坪、跑道上四个飞机召唤位（顺着跑道朝战场那头）；
+  --   舰载机也停在陆上跑道（没有航母）
+  local function layoutDesert()
+    for _, team in ipairs({ "atk", "def" }) do
+      local B = Map.BASES[team]
+      local face = V(B.face, 0, 0)
+      local list = groundIds(team)
+      local gL, gW = biggest(list)
+      local n = math.min(GROUND_PADS, #list)
+      local gap = math.max(22, gW + 10)
+      for i = 1, n do
+        local x, z = B.motor.x, B.motor.z + (i - (n + 1) / 2) * gap
+        local pos = V(x, surface(x, z), z)
+        addPad({ team = team, vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(pos, pos + face),
+          term = V(x - B.face * (gL / 2 + 4), 0, z - 4), r = 12, size = V(gW + 2, 0, gL + 2) })
+      end
+      local dh = models(team, "heli")
+      for k = 1, math.min(3, #dh) do
+        local x, z = B.heli.x + (k - 2) * 60, B.heli.z
+        local pos = V(x, surface(x, z), z)
+        addPad({ team = team, vid = dh[1], vids = dh, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + face),
+          term = V(x - 22, 0, z + 18), r = 24, size = V(30, 0, 30), heli = true })
+      end
+      local A = B.airfield
+      local ids = models(team, "jet")
+      if #ids > 0 then
+        local L, W = biggest(ids)
+        local x = A.x - B.face * 420
+        for i = 1, 4 do   -- 顺着跑道朝战场那头一个接一个排、左右错开（后面的照样直接起飞）
+          x += B.face * L / 2
+          local z = A.z + ((i % 2 == 0) and 1 or -1) * A.wid * 0.2
+          local pos = V(x, surface(x, z), z)
+          addPad({ team = team, vid = ids[1], vids = ids, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + face),
+            term = V(x, 0, A.z - A.wid / 2 - 10), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
+          x += B.face * (L / 2 + 30)
+        end
+      end
     end
   end
 
@@ -181,6 +242,7 @@ function Depots.init(G)
   -- 登陆平台：浮在海上的一大块钢平台（四周护栏、几盏灯、两侧画出每个生成格）
   local function buildBarge(f)
     local B = Map.BARGE
+    if not B then return end
     local m = Instance.new("Model")
     m.Name = "Barge"
     local deckY = B.top - 0.75
@@ -302,8 +364,12 @@ function Depots.init(G)
     local root = workspace:FindFirstChild("Map") or workspace
     local f = Instance.new("Folder")
     f.Name = "Pads"
-    G.try("登陆平台", buildBarge, f)
-    layout()
+    if Map.desert then
+      layoutDesert()
+    else
+      G.try("登陆平台", buildBarge, f)
+      layout()
+    end
     for _, p in ipairs(pads) do G.try("生成点 " .. p.vid, buildPad, f, p) end
     f.Parent = root
   end
@@ -362,6 +428,11 @@ function Depots.init(G)
     local want = vid or p.vid
     if want and G.passOkFor and not G.passOkFor(P, want) then
       G.msg(P.pl, "bad", "pass.locked", { k = "veh." .. want })
+      return
+    end
+    -- 金币解锁（Economy.lua，用户 11-23）：没买的型号不给生成（客户端卡片上画着锁和价钱，点两下买）
+    if want and G.vehUnlocked and not G.vehUnlocked(P, want) then
+      G.msg(P.pl, "bad", "eco.needVeh", Config.VehPrice(want) or 0)
       return
     end
     vid = vid or p.vid

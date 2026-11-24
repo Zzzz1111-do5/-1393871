@@ -103,7 +103,10 @@ function UI.init(G)
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
-  local function teamColor(t) return Config.Teams[t or "atk"].color end
+  local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
+    local T0 = Config.Teams[t or "atk"]
+    return T0 and T0.color or RGB(200, 200, 200)
+  end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
     return string.format("%d:%02d", s // 60, s % 60)
@@ -220,6 +223,7 @@ function UI.init(G)
   local langBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   local sideBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0 - 118, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
+  sideBtn.Visible = false   -- 用户 11-22：「界面就不要写 switch side 了」——自动分队，不再从部署界面换阵营
   local menuBtn = link(deploy, "", UDim2.fromOffset(80, 26), UDim2.new(1, -M0 - 236, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   menuBtn.Activated:Connect(function() if G.showMenu then G.showMenu() end end)
   hair(deploy, UDim2.new(1, -M0 * 2, 0, 1), UDim2.fromOffset(M0, topY + 34), 0.9)
@@ -469,6 +473,8 @@ function UI.init(G)
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "redbase" then return T("spawn.redbase") end   -- 沙漠图：红方前进基地
+    if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id
   end
 
@@ -975,6 +981,7 @@ function UI.init(G)
   function G.refresh()
     local S = G.S
     if not S then return end
+    if G.refreshMapPick then G.refreshMapPick(S) end   -- 选地图界面（MapPick.lua）：生成地图时也要刷进度、生成好了快速加入
     if (S.progress or 1) < 1 then
       loading.Visible = true
       loadText.Text = T("ui.serverStarting", math.floor((S.progress or 0) * 100))
@@ -983,10 +990,12 @@ function UI.init(G)
     loading.Visible = false
     if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
-    local showDeploy = not S.alive and S.phase ~= "end"
+    -- 阵亡效果（DeathFx.lua，用户 11-23：死亡不要瞬间切到部署画面）放着的时候部署界面、平显都先不出来
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    local showDeploy = not S.alive and S.phase ~= "end" and not dying
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
-    hud.Visible = not showDeploy
+    hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniBox

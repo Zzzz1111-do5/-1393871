@@ -176,4 +176,28 @@ if cross and hrp then
 end
 C.bodycamOn = bc0
 
+print("⑤ 边走边开枪（用户 11-21：后坐力是往下的）")
+-- 记录仪（Bodycam.lua）走路时每帧给镜头加一点往下的晃动、下一帧开头还原；后坐原来在它后面加，还原被跳过，晃动留在镜头里越压越低
+if hrp then
+  C.bodycamOn = true
+  cam.CameraType = Enum.CameraType.Custom
+  cam.CFrame = CF(hrp.Position + V3(0, 1.5, 0)) * R.CFrame.Angles(math.rad(-5), math.rad(30), 0)
+  for _ = 1, 20 do
+    hrp.AssemblyLinearVelocity = V3(0, 0, -16)
+    R.run(1 / 60, 1 / 60)
+  end
+  local pS = pitchYaw(cam.CFrame)
+  for _ = 1, 30 do
+    C.kick(W.m4, false, "m4")
+    for _ = 1, 5 do
+      hrp.AssemblyLinearVelocity = V3(0, 0, -16)
+      R.run(1 / 60, 1 / 60)
+    end
+  end
+  local pE = pitchYaw(cam.CFrame)
+  hrp.AssemblyLinearVelocity = V3(0, 0, 0)
+  check(pE - pS > 3, string.format("边走边打 30 发：镜头往上抬 %.1f°（原来走着打一路往下压）", pE - pS))
+  C.bodycamOn = bc0
+end
+
 T.summary()

@@ -66,7 +66,7 @@ function Air.init(G)
     local out = vehModels0 and vehModels0(team) or {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if AIRCATS[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do if AD.get(id) then table.insert(out, id) end end
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do if AD.get(id) then table.insert(out, id) end end   -- 两边的型号都能开
       end
     end
     return out
@@ -440,6 +440,10 @@ function Air.init(G)
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
     local tp = tgtPos(t)
+    -- 激光制导的弹冲着装了激光告警的坦克去：报警、自动烟幕；烟幕挡住照射点（或 JD-3 把照射干扰掉）就丢了目标（Kit.lua）
+    if tp and t and not t.decoy and w.guide == "laser" and G.kitLaser and G.kitLaser(s, t, dt) then
+      s.tgt, s.aimPt, t, tp = nil, nil, nil, nil
+    end
     if not tp then
       s.tgt, t = nil, nil
       tp = s.aimPt
@@ -471,6 +475,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airGuideMissile = guideMissile   -- 地面车的地空导弹也按这套飞（Armor.lua：铠甲-S1 的 57E6）
   -- 炸弹：真实重力；制导炸弹算还要多久落地，往目标方向改水平速度（带翼的滑得远）
   local function guideBomb(s, dt)
     s.age += dt
@@ -504,7 +509,16 @@ function Air.init(G)
   end
 
   -- 挂点的世界位置
-  local function stationWorld(e, s) return e.root.CFrame * CF(s.pos) end
+  --   歼-20 侧弹舱（AirDefs 的 sideArm）：霹雳-10 在挂架转出舱外的位置发射（s.pos 是收在舱里的位置）
+  local function stationWorld(e, s)
+    local arm = e.def.sideArm
+    if arm and s.bay and s.bay ~= "main" then
+      local sd = (s.pos.X >= 0) and 1 or -1
+      local P = Vector3.new(sd * arm.p.X, arm.p.Y, s.pos.Z)
+      return e.root.CFrame * CF((CF(P) * CFrame.Angles(0, 0, -sd * arm.A) * CF(s.pos - P)).Position)
+    end
+    return e.root.CFrame * CF(s.pos)
+  end
   -- 选一个还有这种弹的挂点（左右交替）
   local function pickStation(e, wid)
     local d = e.def
@@ -582,7 +596,9 @@ function Air.init(G)
     return t
   end
 
-  local function fireStore(P, e, wid, tid, aim)
+  -- n、rip：战雷的投弹数量（客户端 Shift + B）——n 枚炸弹，双投两枚同时出，齐投（rip）一枚接一枚隔 BOMB_GAP 秒
+  local BOMB_GAP = 0.08
+  local function fireStore(P, e, wid, tid, aim, n, rip)
     local w = AD.W[type(wid) == "string" and wid or ""]
     if not w or w.kind == "gun" or w.kind == "tank" then return end   -- 副油箱不是弹（抛油箱走 jettison）
     if G.round.phase ~= "battle" then return end
@@ -597,16 +613,48 @@ function Air.init(G)
     local tgt = (w.kind == "aam" or w.kind == "agm" or w.kind == "bomb") and validTarget(e, w, tid) or nil
     local aimPt = (typeof(aim) == "Vector3" and aim.Magnitude < 1e6) and aim or nil
     local base = e.vel or V()
-    if w.kind == "aam" or w.kind == "agm" then
+    if w.nuke then   -- 「惊雷-1」高超音速战术核导弹（Nuke.lua）：先看这一队能不能发（冷却、开战多久），再按空射弹道导弹的弹道飞
+      local ok, why, n = true, nil, nil
+      if G.nukeCheck then ok, why, n = G.nukeCheck(e.team) end
+      if not ok or not G.nukeArm then
+        if P and P.pl and why then G.msg(P.pl, "bad", why, n) end
+        return
+      end
+      local launch = scf.Position - scf.UpVector * 2.5
+      local H = G.nukeArm(e.team, launch, aimPt or (launch + fwd * 9000))
+      S = S or { team = e.team, name = "H-6K" }
+      S.wid = "hn1"
+      G.launch({ kind = "missile", pos = launch, vel = base - scf.UpVector * 10, w = w, src = S, ignore = ignoreOf(e), life = w.life or 90,
+        step = G.nukeGuide, age = 0, hyper = H, byEnt = e.id })
+      e.nextStore = t + 1
+    elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
       local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
         step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id })
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
     elseif w.kind == "bomb" then
-      G.launch({ kind = "bomb", pos = scf.Position - scf.UpVector * 1.5, vel = base - scf.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
-        step = guideBomb, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-      e.nextStore = t + ((e.def.bomber) and 0.12 or 0.25)
+      local function drop(j)
+        local c2 = stationWorld(e, e.def.st[j])
+        local tg = (tgt and tgt.alive) and tgt or nil
+        G.launch({ kind = "bomb", pos = c2.Position - c2.UpVector * 1.5, vel = (e.vel or V()) - c2.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
+          step = guideBomb, age = 0, tgt = tg, tgId = tg and tg.id or nil, aimPt = aimPt, byEnt = e.id })
+        spend(e, j)
+        G.fx({ k = "storeOff", id = e.id, st = j, w = wid })
+      end
+      drop(i)
+      local cnt = math.clamp(math.floor(tonumber(n) or 1), 1, 60)
+      local gap = (rip == true) and BOMB_GAP or 0
+      for k = 2, cnt do
+        local function nextOne()
+          if not e.alive or G.round.phase ~= "battle" then return end
+          local j = pickStation(e, wid)   -- 剩得多的挂点先投：左右轮流
+          if j then drop(j) end
+        end
+        if gap > 0 then task.delay(gap * (k - 1), nextOne) else nextOne() end
+      end
+      e.nextStore = t + gap * (cnt - 1) + ((e.def.bomber) and 0.12 or 0.25)
+      return   -- 上面每枚都扣过数了
     elseif w.kind == "rkt" then
       local dir = (fwd + V((math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02)).Unit
       G.launch({ kind = "rocket", pos = scf.Position + fwd * 3, vel = base + dir * w.speed, w = w, src = S, ignore = ignoreOf(e), life = w.range / w.speed + 1,
@@ -615,6 +663,18 @@ function Air.init(G)
     end
     spend(e, i)
     G.fx({ k = "storeOff", id = e.id, st = i, w = wid })
+  end
+
+  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达弹锁着敌机半秒报一次；
+  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报
+  local function lockOn(e, tid, full)
+    local tg = (type(tid) == "string") and G.entById[tid] or nil
+    if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
+    local tn = now()
+    if tn < (e.lockPingT or 0) then return end
+    e.lockPingT = tn + 0.35
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
+    if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwrLock", by = e.id, full = full == true }) end
   end
 
   -- 航炮：扣着扳机，每 0.1 秒打一发弹丸（带这 0.1 秒所有炮弹的伤害）；机头炮塔 / 舱门机枪朝准星（有转动范围）
@@ -780,12 +840,22 @@ function Air.init(G)
     -- 停在自己的机场 / 甲板 / 停机坪附近：能补弹修理
     local p = e.root.CFrame.Position
     local function near(x, z, r) return (V(p.X, 0, p.Z) - V(x, 0, z)).Magnitude < r end
+    if Map.desert then   -- 沙漠：自己基地的跑道、直升机坪、营地
+      local B = Map.BASES and Map.BASES[e.team]
+      if not B then return false end
+      local A = B.airfield
+      if A and near(A.x, A.z, A.len * 0.6) then return true end
+      if B.heli and near(B.heli.x, B.heli.z, 260) then return true end
+      if B.camp and near(B.camp.x, B.camp.z, 260) then return true end
+      return false
+    end
     if e.team == "atk" then
       local dk = deckOf("carrier")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end
       dk = deckOf("lhd")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end
       if near(Map.AFIELD2.x, Map.AFIELD2.z, Map.AFIELD2.len * 0.6) then return true end
+      if Map.REDBASE and near(Map.REDBASE.x, Map.REDBASE.z, 500) then return true end   -- 沙漠图：前进基地的直升机坪
       if pointOk("atk", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end
     else
       if pointOk("def", "D") and near(Map.AIRFIELD.x, Map.AIRFIELD.z, Map.AIRFIELD.len * 0.6) then return true end
@@ -807,7 +877,8 @@ function Air.init(G)
       e.model:SetAttribute("Fire", e.trig)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
-    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
+    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
+    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then

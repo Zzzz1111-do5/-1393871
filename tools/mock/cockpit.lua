@@ -1,4 +1,4 @@
--- 飞机座舱测试（模拟器）：python3 tools/mock/run.py tools/mock/cockpit.lua [air=j20|j35|j50|j16|j15t|f35|f22|a10c] [dump=<目录>]
+-- 飞机座舱测试（模拟器）：python3 tools/mock/run.py tools/mock/cockpit.lua [air=j20|j35|j16|j15t|f35|f22|a10c] [dump=<目录>]
 --   用户 11-21：第一人称开飞机要有和 DCS 一样的视觉细节；座舱盖玻璃要有畸变、划痕、反光折射
 --   ① 召唤、坐上，V 进座舱：座舱拼出来了（零件、屏幕、平显、座舱盖玻璃和划痕），镜头在飞行员眼位；外模型的飞行员、座舱盖玻璃不画；外面的 2D 平显不画
 --   ② 屏幕边的按键：中间小点对准、左键按（换页，不开炮）
@@ -12,8 +12,25 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local AIR = TEST_ARGS:match("air=(%w+)") or "j20"
-local US = { f35 = true, f22 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
+local US = { f35 = true, f22 = true, f16 = true, f15 = true, f14 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
 local side = US[AIR] and "def" or "atk"
+-- imp=1：假装 Studio 里导入了这型飞机的原模型（照 ImportedAir 元数据摆一套同名的 MeshPart，开服时收进 Imported），走原模型那条路
+local IMP = nil
+if TEST_ARGS:match("imp=1") then
+  local f = assert(io.open(SRC_DIR .. "/ReplicatedStorage/ImportedAir.lua"))
+  local IA = load(f:read("a"))()
+  f:close()
+  IMP = IA.alias[AIR] or AIR
+  local info = IA.m[IMP]
+  assert(info, "ImportedAir 里没有 " .. tostring(IMP))
+  for name, p in pairs(info.parts) do
+    local mp = R.Instance.new("MeshPart")
+    mp.Name = "A_" .. IMP .. "__" .. name
+    mp.Size = V3(p.s[1], p.s[2], p.s[3])
+    mp.CFrame = T.CF(900 + p.c[1], 200 + p.c[2], 900 + p.c[3])
+    mp.Parent = R.services.Workspace
+  end
+end
 
 local G = T.boot()
 G.fortsHold = true
@@ -79,13 +96,40 @@ local cur = I.cur
 check(C.interiorOn() and cur ~= nil and cur.spec.air and I.mode == "seat", "按 V：坐进座舱（" .. tostring(cur and cur.key) .. "）")
 if not cur then T.summary() return end
 local nParts, nScreens, nLights, nGlass = #cur.b.parts, #cur.b.screens, #cur.b.lights, #(cur.spec.glass or {})
-check(nParts > 250, "座舱零件 " .. nParts .. " 个")
-check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
+local v0 = C.viewById(e.id)
+local v0M = v0 and v0.M or {}
+local MP = cur.spec.modelPit   -- 原模型自带的座舱（F-16）：座舱是原模型的，内饰只有屏幕、平显、键帽
+if MP then
+  check(nParts >= 10, "原模型座舱：贴的屏幕、键帽、平显框 " .. nParts .. " 个零件")
+  local pit, hidPit = 0, 0
+  for _, it in ipairs(v0M.items or {}) do
+    if it.pit == "Pit" then
+      pit = pit + 1
+      for _, zp in ipairs(cur.zone or {}) do if zp == it.p then hidPit = hidPit + 1 end end
+    end
+  end
+  check(pit >= 1 and hidPit == 0, string.format("原模型的座舱件（%d 块）坐在座舱里照样画（藏了 %d 块）", pit, hidPit))
+  -- 屏幕贴在原模型的显示器上：每块的中心离元数据里量的位置不到 1 厘米
+  local I = v0M.imp.info
+  local eyeM = R.Vector3.new(I.pit[1][1], I.pit[1][2], I.pit[1][3])
+  local worst = 0
+  for name, o in pairs(I.pitScr) do
+    local want = v0.cf * CF(cur.eyeBody) * CF((R.Vector3.new(o.c[1], o.c[2], o.c[3]) - eyeM))
+    local best = math.huge
+    for _, sc in ipairs(cur.b.screens) do best = math.min(best, (sc.part.Position - want.Position).Magnitude) end
+    worst = math.max(worst, best)
+  end
+  check(worst < 0.03 * 2.8, string.format("屏幕贴在原模型的显示器、圆表、平显上（最远差 %.1f 厘米）", worst / 2.8 * 100))
+else
+  check(nParts > 250, "座舱零件 " .. nParts .. " 个")
+end
+local minS = cur.spec.minScreens or 5   -- F-35 真就三块（全景屏两半 + 备份飞行显示器）
+check(nScreens >= minS, "屏幕 " .. nScreens .. " 块（至少 " .. minS .. "）")
 local live = 0
 for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end
 check(live == nScreens, string.format("屏幕页面都起来了（%d / %d）", live, nScreens))
 check(nLights >= 2, "座舱灯 " .. nLights .. " 盏")
-check(nGlass >= 8, "座舱盖玻璃 " .. nGlass .. " 块")
+if not MP then check(nGlass >= 8, "座舱盖玻璃 " .. nGlass .. " 块") end
 local scr = 0
 for _, g in ipairs(cur.spec.glass or {}) do
   local sg = g:FindFirstChildOfClass("SurfaceGui")
@@ -93,7 +137,18 @@ for _, g in ipairs(cur.spec.glass or {}) do
   check(g.Material == Enum.Material.Glass, "玻璃是 Glass 材质（看出去有折射）")
   break
 end
-check(scr == 1, "玻璃上有划痕、污渍")
+if not MP then check(scr == 1, "玻璃上有划痕、污渍") end
+-- 用户 11-22：「飞机不要搞多边形的座舱盖，一反光看着太难受了，就要弧形」——一整块光滑网格（EditableMesh），平板不画（带划痕的只剩划痕）
+if cur.spec.canopy then
+  local cm = cur.canopyMesh
+  local panesOff = 0
+  for _, p in ipairs(cur.spec.canopy.panes or {}) do if p.Transparency >= 1 then panesOff = panesOff + 1 end end
+  check(cm ~= nil and cm.Parent == cur.model and cm.Material == Enum.Material.Glass and cm.Transparency < 0.95,
+    string.format("光滑座舱盖：一整块网格（%s，%d 个三角形）", cm and cm.ClassName or "没有", R.editStats.tris))
+  check(panesOff == #(cur.spec.canopy.panes or {}), string.format("原来的平板玻璃不画了（%d / %d）", panesOff, #(cur.spec.canopy.panes or {})))
+  local scr2 = cur.spec.glass[1] and cur.spec.glass[1]:FindFirstChildOfClass("SurfaceGui")
+  check(scr2 ~= nil, "带划痕的那几块只剩划痕（划痕还在）")
+end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 local v = C.viewById(e.id)
 local eyeW = v.cf * CF(cur.eyeBody)
@@ -101,6 +156,13 @@ check((cam.CFrame.Position - eyeW.Position).Magnitude < 0.25 * 2.8, string.forma
 local q = v.cf:PointToObjectSpace(cam.CFrame.Position)
 local sideOk = (cur.spec.heli or cur.spec.eyeShift) and 0.8 * 2.8 or v.def.W * 0.1   -- 并排座：机长坐一边
 check(math.abs(q.X) < sideOk and q.Z < 0, string.format("眼位在机身中线（并排座在一边）、机头那半边（机体坐标 %.1f, %.1f, %.1f）", q.X, q.Y, q.Z))
+-- 双座（歼-16）：驾驶员的眼位在前座——座舱盖的前半段、后座飞行员的前面（用户 11-22：「j16 驾驶位第一人称不能坐在后座」）
+local Cn = v.def.canopy
+if v.def.twoSeat and Cn then
+  local s2 = C.AM and C.AM.seatCF and C.AM.seatCF(v.M, 2)
+  local zr = s2 and s2.Position.Z or (Cn.z + Cn.len * 0.2)
+  check(q.Z < Cn.z and q.Z < zr - 0.8 * 2.8, string.format("双座：驾驶员坐前座（眼位 z %.1f，座舱盖中点 %.1f，后座 %.1f）", q.Z, Cn.z, zr))
+end
 check(v.M.pilotsOn == false, "外模型里的飞行员不画（第一人称）")
 local hid = 0
 for _, p in ipairs(cur.zone or {}) do if p.LocalTransparencyModifier == 1 then hid = hid + 1 end end
@@ -112,9 +174,11 @@ print("② 屏幕边的按键：中间小点对准、左键按")
 local keys = cur.b.softkeys
 check(#keys >= 10, "屏幕边有 " .. #keys .. " 个带字的按键")
 local want = nil
+-- 没有雷达的（A-10C）按左边那块的 DSMS，查它换成外挂页
+local KW = cur.spec.noRadar and { DSMS = true } or { RDR = true, ["雷达"] = true, FCR = true }
+local PW = cur.spec.noRadar and { "^STORES", "^外挂" } or { "^RDR", "^雷达" }
 for _, k in ipairs(keys) do
-  local l = k.label
-  if l == "RDR" or l == "雷达" then want = k break end
+  if KW[k.label] then want = k break end
 end
 if want then
   -- 看过去：直升机头跟着镜头方向；固定翼（用户 11-21：WASD 飞、没有准心）按住 Alt 用鼠标转头，中间小点对准按键
@@ -143,15 +207,25 @@ if want then
   T.mouse(false)
   R.run(0.3)
   check(not fired, "左键按的是屏幕键，不开炮")
+  -- 只查按的那块屏，而且字要看得见（父级都没藏起来）
+  local function shown(d, root)
+    local o = d
+    while o and o ~= root do
+      if o.Visible == false then return false end
+      o = o.Parent
+    end
+    return true
+  end
   local radar = false
-  for _, s in ipairs(cur.b.screens) do
-    for _, d in ipairs(s.gui:GetDescendants()) do
-      if d:IsA("TextLabel") and (d.Text:match("^RDR") or d.Text:match("^雷达")) then radar = true end
+  local sc = want.screen or cur.b.screens[1]
+  for _, d in ipairs(sc.gui:GetDescendants()) do
+    if d:IsA("TextLabel") and shown(d, sc.gui) then
+      for _, pat in ipairs(PW) do if d.Text:match(pat) then radar = true end end
     end
   end
-  check(radar, "按「" .. want.label .. "」：左边那块换成雷达页面")
+  check(radar, "按「" .. want.label .. "」：这块屏换成" .. (cur.spec.noRadar and "外挂" or "雷达") .. "页面")
   if not cur.spec.heli then T.key(Enum.KeyCode.LeftAlt, false) end
-else check(false, "找到雷达键") end
+else check(false, cur.spec.noRadar and "找到 DSMS 键" or "找到雷达键") end
 local lk0 = fst.cf.LookVector
 fst.aimYaw, fst.aimPitch = math.atan2(-lk0.X, -lk0.Z), 0
 if cur.spec.heli then fst.camYaw, fst.camPitch = math.atan2(-lk0.X, -lk0.Z), 0 end
@@ -162,11 +236,12 @@ local function gearLit()
   for _, l in ipairs(cur.b.leds) do if l.role == "gear" and l.p.Color == l.on then n = n + 1 end end
   return n
 end
-if not cur.spec.heli then check(gearLit() == 3, "停在地上：起落架三个绿灯亮（" .. gearLit() .. "）") end
+if not cur.spec.heli and not MP then check(gearLit() == 3, "停在地上：起落架三个绿灯亮（" .. gearLit() .. "）") end
 local gh0 = cur.b.groups.gearh and cur.b.groups.gearh.anim
 local thrZ0 = cur.b.groups.thr and cur.b.groups.thr.anim.Position.Z
 local maxStick = 0
 local function stickNow()
+  if not cur.b.groups.stick then return end   -- 原模型座舱：杆是原模型的（不动）
   local rx, _, rz = cur.b.groups.stick.anim:ToEulerAnglesXYZ()
   maxStick = math.max(maxStick, math.abs(rx), math.abs(rz))
 end
@@ -213,25 +288,29 @@ else
     T.key(Enum.KeyCode.S, true)   -- 速度到了按住 S 抬头
     local up = T.runUntil(function() stickNow() return not fst.ground end, 10)
     check(up, string.format("滑跑起飞（离地时 %.0f 格 / 秒）", fst.spd or 0))
-    local thrZ1 = cur.b.groups.thr.anim.Position.Z
-    check(thrZ1 < thrZ0 - 0.05 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
+    if not MP then
+      local thrZ1 = cur.b.groups.thr.anim.Position.Z
+      check(thrZ1 < thrZ0 - 0.05 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
+    end
     for _ = 1, 30 do R.run(1 / 30) stickNow() end
     T.key(Enum.KeyCode.S, false)
     for _ = 1, 150 do R.run(1 / 30) stickNow() end   -- 加力爬一会儿
     T.key(Enum.KeyCode.LeftShift, false)
     fst.thr = 100
   end
-  check(maxStick > math.rad(1.5), string.format("驾驶杆跟着拉（最大 %.1f°）", math.deg(maxStick)))
+  if not MP then check(maxStick > math.rad(1.5), string.format("驾驶杆跟着拉（最大 %.1f°）", math.deg(maxStick))) end
 end
 if not heli then
   -- 起飞爬过 15 米自动收起落架（Fly.lua），等它收完
   T.runUntil(function() return (fst.gear or 1) < 0.02 end, 10)
-  check((fst.gear or 1) < 0.02 and gearLit() == 0, string.format("起落架收上去了：绿灯都灭（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
-  local gh1 = cur.b.groups.gearh.anim
-  check(math.abs(select(1, gh0:ToObjectSpace(gh1):ToEulerAnglesXYZ())) > math.rad(20), "起落架手柄扳上去了")
+  check((fst.gear or 1) < 0.02 and (MP or gearLit() == 0), string.format("起落架收上去了：绿灯都灭（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
+  if not MP then
+    local gh1 = cur.b.groups.gearh.anim
+    check(math.abs(select(1, gh0:ToObjectSpace(gh1):ToEulerAnglesXYZ())) > math.rad(20), "起落架手柄扳上去了")
+  end
   T.tap(Enum.KeyCode.G)
   R.run(3)
-  check((fst.gear or 0) > 0.9 and gearLit() == 3, string.format("G 放起落架：三个绿灯又亮了（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
+  check((fst.gear or 0) > 0.9 and (MP or gearLit() == 3), string.format("G 放起落架：三个绿灯又亮了（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
   T.tap(Enum.KeyCode.G)
   R.run(3)
 end
@@ -273,6 +352,8 @@ if heli then   -- 直升机：头跟着镜头方向（鼠标转的就是它，�
 else
   -- 用户 11-21：飞机 WASD 飞、没有准心——头看前方（航迹）；用户 11-21（晚）：飞机要允许用鼠标转视角——
   --   不按 Alt 动鼠标头就转、停在那里；鼠标 2.5 秒不动回到前方；C 立刻回正；按住 Alt 照旧能转头（对准屏幕边的按键），松开回到前方
+  --   （用户 11-24 起固定翼默认是战雷式鼠标瞄准——鼠标给方向、头跟着想去的方向；这一段测的是按 M 切回去的纯键盘驾驶的看法）
+  if C.flyMouseAim then C.flyMouseAim(false) end
   local function offFwd() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.vdir or fst.cf.LookVector))))) end
   for _ = 1, 15 do
     R.mouseDelta = R.Vector2.new(-40, 0)
@@ -306,6 +387,7 @@ else
   R.run(0.8)
   check(offFwd() < 12, string.format("松开 Alt：头回到前方（差 %.1f°）", offFwd()))
   R.run(0.5)
+  if C.flyMouseAim then C.flyMouseAim(true) end   -- 后面照默认（战雷式鼠标瞄准）
 end
 
 -- 导出给预览图：座舱眼位看前面、看左右、低头看屏幕

@@ -34,18 +34,30 @@ function Round.init(G)
   local now = os.clock
 
   -- 阶段：每个据点属于第几阶段、是不是侧翼（没写进 Config.Stages 的据点一直开着）
+  --   开服时地图还没定（等大家投票），Map / Config.Stages 还是岛的：定了图以后开局前 buildMapTables() 按那张图重算（就地改，G.stageOf 这些引用不变）
   local STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
   local stageOf, flankOf = {}, {}
-  for i, st in ipairs(STAGES) do
-    for _, id in ipairs(st.points) do stageOf[id] = i end
-    for _, id in ipairs(st.flank or {}) do
-      if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+  local function buildStages()
+    STAGES = Config.Stages or { { id = "all", points = { "A", "B", "C", "D", "E" }, time = RC.battle } }
+    table.clear(stageOf)
+    table.clear(flankOf)
+    for i, st in ipairs(STAGES) do
+      for _, id in ipairs(st.points) do stageOf[id] = i end
+      for _, id in ipairs(st.flank or {}) do
+        if not stageOf[id] then stageOf[id], flankOf[id] = i, true end
+      end
     end
+    G.STAGES = STAGES
   end
+  buildStages()
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
+  -- 征服模式（沙漠地图，用户 11-22）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
+  local function conquest() return Map.desert == true end
+  G.conquest = conquest
   local function isActive(s)
+    if conquest() then return s ~= nil end
     if not s or s.locked then return false end
     local k = stageOf[s.id]
     if not k then return false end
@@ -69,11 +81,14 @@ function Round.init(G)
   G.rallyOf = function(id) return rally[id] and rally[id][1] end
   local FD = require(game:GetService("ReplicatedStorage"):WaitForChild("FortDefs"))
   local bunkers = {}
-  for _, f in ipairs(FD.layout(Map)) do
-    if f.kind == "bunker" then
-      local d = FD.D.bunker
-      local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
-      table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+  local function buildBunkers()
+    table.clear(bunkers)
+    for _, f in ipairs(FD.layout(Map)) do
+      if f.kind == "bunker" then
+        local d = FD.D.bunker
+        local pos, lv = f.cf.Position, f.cf.LookVector   -- −Z 朝前
+        table.insert(bunkers, { x = pos.X, y = pos.Y + d.turret.pivot.Y, z = pos.Z, fx = lv.X, fz = lv.Z, r = d.sight, cosArc = math.cos(math.rad(d.turret.arc + 12)) })
+      end
     end
   end
   local function covered(x, z)
@@ -91,59 +106,73 @@ function Round.init(G)
   local staging = {}   -- [据点] = { {x, z}, … }（好的在前；都在机枪碉堡射界里时才用射界里的）
   local OFF = Config.StageOff or 260
   local BACK = Config.RallyBack or 200
-  for _, p in ipairs(Map.POINTS) do
-    local k = stageOf[p.id]
-    if k and not flankOf[p.id] then
-      -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
-      local fx, fz, fd = nil, nil, math.huge
-      for _, q in ipairs(Map.POINTS) do
-        if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
-          local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
-          if d < fd then fx, fz, fd = q.x, q.z, d end
-        end
-      end
-      if not fx then
-        for _, b in ipairs(Map.LANDINGS) do
-          if (b.isle or "main") == p.land then
-            local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
-            if d < fd then fx, fz, fd = b.cx, b.z, d end
+  local function buildStaging()
+    table.clear(staging)
+    table.clear(rally)
+    for _, p in ipairs(Map.POINTS) do
+      local k = stageOf[p.id]
+      if k and not flankOf[p.id] then
+        -- 攻方来的方向：同一块陆地上前面阶段的据点；没有就是最近的登陆点；再没有就是南边（攻方从南边的海上来）
+        local fx, fz, fd = nil, nil, math.huge
+        for _, q in ipairs(Map.POINTS) do
+          if stageOf[q.id] and stageOf[q.id] < k and not flankOf[q.id] and q.land == p.land then
+            local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
+            if d < fd then fx, fz, fd = q.x, q.z, d end
           end
         end
-      end
-      local ux, uz = 0, 1
-      if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
-      local good, bad = {}, {}
-      for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
-        local a = math.rad(ang)
-        local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
-        for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
-            table.insert(covered(x, z) and bad or good, { x = x, z = z })
-            break
+        if not fx then
+          for _, b in ipairs(Map.LANDINGS) do
+            if (b.isle or "main") == p.land then
+              local d = math.sqrt((b.cx - p.x) ^ 2 + (b.z - p.z) ^ 2)
+              if d < fd then fx, fz, fd = b.cx, b.z, d end
+            end
           end
         end
-      end
-      for _, c in ipairs(bad) do table.insert(good, c) end
-      staging[p.id] = (#good > 0) and good or nil
-      -- 守方集结点：反方向（据点后面）150～250 格
-      local rs = {}
-      for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
-        local a = math.rad(ang)
-        local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
-        for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
-          local x, z = p.x + dx * r, p.z + dz * r
-          if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
-            table.insert(rs, { x = x, z = z })
-            break
+        local ux, uz = 0, 1
+        if fx and fd > 1 then ux, uz = (fx - p.x) / fd, (fz - p.z) / fd end
+        local good, bad = {}, {}
+        for _, ang in ipairs({ 0, 25, -25, 50, -50, 75, -75, 100, -100 }) do
+          local a = math.rad(ang)
+          local dx, dz = ux * math.cos(a) - uz * math.sin(a), ux * math.sin(a) + uz * math.cos(a)
+          for _, r in ipairs({ OFF, OFF - 40, OFF + 30, 210, 290 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 and not (Map.inHarbor and Map.inHarbor(x, z, 70)) then   -- 港口码头的坑里不行
+              table.insert(covered(x, z) and bad or good, { x = x, z = z })
+              break
+            end
           end
         end
+        for _, c in ipairs(bad) do table.insert(good, c) end
+        staging[p.id] = (#good > 0) and good or nil
+        -- 守方集结点：反方向（据点后面）150～250 格
+        local rs = {}
+        for _, ang in ipairs({ 0, 30, -30, 60, -60, 90, -90 }) do
+          local a = math.rad(ang)
+          local dx, dz = -(ux * math.cos(a) - uz * math.sin(a)), -(ux * math.sin(a) + uz * math.cos(a))
+          for _, r in ipairs({ BACK, BACK - 30, BACK + 40, 160, 240 }) do
+            local x, z = p.x + dx * r, p.z + dz * r
+            if Map.isLand(x, z) and Map.landOf(x, z) == p.land and Map.slope(x, z) < 0.9 then
+              table.insert(rs, { x = x, z = z })
+              break
+            end
+          end
+        end
+        rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
+      else
+        rally[p.id] = { { x = p.x, z = p.z - 120 } }
       end
-      rally[p.id] = (#rs > 0) and rs or { { x = p.x, z = p.z - 120 } }
-    else
-      rally[p.id] = { { x = p.x, z = p.z - 120 } }
     end
   end
+  -- 按现在这张图算：阶段表、碉堡射界、攻方出发阵地、守方集结点（原来只在开服时按岛算一次——沙海的 A 出发阵地落在岛的坐标上，跑到了据点北边敌人那一侧）
+  local tablesFor = nil
+  local function buildMapTables()
+    tablesFor = Map.id
+    buildStages()
+    buildBunkers()
+    buildStaging()
+  end
+  buildMapTables()
+  G.mapTablesFor = function() return tablesFor end   -- 测试用
   G.stagingCovered = covered
   G.stagingOf = function(id) return staging[id] and staging[id][1] end
 
@@ -163,9 +192,11 @@ function Round.init(G)
     P.pl.Neutral = false
     P.pl:SetAttribute("Side", team)   -- 客户端认敌我用（锁定、血条）
   end
+  G.setTeamOf = setTeam   -- PvE（Pve.lua）：真人都换到攻方
 
   -- 新来的人先放到真人少的一方（临时的），进服先看选阵营界面：自己选解放军（攻）还是美军（守）
   local function pickTeam()
+    if G.pve then return "atk" end   -- PvE 关卡：真人都在攻方（Pve.lua）
     local a, d = teamCount("atk", true), teamCount("def", true)
     if a < d then return "atk" elseif d < a then return "def" end
     return (math.random() < 0.5) and "atk" or "def"
@@ -174,6 +205,7 @@ function Round.init(G)
   -- 能不能进这一队：不算自己，这一队的真人不比另一队多（人多的一边「人数已满」）
   local function canJoin(P, team)
     if team ~= "atk" and team ~= "def" then return false end
+    if G.pve then return team == "atk" end   -- PvE 关卡：只能进攻方
     local other = (team == "atk") and "def" or "atk"
     local a, b = teamCount(team, true), teamCount(other, true)
     if P.team == team then a -= 1 elseif P.team == other then b -= 1 end
@@ -219,6 +251,7 @@ function Round.init(G)
   -- 第一波：准备阶段和开战后 Config.FirstWave 秒（第一阶段）能坐登陆艇抢滩；之后只能在攻击出发阵地出生
   local function firstWave()
     if R.phase == "prep" then return true end
+    if Map.LANDONLY then return false end   -- 沙漠图没有登陆艇：一开战就在攻击出发阵地出生
     return R.phase == "battle" and R.stage == 1 and now() - (R.battleAt or 0) < (Config.FirstWave or 45)
   end
   G.firstWave = firstWave
@@ -253,7 +286,7 @@ function Round.init(G)
     end
     if not best then
       for _, s in ipairs(list) do
-        if s.ok and ((team == "atk" and s.kind == "barge") or (team == "def" and s.kind == "camp")) then best = s end
+        if s.ok and ((team == "atk" and (s.kind == "barge" or s.kind == "redbase")) or (team == "def" and s.kind == "camp")) then best = s end
       end
     end
     if best then best.rec = true end
@@ -262,15 +295,39 @@ function Round.init(G)
   -- 出生点：{ id, kind, x, z, ok, rec }；每队能选哪些、现在能不能用、推荐哪个（离当前目标最近的）
   --   攻方的登陆点只列当前目标所在的那块陆地上的；守方的集结点只给当前阶段的据点。自己手里的据点都能出生（守方的机场 D 是飞机基地）
   local function spawnList(team, P)
+    if conquest() then   -- 征服：自己的基地（营地；车场、机场、直升机坪的召唤位在基地里）+ 本队占着的据点（没被压着才行）
+      local out = {}
+      local B = Map.BASES and Map.BASES[team]
+      if B then table.insert(out, { id = "base", kind = "base", x = B.camp.x, z = B.camp.z, ok = true }) end
+      local best, bd = nil, math.huge
+      for _, p in ipairs(Map.POINTS) do
+        local s = points[p.id]
+        if s and s.owner == team then
+          local sp = { id = "point." .. p.id, kind = "point", point = p.id, x = p.x, z = p.z, ok = not s.pressed }
+          table.insert(out, sp)
+          -- 推荐：离中线最近（最靠前）的自己的据点
+          local d = math.abs(p.x)
+          if sp.ok and d < bd then best, bd = sp, d end
+        end
+      end
+      if best then best.rec = true elseif out[1] then out[1].rec = true end
+      if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
+      return out
+    end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
     --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
     local out = {}
     local objs = objectives(false)
-    if team == "atk" then
+    if team == "atk" and Map.LANDONLY then   -- 沙漠图：南边的前进基地（地面载具、直升机）、前进机场（飞机）
+      table.insert(out, { id = "redbase", kind = "redbase", x = Map.REDBASE.x, z = Map.REDBASE.z, ok = true })
+      table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })
+    elseif team == "atk" then
       table.insert(out, { id = "fleet", kind = "fleet", ok = true })   -- 两栖攻击舰甲板（直升机生成点）
       table.insert(out, { id = "cv", kind = "cv", ok = true })   -- 航母甲板（舰载机生成点）
       table.insert(out, { id = "barge", kind = "barge", ok = true })   -- 登陆平台（地面载具生成点）
       table.insert(out, { id = "af2", kind = "af2", x = Map.AFIELD2.x, z = Map.AFIELD2.z, ok = true })   -- 攻方机场岛（陆基飞机生成点）
+    end
+    if team == "atk" then
       if firstWave() then   -- 第一波：坐登陆艇抢滩（准备阶段上艇，开战一起冲）
         local lands = {}
         for _, p in ipairs(objs) do lands[p.land] = true end
@@ -304,6 +361,7 @@ function Round.init(G)
       end
     end
     recommend(team, out)
+    if G.squadSpawns then for _, s in ipairs(G.squadSpawns(team, P)) do table.insert(out, s) end end   -- 小队队友身边（Squads.lua）
     return out
   end
   G.spawnList = spawnList
@@ -328,7 +386,14 @@ function Round.init(G)
         return CFrame.lookAt(d.cf.Position + off, d.cf.Position + off + face)
       end
       local f = Map.FLEET[2] or Map.FLEET[1]
-      return CFrame.new(f.x, 40, f.z)
+      if f then return CFrame.new(f.x, 40, f.z) end
+      local B = Map.BASES and Map.BASES[P.team]   -- 没有舰队的地图（沙漠）：回自己基地
+      if B then
+        local c = B.camp or B
+        local p = standAt(c.x, c.z, 45)
+        return CFrame.lookAt(p, p + V(B.face or 1, 0, 0))
+      end
+      return CFrame.new(0, 60, 0)
     elseif sp.kind == "cv" then   -- 航母（福建舰）：舰岛左边、着舰区右边红线以外，面朝舰尾的停机位；别站在弹射器、着舰区上
       for _, d in ipairs(G.decks or {}) do
         if d.kind == "carrier" then
@@ -340,6 +405,10 @@ function Round.init(G)
       local B = Map.BARGE
       local p = V(B.x + (math.random() - 0.5) * B.W * 0.5, B.top + 3, B.z + (math.random() - 0.5) * B.L * 0.6)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "redbase" then   -- 沙漠图的前进基地：车场北边（面朝北，朝着战线）
+      local B = Map.REDBASE
+      local p = standAt(B.x + (math.random() - 0.5) * 160, B.z - 150, 20)
+      return CFrame.lookAt(p, p + V(0, 0, -1))
     elseif sp.kind == "af2" then   -- 攻方机场岛：停机坪北面
       local A = Map.AFIELD2
       local p = standAt(A.x + (math.random() - 0.5) * 120, A.z - A.wid / 2 - 120, 10)
@@ -350,10 +419,15 @@ function Round.init(G)
       return CFrame.lookAt(p, p + V(0, 0, 1))
     elseif sp.kind == "point" then
       local p = standAt(sp.x, sp.z, 30)
+      if conquest() then face = V(-math.sign(sp.x ~= 0 and sp.x or (P.team == "atk" and -1 or 1)), 0, 0) end   -- 征服：朝中线
       return CFrame.lookAt(p, p + face)
     elseif sp.kind == "camp" then
       local p = standAt(sp.x, sp.z, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "base" then   -- 征服：自己基地的营地，面朝战场（中线）
+      local B = Map.BASES and Map.BASES[P.team]
+      local p = standAt(sp.x, sp.z, 45)
+      return CFrame.lookAt(p, p + V(B and B.face or 1, 0, 0))
     elseif sp.kind == "rally" or sp.kind == "staging" then   -- 守方前线集结点、攻方攻击出发阵地：面朝据点
       local p = standAt(sp.x, sp.z, 25)
       local pt = nil
@@ -363,6 +437,13 @@ function Round.init(G)
     elseif sp.kind == "beach" then   -- 没有登陆艇模块时直接站在滩上
       local p = standAt(sp.x, sp.z - 40, 40)
       return CFrame.lookAt(p, p + face)
+    elseif sp.kind == "squad" then   -- 小队队友身后（Squads.lua）；刚好不行了（挨打了、上车了）就在他最后报的位置附近
+      local cf = G.squadSpawnCF and G.squadSpawnCF(P, sp)
+      if cf then return cf end
+      if sp.x then
+        local p = standAt(sp.x, sp.z, 8)
+        return CFrame.lookAt(p, p + face)
+      end
     end
     return CFrame.new(0, 60, 0)
   end
@@ -504,15 +585,9 @@ function Round.init(G)
     end
   end
 
-  local function onDied(P, char)
-    if P.char ~= char then return end
-    P.alive = false
-    P.deaths += 1
-    P.deadAt = now()
-    P.canDeployAt = now() + Config.RespawnDelay
-    P.vehicle = nil
-    G.emit("died", P)
-    -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻
+  -- 记功：最后一个打伤的人算击杀，最近 15 秒里打掉 30 以上的算助攻；击杀信息发给所有人。
+  --   倒地的那一下就记（Revive.lua 的 G.downPlayer 调）；没倒地直接死的在 onDied 里记。返回凶手那条伤害记录和名字（阵亡镜头用）
+  local function creditDeath(P)
     local log, t = P.dmgLog or {}, now()
     local killer, assists = nil, {}
     for i = #log, 1, -1 do
@@ -544,9 +619,32 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
+    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    return killer, kname
+  end
+  G.creditDeath = creditDeath
+
+  local function onDied(P, char)
+    if P.char ~= char then return end
+    local down = P.downed   -- 倒地以后才死的（流血、放弃、补枪）：击杀在倒地时已经记过了
+    P.downed = nil
+    P.revT = nil
+    P.alive = false
+    P.deaths += 1
+    P.deadAt = now()
+    -- 倒着等过救援了：不用再等复活时间（等的那几秒已经在地上过了）
+    P.canDeployAt = now() + ((down and (Config.Revive and Config.Revive.afterDown)) or Config.RespawnDelay)
+    P.vehicle = nil
+    G.emit("died", P)
+    local killer, kname
+    if down and down.credited then
+      killer, kname = down.killer, down.kname
+      P.dmgLog = {}
+    else
+      killer, kname = creditDeath(P)
+    end
     G.msg(P.pl, "center", kname and "ui.killedBy" or "ui.died", kname)
     if killer and G.killcam then G.try("阵亡镜头", G.killcam, P, killer) end   -- 镜头转过去看凶手（Battle.lua）
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
     G.pushOne(P)
   end
 
@@ -626,9 +724,10 @@ function Round.init(G)
     for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
     if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
-    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true }
+    local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true, base = true }   -- redbase：沙海的前进基地；base：沙漠风暴两边的基地
     if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     if P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
+    if conquest() and P.team == "def" and R.phase == "battle" and (R.ticketsDef or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 征服：守方也按兵力
     P.lastChoice = choice   -- 快速部署照上次的装备
     P.role = kit.role
     P.kit = kit
@@ -642,6 +741,28 @@ function Round.init(G)
     end
     P.canDeployAt = now() + 2
     P.pl:LoadCharacter()
+  end
+
+  -- 选地图（主菜单「开始游戏」→ 选地图界面，MapPick.lua）：还没定地图就是投一票（init.server.lua 的 G.voteMap，能改票），大家都看到票数；
+  --   定过了就记下他想要哪张（界面上是「加入」）
+  function G.ACT.pickMap(P, id)
+    if type(id) ~= "string" then return end
+    P.wantMap = id
+    if not G.mapId and G.voteMap and G.voteMap(P.pl, id) then
+      G.pushAll()
+      return
+    end
+    -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
+    if G.pve and G.mapId then
+      if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
+        G.pveExit()
+        G.msg(P.pl, "info", "pve.left")
+        G.roundStart()
+        return
+      end
+      G.msg(P.pl, "info", "pve.joined", G.pve.n)
+    end
+    G.pushOne(P)
   end
 
   -- 快速加入（主菜单的大按钮）/ 快速部署（部署界面）：没选阵营的按人数自动分；装备照上次出击的（没有就默认）；
@@ -701,10 +822,20 @@ function Round.init(G)
         wid = src and src.wid or nil })   -- wid：哪把枪打的（改枪的枪械经验）
       if #victim.dmgLog > 30 then table.remove(victim.dmgLog, 1) end
     end
-    hum:TakeDamage(amt)
     local head = part ~= nil and part.Name == "Head"
-    -- 打死真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
-    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", (hum.Health <= 0) and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
+    -- 倒地（Revive.lua）：已经倒着的再挨一下就没了（补枪，不再记一次击杀）；这一下会打死、又不是打得太狠：倒地等人救（击杀现在就记）
+    local lethal = false
+    if victim and victim.downed then
+      hum.Health = 0
+    elseif victim and G.downOk and hum.Health - amt <= 0 and G.downOk(victim, hum, amt) then
+      G.downPlayer(victim, hum, src, part)
+      lethal = true
+    else
+      hum:TakeDamage(amt)
+      lethal = hum.Health <= 0
+    end
+    -- 打死（打倒）真人是 pkill / headpkill（加分和打死小兵不一样，客户端的加分滚动按它写）
+    if src and src.P and src.P.pl then G.R.Msg:FireClient(src.P.pl, "hit", lethal and (head and "headpkill" or "pkill") or (head and "head" or "hit")) end
     -- 挨打的真人：伤害从哪来（客户端在准星周围画一道红弧指过去）——开枪的人 / 小兵的位置，爆炸的话是炸点
     if victim and victim.pl then
       local ap = G.boomAt
@@ -723,10 +854,12 @@ function Round.init(G)
   ---------------------------------------------------------------- 据点
 
   local function resetPoints()
+    for k in pairs(points) do points[k] = nil end   -- 换了地图（据点不一样）：旧的清掉
+    local own = conquest() and "none" or "def"
     for _, p in ipairs(Map.POINTS) do
-      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = "def", prog = 0, locked = false, atk = 0, def = 0, pressed = false }
+      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = own, prog = 0, cap = 0, locked = false, atk = 0, def = 0, pressed = false }
       local m = G.pointModels and G.pointModels[p.id]
-      if m then m:SetAttribute("Owner", "def") m:SetAttribute("Prog", 0) end
+      if m then m:SetAttribute("Owner", own) m:SetAttribute("Prog", 0) end
     end
   end
   resetPoints()
@@ -736,8 +869,16 @@ function Round.init(G)
     if not m then return end
     m:SetAttribute("Owner", s.owner)
     m:SetAttribute("Prog", s.prog)
-    local col = Config.Teams[s.owner].color
-    if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+    m:SetAttribute("Cap", s.cap or 0)
+    local NEUTRAL = Color3.fromRGB(200, 200, 200)
+    local col
+    if conquest() then   -- 征服：中立灰，往哪边推就往那边的颜色渐变
+      local c = s.cap or 0
+      col = (c >= 0) and NEUTRAL:Lerp(Config.Teams.atk.color, c) or NEUTRAL:Lerp(Config.Teams.def.color, -c)
+    else
+      col = Config.Teams[s.owner] and Config.Teams[s.owner].color or NEUTRAL
+      if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+    end
     for _, n in ipairs({ "Ring", "Flag" }) do
       local p = m:FindFirstChild(n)
       if p then p.Color = col end
@@ -751,7 +892,7 @@ function Round.init(G)
     local who = {}
     local r2 = CC.r * CC.r
     for _, P in pairs(G.P) do
-      if P.alive and P.char then
+      if P.alive and P.char and not P.downed then   -- 倒地的不算占领人数
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
@@ -813,6 +954,7 @@ function Round.init(G)
     G.msgAll("center", "ui.captured", { k = "point." .. s.id })
     G.fx({ k = "capture", id = s.id })
     G.emit("captured", s)
+    if R.phase ~= "battle" then return end   -- PvE 关卡拿够了据点、这一局已经结束了（Pve.lua）：不再推下一阶段
     local TK = Config.Tickets or {}
     if flankOf[s.id] then   -- 侧翼：补兵力，不影响推进
       R.tickets += TK.flank or 0
@@ -831,7 +973,75 @@ function Round.init(G)
     stageCleared()
   end
 
+  -- 征服模式的占领：s.cap 从 −1（守方占满）经 0（中立）到 +1（攻方占满）；圈里哪边人多往哪边推（同 capRate，机器人算 CC.botW 个人）；
+  --   推过 0 变中立、推满归那边；没人 / 人一样多：往原来的主人那边慢慢回
+  local function conqStep(dt)
+    for _, p in ipairs(Map.POINTS) do
+      local s = points[p.id]
+      if s then
+        local a, d, who, ra, rd = countIn(s)
+        s.atk, s.def = a, d
+        local effA = ra + (a - ra) * (CC.botW or 1)
+        local effD = rd + (d - rd) * (CC.botW or 1)
+        local diff = effA - effD
+        local old = s.cap or 0
+        local cap = old
+        if diff > 0.01 then cap = math.min(1, cap + capRate(diff) * dt)
+        elseif diff < -0.01 then cap = math.max(-1, cap - capRate(-diff) * dt)
+        elseif s.owner == "atk" then cap = math.min(1, cap + dt / CC.decay)
+        elseif s.owner == "def" then cap = math.max(-1, cap - dt / CC.decay)
+        elseif cap > 0 then cap = math.max(0, cap - dt / CC.decay)
+        elseif cap < 0 then cap = math.min(0, cap + dt / CC.decay) end
+        s.cap = cap
+        local owner = s.owner
+        if cap >= 1 then owner = "atk"
+        elseif cap <= -1 then owner = "def"
+        elseif (s.owner == "atk" and cap <= 0) or (s.owner == "def" and cap >= 0) then owner = "none" end
+        if owner ~= s.owner then
+          local lost = s.owner
+          s.owner = owner
+          if owner == "none" then
+            if lost ~= "none" then G.msgTeam(lost, "bad", "ui.lostPoint", { k = "point." .. s.id }) end
+          else
+            for _, P in ipairs(who) do
+              if P.team == owner then
+                P.caps += 1
+                G.addScore(P, Config.Score.capture)
+                G.msg(P.pl, "good", "ui.capturedYou", { k = "point." .. s.id })
+              end
+            end
+            G.msgTeam(owner, "good", "ui.weTook", { k = "point." .. s.id })
+            G.msgTeam((owner == "atk") and "def" or "atk", "bad", "ui.lostPoint", { k = "point." .. s.id })
+            G.fx({ k = "capture", id = s.id })
+            G.emit("captured", s)
+          end
+        end
+        s.prog = math.abs(cap)
+        s.pressed = (s.owner == "atk" and d > a) or (s.owner == "def" and a > d)
+        s.motion = (cap > old) and 1 or ((cap < old) and -1 or 0)
+        if math.abs(cap - old) > 1e-6 then paint(s) end
+      end
+    end
+  end
+  -- 征服模式的兵力：据点少的一边按差几个、每秒掉 BLEED（两边一样多不掉）
+  local BLEED = (Config.Tickets and Config.Tickets.bleed) or 0.3
+  local bleedAcc = { atk = 0, def = 0 }
+  local function conqBleed(dt)
+    local nA, nD = 0, 0
+    for _, s in pairs(points) do
+      if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+    end
+    local lose = (nA > nD) and "def" or ((nD > nA) and "atk" or nil)
+    if not lose then return end
+    bleedAcc[lose] += BLEED * math.abs(nA - nD) * dt
+    while bleedAcc[lose] >= 1 do
+      bleedAcc[lose] -= 1
+      if lose == "atk" then R.tickets = math.max(0, R.tickets - 1) else R.ticketsDef = math.max(0, (R.ticketsDef or 0) - 1) end
+    end
+  end
+
   local function capStep(dt)
+    if conquest() then conqStep(dt) conqBleed(dt) return end
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
       if isActive(s) then
@@ -875,6 +1085,7 @@ function Round.init(G)
   end
 
   function G.roundStart()
+    if tablesFor ~= Map.id then buildMapTables() end   -- 地图是开服以后投票定的：第一局开局前按那张图重算阶段、出发阵地、集结点
     R.n += 1
     R.phase = "prep"
     R.t0 = now()
@@ -885,6 +1096,7 @@ function Round.init(G)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets
+    if conquest() then R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800 end
     resetPoints()
     clearChars()
     for _, P in pairs(G.P) do
@@ -905,12 +1117,25 @@ function Round.init(G)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)
     R.ticketsMax = R.tickets
+    if conquest() then
+      R.tickets, R.ticketsDef, R.ticketsMax = TK.conquest or 800, TK.conquest or 800, TK.conquest or 800
+      if G.pveTickets then G.pveTickets(R) end   -- PvE 关卡：两边的兵力按关卡（Pve.lua）
+      R.endsAt = now() + (RC.conquest or 2400)
+      G.msgAll("center", "ui.conquestStart")
+      G.pushAll()
+      return
+    end
     G.msgAll("stage", "stage." .. ((STAGES[1] and STAGES[1].id) or "all"), 1, #STAGES)
     G.pushAll()
   end
   -- 攻方阵亡一个（真人、机器人都算）：兵力扣 1；剩 50、20 的时候喊一声
   local function ticketLoss(team)
-    if team ~= "atk" or R.phase ~= "battle" then return end
+    if R.phase ~= "battle" then return end
+    if conquest() then   -- 征服：两边阵亡都扣自己的兵力
+      if team == "def" then R.ticketsDef = math.max(0, (R.ticketsDef or 0) - 1) elseif team == "atk" then R.tickets = math.max(0, (R.tickets or 0) - 1) end
+      return
+    end
+    if team ~= "atk" then return end
     R.tickets = math.max(0, (R.tickets or 0) - 1)
     if R.tickets == 50 or R.tickets == 20 then G.msgAll("center", "ui.ticketsLow", R.tickets) end
   end
@@ -923,9 +1148,11 @@ function Round.init(G)
     R.winner = winner
     R.nextAt = now() + RC.results
     local best = nil
+    if G.pveFinish then G.try("PvE 结算", G.pveFinish, winner) end   -- PvE 关卡：打通的奖励、进度（Pve.lua），先于存档
     for _, P in pairs(G.P) do
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
+      if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil
@@ -933,6 +1160,7 @@ function Round.init(G)
     G.emit("roundEnd", winner)
     G.pushAll()
   end
+  G.roundFinish = function(w) return finish(w) end   -- PvE：拿下要求的据点数就提前结束（Pve.lua）
 
   function G.roundStep(dt)
     local t = now()
@@ -940,7 +1168,11 @@ function Round.init(G)
       if t >= R.prepEnds then startBattle() end
     elseif R.phase == "battle" then
       capStep(dt)
-      if R.phase == "battle" and ((R.tickets or 1) <= 0 or t >= R.endsAt) then   -- 兵力扣光、这一阶段时间到：守方赢
+      if conquest() then   -- 征服：哪边兵力先扣光哪边输；时间到兵力多的赢
+        if (R.tickets or 1) <= 0 then finish("def")
+        elseif (R.ticketsDef or 1) <= 0 then finish("atk")
+        elseif t >= R.endsAt then finish(((R.tickets or 0) >= (R.ticketsDef or 0)) and "atk" or "def") end
+      elseif R.phase == "battle" and ((R.tickets or 1) <= 0 or t >= R.endsAt) then   -- 兵力扣光、这一阶段时间到：守方赢
         local active = false   -- 有据点正在被占（攻方人多、进度在涨）：加时
         for _, s in pairs(points) do if isActive(s) and s.prog > 0 and s.atk > s.def then active = true end end
         if active then
@@ -967,7 +1199,7 @@ function Round.init(G)
     local out = {}
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
-      table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
+      table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, cap = math.floor((s.cap or 0) * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
         act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
     end
     return out
@@ -988,7 +1220,13 @@ function Round.init(G)
       phase = R.phase, left = math.max(0, math.floor(left + 0.5)), ot = R.overtimeEnds and math.max(0, math.floor(R.overtimeEnds - t + 0.5)) or nil,
       points = pointsState(), nAtk = teamCount("atk"), nDef = teamCount("def"), winner = R.winner, mvp = R.mvp, round = R.n,
       stage = R.stage, stages = #STAGES, stageId = STAGES[R.stage] and STAGES[R.stage].id, tickets = R.tickets, ticketsMax = R.ticketsMax,
-      progress = G.worldReady and 1 or (G.worldProgress or 0),
+      ticketsDef = conquest() and R.ticketsDef or nil, mode = conquest() and "conquest" or "assault",
+      -- 地图还没定（等第一个玩家选）：当成「好了」，主菜单、选地图界面才出得来；定了以后照常报生成进度
+      progress = (G.worldReady or not G.mapId) and 1 or (G.worldProgress or 0),
+      map = G.mapId,   -- 这个服务器在打哪张图（还没定是 nil：选地图界面上三张都能投）
+      pve = G.pve and G.pve.n or nil,   -- PvE 关卡：第几关（Pve.lua）
+      mapReady = G.worldReady == true,
+      vote = G.mapVoteState and G.mapVoteState() or nil,   -- 还在投票：{ n = 各张票数, left = 还剩几秒（第一票投出后才有）, voters, players }
     }
   end
   local function personal(P, C)
@@ -996,6 +1234,7 @@ function Round.init(G)
     C.team = P.team
     C.round = R.n
     C.picked = P.picked == true
+    C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
     C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")
     C.role = P.role
@@ -1050,6 +1289,11 @@ function Round.init(G)
   Players.PlayerAdded:Connect(onPlayer)
   for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
   Players.PlayerRemoving:Connect(function(pl)
+    -- 投了票走了：票不算了，大家的票数刷新
+    if G.mapVotes and G.mapVotes[pl] then
+      G.mapVotes[pl] = nil
+      task.defer(function() if G.pushAll then G.pushAll() end end)
+    end
     local P = G.P[pl]
     if not P then return end
     G.emit("left", P)

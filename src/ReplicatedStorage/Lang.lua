@@ -55,7 +55,129 @@ add("role.mg.desc", "百发弹链的机枪，压制冲上来的人", "100-round 
 add("role.sniper.desc", "远距离一枪一个，爆头双倍；另带一支 M4", "One shot from far away, headshots deal double; carries an M4 too")
 add("role.at.desc", "火箭筒打坦克、装甲车、碉堡", "Rocket launcher against tanks, APCs and bunkers")
 add("role.aa.desc", "单兵防空导弹，锁定直升机、飞机", "Shoulder SAM that locks onto helicopters and jets")
-add("role.medic.desc", "M4 + 急救包，给身边的队友回血", "M4 and a medkit that heals nearby teammates")
+add("role.medic.desc", "M4 + 急救包，给身边的队友回血、快速救起倒地的队友", "M4 and a medkit that heals nearby teammates and quickly revives downed ones")
+-- PvE 关卡（Pve.lua、选地图界面）
+add("pve.tabPvp", "对战 PVP", "PVP")
+add("pve.tabPve", "关卡 PVE", "PVE MISSIONS")
+add("pve.title", "关卡", "MISSIONS")
+add("pve.sub", "跟电脑打，一关一关解锁；打通拿金币（第一次翻倍），金币解锁载具和配件", "Fight the AI and unlock missions one by one; clears pay coins (double the first time) for vehicles and attachments")
+add("pve.level", "第 {1} 关", "MISSION {1}")
+add("pve.n1", "滩头阵地", "Beachhead")
+add("pve.n2", "港口突袭", "Harbour Raid")
+add("pve.n3", "夜袭机场", "Airfield Night Strike")
+add("pve.n4", "沙海遭遇", "Desert Encounter")
+add("pve.n5", "纵深突破", "Breakthrough")
+add("pve.n6", "钢铁洪流", "Steel Tide")
+add("pve.n7", "全岛攻略", "Island Sweep")
+add("pve.n8", "沙漠风暴", "Desert Storm")
+-- 第 9～16 关（用户 11-24：「做关卡 越多越逼真越好」）
+add("pve.n9", "沙海突破", "Breaching the Sand Sea")
+add("pve.n10", "无车之战", "Infantry Only")
+add("pve.n11", "海岸防线", "Coastal Line")
+add("pve.n12", "沙海纵深", "Deep in the Sand Sea")
+add("pve.n13", "夜幕坦克战", "Night Tank Battle")
+add("pve.n14", "铁锤行动", "Operation Hammer")
+add("pve.n15", "沙海决战", "Sand Sea Showdown")
+add("pve.n16", "最终决战", "Final Battle")
+-- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
+add("pve.brief", "作战简报", "BRIEFING")
+add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
+add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
+-- 战雷的投弹（Fly.lua / Bombsight.lua）
+add("air.bombN1", "投弹：单投（一次一枚）", "Bombs: single")
+add("air.bombN2", "投弹：双投（两枚一起）", "Bombs: pair")
+add("air.bombN0", "投弹：齐投（这种炸弹全部，一枚接一枚）", "Bombs: salvo (all of this type, one after another)")
+add("air.poiSet", "目标点标好了：照着箭头修航向，落点走到红方框自动投弹（Alt + 中键对着天上取消）", "Target point set: steer by the arrow, bombs release automatically over the red box (Alt+MMB at the sky clears it)")
+add("air.poiOff", "目标点取消了", "Target point cleared")
+add("air.bsTitle", "轰炸瞄准镜", "BOMBSIGHT")
+add("air.bsHint", "F7 退出 · F 投弹 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· Z 变焦 · 鼠标左右 修航向", "F7 exit · F drop · Shift+B single / pair / salvo · Alt+MMB target point (auto release) · Z zoom · mouse left/right adjusts heading")
+add("air.bsAlt", "高度  {1} 米", "ALT  {1} m")
+add("air.bsSpd", "地速  {1} 千米/时", "GS  {1} km/h")
+add("air.bsFall", "落下  {1} 秒", "FALL  {1} s")
+add("air.bsMode1", "单投", "SINGLE")
+add("air.bsMode2", "双投", "PAIR")
+add("air.bsMode0", "齐投", "SALVO")
+add("air.ccrpT", "{1} 秒后投弹", "release in {1} s")
+add("air.ccrpPassed", "飞过了 · 掉头再来", "passed · come around")
+add("air.ccrpRel", "投弹！", "BOMBS AWAY")
+add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
+add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
+add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
+add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
+add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
+add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
+add("pve.b4", "两军在沙漠遭遇，双方都有少量坦克和步战车。任务：打光敌人 200 兵力（我方 320）。", "Meeting engagement in the desert, a few tanks and IFVs on both sides. Deplete 200 enemy tickets (we have 320).")
+add("pve.b5", "敌防御纵深有 M1A1 坦克和布雷德利步战车。任务：连续拿下四个据点，撕开防线。", "M1A1 tanks and Bradleys defend in depth. Take four objectives in a row and tear the line open.")
+add("pve.b6", "坦克对决：敌 M1A1、M1A2 坦克连，我方 T-90M、99A。任务：打光敌人 260 兵力。", "Tank duel: an M1A1/M1A2 company against our T-90Ms and Type 99As. Deplete 260 enemy tickets.")
+add("pve.b7", "敌主力退守全岛，五个据点层层设防。任务：拿下全部五个据点。", "The enemy main body falls back across the island, five objectives in layered defence. Take all five.")
+add("pve.b8", "敌重兵集团：M1A2、M1A1、布雷德利；我方 T-90M、99A、BMP-3 协同。任务：打光敌人 320 兵力。", "Heavy enemy group of M1A2s, M1A1s and Bradleys; our T-90Ms, Type 99As and BMP-3s attack together. Deplete 320 tickets.")
+add("pve.b9", "沙海前沿：敌摩步连有布雷德利、斯特赖克和少量 M1A1。任务：BMP-3 机步营突破两道沙墙阵地。", "Sand Sea front: a motorised company with Bradleys, Strykers and a few M1A1s. Our BMP-3 battalion breaches two berm lines.")
+add("pve.b10", "敌方是精锐步兵，没有车辆支援；地形开阔、狙击手多。任务：打光敌人 240 兵力。", "Elite enemy infantry with no vehicles; open ground and many snipers. Deplete 240 enemy tickets.")
+add("pve.b11", "敌在海岸构筑防线：M1A2、布雷德利、M1150 扫雷车。任务：T-90M、BMP-3 掩护步兵拿下三个据点。", "A coastal defence line with M1A2s, Bradleys and M1150 breachers. T-90Ms and BMP-3s cover the infantry onto three objectives.")
+add("pve.b12", "突破以后向纵深发展，敌坦克、步战车混编反冲击。任务：连续拿下四个阶段的据点。", "Exploit the breach: enemy tanks and IFVs counter-attack together. Take the objectives of four stages in a row.")
+add("pve.b13", "夜里沙漠坦克战：敌 5 辆 M1A2、M1A1，我方 4 辆 T-90M、99A、96 式。用热像，先敌开火。任务：打光敌人 300 兵力。", "Night tank battle in the desert: five M1A2/M1A1s against our four T-90Ms, Type 99As and Type 96s. Use thermals and shoot first. Deplete 300 tickets.")
+add("pve.b14", "全岛总攻：敌 30 人、4 辆装甲车顽抗。任务：拿下全部五个据点。", "All-out assault on the island: 30 enemies and 4 armoured vehicles hold out. Take all five objectives.")
+add("pve.b15", "敌最后的装甲预备队：M1A2、M1A1、布雷德利。任务：打通沙海全部五个阶段。", "The enemy's last armoured reserve of M1A2s, M1A1s and Bradleys. Break through all five stages of the Sand Sea.")
+add("pve.b16", "敌全部兵力 36 人、5 辆装甲车最后一搏。任务：打光敌人 400 兵力。", "Everything the enemy has left: 36 troops and 5 armoured vehicles. Deplete 400 enemy tickets.")
+add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
+add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
+add("pve.forces", "敌军 {1} · 友军 {2}", "Enemies {1} · Allies {2}")
+add("pve.reward", "奖励 {1} 金币（第一次翻倍）", "Reward {1} coins (doubled first time)")
+add("pve.rewardFirst", "首次通关奖励 ◉ {1}", "First clear reward ◉ {1}")
+add("pve.rewardReplay", "再次通关奖励 ◉ {1}", "Replay reward ◉ {1}")
+add("pve.locked", "先打通第 {1} 关", "Clear mission {1} first")
+add("pve.cleared", "✓ 已通关", "✓ CLEARED")
+add("pve.start", "开始", "START")
+add("pve.hud", "PvE 第 {1} 关 · {2} · {3}", "PvE {1} · {2} · {3}")
+add("pve.win", "关卡完成！", "Mission complete!")
+add("pve.next", "下一局：第 {1} 关", "Next round: mission {1}")
+add("pve.nextMap", "下一关换地图了：回主菜单「开始游戏 → 关卡」选第 {1} 关", "The next mission is on another map: open PLAY → MISSIONS and pick mission {1}")
+add("pve.allClear", "全部关卡都打通了！", "All missions cleared!")
+add("pve.retry", "没打下来，再来一次第 {1} 关", "Mission failed — retrying mission {1}")
+add("pve.needNew", "这个服务器在打别的：在 Studio 里请重新开始测试再选关卡", "This server is busy with another mode — restart the test in Studio to pick a mission")
+add("pve.teleport", "正在带你去新的关卡服务器……", "Taking you to a new mission server…")
+add("pve.lockedMsg", "这一关还没解锁（先打通第 {1} 关）", "That mission is locked (clear mission {1} first)")
+add("pve.botTeam", "PvE：真人都在进攻方", "PvE: all players are on the attacking side")
+add("pve.nowPve", "这个服务器在打 PvE 第 {1} 关 · {2}", "This server is playing PvE mission {1} · {2}")
+add("pve.joined", "这个服务器有人在打 PvE 第 {1} 关：你加入了他们（进攻方）", "Other players are on PvE mission {1} here — you joined them on the attacking side")
+add("pve.left", "退出关卡：这个服务器改打对战", "Mission ended — this server is back to PvP")
+-- 金币（Economy.lua）
+add("eco.coins", "金币 {1}", "{1} coins")
+add("eco.round", "这一局 +{1} 金币", "+{1} coins this round")
+add("eco.pve", "关卡奖励 +{1} 金币", "Level reward +{1} coins")
+add("eco.notLoaded", "存档还没读好，稍等一下", "Your profile is still loading")
+add("eco.poor", "金币不够，还差 {1}", "Not enough coins ({1} short)")
+add("eco.boughtVeh", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
+add("eco.boughtAtt", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
+add("eco.lockVeh", "{1} 金币解锁", "{1} coins to unlock")
+add("eco.confirm", "再点一次：用 {1} 金币解锁 {2}", "Click again to unlock {2} for {1} coins")
+add("eco.needVeh", "这型还没解锁（{1} 金币）", "Not unlocked yet ({1} coins)")
+add("eco.attLock", "Lv.{1} 解锁 · 或 {2} 金币", "Lv.{1} or {2} coins")
+-- 小队（Squads.lua 服务器 / 客户端）
+add("spawn.squad", "小队：{1}", "Squad: {1}")
+add("squad.title", "{1} 小队", "SQUAD {1}")
+add("squad.down", "倒地", "DOWN")
+add("squad.dead", "阵亡", "KIA")
+add("squad.veh", "载具", "VEHICLE")
+add("squad.alone", "等队友加入", "Waiting for squadmates")
+-- 倒地与救援（Revive.lua / Downed.lua）
+add("ui.downed", "你倒下了", "You're down")
+add("ui.downedBy", "你被 {1} 击倒了", "Downed by {1}")
+add("ui.youRevived", "救起了 {1}", "Revived {1}")
+add("ui.revivedBy", "{1} 把你救起来了", "{1} revived you")
+add("down.title", "倒地 · 等待救援", "DOWNED · WAITING FOR REVIVE")
+add("death.title", "阵　亡", "WASTED")
+add("death.by", "被 {1} 击杀 · {2} 米", "Killed by {1} · {2} m")
+add("death.byNear", "被 {1} 击杀", "Killed by {1}")
+add("down.bleed", "{1} 秒后阵亡", "Bleeding out in {1} s")
+add("down.giveUp", "按住 空格 放弃（重新部署）", "Hold SPACE to give up (redeploy)")
+add("down.giveUpTouch", "按住这里放弃", "Hold to give up")
+add("down.near", "最近的队友 {1} 米", "Nearest teammate {1} m")
+add("down.none", "附近没有队友", "No teammates nearby")
+add("down.coming", "{1} 正在救你", "{1} is reviving you")
+add("revive.act", "救起", "Revive")
+add("revive.medic", "急救（满血）", "Revive (full health)")
+add("revive.tag", "需要救援", "NEEDS REVIVE")
 add("role.engineer.desc", "修车、修工事；探雷、排雷、剪铁丝网", "Repairs vehicles and forts; finds and clears mines, cuts wire")
 add("role.mortar.desc", "迫击炮：点准星下的地面，炮弹几秒后落下", "Mortar: shells land where you aim a few seconds later")
 add("role.spec.desc", "跑得最快，M4 + 炸药包 + 手雷", "The fastest runner, with an M4, C4 charges and a grenade")
@@ -84,6 +206,23 @@ add("point.B", "B 灯塔岛", "B Lighthouse Isle")
 add("point.C", "C 港口镇", "C Harbor Town")
 add("point.D", "D 机场", "D Airfield")
 add("point.E", "E 指挥所", "E Command Post")
+-- 沙漠地图「沙漠风暴」的据点（MapDesert.lua）
+add("point.A@desert", "A 绿洲镇", "A Oasis Town")
+add("point.B@desert", "B 油田", "B Oil Field")
+add("point.C@desert", "C 古城", "C Old Citadel")
+add("point.D@desert", "D 十字路口镇", "D Crossroads")
+add("point.E@desert", "E 雷达站", "E Radar Station")
+add("point.F@desert", "F 干河谷桥", "F Wadi Bridge")
+add("point.G@desert", "G 炼油厂", "G Refinery")
+add("faction.atk.role@desert", "西线  ·  征服", "WEST  ·  CONQUEST")
+add("faction.def.role@desert", "东线  ·  征服", "EAST  ·  CONQUEST")
+add("faction.def.name@desert", "沙漠守备军", "DGC")
+add("spawn.base", "本方基地", "Home Base")
+add("ui.lostPoint", "{1} 丢了", "{1} was lost")
+add("ui.weTook", "我方拿下了 {1}", "We took {1}")
+add("ui.conquestStart", "开战！占领据点，打光敌人的兵力", "Battle! Capture the points and drain the enemy's tickets")
+add("ui.win.atk@desert", "西线胜利：敌人的兵力打光了", "WEST WINS: the enemy ran out of tickets")
+add("ui.win.def@desert", "东线胜利：敌人的兵力打光了", "EAST WINS: the enemy ran out of tickets")
 add("beach.red", "红滩", "Red Beach")
 add("beach.white", "白滩", "White Beach")
 add("beach.blue", "绿滩", "Green Beach")   -- 原来叫蓝滩（用户 11-21：蓝色全部改成绿色）
@@ -117,8 +256,9 @@ add("vcat.heli", "直升机", "Helicopters")
 add("vcat.jet", "固定翼", "Jets")
 add("vcat.ship", "舰艇", "Ships")
 local VEH = {
-  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" },
-  m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv3", "M1A2 SEPv3" },
+  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" }, bmp3 = { "BMP-3 步兵战车", "BMP-3 IFV" },
+  pantsir = { "铠甲-S1 弹炮合一防空车", "Pantsir-S1 SPAAGM" },
+  m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv2", "M1A2 SEPv2" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
   m1117 = { "M1117 装甲警卫车", "M1117 Guardian" }, hmmwv = { "悍马", "Humvee" }, jltv = { "JLTV 联合轻型战术车", "JLTV" },
@@ -128,9 +268,10 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
-  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j50 = { "歼-50", "J-50" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" }, j8 = { "歼-8II", "J-8II" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
-  a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
+  a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, f16 = { "F-16C 战隼", "F-16C Fighting Falcon" }, f15 = { "F-15C 鹰", "F-15C Eagle" }, f14 = { "F-14A 雄猫", "F-14A Tomcat" },
+  mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
   t055 = { "055 型驱逐舰", "Type 055 Destroyer" }, t054a = { "054A 型护卫舰", "Type 054A Frigate" }, t022 = { "022 型导弹艇", "Type 022 Missile Boat" },
   ddg125 = { "DDG-125 驱逐舰", "DDG-125 Destroyer" }, cg47 = { "CG-47 巡洋舰", "CG-47 Cruiser" }, lcs2 = { "LCS-2 濒海战斗舰", "LCS-2 Littoral Combat Ship" }, pbr = { "PBR 巡逻艇", "PBR Patrol Boat" },
   lcm = { "登陆艇", "Landing Craft" }, lcac = { "726 型气垫艇", "Type 726 LCAC" },
@@ -233,8 +374,8 @@ add("ui.pointLocked", "据点被攻方拿下后不能再夺回", "Captured point
 add("ui.serverStarting", "正在生成地图……{1}%", "Building the map… {1}%")
 add("ui.needPick", "先选一个生成点", "Pick a spawn point first")
 add("ui.spawnBlocked", "这个出生点现在用不了", "That spawn point is not available right now")
-add("ui.help", "WASD 移动 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（副武器是战术平板）· Q 上一把 · V 第一 / 第三人称 · E 上车 / 操作 · N 夜视 · Tab 战况 · M 地图",
-  "WASD move · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (secondary = tactical tablet) · Q last weapon · V 1st / 3rd person · E enter / man · N night vision · Tab scoreboard · M map")
+add("ui.help", "WASD 移动 · 按住 Shift 疾跑 · 左键开火 · 右键开镜 · R 换弹 · 1–5 / 滚轮 切武器（再按一次收枪、空手；副武器是战术平板）· Q 上一把 · Z 标记敌人 · 空格 跳 / 翻越矮墙 · E 上车 / 操作 / 按住救起倒地的队友 · V 第一 / 第三人称 · N 夜视 · Tab 战况 · M 地图",
+  "WASD move · hold Shift sprint · LMB fire · RMB aim · R reload · 1-5 / wheel weapons (press again to holster; secondary = tactical tablet) · Q last weapon · Z spot enemy · Space jump / vault low walls · E enter / man / hold to revive a downed teammate · V 1st / 3rd person · N night vision · Tab scoreboard · M map")
 -- 载具
 add("ui.vehFull", "这类载具已经满了", "No free slot for this vehicle type")
 add("ui.vehLost", "你的载具被击毁了", "Your vehicle was destroyed")
@@ -249,7 +390,7 @@ add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武�
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
-add("drv.hintLine", "Shift 退出瞄准镜 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · Z / Wheel zoom · 1/2 weapon · LMB fire")
+add("drv.hintLine", "Shift 退出瞄准镜 · R 激光测距 · Q 换弹种 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · R lase · Q ammo · Z / Wheel zoom · 1/2 weapon · LMB fire")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
@@ -289,20 +430,38 @@ local PRESET = {
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
   bomb = { "炸弹", "Bombs" }, kd88 = { "KD-88 远程打击", "KD-88 standoff" }, cas = { "近距支援", "Close air support" }, hk = { "猎杀", "Hunter-killer" },
   jdam = { "联合直接攻击弹药", "JDAM" }, mk82 = { "Mk 82 炸弹", "Mk 82 bombs" }, antiship = { "反舰", "Anti-ship" },
+  nuke = { "核打击", "Nuclear strike" }, phoenix = { "六枚不死鸟", "Six Phoenix" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
-  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
+  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
   m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
-  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" },
+  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
   ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
   kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
   mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
   pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, yj83k = { "鹰击-83K 反舰导弹", "YJ-83K anti-ship missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
   gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
   gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
+  hn1 = { "惊雷-1 核导弹", "HN-1 nuke" },
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
+-- 高超音速战术核导弹（Nuke.lua / 客户端 Nuke.lua）
+add("nuke.short", "惊雷-1 核", "HN-1 NUKE")
+add("nuke.btn", "开火键", "Fire")
+add("nuke.hold", "按住 {1} 发射核导弹", "Hold {1} to launch the nuke")
+add("nuke.arming", "核导弹解锁中…… {1}%", "Arming nuke… {1}%")
+add("nuke.cd", "核打击还要等 {1} 秒（每队发射后要冷却）", "Nuclear strike available in {1}s (team cooldown)")
+add("nuke.early", "开战 {1} 秒后才能发射核导弹", "Nukes unlock {1}s after the battle starts")
+add("nuke.launched", "核导弹已发射", "Nuke launched")
+add("nuke.launchedSub", "惊雷-1 · 预计 {1} 秒后命中 · 我方不受伤害", "HN-1 · impact in about {1}s · friendly units are safe")
+add("nuke.incoming", "⚠ 核打击来袭 ⚠", "⚠ NUCLEAR STRIKE INBOUND ⚠")
+add("nuke.incomingSub", "敌方高超音速核导弹 · 预计 {1} 秒 · 立刻远离红圈", "Enemy hypersonic nuke · impact in about {1}s · get out of the red circle")
+add("nuke.dive", "核导弹进入末段俯冲", "Nuke in terminal dive")
+add("nuke.det", "核爆", "Nuclear detonation")
+add("nuke.fallout", "辐射区：快离开", "Radiation zone: get out")
+add("nuke.feed", "核打击", "nuclear strike")
+add("nuke.tag", "☢ 爆心", "☢ Ground zero")
 add("preset.sead", "防空压制", "SEAD")
 add("hangar.empty", "不挂", "Empty")
 add("hangar.pick", "点白圈选一个挂点", "Pick a hardpoint")
@@ -354,10 +513,12 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpHeli", "鼠标 机头朝向（准心）· W 桨盘前倾往前飞 · S 往后带杆刹车 / 倒飞 · A/D 侧飞 · E 升 / Q 降 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "Mouse nose heading (aim) · W tilt rotor forward · S flare back to brake / reverse · A/D sidestep · E up / Q down · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 左键 机炮（机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 / 炸弹 · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · LMB gun (sticks to enemy vehicles within 6° and leads them) · F missile / bomb · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
+add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -495,7 +656,7 @@ add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道�
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
 add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；机头跟着准心转，W 桨盘前倾往前飞，A / D 侧飞", "Hold E to climb, Q to descend; the nose follows your aim, W tilts the rotor forward, A / D sidestep")
+add("coach.card.heli.2", "按住 E 升、Q 降；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞", "Hold E to climb, Q to descend; aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep")
 add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
@@ -525,6 +686,7 @@ add("pick.tracked", "履带", "Tracked")
 add("pick.wheeled", "轮式", "Wheeled")
 add("pick.amphib", "两栖", "Amphibious")
 add("arole.fighter", "战斗机", "Fighter")
+add("arole.intercept", "截击机", "Interceptor")
 add("arole.strike", "战斗轰炸机", "Strike fighter")
 add("arole.attack", "攻击机", "Attack aircraft")
 add("arole.bomber", "轰炸机", "Bomber")
@@ -570,7 +732,7 @@ add("gear.sniper.desc", "远距离一枪一个，爆头双倍", "Long-range prec
 add("gear.rpg.desc", "打坦克、装甲车、碉堡", "For tanks, armor and bunkers")
 add("gear.manpads.desc", "锁定直升机、飞机后发射", "Lock on to helicopters and jets, then fire")
 add("gear.mortar.desc", "点准星下的地面，炮弹几秒后落下", "Aim at the ground; shells land a few seconds later")
-add("gear.medkit.desc", "给身边的队友回血", "Heals teammates around you")
+add("gear.medkit.desc", "给身边的队友回血；救倒地的队友快一倍多、救起来满血", "Heals teammates around you; revives downed teammates much faster and to full health")
 add("gear.repair.desc", "修车、修工事", "Repairs vehicles and fortifications")
 add("gear.breach.desc", "探雷、排雷、剪铁丝网", "Detects and clears mines, cuts wire")
 add("gear.binoc.desc", "标记敌人给全队看，呼叫炮火覆盖", "Spots enemies for the team and calls in artillery")
@@ -583,8 +745,8 @@ add("menu.rankLine", "{1}   ·   下一级 {2}", "{1}   ·   NEXT {2}")
 add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
 add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
 add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
-add("menu.c1.title", "快速加入", "QUICK JOIN")
-add("menu.c1.sub", "自动分队 · 默认装备 · 直接上前线（回车）", "AUTO TEAM · DEFAULT KIT · STRAIGHT TO THE FRONT (ENTER)")
+add("menu.c1.title", "开始游戏", "PLAY")
+add("menu.c1.sub", "投票选地图 · 自动分队 · 直接上前线（回车）", "VOTE FOR A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
 add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
@@ -598,6 +760,33 @@ add("menu.c4.cat", "制作人员", "CREDITS")
 add("menu.c4.title", "模型与授权", "MODELS & LICENSES")
 add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-BY)")
 add("menu.beta", "测试版", "BETA")
+-- 选地图（MapPick.lua，用户 11-22：「界面直接写 play，然后进入界面点地图」）
+add("map.cat", "开始游戏", "PLAY")
+add("map.title", "投票选地图", "VOTE FOR A MAP")
+add("map.sub", "大家投票选这个服务器打哪张（能改票），票最多的开；后进来的直接加入", "Everyone votes for this server's map (you can change your vote) — most votes wins; later players join it")
+add("map.back", "返回", "BACK")
+add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
+add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
+add("map.island.desc", "登陆联军从海上抢滩，岛屿守备军守住岛上的据点 · 舰队、登陆艇、机场岛 · 夜战", "The coalition storms the beaches from the sea; the garrison holds the island · fleet, landing craft, island airfield · night")
+add("map.desert.name", "沙漠风暴", "DESERT STORM")
+add("map.desert.mode", "征服", "CONQUEST")
+add("map.desert.desc", "两边各有自己的军事基地和机场，抢中间的据点 · 大纵深坦克战、空战、远程打击", "Each side has its own military base and airfield; fight over the points in between · deep armour thrusts, air war, long-range strikes")
+add("map.sands.name", "沙海", "SEA OF SAND")
+add("map.sands.mode", "突破", "BREAKTHROUGH")
+add("map.sands.desc", "海湾战争式的纯陆地沙漠（约 28 公里见方）：从南边的前进基地北上，五个阶段一个一个打 · 沙墙、油田、镇子、空军基地、岭上指挥部", "A Gulf War desert with no sea (about 28 km across): push north from the forward base through five stages · border berm, oilfield, town, airbase, ridge command")
+add("map.size", "{1} × {1} 公里", "{1} × {1} KM")
+add("map.pick", "选这张", "SELECT")
+add("map.vote", "投这张", "VOTE")
+add("map.voted", "已投这张", "VOTED")
+add("map.votes", "{1} 票", "{1} VOTES")
+add("map.voteLeft", "投票中 · 还剩 {1} 秒 · {2} / {3} 人已投", "VOTING · {1}s LEFT · {2} / {3} VOTED")
+add("map.voteIdle", "投一票就开始倒计时：{1} 秒后按票数最多的开（平票随机）", "The first vote starts a {1}s countdown — most votes wins (ties are random)")
+add("map.decided", "投票结束：打「{1}」", "VOTE OVER: {1}")
+add("map.join", "加入", "JOIN")
+add("map.now", "这个服务器正在打", "NOW PLAYING")
+add("map.other", "这个服务器在打「{1}」", "This server is playing {1}")
+add("map.loading", "正在生成地图……{1}%", "Building the map… {1}%")
+add("map.players", "{1} 名玩家", "{1} PLAYERS")
 add("menu.close", "关闭", "CLOSE")
 add("menu.open", "菜单", "MENU")
 add("menu.h.inf", "步兵", "INFANTRY")
@@ -768,6 +957,12 @@ add("uav.relinkTouchAir", "点这里重新连接无人机（{1} · 自动盘旋 
 add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
 add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
 add("vw.gun125", "125 毫米炮", "125 mm gun")
+add("vw.gun125r", "125 毫米炮（2A46M-5）", "125 mm 2A46M-5")
+add("vw.gun100", "100 毫米炮（2A70）", "100 mm 2A70")
+add("vw.ac30aa", "30 毫米高炮（2A38M ×2）", "30 mm 2A38M ×2")
+add("vw.s57e6", "57E6 地空导弹", "57E6 SAM")
+add("veh.samNeedLock", "先按 Q 用雷达锁住一架飞机，再发射导弹", "Lock an aircraft with the radar (Q) before launching")
+add("aw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")
@@ -793,6 +988,58 @@ add("gar.speed", "车速 {1} 公里 / 时", "Speed {1} km/h")
 add("gar.spawn", "出车", "DEPLOY")
 add("gar.back", "返回", "BACK")
 add("gar.fixed", "标配", "STANDARD")
+-- 爆反分区（用户 11-22：「坦克我能选择在哪个地方贴爆反」）
+add("gar.zone.tf", "炮塔正面", "Turret front")
+add("gar.zone.ts", "炮塔侧面", "Turret sides")
+add("gar.zone.gl", "首上装甲", "Upper glacis")
+add("gar.zone.sk", "侧裙板", "Side skirts")
+add("gar.zoneOn", "装 ✓", "Fitted ✓")
+add("gar.zoneOff", "不装", "Not fitted")
+add("gar.zoneOwn", "原车自带（拆不掉）", "Factory fitted (fixed)")
+add("gar.d.eraZones", "点左边的区（或者车上的白圈）选在哪里贴爆反：炮塔正面、炮塔侧面、首上、侧裙板。火箭弹、导弹打在贴了爆反的地方，那一块炸开、伤害只剩两三成；没贴的地方直接挨。每少贴一个区车轻一点、快 1% 多。",
+  "Pick where to fit reactive armour (cards on the left or the circles on the tank): turret front, turret sides, upper glacis, side skirts. Rockets and missiles hitting a fitted area set off that brick and lose most of their damage; bare areas take the full hit. Each area left bare makes the tank a little lighter and faster.")
+-- 坦克改装体系（TankMods v2，用户 11-22 晚：「一整套的坦克改装体系」「用现实中的标准」）：数字和出处见 TankMods.lua
+add("gar.zone.tb", "炮塔侧面后半", "Turret rear sides")
+add("gar.zone.lf", "下首装甲", "Lower front plate")
+add("gar.zone.sr", "侧裙板后段", "Rear side skirts")
+add("gar.slot.ew", "光电对抗（软杀伤）", "Countermeasures (soft-kill)")
+add("gar.slot.slat", "栅栏装甲", "Slat armour")
+add("gar.slot.belly", "车底防雷板", "Belly armour")
+add("gar.slot.eng", "工程附件", "Engineering kit")
+add("gar.slot.cam", "伪装", "Camouflage")
+add("gar.opt.fy2", "FY-2 爆反（第二代，轻型）", "FY-2 ERA (2nd gen, light)")
+add("gar.opt.fy4", "FY-4 爆反（重型）", "FY-4 ERA (heavy)")
+add("gar.opt.arat", "ARAT-1（M19 块）", "ARAT-1 (M19 tiles)")
+add("gar.opt.arat2", "ARAT-1 + ARAT-2（M32 叠装）", "ARAT-1 + ARAT-2 (M32 stacked)")
+add("gar.opt.gl5", "GL5 硬杀伤主动防护", "GL5 hard-kill APS")
+add("gar.opt.trophy", "Trophy 硬杀伤主动防护", "Trophy hard-kill APS")
+add("gar.opt.lws", "激光告警 + 自动烟幕", "Laser warning + auto smoke")
+add("gar.opt.jd3", "JD-3 激光告警与对抗", "JD-3 laser warning & countermeasure")
+add("gar.opt.slat", "车尾、侧后、炮塔尾部栅栏", "Rear, rear-side & bustle slat cage")
+add("gar.opt.belly", "车底防雷板", "Belly mine plate")
+add("gar.opt.plow", "全宽扫雷犁", "Full-width mine plough")
+add("gar.opt.mcs", "多光谱伪装网", "Multispectral camouflage")
+add("gar.d.fy2", "第二代爆反：对单装药破甲弹（火箭筒）很有效，打在块上伤害只剩三成；串联装药的导弹前级会先把它引爆，只挡一点；对穿甲弹没用。每格约 22 千克（估）。", "2nd-gen ERA: very effective against single-charge HEAT (RPGs) — a hit on a tile does 30% damage; tandem missiles defeat it with their precursor; useless against APFSDS. About 22 kg per tile (est.).")
+add("gar.d.fy4", "重型爆反（和接触-5 同一类：钢板厚、能把长杆穿甲弹打偏打断）：破甲弹剩两成多，串联导弹剩六成，穿甲弹削掉约两成（接触-5 官方说法：削掉约 20% 穿深）。每格约 45 千克（估）。", "Heavy ERA (Kontakt-5 class: thick plates that deflect and break long rods): HEAT down to ~22%, tandem missiles ~60%, APFSDS loses ~20% (Kontakt-5 official claim: ~20% penetration). About 45 kg per tile (est.).")
+add("gar.d.arat", "美军 TUSK 的 ARAT-1：M19 爆反块，每块 65 磅（约 29.5 千克，美国陆军 2020 年报道），对付火箭筒；串联装药导弹挡不住多少，对穿甲弹没用。", "US TUSK ARAT-1: M19 reactive tiles, 65 lb each (about 29.5 kg, US Army 2020), aimed at RPGs; little effect on tandem missiles, none on APFSDS.")
+add("gar.d.arat2", "TUSK II：在 M19 外面再叠一层 ARAT-2（M32，像屋顶的筒瓦），专门对付串联装药——导弹剩五成、火箭弹剩四分之一。原车自带的 M19 外面也会叠上。M32 的重量公开资料没有，按每格约 22 千克算（估）。", "TUSK II: a second ARAT-2 layer (M32, curved like roof tiles) over the M19s, made for tandem warheads — missiles down to 50%, rockets to 25%. Also stacked over the factory M19s. M32 weight is not public; ~22 kg per tile assumed (est.).")
+add("gar.d.gl5", "北方工业 GL5：炮塔四角四个发射单元、四部毫米波雷达，方位 360°、高低只到 20°（陡着砸下来的攻顶弹拦不了），雷达 100 米外开始跟踪、离车约 10 米把来袭弹打爆。每个单元一发，游戏里 45 秒补一发。", "NORINCO GL5: four launch units and four millimetre-wave radars at the turret corners; 360° azimuth but only 20° elevation (no top-attack defence); tracks from beyond 100 m and kills the threat about 10 m out. One round per unit; one refill every 45 s in game.")
+add("gar.d.trophy", "拉斐尔 Trophy（美军 M1A2 SEPv2、陆战队 M1A1 装过）：两侧各一个能转的发射器，EL/M-2133 雷达四块平板天线 360° 覆盖，同一个发射器两发至少隔 1.5 秒。加重约 5000 磅（2.3 吨），美军试验发现炮塔失衡、转得慢（这里炮塔转速 −10%）。每个发射器带几发没公开，按 4 发算。", "Rafael Trophy (fitted to US Army M1A2 SEPv2 and USMC M1A1): two rotating launchers, four EL/M-2133 radar panels for 360° coverage, at least 1.5 s between shots from one launcher. Adds about 5,000 lb (2.3 t); US testing found turret imbalance and slower traverse (−10% here). Rounds per launcher are not public; 4 assumed.")
+add("gar.d.lws", "激光告警接收机：激光制导的导弹 / 炸弹一照上你就报警、报方向，自动打一组烟幕弹——烟幕挡住激光照射点，导弹丢了目标。约 60 千克（估）。", "Laser warning receivers: warn and give a bearing as soon as a laser-guided missile or bomb is aimed at you, and fire a smoke salvo automatically — the smoke hides the laser spot and the missile loses lock. About 60 kg (est.).")
+add("gar.d.jd3", "99A 的 JD-3：激光告警 + 激光压制（干扰对方的激光照射）+ 自动烟幕。公开资料很少，游戏里按：报警、自动打烟，并有约四成五的机会直接让来袭导弹丢失目标（估）。约 120 千克（估）。", "The 99A's JD-3: laser warning + laser countermeasure (jamming the designator) + auto smoke. Little is public; in game it warns, fires smoke, and has about a 45% chance to break the missile's lock outright (est.). About 120 kg (est.).")
+add("gar.d.slat", "车尾、侧面后段（发动机舱外）、炮塔尾部后面离车身约半米的一排扁钢条：火箭弹（单装药破甲）打在上面，约一半被卡坏引信、不炸（维基百科：大约挡下 50%）；对导弹、炮弹没用。约 650 千克（估）。", "Flat steel bars about half a metre off the hull rear, rear sides (engine bay) and turret bustle: roughly half of single-charge rockets hitting them have their fuze crushed and fail to detonate (Wikipedia: about 50%); no effect on missiles or shells. About 650 kg (est.).")
+add("gar.d.belly", "车底加一整块防雷板：压上反坦克雷、炸药在车底炸，这辆车挨的减半（估）。约 1.3 吨（估）。", "A full belly plate: anti-tank mines or charges under the hull do half damage (est.). About 1.3 t (est.).")
+add("gar.d.plow", "Pearson 全宽扫雷犁：3600 千克，扫出 4.2 米宽、175–300 毫米深的通路，犁地时车速 1–15 公里 / 时，升起要 11 秒。开车时按 J 放下 / 升起：放下时车头前面这条通路里的雷被翻到两边、不炸。", "Pearson full-width mine plough: 3,600 kg, clears a 4.2 m lane 175–300 mm deep at 1–15 km/h, 11 s to raise. Press J while driving to lower or raise it: mines in the lane ahead are turned aside without detonating.")
+add("gar.d.mcs", "多光谱伪装网（萨博梭鱼 MCS 这一类）：挡可见光、近红外、热红外和雷达，敌方机器人、车辆发现你的距离只剩七成（估）。只披在侧面、后面，不盖车顶、不挡观瞄。约 300 千克（估）。", "Multispectral camouflage (Saab Barracuda MCS class): covers visual, near-IR, thermal and radar bands; enemy bots and vehicles spot you at 70% of the usual range (est.). Only on the sides and rear — not the roof, not over optics. About 300 kg (est.).")
+add("gar.d.ep", "点车身上的格子贴 / 拆爆反：车顶不贴，观瞄、潜望镜、车灯、烟幕弹发射器、舱盖旁边的不贴，炮塔转动、炮管压低扫过的地方也不贴。原车自带的块拆不掉。", "Click cells on the hull to fit or remove ERA: nothing on the roof, nothing over sights, periscopes, lights, smoke launchers or hatches, nothing where the turret or a depressed gun would sweep. Factory tiles cannot be removed.")
+add("gar.weight", "战斗全重 {1} 吨（+{2} 吨）", "Combat weight {1} t (+{2} t)")
+add("gar.pw", "单位功率 {1} 马力 / 吨", "{1} hp/t")
+add("gar.vmax", "公路最大速度 {1} 公里 / 时", "Road speed {1} km/h")
+add("gar.cells", "爆反 {1} 格", "ERA {1} tiles")
+add("kit.slatDud", "火箭弹打在栅栏装甲上，没炸", "Your rocket hit slat armour and failed to detonate")
+add("kit.slatSaved", "栅栏装甲卡住了一发火箭弹", "Slat armour stopped a rocket")
+add("kit.lwsWarn", "激光告警！{1} 点方向", "LASER WARNING! {1} o'clock")
+add("ui.plowHint", "J 扫雷犁", "J Mine plough")
 add("vh.m", "{1} 米", "{1} m")
 add("vh.rdy", "已就绪", "READY")
 add("vh.loading", "装填 {1}", "LOADING {1}")
@@ -840,8 +1087,16 @@ function Lang.pick(localeId)
   return "en"
 end
 
+-- 地图专用的说法（据点名、阵营名……）：键后面加「@地图」（"point.A@desert"）；客户端换地图时设 Lang.mapId（init.client.lua）
+Lang.mapId = nil
 local function tr(lang, key)
   local T = (lang == "zh") and ZH or EN
+  local mid = Lang.mapId
+  if mid and type(key) == "string" then
+    local k2 = key .. "@" .. mid
+    local v = T[k2] or ZH[k2]
+    if v then return v end
+  end
   return T[key] or ZH[key] or EN[key] or tostring(key)
 end
 
@@ -1006,5 +1261,39 @@ add("gm.desc.mag_drum", "60 发弹鼓：火力压制，但又重又慢", "60-rou
 add("gm.desc.tac_none", "不装", "None")
 add("gm.desc.tac_light", "战术手电：照亮前面，夜里好用；腰射稍稳", "Weapon light: lights the way at night; steadier hip-fire")
 add("gm.desc.tac_peq", "可见激光：腰射准很多，但别人也看得见那道光", "Visible laser: far better hip-fire, but enemies see the beam")
+
+---------------------------------------------------------------- 沙漠图「沙海」（MapSands.lua，地图 id sands）：据点、阶段、出生点、阵营说明换成沙漠的说法（键后面加 @sands）
+add("faction.sub@sands", "海湾风暴 · 沙漠装甲突击", "SEA OF SAND · ARMORED ASSAULT")   -- 英文别叫 DESERT STORM：另一张沙漠图叫这个
+add("faction.atk.role@sands", "进攻  ·  装甲突击", "ATTACK  ·  ARMORED ASSAULT")
+add("faction.def.role@sands", "防守  ·  纵深防御", "DEFEND  ·  DEFENSE IN DEPTH")
+add("faction.atk.desc@sands", "从南边的前进基地、前进机场北上：越过边境沙墙拿下哨所 A，再打油田 B、镇子 C、空军基地 D，最后攻下岩岭上的指挥部 E。每个阶段都能在目标前面的攻击出发阵地出生。每阵亡一人兵力少 1，兵力打光就输。",
+  "Push north from the forward base and airstrip: breach the border berm and take Outpost A, then the Oilfield B, Town C and Airbase D, and finally Command E on the ridge. Spawn at the assault position in front of each objective. Every death costs one reinforcement; run out and you lose.")
+add("point.A@sands", "A 边境哨所", "A Border Post")
+add("point.B@sands", "B 油田", "B Oilfield")
+add("point.C@sands", "C 镇子", "C Town")
+add("point.D@sands", "D 空军基地", "D Airbase")
+add("point.E@sands", "E 岭上指挥部", "E Ridge Command")
+add("spawn.redbase@sands", "前进基地（车场、直升机）", "Forward Base (vehicles, helos)")
+add("spawn.af2@sands", "前进机场（固定翼）", "Forward Airstrip (jets)")
+add("spawn.camp@sands", "后方营地（岭北）", "Rear Camp (north of ridge)")
+add("spawn.afield@sands", "空军基地（战斗机）", "Airbase (jets)")
+add("hud.tip.3@sands", "地图上的载具生成点按 E 生成坦克、装甲车、直升机和飞机，走过去按 E 上车。", "Press E at a vehicle pad to spawn tanks, APCs, helicopters and jets; walk up and press E to get in.")
+add("operation.opening@sands", "夜间突击", "NIGHT ASSAULT")   -- 照旧锁定晚上（Config.DayNight.lockNight）
+add("stage.border@sands", "突破边境", "BREACH THE BORDER")
+add("stage.border.atk@sands", "越过沙墙和反坦克壕，拿下边境哨所 A", "Cross the berm and the tank ditch, take Border Post A")
+add("stage.border.def@sands", "守住边境哨所 A，把敌人挡在沙墙外", "Hold Border Post A and stop them at the berm")
+add("stage.border.short@sands", "边境", "BORDER")
+add("stage.oil@sands", "夺取油田", "TAKE THE OILFIELD")
+add("stage.oil.atk@sands", "拿下油田 B（油井在烧，小心烟里的敌人）", "Take Oilfield B (wells burning: watch the smoke)")
+add("stage.oil.def@sands", "守住油田 B", "Hold Oilfield B")
+add("stage.oil.short@sands", "油田", "OILFIELD")
+add("stage.town@sands", "攻入镇子", "TAKE THE TOWN")
+add("stage.town.atk@sands", "打进镇子，拿下据点 C", "Fight into the town and take C")
+add("stage.town.def@sands", "守住镇子 C，巷战拖住敌人", "Hold Town C street by street")
+add("stage.town.short@sands", "镇子", "TOWN")
+add("stage.airfield.atk@sands", "拿下空军基地 D", "Take Airbase D")
+add("stage.airfield.def@sands", "守住空军基地 D", "Hold Airbase D")
+add("stage.hq.atk@sands", "翻上岩岭，攻下指挥部 E，结束战斗", "Climb the ridge and take Command E to win")
+add("stage.hq.def@sands", "最后一道防线：死守岭上指挥部 E", "Last line: hold Ridge Command E at all costs")
 
 return Lang

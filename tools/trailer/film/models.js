@@ -37,13 +37,156 @@ function collect(model, pre) {
   return out.filter(o => { let p = o.parent; while (p && p !== model) { if (out.includes(p)) return false; p = p.parent; } return true; });
 }
 
+
+// —— 国家标志（时代广场宣传片：两边是虚构的红方 / 蓝方，不出现真实的国旗、军徽）——
+//   舰艇：整张差不多都是红色的贴图就是国旗（055 的舰旗），那块网格藏起来
+function redShare(img, n = 32) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = n;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, n, n);
+  const d = g.getImageData(0, 0, n, n).data;
+  let k = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > 120 && d[i] > d[i + 1] * 1.8 && d[i] > d[i + 2] * 1.8) k++;
+  return k / (n * n);
+}
+export function hideFlags(model) {
+  model.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+      const img = m.map && m.map.image;
+      if (img && img.width && redShare(img) > 0.6) o.visible = false;
+    }
+  });
+}
+//   飞机、车：贴图上鲜红的一块块（红星机徽、红色舷号）连同里面的黄字（闭运算把红星里的「八一」一起圈进来）用周围的漆面补上
+const scrubbed = new Map();
+function morph(m, w, h, r, grow) {   // 方形结构元素的膨胀（grow）/ 腐蚀：先横后竖
+  const a = new Uint8Array(w * h), b = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let v = grow ? 0 : 1;
+      for (let k = Math.max(0, x - r), e = Math.min(w - 1, x + r); k <= e; k++) {
+        if (grow ? m[row + k] : !m[row + k]) { v = grow ? 1 : 0; break; }
+      }
+      a[row + x] = v;
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) {
+      let v = grow ? 0 : 1;
+      for (let k = Math.max(0, y - r), e = Math.min(h - 1, y + r); k <= e; k++) {
+        if (grow ? a[k * w + x] : !a[k * w + x]) { v = grow ? 1 : 0; break; }
+      }
+      b[y * w + x] = v;
+    }
+  }
+  return b;
+}
+function scrubTexture(tex) {
+  if (!tex || scrubbed.has(tex)) return scrubbed.get(tex) || tex;
+  const img = tex.image;
+  scrubbed.set(tex, tex);
+  if (!img || !img.width) return tex;
+  const w = img.width, h = img.height, N = w * h;
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const im = g.getImageData(0, 0, w, h), d = im.data;
+  let m = new Uint8Array(N), n = 0;
+  for (let p = 0, i = 0; p < N; p++, i += 4) if (d[i] > 110 && d[i] > d[i + 1] * 1.8 && d[i] > d[i + 2] * 1.8) { m[p] = 1; n++; }
+  if (n < 4 || n > N * 0.2) return tex;   // 没有，或者一大片都是红的（整块涂装）：不动
+  const s = w / 1024;
+  m = morph(morph(m, w, h, Math.round(9 * s), true), w, h, Math.round(6 * s), false);   // 闭运算 + 往外多 3 格（边上的抗锯齿、黄边）
+  // 积分图：没盖住的像素的颜色和、个数，盖住的像素取周围（由近到远）没盖住的平均色
+  const S = [new Uint32Array((w + 1) * (h + 1)), new Uint32Array((w + 1) * (h + 1)), new Uint32Array((w + 1) * (h + 1)), new Uint32Array((w + 1) * (h + 1))];
+  for (let y = 0; y < h; y++) {
+    let rr = 0, rg = 0, rb = 0, rc = 0;
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x, i = p * 4;
+      if (!m[p]) { rr += d[i]; rg += d[i + 1]; rb += d[i + 2]; rc++; }
+      const q = (y + 1) * (w + 1) + x + 1, up = y * (w + 1) + x + 1;
+      S[0][q] = S[0][up] + rr; S[1][q] = S[1][up] + rg; S[2][q] = S[2][up] + rb; S[3][q] = S[3][up] + rc;
+    }
+  }
+  const box = (c, x0, y0, x1, y1) => S[c][y1 * (w + 1) + x1] - S[c][y0 * (w + 1) + x1] - S[c][y1 * (w + 1) + x0] + S[c][y0 * (w + 1) + x0];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const p = y * w + x;
+    if (!m[p]) continue;
+    for (const R of [8, 16, 32, 64, 128].map(v => Math.round(v * s))) {
+      const x0 = Math.max(0, x - R), y0 = Math.max(0, y - R), x1 = Math.min(w, x + R + 1), y1 = Math.min(h, y + R + 1);
+      const c = box(3, x0, y0, x1, y1);
+      if (c > 8) { const i = p * 4; d[i] = box(0, x0, y0, x1, y1) / c; d[i + 1] = box(1, x0, y0, x1, y1) / c; d[i + 2] = box(2, x0, y0, x1, y1) / c; break; }
+    }
+  }
+  g.putImageData(im, 0, 0);
+  const t2 = new THREE.CanvasTexture(cv);
+  for (const k of ['colorSpace', 'flipY', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'channel']) if (k in tex) t2[k] = tex[k];
+  t2.generateMipmaps = true;
+  t2.needsUpdate = true;
+  scrubbed.set(tex, t2);
+  return t2;
+}
+export function scrubInsignia(model) {
+  model.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    for (const mt of list) if (mt.map) { mt.map = scrubTexture(mt.map); mt.needsUpdate = true; }
+  });
+}
+
+let BLOB = null;
+function blobMat() {
+  if (!BLOB) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(cv);
+    BLOB = new THREE.MeshBasicMaterial({ map: t, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  }
+  return BLOB;
+}
+// 拍片以后游戏里换过的模型（11-18 起）：99A 换成 99A2、M1A2 换成沙漠涂装 SEPv2——分镜里还按老键写，这里换成现在的文件
+const VEH_KEY = { ztz99: 'ztz99a2', m1a2v3: 'm1a2dc' };
+// 原模型里分错块的：PGL-625 炮塔两侧的四联导弹管、发射架烘焙在车体那块网格（Body_1）里，炮塔转、导弹不转（用户 11-22）——
+//   按三角形位置（车体坐标）拆出来挂到炮塔的俯仰架上（跟着炮转、跟着炮抬头）
+const VEH_MOVE = {
+  t625: [{ mesh: '__Body_1', to: 'gun', test: (x, y, z) => y > 7.75 && Math.abs(x - 0.14) > 3.2 && Math.abs(x - 0.14) < 5.8 && z > -4.6 && z < 5.6 }],
+};
+function moveTris(root, model, key, groups) {
+  for (const R of VEH_MOVE[key] || []) {
+    let src = null;
+    model.traverse(o => { if (!src && o.isMesh && (o.name.endsWith(R.mesh) || (o.parent && o.parent.name.endsWith(R.mesh)))) src = o; });
+    if (!src || !src.geometry.index) continue;
+    root.updateMatrixWorld(true);
+    const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(src.matrixWorld);
+    const pos = src.geometry.attributes.position, idx = src.geometry.index.array;
+    const v = new THREE.Vector3(), keep = [], take = [];
+    const inside = i => { v.fromBufferAttribute(pos, i).applyMatrix4(toRoot); return R.test(v.x, v.y, v.z); };
+    for (let t = 0; t < idx.length; t += 3) (inside(idx[t]) && inside(idx[t + 1]) && inside(idx[t + 2]) ? take : keep).push(idx[t], idx[t + 1], idx[t + 2]);
+    if (!take.length) continue;
+    const g2 = src.geometry.clone();
+    g2.setIndex(take); g2.clearGroups();
+    src.geometry = src.geometry.clone(); src.geometry.setIndex(keep); src.geometry.clearGroups();
+    const m2 = new THREE.Mesh(g2, src.material);
+    m2.castShadow = m2.receiveShadow = true;
+    src.parent.add(m2); m2.position.copy(src.position); m2.quaternion.copy(src.quaternion); m2.scale.copy(src.scale);
+    groups[R.to].attach(m2);
+  }
+}
 // —— 地面载具：炮塔、炮管、车轮各挂一个转轴 ——
+// 车上的星徽是单独的几块小网格（纯色贴图：红星、黄字），贴图里擦不掉（整张都是红的），整块藏起来
+const EMB_MESH = { ztz99a2: ['__Body_13', '__Body_15', '__Turret_5', '__Turret_6'] };
 export async function vehicle(key, base) {
+  key = VEH_KEY[key] || key;
   const M = META.ImportedMeta.m[key];
   const src = await loadGLB(`${base}/models/veh/${key}.glb`);
   const model = src.clone(true);
   prepMats(model, 0.25);
   eraseEmblems(key, model);
+  scrubInsignia(model);
+  if (EMB_MESH[key]) model.traverse(o => { if (o.isMesh && EMB_MESH[key].some(k => o.name.endsWith(k) || (o.parent && o.parent.name.endsWith(k)))) o.visible = false; });
   const root = new THREE.Group(); root.name = 'veh:' + key;
   root.add(model);
   root.updateMatrixWorld(true);
@@ -64,8 +207,20 @@ export async function vehicle(key, base) {
       w.piv.attach(o);
     }
   }
+  moveTris(root, model, key, { tur, gun, recoil });
+  // 车底的接触阴影（环境光遮蔽）：车和地面贴着的地方一圈暗（只有太阳的影子时车像飘在沙上）
+  if (M.hull) {
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), blobMat());
+    blob.rotation.x = -Math.PI / 2;
+    blob.scale.set(M.hull[0] * 1.3, M.hull[2] * 1.12, 1);
+    blob.position.set(0, 0.06, 0);
+    blob.renderOrder = -1; blob.name = 'contactShadow';
+    root.add(blob);
+  }
   const V = {
     root, M, tur, gun, recoil, wheels, len: M.len,
+    // 车体坐标里的一点（炮塔、炮都在零位时）→ 跟着炮塔转、炮抬头以后的世界坐标（导弹管口之类）
+    gunPt: p => gun.localToWorld(new THREE.Vector3(p[0] - (M.gun ? M.gun[0] : 0), p[1] - (M.gun ? M.gun[1] : 0), p[2] - (M.gun ? M.gun[2] : 0))),
     muzzle: () => recoil.localToWorld(new THREE.Vector3(0, 0, -(M.muz || 8))),
     muzzleDir: () => new THREE.Vector3(0, 0, -1).transformDirection(recoil.matrixWorld),
     aim(yaw, pitch) { tur.rotation.y = yaw; gun.rotation.x = pitch; },
@@ -77,10 +232,14 @@ export async function vehicle(key, base) {
 
 // —— 飞机、直升机：旋翼转起来、尾喷口位置 ——
 export async function aircraft(key, base) {
-  const M = META.ImportedAir.m[key];
+  // 飞机的 GLB 后来换成了新版（零件叫 A_<键>_v<N>__…，元数据在 ImportedAir.m[<键>_v<N>]）：文件名照旧，零件前缀、元数据按别名找最新那版
+  const ver = (META.ImportedAir.alias && Object.values(META.ImportedAir.alias).find(v => typeof v === 'string' && v.replace(/~$/, '').replace(/_v\d+$/, '') === key)) || key;
+  const vk = ver.replace(/~$/, '');
+  const M = META.ImportedAir.m[vk] || META.ImportedAir.m[key];
   const src = await loadGLB(`${base}/models/air/${key}.glb`);
   const model = src.clone(true);
   prepMats(model, 0.35, key === 'z10w');
+  scrubInsignia(model);
   // 歼-20：原模型的漆面偏亮、偏光滑，月光在机背两条发动机舱的弧面上反出两道白光（用户看着像光柱）；按真机的暗灰隐身涂层压暗、调成哑光
   if (key === 'j20') model.traverse(o => {
     if (!o.isMesh || !o.material || o.material.transparent) return;
@@ -94,15 +253,15 @@ export async function aircraft(key, base) {
   const rot = {};
   for (const k of ['rotor', 'rotor2', 'trotor']) if (M[k]) { const g = new THREE.Group(); g.position.fromArray(M[k].p); g.userData.axis = new THREE.Vector3().fromArray(M[k].a).normalize(); root.add(g); rot[k] = g; }
   const gear = [];
-  for (const o of collect(model, 'A_' + key)) {
-    const b = blockOf(o.name, 'A_' + key), part = M.parts[b];
+  for (const o of collect(model, 'A_' + vk)) {
+    const b = blockOf(o.name, 'A_' + vk), part = M.parts[b];
     const g = part ? part.g : 'Body';
     if (key === 'z10w' && !/Rotor/.test(g)) o.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.color.multiplyScalar(1.8); } });   // 原贴图很暗，夜里只剩一团黑
     if (/Rotor/.test(g) && key === 'z10w') o.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.transparent = true; x.material.opacity = 0.4; x.material.depthWrite = false; x.castShadow = false; } });   // 原模型的桨盘是「转起来的虚影」
     if (g === 'Rotor' && rot.rotor) rot.rotor.attach(o);
     else if (g === 'Rotor2' && rot.rotor2) rot.rotor2.attach(o);
     else if (g === 'TRotor' && rot.trotor) rot.trotor.attach(o);
-    else if (g === 'Gear') gear.push(o);
+    else if (/^(Gear|GDoor)/.test(g)) gear.push(o);   // 起落架、舱门（歼-20、F-22 是后补的零件，机腹蒙皮是完整的）：飞着的时候藏起来
   }
   return {
     root, M, rot, gear, noz: (M.noz || []).map(a => ({ p: new THREE.Vector3(a[0], a[1], a[2]), r: a[3] })),
@@ -113,6 +272,52 @@ export async function aircraft(key, base) {
   };
 }
 
+// 舰艇桅杆、舰艉上的旗子：贴图集里的一小块，和别的零件共用一张贴图（hideFlags 按整块网格找不到）。
+//   按连通块找：水线以上、小块（几十个三角形以内）、贴图上这块大半是红的 → 整块去掉（三角形压成一个点）
+const pxCache = new Map(), flagDone = new WeakSet();
+function texPixels(img) {
+  if (pxCache.has(img)) return pxCache.get(img);
+  const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+  const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
+  const r = { w: img.width, h: img.height, d: g.getImageData(0, 0, img.width, img.height).data };
+  pxCache.set(img, r);
+  return r;
+}
+export function dropFlagBits(model, maxTris = 80) {
+  model.traverse(o => {
+    if (!o.isMesh || !o.geometry || flagDone.has(o.geometry)) return;
+    flagDone.add(o.geometry);
+    const mt = Array.isArray(o.material) ? o.material[0] : o.material;
+    const g = o.geometry, uv = g.attributes.uv, pos = g.attributes.position;
+    if (!mt || !mt.map || !mt.map.image || !mt.map.image.width || !uv || !g.index) return;
+    const P = texPixels(mt.map.image), idx = g.index.array, n = pos.count;
+    const par = new Int32Array(n); for (let i = 0; i < n; i++) par[i] = i;
+    const f = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+    const un = (a, b) => { a = f(a); b = f(b); if (a !== b) par[b] = a; };
+    for (let t = 0; t < idx.length; t += 3) { un(idx[t], idx[t + 1]); un(idx[t], idx[t + 2]); }
+    const comp = new Map();
+    for (let t = 0; t < idx.length; t += 3) { const r = f(idx[t]); let c = comp.get(r); if (!c) comp.set(r, c = []); c.push(t); }
+    let dropped = 0;
+    for (const tris of comp.values()) {
+      if (tris.length > maxTris) continue;
+      let y = 0, u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+      for (const t of tris) for (let k = 0; k < 3; k++) { const i = idx[t + k]; y += pos.getY(i); const u = uv.getX(i), v = uv.getY(i); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+      if (y / (tris.length * 3) <= 0.5) continue;   // 水线以下（船底的防污漆是红的）不管
+      let red = 0;
+      for (let a = 0; a < 16; a++) for (let b = 0; b < 16; b++) {
+        let u = u0 + (u1 - u0) * (a + 0.5) / 16, v = v0 + (v1 - v0) * (b + 0.5) / 16;
+        u -= Math.floor(u); v -= Math.floor(v);
+        const i = (Math.min(P.h - 1, Math.floor(v * P.h)) * P.w + Math.min(P.w - 1, Math.floor(u * P.w))) * 4;
+        if (P.d[i] > 120 && P.d[i] > P.d[i + 1] * 1.8 && P.d[i] > P.d[i + 2] * 1.8) red++;
+      }
+      if (red < 64) continue;   // 这块贴图四分之一以上是红的
+      for (const t of tris) { idx[t + 1] = idx[t]; idx[t + 2] = idx[t]; }
+      dropped += tris.length;
+    }
+    if (dropped) { g.index.needsUpdate = true; console.log('[film] 去掉旗子', o.name, dropped); }
+  });
+}
+
 // —— 舰艇：游戏里按 1 米 = 1.68 格，片子里按真实比例（和车一样 2.8 格）放大 ——
 export const SHIP_K = 2.8 / 1.68;
 export async function ship(key, base) {
@@ -120,6 +325,8 @@ export async function ship(key, base) {
   const src = await loadGLB(`${base}/models/ship/${key}.glb`);
   const model = src.clone(true);
   prepMats(model, 0.2);
+  hideFlags(model);
+  dropFlagBits(model);
   const root = new THREE.Group(); root.name = 'ship:' + key;
   model.scale.setScalar(SHIP_K);
   root.add(model);

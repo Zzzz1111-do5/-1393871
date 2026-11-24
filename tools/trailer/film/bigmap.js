@@ -7,7 +7,10 @@
 import * as THREE from 'three';
 import { clamp, lerp, smooth, rng } from './lib.js';
 
-export const BIG = { fx: 345, fz: -770, R0: 320, K: 5, L: 520, V: 4.0, VW: 1700, BASE: 40 };
+export const BIG = { fx: 345, fz: -770, R0: 320, K: 5, L: 520, V: 4.0, VW: 1700, BASE: 40, id: false, desert: false };
+// desert：海湾战争版的沙漠地图「沙海」（MapSands.lua）——没有海、不补远处的岛和大陆；高度两级网格（近处细 D.height、整张图粗 D.height2）
+// 剪辑版本可以换配置（第三版 v3 用游戏现在的地图：已经放大 3 倍，id = true 原样用，不再放大、不扭岸线、不加山脊）
+export function bigConfig(o) { Object.assign(BIG, o); }
 
 // —— 噪声（定种子的 Perlin、山脊、分形）——
 const PERM = new Uint16Array(512), GX = new Float32Array(256), GY = new Float32Array(256);
@@ -51,12 +54,14 @@ function dOf(s) {   // sOf 的反函数（牛顿法）
   return D;
 }
 export function w2s(x, z) {
+  if (BIG.id) return [x, z];
   const dx = x - BIG.fx, dz = z - BIG.fz, D = Math.hypot(dx, dz);
   if (D <= BIG.R0) return [x, z];
   const k = sOf(D) / D;
   return [BIG.fx + dx * k, BIG.fz + dz * k];
 }
 export function s2w(x, z) {
+  if (BIG.id) return [x, z];
   const dx = x - BIG.fx, dz = z - BIG.fz, s = Math.hypot(dx, dz);
   if (s <= BIG.R0) return [x, z];
   const k = dOf(s) / s;
@@ -94,9 +99,38 @@ export function initBigMap(D) {
     }
   }
   G = { n, R, step, H0, Hs, mat: D.mat, names: D.mats.map(s => s.split('.').pop()) };
+  G2 = D.coarse ? { n: D.coarse.n, R: D.coarse.R, step: D.coarse.step, H0: D.height2, Hs: D.height2, mat: D.mat2, names: G.names } : null;
+}
+let G2 = null;
+// 细网格里头（离边 FB 格以内慢慢换成粗网格，接缝不跳）
+const FB = 600;
+function fineW(x, z) {
+  if (!G2) return 1;
+  const e = G.R - 3 * G.step - Math.max(Math.abs(x), Math.abs(z));
+  return smooth(0, FB, e);
+}
+function bicub(g, x, z) {
+  const { n, R, step, Hs } = g;
+  const fx = (x + R) / step, fz = (z + R) / step;
+  const i = Math.floor(fx), j = Math.floor(fz);
+  if (i < 1 || j < 1 || i > n - 3 || j > n - 3) return null;
+  const u = fx - i, v = fz - j;
+  const r = jj => { const o = jj * n + i; return cub(Hs[o - 1], Hs[o], Hs[o + 1], Hs[o + 2], u); };
+  return cub(r(j - 1), r(j), r(j + 1), r(j + 2), v);
 }
 const cub = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
+// 沙漠图的断崖线（照 MapSands.lua escRaw 抄的）：地图数据外接着铺北边的台地，不在图边上一刀切成直线
+const ESC_R0 = 38912;
+const escRaw = x => -24500 + 1300 * Math.sin(x / 6600 + 0.9) + 460 * Math.sin(x / 2300 + 2.6) + 170 * Math.sin(x / 770 + 4.4) - 24000 * smooth(ESC_R0 - 12000, ESC_R0 + 3000, Math.abs(x));
+const outH = (x, z) => 12 + 60 * smooth(-200, 300, escRaw(x) - z);
 function srcH(x, z) {   // 抹平海底后的游戏高度（双三次）
+  if (G2) {
+    const w = fineW(x, z);
+    const c = w < 1 ? (bicub(G2, x, z) ?? outH(x, z)) : 0;
+    if (w <= 0) return c;
+    const f = bicub(G, x, z) ?? c;
+    return lerp(c, f, w);
+  }
   const { n, R, step, Hs } = G;
   const fx = (x + R) / step, fz = (z + R) / step;
   const i = Math.floor(fx), j = Math.floor(fz);
@@ -113,7 +147,8 @@ export function srcH0(x, z) {   // 游戏里原样的高度（双线性）：零
   return lerp(lerp(a, b, u), lerp(c, d, u), v);
 }
 function srcMat(x, z) {
-  const { n, R, step, mat, names } = G;
+  const g = (G2 && fineW(x, z) < 0.5) ? G2 : G;
+  const { n, R, step, mat, names } = g;
   const i = clamp(Math.round((x + R) / step), 0, n - 1), j = clamp(Math.round((z + R) / step), 0, n - 1);
   return names[mat[j * n + i] - 1] || 'Sand';
 }
@@ -128,6 +163,7 @@ const EXTRA = [
 ];
 function extra(x, z) {
   let h = -1e9;
+  if (BIG.desert) return h;
   for (const I of EXTRA) {
     const u = (x - I.x) / I.a, v = (z - I.z) / I.b, r = Math.hypot(u, v);
     if (r > 1.5) continue;
@@ -147,14 +183,37 @@ function extra(x, z) {
 // 世界里一点 → 去游戏地图的哪儿取高度、材质：放大以后再按噪声扭一扭（游戏的岸线是几道正弦，放大了是一个光溜溜的椭圆；扭出海湾、岬角）
 function srcPos(x, z) {
   const dx = x - BIG.fx, dz = z - BIG.fz, D = Math.hypot(dx, dz);
-  if (D <= BIG.R0) return [x, z, 0, D];
+  if (BIG.id || D <= BIG.R0) return [x, z, 0, D];
   const k = sOf(D) / D, far = smooth(BIG.R0, BIG.R0 + BIG.VW, D), wq = far * 150;
   return [BIG.fx + dx * k + wq * fbm(x / 2900 + 7.1, z / 2900, 3), BIG.fz + dz * k + wq * fbm(x / 2900, z / 2900 - 3.7, 3), far, D];
+}
+// 沙漠的崖壁、方山（用户 11-22：那个山很奇怪）：游戏里的方山是一圈光滑的 S 形崖面 + 凹的坡脚，放大看像一块蛋糕。
+//   片子里在高出平原、陡的地方加：顺坡往下的冲沟（噪声沿等高线方向密、顺坡方向拉长）、一级级的岩层台阶、坡脚的碎石堆；
+//   平顶、平原、矮的沙墙沙丘、柏油路面不动（零件、车都照原来的高度摆）
+function cliffDetail(x, z, h0) {
+  const e = h0 - 12;
+  if (e < 0.8) return 0;
+  const k = 6;
+  const gx = (srcH(x + k, z) - srcH(x - k, z)) / (2 * k), gz = (srcH(x, z + k) - srcH(x, z - k)) / (2 * k);
+  const s = Math.hypot(gx, gz);
+  if (s < 0.05) return 0;
+  const ux = -gz / s, uz = gx / s;   // 沿等高线
+  const u = x * ux + z * uz, v = (x * gx + z * gz) / s;   // 沿坡向
+  const steep = smooth(0.1, 0.65, s) * smooth(4, 26, e) * (1 - matW(x, z)[1]);
+  // 冲沟：大的十几米一道、小的几米一道，深浅不一（原来一样粗细、一样间距，像一排排草垛）
+  const gully = (ridged(u / 47 + 3.1, v / 90 - 1.7, 3) - 0.5) * 10 + (ridged(u / 13 - 7.3, v / 40 + 2.2, 3) - 0.5) * 3.5 * (0.5 + 0.5 * perlin(u / 120, v / 60)) + perlin(u / 6, v / 19) * 1.6;
+  // 岩层：厚薄不一（4～11 格）、高度随位置起伏一点（原来每 7.5 格一级、整整齐齐一圈圈）
+  const ew = e + perlin(u / 160, 0.37) * 5;
+  const L = 7.5 + 3.5 * perlin(ew / 23, 1.7), q = ew / L, f = q - Math.floor(q);
+  const strata = (Math.floor(q) + smooth(0.6, 1, f) - q) * L * 0.32;
+  const talus = smooth(0.04, 0.2, s) * (1 - smooth(0.45, 0.85, s)) * (1 - smooth(20, 45, e));
+  return (gully + strata) * steep + (fbm(x / 8, z / 8, 3) * 1.8 + fbm(x / 31, z / 31, 2) * 2.4) * talus;
 }
 // —— 世界里一点的高度 ——
 export function heightAt(x, z) {
   const [sx, sz, far] = srcPos(x, z);
   const h0 = srcH(sx, sz);
+  if (BIG.desert) return h0 + cliffDetail(x, z, h0);
   let h;
   if (h0 <= 0) h = h0 * (1 + 2.5 * far);   // 海底：远处深一些（海水颜色、浪花按水深）
   else {
@@ -168,8 +227,65 @@ export function heightAt(x, z) {
   return Math.max(h, extra(x, z));
 }
 // 地面的材质权重（沙、草、岩、土）和颜色
-const MATC = { Sand: [0.70, 0.62, 0.45], Rock: [0.36, 0.34, 0.32], Ground: [0.36, 0.28, 0.2], Grass: [0.24, 0.3, 0.17], LeafyGrass: [0.19, 0.25, 0.14], Slate: [0.3, 0.3, 0.32] };
-function surface(x, z, h, slope, out, o) {
+const MATC = { Sand: [0.70, 0.62, 0.45], Rock: [0.36, 0.34, 0.32], Ground: [0.36, 0.28, 0.2], Grass: [0.24, 0.3, 0.17], LeafyGrass: [0.19, 0.25, 0.14], Slate: [0.3, 0.3, 0.32], Asphalt: [0.12, 0.12, 0.13], Concrete: [0.42, 0.42, 0.4] };
+// 沙漠（线性色）：暖沙、砾石、赭红砂岩、灰白石灰岩台地、白盐壳、黑柏油
+const MATD = { Sand: [0.62, 0.47, 0.29], Ground: [0.42, 0.33, 0.23], Rock: [0.27, 0.21, 0.17], Slate: [0.24, 0.2, 0.17], Sandstone: [0.44, 0.33, 0.21], Limestone: [0.6, 0.53, 0.41],
+  Salt: [0.7, 0.64, 0.52], Asphalt: [0.07, 0.068, 0.07], Concrete: [0.4, 0.39, 0.36], Mud: [0.3, 0.24, 0.17] };
+const WCLS = nm => nm === 'Sand' ? 0 : (nm === 'Salt' || nm === 'Asphalt' || nm === 'Concrete') ? 1 : (nm === 'Rock' || nm === 'Slate' || nm === 'Sandstone' || nm === 'Limestone') ? 2 : 3;
+// 台地顶上平的石灰岩是砾漠（hamada：碎石铺的平地），不是崖面那种亮的岩石——夜里高空看，整块台地亮成一片灰白
+const HAMADA = [0.55, 0.41, 0.24];   // 和平原的沙一个色调（偏冷的话月光一照发蓝灰，一大块很扎眼），暗一点
+function matAdd(nm, wt, A) {
+  const cc = MATD[nm] || MATD.Sand;
+  A.c[0] += cc[0] * wt; A.c[1] += cc[1] * wt; A.c[2] += cc[2] * wt;
+  A.w[WCLS(nm)] += wt;
+  if (nm === 'Limestone') A.lime += wt;
+}
+// 一点的材质按周围 4 个格点双线性混（边界软，不出锯齿），乘权重 wt 累加进 A
+function srcMatAdd(x, z, wt, A) {
+  const g = (G2 && fineW(x, z) < 0.5) ? G2 : G;
+  const { n, R, step, mat, names } = g;
+  if (Math.max(Math.abs(x), Math.abs(z)) > R - 2 * step) {   // 地图数据外（高空镜头往远看）：断崖线以北接着是台地，别处是平原的沙地（原来把边上那一圈拉过来，出一道道白斑）
+    matAdd(z < escRaw(x) ? 'Limestone' : 'Sand', wt, A);
+    return;
+  }
+  const fx = clamp((x + R) / step, 0, n - 1.001), fz = clamp((z + R) / step, 0, n - 1.001);
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, o = j * n + i;
+  matAdd(names[mat[o] - 1] || 'Sand', wt * (1 - u) * (1 - v), A);
+  matAdd(names[mat[o + 1] - 1] || 'Sand', wt * u * (1 - v), A);
+  matAdd(names[mat[o + n] - 1] || 'Sand', wt * (1 - u) * v, A);
+  matAdd(names[mat[o + n + 1] - 1] || 'Sand', wt * u * v, A);
+}
+const MACC = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 }, MW = { c: [0, 0, 0], w: [0, 0, 0, 0], lime: 0 };
+function matW(x, z) { MW.c[0] = MW.c[1] = MW.c[2] = 0; MW.w[0] = MW.w[1] = MW.w[2] = MW.w[3] = 0; MW.lime = 0; srcMatAdd(x, z, 1, MW); return MW.w; }   // 一点的四类权重（沙、平的、岩、砾）
+// 远处网格疏（最疏一格一千多），一个顶点只取一点的材质，边界就成了一级级的台阶：按这个顶点管的那一块（fx × fz）多取几点平均
+function surfaceDesert(x, z, h, slope, out, o, fx = 0, fz = 0) {
+  const A = MACC;
+  A.c[0] = A.c[1] = A.c[2] = 0; A.w[0] = A.w[1] = A.w[2] = A.w[3] = 0; A.lime = 0;
+  const nx = fx > 40 ? Math.min(4, Math.ceil(fx / 40)) : 1, nz = fz > 40 ? Math.min(4, Math.ceil(fz / 40)) : 1;
+  const wt = 1 / (nx * nz);
+  for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) srcMatAdd(x + ((a + 0.5) / nx - 0.5) * fx, z + ((b + 0.5) / nz - 0.5) * fz, wt, A);
+  let c = A.c.slice();
+  // 权重：0 沙（沙纹）、1 盐壳 / 柏油（平的）、2 岩石、3 砾石土
+  let w = A.w.slice();
+  const ham = A.lime * (1 - smooth(0.2, 0.4, slope));
+  if (ham > 0) {
+    for (let k = 0; k < 3; k++) c[k] += ham * (HAMADA[k] - MATD.Limestone[k]);
+    w[2] -= ham; w[0] += ham * 0.65; w[3] += ham * 0.35;   // 大半按沙画（沙的贴图带暖色；全按砾石画是中性灰，月光下发蓝）
+  }
+  // 平原上大块的深浅（砾石滩、风吹出来的沙带），沙丘背风坡暗一点
+  const big = fbm(x / 2600, z / 2600, 3), mid = fbm(x / 420, z / 420, 2);
+  if (w[0] > 0.5) {
+    const gravel = smooth(0.05, 0.45, big) * w[0];
+    c = [lerp(c[0], 0.47, gravel * 0.55), lerp(c[1], 0.37, gravel * 0.55), lerp(c[2], 0.25, gravel * 0.55)];
+    w = [w[0] - gravel * 0.5, w[1], w[2], w[3] + gravel * 0.5];
+  }
+  if (ham > 0) { const k = 1 + ham * 0.14 * big; c = [c[0] * k, c[1] * k, c[2] * k]; }   // 砾漠也有大块的深浅（风化程度、碎石疏密）
+  const lv = 0.9 + 0.2 * (mid * 0.5 + 0.5);
+  out.c[o * 3] = c[0] * lv; out.c[o * 3 + 1] = c[1] * lv; out.c[o * 3 + 2] = c[2] * lv;
+  out.w[o * 4] = w[0]; out.w[o * 4 + 1] = w[1]; out.w[o * 4 + 2] = w[2]; out.w[o * 4 + 3] = w[3];
+}
+function surface(x, z, h, slope, out, o, fx, fz) {
+  if (BIG.desert) return surfaceDesert(x, z, h, slope, out, o, fx, fz);
   const [sx, sz, , D] = srcPos(x, z);
   let nm = srcMat(sx, sz);
   const inGame = Math.abs(sx) < G.R - 8 && Math.abs(sz) < G.R - 8 && srcH(sx, sz) > -1;
@@ -179,7 +295,7 @@ function surface(x, z, h, slope, out, o) {
   let c = (MATC[nm] || MATC.Ground).slice();
   if (h < -0.5) c = [0.5, 0.45, 0.34];   // 海底：湿沙
   // 放大出来的山：陡的地方、高处是岩石；草地上一片片深色（树林）
-  const far = smooth(BIG.R0, BIG.R0 + 600, D);
+  const far = BIG.id ? 1 : smooth(BIG.R0, BIG.R0 + 600, D);
   const rock = clamp(smooth(0.5, 0.95, slope) + smooth(520, 1300, h) * 0.6, 0, 1) * (inGame ? far : 1) * (h > 4 ? 1 : 0);
   const forest = (w[1] > 0.5 ? 1 : 0) * smooth(0.05, 0.35, fbm(x / 520, z / 520, 3) + 0.1) * smooth(25, 90, h) * (1 - smooth(0.55, 0.85, slope));
   c = [lerp(c[0], 0.11, forest * 0.75), lerp(c[1], 0.15, forest * 0.75), lerp(c[2], 0.09, forest * 0.75)];
@@ -211,7 +327,7 @@ export function bigTerrainGeo(cx, cz, o = {}) {
     const gx = (H[j * nx + i1] - H[j * nx + i0]) / (xs[i1] - xs[i0]), gz = (H[j1 * nx + i] - H[j0 * nx + i]) / (zs[j1] - zs[j0]);
     const l = Math.hypot(gx, 1, gz);
     nor[v * 3] = -gx / l; nor[v * 3 + 1] = 1 / l; nor[v * 3 + 2] = -gz / l;
-    surface(x, z, h, Math.hypot(gx, gz), out, v);
+    surface(x, z, h, Math.hypot(gx, gz), out, v, (xs[i1] - xs[i0]) / (i1 - i0), (zs[j1] - zs[j0]) / (j1 - j0));
   }
   const idx = [];
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {

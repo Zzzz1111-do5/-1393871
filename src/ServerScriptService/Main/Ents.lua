@@ -151,6 +151,7 @@ function Ents.init(G)
 
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
+    if w and w.nuke and G.nukeAt then return G.nukeAt(pos, w, src) end   -- 核导弹撞到地面 / 房子：照样核爆（Nuke.lua）
     local r = w.splash or 8
     local ownK = false
     if not G.dmgK and G.eraBlast then
@@ -203,7 +204,7 @@ function Ents.init(G)
     s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
-      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt })
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer })   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）
     return s
   end
 
@@ -240,6 +241,8 @@ function Ents.init(G)
       end
       if not done then
         if s.grav then s.vel += GRAV * (s.gscale or 1) * dt end
+        -- 空气阻力（坦克炮弹，Ballistics.lua：a = −k·v·|v|，k 每格）：脱壳穿甲弹每公里掉五六十米 / 秒，破甲弹掉一百多
+        if s.drag then s.vel -= s.vel * math.min(0.5, s.drag * s.vel.Magnitude * dt) end
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
@@ -288,6 +291,9 @@ function Ents.init(G)
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
           if ek then G.dmgK = nil end
+          done = true
+        elseif res and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then
+          -- 火箭弹打在坦克的栅栏装甲上、引信被卡坏：哑火（Kit.lua），不炸
           done = true
         elseif res and s.kind ~= "grenade" then
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）

@@ -648,9 +648,10 @@ function Soldier.init(G)
     step = function(v, dt, camPos)
       local target = v.root.CFrame
       local p = target.Position
-      -- 远了（1500 格外，跟着自动画质 G.perfK 缩放）：整个人收起来（不画、动作也不算）；回到范围里再摆回去
+      -- 远了（2600 格外，跟着自动画质 G.perfK 缩放；原来 1500，用户 11-22 视野改成无限远：狙击镜、望远镜里一公里外的人也看得见）：
+      --   整个人收起来（不画、动作也不算）；回到范围里再摆回去（700 格外的动作本来就四分之一秒才算一次）
       local dist = (p - camPos).Magnitude
-      local hideD = 1500 * (G.perfK or 1)
+      local hideD = 2600 * (G.perfK or 1)
       if dist > hideD then
         if not v.hidden then
           v.hidden, v.home = true, v.model.Parent

@@ -23,7 +23,12 @@ function Operation.init(G)
   local stages = G.Config.Stages or {}
   local capture = G.Config.Capture
   local pointById = {}
-  for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
+  local function indexPoints()
+    table.clear(pointById)
+    for _, p in ipairs(G.Map.POINTS) do pointById[p.id] = p end
+  end
+  indexPoints()
+  if G.onMap then G.onMap(indexPoints) end
 
   local reducedMotion = false
   pcall(function()
@@ -81,15 +86,25 @@ function Operation.init(G)
   local route = ui.frame(brief, UDim2.new(), nil, INK, 1)
   route.Name = "Route"
   local stops = {}
-  for i, stage in ipairs(stages) do
-    local width = 1 / #stages
-    local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
-    stop.Name = stage.id
-    local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
-    local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
-    text.TextWrapped = false
-    stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
+  local shownRound, shownStage, shownTeam, startedAt, renderedLanguage   -- 简报现在显示的是哪一局、哪个阶段（换了地图要重写）
+  -- 阶段路线条：地图是进服以后投票定的（定之前 Config.Stages 还是岛的四个阶段），换了图按那张图的阶段重摆（沙海五个阶段）
+  local function buildStops()
+    for _, st in ipairs(stops) do st.frame:Destroy() end
+    table.clear(stops)
+    stages = G.Config.Stages or {}
+    for i, stage in ipairs(stages) do
+      local width = 1 / #stages
+      local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
+      stop.Name = stage.id
+      local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
+      local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
+      text.TextWrapped = false
+      stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
+    end
+    shownRound, shownStage = nil, nil   -- 简报按新的阶段表重写
   end
+  buildStops()
+  if G.onMap then G.onMap(buildStops) end
 
   local localPanel = panel("Frame", "ObjectiveStatus")
   localPanel.BackgroundTransparency = 0.08
@@ -100,7 +115,6 @@ function Operation.init(G)
   local track = ui.frame(localPanel, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -9), MUTE, 0.72)
   local fill = ui.frame(track, UDim2.fromScale(0, 1), nil, AMBER, 0)
 
-  local shownRound, shownStage, shownTeam, startedAt, renderedLanguage
   local baseX, baseY, viewportW, viewportH, touchWidth, routeNames, canFit
   local redeployHint = false
   local lastPoint, meter = nil, 0

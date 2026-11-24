@@ -64,6 +64,7 @@ local function setCtx(c)
 	end
 end
 
+H.screenErrs, H.screenSeen = {}, {}   -- 画面报错条（见下面 require 里包的 G.showError）
 local function report(where, err, co)
 	local msg = tostring(err)
 	local tb = co and debug.traceback(co, msg) or msg
@@ -375,6 +376,14 @@ roblox.implementMethod("Terrain", "FillBlock", function(self, cf, size, mat)
 	if typeof(cf) ~= "CFrame" or typeof(size) ~= "Vector3" or typeof(mat) ~= "EnumItem" then error("FillBlock 参数不对", 2) end
 	H.terrainFills += 1
 	terrOp({ k = "block", cf = cf, size = size, m = mat.Name })
+	if H.voxCols and mat == Enum.Material.Air then   -- 拆掉校准平台：记的列一起清掉
+		local p0 = cf.Position
+		for key in H.voxCols do
+			local ix, iz = string.match(key, "^(%-?%d+),(%-?%d+)$")
+			local x, z = tonumber(ix) * 4 + 2, tonumber(iz) * 4 + 2
+			if math.abs(x - p0.X) <= size.X / 2 and math.abs(z - p0.Z) <= size.Z / 2 then H.voxCols[key] = nil end
+		end
+	end
 end)
 roblox.implementMethod("Terrain", "FillBall", function(self, center, radius, mat)
 	if typeof(center) ~= "Vector3" or type(radius) ~= "number" or typeof(mat) ~= "EnumItem" then error("FillBall 参数不对", 2) end
@@ -417,7 +426,33 @@ roblox.implementMethod("Terrain", "WriteVoxels", function(self, region, res, mat
 	if typeof(m) ~= "EnumItem" then error("WriteVoxels 材质要是 Enum.Material", 2) end
 	H.voxelWrites += 1
 	H.voxelCount += nx * ny * nz
+	-- 地图下面很深的小块（开服的网格器校准平台，World.lua 的 calibrate）：每一列记下各层占有率，射线照「几成满地面就在几成高」算
+	--   （同 tools/mock/rbx.lua；地图本身的块不记，射线照 Map.height）
+	local mn = region.CFrame.Position - sz / 2
+	if nx * ny * nz <= 60000 and mn.Y < -1000 then
+		H.voxCols = H.voxCols or {}
+		for i = 1, nx do
+			for k = 1, nz do
+				local col = { y0 = mn.Y, occ = {} }
+				for j = 1, ny do
+					local mm = mats[i][j][k]
+					col.occ[j] = (mm ~= Enum.Material.Air and mm ~= Enum.Material.Water) and (occ[i][j][k] or 0) or 0
+				end
+				H.voxCols[math.floor((mn.X + (i - 1) * 4) / 4 + 0.5) .. "," .. math.floor((mn.Z + (k - 1) * 4) / 4 + 0.5)] = col
+			end
+		end
+	end
 end)
+-- 记下的校准平台那一列的地面高度（没记就 nil）
+local function voxColTop(x, z)
+	local c = H.voxCols and H.voxCols[math.floor(x / 4) .. "," .. math.floor(z / 4)]
+	if not c then return nil end
+	for j = #c.occ, 1, -1 do
+		local o = c.occ[j]
+		if o > 0 then return c.y0 + (j - 1) * 4 + 4 * math.min(o, 1) end
+	end
+	return -1e9
+end
 roblox.implementMethod("Terrain", "SetMaterialColor", function(self, mat, color) end)
 
 -- 射线：零件按长方体（球按外接盒）算，地面是 y = 0 的地形
@@ -587,8 +622,15 @@ function raycast0(o, d, params)
 	if include then terrainOK = terrain ~= nil and inList(terrain, list) elseif terrain and inList(terrain, list) then terrainOK = false end
 	local normal = V3.new(0, 1, 0)
 	if terrainOK and H.terrainHeight then   -- 有地图高度（ReplicatedStorage.Map）：沿射线一步步找打到地面 / 水面的地方
-		local hf, water = H.terrainHeight, not (params and params.IgnoreWater)
-		local function surf(x, z) local y = hf(x, z) if water and y < 0 then y = 0 end return y end
+		local hf0, water = H.terrainHeight, not (params and params.IgnoreWater)
+		local function hf(x, z) return voxColTop(x, z) or hf0(x, z) end
+		local function surf(x, z)
+			local c = voxColTop(x, z)
+			if c then return c end
+			local y = hf0(x, z)
+			if water and y < 0 then y = 0 end
+			return y
+		end
 		local L = d.Magnitude
 		local n = math.clamp(math.ceil(L / 3), 1, 400)
 		local prev = 0
@@ -957,6 +999,10 @@ roblox.implementMethod("UserInputService", "IsMouseButtonPressed", function(self
 	return s ~= nil and s.keys[b] == true
 end)
 roblox.implementMethod("UserInputService", "GetFocusedTextBox", function(self) return nil end)
+-- Humanoid.MoveDirection（往哪走）：Lune 的实例没有它的默认值、一读就报错（implementProperty 盖不住 API 表里本来就有的属性）——
+--   Play.lua 的疾跑（11-21 起）每帧读它，报错后整个 stepPlay 后半截不跑（第一人称没开、枪的视图模型不建：ia_optics、ia_flow 的狙击镜、
+--   ia_ui_layout 的触控开镜都挂了）。照真 Roblox 给个可读的值：H.step 每帧给玩家角色的 Humanoid 写一个零（写过就能读）
+H.mdSet = setmetatable({}, { __mode = "k" })
 roblox.implementMethod("UserInputService", "GetKeysPressed", function(self) return {} end)
 roblox.implementMethod("UserInputService", "GetLastInputType", function(self) return Enum.UserInputType.Keyboard end)
 roblox.implementMethod("ContextActionService", "BindAction", function(self) end)
@@ -1136,7 +1182,28 @@ local function hrequire(m)
 		local init = value.init
 		value.init = function(G, ...)
 			H.Gs[side] = G
-			return init(G, ...)
+			-- 金币解锁（Economy.lua）：测试里载具默认全开（老的测试直接召唤各型车）；测金币的测试自己关掉（G.econAll = false）
+			if side == "server" and G.econAll == nil then G.econAll = true end
+			local r = table.pack(init(G, ...))
+			-- 游戏画面上的红色报错条（UI.lua G.showError：每帧 pcall 包着的步骤出错就写在那里）：原来测试台看不见，这里另记一份、第一次出现时打印
+			if side ~= "server" and type(rawget(G, "showError")) == "function" and not rawget(G, "_hSE") then
+				local se = G.showError
+				G._hSE = true
+				G.showError = function(m, ...)
+					local msg = tostring(m)
+					-- 测试台读不到的派生属性（新建零件的 Position、附件的 WorldPosition：Lune 报「missing default value」）真 Roblox 里不会出错：不算
+					if msg:find("missing default value", 1, true) then
+						H.screenLune = (H.screenLune or 0) + 1
+						return se(m, ...)
+					end
+					table.insert(H.screenErrs, { msg = msg, t = H.now, side = sideName(H.ctx) })
+					local key = msg:sub(1, 160)
+					H.screenSeen[key] = (H.screenSeen[key] or 0) + 1
+					if H.screenSeen[key] == 1 then print(string.format("[画面报错条 %.2f 秒 %s] %s", H.now, sideName(H.ctx), msg)) end
+					return se(m, ...)
+				end
+			end
+			return table.unpack(r, 1, r.n)
 		end
 	end
 	c.loading = false
@@ -1314,16 +1381,30 @@ end
 H.visible = visible
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E（触发服务器那边的 ProximityPrompt）；生成出来的那一辆
 -- 飞机 / 直升机召唤位（Depots.lua 的 summon）：一个位上好几型（p.vids）；按型号找到的召唤位记下型号，usePad 时在弹出的机型卡片里点这一型
+-- 两边都能用对方的载具（Config.CrossVehicles）以后，对面的召唤位上也有这一型：先找本来就是这一边的型号的那边的召唤位（同以前），没有再随便哪个
 H.padVid = {}
-function H.pad(G, vid)
+local function nativeOf(G, team, vid)
+	for _, list in pairs((G.Config.Vehicles or {})[team] or {}) do
+		if type(list) == "table" then
+			for _, id in ipairs(list) do if id == vid then return true end end
+		end
+	end
+	return false
+end
+function H.pad(G, vid, team)
 	for _, p in ipairs(G.pads or {}) do
 		if p.vid == vid and not p.summon then return p end
 	end
-	for _, p in ipairs(G.pads or {}) do
-		for _, id in ipairs(p.vids or {}) do
-			if id == vid then
-				H.padVid[p] = vid
-				return p
+	for pass = 1, 2 do
+		for _, p in ipairs(G.pads or {}) do
+			local ok = (pass == 2) or (team ~= nil and p.team == team) or (team == nil and nativeOf(G, p.team, vid))
+			if ok then
+				for _, id in ipairs(p.vids or {}) do
+					if id == vid then
+						H.padVid[p] = vid
+						return p
+					end
+				end
 			end
 		end
 	end
@@ -1477,6 +1558,12 @@ function H.step(dt)
 	local rs = H.RunService
 	for _, pl in PlayersSvc:GetChildren() do
 		if pl:IsA("Player") then
+			local ch = pl.Character
+			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+			if hum and not H.mdSet[hum] then
+				H.mdSet[hum] = true
+				pcall(function() hum.MoveDirection = V3.zero end)
+			end
 			local sig = evStore[rs] and evStore[rs]["RenderStepped@" .. pl.Name]
 			if sig then sig:Fire(dt) end
 		end
@@ -1599,6 +1686,10 @@ function H.boot(placePath, opts)
 	local ws = game:GetService("Workspace")
 	H.workspace = ws
 	genv.workspace = ws
+	do   -- 环境变量 IA_MAP=island / desert（沙漠风暴）/ sands（沙海）：换地图（同 Studio 里给 Workspace 设属性 MapName），全部测试都能在沙漠图上跑
+		local mn = require("@lune/process").env.IA_MAP
+		if mn and mn ~= "" then ws:SetAttribute("MapName", mn) end
+	end
 	if not ws:FindFirstChildOfClass("Terrain") then
 		local t = Inst.new("Terrain")
 		t.Parent = ws
@@ -1653,7 +1744,8 @@ function H.boot(placePath, opts)
 end
 
 function H.summary()
-	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns, H.netStats.s, H.netStats.c))
+	print(string.format("—— 模拟 %.1f 秒（%d 帧）：错误 %d 个，警告 %d 条，画面报错条 %d 次（%d 种；测试台读不到属性的另有 %d 次不算），远程事件 上行 %d / 下行 %d ——", H.now, H.frame, #H.errors, #H.warns,
+		#H.screenErrs, (function() local n = 0 for _ in H.screenSeen do n += 1 end return n end)(), H.screenLune or 0, H.netStats.s, H.netStats.c))
 end
 
 return H

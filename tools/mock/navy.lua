@@ -73,6 +73,15 @@ T.act("deploy", "rifle", "camp")
 R.run(2)
 check(P.alive and me.Character ~= nil, "守方在营地出生")
 local pd = T.pad("ddg125")
+-- 用户 11-23：召唤舰船的界面名字下面带图标——码头终端柱上的牌子：船名下面一张这型船的侧影（HudIcons 的 ship_<型号>）
+R.run(1)
+do
+  local post = pd and pd.prompt and pd.prompt.Parent
+  local sg = post and post:FindFirstChild("PadSign")
+  local ic = sg and sg:FindFirstChild("Icon", true)
+  check(ic ~= nil and ic.Visible and ic:GetAttribute("Icon") == "ship_ddg125" and sg.Size.Y.Offset > 60,
+    "码头牌子上船名下面是 DDG-125 的侧影图标（" .. tostring(ic and ic:GetAttribute("Icon")) .. "）")
+end
 local e = pd and T.usePad(me, pd)
 check(e ~= nil and e.ship and e.sd.id == "ddg125", "生成了 DDG-125")
 check(e ~= nil and e.driver == P and P.vehicle == e, "生成的人直接坐上舰桥")

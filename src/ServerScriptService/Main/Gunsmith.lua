@@ -17,8 +17,7 @@ function Gunsmith.init(G)
   local C = Config.GunMods or {}
   local studio = false
   pcall(function() studio = RunService:IsStudio() end)
-  local ALL = C.unlockAll == true or (C.studioAll ~= false and studio)
-  G.gunAll = ALL
+  G.gunAll = C.unlockAll == true or (C.studioAll ~= false and studio)   -- 全开：按这个值现查（测试里可以改）
   local now = os.clock
 
   -- 存档里的改枪数据整理成合法的（Store.lua 读档时调）：认不得的枪、太长的字串都不要
@@ -77,7 +76,7 @@ function Gunsmith.init(G)
     if not GM.DEF[id] then return nil end
     local guns = gunsOf(P)
     local g = guns[id]
-    return GM.clean(id, (g and g.b) and GM.decode(g.b) or GM.default(id), G.gunLevel(P, id), ALL)
+    return GM.clean(id, (g and g.b) and GM.decode(g.b) or GM.default(id), G.gunLevel(P, id), G.gunAll, function(slot, item) return G.attOwned ~= nil and G.attOwned(P, id, slot, item) end)
   end
 
   -- 写在玩家属性上（客户端的改枪界面、部署界面读）
@@ -92,7 +91,7 @@ function Gunsmith.init(G)
   end
   function G.gunPublish(P)
     for id in pairs(GM.DEF) do publish(P, id) end
-    pcall(function() P.pl:SetAttribute("GunAll", ALL) end)
+    pcall(function() P.pl:SetAttribute("GunAll", G.gunAll == true) end)
   end
 
   -- 改了配件、加了经验：过一会儿存一次档（DataStore 一个键几秒才能写一次；一局结束、退出时本来也存）
@@ -144,7 +143,7 @@ function Gunsmith.init(G)
     local req = cleanReq(id, b)
     if not req then return end
     local lv = G.gunLevel(P, id)
-    local got = GM.clean(id, req, lv, ALL)
+    local got = GM.clean(id, req, lv, G.gunAll, function(slot, item) return G.attOwned ~= nil and G.attOwned(P, id, slot, item) end)   -- 金币买过的也算（Economy.lua）
     local locked = 0
     for _, slot in ipairs(GM.SLOTS) do
       if req[slot] and got[slot] and req[slot] ~= got[slot] then locked += 1 end
@@ -183,7 +182,7 @@ function Gunsmith.init(G)
     if lv > old then
       G.msg(P.pl, "good", "gm.lvUp", { k = "weapon." .. id }, lv)
       local un = GM.unlocksBetween(id, old, lv)
-      if #un > 0 and not ALL then
+      if #un > 0 and not G.gunAll then
         local names = {}
         for k = 1, math.min(3, #un) do names[k] = { k = "gm.item." .. un[k] } end
         -- 最多写三样（参数是表的会按各人的语言翻译）

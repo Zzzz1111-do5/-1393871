@@ -3,9 +3,12 @@
 return function(cur2, hull, dumpCams, path, cam, Enum)
   local out = { parts = {}, cams = {}, lights = {}, screens = {} }
   local function num(x) return string.format("%.4f", x) end
-  local function cfStr(cf)
+  local function cfStr(cf, turn)
     local l = hull:ToObjectSpace(cf)
     local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = l:GetComponents()
+    if turn then   -- 右乘绕自己 Y 轴转半圈：旋转矩阵的第 1、3 列取反
+      r00, r10, r20, r02, r12, r22 = -r00, -r10, -r20, -r02, -r12, -r22
+    end
     return table.concat({ num(x), num(y), num(z), num(r00), num(r01), num(r02), num(r10), num(r11), num(r12), num(r20), num(r21), num(r22) }, ",")
   end
   for _, p in ipairs(cur2.model:GetDescendants()) do
@@ -15,9 +18,21 @@ return function(cur2, hull, dumpCams, path, cam, Enum)
       local mesh = p:FindFirstChildOfClass("SpecialMesh")
       if mesh and mesh.MeshType == Enum.MeshType.Sphere then shape = "Sphere" end
       local col = p.Color
-      table.insert(out.parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%s],"k":[%d,%d,%d],"m":"%s","t":%s}', shape,
-        num(p.Size.X), num(p.Size.Y), num(p.Size.Z), cfStr(p.CFrame), math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255),
-        p.Material.Name, num(math.max(p.Transparency, p.LocalTransparencyModifier))))
+      -- 真模型部件（MeshPart，名字 O_<键>__<块>）：记下键和块名，预览图按 models/optics/<键>.glb 里的那一块画（不画成方块）
+      local mk, mp = string.match(p.Name, "^O_(.-)__(.+)$")
+      local cf = p.CFrame
+      local turn = false
+      -- 原车模型的块（V_<模型键>__<块>：M1A1 原模型的炮塔内饰，InteriorAbrams 克隆进来的）：预览图按 models/veh/<键>.glb 里的那一块画；
+      --   B:mesh 摆的时候乘了导入时转掉的半圈（ImportTurn），GLB 里的几何没转——这里乘回去（半圈乘两次是原样）
+      local vk, vb = string.match(p.Name, "^V_(.-)__(.+)$")
+      if p:IsA("MeshPart") and vk then
+        mk, mp = "veh/" .. vk, p.Name
+        turn = true
+      end
+      table.insert(out.parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%s],"k":[%d,%d,%d],"m":"%s","t":%s%s}', shape,
+        num(p.Size.X), num(p.Size.Y), num(p.Size.Z), cfStr(cf, turn), math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255),
+        p.Material.Name, num(math.max(p.Transparency, p.LocalTransparencyModifier)), (p:IsA("MeshPart") and mk) and string.format(',"mk":"%s","mp":"%s"', mk, mp) or ""))
+      local _ = vb
     end
   end
   for _, L in ipairs(cur2.b.lights) do
@@ -49,7 +64,7 @@ return function(cur2, hull, dumpCams, path, cam, Enum)
         table.insert(acc, string.format('{"x":%s,"y":%s,"w":%s,"h":%s,"v":%s,"bg":%s,"bt":%s,"rot":%s,"round":%s%s%s}', num(x), num(y), num(w), num(h),
           tostring(v), c3(bg), num(ch.BackgroundTransparency), num(ch.Rotation), tostring(round),
           st and string.format(',"st":%s,"stw":%s', c3(st.Color), num(st.Thickness)) or "",
-          txt and txt ~= "" and string.format(',"text":"%s","tc":%s,"ts":%s,"al":"%s","bold":%s', (txt:gsub('[\\"]', '')), c3(ch.TextColor3), num(ch.TextSize), ch.TextXAlignment.Name, tostring(ch.Font == Enum.Font.GothamBold)) or ""))
+          txt and txt ~= "" and string.format(',"text":"%s","tc":%s,"ts":%s,"al":"%s","bold":%s', (txt:gsub('[\\"]', ''):gsub('%c', ' ')), c3(ch.TextColor3), num(ch.TextSize), ch.TextXAlignment.Name, tostring(ch.Font == Enum.Font.GothamBold)) or ""))
         guiNodes(ch, x, y, w, h, acc, v)
       end
     end

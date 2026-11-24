@@ -114,6 +114,17 @@ if not rs:FindFirstChild("UnitModels") then
 end
 local ws = game:GetService("Workspace")
 ws.StreamingEnabled = false
+-- 地形草叶（用户 11-24 发截图：「这个 roblox 的这种草你给海岛地图加上吧」）：Terrain.Decoration、GrassLength 脚本改不了，只能写进地点文件——
+--   草叶只长在 Grass 材质上（海岛图写地形时草地照写 Grass：Map.GRASS）；草长 1 = Roblox 最长（截图那样），嫌高在 Studio 里 Workspace → Terrain 调小
+do
+	local t = ws:FindFirstChildOfClass("Terrain")
+	if not t then
+		t = roblox.Instance.new("Terrain")
+		t.Parent = ws
+	end
+	t.Decoration = true
+	t.GrassLength = 1
+end
 -- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
 local L = game:GetService("Lighting")
 L.Technology = roblox.Enum.Technology.Future

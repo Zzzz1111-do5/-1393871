@@ -3,7 +3,7 @@
 --   飞机驾驶按 P 也要能切换光电视角
 --   ① 准星两边高度 / 速度、右上机型卡（名字、全息侧影、血量）、机头标记、发光的准星细圈；原来的平显（连俯仰梯）收起来；圆形雷达挪到左上
 --   ② 右下六边形武器键：按键号、剩几发，最后一个热诱弹；按 2 选中第二个；准星上方写选中的弹、右边剩几发
---   ⑤ 空中：机头前方的全息标记（斜放的一块面）、锁定菱形（顺时针画出来、锁上四个直角逆时针转、出了离轴角变黄不能发射）、
+--   ⑤ 空中：机头前方的全息标记（斜放的一块面）、战雷式锁定框（锁定中一闪一闪、锁上常亮，框上型号、右边距离，出了离轴角变黄不能发射）、
 --      N 切 夜视 → 热成像 → 关（进光电吊舱让开、下飞机关掉）
 --   ③ P 进光电：镜头到机腹吊舱、平显的圈收起、吊舱画面（模式、倍率、距离）；鼠标只转吊舱、飞机航向不跟着变；Z 变焦；V 电视 → 白热（热成像高亮）；
 --      自己的飞机藏起来；再按 P 回来
@@ -178,7 +178,7 @@ if hs then
   R.run(0.3)
 end
 
-print("⑤ 空中：机头前方的全息标记、锁定菱形（顺时针画出来、锁上四个直角、出了离轴角变黄不能发射）、N 切 夜视 → 热成像 → 关")
+print("⑤ 空中：机头前方的全息标记、战雷式锁定框（框上型号、右边距离、出了离轴角变黄不能发射）、N 切 夜视 → 热成像 → 关")
 T.tap(Enum.KeyCode.Space)
 R.run(1.5)
 local AD = R.require(R.services.ReplicatedStorage:FindFirstChild("AirDefs"))
@@ -209,31 +209,50 @@ if js and foe then
   local w = AD.W[js.wl[js.wi]]
   check(js.lock ~= nil and w and w.kind == "aam", "锁着前方的 A-10（" .. tostring(js.wl[js.wi]) .. "）")
   local lm = find("LockMark")
-  if js.lock and lm then
+  if js.lock and lm then   -- 战雷式锁定（用户 11-23）：细的绿方框、框上型号、右边距离和接近速度
     js.lockT = 0.5 * (w.lockTime or 1)
     R.run(1 / 60)
-    local nE = 0
-    for i = 1, 4 do if T.visible(lm.Diamond:FindFirstChild("Edge" .. i)) then nE = nE + 1 end end
-    local nC = 0
-    for _, c in ipairs(lm:GetChildren()) do if c.Name == "Corner" and T.visible(c) then nC = nC + 1 end end
-    check(T.visible(lm) and nE >= 2 and nE <= 3 and nC == 0, string.format("锁定中：菱形顺时针画了一半（%d 条边、进度 %.2f），还没有直角", nE, lm:GetAttribute("Progress") or -1))
+    local box = lm:FindFirstChildOfClass("UIStroke")
+    check(T.visible(lm) and lm:GetAttribute("Locked") == false and math.abs((lm:GetAttribute("Progress") or 0) - 0.5) < 0.1,
+      string.format("锁定中：目标上的方框（进度 %.2f），还没锁上", lm:GetAttribute("Progress") or -1))
     R.run((w.lockTime or 1) * 0.6)
-    nE, nC = 0, 0
-    for i = 1, 4 do if T.visible(lm.Diamond:FindFirstChild("Edge" .. i)) then nE = nE + 1 end end
-    for _, c in ipairs(lm:GetChildren()) do if c.Name == "Corner" and T.visible(c) then nC = nC + 1 end end
-    check(lm:GetAttribute("Locked") == true and nE == 4 and (nC == 4 or nC == 8), string.format("锁上了：菱形画满（%d 条边）、四个直角（%d 块）", nE, nC))
-    local r1 = lm.Diamond.Rotation
-    R.run(0.1)
-    local r2 = lm.Diamond.Rotation
-    check((r2 < r1 and r1 - r2 < 60) or (r1 - r2 < -300), string.format("菱形逆时针转（%.0f° → %.0f°）", r1, r2))
-    local function colOf(e) return (e.ClassName == "ImageLabel") and e.ImageColor3 or e.BackgroundColor3 end   -- 发光线是图（着色），退回时是方块线
-    local edgeC = colOf(lm.Diamond.Edge1)
-    check(edgeC.G > 0.8 and edgeC.R < 0.6 and edgeC.B < 0.7, "在离轴角里：菱形是全息绿")   -- 用户 11-21：蓝色全部改成绿色
+    local nm, rg = lm:FindFirstChild("TargetName"), lm:FindFirstChild("TargetRange")
+    check(lm:GetAttribute("Locked") == true and box ~= nil and box.Transparency < 0.5, "锁上了：方框常亮")
+    check(nm ~= nil and nm.Text ~= "" and rg ~= nil and rg.Text:match("%d") ~= nil,
+      string.format("框上写型号（%s）、右边写距离（%s）", nm and nm.Text or "", rg and rg.Text or ""))
+    local seeker = find("Seeker")
+    if lm:GetAttribute("Seeker") == "ir" then check(seeker ~= nil and T.visible(seeker), "红外弹：导引头的圈套在目标上") end
+    -- 锁定音（用户 11-24：战雷一模一样）：B 的 AirAudio.lua（SoundLib 的 1000 赫兹纯音调音高）——红外锁上尖的长音（lock）、
+    --   雷达弹锁上「嘀嘀」（beep 队列）；模拟器里那几样纯音没载上的话 AirAudio 不出声，这项跳过
+    local ss = R.game:GetService("SoundService")
+    local vl, vb, vg = ss:FindFirstChild("AirAudio_lock"), ss:FindFirstChild("AirAudio_beep"), ss:FindFirstChild("AirAudio_growl")
+    if vl or vb or vg then
+      check((vl and vl.Volume > 0.1) or lm:GetAttribute("Seeker") == "radar",
+        string.format("锁定音（AirAudio）：红外锁上尖的长音（lock 音量 %.2f；导引头 %s）", vl and vl.Volume or -1, tostring(lm:GetAttribute("Seeker"))))
+    else
+      print("  （模拟器里 SoundLib 的纯音没载上：AirAudio 不出声，锁定音这项跳过）")
+    end
+    -- 被雷达锁定告警（战雷的 RWR，A 11-24）：雷达弹锁着敌机，客户端半秒报一次服务器（服务器转告被锁那架的飞行员）；
+    --   自己被锁：屏幕上「被雷达锁定！」
+    if lm:GetAttribute("Seeker") == "radar" then
+      R.run(0.6)
+      check(jet.lockPingT ~= nil, "雷达弹锁着敌机：报给了服务器（服务器转告被锁的那架）")
+    end
+    R.as("server", function() G.R.Drive:FireClient(me, { op = "rwrLock", by = foe.id, full = true }) end)
+    local seen = false
+    for _ = 1, 20 do   -- 字一闪一闪的（亮七成）：看 0.6 秒里出没出现过
+      R.run(1 / 30)
+      if #T.texts(C.T("air.radarLock")) > 0 then seen = true end
+    end
+    check(js.rwrLockT ~= nil and seen, "被敌机雷达锁着：屏幕上写「被雷达锁定！」")
+    js.rwrLockT = nil
+    foe.root.CFrame = js.cf * CF(60, 20, -700)   -- 上面多飞了一秒多：敌机摆回正前方
+    R.run(0.3)
+    check(box and box.Color.G > 0.8 and box.Color.R < 0.6, "在离轴角里：框是绿的")
     foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
     R.run(0.3)
-    edgeC = colOf(lm.Diamond.Edge1)
-    check(js.lock ~= nil and js.lock.out == true and lm:GetAttribute("InCone") == false and edgeC.R > 0.9 and edgeC.G > 0.7 and edgeC.B < 0.4,
-      "出了导弹的离轴角：锁还在、菱形变黄")
+    check(js.lock ~= nil and js.lock.out == true and lm:GetAttribute("InCone") == false and box.Color.R > 0.9 and box.Color.G > 0.7 and box.Color.B < 0.4,
+      "出了导弹的离轴角：锁还在、框变黄")
     local function stores() local n = 0 for i, v in ipairs(js.stores or {}) do n = n + v end return n end
     local s0 = stores()
     T.tap(Enum.KeyCode.F)
@@ -241,8 +260,7 @@ if js and foe then
     check(stores() == s0, string.format("这时按 F 不发射（挂载 %d → %d）", s0, stores()))
     foe.root.CFrame = js.cf * CF(60, 20, -700)
     R.run(0.3)
-    edgeC = colOf(lm.Diamond.Edge1)
-    check(js.lock ~= nil and not js.lock.out and edgeC.G > 0.8 and edgeC.R < 0.6 and edgeC.B < 0.7, "回到离轴角里：菱形变回全息绿")
+    check(js.lock ~= nil and not js.lock.out and box.Color.G > 0.8 and box.Color.R < 0.6, "回到离轴角里：框变回绿的")
   end
   -- N：夜视 → 热成像 → 关（不用光电吊舱）
   local cc = R.services.Lighting:FindFirstChild("AirIrCC")

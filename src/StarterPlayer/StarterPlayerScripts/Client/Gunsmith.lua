@@ -317,10 +317,31 @@ function Gunsmith.init(G)
     end
     return S.cur
   end
+  -- 拿金币买过的配件（Economy.lua：玩家属性 OwnAtt，「枪.位.配件」逗号隔开）
+  local function ownedAtt(slot, item)
+    local s = me:GetAttribute("OwnAtt")
+    return type(s) == "string" and string.find("," .. s .. ",", "," .. S.id .. "." .. slot .. "." .. item .. ",", 1, true) ~= nil
+  end
   local function locked(slot, item)
     if S.all then return false end
     local lv = GM.unlockLv(S.id, slot, item)
-    return lv ~= nil and lv > S.lv
+    return lv ~= nil and lv > S.lv and not ownedAtt(slot, item)
+  end
+  -- 没到等级的配件：点一下提示价钱、4 秒内再点一下拿金币买（用户 11-23：改枪配件也要解锁）
+  local buyAsk = { key = nil, t = 0 }
+  local function tryBuyAtt(slot, item, lv)
+    local price = G.Config.AttPrice and G.Config.AttPrice(lv) or 0
+    if price <= 0 then return end
+    local coins = me:GetAttribute("Coins") or 0
+    if coins < price then G.toast(T("gm.lock", lv) .. "  ·  " .. T("eco.poor", price - coins), "bad") return end
+    local key = slot .. "." .. item
+    if buyAsk.key == key and os.clock() - buyAsk.t < 4 then
+      buyAsk.key = nil
+      G.R.Act:FireServer("buyAtt", S.id, slot, item)
+      return
+    end
+    buyAsk.key, buyAsk.t = key, os.clock()
+    G.toast(T("eco.confirm", price, T("gm.item." .. item)), "info")
   end
 
   ---------------------------------------------------------------- 3D：装模型、镜头
@@ -597,7 +618,8 @@ function Gunsmith.init(G)
       local eq = fr(b, UD2(0, 50, 0, 16), UD2(1, -6, 0, 6), ACC, 0, V2(1, 0))
       local eqT = tx(eq, T("gm.equipped"), UD2(1, 0, 1, 0), nil, 10, ACC2, F_K, nil, Enum.TextXAlignment.Center)
       local lk = fr(b, UD2(1, 0, 1, 0), nil, RGB(0, 0, 0), 0.35)
-      local lkT = tx(lk, T("gm.lock", x[2]), UD2(1, 0, 0, 20), UD2(0, 0, 0.5, -10), 13, TEXT, F_B, nil, Enum.TextXAlignment.Center)
+      local ap = G.Config.AttPrice and G.Config.AttPrice(x[2]) or 0
+      local lkT = tx(lk, (ap > 0) and T("eco.attLock", x[2], ap) or T("gm.lock", x[2]), UD2(1, 0, 0, 20), UD2(0, 0, 0.5, -10), 13, TEXT, F_B, nil, Enum.TextXAlignment.Center)
       local c = { b = b, st = st, vp = v, item = item, eq = eq, eqT = eqT, lk = lk, lkT = lkT, none = none, nm = nm, ready = stock }
       c.ready = cardModel(c)
       b.MouseEnter:Connect(function()
@@ -613,7 +635,7 @@ function Gunsmith.init(G)
       end)
       b.MouseButton1Click:Connect(function()
         if locked(S.slot, item) then
-          G.toast(T("gm.lock", x[2]), "bad")
+          tryBuyAtt(S.slot, item, x[2])
           return
         end
         S.cur[S.slot] = item
@@ -908,7 +930,7 @@ function Gunsmith.init(G)
     return true
   end
   -- 等级、方案、存好的配件变了（服务器写属性）：开着就刷新
-  for _, a in ipairs({ "GunXp_m4", "GunXp_sniper", "GunSaves_m4", "GunSaves_sniper", "GunAll" }) do
+  for _, a in ipairs({ "GunXp_m4", "GunXp_sniper", "GunSaves_m4", "GunSaves_sniper", "GunAll", "OwnAtt", "Coins" }) do   -- OwnAtt / Coins：拿金币买了配件（Economy.lua）
     pcall(function()
       me:GetAttributeChangedSignal(a):Connect(function()
         if gui.Enabled then

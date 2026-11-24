@@ -14,6 +14,7 @@ local AIVeh = {}
 function AIVeh.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
   local V, CF = Vector3.new, CFrame.new
   local now = os.clock
   local A = Config.AIVeh or {}
@@ -39,6 +40,11 @@ function AIVeh.init(G)
   --   比如第一阶段的前哨岛）下一阶段的（纵深，先在那里等着）。land：车在哪块陆地上（车过不了海，只挑这块陆地上的）
   local function eligible(team, p, land)
     local s = G.points and G.points[p.id]
+    if G.conquest and G.conquest() then   -- 征服（沙漠）：两边一样——敌人的、中立的据点去打，自己的被压着回去守
+      if not s then return 0 end
+      if s.owner == team then return s.pressed and 3 or 0 end
+      return (s.owner == "none") and 2 or 2.4
+    end
     if not s or s.locked or (land and p.land ~= land) or (G.flankOf and G.flankOf[p.id]) then return 0 end
     local active = not G.pointActive or G.pointActive(p.id)
     if team == "atk" then return (active and s.owner ~= "atk") and 2 or 0 end
@@ -85,13 +91,30 @@ function AIVeh.init(G)
 
   ---------------------------------------------------------------- 派车
 
+  -- 这一关（Config.Pve 的 ai，用户 11-24：「做关卡 越多越逼真越好」）给这一方的编成：max 同时几辆、tank 坦克占几成、ids 只从这几型里挑
+  local function levelAi(team)
+    local P = G.pve
+    return P and P.L and P.L.ai and P.L.ai[team] or nil
+  end
+  local function maxFor(team)
+    local a = levelAi(team)
+    return (a and a.max) or MAX
+  end
+  local function usable(id)
+    local d = VD.get(id)
+    return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
+  end
   local function pickModel(team)
-    local V0 = Config.Vehicles[team] or {}
-    local cat = (math.random() < 0.67) and "tank" or "apc"
+    local a = levelAi(team)
+    local tankK = (a and a.tank) or 0.67
+    local cat = (math.random() < tankK) and "tank" or "apc"
     local ids = {}
-    for _, id in ipairs(V0[cat] or {}) do
-      local d = VD.get(id)
-      if d and not d.needsAir and d.weapons and #d.weapons > 0 then table.insert(ids, id) end
+    if a and a.ids then   -- 关卡点名的型号：先挑这一类的，这一类没有就全挑
+      for _, id in ipairs(a.ids) do if usable(id) and VD.get(id).cat == cat then table.insert(ids, id) end end
+      if #ids == 0 then for _, id in ipairs(a.ids) do if usable(id) then table.insert(ids, id) end end end
+    else
+      local V0 = Config.Vehicles[team] or {}
+      for _, id in ipairs(V0[cat] or {}) do if usable(id) then table.insert(ids, id) end end
     end
     if #ids == 0 then return nil end
     return ids[math.random(#ids)]
@@ -129,6 +152,15 @@ function AIVeh.init(G)
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
+    if G.conquest and G.conquest() then   -- 征服：从自己基地车场的空车位出车
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == team and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, p.base.LookVector))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
+    end
     if team == "def" then
       -- 用户（出生点跟着战线走）：目标后面的集结点出车；那里有敌人（或找不到平地）才从营地车场出
       local rp = G.rallyOf and G.rallyOf(goal.id)
@@ -168,6 +200,17 @@ function AIVeh.init(G)
           return setup(e, team, goal, V(x, 0, z), "go")
         end
       end
+    end
+    -- 沙漠图：南边前进基地的车场出车，自己开上去（没有气垫艇）
+    if Map.LANDONLY then
+      for _, p in ipairs(G.pads or {}) do
+        if p.team == "atk" and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
+          local face = p.base.LookVector
+          local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, face))
+          return setup(e, team, goal, p.base.Position, "go")
+        end
+      end
+      return nil
     end
     -- 坐气垫艇冲滩：登陆平台旁的水面车位
     local LC = G.LCAC
@@ -273,6 +316,7 @@ function AIVeh.init(G)
     local function consider(pos, kind, ref)
       local dd = (pos - eye).Magnitude
       local range = (kind == "inf") and ((mg and MG_R) or GUN_R * 0.6) or (main and GUN_R or MG_R)
+      if kind == "veh" and G.sigK then range *= G.sigK(ref) end   -- 披了多光谱伪装网的车近了才发现（Kit.lua）
       if dd > range then return end
       local sc = dd * ((kind == "veh") and 0.5 or ((kind == "fort") and 0.8 or 1))
       if sc >= bs then return end
@@ -321,8 +365,16 @@ function AIVeh.init(G)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     if w.kind == "shell" then
       local dir = spread(mz.LookVector, 0.25)
-      G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
-        life = w.range / w.speed + 0.5 })
+      local ww, a = w, nil
+      if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
+      if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
+        local v0, drag, gs = BAL.launchArgs(a)
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model },
+          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+      else
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
+          life = w.range / w.speed + 0.5 })
+      end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6) * (w.range or 600), w, S, { e.model }, 0)
@@ -358,12 +410,18 @@ function AIVeh.init(G)
     local horiz = math.sqrt(l.X * l.X + l.Z * l.Z)
     local wantYaw = math.deg(math.atan2(l.X, -l.Z))
     local drop = 0
+    local se = 0
     if w.kind == "shell" then
-      local tf = horiz / w.speed
-      drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      if BAL.GUN[wid] then   -- 坦克炮：车长、炮长有激光测距，按真实弹道算超高角（Ballistics.lua；默认弹种）
+        local dist = math.sqrt(horiz * horiz + l.Y * l.Y) / BAL.S
+        se = BAL.aimFor(wid, dist, math.atan2(l.Y, math.max(horiz, 1)), e.ai.ammo)
+      else
+        local tf = horiz / w.speed
+        drop = 0.5 * workspace.Gravity * (w.drop or 0.55) * tf * tf
+      end
     end
     local el = d.turret.elev or { -6, 18 }
-    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1))), el[1], el[2])
+    local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
     e.ty = (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360
     e.gp = approach(e.gp, wantPitch, 22 * dt)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
@@ -478,7 +536,7 @@ function AIVeh.init(G)
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
-        if n < MAX and now() >= nextAt[team] then
+        if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
           nextAt[team] = now() + ((ok and e) and 8 or 15)   -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试
         end

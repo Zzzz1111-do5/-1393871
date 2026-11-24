@@ -14,3 +14,6 @@
 
 # Python 缓存
 __pycache__/
+
+# 授权不许再分发的原模型（Sketchfab Free Standard 等）：转好的文件直接发给用户，不进仓库
+/models/private/

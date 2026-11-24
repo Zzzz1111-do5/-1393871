@@ -114,8 +114,9 @@ GM.find = find
 
 function GM.has(id) return GM.DEF[id] ~= nil end
 
--- 选的配件（表）整理成合法的：没选的、这把枪装不了的用默认；lv 给了的话，没解锁的也换成默认（all = true 全部解锁）
-function GM.clean(id, b, lv, all)
+-- 选的配件（表）整理成合法的：没选的、这把枪装不了的用默认；lv 给了的话，没解锁的也换成默认（all = true 全部解锁）；
+--   owned(位, 配件) 返回 true 的是拿金币买过的（Economy.lua）：没到等级也算解锁
+function GM.clean(id, b, lv, all, owned)
   local D = GM.DEF[id]
   if not D then return nil end
   local out = {}
@@ -125,7 +126,7 @@ function GM.clean(id, b, lv, all)
       local want = type(b) == "table" and b[slot] or nil
       local i, x = nil, nil
       if type(want) == "string" then i, x = find(list, want) end
-      if x and lv and not all and x[2] > lv then x = nil end
+      if x and lv and not all and x[2] > lv and not (owned and owned(slot, x[1])) then x = nil end
       out[slot] = x and x[1] or D.def[slot]
     end
   end
@@ -141,7 +142,8 @@ end
 function GM.unlockLv(id, slot, item)
   local D = GM.DEF[id]
   local list = D and D.slots[slot]
-  local _, x = list and find(list, item)
+  if not list then return nil end
+  local _, x = find(list, item)   -- 原来写成 list and find(...)：and 只留第一个返回值，x 一直是 nil（改枪界面从来不画等级锁）
   return x and x[2] or nil
 end
 

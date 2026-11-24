@@ -18,6 +18,7 @@ local Interior = {}
 
 function Interior.init(G)
   local Kit = require(script.Parent:WaitForChild("InteriorKit"))
+local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖出来的内腔（CavityMeta）
   local Defs = require(script.Parent:WaitForChild("InteriorDefs"))
   local Screens = require(script.Parent:WaitForChild("InteriorScreens"))
   local VD = require(RS:WaitForChild("VehDefs"))
@@ -32,8 +33,19 @@ function Interior.init(G)
   local function sm(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
   local function T(zh, en) return (G.lang == "en") and en or zh end
 
+  -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
+  Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
+  local IP_KEYS = { "ip_m829", "ip_m829lo", "ip_r125", "ip_he125", "ip_chg125", "ip_ext", "ip_radio", "ip_radio2", "ip_cvc", "ip_tsh",
+    "ip_cdu", "ip_cdus", "ip_yoke", "ip_stick", "ip_asq2", "ip_sw", "ip_lamp", "ip_can",   -- 这八件：照用户发来的 M1A2 车长位照片、插图、钢铁猛兽截图找的 / 做的显示器、握把、电子箱、开关面板、顶灯、弹箱
+    "ip_dseat", "ip_swheel", "ip_lever", "ip_gauges", "ip_pedals", "ip_grip" }   -- 用户 11-23「很粗糙…不要自己建模 然后用 blender」：座椅、方向盘、操纵杆、仪表、踏板、握把（tools/weapons/blprep.py）
+  local prewarmed = false
+
+  local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
+  G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
+
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a2", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
+  -- M1A1 / M1A2：M1A1 原模型自带的炮塔内饰（InteriorAbrams.lua：没导入拆好的 m1a1i 就照旧零件拼的）；M10 布克借零件拼的 M1A2（四人、手动装填）
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a", t90m = "ztz99a" }
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -51,6 +63,7 @@ function Interior.init(G)
   local stepScope, actions   -- 开镜动画、按键的功能（下面定义）
   local optic, exitOptic, stepOptic, enterOptic   -- 别的观瞄设备（下面定义）
   local stepAir, scratches   -- 飞机座舱、玻璃划痕（下面定义）
+  local glintList = {}         -- 带划痕的玻璃（划痕反光，stepGlints）：拆内饰时清掉
   local scopePhase = function() return false end
 
   ---------------------------------------------------------------- 提示条
@@ -110,8 +123,42 @@ function Interior.init(G)
 
   ---------------------------------------------------------------- 建 / 拆
 
+  -- 自己这辆车的外模型（View 摆的那套）：坐在车里（乘员位）时不画（用户 11-22：「坦克内部屏幕会被挡住」——
+  --   外模型的车体、炮塔块和内饰叠在一起，驾驶员眼前 4 厘米就是外模型车体的面，车长的显示屏前面是外模型的炮塔件）。
+  --   看观瞄设备时（ownHide）也是它；车外、导演镜头、下车放回来
+  --   从原车挖了内腔的（VehModels 的 M.carve，tools/models/carve.py；用户 11-23「在原车内部雕刻出来内饰」）：坐在乘员位上外壳照样画——
+  --   车窗看出去是自己的车头、引擎盖、车门，跟车外看到的同一块玻璃；只藏原模型自带的简易内饰（inside），显示挖出来的内壁（cav）
+  local function extHide(c, on, inOptic)
+    local key = on and ((inOptic or not c or not c.carved) and "all" or "seat") or "off"
+    if not c or c.extHidden == key then return end
+    local v = G.viewById and G.viewById(c.id)
+    if not v or not v.M then return end
+    local cv = c.carved and v.M.carve
+    -- 用原模型自带炮塔内饰的（spec.crewBox，InteriorAbrams）：坐在车里时外模型的炮、车体、车轮不画（从炮塔里看不见，炮尾那截还伸进乘员舱），
+    --   炮塔的块中心在乘员舱的框里的也不画（M1A2 外模型炮塔里面那块实心的「炮塔底」、炮盾后面）；炮塔顶、舱盖、指挥塔照画——内饰顶上的开口从里面看是它们
+    local box = c.spec and c.spec.crewBox
+    local function cut(it)
+      if not box then return false end
+      local grp = it[2]
+      if grp == "gun" or grp == "hull" or grp == "wheel" then return true end
+      if grp ~= "turret" then return false end
+      local q = it[3].Position - box.c
+      return math.abs(q.X) < box.s.X / 2 and math.abs(q.Y) < box.s.Y / 2 and math.abs(q.Z) < box.s.Z / 2
+    end
+    for _, it in ipairs(v.M.parts) do
+      local p = it[1]
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = ((key == "all") or (key == "seat" and cut(it))) and 1 or 0 end
+    end
+    if cv then
+      for _, p in ipairs(cv.inside) do p.LocalTransparencyModifier = (key == "off") and 0 or 1 end
+      for _, p in ipairs(cv.cav) do p.Transparency = (key == "seat") and 0 or 1 end
+    end
+    c.extHidden = key
+  end
+
   local function teardown()
     if optic then exitOptic(nil) end
+    if cur and not cur.spec.air then extHide(cur, false) end
     if cur and cur.spec.air then
       local v = G.viewById and G.viewById(cur.id)
       if cur.pilotsHidden and v and v.M then pcall(AM.setPilots, v.M, true) end
@@ -121,6 +168,7 @@ function Interior.init(G)
       if cur.model then cur.model:Destroy() end
       cur = nil
     end
+    table.clear(glintList)
     mode, station = nil, nil
     hint.Visible, title.Visible = false, false
     if hideUI then setHideUI(false) end
@@ -146,19 +194,61 @@ function Interior.init(G)
     m.Name = "Interior_" .. key
     local b = Kit.new(m)
     -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
-    local ok, spec = pcall(fn, b, { def = v.def, piv = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero,
-      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
+    -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
+    -- imp：导入的原模型（飞机的座舱屏幕位置、眼位在它的元数据里：F-16 坐进原模型自带的座舱）
+    local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
+    local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
+    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
+      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero, imp = v.M and v.M.imp })
     if not ok then
       m:Destroy()
       if G.showError then G.showError("local 内饰 " .. key .. "：" .. tostring(spec)) end
       return nil
     end
-    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {},
+    -- 「开镜」= 炮长主瞄准镜（用户 11-22：「第一人称开镜视角移动不了」「坦克第一人称视角开镜有时候会是绿色的」）：一坐进车里是驾驶员位，
+    --   原来 Shift 开的是驾驶员的热像 / 微光潜望镜——跟着车体、鼠标转不动，99A、国产装甲车的还是绿色微光。现在主镜跟着车体固定的位置（驾驶员），
+    --   Shift 跟车外一样进炮长主瞄准镜（镜头在炮长镜里、鼠标 / 方向键转炮）；那个位置自己的镜子挪到 G、T
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：遥控武器站的观瞄（M1A2 车长的 CROWS）从乘员位上拿掉，T 那一位空着
+    if not spec.air and v.def.noRoofMg then
+      for _, sp in pairs(spec.stations or {}) do
+        for slot, o in pairs(sp.optics or {}) do
+          if o.rws then sp.optics[slot] = nil end
+        end
+      end
+    end
+    if not spec.air and v.def.turret and v.def.sight then
+      for _, sp in pairs(spec.stations or {}) do
+        local o = sp.optics
+        local p0 = o and o.primary
+        if p0 and p0.kind ~= "gps" and (p0.dir == "hull" or p0.dir == "rear") and not o.third then
+          o.primary, o.alt, o.third = { kind = "gps" }, p0, o.alt
+        end
+      end
+    end
+    -- 坦克一进车里默认是炮长位（内饰函数返回 lock = "gunner"，原来 11-23「就只锁定开炮手」锁死在炮长位；
+    --   用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」——不锁了：F2 驾驶员、F3 炮长、F4 车长、F5 装填手照常换）；
+    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）也挂在炮长位的 T（第三个）上，车外按 T 也是开它
+    if spec.lock and spec.stations and spec.stations[spec.lock] then
+      local sp = spec.stations[spec.lock]
+      local cm = spec.stations.commander
+      sp.optics = sp.optics or {}
+      if cm and cm.optics and cm.optics.primary and cm.optics.primary.kind ~= "gps" and not sp.optics.third then
+        sp.optics.third = cm.optics.primary
+      end
+      local o = { spec.lock }   -- 默认的乘员位排第一个，别的照原来的顺序
+      for _, k in ipairs(spec.order or {}) do if k ~= spec.lock and spec.stations[k] then table.insert(o, k) end end
+      spec.order = o
+    end
+    -- carved：坐在乘员位上外壳照样画——挖出来的内壁（v.M.carve.cav），或者用原模型自带车内的（spec.modelInt：M1A1 原模型的炮塔内饰，
+    --   InteriorAbrams.lua；外模型里伸进乘员舱的块照 spec.crewBox 不画，见 extHide）
+    local carvedOk = (cav ~= nil and spec.carved == true) or spec.modelInt == true
+    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = carvedOk,
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
-    -- 乘员
-    for id, cs in pairs(spec.crew or {}) do
+    -- 乘员：用户 11-22 晚「驾驶室不要显示人了」——车里、座舱里不建乘员小人（哪个视角都没有人，导演镜头也没有）；
+    --   SHOW_CREW 打开就照原来画（乘员位视角时也藏着）
+    for id, cs in pairs(SHOW_CREW and spec.crew or {}) do
       local f = Kit.crew(cs.dress)
       if f then
         f.model.Parent = m
@@ -173,8 +263,8 @@ function Interior.init(G)
       s.update = Screens.make(s, c.env)
       s.nextT = 0
     end
-    -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来
-    if spec.loader == "m256" then
+    -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来（没有乘员小人时不建：不然那发弹自己在空中飞）
+    if spec.loader == "m256" and SHOW_CREW then
       b:group("hround", "turret", CF())
       local parts0 = #b.parts
       Defs.round120(b, "hround", CF(0, 0, 0.49), { len = 0.98 })
@@ -405,7 +495,9 @@ function Interior.init(G)
     local now = os.clock()
     -- 开炮：View 的后坐量一下子涨上去
     local rc = v.recoil or 0
-    if rc > c.lastRecoil + 0.5 then
+    local shots = v.shots or 0   -- 这辆车开了第几炮（View 的 G.vehRecoil 数的；后坐曲线现在有个起势，不能再按后坐量一下子涨多少认开炮）
+    if c.lastShots == nil then c.lastShots = shots end   -- 刚坐进来：之前开过的不算
+    if shots ~= c.lastShots then
       c.recoilT = 0
       c.loaded = false
       c.fired = true
@@ -415,12 +507,14 @@ function Interior.init(G)
       c.dust:Emit(28)
     end
     c.lastRecoil = rc
+    c.lastShots = shots
     c.recoilT += dt
     local K = spec.gunK or 0.3
     local rt = c.recoilT
-    local r = 0
-    if rt < 0.05 then r = K * rt / 0.05
-    elseif rt < 0.6 then r = K * (1 - sm((rt - 0.05) / 0.55)) end
+    -- 炮尾的后坐：跟车外的炮管同一条曲线（View 的 G.recoilCurve：0.08 秒坐到底、顶住一下、0.62 秒复进完；原来 0.05 秒直线坐到底，看着像一下子跳过去）
+    local big = v.recoilBig
+    if big == nil then big = (v.def and (v.def.cat == "tank" or v.def.cat == "arty")) or false end
+    local r = K * (G.recoilCurve and G.recoilCurve(rt, big) or ((rt < 0.6) and (1 - sm(math.max(0, rt - 0.05) / 0.55)) or 0))
     b:setAnim("recoil", CF(0, 0, r))
     -- 炮闩：复进的时候自动打开（落下），装上弹关上
     local w = VD.W[st and st.d and st.d.weapons and st.d.weapons[st.wi or 1] or ""] or VD.W.gun120
@@ -517,6 +611,7 @@ function Interior.init(G)
       local on = true
       if l.role == "ready" then on = c.loaded
       elseif l.role == "radio" then on = math.noise(now * 3, l.p.Position.X) > -0.1
+      elseif l.role == "key" then on = (l.s and l.s.ledOn and l.s.ledOn(l.k)) and true or false   -- 键上的灯：屏幕页面说了算（选中的那个键亮）
       elseif l.role == "domeLamp" then
         l.p.Color = (lightMode == 4) and RGB(40, 40, 40) or LIGHTS[lightMode]
         on = nil
@@ -579,10 +674,12 @@ function Interior.init(G)
       local pelvis = eyeCF * CF(-eyeOff)
       if c.mine == id and camLook then lookW = camLook end
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
-      if cr.headShown ~= (c.mine ~= id) then
-        cr.headShown = c.mine ~= id
-        f.headVisible(cr.headShown)
-        f.torsoVisible(cr.headShown)   -- 第一人称：只留手和腿（低头看得见自己握着操纵杆）
+      -- 第一人称坐在车里 / 座舱里（乘员位）：别的乘员、自己都不画（用户 11-21「不要显示我的腿和胳膊」，11-22「不要显示成员和自己的身体部位」）；
+      --   导演镜头从外面看照画
+      local show = mode ~= "seat"
+      if cr.headShown ~= show then
+        cr.headShown = show
+        f.bodyVisible(show)
       end
     end
   end
@@ -624,6 +721,27 @@ function Interior.init(G)
   ---------------------------------------------------------------- 屏幕的数据
 
   local entsT, entsList = 0, {}
+  -- 地图上的军标按兵种分（InteriorScreens 的 Sym）：车按 Cat（坦克、防空、炮兵，别的算装甲车），飞机按型号分直升机 / 固定翼，工事按种类
+  local ADm = nil
+  local FORT_TYP = { aaa = "aa", howitzer = "arty", coastal = "arty", bunker = "fort" }
+  local function entTyp(kind, cat, mid)
+    if kind == "veh" then   -- 实体的 Cat 是挨打的类别（armor / light……），兵种按型号表（VehDefs 的 cat）
+      local vd = mid and VD.get(mid)
+      local c2 = vd and vd.cat or cat
+      return (c2 == "tank" or c2 == "aa" or c2 == "arty") and c2 or "apc"
+    end
+    if kind == "air" then
+      if ADm == nil then
+        local ok, m = pcall(function() return require(RS:WaitForChild("AirDefs")) end)
+        ADm = ok and m or false
+      end
+      local ad = ADm and ADm.get and mid and ADm.get(mid)
+      return (ad and ad.kind == "heli") and "heli" or "jet"
+    end
+    if kind == "ship" then return "ship" end
+    if kind == "fort" then return FORT_TYP[mid or ""] or "fort" end
+    return "inf"
+  end
   local function nearbyEnts(pos, myId)
     local now = os.clock()
     if now - entsT < 0.25 then return entsList end
@@ -641,7 +759,7 @@ function Interior.init(G)
             local kind = em:GetAttribute("Kind")
             local sz = root.Size
             table.insert(entsList, { pos = p, team = em:GetAttribute("Team"), kind = (kind == "veh" or kind == "ship" or kind == "fort") and "veh" or ((kind == "air") and "air" or "inf"),
-              w = math.max(sz.X, sz.Z), h = sz.Y, seen = dd < 1100 })
+              typ = entTyp(kind, em:GetAttribute("Cat"), em:GetAttribute("Model")), w = math.max(sz.X, sz.Z), h = sz.Y, seen = dd < 1100 })
           end
         end
       end
@@ -652,7 +770,7 @@ function Interior.init(G)
       if hrp and pl ~= me and (hrp.Position - pos).Magnitude < 3000 then
         local hum = ch:FindFirstChildOfClass("Humanoid")
         if hum and hum.Health > 0 and (ch:FindFirstChild("Head") and ch.Head.Transparency < 0.9) then
-          table.insert(entsList, { pos = hrp.Position, team = pl:GetAttribute("Side"), kind = "inf", w = 2, h = 5, seen = (hrp.Position - pos).Magnitude < 900 })
+          table.insert(entsList, { pos = hrp.Position, team = pl:GetAttribute("Side"), kind = "inf", typ = "inf", w = 2, h = 5, seen = (hrp.Position - pos).Magnitude < 900 })
         end
       end
     end
@@ -698,8 +816,13 @@ function Interior.init(G)
     d.turretDeg, d.gunDeg = d.ty, d.gp   -- 火控计算机：方位、射角
     d.ammo = ammo and ((ammo[1] or 0) + (ammo[2] or 0)) or 0
     d.ammoName = wid and string.upper(tostring(wid)) or "--"
-    d.pol = (st.mode == 4) and "BLK" or "WHT"
-    d.zoomTxt = (st.zoom == 2) and "10X" or "3X"
+    d.pol = (st.mode == 4 or (st.mode ~= 3 and st.pol == "BLK")) and "BLK" or "WHT"
+    -- 视场：Drive 的倍率档（SEPv2 热像 3 / 6 / 13 / 25 / 50 倍……）
+    local Z, zi = nil, st.zoom or 1
+    if G.driveZooms then Z, zi = G.driveZooms() end
+    d.zoomFov = (Z and Z[zi or 1]) or ((st.zoom == 2) and 7 or 20)
+    d.zoomTxt = string.format("%dX", math.floor(70 / d.zoomFov + 0.5))
+    if d.zoomTxt == "4X" then d.zoomTxt = "3X" end   -- 默认两档（20°、7°）照旧叫 3X / 10X
     -- 热像的视线：驾驶员（车头）、主瞄准镜（炮）、独立热像仪（车长看的方向）、遥控武器站
     local hE = hullW * CF(V(0, 0.10, -2.4) * S)
     d.hullEye, d.hullF, d.hullR, d.hullU = basis(hE)
@@ -712,9 +835,13 @@ function Interior.init(G)
     local citvDir
     if cm == "GUN LOS" or cm == "GPS LOS" then
       citvDir = gW.LookVector
-    elseif cm == "AUTO" then
-      c.citvA = math.sin(os.clock() * 0.35) * math.rad(60)
+    elseif cm == "AUTO" then   -- 扇区：默认炮塔正面 ±60°，SCAN L / SCAN R 键把左右边设在按键时热像仪指的方向；角速度一样（大约每秒 21°）
+      local sec = c.citvSec or { -60, 60 }
+      local mid, half = (sec[1] + sec[2]) / 2, math.max(5, math.abs(sec[2] - sec[1]) / 2)
+      c.citvA = -math.rad(mid + math.sin(os.clock() * 0.35 * 60 / half) * half)
       citvDir = (tW * ANG(0, c.citvA, 0)).LookVector
+    elseif cm == "STOW" then   -- 收回：朝炮塔正前
+      citvDir = tW.LookVector
     elseif mode == "seat" and station == "commander" and not scopePhase() then
       citvDir = cam.CFrame.LookVector
       c.citvMan = tW:VectorToObjectSpace(citvDir)
@@ -729,10 +856,31 @@ function Interior.init(G)
     d.citvFov = c.citvFov or 22
     d.citvMode = cm
     d.engineOff = G.interiorEngineOff == true
+    local fc = st.fcs   -- 火控（Drive.lua）：弹种、激光测的距离、测距的时刻——CITV 屏下面的弹种字母和距离
+    d.fcsAm, d.fcsR, d.fcsLaseT = fc and fc.am, fc and fc.R, fc and fc.laseT
+    d.fcsMan, d.fcsNoRet = fc and fc.man, fc and fc.noRet   -- 手动装定的距离、没回波
+    d.fcsAim, d.fcsSE = st.fcsAim, st.fcsSE   -- 弹道计算机正在用的距离、飞行时间、超高角（弧度）
+    d.sightMode, d.zoom = st.mode, st.zoom
+    -- 炮长面板上的开关（Drive 的火控状态）：激光首 / 末回波、多回波、保险，火控方式，稳定器，炮管热弯曲没修正的量，校炮偏差，战斗瞄准距离，
+    --   分划 / 符号亮度、分划照明、热像增益 / 电平；自检、炮口基准更新、车长热像仪测距的时刻
+    d.lrf, d.multi, d.arm = fc and fc.lrf or "LAST", fc and fc.multi or false, not (fc and fc.arm == false)
+    d.fcsMode = fc and fc.mode or 1
+    d.stab = st.stab ~= false
+    d.droopErr = fc and ((fc.droop or 0) - (fc.mrs or 0)) or 0
+    d.droop = fc and fc.droop or 0
+    d.bore = fc and fc.bore or { 0, 0 }
+    d.bsR = fc and fc.am and fc.bsR and fc.bsR[fc.am] or nil
+    d.retLvl, d.symLvl, d.retNight, d.thGain, d.thLevel = st.retLvl or 0, st.symLvl or 0, st.retNight == true, st.thGain or 2, st.thLevel or 2
+    d.rof, d.wpn, d.armSafe = st.rof or "HI", st.wi or 1, st.safe == true   -- 布雷德利：射速、武器、保险（IBAS 显示器下沿）
+    d.bitT, d.mrsT = c.bitT, c.mrsT
+    d.citvRange, d.citvRT = c.citvR, c.citvRT
+    d.cant = -math.deg(math.asin(clamp(hullW.RightVector.Y, -1, 1)))   -- 车体侧倾（耳轴倾斜）：右边低是正
     d.ammoAll = G.S and G.S.veh and G.S.veh.ammo or {}
     d.ammoKind = c.ammoKind
     if v.rF then d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(v.rgF or v.rF) else d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(tW * CF(V(0.6, 1.3, 0.2) * S)) end
     d.rwsAmmo = 400
+    -- 坦克不带机枪（VehDefs.TANK_MG）：CROWS 屏只剩车顶摄像头，没有 M2、没有弹数
+    if st and st.d and st.d.noRoofMg then d.rwsAmmo, d.rwsNoGun = nil, true end
     return d
   end
 
@@ -768,19 +916,142 @@ function Interior.init(G)
     end
     function A.polarity()
       local st = G.drive
-      if st then st.mode = (st.mode == 4) and 3 or 4 end
+      if not st then return end
+      st.mode = (st.mode == 4) and 3 or 4
+      st.pol = (st.mode == 4) and "BLK" or "WHT"
+      if G.driveApplySight then G.driveApplySight() end
     end
-    function A.zoom()
+    function A.zoom()   -- 视场下一档（SEPv2 热像 3 / 6 / 13 / 25 / 50 倍，昼光 3 / 10 倍；别的车两档）
       local st = G.drive
-      if st then st.zoom = (st.zoom == 2) and 1 or 2 end
+      if not st then return end
+      if G.driveZoomStep then G.driveZoomStep() else st.zoom = (st.zoom == 2) and 1 or 2 end
+    end
+    -- 昼光 / 热像（M1A1 主瞄准镜的视野选择：白天的光学通道、热像仪通道）：从昼光、微光换到热像（白热），热像换回昼光；下次开镜生效
+    function A.thermal()
+      local st = G.drive
+      if not st then return end
+      st.mode = ((st.mode or 1) >= 3) and 1 or 3
+      if G.sightPref then G.sightPref[(G.isNight and G.isNight()) and "night" or "day"] = st.mode end
+    end
+    function A.lase() if G.driveLase then G.driveLase() end end   -- 激光测距（同 R 键：瞄准线打到哪、多远）
+    function A.range(m) if G.driveRange then G.driveRange(m) end end   -- 手动装定距离（米；nil 回到战斗瞄准距离）：弹道计算机就按它算超高角
+    function A.fcsMode(k)   -- 火控方式 1 正常 / 2 应急 / 3 手动（Drive.lua：应急没有提前量，手动没有弹道计算机、没有稳定、手摇）
+      c.fcsMode = k
+      if G.driveSetFcs then G.driveSetFcs(k) end
+    end
+    ---------------- 炮长面板上的旋钮、开关、按钮（InteriorAbrams 的 KNOBS：B:mov 的 on）——都接到 Drive.lua 的火控上
+    local AMMO4 = { "SABOT", "HEAT", "MPAT", "CAN" }
+    local function set(f, v) if G.driveSet then G.driveSet(f, v) end end
+    function A.reticle(i) set("retLvl", i) end          -- 分划亮度 0 最亮 … 3 最暗
+    function A.symb(i) set("symLvl", i) end             -- 符号亮度 0 最亮 … 3 关
+    function A.gain(i) set("thGain", i) end             -- 热像增益（对比度）0～4
+    function A.level(i) set("thLevel", i) end           -- 热像电平（亮度）0～4
+    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天亮红 / 夜里暗红（红分划，钢铁猛兽那样）
+    function A.stab(i) set("stab", i == 0) end          -- 稳定器开 / 关
+    function A.lrfArm(i) set("arm", i == 0) end         -- 激光测距机待命 / 保险
+    function A.lrf(i) set("lrf", (i == 1) and "FIRST" or "LAST") end   -- 末回波 / 首回波
+    function A.lrfToggle()
+      local st = G.drive
+      if st then set("lrf", (st.fcs.lrf == "FIRST") and "LAST" or "FIRST") end
+    end
+    function A.polaritySet(i)   -- 极性开关：白热 / 黑热（昼光通道开着时先记下，换热像时用）
+      local st = G.drive
+      if not st then return end
+      st.pol = (i == 1) and "BLK" or "WHT"
+      if st.mode == 3 or st.mode == 4 then st.mode = (i == 1) and 4 or 3 end
+      if G.driveApplySight then G.driveApplySight() end
+    end
+    function A.thermalSet(i)   -- 视野选择：昼光 / 热像（极性照极性开关）
+      local st = G.drive
+      if not st then return end
+      st.mode = (i == 1) and ((st.pol == "BLK") and 4 or 3) or 1
+      if G.sightPref then G.sightPref[(G.isNight and G.isNight()) and "night" or "day"] = st.mode end
+      if G.driveApplySight then G.driveApplySight() end
+    end
+    function A.zoomSet() A.zoom() end
+    function A.ammoIdx(i) A.ammo(AMMO4[(i or 0) + 1] or "SABOT") end
+    function A.fcsSet(i) A.fcsMode((i or 0) + 1) end
+    function A.battlesight() if G.driveBattlesight then G.driveBattlesight() end end
+    function A.mrs()
+      if G.driveMrs then G.driveMrs() end
+      c.mrsT = os.clock()
+    end
+    function A.bore(daz, del) if G.driveBore then G.driveBore(daz, del) end end   -- 校炮偏差（密位）；都给 nil 归零
+    function A.bsRange(key, m) if G.driveBsRange then G.driveBsRange(key, m) end end
+    function A.bit()   -- 火控自检：计算机 / 炮长控制显示面板跑一遍自检页，所有指示灯亮一遍
+      c.bitT = os.clock()
+      c.lampT = os.clock() + 3
+    end
+    -- 车长热像仪激光测距 + 敌情报告：测到的距离写在 CITV 屏上；打到的那一点附近看得见的敌人标给全队（Weapons.lua 的 ACT.vspot）
+    function A.citvLase()
+      local d = c.data
+      if not (d.citvEye and d.citvF) then return end
+      local rp = RaycastParams.new()
+      rp.FilterType = Enum.RaycastFilterType.Exclude
+      local ex = { c.model }
+      if G.viewFolder then table.insert(ex, G.viewFolder) end
+      local v = G.viewById and G.viewById(c.id)
+      if v and v.model then table.insert(ex, v.model) end
+      rp.FilterDescendantsInstances = ex
+      local res = workspace:Raycast(d.citvEye, d.citvF * (5000 * S), rp)
+      c.citvRT = os.clock()
+      if res then
+        local m = (res.Position - d.citvEye).Magnitude / S
+        c.citvR = (m >= 50) and math.floor(m / 5 + 0.5) * 5 or nil
+        local st = G.drive
+        local from = (st and st.root and st.root.Position) or d.citvEye
+        if c.citvR then pcall(function() G.R.Act:FireServer("vspot", from, res.Position) end) end
+      else
+        c.citvR = nil
+      end
+      if G.sfx then pcall(G.sfx, "uiClick") end
+    end
+    -- 布雷德利炮长面板：射速（高速 / 低速 / 单发）、武器总开关（保险 / 待发）、武器选择（25 毫米炮 / 并列机枪）
+    local ROF = { "HI", "LO", "SS" }
+    function A.rof(i)
+      local st = G.drive
+      if st then st.rof = ROF[(i or 0) + 1] or "HI" end
+    end
+    function A.armGun(i)
+      local st = G.drive
+      if st then st.safe = (i == 1) end
+    end
+    function A.weapon(i) if G.driveWeapon then G.driveWeapon((i or 0) + 1) end end
+    -- 可动部件的档位跟着系统状态（Interior 的 stepMovs 每帧问一次）
+    function A.sync()
+      local st = G.drive
+      if not st or not st.fcs then return nil end
+      local f = st.fcs
+      local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
+      local sym = f.am and BAL.AMMO[f.am] and BAL.AMMO[f.am].sym
+      local ai = 0
+      for i, a in ipairs(AMMO4) do if a == sym then ai = i - 1 end end
+      local zi = st.zoom or 1
+      return { pol = ((st.mode == 4) or (st.mode ~= 3 and st.pol == "BLK")) and 1 or 0, zoom = zi - 1, vis = ((st.mode or 1) >= 3) and 1 or 0,
+        ammo = ai, lrf = (f.lrf == "FIRST") and 1 or 0, fcs = (f.mode or 1) - 1, stab = (st.stab == false) and 1 or 0,
+        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0,
+        rof = (st.rof == "LO") and 1 or ((st.rof == "SS") and 2 or 0), armg = st.safe and 1 or 0, wpn = (st.wi or 1) - 1 }
     end
     function A.engine(on)
       G.interiorEngineOff = not on
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
     end
     function A.lampTest() c.lampT = os.clock() + 3 end
-    function A.ammo(kind) c.ammoKind = kind end
+    function A.ammo(kind)
+      c.ammoKind = kind
+      -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
+      local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
+      local st = G.drive
+      local wid = st and st.d and st.d.weapons and st.d.weapons[st.wi or 1]
+      local key = BAL.panelAmmo and BAL.panelAmmo(kind, wid) or BAL.PANEL[kind]   -- 这门炮没有这种就挑同一类的（T-90M 借 99A 的面板）
+      if G.driveAmmo and key then G.driveAmmo(key) end
+    end
     function A.citvFov(f) c.citvFov = f end
+    function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）
+      c.citvSec = c.citvSec or { -60, 60 }
+      c.citvSec[side] = deg
+      if c.citvSec[1] > c.citvSec[2] then c.citvSec[1], c.citvSec[2] = c.citvSec[2], c.citvSec[1] end
+    end
     function A.citvMode(m) c.citvMode = m end
     return A
   end
@@ -791,7 +1062,7 @@ function Interior.init(G)
   local function pickKey(c)
     local o = cam.CFrame.Position
     local dir = cam.CFrame.LookVector
-    local best, bs = nil, math.huge
+    local best, bs, bt = nil, math.huge, math.huge
     for _, k in ipairs(c.b.softkeys) do
       local cf, sz = k.part.CFrame, k.part.Size * 0.5
       local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
@@ -802,15 +1073,158 @@ function Interior.init(G)
           local mx, my = sz.X + 0.006 * S, sz.Y + 0.010 * S
           if math.abs(px) <= mx and math.abs(py) <= my then
             local score = (px / mx) ^ 2 + (py / my) ^ 2
-            if score < bs then best, bs = k, score end
+            if score < bs then best, bs, bt = k, score, t end
           end
         end
       end
     end
-    return best
+    return best, bt
   end
-  G.interiorHover = function() return hover ~= nil and mode == "seat" end
+  -- 可动部件（InteriorKit 的 B:mov：旋钮、拨动开关、按钮、握把上的按钮……用户 11-22「所有可动部件都要能动，我准心移动到哪点一下就能动」；
+  --   11-24「按钮什么的实现功能」）：视线穿过它的点选盒（hit：组里的盒子，米）就算对准，挑最近的
+  local function movBox(mv)
+    return mv.g.world * Kit.toS(mv.hit.cf), mv.hit.size * (S / 2)
+  end
+  local function pickMov(c)
+    local o = cam.CFrame.Position
+    local dir = cam.CFrame.LookVector
+    local best, bt = nil, math.huge
+    for _, mv in ipairs(c.b.movs or {}) do
+      if mv.hit and mv.g.world then
+        local cf, h = movBox(mv)
+        local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
+        local t0, t1 = -math.huge, math.huge
+        local ok = true
+        for _, ax in ipairs({ "X", "Y", "Z" }) do
+          local a, dd, e = lo[ax], ld[ax], h[ax]
+          if math.abs(dd) < 1e-6 then
+            if math.abs(a) > e then ok = false break end
+          else
+            local ta, tb = (-e - a) / dd, (e - a) / dd
+            if ta > tb then ta, tb = tb, ta end
+            t0, t1 = math.max(t0, ta), math.min(t1, tb)
+            if t0 > t1 then ok = false break end
+          end
+        end
+        if ok and t1 > 0 and t0 < 1.6 * S and t0 < bt then best, bt = mv, math.max(t0, 0) end
+      end
+    end
+    return best, bt
+  end
+  -- 可动部件的零件（高亮用）：在它的组或者子组里的
+  local function movParts(c, mv)
+    if mv.parts then return mv.parts end
+    mv.parts = {}
+    for _, it in ipairs(c.b.parts) do
+      local g = it[2]
+      while g do
+        if g == mv.g or (mv.g.parent and g == mv.g.parent and mv.kind == "hinge") then table.insert(mv.parts, it[1]) break end
+        g = g.parent
+      end
+    end
+    return mv.parts
+  end
+  local function movHover(c, mv, on)
+    for _, p in ipairs(movParts(c, mv)) do
+      if on then
+        p:SetAttribute("C0", p:GetAttribute("C0") or p.Color)
+        p.Color = RGB(255, 190, 60)
+      elseif p:GetAttribute("C0") then
+        p.Color = p:GetAttribute("C0")
+        p:SetAttribute("C0", nil)
+      end
+    end
+  end
+  local function movText(mv)
+    local lb = mv.label and T(mv.label[1], mv.label[2]) or T("开关", "switch")
+    local names = mv.posNames
+    if names and names[mv.state + 1] then lb = lb .. "：" .. names[mv.state + 1] end
+    return lb
+  end
+  -- 按一下：转一档 / 拨一下 / 按下去，再调它的动作（act[on](新的档位, 这一件)）
+  local function movPress(c, mv)
+    if mv.kind == "knob" then mv.state = (mv.state + 1) % math.max(1, mv.n or 2)
+    elseif mv.kind == "hinge" or mv.kind == "slide" then mv.state = 1 - mv.state
+    elseif mv.kind == "push" then mv.pt = 0 end
+    mv.held = os.clock() + 0.6   -- 刚拨过：这一会儿不按系统状态回拨（动作还没生效的那一帧）
+    if G.sfx then pcall(G.sfx, (mv.kind == "push") and "uiClick" or "dry") end
+    local f = mv.on and c.env.act[mv.on]
+    if f then
+      local ok, err = pcall(f, mv.state, mv)
+      if not ok then warn("[内饰] " .. tostring(mv.on) .. "：" .. tostring(err)) end
+    end
+    for _, s2 in ipairs(c.b.screens) do s2.nextT = 0 end
+  end
+  -- 每帧：档位跟着系统状态（同一个功能别处也能改：V 键换热像、面板上的键……）、动画走到档位上
+  local function stepMovs(c, dt)
+    local list = c.b.movs
+    if not list then return end
+    local sy = c.env.act.sync and c.env.act.sync() or nil
+    for _, mv in ipairs(list) do
+      if sy and mv.sync and sy[mv.sync] ~= nil and not (mv.held and os.clock() < mv.held) then
+        local v = sy[mv.sync]
+        if mv.kind == "knob" then mv.state = v % math.max(1, mv.n or 2) else mv.state = v end
+      end
+      local u
+      if mv.kind == "push" then
+        if mv.pt then
+          mv.pt += dt
+          local k = mv.pt / mv.t
+          u = (k < 0.5) and (k * 2) or math.max(0, 2 - k * 2)
+          if k >= 1 then mv.pt, u = nil, 0 end
+        else u = 0 end
+        c.b:setAnim(mv.name, CF(mv.axis * ((mv.d or 0.004) * u)))
+      else
+        mv.p = mv.p or mv.state
+        mv.p += (mv.state - mv.p) * math.min(1, dt / math.max(mv.t, 0.02) * 2.5)
+        if mv.kind == "knob" then
+          c.b:setAnim(mv.name, CFrame.fromAxisAngle(mv.axis, -rad((mv.step or 40) * mv.p)))
+        elseif mv.kind == "hinge" then
+          c.b:setAnim(mv.name, CFrame.fromAxisAngle(mv.axis, rad((mv.a0 or 0) + ((mv.a1 or -60) - (mv.a0 or 0)) * mv.p)))
+        elseif mv.kind == "slide" then
+          c.b:setAnim(mv.name, CF(mv.axis * ((mv.d or 0.05) * mv.p)))
+        elseif mv.kind == "fn" and mv.fn then
+          c.b:setAnim(mv.name, mv.fn(mv.p))
+        end
+      end
+    end
+  end
+  -- 准心对着的有按键的屏幕（显示面 + 外面一圈边框、按键、按键下面印的字）：左键当成在操作屏幕，不开炮
+  --   （用户 11-22：「我操控显示屏的时候坦克会开炮，因为我点了鼠标左键」——原来只有小点正好落在某个键上才不开炮，
+  --   点在键旁边、键下面的字上、屏幕上，炮就打出去了）；平显的组合玻璃不算（透过它瞄准开火）
+  local hoverScr = nil
+  local function pickScreen(c)
+    local o = cam.CFrame.Position
+    local dir = cam.CFrame.LookVector
+    for _, s in ipairs(c.b.screens) do
+      local p = s.part
+      if p and s.opt and s.opt.keys and (not s.opt.noBack or s.opt.propShell) then   -- 真模型外壳的屏幕（B:propScreen）也算
+        local cf, sz = p.CFrame, p.Size * 0.5
+        local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
+        if ld.Z > 1e-4 then
+          local t = (-sz.Z - lo.Z) / ld.Z
+          if t > 0 and t < 1.6 * S then
+            local px, py = lo.X + ld.X * t, lo.Y + ld.Y * t
+            local m = (s.opt.pickM or ((s.opt.propShell and 0.05 or s.opt.bezel or 0.036) + 0.02)) * S   -- 真模型外壳：键在玻璃外面好几厘米；pickM 自己给（车长显示单元的键盘离屏幕十几厘米）
+            if math.abs(px) <= sz.X + m and math.abs(py) <= sz.Y + m then return s end
+          end
+        end
+      end
+    end
+    return nil
+  end
+  -- 开着观瞄设备（武器站左键就是开火）、瞄准镜的时候不算：hover 停在进镜前那一帧的值
+  G.interiorHover = function() return (hover ~= nil or hoverScr ~= nil) and mode == "seat" and optic == nil and not (G.drive and G.drive.sight) end
   G.interiorHoverKey = function() return hover end   -- 测试用
+  -- 测试用：可动部件（旋钮、开关、按钮）的列表；按 id（InteriorAbrams 的 KNOBS：POL、VIS、FCS……）拨一下，走跟左键一样的路
+  G.interiorMovs = function() return cur and cur.b.movs or {} end
+  G.interiorMovPress = function(id)
+    if not cur then return false end
+    for _, mv in ipairs(cur.b.movs or {}) do
+      if mv.id == id then movPress(cur, mv) return true end
+    end
+    return false
+  end
   local dot = Instance.new("Frame")
   dot.AnchorPoint = Vector2.new(0.5, 0.5)
   dot.Position = UDim2.fromScale(0.5, 0.5)
@@ -838,14 +1252,36 @@ function Interior.init(G)
   tip.Visible = false
   tip.Parent = gui
   local function stepKeys(c)
-    local k = (mode == "seat" and not scopePhase()) and pickKey(c) or nil
-    if hover and hover ~= k then hover.part.Color = hover.col end
-    hover = k
+    local k, kt = nil, math.huge
+    local mv, mt = nil, math.huge
+    if mode == "seat" and not scopePhase() then
+      k, kt = pickKey(c)
+      mv, mt = pickMov(c)
+      kt = kt or math.huge
+      if k and mv then   -- 键和可动部件都对得上：挑近的
+        if mt < kt - 0.01 * S then k = nil else mv = nil end
+      end
+    end
+    if hover and hover ~= k and not hover.mov then hover.part.Color = hover.col end
+    if hover and hover.mov and (not mv or hover.mov ~= mv) then movHover(c, hover.mov, false) end
+    if mv then
+      if not (hover and hover.mov == mv) then movHover(c, mv, true) end
+      hover = { mov = mv }
+    else
+      hover = k
+    end
+    hoverScr = (mode == "seat" and not scopePhase() and not k and not mv) and pickScreen(c) or nil
     dot.Visible = mode == "seat" and not hideUI
-    if k then
+    if mv then
+      tip.Text = movText(mv) .. "  ——  " .. T("左键：", "click: ") .. ((mv.kind == "knob") and T("转一档", "next position") or ((mv.kind == "push") and T("按下", "press") or T("拨动", "flip")))
+      tip.Visible = not hideUI
+    elseif k then
       k.part.Color = RGB(255, 190, 60)
       local id = Screens.canon(k.label)
       tip.Text = k.label .. "  ——  " .. (Screens.KEYDESC[id] or "")
+      tip.Visible = not hideUI
+    elseif hoverScr then   -- 对着屏幕、没对准键：提示怎么按（这时左键不开炮）
+      tip.Text = T("小点对准屏幕边的按键再按左键（对着屏幕时左键不开炮）", "put the dot on a key to press it (no firing while looking at a screen)")
       tip.Visible = not hideUI
     else
       tip.Visible = false
@@ -933,17 +1369,39 @@ function Interior.init(G)
       return
     end
     if cur and cur.spec.air then teardown() end
+    if not prewarmed and G.opticPrewarm then prewarmed = true G.opticPrewarm(IP_KEYS) end   -- 一上车就在后台把真模型部件生成好
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.hullF then return end
     if cur and cur.id ~= st.id then teardown() end
+    -- 进车时真模型部件还没生成好（用了零件拼的）：等它们都好了重建一次内饰（只在没开观瞄设备的时候换，换完回到原来的乘员位）
+    if cur and not cur.propsDone and (cur.b.propMiss or cur.headMiss) and not optic then
+      local ready = true
+      for k in pairs(cur.b.propMiss or {}) do if not (G.opticReady and G.opticReady(k)) then ready = false break end end
+      if ready and cur.headMiss then
+        for _, k in ipairs({ "ip_cvc", "ip_tsh" }) do if G.opticFailed and not G.opticFailed(k) and not (G.opticReady and G.opticReady(k)) then ready = false end end
+      end
+      if ready then
+        local keepM, keepS = mode, station
+        teardown()
+        mode, station = keepM, keepS   -- 下一帧照原来的乘员位重建
+        return
+      else
+        cur.propCheckT = (cur.propCheckT or 0) + dt
+        if cur.propCheckT > 60 then cur.propsDone = true end   -- 一分钟还没好（没开 Mesh API、生成失败）：不等了
+      end
+    end
     if mode == nil then
       if cur and cur.model.Parent then cur.model.Parent = nil end
+      if cur then extHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       return
     end
     if not cur then
+      Kit.headMiss = nil
       cur = build(st, v)
       if not cur then mode = nil return end
+      cur.headMiss = Kit.headMiss
+      if not cur.b.propMiss and not cur.headMiss then cur.propsDone = true end
       local want = station or lastStation[cur.key]
       if not (want and cur.spec.stations[want]) then want = cur.spec.order[1] end   -- 这型车没有那个乘员位
       enterStation(cur, want)
@@ -955,10 +1413,24 @@ function Interior.init(G)
     end
     if quickOptic and mode == "seat" and cur then   -- T 从车外直接进车长的主观瞄（下面按键那里记下的）
       quickOptic = false
-      if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
-      if enterOptic(cur, "primary") and optic then optic.quick = true end
+      if cur.spec.lock then   -- 坦克锁在炮长位：车长的主观瞄在炮长位的 T（第三个）上
+        if station ~= cur.spec.lock then enterStation(cur, cur.spec.lock) end   -- 车外按 T 记下的是车长位（内饰早就建好时不经过 enterStation）
+        local sp = cur.spec.stations[cur.spec.lock]
+        local slot = (sp and sp.optics and sp.optics.third) and "third" or "primary"
+        if enterOptic(cur, slot) and optic then optic.quick = true end
+      else
+        if station ~= "commander" and cur.spec.stations.commander then enterStation(cur, "commander") end
+        if enterOptic(cur, "primary") and optic then optic.quick = true end
+      end
     end
     local c = cur
+    -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画。
+    --   主瞄准镜（st.sight）也按观瞄设备算（全藏）。Drive 开镜 / 退镜时自己把整车零件设成藏 / 不藏（ownVisible），extHide 记着的状态就不对了：
+    --   镜子状态一变，缓存作废、按现在的乘员位重新藏一遍——原来退镜以后整辆车的外模型、原模型的简易内饰全露出来，
+    --   乘员眼前、车里的显示屏前面横着一块块外壳（用户 11-24：「开镜有bug……屏幕有一块色斑」）
+    local sightNow = st.sight == true
+    if c.sightWas ~= sightNow then c.sightWas, c.extHidden = sightNow, nil end
+    extHide(c, mode == "seat" or optic ~= nil or sightNow, optic ~= nil or sightNow)
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -985,6 +1457,7 @@ function Interior.init(G)
     if not c.model.Parent then c.model.Parent = workspace end
     frames(c, v)            -- 先按上一帧的动画算一遍（动画里要用到各组的位置）
     stepAnim(c, v, st, dt)
+    stepMovs(c, dt)         -- 旋钮、开关、按钮
     frames(c, v)            -- 动画改了子组，再算一遍
     stepRound(c)
     pose(c)
@@ -1020,11 +1493,14 @@ function Interior.init(G)
     else
       local LB = { driver = { "驾驶员", "driver" }, gunner = { "炮长", "gunner" }, commander = { "车长", "commander" }, loader = { "装填手", "loader" }, troop = { "载员", "troop" } }
       local fk = {}
+      local FN = { driver = 2, gunner = 3, commander = 4, loader = 5 }
+      local named = c.spec.lock ~= nil   -- 坦克：F2～F5 按名字（驾驶员 / 炮长 / 车长 / 装填手）；别的车按乘员位顺序
       for i, k2 in ipairs(c.spec.order) do
         local lb = LB[k2] or { k2, k2 }
-        table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
+        table.insert(fk, "F" .. ((named and FN[k2]) or (i + 1)) .. " " .. T(lb[1], lb[2]))
       end
-      hint.Text = T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
+      local tk = (st and st.d and st.d.turret) and T("方向键转炮塔、抬压炮 · WASD 开车 · ", "arrows traverse / elevate · WASD drive · ") or ""
+      hint.Text = tk .. T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
         "C exterior · " .. table.concat(fk, "  ") .. " · Shift / G / T optics · B free cam · L lights · U hide UI · wheel zoom")
     end
   end
@@ -1183,7 +1659,7 @@ function Interior.init(G)
   G.interiorScopeState = function() return scope end   -- 测试用
 
   ---------------------------------------------------------------- 其他观瞄设备（各乘员位的主镜 / 备用镜）
-  -- 资料对照：M1A2 SEPv3——炮长主瞄准镜 GPS（Drive.lua）、炮长辅助瞄准镜 GAS（M920，8 倍直瞄望远镜，主镜坏了用，分划按弹种刻距离）、
+  -- 资料对照：M1A2 SEPv2——炮长主瞄准镜 GPS（Drive.lua）、炮长辅助瞄准镜 GAS（M920，8 倍直瞄望远镜，主镜坏了用，分划按弹种刻距离）、
   --   车长独立热像仪 CITV（宽 / 窄视场，能自己转，猎-歼）、主瞄准镜延伸目镜 GPSE（车长看炮长的画面）、CROWS-LP 遥控武器站摄像头、
   --   驾驶员视觉增强器 DVE（AN/VAS-5 非制冷热像，车头方向）、后视热像摄像头 RVSS、装填手潜望镜（能 360° 转）；
   --   99A——炮长主镜 / 备用瞄准镜、车长周视瞄准镜（昼夜两用，独立转，猎-歼）、驾驶员微光夜视潜望镜
@@ -1249,9 +1725,14 @@ function Interior.init(G)
   local LOOKS = {
     day = { -0.1, 0.10, 0.0, RGB(255, 255, 255) }, whot = { -1, 0.45, -0.32, RGB(225, 225, 225), Color3.new(1, 1, 1) },
     bhot = { -1, 0.25, 0.22, RGB(235, 235, 235), Color3.new(0, 0, 0) }, nv = { -1, 0.35, 0.10, RGB(120, 255, 140) },
+    -- 昼光镜（CROWS 摄像头、辅助瞄准镜、潜望镜）夜里用（用户 11-22：「坦克第三人称驾驶开镜全屏都是黄色」——夜视仪的增亮还留着、
+    --   昼光档颜色照原样，沙漠的沙子过曝成满屏的黄）：夜里看出去暗、发灰、偏冷，跟真的昼光镜在夜里一样只看得清个轮廓
+    dayN = { -0.7, 0.12, -0.05, RGB(212, 220, 236) },
   }
   local function applyLook(look)
     clearOhl()
+    G.opticNv = look == "nv"   -- 夜视档：昼夜（DayNight.lua）照夜视仪那样增亮
+    if look == "day" and G.isNight and G.isNight() then look = "dayN" end
     local L = LOOKS[look]
     if not L then icc.Enabled = false return end
     icc.Enabled = true
@@ -1400,14 +1881,7 @@ function Interior.init(G)
     end
     return CFrame.lookAt(p, p + dir, up)
   end
-  local function ownHide(c, on)
-    local v = G.viewById and G.viewById(c.id)
-    if not v or not v.M then return end
-    for _, it in ipairs(v.M.parts) do
-      local p = it[1]
-      if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
-    end
-  end
+  local function ownHide(c, on) extHide(c, on, true) end
   exitOptic = function(c)
     if not optic then return end
     local o = optic.o
@@ -1421,6 +1895,7 @@ function Interior.init(G)
     end
     og.Enabled = false
     icc.Enabled = false
+    G.opticNv = false
     clearOhl()
     if o.useSight and G.driveSetSight then G.driveSetSight(false) end
     if c then ownHide(c, false) end
@@ -1430,6 +1905,8 @@ function Interior.init(G)
     local sp = c.spec.stations[station]
     local o = sp and sp.optics and sp.optics[slot]
     if not o then return false end
+    -- 坦克不带机枪（VehDefs.TANK_MG，用户 11-22「坦克不要弄哪个机枪」）：车长的遥控武器站这一位空着，按 T 没反应
+    if o.rws and G.drive and G.drive.d and G.drive.d.noRoofMg then return false end
     if o.kind == "gps" then   -- 炮长主瞄准镜（车长看就是延伸目镜）：照常的瞄准镜，头先凑过去
       scope.phase, scope.t, scope.cb = "in", 0, function() if G.driveSetSight then G.driveSetSight(true) end end
       return true
@@ -1454,9 +1931,11 @@ function Interior.init(G)
     for _, ch in ipairs(ret:GetChildren()) do ch:Destroy() end
     local vp = cam.ViewportSize
     local u = math.min(vp.X, vp.Y)
-    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or ((o.look == "day") and RGB(30, 30, 30) or RGB(235, 240, 235)))
+    -- 昼光镜的黑分划、黑字：夜里画面是暗的（LOOKS.dayN），黑的看不见，换成浅色
+    local dayLit = o.look == "day" and not (G.isNight and G.isNight())
+    local col = (o.look == "bhot") and RGB(20, 20, 20) or ((o.look == "nv") and RGB(190, 255, 190) or (dayLit and RGB(30, 30, 30) or RGB(235, 240, 235)))
     if o.ret == "crows" or o.ret == "rear" then col = RGB(240, 240, 240) end
-    if o.ret == "gas" or o.ret == "gascn" then col = RGB(20, 20, 20) end
+    if (o.ret == "gas" or o.ret == "gascn") and dayLit then col = RGB(20, 20, 20) end
     ret.Size = UDim2.fromOffset(0, 0)
     ;(RETS[o.ret] or RETS.none)(u, col)
     -- 镜框形状：圆的目镜、长方形的屏幕、装填手潜望镜的长条
@@ -1473,7 +1952,7 @@ function Interior.init(G)
     oName.Position = UDim2.new(0.5, -hole.Size.X.Offset / 2 + 10, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oName.Size = UDim2.fromOffset(300, 20)
     oName.Text = o.name or ""
-    oName.TextColor3 = (o.look == "day" and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
+    oName.TextColor3 = (dayLit and o.shape == "circle") and RGB(20, 20, 20) or RGB(230, 236, 230)
     oInfo.Position = UDim2.new(0.5, hole.Size.X.Offset / 2 - 310, 0.5, -hole.Size.Y.Offset / 2 + 6)
     oInfo.Size = UDim2.fromOffset(300, 20)
     oInfo.TextColor3 = oName.TextColor3
@@ -1569,6 +2048,7 @@ function Interior.init(G)
     sg.LightInfluence = 1
     sg.Parent = part
     local W, H = part.Size.X * 120, part.Size.Z * 120
+    local G2 = { part = part, sg = sg, list = {} }
     for _ = 1, 26 do
       local f = Instance.new("Frame")
       f.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1579,7 +2059,10 @@ function Interior.init(G)
       f.Size = UDim2.fromOffset(8 + rng:NextNumber() * 60, 1)
       f.Rotation = rng:NextNumber() * 180
       f.Parent = sg
+      -- 反光（用户 11-22：「一些小划痕有反光效果」）：每道划痕自己的方向——头一动，正好对上光的那几道一闪一闪
+      table.insert(G2.list, { f = f, tr = f.BackgroundTransparency, ph = rng:NextNumber() * 6.283, k = 3 + rng:NextNumber() * 9 })
     end
+    table.insert(glintList, G2)
     for _ = 1, 3 do   -- 污渍
       local f = Instance.new("Frame")
       f.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1593,6 +2076,120 @@ function Interior.init(G)
       local cr = Instance.new("UICorner")
       cr.CornerRadius = UDim.new(0.5, 0)
       cr.Parent = f
+    end
+  end
+  -- 光滑的座舱盖（InteriorDefs 给的 spec.canopy：沿机身一圈圈截面的 z、半径）：EditableMesh 拼成一整块光滑网格，
+  --   法线按回转曲面算（看着是弧形、反光是一整片连续的高光，不是一条条棱），每个三角形正反各一份（从里面、外面都看得见）；
+  --   玻璃材质的折射也跟着曲面走——从里面看出去外面的东西带一点点畸变（用户 11-22：「视角带点畸变」）。
+  --   拼成了原来的平板就不画（带划痕的几块透明度 1，只留划痕）；拼不成（Studio 游戏设置 → 安全里没开 Mesh / Image API）：还用平板，反光调弱
+  local meshWarned = false
+  local function smoothCanopy(c)
+    local cp = c.spec.canopy
+    if not cp or c.canopyTried then return end
+    c.canopyTried = true
+    task.spawn(function()
+      local ok, mp, ctr = pcall(function()
+        local AS = game:GetService("AssetService")
+        local em = AS:CreateEditableMesh()
+        local N, rows = cp.cols, cp.rows
+        local P, Nn = {}, {}
+        local lo, hi = V(1e9, 1e9, 1e9), V(-1e9, -1e9, -1e9)
+        for j, row in ipairs(rows) do
+          local a0, a1 = rows[math.max(1, j - 1)], rows[math.min(#rows, j + 1)]
+          local dz = a1.z - a0.z
+          local drdz = (math.abs(dz) > 1e-6) and (a1.r - a0.r) / dz or 0
+          P[j], Nn[j] = {}, {}
+          for i = 0, N do
+            local a = math.rad(-90 + 180 * i / N)
+            local p = V(math.sin(a) * row.r, cp.cy + math.cos(a) * row.r, row.z) * S
+            P[j][i] = p
+            Nn[j][i] = V(math.sin(a), math.cos(a), -drdz).Unit
+            lo = V(math.min(lo.X, p.X), math.min(lo.Y, p.Y), math.min(lo.Z, p.Z))
+            hi = V(math.max(hi.X, p.X), math.max(hi.Y, p.Y), math.max(hi.Z, p.Z))
+          end
+        end
+        local center = (lo + hi) / 2
+        local vid, nOut, nIn = {}, {}, {}
+        for j = 1, #rows do
+          vid[j], nOut[j], nIn[j] = {}, {}, {}
+          for i = 0, N do
+            vid[j][i] = em:AddVertex(P[j][i] - center)
+            nOut[j][i] = em:AddNormal(Nn[j][i])
+            nIn[j][i] = em:AddNormal(-Nn[j][i])
+          end
+        end
+        local function tri(A, B, C)   -- A、B、C = { j, i }：外面一份（叉乘朝外）、里面一份（反着绕、法线朝里）
+          local pa, pb, pc = P[A[1]][A[2]], P[B[1]][B[2]], P[C[1]][C[2]]
+          local nrm = Nn[A[1]][A[2]] + Nn[B[1]][B[2]] + Nn[C[1]][C[2]]
+          if (pb - pa):Cross(pc - pa):Dot(nrm) < 0 then B, C = C, B end
+          local f1 = em:AddTriangle(vid[A[1]][A[2]], vid[B[1]][B[2]], vid[C[1]][C[2]])
+          em:SetFaceNormals(f1, { nOut[A[1]][A[2]], nOut[B[1]][B[2]], nOut[C[1]][C[2]] })
+          local f2 = em:AddTriangle(vid[A[1]][A[2]], vid[C[1]][C[2]], vid[B[1]][B[2]])
+          em:SetFaceNormals(f2, { nIn[A[1]][A[2]], nIn[C[1]][C[2]], nIn[B[1]][B[2]] })
+        end
+        for j = 1, #rows - 1 do
+          for i = 0, N - 1 do
+            if (P[j][i] - P[j][i + 1]).Magnitude > 1e-4 then tri({ j, i }, { j, i + 1 }, { j + 1, i + 1 }) end
+            if (P[j + 1][i] - P[j + 1][i + 1]).Magnitude > 1e-4 then tri({ j, i }, { j + 1, i + 1 }, { j + 1, i }) end
+          end
+        end
+        local part = AS:CreateMeshPartAsync(Content.fromObject(em))
+        return part, center
+      end)
+      if not ok or not mp then
+        for _, p in ipairs(cp.panes or {}) do p.Reflectance = math.min(p.Reflectance, 0.035) end
+        if not meshWarned then
+          meshWarned = true
+          warn("[座舱] 光滑座舱盖生成不了（还用平板拼的；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API）：" .. tostring(mp))
+        end
+        return
+      end
+      if cur ~= c or not c.model then mp:Destroy() return end
+      mp.Name = "CanopySmooth"
+      mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch, mp.CastShadow = true, false, false, false, false
+      mp.Material = Enum.Material.Glass
+      mp.Color = cp.color or RGB(54, 62, 68)
+      mp.Transparency = cp.trans or 0.88
+      mp.Reflectance = cp.refl or 0.1
+      local off = CF(ctr)
+      local hw = c.b.groups.hull.world   -- 刚拼好座舱、还没摆过一帧时是空的：下一帧 pose 摆
+      if hw then mp.CFrame = hw * off end
+      mp.Parent = c.model
+      table.insert(c.b.parts, { mp, c.b.groups.hull, off })
+      c.plist[#c.b.parts] = mp
+      for _, p in ipairs(cp.panes or {}) do p.Transparency = 1 end   -- 平板不画了（带划痕的几块只剩划痕）
+      c.canopyMesh = mp
+    end)
+  end
+  -- 划痕反光：迎着日 / 月光（夜里还有照明弹）看过去，玻璃上的细划痕亮起来；每道按自己的方向闪（头一动一闪一闪）
+  local function stepGlints(c)
+    if #glintList == 0 then return end
+    local ok, sun = pcall(function() return Lighting:GetSunDirection() end)
+    local light, strong = nil, 1
+    if ok and sun and sun.Y > -0.05 then light = sun end
+    if not light then
+      local ok2, moon = pcall(function() return Lighting:GetMoonDirection() end)
+      if ok2 and moon and moon.Y > 0 then light, strong = moon, 0.55 end
+    end
+    local fl = G.brightFlare and G.brightFlare(cam.CFrame.Position)   -- 天上的照明弹（Warfx）：最亮的那颗
+    local cp = cam.CFrame.Position
+    local hy = look.yaw * 3.1 + look.pitch * 2.3
+    for _, g2 in ipairs(glintList) do
+      local p = g2.part
+      if p.Parent then
+        local v = (p.Position - cp)
+        local vu = v.Magnitude > 1e-3 and v.Unit or cam.CFrame.LookVector
+        local k = 0
+        if light then k = math.max(0, (vu:Dot(light) - 0.45) / 0.55) * strong end
+        if fl then k = math.max(k, math.max(0, (vu:Dot((fl - cp).Unit) - 0.55) / 0.45) * 0.8) end
+        k = k * k
+        g2.sg.LightInfluence = 1 - 0.8 * k
+        g2.sg.Brightness = 1 + 2.5 * k
+        for _, s3 in ipairs(g2.list) do
+          local tw = 0.5 + 0.5 * math.sin(s3.ph + hy * s3.k)
+          s3.f.BackgroundTransparency = s3.tr - (s3.tr - 0.25) * k * tw * tw
+        end
+      end
     end
   end
   -- 迎着日月光的眩光：光晕几圈 + 划痕反光的放射纹 + 玻璃整体发白一点
@@ -1749,7 +2346,8 @@ function Interior.init(G)
               if math.abs(az) < 60 then
                 local kind = em:GetAttribute("Kind")
                 if kind == "air" or kind == "veh" or kind == "ship" then
-                  table.insert(airContacts, { az = az, km = dist / S / 1000, friend = em:GetAttribute("Team") == d.team,
+                  table.insert(airContacts, { az = az, km = dist / S / 1000, friend = em:GetAttribute("Team") == d.team, kind = kind,   -- kind：态势图分飞机 / 地面目标的符号
+                    typ = entTyp(kind, em:GetAttribute("Cat"), em:GetAttribute("Model")),   -- 地面目标按兵种画军标（坦克、装甲车、防空……）
                     locked = st.lock and st.lock.id == em:GetAttribute("EntId") })
                 end
               end
@@ -1805,6 +2403,7 @@ function Interior.init(G)
       b:setAnim("pedR" .. q, CF(0, 0, -yw * 0.05))
     end
     b:setAnim("thr", CF(0, 0, -clamp((st.thr or 0) / 130, 0, 1) * 0.14))
+    b:setAnim("thr2", CF(0, 0, -clamp((st.thr or 0) / 130, 0, 1) * 0.14))   -- 另一座那组（B-2）一起推；没有这组时不管
     b:setAnim("gearh", ANG(rad(((st.gear or 0) > 0.5) and 0 or -55), 0, 0))
     local now = os.clock()
     local hp = st.em and st.em:GetAttribute("Hp")
@@ -1839,11 +2438,22 @@ function Interior.init(G)
     local e = c.eyeBody
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and it.tag ~= "pilot" then
+      -- 原模型自带的座舱（F-16，spec.modelPit）：座舱件（pit == "Pit"）就是内饰本身，不藏；原模型的平显（PitHud，玻璃上画死了符号）照旧藏
+      if p and p:IsA("BasePart") and it.tag ~= "pilot" and not (c.spec.modelPit and it.pit == "Pit") then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         local glassy = p.Material == Enum.Material.Glass or (p.Transparency > 0.15 and p.Transparency < 1)
         local dist = cf and (cf.Position - e).Magnitude or math.huge
         local near = dist < 2.0 * S and p.Size.Magnitude < 3.2 * S
+        -- 外模型自带的座舱（仪表板、座椅、平显、驾驶杆……原模型按材质并成的块，比 3.2 米大）挡在内饰的屏幕前面（用户 11-22：「飞机的电子屏会被挡住」）：
+        --   包围球碰到眼睛周围那块座舱空间（左右 0.55、上 0.45、下 1.1、前 1.3、后 0.7 米）、又不是整架飞机那么大（最长不到 8 米）的也不画
+        if not near and cf and math.max(p.Size.X, p.Size.Y, p.Size.Z) < 8 * S then
+          local q = cf.Position - e
+          local cx = math.clamp(q.X, -0.55 * S, 0.55 * S)
+          local cy = math.clamp(q.Y, -1.1 * S, 0.45 * S)
+          local cz = math.clamp(q.Z, -1.3 * S, 0.7 * S)
+          local gap = (q - V(cx, cy, cz)).Magnitude
+          if gap < p.Size.Magnitude / 2 then near = true end
+        end
         -- 直升机的座舱窗是一整个大玻璃球（不是座舱盖件）：眼睛附近的玻璃都不画，看出去只隔内饰自己那层
         if (it.canopy and glassy) or near or (glassy and dist < 4.5 * S) then table.insert(list, p) end
       end
@@ -1854,22 +2464,85 @@ function Interior.init(G)
     for _, p in ipairs(c.zone or {}) do p.LocalTransparencyModifier = on and 1 or 0 end
     c.zoneOn = on
   end
+  -- 线段 o→q 穿不穿过一个方块（cf、半边长 half）；o 在方块里面的不算（Roblox 只画朝外的面，从里面看不见）
+  local function segHitsBox(o, q, cf, half)
+    local lo, lq = cf:PointToObjectSpace(o), cf:PointToObjectSpace(q)
+    if math.abs(lo.X) <= half.X and math.abs(lo.Y) <= half.Y and math.abs(lo.Z) <= half.Z then return false end
+    local dv = lq - lo
+    local t0, t1 = 0, 1
+    for _, a in ipairs({ { lo.X, dv.X, half.X }, { lo.Y, dv.Y, half.Y }, { lo.Z, dv.Z, half.Z } }) do
+      local x, dd, h = a[1], a[2], a[3]
+      if math.abs(dd) < 1e-9 then
+        if x < -h or x > h then return false end
+      else
+        local u, w = (-h - x) / dd, (h - x) / dd
+        if u > w then u, w = w, u end
+        if u > t0 then t0 = u end
+        if w < t1 then t1 = w end
+        if t0 > t1 then return false end
+      end
+    end
+    return true
+  end
+  -- 挡在屏幕前面的外模型零件也不画（用户 11-22：「飞机的电子屏会被挡住」）：从这个座位的眼睛往每块屏幕（1.6 米以内）的中心和四个角打线，
+  --   穿过的零件都收进 zone——轰-6 没导入模型时，座舱下面那段机身方块有 8.6 米长（上面按大小挑的规则不管），顶面正好盖住仪表板。
+  --   都在机体坐标里算（外模型的 cf0 / H·off，内饰按这一帧的 v.cf 摆的），飞着进座舱也不差一帧；整架飞机那么大的件（最长超过机长、翼展的一半）不动
+  local function occluders(c, v, eyeW)
+    local M = v.M
+    if not M or not M.items or not v.cf then return end
+    local eB = v.cf:PointToObjectSpace(eyeW)
+    local pts = {}
+    for _, s in ipairs(c.b.screens) do
+      if s.page ~= "hud" and s.part and s.part:IsA("BasePart") then
+        local cf, hx, hy = s.part.CFrame, s.part.Size.X * 0.45, s.part.Size.Y * 0.45
+        for _, k in ipairs({ { 0, 0 }, { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 } }) do
+          local q = v.cf:PointToObjectSpace((cf * CF(k[1] * hx, k[2] * hy, 0)).Position)
+          local len = (q - eB).Magnitude
+          if len < 1.6 * S and len > 0.1 * S then table.insert(pts, eB + (q - eB) * (1 - 0.02 * S / len)) end
+        end
+      end
+    end
+    if #pts == 0 then return end
+    local have = {}
+    for _, p in ipairs(c.zone) do have[p] = true end
+    local big = 0.5 * math.max(v.def.L or 0, v.def.W or 0)
+    for _, it in ipairs(M.items) do
+      local p = it.p
+      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and not it.pit and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
+        local cf = it.cf0 or (it.H and it.off and it.H * it.off)
+        if cf and math.max(p.Size.X, p.Size.Y, p.Size.Z) < big then
+          local half = p.Size / 2
+          for _, q in ipairs(pts) do
+            if segHitsBox(eB, q, cf, half) then
+              have[p] = true
+              table.insert(c.zone, p)
+              if c.zoneOn then p.LocalTransparencyModifier = 1 end
+              break
+            end
+          end
+        end
+      end
+    end
+  end
   stepAir = function(dt, st)
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.cf or not v.def then return end
     if cur and cur.id ~= st.id then teardown() end
-    if mode == nil or st.eo then   -- 车外 / 看光电吊舱（Fly.lua 管镜头）：座舱收起来，外模型放回来
+    if mode == nil or st.eo or st.bsight then   -- 车外 / 看光电吊舱 / 轰炸瞄准镜（Fly.lua 管镜头）：座舱收起来，外模型放回来
       if cur and cur.model.Parent then cur.model.Parent = nil end
       if cur and cur.pilotsHidden and v.M then pcall(AM.setPilots, v.M, true) cur.pilotsHidden = false end
       if cur and cur.zoneOn then zoneHide(cur, false) end
       hint.Visible, dot.Visible, tip.Visible = false, false, false
       cfx.Enabled = false
-      hover = nil
+      hover, hoverScr = nil, nil
       return
     end
     if not cur then
+      Kit.headMiss = nil
       cur = build(st, v)
       if not cur then mode = nil return end
+      cur.headMiss = Kit.headMiss
+      if not cur.b.propMiss and not cur.headMiss then cur.propsDone = true end
       cur.eyeBody = airEye(v, cur.spec)
       cur.zone = zoneParts(cur, v)
       if cur.spec.ihadss then   -- 阿帕奇的头盔单目显示（IHADSS）：符号画在眼前一块跟着头走的板上（视场 40°×30°，绿色）
@@ -1892,8 +2565,9 @@ function Interior.init(G)
         cur.ihadss = s2
       end
       for i, g in ipairs(cur.spec.glass or {}) do scratches(g, i * 977 + #st.d.id) end
+      smoothCanopy(cur)   -- 光滑座舱盖（拼成了平板就不画）
       enterStation(cur, station or lastStation[cur.key] or cur.spec.order[1])
-      look.fovT, look.fov = 85, 85
+      look.fovT, look.fov = 72, 72   -- 原来 85°：屏看着小、字看不清（用户 11-22：离电子屏不够近）
     end
     local c = cur
     if not c.model.Parent then c.model.Parent = workspace end
@@ -1905,6 +2579,11 @@ function Interior.init(G)
     pose(c)
     -- 镜头：头跟着 Fly 的瞄准方向（有人开的固定翼 WASD 飞，瞄准方向就是航迹；无人机是鼠标给的方向）/ 镜头方向（直升机），限在脖子转得到的范围；大过载头往下沉、侧向过载歪
     local base, sp = stationCF(c, station)
+    if base and mode == "seat" and c.occFor ~= station then   -- 换到这个座位后第一帧（内饰已经按这一帧摆好）：挡屏幕的外模型零件收起来
+      c.occFor = station
+      local ok, err = pcall(occluders, c, v, base.Position)
+      if not ok then warn("[座舱] 挡屏幕的外模型：" .. tostring(err)) end
+    end
     if base then
       if mode == "seat" then
         local aim
@@ -1964,6 +2643,7 @@ function Interior.init(G)
     end
     stepKeys(c)
     stepGlare()
+    stepGlints(c)
     hint.Visible = not hideUI
     hint.Text = T("V 出座舱 · 鼠标转头看（停 2.5 秒回正、C 立刻回正）· 滚轮变焦 · 中间小点对准屏幕边的按键左键按 · K 导演镜头 · L 座舱灯 · U 藏界面",
       "V exit cockpit · mouse turns your head (recenters after 2.5 s, C at once) · wheel zoom · dot on a bezel key + click · K free cam · L lights · U hide UI")
@@ -1975,9 +2655,10 @@ function Interior.init(G)
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
+        if hover.mov then movPress(cur, hover.mov) return end
         local s2 = hover.screen
         if s2 and s2.onKey then pcall(s2.onKey, hover.label, cur.env.act) s2.nextT = 0 end
         hover.part.Color = RGB(255, 255, 255)
@@ -2010,6 +2691,10 @@ function Interior.init(G)
     end
     local st = G.drive
     if not st or not st.d or G.myVeh ~= st then return end
+    if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and hover.mov and mode == "seat" and cur then   -- 拨对准的那个旋钮 / 开关 / 按钮
+      movPress(cur, hover.mov)
+      return
+    end
     if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then   -- 按下对准的那个键
       local s2 = hover.screen
       if s2 and s2.onKey then
@@ -2054,7 +2739,7 @@ function Interior.init(G)
       end
     elseif KEYST[k] then
       local want = KEYST[k]
-      if cur then   -- 按这型车的乘员位顺序（F2 第一个、F3 第二个……；坦克正好是驾驶员 / 炮长 / 车长 / 装填手）
+      if cur and not (cur.spec.lock and cur.spec.stations[want]) then   -- 坦克有这个名字的乘员位就去它（F2 驾驶员、F3 炮长、F4 车长、F5 装填手）；别的车按这型车的乘员位顺序
         local idx = ({ [Enum.KeyCode.F2] = 1, [Enum.KeyCode.F3] = 2, [Enum.KeyCode.F4] = 3, [Enum.KeyCode.F5] = 4 })[k]
         want = cur.spec.order[idx] or want
       end

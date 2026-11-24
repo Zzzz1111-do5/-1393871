@@ -61,34 +61,44 @@ H.run(2)
 check(PD.alive, "守方在营地出生了")
 print("① 改装出车")
 H.goPad(G, def, pads[1])
-act(def, "padSpawn", pads[1].id, { aps = "hk", roof = "gau8" }, "m1a2")
+-- 用户 11-22：「坦克我能选择在哪个地方贴爆反」——这辆只在首上贴（侧裙板是原车自带的，拆不掉）；「坦克不要弄哪个机枪」——没有机枪、没有车顶武器这一位
+act(def, "padSpawn", pads[1].id, { aps = "hk", era = "gl" }, "m1a2")
 H.run(1)
 local eA = nil
 for _, e in ipairs(G.vehicles) do if e.padId == pads[1].id and e.alive then eA = e end end
 check(eA ~= nil, "按改装生成了一辆 M1A2")
 if not eA then H.summary() process.exit(1) end
-check(eA.def.mods and eA.def.mods.aps == "hk" and eA.def.mods.roof == "gau8", "改装：" .. tostring(eA.model:GetAttribute("Mods")))
+check(eA.def.mods and eA.def.mods.aps == "hk" and eA.def.mods.era == "gl+sk" and eA.def.mods.roof == nil, "改装：" .. tostring(eA.model:GetAttribute("Mods")))
 check(eA.aps and eA.aps.n == 4 and eA.model:GetAttribute("Aps") == 4, "主动防御 4 发")
-check(table.find(eA.def.weapons, "gau8") ~= nil and #eA.def.weapons == 3, "武器表：" .. table.concat(eA.def.weapons, ", "))
+check(#eA.def.weapons == 1 and eA.def.weapons[1] == "gun120", "只有主炮，没有机枪：" .. table.concat(eA.def.weapons, ", "))
 local base0 = VD.get("m1a2")
-check(eA.def.speed < base0.speed and math.abs(eA.def.speed - base0.speed * 0.97 * 0.95) < 0.01, string.format("车速 %.1f → %.1f", base0.speed, eA.def.speed))
-check(eA.era and eA.era.n >= 8, "爆反块 " .. tostring(eA.era and eA.era.n))
+local zl = TM.eraZones("m1a2")
+local wantSpd = base0.speed * 0.97 * (1 + TM.ZSPD * (#zl - 2))
+check(#zl == 4 and math.abs(eA.def.speed - wantSpd) < 0.01, string.format("车速 %.1f → %.1f（主动防御重一点；四个区少贴 %d 个，轻一点）", base0.speed, eA.def.speed, #zl - 2))
+local L = TM.eraOf("m1a2")
+local nFit = 0
+for _, b in ipairs(L.b) do if b[17] == "gl" or b[17] == "sk" then nFit += 1 end end
+check(eA.era and eA.era.n == nFit and eA.era.n < #L.b, string.format("爆反块：只有首上、侧裙板的 %d 块起作用（一共 %d 块位置）", eA.era and eA.era.n or 0, #L.b))
 -- 客户端的模型
 local vA = CD.viewById and CD.viewById(eA.id)
-local nKit, nTur = 0, 0
-if vA and vA.M then
-	for _, it in ipairs(vA.M.parts) do
-		if it[2] == "kit" then nKit += 1 end
-		if it[2] == "turret" then nTur += 1 end
-	end
+check(vA and vA.M and vA.M.mods and vA.M.mods.aps == "hk" and vA.M.mods.era == "gl+sk", "客户端按改装拼的车")
+local offTf, onGl = 0, 0
+for i, b in ipairs(L.b) do
+	local e2 = vA and vA.M and vA.M.era and vA.M.era[i]
+	if e2 and b[17] == "tf" and e2.off2 and #e2.parts == 0 then offTf += 1 end
+	if e2 and b[17] == "gl" and not e2.off2 then onGl += 1 end
 end
-check(vA and vA.M and vA.M.mods and vA.M.mods.aps == "hk", "客户端按改装拼的车")
-check(nKit >= 10, "加特林的零件（kit 组）" .. nKit .. " 块")
-check(vA and vA.M and vA.M.kpiv ~= nil, "加特林的俯仰轴")
-local L = TM.eraOf("m1a2")
-local mz = TM.kitMuzzle(L, eA.root.CFrame * CF.new(0, -eA.def.H / 2, 0), 0, 0)
-local rel = (eA.root.CFrame * CF.new(0, -eA.def.H / 2, 0)):PointToObjectSpace(mz.Position)
-check(rel.Y > 7.5 and rel.Z < -2, string.format("加特林的炮口在炮塔顶上、朝前（高 %.1f，前 %.1f）", rel.Y, -rel.Z))
+check(offTf > 0 and onGl > 0, string.format("客户端：炮塔正面没贴（%d 块位置空着）、首上贴了（%d 块）", offTf, onGl))
+check(vA and vA.M and vA.M.kpiv == nil, "没有车顶加特林")
+-- 没贴的区：炮塔正面挨火箭弹，爆反不起作用（满伤害）
+do
+	local tfi = nil
+	for i, b in ipairs(L.b) do if b[17] == "tf" then tfi = i break end end
+	local baseA = eA.root.CFrame * CF.new(0, -eA.def.H / 2, 0)
+	local c = TM.blockCF(L, L.b[tfi], baseA, eA.ty or 0)
+	local i2 = G.eraBlast and G.eraBlast(c.Position + c.ZVector * 0.5, G.Config.Weapons.rpg, -c.ZVector)
+	check(i2 == nil or i2[eA] == nil, "炮塔正面没贴爆反：火箭弹打上去不炸爆反块")
+end
 
 print("② 主动防御拦火箭弹，打光以后爆反接住")
 local RPG = G.Config.Weapons.rpg
@@ -184,7 +194,20 @@ for _, d in pg:GetDescendants() do if d:IsA("TextButton") and d.Name == "GarageG
 check(go ~= nil, "有「出车」按钮")
 if go then H.press(def, go) end
 H.run(0.3)
-check(got and got.aps == "hk" and got.era == "era" and got.roof == "stock", "点「出车」把改装交给了回调：" .. (got and TM.encode(got) or "-"))
+check(got and got.aps == "hk" and got.era == TM.cleanEra("ztz99a", nil) and got.roof == nil, "点「出车」把改装交给了回调：" .. (got and TM.encode(got) or "-"))
+-- 改装界面里拆掉 99A 炮塔正面的补贴爆反（其余三个区原车自带，拆不掉）
+got = nil
+as(def, function() CD.openGarage("ztz99a", { aps = "hk" }, function(m) got = m end) end)
+H.run(0.3)
+as(def, function() CD.garageToggleZone("tf") CD.garageToggleZone("sk") end)
+H.run(0.2)
+local S2 = CD.garageState and CD.garageState()
+check(S2 and S2.mods.era == "ts+gl+sk", "点炮塔正面：拆掉了；点侧裙板（原车自带）：拆不掉（" .. tostring(S2 and S2.mods.era) .. "）")
+go = nil
+for _, d in pg:GetDescendants() do if d:IsA("TextButton") and d.Name == "GarageGo" then go = d end end
+if go then H.press(def, go) end
+H.run(0.3)
+check(got and got.era == "ts+gl+sk", "出车带上选的爆反区：" .. (got and TM.encode(got) or "-"))
 check(not CD.garageOpen(), "界面关了")
 
 print("⑤ 驾驶界面：敌人头顶的名字和距离、被发现、爆反 / 主动防御剩多少、圆形小地图")

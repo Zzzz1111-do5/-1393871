@@ -129,7 +129,37 @@ function Garage.init(G)
     end
   end
 
+  -- 爆反分区（用户 11-22：「坦克我能选择在哪个地方贴爆反」）：这一区块的中心（白圈放这里）、装 / 拆
+  local function zonePoint(z)
+    local L = S and S.M and S.M.eraL
+    if not L then return nil end
+    local sum, n = V(), 0
+    for _, b in ipairs(L.b) do
+      if b[17] == z then sum += V(b[2], b[3], b[4]) n += 1 end
+    end
+    return n > 0 and sum / n or nil
+  end
+  -- 区开关（老界面）：按区改贴哪几格（TankMods.cellsInZones），型号不动
+  local function setZones(zs)
+    local L = TM.eraOf(S.id)
+    if not L then return end
+    S.mods.ep = TM.epEncode(TM.cellsInZones(S.id, zs), #L.b)
+    S.mods = TM.clean(S.id, S.mods)
+  end
   local refresh
+  local function toggleZone(z)
+    if not S then return end
+    local list, own = TM.eraZones(S.id)
+    if own[z] then return end
+    local on = TM.eraSet(S.mods, S.id)
+    on[z] = not on[z]
+    local out = {}
+    for _, q in ipairs(list) do if on[q] or own[q] then table.insert(out, q) end end
+    setZones(out)
+    S.focus, S.open = "era", "era"
+    refresh(true)
+  end
+  G.garageToggleZone = toggleZone   -- 测试用
   local function choose(slot, opt)
     if not S then return end
     S.mods[slot] = opt
@@ -165,6 +195,40 @@ function Garage.init(G)
     local F = TM.FOR[S.id]
     local order = 0
     for _, slot in ipairs(TM.SLOTS) do
+      if slot == "ep" then
+        -- 爆反贴在哪几格：在下面爆反那一位里按区开关（逐格点车身的界面还在做）
+      elseif slot == "era" then   -- 爆反：型号 + 每个区一个开关
+        local zl, own = TM.eraZones(S.id)
+        local on = TM.eraSet(S.mods, S.id)
+        local names = {}
+        for _, z in ipairs(zl) do if on[z] then table.insert(names, T("gar.zone." .. z)) end end
+        order += 1
+        local eb = card(T("gar.slot.era") .. " · " .. T("gar.opt." .. (S.mods.era or "none")), (#names > 0) and table.concat(names, " · ") or T("gar.opt.none"), 56, (S.open == "era") and RGB(26, 44, 32) or nil, order)
+        eb.Activated:Connect(function()
+          if not S then return end
+          S.open = (S.open == "era") and nil or "era"
+          S.focus = "era"
+          refresh(false)
+        end)
+        if S.open == "era" then
+          for _, opt in ipairs(F.era or {}) do   -- 爆反型号（FY-2 / FY-4、ARAT-1 / ARAT-2）
+            order += 1
+            local sel = S.mods.era == opt
+            local ob, t1 = card("    " .. T("gar.opt." .. opt), "", 34, sel and RGB(40, 98, 54) or RGB(14, 17, 20), order)
+            t1.TextColor3 = sel and RGB(255, 255, 255) or RGB(206, 212, 214)
+            ob.Activated:Connect(function() choose("era", opt) end)
+          end
+          for _, z in ipairs(zl) do
+            order += 1
+            local sel = on[z] == true
+            local zb, t1 = card("    " .. T("gar.zone." .. z), own[z] and T("gar.zoneOwn") or (sel and T("gar.zoneOn") or T("gar.zoneOff")), 44,
+              sel and RGB(40, 98, 54) or RGB(14, 17, 20), order)
+            zb.Name = "Zone_" .. z
+            t1.TextColor3 = sel and RGB(255, 255, 255) or RGB(206, 212, 214)
+            if not own[z] then zb.Activated:Connect(function() toggleZone(z) end) end
+          end
+        end
+      else
       local list = F[slot] or {}
       local cur = S.mods[slot]
       local fixed = #list <= 1
@@ -185,10 +249,16 @@ function Garage.init(G)
           ob.Activated:Connect(function() choose(slot, opt) end)
         end
       end
+      end
     end
-    local f = S.focus or S.mods.era
-    infoT.Text = T("gar.opt." .. f)
-    infoD.Text = T("gar.d." .. f)
+    local f = S.focus or "era"
+    if f == "era" then
+      infoT.Text = T("gar.slot.era")
+      infoD.Text = T("gar.d.eraZones")
+    else
+      infoT.Text = T("gar.opt." .. f)
+      infoD.Text = T("gar.d." .. f)
+    end
     local dd = TM.applyDef(d, S.mods)
     infoS.Text = T("gar.speed", math.floor(dd.speed / 2.8 * 3.6 + 0.5))
     title.Text = T("gar.title") .. "  ·  " .. T("veh." .. S.id)
@@ -249,9 +319,20 @@ function Garage.init(G)
     local vs = workspace.CurrentCamera.ViewportSize
     local tanY = math.tan(math.rad(vcam.FieldOfView) / 2)
     for _, b in ipairs(spotBtns) do
-      local wp = slotPoint(b:GetAttribute("Slot"))
+      local zk = b:GetAttribute("Zone")
+      local wp
+      if zk then wp = (S.open == "era") and zonePoint(zk) or nil else wp = slotPoint(b:GetAttribute("Slot")) end
       local lp = wp and vcam.CFrame:PointToObjectSpace(wp)
-      if lp and lp.Z < -0.5 then
+      if zk and lp and lp.Z < -0.5 then   -- 爆反分区的白圈：装了的实心绿、没装的空心
+        local nx = lp.X / (-lp.Z * tanY * (vs.X / math.max(vs.Y, 1)))
+        local ny = lp.Y / (-lp.Z * tanY)
+        b.Visible = true
+        b.Position = UDim2.fromOffset((nx + 1) / 2 * vs.X, (1 - ny) / 2 * vs.Y)
+        local on = TM.eraSet(S.mods, S.id)[zk]
+        b.Size = UDim2.fromOffset(22, 22)
+        b.BackgroundColor3 = on and ACC or RGB(255, 255, 255)
+        b.BackgroundTransparency = on and 0.15 or 0.85
+      elseif lp and lp.Z < -0.5 and not zk then
         local nx = lp.X / (-lp.Z * tanY * (vs.X / math.max(vs.Y, 1)))
         local ny = lp.Y / (-lp.Z * tanY)
         b.Visible = true
@@ -291,9 +372,26 @@ function Garage.init(G)
       b.Activated:Connect(function()
         if not S then return end
         S.open = slot
-        S.focus = S.mods[slot]
+        S.focus = (slot == "era") and "era" or S.mods[slot]
         refresh(false)
       end)
+      table.insert(spotBtns, b)
+    end
+    for _, z in ipairs((TM.eraZones(id))) do   -- 爆反每个区一个白圈（展开爆反那一位时显示，点一下装 / 拆）
+      local b = Instance.new("TextButton")
+      b.Text = ""
+      b.Name = "ZoneSpot_" .. z
+      b.AnchorPoint = Vector2.new(0.5, 0.5)
+      b.BackgroundColor3 = RGB(255, 255, 255)
+      b.BorderSizePixel = 0
+      b.Visible = false
+      b:SetAttribute("Zone", z)
+      local cr = Instance.new("UICorner")
+      cr.CornerRadius = UDim.new(1, 0)
+      cr.Parent = b
+      ui.stroke(b, RGB(255, 255, 255), 2, 0.1)
+      b.Parent = spots
+      b.Activated:Connect(function() toggleZone(z) end)
       table.insert(spotBtns, b)
     end
     refresh(true)

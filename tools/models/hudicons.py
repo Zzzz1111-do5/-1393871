@@ -11,6 +11,7 @@
 #     机头前方的全息标记（noseJet / noseHeli：只描边、往前一根线）、热成像的扫描线和噪点（scanTex / noiseTex）、
 #     全息瞄准镜式的准心（holoJetCore / holoJetGlow、holoHeliCore / holoHeliGlow：细芯 + 光晕两张叠着）、
 #     发光的线（glowLine 菱形的边、glowCorner 锁定的直角、brkAlt / brkSpd 高度速度下面的折线、aimRing 准星的细圈）
+#   · 舰艇：vehicons.mjs SET=ship 拍的 ship_<型号>.png（召唤界面、码位牌子上的侧影，用户 11-23）
 #   用法：python3 -I tools/models/hudicons.py <侧面图目录> <输出 HudIcons.lua>（输出文件已有的图、这次目录里没有的留着）
 import base64, math, os, sys
 import numpy as np
@@ -577,8 +578,9 @@ if os.path.exists(OUT):
 for f in sorted(os.listdir(SRC)):
     if f.endswith('.png'):
         air = f.startswith('air_')   # 飞机、直升机的侧影：扁一点，细的旋翼、垂尾留着
-        w, h, d = vehicle(os.path.join(SRC, f), box_h=70 if air else 74, thin=(5, 7) if air else (9, 13), flat=air)
-        icons[f[:-4] if air else 'veh_' + f[:-4]] = (w, h, 'la', d)
+        ship = f.startswith('ship_')   # 舰艇（用户 11-23：召唤界面名字下面带图标）：明暗同地面载具，船身细长、高度框小一点
+        w, h, d = vehicle(os.path.join(SRC, f), box_h=70 if air else (60 if ship else 74), thin=(5, 7) if air else (9, 13), flat=air)
+        icons[f[:-4] if (air or ship) else 'veh_' + f[:-4]] = (w, h, 'la', d)
         print(f"{f[:-4]}：{w}×{h}，{len(d)} 字节")
 for key, (w, h, fn, glow) in {
     'hexFill': (72, 80, hex_fill, 0), 'hexEdge': (72, 80, hex_edge, 0), 'hexGlow': (72, 80, hex_glow, 4),

@@ -10,6 +10,25 @@ function Armor.init(G)
   local Config, Map = G.Config, G.Map
   local VD = require(RS:WaitForChild("VehDefs"))
   local FD = require(RS:WaitForChild("FortDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
+  local AD = require(RS:WaitForChild("AirDefs"))   -- 地空导弹（铠甲-S1 的 57E6）的飞行参数、外形
+  -- 坦克炮按弹种的一份武器表（伤害倍数、爆炸半径按弹种改；Ballistics.AMMO 的 vs / splash）
+  local ammoW = {}
+  local function weaponOf(wid, w, key)
+    local a, k = BAL.ammo(wid, key)
+    if not a then return w, nil, nil end
+    local id = wid .. ":" .. k
+    if not ammoW[id] then
+      local c = table.clone(w)
+      c.vs = table.clone(w.vs or {})
+      for t, m in pairs(a.vs or {}) do c.vs[t] = (c.vs[t] or 1) * m end
+      c.splash = (w.splash or 6) * (a.splash or 1)
+      c.ammo, c.base = k, w   -- base：原来那门炮的武器表（比较是哪门炮用）
+      ammoW[id] = c
+    end
+    return ammoW[id], a, k
+  end
+  G.tankWeaponOf = weaponOf   -- AIVeh.lua 也用
   local V = Vector3.new
   local CF = CFrame.new
   local now = os.clock
@@ -59,7 +78,7 @@ function Armor.init(G)
     local out = {}
     for _, cat in ipairs(Config.VehicleOrder) do
       if GROUND[cat] then
-        for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+        for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都能开（Config.CrossVehicles）
           local d = VD.get(id)
           if d and not d.needsAir then table.insert(out, id) end
         end
@@ -214,6 +233,7 @@ function Armor.init(G)
     end
     e.lastSync = now()
     if G.eraSetup then G.try("爆反", G.eraSetup, e) end   -- Era.lua：原模型上的爆反块
+    if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
@@ -366,7 +386,7 @@ function Armor.init(G)
     local dt = math.max(0.02, t - (e.lastSync or t))
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
-    local maxD = math.max(e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6
+    local maxD = math.max((G.kitSpeedCap and G.kitSpeedCap(e)) or e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6   -- 扫雷犁放着：限 15 公里 / 时
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
@@ -435,11 +455,39 @@ function Armor.init(G)
     local gdir = mz.LookVector   -- 顺着炮管 / 枪管出去（原来客户端给的方向和炮管差 8° 以内就用客户端的，弹道会斜着出炮口）
     local S = src(P)
     if w.kind == "shell" then
-      G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-        life = w.range / w.speed + 0.5 })
+      -- 坦克炮（Ballistics.lua 认得的炮）：按客户端选的弹种（msg.am，这门炮能打的才认）用真实初速、重力、空气阻力，带曳光
+      local ww, a = weaponOf(wid, w, type(msg) == "table" and msg.am or nil)
+      if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
+        local pw = ww.pelletW
+        if not pw then
+          pw = { dmg = w.dmg * a.pdmg, range = a.range * BAL.S, vs = ww.vs, fx = "lmg", spread = a.coneDeg }
+          ww.pelletW = pw
+        end
+        for _ = 1, a.pellets do G.botShot(mz.Position, mz.Position + gdir * pw.range, pw, S, { e.model, P.char }, a.coneDeg) end
+      elseif a then
+        local v0, drag, gs = BAL.launchArgs(a)
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
+          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+      else
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
+          life = w.range / w.speed + 0.5 })
+      end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
+    elseif w.kind == "sam" then
+      -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），
+      --   从炮两边的发射筒出去（左右轮流），按飞机导弹那套导引追（Air.lua 的 G.airGuideMissile，飞行参数 AirDefs.W）；被打的那架响导弹来袭告警
+      local tg = (type(msg) == "table" and type(msg.tgt) == "string") and G.entById[msg.tgt] or nil
+      local aw = AD.W[wid]
+      if not tg or not tg.alive or not tg.air or tg.team == e.team or not aw or not G.airGuideMissile then return end
+      if (tg.root.CFrame.Position - mz.Position).Magnitude > (w.range or 6000) then G.msg(P.pl, "bad", "ui.outOfRange") return end
+      e.samSide = -(e.samSide or 1)
+      local lp = (mz * CF(e.samSide * 1.3, 0.2, 2.0)).Position
+      local sh = G.launch({ kind = "missile", pos = lp, vel = gdir * 80 + V(0, 12, 0), w = aw, src = S, ignore = { e.model, P.char }, life = aw.life or 13,
+        step = G.airGuideMissile, age = 0, tgt = tg, tgId = tg.id, byEnt = e.id })
+      if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
+      G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
     elseif w.kind == "arty" then
       if typeof(aim) ~= "Vector3" then return end
       local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)
@@ -512,8 +560,10 @@ function Armor.init(G)
         G.fx({ k = "smokeCloud", p = it.b, r = SM.r, life = SM.life })
       end
     end)
-    G.pushOne(P)
+    if P then G.pushOne(P) end
   end
+  -- 激光告警自动打烟幕（Kit.lua）：没人开也能打
+  function G.vehSmoke(e) smoke(e.driver, e) end
 
   function G.driveInput(P, d)
     local e = P.vehicle
@@ -521,6 +571,7 @@ function Armor.init(G)
     if d.op == "state" then sync(P, e, d)
     elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
+    elseif d.op == "plow" then if G.kitPlow then G.kitPlow(P, e, d.down == true) end   -- 扫雷犁放下 / 升起（Kit.lua）
     elseif d.op == "exit" then unseat(P, e, true) end
   end
 

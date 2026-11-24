@@ -459,12 +459,13 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
   NormalId = "Right Top Back Left Bottom Front",
   ProximityPromptStyle = "Default Custom",
+  ProximityPromptExclusivity = "OnePerButton OneGlobally AlwaysShow",
   SurfaceGuiSizingMode = "FixedSize PixelsPerStud",
   SortDirection = "Ascending Descending",
   CoreGuiType = "PlayerList Health Backpack Chat All EmotesMenu SelfView Captures",
@@ -475,11 +476,15 @@ local ENUMS = {
   ContextActionResult = "Sink Pass",
 }
 local Enum = {}
+-- 有的枚举 Value 不是 0、1、2…：渲染优先级同 Roblox（First 0、Input 100、Camera 200、Character 300、Last 2000），
+--   BindToRenderStep 按它排先后（原来编成 0～4，「镜头 + 5」排到了「最后」后面）
+local VALUES = { RenderPriority = { First = 0, Input = 100, Camera = 200, Character = 300, Last = 2000 } }
 for ename, list in pairs(ENUMS) do
   local items = {}
   local i = 0
   for name in list:gmatch("%S+") do
-    items[name] = setmetatable({ Name = name, EnumType = ename, Value = i }, { __type = "EnumItem", __tostring = function() return "Enum." .. ename .. "." .. name end })
+    local val = VALUES[ename] and VALUES[ename][name] or i
+    items[name] = setmetatable({ Name = name, EnumType = ename, Value = val }, { __type = "EnumItem", __tostring = function() return "Enum." .. ename .. "." .. name end })
     i = i + 1
   end
   Enum[ename] = setmetatable({}, { __index = function(_, k)
@@ -956,9 +961,29 @@ local ATTR_OK = { ["nil"] = true, boolean = true, number = true, string = true, 
 function base.SetAttribute(o, k, v)
   if type(k) ~= "string" then error("SetAttribute 名字要字符串", 2) end
   if not ATTR_OK[typeof(v)] then error("SetAttribute 不能存 " .. typeof(v), 2) end
+  local old = o._attr[k]
   o._attr[k] = v
+  if old ~= v then
+    local m = rawget(o, "_achg")
+    local s = m and m[k]
+    if s then s:Fire() end
+  end
 end
 function base.GetAttribute(o, k) return o._attr[k] end
+function base.GetAttributeChangedSignal(o, k)
+  if type(k) ~= "string" then error("GetAttributeChangedSignal 名字要字符串", 2) end
+  local m = rawget(o, "_achg")
+  if not m then
+    m = {}
+    rawset(o, "_achg", m)
+  end
+  local s = m[k]
+  if not s then
+    s = newSig()
+    m[k] = s
+  end
+  return s
+end
 function base.GetPropertyChangedSignal(o, prop)
   if not lookup(o._cls, "props", prop) and lookup(o._cls, "ro", prop) == nil then error(prop .. " 不是 " .. o._cls .. " 的属性", 2) end
   local s = o._chg[prop]
@@ -1020,6 +1045,22 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
+    -- 小块的写入（开服的网格器校准平台）：每一列记下各层的占有率，射线按 R.surfFrac（假装的网格器）算地面在哪
+    if sx * sy * sz <= 60000 and region._min._y < -1000 then   -- 只有地图下面很深的试验平台（地图本身的块不记）
+      R.voxCols = R.voxCols or {}
+      local mn = region._min
+      for i = 1, sx do
+        for k = 1, sz do
+          local col = { y0 = mn._y, occ = {} }
+          for j = 1, sy do
+            local m = mats[i][j][k]
+            local nm = m and m.Name or "Air"
+            col.occ[j] = (nm ~= "Air" and nm ~= "Water") and (occ[i][j][k] or 0) or 0
+          end
+          R.voxCols[math.floor((mn._x + (i - 1) * 4) / 4 + 0.5) .. "," .. math.floor((mn._z + (k - 1) * 4) / 4 + 0.5)] = col
+        end
+      end
+    end
     -- 写了哪些材质（每隔 3 列抽一列看；测试查地形里没有 Grass——会长草叶）
     R.voxelMats = R.voxelMats or {}
     for i = 1, sx, 3 do
@@ -1040,6 +1081,14 @@ def("Terrain", "BasePart", {
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBlock(CFrame, Vector3, Material) 参数不对", 2) end
     if size._x > 2048 * 4 or size._z > 2048 * 4 then error("FillBlock 区域太大", 2) end
     table.insert(R.terrainFills, { k = "block", p = c.Position, size = size, mat = mat.Name })   -- 宣传片录场景用
+    if R.voxCols and mat.Name == "Air" then   -- 拆掉校准平台：记的列一起清掉
+      local p0 = c.Position
+      for key in pairs(R.voxCols) do
+        local ix, iz = string.match(key, "^(%-?%d+),(%-?%d+)$")
+        local x, z = tonumber(ix) * 4 + 2, tonumber(iz) * 4 + 2
+        if math.abs(x - p0._x) <= size._x / 2 and math.abs(z - p0._z) <= size._z / 2 then R.voxCols[key] = nil end
+      end
+    end
   end,
   FillBall = function(_, c, r, mat)
     if not isV3(c) or type(r) ~= "number" or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBall(Vector3, 半径, Material) 参数不对", 2) end
@@ -1171,8 +1220,8 @@ def("UITextSizeConstraint", "Instance", { MaxTextSize = { T.number, 100 }, MinTe
 def("ProximityPrompt", "Instance", {
   ActionText = { T.string, "Interact" }, ObjectText = { T.string, "" }, HoldDuration = { T.number, 0 }, MaxActivationDistance = { T.number, 10 },
   RequiresLineOfSight = { T.bool, true }, KeyboardKeyCode = { E("KeyCode"), Enum.KeyCode.E }, Enabled = { T.bool, true }, Style = { E("ProximityPromptStyle"), Enum.ProximityPromptStyle.Default },
-  UIOffset = { T.Vector2, newV2(0, 0) },
-}, { events = { Triggered = true, TriggerEnded = true } })
+  UIOffset = { T.Vector2, newV2(0, 0) }, GamepadKeyCode = { E("KeyCode"), Enum.KeyCode.ButtonX }, Exclusivity = { E("ProximityPromptExclusivity"), Enum.ProximityPromptExclusivity.OnePerButton },
+}, { events = { Triggered = true, TriggerEnded = true, PromptButtonHoldBegan = true, PromptButtonHoldEnded = true } })
 def("Smoke", "Instance", { Color = { T.Color3, newC3(1, 1, 1) }, Opacity = { T.number, 0.5 }, RiseVelocity = { T.number, 1 }, Size = { T.number, 1 }, Enabled = { T.bool, true } })
 def("Fire", "Instance", { Color = { T.Color3, newC3(1, 0.5, 0) }, SecondaryColor = { T.Color3, newC3(1, 0, 0) }, Heat = { T.number, 9 }, Size = { T.number, 5 }, Enabled = { T.bool, true } })
 def("Sky", "Instance", {
@@ -1229,11 +1278,11 @@ def("EchoSoundEffect", "Instance", { Delay = { T.number, 1 }, Feedback = { T.num
 def("ReverbSoundEffect", "Instance", { DecayTime = { T.number, 1.5 }, Density = { T.number, 1 }, Diffusion = { T.number, 1 }, DryLevel = { T.number, -6 }, WetLevel = { T.number, 0 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
 def("TremoloSoundEffect", "Instance", { Depth = { T.number, 1 }, Duty = { T.number, 0.5 }, Frequency = { T.number, 5 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
 def("PitchShiftSoundEffect", "Instance", { Octave = { T.number, 1.25 }, Enabled = { T.bool, true }, Priority = { T.number, 0 } })
-def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number, 100 }, WalkSpeed = { T.number, 16 },
+def("Humanoid", "Instance", { Health = { T.number, 100 }, MaxHealth = { T.number, 100 }, WalkSpeed = { T.number, 16 }, MoveDirection = { T.Vector3, v3() },
   BreakJointsOnDeath = { T.bool, true }, RequiresNeck = { T.bool, true }, AutoRotate = { T.bool, true }, CameraOffset = { T.Vector3, v3() },
   DisplayDistanceType = { E("HumanoidDisplayDistanceType"), Enum.HumanoidDisplayDistanceType.Viewer }, NameOcclusion = { E("NameOcclusion"), Enum.NameOcclusion.OccludeAll },
   HealthDisplayType = { E("HumanoidHealthDisplayType"), Enum.HumanoidHealthDisplayType.DisplayWhenDamaged }, JumpPower = { T.number, 50 }, JumpHeight = { T.number, 7.2 },
-  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false },
+  UseJumpPower = { T.bool, false }, HipHeight = { T.number, 2 }, PlatformStand = { T.bool, false }, Sit = { T.bool, false }, Jump = { T.bool, false },
   FloorMaterial = { E("Material"), Enum.Material.Grass } }, { events = { Died = true, HealthChanged = true }, methods = {   -- 脚下的材质（跳起来是 Air）：模拟器里人总站在地上
   -- 跟真机一样：拿起一件之前，手里原来的放回背包；UnequipTools 把手里的都放回背包
   EquipTool = function(o, t)
@@ -1453,9 +1502,25 @@ local function underAny(o, list)
   end
   return false
 end
+-- 记下来的小块地形（校准平台）：最上面有东西的那层按 R.surfFrac(占有率) 算地面（没给就是「几成满地面就在几成高」）；
+--   整层满的就在这层顶上。不在记下的列里：照测试给的高度函数
+local function voxColTop(x, z)
+  local c = R.voxCols and R.voxCols[math.floor(x / 4) .. "," .. math.floor(z / 4)]
+  if not c then return nil end
+  for j = #c.occ, 1, -1 do
+    local o = c.occ[j]
+    if o > 0 then
+      local f = (o >= 1) and 1 or (R.surfFrac and R.surfFrac(o) or o)
+      return c.y0 + (j - 1) * 4 + 4 * f
+    end
+  end
+  return -1e9
+end
+R.voxColTop = voxColTop
 local function terrainHit(origin, dir, len, params)
-  local H = R.terrainHeight
-  if not H then return nil end
+  local H0 = R.terrainHeight
+  if not H0 then return nil end
+  local H = function(x, z) return voxColTop(x, z) or H0(x, z) end
   local water = not (params and params.IgnoreWater)
   local function below(t)
     local p = origin + dir * t
@@ -1532,10 +1597,12 @@ function R.castRay(origin, dir, params)
     end
   end
   local tmat
-  if not inc and R.terrainHeight then   -- 地形：按测试给的高度函数（项目自己的 Map.height），海面 y = 0
+  -- 同 Roblox：Include 名单里有 Terrain 才打地形；Exclude 名单里有 Terrain 就不打（原来 Include 一律不打地形，Exclude 一律打）
+  local terrOK = (inc and underAny(R.terrain, list)) or (not inc and not (params and underAny(R.terrain, list)))
+  if terrOK and R.terrainHeight then   -- 地形：按测试给的高度函数（项目自己的 Map.height），海面 y = 0
     local t, kind = terrainHit(origin, d, bt, params)
     if t and t < bt then best, bt, bp, tmat = R.terrain, t, origin + d * t, (kind == "water") and Enum.Material.Water or Enum.Material.Grass end
-  elseif d._y < -1e-6 and not inc then   -- 没给高度函数：y = 0 的平面
+  elseif d._y < -1e-6 and terrOK then   -- 没给高度函数：y = 0 的平面
     local t = -origin._y / d._y
     if t >= 0 and t < bt then best, bt, bp, tmat = R.terrain, t, origin + d * t, Enum.Material.Grass end
   end
@@ -1663,14 +1730,27 @@ R.services.RunService = service("RunService", {}, { ro = {
     return R.RenderStepped
   end,
 }, methods = { IsStudio = function() return true end, IsServer = function() return side() == "server" end, IsClient = function() return side() == "client" end,
+  -- 同 Roblox：绑上的按优先级从小到大跑（原来按绑定先后，测不出谁先谁后的问题——记录仪晃动和后坐力的先后就是这样，用户 11-21）
   BindToRenderStep = function(_, name, prio, f)
     if side() ~= "client" then error("BindToRenderStep 只能在客户端用", 2) end
     if type(name) ~= "string" or type(prio) ~= "number" or type(f) ~= "function" then error("BindToRenderStep(名字, 优先级数字, 函数)", 2) end
     R.boundSteps = R.boundSteps or {}
-    R.boundSteps[name] = R.RenderStepped:Connect(f)
+    R.boundSeq = (R.boundSeq or 0) + 1
+    R.boundSteps[name] = { prio = prio, f = f, seq = R.boundSeq }
+    if not R.boundConn then
+      R.boundConn = R.RenderStepped:Connect(function(dt)
+        local list = {}
+        for _, b in pairs(R.boundSteps) do table.insert(list, b) end
+        table.sort(list, function(a, b2) if a.prio ~= b2.prio then return a.prio < b2.prio end return a.seq < b2.seq end)
+        for _, b in ipairs(list) do
+          local ok, e = pcall(b.f, dt)
+          if not ok then report(tostring(e)) end
+        end
+      end)
+    end
   end,
   UnbindFromRenderStep = function(_, name)
-    if R.boundSteps and R.boundSteps[name] then R.boundSteps[name]:Disconnect() R.boundSteps[name] = nil end
+    if R.boundSteps then R.boundSteps[name] = nil end
   end,
 } })
 R.services.Debris = service("Debris", {}, { methods = { AddItem = function(_, inst, t)
@@ -2107,7 +2187,7 @@ local function envFor(scriptInst, sd)
     Color3 = Color3, UDim = UDim, UDim2 = UDim2, Enum = Enum, TweenInfo = TweenInfo, RaycastParams = RaycastParams, Random = Random, Region3 = Region3, BrickColor = BrickColor,
     ColorSequence = ColorSequence, NumberSequence = NumberSequence, NumberRange = NumberRange, Content = R.Content, buffer = R.buffer,
     NumberSequenceKeypoint = NumberSequenceKeypoint, ColorSequenceKeypoint = ColorSequenceKeypoint,
-    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）
+    task = task, math = luauMath(), string = string, table = R.luauTable, utf8 = utf8, os = { time = function() return R.osTime or os.time() end, clock = function() local hk = R.clockHook if hk then local v = hk() if v then return v end end return clock end, date = function(f, t) return os.date(f, t or R.osTime or os.time()) end },   -- date：记录仪画面的日期时间（Bodycam.lua）；clockHook：测试临时让某个协程看真时间（寻路后台按 CPU 时间让帧，navslice.lua）
     pairs = pairs, ipairs = ipairs, next = next, select = select, type = type, typeof = typeof, tostring = tostring, tonumber = tonumber,
     print = function(...) if R.verbose then print(...) end end,
     PROBE_SET = function(v) R.lastProbe = v end,
@@ -2133,6 +2213,8 @@ local function envFor(scriptInst, sd)
         local init = r.init
         r.init = function(G, ...)
           R.Gs[side()] = G
+          -- 金币解锁（Economy.lua）：测试里载具默认全开（老的测试直接召唤各型车）；测金币的测试自己关掉（G.econAll = false）
+          if side() == "server" and G.econAll == nil then G.econAll = true end
           return init(G, ...)
         end
       end
