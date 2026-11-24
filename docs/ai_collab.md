@@ -155,6 +155,12 @@
   - ④ **已做**（8a23aa8）：WtAir.lua（服务器：飞机机翼 / 尾翼 / 发动机 / 油箱 / 飞行员 / 操纵面各自的血，断翼、起火、漏油、昏迷）、
     WtAir.lua（客户端：起火 / 漏油特效、左下飞机损伤图、昏迷黑屏），Fly.lua 的 jetPhysics / 直升机按 G.wtaFlight 打折推力、舵效、断翼滚。
     **Ents.damageEnt 里飞机先过 G.wtaHit（机身血照扣）；hitThing 把命中点给 G.wtPos**。测试 tools/mock/wtair.lua。
+  - 11-24 夜补（用户：「再做一个金属射流弹」「射流弹击中别的坦克的 x 光动画要有特殊效果」）：
+    · **金属射流弹**（2128b9a）：Ballistics 的 jet120 / jet125 / jet105（每门坦克炮弹种表最后一种），WtDamage AMMO 同名（ce、串联、穿深 760～950）；
+      打中车时 Wt.lua 发 G.fx wtJet（WtHud.jetFx：白闪、火花、一道白热射流钻进车里）
+    · **X 光慢放动画**（2f9cca6）：破甲 / 射流打穿时（xr.jet；专门的射流弹 xr.big）WtHud 的 xaBuild / xaStep 按时间轴放：弹飞入 → 白闪冲击波 →
+      射流一点点钻进去（熔化金属珠、杵体）→ 破片一根根长出 → 打到的乘员 / 模块红白闪 → 殉爆火球 / 起火；别的弹种还是原来那张静态图
+    · 直接出击（c1c89df）：部署界面下面一条出击栏（WtBattle），点车 = G.ACT.wtDeployVeh（出生、出车、坐进去）
 
 ## 工具链的先后（别互相覆盖）
 
