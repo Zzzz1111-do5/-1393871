@@ -68,7 +68,7 @@ if cur then
   nLights = #cur.b.lights
 end
 check(nParts > 400, "内饰零件 " .. nParts .. " 个")
-check(nCrew == 0, string.format("车里不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）：%d 个", nCrew))
+check(nCrew == 4, string.format("车里有乘员小人（用户 11-24：「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活」；11-22 关过）：%d 个", nCrew))
 check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
 local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
@@ -109,8 +109,22 @@ for _, name in ipairs(cur.spec.order) do
   check(st.station == name, "换到 " .. name)
   local _, q = inside(name)
   camAt[name] = q
-  local cr = st.cur and st.cur.crew[name]
-  check(cr == nil, name .. "：这个位置没有乘员小人（自己的手脚、别的乘员都不画）")
+  -- 自己这个位置的小人不画（11-21：不要看见自己的胳膊腿），别的乘员照画、各干各的活（11-24）
+  local own, others, othersShown = st.cur and st.cur.crew[name], 0, 0
+  local function shown(f)
+    for _, p in ipairs(f.model:GetDescendants()) do
+      if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and p.Transparency < 1 and (p.LocalTransparencyModifier or 0) < 1 then return true end
+    end
+    return false
+  end
+  for id, cr in pairs(st.cur and st.cur.crew or {}) do
+    if id ~= name then
+      others = others + 1
+      if shown(cr.f) then othersShown = othersShown + 1 end
+    end
+  end
+  check(own ~= nil and not shown(own.f), name .. "：自己这个位置的小人不画")
+  check(others > 0 and othersShown == others, string.format("%s：别的乘员画着（%d / %d）", name, othersShown, others))
 end
 if camAt.driver and camAt.gunner and camAt.commander then
   check(camAt.driver.Z < camAt.gunner.Z - 1 and camAt.commander.Y > camAt.gunner.Y - 0.5,

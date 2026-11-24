@@ -967,7 +967,10 @@ local function setJ(Jx, P0, P1) Jx.m.C0 = P0:Inverse() * P1 * Jx.c1 end
 -- 做一个乘员：返回 { model, hrp, J, set(pose) }；dress 见上面的 DRESS
 function K.crew(dressKey)
   local dress = DRESS[dressKey] or DRESS.crew_us
-  local m, hrp, head = slimRig(dress)   -- 真人比例（R15 模板 / 方块小人只在调试时用：rigFromTemplate、partRig）
+  -- 用户 11-24：「坦克要有精细的 roblox 人物」——有 R15 模板（ReplicatedStorage.BotRig：Bots.lua 开服时做的，士兵机器人也是它）就用 Roblox 小人，
+  --   按乘员服上色、戴原模型的坦克帽；没有模板（Studio 连不上资源、模拟测试）照旧真人比例的人体模型（slimRig）
+  local m, hrp, head = rigFromTemplate(dress)
+  if not m then m, hrp, head = slimRig(dress) end
   local J = {}
   for _, d in ipairs(m:GetDescendants()) do
     if d:IsA("Motor6D") then J[d.Name] = { m = d, c0 = d.C0, c1 = d.C1, c1i = d.C1:Inverse() } end

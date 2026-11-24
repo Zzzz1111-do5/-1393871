@@ -40,7 +40,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     "ip_dseat", "ip_swheel", "ip_lever", "ip_gauges", "ip_pedals", "ip_grip" }   -- 用户 11-23「很粗糙…不要自己建模 然后用 blender」：座椅、方向盘、操纵杆、仪表、踏板、握把（tools/weapons/blprep.py）
   local prewarmed = false
 
-  local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
+  -- 车里画不画乘员小人：用户 11-22 晚「驾驶室不要显示人了」关过；11-24「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活
+  --   玩家第一人称就是负责扮演炮手视角」——地面车又画上（Roblox 小人，InteriorKit K.crew），飞机座舱照旧不画
+  local SHOW_CREW = true
   G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
@@ -248,7 +250,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
     -- 乘员：用户 11-22 晚「驾驶室不要显示人了」——车里、座舱里不建乘员小人（哪个视角都没有人，导演镜头也没有）；
     --   SHOW_CREW 打开就照原来画（乘员位视角时也藏着）
-    for id, cs in pairs(SHOW_CREW and spec.crew or {}) do
+    for id, cs in pairs((SHOW_CREW and not spec.air) and spec.crew or {}) do
       local f = Kit.crew(cs.dress)
       if f then
         f.model.Parent = m
@@ -264,7 +266,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       s.nextT = 0
     end
     -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来（没有乘员小人时不建：不然那发弹自己在空中飞）
-    if spec.loader == "m256" and SHOW_CREW then
+    if spec.loader == "m256" and SHOW_CREW and not spec.air then
       b:group("hround", "turret", CF())
       local parts0 = #b.parts
       Defs.round120(b, "hround", CF(0, 0, 0.49), { len = 0.98 })
@@ -651,7 +653,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if id == "loader" and c.lo then   -- 装填的动作
         local L = c.lo
         local yaw = L.a.yaw + (L.b.yaw - L.a.yaw) * L.u
-        eye = L.a.eye:Lerp(L.b.eye, L.u)
+        -- 关键帧是照 M1A2 那套内饰排的：按这辆车装填手自己的眼位平移（B 的 M1A1 原模型内饰装填手站得不一样）
+        eye = cs.eye + (L.a.eye:Lerp(L.b.eye, L.u) - LOAD[1].eye)
         rot = ANG(0, rad(yaw), 0) * ANG(rad((cs.lean or 0) * 0.6 - 8), 0, 0)
         chest = ANG(rad(-14), 0, 0)
         local hr = c.b.groups.hround
@@ -660,23 +663,26 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           rh = hr.world * (V(0.02, -0.02, 0.47) * S)
           lookW = (hr.world.Position - (g.world * (eye * S))).Unit
         elseif L.k < 0.2 then
-          lh = at(c, "doorL", V(0.30 + 0.0, 0, -0.05))
+          local door = c.b.groups.doorL and at(c, "doorL", V(0, 0, 0)) or (g.world * ((cs.eye + V(0.15, -0.35, 0.95)) * S))   -- 没有弹药门：身后偏右
+          lh = c.b.groups.doorL and at(c, "doorL", V(0.30 + 0.0, 0, -0.05)) or door
           rh = nil
-          lookW = (at(c, "doorL", V(0, 0, 0)) - g.world * (eye * S)).Unit
+          lookW = (door - g.world * (eye * S)).Unit
         elseif L.k > 0.8 then
           lh = nil
-          rh = at(c, "arm", V(0, 0.10, 0))
+          rh = c.b.groups.arm and at(c, "arm", V(0, 0.10, 0)) or at(c, "gun", V(-0.35, 0.12, 0.85))   -- 没有保险拨杆的组：炮尾左边
           lookW = (at(c, "gun", V(0, 0.1, 0.8)) - g.world * (eye * S)).Unit
         end
-        if (L.a.knee or L.b.knee) then rf = at(c, "knee", V(0.0, 0.10, -0.08)) end
+        if (L.a.knee or L.b.knee) then
+          rf = c.b.groups.knee and at(c, "knee", V(0.0, 0.10, -0.08)) or (g.world * ((cs.eye + V(0.22, -1.25, 0.30)) * S))
+        end
       end
       local eyeCF = g.world * CF(eye * S) * rot
       local pelvis = eyeCF * CF(-eyeOff)
       if c.mine == id and camLook then lookW = camLook end
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
-      -- 第一人称坐在车里 / 座舱里（乘员位）：别的乘员、自己都不画（用户 11-21「不要显示我的腿和胳膊」，11-22「不要显示成员和自己的身体部位」）；
-      --   导演镜头从外面看照画
-      local show = mode ~= "seat"
+      -- 第一人称坐在车里（乘员位）：自己那个位置的小人不画（用户 11-21「不要显示我的腿和胳膊」）；别的乘员 11-22 关过（「不要显示成员和自己的身体部位」），
+      --   11-24 又要（「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活」）；导演镜头从外面看照画
+      local show = mode ~= "seat" or id ~= c.mine   -- 11-24：别的乘员照画（各干各的活），自己那个位置的不画（看得见自己的胳膊腿：11-21 不要）
       if cr.headShown ~= show then
         cr.headShown = show
         f.bodyVisible(show)
