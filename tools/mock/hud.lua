@@ -26,6 +26,7 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
+C.wtFlightOn = false   -- 这个测试测 MWT 式那套（11-24 夜默认换成了战雷式 WtFlight.lua，那套在 tools/mock/wtflight.lua 测）
 T.act("deploy", "rifle", G.Map.LANDONLY and "baseAir" or "af2")   -- 沙海（11-24 起只剩这张）：主基地机场
 R.run(2)
 check(P.alive, "出生了")

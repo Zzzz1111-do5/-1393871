@@ -97,7 +97,7 @@ R.run(2.6)
 local w = AD.W[st.wl[st.wi]]
 check(st.lock ~= nil and st.lockT >= (w.lockTime or 1), string.format("迎头的锁上了（进度 %.1f / %.1f 秒）", st.lockT or 0, w.lockTime or 1))
 local mode = gui:FindFirstChild("RadarMode", true)
-check(mode and mode.Text == "STT", "雷达屏写 STT：" .. tostring(mode and mode.Text))
+check(mode and string.sub(mode.Text, 1, 3) == "TRK", "雷达屏写 TRK（跟踪；11-24 夜照战雷改了说法，原来写 STT）：" .. tostring(mode and mode.Text))
 check(jet.radarTgt == foe.id, "服务器知道雷达跟踪着它（数据链）")
 setFoe(fly.p, V3(220, 0, 0))
 R.run(0.6)

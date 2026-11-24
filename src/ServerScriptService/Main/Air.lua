@@ -460,6 +460,7 @@ function Air.init(G)
       end
       return
     end
+    if not s.active then G.fx({ k = "shotAct", id = s.id }) end   -- 导引头开机：告诉客户端（雷达屏上这发弹的数据链虚线变实线，WtFlight / Radar.lua）
     s.active = true
     if s.tgt and s.tgt.decoy then return end   -- 被箔条骗走了
     local los = (rp - s.pos) / math.max(dist, 1)

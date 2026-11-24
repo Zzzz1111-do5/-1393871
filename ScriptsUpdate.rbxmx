@@ -1038,7 +1038,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 22:08 77017fe"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 22:45 9f244b1"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -6750,6 +6750,40 @@ add("wta.tEng", "发动机受损：推力下降", "Engine damaged: less thrust")
 add("wta.tTail", "尾翼打断：俯仰失控", "Tail lost: no pitch control")
 add("wta.tTailRotor", "尾桨打断：机身打转", "Tail rotor lost: spinning")
 add("wta.tCtrl", "操纵面受损：舵不灵", "Controls damaged: sluggish")
+
+---------------------------------------------------------------- 战雷式的开飞机界面（WtFlight.lua、Radar.lua；用户 11-24 夜发了战雷的截图）
+add("wt.thr", "节流阀", "Throttle")
+add("wt.rotor", "旋翼转速", "Rotor")
+add("wt.ab", "加力", "WEP")
+add("wt.ias", "表　速", "IAS")
+add("wt.tas", "速　度", "TAS")
+add("wt.mach", "马赫数", "Mach")
+add("wt.alt", "海拔高", "Altitude")
+add("wt.ralt", "雷达高", "Radar alt")
+add("wt.m", "{1} 米", "{1} m")
+add("wt.aam", "空对空", "AAM")
+add("wt.agm", "空对地", "AGM")
+add("wt.bomb", "炸　弹", "Bombs")
+add("wt.rkt", "火箭弹", "Rockets")
+add("wt.track", "追　踪", "Tracking")
+add("wt.left", "左", "L")
+add("wt.right", "右", "R")
+add("wt.flare", "热焰弹", "Flares")
+add("wt.chaff", "干扰箔", "Chaff")
+add("wt.gun", "机　炮 自动", "Cannon auto")
+add("wt.fuel", "燃油量", "Fuel")
+add("wt.oil", "油　温", "Oil")
+add("wt.eng", "引　擎", "Engine")
+add("wt.selW", "已选武器：{1} {2}", "Selected weapon: {1} {2}")
+add("wt.seeker", "导引头：{1}", "Seeker: {1}")
+add("wt.seekOn", "开启", "on")
+add("wt.seekTrack", "正在追踪", "tracking")
+add("wt.seekLock", "已锁定", "locked")
+add("wt.radarOff", "雷达关", "RADAR OFF")
+add("wt.radarOn", "雷达开", "RADAR ON")
+add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
+add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
+add("wt.dlLost", "数据链中断", "Datalink lost")
 
 return Lang
 ]]></ProtectedString>
@@ -14762,6 +14796,7 @@ function Air.init(G)
       end
       return
     end
+    if not s.active then G.fx({ k = "shotAct", id = s.id }) end   -- 导引头开机：告诉客户端（雷达屏上这发弹的数据链虚线变实线，WtFlight / Radar.lua）
     s.active = true
     if s.tgt and s.tgt.decoy then return end   -- 被箔条骗走了
     local los = (rp - s.pos) / math.max(dist, 1)
@@ -30861,7 +30896,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -32321,6 +32356,20 @@ function AirHud.init(G)
         h.short.TextColor3 = sel and WHITE or METAL_ICON
       end
     end
+    -- 战雷式界面（WtFlight.lua；用户 11-24 夜：「战雷ui压根不是这样的」，发了战雷的截图）：开着时开飞机的人这一套 MWT 式的收起来
+    --   （右上机型侧影血量、准星两边高度速度、准星上方弹的牌子、六边形武器键、机头全息准星、绿方框锁定）；
+    --   留着热成像、鼠标瞄准的白圈（按 M 切过去才有）、机炮提前量小圈；坐后面的乘客照旧看右上那块
+    if G.wtFlightOn and G.wtFlightStep then
+      A.card.Visible = not pilot
+      root.Visible = false
+      A.hexBar.Visible = false
+      hsg.Enabled = false
+      A.boreFall.Visible = false
+      A.lock.Visible, A.seek.Visible, A.leadLine.Visible, A.aim.Visible = false, false, false, false
+      G.wtFlightStep(st, info)
+    else
+      A.card.Visible = true
+    end
   end
 
   -- 光电吊舱、无人机画面：这一套收起来（热成像也先让开，出来再开）
@@ -32328,6 +32377,7 @@ function AirHud.init(G)
     if gui.Enabled then gui.Enabled = false end
     hsg.Enabled = false
     irApply(false)
+    if G.wtFlightOff then G.wtFlightOff() end
   end
 
   -- 下了飞机、被打下来（Fly 不调了）：收起来、热成像关掉
@@ -33118,29 +33168,14 @@ function AM.build(d, team, load)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
-          -- 加力尾焰（用户 11-23：「飞机尾喷要有马赫环，你就一比一还原战雷的」，给了战雷里歼-20 开加力的截图）：照截图——
-          --   ① 焰身是一根半透明的紫色管子，两边一圈亮蓝的边（ForceField 材质：边缘亮、正对着看是透的），前后两段，后段淡、细一点
-          --   ② 管子里一层淡紫的焰（Beam，正对镜头），往后淡掉
-          --   ③ 马赫环：焰身里一节一节的亮环——薄圆片（ForceField：侧面看是横在焰里的一道亮线，从后面看是一个环），
-          --      外面套一个淡淡的菱形光（两条 Beam 一宽一窄拼成，侧面看是菱形）；越往后越小、越淡，加力越大出来的越多
-          --   ④ 喷口里：军推以下照旧暗红 → 橙；开加力变成深紫（截图里从后面看喷口里是紫的）
+          -- 加力尾焰（用户 11-24 夜：「尾喷也要重做」，给了战雷里米格-29 开加力的截图；11-23 那版照歼-20 截图做的紫色焰身、蓝边管子、
+          --   一节一节的马赫环不要了）：照新截图——
+          --   ① 喷口里：开加力烧得发橙粉色（热芯，下面每帧那段），军推以下照旧暗红 → 橙
+          --   ② 焰身：一条长长的、半透明的橙色光柱（Beam，正对镜头），跟喷口差不多粗、往后慢慢细一点，橙 → 橘红、越往后越淡；
+          --      长短跟着加力（满加力约七个喷口直径），每帧长短轻轻抖一点（火在跳）
+          --   ③ 焰芯：喷口后面短短一截更亮的粉白（离喷口近的地方最热），也是 Beam
           local r = E.r
           local flat = E.flat
-          for kk = 1, 2 do
-            local tube = flat and newPart(m, V(1, r * 0.85, r * 2.0), RGB(70, 140, 255), MAT.ForceField, nil, 1)
-              or newPart(m, V(1, r * 1.9, r * 1.9), RGB(70, 140, 255), MAT.ForceField, CYL, 1)
-            tube.Name = "AbTube"
-            tube.CastShadow = false
-            table.insert(M.flames, add(tube, base, "ab", hotItem({ tube = kk })))
-          end
-          for i = 1, 4 do
-            local k = 1 - 0.13 * (i - 1)
-            local ring = flat and newPart(m, V(r * 0.2, r * 0.7 * k, r * 1.7 * k), RGB(226, 208, 255), MAT.ForceField, nil, 1)
-              or newPart(m, V(r * 0.2, r * 1.45 * k, r * 1.45 * k), RGB(226, 208, 255), MAT.ForceField, CYL, 1)
-            ring.Name = "MachRing"
-            ring.CastShadow = false
-            table.insert(M.flames, add(ring, base, "ab", hotItem({ ring = i })))
-          end
           local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
           src.Name = "Plume"
           src.CastShadow = false
@@ -33157,7 +33192,7 @@ function AM.build(d, team, load)
             bm.Name = name
             bm.Attachment0, bm.Attachment1 = a0, a1
             bm.FaceCamera = true
-            bm.Segments = 1
+            bm.Segments = 8
             bm.LightEmission, bm.LightInfluence = emit or 1, 0
             bm.Color, bm.Transparency = col, tr
             bm.Width0, bm.Width1 = w0, w1
@@ -33168,16 +33203,15 @@ function AM.build(d, team, load)
           local p0 = att("P0", 0)
           it.fillEnd = att("FillEnd", 1)
           it.fill = beam("AbFill", p0, it.fillEnd,
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(176, 150, 236)), ColorSequenceKeypoint.new(0.5, RGB(150, 118, 210)), ColorSequenceKeypoint.new(1, RGB(132, 112, 196)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(0.6, 0.7), NumberSequenceKeypoint.new(1, 1) }),
-            r * (flat and 1.0 or 1.75), r * (flat and 0.8 or 1.35), 0.55)
-          it.dia = {}
-          for i = 1, 4 do   -- 马赫环外面的菱形光：A→B 由窄变宽、B→C 由宽变窄
-            local A, Bm, C = att("D" .. i .. "a", 1), att("D" .. i .. "b", 1.5), att("D" .. i .. "c", 2)
-            local col = ColorSequence.new(RGB(236, 222, 255))
-            local tr = NumberSequence.new(0.35 + 0.12 * (i - 1))
-            it.dia[i] = { a = A, b = Bm, c = C, b1 = beam("Mach" .. i .. "a", A, Bm, col, tr, 0, 1), b2 = beam("Mach" .. i .. "b", Bm, C, col, tr, 1, 0) }
-          end
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 176, 120)), ColorSequenceKeypoint.new(0.45, RGB(255, 132, 76)), ColorSequenceKeypoint.new(1, RGB(236, 86, 52)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.35, 0.48), NumberSequenceKeypoint.new(0.75, 0.74), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 1.2 or 1.9), r * (flat and 0.9 or 1.4), 0.8)
+          it.coreEnd = att("CoreEnd", 1)
+          it.coreB = beam("AbCore", p0, it.coreEnd,
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 232, 214)), ColorSequenceKeypoint.new(1, RGB(255, 150, 120)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.55), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 0.9 or 1.45), r * (flat and 0.4 or 0.7), 1)
+          it.dia = {}   -- 原来的马赫环菱形光：这版不画（截图里看不到）
           table.insert(M.flames, it)
         end
         -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
@@ -33757,9 +33791,9 @@ function AM.pose(M, cf, c, now, world)
           local col = RGB(110, 36, 18):Lerp(RGB(196, 84, 36), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         elseif not it.cold then
-          -- 军推以下暗红 → 橙；开加力变成深紫（战雷的截图：从后面看喷口里是紫的、边上一圈亮蓝）
-          tr = (ab > 0) and (0.06 + (1 - ab) * 0.2) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
-          local col = (ab > 0) and RGB(255, 140, 70):Lerp(RGB(168, 86, 196), math.min(1, ab * 1.6)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
+          -- 军推以下暗红 → 橙；开加力烧得发橙粉色（用户 11-24 夜给的战雷米格-29 截图：从后面看喷口里是亮的橙粉色）
+          tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
+          local col = (ab > 0) and RGB(255, 150, 84):Lerp(RGB(255, 184, 160), math.min(1, ab * 1.4)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         end
       elseif it.tube then   -- 焰身的蓝边管子：长短跟着加力（尺寸只在加力变了时改，抖动交给里面的光）
@@ -33790,10 +33824,12 @@ function AM.pose(M, cf, c, now, world)
         if on ~= it.on then
           it.on = on
           it.fill.Enabled = on
+          if it.coreB then it.coreB.Enabled = on end
         end
-        if on then
+        if on then   -- 光柱：满加力约七个喷口直径长；焰芯一个半
           local fl = 1 + 0.05 * math.sin((now or 0) * 37 + r) + 0.03 * math.sin((now or 0) * 61)
-          it.fillEnd.Position = V(0, 0, r * 2 * (1.4 + 2.4 * ab) * fl)
+          it.fillEnd.Position = V(0, 0, r * 2 * (2.2 + 4.8 * ab) * fl)
+          if it.coreEnd then it.coreEnd.Position = V(0, 0, r * 2 * (0.6 + 0.9 * ab) * (2 - fl)) end
         end
         for i, dm in ipairs(it.dia) do
           local th0 = 0.2 + 0.15 * (i - 1)
@@ -41915,9 +41951,11 @@ function Fly.init(G)
       st.accV = nil
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
+      if G.wtRwrEvent then G.wtRwrEvent("rwr", m) end   -- 战雷式雷达告警圆盘（WtFlight.lua）
       if G.playSound then G.playSound("capture", nil, 2.2) end
     elseif m.op == "rwrLock" then   -- 被敌机的雷达锁着（战雷的 RWR）：对方半秒报一次，停了一秒多就算丢了
       st.rwrLockT = os.clock() + 1.1
+      if G.wtRwrEvent then G.wtRwrEvent("rwrLock", m) end
       st.rwrLockFull = m.full == true
     end
   end)
@@ -42645,12 +42683,13 @@ function Fly.init(G)
       fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       info.fuel = T("air.fuelLeft", math.floor(tot * 100 + 0.5), left2)
+      info.fuelT = left2   -- 战雷式左上参数表（WtFlight.lua）：燃油量写还能飞几分几秒
       info.fuelCol = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or nil)
       info.thr = thrText.Text
       info.vs = T("air.vs", vsText.Text)
       info.gear = (d.kind == "jet" and st.gearWant > 0.5) and T("air.gearState.down") or nil
       local bp, bon = project(pos + st.cf.LookVector * 400)
-      bore.Position, bore.Visible = bp, bon and not st.eo
+      bore.Position, bore.Visible = bp, bon and not st.eo and not G.wtFlightOn   -- 战雷式界面（WtFlight.lua）有自己的机头 ⊕
       G.try_(dcsHud, pos, kmh)
       -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
       G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
@@ -42665,8 +42704,10 @@ function Fly.init(G)
       -- 用户：圈太小、挡视野——原来按导引头离轴角画，小的只有一两百像素、正好套在飞机和前方上；现在至少框到画面高度的八成，
       --   飞机和前方留空，离轴角大的弹（近距格斗弹）再大一点；武器名写在圈里靠下
       local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), vh * 0.8, vh * 0.94)
-      ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav
-      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav
+      -- 战雷式界面（WtFlight.lua）开着时不画这个绿大圈：导弹的大圈小圈按导引头真实的离轴角画（锁定前白、锁上红）
+      local wtOn = G.wtFlightOn == true
+      ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav and not wtOn
+      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav and not wtOn
       ringText.Text = wid and (T("aw." .. wid) .. "  ×" .. left(wid)) or (gid and (T("aw." .. gid) .. "  ×" .. left(gid))) or ""
       local lk = st.cf.LookVector
       hdgText.Text = string.format("%03d", math.floor((math.deg(math.atan2(lk.X, -lk.Z)) + 360) % 360 + 0.5) % 360)
@@ -44419,6 +44460,7 @@ function Fx.init(G)
   -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
   local function fixShot(e)
     local s = flying[e.id]
+    if s and e.lost then s.lost = true end   -- 数据链断了 / 导引头丢了目标（雷达屏上只剩预计命中点那个小圈，Radar.lua）
     if not s or s.path or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
     if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
     s.v = e.v
@@ -44745,6 +44787,9 @@ function Fx.init(G)
         if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
       elseif k == "shotEnd" then endShot(e.id)
       elseif k == "shotFix" then fixShot(e)
+      elseif k == "shotAct" then   -- 主动雷达弹导引头开机（服务器 Air.lua arhStep）：雷达屏上数据链虚线变实线
+        local fs = flying[e.id]
+        if fs then fs.act, fs.lost = true, false end
       elseif k == "flares" then flares(e)
       elseif k == "eject" then eject(e)
       elseif k == "shell" then shell(e)
@@ -64597,8 +64642,13 @@ function Radar.init(G)
   end
   G.radarSees = sees
 
-  ---------------------------------------------------------------- 雷达屏
-
+  ---------------------------------------------------------------- 雷达屏（战雷式：右侧方形屏；用户 11-24 夜：「那个雷达屏在右侧」「战雷不同的雷达会有不同的扫描图」）
+  --   照战雷 wiki（「Airborne radars」「机载雷达」）：顶上「工作模式 + 信号处理」（SRC 搜索 / TRK 跟踪，PD 脉冲多普勒；老的脉冲雷达只写 SRC / TRK；
+  --   跟踪的目标一时看不见、雷达按记忆外推时 TRK MEM）；左上扫描范围「方位 × 俯仰」、两个上角方位极限、右上量程、右下 0 km、左边俯仰角和天线俯仰标记；
+  --   屏里竖的扫描波束来回扫；搜到的目标一短横（越久没扫到越暗），选中的两边加竖线，跟踪着的套方框、带一根速度线；
+  --   自己打出去的主动雷达弹（数据链，用户：「飞机本身会和自己的导弹形成数据链互相提供信息」）：弹一个小点，到目标一条线——
+  --   导引头还没开机（靠你的雷达给目标位置）是虚线、预计命中点一个小圈；开机了实线；数据链断了（你丢了锁、转开、雷达关了）只剩那个小圈
+  --   键：Alt+R 开关雷达、Alt+Q 换量程（量程外的不显示）、Alt+T 换目标（同 R）；屏下面一排按键提示
   local gui = Instance.new("ScreenGui")
   gui.Name = "Radar"
   gui.ResetOnSpawn = false
@@ -64606,7 +64656,10 @@ function Radar.init(G)
   gui.DisplayOrder = 5
   gui.Enabled = false
   gui.Parent = me:WaitForChild("PlayerGui")
-  local GRN, DIM, AMB = RGB(110, 255, 150), RGB(60, 150, 90), RGB(255, 200, 80)
+  local UIS = game:GetService("UserInputService")
+  local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+  local GRN, LINE, FILL, BEAM = RGB(140, 255, 160), RGB(110, 230, 140), RGB(24, 120, 56), RGB(170, 255, 190)
+  local AMB, RED = RGB(255, 200, 80), RGB(255, 80, 64)
   local function frame(parent, size, pos, col, tr, anchor)
     local f = Instance.new("Frame")
     f.Size, f.Position = size, pos or U2.new()
@@ -64615,57 +64668,125 @@ function Radar.init(G)
     f.Parent = parent
     return f
   end
-  local function label(parent, name, pos, anchor, align)
+  local function label(parent, name, pos, anchor, align, ts)
     local l = Instance.new("TextLabel")
     l.Name = name
     l.BackgroundTransparency = 1
-    l.Size, l.Position, l.AnchorPoint = U2.fromOffset(120, 14), pos, anchor or V2(0, 0)
-    l.Font, l.TextSize, l.TextColor3 = Enum.Font.Code, 12, GRN
+    l.Size, l.Position, l.AnchorPoint = U2.fromOffset(90, 14), pos, anchor or V2(0, 0)
+    l.Font, l.TextSize, l.TextColor3 = Enum.Font.Code, ts or 13, GRN
     l.TextXAlignment = align or Enum.TextXAlignment.Left
-    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 20, 8)
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.45, RGB(0, 20, 8)
     l.Text = ""
     l.Parent = parent
     return l
   end
-  local W, H = 200, 190
-  local scope = frame(gui, U2.fromOffset(W, H), U2.new(0, 18, 0.5, 30), RGB(4, 14, 8), 0.35, V2(0, 0.5))
+  local function line(parent, col, th)
+    local f = frame(parent, U2.fromOffset(2, th or 1.4), U2.new(), col or GRN, 0, V2(0.5, 0.5))
+    f.Visible = false
+    return f
+  end
+  local function setLine(f, x0, y0, x1, y1)
+    local dx, dy = x1 - x0, y1 - y0
+    f.Size = U2.fromOffset(math.sqrt(dx * dx + dy * dy), f.Size.Y.Offset)
+    f.Position = U2.fromOffset((x0 + x1) / 2, (y0 + y1) / 2)
+    f.Rotation = math.deg(math.atan2(dy, dx))
+    f.Visible = true
+  end
+  local W, H = mobile and 190 or 236, mobile and 180 or 224
+  local scope = frame(gui, U2.fromOffset(W, H), mobile and U2.new(1, -16, 0.5, 60) or U2.new(1, -44, 0.5, 130), FILL, 0.5, V2(1, 0.5))   -- 右侧偏下：让开右上的圆形小地图和它下面的「被发现!」
   scope.Name = "RadarScope"
   local st0 = Instance.new("UIStroke")
-  st0.Color, st0.Thickness, st0.Transparency = GRN, 1, 0.35
+  st0.Color, st0.Thickness, st0.Transparency = LINE, 1.2, 0.25
   st0.Parent = scope
-  -- 网格：方位 0°、±一半；距离四分之一一格
-  for _, fx in ipairs({ 0.25, 0.5, 0.75 }) do
-    local v = frame(scope, U2.new(0, 1, 1, 0), U2.fromScale(fx, 0), DIM, (fx == 0.5) and 0.35 or 0.65)
+  -- 网格：方位八格、距离四格
+  for i = 1, 7 do
+    local v = frame(scope, U2.new(0, 1, 1, 0), U2.fromScale(i / 8, 0), LINE, (i == 4) and 0.35 or 0.6)
     v.Name = "Grid"
-    local h = frame(scope, U2.new(1, 0, 0, 1), U2.fromScale(0, fx), DIM, 0.65)
+  end
+  for i = 1, 3 do
+    local h = frame(scope, U2.new(1, 0, 0, 1), U2.fromScale(0, i / 4), LINE, 0.6)
     h.Name = "Grid"
   end
-  local scan = frame(scope, U2.new(0, 2, 1, 0), U2.fromScale(0.5, 0), GRN, 0.25, V2(0.5, 0))
+  local scan = frame(scope, U2.new(0, 7, 1, 0), U2.fromScale(0.5, 0), BEAM, 0.55, V2(0.5, 0))
   scan.Name = "ScanLine"
   local blips = {}
   for i = 1, 14 do
-    local b = frame(scope, U2.fromOffset(9, 3), U2.new(), GRN, 0, V2(0.5, 0.5))
+    local b = frame(scope, U2.fromOffset(12, 3), U2.new(), Color3.new(1, 1, 1), 0, V2(0.5, 0.5))
     b.Name = "Blip"
     b.Visible = false
-    blips[i] = b
+    local l1 = frame(b, U2.fromOffset(2, 9), U2.new(0, -4, 0.5, 0), Color3.new(1, 1, 1), 0, V2(0.5, 0.5))   -- 选中的：两边竖线「|—|」
+    local l2 = frame(b, U2.fromOffset(2, 9), U2.new(1, 4, 0.5, 0), Color3.new(1, 1, 1), 0, V2(0.5, 0.5))
+    l1.Name, l2.Name = "SelL", "SelR"
+    blips[i] = { f = b, l1 = l1, l2 = l2 }
   end
-  local lockBox = frame(scope, U2.fromOffset(16, 12), U2.new(), AMB, 1, V2(0.5, 0.5))
+  local lockBox = frame(scope, U2.fromOffset(14, 14), U2.new(), AMB, 1, V2(0.5, 0.5))
   lockBox.Name = "RadarLock"
   local ls = Instance.new("UIStroke")
-  ls.Color, ls.Thickness = AMB, 1.5
+  ls.Color, ls.Thickness = Color3.new(1, 1, 1), 1.5
   ls.Parent = lockBox
   lockBox.Visible = false
-  local tName = label(scope, "RadarName", U2.fromOffset(4, -16))
+  local lockDot = frame(scope, U2.fromOffset(5, 5), U2.new(), Color3.new(1, 1, 1), 0, V2(0.5, 0.5))
+  lockDot.Name = "TrackDot"
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = lockDot
+  end
+  lockDot.Visible = false
+  local velLine = line(scope, Color3.new(1, 1, 1), 1.4)
+  velLine.Name = "TrackVel"
+  -- 天线俯仰标记：左边沿一小横道
+  local elMark = frame(scope, U2.fromOffset(9, 2), U2.new(0, -2, 0.5, 0), Color3.new(1, 1, 1), 0, V2(1, 0.5))
+  elMark.Name = "AntennaEl"
+  -- 数据链：自己打出去的主动雷达弹
+  local dl = {}
+  for i = 1, 4 do
+    local dot = frame(scope, U2.fromOffset(4, 4), U2.new(), Color3.new(1, 1, 1), 0, V2(0.5, 0.5))
+    dot.Name = "Missile"
+    dot.Visible = false
+    local ring = frame(scope, U2.fromOffset(10, 10), U2.new(), Color3.new(1, 1, 1), 1, V2(0.5, 0.5))
+    ring.Name = "IOG"
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = ring
+    local rs = Instance.new("UIStroke")
+    rs.Color, rs.Thickness = Color3.new(1, 1, 1), 1.2
+    rs.Parent = ring
+    ring.Visible = false
+    local segs = {}
+    for k = 1, 8 do
+      segs[k] = line(scope, Color3.new(1, 1, 1), 1.2)
+      segs[k].Name = "DlSeg"
+    end
+    dl[i] = { dot = dot, ring = ring, segs = segs }
+  end
+  -- 屏外的字
+  local tMode = label(scope, "RadarMode", U2.new(0.5, 0, 0, -36), V2(0.5, 0), Enum.TextXAlignment.Center, 14)
+  local tZone = label(scope, "RadarZone", U2.new(0, -6, 0, -36), V2(0, 0))
+  local tRange = label(scope, "RadarRange", U2.new(1, 0, 0, -18), V2(1, 0), Enum.TextXAlignment.Right)
+  local tAzL = label(scope, "AzL", U2.new(0, 2, 0, -18), V2(0, 0))
+  local tAzR = label(scope, "AzR", U2.new(1, -40, 0, -18), V2(1, 0), Enum.TextXAlignment.Right)
+  local tElT = label(scope, "ElT", U2.new(0, -6, 0.2, 0), V2(1, 0.5), Enum.TextXAlignment.Right)
+  local tElB = label(scope, "ElB", U2.new(0, -6, 0.8, 0), V2(1, 0.5), Enum.TextXAlignment.Right)
+  local tZero = label(scope, "RangeMin", U2.new(1, 0, 1, 4), V2(1, 0), Enum.TextXAlignment.Right)
+  tZero.Text = "0 km"
+  local tName = label(scope, "RadarName", U2.new(0, 0, 1, 4), V2(0, 0))
   tName.Size = U2.fromOffset(W - 50, 14)
-  local tMode = label(scope, "RadarMode", U2.new(1, -4, 0, -16), V2(1, 0), Enum.TextXAlignment.Right)
-  local tRange = label(scope, "RadarRange", U2.new(0, 4, 1, 2))
-  local tWarn = label(scope, "RadarWarn", U2.new(1, -4, 1, 2), V2(1, 0), Enum.TextXAlignment.Right)
+  tName.TextSize = 11
+  local tWarn = label(scope, "RadarWarn", U2.new(0.5, 0, 0.5, 0), V2(0.5, 0.5), Enum.TextXAlignment.Center, 14)
   tWarn.TextColor3 = AMB
+  local tEmit = label(scope, "Emit", U2.new(0, 0, 1, 20), V2(0, 0), Enum.TextXAlignment.Left, 13)
+  local tKeys = label(scope, "Keys", U2.new(0, 0, 1, 36), V2(0, 0), Enum.TextXAlignment.Left, 10)
+  tKeys.Size = U2.fromOffset(W + 60, 14)
+  tKeys.TextColor3 = RGB(200, 230, 205)
+  tKeys.Text = mobile and "" or "Alt+R 开关  Alt+Q 量程  Alt+T / R 换目标"
 
   ---------------------------------------------------------------- 每帧
 
   local seen = setmetatable({}, { __mode = "k" })   -- [em] = { t = 扫到的时刻, az, dist }
-  local S = { az = 0, dir = 1 }
+  local S = { az = 0, dir = 1, on = true, scale = 1, el = 0, eld = 1 }
+  local SCALES = { 1, 0.5, 0.25 }
+  local lastSt = nil
   local function hostiles(st)
     local out = {}
     local f = workspace:FindFirstChild("Ents")
@@ -64678,66 +64799,191 @@ function Radar.init(G)
     end
     return out
   end
+  -- 雷达关着：看不见（Fly.lua 的雷达弹锁不上、锁着的一秒后丢）
+  local sees0 = sees
+  sees = function(st, em)
+    if not S.on and st and st.d and st.d.radar then return false, "off" end
+    return sees0(st, em)
+  end
+  G.radarSees = sees
+  G.radarOn = function() return S.on end
+
+  -- 键：Alt+R 开关、Alt+Q 量程、Alt+T 换目标
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not lastSt or not lastSt.pilot or not (lastSt.d and lastSt.d.radar) then return end
+    if not (UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt)) then return end
+    local k = io.KeyCode
+    if k == Enum.KeyCode.R then
+      S.on = not S.on
+      if G.toast then G.toast(T(S.on and "wt.radarOn" or "wt.radarOff"), "info") end
+    elseif k == Enum.KeyCode.Q then
+      S.scale = S.scale % #SCALES + 1
+      local rd = lastSt.d.radar
+      if G.toast then G.toast(T("wt.radarRange", string.format("%.0f", rd.range * SCALES[S.scale] / AD.M / 1000)), "info") end
+    elseif k == Enum.KeyCode.T then
+      if G.flyNextTarget then G.flyNextTarget() end
+    end
+  end)
+
+  local contacts = {}
+  function G.radarContacts() return contacts end   -- 航向罗盘上的小三角（WtFlight.lua）
 
   function G.radarStep(st, dt, lockEm)
+    lastSt = st
     local rd = st and st.d and st.d.radar
     if not rd or not st.pilot or st.uav then
       gui.Enabled = false
+      table.clear(contacts)
       return
     end
-    gui.Enabled = true
+    gui.Enabled = not st.eo and not st.bsight
     local now = os.clock()
-    -- 扫描线：锁着就停在目标上（STT），不然在方位里来回扫（一来一回两秒多）
+    local range = rd.range * SCALES[S.scale]
+    local pd = rd.kind == "pd"
+    -- 扫描线：锁着就停在目标上（TRK），不然在方位里来回扫；雷达关着不扫
     local stt = false
-    local lockOk, lockWhy, lockAz, _, lockDist = false, nil, nil, nil, nil
+    local lockOk, lockWhy, lockAz, lockEl, lockDist = false, nil, nil, nil, nil
     if lockEm then
-      lockOk, lockWhy, lockAz, _, lockDist = sees(st, lockEm)
+      lockOk, lockWhy, lockAz, lockEl, lockDist = sees(st, lockEm)
       if lockAz then stt = true end
     end
-    if stt and lockOk then
+    if not S.on then
+      stt = false
+    elseif stt and lockOk then
       S.az = clamp(lockAz, -rd.az, rd.az)
+      S.el = clamp(lockEl or 0, -rd.el, rd.el)
     else
       S.az = S.az + S.dir * rd.az * 2 / 1.1 * dt
       if S.az > rd.az then S.az, S.dir = rd.az, -1 elseif S.az < -rd.az then S.az, S.dir = -rd.az, 1 end
+      S.el = S.el + S.eld * rd.el * 2 / 4.4 * dt   -- 天线俯仰慢慢上下扫（一来一回将近九秒）
+      if S.el > rd.el * 0.8 then S.el, S.eld = rd.el * 0.8, -1 elseif S.el < -rd.el * 0.8 then S.el, S.eld = -rd.el * 0.8, 1 end
     end
-    -- 扫到的（扫描线扫过它的方位附近）、看得见的：记下来；没扫到的照旧显示一会儿再暗下去
-    local list = hostiles(st)
+    -- 扫到的（扫描线扫过它的方位附近）、看得见的、在量程里的：记下来；没扫到的照旧显示一会儿再暗下去
+    local list = S.on and hostiles(st) or {}
     for _, em in ipairs(list) do
       local ok, _, az, _, dist = sees(st, em)
-      if ok and az and (math.abs(az - S.az) < 7 or em == lockEm) then
+      if ok and az and dist <= range and (math.abs(az - S.az) < 7 or em == lockEm) then
         seen[em] = { t = now, az = az, dist = dist }
       end
     end
     -- 画
     local function xOf(az) return clamp(0.5 + az / (2 * rd.az), 0.02, 0.98) end
-    local function yOf(dist) return clamp(1 - dist / rd.range, 0.02, 0.98) end
+    local function yOf(dist) return clamp(1 - dist / range, 0.02, 0.98) end
+    scan.Visible = S.on
     scan.Position = U2.fromScale(xOf(S.az), 0)
-    scan.BackgroundColor3 = (stt and lockOk) and AMB or GRN
+    scan.BackgroundColor3 = (stt and lockOk) and AMB or BEAM
+    elMark.Position = U2.new(0, -2, clamp(0.5 - S.el / (2 * rd.el), 0.02, 0.98), 0)
     local n = 0
+    table.clear(contacts)
     for em, r in pairs(seen) do
       local age = now - r.t
-      if age > 2.6 or not em.Parent then
+      if age > 2.6 or not em.Parent or not S.on then
         seen[em] = nil
-      elseif n < #blips then
-        n += 1
-        local b = blips[n]
-        b.Position = U2.fromScale(xOf(r.az), yOf(r.dist))
-        b.BackgroundTransparency = clamp(age / 2.6, 0, 0.9)
-        b.Visible = true
+      else
+        table.insert(contacts, { em = em, az = r.az, dist = r.dist, locked = em == lockEm })
+        if n < #blips and em ~= lockEm then
+          n += 1
+          local b = blips[n]
+          b.f.Position = U2.fromScale(xOf(r.az), yOf(r.dist))
+          b.f.BackgroundTransparency = clamp(age / 2.6, 0, 0.85)
+          local sel = st.lock ~= nil and st.lock.em == em
+          b.l1.Visible, b.l2.Visible = sel, sel
+          b.f.Visible = true
+        end
       end
     end
-    for i = n + 1, #blips do blips[i].Visible = false end
-    lockBox.Visible = stt and lockAz ~= nil and lockDist ~= nil
-    if lockBox.Visible then lockBox.Position = U2.fromScale(xOf(lockAz), yOf(lockDist)) end
+    for i = n + 1, #blips do blips[i].f.Visible = false end
+    -- 跟踪着的目标：方框 + 圆点 + 速度线（目标往哪飞，屏上横是方位、竖是距离）
+    local showLock = stt and lockAz ~= nil and lockDist ~= nil
+    lockBox.Visible, lockDot.Visible = showLock, showLock
+    if showLock then
+      local lx, ly = xOf(lockAz), yOf(lockDist)
+      lockBox.Position, lockDot.Position = U2.fromScale(lx, ly), U2.fromScale(lx, ly)
+      local root = lockEm:FindFirstChild("Root")
+      local vT = root and velOf(lockEm, root.CFrame.Position, now) or V()
+      if vT.Magnitude > 5 then
+        local l = st.cf:VectorToObjectSpace(vT.Unit)
+        local px, py = lx * W, ly * H
+        setLine(velLine, px, py, px + l.X * 22, py + l.Z * 22)   -- 往前飞（−Z）在屏上往上
+      else
+        velLine.Visible = false
+      end
+    else
+      velLine.Visible = false
+    end
+    -- 数据链：自己打出去的主动雷达弹
+    local fl = G.flyingShots or {}
+    local di = 0
+    for _, fs in pairs(fl) do
+      if di >= #dl then break end
+      local aw = fs.aw
+      if fs.my and aw and aw.seeker == "radar" and aw.act and fs.p then
+        di += 1
+        local D = dl[di]
+        local l = st.cf:PointToObjectSpace(fs.p)
+        local mAz = math.deg(math.atan2(l.X, -l.Z))
+        local mx, my = xOf(mAz) * W, yOf(l.Magnitude) * H
+        D.dot.Position, D.dot.Visible = U2.fromOffset(mx, my), true
+        -- 目标在屏上的位置（数据链给的）；断了就是最后估的命中点
+        local tx, ty = nil, nil
+        local tem = nil
+        local ents = workspace:FindFirstChild("Ents")
+        if fs.tg and ents then
+          for _, em in ipairs(ents:GetChildren()) do
+            if em:GetAttribute("EntId") == fs.tg then tem = em break end
+          end
+        end
+        local troot = tem and tem:FindFirstChild("Root")
+        if troot and not fs.lost then
+          local tl = st.cf:PointToObjectSpace(troot.CFrame.Position)
+          tx, ty = xOf(math.deg(math.atan2(tl.X, -tl.Z))) * W, yOf(tl.Magnitude) * H
+          fs.iog = { tx, ty }
+        elseif fs.iog then
+          tx, ty = fs.iog[1], fs.iog[2]
+        end
+        local linkOk = not fs.lost and S.on and stt and lockEm == tem
+        if tx then
+          D.ring.Position = U2.fromOffset(tx, ty)
+          D.ring.Visible = not fs.act   -- 导引头开机前：预计命中点一个小圈
+          local segs = D.segs
+          local nseg = #segs
+          for kq, sg in ipairs(segs) do
+            if fs.act or linkOk then
+              local a0 = (kq - 1) / nseg
+              local a1 = fs.act and (kq / nseg) or ((kq - 0.5) / nseg)   -- 开机前虚线、开机后实线
+              setLine(sg, mx + (tx - mx) * a0, my + (ty - my) * a0, mx + (tx - mx) * a1, my + (ty - my) * a1)
+              sg.BackgroundColor3 = fs.act and RED or Color3.new(1, 1, 1)
+            else
+              sg.Visible = false
+            end
+          end
+        else
+          D.ring.Visible = false
+          for _, sg in ipairs(D.segs) do sg.Visible = false end
+        end
+      end
+    end
+    for i = di + 1, #dl do
+      dl[i].dot.Visible, dl[i].ring.Visible = false, false
+      for _, sg in ipairs(dl[i].segs) do sg.Visible = false end
+    end
+    -- 字
+    local mode = (stt and lockOk) and "TRK" or ((stt and not lockOk) and "TRK MEM" or "SRC")
+    tMode.Text = S.on and (mode .. (pd and " PD" or "")) or "OFF"
+    tZone.Text = string.format("%d°×%d°", rd.az * 2, rd.el * 2)
+    tRange.Text = string.format("%.0f km", range / AD.M / 1000)
+    tAzL.Text, tAzR.Text = string.format("-%d°", rd.az), string.format("%d°", rd.az)
+    tElT.Text, tElB.Text = string.format("%d°", math.floor(rd.el * 0.6)), string.format("-%d°", math.floor(rd.el * 0.6))
     tName.Text = rd.name or ""
-    tMode.Text = (stt and lockOk) and "STT" or (stt and "STT ?" or "SRC")
-    tRange.Text = string.format("%.0f km", rd.range / AD.M / 1000)
+    tEmit.Text = S.on and "((o))" or "( . )"
+    tEmit.TextColor3 = S.on and GRN or RGB(120, 140, 125)
     tWarn.Text = (stt and lockWhy == "notch") and T("air.radarNotch") or ((stt and lockWhy == "clutter") and T("air.radarClutter") or "")
     st.radarAz, st.radarStt = S.az, stt and lockOk   -- 测试用
   end
 
   function G.radarOff()
     gui.Enabled = false
+    table.clear(contacts)
   end
   G.radarGui = gui   -- 测试用
 end
@@ -69463,7 +69709,9 @@ function SquadHud.init(G)
     local menu = (G.menuShown and G.menuShown()) or false
     local myCh = player.Character
     local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
-    panel.Visible = sq ~= nil and not menu and myHrp ~= nil
+    -- 开飞机、战雷式界面（WtFlight.lua）开着时左上是参数表：小队名单先收起来
+    local flying = G.wtFlightOn and G.fly ~= nil and G.fly.pilot == true
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying
     title.Text = sq and T("squad.title", sq) or ""
     local seen = {}
     for i, pl in ipairs(list) do
@@ -71504,17 +71752,20 @@ function TankHud.init(G)
   -- 小地图挪到左下（开坦克）/ 左上（开飞机）变圆 / 恢复
   local docked, saved, dockAir = false, nil, false
   local AIR_X, AIR_Y = 64, 62   -- 飞机：左上，让开 Roblox 自己的按钮那一排、左上角的菜单键（≡）
+  -- 战雷式界面开着（WtFlight.lua，用户 11-24 夜发的战雷截图）：飞机的圆形小地图在右上（左上是参数表）
+  local AIR_RX = 26
+  local function airPos() if G.wtFlightOn then return V2(1, 0), UD2(1, -AIR_RX, 0, AIR_Y) end return V2(0, 0), UD2(0, AIR_X, 0, AIR_Y) end
+  local function airRing() if G.wtFlightOn then return UD2(1, -AIR_RX - MS / 2, 0, AIR_Y + MS / 2) end return UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) end
   local function dock(on, air)
     if mobile then on = false end
     air = on and air == true
     if on and docked and air ~= dockAir then   -- 坦克 ↔ 飞机：只换位置
       local box = G.hudParts and G.hudParts.miniBox
       if box then
-        box.AnchorPoint = air and V2(0, 0) or V2(0, 1)
-        box.Position = air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26)
+        if air then box.AnchorPoint, box.Position = airPos() else box.AnchorPoint, box.Position = V2(0, 1), UD2(0, 26, 1, -26) end
       end
       dockAir = air
-      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ring.Position = air and airRing() or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
       ringLook(air)
       return
     end
@@ -71534,9 +71785,10 @@ function TankHud.init(G)
     if on then
       saved = { a = box.AnchorPoint, p = box.Position, s = box.Size, r = corner and corner.CornerRadius,
         rr = G.hudLayout and G.hudLayout.radarRight, sq = squad and squad.Visible }
-      box.AnchorPoint, box.Position, box.Size = air and V2(0, 0) or V2(0, 1), air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26), UDim2.fromOffset(MS, MS)
+      if air then box.AnchorPoint, box.Position = airPos() else box.AnchorPoint, box.Position = V2(0, 1), UD2(0, 26, 1, -26) end
+      box.Size = UDim2.fromOffset(MS, MS)
       dockAir = air
-      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ring.Position = air and airRing() or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
       ringLook(air)
       if corner then corner.CornerRadius = UDim.new(0.5, 0) end
       if G.hudLayout then G.hudLayout.radarRight = false end
@@ -71699,7 +71951,8 @@ function TankHud.init(G)
       spotTxt.Text = T("vh.spotted")
       local a = math.clamp((t - spotT0) / 0.22, 0, 1)
       local e = 1 - (1 - a) * (1 - a)
-      local base = (air and docked) and UD2(0, AIR_X + 4, 0, AIR_Y + MS + 34) or spotX   -- 飞机：左上圆形雷达的正下方（照 MWT 截图）
+      -- 飞机：左上圆形雷达的正下方（照 MWT 截图）；战雷式界面开着时在左边雷达告警圆盘的右边（用户 11-24 夜：「被发现那个标记移动到左侧」）
+      local base = (air and docked) and (G.wtFlightOn and UD2(0, 214, 0.5, 58) or UD2(0, AIR_X + 4, 0, AIR_Y + MS + 34)) or spotX
       spot.Position = base + UD2(0, -40 * (1 - e), 0, 0)
       streak.Size = UDim2.fromOffset(34 + 60 * (1 - e), 2)
       local pulse = 0.5 + 0.5 * math.sin(t * 5)
@@ -78000,6 +78253,545 @@ return WtBattle
         </Item>
         <Item class="ModuleScript" referent="220">
           <Properties>
+            <string name="Name">WtFlight</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式的开飞机界面
+--   用户 11-24 夜：「飞机操作ui我记得有个版本已经帮我改成战争雷霆的了 现在完全不是」「战雷ui压根不是这样的」，发了 B 站战雷视频的截图
+--   （米格-29、F-15 的空战）；「不同导弹有不同锁定范围 锁定前大圈和小圈都是白色的 锁定就都变成红色」「那个雷达屏在右侧」。
+--   照截图和战雷 wiki（官方英文 wiki「Airborne radars」、中文 wiki「机载雷达」「雷达告警接收器」）做，图都是框和字拼的：
+--   · 左上一列小字（标签灰白、数白色等宽）：节流阀（开加力写红色「110 % 加力」）、表速、速度、马赫数、海拔高、雷达高；
+--     挂的弹一种一行（「空对空 4[左] R-73」：剩几发、下一发从哪边挂架打，选中的那行前面「›」；红外导引头追踪时标签换成红色「追踪」）、
+--     热焰弹、干扰箔（每组诱饵弹里两样都有：一个数）、机炮（「机 炮 自动 150 30 毫米 GSh-30-1」）、燃油量（照现在的油门还能飞几分几秒）；
+--     每台发动机的油温、引擎温度（开加力油温往上走、变橙色，后面写还能撑多久）
+--   · 机头一个小 ⊕（固定机炮顺着机头打）；选了导弹：大圈是这种弹导引头能锁的离轴角（每种弹不一样大，近距格斗弹的大到出屏幕），
+--     小圈是导引头看着哪（追踪时滑到目标上）——锁定前都是白的，锁上都变红
+--   · 雷达跟踪着的目标：方框，右边距离、接近速度（越飞越远是负的），左下高度差，下面一个圈带一根线（目标往哪飞：线朝下迎头冲你来，朝上背对你跑）
+--   · 顶上一条航向罗盘（雷达看到的敌机在上面是小三角，锁着的套框）；左边雷达告警圆盘（RWR：敌机雷达扫到你标型号，锁着你一条虚线连到中间，
+--     导弹打过来「MSL」红色闪、实线）；底下中间「已选武器」「导引头」两行；右边雷达屏在 Radar.lua；右上圆形小地图（TankHud 的飞机模式）；
+--     左下损伤图是 C 的 WtAir.lua
+--   G.wtFlightStep(st, info)：AirHud 每帧调（G.wtFlightOn 开着时 AirHud 原来那套 MWT 式的收起来）；G.wtFlightOff() 下飞机收起
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+
+local WtFlight = {}
+
+function WtFlight.init(G)
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local AD = require(RS:WaitForChild("AirDefs"))
+  local V, V2, UD2 = Vector3.new, Vector2.new, UDim2.new
+  local RGB = Color3.fromRGB
+  local clamp, rad, deg = math.clamp, math.rad, math.deg
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+  local HUD = RGB(120, 255, 150)                     -- 战雷平显的绿（界面一律绿色：用户 11-21）
+  local TXT, LAB = RGB(238, 242, 238), RGB(178, 188, 180)   -- 左上：数白、标签灰白
+  local RED, ORG, WHITE = RGB(255, 72, 60), RGB(255, 168, 60), Color3.new(1, 1, 1)
+  local INK = RGB(0, 0, 0)
+  local MONO, SANS = Enum.Font.Code, Enum.Font.GothamMedium
+  G.wtFlightOn = true
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtFlight"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 5
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+
+  local function frame(parent, size, pos, col, tr, anchor)
+    local f = Instance.new("Frame")
+    f.Size, f.Position, f.AnchorPoint = size, pos or UD2(), anchor or V2()
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = col or INK, tr or 1, 0
+    f.Parent = parent
+    return f
+  end
+  local function label(parent, size, pos, ts, col, font, anchor, align)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Size, l.Position, l.AnchorPoint = size, pos or UD2(), anchor or V2()
+    l.Text, l.TextSize, l.TextColor3, l.Font = "", ts or 13, col or TXT, font or MONO
+    l.TextXAlignment = align or Enum.TextXAlignment.Left
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, INK
+    l.Parent = parent
+    return l
+  end
+  local function ringOf(parent, px, col, th)   -- 一个圈：圆角框 + 描边
+    local f = frame(parent, UDim2.fromOffset(px, px), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = f
+    local s = Instance.new("UIStroke")
+    s.Color, s.Thickness, s.Transparency = col or WHITE, th or 1.4, 0
+    s.Parent = f
+    return f, s
+  end
+  local function seg(parent, col, th)   -- 一段线（setSeg 摆两头）
+    local f = frame(parent, UDim2.fromOffset(2, th or 1.4), UD2(), col or HUD, 0, V2(0.5, 0.5))
+    f.Visible = false
+    return f
+  end
+  local function setSeg(f, x0, y0, x1, y1)
+    local dx, dy = x1 - x0, y1 - y0
+    f.Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy), f.Size.Y.Offset)
+    f.Position = UDim2.fromOffset((x0 + x1) / 2, (y0 + y1) / 2)
+    f.Rotation = deg(math.atan2(dy, dx))
+    f.Visible = true
+  end
+
+  local W = {}
+  G.wtFlight = W   -- 测试用
+
+  ---------------------------------------------------------------- 左上：参数表
+  local LIST_X = mobile and 12 or 70   -- 让开左上角的菜单键（≡）、Roblox 自己那排按钮
+  local list = frame(gui, UDim2.fromOffset(330, 470), UD2(0, LIST_X, 0, mobile and 64 or 58))
+  list.Name = "WtParams"
+  local ROW, COL1, COL2 = 16, 74, 178
+  local rows = {}
+  local function row(i)
+    local r = rows[i]
+    if r then return r end
+    local y = (i - 1) * ROW
+    r = {}
+    r.mk = label(list, UDim2.fromOffset(10, ROW), UD2(0, -2, 0, y), 13, TXT, MONO)
+    r.lab = label(list, UDim2.fromOffset(COL1 - 10, ROW), UD2(0, 10, 0, y), 13, LAB, SANS)
+    r.val = label(list, UDim2.fromOffset(COL2 - COL1, ROW), UD2(0, COL1 + 8, 0, y), 13, TXT, MONO)
+    r.ext = label(list, UDim2.fromOffset(160, ROW), UD2(0, COL2 + 8, 0, y), 13, TXT, MONO)
+    r.lab.Name, r.val.Name, r.ext.Name = "Lab" .. i, "Val" .. i, "Ext" .. i
+    rows[i] = r
+    return r
+  end
+  local nRows = 0
+  local function put(mk, lab, val, ext, labCol, valCol)
+    nRows += 1
+    local r = row(nRows)
+    r.mk.Text, r.lab.Text, r.val.Text, r.ext.Text = mk or "", lab or "", val or "", ext or ""
+    r.lab.TextColor3, r.val.TextColor3, r.ext.TextColor3 = labCol or LAB, valCol or TXT, valCol or TXT
+    r.mk.Visible, r.lab.Visible, r.val.Visible, r.ext.Visible = true, true, true, true
+  end
+  local function gap()
+    nRows += 1
+    local r = row(nRows)
+    r.mk.Text, r.lab.Text, r.val.Text, r.ext.Text = "", "", "", ""
+  end
+  W.rows = rows
+
+  -- 大气（国际标准大气，对流层）：表速 = 真速 × √(ρ / ρ0)，声速按温度
+  local function atmo(hM)
+    local h = clamp(hM, -500, 20000)
+    local Tk = math.max(216.65, 288.15 - 0.0065 * h)
+    local rho = (h < 11000) and (1 - 2.25577e-5 * h) ^ 4.25588 or 0.2971 * math.exp(-(h - 11000) / 6341.6)
+    return rho, 20.05 * math.sqrt(Tk)
+  end
+  -- 发动机温度（只是看的：油门越大越热，开加力油温慢慢往上走、过了 105 °C 变橙色，写还能撑多久——战雷那样；不影响推演）
+  local eng = { oil = 88, egt = 520, abT = 0 }
+  local KIND_LAB = { aam = "wt.aam", agm = "wt.agm", bomb = "wt.bomb", rkt = "wt.rkt" }
+
+  ---------------------------------------------------------------- 机头 ⊕、导弹的大圈小圈
+  local bore = frame(gui, UDim2.fromOffset(26, 26), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
+  bore.Name = "WtBore"
+  do
+    local _, s = ringOf(bore, 16, HUD, 1.4)
+    s.Parent.Name = "Ring"
+    for _, a in ipairs({ { 0, -10, 1.4, 8 }, { 0, 10, 1.4, 8 }, { -10, 0, 8, 1.4 }, { 10, 0, 8, 1.4 } }) do   -- 十字从圈里伸出来一点
+      local f = frame(bore, UDim2.fromOffset(a[3], a[4]), UD2(0.5, a[1], 0.5, a[2]), HUD, 0, V2(0.5, 0.5))
+      f.Name = "Tick"
+    end
+  end
+  bore.Visible = false
+  local bigC, bigS = ringOf(gui, 200, WHITE, 1.5)
+  bigC.Name = "SeekerCone"
+  bigC.Visible = false
+  local smallC, smallS = ringOf(gui, 26, WHITE, 1.6)
+  smallC.Name = "SeekerHead"
+  smallC.Visible = false
+
+  ---------------------------------------------------------------- 锁定框（雷达 / 导引头跟踪着的目标）
+  local box = frame(gui, UDim2.fromOffset(30, 30), UD2(), INK, 1, V2(0.5, 0.5))
+  box.Name = "WtLockBox"
+  local boxS = Instance.new("UIStroke")
+  boxS.Color, boxS.Thickness = HUD, 1.6
+  boxS.Parent = box
+  box.Visible = false
+  local bDist = label(box, UDim2.fromOffset(90, 15), UD2(1, 4, 0, -2), 13, HUD, MONO)
+  local bVc = label(box, UDim2.fromOffset(90, 15), UD2(1, 4, 0, 14), 13, HUD, MONO)
+  local bAlt = label(box, UDim2.fromOffset(70, 15), UD2(0, 0, 1, 3), 13, HUD, MONO, V2(1, 0), Enum.TextXAlignment.Right)
+  bDist.Name, bVc.Name, bAlt.Name = "Range", "Closure", "AltDiff"
+  for _, l in ipairs({ bDist, bVc, bAlt }) do l.TextStrokeTransparency = 0.3 end
+  -- 目标往哪飞：一个小圈、从圈心伸出一根线（线朝下迎头、朝上背对着跑；左右按它横着飞的方向）
+  local asp = frame(box, UDim2.fromOffset(24, 24), UD2(0.5, 0, 1, 18), INK, 1, V2(0.5, 0.5))
+  asp.Name = "Aspect"
+  ringOf(asp, 10, HUD, 1.4)
+  local aspLine = frame(asp, UDim2.fromOffset(1.6, 11), UD2(0.5, 0, 0.5, 0), HUD, 0, V2(0.5, 0))
+  aspLine.Name = "AspectLine"
+  local tracks = setmetatable({}, { __mode = "k" })
+  local function velOf(em, p, t)   -- 目标的速度：两帧位置差平滑（服务器不发速度）
+    local r = tracks[em]
+    if not r then tracks[em] = { p = p, t = t, v = V() } return V() end
+    if t - r.t > 1e-3 then
+      local raw = (p - r.p) / (t - r.t)
+      if raw.Magnitude < 3000 then r.v = r.v:Lerp(raw, math.min(1, (t - r.t) * 5)) end
+      r.p, r.t = p, t
+    end
+    return r.v
+  end
+
+  ---------------------------------------------------------------- 顶上：航向罗盘
+  local TAPE_W, TAPE_DEG = 380, 30   -- 宽多少像素、两头各多少度
+  local tape = frame(gui, UDim2.fromOffset(TAPE_W, 34), UD2(0.5, 0, 0, mobile and 40 or 6), INK, 1, V2(0.5, 0))
+  tape.Name = "WtHeading"
+  tape.ClipsDescendants = true
+  local tapeMarks = {}
+  for i = 1, 16 do
+    local l = label(tape, UDim2.fromOffset(40, 14), UD2(), 12, TXT, MONO, V2(0.5, 0), Enum.TextXAlignment.Center)
+    local tk = frame(tape, UDim2.fromOffset(1.4, 5), UD2(), TXT, 0.2, V2(0.5, 0))
+    tapeMarks[i] = { l = l, tk = tk }
+  end
+  local caret = label(gui, UDim2.fromOffset(20, 12), UD2(0.5, 0, 0, (mobile and 40 or 6) + 30), 11, TXT, MONO, V2(0.5, 0), Enum.TextXAlignment.Center)
+  caret.Text = "^"
+  caret.Name = "WtHeadingCaret"
+  local tapeTri = {}   -- 雷达看到的敌机：罗盘上一个小菱形（锁着的换成方框）
+  for i = 1, 10 do
+    local tr = frame(tape, UDim2.fromOffset(7, 7), UD2(), RED, 0, V2(0.5, 0.5))
+    tr.Name = "Contact"
+    local s = Instance.new("UIStroke")
+    s.Color, s.Thickness, s.Transparency = HUD, 1.4, 1
+    s.Parent = tr
+    tr.Visible = false
+    tapeTri[i] = { f = tr, s = s }
+  end
+
+  ---------------------------------------------------------------- 左边：雷达告警圆盘（RWR）
+  local RW = 150
+  local rwr = frame(gui, UDim2.fromOffset(RW, RW), UD2(0, mobile and 18 or 46, 0.5, 70), INK, 1, V2(0, 0.5))
+  rwr.Name = "WtRwr"
+  do
+    local o = ringOf(rwr, RW, HUD, 1.4)
+    o.Name = "Outer"
+    local i2 = ringOf(rwr, RW * 0.62, HUD, 1)
+    i2.Name = "Inner"
+    local plus = label(rwr, UDim2.fromOffset(20, 20), UD2(0.5, 0, 0.5, 0), 16, HUD, MONO, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+    plus.Text = "+"
+  end
+  local rwrBg = Instance.new("UICorner")
+  rwrBg.CornerRadius = UDim.new(0.5, 0)
+  rwrBg.Parent = rwr
+  rwr.BackgroundColor3, rwr.BackgroundTransparency = RGB(0, 30, 10), 0.75
+  local rwrTags, rwrLines = {}, {}
+  for i = 1, 8 do
+    local l = label(rwr, UDim2.fromOffset(40, 14), UD2(), 12, HUD, MONO, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+    l.Visible = false
+    rwrTags[i] = l
+    local dashes = {}
+    for k = 1, 6 do
+      dashes[k] = seg(rwr, HUD, 1.4)
+      dashes[k].Name = "RwrDash"
+    end
+    rwrLines[i] = dashes
+  end
+  local threats = {}   -- [实体 id] = { t 最后一次, lock 锁着我到什么时候, msl 导弹打过来到什么时候 }
+  function G.wtRwrEvent(op, m)   -- Fly.lua 收到服务器的 rwr / rwrLock 时转过来
+    if op == "rwrLock" and m.by then
+      local r = threats[m.by] or {}
+      r.lock = os.clock() + 1.1
+      threats[m.by] = r
+    elseif op == "rwr" then
+      W.mslUntil = os.clock() + 4
+      W.mslBy = W.lastLockBy
+    end
+    if op == "rwrLock" then W.lastLockBy = m.by end
+  end
+
+  ---------------------------------------------------------------- 底下中间：已选武器、导引头
+  local selW = label(gui, UDim2.fromOffset(420, 16), UD2(0.5, -130, 1, mobile and -150 or -118), 14, TXT, SANS)
+  local selS = label(gui, UDim2.fromOffset(420, 16), UD2(0.5, -130, 1, mobile and -132 or -100), 14, TXT, SANS)
+  selW.Name, selS.Name = "WtSelWeapon", "WtSeeker"
+
+  ---------------------------------------------------------------- 每帧
+  local lastT = -9
+  local function px(degs)   -- 离轴角 → 屏幕上离画面中心多少像素（按镜头视场）
+    local vh = math.max(cam.ViewportSize.Y, 1)
+    return (vh / 2) / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(clamp(degs, 0, 85)))
+  end
+  local function proj(p)
+    local sp, on = cam:WorldToViewportPoint(p)
+    return UDim2.fromOffset(sp.X, sp.Y), on and sp.Z > 0, sp
+  end
+
+  function G.wtFlightStep(st, info)
+    if not G.wtFlightOn or not info.pilot or st.uav then
+      gui.Enabled = false
+      return
+    end
+    gui.Enabled = true
+    local t = os.clock()
+    local dt = math.min(0.1, t - lastT)
+    lastT = t
+    local d = info.d
+    local cf = st.cf
+    local pos = cf.Position
+    local jet = d.kind == "jet"
+
+    -- ① 左上参数表
+    nRows = 0
+    local thr = st.thr or 0
+    if jet then
+      if thr > 100.5 then put(nil, T("wt.thr"), string.format("%d %% %s", math.floor(thr + 0.5), T("wt.ab")), nil, nil, RED)
+      else put(nil, T("wt.thr"), string.format("%d %%", math.floor(thr + 0.5))) end
+    else
+      put(nil, T("wt.rotor"), string.format("%d %%", math.floor((st.rpm or 0) + 0.5)))
+    end
+    local hM = pos.Y / AD.M
+    local rho, a = atmo(hM)
+    local tas = st.vel.Magnitude / AD.M
+    put(nil, T("wt.ias"), string.format("%d km/h", math.floor(tas * math.sqrt(rho) * 3.6 + 0.5)))
+    put(nil, T("wt.tas"), string.format("%d km/h", math.floor(tas * 3.6 + 0.5)))
+    put(nil, T("wt.mach"), string.format("%.2f", tas / a))
+    put(nil, T("wt.alt"), T("wt.m", math.floor(hM + 0.5)))
+    put(nil, T("wt.ralt"), T("wt.m", math.max(0, info.agl or 0)))
+    gap()
+    -- 挂的弹：一种一行（机炮放最后），选中的前面「›」
+    local items = info.wl or {}
+    local gunIt, flareIt = nil, nil
+    local lk = info.lock
+    for _, it in ipairs(items) do
+      if it.flare then flareIt = it
+      elseif it.w and it.w.kind == "gun" then gunIt = gunIt or it
+      elseif it.w then
+        local labK = KIND_LAB[it.w.kind] or "wt.agm"
+        local labCol = nil
+        if it.sel and lk and lk.on and lk.seeker == "ir" and not lk.locked then labK, labCol = "wt.track", RED end   -- 红外导引头在追踪
+        local n = it.n or 0
+        local side = (n % 2 == 0) and T("wt.left") or T("wt.right")   -- 左右挂架轮着打
+        put(it.sel and ">" or "", T(labK), (n > 0) and string.format("%d[%s]", n, side) or "0", T("aw." .. it.wid), labCol, (n > 0) and TXT or RED)
+      end
+    end
+    local nf = flareIt and flareIt.n or st.flares or 0
+    put("", T("wt.flare"), tostring(nf), nil, nil, (nf > 0) and TXT or RED)
+    put("", T("wt.chaff"), tostring(nf), nil, nil, (nf > 0) and TXT or RED)
+    if gunIt then
+      put(gunIt.sel and ">" or "", T("wt.gun"), tostring(gunIt.n or 0), T("aw." .. gunIt.wid), nil, ((gunIt.n or 0) > 0) and TXT or RED)
+    end
+    put("", T("wt.fuel"), info.fuelT or "--:--", nil, nil, info.fuelCol or TXT)
+    gap()
+    -- 发动机：每台一组油温、引擎温度
+    local k = clamp(thr / 100, 0, 1.3)
+    if jet then
+      local ab = thr > 100.5
+      eng.abT = ab and (eng.abT + dt) or math.max(0, eng.abT - dt * 0.5)
+      local oilT = 86 + 16 * math.min(k, 1) + math.min(eng.abT, 120) / 120 * 14
+      eng.oil += (oilT - eng.oil) * math.min(1, dt * 0.4)
+      eng.egt += ((520 + 330 * math.min(k, 1) + (ab and 100 or 0)) - eng.egt) * math.min(1, dt * 1.5)
+    else
+      eng.oil += ((80 + 20 * clamp((st.rpm or 0) / 100, 0, 1)) - eng.oil) * math.min(1, dt * 0.4)
+      eng.egt += ((480 + 260 * clamp((st.rpm or 0) / 100, 0, 1)) - eng.egt) * math.min(1, dt * 1.5)
+    end
+    local nEng = (d.eng and #d.eng > 0) and #d.eng or 1
+    local hot = eng.oil > 105
+    local leftS = hot and math.max(0, (120 - eng.oil) / 0.12) or nil   -- 还能撑多久（看的）
+    for _ = 1, math.min(nEng, 3) do
+      put("", T("wt.oil"), string.format("%d°C%s", math.floor(eng.oil + 0.5), leftS and string.format(" %d:%02d", math.floor(leftS / 60), math.floor(leftS % 60)) or ""), nil,
+        hot and ORG or nil, hot and ORG or TXT)
+      put("", T("wt.eng"), string.format("%d°C", math.floor(eng.egt + 0.5)))
+    end
+    for i = nRows + 1, #rows do
+      local r = rows[i]
+      r.mk.Visible, r.lab.Visible, r.val.Visible, r.ext.Visible = false, false, false, false
+    end
+
+    -- ② 机头 ⊕、导弹的大圈小圈
+    local bp, bon = proj(pos + cf.LookVector * 600)
+    bore.Position, bore.Visible = bp, bon and not st.eo and not st.bsight
+    local w = info.w
+    local missile = w and (w.kind == "aam" or w.kind == "agm") and (w.cone or 0) > 0
+    if missile and bon and not st.eo and not st.bsight then
+      local locked = lk and lk.on and lk.locked
+      local col = locked and RED or WHITE
+      local r0 = px(w.cone) * 2
+      bigC.Size, bigC.Position, bigC.Visible = UDim2.fromOffset(r0, r0), bp, true
+      bigS.Color = col
+      -- 小圈：导引头看着哪——没目标在大圈中心；追踪 / 锁定时滑到目标上（红外的从机头滑过去，雷达弹锁着就在目标上）
+      local sp = bp
+      if lk and lk.on and lk.p then
+        local kk = locked and 1 or clamp(lk.k or 0, 0, 1)
+        sp = bp:Lerp(lk.p, (lk.seeker == "ir") and kk or (locked and 1 or 0))
+      end
+      smallC.Position, smallC.Visible = sp, true
+      smallC.Size = UDim2.fromOffset(locked and 22 or 26, locked and 22 or 26)
+      smallS.Color = col
+    else
+      bigC.Visible, smallC.Visible = false, false
+    end
+
+    -- ③ 锁定框：距离、接近速度、高度差、目标往哪飞
+    local tgt = st.lock
+    if lk and lk.on and lk.p and tgt and not st.eo and not st.bsight then
+      box.Visible = true
+      box.Position = lk.p
+      local m = (lk.dist or 0) / AD.M
+      bDist.Text = (m >= 1000) and string.format("%.1f km", m / 1000) or string.format("%d m", math.floor(m + 0.5))
+      bVc.Text = lk.vc and string.format("%d m/s", math.floor(lk.vc + 0.5)) or ""
+      local em = tgt.em
+      local root = em and em.Parent and em:FindFirstChild("Root")
+      if root then
+        local tp = root.CFrame.Position
+        local dh = (tp.Y - pos.Y) / AD.M
+        bAlt.Text = (math.abs(dh) >= 1000) and string.format("%+.0f km", dh / 1000) or string.format("%+d m", math.floor(dh / 10 + 0.5) * 10)
+        local vT = velOf(em, tp, t)
+        local los = (pos - tp)   -- 从目标看向我
+        if vT.Magnitude > 5 and los.Magnitude > 1 then
+          local u = los.Unit
+          local head = vT.Unit:Dot(u)   -- 1 迎头冲我来、−1 背对我
+          local side = cam.CFrame.RightVector:Dot(vT.Unit)
+          local ang = deg(math.acos(clamp(head, -1, 1)))   -- 0 迎头、180 背对
+          aspLine.Rotation = (side >= 0) and -ang or ang   -- 0°：线朝下（迎头）
+          aspLine.Visible = true
+        else
+          aspLine.Visible = false
+        end
+      else
+        bAlt.Text = ""
+        aspLine.Visible = false
+      end
+    else
+      box.Visible = false
+    end
+
+    -- ④ 航向罗盘
+    local lv = cf.LookVector
+    local hdg = (deg(math.atan2(lv.X, -lv.Z)) + 360) % 360
+    local base = math.floor((hdg - TAPE_DEG) / 5) * 5
+    local CARD = { [0] = "N", [90] = "E", [180] = "S", [270] = "W" }
+    for i, mk in ipairs(tapeMarks) do
+      local h = base + (i - 1) * 5
+      local off = h - hdg
+      local x = TAPE_W / 2 + off / TAPE_DEG * (TAPE_W / 2)
+      local hh = (h % 360 + 360) % 360
+      mk.l.Visible = x > 8 and x < TAPE_W - 8 and (hh % 10 == 0 or hh % 5 == 0)
+      mk.tk.Visible = mk.l.Visible
+      if mk.l.Visible then
+        mk.l.Position = UDim2.fromOffset(x, 0)
+        mk.tk.Position = UDim2.fromOffset(x, 15)
+        mk.l.Text = CARD[hh] or tostring(hh)
+        mk.l.TextColor3 = CARD[hh] and HUD or TXT
+      end
+    end
+    local contacts = G.radarContacts and G.radarContacts() or {}
+    local ni = 0
+    for _, c in ipairs(contacts) do
+      if ni < #tapeTri and math.abs(c.az) < TAPE_DEG then
+        ni += 1
+        local tr = tapeTri[ni]
+        tr.f.Position = UDim2.fromOffset(TAPE_W / 2 + c.az / TAPE_DEG * (TAPE_W / 2), 26)
+        tr.f.Rotation = c.locked and 0 or 45
+        tr.f.Size = c.locked and UDim2.fromOffset(9, 9) or UDim2.fromOffset(6, 6)
+        tr.f.BackgroundTransparency = c.locked and 1 or 0
+        tr.s.Transparency = c.locked and 0 or 1
+        tr.f.Visible = true
+      end
+    end
+    for i = ni + 1, #tapeTri do tapeTri[i].f.Visible = false end
+
+    -- ⑤ 雷达告警圆盘：敌机的雷达扫到我（在它的扫描范围里）标型号，锁着我虚线连到中间，导弹打过来实线、红色闪
+    local ents = workspace:FindFirstChild("Ents")
+    local side = me:GetAttribute("Side")
+    local myYaw = math.atan2(lv.X, -lv.Z)
+    local ti = 0
+    local R0 = RW / 2
+    local function place(i, bearing, rr, text, col, mode)   -- mode：nil 只有字、"dash" 虚线、"solid" 实线
+      local x = R0 + math.sin(bearing) * rr
+      local y = R0 - math.cos(bearing) * rr
+      local tag = rwrTags[i]
+      tag.Text, tag.TextColor3, tag.Visible = text, col, true
+      tag.Position = UDim2.fromOffset(x, y)
+      local dashes = rwrLines[i]
+      for kq, dsh in ipairs(dashes) do
+        if mode then
+          local n = #dashes
+          local a0, a1 = (kq - 1) / n, (kq - (mode == "dash" and 0.45 or 0)) / n
+          local ex, ey = R0 + math.sin(bearing) * (rr - 9), R0 - math.cos(bearing) * (rr - 9)
+          setSeg(dsh, R0 + (ex - R0) * a0, R0 + (ey - R0) * a0, R0 + (ex - R0) * a1, R0 + (ey - R0) * a1)
+          dsh.BackgroundColor3 = col
+        else
+          dsh.Visible = false
+        end
+      end
+    end
+    local mslOn = W.mslUntil and t < W.mslUntil
+    for _, em in ipairs(ents and ents:GetChildren() or {}) do
+      if ti >= #rwrTags then break end
+      local mdl = em:GetAttribute("Model")
+      local dd = mdl and AD.D[mdl]
+      local rd = dd and dd.radar
+      local root = em:FindFirstChild("Root")
+      if rd and root and em ~= st.em and em:GetAttribute("Team") ~= side and em:GetAttribute("Kind") == "air" and (em:GetAttribute("Hp") or 1) > 0 then
+        local rc = root.CFrame
+        local to = pos - rc.Position
+        local dist = to.Magnitude
+        local id = em:GetAttribute("EntId")
+        local th = id and threats[id]
+        local locking = th and th.lock and t < th.lock
+        local l = rc:VectorToObjectSpace(to / math.max(dist, 1))
+        local inScan = dist <= rd.range and math.abs(deg(math.atan2(l.X, -l.Z))) <= rd.az and math.abs(deg(math.asin(clamp(l.Y, -1, 1)))) <= rd.el
+        if inScan or locking then
+          ti += 1
+          local rel = -to
+          local bearing = math.atan2(rel.X, -rel.Z) - myYaw
+          local missileHere = mslOn and (W.mslBy == id)
+          local rr = R0 * (missileHere and 0.42 or (locking and 0.6 or 0.8))
+          local code = string.upper(string.sub(mdl, 1, 4))
+          if missileHere then
+            place(ti, bearing, rr, ((t * 4) % 1 < 0.6) and "MSL" or "", RED, "solid")
+          elseif locking then
+            place(ti, bearing, rr, code, ORG, "dash")
+          else
+            place(ti, bearing, rr, code, HUD, nil)
+          end
+        end
+      end
+    end
+    if mslOn and not (W.mslBy and threats[W.mslBy]) and ti < #rwrTags then   -- 导弹打过来、不知道是谁打的：正后方闪「MSL」
+      ti += 1
+      place(ti, math.pi, R0 * 0.42, ((t * 4) % 1 < 0.6) and "MSL" or "", RED, "solid")
+    end
+    for i = ti + 1, #rwrTags do
+      rwrTags[i].Visible = false
+      for _, dsh in ipairs(rwrLines[i]) do dsh.Visible = false end
+    end
+    for id, th in pairs(threats) do
+      if not th.lock or t - th.lock > 5 then threats[id] = nil end
+    end
+
+    -- ⑥ 底下中间：已选武器、导引头
+    if w and info.wid then
+      selW.Text = T("wt.selW", T("aw." .. info.wid), T("air.k." .. (w.kind or "agm")))
+      if w.kind == "aam" or (w.kind == "agm" and (w.cone or 0) > 0) then
+        local stt = (lk and lk.on) and (lk.locked and "wt.seekLock" or "wt.seekTrack") or "wt.seekOn"
+        selS.Text = T("wt.seeker", T(stt))
+        selS.TextColor3 = (lk and lk.on and lk.locked) and RED or TXT
+      else
+        selS.Text = ""
+      end
+    else
+      selW.Text, selS.Text = "", ""
+    end
+  end
+
+  function G.wtFlightOff()
+    gui.Enabled = false
+  end
+  G.wtFlightGui = gui   -- 测试用
+  G.frameConn("WtFlight", function()
+    if gui.Enabled and os.clock() - lastT > 0.25 then gui.Enabled = false end
+  end)
+end
+
+return WtFlight
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="221">
+          <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
 --   · 命中提示（打出去的）：准星下面一行——击穿（橙）/ 未击穿（灰）/ 跳弹（黄）/ 已击毁（红：弹药殉爆、车组全灭、烧毁），
@@ -78426,7 +79218,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="221">
+        <Item class="ModuleScript" referent="222">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）

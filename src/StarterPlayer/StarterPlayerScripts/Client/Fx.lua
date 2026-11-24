@@ -1189,6 +1189,7 @@ function Fx.init(G)
   -- 服务器校正：导弹拐弯、炸弹滑翔（本地只会直线 / 抛物线）
   local function fixShot(e)
     local s = flying[e.id]
+    if s and e.lost then s.lost = true end   -- 数据链断了 / 导引头丢了目标（雷达屏上只剩预计命中点那个小圈，Radar.lua）
     if not s or s.path or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
     if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
     s.v = e.v
@@ -1515,6 +1516,9 @@ function Fx.init(G)
         if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
       elseif k == "shotEnd" then endShot(e.id)
       elseif k == "shotFix" then fixShot(e)
+      elseif k == "shotAct" then   -- 主动雷达弹导引头开机（服务器 Air.lua arhStep）：雷达屏上数据链虚线变实线
+        local fs = flying[e.id]
+        if fs then fs.act, fs.lost = true, false end
       elseif k == "flares" then flares(e)
       elseif k == "eject" then eject(e)
       elseif k == "shell" then shell(e)

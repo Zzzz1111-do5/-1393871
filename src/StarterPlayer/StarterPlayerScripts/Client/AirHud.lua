@@ -615,6 +615,20 @@ function AirHud.init(G)
         h.short.TextColor3 = sel and WHITE or METAL_ICON
       end
     end
+    -- 战雷式界面（WtFlight.lua；用户 11-24 夜：「战雷ui压根不是这样的」，发了战雷的截图）：开着时开飞机的人这一套 MWT 式的收起来
+    --   （右上机型侧影血量、准星两边高度速度、准星上方弹的牌子、六边形武器键、机头全息准星、绿方框锁定）；
+    --   留着热成像、鼠标瞄准的白圈（按 M 切过去才有）、机炮提前量小圈；坐后面的乘客照旧看右上那块
+    if G.wtFlightOn and G.wtFlightStep then
+      A.card.Visible = not pilot
+      root.Visible = false
+      A.hexBar.Visible = false
+      hsg.Enabled = false
+      A.boreFall.Visible = false
+      A.lock.Visible, A.seek.Visible, A.leadLine.Visible, A.aim.Visible = false, false, false, false
+      G.wtFlightStep(st, info)
+    else
+      A.card.Visible = true
+    end
   end
 
   -- 光电吊舱、无人机画面：这一套收起来（热成像也先让开，出来再开）
@@ -622,6 +636,7 @@ function AirHud.init(G)
     if gui.Enabled then gui.Enabled = false end
     hsg.Enabled = false
     irApply(false)
+    if G.wtFlightOff then G.wtFlightOff() end
   end
 
   -- 下了飞机、被打下来（Fly 不调了）：收起来、热成像关掉

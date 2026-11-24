@@ -99,6 +99,11 @@ if kind == "jet" or kind == "heli" then
     where("挪开以后")
     check(st2.lock ~= nil and st2.lock.out == true, "敌机出了离轴角：锁还在、算在发射角度外")
   end
+  local wiN = tonumber(TEST_ARGS:match("wi=(%d+)") or "")   -- wi=2：选第二种弹（比如歼-20 的霹雳-10 红外弹：不用雷达也能锁）
+  if wiN and st2 then
+    st2.wi, st2.lock, st2.lockT = wiN, nil, 0
+    R.run(0.5)
+  end
   local lockK = tonumber(TEST_ARGS:match("lock=([%d%.]+)") or "")
   if lockK and st2 and st2.lock and w then
     st2.lockT = lockK * (w.lockTime or 1)
@@ -126,6 +131,20 @@ if kind == "jet" or kind == "heli" then
   if TEST_ARGS:find("ir=1", 1, true) and C.airThermal then
     C.airThermal(true)
     R.run(0.2)
+  end
+  -- rwr=1：敌机雷达锁着我、一发导弹打过来（看战雷式的雷达告警圆盘：型号、虚线、MSL）
+  if TEST_ARGS:find("rwr=1", 1, true) and fe and C.wtRwrEvent then
+    R.as("client", function()
+      C.wtRwrEvent("rwrLock", { by = fe.id })
+      C.wtRwrEvent("rwr", { id = 1, w = "aim120" })
+    end)
+    R.run(0.1)
+  end
+  -- dl=1：自己打出去一发霹雳-15、导引头还没开机（看雷达屏上的数据链：弹的点、到目标的虚线、截获圈）；只是画面，不经服务器
+  if TEST_ARGS:find("dl=1", 1, true) and st2 and C.flyingShots then
+    C.flyingShots[991001] = { wm = { parts = {}, offs = {} }, cfs = {}, aw = AD.W.pl15, w = "pl15", burn = 5, half = 2, t = 0, kind = "missile", trailT = 0, my = true,
+      p = st2.cf.Position + st2.cf.LookVector * 220 + st2.cf.RightVector * 20, v = st2.cf.LookVector * 820, tg = fe and fe.id or nil }
+    R.run(1 / 30)
   end
 end
 

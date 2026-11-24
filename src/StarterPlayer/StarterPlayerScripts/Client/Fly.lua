@@ -1997,9 +1997,11 @@ function Fly.init(G)
       st.accV = nil
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
+      if G.wtRwrEvent then G.wtRwrEvent("rwr", m) end   -- 战雷式雷达告警圆盘（WtFlight.lua）
       if G.playSound then G.playSound("capture", nil, 2.2) end
     elseif m.op == "rwrLock" then   -- 被敌机的雷达锁着（战雷的 RWR）：对方半秒报一次，停了一秒多就算丢了
       st.rwrLockT = os.clock() + 1.1
+      if G.wtRwrEvent then G.wtRwrEvent("rwrLock", m) end
       st.rwrLockFull = m.full == true
     end
   end)
@@ -2727,12 +2729,13 @@ function Fly.init(G)
       fuelText.Text = T("air.fuel", math.floor(st.fuel * 100 + 0.5)) .. ((st.fuelX > 0) and string.format(" +%d", math.floor(st.fuelX * 100 + 0.5)) or "") .. "  " .. left2
       fuelText.TextColor3 = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or HUD)
       info.fuel = T("air.fuelLeft", math.floor(tot * 100 + 0.5), left2)
+      info.fuelT = left2   -- 战雷式左上参数表（WtFlight.lua）：燃油量写还能飞几分几秒
       info.fuelCol = (tot < 0.1) and RGB(255, 90, 80) or ((tot < 0.25) and RGB(255, 200, 90) or nil)
       info.thr = thrText.Text
       info.vs = T("air.vs", vsText.Text)
       info.gear = (d.kind == "jet" and st.gearWant > 0.5) and T("air.gearState.down") or nil
       local bp, bon = project(pos + st.cf.LookVector * 400)
-      bore.Position, bore.Visible = bp, bon and not st.eo
+      bore.Position, bore.Visible = bp, bon and not st.eo and not G.wtFlightOn   -- 战雷式界面（WtFlight.lua）有自己的机头 ⊕
       G.try_(dcsHud, pos, kmh)
       -- 命中标记标在炮口指的地方（固定的航炮顺着机头打；机头炮塔跟着瞄准圈），打中时这个准星放大一下、变红（另一会话）
       G.hitMarkerAt = gw and (gw.turret and (G.mobile and UDim2.fromScale(0.5, 0.5) or aimRing.Position) or bp) or nil
@@ -2747,8 +2750,10 @@ function Fly.init(G)
       -- 用户：圈太小、挡视野——原来按导引头离轴角画，小的只有一两百像素、正好套在飞机和前方上；现在至少框到画面高度的八成，
       --   飞机和前方留空，离轴角大的弹（近距格斗弹）再大一点；武器名写在圈里靠下
       local px = clamp(vh / math.tan(rad(cam.FieldOfView / 2)) * math.tan(rad(math.min(rdeg, 55))), vh * 0.8, vh * 0.94)
-      ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav
-      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav
+      -- 战雷式界面（WtFlight.lua）开着时不画这个绿大圈：导弹的大圈小圈按导引头真实的离轴角画（锁定前白、锁上红）
+      local wtOn = G.wtFlightOn == true
+      ring.Size, ring.Position, ring.Visible = UDim2.fromOffset(px, px), bp, bon and not st.eo and not st.uav and not wtOn
+      ringText.Position, ringText.Visible = bp + UDim2.fromOffset(0, px / 2 - 30), bon and not st.eo and not st.uav and not wtOn
       ringText.Text = wid and (T("aw." .. wid) .. "  ×" .. left(wid)) or (gid and (T("aw." .. gid) .. "  ×" .. left(gid))) or ""
       local lk = st.cf.LookVector
       hdgText.Text = string.format("%03d", math.floor((math.deg(math.atan2(lk.X, -lk.Z)) + 360) % 360 + 0.5) % 360)
