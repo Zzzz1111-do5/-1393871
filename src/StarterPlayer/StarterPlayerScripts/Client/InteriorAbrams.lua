@@ -353,6 +353,42 @@ return function(Defs, Hp)
       loader = { g = T, eye = lEye, look = V(0.45, -0.20, -1), yaw = 170, up = 70, down = 75, crew = "loader",
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     }
+    -- 驾驶员位（用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」）：挖了内腔的 A2 才有——车体内腔就是驾驶舱
+    --   （挖出来的驾驶舱很矮：顶在座圈下 0.31～0.45 米、地板 0.91～1.06 米、两边墙 ±0.66 米，驾驶员半躺）；M1A1 原模型只做了炮塔里面，A1 没有驾驶员位
+    local order = { "gunner", "commander", "loader" }
+    if cav then
+      local H = "hull"
+      local eyeD = V(0, -0.46, -1.85)
+      local function lookAt(p, at) return CFrame.lookAt(p, at) end
+      -- 三具潜望镜（前面一具正对，两边各斜 32°）、正前方驾驶员视觉增强器 DVE 的显示器
+      for i = -1, 1 do
+        local a = rad(i * 32)
+        local q = V(math.sin(a) * 0.22, -0.40, -2.05 - math.cos(a) * 0.05)
+        b:periscope(H, lookAt(q, q + V(math.sin(a), 0, -math.cos(a))), 0.17, 0.07, 0.08, { model = true })
+      end
+      b:screen(H, 0.16, 0.12, lookAt(V(0, -0.50, -2.16), eyeD), "dve", { lightColor = RGB(200, 200, 200), lightK = 0.25 })
+      -- 半躺的座椅、T 形操纵把（两端拧把油门、中间换挡，跟着转向转）、刹车踏板
+      b:seat(H, CF(0, -0.86, -2.22) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.55, recline = 40, head = true, col = RGB(52, 50, 44) })
+      b:group("tbar", H, CF(0, -0.60, -2.62))
+      b:tube("tbar", V(-0.24, 0, 0), V(0.24, 0, 0), 0.035, C.dark, MAT.Metal)
+      b:cyl("tbar", 0.11, 0.05, CF(-0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:cyl("tbar", 0.11, 0.05, CF(0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:box("tbar", V(0.10, 0.06, 0.08), CF(0, 0.02, 0), C.black)
+      b:box("tbar", V(0.03, 0.08, 0.03), CF(0.04, 0.07, 0), RGB(200, 40, 30))   -- 换挡杆
+      b:tube(H, V(0, -0.60, -2.62), V(0, -0.90, -2.80), 0.06, C.gray, MAT.Metal)
+      b:box(H, V(0.18, 0.04, 0.12), CF(0.10, -0.90, -2.85) * ANG(rad(-25), 0, 0), C.dark, MAT.DiamondPlate)
+      -- 驾驶员综合显示器 DID（左前）：主菜单、状态、告警、导航、维护；起动、熄火、战术怠速、灯检、确认告警
+      b:screen(H, 0.18, 0.135, lookAt(V(-0.36, -0.58, -2.36), eyeD), "did",
+        { keys = { top = { "MAIN MENU", "STATUS", "W/C/A", "NAV", "MAINT" }, bottom = { "PUSH TO START", "SHUT OFF", "TAC IDLE", "LAMP TEST", "ALARM ACK" } }, lightK = 0.3 })
+      -- 灭火瓶（哈龙，驾驶员后面两瓶）、顶灯
+      b:extinguisher(H, CF(-0.40, -0.78, -1.30), 0.45, 0.14)
+      b:extinguisher(H, CF(0.40, -0.78, -1.30), 0.45, 0.14)
+      b:light(H, CF(0, -0.42, -1.55), "dome", RGB(255, 240, 220), 2.4, 0.9)
+      stations.driver = { g = H, eye = eyeD, look = V(0, 0.10, -1), yaw = 110, up = 30, down = 55, crew = "driver",
+        optics = { primary = { kind = "dve", name = "DVE  AN/VAS-5", g = H, pos = V(0, 0.06, -2.25), dir = "hull", fovs = { 40 }, ret = "dve", look = "bhot", shape = "rect" },
+          alt = { kind = "rear", name = "RVSS  REAR", g = H, pos = V(1.25, 0.10, 3.45), dir = "rear", fovs = { 52 }, ret = "rear", look = "whot", shape = "rect" } } }
+      order = { "driver", "gunner", "commander", "loader" }
+    end
     -- 坐在车里时外模型里伸进乘员舱的块不画（Interior 的 extHide）：炮塔壳的框（炮塔坐标，格）往里收 0.3 格
     local sh = D.parts.Int_Shell.p
     local box = { c = v3(sh.c) - D.tur, s = v3(sh.s) - V(0.6, 0.6, 0.6) }
@@ -361,8 +397,8 @@ return function(Defs, Hp)
       loader = "m256",
       modelInt = true, carved = true, crewBox = box,
       stations = stations,
-      order = { "gunner", "commander", "loader" },
-      lock = "gunner",
+      order = order,
+      lock = "gunner",   -- 一进车默认炮长位，F2 驾驶员（挖了内腔才有）、F3 炮长、F4 车长、F5 装填手
       crew = {},
       abrams = variant,
     }

@@ -224,9 +224,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         end
       end
     end
-    -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：内饰函数返回 lock = "gunner"——
-    --   一进车里就是炮长位，F2～F5 都停在炮长位，C 再按一下直接出车（乘员位只有这一个）；
-    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）挪到炮长位的 T（第三个），车外按 T 也是开它（原来要先坐到车长位）
+    -- 坦克一进车里默认是炮长位（内饰函数返回 lock = "gunner"，原来 11-23「就只锁定开炮手」锁死在炮长位；
+    --   用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」——不锁了：F2 驾驶员、F3 炮长、F4 车长、F5 装填手照常换）；
+    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）也挂在炮长位的 T（第三个）上，车外按 T 也是开它
     if spec.lock and spec.stations and spec.stations[spec.lock] then
       local sp = spec.stations[spec.lock]
       local cm = spec.stations.commander
@@ -234,7 +234,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if cm and cm.optics and cm.optics.primary and cm.optics.primary.kind ~= "gps" and not sp.optics.third then
         sp.optics.third = cm.optics.primary
       end
-      spec.order = { spec.lock }
+      local o = { spec.lock }   -- 默认的乘员位排第一个，别的照原来的顺序
+      for _, k in ipairs(spec.order or {}) do if k ~= spec.lock and spec.stations[k] then table.insert(o, k) end end
+      spec.order = o
     end
     -- carved：坐在乘员位上外壳照样画——挖出来的内壁（v.M.carve.cav），或者用原模型自带车内的（spec.modelInt：M1A1 原模型的炮塔内饰，
     --   InteriorAbrams.lua；外模型里伸进乘员舱的块照 spec.crewBox 不画，见 extHide）
@@ -1293,7 +1295,6 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   end
 
   local function enterStation(c, k)
-    if c.spec.lock then k = c.spec.lock end   -- 坦克：不管要换哪个位置，都是炮长位
     if not c.spec.stations[k] then return end
     station = k
     mode = "seat"
@@ -1482,14 +1483,11 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     else
       local LB = { driver = { "驾驶员", "driver" }, gunner = { "炮长", "gunner" }, commander = { "车长", "commander" }, loader = { "装填手", "loader" }, troop = { "载员", "troop" } }
       local fk = {}
-      if c.spec.lock then   -- 坦克锁在炮长位：不列换位键
-        local lb = LB[c.spec.lock] or { c.spec.lock, c.spec.lock }
-        table.insert(fk, T(lb[1] .. "位", lb[2] .. " seat"))
-      else
-        for i, k2 in ipairs(c.spec.order) do
-          local lb = LB[k2] or { k2, k2 }
-          table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
-        end
+      local FN = { driver = 2, gunner = 3, commander = 4, loader = 5 }
+      local named = c.spec.lock ~= nil   -- 坦克：F2～F5 按名字（驾驶员 / 炮长 / 车长 / 装填手）；别的车按乘员位顺序
+      for i, k2 in ipairs(c.spec.order) do
+        local lb = LB[k2] or { k2, k2 }
+        table.insert(fk, "F" .. ((named and FN[k2]) or (i + 1)) .. " " .. T(lb[1], lb[2]))
       end
       local tk = (st and st.d and st.d.turret) and T("方向键转炮塔、抬压炮 · WASD 开车 · ", "arrows traverse / elevate · WASD drive · ") or ""
       hint.Text = tk .. T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
@@ -2730,7 +2728,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     elseif KEYST[k] then
       local want = KEYST[k]
-      if cur then   -- 按这型车的乘员位顺序（F2 第一个、F3 第二个……；坦克正好是驾驶员 / 炮长 / 车长 / 装填手）
+      if cur and not (cur.spec.lock and cur.spec.stations[want]) then   -- 坦克有这个名字的乘员位就去它（F2 驾驶员、F3 炮长、F4 车长、F5 装填手）；别的车按这型车的乘员位顺序
         local idx = ({ [Enum.KeyCode.F2] = 1, [Enum.KeyCode.F3] = 2, [Enum.KeyCode.F4] = 3, [Enum.KeyCode.F5] = 4 })[k]
         want = cur.spec.order[idx] or want
       end

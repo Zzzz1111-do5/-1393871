@@ -1102,6 +1102,9 @@
     分划 / 符号亮度、热像增益 / 电平、红分划；布雷德利射速（高 / 低 / 单发）、武器选择、武器总开关。
     ④ 屏幕：GCDP（`P.gcdp2`，主画面 + MAIN / AMMO / RANGE / ADJUST / BIT 页）、CCP 接真功能、CITV 五档视场、车长握把热像仪激光测距 + 敌情报告（服务器 `ACT.vspot`）。
     ⑤ 测试：`tools/mock/interior_abrams.lua veh=m1a2|m1a1`、`interior_bradley.lua`、`interior_occ.lua … imp=m1a1i`（`T.fakeImport`）。细节见 `docs/interior.md`。
+  - 11-24：用户「为什么给我默认炮长位控不了 我要能开别的位置」「你先让坦克能用不同视角」：坦克不再锁死在炮长位（Interior.lua）——一进车默认炮长位，
+    F2 驾驶员、F3 炮长、F4 车长、F5 装填手，C 依次换位、最后一个之后回车外；M1A2 挖了内腔（m1a2dc）以后加了驾驶员位（InteriorAbrams.lua：车体前部半躺的座椅、
+    三块潜望镜、视觉增强器屏 DVE / 后视 RVSS、T 形把、DID 屏）；M1A1 原模型内饰只有炮塔，没有驾驶员位。
 
 ## 协作（几个会话一起改这个仓库）
 

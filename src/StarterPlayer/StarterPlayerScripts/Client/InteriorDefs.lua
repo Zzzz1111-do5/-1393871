@@ -603,7 +603,7 @@ function Defs.m1a2(b, ctx)
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     },
     order = { "driver", "gunner", "commander", "loader" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     crew = {
       driver = { dress = "tank_us", g = H, eye = eyeD, lean = 34, yaw = 0, look = V(0, 0.1, -1),
         hands = { l = { "tbar", V(-0.27, 0.0, 0) }, r = { "tbar", V(0.27, 0.0, 0) } },
@@ -1036,7 +1036,7 @@ function Defs.ztz99a(b, ctx)
           alt = { kind = "gps" } } },
     },
     order = { "driver", "gunner", "commander" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     carved = carved,   -- 挖了内腔的那套：坐在车里外壳照样画（从里面看不见外壳的背面），显示内壁
     crew = {
       driver = { dress = "tank_cn", g = H, eye = eyeD, lean = dRoof and 40 or 32, yaw = 0, look = V(0, 0.1, -1),
