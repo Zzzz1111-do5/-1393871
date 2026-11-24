@@ -190,6 +190,46 @@ function WtMatch.init(G)
     end
   end
 
+  ---------------------------------------------------------------- 直接出击（战雷：阵亡以后在出击界面选车，人就在车里出生，不用走去召唤位）
+  --   客户端 WtBattle.lua 的出击栏点一型 → { 型号, 装备 }：在自己主基地出生（地面车 base、飞机 baseAir），出生那一下挪到这一型的召唤位旁边、
+  --   照召唤位那套出车（Depots spawnAt：SP、阵容、金币解锁、名额都照查），再挪到车边坐进去
+  G.ACT.wtDeployVeh = function(P, vid, choice)
+    if type(vid) ~= "string" or not P or not P.pl then return end
+    local R = G.round
+    if not R or (R.phase ~= "battle" and R.phase ~= "prep") or P.alive then return end
+    local air = AD.get(vid)
+    local gd = (not air) and VD.get(vid)
+    if not air and not gd then return end
+    local pads = {}
+    for _, p in ipairs(G.pads or {}) do
+      if p.team == P.team and p.summon and p.vids and table.find(p.vids, vid) and ((air and p.kind == "air") or (gd and p.kind == "veh")) then
+        table.insert(pads, p)
+      end
+    end
+    if #pads == 0 then G.msg(P.pl, "bad", "wt.noPad") return end
+    if G.wtSpawnOk and not G.wtSpawnOk(P, vid, air and "air" or "veh") then return end
+    P.spawnCF = nil
+    G.ACT.deploy(P, (type(choice) == "table" or type(choice) == "string") and choice or (P.lastChoice or "rifle"), air and "baseAir" or "base")
+    if not P.spawnCF then return end   -- 没部署成（出生点被占、兵力打光……：deploy 里已经说了）
+    P.after = function(P2, char)
+      local Map = G.Map
+      for _, p in ipairs(pads) do
+        local y = (G.airSurface and G.airSurface(p.term.X, p.term.Z)) or Map.ground(p.term.X, p.term.Z)
+        char:PivotTo(CFrame.new(p.term.X + 1.5, y + 3, p.term.Z + 1.5))
+        P2.padT = 0
+        local e = G.padSpawnAt and G.padSpawnAt(P2, p, nil, vid)
+        if e and e.root then
+          task.wait(0.15)
+          char:PivotTo(e.root.CFrame * CFrame.new((e.def.W or 8) / 2 + 3, 2, 0))
+          task.wait(0.1)
+          G.ACT.enterVeh(P2, e.id)
+          return
+        end
+      end
+      G.msg(P2.pl, "bad", "wt.padBusy")
+    end
+  end
+
   local AWARD = { first = 80, double = 60, triple = 120, rampage = 150, avenger = 60, marksman = 50 }   -- 奖章加多少分（也就攒 SP）
   -- 自己阵亡：连杀断了
   G.on("died", function(P)

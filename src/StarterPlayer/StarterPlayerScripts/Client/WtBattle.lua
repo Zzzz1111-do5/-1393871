@@ -108,6 +108,83 @@ function WtBattle.init(G)
     return T("wtm.sp", w.sp or 0) .. "  ·  " .. T("wtm.lineup", #(w.order or {}), w.max or 5)
   end
 
+  ---------------------------------------------------------------- 出击栏（战雷：阵亡以后在出击界面直接选车，人在车里出生）
+  --   部署界面下面一条：本队能开的地面车一排、飞机直升机一排，每张卡写名字、这辆现在要多少 SP（免费 / 够了 / 不够 / 阵容满了 / 备用用完）；
+  --   点一张 → 服务器 WtMatch.lua G.ACT.wtDeployVeh（在主基地出生、出车、坐进去）；装备照部署界面左下选的
+  local strip = Instance.new("ScrollingFrame")
+  strip.Name = "WtLineup"
+  strip.Size, strip.Position, strip.AnchorPoint = UD2(0.62, 0, 0, 76), UD2(0.5, 0, 1, -104), V2(0.5, 1)
+  strip.BackgroundColor3, strip.BackgroundTransparency, strip.BorderSizePixel = RGB(8, 12, 14), 0.35, 0
+  strip.ScrollingDirection = Enum.ScrollingDirection.X
+  strip.ScrollBarThickness = 4
+  strip.CanvasSize = UD2(0, 0, 0, 0)
+  strip.AutomaticCanvasSize = Enum.AutomaticSize.X
+  strip.Visible = false
+  strip.Parent = gui
+  do
+    local l = Instance.new("UIListLayout")
+    l.FillDirection = Enum.FillDirection.Horizontal
+    l.Padding = UDim.new(0, 6)
+    l.VerticalAlignment = Enum.VerticalAlignment.Center
+    l.SortOrder = Enum.SortOrder.LayoutOrder
+    l.Parent = strip
+    local pd = Instance.new("UIPadding")
+    pd.PaddingLeft, pd.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+    pd.Parent = strip
+  end
+  local stripTitle = label(gui, "", UD2(0.62, 0, 0, 18), UD2(0.5, 0, 1, -182), 13, GOLD, BOLD, V2(0.5, 1), LEFT)
+  stripTitle.Visible = false
+  local cards, cardKey = {}, nil
+  local function buildCards(S)
+    local team = S.team or "atk"
+    local key = team .. ":" .. tostring(#(S.wt and S.wt.order or {}))
+    if key == cardKey and #cards > 0 then return end
+    cardKey = key
+    for _, c in ipairs(cards) do c.b:Destroy() end
+    cards = {}
+    local ids = {}
+    for _, cat in ipairs({ "tank", "apc", "aa", "arty", "jet", "heli" }) do
+      for _, id in ipairs(Config.TeamVehicles(team, cat)) do table.insert(ids, { id = id, cat = cat }) end
+    end
+    for i, it in ipairs(ids) do
+      local b = Instance.new("TextButton")
+      b.Name = "Deploy_" .. it.id
+      b.Text = ""
+      b.LayoutOrder = i
+      b.Size = UD2(0, 132, 0, 60)
+      b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(22, 26, 30), 0.1, 0
+      b.AutoButtonColor = true
+      b.Parent = strip
+      local st = Instance.new("UIStroke")
+      st.Color, st.Transparency, st.Thickness = WHITE, 0.85, 1
+      st.Parent = b
+      local nm = string.match(T("veh." .. it.id), "^(%S+)") or T("veh." .. it.id)
+      label(b, nm, UD2(1, -10, 0, 20), UD2(0, 6, 0, 5), 14, WHITE, BLACK, nil, LEFT)
+      label(b, T("vcat." .. it.cat), UD2(1, -10, 0, 14), UD2(0, 6, 0, 24), 11, MUTE, MED, nil, LEFT)
+      local tag = label(b, "", UD2(1, -10, 0, 16), UD2(0, 6, 1, -20), 12, GOLD, BLACK, nil, LEFT)
+      b.Activated:Connect(function()
+        local sel = G.deploySel
+        G.R.Act:FireServer("wtDeployVeh", it.id, sel and sel.kit or nil)
+      end)
+      table.insert(cards, { b = b, tag = tag, id = it.id, cat = it.cat, st = st })
+    end
+  end
+  local function stepStrip(S)
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    local show = S.wt ~= nil and S.alive == false and (S.phase == "battle" or S.phase == "prep") and not dying
+      and not (G.menuShown and G.menuShown()) and not G.factionOpen and S.picked ~= false
+    strip.Visible, stripTitle.Visible = show, show
+    if not show then return end
+    buildCards(S)
+    stripTitle.Text = T("wtm.lineupTitle") .. "   ·   " .. (G.wtSpLine() or "")
+    for _, c in ipairs(cards) do
+      local txt, col = tagOf(c.id, c.cat, S.wt, S)
+      c.tag.Text, c.tag.TextColor3 = txt, col
+      local inLine = (S.wt.ln and S.wt.ln[c.id] or 0) > 0
+      c.st.Color, c.st.Transparency = inLine and GOLD or WHITE, inLine and 0.2 or 0.85
+    end
+  end
+
   ---------------------------------------------------------------- 结算页
   local res = frame(gui, UD2(1, 0, 1, 0), nil, RGB(4, 6, 8), 0.22)
   res.Name = "WtResults"
@@ -327,7 +404,7 @@ function WtBattle.init(G)
     end
     local S = G.S
     local w = S and S.wt
-    if S then G.try_(stepResults, S) end
+    if S then G.try_(stepResults, S) G.try_(stepStrip, S) end
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen
     local driving = G.drive ~= nil or G.myVeh ~= nil
     local show = w ~= nil and not covered and not driving and (S.phase == "battle" or S.phase == "prep") and S.picked ~= false
