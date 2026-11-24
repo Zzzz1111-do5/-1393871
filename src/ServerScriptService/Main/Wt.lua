@@ -366,6 +366,7 @@ function Wt.init(G)
     xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5)
     if a.t == "ce" then   -- 金属射流：从命中点顺着来向钻进车里（客户端 WtHud 画一道白热的射流、一圈火花；X 光里画成亮青白线）
       xr.jet = true
+      xr.big = a.jet or nil   -- 专门的金属射流弹：X 光动画里射流更粗、熔珠更多
       G.fx({ k = "wtJet", p = res.Position, d = vel, len = xr.core * M, pen = true, big = a.jet or nil })
     end
     rr.wp = res.Position
