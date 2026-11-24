@@ -31,6 +31,7 @@ const SHOTS = [
   { name: '07_airfield', pos: [-1700, 180, 600], look: [-400, 0, 1050], fov: 55, span: 1600 },
   { name: '08_ground', pos: [30, 6, -330], look: [10, 8, -120], fov: 70, span: 400 },
 ];
+if (process.env.SHOTS) SHOTS.splice(0, SHOTS.length, ...JSON.parse(process.env.SHOTS));   // 自定义镜头（区域预览）
 srv.listen(0, async () => {
   const port = srv.address().port;
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
