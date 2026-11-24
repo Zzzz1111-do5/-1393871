@@ -708,7 +708,7 @@ function TacPad.init(G)
     if not open then return end
     open, sending, dragging = false, nil, false
     local root = G.mapRoot
-    if root and root.Parent == holder and G.hudParts and G.hudParts.miniBox then G.mapMount(G.hudParts.miniBox, UDs(1, 1)) end
+    if root and root.Parent == holder and G.hudParts and G.hudParts.miniBox then G.mapMount(G.hudParts.miniClip or G.hudParts.miniBox, UDs(1, 1)) end
     pcall(function() G.R.Act:FireServer("tacPad", false) end)
     local ch = me.Character
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
