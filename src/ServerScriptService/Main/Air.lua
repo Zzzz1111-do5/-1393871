@@ -807,15 +807,6 @@ function Air.init(G)
     -- 停在自己的机场 / 甲板 / 停机坪附近：能补弹修理
     local p = e.root.CFrame.Position
     local function near(x, z, r) return (V(p.X, 0, p.Z) - V(x, 0, z)).Magnitude < r end
-    if Map.desert then   -- 沙漠：自己基地的跑道、直升机坪、营地
-      local B = Map.BASES and Map.BASES[e.team]
-      if not B then return false end
-      local A = B.airfield
-      if A and near(A.x, A.z, A.len * 0.6) then return true end
-      if B.heli and near(B.heli.x, B.heli.z, 260) then return true end
-      if B.camp and near(B.camp.x, B.camp.z, 260) then return true end
-      return false
-    end
     if e.team == "atk" then
       local dk = deckOf("carrier")
       if dk and near(dk.cf.Position.X, dk.cf.Position.Z, dk.L * 0.5) then return true end

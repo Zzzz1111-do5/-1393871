@@ -4,7 +4,7 @@
 --     传送数据里带着关卡号，新服务器第一个进来的人按它开）
 --   这一关：真人都在攻方（Round.lua 的分队看 G.pve）；电脑人数按关卡（G.botWanted，Bots.lua）：敌方 enemies（多一个真人多 perPlayer 个）、
 --     友军 allies（真人多了少补）；电脑的枪法和反应按 skill 缩放（Config.Bots 的反应时间、散布）；aiVeh：敌方开不开 AI 坦克、飞机
---   赢：岛——拿下 caps 个据点（G.on("captured")）；沙漠——敌方兵力（tickets）扣光（照征服的规则）
+--   赢：拿下 caps 个据点（G.on("captured")；岛、沙海都是）；关卡给了 tickets 的（征服的规则）敌方兵力扣光也赢（原来沙漠风暴的关，11-24 那张图删了，改到沙海）
 --   结算（Round.lua 的 finish 先调 G.pveFinish）：赢了每个真人发这一关的奖励（第一次打通 × firstBonus），记进存档（P.data.pve）；
 --     下一关同一张图就接着打下一关，不是就提示回菜单选；输了再来这一关
 local Players = game:GetService("Players")

@@ -53,7 +53,7 @@ local function runwayAt(Map, x, z)
   return false
 end
 
--- 沙漠图（MapDesert）：底色照它的 Map.COLORS 压暗（卫星图那样）；没有的材质用沙色
+-- 沙漠图（沙海）：底色照它的 Map.COLORS 压暗（卫星图那样）；没有的材质用沙色
 local DCOL = {}
 local function desertCol(Map, m)
   local c = DCOL[m]
@@ -126,7 +126,7 @@ function MapPaint.paint(Map, P, r0, r1, buf)
           c = TARMAC
         else
           local m
-          if P.detail or Map.desert then   -- 沙漠：底图也按材质（不然平地全按「草地」画成绿的）
+          if P.detail then
             local ok, mat = pcall(Map.material, x, z, y, slope)
             m = ok and mat and mat.Name or guessMat(Map, y, slope)
           else

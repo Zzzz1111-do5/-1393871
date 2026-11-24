@@ -178,7 +178,7 @@ local function voteWinner()
 end
 local function waitMap()
   local t0 = os.clock()
-  -- Studio、测试台：Workspace 的属性 MapName 直接定（"island" / "desert" / "sands"），不等人选
+  -- Studio、测试台：Workspace 的属性 MapName 直接定（"island" / "sands"），不等人选
   do
     local forced
     pcall(function() forced = workspace:GetAttribute("MapName") end)

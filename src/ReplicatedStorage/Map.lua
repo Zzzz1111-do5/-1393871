@@ -514,15 +514,14 @@ function Map.lineClear(a, b, step)
 end
 
 ---------------------------------------------------------------- 几张地图（用户 11-22：「加一个沙漠地图」「进入界面点地图」）
--- 上面算的是「岛屿突击」；沙漠在 MapDesert（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
+-- 上面算的是「岛屿突击」；沙漠「沙海」在 MapSands（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
 --   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
 Map.id = "island"
-Map.ids = { "island", "desert", "sands" }
+Map.ids = { "island", "sands" }   -- 原来还有「沙漠风暴」（MapDesert，征服）：用户 11-24「沙漠风暴删掉」
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
   island = { km = 8.8, mode = "assault", sea = true },
-  desert = { km = 23.4, mode = "conquest", sea = false },
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
 local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
@@ -531,6 +530,7 @@ for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
 end
 function Map.profile(id)
+  if id ~= "island" and not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的「沙漠风暴」：只换脚本的地点里 MapDesert 模块可能还在）
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)

@@ -21,9 +21,9 @@ function Navy.init(G)
   local ships = {}
   G.ships = ships
   G.ShipDefs = SD   -- 测试、别的模块查型号用
-  -- 没有海的图（沙海 LANDONLY、沙漠风暴 desert）：不建码头、不出舰艇（G.ships 留个空表给别的模块查）。
+  -- 没有海的图（沙海 LANDONLY）：不建码头、不出舰艇（G.ships 留个空表给别的模块查）。
   --   地图是开服以后投票定的，初始化时 Map 还是岛：不能在这里直接 return，下面每个入口按现在这张图判断
-  local function noSea() return Map.LANDONLY == true or Map.desert == true end
+  local function noSea() return Map.LANDONLY == true end
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -158,7 +158,7 @@ function Navy.init(G)
 
   local built = false
   local function buildPiers()
-    if built or Map.desert or Map.LANDONLY then return end   -- 沙漠（沙漠风暴、沙海）没有海、没有码头
+    if built or Map.LANDONLY then return end   -- 沙漠（沙海）没有海、没有码头
     built = true
     local root = workspace:FindFirstChild("Map") or workspace
     local f = Instance.new("Folder")
@@ -956,7 +956,7 @@ function Navy.init(G)
     -- AI 舰艇：开战后没有就出来一艘（被击沉 150 秒后再来）
     if aiT >= 1 then
       aiT = 0
-      if G.round and G.round.phase == "battle" and not G.navyNoAI and not Map.desert and not Map.LANDONLY then   -- 沙漠没有海：不出 AI 舰艇
+      if G.round and G.round.phase == "battle" and not G.navyNoAI and not Map.LANDONLY then   -- 沙漠没有海：不出 AI 舰艇
         for _, team in ipairs({ "atk", "def" }) do
           local have = false
           for _, e in ipairs(ships) do if e.alive and e.ai and e.team == team then have = true end end

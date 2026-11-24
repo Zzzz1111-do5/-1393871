@@ -1105,6 +1105,12 @@
   - 11-24：用户「为什么给我默认炮长位控不了 我要能开别的位置」「你先让坦克能用不同视角」：坦克不再锁死在炮长位（Interior.lua）——一进车默认炮长位，
     F2 驾驶员、F3 炮长、F4 车长、F5 装填手，C 依次换位、最后一个之后回车外；M1A2 挖了内腔（m1a2dc）以后加了驾驶员位（InteriorAbrams.lua：车体前部半躺的座椅、
     三块潜望镜、视觉增强器屏 DVE / 后视 RVSS、T 形把、DID 屏）；M1A1 原模型内饰只有炮塔，没有驾驶员位。
+  - 11-24：开坦克瞄准镜时小地图的整张图没裁边（CanvasGroup 挪到 RadarTop 那层以后不裁），深蓝的海盖住半个镜子：地图改挂在框里一层
+    ClipsDescendants 的 MapClip（UI.lua），TacPad、Hud 跟着认它。
+  - 11-24：用户「沙漠风暴删掉」：删了 `MapDesert.lua`（地图 id `desert`，征服）和只给它用的代码——World 的建图（基地、据点、路、电线杆）、
+    Depots 的基地车位、Air / Fly 的「只落自己基地跑道」、FortDefs 的基地高炮、Nav 的网格范围、MapUI 的沙漠色块和基地方块、选图卡片、测试（mock/desert.lua、
+    navslice.lua）；`Map.profile` 只认 `Map.ids` 里的图（只换脚本的地点里旧的 MapDesert 模块还在也不会被载）。PvE 原来在沙漠风暴的第 4、6、8 关改到沙海
+    （拿下 2 / 3 / 5 个据点赢）。Round / Bots / AIVeh 的征服规则留着（现在没有图用）。
 
 ## 协作（几个会话一起改这个仓库）
 

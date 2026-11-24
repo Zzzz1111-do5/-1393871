@@ -305,7 +305,7 @@ function Nuke.init(G)
     local d = (p - cp).Magnitude
     local look = cam.CFrame.LookVector:Dot((p - cp).Unit)
     local mine = e.team == myTeam()
-    local desert = Map.desert
+    local desert = Map.DESERT
     local N = { p = p, gy = gy, t0 = os.clock(), parts = {}, d = d }
 
     -- ① 闪光、调色、模糊

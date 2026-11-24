@@ -53,7 +53,7 @@ function Round.init(G)
   G.stageOf, G.flankOf, G.STAGES = stageOf, flankOf, STAGES
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
-  -- 征服模式（沙漠地图，用户 11-22）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
+  -- 征服模式（原来给「沙漠风暴」用，用户 11-24 把那张图删了，现在没有图用；留着规则以后别的图要用）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
   local function conquest() return Map.desert == true end
   G.conquest = conquest
   local function isActive(s)

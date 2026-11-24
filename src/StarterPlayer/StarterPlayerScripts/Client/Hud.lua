@@ -172,7 +172,7 @@ function Hud.init(G)
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
   box.Size = UDim2.fromOffset(MS, MS)
-  local function boxBg() box.BackgroundColor3 = (Map.desert or Map.DESERT) and RGB(86, 70, 50) or RGB(22, 36, 50) end   -- 地图外面：海岛是深海的蓝，沙漠是暗沙色
+  local function boxBg() box.BackgroundColor3 = Map.DESERT and RGB(86, 70, 50) or RGB(22, 36, 50) end   -- 地图外面：海岛是深海的蓝，沙漠是暗沙色
   boxBg()
   if G.onMap then G.onMap(boxBg) end
   box.BackgroundTransparency = 0.12

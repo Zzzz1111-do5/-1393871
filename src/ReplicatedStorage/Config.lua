@@ -6,7 +6,7 @@ Config.Version = "1.0-alpha"
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
---   desert（「沙漠风暴」，MapDesert.lua，征服）、sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。
+--   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 Config.Map = "island"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
@@ -251,11 +251,11 @@ Config.Pve = {
     { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
     { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
     { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
-    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },
+    { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },   -- 原来这三关在沙漠风暴（11-24 删了）：改到沙海
     { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
-    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
+    { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
     { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
-    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
+    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
   },
 }
 function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）

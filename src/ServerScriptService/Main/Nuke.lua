@@ -122,7 +122,7 @@ function Nuke.init(G)
     if typeof(tp) ~= "Vector3" then tp = from + V(0, 0, -9000) end
     -- 瞄到天上（看着天边按的）：顺着方向落到地面上
     local gx, gz = tp.X, tp.Z
-    local lim = (Map.desert and Map.R or (Map.PLAY or 20000)) - 200
+    local lim = (Map.PLAY or 20000) - 200
     gx, gz = math.clamp(gx, -lim, lim), math.clamp(gz, -lim, lim)
     local tgt = V(gx, ground(gx, gz), gz)
     readyAt[team] = now() + (NC.cd or 420)

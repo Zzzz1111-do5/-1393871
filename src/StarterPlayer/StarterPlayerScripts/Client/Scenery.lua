@@ -413,12 +413,11 @@ function Scenery.init(G)
   local shown, moveL, moveCF = {}, {}, {}
   local RI, SEA_Y = 0, -0.6
   -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
-  --   沙漠没有海，地形 ±R 外面接一圈沙色的平面（飞出地形边上看着还是戈壁一直铺到天边）
   --   沙海（Map.DESERT）也没有海：地形一直写到 ±SEA_R（外面一圈平地），再往外这圈平面是沙地，顶面和平原一样高
   local function oceanStyle()
-    local desert = Map.desert or Map.DESERT
-    RI = math.floor(((Map.desert and Map.R) or Map.SEA_R or Map.R or 4096) / OS)
-    SEA_Y = Map.desert and ((Map.BASE_Y or 8) - 0.5) or (Map.DESERT and ((Map.PLAIN or 12) - 0.5)) or -0.6
+    local desert = Map.DESERT
+    RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)
+    SEA_Y = Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6
     local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)
     for _, p in ipairs(tiles) do
       p.Color = desert and sand or RGB(24, 84, 102)
