@@ -12,6 +12,7 @@ local check = T.check
 
 local G = T.boot()
 G.econAll = false   -- 测试台默认载具全开（rbx.lua）：这里测的就是解锁
+G.Config.Economy.infinite = false   -- 现在 Config 里开着无限金币（用户 11-24）：①～⑦ 测的是正常扣钱，⑧ 再打开测
 G.fortsHold = true
 G.navyNoAI = true
 G.aiVehOff = true
@@ -141,5 +142,20 @@ R.run(0.5)
 local badge = me.PlayerGui:FindFirstChild("Coins") and me.PlayerGui.Coins:FindFirstChild("Badge")
 local amount = badge and badge:FindFirstChild("Amount")
 check(amount ~= nil and amount.Text:find(tostring(P.data.coins % 1000), 1, true) ~= nil, "牌子上写着现在的金币（" .. tostring(amount and amount.Text) .. "）")
+print("⑧ 无限金币（Config.Economy.infinite，用户 11-24「给我先设置成无限金币」）")
+E.infinite = true
+G.econPublish(P)
+R.run(0.5)
+check(me:GetAttribute("CoinsInf") == true and (me:GetAttribute("Coins") or 0) >= 1e8, "玩家属性：CoinsInf、Coins 是个大数（" .. tostring(me:GetAttribute("Coins")) .. "）")
+check(amount ~= nil and amount.Text:find("∞", 1, true) ~= nil, "牌子上写 ∞（" .. tostring(amount and amount.Text) .. "）")
+P.data.coins = 0
+G.ACT.buyVeh(P, "m1a2")
+check(P.data.ownVeh.m1a2 == true and P.data.coins == 0, "一个金币没有也买得下 M1A2，存档里的金币不动")
+G.ACT.buyAtt(P, "m4", "mag", "mag_drum")
+check((me:GetAttribute("OwnAtt") or ""):find("m4.mag.mag_drum", 1, true) ~= nil and P.data.coins == 0, "配件也能买（弹鼓）")
+E.infinite = false
+G.econPublish(P)
+R.run(0.3)
+check(me:GetAttribute("CoinsInf") == false and me:GetAttribute("Coins") == 0, "关掉以后回到存档里的真金币")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
 T.summary()

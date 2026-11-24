@@ -2414,7 +2414,7 @@ World.desertChunk = desertChunk
 function World.desertTerrain(onProgress)
   local T = workspace.Terrain
   local R, BY = Map.R, Map.BASE_Y
-  for m, c in pairs(DESERT_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
+  for m, c in pairs(Map.COLORS or DESERT_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end   -- MapDesert.COLORS（同一套，客户端画中画也用）
   do
     local okC, res = calibrate(T, { MAT.Sand, MAT.Ground })
     if okC then

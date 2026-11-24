@@ -157,6 +157,35 @@ if dumpDir then
   print("  写了 " .. dumpDir .. "/interior_" .. VEH .. "_carve.json")
 end
 
+print("③½ 炮长位 Shift 开镜、再退回来（用户 11-24：「开镜有bug……屏幕有一块色斑」——原来退镜后原模型的简易内饰、外模型炮塔里的块全露出来）")
+T.tap(Enum.KeyCode.F3)
+R.run(0.4)
+local function ltmSig()
+  local s = {}
+  for i, it in ipairs(v.M.parts) do
+    local p = it[1]
+    if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) >= 0.99 then s[#s + 1] = i end
+  end
+  return #s, table.concat(s, ",")
+end
+local n0, s0 = ltmSig()
+T.tap(Enum.KeyCode.LeftShift)
+R.run(0.6)
+check(C.drive.sight == true, "进了瞄准镜")
+local shown = 0
+for _, it in ipairs(v.M.parts) do
+  local p = it[1]
+  if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) < 0.99 and p.Transparency < 0.99 then shown = shown + 1 end
+end
+check(shown == 0, string.format("镜里自己的车整辆不画（还画着 %d 块）", shown))
+T.tap(Enum.KeyCode.LeftShift)
+R.run(0.6)
+local n1, s1 = ltmSig()
+check(not C.drive.sight and C.interiorState().station == "gunner", "退回炮长位")
+check(s1 == s0, string.format("退镜后藏着的块跟开镜前一样（开镜前 %d 块，现在 %d 块）", n0, n1))
+check(allT(cv.cav, "Transparency", 0) and allT(cv.inside, "LocalTransparencyModifier", 1), "内壁照样显示、简易内饰照样藏着")
+check(#R.errors == 0, "开镜没有报错：" .. table.concat(R.errors, " | "))
+
 print("④ C 出来")
 for _ = 1, 6 do
   if not C.interiorOn() then break end

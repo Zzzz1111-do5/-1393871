@@ -1421,7 +1421,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     end
     local c = cur
-    extHide(c, mode == "seat" or optic ~= nil, optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画
+    -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画。
+    --   主瞄准镜（st.sight）也按观瞄设备算（全藏）。Drive 开镜 / 退镜时自己把整车零件设成藏 / 不藏（ownVisible），extHide 记着的状态就不对了：
+    --   镜子状态一变，缓存作废、按现在的乘员位重新藏一遍——原来退镜以后整辆车的外模型、原模型的简易内饰全露出来，
+    --   乘员眼前、车里的显示屏前面横着一块块外壳（用户 11-24：「开镜有bug……屏幕有一块色斑」）
+    local sightNow = st.sight == true
+    if c.sightWas ~= sightNow then c.sightWas, c.extHidden = sightNow, nil end
+    extHide(c, mode == "seat" or optic ~= nil or sightNow, optic ~= nil or sightNow)
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end

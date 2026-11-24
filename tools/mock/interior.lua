@@ -186,12 +186,35 @@ check(c0.rackN == (rack0 or 0) - 1, string.format("弹架 / 转盘上少了一�
 print("④ 炮长位 Shift 进主瞄准镜")
 T.tap(Enum.KeyCode.F3)
 R.run(0.2)
+-- 外模型各块在车里藏没藏（LocalTransparencyModifier）：开镜再退回来要跟开镜前一样（用户 11-24：「开镜有bug……屏幕有一块色斑」——
+--   原来退镜时 Drive 把整车设回可见，车里本该藏着的外壳块、原模型简易内饰盖在显示屏上）
+local function hidSig()
+  local v = C.viewById(e.id)
+  local n, s = 0, {}
+  for i, it in ipairs(v.M.parts) do
+    local p = it[1]
+    if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) >= 0.99 then n = n + 1 s[#s + 1] = i end
+  end
+  return n, table.concat(s, ",")
+end
+local hidN0, hidS0 = hidSig()
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.3)
 check(C.drive.sight and c0.model.Parent == nil, "进了瞄准镜：内饰收起来")
+do
+  local v = C.viewById(e.id)
+  local shown = 0
+  for _, it in ipairs(v.M.parts) do
+    local p = it[1]
+    if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) < 0.99 and p.Transparency < 0.99 then shown = shown + 1 end
+  end
+  check(shown == 0, string.format("瞄准镜里自己的车整辆不画（还画着 %d 块）", shown))
+end
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.3)
 check(not C.drive.sight and c0.model.Parent ~= nil and C.interiorOn(), "出瞄准镜：回到炮长位")
+local hidN1, hidS1 = hidSig()
+check(hidS1 == hidS0, string.format("退镜后车里藏着的外模型块跟开镜前一样（开镜前藏 %d 块，现在 %d 块）", hidN0, hidN1))
 
 print("⑤ B 导演镜头、U 藏界面")
 T.tap(Enum.KeyCode.B)

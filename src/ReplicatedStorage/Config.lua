@@ -221,8 +221,11 @@ end
 --   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
 --   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
 --   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
+--   infinite：true = 无限金币（用户 11-24：「给我先设置成无限金币」）——买载具、配件不查余额、不扣钱，界面上写 ∞；
+--     存档里的金币照旧（挣的照样记），改回 false 就恢复正常；上线前记得改回 false
 Config.Economy = {
   unlockAll = false,
+  infinite = true,
   startCoins = 1500,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
