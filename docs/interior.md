@@ -195,17 +195,22 @@
   座圈那一圈车顶装甲的厚度（−0.17～+0.09）用一圈钢圈封上（carve.py 只挖开了上下两层面，中间是空的，隔着缝能看见车外）
   剖面看法：`python3 -I tools/models/cavprof.py src/ReplicatedStorage/CavityMeta.lua ztz99a2 0,4.34,-0.536 Hull`（tur 是 ImportedMeta 的 tur）
 - M1A2（用户 11-24：「你的 m1a2 是在车内挖的建模吗」「如果是的话抬头是看得见八边形天窗的」）：carve.json 的 m1a2dc（车体 Hull、炮塔 Tur 两个空间）。
-  炮塔右边一块竖板（Turret_4）和炮塔块里一片垂到 5.3 格的面伸进了车长显示单元前面，当成实心会鼓出两大块——`ignore` 盒子 [1.45, 3.4, 5.2, 6.62, −1.85, −0.15]
-  让它们不挡水（伸进内腔的那截挪到 Inside_*，坐进车里藏起来）。挖出来炮塔内腔顶在 6.0～6.5 格（座圈上 0.72 米），车长指挥塔是顶上一口八边形的井
-  （中心 1.40, 1.07 格，内切半径 0.27 米，6.55～6.95 格高）。InteriorAbrams 有 ctx.cav 时：M1A1 的炮塔壳（Int_Shell）不摆，别的件照摆；
-  井壁上贴一圈八具观察镜（浅蓝玻璃、细黑框、反光、防撞垫，同 11-23 的插图）；车长眼位往后挪到指挥塔底下。要重导 models/veh/m1a2dc.glb
-  预览：`python3 tools/mock/run.py tools/mock/interior_abrams.lua veh=m1a2 imp=m1a2dc dump=<目录>`，
-  `CARVE=1 GLBOFF=0,-4.48,1.291 AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_abrams.json <前缀> models/veh/m1a2dc.glb`
-  （GLBOFF：炮塔座圈中心在模型坐标里的位置取负，dump 是炮塔坐标）
-- 用户 11-24：「边框过于粗糙」（挖出来的内壁、指挥塔、显示屏边框）——M1A2、99A 体素 0.06 → 0.05 格、每个空间 1.6～2 万个三角形（每块 MeshPart 不超过 2 万）、
-  Taubin 磨 24 遍；悍马、JLTV 1.6 / 1.8 万个三角形、磨 24 遍（四个 GLB 都要重导）。指挥塔井不是正八边形：`python3 -I tools/models/cavrays.py m1a2dc CavTurWall_1 1.43 1.06 6.6,6.7,6.8`
-  从井中心往 8 个方向打射线量井壁，每块观察镜、每段边框按自己那个方向的距离摆（InteriorAbrams 的 RW / RB / RT 表）；观察镜 4 毫米细框，
-  井壁上下沿各压一圈浅灰金属边框。Kit 的屏幕机壳改成圆角，玻璃四周凸起一圈边框、贴玻璃一道细亮边（有实体键的屏幕不凸，免得盖住键名）
+  · 炮塔右边一块竖板（Turret_4）和炮塔块里一片垂到 5.3 格的面伸进车长显示单元前面：`ignore` 盒子不挡水
+  · 指挥塔（用户：「我记得 m1a2 模型自带八边形镜子啊，你只需要把那个镜子的玻璃做透明然后抬头能看见就行了」）：原模型自带一圈八块观察镜
+    （Turret_8 里材质 glass.001，7.22～7.46 格高、离中心 1.19 格）。`glass` 只认这一圈（box）；关着的舱盖是一块厚圆盘塞在指挥塔里（7.2～7.6 格），
+    底板 7.06～7.19 格，镜子靠里那层在 0.65～1.0 格——`ignoreCyl`（圆心 1.40, 0.93，半径 1.13，7.0～7.57 格）都不挡水，水灌到玻璃跟前，
+    它们挪进 Inside（坐进车里藏起来）；顶上补一块盖板（7.62 格）；`winDepth` 0.45：按每块玻璃的矩形往里打穿窗洞（弯的内壁只删平行的面会删得七零八落）。
+    玻璃拆成透明的 Glass 块——抬头透过原模型的观察镜看得到外面
+  · InteriorAbrams 有 ctx.cav 时：M1A1 的炮塔壳（Int_Shell）不摆，别的件照摆；车长眼位往后挪到指挥塔底下。
+    车长两块屏用 M1A1 原内饰自己的机壳（用户：「m1a1 那个模型不是自带内饰，你直接给原内饰的显示屏加上功能就行了啊」），功能做在原屏上（cduBuild）
+  · carve.py 新选项：`ignoreCyl`（竖着的圆柱不挡水）、`winDepth` / `winMargin`（矩形窗洞）、`debug`（几个点算不算实体 / 墙 / 可灌 / 内腔，查问题用）；
+    修了配了玻璃时补盖板不挡水（车体 / 炮塔内腔从座圈漏成一片）
+  · 预览：`python3 tools/mock/run.py tools/mock/interior_abrams.lua veh=m1a2 imp=m1a2dc dump=<目录>`，
+    `CARVE=1 GLBOFF=0,-4.48,1.291 AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_abrams.json <前缀> models/veh/m1a2dc.glb`
+    （GLBOFF：炮塔座圈中心在模型坐标里的位置取负，dump 是炮塔坐标）
+- 用户 11-24：「边框过于粗糙」（挖出来的内壁、显示屏边框）——M1A2、99A 体素 0.06 → 0.05 格、每个空间 1.6～2 万个三角形（每块 MeshPart 不超过 2 万）、
+  Taubin 磨 24 遍；悍马、JLTV 1.6 / 1.8 万个三角形、磨 24 遍（四个 GLB 都要重导）。Kit 的屏幕机壳改成圆角，玻璃四周凸起一圈边框、
+  贴玻璃一道细亮边（有实体键的屏幕不凸，免得盖住键名）。量挖好的内壁：`python3 -I tools/models/cavrays.py <模型键> <块名> <cx> <cz> <y1,y2,…>`
 
 ## 各型坦克真实的乘员布局（用户 11-23：「他每个坦克驾驶员应该都是坐在方向机上面的吧」「现实中是怎么安排的我不了解你去查一下每个坦克的结构」，附 M1A2 炮塔内部结构图）
 

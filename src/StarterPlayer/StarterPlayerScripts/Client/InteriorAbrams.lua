@@ -277,7 +277,7 @@ return function(Defs, Hp)
     local hubM = P(PT.hub)
     -- 原模型的块
     for _, name in ipairs({ "Int_Shell", "Int_Loader", "Int_GpsEye", "Int_GPanel", "Int_GHousing", "Int_GSeat", "Int_Ccp", "Int_Gpse", "Int_Cdu", "Int_Cch", "Int_CBox", "Int_CSeat" }) do
-      if not (sep and name == "Int_Cdu") and not (cav and name == "Int_Shell") then put(b, D, name, T, inT) end   -- SEPv2 的车长显示单元换成钢铁猛兽那台（下面）；挖了内腔不要 M1A1 的炮塔壳
+      if not (cav and name == "Int_Shell") then put(b, D, name, T, inT) end   -- 挖了内腔不要 M1A1 的炮塔壳
     end
     b:group("gch", T, CF(hubM))
     put(b, D, "Int_Gch", "gch", function(c) return P(c) - hubM end)
@@ -317,18 +317,9 @@ return function(Defs, Hp)
 
     -- 车长那两块屏
     if sep then
-      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）——
-      --   用户 11-24 又发来钢铁猛兽 M1A2 车长位的截图（11-23 那套「严格按照这个图」）：左边一列蓝键、两屏之间一排蓝键、右边橙色字母数字键盘、
-      --   下边橙色横杠键、左下橙色方向键。用零件拼的 M1A2 那台（Defs.sbCdu：ip_cdus 机壳 + CdusLayout 版面，功能一样），
-      --   摆在原模型机壳正面的位置，往车长那边转 15°
-      local front = P(V(2.28, 6.047, PT.housingZ))   -- 原机壳中心 x 2.483：这台窄一点、转过来，右边会插进炮塔壁，往左挪 7 厘米
-      local th = rad(-15)
-      if Defs.sbCdu then
-        Defs.sbCdu(b, T, CFrame.lookAt(front, front + V(math.sin(th), 0, math.cos(th))))
-      else
-        put(b, D, "Int_Cdu", T, inT)
-        cduBuild(b, T, Pl, "CITV")
-      end
+      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）——就做在 M1A1 原内饰自己的那台机壳上
+      --   （用户 11-24：「m1a1 那个模型不是自带内饰，你直接给原内饰的显示屏加上功能就行了啊」）：屏幕贴在原来两块屏的位置，键盖在原来的键上
+      cduBuild(b, T, Pl, "CITV")
       cchButtons(b, T, Pl)
     else
       -- A1：原模型这两块屏的版面（FLIR、PWR、CITV、SGF、CEU、FCEU、CCHA 七格）是车长的状态显示器
@@ -346,45 +337,9 @@ return function(Defs, Hp)
     local gEye = P(V(1.653, 5.330, -1.720))
     local cEye = P(V(1.352, 6.150, cav and 0.750 or 0.300))   -- 挖了内腔：往后挪到指挥塔底下（抬头就是八边形的井）
     if cav and sep then
-      -- 车长指挥塔：挖出来的那口八边形的井（从挖好的内壁量的：中心 1.40, 1.00 格，内切半径 0.27 米，井壁 6.55～6.95 格高），
-      --   井壁上一圈八具观察镜（用户 11-23 的插图：浅蓝玻璃、细黑框、两道斜的反光，下面一条防撞垫）
-      -- 井的剖面（从挖好的内壁打射线量的，座圈上，米）：中心 (0.511, 0.840)；井壁 0.757～0.829 高这一段是竖直的，
-      --   各方向（正前起、顺时针每 45°）离中心的距离不一样（后面两个斜角收得最紧），往上是舱盖的穹顶
-      local CUP = V(0.511, 0, 0.840)
-      local RW = { 0.3236, 0.3275, 0.2775, 0.2564, 0.3482, 0.2754, 0.2871, 0.3339 }   -- 0.793 高
-      local RB = { 0.3236, 0.3275, 0.2782, 0.2564, 0.3543, 0.2768, 0.2871, 0.3339 }   -- 0.757 高（下沿）
-      local RT = { 0.3161, 0.3211, 0.2707, 0.2507, 0.3443, 0.2675, 0.2796, 0.3279 }   -- 0.829 高（上沿）
-      local RIM, FR = RGB(196, 198, 194), RGB(46, 48, 50)
-      local tn = math.tan(PI / 8)
-      for i = 0, 7 do
-        local a = rad(i * 45)
-        local dv = V(math.sin(a), 0, -math.cos(a))   -- 这块壁朝外的方向（第一块朝正前）
-        local function at(r, y)
-          local q = V(CUP.X, y, CUP.Z) + dv * r
-          return CFrame.lookAt(q, q + dv)   -- 局部 +Z 朝井的中心（朝人）
-        end
-        -- 上下两圈八边形的边框（用户 11-24：「边框过于粗糙」）：浅灰金属条压住井壁上下两道毛边，两头稍搭接、角上不露缝
-        b:box(T, V(2 * RB[i + 1] * tn * 1.12, 0.012, 0.012), at(RB[i + 1] - 0.005, 0.757), RIM, MAT.Metal)
-        b:box(T, V(2 * RT[i + 1] * tn * 1.12, 0.012, 0.012), at(RT[i + 1] - 0.005, 0.829), RIM, MAT.Metal)
-        -- 观察镜：浅蓝玻璃 + 一圈 4 毫米宽的深灰金属细框（贴在玻璃前面），夹在两圈边框中间
-        local gw, gh = 2 * RW[i + 1] * tn * 0.80, 0.058
-        local vb = at(RW[i + 1] - 0.003, 0.793)
-        local gl = b:box(T, V(gw, gh, 0.004), vb, RGB(166, 220, 236), MAT.Glass)
-        gl.Transparency, gl.CastShadow = 0.12, false
-        for _, e2 in ipairs({ { 0, gh / 2 + 0.002, gw + 0.008, 0.004 }, { 0, -gh / 2 - 0.002, gw + 0.008, 0.004 }, { gw / 2 + 0.002, 0, 0.004, gh }, { -gw / 2 - 0.002, 0, 0.004, gh } }) do
-          b:box(T, V(e2[3], e2[4], 0.003), vb * CF(e2[1], e2[2], 0.0015), FR, MAT.Metal)
-        end
-        local sg = Kit.gui(gl, Enum.NormalId.Back, 900)
-        for _, r in ipairs({ { 0.36, 0.09 }, { 0.50, 0.04 } }) do   -- 两道斜的反光
-          local f = Instance.new("Frame")
-          f.AnchorPoint = Vector2.new(0.5, 0.5)
-          f.Position, f.Size = UDim2.fromScale(r[1], 0.5), UDim2.fromScale(r[2], 1.8)
-          f.Rotation = 35
-          f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = RGB(255, 255, 255), 0.35, 0
-          f.Parent = sg
-        end
-      end
-      b:light(T, CF(CUP + V(0, 0.80, 0)), "dome", RGB(255, 244, 228), 0.9, 0.5)
+      -- 车长指挥塔：原模型自带一圈八块观察镜（用户 11-24：「我记得 m1a2 模型自带八边形镜子啊，你只需要把那个镜子的玻璃做透明然后抬头能看见就行了」）——
+      --   carve.json 的 glass 把它们拆成透明的 Glass 块、后面的内壁挖开；关着的舱盖、镜子靠里那层挪进 Inside（坐进车里藏起来）。这里只补一盏小灯
+      b:light(T, CF(0.50, 0.90, 0.80), "dome", RGB(255, 244, 228), 0.9, 0.5)
     end
     local lEye = P(V(-1.720, 6.200, 0.400))
     local gas = PT.gasEnd
