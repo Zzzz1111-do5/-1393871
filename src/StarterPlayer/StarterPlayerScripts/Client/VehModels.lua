@@ -195,7 +195,8 @@ function VehModels.build(d, team, mods)
     end
     for name, p in pairs(info.parts) do
       local src = folder:FindFirstChild("V_" .. ikey .. "__" .. name)
-      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") and not replaced[name] then
+      -- k = int：原模型自带的车内（M1A1 的炮塔内饰，拆成 Int_* 十几块）不放进车模——坐进车里时内饰（InteriorAbrams）自己克隆、按组摆（炮尾后坐、握把摆）
+      if src and src:IsA("BasePart") and not (noMg and p.g == "RwsGun") and not replaced[name] and p.k ~= "int" then
         local mp = Tint.fix(src:Clone(), src)
         mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch = true, false, false, false
         mp.Size = v3(p.s)
@@ -233,12 +234,6 @@ function VehModels.build(d, team, mods)
           table.insert(carve.glass, mp)
         elseif p.k == "inside" then
           table.insert(carve.inside, mp)
-        elseif p.k == "int" then
-          -- 原模型自带的车内（M1A1 的炮塔内饰：炮长主瞄准镜目镜、计算机控制面板、车长显示器……，tools/models/blveh.py）：
-          --   平时藏着（别的车、车外看不见，也省得画），坐进这辆车 Interior 显示——跟挖出来的内壁（cav）一样管
-          mp.Transparency = 1
-          table.insert(carve.cav, mp)
-          carve.model = true
         end
         mp.Parent = m
         table.insert(parts, { mp, grp, off, wi })

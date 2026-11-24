@@ -322,6 +322,8 @@ Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAs
 -- 倒地与救援（Revive.lua，用户 11-23「按你想的来弄」）：致命的一下先倒地，队友按住 E 救起来
 -- 人人都能按 Z 标记看到的敌人（Weapons.lua 的 ACT.spot）：比望远镜近、锥窄、标记时间短
 Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
+-- 车里激光测距后报告敌情（M1A2 SEPv2 的 CITV、布雷德利的 CIV：Weapons.lua 的 ACT.vspot）：4 公里、锥 1.2°、标 20 秒
+Config.VehSpot = { range = 11200, cone = 1.2, spotTime = 20, cd = 2 }
 -- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
 Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
 Config.Revive = {

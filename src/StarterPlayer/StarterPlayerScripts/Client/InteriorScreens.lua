@@ -645,7 +645,7 @@ P.gcdp = function(s, env, zh)
   return function(d)
     for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
     if d.gunEye and not st.page then
-      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = (d.zoomTxt == "10X") and 7 or 20, pal = (d.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or ((d.zoomTxt == "10X") and 7 or 20), pal = (d.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
     end
     for a, it in pairs(ammo) do
       local on = a == st.ammo
@@ -738,14 +738,22 @@ P.ccp = function(s, env, zh)
     elseif k == "SABOT" or k == "HEAT" or k == "MPAT" or k == "CAN" then act.ammo(k)
     elseif k == "LRF" then act.lase()
     elseif k == "FCS" then st.fcs = st.fcs % 3 + 1 act.fcsMode(st.fcs)
-    elseif k == "TEST" then st.testT, st.page = os.clock(), "TEST" act.lampTest()
-    elseif k == "MRS" then st.msg, st.msgT = L("MRS UPDATE COMPLETE", "炮口基准更新完成"), os.clock()
+    elseif k == "TEST" then st.testT, st.page = os.clock(), "TEST" if act.bit then act.bit() else act.lampTest() end
+    elseif k == "BSGT" then   -- 战斗瞄准：清掉测的 / 手动的距离，回到这个弹种的战斗瞄准距离
+      if act.battlesight then act.battlesight() end
+      st.entry = ""
+      st.msg, st.msgT = L("BATTLESIGHT", "战斗瞄准"), os.clock()
+    elseif k == "MRS" then   -- 炮口基准更新：量炮管的热弯曲，计算机按它修正
+      if act.mrs then act.mrs() end
+      st.msg, st.msgT = L("MRS UPDATE COMPLETE", "炮口基准更新完成"), os.clock()
     elseif k == "DATA" then st.page = (st.page == "DATA") and nil or "DATA"
     elseif k == "WHT/BLK" then act.polarity() st.msg, st.msgT = L("TIS POLARITY", "热像极性"), os.clock()
     elseif k == "3X/10X" then act.zoom() st.msg, st.msgT = L("GPS MAGNIFICATION", "主瞄准镜倍率"), os.clock()
     elseif k == "DAY/TIS" then act.thermal() st.msg, st.msgT = L("GPS VISION SELECT", "主瞄准镜昼光 / 热像"), os.clock() end
   end
   return function(d)
+    st.fcs = d.fcsMode or st.fcs   -- 火控方式以 Drive 的为准（目镜下面的旋钮也能拨）
+    if d.bitT and d.bitT ~= st.bitSeen then st.bitSeen, st.testT, st.page = d.bitT, d.bitT, "TEST" end   -- 面板上的自检按钮
     if st.page == "TEST" and st.testT and os.clock() - st.testT > 6 then st.page = nil end
     for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
     local amKey = d.fcsAm
@@ -759,9 +767,9 @@ P.ccp = function(s, env, zh)
     end
     -- 弹道计算机现在用的距离：激光测的 / 手动装定的 / 没测就是这种弹的战斗瞄准距离
     local Rm, tag
-    if d.fcsR then Rm, tag = d.fcsR, d.fcsMan and "MAN" or "LRF"
+    if d.fcsR then Rm, tag = d.fcsR, d.fcsMan and "MAN" or ((d.lrf == "FIRST") and "LRF F" or "LRF L") .. (d.multi and " M" or "")
     elseif d.fcsNoRet then Rm, tag = nil, L("NO RTN", "无回波")
-    else Rm, tag = am and am.bs or nil, "BSGT" end
+    else Rm, tag = d.bsR or (am and am.bs) or nil, "BSGT" end
     st.R = Rm
     if st.entry ~= "" then   -- 正在打数：大字显示打的数（没打满的位闪下划线）
       local blink = math.floor(os.clock() * 3) % 2 == 0
@@ -780,7 +788,12 @@ P.ccp = function(s, env, zh)
     se.Text = seMil and string.format(L("SE %5.2f MIL   TOF %4.2f S", "超高角 %5.2f 密位  飞行 %4.2f 秒"), seMil, tof) or L("SE  --.--", "超高角 --.--")
     cantT.Text = string.format(L("CANT %+5.1f   %s  %s", "侧倾 %+5.1f°  %s  %s"), d.cant or 0, (d.sightMode == 4) and "BLK" or ((d.sightMode == 3) and "WHT" or "DAY"), (d.zoom == 2) and "10X" or "3X")
     local rd = d.ready
+    local adv = nil   -- 提示：稳定器关、激光保险、炮口基准该更新了（炮管热弯曲没修正的超过 0.25 毫弧度）
+    if math.abs(d.droopErr or 0) > 0.25 then adv = L("MRS UPDATE REQUIRED", "需要炮口基准更新")
+    elseif d.stab == false then adv = L("STAB OFF", "稳定器关")
+    elseif d.arm == false then adv = L("LRF SAFE", "激光保险") end
     if st.msg and os.clock() - st.msgT < 2.5 then statT.Text, statT.TextColor3 = st.msg, LED
+    elseif adv and math.floor(os.clock() * 1.5) % 2 == 0 then statT.Text, statT.TextColor3 = adv, LED
     else
       statT.Text = rd and L("READY TO FIRE", "待发") or L("LOADING", "装填中")
       statT.TextColor3 = rd and GRN or LED
@@ -803,6 +816,216 @@ P.ccp = function(s, env, zh)
       local lines = {}
       for i = 1, math.min(#items, k) do lines[i] = items[i] end
       pages.TEST.set(lines)
+    end
+  end
+end
+
+-- M1A2 SEPv2 炮长控制显示面板 GCDP（用户 11-24：「m1a2sepv2……按钮什么的实现功能，实现现实中那几块屏幕所有的功能」）：
+--   炮长右手边那台机器（M1A1 原模型的计算机外壳，InteriorAbrams 借过来）：左边显示窗、右边 3 × 4 数字键盘、下面两排软键。
+--   真车上 GCDP 是炮长手动给火控输入、看火控状态、做维护的那块面板（FM 3-20.21：「manual inputs to the fire control computer, bypassing automatic inputs,
+--   and performing maintenance functions」）——这里每个键都真起作用（Interior 的动作 → Drive.lua 的火控）：
+--   · 主页：左边主瞄准镜的画面（热像 / 昼光，照极性、视场），右边弹种（选中的亮）、待发；下面一行距离（激光末 / 首回波、多回波 M、手动 MAN、战斗瞄准 BS），
+--     弹道计算机算的超高角和飞行时间，再下面火控方式、稳定器、激光保险、极性、倍率；炮管热弯曲没修正的超过 0.25 毫弧度闪「需要炮口基准更新」
+--   · MAIN 菜单（数字键选）· AMMO 下一种弹（换了要重新装填）· RANGE 键盘打四位数 ENT 装定距离（CLR 删 / 清）· ADJUST 校炮偏差（4 / 6 方向、2 / 8 高低，
+--     每下 0.05 密位，0 归零）、这种弹的战斗瞄准距离（1 / 3 减 / 加 50 米，5 回默认）· LRF 末回波 ↔ 首回波 · WHT/BLK · 3X/10X 视场下一档 ·
+--     FCS 正常 → 应急（没有提前量）→ 手动（没有弹道计算机、没有稳定）· BSGT 战斗瞄准 · MRS 炮口基准更新 · BIT 自检 · RESET 关页面、清输入
+P.gcdp2 = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.BackgroundColor3 = RGB(3, 6, 5)
+  local G0 = RGB(110, 240, 140)
+  local DIMG = RGB(30, 60, 38)
+  local AMB = RGB(255, 186, 60)
+  local RED = RGB(255, 80, 60)
+  local function L(en, cn) return zh and cn or en end
+  local BALOK, BAL = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics", 2)) end)
+  if not BALOK then BAL = nil end
+  local top = Tx(R, "GCDP  M1A2 SEPv2", 5, 2, W * 0.6, 14, 11, G0, nil, FONTB, 3)
+  local fcsT = Tx(R, "", W * 0.4, 2, W * 0.6 - 5, 14, 11, G0, Enum.TextXAlignment.Right, FONTB, 3)
+  local _ = top
+  local vw, vh = math.floor(W * 0.60), math.floor(H * 0.58)
+  local view = F(R, 4, 18, vw, vh, RGB(0, 0, 0), 0, 1)
+  view.ClipsDescendants = true
+  local th = Screens.thermal(view, vw, vh, { cols = 24 })
+  reticleTank(view, vw, vh, G0)
+  local viewT = Tx(view, "", 3, vh - 13, vw - 6, 12, 10, G0, Enum.TextXAlignment.Right, FONT, 8)
+  local AM = { "SABOT", "HEAT", "MPAT", "CAN" }
+  local amBox = {}
+  local cx, cw = vw + 10, W - vw - 14
+  local rh = math.floor((vh - 22) / 4)
+  for i, a in ipairs(AM) do
+    local f = F(R, cx, 18 + (i - 1) * rh, cw, rh - 3, DIMG, 0, 2)
+    amBox[a] = { f = f, t = Tx(f, a, 4, 0, cw - 8, rh - 3, 12, G0, nil, FONTB, 3) }
+  end
+  local ready = F(R, cx, 18 + 4 * rh, cw, vh - 4 * rh, DIMG, 0, 2)
+  local readyT = Tx(ready, "", 0, 0, cw, vh - 4 * rh, 11, G0, Enum.TextXAlignment.Center, FONTB, 3)
+  local y0 = 22 + vh
+  local lh = math.floor((H - y0 - 2) / 3)
+  local rngT = Tx(R, "", 5, y0, W - 10, lh, math.min(15, lh), G0, nil, FONTB, 3)
+  local seT = Tx(R, "", 5, y0 + lh, W - 10, lh, math.min(12, lh - 1), G0, nil, FONT, 3)
+  local stT = Tx(R, "", 5, y0 + 2 * lh, W - 10, lh, math.min(12, lh - 1), G0, nil, FONT, 3)
+  local pages = { MAIN = textPage(s, L("MAIN MENU", "主菜单"), 9, G0), AMMO = textPage(s, L("AMMUNITION SELECT", "弹种选择"), 6, G0),
+    RANGE = textPage(s, L("MANUAL RANGE ENTRY", "手动装定距离"), 6, G0), ADJUST = textPage(s, L("ADJUST", "调整"), 8, G0), BIT = textPage(s, L("FCS BUILT-IN TEST", "火控自检"), 8, G0) }
+  local FCSN = zh and { "正常", "应急", "手动" } or { "NORMAL", "EMERGENCY", "MANUAL" }
+  local st = { page = nil, entry = "", msg = nil, msgT = 0, bitT = nil, fcs = 1, am = "SABOT", amKey = nil, bitSeen = nil }
+  s.st = st   -- 测试用
+  local function say(m) st.msg, st.msgT = m, os.clock() end
+  local function digitKey(k)
+    local dg = string.match(k, "^CCP (%d)$") or string.match(k, "^(%d)$")
+    return dg and tonumber(dg) or nil
+  end
+  s.onKey = function(k, act)
+    k = canon(k)
+    local dg = digitKey(k)
+    local isEnt = k == "CCP ENT" or k == "ENT"
+    local isClr = k == "CCP CLR" or k == "CLR"
+    if st.page == "ADJUST" and (dg or isClr) then
+      if dg == 4 then act.bore(-0.05, 0) elseif dg == 6 then act.bore(0.05, 0)
+      elseif dg == 8 then act.bore(0, 0.05) elseif dg == 2 then act.bore(0, -0.05)
+      elseif dg == 0 then act.bore(nil, nil) say(L("BORESIGHT ZEROED", "校炮偏差归零"))
+      elseif dg == 1 or dg == 3 then   -- 这种弹的战斗瞄准距离减 / 加 50 米
+        local key = BAL and BAL.PANEL[st.am]
+        local bs0 = key and BAL.AMMO[key] and BAL.AMMO[key].bs or 1000
+        act.bsRange(key, (st.bsR or bs0) + ((dg == 3) and 50 or -50))
+      elseif dg == 5 then
+        local key = BAL and BAL.PANEL[st.am]
+        act.bsRange(key, nil)
+        say(L("BATTLESIGHT RANGE DEFAULT", "战斗瞄准距离恢复默认"))
+      elseif isClr then st.page = nil end
+      return
+    end
+    if st.page == "MAIN" and dg then   -- 菜单：数字键选
+      local MENU = { "AMMO", "RANGE", "ADJUST", "LRF", "FCS", "BSGT", "MRS", "BIT" }
+      if MENU[dg] then st.page = nil k = MENU[dg] dg = nil end
+    elseif st.page == "AMMO" and dg and AM[dg] then
+      act.ammo(AM[dg])
+      say(L("INDEXED ", "已选 ") .. AM[dg])
+      st.page = nil
+      return
+    end
+    if dg then   -- 主页 / 装定距离页：打数
+      st.page = "RANGE"
+      if #st.entry < 4 then st.entry = st.entry .. tostring(dg) end
+      return
+    elseif isEnt then
+      if st.page == "RANGE" or st.entry ~= "" then
+        local r = tonumber(st.entry)
+        st.entry = ""
+        st.page = nil
+        if r and r >= 100 and r <= 5000 then act.range(r) say(string.format(L("MAN RANGE %d M", "手动距离 %d 米"), r))
+        else say(L("RANGE ERROR  100-5000", "距离超出范围（100～5000）")) end
+      end
+      return
+    elseif isClr then
+      if st.entry ~= "" then st.entry = string.sub(st.entry, 1, -2)
+      elseif st.page then st.page = nil
+      else act.range(nil) say(L("MAN RANGE CLEARED", "手动距离已清")) end
+      return
+    end
+    if k == "MAIN" then st.page = (st.page == "MAIN") and nil or "MAIN"
+    elseif k == "AMMO" then
+      if st.page == "AMMO" then   -- 弹种页里再按：下一种
+        local i = table.find(AM, st.am) or 1
+        act.ammo(AM[i % #AM + 1])
+      else st.page = "AMMO" end
+    elseif k == "RANGE" then st.page, st.entry = "RANGE", ""
+    elseif k == "ADJUST" then st.page = (st.page == "ADJUST") and nil or "ADJUST"
+    elseif k == "LRF" then act.lrfToggle() say(L("LRF RETURN SELECT", "激光回波选择"))
+    elseif k == "WHT/BLK" then act.polarity()
+    elseif k == "3X/10X" then act.zoom()
+    elseif k == "FCS" then st.fcs = st.fcs % 3 + 1 act.fcsMode(st.fcs)
+    elseif k == "BSGT" then act.battlesight() st.entry = "" say(L("BATTLESIGHT", "战斗瞄准"))
+    elseif k == "MRS" then act.mrs() say(L("MRS UPDATE COMPLETE", "炮口基准更新完成"))
+    elseif k == "BIT" then act.bit()
+    elseif k == "RESET" then st.page, st.entry = nil, "" say(L("RESET", "复位"))
+    elseif k == "LASE" then act.lase() end
+  end
+  return function(d)
+    st.fcs = d.fcsMode or 1
+    if d.bitT and d.bitT ~= st.bitSeen then st.bitSeen, st.bitT, st.page = d.bitT, d.bitT, "BIT" end
+    if st.page == "BIT" and st.bitT and os.clock() - st.bitT > 7 then st.page = nil end
+    for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
+    local am = BAL and d.fcsAm and BAL.AMMO[d.fcsAm]
+    st.am = (am and am.sym) or st.am
+    st.bsR = d.bsR
+    if d.gunEye and not st.page then
+      local thermal = d.sightMode == 3 or d.sightMode == 4
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or 20,
+        pal = thermal and ((d.pol == "BLK") and PAL.BLK or PAL.WHT) or PAL.DAY or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
+      viewT.Text = string.format("%s  %s", thermal and ((d.pol == "BLK") and "BLK" or "WHT") or "DAY", d.zoomTxt or "")
+    end
+    for a, it in pairs(amBox) do
+      local on = a == st.am
+      it.f.BackgroundColor3 = on and G0 or DIMG
+      it.t.TextColor3 = on and RGB(0, 0, 0) or G0
+    end
+    local rd = d.ready
+    ready.BackgroundColor3 = rd and G0 or DIMG
+    readyT.TextColor3 = rd and RGB(0, 0, 0) or AMB
+    readyT.Text = rd and L("READY", "待发") or L("LOADING", "装填中")
+    fcsT.Text = FCSN[st.fcs] or ""
+    fcsT.TextColor3 = (st.fcs == 1) and G0 or ((st.fcs == 2) and AMB or RED)
+    -- 距离：手动 / 激光（末 / 首回波、多回波）/ 战斗瞄准 / 没回波
+    local Rm, src
+    if st.entry ~= "" then
+      local blink = math.floor(os.clock() * 3) % 2 == 0
+      rngT.Text = L("ENTER RANGE ", "输入距离 ") .. st.entry .. string.rep(blink and "_" or " ", 4 - #st.entry)
+    else
+      if d.fcsR then Rm, src = d.fcsR, d.fcsMan and "MAN" or (((d.lrf == "FIRST") and "LRF F" or "LRF L") .. (d.multi and "  MULTI" or ""))
+      elseif d.fcsNoRet then Rm, src = nil, L("NO RETURN", "无回波")
+      else Rm, src = d.bsR or (am and am.bs) or nil, "BS" end
+      rngT.Text = (Rm and string.format(L("RANGE %04d  ", "距离 %04d  "), math.floor(Rm + 0.5)) or L("RANGE ----  ", "距离 ----  ")) .. (src or "")
+    end
+    local seMil, tof
+    if am and BAL and (Rm or d.bsR) and st.fcs ~= 3 then
+      local a, t = BAL.superElev(am, Rm or d.bsR or am.bs, 0)
+      seMil, tof = a * 6400 / (2 * math.pi), t
+    end
+    seT.Text = (st.fcs == 3) and L("MANUAL - NO BALLISTIC SOLUTION", "手动方式：没有弹道解算")
+      or (seMil and string.format(L("SE %5.2f MIL   TOF %4.2f S   CANT %+4.1f", "超高角 %5.2f 密位  飞行 %4.2f 秒  侧倾 %+4.1f°"), seMil, tof, d.cant or 0) or "")
+    local adv
+    if math.abs(d.droopErr or 0) > 0.25 then adv = L("MRS UPDATE REQUIRED", "需要炮口基准更新") end
+    local stLine = string.format("%s  %s  %s", d.stab and L("STAB ON", "稳定") or L("STAB OFF", "稳定器关"), d.arm and L("LRF ARM", "激光待命") or L("LRF SAFE", "激光保险"),
+      (d.bore and (d.bore[1] ~= 0 or d.bore[2] ~= 0)) and string.format(L("BORE %+.2f/%+.2f", "校炮 %+.2f/%+.2f"), d.bore[1], d.bore[2]) or "")
+    if st.msg and os.clock() - st.msgT < 2.5 then stT.Text, stT.TextColor3 = st.msg, AMB
+    elseif adv and math.floor(os.clock() * 1.5) % 2 == 0 then stT.Text, stT.TextColor3 = adv, AMB
+    else stT.Text, stT.TextColor3 = stLine, (d.stab and d.arm) and G0 or AMB end
+    if st.page == "MAIN" then
+      pages.MAIN.set({ L("1  AMMUNITION SELECT", "1  弹种选择"), L("2  MANUAL RANGE ENTRY", "2  手动装定距离"), L("3  ADJUST (BORESIGHT / BATTLESIGHT)", "3  调整（校炮 / 战斗瞄准距离）"),
+        L("4  LRF  ", "4  激光  ") .. ((d.lrf == "FIRST") and L("FIRST RETURN", "首回波") or L("LAST RETURN", "末回波")),
+        L("5  FCS MODE  ", "5  火控方式  ") .. (FCSN[st.fcs] or ""), L("6  BATTLESIGHT", "6  战斗瞄准"), L("7  MRS UPDATE", "7  炮口基准更新"), L("8  BUILT-IN TEST", "8  自检"),
+        L("CLR  EXIT", "CLR  退出") })
+    elseif st.page == "AMMO" then
+      local lines = {}
+      for i, a in ipairs(AM) do lines[i] = string.format("%d  %s%s", i, a, (a == st.am) and L("   << INDEXED", "   << 已选") or "") end
+      lines[6] = L("KEY 1-4 TO INDEX   AMMO = NEXT", "按 1～4 选   AMMO 下一种")
+      pages.AMMO.set(lines)
+    elseif st.page == "RANGE" then
+      local blink = math.floor(os.clock() * 3) % 2 == 0
+      pages.RANGE.set({ L("ENTER 4 DIGITS (METERS)", "打四位数（米）"), "", "      " .. st.entry .. string.rep(blink and "_" or " ", 4 - #st.entry), "",
+        L("ENT  APPLY     CLR  DELETE", "ENT 装定     CLR 删除"), L("RANGE 100 - 5000", "范围 100～5000") })
+    elseif st.page == "ADJUST" then
+      local key = BAL and BAL.PANEL[st.am]
+      local bs0 = key and BAL.AMMO[key] and BAL.AMMO[key].bs or 0
+      pages.ADJUST.set({
+        string.format(L("BORESIGHT AZ  %+.2f MIL", "校炮 方向  %+.2f 密位"), d.bore and d.bore[1] or 0),
+        string.format(L("BORESIGHT EL  %+.2f MIL", "校炮 高低  %+.2f 密位"), d.bore and d.bore[2] or 0),
+        L("4 / 6  AZ   2 / 8  EL   0  ZERO", "4 / 6 方向  2 / 8 高低  0 归零"),
+        string.format(L("BATTLESIGHT %s  %d M", "战斗瞄准 %s  %d 米"), st.am, d.bsR or bs0),
+        L("1 / 3  -50 / +50 M   5  DEFAULT", "1 / 3 减 / 加 50 米  5 默认"),
+        string.format(L("TUBE BEND %.2f MRAD  (MRS %+.2f)", "炮管弯曲 %.2f 毫弧度（未修正 %+.2f）"), d.droop or 0, d.droopErr or 0),
+        string.format(L("CANT %+.1f DEG", "侧倾 %+.1f°"), d.cant or 0),
+        L("CLR  EXIT", "CLR  退出") })
+    elseif st.page == "BIT" then
+      local kk = math.floor((os.clock() - (st.bitT or 0)) / 0.6)
+      local items = { L("FIRE CONTROL ELECTRONICS .. GO", "火控电子 .......... 正常"), L("GUNNER'S PRIMARY SIGHT ... GO", "主瞄准镜 .......... 正常"),
+        L("2ND GEN FLIR ............. GO", "二代热像 .......... 正常"), L("LASER RANGEFINDER ........ GO", "激光测距 .......... 正常"),
+        L("CANT / CROSSWIND SENSOR .. GO", "侧倾 / 横风传感器 . 正常"), d.stab and L("GUN / TURRET DRIVE ....... GO", "炮 / 炮塔驱动 ..... 正常") or L("STABILIZATION ........ OFF", "稳定器 ............ 关"),
+        (math.abs(d.droopErr or 0) > 0.25) and L("MRS ........ UPDATE REQUIRED", "炮口基准 .......... 要更新") or L("MUZZLE REFERENCE ......... GO", "炮口基准 .......... 正常"),
+        L("BIT COMPLETE", "自检完成") }
+      local lines = {}
+      for i = 1, math.min(#items, kk) do lines[i] = items[i] end
+      pages.BIT.set(lines)
     end
   end
 end
@@ -886,7 +1109,7 @@ P.citvClassic = function(s, env, zh)
   return function(d)
     local gps = d.citvMode == "GPS LOS"
     if gps and d.gunEye then
-      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = (d.zoomTxt == "10X") and 7 or 20, pal = (st.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or ((d.zoomTxt == "10X") and 7 or 20), pal = (st.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
     elseif d.citvEye then
       th.render({ eye = d.citvEye, f = d.citvF, r = d.citvR, u = d.citvU, hfov = d.citvFov or 22, pal = (st.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
     end
@@ -954,12 +1177,21 @@ P.citv = function(s, env, zh)
   local _, cvR = Ln(ibox, icx, icy, icx, icy - 1, 1, GT, 9)
   local flash = Tx(R, "", 0, H * 0.24, W, 18, 13, RGB(255, 214, 96), Enum.TextXAlignment.Center, FONTB, 9)
   local dim = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 30)
-  local st = { pol = "WHT", nfov = false, sym = true, fT = 0, brt = 0, rel = 0, mode = "MAN", desT = nil }
+  local st = { pol = "WHT", nfov = false, sym = true, fT = 0, brt = 0, rel = 0, mode = "MAN", desT = nil, wf = 1, nf = 1 }
   local MODE = { MAN = "MAN SCAN", AUTO = "AUTO SCAN", ["GUN LOS"] = "GUN LOS", ["GPS LOS"] = "GPS LOS", STOW = "STOW" }
+  -- 视场（SEPv2 的 CITV 是第二代前视红外：宽视场 3 / 6 倍，窄视场 13 / 25 / 50 倍——同一个键再按一下换下一档）
+  local WF, NF = { 23.3, 11.7 }, { 5.4, 2.8, 1.4 }
   s.onKey = function(k, act)
     k = canon(k)
     if k == "WHT" or k == "BLK" then st.pol = k
-    elseif k == "WFOV" or k == "NFOV" then st.nfov = k == "NFOV" act.citvFov(st.nfov and 7 or 22)
+    elseif k == "WFOV" then
+      if not st.nfov then st.wf = st.wf % #WF + 1 end
+      st.nfov = false
+      act.citvFov(WF[st.wf])
+    elseif k == "NFOV" then
+      if st.nfov then st.nf = st.nf % #NF + 1 end
+      st.nfov = true
+      act.citvFov(NF[st.nf])
     elseif k == "SYM" then st.sym = not st.sym
     elseif k == "BRT+" then st.brt = math.max(0, st.brt - 0.15)
     elseif k == "BRT-" then st.brt = math.min(0.75, st.brt + 0.15)
@@ -989,13 +1221,13 @@ P.citv = function(s, env, zh)
     st.rel = d.citvRel or st.rel
     local pal = (st.pol == "BLK") and PAL.GRNB or PAL.GRN
     if st.mode == "GPS LOS" and d.gunEye then
-      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = (d.zoomTxt == "10X") and 7 or 20, pal = pal, ents = d.ents, Map = env.Map, range = 4000 })
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or ((d.zoomTxt == "10X") and 7 or 20), pal = pal, ents = d.ents, Map = env.Map, range = 4000 })
     elseif d.citvEye then
       th.render({ eye = d.citvEye, f = d.citvF, r = d.citvR, u = d.citvU, hfov = d.citvFov or 22, pal = pal, ents = d.ents, Map = env.Map, range = 4000 })
     end
     sym.Visible = st.sym
     dim.BackgroundTransparency = 1 - st.brt
-    mag.Text = ((d.citvFov or 22) < 10) and "13X" or "3X"
+    mag.Text = string.format("%dX", math.floor(70 / (d.citvFov or 22) + 0.5))
     modeT.Text = MODE[st.mode] or ""
     -- 箭头：热像仪比炮低 → 朝下，高 → 朝上
     local de = 0
@@ -1013,14 +1245,17 @@ P.citv = function(s, env, zh)
     end
     local a = BALM and d.wid and BALM.ammo(d.wid, d.fcsAm)
     amT.Text = a and (AMMO_LETTER[a.sym] or string.sub(a.sym, 1, 1)) or "-"
-    local r = (d.fcsR and d.fcsLaseT and os.clock() - d.fcsLaseT < 10) and d.fcsR or (a and a.bs)
+    -- 车长热像仪自己的激光测距（SEPv2：握把上的按钮，测完把那一片看得见的敌人报告给全队）10 秒内用它；不然炮长测的；都没有是战斗瞄准距离
+    local r
+    if d.citvRT and os.clock() - d.citvRT < 10 then r = d.citvRange
+    else r = (d.fcsR and d.fcsLaseT and os.clock() - d.fcsLaseT < 10) and d.fcsR or (a and a.bs) end
     rngT.Text = r and string.format("%d", math.floor(r)) or "----"
     -- 右下角：炮、热像仪相对车头的方向
     local L0 = ih * 0.42
     local tg = math.rad(d.ty or 0)
     gunL(icx, icy, icx + math.sin(tg) * L0, icy - math.cos(tg) * L0)
     local cv = math.rad((d.ty or 0) + (d.citvRel or 0))
-    local half = math.rad(((d.citvFov or 22) < 10) and 8 or 20)
+    local half = math.rad(math.clamp((d.citvFov or 22) / 2, 1.5, 20))
     cvL(icx, icy, icx + math.sin(cv - half) * L0 * 0.9, icy - math.cos(cv - half) * L0 * 0.9)
     cvR(icx, icy, icx + math.sin(cv + half) * L0 * 0.9, icy - math.cos(cv + half) * L0 * 0.9)
     if os.clock() - st.fT > 2.5 then flash.Text = "" end
@@ -1429,7 +1664,7 @@ P.gunsight = function(s, env)
   local rng = Tx(R, "", W - 100, 3, 96, 14, 12, G, Enum.TextXAlignment.Right, FONTB, 8)
   return function(d)
     if d.gunEye then
-      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = (d.zoomTxt == "10X") and 7 or 20, pal = (d.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or ((d.zoomTxt == "10X") and 7 or 20), pal = (d.pol == "BLK") and PAL.BLK or PAL.WHT, ents = d.ents, Map = env.Map, range = 4000 })
     end
     info.Text = string.format("热像  %s  %s", (d.pol == "BLK") and "黑热" or "白热", (d.zoomTxt == "10X") and "10倍" or "3.5倍")
     rng.Text = d.range and string.format("距离 %04d", math.floor(d.range)) or ""

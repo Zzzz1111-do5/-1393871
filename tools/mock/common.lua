@@ -213,6 +213,37 @@ function T.usePad(pl, p)
   return nil
 end
 
+-- 假装 Studio 里导入了某个原模型（照 ImportedMeta 在 ReplicatedStorage.Imported.Veh.<key> 摆一套同名、同尺寸的 MeshPart；被新块顶替的旧块不摆）
+function T.fakeImport(key)
+  local RS = R.services.ReplicatedStorage
+  local IM = R.require(RS:FindFirstChild("ImportedMeta"))
+  local info = IM.m[key]
+  if not info then return 0 end
+  local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
+  imp.Name = "Imported"
+  imp.Parent = RS
+  local vf = imp:FindFirstChild("Veh") or R.Instance.new("Folder")
+  vf.Name = "Veh"
+  vf.Parent = imp
+  local f = R.Instance.new("Folder")
+  f.Name = key
+  local gone = {}
+  for _, p in pairs(info.parts) do for _, o in ipairs(p.rep or {}) do gone[o] = true end end
+  local n = 0
+  for name, p in pairs(info.parts) do
+    if not gone[name] then
+      local b = R.Instance.new("MeshPart")
+      b.Name = "V_" .. key .. "__" .. name
+      b.Size = T.V3(p.s[1], p.s[2], p.s[3])
+      b.Parent = f
+      n = n + 1
+    end
+  end
+  f:SetAttribute("N", n)
+  f.Parent = vf
+  return n
+end
+
 function T.summary()
   print(string.format("脚本报错 %d 条，警告 %d 条", #R.errors, #R.warns))
   -- 同一条（每帧都报的）只列一次，后面写重复了几次

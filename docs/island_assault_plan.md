@@ -1092,6 +1092,16 @@
     服务器已经在打别的：只有自己就直接换、不然开私人服务器传过去（线上）；只有自己时在对战页点地图就退出关卡改打对战。左上角一行「PvE 第 N 关 · 名字 · 目标」。
     测试：`tools/mock/economy.lua`（新玩家金币、两边载具表、没买的拒绝生成、买车、结算金币、买配件）、`tools/mock/pve.lua`（锁关、选关、电脑人数和水平、赢了发奖记进度、
     下一关、关卡页、左上角、退出关卡）。测试台默认全解锁（`G.econAll = true`，在 `tools/mock/rbx.lua` 和 `tools/test/harness.luau` 的初始化里），经济测试自己关掉。
+  - 11-24：用户「另一个 ai 提交了东西，关于内饰得把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里，然后你负责续作，自己找 m1a2sepv2 内饰截图，应该和目前 a1 大差不差，
+    然后按钮什么的实现功能，实现现实中那几块屏幕所有的功能」：
+    ① 拆块（`tools/models/intsplit.py` + `intsplit.json`）：m1a1i.glb 炮塔内饰那一整块（Int_2）按连通块拆成 15 块，ImportedMeta 里 `rep = { "Int_2" }`；
+    炮尾开炮后坐、摇架跟着俯仰、炮长双握把跟着炮塔转动摆。用户要重导 veh/m1a1i.glb。
+    ② `InteriorAbrams.lua`：A1、A2（SEPv2）整套用原模型的块；布雷德利（`Defs.donorIfv`，InteriorAFV 的步战车炮塔调它）借炮长 / 车长位那几件；没导入的照旧零件拼。
+    ③ Interior 的可动部件运行时（`B:mov`：旋钮、选择开关、拨动开关、按钮，左键拨、悬停写档位、每帧照火控状态同步）；Drive 的火控补全：激光首 / 末回波和多回波、
+    激光保险、火控方式（正常 / 应急 / 手动）、稳定器开关、每种弹的战斗瞄准距离、炮管热弯曲和炮口基准更新、校炮、多档倍率（VehDefs 的 sightZoom）、
+    分划 / 符号亮度、热像增益 / 电平、红分划；布雷德利射速（高 / 低 / 单发）、武器选择、武器总开关。
+    ④ 屏幕：GCDP（`P.gcdp2`，主画面 + MAIN / AMMO / RANGE / ADJUST / BIT 页）、CCP 接真功能、CITV 五档视场、车长握把热像仪激光测距 + 敌情报告（服务器 `ACT.vspot`）。
+    ⑤ 测试：`tools/mock/interior_abrams.lua veh=m1a2|m1a1`、`interior_bradley.lua`、`interior_occ.lua … imp=m1a1i`（`T.fakeImport`）。细节见 `docs/interior.md`。
 
 ## 协作（几个会话一起改这个仓库）
 

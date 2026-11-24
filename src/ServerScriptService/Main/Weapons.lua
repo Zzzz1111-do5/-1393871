@@ -640,6 +640,22 @@ function Weapons.init(G)
     G.spotFrom(P, char, head, aim, Q)
   end
 
+  -- 车里的激光测距 + 敌情报告（M1A2 SEPv2 车长的独立热像仪 CITV、布雷德利的 CIV 测距后报告——蓝军跟踪系统的敌情报告 SPOTREP；
+  --   用户 11-24「实现现实中那几块屏幕所有的功能」）：从车上的观瞄设备往测到的那一点看（锥窄），看得见的敌人标给全队，比按 Z 远得多、标得久
+  G.ACT.vspot = function(P, from, aim)
+    if typeof(aim) ~= "Vector3" or typeof(from) ~= "Vector3" or aim.X ~= aim.X or from.X ~= from.X then return end
+    local e = P.vehicle
+    if not P.alive or not e or not e.alive or not e.root or e == P.remote then return end
+    if not G.round or G.round.phase ~= "battle" then return end
+    if (from - e.root.Position).Magnitude > 40 then return end   -- 观瞄设备得在自己车上
+    local W = Config.VehSpot or { range = 11200, cone = 1.2, spotTime = 20, cd = 2 }
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.vspot or 0) then return end
+    P.cd.vspot = t + W.cd
+    G.spotFrom(P, e.root.Parent or e.root, { Position = from }, aim, W)
+  end
+
   -- 每半秒把还在标记期里的敌人位置发给那一队
   task.spawn(function()
     while true do
