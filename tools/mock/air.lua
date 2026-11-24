@@ -54,7 +54,7 @@ local has = false
 for _, id in ipairs(C.S.vehModels or {}) do if id == jetId then has = true end end
 check(has, "能用的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
 check(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap >= 1, "固定翼名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap))
-T.act("deploy", "rifle", (side == "atk") and "af2" or "afield")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
+T.act("deploy", "rifle", G.Map.LANDONLY and "baseAir" or ((side == "atk") and "af2" or "afield"))   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 local jp = T.pad(jetId)

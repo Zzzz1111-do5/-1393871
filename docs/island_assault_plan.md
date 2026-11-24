@@ -1202,6 +1202,8 @@
     FillBlock 30536 次、16 亿体素（全图平地开服前铺完，只有起伏块挪到了后台），Lune 里同一段 Luau 计算 30 秒，慢在 Roblox 铺地形。
     World.lua terrainDesert 重写：开服前只铺两边主基地一带（FillBlock 1255 次、0.33 亿体素），其余后台按「有人的地方插队 → 据点 → 全图平地 → 剩下的起伏块」铺；
     平地小块按矩形合并；开服打印每次 FillBlock 平均几毫秒，太慢 warn 查 SmoothVoxelsUpgraded；地点文件的 Terrain 写 SmoothVoxelsUpgraded = false。
+  - 11-24 夜（E）：用户「我不想让准心控制飞机飞行方向」：Fly.lua 固定翼默认纯键盘驾驶（mouseAim = false，M 切战雷鼠标瞄准）；
+    用户 11-21 要过「WASD 控制方向、不要准心控制」，11-24 早上 7ff77b0 照战雷把默认换成了鼠标瞄准。
 
 ## 协作（几个会话一起改这个仓库）
 

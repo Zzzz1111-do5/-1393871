@@ -200,6 +200,11 @@ do
   UD2mt.__index = function(t, k)
     if k == "X" or k == "Width" then return newUDim(rawget(t, "_XS"), rawget(t, "_XO")) end
     if k == "Y" or k == "Height" then return newUDim(rawget(t, "_YS"), rawget(t, "_YO")) end
+    if k == "Lerp" then   -- 和真的一样：UDim2:Lerp(目标, 比例)（AirHud 红外导引头圈从机头滑到目标上用；原来模拟器里每帧报错、飞机界面后半截不更新）
+      return function(a, g, al)
+        return newUDim2(a._XS + (g._XS - a._XS) * al, a._XO + (g._XO - a._XO) * al, a._YS + (g._YS - a._YS) * al, a._YO + (g._YO - a._YO) * al)
+      end
+    end
     return base(t, k)
   end
 end

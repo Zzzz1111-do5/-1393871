@@ -26,7 +26,7 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "af2")
+T.act("deploy", "rifle", G.Map.LANDONLY and "baseAir" or "af2")   -- 沙海（11-24 起只剩这张）：主基地机场
 R.run(2)
 check(P.alive, "出生了")
 local cam = R.services.Workspace.CurrentCamera

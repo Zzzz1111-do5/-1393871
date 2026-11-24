@@ -28,7 +28,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
-  （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～五包、E 第一～五包，新的在上面）
+  （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～五包、E 第一～六包，新的在上面）
+  11 月 24 日 E 第六包（开飞机：准心不再管飞行方向）：换游戏文件（或者「三、只换脚本」）；模型都不用重导：
+    - 用户：「我不想让准心控制飞机飞行方向」——固定翼默认回到 11-21 那套纯键盘驾驶：W 低头、S 抬头、A / D 滚转、Q / E 方向舵，
+      Shift / Ctrl 或滚轮加减油门，鼠标只转视角（停 2.5 秒回到身后，C 立刻回正）；想试战雷那种「鼠标给方向、飞机自己追过去」的按 M 切
+    - 屏幕下面的按键说明跟着改了（机炮顺着机头打，敌机前面的小圈是提前量；B 减速板）
   11 月 24 日 E 第五包（沙海卡在「正在生成地图……%」；合并 A、B、C、D 到 11-24 夜）：换游戏文件 RobloxTotalBattlefield.rbxlx（推荐：里面有两样脚本改不了的设置）；模型都不用重导：
     - 原因：开服时要先把整张沙海的平地都铺上地形才让人进（3 万多次、16 亿个体素），Roblox 铺地形比算高度慢得多，进度条涨 1% 要铺一千多次，看着就是不动
     - 现在开服前只铺两边主基地一带（是原来的五十分之一），铺完就能出生；其余的在后台接着铺：谁（真人、机器人、车、低飞的飞机）走到哪、哪里先铺，

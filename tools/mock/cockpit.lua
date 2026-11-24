@@ -54,7 +54,7 @@ R.run(1)
 local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
 T.runUntil(function() return G.round.phase == "battle" end, 90)   -- 守方机场准备阶段不能出生
-T.actAs(me, "deploy", "rifle", (side == "atk") and "af2" or "afield")
+T.actAs(me, "deploy", "rifle", G.Map.LANDONLY and "baseAir" or ((side == "atk") and "af2" or "afield"))
 R.run(1.5)
 check(P.alive and me.Character ~= nil, "在机场出生了")
 local cam = R.workspace.CurrentCamera
