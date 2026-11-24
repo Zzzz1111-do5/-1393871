@@ -410,8 +410,8 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · 空格 下车",
-  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · G scout · K artillery · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
@@ -1401,6 +1401,23 @@ add("wtm.cK", "击杀", "Kills")
 add("wtm.cC", "占点", "Caps")
 add("wtm.cD", "阵亡", "Deaths")
 add("wtm.rewards", "本局：得分 {1}  ·  经验 +{2}  ·  攒了 {3} SP  ·  击毁地面 {4}  ·  击落 {5}", "This battle: score {1}  ·  XP +{2}  ·  {3} SP earned  ·  ground kills {4}  ·  air kills {5}")
+-- 战雷式侦察、火炮支援、击杀信息（WtMatch.lua / WtBattle.lua / WtTank.lua）
+add("wt.noScout", "只有轻型车（步战车、装甲车、防空车）能侦察", "Only light vehicles (IFVs, APCs, SPAA) can scout")
+add("wt.scoutNone", "准星附近没有看得见的敌方车辆", "No visible enemy vehicle near your crosshair")
+add("wt.scoutAgain", "这辆车刚被侦察过（{1} 秒后才能再侦察）", "That vehicle was just scouted (again in {1}s)")
+add("wt.scouted", "{1} 侦察到了 {2}", "{1} scouted a {2}")
+add("wt.scoutKill", "侦察助攻：你侦察的 {1} 被击毁（多一次火炮支援）", "Scout assist: the {1} you scouted was destroyed (+1 artillery strike)")
+add("wt.artyNo", "防空车不能呼叫火炮支援", "SPAA cannot call artillery")
+add("wt.artyFar", "太远了（最远 {1} 米）", "Too far (max {1} m)")
+add("wt.artyCd", "火炮支援还要 {1} 秒", "Artillery ready in {1}s")
+add("wt.artyCalled", "{1} 呼叫了火炮支援", "{1} called in artillery")
+add("wt.killedBy", "被 {1} 的 {2} 击毁", "Destroyed by {1}'s {2}")
+add("wt.killedBy2", "被 {1} 击毁", "Destroyed by {1}")
+add("wtm.ai", "AI", "AI")
+add("wtm.destroyed", "击毁", "destroyed")
+add("wtm.shotDown", "击落", "shot down")
+add("wtm.ammoRack", "打爆弹药架", "ammo-racked")
+add("wtm.burned", "烧毁", "burned")
 -- 战雷式飞机受伤（WtAir.lua）
 add("wta.crit", "重创", "CRITICAL HIT")
 add("wta.hurt", "被击中", "You were hit")

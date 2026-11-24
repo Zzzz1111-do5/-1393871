@@ -391,6 +391,10 @@ function WtHud.init(G)
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
     elseif op == "wtFixed" then
       say(T("wt.fixed"), OK, 2)
+    elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
+      local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
+      say(kv and T("wt.killedBy", m.from or "?", kv) or T("wt.killedBy2", m.from or "?"), DEAD, 5)
+      if m.xr then G.try_(showXray, m) end
     elseif op == "wtaHit" then
       showAirHit(m)
     elseif op == "wtaHurt" then

@@ -140,6 +140,8 @@ function Wt.init(G)
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       G.fx({ k = "boom", p = (base * CF(tp)).Position, s = 4.2, c = "wreck" })
     end
+    e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
+    e.wtLastPass = e.pass and table.clone(e.pass) or nil
     G.wtRaw = true
     G.damageEnt(e, 1e9, src)
     G.wtRaw = false
@@ -288,6 +290,13 @@ function Wt.init(G)
     if P and P.pl and G.P[P.pl] == P then G.R.Drive:FireClient(P.pl, payload) end
     if not res.kill then
       msgTo(e, { op = "wtHurt", r = res.r, parts = out, fire = res.fire, from = s.src and s.src.name, xr = extra })
+    else   -- 被击毁的那一发：车里的人看「被 XX 的 YY 击毁」和这一发的 X 光（战雷的击毁回放）
+      local kveh = P and P.vehicle and P.vehicle.def and P.vehicle.def.id or nil
+      local kill = table.clone(payload)
+      kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
+      for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
+        if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
+      end
     end
     G.wtHits = (G.wtHits or 0) + 1   -- 测试用
     G.wtLast = payload

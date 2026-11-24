@@ -206,8 +206,83 @@ function WtBattle.init(G)
     nextT.Text = T("ui.nextRound", S.left or 0)
   end
 
+  ---------------------------------------------------------------- 击杀信息（战雷左边那一栏）：「玩家A [豹 2A6] 击毁 玩家B [T-72B3]」
+  --   服务器 WtMatch.lua 车被打掉时发 { op = "wtFeed", k 打的人, kt 他那队, kv 他开的车, v 车里的人, vt 那队, vv 那辆车, air 打下来的是飞机, why 殉爆 / 起火 }；
+  --   我方蓝、敌方红；最多 7 行，8 秒后淡掉；自己相关的那行底色亮一点
+  local FEED_N = 7
+  local feedBox = frame(gui, UD2(0, 460, 0, FEED_N * 22), UD2(0, 16, 0.36, 0), INK, 1)
+  feedBox.Name = "WtKillFeed"
+  local feedRows, feedList = {}, {}
+  for i = 1, FEED_N do
+    local r = frame(feedBox, UD2(1, 0, 0, 20), UD2(0, 0, 0, (i - 1) * 22), INK, 0.6)
+    local l = label(r, "", UD2(1, -12, 1, 0), UD2(0, 6, 0, 0), 13, WHITE, BOLD, nil, LEFT)
+    l.RichText = true
+    r.Visible = false
+    feedRows[i] = { f = r, l = l }
+  end
+  local BLUE, RED = RGB(110, 170, 255), RGB(255, 96, 80)
+  local function vehName(id) return id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or nil end
+  local function feedLine(m)
+    local side = me:GetAttribute("Side")
+    local function who(name, team, veh)
+      local col = (team == side) and BLUE or RED
+      local nm = name or T("wtm.ai")
+      local v = vehName(veh)
+      return string.format('<font color="%s">%s</font>%s', hex(col), nm, v and string.format(' <font color="#C8CDD0">[%s]</font>', v) or "")
+    end
+    local verb = T(m.air and "wtm.shotDown" or ((m.why == "ammo") and "wtm.ammoRack" or ((m.why == "fire") and "wtm.burned" or "wtm.destroyed")))
+    if not m.k then return who(m.v, m.vt, m.vv) .. "  " .. verb end
+    return who(m.k, m.kt, m.kv) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv)
+  end
+  local function redrawFeed()
+    local t = os.clock()
+    for i = #feedList, 1, -1 do if t - feedList[i].t > 9 then table.remove(feedList, i) end end
+    for i, R in ipairs(feedRows) do
+      local e = feedList[i]
+      R.f.Visible = e ~= nil
+      if e then
+        R.l.Text = e.txt
+        local a = math.clamp((t - e.t - 7.5) / 1.5, 0, 1)
+        R.l.TextTransparency = a
+        R.f.BackgroundTransparency = (e.mine and 0.35 or 0.6) + a * 0.4
+      end
+    end
+  end
+  -- 火炮支援的落点：地上一圈红（本队看得见；敌人只看得见炮弹落下来）
+  local artyMarks = {}
+  local function artyMark(e)
+    if typeof(e.p) ~= "Vector3" or e.team ~= me:GetAttribute("Side") then return end
+    local p = Instance.new("Part")
+    p.Name = "WtArtyMark"
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Shape = Enum.PartType.Cylinder
+    p.Size = Vector3.new(0.3, (e.r or 70) * 2, (e.r or 70) * 2)
+    p.CFrame = CFrame.new(e.p + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+    p.Material, p.Color, p.Transparency = Enum.Material.Neon, RGB(255, 70, 50), 0.82
+    p.Parent = workspace
+    table.insert(artyMarks, { p = p, till = os.clock() + (e.t or 10) })
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
+    end
+  end)
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) ~= "table" or m.op ~= "wtFeed" then return end
+    table.insert(feedList, 1, { txt = feedLine(m), t = os.clock(), mine = m.vid == me.UserId or m.k == me.DisplayName })
+    while #feedList > FEED_N do table.remove(feedList) end
+    redrawFeed()
+  end)
+  G.wtFeedRows = function() return feedList end   -- 测试用
+
   ---------------------------------------------------------------- 每帧
   G.frameConn("WtBattle", function()
+    if #feedList > 0 then G.try_(redrawFeed) end
+    for i = #artyMarks, 1, -1 do
+      local a = artyMarks[i]
+      if os.clock() > a.till then a.p:Destroy() table.remove(artyMarks, i) end
+    end
     local S = G.S
     local w = S and S.wt
     if S then G.try_(stepResults, S) end

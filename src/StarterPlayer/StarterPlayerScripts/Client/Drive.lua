@@ -1451,6 +1451,12 @@ function Drive.init(G)
       smoke()
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
+    elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
+      local aim = st.aimPt or (workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 1000)
+      local from = (st.sight and workspace.CurrentCamera.CFrame.Position) or (st.root.Position + V(0, st.d.H or 6, 0))
+      G.R.Act:FireServer("wtScout", from, aim)
+    elseif k == Enum.KeyCode.K and not (G.interiorOn and G.interiorOn()) then   -- 战雷式火炮支援：准星下那块地落一轮炮弹（冷却 2 分钟）
+      if st.aimPt then G.R.Act:FireServer("wtArty", st.aimPt) end
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）

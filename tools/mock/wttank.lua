@@ -77,7 +77,8 @@ local list = {}
 for _, sd in ipairs(slots) do table.insert(list, (sd.am or sd.wid or sd.k) .. (sd.num and ("[" .. sd.num .. "]") or "")) end
 print("  弹药栏：" .. table.concat(list, " "))
 local nGun = #(R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics")).GUN[def.weapons[1]] or { 1 })
-check(#slots == nGun + (#def.weapons - 1) + 2, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修（" .. #slots .. "）")
+local extra = ((def.cat == "apc" or def.cat == "aa") and 1 or 0) + ((def.cat ~= "aa") and 1 or 0)   -- 侦察（轻型车）、火炮支援（不是防空车）
+check(#slots == nGun + (#def.weapons - 1) + 2 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 侦察 / 火炮（" .. #slots .. "）")
 local di = find("WtDamageInd")
 local sch = find("Schematic")
 local nSch = sch and #sch:GetDescendants() or 0

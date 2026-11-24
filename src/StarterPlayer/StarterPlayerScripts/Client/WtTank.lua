@@ -217,6 +217,19 @@ function WtTank.init(G)
       b(-5, 17, 7, 3, RGB(60, 62, 58), 0)
       b(5, 18, 12, 12, RGB(200, 204, 204), 0.25, true)
       b(10, 24, 9, 9, RGB(220, 224, 224), 0.35, true)
+    elseif kind == "scout" then   -- 侦察：望远镜
+      for i = -1, 1, 2 do
+        local f = b(i * 6, 6, 11, 11, WHITE, 1, true)
+        stroke(f, RGB(214, 220, 222), 2.4, 0)
+        b(i * 6, 15, 7, 6, RGB(170, 176, 178), 0, 2)
+      end
+      b(0, 12, 4, 4, RGB(170, 176, 178), 0)
+    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 往下落的炮弹
+      local f = b(0, 2, 22, 22, WHITE, 1, true)
+      stroke(f, RGB(255, 120, 90), 2, 0)
+      b(0, 12, 2, 26, RGB(255, 120, 90), 0.2)
+      b(0, 12, 26, 2, RGB(255, 120, 90), 0.2)
+      b(7, 18, 5, 11, RGB(150, 150, 140), 0, 2)
     elseif kind == "ext" then   -- 灭火器
       b(0, 0, 11, 20, RGB(220, 42, 32), 0, 3)
       b(0, 19, 6, 4, RGB(60, 60, 60), 0)
@@ -273,6 +286,8 @@ function WtTank.init(G)
     for i, sd in ipairs(slotDef) do sd.num = (i <= 6) and i or nil end
     table.insert(slotDef, { k = "smoke", icon = "smoke", keyTxt = "X" })
     table.insert(slotDef, { k = "fix", icon = "fix", keyTxt = "Y" })
+    if d.cat == "apc" or d.cat == "aa" then table.insert(slotDef, { k = "scout", icon = "scout", keyTxt = "G" }) end   -- 轻型车才能侦察（战雷）
+    if d.cat ~= "aa" then table.insert(slotDef, { k = "arty", icon = "arty", keyTxt = "K" }) end   -- 防空车不能叫火炮
     for i = #slots + 1, #slotDef do newSlot(i) end
     for i, s in ipairs(slots) do
       local sd = slotDef[i]
@@ -331,6 +346,14 @@ function WtTank.init(G)
       elseif sd.k == "smoke" then
         local n = vs and vs.smoke or 0
         cnt, empty = tostring(n), n <= 0
+      elseif sd.k == "arty" then   -- 火炮支援：冷却（服务器时间）；侦察助攻多给的次数写在右下
+        local cd = me:GetAttribute("WtArtyCd")
+        local left = cd and (cd - workspace:GetServerTimeNow()) or 0
+        local bonus = me:GetAttribute("WtArtyBonus")
+        if left > 0 and not bonus then fillK, timeTxt = 1 - left / 120, string.format("%d", math.ceil(left)) end
+        cnt = bonus and ("+" .. bonus) or ""
+      elseif sd.k == "scout" then
+        cnt = ""
       else
         if fire then ic = "ext" end
         if fix then fillK = fix end
