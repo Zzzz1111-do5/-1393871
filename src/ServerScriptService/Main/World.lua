@@ -58,6 +58,10 @@ local function folder(name, parent)
   f.Parent = parent or workspace
   return f
 end
+-- 开了流式加载（Workspace.StreamingEnabled）：一栋房子整栋一起流进流出（不会先来了看不见的碰撞盒、墙还没到，或者只剩半栋）
+local function atomic(m)
+  pcall(function() m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic end)
+end
 -- 地面高度上的一点（海上是海面）
 local function at(x, z, dy) return V(x, Map.ground(x, z) + (dy or 0), z) end
 
@@ -924,6 +928,7 @@ local function building(f, key, x, z, rot, opt)
   -- 占地（Battle.lua 炸塌房子用：废墟按这个摆）
   m:SetAttribute("BldBase", base)
   m:SetAttribute("BldSize", V(w, h, d))
+  atomic(m)
   m.Parent = f
   return base, m, w, h, d
 end
@@ -940,6 +945,11 @@ end
 ---------------------------------------------------------------- 据点
 
 -- 据点：地上一圈（颜色跟着归属变）、旗杆和旗、一圈断续的沙袋、远处也看得到的字母牌；Round 按属性 Owner 改颜色
+-- 开了 streaming（地点文件的 Workspace.StreamingEnabled）也一直留在每个客户端上：据点（远处九千格就看得见旗杆上的字母）、舰队（航母甲板上站着人、远处就看得见）
+local function persist(m)
+  pcall(function() m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent end)
+end
+
 function World.points(f)
   local list = {}
   for _, p in ipairs(Map.POINTS) do
@@ -959,6 +969,7 @@ function World.points(f)
     sandbags(m, V(p.x, 0, p.z), 16, 3.5, 5.6, 3)
     m:SetAttribute("Id", p.id)
     m:SetAttribute("Owner", "def")
+    persist(m)
     m.Parent = f
     list[p.id] = m
   end
@@ -1572,6 +1583,7 @@ function World.fleet(f)
       local ok, err = pcall(World.carrierDeck, m, base * CF(0, AirDefs.DECKS.carrier.top, 0), real == true)
       if not ok then warn("[全面大战场] 航母甲板出错：" .. tostring(err)) end
       m:SetAttribute("Kind", s.kind)
+      persist(m)
       m.Parent = f
       table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
     else   -- 别的舰：拼的船体（不用 continue：测试台的 Lua 5.4 没有）
@@ -1593,6 +1605,7 @@ function World.fleet(f)
         light(m, (base * CF(ix - 9.6, D.deck + 22, iz + dz)).Position, RGB(255, 214, 160), 1.1, 140, 1.8, { face = Enum.NormalId.Left, angle = 70 }, 3)
       end
       m:SetAttribute("Kind", s.kind)
+      persist(m)
       m.Parent = f
       table.insert(decks, { kind = s.kind, cf = base * CF(0, D.deck + 1, 0), L = D.L, W = D.W, model = m })
     end
@@ -2019,6 +2032,7 @@ local function adobe(f, x, z, w, d, h, rot, col, R, yard)
     slab(m, V(seg, wh, 0.9), base * CF(-hw + seg / 2, wh / 2, z1), wc, MAT.Concrete)
     slab(m, V(seg, wh, 0.9), base * CF(hw - seg / 2, wh / 2, z1), wc, MAT.Concrete)
   end
+  atomic(m)
   m.Parent = f
   return base
 end
@@ -2052,6 +2066,7 @@ local function mosque(f, x, z, rot)
   slab(m, V(6, 6, 6), mt * CF(0, 61, 0), RGB(64, 118, 128), MAT.SmoothPlastic, BALL)
   deco(m, V(0.4, 3.5, 0.4), mt * CF(0, 65.5, 0), RGB(214, 180, 70), MAT.Metal)
   light(m, (mt * CF(0, 41.5, -5.2)).Position, RGB(140, 255, 170), 0.6, 18, 1.1, nil, 3)   -- 宣礼塔阳台的绿灯
+  atomic(m)
   m.Parent = f
 end
 
@@ -2148,6 +2163,7 @@ local function pumpjack(f, x, z, rot, phase)
   slab(m, V(4, 4.5, 4.5), base * CF(0, 3.4, 8.2), dark, MAT.Metal)   -- 曲柄配重
   slab(m, V(4.4, 3.6, 4), base * CF(0, 1.8, 11.6), RGB(120, 124, 116), MAT.Metal)   -- 电机房
   cyl(m, 1.6, 1.4, base * CF(0, 1.2, -10), RGB(90, 96, 92), MAT.Metal)   -- 井口
+  atomic(m)
   m.Parent = f
 end
 -- 采油树（没装抽油机的自喷井）：一截立管、阀门、管汇
@@ -2159,6 +2175,7 @@ local function wellhead(f, x, z)
   part(m, V(1.2, 7, 1.2), CF(x, y + 3.5, z), RGB(170, 60, 40), MAT.Metal, nil, true)
   for _, k in ipairs({ 2.4, 4.6 }) do part(m, V(3.2, 0.9, 0.9), CF(x, y + k, z), RGB(200, 180, 60), MAT.Metal) end
   part(m, V(0.6, 0.6, 9), CF(x, y + 1.2, z + 4.8), RGB(120, 120, 116), MAT.Metal)
+  atomic(m)
   m.Parent = f
 end
 

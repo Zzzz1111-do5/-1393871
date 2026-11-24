@@ -214,6 +214,7 @@ function Air.init(G)
       e.model:SetAttribute("Driver", P.pl.UserId)
       if uav then
         e.loit = nil
+        if G.streamFocus then G.streamFocus(P.pl, e.root, true) end   -- 人站在原地遥控：无人机那边也算加载中心（开了 streaming 时画面里有房子、地形细节）
         e.opId = P.pl.UserId
         e.model:SetAttribute("Op", P.pl.UserId)
         e.model:SetAttribute("Loiter", false)
@@ -265,6 +266,7 @@ function Air.init(G)
     for i, Q in ipairs(e.pass) do if Q == P then table.remove(e.pass, i) break end end
     local char = P.char
     if uav then   -- 遥控无人机的：人本来就在地上，收起平板就行
+      if G.streamFocus then G.streamFocus(P.pl, e.root, false) end
       tablet(P, false)
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hrp and char.Parent then hrp.Anchored = false end

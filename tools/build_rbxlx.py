@@ -95,14 +95,23 @@ for svc in sorted(os.listdir(SRC)):
     build(os.path.join(SRC, svc), it)
     services.append(it)
 by = {s.name: s for s in services}
-# 不是脚本的东西：放导入模型的文件夹、关掉流式加载、光照（Future 只能写进地图文件）
+# 不是脚本的东西：放导入模型的文件夹、流式加载、光照（Future 只能写进地图文件）
 rs = by.setdefault('ReplicatedStorage', Item('ReplicatedStorage', 'ReplicatedStorage'))
 if rs not in services:
     services.append(rs)
 for f in ('UnitModels',):
     if not rs.find(f):
         rs.kids.append(Item('Folder', f))
-services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'false')]))
+# 流式加载（用户 11-24 晚「streaming 优化」）：客户端只收身边一片的地图零件和地形（远处的地形照样画得出来，低细节）——大地图进服快、省内存。
+#   这几个 Workspace 属性脚本改不了，只能写进地点文件；同 tools/build.luau。客户端的配套见 Client/Stream.lua（远处的射线按地形高度算），
+#   服务器把实体代理、玩家角色、舰队、据点设成 Persistent（Ents.lua、Round.lua、World.lua），出生到远处先预加载（RequestStreamAroundAsync）。
+#   最小半径 512 格（约 180 米：脚下一定在）、目标半径 4096 格（约 1.5 公里：坦克的瞄准射线、步兵视野都在里面）；
+#   ModelStreamingBehavior = Improved（2）；StreamOutBehavior = LowMemory（1）：只在内存紧的时候才把最小半径外的卸掉——
+#     电脑上看过的房子一直留着（用户 11-22 要视野无限远；Opportunistic 内存够也会把目标半径外的卸掉，远处的房子一转头就没了），手机内存紧了才卸；
+#   StreamingIntegrityMode = Disabled（1）：不暂停等加载——飞机一秒飞上千格，暂停会一直卡住；车、飞机贴地按 Map.height 算，不靠加载进来的地形
+services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'true'), ('int', 'StreamingMinRadius', '512'),
+                                                      ('int', 'StreamingTargetRadius', '4096'), ('token', 'ModelStreamingBehavior', '2'),
+                                                      ('token', 'StreamOutBehavior', '1'), ('token', 'StreamingIntegrityMode', '1')]))
 # 同 tools/build.luau：夜战（开服时 World.lighting 还会再设一遍）
 services.append(Item('Lighting', 'Lighting', props=[('float', 'Brightness', '2.2'), ('float', 'ClockTime', '2.3'), ('float', 'EnvironmentDiffuseScale', '1'),
                                                     ('float', 'EnvironmentSpecularScale', '1'), ('bool', 'GlobalShadows', 'true'), ('token', 'Technology', '4')]))

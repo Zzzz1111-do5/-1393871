@@ -429,6 +429,20 @@ function Night.init(G)
   G.glowCount = function() return #glows end
 
   local anim = {}
+  local animSet = setmetatable({}, { __mode = "k" })
+  -- 会闪的灯、会转的雷达、会点头的抽油机：登记一次（同一块不重复）。开了 streaming（Stream.lua）以后开局只扫得到身边已加载的，
+  --   远处的走近了才流进来——跟后来摆的一样在 DescendantAdded 里登记；流出去的（Parent 是 nil）每帧跳过
+  local function regAnim(p)
+    if animSet[p] then return end
+    local a = p:GetAttribute("Anim")
+    if a == "blink" or a == "spin" or a == "rock" then
+      animSet[p] = true
+      table.insert(anim, { p = p, a = a, spd = p:GetAttribute("Spd") or 1, cf0 = p.CFrame, pivot = p:GetAttribute("Pivot"),
+        glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light"),
+        axis = p:GetAttribute("Axis"), amp = p:GetAttribute("Amp") or 0.2, ph = p:GetAttribute("Ph") or 0 })
+    end
+  end
+  G.animCount = function() return #anim end   -- 测试用
   task.spawn(function()
     for _ = 1, 120 do
       local root = workspace:FindFirstChild("Map")
@@ -436,18 +450,14 @@ function Night.init(G)
         task.wait(2)
         for _, p in ipairs(root:GetDescendants()) do
           if p:IsA("BasePart") then
-            local a = p:GetAttribute("Anim")
-            if a == "blink" or a == "spin" or a == "rock" then
-              table.insert(anim, { p = p, a = a, spd = p:GetAttribute("Spd") or 1, cf0 = p.CFrame, pivot = p:GetAttribute("Pivot"),
-                glow = p:FindFirstChild("Glow"), light = p:FindFirstChildWhichIsA("Light"),
-                axis = p:GetAttribute("Axis"), amp = p:GetAttribute("Amp") or 0.2, ph = p:GetAttribute("Ph") or 0 })
-            end
+            regAnim(p)
           elseif p:IsA("BillboardGui") then
             addGlow(p)
           end
         end
-        root.DescendantAdded:Connect(function(d)   -- 后来摆的（舰艇重建等）
+        root.DescendantAdded:Connect(function(d)   -- 后来摆的（舰艇重建等）、开了 streaming 后走近了流进来的
           if d.Name == "Glow" then task.defer(addGlow, d) end
+          if d:IsA("BasePart") then task.defer(function() if d.Parent then regAnim(d) end end) end   -- 等属性、子件（灯）都到了再登记
         end)
         stepGlows()
         return
@@ -464,8 +474,14 @@ function Night.init(G)
     end
     if #anim == 0 then return end
     local t = os.clock()
-    for _, x in ipairs(anim) do
-      if x.p.Parent then
+    for i = #anim, 1, -1 do   -- 倒着走：流出去（开了 streaming 走远了）、拆掉的零件从表里删掉——流回来是新零件，DescendantAdded 会重新登记，表不会越积越长
+      local x = anim[i]
+      if not x.p.Parent then
+        animSet[x.p] = nil
+        if x.glow then glowDark[x.glow] = nil end
+        anim[i] = anim[#anim]
+        anim[#anim] = nil
+      else
         if x.a == "blink" then
           local lit = ((t * x.spd) % 1) < 0.16
           if x.lit ~= lit then

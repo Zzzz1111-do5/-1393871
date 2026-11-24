@@ -253,7 +253,7 @@ function Play.init(G)
     -- 实体（小兵、车、船、工事）不打服务器的隐形命中盒，按画面上看得见的位置算（View.lua G.viewRay；服务器按你看到的那一刻判定，Rewind.lua）
     rayP.FilterDescendantsInstances = { player.Character, G.fxFolder, G.viewFolder, workspace:FindFirstChild("Ents") }
     local len = range or 1500
-    local res = workspace:Raycast(ray.Origin, ray.Direction * len, rayP)
+    local res = G.rayFar(ray.Origin, ray.Direction * len, rayP)   -- 迫击炮、标点打到远处没加载的地形：按地形高度算（Stream.lua）
     if not ground and G.viewRay then
       local vp3, vem = G.viewRay(ray.Origin, ray.Direction, res and (res.Position - ray.Origin).Magnitude or len)
       if vp3 then return vp3, vem end

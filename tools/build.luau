@@ -105,7 +105,8 @@ if fs.isDir("models/imported") then
 	if nImported > 0 then holder.Parent = game:GetService("ServerStorage") end
 end
 
--- 不是脚本的东西：放导入模型的文件夹、关掉流式加载（客户端要复制服务器的单位模型）
+-- 不是脚本的东西：放导入模型的文件夹、流式加载（同 tools/build_rbxlx.py 的说明：用户 11-24 晚「streaming 优化」；
+--   原来关着是因为客户端要从 workspace 复制服务器的单位模型——现在模型都在 ReplicatedStorage.Imported，不受 streaming 影响）
 local rs = game:GetService("ReplicatedStorage")
 if not rs:FindFirstChild("UnitModels") then
 	local f = Instance.new("Folder")
@@ -113,7 +114,12 @@ if not rs:FindFirstChild("UnitModels") then
 	f.Parent = rs
 end
 local ws = game:GetService("Workspace")
-ws.StreamingEnabled = false
+ws.StreamingEnabled = true
+ws.StreamingMinRadius = 512
+ws.StreamingTargetRadius = 4096
+pcall(function() ws.ModelStreamingBehavior = roblox.Enum.ModelStreamingBehavior.Improved end)
+pcall(function() ws.StreamOutBehavior = roblox.Enum.StreamOutBehavior.LowMemory end)   -- 内存紧了才卸（同 tools/build_rbxlx.py）
+pcall(function() ws.StreamingIntegrityMode = roblox.Enum.StreamingIntegrityMode.Disabled end)   -- 不暂停等加载
 -- 地形草叶（用户 11-24 发截图：「这个 roblox 的这种草你给海岛地图加上吧」）：Terrain.Decoration、GrassLength 脚本改不了，只能写进地点文件——
 --   草叶只长在 Grass 材质上（海岛图写地形时草地照写 Grass：Map.GRASS）；草长 1 = Roblox 最长（截图那样），嫌高在 Studio 里 Workspace → Terrain 调小
 do

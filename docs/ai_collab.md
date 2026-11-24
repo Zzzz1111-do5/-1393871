@@ -42,9 +42,19 @@
   ① 在原模型上雕刻显示屏：飞机转换时（tools/models/sf_air.py、air2glb.py）把仪表板网格按显示器矩形切开、往里挖槽（槽壁、槽底），
      屏幕（SurfaceGui）放在槽底——先 F-16C，再歼-8II；F-15C / F-14A 的原模型没有座舱，照 carve.py 的路子从原模型挖座舱再刻屏。
      **改 AirModels.lua 的 Pit / PitHud、InteriorDefs.lua 的 modelPit、ImportedAir 的 pitScr 前在这里写一笔**
-  ② 流畅度和 3A 式优化（全游戏）：先量各模块每帧的脚本时间（G.perfT），挑热点改；特效对象池、远处的实体降频更新 + 插值、画质跟着帧率自适应。
-     **动 View.lua / Fx.lua / Warfx.lua 的每帧循环前会在这里写一笔**
-  ③ 流体效果：统一风场（Workspace.GlobalWind）、船和两栖车尾迹、落水水柱、直升机旋翼下洗、烟火随风翻滚
+     **已做 F-16C**（fb39fd1：sf_air.py carve_rects，两块 MFD 刻进仪表板、屏幕在槽底；键名 f16_v2）；同一次还修了座舱盖玻璃是多边形（新导入件 optics/ip_canopy.glb）
+  ② **已做：流式加载（用户 11-24 晚改口：「我的意思是 streaming优化」）**——地点文件里 Workspace 开了 StreamingEnabled
+     （tools/build_rbxlx.py、build.luau：最小半径 512、目标半径 4096、ModelStreamingBehavior Improved、StreamOutBehavior LowMemory、StreamingIntegrityMode Disabled）。
+     客户端只有身边一片的地图零件和地形，**大家写代码注意**：
+     - 客户端打远处的射线（瞄准点、激光测距、标点、落点）用 `G.rayFar(起点, 向量, params)`（Client/Stream.lua），别直接 `workspace:Raycast`——
+       远处没加载的地形会打空；它先照常打，打空了按 `Map.rayGround`（Map.height 算的地形）找落点，返回跟 RaycastResult 一样用的表（多一个 far = true）。
+       两点之间的视线挡不挡用 `G.terrainBlocks(甲, 乙)`（只看 3000 格外的）
+     - 服务器建的、所有人一直要看得见的模型（实体代理 Ents、角色、舰队、据点已经做了）用 `G.persist(model)`（Ents.lua）；房子整栋用 Atomic（World.lua atomic）
+     - 客户端一次性扫 `workspace.Map:GetDescendants()` 的，开了 streaming 只扫得到身边的——要配 `DescendantAdded`（Night.lua 灯光那样）；
+       客户端别 `WaitForChild` 地图里的零件（远处的不会来，一直等）
+     - 玩家传到远处前 `G.streamAround(pl, 位置)`（Round.lua 出生已经加了）；遥控的东西飞远了 `G.streamFocus(pl, 零件, true/false)`（无人机已经加了）
+     - 模拟器 `R.streamSim = 半径` 假装客户端只有这么大一片（rbx.lua）；测试 tools/mock/stream.lua
+  ③ 还没做：流畅度（量每帧脚本时间挑热点）、流体效果（风场、尾迹、水柱、旋翼下洗）——用户说先做 streaming，这两样等用户再提
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

@@ -999,7 +999,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       local v = G.viewById and G.viewById(c.id)
       if v and v.model then table.insert(ex, v.model) end
       rp.FilterDescendantsInstances = ex
-      local res = workspace:Raycast(d.citvEye, d.citvF * (5000 * S), rp)
+      local res = G.rayFar(d.citvEye, d.citvF * (5000 * S), rp, true)   -- 车长周视镜激光：远处没加载的山坡按地形高度算回波（Stream.lua）
       c.citvRT = os.clock()
       if res then
         local m = (res.Position - d.citvEye).Magnitude / S
@@ -1989,7 +1989,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         if st.em then table.insert(ex, st.em) end
         if me.Character then table.insert(ex, me.Character) end
         rayP.FilterDescendantsInstances = ex
-        local hit = workspace:Raycast(o3, dir * 3000, rayP)
+        local hit = G.rayFar(o3, dir * 3000, rayP)
         local pt = hit and hit.Position or (o3 + dir * 3000)
         if R then st.rwsPt = pt else st.aimPt = pt end
       end

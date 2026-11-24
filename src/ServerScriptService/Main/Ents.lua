@@ -16,6 +16,28 @@ function Ents.init(G)
   folder.Parent = workspace
   G.entFolder = folder
 
+  -- 流式加载（地点文件里 Workspace.StreamingEnabled 开着时；用户 11-24 晚「streaming 优化」）：客户端只收到身边一片的地图零件和地形。
+  --   一直要在的（雷达、标记、瞄准、队友、敌舰都要看全图的）设成 Persistent：实体代理（一个隐形的命中盒 Root，很轻）、玩家角色、舰队、据点；
+  --   玩家出生到远处、遥控无人机飞远，先请服务器把那一片送过去（RequestStreamAroundAsync / AddReplicationFocus）。没开 streaming 时这些都不起作用
+  G.streaming = false
+  pcall(function() G.streaming = workspace.StreamingEnabled == true end)
+  function G.persist(model)
+    if model then pcall(function() model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent end) end
+  end
+  function G.streamAround(pl, pos, timeout)
+    if not G.streaming or not pl or typeof(pos) ~= "Vector3" then return end
+    local ch = pl.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    if hrp and (hrp.Position - pos).Magnitude < 400 then return end   -- 就在身边（最小半径 512 以内本来就在）：不用等
+    pcall(function() pl:RequestStreamAroundAsync(pos, timeout or 3) end)
+  end
+  function G.streamFocus(pl, part, on)
+    if not G.streaming or not pl or not part then return end
+    pcall(function()
+      if on then pl:AddReplicationFocus(part) else pl:RemoveReplicationFocus(part) end
+    end)
+  end
+
   local ents, byId, nextId = {}, {}, 0
   G.ents, G.entById = ents, byId
 
@@ -43,6 +65,7 @@ function Ents.init(G)
     m:SetAttribute("Cat", def.cat)
     m:SetAttribute("Hp", def.hp)
     m:SetAttribute("MaxHp", def.hp)
+    G.persist(m)   -- 全图都要看得见（雷达、标记、队友、瞄准）：不随 streaming 流出去
     local e = { id = id, model = m, root = root, kind = def.kind, team = def.team, cat = def.cat or "light", hp = def.hp or 100, maxHp = def.hp or 100,
       air = def.air, sea = def.sea, alive = true, born = os.clock(), data = def.data or {} }
     for k, v in pairs(def.extra or {}) do e[k] = v end

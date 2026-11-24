@@ -2444,7 +2444,7 @@ function Fly.init(G)
     local adir = lookDir()
     local o = (d.kind == "jet" and not st.eo) and pos or cam.CFrame.Position
     local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
-    local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
+    local res = G.rayFar(o + adir * (d.L * 0.6), adir * far, aimParams)   -- 光电吊舱看八公里外：远处没加载的地形按高度算（Stream.lua）
     st.aimPt = res and res.Position or (o + adir * far)
     if d.kind == "jet" and st.pilot and not st.uav and not st.eo and not st.crashed then   -- 机炮黏住目标：瞄准点换成目标的提前量（发给服务器）
       st.stick = gunStick()
