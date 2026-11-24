@@ -294,6 +294,50 @@ function Warfx.init(G)
   end)
   G.nightClouds = clouds   -- 测试用
 
+  ---------------------------------------------------------------- 积云（用户 11-24：「要能在任何位置都适合打坦克战、空战，包括云朵」）
+  -- 地形的云是平平的一层；空战要一团一团的积云（能钻进去躲、穿出来）：按定死的种子在作战区上空摆几十团，每团十来个半透明的大球
+  --   挤在一起（底下一块扁的云底、上面鼓起来），夜里是月光照着的灰蓝色、越往上越亮；不碰撞、不挡射线、不投影；客户端自己的、只摆一次
+  local banks = Instance.new("Folder")
+  banks.Name = "CloudBanks"
+  banks.Parent = FXF
+  G.cloudBanks = banks   -- 测试用
+  local function cloudBanks()
+    banks:ClearAllChildren()
+    local rng = Random.new(91124)
+    local span = (MapM.PLAY or 20000) * 0.9
+    local LOW, HIGH = RGB(70, 78, 94), RGB(122, 130, 146)
+    for _ = 1, 54 do
+      local cx, cz = rng:NextNumber(-span, span), rng:NextNumber(-span, span)
+      local cy = rng:NextNumber(1900, 3600)
+      local size = rng:NextNumber(280, 720)
+      local base = Instance.new("Part")
+      base.Shape = Enum.PartType.Cylinder
+      base.Size = Vector3.new(size * 0.22, size * 2.2, size * 2.2)
+      base.CFrame = CFrame.new(cx, cy, cz) * CFrame.Angles(0, 0, math.pi / 2)
+      base.Color, base.Transparency = LOW, 0.62
+      for _, b in ipairs({ base }) do
+        b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
+        b.Material = Enum.Material.SmoothPlastic
+        b.Parent = banks
+      end
+      for _ = 1, rng:NextInteger(7, 12) do
+        local r = size * rng:NextNumber(0.32, 0.62)
+        local up = rng:NextNumber(0, 1)
+        local b = Instance.new("Part")
+        b.Shape = Enum.PartType.Ball
+        b.Size = Vector3.new(r * 2, r * 2, r * 2)
+        b.CFrame = CFrame.new(cx + rng:NextNumber(-1, 1) * size * 0.9, cy + r * 0.35 + up * size * 0.32, cz + rng:NextNumber(-0.7, 0.7) * size * 0.9)
+        b.Color = LOW:Lerp(HIGH, up)
+        b.Transparency = rng:NextNumber(0.5, 0.68)
+        b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
+        b.Material = Enum.Material.SmoothPlastic
+        b.Parent = banks
+      end
+    end
+  end
+  pcall(cloudBanks)
+  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end   -- 换地图（作战区大小变了）重摆
+
   ---------------------------------------------------------------- 探照灯
   -- 守方几处要地（指挥部、机场、港口、营地）各两盏对空探照灯：灰绿色的灯筒架在矮杆上，一道淡蓝白的光柱斜着照上天，慢慢来回扫
   --   （二战登陆夜战那种画面）。只是画面：每个客户端自己画，扫的角度按服务器时间算（大家看到的差不多同步）；离镜头 9000 格外的不更新、不画

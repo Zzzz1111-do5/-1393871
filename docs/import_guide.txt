@@ -24,6 +24,8 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～七包、B 第二～三包、D 第四包、E 第一～四包，新的在上面）
+  11 月 24 日 B 第六包（沙海全图加掩体：到处都有能藏坦克的土堤、石头、院子、残骸；公路边电线杆；天上一团团积云能钻进去）：
+    换游戏文件（或者「三、只换脚本」）；模型都不用重导。
   11 月 24 日 B 第五包（沙海两边主基地：营区 + 机场 + 车场 + 直升机坪围在一起，细节做满；只在自己基地固定出生；开服只写基地一带，加载快多了）：
     换游戏文件（或者「三、只换脚本」）；模型都不用重导。
   11 月 24 日 B 第四包（只剩沙海：沙漠风暴、岛屿突击删了，开服就建沙海；合并 E 到 d4f0f6e）：换游戏文件（或者「三、只换脚本」）；

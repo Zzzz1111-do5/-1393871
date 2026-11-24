@@ -11,6 +11,18 @@ T.runUntil(function() return G.worldReady end, 900)
 local B = G.Map.BASES[side]
 local Y = G.Map.ground(B.x, B.z)
 local f = R.services.Workspace.Map.Scenery:FindFirstChild("FOB_" .. side)
+-- area=x,z,r：改成导出世界里那一圈的零件（看全图的掩体、地物）
+local ax, az, ar = TEST_ARGS:match("area=(%-?%d+),(%-?%d+),(%d+)")
+if ax then
+  B = { x = tonumber(ax), z = tonumber(az), yaw = 0 }
+  Y = G.Map.ground(B.x, B.z)
+  local rr = tonumber(ar)
+  local list = {}
+  for _, d in ipairs(R.services.Workspace.Map:GetDescendants()) do
+    if d:IsA("BasePart") and (d.Position.X - B.x) ^ 2 + (d.Position.Z - B.z) ^ 2 < rr * rr then table.insert(list, d) end
+  end
+  f = { GetDescendants = function() return list end }
+end
 local parts = {}
 local function num(x) return string.format("%.3f", x) end
 local function dump(root)
@@ -31,7 +43,7 @@ end
 dump(f)
 -- 附近的召唤位、工事（基地矩形里的）
 local pads = R.services.Workspace.Map:FindFirstChild("Pads")
-if pads then dump(pads) end
+if pads and not ax then dump(pads) end
 local fh = io.open(out, "w")
 fh:write(string.format('{"yaw":%s,"parts":[%s]}', num(B.yaw), table.concat(parts, ",\n")))
 fh:close()

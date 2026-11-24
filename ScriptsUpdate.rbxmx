@@ -961,7 +961,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 17:56 8a23aa8"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 17:57 f961e04"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -29280,10 +29280,176 @@ local function bedouin(f)
   end
 end
 
+-- 全图的掩体和地物（用户 11-24：「细节密度加到爆，要能在任何位置都适合打坦克战、空战」「地图不够精细、细节少」）：
+--   战区（两边主基地之间）按 600 格的网格，每格按定死的种子撒一样东西——坦克掩体（U 形土堤，车躲在后面只露炮塔）、岩石露头、
+--   废弃的泥砖院子、烧毁的车（不冒烟：几百处一起冒烟太费）、沙袋阵地、散落的水泥墩、扔下的集装箱；避开路、据点、镇子、两边基地、陡坡、沙墙
+local function sandsCover(f)
+  local cf0 = folder("Cover", f)
+  local R = Random.new(24113)
+  local SAND, SAND2 = RGB(196, 170, 126), RGB(176, 150, 108)
+  local MUD = { RGB(196, 172, 130), RGB(184, 158, 116), RGB(204, 184, 146) }
+  local ROCK = { RGB(160, 128, 96), RGB(140, 116, 96), RGB(176, 146, 110), RGB(124, 108, 92) }
+  local function berm2(cf, len, h, w)
+    wedge(cf0, V(len, h, w / 2), cf * CF(0, h / 2, -w / 4), SAND, MAT.Sand, true)
+    wedge(cf0, V(len, h, w / 2), cf * CF(0, h / 2, w / 4) * CFrame.Angles(0, math.pi, 0), SAND, MAT.Sand, true)
+  end
+  local function ok(x, z, r)
+    if Map.roadDist(x, z) < r + 30 then return false end
+    for _, p in ipairs(Map.POINTS) do
+      local rr = (p.id == "C") and 1100 or 520
+      if (p.x - x) ^ 2 + (p.z - z) ^ 2 < rr * rr then return false end
+    end
+    for _, B in pairs(Map.BASES or {}) do
+      local q = B.rect
+      if x > q.x0 - 500 and x < q.x1 + 500 and z > q.z0 - 500 and z < q.z1 + 500 then return false end
+    end
+    if Map.bermZ and math.abs(z - Map.bermZ(x)) < 120 then return false end
+    if (Map.AIRFIELD.x - x) ^ 2 + (Map.AIRFIELD.z - z) ^ 2 < 2400 ^ 2 then return false end
+    for _, o in ipairs({ { 0, 0 }, { r, 0 }, { -r, 0 }, { 0, r }, { 0, -r } }) do
+      if Map.slope(x + o[1], z + o[2]) > 0.28 then return false end
+    end
+    return true
+  end
+  local function base(x, z, rot)
+    local y = math.huge
+    for _, o in ipairs({ { 0, 0 }, { 8, 8 }, { -8, 8 }, { 8, -8 }, { -8, -8 } }) do y = math.min(y, Map.ground(x + o[1], z + o[2])) end
+    return CF(x, y, z) * CFrame.Angles(0, rot, 0)
+  end
+  -- 坦克战要的是到处都有能藏车身的东西：长条土堤、坦克掩体、大石头多放（零件少、挡得多），院子、残骸、沙袋、水泥墩、集装箱点缀
+  local kinds = { "bermline", "bermline", "bermline", "berm", "berm", "rock", "rock", "rock", "ruin", "wreck", "bags", "jersey", "conex" }
+  local n = 0
+  for gx = -14100, 14100, 450 do
+    for gz = -14700, 14700, 450 do
+      local x, z = gx + R:NextNumber(-170, 170), gz + R:NextNumber(-170, 170)
+      local kind = kinds[R:NextInteger(1, #kinds)]
+      local rot = R:NextNumber(0, math.pi * 2)
+      if R:NextNumber() < 0.86 and ok(x, z, 26) then
+        n += 1
+        local c = base(x, z, rot)
+        if kind == "bermline" then   -- 长条土堤：两三段、拐着弯，五到八格高（坦克车身全藏住，只露炮塔）
+          local len, h = R:NextNumber(50, 85), R:NextNumber(5, 8)
+          local cc = c
+          for _ = 1, R:NextInteger(2, 3) do
+            berm2(cc, len, h, h * 2.8)
+            cc = cc * CF(len / 2, 0, 0) * CFrame.Angles(0, R:NextNumber(-0.4, 0.4), 0) * CF(len / 2, 0, 0)
+            local q = cc.Position
+            cc = CF(q.X, Map.ground(q.X, q.Z), q.Z) * (cc - q)
+          end
+        elseif kind == "berm" then   -- 坦克掩体：前面一道、两边两道，口朝后；有的两三个并排
+          local face = (R:NextNumber() < 0.5) and 0 or math.pi   -- 朝南或朝北（两边都用得上）
+          local cc = base(x, z, face + R:NextNumber(-0.3, 0.3))
+          for k = 0, R:NextInteger(0, 1) do
+            local u = cc * CF(k * 34, 0, 0)
+            berm2(u * CF(0, 0, -11), 26, 5.5, 10)
+            for _, sx in ipairs({ -13, 13 }) do   -- 两边的矮堤：一块斜着的楔子（往后越来越低）
+              wedge(cf0, V(5, 4.5, 18), u * CF(sx, 2.25, -1) * CFrame.Angles(0, math.pi, 0), SAND2, MAT.Sand, true)
+            end
+          end
+        elseif kind == "rock" then   -- 岩石露头：几块转着的大石头挤在一起
+          for k = 1, R:NextInteger(2, 4) do
+            local sx, sy, sz = R:NextNumber(10, 28), R:NextNumber(6, 16), R:NextNumber(10, 24)
+            local pc = c * CF(R:NextNumber(-12, 12), sy * 0.3, R:NextNumber(-12, 12)) * CFrame.Angles(R:NextNumber(-0.3, 0.3), R:NextNumber(0, 6.28), R:NextNumber(-0.3, 0.3))
+            local rk = part(cf0, V(sx, sy, sz), pc, ROCK[R:NextInteger(1, #ROCK)], (k % 2 == 0) and MAT.Sandstone or MAT.Rock, nil, true)
+            rk.CastShadow = sx > 8
+          end
+        elseif kind == "ruin" then   -- 废弃院子：一圈塌了一半的泥砖墙、院里一座塌了顶的房子、碎砖堆
+          local col = MUD[R:NextInteger(1, #MUD)]
+          for sd = 0, 3 do
+            local w = c * CFrame.Angles(0, sd * math.pi / 2, 0)
+            for seg = -1, 1 do
+              if R:NextNumber() < 0.6 then
+                local h = R:NextNumber(3, 8)
+                part(cf0, V(12, h, 1.4), w * CF(seg * 13, h / 2, -19), col, MAT.Sandstone, nil, true)
+              end
+            end
+          end
+          local hh = R:NextNumber(6, 10)
+          part(cf0, V(16, hh, 1.2), c * CF(4, hh / 2, -4), col, MAT.Sandstone, nil, true)
+          part(cf0, V(1.2, hh * 0.7, 12), c * CF(-4, hh * 0.35, 2), col, MAT.Sandstone, nil, true)
+          part(cf0, V(10, 3, 8), c * CF(6, 1, 4) * CFrame.Angles(0.2, 0.5, 0.1), col:Lerp(RGB(120, 100, 80), 0.3), MAT.Sandstone, nil, true)
+          for k = 1, 2 do part(cf0, V(2, 1.2, 1.6), c * CF(R:NextNumber(-12, 12), 0.5, R:NextNumber(-12, 12)) * CFrame.Angles(0, R:NextNumber(0, 3), 0.3), col, MAT.Sandstone) end
+        elseif kind == "wreck" then   -- 烧毁的车：坦克或卡车，旁边炸飞的炮塔 / 车门
+          local burnt = RGB(42, 38, 34)
+          if R:NextNumber() < 0.55 then
+            part(cf0, V(10, 3.2, 20), c * CF(0, 2.4, 0) * CFrame.Angles(0.05, 0, -0.06), burnt, MAT.CorrodedMetal, nil, true)
+            for _, sx in ipairs({ -5.4, 5.4 }) do part(cf0, V(1.8, 2.8, 21), c * CF(sx, 1.4, 0), RGB(30, 28, 26), MAT.Metal, nil, true) end
+            local tur = c * CF(9, 1.2, 7) * CFrame.Angles(0.3, 1.1, 0.5)
+            part(cf0, V(7, 2.6, 8), tur, RGB(48, 44, 40), MAT.CorrodedMetal, nil, true)
+            part(cf0, V(11, 0.8, 0.8), tur * CF(0, 0, -9) * CFrame.Angles(0, math.pi / 2, 0), RGB(36, 34, 32), MAT.Metal, CYL)
+          else
+            part(cf0, V(5.4, 4.4, 5), c * CF(0, 3, -6) * CFrame.Angles(0, 0, 0.12), burnt, MAT.CorrodedMetal, nil, true)
+            part(cf0, V(5.6, 1, 12), c * CF(0, 1.4, 2.4) * CFrame.Angles(0.06, 0, 0.12), burnt, MAT.CorrodedMetal, nil, true)
+            for _, wz in ipairs({ -6, 2, 5.6 }) do part(cf0, V(5.8, 2.8, 2.8), c * CF(0, 1.2, wz), RGB(26, 26, 28), MAT.SmoothPlastic, CYL) end
+          end
+        elseif kind == "bags" then   -- 沙袋阵地：马蹄形，口朝后
+          for k = 0, 4 do
+            local a = (k - 2) * 0.55
+            local bc = c * CFrame.Angles(0, a, 0) * CF(0, 0, -7)
+            for r = 0, 1 do part(cf0, V(5.6 - r * 0.4, 1.4, 2.2 - r * 0.2), bc * CF(0, 0.7 + r * 1.4, 0), (r == 0) and C.sandbag or RGB(156, 140, 100), MAT.Fabric, nil, true) end
+          end
+        elseif kind == "jersey" then   -- 散落的水泥墩（以前的检查站）
+          for k = 1, R:NextInteger(3, 6) do
+            local jc = c * CF(R:NextNumber(-16, 16), 0, R:NextNumber(-10, 10)) * CFrame.Angles(0, R:NextNumber(-0.5, 0.5) + ((k % 2 == 0) and 0 or 1.57), R:NextNumber() < 0.2 and 1.4 or 0)
+            part(cf0, V(8.4, 1.1, 2.3), jc * CF(0, 0.55, 0), RGB(184, 180, 168), MAT.Concrete, nil, true)
+            part(cf0, V(8.4, 1.5, 0.95), jc * CF(0, 1.85, 0), RGB(184, 180, 168), MAT.Concrete, nil, true)
+          end
+        else   -- 扔下的集装箱：一个立着、有的翻倒
+          local cols = { RGB(128, 98, 70), RGB(92, 104, 84), RGB(132, 64, 52), RGB(72, 88, 112) }
+          for k = 0, R:NextInteger(0, 1) do
+            local tip = (k == 1) and 1.57 or 0
+            local cc = c * CF(k * 12, 0, k * 4) * CFrame.Angles(0, k * 0.4, 0) * CFrame.Angles(0, 0, tip)
+            part(cf0, V(17, 7.2, 6.8), cc * CF(0, tip > 0 and 3.4 or 3.6, tip > 0 and 0 or 0) , cols[R:NextInteger(1, #cols)], MAT.CorrodedMetal, nil, true)
+          end
+        end
+      end
+    end
+  end
+  -- 电线杆：沿 80 号公路、6 号公路一侧（木杆、横担、三根线垂下来一点）
+  local pf = folder("Poles", f)
+  for _, rd in ipairs(Map.ROADS) do
+    if rd.name == "80号公路" or rd.name == "6号公路" then
+      local acc, prev = 0, nil
+      for i = 2, #rd.x do
+        local ax, az, bx, bz = rd.x[i - 1], rd.z[i - 1], rd.x[i], rd.z[i]
+        local dx, dz = bx - ax, bz - az
+        local L = math.sqrt(dx * dx + dz * dz)
+        acc += L
+        if acc >= 160 and L > 1 then
+          acc = 0
+          local sx, sz = -dz / L, dx / L
+          local x, z = bx + sx * (rd.w * 0.5 + 12), bz + sz * (rd.w * 0.5 + 12)
+          local inside = false
+          for _, B in pairs(Map.BASES or {}) do
+            local q = B.rect
+            if x > q.x0 and x < q.x1 and z > q.z0 and z < q.z1 then inside = true end
+          end
+          if not inside and math.abs(x) < 30000 and math.abs(z) < 30000 then
+            local y = Map.ground(x, z)
+            local top = V(x, y + 22, z)
+            cyl(pf, 22, 0.8, CF(x, y + 11, z), RGB(96, 76, 56), MAT.Wood, true)
+            part(pf, V(7, 0.5, 0.5), CFrame.lookAt(top - V(0, 1.5, 0), top - V(0, 1.5, 0) + V(sx, 0, sz)), RGB(96, 76, 56), MAT.Wood)
+            if prev and (prev - top).Magnitude < 260 then
+              for _, o in ipairs({ -2.8, 2.8 }) do   -- 两根线（直的，省零件）
+                local a = prev + V(sx, 0, sz) * o - V(0, 1.2, 0)
+                local b = top + V(sx, 0, sz) * o - V(0, 1.2, 0)
+                local w = part(pf, V(0.12, 0.12, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), RGB(30, 30, 30), MAT.Metal)
+                w.CastShadow = false
+              end
+            end
+            prev = top
+          end
+        end
+      end
+    end
+  end
+  return n
+end
+
 function World.desert(f)
   local df = folder("Desert", f)
   local ok, err
-  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin } }) do   -- 红方前进基地改成 FOB.lua 的主基地
+  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin },
+    { "掩体和地物", function(ff) if Map.BASES then sandsCover(ff) end end } }) do   -- 红方前进基地改成 FOB.lua 的主基地
     ok, err = pcall(s[2], df)
     if not ok then warn("[沙漠] " .. s[1] .. "出错：" .. tostring(err)) end
   end
@@ -75858,6 +76024,50 @@ function Warfx.init(G)
     clouds.Parent = T
   end)
   G.nightClouds = clouds   -- 测试用
+
+  ---------------------------------------------------------------- 积云（用户 11-24：「要能在任何位置都适合打坦克战、空战，包括云朵」）
+  -- 地形的云是平平的一层；空战要一团一团的积云（能钻进去躲、穿出来）：按定死的种子在作战区上空摆几十团，每团十来个半透明的大球
+  --   挤在一起（底下一块扁的云底、上面鼓起来），夜里是月光照着的灰蓝色、越往上越亮；不碰撞、不挡射线、不投影；客户端自己的、只摆一次
+  local banks = Instance.new("Folder")
+  banks.Name = "CloudBanks"
+  banks.Parent = FXF
+  G.cloudBanks = banks   -- 测试用
+  local function cloudBanks()
+    banks:ClearAllChildren()
+    local rng = Random.new(91124)
+    local span = (MapM.PLAY or 20000) * 0.9
+    local LOW, HIGH = RGB(70, 78, 94), RGB(122, 130, 146)
+    for _ = 1, 54 do
+      local cx, cz = rng:NextNumber(-span, span), rng:NextNumber(-span, span)
+      local cy = rng:NextNumber(1900, 3600)
+      local size = rng:NextNumber(280, 720)
+      local base = Instance.new("Part")
+      base.Shape = Enum.PartType.Cylinder
+      base.Size = Vector3.new(size * 0.22, size * 2.2, size * 2.2)
+      base.CFrame = CFrame.new(cx, cy, cz) * CFrame.Angles(0, 0, math.pi / 2)
+      base.Color, base.Transparency = LOW, 0.62
+      for _, b in ipairs({ base }) do
+        b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
+        b.Material = Enum.Material.SmoothPlastic
+        b.Parent = banks
+      end
+      for _ = 1, rng:NextInteger(7, 12) do
+        local r = size * rng:NextNumber(0.32, 0.62)
+        local up = rng:NextNumber(0, 1)
+        local b = Instance.new("Part")
+        b.Shape = Enum.PartType.Ball
+        b.Size = Vector3.new(r * 2, r * 2, r * 2)
+        b.CFrame = CFrame.new(cx + rng:NextNumber(-1, 1) * size * 0.9, cy + r * 0.35 + up * size * 0.32, cz + rng:NextNumber(-0.7, 0.7) * size * 0.9)
+        b.Color = LOW:Lerp(HIGH, up)
+        b.Transparency = rng:NextNumber(0.5, 0.68)
+        b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
+        b.Material = Enum.Material.SmoothPlastic
+        b.Parent = banks
+      end
+    end
+  end
+  pcall(cloudBanks)
+  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end   -- 换地图（作战区大小变了）重摆
 
   ---------------------------------------------------------------- 探照灯
   -- 守方几处要地（指挥部、机场、港口、营地）各两盏对空探照灯：灰绿色的灯筒架在矮杆上，一道淡蓝白的光柱斜着照上天，慢慢来回扫
