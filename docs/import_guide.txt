@@ -29,6 +29,14 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～五包、E 第一～五包，新的在上面）
+  11 月 24 日 E 第五包（沙海卡在「正在生成地图……%」；合并 A、B、C、D 到 11-24 夜）：换游戏文件 RobloxTotalBattlefield.rbxlx（推荐：里面有两样脚本改不了的设置）；模型都不用重导：
+    - 原因：开服时要先把整张沙海的平地都铺上地形才让人进（3 万多次、16 亿个体素），Roblox 铺地形比算高度慢得多，进度条涨 1% 要铺一千多次，看着就是不动
+    - 现在开服前只铺两边主基地一带（是原来的五十分之一），铺完就能出生；其余的在后台接着铺：谁（真人、机器人、车、低飞的飞机）走到哪、哪里先铺，
+      然后是据点一带，再是全图平地、山丘沙丘。刚开局飞高往远处看，可能有几块地方还没铺上，过一会儿就有了
+    - 游戏文件里 Workspace → Terrain 的 SmoothVoxelsUpgraded 设成了关（Roblox 说这是没做完的功能，开着时铺地形慢几千倍）；
+      只换脚本的话，在 Studio 里选中 Workspace 下面的 Terrain，属性里要是看得到 SmoothVoxelsUpgraded 并且勾着，取消勾选再保存
+    - 还卡的话：Studio 里「视图 → 输出」窗口找「[地形] 开服前写了基地一带」那一行（写着铺了几次、平均每次几毫秒），截图发我
+    - 这个游戏文件里还有：流式加载（D 第五包）、战雷式伤害 / 坦克界面 / 重生点数（C）、飞机驾驶感和雷达（A 第八包）、沙海两边主基地和全图掩体（B 第五、六包）
   11 月 24 日 D 第五包（流式加载 streaming；座舱盖玻璃不再是多边形；F-16 显示屏刻进原模型）：换游戏文件（或者「三、只换脚本」，再照下面手动设 Workspace 的几个属性）；
   再导入 optics/ip_canopy.glb（新文件），重导 air/f16.glb（里面的零件换成 A_f16_v2__…，旧的不用删；不重导照旧用老的）：
     - 流式加载（用户：「streaming优化」）：游戏文件里 Workspace 开了 StreamingEnabled——客户端只加载身边约 1.5 公里（4096 格）以内的地图零件和地形细节，

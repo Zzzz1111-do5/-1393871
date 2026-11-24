@@ -379,145 +379,297 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
   return N * N * NY
 end
 
--- 沙漠地图（沙海 MapSands：没有海）：按 2048 格一大块看，整块都是同一级平地的一次 FillBlock；不是的按 256 格的小块，
---   平地 FillBlock、有起伏的逐列写体素。核心区（据点、基地一带）先写完才让人出生，外面的在后台接着写（每块让一帧）
--- 地底只填到这里（原来 −40：整张图平地填 13 层体素，开服光 FillBlock 就几十亿个——用户 11-24「沙海加载时间太长」；
---   弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
+-- 沙漠地图（沙海 MapSands：没有海）：按 2048 格一大块、里面 8 × 8 个 256 格小块看；平地小块按矩形合并成尽量大的一次 FillBlock，
+--   有起伏的小块逐列写体素。
+-- 开服前只写两边主基地一带（Map.CORES，出生只在自己基地），写完就让人出生；其余全在后台写（每帧最多 8 毫秒），顺序：
+--   ① 插队：真人、机器人、车、飞机身边（±6 个小块，约 1500 格）还没写的，先写；② 据点一带（Map.HOTS）写全；
+--   ③ 全图的平地（起伏块先垫一层薄底，不是窟窿）；④ 剩下的起伏块，离据点近的先。
+-- 用户 11-24 晚：「目前游戏的优化没有效果 沙海地图还是加载不出来」——卡在「正在生成地图……%」：原来开服前要把全图平地都铺完
+--   （3 万多次 FillBlock、16 亿个体素，进度条涨 1% 要铺一千多次），Roblox 里地形引擎铺这些远比算高度慢；现在开服前只剩基地一带几百次
+-- 地底只填到这里（原来 −40：整张图平地填 13 层体素——用户 11-24「沙海加载时间太长」；弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
 local DESERT_BASE = -4
 local function terrainDesert(T, onProgress, G)
   local SR, TILE, CH = Map.SEA_R, 2048, 256
-  local PH = (Map.PLAIN or 12) - 8   -- 垫底那层的顶
-  local relief = {}
+  local NT = math.floor(2 * SR / TILE)   -- 一边几个大块
+  local PH = (Map.PLAIN or 12) - 8       -- 垫底那层的顶
+  local PLAY = Map.PLAY or SR
+  local diag = { fills = 0, vox = 0, fillT = 0, chunks = 0, chunkT = 0 }
   local t0 = os.clock()
-  local function fill(x0, z0, w, d, y, mat)
-    -- 作战区里地壳 16 格厚（弹坑挖不穿）；作战区外面那一圈只是远景，8 格
-    local inner = math.abs(x0 + w / 2) < (Map.PLAY or SR) and math.abs(z0 + d / 2) < (Map.PLAY or SR)
-    local yb = math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
-    while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层
-      local h = math.min(60, y - yb)
-      T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
-      yb += h
+  local budget = 0.03   -- 让一帧：开服前 30 毫秒一让，后台 8 毫秒一让（开打以后服务器不卡）
+  local function pace(b)
+    if os.clock() - t0 > (b or budget) then task.wait() t0 = os.clock() end
+  end
+  -- Roblox 论坛（2025-02，Roblox 员工）：Terrain 的 SmoothVoxelsUpgraded 是没做完的功能，开着时 FillBlock 慢几千到几万倍，要关着——读得到就查一下
+  do
+    local okS, sv = pcall(function() return T.SmoothVoxelsUpgraded end)
+    if okS and sv == true then
+      warn("[地形] Workspace → Terrain 的 SmoothVoxelsUpgraded 开着：写地形会慢几千倍（地图生成卡住）。在 Studio 里选中 Terrain，属性里取消勾选再保存")
     end
   end
-  local nTiles = (2 * SR / TILE) ^ 2
-  local done = 0
-  for tx = -SR, SR - TILE, TILE do
-    for tz = -SR, SR - TILE, TILE do
-      local kinds, allFlat, L0, M0 = {}, true, nil, nil
-      for i = 0, 7 do
-        for k = 0, 7 do
-          local kind, L, M = Map.chunkKind(tx + i * CH, tz + k * CH)
-          kinds[i * 8 + k] = { kind, L, M }
-          if kind ~= "flat" then allFlat = false
-          elseif L0 == nil then L0, M0 = L, M
-          elseif L ~= L0 or M ~= M0 then allFlat = false end
-        end
+  local function fill(x0, z0, w, d, y, mat)
+    -- 作战区里地壳 16 格厚（弹坑挖不穿）；作战区外面那一圈只是远景，8 格（PLAY 正好落在 2048 的格线上，一个大块不会跨两边）
+    local inner = math.abs(x0 + w / 2) < PLAY and math.abs(z0 + d / 2) < PLAY
+    local yb = math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
+    while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层（2048 × 2048 × 60 格 ≈ 390 万）
+      local h = math.min(60, y - yb)
+      local c0 = os.clock()
+      T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
+      diag.fills += 1
+      diag.vox += (w / 4) * (h / 4) * (d / 4)
+      diag.fillT += os.clock() - c0
+      yb += h
+      pace()
+    end
+  end
+  local function relief(x0, z0, n)
+    local c0 = os.clock()
+    local v = writeChunk(T, x0, z0, n, nil, DESERT_BASE)
+    diag.chunks += 1
+    diag.chunkT += os.clock() - c0
+    return v
+  end
+  local function tileOf(x, z) return math.floor((x + SR) / TILE), math.floor((z + SR) / TILE) end
+  local function ckey(x0, z0) return x0 * 1048576 + z0 end
+  -- 到一组圈（核心区 / 据点）圈边多远
+  local function distTo(list, x, z)
+    local best = math.huge
+    for _, C in ipairs(list) do best = math.min(best, math.sqrt((x - C.x) ^ 2 + (z - C.z) ^ 2) - C.r) end
+    return best
+  end
+  local cores = Map.CORES or { Map.CORE or { x = 0, z = 0, r = 12000 } }
+  local hots = Map.HOTS or cores
+
+  -- 一个大块的平地：8 × 8 小块分类，同一级、同材质的平地小块贪心合并成矩形一次 FillBlock；起伏小块（没写过的）先垫一层薄底、交出去
+  local tileDone, reliefDone, kindOf = {}, {}, {}
+  local function kindAt(x0, z0)   -- Map.chunkKind 要在块里打 81 个点：算过的记下来（插队扫描每半秒要看几百块）
+    local k = ckey(x0, z0)
+    local v = kindOf[k]
+    if v == nil then
+      local kind, L, M = Map.chunkKind(x0, z0)
+      v = (kind == "flat") and { L, M } or false
+      kindOf[k] = v
+    end
+    return v
+  end
+  local function tileFlat(ix, iz, onRelief)
+    local tk = ix * 4096 + iz
+    if tileDone[tk] then return false end
+    tileDone[tk] = true
+    local tx, tz = -SR + ix * TILE, -SR + iz * TILE
+    local K = table.create(64)
+    for i = 0, 7 do
+      for k = 0, 7 do
+        K[i * 8 + k + 1] = kindAt(tx + i * CH, tz + k * CH)
       end
-      if allFlat then
-        fill(tx, tz, TILE, TILE, L0, M0)
-      else
-        for i = 0, 7 do
-          for k = 0, 7 do
-            local e = kinds[i * 8 + k]
-            local x0, z0 = tx + i * CH, tz + k * CH
-            if e[1] == "flat" then
-              fill(x0, z0, CH, CH, e[2], e[3])
-            else
-              -- 有起伏的块：先垫一层薄薄的底（平原下面 8 格），后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
-              T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
-              table.insert(relief, { x0, z0 })
+    end
+    local used = {}
+    local function same(i, k, e)
+      local f = K[i * 8 + k + 1]
+      return f and not used[i * 8 + k] and f[1] == e[1] and f[2] == e[2]
+    end
+    for k = 0, 7 do
+      for i = 0, 7 do
+        local e = K[i * 8 + k + 1]
+        if e and not used[i * 8 + k] then
+          local i1 = i
+          while i1 < 7 and same(i1 + 1, k, e) do i1 += 1 end
+          local k1, grow = k, true
+          while grow and k1 < 7 do
+            for ii = i, i1 do
+              if not same(ii, k1 + 1, e) then grow = false break end
             end
+            if grow then k1 += 1 end
+          end
+          for ii = i, i1 do for kk = k, k1 do used[ii * 8 + kk] = true end end
+          fill(tx + i * CH, tz + k * CH, (i1 - i + 1) * CH, (k1 - k + 1) * CH, e[1], e[2])
+        elseif not e then
+          local x0, z0 = tx + i * CH, tz + k * CH
+          -- onRelief 返回 true：这块马上就写全，不用垫；否则先垫一层薄底——后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
+          if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
+            T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
+            diag.fills += 1
+            pace()
           end
         end
       end
-      done += 1
-      if onProgress then onProgress(0.25 * done / nTiles) end
-      if os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end
+    end
+    return true
+  end
+
+  -- ① 开服前：两边基地一带（核心圈碰到的大块铺平地，圈里的起伏块写全）
+  local coreTiles, coreSet, coreRelief = {}, {}, {}
+  for _, C in ipairs(cores) do
+    local a0, b0 = tileOf(C.x - C.r - CH, C.z - C.r - CH)
+    local a1, b1 = tileOf(C.x + C.r + CH, C.z + C.r + CH)
+    for ix = math.max(0, a0), math.min(NT - 1, a1) do
+      for iz = math.max(0, b0), math.min(NT - 1, b1) do
+        local tk = ix * 4096 + iz
+        if not coreSet[tk] then
+          coreSet[tk] = true
+          table.insert(coreTiles, { ix, iz })
+        end
+      end
     end
   end
-  -- 有起伏的块：离核心区近的先写（Map.CORES 一组圈：到最近那个圈的圈边多远；没有就是一个大圈 Map.CORE）
-  local cores = Map.CORES or { Map.CORE or { x = 0, z = 0, r = 12000 } }
-  local function dist(c)
-    local best = math.huge
-    for _, C in ipairs(cores) do
-      best = math.min(best, math.sqrt((c[1] + CH / 2 - C.x) ^ 2 + (c[2] + CH / 2 - C.z) ^ 2) - C.r)
-    end
-    return best
+  local laterRelief = {}   -- 核心大块里、圈外面的起伏块：交给后台
+  local nPre = #coreTiles
+  local doneUnits = 0
+  for _, t in ipairs(coreTiles) do
+    tileFlat(t[1], t[2], function(x0, z0)
+      if distTo(cores, x0 + CH / 2, z0 + CH / 2) <= CH then
+        table.insert(coreRelief, { x0, z0 })
+        return true
+      end
+      table.insert(laterRelief, { x0, z0 })
+      return false
+    end)
+    doneUnits += 1
+    if onProgress then onProgress(0.3 * doneUnits / math.max(1, nPre)) end
+    pace(0.03)
   end
-  for _, c in ipairs(relief) do c[3] = dist(c) end
-  table.sort(relief, function(a, b) return a[3] < b[3] end)
-  local core, rest = {}, {}
-  for _, c in ipairs(relief) do table.insert(c[3] <= 0 and core or rest, c) end
-  -- 后台的顺序（Map.HOTS：据点一带先，用户 11-24「沙海加载时间太长」以后开服只写基地）
-  if Map.HOTS then
-    local saved = cores
-    cores = Map.HOTS
-    for _, c in ipairs(rest) do c[3] = dist(c) end
-    cores = saved
-    table.sort(rest, function(a, b) return a[3] < b[3] end)
-  end
+  table.sort(coreRelief, function(a, b) return distTo(cores, a[1], a[2]) < distTo(cores, b[1], b[2]) end)
   local total = 0
-  for n, c in ipairs(core) do
-    total += writeChunk(T, c[1], c[2], nil, nil, DESERT_BASE)
-    if onProgress then onProgress(0.25 + 0.75 * n / #core) end
-    if n % 2 == 0 or os.clock() - t0 > 0.03 then task.wait() t0 = os.clock() end   -- 也按块数让：测试台里 os.clock 是模拟时钟，同一步里不走
+  for n, c in ipairs(coreRelief) do
+    reliefDone[ckey(c[1], c[2])] = true
+    total += relief(c[1], c[2])
+    if onProgress then onProgress(0.3 + 0.7 * n / #coreRelief) end
+    if n % 2 == 0 then task.wait() t0 = os.clock() else pace(0.03) end   -- 也按块数让：测试台里 os.clock 是模拟时钟，同一步里不走
   end
-  if G then G.terrainRest = #rest end
-  task.spawn(function()   -- 外面的：后台慢慢写（飞机飞得到，坦克一时半会开不过去）；一块拆成四个 128 格的小块写，每帧最多 8 毫秒，开打以后服务器不卡
-    -- 有人跑到还没写的地方（身边 ±5 块、约 1300 格）：那一片插队先写；半秒看一次
+  print(string.format("[地形] 开服前写了基地一带：%d 次 FillBlock（%.2f 亿体素，共 %.1f 秒，平均每次 %.1f 毫秒）、%d 块起伏（共 %.1f 秒，平均每块 %.0f 毫秒）",
+    diag.fills, diag.vox / 1e8, diag.fillT, diag.fills > 0 and diag.fillT * 1000 / diag.fills or 0, diag.chunks, diag.chunkT, diag.chunks > 0 and diag.chunkT * 1000 / diag.chunks or 0))
+  if diag.fills > 20 and diag.fillT * 1000 / diag.fills > 40 then
+    warn("[地形] Roblox 写地形特别慢（每次 FillBlock 平均 " .. math.floor(diag.fillT * 1000 / diag.fills) .. " 毫秒）：在 Studio 里看一下 Workspace → Terrain 的属性"
+      .. "，SmoothVoxelsUpgraded 要是勾着，取消勾（Roblox 说这是没做完的功能，开着地形操作慢几千倍）")
+  end
+  if G then G.terrainDiag = diag end
+
+  -- 后台：剩下的大块、起伏块
+  local tilesLeft, reliefQ = {}, {}
+  for ix = 0, NT - 1 do
+    for iz = 0, NT - 1 do
+      if not tileDone[ix * 4096 + iz] then
+        local cx, cz = -SR + (ix + 0.5) * TILE, -SR + (iz + 0.5) * TILE
+        table.insert(tilesLeft, { ix, iz, distTo(hots, cx, cz) })
+      end
+    end
+  end
+  table.sort(tilesLeft, function(a, b) return a[3] < b[3] end)
+  local function queueRelief(x0, z0)
+    if not reliefDone[ckey(x0, z0)] then table.insert(reliefQ, { x0, z0, distTo(hots, x0 + CH / 2, z0 + CH / 2) }) end
+  end
+  for _, c in ipairs(laterRelief) do queueRelief(c[1], c[2]) end
+  if G then G.terrainRest = #tilesLeft + #reliefQ end
+  task.spawn(function()
     local Players = game:GetService("Players")
-    local pending, urgent = {}, {}
-    local function key(x0, z0) return x0 * 1048576 + z0 end
-    for _, c in ipairs(rest) do pending[key(c[1], c[2])] = c end
+    budget = 0.008
+    local urgentTiles, urgentRelief = {}, {}
+    local seen = {}
+    local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
+      local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
+      local here = ckey(cx0, cz0)
+      if seen[here] then return end   -- 好几个人挤在同一块：看一次就够
+      seen[here] = true
+      for dx = -6, 6 do
+        for dz = -6, 6 do
+          local x0, z0 = (cx0 + dx) * CH, (cz0 + dz) * CH
+          if math.abs(x0 + CH / 2) < SR and math.abs(z0 + CH / 2) < SR then
+            local ix, iz = tileOf(x0 + 1, z0 + 1)
+            if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
+            local k = ckey(x0, z0)
+            if not reliefDone[k] and not urgentRelief[k] and kindAt(x0, z0) == false then urgentRelief[k] = { x0, z0, (dx * dx + dz * dz) } end
+          end
+        end
+      end
+    end
     local function scan()
+      table.clear(seen)
       for _, pl in ipairs(Players:GetPlayers()) do
         local ch = pl.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-        if hrp then
-          local p = hrp.Position
-          local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
-          for r = 0, 5 do   -- 由近到远
-            for dx = -r, r do
-              for dz = -r, r do
-                if math.max(math.abs(dx), math.abs(dz)) == r then
-                  local c = pending[key((cx0 + dx) * CH, (cz0 + dz) * CH)]
-                  if c and not c.q then
-                    c.q = true
-                    table.insert(urgent, c)
-                  end
-                end
+        if hrp then want(hrp.CFrame.Position) end
+      end
+      for _, e in ipairs(G and G.ents or {}) do   -- 机器人、车、飞机（飞得高的不管：底下没铺好看着是远景，不会掉下去）
+        if e.alive and e.root and e.root.Parent then
+          local p = e.root.CFrame.Position
+          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then want(p) end
+        end
+      end
+    end
+    local function urgentStep()
+      for k, t in pairs(urgentTiles) do
+        urgentTiles[k] = nil
+        if tileFlat(t[1], t[2], queueRelief) then return true end
+      end
+      local best, bk = nil, nil
+      for k, c in pairs(urgentRelief) do
+        if reliefDone[k] then urgentRelief[k] = nil
+        elseif not best or c[3] < best[3] then best, bk = c, k end
+      end
+      if best then
+        urgentRelief[bk] = nil
+        reliefDone[bk] = true
+        for q = 0, 3 do
+          relief(best[1] + (q % 2) * 128, best[2] + (q // 2) * 128, 32)
+          if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
+        end
+        return true
+      end
+      return false
+    end
+    local scanAt, ti, ri, sorted = 0, 1, 1, false
+    while true do
+      if os.clock() >= scanAt then
+        scanAt = os.clock() + 0.5
+        local okS, errS = pcall(scan)   -- 扫描出错（某个实体的零件刚被删之类）不能把整个后台写地形停掉
+        if not okS then warn("[地形] 插队扫描出错：" .. tostring(errS)) end
+      end
+      if not urgentStep() then
+        if ti <= #tilesLeft then
+          -- ②③ 大块：据点一带的先（tilesLeft 按离据点的距离排好了）；据点圈里的起伏块跟着写全
+          local t = tilesLeft[ti]
+          ti += 1
+          local hot = t[3] <= TILE
+          local did = tileFlat(t[1], t[2], function(x0, z0)
+            if hot and distTo(hots, x0 + CH / 2, z0 + CH / 2) <= 0 then
+              reliefDone[ckey(x0, z0)] = true
+              for q = 0, 3 do
+                relief(x0 + (q % 2) * 128, z0 + (q // 2) * 128, 32)
+                if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
               end
+              return true
+            end
+            queueRelief(x0, z0)
+            return false
+          end)
+          if did then   -- 插队时已经铺过的大块：不白等一帧
+            task.wait()
+            t0 = os.clock()
+          end
+        else
+          -- ④ 剩下的起伏块：离据点近的先
+          if not sorted then
+            sorted = true
+            table.sort(reliefQ, function(a, b) return a[3] < b[3] end)
+          end
+          local c = reliefQ[ri]
+          if not c then break end
+          ri += 1
+          local k = ckey(c[1], c[2])
+          if not reliefDone[k] then
+            reliefDone[k] = true
+            for q = 0, 3 do
+              relief(c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32)
+              if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
             end
           end
         end
       end
+      if G then G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) end
     end
-    local t1, k, i, left, scanAt = os.clock(), 0, 1, #rest, 0
-    while left > 0 do
-      if os.clock() >= scanAt then
-        scanAt = os.clock() + 0.5
-        scan()
-      end
-      local c = table.remove(urgent, 1)
-      if not c then
-        while i <= #rest and not pending[key(rest[i][1], rest[i][2])] do i += 1 end
-        c = rest[i]
-        i += 1
-      end
-      if not c then break end
-      if pending[key(c[1], c[2])] then
-        pending[key(c[1], c[2])] = nil
-        for q = 0, 3 do
-          writeChunk(T, c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32, nil, DESERT_BASE)
-          k += 1
-          if k % 2 == 0 or os.clock() - t1 > 0.008 then task.wait() t1 = os.clock() end
-        end
-        left -= 1
-        if G then G.terrainRest = left end
-      end
-    end
+    if G then G.terrainRest = 0 end
+    print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏", diag.fills, diag.vox / 1e8, diag.chunks))
   end)
-  return total, #core + #rest
+  return total, #coreRelief + #reliefQ
 end
 
 -- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素

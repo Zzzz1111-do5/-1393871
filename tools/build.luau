@@ -122,6 +122,7 @@ pcall(function() ws.StreamOutBehavior = roblox.Enum.StreamOutBehavior.LowMemory 
 pcall(function() ws.StreamingIntegrityMode = roblox.Enum.StreamingIntegrityMode.Disabled end)   -- 不暂停等加载
 -- 地形草叶（用户 11-24 发截图：「这个 roblox 的这种草你给海岛地图加上吧」）：Terrain.Decoration、GrassLength 脚本改不了，只能写进地点文件——
 --   草叶只长在 Grass 材质上（海岛图写地形时草地照写 Grass：Map.GRASS）；草长 1 = Roblox 最长（截图那样），嫌高在 Studio 里 Workspace → Terrain 调小
+local terrainSV = false
 do
 	local t = ws:FindFirstChildOfClass("Terrain")
 	if not t then
@@ -130,6 +131,9 @@ do
 	end
 	t.Decoration = true
 	t.GrassLength = 1
+	-- SmoothVoxelsUpgraded 关着（用户 11-24 晚：沙海卡在「正在生成地图……%」）：Roblox 员工在论坛说这是没做完的功能，开着时 FillBlock 等地形操作慢几千到几万倍，
+	--   「Please keep it as False」；地点文件里不写的话由 Studio 定默认值。Lune 不认这个属性时 build 末尾直接往 XML 里补
+	terrainSV = pcall(function() t.SmoothVoxelsUpgraded = false end)
 end
 -- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
 local L = game:GetService("Lighting")
@@ -171,6 +175,11 @@ local function protectSource(xml)
 	return table.concat(parts), fixed
 end
 local xml, fixed = protectSource(roblox.serializePlace(game, true))
+if not terrainSV or not string.find(xml, '"SmoothVoxelsUpgraded"', 1, true) then   -- Lune 的属性表里没有它：照 Roblox 地点文件的写法补进 Terrain 的 Properties
+	local a = string.find(xml, '<Item class="Terrain"', 1, true)
+	local b = a and string.find(xml, "<Properties>", a, true)
+	if b then xml = string.sub(xml, 1, b + 11) .. '\n        <bool name="SmoothVoxelsUpgraded">false</bool>' .. string.sub(xml, b + 12) end
+end
 fs.writeFile(out, xml)
 print("Source 改成 ProtectedString：" .. fixed .. " 处")
 print(string.format("写好了 %s：Script %d、LocalScript %d、ModuleScript %d、Folder %d", out, count.Script, count.LocalScript, count.ModuleScript, count.Folder))

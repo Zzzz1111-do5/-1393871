@@ -54,12 +54,17 @@ end
 local nP, pP = allPers(map and map:FindFirstChild("Points"))
 check(nP > 0 and pP == nP, string.format("据点（远处看得见旗杆上的字母）Persistent（%d / %d）", pP, nP))
 local nF, pF = allPers(map and map:FindFirstChild("Fleet"))
-check(nF > 0 and pF == nF, string.format("舰队 Persistent（%d / %d）", pF, nF))
+if Map.LANDONLY then   -- 沙海（11-24 起只剩这张图）没有舰队
+  check(nF == 0, "沙海没有舰队（不用查 Persistent）")
+else
+  check(nF > 0 and pF == nF, string.format("舰队 Persistent（%d / %d）", pF, nF))
+end
 
 print("② 出生：角色 Persistent，出生前先预加载出生点那一片")
 T.runUntil(function() return G.round.phase == "battle" end, 90)
 R.streamLog = {}
-T.actAs(me, "deploy", "rifle", "camp")
+-- 出生点：岛图是守方营地 camp；沙海（11-24 起只剩这张图）只能在自己主基地 base 出生
+T.actAs(me, "deploy", "rifle", Map.LANDONLY and "base" or "camp")
 R.run(2)
 check(P.alive and me.Character ~= nil, "出生了")
 check(me.Character and me.Character.ModelStreamingMode == PERS, "角色 Persistent（别人那边全图都看得见：队友标记、复活）")
