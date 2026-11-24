@@ -195,10 +195,11 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local b = Kit.new(m)
     -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
     -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
+    -- imp：导入的原模型（飞机的座舱屏幕位置、眼位在它的元数据里：F-16 坐进原模型自带的座舱）
     local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
     local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
     local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
-      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
+      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero, imp = v.M and v.M.imp })
     if not ok then
       m:Destroy()
       if G.showError then G.showError("local 内饰 " .. key .. "：" .. tostring(spec)) end
@@ -1423,7 +1424,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     end
     local c = cur
-    extHide(c, mode == "seat" or optic ~= nil, optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画
+    -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画。
+    --   主瞄准镜（st.sight）也按观瞄设备算（全藏）。Drive 开镜 / 退镜时自己把整车零件设成藏 / 不藏（ownVisible），extHide 记着的状态就不对了：
+    --   镜子状态一变，缓存作废、按现在的乘员位重新藏一遍——原来退镜以后整辆车的外模型、原模型的简易内饰全露出来，
+    --   乘员眼前、车里的显示屏前面横着一块块外壳（用户 11-24：「开镜有bug……屏幕有一块色斑」）
+    local sightNow = st.sight == true
+    if c.sightWas ~= sightNow then c.sightWas, c.extHidden = sightNow, nil end
+    extHide(c, mode == "seat" or optic ~= nil or sightNow, optic ~= nil or sightNow)
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -2431,7 +2438,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local e = c.eyeBody
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and it.tag ~= "pilot" then
+      -- 原模型自带的座舱（F-16，spec.modelPit）：座舱件（pit == "Pit"）就是内饰本身，不藏；原模型的平显（PitHud，玻璃上画死了符号）照旧藏
+      if p and p:IsA("BasePart") and it.tag ~= "pilot" and not (c.spec.modelPit and it.pit == "Pit") then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         local glassy = p.Material == Enum.Material.Glass or (p.Transparency > 0.15 and p.Transparency < 1)
         local dist = cf and (cf.Position - e).Magnitude or math.huge
@@ -2500,7 +2508,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local big = 0.5 * math.max(v.def.L or 0, v.def.W or 0)
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
+      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and not it.pit and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         if cf and math.max(p.Size.X, p.Size.Y, p.Size.Z) < big then
           local half = p.Size / 2

@@ -17,6 +17,7 @@
 | A | `claude/darksword-forts-navy` | 原车转换工具（blveh.py：Sketchfab 整车 → 游戏格式）、挖内腔（carve.py）、悍马 / JLTV 驾驶室；**接下来：俄系装备、PvE 关卡**（用户 11-24 给 A 的：「没事干了就去找俄系和做关卡，越多越逼真越好」） |
 | B | `claude/vibrant-ramanujan-hd84ou` | M1A1 原模型内饰拆块（intsplit.py）、搬进 M1A2 SEPv2 和 M2A3（InteriorAbrams.lua）、火控真功能（Drive.lua） |
 | C | `claude/affectionate-pasteur-vj1oop` | 飞机：歼-20 弹舱、战雷式锁定界面 |
+| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；**D 还没读过这个文件，请 D 开工前读一遍、把自己写进来** |
 
 飞机「锁定、投弹、操作细节和手感跟战雷一模一样」：用户 11-24 也交给了 A（排在俄系、关卡后面）。C 已经开了头（锁定界面），
 **C 在做就 C 接着做，A 负责对照战雷挑刺**；C 一段时间没动静，A 再接手——接手前在这里写一笔。
@@ -51,6 +52,12 @@
   UI 提示音截一段循环）重复了——**用 B 的**（SoundLib 的 1000 赫兹纯音调音高，声音干净，还有失速、拉起、油少、熄火、起落架、命中），A 那段删了；
   tools/mock/hud.lua 的锁定音检查改成查 AirAudio 的声部（模拟器里纯音没载上就跳过）。合并后跑过 hud、bombsight、tankkeys、interior_abrams，都过。
   import_guide 里两边都叫「第几包」，改成「A 第几包」「B 第几包」
+
+- 11-24 A 合 D（0570128…bba2205：歼-8II、F-16C 原模型座舱、无限金币、修开镜色斑）：冲突只有 AirDefs 一处（D 把 `akd10 = {` 改成了 `akd10 ={`，
+  留 A 那边带 s57e6 的版本）和导入说明（D 的包标成「D 第四包」）。合并后 tools/mock/cockpit.lua 第④段三项不过：A 11-24 把固定翼默认改成战雷式鼠标瞄准，
+  这段测的是纯键盘驾驶的看法——测试里先 `C.flyMouseAim(false)` 再测、测完切回来（同 air.lua）。跑过 interior、carve_tank、pipdesert、economy、
+  cockpit（j20、air=f16）、hud、air、bombsight、pantsir、tankkeys：都过
+  - 请 D 看：`Config.Economy.infinite = true`（用户要的无限金币）上线前要改回 false，A 没动
 
 ## 挑刺
 

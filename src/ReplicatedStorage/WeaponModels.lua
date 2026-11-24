@@ -35,6 +35,7 @@ local D = {
   pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 0.6 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
   pl12 = { nose = "radar", col = WHITE, bands = { { 0.24, 0.025, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 2.0 }, mid = { at = 0.42, c = 0.12, s = 1.6 } },
   aim120 = { nose = "radar", col = WHITE, bands = { { 0.22, 0.025, YELLOW }, { 0.34, 0.025, BROWN } }, tail = { at = 0.94, c = 0.075, s = 2.1 }, mid = { at = 0.4, c = 0.1, s = 1.5 } },
+  aim54 = { nose = "radar", col = WHITE, bands = { { 0.2, 0.02, YELLOW }, { 0.3, 0.02, BROWN } }, tail = { at = 0.9, c = 0.11, s = 1.5 }, mid = { at = 0.42, c = 0.22, s = 1.2 } },   -- 不死鸟：粗、四片长弦弹翼
   ty90 = { nose = "ir", col = LGREY, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.1, s = 2.6 }, can = { at = 0.14, c = 0.06, s = 1.4 } },
   aim92 = { nose = "ir", col = GREY, bands = { { 0.2, 0.03, YELLOW }, { 0.3, 0.03, BROWN } }, tail = { at = 0.93, c = 0.08, s = 2.6 }, can = { at = 0.12, c = 0.05, s = 1.5 } },
   -- 空地导弹

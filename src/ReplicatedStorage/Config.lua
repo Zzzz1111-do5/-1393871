@@ -188,7 +188,7 @@ Config.Vehicles = {
     aa = { "pgz07", "pgl625", "ld2000", "pantsir" },
     arty = { "plz07" },
     heli = { "z10", "z20" },
-    jet = { "j15t", "j35", "j20", "j36", "j16", "j11", "j10", "h6k", "gj11", "gj2" },   -- 歼-50 11-22 删掉了（用户：j50 删掉）
+    jet = { "j15t", "j35", "j20", "j36", "j16", "j11", "j10", "j8", "h6k", "gj11", "gj2" },   -- 歼-50 11-22 删掉了（用户：j50 删掉）；歼-8II 11-23 加的
     ship = { "t055", "t054a", "t022" },
   },
   def = {
@@ -197,7 +197,7 @@ Config.Vehicles = {
     aa = { "m163", "mshorad", "cram", "patriot" },
     arty = { "m109a7", "m270" },   -- M777 是地图自带的炮位（Forts），走过去就能用
     heli = { "ah64e", "uh60", "ch47" },
-    jet = { "a10c", "f35", "f22", "mq9", "b2" },
+    jet = { "a10c", "f35", "f22", "f16", "f15", "f14", "mq9", "b2" },   -- F-16C、F-15C、F-14A 11-23 加的
     ship = { "ddg125", "cg47", "lcs2", "pbr" },
   },
 }
@@ -221,8 +221,11 @@ end
 --   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
 --   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
 --   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
+--   infinite：true = 无限金币（用户 11-24：「给我先设置成无限金币」）——买载具、配件不查余额、不扣钱，界面上写 ∞；
+--     存档里的金币照旧（挣的照样记），改回 false 就恢复正常；上线前记得改回 false
 Config.Economy = {
   unlockAll = false,
+  infinite = true,
   startCoins = 1500,
   perScore = 0.1, win = 200, lose = 60,
   veh = {

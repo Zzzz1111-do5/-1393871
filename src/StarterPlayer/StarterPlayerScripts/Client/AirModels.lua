@@ -1268,6 +1268,8 @@ function AM.build(d, team, load)
           if g == "Gun" then M.gunPiv = piv end   -- Fly.lua 按原模型的耳轴位置算炮塔的方位、俯仰（AirDefs 的 gunPos 是零件拼的模型的）
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
           add(mp, cc0, "f", { fold = (g == "FoldR") and 1 or -1 })
+        elseif g == "Pit" or g == "PitHud" then   -- 原模型自带的座舱（F-16）、原模型的平显：跟着机身；座舱视角里 Interior 按 pit 认（座舱不藏，平显换成会动的）
+          add(mp, cc0, "b", { pit = g })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链
           local F = I.fold and I.fold.Tip
           add(mp, cc0, "f", { fold = (g == "TipR") and 1 or -1, fh = F and { x = F.x, y = F.y + O.Y, A = F.A } or nil })

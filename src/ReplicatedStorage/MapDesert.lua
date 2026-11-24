@@ -24,6 +24,10 @@ M.MAXH = 290 * M.HK
 M.RES = 4
 M.BASE_Y = 8              -- 戈壁平原的高度（河谷底在 1 左右，还是陆地）
 M.desert = true
+-- 地形颜色（World.lua 写沙漠地形时 SetMaterialColor 用它；客户端瞄准镜画中画 ScopePip 也按它给镜里的地形上色——原来镜里的盐碱地、砂岩画成草绿）
+local C3 = Color3.fromRGB
+M.COLORS = { Sand = C3(214, 184, 132), Ground = C3(164, 132, 94), Sandstone = C3(190, 142, 98), Rock = C3(132, 116, 100),
+  Salt = C3(228, 222, 206), Concrete = C3(158, 152, 142), Asphalt = C3(64, 64, 66), Mud = C3(120, 96, 70) }
 
 ---------------------------------------------------------------- 两边的基地（跑道、营地、车场）
 

@@ -243,7 +243,13 @@ function B:screen(g, w, h, cf, page, opt)
   face.Reflectance = 0
   -- 清晰度（用户 11-22：「载具内部显示屏像素太少，看不清字」）：页面照旧按每米 ppm 个「设计像素」排版（字号、位置都是这个单位），
   --   实际按 QK 倍的像素画（SurfaceGui 每米 ppm × QK 个像素），页面根上挂一个 UIScale（QK 倍）放大回来——字、线的大小不变，像素多了 QK² 倍
-  local QK = (page ~= "hud") and 2 or 1   -- 平显本来就是每米 3000，不用再加
+  --   用户 11-23 又说「目前所有载具显示屏清晰度太低」：QK 不再固定 2 倍，按这块屏的大小算——长边画到约 1100 个真像素（小屏、大屏一样清楚），
+  --   最少 2 倍、最多 4 倍（原来一块 25 厘米的屏长边 700 像素，现在 1100）
+  local QK = 1   -- 平显本来就是每米 3000，不用再加
+  if page ~= "hud" then
+    local long = math.max(w, h) * (opt.ppm or 1400)
+    QK = math.clamp(1100 / math.max(long, 1), 2, 4)
+  end
   local sg = K.gui(face, Enum.NormalId.Front, (opt.ppm or 1400) * QK, opt.glow or 1.0)
   local tabT = (touch and opt.keys.top and #opt.keys.top > 0) and (opt.touchH or 0.1) or 0      -- 上、下菜单条各占屏高几成
   local tabB = (touch and opt.keys.bottom and #opt.keys.bottom > 0) and (opt.touchH or 0.1) or 0
