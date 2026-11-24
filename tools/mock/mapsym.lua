@@ -54,7 +54,7 @@ local function spot(i, n, r)
   local x, z = bx + math.cos(a) * r, bz + math.sin(a) * r
   return x, z
 end
-local list = { { "veh", "ztz99a", "tank" }, { "veh", "zbd05", "apc" }, { "veh", "plz07", "arty" }, { "veh", "pgz07", "aa" },
+local list = { { "veh", "ztz99a", "tank" }, { "veh", "m2a3", "apc" }, { "veh", "plz07", "arty" }, { "veh", "pgz07", "aa" },
   { "air", "z10", "heli" }, { "air", "j20", "jet" }, { "bot", nil, "inf" } }
 for i, it in ipairs(list) do
   local x, z = spot(i, #list, 260)

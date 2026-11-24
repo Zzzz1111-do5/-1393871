@@ -109,39 +109,9 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
   smoke = { banks = { { at = V(3.4, 1.5, -2.3), yaw = 35 }, { at = V(-3.4, 1.5, -2.3), yaw = -35 } }, n = 6 },
   sightZoom = { day = { 3, 10 }, th = { 3, 10 } },   -- M1A1 主瞄准镜：昼光 3 / 10 倍，热像（第一代）宽 3 倍、窄 10 倍
   weapons = { "gun120", "coax" } })
-D.m10 = tracked({ cat = "tank", L = 22, W = 9.6, H = 7.4, hullH = 4.3, clear = 1.4, speed = 37, accel = 11, turn = 40,
-  rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.2, z1 = 7.0 }, skirt = true,
-  turret = { pivot = V(0, 4.3, 0.6), size = V(7.0, 2.3, 7.6), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 2.0 },
-  gun = { pivot = V(0, 0.9, -3.4), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.1, 0.9, -3.5),
-  sight = V(1.7, 2.1, -2.4), cupola = V(1.7, 2.3, 0.6),
-  smoke = { banks = { { at = V(3.2, 1.5, -1.8), yaw = 35 }, { at = V(-3.2, 1.5, -1.8), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
 
 ---------------------------------------------------------------- 装甲车（履带）
 
-D.zbd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.0, hullH = 4.6, clear = 1.2, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
-  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 }, skirt = false,
-  turret = { pivot = V(0, 4.6, -1.6), size = V(4.6, 1.6, 4.8), style = "ifv", trav = 60, elev = { -8, 50 } },
-  gun = { pivot = V(0, 0.6, -2.2), len = 7.5, cal = 0.24, brake = true }, coax = V(0.8, 0.6, -2.3),
-  sight = V(-1.4, 1.5, -1.8),
-  smoke = { banks = { { at = V(2.2, 0.9, -1.6), yaw = 30 }, { at = V(-2.2, 0.9, -1.6), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
--- BMP-3 步兵战车（用户 11-24「找俄系」）：18.7 吨、UTD-29 500 马力、公路 70 公里 / 时、能浮渡；炮塔里 2A70 100 毫米炮 + 2A72 30 毫米炮并列，
---   炮长左、车长右，后面七名载员从车尾两扇门（门上面是发动机）下车；原模型 lampilamp（炮塔顶上加了防无人机网架）
-D.bmp3 = tracked({ cat = "apc", L = 20, W = 9.0, H = 6.8, hullH = 5.0, clear = 1.4, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
-  rw = { n = 6, r = 0.95, x = 3.6, z0 = -5.2, z1 = 6.2 }, skirt = false,
-  turret = { pivot = V(0, 5.04, -0.82), size = V(4.8, 1.6, 5.0), style = "ifv", trav = 60, elev = { -6, 60 } },
-  gun = { pivot = V(0.16, 0.63, -1.49), len = 7.8, cal = 0.28 }, coax = V(0.7, 0.6, -2.0),
-  sight = V(-1.2, 1.3, -1.4),
-  smoke = { banks = { { at = V(2.2, 0.9, -1.4), yaw = 30 }, { at = V(-2.2, 0.9, -1.4), yaw = -30 } }, n = 3 },
-  weapons = { "gun100", "ac30", "coax" }, seats = 7 })
-D.ztd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.2, hullH = 4.6, clear = 1.2, speed = 38, accel = 10, turn = 38, amphib = true, boat = true,
-  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 },
-  turret = { pivot = V(0, 4.6, -0.6), size = V(6.0, 2.0, 6.0), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.2 },
-  gun = { pivot = V(0, 0.8, -2.8), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.8, -2.9),
-  sight = V(-1.6, 1.8, -2.0),
-  smoke = { banks = { { at = V(2.8, 1.2, -1.6), yaw = 35 }, { at = V(-2.8, 1.2, -1.6), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
 D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 36, accel = 10, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
@@ -150,41 +120,9 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
   weapons = { "ac30", "coax" }, seats = 6 })
-D.m1150 = tracked({ cat = "apc", L = 24, W = 10.2, H = 6.6, hullH = 4.4, clear = 1.4, speed = 32, accel = 9, turn = 34, plow = true,
-  rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, skirt = true,
-  turret = { pivot = V(0, 4.4, 1.6), size = V(2.2, 1.0, 2.2), style = "rws", trav = 70, elev = { -10, 50 } },
-  gun = { pivot = V(0, 0.6, -0.6), len = 4.6, cal = 0.2 }, sight = V(0, 1.4, -0.8),
-  smoke = { banks = { { at = V(1.4, 0.4, -0.6), yaw = 35 }, { at = V(-1.4, 0.4, -0.6), yaw = -35 } }, n = 4 },
-  weapons = { "hmg" } })
 
 ---------------------------------------------------------------- 装甲车（轮式）
 
-D.zsl92b = wheeled({ cat = "apc", L = 21, W = 8.4, H = 7.6, hullH = 5.2, clear = 1.7, speed = 46, accel = 12, turn = 48, amphib = true, boat = true,
-  axles = { -6.0, -1.6, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.5,
-  turret = { pivot = V(0, 5.2, -0.6), size = V(4.2, 1.5, 4.2), style = "ifv", trav = 60, elev = { -8, 55 } },
-  gun = { pivot = V(0, 0.6, -2.0), len = 7.0, cal = 0.22, brake = true }, coax = V(0.8, 0.6, -2.1),
-  sight = V(-1.3, 1.4, -1.6),
-  smoke = { banks = { { at = V(2.1, 0.9, -1.2), yaw = 35 }, { at = V(-2.1, 0.9, -1.2), yaw = -35 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
-D.ptl02 = wheeled({ cat = "apc", L = 22, W = 8.6, H = 7.4, hullH = 5.0, clear = 1.7, speed = 46, accel = 12, turn = 46,
-  axles = { -6.4, -2.0, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.6,
-  turret = { pivot = V(0, 5.0, 0.4), size = V(5.6, 1.8, 5.8), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.0 },
-  gun = { pivot = V(0, 0.7, -2.6), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.7, -2.7),
-  sight = V(-1.5, 1.6, -2.0),
-  smoke = { banks = { { at = V(2.7, 1.0, -1.6), yaw = 35 }, { at = V(-2.7, 1.0, -1.6), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
-D.stryker = wheeled({ cat = "apc", L = 22, W = 8.4, H = 7.8, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
-  axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
-  turret = { pivot = V(0, 5.8, 0.4), size = V(2.4, 1.1, 2.4), style = "rws", trav = 70, elev = { -12, 55 } },
-  gun = { pivot = V(0, 0.6, -0.6), len = 5.0, cal = 0.2 }, sight = V(0, 1.4, -0.9),
-  smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
-  weapons = { "hmg" }, seats = 8 })
-D.m1117 = wheeled({ cat = "apc", L = 17, W = 7.6, H = 7.4, hullH = 5.4, clear = 1.6, speed = 50, accel = 13, turn = 52,
-  axles = { -4.8, 4.6 }, steer = 1, wr = 1.6, ww = 1.0, wx = 3.1,
-  turret = { pivot = V(0, 5.4, 0.6), size = V(3.2, 1.4, 3.2), style = "ifv", trav = 70, elev = { -8, 45 } },
-  gun = { pivot = V(0, 0.6, -1.4), len = 4.6, cal = 0.2 }, sight = V(-1.0, 1.3, -1.2),
-  smoke = { banks = { { at = V(1.6, 0.7, -1.4), yaw = 35 }, { at = V(-1.6, 0.7, -1.4), yaw = -35 } }, n = 4 },
-  weapons = { "hmg" }, seats = 4 })
 D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 58, accel = 15, turn = 60, light = true,
   axles = { -4.0, 4.2 }, steer = 1, wr = 1.3, ww = 0.9, wx = 2.6,
   turret = { pivot = V(0, 4.6, 0.6), size = V(2.4, 0.9, 2.4), style = "ring", trav = 90, elev = { -10, 40 } },

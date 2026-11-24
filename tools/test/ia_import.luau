@@ -134,7 +134,7 @@ do
 	Mz.model:Destroy()
 	-- 没导入原模型的型号（这里没假装导入斯特赖克）：零件拼的炮塔按型号表原来的转轴摆，坐在车体顶上——
 	--   型号表的转轴照原模型改过（高 2 格），零件拼的要是也按它摆，炮塔就悬在车体上面
-	local ds = VD.get("stryker")
+	local ds = VD.get("mshorad")
 	local Ms = VM.build(ds, "def")
 	local lowT = 1e9
 	for _, it in ipairs(Ms.parts) do

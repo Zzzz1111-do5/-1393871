@@ -115,6 +115,10 @@ function AIVeh.init(G)
     else
       local V0 = Config.Vehicles[team] or {}
       for _, id in ipairs(V0[cat] or {}) do if usable(id) then table.insert(ids, id) end end
+      -- 这一类本队没有车了（11-24 红方的步战车全删了）：换另一类挑，不至于这一轮不出车
+      if #ids == 0 then
+        for _, id in ipairs(V0[(cat == "tank") and "apc" or "tank"] or {}) do if usable(id) then table.insert(ids, id) end end
+      end
     end
     if #ids == 0 then return nil end
     return ids[math.random(#ids)]

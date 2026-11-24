@@ -51,8 +51,8 @@ local function has(id, wid)
   for _, w in ipairs(d and d.weapons or {}) do if w == wid then return true end end
   return false
 end
-check(has("stryker", "hmg") and has("jltv", "hmg") and has("hmmwv", "hmg"), "斯特赖克、JLTV、悍马的 12.7 毫米机枪还在")
-check(has("zbd05", "coax") and has("m2a3", "coax"), "步战车的并列机枪还在")
+check(has("jltv", "hmg") and has("hmmwv", "hmg"), "JLTV、悍马的 12.7 毫米机枪还在")
+check(has("m2a3", "coax"), "步战车的并列机枪还在")
 
 print("② M1A2 画出来：车顶没有 M2，指挥塔还在")
 local hrp = me.Character and me.Character:FindFirstChild("HumanoidRootPart")

@@ -58,18 +58,6 @@ H.t90m = {
 H.m2a3 = {
   { id = "ramp", g = "hull", m = "ramp", at = V(0, 1.6, 7.9), top = V(0, 5.5, 8.77), w = 4.6, use = "pass" },
 }
--- 斯特赖克：车尾跳板（下沿 y 2.2 / z 8.2，上沿 y 5.8 / z 8.95）
-H.stryker = {
-  { id = "ramp", g = "hull", m = "ramp", at = V(0, 2.2, 8.2), top = V(0, 5.8, 8.95), w = 3.8, use = "pass" },
-}
--- BMP-3：车尾两扇门往左右开（下面的踏板跟着翻下来），载员舱顶两块大舱盖（每块上还有一个小舱盖）——发动机在载员舱地板下面，
---   载员从发动机上面那条低矮的过道钻出去，车顶舱盖打开好直起腰。舱盖往哪边翻没查到准的：照 BMP-1 / 2 载员舱顶舱盖（外沿铰链、往两边翻开当侧挡板）
-H.bmp3 = {
-  { id = "doorL", g = "hull", m = "door", hinge = "L", at = V(-0.85, 2.3, 9.47), top = V(-0.85, 4.6, 9.47), w = 1.55, use = "pass" },
-  { id = "doorR", g = "hull", m = "door", hinge = "R", at = V(0.85, 2.3, 9.47), top = V(0.85, 4.6, 9.47), w = 1.55, use = "pass" },
-  { id = "roofL", g = "hull", m = "flap", side = -1, at = V(-1.0, 4.88, 5.8), w = 1.7, h = 2.0, use = "pass" },
-  { id = "roofR", g = "hull", m = "flap", side = 1, at = V(1.0, 4.88, 5.8), w = 1.7, h = 2.0, use = "pass" },
-}
 -- ZBD-05（zbd97 的模型）：车尾一扇大门，右边铰链（模型上门右边两个铰链座）
 H.zbd97 = {
   { id = "door", g = "hull", m = "door", hinge = "R", at = V(0, 1.7, 9.17), top = V(0, 5.4, 9.17), w = 3.8, use = "pass" },

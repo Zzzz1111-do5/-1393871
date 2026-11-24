@@ -236,7 +236,7 @@ else
   T.act("deploy", "rifle", "barge")
   R.run(2)
   check(P.alive and P.vehicle == nil, "步兵在登陆平台出生")
-  local ap = T.pad("zbd05")
+  local ap = T.pad("m2a3")   -- ZBD-05 11-24 删掉了
   local ea = ap and T.usePad(me, ap)
   check(ea ~= nil and ea.lcac ~= nil, "两栖车 ZBD-05 站在气垫艇上生成")
   if ea then

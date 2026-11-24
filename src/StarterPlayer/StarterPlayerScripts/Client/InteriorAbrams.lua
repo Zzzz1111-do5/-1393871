@@ -534,6 +534,5 @@ return function(Defs, Hp)
 
   Defs.m1a1 = function(b, ctx) return abrams(b, ctx, "a1") or procM1A2(b, ctx) end
   Defs.m1a2 = function(b, ctx) return abrams(b, ctx, "sep2") or procM1A2(b, ctx) end
-  Defs.m10 = procM1A2   -- M10 布克：照旧借零件拼的 M1A2 内饰（四人、手动装填，火控同源）
   Defs.donor, Defs.donorPut, Defs.donorPT, Defs.donorControl, Defs.donorKnobs = donor, put, PT, control, KNOBS
 end

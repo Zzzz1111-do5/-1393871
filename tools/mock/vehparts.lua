@@ -1,9 +1,9 @@
 -- 导出零件拼的载具（没有原模型的那几辆）的零件：形状、尺寸、CFrame（Roblox 坐标，车头朝 −Z），给 tools/models/vehicons.mjs 画侧面图标
---   python3 tools/mock/run.py tools/mock/vehparts.lua out=<文件.json> [ids=m10,ztd05,...]
+--   python3 tools/mock/run.py tools/mock/vehparts.lua out=<文件.json> [ids=ztz96,pgz07,...]
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R = T.R
 local out = TEST_ARGS:match("out=(%S+)")
-local idsArg = TEST_ARGS:match("ids=(%S+)") or "m10,ztd05,pgz07,ld2000"
+local idsArg = TEST_ARGS:match("ids=(%S+)") or "ztz96,pgz07,ld2000"
 local G = T.boot()
 T.runUntil(function() return G.worldReady end, 120)
 local me = T.join("P1", 7701, true)
