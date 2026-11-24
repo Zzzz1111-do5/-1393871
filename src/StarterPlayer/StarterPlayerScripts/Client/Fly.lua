@@ -915,6 +915,7 @@ function Fly.init(G)
     st = nil
     G.fly = nil
     G.hitMarkerAt = nil
+    if G.airAudioOff then G.airAudioOff() end
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -1759,6 +1760,7 @@ function Fly.init(G)
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
+        if G.airAudioEvent then G.airAudioEvent("flare") end
       end
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
@@ -1821,7 +1823,10 @@ function Fly.init(G)
 
   -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
   function G.onHitMarker(kind)
-    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+    if st and st.pilot then
+      st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45))
+      if G.airAudioEvent then G.airAudioEvent((kind == "kill") and "kill" or "hit") end   -- 战雷式命中「叮」、击落两声
+    end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
@@ -2385,6 +2390,7 @@ function Fly.init(G)
     if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
       st.flareNext = os.clock() + 0.3
       G.R.Drive:FireServer({ op = "flare" })
+      if G.airAudioEvent then G.airAudioEvent("flare") end
     end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
@@ -2498,6 +2504,16 @@ function Fly.init(G)
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 提示音、告警音（AirAudio.lua，用户 11-24：「把开飞机的各种 ui 声音做成战雷」）：导引头声、雷达弹锁定、导弹来袭、失速、拉起、油少、熄火、起落架
+      if G.airAudioStep then
+        local lk = st.lock
+        G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
+          locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
+          pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
+          gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
+      end
       -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
       --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
       local rest = st.ground and em:GetAttribute("Rest") or 0

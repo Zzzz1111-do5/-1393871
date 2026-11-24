@@ -121,7 +121,7 @@ local KNOBS = {
   { id = "ARM", c = V(1.848, 4.492, -2.675), dia = 0.014, style = "toggle", on = "lrfArm", sync = "arm",
     label = { "激光测距机", "LRF" }, pos = { "待命", "保险" }, posEn = { "ARMED", "SAFE" } },
   { id = "RETN", c = V(1.566, 5.454, -2.645), dia = 0.034, style = "round", n = 2, step = 60, on = "retNight", sync = "retn",
-    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（黑分划）", "夜间（红分划）" }, posEn = { "DAY", "NIGHT" } },
+    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（亮红）", "夜间（暗红）" }, posEn = { "DAY", "NIGHT" } },
   { id = "BIT", c = V(1.566, 5.576, -2.665), dia = 0.020, style = "push", on = "bit",
     label = { "火控自检", "FCS BIT" } },
 }

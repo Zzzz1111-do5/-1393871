@@ -38,4 +38,15 @@ return {
 	heliRotor = { ids = { 18630771616, 18630809102 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 10,
 		src = "ChuckNorrisBR1：Helicopter Bell UH-1H \"Huey\" rotor sound, looped" },
 	shipEngine = { ids = { 82255182471237 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 10, src = "iris's workshop：Ship Engine" },
+	-- 坦克发动机分层（用户 11-24：「坦克的发动机声音、加速声音」做成战雷那样）：同一个作者的一套——怠速循环（上面的 tankEngine）、
+	--   行驶循环、加速、起动、熄火；Drive.lua 按转速、负载交叉淡入淡出，起步 / 猛踩油门叠一声加速
+	tankDrive = { ids = { 8213082259 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 29, src = "Tankentwerfer：medium tank engine driving loop" },
+	tankAccel = { ids = { 8213068475 }, vol = 1, s = { 0.96, 1.04 }, len = 3, src = "Tankentwerfer：medium tank engine accelerate" },
+	tankStart = { ids = { 8213060841 }, vol = 1, s = { 1, 1 }, len = 4, src = "Tankentwerfer：medium tank engine start up" },
+	tankStop = { ids = { 8213085433 }, vol = 1, s = { 1, 1 }, len = 2, src = "Tankentwerfer：medium tank engine shut off" },
+	tankTracks = { ids = { 135855037438124 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 3, src = "JunkersJu87B_2Stuka：Tank tracks moving sound [LOOP]" },
+	-- 纯音（1000 赫兹，5 秒，循环）：飞机的导引头声、告警音（AirAudio.lua）、M1 燃气轮机的尖啸（Drive.lua）按 PlaybackSpeed 调音高（1 = 1000 赫兹）
+	toneSine = { ids = { 87992832353391 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：sine_1000hz" },
+	toneSquare = { ids = { 95787800165497 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：square_no_alias_1000hz" },
+	toneSaw = { ids = { 122140586645742 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：sawtooth_1000hz" },
 }

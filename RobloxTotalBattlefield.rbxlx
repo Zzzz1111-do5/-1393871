@@ -10696,6 +10696,17 @@ return {
 	heliRotor = { ids = { 18630771616, 18630809102 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 10,
 		src = "ChuckNorrisBR1：Helicopter Bell UH-1H \"Huey\" rotor sound, looped" },
 	shipEngine = { ids = { 82255182471237 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 10, src = "iris's workshop：Ship Engine" },
+	-- 坦克发动机分层（用户 11-24：「坦克的发动机声音、加速声音」做成战雷那样）：同一个作者的一套——怠速循环（上面的 tankEngine）、
+	--   行驶循环、加速、起动、熄火；Drive.lua 按转速、负载交叉淡入淡出，起步 / 猛踩油门叠一声加速
+	tankDrive = { ids = { 8213082259 }, vol = 0.9, s = { 1, 1 }, loop = true, len = 29, src = "Tankentwerfer：medium tank engine driving loop" },
+	tankAccel = { ids = { 8213068475 }, vol = 1, s = { 0.96, 1.04 }, len = 3, src = "Tankentwerfer：medium tank engine accelerate" },
+	tankStart = { ids = { 8213060841 }, vol = 1, s = { 1, 1 }, len = 4, src = "Tankentwerfer：medium tank engine start up" },
+	tankStop = { ids = { 8213085433 }, vol = 1, s = { 1, 1 }, len = 2, src = "Tankentwerfer：medium tank engine shut off" },
+	tankTracks = { ids = { 135855037438124 }, vol = 0.8, s = { 1, 1 }, loop = true, len = 3, src = "JunkersJu87B_2Stuka：Tank tracks moving sound [LOOP]" },
+	-- 纯音（1000 赫兹，5 秒，循环）：飞机的导引头声、告警音（AirAudio.lua）、M1 燃气轮机的尖啸（Drive.lua）按 PlaybackSpeed 调音高（1 = 1000 赫兹）
+	toneSine = { ids = { 87992832353391 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：sine_1000hz" },
+	toneSquare = { ids = { 95787800165497 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：square_no_alias_1000hz" },
+	toneSaw = { ids = { 122140586645742 }, vol = 1, s = { 1, 1 }, loop = true, len = 5, src = "dragonballz_1995：sawtooth_1000hz" },
 }
 ]]></ProtectedString>
       </Properties>
@@ -26989,7 +27000,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "AirAudio", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -27428,6 +27439,216 @@ return AaFcs
         </Item>
         <Item class="ModuleScript" referent="133">
           <Properties>
+            <string name="Name">AirAudio</string>
+            <ProtectedString name="Source"><![CDATA[-- 开飞机的提示音、告警音（用户 11-24：「把开飞机的各种 ui 声音做成战雷」）
+--   · 红外弹（seeker = "ir"）的导引头声：没锁上是低沉发毛的嗡嗡声（「咕噜」）；锁定进度往上走，音调跟着升；锁上是尖的长音；
+--     锁着但目标出了离轴角（菱形变黄）又回到嗡嗡
+--   · 雷达弹：锁的过程一下一下轻的「嘀」，锁上「嘀嘀」两声；空对地弹、制导炸弹锁上「嘀」一声
+--   · 导弹来袭（服务器的 rwr）：急促的「嘀嘀嘀」；失速：喇叭一样的「嘟——嘟——」；拉起（离地近还在往下掉）：高低两个音来回换；
+--     油不多：隔几秒「叮——咚」；发动机熄火：隔一会儿低沉的「当」
+--   · 放热诱弹「嘭嘭」两声；打中敌人「叮」；打下来往上走的两声；自己挨打金属的「当」；起落架收放时液压的嗡嗡、到位「咔」一声
+--   音源：SoundLib 的 1000 赫兹纯音（toneSine 正弦、toneSquare 方波、toneSaw 锯齿波），PlaybackSpeed 调音高（1 = 1000 赫兹）；
+--     哪个没载上那几样就不响（屏幕上的告警字照旧）
+--   Fly.lua 每帧调 G.airAudioStep(dt, a)，下飞机调 G.airAudioOff()，一次性的事调 G.airAudioEvent(名字)
+local M = {}
+
+function M.init(G)
+  local SS = game:GetService("SoundService")
+  local clamp = math.clamp
+  local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
+  local TICK = "rbxasset://sounds/volume_slider.ogg"
+  local THUD = "rbxasset://sounds/action_jump_land.mp3"
+
+  local voices = {}   -- [名字] = 循环的 Sound（音量、音高每帧调）
+  local function voice(name, key)
+    local v = voices[name]
+    if v and v.Parent then return v end
+    if not G.realLoop then return nil end
+    v = G.realLoop(key, SS)
+    if not v then return nil end
+    v.Volume = 0
+    v.Name = "AirAudio_" .. name
+    voices[name] = v
+    return v
+  end
+  local function effect(v, cls, props)
+    local e = v:FindFirstChildOfClass(cls)
+    if not e then
+      e = Instance.new(cls)
+      e.Parent = v
+    end
+    for k, x in pairs(props) do e[k] = x end
+    return e
+  end
+  -- 一个声部：音量、音高（赫兹）；返回 Sound（没载上 nil）
+  local function set(name, key, vol, hz)
+    local v = voice(name, key)
+    if not v then return nil end
+    v.Volume = vol
+    if hz then v.PlaybackSpeed = clamp(hz / 1000, 0.05, 20) end
+    return v
+  end
+  local function silence()
+    for _, v in pairs(voices) do v.Volume = 0 end
+  end
+
+  -- 短促的「嘀」：排进队列，每帧取正在响的那一个（同一时间只响一个，后来的高过先来的就用后来的）
+  local queue = {}
+  local function beep(hz, dur, vol, delay)
+    local t0 = os.clock() + (delay or 0)
+    table.insert(queue, { t0 = t0, t1 = t0 + dur, hz = hz, vol = vol })
+  end
+  local function shot(L)   -- 一次性的叠层声音（Fx.lua 的 makeSound）
+    if G.makeSound then pcall(G.makeSound, L, SS, { dry = false }) end
+  end
+  local function realShot(key, speed, vol)
+    local id, cfg = nil, nil
+    if G.realSound then id, cfg = G.realSound(key) end
+    if not id then return false end
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = (cfg and cfg.vol or 1) * vol
+    s.PlaybackSpeed = speed
+    s.Parent = SS
+    s:Play()
+    game:GetService("Debris"):AddItem(s, ((cfg and cfg.len) or 3) / speed + 0.5)
+    return true
+  end
+
+  local S = { hp = nil, gear = nil, lockWas = false, rTick = 0, chimeT = 0, outT = 0 }
+
+  function G.airAudioOff()
+    silence()
+    queue = {}
+    S.hp, S.gear, S.lockWas = nil, nil, false
+  end
+
+  function G.airAudioEvent(name)
+    if name == "flare" then   -- 热诱弹：两声闷的「嘭」
+      for i = 0, 1 do
+        shot({ id = EXP, vol = 0.32, s = { 2.3, 2.7 }, reg = { 0.02, 0.22 }, eq = { -4, 2, 2 } })
+        task.delay(0.07 + i * 0.07, function() shot({ id = TICK, vol = 0.35, s = { 0.9, 1.0 } }) end)
+      end
+    elseif name == "hit" then   -- 打中敌机：清脆的「叮」
+      if not realShot("metalHit", 1.6, 0.32) then shot({ id = TICK, vol = 0.6, s = { 3.0, 3.1 } }) end
+    elseif name == "kill" then   -- 打下来：往上走的两声
+      beep(1320, 0.09, 0.30)
+      beep(1760, 0.18, 0.30, 0.10)
+    elseif name == "damaged" then   -- 自己挨打：金属的「当」+ 一声闷响
+      if not realShot("metalHit", 0.85, 0.9) then shot({ id = TICK, vol = 0.9, s = { 0.6, 0.65 } }) end
+      shot({ id = EXP, vol = 0.35, s = { 1.5, 1.7 }, reg = { 0.0, 0.25 }, eq = { 6, 0, -10 } })
+    end
+  end
+
+  function G.airAudioStep(dt, a)
+    if not a or not a.on then silence() return end
+    local t = os.clock()
+    local w = a.w
+    local isIR = w and w.kind == "aam" and w.seeker ~= "radar"
+    local isRadar = w and w.kind == "aam" and w.seeker == "radar"
+    local guided = w and (w.kind == "agm" or (w.kind == "bomb" and w.guided))
+    local prog = (a.hasTgt and w and w.lockTime) and clamp(a.lockT / w.lockTime, 0, 1) or 0
+    local locked = a.locked and not a.out
+    local busy = a.rwr and 0.5 or 1   -- 导弹来袭时别的声音让一让
+
+    -- ① 红外导引头：嗡嗡（方波，压掉高音、加点失真，音量一抖一抖）→ 锁上尖的长音（正弦）
+    local growlV, lockV, gHz = 0, 0, 320
+    if isIR then
+      if locked then
+        lockV = 0.30 * busy
+      else
+        growlV = 0.24 * busy
+        gHz = 290 + 360 * prog + (a.out and 140 or 0)
+      end
+    end
+    local g = set("growl", "toneSquare", growlV, gHz + math.sin(t * 31) * 7 + math.sin(t * 13) * 5)
+    if g then
+      effect(g, "EqualizerSoundEffect", { LowGain = 4, MidGain = 0, HighGain = -14 })
+      effect(g, "DistortionSoundEffect", { Level = 0.55 })
+      effect(g, "TremoloSoundEffect", { Depth = 0.55, Duty = 0.5, Frequency = 10 })
+    end
+    set("lock", "toneSine", lockV, 1450 + math.sin(t * 9) * 6)
+
+    -- ② 雷达弹：锁的过程每 0.3 秒一下轻「嘀」；锁上「嘀嘀」；空对地 / 制导炸弹锁上「嘀」
+    if isRadar and a.hasTgt and not locked and t >= S.rTick then
+      S.rTick = t + 0.3
+      beep(900, 0.04, 0.13 * busy)
+    end
+    if locked and not S.lockWas then
+      if isRadar then
+        beep(1250, 0.07, 0.30)
+        beep(1250, 0.07, 0.30, 0.11)
+      elseif guided then
+        beep(1000, 0.12, 0.26)
+      end
+    end
+    S.lockWas = locked == true
+
+    -- ③ 导弹来袭：急促的「嘀嘀嘀」（每秒七下半）
+    set("rwr", "toneSine", (a.rwr and ((t * 7.5) % 1 < 0.5)) and 0.34 or 0, 1150)
+
+    -- ④ 失速：锯齿波「嘟——嘟——」（每秒两下半）
+    local stallV = (a.stall and ((t * 2.5) % 1 < 0.62)) and 0.20 * busy or 0
+    local sv = set("stall", "toneSaw", stallV, 440)
+    if sv then effect(sv, "EqualizerSoundEffect", { LowGain = 2, MidGain = 0, HighGain = -10 }) end
+
+    -- ⑤ 拉起：两个音来回换（像近地告警）
+    set("pull", "toneSine", a.pullup and 0.28 * busy or 0, ((t * 5) % 1 < 0.5) and 650 or 950)
+
+    -- ⑥ 油不多 / 熄火：隔一会儿响一下
+    if (a.bingo or a.flameout) and t >= S.chimeT then
+      if a.flameout then
+        S.chimeT = t + 2.5
+        beep(420, 0.45, 0.22 * busy)
+      else
+        S.chimeT = t + 5
+        beep(880, 0.18, 0.18 * busy)
+        beep(660, 0.26, 0.18 * busy, 0.2)
+      end
+    end
+
+    -- ⑦ 起落架：收放时液压的嗡嗡，到位「咔」一声
+    local gear = a.gear
+    if gear then
+      local moving = gear > 0.02 and gear < 0.98
+      local hv = set("hyd", "toneSquare", moving and 0.045 or 0, 150 + (gear * 25))
+      if hv then
+        effect(hv, "EqualizerSoundEffect", { LowGain = 6, MidGain = -6, HighGain = -30 })
+        effect(hv, "DistortionSoundEffect", { Level = 0.4 })
+      end
+      if S.gear and ((S.gear < 0.98 and gear >= 0.98) or (S.gear > 0.02 and gear <= 0.02)) then
+        shot({ id = THUD, vol = 0.55, s = { 0.72, 0.78 }, eq = { 4, 0, -6 } })
+        shot({ id = TICK, vol = 0.5, s = { 0.55, 0.6 } })
+      end
+      S.gear = gear
+    end
+
+    -- ⑧ 自己挨打（血掉了）
+    if a.hp then
+      if S.hp and a.hp < S.hp - 0.004 then G.airAudioEvent("damaged") end
+      S.hp = a.hp
+    end
+
+    -- 「嘀」的队列
+    local bv, bh = 0, 1000
+    for i = #queue, 1, -1 do
+      local q = queue[i]
+      if t >= q.t1 then
+        table.remove(queue, i)
+      elseif t >= q.t0 then
+        bv, bh = math.max(bv, q.vol), q.hz
+      end
+    end
+    set("beep", "toneSine", bv, bh)
+  end
+end
+
+return M
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="134">
+          <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
 --   翼尖涡流：过载 3.5 g 以上两个翼尖各拖一条细白线（Trail），拉得越狠越浓、越长
@@ -27606,7 +27827,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -28223,7 +28444,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -29781,7 +30002,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -29979,7 +30200,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -30269,7 +30490,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -30426,7 +30647,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -31009,7 +31230,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -31133,7 +31354,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -31314,7 +31535,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -31618,7 +31839,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -32111,7 +32332,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -32565,7 +32786,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -32659,15 +32880,32 @@ function Drive.init(G)
   ss.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   ss.Parent = screenBox
   -- 分划：中心十字、两边的横线、测距刻度（照截图的样子）
-  local RET = RGB(235, 235, 235)
+  --   用户 11-24：「坦克开镜视角……带着光晕的红色准心，像钢铁猛兽一样」——LED 照明的红分划：每条线后面垫两层更宽、更透明的红色（光晕），
+  --   数字也带一圈红色的发光描边；昼光、夜视、热像都是红的（车里的分划照明旋钮：白天亮红、夜间暗红）
+  local RET = RGB(255, 46, 32)
+  local RET_DIM = RGB(190, 34, 24)
   local reticle = Instance.new("Frame")
   reticle.Size = UDim2.fromOffset(300, 120)
   reticle.AnchorPoint = Vector2.new(0.5, 0.5)
   reticle.Position = UDim2.fromScale(0.5, 0.5)
   reticle.BackgroundTransparency = 1
   reticle.Parent = sight
-  local retParts = {}
-  local function rl(size, pos) local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5)) table.insert(retParts, f) return f end
+  local retParts, retHalo = {}, {}
+  local function halo(size, pos, grow, tr)
+    local h = ui.frame(reticle, UDim2.new(size.X.Scale, size.X.Offset + grow, size.Y.Scale, size.Y.Offset + grow), pos, RET, tr, Vector2.new(0.5, 0.5))
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, math.ceil(grow / 2) + 1)
+    c.Parent = h
+    table.insert(retHalo, { f = h, t = tr })
+    return h
+  end
+  local function rl(size, pos)
+    halo(size, pos, 12, 0.9)
+    halo(size, pos, 5, 0.68)
+    local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5))
+    table.insert(retParts, f)
+    return f
+  end
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, -110, 0.5, 0))
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, 110, 0.5, 0))
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, -56, 0.5, -10))
@@ -32676,8 +32914,18 @@ function Drive.init(G)
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, 56, 0.5, 10))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, -26))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, 26))
-  local dot = rl(UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5))
-  dot.BackgroundTransparency = 1
+  -- 中心的小圈：一圈细线 + 外面一圈更粗、更透明的（光晕），圈里面不填（别挡住瞄的东西）
+  local dotHalo = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  local dhs = Instance.new("UIStroke")
+  dhs.Color = RET
+  dhs.Thickness = 5
+  dhs.Transparency = 0.75
+  dhs.Parent = dotHalo
+  local dhc = Instance.new("UICorner")
+  dhc.CornerRadius = UDim.new(0.5, 0)
+  dhc.Parent = dotHalo
+  local dot = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  table.insert(retParts, dot)
   local dotStroke = Instance.new("UIStroke")
   dotStroke.Color = RET
   dotStroke.Thickness = 1.5
@@ -32801,20 +33049,18 @@ function Drive.init(G)
     screenBox.Visible = thermal
     grain.Visible = m ~= "day"
     cc.Enabled = true
-    local retCol = RET
+    local retCol = st.retNight and RET_DIM or RET   -- 红分划（钢铁猛兽那样）：分划照明旋钮白天亮红、夜间暗红
     if m == "day" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.1, 0.08, 0, Color3.new(1, 1, 1)
       clearHl()
     elseif m == "nv" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.35, 0.06, RGB(120, 255, 140)
-      retCol = RGB(190, 255, 190)
       clearHl()
     elseif m == "whot" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
       refreshHl(Color3.new(1, 1, 1))
     else
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
-      retCol = RGB(20, 20, 20)
       refreshHl(Color3.new(0, 0, 0))
     end
     -- 热像仪的增益（对比度）、电平（亮度）：炮长控制面板上的两个旋钮（车里 Interior：st.thGain / st.thLevel，0～4，2 是中间）
@@ -32823,12 +33069,22 @@ function Drive.init(G)
       cc.Brightness += ((st.thLevel or 2) - 2) * 0.07
     end
     -- 分划照明（白天的光学通道：夜里拨到红色照明）、分划亮度、符号亮度（面板上的旋钮：0 最亮 … 3 最暗 / 关）
-    if m == "day" and st.retNight then retCol = RGB(255, 70, 50) end
     local RB = ({ 0, 0.25, 0.5, 0.75 })[(st.retLvl or 0) + 1] or 0
     local SB = ({ 0, 0.3, 0.6, 1 })[(st.symLvl or 0) + 1] or 0
     for _, f in ipairs(retParts) do f.BackgroundColor3 = retCol f.BackgroundTransparency = (f == dot) and 1 or RB end
+    -- 光晕跟着分划亮度：调暗了光晕也淡；夜间照明（暗红）光晕再淡一点
+    local hk = (1 - RB) * (st.retNight and 0.7 or 1)
+    for _, h in ipairs(retHalo) do
+      h.f.BackgroundColor3 = retCol
+      h.f.BackgroundTransparency = 1 - (1 - h.t) * hk
+    end
+    dhs.Color, dhs.Transparency = retCol, 1 - 0.25 * hk
     dotStroke.Color = retCol
     dotStroke.Transparency = RB
+    for _, l in ipairs({ rangeText, modeText, zoomText, ammoText, fcsText }) do   -- 字也带一圈红色的光
+      l.TextStrokeColor3 = retCol
+      l.TextStrokeTransparency = 1 - (1 - SB) * 0.45 * (st.retNight and 0.7 or 1)
+    end
     rangeText.TextColor3, modeText.TextColor3, zoomText.TextColor3, ammoText.TextColor3 = retCol, retCol, retCol, retCol
     rangeText.TextTransparency, modeText.TextTransparency, zoomText.TextTransparency, ammoText.TextTransparency, fcsText.TextTransparency = SB, SB, SB, SB, SB
     fcsText.TextColor3, multiBar.BackgroundColor3, multiBar.BackgroundTransparency = retCol, retCol, SB
@@ -32956,9 +33212,24 @@ function Drive.init(G)
   -- 发动机声（开车的人自己听）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、削掉高音）+ 涡轮 / 履带的呜呜声（风声循环），
   --   油门越大、开得越快音调越高、越响；坦克沉一点，轮式车尖一点
   local engine = nil
+  -- 一次性的真录音（起动、熄火、加速）：放在 SoundService，播完自己删
+  local function realOnce(key, vol, speed)
+    local id, cfg = nil, nil
+    if G.realSound then id, cfg = G.realSound(key) end
+    if not id then return nil end
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = (cfg and cfg.vol or 1) * (vol or 1)
+    s.PlaybackSpeed = speed or 1
+    s.Parent = game:GetService("SoundService")
+    s:Play()
+    game:GetService("Debris"):AddItem(s, ((cfg and cfg.len) or 4) / (speed or 1) + 0.5)
+    return s
+  end
   local function engineStop()
     if engine then
       for _, snd in pairs(engine.s) do if snd then snd:Destroy() end end
+      if engine.layered and not engine.layered.turb then realOnce("tankStop", 0.9) end   -- 柴油机熄火一声
       engine = nil
     end
   end
@@ -32976,6 +33247,33 @@ function Drive.init(G)
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
     local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
     engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2, realEng = realEng ~= nil }
+    -- 战雷式分层（用户 11-24：「坦克的发动机声音、加速声音」）：有行驶循环的录音就分层——
+    --   柴油机：怠速层（转速低为主）和行驶层（转速上去、负载大更响更沉）交叉淡入淡出，上车先一声起动、下车一声熄火，猛踩油门叠一声加速；
+    --   M1 系列（AGT1500 燃气轮机）：喷气发动机录音放慢当轰鸣、1000 赫兹纯音升调当尖啸，上车 2.5 秒从低转速爬上来，底下垫一层放慢的行驶录音；
+    --   履带：真录音循环，车速越快越密越响；车里 / 镜里每层削掉高音（闷）
+    if realEng and G.realLoop then
+      local drive = G.realLoop("tankDrive", SS)
+      if drive then
+        local turb = d.id == "m1a1" or d.id == "m1a2"
+        local jet = turb and G.realLoop("jetEngine", SS) or nil
+        local tone = (turb and jet) and G.realLoop("toneSine", SS) or nil
+        local tracks = G.realLoop("tankTracks", SS)
+        local L = { drive = drive, jet = jet, tone = tone, tracks = tracks, turb = turb and jet ~= nil and tone ~= nil, load = 0, t0 = os.clock() }
+        for _, snd in pairs({ realEng, drive, jet, tone, tracks }) do
+          snd.Volume = 0
+          local e = Instance.new("EqualizerSoundEffect")
+          e.Name = "Muffle"
+          e.Parent = snd
+          table.insert(engine.s, snd)
+        end
+        if not L.turb then
+          if jet then jet:Destroy() L.jet = nil end
+          if tone then tone:Destroy() L.tone = nil end
+          realOnce("tankStart", 0.85)
+        end
+        engine.layered = L
+      end
+    end
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -32998,6 +33296,58 @@ function Drive.init(G)
     if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
+    local L = engine.layered
+    if L then
+      local function smooth(a, b, x)
+        local k = math.clamp((x - a) / (b - a), 0, 1)
+        return k * k * (3 - 2 * k)
+      end
+      -- 负载：踩着油门、车还没跑起来（加速中）大；松油门、匀速小——大负载更响、音色更沉
+      local want2 = math.abs(thr) * math.clamp(1 - spd * 0.85, 0.15, 1)
+      L.load += (want2 - L.load) * math.min(1, dt * 4)
+      local load = L.load
+      local now = os.clock()
+      if L.turb then
+        local spool = math.clamp((now - L.t0) / 2.5, 0, 1)   -- 起动：转速从低往上爬
+        local rr = r * spool
+        L.jet.PlaybackSpeed = 0.30 + 0.22 * spool + rr * 0.42 + load * 0.05
+        L.jet.Volume = (0.30 + 0.45 * rr + 0.25 * load) * (0.4 + 0.6 * spool)
+        L.tone.PlaybackSpeed = 1.35 + rr * 1.35 + load * 0.08   -- 尖啸 1350～2800 赫兹
+        L.tone.Volume = (0.018 + 0.03 * rr + 0.02 * load) * spool
+        engine.rumble.Volume = 0
+        L.drive.PlaybackSpeed = 0.55 + r * 0.25
+        L.drive.Volume = (0.12 + 0.25 * r) * smooth(0.02, 0.2, spd + load * 0.3)
+      else
+        local fadeIn = math.clamp((now - L.t0 - 1.1) / 1.0, 0, 1)   -- 起动声放完才进怠速
+        local idleW = 1 - smooth(0.25, 0.62, r)
+        engine.rumble.PlaybackSpeed = 0.9 + r * 0.35
+        engine.rumble.Volume = (0.25 + 0.55 * idleW) * (0.35 + 0.65 * fadeIn)
+        L.drive.PlaybackSpeed = 0.72 + r * 0.52 + load * 0.04
+        L.drive.Volume = (smooth(0.12, 0.5, r) * (0.45 + 0.55 * load) + 0.12 * r) * 1.15 * fadeIn
+        -- 猛踩油门（起步、刹停再走）：叠一声加速（3 秒内不重复）
+        if math.abs(thr) > 0.7 and (L.prevThr or 0) < 0.35 and now - (L.accT or -9) > 3 and fadeIn >= 1 then
+          L.accT = now
+          realOnce("tankAccel", 0.75 + 0.25 * (1 - spd))
+        end
+      end
+      L.prevThr = math.abs(thr)
+      local airL = st and st.airS ~= nil
+      if L.tracks then
+        L.tracks.PlaybackSpeed = 0.55 + spd * 0.75
+        L.tracks.Volume = airL and 0 or smooth(0.01, 0.18, spd) * (0.25 + 0.5 * spd)
+      end
+      if engine.clank then engine.clank.Volume = 0 end
+      -- 车里 / 镜里：闷（削高音、低音厚一点）
+      local inside = (st and st.sight) or (G.interiorOn and G.interiorOn())
+      for _, snd in pairs({ engine.rumble, L.drive, L.jet, L.tone, L.tracks }) do
+        local e = snd and snd:FindFirstChild("Muffle")
+        if e then e.LowGain, e.MidGain, e.HighGain = inside and 3 or 0, inside and -4 or 0, inside and -16 or 0 end
+      end
+      local slip = (st and not airL) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
+      engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
+      engine.skid.PlaybackSpeed = 1.4 + slip * 1.2
+      return
+    end
     if engine.realEng then   -- 真录音：转速高了放快一点、响一点；叠出来的涡轮尖啸压低（别盖住真录音）
       engine.rumble.PlaybackSpeed = 0.8 + r * 0.55
       engine.rumble.Volume = 0.5 + 0.6 * r
@@ -34156,7 +34506,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -35156,7 +35506,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -35371,7 +35721,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -36291,6 +36641,7 @@ function Fly.init(G)
     st = nil
     G.fly = nil
     G.hitMarkerAt = nil
+    if G.airAudioOff then G.airAudioOff() end
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -37135,6 +37486,7 @@ function Fly.init(G)
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
+        if G.airAudioEvent then G.airAudioEvent("flare") end
       end
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
@@ -37197,7 +37549,10 @@ function Fly.init(G)
 
   -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
   function G.onHitMarker(kind)
-    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+    if st and st.pilot then
+      st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45))
+      if G.airAudioEvent then G.airAudioEvent((kind == "kill") and "kill" or "hit") end   -- 战雷式命中「叮」、击落两声
+    end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
@@ -37761,6 +38116,7 @@ function Fly.init(G)
     if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
       st.flareNext = os.clock() + 0.3
       G.R.Drive:FireServer({ op = "flare" })
+      if G.airAudioEvent then G.airAudioEvent("flare") end
     end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
@@ -37874,6 +38230,16 @@ function Fly.init(G)
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 提示音、告警音（AirAudio.lua，用户 11-24：「把开飞机的各种 ui 声音做成战雷」）：导引头声、雷达弹锁定、导弹来袭、失速、拉起、油少、熄火、起落架
+      if G.airAudioStep then
+        local lk = st.lock
+        G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
+          locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
+          pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
+          gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
+      end
       -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
       --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
       local rest = st.ground and em:GetAttribute("Rest") or 0
@@ -37970,7 +38336,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -38326,7 +38692,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -39865,7 +40231,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -40275,7 +40641,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -40407,7 +40773,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -40686,7 +41052,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -41240,7 +41606,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -42191,7 +42557,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -42654,7 +43020,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -43483,7 +43849,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -43597,7 +43963,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -44544,7 +44910,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     function A.symb(i) set("symLvl", i) end             -- 符号亮度 0 最亮 … 3 关
     function A.gain(i) set("thGain", i) end             -- 热像增益（对比度）0～4
     function A.level(i) set("thLevel", i) end           -- 热像电平（亮度）0～4
-    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天黑分划 / 夜里红分划
+    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天亮红 / 夜里暗红（红分划，钢铁猛兽那样）
     function A.stab(i) set("stab", i == 0) end          -- 稳定器开 / 关
     function A.lrfArm(i) set("arm", i == 0) end         -- 激光测距机待命 / 保险
     function A.lrf(i) set("lrf", (i == 1) and "FIRST" or "LAST") end   -- 末回波 / 首回波
@@ -46391,7 +46757,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -47106,7 +47472,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -47232,7 +47598,7 @@ local KNOBS = {
   { id = "ARM", c = V(1.848, 4.492, -2.675), dia = 0.014, style = "toggle", on = "lrfArm", sync = "arm",
     label = { "激光测距机", "LRF" }, pos = { "待命", "保险" }, posEn = { "ARMED", "SAFE" } },
   { id = "RETN", c = V(1.566, 5.454, -2.645), dia = 0.034, style = "round", n = 2, step = 60, on = "retNight", sync = "retn",
-    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（黑分划）", "夜间（红分划）" }, posEn = { "DAY", "NIGHT" } },
+    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（亮红）", "夜间（暗红）" }, posEn = { "DAY", "NIGHT" } },
   { id = "BIT", c = V(1.566, 5.576, -2.665), dia = 0.020, style = "push", on = "bit",
     label = { "火控自检", "FCS BIT" } },
 }
@@ -47554,7 +47920,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -47706,7 +48072,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -49675,7 +50041,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -50712,7 +51078,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -53277,7 +53643,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -53543,7 +53909,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -53705,7 +54071,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -54187,7 +54553,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -54712,7 +55078,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -54862,7 +55228,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -55175,7 +55541,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -55497,7 +55863,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -55714,7 +56080,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -55848,7 +56214,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -56353,7 +56719,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -56972,7 +57338,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -57253,7 +57619,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -57510,7 +57876,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -57653,7 +58019,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -58347,7 +58713,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -58944,7 +59310,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -59447,7 +59813,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -60394,7 +60760,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -61124,7 +61490,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -61876,7 +62242,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -61960,7 +62326,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -62710,7 +63076,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -62920,7 +63286,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -63375,7 +63741,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -64595,7 +64961,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -65102,7 +65468,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -65215,7 +65581,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -66303,7 +66669,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -66407,7 +66773,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -67915,7 +68281,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -68826,7 +69192,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -68996,11 +69362,18 @@ function View.init(G)
 
   -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
   local dying = {}
+  local function engSndOff(v)   -- 别人的车的发动机、履带声（stepVeh 里挂的）
+    if v.engS then
+      for _, s in pairs(v.engS) do s:Destroy() end
+      v.engS = nil
+    end
+  end
   local function remove(em)
     local v = views[em]
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     local hp = em:GetAttribute("Hp") or 1
     if v.ext and v.ext.remove then
       local ok, keep = pcall(v.ext.remove, v)
@@ -69489,6 +69862,43 @@ function View.init(G)
       local erate = far and 0 or (2 + math.clamp(acc * 0.9, 0, 26) + math.clamp(math.abs(v.speed or 0) * 0.05, 0, 3))
       for _, pe in ipairs(M.exhaust) do if math.abs(pe.Rate - erate) > 0.4 then pe.Rate = erate end end
     end
+    -- 别人的车的发动机、履带声（用户 11-24：坦克的发动机声音做成战雷那样）：3D 的，挂在车的根部件上；380 格以内、有人开、没被毁才响；
+    --   车速越快越尖越响、往前加速时更响（像在踩油门），履带车还有履带的哗啦声
+    if not own then
+      local dist = (pos - camPos).Magnitude
+      local running = lit and dist < 380 and v.root ~= nil and v.root.Parent ~= nil
+      if running and not v.engS and G.realLoop then
+        local tracked = d.arch == "tracked"
+        local e1 = G.realLoop(tracked and "tankDrive" or "tankEngine", v.root)
+        local e2 = tracked and G.realLoop("tankTracks", v.root) or nil
+        for i, s in ipairs({ e1 or false, e2 or false }) do
+          if s then
+            s.Volume = 0
+            s.RollOffMode = Enum.RollOffMode.InverseTapered
+            s.RollOffMinDistance, s.RollOffMaxDistance = (i == 1) and 14 or 10, (i == 1) and 380 or 220
+            pcall(function() s.TimePosition = math.random() * 2.5 end)   -- 几辆车别齐着响
+          end
+        end
+        v.engS = { e1, e2 }
+      end
+      if v.engS then
+        if not running then
+          engSndOff(v)
+        else
+          local sp = math.clamp(math.abs(v.speed or 0) / math.max(d.speed or 30, 1), 0, 1)
+          local acc = math.clamp(math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1)) / 8, 0, 1)
+          local e1, e2 = v.engS[1], v.engS[2]
+          if e1 then
+            e1.PlaybackSpeed = 0.72 + 0.5 * sp + 0.08 * acc
+            e1.Volume = 0.35 + 0.5 * sp + 0.4 * acc
+          end
+          if e2 then
+            e2.PlaybackSpeed = 0.55 + 0.75 * sp
+            e2.Volume = math.clamp((sp - 0.02) * 4, 0, 1) * (0.25 + 0.5 * sp)
+          end
+        end
+      end
+    end
     -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
     --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
     if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
@@ -69558,6 +69968,7 @@ function View.init(G)
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
     if v.model then v.model:Destroy() end
     add(em)   -- 新建的 solidOn 是空的：下一帧离得近就重新挑实心零件
@@ -69807,7 +70218,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -70651,13 +71062,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="199">
+  <Item class="Workspace" referent="200">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="200">
+  <Item class="Lighting" referent="201">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

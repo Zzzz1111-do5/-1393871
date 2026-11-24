@@ -942,7 +942,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     function A.symb(i) set("symLvl", i) end             -- 符号亮度 0 最亮 … 3 关
     function A.gain(i) set("thGain", i) end             -- 热像增益（对比度）0～4
     function A.level(i) set("thLevel", i) end           -- 热像电平（亮度）0～4
-    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天黑分划 / 夜里红分划
+    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天亮红 / 夜里暗红（红分划，钢铁猛兽那样）
     function A.stab(i) set("stab", i == 0) end          -- 稳定器开 / 关
     function A.lrfArm(i) set("arm", i == 0) end         -- 激光测距机待命 / 保险
     function A.lrf(i) set("lrf", (i == 1) and "FIRST" or "LAST") end   -- 末回波 / 首回波
