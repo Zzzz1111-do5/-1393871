@@ -1077,7 +1077,7 @@ function Drive.init(G)
     if me.Character then table.insert(ex, me.Character) end
     if st.em then table.insert(ex, st.em) end
     aimParams.FilterDescendantsInstances = ex
-    local res = workspace:Raycast(o, dir * 4000, aimParams)
+    local res = G.rayFar(o, dir * 4000, aimParams)   -- 开了 streaming：远处没加载的地形按地形高度算（Stream.lua）
     return res and res.Position or (o + dir * 4000), res ~= nil
   end
 
@@ -1165,7 +1165,7 @@ function Drive.init(G)
     if st.em then table.insert(ex, st.em) end
     aimParams.FilterDescendantsInstances = ex
     -- 瞄准点只管方向和距离（火控按距离抬炮）：炮管长度以内碰到的（贴着工事、石头、屋檐停车）不算，不然 aimTurret 按一格远的点算出来的俯仰角不对
-    local res = workspace:Raycast(piv, dirW * 4000, aimParams)
+    local res = G.rayFar(piv, dirW * 4000, aimParams)
     local dist = res and (res.Position - piv).Magnitude or 4000
     st.aimPt = piv + dirW * math.max(dist, 10)
     k.pt, k.hit = st.aimPt, res and res.Instance
@@ -1218,7 +1218,7 @@ function Drive.init(G)
     local left = BAL.MAXR * BAL.S
     for _ = 1, 3 do
       aimParams.FilterDescendantsInstances = ex
-      local res = workspace:Raycast(o, dir * left, aimParams)
+      local res = G.rayFar(o, dir * left, aimParams, true)   -- 激光打到没加载的远处山坡：按地形高度算回波（Stream.lua）
       if not res then break end
       local m = (res.Position - eye).Magnitude / BAL.S
       if m >= 50 then table.insert(rets, m) end
@@ -1357,7 +1357,7 @@ function Drive.init(G)
       local ex = { G.viewFolder, ownBox, st.em }
       if me.Character then table.insert(ex, me.Character) end
       aimParams.FilterDescendantsInstances = ex
-      local res = workspace:Raycast(mz.Position, dir * (w.range or 900), aimParams)
+      local res = G.rayFar(mz.Position, dir * (w.range or 900), aimParams)
       G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
     end
     if w.kind == "shell" or w.kind == "arty" then
@@ -1586,7 +1586,7 @@ function Drive.init(G)
         local o = eye
         local want = dirCam.LookVector
         aimParams.FilterDescendantsInstances = { G.viewFolder, ownBox, st.em, me.Character }
-        local res = workspace:Raycast(o, want * 4000, aimParams)
+        local res = G.rayFar(o, want * 4000, aimParams)
         st.aimPt = res and res.Position or (o + want * 4000)
       end
     else

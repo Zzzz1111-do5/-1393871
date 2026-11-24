@@ -150,7 +150,7 @@ function Hud.init(G)
   rp.FilterType = Enum.RaycastFilterType.Include
   local function ground(m)
     rp.FilterDescendantsInstances = { workspace.Terrain }
-    local hit = workspace:Raycast(Vector3.new(m.x, 2000, m.z), Vector3.new(0, -4000, 0), rp)
+    local hit = G.rayFar(Vector3.new(m.x, 2000, m.z), Vector3.new(0, -4000, 0), rp)   -- 开了 streaming、据点在远处没加载：按地形高度算（Stream.lua）
     if hit then
       m.part.CFrame = CFrame.new(m.x, math.max(hit.Position.Y, 0) + 30, m.z)
       m.ok = true

@@ -254,7 +254,7 @@ def main():
             al = ov.getchannel('A')
             ov.putalpha(ImageChops.multiply(al, m))
         img = Image.alpha_composite(img, ov)
-    if ss > 1:
+    if ss > 1 and __import__('os').environ.get('BIG') != '1':   # BIG=1：保留放大后的尺寸（给用户看的截图要清楚：字、线按倍数画，不是把小图放大）
         img = img.resize((W0, H0), Image.LANCZOS)
     img.convert('RGB').save(out)
     print('写到', out, '元素', len(items))

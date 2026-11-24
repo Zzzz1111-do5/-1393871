@@ -721,6 +721,7 @@ function Round.init(G)
     hum.Health = kit.hp
     hum.WalkSpeed = kit.speed
     hum.BreakJointsOnDeath = false
+    if G.persist then G.persist(char) end   -- 开了 streaming：别人那边全图都看得见这个人（队友标记、复活、小队）
     G.try("换衣服", dress, P, char)
     hum.Died:Connect(function() G.try("阵亡", onDied, P, char) end)
     char:SetAttribute("Team", P.team)
@@ -729,6 +730,7 @@ function Round.init(G)
     local cf = P.spawnCF
     if cf then
       task.wait()
+      if G.streamAround then G.streamAround(P.pl, cf.Position) end   -- 开了 streaming：出生点那一片先送到（远处的出生点、队友身边），落地不踩空
       if char.Parent then char:PivotTo(cf) end
     end
     P.alive = true

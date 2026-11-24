@@ -806,7 +806,7 @@ function Scope.init(G)
         S.lrfT = t
         rayP.FilterDescendantsInstances = { me.Character, cam }
         local look = cam.CFrame.LookVector
-        local res = workspace:Raycast(cam.CFrame.Position, look * 3000, rayP)
+        local res = G.rayFar(cam.CFrame.Position, look * 3000, rayP, true)   -- 激光测距：没加载的远处地形按地形高度算（Stream.lua）
         local deg, dirName = bearing(look)
         local dist = res and string.format("%04d m", math.floor((res.Position - cam.CFrame.Position).Magnitude / 2.8 + 0.5)) or "---- m"
         lrfT.Text = string.format("%s   %03d° %s   %.0f×", dist, math.floor(deg + 0.5) % 360, dirName, zoom)

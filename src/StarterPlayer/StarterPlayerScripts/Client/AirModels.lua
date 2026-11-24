@@ -768,29 +768,14 @@ function AM.build(d, team, load)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
-          -- 加力尾焰（用户 11-23：「飞机尾喷要有马赫环，你就一比一还原战雷的」，给了战雷里歼-20 开加力的截图）：照截图——
-          --   ① 焰身是一根半透明的紫色管子，两边一圈亮蓝的边（ForceField 材质：边缘亮、正对着看是透的），前后两段，后段淡、细一点
-          --   ② 管子里一层淡紫的焰（Beam，正对镜头），往后淡掉
-          --   ③ 马赫环：焰身里一节一节的亮环——薄圆片（ForceField：侧面看是横在焰里的一道亮线，从后面看是一个环），
-          --      外面套一个淡淡的菱形光（两条 Beam 一宽一窄拼成，侧面看是菱形）；越往后越小、越淡，加力越大出来的越多
-          --   ④ 喷口里：军推以下照旧暗红 → 橙；开加力变成深紫（截图里从后面看喷口里是紫的）
+          -- 加力尾焰（用户 11-24 夜：「尾喷也要重做」，给了战雷里米格-29 开加力的截图；11-23 那版照歼-20 截图做的紫色焰身、蓝边管子、
+          --   一节一节的马赫环不要了）：照新截图——
+          --   ① 喷口里：开加力烧得发橙粉色（热芯，下面每帧那段），军推以下照旧暗红 → 橙
+          --   ② 焰身：一条长长的、半透明的橙色光柱（Beam，正对镜头），跟喷口差不多粗、往后慢慢细一点，橙 → 橘红、越往后越淡；
+          --      长短跟着加力（满加力约七个喷口直径），每帧长短轻轻抖一点（火在跳）
+          --   ③ 焰芯：喷口后面短短一截更亮的粉白（离喷口近的地方最热），也是 Beam
           local r = E.r
           local flat = E.flat
-          for kk = 1, 2 do
-            local tube = flat and newPart(m, V(1, r * 0.85, r * 2.0), RGB(70, 140, 255), MAT.ForceField, nil, 1)
-              or newPart(m, V(1, r * 1.9, r * 1.9), RGB(70, 140, 255), MAT.ForceField, CYL, 1)
-            tube.Name = "AbTube"
-            tube.CastShadow = false
-            table.insert(M.flames, add(tube, base, "ab", hotItem({ tube = kk })))
-          end
-          for i = 1, 4 do
-            local k = 1 - 0.13 * (i - 1)
-            local ring = flat and newPart(m, V(r * 0.2, r * 0.7 * k, r * 1.7 * k), RGB(226, 208, 255), MAT.ForceField, nil, 1)
-              or newPart(m, V(r * 0.2, r * 1.45 * k, r * 1.45 * k), RGB(226, 208, 255), MAT.ForceField, CYL, 1)
-            ring.Name = "MachRing"
-            ring.CastShadow = false
-            table.insert(M.flames, add(ring, base, "ab", hotItem({ ring = i })))
-          end
           local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
           src.Name = "Plume"
           src.CastShadow = false
@@ -807,7 +792,7 @@ function AM.build(d, team, load)
             bm.Name = name
             bm.Attachment0, bm.Attachment1 = a0, a1
             bm.FaceCamera = true
-            bm.Segments = 1
+            bm.Segments = 8
             bm.LightEmission, bm.LightInfluence = emit or 1, 0
             bm.Color, bm.Transparency = col, tr
             bm.Width0, bm.Width1 = w0, w1
@@ -818,16 +803,15 @@ function AM.build(d, team, load)
           local p0 = att("P0", 0)
           it.fillEnd = att("FillEnd", 1)
           it.fill = beam("AbFill", p0, it.fillEnd,
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(176, 150, 236)), ColorSequenceKeypoint.new(0.5, RGB(150, 118, 210)), ColorSequenceKeypoint.new(1, RGB(132, 112, 196)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(0.6, 0.7), NumberSequenceKeypoint.new(1, 1) }),
-            r * (flat and 1.0 or 1.75), r * (flat and 0.8 or 1.35), 0.55)
-          it.dia = {}
-          for i = 1, 4 do   -- 马赫环外面的菱形光：A→B 由窄变宽、B→C 由宽变窄
-            local A, Bm, C = att("D" .. i .. "a", 1), att("D" .. i .. "b", 1.5), att("D" .. i .. "c", 2)
-            local col = ColorSequence.new(RGB(236, 222, 255))
-            local tr = NumberSequence.new(0.35 + 0.12 * (i - 1))
-            it.dia[i] = { a = A, b = Bm, c = C, b1 = beam("Mach" .. i .. "a", A, Bm, col, tr, 0, 1), b2 = beam("Mach" .. i .. "b", Bm, C, col, tr, 1, 0) }
-          end
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 176, 120)), ColorSequenceKeypoint.new(0.45, RGB(255, 132, 76)), ColorSequenceKeypoint.new(1, RGB(236, 86, 52)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.35, 0.48), NumberSequenceKeypoint.new(0.75, 0.74), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 1.2 or 1.9), r * (flat and 0.9 or 1.4), 0.8)
+          it.coreEnd = att("CoreEnd", 1)
+          it.coreB = beam("AbCore", p0, it.coreEnd,
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 232, 214)), ColorSequenceKeypoint.new(1, RGB(255, 150, 120)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.55), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 0.9 or 1.45), r * (flat and 0.4 or 0.7), 1)
+          it.dia = {}   -- 原来的马赫环菱形光：这版不画（截图里看不到）
           table.insert(M.flames, it)
         end
         -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
@@ -1407,9 +1391,9 @@ function AM.pose(M, cf, c, now, world)
           local col = RGB(110, 36, 18):Lerp(RGB(196, 84, 36), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         elseif not it.cold then
-          -- 军推以下暗红 → 橙；开加力变成深紫（战雷的截图：从后面看喷口里是紫的、边上一圈亮蓝）
-          tr = (ab > 0) and (0.06 + (1 - ab) * 0.2) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
-          local col = (ab > 0) and RGB(255, 140, 70):Lerp(RGB(168, 86, 196), math.min(1, ab * 1.6)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
+          -- 军推以下暗红 → 橙；开加力烧得发橙粉色（用户 11-24 夜给的战雷米格-29 截图：从后面看喷口里是亮的橙粉色）
+          tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
+          local col = (ab > 0) and RGB(255, 150, 84):Lerp(RGB(255, 184, 160), math.min(1, ab * 1.4)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         end
       elseif it.tube then   -- 焰身的蓝边管子：长短跟着加力（尺寸只在加力变了时改，抖动交给里面的光）
@@ -1440,10 +1424,12 @@ function AM.pose(M, cf, c, now, world)
         if on ~= it.on then
           it.on = on
           it.fill.Enabled = on
+          if it.coreB then it.coreB.Enabled = on end
         end
-        if on then
+        if on then   -- 光柱：满加力约七个喷口直径长；焰芯一个半
           local fl = 1 + 0.05 * math.sin((now or 0) * 37 + r) + 0.03 * math.sin((now or 0) * 61)
-          it.fillEnd.Position = V(0, 0, r * 2 * (1.4 + 2.4 * ab) * fl)
+          it.fillEnd.Position = V(0, 0, r * 2 * (2.2 + 4.8 * ab) * fl)
+          if it.coreEnd then it.coreEnd.Position = V(0, 0, r * 2 * (0.6 + 0.9 * ab) * (2 - fl)) end
         end
         for i, dm in ipairs(it.dia) do
           local th0 = 0.2 + 0.15 * (i - 1)

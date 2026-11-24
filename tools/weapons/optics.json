@@ -309,6 +309,13 @@
    "license": "CC-BY-4.0",
    "url": "https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c"
   },
+  "ip_canopy": {
+   "gen": "gen_canopy.mjs",
+   "name": "战斗机座舱盖玻璃（光滑曲面）",
+   "author": "本项目",
+   "license": "自制（tools/weapons/gen_canopy.mjs 程序生成：和游戏里零件拼的座舱盖同一个曲面）",
+   "url": ""
+  },
   "ip_cdus": {
    "gen": "gen_cdus.mjs",
    "name": "M1A2 SEPv2 车长显示单元的机壳和屏框",
@@ -1563,6 +1570,15 @@
     "Body": 256
    },
    "front": true
+  },
+  "ip_canopy": {
+   "src": "ip_canopy",
+   "title": "座舱：战斗机座舱盖玻璃（截面半圆的管子 + 弹头形风挡，一整块光滑曲面、正反两面）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "parts": {
+    "glass": "Glass"
+   }
   },
   "ip_cdus": {
    "src": "ip_cdus",

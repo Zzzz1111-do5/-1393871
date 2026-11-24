@@ -11,6 +11,7 @@
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Radar 战雷式机载雷达（雷达屏、置零 / 地杂波判定，雷达弹只能锁看得见的）
 --   Bombsight 战雷式轰炸瞄准镜（F7）和 CCRP 目标点的画面（状态、按键、镜头在 Fly.lua）
 --   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 --   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
@@ -85,7 +86,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")

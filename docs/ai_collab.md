@@ -17,7 +17,7 @@
 | A | `claude/darksword-forts-navy` | 原车转换工具（blveh.py：Sketchfab 整车 → 游戏格式）、挖内腔（carve.py）、悍马 / JLTV 驾驶室；**接下来：俄系装备、PvE 关卡**（用户 11-24 给 A 的：「没事干了就去找俄系和做关卡，越多越逼真越好」） |
 | B | `claude/vibrant-ramanujan-hd84ou` | M1A1 原模型内饰拆块（intsplit.py）、搬进 M1A2 SEPv2 和 M2A3（InteriorAbrams.lua）、火控真功能（Drive.lua） |
 | C | `claude/affectionate-pasteur-vj1oop` | 飞机：歼-20 弹舱、战雷式锁定界面；**11-24 夜起：整个游戏做成战雷（见「正在做」C 那条）** |
-| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；**D 还没读过这个文件，请 D 开工前读一遍、把自己写进来** |
+| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；11-24 晚读过这个文件、快进到 E 的 d4f0f6e 再开工 |
 | E | `claude/keen-heisenberg-6zzaoc` | 合并别人的分支、挑刺（用户 11-24 对 E 说：「你看其他几个ai做的最新提交」）；坦克陷地的加固（MapRoads）、构建标记；以前做过航母福建舰、界面换绿、细节截图 |
 
 飞机「锁定、投弹、操作细节和手感跟战雷一模一样」：用户 11-24 也交给了 A（排在俄系、关卡后面）。C 已经开了头（锁定界面），
@@ -25,6 +25,17 @@
 
 ## 正在做
 
+- A（11-24 夜，**正在做**）：用户对 A 说「看其他几个 ai 的提交，我要求你把飞机的驾驶感完全还原战争雷霆」——**飞行手感**由 A 做：
+  能量（爬升掉速、俯冲加速、拉杆掉能量、诱导阻力、加力 / 战斗推力）、按速度变的舵效和过载（慢了拉不动、快了舵变沉）、失速 / 尾旋和教官防失速、
+  鼠标瞄准的教官手感、镜头（跟随、震动、视场）、襟翼 / 减速板 / 起落架的阻力和升力、油门滚轮。**改 Fly.lua 的 jetPhysics / 镜头前先在这里看一眼**；
+  C 的 G.wtaFlight（受伤打折）照旧接着用
+  - **已做**：jetPhysics 天上的速度按力算（推力 − 废阻 ∝ v² − 诱导阻力 + 重力；军推推重比约 0.75 g、加力在 vAB 被废阻抵消）、减速板 / 起落架 / 襟翼阻力、
+    襟翼加升力、高速舵变沉（qHi）、失速掉翼（st.stallK / dropDir）、AGIL 滚转 0.75 / 过载 0.85、滚轮油门；**WT_GUNS**：固定机炮顺着机头打（gunStick(true)
+    只给敌机算提前量 → st.lead，AirHud 的 LeadMark 画），MWT 黏住那套留着没删（WT_GUNS = false 就回去）。测试 tools/mock/wtfeel.lua；air.lua ⑤½ 改测提前量圈
+  - **已做**：机载雷达（用户 11-24 夜「雷达扫描图……为雷达锁定式导弹提供引导……39 机动」）——AirDefs 每型的 radar（pd / pulse、range / lock / az / el / notch），
+    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁、
+    雷达真跟踪着才报 lockOn；服务器 Air.lua 的 arhStep（数据链 → 惯导 → 开导引头、置零半秒丢）、flare 里箔条只骗开了导引头的雷达弹；Fx 画箔条云。
+    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 AirDefs 的 RADAR 表里给它配雷达
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
   - 铠甲-S1（pantsir，SanderWolf_ 的原模型）：车辆新武器种类 **sam**（地面车的地空导弹）——客户端 Drive.lua 要 AaFcs 的 Q 锁定（lockId）才发、消息带 tgt；
@@ -48,6 +59,23 @@
   - **已做**（①②）：FOB.lua、MapSands 的 BASES / FOB / baseW / HOTS、World 的地形顺序和地壳厚度、Round 的固定出生（base / baseAir）、Depots、Bots、
     AIVeh、Air、Fly、FortDefs。**动出生、车位、地形写法的先看一眼这几处**。
   - **已做**（③④）：World.lua 的 sandsCover（全图掩体、电线杆）、Warfx.lua 的积云（CloudBanks）
+- D（11-24 晚，用户给 D 的：「合并其他ai的成功 雕刻显示屏 给全游戏做流体优化以及各种3a游戏的那种优化」；前面还有「我需要你在原模型上雕刻显示屏哈」）：
+  ① 在原模型上雕刻显示屏：飞机转换时（tools/models/sf_air.py、air2glb.py）把仪表板网格按显示器矩形切开、往里挖槽（槽壁、槽底），
+     屏幕（SurfaceGui）放在槽底——先 F-16C，再歼-8II；F-15C / F-14A 的原模型没有座舱，照 carve.py 的路子从原模型挖座舱再刻屏。
+     **改 AirModels.lua 的 Pit / PitHud、InteriorDefs.lua 的 modelPit、ImportedAir 的 pitScr 前在这里写一笔**
+     **已做 F-16C**（fb39fd1：sf_air.py carve_rects，两块 MFD 刻进仪表板、屏幕在槽底；键名 f16_v2）；同一次还修了座舱盖玻璃是多边形（新导入件 optics/ip_canopy.glb）
+  ② **已做：流式加载（用户 11-24 晚改口：「我的意思是 streaming优化」）**——地点文件里 Workspace 开了 StreamingEnabled
+     （tools/build_rbxlx.py、build.luau：最小半径 512、目标半径 4096、ModelStreamingBehavior Improved、StreamOutBehavior LowMemory、StreamingIntegrityMode Disabled）。
+     客户端只有身边一片的地图零件和地形，**大家写代码注意**：
+     - 客户端打远处的射线（瞄准点、激光测距、标点、落点）用 `G.rayFar(起点, 向量, params)`（Client/Stream.lua），别直接 `workspace:Raycast`——
+       远处没加载的地形会打空；它先照常打，打空了按 `Map.rayGround`（Map.height 算的地形）找落点，返回跟 RaycastResult 一样用的表（多一个 far = true）。
+       两点之间的视线挡不挡用 `G.terrainBlocks(甲, 乙)`（只看 3000 格外的）
+     - 服务器建的、所有人一直要看得见的模型（实体代理 Ents、角色、舰队、据点已经做了）用 `G.persist(model)`（Ents.lua）；房子整栋用 Atomic（World.lua atomic）
+     - 客户端一次性扫 `workspace.Map:GetDescendants()` 的，开了 streaming 只扫得到身边的——要配 `DescendantAdded`（Night.lua 灯光那样）；
+       客户端别 `WaitForChild` 地图里的零件（远处的不会来，一直等）
+     - 玩家传到远处前 `G.streamAround(pl, 位置)`（Round.lua 出生已经加了）；遥控的东西飞远了 `G.streamFocus(pl, 零件, true/false)`（无人机已经加了）
+     - 模拟器 `R.streamSim = 半径` 假装客户端只有这么大一片（rbx.lua）；测试 tools/mock/stream.lua
+  ③ 还没做：流畅度（量每帧脚本时间挑热点）、流体效果（风场、尾迹、水柱、旋翼下洗）——用户说先做 streaming，这两样等用户再提
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、
@@ -60,8 +88,45 @@
      风挡 / 机身是一整块，掀不起来（要重切模型，没做）。测试 tools/test/ia_hatch.luau；预览 tools/mock/hatch_view.cjs。
      **改 View.lua 的 v.hullF / v.tF / v.recoil / v.shots、Armor / Air 的 seat（人挪到车根零件上）注意 Hatch.lua 在读**
   ④ 坦克车组小人（车外看得见：车长探出舱口等）、玩家第一人称是炮手但能开车（B 的车内饰那边 E 先读再动，改 Interior* 前在这里写一笔）；
-  ⑤ 各兵种配不同武器、改枪（E 正在做：新枪原模型走 tools/weapons/optics.json 那条管线）；
-  ⑥ ~~往战雷做~~——**用户 11-24 取消：「战雷那个不做了」**，谁也别再按「做成战争雷霆」去改（乘员 / 模块伤害、命中回放这些都不做）。
+  ⑤ 各兵种配不同武器、改枪：**阶段 A 已做**（b040fb4：9 把新枪原模型、兵种一排、霰弹枪弹丸、手枪双手握）；新枪的改枪配件位（GunMods）还没做——
+     用户 11-24 晚「你自己的先别动」，暂停。**已知问题**：optics/m17.glb 和 OpticMesh/m17.lua 里有两块空网格（Caa4、Cb73：dropBox 把三角形全删了、块还留着），
+     没导入 glb 时客户端现生成 M17 报「网格没有三角形」、退回零件拼的（模拟器测试里那条 m17 警告就是它），E 回头修；
+  ⑥ ~~往战雷做~~——用户 11-24 对 E 说过「战雷那个不做了」，之后又对 C 说「把整个游戏做成战雷」（见下面 C 那条，以用户最新这句为准，C 在做）。
+  ⑦ **已做（11-24 夜，用户：「目前游戏的优化没有效果 沙海地图还是加载不出来」，卡在「正在生成地图……%」，整个换的游戏文件）**：
+     原因：B 的「开服只写基地一带」只把起伏块挪到了后台，**全图平地还是开服前铺**——3 万多次 FillBlock、16 亿个体素（模拟器数的），
+     进度条涨 1% 要铺一千多次；Lune 里同一段 Luau 计算只要 30 秒，慢的是 Roblox 地形引擎铺地形。
+     改法（World.lua terrainDesert 整个重写，**B 改地形写法前先看这里**）：开服前只写两边主基地一带（Map.CORES 碰到的 2048 大块：平地小块按矩形合并、
+     圈里的起伏块写全）——FillBlock 1255 次、0.33 亿体素（1/49）；其余全在后台：① 真人、机器人、车、低飞的飞机身边 ±6 个小块（G.ents + 玩家角色）插队
+     ② 据点一带（Map.HOTS）写全 ③ 全图平地（起伏块先垫薄底）④ 剩下的起伏块（离据点近的先）；每帧 8 毫秒、每块之间都让。
+     开服打一行「[地形] 开服前写了基地一带：几次 FillBlock、平均每次几毫秒」，平均超过 40 毫秒 warn 提示查 SmoothVoxelsUpgraded；
+     tools/build.luau 往地点文件的 Terrain 写 `SmoothVoxelsUpgraded = false`（Roblox 员工在论坛说这是没做完的功能，开着时地形操作慢几千倍，要关着）。
+     **D 注意**：流式加载照旧开着（合进来了）；论坛 10 月公告说新地形（Workspace 的 Expanded Terrain）开着流式加载时，厚度不到 16 个体素的地形客户端可能看不见——
+     沙海地壳只有 4 个体素（B 为了快减的），现在 Expanded Terrain 默认不开，没事；谁要开它，得把地壳加厚。
+  ⑧ **已做（11-24 夜，用户：「我不想让准心控制飞机飞行方向」「我记得我让另一个 ai 改过」）**：固定翼默认改回纯键盘驾驶（Fly.lua `mouseAim = false`：
+     W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角）——用户 11-21 就要过「飞机改成 WASD 控制方向、不要准心控制」（855780d、f647e0e），
+     11-24 早上照战雷改（7ff77b0）时默认换成了鼠标瞄准。**A 注意：别再把默认改回鼠标瞄准**（想用的按 M 切）；键盘模式的按键说明 air.helpJetKb 跟上了
+     A 后来的机炮（顺着机头打、提前量圈）、滚轮油门、B 减速板。用户还说「飞机操作 ui 我记得有个版本已经改成战争雷霆的了，现在完全不是」——
+     查了全部分支的历史：飞机界面一直是 11-20 照 MWT 截图做的那套，从来没有整套改成战雷式的版本（战雷式的只有锁定方框、鼠标瞄准白圈、提前量圈、
+     轰炸瞄准镜、雷达告警、雷达屏、损伤图这些零件），已经跟用户说了、等用户定要不要整套换成战雷式。
+     模拟器 tools/mock/rbx.lua 补了 UDim2:Lerp（C 的锁定框红外导引头圈用；原来模拟器里每帧报错、飞机界面后半截不更新，真 Roblox 有这个方法）；
+     tools/mock/hudshot.lua 跟着只剩沙海改出生点。
+  ⑨ **已做（11-24 夜，用户发了 B 站战雷视频的截图：「战雷ui压根不是这样的」「那个雷达屏在右侧」「不同导弹有不同锁定范围 锁定前大圈和小圈都是白色的
+     锁定就都变成红色」「战雷不同的雷达会有不同的扫描图」「飞机本身会和自己的导弹形成数据链互相提供信息」「被发现那个标记移动到左侧」「尾喷也要重做」）**：
+     开飞机的界面换成战雷式——新模块 Client/WtFlight.lua（`G.wtFlightOn` 默认开，AirHud 每帧调 `G.wtFlightStep(st, info)`，开着时 AirHud 那套 MWT 式的
+     对开飞机的人收起来，乘客照旧）：左上参数表（节流阀 / 表速 / 速度 / 马赫数 / 海拔高 / 雷达高、每种弹一行、热焰弹、干扰箔、机炮、燃油量、每台发动机油温 /
+     引擎温度）、机头 ⊕、导弹大圈（导引头离轴角 w.cone，按镜头视场真实投影，不再至少八成屏高）小圈（锁定前白、锁上红）、锁定框（距离、接近速度、
+     高度差、目标飞向）、顶上航向罗盘、左边雷达告警圆盘（敌机雷达扫到你标型号、锁着你虚线、导弹打来 MSL 实线红闪；Fly.lua 收到 rwr / rwrLock 转给
+     `G.wtRwrEvent`）、底下「已选武器 / 导引头」。**A 注意：Radar.lua 的雷达屏改成了战雷式**（挪到右侧，SRC / TRK / TRK MEM + PD，方位 × 俯仰、
+     量程、俯仰刻度、天线俯仰标记，搜索目标一短横 / 选中「|—|」/ 跟踪方框 + 速度线；Alt+R 开关雷达（关着 `G.radarSees` 返回 false, "off"）、Alt+Q 量程、
+     Alt+T 换目标；`G.radarContacts()` 给航向罗盘）；数据链：自己打出去的主动雷达弹在屏上一个点、到目标一条线（开机前虚线 + 预计命中点小圈，
+     开机后实线，断了只剩小圈）——服务器 Air.lua arhStep 第一次开导引头时发 fx `shotAct`，客户端 Fx.lua 记 `fs.act`；shotFix 带 lost 时记 `fs.lost`。
+     **C 注意**：AirHud 里 C 的绿方框锁定（LockMark）在战雷式开着时收起来了（WtFlight 有自己的锁定框）；Fly.lua 那个绿大圈（HudRing）也收了。
+     TankHud 的飞机模式：圆形小地图挪到右上、「被发现!」挪到左边雷达告警圆盘右边；SquadHud 的小队名单开飞机时收起来（左上是参数表）。
+     尾焰（AirModels.lua）照新截图（米格-29）重做：喷口里开加力橙粉色，焰身一条长长的半透明橙色光柱（AbFill，满加力约七个喷口直径）+ 喷口后面
+     一截粉白焰芯（AbCore）；11-23 那版的蓝边管子（AbTube）、马赫环（MachRing / Mach 菱形光）不要了，tools/mock/airfx.lua ③ 跟着改。
+     方框上那个「大」字、方框下数字的确切含义资料里没有：下面那个数按截图推成「目标比你低多少（高度差）」；「大」没做。
+     测试：tools/mock/wtflight.lua（参数表各行、雷达屏 Alt+R / Alt+Q、红外弹圈白→红、告警圆盘、真打一发霹雳-15 看数据链虚线→实线）；
+     tools/mock/hudshot.lua 加了 rwr=1（告警圆盘有一架锁着你 + 导弹来袭）、dl=1（雷达屏上一发自己的弹）；hud_render.py 加 BIG=1（SS=2 时出 2560×1440 原尺寸，字清楚）。
 
 - C（11-24 夜，用户直接对 C 说「把整个游戏做成战雷」，C 问了范围，用户四项全勾：坦克平显战雷化、**乘员和模块伤害 + X 光命中回放**、
   对局玩法战雷化（占领点、兵力票、重生点数 SP、出击阵容、战后结算）、飞机补齐（部件受伤、起火、飞行员昏迷）——
@@ -91,6 +156,9 @@
 
 ## 合并记录
 
+- 11-24 夜 E 合 B（eef4629，里面有 A 905d5ee、C 05adba1）——快进；再合 D（480ac31：流式加载）：冲突只有客户端模块清单（D 的 Stream + C 的 Wt* + A 的 Radar 都留）、
+  ai_collab、导入说明（模型数用 D 的 131），游戏文件重新打包（b5d6c0f）。合完 E 改了沙海开服写地形（见上面 E ⑦）。
+
 - 11-24 C 合 B（c09069b：沙海全图掩体、积云）→ ceb10fc：冲突只有 island_assault_plan 一处（两段都留）。
 
 - 11-24 C 合 B（6970502：沙海两边主基地 FOB、只在自己基地出生、开服只写基地一带地形）→ 53793b0：冲突只有 PvE 第 11 关名字、几关简报
@@ -119,6 +187,20 @@
   冲突只有 Config 的 PvE 关卡表（B 把八关都挪到沙海，A 加到十六关、有编成——**用 A 的十六关**，岛上的七关改成沙海，名字、简报 Lang 里跟着改）、
   计划文档两段都留、游戏文件重新打包。合并后 B 顺手改了 A 挑的两条（见下面「A 看 B」4、5），Map.profile 等 MapSands 等到 60 秒、没载上不记死
   （同 E 给 MapRoads 加的：客户端一进游戏就 require Map，那时导入的网格还在往下传）。
+- 11-24 B 合 A（到 905d5ee，里面有 C 的战雷①～④：车辆伤害 + X 光回放、战雷坦克界面、SP / 出击阵容 / 结算页、飞机受伤；A 的战雷飞行手感、
+  机载雷达、各型导弹发动机 / 尾烟、streamaudit）：B 这边没有新提交，直接快进，没有冲突。合并后跑过 syntax、fob、sands、pve、mappick、wttank、
+  wtmatch、wtair、wtfeel、radar、streamaudit。
+  - 给 A（流式加载）：B 11-24 已经把「开服就写」的地形减到两边基地一带（Map.CORES，约 500 块），其余后台写、据点先（Map.HOTS）、有人去的地方插队
+    （World.lua terrainDesert），起伏块先垫底；地底只填到地面下 16 格。streamaudit 数出来的零件大头是 Scenery.Desert（两万四，其中 B 的全图掩体
+    sandsCover 约一万九）和两边 FOB（各八千三）——开流式加载时这几块都是纯摆设，可以放心让它流走；FOB 里的召唤位在 Map.Pads、工事在 Map.Defenses，
+    不在 Scenery 里。客户端的积云（Warfx.lua CloudBanks）是客户端自己摆的，不受流式加载影响。
+- 11-24 B 合 E（9fbc9b3，里面有 D 的流式加载、E 的沙海开服提速、飞机界面）：快进，全按 E 的来（用户：「看最新提交，所有一切就按照他的来」）。
+- **给大家（B，11-24：用户「现在所有显示屏的清晰度非常低」）**：Roblox 画 SurfaceGui / BillboardGui 的贴图预算是全场景共用的，3D 界面太多，
+  引擎就把所有 3D 界面一起降分辨率——车里、座舱的屏幕跟着糊。数出来原来整张图约 1200 个 BillboardGui（两座 FOB 九百多个小灯光晕、
+  空军基地跑道灯 186 个）、SurfaceGui 500 万像素（Forts.lua 雷区警示牌没设 CanvasSize，按默认 800 × 600 画，八块三百八十万）。
+  已改：FOB 的小灯、跑道灯大部分换成霓虹零件（每隔几盏留一个光晕给远处看），照明塔 / 路灯 / 探照灯是霓虹灯头 + 射灯、不带光晕；
+  FOB 牌子 PixelsPerStud 24 → 14、MaxDistance 150；警示牌 CanvasSize 64 × 44。合计 BillboardGui 205、SurfaceGui 50 万像素。
+  **以后加灯别再一盏一个 BillboardGui（World.light 那种），成批的用霓虹零件；新建 SurfaceGui 一定要设 CanvasSize 或 PixelsPerStud。**
 
 ## 挑刺
 
@@ -159,7 +241,13 @@ C 的锁定界面（345b7f9）方框、型号、距离、红外导引头圈都�
 
 ### B 看 A
 
-（请 B 填：A 的 blveh.py、blveh_meta.py、M1A1 炮塔转轴按座圈中心重新量的（x 0.043、z −0.796，以前 −0.303）、eralayout 只算一部分……）
+1. 请 A 看（11-24 B 合到 905d5ee 以后跑的；代码和 A 的分支一样，**不是合并弄坏的**——A 在 6597f4a 里也写了「这几个改动以后的测试还没重跑」）：
+   - `tools/mock/wtfeel.lua` 四项不过：⑤「拉到 4.6 g」（要 > 5）、「盘旋 5 秒：280 → 266 格/秒（掉 5%）」（要掉 25% 以上）、
+     ⑩「太慢还拉杆：失速了（0.00）」（stallK 没起来）、「一边机翼掉下去（坡度 −0° → 0°）」——像是 6597f4a「低速舵效再陡（1.1 倍失速速度只剩一半多）」
+     以后拉不动了：过载上不去、速度不掉，失速那段也就进不去。B 没动 Fly.lua（A 认领的飞行手感）。
+   - `tools/mock/radar.lua` 一项不过：「开了导引头的被箔条骗走了」（应该被骗走，没有）。
+   - 别的都过：syntax、fob、sands、pve、mappick、wttank、wtmatch、wtair、streamaudit。
+2. （以前留的，B 还没看：A 的 blveh.py、blveh_meta.py、M1A1 炮塔转轴按座圈中心重新量的（x 0.043、z −0.796，以前 −0.303）、eralayout 只算一部分……）
 
 ### E 看 B / D（11-24）
 

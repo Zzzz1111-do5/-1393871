@@ -250,7 +250,7 @@ function Sail.init(G)
     if me.Character then table.insert(ex, me.Character) end
     if G.viewFolder then table.insert(ex, G.viewFolder) end
     aimParams.FilterDescendantsInstances = ex
-    local res = workspace:Raycast(o, dir * 6000, aimParams)
+    local res = G.rayFar(o, dir * 6000, aimParams)   -- 开了 streaming：没加载的岸上按地形高度算（Stream.lua）
     if res then return res.Position end
     if dir.Y < -0.01 then   -- 没打到东西但朝下：落在海平面上
       local t = -o.Y / dir.Y

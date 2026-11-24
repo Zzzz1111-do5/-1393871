@@ -200,6 +200,11 @@ do
   UD2mt.__index = function(t, k)
     if k == "X" or k == "Width" then return newUDim(rawget(t, "_XS"), rawget(t, "_XO")) end
     if k == "Y" or k == "Height" then return newUDim(rawget(t, "_YS"), rawget(t, "_YO")) end
+    if k == "Lerp" then   -- 和真的一样：UDim2:Lerp(目标, 比例)（AirHud 红外导引头圈从机头滑到目标上用；原来模拟器里每帧报错、飞机界面后半截不更新）
+      return function(a, g, al)
+        return newUDim2(a._XS + (g._XS - a._XS) * al, a._XO + (g._XO - a._XO) * al, a._YS + (g._YS - a._YS) * al, a._YO + (g._YO - a._YO) * al)
+      end
+    end
     return base(t, k)
   end
 end
@@ -427,6 +432,7 @@ end
 
 -- 枚举：只认白名单里的名字（写错了就报错）
 local ENUMS = {
+  ModelStreamingMode = "Default Atomic Persistent PersistentPerPlayer Nonatomic",
   AspectType = "FitWithinMaxSize ScaleWithParentSize",
   DominantAxis = "Width Height",
   ScrollingDirection = "X Y XY",
@@ -1130,7 +1136,8 @@ def("Tool", "Model", { RequiresHandle = { T.bool, true }, CanBeDropped = { T.boo
   { events = { Activated = true, Deactivated = true, Equipped = true, Unequipped = true } })
 def("Backpack", "Instance", {}, { noCreate = true })
 def("StringValue", "Instance", { Value = { T.string, "" } })
-def("Model", "PVInstance", { PrimaryPart = { function(v) return v == nil or (typeof(v) == "Instance" and isA(v._cls, "BasePart")) end, nil }, WorldPivot = { T.CFrame, CFrame.new() } })
+def("Model", "PVInstance", { PrimaryPart = { function(v) return v == nil or (typeof(v) == "Instance" and isA(v._cls, "BasePart")) end, nil }, WorldPivot = { T.CFrame, CFrame.new() },
+  ModelStreamingMode = { E("ModelStreamingMode"), Enum.ModelStreamingMode.Default } })
 def("Folder", "Instance", {})
 def("JointInstance", "Instance", {
   Part0 = { function(v) return v == nil or (typeof(v) == "Instance" and isA(v._cls, "BasePart")) end, nil },
@@ -1484,6 +1491,27 @@ local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity 
       local t0 = os.clock()
       local res = R.castRay(origin, dir, params)
       R.rayT, R.rayN = R.rayT + (os.clock() - t0), R.rayN + 1
+      -- R.streamSim = 半径（格）：假装开着 streaming——客户端打到的地形、地图零件离本机玩家（没有角色就是镜头）超过这个半径的算没加载，打空；
+      --   Persistent 的 Model（实体代理、角色、舰队、据点）里的照样打得到（tools/mock/stream.lua）
+      if res and R.streamSim and side() == "client" then
+        local keep = false
+        local m = res.Instance
+        while m and m ~= R.workspace do
+          if m:IsA("Model") and m.ModelStreamingMode == Enum.ModelStreamingMode.Persistent then keep = true break end
+          m = m.Parent
+        end
+        if not keep then
+          local lp = R.localPlayer
+          local ch = lp and lp.Character
+          local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+          local cam = R.workspace.CurrentCamera
+          local focus = (hrp and hrp.Position) or (cam and cam.CFrame.Position) or origin
+          if (res.Position - focus).Magnitude > R.streamSim then
+            R.streamDrop = (R.streamDrop or 0) + 1
+            return nil
+          end
+        end
+      end
       return res
     end
     if hit and params and params.FilterType == Enum.RaycastFilterType.Include then
@@ -2048,6 +2076,25 @@ def("Player", "Instance", { Character = { T.Instance, nil }, Team = { T.Instance
   RespawnLocation = { T.Instance, nil }, CameraMaxZoomDistance = { T.number, 128 }, CameraMinZoomDistance = { T.number, 0.5 }, HealthDisplayDistance = { T.number, 100 }, NameDisplayDistance = { T.number, 100 } }, { noCreate = true, events = { CharacterAdded = true, CharacterRemoving = true }, ro = {
   UserId = function(o) return o._uid end, DisplayName = function(o) return o._p.Name end,
 }, methods = {
+  -- 流式加载（Workspace.StreamingEnabled）：模拟器里整个世界本来就都在，这里只检查参数、记一笔（R.streamLog，测试看服务器有没有预加载、加加载中心）
+  RequestStreamAroundAsync = function(o, pos, timeout)
+    if side() ~= "server" then error("RequestStreamAroundAsync 只能在服务器调用", 2) end
+    if typeof(pos) ~= "Vector3" or (timeout ~= nil and type(timeout) ~= "number") then error("RequestStreamAroundAsync(Vector3, 秒) 参数不对", 2) end
+    R.streamLog = R.streamLog or {}
+    table.insert(R.streamLog, { op = "around", pl = o, pos = pos })
+  end,
+  AddReplicationFocus = function(o, part)
+    if side() ~= "server" then error("AddReplicationFocus 只能在服务器调用", 2) end
+    if typeof(part) ~= "Instance" or not isA(part._cls, "BasePart") then error("AddReplicationFocus(BasePart) 参数不对", 2) end
+    R.streamLog = R.streamLog or {}
+    table.insert(R.streamLog, { op = "add", pl = o, part = part })
+  end,
+  RemoveReplicationFocus = function(o, part)
+    if side() ~= "server" then error("RemoveReplicationFocus 只能在服务器调用", 2) end
+    if typeof(part) ~= "Instance" or not isA(part._cls, "BasePart") then error("RemoveReplicationFocus(BasePart) 参数不对", 2) end
+    R.streamLog = R.streamLog or {}
+    table.insert(R.streamLog, { op = "remove", pl = o, part = part })
+  end,
   LoadCharacter = function(o)
     if side() ~= "server" then error("LoadCharacter 只能在服务器调用", 2) end
     if o._p.Character then base.Destroy(o._p.Character) end
@@ -2298,6 +2345,7 @@ R.Vector3 = Vector3
 R.Vector2 = Vector2
 R.CFrame = CFrame
 R.Instance = Instance
+R.RaycastParams = RaycastParams   -- 测试里造射线参数（tools/mock/stream.lua）
 R.Color3 = Color3
 R.base = base
 return R

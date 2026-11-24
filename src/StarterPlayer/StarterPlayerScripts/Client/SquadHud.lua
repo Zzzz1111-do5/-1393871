@@ -153,7 +153,9 @@ function SquadHud.init(G)
     local menu = (G.menuShown and G.menuShown()) or false
     local myCh = player.Character
     local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
-    panel.Visible = sq ~= nil and not menu and myHrp ~= nil
+    -- 开飞机、战雷式界面（WtFlight.lua）开着时左上是参数表：小队名单先收起来
+    local flying = G.wtFlightOn and G.fly ~= nil and G.fly.pilot == true
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying
     title.Text = sq and T("squad.title", sq) or ""
     local seen = {}
     for i, pl in ipairs(list) do

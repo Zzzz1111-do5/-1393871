@@ -244,17 +244,20 @@ function TankHud.init(G)
   -- 小地图挪到左下（开坦克）/ 左上（开飞机）变圆 / 恢复
   local docked, saved, dockAir = false, nil, false
   local AIR_X, AIR_Y = 64, 62   -- 飞机：左上，让开 Roblox 自己的按钮那一排、左上角的菜单键（≡）
+  -- 战雷式界面开着（WtFlight.lua，用户 11-24 夜发的战雷截图）：飞机的圆形小地图在右上（左上是参数表）
+  local AIR_RX = 26
+  local function airPos() if G.wtFlightOn then return V2(1, 0), UD2(1, -AIR_RX, 0, AIR_Y) end return V2(0, 0), UD2(0, AIR_X, 0, AIR_Y) end
+  local function airRing() if G.wtFlightOn then return UD2(1, -AIR_RX - MS / 2, 0, AIR_Y + MS / 2) end return UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) end
   local function dock(on, air)
     if mobile then on = false end
     air = on and air == true
     if on and docked and air ~= dockAir then   -- 坦克 ↔ 飞机：只换位置
       local box = G.hudParts and G.hudParts.miniBox
       if box then
-        box.AnchorPoint = air and V2(0, 0) or V2(0, 1)
-        box.Position = air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26)
+        if air then box.AnchorPoint, box.Position = airPos() else box.AnchorPoint, box.Position = V2(0, 1), UD2(0, 26, 1, -26) end
       end
       dockAir = air
-      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ring.Position = air and airRing() or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
       ringLook(air)
       return
     end
@@ -274,9 +277,10 @@ function TankHud.init(G)
     if on then
       saved = { a = box.AnchorPoint, p = box.Position, s = box.Size, r = corner and corner.CornerRadius,
         rr = G.hudLayout and G.hudLayout.radarRight, sq = squad and squad.Visible }
-      box.AnchorPoint, box.Position, box.Size = air and V2(0, 0) or V2(0, 1), air and UD2(0, AIR_X, 0, AIR_Y) or UD2(0, 26, 1, -26), UDim2.fromOffset(MS, MS)
+      if air then box.AnchorPoint, box.Position = airPos() else box.AnchorPoint, box.Position = V2(0, 1), UD2(0, 26, 1, -26) end
+      box.Size = UDim2.fromOffset(MS, MS)
       dockAir = air
-      ring.Position = air and UD2(0, AIR_X + MS / 2, 0, AIR_Y + MS / 2) or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
+      ring.Position = air and airRing() or UD2(0, 26 + MS / 2, 1, -26 - MS / 2)
       ringLook(air)
       if corner then corner.CornerRadius = UDim.new(0.5, 0) end
       if G.hudLayout then G.hudLayout.radarRight = false end
@@ -314,7 +318,7 @@ function TankHud.init(G)
   local function clear(from, to, target, st)
     rp.FilterDescendantsInstances = excludeList(st)
     local hit = workspace:Raycast(from, to - from, rp)
-    if not hit then return true end
+    if not hit then return not (G.terrainBlocks and G.terrainBlocks(from, to)) end   -- 开了 streaming：远处没加载的山也挡（Stream.lua）
     local e = entOf(hit.Instance)
     return e ~= nil and e == target
   end
@@ -439,7 +443,8 @@ function TankHud.init(G)
       spotTxt.Text = T("vh.spotted")
       local a = math.clamp((t - spotT0) / 0.22, 0, 1)
       local e = 1 - (1 - a) * (1 - a)
-      local base = (air and docked) and UD2(0, AIR_X + 4, 0, AIR_Y + MS + 34) or spotX   -- 飞机：左上圆形雷达的正下方（照 MWT 截图）
+      -- 飞机：左上圆形雷达的正下方（照 MWT 截图）；战雷式界面开着时在左边雷达告警圆盘的右边（用户 11-24 夜：「被发现那个标记移动到左侧」）
+      local base = (air and docked) and (G.wtFlightOn and UD2(0, 214, 0.5, 58) or UD2(0, AIR_X + 4, 0, AIR_Y + MS + 34)) or spotX
       spot.Position = base + UD2(0, -40 * (1 - e), 0, 0)
       streak.Size = UDim2.fromOffset(34 + 60 * (1 - e), 2)
       local pulse = 0.5 + 0.5 * math.sin(t * 5)

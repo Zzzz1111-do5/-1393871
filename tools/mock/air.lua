@@ -54,7 +54,7 @@ local has = false
 for _, id in ipairs(C.S.vehModels or {}) do if id == jetId then has = true end end
 check(has, "能用的型号里有 " .. jetId .. "：" .. table.concat(C.S.vehModels or {}, ","))
 check(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap >= 1, "固定翼名额 " .. tostring(C.S.vehAvail and C.S.vehAvail.jet and C.S.vehAvail.jet.cap))
-T.act("deploy", "rifle", (side == "atk") and "af2" or "afield")   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
+T.act("deploy", "rifle", G.Map.LANDONLY and "baseAir" or ((side == "atk") and "af2" or "afield"))   -- 攻方机场岛（歼-20 是陆基飞机）/ 守方机场（据点 D）
 R.run(2)
 check(P.alive and P.vehicle == nil, "步兵出生了")
 local jp = T.pad(jetId)
@@ -418,64 +418,66 @@ if fst and e then
   R.run(0.5)
 end
 
-print("⑤½ 机炮黏住目标（用户 11-21：机炮也能像 MWT 那样黏在载具上）")
+print("⑤½ 战雷式机炮（用户 11-24 夜「把飞机的驾驶感完全还原战争雷霆」）：顺着机头打、不黏目标；敌机前面画提前量小圈")
 if fst and e then
   R.run(0.5)
   local ents = R.workspace:FindFirstChild("Ents")
-  local fake = R.Instance.new("Model")
-  fake.Name = "FakeTank"
-  local root = R.Instance.new("Part")
-  root.Name = "Root"
-  root.Size = V3(8, 6, 14)
-  root.Anchored = true
-  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 900 + fst.cf.RightVector * 40)   -- 机头右边 2.5°、900 格
-  root.Parent = fake
-  fake:SetAttribute("Kind", "veh")
-  fake:SetAttribute("Team", (me:GetAttribute("Side") == "atk") and "def" or "atk")
-  fake:SetAttribute("Hp", 100)
-  fake:SetAttribute("EntId", 99901)
-  fake.Parent = ents
+  local function fakeEnt(kind, offset, id)
+    local fake = R.Instance.new("Model")
+    fake.Name = "Fake" .. kind
+    local root = R.Instance.new("Part")
+    root.Name = "Root"
+    root.Size = V3(8, 6, 14)
+    root.Anchored = true
+    root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf:VectorToWorldSpace(offset))
+    root.Parent = fake
+    fake:SetAttribute("Kind", kind)
+    fake:SetAttribute("Team", (me:GetAttribute("Side") == "atk") and "def" or "atk")
+    fake:SetAttribute("Hp", 100)
+    fake:SetAttribute("EntId", id)
+    fake.Parent = ents
+    return fake, root
+  end
   local gun0 = fst.d.gun
   fst.d.gun = gun0 or "gsh30"   -- 歼-20 没有内置机炮：这一段借一门 30 毫米炮来测（测完还原）
+  -- 敌方坦克在机头前方 2.5°：战雷不黏（MWT 那套关了），瞄准点不偏过去
+  local tank = fakeEnt("veh", V3(40, 0, -900), 99901)
   R.run(0.4)
-  check(fst.stick ~= nil and fst.stick.em == fake, "机头前方 2.5° 的敌方坦克：机炮黏上去了")
-  local function aimRingShown()   -- AirHud 的准星圈（ImageLabel，T.findNamed 只找按钮）
-    for _, g in ipairs(R.localPlayer.PlayerGui:GetDescendants()) do
-      if g.Name == "AimRing" and g.ClassName == "ImageLabel" and T.visible(g) then return g end
-    end
+  check(fst.stick == nil and fst.lead == nil, "机头前方的敌方坦克：机炮不黏、地面目标不画提前量圈（战雷那样）")
+  R.run(0.3)
+  check(e.stick ~= true, "服务器那边机炮照机头打（没有「黏住」）")
+  tank:Destroy()
+  -- 敌机在机头前方 10°、1000 格：画提前量圈（AirHud 的 LeadMark），旁边写距离
+  local plane, proot = fakeEnt("air", V3(170, 20, -1000), 99902)
+  R.run(0.4)
+  check(fst.lead ~= nil and fst.lead.em == plane, "机头前方 10° 的敌机：算了提前量")
+  local lm = nil
+  for _, g in ipairs(R.localPlayer.PlayerGui:GetDescendants()) do
+    if g.Name == "LeadMark" and T.visible(g) then lm = g end
   end
-  local ring = aimRingShown()
-  check(ring ~= nil, "黏住时准星圈画在目标上")
-  if ring and fst.stick then
+  check(lm ~= nil, "平显上画着提前量小圈")
+  if lm and fst.lead then
     local cam2 = R.workspace.CurrentCamera
-    local sp = cam2:WorldToViewportPoint(fst.stick.lead)
+    local sp = cam2:WorldToViewportPoint(fst.lead.lead)
     local vp = cam2.ViewportSize
-    local pos = ring.Position
+    local pos = lm.Position
     local dx = pos.X.Scale * vp.X + pos.X.Offset - sp.X
     local dy = pos.Y.Scale * vp.Y + pos.Y.Offset - sp.Y
-    check(math.sqrt(dx * dx + dy * dy) < 6, string.format("准星圈在提前量那一点上（差 %.1f 像素）", math.sqrt(dx * dx + dy * dy)))
+    check(math.sqrt(dx * dx + dy * dy) < 6, string.format("小圈在提前量那一点上（差 %.1f 像素）", math.sqrt(dx * dx + dy * dy)))
+    local rt = lm:FindFirstChild("LeadRange")
+    check(rt and rt.Text:match("%d") ~= nil, "旁边写着距离（米）：" .. tostring(rt and rt.Text))
   end
-  if fst.stick then
-    local to = (fst.stick.lead - fst.cf.Position).Unit
-    local off = math.deg(math.acos(math.max(-1, math.min(1, to:Dot(fst.cf.LookVector)))))
-    check(off > 1 and off < 12, string.format("瞄准点在提前量上（离机头 %.1f°，服务器 12° 以内照着打）", off))
-  end
+  -- 偏到 26° 以外不画；队友的飞机不画
+  proot.CFrame = R.CFrame.new(fst.cf.Position + fst.cf:VectorToWorldSpace(V3(600, 0, -700)))   -- 约 40°
   R.run(0.3)
-  check(e.stick == true and e.aim ~= nil, "服务器收到了「黏住了」和瞄准点")
-  -- 偏到 9° 以外松开；队友的车不黏
-  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 600 + fst.cf.RightVector * 150)   -- 约 14°
+  check(fst.lead == nil, "敌机偏到 26° 以外：不画")
+  proot.CFrame = R.CFrame.new(fst.cf.Position + fst.cf:VectorToWorldSpace(V3(0, 0, -900)))
+  plane:SetAttribute("Team", me:GetAttribute("Side"))
   R.run(0.3)
-  check(fst.stick == nil, "目标偏到 9° 以外：松开了")
-  root.CFrame = R.CFrame.new(fst.cf.Position + fst.cf.LookVector * 900)
-  fake:SetAttribute("Team", me:GetAttribute("Side"))
-  R.run(0.3)
-  check(fst.stick == nil, "自己队的车不黏")
-  fake:Destroy()
-  R.run(0.3)
-  check(aimRingShown() == nil, "没黏住：准星圈收起来")
+  check(fst.lead == nil, "自己队的飞机不画")
+  plane:Destroy()
   fst.d.gun = gun0
 end
-
 print("⑤¾ 战雷式鼠标瞄准（用户 11-24：「飞机……改成战雷一模一样的，包括操作细节和手感」）：鼠标给方向、教官追过去；按方向键直接操纵；M 切换")
 if fst and e and C.flyMouseAim and not fst.ground then
   T.tap(Enum.KeyCode.M)

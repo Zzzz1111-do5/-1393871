@@ -117,6 +117,50 @@ for id, w in pairs(AirDefs.W) do
     w.burn = (w.burn or 3) * (0.6 + 0.4 * k)
   end
 end
+-- 各型导弹的发动机、尾烟、能量（用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）——服务器 Air.lua 按它飞、客户端 Fx.lua 按它画尾烟：
+--   burn 发动机烧几秒（烧完不冒烟、不发光，靠惯性滑翔）；pulse 双脉冲（{ at = 第几秒点第二次, t = 烧几秒 }：霹雳-15）；
+--   cruise 涡喷一直开（巡航弹，匀速飞），boost 它起飞那一下助推几秒（浓烟）；speed 最快（格 / 秒，不写照上面）；
+--   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
+--   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
+local MOTOR = {
+  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
+  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
+  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
+  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low" },
+  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med" },
+  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
+  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
+  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
+  s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
+  akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
+  agm114 = { burn = 3.0, g = 15, bleed = 0.07, smoke = "med" },
+  agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
+  kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
+  yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },
+  yj91 = { burn = 8, g = 12, bleed = 0.05, smoke = "med" },
+  agm88 = { burn = 7, g = 15, bleed = 0.05, smoke = "med" },
+}
+for wid, m in pairs(MOTOR) do
+  local w = AirDefs.W[wid]
+  if w then
+    for k, v in pairs(m) do w[k] = v end
+  end
+end
+-- 这一刻发动机开着没（尾焰、尾烟、加速都按它）：助推 / 主发动机、双脉冲的第二次、巡航弹一直开
+function AirDefs.motorOn(w, t)
+  if not w then return false end
+  if w.cruise then return true end
+  if t < (w.burn or 3) then return true end
+  local p = w.pulse
+  return p ~= nil and t >= p.at and t < p.at + p.t
+end
+-- 尾烟浓不浓（low / med / heavy）：巡航弹起飞那一下是助推器的浓烟
+function AirDefs.smokeOf(w, t)
+  if not w then return "med" end
+  if w.cruise and t < (w.boost or 0) then return "heavy" end
+  return w.smoke or "med"
+end
+
 -- 每个挂点每种武器挂几枚（多联挂架）：没写就是 1；火箭巢是一个巢（弹数在 tubes）
 local function N(t) return t end
 
@@ -555,9 +599,42 @@ D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp =
 
 ---------------------------------------------------------------- 补默认值
 
+-- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
+--   kind pd 脉冲多普勒（有源相控阵也是）：能下视，但会滤掉相对地面的径向速度太小的目标——目标把你放在 3 点 / 9 点方向侧着飞（置零、3/9 机动），
+--     径向速度掉到 notch（格 / 秒）以下就从雷达屏上消失、锁不住，已经锁着的丢锁；
+--   kind pulse 脉冲（老雷达）：不怕置零，但往下看（目标比自己低、背景是地面）有地杂波，低空的目标看不见；
+--   range 搜索距离、lock 能锁定（单目标跟踪 STT）的距离（格）；az / el 方位、俯仰扫描 ±度。没写的飞机没有对空雷达（A-10、轰炸机、无人机、直升机）
+--   客户端 Radar.lua 画雷达屏（B 显：横轴方位、竖轴距离）、Fly.lua 雷达弹只能锁雷达看得见的；服务器 Air.lua 的雷达弹按发射机的雷达跟踪（数据链）飞、
+--   近了自己开导引头（act），也会被置零、箔条骗
+local function radar(name, kind, range, lock, az, el, notch)
+  return { name = name, kind = kind, range = range, lock = lock, az = az, el = el, notch = notch }
+end
+local RADAR = {
+  j20 = radar("KLJ-5 有源相控阵", "pd", 16000, 13000, 60, 45, 45),
+  j35 = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j15t = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j16 = radar("有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  j11 = radar("1474 型脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  j10 = radar("KLJ-10 有源相控阵", "pd", 13000, 10500, 60, 45, 45),
+  j36 = radar("有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  j8 = radar("SL-8A 脉冲", "pulse", 8000, 6000, 45, 30, 0),
+  f35 = radar("AN/APG-81 有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  f22 = radar("AN/APG-77 有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  f16 = radar("AN/APG-68 脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  f15 = radar("AN/APG-63 脉冲多普勒", "pd", 13000, 10500, 60, 40, 60),
+  f14 = radar("AN/AWG-9 脉冲多普勒", "pd", 18000, 14000, 65, 40, 60),
+}
+-- 雷达弹（主动雷达）：act 离目标多近自己开导引头（之前按发射机雷达的跟踪走数据链）、notch 导引头的置零门限（格 / 秒）
+local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 } }
+for wid, a in pairs(ARH) do
+  local w = AirDefs.W[wid]
+  if w then w.act, w.notch = a.act, a.notch end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
+  d.radar = d.radar or RADAR[id]
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
     d.vRot = d.stall * 1.5   -- 抬头离地的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）

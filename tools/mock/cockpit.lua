@@ -12,6 +12,9 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local AIR = TEST_ARGS:match("air=(%w+)") or "j20"
+-- canopy=noedit：没开 Mesh / Image API（EditableMesh 拼不成）；canopy=imp：同时假装导入了光滑座舱盖 models/optics/ip_canopy.glb
+--   （用户 11-24 晚：「目前飞机驾驶舱玻璃都是多边形 第一人称看非常难受」）
+local CANOPY = TEST_ARGS:match("canopy=(%w+)")
 local US = { f35 = true, f22 = true, f16 = true, f15 = true, f14 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
 local side = US[AIR] and "def" or "atk"
 -- imp=1：假装 Studio 里导入了这型飞机的原模型（照 ImportedAir 元数据摆一套同名的 MeshPart，开服时收进 Imported），走原模型那条路
@@ -51,7 +54,7 @@ R.run(1)
 local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
 T.runUntil(function() return G.round.phase == "battle" end, 90)   -- 守方机场准备阶段不能出生
-T.actAs(me, "deploy", "rifle", (side == "atk") and "af2" or "afield")
+T.actAs(me, "deploy", "rifle", G.Map.LANDONLY and "baseAir" or ((side == "atk") and "af2" or "afield"))
 R.run(1.5)
 check(P.alive and me.Character ~= nil, "在机场出生了")
 local cam = R.workspace.CurrentCamera
@@ -89,6 +92,27 @@ local fst = C.fly
 check(P.vehicle == e and fst ~= nil and fst.pilot, "坐上了 " .. AIR)
 T.runUntil(function() return G.round.phase == "battle" end, 60)
 if not fst then T.summary() return end
+local edit0 = R.editStats.meshes
+if CANOPY == "noedit" or CANOPY == "imp" then R.noEditable = true end
+if CANOPY == "imp" then   -- 照 OpticsMeta 在 ReplicatedStorage.Imported.Optics.ip_canopy 摆一块同名、同尺寸的 MeshPart
+  local RS = R.services.ReplicatedStorage
+  local OM = R.require(RS:FindFirstChild("OpticsMeta"))
+  local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
+  imp.Name = "Imported"
+  imp.Parent = RS
+  local of = imp:FindFirstChild("Optics") or R.Instance.new("Folder")
+  of.Name = "Optics"
+  of.Parent = imp
+  local f = R.Instance.new("Folder")
+  f.Name = "ip_canopy"
+  for name, pi in pairs(OM.ip_canopy.parts) do
+    local mp = R.Instance.new("MeshPart")
+    mp.Name = "O_ip_canopy__" .. name
+    mp.Size = V3(pi.s[1], pi.s[2], pi.s[3])
+    mp.Parent = f
+  end
+  f.Parent = of
+end
 T.tap(Enum.KeyCode.V)
 R.run(0.6)
 local I = C.interiorState()
@@ -134,12 +158,40 @@ local scr = 0
 for _, g in ipairs(cur.spec.glass or {}) do
   local sg = g:FindFirstChildOfClass("SurfaceGui")
   if sg and #sg:GetChildren() >= 20 then scr = scr + 1 end
-  check(g.Material == Enum.Material.Glass, "玻璃是 Glass 材质（看出去有折射）")
+  if CANOPY == "noedit" then   -- 拼不成光滑座舱盖：平板（带划痕的这几块也是）改成几乎全透的塑料（玻璃材质一块一块各折射，棱全看得见）
+    check(g.Material == Enum.Material.SmoothPlastic and g.Transparency >= 0.97, "没开 Mesh API：带划痕的平板也几乎全透（看不出棱）")
+  else
+    check(g.Material == Enum.Material.Glass, "玻璃是 Glass 材质（看出去有折射）")
+  end
   break
 end
 if not MP then check(scr == 1, "玻璃上有划痕、污渍") end
 -- 用户 11-22：「飞机不要搞多边形的座舱盖，一反光看着太难受了，就要弧形」——一整块光滑网格（EditableMesh），平板不画（带划痕的只剩划痕）
-if cur.spec.canopy then
+if cur.spec.canopy and CANOPY == "noedit" then
+  -- 拼不成光滑座舱盖：144 块平板改成几乎全透、不反光的塑料（看不出棱），只剩划痕
+  local bad = 0
+  for _, p in ipairs(cur.spec.canopy.panes or {}) do
+    if p.Material ~= Enum.Material.SmoothPlastic or p.Transparency < 0.97 or p.Reflectance > 0 then bad = bad + 1 end
+  end
+  check(cur.canopyMesh == nil and #(cur.spec.canopy.panes or {}) > 100 and bad == 0,
+    string.format("没开 Mesh API：平板几乎全透、不反光（%d 块里 %d 块不对）", #(cur.spec.canopy.panes or {}), bad))
+  check(cur.spec.glass[1] and cur.spec.glass[1]:FindFirstChildOfClass("SurfaceGui") ~= nil, "划痕还在")
+elseif cur.spec.canopy and CANOPY == "imp" then
+  local cm = cur.canopyMesh
+  check(cur.spec.canopy.std == true, "这型的座舱盖是标准曲面（和 ip_canopy 一样）")
+  check(cm ~= nil and cm.Name == "CanopySmooth" and cm.Parent == cur.model and cm.Material == Enum.Material.Glass and R.editStats.meshes == edit0,
+    "没开 Mesh API 也用上了导入的光滑座舱盖（O_ip_canopy__Glass），没现拼网格")
+  local panesOff = 0
+  for _, p in ipairs(cur.spec.canopy.panes or {}) do if p.Transparency >= 1 then panesOff = panesOff + 1 end end
+  check(panesOff == #(cur.spec.canopy.panes or {}), "平板玻璃不画了")
+  if cm then
+    local v = C.viewById(e.id)
+    local rel = cur.b.groups.hull.world:PointToObjectSpace(cm.Position)
+    local OM = R.require(R.services.ReplicatedStorage:FindFirstChild("OpticsMeta"))
+    local c0 = OM.ip_canopy.parts.Glass.c
+    check((rel - V3(c0[1], c0[2], c0[3])).Magnitude < 0.05, string.format("摆在座舱里该在的地方（差 %.3f 格）", (rel - V3(c0[1], c0[2], c0[3])).Magnitude))
+  end
+elseif cur.spec.canopy then
   local cm = cur.canopyMesh
   local panesOff = 0
   for _, p in ipairs(cur.spec.canopy.panes or {}) do if p.Transparency >= 1 then panesOff = panesOff + 1 end end

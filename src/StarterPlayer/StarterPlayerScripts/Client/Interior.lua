@@ -999,7 +999,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       local v = G.viewById and G.viewById(c.id)
       if v and v.model then table.insert(ex, v.model) end
       rp.FilterDescendantsInstances = ex
-      local res = workspace:Raycast(d.citvEye, d.citvF * (5000 * S), rp)
+      local res = G.rayFar(d.citvEye, d.citvF * (5000 * S), rp, true)   -- 车长周视镜激光：远处没加载的山坡按地形高度算回波（Stream.lua）
       c.citvRT = os.clock()
       if res then
         local m = (res.Position - d.citvEye).Magnitude / S
@@ -1989,7 +1989,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         if st.em then table.insert(ex, st.em) end
         if me.Character then table.insert(ex, me.Character) end
         rayP.FilterDescendantsInstances = ex
-        local hit = workspace:Raycast(o3, dir * 3000, rayP)
+        local hit = G.rayFar(o3, dir * 3000, rayP)
         local pt = hit and hit.Position or (o3 + dir * 3000)
         if R then st.rwsPt = pt else st.aimPt = pt end
       end
@@ -2089,10 +2089,45 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   --   玻璃材质的折射也跟着曲面走——从里面看出去外面的东西带一点点畸变（用户 11-22：「视角带点畸变」）。
   --   拼成了原来的平板就不画（带划痕的几块透明度 1，只留划痕）；拼不成（Studio 游戏设置 → 安全里没开 Mesh / Image API）：还用平板，反光调弱
   local meshWarned = false
+  -- 拼不成光滑座舱盖时的平板（用户 11-24 晚：「目前飞机驾驶舱玻璃都是多边形 第一人称看非常难受」）：玻璃材质每块平板各折射、各反光，
+  --   144 块的棱全看得见——改成几乎全透、不反光的塑料（看不出棱），只留带划痕那几块上的划痕、污渍（SurfaceGui，照样看得见）
+  local function flatPanes(cp)
+    for _, p in ipairs(cp.panes or {}) do
+      p.Material = Enum.Material.SmoothPlastic
+      p.Reflectance = 0
+      p.Transparency = 0.975
+    end
+  end
+  -- 摆好一块光滑座舱盖（导入的、现生成的都走这里）：玻璃材质、按机型的颜色透明度；off 是它在座舱（hull 组）里的位置
+  local function useCanopy(c, cp, mp, off)
+    mp.Name = "CanopySmooth"
+    mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch, mp.CastShadow = true, false, false, false, false
+    mp.Material = Enum.Material.Glass
+    mp.Color = cp.color or RGB(54, 62, 68)
+    mp.Transparency = cp.trans or 0.88
+    mp.Reflectance = cp.refl or 0.1
+    local hw = c.b.groups.hull.world   -- 刚拼好座舱、还没摆过一帧时是空的：下一帧 pose 摆
+    if hw then mp.CFrame = hw * off end
+    mp.Parent = c.model
+    table.insert(c.b.parts, { mp, c.b.groups.hull, off })
+    c.plist[#c.b.parts] = mp
+    for _, p in ipairs(cp.panes or {}) do p.Transparency = 1 end   -- 平板不画了（带划痕的几块只剩划痕）
+    c.canopyMesh = mp
+  end
   local function smoothCanopy(c)
     local cp = c.spec.canopy
     if not cp or c.canopyTried then return end
     c.canopyTried = true
+    -- ① 导入的光滑座舱盖（models/optics/ip_canopy.glb，tools/weapons/gen_canopy.mjs 生成的同一个曲面）：不用 Mesh / Image API 也有
+    if cp.std and G.opticParts and G.opticReady and G.opticReady("ip_canopy") then   -- 没导入、也没生成好：别让 Optics 再现生成一份（下面自己拼）
+      local list = G.opticParts("ip_canopy")
+      local it = list and list[1]
+      if it and it.part then
+        for i = 2, #list do list[i].part:Destroy() end
+        useCanopy(c, cp, it.part, it.cf)   -- 器材坐标（格）就是座舱坐标 × 2.8；导入的 cf 里补回了转掉的半圈
+        return
+      end
+    end
     task.spawn(function()
       local ok, mp, ctr = pcall(function()
         local AS = game:GetService("AssetService")
@@ -2143,28 +2178,15 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         return part, center
       end)
       if not ok or not mp then
-        for _, p in ipairs(cp.panes or {}) do p.Reflectance = math.min(p.Reflectance, 0.035) end
+        flatPanes(cp)
         if not meshWarned then
           meshWarned = true
-          warn("[座舱] 光滑座舱盖生成不了（还用平板拼的；在 Studio 的游戏设置 → 安全里打开 Mesh / Image API）：" .. tostring(mp))
+          warn("[座舱] 光滑座舱盖生成不了（平板改成几乎全透；导入 models/optics/ip_canopy.glb，或者在 Studio 的游戏设置 → 安全里打开 Mesh / Image API）：" .. tostring(mp))
         end
         return
       end
       if cur ~= c or not c.model then mp:Destroy() return end
-      mp.Name = "CanopySmooth"
-      mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch, mp.CastShadow = true, false, false, false, false
-      mp.Material = Enum.Material.Glass
-      mp.Color = cp.color or RGB(54, 62, 68)
-      mp.Transparency = cp.trans or 0.88
-      mp.Reflectance = cp.refl or 0.1
-      local off = CF(ctr)
-      local hw = c.b.groups.hull.world   -- 刚拼好座舱、还没摆过一帧时是空的：下一帧 pose 摆
-      if hw then mp.CFrame = hw * off end
-      mp.Parent = c.model
-      table.insert(c.b.parts, { mp, c.b.groups.hull, off })
-      c.plist[#c.b.parts] = mp
-      for _, p in ipairs(cp.panes or {}) do p.Transparency = 1 end   -- 平板不画了（带划痕的几块只剩划痕）
-      c.canopyMesh = mp
+      useCanopy(c, cp, mp, CF(ctr))
     end)
   end
   -- 划痕反光：迎着日 / 月光（夜里还有照明弹）看过去，玻璃上的细划痕亮起来；每道按自己的方向闪（头一动一闪一闪）

@@ -22,9 +22,9 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "af2")
+T.act("deploy", "rifle", G.Map.LANDONLY and "baseAir" or "af2")   -- 沙海（11-24 起只剩这张）：主基地机场
 R.run(2)
-local A2 = G.Map.AFIELD2
+local A2 = G.Map.AFIELD2 or G.Map.AIRFIELD
 local x, z = A2.x + 300, A2.z - A2.wid / 2 - 220
 local gy = G.airSurface(x, z)
 local e = G.spawnAircraft("atk", "j20", CF(x, gy + 6, z), nil, P)
@@ -98,20 +98,15 @@ R.run(1)
 check(booms == 1, "一直在音障上面不再响")
 C.sfx = sfx0
 
-print("③ 尾喷（照战雷）：军推只有喷口里的热芯；加力是蓝边的紫色焰身（ForceField 管子 + 淡紫的光）、一节一节的马赫环，没有玻璃气泡")
-local function beams()
+print("③ 尾喷（用户 11-24 夜照战雷米格-29 的截图重做）：军推只有喷口里的热芯；加力是一条长长的半透明橙色光柱 + 喷口后面一截粉白的焰芯，喷口里发橙粉色；没有蓝边管子、马赫环、玻璃气泡")
+local function beams(name)
   local n = 0
-  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and d.Name == "AbFill" and d.Enabled then n = n + 1 end end
+  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and d.Name == name and d.Enabled then n = n + 1 end end
   return n
 end
 local function shown(name)   -- 看得见的（不全透明）这种零件有几块
   local n = 0
   for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Name == name and d.Transparency < 0.95 then n = n + 1 end end
-  return n
-end
-local function machBeams()
-  local n = 0
-  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and string.match(d.Name, "^Mach%d") and d.Enabled then n = n + 1 end end
   return n
 end
 local glass = 0
@@ -122,24 +117,21 @@ for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "ParticleEmi
 check(haze == 0, "喷口后面没有热浪粒子（用户：喷口有怪异的泡泡）")
 st.thr, st.thrE = 100, 100
 R.run(0.3)
-check(beams() == 0 and shown("AbTube") == 0 and shown("MachRing") == 0, "军推：没有焰身、没有马赫环")
+check(beams("AbFill") == 0 and beams("AbCore") == 0, "军推：没有加力的光柱")
 st.thr, st.thrE = 130, 130
 R.run(0.3)
-check(beams() >= 2, "加力：焰身里淡紫的光亮了（" .. beams() .. " 条，两个喷口）")
-local tubes, ff = shown("AbTube"), 0
-for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Name == "AbTube" and d.Material == Enum.Material.ForceField then ff = ff + 1 end end
-check(tubes >= 4 and ff == tubes, "加力：蓝边的焰身管子（ForceField，" .. tubes .. " 段）")
-check(shown("MachRing") >= 6, "加力推满：每个喷口后面一串马赫环（" .. shown("MachRing") .. " 个）")
-check(machBeams() >= 12, "马赫环外面的菱形光（" .. machBeams() .. " 条）")
-local z1, z2 = nil, nil   -- 马赫环一个接一个往后排
+check(beams("AbFill") >= 2 and beams("AbCore") >= 2, string.format("加力：每个喷口一条橙色光柱、一截焰芯（%d / %d 条）", beams("AbFill"), beams("AbCore")))
+check(shown("AbTube") == 0 and shown("MachRing") == 0, "没有 11-23 那版的蓝边管子、马赫环")
+local fillLen = 0
 for _, d in ipairs(v.M.model:GetDescendants()) do
-  if d:IsA("BasePart") and d.Name == "MachRing" and d.Transparency < 0.95 then
-    local zz = v.M.model:GetPivot():PointToObjectSpace(d.Position).Z
-    if not z1 or zz < z1 then z1 = zz end
-    if not z2 or zz > z2 then z2 = zz end
-  end
+  if d.ClassName == "Attachment" and d.Name == "FillEnd" then fillLen = math.max(fillLen, d.Position.Z) end
 end
-check(z1 and z2 and z2 - z1 > 3, string.format("马赫环沿着焰身往后排开（前后相距 %.1f 格）", (z1 and z2) and (z2 - z1) or 0))
+check(fillLen > 12, string.format("光柱拉得长（%.0f 格，满加力约七个喷口直径）", fillLen))
+local hotOk = false
+for _, d in ipairs(v.M.model:GetDescendants()) do
+  if d:IsA("BasePart") and d.Transparency < 0.3 and d.Color.R > 0.95 and d.Color.G > 0.55 and d.Color.B > 0.3 and d.Color.B < 0.8 then hotOk = true end
+end
+check(hotOk, "喷口里烧得发橙粉色")
 
 print("⑤ 导弹视角小窗：自己打出去的弹，右上角从弹上看目标；命中写「命中」，停一会儿关掉")
 do

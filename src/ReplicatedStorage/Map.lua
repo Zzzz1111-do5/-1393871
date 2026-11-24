@@ -524,6 +524,48 @@ function Map.lineClear(a, b, step)
   return true
 end
 
+-- 射线 o → o + v 第一次碰到地面（Map.height 的地形；有海的图还有海面 y = 0）的地方：返回落点、离 o 多远，碰不到返回 nil。
+--   用户 11-24 晚要 streaming 优化（大地图流式加载）：开了以后客户端只有身边一片地形，远处的地形没加载，激光测距、瞄准、标点的射线打空——
+--   地形本来就是按 Map.height 写的，算出来的落点和真地形一样。只在射线低于最高地形（MAXH）的那一段里一步步走，碰到了再二分 10 次
+function Map.rayGround(o, v, step)
+  local L = v.Magnitude
+  if L < 1e-6 then return nil end
+  local d = v / L
+  local inf = Map.info and Map.info[Map.id]
+  local sea = not inf or inf.sea ~= false
+  local top = (Map.MAXH or 600) + 60
+  local t0, t1 = 0, L
+  if o.Y > top then
+    if d.Y >= -1e-6 then return nil end   -- 在最高地形上面、还朝上或水平：碰不到
+    t0 = (top - o.Y) / d.Y
+  end
+  if d.Y > 1e-6 then t1 = math.min(L, (top - o.Y) / d.Y) end
+  if t0 >= t1 then return nil end
+  step = step or math.clamp((t1 - t0) / 160, 6, 60)
+  local function below(t)
+    local p = o + d * t
+    local h = (Map.height(p.X, p.Z))
+    if sea and h < 0 then h = 0 end
+    return p.Y <= h, h, p
+  end
+  if below(t0) then return o + d * t0, t0 end
+  local t = t0
+  while t < t1 do
+    local tn = math.min(t1, t + step)
+    if below(tn) then
+      local a, b = t, tn
+      for _ = 1, 10 do
+        local m = (a + b) / 2
+        if below(m) then b = m else a = m end
+      end
+      local _, h, p = below(b)
+      return Vector3.new(p.X, h, p.Z), b
+    end
+    t = tn
+  end
+  return nil
+end
+
 ---------------------------------------------------------------- 几张地图（用户 11-22：「加一个沙漠地图」「进入界面点地图」）
 -- 上面算的是「岛屿突击」；沙漠「沙海」在 MapSands（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
@@ -534,7 +576,7 @@ Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默�
 Map.info = {
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
-local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
+local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true, rayGround = true }
 local PROFILES = { island = {} }
 for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
