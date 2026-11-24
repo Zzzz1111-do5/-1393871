@@ -163,7 +163,11 @@ function WtAir.init(G)
     if not wp or em:GetAttribute("Wreck") then gui.Enabled = false koSince = nil return end
     gui.Enabled = true
     local vp = workspace.CurrentCamera.ViewportSize
-    scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.8, 1.25)
+    -- 手机：左下是摇杆和油门键，挪到右上小地图下面；开着光电吊舱时左下是吊舱的读数，先收起
+    local touch = game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+    if touch then DI.AnchorPoint, DI.Position = V2(1, 0), UD2(1, -12, 0, 236) end
+    scale.Scale = touch and 0.8 or math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.8, 1.25)
+    DI.Visible = not st.eo
     local heli = st.d and st.d.kind == "heli"
     local order = heli and ORDER_HELI or ORDER_JET
     PL.wingL.f.Visible, PL.wingR.f.Visible, PL.rotor.f.Visible = not heli, not heli, heli
