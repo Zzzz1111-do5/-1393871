@@ -961,7 +961,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 14:52 9a68449"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 16:33 115217d"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -2939,6 +2939,185 @@ return GM
       </Item>
       <Item class="ModuleScript" referent="16">
         <Properties>
+          <string name="Name">HatchDefs</string>
+          <ProtectedString name="Source"><![CDATA[-- 全面大战场——载具的舱盖、车门、跳板（用户 11-24：「坦克舱门开合动画」「你记得按照现实中不同坦克的舱门开合模式去做哈」）
+--   客户端 Hatch.lua 照这张表在原模型上加能动的舱盖（原模型的舱盖和车身是一整块网格，掀不起来：盖一块同样大小的板，开的时候板掀开、
+--   下面垫一块黑的当舱口）；车长探出舱口的小人、上下车时开的门也在那里
+--   位置：原模型坐标（格，models/veh/<键>.glb 的坐标：原点车底中心，X 右、Y 上、−Z 朝前），tools/models/hatchmeasure.py 在模型上量的高度；
+--     炮塔上的（g = "turret"）客户端再减去炮塔转轴；r 圆舱盖半径、w × h 方的
+--   动法（照真车，出处见每一行；没查到的写明是照同一系的车推的）：
+--     abrams    后铰链往后掀到 105°；另有「打开保护位」：舱盖只掀开 9°，车长从缝里往外看（M1 系列车长舱盖能锁在全开和「open, protected」两个位置）
+--     rear      后铰链往后掀到 105°
+--     front     前铰链往前掀到 95°（掀开立在前面当挡板：T-72 / T-90 的车长、炮长舱盖都能锁在往前开的位置）
+--     liftswing 先往上抬一点再横着转开（驾驶员舱盖：炮管在头顶，掀不起来，抬起来往一边转；side 1 往右、−1 往左）
+--     ramp      车尾跳板：下沿铰链往外放倒，放到跳板尖着地（布雷德利是液压跳板、左边开一扇小门；斯特赖克同样是尾部跳板）
+--     door      竖铰链的门往外开 105°（hinge = "L" 左边是铰链、"R" 右边；BMP-3 车尾两扇门往左右两边开）
+--     flap      车顶舱盖外沿铰链往上往外翻 110°（BMP-3 载员舱顶两块大舱盖）
+--   crew：这个舱口是谁的（commander 车长、loader 装填手：没打仗时探出来的小人站这里）；use：pass 乘客上下车时开、drv 驾驶员上下车时开
+local V = Vector3.new
+
+local H = {}
+
+-- 位置都在模型上量过（tools/mock/hatch_view.cjs 的 grid：正上方看、叠 1 格的网格；高度 tools/models/hatchmeasure.py，取舱盖中心最上面那层——
+--   开着时垫的黑底要盖住原模型自己那块关着的舱盖）。驾驶员舱盖 pv 是模型上看得见的转轴（舱盖抬起来绕它横着转开），w × h 是方的（长圆的按方的画）
+
+-- M1A2 SEPv2（m1a2dc）：车长舱盖在八边形指挥塔顶上（四周一圈透明防弹板），装填手舱盖在左边；
+--   驾驶员舱盖在车体正前方炮塔底下（前沿三具潜望镜），右后方一根转轴：抬起来往右转开
+H.m1a2dc = {
+  { id = "cmd", g = "turret", at = V(1.57, 7.56, 1.24), r = 0.95, m = "abrams", crew = "commander" },
+  { id = "ldr", g = "turret", at = V(-1.2, 6.93, 0.93), r = 0.78, m = "rear", crew = "loader" },
+  { id = "drv", g = "hull", at = V(-0.1, 4.21, -5.79), w = 2.0, h = 1.1, m = "liftswing", side = 1, pv = V(1.12, 0, -5.57), use = "drv" },
+}
+-- M1A1（m1a1i）：原模型的车长舱盖本来就是开着的（orig = "open"：不另画舱盖，只有车长探身 / 缩回去）
+H.m1a1i = {
+  { id = "cmd", g = "turret", at = V(1.51, 7.6, 1.08), r = 0.9, m = "abrams", crew = "commander", orig = "open" },
+  { id = "ldr", g = "turret", at = V(-1.36, 7.22, 0.94), r = 0.85, m = "rear", crew = "loader" },
+  { id = "drv", g = "hull", at = V(0, 4.64, -6.0), w = 2.0, h = 1.3, m = "liftswing", side = 1, pv = V(1.05, 0, -5.6), use = "drv" },
+}
+H.m1a1 = H.m1a1i
+-- 99A（ztz99a2）：车长（右边，舱盖四周一圈潜望镜）、炮长（左边）都是单片舱盖往后开（tank-afv.com 的 Type 99：两个都是 single piece hatch opening to the rear）；
+--   驾驶员舱盖在车体中线（长圆形，前面一排潜望镜），转轴在右后方——照模型上的转轴往右转开（资料说 99 式往左开，99A 挪了位置，没查到准的）
+H.ztz99a2 = {
+  { id = "cmd", g = "turret", at = V(1.5, 6.75, -0.05), r = 0.95, m = "rear", crew = "commander" },
+  { id = "gnr", g = "turret", at = V(-1.4, 6.62, -0.15), r = 0.85, m = "rear" },
+  { id = "drv", g = "hull", at = V(0, 4.10, -5.66), w = 1.75, h = 1.15, m = "liftswing", side = 1, pv = V(0.68, 0, -5.27), use = "drv" },
+}
+-- 96 式（ztz96）：从 88 式一路改过来的苏式布局——车长（右）、炮长（左）舱盖往前开、锁在前面当挡板；
+--   驾驶员在车体左前方（不在中线），舱盖左后方有铰链座：抬起来往左（车外侧）转开（同 T-54 / 55 一系）
+H.ztz96 = {
+  { id = "cmd", g = "turret", at = V(1.53, 6.87, 0.05), r = 0.95, m = "front", crew = "commander" },
+  { id = "gnr", g = "turret", at = V(-1.28, 6.35, -0.2), r = 0.85, m = "front" },
+  { id = "drv", g = "hull", at = V(-1.89, 4.31, -5.27), r = 0.8, m = "liftswing", side = -1, pv = V(-2.43, 0, -4.88), use = "drv" },
+}
+-- T-90M（t90m）：车长指挥塔在右后（一圈观察窗，舱盖在塔顶），炮长舱盖在左边（炮长瞄准镜后面），都往前开（T-72 / T-90 一系）；
+--   驾驶员舱盖在车体中线（前面潜望镜座），右后方转轴：抬起来往右转开
+H.t90m = {
+  { id = "cmd", g = "turret", at = V(1.95, 6.60, 0.76), r = 0.72, m = "front", crew = "commander" },
+  { id = "gnr", g = "turret", at = V(-1.86, 6.35, -0.25), r = 0.75, m = "front" },
+  { id = "drv", g = "hull", at = V(0.08, 4.18, -4.78), w = 1.75, h = 1.07, m = "liftswing", side = 1, pv = V(0.64, 0, -4.54), use = "drv" },
+}
+-- M2A3 布雷德利：车尾液压跳板（斜面：下沿 y 1.6 / z 7.9，上沿 y 5.5 / z 8.77）
+H.m2a3 = {
+  { id = "ramp", g = "hull", m = "ramp", at = V(0, 1.6, 7.9), top = V(0, 5.5, 8.77), w = 4.6, use = "pass" },
+}
+-- 斯特赖克：车尾跳板（下沿 y 2.2 / z 8.2，上沿 y 5.8 / z 8.95）
+H.stryker = {
+  { id = "ramp", g = "hull", m = "ramp", at = V(0, 2.2, 8.2), top = V(0, 5.8, 8.95), w = 3.8, use = "pass" },
+}
+-- BMP-3：车尾两扇门往左右开（下面的踏板跟着翻下来），载员舱顶两块大舱盖（每块上还有一个小舱盖）——发动机在载员舱地板下面，
+--   载员从发动机上面那条低矮的过道钻出去，车顶舱盖打开好直起腰。舱盖往哪边翻没查到准的：照 BMP-1 / 2 载员舱顶舱盖（外沿铰链、往两边翻开当侧挡板）
+H.bmp3 = {
+  { id = "doorL", g = "hull", m = "door", hinge = "L", at = V(-0.85, 2.3, 9.47), top = V(-0.85, 4.6, 9.47), w = 1.55, use = "pass" },
+  { id = "doorR", g = "hull", m = "door", hinge = "R", at = V(0.85, 2.3, 9.47), top = V(0.85, 4.6, 9.47), w = 1.55, use = "pass" },
+  { id = "roofL", g = "hull", m = "flap", side = -1, at = V(-1.0, 4.88, 5.8), w = 1.7, h = 2.0, use = "pass" },
+  { id = "roofR", g = "hull", m = "flap", side = 1, at = V(1.0, 4.88, 5.8), w = 1.7, h = 2.0, use = "pass" },
+}
+-- ZBD-05（zbd97 的模型）：车尾一扇大门，右边铰链（模型上门右边两个铰链座）
+H.zbd97 = {
+  { id = "door", g = "hull", m = "door", hinge = "R", at = V(0, 1.7, 9.17), top = V(0, 5.4, 9.17), w = 3.8, use = "pass" },
+}
+-- ZSL-92B（借 LAV-25 的模型）：LAV 车尾两扇门往两边开（斜面）
+H.lav25 = {
+  { id = "doorL", g = "hull", m = "door", hinge = "L", at = V(-0.85, 2.1, 7.95), top = V(-0.85, 4.9, 8.86), w = 1.6, use = "pass" },
+  { id = "doorR", g = "hull", m = "door", hinge = "R", at = V(0.85, 2.1, 7.95), top = V(0.85, 4.9, 8.86), w = 1.6, use = "pass" },
+}
+-- M1117（借 M-ATV 的模型）：车尾一扇门，左边铰链
+H.matv = {
+  { id = "door", g = "hull", m = "door", hinge = "L", at = V(0, 2.4, 7.63), top = V(0, 6.4, 7.63), w = 2.2, use = "pass" },
+}
+
+-- 没有原模型（零件拼的车）或者表里没有的型号：按型号表的尺寸摆一套通用的——坦克车长舱盖在 cupola（往后开）、驾驶员舱盖往右转开；
+--   有乘客座位的车车尾一扇门（右边铰链）
+function H.generic(d)
+  local list = {}
+  if d.cat == "tank" and d.cupola then
+    table.insert(list, { id = "cmd", g = "turretLocal", at = d.cupola, r = 0.9, m = "rear", crew = "commander" })
+  end
+  if d.cat == "tank" then
+    table.insert(list, { id = "drv", g = "hull", at = V(0, d.hullH, -d.L * 0.36), r = 0.8, m = "liftswing", side = 1, use = "drv" })
+  end
+  if (d.seats or 1) > 1 then
+    local zr = d.L / 2 - 0.05
+    table.insert(list, { id = "door", g = "hull", m = "door", hinge = "R", at = V(0, (d.clear or 1.2) + 0.4, zr), top = V(0, d.hullH - 0.4, zr), w = math.min(2.6, d.W * 0.3), use = "pass" })
+  end
+  return list
+end
+
+-- ---------------------------------------------------------------- 几何（客户端 Hatch.lua 和测试共用：只用 Vector3 / CFrame）
+local CF, ANG, rad = CFrame.new, CFrame.Angles, math.rad
+local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
+H.TH = 0.18                                   -- 舱盖板厚（格）
+H.UPRIGHT = ANG(0, 0, math.pi / 2)            -- 圆柱的轴（X）转到竖直
+H.ABRAMS_OP = rad(9) / rad(105)               -- 艾布拉姆斯「打开保护位」占全开的多少
+
+-- 表里的一行 → 算好的舱盖（挂在车体还是炮塔、在那个坐标系里的位置）：tpiv 炮塔转轴（原模型坐标）
+function H.prep(d, tpiv)
+  tpiv = tpiv or V()
+  local h = { id = d.id, m = d.m, g = (d.g == "hull") and "hull" or "turret", r = d.r, w = d.w, side = d.side, hinge = d.hinge,
+    crew = d.crew, use = d.use, orig = d.orig }
+  local sh = (d.g == "turret") and tpiv or V()   -- turretLocal：已经是炮塔坐标
+  h.loc = d.at - sh
+  if d.pv then h.pv = d.pv - V(sh.X, 0, sh.Z) end
+  if d.m == "ramp" or d.m == "door" then   -- 车尾斜面上的板：下沿 at、上沿 top
+    local base, top = d.at - sh, d.top - sh
+    local u = top - base
+    h.L = u.Magnitude
+    h.t0 = math.atan2(u.Z, u.Y)   -- 往后倾多少（绕 X 轴）
+    h.base = base
+    if d.m == "ramp" then h.open = clamp(math.acos(clamp(-base.Y / h.L, -1, 1)) - h.t0, rad(60), rad(150)) end   -- 放倒到尖着地
+    h.shape, h.size = "block", V(h.w, h.L, H.TH)
+    h.holeSize = V(h.w * 0.94, h.L * 0.94, 0.06)
+    h.holeCF = CF(base) * ANG(h.t0, 0, 0) * CF(0, h.L / 2, 0.04)
+  elseif d.w and d.h then   -- 方的（BMP-3 车顶舱盖、长圆的驾驶员舱盖）
+    h.h = d.h
+    h.shape, h.size = "block", V(h.w, H.TH, h.h)
+    h.holeSize = V(h.w * 0.92, 0.06, h.h * 0.92)
+    h.holeCF = CF(h.loc + V(0, 0.04, 0))
+  else
+    h.shape, h.size = "round", V(H.TH, h.r * 2, h.r * 2)
+    h.holeSize = V(0.06, h.r * 1.84, h.r * 1.84)
+    h.holeCF = CF(h.loc + V(0, 0.04, 0)) * H.UPRIGHT
+  end
+  return h
+end
+
+-- 舱盖在车体 / 炮塔坐标里的样子（p：开的程度 0～1）。板都摆在原模型表面外面一点（不和原模型的舱盖抢同一个面闪）
+function H.lidCF(h, p)
+  local m, C, TH = h.m, h.loc, H.TH
+  local up = TH / 2 + 0.01
+  local rot = (h.shape == "round") and H.UPRIGHT or CF()
+  local hd = h.h and h.h / 2 or h.r       -- 前后半长（铰链离中心多远）
+  if m == "rear" or m == "abrams" then   -- 后铰链：铰链在舱盖后沿（+Z 朝后），往后掀
+    local a = rad(105) * p
+    return CF(C + V(0, 0, hd)) * ANG(a, 0, 0) * CF(0, up, -hd) * rot
+  elseif m == "front" then               -- 前铰链：往前掀、立在前面
+    local a = rad(95) * p
+    return CF(C + V(0, 0, -hd)) * ANG(-a, 0, 0) * CF(0, up, hd) * rot
+  elseif m == "liftswing" then           -- 先抬 0.22 格，再绕竖轴（pv，没给就在侧边）转开 160°；side 1 从前面转到右边，−1 转到左边
+    local lift = clamp(p / 0.25, 0, 1) * 0.22
+    local ang = clamp((p - 0.25) / 0.75, 0, 1) * rad(160)
+    local s = h.side or 1
+    local pv = h.pv and V(h.pv.X, C.Y, h.pv.Z) or (C + V(s * (h.w and h.w / 2 or h.r), 0, 0))
+    return CF(pv + V(0, lift, 0)) * ANG(0, -s * ang, 0) * CF((C - pv) + V(0, up, 0)) * rot
+  elseif m == "ramp" then                -- 下沿铰链往后放倒
+    return CF(h.base) * ANG(h.t0 + h.open * p, 0, 0) * CF(0, h.L / 2, up)
+  elseif m == "door" then                -- 竖铰链（斜面上的门按斜面倾着转）
+    local left = h.hinge == "L"
+    local hx = left and -h.w / 2 or h.w / 2
+    return CF(h.base) * ANG(h.t0, 0, 0) * CF(hx, 0, up) * ANG(0, (left and -1 or 1) * rad(105) * p, 0) * CF(-hx, h.L / 2, 0)
+  elseif m == "flap" then                -- 外沿铰链往上往外翻
+    local s = h.side or 1
+    return CF(C + V(s * h.w / 2, 0, 0)) * ANG(0, 0, -s * rad(110) * p) * CF(-s * h.w / 2, up, 0)
+  end
+  return CF(C)
+end
+
+return H
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="17">
+        <Properties>
           <string name="Name">HitSurf</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——子弹打在什么上面（弹着点的样子、声音按它出；用户：枪打在坦克上要有火花）：
 --   服务器发枪响特效时带上（Weapons.lua 的 KIND.gun、G.botShot），自己开的枪客户端照同样的规则判（Fx.lua）
@@ -2987,7 +3166,7 @@ return HitSurf
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">HudIcons</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/hudicons.py），别手改：驾驶界面的图标——每辆地面载具的侧面全息图标（原模型正侧面拍的，灰度、带柔光晕，
@@ -3087,7 +3266,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">HudMeta</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/hud.mjs），别手改：飞机座舱平显（光学瞄准屏）原模型的元数据
@@ -3107,7 +3286,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">ImportTurn</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——导入的原模型摆放时要补回的半圈（服务器、客户端共用）
@@ -3124,7 +3303,7 @@ return { TURN = skip and CFrame.new() or CFrame.Angles(0, math.pi, 0) }
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">ImportedAir</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/air2glb.py），别手改：网页版飞机、直升机模型原样转成的 Roblox 模型（models/air/<文件名>.glb）的元数据
@@ -3199,7 +3378,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">ImportedMeta</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/mdl2glb.py），别手改：装备原模型（models/veh/<模型键>.glb）的元数据——网页版的模型原样转的，网页版没有的从 Sketchfab 下载（tools/models/sfveh.py）
@@ -3241,7 +3420,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">ImportedShip</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/ship2glb.py、tools/models/sfship.py），别手改：舰艇模型（models/ship/<型号>.glb）的元数据
@@ -3267,7 +3446,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">ImportedTint</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/models/tint.py），别手改：导入的原模型每块零件（MeshPart 的名字）的平均色——底色贴图按三角形面积取样 × 材质底色，sRGB 0–255
@@ -4978,7 +5157,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">ImportedWpn</string>
           <ProtectedString name="Source"><![CDATA[-- 导弹合集（models/wpn/missiles.glb，tools/models/wpn2glb.py 生成）：署名（主菜单「致谢」）和导入了的型号
@@ -4989,7 +5168,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">Lang</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
@@ -5285,6 +5464,9 @@ add("fw.flak35", "双联 35 毫米高炮", "Twin 35 mm AA")
 add("fw.how155", "155 毫米榴弹炮", "155 mm howitzer")
 add("ui.man", "操作", "Man")
 add("ui.board", "上车", "Enter")
+add("ui.ride", "坐后面（{1} / {2}）", "Ride ({1} / {2})")
+add("ride.hint", "乘客 · {1} / {2} 座 · 驾驶：{3} · 鼠标转镜头 · 滚轮远近 · F / 空格 下车", "Passenger · {1} / {2} seats · driver: {3} · mouse look · wheel zoom · F / Space to get out")
+add("ride.exitBtn", "下车", "Get out")
 add("ui.manned", "你在操作{1}", "You are manning the {1}")
 add("ui.fortKilled", "摧毁 {1}", "Destroyed {1}")
 add("ui.fortDown", "{1} 摧毁了 {2}", "{1} destroyed {2}")
@@ -6294,7 +6476,7 @@ return Lang
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">Map</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场地图（ReplicatedStorage.Map）：纯数学，服务器、客户端算出来一样（地形、小地图、出生点、据点都用它）
@@ -6869,7 +7051,7 @@ return Map
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">MapDesert</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——沙漠地图「沙漠风暴」（ReplicatedStorage.MapDesert）：跟 Map.lua 同一套接口（Map.use("desert") 换进 Map 表）；纯数学，服务器、客户端算出来一样
@@ -7234,7 +7416,7 @@ return M
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">MapPaint</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——地图的「卫星图」：按 Map.lua 的高度、材质一个像素一个像素算颜色（客户端 MapUI 用 EditableImage 画小地图、部署地图）
@@ -7411,7 +7593,7 @@ return MapPaint
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">MapRoads</string>
           <ProtectedString name="Source"><![CDATA[-- 路网（tools/map/roads.lua 离线算好的，别手改：改了地形重跑一遍）：Map.lua 开服时按它压平路面、换土路材质；客户端摆树、花草时避开
@@ -7431,7 +7613,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">MapSands</string>
           <ProtectedString name="Source"><![CDATA[--!native
@@ -8240,11 +8422,11 @@ return Map
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="Folder" referent="31">
+      <Item class="Folder" referent="32">
         <Properties>
           <string name="Name">OpticMesh</string>
         </Properties>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">acog</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 3.5x35 Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -8327,7 +8509,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">at4</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Anti-Tank Grenade Launcher | AT4 | GameReady（Pan_Ar4ik，CC-BY-4.0）的网格和底色贴图
@@ -8347,7 +8529,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">atacr</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Nightforce ATACR 7-35x56 F1（suspensy，CC-BY-4.0）的网格和底色贴图
@@ -8402,7 +8584,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">binoc</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：binoculars（TORI106，CC-BY-4.0）的网格和底色贴图
@@ -8422,7 +8604,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">c4</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Simple Old C4（Blender3D，CC-BY-4.0）的网格和底色贴图
@@ -8442,7 +8624,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">grip_afg</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul AFG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -8476,7 +8658,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">grip_rvg</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly Magpul RVG（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -8503,7 +8685,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="40">
           <Properties>
             <string name="Name">ifak</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tactical FIRST AID KIT（Ruslan Koschey，CC-BY-4.0）的网格和底色贴图
@@ -8523,7 +8705,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="41">
           <Properties>
             <string name="Name">ip_asq</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ASQ-155 Ballistic Computer（TwilightFox，CC-BY-4.0）的网格和底色贴图
@@ -8543,7 +8725,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="42">
           <Properties>
             <string name="Name">ip_asq2</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ASQ-155 Ballistic Computer（TwilightFox，CC-BY-4.0）的网格和底色贴图
@@ -8563,7 +8745,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="42">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">ip_can</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Ammuntion box（jaiharitheking，CC-BY-4.0）的网格和底色贴图
@@ -8583,7 +8765,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">ip_cdu</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Aircraft instrument/module thingy（LuddePudde，CC-BY-4.0）的网格和底色贴图
@@ -8610,7 +8792,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">ip_cdus</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M1A2 SEPv2 车长显示单元的机壳和屏框（本项目，自制（照用户发来的钢铁猛兽截图量的比例，tools/weapons/gen_cdus.mjs 程序生成））的网格和底色贴图
@@ -8672,7 +8854,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">ip_chg125</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：GunPowder shell 125mm（dichevk，CC-BY-4.0）的网格和底色贴图
@@ -8699,7 +8881,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">ip_cvc</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Combat Vehicle Crewman (CVC) Helmet, Vietnam Era（olmopotums，CC-BY-4.0）的网格和底色贴图
@@ -8719,7 +8901,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">ip_dseat</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Driver seat "Pilot" with air suspension.（dewolfepilot，CC-BY-4.0）的网格和底色贴图
@@ -8739,7 +8921,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">ip_ext</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Fire Extinguisher（Sir Erdees，CC-BY-4.0）的网格和底色贴图
@@ -8759,7 +8941,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">ip_gauges</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Dashboard Gauges（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -8807,7 +8989,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">ip_grip</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：F-4 Phantom II Flight Stick (Joystick)-Low Poly（alpertheronin，CC-BY-4.0）的网格和底色贴图
@@ -8827,7 +9009,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">ip_he125</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：HE shell 125mm（dichevk，CC-BY-4.0）的网格和底色贴图
@@ -8875,7 +9057,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">ip_lamp</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Industrial Bulkhead Wall Lamp Lowpoly（iwanPlays，CC-BY-4.0）的网格和底色贴图
@@ -8902,7 +9084,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">ip_lever</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Classic Shift Lever（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -8929,7 +9111,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">ip_m829</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M829A1 OBJ（Jeyhun1985，CC-BY-4.0）的网格和底色贴图
@@ -9005,7 +9187,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">ip_m829lo</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M829A1 OBJ（Jeyhun1985，CC-BY-4.0）的网格和底色贴图
@@ -9081,7 +9263,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">ip_mon</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Computer Box Monitor（SUrusso613，CC-BY-4.0）的网格和底色贴图
@@ -9101,7 +9283,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">ip_pedals</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Pedals Sets（kryoxshade，CC-BY-4.0）的网格和底色贴图
@@ -9128,7 +9310,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">ip_peri</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FV105 Sultan periscop（renalds_rs，CC-BY-4.0）的网格和底色贴图
@@ -9148,7 +9330,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">ip_r125</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tank ammo HEAT 3BK18（VladIG_CG，CC-BY-4.0）的网格和底色贴图
@@ -9168,7 +9350,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">ip_radio</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Military Radio（curichenkow，CC-BY-4.0）的网格和底色贴图
@@ -9188,7 +9370,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">ip_radio2</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Military Radio - Low Poly（Camille Barral，CC-BY-4.0）的网格和底色贴图
@@ -9208,7 +9390,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="62">
+        <Item class="ModuleScript" referent="63">
           <Properties>
             <string name="Name">ip_stick</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：B-8 Fighter Control Stick (Low Poly)（StratoArt，CC-BY-4.0）的网格和底色贴图
@@ -9249,7 +9431,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="63">
+        <Item class="ModuleScript" referent="64">
           <Properties>
             <string name="Name">ip_sw</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Industrial Switches Apollo Command Module（ntilted，CC-BY-4.0）的网格和底色贴图
@@ -9325,7 +9507,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="64">
+        <Item class="ModuleScript" referent="65">
           <Properties>
             <string name="Name">ip_swheel</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：car bus truck steering wheel interior control（kopofx，CC-BY-4.0）的网格和底色贴图
@@ -9345,7 +9527,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="65">
+        <Item class="ModuleScript" referent="66">
           <Properties>
             <string name="Name">ip_tab</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Rugged Sci-Fi Tactical Military Tablet（3DMOAN，CC-BY-4.0）的网格和底色贴图
@@ -9365,7 +9547,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="66">
+        <Item class="ModuleScript" referent="67">
           <Properties>
             <string name="Name">ip_tsh</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Tank Helmet（denj666，CC-BY-4.0）的网格和底色贴图
@@ -9385,7 +9567,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="68">
           <Properties>
             <string name="Name">ip_yoke</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ANIMATED KC-135 YOKE（StratoArt，CC-BY-4.0）的网格和底色贴图
@@ -9405,7 +9587,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="68">
+        <Item class="ModuleScript" referent="69">
           <Properties>
             <string name="Name">m224</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Mortar - M224（Jan Češnjevar，CC-BY-4.0）的网格和底色贴图
@@ -9432,7 +9614,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="69">
+        <Item class="ModuleScript" referent="70">
           <Properties>
             <string name="Name">m40a5</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：USMC M40A5 Sniper（Urpo，CC-BY-4.0）的网格和底色贴图
@@ -9466,7 +9648,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="70">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">m67</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：M67（Firewarden3D，CC-BY-4.0）的网格和底色贴图
@@ -9486,7 +9668,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="71">
+        <Item class="ModuleScript" referent="72">
           <Properties>
             <string name="Name">mag_drum</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9513,7 +9695,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="72">
+        <Item class="ModuleScript" referent="73">
           <Properties>
             <string name="Name">mag_hex30</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9540,7 +9722,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="73">
+        <Item class="ModuleScript" referent="74">
           <Properties>
             <string name="Name">mag_pmag20</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9560,7 +9742,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="74">
+        <Item class="ModuleScript" referent="75">
           <Properties>
             <string name="Name">mag_pmag40</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly AR-15 magazines（notcplkerry，CC-BY-4.0）的网格和底色贴图
@@ -9580,7 +9762,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="75">
+        <Item class="ModuleScript" referent="76">
           <Properties>
             <string name="Name">muz_brake</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -9600,7 +9782,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="76">
+        <Item class="ModuleScript" referent="77">
           <Properties>
             <string name="Name">muz_comp</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：low-poly Muzzle Device Set（DU1701，CC-BY-4.0）的网格和底色贴图
@@ -9620,7 +9802,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="77">
+        <Item class="ModuleScript" referent="78">
           <Properties>
             <string name="Name">opt_acog6</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -9703,7 +9885,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="78">
+        <Item class="ModuleScript" referent="79">
           <Properties>
             <string name="Name">opt_holo</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：EoTech EXPS3-0 Holographic Weapon Sight Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -9744,7 +9926,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="79">
+        <Item class="ModuleScript" referent="80">
           <Properties>
             <string name="Name">opt_rds</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Generic Red Dot Scope / Rifle Attachment Lowpoly（valterjherson1，CC-BY-4.0）的网格和底色贴图
@@ -9771,7 +9953,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="80">
+        <Item class="ModuleScript" referent="81">
           <Properties>
             <string name="Name">opt_romeo</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Sig Sauer Romeo3 Reflex Sight（ense7en，CC-BY-4.0）的网格和底色贴图
@@ -9819,7 +10001,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="81">
+        <Item class="ModuleScript" referent="82">
           <Properties>
             <string name="Name">qbu88</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Low-Poly QBU-88（TastyTony，CC-BY-4.0）的网格和底色贴图
@@ -9888,7 +10070,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="82">
+        <Item class="ModuleScript" referent="83">
           <Properties>
             <string name="Name">qw2</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：QW-2（会飞的购物清单，CC-BY-4.0）的网格和底色贴图
@@ -9950,7 +10132,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="83">
+        <Item class="ModuleScript" referent="84">
           <Properties>
             <string name="Name">rpg7</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：RPG-7（Tactical_Beard，CC-BY-4.0）的网格和底色贴图
@@ -9970,7 +10152,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="84">
+        <Item class="ModuleScript" referent="85">
           <Properties>
             <string name="Name">stinger</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：FIM-92 Stinger（Mortavex，CC-BY-4.0）的网格和底色贴图
@@ -10004,7 +10186,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="85">
+        <Item class="ModuleScript" referent="86">
           <Properties>
             <string name="Name">sup_socom</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -10024,7 +10206,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="86">
+        <Item class="ModuleScript" referent="87">
           <Properties>
             <string name="Name">sup_sr8</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Silencers Pack 1（pedrobelthori，CC-BY-4.0）的网格和底色贴图
@@ -10044,7 +10226,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="87">
+        <Item class="ModuleScript" referent="88">
           <Properties>
             <string name="Name">sup_wrap</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Suppressors 10 Pack（TheWarVet，CC-BY-4.0）的网格和底色贴图
@@ -10064,7 +10246,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="88">
+        <Item class="ModuleScript" referent="89">
           <Properties>
             <string name="Name">tac_light</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Surefire M952V Weapon Light（RedRogueXIII，CC-BY-4.0）的网格和底色贴图
@@ -10084,7 +10266,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="89">
+        <Item class="ModuleScript" referent="90">
           <Properties>
             <string name="Name">tac_peq</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：ATPIAL AN/PEQ-15 (Low-Poly)（GoldbergR，CC-BY-4.0）的网格和底色贴图
@@ -10146,7 +10328,7 @@ return {
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="90">
+        <Item class="ModuleScript" referent="91">
           <Properties>
             <string name="Name">wrench</string>
             <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：Weathered Wrench (Game Model)（Michael Makivic，CC-BY-4.0）的网格和底色贴图
@@ -10167,7 +10349,7 @@ return {
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="91">
+      <Item class="ModuleScript" referent="92">
         <Properties>
           <string name="Name">OpticsMeta</string>
           <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/weapons/optics.mjs），别手改：瞄准镜、望远镜（Sketchfab 模型原样）的元数据
@@ -10725,7 +10907,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="92">
+      <Item class="ModuleScript" referent="93">
         <Properties>
           <string name="Name">SceneryMeta</string>
           <ProtectedString name="Source"><![CDATA[-- 花草树木模型包的元数据（tools/scenery/scenery.mjs 生成，别手改）：models/scenery/scenery.glb 里每一件
@@ -10769,7 +10951,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="93">
+      <Item class="ModuleScript" referent="94">
         <Properties>
           <string name="Name">ShipDefs</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇的型号数据（服务器、客户端共用）：尺寸、速度、转向、血量、武器（主炮、副炮 / 机枪、反舰 / 对陆导弹、防空导弹、近防炮）、样子
@@ -11016,7 +11198,7 @@ return ShipDefs
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="94">
+      <Item class="ModuleScript" referent="95">
         <Properties>
           <string name="Name">SoundLib</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——真录音（用户 11-21：声音要逼真，「你来处理声音找音源」）
@@ -11074,7 +11256,7 @@ return {
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="95">
+      <Item class="ModuleScript" referent="96">
         <Properties>
           <string name="Name">TankMods</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克改装（用户 11-19：给坦克实现爆反和主动拦截系统，像给飞机选导弹那样选装；
@@ -11570,7 +11752,7 @@ return TM
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="96">
+      <Item class="ModuleScript" referent="97">
         <Properties>
           <string name="Name">VehDefs</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
@@ -11996,7 +12178,7 @@ return VehDefs
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="97">
+      <Item class="ModuleScript" referent="98">
         <Properties>
           <string name="Name">WeaponModels</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -12297,11 +12479,11 @@ return WM
         </Properties>
       </Item>
     </Item>
-    <Item class="Folder" referent="98">
+    <Item class="Folder" referent="99">
       <Properties>
         <string name="Name">ServerScriptService</string>
       </Properties>
-      <Item class="Script" referent="99">
+      <Item class="Script" referent="100">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -12629,7 +12811,7 @@ end)
 print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(Config.Build) .. "）服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="100">
+        <Item class="ModuleScript" referent="101">
           <Properties>
             <string name="Name">AIVeh</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -13183,7 +13365,7 @@ return AIVeh
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="101">
+        <Item class="ModuleScript" referent="102">
           <Properties>
             <string name="Name">Air</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -14217,7 +14399,7 @@ return Air
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="102">
+        <Item class="ModuleScript" referent="103">
           <Properties>
             <string name="Name">Aps</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防护系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；用户 11-22 晚：改装体系照真实的系统做）
@@ -14355,7 +14537,7 @@ return Aps
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="103">
+        <Item class="ModuleScript" referent="104">
           <Properties>
             <string name="Name">Armor</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -14532,22 +14714,38 @@ function Armor.init(G)
     end
   end
 
-  local function seat(P, e)
+  -- asPass：坐后面当乘客（用户 11-24：运兵车、步战车要真的能载人）——人藏进车里、跟着车走，不开车、不开火
+  local function seat(P, e, asPass)
     local char = P.char
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then hrp.Anchored = true end
     hideChar(char, true)
     P.vehicle = e
-    e.driver = P
-    e.emptyAt = nil
-    e.model:SetAttribute("Driver", P.pl.UserId)
+    if asPass then
+      e.pass = e.pass or {}
+      table.insert(e.pass, P)
+      e.model:SetAttribute("Pass", #e.pass)
+    else
+      e.driver = P
+      e.emptyAt = nil
+      e.model:SetAttribute("Driver", P.pl.UserId)
+    end
     char:PivotTo(e.root.CFrame)
     G.pushOne(P)
   end
 
   local function unseat(P, e, place)
     if P.vehicle == e then P.vehicle = nil end
+    local wasPass = false
+    for i, Q in ipairs(e.pass or {}) do
+      if Q == P then
+        table.remove(e.pass, i)
+        wasPass = true
+        e.model:SetAttribute("Pass", #e.pass)
+        break
+      end
+    end
     if e.driver == P then
       e.driver = nil
       e.emptyAt = now()
@@ -14558,7 +14756,8 @@ function Armor.init(G)
       hideChar(char, false)
       local hrp = char:FindFirstChild("HumanoidRootPart")
       local base = baseOf(e)
-      local side = base * CF(-(e.def.W / 2 + 4), 0, 0)
+      -- 开车的从左边下；乘客从车尾（步战车、运兵车的后门）下，几个人错开一点
+      local side = wasPass and (base * CF(((#(e.pass or {}) % 3) - 1) * 2.2, 0, e.def.L / 2 + 3.5)) or (base * CF(-(e.def.W / 2 + 4), 0, 0))
       local x, z = side.Position.X, side.Position.Z
       if hrp then hrp.Anchored = false end
       char:PivotTo(CFrame.lookAt(V(x, Map.ground(x, z) + 3.5, z), V(x, Map.ground(x, z) + 3.5, z) + base.LookVector))
@@ -14584,6 +14783,7 @@ function Armor.init(G)
     e.model:SetAttribute("Gp", 0)
     e.model:SetAttribute("Driver", 0)
     e.ty, e.gp = 0, 0
+    e.pass = {}   -- 乘客（d.seats 个座位，步战车、运兵车、卡车）
     e.smokeLeft = SM.salvos
     e.smokeNext = 0
     e.wst = {}
@@ -14617,6 +14817,15 @@ function Armor.init(G)
           end
           G.msg(D.pl, "bad", "ui.vehLost")
         end
+        for _, Q in ipairs(self.pass or {}) do   -- 车里的乘客跟着阵亡（同直升机）
+          Q.vehicle = nil
+          if Q.char then
+            hideChar(Q.char, false)
+            G.hurtChar(Q.char, 1e5, src)
+          end
+          G.msg(Q.pl, "bad", "ui.vehLost")
+        end
+        self.pass = {}
         if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = "veh." .. self.def.id }) end
         for i, x in ipairs(vehicles) do
           if x == self then table.remove(vehicles, i) break end
@@ -14719,14 +14928,24 @@ function Armor.init(G)
   end
 
   -- 上自己队的空车（离车 18 格以内）
+  --   有人开（或者 AI 开着）的车：有座位（d.seats）就坐后面当乘客（用户 11-24：运兵车、步战车要真的能载人）
   function G.ACT.enterVeh(P, entId)
     local e = type(entId) == "string" and G.entById[entId] or nil
-    if not e or not e.alive or not e.def or e.driver or e.ai or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end   -- AI 开着的上不去
-    if G.reservedFor(e, P) then return end
+    if not e or not e.alive or not e.def or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
-    e.resP = nil
-    seat(P, e)
+    local cap = (e.def.seats or 1) - 1   -- seats 连开车的算（悍马、JLTV 4 个座 = 司机 + 3 个乘客）；坦克 1 个座，没有乘客位
+    local free = cap > 0 and #(e.pass or {}) < cap
+    if not e.driver and not e.ai then
+      if G.reservedFor(e, P) then   -- 刚生成、留给别人开的：有座位就先坐后面
+        if free then seat(P, e, true) end
+        return
+      end
+      e.resP = nil
+      seat(P, e)
+    elseif free then
+      seat(P, e, true)
+    end
   end
 
   ---------------------------------------------------------------- 开车、开火、烟幕弹（客户端发来的）
@@ -14927,7 +15146,11 @@ function Armor.init(G)
 
   function G.driveInput(P, d)
     local e = P.vehicle
-    if not e or not e.alive or e.driver ~= P or type(d) ~= "table" then return end
+    if not e or not e.alive or type(d) ~= "table" then return end
+    if e.driver ~= P then   -- 乘客：只能下车
+      if d.op == "exit" and table.find(e.pass or {}, P) then unseat(P, e, true) end
+      return
+    end
     if d.op == "state" then sync(P, e, d)
     elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
@@ -14950,7 +15173,19 @@ function Armor.init(G)
         else
           D.char:PivotTo(e.root.CFrame)
         end
-      elseif e.alive and e.emptyAt and t - e.emptyAt > 90 then   -- 没人开 90 秒：收走（不算冷却）
+      end
+      if e.pass and #e.pass > 0 then   -- 乘客跟着车走（走了、死了、换了角色的去掉）
+        for i = #e.pass, 1, -1 do
+          local Q = e.pass[i]
+          if not Q.alive or not Q.char or not Q.char.Parent or G.P[Q.pl] ~= Q or Q.vehicle ~= e then
+            table.remove(e.pass, i)
+          else
+            Q.char:PivotTo(e.root.CFrame)
+          end
+        end
+        if e.model:GetAttribute("Pass") ~= #e.pass then e.model:SetAttribute("Pass", #e.pass) end
+      end
+      if not D and e.alive and e.emptyAt and t - e.emptyAt > 90 and #(e.pass or {}) == 0 then   -- 没人开、也没坐人 90 秒：收走（不算冷却）
         for i, x in ipairs(vehicles) do
           if x == e then table.remove(vehicles, i) break end
         end
@@ -14966,7 +15201,9 @@ function Armor.init(G)
     if not e or not e.alive then return nil end
     local ammo = {}
     for wid, st in pairs(e.wst) do ammo[wid] = { st.mag, st.reserve } end
-    return { id = e.id, m = e.def.id, locked = e.locked or false, smoke = e.smokeLeft, ammo = ammo }
+    local pass = e.driver ~= P   -- 坐后面的乘客（客户端 Ride.lua 管镜头、下车）
+    return { id = e.id, m = e.def.id, locked = e.locked or false, smoke = e.smokeLeft, ammo = ammo,
+      pass = pass or nil, seats = (e.def.seats or 1) - 1, np = #(e.pass or {}), drv = e.driver and e.driver.pl.DisplayName or (e.ai and "AI") or nil }
   end
 
   G.on("died", function(P)
@@ -14992,7 +15229,7 @@ return Armor
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="104">
+        <Item class="ModuleScript" referent="105">
           <Properties>
             <string name="Name">Battle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -15478,7 +15715,7 @@ return Battle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="105">
+        <Item class="ModuleScript" referent="106">
           <Properties>
             <string name="Name">Bots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -16693,7 +16930,7 @@ return Bots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="106">
+        <Item class="ModuleScript" referent="107">
           <Properties>
             <string name="Name">Depots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -17205,7 +17442,7 @@ return Depots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="107">
+        <Item class="ModuleScript" referent="108">
           <Properties>
             <string name="Name">Economy</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——金币（用户 11-23：「把很多坦克飞机直升机搞成金币解锁吧 然后两边都可以用对方的载具 然后金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
@@ -17356,7 +17593,7 @@ return Economy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="108">
+        <Item class="ModuleScript" referent="109">
           <Properties>
             <string name="Name">Ents</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -17714,7 +17951,7 @@ return Ents
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="109">
+        <Item class="ModuleScript" referent="110">
           <Properties>
             <string name="Name">Era</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -17850,7 +18087,7 @@ return Era
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="110">
+        <Item class="ModuleScript" referent="111">
           <Properties>
             <string name="Name">Forts</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -19076,7 +19313,7 @@ return Forts
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="111">
+        <Item class="ModuleScript" referent="112">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -19283,7 +19520,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="112">
+        <Item class="ModuleScript" referent="113">
           <Properties>
             <string name="Name">Imports</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -19421,7 +19658,7 @@ return Imports
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="113">
+        <Item class="ModuleScript" referent="114">
           <Properties>
             <string name="Name">Kit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克加装件（TankMods 的 slat / belly / eng / ew / cam，用户 11-22 晚：「要能有一整套的坦克改装体系」「用现实中的标准」）
@@ -19575,7 +19812,7 @@ return Kit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="114">
+        <Item class="ModuleScript" referent="115">
           <Properties>
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -19811,7 +20048,7 @@ return Nav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">Navy</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -20813,7 +21050,7 @@ return Navy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -21118,7 +21355,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">Passes</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -21202,7 +21439,7 @@ return Passes
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">Pve</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——PvE 关卡（用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）
@@ -21378,7 +21615,7 @@ return Pve
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">Revive</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
@@ -21569,7 +21806,7 @@ return Revive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">Rewind</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -21804,7 +22041,7 @@ return Rewind
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">Round</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -23115,7 +23352,7 @@ return Round
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">Squads</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
@@ -23247,7 +23484,7 @@ return Squads
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">Store</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -23354,7 +23591,7 @@ return Store
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">Tactical</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -23580,7 +23817,7 @@ return Tactical
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">Vehicles</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -23876,7 +24113,7 @@ return Vehicles
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">Weapons</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -24603,7 +24840,7 @@ return Weapons
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">World</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -27388,11 +27625,11 @@ return World
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="128">
+    <Item class="Folder" referent="129">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="129">
+      <Item class="LocalScript" referent="130">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -27482,7 +27719,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -27526,6 +27763,8 @@ G.R.Board.OnClientEvent:Connect(safe(function(d) G.onBoard(d) end))
 local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function(dt) if G.stepFly then G.stepFly(dt) end end },
   { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end },
   { "interior", function(dt) if G.stepInterior then G.stepInterior(dt) end end },   -- 载具内饰：要用 View 这一帧算好的车体、炮塔姿态，镜头最后定
+  { "ride", function(dt) if G.stepRide then G.stepRide(dt) end end },   -- 坐在别人开的车后面（Ride.lua）：镜头要用 View 这一帧摆好的车
+  { "hatch", function(dt) if G.stepHatches then G.stepHatches(dt) end end },   -- 舱盖、车门开合，车长探身，上车的小人（Hatch.lua）：跟着 View 这一帧摆好的车
   { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
@@ -27551,7 +27790,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -27919,7 +28158,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">AirAudio</string>
             <ProtectedString name="Source"><![CDATA[-- 开飞机的提示音、告警音（用户 11-24：「把开飞机的各种 ui 声音做成战雷」）
@@ -28140,7 +28379,7 @@ return M
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -28320,7 +28559,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -28945,7 +29184,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -29081,6 +29320,22 @@ end
 --   那几块当蒙皮一直画，整架抬高 lift 格（放下起落架时机身离地的高度，真机全高减模型高），用零件拼的起落架（用户：部分飞机没有起落架）
 local NOGEAR = { a10 = 2.5, a10_v2 = 2.5, a10_v3 = 2.5, b2 = 4.8, b2_v2 = 4.8, b2_v3 = 4.8 }
 AM.NOGEAR = NOGEAR
+-- 原模型没有飞行员眼位（ImportedAir 的 pit 是 tools/models/air_anim.py 的 PIT 表生成的，这几个没量）：照原模型量的（用户 11-24：飞机座舱眼位修好）。
+--   没有 pit 时座舱退回猜的眼位 V(0, H*0.35, -L*0.3)，UH-60 那个点在机舱顶上、旋翼旁边，AH-64 比座舱盖还高，轰-6K 在机身中段——
+--   内饰拼在那里，屏幕被机身盖住（B 11-22 把挡屏幕的零件收起来了，但人其实坐在机舱外面）。
+--   模型坐标（加 O 之前，同 ImportedAir 的 c），一个座位一个：并列座 1 左 2 右，串列座 1 前 2 后（Interior 的 spec.seat 挑）；
+--   量法：沿座位那条线往下、往上打射线量座舱盖 / 舱顶和地板，眼睛在舱顶下 0.3～0.4 米；tools/mock/interior_view.cjs（GLBOP=1 GLBOFF=−眼位）看内饰装不装得下
+local PIT_FIX = {
+  a10_v3 = { { 0, 6.7, -14.5 } },                                -- 座舱盖（Body_3）顶 7.7、前风挡在 z −17.5
+  ah64_v2 = { { 0, 6.10, -16.26 }, { 0, 7.36, -11.5 } },          -- 前座炮手、后座飞行员（后座高 0.45 米、靠后 1.7 米：同 InteriorDefs 串列座）
+  z10w_v2 = { { 0, 4.6, -10.4 }, { 0, 6.6, -6.2 } },              -- 前座比后座低得多（模型的前座盖顶 5.4、后座 7.2）
+  uh60 = { { -1.4, 6.0, -16.0 }, { 1.4, 6.0, -16.0 } },           -- 驾驶舱顶棚 7.0、风挡上沿 z −17.5（直-20 借这个模型，坐左座）
+  ch47 = { { -1.68, 7.4, -16.0 }, { 1.68, 7.4, -16.0 } },         -- 风挡 z −18～−17、地板 4.2
+  h6k_v3 = { { -1.54, 10.6, -38.2 }, { 1.54, 10.6, -38.2 } },     -- 领航员的玻璃机头后面那一级台阶上；地板 7.8
+  b2_v3 = { { -1.74, 6.9, -19.0 }, { 1.74, 6.9, -19.0 } },        -- 模型座舱里有一层 7.2～7.5 的板：眼睛放在它下面（不然从上面看它盖住仪表板）
+}
+AM.PIT_FIX = PIT_FIX
+
 function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
@@ -29094,6 +29349,7 @@ function AM.importedFor(d)
     local plain = string.sub(k, -1) == "~"
     local key = plain and string.sub(k, 1, -2) or k
     local info = IA.m and IA.m[key]
+    if info and not info.pit and PIT_FIX[key] then info.pit = PIT_FIX[key] end   -- 没量眼位的补上（座舱内饰、外模型里的飞行员都按它摆）
     local f = air:FindFirstChild(key)
     if usable(info, f, key) then
       local lift = NOGEAR[key]
@@ -30505,7 +30761,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -30703,7 +30959,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -30993,7 +31249,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Bombsight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式轰炸瞄准镜的画面（F7「轰炸机视角」）和 CCRP 目标点的标记
@@ -31212,7 +31468,7 @@ return Bombsight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -31369,7 +31625,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -31952,7 +32208,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -32082,7 +32338,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -32263,7 +32519,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -32567,7 +32823,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -33061,7 +33317,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -33515,7 +33771,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -34989,7 +35245,7 @@ function Drive.init(G)
   function G.stepDrive(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
-    if vs and (vs.fort or vs.air or vs.ship) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管，舰艇归 Sail 管
+    if vs and (vs.fort or vs.air or vs.ship or vs.pass) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管，舰艇归 Sail 管
     if vs and (not st or st.id ~= vs.id) then
       if st then stop() end
       begin(vs)
@@ -35249,7 +35505,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -36249,7 +36505,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -36464,7 +36720,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -39305,7 +39561,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -39623,7 +39879,14 @@ function FortView.init(G)
           pr.Triggered:Connect(function() G.R.Act:FireServer("enterVeh", v.id) end)
           v.prompt = pr
         end
-        local free = (em:GetAttribute("Driver") or 0) == 0 or (v.kind == "air" and v.def and v.def.transport)
+        local drv = (em:GetAttribute("Driver") or 0) ~= 0 or em:GetAttribute("AI") == true
+        local free = not drv or (v.kind == "air" and v.def and v.def.transport)
+        -- 地面车有人开（或者 AI 开着）：还有乘客座位就能坐后面（用户 11-24：运兵车、步战车要真的能载人）
+        local cap = (v.kind == "veh" and v.def) and ((v.def.seats or 1) - 1) or 0
+        local np = em:GetAttribute("Pass") or 0
+        if v.kind == "veh" and drv and cap > 0 and np < cap then free = true end
+        local act = (v.kind == "veh" and drv) and T("ui.ride", np, cap) or T("ui.board")
+        if v.prompt.ActionText ~= act then v.prompt.ActionText = act end
         v.prompt.Enabled = (ok and em:GetAttribute("Team") == side and free and not em:GetAttribute("Wreck")
           and not em:GetAttribute("Locked")) and true or false
       end
@@ -39661,7 +39924,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -41200,7 +41463,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -41610,7 +41873,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -41742,7 +42005,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -42021,7 +42284,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -42575,7 +42838,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -43526,7 +43789,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -43989,7 +44252,720 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
+          <Properties>
+            <string name="Name">Hatch</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——地面车的舱盖、车门、跳板开合，车长探出舱口，上车的人爬上车钻进舱口 / 从尾门走进去
+--   （用户 11-24：「坦克舱门开合动画」「进入载具的动画」「坦克要有精细的roblox人物有不同的动画来负责干不同的活」
+--    「你记得按照现实中不同坦克的舱门开合模式去做哈」）
+--   · 原模型的舱盖和车身是一整块网格、掀不起来：照 HatchDefs 在原位置做一块同样大小的板，照真车的动法动；开着时下面垫一块黑的当舱口
+--     （盖住原模型自己那块关着的舱盖）。关着时板和黑底都藏起来，看到的是原模型自己的舱盖（细节都在）
+--     动法见 HatchDefs：艾布拉姆斯后铰链 + 「打开保护位」、T-90 / 96 往前开、99A 往后开、驾驶员舱盖抬起来横着转开、
+--     布雷德利 / 斯特赖克尾部跳板放倒、BMP-3 两扇尾门往两边开 + 车顶两块大舱盖往外翻
+--   · 什么时候开：没人的车停着——全开；有人上车——驾驶员舱盖开着等人钻进去；乘客上下车（Pass 变了）——尾门 / 跳板开 3 秒；
+--     有人开、一阵没开炮没挨打——车长探出舱口（小人：两手扶舱圈、端望远镜、四下看），开炮或者挨打——车长缩回去、舱盖关上；
+--     艾布拉姆斯打完一阵（12～30 秒）车长舱盖先停在「打开保护位」（掀开一道缝）
+--   · 上车：有人坐上来（Driver / Pass 变了）时，按那个人刚才站的地方做一个小人——走到车边、两手扒着车体爬上去、
+--     走到驾驶员舱口、扶着舱圈钻进去；乘客走到车尾、顺着跳板 / 跨进尾门弯腰钻进去（服务器那边人已经藏起来坐好了，这里只是画给大家看）
+--   · 飞机：停在地上有人登机（Driver 变成玩家）——座舱左边靠一架登机梯，飞行员小人走过去、顺着梯子爬上去、跨进座舱坐下
+--     （座舱盖停机时本来就开着：Fly.lua 的 can；直升机没有梯子，踩着机身踏板钻进左边舱门）；放完梯子撤掉、换回模型自己的飞行员
+--   · 260 格以内才建、320 格外收掉；自己坐在车里（车内视角、瞄准镜）时这辆车外面的这些都不画
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+
+local Hatch = {}
+
+function Hatch.init(G)
+  local V, CF, ANG = Vector3.new, CFrame.new, CFrame.Angles
+  local HD = require(RS:WaitForChild("HatchDefs"))
+  local Kit = nil   -- InteriorKit（小人）：第一次要用时再拿
+  local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
+  local function smooth(u) u = clamp(u, 0, 1) return u * u * (3 - 2 * u) end
+  local BLACK = Color3.fromRGB(12, 12, 12)
+
+  local st = {}      -- 每辆车：em → { hs = { 舱盖 }, fig, … }（false：这辆车没有舱盖可画）
+  local hist = {}    -- 每个玩家最近 0.8 秒站在哪（上车动画从那里开始）：player → { list = { { t, p } … }, out }
+  local anims = {}   -- 正在上车的小人
+
+  local AM = nil   -- AirModels（飞机座位）：第一次要用时再拿
+  local function airModels()
+    if AM == nil then
+      local ok, m = pcall(function() return require(script.Parent:WaitForChild("AirModels")) end)
+      AM = ok and m or false
+    end
+    return AM or nil
+  end
+
+  local function kit()
+    if Kit == nil then
+      local ok, k = pcall(function() return require(script.Parent:WaitForChild("InteriorKit")) end)
+      Kit = ok and k or false
+    end
+    return Kit or nil
+  end
+
+  -- 做一个小人；量好站着时骨盆离脚底多高、眼睛比骨盆高多少（R15 模板和真人比例的人体模型不一样大）
+  local function newFig(dress, parent)
+    local K = kit()
+    local f = K and K.crew(dress)
+    if not f then return nil end
+    local m = f.model
+    local lt = m:FindFirstChild("LowerTorso")
+    local ltY = lt and lt.CFrame.Position.Y or f.hrp.CFrame.Position.Y
+    local bottom = nil
+    for _, p in ipairs(m:GetDescendants()) do
+      if p:IsA("BasePart") and p ~= f.hrp then
+        local b = p.CFrame.Position.Y - p.Size.Y / 2
+        if not bottom or b < bottom then bottom = b end
+      end
+    end
+    local k = f.head.Size.Y / 1.2
+    local F = { f = f, k = k, pelvisH = clamp(ltY - (bottom or ltY - 2.9 * k), 1.4 * k, 4 * k), eyeY = clamp(f.head.CFrame.Position.Y - ltY, 1.2 * k, 3.4 * k) }
+    m.Parent = parent
+    return F
+  end
+
+  local function newPart(parent, shape, size, color)
+    local p = Instance.new("Part")
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+    p.CastShadow = true
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    if shape == "round" then p.Shape = Enum.PartType.Cylinder end
+    p.Size = size
+    p.Color = color
+    p.Material = Enum.Material.SmoothPlastic
+    p.Transparency = 1
+    p.Parent = parent
+    return p
+  end
+
+  -- 舱盖的颜色：原模型里包住舱口那一块（同组、包围盒装得下舱口、最小的那块）的颜色——Tint 已经按贴图平均色上过色；找不到用同组按大小加权的平均色
+  local function lidColor(v, h)
+    local best, bv = nil, math.huge
+    local r, g, b, n = 0, 0, 0, 0
+    for _, it in ipairs(v.M and v.M.parts or {}) do
+      local p, grp, off = it[1], it[2], it[3]
+      if p:IsA("BasePart") and p.Transparency < 0.5 and grp == h.g and off then
+        local rel = off.Position - h.loc
+        local s = p.Size / 2 + V(0.3, 0.3, 0.3)
+        local vol = p.Size.X * p.Size.Y * p.Size.Z
+        if math.abs(rel.X) < s.X and math.abs(rel.Y) < s.Y and math.abs(rel.Z) < s.Z and vol < bv and vol > 0.05 then best, bv = p, vol end
+        local w = (p.Size.X * p.Size.Z) ^ 0.5
+        local c = p.Color
+        r, g, b, n = r + c.R * w, g + c.G * w, b + c.B * w, n + w
+      end
+    end
+    if best then return best.Color end
+    if n > 0 then return Color3.new(r / n, g / n, b / n) end
+    return Color3.fromRGB(96, 98, 84)
+  end
+
+  local function build(v)
+    local key = v.M and v.M.imported
+    local list = key and HD[key]
+    if not list and not key and v.def then list = HD.generic(v.def) end   -- 零件拼的车按型号表摆一套；原模型表里没有的不乱画
+    if not list or #list == 0 then return false end
+    local folder = Instance.new("Folder")
+    folder.Name = "Hatches"
+    folder.Parent = v.model
+    local tpiv = (v.M and v.M.tpiv) or (v.def and v.def.turret and v.def.turret.pivot) or V()
+    local s = { folder = folder, hs = {}, combatT = -999, drvT = -999, passT = -999, hp = nil, drv = nil, pass = nil,
+      seed = math.random() * 100, cn = v.em:GetAttribute("Team") == "atk", hide = false }   -- 攻方解放军、守方美军（车可以开对面的型号，乘员照自己这边穿）
+    for _, d in ipairs(list) do
+      local h = HD.prep(d, tpiv)
+      h.p = 0
+      local col = lidColor(v, h)
+      h.lid = newPart(folder, h.shape, h.size, col)
+      h.hole = newPart(folder, h.shape, h.holeSize, BLACK)
+      h.hole.CastShadow = false
+      table.insert(s.hs, h)
+      if h.use == "drv" then s.drvH = h end
+      if h.use == "pass" then s.passH = s.passH or {} table.insert(s.passH, h) end
+      if h.crew == "commander" then s.cmdH = h end
+    end
+    return s
+  end
+
+  local function dropFig(F) if F then F.f.model:Destroy() end end
+  -- 自己在车里看（外模型藏着）时新做出来的小人、梯子也一起藏
+  local function hideNew(s, inst)
+    if not (s and s.hide and inst) then return end
+    for _, x in ipairs(inst:GetDescendants()) do
+      if x:IsA("BasePart") then x.LocalTransparencyModifier = 1 end
+    end
+    if inst:IsA("BasePart") then inst.LocalTransparencyModifier = 1 end
+  end
+  local function drop(em)
+    local s = st[em]
+    st[em] = nil
+    if not s then return end
+    for _, F in pairs(s.figs or {}) do dropFig(F) end
+    for i = #anims, 1, -1 do
+      local A = anims[i]
+      if A.s == s then
+        dropFig(A.F)
+        if A.done then pcall(A.done) end   -- 登机梯收掉、飞行员换回来
+        table.remove(anims, i)
+      end
+    end
+    if s.folder then s.folder:Destroy() end
+  end
+
+  ---------------------------------------------------------------- 车长 / 装填手探出舱口
+  --   车长：四下看、隔一阵端望远镜看前面；装填手（艾布拉姆斯）：守着左边和后面（装填手舱口在炮塔左边），手扶舱圈
+  local function crewFig(s, v, h, dt, now)
+    s.figs = s.figs or {}
+    local F = s.figs[h.id]
+    local want = (s.out and h.p > 0.85) and 1 or 0
+    if not F then
+      if want == 0 then return end
+      F = newFig(s.cn and "tank_cn" or "tank_us", s.folder)
+      if not F then return end
+      F.rise = 0
+      s.figs[h.id] = F
+      if h.crew == "commander" then s.fig = F end
+      hideNew(s, F.f.model)
+    end
+    F.rise += clamp(want - F.rise, -dt * 2.4, dt * 1.3)   -- 缩回去快、钻出来慢一点
+    local m = F.f.model
+    if F.rise <= 0.01 and want == 0 then
+      if m.Parent then m.Parent = nil end
+      return
+    end
+    if m.Parent ~= s.folder then m.Parent = s.folder end
+    local frame = (h.g == "hull") and v.hullF or v.tF
+    if not frame then return end
+    local C = h.loc
+    -- 四下看：慢慢左右扫（每辆车相位不一样），隔一阵端起望远镜看前面；装填手看左边（左后方）
+    local ldr = h.crew == "loader"
+    local ph = ldr and 1.7 or 0
+    local yaw = math.sin(now * 0.23 + s.seed + ph) * math.rad(ldr and 45 or 70) + math.sin(now * 0.071 + s.seed * 2 + ph) * math.rad(40)
+    if ldr then yaw += math.rad(95) end
+    local binoc = (not ldr) and math.sin(now * 0.19 + s.seed * 3) > 0.55
+    if binoc then yaw *= 0.25 end
+    local up = F.rise * 2.05 * F.k   -- 眼睛离舱圈多高：胸口露出来
+    local body = frame * CF(C + V(0, up - 0.25 * F.k, 0.12)) * ANG(0, yaw * 0.45, 0)
+    local pelvis = body * CF(0, -F.eyeY, 0.05)
+    local look = (frame * ANG(0, yaw, 0)).LookVector + V(0, binoc and 0.03 or -0.07, 0)
+    local lh, rh
+    if binoc and F.rise > 0.9 then
+      local face = body * CF(0, -0.1 * F.k, -0.45 * F.k)
+      lh, rh = (face * CF(-0.17 * F.k, 0, 0)).Position, (face * CF(0.17 * F.k, 0, 0)).Position
+    else   -- 两手扶着舱圈
+      local hr = h.r or (h.w and h.w / 2) or 0.8
+      lh = (frame * CF(C + V(-hr * 0.85, 0.22, -0.15))).Position
+      rh = (frame * CF(C + V(hr * 0.85, 0.22, -0.15))).Position
+    end
+    F.f.set({ pelvis = pelvis, chest = ANG(math.rad(-4), 0, 0), look = look, lh = lh, rh = rh,
+      lf = (pelvis * CF(-0.4 * F.k, -F.pelvisH, -0.2 * F.k)).Position, rf = (pelvis * CF(0.4 * F.k, -F.pelvisH, 0.1 * F.k)).Position })
+  end
+
+  ---------------------------------------------------------------- 上车的小人
+  -- 关键帧（车体坐标）：t 秒、p 骨盆、yaw 朝向（0 朝车头 −Z）、lean 弯腰、lh / rh / lf / rf 手脚（nil：自然垂着 / 走路）；walk 这一段迈步
+  local function keyAt(K, t)
+    local a, b = K[1], K[#K]
+    for i = 1, #K - 1 do
+      if t < K[i + 1].t then a, b = K[i], K[i + 1] break end
+    end
+    local u = (b.t > a.t) and smooth((t - a.t) / (b.t - a.t)) or 1
+    local function lp(x, y) if x and y then return x:Lerp(y, u) end return nil end
+    local function ln(x, y) return (x or 0) + ((y or 0) - (x or 0)) * u end
+    -- 转向走最近的那边
+    local dy = ((b.yaw or 0) - (a.yaw or 0) + math.pi) % (2 * math.pi) - math.pi
+    return { p = lp(a.p, b.p), yaw = (a.yaw or 0) + dy * u, lean = ln(a.lean, b.lean), lh = lp(a.lh, b.lh), rh = lp(a.rh, b.rh),
+      lf = lp(a.lf, b.lf), rf = lp(a.rf, b.rf), walk = a.walk and b.walk }
+  end
+
+  -- 绕着车走：直线穿过车身（车体坐标里的长方形 |x| < hw、|z| < hl）就从车角绕过去
+  local function route(a, b, hw, hl)
+    local function hits(p, q)
+      for i = 1, 23 do
+        local t = i / 24
+        local x, z = p.X + (q.X - p.X) * t, p.Z + (q.Z - p.Z) * t
+        if math.abs(x) < hw and math.abs(z) < hl then return true end
+      end
+      return false
+    end
+    if not hits(a, b) then return { b } end
+    local cs = { V(hw + 0.3, b.Y, hl + 0.3), V(-hw - 0.3, b.Y, hl + 0.3), V(hw + 0.3, b.Y, -hl - 0.3), V(-hw - 0.3, b.Y, -hl - 0.3) }
+    local best, bl = nil, math.huge
+    for _, c in ipairs(cs) do
+      if not hits(a, c) and not hits(c, b) then
+        local l = (a - c).Magnitude + (c - b).Magnitude
+        if l < bl then best, bl = { c, b }, l end
+      end
+    end
+    if best then return best end
+    for _, c1 in ipairs(cs) do
+      for _, c2 in ipairs(cs) do
+        if c1 ~= c2 and not hits(a, c1) and not hits(c1, c2) and not hits(c2, b) then
+          local l = (a - c1).Magnitude + (c1 - c2).Magnitude + (c2 - b).Magnitude
+          if l < bl then best, bl = { c1, c2, b }, l end
+        end
+      end
+    end
+    return best or { b }
+  end
+  -- 从 from 走到 to（绕开车身），最后转到 yawEnd：往 K 里加关键帧，返回走完的时刻
+  local function walkTo(K, from, to, yawEnd, v, k)
+    local hw, hl = ((v.def and v.def.W) or 10) / 2 + 0.4, ((v.def and v.def.L) or 16) / 2 + 0.4
+    local pts = route(from, to, hw, hl)
+    local t, p = 0, from
+    local spd = 11 * k   -- 小跑，约 4 米 / 秒
+    for i, q in ipairs(pts) do
+      local d = q - p
+      local yaw = math.atan2(-d.X, -d.Z)
+      if i == 1 then table.insert(K, { t = 0, p = p, yaw = yaw, walk = true })
+      else
+        t += 0.12
+        table.insert(K, { t = t, p = p, yaw = yaw, walk = true })
+      end
+      t += math.max(d.Magnitude / spd, 0.12)
+      table.insert(K, { t = t, p = q, yaw = yaw, walk = true })
+      p = q
+    end
+    t += 0.15
+    table.insert(K, { t = t, p = to, yaw = yawEnd, walk = true })
+    return t
+  end
+  -- 关键帧没给手脚的补上自然的位置（两手垂在身边、两脚站着），前后两帧之间才接得上不跳
+  local function fill(K, F)
+    local P, k = F.pelvisH, F.k
+    for _, key in ipairs(K) do
+      local R = ANG(0, key.yaw or 0, 0)
+      key.lh = key.lh or (key.p + R * V(-1.0 * k, -0.9 * k, 0))
+      key.rh = key.rh or (key.p + R * V(1.0 * k, -0.9 * k, 0))
+      key.lf = key.lf or (key.p + R * V(-0.42 * k, -P, 0))
+      key.rf = key.rf or (key.p + R * V(0.42 * k, -P, 0))
+    end
+    return K
+  end
+
+  -- 开车的：走到车边 → 扒着车体爬上去 → 走到驾驶员舱口 → 扶着舱圈钻进去
+  local function drvKeys(v, h, from, F)
+    local W = (v.def and v.def.W) or 10
+    local C = h.loc
+    local hr = h.r or (h.w and h.w / 2) or 0.8   -- 扶舱圈的手离中心多远
+    local s = (from.X >= 0) and 1 or -1
+    local P, k = F.pelvisH, F.k
+    local roof = C.Y
+    local zs = C.Z + 0.4
+    local edge = s * W / 2
+    local G0 = V(edge + s * 1.0 * k, P, zs)
+    local face = s * math.pi / 2   -- 面朝车：yaw = +90° 时 LookVector 是 −X
+    local sink = roof - F.eyeY - 0.5 * k
+    local K = {}
+    local t1 = walkTo(K, V(from.X, P, from.Z), G0, face, v, k)
+    for _, key in ipairs({
+      -- 两手扒住车体上沿
+      { t = t1 + 0.18, p = G0, yaw = face, lh = V(edge - s * 0.25, roof + 0.05, zs + s * 0.6 * k), rh = V(edge - s * 0.25, roof + 0.05, zs - s * 0.6 * k),
+        lf = V(edge + s * 1.0 * k, 0.1, zs + s * 0.35 * k), rf = V(edge + s * 1.0 * k, 0.1, zs - s * 0.35 * k) },
+      -- 一只脚蹬上翼子板 / 车体侧面，身子往上拔
+      { t = t1 + 0.55, p = V(edge + s * 0.55 * k, roof + P * 0.35, zs), yaw = face, lean = 0.5,
+        lh = V(edge - s * 0.35, roof + 0.05, zs + s * 0.6 * k), rh = V(edge - s * 0.35, roof + 0.05, zs - s * 0.6 * k),
+        lf = V(edge + s * 0.25 * k, roof * 0.5, zs + s * 0.35 * k), rf = V(edge + s * 0.85 * k, 0.1, zs - s * 0.35 * k) },
+      -- 两脚上了车体，蹲着
+      { t = t1 + 0.9, p = V(edge - s * 0.6 * k, roof + P * 0.72, zs), yaw = face, lean = 0.35,
+        lh = V(edge - s * 1.1 * k, roof + 0.05, zs + s * 0.55 * k), rh = V(edge - s * 1.1 * k, roof + 0.05, zs - s * 0.55 * k),
+        lf = V(edge - s * 0.45 * k, roof, zs + s * 0.35 * k), rf = V(edge - s * 0.45 * k, roof, zs - s * 0.35 * k) },
+      -- 站起来走到舱口边上，转身朝前
+      { t = t1 + 1.3, p = V(C.X + s * 0.95 * k, roof + P, C.Z), yaw = 0,
+        lf = V(C.X + s * 0.75 * k, roof, C.Z - 0.2 * k), rf = V(C.X + s * 1.15 * k, roof, C.Z + 0.2 * k) },
+      -- 一脚跨进舱口，手扶舱圈
+      { t = t1 + 1.6, p = V(C.X + s * 0.25 * k, roof + P * 0.82, C.Z), yaw = 0, lean = 0.15,
+        lh = V(C.X - hr * 0.9, roof + 0.12, C.Z - 0.1), rh = V(C.X + hr * 0.9, roof + 0.12, C.Z - 0.1),
+        lf = V(C.X, roof - 0.6 * k, C.Z), rf = V(C.X + s * 1.0 * k, roof, C.Z + 0.2 * k) },
+      -- 钻进去
+      { t = t1 + 2.15, p = V(C.X, sink, C.Z), yaw = 0,
+        lh = V(C.X - hr * 0.7, roof - 0.1, C.Z), rh = V(C.X + hr * 0.7, roof - 0.1, C.Z),
+        lf = V(C.X - 0.3 * k, sink - P, C.Z), rf = V(C.X + 0.3 * k, sink - P, C.Z) },
+    }) do table.insert(K, key) end
+    return fill(K, F), t1 + 2.15
+  end
+
+  -- 坐后面的：走到车尾 → 顺着跳板走上去 / 跨上尾门的踏板 → 弯腰钻进去
+  local function passKeys(v, h, from, F)
+    local P, k = F.pelvisH, F.k
+    local B = h.base
+    local sill = math.max(B.Y, 0)
+    local out = (h.m == "ramp") and (h.L * math.sin(h.t0 + h.open) + 1.2 * k) or 1.8 * k   -- 跳板放倒后尖在车后多远
+    local X = B.X
+    if h.m == "door" then X = B.X + ((h.hinge == "L") and 0.15 or -0.15) end
+    local hl = ((v.def and v.def.L) or 16) / 2 + 0.4
+    local R0 = V(X, P, math.max(B.Z + out, hl + 0.8))
+    local K = {}
+    local t1 = walkTo(K, V(from.X, P, from.Z), R0, 0, v, k)
+    if h.m == "ramp" then
+      table.insert(K, { t = t1 + 0.7, p = V(X, sill + P * 0.92, B.Z + 0.3), yaw = 0, lean = 0.35, walk = true })
+      table.insert(K, { t = t1 + 1.25, p = V(X, sill + P * 0.85, B.Z - 2.6 * k), yaw = 0, lean = 0.45, walk = true })
+      return fill(K, F), t1 + 1.25
+    end
+    for _, key in ipairs({
+      -- 一脚踩上踏板 / 门槛，手扶门框
+      { t = t1 + 0.4, p = V(X, sill * 0.55 + P * 0.95, B.Z + 0.6 * k), yaw = 0, lean = 0.3,
+        lh = V(X - 0.75 * k, sill + 1.4 * k, B.Z + 0.1), rh = V(X + 0.75 * k, sill + 1.4 * k, B.Z + 0.1),
+        lf = V(X - 0.25 * k, sill, B.Z - 0.2), rf = V(X + 0.3 * k, 0.1, B.Z + 1.1 * k) },
+      -- 弯腰钻进去
+      { t = t1 + 0.95, p = V(X, sill + P * 0.8, B.Z - 2.2 * k), yaw = 0, lean = 0.6,
+        lf = V(X - 0.3 * k, sill, B.Z - 2.0 * k), rf = V(X + 0.3 * k, sill, B.Z - 2.4 * k) },
+    }) do table.insert(K, key) end
+    return fill(K, F), t1 + 0.95
+  end
+
+  local function startBoard(v, s, kind, fromW)
+    local h
+    if kind == "drv" then h = s.drvH
+    else   -- 几扇门挑离人近的
+      local best, bd = nil, math.huge
+      for _, x in ipairs(s.passH or {}) do
+        if (x.m == "ramp" or x.m == "door") and v.hullF then
+          local dd = fromW and ((v.hullF * x.base) - fromW).Magnitude or 0
+          if dd < bd then best, bd = x, dd end
+        end
+      end
+      h = best
+    end
+    if not h or not v.hullF then return end
+    if not fromW then   -- 不知道刚才站哪：开车的从左边、乘客从车尾过来
+      fromW = (kind == "drv") and (v.hullF * V(-((v.def.W or 10) / 2 + 6), 0, h.loc.Z)) or (v.hullF * V(0, 0, (v.def.L or 16) / 2 + 6))
+    end
+    local from = v.hullF:PointToObjectSpace(fromW)
+    local F = newFig(kind == "drv" and (s.cn and "tank_cn" or "tank_us") or (s.cn and "crew_cn" or "crew_us"), s.folder)
+    if not F then return end
+    hideNew(s, F.f.model)
+    local K, dur
+    if kind == "drv" then K, dur = drvKeys(v, h, from, F) else K, dur = passKeys(v, h, from, F) end
+    table.insert(anims, { v = v, s = s, h = h, F = F, K = K, dur = dur, t = 0, kind = kind, stride = 0 })
+    if kind == "drv" then s.drvHold = true else s.passHold = (s.passHold or 0) + 1 end
+  end
+
+  -- 飞机登机：座舱左边一架登机梯（机体坐标），飞行员走过去、爬梯子、跨进座舱坐下；直升机踩着踏板钻进左边舱门
+  local function airBoard(v, s, fromW)
+    local A = airModels()
+    local seat = A and v.M and A.seatCF(v.M, 1)
+    if not seat or not v.cf then return end
+    local d = v.def or {}
+    local heli = d.rotor ~= nil
+    local F = newFig(heli and (s.cn and "heli_cn" or "heli_us") or (s.cn and "pilot_cn" or "pilot_us"), s.folder)
+    if not F then return end
+    local P, k = F.pelvisH, F.k
+    local S = seat.Position
+    local g = -(d.gearH or 3)                    -- 地面（机体坐标：根零件离地 gearH）
+    local sill = S.Y + 0.9                       -- 座舱边沿
+    local side = -1                              -- 从左边上（战斗机登机梯一般挂左边）
+    local lx = S.X + side * 2.2                  -- 梯子顶靠在机身侧面
+    local fx = lx + side * math.max(1.2, (sill - g) * 0.28)   -- 梯子脚往外撇一点
+    local from = v.cf:PointToObjectSpace(fromW or (v.cf * V(side * 12, g, S.Z + 4)))
+    local K = {}
+    local Fp = V(fx + side * 0.75 * k, g + P, S.Z)
+    local face = side * math.pi / 2   -- 面朝机身（side −1：站在左边、朝 +X）
+    local t1 = walkTo(K, V(from.X, g + P, from.Z), Fp, face, { def = { W = 4, L = 4 } }, k)
+    local props = {}
+    if not heli then
+      -- 梯子：两根扶手 + 一档一档的踏棍（黄色地勤设备），从地面斜靠到座舱边沿
+      local foot, top = V(fx, g, S.Z), V(lx, sill + 0.5, S.Z)
+      local u = top - foot
+      local L = u.Magnitude
+      local mid = foot + u / 2
+      local base = CF(mid) * ANG(0, 0, -math.atan2(u.X, u.Y))   -- 竖着的扶手（长在 Y 上）绕 Z 转到 foot → top 的方向
+      local col = Color3.fromRGB(214, 176, 48)
+      for _, z in ipairs({ -0.45, 0.45 }) do
+        local r = newPart(s.folder, nil, V(0.14, L, 0.14), col)
+        r.Transparency = 0
+        table.insert(props, { r, base * CF(0, 0, z) })
+      end
+      local n = math.max(3, math.floor(L / 0.9))
+      for i = 1, n do
+        local r = newPart(s.folder, nil, V(0.1, 0.1, 0.9), Color3.fromRGB(70, 72, 74))
+        r.Transparency = 0
+        table.insert(props, { r, base * CF(0, -L / 2 + i * L / (n + 1), 0) })
+      end
+      -- 爬：一步一档，左右手脚交替（身子贴着梯子，面朝机身）
+      local steps = math.max(3, math.floor((sill - g) / 0.9))
+      local t = t1 + 0.15
+      for i = 1, steps do
+        local u2 = i / steps
+        local px = fx + side * 0.75 * k + (lx - fx) * u2
+        local py = g + P * (1 - 0.15 * u2) + (sill - g - P * 0.55) * u2
+        local hy = py + P * 0.55
+        local even = i % 2 == 0
+        -- 面朝 +X（side −1）时左手在 −Z：左右按 side 换
+        table.insert(K, { t = t + i * 0.32, p = V(px, py, S.Z), yaw = face, lean = 0.1,
+          lh = V(px - side * 0.45 * k, hy + (even and 0.45 or 0), S.Z + side * 0.42), rh = V(px - side * 0.45 * k, hy + (even and 0 or 0.45), S.Z - side * 0.42),
+          lf = V(px - side * 0.3 * k, py - P * (even and 0.6 or 0.85), S.Z + side * 0.2), rf = V(px - side * 0.3 * k, py - P * (even and 0.85 or 0.6), S.Z - side * 0.2) })
+      end
+      t = t + steps * 0.32
+      -- 跨进座舱：一条腿先迈进去，身子转向前，坐下
+      table.insert(K, { t = t + 0.45, p = V(S.X + side * 0.9, sill + P * 0.35, S.Z + 0.3), yaw = side * math.pi / 4, lean = 0.3,
+        lh = V(S.X + side * 0.8, sill + 0.1, S.Z - 0.9), rh = V(S.X + side * 0.8, sill + 0.1, S.Z + 0.9),
+        lf = V(S.X + side * 0.3, sill - 0.6, S.Z - 0.4), rf = V(S.X + side * 1.6, sill - 0.2, S.Z + 0.2) })
+      table.insert(K, { t = t + 1.1, p = S + V(0, -0.45 * k, 0.15), yaw = 0, lean = -0.1,
+        lh = V(S.X - 0.55, sill - 0.1, S.Z - 0.6), rh = V(S.X + 0.55, sill - 0.1, S.Z - 0.6),
+        lf = V(S.X - 0.35, S.Y - 1.6 * k, S.Z - 2.0 * k), rf = V(S.X + 0.35, S.Y - 1.6 * k, S.Z - 2.0 * k) })
+      t = t + 1.1
+      fill(K, F)
+      table.insert(anims, { v = v, s = s, F = F, K = K, dur = t, t = 0, kind = "air", stride = 0, props = props })
+    else
+      -- 直升机：走到左边舱门，踩上踏板，弯腰钻进去坐下
+      local dx = S.X + side * 2.0
+      table.insert(K, { t = t1 + 0.4, p = V(dx, g + P + 0.6, S.Z), yaw = face, lean = 0.35,
+        lh = V(dx - side * 0.5, S.Y + 0.9, S.Z - 0.7), rh = V(dx - side * 0.5, S.Y + 0.9, S.Z + 0.7),
+        lf = V(dx - side * 0.2, g + 0.9, S.Z - 0.2), rf = V(dx + side * 0.3, g + 0.1, S.Z + 0.2) })
+      table.insert(K, { t = t1 + 1.1, p = S + V(0, -0.45 * k, 0.15), yaw = 0,
+        lf = V(S.X - 0.35, S.Y - 1.6 * k, S.Z - 1.8 * k), rf = V(S.X + 0.35, S.Y - 1.6 * k, S.Z - 1.8 * k) })
+      fill(K, F)
+      table.insert(anims, { v = v, s = s, F = F, K = K, dur = t1 + 1.1, t = 0, kind = "air", stride = 0, props = props })
+    end
+    -- 别人的飞机：爬的时候先把模型自己坐好的飞行员藏起来，坐下了再换回来（自己的不动：座舱视角 Interior 自己管飞行员显不显示）
+    local own = v.em:GetAttribute("Driver") == Players.LocalPlayer.UserId
+    anims[#anims].own = own
+    if not own and A.setPilots then
+      pcall(A.setPilots, v.M, false)
+      anims[#anims].done = function()
+        for _, pr in ipairs(props) do pr[1]:Destroy() end
+        pcall(A.setPilots, v.M, true)
+      end
+    else
+      anims[#anims].done = function() for _, pr in ipairs(props) do pr[1]:Destroy() end end
+    end
+  end
+
+  local function stepAnims(dt)
+    for i = #anims, 1, -1 do
+      local A = anims[i]
+      A.t += dt
+      local v, F = A.v, A.F
+      local frame = (A.kind == "air") and v.cf or v.hullF
+      -- 自己的飞机进了座舱视角（Interior）：镜头就在座位上，小人别挡着，直接收掉
+      local inCockpit = A.own and G.interiorOn and G.interiorOn()
+      if A.t >= A.dur + 0.05 or not frame or st[v.em] ~= A.s or inCockpit then
+        dropFig(F)
+        if A.kind == "drv" then A.s.drvHold = nil elseif A.kind == "pass" then A.s.passHold = math.max(0, (A.s.passHold or 1) - 1) end
+        if A.done then A.done() end
+        table.remove(anims, i)
+      else
+        local k = keyAt(A.K, A.t)
+        if A.props then   -- 登机梯：跟着飞机摆
+          local pl, cl = {}, {}
+          for _, pr in ipairs(A.props) do table.insert(pl, pr[1]) table.insert(cl, frame * pr[2]) end
+          workspace:BulkMoveTo(pl, cl, Enum.BulkMoveMode.FireCFrameChanged)
+        end
+        local pos = k.p
+        if A.last then A.stride += (pos - A.last).Magnitude end
+        A.last = pos
+        local body = frame * CF(pos) * ANG(0, k.yaw, 0)
+        local pelvis = body * ANG(-(k.lean or 0) * 0.35, 0, 0)
+        local function w(x) return x and (frame * x) or nil end
+        local P = { pelvis = pelvis, chest = ANG(-(k.lean or 0) * 0.65, 0, 0), look = body.LookVector + V(0, -0.15, 0),
+          lh = w(k.lh), rh = w(k.rh), lf = w(k.lf), rf = w(k.rf) }
+        if k.walk then   -- 迈步：两脚前后交替，抬起来的那只离地一点
+          local ph = A.stride / (1.6 * F.k) * math.pi
+          local sw = math.sin(ph) * 0.55 * F.k
+          local lift = math.max(0, math.cos(ph)) * 0.3 * F.k
+          local lift2 = math.max(0, -math.cos(ph)) * 0.3 * F.k
+          P.lf = (body * CF(-0.42 * F.k, -F.pelvisH + lift, -sw)).Position
+          P.rf = (body * CF(0.42 * F.k, -F.pelvisH + lift2, sw)).Position
+          P.lh = (body * CF(-1.0 * F.k, -0.9 * F.k, sw * 0.8)).Position
+          P.rh = (body * CF(1.0 * F.k, -0.9 * F.k, -sw * 0.8)).Position
+        end
+        F.f.set(P)
+      end
+    end
+  end
+
+  ---------------------------------------------------------------- 每帧
+  local function sampleHist(now)
+    for _, pl in ipairs(Players:GetPlayers()) do
+      local ch = pl.Character
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      if hrp then
+        local H = hist[pl]
+        if not H then H = { list = {} } hist[pl] = H end
+        table.insert(H.list, { t = now, p = hrp.CFrame.Position })
+        while #H.list > 0 and now - H.list[1].t > 0.8 do table.remove(H.list, 1) end
+      end
+    end
+    for pl in pairs(hist) do
+      if not pl.Parent then hist[pl] = nil end
+    end
+  end
+  -- 这个人上车前最后站在哪：服务器上车时把人挪到车的根零件上（Armor.lua seat）——从最近往前找第一个不在那里的位置
+  local function lastOutside(pl, v)
+    local H = hist[pl]
+    if not H then return nil end
+    local c = v.root and v.root.CFrame.Position or (v.cf or v.hullF).Position
+    for i = #H.list, 1, -1 do
+      local p = H.list[i].p
+      if (p - c).Magnitude > 1.0 then return p end
+    end
+    return nil
+  end
+
+  function G.stepHatches(dt)
+    local views = G.views
+    if not views then return end
+    local cam = workspace.CurrentCamera
+    local camPos = cam and cam.CFrame.Position or V()
+    local now = os.clock()
+    for em in pairs(st) do
+      if not em.Parent or not views[em] then drop(em) end
+    end
+    local plist, clist = {}, {}
+    for em, v in pairs(views) do
+      if v.kind == "air" and v.model and v.cf and v.M then
+        -- 飞机：只管登机的小人（座舱盖、舱门、跳板 AirModels 自己会动）
+        local dist = (v.cf.Position - camPos).Magnitude
+        local s = st[em]
+        if dist > 320 or em:GetAttribute("Wreck") then
+          if s ~= nil then drop(em) end
+        elseif dist < 260 or s then
+          if s == nil then
+            local folder = Instance.new("Folder")
+            folder.Name = "Boarding"
+            folder.Parent = v.model
+            s = { folder = folder, hs = {}, air = true, cn = em:GetAttribute("Team") == "atk", hide = false }
+            st[em] = s
+          end
+          local drv = em:GetAttribute("Driver") or 0
+          if s.drv ~= nil and s.drv ~= drv and drv > 0 then
+            local c = v.c or {}
+            local parked = (c.gear or 0) > 0.9 and (c.thr or 0) < 10   -- 停在地上（放着起落架、慢车）
+            local pl = Players:GetPlayerByUserId(drv)
+            if pl and parked then airBoard(v, s, lastOutside(pl, v)) end
+          end
+          s.drv = drv
+        end
+      elseif v.kind == "veh" and v.model and v.hullF then
+        local dist = (v.hullF.Position - camPos).Magnitude
+        local s = st[em]
+        if dist > 320 or em:GetAttribute("Wreck") then
+          if s ~= nil then drop(em) end
+        elseif dist < 260 or s then
+          if s == nil then
+            s = build(v)
+            st[em] = s
+          end
+          if s then
+            -- 有没有人、谁上了车、打没打仗
+            local drv = em:GetAttribute("Driver") or 0
+            local crewed = drv ~= 0
+            if s.drv ~= nil and s.drv ~= drv then
+              s.drvT = now
+              local pl = drv > 0 and Players:GetPlayerByUserId(drv)
+              if pl then startBoard(v, s, "drv", lastOutside(pl, v)) end
+            end
+            s.drv = drv
+            local pass = em:GetAttribute("Pass") or 0
+            if s.pass ~= nil and s.pass ~= pass then
+              s.passT = now
+              -- 谁上来了：服务器把乘客挪到车中心、藏起来——现在离车中心很近、刚才还在外面的
+              local n = pass - s.pass
+              if n > 0 then
+                local c = v.root and v.root.CFrame.Position or (v.cf or v.hullF).Position
+                for _, pl in ipairs(Players:GetPlayers()) do
+                  if n <= 0 then break end
+                  local ch = pl.Character
+                  local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                  if hrp and pl.UserId ~= drv and (hrp.CFrame.Position - c).Magnitude < 2.5 then
+                    local out = lastOutside(pl, v)
+                    if out then
+                      startBoard(v, s, "pass", out)
+                      n -= 1
+                    end
+                  end
+                end
+              end
+            end
+            s.pass = pass
+            local hp = em:GetAttribute("Hp")
+            if hp and s.hp and hp < s.hp - 0.5 then s.combatT = now end   -- 挨打
+            s.hp = hp
+            if (v.recoil or 0) > 0.05 or (v.shots or 0) ~= (s.shots or 0) then s.combatT = now end   -- 开炮（View 的后坐、开炮次数）
+            s.shots = v.shots or 0
+            local calm = now - s.combatT
+            local moving = math.abs(v.speed or 0) > 1
+            s.out = crewed and calm > 30
+            -- 自己坐在这辆车里（瞄准镜 / 车内视角）：外模型藏起来了，这些也藏
+            local p1 = v.M and v.M.parts[1] and v.M.parts[1][1]
+            local okL, ltm = pcall(function() return p1.LocalTransparencyModifier end)   -- 测试台里没设过的属性读不出来
+            local hide = (okL and type(ltm) == "number" and ltm > 0.5) and true or false
+            if hide ~= s.hide then
+              s.hide = hide
+              for _, x in ipairs(s.folder:GetDescendants()) do
+                if x:IsA("BasePart") then x.LocalTransparencyModifier = hide and 1 or 0 end
+              end
+            end
+            for _, h in ipairs(s.hs) do
+              local want
+              if h.crew then   -- 车长、装填手：没打仗探出来，打起来缩回去
+                if not crewed then want = 1
+                elseif calm < 12 then want = 0
+                elseif h.m == "abrams" and calm < 30 then want = HD.ABRAMS_OP   -- 打开保护位
+                elseif calm < 30 then want = 0
+                else want = 1 end
+                local F = s.figs and s.figs[h.id]
+                if want < h.p and F and F.rise > 0.05 then want = h.p end   -- 人要钻回去：等人缩进去再关
+              elseif h.use == "drv" then
+                want = (not crewed or s.drvHold or now - s.drvT < 2.5) and 1 or 0
+              elseif h.use == "pass" then
+                want = (((s.passHold or 0) > 0) or now - s.passT < 3 or (not crewed and not moving)) and 1 or 0
+              else
+                want = (not crewed) and 1 or 0
+              end
+              local spd = (h.m == "ramp") and 0.8 or 2.2
+              h.p += clamp(want - h.p, -dt * spd, dt * spd)
+              local frame = (h.g == "hull") and v.hullF or v.tF
+              -- 关着：板和黑底都藏起来（看原模型自己的舱盖）；原模型那块本来就开着的（M1A1 车长舱盖）：一直用原模型的，只有车长探身 / 缩回去
+              local lidOn, holeOn
+              if h.orig == "open" then lidOn, holeOn = false, false
+              else lidOn, holeOn = h.p > 0.004, h.p > 0.004 end
+              h.lid.Transparency = lidOn and 0 or 1
+              h.hole.Transparency = holeOn and 0 or 1
+              if frame then
+                if lidOn then
+                  table.insert(plist, h.lid)
+                  table.insert(clist, frame * HD.lidCF(h, h.p))
+                end
+                if holeOn then
+                  table.insert(plist, h.hole)
+                  table.insert(clist, frame * h.holeCF)
+                end
+              end
+              if h.crew and (s.out or (s.figs and s.figs[h.id])) then crewFig(s, v, h, dt, now) end
+            end
+          end
+        end
+      end
+    end
+    if #plist > 0 then workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged) end
+    stepAnims(dt)
+    sampleHist(now)
+  end
+  G.hatchState = function(em) return st[em] end   -- 测试用
+  G.hatchAnims = anims
+  -- 测试用：直接让某架飞机（G.views 里的）放一次登机动画
+  G.hatchAirBoard = function(em, fromW)
+    local v = G.views and G.views[em]
+    if not v or v.kind ~= "air" then return false end
+    local s = st[em]
+    if not s then
+      local folder = Instance.new("Folder")
+      folder.Name = "Boarding"
+      folder.Parent = v.model
+      s = { folder = folder, hs = {}, air = true, cn = em:GetAttribute("Team") == "atk", hide = false }
+      st[em] = s
+    end
+    local n0 = #anims
+    airBoard(v, s, fromW)
+    return #anims > n0
+  end
+end
+
+return Hatch
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -44818,7 +45794,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -44932,7 +45908,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -44977,7 +45953,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     "ip_dseat", "ip_swheel", "ip_lever", "ip_gauges", "ip_pedals", "ip_grip" }   -- 用户 11-23「很粗糙…不要自己建模 然后用 blender」：座椅、方向盘、操纵杆、仪表、踏板、握把（tools/weapons/blprep.py）
   local prewarmed = false
 
-  local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
+  -- 车里画不画乘员小人：用户 11-22 晚「驾驶室不要显示人了」关过；11-24「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活
+  --   玩家第一人称就是负责扮演炮手视角」——地面车又画上（Roblox 小人，InteriorKit K.crew），飞机座舱照旧不画
+  local SHOW_CREW = true
   G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
@@ -45185,7 +46163,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
     -- 乘员：用户 11-22 晚「驾驶室不要显示人了」——车里、座舱里不建乘员小人（哪个视角都没有人，导演镜头也没有）；
     --   SHOW_CREW 打开就照原来画（乘员位视角时也藏着）
-    for id, cs in pairs(SHOW_CREW and spec.crew or {}) do
+    for id, cs in pairs((SHOW_CREW and not spec.air) and spec.crew or {}) do
       local f = Kit.crew(cs.dress)
       if f then
         f.model.Parent = m
@@ -45201,7 +46179,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       s.nextT = 0
     end
     -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来（没有乘员小人时不建：不然那发弹自己在空中飞）
-    if spec.loader == "m256" and SHOW_CREW then
+    if spec.loader == "m256" and SHOW_CREW and not spec.air then
       b:group("hround", "turret", CF())
       local parts0 = #b.parts
       Defs.round120(b, "hround", CF(0, 0, 0.49), { len = 0.98 })
@@ -45588,7 +46566,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if id == "loader" and c.lo then   -- 装填的动作
         local L = c.lo
         local yaw = L.a.yaw + (L.b.yaw - L.a.yaw) * L.u
-        eye = L.a.eye:Lerp(L.b.eye, L.u)
+        -- 关键帧是照 M1A2 那套内饰排的：按这辆车装填手自己的眼位平移（B 的 M1A1 原模型内饰装填手站得不一样）
+        eye = cs.eye + (L.a.eye:Lerp(L.b.eye, L.u) - LOAD[1].eye)
         rot = ANG(0, rad(yaw), 0) * ANG(rad((cs.lean or 0) * 0.6 - 8), 0, 0)
         chest = ANG(rad(-14), 0, 0)
         local hr = c.b.groups.hround
@@ -45597,23 +46576,26 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           rh = hr.world * (V(0.02, -0.02, 0.47) * S)
           lookW = (hr.world.Position - (g.world * (eye * S))).Unit
         elseif L.k < 0.2 then
-          lh = at(c, "doorL", V(0.30 + 0.0, 0, -0.05))
+          local door = c.b.groups.doorL and at(c, "doorL", V(0, 0, 0)) or (g.world * ((cs.eye + V(0.15, -0.35, 0.95)) * S))   -- 没有弹药门：身后偏右
+          lh = c.b.groups.doorL and at(c, "doorL", V(0.30 + 0.0, 0, -0.05)) or door
           rh = nil
-          lookW = (at(c, "doorL", V(0, 0, 0)) - g.world * (eye * S)).Unit
+          lookW = (door - g.world * (eye * S)).Unit
         elseif L.k > 0.8 then
           lh = nil
-          rh = at(c, "arm", V(0, 0.10, 0))
+          rh = c.b.groups.arm and at(c, "arm", V(0, 0.10, 0)) or at(c, "gun", V(-0.35, 0.12, 0.85))   -- 没有保险拨杆的组：炮尾左边
           lookW = (at(c, "gun", V(0, 0.1, 0.8)) - g.world * (eye * S)).Unit
         end
-        if (L.a.knee or L.b.knee) then rf = at(c, "knee", V(0.0, 0.10, -0.08)) end
+        if (L.a.knee or L.b.knee) then
+          rf = c.b.groups.knee and at(c, "knee", V(0.0, 0.10, -0.08)) or (g.world * ((cs.eye + V(0.22, -1.25, 0.30)) * S))
+        end
       end
       local eyeCF = g.world * CF(eye * S) * rot
       local pelvis = eyeCF * CF(-eyeOff)
       if c.mine == id and camLook then lookW = camLook end
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
-      -- 第一人称坐在车里 / 座舱里（乘员位）：别的乘员、自己都不画（用户 11-21「不要显示我的腿和胳膊」，11-22「不要显示成员和自己的身体部位」）；
-      --   导演镜头从外面看照画
-      local show = mode ~= "seat"
+      -- 第一人称坐在车里（乘员位）：自己那个位置的小人不画（用户 11-21「不要显示我的腿和胳膊」）；别的乘员 11-22 关过（「不要显示成员和自己的身体部位」），
+      --   11-24 又要（「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活」）；导演镜头从外面看照画
+      local show = mode ~= "seat" or id ~= c.mine   -- 11-24：别的乘员照画（各干各的活），自己那个位置的不画（看得见自己的胳膊腿：11-21 不要）
       if cr.headShown ~= show then
         cr.headShown = show
         f.bodyVisible(show)
@@ -47736,7 +48718,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -48458,7 +49440,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -48822,9 +49804,14 @@ return function(Defs, Hp)
     -- 驾驶员位（用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」）：挖了内腔的 A2 才有——车体内腔就是驾驶舱
     --   （挖出来的驾驶舱很矮：顶在座圈下 0.31～0.45 米、地板 0.91～1.06 米、两边墙 ±0.66 米，驾驶员半躺）；M1A1 原模型只做了炮塔里面，A1 没有驾驶员位
     local order = { "gunner", "commander", "loader" }
+    local driverCrew = nil
     if cav then
       local H = "hull"
       local eyeD = V(0, -0.46, -1.85)
+      -- 驾驶员小人（E 11-24）：半躺在座椅上，两手握 T 形操纵把两头，脚踩刹车踏板那一片
+      driverCrew = { dress = "tank_us", g = H, eye = eyeD, lean = 34, yaw = 0, look = V(0, 0.1, -1),
+        hands = { l = { "tbar", V(-0.25, 0, 0) }, r = { "tbar", V(0.25, 0, 0) } },
+        feet = { l = { H, V(-0.12, -0.88, -2.92) }, r = { H, V(0.10, -0.88, -2.90) } } }
       local function lookAt(p, at) return CFrame.lookAt(p, at) end
       -- 三具潜望镜（前面一具正对，两边各斜 32°）、正前方驾驶员视觉增强器 DVE 的显示器
       for i = -1, 1 do
@@ -48865,7 +49852,21 @@ return function(Defs, Hp)
       stations = stations,
       order = order,
       lock = "gunner",   -- 一进车默认炮长位，F2 驾驶员（挖了内腔才有）、F3 炮长、F4 车长、F5 装填手
-      crew = {},
+      -- 乘员小人（E 11-24；用户：「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活 玩家第一人称就是负责扮演炮手视角」）：
+      --   位置按上面各乘员位的眼位、原模型的座椅 / 握把量的（供体格 → 炮塔米：P）；炮塔地板约 −1.12 米、车长脚踏约 −0.42 米。
+      --   玩家坐哪个位置那个小人不画（Interior.lua stepCrew）；装填手的装填动作（Interior.lua，M256）按他自己的眼位平移
+      crew = {
+        gunner = { dress = "tank_us", g = "turret", eye = gEye + V(0, -0.02, 0.02), lean = -24, yaw = 0, look = V(0, -0.12, -1),
+          hands = { l = { "gch", V(-0.14, 0.12, 0) }, r = { "gch", V(0.14, 0.12, 0) } },
+          feet = { l = { "turret", V(gEye.X - 0.12, -0.98, gEye.Z - 0.55) }, r = { "turret", V(gEye.X + 0.10, -0.98, gEye.Z - 0.52) } } },
+        commander = { dress = "tank_us", g = "turret", eye = cEye, lean = -10, yaw = 0, look = V(0, -0.30, -1),
+          hands = { l = { "turret", cEye + V(-0.12, -0.42, -0.42) }, r = { "turret", P(PT.cch) + V(0, 0.08, 0) } },
+          feet = { l = { "turret", V(cEye.X - 0.12, -0.42, cEye.Z - 0.25) }, r = { "turret", V(cEye.X + 0.10, -0.42, cEye.Z - 0.25) } } },
+        loader = { dress = "tank_us", g = "turret", eye = lEye, lean = -6, yaw = -28, look = V(0.5, -0.25, -1), stand = true,
+          hands = { l = { "turret", lEye + V(0.38, -0.48, -0.40) }, r = nil },
+          feet = { l = { "turret", V(lEye.X - 0.14, -1.12, lEye.Z + 0.05) }, r = { "turret", V(lEye.X + 0.14, -1.12, lEye.Z + 0.10) } } },
+        driver = driverCrew,
+      },
       abrams = variant,
     }
   end
@@ -48984,7 +49985,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -49136,7 +50137,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -51264,7 +52265,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -52236,7 +53237,10 @@ local function setJ(Jx, P0, P1) Jx.m.C0 = P0:Inverse() * P1 * Jx.c1 end
 -- 做一个乘员：返回 { model, hrp, J, set(pose) }；dress 见上面的 DRESS
 function K.crew(dressKey)
   local dress = DRESS[dressKey] or DRESS.crew_us
-  local m, hrp, head = slimRig(dress)   -- 真人比例（R15 模板 / 方块小人只在调试时用：rigFromTemplate、partRig）
+  -- 用户 11-24：「坦克要有精细的 roblox 人物」——有 R15 模板（ReplicatedStorage.BotRig：Bots.lua 开服时做的，士兵机器人也是它）就用 Roblox 小人，
+  --   按乘员服上色、戴原模型的坦克帽；没有模板（Studio 连不上资源、模拟测试）照旧真人比例的人体模型（slimRig）
+  local m, hrp, head = rigFromTemplate(dress)
+  if not m then m, hrp, head = slimRig(dress) end
   local J = {}
   for _, d in ipairs(m:GetDescendants()) do
     if d:IsA("Motor6D") then J[d.Name] = { m = d, c0 = d.C0, c1 = d.C1, c1i = d.C1:Inverse() } end
@@ -52336,7 +53340,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -55073,7 +56077,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -55339,7 +56343,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -55501,7 +56505,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -55995,7 +56999,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -56520,7 +57524,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -56696,7 +57700,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -57009,7 +58013,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -57331,7 +58335,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -57548,7 +58552,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -57682,7 +58686,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -58187,7 +59191,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -58806,7 +59810,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -59087,7 +60091,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -59344,7 +60348,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -59488,7 +60492,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -60182,7 +61186,135 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="183">
+          <Properties>
+            <string name="Name">Ride</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
+--   服务器（Armor.lua）：有人开（或者 AI 开着）的步战车、运兵车、悍马还有座位，走过去按 E 就坐后面（车的座位 seats 连司机算）；
+--     人藏进车里跟着车走，不能开枪；车被打爆乘客一起阵亡；F / E / 空格下车，从车尾（步战车、运兵车的后门）下去
+--   这里：G.S.veh.pass 时接管镜头——绕着车转的弹簧臂（同开车，VehCam），鼠标转、滚轮远近；屏幕下面写着第几座、谁在开、怎么下车；
+--     手机右边一个「下车」按钮。下车 / 车没了把镜头还给步兵
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local Ride = {}
+
+function Ride.init(G)
+  local V, CF, ANG = Vector3.new, CFrame.new, CFrame.Angles
+  local me = Players.LocalPlayer
+  local cam = workspace.CurrentCamera
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Ride"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+  local hint = Instance.new("TextLabel")
+  hint.AnchorPoint = Vector2.new(0.5, 1)
+  hint.Position = UDim2.new(0.5, 0, 1, -28)
+  hint.Size = UDim2.fromOffset(720, 30)
+  hint.BackgroundColor3 = Color3.fromRGB(10, 12, 10)
+  hint.BackgroundTransparency = 0.35
+  hint.BorderSizePixel = 0
+  hint.TextColor3 = Color3.fromRGB(220, 236, 220)
+  hint.Font = Enum.Font.GothamMedium
+  hint.TextSize = 15
+  hint.Parent = gui
+  local corner = Instance.new("UICorner")
+  corner.CornerRadius = UDim.new(0, 6)
+  corner.Parent = hint
+  local btn = Instance.new("TextButton")   -- 手机：下车
+  btn.AnchorPoint = Vector2.new(1, 1)
+  btn.Position = UDim2.new(1, -24, 1, -90)
+  btn.Size = UDim2.fromOffset(110, 52)
+  btn.BackgroundColor3 = Color3.fromRGB(20, 26, 20)
+  btn.BackgroundTransparency = 0.25
+  btn.TextColor3 = Color3.fromRGB(230, 240, 230)
+  btn.Font = Enum.Font.GothamBold
+  btn.TextSize = 18
+  btn.Visible = false
+  btn.Parent = gui
+  local bc = corner:Clone()
+  bc.Parent = btn
+
+  local riding = nil   -- { id, yaw, pitch, dist }
+  local function getOut() G.R.Drive:FireServer({ op = "exit" }) end
+  btn.Activated:Connect(getOut)
+
+  local function stop()
+    if not riding then return end
+    riding = nil
+    gui.Enabled = false
+    if G.vehCamReset then G.vehCamReset("ride") end
+    cam.CameraType = Enum.CameraType.Custom
+    cam.FieldOfView = 70
+    local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+    if hum then cam.CameraSubject = hum end
+    if UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
+    G.riding = nil
+  end
+
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or not riding then return end
+    local k = io.KeyCode
+    if k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then getOut() end
+  end)
+  UIS.InputChanged:Connect(function(io, gp)
+    if gp or not riding then return end
+    if io.UserInputType == Enum.UserInputType.MouseWheel then
+      riding.dist = math.clamp(riding.dist - io.Position.Z * 3, 10, 48)
+    end
+  end)
+
+  local lastPos = nil
+  function G.stepRide(dt)
+    local S = G.S
+    local vs = S and S.alive and S.veh or nil
+    if not (vs and vs.pass and not vs.air and not vs.ship and not vs.fort) then
+      stop()
+      return
+    end
+    local v = G.viewById and G.viewById(vs.id)
+    if not v or not v.cf then return end
+    if not riding or riding.id ~= vs.id then
+      local _, yaw = v.cf:ToEulerAnglesYXZ()
+      riding = { id = vs.id, yaw = yaw, pitch = -0.28, dist = math.max(18, (v.def and v.def.L or 18) * 1.25) }
+      lastPos = nil
+      G.riding = riding
+    end
+    gui.Enabled = true
+    btn.Visible = UIS.TouchEnabled
+    btn.Text = T("ride.exitBtn")
+    hint.Text = T("ride.hint", (vs.np or 1), (vs.seats or 1), tostring(vs.drv or "—"))
+    -- 镜头：绕着车转（鼠标 / 手机滑动），弹簧臂跟着车
+    if not UIS.TouchEnabled then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
+    local md = UIS:GetMouseDelta()
+    riding.yaw -= md.X * 0.0045
+    riding.pitch = math.clamp(riding.pitch - md.Y * 0.0045, -1.1, 0.35)
+    local d = v.def
+    local pivot = v.cf.Position + V(0, (d and d.H or 6) * 0.55, 0)
+    local vel = lastPos and (pivot - lastPos) / math.max(dt, 1e-3) or V()
+    lastPos = pivot
+    cam.CameraType = Enum.CameraType.Scriptable
+    local dir = ANG(0, riding.yaw, 0) * ANG(riding.pitch, 0, 0)
+    if G.vehCam then
+      local cf, jit, fov = G.vehCam({ key = "ride", pivot = pivot, dir = dir, dist = riding.dist, up = 2, vel = vel, dt = dt, fov0 = 70, fovK = 5 })
+      cam.CFrame = cf * (jit or CF())
+      cam.FieldOfView = fov or 70
+    else
+      cam.CFrame = CF(pivot) * dir * CF(0, 2, riding.dist)
+    end
+  end
+  G.rideStop = stop   -- 测试用
+end
+
+return Ride
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -60779,7 +61911,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -61282,7 +62414,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -62229,7 +63361,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -63028,7 +64160,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -63780,7 +64912,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -63864,7 +64996,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -64614,7 +65746,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -64824,7 +65956,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -65279,7 +66411,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -66499,7 +67631,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -67006,7 +68138,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -67119,7 +68251,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -68207,7 +69339,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -68311,7 +69443,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -69819,7 +70951,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -70732,7 +71864,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="200">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -71758,7 +72890,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="201">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
