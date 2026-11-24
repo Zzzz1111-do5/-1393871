@@ -131,6 +131,22 @@ end
 --   那几块当蒙皮一直画，整架抬高 lift 格（放下起落架时机身离地的高度，真机全高减模型高），用零件拼的起落架（用户：部分飞机没有起落架）
 local NOGEAR = { a10 = 2.5, a10_v2 = 2.5, a10_v3 = 2.5, b2 = 4.8, b2_v2 = 4.8, b2_v3 = 4.8 }
 AM.NOGEAR = NOGEAR
+-- 原模型没有飞行员眼位（ImportedAir 的 pit 是 tools/models/air_anim.py 的 PIT 表生成的，这几个没量）：照原模型量的（用户 11-24：飞机座舱眼位修好）。
+--   没有 pit 时座舱退回猜的眼位 V(0, H*0.35, -L*0.3)，UH-60 那个点在机舱顶上、旋翼旁边，AH-64 比座舱盖还高，轰-6K 在机身中段——
+--   内饰拼在那里，屏幕被机身盖住（B 11-22 把挡屏幕的零件收起来了，但人其实坐在机舱外面）。
+--   模型坐标（加 O 之前，同 ImportedAir 的 c），一个座位一个：并列座 1 左 2 右，串列座 1 前 2 后（Interior 的 spec.seat 挑）；
+--   量法：沿座位那条线往下、往上打射线量座舱盖 / 舱顶和地板，眼睛在舱顶下 0.3～0.4 米；tools/mock/interior_view.cjs（GLBOP=1 GLBOFF=−眼位）看内饰装不装得下
+local PIT_FIX = {
+  a10_v3 = { { 0, 6.7, -14.5 } },                                -- 座舱盖（Body_3）顶 7.7、前风挡在 z −17.5
+  ah64_v2 = { { 0, 6.10, -16.26 }, { 0, 7.36, -11.5 } },          -- 前座炮手、后座飞行员（后座高 0.45 米、靠后 1.7 米：同 InteriorDefs 串列座）
+  z10w_v2 = { { 0, 4.6, -10.4 }, { 0, 6.6, -6.2 } },              -- 前座比后座低得多（模型的前座盖顶 5.4、后座 7.2）
+  uh60 = { { -1.4, 6.0, -16.0 }, { 1.4, 6.0, -16.0 } },           -- 驾驶舱顶棚 7.0、风挡上沿 z −17.5（直-20 借这个模型，坐左座）
+  ch47 = { { -1.68, 7.4, -16.0 }, { 1.68, 7.4, -16.0 } },         -- 风挡 z −18～−17、地板 4.2
+  h6k_v3 = { { -1.54, 10.6, -38.2 }, { 1.54, 10.6, -38.2 } },     -- 领航员的玻璃机头后面那一级台阶上；地板 7.8
+  b2_v3 = { { -1.74, 6.9, -19.0 }, { 1.74, 6.9, -19.0 } },        -- 模型座舱里有一层 7.2～7.5 的板：眼睛放在它下面（不然从上面看它盖住仪表板）
+}
+AM.PIT_FIX = PIT_FIX
+
 function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
@@ -144,6 +160,7 @@ function AM.importedFor(d)
     local plain = string.sub(k, -1) == "~"
     local key = plain and string.sub(k, 1, -2) or k
     local info = IA.m and IA.m[key]
+    if info and not info.pit and PIT_FIX[key] then info.pit = PIT_FIX[key] end   -- 没量眼位的补上（座舱内饰、外模型里的飞行员都按它摆）
     local f = air:FindFirstChild(key)
     if usable(info, f, key) then
       local lift = NOGEAR[key]

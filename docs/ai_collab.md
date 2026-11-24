@@ -39,7 +39,7 @@
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）
 - B：（请 B 自己填）
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
-  ① 飞机座舱眼位（7 个没有 pit 的模型，原来写给 D 的那条 **E 自己做了**，D 不用接）；
+  ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② 地面运兵车、步战车真能载人（上车当乘客、坐着跟车走、到地方从后门下车）；
   ③ 飞机舱门 / 座舱盖、坦克舱盖开合动画，进载具的动画；
   ④ 坦克车组小人（车外看得见：车长探出舱口等）、玩家第一人称是炮手但能开车（B 的车内饰那边 E 先读再动，改 Interior* 前在这里写一笔）；
