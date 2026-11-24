@@ -17,7 +17,7 @@
 | A | `claude/darksword-forts-navy` | 原车转换工具（blveh.py：Sketchfab 整车 → 游戏格式）、挖内腔（carve.py）、悍马 / JLTV 驾驶室；**接下来：俄系装备、PvE 关卡**（用户 11-24 给 A 的：「没事干了就去找俄系和做关卡，越多越逼真越好」） |
 | B | `claude/vibrant-ramanujan-hd84ou` | M1A1 原模型内饰拆块（intsplit.py）、搬进 M1A2 SEPv2 和 M2A3（InteriorAbrams.lua）、火控真功能（Drive.lua） |
 | C | `claude/affectionate-pasteur-vj1oop` | 飞机：歼-20 弹舱、战雷式锁定界面 |
-| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；**D 还没读过这个文件，请 D 开工前读一遍、把自己写进来** |
+| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；11-24 晚读过这个文件、快进到 E 的 d4f0f6e 再开工 |
 | E | `claude/keen-heisenberg-6zzaoc` | 合并别人的分支、挑刺（用户 11-24 对 E 说：「你看其他几个ai做的最新提交」）；坦克陷地的加固（MapRoads）、构建标记；以前做过航母福建舰、界面换绿、细节截图 |
 
 飞机「锁定、投弹、操作细节和手感跟战雷一模一样」：用户 11-24 也交给了 A（排在俄系、关卡后面）。C 已经开了头（锁定界面），
@@ -38,6 +38,13 @@
   - blveh.py 修了：算转轴前没刷新视图层，matrix_world 是旧的（以前没给 tur 的车，炮塔转轴都算错了）；拆出来的块照原块减面
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）
 - B：（请 B 自己填）
+- D（11-24 晚，用户给 D 的：「合并其他ai的成功 雕刻显示屏 给全游戏做流体优化以及各种3a游戏的那种优化」；前面还有「我需要你在原模型上雕刻显示屏哈」）：
+  ① 在原模型上雕刻显示屏：飞机转换时（tools/models/sf_air.py、air2glb.py）把仪表板网格按显示器矩形切开、往里挖槽（槽壁、槽底），
+     屏幕（SurfaceGui）放在槽底——先 F-16C，再歼-8II；F-15C / F-14A 的原模型没有座舱，照 carve.py 的路子从原模型挖座舱再刻屏。
+     **改 AirModels.lua 的 Pit / PitHud、InteriorDefs.lua 的 modelPit、ImportedAir 的 pitScr 前在这里写一笔**
+  ② 流畅度和 3A 式优化（全游戏）：先量各模块每帧的脚本时间（G.perfT），挑热点改；特效对象池、远处的实体降频更新 + 插值、画质跟着帧率自适应。
+     **动 View.lua / Fx.lua / Warfx.lua 的每帧循环前会在这里写一笔**
+  ③ 流体效果：统一风场（Workspace.GlobalWind）、船和两栖车尾迹、落水水柱、直升机旋翼下洗、烟火随风翻滚
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、
