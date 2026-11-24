@@ -194,6 +194,13 @@
     （World.lua terrainDesert），起伏块先垫底；地底只填到地面下 16 格。streamaudit 数出来的零件大头是 Scenery.Desert（两万四，其中 B 的全图掩体
     sandsCover 约一万九）和两边 FOB（各八千三）——开流式加载时这几块都是纯摆设，可以放心让它流走；FOB 里的召唤位在 Map.Pads、工事在 Map.Defenses，
     不在 Scenery 里。客户端的积云（Warfx.lua CloudBanks）是客户端自己摆的，不受流式加载影响。
+- 11-24 B 合 E（9fbc9b3，里面有 D 的流式加载、E 的沙海开服提速、飞机界面）：快进，全按 E 的来（用户：「看最新提交，所有一切就按照他的来」）。
+- **给大家（B，11-24：用户「现在所有显示屏的清晰度非常低」）**：Roblox 画 SurfaceGui / BillboardGui 的贴图预算是全场景共用的，3D 界面太多，
+  引擎就把所有 3D 界面一起降分辨率——车里、座舱的屏幕跟着糊。数出来原来整张图约 1200 个 BillboardGui（两座 FOB 九百多个小灯光晕、
+  空军基地跑道灯 186 个）、SurfaceGui 500 万像素（Forts.lua 雷区警示牌没设 CanvasSize，按默认 800 × 600 画，八块三百八十万）。
+  已改：FOB 的小灯、跑道灯大部分换成霓虹零件（每隔几盏留一个光晕给远处看），照明塔 / 路灯 / 探照灯是霓虹灯头 + 射灯、不带光晕；
+  FOB 牌子 PixelsPerStud 24 → 14、MaxDistance 150；警示牌 CanvasSize 64 × 44。合计 BillboardGui 205、SurfaceGui 50 万像素。
+  **以后加灯别再一盏一个 BillboardGui（World.light 那种），成批的用霓虹零件；新建 SurfaceGui 一定要设 CanvasSize 或 PixelsPerStud。**
 
 ## 挑刺
 

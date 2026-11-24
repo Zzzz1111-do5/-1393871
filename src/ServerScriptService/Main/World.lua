@@ -1230,14 +1230,32 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
   local lights = Instance.new("Folder")
   lights.Name = "RunwayLights"
   lights.Parent = f
+  -- 用户 11-24：「现在所有显示屏的清晰度非常低」——每盏灯一个 BillboardGui 光晕，整张图上千个，引擎画 3D 界面的预算被占满，
+  --   车里、座舱的屏幕跟着降分辨率：大部分灯只是一块霓虹，每隔几盏、跑道头两边那几盏留光晕（远处飞机看得到）
+  local function neon(pos, col, sz)
+    local p = part(lights, V(sz, sz * 0.6, sz), CF(pos), col, MAT.Neon)
+    p.CastShadow = false
+  end
+  local k = 0
   for xx = -A.len / 2 + 10, A.len / 2 - 10, 60 do   -- 跑道长了：60 格一盏（灯太多费）
-    for sd = -1, 1, 2 do light(lights, (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) end
+    k += 1
+    for sd = -1, 1, 2 do
+      local pos = (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position
+      if k % 4 == 1 then light(lights, pos, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) else neon(pos, RGB(255, 246, 220), 0.6) end
+    end
   end
   for zz = -A.wid / 2 + 3, A.wid / 2 - 3, 8 do
-    light(lights, (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
-    light(lights, (base * CF(A.len / 2 + 2, 1.2, zz)).Position, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
+    local edge = math.abs(zz) > A.wid / 2 - 12
+    local pa, pb = (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, (base * CF(A.len / 2 + 2, 1.2, zz)).Position
+    if edge then
+      light(lights, pa, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
+      light(lights, pb, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
+    else
+      neon(pa, RGB(60, 255, 120), 0.6)
+      neon(pb, RGB(255, 50, 40), 0.6)
+    end
   end
-  for xx = -math.min(1000, A.len * 0.3), math.min(1000, A.len * 0.3), 50 do light(lights, (base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5, nil, nil, nil, 3) end
+  for xx = -math.min(1000, A.len * 0.3), math.min(1000, A.len * 0.3), 50 do neon((base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5) end
   for i = -1, 1 do floodPole(lights, A.x + i * A.len * 0.24, y, A.z - A.wid / 2 - 84, 22, RGB(255, 222, 170), 120) end
   local _ = team
 end

@@ -71,6 +71,7 @@ function Forts.init(G)
     local board = part(f, V(3.2, 2.2, 0.2), base * CF(0, 3.6, 0.25), RGB(196, 40, 36), MAT.SmoothPlastic, false)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Back
+    sg.CanvasSize = Vector2.new(64, 44)   -- 只画一个骷髅：原来没设，按默认 800 × 600 画（八块牌子占三百多万像素，挤掉车里、座舱屏幕的分辨率）
     sg.Parent = board
     local t = Instance.new("TextLabel")
     t.Size = UDim2.fromScale(1, 1)

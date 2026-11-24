@@ -1038,7 +1038,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 22:45 9f244b1"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 22:57 9fbc9b3"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -19303,9 +19303,9 @@ local function board(f, cf, w, h, text, bg, fg, solid)
   local sg = Instance.new("SurfaceGui")
   sg.Face = Enum.NormalId.Front
   sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-  sg.PixelsPerStud = 24
+  sg.PixelsPerStud = 14   -- 牌子上的字不用多清楚；SurfaceGui / BillboardGui 太多，引擎会把所有 3D 界面（车里、座舱的屏幕）一起降分辨率
   sg.LightInfluence = 0.6
-  sg.MaxDistance = 300
+  sg.MaxDistance = 150
   sg.Parent = p
   local t = Instance.new("TextLabel")
   t.Size = UDim2.new(1, -6, 1, -4)
@@ -19318,8 +19318,34 @@ local function board(f, cf, w, h, text, bg, fg, solid)
   t.Parent = sg
   return p
 end
--- 只有光晕的小灯（不带真光源）
-local function glow(f, pos, col, size) return W.light(f, pos, col or COL.lamp, size or 0.5, nil, nil, nil, 2) end
+-- 小灯：只是一块霓虹（用户 11-24：「现在所有显示屏的清晰度非常低」——原来每盏小灯都挂一个 BillboardGui 光晕，两座基地九百多个，
+--   引擎画 3D 界面的预算被占满，车里、座舱的屏幕跟着降分辨率；霓虹零件夜里照样亮，不占那份预算）
+local function glow(f, pos, col, size)
+  local s = size or 0.5
+  local p = W.part(f, V(s, s * 0.6, s), CF(pos), col or COL.lamp, MAT.Neon)
+  p.CastShadow = false
+  return p
+end
+-- 远处也要看得见的少数几盏（跑道信标）：带光晕
+local function beacon(f, pos, col, size) return W.light(f, pos, col or COL.lamp, size or 0.6, nil, nil, nil, 3) end
+-- 灯头：霓虹 + 可选的射灯（朝 look 照；不带光晕）
+local function lamp(f, pos, look, col, size, range, angle, bright)
+  local s = size or 1
+  local p = W.part(f, V(s, s * 0.6, s), CFrame.lookAt(pos, pos + look), col or COL.lamp, MAT.Neon)
+  p.CastShadow = false
+  if range then
+    local L = Instance.new("SpotLight")
+    L.Face, L.Angle, L.Range, L.Brightness, L.Color, L.Shadows = Enum.NormalId.Front, angle or 70, range, bright or 2.2, col or COL.lamp, false
+    L.Parent = p
+  end
+  return p
+end
+-- 探照灯杆（同 World.floodPole，灯头不带光晕）
+local function floodPole(f, x, y, z, h, col, range)
+  W.part(f, V(0.7, h, 0.7), CF(x, y + h / 2, z), RGB(60, 62, 66), MAT.Metal, nil, true)
+  W.part(f, V(3.2, 0.5, 1.6), CF(x, y + h, z), RGB(40, 42, 46), MAT.Metal)
+  lamp(f, V(x, y + h - 0.4, z), V(0, -1, 0), col, 1.4, range, 95, 2.4)
+end
 
 ---------------------------------------------------------------- 防御工事
 
@@ -19453,8 +19479,7 @@ local function tower(f, cf, lit)
   glow(f, (cf * CF(-5, H + 16.3, 5)).Position, RGB(255, 50, 40), 0.4)
   -- 探照灯（往外、往下照）
   local pos = (cf * CF(-2.5, H + 6.4, -6.2)).Position
-  local l = W.light(f, pos, RGB(255, 238, 206), 1.0, lit and 160 or nil, 2.6, lit and { face = Enum.NormalId.Front, angle = 32 } or nil, 3)
-  l.CFrame = CFrame.lookAt(pos, pos + cf.LookVector + V(0, -0.28, 0))
+  lamp(f, pos, cf.LookVector + V(0, -0.28, 0), RGB(255, 238, 206), 1.0, lit and 160 or nil, 32, 2.6)
 end
 
 -- 拖车式照明塔：拖车、四个支腿、发电机舱、桅杆、顶上四盏灯（朝 −Z、往下照；lit 的那盏带真光源）
@@ -19471,9 +19496,7 @@ local function lightTower(f, cf, lit)
   P(f, 7, 0.5, 0.5, cf * CF(0, 27.6, 2.6), COL.steelDk, MAT.Metal)
   for i, x in ipairs({ -2.6, -0.9, 0.9, 2.6 }) do
     local pos = (cf * CF(x, 28.6, 2.3)).Position
-    local real = lit and i == 2
-    local l = W.light(f, pos, COL.lamp, 1.0, real and 150 or nil, 2.4, real and { face = Enum.NormalId.Front, angle = 75 } or nil, 3)
-    l.CFrame = CFrame.lookAt(pos, pos + cf.LookVector + V(0, -0.5, 0))
+    lamp(f, pos, cf.LookVector + V(0, -0.5, 0), COL.lamp, 1.0, (lit and i == 2) and 150 or nil, 75, 2.4)
   end
 end
 
@@ -19481,7 +19504,7 @@ end
 local function streetLamp(f, cf, real)
   P(f, 0.5, 14, 0.5, cf * CF(0, 7, 0), COL.steel, MAT.Metal, true)
   P(f, 0.3, 0.3, 3.4, cf * CF(0, 13.8, -1.6), COL.steel, MAT.Metal)
-  W.light(f, (cf * CF(0, 13.5, -3.2)).Position, COL.lamp, 0.8, real and 55 or nil, 1.6, real and { face = Enum.NormalId.Bottom, angle = 110 } or nil, 2)
+  lamp(f, (cf * CF(0, 13.5, -3.2)).Position, V(0, -1, 0), COL.lamp, 0.8, real and 55 or nil, 110, 1.6)
 end
 
 -- 混凝土防空掩体（倒 U 形涵洞 + 顶上沙袋，两头挡墙错开）：顺着 cf 的 X
@@ -19742,7 +19765,7 @@ local function ecp(f, cf, team)
   for _, o in ipairs({ { -28, -12 }, { -4, -12 }, { -28, -40 }, { -4, -40 } }) do P(f, 0.8, 13, 0.8, cf * CF(o[1], 6.5, o[2]), COL.steel, MAT.Metal, true) end
   P(f, 28, 0.6, 32, cf * CF(-16, 13.3, -26), COL.tin, MAT.Metal)
   P(f, 28.4, 1.4, 0.4, cf * CF(-16, 12.6, -42.1), COL.yellow, MAT.Metal)
-  for _, z in ipairs({ -18, -34 }) do W.light(f, (cf * CF(-16, 12.6, z)).Position, RGB(255, 240, 214), 1.2, 60, 1.8, { face = Enum.NormalId.Bottom, angle = 120 }, 3) end
+  for _, z in ipairs({ -18, -34 }) do lamp(f, (cf * CF(-16, 12.6, z)).Position, V(0, -1, 0), RGB(255, 240, 214), 1.2, 60, 120, 1.8) end
   -- 岗亭（中间隔离墩那头）：混凝土小房、窗、顶、沙袋三面
   local gh = cf * CF(0, 0, -8)
   P(f, 6, 8, 6, gh * CF(0, 4, -4), COL.conc, MAT.Concrete, true)
@@ -19772,7 +19795,7 @@ local function ecp(f, cf, team)
   -- 探照灯杆
   for _, o in ipairs({ { -40, -20 }, { 40, -20 }, { -40, -130 }, { 40, -130 } }) do
     local p = (cf * CF(o[1], 0, o[2])).Position
-    W.floodPole(f, p.X, cf.Position.Y, p.Z, 18, COL.lamp, 100)
+    floodPole(f, p.X, cf.Position.Y, p.Z, 18, COL.lamp, 100)
   end
   local _ = team
 end
@@ -19872,7 +19895,7 @@ local function dfac(f, cf)
   P(f, 8, 8, 0.2, cf * CF(0, 4, -18.06), COL.door, MAT.Metal)
   P(f, 18, 0.5, 10, cf * CF(0, 10.4, -23), COL.tin, MAT.Metal)
   for _, o in ipairs({ { -8, -27.5 }, { 8, -27.5 } }) do P(f, 0.6, 10.2, 0.6, cf * CF(o[1], 5.1, o[2]), COL.steel, MAT.Metal, true) end
-  W.light(f, (cf * CF(0, 9.8, -23)).Position, COL.lamp, 0.8, 40, 1.4, { face = Enum.NormalId.Bottom, angle = 120 }, 2)
+  lamp(f, (cf * CF(0, 9.8, -23)).Position, V(0, -1, 0), COL.lamp, 0.8, 40, 120, 1.4)
   board(f, cf * CF(0, 11.4, -28.2), 16, 2.6, "食堂 DFAC", RGB(150, 40, 36), COL.white)
   for x = -30, 30, 12 do P(f, 3, 2.6, 2.4, cf * CF(x, 1.3, 19.4), COL.ac, MAT.Metal, true) end
   for k = 0, 1 do
@@ -19919,7 +19942,7 @@ local function fuelFarm(f, cf)
   for _, o in ipairs({ { 36, -2 }, { -36, -22 } }) do P(f, 0.8, 1.8, 0.8, cf * CF(o[1], 0.9, o[2]), COL.red, MAT.SmoothPlastic, true) end
   board(f, cf * CF(30, 4, -32) * ANG(0, PI, 0), 8, 2.4, "严禁烟火", COL.red, COL.white, true)
   P(f, 0.4, 2.8, 0.4, cf * CF(30, 1.4, -32), COL.steelDk, MAT.Metal)
-  W.floodPole(f, (cf * CF(44, 0, 10)).Position.X, cf.Position.Y, (cf * CF(44, 0, 10)).Position.Z, 16, COL.lamp, 80)
+  floodPole(f, (cf * CF(44, 0, 10)).Position.X, cf.Position.Y, (cf * CF(44, 0, 10)).Position.Z, 16, COL.lamp, 80)
 end
 
 -- 弹药库：三个 U 形土堤隔开的弹药格（口朝 −Z），格里托盘弹药箱、一个集装箱；避雷针、红牌子
@@ -20047,12 +20070,19 @@ local function airfield(f, B0, R, team, yaw)
   W.building(bf, "conc2", fp.X, fp.Z, yaw + PI)
   -- 跑道灯：两边白边灯、两头绿 / 红入口灯、滑行道蓝灯、进近灯（跑道头外面一排排白灯）、PAPI（跑道左边四盏红白）
   local lf = folder("RunwayLights", f)
+  local k = 0
   for x = -len / 2 + 10, len / 2 - 10, 60 do
-    for _, s in ipairs({ -1, 1 }) do glow(lf, L(x, RZ + s * (wid / 2 + 1.5)).Position + V(0, 1.2, 0), RGB(255, 246, 220), 0.6) end
+    k += 1
+    for _, s in ipairs({ -1, 1 }) do
+      local pos = L(x, RZ + s * (wid / 2 + 1.5)).Position + V(0, 1.2, 0)
+      if k % 4 == 1 then beacon(lf, pos, RGB(255, 246, 220), 0.6) else glow(lf, pos, RGB(255, 246, 220), 0.6) end
+    end
   end
   for z = -wid / 2 + 3, wid / 2 - 3, 8 do
-    glow(lf, L(-len / 2 - 2, RZ + z).Position + V(0, 1.2, 0), RGB(60, 255, 120), 0.6)
-    glow(lf, L(len / 2 + 2, RZ + z).Position + V(0, 1.2, 0), RGB(255, 50, 40), 0.6)
+    local edge = math.abs(z) > wid / 2 - 12
+    local pa, pb = L(-len / 2 - 2, RZ + z).Position + V(0, 1.2, 0), L(len / 2 + 2, RZ + z).Position + V(0, 1.2, 0)
+    if edge then beacon(lf, pa, RGB(60, 255, 120), 0.6) beacon(lf, pb, RGB(255, 50, 40), 0.6)
+    else glow(lf, pa, RGB(60, 255, 120), 0.6) glow(lf, pb, RGB(255, 50, 40), 0.6) end
   end
   for x = -1500, 1500, 50 do glow(lf, L(x, TZ - 19).Position + V(0, 1, 0), RGB(70, 120, 255), 0.5) end
   for _, s in ipairs({ -1, 1 }) do
@@ -20098,7 +20128,7 @@ local function airfield(f, B0, R, team, yaw)
   end
   for _, x in ipairs({ -1300, -700, -100, 500, 1100 }) do
     local p = L(x, RZ - 370).Position
-    W.floodPole(f, p.X, B0.Position.Y, p.Z, 24, COL.lamp, 130)
+    floodPole(f, p.X, B0.Position.Y, p.Z, 24, COL.lamp, 130)
   end
 end
 
@@ -20219,7 +20249,7 @@ function FOB.build(World, root, side)
     cloth.Name = (i == 2) and "BaseFlagCloth" or "FlagCloth"
     CylV(sp, 2.6, 2.6, fp * CF(0, 1.3, 0), COL.concDk, MAT.Concrete, true)
   end
-  for _, s in ipairs({ -1, 1 }) do W.floodPole(sp, L(F.spawn.lx + s * 44, F.spawn.lz).Position.X, Y, L(F.spawn.lx + s * 44, F.spawn.lz).Position.Z, 20, COL.lamp, 110) end
+  for _, s in ipairs({ -1, 1 }) do floodPole(sp, L(F.spawn.lx + s * 44, F.spawn.lz).Position.X, Y, L(F.spawn.lx + s * 44, F.spawn.lz).Position.Z, 20, COL.lamp, 110) end
 
   -- ④ 车场：硬化地坪（召唤车位由 Depots 摆在 motor 那一排）、停着的车、维修区
   local mp = folder("MotorPool", base)
@@ -20481,6 +20511,7 @@ function Forts.init(G)
     local board = part(f, V(3.2, 2.2, 0.2), base * CF(0, 3.6, 0.25), RGB(196, 40, 36), MAT.SmoothPlastic, false)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Back
+    sg.CanvasSize = Vector2.new(64, 44)   -- 只画一个骷髅：原来没设，按默认 800 × 600 画（八块牌子占三百多万像素，挤掉车里、座舱屏幕的分辨率）
     sg.Parent = board
     local t = Instance.new("TextLabel")
     t.Size = UDim2.fromScale(1, 1)
@@ -28445,14 +28476,32 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
   local lights = Instance.new("Folder")
   lights.Name = "RunwayLights"
   lights.Parent = f
+  -- 用户 11-24：「现在所有显示屏的清晰度非常低」——每盏灯一个 BillboardGui 光晕，整张图上千个，引擎画 3D 界面的预算被占满，
+  --   车里、座舱的屏幕跟着降分辨率：大部分灯只是一块霓虹，每隔几盏、跑道头两边那几盏留光晕（远处飞机看得到）
+  local function neon(pos, col, sz)
+    local p = part(lights, V(sz, sz * 0.6, sz), CF(pos), col, MAT.Neon)
+    p.CastShadow = false
+  end
+  local k = 0
   for xx = -A.len / 2 + 10, A.len / 2 - 10, 60 do   -- 跑道长了：60 格一盏（灯太多费）
-    for sd = -1, 1, 2 do light(lights, (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) end
+    k += 1
+    for sd = -1, 1, 2 do
+      local pos = (base * CF(xx, 1.2, sd * (A.wid / 2 + 1.5))).Position
+      if k % 4 == 1 then light(lights, pos, RGB(255, 246, 220), 0.6, nil, nil, nil, 3) else neon(pos, RGB(255, 246, 220), 0.6) end
+    end
   end
   for zz = -A.wid / 2 + 3, A.wid / 2 - 3, 8 do
-    light(lights, (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
-    light(lights, (base * CF(A.len / 2 + 2, 1.2, zz)).Position, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
+    local edge = math.abs(zz) > A.wid / 2 - 12
+    local pa, pb = (base * CF(-A.len / 2 - 2, 1.2, zz)).Position, (base * CF(A.len / 2 + 2, 1.2, zz)).Position
+    if edge then
+      light(lights, pa, RGB(60, 255, 120), 0.6, nil, nil, nil, 3)
+      light(lights, pb, RGB(255, 50, 40), 0.6, nil, nil, nil, 3)
+    else
+      neon(pa, RGB(60, 255, 120), 0.6)
+      neon(pb, RGB(255, 50, 40), 0.6)
+    end
   end
-  for xx = -math.min(1000, A.len * 0.3), math.min(1000, A.len * 0.3), 50 do light(lights, (base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5, nil, nil, nil, 3) end
+  for xx = -math.min(1000, A.len * 0.3), math.min(1000, A.len * 0.3), 50 do neon((base * CF(xx, 1.2, -A.wid / 2 - 9)).Position, RGB(70, 120, 255), 0.5) end
   for i = -1, 1 do floodPole(lights, A.x + i * A.len * 0.24, y, A.z - A.wid / 2 - 84, 22, RGB(255, 222, 170), 120) end
   local _ = team
 end
