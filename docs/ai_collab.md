@@ -17,7 +17,7 @@
 | A | `claude/darksword-forts-navy` | 原车转换工具（blveh.py：Sketchfab 整车 → 游戏格式）、挖内腔（carve.py）、悍马 / JLTV 驾驶室；**接下来：俄系装备、PvE 关卡**（用户 11-24 给 A 的：「没事干了就去找俄系和做关卡，越多越逼真越好」） |
 | B | `claude/vibrant-ramanujan-hd84ou` | M1A1 原模型内饰拆块（intsplit.py）、搬进 M1A2 SEPv2 和 M2A3（InteriorAbrams.lua）、火控真功能（Drive.lua） |
 | C | `claude/affectionate-pasteur-vj1oop` | 飞机：歼-20 弹舱、战雷式锁定界面；**11-24 夜起：整个游戏做成战雷（见「正在做」C 那条）** |
-| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；**D 还没读过这个文件，请 D 开工前读一遍、把自己写进来** |
+| D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；11-24 晚读过这个文件、快进到 E 的 d4f0f6e 再开工 |
 | E | `claude/keen-heisenberg-6zzaoc` | 合并别人的分支、挑刺（用户 11-24 对 E 说：「你看其他几个ai做的最新提交」）；坦克陷地的加固（MapRoads）、构建标记；以前做过航母福建舰、界面换绿、细节截图 |
 
 飞机「锁定、投弹、操作细节和手感跟战雷一模一样」：用户 11-24 也交给了 A（排在俄系、关卡后面）。C 已经开了头（锁定界面），
@@ -59,6 +59,23 @@
   - **已做**（①②）：FOB.lua、MapSands 的 BASES / FOB / baseW / HOTS、World 的地形顺序和地壳厚度、Round 的固定出生（base / baseAir）、Depots、Bots、
     AIVeh、Air、Fly、FortDefs。**动出生、车位、地形写法的先看一眼这几处**。
   - **已做**（③④）：World.lua 的 sandsCover（全图掩体、电线杆）、Warfx.lua 的积云（CloudBanks）
+- D（11-24 晚，用户给 D 的：「合并其他ai的成功 雕刻显示屏 给全游戏做流体优化以及各种3a游戏的那种优化」；前面还有「我需要你在原模型上雕刻显示屏哈」）：
+  ① 在原模型上雕刻显示屏：飞机转换时（tools/models/sf_air.py、air2glb.py）把仪表板网格按显示器矩形切开、往里挖槽（槽壁、槽底），
+     屏幕（SurfaceGui）放在槽底——先 F-16C，再歼-8II；F-15C / F-14A 的原模型没有座舱，照 carve.py 的路子从原模型挖座舱再刻屏。
+     **改 AirModels.lua 的 Pit / PitHud、InteriorDefs.lua 的 modelPit、ImportedAir 的 pitScr 前在这里写一笔**
+     **已做 F-16C**（fb39fd1：sf_air.py carve_rects，两块 MFD 刻进仪表板、屏幕在槽底；键名 f16_v2）；同一次还修了座舱盖玻璃是多边形（新导入件 optics/ip_canopy.glb）
+  ② **已做：流式加载（用户 11-24 晚改口：「我的意思是 streaming优化」）**——地点文件里 Workspace 开了 StreamingEnabled
+     （tools/build_rbxlx.py、build.luau：最小半径 512、目标半径 4096、ModelStreamingBehavior Improved、StreamOutBehavior LowMemory、StreamingIntegrityMode Disabled）。
+     客户端只有身边一片的地图零件和地形，**大家写代码注意**：
+     - 客户端打远处的射线（瞄准点、激光测距、标点、落点）用 `G.rayFar(起点, 向量, params)`（Client/Stream.lua），别直接 `workspace:Raycast`——
+       远处没加载的地形会打空；它先照常打，打空了按 `Map.rayGround`（Map.height 算的地形）找落点，返回跟 RaycastResult 一样用的表（多一个 far = true）。
+       两点之间的视线挡不挡用 `G.terrainBlocks(甲, 乙)`（只看 3000 格外的）
+     - 服务器建的、所有人一直要看得见的模型（实体代理 Ents、角色、舰队、据点已经做了）用 `G.persist(model)`（Ents.lua）；房子整栋用 Atomic（World.lua atomic）
+     - 客户端一次性扫 `workspace.Map:GetDescendants()` 的，开了 streaming 只扫得到身边的——要配 `DescendantAdded`（Night.lua 灯光那样）；
+       客户端别 `WaitForChild` 地图里的零件（远处的不会来，一直等）
+     - 玩家传到远处前 `G.streamAround(pl, 位置)`（Round.lua 出生已经加了）；遥控的东西飞远了 `G.streamFocus(pl, 零件, true/false)`（无人机已经加了）
+     - 模拟器 `R.streamSim = 半径` 假装客户端只有这么大一片（rbx.lua）；测试 tools/mock/stream.lua
+  ③ 还没做：流畅度（量每帧脚本时间挑热点）、流体效果（风场、尾迹、水柱、旋翼下洗）——用户说先做 streaming，这两样等用户再提
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

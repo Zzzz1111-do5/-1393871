@@ -382,7 +382,9 @@ def convert(key, AD, ids):
         for nm, e in A.PITSCR[key].items():
             o = {'c': [round(float(x), 3) for x in R(e['c'])], 'n': [round(float(x), 4) for x in B.rbn(e['n'])],
                  'u': [round(float(x), 4) for x in B.rbn(e['u'])], 'w': round(float(e['w']) * S, 3), 'h': round(float(e['h']) * S, 3)}
-            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h')})
+            if e.get('d'):   # 雕进原模型的显示屏：槽深（格），屏幕在槽底
+                o['d'] = round(float(e['d']) * S, 4)
+            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h', 'd')})
             info['pitScr'][nm] = o
     # 旋翼：支点、轴
     for g, (p, a) in rot_piv.items():

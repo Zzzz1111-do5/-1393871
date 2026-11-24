@@ -357,7 +357,10 @@ function Navy.init(G)
     if not e then return nil end
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
-    if P and P.alive and P.char and not P.vehicle and P.team == team then seat(P, e) end
+    if P and P.alive and P.char and not P.vehicle and P.team == team then
+      if G.streamAround then G.streamAround(P.pl, e.root.CFrame.Position, 2) end   -- 开了 streaming：船停在远处海上，先把那一片送过去再上舰桥
+      if P.alive and P.char and not P.vehicle and e.alive then seat(P, e) end
+    end
     return e
   end
 

@@ -1148,6 +1148,18 @@
     材质取最多的那种）、深海底不画，并多一级 64 格一点、6400 格见方的网格（不算进「准备好了」）；换地图（`G.onMap`）扔掉旧图的网格重算。
     新测试 `tools/mock/pipdesert.lua [map=desert|sands]`：沙漠 83 块网格里 32 块是盐碱地 / 砂岩（原来都是绿的），现在颜色都对、镜里没有海。
     ⑤ 进行中（0570128）：歼-8II、F-16C 原模型（F-16 坐进原模型自带的座舱，`Defs.modelPit`：屏幕贴在原模型的显示器上），F-15C / F-14A 数据；显示屏清晰度提高。
+  - 11-24（darksword-air-map）流式加载（用户：「合并其他ai的成功 雕刻显示屏 给全游戏做流体优化以及各种3a游戏的那种优化」，后来说「我的意思是 steaming优化」）：
+    ① 地点文件（`tools/build_rbxlx.py`、`tools/build.luau`；脚本改不了）：Workspace.StreamingEnabled，StreamingMinRadius 512（脚下 180 米一定在）、
+    StreamingTargetRadius 4096（约 1.5 公里）、ModelStreamingBehavior Improved、StreamOutBehavior LowMemory（内存够就留着看过的，手机紧了才卸——
+    用户 11-22 要视野无限远，Opportunistic 内存够也卸，远处房子一转头就没了）、StreamingIntegrityMode Disabled（喷气机一秒上千格，不暂停等加载）。
+    ② 一直要在的设成 Persistent（`Ents.lua G.persist`）：实体代理（车、飞机、船、小兵、工事的隐形命中盒，客户端照它画模型）、玩家角色（Round.lua）、
+    据点、舰队（World.lua）；房子整栋 Atomic（不会先到碰撞盒、墙还没到）。③ 出生前 `G.streamAround`（RequestStreamAroundAsync，离得近不等）、
+    码头召唤的船停在远处海上也先预加载（Navy.lua spawnShip）；遥控无人机算加载中心（Air.lua seat / unseat：Add / RemoveReplicationFocus）。
+    ④ 客户端远处的射线：`Client/Stream.lua G.rayFar`——先照常打，打空了（远处没加载）按 `Map.rayGround`（地形本来就是 Map.height 写的）找落点：
+    坦克瞄准点、激光测距（朝上坡打也算）、车长周视镜激光、遥控武器站、机枪曳光落点、飞机光电吊舱、步兵准星 / 迫击炮 / 标点、望远镜测距、舰炮落点、据点牌子高度；
+    飞机 HUD 挑一万多格外的敌机时远处没加载的山也挡视线（`G.terrainBlocks`）。⑤ 夜里的闪灯、灯塔、抽油机：走近流进来的照样登记（DescendantAdded），
+    流出去的从表里删掉（Night.lua）。⑥ 模拟器 `R.streamSim = 半径`（客户端打到半径外、不在 Persistent 模型里的算没加载）、Add / RemoveReplicationFocus、
+    RequestStreamAroundAsync 记账；新测试 `tools/mock/stream.lua`：激光打 1954 格外的山坡，600 格外全卸掉时测到 695 米，和整张图都在时一样。
   - 11-24：开坦克瞄准镜时小地图的整张图没裁边（CanvasGroup 挪到 RadarTop 那层以后不裁），深蓝的海盖住半个镜子：地图改挂在框里一层
     ClipsDescendants 的 MapClip（UI.lua），TacPad、Hud 跟着认它。
   - 11-24：用户「沙漠风暴删掉」：删了 `MapDesert.lua`（地图 id `desert`，征服）和只给它用的代码——World 的建图（基地、据点、路、电线杆）、
@@ -1399,7 +1411,8 @@
 
 ### 其它
 
-- 不开流式加载：地图不算太大，远处的岛和舰队要一直看得见。
+- ~~不开流式加载~~ → **2026-11-24 开了流式加载**（用户：「streaming优化」）：地图放大好几倍以后整张图一下子全传太重。客户端只有身边 4096 格的地图零件和地形细节，
+  远处的地形 Roblox 按低细节画；一直要看得见的（实体代理、玩家、舰队、据点）设成 Persistent，远处的射线按 `Map.rayGround` 算。细节见上面「11-24（darksword-air-map）流式加载」。
 - 所有文字走 `Lang.lua`，服务器给客户端发的是文字编号和参数，各人按自己的语言显示。按 `LocalizationService.RobloxLocaleId` 判断，`zh` 开头用中文，其余英文，能手动切。
 - 地图上的牌子只用字母（A～E），不分语言。
 

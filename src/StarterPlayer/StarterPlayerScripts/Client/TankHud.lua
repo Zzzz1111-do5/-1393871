@@ -314,7 +314,7 @@ function TankHud.init(G)
   local function clear(from, to, target, st)
     rp.FilterDescendantsInstances = excludeList(st)
     local hit = workspace:Raycast(from, to - from, rp)
-    if not hit then return true end
+    if not hit then return not (G.terrainBlocks and G.terrainBlocks(from, to)) end   -- 开了 streaming：远处没加载的山也挡（Stream.lua）
     local e = entOf(hit.Instance)
     return e ~= nil and e == target
   end

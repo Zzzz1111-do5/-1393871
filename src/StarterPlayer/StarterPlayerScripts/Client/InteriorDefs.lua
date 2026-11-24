@@ -1490,7 +1490,9 @@ function Defs.jet(b, ctx, L)
     local z, r = ring(k / MR)
     table.insert(rows, { z = z, r = math.max(r, 0.004) })
   end
-  local canopy = { rows = rows, cy = cy0, cols = 48, color = GC, panes = panes, refl = 0.1, trans = L.goldGlass and 0.86 or 0.88 }
+  -- std：这一组数（R0、cy0、zf、zr、Lf）和导入用的光滑座舱盖网格（tools/weapons/gen_canopy.mjs → models/optics/ip_canopy.glb）一样，Interior 优先用导入的
+  local canopy = { rows = rows, cy = cy0, cols = 48, color = GC, panes = panes, refl = 0.1, trans = L.goldGlass and 0.86 or 0.88,
+    std = (R0 == 0.52 and cy0 == -0.24 and zf == -0.80 and zr == 0.57 and Lf == 0.30) }
   if L.hoop then
     local R1, cyh, th, z = 0.50, -0.24, L.hoop.th or 0.05, L.hoop.z or -0.80
     local n = 16
@@ -1612,7 +1614,12 @@ function Defs.modelPit(b, ctx, L)
       cr.CornerRadius = UDim.new(0.5, 0)
       cr.Parent = s2.root
     else
-      -- 多功能显示器：显示区上下原模型的按键条上各一排 5 个键帽
+      -- 多功能显示器：显示区上下原模型的按键条上各一排 5 个键帽。
+      --   雕进原模型的（元数据有 d，tools/models/sf_air.py 的 carve：用户 11-24「我需要你在原模型上雕刻显示屏哈」）：o.c 已经在槽底，
+      --   屏幕贴着槽底（只往外让 0.8 毫米），键帽摆回边框面上原来的按键那儿（屏幕平面往外 d）——玻璃比边框、按键低一截，像真的 MFD
+      local carved = o.d ~= nil
+      if carved then cf, w, h = place(o, 0.0008) end
+      local lift = carved and (o.d / SS - 0.0008 + 0.0035) or 0.003   -- 键帽中心在屏幕平面前面多远（米）
       local ks = L.keys and L.keys[name]
       local gap = L.keyGap or 0.0045
       local kp
@@ -1623,7 +1630,7 @@ function Defs.modelPit(b, ctx, L)
           kp[side] = {}
           for i = 1, #list do
             local x = w / 2 - (i - 0.5) * w / #list
-            kp[side][i] = { x, ((side == "top") and 1 or -1) * (h / 2 + gap), w / #list * 0.82, 0.0068, -0.003 }
+            kp[side][i] = { x, ((side == "top") and 1 or -1) * (h / 2 + gap), w / #list * 0.82, 0.0068, -lift }
           end
         end
       end

@@ -226,7 +226,7 @@ function Gunner.init(G)
     if me.Character then table.insert(ex, me.Character) end
     if gs and gs.em then table.insert(ex, gs.em) end
     aimParams.FilterDescendantsInstances = ex
-    local res = workspace:Raycast(o, dir * len, aimParams)
+    local res = G.rayFar(o, dir * len, aimParams)   -- 远处没加载的地形按高度算（Stream.lua）
     return res and res.Position or (o + dir * len), res ~= nil
   end
 
