@@ -36,5 +36,5 @@ while sim2 < 1500 do
   sim2 = sim2 + 1 / 15
 end
 local n2, v2, w2 = snap()
-print(string.format("后台铺完（连开服前一共）：FillBlock %d 次（%.3f 亿体素），WriteVoxels %.3f 亿体素；模拟 %.0f 秒（后台每帧最多铺两次，这个数只看帧数）；还剩 %s 项",
+print(string.format("后台铺完（连开服前一共）：FillBlock %d 次（%.3f 亿体素），WriteVoxels %.3f 亿体素；模拟 %.0f 秒（模拟器的时钟一步里不走，这个数只看让了多少帧，不是真秒数）；还剩 %s 项",
   n2, v2 / 1e8, w2 / 1e8, sim2, tostring(G.terrainRest)))
