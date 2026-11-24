@@ -190,6 +190,12 @@ function WtMatch.init(G)
     end
   end
 
+  local AWARD = { first = 80, double = 60, triple = 120, rampage = 150, avenger = 60, marksman = 50 }   -- 奖章加多少分（也就攒 SP）
+  -- 自己阵亡：连杀断了
+  G.on("died", function(P)
+    if P and P.wtm then P.wtm.streak = 0 end
+  end)
+
   ---------------------------------------------------------------- 车被打掉
   --   车主那一型记一笔「已毁」；打掉它的人记击毁地面 / 击落空中；侦察到的车被打掉，侦察的人有助攻；
   --   全服一条战雷式击杀信息（左边那一栏，客户端 WtBattle.lua）
@@ -210,6 +216,31 @@ function WtMatch.init(G)
       sc.P.wtArtyBonus = math.min(2, (sc.P.wtArtyBonus or 0) + 1)
       pushArty(sc.P)
       G.msg(sc.P.pl, "good", "wt.scoutKill", { k = "veh." .. (e.def and e.def.id or "") })
+    end
+    -- 战场奖章（战雷屏幕上方弹出来的那种）：首杀、双杀 / 三杀、坦克狂暴者（不死连杀 5 辆）、复仇者、神射手（1.5 公里外）
+    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team then
+      local t = now()
+      local s = S(K)
+      local aw = {}
+      local R = G.round
+      if R and not R.wtFirst then R.wtFirst = true table.insert(aw, "first") end
+      s.streak = (s.streak or 0) + 1
+      s.kt = s.kt or {}
+      table.insert(s.kt, t)
+      while #s.kt > 0 and t - s.kt[1] > 12 do table.remove(s.kt, 1) end
+      if #s.kt == 2 then table.insert(aw, "double") elseif #s.kt >= 3 then table.insert(aw, "triple") end
+      if s.streak == 5 then table.insert(aw, "rampage") end
+      local victim = e.driver or e.wtLastDriver
+      for _, Q in pairs(G.P) do   -- 复仇者：打掉的这辆刚刚（20 秒内）击毁过我们队的人
+        if Q.team == K.team and Q ~= K and Q.wtKilledBy == e and t - (Q.wtKilledT or 0) < 20 then table.insert(aw, "avenger") break end
+      end
+      local kp = K.vehicle and K.vehicle.root and K.vehicle.root.Position
+      if kp and e.root and (kp - e.root.Position).Magnitude / 2.8 > 1500 then table.insert(aw, "marksman") end
+      for _, a in ipairs(aw) do
+        G.addScore(K, (AWARD[a] or 40))
+        G.R.Drive:FireClient(K.pl, { op = "wtAward", a = a, pts = AWARD[a] or 40 })
+      end
+      if victim and victim.pl then victim.wtKilledBy, victim.wtKilledT = K.vehicle, t end
     end
     if e.cat ~= "inf" and e.cat ~= "fort" and e.def and e.def.id then
       local D = e.driver or e.wtLastDriver

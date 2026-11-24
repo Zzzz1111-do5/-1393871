@@ -268,6 +268,48 @@ function WtBattle.init(G)
       if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
     end
   end)
+  -- 战场奖章（战雷屏幕上方弹出来的那种）：一枚金色的章 + 名字 + 加了多少分，几个一起来就排队
+  local award = frame(gui, UD2(0, 300, 0, 64), UD2(0.5, 0, 0, 150), INK, 1, V2(0.5, 0))
+  award.Name = "WtAward"
+  award.Visible = false
+  local medal = frame(award, UD2(0, 44, 0, 44), UD2(0, 0, 0.5, 0), GOLD, 0.05, V2(0, 0.5))
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = medal
+    local st = Instance.new("UIStroke")
+    st.Color, st.Thickness, st.Transparency = RGB(120, 80, 20), 3, 0.1
+    st.Parent = medal
+  end
+  local medalT = label(medal, "★", UD2(1, 0, 1, 0), nil, 24, RGB(120, 70, 10), BLACK)
+  local awName = label(award, "", UD2(1, -54, 0, 28), UD2(0, 54, 0, 6), 22, GOLD, BLACK, nil, LEFT)
+  local awPts = label(award, "", UD2(1, -54, 0, 18), UD2(0, 54, 0, 36), 14, WHITE, BOLD, nil, LEFT)
+  local awQueue, awUntil = {}, 0
+  local function nextAward()
+    local a = table.remove(awQueue, 1)
+    if not a then award.Visible = false return end
+    awName.Text = T("wta.aw." .. a.a)
+    awPts.Text = T("wtm.awardPts", a.pts or 0)
+    award.Visible = true
+    awUntil = os.clock() + 2.6
+    if G.sfx then pcall(G.sfx, "uiClick") end
+  end
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) == "table" and m.op == "wtAward" then
+      table.insert(awQueue, m)
+      if not award.Visible then nextAward() end
+    end
+  end)
+  G.frameConn("WtAward", function()
+    if award.Visible then
+      local t = os.clock()
+      local k = math.clamp(1 - (awUntil - t) / 0.25, 0, 1)   -- 刚出来的 0.25 秒：从大缩到正常
+      local pop = 1 - math.clamp((t - (awUntil - 2.6)) / 0.25, 0, 1)
+      award.Size = UD2(0, 300 * (1 + 0.25 * pop), 0, 64 * (1 + 0.25 * pop))
+      if t > awUntil then nextAward() end
+      local _ = k
+    end
+  end)
   G.R.Drive.OnClientEvent:Connect(function(m)
     if type(m) ~= "table" or m.op ~= "wtFeed" then return end
     table.insert(feedList, 1, { txt = feedLine(m), t = os.clock(), mine = m.vid == me.UserId or m.k == me.DisplayName })

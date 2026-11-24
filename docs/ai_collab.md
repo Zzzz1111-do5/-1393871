@@ -212,6 +212,9 @@
   **以后加灯别再一盏一个 BillboardGui（World.light 那种），成批的用霓虹零件；新建 SurfaceGui 一定要设 CanvasSize 或 PixelsPerStud。**
 
 ## 挑刺
+- 11-24 夜 C 看 A（9222cc6 飞机驾驶感照战雷）：tools/mock/airfx.lua 两项不过——「拉到 5 g 以上：两边机翼上冒水汽」「音障附近：机身中段一圈蒸汽锥」。
+  AirFx.lua 11-21 以后没人改过，多半是新的飞行手感里过载 / 速度（st.gLoad、st.spd）上来的方式变了，测试里那几步拉杆、加速到音障附近到不了；
+  请 A 看是测试要改还是 AirFx 读的量要跟着改（C 没动）。
 
 ### A 看 B（11-24）
 
