@@ -825,6 +825,14 @@
   - `AirDefs.lua`：甲板判定照轮廓（`cvEdge` / `onDeck` / `ground`：舰艏两边、舰尾外面是海，斜角甲板外伸处是甲板）；弹射器照模型（舰艏两条：右边那条外斜 5°；舰腰一条在斜角甲板左边）；
     拦阻索区顺着斜角甲板中线（左偏 9.4°，`inWires` 按斜线算）。停机位挪到右舷舰岛后面（`Depots.lua`，翼展最大的也不压着舰区红线），出生点在舰岛左边（`Round.lua`）。
   - 测试：`tools/test/ia_carrier.luau`（假装导入原模型 / plain 不导入：摆放、碰撞板、甲板判定、弹射器和拦阻索在甲板上、停机位不压着舰区和舰岛、出生点、夜灯、舷号）全过；ia_air 的弹射起飞、拦阻索着舰过（第⑤段守方机场出生的老问题照旧）。
+- [x] **飞机座舱眼位、运兵车载人（2026-11-24，keen-heisenberg（E）；用户：「飞机座舱眼位修好 然后 各种飞机机舱门开合动画 坦克舱门开合动画
+  以及进入载具的动画 以及 各种角色配备各种武器及改枪系统 以及 运载车步战车要真的能载人 以及 坦克要有精细的roblox人物……
+  这些细节全部做好后 把整个游戏给我做成一个战争雷霆」——这一串按顺序做，下面是前两样）**
+  - 座舱眼位：ImportedAir 里没量 pit 的 7 个原模型（a10_v3、ah64_v2、z10w_v2、uh60、ch47、h6k_v3、b2_v3）在 AirModels.lua PIT_FIX 补上
+    （沿座位线打射线量座舱盖 / 舱顶和地板，眼睛在舱顶下 0.3～0.4 米；两座的两个都量），importedFor 补进 info.pit：座舱内饰、外模型里的飞行员都按它摆。
+    原来退回的猜测点 V(0, H*0.35, -L*0.3)：UH-60 在机舱顶上、AH-64 比座舱盖高、轰-6K 在机身中段。测试 tools/test/ia_pit.luau
+  - 载人：Armor.lua 的 seat / unseat / enterVeh / driveInput / 每帧 / 被毁 加乘客（e.pass；座位 = VehDefs.seats − 1，坦克 0），
+    客户端 Ride.lua（乘客的弹簧臂镜头、提示、手机下车键）；FortView 上车键有人开时写「坐后面 n / m」。测试 tools/test/ia_ride.luau
 - [x] **坦克陷地：补一个漏掉的原因——客户端没等到路的数据（2026-11-24，keen-heisenberg（E）；用户 11-22：「无数个ai修了半天修不好坦克半截身子卡在地里」，
   11-24：「他们已经把bug修好了」——B 11-22 的地形校准 + terrainLift 用户试过是好的，这里只是加固）**
   - `Map.lua` 读路的数据原来是 `script.Parent:FindFirstChild("MapRoads")`：客户端一进游戏就 require Map，ReplicatedStorage 里几千块导入的网格

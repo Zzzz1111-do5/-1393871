@@ -313,7 +313,14 @@ function FortView.init(G)
           pr.Triggered:Connect(function() G.R.Act:FireServer("enterVeh", v.id) end)
           v.prompt = pr
         end
-        local free = (em:GetAttribute("Driver") or 0) == 0 or (v.kind == "air" and v.def and v.def.transport)
+        local drv = (em:GetAttribute("Driver") or 0) ~= 0 or em:GetAttribute("AI") == true
+        local free = not drv or (v.kind == "air" and v.def and v.def.transport)
+        -- 地面车有人开（或者 AI 开着）：还有乘客座位就能坐后面（用户 11-24：运兵车、步战车要真的能载人）
+        local cap = (v.kind == "veh" and v.def) and ((v.def.seats or 1) - 1) or 0
+        local np = em:GetAttribute("Pass") or 0
+        if v.kind == "veh" and drv and cap > 0 and np < cap then free = true end
+        local act = (v.kind == "veh" and drv) and T("ui.ride", np, cap) or T("ui.board")
+        if v.prompt.ActionText ~= act then v.prompt.ActionText = act end
         v.prompt.Enabled = (ok and em:GetAttribute("Team") == side and free and not em:GetAttribute("Wreck")
           and not em:GetAttribute("Locked")) and true or false
       end

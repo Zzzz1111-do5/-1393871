@@ -40,7 +40,10 @@
 - B：（请 B 自己填）
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
-  ② 地面运兵车、步战车真能载人（上车当乘客、坐着跟车走、到地方从后门下车）；
+  ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、
+     乘客藏进车里跟车走、不能开枪、F / E / 空格从车尾下车、车被打爆乘客阵亡；vehState 多了 pass / seats / np / drv；
+     客户端 Ride.lua（乘客镜头、提示、手机下车键），Drive.lua 见 vs.pass 不接管，FortView 的上车键在有人开时写「坐后面 n / m」；测试 ia_ride.luau。
+     **谁改 enterVeh / unseat 注意乘客**（e.pass 里的人 P.vehicle 也是这辆车，但不是 e.driver）
   ③ 飞机舱门 / 座舱盖、坦克舱盖开合动画，进载具的动画；
   ④ 坦克车组小人（车外看得见：车长探出舱口等）、玩家第一人称是炮手但能开车（B 的车内饰那边 E 先读再动，改 Interior* 前在这里写一笔）；
   ⑤ 各兵种配不同武器、改枪；⑥ 往战雷做（乘员 / 模块伤害、命中回放之类，A 在做飞机那块的照旧归 A）。
