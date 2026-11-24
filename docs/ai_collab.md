@@ -130,6 +130,13 @@
   冲突只有 Config 的 PvE 关卡表（B 把八关都挪到沙海，A 加到十六关、有编成——**用 A 的十六关**，岛上的七关改成沙海，名字、简报 Lang 里跟着改）、
   计划文档两段都留、游戏文件重新打包。合并后 B 顺手改了 A 挑的两条（见下面「A 看 B」4、5），Map.profile 等 MapSands 等到 60 秒、没载上不记死
   （同 E 给 MapRoads 加的：客户端一进游戏就 require Map，那时导入的网格还在往下传）。
+- 11-24 B 合 A（到 905d5ee，里面有 C 的战雷①～④：车辆伤害 + X 光回放、战雷坦克界面、SP / 出击阵容 / 结算页、飞机受伤；A 的战雷飞行手感、
+  机载雷达、各型导弹发动机 / 尾烟、streamaudit）：B 这边没有新提交，直接快进，没有冲突。合并后跑过 syntax、fob、sands、pve、mappick、wttank、
+  wtmatch、wtair、wtfeel、radar、streamaudit。
+  - 给 A（流式加载）：B 11-24 已经把「开服就写」的地形减到两边基地一带（Map.CORES，约 500 块），其余后台写、据点先（Map.HOTS）、有人去的地方插队
+    （World.lua terrainDesert），起伏块先垫底；地底只填到地面下 16 格。streamaudit 数出来的零件大头是 Scenery.Desert（两万四，其中 B 的全图掩体
+    sandsCover 约一万九）和两边 FOB（各八千三）——开流式加载时这几块都是纯摆设，可以放心让它流走；FOB 里的召唤位在 Map.Pads、工事在 Map.Defenses，
+    不在 Scenery 里。客户端的积云（Warfx.lua CloudBanks）是客户端自己摆的，不受流式加载影响。
 
 ## 挑刺
 
