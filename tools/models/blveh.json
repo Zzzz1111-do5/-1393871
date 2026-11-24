@@ -1,104 +1,86 @@
 {
- "m3a3": {
-  "_说明": "M3 布雷德利骑兵战车（mansoorsajidp，Sketchfab 99ab5c2396784da49e26adac2626548d，CC-BY-4.0，作者自己用 Blender 做的）；原模型车头朝 +Z，转半圈",
-  "uid": "99ab5c2396784da49e26adac2626548d",
-  "rotZ": 180,
-  "length": 6.55,
-  "texMax": 1024,
-  "gunBack": 0.15,
-  "groups": {
-   "Turret": [
-    "Object_10",
-    "Object_11",
-    "Object_13",
-    "Object_15",
-    "Object_17",
-    "Object_18",
-    "Object_51",
-    "Object_53",
-    "Object_55"
-   ],
-   "Gun": [
-    "Object_42",
-    "Object_49"
-   ],
-   "Tow": [
-    "Object_20",
-    "Object_21"
-   ]
+  "m3a3": {
+    "_说明": "M3 布雷德利骑兵战车（mansoorsajidp，Sketchfab 99ab5c2396784da49e26adac2626548d，CC-BY-4.0，作者自己用 Blender 做的）；原模型车头朝 +Z，转半圈",
+    "uid": "99ab5c2396784da49e26adac2626548d",
+    "rotZ": 180,
+    "length": 6.55,
+    "texMax": 1024,
+    "gunBack": 0.15,
+    "groups": {
+      "Turret": ["Object_10", "Object_11", "Object_13", "Object_15", "Object_17", "Object_18", "Object_51", "Object_53", "Object_55"],
+      "Gun": ["Object_42", "Object_49"],
+      "Tow": ["Object_20", "Object_21"]
+    },
+    "wheels": [["Object_29", "Object_30"], ["Object_61", "Object_62"], ["Object_66", "Object_67"], ["Object_71", "Object_72"], ["Object_76", "Object_77"], ["Object_81", "Object_82"], ["Object_32"], ["Object_57"], ["Object_96", "Object_97"], ["Object_111", "Object_112"], ["Object_108", "Object_109"], ["Object_105", "Object_106"], ["Object_102", "Object_103"], ["Object_99", "Object_100"], ["Object_36"], ["Object_34"]],
+    "decimate": {
+      "Object_23": 0.12,
+      "Object_38": 0.12,
+      "Object_24": 0.3,
+      "Object_39": 0.3,
+      "Object_25": 0.4,
+      "Object_40": 0.4,
+      "Object_4": 0.45,
+      "Object_5": 0.45,
+      "Object_6": 0.1
+    }
   },
-  "wheels": [
-   [
-    "Object_29",
-    "Object_30"
-   ],
-   [
-    "Object_61",
-    "Object_62"
-   ],
-   [
-    "Object_66",
-    "Object_67"
-   ],
-   [
-    "Object_71",
-    "Object_72"
-   ],
-   [
-    "Object_76",
-    "Object_77"
-   ],
-   [
-    "Object_81",
-    "Object_82"
-   ],
-   [
-    "Object_32"
-   ],
-   [
-    "Object_57"
-   ],
-   [
-    "Object_96",
-    "Object_97"
-   ],
-   [
-    "Object_111",
-    "Object_112"
-   ],
-   [
-    "Object_108",
-    "Object_109"
-   ],
-   [
-    "Object_105",
-    "Object_106"
-   ],
-   [
-    "Object_102",
-    "Object_103"
-   ],
-   [
-    "Object_99",
-    "Object_100"
-   ],
-   [
-    "Object_36"
-   ],
-   [
-    "Object_34"
-   ]
-  ],
-  "decimate": {
-   "Object_23": 0.12,
-   "Object_38": 0.12,
-   "Object_24": 0.3,
-   "Object_39": 0.3,
-   "Object_25": 0.4,
-   "Object_40": 0.4,
-   "Object_4": 0.45,
-   "Object_5": 0.45,
-   "Object_6": 0.1
+  "m1a1i": {
+    "_说明": "M1A1 艾布拉姆斯（Muhamad Mirza Arrafi / MirzaArrafiERV_45，Sketchfab 1529f5d842cb4f578aa8cb672524f044，CC-BY-4.0，带炮塔内饰）；用户 11-23「你直接用这 m1」「原模型也换成这个」：从原文件直接转（以前的 m1a1 是网页版烘焙过的同一个模型，车内并进了车体、不跟炮塔转）。原模型车头朝 +Z，转半圈；单位就是米（车体 8.1 米），不缩放；原模型好几层一模一样的面（游戏里扒的），去重；炮管、炮盾和车体是一块，按框拆出来；Object_13 是一圈观察镜玻璃：驾驶员的三块在车体上，车长、装填手、炮长镜窗的在炮塔上，按框分开",
+    "uid": "1529f5d842cb4f578aa8cb672524f044",
+    "credit": "M1A1 艾布拉姆斯（带炮塔内饰）：M1A1 Abrams Main Battle Tank，作者 Muhamad Mirza Arrafi（MirzaArrafiERV_45，https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "title": "M1A1 艾布拉姆斯（带炮塔内饰）",
+    "creditEn": "This work is based on \"M1A1 Abrams Main Battle Tank\" (https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "changes": "Blender 从原文件直接转（tools/models/blveh.py）：转半圈朝 −Z、去掉重合的面、炮管和炮盾从车体里拆出来、炮塔内饰归炮塔、贴图缩到 1024、按部件和材质切块",
+    "alias": ["m1a1"],
+    "old": "m1a1",
+    "rotZ": 180,
+    "scale": 1.0,
+    "texMax": 1024,
+    "dedupe": true,
+    "dedupeFirst": ["Object_8", "Object_14", "Object_11", "Object_2", "Object_3", "Object_17"],
+    "split": [
+      {
+        "from": ["Object_8", "Object_9"],
+        "to": "Gun",
+        "box": [-0.6, 0.6, 0.9, 1.8, 0.9, 6.0]
+      },
+      {
+        "from": ["Object_10"],
+        "to": "Gun",
+        "box": [-0.2, 0.2, 1.25, 1.5, 2.9, 3.6]
+      },
+      {
+        "from": ["Object_10"],
+        "to": "Turret",
+        "box": [-1.7, 1.7, 1.0, 1.95, -2.0, 1.9]
+      },
+      {
+        "from": ["Object_13"],
+        "to": "Turret",
+        "box": [-1.2, 1.0, 1.5, 2.3, -1.2, 0.6]
+      }
+    ],
+    "groups": {
+      "Turret": ["Object_14", "Object_15", "Object_6", "Object_2", "Object_16", "Object_4", "Object_17", "Object_3"],
+      "RwsGun": ["Object_5"]
+    },
+    "labels": {
+      "Object_4": "Int",
+      "Object_17": "Int",
+      "Object_3": "Int"
+    },
+    "kinds": {
+      "Int": "int"
+    },
+    "matColor": {
+      "chassis_vlo.4": [34, 44, 50]
+    },
+    "tur": [-0.03, 1.0, -0.15],
+    "gun": [0.0, 1.325, 1.55],
+    "points": {
+      "sight": [-0.55, 2.29, 0.22],
+      "gps": [-0.6045, 1.015, 0.417],
+      "gpse": [-0.498, 1.371, -0.346]
+    }
   }
- }
 }

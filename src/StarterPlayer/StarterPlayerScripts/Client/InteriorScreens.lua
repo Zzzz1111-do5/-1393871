@@ -393,7 +393,12 @@ Screens.KEYDESC = {
   ["6"] = "6（字母模式：P Q R）", ["7"] = "7（字母模式：S T U）", ["8"] = "8（字母模式：V W X）", ["9"] = "9（字母模式：Y Z）", ["0"] = "0（字母模式：空格）",
   ["."] = "小数点", ["-"] = "横杠", CLR = "删掉最后一个字；没字了再按：清掉目标点", LTR = "切换字母 / 数字", NEXT = "这个字母打完了（连按同一个键打下一个字母）",
   ENT = "确定：偶数位数字（4 / 6 / 8 / 10 位，前一半东、后一半北）设目标点；打的是字就当消息发出去",
+  -- M1A1 计算机控制面板 CCP 的数字键盘、主瞄准镜 / 热像仪控制面板上的旋钮（用户 11-23：电脑和观瞄设备实现现实中的功能）
+  ["CCP ENT"] = "确定：把打的四位数装定成距离（米），弹道计算机按它算超高角", ["CCP CLR"] = "清除：删掉打了一半的数；没在打就清掉手动距离",
+  ["DAY/TIS"] = "主瞄准镜视野选择：昼光通道 / 热像通道（下次开镜生效）", SABOT = "穿甲弹（M829）", HEAT = "破甲弹（M830）", MPAT = "多用途弹（M830A1）",
+  CAN = "霰弹（M1028）", TEST = "计算机自检 + 灯检", DATA = "弹道数据页：弹种、距离、初速、超高角、飞行时间、侧倾",
 }
+for i = 0, 9 do Screens.KEYDESC["CCP " .. i] = "数字 " .. i .. "：手动装定距离（打四位数，再按 ENT）" end
 local KM = Screens.KEYMAP
 local function canon(k) return KM[k] or k end
 Screens.canon = canon
@@ -665,6 +670,184 @@ P.gcdp = function(s, env, zh)
     elseif st.page == "BSGT" then
       pages.BSGT.set({ L("BORESIGHT", "校炮"), L("ALIGN RETICLE TO MRS", "分划对准炮口基准"), string.format(L("AZ  %+.2f", "方向  %+.2f"), st.bs[1]), string.format(L("EL  %+.2f", "高低  %+.2f"), st.bs[2]), L("BORESIGHT OK", "校炮完成"), "" })
     end
+  end
+end
+
+-- M1A1 计算机控制面板 CCP（用户 11-23：「有一个带内饰的 m1a1 里面的电脑……给那个电脑和观瞄设备实现现实中的功能」）：
+--   炮长右手边那个斜挂着的黑盒子（原模型的器材，tools/models/blveh.py 转的 m1a1i），左边是显示窗、右边 3 × 4 的键盘。
+--   真车上这台弹道计算机按激光测的距离、弹种、耳轴倾斜（侧倾）、横风、药温、气压、炮口基准算超高角和提前量；数据都从这里看、从这里装定。
+--   显示窗（橙红色的数码管字）：大字是弹道计算机现在用的距离 + 来源（LRF 激光测的 / MAN 手动装定 / BSGT 战斗瞄准距离 / ---- 没回波），
+--     下面四个弹种灯（选中的亮）、超高角（密位）和飞行时间（秒，Ballistics 真算的）、侧倾、待发；DATA 页列全部弹道数据，TEST 页是机内自检
+--   键盘（原模型上是 3 × 4 的数字键盘：1 2 3 / 4 5 6 / 7 8 9 / CLR 0 ENT，都真起作用）：打四位数、按 ENT——手动装定距离
+--     （弹道计算机就按它算超高角，开镜看得到炮跟着抬）；CLR 删掉打了一半的数，没在打就清掉手动距离（回到激光测的 / 战斗瞄准距离）
+--   目镜右边两块面板上的旋钮、拨杆也接到这里（Interior 的 m1a1 内饰）：WHT/BLK 热像极性、3X/10X 倍率、DAY/TIS 昼光 / 热像、AMMO 弹种选择开关
+P.ccp = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.BackgroundColor3 = RGB(6, 4, 4)
+  local LED = RGB(255, 92, 36)          -- 数码管的橙红
+  local DIM = RGB(52, 18, 10)           -- 没亮的段（数码管底下隐约看得见的 8）
+  local GRN = RGB(120, 255, 120)
+  local function L(en, cn) return zh and cn or en end
+  local BALOK, BAL = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics", 2)) end)
+  if not BALOK then BAL = nil end
+  local top = Tx(R, "CCP  M1A1", 6, 3, W * 0.5, 14, 11, LED, nil, FONTB, 3)
+  local fcsT = Tx(R, "", W * 0.5, 3, W * 0.5 - 6, 14, 11, LED, Enum.TextXAlignment.Right, FONTB, 3)
+  local _ = top
+  -- 大字：距离（底下一排暗的 8888）
+  local bigY, bigH = 20, math.floor(H * 0.34)
+  Tx(R, "8888", 6, bigY, W * 0.62, bigH, bigH, DIM, Enum.TextXAlignment.Right, FONT, 3)
+  local big = Tx(R, "----", 6, bigY, W * 0.62, bigH, bigH, LED, Enum.TextXAlignment.Right, FONT, 4)
+  local unit = Tx(R, "M", W * 0.64, bigY + bigH * 0.12, W * 0.12, bigH * 0.4, bigH * 0.36, LED, nil, FONTB, 4)
+  local src = Tx(R, "", W * 0.64, bigY + bigH * 0.52, W * 0.34, bigH * 0.4, bigH * 0.3, LED, nil, FONTB, 4)
+  local _2 = unit
+  -- 弹种灯
+  local AM = { "SABOT", "HEAT", "MPAT", "CAN" }
+  local lamps = {}
+  local ly = bigY + bigH + 6
+  local lw = (W - 12 - 3 * 4) / 4
+  for i, a in ipairs(AM) do
+    local f = F(R, 6 + (i - 1) * (lw + 4), ly, lw, 16, RGB(30, 10, 6), 0, 3)
+    lamps[a] = { f = f, t = Tx(f, a, 0, 0, lw, 16, 11, DIM, Enum.TextXAlignment.Center, FONTB, 4) }
+  end
+  local se = Tx(R, "", 6, ly + 22, W - 12, 14, 12, LED, nil, FONT, 3)
+  local cantT = Tx(R, "", 6, ly + 38, W - 12, 14, 12, LED, nil, FONT, 3)
+  local stat = F(R, 6, H - 22, W - 12, 18, RGB(30, 10, 6), 0, 3)
+  local statT = Tx(stat, "", 0, 0, W - 12, 18, 12, LED, Enum.TextXAlignment.Center, FONTB, 4)
+  local pages = { DATA = textPage(s, L("BALLISTIC DATA", "弹道数据"), 8, LED), TEST = textPage(s, L("COMPUTER SELF TEST", "计算机自检"), 7, LED) }
+  local FCS = zh and { "正常", "应急", "手动" } or { "NORMAL", "EMERGENCY", "MANUAL" }
+  local st = { page = nil, fcs = 1, msg = nil, msgT = 0, testT = nil, R = nil, entry = "", sym = "SABOT" }
+  local SYM = { m829a3 = "SABOT", m830 = "HEAT", m830a1 = "MPAT", m1028 = "CAN", m900 = "SABOT", m456 = "HEAT" }
+  s.st = st   -- 测试用
+  s.onKey = function(k, act)
+    k = canon(k)
+    local dig = string.match(k, "^CCP (%d)$")
+    if dig then   -- 数字键：最多四位
+      if #st.entry < 4 then st.entry = st.entry .. dig end
+    elseif k == "CCP ENT" then
+      local r = tonumber(st.entry)
+      st.entry = ""
+      if r and r >= 100 and r <= 5000 then act.range(r) st.msg, st.msgT = string.format(L("MAN RANGE %d M", "手动距离 %d 米"), r), os.clock()
+      else st.msg, st.msgT = L("RANGE ERROR", "距离超出范围"), os.clock() end
+    elseif k == "CCP CLR" then
+      if st.entry ~= "" then st.entry = ""
+      else act.range(nil) st.msg, st.msgT = L("MAN RANGE CLEARED", "手动距离已清"), os.clock() end
+    elseif k == "AMMO" then   -- 弹种选择开关：SABOT → HEAT → MPAT → CAN
+      local i = table.find(AM, st.sym) or 1
+      act.ammo(AM[i % #AM + 1])
+    elseif k == "SABOT" or k == "HEAT" or k == "MPAT" or k == "CAN" then act.ammo(k)
+    elseif k == "LRF" then act.lase()
+    elseif k == "FCS" then st.fcs = st.fcs % 3 + 1 act.fcsMode(st.fcs)
+    elseif k == "TEST" then st.testT, st.page = os.clock(), "TEST" act.lampTest()
+    elseif k == "MRS" then st.msg, st.msgT = L("MRS UPDATE COMPLETE", "炮口基准更新完成"), os.clock()
+    elseif k == "DATA" then st.page = (st.page == "DATA") and nil or "DATA"
+    elseif k == "WHT/BLK" then act.polarity() st.msg, st.msgT = L("TIS POLARITY", "热像极性"), os.clock()
+    elseif k == "3X/10X" then act.zoom() st.msg, st.msgT = L("GPS MAGNIFICATION", "主瞄准镜倍率"), os.clock()
+    elseif k == "DAY/TIS" then act.thermal() st.msg, st.msgT = L("GPS VISION SELECT", "主瞄准镜昼光 / 热像"), os.clock() end
+  end
+  return function(d)
+    if st.page == "TEST" and st.testT and os.clock() - st.testT > 6 then st.page = nil end
+    for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
+    local amKey = d.fcsAm
+    local am = BAL and amKey and BAL.AMMO[amKey]
+    local sym = SYM[amKey or ""] or (am and am.sym) or "SABOT"
+    st.sym = sym
+    for a, it in pairs(lamps) do
+      local on = a == sym
+      it.f.BackgroundColor3 = on and LED or RGB(30, 10, 6)
+      it.t.TextColor3 = on and RGB(20, 4, 0) or DIM
+    end
+    -- 弹道计算机现在用的距离：激光测的 / 手动装定的 / 没测就是这种弹的战斗瞄准距离
+    local Rm, tag
+    if d.fcsR then Rm, tag = d.fcsR, d.fcsMan and "MAN" or "LRF"
+    elseif d.fcsNoRet then Rm, tag = nil, L("NO RTN", "无回波")
+    else Rm, tag = am and am.bs or nil, "BSGT" end
+    st.R = Rm
+    if st.entry ~= "" then   -- 正在打数：大字显示打的数（没打满的位闪下划线）
+      local blink = math.floor(os.clock() * 3) % 2 == 0
+      big.Text = st.entry .. string.rep(blink and "_" or " ", 4 - #st.entry)
+      src.Text = L("ENTER", "输入")
+    else
+      big.Text = Rm and string.format("%4d", math.floor(Rm + 0.5)) or "----"
+      src.Text = tag
+    end
+    fcsT.Text = FCS[st.fcs]
+    local seMil, tof = nil, nil
+    if am and Rm and BAL then
+      local a, t = BAL.superElev(am, Rm, 0)
+      seMil, tof = a * 6400 / (2 * PI), t
+    end
+    se.Text = seMil and string.format(L("SE %5.2f MIL   TOF %4.2f S", "超高角 %5.2f 密位  飞行 %4.2f 秒"), seMil, tof) or L("SE  --.--", "超高角 --.--")
+    cantT.Text = string.format(L("CANT %+5.1f   %s  %s", "侧倾 %+5.1f°  %s  %s"), d.cant or 0, (d.sightMode == 4) and "BLK" or ((d.sightMode == 3) and "WHT" or "DAY"), (d.zoom == 2) and "10X" or "3X")
+    local rd = d.ready
+    if st.msg and os.clock() - st.msgT < 2.5 then statT.Text, statT.TextColor3 = st.msg, LED
+    else
+      statT.Text = rd and L("READY TO FIRE", "待发") or L("LOADING", "装填中")
+      statT.TextColor3 = rd and GRN or LED
+    end
+    if st.page == "DATA" then
+      pages.DATA.set({
+        string.format(L("AMMO      %s", "弹种    %s"), am and am.name or "--"),
+        string.format(L("RANGE     %s M  (%s)", "距离    %s 米（%s）"), Rm and tostring(math.floor(Rm + 0.5)) or "----", tag),
+        string.format(L("MUZZLE V  %d M/S", "初速    %d 米/秒"), am and am.v0 or 0),
+        seMil and string.format(L("SUPERELEV %.2f MIL", "超高角  %.2f 密位"), seMil) or "",
+        tof and string.format(L("TIME OF FLIGHT %.2f S", "飞行时间 %.2f 秒"), tof) or "",
+        string.format(L("CANT      %+.1f DEG", "侧倾    %+.1f°"), d.cant or 0),
+        L("XWIND 0 KN  TEMP 21 C  BARO 1013", "横风 0  气温 21℃  气压 1013"),
+        string.format(L("LEAD      %s", "提前量  %s"), (d.fcsAim and d.fcsAim.lead) and L("ON", "有") or L("OFF", "无")),
+      })
+    elseif st.page == "TEST" then
+      local k = math.floor((os.clock() - (st.testT or 0)) / 0.7)
+      local items = { L("PROCESSOR ..... GO", "处理器 ...... 正常"), L("MEMORY ........ GO", "存储器 ...... 正常"), L("LRF ........... GO", "激光测距 .... 正常"),
+        L("CANT SENSOR ... GO", "侧倾传感器 .. 正常"), L("WIND SENSOR ... GO", "横风传感器 .. 正常"), L("GPS / TIS ..... GO", "瞄准镜 / 热像 正常"), L("TEST COMPLETE", "自检完成") }
+      local lines = {}
+      for i = 1, math.min(#items, k) do lines[i] = items[i] end
+      pages.TEST.set(lines)
+    end
+  end
+end
+
+-- M1A1 车长位的状态显示器（原模型车长面前两块屏的版面：FLIR、PWR、CITV、SGF、CEU、FCEU、CCHA 七格）：每格是一个分系统，绿 GO、黄 / 红有毛病；
+--   PWR 电源（发动机熄火就只剩电瓶）、FCEU 火控电子组件、CEU 车长电子组件、SGF 稳定器、CCHA 车长操纵握把、FLIR / CITV 热像通道
+P.m1stat = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.BackgroundColor3 = RGB(8, 12, 22)
+  local LINE = RGB(210, 220, 230)
+  local GRN, AMB, RED = RGB(90, 230, 120), RGB(255, 180, 60), RGB(255, 70, 50)
+  local function L(en, cn) return zh and cn or en end
+  -- 七格（照原模型屏上的版面：左边一列 FLIR、SGF，中间 PWR、指示、CEU，右边 CITV、FCEU、CCHA）
+  local cells = {
+    FLIR = { 0.03, 0.06, 0.24, 0.42 }, PWR = { 0.30, 0.06, 0.18, 0.18 }, IND = { 0.30, 0.28, 0.18, 0.20 }, CITV = { 0.52, 0.10, 0.45, 0.28 },
+    SGF = { 0.03, 0.52, 0.24, 0.42 }, CEU = { 0.30, 0.52, 0.18, 0.42 }, FCEU = { 0.52, 0.42, 0.45, 0.26 }, CCHA = { 0.52, 0.70, 0.45, 0.24 },
+  }
+  local out = {}
+  for name, c in pairs(cells) do
+    local f = F(R, W * c[1], H * c[2], W * c[3], H * c[4], RGB(10, 16, 28), 0, 2)
+    Box(f, 0, 0, W * c[3], H * c[4], 1.5, LINE, 3)
+    local t = Tx(f, name == "IND" and "" or name, 4, 2, W * c[3] - 8, 12, 11, LINE, nil, FONTB, 4)
+    local v = Tx(f, "", 4, H * c[4] - 18, W * c[3] - 8, 14, 11, GRN, nil, FONTB, 4)
+    out[name] = { f = f, t = t, v = v }
+  end
+  local bar = F(out.IND.f, W * 0.03, H * 0.07, W * 0.12, 3, AMB, 0, 5)
+  local clock = Tx(R, "", W * 0.52, H * 0.015, W * 0.45, 10, 9, LINE, Enum.TextXAlignment.Right, FONT, 3)
+  return function(d)
+    local hp = d.hp or 1
+    local off = d.engineOff
+    local function set(name, txt, col)
+      out[name].v.Text, out[name].v.TextColor3 = txt, col
+    end
+    set("PWR", off and L("BATT", "电瓶") or "GO", off and AMB or GRN)
+    set("FCEU", hp < 0.3 and "NO-GO" or "GO", hp < 0.3 and RED or GRN)
+    set("CEU", "GO", GRN)
+    set("SGF", hp < 0.5 and L("DEGR", "降级") or "GO", hp < 0.5 and AMB or GRN)
+    set("CCHA", "GO", GRN)
+    local th = d.sightMode == 3 or d.sightMode == 4
+    set("FLIR", th and ((d.sightMode == 4) and "BLK" or "WHT") or L("STBY", "待机"), th and GRN or AMB)
+    set("CITV", string.format("%03d", math.floor(((d.ty or 0) % 360) / 360 * 6400 / 10)), GRN)
+    bar.BackgroundColor3 = d.ready and GRN or AMB
+    local t = d.clock or 0
+    clock.Text = string.format("%02d:%02d", math.floor(t / 3600) % 24, math.floor(t / 60) % 60)
   end
 end
 

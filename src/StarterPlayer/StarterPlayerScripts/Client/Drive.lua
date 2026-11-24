@@ -1019,10 +1019,18 @@ function Drive.init(G)
     local m = res and (res.Position - eye).Magnitude / BAL.S
     if m and m >= 50 then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
     else f.R, f.noRet = nil, true end
+    f.man = nil
     f.leadY, f.leadP = f.ry or 0, f.rp or 0   -- 测距那一刻跟踪的角速度（弧度 / 秒）：提前量
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
-  G.driveLase = function() if st then lase() end end   -- 测试用
+  G.driveLase = function() if st then lase() end end   -- 测试用；车里计算机控制面板的 LRF 键（Interior.lua）也走这里
+  -- 手动装定距离（M1A1 计算机控制面板 CCP 的 RANGE 键，Interior.lua）：弹道计算机按这个距离算超高角（没有提前量）；nil 清掉、回到战斗瞄准距离
+  G.driveRange = function(m)
+    if not st then return end
+    local f = st.fcs
+    if m then f.R, f.noRet, f.laseT, f.man = math.clamp(math.floor(m / 5 + 0.5) * 5, 50, BAL.MAXR), false, nil, true
+    else f.R, f.noRet, f.laseT, f.man = nil, false, nil, nil end
+  end
   local function cycleAmmo(key)
     local wid = weaponId()
     local list = wid and BAL.GUN[wid]

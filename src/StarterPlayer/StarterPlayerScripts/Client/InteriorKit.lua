@@ -567,12 +567,51 @@ function B:periscope(g, cf, w, h, d, opt)
   end
   return gl
 end
--- 目镜的镜片：一块暗的玻璃、映一点天光（用户 11-22 发的车长位截图：GPSE 目镜里是暗的、映着一点蓝；「现实中不带绿光」——
---   原来这里是一颗发绿光的霓虹小球「热像是绿的」）。cf 是镜片中心，镜片的面朝 cf 的 ±Z
-function B:lens(g, cf, dia)
-  local gl = self:cylZ(g, 0.003, dia, cf, RGB(14, 20, 30), MAT.Glass)
-  gl.Reflectance, gl.CastShadow = 0.32, false
-  return gl
+-- 目镜的镜片（用户 11-24 指着 M1A1 车长延伸目镜：「这个圆圈里面是一个镜片 要有光学效果的凸透镜 反光和镀膜做出来」；
+--   11-22：GPSE 目镜里是暗的、映着一点蓝，「现实中不带绿光」）：
+--   · 凸透镜：压扁的椭球（SpecialMesh 球，前后厚 = 直径 × k），深色光学玻璃，Glass 材质（后面的东西有折射）+ 映环境
+--   · 镀膜：外面再包一层薄薄的半透明椭球，增透膜的颜色（紫红，边上带一点绿）——真镜头斜着看泛紫光
+--   · 反光：车里顶灯在凸面上的倒影——左上一块柔和的大高光、旁边一颗小而亮的；右下边缘一抹淡淡的镀膜反光（贴在椭球面上、按面的法线摆）
+--   · 出瞳：正中一个很小很淡的亮点（瞄准镜里的光从这里出来；离远了看目镜就是这样一个小亮点）
+--   cf 是镜片中心，凸面朝 cf 的 ±Z（opt.face = 1：看的人在 +Z 那边，高光、出瞳画在那面；−1 反过来）；返回镜片本体
+local LENS_COAT = RGB(150, 70, 190)    -- 增透膜反光：紫红
+local LENS_COAT2 = RGB(70, 190, 140)   -- 边缘那一抹：偏绿
+function B:lens(g, cf, dia, opt)
+  opt = opt or {}
+  local k = opt.k or 0.28           -- 凸度：前后厚 / 直径
+  local f = opt.face or 1
+  local a, c = dia / 2, dia * k / 2   -- 椭球的半径、半厚（米）
+  local function ell(sz, at, col, mat, tr, refl)
+    local p = self:add(g, "Part", sz, at, col, mat)
+    local m = Instance.new("SpecialMesh")
+    m.MeshType = Enum.MeshType.Sphere
+    m.Parent = p
+    p.Transparency, p.Reflectance, p.CastShadow = tr or 0, refl or 0, false
+    return p
+  end
+  local glass = ell(V(dia, dia, dia * k), cf, opt.col or RGB(10, 13, 22), MAT.Glass, 0.12, 0.30)
+  ell(V(dia * 1.012, dia * 1.012, dia * k * 1.08), cf, opt.coat or LENS_COAT, MAT.SmoothPlastic, 0.86, 0.45)
+  -- 椭球面上一点（u 右、v 上，−1 ~ 1，看的人看过去）和那里的法线：高光贴着面摆
+  local function on(u, v, lift)
+    local x, y = -f * u * a, v * a   -- 看的人在 +Z（f = 1）时，他的右手边是 +X；在 −Z 时反过来
+    local zz = c * math.sqrt(math.max(0, 1 - u * u - v * v))
+    local n = V(x / (a * a), y / (a * a), f * zz / (c * c)).Unit
+    local p = V(x, y, f * zz) + n * (lift or 0.0004)
+    return cf * CFrame.lookAt(p, p + n)
+  end
+  local function glint(u, v, w, h, col, tr, rot)
+    local p = self:add(g, "Part", V(w, h, 0.0006), on(u, v) * ANG(0, 0, rad(rot or 0)), col, MAT.Neon)
+    local m = Instance.new("SpecialMesh")
+    m.MeshType = Enum.MeshType.Sphere
+    m.Parent = p
+    p.Transparency, p.CastShadow = tr, false
+    return p
+  end
+  glint(-0.30, 0.32, dia * 0.26, dia * 0.16, RGB(235, 240, 255), 0.62, -35)   -- 顶灯的倒影：柔和的一大块
+  glint(-0.40, 0.42, dia * 0.07, dia * 0.05, RGB(255, 255, 255), 0.12, -35)   -- 最亮的那一点
+  glint(0.52, -0.48, dia * 0.20, dia * 0.06, LENS_COAT2, 0.70, 45)            -- 右下边缘：镀膜泛绿的一抹
+  glint(0, 0, dia * 0.10, dia * 0.10, opt.pupil or RGB(190, 200, 205), 0.78)   -- 出瞳：正中很淡的小亮点
+  return glass
 end
 -- 座椅：坐垫 + 靠背 + 钢架 + 调节手柄；cf 是坐垫上表面中心，−Z 朝前
 function B:seat(g, cf, opt)

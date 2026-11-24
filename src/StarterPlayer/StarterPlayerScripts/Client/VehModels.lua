@@ -17,18 +17,25 @@ do
   local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
   if ok and type(r) == "table" then IM = r end
 end
+-- 型号 → 原模型：先找 alias 的模型键；那个模型还没导入（Studio 里没导新 GLB）就退回 old 的旧模型键
+--   （用户 11-23「原模型也换成这个」：M1A1 换成从 Sketchfab 原文件直接转的 m1a1i，没重新导入的照旧用以前的 m1a1）
 local function importedFor(d)
   if not IM then return nil end
-  local key = IM.alias and IM.alias[d.id]
-  local info = key and IM.m[key]
-  if not info then return nil end
   local imp = RS:FindFirstChild("Imported")
   local veh = imp and imp:FindFirstChild("Veh")
-  local f = veh and veh:FindFirstChild(key)
-  if not f then return nil end
-  local n = f:GetAttribute("N")   -- 服务器记的块数：还没全复制过来就先不用（View 等块齐了再重建）
-  if n and #f:GetChildren() < n then return nil end
-  return key, info, f
+  local keys = { IM.alias and IM.alias[d.id] }
+  local old = IM.old and IM.old[d.id]
+  if type(old) == "string" then table.insert(keys, old) end
+  for _, key in ipairs(keys) do
+    local info = IM.m[key]
+    local f = info and veh and veh:FindFirstChild(key)
+    if f then
+      local n = f:GetAttribute("N")   -- 服务器记的块数：还没全复制过来就先不用（View 等块齐了再重建）
+      if n and #f:GetChildren() < n then return nil end
+      return key, info, f
+    end
+  end
+  return nil
 end
 VehModels.importedFor = importedFor
 
@@ -226,6 +233,12 @@ function VehModels.build(d, team, mods)
           table.insert(carve.glass, mp)
         elseif p.k == "inside" then
           table.insert(carve.inside, mp)
+        elseif p.k == "int" then
+          -- 原模型自带的车内（M1A1 的炮塔内饰：炮长主瞄准镜目镜、计算机控制面板、车长显示器……，tools/models/blveh.py）：
+          --   平时藏着（别的车、车外看不见，也省得画），坐进这辆车 Interior 显示——跟挖出来的内壁（cav）一样管
+          mp.Transparency = 1
+          table.insert(carve.cav, mp)
+          carve.model = true
         end
         mp.Parent = m
         table.insert(parts, { mp, grp, off, wi })

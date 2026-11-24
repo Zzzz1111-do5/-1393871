@@ -44,7 +44,17 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a2", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
+  -- 用原模型自带车内的（M1A1：tools/models/blveh.py 转的 m1a1i，块的 k = "int"）：那个模型没导入（Studio 里还是旧的 m1a1）就照旧借这型的内饰
+  local NEED_INT = { m1a1 = "m1a2" }
+  local IMETA = nil   -- ImportedMeta（原模型的元数据：src 换算矩阵、量好的点）
+  local function imeta(key)
+    if IMETA == nil then
+      local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
+      IMETA = (ok and type(r) == "table") and r or false
+    end
+    return IMETA and IMETA.m and IMETA.m[key] or nil
+  end
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -176,6 +186,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
 
   local function build(st, v)
     local key = ALIAS[v.def.id] or v.def.id
+    local modelInt = v.M and v.M.carve and v.M.carve.model and v.M.imported and imeta(v.M.imported)   -- 原模型自带车内
+    if NEED_INT[key] and not (modelInt and Defs[key]) then key = NEED_INT[key] end
     local fn = Defs[key]
     if not fn then return nil end
     local m = Instance.new("Model")
@@ -185,7 +197,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
     local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
     local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
-    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
+    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav, meta = modelInt or nil,
       gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
     if not ok then
       m:Destroy()
@@ -224,7 +236,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
       spec.order = { spec.lock }
     end
-    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = cav ~= nil and spec.carved == true,
+    -- carved：坐在乘员位上外壳照样画、显示 v.M.carve.cav——挖出来的内壁，或者原模型自带的车内（spec.modelInt：M1A1）
+    local carvedOk = cav ~= nil or (spec.modelInt == true and modelInt ~= nil)
+    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = carvedOk and spec.carved == true,
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
@@ -835,6 +849,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     d.engineOff = G.interiorEngineOff == true
     local fc = st.fcs   -- 火控（Drive.lua）：弹种、激光测的距离、测距的时刻——CITV 屏下面的弹种字母和距离
     d.fcsAm, d.fcsR, d.fcsLaseT = fc and fc.am, fc and fc.R, fc and fc.laseT
+    d.fcsMan, d.fcsNoRet = fc and fc.man, fc and fc.noRet   -- 手动装定的距离、没回波
+    d.fcsAim, d.fcsSE = st.fcsAim, st.fcsSE   -- 弹道计算机正在用的距离、飞行时间、超高角（弧度）
+    d.sightMode, d.zoom = st.mode, st.zoom
+    d.cant = -math.deg(math.asin(clamp(hullW.RightVector.Y, -1, 1)))   -- 车体侧倾（耳轴倾斜）：右边低是正
     d.ammoAll = G.S and G.S.veh and G.S.veh.ammo or {}
     d.ammoKind = c.ammoKind
     if v.rF then d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(v.rgF or v.rF) else d.rwsEye, d.rwsF, d.rwsR, d.rwsU = basis(tW * CF(V(0.6, 1.3, 0.2) * S)) end
@@ -882,6 +900,16 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       local st = G.drive
       if st then st.zoom = (st.zoom == 2) and 1 or 2 end
     end
+    -- 昼光 / 热像（M1A1 主瞄准镜的视野选择：白天的光学通道、热像仪通道）：从昼光、微光换到热像（白热），热像换回昼光；下次开镜生效
+    function A.thermal()
+      local st = G.drive
+      if not st then return end
+      st.mode = ((st.mode or 1) >= 3) and 1 or 3
+      if G.sightPref then G.sightPref[(G.isNight and G.isNight()) and "night" or "day"] = st.mode end
+    end
+    function A.lase() if G.driveLase then G.driveLase() end end   -- 激光测距（同 R 键：瞄准线打到哪、多远）
+    function A.range(m) if G.driveRange then G.driveRange(m) end end   -- 手动装定距离（米；nil 回到战斗瞄准距离）：弹道计算机就按它算超高角
+    function A.fcsMode(k) c.fcsMode = k end
     function A.engine(on)
       G.interiorEngineOff = not on
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
