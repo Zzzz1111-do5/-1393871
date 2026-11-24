@@ -121,6 +121,7 @@ SPEC = {
     #   正前方控制板下面两个圆表（空速、高度）、中间姿态球、下面一个斜 45° 的航向仪；平显是 Cube.016 那一组（组合玻璃上画死了符号，座舱里换成会动的）
     'f16': {
         'ids': ['f16'],
+        'kname': 'f16_v2',   # 11-24 雕了显示屏：导入后的块叫 A_f16_v2__…；没重导的照旧用老的 f16（屏幕贴在面上）
         'credit': credit('F-16C', 'F-16 Fighting Falcon | NATO | GameReady', 'rave.Ar4ik', '1d74c97a06384d318b1d09e0e3811055', 'f-16-fighting-falcon-nato-gameready')
                   + '（改动：转成 Roblox 坐标，去掉自带的外挂，襟副翼、全动平尾、方向舵、座舱盖切成会动的块；机身材质改不透明；座舱屏幕贴实时画面）',
         'fwd': '+x', 'up': '+y', 'len': 15.06, 'lift': 0.4, 'ymid': 'box',   # 机腹（进气道下）离地 0.85 米、全高约 5 米
@@ -138,8 +139,11 @@ SPEC = {
         'noz': [[-7.1, 0.0, 1.335, 0.34]],
         'eye_src': [5.70, 15.35, -0.37],
         'pitscr': {
-            'mfdL': {'c': [7.497, 14.535, -0.705], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16l'},
-            'mfdR': {'c': [7.497, 14.535, -0.025], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16r'},
+            # 两块多功能显示器雕进机壳（用户 11-24：「我需要你在原模型上雕刻显示屏哈」）：原模型的机壳（Cube.011 / Cube.006，0.263 见方、0.028 厚；
+            #   这个模型 1 单位 = 0.366 米）本来就是边框一圈、槽壁（|a|、|b| = 0.104）往里 0.0115、槽底是带雷达画面贴图的显示面——
+            #   去掉槽底那块显示面，槽壁顺着往下再接 0.008（槽一共 7 毫米深）、补新槽底，屏幕放在槽底；槽口 0.207 见方（贴着原来的槽壁里面）
+            'mfdL': {'c': [7.497, 14.535, -0.705], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16l', 'carve': {'w': 0.207, 'h': 0.207, 'd': 0.008}},
+            'mfdR': {'c': [7.497, 14.535, -0.025], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16r', 'carve': {'w': 0.207, 'h': 0.207, 'd': 0.008}},
             'asi': {'c': [7.478, 14.394, -0.4534], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.13, 'h': 0.13, 'page': 'asi', 'round': 1},
             'alt': {'c': [7.478, 14.394, -0.2866], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.13, 'h': 0.13, 'page': 'alt', 'round': 1},
             'adi': {'c': [7.335, 14.175, -0.375], 'n': [-0.986, -0.168, 0], 'u': [-0.168, 0.986, 0], 'w': 0.19, 'h': 0.19, 'page': 'adi', 'round': 1},
@@ -390,7 +394,128 @@ def inbox(lo, hi, sel):
     return True
 
 
+CARVED = {}  # build() 雕过的显示屏：{名字: {'z0' 显示面离 pitscr.c 平面多远, 'cut' 切了几个三角形}}
 EXTRA = {}   # build() 顺便算的：飞行员眼位、座舱屏幕（网页版坐标），main() 交给 air_anim 的 PIT / PITSCR
+
+
+def carve_rects(P, N, UV, T, rects):
+    """在原模型上雕刻显示屏（用户 11-24：「我需要你在原模型上雕刻显示屏哈」）：多功能显示器那块机壳正面，显示区挖进去一个槽，
+    屏幕（游戏里的 SurfaceGui）放在槽底——跟真的 MFD 一样，玻璃比四周的边框、按键低一截，不是贴在面上的一张画。
+    rects = [{'c', 'n', 'u', 'w', 'h', 'd'}]（原模型坐标；n 朝人、u 朝上、w × h 槽口、d 槽深）：
+      ① 挑出贴着显示面的三角形：朝 n（法线和 n 夹角 25° 以内）、离 c 那个平面 1 厘米以内、平面上的范围和槽口有交叠；
+      ② 这些三角形按槽口的四条边一刀一刀切开（多边形对半平面裁剪，切出来的点按边插值位置、法线、贴图坐标），槽口里的扔掉；
+      ③ 补四面槽壁（法线朝槽里）、槽底（法线朝 n）——给深色材质，单独返回。
+    返回 (P, N, UV, T, walls, info)：walls[i] = 第 i 个槽的 (P, N, T)（这个图元里没有那块显示面就没有）；
+    info[i] = {'z0' 显示面离 c 平面多远（沿 n）, 'cut' 扔掉 / 切开的三角形数}"""
+    P = np.asarray(P, dtype=np.float64)
+    N = np.asarray(N, dtype=np.float64)
+    UV = np.asarray(UV, dtype=np.float64)
+    T = np.asarray(T)
+    outP, outN, outUV, outT = [P], [N], [UV], []
+    nv = len(P)
+    keep = np.ones(len(T), dtype=bool)
+    walls = {}
+    info = []
+    for ri, R in enumerate(rects):
+        wallP, wallN, wallT = [], [], []
+        c = np.asarray(R['c'], dtype=np.float64)
+        n = np.asarray(R['n'], dtype=np.float64)
+        n /= np.linalg.norm(n)
+        u = np.asarray(R['u'], dtype=np.float64)
+        u = u - n * (u @ n)
+        u /= np.linalg.norm(u)
+        r = np.cross(n, u)   # 平面上的第三根轴（右手：r × u = n）
+        hw, hh, d = R['w'] / 2, R['h'] / 2, R['d']
+        a = (P - c) @ r
+        b = (P - c) @ u
+        z = (P - c) @ n
+        Tk = T[keep]
+        idx = np.where(keep)[0]
+        fn = np.cross(P[Tk[:, 1]] - P[Tk[:, 0]], P[Tk[:, 2]] - P[Tk[:, 0]])
+        fl = np.linalg.norm(fn, axis=1)
+        facing = (fn @ n) > 0.9 * np.maximum(fl, 1e-12)
+        A_, B_, Z_ = a[Tk], b[Tk], z[Tk]
+        over = (A_.max(1) > -hw) & (A_.min(1) < hw) & (B_.max(1) > -hh) & (B_.min(1) < hh)
+        # 原模型自己已经凹进去的显示器（F-16 的 MFD：边框一圈、槽壁、槽底是带画面贴图的显示面）：槽口里朝人的面比四周的边框深 2 毫米以上——
+        #   就把槽底那块（带原来的画面贴图）去掉、槽壁顺着往下再接 d、补新槽底；平的面板才从面上挖
+        Ac, Bc, Zc = A_.mean(1), B_.mean(1), Z_.mean(1)
+        inner = facing & (np.abs(Ac) < hw * 0.8) & (np.abs(Bc) < hh * 0.8) & (Zc > -0.05) & (Zc < 0.01)
+        ring = facing & (np.maximum(np.abs(Ac) / hw, np.abs(Bc) / hh) > 1.0) & (np.maximum(np.abs(Ac) / hw, np.abs(Bc) / hh) < 1.3) & (np.abs(Zc) < 0.02)
+        z_in = float(np.median(Zc[inner])) if inner.any() else None
+        z_rim = float(np.max(Zc[ring])) if ring.any() else None
+        recessed = z_in is not None and z_rim is not None and z_in < z_rim - 0.002
+        if recessed:
+            near = (np.abs(Z_ - z_in) < 0.0025).all(axis=1)
+        else:
+            near = (np.abs(Z_) < 0.01).all(axis=1)
+        sel = idx[facing & near & over]
+        if not len(sel):
+            info.append({'z0': 0.0, 'cut': 0, 'old': False})
+            continue
+        z0 = float(np.median(z[T[sel]]))
+        # 一刀一刀切：每刀把多边形分成「槽口外」（留下，三角化）和「还可能在槽口里」（接着切）；四刀切完剩下的就是槽口里的，扔掉
+        cuts = [(r, -hw, -1), (r, hw, 1), (u, -hh, -1), (u, hh, 1)]   # (轴, 边, 外侧方向)：s*(x·轴 − 边) > 0 是槽口外
+
+        def split(poly, ax, e0, s):
+            def f(v):
+                return s * ((v[0] - c) @ ax - e0)
+            out_, in_ = [], []
+            m = len(poly)
+            for k in range(m):
+                v1, v2 = poly[k], poly[(k + 1) % m]
+                f1, f2 = f(v1), f(v2)
+                (out_ if f1 > 0 else in_).append(v1)
+                if (f1 > 0) != (f2 > 0):
+                    t_ = f1 / (f1 - f2)
+                    vm = tuple(v1[j] + (v2[j] - v1[j]) * t_ for j in range(3))
+                    out_.append(vm)
+                    in_.append(vm)
+            return out_, in_
+        ncut = 0
+        for ti in sel:
+            keep[ti] = False
+            ncut += 1
+            poly = [(P[k], N[k], UV[k]) for k in T[ti]]
+            for ax, e0, s in cuts:
+                if len(poly) < 3:
+                    break
+                o_, poly = split(poly, ax, e0, s)
+                if len(o_) >= 3:   # 槽口外这一片：扇形三角化，顶点顺序不变（正反面不变）
+                    base = nv
+                    for (pp, nn, uu) in o_:
+                        outP.append(pp[None])
+                        nn2 = nn / (np.linalg.norm(nn) + 1e-12)
+                        outN.append(nn2[None])
+                        outUV.append(uu[None])
+                        nv += 1
+                    for k in range(1, len(o_) - 1):
+                        outT.append([base, base + k, base + k + 1])
+        # 槽壁、槽底：槽口四角在显示面上（z0），往里 d
+        def corner(ca, cb, cz):
+            return c + r * ca + u * cb + n * cz
+        quads = [((-hw, -hh), (-hw, hh), r), ((hw, hh), (hw, -hh), -r), ((-hw, hh), (hw, hh), -u), ((hw, -hh), (-hw, -hh), u)]
+        for (p1, p2, nrm) in quads:
+            q = [corner(p1[0], p1[1], z0), corner(p2[0], p2[1], z0), corner(p2[0], p2[1], z0 - d), corner(p1[0], p1[1], z0 - d)]
+            base = sum(len(x) for x in wallP)
+            wallP.append(np.array(q))
+            wallN.append(np.repeat(nrm[None], 4, axis=0))
+            tri = [[base, base + 1, base + 2], [base, base + 2, base + 3]]
+            g = np.cross(q[1] - q[0], q[2] - q[0])
+            if g @ nrm < 0:
+                tri = [[t_[0], t_[2], t_[1]] for t_ in tri]
+            wallT.extend(tri)
+        q = [corner(-hw, -hh, z0 - d), corner(hw, -hh, z0 - d), corner(hw, hh, z0 - d), corner(-hw, hh, z0 - d)]
+        base = sum(len(x) for x in wallP)
+        wallP.append(np.array(q))
+        wallN.append(np.repeat(n[None], 4, axis=0))
+        tri = [[base, base + 1, base + 2], [base, base + 2, base + 3]]
+        if np.cross(q[1] - q[0], q[2] - q[0]) @ n < 0:
+            tri = [[t_[0], t_[2], t_[1]] for t_ in tri]
+        wallT.extend(tri)
+        walls[ri] = (np.concatenate(wallP), np.concatenate(wallN), np.array(wallT, dtype=np.int64))
+        info.append({'z0': z0, 'cut': ncut, 'old': bool(recessed), 'top': float(z_rim) if recessed else z0})
+    T2 = np.concatenate([T[keep]] + ([np.array(outT, dtype=T.dtype)] if outT else []), axis=0)
+    return np.concatenate(outP), np.concatenate(outN), np.concatenate(outUV), T2, walls, info
 
 
 def build(key, path):
@@ -404,6 +529,15 @@ def build(key, path):
     #   游戏里坐进座舱时不藏（看到的就是原模型的座舱），屏幕贴在它的显示器上；pithud 原模型的平显（玻璃上画死了符号）单独成 PitHud 组，
     #   座舱里藏起来、换成我们会动的平显
     pitmat, pitnode, pithud = set(S.get('pitmat', [])), S.get('pitnode', []), S.get('pithud', [])
+    # 要雕刻的显示屏（pitscr 里带 carve 的）：座舱件的三角形先按槽口切开、补槽壁槽底（carve_rects）
+    cnames = [nm for nm, e in (S.get('pitscr') or {}).items() if e.get('carve')]
+    crects = []
+    for nm in cnames:
+        e = S['pitscr'][nm]
+        cv = e['carve']
+        crects.append({'c': e['c'], 'n': e['n'], 'u': e['u'], 'w': cv.get('w', e['w']), 'h': cv.get('h', e['h']), 'd': cv['d']})
+    CARVED.clear()
+    recess = []   # 槽壁、槽底（变换后的 P, N, UV, T），后面给深色材质
     mnames = [m.get('name', '') for m in (J.get('materials') or [])]
     # 座舱盖用了机身那张带透明通道的贴图（整个机身材质是半透明混合）：机身改不透明，座舱盖另外克隆一份半透明的材质
     glassnode = S.get('glassnode', [])
@@ -429,14 +563,24 @@ def build(key, path):
         mname = mnames[p['mat']] if 0 <= p['mat'] < len(mnames) else ''
         inPit = mname in pitmat or (pitnode and match(p['path'], pitnode))
         if inPit or (pithud and match(p['path'], pithud)):
-            P = (p['P'] @ Rm.T + t) * s
-            N = p['N'] @ Rm.T
-            hud = np.zeros(len(p['T']), dtype=bool)
+            P0, N0, UV0, T0 = p['P'], p['N'], p['UV'], p['T']
+            if inPit and crects and not (pithud and match(p['path'], pithud)):
+                P0, N0, UV0, T0, walls, cinfo = carve_rects(P0, N0, UV0, T0, crects)
+                for ri, wl in walls.items():
+                    nm = cnames[ri]
+                    if nm in CARVED:   # 同一块显示面分在几个图元里：槽壁只补一次
+                        continue
+                    CARVED[nm] = {'z0': cinfo[ri]['z0'], 'cut': cinfo[ri]['cut'], 'old': cinfo[ri]['old'], 'top': cinfo[ri]['top']}
+                    WP, WN, WT = wl
+                    recess.append(((WP @ Rm.T + t) * s, WN @ Rm.T, np.zeros((len(WP), 2)), WT))
+            P = (P0 @ Rm.T + t) * s
+            N = N0 @ Rm.T
+            hud = np.zeros(len(T0), dtype=bool)
             if pithud and match(p['path'], pithud):
                 hud[:] = True
                 if S.get('pithud_box'):   # 平显和别的东西是一块网格：只要盒子（原模型坐标）里的三角形（重心算）
                     lo_, hi_ = np.array(S['pithud_box'][0]), np.array(S['pithud_box'][1])
-                    C = p['P'][p['T']].mean(axis=1)
+                    C = P0[T0].mean(axis=1)
                     hud = ((C >= lo_) & (C <= hi_)).all(axis=1)
             for pg, msk in (('PitHud', hud), ('Pit', ~hud)):
                 if not msk.any() or (pg == 'Pit' and not inPit):
@@ -444,7 +588,7 @@ def build(key, path):
                 if pg not in pidx:
                     pidx[pg] = len(parts)
                     parts.append({'n': pg})
-                groups.setdefault((p['mat'], pidx[pg]), []).append((P, N, p['UV'], p['T'][msk]))
+                groups.setdefault((p['mat'], pidx[pg]), []).append((P, N, UV0, T0[msk]))
             continue
         # 按连通块挑：一个节点里合在一起的翼面（鸭翼和机翼一个节点）、挂着的副油箱（和机身一个节点）
         rules = [r for r in S.get('comp', []) if any(re.search(r['node'], n) for n in names_of(p['path']))]
@@ -509,6 +653,14 @@ def build(key, path):
         P = (p['P'] @ Rm.T + t) * s
         N = p['N'] @ Rm.T
         groups.setdefault((p['mat'], pi), []).append((P, N, p['UV'], p['T']))
+    # 槽壁、槽底：一种新材质（深色哑光，排在座舱盖克隆的材质后面），放进座舱件那一组
+    for nm in cnames:
+        if nm not in CARVED:
+            print('  ！%s 没找到要雕的显示面（pitscr 的 c / n 量错了？）' % nm)
+    recess_mi = None
+    if recess:
+        recess_mi = len(mnames) + len(clones)
+        groups[(recess_mi, pidx['Pit'])] = recess
     allP = np.concatenate([P for gl in groups.values() for (P, _, _, _) in gl])
     gearP = [P for (mi, pi), gl in groups.items() if pi == 0 for (P, _, _, _) in gl]
     z0 = float(np.concatenate(gearP)[:, 2].min()) if gearP else float(allP[:, 2].min())
@@ -574,6 +726,9 @@ def build(key, path):
         mm['n'] = (mm['n'] + '_glass')[:40]
         mm['am'] = 2
         mats.append(mm)
+    if recess_mi is not None:   # 雕出来的显示屏槽：深灰哑光（真的 MFD 玻璃四周是黑色的边框内壁）
+        assert recess_mi == len(mats)
+        mats.append({'n': 'PitRecess', 'c': [0.028, 0.030, 0.034, 1.0], 'mr': [0.0, 0.65], 'am': 0})
     vb = VBa.tobytes()
     ib = IBa.tobytes()
     binb = vb + ib + b''.join(blobs)
@@ -595,7 +750,14 @@ def build(key, path):
         EXTRA['scr'] = {}
         for nm, e in S['pitscr'].items():
             o = {'c': toweb(e['c']), 'n': todir(e['n']), 'u': todir(e['u']), 'w': e['w'] * s, 'h': e['h'] * s}
-            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h')})
+            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h', 'carve')})
+            if nm in CARVED:   # 雕过的：屏幕在槽底，大小 = 槽口；d = 边框面到槽底多深（游戏按它把屏边键帽摆回边框上原来的按键那儿）
+                cv, K_ = e['carve'], CARVED[nm]
+                n_ = np.asarray(e['n'], dtype=np.float64)
+                n_ = n_ / np.linalg.norm(n_)
+                floor = K_['z0'] - cv['d']
+                o['c'] = toweb(np.asarray(e['c'], dtype=np.float64) + n_ * floor)
+                o['w'], o['h'], o['d'] = cv.get('w', e['w']) * s, cv.get('h', e['h']) * s, (K_['top'] - floor) * s
             EXTRA['scr'][nm] = o
     # 节点活动部件的铰链（网页版坐标）
     surf = {}

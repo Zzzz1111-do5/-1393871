@@ -482,6 +482,12 @@ return {
     size = { 0.854, 0.596, 0.454 },
     credit = "车内饰：弹药箱（12.7 毫米 M2A1 弹箱）：Ammuntion box，作者 jaiharitheking，CC-BY-4.0 https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c",
   },
+  ip_canopy = {
+    parts = {
+      Glass = { c = { 0, 0.056, -0.742 }, s = { 2.912, 1.456, 4.676 }, tri = 5120, col = { 54, 62, 68 }, met = 0 },
+    },
+    size = { 2.912, 1.456, 4.676 },
+  },
   ip_cdus = {
     parts = {
       Housing = { c = { 0, 0, -0.105 }, s = { 1.148, 1.316, 0.21 }, tri = 216, col = { 44, 48, 66 }, met = 0.05 },
