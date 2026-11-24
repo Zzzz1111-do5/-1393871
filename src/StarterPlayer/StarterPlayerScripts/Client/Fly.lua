@@ -246,7 +246,9 @@ function Fly.init(G)
       if d.tail then v.spinT = (v.spinT + rpm / 100 * 18 * dt) % (math.pi * 2) end
       if d.prop then v.spinP = (v.spinP + (c.thr or 0) / 100 * 30 * dt) % (math.pi * 2) end
       if d.fanEng then v.spinF = ((v.spinF or 0) + (0.25 + (c.thr or 0) / 100) * 45 * dt) % (math.pi * 2) end   -- 涡扇风扇（A-10）：慢车也转
-      c.spin1, c.spin2, c.spinT, c.spinP, c.spinF = v.spin1, v.spin2, v.spinT, v.spinP, v.spinF
+      -- 喷气发动机的涡轮（AirModels 的发动机后段）：跟着转速，慢车也转；看着慢一点（真的一分钟上万转，画出来只会一格格跳）
+      if d.kind == "jet" and not d.prop then v.spinJ = ((v.spinJ or 0) + (0.12 + math.clamp(rpm, 0, 110) / 100) * 34 * dt) % (math.pi * 2) end
+      c.spin1, c.spin2, c.spinT, c.spinP, c.spinF, c.spinJ = v.spin1, v.spin2, v.spinT, v.spinP, v.spinF, v.spinJ
       AM.setStores(M, em:GetAttribute("Stores"))
       -- 远的少摆几次（一架几百个零件）
       v.frame += 1

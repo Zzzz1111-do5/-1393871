@@ -77,6 +77,9 @@ local SURF_F = {
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
 --   原模型的变形动画就是这一开一合），整只绕喉道中心偏转：抬头时出口往上、右偏时出口往右、右滚时右边往上左边往下；加力火焰跟着出口走
 local TVC_ON = { j15t = true, j16 = true, j20 = true, j35 = true, f35 = true }
+-- 用户 11-24 夜「飞机尾部发动机实现动画」：别的圆喷口加力战斗机也装上这套调节片——只开合（慢车微张、军推收拢、加力张开），
+--   不跟着杆偏转（这几型真机没有推力矢量）
+local NOZ_ONLY = { j11 = true, j10 = true, j8 = true, f16 = true, f15 = true, f14 = true }
 local TVC_P, TVC_Y, TVC_R = rad(16), rad(10), rad(7)
 local function tvcOpen(t)
   if t <= 100 then return 0.45 - 0.3 * math.clamp(t / 100, 0, 1) end
@@ -689,15 +692,18 @@ function AM.build(d, team, load)
         end
         if best then E = setmetatable({ x = best[1], y = best[2] + imp.O.Y, z = best[3], r = best[4] }, { __index = E }) end
       end
+      local E0 = E   -- 原模型自己的喷口出口（下面推力矢量喷口会把 E 挪到它的出口）：发动机后段照这里摆
       local tvcVec = nil
-      if imp and TVC_ON[d.id] and not E.prop and not E.flat then
+      if imp and (TVC_ON[d.id] or NOZ_ONLY[d.id]) and not E.prop and not E.flat then
         local TI, TF = tvcAsset()
         if TI then
           local T = TI.tvc
           local k = E.r / T.r                            -- 外罩和原模型的喷口一样粗
           local side = (E.x >= 0) and 1 or -1
           local throat = V(E.x, E.y, E.z + 0.42 * k)    -- 铰链那一圈：外罩前沿正好贴着原模型的出口
+          local noVec = not TVC_ON[d.id]
           local function vec(c)
+            if noVec then return CF() end
             local th = -((c.pit or 0) * TVC_P + side * (c.rol or 0) * TVC_R)
             return CF(throat) * CFrame.Angles(th, (c.yaw or 0) * TVC_Y, 0) * CF(-throat)
           end
@@ -753,6 +759,42 @@ function AM.build(d, team, load)
               { hp = hp, ax = axis, f = function(c) local t = c.thr or 0 return -(t > 100 and rad(12) * math.min(1, (t - 100) / 25) or rad(-4) * (1 - t / 100)) end })
           end
         end
+      end
+      -- 发动机后段（用户 11-24 夜：「飞机尾部发动机实现动画」）：从后面往喷口里看——
+      --   ① 涡轮：十八片斜着的叶片 + 盘心，跟着发动机转速转（Fly.lua 的 c.spinJ：慢车也转，油门越大越快）
+      --   ② 尾锥：涡轮后面的锥体
+      --   ③ 加力燃烧室的火焰稳定器：内外两圈 V 形槽——不开加力是暗的金属色；一开加力这两圈先烧白（点火那一下），
+      --      再变成橙红一直烧着（尾焰在它后面喷出来，见下面 ab 那段的 holder）
+      --   二元喷口（F-22）、螺旋桨不画；位置按原模型自己的喷口出口（E0）往里
+      if not E.prop and not E.flat and d.kind == "jet" then
+        local r0, z0 = E0.r, E0.z
+        local t0 = TAG
+        TAG = "eng"
+        local hubCF = CF(E0.x, E0.y, z0 - r0 * 1.75) * CFrame.Angles(math.pi / 2, 0, 0)   -- 盘心坐标系：转轴是自己的 Y（顺着机身）
+        local fJ = function(c) return c.spinJ or 0 end
+        add(newPart(m, V(r0 * 0.5, 0.25, r0 * 0.5), RGB(48, 46, 44), MAT.Metal, CYL), UPRIGHT, "r", { hub = hubCF, f = fJ })
+        local NB = 18
+        for kb = 1, NB do
+          local a = (kb - 1) / NB * math.pi * 2
+          local cfb = CFrame.Angles(0, a, 0) * CF(r0 * 0.52, 0, 0) * CFrame.Angles(rad(38), 0, 0)   -- 叶片扭着装（斜对气流）
+          local bp = newPart(m, V(r0 * 0.58, 0.05, r0 * 0.2), RGB(84, 80, 76), MAT.Metal)
+          bp.CastShadow = false
+          add(bp, cfb, "r", { hub = hubCF, f = fJ })
+        end
+        local cone = cylZ(r0 * 0.7, r0 * 0.36, CF(E0.x, E0.y, z0 - r0 * 1.3), RGB(58, 56, 54), MAT.Metal)
+        cone.p.CastShadow = false
+        for ring, rr in ipairs((d.ab and not E0.cold and not E0.mild) and { 0.62, 0.34 } or {}) do   -- 没有加力的（轰-6、A-10、无人机）没有火焰稳定器
+          local n = (ring == 1) and 14 or 8
+          for ks = 1, n do
+            local a = (ks - 0.5) / n * math.pi * 2
+            local len = 2 * math.pi * rr * r0 / n * 1.06
+            local hp = newPart(m, V(len, r0 * 0.08, r0 * 0.12), RGB(46, 44, 42), MAT.Neon)
+            hp.CastShadow = false
+            local cf0 = CF(E0.x, E0.y, z0 - r0 * 0.85) * CFrame.Angles(0, 0, a) * CF(0, rr * r0, 0)
+            table.insert(M.flames, add(hp, cf0, "ab", { holder = true }))
+          end
+        end
+        TAG = t0
       end
       if not E.prop then
         -- 尾焰（用户：尾部喷口是一根光柱，不真实；后来又说上一版的尾喷非常怪——那版拖着几团玻璃球当热浪，看着像一串气泡）：
@@ -1196,7 +1238,7 @@ function AM.build(d, team, load)
     for i = 1, #items do
       local it = items[i]
       local t = it.tag
-      if it.kind == "ab" or t == "lamp" or t == "store" or t == "tvc" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
+      if it.kind == "ab" or t == "lamp" or t == "store" or t == "tvc" or t == "eng" or (t == "gear" and keepGear) or (t == "pilot" and pit and pit[it.seat]) then
         if t == "pilot" then   -- 挪进原模型的座舱：眼位往下 0.3 格、往后 0.3 格是零件拼的那个参考点（头的中心偏下）
           local e = pit[it.seat]
           local mv = CF(V(e[1], e[2] - 0.3, e[3] + 0.3) + imp.O) * it.ref:Inverse()
@@ -1384,7 +1426,21 @@ function AM.pose(M, cf, c, now, world)
       local ab = (t > 100) and math.min(1, (t - 100) / 25) or 0
       local r = it.r
       local tr = 1
-      if it.core then
+      if it.holder then   -- 火焰稳定器：开加力那一下烧白，之后橙红；不开加力是暗的金属色
+        out = cf * it.cf0
+        tr = 0
+        local on = ab > 0.01
+        if on and not it.on then it.onT = now or 0 end
+        it.on = on
+        local col
+        if on then
+          local k = math.clamp(((now or 0) - (it.onT or 0)) / 0.35, 0, 1)
+          col = RGB(255, 246, 230):Lerp(RGB(255, 132, 60), k):Lerp(RGB(255, 180, 110), 0.15 + 0.15 * math.sin((now or 0) * 31))
+        else
+          col = RGB(46, 44, 42):Lerp(RGB(120, 52, 30), math.clamp((t - 60) / 40, 0, 1))   -- 军推：烧得暗红
+        end
+        if it.p.Color ~= col then it.p.Color = col end
+      elseif it.core then
         out = cf * b0 * CF(0, 0, -0.25) * ALONG_Z   -- 凹进喷口一点：从侧面看不见，从后面看喷口里发亮
         if it.mild then   -- 涡扇：喷口里只有暗暗的橙红（排气温度低）
           tr = math.clamp(0.98 - t / 100 * 0.32, 0.62, 0.98)
