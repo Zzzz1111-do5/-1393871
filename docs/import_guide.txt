@@ -24,6 +24,9 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～七包、B 第二～三包、D 第四包、E 第一～四包，新的在上面）
+  11 月 24 日 B 第四包（只剩沙海：沙漠风暴、岛屿突击删了，开服就建沙海；合并 E 到 d4f0f6e）：换游戏文件（或者「三、只换脚本」）；
+    这一包本身不用导模型。前面 A、D、E 几包的新模型还没导的照各包说明导：veh/t90m.glb、veh/bmp3.glb、veh/pantsir.glb、air/f16.glb、air/j8.glb、
+    optics/ 里 9 个新枪。只换脚本的地点里 ReplicatedStorage 下面旧的 MapDesert 模块还在也没关系（不会再被载），想清爽可以删掉。
   11 月 24 日 E 第四包（各兵种配不同的枪）：换游戏文件（或者「三、只换脚本」）；再导入 optics/ 里 9 个新文件（新名字 O_<键>__…，不用删旧的）：
       qbz191.glb、qjy88.glb、qcw05.glb、qbs09.glb、qsz92.glb（解放军）、m249.glb、m1014.glb、m17.glb、mp7.glb（美军）
     - 主武器多了：步枪（解放军 QBZ-191 / 美军 M4）、机枪（QJY-88 / M249，100 发、带着跑得慢）、冲锋枪（QCW-05 / MP7）、
