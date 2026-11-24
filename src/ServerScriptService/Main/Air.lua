@@ -431,9 +431,57 @@ function Air.init(G)
   end
 
   -- 导弹：助推到额定速度、之后慢慢减速；比例导引（带提前量）、过载有限；导引头看不到目标就丢失；近炸
+  -- 主动雷达弹（霹雳-15、AIM-120……；战雷式，用户 11-24 夜：「雷达扫描图……为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
+  --   离目标远时靠发射机的雷达跟踪（数据链）——发射机得一直锁着（客户端每半秒报 lockOn → e.radarTgt / e.radarT），断了就往最后估的拦截点飞（惯导）；
+  --   近到 w.act 自己开导引头：只看弹头前方 40°；目标相对地面的速度在视线上的分量小于 w.notch（侧着飞、把导弹放在 3 / 9 点：置零）超过半秒就丢；
+  --   开了导引头以后也会被箔条骗（flare 里）。开机以后目标重新进视场、不置零了还能再咬上
+  local function arhStep(s, dt)
+    local w, ref = s.w, s.ref
+    if not ref then return end
+    if not ref.alive or not ref.root then
+      s.ref = nil
+      return
+    end
+    local rp = ref.root.CFrame.Position
+    local dist = (rp - s.pos).Magnitude
+    if not s.active and dist > w.act then
+      local sh = s.byEnt and G.entById[s.byEnt]
+      local dl = sh ~= nil and sh.alive and sh.radarTgt == ref.id and now() - (sh.radarT or -9) < 1.3
+      s.dl = dl
+      if dl then
+        if s.tgt ~= ref and not (s.tgt and s.tgt.decoy) then s.tgt, s.tgId, s.aimPt = ref, ref.id, nil end
+      elseif s.tgt == ref then   -- 数据链断了：往最后估的拦截点飞
+        local tgo = dist / math.max(s.vel.Magnitude, 1)
+        s.tgt, s.tgId = nil, nil
+        s.aimPt = rp + tgtVel(ref) * math.min(tgo, 6)
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel, lost = true })
+      end
+      return
+    end
+    s.active = true
+    if s.tgt and s.tgt.decoy then return end   -- 被箔条骗走了
+    local los = (rp - s.pos) / math.max(dist, 1)
+    local fov = s.vel.Magnitude > 1 and s.vel.Unit:Dot(los) > math.cos(math.rad(40))
+    local notched = math.abs(tgtVel(ref):Dot(los)) < (w.notch or 50) and dist > 250
+    s.notched = notched
+    if fov and not notched then
+      s.notchT = 0
+      if s.tgt ~= ref then s.tgt, s.tgId, s.aimPt = ref, ref.id, nil end   -- 开机咬上 / 重新咬上
+    else
+      s.notchT = (s.notchT or 0) + dt
+      if s.tgt == ref and s.notchT > 0.5 then
+        s.tgt, s.tgId = nil, nil
+        s.aimPt = rp + tgtVel(ref) * 0.5
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel, lost = true })
+      end
+    end
+  end
+  G.airArhStep = arhStep   -- 测试用
+
   local function guideMissile(s, dt)
     s.age += dt
     local w = s.w
+    if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
     local spd = s.vel.Magnitude
     if s.age < (w.burn or 3) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
     else spd = math.max(w.speed * 0.3, spd - w.speed * 0.12 * dt) end
@@ -631,7 +679,8 @@ function Air.init(G)
     elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
       local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
-        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id })
+        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
+        ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
     elseif w.kind == "bomb" then
@@ -672,6 +721,9 @@ function Air.init(G)
     local tg = (type(tid) == "string") and G.entById[tid] or nil
     if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
     local tn = now()
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude < 20000 then
+      e.radarTgt, e.radarT = tg.id, tn   -- 雷达跟踪着它：飞出去的主动雷达弹按这个走数据链（arhStep）
+    end
     if tn < (e.lockPingT or 0) then return end
     e.lockPingT = tn + 0.35
     if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
@@ -750,7 +802,16 @@ function Air.init(G)
     G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V(), n = n })
     for _, s in ipairs(G.shots) do
       if s.tgt == e and s.w and (s.w.kind == "aam") then
-        local chance = (s.w.seeker == "ir") and 0.33 or 0.07
+        -- 红外弹看热诱弹（三成被骗）；雷达弹看箔条（每组诱饵弹里都有：战雷那样）——只有开了导引头的才会被骗（数据链阶段不看），
+        --   同时在置零（侧着飞）的话更容易（战雷里「置零 + 箔条」是躲雷达弹的标准动作）
+        local chance
+        if s.w.seeker == "ir" then
+          chance = 0.33
+        elseif s.w.act then
+          chance = s.active and ((s.notched or (s.notchT or 0) > 0) and 0.5 or 0.2) or 0
+        else
+          chance = 0.07
+        end
         if (s.pos - p).Magnitude < 2200 and math.random() < chance then
           s.tgt = { decoy = true, pos = p - (e.vel or V()) * 0.15, vel = (e.vel or V()) * 0.35 + V(0, -10, 0) }
           s.tgId = nil

@@ -567,9 +567,42 @@ D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp =
 
 ---------------------------------------------------------------- 补默认值
 
+-- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
+--   kind pd 脉冲多普勒（有源相控阵也是）：能下视，但会滤掉相对地面的径向速度太小的目标——目标把你放在 3 点 / 9 点方向侧着飞（置零、3/9 机动），
+--     径向速度掉到 notch（格 / 秒）以下就从雷达屏上消失、锁不住，已经锁着的丢锁；
+--   kind pulse 脉冲（老雷达）：不怕置零，但往下看（目标比自己低、背景是地面）有地杂波，低空的目标看不见；
+--   range 搜索距离、lock 能锁定（单目标跟踪 STT）的距离（格）；az / el 方位、俯仰扫描 ±度。没写的飞机没有对空雷达（A-10、轰炸机、无人机、直升机）
+--   客户端 Radar.lua 画雷达屏（B 显：横轴方位、竖轴距离）、Fly.lua 雷达弹只能锁雷达看得见的；服务器 Air.lua 的雷达弹按发射机的雷达跟踪（数据链）飞、
+--   近了自己开导引头（act），也会被置零、箔条骗
+local function radar(name, kind, range, lock, az, el, notch)
+  return { name = name, kind = kind, range = range, lock = lock, az = az, el = el, notch = notch }
+end
+local RADAR = {
+  j20 = radar("KLJ-5 有源相控阵", "pd", 16000, 13000, 60, 45, 45),
+  j35 = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j15t = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j16 = radar("有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  j11 = radar("1474 型脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  j10 = radar("KLJ-10 有源相控阵", "pd", 13000, 10500, 60, 45, 45),
+  j36 = radar("有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  j8 = radar("SL-8A 脉冲", "pulse", 8000, 6000, 45, 30, 0),
+  f35 = radar("AN/APG-81 有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  f22 = radar("AN/APG-77 有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  f16 = radar("AN/APG-68 脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  f15 = radar("AN/APG-63 脉冲多普勒", "pd", 13000, 10500, 60, 40, 60),
+  f14 = radar("AN/AWG-9 脉冲多普勒", "pd", 18000, 14000, 65, 40, 60),
+}
+-- 雷达弹（主动雷达）：act 离目标多近自己开导引头（之前按发射机雷达的跟踪走数据链）、notch 导引头的置零门限（格 / 秒）
+local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 } }
+for wid, a in pairs(ARH) do
+  local w = AirDefs.W[wid]
+  if w then w.act, w.notch = a.act, a.notch end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
+  d.radar = d.radar or RADAR[id]
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
     d.vRot = d.stall * 1.5   -- 抬头离地的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）
@@ -961,7 +994,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 18:00 62d9e24"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 18:50 c088a77"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -5344,6 +5377,10 @@ add("air.ccrpRel", "投弹！", "BOMBS AWAY")
 add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
 add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
 add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
+add("air.radarNotch", "置零", "NOTCH")
+add("air.radarClutter", "地杂波", "CLUTTER")
+add("air.radarLost", "雷达丢失目标", "Radar lost the target")
+add("air.radarLostNotch", "目标置零（侧着飞），雷达丢失锁定", "Target notched (beaming) — radar lock lost")
 add("pve.b1", "敌一个加强排守边境哨所，没有装甲。任务：越过沙墙和反坦克壕，拿下 A 边境哨所。", "An enemy reinforced platoon holds the border post, no armour. Cross the berm and the anti-tank ditch and take objective A.")
 add("pve.b2", "敌两个排守边境哨所和油田，有机枪阵地。任务：拿下边境哨所、油田两个据点。", "Two enemy platoons hold the border post and the oilfield with MG nests. Take both objectives.")
 add("pve.b3", "敌机械化连守镇子一线，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下连续拿下三个据点；带上反坦克武器。", "A mechanised company holds the line up to the town with Bradleys, Strykers and JLTVs. Take three objectives under cover of night; bring anti-tank weapons.")
@@ -5773,8 +5810,8 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 左键 机炮（机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 / 炸弹 · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · LMB gun (sticks to enemy vehicles within 6° and leads them) · F missile / bomb · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
   "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
@@ -14583,9 +14620,57 @@ function Air.init(G)
   end
 
   -- 导弹：助推到额定速度、之后慢慢减速；比例导引（带提前量）、过载有限；导引头看不到目标就丢失；近炸
+  -- 主动雷达弹（霹雳-15、AIM-120……；战雷式，用户 11-24 夜：「雷达扫描图……为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
+  --   离目标远时靠发射机的雷达跟踪（数据链）——发射机得一直锁着（客户端每半秒报 lockOn → e.radarTgt / e.radarT），断了就往最后估的拦截点飞（惯导）；
+  --   近到 w.act 自己开导引头：只看弹头前方 40°；目标相对地面的速度在视线上的分量小于 w.notch（侧着飞、把导弹放在 3 / 9 点：置零）超过半秒就丢；
+  --   开了导引头以后也会被箔条骗（flare 里）。开机以后目标重新进视场、不置零了还能再咬上
+  local function arhStep(s, dt)
+    local w, ref = s.w, s.ref
+    if not ref then return end
+    if not ref.alive or not ref.root then
+      s.ref = nil
+      return
+    end
+    local rp = ref.root.CFrame.Position
+    local dist = (rp - s.pos).Magnitude
+    if not s.active and dist > w.act then
+      local sh = s.byEnt and G.entById[s.byEnt]
+      local dl = sh ~= nil and sh.alive and sh.radarTgt == ref.id and now() - (sh.radarT or -9) < 1.3
+      s.dl = dl
+      if dl then
+        if s.tgt ~= ref and not (s.tgt and s.tgt.decoy) then s.tgt, s.tgId, s.aimPt = ref, ref.id, nil end
+      elseif s.tgt == ref then   -- 数据链断了：往最后估的拦截点飞
+        local tgo = dist / math.max(s.vel.Magnitude, 1)
+        s.tgt, s.tgId = nil, nil
+        s.aimPt = rp + tgtVel(ref) * math.min(tgo, 6)
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel, lost = true })
+      end
+      return
+    end
+    s.active = true
+    if s.tgt and s.tgt.decoy then return end   -- 被箔条骗走了
+    local los = (rp - s.pos) / math.max(dist, 1)
+    local fov = s.vel.Magnitude > 1 and s.vel.Unit:Dot(los) > math.cos(math.rad(40))
+    local notched = math.abs(tgtVel(ref):Dot(los)) < (w.notch or 50) and dist > 250
+    s.notched = notched
+    if fov and not notched then
+      s.notchT = 0
+      if s.tgt ~= ref then s.tgt, s.tgId, s.aimPt = ref, ref.id, nil end   -- 开机咬上 / 重新咬上
+    else
+      s.notchT = (s.notchT or 0) + dt
+      if s.tgt == ref and s.notchT > 0.5 then
+        s.tgt, s.tgId = nil, nil
+        s.aimPt = rp + tgtVel(ref) * 0.5
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel, lost = true })
+      end
+    end
+  end
+  G.airArhStep = arhStep   -- 测试用
+
   local function guideMissile(s, dt)
     s.age += dt
     local w = s.w
+    if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
     local spd = s.vel.Magnitude
     if s.age < (w.burn or 3) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
     else spd = math.max(w.speed * 0.3, spd - w.speed * 0.12 * dt) end
@@ -14783,7 +14868,8 @@ function Air.init(G)
     elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
       local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
-        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id })
+        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
+        ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
     elseif w.kind == "bomb" then
@@ -14824,6 +14910,9 @@ function Air.init(G)
     local tg = (type(tid) == "string") and G.entById[tid] or nil
     if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
     local tn = now()
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude < 20000 then
+      e.radarTgt, e.radarT = tg.id, tn   -- 雷达跟踪着它：飞出去的主动雷达弹按这个走数据链（arhStep）
+    end
     if tn < (e.lockPingT or 0) then return end
     e.lockPingT = tn + 0.35
     if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
@@ -14902,7 +14991,16 @@ function Air.init(G)
     G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V(), n = n })
     for _, s in ipairs(G.shots) do
       if s.tgt == e and s.w and (s.w.kind == "aam") then
-        local chance = (s.w.seeker == "ir") and 0.33 or 0.07
+        -- 红外弹看热诱弹（三成被骗）；雷达弹看箔条（每组诱饵弹里都有：战雷那样）——只有开了导引头的才会被骗（数据链阶段不看），
+        --   同时在置零（侧着飞）的话更容易（战雷里「置零 + 箔条」是躲雷达弹的标准动作）
+        local chance
+        if s.w.seeker == "ir" then
+          chance = 0.33
+        elseif s.w.act then
+          chance = s.active and ((s.notched or (s.notchT or 0) > 0) and 0.5 or 0.2) or 0
+        else
+          chance = 0.07
+        end
         if (s.pos - p).Magnitude < 2200 and math.random() < chance then
           s.tgt = { decoy = true, pos = p - (e.vel or V()) * 0.15, vel = (e.vel or V()) * 0.35 + V(0, -10, 0) }
           s.tgId = nil
@@ -30366,6 +30464,7 @@ return WtMatch
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Radar 战雷式机载雷达（雷达屏、置零 / 地杂波判定，雷达弹只能锁看得见的）
 --   Bombsight 战雷式轰炸瞄准镜（F7）和 CCRP 目标点的画面（状态、按键、镜头在 Fly.lua）
 --   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 --   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
@@ -30440,7 +30539,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -31559,6 +31658,20 @@ function AirHud.init(G)
   stroke(A.maim, WHITE, 1.4, 0.15)
   round(frame(A.maim, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)))
   A.maim.Visible = false
+  -- 战雷式机炮提前量（Fly.lua 的 info.lead：敌机的提前量点，炮弹飞过去的时间里它飞到哪、炮弹往下掉多少都算上）：琥珀色小圈 + 中心点，
+  --   旁边写距离；机头的「+」压上去开炮就打得中（战雷的固定机炮顺着机头打，不再自动黏住目标）
+  A.lead = round(frame(gui, UDim2.fromOffset(18, 18), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  A.lead.Name = "LeadMark"
+  stroke(A.lead, Color3.fromRGB(255, 200, 70), 1.6, 0.05)
+  round(frame(A.lead, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), Color3.fromRGB(255, 200, 70), 0.05, V2(0.5, 0.5)))
+  A.leadT = Instance.new("TextLabel")
+  A.leadT.Name = "LeadRange"
+  A.leadT.BackgroundTransparency = 1
+  A.leadT.Size, A.leadT.Position, A.leadT.AnchorPoint = UDim2.fromOffset(80, 14), UD2(1, 4, 0.5, 0), V2(0, 0.5)
+  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.Code, 12, Enum.TextXAlignment.Left
+  A.leadT.TextColor3, A.leadT.TextStrokeTransparency = Color3.fromRGB(255, 214, 110), 0.4
+  A.leadT.Parent = A.lead
+  A.lead.Visible = false
   A.leadLine = frame(gui, UDim2.fromOffset(10, 1.5), UD2(), WHITE, 0.1, V2(0.5, 0.5))
   A.leadLine.Name = "LeadLine"
   A.leadLine.Visible = false
@@ -31792,6 +31905,11 @@ function AirHud.init(G)
     -- 机炮提前量：一个小圈（不转），锁着目标时一根细线连到目标（战雷）
     A.maim.Visible = pilot and info.maim ~= nil
     if info.maim then A.maim.Position = info.maim end
+    A.lead.Visible = pilot and info.lead ~= nil
+    if info.lead then
+      A.lead.Position = info.lead
+      A.leadT.Text = info.leadDist and string.format("%d", math.floor(info.leadDist / 2.8 + 0.5)) or ""
+    end
     A.aim.Visible = pilot and info.aim ~= nil
     if info.aim then
       A.aim.Position = info.aim
@@ -39510,6 +39628,10 @@ function Fly.init(G)
   local GR = AD.GRAV
   -- 用户 11-21：飞机过于灵活——玩家开的固定翼滚转、俯仰角速度和最大过载都收一截（起转、停住的快慢跟着一起慢下来）
   local AGIL = { roll = 0.45, pitch = 0.65, g = 0.72 }
+  -- 用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」——战雷的喷气战斗机滚转快（侧卫一秒两百多度）、能拉到八九个 g，
+  --   沉重感来自能量：转得狠掉速快、爬升掉速、慢了拉不动——滚转、过载放开到 0.75 / 0.85（原来 11-21 嫌太灵活收到 0.45 / 0.72，
+  --   那时速度是「油门给目标速度」，转弯、爬升几乎不掉速，只能靠收灵活度）；俯仰角速度照旧
+  AGIL.roll, AGIL.g = 0.75, 0.85
   local function T(k, ...) return G.T(k, ...) end
   local function clamp(v, a, b) return v < a and a or (v > b and b or v) end
   local function approach(a, b, s)
@@ -40390,6 +40512,7 @@ function Fly.init(G)
       st.eo, st.bsight = false, false
     end
     if G.bsOff then G.bsOff() end   -- 轰炸瞄准镜、目标点的画面
+    if G.radarOff then G.radarOff() end   -- 雷达屏
     eoGui.Visible, eoCC.Enabled, eoHl.Enabled = false, false, false
     local old = st
     st = nil
@@ -40553,6 +40676,8 @@ function Fly.init(G)
       local root = em:FindFirstChild("Root")
       if root and em ~= st.em and em:GetAttribute("Team") ~= myTeam and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
         local ok = (w.kind == "aam") and kind == "air" or ((w.kind == "agm" or w.kind == "bomb") and GROUND_KINDS[kind])
+        -- 雷达弹（战雷，用户 11-24 夜）：只能锁自己雷达看得见的（Radar.lua：扫描范围、距离、置零、地杂波）
+        if ok and w.seeker == "radar" and st.d.radar and G.radarSees and not G.radarSees(st, em) then ok = false end
         if ok then
           local to = root.CFrame.Position - p0
           local dist = to.Magnitude
@@ -40589,7 +40714,11 @@ function Fly.init(G)
   --   （炮弹带着自己飞机的速度出膛，所以用相对速度）+ 下坠；服务器的固定机炮最多偏 12° 朝这一点打（Air.lua 的 gunDir）
   local STICK_IN, STICK_OUT = math.cos(rad(6)), math.cos(rad(9))
   local STICK_KINDS = { veh = true, fort = true, lcm = true, lcac = true, ship = true, air = true }
-  local function gunStick()
+  -- 战雷式机炮（用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」）：固定机炮顺着机头打，不黏目标、不自动打提前量（上面 11-21 那套 MWT 的关掉）；
+  --   敌机在机头前方 20° 以内、炮的射程 1.3 倍以内：算它的提前量（同下面），平显上画一个小圈（AirHud 的 LeadMark），把机头的「+」压上去打
+  local WT_GUNS = true
+  local LEAD_IN, LEAD_OUT, LEAD_KINDS = math.cos(rad(20)), math.cos(rad(26)), { air = true }
+  local function gunStick(wt)
     local gw = nil   -- 这架飞机的炮：挂载表里的炮（固定翼），没有就看机型的 gun（歼-20 没有内置机炮，不黏）
     for _, wid in ipairs(st.wl or {}) do
       local w = AD.W[wid]
@@ -40604,14 +40733,14 @@ function Fly.init(G)
     local best, bestS = nil, math.huge
     for _, em in ipairs(f:GetChildren()) do
       local root = em:FindFirstChild("Root")
-      if root and em ~= st.em and STICK_KINDS[em:GetAttribute("Kind") or ""] and em:GetAttribute("Team") ~= myTeam
+      if root and em ~= st.em and (wt and LEAD_KINDS or STICK_KINDS)[em:GetAttribute("Kind") or ""] and em:GetAttribute("Team") ~= myTeam
         and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
         local p = root.CFrame.Position
         local to = p - p0
         local dist = to.Magnitude
-        if dist > 40 and dist < gw.range then
+        if dist > 40 and dist < gw.range * (wt and 1.3 or 1) then
           local c = fwd:Dot(to / dist)
-          if c > ((em == keep) and STICK_OUT or STICK_IN) then
+          if c > ((em == keep) and (wt and LEAD_OUT or STICK_OUT) or (wt and LEAD_IN or STICK_IN)) then
             local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0)
             if sc < bestS then best, bestS = { em = em, p = p, dist = dist }, sc end
           end
@@ -40848,23 +40977,44 @@ function Fly.init(G)
     if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
     -- 进近自动油门（真飞机的速度保护 / 迎角地板）：起落架放着在天上，速度不掉到 1.2 倍失速以下——
     --   油门收太多也不至于失速、掉在跑道前面的海里（收起落架就没有这个保护）
-    local apc = st.gear > 0.9 and not st.ground and not st.out and tgt < d.stall * 1.2
-    if apc then tgt = d.stall * 1.2 end
+    local apc = st.gear > 0.9 and not st.ground and not st.out and (tgt < d.stall * 1.2 or st.spd < d.stall * 1.25)
+    if apc then tgt = math.max(tgt, d.stall * 1.2) end
     st.apc = apc
     -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
     --   一推油门不再四五十米就飞起来；弹射器单独算）
     if st.ground and not st.cat then acc *= 0.25 end
+    st.airbrake = false
     if st.trap then   -- 挂着拦阻索：发动机推力不算，地上那段按拦阻索减速
-    -- 地上减速：B 刹车 70；油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）；带着点油门滑行只有轮子阻力 22
-    elseif tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt)
-    else st.spd -= math.min(st.spd - tgt, (st.ground and ((key(Enum.KeyCode.B) and 70) or (st.thr < 5 and 36) or 22) or acc * 0.45) * dt) end
-    if not st.ground then
+    elseif st.ground then
+      -- 地上减速：B 刹车 70；油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）；带着点油门滑行只有轮子阻力 22
+      if tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt)
+      else st.spd -= math.min(st.spd - tgt, ((key(Enum.KeyCode.B) and 70) or (st.thr < 5 and 36) or 22) * dt) end
+    else
+      -- 天上：战雷式能量（用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」）——原来是「油门给目标速度、按固定加速度追过去」，
+      --   军推推力折算 1.6 g（军推就能一直竖着往上爬，转弯、爬升几乎不掉速）。现在按力算：
+      --   推力（军推按真推重比 0.75 g 左右，按机型的 accel 比例；加力在 vAB 正好被废阻抵消）− 废阻（∝ 速度²：军推最大平飞速度正好 vMil，
+      --   越接近越加不上去，高速时收油门减速快、低速慢）− 诱导阻力（下面按过载算）+ 重力沿航迹的分量（爬升掉速、俯冲加速，g·sinγ 全算）；
+      --   起落架、减速板（天上按 B）、襟翼、副油箱加废阻；重了推力打折
+      local Tmil = clamp((d.accel or 30) / 45, 0.35, 1.25) * 0.75 * GR
+      local kD = Tmil / (d.vMil * d.vMil)
+      local Tab = kD * d.vMax * d.vMax
+      local T = (thr <= 100) and (0.05 + 0.95 * thr / 100) * Tmil or (Tmil + (Tab - Tmil) * math.min(thr - 100, 30) / 30)
+      if st.out then T = 0 end
+      if wa then T *= wa.eng end
+      T /= (st.heavy or 1)
+      local brk = not G.mobile and key(Enum.KeyCode.B)
+      local Dk = 1 + 2 * (st.drag or 0) + 0.9 * (st.gear or 0) + (brk and 1.6 or 0) + 0.45 * (st.flapK or 0)
+      st.spd += (T - kD * Dk * st.spd * math.abs(st.spd)) * dt
       local vd = st.vdir or fwd
-      st.spd -= GR * vd.Y * 0.9 * dt   -- 沿航迹爬升掉速、俯冲加速（拉杆掉的能量在下面按过载算：诱导阻力）
+      st.spd -= GR * vd.Y * dt   -- 沿航迹爬升掉速、俯冲加速（拉杆掉的能量在下面按过载算：诱导阻力）
+      if apc and st.spd < d.stall * 1.2 then st.spd = math.min(d.stall * 1.2, st.spd + Tmil * dt) end
+      st.airbrake = brk
+      st.thrust = T   -- 测试用
     end
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
+    local qHi = 1 - 0.3 * Map.smooth(d.vMax * 0.95, d.vMax * 1.25, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
     if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
     --   自动压坡度让准心落到升力方向上、按偏差要过载（拉杆）转过去；按着 A / D 时滚转听键盘，俯仰照旧往准心拉
@@ -40983,7 +41133,7 @@ function Fly.init(G)
     end
     st.nCmd = clamp(nCmd, -2, GMAX / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
     st.yawCmd = yc * q
-    st.rr = approach(st.rr, rc * q, ROLL * 2.2 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢（2.8 → 2.2：用户说再笨重一点）
+    st.rr = approach(st.rr, rc * q * qHi, ROLL * 2.2 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢（2.8 → 2.2：用户说再笨重一点）
     if st.ground then st.rr, st.yr = 0, 0 end
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(PITCH, 1e-3), -1, 1), clamp(st.rr / math.max(ROLL, 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
@@ -41087,11 +41237,23 @@ function Fly.init(G)
       local aoa = math.atan2(-vd:Dot(upB), math.max(vd:Dot(fw), 0.05))
       local beta = math.asin(clamp(vd:Dot(rtB), -1, 1))
       local aMax = rad(d.aoaMax or 24)
-      local ka = GR / (d.stall * d.stall * aMax) * spd * spd
+      local ka = GR / (d.stall * d.stall * aMax) * spd * spd * (1 + 0.25 * (st.flapK or 0))   -- 放襟翼升力大一点（失速速度低一成）
       local function liftOf(a)
         if a > aMax then return ka * aMax * math.max(0.35, 1 - (a - aMax) / aMax * 1.5) end
         if a < -aMax * 0.6 then return -ka * aMax * 0.6 end
         return ka * a
+      end
+      -- 失速（战雷）：迎角过了最大迎角，一边机翼先掉（翼尖先失速）、机头往下沉（升力在 liftOf 里掉）；用鼠标瞄准（教官）时轻一些
+      --   ——教官本来就不拉过最大迎角，只有太慢、托不住的时候才会失速。迎角回到八成以下慢慢恢复
+      if aoa > aMax * 1.02 then
+        if not st.dropDir then st.dropDir = (math.abs(beta) > 0.02) and ((beta > 0) and -1 or 1) or ((math.random() < 0.5) and -1 or 1) end
+        st.stallK = approach(st.stallK or 0, 1, 1.8 * dt)
+      else
+        st.stallK = approach(st.stallK or 0, 0, ((aoa < aMax * 0.8) and 2.5 or 0.8) * dt)
+        if st.stallK <= 0 then st.dropDir = nil end
+      end
+      if st.stallK > 0.05 and st.dropDir then
+        st.rr = st.rr + st.dropDir * ROLL * ((mAim and not stickHeld) and 0.6 or 1.4) * st.stallK * dt
       end
       local lhat = upB - vd * vd:Dot(upB)
       lhat = (lhat.Magnitude > 1e-3) and lhat.Unit or upB
@@ -41121,7 +41283,7 @@ function Fly.init(G)
       local n = L / GR
       st.gLoad = n
       st.aoaDeg = math.deg(aoa)
-      st.spd = math.max(0, st.spd - 0.33 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力
+      st.spd = math.max(0, st.spd - 0.22 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力：拉得越狠、越慢掉得越多（最大过载盘旋几秒掉三四成速度）
       st.sink = 0
       local v0 = st.vel
       st.vel = st.vdir * st.spd
@@ -41187,6 +41349,7 @@ function Fly.init(G)
     st.c.gear = st.gear
     st.c.thr = st.thr
     st.c.flap = (st.gear > 0.5 and st.spd < d.stall * 1.6) and 1 or 0
+    st.flapK = approach(st.flapK or 0, st.c.flap, dt / 2)   -- 襟翼放下 / 收起要两秒（升力、阻力按它）
     st.c.can = (st.ground and st.thr < 5 and st.spd < 3) and 1 or 0
     -- 折翼（用户：飞机机翼折叠没有动画）：原来直接 0 / 1 一下就折好；现在约 4 秒折起 / 展开（真机十几秒，游戏里缩短），
     --   一上来就停在甲板上的直接是折着的；推油门就开始展开，展开完才能弹射
@@ -41405,9 +41568,13 @@ function Fly.init(G)
     if st and io.KeyCode == Enum.KeyCode.F then st.missile = false end
     if st and io.KeyCode == Enum.KeyCode.X then st.flareHold = false end
   end)
-  UIS.InputChanged:Connect(function(io, gp)   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
-    if gp or not st or not (st.uav or st.eo) or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
-    st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
+  UIS.InputChanged:Connect(function(io, gp)
+    if gp or not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+    if st.uav or st.eo then   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
+      st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
+    elseif st.pilot and st.d.kind == "jet" then   -- 战雷：滚轮是油门（一格 5%，推过 100% 就是加力）
+      st.thr = clamp(st.thr + io.Position.Z * 5, 0, st.d.ab and 130 or 100)
+    end
   end)
 
   G.R.Drive.OnClientEvent:Connect(function(m)
@@ -41951,11 +42118,19 @@ function Fly.init(G)
     local far = (st.eo or st.uav) and 24000 or 9000   -- 光电吊舱、前视光电看得远（八公里多）
     local res = workspace:Raycast(o + adir * (d.L * 0.6), adir * far, aimParams)
     st.aimPt = res and res.Position or (o + adir * far)
-    if d.kind == "jet" and st.pilot and not st.uav and not st.eo and not st.crashed then   -- 机炮黏住目标：瞄准点换成目标的提前量（发给服务器）
-      st.stick = gunStick()
-      if st.stick then st.aimPt = st.stick.lead end
+    if d.kind == "jet" and st.pilot and not st.uav and not st.eo and not st.crashed then
+      if WT_GUNS then   -- 战雷：机炮顺着机头打，只画敌机的提前量圈（st.lead；keep 用 st.stick 那一套，这里存在 st.lead）
+        local keep0 = st.stick
+        st.stick = st.leadKeep
+        st.lead = gunStick(true)
+        st.leadKeep, st.stick = st.lead, nil
+        if keep0 then st.stickV = nil end
+      else   -- MWT（11-21）：机炮黏住目标，瞄准点换成目标的提前量（发给服务器）
+        st.stick = gunStick()
+        if st.stick then st.aimPt = st.stick.lead end
+      end
     else
-      st.stick = nil
+      st.stick, st.lead, st.leadKeep = nil, nil, nil
     end
     do   -- 瞄准点打在哪个实体上（吊舱页面的 POINT 跟踪框）
       local hm = res and res.Instance and res.Instance:FindFirstAncestorOfClass("Model")
@@ -42059,8 +42234,17 @@ function Fly.init(G)
             local vc = (d0 - st.lock.dist) / dt / AD.M
             st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
           end
+          -- 雷达弹（战雷）：雷达得一直看得见它——它侧着飞把你放在 3 / 9 点（置零）、钻进地杂波、出了雷达的扫描范围，超过 1 秒丢锁
+          local rOk, rWhy = true, nil
+          if w.seeker == "radar" and st.d.radar and G.radarSees then rOk, rWhy = G.radarSees(st, st.lock.em) end
+          st.lock.radarWhy = (not rOk) and rWhy or nil
+          if rOk then
+            st.lock.radarLostT = 0
+          else
+            st.lock.radarLostT = (st.lock.radarLostT or 0) + dt
+          end
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
-          local inside = inCone(w, st.lock)
+          local inside = inCone(w, st.lock) and rOk
           if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
             st.lock.out = not inside
             if inside then
@@ -42069,6 +42253,11 @@ function Fly.init(G)
             else
               st.lock.outT = (st.lock.outT or 0) + dt
               if st.lock.outT > 4 then st.lock, st.lockT = nil, 0 end
+            end
+            if st.lock and (st.lock.radarLostT or 0) > 1.0 then   -- 雷达丢了：置零 / 地杂波 / 出了范围
+              local why = st.lock.radarWhy
+              st.lock, st.lockT = nil, 0
+              if G.toast then G.toast(T((why == "notch") and "air.radarLostNotch" or "air.radarLost"), "info") end
             end
           else
             st.lock, st.lockT = nil, 0
@@ -42278,7 +42467,8 @@ function Fly.init(G)
       end
       -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
       -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
-      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0) then
+      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0)
+        and not st.lock.radarWhy then   -- 雷达真跟踪着（没置零、没出范围）才报：服务器按这个给飞出去的雷达弹走数据链
         st.lockPingT = os.clock() + 0.5
         G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
       end
@@ -42305,11 +42495,23 @@ function Fly.init(G)
         local mp, mon = project(pos + aimRingDir() * 400)
         if mon then info.maim = mp end
       end
+      -- 战雷式机炮提前量圈（AirHud 的 LeadMark）：敌机的提前量点、距离
+      info.lead, info.leadDist = nil, nil
+      if st.lead and st.lead.lead and st.pilot then
+        local lp, lon = project(st.lead.lead)
+        if lon then info.lead, info.leadDist = lp, st.lead.dist end
+      end
       aimRing.Visible = false
       if G.airHudStep then G.try_(G.airHudStep, st, info) end
       if G.tankHudExtra then G.try_(G.tankHudExtra, st, clamp(hp / mx, 0, 1), "air") end   -- 左上圆形雷达、「被发现!」、敌人头顶带血条的名牌（TankHud.lua）
     elseif G.airHudOff then
       G.airHudOff()
+    end
+    -- 战雷式机载雷达屏（Radar.lua）：搜索扫描、锁着雷达弹的目标时 STT
+    if G.radarStep then
+      local _, rw = storeW()
+      local lockEm = (st.lock and rw and rw.seeker == "radar") and st.lock.em or nil
+      G.try_(G.radarStep, st, dt, lockEm)
     end
     -- 战雷的轰炸瞄准镜画面、CCRP 目标点的方框和箭头（Bombsight.lua）
     if G.bsDraw then
@@ -43905,6 +44107,14 @@ function Fx.init(G)
           Debris:AddItem(sm, 1.65)
         end)
       end
+    end
+    -- 箔条（战雷：每组诱饵弹里都有，骗开了导引头的雷达弹；服务器 Air.lua 的 flare）：机尾后面一团闪着银光的碎屑云，慢慢散开飘落
+    for k = 1, 2 do
+      local q = e.p - v0 * 0.12 + V((math.random() - 0.5) * 8, -2 - math.random() * 4, (math.random() - 0.5) * 8)
+      local ch = part(BALL, V(3, 3, 3), CFrame.new(q), RGB(214, 218, 224), Enum.Material.Foil, 0.45)
+      ch.Name = "Chaff"
+      tween(ch, 2.4, { CFrame = CFrame.new(q + v0 * 0.25 - V(0, 14, 0)), Size = V(16, 12, 16), Transparency = 1 })
+      Debris:AddItem(ch, 2.45)
     end
     G.playSound("quiet", e.p, 1.6)
   end
@@ -63938,6 +64148,227 @@ return Play
         </Item>
         <Item class="ModuleScript" referent="196">
           <Properties>
+            <string name="Name">Radar</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式机载雷达
+--   用户 11-24 夜：「战雷我记得不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」
+--   每型飞机的雷达在 AirDefs 的 radar（pd 脉冲多普勒 / pulse 脉冲、搜索 / 锁定距离、方位俯仰扫描范围、置零门限）：
+--   ① 搜索（SRC）：扫描线在方位里来回扫，扫到的敌机在雷达屏上亮一下、慢慢暗下去。看不见的：出了扫描范围、太远、
+--      置零（pd：目标相对地面的速度在视线上的分量太小——它侧着飞、把你放在 3 点 / 9 点方向）、地杂波（pulse：往下看、目标贴地）
+--   ② 锁定（STT）：Fly.lua 拿雷达弹锁着一架时，扫描线停在它身上；它置零 / 出了范围超过 1 秒就丢锁（Fly.lua 管）
+--   ③ 雷达屏（B 显）：左边中间一块方屏，横轴方位、竖轴距离；敌机一小横道，锁定的那架套方框；上面写雷达型号、模式，下面量程，
+--      锁着的目标在置零时写「置零」
+--   G.radarSees(st, em) → 看得见吗、看不见的原因（range / fov / notch / clutter）、方位°、俯仰°、距离（Fly.lua 挑目标、保持锁定用）
+--   G.radarStep(st, dt, lockEm)：每帧扫描、画屏；G.radarOff()
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+
+local Radar = {}
+
+function Radar.init(G)
+  local me = Players.LocalPlayer
+  local Map = G.Map or require(RS:WaitForChild("Map"))
+  local AD = require(RS:WaitForChild("AirDefs"))
+  local V, RGB, U2, V2 = Vector3.new, Color3.fromRGB, UDim2, Vector2.new
+  local clamp = math.clamp
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local function ground(x, z) return AD.ground and AD.ground(Map, x, z) or Map.ground(x, z) end
+
+  -- 敌机的速度：按位置两帧差平滑（服务器不发速度）
+  local track = setmetatable({}, { __mode = "k" })
+  local function velOf(em, p, now)
+    local t = track[em]
+    if not t then
+      track[em] = { p = p, t = now, v = V() }
+      return V()
+    end
+    if now - t.t > 1e-3 then
+      local raw = (p - t.p) / (now - t.t)
+      if raw.Magnitude < 2000 then t.v = t.v:Lerp(raw, math.min(1, (now - t.t) * 6)) end
+      t.p, t.t = p, now
+    end
+    return t.v
+  end
+
+  local function sees(st, em)
+    local rd = st and st.d and st.d.radar
+    if not rd then return true end   -- 没有对空雷达的飞机：照旧（老规则，按导引头的视场）
+    local root = em and em.Parent and em:FindFirstChild("Root")
+    if not root then return false, "gone" end
+    local p0, p = st.cf.Position, root.CFrame.Position
+    local to = p - p0
+    local dist = to.Magnitude
+    if dist < 1 then return true, nil, 0, 0, dist end
+    local u = to / dist
+    local l = st.cf:VectorToObjectSpace(u)
+    local az = math.deg(math.atan2(l.X, -l.Z))
+    local el = math.deg(math.asin(clamp(l.Y, -1, 1)))
+    local vT = velOf(em, p, os.clock())
+    if dist > rd.range then return false, "range", az, el, dist end
+    if math.abs(az) > rd.az or math.abs(el) > rd.el then return false, "fov", az, el, dist end
+    if rd.kind == "pd" then
+      -- 脉冲多普勒：地面回波的多普勒频移 = 自己的速度在这个方向上的分量；目标的 = （它的 − 自己的）在视线上的分量。
+      --   两个差的正好是目标相对地面的速度在视线上的分量——太小（侧着飞）就和地杂波混在一起被滤掉：置零
+      if math.abs(vT:Dot(u)) < (rd.notch or 50) then return false, "notch", az, el, dist end
+    else
+      -- 脉冲雷达：往下看时背景是地面，贴地的目标埋在地杂波里
+      local tAlt = p.Y - math.max(ground(p.X, p.Z), 0)
+      if u.Y < -0.06 and tAlt < 700 then return false, "clutter", az, el, dist end
+    end
+    return true, nil, az, el, dist
+  end
+  G.radarSees = sees
+
+  ---------------------------------------------------------------- 雷达屏
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "Radar"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 5
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+  local GRN, DIM, AMB = RGB(110, 255, 150), RGB(60, 150, 90), RGB(255, 200, 80)
+  local function frame(parent, size, pos, col, tr, anchor)
+    local f = Instance.new("Frame")
+    f.Size, f.Position = size, pos or U2.new()
+    f.AnchorPoint = anchor or V2(0, 0)
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = col, tr, 0
+    f.Parent = parent
+    return f
+  end
+  local function label(parent, name, pos, anchor, align)
+    local l = Instance.new("TextLabel")
+    l.Name = name
+    l.BackgroundTransparency = 1
+    l.Size, l.Position, l.AnchorPoint = U2.fromOffset(120, 14), pos, anchor or V2(0, 0)
+    l.Font, l.TextSize, l.TextColor3 = Enum.Font.Code, 12, GRN
+    l.TextXAlignment = align or Enum.TextXAlignment.Left
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 20, 8)
+    l.Text = ""
+    l.Parent = parent
+    return l
+  end
+  local W, H = 200, 190
+  local scope = frame(gui, U2.fromOffset(W, H), U2.new(0, 18, 0.5, 30), RGB(4, 14, 8), 0.35, V2(0, 0.5))
+  scope.Name = "RadarScope"
+  local st0 = Instance.new("UIStroke")
+  st0.Color, st0.Thickness, st0.Transparency = GRN, 1, 0.35
+  st0.Parent = scope
+  -- 网格：方位 0°、±一半；距离四分之一一格
+  for _, fx in ipairs({ 0.25, 0.5, 0.75 }) do
+    local v = frame(scope, U2.new(0, 1, 1, 0), U2.fromScale(fx, 0), DIM, (fx == 0.5) and 0.35 or 0.65)
+    v.Name = "Grid"
+    local h = frame(scope, U2.new(1, 0, 0, 1), U2.fromScale(0, fx), DIM, 0.65)
+    h.Name = "Grid"
+  end
+  local scan = frame(scope, U2.new(0, 2, 1, 0), U2.fromScale(0.5, 0), GRN, 0.25, V2(0.5, 0))
+  scan.Name = "ScanLine"
+  local blips = {}
+  for i = 1, 14 do
+    local b = frame(scope, U2.fromOffset(9, 3), U2.new(), GRN, 0, V2(0.5, 0.5))
+    b.Name = "Blip"
+    b.Visible = false
+    blips[i] = b
+  end
+  local lockBox = frame(scope, U2.fromOffset(16, 12), U2.new(), AMB, 1, V2(0.5, 0.5))
+  lockBox.Name = "RadarLock"
+  local ls = Instance.new("UIStroke")
+  ls.Color, ls.Thickness = AMB, 1.5
+  ls.Parent = lockBox
+  lockBox.Visible = false
+  local tName = label(scope, "RadarName", U2.fromOffset(4, -16))
+  tName.Size = U2.fromOffset(W - 50, 14)
+  local tMode = label(scope, "RadarMode", U2.new(1, -4, 0, -16), V2(1, 0), Enum.TextXAlignment.Right)
+  local tRange = label(scope, "RadarRange", U2.new(0, 4, 1, 2))
+  local tWarn = label(scope, "RadarWarn", U2.new(1, -4, 1, 2), V2(1, 0), Enum.TextXAlignment.Right)
+  tWarn.TextColor3 = AMB
+
+  ---------------------------------------------------------------- 每帧
+
+  local seen = setmetatable({}, { __mode = "k" })   -- [em] = { t = 扫到的时刻, az, dist }
+  local S = { az = 0, dir = 1 }
+  local function hostiles(st)
+    local out = {}
+    local f = workspace:FindFirstChild("Ents")
+    if not f then return out end
+    local myTeam = me:GetAttribute("Side")
+    for _, em in ipairs(f:GetChildren()) do
+      if em ~= st.em and em:GetAttribute("Kind") == "air" and em:GetAttribute("Team") ~= myTeam and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
+        table.insert(out, em)
+      end
+    end
+    return out
+  end
+
+  function G.radarStep(st, dt, lockEm)
+    local rd = st and st.d and st.d.radar
+    if not rd or not st.pilot or st.uav then
+      gui.Enabled = false
+      return
+    end
+    gui.Enabled = true
+    local now = os.clock()
+    -- 扫描线：锁着就停在目标上（STT），不然在方位里来回扫（一来一回两秒多）
+    local stt = false
+    local lockOk, lockWhy, lockAz, _, lockDist = false, nil, nil, nil, nil
+    if lockEm then
+      lockOk, lockWhy, lockAz, _, lockDist = sees(st, lockEm)
+      if lockAz then stt = true end
+    end
+    if stt and lockOk then
+      S.az = clamp(lockAz, -rd.az, rd.az)
+    else
+      S.az = S.az + S.dir * rd.az * 2 / 1.1 * dt
+      if S.az > rd.az then S.az, S.dir = rd.az, -1 elseif S.az < -rd.az then S.az, S.dir = -rd.az, 1 end
+    end
+    -- 扫到的（扫描线扫过它的方位附近）、看得见的：记下来；没扫到的照旧显示一会儿再暗下去
+    local list = hostiles(st)
+    for _, em in ipairs(list) do
+      local ok, _, az, _, dist = sees(st, em)
+      if ok and az and (math.abs(az - S.az) < 7 or em == lockEm) then
+        seen[em] = { t = now, az = az, dist = dist }
+      end
+    end
+    -- 画
+    local function xOf(az) return clamp(0.5 + az / (2 * rd.az), 0.02, 0.98) end
+    local function yOf(dist) return clamp(1 - dist / rd.range, 0.02, 0.98) end
+    scan.Position = U2.fromScale(xOf(S.az), 0)
+    scan.BackgroundColor3 = (stt and lockOk) and AMB or GRN
+    local n = 0
+    for em, r in pairs(seen) do
+      local age = now - r.t
+      if age > 2.6 or not em.Parent then
+        seen[em] = nil
+      elseif n < #blips then
+        n += 1
+        local b = blips[n]
+        b.Position = U2.fromScale(xOf(r.az), yOf(r.dist))
+        b.BackgroundTransparency = clamp(age / 2.6, 0, 0.9)
+        b.Visible = true
+      end
+    end
+    for i = n + 1, #blips do blips[i].Visible = false end
+    lockBox.Visible = stt and lockAz ~= nil and lockDist ~= nil
+    if lockBox.Visible then lockBox.Position = U2.fromScale(xOf(lockAz), yOf(lockDist)) end
+    tName.Text = rd.name or ""
+    tMode.Text = (stt and lockOk) and "STT" or (stt and "STT ?" or "SRC")
+    tRange.Text = string.format("%.0f km", rd.range / AD.M / 1000)
+    tWarn.Text = (stt and lockWhy == "notch") and T("air.radarNotch") or ((stt and lockWhy == "clutter") and T("air.radarClutter") or "")
+    st.radarAz, st.radarStt = S.az, stt and lockOk   -- 测试用
+  end
+
+  function G.radarOff()
+    gui.Enabled = false
+  end
+  G.radarGui = gui   -- 测试用
+end
+
+return Radar
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="197">
+          <Properties>
             <string name="Name">Ride</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
 --   服务器（Armor.lua）：有人开（或者 AI 开着）的步战车、运兵车、悍马还有座位，走过去按 E 就坐后面（车的座位 seats 连司机算）；
@@ -64064,7 +64495,7 @@ return Ride
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -64661,7 +65092,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -65163,7 +65594,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="199">
+        <Item class="ModuleScript" referent="200">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -66110,7 +66541,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="200">
+        <Item class="ModuleScript" referent="201">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -66909,7 +67340,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="201">
+        <Item class="ModuleScript" referent="202">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -67661,7 +68092,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="202">
+        <Item class="ModuleScript" referent="203">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -67745,7 +68176,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="203">
+        <Item class="ModuleScript" referent="204">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -68495,7 +68926,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="204">
+        <Item class="ModuleScript" referent="205">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -68705,7 +69136,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="205">
+        <Item class="ModuleScript" referent="206">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -69160,7 +69591,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="206">
+        <Item class="ModuleScript" referent="207">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -70380,7 +70811,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="207">
+        <Item class="ModuleScript" referent="208">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -70888,7 +71319,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="208">
+        <Item class="ModuleScript" referent="209">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -71001,7 +71432,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="209">
+        <Item class="ModuleScript" referent="210">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -72162,7 +72593,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="210">
+        <Item class="ModuleScript" referent="211">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -72266,7 +72697,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="211">
+        <Item class="ModuleScript" referent="212">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -73783,7 +74214,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="212">
+        <Item class="ModuleScript" referent="213">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -74696,7 +75127,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="213">
+        <Item class="ModuleScript" referent="214">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -75726,7 +76157,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="214">
+        <Item class="ModuleScript" referent="215">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -76611,7 +77042,7 @@ return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="215">
+        <Item class="ModuleScript" referent="216">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④）
@@ -76870,7 +77301,7 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="216">
+        <Item class="ModuleScript" referent="217">
           <Properties>
             <string name="Name">WtBattle</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式对局的界面（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -77123,7 +77554,7 @@ return WtBattle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="217">
+        <Item class="ModuleScript" referent="218">
           <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
@@ -77551,7 +77982,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="218">
+        <Item class="ModuleScript" referent="219">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）

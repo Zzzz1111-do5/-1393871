@@ -274,6 +274,20 @@ function AirHud.init(G)
   stroke(A.maim, WHITE, 1.4, 0.15)
   round(frame(A.maim, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)))
   A.maim.Visible = false
+  -- 战雷式机炮提前量（Fly.lua 的 info.lead：敌机的提前量点，炮弹飞过去的时间里它飞到哪、炮弹往下掉多少都算上）：琥珀色小圈 + 中心点，
+  --   旁边写距离；机头的「+」压上去开炮就打得中（战雷的固定机炮顺着机头打，不再自动黏住目标）
+  A.lead = round(frame(gui, UDim2.fromOffset(18, 18), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  A.lead.Name = "LeadMark"
+  stroke(A.lead, Color3.fromRGB(255, 200, 70), 1.6, 0.05)
+  round(frame(A.lead, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), Color3.fromRGB(255, 200, 70), 0.05, V2(0.5, 0.5)))
+  A.leadT = Instance.new("TextLabel")
+  A.leadT.Name = "LeadRange"
+  A.leadT.BackgroundTransparency = 1
+  A.leadT.Size, A.leadT.Position, A.leadT.AnchorPoint = UDim2.fromOffset(80, 14), UD2(1, 4, 0.5, 0), V2(0, 0.5)
+  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.Code, 12, Enum.TextXAlignment.Left
+  A.leadT.TextColor3, A.leadT.TextStrokeTransparency = Color3.fromRGB(255, 214, 110), 0.4
+  A.leadT.Parent = A.lead
+  A.lead.Visible = false
   A.leadLine = frame(gui, UDim2.fromOffset(10, 1.5), UD2(), WHITE, 0.1, V2(0.5, 0.5))
   A.leadLine.Name = "LeadLine"
   A.leadLine.Visible = false
@@ -507,6 +521,11 @@ function AirHud.init(G)
     -- 机炮提前量：一个小圈（不转），锁着目标时一根细线连到目标（战雷）
     A.maim.Visible = pilot and info.maim ~= nil
     if info.maim then A.maim.Position = info.maim end
+    A.lead.Visible = pilot and info.lead ~= nil
+    if info.lead then
+      A.lead.Position = info.lead
+      A.leadT.Text = info.leadDist and string.format("%d", math.floor(info.leadDist / 2.8 + 0.5)) or ""
+    end
     A.aim.Visible = pilot and info.aim ~= nil
     if info.aim then
       A.aim.Position = info.aim

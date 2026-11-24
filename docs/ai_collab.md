@@ -29,6 +29,13 @@
   能量（爬升掉速、俯冲加速、拉杆掉能量、诱导阻力、加力 / 战斗推力）、按速度变的舵效和过载（慢了拉不动、快了舵变沉）、失速 / 尾旋和教官防失速、
   鼠标瞄准的教官手感、镜头（跟随、震动、视场）、襟翼 / 减速板 / 起落架的阻力和升力、油门滚轮。**改 Fly.lua 的 jetPhysics / 镜头前先在这里看一眼**；
   C 的 G.wtaFlight（受伤打折）照旧接着用
+  - **已做**：jetPhysics 天上的速度按力算（推力 − 废阻 ∝ v² − 诱导阻力 + 重力；军推推重比约 0.75 g、加力在 vAB 被废阻抵消）、减速板 / 起落架 / 襟翼阻力、
+    襟翼加升力、高速舵变沉（qHi）、失速掉翼（st.stallK / dropDir）、AGIL 滚转 0.75 / 过载 0.85、滚轮油门；**WT_GUNS**：固定机炮顺着机头打（gunStick(true)
+    只给敌机算提前量 → st.lead，AirHud 的 LeadMark 画），MWT 黏住那套留着没删（WT_GUNS = false 就回去）。测试 tools/mock/wtfeel.lua；air.lua ⑤½ 改测提前量圈
+  - **已做**：机载雷达（用户 11-24 夜「雷达扫描图……为雷达锁定式导弹提供引导……39 机动」）——AirDefs 每型的 radar（pd / pulse、range / lock / az / el / notch），
+    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁、
+    雷达真跟踪着才报 lockOn；服务器 Air.lua 的 arhStep（数据链 → 惯导 → 开导引头、置零半秒丢）、flare 里箔条只骗开了导引头的雷达弹；Fx 画箔条云。
+    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 AirDefs 的 RADAR 表里给它配雷达
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
   - 铠甲-S1（pantsir，SanderWolf_ 的原模型）：车辆新武器种类 **sam**（地面车的地空导弹）——客户端 Drive.lua 要 AaFcs 的 Q 锁定（lockId）才发、消息带 tgt；

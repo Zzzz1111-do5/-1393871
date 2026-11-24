@@ -555,9 +555,42 @@ D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp =
 
 ---------------------------------------------------------------- 补默认值
 
+-- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
+--   kind pd 脉冲多普勒（有源相控阵也是）：能下视，但会滤掉相对地面的径向速度太小的目标——目标把你放在 3 点 / 9 点方向侧着飞（置零、3/9 机动），
+--     径向速度掉到 notch（格 / 秒）以下就从雷达屏上消失、锁不住，已经锁着的丢锁；
+--   kind pulse 脉冲（老雷达）：不怕置零，但往下看（目标比自己低、背景是地面）有地杂波，低空的目标看不见；
+--   range 搜索距离、lock 能锁定（单目标跟踪 STT）的距离（格）；az / el 方位、俯仰扫描 ±度。没写的飞机没有对空雷达（A-10、轰炸机、无人机、直升机）
+--   客户端 Radar.lua 画雷达屏（B 显：横轴方位、竖轴距离）、Fly.lua 雷达弹只能锁雷达看得见的；服务器 Air.lua 的雷达弹按发射机的雷达跟踪（数据链）飞、
+--   近了自己开导引头（act），也会被置零、箔条骗
+local function radar(name, kind, range, lock, az, el, notch)
+  return { name = name, kind = kind, range = range, lock = lock, az = az, el = el, notch = notch }
+end
+local RADAR = {
+  j20 = radar("KLJ-5 有源相控阵", "pd", 16000, 13000, 60, 45, 45),
+  j35 = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j15t = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
+  j16 = radar("有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  j11 = radar("1474 型脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  j10 = radar("KLJ-10 有源相控阵", "pd", 13000, 10500, 60, 45, 45),
+  j36 = radar("有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  j8 = radar("SL-8A 脉冲", "pulse", 8000, 6000, 45, 30, 0),
+  f35 = radar("AN/APG-81 有源相控阵", "pd", 15000, 12000, 60, 45, 45),
+  f22 = radar("AN/APG-77 有源相控阵", "pd", 17000, 14000, 60, 45, 40),
+  f16 = radar("AN/APG-68 脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
+  f15 = radar("AN/APG-63 脉冲多普勒", "pd", 13000, 10500, 60, 40, 60),
+  f14 = radar("AN/AWG-9 脉冲多普勒", "pd", 18000, 14000, 65, 40, 60),
+}
+-- 雷达弹（主动雷达）：act 离目标多近自己开导引头（之前按发射机雷达的跟踪走数据链）、notch 导引头的置零门限（格 / 秒）
+local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 } }
+for wid, a in pairs(ARH) do
+  local w = AirDefs.W[wid]
+  if w then w.act, w.notch = a.act, a.notch end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
+  d.radar = d.radar or RADAR[id]
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
     d.vRot = d.stall * 1.5   -- 抬头离地的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）

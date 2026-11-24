@@ -1202,6 +1202,14 @@ function Fx.init(G)
         end)
       end
     end
+    -- 箔条（战雷：每组诱饵弹里都有，骗开了导引头的雷达弹；服务器 Air.lua 的 flare）：机尾后面一团闪着银光的碎屑云，慢慢散开飘落
+    for k = 1, 2 do
+      local q = e.p - v0 * 0.12 + V((math.random() - 0.5) * 8, -2 - math.random() * 4, (math.random() - 0.5) * 8)
+      local ch = part(BALL, V(3, 3, 3), CFrame.new(q), RGB(214, 218, 224), Enum.Material.Foil, 0.45)
+      ch.Name = "Chaff"
+      tween(ch, 2.4, { CFrame = CFrame.new(q + v0 * 0.25 - V(0, 14, 0)), Size = V(16, 12, 16), Transparency = 1 })
+      Debris:AddItem(ch, 2.45)
+    end
     G.playSound("quiet", e.p, 1.6)
   end
   -- 弹射座椅：座舱盖飞走、座椅带着一道火冲上去
