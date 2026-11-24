@@ -69,12 +69,12 @@ function WtAir.init(G)
     if heli then
       if l.Y > (d.H or 10) * 0.25 then return { { "rotor", 1 }, { "ctrl", 0.3 } } end
       if v > 0.45 then return { { "tail", 1 } } end
-      if v < -0.45 then return { { "pilot", 0.7 }, { "ctrl", 0.3 } } end
+      if v < -0.45 then return { { "pilot", 1.6 }, { "ctrl", 0.3 } } end   -- 人比铝皮脆：座舱挨一发炮弹基本就昏了
       return { { "eng", 0.8 }, { "fuel", 0.6 } }
     end
     if math.abs(u) > 0.3 then return { { (u < 0) and "wingL" or "wingR", 1 }, { "ctrl", 0.3 }, { "fuel", 0.15 } } end
     if v > 0.55 then return { { "tail", 1 }, { "ctrl", 0.4 } } end
-    if v < -0.5 then return { { "pilot", 0.7 }, { "ctrl", 0.3 } } end
+    if v < -0.5 then return { { "pilot", 1.6 }, { "ctrl", 0.3 } } end   -- 人比铝皮脆：座舱挨一发炮弹基本就昏了
     if v > 0.1 then return { { "eng", 1 }, { "fuel", 0.3 } } end
     return { { "fuel", 1 }, { "eng", 0.25 } }
   end
