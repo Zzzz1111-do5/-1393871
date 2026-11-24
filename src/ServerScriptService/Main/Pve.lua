@@ -159,10 +159,11 @@ function Pve.init(G)
       G.msgAll("bad", "pve.retry", n)
     end
   end
-  -- 新一局：打通了就换下一关
+  -- 新一局：打通了就换下一关；开局在屏幕上播一遍这一关的作战简报（敌情、任务、友军）
   G.on("roundStart", function()
     local P = G.pve
     if P and P.next then apply(P.next) end
+    if G.pve then G.msgAll("info", "pve.b" .. G.pve.n) end
   end)
 end
 

@@ -91,13 +91,30 @@ function AIVeh.init(G)
 
   ---------------------------------------------------------------- 派车
 
+  -- 这一关（Config.Pve 的 ai，用户 11-24：「做关卡 越多越逼真越好」）给这一方的编成：max 同时几辆、tank 坦克占几成、ids 只从这几型里挑
+  local function levelAi(team)
+    local P = G.pve
+    return P and P.L and P.L.ai and P.L.ai[team] or nil
+  end
+  local function maxFor(team)
+    local a = levelAi(team)
+    return (a and a.max) or MAX
+  end
+  local function usable(id)
+    local d = VD.get(id)
+    return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
+  end
   local function pickModel(team)
-    local V0 = Config.Vehicles[team] or {}
-    local cat = (math.random() < 0.67) and "tank" or "apc"
+    local a = levelAi(team)
+    local tankK = (a and a.tank) or 0.67
+    local cat = (math.random() < tankK) and "tank" or "apc"
     local ids = {}
-    for _, id in ipairs(V0[cat] or {}) do
-      local d = VD.get(id)
-      if d and not d.needsAir and d.weapons and #d.weapons > 0 then table.insert(ids, id) end
+    if a and a.ids then   -- 关卡点名的型号：先挑这一类的，这一类没有就全挑
+      for _, id in ipairs(a.ids) do if usable(id) and VD.get(id).cat == cat then table.insert(ids, id) end end
+      if #ids == 0 then for _, id in ipairs(a.ids) do if usable(id) then table.insert(ids, id) end end end
+    else
+      local V0 = Config.Vehicles[team] or {}
+      for _, id in ipairs(V0[cat] or {}) do if usable(id) then table.insert(ids, id) end end
     end
     if #ids == 0 then return nil end
     return ids[math.random(#ids)]
@@ -519,7 +536,7 @@ function AIVeh.init(G)
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
-        if n < MAX and now() >= nextAt[team] then
+        if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
           nextAt[team] = now() + ((ok and e) and 8 or 15)   -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试
         end

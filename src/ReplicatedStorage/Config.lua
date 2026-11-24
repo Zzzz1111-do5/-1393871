@@ -247,15 +247,39 @@ Config.Economy = {
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
+  -- ai（用户 11-24：「做关卡 越多越逼真越好」）：这一关电脑开的地面载具——def 敌方、atk 友军：max 同时几辆、tank 坦克占几成（其余步战车）、
+  --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
   levels = {
     { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
     { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
-    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },
-    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
-    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
-    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
-    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
+    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+      ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
+    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
+      ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
+    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
+    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
+      ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
+    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+      ai = { def = { max = 3 }, atk = { max = 2 } } },
+    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "bmp3" } } } },
+    -- 第 9～16 关（11-24 加）：沙海（突破，五个阶段）也有关卡；坦克战、机械化步兵、海岸防线、夜幕坦克战……
+    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
+      ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "stryker", "m1a1" } }, atk = { max = 2, tank = 0, ids = { "bmp3", "zbd05" } } } },
+    { map = "desert", tickets = 240, ticketsAtk = 280, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
+    { map = "island", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "m1150" } }, atk = { max = 2, ids = { "t90m", "bmp3" } } } },
+    { map = "sands", caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
+    { map = "desert", tickets = 300, ticketsAtk = 300, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
+      ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
+    { map = "island", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
+    { map = "sands", caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "bmp3", "ztz99a" } } } },
+    { map = "desert", tickets = 400, ticketsAtk = 320, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
+      ai = { def = { max = 5, tank = 0.7 }, atk = { max = 4, tank = 0.7 } } },
   },
 }
 function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）

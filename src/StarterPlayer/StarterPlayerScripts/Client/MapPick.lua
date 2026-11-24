@@ -247,12 +247,20 @@ function MapPick.init(G)
     b.Parent = content
     tabs[k] = { b = b, st = stroke(b, 0.8) }
   end
-  local pveGrid = frame(content, UDim2.fromOffset(1232, 520), UDim2.fromOffset(0, 148), RGB(0, 0, 0), 1)
+  -- 关卡多了（用户 11-24：「做关卡 越多越逼真越好」，16 关）：卡片排四列、竖着滚
+  local PC = G.Config.Pve or { levels = {} }
+  local LW, LH = 296, 286
+  local pveGrid = Instance.new("ScrollingFrame")
+  pveGrid.Size, pveGrid.Position = UDim2.fromOffset(1244, 520), UDim2.fromOffset(0, 148)
+  pveGrid.BackgroundTransparency, pveGrid.BorderSizePixel = 1, 0
+  pveGrid.ScrollBarThickness = 6
+  pveGrid.ScrollBarImageColor3 = RGB(200, 204, 210)
+  pveGrid.ScrollingDirection = Enum.ScrollingDirection.Y
+  pveGrid.CanvasSize = UDim2.fromOffset(0, math.ceil(#PC.levels / 4) * (LH + 16))
   pveGrid.Name = "PveGrid"
   pveGrid.Visible = false
-  local PC = G.Config.Pve or { levels = {} }
+  pveGrid.Parent = content
   local lcards = {}
-  local LW, LH = 296, 250
   for n, L in ipairs(PC.levels) do
     local col, row = (n - 1) % 4, math.floor((n - 1) / 4)
     local b = Instance.new("TextButton")
@@ -273,6 +281,9 @@ function MapPick.init(G)
     K.forces = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 122), 13, RGB(214, 218, 222))
     K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.GothamBold)
     K.reward.TextYAlignment = Enum.TextYAlignment.Top
+    -- 作战简报（敌情、任务、友军）：三行小字
+    K.brief = text(b, "", UDim2.fromOffset(LW - 32, 50), UDim2.fromOffset(16, 180), 11, RGB(176, 182, 190))
+    K.brief.TextWrapped, K.brief.TextYAlignment = true, Enum.TextYAlignment.Top
     K.state = Instance.new("TextLabel")
     K.state.Size, K.state.Position, K.state.AnchorPoint = UDim2.fromOffset(150, 34), UDim2.new(1, -16, 1, -16), V2(1, 1)
     K.state.BackgroundColor3, K.state.BorderSizePixel = WHITE, 0
@@ -419,6 +430,7 @@ function MapPick.init(G)
         K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
         K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
         K.forces.Text = T("pve.forces", L.enemies, L.allies)
+        K.brief.Text = T("pve.b" .. i)
         K.reward.Text = (i > cl) and T("pve.rewardFirst", math.floor(L.reward * (PC.firstBonus or 1))) or T("pve.rewardReplay", math.floor(L.reward * (PC.replay or 1)))
         local locked = i > cl + 1
         local done = i <= cl

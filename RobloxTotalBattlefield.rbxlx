@@ -1099,15 +1099,39 @@ Config.Economy = {
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
+  -- ai（用户 11-24：「做关卡 越多越逼真越好」）：这一关电脑开的地面载具——def 敌方、atk 友军：max 同时几辆、tank 坦克占几成（其余步战车）、
+  --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
   levels = {
     { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
     { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
-    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },
-    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
-    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
-    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
-    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
+    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+      ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
+    { map = "desert", tickets = 200, ticketsAtk = 320, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
+      ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
+    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
+    { map = "desert", tickets = 260, ticketsAtk = 320, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
+      ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
+    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+      ai = { def = { max = 3 }, atk = { max = 2 } } },
+    { map = "desert", tickets = 320, ticketsAtk = 300, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "bmp3" } } } },
+    -- 第 9～16 关（11-24 加）：沙海（突破，五个阶段）也有关卡；坦克战、机械化步兵、海岸防线、夜幕坦克战……
+    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
+      ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "stryker", "m1a1" } }, atk = { max = 2, tank = 0, ids = { "bmp3", "zbd05" } } } },
+    { map = "desert", tickets = 240, ticketsAtk = 280, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
+    { map = "island", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "m1150" } }, atk = { max = 2, ids = { "t90m", "bmp3" } } } },
+    { map = "sands", caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
+    { map = "desert", tickets = 300, ticketsAtk = 300, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
+      ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
+    { map = "island", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
+    { map = "sands", caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "bmp3", "ztz99a" } } } },
+    { map = "desert", tickets = 400, ticketsAtk = 320, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
+      ai = { def = { max = 5, tank = 0.7 }, atk = { max = 4, tank = 0.7 } } },
   },
 }
 function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）
@@ -4911,6 +4935,33 @@ add("pve.n5", "纵深突破", "Breakthrough")
 add("pve.n6", "钢铁洪流", "Steel Tide")
 add("pve.n7", "全岛攻略", "Island Sweep")
 add("pve.n8", "沙漠风暴", "Desert Storm")
+-- 第 9～16 关（用户 11-24：「做关卡 越多越逼真越好」）
+add("pve.n9", "沙海突破", "Breaching the Sand Sea")
+add("pve.n10", "无车之战", "Infantry Only")
+add("pve.n11", "海岸防线", "Coastal Line")
+add("pve.n12", "沙海纵深", "Deep in the Sand Sea")
+add("pve.n13", "夜幕坦克战", "Night Tank Battle")
+add("pve.n14", "铁锤行动", "Operation Hammer")
+add("pve.n15", "沙海决战", "Sand Sea Showdown")
+add("pve.n16", "最终决战", "Final Battle")
+-- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
+add("pve.brief", "作战简报", "BRIEFING")
+add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
+add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
+add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
+add("pve.b4", "两军在沙漠遭遇，双方都有少量坦克和步战车。任务：打光敌人 200 兵力（我方 320）。", "Meeting engagement in the desert, a few tanks and IFVs on both sides. Deplete 200 enemy tickets (we have 320).")
+add("pve.b5", "敌防御纵深有 M1A1 坦克和布雷德利步战车。任务：连续拿下四个据点，撕开防线。", "M1A1 tanks and Bradleys defend in depth. Take four objectives in a row and tear the line open.")
+add("pve.b6", "坦克对决：敌 M1A1、M1A2 坦克连，我方 T-90M、99A。任务：打光敌人 260 兵力。", "Tank duel: an M1A1/M1A2 company against our T-90Ms and Type 99As. Deplete 260 enemy tickets.")
+add("pve.b7", "敌主力退守全岛，五个据点层层设防。任务：拿下全部五个据点。", "The enemy main body falls back across the island, five objectives in layered defence. Take all five.")
+add("pve.b8", "敌重兵集团：M1A2、M1A1、布雷德利；我方 T-90M、99A、BMP-3 协同。任务：打光敌人 320 兵力。", "Heavy enemy group of M1A2s, M1A1s and Bradleys; our T-90Ms, Type 99As and BMP-3s attack together. Deplete 320 tickets.")
+add("pve.b9", "沙海前沿：敌摩步连有布雷德利、斯特赖克和少量 M1A1。任务：BMP-3 机步营突破两道沙墙阵地。", "Sand Sea front: a motorised company with Bradleys, Strykers and a few M1A1s. Our BMP-3 battalion breaches two berm lines.")
+add("pve.b10", "敌方是精锐步兵，没有车辆支援；地形开阔、狙击手多。任务：打光敌人 240 兵力。", "Elite enemy infantry with no vehicles; open ground and many snipers. Deplete 240 enemy tickets.")
+add("pve.b11", "敌在海岸构筑防线：M1A2、布雷德利、M1150 扫雷车。任务：T-90M、BMP-3 掩护步兵拿下三个据点。", "A coastal defence line with M1A2s, Bradleys and M1150 breachers. T-90Ms and BMP-3s cover the infantry onto three objectives.")
+add("pve.b12", "突破以后向纵深发展，敌坦克、步战车混编反冲击。任务：连续拿下四个阶段的据点。", "Exploit the breach: enemy tanks and IFVs counter-attack together. Take the objectives of four stages in a row.")
+add("pve.b13", "夜里沙漠坦克战：敌 5 辆 M1A2、M1A1，我方 4 辆 T-90M、99A、96 式。用热像，先敌开火。任务：打光敌人 300 兵力。", "Night tank battle in the desert: five M1A2/M1A1s against our four T-90Ms, Type 99As and Type 96s. Use thermals and shoot first. Deplete 300 tickets.")
+add("pve.b14", "全岛总攻：敌 30 人、4 辆装甲车顽抗。任务：拿下全部五个据点。", "All-out assault on the island: 30 enemies and 4 armoured vehicles hold out. Take all five objectives.")
+add("pve.b15", "敌最后的装甲预备队：M1A2、M1A1、布雷德利。任务：打通沙海全部五个阶段。", "The enemy's last armoured reserve of M1A2s, M1A1s and Bradleys. Break through all five stages of the Sand Sea.")
+add("pve.b16", "敌全部兵力 36 人、5 辆装甲车最后一搏。任务：打光敌人 400 兵力。", "Everything the enemy has left: 36 troops and 5 armoured vehicles. Deplete 400 enemy tickets.")
 add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
 add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
 add("pve.forces", "敌军 {1} · 友军 {2}", "Enemies {1} · Allies {2}")
@@ -12477,13 +12528,30 @@ function AIVeh.init(G)
 
   ---------------------------------------------------------------- 派车
 
+  -- 这一关（Config.Pve 的 ai，用户 11-24：「做关卡 越多越逼真越好」）给这一方的编成：max 同时几辆、tank 坦克占几成、ids 只从这几型里挑
+  local function levelAi(team)
+    local P = G.pve
+    return P and P.L and P.L.ai and P.L.ai[team] or nil
+  end
+  local function maxFor(team)
+    local a = levelAi(team)
+    return (a and a.max) or MAX
+  end
+  local function usable(id)
+    local d = VD.get(id)
+    return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
+  end
   local function pickModel(team)
-    local V0 = Config.Vehicles[team] or {}
-    local cat = (math.random() < 0.67) and "tank" or "apc"
+    local a = levelAi(team)
+    local tankK = (a and a.tank) or 0.67
+    local cat = (math.random() < tankK) and "tank" or "apc"
     local ids = {}
-    for _, id in ipairs(V0[cat] or {}) do
-      local d = VD.get(id)
-      if d and not d.needsAir and d.weapons and #d.weapons > 0 then table.insert(ids, id) end
+    if a and a.ids then   -- 关卡点名的型号：先挑这一类的，这一类没有就全挑
+      for _, id in ipairs(a.ids) do if usable(id) and VD.get(id).cat == cat then table.insert(ids, id) end end
+      if #ids == 0 then for _, id in ipairs(a.ids) do if usable(id) then table.insert(ids, id) end end end
+    else
+      local V0 = Config.Vehicles[team] or {}
+      for _, id in ipairs(V0[cat] or {}) do if usable(id) then table.insert(ids, id) end end
     end
     if #ids == 0 then return nil end
     return ids[math.random(#ids)]
@@ -12905,7 +12973,7 @@ function AIVeh.init(G)
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
-        if n < MAX and now() >= nextAt[team] then
+        if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
           nextAt[team] = now() + ((ok and e) and 8 or 15)   -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试
         end
@@ -21043,10 +21111,11 @@ function Pve.init(G)
       G.msgAll("bad", "pve.retry", n)
     end
   end
-  -- 新一局：打通了就换下一关
+  -- 新一局：打通了就换下一关；开局在屏幕上播一遍这一关的作战简报（敌情、任务、友军）
   G.on("roundStart", function()
     local P = G.pve
     if P and P.next then apply(P.next) end
+    if G.pve then G.msgAll("info", "pve.b" .. G.pve.n) end
   end)
 end
 
@@ -54134,12 +54203,20 @@ function MapPick.init(G)
     b.Parent = content
     tabs[k] = { b = b, st = stroke(b, 0.8) }
   end
-  local pveGrid = frame(content, UDim2.fromOffset(1232, 520), UDim2.fromOffset(0, 148), RGB(0, 0, 0), 1)
+  -- 关卡多了（用户 11-24：「做关卡 越多越逼真越好」，16 关）：卡片排四列、竖着滚
+  local PC = G.Config.Pve or { levels = {} }
+  local LW, LH = 296, 286
+  local pveGrid = Instance.new("ScrollingFrame")
+  pveGrid.Size, pveGrid.Position = UDim2.fromOffset(1244, 520), UDim2.fromOffset(0, 148)
+  pveGrid.BackgroundTransparency, pveGrid.BorderSizePixel = 1, 0
+  pveGrid.ScrollBarThickness = 6
+  pveGrid.ScrollBarImageColor3 = RGB(200, 204, 210)
+  pveGrid.ScrollingDirection = Enum.ScrollingDirection.Y
+  pveGrid.CanvasSize = UDim2.fromOffset(0, math.ceil(#PC.levels / 4) * (LH + 16))
   pveGrid.Name = "PveGrid"
   pveGrid.Visible = false
-  local PC = G.Config.Pve or { levels = {} }
+  pveGrid.Parent = content
   local lcards = {}
-  local LW, LH = 296, 250
   for n, L in ipairs(PC.levels) do
     local col, row = (n - 1) % 4, math.floor((n - 1) / 4)
     local b = Instance.new("TextButton")
@@ -54160,6 +54237,9 @@ function MapPick.init(G)
     K.forces = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 122), 13, RGB(214, 218, 222))
     K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.GothamBold)
     K.reward.TextYAlignment = Enum.TextYAlignment.Top
+    -- 作战简报（敌情、任务、友军）：三行小字
+    K.brief = text(b, "", UDim2.fromOffset(LW - 32, 50), UDim2.fromOffset(16, 180), 11, RGB(176, 182, 190))
+    K.brief.TextWrapped, K.brief.TextYAlignment = true, Enum.TextYAlignment.Top
     K.state = Instance.new("TextLabel")
     K.state.Size, K.state.Position, K.state.AnchorPoint = UDim2.fromOffset(150, 34), UDim2.new(1, -16, 1, -16), V2(1, 1)
     K.state.BackgroundColor3, K.state.BorderSizePixel = WHITE, 0
@@ -54306,6 +54386,7 @@ function MapPick.init(G)
         K.map.Text = T("map." .. L.map .. ".name") .. "  ·  " .. T("map." .. L.map .. ".mode")
         K.goal.Text = L.caps and T("pve.goalCaps", L.caps) or T("pve.goalTickets", L.tickets or 0)
         K.forces.Text = T("pve.forces", L.enemies, L.allies)
+        K.brief.Text = T("pve.b" .. i)
         K.reward.Text = (i > cl) and T("pve.rewardFirst", math.floor(L.reward * (PC.firstBonus or 1))) or T("pve.rewardReplay", math.floor(L.reward * (PC.replay or 1)))
         local locked = i > cl + 1
         local done = i <= cl

@@ -25,6 +25,7 @@
 
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
+  - PvE 关卡 8 → 16 关（Config.Pve 每关加 ai 编成：def / atk 的 max、tank、ids；AIVeh.lua 照它挑车），每关简报 pve.b<n>，关卡页可滚动；测试 tools/mock/pve_ai.lua
   - blveh.py 修了：算转轴前没刷新视图层，matrix_world 是旧的（以前没给 tur 的车，炮塔转轴都算错了）；拆出来的块照原块减面
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）
 - B：（请 B 自己填）
