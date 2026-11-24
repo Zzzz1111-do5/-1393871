@@ -77,6 +77,10 @@ W.AMMO = {
   bm60 = { p0 = 720, fall = 30, t = "ke", spall = 16, n = 16, core = 3.2 },
   bk31 = { p0 = 760, t = "ce", spall = 20, n = 12, core = 2.4, tandem = true },
   of26 = { p0 = 45, t = "he", spall = 40, n = 20, core = 0, blast = 2.4 },
+  -- 金属射流弹：串联聚能装药（穿深跟距离无关、爆反挡不住多少），射流在车里钻得深（core 米）、破片锥窄而密
+  jet120 = { p0 = 900, t = "ce", spall = 16, n = 18, core = 4.2, tandem = true, jet = true },
+  jet125 = { p0 = 950, t = "ce", spall = 16, n = 18, core = 4.4, tandem = true, jet = true },
+  jet105 = { p0 = 760, t = "ce", spall = 16, n = 16, core = 3.8, tandem = true, jet = true },
 }
 -- 别的武器（按武器 id）：机炮的脱壳穿甲弹、反坦克火箭 / 导弹、飞机的弹
 W.WPN = {

@@ -247,7 +247,11 @@ function WtHud.init(G)
     line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
     if m.r == "pen" or m.kill then
       local core = (x.core or 0) * W.M
-      if core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
+      if core > 0 and x.jet then   -- 金属射流：白热的芯 + 一层青白的光
+        line(p0, p0 + dv * core, RGB(236, 248, 255), 0.12)
+        local dd = dv * core
+        box(V3(0.42, 0.42, dd.Magnitude), CFrame.lookAt(p0 + dd / 2, p0 + dd), RGB(140, 210, 255), 0.55, Enum.Material.Neon)
+      elseif core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
       for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
         local len = (1.4 + (i % 4) * 0.35) * W.M
         local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
@@ -369,6 +373,66 @@ function WtHud.init(G)
     elseif anyBad then panelTip.Text, panelTip.TextColor3 = T("wt.tipFix"), Color3.new(1, 1, 1)
     else panelTip.Text = "" end
   end
+
+  ---------------------------------------------------------------- 金属射流（破甲弹、金属射流弹打在车上）
+  --   用户 11-24 夜「再做一个金属射流弹」：命中点一团白光、往外喷一圈火花，一道白热的射流顺着来向钻进去（从车外伸进去一截，
+  --   打穿的钻得深、射流弹更粗更亮），零点几秒淡掉；没打穿只有一小截
+  local TS = game:GetService("TweenService")
+  local function jetFx(e)
+    if typeof(e.p) ~= "Vector3" or typeof(e.d) ~= "Vector3" then return end
+    if (e.p - workspace.CurrentCamera.CFrame.Position).Magnitude > 3000 then return end
+    local d = (e.d.Magnitude > 0.01) and e.d.Unit or V3(0, 0, -1)
+    local len = math.clamp(e.len or 2, 0.5, 24)
+    local big = e.big == true
+    local a0, a1 = e.p - d * 1.4, e.p + d * len
+    local mid, L = (a0 + a1) / 2, (a1 - a0).Magnitude
+    local f = Instance.new("Folder")
+    f.Name = "WtJet"
+    f.Parent = workspace
+    local function mk(size, cf, col, tr, shape)
+      local q = Instance.new("Part")
+      q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.CastShadow = true, false, false, false, false
+      q.Material, q.Color, q.Transparency, q.Size, q.CFrame = Enum.Material.Neon, col, tr, size, cf
+      if shape then q.Shape = shape end
+      q.Parent = f
+      return q
+    end
+    local w = big and 0.22 or 0.14
+    local core = mk(V3(w, w, L), CFrame.lookAt(mid, a1), RGB(240, 250, 255), 0.02)
+    local glow = mk(V3(w * 4, w * 4, L), CFrame.lookAt(mid, a1), RGB(150, 210, 255), 0.6)
+    local flash = mk(V3(1, 1, 1) * (big and 3.4 or 2.6), CFrame.new(e.p), RGB(255, 236, 200), 0.15, Enum.PartType.Ball)
+    local lt = Instance.new("PointLight")
+    lt.Color, lt.Brightness, lt.Range = RGB(200, 225, 255), big and 8 or 5, 22
+    lt.Parent = flash
+    local pe = Instance.new("ParticleEmitter")   -- 火花：从命中点往外喷（射流反溅出来的铜和钢的碎渣）
+    pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    pe.Color = ColorSequence.new(RGB(255, 236, 190), RGB(255, 140, 60))
+    pe.LightEmission = 1
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0.05) })
+    pe.Lifetime = NumberRange.new(0.18, 0.45)
+    pe.Speed = NumberRange.new(30, 70)
+    pe.SpreadAngle = Vector2.new(55, 55)
+    pe.Drag = 4
+    pe.Rate = 0
+    pe.EmissionDirection = Enum.NormalId.Front
+    local emit = Instance.new("Attachment")
+    emit.CFrame = CFrame.lookAt(Vector3.zero, -d)   -- 往来向那边喷
+    emit.Parent = flash
+    pe.Parent = emit
+    pcall(function() pe:Emit(big and 46 or 30) end)
+    local ti = TweenInfo.new(big and 0.32 or 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TS:Create(core, ti, { Transparency = 1 }):Play()
+    TS:Create(glow, ti, { Transparency = 1, Size = V3(w * 7, w * 7, L) }):Play()
+    TS:Create(flash, ti, { Transparency = 1, Size = flash.Size * 1.8 }):Play()
+    TS:Create(lt, ti, { Brightness = 0 }):Play()
+    task.delay(0.8, function() f:Destroy() end)
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "wtJet" then G.try_(jetFx, e) end
+    end
+  end)
 
   ---------------------------------------------------------------- 服务器发来的
 

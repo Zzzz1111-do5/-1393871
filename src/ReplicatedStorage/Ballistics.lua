@@ -42,13 +42,21 @@ B.AMMO = {
     vs = { inf = 0.9, light = 1.3, armor = 0.95, fort = 1.3 }, splash = 1.0 },
   of26 = { cls = "he", name = "3OF26 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,      -- 杀伤爆破榴弹
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.6 },
+  -- 金属射流弹（用户 11-24 夜「再做一个金属射流弹」）：串联聚能装药破甲弹——前级先把爆反引爆，主装药炸出一股几千米每秒的铜射流
+  --   往装甲里钻（穿深跟距离无关）；打中时客户端画一道白热的射流（WtHud 的 wtJet），X 光里是一道亮青白线
+  jet120 = { cls = "jet", name = "120 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet125 = { cls = "jet", name = "125 金属射流弹", sym = "射流", v0 = 950, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
-  gun120 = { "m829a3", "m830", "m830a1", "m1028" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
-  gun125 = { "dtc10", "heat125", "he125" },
-  gun125r = { "bm60", "bk31", "of26" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
-  gun105 = { "m900", "m456" },
+  gun120 = { "m829a3", "m830", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
+  gun125 = { "dtc10", "heat125", "he125", "jet125" },
+  gun125r = { "bm60", "bk31", "of26", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
+  gun105 = { "m900", "m456", "jet105" },
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

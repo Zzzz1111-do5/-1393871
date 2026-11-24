@@ -187,6 +187,13 @@ function WtTank.init(G)
       b(0, 12, 10, 2, (kind == "mpat") and RGB(96, 176, 255) or RGB(242, 202, 60), 0)
       b(0, 17, 8, 7, RGB(70, 74, 76), 0, 3)
       b(0, 23, 2, 8, RGB(170, 170, 164), 0, 1)
+    elseif kind == "jet" then   -- 金属射流弹：串联破甲弹（前面一截前级装药），弹头前一道青白的射流
+      b(0, 0, 12, 4, RGB(120, 120, 112), 0, 1)
+      b(0, 3, 10, 14, RGB(46, 52, 62), 0, 2)
+      b(0, 10, 10, 2, RGB(110, 210, 255), 0)
+      b(0, 16, 8, 6, RGB(60, 66, 74), 0, 3)
+      b(0, 21, 4, 4, RGB(150, 150, 146), 0, 1)
+      b(0, 24, 2, 9, RGB(170, 232, 255), 0, 1)
     elseif kind == "can" then   -- 霰弹：平头圆筒、一排钨珠
       b(0, 0, 13, 22, RGB(176, 176, 166), 0, 2)
       for i = -1, 1 do b(i * 4, 9, 2, 2, RGB(60, 60, 60), 0, true) end
@@ -275,7 +282,7 @@ function WtTank.init(G)
         for _, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE" })[cls] or "" })
+          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流" })[cls] or "" })
         end
       elseif w then
         local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))

@@ -352,6 +352,9 @@ function Wt.init(G)
         if mm < 20 then for _, c in ipairs(S.crew) do if (W.center(d, yaw, c.it) - p).Magnitude < a.blast * M * 0.5 then hurt(e, c, 35, out, s.src) end end end
       end
       local flags = {}
+      if a.t == "ce" then   -- 破甲 / 射流弹没打穿：射流钻进装甲里一小截就没劲了（客户端画一小段亮光、一团火花）
+        G.fx({ k = "wtJet", p = res.Position, d = vel, len = 0.5 * M, pen = false, big = a.jet or nil })
+      end
       sendHit(e, s, rr, out, xr)
       after(e, s.src, rr, flags)
       return true
@@ -361,6 +364,10 @@ function Wt.init(G)
     local flags = {}
     inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)
     xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5)
+    if a.t == "ce" then   -- 金属射流：从命中点顺着来向钻进车里（客户端 WtHud 画一道白热的射流、一圈火花；X 光里画成亮青白线）
+      xr.jet = true
+      G.fx({ k = "wtJet", p = res.Position, d = vel, len = xr.core * M, pen = true, big = a.jet or nil })
+    end
     rr.wp = res.Position
     after(e, s.src, rr, flags)
     sendHit(e, s, rr, out, xr)
