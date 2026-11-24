@@ -81,6 +81,8 @@ add("pve.n15", "沙海决战", "Sand Sea Showdown")
 add("pve.n16", "最终决战", "Final Battle")
 -- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
 add("pve.brief", "作战简报", "BRIEFING")
+add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
+add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
 add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
 add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
 add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")

@@ -268,6 +268,12 @@ function AirHud.init(G)
   end
   A.aim.Visible = false
   A.aim.Size = UDim2.fromOffset(18, 18)   -- 战雷的提前量小圈
+  -- 战雷式鼠标瞄准的小圈（Fly.lua 的 info.maim：鼠标想去的方向；飞机往这里追，机头的「+」跟过来）：白色细圈、中间一个点
+  A.maim = round(frame(gui, UDim2.fromOffset(22, 22), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  A.maim.Name = "MouseAim"
+  stroke(A.maim, WHITE, 1.4, 0.15)
+  round(frame(A.maim, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)))
+  A.maim.Visible = false
   A.leadLine = frame(gui, UDim2.fromOffset(10, 1.5), UD2(), WHITE, 0.1, V2(0.5, 0.5))
   A.leadLine.Name = "LeadLine"
   A.leadLine.Visible = false
@@ -499,6 +505,8 @@ function AirHud.init(G)
     end
     hsg.Enabled = showHolo
     -- 机炮提前量：一个小圈（不转），锁着目标时一根细线连到目标（战雷）
+    A.maim.Visible = pilot and info.maim ~= nil
+    if info.maim then A.maim.Position = info.maim end
     A.aim.Visible = pilot and info.aim ~= nil
     if info.aim then
       A.aim.Position = info.aim

@@ -4946,6 +4946,8 @@ add("pve.n15", "沙海决战", "Sand Sea Showdown")
 add("pve.n16", "最终决战", "Final Battle")
 -- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
 add("pve.brief", "作战简报", "BRIEFING")
+add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
+add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
 add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
 add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
 add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
@@ -28118,6 +28120,12 @@ function AirHud.init(G)
   end
   A.aim.Visible = false
   A.aim.Size = UDim2.fromOffset(18, 18)   -- 战雷的提前量小圈
+  -- 战雷式鼠标瞄准的小圈（Fly.lua 的 info.maim：鼠标想去的方向；飞机往这里追，机头的「+」跟过来）：白色细圈、中间一个点
+  A.maim = round(frame(gui, UDim2.fromOffset(22, 22), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5)))
+  A.maim.Name = "MouseAim"
+  stroke(A.maim, WHITE, 1.4, 0.15)
+  round(frame(A.maim, UDim2.fromOffset(3, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0.15, V2(0.5, 0.5)))
+  A.maim.Visible = false
   A.leadLine = frame(gui, UDim2.fromOffset(10, 1.5), UD2(), WHITE, 0.1, V2(0.5, 0.5))
   A.leadLine.Name = "LeadLine"
   A.leadLine.Visible = false
@@ -28349,6 +28357,8 @@ function AirHud.init(G)
     end
     hsg.Enabled = showHolo
     -- 机炮提前量：一个小圈（不转），锁着目标时一根细线连到目标（战雷）
+    A.maim.Visible = pilot and info.maim ~= nil
+    if info.maim then A.maim.Position = info.maim end
     A.aim.Visible = pilot and info.aim ~= nil
     if info.aim then
       A.aim.Position = info.aim
@@ -36698,6 +36708,12 @@ function Fly.init(G)
     best.lead = lead + V(0, 0.5 * workspace.Gravity * 0.08 * t * t, 0)   -- 炮弹的下坠（服务器的 gscale 0.08）
     return best
   end
+  -- 战雷式鼠标瞄准（用户 11-24：「飞机锁定敌目标改成战雷一模一样的 包括投弹以及各方面操作细节和手感」）：
+  --   鼠标转的是想去的方向（屏幕正中的小圈），镜头顺着它看，教官自动压坡度、拉杆把机头追过去（机头的「+」在画面里跟着走）；
+  --   按着 W / S / A / D / Q / E 就是直接操纵（松开教官又追回鼠标那里）；按住 C 自由看（飞机照旧往鼠标那里飞）。
+  --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
+  local mouseAim = true
+  G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 镜头跟着机身（用户 11-21：飞机的飞行方向标志动来动去，应该固定位置）：原来镜头顺着鼠标瞄准方向看（战雷那样），
@@ -36822,6 +36838,7 @@ function Fly.init(G)
     --   地上油门收到底按住 Ctrl 倒退。键是开关量：杆量 0.3 秒推满、松开 0.2 秒回中，不会一按就猛地一转。
     --   无人机（平板上飞）照旧鼠标给方向、W / S 油门；开着光电吊舱、飞出作战区自动掉头时照旧按给的方向自动飞（下面的教官）
     local kb = not st.uav and not G.mobile
+    local mAim = kb and mouseAim   -- 战雷式：鼠标给方向（教官飞），按方向键时直接操纵
     local up, dn
     if kb then
       up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or key(Enum.KeyCode.Up) or (touch and touch.up)
@@ -36904,7 +36921,8 @@ function Fly.init(G)
     local bank = math.asin(clamp(right.Y, -1, 1))
     local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
     local nCmd, rc, yc
-    if G.mobile or (kb and not st.eo and not st.oob) then
+    local stickHeld = math.abs(st.kP or 0) + math.abs(st.kR or 0) + math.abs(st.kY or 0) > 0.02
+    if G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld)) then
       -- 驾驶杆（键盘 / 手机摇杆）：往后拉要过载、松杆 1 g，坡度 33° 以内补一点杆保高度；没压 A / D、坡度 20° 以内机翼慢慢自己摆平
       local pull = -pitchIn   -- 往后拉为正
       nCmd = (pull >= 0) and (1 + pull * (GMAX - 1)) or (1 + pull * 3)   -- 推杆到 −2 g
@@ -36915,7 +36933,9 @@ function Fly.init(G)
       rc, yc = rollIn * ROLL, yawIn * rad(d.yaw) * 0.6
       if rollIn == 0 and upright and not st.ground and math.abs(bank) < rad(20) then rc = clamp(bank * 2.5, -1, 1) * ROLL * 0.3 end
       if landAid and rollIn == 0 then rc = clamp(bank * 2.5, -1, 1) * ROLL end   -- 贴着跑道 / 甲板：机翼自动摆平
-      if kb then setAim((not st.ground and st.vdir) or fwd) end   -- 鼠标瞄准方向跟着航迹（开光电吊舱、自动掉头时从现在的航向接着飞）
+      if kb and not mAim then setAim((not st.ground and st.vdir) or fwd) end   -- 鼠标瞄准方向跟着航迹（开光电吊舱、自动掉头时从现在的航向接着飞）；
+      --   战雷式按着方向键时不动它：松开以后教官追回鼠标那里
+      if mAim and st.ground then setAim(fwd) end   -- 地上滑跑：鼠标圈跟着机头（离地以后再交给鼠标）
     else
       local aim = autoDir()
       local l = cf:VectorToObjectSpace(aim)
@@ -37375,6 +37395,11 @@ function Fly.init(G)
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
       end
+    elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
+      mouseAim = not mouseAim
+      setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
+      st.lookYaw, st.lookPitch = 0, 0
+      if G.toast then G.toast(T(mouseAim and "air.mouseAimOn" or "air.mouseAimOff"), "info") end
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
@@ -37697,7 +37722,11 @@ function Fly.init(G)
     else
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
       if d.kind == "jet" and not G.mobile and not pitLook then
-        if st.pilot and not st.uav then
+        if st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
+          -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
+          st.aimYaw -= md.X * SENS
+          st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
+        elseif st.pilot and not st.uav then
           -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
           --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
           --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
@@ -37806,10 +37835,17 @@ function Fly.init(G)
       local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
+      local wtCam = mouseAim and not st.uav and not G.mobile and not st.ground
+      if wtCam then   -- 战雷式：镜头顺着鼠标想去的方向（飞机在画面里追过去），镜头的上方就是天上（地平线不歪）
+        local a = autoDir()
+        st.camF = st.camF and st.camF:Lerp(a, 1 - math.exp(-dt * 14)) or a
+        if st.camF.Magnitude > 1e-3 then st.camF = st.camF.Unit end
+        fwd, upC = st.camF, V(0, 1, 0)
+      end
       -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
       --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
       --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
-      do
+      if not wtCam then
         local noseF = fwd
         local cf2 = noseF
         if st.camF and st.camF:Dot(noseF) > 0.5 then
@@ -37825,7 +37861,8 @@ function Fly.init(G)
         fwd = cf2
       end
       -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
-      if st.uav or os.clock() - (st.lookT or 0) > 2.5 then
+      if wtCam and key(Enum.KeyCode.C) then st.lookT = os.clock() end
+      if st.uav or os.clock() - (st.lookT or 0) > ((wtCam and not key(Enum.KeyCode.C)) and 0 or 2.5) then
         local kk = math.exp(-dt * (st.uav and 5 or 2.2))
         st.lookYaw = (st.lookYaw or 0) * kk
         st.lookPitch = (st.lookPitch or 0) * kk
@@ -38194,6 +38231,12 @@ function Fly.init(G)
     warnText.Position = UDim2.new(0.5, 0, 0.5, st.uav and -130 or -172)   -- 告警：让开准星上方的武器名牌
     if not st.uav and not st.eo then
       if st.pilot then info.aim = aimRing.Visible and aimRing.Position or nil end   -- 准星由 AirHud 画（发光的细圈），这里的「◯」字收起来
+      -- 战雷式鼠标瞄准的小圈（屏幕上鼠标想去的方向）：AirHud 画白色细圈
+      info.maim = nil
+      if st.pilot and d.kind == "jet" and mouseAim and not st.uav and not G.mobile and not st.eo and not st.ground then
+        local mp, mon = project(pos + aimRingDir() * 400)
+        if mon then info.maim = mp end
+      end
       aimRing.Visible = false
       if G.airHudStep then G.try_(G.airHudStep, st, info) end
       if G.tankHudExtra then G.try_(G.tankHudExtra, st, clamp(hp / mx, 0, 1), "air") end   -- 左上圆形雷达、「被发现!」、敌人头顶带血条的名牌（TankHud.lua）
