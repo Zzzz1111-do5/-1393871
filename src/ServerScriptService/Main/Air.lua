@@ -664,6 +664,18 @@ function Air.init(G)
     G.fx({ k = "storeOff", id = e.id, st = i, w = wid })
   end
 
+  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达弹锁着敌机半秒报一次；
+  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报
+  local function lockOn(e, tid, full)
+    local tg = (type(tid) == "string") and G.entById[tid] or nil
+    if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
+    local tn = now()
+    if tn < (e.lockPingT or 0) then return end
+    e.lockPingT = tn + 0.35
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
+    if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwrLock", by = e.id, full = full == true }) end
+  end
+
   -- 航炮：扣着扳机，每 0.1 秒打一发弹丸（带这 0.1 秒所有炮弹的伤害）；机头炮塔 / 舱门机枪朝准星（有转动范围）
   local function gunDir(e, w)
     local cf = e.root.CFrame
@@ -865,6 +877,7 @@ function Air.init(G)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
+    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then

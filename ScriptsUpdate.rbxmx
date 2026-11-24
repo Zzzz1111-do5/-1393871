@@ -4971,6 +4971,8 @@ add("air.ccrpT", "{1} 秒后投弹", "release in {1} s")
 add("air.ccrpPassed", "飞过了 · 掉头再来", "passed · come around")
 add("air.ccrpRel", "投弹！", "BOMBS AWAY")
 add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
+add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
+add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
 add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
 add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
 add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
@@ -13688,6 +13690,18 @@ function Air.init(G)
     G.fx({ k = "storeOff", id = e.id, st = i, w = wid })
   end
 
+  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达弹锁着敌机半秒报一次；
+  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报
+  local function lockOn(e, tid, full)
+    local tg = (type(tid) == "string") and G.entById[tid] or nil
+    if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
+    local tn = now()
+    if tn < (e.lockPingT or 0) then return end
+    e.lockPingT = tn + 0.35
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
+    if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwrLock", by = e.id, full = full == true }) end
+  end
+
   -- 航炮：扣着扳机，每 0.1 秒打一发弹丸（带这 0.1 秒所有炮弹的伤害）；机头炮塔 / 舱门机枪朝准星（有转动范围）
   local function gunDir(e, w)
     local cf = e.root.CFrame
@@ -13889,6 +13903,7 @@ function Air.init(G)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
+    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then
@@ -27722,7 +27737,7 @@ return AaFcs
 --   · 红外弹（seeker = "ir"）的导引头声：没锁上是低沉发毛的嗡嗡声（「咕噜」）；锁定进度往上走，音调跟着升；锁上是尖的长音；
 --     锁着但目标出了离轴角（菱形变黄）又回到嗡嗡
 --   · 雷达弹：锁的过程一下一下轻的「嘀」，锁上「嘀嘀」两声；空对地弹、制导炸弹锁上「嘀」一声
---   · 导弹来袭（服务器的 rwr）：急促的「嘀嘀嘀」；失速：喇叭一样的「嘟——嘟——」；拉起（离地近还在往下掉）：高低两个音来回换；
+--   · 导弹来袭（服务器的 rwr）：急促的「嘀嘀嘀」；被敌机雷达锁着（服务器的 rwrLock，A 加的）：一下一下高的「嘀」、锁上两短一停；失速：喇叭一样的「嘟——嘟——」；拉起（离地近还在往下掉）：高低两个音来回换；
 --     油不多：隔几秒「叮——咚」；发动机熄火：隔一会儿低沉的「当」
 --   · 放热诱弹「嘭嘭」两声；打中敌人「叮」；打下来往上走的两声；自己挨打金属的「当」；起落架收放时液压的嗡嗡、到位「咔」一声
 --   音源：SoundLib 的 1000 赫兹纯音（toneSine 正弦、toneSquare 方波、toneSaw 锯齿波），PlaybackSpeed 调音高（1 = 1000 赫兹）；
@@ -27864,6 +27879,17 @@ function M.init(G)
 
     -- ③ 导弹来袭：急促的「嘀嘀嘀」（每秒七下半）
     set("rwr", "toneSine", (a.rwr and ((t * 7.5) % 1 < 0.5)) and 0.34 or 0, 1150)
+    -- ③½ 被敌机雷达锁着（A 11-24 加的：对方雷达弹锁着你，服务器转告 rwrLock）：锁定中每 0.6 秒一下高的「嘀」，锁上了「嘀嘀」两短一停；
+    --   导弹来袭时让给上面那个
+    if a.rwrLock and not a.rwr and t >= (S.lkTick or 0) then
+      S.lkTick = t + 0.6
+      if a.rwrFull then
+        beep(1600, 0.06, 0.26)
+        beep(1600, 0.06, 0.26, 0.11)
+      else
+        beep(1600, 0.08, 0.2)
+      end
+    end
 
     -- ④ 失速：锯齿波「嘟——嘟——」（每秒两下半）
     local stallV = (a.stall and ((t * 2.5) % 1 < 0.62)) and 0.20 * busy or 0
@@ -38156,6 +38182,9 @@ function Fly.init(G)
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
       if G.playSound then G.playSound("capture", nil, 2.2) end
+    elseif m.op == "rwrLock" then   -- 被敌机的雷达锁着（战雷的 RWR）：对方半秒报一次，停了一秒多就算丢了
+      st.rwrLockT = os.clock() + 1.1
+      st.rwrLockFull = m.full == true
     end
   end)
 
@@ -38923,6 +38952,7 @@ function Fly.init(G)
       -- 警告
       local warn = nil
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
+      elseif st.rwrLockT and os.clock() < st.rwrLockT then warn = ((os.clock() * 2) % 1 < 0.7) and T(st.rwrLockFull and "air.radarLock" or "air.radarTrack") or ""
       elseif st.out and not st.ground then warn = T("air.flameout")
       elseif st.oob then warn = T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
@@ -38937,6 +38967,7 @@ function Fly.init(G)
         G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
           locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
           rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          rwrLock = st.rwrLockT ~= nil and os.clock() < st.rwrLockT, rwrFull = st.rwrLockFull == true,   -- 被敌机雷达锁着（A 加的，服务器转告）
           stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
           pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
           gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
@@ -39003,6 +39034,11 @@ function Fly.init(G)
         lockBox.Visible, lockText.Visible = false, false
       end
       -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
+      -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
+      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0) then
+        st.lockPingT = os.clock() + 0.5
+        G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
+      end
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
         local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）

@@ -1925,6 +1925,9 @@ function Fly.init(G)
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
       if G.playSound then G.playSound("capture", nil, 2.2) end
+    elseif m.op == "rwrLock" then   -- 被敌机的雷达锁着（战雷的 RWR）：对方半秒报一次，停了一秒多就算丢了
+      st.rwrLockT = os.clock() + 1.1
+      st.rwrLockFull = m.full == true
     end
   end)
 
@@ -2692,6 +2695,7 @@ function Fly.init(G)
       -- 警告
       local warn = nil
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
+      elseif st.rwrLockT and os.clock() < st.rwrLockT then warn = ((os.clock() * 2) % 1 < 0.7) and T(st.rwrLockFull and "air.radarLock" or "air.radarTrack") or ""
       elseif st.out and not st.ground then warn = T("air.flameout")
       elseif st.oob then warn = T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
@@ -2706,6 +2710,7 @@ function Fly.init(G)
         G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
           locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
           rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          rwrLock = st.rwrLockT ~= nil and os.clock() < st.rwrLockT, rwrFull = st.rwrLockFull == true,   -- 被敌机雷达锁着（A 加的，服务器转告）
           stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
           pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
           gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
@@ -2772,6 +2777,11 @@ function Fly.init(G)
         lockBox.Visible, lockText.Visible = false, false
       end
       -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
+      -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
+      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0) then
+        st.lockPingT = os.clock() + 0.5
+        G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
+      end
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
         local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）

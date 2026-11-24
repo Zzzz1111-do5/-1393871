@@ -232,6 +232,22 @@ if js and foe then
     else
       print("  （模拟器里 SoundLib 的纯音没载上：AirAudio 不出声，锁定音这项跳过）")
     end
+    -- 被雷达锁定告警（战雷的 RWR，A 11-24）：雷达弹锁着敌机，客户端半秒报一次服务器（服务器转告被锁那架的飞行员）；
+    --   自己被锁：屏幕上「被雷达锁定！」
+    if lm:GetAttribute("Seeker") == "radar" then
+      R.run(0.6)
+      check(jet.lockPingT ~= nil, "雷达弹锁着敌机：报给了服务器（服务器转告被锁的那架）")
+    end
+    R.as("server", function() G.R.Drive:FireClient(me, { op = "rwrLock", by = foe.id, full = true }) end)
+    local seen = false
+    for _ = 1, 20 do   -- 字一闪一闪的（亮七成）：看 0.6 秒里出没出现过
+      R.run(1 / 30)
+      if #T.texts(C.T("air.radarLock")) > 0 then seen = true end
+    end
+    check(js.rwrLockT ~= nil and seen, "被敌机雷达锁着：屏幕上写「被雷达锁定！」")
+    js.rwrLockT = nil
+    foe.root.CFrame = js.cf * CF(60, 20, -700)   -- 上面多飞了一秒多：敌机摆回正前方
+    R.run(0.3)
     check(box and box.Color.G > 0.8 and box.Color.R < 0.6, "在离轴角里：框是绿的")
     foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
     R.run(0.3)
