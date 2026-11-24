@@ -957,6 +957,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
+Config.Build = "11-24 14:52 9a68449"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -6623,6 +6624,14 @@ Map.ROADS = ROADS
 do
   local ok, data = false, nil
   local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  -- 客户端要等它复制过来（用户 11-22：无数个 AI 修不好坦克半截身子卡在地里）：客户端一进游戏头一件事就 require Map，
+  --   这时 ReplicatedStorage 里几千块导入的网格还在往下传，MapRoads 常常还没到——原来 FindFirstChild 查一下没有就当没有路，
+  --   这个客户端的地面高度就少了路的挖填（路堤、路堑最多差 6 格），可地形是服务器按有路写的：自己开的车按客户端的高度摆，
+  --   路堤上整车矮下去半截、陷在看得见的路面里（位置再报给服务器，别人看着也陷着）。服务器开服时什么都在，等不着
+  if not mod and script and script.Parent and script.Parent.WaitForChild then
+    mod = script.Parent:WaitForChild("MapRoads", 60)
+    if not mod then warn("[地图] 等了 60 秒还没有 ReplicatedStorage.MapRoads：这边的地面高度没有路，车会和地形对不上（脚本没换全？）") end
+  end
   if mod then ok, data = pcall(require, mod) end
   if ok and type(data) == "table" then
     for _, r in ipairs(data) do
@@ -12618,7 +12627,7 @@ game:BindToClose(function()
   if G.saveAll then G.saveAll() end
 end)
 
-print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
+print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(Config.Build) .. "）服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
       <Item class="ModuleScript" referent="100">
@@ -33863,6 +33872,7 @@ function Drive.init(G)
     -- 两栖车：浮着时车底在吃水线（海面下大半个车体）；水浅到履带碰着海底，就踩着海底往上爬（车底取海底和吃水线高的那个），
     --   不会在水深 1.5 格那一下从吃水线弹到海面上
     local draft = d.amphib and d.hullH * 0.55 or nil
+    -- 公式的高度；真地形和公式差多少由下面的 terrainLift（B 的，平滑过）整车补上——这里再照真地形量就补了两遍（E 11-24 合并时去掉）
     local function gh(p)
       if draft then return math.max(Map.height(p.X, p.Z), -draft) end
       return Map.ground(p.X, p.Z)
@@ -56989,7 +56999,7 @@ function Menu.init(G)
     local _ = team
     gTitle.Text = T("game.title")
     gSub.Text = T("menu.beta")
-    gVer.Text = tostring(Config.Version or "")
+    gVer.Text = tostring(Config.Version or "") .. ((Config.Build and Config.Build ~= "dev") and ("  ·  " .. Config.Build) or "")
   end
   -- 部署界面右上角「菜单」
   function G.showMenu()
