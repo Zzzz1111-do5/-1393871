@@ -22,6 +22,7 @@ TM.SPEC = {
   ztz96 = { t = 43, hp = 1000, vmax = 70, ammo = 42, ready = 22 },
   m1a2 = { t = 63, hp = 1500, vmax = 67, ammo = 42, ready = 36 },
   m1a1 = { t = 57, hp = 1500, vmax = 67, ammo = 40, ready = 34 },
+  t90m = { t = 46.5, hp = 1130, vmax = 60, ammo = 43, ready = 22 },   -- T-90M：46.5 吨、V-92S2F 1130 马力、60 km/h、43 发（自动装弹机 22 发）
 }
 
 ---------------------------------------------------------------- 爆反型号
@@ -112,6 +113,8 @@ TM.FOR = {
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   ztz96 = { era = { "fy2", "fy4" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
+  t90m = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+    eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   m1a2 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock", "gau8" } },
   m1a1 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
@@ -138,6 +141,12 @@ TM.PRESETS = {
     { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { eng = "plow", belly = "belly" } },
+  },
+  t90m = {   -- 出厂就是「化石」重型爆反四个区全贴；城市型加车尾、侧面后段的栅栏和防地雷底板（叙利亚、乌克兰战场的样子）
+    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
+    { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", ew = "lws" } },
+    { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", ew = "lws", slat = "slat", belly = "belly" } },
+    { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", eng = "plow", belly = "belly" } },
   },
   m1a2 = {
     { id = "factory", z = { "sk" }, set = { era = "arat", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },

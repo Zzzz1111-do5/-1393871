@@ -18,6 +18,8 @@ OUT = os.path.join(ROOT, 'src', 'ReplicatedStorage', 'EraMeta.lua')
 SPEC = {
     # 用户 11-19：这些坦克都自带爆反（包括 99A）——四个区都用模型自带的，游戏里平时不另画砖
     'ztz99a2': {'kind': 'fy4', 'zones': ['tfront', 'troof', 'tside', 'glacis', 'skirt'], 'own': ['ts', 'gl', 'sk'], 'brick': (1.25, 0.78, 0.3), 'skirt': (1.9, 1.15, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},   # 99A 炮塔正面原模型没有：贴（用户 11-19）
+    # T-90M（用户 11-24 找的俄系）：炮塔正面、侧面、首上、侧裙板都是「化石」重型爆反，原模型上就有——四个区都用模型自带的
+    't90m': {'kind': 'fy4', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.8, 1.1, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     'ztz96': {'kind': 'fy2', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.9, 1.15, 0.32), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     # 15 式轻坦 11-19 删掉了（用户：建模非常粗糙）
     # M1A2 SEPv2、M1A1 这两个模型侧裙板本来就挂着 ARAT 爆反块（TUSK）：own = 用模型自带的，游戏里平时不另画砖，炸掉了才补焦黑的空位

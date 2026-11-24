@@ -45,7 +45,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
   -- M1A1 / M1A2：M1A1 原模型自带的炮塔内饰（InteriorAbrams.lua：没导入拆好的 m1a1i 就照旧零件拼的）；M10 布克借零件拼的 M1A2（四人、手动装填）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a" }
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a", t90m = "ztz99a" }
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -1037,7 +1037,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       c.ammoKind = kind
       -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
       local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
-      if G.driveAmmo and BAL.PANEL[kind] then G.driveAmmo(BAL.PANEL[kind]) end
+      local st = G.drive
+      local wid = st and st.d and st.d.weapons and st.d.weapons[st.wi or 1]
+      local key = BAL.panelAmmo and BAL.panelAmmo(kind, wid) or BAL.PANEL[kind]   -- 这门炮没有这种就挑同一类的（T-90M 借 99A 的面板）
+      if G.driveAmmo and key then G.driveAmmo(key) end
     end
     function A.citvFov(f) c.citvFov = f end
     function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）

@@ -12,6 +12,8 @@ local V = Vector3.new
 VehDefs.W = {
   gun125 = { kind = "shell", dmg = 640, speed = 4872, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 30, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  gun125r = { kind = "shell", dmg = 640, speed = 4648, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 30, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   gun120 = { kind = "shell", dmg = 640, speed = 4354, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 30, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   gun105 = { kind = "shell", dmg = 480, speed = 4214, drop = 0.14, splash = 6, rate = 5.0, mag = 1, reload = 0, reserve = 36, range = 2600,
@@ -70,6 +72,16 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   sight = V(-1.7, 2.0, -2.2), cupola = V(1.6, 2.2, 0.4),
   smoke = { banks = { { at = V(3.1, 1.4, -1.2), yaw = 40 }, { at = V(-3.1, 1.4, -1.2), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
+-- T-90M「突破-3」（用户 11-24「没事干了就去找俄系」）：46.5 吨、V-92S2F 1130 马力、公路 60 公里 / 时；2A46M-5 125 毫米滑膛炮、转盘式自动装弹机（22 发）；
+--   三人车组：炮长左、车长右（同 99A）；炮塔正面、侧面、首上、侧裙板都是「化石」（Relikt）重型爆反；原模型 mansoorsajidp（带车内）
+D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 32, accel = 9, turn = 36,
+  rw = { n = 6, r = 1.14, x = 3.93, z0 = -6.7, z1 = 5.4 }, era = true, skirt = true,
+  turret = { pivot = V(0, 4.3, 0.34), size = V(7.0, 2.0, 7.4), style = "round", trav = 40, elev = { -6, 14 }, bustle = 1.6 },
+  gun = { pivot = V(0, 1.28, -2.31), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.0),
+  sight = V(-1.8, 2.0, -2.0), cupola = V(1.6, 2.1, 0.4),
+  smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
+  sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },   -- 「松树-U」炮长瞄准镜：昼光 4 / 12 倍，热像（Catherine-FC）宽 3.7、窄 12 倍
+  weapons = { "gun125r", "coax" } })
 D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },

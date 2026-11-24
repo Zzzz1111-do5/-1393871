@@ -183,7 +183,7 @@ Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {
-    tank = { "ztz96", "ztz99a" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
+    tank = { "ztz96", "ztz99a", "t90m" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
     apc = { "ztd05", "zbd05", "zsl92b", "ptl02" },
     aa = { "pgz07", "pgl625", "ld2000" },
     arty = { "plz07" },
@@ -227,7 +227,7 @@ Config.Economy = {
   perScore = 0.1, win = 200, lose = 60,
   veh = {
     -- 坦克
-    ztz96 = 0, m10 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000,
+    ztz96 = 0, m10 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000, t90m = 2800,
     -- 装甲车
     ztd05 = 0, m1117 = 0, hmmwv = 0, zsl92b = 600, jltv = 600, zbd05 = 900, stryker = 1000, ptl02 = 1200, m2a3 = 1200, m1150 = 1500,
     -- 防空
@@ -265,7 +265,7 @@ function Config.AttPrice(lv)
 end
 Config.VehicleMod = {
   m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
-  ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 },
+  ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 }, t90m = { hp = 1.05, gun = 1.05 },
   zbd05 = { amphib = true }, ztd05 = { amphib = true, gun = 1.6 }, hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
   m1150 = { hp = 1.4, speed = 0.8 }, m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
   z20 = { transport = true }, uh60 = { transport = true }, ch47 = { transport = true, hp = 1.3 },
