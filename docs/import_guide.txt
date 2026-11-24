@@ -23,7 +23,15 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
-  （11 月 24 日 A、B、D 三个 AI 会话各自编号：A 第一～六包、B 第二～三包、D 第四包，新的在上面）
+  （11 月 24 日 A、B、D 三个 AI 会话各自编号：A 第一～七包、B 第二～三包、D 第四包，新的在上面）
+  11 月 24 日 A 第七包（海岛图长 Roblox 的草；合并 D 的修开镜色斑）：换游戏文件 RobloxTotalBattlefield.rbxlx（推荐，草的开关在里面）；模型都不用重导：
+    - 用户发截图：「这个 roblox 的这种草你给海岛地图加上吧」——海岛图的大片草地长 Roblox 会动的草叶（草长调到最长，跟截图一样）；
+      坦克、小人的下半截会被草挡住一点（截图里也是这样）。沙漠、沙海图不长
+    - 草叶的开关和草长脚本改不了，写在新游戏文件里的 Terrain 上。只换脚本（ScriptsUpdate.rbxmx）的话要自己在 Studio 里设：
+      资源管理器 Workspace → Terrain → 属性里勾上 Decoration、GrassLength 填 1（嫌高就填小一点，0.1～1）
+    - 载具召唤卡片上 T-90M、BMP-3、铠甲-S1 也有侧影图标了
+    - D 修的开镜色斑（坦克退镜后外模型块露在车里、步枪瞄准镜在沙漠图上的绿斑）、无限金币、F-16C / 歼-8II 都在这个游戏文件里（见下面 D 第四包）
+
   11 月 24 日 A 第六包（俄系第三辆：铠甲-S1 弹炮合一防空车）：换游戏文件（或者「三、只换脚本」）；再导入一个新文件 veh/pantsir.glb：
     - 攻方防空车多了铠甲-S1（2600 金币，两边都能开）：KamAZ 8×8 底盘，后部战斗模块——两门 2A38M 双管 30 毫米高炮（一秒三十多发，打飞机很猛）
       + 12 枚 57E6 地空导弹；顶上的搜索雷达一直转，8 个轮子各自有弹簧、前两排转向

@@ -35,6 +35,7 @@ print("① 开服量网格器（假装的网格器：" .. MODEL .. "）")
 local CAL = W.terrainCal and W.terrainCal() or {}
 local LG = CAL.LeafyGrass
 check(LG ~= nil and CAL.Sand ~= nil, "草地（LeafyGrass）、沙地都量了")
+if Map.GRASS then check(CAL.Grass ~= nil, "海岛图草地写 Grass（长草叶）：Grass 也量了") end
 if LG then
   local worst, line = 0, {}
   for a = 1, #LG.o do

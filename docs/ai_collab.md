@@ -30,6 +30,9 @@
     服务器 Armor.lua fire 的 sam 分支按 Air.lua 导出的 `G.airGuideMissile` 飞，飞行参数 / 外形在 AirDefs.W.s57e6（kind sam：热诱弹不骗），车上弹药在 VehDefs.W.s57e6。
     以后加道尔-M2 之类直接用 kind = "sam"。blveh.py：split 加 label（拆出来单独成块、组不变；铠甲的搜索雷达 k = radar，VehModels 打 Radar 属性让它转）；
     装箱改成按原块装（原来全合成一块再按连通块拆，零件多的车 Blender 要跑十几分钟）
+  - 海岛图长草（用户 11-24 发截图要 Roblox 的草）：Map.GRASS = true 的图 writeChunk 照写 Grass（长草叶），校准也量 Grass；
+    Terrain.Decoration / GrassLength 脚本改不了，tools/build.luau 在地点文件里建 Terrain 写好（Decoration 开、GrassLength 1）。
+    veh.lua / scenery.lua / terrcal.lua 跟着改；**谁要改地形材质注意：海岛草地现在是 Grass，不是 LeafyGrass**
   - PvE 关卡 8 → 16 关（Config.Pve 每关加 ai 编成：def / atk 的 max、tank、ids；AIVeh.lua 照它挑车），每关简报 pve.b<n>，关卡页可滚动；测试 tools/mock/pve_ai.lua
   - blveh.py 修了：算转轴前没刷新视图层，matrix_world 是旧的（以前没给 tur 的车，炮塔转轴都算错了）；拆出来的块照原块减面
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）

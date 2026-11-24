@@ -7,6 +7,9 @@
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
 local Map = {}
 Map.NAME = "island"
+-- 地形长 Roblox 会动的草叶（用户 11-24 发了截图：「这个 roblox 的这种草你给海岛地图加上吧」）：World.lua 写地形时草地照写 Grass（草叶只长在 Grass 上）；
+--   草叶开关 Terrain.Decoration、草长 GrassLength 脚本改不了，写在地点文件的 Terrain 上（tools/build.luau）
+Map.GRASS = true
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 
@@ -483,7 +486,7 @@ function Map.material(x, z, y, slope)
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
   -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
-  --   写地形时 Grass 都换成 LeafyGrass（World.lua 的 writeChunk；用户 11-21：会动的草叶把车、人的下半截盖住，脚本又关不掉草叶）
+  --   Grass 上长 Roblox 会动的草叶（Map.GRASS，用户 11-24 要回来的；11-21 时嫌草叶盖住车、人的下半截，写地形时换成过 LeafyGrass）
   return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 

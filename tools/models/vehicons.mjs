@@ -24,6 +24,7 @@ const GLB = {
   ztz96: 'ztz96', ztz99a: 'ztz99a2', m1a1: 'm1a1', m1a2: 'm1a2dc', zbd05: 'zbd97', zsl92b: 'lav25', ptl02: 'ptl02', pgl625: 't625',
   plz07: 'pzh2000', m1117: 'matv', hmmwv: 'hmmwv', jltv: 'jltv', m2a3: 'm2a3', stryker: 'stryker', mshorad: 'stryker', m1150: 'm1150',
   m163: 'm163', cram: 'cram', patriot: 'patriot', m109a7: 'm109', m270: 'm270',
+  t90m: 't90m', bmp3: 'bmp3', pantsir: 'pantsir',   // 俄系（用户 11-24）：blveh.py 转的原模型
 };
 // 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
 const AIR = {
