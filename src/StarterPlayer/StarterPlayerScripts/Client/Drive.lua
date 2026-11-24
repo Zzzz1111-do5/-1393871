@@ -1179,17 +1179,23 @@ function Drive.init(G)
     st.zoom = i and math.clamp(i, 1, #ZOOMS) or (st.zoom % #ZOOMS + 1)
   end
   G.driveZooms = function() syncZooms() return ZOOMS, st and st.zoom end
+  G.driveWeapon = function(i)   -- 武器选择（布雷德利：25 毫米炮 / 并列机枪）
+    if st and st.d.weapons[i] then st.wi = i end
+  end
   G.driveApplySight = function() if st then syncZooms() applyMode() end end
 
   local function tryFire()
     local wid = weaponId()
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
+    if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
     local t = os.clock()
     if t < (st.next[wid] or 0) then return end
     local ammo = G.S and G.S.veh and G.S.veh.ammo and G.S.veh.ammo[wid]
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
-    st.next[wid] = t + w.rate
+    -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
+    local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
+    st.next[wid] = t + w.rate * rofK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
@@ -1496,7 +1502,7 @@ function Drive.init(G)
     end
     -- 连发
     local w = VD.W[weaponId() or ""]
-    if st.firing and w and w.rate < 0.5 then tryFire() end
+    if st.firing and w and w.rate < 0.5 and not (st.rof == "SS" and w.kind == "shell") then tryFire() end   -- 单发：按住不连发
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then

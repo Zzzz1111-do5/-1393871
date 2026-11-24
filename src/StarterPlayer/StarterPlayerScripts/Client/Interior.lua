@@ -1002,6 +1002,17 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
       if G.sfx then pcall(G.sfx, "uiClick") end
     end
+    -- 布雷德利炮长面板：射速（高速 / 低速 / 单发）、武器总开关（保险 / 待发）、武器选择（25 毫米炮 / 并列机枪）
+    local ROF = { "HI", "LO", "SS" }
+    function A.rof(i)
+      local st = G.drive
+      if st then st.rof = ROF[(i or 0) + 1] or "HI" end
+    end
+    function A.armGun(i)
+      local st = G.drive
+      if st then st.safe = (i == 1) end
+    end
+    function A.weapon(i) if G.driveWeapon then G.driveWeapon((i or 0) + 1) end end
     -- 可动部件的档位跟着系统状态（Interior 的 stepMovs 每帧问一次）
     function A.sync()
       local st = G.drive
@@ -1014,7 +1025,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       local zi = st.zoom or 1
       return { pol = ((st.mode == 4) or (st.mode ~= 3 and st.pol == "BLK")) and 1 or 0, zoom = zi - 1, vis = ((st.mode or 1) >= 3) and 1 or 0,
         ammo = ai, lrf = (f.lrf == "FIRST") and 1 or 0, fcs = (f.mode or 1) - 1, stab = (st.stab == false) and 1 or 0,
-        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0 }
+        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0,
+        rof = (st.rof == "LO") and 1 or ((st.rof == "SS") and 2 or 0), armg = st.safe and 1 or 0, wpn = (st.wi or 1) - 1 }
     end
     function A.engine(on)
       G.interiorEngineOff = not on

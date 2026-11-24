@@ -199,10 +199,15 @@ return function(Defs, Hp)
       local gEye = V(gx, math.min(TH - 0.16, 0.42), -0.20)
       local cEye = V(cxp, math.min(TH - 0.10, 0.52), 0.05)
       if big then gEye, cEye = V(gs * 0.55, math.min(TH - 0.20, 0.50), -0.55), V(-gs * 0.58, math.min(TH - 0.12, 0.62), -0.40) end
+      -- M2A3 布雷德利（用户 11-24「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」）：炮长目镜、目镜旁的面板、双握把、座椅，车长延伸目镜、两块屏、握把、座椅
+      --   用 M1A1 原模型的件（InteriorAbrams 的 Defs.donorIfv）；没导入拆好的 m1a1i 照旧零件拼
+      local dn = L.donor and Defs.donorIfv and Defs.donorIfv(b, ctx, { gs = gs, gx = gx, gEye = gEye, cxp = cxp, cEye = cEye, TH = TH, tw = tw }) or nil
       -- 炮长：瞄准镜目镜（护额垫 + 橡胶眼罩）、炮长显示器、双握把
-      bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
-      bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
-      for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      if not dn then
+        bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
+        bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
+        for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      end
       -- 屏幕别放到炮尾和黄色防护栏里边、别穿出炮塔壁（用户 11-22：「坦克内部屏幕会被挡住」，tools/mock/interior_occ.lua 查出来的）：
       --   自行火炮（大口径）的防护栏离炮轴快半米，原来炮长、车长那两块屏在栏里边，隔着栏杆看——挪到人这边；窄炮塔（M-SHORAD、ZSL-92B）
       --   车长的地图屏跑到炮塔壁外面去了——收在壁里面
@@ -211,10 +216,12 @@ return function(Defs, Hp)
       local function inX(x) return math.clamp(x, -wallIn, wallIn) end
       local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
       b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
-      b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
-      bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
-      for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
-      b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then
+        b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
+        bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
+        for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
+        b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       -- 车长：观察镜一圈、显示器、握把
       for i = 0, 5 do
         local a = (i - 2.5) * rad(40)
@@ -225,24 +232,26 @@ return function(Defs, Hp)
       -- 车长的热像屏：自行火炮挪到防护栏外边；自行高炮挪到车长外侧（原来正好挡在下面那块雷达屏前面）
       local cvx = cxp + gs * 0.10
       if big then cvx = -gs * math.max(0.32, railX + 0.14) elseif tur == "spaag" then cvx = cxp - gs * 0.12 end
-      b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
-      local mpage = cn and "cnmap" or "cid"
-      b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
-      b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
-      bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
-      b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then
+        b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
+        local mpage = cn and "cnmap" or "cid"
+        b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+        b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
+        bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
+        b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       b:radio(T, 0.24, 0.18, 0.20, CF(-gs * (tw - 0.14), 0.22, tl - 0.15) * ANG(0, PI, 0), OD)
       -- 车长、炮长的舱盖（从里面看）
       b:cylY(T, 0.04, 0.54, CF(cxp, TH + 0.01, cEye.Z), WALL, MAT.SmoothPlastic)
       b:light(T, CF(0, TH - 0.10, 0.10), "dome", RGB(255, 240, 220), 2.4, 0.7)
       b:light(T, CF(0, 0.10, -0.40), "flash", RGB(255, 170, 80), 4, 0)
-      stations.gunner = { g = T, eye = gEye + V(0, 0.04, 0.14), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.gunner = { g = T, eye = dn and (dn.gScope + V(0, 0.06, 0.26)) or (gEye + V(0, 0.04, 0.14)), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
+        scope = dn and dn.gScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = { kind = "gps" }, alt = (L.opt and L.opt.gunnerAlt) or nil } }
-      stations.commander = { g = T, eye = cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.commander = { g = T, eye = dn and (dn.cScope + V(0, 0.05, 0.24)) or cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
+        scope = dn and dn.cScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = (L.opt and L.opt.commander) or { kind = "citv", name = cn and "车长周视热像仪" or "CIV", g = T, pos = V(cxp, TH + 0.35, cEye.Z - 0.20),
-          dir = "citv", fovs = { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
+          dir = "citv", fovs = dn and { 23.3, 11.7, 5.4, 2.8, 1.4 } or { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
           alt = { kind = "gps" } } }
       crew.gunner = { dress = dress, g = T, eye = gEye, lean = -18, yaw = 0, look = V(0, -0.12, -1),
         hands = { l = { "gch", V(-0.15, 0.08, 0) }, r = { "gch", V(0.15, 0.08, 0) } },
@@ -676,7 +685,7 @@ return function(Defs, Hp)
     if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
     return Defs.cab(b, ctx, o)
   end end
-  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
+  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
   Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })

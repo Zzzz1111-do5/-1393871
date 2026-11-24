@@ -11312,6 +11312,7 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
   gun = { pivot = V(0, 0.7, -2.4), len = 6.5, cal = 0.24 }, coax = V(0.9, 0.7, -2.5),
   sight = V(-1.5, 1.7, -1.8),
+  sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
   weapons = { "ac30", "coax" }, seats = 6 })
 D.m1150 = tracked({ cat = "apc", L = 24, W = 10.2, H = 6.6, hullH = 4.4, clear = 1.4, speed = 32, accel = 9, turn = 34, plow = true,
@@ -33743,17 +33744,23 @@ function Drive.init(G)
     st.zoom = i and math.clamp(i, 1, #ZOOMS) or (st.zoom % #ZOOMS + 1)
   end
   G.driveZooms = function() syncZooms() return ZOOMS, st and st.zoom end
+  G.driveWeapon = function(i)   -- 武器选择（布雷德利：25 毫米炮 / 并列机枪）
+    if st and st.d.weapons[i] then st.wi = i end
+  end
   G.driveApplySight = function() if st then syncZooms() applyMode() end end
 
   local function tryFire()
     local wid = weaponId()
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
+    if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
     local t = os.clock()
     if t < (st.next[wid] or 0) then return end
     local ammo = G.S and G.S.veh and G.S.veh.ammo and G.S.veh.ammo[wid]
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
-    st.next[wid] = t + w.rate
+    -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
+    local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
+    st.next[wid] = t + w.rate * rofK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
@@ -34060,7 +34067,7 @@ function Drive.init(G)
     end
     -- 连发
     local w = VD.W[weaponId() or ""]
-    if st.firing and w and w.rate < 0.5 then tryFire() end
+    if st.firing and w and w.rate < 0.5 and not (st.rof == "SS" and w.kind == "shell") then tryFire() end   -- 单发：按住不连发
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then
@@ -44592,6 +44599,17 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
       if G.sfx then pcall(G.sfx, "uiClick") end
     end
+    -- 布雷德利炮长面板：射速（高速 / 低速 / 单发）、武器总开关（保险 / 待发）、武器选择（25 毫米炮 / 并列机枪）
+    local ROF = { "HI", "LO", "SS" }
+    function A.rof(i)
+      local st = G.drive
+      if st then st.rof = ROF[(i or 0) + 1] or "HI" end
+    end
+    function A.armGun(i)
+      local st = G.drive
+      if st then st.safe = (i == 1) end
+    end
+    function A.weapon(i) if G.driveWeapon then G.driveWeapon((i or 0) + 1) end end
     -- 可动部件的档位跟着系统状态（Interior 的 stepMovs 每帧问一次）
     function A.sync()
       local st = G.drive
@@ -44604,7 +44622,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       local zi = st.zoom or 1
       return { pol = ((st.mode == 4) or (st.mode ~= 3 and st.pol == "BLK")) and 1 or 0, zoom = zi - 1, vis = ((st.mode or 1) >= 3) and 1 or 0,
         ammo = ai, lrf = (f.lrf == "FIRST") and 1 or 0, fcs = (f.mode or 1) - 1, stab = (st.stab == false) and 1 or 0,
-        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0 }
+        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0,
+        rof = (st.rof == "LO") and 1 or ((st.rof == "SS") and 2 or 0), armg = st.safe and 1 or 0, wpn = (st.wi or 1) - 1 }
     end
     function A.engine(on)
       G.interiorEngineOff = not on
@@ -46571,10 +46590,15 @@ return function(Defs, Hp)
       local gEye = V(gx, math.min(TH - 0.16, 0.42), -0.20)
       local cEye = V(cxp, math.min(TH - 0.10, 0.52), 0.05)
       if big then gEye, cEye = V(gs * 0.55, math.min(TH - 0.20, 0.50), -0.55), V(-gs * 0.58, math.min(TH - 0.12, 0.62), -0.40) end
+      -- M2A3 布雷德利（用户 11-24「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」）：炮长目镜、目镜旁的面板、双握把、座椅，车长延伸目镜、两块屏、握把、座椅
+      --   用 M1A1 原模型的件（InteriorAbrams 的 Defs.donorIfv）；没导入拆好的 m1a1i 照旧零件拼
+      local dn = L.donor and Defs.donorIfv and Defs.donorIfv(b, ctx, { gs = gs, gx = gx, gEye = gEye, cxp = cxp, cEye = cEye, TH = TH, tw = tw }) or nil
       -- 炮长：瞄准镜目镜（护额垫 + 橡胶眼罩）、炮长显示器、双握把
-      bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
-      bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
-      for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      if not dn then
+        bx(T, 0.18, 0.20, 0.32, gx, gEye.Y + 0.02, gEye.Z - 0.30, RGB(40, 42, 40))
+        bx(T, 0.16, 0.05, 0.05, gx, gEye.Y + 0.09, gEye.Z - 0.13, C.rubber, MAT.Fabric)
+        for _, s in ipairs({ -1, 1 }) do b:cylZ(T, 0.05, 0.045, CF(gx + s * 0.032, gEye.Y, gEye.Z - 0.135), C.rubber, MAT.Fabric) end
+      end
       -- 屏幕别放到炮尾和黄色防护栏里边、别穿出炮塔壁（用户 11-22：「坦克内部屏幕会被挡住」，tools/mock/interior_occ.lua 查出来的）：
       --   自行火炮（大口径）的防护栏离炮轴快半米，原来炮长、车长那两块屏在栏里边，隔着栏杆看——挪到人这边；窄炮塔（M-SHORAD、ZSL-92B）
       --   车长的地图屏跑到炮塔壁外面去了——收在壁里面
@@ -46583,10 +46607,12 @@ return function(Defs, Hp)
       local function inX(x) return math.clamp(x, -wallIn, wallIn) end
       local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
       b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
-      b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
-      bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
-      for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
-      b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then
+        b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
+        bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
+        for _, s in ipairs({ -1, 1 }) do bx("gch", 0.04, 0.12, 0.05, s * 0.15, 0.05, 0, C.rubber, MAT.Fabric) end
+        b:seat(T, CF(gx, gEye.Y - 0.80, gEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.42, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       -- 车长：观察镜一圈、显示器、握把
       for i = 0, 5 do
         local a = (i - 2.5) * rad(40)
@@ -46597,24 +46623,26 @@ return function(Defs, Hp)
       -- 车长的热像屏：自行火炮挪到防护栏外边；自行高炮挪到车长外侧（原来正好挡在下面那块雷达屏前面）
       local cvx = cxp + gs * 0.10
       if big then cvx = -gs * math.max(0.32, railX + 0.14) elseif tur == "spaag" then cvx = cxp - gs * 0.12 end
-      b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
-      local mpage = cn and "cnmap" or "cid"
-      b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
-      b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
-      bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
-      b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      if not dn then
+        b:screen(T, 0.18, 0.13, look(V(inX(cvx), cEye.Y - 0.22, cEye.Z - 0.36), cEye), cpage, { keys = KEY[cpage], lightK = 0.28 })
+        local mpage = cn and "cnmap" or "cid"
+        b:screen(T, 0.20, 0.15, look(V(inX(cxp - gs * 0.30), cEye.Y - 0.28, cEye.Z - 0.12), cEye), mpage, { keys = KEY[mpage], lightColor = RGB(150, 190, 230), lightK = 0.3 })
+        b:group("cch", T, CF(cxp, cEye.Y - 0.44, cEye.Z - 0.30))
+        bx("cch", 0.06, 0.12, 0.06, 0, 0.05, 0, C.black)
+        b:seat(T, CF(cxp, cEye.Y - 0.80, cEye.Z + 0.12), { w = 0.40, d = 0.36, back = 0.40, recline = 8, col = RGB(52, 50, 44), post = 0.30 })
+      end
       b:radio(T, 0.24, 0.18, 0.20, CF(-gs * (tw - 0.14), 0.22, tl - 0.15) * ANG(0, PI, 0), OD)
       -- 车长、炮长的舱盖（从里面看）
       b:cylY(T, 0.04, 0.54, CF(cxp, TH + 0.01, cEye.Z), WALL, MAT.SmoothPlastic)
       b:light(T, CF(0, TH - 0.10, 0.10), "dome", RGB(255, 240, 220), 2.4, 0.7)
       b:light(T, CF(0, 0.10, -0.40), "flash", RGB(255, 170, 80), 4, 0)
-      stations.gunner = { g = T, eye = gEye + V(0, 0.04, 0.14), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.gunner = { g = T, eye = dn and (dn.gScope + V(0, 0.06, 0.26)) or (gEye + V(0, 0.04, 0.14)), look = V(0, -0.15, -1), yaw = 110, up = 45, down = 60, crew = "gunner", sight = true,
+        scope = dn and dn.gScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = { kind = "gps" }, alt = (L.opt and L.opt.gunnerAlt) or nil } }
-      stations.commander = { g = T, eye = cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
-        scope = V(gx, gEye.Y, gEye.Z - 0.14),
+      stations.commander = { g = T, eye = dn and (dn.cScope + V(0, 0.05, 0.24)) or cEye, look = V(0, -0.25, -1), yaw = 160, up = 70, down = 70, crew = "commander",
+        scope = dn and dn.cScope or V(gx, gEye.Y, gEye.Z - 0.14),
         optics = { primary = (L.opt and L.opt.commander) or { kind = "citv", name = cn and "车长周视热像仪" or "CIV", g = T, pos = V(cxp, TH + 0.35, cEye.Z - 0.20),
-          dir = "citv", fovs = { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
+          dir = "citv", fovs = dn and { 23.3, 11.7, 5.4, 2.8, 1.4 } or { 20, 6 }, ret = cn and "pano" or "citv", look = "whot", shape = cn and "circle" or "rect" },
           alt = { kind = "gps" } } }
       crew.gunner = { dress = dress, g = T, eye = gEye, lean = -18, yaw = 0, look = V(0, -0.12, -1),
         hands = { l = { "gch", V(-0.15, 0.08, 0) }, r = { "gch", V(0.15, 0.08, 0) } },
@@ -47048,7 +47076,7 @@ return function(Defs, Hp)
     if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
     return Defs.cab(b, ctx, o)
   end end
-  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
+  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
   Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })
@@ -47209,7 +47237,6 @@ local KNOBS = {
 return function(Defs, Hp)
   local procM1A2 = Defs.m1a2
   Defs.m1a2proc = procM1A2
-  local WHITE = RGB(226, 226, 218)
 
   -- 一个能转、能按的东西（盖在原模型的件上）：cf 是件的正面（−Z 朝人），样子按 style；spec 给 Interior 的可动部件（B:mov）
   local function control(b, g, cf, K, zh)
@@ -47436,6 +47463,80 @@ return function(Defs, Hp)
       crew = {},
       abrams = variant,
     }
+  end
+
+  ---------------------------------------------------------------- 布雷德利（M2A3）：借炮长 / 车长位那几件
+  -- 炮塔又小又矮（座圈上面只有半米多净高）、炮长在左、车长在右、中间是 25 毫米炮的炮尾——M1A1 的件挪到对应的乘员位上、缩小，目镜旁的面板转过来贴在左边炮塔壁上；
+  --   旋钮按布雷德利的功能分（炮长的综合瞄准具 IBAS 控制：视野、极性、视场、增益、电平、分划 / 符号亮度；射速 高速 / 低速 / 单发、武器选择 25 毫米炮 / 并列机枪、
+  --   武器总开关、稳定器、分划照明）；车长两块屏是独立热像观察仪 CIV + 战术显示器（同 SEPv2 那套键），握把上指示、CIV 激光测距 + 敌情报告
+  local function byId(id) for _, K in ipairs(KNOBS) do if K.id == id then return K end end end
+  local IFV_PANEL = { byId("RETICLE"), byId("SYMB"), byId("GAIN"), byId("LEVEL"), byId("POL"), byId("FOV"), byId("VIS"),
+    { id = "ROF", c = V(2.252, 5.507, -2.639), dia = 0.040, style = "bar", n = 3, step = 45, on = "rof", sync = "rof",
+      label = { "射速选择", "RATE SELECT" }, pos = { "高速（每分 200 发）", "低速（每分 100 发）", "单发" }, posEn = { "HI 200", "LO 100", "SS" } },
+    { id = "WPN", c = V(2.254, 5.244, -2.612), dia = 0.034, style = "round", n = 2, step = 60, on = "weapon", sync = "wpn",
+      label = { "武器选择", "WEAPON SELECT" }, pos = { "25 毫米炮", "并列机枪" }, posEn = { "25MM", "COAX" } } }
+  local IFV_EYE = { byId("STAB"), byId("RETN"),
+    { id = "ARMG", c = V(1.622, 4.392, -2.639), dia = 0.040, style = "bar", n = 2, step = 60, on = "armGun", sync = "armg",
+      label = { "武器总开关", "ARM / SAFE" }, pos = { "待发", "保险" }, posEn = { "ARM", "SAFE" } } }
+  -- geo：InteriorAFV 步战车炮塔的尺寸和乘员位（米）：gs 炮长在哪边（−1 左）、gx、gEye、cxp、cEye、TH 炮塔净高、tw 炮塔半宽；
+  --   返回 { gScope 炮长目镜, cScope 车长目镜 }（乘员位用），没导入拆好的 m1a1i 返回 nil（照旧零件拼）
+  function Defs.donorIfv(b, ctx, geo)
+    local D = donor("m1a1i")
+    if not D or not D.split then return nil end
+    local T = "turret"
+    local gs = geo.gs or -1
+    local function mapper(from, to, rot, k)
+      rot = rot or CF()
+      return function(p) return to + rot:VectorToWorldSpace((p - from) / S * k) end
+    end
+    local function putM(name, g, X, rot, k, base)
+      local it = D.parts[name]
+      if not it then return end
+      b:mesh(g, it.src, v3(it.p.s) * k / S, CF(X(v3(it.p.c)) - (base or Vector3.zero)) * (rot or CF()))
+    end
+    -- 炮长：目镜对着炮长的眼睛（缩到 0.75：顶上那块高面板不顶出炮塔）
+    local kG = 0.75
+    local gScope = V(geo.gx, geo.TH - 0.23, geo.gEye.Z - 0.14)
+    local XG = mapper(PT.gps, gScope, CF(), kG)
+    putM("Int_GpsEye", T, XG, CF(), kG)
+    putM("Int_GSeat", T, mapper(V(1.46, 2.64, -1.49), V(geo.gx, geo.gEye.Y - 0.80, geo.gEye.Z + 0.10), CF(), 0.8), CF(), 0.8)
+    local hub = XG(PT.hub)
+    b:group("gch", T, CF(hub))
+    putM("Int_Gch", "gch", XG, CF(), kG, hub)
+    b:lens(T, CF(XG(PT.gps + V(0, 0, -0.07))), 0.060 * kG, { face = 1 })
+    knobsBuild(b, T, placer(XG, CF(), kG), IFV_EYE, false)
+    palmButtons(b, function(q) return XG(q) - hub end)
+    -- 目镜旁的控制面板：转 90° 贴在炮长外侧的炮塔壁上，面朝炮长
+    local rotP = ANG(0, (gs < 0) and PI / 2 or -PI / 2, 0)
+    local panC = v3(D.parts.Int_GPanel.p.c)
+    local XP = mapper(panC, V(gs * (geo.tw - 0.10), math.min(0.20, geo.TH - 0.30), geo.gEye.Z - 0.12), rotP, kG)
+    putM("Int_GPanel", T, XP, rotP, kG)
+    knobsBuild(b, T, placer(XP, rotP, kG), IFV_PANEL, false)
+    b:led(T, CF(XP(V(2.680, 4.746, -2.633))), RGB(90, 255, 120), 0.007, "tis")
+    -- 车长：延伸目镜（看炮长综合瞄准具的画面）
+    local kC = 0.8
+    local cScope = V(geo.cxp, geo.TH - 0.20, geo.cEye.Z - 0.14)
+    local XC = mapper(PT.gpse, cScope, CF(), kC)
+    putM("Int_Gpse", T, XC, CF(), kC)
+    b:lens(T, CF(XC(PT.gpse + V(0, 0, -0.06))), 0.055 * kC, { face = 1 })
+    -- 两块屏的机壳：车长右前方（看过去偏右 48°）、比眼睛略低，转过来对着车长——
+    --   延伸目镜就在眼前（左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；外边贴着炮塔壁（壁内面 tw − 0.02）
+    local cE = cScope + V(0, 0.05, 0.24)   -- 车长位的眼睛（InteriorAFV 的 stations.commander.eye）
+    local kD = 0.52
+    local aD, rD = rad(48), 0.34
+    local lim = geo.tw - 0.19
+    local dc = V(math.clamp(cE.X - gs * rD * math.sin(aD), -lim, lim), cE.Y - 0.05, cE.Z - rD * math.cos(aD))
+    local rotD = ANG(0, math.atan2(cE.X - dc.X, cE.Z - dc.Z), 0)
+    local XD = mapper(v3(D.parts.Int_Cdu.p.c), dc, rotD, kD)
+    putM("Int_Cdu", T, XD, rotD, kD)
+    cduBuild(b, T, placer(XD, rotD, kD), "CIV")
+    -- 车长操纵握把（右手边，机壳底下）、座椅
+    local kH = 0.72
+    local XH = mapper(PT.cch, V(-gs * (geo.tw - 0.20), geo.cEye.Y - 0.48, geo.cEye.Z + 0.02), CF(), kH)
+    putM("Int_Cch", T, XH, CF(), kH)
+    cchButtons(b, T, placer(XH, CF(), kH))
+    putM("Int_CSeat", T, mapper(V(1.46, 4.03, 1.05), V(geo.cxp, geo.cEye.Y - 0.78, geo.cEye.Z + 0.12), CF(), 0.8), CF(), 0.8)
+    return { gScope = gScope, cScope = cScope }
   end
 
   Defs.m1a1 = function(b, ctx) return abrams(b, ctx, "a1") or procM1A2(b, ctx) end

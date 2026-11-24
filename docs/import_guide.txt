@@ -23,7 +23,7 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
-  11 月 24 日第二包（M1A1 的炮塔内饰搬进 M1A2 SEPv2、车里的按钮旋钮都能用）：换游戏文件（或者「三、只换脚本」）；再重导 veh/m1a1i.glb 一个文件：
+  11 月 24 日第二包（M1A1 的炮塔内饰搬进 M1A2 SEPv2 和 M2A3 布雷德利、车里的按钮旋钮都能用）：换游戏文件（或者「三、只换脚本」）；再重导 veh/m1a1i.glb 一个文件：
     - 用户：「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」「m1a2sepv2……应该和目前 a1 大差不差，按钮什么的实现功能，实现现实中那几块屏幕所有的功能」
     - m1a1i.glb 里炮塔内饰原来是一整块（V_m1a1i__Int_2），现在拆成 15 块（V_m1a1i__Int_Shell、Int_Breech、Int_GpsEye……）：
       M1A1、M1A2 都用它；炮尾开炮会后坐、炮长双握把跟着炮塔转动摆、摇架跟着炮俯仰。没重导的照旧用零件拼的内饰
@@ -40,6 +40,10 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
       打炮炮管会热弯、炮弹慢慢打低，按炮口基准更新就修正回来；手动方式没有超高角；稳定器关了瞄准线跟着车身晃
     - M1A2 车长那两块屏：上面独立热像仪 CITV、下面战术显示器（蓝军跟踪地图、消息、本车状态），键在两屏之间和右边；
       车长握把上的按钮：指示（炮塔转过去）、热像仪激光测距 + 敌情报告（看得见的敌人标给全队 20 秒）
+    - M2A3 布雷德利借 M1A1 的炮长目镜、目镜旁的控制面板（转过来贴在炮长左手的炮塔壁上）、双握把、车长延伸目镜、车长两块屏的机壳
+      （上面独立热像观察仪 CIV、下面战术显示器，放在延伸目镜右边、不挡）、车长握把、两把座椅；M1A1 的炮塔壳、120 炮尾、装填手那边不搬
+      （布雷德利有自己的 25 毫米炮）。炮长面板多了射速（高速 / 低速 / 单发：单发扳一下打一发）、武器选择（25 毫米炮 / 并列机枪）、
+      武器总开关（保险时扳机打不响）；热像 4 / 12 / 24 倍。没重导 m1a1i 的照旧零件拼
 
   11 月 24 日第一包（M1A1 换成带炮塔内饰的原模型）：换游戏文件（或者「三、只换脚本」）；再导入一个新文件 veh/m1a1i.glb：
     - 用户：「你直接用这 m1」「原模型也换成这个」——Sketchfab 上 Muhamad Mirza Arrafi 的 M1A1（带炮塔内饰），用 Blender 从原文件直接转
