@@ -18,6 +18,9 @@ VehDefs.W = {
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   gun105 = { kind = "shell", dmg = 480, speed = 4214, drop = 0.14, splash = 6, rate = 5.0, mag = 1, reload = 0, reserve = 36, range = 2600,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },
+  -- BMP-3 的 2A70 100 毫米低膛压线膛炮（用户 11-24 找的俄系）：3OF32 杀伤爆破榴弹，初速 250 米 / 秒、弹道很弯，打步兵、工事、轻装甲（炮射导弹 9M117 游戏里没有）
+  gun100 = { kind = "shell", dmg = 330, speed = 700, drop = 0.42, splash = 9, rate = 6.0, mag = 1, reload = 0, reserve = 34, range = 2400,
+    vs = { inf = 1.3, light = 1.1, armor = 0.4, air = 0.3, ship = 0.5, fort = 1.4 }, fx = "tank", cal = 0.3 },
   ac30 = { kind = "shell", dmg = 60, speed = 1150, drop = 0.2, splash = 4, rate = 0.19, mag = 50, reload = 4.5, reserve = 400, range = 2000,
     vs = { inf = 1, light = 1, armor = 0.22, air = 1.4, ship = 0.35, fort = 0.6 }, fx = "ac", cal = 0.2 },
   ac35 = { kind = "shell", dmg = 46, speed = 1300, drop = 0.15, splash = 5, rate = 0.07, mag = 120, reload = 5, reserve = 600, range = 2400,
@@ -116,6 +119,15 @@ D.zbd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.0, hullH = 4.6, clear = 
   sight = V(-1.4, 1.5, -1.8),
   smoke = { banks = { { at = V(2.2, 0.9, -1.6), yaw = 30 }, { at = V(-2.2, 0.9, -1.6), yaw = -30 } }, n = 4 },
   weapons = { "ac30", "coax" }, seats = 6 })
+-- BMP-3 步兵战车（用户 11-24「找俄系」）：18.7 吨、UTD-29 500 马力、公路 70 公里 / 时、能浮渡；炮塔里 2A70 100 毫米炮 + 2A72 30 毫米炮并列，
+--   炮长左、车长右，后面七名载员从车尾两扇门（门上面是发动机）下车；原模型 lampilamp（炮塔顶上加了防无人机网架）
+D.bmp3 = tracked({ cat = "apc", L = 20, W = 9.0, H = 6.8, hullH = 5.0, clear = 1.4, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
+  rw = { n = 6, r = 0.95, x = 3.6, z0 = -5.2, z1 = 6.2 }, skirt = false,
+  turret = { pivot = V(0, 5.04, -0.82), size = V(4.8, 1.6, 5.0), style = "ifv", trav = 60, elev = { -6, 60 } },
+  gun = { pivot = V(0.16, 0.63, -1.49), len = 7.8, cal = 0.28 }, coax = V(0.7, 0.6, -2.0),
+  sight = V(-1.2, 1.3, -1.4),
+  smoke = { banks = { { at = V(2.2, 0.9, -1.4), yaw = 30 }, { at = V(-2.2, 0.9, -1.4), yaw = -30 } }, n = 3 },
+  weapons = { "gun100", "ac30", "coax" }, seats = 7 })
 D.ztd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.2, hullH = 4.6, clear = 1.2, speed = 38, accel = 10, turn = 38, amphib = true, boat = true,
   rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 },
   turret = { pivot = V(0, 4.6, -0.6), size = V(6.0, 2.0, 6.0), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.2 },

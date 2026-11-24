@@ -688,6 +688,7 @@ return function(Defs, Hp)
   Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
+  Defs.bmp3 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.6, gunK = 0.12, gunCal = 0.20, drv = { z = 0.90 } })   -- BMP-3：炮长左车长右、后门下车（用户 11-24 找的俄系）
   Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })
   Defs.ztd05 = afv({ cn = CN, tur = "wedge", gunL = true, eng = 1.7, gunK = 0.30, gunCal = 0.30 })
   Defs.ptl02 = afv({ cn = CN, wheeled = true, tur = "wedge", gunL = true, eng = 1.6, gunK = 0.30, gunCal = 0.30 })

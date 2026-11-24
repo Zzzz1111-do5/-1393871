@@ -207,7 +207,7 @@ add("vcat.heli", "直升机", "Helicopters")
 add("vcat.jet", "固定翼", "Jets")
 add("vcat.ship", "舰艇", "Ships")
 local VEH = {
-  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" },
+  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" }, bmp3 = { "BMP-3 步兵战车", "BMP-3 IFV" },
   m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv2", "M1A2 SEPv2" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
@@ -904,6 +904,7 @@ add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
 add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
 add("vw.gun125", "125 毫米炮", "125 mm gun")
 add("vw.gun125r", "125 毫米炮（2A46M-5）", "125 mm 2A46M-5")
+add("vw.gun100", "100 毫米炮（2A70）", "100 mm 2A70")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")

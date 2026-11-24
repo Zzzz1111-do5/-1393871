@@ -129,6 +129,8 @@ for rule in CFG.get('split', []):
             bm.to_mesh(ob.data)
             bm.free()
         split_group[new.name] = rule['to']
+        if name in CFG.get('decimate', {}):   # 拆出来的块照原来那块的比例减面
+            CFG['decimate'][new.name] = CFG['decimate'][name]
         print('  拆 %s → %s：%d 个面（%d 个零件）' % (name, rule['to'], len(chosen), len(inside)))
 objs = [o for o in bpy.data.objects if o.type == 'MESH']
 
@@ -285,6 +287,9 @@ for (g, mat, lab), lst in sorted(buckets.items()):
         p.data.transform(Matrix.Translation(-c))
         p.location = c
         out_objs.append((p, g, mat, lo, hi, lab))
+
+# 物体挪了原点（location）以后 matrix_world 要等视图层刷新才变：不刷新的话下面按世界坐标算转轴时用的是旧矩阵（顶点都在原点附近）
+bpy.context.view_layer.update()
 
 # 分组结果
 rep = {'parts': {}, 'wheels': {g: {'c': w['c'], 'r': w['r']} for g, w in wheel_info.items()}}
