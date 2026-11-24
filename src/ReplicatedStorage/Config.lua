@@ -96,13 +96,37 @@ for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
 -- 装备栏（用户：开局不选兵种，默认就是一个士兵，部署界面底下改枪械配置）：四格各挑一样，服务器按这张表核对；
 --   上面的「兵种」只剩老的名字（测试、机器人、战况表的标签）还认
 Config.Loadout = {
-  { id = "primary", opts = { "m4", "sniper" } },                       -- 主武器
-  { id = "secondary", opts = { "tablet" }, none = true },             -- 副武器：战术平板（R 币解锁：Config.Passes.tablet；用户：不要按 B 召唤平板，平板做成物品）
+  { id = "primary", opts = { "m4", "qbz191", "lmg", "smg", "shotgun", "sniper" } },   -- 主武器（机枪、冲锋枪、霰弹枪两边各是自己的制式：GearDefs.BY）
+  { id = "secondary", opts = { "pistol", "tablet" }, none = true },   -- 副武器：手枪、战术平板（R 币解锁：Config.Passes.tablet；用户：不要按 B 召唤平板，平板做成物品）
   { id = "launcher", opts = { "rpg", "manpads", "mortar" }, none = true },   -- 发射器（可以不带：跑得快一点）
   { id = "gadget", opts = { "medkit", "repair", "breach", "binoc" } },  -- 装备
   { id = "throw", opts = { "grenade", "c4" } },                        -- 投掷
 }
-Config.LoadoutDefault = { primary = "m4", gadget = "medkit", throw = "grenade" }
+Config.LoadoutDefault = { primary = "m4", secondary = "pistol", gadget = "medkit", throw = "grenade" }
+-- 兵种（用户 11-24：「各种角色配备各种武器」）：部署界面顶上一排，点一个就把装备栏换成这个兵种的一套（之后每格照样能改）；
+--   primary 写 rifle 的按阵营给：攻方（解放军）QBZ-191、守方（美军）M4
+Config.RoleKits = {
+  { id = "rifle", kit = { primary = "rifle", secondary = "pistol", gadget = "medkit", throw = "grenade" } },
+  { id = "mg", kit = { primary = "lmg", secondary = "pistol", gadget = "medkit", throw = "grenade" } },
+  { id = "assault", kit = { primary = "smg", secondary = "pistol", gadget = "breach", throw = "grenade" } },
+  { id = "breacher", kit = { primary = "shotgun", secondary = "pistol", gadget = "breach", throw = "c4" } },
+  { id = "sniper", kit = { primary = "sniper", secondary = "pistol", gadget = "binoc", throw = "grenade" } },
+  { id = "at", kit = { primary = "rifle", secondary = "pistol", launcher = "rpg", gadget = "medkit", throw = "c4" } },
+  { id = "aa", kit = { primary = "rifle", secondary = "pistol", launcher = "manpads", gadget = "medkit", throw = "grenade" } },
+  { id = "medic", kit = { primary = "smg", secondary = "pistol", gadget = "medkit", throw = "grenade" } },
+  { id = "engineer", kit = { primary = "shotgun", secondary = "pistol", gadget = "repair", throw = "c4" } },
+  { id = "mortar", kit = { primary = "rifle", secondary = "pistol", launcher = "mortar", gadget = "binoc", throw = "grenade" } },
+}
+function Config.roleKit(id, team)
+  for _, r in ipairs(Config.RoleKits) do
+    if r.id == id then
+      local k = table.clone(r.kit)
+      if k.primary == "rifle" then k.primary = (team == "atk") and "qbz191" or "m4" end
+      return k
+    end
+  end
+  return nil
+end
 -- 改枪（GunMods.lua，用户 11-20：对标三角洲行动）：killXp 用这把枪打死一个人（真人 / 机器人）加多少枪械经验，
 --   unlockAll 配件全部解锁（不用升级），studioAll 在 Studio 里测试时全部解锁（发布到线上照常按等级）
 -- 11-23 起配件要解锁（升到等级、或者拿金币买，Economy.lua）：Studio 里测试也照样上锁（studioAll 改成 false），想看全部配件改回 true
@@ -146,6 +170,18 @@ Config.Weapons = {
   sniper = { kind = "gun", dmg = 96, rate = 1.35, mag = 5, reload = 3.0, range = 1500, spread = 2.6, adsK = 0.0115, moveK = 1.5,
     vs = { inf = 1, light = 0.25, armor = 0, air = 0.1, ship = 0, fort = 0.05 }, head = 2.2, scope = 5,
     rc = { up = 1.8, side = 0.35, punch = 3.4, roll = 1.2 } },
+  -- 各兵种的枪（用户 11-24：「各种角色配备各种武器」）：两边各用自己的制式（GearDefs.BY：解放军 / 美军的原模型），数值一样（公平）；
+  --   没有瞄准镜的开镜按机械瞄具（照门、准星对正），adsZoom 开镜放大多少；pellets 霰弹一枪几颗弹丸（dmg 是每颗的，spread 是弹丸散开的锥角）
+  qbz191 = { kind = "gun", dmg = 26, rate = 0.08, mag = 30, reload = 2.7, range = 680, spread = 0.52, adsK = 0.34, moveK = 0.82, bloom = { 0.065, 0.55, 2.2, 0.12 },
+    auto = true, vs = G_VS, head = 1.6, rc = { up = 0.32, side = 0.12, punch = 1.0, roll = 0.5 }, fall = { 0.44, 0.72 }, adsZoom = 1.3 },   -- 5.8 毫米，射速每分钟 750 发
+  lmg = { kind = "gun", dmg = 25, rate = 0.075, mag = 100, reload = 6.2, range = 760, spread = 0.95, adsK = 0.42, moveK = 1.7, bloom = { 0.05, 0.85, 1.8, 0.12 },
+    auto = true, vs = G_VS, head = 1.5, rc = { up = 0.24, side = 0.16, punch = 0.8, roll = 0.4 }, fall = { 0.5, 0.75 }, adsZoom = 1.3, adsSpd = 0.7, heavy = true },   -- 弹链 100 发、换弹慢、开镜慢、走着打散、背着走慢一点
+  smg = { kind = "gun", dmg = 19, rate = 0.06, mag = 40, reload = 2.2, range = 320, spread = 0.62, adsK = 0.45, moveK = 0.45, bloom = { 0.05, 0.6, 2.6, 0.12 },
+    auto = true, vs = G_VS, head = 1.5, rc = { up = 0.2, side = 0.1, punch = 0.7, roll = 0.4 }, fall = { 0.3, 0.55 }, adsZoom = 1.25 },   -- 每分钟 1000 发、近距离、跑着打也准
+  shotgun = { kind = "gun", pellets = 9, dmg = 13, rate = 0.32, mag = 7, reload = 3.2, range = 90, spread = 4.5, adsK = 0.8, moveK = 0.3,
+    vs = G_VS, head = 1.25, rc = { up = 1.4, side = 0.4, punch = 2.6, roll = 1.0 }, fall = { 0.2, 0.35 }, adsZoom = 1.2 },   -- 半自动、一枪 9 颗、二十几米外就不行了
+  pistol = { kind = "gun", dmg = 24, rate = 0.14, mag = 15, reload = 1.7, range = 260, spread = 0.7, adsK = 0.45, moveK = 0.5,
+    vs = G_VS, head = 1.6, rc = { up = 0.7, side = 0.18, punch = 1.4, roll = 0.6 }, fall = { 0.35, 0.6 }, adsZoom = 1.2 },   -- 半自动
   rpg = { kind = "proj", dmg = 110, rate = 0.5, mag = 1, reserve = 3, reload = 3.4, range = 700, spread = 0.4, speed = 230, splash = 11, drop = true,
     vs = { inf = 1, light = 5, armor = 5.5, air = 3, ship = 2.5, fort = 4 } },
   manpads = { kind = "lock", dmg = 120, rate = 0.5, mag = 1, reserve = 1, reload = 3.5, range = 1400, speed = 320, splash = 9, lockTime = 1.6,

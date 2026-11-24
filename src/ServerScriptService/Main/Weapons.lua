@@ -44,6 +44,12 @@ function Weapons.init(G)
   local SHAPE = {
     m4 = { L = 2.9, barrel = 1.3, stock = true, mag = 0.95, color = RGB(40, 40, 42), rail = true, acog = true },
     sniper = { L = 4.0, barrel = 2.2, stock = true, scope = true, mag = 0.6, color = RGB(70, 66, 52) },
+    -- 各兵种的枪（用户 11-24）：真模型（models/optics/<键>.glb）没导入时零件拼的样子
+    qbz191 = { L = 2.9, barrel = 1.3, stock = true, mag = 0.95, color = RGB(36, 36, 38), rail = true },
+    lmg = { L = 3.6, barrel = 1.8, stock = true, box = true, color = RGB(44, 46, 44), thick = true },
+    smg = { L = 2.0, barrel = 0.6, stock = true, mag = 0.9, color = RGB(34, 34, 36), small = true },
+    shotgun = { L = 3.3, barrel = 1.7, stock = true, color = RGB(38, 38, 40), thick = true },
+    pistol = { L = 0.9, barrel = 0.35, color = RGB(40, 40, 42), small = true, mag = 0.5 },
     rpg = { tube = 4.6, dia = 0.7, color = OLIVE, warhead = true },
     manpads = { tube = 5.0, dia = 0.6, color = RGB(64, 72, 60), sight = true },
     mortar = { tube = 3.4, dia = 0.75, color = OLIVE, plate = true },
@@ -408,8 +414,24 @@ function Weapons.init(G)
     local dir = aim - origin
     if dir.Magnitude < 0.5 then return end
     if not spend(P, id) then return end
-    dir = spreadDir(dir.Unit, gunSpread(P, id, w, char, mode == "ads"))
+    local aimDir = dir.Unit
+    dir = spreadDir(aimDir, gunSpread(P, id, w, char, mode == "ads"))
     params.FilterDescendantsInstances = { char }
+    -- 霰弹（w.pellets，用户 11-24 加的霰弹枪）：一枪几颗弹丸，各自在锥角 w.spread 里散开、各算各的伤害；第一颗照下面普通的一发走
+    if (w.pellets or 1) > 1 then
+      local s0 = src(P)
+      s0.wid = id
+      for _ = 2, w.pellets do
+        local d2 = spreadDir(aimDir, w.spread * (mode == "ads" and (w.adsK or 1) or 1))
+        local r2 = workspace:Raycast(origin, d2 * w.range, params)
+        local rw2 = G.rewindShot and G.rewindShot(P, origin, d2, w.range, r2)
+        local h2 = (rw2 and rw2.pos) or (r2 and r2.Position) or (origin + d2 * w.range)
+        G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = h2, by = P.pl.UserId, q = w.quiet, t = P.team, h = surfOf(rw2, r2), pel = true })
+        local dmg2 = GM.dmgAt(w, (h2 - origin).Magnitude)
+        if rw2 then G.hitRewound(rw2, w, dmg2, s0, w.head)
+        elseif r2 and r2.Instance then G.hitThing(r2.Instance, w, dmg2, s0, w.head, r2.Position) end
+      end
+    end
     local res = workspace:Raycast(origin, dir * w.range, params)
     -- 按现在的位置没打中人 / 车：按他屏幕上那一刻的位置再判一次（Rewind.lua，延迟补偿）
     local rw = G.rewindShot and G.rewindShot(P, origin, dir, w.range, res)

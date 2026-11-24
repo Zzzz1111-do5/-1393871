@@ -359,6 +359,18 @@ function Play.init(G)
       local mz = handle and handle:FindFirstChild("Muzzle")
       local from = (G.fpsMuzzle and G.fpsMuzzle()) or (mz and mz.WorldPosition)   -- 第一人称时曳光从镜头前那支枪的枪口出去
       if G.gunFx and from then G.gunFx(id, from, p, true, nil, w.quiet) end   -- w.quiet：装了消音器（改枪）
+      if G.gunFx and from and (w.pellets or 1) > 1 then   -- 霰弹：别的弹丸也画几道散开的曳光（服务器各算各的，这里只是看着像）
+        local d0 = p - from
+        local L0 = d0.Magnitude
+        if L0 > 1 then
+          local cf = CFrame.lookAt(from, p)
+          for _ = 2, math.min(w.pellets, 6) do
+            local a1, a2 = math.random() * math.pi * 2, math.rad(w.spread or 4) * math.sqrt(math.random())
+            local dir = (cf * CFrame.Angles(0, 0, a1) * CFrame.Angles(a2, 0, 0)).LookVector
+            G.gunFx(id, from, from + dir * L0, true, nil, w.quiet, true)
+          end
+        end
+      end
       -- 开着镜（镜子已经举到眼前）告诉服务器：散布按开镜算（Config.gunSpread）；镜子还在往上举的那一下按腰射算
       local ads = cur.aiming and not (G.fpsOpticPending and G.fpsOpticPending())
       RShoot:FireServer(id, p, ads and "ads" or nil)

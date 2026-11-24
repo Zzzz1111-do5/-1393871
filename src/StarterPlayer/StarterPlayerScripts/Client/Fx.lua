@@ -510,7 +510,8 @@ function Fx.init(G)
   local impact, probeAt   -- 弹着点（下面「弹着点」一节）
   local IMPK = { hmg = 1.7, coax = 1.4, ciws = 2, agun = 2, ac = 2, sniper = 1.3, lmg = 1.1 }   -- 弹着点的大小（按口径：步枪 1）
   -- h：打在什么上面（HitSurf 代号；别人打的服务器给，nil 是什么都没打中；自己打的不给，本地探一下）
-  function G.gunFx(id, a, b, mine, h, quiet)
+  -- pel：霰弹的其余弹丸（只画曳光和弹着点，枪口火、枪声那一发已经有了）
+  function G.gunFx(id, a, b, mine, h, quiet, pel)
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
@@ -543,7 +544,7 @@ function Fx.init(G)
       tween(gl, L / speed, { CFrame = CFrame.lookAt(b - d.Unit * len * 0.4, b + d.Unit) }, Enum.EasingStyle.Linear)
       Debris:AddItem(gl, L / speed + 0.05)
     end
-    if not lite and not quiet then   -- 消音器：没有枪口那团火
+    if not lite and not quiet and not pel then   -- 消音器：没有枪口那团火
       local fl = part(BALL, V(0.9, 0.9, 0.9), CFrame.new(a), RGB(255, 210, 120), Enum.Material.Neon, 0.2)
       tween(fl, 0.06, { Transparency = 1, Size = V(1.4, 1.4, 1.4) })
       Debris:AddItem(fl, 0.08)
@@ -569,12 +570,13 @@ function Fx.init(G)
         end)
       end
     end
-    if mine and (id == "m4" or id == "sniper" or id == "rifle") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
+    if pel then return end
+    if mine and (id == "m4" or id == "sniper" or id == "rifle" or id == "qbz191") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
       G.sfx(quiet and ((id == "sniper") and "sniperSdMe" or "rifleSdMe") or ((id == "sniper") and "sniperMe" or "rifleMe"), nil, { must = true })
       if math.random() < 0.35 then G.sfx("brass", nil, { delay = 0.35 + math.random() * 0.25 }) end
       return
     end
-    local snd = (id == "smgsd" or quiet) and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or "rifle")   -- 装了消音器的：闷响
+    local snd = (id == "smgsd" or quiet) and "quiet" or ((id == "sniper" or id == "lmg" or id == "pistol") and id or (id == "shotgun" and "sniper") or "rifle")   -- 装了消音器的：闷响；霰弹枪按狙击枪那一声（闷、重）
     G.playSound(snd, a)
   end
 
@@ -1465,7 +1467,7 @@ function Fx.init(G)
         end
         if e.by ~= me.UserId then
           nearMiss(e)
-          G.gunFx(e.w, e.a, e.b, false, e.h, e.q)
+          G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
       elseif k == "boom" then boom(e.p, e.s, e.c)

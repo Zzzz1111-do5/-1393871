@@ -89,4 +89,13 @@
   车内饰：指针式仪表三块（表盘朝 +Z，原点在背面中心）（ip_gauges.glb）：「Dashboard Gauges」，作者 kryoxshade，CC-BY-4.0 https://sketchfab.com/3d-models/dashboard-gauges-05288d08679d4cb195217a3477ae10ad；改动：Blender：三块表整组宽缩到 0.26 米，表盘朝 +Z，原点在背面中心
   车内饰：刹车、油门踏板（踏板面朝 +Z 对着驾驶员，原点在踏板底边中点）（ip_pedals.glb）：「Pedals Sets」，作者 kryoxshade，CC-BY-4.0 https://sketchfab.com/3d-models/pedals-sets-aed5b969daad4f2086468869b06a4f84；改动：Blender：只留四套里的一套（黑胶刹车 + 银色油门），截掉伸出去的长转轴和踏板臂后段（只留 0.4 米深），高度缩到 0.30 米，踏板面朝 +Z（对着驾驶员），原点在两块踏板底边的中点
   车内饰：操纵握把（扳机朝 −Z，原点在握把底面中心，高 0.13 米）（ip_grip.glb）：「F-4 Phantom II Flight Stick (Joystick)-Low Poly」，作者 alpertheronin，CC-BY-4.0 https://sketchfab.com/3d-models/f-4-phantom-ii-flight-stick-joystick-low-poly-b53fdc25c8cc43aba8fdf6c40bb709e3；改动：Blender：扳机转成朝 −Z（朝前），原点在握把底面中心（原模型就是米）
+  解放军步枪（QBZ-191）（qbz191.glb）：「QBZ-191 - Free」，作者 Brahian_s_g，CC-BY-4.0 https://sketchfab.com/3d-models/qbz-191-free-88786970cb164adaad127a91a29b3dd8；改动：转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小
+  解放军通用机枪（QJY-88）（qjy88.glb）：「QJY88」，作者 flyinglist1，CC-BY-4.0 https://sketchfab.com/3d-models/qjy88-f3d6595f4b954ce48d9441590b64fb3e；改动：转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小
+  解放军冲锋枪（QCW-05）（qcw05.glb）：「Low-Poly QCW-05 JS」，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-qcw-05-js-0418d46e15d941d1a89f84d639ee118d；改动：转成枪口朝前、缩到真枪尺寸，贴图缩小
+  解放军霰弹枪（QBS-09）（qbs09.glb）：「Low-Poly QBS-09」，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-qbs-09-e13ccd2227c64edbb4f611fc52ab6325；改动：转成枪口朝前、缩到真枪尺寸，贴图缩小
+  解放军手枪（QSZ-92）（qsz92.glb）：「Low-Poly QSZ-92」，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-qsz-92-6e8275a366454ad2ad370620412b5075；改动：转成枪口朝前、缩到真枪尺寸，贴图缩小
+  美军轻机枪（M249）（m249.glb）：「M249」，作者 ArtDmitriyK，CC-BY-4.0 https://sketchfab.com/3d-models/m249-b1e60faa37de4461822103fe38e5c9ce；改动：去掉两脚架、瞄准镜和镜座；转成枪口朝前、缩到真枪尺寸，贴图缩小
+  美军霰弹枪（M1014）（m1014.glb）：「Low Poly ShotGun-M1014」，作者 BravoCastle，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-shotgun-m1014-623381817230474f9148f6208655cdfb；改动：转成枪口朝前、缩到真枪尺寸，贴图缩小
+  美军手枪（M17）（m17.glb）：「low-poly SIG Sauer M17」，作者 DU1701，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-sig-sauer-m17-35e5bc9e68a841788ec8fdb09589fb92；改动：去掉枪身下挂的附件；转成枪口朝前、缩到真枪尺寸，贴图缩小
+  美军冲锋枪（MP7A1）（mp7.glb）：「Low-Poly HK MP7」，作者 TastyTony，CC-BY-4.0 https://sketchfab.com/3d-models/low-poly-hk-mp7-0ebd1e2b7a60408cb3b587b4807635ab；改动：转成枪口朝前、缩到真枪尺寸，贴图缩小
   改动：换了单位（米 → 格）、方向和原点，同一种材质的零件并成一块；合集里只取用到的那一件（消音器、枪口件、弹匣），红点瞄具去掉了前镜片（游戏里看得穿镜筒）；GLB 贴图最长边缩到 1024，游戏内嵌的版本贴图再缩小并压成 256 色；别的几何、材质都没改
