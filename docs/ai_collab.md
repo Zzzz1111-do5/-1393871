@@ -68,6 +68,13 @@
   ① 车辆伤害模型（ReplicatedStorage/WtDamage.lua：装甲按毫米、弹按穿深、跳弹、模块和乘员、弹药殉爆、起火；服务器在炮弹打中车时算）+ 命中提示 + X 光回放；
   ② 坦克战雷平显（准星、装填圈、弹种栏、左下车组 / 模块、穿深指示）；③ 对局玩法；④ 飞机受伤。
   **要改 Armor.lua 的 fire / onDeath、Ents.lua 的 damageEnt、TankHud.lua、Round.lua 的，先在这里看一眼 C 做到哪了**
+  - ① **已做**（a0f6cce）：WtDamage.lua（共用：各车型各面毫米、弹种穿深、跳弹、车内乘员 / 模块布局、破片锥）、Wt.lua（服务器：炮弹 / 火箭 / 导弹
+    打中车走 G.wtShellHit，别的伤害走 G.wtGeneric；乘员换位、殉爆、M1 泄压板、起火、Y 维修 / 灭火；状态写属性 WtC / WtM / WtF / WtFix / WtMob / WtGun / WtTrav）、
+    WtHud.lua（命中提示、X 光回放）。**战雷式的车不直接扣 e.hp：Ents.damageEnt 交给 Wt.lua**（e.hp 按活着的乘员算个比例，给名牌、血条用）。
+  - ② **已做**（d056c6d）：WtTank.lua（电脑上开坦克：穿深指示准星、装填弧、底部弹药栏、左下俯视损伤图），VehHud 有它就不画 MWT 那套；
+    **数字键改成战雷那样先选主炮弹种**（Drive.lua 先问 G.wtKeySlot：M1A2 是 1～4 四种弹、没有别的武器格），改 Drive 数字键的注意。测试 tools/mock/wttank.lua。
+  - C 打包改用 tools/build.luau（带构建标记、地形草叶设置），不再用 build_rbxlx.py。
+  - ③ 在做：对局玩法（SP、出击阵容、战后结算）——会改 Depots.lua 的 spawnAt（出车前查 SP / 阵容）、Round.lua 的 personal（推 SP 状态）、UI.lua 的结算页。
 
 ## 工具链的先后（别互相覆盖）
 
@@ -77,6 +84,9 @@
 - EraMeta：`eralayout.py <键>` 可以只重算几型，其余照旧（A 改的）。
 
 ## 合并记录
+
+- 11-24 C 合 B（6970502：沙海两边主基地 FOB、只在自己基地出生、开服只写基地一带地形）→ 53793b0：冲突只有 PvE 第 11 关名字、几关简报
+  （用 B 按新地图写的）、Config 一行注释、island_assault_plan 一段（B 的段落在前、C 的合并记录接后面），地点文件合完重新打包。
 
 - 11-24 A 合 B（184c035…ea3fe88）：A 自己那版 M1A1 车内（InteriorM1A1.lua：原模型车内整块在原位显示、上面盖屏和键）和 B 的
   InteriorAbrams 重复了——B 的更完整（拆块、炮尾后坐、握把摆、可动旋钮、M1A2 / 布雷德利都能借），**用 B 的**，A 那版和它的测试删了。
