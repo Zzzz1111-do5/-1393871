@@ -327,6 +327,20 @@ Config.Pve = {
   },
 }
 function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用金币（舰艇、R 币通行证的 B-2）
+-- 战雷式对局（WtMatch.lua，用户 11-24 夜「把整个游戏做成战雷」）：重生点数 SP、出击阵容
+--   每局每人 SP 从 sp0 起，第一辆车免费，以后出车按 cost 花（这一局每多出过一辆贵 rise）；得分攒 SP（每分 perScore），封顶 spMax；
+--   一局最多开 lineup 种车，每种出 1 + backup 次；步兵出生不要 SP；PvE 关卡不收
+Config.Wt = { on = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
+  cost = { tank = 300, apc = 200, aa = 220, arty = 260, jet = 450, bomber = 550, drone = 280, heli = 380, transport = 240, ship = 400 } }
+-- cat：地面车的 VehDefs cat（tank / apc / aa / arty）、飞机的 AirDefs cat（jet / heli）、舰艇 ship；nPaid：这一局已经花 SP 出过几辆
+function Config.WtCost(id, cat, nPaid)
+  local W, m = Config.Wt, Config.VehicleMod[id] or {}
+  local k = cat
+  if cat == "jet" then k = m.bomber and "bomber" or (m.drone and "drone" or "jet")
+  elseif cat == "heli" then k = m.transport and "transport" or "heli" end
+  local base = W.cost[k] or 250
+  return math.floor(base * (1 + W.rise * math.max(0, nPaid or 0)) / 10 + 0.5) * 10
+end
 function Config.AttPrice(lv)
   if (lv or 0) <= 1 then return 0 end
   return Config.Economy.attBase + Config.Economy.attPerLv * lv

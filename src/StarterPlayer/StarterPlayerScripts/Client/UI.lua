@@ -1069,7 +1069,7 @@ function UI.init(G)
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy and not dying
-    results.Visible = S.phase == "end"
+    results.Visible = S.phase == "end" and not (G.wtResultsOn and G.wtResultsOn())   -- 战雷式结算页（WtBattle.lua）开着就不画这张
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniClip
     if mapMountedIn ~= want then

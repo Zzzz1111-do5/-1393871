@@ -430,6 +430,8 @@ function Depots.init(G)
     local ok, d = check(P, p, vid)
     if not ok then return nil end
     if now() < (P.padT or 0) then return nil end
+    local wk = (p.kind == "air" or p.kind == "ship") and p.kind or "veh"
+    if G.wtSpawnOk and not G.wtSpawnOk(P, vid, wk) then return nil end   -- 战雷式（WtMatch.lua）：SP 够不够、出击阵容满没满、备用用完没有
     P.padT = now() + 2
     local e
     if p.kind == "air" then
@@ -443,6 +445,7 @@ function Depots.init(G)
     end
     if e then
       e.padId = p.id
+      if G.wtSpawned then G.try("战雷出车", G.wtSpawned, P, vid, wk, e) end   -- 花 SP、记进出击阵容
       G.fx({ k = "padSpawn", p = e.root.CFrame.Position })
     end
     return e

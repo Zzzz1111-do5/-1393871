@@ -1234,7 +1234,9 @@ function Round.init(G)
   local function boardState()
     local list = {}
     for _, P in pairs(G.P) do
-      table.insert(list, { n = P.pl.DisplayName, id = P.pl.UserId, t = P.team, k = P.kills, d = P.deaths, s = P.score, c = P.caps, r = P.role, rk = P.rank or 1 })
+      local row = { n = P.pl.DisplayName, id = P.pl.UserId, t = P.team, k = P.kills, d = P.deaths, s = P.score, c = P.caps, r = P.role, rk = P.rank or 1 }
+      if G.wtBoard then G.wtBoard(P, row) end   -- 战雷式结算：击毁地面 vk、击落 ak、攒的 SP（WtMatch.lua）
+      table.insert(list, row)
     end
     if G.botBoard then for _, b in ipairs(G.botBoard()) do table.insert(list, b) end end
     return list
@@ -1275,6 +1277,7 @@ function Round.init(G)
     end
     C.me = { k = P.kills, d = P.deaths, s = P.score, c = P.caps, xp = P.xp or 0, rank = P.rank or 1, gain = P.roundXp or 0 }
     if G.tacState then C.tac = G.tacState(P) end   -- 战术平板：每样还剩几次、冷却（Tactical.lua）
+    if G.wtPersonal then C.wt = G.wtPersonal(P) end   -- 战雷式对局：SP、出击阵容（WtMatch.lua）
     return C
   end
   function G.pushOne(P)
