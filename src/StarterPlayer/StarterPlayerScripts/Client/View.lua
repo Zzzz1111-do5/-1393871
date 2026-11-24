@@ -669,7 +669,8 @@ function View.init(G)
     --   车速越快越尖越响、往前加速时更响（像在踩油门），履带车还有履带的哗啦声
     if not own then
       local dist = (pos - camPos).Magnitude
-      local running = lit and dist < 380 and v.root ~= nil and v.root.Parent ~= nil
+      -- 回差（A 挑的刺）：进 360 格才挂、出 400 格才拆——车在 380 格上下来回开时别每过一次线就拆了又建两个 Sound
+      local running = lit and dist < (v.engS and 400 or 360) and v.root ~= nil and v.root.Parent ~= nil
       if running and not v.engS and G.realLoop then
         local tracked = d.arch == "tracked"
         local e1 = G.realLoop(tracked and "tankDrive" or "tankEngine", v.root)

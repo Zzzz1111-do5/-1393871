@@ -475,6 +475,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airGuideMissile = guideMissile   -- 地面车的地空导弹也按这套飞（Armor.lua：铠甲-S1 的 57E6）
   -- 炸弹：真实重力；制导炸弹算还要多久落地，往目标方向改水平速度（带翼的滑得远）
   local function guideBomb(s, dt)
     s.age += dt
@@ -595,7 +596,9 @@ function Air.init(G)
     return t
   end
 
-  local function fireStore(P, e, wid, tid, aim)
+  -- n、rip：战雷的投弹数量（客户端 Shift + B）——n 枚炸弹，双投两枚同时出，齐投（rip）一枚接一枚隔 BOMB_GAP 秒
+  local BOMB_GAP = 0.08
+  local function fireStore(P, e, wid, tid, aim, n, rip)
     local w = AD.W[type(wid) == "string" and wid or ""]
     if not w or w.kind == "gun" or w.kind == "tank" then return end   -- 副油箱不是弹（抛油箱走 jettison）
     if G.round.phase ~= "battle" then return end
@@ -631,9 +634,27 @@ function Air.init(G)
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
     elseif w.kind == "bomb" then
-      G.launch({ kind = "bomb", pos = scf.Position - scf.UpVector * 1.5, vel = base - scf.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
-        step = guideBomb, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-      e.nextStore = t + ((e.def.bomber) and 0.12 or 0.25)
+      local function drop(j)
+        local c2 = stationWorld(e, e.def.st[j])
+        local tg = (tgt and tgt.alive) and tgt or nil
+        G.launch({ kind = "bomb", pos = c2.Position - c2.UpVector * 1.5, vel = (e.vel or V()) - c2.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
+          step = guideBomb, age = 0, tgt = tg, tgId = tg and tg.id or nil, aimPt = aimPt, byEnt = e.id })
+        spend(e, j)
+        G.fx({ k = "storeOff", id = e.id, st = j, w = wid })
+      end
+      drop(i)
+      local cnt = math.clamp(math.floor(tonumber(n) or 1), 1, 60)
+      local gap = (rip == true) and BOMB_GAP or 0
+      for k = 2, cnt do
+        local function nextOne()
+          if not e.alive or G.round.phase ~= "battle" then return end
+          local j = pickStation(e, wid)   -- 剩得多的挂点先投：左右轮流
+          if j then drop(j) end
+        end
+        if gap > 0 then task.delay(gap * (k - 1), nextOne) else nextOne() end
+      end
+      e.nextStore = t + gap * (cnt - 1) + ((e.def.bomber) and 0.12 or 0.25)
+      return   -- 上面每枚都扣过数了
     elseif w.kind == "rkt" then
       local dir = (fwd + V((math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02)).Unit
       G.launch({ kind = "rocket", pos = scf.Position + fwd * 3, vel = base + dir * w.speed, w = w, src = S, ignore = ignoreOf(e), life = w.range / w.speed + 1,
@@ -642,6 +663,18 @@ function Air.init(G)
     end
     spend(e, i)
     G.fx({ k = "storeOff", id = e.id, st = i, w = wid })
+  end
+
+  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达弹锁着敌机半秒报一次；
+  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报
+  local function lockOn(e, tid, full)
+    local tg = (type(tid) == "string") and G.entById[tid] or nil
+    if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
+    local tn = now()
+    if tn < (e.lockPingT or 0) then return end
+    e.lockPingT = tn + 0.35
+    if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
+    if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwrLock", by = e.id, full = full == true }) end
   end
 
   -- 航炮：扣着扳机，每 0.1 秒打一发弹丸（带这 0.1 秒所有炮弹的伤害）；机头炮塔 / 舱门机枪朝准星（有转动范围）
@@ -835,7 +868,8 @@ function Air.init(G)
       e.model:SetAttribute("Fire", e.trig)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
-    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
+    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
+    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then

@@ -40,12 +40,14 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     "ip_dseat", "ip_swheel", "ip_lever", "ip_gauges", "ip_pedals", "ip_grip" }   -- 用户 11-23「很粗糙…不要自己建模 然后用 blender」：座椅、方向盘、操纵杆、仪表、踏板、握把（tools/weapons/blprep.py）
   local prewarmed = false
 
-  local SHOW_CREW = false   -- 车里画不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）
+  -- 车里画不画乘员小人：用户 11-22 晚「驾驶室不要显示人了」关过；11-24「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活
+  --   玩家第一人称就是负责扮演炮手视角」——地面车又画上（Roblox 小人，InteriorKit K.crew），飞机座舱照旧不画
+  local SHOW_CREW = true
   G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
   -- M1A1 / M1A2：M1A1 原模型自带的炮塔内饰（InteriorAbrams.lua：没导入拆好的 m1a1i 就照旧零件拼的）；M10 布克借零件拼的 M1A2（四人、手动装填）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a" }
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a", t90m = "ztz99a" }
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -195,10 +197,11 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local b = Kit.new(m)
     -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
     -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
+    -- imp：导入的原模型（飞机的座舱屏幕位置、眼位在它的元数据里：F-16 坐进原模型自带的座舱）
     local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
     local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
     local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
-      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
+      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero, imp = v.M and v.M.imp })
     if not ok then
       m:Destroy()
       if G.showError then G.showError("local 内饰 " .. key .. "：" .. tostring(spec)) end
@@ -247,7 +250,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
     -- 乘员：用户 11-22 晚「驾驶室不要显示人了」——车里、座舱里不建乘员小人（哪个视角都没有人，导演镜头也没有）；
     --   SHOW_CREW 打开就照原来画（乘员位视角时也藏着）
-    for id, cs in pairs(SHOW_CREW and spec.crew or {}) do
+    for id, cs in pairs((SHOW_CREW and not spec.air) and spec.crew or {}) do
       local f = Kit.crew(cs.dress)
       if f then
         f.model.Parent = m
@@ -263,7 +266,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       s.nextT = 0
     end
     -- 炮弹（装填手手上那一发）：子组 hround 挂在炮塔上，平时藏起来（没有乘员小人时不建：不然那发弹自己在空中飞）
-    if spec.loader == "m256" and SHOW_CREW then
+    if spec.loader == "m256" and SHOW_CREW and not spec.air then
       b:group("hround", "turret", CF())
       local parts0 = #b.parts
       Defs.round120(b, "hround", CF(0, 0, 0.49), { len = 0.98 })
@@ -650,7 +653,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if id == "loader" and c.lo then   -- 装填的动作
         local L = c.lo
         local yaw = L.a.yaw + (L.b.yaw - L.a.yaw) * L.u
-        eye = L.a.eye:Lerp(L.b.eye, L.u)
+        -- 关键帧是照 M1A2 那套内饰排的：按这辆车装填手自己的眼位平移（B 的 M1A1 原模型内饰装填手站得不一样）
+        eye = cs.eye + (L.a.eye:Lerp(L.b.eye, L.u) - LOAD[1].eye)
         rot = ANG(0, rad(yaw), 0) * ANG(rad((cs.lean or 0) * 0.6 - 8), 0, 0)
         chest = ANG(rad(-14), 0, 0)
         local hr = c.b.groups.hround
@@ -659,23 +663,26 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           rh = hr.world * (V(0.02, -0.02, 0.47) * S)
           lookW = (hr.world.Position - (g.world * (eye * S))).Unit
         elseif L.k < 0.2 then
-          lh = at(c, "doorL", V(0.30 + 0.0, 0, -0.05))
+          local door = c.b.groups.doorL and at(c, "doorL", V(0, 0, 0)) or (g.world * ((cs.eye + V(0.15, -0.35, 0.95)) * S))   -- 没有弹药门：身后偏右
+          lh = c.b.groups.doorL and at(c, "doorL", V(0.30 + 0.0, 0, -0.05)) or door
           rh = nil
-          lookW = (at(c, "doorL", V(0, 0, 0)) - g.world * (eye * S)).Unit
+          lookW = (door - g.world * (eye * S)).Unit
         elseif L.k > 0.8 then
           lh = nil
-          rh = at(c, "arm", V(0, 0.10, 0))
+          rh = c.b.groups.arm and at(c, "arm", V(0, 0.10, 0)) or at(c, "gun", V(-0.35, 0.12, 0.85))   -- 没有保险拨杆的组：炮尾左边
           lookW = (at(c, "gun", V(0, 0.1, 0.8)) - g.world * (eye * S)).Unit
         end
-        if (L.a.knee or L.b.knee) then rf = at(c, "knee", V(0.0, 0.10, -0.08)) end
+        if (L.a.knee or L.b.knee) then
+          rf = c.b.groups.knee and at(c, "knee", V(0.0, 0.10, -0.08)) or (g.world * ((cs.eye + V(0.22, -1.25, 0.30)) * S))
+        end
       end
       local eyeCF = g.world * CF(eye * S) * rot
       local pelvis = eyeCF * CF(-eyeOff)
       if c.mine == id and camLook then lookW = camLook end
       f.set({ pelvis = pelvis, chest = chest, look = lookW, lh = lh, rh = rh, lf = lf, rf = rf, footRot = g.world.Rotation * ANG(rad(cs.footPitch or 0), 0, 0) })
-      -- 第一人称坐在车里 / 座舱里（乘员位）：别的乘员、自己都不画（用户 11-21「不要显示我的腿和胳膊」，11-22「不要显示成员和自己的身体部位」）；
-      --   导演镜头从外面看照画
-      local show = mode ~= "seat"
+      -- 第一人称坐在车里（乘员位）：自己那个位置的小人不画（用户 11-21「不要显示我的腿和胳膊」）；别的乘员 11-22 关过（「不要显示成员和自己的身体部位」），
+      --   11-24 又要（「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活」）；导演镜头从外面看照画
+      local show = mode ~= "seat" or id ~= c.mine   -- 11-24：别的乘员照画（各干各的活），自己那个位置的不画（看得见自己的胳膊腿：11-21 不要）
       if cr.headShown ~= show then
         cr.headShown = show
         f.bodyVisible(show)
@@ -1040,7 +1047,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       c.ammoKind = kind
       -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
       local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
-      if G.driveAmmo and BAL.PANEL[kind] then G.driveAmmo(BAL.PANEL[kind]) end
+      local st = G.drive
+      local wid = st and st.d and st.d.weapons and st.d.weapons[st.wi or 1]
+      local key = BAL.panelAmmo and BAL.panelAmmo(kind, wid) or BAL.PANEL[kind]   -- 这门炮没有这种就挑同一类的（T-90M 借 99A 的面板）
+      if G.driveAmmo and key then G.driveAmmo(key) end
     end
     function A.citvFov(f) c.citvFov = f end
     function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）
@@ -1420,7 +1430,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     end
     local c = cur
-    extHide(c, mode == "seat" or optic ~= nil, optic ~= nil)   -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画
+    -- 乘员位、观瞄设备里：外模型不画（挖了内腔的车乘员位上照画）；导演镜头：画。
+    --   主瞄准镜（st.sight）也按观瞄设备算（全藏）。Drive 开镜 / 退镜时自己把整车零件设成藏 / 不藏（ownVisible），extHide 记着的状态就不对了：
+    --   镜子状态一变，缓存作废、按现在的乘员位重新藏一遍——原来退镜以后整辆车的外模型、原模型的简易内饰全露出来，
+    --   乘员眼前、车里的显示屏前面横着一块块外壳（用户 11-24：「开镜有bug……屏幕有一块色斑」）
+    local sightNow = st.sight == true
+    if c.sightWas ~= sightNow then c.sightWas, c.extHidden = sightNow, nil end
+    extHide(c, mode == "seat" or optic ~= nil or sightNow, optic ~= nil or sightNow)
     -- 别的观瞄设备：内饰收起来，镜头在镜子里（辅助瞄准镜同时开着 Drive 的瞄准镜，炮跟着鼠标瞄）
     if optic then
       if c.model.Parent then c.model.Parent = nil end
@@ -2428,7 +2444,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local e = c.eyeBody
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and it.tag ~= "pilot" then
+      -- 原模型自带的座舱（F-16，spec.modelPit）：座舱件（pit == "Pit"）就是内饰本身，不藏；原模型的平显（PitHud，玻璃上画死了符号）照旧藏
+      if p and p:IsA("BasePart") and it.tag ~= "pilot" and not (c.spec.modelPit and it.pit == "Pit") then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         local glassy = p.Material == Enum.Material.Glass or (p.Transparency > 0.15 and p.Transparency < 1)
         local dist = cf and (cf.Position - e).Magnitude or math.huge
@@ -2497,7 +2514,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local big = 0.5 * math.max(v.def.L or 0, v.def.W or 0)
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
+      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and not it.pit and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         if cf and math.max(p.Size.X, p.Size.Y, p.Size.Z) < big then
           local half = p.Size / 2
@@ -2517,7 +2534,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.cf or not v.def then return end
     if cur and cur.id ~= st.id then teardown() end
-    if mode == nil or st.eo then   -- 车外 / 看光电吊舱（Fly.lua 管镜头）：座舱收起来，外模型放回来
+    if mode == nil or st.eo or st.bsight then   -- 车外 / 看光电吊舱 / 轰炸瞄准镜（Fly.lua 管镜头）：座舱收起来，外模型放回来
       if cur and cur.model.Parent then cur.model.Parent = nil end
       if cur and cur.pilotsHidden and v.M then pcall(AM.setPilots, v.M, true) cur.pilotsHidden = false end
       if cur and cur.zoneOn then zoneHide(cur, false) end
@@ -2644,7 +2661,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
         if hover.mov then movPress(cur, hover.mov) return end

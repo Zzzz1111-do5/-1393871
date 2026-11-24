@@ -1100,7 +1100,7 @@ function Defs.jet(b, ctx, L)
   local disp = L.disp or "pano"
   -- 平显下面有正前方控制板（UFC / ICP）的机型（用户 11-21 给的歼-20、歼-16、歼-15T 第一人称参考图，F-22 真机照片）：
   --   遮光罩中间让开控制板那么宽，平显投影仪改浅（原来往后伸到离眼 0.55 米，挡住控制板上半截），主显示器往下挪
-  local UFCW = ({ j20 = 0.21, j16 = 0.20, j15t = 0.21, f22 = 0.17 })[disp]
+  local UFCW = ({ j20 = 0.21, j16 = 0.20, j15t = 0.21, f22 = 0.17, f16 = 0.17, f15c = 0.17 })[disp]
   b:box(H, V(0.80, 0.46, 0.06), look(V(0, -0.46, -0.77), V(0, -0.1, 0.3)), PIT)
   bx(0.78, 0.05, 0.16, 0, -0.205, -0.78, GLARE, MAT.Fabric, 4, 0, 0)   -- 遮光罩：前沿离眼 0.70 米（原来 0.60，挡住下面小屏的上沿）
   -- 贴着仪表板面摆（显示器和面板同一个斜度，往外凸 m 米；原来朝着眼睛摆，往下挪了以后上半截埋进面板里）
@@ -1110,7 +1110,7 @@ function Defs.jet(b, ctx, L)
     return CFrame.lookAt(p, p + PN, PU)
   end
   -- 上控制台（平显下面往人这边凸出来的一块，参考图里控制板、小圆表、备份姿态都装在它上面）：cons(x, y) 是它面上的一点（x 人看来往右）
-  local CONSW = ({ j20 = 0.56, j16 = 0.56, j15t = 0.42, f22 = 0.56, pano = 0.56, a10 = 0.20 })[disp]
+  local CONSW = ({ j20 = 0.56, j16 = 0.56, j15t = 0.42, f22 = 0.56, pano = 0.56, a10 = 0.20, f16 = 0.42, f15c = 0.42 })[disp]
   local CONS = CONSW and CFrame.lookAt(V(0, -0.30, -0.7575), eye)
   if CONS then b:box(H, V(CONSW, 0.12, 0.085), CONS, PIT) end
   local function cons(x, y) return CONS * CF(-x, (y + 0.30) / 0.929, -0.0435) end
@@ -1271,6 +1271,58 @@ function Defs.jet(b, ctx, L)
     b:screen(H, 0.18, 0.09, flush(0.20, -0.635), "gauges", { lightK = 0.15, light = false })
     b:screen(H, 0.09, 0.075, look(V(0.32, -0.52, -0.56)), "cdu", { lightK = 0.15 })
     keypad(cons(0, -0.30), 0.16, { { "1", "2", "3", "FUNC", "HACK" }, { "4", "5", "6", "LTR", "MK" }, { "7", "8", "9", "0", "ENT" } })
+    standby = false
+  elseif disp == "f16" then
+    -- F-16C Block 50（没导入原模型时零件拼的；导入了用原模型自带的座舱，见 Defs.modelPit）：两块 4 英寸多功能显示器（边上 20 个按键），
+    --   平显下面正前方控制板 ICP（数字键）、右边一块绿色数据输入显示器 DED；中间一列：空速 / 高度两个小圆表、姿态仪、下面航向仪
+    local KF = { top = { "FCR", "HSD", "SMS", "FUEL", "FLT" }, bottom = { "RNG", "COM", "CHK", "TGT", "MENU" } }
+    b:screen(H, 0.102, 0.102, flush(-0.205, -0.50), "f16l", { keys = KF, lightK = 0.3, ppm = 1800 })
+    b:screen(H, 0.102, 0.102, flush(0.205, -0.50), "f16r", { keys = KF, lightK = 0.3, ppm = 1800 })
+    keypad(cons(-0.02, -0.30), 0.12, { { "COM1", "COM2", "IFF", "LIST" }, { "1", "2", "3", "A-A" }, { "4", "5", "6", "A-G" }, { "7", "8", "9", "0" } })
+    b:screen(H, 0.075, 0.032, cons(0.12, -0.30), "ded", { lightK = 0.12, ppm = 2400, bezel = 0.006, depth = 0.01 })
+    b:screen(H, 0.05, 0.05, flush(-0.075, -0.43), "asi", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(0.075, -0.43), "alt", { light = false, ppm = 2400 })
+    b:screen(H, 0.075, 0.075, flush(0, -0.505), "adi", { light = false, ppm = 2400 })
+    b:screen(H, 0.075, 0.075, flush(0, -0.62), "hsi", { light = false, ppm = 2400 })
+    standby = false
+  elseif disp == "f15c" then
+    -- F-15C（MSIP）：左上雷达垂直态势显示器 VSD（单色绿，B 显示）、右上雷达告警 TEWS（圆屏）、平显下正前方控制板 UFC；
+    --   中间机械表（姿态仪、航向仪，两边空速、高度、升降速度），左下彩色多功能显示器 MPCD（外挂管理），右下发动机表
+    local KV = { top = { "RNG", "TWS", "VS", "PDS", "SRCH" } }
+    b:screen(H, 0.125, 0.125, flush(-0.235, -0.44), "vsd", { keys = KV, lightK = 0.25, ppm = 1600 })
+    b:screen(H, 0.10, 0.10, flush(0.235, -0.44), "rwr", { light = false, ppm = 1800, bezel = 0.014 })
+    b:screen(H, 0.085, 0.085, flush(0, -0.45), "adi", { light = false, ppm = 2200 })
+    b:screen(H, 0.085, 0.085, flush(0, -0.58), "hsi", { light = false, ppm = 2200 })
+    b:screen(H, 0.05, 0.05, flush(-0.105, -0.42), "asi", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(0.105, -0.42), "alt", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(0.105, -0.52), "vvi", { light = false, ppm = 2400 })
+    b:screen(H, 0.125, 0.125, flush(-0.235, -0.62), "mfd_sms", { keys = { top = { "SMS", "PFD", "SA", "ENG", "MENU" } }, lightK = 0.25, ppm = 1600 })
+    b:screen(H, 0.16, 0.09, flush(0.235, -0.62), "gauges", { lightK = 0.15, light = false })
+    ufcBox(cons(0, -0.30), 0.17, 0.12, { sw = 0.11, sh = 0.03, sy = 0.035, page = "ded",
+      left = { "1", "2", "3", "4" }, right = { "5", "6", "7", "8" }, pad = { { "9", "0", "CLR", "ENT" } } })
+    standby = false
+  elseif disp == "f14" then
+    -- F-14A 前座：平显下面一块方的垂直显示器 VDI（绿色 CRT 姿态）、下面水平态势显示器 HSD；两边空速 / 迎角、高度 / 升降速度，右下发动机表
+    b:screen(H, 0.125, 0.125, flush(0, -0.45), "vdi", { lightK = 0.2, ppm = 1600, bezel = 0.012 })
+    b:screen(H, 0.115, 0.115, flush(0, -0.60), "tsd", { keys = { top = { "RNG", "NAV", "TID", "ECM", "MENU" } }, lightK = 0.2, ppm = 1600 })
+    b:screen(H, 0.05, 0.05, flush(-0.13, -0.43), "asi", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(0.13, -0.43), "alt", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(0.13, -0.53), "vvi", { light = false, ppm = 2400 })
+    b:screen(H, 0.05, 0.05, flush(-0.13, -0.53), "gmeter", { light = false, ppm = 2400 })
+    b:screen(H, 0.16, 0.09, flush(0.26, -0.58), "gauges", { lightK = 0.15, light = false })
+    b:screen(H, 0.075, 0.075, flush(-0.26, -0.47), "rwr", { light = false, ppm = 2000, bezel = 0.01 })
+    standby = false
+  elseif disp == "j8" then
+    -- 歼-8II（1980 年代的模拟座舱）：仪表板正中一块圆的雷达显示器，两边、下面一圈机械表（姿态、航向、空速、高度、升降速度、过载），
+    --   右边两台发动机的转速 / 排温表；有平显
+    b:screen(H, 0.12, 0.12, flush(0, -0.45), "rscope", { lightK = 0.2, ppm = 1600, bezel = 0.016 })
+    b:screen(H, 0.08, 0.08, flush(-0.17, -0.46), "adi", { light = false, ppm = 2200 })
+    b:screen(H, 0.08, 0.08, flush(0, -0.59), "hsi", { light = false, ppm = 2200 })
+    b:screen(H, 0.055, 0.055, flush(-0.27, -0.43), "asi", { light = false, ppm = 2400 })
+    b:screen(H, 0.055, 0.055, flush(0.17, -0.43), "alt", { light = false, ppm = 2400 })
+    b:screen(H, 0.055, 0.055, flush(0.17, -0.52), "vvi", { light = false, ppm = 2400 })
+    b:screen(H, 0.055, 0.055, flush(-0.17, -0.57), "gmeter", { light = false, ppm = 2400 })
+    b:screen(H, 0.15, 0.085, flush(0.27, -0.57), "gauges", { lightK = 0.15, light = false })
     standby = false
   else   -- pano（歼-35）：整块触摸大屏（资料只到「大横屏」），两边上前显示器照旧
     b:screen(H, 0.50, 0.21, flush(0, -0.505), "pano", { keys = K, touch = true, touchH = 0.09, lightK = 0.45, lightColor = RGB(140, 180, 220) })
@@ -1496,8 +1548,13 @@ function Defs.jet(b, ctx, L)
     local ry, rz = 0.22, 1.15
     bx(0.84, 0.03, 1.1, 0, -1.06 + ry, rz - 0.1, PIT2, MAT.DiamondPlate)
     for _, sx in ipairs({ -1, 1 }) do bx(0.03, 0.78, 1.1, sx * 0.44, -0.67 + ry, rz - 0.1, PIT) end
-    b:screen(H, 0.15, 0.15, look(V(-0.17, -0.40 + ry, rz - 0.72), V(0, ry, rz)), "mfd_sa", { keys = K, lightK = 0.25 })
-    b:screen(H, 0.15, 0.15, look(V(0.17, -0.40 + ry, rz - 0.72), V(0, ry, rz)), "mfd_sms", { keys = K, lightK = 0.25 })
+    if L.rio then   -- F-14 后座（RIO）：正中一块 9 英寸的圆形战术信息显示器 TID（俯视的空情），左上方雷达细节数据显示器 DDD
+      b:screen(H, 0.23, 0.23, look(V(0, -0.42 + ry, rz - 0.72), V(0, ry, rz)), "tid", { lightK = 0.3, ppm = 1200, bezel = 0.02 })
+      b:screen(H, 0.12, 0.12, look(V(-0.21, -0.25 + ry, rz - 0.74), V(0, ry, rz)), "vsd", { keys = { top = { "RNG", "PD", "PDS", "RWS", "TWS" } }, lightK = 0.2, ppm = 1600 })
+    else
+      b:screen(H, 0.15, 0.15, look(V(-0.17, -0.40 + ry, rz - 0.72), V(0, ry, rz)), "mfd_sa", { keys = K, lightK = 0.25 })
+      b:screen(H, 0.15, 0.15, look(V(0.17, -0.40 + ry, rz - 0.72), V(0, ry, rz)), "mfd_sms", { keys = K, lightK = 0.25 })
+    end
     b:seat(H, CF(0, -0.80 + ry, rz + 0.14), { w = 0.46, d = 0.44, back = 0.70, recline = 16, col = RGB(58, 62, 56), frame = RGB(44, 46, 48) })
     bx(0.36, 0.30, 0.16, 0, 0.06 + ry, rz + 0.36, SC, nil, 16, 0, 0)
     crew.wso = { dress = dress, g = H, eye = V(0, ry, rz), lean = 4, yaw = 0, look = V(0, -0.1, -1),
@@ -1508,6 +1565,85 @@ function Defs.jet(b, ctx, L)
   end
   return { air = true, stations = stations, order = order, crew = crew, cn = cn, glass = glass, canopy = canopy, minScreens = L.minScreens, noRadar = L.noRadar }
 end
+
+---------------------------------------------------------------- 原模型自带的座舱（用户 11-23：「你去找带内饰的然后给他们屏幕实现功能就行」）
+-- 座舱就是原模型的那套（AirModels 里的 Pit 组：座舱视角里不藏，Interior.zoneParts），这里只在原模型的显示器、圆表、平显上贴我们的实时画面：
+--   位置在 ImportedAir 元数据的 pitScr（tools/models/sf_air.py 按原模型量的：中心、朝人的法线、上方、宽高，模型坐标·格），眼位是元数据的 pit；
+--   多功能显示器四周原模型的按键条上盖一排能按的键帽（印字、背光）；圆表的画面裁成圆的；原模型的平显（组合玻璃上画死了符号）藏起来，
+--   换成会动的平显——透明组合玻璃 + 两根细立柱、顶梁
+-- L = { pages 换掉元数据里写的页面, keys = { 屏幕名 = { top = {…}, bottom = {…} } }, keyGap 按键条在显示区外多远（米）, cn 中文 }
+function Defs.modelPit(b, ctx, L)
+  local H = "hull"
+  local I = ctx.imp.info
+  local e = I.pit[1]
+  local eyeM = V(e[1], e[2], e[3])
+  local SS = Kit.S
+  local hasHud = false
+  local function place(o, push)   -- 模型坐标（格）→ 眼位为原点的米；push 往人这边挪一点（贴在原模型的玻璃前面）
+    local n = V(o.n[1], o.n[2], o.n[3]).Unit
+    local u = V(o.u[1], o.u[2], o.u[3]).Unit
+    local p = (V(o.c[1], o.c[2], o.c[3]) - eyeM) / SS + n * (push or 0.0025)
+    return CFrame.lookAt(p, p + n, u), o.w / SS, o.h / SS
+  end
+  local names = {}
+  for name in pairs(I.pitScr) do table.insert(names, name) end
+  table.sort(names)   -- 每次建的顺序一样（测试、键位稳定）
+  for _, name in ipairs(names) do
+    local o = I.pitScr[name]
+    local cf, w, h = place(o)
+    local page = (L.pages and L.pages[name]) or o.page
+    if page == "hud" then
+      hasHud = true
+      local hs = b:screen(H, w, h, cf, "hud", { light = false, glow = 2.2, ppm = 3000, bezel = 0.003, depth = 0.003, noBack = true })
+      hs.part.Material = MAT.Glass
+      hs.part.Transparency = 0.93
+      hs.part.Reflectance = 0.06
+      hs.part.Color = RGB(150, 205, 165)
+      hs.root.BackgroundTransparency = 1
+      b:name("hud", hs)
+      for _, sx in ipairs({ -1, 1 }) do   -- 组合玻璃两边的细立柱、顶梁（原模型的平显块藏起来了）
+        b:box(H, V(0.007, h + 0.012, 0.012), cf * CF(sx * (w / 2 + 0.0045), 0.004, 0.004), RGB(30, 32, 34), MAT.Metal)
+      end
+      b:box(H, V(w + 0.016, 0.008, 0.012), cf * CF(0, h / 2 + 0.008, 0.004), RGB(30, 32, 34), MAT.Metal)
+    elseif o.round then   -- 圆表：画面裁成圆的、贴在原模型表盘上（表框是原模型的）
+      local s2 = b:screen(H, w, h, cf, page, { light = false, ppm = 2400, bezel = 0.001, depth = 0.002, noBack = true })
+      s2.part.Transparency = 1
+      local cr = Instance.new("UICorner")
+      cr.CornerRadius = UDim.new(0.5, 0)
+      cr.Parent = s2.root
+    else
+      -- 多功能显示器：显示区上下原模型的按键条上各一排 5 个键帽
+      local ks = L.keys and L.keys[name]
+      local gap = L.keyGap or 0.0045
+      local kp
+      if ks then
+        kp = {}
+        for _, side in ipairs({ "top", "bottom" }) do
+          local list = ks[side] or {}
+          kp[side] = {}
+          for i = 1, #list do
+            local x = w / 2 - (i - 0.5) * w / #list
+            kp[side][i] = { x, ((side == "top") and 1 or -1) * (h / 2 + gap), w / #list * 0.82, 0.0068, -0.003 }
+          end
+        end
+      end
+      b:screen(H, w, h, cf, page, { keys = ks, keyPos = kp, noBack = true, bezel = 0.001, depth = 0.002, ppm = L.ppm or 2400,
+        lightK = 0.18, lightRange = 0.5, keyCol = RGB(40, 42, 44), keyFg = RGB(220, 226, 214) })
+    end
+  end
+  b:light(H, CF(0, -0.25, -0.45), "dome", RGB(200, 230, 255), 1.2, 0.2)
+  b:light(H, CF(0, -0.10, -0.40), "warn", RGB(255, 40, 30), 1.4, 0)
+  local stations = { pilot = { g = H, eye = V(0, 0, 0), look = V(0, -0.02, -1), yaw = 150, up = 80, down = 60, crew = "pilot" } }
+  return { air = true, modelPit = true, stations = stations, order = { "pilot" }, crew = {}, cn = L.cn, glass = {}, minScreens = L.minScreens,
+    noHud = not hasHud }
+end
+-- 导入了带座舱的原模型（元数据里有 pitScr 和眼位）就用原模型的座舱，没导入（零件拼的飞机）照旧拼
+local function hasModelPit(ctx)
+  local imp = ctx and ctx.imp
+  local I = imp and imp.info
+  return I and I.pitScr and I.pit and I.pit[1] and true or false
+end
+Defs.hasModelPit = hasModelPit
 
 -- 各型照 docs/cockpit_research.md：minScreens 这一型真有几块屏（测试按它查）、noRadar 没有雷达（A-10C）
 Defs.j20 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j20", hud = true, hudW = 0.21, hudH = 0.16, hudFrame = "wide", stick = "center", cn = true, goldGlass = true, minScreens = 4,
@@ -1525,6 +1661,21 @@ Defs.j15t = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp 
   hoop = { z = -0.78, th = 0.075, compass = true } }) end
 Defs.f35 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f35", hud = false, stick = "side", minScreens = 3, goldGlass = true }) end
 Defs.f22 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f22", hud = true, hudW = 0.15, hudH = 0.17, hudFrame = "tall", stick = "side", goldGlass = true }) end
+-- F-16C（用户 11-23 加的）：导入了原模型就坐进原模型的座舱（两块多功能显示器、空速 / 高度、姿态球、航向仪、平显都贴实时画面）；
+--   没导入用零件拼的 F-16C 座舱（右侧杆、窄高平显、ICP + DED）
+local F16KEYS = { top = { "FCR", "HSD", "SMS", "FUEL", "FLT" }, bottom = { "RNG", "COM", "CHK", "TGT", "MENU" } }
+Defs.f16 = function(b, ctx)
+  if hasModelPit(ctx) then return Defs.modelPit(b, ctx, { keys = { mfdL = F16KEYS, mfdR = F16KEYS }, minScreens = 6 }) end
+  return Defs.jet(b, ctx, { disp = "f16", hud = true, hudW = 0.11, hudH = 0.16, hudFrame = "tall", stick = "side", minScreens = 6 })
+end
+-- F-15C：原模型（mgg8 的 CC0 F-15A）没有座舱内饰，按 F-15C MSIP 的座舱拼：VSD、TEWS、MPCD、机械表、UFC
+Defs.f15 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f15c", hud = true, hudW = 0.15, hudH = 0.15, hudFrame = "tall", stick = "center", frame = true, minScreens = 6 }) end
+-- F-14A：前座飞行员（VDI、HSD），后座雷达截击官（TID、DDD），F2 / F3 换座；风挡有框
+Defs.f14 = function(b, ctx) return Defs.jet(b, ctx, { disp = "f14", hud = true, hudW = 0.13, hudH = 0.11, hudFrame = "box", stick = "center", seats = 2, rio = true, frame = true,
+  minScreens = 6 }) end
+-- 歼-8II：模拟座舱（圆的雷达显示器 + 一圈机械表）、平显、中央杆
+Defs.j8 = function(b, ctx) return Defs.jet(b, ctx, { hudModel = "hud15", disp = "j8", hud = true, hudW = 0.14, hudH = 0.13, hudFrame = "box", stick = "center", frame = true, cn = true,
+  minScreens = 6 }) end
 Defs.a10c = function(b, ctx) return Defs.jet(b, ctx, { disp = "a10", hud = true, stick = "center", frame = true, noRadar = true }) end
 
 ---------------------------------------------------------------- 直升机、轰炸机座舱共用件

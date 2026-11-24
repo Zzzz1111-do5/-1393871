@@ -321,4 +321,4 @@ game:BindToClose(function()
   if G.saveAll then G.saveAll() end
 end)
 
-print("[全面大战场] " .. Config.Version .. " 服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
+print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(Config.Build) .. "）服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))

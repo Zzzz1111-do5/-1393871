@@ -7,6 +7,9 @@
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
 local Map = {}
 Map.NAME = "island"
+-- 地形长 Roblox 会动的草叶（用户 11-24 发了截图：「这个 roblox 的这种草你给海岛地图加上吧」）：World.lua 写地形时草地照写 Grass（草叶只长在 Grass 上）；
+--   草叶开关 Terrain.Decoration、草长 GrassLength 脚本改不了，写在地点文件的 Terrain 上（tools/build.luau）
+Map.GRASS = true
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 
@@ -326,6 +329,14 @@ Map.ROADS = ROADS
 do
   local ok, data = false, nil
   local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  -- 客户端要等它复制过来（用户 11-22：无数个 AI 修不好坦克半截身子卡在地里）：客户端一进游戏头一件事就 require Map，
+  --   这时 ReplicatedStorage 里几千块导入的网格还在往下传，MapRoads 常常还没到——原来 FindFirstChild 查一下没有就当没有路，
+  --   这个客户端的地面高度就少了路的挖填（路堤、路堑最多差 6 格），可地形是服务器按有路写的：自己开的车按客户端的高度摆，
+  --   路堤上整车矮下去半截、陷在看得见的路面里（位置再报给服务器，别人看着也陷着）。服务器开服时什么都在，等不着
+  if not mod and script and script.Parent and script.Parent.WaitForChild then
+    mod = script.Parent:WaitForChild("MapRoads", 60)
+    if not mod then warn("[地图] 等了 60 秒还没有 ReplicatedStorage.MapRoads：这边的地面高度没有路，车会和地形对不上（脚本没换全？）") end
+  end
   if mod then ok, data = pcall(require, mod) end
   if ok and type(data) == "table" then
     for _, r in ipairs(data) do
@@ -483,7 +494,7 @@ function Map.material(x, z, y, slope)
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
   if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
   -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
-  --   写地形时 Grass 都换成 LeafyGrass（World.lua 的 writeChunk；用户 11-21：会动的草叶把车、人的下半截盖住，脚本又关不掉草叶）
+  --   Grass 上长 Roblox 会动的草叶（Map.GRASS，用户 11-24 要回来的；11-21 时嫌草叶盖住车、人的下半截，写地形时换成过 LeafyGrass）
   return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
@@ -533,9 +544,13 @@ function Map.profile(id)
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
-      return require(script.Parent:WaitForChild(name, 5))
+      -- 客户端一进游戏就 require Map（同上面 MapRoads）：ReplicatedStorage 里几千块导入的网格还在往下传，MapSands 可能还没到——等久一点
+      local mod = script.Parent:WaitForChild(name, 60)
+      if not mod then error("等了 60 秒还没有 ReplicatedStorage." .. name) end
+      return require(mod)
     end)
-    PROFILES[id] = (ok and type(mod) == "table") and mod or false
+    -- 没载上不记死（下次 Map.use 还会再试：客户端照 MapId 属性再换一次时就到了）
+    if ok and type(mod) == "table" then PROFILES[id] = mod end
     if not ok then warn("[地图] " .. tostring(id) .. " 加载不了：" .. tostring(mod)) end
   end
   return PROFILES[id] or nil

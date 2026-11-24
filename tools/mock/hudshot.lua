@@ -3,7 +3,7 @@
 --     tools/weapons/gunrender.mjs ads=… 拍同一个开镜画面的 3D 背景，hud_render.py 叠上去
 --   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
 --     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像；
---     [roll=25]：带坡度；[clean=1]：截图前收起新手卡、作战简报
+--     [roll=25]：带坡度；[clean=1]：截图前收起新手卡、作战简报；[bs=1]：开轰炸瞄准镜（F7）；[poi=1.5]：落点前方 1.5 秒处标目标点
 --   用户：开坦克要是 MWT 那套驾驶界面（截图），不要叠着旧界面。坐进一辆车、前方放一辆敌车开一会，
 --   把所有显示着的界面元素按 Roblox 的排版算出屏幕上的方框（1280×720，UDim2 + AnchorPoint + UIListLayout + UIScale 的近似），
 --   写成 JSON；tools/mock/hud_render.py 画成图看。也按 ScreenGui 列出各有多少个显示着的元素（找没关掉的旧界面）
@@ -103,6 +103,20 @@ if kind == "jet" or kind == "heli" then
   if lockK and st2 and st2.lock and w then
     st2.lockT = lockK * (w.lockTime or 1)
     R.run(1 / 60)
+  end
+  -- bs=1：开战雷式轰炸瞄准镜（F7，要挂炸弹的飞机，比如 side=atk id=h6k）；poi=<秒>：在落点前方这么多秒的地方标目标点（CCRP 的方框和箭头）
+  if TEST_ARGS:find("bs=1", 1, true) and st2 and C.flyBombsight then
+    C.flyBombsight(true)
+    R.run(0.5)
+    check(st2.bsight == true, "开了轰炸瞄准镜")
+  end
+  local poiS = tonumber(TEST_ARGS:match("poi=([%d%.]+)") or "")
+  if poiS and st2 then
+    local hv = R.Vector3.new(st2.vel.X, 0, st2.vel.Z)
+    local imp = C.bombImpact((st2.cf * CF(0, -(st2.d.H or 4) * 0.35 - 1.5, 0)).Position, st2.vel - st2.cf.UpVector * 4)
+    local tp = imp + hv.Unit * (hv.Magnitude * poiS) + R.Vector3.new(-hv.Unit.Z, 0, hv.Unit.X) * 25
+    st2.poi = R.Vector3.new(tp.X, math.max(G.Map.ground(tp.X, tp.Z), 0), tp.Z)
+    R.run(0.2)
   end
   local roll = tonumber(TEST_ARGS:match("roll=(%-?[%d%.]+)") or "")
   if roll and st2 then   -- 带一点坡度（看机头全息准心跟着机身滚转、有透视）

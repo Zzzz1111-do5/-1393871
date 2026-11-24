@@ -343,9 +343,10 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
         top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
-        -- 草地写成 LeafyGrass（不长草叶）：Roblox 会动的草叶只长在 Grass 上，盖住履带、车轮、小人的腿，看着像半截身子在地里；
-        --   那个开关（Terrain.Decoration）和草长（GrassLength）脚本都改不了，只能在 Studio 属性里勾——换材质就不管地点里勾没勾了
-        if top == Grass then top = Leafy end
+        -- 草地：图上开了 Map.GRASS（海岛，用户 11-24 发截图「这种草给海岛地图加上」）照写 Grass，长 Roblox 会动的草叶——
+        --   开关（Terrain.Decoration）和草长（GrassLength）脚本改不了，地点文件里的 Terrain 写好了（tools/build.luau）；
+        --   别的图写成 LeafyGrass（不长草叶；用户 11-21 嫌草叶盖住履带、车轮、小人的腿，看着像半截身子在地里）
+        if top == Grass and not Map.GRASS then top = Leafy end
       end
       local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
@@ -463,18 +464,19 @@ function World.terrain(onProgress, G)
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
     T.WaterWaveSpeed = 8
-    -- 地形草叶（用户 11-21：坦克还是半截卡在下面，「你直接把草删掉好了」）：原来在这里设 GrassLength、Decoration——
-    --   Roblox 不许脚本改这两个属性（文档写着 Not Scriptable，一改就报错，被 pcall 吞了），所以调过的 0.55 / 0.45 / 0.28 / 0.22、
-    --   关 Decoration 都没生效。现在 writeChunk 不写 Grass 材质（写成 LeafyGrass），草叶就长不出来
+    -- 地形草叶：Roblox 不许脚本改 GrassLength、Decoration（文档写着 Not Scriptable，一改就报错，被 pcall 吞了；以前调过的 0.55 / 0.45 / 0.28 / 0.22、
+    --   关 Decoration 都没生效）。用户 11-21 嫌草叶盖住车：writeChunk 改写 LeafyGrass（不长草叶）；用户 11-24 又要回来（发了截图）：
+    --   海岛图（Map.GRASS）照写 Grass，开关、草长写在地点文件的 Terrain 上（tools/build.luau：Decoration 开、GrassLength 1）
   end)
   for m, c in pairs(Map.COLORS or TERRAIN_COLORS) do pcall(function() T:SetMaterialColor(MAT[m], c) end) end
   -- 先量网格器（见上面 calibrate）：量出来的对照表写地图时用
   do
-    local okC, res = calibrate(T, { MAT.LeafyGrass, MAT.Sand })
+    local calMats = Map.GRASS and { MAT.Grass, MAT.LeafyGrass, MAT.Sand } or { MAT.LeafyGrass, MAT.Sand }   -- 长草叶的图草地写 Grass：也量它
+    local okC, res = calibrate(T, calMats)
     if okC then
       CAL = res
       local parts = {}
-      for _, name in ipairs({ "LeafyGrass", "Sand" }) do
+      for _, name in ipairs({ "Grass", "LeafyGrass", "Sand" }) do
         local t = res[name]
         if t then
           local bits = {}

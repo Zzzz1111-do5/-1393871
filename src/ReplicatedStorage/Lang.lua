@@ -63,13 +63,62 @@ add("pve.title", "关卡", "MISSIONS")
 add("pve.sub", "跟电脑打，一关一关解锁；打通拿金币（第一次翻倍），金币解锁载具和配件", "Fight the AI and unlock missions one by one; clears pay coins (double the first time) for vehicles and attachments")
 add("pve.level", "第 {1} 关", "MISSION {1}")
 add("pve.n1", "越过沙墙", "Over the Berm")
-add("pve.n2", "边境哨所", "Border Post")
-add("pve.n3", "夜袭油田", "Oilfield Night Raid")
+add("pve.n2", "夺取油田", "Seize the Oilfield")
+add("pve.n3", "夜袭镇子", "Night Raid on the Town")
 add("pve.n4", "沙海遭遇", "Desert Encounter")
-add("pve.n5", "镇子巷战", "Street Fight")
+add("pve.n5", "纵深突破", "Breakthrough")
 add("pve.n6", "钢铁洪流", "Steel Tide")
-add("pve.n7", "空军基地", "Air Base")
+add("pve.n7", "全线攻略", "Full Sweep")
 add("pve.n8", "沙漠风暴", "Desert Storm")
+-- 第 9～16 关（用户 11-24：「做关卡 越多越逼真越好」）
+add("pve.n9", "沙海突破", "Breaching the Sand Sea")
+add("pve.n10", "无车之战", "Infantry Only")
+add("pve.n11", "边境防线", "Border Line")
+add("pve.n12", "沙海纵深", "Deep in the Sand Sea")
+add("pve.n13", "夜幕坦克战", "Night Tank Battle")
+add("pve.n14", "铁锤行动", "Operation Hammer")
+add("pve.n15", "沙海决战", "Sand Sea Showdown")
+add("pve.n16", "最终决战", "Final Battle")
+-- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
+add("pve.brief", "作战简报", "BRIEFING")
+add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
+add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
+-- 战雷的投弹（Fly.lua / Bombsight.lua）
+add("air.bombN1", "投弹：单投（一次一枚）", "Bombs: single")
+add("air.bombN2", "投弹：双投（两枚一起）", "Bombs: pair")
+add("air.bombN0", "投弹：齐投（这种炸弹全部，一枚接一枚）", "Bombs: salvo (all of this type, one after another)")
+add("air.poiSet", "目标点标好了：照着箭头修航向，落点走到红方框自动投弹（Alt + 中键对着天上取消）", "Target point set: steer by the arrow, bombs release automatically over the red box (Alt+MMB at the sky clears it)")
+add("air.poiOff", "目标点取消了", "Target point cleared")
+add("air.bsTitle", "轰炸瞄准镜", "BOMBSIGHT")
+add("air.bsHint", "F7 退出 · F 投弹 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· Z 变焦 · 鼠标左右 修航向", "F7 exit · F drop · Shift+B single / pair / salvo · Alt+MMB target point (auto release) · Z zoom · mouse left/right adjusts heading")
+add("air.bsAlt", "高度  {1} 米", "ALT  {1} m")
+add("air.bsSpd", "地速  {1} 千米/时", "GS  {1} km/h")
+add("air.bsFall", "落下  {1} 秒", "FALL  {1} s")
+add("air.bsMode1", "单投", "SINGLE")
+add("air.bsMode2", "双投", "PAIR")
+add("air.bsMode0", "齐投", "SALVO")
+add("air.ccrpT", "{1} 秒后投弹", "release in {1} s")
+add("air.ccrpPassed", "飞过了 · 掉头再来", "passed · come around")
+add("air.ccrpRel", "投弹！", "BOMBS AWAY")
+add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
+add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
+add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
+add("pve.b1", "敌一个加强排守边境哨所，没有装甲。任务：越过沙墙和反坦克壕，拿下 A 边境哨所。", "An enemy reinforced platoon holds the border post, no armour. Cross the berm and the anti-tank ditch and take objective A.")
+add("pve.b2", "敌两个排守边境哨所和油田，有机枪阵地。任务：拿下边境哨所、油田两个据点。", "Two enemy platoons hold the border post and the oilfield with MG nests. Take both objectives.")
+add("pve.b3", "敌机械化连守镇子一线，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下连续拿下三个据点；带上反坦克武器。", "A mechanised company holds the line up to the town with Bradleys, Strykers and JLTVs. Take three objectives under cover of night; bring anti-tank weapons.")
+add("pve.b4", "两军在沙海遭遇，双方都有少量坦克和步战车。任务：突破边境沙墙、拿下油田，两个据点。", "Meeting engagement in the Sand Sea, a few tanks and IFVs on both sides. Break the border berm and take the oilfield: two objectives.")
+add("pve.b5", "敌防御纵深有 M1A1 坦克和布雷德利步战车。任务：连续拿下四个据点，撕开防线。", "M1A1 tanks and Bradleys defend in depth. Take four objectives in a row and tear the line open.")
+add("pve.b6", "坦克对决：敌 M1A1、M1A2 坦克连，我方 T-90M、99A。任务：在沙海连续拿下三个据点。", "Tank duel: an M1A1/M1A2 company against our T-90Ms and Type 99As. Take three objectives in a row across the Sand Sea.")
+add("pve.b7", "敌主力退守岩岭一线，五个据点层层设防。任务：打通沙海全部五个阶段。", "The enemy main body falls back to the ridge, five objectives in layered defence. Break through all five stages.")
+add("pve.b8", "敌重兵集团：M1A2、M1A1、布雷德利；我方 T-90M、99A、BMP-3 协同。任务：打通沙海全部五个阶段。", "Heavy enemy group of M1A2s, M1A1s and Bradleys; our T-90Ms, Type 99As and BMP-3s attack together. Break through all five stages of the Sand Sea.")
+add("pve.b9", "沙海前沿：敌摩步连有布雷德利、斯特赖克和少量 M1A1。任务：BMP-3 机步营突破两道沙墙阵地。", "Sand Sea front: a motorised company with Bradleys, Strykers and a few M1A1s. Our BMP-3 battalion breaches two berm lines.")
+add("pve.b10", "敌方是精锐步兵，没有车辆支援；地形开阔、狙击手多。任务：拿下沙海前三个据点。", "Elite enemy infantry with no vehicles; open ground and many snipers. Take the first three objectives of the Sand Sea.")
+add("pve.b11", "敌在边境构筑防线：M1A2、布雷德利、M1150 扫雷车。任务：T-90M、BMP-3 掩护步兵拿下三个据点。", "A border defence line with M1A2s, Bradleys and M1150 breachers. T-90Ms and BMP-3s cover the infantry onto three objectives.")
+add("pve.b12", "突破以后向纵深发展，敌坦克、步战车混编反冲击。任务：连续拿下四个阶段的据点。", "Exploit the breach: enemy tanks and IFVs counter-attack together. Take the objectives of four stages in a row.")
+add("pve.b13", "夜里沙海坦克战：敌 5 辆 M1A2、M1A1，我方 4 辆 T-90M、99A、96 式。用热像，先敌开火。任务：拿下四个阶段的据点。", "Night tank battle in the Sand Sea: five M1A2/M1A1s against our four T-90Ms, Type 99As and Type 96s. Use thermals and shoot first. Take the objectives of four stages.")
+add("pve.b14", "全线总攻：敌 30 人、4 辆装甲车顽抗。任务：拿下全部五个据点。", "All-out assault: 30 enemies and 4 armoured vehicles hold out. Take all five objectives.")
+add("pve.b15", "敌最后的装甲预备队：M1A2、M1A1、布雷德利。任务：打通沙海全部五个阶段。", "The enemy's last armoured reserve of M1A2s, M1A1s and Bradleys. Break through all five stages of the Sand Sea.")
+add("pve.b16", "敌全部兵力 36 人、5 辆装甲车最后一搏。任务：打通沙海全部五个阶段，拿下岭上指挥部。", "Everything the enemy has left: 36 troops and 5 armoured vehicles. Break through all five stages of the Sand Sea and take the ridge command post.")
 add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
 add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
 add("pve.forces", "敌军 {1} · 友军 {2}", "Enemies {1} · Allies {2}")
@@ -151,6 +200,33 @@ add("weapon.breach", "破障器材", "Breaching Kit")
 add("weapon.c4", "炸药包", "C4")
 add("weapon.binoc", "望远镜", "Binoculars")
 add("weapon.tablet", "战术平板", "Tactical Tablet")
+-- 各兵种的枪（用户 11-24）：两边各用自己的制式，部署界面按阵营写型号（weapon.<枪>.<阵营>）
+add("weapon.qbz191", "QBZ-191 步枪", "QBZ-191 Rifle")
+add("weapon.lmg.atk", "QJY-88 通用机枪", "QJY-88 GPMG")
+add("weapon.lmg.def", "M249 轻机枪", "M249 SAW")
+add("weapon.smg.atk", "QCW-05 冲锋枪", "QCW-05 SMG")
+add("weapon.smg.def", "MP7 冲锋枪", "MP7 PDW")
+add("weapon.shotgun", "霰弹枪", "Shotgun")
+add("weapon.shotgun.atk", "QBS-09 霰弹枪", "QBS-09 Shotgun")
+add("weapon.shotgun.def", "M1014 霰弹枪", "M1014 Shotgun")
+add("weapon.pistol.atk", "QSZ-92 手枪", "QSZ-92 Pistol")
+add("weapon.pistol.def", "M17 手枪", "M17 Pistol")
+add("gear.qbz191.desc", "解放军现役步枪，5.8 毫米，全自动", "PLA service rifle, 5.8 mm, full-auto")
+add("gear.lmg.desc", "弹链一百发，压制用；背着走慢、开镜慢", "100-round belt for suppression; heavy and slow to aim")
+add("gear.smg.desc", "射速快、跑着打也准，近距离用", "Fast-firing and accurate on the move; close range")
+add("gear.shotgun.desc", "一枪九颗弹丸，近了一枪倒，远了没用", "Nine pellets per shot: deadly up close, useless far away")
+add("gear.pistol.desc", "副武器，主武器没子弹时掏出来", "Sidearm for when the primary runs dry")
+add("deploy.roles", "兵种", "ROLE")
+add("kitrole.rifle", "步枪兵", "Rifleman")
+add("kitrole.mg", "机枪手", "Gunner")
+add("kitrole.assault", "突击兵", "Assault")
+add("kitrole.breacher", "破门手", "Breacher")
+add("kitrole.sniper", "狙击手", "Sniper")
+add("kitrole.at", "反坦克兵", "Anti-tank")
+add("kitrole.aa", "防空兵", "Anti-air")
+add("kitrole.medic", "医疗兵", "Medic")
+add("kitrole.engineer", "工兵", "Engineer")
+add("kitrole.mortar", "迫击炮手", "Mortar")
 
 add("point.A", "A 前哨岛", "A Outpost Isle")
 add("point.B", "B 灯塔岛", "B Lighthouse Isle")
@@ -196,7 +272,8 @@ add("vcat.heli", "直升机", "Helicopters")
 add("vcat.jet", "固定翼", "Jets")
 add("vcat.ship", "舰艇", "Ships")
 local VEH = {
-  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" },
+  ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" }, bmp3 = { "BMP-3 步兵战车", "BMP-3 IFV" },
+  pantsir = { "铠甲-S1 弹炮合一防空车", "Pantsir-S1 SPAAGM" },
   m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv2", "M1A2 SEPv2" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
@@ -207,9 +284,10 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
-  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" }, j8 = { "歼-8II", "J-8II" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
-  a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
+  a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, f16 = { "F-16C 战隼", "F-16C Fighting Falcon" }, f15 = { "F-15C 鹰", "F-15C Eagle" }, f14 = { "F-14A 雄猫", "F-14A Tomcat" },
+  mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
   t055 = { "055 型驱逐舰", "Type 055 Destroyer" }, t054a = { "054A 型护卫舰", "Type 054A Frigate" }, t022 = { "022 型导弹艇", "Type 022 Missile Boat" },
   ddg125 = { "DDG-125 驱逐舰", "DDG-125 Destroyer" }, cg47 = { "CG-47 巡洋舰", "CG-47 Cruiser" }, lcs2 = { "LCS-2 濒海战斗舰", "LCS-2 Littoral Combat Ship" }, pbr = { "PBR 巡逻艇", "PBR Patrol Boat" },
   lcm = { "登陆艇", "Landing Craft" }, lcac = { "726 型气垫艇", "Type 726 LCAC" },
@@ -229,6 +307,9 @@ add("fw.flak35", "双联 35 毫米高炮", "Twin 35 mm AA")
 add("fw.how155", "155 毫米榴弹炮", "155 mm howitzer")
 add("ui.man", "操作", "Man")
 add("ui.board", "上车", "Enter")
+add("ui.ride", "坐后面（{1} / {2}）", "Ride ({1} / {2})")
+add("ride.hint", "乘客 · {1} / {2} 座 · 驾驶：{3} · 鼠标转镜头 · 滚轮远近 · F / 空格 下车", "Passenger · {1} / {2} seats · driver: {3} · mouse look · wheel zoom · F / Space to get out")
+add("ride.exitBtn", "下车", "Get out")
 add("ui.manned", "你在操作{1}", "You are manning the {1}")
 add("ui.fortKilled", "摧毁 {1}", "Destroyed {1}")
 add("ui.fortDown", "{1} 摧毁了 {2}", "{1} destroyed {2}")
@@ -368,13 +449,13 @@ local PRESET = {
   mix = { "混合", "Mixed" }, rkt = { "火箭", "Rockets" }, none = { "空载", "Unarmed" }, dap = { "火力型", "Gunship" }, strike = { "轰炸", "Strike" },
   bomb = { "炸弹", "Bombs" }, kd88 = { "KD-88 远程打击", "KD-88 standoff" }, cas = { "近距支援", "Close air support" }, hk = { "猎杀", "Hunter-killer" },
   jdam = { "联合直接攻击弹药", "JDAM" }, mk82 = { "Mk 82 炸弹", "Mk 82 bombs" }, antiship = { "反舰", "Anti-ship" },
-  nuke = { "核打击", "Nuclear strike" },
+  nuke = { "核打击", "Nuclear strike" }, phoenix = { "六枚不死鸟", "Six Phoenix" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
-  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
+  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
   m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
-  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" },
+  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
   ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
   kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
   mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
@@ -451,8 +532,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 左键 机炮（机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 / 炸弹 · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · LMB gun (sticks to enemy vehicles within 6° and leads them) · F missile / bomb · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -622,6 +705,7 @@ add("pick.tracked", "履带", "Tracked")
 add("pick.wheeled", "轮式", "Wheeled")
 add("pick.amphib", "两栖", "Amphibious")
 add("arole.fighter", "战斗机", "Fighter")
+add("arole.intercept", "截击机", "Interceptor")
 add("arole.strike", "战斗轰炸机", "Strike fighter")
 add("arole.attack", "攻击机", "Attack aircraft")
 add("arole.bomber", "轰炸机", "Bomber")
@@ -886,6 +970,12 @@ add("uav.relinkTouchAir", "点这里重新连接无人机（{1} · 自动盘旋 
 add("sight.whot", "热成像 · 白热", "THERMAL · WHT")
 add("sight.bhot", "热成像 · 黑热", "THERMAL · BHT")
 add("vw.gun125", "125 毫米炮", "125 mm gun")
+add("vw.gun125r", "125 毫米炮（2A46M-5）", "125 mm 2A46M-5")
+add("vw.gun100", "100 毫米炮（2A70）", "100 mm 2A70")
+add("vw.ac30aa", "30 毫米高炮（2A38M ×2）", "30 mm 2A38M ×2")
+add("vw.s57e6", "57E6 地空导弹", "57E6 SAM")
+add("veh.samNeedLock", "先按 Q 用雷达锁住一架飞机，再发射导弹", "Lock an aircraft with the radar (Q) before launching")
+add("aw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")

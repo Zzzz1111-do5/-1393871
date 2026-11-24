@@ -20,16 +20,26 @@ local Lighting = game:GetService("Lighting")
 
 local ScopePip = {}
 
--- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）
+-- 地形材质的颜色（同 World.lua 的 TERRAIN_COLORS：开服时 SetMaterialColor 设的那套）；沙漠、沙海这类图自己带一张（Map.COLORS），先查它
+--   用户 11-24「开镜有bug……屏幕有一块色斑」：原来只有岛上那几种材质，沙漠的盐碱地、砂岩，沙海的石灰岩台地、盐壳查不到就画成草绿色——
+--   开镜看过去镜里一块块绿斑，镜外是沙色
 local TC = {
   Grass = { 98, 148, 64 }, LeafyGrass = { 98, 148, 64 }, Sand = { 226, 208, 160 }, Rock = { 124, 118, 110 }, Slate = { 98, 98, 104 },
   Ground = { 122, 98, 70 }, Mud = { 54, 47, 40 }, Concrete = { 150, 148, 140 }, Asphalt = { 70, 72, 76 },
+  Sandstone = { 190, 142, 98 }, Salt = { 228, 222, 206 }, Limestone = { 198, 182, 150 }, Basalt = { 60, 62, 64 },
 }
 -- 跟着人走的两级：step 每格几格、n 每边几格、drop 整张往下沉、edge 最外一圈再沉、move 人走开多远重新生成
 local LEVELS = {
   { step = 4, n = 96, drop = 0, edge = 1.6, move = 100 },
   { step = 20, n = 90, drop = 1, edge = 4, move = 420 },
 }
+-- 没有海的图（沙漠、沙海）多一级：64 格一点、6400 格见方。沙漠的「全岛」那级只铺有起伏的块，戈壁平原上 900 格以外原来没有地形网格；
+--   有了这级，动的东西画到的范围（DYN_RANGE）里车都踩在真的地面上，更远才是垫底的平地。不算进「能用了」（opt）
+local LEVEL3 = { step = 64, n = 100, drop = 2, edge = 5, move = 1200, opt = true }
+local function levels(sea)
+  if sea then return LEVELS end
+  return { LEVELS[1], LEVELS[2], LEVEL3 }
+end
 local FAR = { step = 64, drop = 2.5, edge = 6 }   -- 全岛（生成一次）
 local CELL = 128            -- 地图上的东西按 128 格的格子分
 local RANGE = 5200          -- 静态的东西画多远
@@ -57,7 +67,7 @@ function ScopePip.init(G)
   G.PIP_ADS = 1.25
 
   -- st：ok 能不能用（nil 还不知道）、lv 两级地形（{ mp, cx, cz }）、far 全岛那几张、busy 正在后台生成
-  local st = { ok = nil, lv = {}, far = false, busy = false, started = false, warned = false, nClones = 0, cellT = 0, syncT = 0, dynT = 0, mkBudget = 0, chk = nil }
+  local st = { ok = nil, lv = {}, far = false, farM = {}, gen = 0, busy = false, started = false, warned = false, nClones = 0, cellT = 0, syncT = 0, dynT = 0, mkBudget = 0, chk = nil }
 
   ---------------------------------------------------------------- 画中画的窗口（圆的：UICorner 裁成圆）
 
@@ -93,23 +103,67 @@ function ScopePip.init(G)
     return p
   end
 
+  -- 这张图有没有海（Map.info[id].sea；沙漠、沙海没有）
+  local function seaMap()
+    local inf = Map.info and Map.info[Map.id]
+    return not inf or inf.sea ~= false
+  end
+  -- 这种材质在这张图上的颜色：图自己的表（Map.COLORS，Color3）→ 岛上那套（TC）→ 没有的：有海的图当草地、没海的当沙地
+  local function matColor(m)
+    local mc = Map.COLORS and Map.COLORS[m.Name]
+    if typeof(mc) == "Color3" then return mc end
+    local c = TC[m.Name] or (seaMap() and TC.Grass or TC.Sand)
+    return RGB(c[1], c[2], c[3])
+  end
+
   -- 海面（半透明：浅滩透出底下的沙）、深海色的底（没有地形网格的地方）：5 × 5 块 2048 见方，跟着镜头挪
+  --   没有海的图（沙漠、沙海）：这 25 块改成平地——每块按里面 3 × 3 个点的地面高度取中位数、材质取最多的那种，放低 3 格垫在地形网格下面。
+  --   沙漠的地形网格只铺有起伏的地方（detailBoxes），戈壁平原是开服 FillBlock 铺的平地：原来镜里远处的平原透出底下这层蓝绿的海
   local water, deep = {}, {}
   for i = 1, 25 do
     water[i] = plate(V(2048, 1, 2048), RGB(26, 82, 98), 0.32)   -- 同 Terrain.WaterColor（30, 112, 136）透过深水看暗一些
     deep[i] = plate(V(2048, 1, 2048), RGB(10, 34, 44), 0)
   end
-  local waterAt = nil
-  local function placeWater(p)
-    local gx, gz = floor(p.X / 2048 + 0.5) * 2048, floor(p.Z / 2048 + 0.5) * 2048
-    if waterAt and waterAt.X == gx and waterAt.Z == gz then return end
-    waterAt = V(gx, 0, gz)
+  local WATER_C = RGB(26, 82, 98)
+  local waterAt, waterMap = nil, nil
+  local function groundPlate(p, x, z)
+    local ys, cnt = {}, {}
+    for a = -1, 1 do
+      for b = -1, 1 do
+        local sx, sz = x + a * 640, z + b * 640
+        local y = (Map.height(sx, sz))
+        table.insert(ys, y)
+        local ok, m = pcall(Map.material, sx, sz, y, 0)
+        if ok and typeof(m) == "EnumItem" then cnt[m] = (cnt[m] or 0) + 1 end
+      end
+    end
+    table.sort(ys)
+    local best, bn = Enum.Material.Sand, -1
+    for m, n in pairs(cnt) do if n > bn then best, bn = m, n end end
+    p.CFrame = CF(x, ys[5] - 3.5, z)   -- 板厚 1 格：上表面比地面低 3 格（远处那级网格往下沉 2.5，别跟它打架）
+    p.Material = best
+    p.Color = matColor(best)
+    p.Transparency = 0
+  end
+  local function placeWater(pos)
+    local gx, gz = floor(pos.X / 2048 + 0.5) * 2048, floor(pos.Z / 2048 + 0.5) * 2048
+    if waterAt and waterAt.X == gx and waterAt.Z == gz and waterMap == Map.id then return end
+    waterAt, waterMap = V(gx, 0, gz), Map.id
+    local sea = seaMap()
     local i = 0
     for a = -2, 2 do
       for b = -2, 2 do
         i += 1
-        water[i].CFrame = CF(gx + a * 2048, -0.5, gz + b * 2048)
-        deep[i].CFrame = CF(gx + a * 2048, -10.5, gz + b * 2048)
+        local x, z = gx + a * 2048, gz + b * 2048
+        if sea then
+          water[i].CFrame = CF(x, -0.5, z)
+          water[i].Material, water[i].Color, water[i].Transparency = Enum.Material.SmoothPlastic, WATER_C, 0.32
+          deep[i].CFrame = CF(x, -10.5, z)
+          deep[i].Transparency = 0
+        else
+          groundPlate(water[i], x, z)
+          deep[i].Transparency = 1
+        end
       end
     end
   end
@@ -212,8 +266,7 @@ function ScopePip.init(G)
       local mp = AS:CreateMeshPartAsync(Content.fromObject(g.em))
       mp.Name = "PipTerrain_" .. m.Name
       mp.Material = m   -- Roblox 自带材质：草、沙、岩石……的纹理按网格的 UV 铺
-      local c = TC[m.Name] or TC.Grass
-      mp.Color = RGB(c[1], c[2], c[3])
+      mp.Color = matColor(m)   -- 这张图的地形颜色（沙漠、沙海的盐壳、砂岩……原来查不到画成草绿）
       props(mp)
       mp.CFrame = CF(cx + (g.lx + g.hx) / 2, (g.ly + g.hy) / 2, cz + (g.lz + g.hz) / 2)   -- 生成的网格原点在包围盒中心
       mp.Parent = model
@@ -238,10 +291,12 @@ function ScopePip.init(G)
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     return hrp and hrp.Position or cam.CFrame.Position
   end
+  -- 后台生成的网格按「第几代」认：换了地图（G.onMap）代数加一，还在算的旧图网格算完直接扔掉
   local function maintain()
     if st.busy or st.ok == false then return end
     local p = here()
-    for i, L in ipairs(LEVELS) do
+    local gen = st.gen
+    for i, L in ipairs(levels(seaMap())) do
       local cur = st.lv[i]
       if not cur or (V(p.X - cur.cx, 0, p.Z - cur.cz)).Magnitude > L.move then
         local snap = L.step * 4
@@ -249,6 +304,7 @@ function ScopePip.init(G)
         job(function()
           local mp = terrainMesh(cx, cz, L.step, L.n, L.n, L.drop, L.edge)
           st.ok = true
+          if gen ~= st.gen then mp:Destroy() return end
           mp.Parent = wm
           if st.lv[i] and st.lv[i].mp then st.lv[i].mp:Destroy() end
           st.lv[i] = { mp = mp, cx = cx, cz = cz }
@@ -268,20 +324,33 @@ function ScopePip.init(G)
             if n > 0 then
               local cx = b[1] + (s * w + n / 2) * FAR.step
               local mp = terrainMesh(cx, (b[2] + b[4]) / 2, FAR.step, n, nz, FAR.drop, FAR.edge)
+              if gen ~= st.gen then mp:Destroy() return end
               mp.Parent = wm
+              table.insert(st.farM, mp)
             end
           end
         end
       end)
     end
   end
-  -- 能用了：EditableMesh 好用，脚下两级都生成好了、离现在的位置不远
+  -- 换地图（进服以后才在选图界面定的那张）：岛上算好的地形网格全扔掉，按新图重新生成；垫底的那层（海面 / 平地）也重摆
+  local function resetTerrain()
+    st.gen += 1
+    for _, cur in pairs(st.lv) do if cur.mp then cur.mp:Destroy() end end
+    table.clear(st.lv)
+    for _, mp in ipairs(st.farM) do mp:Destroy() end
+    table.clear(st.farM)
+    st.far = false
+    waterAt = nil
+  end
+  if G.onMap then G.onMap(resetTerrain) end
+  -- 能用了：EditableMesh 好用，脚下两级都生成好了、离现在的位置不远（没海的图第三级不等）
   function G.pipReady()
     if st.ok ~= true or G.pipForceOff then return false end   -- pipForceOff：测试 / 调试时关掉画中画（退回整屏放大）
     local p = here()
-    for i, L in ipairs(LEVELS) do
+    for i, L in ipairs(levels(seaMap())) do
       local cur = st.lv[i]
-      if not cur or (V(p.X - cur.cx, 0, p.Z - cur.cz)).Magnitude > L.move * 1.6 then return false end
+      if not L.opt and (not cur or (V(p.X - cur.cx, 0, p.Z - cur.cz)).Magnitude > L.move * 1.6) then return false end
     end
     return true
   end

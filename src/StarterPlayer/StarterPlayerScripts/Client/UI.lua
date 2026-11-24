@@ -327,6 +327,43 @@ function UI.init(G)
     c.slot = slot
     cards[i] = c
   end
+  -- 兵种（用户 11-24：「各种角色配备各种武器」）：装备栏上面一排，点一个整套换成这个兵种的（Config.RoleKits；之后每格照样能改）；
+  --   选格子（上面弹出可选的）时藏起来不挡
+  local roleRow = Instance.new("ScrollingFrame")
+  roleRow.Name = "RoleRow"
+  roleRow.Size = UDim2.new(1, -M0 * 2, 0, mobile and 24 or 28)
+  roleRow.Position = UDim2.new(0, M0, 1, slotY - SH - 12)
+  roleRow.AnchorPoint = Vector2.new(0, 1)
+  roleRow.BackgroundTransparency, roleRow.BorderSizePixel = 1, 0
+  roleRow.ScrollBarThickness = 0
+  roleRow.ScrollingDirection = Enum.ScrollingDirection.X
+  roleRow.AutomaticCanvasSize = Enum.AutomaticSize.X
+  roleRow.CanvasSize = UDim2.new()
+  roleRow.Parent = kitPage
+  local roleLay = Instance.new("UIListLayout")
+  roleLay.FillDirection = Enum.FillDirection.Horizontal
+  roleLay.Padding = UDim.new(0, mobile and 10 or 16)
+  roleLay.SortOrder = Enum.SortOrder.LayoutOrder
+  roleLay.VerticalAlignment = Enum.VerticalAlignment.Center
+  roleLay.Parent = roleRow
+  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  roleHead.LayoutOrder = 0
+  local roleBtns = {}
+  for i, r in ipairs(Config.RoleKits or {}) do
+    local b = link(roleRow, "", UDim2.fromOffset(mobile and 52 or 66, mobile and 22 or 26), UDim2.new(), mobile and 11 or 13, nil, Enum.TextXAlignment.Center)
+    b.Name = "Role_" .. r.id
+    b.LayoutOrder = i
+    local u = hair(b, UDim2.new(0, 18, 0, 2), UDim2.new(0.5, -9, 1, -2), 1)
+    b.Activated:Connect(function()
+      local k = Config.roleKit and Config.roleKit(r.id, (G.S and G.S.team) or "atk")
+      if not k then return end
+      sel.kit = k
+      sel.kitRole = r.id
+      sel.slot = nil
+      G.refreshDeploy()
+    end)
+    roleBtns[r.id] = { b = b, u = u }
+  end
   -- 主按钮：选择生成点
   local CW, CH = mobile and 200 or 270, mobile and 48 or 62
   local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
@@ -365,7 +402,15 @@ function UI.init(G)
 
   local focus = 1   -- 大图、标题看的是哪一格
   local bigItem, bigWait = nil, false
-  local function itemName(id) return id and T("weapon." .. id) or T("deploy.none") end
+  -- 各兵种的枪两边是不同的制式（GearDefs.BY）：有「weapon.<枪>.<阵营>」的按自己这边的写（机枪：QJY-88 / M249）
+  local function itemName(id)
+    if not id then return T("deploy.none") end
+    local team = (G.S and G.S.team) or "atk"
+    local k2 = "weapon." .. id .. "." .. team
+    local v = T(k2)
+    if v ~= k2 then return v end
+    return T("weapon." .. id)
+  end
   local function setModel(vp, id, team)
     if not G.gearModel or not G.viewFit then return id ~= nil end   -- GearView 还没起来：等一会儿再画
     if not id then
@@ -657,6 +702,24 @@ function UI.init(G)
       end
     end
     picker.Visible = sel.slot ~= nil
+    -- 兵种那一排：现在这一套正好是哪个兵种的就点亮它（自己改了哪格就都不亮）
+    roleRow.Visible = sel.slot == nil
+    roleHead.Text = T("deploy.roles")
+    local cur = nil
+    for _, r in ipairs(Config.RoleKits or {}) do
+      local k = Config.roleKit(r.id, team)
+      local same = true
+      for _, slot in ipairs(SLOTS) do
+        if (k[slot.id] or false) ~= (sel.kit[slot.id] or false) then same = false break end
+      end
+      if same and (cur == nil or sel.kitRole == r.id) then cur = r.id end
+    end
+    for id, rb in pairs(roleBtns) do
+      rb.b.Text = T("kitrole." .. id)
+      rb.b.TextColor3 = (id == cur) and WHITE or DIM
+      rb.b.Font = (id == cur) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      rb.u.BackgroundTransparency = (id == cur) and 0 or 1
+    end
     -- 标题、说明、数据、大图：看的那一格
     local fs = SLOTS[focus] or SLOTS[1]
     local fid = sel.kit[fs.id]

@@ -11,6 +11,7 @@ function Armor.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local FD = require(RS:WaitForChild("FortDefs"))
   local BAL = require(RS:WaitForChild("Ballistics"))
+  local AD = require(RS:WaitForChild("AirDefs"))   -- 地空导弹（铠甲-S1 的 57E6）的飞行参数、外形
   -- 坦克炮按弹种的一份武器表（伤害倍数、爆炸半径按弹种改；Ballistics.AMMO 的 vs / splash）
   local ammoW = {}
   local function weaponOf(wid, w, key)
@@ -171,22 +172,38 @@ function Armor.init(G)
     end
   end
 
-  local function seat(P, e)
+  -- asPass：坐后面当乘客（用户 11-24：运兵车、步战车要真的能载人）——人藏进车里、跟着车走，不开车、不开火
+  local function seat(P, e, asPass)
     local char = P.char
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then hrp.Anchored = true end
     hideChar(char, true)
     P.vehicle = e
-    e.driver = P
-    e.emptyAt = nil
-    e.model:SetAttribute("Driver", P.pl.UserId)
+    if asPass then
+      e.pass = e.pass or {}
+      table.insert(e.pass, P)
+      e.model:SetAttribute("Pass", #e.pass)
+    else
+      e.driver = P
+      e.emptyAt = nil
+      e.model:SetAttribute("Driver", P.pl.UserId)
+    end
     char:PivotTo(e.root.CFrame)
     G.pushOne(P)
   end
 
   local function unseat(P, e, place)
     if P.vehicle == e then P.vehicle = nil end
+    local wasPass = false
+    for i, Q in ipairs(e.pass or {}) do
+      if Q == P then
+        table.remove(e.pass, i)
+        wasPass = true
+        e.model:SetAttribute("Pass", #e.pass)
+        break
+      end
+    end
     if e.driver == P then
       e.driver = nil
       e.emptyAt = now()
@@ -197,7 +214,8 @@ function Armor.init(G)
       hideChar(char, false)
       local hrp = char:FindFirstChild("HumanoidRootPart")
       local base = baseOf(e)
-      local side = base * CF(-(e.def.W / 2 + 4), 0, 0)
+      -- 开车的从左边下；乘客从车尾（步战车、运兵车的后门）下，几个人错开一点
+      local side = wasPass and (base * CF(((#(e.pass or {}) % 3) - 1) * 2.2, 0, e.def.L / 2 + 3.5)) or (base * CF(-(e.def.W / 2 + 4), 0, 0))
       local x, z = side.Position.X, side.Position.Z
       if hrp then hrp.Anchored = false end
       char:PivotTo(CFrame.lookAt(V(x, Map.ground(x, z) + 3.5, z), V(x, Map.ground(x, z) + 3.5, z) + base.LookVector))
@@ -223,6 +241,7 @@ function Armor.init(G)
     e.model:SetAttribute("Gp", 0)
     e.model:SetAttribute("Driver", 0)
     e.ty, e.gp = 0, 0
+    e.pass = {}   -- 乘客（d.seats 个座位，步战车、运兵车、卡车）
     e.smokeLeft = SM.salvos
     e.smokeNext = 0
     e.wst = {}
@@ -256,6 +275,15 @@ function Armor.init(G)
           end
           G.msg(D.pl, "bad", "ui.vehLost")
         end
+        for _, Q in ipairs(self.pass or {}) do   -- 车里的乘客跟着阵亡（同直升机）
+          Q.vehicle = nil
+          if Q.char then
+            hideChar(Q.char, false)
+            G.hurtChar(Q.char, 1e5, src)
+          end
+          G.msg(Q.pl, "bad", "ui.vehLost")
+        end
+        self.pass = {}
         if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = "veh." .. self.def.id }) end
         for i, x in ipairs(vehicles) do
           if x == self then table.remove(vehicles, i) break end
@@ -358,14 +386,24 @@ function Armor.init(G)
   end
 
   -- 上自己队的空车（离车 18 格以内）
+  --   有人开（或者 AI 开着）的车：有座位（d.seats）就坐后面当乘客（用户 11-24：运兵车、步战车要真的能载人）
   function G.ACT.enterVeh(P, entId)
     local e = type(entId) == "string" and G.entById[entId] or nil
-    if not e or not e.alive or not e.def or e.driver or e.ai or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end   -- AI 开着的上不去
-    if G.reservedFor(e, P) then return end
+    if not e or not e.alive or not e.def or e.team ~= P.team or P.vehicle or not P.alive or not P.char then return end
     local hrp = P.char:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - e.root.CFrame.Position).Magnitude > e.def.L * 0.5 + 18 then return end
-    e.resP = nil
-    seat(P, e)
+    local cap = (e.def.seats or 1) - 1   -- seats 连开车的算（悍马、JLTV 4 个座 = 司机 + 3 个乘客）；坦克 1 个座，没有乘客位
+    local free = cap > 0 and #(e.pass or {}) < cap
+    if not e.driver and not e.ai then
+      if G.reservedFor(e, P) then   -- 刚生成、留给别人开的：有座位就先坐后面
+        if free then seat(P, e, true) end
+        return
+      end
+      e.resP = nil
+      seat(P, e)
+    elseif free then
+      seat(P, e, true)
+    end
   end
 
   ---------------------------------------------------------------- 开车、开火、烟幕弹（客户端发来的）
@@ -474,6 +512,19 @@ function Armor.init(G)
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
+    elseif w.kind == "sam" then
+      -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），
+      --   从炮两边的发射筒出去（左右轮流），按飞机导弹那套导引追（Air.lua 的 G.airGuideMissile，飞行参数 AirDefs.W）；被打的那架响导弹来袭告警
+      local tg = (type(msg) == "table" and type(msg.tgt) == "string") and G.entById[msg.tgt] or nil
+      local aw = AD.W[wid]
+      if not tg or not tg.alive or not tg.air or tg.team == e.team or not aw or not G.airGuideMissile then return end
+      if (tg.root.CFrame.Position - mz.Position).Magnitude > (w.range or 6000) then G.msg(P.pl, "bad", "ui.outOfRange") return end
+      e.samSide = -(e.samSide or 1)
+      local lp = (mz * CF(e.samSide * 1.3, 0.2, 2.0)).Position
+      local sh = G.launch({ kind = "missile", pos = lp, vel = gdir * 80 + V(0, 12, 0), w = aw, src = S, ignore = { e.model, P.char }, life = aw.life or 13,
+        step = G.airGuideMissile, age = 0, tgt = tg, tgId = tg.id, byEnt = e.id })
+      if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
+      G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
     elseif w.kind == "arty" then
       if typeof(aim) ~= "Vector3" then return end
       local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)
@@ -553,7 +604,11 @@ function Armor.init(G)
 
   function G.driveInput(P, d)
     local e = P.vehicle
-    if not e or not e.alive or e.driver ~= P or type(d) ~= "table" then return end
+    if not e or not e.alive or type(d) ~= "table" then return end
+    if e.driver ~= P then   -- 乘客：只能下车
+      if d.op == "exit" and table.find(e.pass or {}, P) then unseat(P, e, true) end
+      return
+    end
     if d.op == "state" then sync(P, e, d)
     elseif d.op == "fire" then fire(P, e, d.w, d.dir, d.aim, d)
     elseif d.op == "smoke" then smoke(P, e)
@@ -576,7 +631,19 @@ function Armor.init(G)
         else
           D.char:PivotTo(e.root.CFrame)
         end
-      elseif e.alive and e.emptyAt and t - e.emptyAt > 90 then   -- 没人开 90 秒：收走（不算冷却）
+      end
+      if e.pass and #e.pass > 0 then   -- 乘客跟着车走（走了、死了、换了角色的去掉）
+        for i = #e.pass, 1, -1 do
+          local Q = e.pass[i]
+          if not Q.alive or not Q.char or not Q.char.Parent or G.P[Q.pl] ~= Q or Q.vehicle ~= e then
+            table.remove(e.pass, i)
+          else
+            Q.char:PivotTo(e.root.CFrame)
+          end
+        end
+        if e.model:GetAttribute("Pass") ~= #e.pass then e.model:SetAttribute("Pass", #e.pass) end
+      end
+      if not D and e.alive and e.emptyAt and t - e.emptyAt > 90 and #(e.pass or {}) == 0 then   -- 没人开、也没坐人 90 秒：收走（不算冷却）
         for i, x in ipairs(vehicles) do
           if x == e then table.remove(vehicles, i) break end
         end
@@ -592,7 +659,9 @@ function Armor.init(G)
     if not e or not e.alive then return nil end
     local ammo = {}
     for wid, st in pairs(e.wst) do ammo[wid] = { st.mag, st.reserve } end
-    return { id = e.id, m = e.def.id, locked = e.locked or false, smoke = e.smokeLeft, ammo = ammo }
+    local pass = e.driver ~= P   -- 坐后面的乘客（客户端 Ride.lua 管镜头、下车）
+    return { id = e.id, m = e.def.id, locked = e.locked or false, smoke = e.smokeLeft, ammo = ammo,
+      pass = pass or nil, seats = (e.def.seats or 1) - 1, np = #(e.pass or {}), drv = e.driver and e.driver.pl.DisplayName or (e.ai and "AI") or nil }
   end
 
   G.on("died", function(P)

@@ -162,9 +162,12 @@ function FPSView.init(G)
       info = { kind = "binoc", eyeG = at * V(), objG = at * V(0, 0, 0.5), r = 0.03 }
     elseif E.eye and E.obj then   -- 狙击镜：目镜占屏幕高度九成（使命召唤的狙击镜也是几乎占满）
       info = { kind = "scope", eyeG = ea * V(E.eye.c[1], E.eye.c[2], E.eye.c[3]), objG = ea * V(E.obj.c[1], E.obj.c[2], E.obj.c[3]), r = E.eye.r, K = 0.9, Kp = 0.55, sniper = true }
+    elseif not mp then   -- 机械瞄具（各兵种的枪，用户 11-24）：照门、准星的连线对到屏幕正中（同 M4 的 ADS_CF）
+      local r, f = GD.sights(M)
+      if r then info = { kind = "iron", eyeG = at * r, objG = at * f } end
     end
     local mz = GD.muzzle(M)
-    return { optic = info, mz = mz and (at * CF(mz)) or nil }, nil
+    return { optic = info, mz = mz and (at * CF(mz)) or nil, pistol = GD.PISTOL and GD.PISTOL[key] or nil }, nil
   end
   local function allReady(keys)
     if not G.opticReady then return false end
@@ -382,6 +385,7 @@ function FPSView.init(G)
   local function buildVM(id, tool)
     destroyVM()
     local opticInfo, vm0Wait, realMz = nil, nil, nil
+    local pistolGrip = false   -- 手枪（GearDefs.PISTOL）：左手托着右手
     local model = Instance.new("Model")
     model.Name = "FPSViewModel"
     local items = {}
@@ -501,6 +505,7 @@ function FPSView.init(G)
       if gk then gr, need = gearVM(model, items, gk, tool:GetAttribute("GearMount")) end
       if gr then   -- 整件真模型
         opticInfo = gr.optic
+        pistolGrip = gr.pistol == true
         realMz = gr.mz or CF(GRIP)
         local it = bld and GM.ITEM[bld.muzzle]
         local M = it and it.model and G.opticMeta and G.opticMeta[it.model]
@@ -598,7 +603,7 @@ function FPSView.init(G)
       sl.Parent = lamp
     end
     vm = { id = id, model = model, items = items, arms = arms, flash = flash, light = light, m4 = isM4, mzOff = mzOff or CF(GRIP),
-      plist = {}, clist = {}, act = nil, t0 = now(), draw = now(), flashT = 0, bolt = 0, optic = opticInfo, wait = vm0Wait,
+      plist = {}, clist = {}, act = nil, t0 = now(), draw = now(), flashT = 0, bolt = 0, optic = opticInfo, wait = vm0Wait, pistol = pistolGrip,
       tac = tac, beam = beam, spot = spot, lamp = lamp }
     for _, it in ipairs(items) do table.insert(vm.plist, it[1]) end
     for _, it in ipairs(arms) do table.insert(vm.plist, it[1]) end
@@ -649,7 +654,8 @@ function FPSView.init(G)
       local K = O.K or 0.86
       if G.scopePipMode and G.scopePipMode() then K = O.Kp or 0.34 end
       d = math.max(0.1, O.r / (math.tan(math.rad(cam.FieldOfView) / 2) * K))
-    elseif O.kind == "dot" then d = O.adsD or 0.3 end   -- 红点、全息（改枪）：后窗离眼睛 0.2～0.45 格，看得见枪和窗框
+    elseif O.kind == "dot" then d = O.adsD or 0.3   -- 红点、全息（改枪）：后窗离眼睛 0.2～0.45 格，看得见枪和窗框
+    elseif O.kind == "iron" then d = O.adsD or 0.34 end   -- 机械瞄具：照门离眼睛同 M4（ADS_CF 的 0.34）
     return CF(V(0, 0, -d) - rot * r) * rot
   end
 
@@ -756,7 +762,7 @@ function FPSView.init(G)
   -- 还在把镜子举到眼前（Scope.lua 开着镜时问；等举到了才画目镜里的像。Play 每帧先调 Scope、后调 stepFPS，所以不看这一帧按没按右键）
   -- 瞄准镜：举到七成就让 Scope.lua 画镜片那一层（镜身本来就看得见，不用等贴上目镜）；望远镜照旧等举到眼前
   function G.fpsOpticPending()
-    if vm == nil or vm.optic == nil or vm.optic.kind == "dot" then return false end
+    if vm == nil or vm.optic == nil or vm.optic.kind == "dot" or vm.optic.kind == "iron" then return false end
     return ads < ((vm.optic.kind == "scope") and 0.7 or 0.88)
   end
   -- 举镜进度（0～1；不是第一人称时当举好了）：Play 的倍率跟着它慢慢放大
@@ -905,9 +911,17 @@ function FPSView.init(G)
       n += 1
       clist[n] = base * cf * it[3]
     end
+    -- 手枪：左手不伸到护木那儿（步枪的姿势），整条左胳膊挪过来，左手托在右手左下边（两手握枪）
+    local lShift = nil
+    if vm.pistol then
+      local lh, rh = base * sample(clip, "lh", ct), base * sample(clip, "rh", ct)
+      lShift = CF((rh * V(-0.16, -0.05, 0.05)) - lh.Position)
+    end
     for _, it in ipairs(vm.arms) do
       n += 1
-      clist[n] = base * sample(clip, it[2], ct)
+      local cf = base * sample(clip, it[2], ct)
+      if lShift and string.sub(it[2], 1, 1) == "l" then cf = lShift * cf end
+      clist[n] = cf
     end
     -- 枪口、火光
     local gunCF = base * sample(clip, "gun", ct)

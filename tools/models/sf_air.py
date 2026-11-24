@@ -113,6 +113,73 @@ SPEC = {
         ],
         'noz': [[-7.07, 1.61, 2.64, 0.42], [-7.07, 0.0, 2.64, 0.42]],
     },
+    # F-16C（rave.Ar4ik 的「F-16 Fighting Falcon | NATO | GameReady」，CC-BY；用户 11-23：「你再把 j8 和 f16 f15 f14 都做进去 你去找带内饰的然后给他们屏幕实现功能」）：
+    #   机身一整块（Korpus_Low，舵面没分开，按切法切）、座舱盖单独一块（Kupol）、整套座舱（cockpit 材质：仪表板、平显、正前方控制板、两块多功能显示器、
+    #   弹射座椅、侧杆、油门）；原模型机身材质整个设成了半透明混合（座舱盖的透明度在机身贴图的透明通道里）——机身改不透明，座舱盖克隆一份半透明的；
+    #   飞行状态（起落架收着，零件拼）；翼下挂的 GBU-10、翼尖 AIM-120、两个副油箱去掉（游戏按选的挂载另画）
+    #   座舱屏幕（原模型坐标，机头 +x、头顶 +y、+z 是右边）：两块多功能显示器在 x 7.50 的仪表板上（显示区在四根按键条里面，0.21 见方）、
+    #   正前方控制板下面两个圆表（空速、高度）、中间姿态球、下面一个斜 45° 的航向仪；平显是 Cube.016 那一组（组合玻璃上画死了符号，座舱里换成会动的）
+    'f16': {
+        'ids': ['f16'],
+        'credit': credit('F-16C', 'F-16 Fighting Falcon | NATO | GameReady', 'rave.Ar4ik', '1d74c97a06384d318b1d09e0e3811055', 'f-16-fighting-falcon-nato-gameready')
+                  + '（改动：转成 Roblox 坐标，去掉自带的外挂，襟副翼、全动平尾、方向舵、座舱盖切成会动的块；机身材质改不透明；座舱屏幕贴实时画面）',
+        'fwd': '+x', 'up': '+y', 'len': 15.06, 'lift': 0.4, 'ymid': 'box',   # 机腹（进气道下）离地 0.85 米、全高约 5 米
+        'drop': [r'^gbu-10', r'^aim-120', r'^Cylinder$', r'^Cylinder\.038$'],
+        'pitmat': ['cockpit'], 'pithud': [r'^Cube\.016$'], 'pithud_box': [[7.0, 15.0, -0.62], [7.6, 15.6, -0.13]], 'glassnode': [r'^Kupol'],
+        'matfix': {'Material.001': {'am': 0}, 'cockpit': {'am': 0}},
+        'nodes': {r'^Kupol': ('Canopy', 'canopy', {'A': 0.6})},
+        # 网页版坐标（地面 z = 0 是腹鳍最低点，没加 lift）：机翼后缘一条直线在 x −3.74、翼面高 1.33～1.47；全动平尾后缘 x −7.06、
+        #   翼根前缘 −5.14、翼尖 |y| 2.8；垂尾从 z 2.5 起、后缘往上越来越靠后（−6.6 → −7.5）
+        'surf': [
+            {'g': 'Flp', 'k': 'flaperon', 't': 'te', 'r': [1.2, 3.9], 'x': [-3.9, -2.0], 'w': [1.25, 1.6], 'c': 0.62},
+            {'g': 'Stab', 'k': 'stab', 't': 'box', 'r': [1.0, 2.9], 'x': [-7.2, -4.9], 'w': [1.2, 1.65], 'cut': True, 'px': -5.9, 'pz': 1.4},
+            {'g': 'Rud', 'k': 'rud', 't': 'te', 'sp': 'z', 'mir': False, 'r': [2.6, 4.25], 'x': [-7.7, -5.8], 'w': [-0.15, 0.15], 'c': 0.5},
+        ],
+        'noz': [[-7.1, 0.0, 1.335, 0.34]],
+        'eye_src': [5.70, 15.35, -0.37],
+        'pitscr': {
+            'mfdL': {'c': [7.497, 14.535, -0.705], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16l'},
+            'mfdR': {'c': [7.497, 14.535, -0.025], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.21, 'h': 0.21, 'page': 'f16r'},
+            'asi': {'c': [7.478, 14.394, -0.4534], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.13, 'h': 0.13, 'page': 'asi', 'round': 1},
+            'alt': {'c': [7.478, 14.394, -0.2866], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.13, 'h': 0.13, 'page': 'alt', 'round': 1},
+            'adi': {'c': [7.335, 14.175, -0.375], 'n': [-0.986, -0.168, 0], 'u': [-0.168, 0.986, 0], 'w': 0.19, 'h': 0.19, 'page': 'adi', 'round': 1},
+            'hsi': {'c': [7.245, 14.02, -0.375], 'n': [-0.705, 0.709, 0], 'u': [0.709, 0.705, 0], 'w': 0.19, 'h': 0.19, 'page': 'hsi', 'round': 1},
+            'hud': {'c': [7.29, 15.21, -0.3775], 'n': [-1, 0, 0], 'u': [0, 1, 0], 'w': 0.27, 'h': 0.44, 'page': 'hud'},
+        },
+    },
+    # 歼-8II（Rhine_Lab_Muelsyse 的「Shenyang J-8II/B」，CC-BY；同一作者的歼-11 也是这么做的）：副翼、襟翼、全动平尾、方向舵、座舱盖、
+    #   起落架舱门都是单独的节点；整架摆成带坡度、抬头的飞行姿态，起落架收在舱里（支柱、机轮去掉，游戏里用零件拼的放下来）；
+    #   翼下的导弹和导轨（C_Ext*、3、4、1）、机腹中线挂架去掉
+    'j8': {
+        'ids': ['j8'],
+        'credit': credit('歼-8II', 'Shenyang J-8II/B', 'Rhine_Lab_Muelsyse', '1c122a7cd4c44b1f85b916a1e059bfe4', 'shenyang-j-8iib')
+                  + '（改动：转成 Roblox 坐标、摆正，去掉自带的导弹和收着的起落架，舵面、座舱盖、起落架舱门做成会动的块）',
+        'fwd': '-z', 'up': '+y', 'len': 21.59, 'lift': 0.35, 'level_gear': False,   # 真机全高 5.41 米（模型 5.09 米：腹鳍放着）
+        'level': [(r'^LeftAileron$', r'^RightAileron$'), (r'^LeftFlap$', r'^RightFlap$'), (r'^LeftStab$', r'^RightStab$')],
+        'drop': [r'^C_Ext\d', r'^1$', r'^3$', r'^4$', r'^05$', r'^BL$', r'^Centerline_Pylon$', r'^Box18$', r'MainGearStrut$', r'MainGearTire$', r'^Nose_Gear$'],
+        # 座舱盖的玻璃（和前风挡一个节点 glass）：按连通块挑后面那块大的跟着座舱盖框（hatch）一起掀
+        'comp': [{'node': r'^glass$', 'sel': {'x': [4.5, 6.2], 'ay': [0, 0.3]}, 'g': 'Canopy', 'k': 'canopy', 'extra': {'A': 0.8}}],
+        'noz': [[-7.66, 0.46, 1.93, 0.38]],
+        'nodes': {
+            r'^LeftAileron$': ('AilL', 'ail'), r'^RightAileron$': ('AilR', 'ail'),
+            r'^LeftFlap$': ('FlpL', 'flap'), r'^RightFlap$': ('FlpR', 'flap'),
+            r'^LeftStab$': ('StabL', 'stab'), r'^RightStab$': ('StabR', 'stab'),
+            r'^Rudder$': ('Rud', 'rud'),
+            r'^hatch$': ('Canopy', 'canopy', {'A': 0.8}),
+            r'^gear_l_hatch$': ('GDoorL', 'gdh', {'A': 1.45}), r'^gear_r_hatch$': ('GDoorR', 'gdh', {'A': 1.45}),
+            r'^nose_gear_hatch_l$': ('GDoorNL', 'gdh', {'A': 1.4}), r'^nose_gear_hatch_r$': ('GDoorNR', 'gdh', {'A': 1.4}),
+        },
+    },
+    'f15': {
+        'ids': ['f15'],
+        'credit': 'F-15C：F-15A Eagle — USAF 76-0020, Duxford，作者 mgg8（https://sketchfab.com/3d-models/f-15a-eagle-usaf-76-0020-duxford-524f9394057e46ec8424d4a356f794b7），CC0 公共领域（不用署名，照样写上出处）',
+        'fwd': '+z', 'up': '+y', 'len': 19.43,
+    },
+    'f14': {
+        'ids': ['f14'],
+        'credit': credit('F-14A', 'F-14A Tomcat', 'Novia556', '8df51512f1af4415bd547e5ed5936ea2', 'f-14a-tomcat'),
+        'fwd': '+z', 'up': '+y', 'len': 19.1, 'drop': [r'^Object_2$'],
+    },
 }
 
 
@@ -323,6 +390,9 @@ def inbox(lo, hi, sel):
     return True
 
 
+EXTRA = {}   # build() 顺便算的：飞行员眼位、座舱屏幕（网页版坐标），main() 交给 air_anim 的 PIT / PITSCR
+
+
 def build(key, path):
     """读下载的 GLB，按 SPEC 做成网页版烘焙模型那样的 (meta, binb, credit)，外加节点部件的铰链表（网页版坐标）"""
     S = SPEC[key]
@@ -330,6 +400,19 @@ def build(key, path):
     prims = gather(J, BIN)
     Rm, t, s = frame(prims, S)
     nodes = S.get('nodes', {})
+    # 原模型自带座舱（用户 11-23：「你去找带内饰的然后给他们屏幕实现功能」）：座舱里的件（pitmat 材质、pitnode 节点）单独成 Pit 组——
+    #   游戏里坐进座舱时不藏（看到的就是原模型的座舱），屏幕贴在它的显示器上；pithud 原模型的平显（玻璃上画死了符号）单独成 PitHud 组，
+    #   座舱里藏起来、换成我们会动的平显
+    pitmat, pitnode, pithud = set(S.get('pitmat', [])), S.get('pitnode', []), S.get('pithud', [])
+    mnames = [m.get('name', '') for m in (J.get('materials') or [])]
+    # 座舱盖用了机身那张带透明通道的贴图（整个机身材质是半透明混合）：机身改不透明，座舱盖另外克隆一份半透明的材质
+    glassnode = S.get('glassnode', [])
+    clones = []
+
+    def clone_of(mi):
+        if mi not in clones:
+            clones.append(mi)
+        return len(mnames) + clones.index(mi)
     # 每个图元属于哪个部件：去掉的、起落架、节点活动部件、机体
     VB, IB, lod = [], [], []
     parts = [{'n': 'gear'}]   # pi 0：起落架（air_anim.GEAR 按连通块分前 / 左 / 右）
@@ -339,6 +422,29 @@ def build(key, path):
     groups = {}
     for p in prims:
         if match(p['path'], S.get('drop', [])):
+            continue
+        if glassnode and match(p['path'], glassnode) and p['mat'] >= 0:
+            p = dict(p)
+            p['mat'] = clone_of(p['mat'])
+        mname = mnames[p['mat']] if 0 <= p['mat'] < len(mnames) else ''
+        inPit = mname in pitmat or (pitnode and match(p['path'], pitnode))
+        if inPit or (pithud and match(p['path'], pithud)):
+            P = (p['P'] @ Rm.T + t) * s
+            N = p['N'] @ Rm.T
+            hud = np.zeros(len(p['T']), dtype=bool)
+            if pithud and match(p['path'], pithud):
+                hud[:] = True
+                if S.get('pithud_box'):   # 平显和别的东西是一块网格：只要盒子（原模型坐标）里的三角形（重心算）
+                    lo_, hi_ = np.array(S['pithud_box'][0]), np.array(S['pithud_box'][1])
+                    C = p['P'][p['T']].mean(axis=1)
+                    hud = ((C >= lo_) & (C <= hi_)).all(axis=1)
+            for pg, msk in (('PitHud', hud), ('Pit', ~hud)):
+                if not msk.any() or (pg == 'Pit' and not inPit):
+                    continue
+                if pg not in pidx:
+                    pidx[pg] = len(parts)
+                    parts.append({'n': pg})
+                groups.setdefault((p['mat'], pidx[pg]), []).append((P, N, p['UV'], p['T'][msk]))
             continue
         # 按连通块挑：一个节点里合在一起的翼面（鸭翼和机翼一个节点）、挂着的副油箱（和机身一个节点）
         rules = [r for r in S.get('comp', []) if any(re.search(r['node'], n) for n in names_of(p['path']))]
@@ -459,12 +565,38 @@ def build(key, path):
             mm['ac'] = m.get('alphaCutoff', 0.5)
         if m.get('doubleSided'):
             mm['ds'] = 1
+        fx = S.get('matfix', {}).get(m.get('name', ''))
+        if fx:
+            mm.update(fx)
+        mats.append(mm)
+    for mi in clones:   # 座舱盖：同一张贴图，半透明混合（贴图的透明通道就是玻璃）
+        mm = dict(mats[mi])
+        mm['n'] = (mm['n'] + '_glass')[:40]
+        mm['am'] = 2
         mats.append(mm)
     vb = VBa.tobytes()
     ib = IBa.tobytes()
     binb = vb + ib + b''.join(blobs)
     meta = {'st': 8, 'vb': [0, len(vb)], 'ib': [len(vb), len(ib)], 'it': 4, 'lod': [lod], 'parts': parts, 'mats': mats, 'imgs': imgs,
             'noz': S.get('noz', [])}
+    # 飞行员眼位、座舱屏幕（原模型坐标量的）→ 网页版坐标
+    def toweb(P):
+        q = (np.asarray(P, dtype=np.float64) @ Rm.T + t) * s
+        q[..., 2] -= z0
+        return q
+
+    def todir(D):
+        v = np.asarray(D, dtype=np.float64) @ Rm.T
+        return v / np.linalg.norm(v)
+    EXTRA.clear()
+    if S.get('eye_src'):
+        EXTRA['eye'] = toweb(S['eye_src'])
+    if S.get('pitscr'):
+        EXTRA['scr'] = {}
+        for nm, e in S['pitscr'].items():
+            o = {'c': toweb(e['c']), 'n': todir(e['n']), 'u': todir(e['u']), 'w': e['w'] * s, 'h': e['h'] * s}
+            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h')})
+            EXTRA['scr'][nm] = o
     # 节点活动部件的铰链（网页版坐标）
     surf = {}
     T3 = IBa.reshape(-1, 3)
@@ -600,6 +732,10 @@ def main(argv):
         A.SURF[key] = S['surf']
     if S.get('pit'):
         A.PIT[key] = S['pit']
+    if EXTRA.get('eye') is not None:   # 原模型座舱：眼位按座椅量的
+        A.PIT[key] = [list(EXTRA['eye'])]
+    if EXTRA.get('scr'):
+        A.PITSCR[key] = EXTRA['scr']
     for i in S['ids']:
         X.ALIAS[i] = key
     if S.get('lift'):   # 没有放下的起落架：机腹最低点离地多高（米），游戏里用零件拼的起落架

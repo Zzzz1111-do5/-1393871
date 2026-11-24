@@ -53,28 +53,28 @@ function Marks.init(G)
   local function hideBomb()
     bombRing.Parent, crossA.Parent, crossB.Parent, beam.Parent = nil, nil, nil, nil
   end
-  -- 按服务器的炸弹物理往前推，落到地面（或海面）为止
+  -- 按服务器的炸弹物理往前推，落到地面（或海面）为止；第二个返回值是落下要几秒（Fly.lua 的轰炸瞄准镜、CCRP 用）
   local function bombImpact(p, v)
     local dt = 0.05
-    for _ = 1, 1200 do
+    for n = 1, 1200 do
       v += V(0, -GR, 0) * dt
       v = v * (1 - 0.02 * dt)
       local np = p + v * dt
       local g = math.max(ground(np.X, np.Z), 0)
       if np.Y <= g then
-        local k = (p.Y - g) / math.max(p.Y - np.Y, 1e-3)
-        local hit = p:Lerp(np, math.clamp(k, 0, 1))
-        return V(hit.X, g, hit.Z)
+        local k = math.clamp((p.Y - g) / math.max(p.Y - np.Y, 1e-3), 0, 1)
+        local hit = p:Lerp(np, k)
+        return V(hit.X, g, hit.Z), (n - 1 + k) * dt
       end
       p = np
     end
-    return V(p.X, math.max(ground(p.X, p.Z), 0), p.Z)
+    return V(p.X, math.max(ground(p.X, p.Z), 0), p.Z), 60
   end
   G.bombImpact = bombImpact   -- 测试用
 
   local function stepBomb()
     local st = G.fly
-    if not st or not st.pilot or st.crashed or st.ground or not st.wl then
+    if not st or not st.pilot or st.crashed or st.ground or not st.wl or st.bsight then   -- 轰炸瞄准镜里十字就是落点（战雷那样），地上不再画圈
       hideBomb()
       return
     end
@@ -112,6 +112,31 @@ function Marks.init(G)
     crossA.Parent, crossB.Parent, beam.Parent = folder, folder, folder
   end
 
+  -- 目标点（战雷的「兴趣点」，开飞机时 Alt + 中键标的，Fly.lua 的 st.poi）：地上一个红方框（四条边）、一道细光柱
+  local poiParts = {}
+  for i = 1, 4 do
+    poiParts[i] = part(V(1, 0.5, 1), RGB(255, 60, 50), nil, 0.05)
+    poiParts[i].Name = "PoiMark"
+  end
+  poiParts[5] = part(V(0.5, 220, 0.5), RGB(255, 80, 60), nil, 0.5)
+  poiParts[5].Name = "PoiBeam"
+  local function stepPoi()
+    local st = G.fly
+    local p = st and st.pilot and not st.crashed and st.poi
+    if not p then
+      for _, q in ipairs(poiParts) do q.Parent = nil end
+      return
+    end
+    local h = 18   -- 方框半边长（格）
+    local y = p.Y + 0.6
+    poiParts[1].Size, poiParts[1].CFrame = V(h * 2 + 1.2, 0.5, 1.2), CFrame.new(p.X, y, p.Z - h)
+    poiParts[2].Size, poiParts[2].CFrame = V(h * 2 + 1.2, 0.5, 1.2), CFrame.new(p.X, y, p.Z + h)
+    poiParts[3].Size, poiParts[3].CFrame = V(1.2, 0.5, h * 2 + 1.2), CFrame.new(p.X - h, y, p.Z)
+    poiParts[4].Size, poiParts[4].CFrame = V(1.2, 0.5, h * 2 + 1.2), CFrame.new(p.X + h, y, p.Z)
+    poiParts[5].CFrame = CFrame.new(p.X, p.Y + 110, p.Z)
+    for _, q in ipairs(poiParts) do q.Parent = folder end
+  end
+
   -- 扔出去的炸弹：每颗地上一个小圈，跟着算到落地
   local live = {}   -- [弹编号] = 圈
   local function stepDropped()
@@ -138,6 +163,7 @@ function Marks.init(G)
   G.frameConn("Marks", function()
     G.try_(stepBomb)
     G.try_(stepDropped)
+    G.try_(stepPoi)
   end)
 end
 

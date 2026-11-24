@@ -10,6 +10,20 @@ local process = require("@lune/process")
 local Instance = roblox.Instance
 local out = process.args[1] or "RobloxTotalBattlefield.rbxlx"
 
+-- 构建标记（用户 11-22：不知道新脚本换没换上）：Config.lua 里的 Config.Build = "dev" 换成「月-日 时:分 提交号」
+local stamp = os.date("%m-%d %H:%M")
+do
+	local ok, r = pcall(process.exec or process.spawn, "git", { "rev-parse", "--short", "HEAD" })   -- Lune 0.9 起 spawn 改名 exec
+	if ok and r and r.ok then stamp = stamp .. " " .. (string.gsub(r.stdout, "%s+", "")) end
+end
+local function stampSource(path, src)
+	if string.match(path, "ReplicatedStorage/Config%.lua$") then
+		local s2, n = string.gsub(src, 'Config%.Build = "dev"', 'Config.Build = "' .. stamp .. '"', 1)
+		if n == 1 then return s2 end
+	end
+	return src
+end
+
 local game = Instance.new("DataModel")
 local count = { Script = 0, LocalScript = 0, ModuleScript = 0, Folder = 0 }
 
@@ -53,7 +67,7 @@ local function build(dir, parent)
 			if cls then
 				local s = Instance.new(cls)
 				s.Name = base
-				s.Source = fs.readFile(path)
+				s.Source = stampSource(path, fs.readFile(path))
 				s.Parent = parent
 				count[cls] += 1
 			end
@@ -100,6 +114,17 @@ if not rs:FindFirstChild("UnitModels") then
 end
 local ws = game:GetService("Workspace")
 ws.StreamingEnabled = false
+-- 地形草叶（用户 11-24 发截图：「这个 roblox 的这种草你给海岛地图加上吧」）：Terrain.Decoration、GrassLength 脚本改不了，只能写进地点文件——
+--   草叶只长在 Grass 材质上（海岛图写地形时草地照写 Grass：Map.GRASS）；草长 1 = Roblox 最长（截图那样），嫌高在 Studio 里 Workspace → Terrain 调小
+do
+	local t = ws:FindFirstChildOfClass("Terrain")
+	if not t then
+		t = roblox.Instance.new("Terrain")
+		t.Parent = ws
+	end
+	t.Decoration = true
+	t.GrassLength = 1
+end
 -- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
 local L = game:GetService("Lighting")
 L.Technology = roblox.Enum.Technology.Future
@@ -166,4 +191,4 @@ count = count0
 local packXml = protectSource(roblox.serializeModel({ pack }, true))
 local packOut = string.gsub(out, "[^/\\]+$", "ScriptsUpdate.rbxmx")
 fs.writeFile(packOut, packXml)
-print("写好了 " .. packOut .. "（只换脚本的更新包）")
+print("写好了 " .. packOut .. "（只换脚本的更新包）；构建标记 " .. stamp)

@@ -158,8 +158,9 @@ def add_part(pt):
     M = rb_mat(pt['c'])
     if pt.get('t', 0) >= 0.99:
         return
-    if shp == 'Ball':
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=0.5)
+    if shp == 'Ball' or shp == 'Sphere':   # Sphere：SpecialMesh 球（压扁的椭球：目镜镜片、高光）
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.5)
+        bpy.ops.object.shade_smooth()
         ob = bpy.context.object
         ob.scale = (sz[0], sz[2], sz[1])
     elif shp == 'Cylinder':   # Roblox 的圆柱轴在 X

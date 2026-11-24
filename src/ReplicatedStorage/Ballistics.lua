@@ -16,32 +16,50 @@ B.G = 9.81 * S   -- 真实重力（格 / 秒²）
 --   tr 曳光、ce 聚能装药（破甲 / 多用途：爆反照挡破甲弹那样挡，Era.lua）、vs 打各类目标的伤害倍数（乘在炮的 vs 上）、splash 爆炸半径倍数；
 --   资料：公开的弹药手册、厂家数据
 B.AMMO = {
-  m829a3 = { name = "M829A3", sym = "SABOT", v0 = 1555, k = 3.6e-5, bs = 1200, tr = true,      -- 120 毫米尾翼稳定脱壳穿甲弹（贫铀长杆）
+  m829a3 = { cls = "ap", name = "M829A3", sym = "SABOT", v0 = 1555, k = 3.6e-5, bs = 1200, tr = true,      -- 120 毫米尾翼稳定脱壳穿甲弹（贫铀长杆）
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
-  m830 = { name = "M830 HEAT-MP-T", sym = "HEAT", v0 = 1140, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 120 毫米破甲多用途弹（截图里那种）
+  m830 = { cls = "heat", name = "M830 HEAT-MP-T", sym = "HEAT", v0 = 1140, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 120 毫米破甲多用途弹（截图里那种）
     vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
-  m830a1 = { name = "M830A1 MPAT", sym = "MPAT", v0 = 1410, k = 8.5e-5, bs = 900, tr = true, ce = true,    -- 120 毫米多用途反坦克弹（能打直升机）
+  m830a1 = { cls = "mpat", name = "M830A1 MPAT", sym = "MPAT", v0 = 1410, k = 8.5e-5, bs = 900, tr = true, ce = true,    -- 120 毫米多用途反坦克弹（能打直升机）
     vs = { inf = 1.0, light = 1.3, armor = 0.85, fort = 1.2, air = 1.4 }, splash = 1.1 },
-  m1028 = { name = "M1028 CAN", sym = "CAN", v0 = 1410, k = 1.5e-4, bs = 300, tr = false,       -- 120 毫米霰弹：1150 颗钨珠，近距离打步兵（500 米内）
+  m1028 = { cls = "can", name = "M1028 CAN", sym = "CAN", v0 = 1410, k = 1.5e-4, bs = 300, tr = false,       -- 120 毫米霰弹：1150 颗钨珠，近距离打步兵（500 米内）
     pellets = 24, coneDeg = 1.8, range = 600, pdmg = 0.12,   -- 游戏里按 24 道弹丸射线算（每道 = 一小把钨珠），锥角 ±1.8°、打 600 米
     vs = { inf = 1.6, light = 0.4, armor = 0.02, fort = 0.15, air = 0.6 } },
-  m900 = { name = "M900", sym = "SABOT", v0 = 1505, k = 4.0e-5, bs = 1200, tr = true,           -- 105 毫米尾翼稳定脱壳穿甲弹
+  m900 = { cls = "ap", name = "M900", sym = "SABOT", v0 = 1505, k = 4.0e-5, bs = 1200, tr = true,           -- 105 毫米尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
-  m456 = { name = "M456 HEAT", sym = "HEAT", v0 = 1173, k = 1.0e-4, bs = 900, tr = true, ce = true,         -- 105 毫米破甲弹
+  m456 = { cls = "heat", name = "M456 HEAT", sym = "HEAT", v0 = 1173, k = 1.0e-4, bs = 900, tr = true, ce = true,         -- 105 毫米破甲弹
     vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
-  dtc10 = { name = "DTC10-125", sym = "穿甲", v0 = 1740, k = 3.4e-5, bs = 1200, tr = true,       -- 125 毫米尾翼稳定脱壳穿甲弹（99A）
+  dtc10 = { cls = "ap", name = "DTC10-125", sym = "穿甲", v0 = 1740, k = 3.4e-5, bs = 1200, tr = true,       -- 125 毫米尾翼稳定脱壳穿甲弹（99A）
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
-  heat125 = { name = "125 HEAT", sym = "破甲", v0 = 905, k = 1.0e-4, bs = 900, tr = true, ce = true,         -- 125 毫米破甲弹
+  heat125 = { cls = "heat", name = "125 HEAT", sym = "破甲", v0 = 905, k = 1.0e-4, bs = 900, tr = true, ce = true,         -- 125 毫米破甲弹
     vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
-  he125 = { name = "125 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,        -- 125 毫米杀爆弹
+  he125 = { cls = "he", name = "125 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,        -- 125 毫米杀爆弹
+    vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.6 },
+  -- 俄制 125 毫米（T-90M 的 2A46M-5，用户 11-24「找俄系」）：
+  bm60 = { cls = "ap", name = "3BM60 Svinets-2", sym = "穿甲", v0 = 1660, k = 3.5e-5, bs = 1200, tr = true,     -- 「铅-2」贫铀长杆尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  bk31 = { cls = "heat", name = "3BK31 HEAT", sym = "破甲", v0 = 915, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 串联装药破甲弹
+    vs = { inf = 0.9, light = 1.3, armor = 0.95, fort = 1.3 }, splash = 1.0 },
+  of26 = { cls = "he", name = "3OF26 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,      -- 杀伤爆破榴弹
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
   gun120 = { "m829a3", "m830", "m830a1", "m1028" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
   gun125 = { "dtc10", "heat125", "he125" },
+  gun125r = { "bm60", "bk31", "of26" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
   gun105 = { "m900", "m456" },
 }
+-- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
+function B.panelAmmo(kind, wid)
+  local key = B.PANEL[kind]
+  local list = wid and B.GUN[wid]
+  if key and list and not table.find(list, key) then
+    local cls = B.AMMO[key] and B.AMMO[key].cls
+    for _, k in ipairs(list) do if B.AMMO[k] and B.AMMO[k].cls == cls then return k end end
+  end
+  return key
+end
 B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
 B.MAXR = 5000   -- 激光测距、弹在空中最多飞的距离（米）

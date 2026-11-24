@@ -347,6 +347,7 @@ function Drive.init(G)
     -- 两栖车：浮着时车底在吃水线（海面下大半个车体）；水浅到履带碰着海底，就踩着海底往上爬（车底取海底和吃水线高的那个），
     --   不会在水深 1.5 格那一下从吃水线弹到海面上
     local draft = d.amphib and d.hullH * 0.55 or nil
+    -- 公式的高度；真地形和公式差多少由下面的 terrainLift（B 的，平滑过）整车补上——这里再照真地形量就补了两遍（E 11-24 合并时去掉）
     local function gh(p)
       if draft then return math.max(Map.height(p.X, p.Z), -draft) end
       return Map.ground(p.X, p.Z)
@@ -463,7 +464,7 @@ function Drive.init(G)
     if realEng and G.realLoop then
       local drive = G.realLoop("tankDrive", SS)
       if drive then
-        local turb = d.id == "m1a1" or d.id == "m1a2"
+        local turb = d.turbine == true   -- 燃气轮机（VehDefs 的 turbine，A 挑的刺：原来写死 m1a1 / m1a2，以后加 T-80 照样认）
         local jet = turb and G.realLoop("jetEngine", SS) or nil
         local tone = (turb and jet) and G.realLoop("toneSine", SS) or nil
         local tracks = G.realLoop("tankTracks", SS)
@@ -1328,9 +1329,20 @@ function Drive.init(G)
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
+    -- 地空导弹（铠甲-S1 的 57E6）：要先用防空火控 Q 雷达锁住一架飞机（AaFcs.lua），锁住的那架就是目标
+    local samTgt = nil
+    if w.kind == "sam" then
+      local fs = G.aaFcsState and G.aaFcsState()
+      samTgt = fs and fs.lockId
+      if not samTgt then
+        st.next[wid] = t + 0.4
+        if G.toast then G.toast(T("veh.samNeedLock"), "info") end
+        return
+      end
+    end
     -- 开火这一刻的炮塔、炮管、机枪塔角度一起发过去：服务器按它摆好炮管再算炮口（用户：弹道顺着枪管和炮管、开火位置和枪口对上）
     G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp,
-      am = BAL.GUN[wid] and st.fcs.am or nil })   -- 坦克炮：这一发是什么弹（服务器按它的初速、阻力打出去）
+      am = BAL.GUN[wid] and st.fcs.am or nil, tgt = samTgt })   -- am 坦克炮这一发是什么弹（服务器按它的初速、阻力打出去）；tgt 地空导弹的目标
     if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
       local dir = mz.LookVector
       local ex = { G.viewFolder, ownBox, st.em }
@@ -1457,7 +1469,7 @@ function Drive.init(G)
   function G.stepDrive(dt)
     local S = G.S
     local vs = S and S.alive and S.veh or nil
-    if vs and (vs.fort or vs.air or vs.ship) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管，舰艇归 Sail 管
+    if vs and (vs.fort or vs.air or vs.ship or vs.pass) then vs = nil end   -- 操作工事归 Gunner 管，飞机归 Fly 管，舰艇归 Sail 管
     if vs and (not st or st.id ~= vs.id) then
       if st then stop() end
       begin(vs)
@@ -1593,11 +1605,13 @@ function Drive.init(G)
     st.aimNoDrop = nil
     do
       local wa = VD.W[weaponId() or ""]
-      if d.cat == "aa" and wa and wa.kind == "shell" and d.turret and d.gun and G.aaFcs then
+      if d.cat == "aa" and wa and (wa.kind == "shell" or wa.kind == "sam") and d.turret and d.gun and G.aaFcs then
         local base = st.root * CF(0, -d.H / 2, 0)
         local piv = (base * CF(d.turret.pivot) * CF(d.gun.pivot)).Position
         local gl = VD.gunCF(d, base, st.ty, st.gp).LookVector
-        local r = G.aaFcs({ origin = piv, speed = wa.speed, g = workspace.Gravity * (wa.drop or 0.55), range = wa.range or 2000,
+        -- 地空导弹（铠甲-S1）：导弹自己追，火控不算提前量（当成飞得极快、不下坠的弹：炮塔对着飞机），Q 锁住的那架就是导弹的目标
+        local sam = wa.kind == "sam"
+        local r = G.aaFcs({ origin = piv, speed = sam and 1e6 or wa.speed, g = sam and 0 or workspace.Gravity * (wa.drop or 0.55), range = wa.range or 2000,
           look = cam.CFrame.LookVector, side = me:GetAttribute("Side"), hullYaw = st.yaw, gunYaw = math.atan2(-gl.X, -gl.Z) })
         if r.aimPt then st.aimPt, st.aimNoDrop = r.aimPt, true end
       end

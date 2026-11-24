@@ -172,8 +172,11 @@ return function(Defs, Hp)
   end
 
   -- 炮长目镜、车长延伸目镜的镜片（凸透镜 + 增透膜，B:lens）；目镜朝 +Z（对着坐在后面的人）
+  --   炮长目镜：原模型目镜圈正中一个半径 2.6 厘米、深 6 毫米的孔（目镜圈后端面在 PT.gps 前 0.084 格），镜片直径 5 厘米、放在孔底，
+  --   凸面正好和端面齐平（原来直径 6 厘米、离端面还有 5 毫米：比孔大、整个凸在外面像个盖子）
+  local GPS_LENS = V(0, 0, -0.10)
   local function lenses(b, T, P)
-    b:lens(T, CF(P(PT.gps + V(0, 0, -0.07))), 0.060, { face = 1 })
+    b:lens(T, CF(P(PT.gps + GPS_LENS)), 0.050, { face = 1, k = 0.26 })
     b:lens(T, CF(P(PT.gpse + V(0, 0, -0.06))), 0.055, { face = 1 })
   end
 
@@ -356,9 +359,14 @@ return function(Defs, Hp)
     -- 驾驶员位（用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」）：挖了内腔的 A2 才有——车体内腔就是驾驶舱
     --   （挖出来的驾驶舱很矮：顶在座圈下 0.31～0.45 米、地板 0.91～1.06 米、两边墙 ±0.66 米，驾驶员半躺）；M1A1 原模型只做了炮塔里面，A1 没有驾驶员位
     local order = { "gunner", "commander", "loader" }
+    local driverCrew = nil
     if cav then
       local H = "hull"
       local eyeD = V(0, -0.46, -1.85)
+      -- 驾驶员小人（E 11-24）：半躺在座椅上，两手握 T 形操纵把两头，脚踩刹车踏板那一片
+      driverCrew = { dress = "tank_us", g = H, eye = eyeD, lean = 34, yaw = 0, look = V(0, 0.1, -1),
+        hands = { l = { "tbar", V(-0.25, 0, 0) }, r = { "tbar", V(0.25, 0, 0) } },
+        feet = { l = { H, V(-0.12, -0.88, -2.92) }, r = { H, V(0.10, -0.88, -2.90) } } }
       local function lookAt(p, at) return CFrame.lookAt(p, at) end
       -- 三具潜望镜（前面一具正对，两边各斜 32°）、正前方驾驶员视觉增强器 DVE 的显示器
       for i = -1, 1 do
@@ -399,7 +407,21 @@ return function(Defs, Hp)
       stations = stations,
       order = order,
       lock = "gunner",   -- 一进车默认炮长位，F2 驾驶员（挖了内腔才有）、F3 炮长、F4 车长、F5 装填手
-      crew = {},
+      -- 乘员小人（E 11-24；用户：「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活 玩家第一人称就是负责扮演炮手视角」）：
+      --   位置按上面各乘员位的眼位、原模型的座椅 / 握把量的（供体格 → 炮塔米：P）；炮塔地板约 −1.12 米、车长脚踏约 −0.42 米。
+      --   玩家坐哪个位置那个小人不画（Interior.lua stepCrew）；装填手的装填动作（Interior.lua，M256）按他自己的眼位平移
+      crew = {
+        gunner = { dress = "tank_us", g = "turret", eye = gEye + V(0, -0.02, 0.02), lean = -24, yaw = 0, look = V(0, -0.12, -1),
+          hands = { l = { "gch", V(-0.14, 0.12, 0) }, r = { "gch", V(0.14, 0.12, 0) } },
+          feet = { l = { "turret", V(gEye.X - 0.12, -0.98, gEye.Z - 0.55) }, r = { "turret", V(gEye.X + 0.10, -0.98, gEye.Z - 0.52) } } },
+        commander = { dress = "tank_us", g = "turret", eye = cEye, lean = -10, yaw = 0, look = V(0, -0.30, -1),
+          hands = { l = { "turret", cEye + V(-0.12, -0.42, -0.42) }, r = { "turret", P(PT.cch) + V(0, 0.08, 0) } },
+          feet = { l = { "turret", V(cEye.X - 0.12, -0.42, cEye.Z - 0.25) }, r = { "turret", V(cEye.X + 0.10, -0.42, cEye.Z - 0.25) } } },
+        loader = { dress = "tank_us", g = "turret", eye = lEye, lean = -6, yaw = -28, look = V(0.5, -0.25, -1), stand = true,
+          hands = { l = { "turret", lEye + V(0.38, -0.48, -0.40) }, r = nil },
+          feet = { l = { "turret", V(lEye.X - 0.14, -1.12, lEye.Z + 0.05) }, r = { "turret", V(lEye.X + 0.14, -1.12, lEye.Z + 0.10) } } },
+        driver = driverCrew,
+      },
       abrams = variant,
     }
   end
@@ -442,7 +464,7 @@ return function(Defs, Hp)
     local hub = XG(PT.hub)
     b:group("gch", T, CF(hub))
     putM("Int_Gch", "gch", XG, CF(), kG, hub)
-    b:lens(T, CF(XG(PT.gps + V(0, 0, -0.07))), 0.060 * kG, { face = 1 })
+    b:lens(T, CF(XG(PT.gps + GPS_LENS)), 0.050 * kG, { face = 1, k = 0.26 })
     knobsBuild(b, T, placer(XG, CF(), kG), IFV_EYE, false)
     palmButtons(b, function(q) return XG(q) - hub end)
     -- 目镜旁的控制面板：转 90° 贴在炮长外侧的炮塔壁上，面朝炮长

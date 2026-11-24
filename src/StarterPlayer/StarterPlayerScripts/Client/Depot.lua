@@ -170,7 +170,8 @@ function Depot.init(G)
   ---------------------------------------------------------------- 召唤位：选机型
 
   -- 机型的用途（卡片上的一行字）
-  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", a10c = "attack",
+  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", j8 = "intercept",
+    f16 = "fighter", f15 = "fighter", f14 = "intercept", a10c = "attack",
     h6k = "bomber", b2 = "bomber", gj11 = "uav", gj2 = "uav", mq9 = "uav", z10 = "aheli", ah64e = "aheli", z20 = "uheli", uh60 = "uheli", ch47 = "theli" }
   local pick = Instance.new("ScreenGui")
   pick.Name = "AirPick"
@@ -354,7 +355,7 @@ function Depot.init(G)
   local function vehCards(ids)
     gl.CellSize, gl.CellPadding = UDim2.fromOffset(182, 116), UDim2.fromOffset(8, 8)
     pTitle.Text = T("pad.summonVeh")
-    pSub.Text = T("pick.subVeh") .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
+    pSub.Text = T("pick.subVeh") .. "   ·   ◉ " .. T("eco.coins", (me:GetAttribute("CoinsInf") == true) and "∞" or (me:GetAttribute("Coins") or 0))
     local list = {}
     for i, id in ipairs(ids) do
       local d = VD.get(id)
@@ -409,7 +410,7 @@ function Depot.init(G)
     local av = S and S.vehAvail and S.vehAvail[heli and "heli" or "jet"]
     local st = ""
     if av then st = (av.u >= av.cap) and ((av.cd and av.cd > 0) and T("pad.cd", av.cd) or T("pad.full", av.u, av.cap)) or T("pad.ready", av.u, av.cap) end
-    pSub.Text = T("pick.sub") .. "   ·   " .. st .. "   ·   ◉ " .. T("eco.coins", me:GetAttribute("Coins") or 0)
+    pSub.Text = T("pick.sub") .. "   ·   " .. st .. "   ·   ◉ " .. T("eco.coins", (me:GetAttribute("CoinsInf") == true) and "∞" or (me:GetAttribute("Coins") or 0))
     for i, id in ipairs(ids) do
       local d = AD.get(id)
       if d then

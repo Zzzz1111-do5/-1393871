@@ -77,6 +77,11 @@ function Coins.init(G)
   local function refresh()
     local c = player:GetAttribute("Coins")
     if type(c) ~= "number" then return end
+    if player:GetAttribute("CoinsInf") == true then   -- 无限金币（Config.Economy.infinite）：写 ∞，不弹加减
+      txt.Text = "◉ " .. T("eco.coins", "∞")
+      last = c
+      return
+    end
     txt.Text = "◉ " .. T("eco.coins", fmt(c))
     if last ~= nil and c ~= last then
       local d = c - last
@@ -93,6 +98,7 @@ function Coins.init(G)
     last = c
   end
   player:GetAttributeChangedSignal("Coins"):Connect(refresh)
+  player:GetAttributeChangedSignal("CoinsInf"):Connect(refresh)
   refresh()
   G.coinsShown = function() return badge.Visible end   -- 测试用
 

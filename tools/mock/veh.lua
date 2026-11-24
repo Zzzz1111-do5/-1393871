@@ -12,11 +12,16 @@ G.navyNoAI = true   -- 也不要 AI 舰艇（同 tools/test/ia_veh.luau）
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
 check(G.worldReady, "地图生成好了（地形体素 " .. tostring(R.voxelsWritten) .. "）")
--- 地形里没有 Grass 材质（用户 11-21：坦克还是半截身子在地里——Roblox 会动的草叶只长在 Grass 上，脚本又关不掉；草地写成 LeafyGrass）
+-- 草地的材质：Roblox 会动的草叶只长在 Grass 上（脚本关不掉、也改不了草长）——用户 11-21 嫌草叶盖住车，写成过 LeafyGrass；
+--   用户 11-24 发截图要回来：海岛图（Map.GRASS）大片草地照写 Grass（长草叶），深色的 LeafyGrass 只有零星几块；别的图不写 Grass
 do
   local VM = R.voxelMats or {}
-  check((VM.Grass or 0) == 0 and (VM.LeafyGrass or 0) > 1000,
-    string.format("地形不写 Grass（不长草叶）：Grass %d、LeafyGrass %d、Sand %d、Ground %d 个体素（抽样）", VM.Grass or 0, VM.LeafyGrass or 0, VM.Sand or 0, VM.Ground or 0))
+  if G.Map.GRASS then
+    check((VM.Grass or 0) > 1000 and (VM.Grass or 0) > (VM.LeafyGrass or 0),
+      string.format("海岛图草地写 Grass（长草叶）：Grass %d、LeafyGrass %d、Sand %d、Ground %d 个体素（抽样）", VM.Grass or 0, VM.LeafyGrass or 0, VM.Sand or 0, VM.Ground or 0))
+  else
+    check((VM.Grass or 0) == 0, string.format("这张图不写 Grass（不长草叶）：Grass %d、LeafyGrass %d 个体素（抽样）", VM.Grass or 0, VM.LeafyGrass or 0))
+  end
 end
 local me = T.join("P1", 5001, true)
 local other = T.join("P2", 5002, false)

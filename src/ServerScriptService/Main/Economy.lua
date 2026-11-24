@@ -13,6 +13,11 @@ function Economy.init(G)
   local E = Config.Economy
   local GM = require(RS:WaitForChild("GunMods"))
   if E.unlockAll then G.econAll = true end   -- 自己测试用：载具全开（Config.Economy.unlockAll）
+  -- 无限金币（Config.Economy.infinite，用户 11-24）：买东西不查余额、不扣；玩家属性 Coins 写一个大数（客户端按它判断买不买得起）、
+  --   CoinsInf = true（界面上写 ∞）；存档里的真金币照旧
+  --   每次现查（测试台开着关着都要测；上线前把 Config 里的 infinite 改回 false 就行）
+  local function INF() return E.infinite == true end
+  local INF_SHOW = 999999999
 
   local function setList(t)
     local out = {}
@@ -24,7 +29,8 @@ function Economy.init(G)
     local d = P.data
     if not d then return end
     pcall(function()
-      P.pl:SetAttribute("Coins", d.coins)
+      P.pl:SetAttribute("Coins", INF() and INF_SHOW or d.coins)
+      P.pl:SetAttribute("CoinsInf", INF())
       P.pl:SetAttribute("OwnVeh", setList(d.ownVeh))
       P.pl:SetAttribute("OwnAtt", setList(d.ownAtt))
       P.pl:SetAttribute("PveCleared", d.pve or 0)
@@ -85,8 +91,10 @@ function Economy.init(G)
     local d = P.data
     if not d then G.msg(P.pl, "bad", "eco.notLoaded") return end
     if d.ownVeh[id] then return end
-    if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
-    d.coins -= price
+    if not INF() then
+      if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
+      d.coins -= price
+    end
     d.ownVeh[id] = true
     publish(P)
     G.msg(P.pl, "good", "eco.boughtVeh", { k = "veh." .. id }, price)
@@ -111,8 +119,10 @@ function Economy.init(G)
     if G.gunLevel and G.gunLevel(P, gun) >= lv then return end   -- 等级已经到了：本来就能用
     local price = Config.AttPrice(lv)
     if price <= 0 then return end
-    if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
-    d.coins -= price
+    if not INF() then
+      if d.coins < price then G.msg(P.pl, "bad", "eco.poor", price - d.coins) return end
+      d.coins -= price
+    end
     d.ownAtt[key] = true
     publish(P)
     G.msg(P.pl, "good", "eco.boughtAtt", { k = "gm.item." .. item }, price)

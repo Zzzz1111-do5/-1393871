@@ -68,7 +68,7 @@ if cur then
   nLights = #cur.b.lights
 end
 check(nParts > 400, "内饰零件 " .. nParts .. " 个")
-check(nCrew == 0, string.format("车里不画乘员小人（用户 11-22 晚：「驾驶室不要显示人了」）：%d 个", nCrew))
+check(nCrew == 4, string.format("车里有乘员小人（用户 11-24：「坦克要有精细的 roblox 人物有不同的动画来负责干不同的活」；11-22 关过）：%d 个", nCrew))
 check(nScreens >= 5, "屏幕 " .. nScreens .. " 块")
 local live = 0
 if cur then for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end end
@@ -109,8 +109,22 @@ for _, name in ipairs(cur.spec.order) do
   check(st.station == name, "换到 " .. name)
   local _, q = inside(name)
   camAt[name] = q
-  local cr = st.cur and st.cur.crew[name]
-  check(cr == nil, name .. "：这个位置没有乘员小人（自己的手脚、别的乘员都不画）")
+  -- 自己这个位置的小人不画（11-21：不要看见自己的胳膊腿），别的乘员照画、各干各的活（11-24）
+  local own, others, othersShown = st.cur and st.cur.crew[name], 0, 0
+  local function shown(f)
+    for _, p in ipairs(f.model:GetDescendants()) do
+      if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and p.Transparency < 1 and (p.LocalTransparencyModifier or 0) < 1 then return true end
+    end
+    return false
+  end
+  for id, cr in pairs(st.cur and st.cur.crew or {}) do
+    if id ~= name then
+      others = others + 1
+      if shown(cr.f) then othersShown = othersShown + 1 end
+    end
+  end
+  check(own ~= nil and not shown(own.f), name .. "：自己这个位置的小人不画")
+  check(others > 0 and othersShown == others, string.format("%s：别的乘员画着（%d / %d）", name, othersShown, others))
 end
 if camAt.driver and camAt.gunner and camAt.commander then
   check(camAt.driver.Z < camAt.gunner.Z - 1 and camAt.commander.Y > camAt.gunner.Y - 0.5,
@@ -186,12 +200,35 @@ check(c0.rackN == (rack0 or 0) - 1, string.format("弹架 / 转盘上少了一�
 print("④ 炮长位 Shift 进主瞄准镜")
 T.tap(Enum.KeyCode.F3)
 R.run(0.2)
+-- 外模型各块在车里藏没藏（LocalTransparencyModifier）：开镜再退回来要跟开镜前一样（用户 11-24：「开镜有bug……屏幕有一块色斑」——
+--   原来退镜时 Drive 把整车设回可见，车里本该藏着的外壳块、原模型简易内饰盖在显示屏上）
+local function hidSig()
+  local v = C.viewById(e.id)
+  local n, s = 0, {}
+  for i, it in ipairs(v.M.parts) do
+    local p = it[1]
+    if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) >= 0.99 then n = n + 1 s[#s + 1] = i end
+  end
+  return n, table.concat(s, ",")
+end
+local hidN0, hidS0 = hidSig()
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.3)
 check(C.drive.sight and c0.model.Parent == nil, "进了瞄准镜：内饰收起来")
+do
+  local v = C.viewById(e.id)
+  local shown = 0
+  for _, it in ipairs(v.M.parts) do
+    local p = it[1]
+    if p:IsA("BasePart") and (p.LocalTransparencyModifier or 0) < 0.99 and p.Transparency < 0.99 then shown = shown + 1 end
+  end
+  check(shown == 0, string.format("瞄准镜里自己的车整辆不画（还画着 %d 块）", shown))
+end
 T.tap(Enum.KeyCode.LeftShift)
 R.run(0.3)
 check(not C.drive.sight and c0.model.Parent ~= nil and C.interiorOn(), "出瞄准镜：回到炮长位")
+local hidN1, hidS1 = hidSig()
+check(hidS1 == hidS0, string.format("退镜后车里藏着的外模型块跟开镜前一样（开镜前藏 %d 块，现在 %d 块）", hidN0, hidN1))
 
 print("⑤ B 导演镜头、U 藏界面")
 T.tap(Enum.KeyCode.B)

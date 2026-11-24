@@ -480,6 +480,78 @@
      "z": "min"
     }
    }
+  },
+  "qbz191": {
+   "uid": "88786970cb164adaad127a91a29b3dd8",
+   "name": "QBZ-191 - Free",
+   "author": "Brahian_s_g",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/qbz-191-free-88786970cb164adaad127a91a29b3dd8"
+  },
+  "qjy88": {
+   "uid": "f3d6595f4b954ce48d9441590b64fb3e",
+   "name": "QJY88",
+   "author": "flyinglist1",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/qjy88-f3d6595f4b954ce48d9441590b64fb3e"
+  },
+  "qcw05": {
+   "uid": "0418d46e15d941d1a89f84d639ee118d",
+   "name": "Low-Poly QCW-05 JS",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qcw-05-js-0418d46e15d941d1a89f84d639ee118d"
+  },
+  "qbs09": {
+   "uid": "e13ccd2227c64edbb4f611fc52ab6325",
+   "name": "Low-Poly QBS-09",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qbs-09-e13ccd2227c64edbb4f611fc52ab6325"
+  },
+  "qsz92": {
+   "uid": "6e8275a366454ad2ad370620412b5075",
+   "name": "Low-Poly QSZ-92",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qsz-92-6e8275a366454ad2ad370620412b5075"
+  },
+  "m249": {
+   "uid": "b1e60faa37de4461822103fe38e5c9ce",
+   "name": "M249",
+   "author": "ArtDmitriyK",
+   "license": "CC-BY-4.0",
+   "note": "去掉两脚架、瞄准镜和镜座；转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/m249-b1e60faa37de4461822103fe38e5c9ce"
+  },
+  "m17": {
+   "uid": "35e5bc9e68a841788ec8fdb09589fb92",
+   "name": "low-poly SIG Sauer M17",
+   "author": "DU1701",
+   "license": "CC-BY-4.0",
+   "note": "去掉枪身下挂的附件；转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-sig-sauer-m17-35e5bc9e68a841788ec8fdb09589fb92"
+  },
+  "m1014d": {
+   "uid": "623381817230474f9148f6208655cdfb",
+   "name": "Low Poly ShotGun-M1014",
+   "author": "BravoCastle",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-shotgun-m1014-623381817230474f9148f6208655cdfb"
+  },
+  "mp7": {
+   "uid": "0ebd1e2b7a60408cb3b587b4807635ab",
+   "name": "Low-Poly HK MP7",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-hk-mp7-0ebd1e2b7a60408cb3b587b4807635ab"
   }
  },
  "items": {
@@ -1578,6 +1650,392 @@
     "Body": 256
    },
    "front": true
+  },
+  "qbz191": {
+   "src": "qbz191",
+   "title": "解放军步枪（QBZ-191）",
+   "axes": "x,y,z",
+   "scale": 3.18,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256,
+    "Body2": 128,
+    "Body2_2": 128
+   },
+   "pts": {
+    "grip": [
+     0,
+     -0.02,
+     -0.62
+    ],
+    "rail": [
+     0,
+     0.35,
+     -0.1
+    ],
+    "muzzle": [
+     0,
+     0.245,
+     1.23
+    ],
+    "sightR": [
+     0,
+     0.43,
+     -0.59
+    ],
+    "sightF": [
+     0,
+     0.44,
+     0.54
+    ]
+   },
+   "tris": 24000
+  },
+  "qjy88": {
+   "src": "qjy88",
+   "title": "解放军通用机枪（QJY-88）",
+   "axes": "x,y,z",
+   "scale": 0.4213,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.215,
+     -0.73
+    ],
+    "rail": [
+     0,
+     0.13,
+     -0.3
+    ],
+    "muzzle": [
+     0,
+     0.05,
+     1.66
+    ],
+    "sightR": [
+     0,
+     0.18,
+     -0.565
+    ],
+    "sightF": [
+     0,
+     0.2,
+     1.47
+    ]
+   },
+   "tris": 24000
+  },
+  "qcw05": {
+   "src": "qcw05",
+   "title": "解放军冲锋枪（QCW-05）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000228,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.12,
+     0.05
+    ],
+    "rail": [
+     0,
+     0.3,
+     0.2
+    ],
+    "muzzle": [
+     0,
+     0.215,
+     0.87
+    ],
+    "sightR": [
+     0,
+     0.415,
+     0.06
+    ],
+    "sightF": [
+     0,
+     0.425,
+     0.57
+    ]
+   }
+  },
+  "qbs09": {
+   "src": "qbs09",
+   "title": "解放军霰弹枪（QBS-09）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000366,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.15,
+     -0.5
+    ],
+    "rail": [
+     0,
+     0.225,
+     -0.13
+    ],
+    "muzzle": [
+     0,
+     0.17,
+     1.46
+    ],
+    "sightR": [
+     0,
+     0.275,
+     -0.55
+    ],
+    "sightF": [
+     0,
+     0.285,
+     0.87
+    ]
+   }
+  },
+  "qsz92": {
+   "src": "qsz92",
+   "title": "解放军手枪（QSZ-92）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000268,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.07,
+     -0.165
+    ],
+    "muzzle": [
+     0,
+     0.115,
+     0.26
+    ],
+    "sightR": [
+     0,
+     0.172,
+     -0.188
+    ],
+    "sightF": [
+     0,
+     0.174,
+     0.228
+    ]
+   }
+  },
+  "m249": {
+   "src": "m249",
+   "title": "美军轻机枪（M249）",
+   "axes": "x,y,z",
+   "scale": 2.43,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "dropBox": [
+    [
+     -1,
+     -1,
+     0.75,
+     1,
+     0.02,
+     1.05
+    ],
+    [
+     -1,
+     0.55,
+     -0.9,
+     1,
+     0.8,
+     -0.1
+    ],
+    [
+     -1,
+     0.44,
+     -0.66,
+     1,
+     0.64,
+     -0.28
+    ]
+   ],
+   "pts": {
+    "grip": [
+     0,
+     -0.12,
+     -0.61
+    ],
+    "rail": [
+     0,
+     0.52,
+     -0.45
+    ],
+    "muzzle": [
+     0,
+     0.33,
+     1.42
+    ],
+    "sightR": [
+     0,
+     0.47,
+     -0.05
+    ],
+    "sightF": [
+     0,
+     0.5,
+     1.05
+    ]
+   }
+  },
+  "m1014": {
+   "src": "m1014d",
+   "title": "美军霰弹枪（M1014）",
+   "axes": "x,y,z",
+   "scale": 0.597,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "pts": {
+    "grip": [
+     0,
+     -0.135,
+     -0.62
+    ],
+    "rail": [
+     0,
+     0.22,
+     -0.13
+    ],
+    "muzzle": [
+     0,
+     0.135,
+     1.36
+    ],
+    "sightR": [
+     0,
+     0.235,
+     -0.45
+    ],
+    "sightF": [
+     0,
+     0.24,
+     1.25
+    ]
+   }
+  },
+  "m17": {
+   "src": "m17",
+   "title": "美军手枪（M17）",
+   "axes": "-z,y,x",
+   "scale": 0.2777,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "dropBox": [
+    [
+     -1,
+     -0.04,
+     0.11,
+     1,
+     0.07,
+     0.22
+    ],
+    [
+     -1,
+     -0.24,
+     -0.09,
+     1,
+     -0.05,
+     0.27
+    ]
+   ],
+   "pts": {
+    "grip": [
+     0,
+     -0.045,
+     -0.18
+    ],
+    "muzzle": [
+     0,
+     0.14,
+     0.28
+    ],
+    "sightR": [
+     0,
+     0.215,
+     -0.2
+    ],
+    "sightF": [
+     0,
+     0.215,
+     0.256
+    ]
+   }
+  },
+  "mp7": {
+   "src": "mp7",
+   "title": "美军冲锋枪（MP7A1）",
+   "axes": "-y,-z,x",
+   "scale": 0.001317,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.065,
+     0.105
+    ],
+    "rail": [
+     0,
+     0.2,
+     0.17
+    ],
+    "muzzle": [
+     0,
+     0.107,
+     0.59
+    ],
+    "sightR": [
+     0,
+     0.25,
+     -0.024
+    ],
+    "sightF": [
+     0,
+     0.25,
+     0.393
+    ]
+   }
   }
  }
 }

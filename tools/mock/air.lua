@@ -265,6 +265,8 @@ if me.Character then
 end
 print("⑤a 键位（用户 11-21：WASD 控制方向、不要准心）：Shift 加油门、Ctrl 收油门，地上收到底按住 Ctrl 倒退；W / S 不再管油门")
 local fst = C.fly
+-- 用户 11-24 改成战雷式鼠标瞄准（默认）；下面这几段测的是纯键盘驾驶那一套（M 切过去），战雷式在 ⑤¾ 单独测
+if C.flyMouseAim then C.flyMouseAim(false) end
 local CFr, V2 = R.CFrame, R.Vector2.new
 if fst and e then
   fst.thr = 0
@@ -474,6 +476,47 @@ if fst and e then
   fst.d.gun = gun0
 end
 
+print("⑤¾ 战雷式鼠标瞄准（用户 11-24：「飞机……改成战雷一模一样的，包括操作细节和手感」）：鼠标给方向、教官追过去；按方向键直接操纵；M 切换")
+if fst and e and C.flyMouseAim and not fst.ground then
+  T.tap(Enum.KeyCode.M)
+  R.run(0.2)
+  check(C.flyMouseAim() == true, "按 M：切到战雷式鼠标瞄准")
+  -- 摆平、保持高度，鼠标往右推 40°（直接给鼠标的转动量：一帧推完）
+  fst.thr = 90
+  local q = fst.cf.Position
+  local f0 = R.Vector3.new(fst.cf.LookVector.X, 0, fst.cf.LookVector.Z).Unit
+  fst.cf = CFr.lookAt(q, q + f0)
+  fst.vdir, fst.pr, fst.rr, fst.yr = f0, 0, 0, 0
+  fst.aimYaw = math.atan2(-f0.X, -f0.Z) - math.rad(40)
+  fst.aimPitch = 0
+  local hd0 = math.deg(math.atan2(-f0.X, -f0.Z))
+  local maxBank = 0
+  for _ = 1, 150 do R.run(1 / 30) maxBank = math.max(maxBank, math.abs(bankDeg())) end
+  local f1 = fst.cf.LookVector
+  local turned = (hd0 - math.deg(math.atan2(-f1.X, -f1.Z)) + 540) % 360 - 180
+  check(turned > 15, string.format("鼠标往右 40°：飞机自己压坡度转过去（5 秒转了 %.0f°、最大坡度 %.0f°）", turned, maxBank))
+  check(maxBank > 15, "转弯时压了坡度（教官协调转弯）")
+  -- 鼠标瞄准的小圈：AirHud 画（MouseAim）
+  local mm = nil
+  for _, g in ipairs(R.localPlayer.PlayerGui:GetDescendants()) do if g.Name == "MouseAim" and T.visible(g) then mm = g end end
+  check(mm ~= nil, "平显上有鼠标瞄准的小圈")
+  -- 镜头顺着鼠标想去的方向看（不是机头）
+  local camLk = R.workspace.CurrentCamera.CFrame.LookVector
+  local aimV = (R.CFrame.Angles(0, fst.aimYaw, 0) * R.CFrame.Angles(fst.aimPitch, 0, 0)).LookVector
+  check(camLk:Dot(aimV) > 0.98, string.format("镜头顺着鼠标想去的方向（夹角 %.1f°）", math.deg(math.acos(math.max(-1, math.min(1, camLk:Dot(aimV)))))))
+  -- 按住 A 直接操纵：往左滚（不管鼠标在右边）
+  local b0 = bankDeg()
+  T.key(Enum.KeyCode.A, true)
+  R.run(0.8)
+  local b1 = bankDeg()
+  T.key(Enum.KeyCode.A, false)
+  check(b1 > b0 + 10, string.format("按住 A：直接往左滚（右翼抬起，坡度 %.0f° → %.0f°）", b0, b1))   -- 坡度：右翼抬起为正（往右滚是负）
+  T.tap(Enum.KeyCode.M)
+  R.run(0.2)
+  check(C.flyMouseAim() == false, "再按 M：回到纯键盘驾驶")
+  C.flyMouseAim(true)   -- 后面的照默认（战雷式）也不碍事：⑥ 以后只看油量、武器
+  C.flyMouseAim(false)
+end
 print("⑥ 油量：飞着就烧油（油门越大越费）、平显上有油量；副油箱先烧、烧干自动抛、J 键手动抛；烧干熄火")
 check(fst ~= nil and e ~= nil and e.alive and P.vehicle == e, string.format("还开着飞机（fly %s、alive %s、P.vehicle 是它 %s、高度 %.0f）", tostring(fst ~= nil),
   tostring(e and e.alive), tostring(P.vehicle == e), fst and (fst.cf.Position.Y - G.Map.ground(fst.cf.Position.X, fst.cf.Position.Z)) or -1))

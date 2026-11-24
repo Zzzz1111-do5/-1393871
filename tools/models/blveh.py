@@ -6,7 +6,8 @@
 #     没点名的归 Body）、wheels [原节点名…]（每个一组 Wnn，自己转）、decimate { 原节点名: 保留比例 }、texMax 贴图最大边长、drop [不要的节点]
 #     scale 原模型单位 → 米直接乘（给了就不按 length 缩）；lengthRef [节点…]：按这几块的前后长度缩到 length（不给按车体 + 车轮）
 #     dedupe true：重合的三角形只留一份（游戏里扒的模型常有两三层一模一样的面，Roblox 里会闪）；dedupeFirst [节点…] 先留谁的
-#     split [{ from: [节点…], to: 组名, box: [x0, x1, y0, y1, z0, z1] }]：整个连通块（按位置焊接 1 毫米）落在框里的面拆出来归 to 组
+#     split [{ from: [节点…], to: 组名, box: [x0, x1, y0, y1, z0, z1], label: 块名前缀 }]：整个连通块（按位置焊接 1 毫米）落在框里的面拆出来归 to 组
+#       （给了 label：拆出来的单独成块、块名用这个前缀，比如铠甲的搜索雷达 Radar，kinds 里给它 k）
 #       （炮管和车体烘焙成一块的）；框是原模型 glTF 坐标（Y 上，原模型的车头朝哪就是哪）
 #     labels { 节点名: 块名前缀 }：这些节点单独成块、块名用这个前缀（组照旧），kinds { 前缀: k }：元数据里这些块带 k（int = 原模型自带的车内）
 #   输出：节点名 V_<键>__<组>_<n>（每个节点一种材质、≤19000 个三角形、原点在包围盒中心），坐标：格，X 右、Y 上、−Z 朝前，原点车底中心；
@@ -73,8 +74,9 @@ if CFG.get('dedupe'):
             bpy.data.objects.remove(o, do_unlink=True)
     objs = [o for o in bpy.data.objects if o.type == 'MESH']
 
-# 按框拆：整个连通块落在框里的面挪到新物体（名字 <原名>.<组>），归 to 组
+# 按框拆：整个连通块落在框里的面挪到新物体（名字 <原名>.<组>，给了 label 是 <原名>.<label>），归 to 组
 split_group = {}
+split_label = {}
 for rule in CFG.get('split', []):
     bx = rule['box']
     lo = Vector((bx[0], -bx[5], bx[2]))   # glTF (x, y, z) → Blender (x, −z, y)
@@ -117,7 +119,7 @@ for rule in CFG.get('split', []):
             continue
         new = o.copy()
         new.data = o.data.copy()
-        new.name = '%s.%s' % (name, rule['to'])
+        new.name = '%s.%s' % (name, rule.get('label', rule['to']))
         for col in o.users_collection:
             col.objects.link(new)
         for ob, keep in ((o, False), (new, True)):
@@ -129,6 +131,10 @@ for rule in CFG.get('split', []):
             bm.to_mesh(ob.data)
             bm.free()
         split_group[new.name] = rule['to']
+        if rule.get('label'):
+            split_label[new.name] = rule['label']
+        if name in CFG.get('decimate', {}):   # 拆出来的块照原来那块的比例减面
+            CFG['decimate'][new.name] = CFG['decimate'][name]
         print('  拆 %s → %s：%d 个面（%d 个零件）' % (name, rule['to'], len(chosen), len(inside)))
 objs = [o for o in bpy.data.objects if o.type == 'MESH']
 
@@ -215,7 +221,7 @@ for o in objs:
         g = 'W%02d' % (wheel_of[o.name] + 1)
     else:
         g = group_of.get(o.name, 'Body')
-    lab = LABELS.get(o.name.split('.')[0], g)
+    lab = split_label.get(o.name) or LABELS.get(o.name.split('.')[0], g)
     # 按材质拆开
     bpy.ops.object.select_all(action='DESELECT')
     o.select_set(True)
@@ -235,46 +241,52 @@ for o in objs:
 
 out_objs = []
 counter = {}
-for (g, mat, lab), lst in sorted(buckets.items()):
-    bpy.ops.object.select_all(action='DESELECT')
-    for p in lst:
-        p.select_set(True)
-    bpy.context.view_layer.objects.active = lst[0]
-    if len(lst) > 1:
-        bpy.ops.object.join()
-    o = bpy.context.view_layer.objects.active
-    # 三角化，超过上限按连通块分装
-    me = o.data
+
+
+def tri(p):   # 三角化（就地），返回三角形数
     bm = bmesh.new()
-    bm.from_mesh(me)
+    bm.from_mesh(p.data)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
-    bm.to_mesh(me)
+    bm.to_mesh(p.data)
     bm.free()
-    pieces = [o]
-    if len(me.polygons) > TRI_MAX:
-        bpy.ops.object.select_all(action='DESELECT')
-        o.select_set(True)
-        bpy.context.view_layer.objects.active = o
-        bpy.ops.mesh.separate(type='LOOSE')
-        loose = sorted(bpy.context.selected_objects, key=lambda x: -len(x.data.polygons))
-        packs = []
-        for p in loose:
-            for pk in packs:
-                if pk[0] + len(p.data.polygons) <= TRI_MAX:
-                    pk[0] += len(p.data.polygons)
-                    pk[1].append(p)
-                    break
-            else:
-                packs.append([len(p.data.polygons), [p]])
-        pieces = []
-        for _, lst2 in packs:
+    return len(p.data.polygons)
+
+
+def join(lst2):
+    bpy.ops.object.select_all(action='DESELECT')
+    for p in lst2:
+        p.select_set(True)
+    bpy.context.view_layer.objects.active = lst2[0]
+    if len(lst2) > 1:
+        bpy.ops.object.join()
+    return bpy.context.view_layer.objects.active
+
+
+for (g, mat, lab), lst in sorted(buckets.items()):
+    # 每块先三角化，按三角形数装箱（每箱 ≤ TRI_MAX）再合并；一块自己就超了才按连通块拆
+    #   （原来先全部合成一块、超了再按连通块拆：铠甲的车体上千个小零件，Blender 的按连通块拆分跑十几分钟）
+    items = []
+    for p in lst:
+        n = tri(p)
+        if n > TRI_MAX:
             bpy.ops.object.select_all(action='DESELECT')
-            for p in lst2:
-                p.select_set(True)
-            bpy.context.view_layer.objects.active = lst2[0]
-            if len(lst2) > 1:
-                bpy.ops.object.join()
-            pieces.append(bpy.context.view_layer.objects.active)
+            p.select_set(True)
+            bpy.context.view_layer.objects.active = p
+            bpy.ops.mesh.separate(type='LOOSE')
+            items += [(len(x.data.polygons), x) for x in bpy.context.selected_objects]
+        else:
+            items.append((n, p))
+    items.sort(key=lambda it: -it[0])
+    packs = []
+    for n, p in items:
+        for pk in packs:
+            if pk[0] + n <= TRI_MAX:
+                pk[0] += n
+                pk[1].append(p)
+                break
+        else:
+            packs.append([n, [p]])
+    pieces = [join(lst2) for _, lst2 in packs]
     for p in pieces:
         counter[lab] = counter.get(lab, 0) + 1
         p.name = 'V_%s__%s_%d' % (KEY, lab, counter[lab])
@@ -285,6 +297,9 @@ for (g, mat, lab), lst in sorted(buckets.items()):
         p.data.transform(Matrix.Translation(-c))
         p.location = c
         out_objs.append((p, g, mat, lo, hi, lab))
+
+# 物体挪了原点（location）以后 matrix_world 要等视图层刷新才变：不刷新的话下面按世界坐标算转轴时用的是旧矩阵（顶点都在原点附近）
+bpy.context.view_layer.update()
 
 # 分组结果
 rep = {'parts': {}, 'wheels': {g: {'c': w['c'], 'r': w['r']} for g, w in wheel_info.items()}}

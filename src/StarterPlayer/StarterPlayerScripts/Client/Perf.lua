@@ -1,5 +1,5 @@
 -- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
---   F7 开关：左边一块小面板，每半秒刷新——帧率（平均、这半秒里最慢的一帧）、自动画质档位 G.perfK、
+--   F7 开关（开着挂炸弹的飞机时 F7 是轰炸瞄准镜，用 Ctrl + F7）：左边一块小面板，每半秒刷新——帧率（平均、这半秒里最慢的一帧）、自动画质档位 G.perfK、
 --     客户端每个模块每帧用掉多少毫秒（init.client.lua 的逐帧步骤、各模块自己用 G.frameConn 连的逐帧回调）、
 --     引擎的统计（Stats：实例、零件、会动的零件、物理每步、内存、网络收发，读得到的话还有渲染的 CPU / GPU 时间）、
 --     载具这一帧摆了多少零件、地图光晕亮着几个——截图发过来就知道卡在哪
@@ -53,7 +53,8 @@ function Perf.init(G)
   G.perfPanel = gui   -- 测试用
 
   UIS.InputBegan:Connect(function(input, gp)
-    if input.KeyCode == Enum.KeyCode.F7 and not UIS:GetFocusedTextBox() then
+    -- 开着挂炸弹的飞机：F7 是战雷的轰炸瞄准镜（Fly.lua），这时 Ctrl + F7 开性能面板
+    if input.KeyCode == Enum.KeyCode.F7 and not UIS:GetFocusedTextBox() and not (G.flyWantsF7 and G.flyWantsF7()) then
       gui.Enabled = not gui.Enabled
     end
   end)

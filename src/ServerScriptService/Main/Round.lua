@@ -676,7 +676,9 @@ function Round.init(G)
     local role = (pick.primary == "sniper" and "sniper") or LAUNCH_ROLE[pick.launcher or ""] or "rifle"
     -- 走路速度：主武器上的配件越重越慢一点（改枪的「机动性」：弹鼓、长消音器、6 倍镜）
     local mob = (P and G.gunMob) and G.gunMob(P, pick.primary) or 1
-    return { weapons = list, hp = S.hp, speed = (pick.launcher and S.heavy or S.speed) * mob, role = role, pick = pick }
+    local pw = pick.primary and Config.Weapons[pick.primary]
+    local heavy = pick.launcher ~= nil or (pw ~= nil and pw.heavy == true)   -- 带着发射器、机枪（用户 11-24 加的各兵种的枪）走慢一点
+    return { weapons = list, hp = S.hp, speed = (heavy and S.heavy or S.speed) * mob, role = role, pick = pick }
   end
   function G.kitOf(P)
     if P.kit and P.kit.role == P.role then return P.kit end   -- 别处直接改了 P.role（测试换成观察员）就按那个兵种
