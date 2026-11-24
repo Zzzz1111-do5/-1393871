@@ -91,8 +91,9 @@ function Ents.init(G)
     --   炮弹 / 火箭弹直接打中的那一下已经按穿深算过（G.wtSkip：同一发的溅射不再算它）；G.wtRaw 是 Wt.lua 自己判了击毁
     if e.wt and not G.wtRaw and G.wtGeneric then
       if G.wtSkip == e then return end
-      G.wtGeneric(e, amt, src, G.wtPos)
-      return
+      local ok, err = pcall(G.wtGeneric, e, amt, src, G.wtPos)
+      if ok then return end
+      warn("[战雷伤害] " .. tostring(err))   -- 出错时这一下照老办法扣血，别让车打不死
     end
     e.hp -= amt
     e.lastHitBy = src
@@ -289,15 +290,19 @@ function Ents.init(G)
           if hs and HitSurf.METAL[hs] then
             G.fx({ k = "spark", p = res.Position, n = res.Normal, h = hs, s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
           end
+          -- 溅射出错也要把 wtSkip 放掉：不然这辆车之后再也不掉血
           G.wtSkip = wtE
-          if s.kind == "shell" then
-            s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
-              boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }
-            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
-          else
-            G.explode(res.Position, s.w, s.src)
-          end
+          local okE, errE = pcall(function()
+            if s.kind == "shell" then
+              s.w.splashW = s.w.splashW or { dmg = (s.w.dmg or 100) * 0.3, splash = s.w.splash, vs = s.w.vs,
+                boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }
+              G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+            else
+              G.explode(res.Position, s.w, s.src)
+            end
+          end)
           G.wtSkip = nil
+          if not okE then G.reportError("战雷伤害溅射", errE) end
           done = true
         end
         if ricE and RIC and ricE.alive and RIC.a0[ricE.cat] then

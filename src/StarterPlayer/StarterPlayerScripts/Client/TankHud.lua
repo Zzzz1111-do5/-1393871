@@ -449,7 +449,8 @@ function TankHud.init(G)
       streak.BackgroundTransparency = 0.1 + 0.25 * pulse
     end
     -- 车旁边的全息屏：镜头右边那一侧、炮塔高度，斜一点朝着镜头
-    local root = (not air) and st.root or nil   -- 飞机不要（速度在准星右边的括号里）
+    -- 飞机不要（速度在准星右边的括号里）；战雷那套（WtTank.lua）车速在左下损伤图旁边，也不要
+    local root = (not air) and not (G.wtTankShown and G.wtTankShown()) and st.root or nil
     if root then
       local d = st.d or {}
       local cp = cam.CFrame

@@ -1423,6 +1423,8 @@ function Drive.init(G)
 
   ---------------------------------------------------------------- 输入
 
+  local NUMK = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4,
+    [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 }   -- 战雷那样主炮几种弹一种一个数，M1A2 四种弹 + 机枪要到 5
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
     local k = io.KeyCode
@@ -1441,9 +1443,10 @@ function Drive.init(G)
       lase()
     elseif k == Enum.KeyCode.Q then   -- 换弹种（穿甲 / 破甲 / 多用途……）
       cycleAmmo()
-    elseif k == Enum.KeyCode.One or k == Enum.KeyCode.Two or k == Enum.KeyCode.Three or k == Enum.KeyCode.Four then   -- 3 / 4：车顶重机枪、改装的车顶加特林
-      local i = (k == Enum.KeyCode.One) and 1 or ((k == Enum.KeyCode.Two) and 2 or ((k == Enum.KeyCode.Three) and 3 or 4))
-      if st.d.weapons[i] then st.wi = i end
+    elseif NUMK[k] then   -- 3 / 4：车顶重机枪、改装的车顶加特林
+      local i = NUMK[k]
+      -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪
+      if not (G.wtKeySlot and G.wtKeySlot(st, i)) and st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）

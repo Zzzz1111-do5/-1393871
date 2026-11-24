@@ -642,6 +642,7 @@ function VehHud.init(G)
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
   local mwtOn = false   -- 电脑上开坦克：MWT 那套（帧函数里按 compact 定）
+  local wtMode = false  -- 电脑上开坦克：战雷那套（WtTank.lua，用户 11-24 夜「把整个游戏做成战雷」）——有它就不画 MWT 那套
   local TR = {}
   TR.root = frame(ret, UD2(0, 120, 0, 120), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   TR.root.Name = "TankReticle"
@@ -1095,6 +1096,7 @@ function VehHud.init(G)
     local hasGun = d.turret ~= nil and d.gun ~= nil and d.weapons[1] ~= nil
     if not hasGun then
       hideReticles()
+      if wtMode then G.wtTankStep(st, nil) end   -- 没有炮塔的车（悍马的机枪……）：战雷界面只画弹药栏、损伤图
       return
     end
     local base = st.root * CFrame.new(0, -d.H / 2, 0)
@@ -1104,8 +1106,14 @@ function VehHud.init(G)
     local wid = d.weapons[st.wi]
     local w = wid and VD.W[wid]
     local penC, penT = nil, nil
-    if w then penC, penT = penState(w, gcf.Position, pt, st.em) end
-    placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT, selAmmo)
+    if wtMode then
+      -- 战雷那套：准星（穿深指示按毫米算）、底部弹药栏、左下损伤图都在 WtTank.lua
+      hideReticles()
+      G.wtTankStep(st, { p = pt, o = gcf.Position, relK = relK, ready = ready, left = left, wid = wid, w = w, am = st.fcs and st.fcs.am })
+    else
+      if w then penC, penT = penState(w, gcf.Position, pt, st.em) end
+      placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT, selAmmo)
+    end
     if G.tankHudExtra then G.tankHudExtra(st, k) end   -- 敌人头顶的名字和距离、「被发现」、爆反 / 主动防御的状态（TankHud.lua）
   end
 
@@ -1477,7 +1485,7 @@ function VehHud.init(G)
     if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
       hp0 = nil
-      mwtOn = false
+      mwtOn, wtMode = false, false
       G.tankHudActive = false
     end
     if not gui.Enabled and not inSight then return end
@@ -1487,8 +1495,9 @@ function VehHud.init(G)
       if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
       return
     end
-    mwtOn = showTank and not compact
-    G.tankHudActive = mwtOn
+    wtMode = showTank and not compact and G.wtTankStep ~= nil
+    mwtOn = showTank and not compact and not wtMode
+    G.tankHudActive = showTank and not compact   -- 屏幕上只留这一套（Coach 的三步卡、Hud 的提示让开）
     MW.root.Visible = mwtOn
     compGroup.Visible = not compact and not showTank and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
     TK.car.Visible, TK.arm.Visible = false, false   -- 电脑开坦克是 MWT 那套（MW），触屏是紧凑读数面板（MS）

@@ -404,12 +404,12 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1/2 换武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · 空格 下车",
-  "WASD drive · Mouse aim · LMB fire · 1/2 weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
-add("drv.hintLine", "Shift 退出瞄准镜 · R 激光测距 · Q 换弹种 · Z / 滚轮 倍率 · 1/2 换武器 · 左键 开火", "Shift leave sight · R lase · Q ammo · Z / Wheel zoom · 1/2 weapon · LMB fire")
+add("drv.hintLine", "Shift 退出瞄准镜 · R 激光测距 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · 左键 开火", "Shift leave sight · R lase · Q / 1-5 shell · Z / Wheel zoom · LMB fire")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
@@ -666,7 +666,7 @@ add("coach.cardSub", "三步上手 · 回车关上", "Three steps · Enter to cl
 add("coach.gotIt", "知道了", "GOT IT")
 add("coach.moreKeys", "F1 全部按键", "F1 all keys")
 add("coach.card.veh.1", "W / S 前进后退，A / D 转向（履带车能原地打转）", "W / S to drive, A / D to steer (tracked vehicles can pivot in place)")
-add("coach.card.veh.2", "鼠标转炮塔瞄准，左键开火，1 / 2 换武器", "The mouse aims the turret, LMB fires, 1 / 2 switch weapons")
+add("coach.card.veh.2", "鼠标转炮塔瞄准，左键开火，数字键选弹种 / 武器（看底下的弹药栏）", "The mouse aims the turret, LMB fires, number keys pick the shell / weapon (see the ammo bar)")
 add("coach.card.veh.3", "Shift 进瞄准镜（V 切夜视 / 热成像），M 放烟幕，空格下车", "Shift for the gunner sight (V: night / thermal), M smoke, Space to get out")
 add("coach.card.lcac.1", "W / S 油门，A / D 转向：越快越灵，转弯会甩尾", "W / S throttle, A / D steer: sharper at speed, the stern slides out")
 add("coach.card.lcac.2", "开到海滩、冲上沙滩，车会自动放下来", "Run up onto a beach and the vehicle is set down automatically")
@@ -1370,5 +1370,6 @@ add("wt.noFix", "没有要修的部件", "Nothing to repair")
 add("wt.extCd", "灭火器冷却中（{1} 秒）", "Extinguisher recharging ({1} s)")
 add("wt.noGun", "主炮打不了：炮长阵亡或炮闩 / 炮管损毁", "Main gun out: gunner KO or breech / barrel destroyed")
 add("wt.fixing", "正在维修，暂时不能开炮", "Repairing — main gun unavailable")
+add("wtt.crew", "车组 %d / %d", "Crew %d / %d")
 
 return Lang

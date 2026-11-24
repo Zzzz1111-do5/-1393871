@@ -298,6 +298,7 @@ function WtHud.init(G)
     local em = st and st.em
     local wc = em and em:GetAttribute("WtC")
     if not wc or (G.S and G.S.veh == nil and not st) then panel.Visible = false return end
+    if G.wtTankShown and G.wtTankShown() then panel.Visible = false return end   -- 电脑上是战雷那套的损伤示意图（WtTank.lua）
     panel.Visible = true
     local d = st.d or (VD.get and VD.get(em:GetAttribute("Model") or ""))
     if not d then panel.Visible = false return end
