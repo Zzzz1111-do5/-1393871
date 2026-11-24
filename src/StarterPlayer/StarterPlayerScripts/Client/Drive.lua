@@ -464,7 +464,7 @@ function Drive.init(G)
     if realEng and G.realLoop then
       local drive = G.realLoop("tankDrive", SS)
       if drive then
-        local turb = d.id == "m1a1" or d.id == "m1a2"
+        local turb = d.turbine == true   -- 燃气轮机（VehDefs 的 turbine，A 挑的刺：原来写死 m1a1 / m1a2，以后加 T-80 照样认）
         local jet = turb and G.realLoop("jetEngine", SS) or nil
         local tone = (turb and jet) and G.realLoop("toneSine", SS) or nil
         local tracks = G.realLoop("tankTracks", SS)

@@ -518,6 +518,7 @@ function UI.init(G)
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "af3" then return T("spawn.af3") end   -- 沙海：守方主基地的机场
     if s.kind == "redbase" then return T("spawn.redbase") end   -- 沙漠图：红方前进基地
     if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id

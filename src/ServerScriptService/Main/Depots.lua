@@ -72,11 +72,12 @@ function Depots.init(G)
   local GROUND_PADS = 8   -- 每边几个地面车位（原来一型一个，现在哪个位都能召唤任何一型）
 
   local function layout()
+    local skipCamp = Map.BASES ~= nil   -- 沙海：两边主基地在下面 runwayPads 后面一起摆
     -- 守方营地：南面一排地面车位（车头朝南，背后是通道，终端柱在车尾），北面直升机停机坪
     local C = Map.CAMP
     local list = groundIds("def")
     local gL, gW = biggest(list)
-    local n = math.min(GROUND_PADS, #list)
+    local n = skipCamp and 0 or math.min(GROUND_PADS, #list)
     local gap = math.max(22, gW + 10)
     local x0 = C.x - (n - 1) * gap / 2
     for i = 1, n do
@@ -87,7 +88,7 @@ function Depots.init(G)
     local hx = { C.x - 140, C.x + 120, C.x + 172 }
     local dh = models("def", "heli")
     for i = 1, math.min(3, math.max(1, #dh)) do
-      if #dh == 0 then break end
+      if #dh == 0 or skipCamp then break end
       local x, z = hx[i], C.z - 32
       addPad({ team = "def", vid = dh[1], vids = dh, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
         term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
@@ -96,8 +97,9 @@ function Depots.init(G)
     --   从跑道中间偏西开始排，前面还有两千多格跑道；终端柱在跑道北边（用户：机场太小、跑道非常短——
     --   原来停在跑道北边的停机坪上、机头朝南，一推油门就横穿过几十格宽的跑道冲出去了）
     local EAST = V(1, 0, 0)   -- 召唤位按这个基地最大的机型留地方（biggest）
-    local function runwayPads(A, team, ids, need)
+    local function runwayPads(A, team, ids, need, ts)
       if #ids == 0 then return end
+      ts = ts or -1   -- 终端柱在跑道哪一边（−1 北边）
       local L, W = biggest(ids)
       local x = A.x - 420
       for i = 1, 4 do   -- 四个召唤位，一个接一个顺着跑道往东排、左右错开
@@ -105,9 +107,42 @@ function Depots.init(G)
         local z = A.z + ((i % 2 == 0) and 1 or -1) * A.wid * 0.2
         local pos = V(x, surface(x, z), z)
         addPad({ team = team, vid = ids[1], vids = ids, summon = true, kind = "air", need = need, base = CFrame.lookAt(pos, pos + EAST),
-          term = V(x, 0, A.z - A.wid / 2 - 10), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
+          term = V(x, 0, A.z + ts * (A.wid / 2 + 10)), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
         x += L / 2 + 30
       end
+    end
+    -- 沙海（用户 11-24：「军事基地应该在一起」「固定两边都在双方各自固定位置出生」）：两边主基地一样——车场一排地面车位（基地坐标横着排、
+    --   车头朝战场、终端柱在车尾）、三个直升机坪、自己跑道上四个飞机召唤位（终端柱在跑道靠营区那边）；据点 D 的空军基地不再出飞机
+    if Map.BASES then
+      local F = Map.FOB
+      for _, team in ipairs({ "atk", "def" }) do
+        local HB = Map.BASES[team]
+        local fwd = V(0, 0, HB.face)
+        local gl = groundIds(team)
+        local L2, W2 = biggest(gl)
+        local n2 = math.min(GROUND_PADS, #gl)
+        local gap2 = math.max(22, W2 + 10)
+        for i = 1, n2 do
+          local lx = F.motor.lx + (i - (n2 + 1) / 2) * gap2
+          local x, z = Map.baseW(HB, lx, F.motor.lz)
+          local tx, tz = Map.baseW(HB, lx - 4, F.motor.lz + L2 / 2 + 4)
+          local pos = V(x, surface(x, z), z)
+          addPad({ team = team, vid = gl[1], vids = gl, summon = true, kind = "veh", base = CFrame.lookAt(pos, pos + fwd),
+            term = V(tx, 0, tz), r = 12, size = V(W2 + 2, 0, L2 + 2) })
+        end
+        local hh = models(team, "heli")
+        for k = -1, 1 do
+          if #hh == 0 then break end
+          local x, z = Map.baseW(HB, F.heli.lx + k * 90, F.heli.lz)
+          local tx, tz = Map.baseW(HB, F.heli.lx + k * 90 - 26, F.heli.lz + 14)
+          local pos = V(x, surface(x, z), z)
+          addPad({ team = team, vid = hh[1], vids = hh, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + fwd),
+            term = V(tx, 0, tz), r = 24, size = V(30, 0, 30), heli = true })
+        end
+        local A2 = HB.airfield
+        runwayPads(A2, team, models(team, "jet"), nil, (HB.camp.z < A2.z) and -1 or 1)
+      end
+      return
     end
     -- 守方机场（据点 D 丢了就用不了）
     local A = Map.AIRFIELD

@@ -641,6 +641,11 @@ function Fly.init(G)
         table.insert(out, { p = V(td.X, AD.ground(Map, td.X, td.Z), td.Z), dir = V(-s, 0, 0) })
       end
     end
+    local HB = Map.BASES and Map.BASES[team]
+    if HB and HB.airfield then   -- 沙海：只落自己主基地的跑道
+      runway(HB.airfield)
+      return out
+    end
     if team == "atk" then
       local base = AD.carrierCF(Map)
       if base and st.d.carrier then

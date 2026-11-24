@@ -316,6 +316,15 @@ function Round.init(G)
     end
     -- 用户（交战区）：区外不能出生——步兵只能在当前交战区出生（攻方：第一波的登陆艇、攻击出发阵地、空降；守方：据点本身、后方集结点）；
     --   舰艇、航母、登陆平台、机场、营地是开载具 / 飞机的地方，照旧能去（攻方拿下的据点、守方后方别的据点不能再出生）
+    -- 沙海（用户 11-24：「固定两边都在双方各自固定位置出生」）：只在自己主基地出生——营区的出生广场（步兵、车场、直升机）、
+    --   机场滑行道边（开飞机的）；不再有攻击出发阵地、集结点、据点、伞降、小队队友身边
+    if Map.BASES and Map.BASES[team] then
+      local B = Map.BASES[team]
+      return {
+        { id = "base", kind = (team == "atk") and "redbase" or "camp", x = B.spawn.x, z = B.spawn.z, ok = true, rec = true },
+        { id = "baseAir", kind = (team == "atk") and "af2" or "af3", x = B.airSpawn.x, z = B.airSpawn.z, ok = true },
+      }
+    end
     local out = {}
     local objs = objectives(false)
     if team == "atk" and Map.LANDONLY then   -- 沙漠图：南边的前进基地（地面载具、直升机）、前进机场（飞机）
@@ -377,8 +386,24 @@ function Round.init(G)
   end
   G.standAt = standAt
 
+  -- 主基地的固定出生位（Map.BASES 的 spawns / airSpawns）：从随便一个开始挑第一个没人站着的
+  local function fixedSpot(list)
+    local n = #list
+    local start = math.random(n)
+    for k = 0, n - 1 do
+      local s = list[(start + k - 1) % n + 1]
+      if not G.spotClear or G.spotClear(s.x, s.z, 1.5, 1.5, 5) then return s end
+    end
+    return list[start]
+  end
   local function spawnCF(P, sp)
     local face = (P.team == "atk") and V(0, 0, -1) or V(0, 0, 1)   -- 攻方朝北（岛），守方朝南（海）
+    local HB = Map.BASES and Map.BASES[P.team]
+    if HB and (sp.id == "base" or sp.id == "baseAir") then   -- 沙海：自己主基地的固定出生位；广场上朝战场，机场边朝跑道
+      local s = fixedSpot(sp.id == "base" and HB.spawns or HB.airSpawns)
+      local p = V(s.x, Map.ground(s.x, s.z) + 3.5, s.z)
+      return CFrame.lookAt(p, p + V(0, 0, (sp.id == "base") and HB.face or -HB.face))
+    end
     if sp.kind == "fleet" then
       local d = G.decks and G.decks[2] or (G.decks and G.decks[1])
       if d then

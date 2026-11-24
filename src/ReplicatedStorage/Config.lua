@@ -296,8 +296,8 @@ Config.Pve = {
     { map = "sands", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
     { map = "sands", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
       ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
-    -- 第 4、6、8、10、13、16 关原来在沙漠风暴（打光兵力）；11-24 那张图删了，改到沙海、按据点算（沙海 A～E 五个阶段各一个据点）
-    -- 11-24 用户「全部默认沙海地图吧，登岛那个也删了」：原来在岛屿突击的几关也都挪到沙海（合并 A 的 16 关和 B 的只留沙海，C 合的）
+    -- 第 4、6、8 关原来在沙漠风暴（打光兵力）、第 1、2、3、5、7、11、14 关原来在岛上；11-24 用户把两张图都删了（「全部默认沙海地图吧，登岛那个也删了」）：
+    --   十六关都在沙海、按据点算（沙海 A～E 五个阶段各一个据点，caps 最多 5）
     { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
       ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
     { map = "sands", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,

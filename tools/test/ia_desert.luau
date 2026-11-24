@@ -57,7 +57,9 @@ local nRock = count(oil, function(d) return d:IsA("BasePart") and d:GetAttribute
 check(nPump >= 15 and nRock == nPump * 2, "油田抽油机 " .. nPump .. " 台（游梁、驴头带点头动画 " .. nRock .. " 件）")
 check(count(oil, function(d) return d:IsA("Fire") end) >= 3, "几口井在烧")
 check(des and des:FindFirstChild("HighwayOfDeath") and #des.HighwayOfDeath:GetChildren() > 80, "死亡公路上一路残骸（" .. tostring(des and des:FindFirstChild("HighwayOfDeath") and #des.HighwayOfDeath:GetChildren()) .. " 个零件）")
-check(des and des:FindFirstChild("RedBase") ~= nil and des:FindFirstChild("Shelters") ~= nil, "红方前进基地、加固机库")
+local scen = des and des.Parent
+check(scen and scen:FindFirstChild("FOB_atk") ~= nil and scen:FindFirstChild("FOB_def") ~= nil and des:FindFirstChild("Shelters") ~= nil,
+	"两边主基地（FOB.lua，用户 11-24「军事基地应该在一起」）、空军基地的加固机库")
 -- 建筑别压在路上、别压在据点圈里
 local onRoad, inPoint = 0, 0
 for _, m in ipairs(town and town:GetChildren() or {}) do
@@ -90,7 +92,8 @@ for _, p in ipairs(G.pads or {}) do
 		local pos = p.base.Position
 		if p.kind == "veh" then
 			atkVeh += 1
-			check(not p.sea and (pos - roblox.Vector3.new(M.REDBASE.x, pos.Y, M.REDBASE.z)).Magnitude < 400, string.format("攻方车位在前进基地（%.0f, %.0f）", pos.X, pos.Z))
+			local R0 = M.BASES.atk.rect
+			check(not p.sea and pos.X > R0.x0 and pos.X < R0.x1 and pos.Z > R0.z0 and pos.Z < R0.z1, string.format("攻方车位在自己主基地里（%.0f, %.0f）", pos.X, pos.Z))
 		elseif p.kind == "air" and p.heli then atkHeli += 1
 		elseif p.kind == "air" then
 			atkJet += 1
@@ -99,7 +102,7 @@ for _, p in ipairs(G.pads or {}) do
 	end
 end
 check(atkVeh >= 4 and atkHeli >= 1 and atkJet >= 4, string.format("攻方：车位 %d、直升机坪 %d、固定翼召唤位 %d", atkVeh, atkHeli, atkJet))
-check(carrierJet, "没有航母：歼-15T 也能在前进机场召唤")
+check(carrierJet, "没有航母：歼-15T 也能在主基地机场召唤")
 
 print("④ 玩家：部署、开战")
 local pls = {}
@@ -113,25 +116,26 @@ local a1, d1 = atk[1], def[1]
 local list = G.spawnList("atk", G.P[a1])
 local ids = {}
 for _, s in ipairs(list) do ids[s.id] = s end
-check(ids.redbase ~= nil and ids.af2 ~= nil and ids.fleet == nil and ids.cv == nil and ids.barge == nil, "攻方出生点：前进基地、前进机场，没有舰队、航母、登陆平台")
+local nIds = 0
+for _ in pairs(ids) do nIds += 1 end
+check(nIds == 2 and ids.base ~= nil and ids.baseAir ~= nil, "攻方出生点只有主基地、主基地机场（用户 11-24「固定两边都在双方各自固定位置出生」）")
 local beach = false
 for id in pairs(ids) do if string.sub(id, 1, 6) == "beach." then beach = true end end
 check(not beach, "没有登陆艇的海滩出生点")
-act(a1, "deploy", "rifle", "redbase")
-act(d1, "deploy", "rifle", "camp")
+act(a1, "deploy", "rifle", "base")
+act(d1, "deploy", "rifle", "base")
 H.run(2)
 local pa = a1.Character and a1.Character:FindFirstChild("HumanoidRootPart")
-check(pa ~= nil and math.abs(pa.Position.Z - M.REDBASE.z) < 400, string.format("攻方在前进基地出生（z = %.0f）", pa and pa.Position.Z or 0))
+local sa = M.BASES.atk.spawn
+check(pa ~= nil and math.abs(pa.Position.Z - sa.z) < 40 and math.abs(pa.Position.X - sa.x) < 40, string.format("攻方在自己主基地的出生广场出生（z = %.0f）", pa and pa.Position.Z or 0))
 local pd = d1.Character and d1.Character:FindFirstChild("HumanoidRootPart")
-check(pd ~= nil and pd.Position.Z < -12000, string.format("守方在岭北营地出生（z = %.0f）", pd and pd.Position.Z or 0))
+local sd = M.BASES.def.spawn
+check(pd ~= nil and math.abs(pd.Position.Z - sd.z) < 40 and math.abs(pd.Position.X - sd.x) < 40, string.format("守方在自己主基地的出生广场出生（z = %.0f）", pd and pd.Position.Z or 0))
 local okB = H.runUntil(function() return G.round.phase == "battle" end, G.Config.Round.prep + 5)
 check(okB and G.round.stage == 1 and G.pointActive("A") and not G.pointActive("B"), "开战：第一阶段只能占边境哨所 A")
 local st = nil
 for _, s in ipairs(G.spawnList("atk", G.P[atk[2] or a1])) do if s.id == "stage.A" then st = s end end
-check(st ~= nil and st.ok, "一开战就能在 A 的攻击出发阵地出生（没有第一波登陆艇）")
-if st then
-	check(st.z > 7050, string.format("出发阵地在 A 南边（z = %.0f）", st.z))
-end
+check(st == nil, "开战以后也只在主基地出生（没有攻击出发阵地）")
 local CA = H.Gs[a1.Name]
 check(CA and CA.T("point.A") == "A 边境哨所" or (CA and CA.T("point.A") == "A Border Post"), "据点名换成沙漠的说法：" .. tostring(CA and CA.T("point.A")))
 

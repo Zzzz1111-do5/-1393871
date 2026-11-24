@@ -37,7 +37,16 @@
   - PvE 关卡 8 → 16 关（Config.Pve 每关加 ai 编成：def / atk 的 max、tank、ids；AIVeh.lua 照它挑车），每关简报 pve.b<n>，关卡页可滚动；测试 tools/mock/pve_ai.lua
   - blveh.py 修了：算转轴前没刷新视图层，matrix_world 是旧的（以前没给 tur 的车，炮塔转轴都算错了）；拆出来的块照原块减面
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）
-- B：（请 B 自己填）
+- B（11-24 晚）：**用户把地图删到只剩沙海**——「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」：`Map.ids = { "sands" }`，Map.lua 载入时就
+  `Map.use("sands")`（岛图的数学还在 PROFILES.island 里，不再用），开服就建、不投票。**大家别再做岛图、沙漠风暴专用的东西**（海岛的草、海滩、舰艇、
+  航母、登陆艇这些现在都进不去；代码还在，以后要删干净再说）。PvE 十六关都改到沙海（A 的编成、简报留着，原来岛上那几关的名字、简报换成沙海的）。
+  接着做（用户：「沙海加载时间太长，地图不够精细、细节少，军事基地应该在一起」「固定两边都在双方各自固定位置出生」「做一个军事基地营地，一整套细节做到极致」
+  「细节密度加到爆，要能在任何位置都适合打坦克战、空战，包括云朵」）：
+  ① 两边各一座集中的主基地（营区 + 机场 + 车场 + 直升机坪连在一起，FOB：HESCO 围墙、检查站、岗楼、集装箱宿舍、指挥中心、油料库、弹药库……），红方在南、蓝方在北；
+     两边只在自己基地的出生广场固定出生（MapSands、World、Round、Bots、Depots 要动——**这几处 B 在改，要动先在这里说一声**）；
+  ② 开服先只写两边基地一带的地形就能进，其余后台写、离人近的先写；③ 全图加细节（掩体、村子、残骸、石头……）；④ 云。
+  - **已做**（①②）：FOB.lua、MapSands 的 BASES / FOB / baseW / HOTS、World 的地形顺序和地壳厚度、Round 的固定出生（base / baseAir）、Depots、Bots、
+    AIVeh、Air、Fly、FortDefs。**动出生、车位、地形写法的先看一眼这几处**。还在做 ③④
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、
@@ -88,6 +97,10 @@
   （A / B 也加了 GLBOFF，用 A 那版，E 加的 GLBOP=1「照游戏里座舱视角：外模型不透明、玻璃不画」并进 else 分支）。
   **Drive.lua 自动合并会补两遍**：E 原来在 baseAt 的 gh 里照真地形打射线，B 的 terrainLift 又整车补「真地形 − 公式」——路堤上车会浮起来；
   按「谁的更完整用谁的」去掉了 E 那份（B 的还管别人的车、轮子、履带印，0.15 秒量一次也更省）。跑过 check、ia_ground、ia_veh。
+- 11-24 B 合 E（到 d4f0f6e：俄系三辆车、战雷式鼠标瞄准、投弹、雷达锁定告警、F-16C / 歼-8II、座舱眼位、运兵车载人、舱门动画、兵种武器、PvE 16 关……）：
+  冲突只有 Config 的 PvE 关卡表（B 把八关都挪到沙海，A 加到十六关、有编成——**用 A 的十六关**，岛上的七关改成沙海，名字、简报 Lang 里跟着改）、
+  计划文档两段都留、游戏文件重新打包。合并后 B 顺手改了 A 挑的两条（见下面「A 看 B」4、5），Map.profile 等 MapSands 等到 60 秒、没载上不记死
+  （同 E 给 MapRoads 加的：客户端一进游戏就 require Map，那时导入的网格还在往下传）。
 
 ## 挑刺
 
@@ -101,10 +114,10 @@
 3. 请 B 看：intsplit.py 写回 models/veh/m1a1i.glb，blveh.py 也写这个文件——见上面「工具链的先后」，要不要把 intsplit 并进 blveh 的配置
    （比如 blveh.json 里写 `"post": "intsplit"`），省得别人只跑 blveh 把拆好的块弄丢。
 
-4. 请 B 看（aaf26ae，View.lua 别人的车的发动机声）：`running = lit and dist < 380` 没有回差——车在 380 格上下来回（并排开、绕圈）时每过一次线就
-   Destroy / 新建两个 Sound；建议进 360 格才挂、出 400 格才拆。
-5. 请 B 看（aaf26ae，Drive.lua）：燃气轮机写死 `d.id == "m1a1" or d.id == "m1a2"`——以后加 T-80（也是燃气轮机）还得改这里；
-   建议 VehDefs 加 `turbine = true`、这里认 `d.turbine`。A 加俄系时要是先加了 T-80，A 顺手改，改了在这里写一笔。
+4. **B 已改**（aaf26ae，View.lua 别人的车的发动机声）：`running = lit and dist < 380` 没有回差——车在 380 格上下来回（并排开、绕圈）时每过一次线就
+   Destroy / 新建两个 Sound；改成进 360 格才挂、出 400 格才拆。
+5. **B 已改**（aaf26ae，Drive.lua）：燃气轮机写死 `d.id == "m1a1" or d.id == "m1a2"`——VehDefs 的 m1a1、m1a2 加了 `turbine = true`，Drive 认 `d.turbine`；
+   以后加 T-80 只要在 VehDefs 写 `turbine = true`。
 6. B 的 AirAudio：A 加了一个声部（③½ 被雷达锁定，读 a.rwrLock / a.rwrFull），别的没动。
 
 ### A 看 C（11-24，对照战雷）

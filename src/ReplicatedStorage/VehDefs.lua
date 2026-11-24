@@ -92,7 +92,7 @@ D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear
   smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
   sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },   -- 「松树-U」炮长瞄准镜：昼光 4 / 12 倍，热像（Catherine-FC）宽 3.7、窄 12 倍
   weapons = { "gun125r", "coax" } })
-D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
   gun = { pivot = V(0, 0.95, -4.0), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.1),
@@ -101,7 +101,7 @@ D.m1a2 = tracked({ cat = "tank", L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear =
   sightZoom = { day = { 3, 10 }, th = { 3, 6, 13, 25, 50 } },
   smoke = { banks = { { at = V(3.5, 1.6, -2.4), yaw = 35 }, { at = V(-3.5, 1.6, -2.4), yaw = -35 } }, n = 6 },
   weapons = { "gun120", "coax" } })
-D.m1a1 = tracked({ cat = "tank", L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.6, 2.3, 9.0), style = "abrams", trav = 40, elev = { -9, 20 }, bustle = 2.6 },
   gun = { pivot = V(0, 0.95, -3.9), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.0),

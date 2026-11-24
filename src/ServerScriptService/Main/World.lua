@@ -377,13 +377,18 @@ end
 
 -- 沙漠地图（沙海 MapSands：没有海）：按 2048 格一大块看，整块都是同一级平地的一次 FillBlock；不是的按 256 格的小块，
 --   平地 FillBlock、有起伏的逐列写体素。核心区（据点、基地一带）先写完才让人出生，外面的在后台接着写（每块让一帧）
-local DESERT_BASE = -40
+-- 地底只填到这里（原来 −40：整张图平地填 13 层体素，开服光 FillBlock 就几十亿个——用户 11-24「沙海加载时间太长」；
+--   弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
+local DESERT_BASE = -4
 local function terrainDesert(T, onProgress, G)
   local SR, TILE, CH = Map.SEA_R, 2048, 256
+  local PH = (Map.PLAIN or 12) - 8   -- 垫底那层的顶
   local relief = {}
   local t0 = os.clock()
   local function fill(x0, z0, w, d, y, mat)
-    local yb = DESERT_BASE
+    -- 作战区里地壳 16 格厚（弹坑挖不穿）；作战区外面那一圈只是远景，8 格
+    local inner = math.abs(x0 + w / 2) < (Map.PLAY or SR) and math.abs(z0 + d / 2) < (Map.PLAY or SR)
+    local yb = math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
     while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层
       local h = math.min(60, y - yb)
       T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
@@ -411,7 +416,13 @@ local function terrainDesert(T, onProgress, G)
           for k = 0, 7 do
             local e = kinds[i * 8 + k]
             local x0, z0 = tx + i * CH, tz + k * CH
-            if e[1] == "flat" then fill(x0, z0, CH, CH, e[2], e[3]) else table.insert(relief, { x0, z0 }) end
+            if e[1] == "flat" then
+              fill(x0, z0, CH, CH, e[2], e[3])
+            else
+              -- 有起伏的块：先垫一层薄薄的底（平原下面 8 格），后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
+              T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
+              table.insert(relief, { x0, z0 })
+            end
           end
         end
       end
@@ -433,6 +444,14 @@ local function terrainDesert(T, onProgress, G)
   table.sort(relief, function(a, b) return a[3] < b[3] end)
   local core, rest = {}, {}
   for _, c in ipairs(relief) do table.insert(c[3] <= 0 and core or rest, c) end
+  -- 后台的顺序（Map.HOTS：据点一带先，用户 11-24「沙海加载时间太长」以后开服只写基地）
+  if Map.HOTS then
+    local saved = cores
+    cores = Map.HOTS
+    for _, c in ipairs(rest) do c[3] = dist(c) end
+    cores = saved
+    table.sort(rest, function(a, b) return a[3] < b[3] end)
+  end
   local total = 0
   for n, c in ipairs(core) do
     total += writeChunk(T, c[1], c[2], nil, nil, DESERT_BASE)
@@ -441,14 +460,57 @@ local function terrainDesert(T, onProgress, G)
   end
   if G then G.terrainRest = #rest end
   task.spawn(function()   -- 外面的：后台慢慢写（飞机飞得到，坦克一时半会开不过去）；一块拆成四个 128 格的小块写，每帧最多 8 毫秒，开打以后服务器不卡
-    local t1, k = os.clock(), 0
-    for n, c in ipairs(rest) do
-      for q = 0, 3 do
-        writeChunk(T, c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32, nil, DESERT_BASE)
-        k += 1
-        if k % 2 == 0 or os.clock() - t1 > 0.008 then task.wait() t1 = os.clock() end
+    -- 有人跑到还没写的地方（身边 ±5 块、约 1300 格）：那一片插队先写；半秒看一次
+    local Players = game:GetService("Players")
+    local pending, urgent = {}, {}
+    local function key(x0, z0) return x0 * 1048576 + z0 end
+    for _, c in ipairs(rest) do pending[key(c[1], c[2])] = c end
+    local function scan()
+      for _, pl in ipairs(Players:GetPlayers()) do
+        local ch = pl.Character
+        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+        if hrp then
+          local p = hrp.Position
+          local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
+          for r = 0, 5 do   -- 由近到远
+            for dx = -r, r do
+              for dz = -r, r do
+                if math.max(math.abs(dx), math.abs(dz)) == r then
+                  local c = pending[key((cx0 + dx) * CH, (cz0 + dz) * CH)]
+                  if c and not c.q then
+                    c.q = true
+                    table.insert(urgent, c)
+                  end
+                end
+              end
+            end
+          end
+        end
       end
-      if G then G.terrainRest = #rest - n end
+    end
+    local t1, k, i, left, scanAt = os.clock(), 0, 1, #rest, 0
+    while left > 0 do
+      if os.clock() >= scanAt then
+        scanAt = os.clock() + 0.5
+        scan()
+      end
+      local c = table.remove(urgent, 1)
+      if not c then
+        while i <= #rest and not pending[key(rest[i][1], rest[i][2])] do i += 1 end
+        c = rest[i]
+        i += 1
+      end
+      if not c then break end
+      if pending[key(c[1], c[2])] then
+        pending[key(c[1], c[2])] = nil
+        for q = 0, 3 do
+          writeChunk(T, c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32, nil, DESERT_BASE)
+          k += 1
+          if k % 2 == 0 or os.clock() - t1 > 0.008 then task.wait() t1 = os.clock() end
+        end
+        left -= 1
+        if G then G.terrainRest = left end
+      end
     end
   end)
   return total, #core + #rest
@@ -2228,36 +2290,6 @@ local function border(f)
   end
 end
 
--- 红方前进基地（Map.REDBASE）：外面一圈 HESCO、几排帐篷、铁皮营房、油罐区、弹药堆（沙袋围着）、探照灯；车场、直升机坪是 Depots 摆的生成点
-local function redBase(f)
-  local B = Map.REDBASE
-  local rf = folder("RedBase", f)
-  local x0, x1, z0, z1 = B.x - 460, B.x + 460, B.z - 230, B.z + 260
-  hesco(rf, x0, z0, B.x - 150, z0)   -- 北墙中间开一个宽口（车场的车直接往北开出去）
-  hesco(rf, B.x + 150, z0, x1, z0)
-  hesco(rf, x1, z0, x1, z1)
-  hesco(rf, x1, z1, x0, z1)
-  hesco(rf, x0, z1, x0, z0)
-  for _, c in ipairs({ { x0 + 12, z0 + 12, math.pi * 0.25 }, { x1 - 12, z0 + 12, -math.pi * 0.25 }, { x0 + 12, z1 - 12, math.pi * 0.75 }, { x1 - 12, z1 - 12, -math.pi * 0.75 } }) do
-    watchtower(rf, c[1], c[2], c[3])
-  end
-  -- 车场地面：一大块压实的沙砾（车位在 B.z − 90 一排）
-  local y = gy(B.x, B.z - 90)
-  part(rf, V(360, 0.4, 60), CF(B.x, y + 0.05, B.z - 90), RGB(150, 132, 104), MAT.Ground)
-  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 60, 0, RGB(170, 150, 110)) end   -- 沙色帐篷
-  for i = -4, 4 do tent(rf, B.x - 300 + i * 20, B.z + 100, 0, RGB(170, 150, 110)) end
-  local bf = folder("Buildings", rf)
-  for k = 0, 2 do building(bf, "quonset", B.x - 120 + k * 60, B.z + 150, math.pi / 2) end
-  building(bf, "smallwh", B.x + 120, B.z + 160, math.pi)
-  for k = -1, 1 do fuelTank(rf, B.x + 380, B.z + 150 + k * 30, 18, 10) end
-  for k = 0, 2 do truck(rf, B.x + 330 + k * 9, B.z + 80, math.pi, "fuel") end
-  for k = 0, 3 do truck(rf, B.x - 400 + k * 9, B.z - 20, 0, "cargo") end
-  sandbags(rf, V(B.x - 380, 0, B.z + 170), 18, 0, math.pi * 2, 3)   -- 弹药堆
-  crates(rf, B.x - 380, B.z + 170, 6, 7)
-  mast(rf, B.x + 40, B.z + 120, 40)
-  for i = -2, 2 do floodPole(rf, B.x + i * 150, gy(B.x + i * 150, B.z - 130), B.z - 130, 18, RGB(255, 222, 172), 110) end
-end
-
 -- 加固机库（HAS）：空军基地跑道北边一排，半圆拱的混凝土壳（埋一半），机库口朝南对着滑行道、门洞是黑的；顶上覆土长了点沙
 local function shelters(f, A)
   local sf = folder("Shelters", f)
@@ -2322,7 +2354,7 @@ end
 function World.desert(f)
   local df = folder("Desert", f)
   local ok, err
-  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "前进基地", redBase }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin } }) do
+  for _, s in ipairs({ { "镇子", desertTown }, { "油田", oilfield }, { "边境", border }, { "死亡公路", highwayOfDeath }, { "黑帐篷", bedouin } }) do   -- 红方前进基地改成 FOB.lua 的主基地
     ok, err = pcall(s[2], df)
     if not ok then warn("[沙漠] " .. s[1] .. "出错：" .. tostring(err)) end
   end
@@ -2334,10 +2366,12 @@ function World.details(f)
   local ef = folder("Details", f)
   local bf = folder("Buildings", f)
   airfieldExtras(ef, Map.AIRFIELD)
-  local A2 = Map.AFIELD2
-  airfieldExtras(ef, { x = A2.x, z = A2.z, y = A2.y, len = A2.len, wid = A2.wid })
+  if not Map.BASES then   -- 沙海的两边主基地自己有一整套（FOB.lua）
+    local A2 = Map.AFIELD2
+    airfieldExtras(ef, { x = A2.x, z = A2.z, y = A2.y, len = A2.len, wid = A2.wid })
+  end
   commandExtras(ef)
-  campExtras(ef)
+  if not Map.BASES then campExtras(ef) end
   outpostExtras(ef, bf)
   beachLines(ef)
   wrecks(ef)
@@ -2355,8 +2389,12 @@ function World.build(G)
   G.try("机场", airfield, deco, Map.AIRFIELD, "def")
   if Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
     G.try("指挥所", commandPost, deco)
-    G.try("营地", camp, deco)
-    G.try("攻方前进机场", attackerAirfield, deco)
+    -- 两边的主基地（FOB.lua：营区 + 机场 + 车场 + 直升机坪围在一起，用户 11-24「军事基地应该在一起」）；原来的守方营地、红方前进基地、前进机场不建了
+    local FOB = require(script.Parent:WaitForChild("FOB"))
+    G.fobParts = {}
+    for _, side in ipairs({ "atk", "def" }) do
+      G.try("主基地 " .. side, function() G.fobParts[side] = FOB.build(World, deco, side) end)
+    end
     G.try("沙漠", World.desert, deco)
     G.try("细节", World.details, deco)
   else

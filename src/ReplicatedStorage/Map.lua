@@ -544,9 +544,13 @@ function Map.profile(id)
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
-      return require(script.Parent:WaitForChild(name, 5))
+      -- 客户端一进游戏就 require Map（同上面 MapRoads）：ReplicatedStorage 里几千块导入的网格还在往下传，MapSands 可能还没到——等久一点
+      local mod = script.Parent:WaitForChild(name, 60)
+      if not mod then error("等了 60 秒还没有 ReplicatedStorage." .. name) end
+      return require(mod)
     end)
-    PROFILES[id] = (ok and type(mod) == "table") and mod or false
+    -- 没载上不记死（下次 Map.use 还会再试：客户端照 MapId 属性再换一次时就到了）
+    if ok and type(mod) == "table" then PROFILES[id] = mod end
     if not ok then warn("[地图] " .. tostring(id) .. " 加载不了：" .. tostring(mod)) end
   end
   return PROFILES[id] or nil

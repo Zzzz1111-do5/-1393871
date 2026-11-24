@@ -56,10 +56,60 @@ end
 
 ---------------------------------------------------------------- 锚点
 
-Map.REDBASE = { x = 0, z = 15500 }                                   -- 红方前进基地（攻方出生、地面载具）
-Map.AFIELD2 = { x = 0, z = 17600, len = 3300, wid = 90, rot = 0 }   -- 红方前进机场（陆基飞机）
-Map.AIRFIELD = { x = 3400, z = -5200, len = 3600, wid = 90, rot = 0 } -- 蓝方空军基地（据点 D）
-Map.CAMP = { x = -200, z = -15000 }                                  -- 蓝方后方营地（岭北）
+-- 两边的主基地（用户 11-24：「军事基地应该在一起」「固定两边都在双方各自固定位置出生」「做一个军事基地营地，一整套细节做到极致」）：
+--   原来红方的前进基地、前进机场是分开的两块，蓝方的后方营地只有几顶帐篷——现在两边各一座营区 + 机场 + 车场 + 直升机坪围在一起的
+--   前进作战基地（ServerScriptService/Main/FOB.lua 建），红方在南、蓝方在北，两边一模一样（绕地图中心转半圈）。
+--   按基地自己的坐标摆：lx 横向、lz 纵向、−lz 朝战场；Map.baseW(B, lx, lz) 换成世界坐标。出生只在自己基地（Round.lua）
+local FOB = {
+  camp = { x0 = -560, x1 = 560, z0 = -420, z1 = 420 },        -- 营区的 HESCO 围墙
+  runway = { lz = 1150, len = 3600, wid = 90 },                -- 跑道在营区后面、世界的东西向（顺着基地的 lx）
+  motor = { lx = -300, lz = -330 },                            -- 车场：召唤车位横着一排、车头朝战场
+  heli = { lx = 400, lz = -250 },                              -- 直升机坪：横着三个、间隔 90
+  spawn = { lx = 0, lz = -300 },                               -- 出生广场：4 × 4 个固定出生位、间隔 12
+  air = { lx = -49, lz = 1010 },                               -- 机场的出生位：滑行道边上一排 8 个（开飞机的）
+  rect = { x0 = -2200, x1 = 2200, z0 = -680, z1 = 1500 },      -- 整个基地（外面一圈土堤）
+}
+Map.FOB = FOB
+Map.BASES = {
+  atk = { x = 0, z = 16000, yaw = 0 },            -- 红方（攻方）：南边，朝北打
+  def = { x = 0, z = -16000, yaw = math.pi },     -- 守方：北边，朝南打
+}
+local function baseW(B, lx, lz)
+  local c, s = cos(B.yaw), sin(B.yaw)
+  return B.x + lx * c + lz * s, B.z - lx * s + lz * c
+end
+Map.baseW = baseW
+for side, B in pairs(Map.BASES) do
+  B.side = side
+  B.face = (side == "atk") and -1 or 1   -- 朝战场是世界的 −Z（红方）/ +Z（守方）
+  local function at(lx, lz) local x, z = baseW(B, lx, lz) return { x = x, z = z } end
+  B.camp = at(0, 0)
+  B.motor = at(FOB.motor.lx, FOB.motor.lz)
+  B.heli = at(FOB.heli.lx, FOB.heli.lz)
+  B.spawn = at(FOB.spawn.lx, FOB.spawn.lz)
+  B.spawns = {}
+  for i = 0, 3 do
+    for k = 0, 3 do table.insert(B.spawns, at(FOB.spawn.lx + (i - 1.5) * 12, FOB.spawn.lz + (k - 1.5) * 12)) end
+  end
+  B.airSpawn = at(FOB.air.lx, FOB.air.lz)
+  B.airSpawns = {}
+  for i = 0, 7 do table.insert(B.airSpawns, at(FOB.air.lx + i * 14, FOB.air.lz)) end
+  local rx, rz = baseW(B, 0, FOB.runway.lz)
+  B.airfield = { x = rx, z = rz, len = FOB.runway.len, wid = FOB.runway.wid, rot = 0, team = side }
+  local xs, zs = {}, {}
+  for _, c in ipairs({ { FOB.rect.x0, FOB.rect.z0 }, { FOB.rect.x1, FOB.rect.z0 }, { FOB.rect.x0, FOB.rect.z1 }, { FOB.rect.x1, FOB.rect.z1 } }) do
+    local x, z = baseW(B, c[1], c[2])
+    table.insert(xs, x) table.insert(zs, z)
+  end
+  B.rect = { x0 = min(table.unpack(xs)), x1 = max(table.unpack(xs)), z0 = min(table.unpack(zs)), z1 = max(table.unpack(zs)) }
+end
+-- 原来的名字（各模块照用）：REDBASE 红方营区、AFIELD2 红方跑道、CAMP 守方营区、AFIELD3 守方跑道（新的：守方的飞机在自己基地起飞，
+--   不再靠据点 D 的空军基地）；AIRFIELD 还是据点 D 那座空军基地（要打的目标）
+Map.REDBASE = Map.BASES.atk.camp
+Map.AFIELD2 = Map.BASES.atk.airfield
+Map.CAMP = Map.BASES.def.camp
+Map.AFIELD3 = Map.BASES.def.airfield
+Map.AIRFIELD = { x = 3400, z = -5200, len = 3600, wid = 90, rot = 0 } -- 守方空军基地（据点 D：要打的目标）
 Map.TOWN = { x = -3800, z = -600 }                                   -- 镇子（据点 C）
 Map.OILFIELD = { x = 5200, z = 2600 }                                -- 油田（据点 B）
 Map.PORT = Map.TOWN   -- 岛图的「港口镇」那一套（据点 C）读这个
@@ -527,24 +577,25 @@ for _, p in ipairs(Map.POINTS) do
   elseif p.id ~= "D" then addFlat(p.x, p.z, 165, 330, avgNatural(p.x, p.z, 165)) end
 end
 do local A = Map.AIRFIELD addRect(A.x, A.z - 120, A.len / 2 + 50, 380, 240, avgNatural(A.x, A.z - 120, 600)) end   -- 跑道 + 北面停机坪、机库
-do local C = Map.CAMP addRect(C.x, C.z + 45, 600, 255, 300, avgNatural(C.x, C.z, 210)) end
-do local A = Map.AFIELD2 addRect(A.x, A.z, A.len / 2 + 20, 210, 180, avgNatural(A.x, A.z, 400)) end
-do local B = Map.REDBASE addRect(B.x, B.z, 700, 400, 300, avgNatural(B.x, B.z, 300)) end
+for _, B in pairs(Map.BASES) do   -- 两边主基地整块压平在平原的高度（正好在体素边上：整块 FillBlock，开服快）
+  local R = B.rect
+  addRect((R.x0 + R.x1) / 2, (R.z0 + R.z1) / 2, (R.x1 - R.x0) / 2, (R.z1 - R.z0) / 2, 420, PLAIN)
+end
 
 ---------------------------------------------------------------- 路网（手画的折线）
 
 local ROADDEF = {
   -- 80 号公路（「死亡公路」）：红方前进基地 → 沙墙开口 → 镇子 → 山口 → 蓝方营地 → 断崖坡道
-  { name = "80号公路", w = 22, p = { 0, 23000, -300, 17000, -1200, 13000, -1200, 7600, -1800, 4500, -3000, 1500, -3800, -600, -2600, -4000,
-    -600, -7200, 300, -9200, 100, -11500, -200, -14700, -500, -19000, -700, -23400, -700, -26400 } },
+  { name = "80号公路", w = 22, p = { 0, 15300, -300, 14600, -1200, 13000, -1200, 7600, -1800, 4500, -3000, 1500, -3800, -600, -2600, -4000,
+    -600, -7200, 300, -9200, 100, -11500, 0, -14000, 0, -15300 } },
+  { name = "断崖坡道", w = 14, p = { -2600, -16400, -2700, -18400, -700, -23400, -700, -26400 } },
   -- 6 号公路：东西向，穿过镇子、油田
   { name = "6号公路", w = 22, p = { -40000, 900, -26000, 700, -18000, 300, -8000, -300, -3800, -600, 1500, 1200, 5200, 2600, 12000, 3200,
     24000, 2400, 40000, 3600 } },
   { name = "机场公路", w = 16, p = { -2600, -4000, 500, -4400, 1550, -4900 } },
-  { name = "油田—前进基地", w = 12, p = { 5200, 2600, 5800, 4800, 6200, 7600, 5000, 11800, 2200, 15400, 700, 15500 } },
+  { name = "油田—前进基地", w = 12, p = { 5200, 2600, 5800, 4800, 6200, 7600, 5000, 11800, 2200, 14400, 220, 15240 } },
   { name = "指挥部", w = 12, p = { 300, -9200, -200, -9150, -600, -9100 } },
-  { name = "前进机场", w = 16, p = { 0, 15500, 0, 16700 } },
-  { name = "西干河土路", w = 10, p = { -3800, -600, -6000, -900, -9000, 7700, -10500, 12500, -3000, 15000, -700, 15400 } },
+  { name = "西干河土路", w = 10, p = { -3800, -600, -6000, -900, -9000, 7700, -10500, 12500, -3000, 14500, -420, 15240 } },
   { name = "东边土路", w = 10, p = { 5200, 2600, 9800, -1500, 13500, 7600, 17000, 12000 } },
 }
 local SX0, SZ0, SX1, SZ1, SY0, SY1, SW = {}, {}, {}, {}, {}, {}, {}
@@ -766,11 +817,14 @@ function Map.chunkKind(x0, z0)
   end
   return "flat", f0, LEVEL_MAT[f0]
 end
--- 写地形的顺序：离核心区（据点、两边的基地和机场）近的先写；核心区（各处 3500 格以内，约一千块）写完才让人出生，其余的后台写
+-- 写地形的顺序（用户 11-24：「沙海加载时间太长」）：开服只把两边主基地一带写完就让人出生（出生只在自己基地）；
+--   其余的后台写：据点一带先（HOTS），再往外；有人跑到还没写的地方，那一片插队先写（World.lua）
 Map.CORE = { x = 0, z = -1000, r = 12000 }
 Map.CORES = {}
-for _, p in ipairs(Map.POINTS) do table.insert(Map.CORES, { x = p.x, z = p.z, r = 3500 }) end
-for _, a in ipairs({ Map.REDBASE, Map.AFIELD2, Map.AIRFIELD, Map.CAMP }) do table.insert(Map.CORES, { x = a.x, z = a.z, r = 3500 }) end
+for _, B in pairs(Map.BASES) do table.insert(Map.CORES, { x = (B.rect.x0 + B.rect.x1) / 2, z = (B.rect.z0 + B.rect.z1) / 2, r = 2700 }) end
+Map.HOTS = {}
+for _, c in ipairs(Map.CORES) do table.insert(Map.HOTS, c) end
+for _, p in ipairs(Map.POINTS) do table.insert(Map.HOTS, { x = p.x, z = p.z, r = 2200 }) end
 function Map.underMat(top)   -- 最上面一层下面填什么
   if top == MAT.Sand or top == MAT.Salt then return MAT.Sand end
   if top == MAT.Rock or top == MAT.Slate then return MAT.Rock end
@@ -797,7 +851,7 @@ end
 
 -- 小地图、部署界面画多大一块（MapUI.lua）、机器人寻路网格的范围（Nav.lua）
 Map.UIBOX = { x0 = -16000, z0 = -19000, x1 = 16000, z1 = 21000 }
-Map.NAVBOX = { x0 = -9600, z0 = -16800, x1 = 9600, z1 = 17600 }
+Map.NAVBOX = { x0 = -9600, z0 = -17800, x1 = 9600, z1 = 17800 }
 Map.NAVCELL = 80   -- 寻路网格（Nav.lua）：80 格一格
 
 return Map
