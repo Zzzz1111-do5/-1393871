@@ -2521,7 +2521,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.cf or not v.def then return end
     if cur and cur.id ~= st.id then teardown() end
-    if mode == nil or st.eo then   -- 车外 / 看光电吊舱（Fly.lua 管镜头）：座舱收起来，外模型放回来
+    if mode == nil or st.eo or st.bsight then   -- 车外 / 看光电吊舱 / 轰炸瞄准镜（Fly.lua 管镜头）：座舱收起来，外模型放回来
       if cur and cur.model.Parent then cur.model.Parent = nil end
       if cur and cur.pilotsHidden and v.M then pcall(AM.setPilots, v.M, true) cur.pilotsHidden = false end
       if cur and cur.zoneOn then zoneHide(cur, false) end
@@ -2648,7 +2648,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
         if hover.mov then movPress(cur, hover.mov) return end

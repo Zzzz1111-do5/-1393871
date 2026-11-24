@@ -4948,6 +4948,24 @@ add("pve.n16", "最终决战", "Final Battle")
 add("pve.brief", "作战简报", "BRIEFING")
 add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
 add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
+-- 战雷的投弹（Fly.lua / Bombsight.lua）
+add("air.bombN1", "投弹：单投（一次一枚）", "Bombs: single")
+add("air.bombN2", "投弹：双投（两枚一起）", "Bombs: pair")
+add("air.bombN0", "投弹：齐投（这种炸弹全部，一枚接一枚）", "Bombs: salvo (all of this type, one after another)")
+add("air.poiSet", "目标点标好了：照着箭头修航向，落点走到红方框自动投弹（Alt + 中键对着天上取消）", "Target point set: steer by the arrow, bombs release automatically over the red box (Alt+MMB at the sky clears it)")
+add("air.poiOff", "目标点取消了", "Target point cleared")
+add("air.bsTitle", "轰炸瞄准镜", "BOMBSIGHT")
+add("air.bsHint", "F7 退出 · F 投弹 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· Z 变焦 · 鼠标左右 修航向", "F7 exit · F drop · Shift+B single / pair / salvo · Alt+MMB target point (auto release) · Z zoom · mouse left/right adjusts heading")
+add("air.bsAlt", "高度  {1} 米", "ALT  {1} m")
+add("air.bsSpd", "地速  {1} 千米/时", "GS  {1} km/h")
+add("air.bsFall", "落下  {1} 秒", "FALL  {1} s")
+add("air.bsMode1", "单投", "SINGLE")
+add("air.bsMode2", "双投", "PAIR")
+add("air.bsMode0", "齐投", "SALVO")
+add("air.ccrpT", "{1} 秒后投弹", "release in {1} s")
+add("air.ccrpPassed", "飞过了 · 掉头再来", "passed · come around")
+add("air.ccrpRel", "投弹！", "BOMBS AWAY")
+add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
 add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
 add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
 add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
@@ -5356,8 +5374,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 左键 机炮（机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 / 炸弹 · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · LMB gun (sticks to enemy vehicles within 6° and leads them) · F missile / bomb · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 鼠标转视角（停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（打机头标记那里；机头 6° 以内的敌方载具自动黏住、打提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -13588,7 +13608,9 @@ function Air.init(G)
     return t
   end
 
-  local function fireStore(P, e, wid, tid, aim)
+  -- n、rip：战雷的投弹数量（客户端 Shift + B）——n 枚炸弹，双投两枚同时出，齐投（rip）一枚接一枚隔 BOMB_GAP 秒
+  local BOMB_GAP = 0.08
+  local function fireStore(P, e, wid, tid, aim, n, rip)
     local w = AD.W[type(wid) == "string" and wid or ""]
     if not w or w.kind == "gun" or w.kind == "tank" then return end   -- 副油箱不是弹（抛油箱走 jettison）
     if G.round.phase ~= "battle" then return end
@@ -13624,9 +13646,27 @@ function Air.init(G)
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
     elseif w.kind == "bomb" then
-      G.launch({ kind = "bomb", pos = scf.Position - scf.UpVector * 1.5, vel = base - scf.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
-        step = guideBomb, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-      e.nextStore = t + ((e.def.bomber) and 0.12 or 0.25)
+      local function drop(j)
+        local c2 = stationWorld(e, e.def.st[j])
+        local tg = (tgt and tgt.alive) and tgt or nil
+        G.launch({ kind = "bomb", pos = c2.Position - c2.UpVector * 1.5, vel = (e.vel or V()) - c2.UpVector * 4, w = w, src = S, ignore = ignoreOf(e), life = 30,
+          step = guideBomb, age = 0, tgt = tg, tgId = tg and tg.id or nil, aimPt = aimPt, byEnt = e.id })
+        spend(e, j)
+        G.fx({ k = "storeOff", id = e.id, st = j, w = wid })
+      end
+      drop(i)
+      local cnt = math.clamp(math.floor(tonumber(n) or 1), 1, 60)
+      local gap = (rip == true) and BOMB_GAP or 0
+      for k = 2, cnt do
+        local function nextOne()
+          if not e.alive or G.round.phase ~= "battle" then return end
+          local j = pickStation(e, wid)   -- 剩得多的挂点先投：左右轮流
+          if j then drop(j) end
+        end
+        if gap > 0 then task.delay(gap * (k - 1), nextOne) else nextOne() end
+      end
+      e.nextStore = t + gap * (cnt - 1) + ((e.def.bomber) and 0.12 or 0.25)
+      return   -- 上面每枚都扣过数了
     elseif w.kind == "rkt" then
       local dir = (fwd + V((math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02, (math.random() - 0.5) * 0.02)).Unit
       G.launch({ kind = "rocket", pos = scf.Position + fwd * 3, vel = base + dir * w.speed, w = w, src = S, ignore = ignoreOf(e), life = w.range / w.speed + 1,
@@ -13837,7 +13877,7 @@ function Air.init(G)
       e.model:SetAttribute("Fire", e.trig)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
-    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim)
+    elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then
@@ -27157,6 +27197,7 @@ return World
 --   AirFx 飞机机动的云雾和音爆（翼尖涡流、高过载机翼水汽、跨音速蒸汽锥、过音障的音爆）
 --   MslCam 导弹视角小窗（自己打出去的导弹 / 制导炸弹：右上角从弹上看目标，命中 / 未命中）
 --   Juice 爽感（加分滚动、爆头、连杀横幅、受伤方向、低血量心跳）
+--   Bombsight 战雷式轰炸瞄准镜（F7）和 CCRP 目标点的画面（状态、按键、镜头在 Fly.lua）
 --   Marks 炸弹落点标记（开飞机选中炸弹时地上的落点圈和光柱、扔出去的炸弹的落点）
 --   Perf 性能面板（F7：帧率、各模块每帧毫秒、引擎统计）和自动画质多管的几样（地形草）
 --   HudArt 驾驶界面的抗锯齿图标（HudIcons：每辆车侧面的全息图、六边形、炮弹……）解成 EditableImage
@@ -27230,7 +27271,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -30520,6 +30561,225 @@ return Bodycam
         </Item>
         <Item class="ModuleScript" referent="137">
           <Properties>
+            <string name="Name">Bombsight</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式轰炸瞄准镜的画面（F7「轰炸机视角」）和 CCRP 目标点的标记
+--   用户 11-24：「飞机锁定敌目标改成战雷一模一样的 包括投弹以及各方面操作细节和手感」
+--   状态、按键、镜头、投弹都在 Fly.lua（st.bsight、st.poi、st.ccrp）；这里只画，Fly.lua 每帧调 G.bsDraw(s)：
+--   ① 瞄准镜（s.on）：圆形视场（四周压黑），十字中心就是炸弹现在投下去的落点；竖线是航迹方向，竖线上的秒刻度是
+--      「地上这一点再过几秒走到十字中心」（目标滑到中心就投）；左边一列：离地高度、地速、落下时间、投弹方式和剩几枚；
+--      最下面一行按键
+--   ② 目标点（战雷的「兴趣点」，Alt + 中键标的）：红方框，上面一根箭头——歪向要转的那边，旁边写还有几秒投弹、
+--      航向差几度；航向偏得太多变灰（这一趟不投）；在屏幕外面（比如拉起抛投时）贴着屏幕边
+local Players = game:GetService("Players")
+
+local Bombsight = {}
+
+function Bombsight.init(G)
+  local ui = G.ui
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local me = Players.LocalPlayer
+  local RGB, U2, V2 = Color3.fromRGB, UDim2, Vector2.new
+  local clamp = math.clamp
+
+  local function screen(name, order)
+    local g = Instance.new("ScreenGui")
+    g.Name = name
+    g.ResetOnSpawn = false
+    g.IgnoreGuiInset = true
+    g.DisplayOrder = order
+    g.Enabled = false
+    g.Parent = me:WaitForChild("PlayerGui")
+    return g
+  end
+  local gui = screen("Bombsight", 6)   -- 瞄准镜画面
+  local cgui = screen("Ccrp", 7)       -- 目标点（瞄准镜里、外面都画）
+
+  local INK, LIGHT = RGB(10, 11, 9), RGB(255, 248, 220)
+  -- 一道线：外面一圈黑、中间一道亮的（地面亮暗都看得清）
+  local function line(parent, name)
+    local f = ui.frame(parent, U2.fromOffset(3, 3), nil, INK, 0.3, V2(0.5, 0.5))
+    f.Name = name
+    local hi = ui.frame(f, U2.new(1, -2, 1, -2), U2.fromScale(0.5, 0.5), LIGHT, 0.05, V2(0.5, 0.5))
+    hi.Name = "Hi"
+    return f
+  end
+  local function text(parent, name, size, pos, ts, anchor, align)
+    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.Code, anchor, align)
+    l.Name = name
+    l.TextStrokeTransparency = 0.25
+    l.TextStrokeColor3 = INK
+    return l
+  end
+
+  ---------------------------------------------------------------- 瞄准镜
+
+  -- 镜片：画面中间一个正圆（按屏幕高度），外面一圈很粗的黑描边把四周压黑
+  local lens = ui.frame(gui, U2.fromScale(0.92, 0.92), U2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  lens.Name = "BsLens"
+  do
+    local ar = Instance.new("UIAspectRatioConstraint")
+    ar.AspectRatio = 1
+    ar.DominantAxis = Enum.DominantAxis.Height
+    ar.Parent = lens
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = lens
+    local vig = ui.stroke(lens, RGB(3, 4, 5), 2600, 0)
+    vig.Name = "Vignette"
+    local rim = ui.frame(lens, U2.fromScale(1, 1), U2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, V2(0.5, 0.5))
+    rim.Name = "Rim"
+    local c2 = Instance.new("UICorner")
+    c2.CornerRadius = UDim.new(0.5, 0)
+    c2.Parent = rim
+    ui.stroke(rim, RGB(70, 66, 52), 3, 0.2)
+  end
+  -- 十字：竖线（航迹）从上到下，横线中间留空；中心一个小圈
+  local vLine = line(gui, "BsVLine")
+  local hL, hR = line(gui, "BsHLine"), line(gui, "BsHLine")
+  local center = ui.frame(gui, U2.fromOffset(14, 14), nil, RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  center.Name = "BsCenter"
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = center
+    ui.stroke(center, LIGHT, 2, 0.05)
+  end
+  -- 竖线上的秒刻度（1～6 秒）
+  local ticks = {}
+  for i = 1, 6 do
+    local tk = line(gui, "BsTick")
+    local lb = text(gui, "BsTickText", U2.fromOffset(30, 16), U2.new(), 13, V2(0, 0.5), Enum.TextXAlignment.Left)
+    lb.Text = tostring(i)
+    ticks[i] = { tk = tk, lb = lb }
+  end
+  -- 左边一列数、最下面一行按键
+  local data = text(gui, "BsData", U2.fromOffset(300, 120), U2.new(), 16, V2(0, 0), Enum.TextXAlignment.Left)
+  data.TextYAlignment = Enum.TextYAlignment.Top
+  local hint = text(gui, "BsHint", U2.new(1, -40, 0, 20), U2.new(0.5, 0, 1, -14), 14, V2(0.5, 1))
+  local title = text(gui, "BsTitle", U2.fromOffset(400, 22), U2.new(0.5, 0, 0, 14), 16, V2(0.5, 0))
+
+  ---------------------------------------------------------------- 目标点
+
+  local RED, GREY = RGB(255, 64, 52), RGB(150, 150, 150)
+  local box = ui.frame(cgui, U2.fromOffset(22, 22), nil, RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  box.Name = "PoiBox"
+  local boxStroke = ui.stroke(box, RED, 2, 0)
+  -- 箭头：一根竖线 + 顶上的三角，整个框的中心在方框上（绕方框转）
+  local arrow = ui.frame(cgui, U2.fromOffset(24, 132), nil, RGB(0, 0, 0), 1, V2(0.5, 0.5))
+  arrow.Name = "PoiArrow"
+  local shaft = ui.frame(arrow, U2.fromOffset(2, 44), U2.new(0.5, 0, 0, 16), LIGHT, 0, V2(0.5, 0))
+  shaft.Name = "Shaft"
+  local head = ui.label(arrow, "▲", U2.fromOffset(24, 18), U2.new(0.5, 0, 0, 0), 16, LIGHT, Enum.Font.GothamBold, V2(0.5, 0))
+  head.Name = "Head"
+  head.TextStrokeTransparency = 0.3
+  local cInfo = text(cgui, "PoiText", U2.fromOffset(170, 36), U2.new(), 15, V2(0, 0.5), Enum.TextXAlignment.Left)
+  cInfo.TextYAlignment = Enum.TextYAlignment.Center
+
+  local function fmtDev(dev)
+    local a = math.floor(math.abs(dev) + 0.5)
+    if a < 1 then return "✓" end
+    return (dev < 0) and ("◀ " .. a .. "°") or (a .. "° ▶")
+  end
+
+  local function drawPoi(s, c)
+    local p = s.poi
+    if not p then
+      cgui.Enabled = false
+      return
+    end
+    cgui.Enabled = true
+    local vs = c.ViewportSize
+    local sp = c:WorldToViewportPoint(p)
+    local x, y = sp.X, sp.Y
+    if sp.Z < 0 then x, y = vs.X - x, vs.Y * 4 end   -- 在身后（拉起抛投、飞过了）：贴到屏幕下边
+    local m = 30
+    local edge = x < m or x > vs.X - m or y < m or y > vs.Y - m
+    x, y = clamp(x, m, vs.X - m), clamp(y, m, vs.Y - m)
+    box.Position = U2.fromOffset(x, y)
+    box:SetAttribute("Edge", edge)
+    local cc = s.ccrp
+    local ok = cc ~= nil and cc.ok and not cc.passed
+    local col = ok and LIGHT or GREY
+    boxStroke.Color = (cc and not ok) and GREY or RED
+    arrow.Position = U2.fromOffset(x, y)
+    arrow.Visible = cc ~= nil and not cc.passed   -- 贴在屏幕边上也画（照着它转过去）
+    arrow.Rotation = cc and clamp(cc.dev * 3, -75, 75) or 0
+    shaft.BackgroundColor3, head.TextColor3 = col, col
+    arrow:SetAttribute("Ok", ok)
+    cInfo.Position = U2.fromOffset(x + 18, y + 18)
+    cInfo.TextColor3 = col
+    if s.relT and os.clock() - s.relT < 1.2 then
+      cInfo.Text = T("air.ccrpRel")
+    elseif not cc then
+      cInfo.Text = s.noBomb and T("air.ccrpNoBomb") or ""
+    elseif cc.passed then
+      cInfo.Text = T("air.ccrpPassed")
+    else
+      cInfo.Text = T("air.ccrpT", string.format("%.1f", math.max(0, cc.ttr))) .. "\n" .. fmtDev(cc.dev)
+    end
+  end
+
+  ---------------------------------------------------------------- 每帧
+
+  local function setLine(f, x, y, w, h)
+    f.Position, f.Size = U2.fromOffset(x, y), U2.fromOffset(w, h)
+  end
+
+  function G.bsDraw(s)
+    local c = workspace.CurrentCamera
+    drawPoi(s, c)
+    if not s.on then
+      gui.Enabled = false
+      return
+    end
+    gui.Enabled = true
+    local vs = c.ViewportSize
+    local cx, cy = vs.X / 2, vs.Y / 2
+    local R = vs.Y * 0.46   -- 镜片半径（像素）：按像素定成正圆（Fly.lua 的视场按它算：镜片框住前方 4.5 秒的地面）
+    lens.Size = U2.fromOffset(R * 2, R * 2)
+    setLine(vLine, cx, cy, 3, R * 2)
+    local gap, len = 12, R * 0.8
+    setLine(hL, cx - gap - len / 2, cy, len, 3)
+    setLine(hR, cx + gap + len / 2, cy, len, 3)
+    center.Position = U2.fromOffset(cx, cy)
+    -- 秒刻度：落点顺着航迹往前 1、2、3……秒地速的地方投到屏幕上（目标在「3」上，再过 3 秒就到十字中心）
+    for i, t in ipairs(ticks) do
+      local p = s.imp and s.dir and s.gs and (s.imp + s.dir * (s.gs * i))
+      local sp = p and c:WorldToViewportPoint(p)
+      local show = sp ~= nil and sp.Z > 0 and math.abs(sp.Y - cy) < R * 0.95 and math.abs(sp.Y - cy) > 8
+      t.tk.Visible, t.lb.Visible = show, show
+      if show then
+        local wdt = (i % 5 == 0) and 26 or 16
+        setLine(t.tk, cx, sp.Y, wdt, 3)
+        t.lb.Position = U2.fromOffset(cx + wdt / 2 + 4, sp.Y)
+      end
+    end
+    -- 左边一列数（镜片左上里面）
+    data.Position = U2.fromOffset(cx - R * 0.78, cy - R * 0.62)
+    local lines = {
+      T("air.bsAlt", math.max(0, math.floor((s.agl or 0) + 0.5))),
+      T("air.bsSpd", math.floor((s.kmh or 0) + 0.5)),
+      T("air.bsFall", string.format("%.1f", s.tf or 0)),
+      T("air.bsMode" .. tostring(s.mode or 1)) .. "  ·  " .. (s.wname or "") .. "  ×" .. tostring(s.left or 0),
+    }
+    if s.zoom and s.zoom > 1 then lines[#lines + 1] = string.format("%d×", s.zoom) end
+    data.Text = table.concat(lines, "\n")
+    title.Text = T("air.bsTitle")
+    hint.Text = T("air.bsHint")
+  end
+
+  function G.bsOff()
+    gui.Enabled, cgui.Enabled = false, false
+  end
+  G.bsGui, G.ccrpGui = gui, cgui   -- 测试用
+end
+
+return Bombsight
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="138">
+          <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
 --   头顶张开一顶圆伞（用户：跳伞没有降落伞）——10 片伞衣两种颜色相间、顶上一圈顶孔、六根伞绳连到肩上；开伞 0.6 秒从小到大张开，空中轻轻摆，
@@ -30675,7 +30935,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -31258,7 +31518,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -31382,7 +31642,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
@@ -31563,7 +31823,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -31867,7 +32127,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -32360,7 +32620,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -32814,7 +33074,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -34405,7 +34665,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -35405,7 +35665,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -35620,7 +35880,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -36396,6 +36656,7 @@ function Fly.init(G)
     on = on and st.pilot and not st.crashed
     if on == (st.eo == true) then return end
     st.eo = on
+    if on then st.bsight = false end   -- 轰炸瞄准镜和吊舱只开一个（自己的飞机照旧藏着，吊舱关了再放出来）
     if on then
       local look = cam.CFrame.LookVector
       st.eoYaw = math.atan2(-look.X, -look.Z)
@@ -36531,10 +36792,11 @@ function Fly.init(G)
     pcall(function() game:GetService("ProximityPromptService").Enabled = true end)
     if st and st.trig then G.R.Drive:FireServer({ op = "trig", on = false }) end
     if G.gunLoop then G.gunLoop("me", nil, nil, false) end
-    if st and st.eo then
+    if st and (st.eo or st.bsight) then
       ownHide(false)
-      st.eo = false
+      st.eo, st.bsight = false, false
     end
+    if G.bsOff then G.bsOff() end   -- 轰炸瞄准镜、目标点的画面
     eoGui.Visible, eoCC.Enabled, eoHl.Enabled = false, false, false
     local old = st
     st = nil
@@ -36592,6 +36854,82 @@ function Fly.init(G)
       if st.load[i] == wid then n += (st.stores and st.stores[i]) or 0 end
     end
     return n
+  end
+  -- 挂着的炸弹：选中的是炸弹就用它，不然挂载里第一种还有的炸弹（CCRP 自动投、轰炸瞄准镜用；F 照旧投选中的那种）
+  local function bombW()
+    local wid, w = curW()
+    if w and w.kind == "bomb" and left(wid) > 0 then return wid, w end
+    for _, wid2 in ipairs(st.wl) do
+      local w2 = AD.W[wid2]
+      if w2 and w2.kind == "bomb" and left(wid2) > 0 then return wid2, w2 end
+    end
+    return nil
+  end
+  -- 炸弹现在投下去落在哪、落下要几秒：按服务器的炸弹物理往前推（Marks.lua 的 G.bombImpact）
+  local function bombNow()
+    local cf = st.cf
+    local p0 = (cf * CF(0, -(st.d.H or 4) * 0.35 - 1.5, 0)).Position
+    local v0 = (st.vel or V()) - cf.UpVector * 4
+    if G.bombImpact then return G.bombImpact(p0, v0) end
+    local h = p0.Y - math.max(ground(p0.X, p0.Z), 0)
+    local vy = -v0.Y
+    local tf = (vy + math.sqrt(math.max(0, vy * vy + 2 * GR * math.max(h, 0)))) / GR
+    local hit = p0 + V(v0.X, 0, v0.Z) * tf * 0.97
+    return V(hit.X, math.max(ground(hit.X, hit.Z), 0), hit.Z), tf
+  end
+  -- F7 轰炸瞄准镜（战雷的「轰炸机视角」）：镜头到机腹往下看炸弹的落点；选上炸弹；鼠标瞄准时教官改成平飞、照现在的航向飞
+  local function setBS(on)
+    if not st then return end
+    local bw = bombW()
+    on = on and st.pilot and not st.crashed and not st.ground and st.d.kind == "jet" and bw ~= nil
+    if on == (st.bsight == true) then return false end
+    if on and st.eo then setEO(false) end
+    st.bsight = on
+    if on then
+      for i, wid2 in ipairs(st.wl) do
+        if wid2 == bw and st.wi ~= i then
+          st.wi = i
+          st.lock, st.lockT = nil, 0
+        end
+      end
+      st.bsZoom, st.bsAim = 1, nil
+      local v = (st.vel.Magnitude > 1) and st.vel.Unit or st.cf.LookVector
+      st.aimYaw = math.atan2(-v.X, -v.Z)
+      st.aimPitch = clamp(math.asin(clamp(v.Y, -1, 1)), -0.06, 0.12)
+    end
+    if not on then st.bsOffT = os.clock() end
+    ownHide(on)
+    if G.playSound then G.playSound("quiet", nil, on and 1.5 or 1.2) end
+    return true
+  end
+  G.flyBombsight = setBS
+  -- Alt + 中键（战雷默认）：在镜头中心对着的地面标目标点（兴趣点）；对着天上按就取消
+  local function markPoi()
+    if not st or not st.pilot then return end
+    local o, dir = cam.CFrame.Position, cam.CFrame.LookVector
+    local res = workspace:Raycast(o, dir * 12000, aimParams)
+    local p = res and res.Position
+    if not p and dir.Y < -0.02 then   -- 射线没碰到东西（地形还没加载）：按地面高度一步步找
+      for i = 1, 240 do
+        local q = o + dir * (i * 50)
+        local g = math.max(ground(q.X, q.Z), 0)
+        if q.Y <= g then p = V(q.X, g, q.Z) break end
+      end
+    end
+    if p and (p - st.cf.Position).Magnitude > 30 then
+      st.poi, st.ccrpArm, st.ccrpRelT = p, nil, nil
+      G.toast(T("air.poiSet"), "info")
+    else
+      st.poi = nil
+      G.toast(T("air.poiOff"), "info")
+    end
+  end
+  G.flyMarkPoi = markPoi
+  -- F7 归不归轰炸瞄准镜（Perf.lua 的性能面板也用 F7）：开着挂炸弹的固定翼（或者瞄准镜开着）、没按 Ctrl
+  function G.flyWantsF7()
+    if not st or not st.pilot or st.d.kind ~= "jet" or st.uav then return false end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl) then return false end
+    return st.bsight == true or os.clock() - (st.bsOffT or -9) < 0.1 or bombW() ~= nil
   end
   function G.flyNextWeapon()
     if not st or #st.wl == 0 then return end
@@ -36715,6 +37053,12 @@ function Fly.init(G)
   --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
   local mouseAim = true
   G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
+  -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
+  --   F7 轰炸瞄准镜（战雷的「轰炸机视角」）；Alt + 中键在镜头中心对着的地面标目标点（战雷的「兴趣点」）：落点走到目标点自动投
+  --   （航向偏太多这一趟不投）。画面在 Bombsight.lua，地上的红方框在 Marks.lua
+  local bombSeries = 1   -- 1 单投、2 双投、0 齐投（这种炸弹全部，一枚接一枚）
+  G.flyBombSeries = function(v) if v ~= nil then bombSeries = v end return bombSeries end
+  local SERIES_GAP = 0.08   -- 齐投一枚接一枚的间隔（秒，跟服务器 Air.lua 的 BOMB_GAP 一样）
   -- 鼠标瞄准方向（用户：准星也要能控制飞行方向，WASD 也不要动）：固定翼的鼠标想去的方向；光电吊舱、飞出作战区时自动驾驶也用它
   local function autoDir() return (CFrame.Angles(0, st.aimYaw, 0) * CFrame.Angles(st.aimPitch, 0, 0)).LookVector end
   -- 镜头跟着机身（用户 11-21：飞机的飞行方向标志动来动去，应该固定位置）：原来镜头顺着鼠标瞄准方向看（战雷那样），
@@ -36801,24 +37145,31 @@ function Fly.init(G)
     G.R.Drive:FireServer({ op = "trig", on = on, aim = st.aimPt, stk = st.stick ~= nil })
   end
 
-  local function fireStore(wid, w)
+  -- aimAt：CCRP 自动投弹给的目标点（制导炸弹照这个坐标飞，像杰达姆；不管锁没锁别的）；投出去了返回 true
+  local function fireStore(wid, w, aimAt)
     local t = os.clock()
-    if t < st.nextFire or left(wid) <= 0 then return end
-    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return end
-    local locked = st.lock and st.lockT >= (w.lockTime or 1)
-    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return end   -- 出了发射角度：锁着也不能打（菱形是黄的）
-    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return end
-    if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
-    st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4)
-    G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = st.aimPt })
-    for i in ipairs(st.d.st or {}) do   -- 本地先扣一枚（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
-      if not w.nuke and st.load[i] == wid and (st.stores[i] or 0) > 0 then
+    if t < st.nextFire or left(wid) <= 0 then return false end
+    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return false end
+    local locked = (not aimAt) and st.lock and st.lockT >= (w.lockTime or 1)
+    if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return false end   -- 出了发射角度：锁着也不能打（菱形是黄的）
+    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return false end
+    if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return false end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
+    -- 炸弹按投弹数量（Shift + B）：单投一枚、双投两枚一起、齐投这种全部一枚接一枚
+    local n = 1
+    if w.kind == "bomb" then n = (bombSeries == 0) and left(wid) or math.min(bombSeries, left(wid)) end
+    local rip = w.kind == "bomb" and bombSeries == 0 and n > 1
+    st.nextFire = t + ((w.kind == "rkt") and (w.rate or 0.12) or 0.4) + (rip and (n - 1) * SERIES_GAP or 0)
+    G.R.Drive:FireServer({ op = "fire", w = wid, tgt = locked and st.lock.id or nil, aim = aimAt or st.aimPt, n = (n > 1) and n or nil, rip = rip or nil })
+    local need = w.nuke and 0 or n   -- 本地先扣（服务器的数随后推过来）；核导弹不先扣（冷却中服务器不发，数不会推回来）
+    for i in ipairs(st.d.st or {}) do
+      while need > 0 and st.load[i] == wid and (st.stores[i] or 0) > 0 do
         st.stores[i] -= 1
-        break
+        need -= 1
       end
     end
     -- 开火声按武器（Fx.lua 的 G.sfx）：导弹低沉的点火 + 呼啸、火箭弹「噗」一声 + 呼的一下、炸弹挂架弹开「咣」一声
     if G.sfx then G.sfx((w.kind == "rkt") and "rkt" or ((w.kind == "bomb") and "bombRel" or "msl"), nil, { vol = (w.kind == "rkt") and 0.7 or 0.8 }) end
+    return true
   end
 
   ---------------------------------------------------------------- 物理：固定翼
@@ -37383,6 +37734,8 @@ function Fly.init(G)
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
+    elseif io.UserInputType == Enum.UserInputType.MouseButton3 and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) and st.d.kind == "jet" then
+      markPoi()   -- 战雷：Alt + 中键 标目标点（兴趣点）
     elseif k == Enum.KeyCode.F then   -- 发导弹 / 火箭 / 炸弹（选中的那种）
       st.missile = true
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
@@ -37401,6 +37754,13 @@ function Fly.init(G)
       setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
       st.lookYaw, st.lookPitch = 0, 0
       if G.toast then G.toast(T(mouseAim and "air.mouseAimOn" or "air.mouseAimOff"), "info") end
+    elseif k == Enum.KeyCode.B and (key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift)) and st.d.kind == "jet" then   -- 战雷：Shift + B 投弹数量
+      bombSeries = (bombSeries == 1) and 2 or ((bombSeries == 2) and 0 or 1)
+      G.toast(T("air.bombN" .. bombSeries), "info")
+    elseif k == Enum.KeyCode.F7 and G.flyWantsF7() then   -- 战雷：F7 轰炸机视角（没挂炸弹的飞机 F7 照旧是性能面板，Ctrl + F7 一直是）
+      setBS(not st.bsight)
+    elseif st.bsight and k == Enum.KeyCode.Z then   -- 瞄准镜变焦 1 → 2 → 4 倍
+      st.bsZoom = ((st.bsZoom or 1) == 1) and 2 or ((st.bsZoom == 2) and 4 or 1)
     elseif k == Enum.KeyCode.J then   -- 抛副油箱（进空战前）
       G.R.Drive:FireServer({ op = "jettison" })
     elseif k == Enum.KeyCode.G then
@@ -37722,7 +38082,13 @@ function Fly.init(G)
       st.eoPitch = clamp(st.eoPitch - md.Y * SENS, -1.5, 0.35)
     else
       local pitLook = key(Enum.KeyCode.LeftAlt) and G.interiorOn and G.interiorOn()   -- 座舱里按住 Alt 自由看（Interior.lua 转头）：准心不动
-      if d.kind == "jet" and not G.mobile and not pitLook then
+      if st.bsight and d.kind == "jet" and st.pilot then
+        -- 轰炸瞄准镜里（战雷）：鼠标左右只细细地修航向（教官带着转、保持平飞），上下不管；纯键盘驾驶时鼠标不管飞
+        if mouseAim and not G.mobile then
+          st.aimYaw -= md.X * SENS * 0.15
+          st.aimPitch += (0 - st.aimPitch) * math.min(1, dt * 1.2)
+        end
+      elseif d.kind == "jet" and not G.mobile and not pitLook then
         if st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
           -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
           st.aimYaw -= md.X * SENS
@@ -37828,6 +38194,28 @@ function Fly.init(G)
       local eye = (st.cf * CF(0, -d.H * 0.22, -d.L * 0.5 - 0.8)).Position
       local look = G.mobile and st.cf.LookVector or aimDirNow()
       cam.CFrame = CFrame.lookAt(eye, eye + look * 100)
+    elseif st.bsight and d.kind == "jet" and st.pilot then
+      -- 轰炸瞄准镜（F7）：机腹下面往下看，稳定地对着炸弹现在投下去的落点（十字中心）；画面的上方是航迹方向，
+      --   地面从上往下滑过十字（目标走到十字中心就投）；不画抖动
+      local imp, tf = bombNow()
+      st.bsImp, st.bsTf = imp, tf
+      st.bsAim = st.bsAim and st.bsAim:Lerp(imp, 1 - math.exp(-dt * 12)) or imp
+      local eye = (st.cf * CF(0, -d.H * 0.5 - 0.8, -d.L * 0.15)).Position
+      local look = st.bsAim - eye
+      look = (look.Magnitude > 1) and look.Unit or V(0, -1, 0)
+      local hv = V(st.vel.X, 0, st.vel.Z)
+      local lk0 = V(st.cf.LookVector.X, 0, st.cf.LookVector.Z)
+      local trk = (hv.Magnitude > 1 and hv.Unit) or (lk0.Magnitude > 1e-3 and lk0.Unit) or V(0, 0, -1)
+      local sK = clamp(-look.Y, 0, 1)
+      cam.CFrame = CFrame.lookAt(eye, eye + look * 100, (trk * sK + V(0, 1, 0) * (1 - sK)).Unit)
+      -- 视野：镜片（屏幕高的 92%）从十字到上边框住落点前方 4.5 秒的地面（目标提前几秒就看得见滑过来），
+      --   慢的时候至少框住三倍杀伤半径；Z 变焦 1 → 2 → 4 倍
+      local _, bww = bombW()
+      local slant = math.max((st.bsAim - eye).Magnitude, 1)
+      local ahead = st.bsAim + trk * (hv.Magnitude * 4.5)
+      local a1 = math.acos(clamp(look:Dot((ahead - eye).Unit), -1, 1))
+      local a2 = math.atan(((bww and bww.splash) or 30) * 3 / slant)
+      st.bsFov = clamp(2 * deg(math.max(a1, a2)) / 0.92, 6, 75) / (st.bsZoom or 1)
     elseif d.kind == "jet" and st.pilot then
       -- 镜头钉在飞机后上方、顺着机头看（用户 11-21：飞行方向标志应该固定位置）：机头前方的全息标记一直在屏幕正中，
       --   鼠标推的准星圈在画面里走（原来镜头顺着鼠标瞄准方向看，标记跟着机头在画面里到处跑）；手机上一样
@@ -37921,15 +38309,16 @@ function Fly.init(G)
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
     if (st.uav and st.dcam == "nose") or st.eo then fovT = 70 / st.zoomS end
+    if st.bsight and st.bsFov then fovT = st.bsFov end
     st.fov = st.fov or cam.FieldOfView
     st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
-    local kick = (st.eo and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
+    local kick = ((st.eo or st.bsight) and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
     if kick > 0.01 then
       local t = os.clock()
       local a = math.rad(0.32) * kick
       cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t * 31, 1.3) * a, math.noise(t * 27, 7.1) * a, math.noise(t * 23, 4.7) * a * 0.5)
     end
-    cam.FieldOfView = st.fov - (st.eo and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
+    cam.FieldOfView = st.fov - ((st.eo or st.bsight) and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
@@ -37993,6 +38382,46 @@ function Fly.init(G)
       else
         if G.nukeArmUI then G.nukeArmUI(false) end
         st.fireLatch = false
+      end
+    end
+    -- 战雷的 CCRP（Alt + 中键标的目标点）：落点顺着航迹走到目标点就自动投（按投弹数量；齐投让一串的中间落在目标上）；
+    --   航向偏得多（落点从目标旁边超过七成杀伤半径走过）这一趟不投，掉头再来。在地上、瞄准镜外面也照样算（屏幕上的箭头在 Bombsight.lua）
+    st.ccrp = nil
+    if st.bsight and (st.ground or st.crashed or not st.pilot) then setBS(false) end
+    if st.poi and st.pilot and d.kind == "jet" and not st.ground and not st.crashed then
+      local bw, bww = bombW()
+      if bw then
+        local imp, tf
+        if st.bsight and st.bsImp then imp, tf = st.bsImp, st.bsTf else imp, tf = bombNow() end
+        local hv = V(st.vel.X, 0, st.vel.Z)
+        local gs = hv.Magnitude
+        if gs > 10 then
+          local dir = hv / gs
+          local rel = V(st.poi.X - imp.X, 0, st.poi.Z - imp.Z)
+          local along = rel:Dot(dir)
+          local crossM = (rel - dir * along).Magnitude
+          -- 要转多少度：航迹穿过目标点落点才走得到——从飞机正下方看目标点的方向和航迹差的角（正的往右转）
+          local to = V(st.poi.X - pos.X, 0, st.poi.Z - pos.Z)
+          local dev = 0
+          if to.Magnitude > 1 then
+            local tu = to.Unit
+            dev = -deg(math.atan2(dir:Cross(tu).Y, dir:Dot(tu)))
+          end
+          local nb = (bombSeries == 0) and left(bw) or math.min(bombSeries, left(bw))
+          local lead = (bombSeries == 0) and (nb - 1) * 0.5 * SERIES_GAP * gs or 0
+          local ttr = (along - lead) / gs
+          local ok = crossM <= math.max(14, (bww.splash or 24) * 0.7)
+          if ttr > 0.3 then st.ccrpArm = true end
+          if st.ccrpArm and ttr <= 0 then
+            if not ok or ttr < -0.6 then
+              st.ccrpArm = false   -- 偏了 / 投不出去（上一串还没投完）：这一趟算了
+            elseif fireStore(bw, bww, st.poi) then   -- 制导炸弹照目标点的坐标飞（像杰达姆）
+              st.ccrpArm = false
+              st.ccrpRelT = os.clock()
+            end
+          end
+          st.ccrp = { ttr = ttr, dev = dev, ok = ok, cross = crossM, tf = tf, passed = ttr < 0 and not st.ccrpArm }
+        end
       end
     end
     -- 锁定：选中的弹要锁的话，目标在视场里待够锁定时间
@@ -38064,7 +38493,7 @@ function Fly.init(G)
     else
       aWpn.Text = T("air.noWeapon")
     end
-    st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and "air.helpJet" or "air.helpHeli")) or "air.helpPass"
+    st.help = st.pilot and (st.uav and "air.helpUav" or ((d.kind == "jet") and (mouseAim and "air.helpJet" or "air.helpJetKb") or "air.helpHeli")) or "air.helpPass"
     -- 开飞机的界面（AirHud.lua，照 MWT 的截图）要的数：这一帧算出来的塞进 info，最后交给 G.airHudStep
     local info = { d = d, pilot = st.pilot == true, hp = hp, mx = mx, kmh = kmh, agl = agl }
     if st.pilot then
@@ -38241,23 +38670,20 @@ function Fly.init(G)
       end
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
-        local h = pos.Y - math.max(ground(pos.X, pos.Z), 0)
-        local vy = -st.vel.Y
-        local tf = (vy + math.sqrt(math.max(0, vy * vy + 2 * GR * math.max(h, 0)))) / GR
-        local hit = pos + V(st.vel.X, 0, st.vel.Z) * tf * 0.97
-        local gp2, gon = project(V(hit.X, ground(hit.X, hit.Z), hit.Z))
+        local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）
         pipper.Position, pipper.Visible = gp2, gon
       else
         pipper.Visible = false
       end
-      if st.eo then   -- 吊舱画面里：平显的落点、降落菱形、锁定框都收起来（吊舱自己画跟踪框）
+      if st.eo or st.bsight then   -- 吊舱 / 轰炸瞄准镜画面里：平显的落点、降落菱形、锁定框、机头标记、大圈都收起来（各自画自己的）
         pipper.Visible, landMark.Visible, landText.Visible, lockBox.Visible, lockText.Visible, restText.Visible = false, false, false, false, false, false
+        bore.Visible, ring.Visible, ringText.Visible, aimRing.Visible = false, false, false, false
       end
     end
     -- MWT 式的界面（AirHud.lua）：有人开 / 坐的飞机都用；遥控无人机（战术平板）、光电吊舱的画面不用
     if not st.uav then dcs.Visible = false end
     warnText.Position = UDim2.new(0.5, 0, 0.5, st.uav and -130 or -172)   -- 告警：让开准星上方的武器名牌
-    if not st.uav and not st.eo then
+    if not st.uav and not st.eo and not st.bsight then
       if st.pilot then info.aim = aimRing.Visible and aimRing.Position or nil end   -- 准星由 AirHud 画（发光的细圈），这里的「◯」字收起来
       -- 战雷式鼠标瞄准的小圈（屏幕上鼠标想去的方向）：AirHud 画白色细圈
       info.maim = nil
@@ -38271,6 +38697,22 @@ function Fly.init(G)
     elseif G.airHudOff then
       G.airHudOff()
     end
+    -- 战雷的轰炸瞄准镜画面、CCRP 目标点的方框和箭头（Bombsight.lua）
+    if G.bsDraw then
+      local s2 = { on = st.bsight == true, poi = (st.pilot and not st.crashed) and st.poi or nil, ccrp = st.ccrp, relT = st.ccrpRelT }
+      if s2.poi and not st.ccrp then s2.noBomb = bombW() == nil end
+      if s2.on and st.bsImp then
+        local bw = bombW() or curW()
+        local hv = V(st.vel.X, 0, st.vel.Z)
+        s2.imp, s2.tf, s2.gs = st.bsImp, st.bsTf, hv.Magnitude
+        s2.dir = (hv.Magnitude > 1) and hv.Unit or nil
+        s2.agl = (pos.Y - st.bsImp.Y) / AD.M
+        s2.kmh = hv.Magnitude / AD.M * 3.6
+        s2.mode, s2.zoom = bombSeries, st.bsZoom
+        s2.wname, s2.left = bw and T("aw." .. bw) or "", bw and left(bw) or 0
+      end
+      G.try_(G.bsDraw, s2)
+    end
   end
 
   -- 被击毁 / 跳伞：服务器推来 alive = false 或 veh = nil，下一帧 stop()
@@ -38280,7 +38722,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="148">
+        <Item class="ModuleScript" referent="149">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -38636,7 +39078,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="149">
+        <Item class="ModuleScript" referent="150">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -40175,7 +40617,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -40585,7 +41027,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -40717,7 +41159,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -40996,7 +41438,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -41550,7 +41992,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -42501,7 +42943,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -42964,7 +43406,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -43793,7 +44235,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -43907,7 +44349,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -46433,7 +46875,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local v = G.viewById and G.viewById(st.id)
     if not v or not v.cf or not v.def then return end
     if cur and cur.id ~= st.id then teardown() end
-    if mode == nil or st.eo then   -- 车外 / 看光电吊舱（Fly.lua 管镜头）：座舱收起来，外模型放回来
+    if mode == nil or st.eo or st.bsight then   -- 车外 / 看光电吊舱 / 轰炸瞄准镜（Fly.lua 管镜头）：座舱收起来，外模型放回来
       if cur and cur.model.Parent then cur.model.Parent = nil end
       if cur and cur.pilotsHidden and v.M then pcall(AM.setPilots, v.M, true) cur.pilotsHidden = false end
       if cur and cur.zoneOn then zoneHide(cur, false) end
@@ -46560,7 +47002,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
         if hover.mov then movPress(cur, hover.mov) return end
@@ -46704,7 +47146,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -47420,7 +47862,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -47871,7 +48313,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -48023,7 +48465,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -49992,7 +50434,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -51029,7 +51471,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -53594,7 +54036,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -53860,7 +54302,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -54022,7 +54464,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -54516,7 +54958,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -55041,7 +55483,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -55099,28 +55541,28 @@ function Marks.init(G)
   local function hideBomb()
     bombRing.Parent, crossA.Parent, crossB.Parent, beam.Parent = nil, nil, nil, nil
   end
-  -- 按服务器的炸弹物理往前推，落到地面（或海面）为止
+  -- 按服务器的炸弹物理往前推，落到地面（或海面）为止；第二个返回值是落下要几秒（Fly.lua 的轰炸瞄准镜、CCRP 用）
   local function bombImpact(p, v)
     local dt = 0.05
-    for _ = 1, 1200 do
+    for n = 1, 1200 do
       v += V(0, -GR, 0) * dt
       v = v * (1 - 0.02 * dt)
       local np = p + v * dt
       local g = math.max(ground(np.X, np.Z), 0)
       if np.Y <= g then
-        local k = (p.Y - g) / math.max(p.Y - np.Y, 1e-3)
-        local hit = p:Lerp(np, math.clamp(k, 0, 1))
-        return V(hit.X, g, hit.Z)
+        local k = math.clamp((p.Y - g) / math.max(p.Y - np.Y, 1e-3), 0, 1)
+        local hit = p:Lerp(np, k)
+        return V(hit.X, g, hit.Z), (n - 1 + k) * dt
       end
       p = np
     end
-    return V(p.X, math.max(ground(p.X, p.Z), 0), p.Z)
+    return V(p.X, math.max(ground(p.X, p.Z), 0), p.Z), 60
   end
   G.bombImpact = bombImpact   -- 测试用
 
   local function stepBomb()
     local st = G.fly
-    if not st or not st.pilot or st.crashed or st.ground or not st.wl then
+    if not st or not st.pilot or st.crashed or st.ground or not st.wl or st.bsight then   -- 轰炸瞄准镜里十字就是落点（战雷那样），地上不再画圈
       hideBomb()
       return
     end
@@ -55158,6 +55600,31 @@ function Marks.init(G)
     crossA.Parent, crossB.Parent, beam.Parent = folder, folder, folder
   end
 
+  -- 目标点（战雷的「兴趣点」，开飞机时 Alt + 中键标的，Fly.lua 的 st.poi）：地上一个红方框（四条边）、一道细光柱
+  local poiParts = {}
+  for i = 1, 4 do
+    poiParts[i] = part(V(1, 0.5, 1), RGB(255, 60, 50), nil, 0.05)
+    poiParts[i].Name = "PoiMark"
+  end
+  poiParts[5] = part(V(0.5, 220, 0.5), RGB(255, 80, 60), nil, 0.5)
+  poiParts[5].Name = "PoiBeam"
+  local function stepPoi()
+    local st = G.fly
+    local p = st and st.pilot and not st.crashed and st.poi
+    if not p then
+      for _, q in ipairs(poiParts) do q.Parent = nil end
+      return
+    end
+    local h = 18   -- 方框半边长（格）
+    local y = p.Y + 0.6
+    poiParts[1].Size, poiParts[1].CFrame = V(h * 2 + 1.2, 0.5, 1.2), CFrame.new(p.X, y, p.Z - h)
+    poiParts[2].Size, poiParts[2].CFrame = V(h * 2 + 1.2, 0.5, 1.2), CFrame.new(p.X, y, p.Z + h)
+    poiParts[3].Size, poiParts[3].CFrame = V(1.2, 0.5, h * 2 + 1.2), CFrame.new(p.X - h, y, p.Z)
+    poiParts[4].Size, poiParts[4].CFrame = V(1.2, 0.5, h * 2 + 1.2), CFrame.new(p.X + h, y, p.Z)
+    poiParts[5].CFrame = CFrame.new(p.X, p.Y + 110, p.Z)
+    for _, q in ipairs(poiParts) do q.Parent = folder end
+  end
+
   -- 扔出去的炸弹：每颗地上一个小圈，跟着算到落地
   local live = {}   -- [弹编号] = 圈
   local function stepDropped()
@@ -55184,6 +55651,7 @@ function Marks.init(G)
   G.frameConn("Marks", function()
     G.try_(stepBomb)
     G.try_(stepDropped)
+    G.try_(stepPoi)
   end)
 end
 
@@ -55191,7 +55659,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -55504,7 +55972,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -55826,7 +56294,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -56043,7 +56511,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -56177,7 +56645,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -56682,7 +57150,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -57301,7 +57769,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -57582,7 +58050,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -57839,11 +58307,11 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
---   F7 开关：左边一块小面板，每半秒刷新——帧率（平均、这半秒里最慢的一帧）、自动画质档位 G.perfK、
+--   F7 开关（开着挂炸弹的飞机时 F7 是轰炸瞄准镜，用 Ctrl + F7）：左边一块小面板，每半秒刷新——帧率（平均、这半秒里最慢的一帧）、自动画质档位 G.perfK、
 --     客户端每个模块每帧用掉多少毫秒（init.client.lua 的逐帧步骤、各模块自己用 G.frameConn 连的逐帧回调）、
 --     引擎的统计（Stats：实例、零件、会动的零件、物理每步、内存、网络收发，读得到的话还有渲染的 CPU / GPU 时间）、
 --     载具这一帧摆了多少零件、地图光晕亮着几个——截图发过来就知道卡在哪
@@ -57897,7 +58365,8 @@ function Perf.init(G)
   G.perfPanel = gui   -- 测试用
 
   UIS.InputBegan:Connect(function(input, gp)
-    if input.KeyCode == Enum.KeyCode.F7 and not UIS:GetFocusedTextBox() then
+    -- 开着挂炸弹的飞机：F7 是战雷的轰炸瞄准镜（Fly.lua），这时 Ctrl + F7 开性能面板
+    if input.KeyCode == Enum.KeyCode.F7 and not UIS:GetFocusedTextBox() and not (G.flyWantsF7 and G.flyWantsF7()) then
       gui.Enabled = not gui.Enabled
     end
   end)
@@ -57982,7 +58451,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -58676,7 +59145,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -59273,7 +59742,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -59776,7 +60245,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -60723,7 +61192,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -61453,7 +61922,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -62205,7 +62674,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -62289,7 +62758,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -63039,7 +63508,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -63249,7 +63718,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -63704,7 +64173,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -64924,7 +65393,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -65431,7 +65900,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -65544,7 +66013,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -66632,7 +67101,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -66736,7 +67205,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -68244,7 +68713,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -69155,7 +69624,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -70136,7 +70605,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -70980,13 +71449,13 @@ return Warfx
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="198">
+  <Item class="Workspace" referent="199">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="199">
+  <Item class="Lighting" referent="200">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
