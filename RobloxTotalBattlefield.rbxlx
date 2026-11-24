@@ -896,13 +896,21 @@ B.AMMO = {
     vs = { inf = 0.9, light = 1.3, armor = 0.95, fort = 1.3 }, splash = 1.0 },
   of26 = { cls = "he", name = "3OF26 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,      -- 杀伤爆破榴弹
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.6 },
+  -- 金属射流弹（用户 11-24 夜「再做一个金属射流弹」）：串联聚能装药破甲弹——前级先把爆反引爆，主装药炸出一股几千米每秒的铜射流
+  --   往装甲里钻（穿深跟距离无关）；打中时客户端画一道白热的射流（WtHud 的 wtJet），X 光里是一道亮青白线
+  jet120 = { cls = "jet", name = "120 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet125 = { cls = "jet", name = "125 金属射流弹", sym = "射流", v0 = 950, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
-  gun120 = { "m829a3", "m830", "m830a1", "m1028" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
-  gun125 = { "dtc10", "heat125", "he125" },
-  gun125r = { "bm60", "bk31", "of26" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
-  gun105 = { "m900", "m456" },
+  gun120 = { "m829a3", "m830", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
+  gun125 = { "dtc10", "heat125", "he125", "jet125" },
+  gun125r = { "bm60", "bk31", "of26", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
+  gun105 = { "m900", "m456", "jet105" },
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)
@@ -1034,7 +1042,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 23:41 c1c89df"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 23:49 2128b9a"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -13129,6 +13137,10 @@ W.AMMO = {
   bm60 = { p0 = 720, fall = 30, t = "ke", spall = 16, n = 16, core = 3.2 },
   bk31 = { p0 = 760, t = "ce", spall = 20, n = 12, core = 2.4, tandem = true },
   of26 = { p0 = 45, t = "he", spall = 40, n = 20, core = 0, blast = 2.4 },
+  -- 金属射流弹：串联聚能装药（穿深跟距离无关、爆反挡不住多少），射流在车里钻得深（core 米）、破片锥窄而密
+  jet120 = { p0 = 900, t = "ce", spall = 16, n = 18, core = 4.2, tandem = true, jet = true },
+  jet125 = { p0 = 950, t = "ce", spall = 16, n = 18, core = 4.4, tandem = true, jet = true },
+  jet105 = { p0 = 760, t = "ce", spall = 16, n = 16, core = 3.8, tandem = true, jet = true },
 }
 -- 别的武器（按武器 id）：机炮的脱壳穿甲弹、反坦克火箭 / 导弹、飞机的弹
 W.WPN = {
@@ -30356,6 +30368,9 @@ function Wt.init(G)
         if mm < 20 then for _, c in ipairs(S.crew) do if (W.center(d, yaw, c.it) - p).Magnitude < a.blast * M * 0.5 then hurt(e, c, 35, out, s.src) end end end
       end
       local flags = {}
+      if a.t == "ce" then   -- 破甲 / 射流弹没打穿：射流钻进装甲里一小截就没劲了（客户端画一小段亮光、一团火花）
+        G.fx({ k = "wtJet", p = res.Position, d = vel, len = 0.5 * M, pen = false, big = a.jet or nil })
+      end
       sendHit(e, s, rr, out, xr)
       after(e, s.src, rr, flags)
       return true
@@ -30365,6 +30380,10 @@ function Wt.init(G)
     local flags = {}
     inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)
     xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5)
+    if a.t == "ce" then   -- 金属射流：从命中点顺着来向钻进车里（客户端 WtHud 画一道白热的射流、一圈火花；X 光里画成亮青白线）
+      xr.jet = true
+      G.fx({ k = "wtJet", p = res.Position, d = vel, len = xr.core * M, pen = true, big = a.jet or nil })
+    end
     rr.wp = res.Position
     after(e, s.src, rr, flags)
     sendHit(e, s, rr, out, xr)
@@ -79520,7 +79539,11 @@ function WtHud.init(G)
     line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
     if m.r == "pen" or m.kill then
       local core = (x.core or 0) * W.M
-      if core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
+      if core > 0 and x.jet then   -- 金属射流：白热的芯 + 一层青白的光
+        line(p0, p0 + dv * core, RGB(236, 248, 255), 0.12)
+        local dd = dv * core
+        box(V3(0.42, 0.42, dd.Magnitude), CFrame.lookAt(p0 + dd / 2, p0 + dd), RGB(140, 210, 255), 0.55, Enum.Material.Neon)
+      elseif core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
       for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
         local len = (1.4 + (i % 4) * 0.35) * W.M
         local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
@@ -79642,6 +79665,66 @@ function WtHud.init(G)
     elseif anyBad then panelTip.Text, panelTip.TextColor3 = T("wt.tipFix"), Color3.new(1, 1, 1)
     else panelTip.Text = "" end
   end
+
+  ---------------------------------------------------------------- 金属射流（破甲弹、金属射流弹打在车上）
+  --   用户 11-24 夜「再做一个金属射流弹」：命中点一团白光、往外喷一圈火花，一道白热的射流顺着来向钻进去（从车外伸进去一截，
+  --   打穿的钻得深、射流弹更粗更亮），零点几秒淡掉；没打穿只有一小截
+  local TS = game:GetService("TweenService")
+  local function jetFx(e)
+    if typeof(e.p) ~= "Vector3" or typeof(e.d) ~= "Vector3" then return end
+    if (e.p - workspace.CurrentCamera.CFrame.Position).Magnitude > 3000 then return end
+    local d = (e.d.Magnitude > 0.01) and e.d.Unit or V3(0, 0, -1)
+    local len = math.clamp(e.len or 2, 0.5, 24)
+    local big = e.big == true
+    local a0, a1 = e.p - d * 1.4, e.p + d * len
+    local mid, L = (a0 + a1) / 2, (a1 - a0).Magnitude
+    local f = Instance.new("Folder")
+    f.Name = "WtJet"
+    f.Parent = workspace
+    local function mk(size, cf, col, tr, shape)
+      local q = Instance.new("Part")
+      q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch, q.CastShadow = true, false, false, false, false
+      q.Material, q.Color, q.Transparency, q.Size, q.CFrame = Enum.Material.Neon, col, tr, size, cf
+      if shape then q.Shape = shape end
+      q.Parent = f
+      return q
+    end
+    local w = big and 0.22 or 0.14
+    local core = mk(V3(w, w, L), CFrame.lookAt(mid, a1), RGB(240, 250, 255), 0.02)
+    local glow = mk(V3(w * 4, w * 4, L), CFrame.lookAt(mid, a1), RGB(150, 210, 255), 0.6)
+    local flash = mk(V3(1, 1, 1) * (big and 3.4 or 2.6), CFrame.new(e.p), RGB(255, 236, 200), 0.15, Enum.PartType.Ball)
+    local lt = Instance.new("PointLight")
+    lt.Color, lt.Brightness, lt.Range = RGB(200, 225, 255), big and 8 or 5, 22
+    lt.Parent = flash
+    local pe = Instance.new("ParticleEmitter")   -- 火花：从命中点往外喷（射流反溅出来的铜和钢的碎渣）
+    pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    pe.Color = ColorSequence.new(RGB(255, 236, 190), RGB(255, 140, 60))
+    pe.LightEmission = 1
+    pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0.05) })
+    pe.Lifetime = NumberRange.new(0.18, 0.45)
+    pe.Speed = NumberRange.new(30, 70)
+    pe.SpreadAngle = Vector2.new(55, 55)
+    pe.Drag = 4
+    pe.Rate = 0
+    pe.EmissionDirection = Enum.NormalId.Front
+    local emit = Instance.new("Attachment")
+    emit.CFrame = CFrame.lookAt(Vector3.zero, -d)   -- 往来向那边喷
+    emit.Parent = flash
+    pe.Parent = emit
+    pcall(function() pe:Emit(big and 46 or 30) end)
+    local ti = TweenInfo.new(big and 0.32 or 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TS:Create(core, ti, { Transparency = 1 }):Play()
+    TS:Create(glow, ti, { Transparency = 1, Size = V3(w * 7, w * 7, L) }):Play()
+    TS:Create(flash, ti, { Transparency = 1, Size = flash.Size * 1.8 }):Play()
+    TS:Create(lt, ti, { Brightness = 0 }):Play()
+    task.delay(0.8, function() f:Destroy() end)
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "wtJet" then G.try_(jetFx, e) end
+    end
+  end)
 
   ---------------------------------------------------------------- 服务器发来的
 
@@ -79892,6 +79975,13 @@ function WtTank.init(G)
       b(0, 12, 10, 2, (kind == "mpat") and RGB(96, 176, 255) or RGB(242, 202, 60), 0)
       b(0, 17, 8, 7, RGB(70, 74, 76), 0, 3)
       b(0, 23, 2, 8, RGB(170, 170, 164), 0, 1)
+    elseif kind == "jet" then   -- 金属射流弹：串联破甲弹（前面一截前级装药），弹头前一道青白的射流
+      b(0, 0, 12, 4, RGB(120, 120, 112), 0, 1)
+      b(0, 3, 10, 14, RGB(46, 52, 62), 0, 2)
+      b(0, 10, 10, 2, RGB(110, 210, 255), 0)
+      b(0, 16, 8, 6, RGB(60, 66, 74), 0, 3)
+      b(0, 21, 4, 4, RGB(150, 150, 146), 0, 1)
+      b(0, 24, 2, 9, RGB(170, 232, 255), 0, 1)
     elseif kind == "can" then   -- 霰弹：平头圆筒、一排钨珠
       b(0, 0, 13, 22, RGB(176, 176, 166), 0, 2)
       for i = -1, 1 do b(i * 4, 9, 2, 2, RGB(60, 60, 60), 0, true) end
@@ -79980,7 +80070,7 @@ function WtTank.init(G)
         for _, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE" })[cls] or "" })
+          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流" })[cls] or "" })
         end
       elseif w then
         local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
