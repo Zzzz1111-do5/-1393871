@@ -140,6 +140,15 @@
   - ② **已做**（d056c6d）：WtTank.lua（电脑上开坦克：穿深指示准星、装填弧、底部弹药栏、左下俯视损伤图），VehHud 有它就不画 MWT 那套；
     **数字键改成战雷那样先选主炮弹种**（Drive.lua 先问 G.wtKeySlot：M1A2 是 1～4 四种弹、没有别的武器格），改 Drive 数字键的注意。测试 tools/mock/wttank.lua。
   - C 打包改用 tools/build.luau（带构建标记、地形草叶设置），不再用 build_rbxlx.py。
+  - 11-24 夜（用户：「内饰粗糙不方便做的车删掉」「完全弄成战雷」「自己去 Sketchfab 找坦克」「新弄的坦克不搞内饰了」「飞机尾部发动机动画」）：
+    · **删了九辆车**（d6421d7）：M10、ZBD-05、BMP-3、ZSL-92B、ZTD-05、PTL-02、斯特赖克、M1117、M1150（车内是零件拼的）；红方步战车一栏空了
+      （两边能开对方的车）；**谁的关卡 / AI / 测试还点名这几型的，换成还在的车**
+    · **新坦克**（459b4bf）：豹 2A6（buh-late）、勒克莱尔（andertan）、T-72B3（MirzaArrafi）、T-80U（javanilga），blveh.py 转，不做车内（按 C 不进车里）；
+      blveh.json 加了 gun（炮耳轴，原来按炮管网格最后端算，炮会绕炮尾转）
+    · **飞机尾部发动机**（a58d7b8）：AirModels 喷口里的涡轮（c.spinJ，Fly.lua 算）、尾锥、火焰稳定器（holder，ab 那段管颜色）；
+      NOZ_ONLY：歼-11 / 歼-10 / 歼-8 / F-16 / F-15 / F-14 也装推力矢量喷口那套调节片，只开合不偏转
+    · **侦察 G、火炮支援 K、击杀信息栏**（547e307）：WtMatch.lua 的 G.ACT.wtScout / wtArty、entDied 发 wtFeed；Wt.lua 车毁前记 e.wtLastDriver，
+      车里的人收 wtKilled（被谁打的 + X 光）。**G / K 在车外是侦察 / 火炮，车内座位上照旧是 Interior 的备用镜 / 导演镜头**
   - ③ **已做**（e5206f4）：WtMatch.lua（服务器：SP——第一辆免费、得分每分 0.5 SP、出车按 Config.WtCost 花；出击阵容 5 种、每种一次备用；
     记击毁地面 / 击落空中）、WtBattle.lua（客户端：比分条下 SP 那一块、召唤卡片上的 SP、「任务完成 / 任务失败」结算页）。
     **Depots.spawnAt 出车前问 G.wtSpawnOk、出了车 G.wtSpawned；G.addScore 被 WtMatch 包了一层（攒 SP）；Ents 车被毁 G.emit("entDied")**。测试 tools/mock/wtmatch.lua。
