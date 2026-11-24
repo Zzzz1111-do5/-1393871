@@ -949,6 +949,12 @@ function Fx.init(G)
   -- 自己开的飞机打出去的：开火那一下 Fly.lua 已经在耳边放过了，这里不再放一遍
   local function mine(e) return G.fly ~= nil and e.by ~= nil and G.fly.id == e.by end
 
+  -- 导弹尾烟三档（AirDefs.smokeOf）：gap 多久一团、s0 / s1 起始 / 最后的大小、tr 起始透明度、life 留多久
+  local MSL_SMOKE = {
+    low = { gap = 0.07, s0 = 0.9, s1 = 3.2, tr = 0.55, life = 1.3, col = RGB(226, 226, 222) },
+    med = { gap = 0.04, s0 = 1.3, s1 = 5.5, tr = 0.32, life = 2.4, col = RGB(222, 222, 218) },
+    heavy = { gap = 0.022, s0 = 2.0, s1 = 9.0, tr = 0.12, life = 4.5, col = RGB(214, 212, 206) },
+  }
   local function newShot(e)
     local kind = e.kind
     local aw = e.w and AD.W[e.w]
@@ -963,7 +969,7 @@ function Fx.init(G)
       end
       if not mine(e) and not aw.hyper then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
-        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+        burn = aw.burn or 4, aw = aw, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
       if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
         local fs = flying[e.id]
         fs.hyper, fs.lit = true, false
@@ -1084,7 +1090,7 @@ function Fx.init(G)
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
-        local burning = s.t < s.burn
+        local burning = s.aw and AD.motorOn(s.aw, s.t) or (s.t < s.burn)   -- 双脉冲第二次、巡航弹一直开
         if s.hyper then burning = s.lit end
         if not burning and s.roar then stopRoar(s) end
         if s.glow then
@@ -1097,13 +1103,17 @@ function Fx.init(G)
             s.plasma = true
             for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
           end
-        elseif s.kind == "missile" then
+        elseif s.kind == "missile" and burning then
+          -- 尾烟按型号（AirDefs 的 smoke；用户 11-24 夜：「不同导弹尾烟……都是不一样的」）：低烟发动机细、淡、散得快（AIM-120、AIM-9X、霹雳-15），
+          --   老式发动机、助推器又粗又浓、挂在天上很久（AIM-54、57E6 的助推段、巡航弹起飞那一下）；发动机一关就不冒烟（只靠惯性滑翔）
+          local sp = MSL_SMOKE[AD.smokeOf(s.aw, s.t)] or MSL_SMOKE.med
           s.trailT += dt
-          if s.trailT > (burning and 0.035 or 0.12) then
+          if s.trailT > sp.gap then
             s.trailT = 0
-            local sm = part(BALL, V(1.3, 1.3, 1.3), cf * CFrame.new(0, 0, s.half + 1), RGB(222, 222, 218), Enum.Material.SmoothPlastic, burning and 0.25 or 0.6)
-            tween(sm, burning and 2.2 or 1.2, { Size = V(5, 5, 5), Transparency = 1 })
-            Debris:AddItem(sm, 2.3)
+            local sm = part(BALL, V(sp.s0, sp.s0, sp.s0), cf * CFrame.new(0, 0, s.half + 1), sp.col, Enum.Material.SmoothPlastic, sp.tr)
+            sm.Name = "MslSmoke"
+            tween(sm, sp.life, { Size = V(sp.s1, sp.s1, sp.s1), Transparency = 1 })
+            Debris:AddItem(sm, sp.life + 0.1)
           end
         end
       elseif s.kind == "grenade" then

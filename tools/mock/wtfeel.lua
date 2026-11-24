@@ -133,6 +133,7 @@ T.key(Enum.KeyCode.B, true)
 fly(2)
 T.key(Enum.KeyCode.B, false)
 local dBrk = s0 - st.spd
+R.run(1 / 15)
 check(st.airbrake == false and dBrk > dClean * 1.8, string.format("按住 B（减速板）2 秒掉 %.0f 格/秒，不按掉 %.0f", dBrk, dClean))
 reset(d.vMil, 0)
 st.gear, st.gearWant = 1, 1
@@ -148,7 +149,7 @@ local function pullAt(spd)
   reset(spd, 100)
   local mg = 0
   T.key(Enum.KeyCode.S, true)
-  fly(1.0, function() mg = math.max(mg, st.gLoad or 0) end)
+  fly(1.6, function() mg = math.max(mg, st.gLoad or 0) end)
   T.key(Enum.KeyCode.S, false)
   return mg
 end

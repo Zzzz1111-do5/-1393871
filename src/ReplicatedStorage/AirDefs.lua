@@ -117,6 +117,50 @@ for id, w in pairs(AirDefs.W) do
     w.burn = (w.burn or 3) * (0.6 + 0.4 * k)
   end
 end
+-- 各型导弹的发动机、尾烟、能量（用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）——服务器 Air.lua 按它飞、客户端 Fx.lua 按它画尾烟：
+--   burn 发动机烧几秒（烧完不冒烟、不发光，靠惯性滑翔）；pulse 双脉冲（{ at = 第几秒点第二次, t = 烧几秒 }：霹雳-15）；
+--   cruise 涡喷一直开（巡航弹，匀速飞），boost 它起飞那一下助推几秒（浓烟）；speed 最快（格 / 秒，不写照上面）；
+--   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
+--   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
+local MOTOR = {
+  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
+  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
+  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
+  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low" },
+  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med" },
+  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
+  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
+  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
+  s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
+  akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
+  agm114 = { burn = 3.0, g = 15, bleed = 0.07, smoke = "med" },
+  agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
+  kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
+  yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },
+  yj91 = { burn = 8, g = 12, bleed = 0.05, smoke = "med" },
+  agm88 = { burn = 7, g = 15, bleed = 0.05, smoke = "med" },
+}
+for wid, m in pairs(MOTOR) do
+  local w = AirDefs.W[wid]
+  if w then
+    for k, v in pairs(m) do w[k] = v end
+  end
+end
+-- 这一刻发动机开着没（尾焰、尾烟、加速都按它）：助推 / 主发动机、双脉冲的第二次、巡航弹一直开
+function AirDefs.motorOn(w, t)
+  if not w then return false end
+  if w.cruise then return true end
+  if t < (w.burn or 3) then return true end
+  local p = w.pulse
+  return p ~= nil and t >= p.at and t < p.at + p.t
+end
+-- 尾烟浓不浓（low / med / heavy）：巡航弹起飞那一下是助推器的浓烟
+function AirDefs.smokeOf(w, t)
+  if not w then return "med" end
+  if w.cruise and t < (w.boost or 0) then return "heavy" end
+  return w.smoke or "med"
+end
+
 -- 每个挂点每种武器挂几枚（多联挂架）：没写就是 1；火箭巢是一个巢（弹数在 tubes）
 local function N(t) return t end
 

@@ -129,6 +129,50 @@ for id, w in pairs(AirDefs.W) do
     w.burn = (w.burn or 3) * (0.6 + 0.4 * k)
   end
 end
+-- 各型导弹的发动机、尾烟、能量（用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）——服务器 Air.lua 按它飞、客户端 Fx.lua 按它画尾烟：
+--   burn 发动机烧几秒（烧完不冒烟、不发光，靠惯性滑翔）；pulse 双脉冲（{ at = 第几秒点第二次, t = 烧几秒 }：霹雳-15）；
+--   cruise 涡喷一直开（巡航弹，匀速飞），boost 它起飞那一下助推几秒（浓烟）；speed 最快（格 / 秒，不写照上面）；
+--   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
+--   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
+local MOTOR = {
+  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
+  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
+  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
+  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low" },
+  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med" },
+  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
+  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
+  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
+  s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
+  akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
+  agm114 = { burn = 3.0, g = 15, bleed = 0.07, smoke = "med" },
+  agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
+  kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
+  yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },
+  yj91 = { burn = 8, g = 12, bleed = 0.05, smoke = "med" },
+  agm88 = { burn = 7, g = 15, bleed = 0.05, smoke = "med" },
+}
+for wid, m in pairs(MOTOR) do
+  local w = AirDefs.W[wid]
+  if w then
+    for k, v in pairs(m) do w[k] = v end
+  end
+end
+-- 这一刻发动机开着没（尾焰、尾烟、加速都按它）：助推 / 主发动机、双脉冲的第二次、巡航弹一直开
+function AirDefs.motorOn(w, t)
+  if not w then return false end
+  if w.cruise then return true end
+  if t < (w.burn or 3) then return true end
+  local p = w.pulse
+  return p ~= nil and t >= p.at and t < p.at + p.t
+end
+-- 尾烟浓不浓（low / med / heavy）：巡航弹起飞那一下是助推器的浓烟
+function AirDefs.smokeOf(w, t)
+  if not w then return "med" end
+  if w.cruise and t < (w.boost or 0) then return "heavy" end
+  return w.smoke or "med"
+end
+
 -- 每个挂点每种武器挂几枚（多联挂架）：没写就是 1；火箭巢是一个巢（弹数在 tubes）
 local function N(t) return t end
 
@@ -994,7 +1038,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 18:50 c088a77"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 18:57 9222cc6"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -14672,8 +14716,11 @@ function Air.init(G)
     local w = s.w
     if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
     local spd = s.vel.Magnitude
-    if s.age < (w.burn or 3) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
-    else spd = math.max(w.speed * 0.3, spd - w.speed * 0.12 * dt) end
+    -- 发动机开着（助推 / 主发动机、霹雳-15 的第二次脉冲、巡航弹一直开）往最快加；关了按阻力掉速（∝ 速度²，各型的 bleed 不一样：
+    --   大的弹掉得慢；用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）
+    if AD.motorOn(w, s.age) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
+    else spd = spd - (w.bleed or 0.12) * w.speed * (spd / w.speed) ^ 2 * dt end
+    spd = math.max(spd, w.speed * 0.22)
     local dir = s.vel.Unit
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
@@ -14696,7 +14743,14 @@ function Air.init(G)
         s.tgt, s.aimPt = nil, nil
       else
         local k = (s.age < 0.25) and 0.4 or 1   -- 刚出架先稳一下
-        dir = turnToward(dir, want, math.rad(w.turn) * dt * k)
+        -- 能拉多少过载按速度² 算（满速时 w.g 个 g）：后段掉了速的弹转不动——战雷里「拖到导弹没能量再急转」躲得掉；
+        --   转弯也掉能量（诱导阻力）
+        local aMax = (w.g or 30) * GRAV * (spd / math.max(w.speed, 1)) ^ 2
+        local wMax = math.min(math.rad(w.turn), aMax / math.max(spd, 1))
+        local nd = turnToward(dir, want, wMax * dt * k)
+        local used = math.acos(math.clamp(nd:Dot(dir), -1, 1)) / math.max(dt, 1e-3)
+        spd = math.max(w.speed * 0.22, spd - 0.04 * (used * spd) ^ 2 / ((w.g or 30) * GRAV) * dt)
+        dir = nd
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
       if dist < fuse then
@@ -41013,7 +41067,7 @@ function Fly.init(G)
     end
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
-    local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
+    local q = clamp((st.spd - d.stall * 0.5) / (d.stall * 1.1), 0.12, 1)   -- 舵效：慢了舵不灵（1.1 倍失速速度只剩一半多，1.6 倍以上才满）
     local qHi = 1 - 0.3 * Map.smooth(d.vMax * 0.95, d.vMax * 1.25, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
     if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
@@ -43855,6 +43909,12 @@ function Fx.init(G)
   -- 自己开的飞机打出去的：开火那一下 Fly.lua 已经在耳边放过了，这里不再放一遍
   local function mine(e) return G.fly ~= nil and e.by ~= nil and G.fly.id == e.by end
 
+  -- 导弹尾烟三档（AirDefs.smokeOf）：gap 多久一团、s0 / s1 起始 / 最后的大小、tr 起始透明度、life 留多久
+  local MSL_SMOKE = {
+    low = { gap = 0.07, s0 = 0.9, s1 = 3.2, tr = 0.55, life = 1.3, col = RGB(226, 226, 222) },
+    med = { gap = 0.04, s0 = 1.3, s1 = 5.5, tr = 0.32, life = 2.4, col = RGB(222, 222, 218) },
+    heavy = { gap = 0.022, s0 = 2.0, s1 = 9.0, tr = 0.12, life = 4.5, col = RGB(214, 212, 206) },
+  }
   local function newShot(e)
     local kind = e.kind
     local aw = e.w and AD.W[e.w]
@@ -43869,7 +43929,7 @@ function Fx.init(G)
       end
       if not mine(e) and not aw.hyper then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
-        burn = aw.burn or 4, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+        burn = aw.burn or 4, aw = aw, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
       if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
         local fs = flying[e.id]
         fs.hyper, fs.lit = true, false
@@ -43990,7 +44050,7 @@ function Fx.init(G)
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
-        local burning = s.t < s.burn
+        local burning = s.aw and AD.motorOn(s.aw, s.t) or (s.t < s.burn)   -- 双脉冲第二次、巡航弹一直开
         if s.hyper then burning = s.lit end
         if not burning and s.roar then stopRoar(s) end
         if s.glow then
@@ -44003,13 +44063,17 @@ function Fx.init(G)
             s.plasma = true
             for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
           end
-        elseif s.kind == "missile" then
+        elseif s.kind == "missile" and burning then
+          -- 尾烟按型号（AirDefs 的 smoke；用户 11-24 夜：「不同导弹尾烟……都是不一样的」）：低烟发动机细、淡、散得快（AIM-120、AIM-9X、霹雳-15），
+          --   老式发动机、助推器又粗又浓、挂在天上很久（AIM-54、57E6 的助推段、巡航弹起飞那一下）；发动机一关就不冒烟（只靠惯性滑翔）
+          local sp = MSL_SMOKE[AD.smokeOf(s.aw, s.t)] or MSL_SMOKE.med
           s.trailT += dt
-          if s.trailT > (burning and 0.035 or 0.12) then
+          if s.trailT > sp.gap then
             s.trailT = 0
-            local sm = part(BALL, V(1.3, 1.3, 1.3), cf * CFrame.new(0, 0, s.half + 1), RGB(222, 222, 218), Enum.Material.SmoothPlastic, burning and 0.25 or 0.6)
-            tween(sm, burning and 2.2 or 1.2, { Size = V(5, 5, 5), Transparency = 1 })
-            Debris:AddItem(sm, 2.3)
+            local sm = part(BALL, V(sp.s0, sp.s0, sp.s0), cf * CFrame.new(0, 0, s.half + 1), sp.col, Enum.Material.SmoothPlastic, sp.tr)
+            sm.Name = "MslSmoke"
+            tween(sm, sp.life, { Size = V(sp.s1, sp.s1, sp.s1), Transparency = 1 })
+            Debris:AddItem(sm, sp.life + 0.1)
           end
         end
       elseif s.kind == "grenade" then

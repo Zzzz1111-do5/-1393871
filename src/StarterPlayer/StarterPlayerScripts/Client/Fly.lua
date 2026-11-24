@@ -1417,7 +1417,7 @@ function Fly.init(G)
     end
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
-    local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
+    local q = clamp((st.spd - d.stall * 0.5) / (d.stall * 1.1), 0.12, 1)   -- 舵效：慢了舵不灵（1.1 倍失速速度只剩一半多，1.6 倍以上才满）
     local qHi = 1 - 0.3 * Map.smooth(d.vMax * 0.95, d.vMax * 1.25, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
     if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，

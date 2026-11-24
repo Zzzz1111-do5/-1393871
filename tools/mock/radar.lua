@@ -117,11 +117,11 @@ local function launch(from, vel)
     step = G.airGuideMissile, age = 0, tgt = foe, tgId = foe.id, byEnt = jet.id, ref = foe })
 end
 setFoe(p0 + V3(0, 0, -7000), V3(0, 0, 150))
-jet.radarTgt, jet.radarT = foe.id, os.clock()
+jet.radarTgt, jet.radarT = foe.id, 1e12   -- 很大的数：一直算「刚报过」（服务器的时钟和测试脚本的 os.clock 不是一个）
 local m1 = launch(p0 + V3(0, -10, -30), V3(0, 0, -700))
 R.run(0.4)
 check(m1.dl == true and m1.tgt == foe, "远：按发射机的雷达跟踪飞（数据链）")
-jet.radarT = os.clock() - 5   -- 发射机丢了锁
+jet.radarT = -1e12   -- 发射机丢了锁（很久没报）
 R.run(0.4)
 check(m1.tgt == nil and m1.aimPt ~= nil, "发射机丢锁：往最后估的拦截点飞（惯导）")
 -- 近处：直接放一枚在目标前方 1500 格（比开导引头的距离近），目标侧着飞
@@ -149,7 +149,7 @@ local function shoot(dist)
   return G.launch({ kind = "missile", pos = tp + V3(0, 0, -dist), vel = V3(0, 0, 700), w = pl, src = { team = "def", name = "test" }, ignore = {}, life = 20,
     step = G.airGuideMissile, age = 0, tgt = jet, tgId = jet.id, byEnt = foe.id, ref = jet })
 end
-foe.radarTgt, foe.radarT = jet.id, os.clock() + 100
+foe.radarTgt, foe.radarT = jet.id, 1e12
 local far = shoot(6000)
 R.run(0.2)
 math.random = function(a, b) if a then return rnd(a, b) end return 0.01 end

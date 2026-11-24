@@ -483,8 +483,11 @@ function Air.init(G)
     local w = s.w
     if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
     local spd = s.vel.Magnitude
-    if s.age < (w.burn or 3) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
-    else spd = math.max(w.speed * 0.3, spd - w.speed * 0.12 * dt) end
+    -- 发动机开着（助推 / 主发动机、霹雳-15 的第二次脉冲、巡航弹一直开）往最快加；关了按阻力掉速（∝ 速度²，各型的 bleed 不一样：
+    --   大的弹掉得慢；用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）
+    if AD.motorOn(w, s.age) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
+    else spd = spd - (w.bleed or 0.12) * w.speed * (spd / w.speed) ^ 2 * dt end
+    spd = math.max(spd, w.speed * 0.22)
     local dir = s.vel.Unit
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
@@ -507,7 +510,14 @@ function Air.init(G)
         s.tgt, s.aimPt = nil, nil
       else
         local k = (s.age < 0.25) and 0.4 or 1   -- 刚出架先稳一下
-        dir = turnToward(dir, want, math.rad(w.turn) * dt * k)
+        -- 能拉多少过载按速度² 算（满速时 w.g 个 g）：后段掉了速的弹转不动——战雷里「拖到导弹没能量再急转」躲得掉；
+        --   转弯也掉能量（诱导阻力）
+        local aMax = (w.g or 30) * GRAV * (spd / math.max(w.speed, 1)) ^ 2
+        local wMax = math.min(math.rad(w.turn), aMax / math.max(spd, 1))
+        local nd = turnToward(dir, want, wMax * dt * k)
+        local used = math.acos(math.clamp(nd:Dot(dir), -1, 1)) / math.max(dt, 1e-3)
+        spd = math.max(w.speed * 0.22, spd - 0.04 * (used * spd) ^ 2 / ((w.g or 30) * GRAV) * dt)
+        dir = nd
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
       if dist < fuse then
