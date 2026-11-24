@@ -48758,6 +48758,7 @@ Defs.b2 = function(b, ctx) return Defs.side(b, ctx, { half = 0.62, me = "L", ctr
 
 -- 步战车、装甲车、自行火炮、自行高炮、轮式车、卡车（InteriorAFV.lua）
 require(script.Parent:WaitForChild("InteriorAFV"))(Defs, { window = window, pane = pane, bar = bar, wiper = wiper, standby = standby, hudUnit = hudUnit })
+require(script.Parent:WaitForChild("InteriorM1A1"))(Defs)   -- M1A1：原模型自带的炮塔内饰（m1a1i）
 
 return Defs
 ]]></ProtectedString>
@@ -49801,6 +49802,115 @@ return K
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="162">
+          <Properties>
+            <string name="Name">InteriorM1A1</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 艾布拉姆斯的车内：用原模型自带的炮塔内饰（tools/models/blveh.py 转的 m1a1i，块的 k = "int"）
+--   用户 11-23：「有一个带内饰的 m1a1 里面的电脑 观瞄设备和 m1a2 的很像 可以把 m1a1 换成那个 给那个电脑和观瞄设备实现现实中的功能」
+--   「你直接用这 m1」「原模型也换成这个」；11-24：「这个圆圈里面是一个镜片 要有光学效果的凸透镜 反光和镀膜做出来」
+--   车壳、座椅、炮尾、电台、面板都是模型自己的（VehModels 平时藏着、坐进车里 Interior 显示），这里只在模型的器材上加能用的东西：
+--   · 炮长主瞄准镜 GPS：目镜里的凸透镜（B:lens：镀膜、反光、出瞳）；Shift 进镜（Drive 的瞄准镜：昼光 / 热像、3× / 10×、激光测距）
+--   · 计算机控制面板 CCP（炮长右手边斜挂的黑盒子）：左边显示窗是活的（InteriorScreens 的 ccp 页），右边 3 × 4 数字键盘每个键都能按
+--     （打四位数按 ENT 手动装定距离——弹道计算机按它算超高角）
+--   · 目镜右边两块控制面板：倍率拨杆（3X/10X）、视野选择旋钮（DAY/TIS 昼光 / 热像）、热像极性旋钮（WHT/BLK）、弹种选择拨杆（AMMO）——
+--     准心对准、左键（看不见的点选块盖在模型的旋钮上，提示条写着是什么）
+--   · 辅助瞄准镜 GAS（G）、车长武器站的瞄准镜（T）；车长位：延伸目镜 GPSE 的镜片、两块显示器（上屏战术地图、下屏分系统状态）
+--   器材位置都是在原模型里量的（glTF 坐标，米：X 朝车的左边、Y 上、Z 朝前；tools/models/ 下的量法见 docs/interior.md），
+--   按元数据的 src 矩阵换到车上（格），再换成内饰坐标（米，相对炮塔座圈中心，X 右、Y 上、−Z 朝前）
+local Kit = require(script.Parent:WaitForChild("InteriorKit"))
+local V, CF = Vector3.new, CFrame.new
+local RGB = Color3.fromRGB
+local S = Kit.S
+
+return function(Defs)
+  function Defs.m1a1(b, ctx)
+    local T, G = "turret", "gun"
+    local M = ctx.meta
+    local A = M and M.src
+    assert(A, "M1A1：原模型的元数据里没有 src（没导入 m1a1i？）")
+    local piv = ctx.piv
+    -- 原模型 glTF 坐标（米）→ 内饰坐标（米，相对炮塔座圈中心）；D 是方向
+    local function P(x, y, z)
+      local g = V(A[1][1] * x + A[1][2] * y + A[1][3] * z + A[1][4], A[2][1] * x + A[2][2] * y + A[2][3] * z + A[2][4],
+        A[3][1] * x + A[3][2] * y + A[3][3] * z + A[3][4])
+      return (g - piv) / S
+    end
+    local function D(x, y, z)
+      return V(A[1][1] * x + A[1][2] * y + A[1][3] * z, A[2][1] * x + A[2][2] * y + A[2][3] * z, A[3][1] * x + A[3][2] * y + A[3][3] * z).Unit
+    end
+    local function face(p, n, up) return CFrame.lookAt(p, p + n, up or V(0, 1, 0)) end   -- LookVector（−Z）= n：屏幕、键帽的正面朝 n
+    local BACK = D(0, 0, -1)   -- 原模型里朝后（对着坐在后面的人）：目镜、控制面板、车长显示器都朝这边
+
+    ---------------- 目镜的镜片（原模型的目镜筒：护眼罩里一个圆孔，GPS 半径 2.6 厘米、GPSE 2.4 厘米，深 5 ～ 6 毫米）
+    b:lens(T, CF(P(-0.6045, 1.0148, 0.423)), 0.050, { k = 0.26 })    -- 炮长主瞄准镜 GPS
+    b:lens(T, CF(P(-0.4977, 1.3707, -0.341)), 0.046, { k = 0.26 })   -- 车长延伸目镜 GPSE
+
+    ---------------- 计算机控制面板 CCP：面板斜着挂（面朝炮长、往下倾 25°），量的是面板平面里的坐标
+    --   u 炮长看过去往右、v 沿面板往上、w 离面板平面（原模型里 0.903x − 0.43y = w 的那一族平面：面板正面 −1.217、显示窗底 −1.221、键盘正面 −1.201）
+    local nG, uG = { 0.903, -0.430, 0 }, { 0.430, 0.9028, 0 }
+    local function onCCP(u, v, w)
+      return P(v * uG[1] + w * nG[1], v * uG[2] + w * nG[2], -u)
+    end
+    local nC, upC = D(nG[1], nG[2], nG[3]), D(uG[1], uG[2], uG[3])
+    -- 显示窗：框里 21.9 × 17.3 厘米（显示面比框里小一圈，贴在窗底前 2 毫米：不和模型抢深度）
+    local ccp = b:screen(T, 0.212, 0.166, face(onCCP(-0.17435, 0.42415, -1.219), nC, upC), "ccp",
+      { noBack = true, propShell = true, bezel = 0.004, keys = {}, pickM = 0.16, lightK = 0.15, lightRange = 0.7, lightColor = RGB(255, 110, 60) })
+    -- 键盘：原模型 12.1 × 15.0 厘米，上面一条是插槽，下面 3 列 × 4 行键；键帽盖在原来的键上（印上字），凸出键盘面 1.5 毫米
+    local PAD = { { "1", "2", "3" }, { "4", "5", "6" }, { "7", "8", "9" }, { "CLR", "0", "ENT" } }
+    for j, row in ipairs(PAD) do
+      for i, t in ipairs(row) do
+        local u = -0.0273 + (i - 0.5) * 0.0363
+        local v = 0.490 - (j - 0.5) * 0.0295
+        b:keyCap(T, ccp, face(onCCP(u, v, -1.1995), nC, upC), 0.031, 0.0245, "CCP " .. t, "dark", { text = t, side = "pad", idx = (j - 1) * 3 + i })
+      end
+    end
+
+    ---------------- 目镜右边两块控制面板上的旋钮、拨杆：看不见的点选块（按下去也走 CCP 那块屏的按键处理）
+    local function hot(x, y, z, w, h, label)
+      local key = b:keyCap(T, ccp, face(P(x, y, z), BACK), w, h, label, "dark", { side = "panel" })
+      key.Transparency = 1
+      for _, ch in ipairs(key:GetChildren()) do if ch:IsA("SurfaceGui") then ch.Enabled = false end end
+    end
+    hot(-0.819, 1.1645, 0.505, 0.050, 0.060, "3X/10X")    -- 右上面板的拨杆：主瞄准镜倍率
+    hot(-0.8195, 1.070, 0.494, 0.045, 0.045, "DAY/TIS")   -- 右上面板的旋钮：视野选择（昼光 / 热像）
+    hot(-0.939, 0.798, 0.485, 0.060, 0.060, "WHT/BLK")    -- 右下面板带护圈的大旋钮：热像极性
+    hot(-0.7635, 0.790, 0.499, 0.055, 0.065, "AMMO")      -- 右下面板的拨杆：弹种选择开关
+
+    ---------------- 车长面前的两块显示器（原模型这两块屏贴的是同一张分系统状态图）：上屏换成战术地图、下屏是活的分系统状态
+    b:screen(T, 0.278, 0.206, face(P(-0.80, 1.505, -0.300), BACK), "cid", { noBack = true, bezel = 0.004, lightK = 0.2, lightColor = RGB(200, 210, 230) })
+    b:screen(T, 0.278, 0.196, face(P(-0.80, 1.210, -0.300), BACK), "m1stat", { noBack = true, bezel = 0.004, lightK = 0.2, lightColor = RGB(160, 190, 230) })
+
+    ---------------- 灯：炮塔顶两盏顶灯（白 / 夜里红或蓝绿，L 换）、开炮时从观察镜透进来的火光、挨打时的红色告警
+    b:light(T, CF(P(-0.05, 1.68, -0.35)), "dome", RGB(255, 244, 228), 3.2, 1.0)
+    b:light(T, CF(P(-0.62, 1.62, 0.20)), "dome", RGB(255, 244, 228), 2.6, 0.8)
+    b:light(T, CF(P(-0.55, 1.78, -0.68)), "flash", RGB(255, 196, 120), 4.0, 0)
+    b:light(T, CF(P(-0.30, 1.20, 0.10)), "warn", RGB(255, 40, 30), 3.0, 0)
+
+    ---------------- 乘员位
+    local gEye = P(-0.6045, 1.030, 0.240)       -- 炮长：目镜后 18 厘米（坐着往前探）
+    local cEye = P(-0.4977, 1.400, -0.520)      -- 车长：延伸目镜后 18 厘米
+    -- 辅助瞄准镜 GAS（M1A1：8 倍望远镜，装在炮盾右边、跟着炮俯仰）；车长武器站的瞄准镜（指挥塔前面，T 开：鼠标转着看）
+    local GAS = { kind = "gas", name = "GAS  8X", g = G, pos = V(0.30, 0.10, 0.05), dir = "gun", fovs = { 8.5 }, ret = "gas", look = "day", shape = "circle", useSight = true }
+    local CWS = { kind = "cws", name = "CWS  3X", g = T, pos = P(-0.55, 2.00, -0.45), dir = "free360", fovs = { 28, 9.5 }, ret = "mil", look = "day", shape = "rect" }
+    return {
+      gunK = 0.305,          -- M256 后坐行程
+      carved = true,         -- 坐在乘员位上外壳照样画、显示原模型的车内（Interior 的 extHide）
+      modelInt = true,
+      stations = {
+        gunner = { g = T, eye = gEye, look = V(0, -0.06, -1), yaw = 140, up = 60, down = 60, crew = "gunner", sight = true,
+          scope = P(-0.6045, 1.0148, 0.405), optics = { primary = { kind = "gps" }, alt = GAS, third = CWS } },
+        commander = { g = T, eye = cEye, look = V(0, -0.12, -1), yaw = 160, up = 70, down = 70, crew = "commander",
+          scope = P(-0.4977, 1.3707, -0.360), optics = { primary = { kind = "gps" }, alt = CWS } },
+      },
+      order = { "gunner", "commander" },
+      lock = "gunner",   -- 坦克只锁定在炮长位（同 M1A2）
+      crew = {},
+    }
+  end
+end
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -52130,7 +52240,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -52396,7 +52506,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -52558,7 +52668,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -53040,7 +53150,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -53565,7 +53675,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -53715,7 +53825,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -54028,7 +54138,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -54350,7 +54460,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -54567,7 +54677,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -54701,7 +54811,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -55206,7 +55316,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -55825,7 +55935,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -56106,7 +56216,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -56363,7 +56473,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -56506,7 +56616,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -57200,7 +57310,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -57797,7 +57907,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -58300,7 +58410,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -59247,7 +59357,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -59977,7 +60087,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -60729,7 +60839,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -60813,7 +60923,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -61563,7 +61673,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -61773,7 +61883,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -62228,7 +62338,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -63448,7 +63558,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -63955,7 +64065,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -64068,7 +64178,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -65156,7 +65266,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -65260,7 +65370,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -66768,7 +66878,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -67684,7 +67794,7 @@ return VehModels
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -68665,7 +68775,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）

@@ -1957,5 +1957,6 @@ Defs.b2 = function(b, ctx) return Defs.side(b, ctx, { half = 0.62, me = "L", ctr
 
 -- 步战车、装甲车、自行火炮、自行高炮、轮式车、卡车（InteriorAFV.lua）
 require(script.Parent:WaitForChild("InteriorAFV"))(Defs, { window = window, pane = pane, bar = bar, wiper = wiper, standby = standby, hudUnit = hudUnit })
+require(script.Parent:WaitForChild("InteriorM1A1"))(Defs)   -- M1A1：原模型自带的炮塔内饰（m1a1i）
 
 return Defs
