@@ -110,6 +110,45 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
   sightZoom = { day = { 3, 10 }, th = { 3, 10 } },   -- M1A1 主瞄准镜：昼光 3 / 10 倍，热像（第一代）宽 3 倍、窄 10 倍
   weapons = { "gun120", "coax" } })
 
+-- 11-24 夜 C 从 Sketchfab 找的坦克（用户：「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」——C 没有做车内，按 C 不进车里）：
+--   原模型见 tools/models/blveh.json（leo2a6 / leclerc / t72b3 / t80u）、署名见 models/veh/credits.txt；尺寸、炮塔座圈、炮耳轴照转换报告（格）
+-- 豹 2A6（德国）：62.3 吨、MTU MB 873 1500 马力、68 km/h、120 毫米 L/55 滑膛炮；EMES-15 炮长镜昼光 12 倍、热像 4 / 12 倍
+D.leo2a6 = tracked({ cat = "tank", L = 21.6, W = 10.8, H = 7.4, hullH = 4.8, clear = 1.4, speed = 35, accel = 10, turn = 35,
+  rw = { n = 7, r = 1.0, x = 3.9, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
+  turret = { pivot = V(0, 4.81, -3.85), size = V(8.5, 2.6, 15.0), style = "wedge", trav = 40, elev = { -9, 20 }, bustle = 4.0 },
+  gun = { pivot = V(0, 1.09, -3.09), len = 13.3, cal = 0.44 }, coax = V(1.0, 1.0, -3.2),
+  sight = V(1.7, 2.1, -2.6), cupola = V(-1.4, 2.4, 1.0),
+  smoke = { banks = { { at = V(3.6, 1.6, -1.6), yaw = 35 }, { at = V(-3.6, 1.6, -1.6), yaw = -35 } }, n = 8 },
+  sightZoom = { day = { 3, 12 }, th = { 4, 12 } },
+  weapons = { "gun120", "coax" } })
+-- 勒克莱尔（法国）：56.5 吨、V8X 1500 马力、72 km/h、120 毫米 CN120-26（炮塔尾舱自动装弹机，三人车组）；HL-60 炮长镜昼光 3.3 / 10 倍
+D.leclerc = tracked({ cat = "tank", L = 19.3, W = 9.7, H = 7.0, hullH = 4.6, clear = 1.3, speed = 37, accel = 11, turn = 37,
+  rw = { n = 6, r = 1.0, x = 3.6, z0 = -6.6, z1 = 6.6 }, era = false, skirt = true,
+  turret = { pivot = V(0, 3.39, -1.89), size = V(8.7, 2.6, 12.3), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 3.5 },
+  gun = { pivot = V(0, 1.76, -2.98), len = 12.0, cal = 0.44 }, coax = V(1.0, 1.7, -3.0),
+  sight = V(1.5, 2.6, -2.2), cupola = V(-1.5, 2.8, 0.6),
+  smoke = { banks = { { at = V(3.4, 2.0, -1.0), yaw = 35 }, { at = V(-3.4, 2.0, -1.0), yaw = -35 } }, n = 6 },
+  sightZoom = { day = { 3.3, 10 }, th = { 3, 10 } },
+  weapons = { "gun120", "coax" } })
+-- T-72B3（俄罗斯）：46 吨、V-92S2F 1130 马力、60 km/h、125 毫米 2A46M-5（转盘式自动装弹机 22 发）；「松树-U」炮长镜昼光 4 / 12 倍、热像 3.7 / 12 倍
+D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clear = 1.3, speed = 32, accel = 9, turn = 36,
+  rw = { n = 6, r = 1.1, x = 3.9, z0 = -6.6, z1 = 5.6 }, era = false, skirt = true,
+  turret = { pivot = V(0, 4.01, -0.09), size = V(8.0, 2.3, 8.5), style = "round", trav = 24, elev = { -6, 14 } },
+  gun = { pivot = V(0, 0.85, -3.51), len = 13.85, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.4),
+  sight = V(-1.8, 2.0, -2.0), cupola = V(1.6, 2.1, 0.4),
+  smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
+  sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },
+  weapons = { "gun125r", "coax" } })
+-- T-80U（俄罗斯）：46 吨、GTD-1250 燃气轮机 1250 马力、70 km/h、125 毫米 2A46M-1（转盘式自动装弹机 28 发）；1G46 炮长镜昼光 2.7 / 12 倍
+D.t80u = tracked({ cat = "tank", turbine = true, L = 20.7, W = 10.75, H = 6.4, hullH = 4.07, clear = 1.3, speed = 36, accel = 11, turn = 38,
+  rw = { n = 6, r = 1.1, x = 3.9, z0 = -6.8, z1 = 5.8 }, era = false, skirt = true,
+  turret = { pivot = V(0, 3.94, -0.75), size = V(8.0, 2.3, 9.0), style = "round", trav = 26, elev = { -5, 14 }, bustle = 0.5 },
+  gun = { pivot = V(0, 0.68, -3.10), len = 14.2, cal = 0.45, fume = true }, coax = V(1.0, 0.8, -3.0),
+  sight = V(-1.8, 2.0, -2.0), cupola = V(1.6, 2.2, 0.4),
+  smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 8 },
+  sightZoom = { day = { 2.7, 12 }, th = { 5.5, 10 } },
+  weapons = { "gun125r", "coax" } })
+
 ---------------------------------------------------------------- 装甲车（履带）
 
 D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 36, accel = 10, turn = 40,

@@ -29,6 +29,12 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～五包、E 第一～七包，新的在上面）
+  11 月 24 日 C 第十包（删九辆车内粗糙的车；新坦克豹 2A6、勒克莱尔、T-72B3、T-80U）：换游戏文件（或者「三、只换脚本」）；再导入 veh/ 里四个新文件：
+      leo2a6.glb（豹 2A6，buh-late）、leclerc.glb（勒克莱尔，andertan）、t72b3.glb（T-72B3，MirzaArrafi）、t80u.glb（T-80U，javanilga）
+    （新名字 V_leo2a6__… / V_leclerc__… / V_t72b3__… / V_t80u__…，不用删旧的；不导也能开，是零件拼的样子）
+    - 删掉的车：M10 布克、ZBD-05、BMP-3、ZSL-92B、ZTD-05、PTL-02、斯特赖克、M1117、M1150（用户：车内是零件拼的，粗糙）；
+      veh/ 里 bmp3、matv、m1150、ptl02、zbd97、lav25 这六个文件没了（以前导进来的零件留着也不碍事，想清爽就删 V_bmp3__… 这些）
+    - 新坦克没有车内（用户：「新弄的坦克不搞内饰了」），按 C 不进车里；炮塔、炮管、负重轮会动；红方 T-72B3、T-80U，蓝方豹 2A6、勒克莱尔
   11 月 24 日 E 第七包（开飞机的界面换成战雷式；尾喷重做）：换游戏文件（或者「三、只换脚本」）；模型都不用重导：
     - 照你发的战雷截图：左上一列小字——节流阀（开加力红字「加力」）、表速、速度、马赫数、海拔高、雷达高；挂的弹一种一行（剩几发、下一发左 / 右挂架、型号，
       选中的前面「>」，红外导引头追踪时变红字「追踪」）、热焰弹、干扰箔、机炮、燃油量（还能飞多久）；每台发动机的油温、引擎温度（开久了加力油温变橙色）

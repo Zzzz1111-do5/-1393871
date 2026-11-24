@@ -222,7 +222,7 @@ Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {
-    tank = { "ztz96", "ztz99a", "t90m" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
+    tank = { "ztz96", "ztz99a", "t90m", "t72b3", "t80u" },   -- T-72B3、T-80U 11-24 夜 C 从 Sketchfab 找的   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
     apc = {},   -- 11-24 删掉了 ZTD-05 / ZBD-05 / ZSL-92B / PTL-02 / BMP-3（用户：车内是零件拼的，粗糙）；两边能开对方的车（CrossVehicles），红方照样有悍马、JLTV、M2A3
     aa = { "pgz07", "pgl625", "ld2000", "pantsir" },
     arty = { "plz07" },
@@ -231,7 +231,7 @@ Config.Vehicles = {
     ship = { "t055", "t054a", "t022" },
   },
   def = {
-    tank = { "m1a1", "m1a2" },   -- M10 布克 11-24 删掉了（车内粗糙）
+    tank = { "m1a1", "m1a2", "leo2a6", "leclerc" },   -- M10 布克 11-24 删掉了（车内粗糙）；豹 2A6、勒克莱尔 11-24 夜 C 从 Sketchfab 找的（不做车内）
     apc = { "hmmwv", "jltv", "m2a3" },   -- M1117、斯特赖克、M1150 11-24 删掉了（车内粗糙）
     aa = { "m163", "mshorad", "cram", "patriot" },
     arty = { "m109a7", "m270" },   -- M777 是地图自带的炮位（Forts），走过去就能用
@@ -269,7 +269,7 @@ Config.Economy = {
   perScore = 0.1, win = 200, lose = 60,
   veh = {
     -- 坦克
-    ztz96 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000, t90m = 2800,
+    ztz96 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000, t90m = 2800, t72b3 = 1600, t80u = 2200, leo2a6 = 2800, leclerc = 2600,
     -- 装甲车
     hmmwv = 0, jltv = 600, m2a3 = 1200,
     -- 防空
@@ -347,6 +347,7 @@ function Config.AttPrice(lv)
 end
 Config.VehicleMod = {
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 }, t90m = { hp = 1.05, gun = 1.05 },
+  leo2a6 = { hp = 1.1, gun = 1.1 }, leclerc = { hp = 1.0, gun = 1.05, speed = 1.05 }, t72b3 = { hp = 0.95 }, t80u = { hp = 1.0, speed = 1.08 },
   hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
   m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
   z20 = { transport = true }, uh60 = { transport = true }, ch47 = { transport = true, hp = 1.3 },

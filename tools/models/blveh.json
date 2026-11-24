@@ -978,5 +978,100 @@
     "kinds": {
       "Radar": "radar"
     }
+  },
+  "leo2a6": {
+    "_说明": "豹 2A6（buh-late，Sketchfab 7cb23d5322df4b409a880de635826067，CC-BY-4.0，作者自己做的「为游戏优化」的模型）；用户 11-24 夜「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」。原模型车头朝 −Z（不用转），车体长 7.63 → 真车 7.72 米；车体、炮塔、炮管、两条履带、每个负重轮 / 主动轮 / 诱导轮都是单独节点",
+    "uid": "7cb23d5322df4b409a880de635826067",
+    "title": "豹 2A6 主战坦克",
+    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管、车轮）、减面、贴图缩到 1024",
+    "alias": ["leo2a6"],
+    "rotZ": 0,
+    "length": 7.72,
+    "texMax": 1024,
+    "dedupe": true,
+    "groups": {
+      "Turret": ["turret_0"],
+      "Gun": ["gun_0"]
+    },
+    "wheels": [["l w wheel_0"], ["r w wheel_0"], ["l op wheel.000_0"], ["l op wheel.001_0"], ["l op wheel.002_0"], ["l op wheel.003_0"], ["l op wheel.004_0"], ["l op wheel.005_0"], ["l op wheel.006_0"], ["r op wheel_0"], ["r op wheel.001_0"], ["r op wheel.002_0"], ["r op wheel.003_0"], ["r op wheel.004_0"], ["r op wheel.005_0"], ["r op wheel.006_0"], ["l n wheel.001_0"], ["r n wheel_0"]],
+    "decimate": {
+      "body_0": 0.5,
+      "turret_0": 0.6,
+      "track_0": 0.3,
+      "track.001_0": 0.3
+    },
+    "credit": "豹 2A6 主战坦克：Leopard 2 A6，作者 buh-late（https://sketchfab.com/3d-models/leopard-2-a6-7cb23d5322df4b409a880de635826067），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "creditEn": "This work is based on \"Leopard 2 A6\" (https://sketchfab.com/3d-models/leopard-2-a6-7cb23d5322df4b409a880de635826067) by buh-late licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "gun": [-0.03, 1.0, -2.2]
+  },
+  "leclerc": {
+    "_说明": "勒克莱尔（andertan，Sketchfab 84a0918d2f534c2eb003ab3cb3029c03，CC-BY-4.0，作者自己做的，游戏里的歼-20 / 歼-16 也是他的）；用户 11-24 夜。原模型车头朝 +X（转 90°），车体长 5.92 → 真车 6.88 米；炮塔节点 turret_2 下面是炮塔，Cylinder.086_1 下面是炮管；车轮和车体在一块里",
+    "uid": "84a0918d2f534c2eb003ab3cb3029c03",
+    "title": "勒克莱尔主战坦克",
+    "changes": "Blender 转换（tools/models/blveh.py）：转 90° 朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+    "alias": ["leclerc"],
+    "rotZ": 90,
+    "length": 6.88,
+    "texMax": 1024,
+    "dedupe": true,
+    "groups": {
+      "Turret": ["Object_25", "Object_29", "Object_30", "Object_28", "Object_27", "Object_26"],
+      "Gun": ["Object_35", "Object_32", "Object_36", "Object_34", "Object_33"]
+    },
+    "decimate": {
+      "Object_5": 0.35,
+      "Object_6": 0.35,
+      "Object_23": 0.55
+    },
+    "credit": "勒克莱尔主战坦克：Char Leclerc，作者 andertan（https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "creditEn": "This work is based on \"Char Leclerc\" (https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03) by andertan licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "gun": [1.8, 1.69, -0.05]
+  },
+  "t72b3": {
+    "_说明": "T-72B3（MirzaArrafiERV_45，Sketchfab dfe130dfce724c30958cec51f2bd86b7，CC-BY-4.0，作者自己做的，游戏里带内饰的 M1A1 也是他的）；用户 11-24 夜。原模型车头朝 −Z（不用转），按材质分块：炮塔 Object_10、炮塔栅栏 Object_15、座圈一圈 Object_6、天线 Object_8，炮管 Object_5；车体装甲 Object_4 长 7.11 → 真车 6.95 米",
+    "uid": "dfe130dfce724c30958cec51f2bd86b7",
+    "title": "T-72B3 主战坦克",
+    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+    "alias": ["t72b3"],
+    "rotZ": 0,
+    "length": 6.95,
+    "lengthRef": ["Object_4"],
+    "texMax": 1024,
+    "dedupe": true,
+    "groups": {
+      "Turret": ["Object_10", "Object_15", "Object_6", "Object_8", "Object_7"],
+      "Gun": ["Object_5"]
+    },
+    "decimate": {
+      "Object_10": 0.6,
+      "Object_14": 0.5,
+      "Object_4": 0.6,
+      "Object_15": 0.5,
+      "Object_17": 0.5,
+      "Object_12": 0.5
+    },
+    "credit": "T-72B3 主战坦克：T-72B3 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "creditEn": "This work is based on \"T-72B3 Main Battle Tank\" (https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "gun": [0.0, 0.98, -0.55]
+  },
+  "t80u": {
+    "_说明": "T-80U（javanilga，Sketchfab ebf4b55eeabb421cbf2758a2ec948439，CC-BY-4.0，作者照片对着做的低模）；用户 11-24 夜。原模型车头朝 +Z（转半圈），车体 Object_4 长 7.90（连车尾油桶）→ 7.4 米；炮塔 Object_48 和上面的车长指挥塔、机枪、天线、尾部网，炮管 Object_44；六对负重轮各一块（左右在一块里，一起转）",
+    "uid": "ebf4b55eeabb421cbf2758a2ec948439",
+    "title": "T-80U 主战坦克",
+    "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管、负重轮）、贴图缩到 1024",
+    "alias": ["t80u"],
+    "rotZ": 180,
+    "length": 7.4,
+    "lengthRef": ["Object_4"],
+    "texMax": 1024,
+    "dedupe": true,
+    "groups": {
+      "Turret": ["Object_48", "Object_32", "Object_34", "Object_36", "Object_40", "Object_42", "Object_46", "Object_50", "Object_38", "Object_54", "Object_30", "Object_52"],
+      "Gun": ["Object_44"]
+    },
+    "wheels": [["Object_18"], ["Object_20"], ["Object_22"], ["Object_24"], ["Object_26"], ["Object_28"]],
+    "credit": "T-80U 主战坦克：Tank T-80U，作者 javanilga（https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "creditEn": "This work is based on \"Tank T-80U\" (https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439) by javanilga licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "gun": [-0.08, 1.78, 1.35]
   }
 }
