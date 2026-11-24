@@ -222,6 +222,10 @@ if js and foe then
       string.format("框上写型号（%s）、右边写距离（%s）", nm and nm.Text or "", rg and rg.Text or ""))
     local seeker = find("Seeker")
     if lm:GetAttribute("Seeker") == "ir" then check(seeker ~= nil and T.visible(seeker), "红外弹：导引头的圈套在目标上") end
+    -- 锁定音（用户 11-24：战雷一模一样）：锁上了一声又高又稳的长音（红外）/ 快的嘀嘀声（雷达）
+    local tone = js.toneSnd
+    check(tone ~= nil and tone.Looped == true and (tone.Volume > 0.2 or lm:GetAttribute("Seeker") == "radar"),
+      string.format("锁定音在响（音量 %.2f、音高 %.2f）", tone and tone.Volume or -1, tone and tone.PlaybackSpeed or -1))
     check(box and box.Color.G > 0.8 and box.Color.R < 0.6, "在离轴角里：框是绿的")
     foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
     R.run(0.3)

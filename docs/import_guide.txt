@@ -23,6 +23,11 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 24 日第五包（飞机锁定音，战雷那样）：模型都不用重导，只换游戏文件（或者「三、只换脚本」）：
+    - 红外弹（AIM-9X、霹雳……）导引头在找：低沉的「嗡嗡」声，越接近锁上音越高；锁上了：持续的高音
+    - 雷达弹：在锁的时候慢「嘀、嘀」，锁上了快「嘀嘀嘀」
+    - 离开飞机声音就停
+
   11 月 24 日第二包（M1A1 的炮塔内饰搬进 M1A2 SEPv2 和 M2A3 布雷德利、车里的按钮旋钮都能用）：换游戏文件（或者「三、只换脚本」）；再重导 veh/m1a1i.glb 一个文件：
     - 用户：「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」「m1a2sepv2……应该和目前 a1 大差不差，按钮什么的实现功能，实现现实中那几块屏幕所有的功能」
     - m1a1i.glb 里炮塔内饰原来是一整块（V_m1a1i__Int_2），现在拆成 15 块（V_m1a1i__Int_Shell、Int_Breech、Int_GpsEye……）：
