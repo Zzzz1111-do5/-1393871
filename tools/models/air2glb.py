@@ -225,6 +225,8 @@ def segment(key):
                 rot_piv[g] = (P['p'], P.get('a', [0, 1, 0]))
             elif n in kfs:
                 g = n
+            elif n in ('Pit', 'PitHud'):   # 原模型自带的座舱（sf_air.py 的 pitmat / pitnode）、原模型的平显（pithud）
+                g = n
             else:
                 g = 'Body'
             tri_g += [g] * len(T)
@@ -328,7 +330,7 @@ def convert(key, AD, ids):
     # 按（部件，材质）分块
     out = []
     count = {}
-    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor', 'Gun', 'GunY']
+    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor', 'Gun', 'GunY', 'Pit', 'PitHud']
     for g in order:
         for mi in sorted(set(tri_m[tri_g == g].tolist())):
             idx_all = tris[(tri_g == g) & (tri_m == mi)]
@@ -374,6 +376,14 @@ def convert(key, AD, ids):
     # 飞行员（座舱里头的位置）
     if A.PIT.get(key):
         info['pit'] = [[round(float(x), 3) for x in R(p)] for p in A.PIT[key]]
+    # 原模型座舱里的屏幕（sf_air.py 的 pitscr）：中心 c、朝着人的法线 n、屏幕的上方 u、宽高（格）——游戏里在这里贴我们的实时画面
+    if getattr(A, 'PITSCR', {}).get(key):
+        info['pitScr'] = {}
+        for nm, e in A.PITSCR[key].items():
+            o = {'c': [round(float(x), 3) for x in R(e['c'])], 'n': [round(float(x), 4) for x in B.rbn(e['n'])],
+                 'u': [round(float(x), 4) for x in B.rbn(e['u'])], 'w': round(float(e['w']) * S, 3), 'h': round(float(e['h']) * S, 3)}
+            o.update({k: v for k, v in e.items() if k not in ('c', 'n', 'u', 'w', 'h')})
+            info['pitScr'][nm] = o
     # 旋翼：支点、轴
     for g, (p, a) in rot_piv.items():
         if (tri_g == g).any():

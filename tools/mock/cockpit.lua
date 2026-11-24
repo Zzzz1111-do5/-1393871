@@ -12,7 +12,7 @@ local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local AIR = TEST_ARGS:match("air=(%w+)") or "j20"
-local US = { f35 = true, f22 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
+local US = { f35 = true, f22 = true, f16 = true, f15 = true, f14 = true, a10c = true, ah64e = true, uh60 = true, ch47 = true, b2 = true }
 local side = US[AIR] and "def" or "atk"
 -- imp=1：假装 Studio 里导入了这型飞机的原模型（照 ImportedAir 元数据摆一套同名的 MeshPart，开服时收进 Imported），走原模型那条路
 local IMP = nil
@@ -96,14 +96,40 @@ local cur = I.cur
 check(C.interiorOn() and cur ~= nil and cur.spec.air and I.mode == "seat", "按 V：坐进座舱（" .. tostring(cur and cur.key) .. "）")
 if not cur then T.summary() return end
 local nParts, nScreens, nLights, nGlass = #cur.b.parts, #cur.b.screens, #cur.b.lights, #(cur.spec.glass or {})
-check(nParts > 250, "座舱零件 " .. nParts .. " 个")
+local v0 = C.viewById(e.id)
+local v0M = v0 and v0.M or {}
+local MP = cur.spec.modelPit   -- 原模型自带的座舱（F-16）：座舱是原模型的，内饰只有屏幕、平显、键帽
+if MP then
+  check(nParts >= 10, "原模型座舱：贴的屏幕、键帽、平显框 " .. nParts .. " 个零件")
+  local pit, hidPit = 0, 0
+  for _, it in ipairs(v0M.items or {}) do
+    if it.pit == "Pit" then
+      pit = pit + 1
+      for _, zp in ipairs(cur.zone or {}) do if zp == it.p then hidPit = hidPit + 1 end end
+    end
+  end
+  check(pit >= 1 and hidPit == 0, string.format("原模型的座舱件（%d 块）坐在座舱里照样画（藏了 %d 块）", pit, hidPit))
+  -- 屏幕贴在原模型的显示器上：每块的中心离元数据里量的位置不到 1 厘米
+  local I = v0M.imp.info
+  local eyeM = R.Vector3.new(I.pit[1][1], I.pit[1][2], I.pit[1][3])
+  local worst = 0
+  for name, o in pairs(I.pitScr) do
+    local want = v0.cf * CF(cur.eyeBody) * CF((R.Vector3.new(o.c[1], o.c[2], o.c[3]) - eyeM))
+    local best = math.huge
+    for _, sc in ipairs(cur.b.screens) do best = math.min(best, (sc.part.Position - want.Position).Magnitude) end
+    worst = math.max(worst, best)
+  end
+  check(worst < 0.03 * 2.8, string.format("屏幕贴在原模型的显示器、圆表、平显上（最远差 %.1f 厘米）", worst / 2.8 * 100))
+else
+  check(nParts > 250, "座舱零件 " .. nParts .. " 个")
+end
 local minS = cur.spec.minScreens or 5   -- F-35 真就三块（全景屏两半 + 备份飞行显示器）
 check(nScreens >= minS, "屏幕 " .. nScreens .. " 块（至少 " .. minS .. "）")
 local live = 0
 for _, s in ipairs(cur.b.screens) do if s.update then live = live + 1 end end
 check(live == nScreens, string.format("屏幕页面都起来了（%d / %d）", live, nScreens))
 check(nLights >= 2, "座舱灯 " .. nLights .. " 盏")
-check(nGlass >= 8, "座舱盖玻璃 " .. nGlass .. " 块")
+if not MP then check(nGlass >= 8, "座舱盖玻璃 " .. nGlass .. " 块") end
 local scr = 0
 for _, g in ipairs(cur.spec.glass or {}) do
   local sg = g:FindFirstChildOfClass("SurfaceGui")
@@ -111,7 +137,7 @@ for _, g in ipairs(cur.spec.glass or {}) do
   check(g.Material == Enum.Material.Glass, "玻璃是 Glass 材质（看出去有折射）")
   break
 end
-check(scr == 1, "玻璃上有划痕、污渍")
+if not MP then check(scr == 1, "玻璃上有划痕、污渍") end
 -- 用户 11-22：「飞机不要搞多边形的座舱盖，一反光看着太难受了，就要弧形」——一整块光滑网格（EditableMesh），平板不画（带划痕的只剩划痕）
 if cur.spec.canopy then
   local cm = cur.canopyMesh
@@ -149,7 +175,7 @@ local keys = cur.b.softkeys
 check(#keys >= 10, "屏幕边有 " .. #keys .. " 个带字的按键")
 local want = nil
 -- 没有雷达的（A-10C）按左边那块的 DSMS，查它换成外挂页
-local KW = cur.spec.noRadar and { DSMS = true } or { RDR = true, ["雷达"] = true }
+local KW = cur.spec.noRadar and { DSMS = true } or { RDR = true, ["雷达"] = true, FCR = true }
 local PW = cur.spec.noRadar and { "^STORES", "^外挂" } or { "^RDR", "^雷达" }
 for _, k in ipairs(keys) do
   if KW[k.label] then want = k break end
@@ -210,11 +236,12 @@ local function gearLit()
   for _, l in ipairs(cur.b.leds) do if l.role == "gear" and l.p.Color == l.on then n = n + 1 end end
   return n
 end
-if not cur.spec.heli then check(gearLit() == 3, "停在地上：起落架三个绿灯亮（" .. gearLit() .. "）") end
+if not cur.spec.heli and not MP then check(gearLit() == 3, "停在地上：起落架三个绿灯亮（" .. gearLit() .. "）") end
 local gh0 = cur.b.groups.gearh and cur.b.groups.gearh.anim
 local thrZ0 = cur.b.groups.thr and cur.b.groups.thr.anim.Position.Z
 local maxStick = 0
 local function stickNow()
+  if not cur.b.groups.stick then return end   -- 原模型座舱：杆是原模型的（不动）
   local rx, _, rz = cur.b.groups.stick.anim:ToEulerAnglesXYZ()
   maxStick = math.max(maxStick, math.abs(rx), math.abs(rz))
 end
@@ -261,25 +288,29 @@ else
     T.key(Enum.KeyCode.S, true)   -- 速度到了按住 S 抬头
     local up = T.runUntil(function() stickNow() return not fst.ground end, 10)
     check(up, string.format("滑跑起飞（离地时 %.0f 格 / 秒）", fst.spd or 0))
-    local thrZ1 = cur.b.groups.thr.anim.Position.Z
-    check(thrZ1 < thrZ0 - 0.05 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
+    if not MP then
+      local thrZ1 = cur.b.groups.thr.anim.Position.Z
+      check(thrZ1 < thrZ0 - 0.05 * 2.8, string.format("油门杆往前推了 %.2f 米", (thrZ0 - thrZ1) / 2.8))
+    end
     for _ = 1, 30 do R.run(1 / 30) stickNow() end
     T.key(Enum.KeyCode.S, false)
     for _ = 1, 150 do R.run(1 / 30) stickNow() end   -- 加力爬一会儿
     T.key(Enum.KeyCode.LeftShift, false)
     fst.thr = 100
   end
-  check(maxStick > math.rad(1.5), string.format("驾驶杆跟着拉（最大 %.1f°）", math.deg(maxStick)))
+  if not MP then check(maxStick > math.rad(1.5), string.format("驾驶杆跟着拉（最大 %.1f°）", math.deg(maxStick))) end
 end
 if not heli then
   -- 起飞爬过 15 米自动收起落架（Fly.lua），等它收完
   T.runUntil(function() return (fst.gear or 1) < 0.02 end, 10)
-  check((fst.gear or 1) < 0.02 and gearLit() == 0, string.format("起落架收上去了：绿灯都灭（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
-  local gh1 = cur.b.groups.gearh.anim
-  check(math.abs(select(1, gh0:ToObjectSpace(gh1):ToEulerAnglesXYZ())) > math.rad(20), "起落架手柄扳上去了")
+  check((fst.gear or 1) < 0.02 and (MP or gearLit() == 0), string.format("起落架收上去了：绿灯都灭（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
+  if not MP then
+    local gh1 = cur.b.groups.gearh.anim
+    check(math.abs(select(1, gh0:ToObjectSpace(gh1):ToEulerAnglesXYZ())) > math.rad(20), "起落架手柄扳上去了")
+  end
   T.tap(Enum.KeyCode.G)
   R.run(3)
-  check((fst.gear or 0) > 0.9 and gearLit() == 3, string.format("G 放起落架：三个绿灯又亮了（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
+  check((fst.gear or 0) > 0.9 and (MP or gearLit() == 3), string.format("G 放起落架：三个绿灯又亮了（起落架 %.2f、亮 %d）", fst.gear or -1, gearLit()))
   T.tap(Enum.KeyCode.G)
   R.run(3)
 end

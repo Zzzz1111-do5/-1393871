@@ -27,6 +27,7 @@ AirDefs.W = {
   gsh30 = { kind = "gun", rate = 0.04, dmg = 30, speed = 2100, range = 1900, splash = 3, vs = VS_GUN, cal = 0.2 },     -- GSh-30-1 30 毫米
   m61 = { kind = "gun", rate = 0.012, dmg = 11, speed = 2100, range = 1800, splash = 2, vs = VS_GUN, cal = 0.16 },     -- M61A2 20 毫米
   gau22 = { kind = "gun", rate = 0.018, dmg = 15, speed = 2100, range = 1800, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- GAU-22/A 25 毫米
+  gsh23 = { kind = "gun", rate = 0.018, dmg = 15, speed = 1900, range = 1700, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- 23-3 型双管 23 毫米（歼-8II 机腹）
   gau8 = { kind = "gun", rate = 0.017, dmg = 22, speed = 1900, range = 2000, splash = 3, cal = 0.22,                      -- GAU-8 30 毫米贫铀穿甲弹
     vs = { inf = 1, light = 1.2, armor = 0.55, air = 1.4, ship = 0.5, fort = 0.7 } },
   m230 = { kind = "gun", rate = 0.095, dmg = 42, speed = 1500, range = 1600, splash = 4, cal = 0.2, turret = true,       -- M230 30 毫米链式炮（机头炮塔）
@@ -48,8 +49,11 @@ AirDefs.W = {
     shape = { L = 5.3, d = 0.25, fin = 0.6 } },
   aim92 = { kind = "aam", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 4.5, d = 0.2, fin = 0.5 } },
+  -- AIM-54 不死鸟（F-14 专用，用户 11-23 加 F-14）：4 米长、454 公斤的远程雷达弹——射程最远、飞得快，但又重又笨（转得慢、导引头视场窄、锁得慢）
+  aim54 = { kind = "aam", seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
+    shape = { L = 11.0, d = 1.06, fin = 1.6 } },
 
-  akd10 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
+  akd10 ={ kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },
   agm114 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 4.5, d = 0.5, fin = 0.7 } },
@@ -94,7 +98,7 @@ AirDefs.W = {
   fl90 = { kind = "rkt", dmg = 260, splash = 13, speed = 720, range = 1800, rate = 0.13, tubes = 12, vs = VS_RKT, shape = { L = 5.0, d = 1.2 } },
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
-local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", akd10 = "laser", agm114 = "laser",
+local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", aim54 = "radar", akd10 = "laser", agm114 = "laser",
   kd88 = "tv", agm65 = "tv", yj83k = "radar", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
 for id, w in pairs(AirDefs.W) do
   w.id = id
@@ -328,6 +332,27 @@ D.j36 = { kind = "jet", cat = "jet", L = 64, W = 68, H = 12, gearH = 7.0, hp = 8
   }),
   presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
     preset("strike", { bayM1 = "lt2", bayM2 = "kd88", bayS = "pl10" }) } }
+-- 歼-8II（用户 11-23：「你再把 j8 和 f16 f15 f14 都做进去」）：沈飞的双发高空高速截击机（1984 年首飞），机头雷达罩 + 两侧进气道、
+--   60° 三角翼、全动平尾、单垂尾加一片机腹折叠腹鳍；原模型 Rhine_Lab_Muelsyse 的「Shenyang J-8II/B」（CC-BY，models/air/j8.glb）：
+--   全长 21.59 米、翼展 9.34 米、全高 5.41 米；副翼、襟翼、全动平尾、方向舵、座舱盖、起落架都是原模型单独的节点；
+--   机腹 23-3 型双管 23 毫米炮（200 发）；7 个挂点：翼下 4 个（霹雳-8 / 霹雳-12 / 火箭巢 / 炸弹）、机腹中线副油箱
+D.j8 = { kind = "jet", cat = "jet", L = 60, W = 26, H = 15, gearH = 6.6, hp = 640, stall = 105, vMil = 320, vAB = 455, accel = 42, abAccel = 36,
+  pitch = 36, roll = 160, yaw = 14, g = 7, flares = 24, gun = "gsh23", gunAmmo = 200, gunPos = V(0, -2.4, -6), ab = true,
+  fus = { len = 58, w = 4.6, h = 4.4, y = 0 }, nose = 12, canopy = { z = -16.5, len = 6.0, w = 2.4, h = 1.8, y = 2.2 },
+  intake = "box", intakeZ = -10, intakeW = 2.6, nacelle = { x = 1.9, w = 2.6, h = 3.2 },
+  wing = { xr = 2.6, zr0 = -3, zr1 = 18, xt = 13.1, zt0 = 15.5, zt1 = 18.5, y = -0.6 },
+  htail = { xr = 2.2, zr0 = 21, zr1 = 27, xt = 9.0, zt0 = 25.5, zt1 = 28, y = 0.2 },
+  vt = { x = 0, zr0 = 12, zr1 = 26, zt0 = 23, zt1 = 28, h = 9.6, cant = 0 },
+  eng = { { x = 1.25, y = -0.2, z = 30, r = 1.05 }, { x = -1.25, y = -0.2, z = 30, r = 1.05 } },
+  gear = { nose = { z = -16, len = 5.6 }, main = { x = 5.2, z = 6, len = 5.4 }, r = 1.15 },
+  st = mirror({
+    { name = "outer", pos = V(10.8, -1.4, 13), opts = { "pl10" } },
+    { name = "mid", pos = V(8.0, -1.6, 10), opts = { "pl10", "pl12", "fl90", "b250" } },
+    { name = "inner", pos = V(5.2, -1.8, 7.5), opts = { "pl12", "b250", "fl90", "tk800" } },
+    { name = "ctr", pos = V(0, -2.9, 2), opts = { "tk800", "b250" } },
+  }),
+  presets = { preset("aa", { outer = "pl10", mid = "pl12", inner = "pl12", ctr = "tk800" }), preset("ag", { outer = "pl10", mid = "fl90", inner = "b250", ctr = "tk800" }),
+    preset("strike", { outer = "pl10", mid = "b250", inner = "b250", ctr = "b250" }) } }
 -- 歼-50 11-22 删掉了（用户：j50 删掉）
 D.h6k = { kind = "jet", cat = "jet", L = 97, W = 92, H = 29, gearH = 10.5, hp = 1150, stall = 85, vMil = 240, accel = 22, pitch = 16, roll = 50, yaw = 10, g = 3,
   flares = 60, bomber = true,
@@ -425,6 +450,76 @@ D.f22 = { kind = "jet", cat = "jet", L = 53, W = 38, H = 14, gearH = 6.6, hp = 7
   presets = { preset("aa", { bayM1 = "aim120", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }),
     preset("ag", { bayM1 = "gbu31", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }),
     preset("sdb", { bayM1 = "gbu39", bayM2 = "aim120", bayM3 = "aim120", bayS = "aim9x" }) } }
+-- F-16C Block 50/52「战隼」（用户 11-23 加的 F-16、F-15、F-14）：单发轻型多用途战斗机，机腹进气道、边条翼、单垂尾、两片腹鳍、右侧杆；
+--   原模型 rave.Ar4ik 的「F-16 Fighting Falcon | NATO | GameReady」（CC-BY，models/air/f16.glb）——自带整套座舱（平显、正前方控制板、
+--   两块 4 英寸多功能显示器、弹射座椅、侧杆、油门），座舱里看到的就是原模型的座舱，屏幕上贴我们的实时画面；
+--   全长 15.06 米、翼展 9.45 米、全高 4.88 米；M61A1 20 毫米炮 511 发（左边条里）；9 个挂点：翼尖、翼下 6 个、机腹中线
+D.f16 = { kind = "jet", cat = "jet", L = 42, W = 27, H = 13.7, gearH = 4.8, hp = 600, stall = 92, vMil = 335, vAB = 455, accel = 50, abAccel = 38,
+  pitch = 50, roll = 240, yaw = 20, g = 9, flares = 30, gun = "m61", gunAmmo = 510, gunPos = V(-2.0, 1.2, -6), ab = true,
+  fus = { len = 40, w = 4.2, h = 4.0, y = 0 }, nose = 8, canopy = { z = -12.5, len = 7, w = 2.4, h = 2.2, y = 2.0 },
+  intake = "box", intakeZ = -4, intakeW = 2.6,
+  wing = { xr = 2.2, zr0 = -4, zr1 = 9, xt = 13.2, zt0 = 6.5, zt1 = 9.5, y = 0.2, lerx = true },
+  htail = { xr = 2.0, zr0 = 13, zr1 = 19, xt = 7.8, zt0 = 17, zt1 = 19.5, y = -0.3 },
+  vt = { x = 0, zr0 = 9, zr1 = 19, zt0 = 16, zt1 = 19.5, h = 8.0, cant = 0 },
+  eng = { { x = 0, y = 0, z = 21.2, r = 1.3 } },
+  gear = { nose = { z = -8.5, len = 4.6 }, main = { x = 3.3, z = 2.0, len = 4.4 }, r = 1.0 },
+  st = mirror({
+    { name = "tip", pos = V(13.3, 0.0, 7.5), opts = { "aim9x", "aim120" } },
+    { name = "outer", pos = V(10.6, -0.8, 6.5), opts = { "aim9x", "aim120" } },
+    { name = "mid", pos = V(7.8, -1.1, 4.5), opts = { "aim120", "agm65", "agm88", "gbu12", "gbu38", "gbu31", "mk82" } },
+    { name = "inner", pos = V(5.2, -1.3, 3.0), opts = { "tk370", "gbu12", "gbu31", "gbu38", "mk82", "agm65" } },
+    { name = "ctr", pos = V(0, -2.7, 0), opts = { "tk370" } },
+  }),
+  presets = { preset("aa", { tip = "aim120", outer = "aim9x", mid = "aim120", inner = "tk370" }),
+    preset("cas", { tip = "aim9x", outer = "aim120", mid = "agm65", inner = "gbu12", ctr = "tk370" }),
+    preset("sead", { tip = "aim120", outer = "aim9x", mid = "agm88", inner = "tk370" }),
+    preset("strike", { tip = "aim9x", outer = "aim120", mid = "gbu31", inner = "tk370", ctr = "tk370" }) } }
+-- F-15C「鹰」：双发重型制空战斗机；原模型 mgg8 的「F-15A Eagle — USAF 76-0020, Duxford」（CC0，models/air/f15.glb，没有座舱内饰——
+--   座舱用零件按 F-15C 的座舱拼：左上雷达垂直态势显示器 VSD、右上雷达告警 TEWS、左下武器控制面板，其余是机械表）；
+--   全长 19.43 米、翼展 13.05 米、全高 5.63 米；M61A1 20 毫米炮 940 发（右翼根）；机身四角四个半埋挂点（AIM-120）、两个翼下挂架（两侧导轨各一枚）
+D.f15 = { kind = "jet", cat = "jet", L = 54, W = 36.5, H = 15.8, gearH = 6.4, hp = 760, stall = 96, vMil = 340, vAB = 470, accel = 50, abAccel = 40,
+  pitch = 44, roll = 200, yaw = 18, g = 9, flares = 30, gun = "m61", gunAmmo = 940, gunPos = V(4.6, 1.4, -2), ab = true,
+  fus = { len = 52, w = 7.0, h = 4.6, y = 0 }, nose = 10, canopy = { z = -15.5, len = 8.5, w = 2.8, h = 2.4, y = 2.6 },
+  intake = "box", intakeZ = -8, intakeW = 3.0, nacelle = { x = 2.8, w = 3.4, h = 3.6 },
+  wing = { xr = 3.6, zr0 = -5, zr1 = 13, xt = 18.3, zt0 = 8.5, zt1 = 12.5, y = 0.6 },
+  htail = { xr = 3.6, zr0 = 18, zr1 = 26, xt = 12.1, zt0 = 23, zt1 = 26.5, y = 0.2 },
+  vt = { x = 3.3, zr0 = 15, zr1 = 25, zt0 = 22.5, zt1 = 26, h = 8.4, cant = 0 },
+  eng = { { x = 1.6, y = 0, z = 27, r = 1.35 }, { x = -1.6, y = 0, z = 27, r = 1.35 } },
+  gear = { nose = { z = -14, len = 5.6 }, main = { x = 3.9, z = 4, len = 5.4 }, r = 1.25 },
+  st = mirror({
+    { name = "railO", pos = V(10.6, -1.7, 4.5), opts = { "aim9x", "aim120" } },
+    { name = "railI", pos = V(8.2, -1.7, 4.5), opts = { "aim120", "aim9x" } },
+    { name = "pylon", pos = V(9.4, -2.6, 3.0), opts = { "tk370", "gbu12", "gbu31", "mk82" } },
+    { name = "fusF", pos = V(3.9, -2.6, -5), opts = { "aim120" } },
+    { name = "fusA", pos = V(3.9, -2.6, 9), opts = { "aim120" } },
+    { name = "ctr", pos = V(0, -3.2, 2), opts = { "tk370" } },
+  }),
+  presets = { preset("aa", { railO = "aim9x", railI = "aim120", fusF = "aim120", fusA = "aim120", ctr = "tk370" }),
+    preset("beast", { railO = "aim9x", railI = "aim120", pylon = "tk370", fusF = "aim120", fusA = "aim120", ctr = "tk370" }),
+    preset("strike", { railO = "aim9x", railI = "aim120", pylon = "gbu31", fusF = "aim120", fusA = "aim120" }) } }
+-- F-14A「雄猫」：格鲁曼的双发双座变后掠翼舰载截击机（前座飞行员、后座雷达截击官 RIO）；原模型 Novia556 的「F-14A Tomcat」
+--   （CC-BY，models/air/f14.glb，在飞行沙盒里用零件拼的，没有座舱内饰——座舱用零件按 F-14A 拼：前座平显、垂直显示器 VDI、水平态势 HSD，
+--   后座一块圆的战术信息显示器 TID）；全长 19.1 米、翼展 19.55 米（展开）、全高 4.88 米；M61A1 20 毫米炮 675 发（机头左下）；
+--   挂点：两个翼套挂架（AIM-9 + AIM-54 / AIM-7）、机腹隧道 4 个（AIM-54 托架或炸弹）、两个进气道下（副油箱）
+D.f14 = { kind = "jet", cat = "jet", L = 53.5, W = 54.7, H = 13.7, gearH = 6.0, hp = 820, stall = 86, vMil = 320, vAB = 450, accel = 42, abAccel = 34,
+  pitch = 40, roll = 170, yaw = 16, g = 7.5, flares = 30, gun = "m61", gunAmmo = 675, gunPos = V(-2.2, 1.0, -14), ab = true, carrier = true,
+  fus = { len = 51, w = 7.6, h = 4.4, y = 0 }, nose = 10, canopy = { z = -15, len = 9.5, w = 2.8, h = 2.3, y = 2.4 }, twoSeat = true,
+  intake = "box", intakeZ = -8, intakeW = 3.0, nacelle = { x = 3.6, w = 3.4, h = 3.6 },
+  wing = { xr = 6.0, zr0 = -8, zr1 = 12, xt = 27.3, zt0 = 9, zt1 = 12.5, y = 0.6 },
+  htail = { xr = 4.0, zr0 = 17, zr1 = 26, xt = 14.0, zt0 = 23, zt1 = 26.5, y = 0.0 },
+  vt = { x = 3.8, zr0 = 14, zr1 = 24, zt0 = 22, zt1 = 25.5, h = 8.4, cant = 5 },
+  eng = { { x = 2.8, y = 0, z = 26.5, r = 1.35 }, { x = -2.8, y = 0, z = 26.5, r = 1.35 } },
+  gear = { nose = { z = -15, len = 5.4 }, main = { x = 7.0, z = 3.5, len = 5.2 }, r = 1.2, hook = 22 },
+  st = mirror({
+    { name = "gloveO", pos = V(6.6, -0.6, -1.0), opts = { "aim9x" } },
+    { name = "gloveI", pos = V(5.6, -1.7, 0.5), opts = { "aim54", "aim120" } },
+    { name = "tunF", pos = V(1.6, -2.7, -6), opts = { "aim54", "aim120", "gbu12", "mk82" } },
+    { name = "tunA", pos = V(1.6, -2.7, 6), opts = { "aim54", "aim120", "gbu12", "mk82" } },
+    { name = "duct", pos = V(4.2, -3.4, 2), opts = { "tk370" } },
+  }),
+  presets = { preset("phoenix", { gloveO = "aim9x", gloveI = "aim54", tunF = "aim54", tunA = "aim54" }),
+    preset("aa", { gloveO = "aim9x", gloveI = "aim54", tunF = "aim120", tunA = "aim120", duct = "tk370" }),
+    preset("strike", { gloveO = "aim9x", gloveI = "aim120", tunF = "gbu12", tunA = "gbu12", duct = "tk370" }) } }
 D.mq9 = { kind = "jet", cat = "jet", L = 31, W = 56, H = 10.6, gearH = 5.4, hp = 360, stall = 48, vMil = 125, accel = 18, pitch = 24, roll = 65, yaw = 12, g = 3.5,
   flares = 0, drone = true, prop = true,
   fus = { len = 30, w = 3.4, h = 3.6, y = 0 }, nose = 5, sat = true,
@@ -606,7 +701,8 @@ end
 
 -- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
-local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, f22 = 500, f35 = 500, a10c = 600, h6k = 1300, b2 = 1600,
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, j8 = 520, f22 = 500, f35 = 500, f16 = 460, f15 = 620, f14 = 700,
+  a10c = 600, h6k = 1300, b2 = 1600,
   gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
 -- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；

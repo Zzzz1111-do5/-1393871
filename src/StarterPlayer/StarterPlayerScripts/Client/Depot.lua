@@ -170,7 +170,8 @@ function Depot.init(G)
   ---------------------------------------------------------------- 召唤位：选机型
 
   -- 机型的用途（卡片上的一行字）
-  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", a10c = "attack",
+  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", j8 = "intercept",
+    f16 = "fighter", f15 = "fighter", f14 = "intercept", a10c = "attack",
     h6k = "bomber", b2 = "bomber", gj11 = "uav", gj2 = "uav", mq9 = "uav", z10 = "aheli", ah64e = "aheli", z20 = "uheli", uh60 = "uheli", ch47 = "theli" }
   local pick = Instance.new("ScreenGui")
   pick.Name = "AirPick"

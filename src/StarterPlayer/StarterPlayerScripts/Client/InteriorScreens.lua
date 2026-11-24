@@ -199,7 +199,8 @@ Screens.PAL = PAL
 -- 在 parent（W × H 像素）里画热像；返回 { render(view) }：view = { eye, f, r, u（世界坐标的基）, hfov 水平视角（度）, pal, ents, Map, range }
 function Screens.thermal(parent, W, H, opt)
   opt = opt or {}
-  local N = opt.cols or 36
+  -- 列数（山脊线一列一列算）：按画面宽度加密到每 5 个设计像素一列、最多 72 列（用户 11-23：显示屏清晰度太低——原来 22～36 列，山一格一格的）
+  local N = math.max(opt.cols or 36, math.min(72, math.floor(W / 5)))
   local o = {}
   local sky = F(parent, 0, 0, W, H, RGB(255, 255, 255), 0, 1)
   local skyG = grad(sky, RGB(0, 0, 0), RGB(0, 0, 0), 90)
@@ -907,8 +908,8 @@ P.cid = function(s, env, zh)
   local entF = F(R, 4, H - BAR - 17, W * 0.62, 15, RGB(255, 255, 255), 0.08, 12)
   local entT = Tx(entF, "", 4, 0, W * 0.62 - 8, 15, 10, RGB(0, 0, 0), nil, FONT, 13)
   local noteT = Tx(R, "", 0, BAR + 2, W, 14, 10, RGB(200, 40, 30), Enum.TextXAlignment.Center, FONTB, 13)
-  local S = { cx = nil, cz = nil, span = (env.zooms or { 0, 3200 })[2], cell = 64, job = nil, w = 0, h = 0 }
-  S.cell = S.span / (paper and 44 or 50)
+  local S = { cx = nil, cz = nil, span = (env.zooms or { 0, 3200 })[2], cell = 64, job = nil, w = 0, h = 0 }   -- cell：地图色块（用户 11-23 显示屏清晰度太低：每屏高 66 / 72 格，原来 44 / 50）
+  S.cell = S.span / (paper and 66 or 72)
   local scale = VH / S.span
   local function landCol(h)
     if h < 0.3 then return nil end   -- 水：底色
@@ -961,7 +962,7 @@ P.cid = function(s, env, zh)
     local J = S.job
     local Map = env.Map
     local calls = 0
-    while J.j < J.nz and calls < 400 do
+    while J.j < J.nz and calls < 700 do
       local j = J.j
       local z = J.cz - J.h / 2 + (j + 0.5) * S.cell
       local run, runCol = nil, nil
@@ -1100,7 +1101,7 @@ P.cid = function(s, env, zh)
     local want = ZOOMS[st.z]
     if want ~= S.span and not S.job then
       S.span, S.cx = want, nil
-      S.cell = S.span / (paper and 44 or 50)
+      S.cell = S.span / (paper and 66 or 72)
       scale = VH / S.span
     end
     local cxw, czw = p.X + st.pan[1], p.Z + st.pan[2]   -- 地图中心（挪过就不是本车）
@@ -1734,6 +1735,7 @@ end
 
 -- 按键的字 → 页面（多功能显示器、全景屏的触摸菜单共用）：F-22 的 TSD、A-10C 的 TAD / DSMS / STAT、F-35 的 FUEL（docs/cockpit_research.md）
 local KEYPAGE = { PFD = "pfd", RDR = "radar", SA = "sa", SMS = "sms", ENG = "eng", TSD = "tsd", TAD = "sa", DSMS = "sms", STAT = "eng", FUEL = "eng",
+  FCR = "radar", HSD = "sa", FLT = "pfd",   -- F-16 的页名：火控雷达、水平态势、飞行
   CDU = "cdu", LOAD = "sms", ["姿态"] = "pfd", ["雷达"] = "radar", ["态势"] = "sa", ["武器"] = "sms", ["发动机"] = "eng", ["油量"] = "eng" }
 -- 多功能显示器：几个页面（默认 姿态 / 雷达 / 态势 / 武器 / 发动机），按键换页；names 给这一型有的页面（A-10C 没有雷达页）
 local function mfd(first, names, bg)
@@ -1771,6 +1773,10 @@ local NAVY = RGB(10, 22, 62)
 P.f22_tsd = mfd("tsd", { "tsd", "radar", "pfd", "sms", "eng" }, NAVY)
 P.f22_sms = mfd("sms", { "sms", "tsd", "radar", "pfd", "eng" }, NAVY)
 P.f22_eng = mfd("eng", { "eng", "tsd", "radar", "pfd", "sms" }, NAVY)
+-- F-16C 的两块 4 英寸多功能显示器（用户 11-23 加 F-16：原模型座舱里贴的就是这两页）：左边默认火控雷达 FCR、右边默认外挂管理 SMS；
+--   上排键换页（FCR 雷达、HSD 水平态势、SMS 外挂、FUEL 发动机燃油、FLT 飞行），下排 RNG 换雷达 / 态势的量程
+P.f16l = mfd("radar", { "radar", "sa", "sms", "eng", "pfd" })
+P.f16r = mfd("sms", { "sms", "sa", "radar", "eng", "pfd" })
 
 -- 一块宽屏分几个窗口（F-35 的「门户」、歼-20 / 歼-35 / 歼-16 的大屏）：areas = { { 起点, 宽（占屏宽几成）, 页面, 标题, 底色 }, … }，
 --   map[键] = { 第几个窗口, 页面 }；每个窗口顶上一条窄标题（门户的名字），窗口之间一道暗缝；没在 map 里的键交给第一个窗口自己的页面
@@ -2069,6 +2075,116 @@ P.hud = function(s, env, zh)
 end
 
 -- 防空雷达（平面位置显示器 PPI）：一圈圈距离环、扫描线转、空中目标（友军蓝、敌军绿）；地面车辆的雷达（自行高炮、C-RAM、操作员控制台）
+-- 数据输入显示器（F-16 的 DED、F-15 正前方控制板上那一小条液晶）：绿色字，通信频率、导航点、时间、敌我识别、航向 / 马赫 / 过载、油量和告警
+P.ded = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local G = RGB(120, 255, 140)
+  local n = clamp(math.floor(H / 14), 2, 5)
+  local L = {}
+  for i = 1, n do L[i] = Tx(s.root, "", 3, 1 + (i - 1) * (H - 2) / n, W - 6, (H - 2) / n, clamp(math.floor((H - 2) / n) - 2, 8, 13), G, nil, FONT, 3) end
+  return function(d)
+    local t = d.clock or 0
+    local rows = {
+      string.format("UHF 251.00  STPT %2d", 1 + math.floor(t / 600) % 9),
+      string.format("VHF 136.00  %02d:%02d:%02d", math.floor(t / 3600) % 24, math.floor(t / 60) % 60, math.floor(t) % 60),
+      string.format("HDG %03d  M%.2f  G%.1f", math.floor((d.hdg or 0) % 360), d.mach or 0, d.g or 1),
+      string.format("FUEL %3d%%  %s", math.floor((d.fuel or 1) * 100), (d.gear or 0) > 0.5 and "GEAR DN" or "M1 3 C 1200"),
+      (d.warn and d.warn ~= "") and d.warn or "IFF  MODE 4 ON",
+    }
+    for i = 1, n do L[i].Text = rows[i] or "" end
+  end
+end
+
+-- F-15C 的垂直态势显示器 VSD / F-14 后座的细节数据显示器 DDD：单色绿的雷达 B 显示（同 radar 页），屏上一道道扫描线（老式 CRT）
+P.vsd = function(s, env, zh)
+  local up = P.radar(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  for y = 0, H, 4 do F(s.root, 0, y, W, 1, RGB(0, 0, 0), 0.82, 8) end
+  return up
+end
+
+-- F-14 前座的垂直显示器 VDI：绿色单色 CRT 的姿态画面（天地线、俯仰梯、飞机符号），下面一行速度、高度、航向
+P.vdi = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local G, DG = RGB(110, 255, 140), RGB(0, 46, 16)
+  local clip = F(R, W * 0.06, H * 0.06, W * 0.88, H * 0.74, RGB(0, 8, 2), 0, 1)
+  clip.ClipsDescendants = true
+  local cw, ch = W * 0.88, H * 0.74
+  local ball = F(clip, cw / 2 - cw * 1.5, ch / 2 - ch * 1.5, cw * 3, ch * 3, RGB(0, 8, 2), 1, 2)
+  F(ball, 0, ch * 1.5, cw * 3, ch * 1.5, DG, 0, 3)   -- 地面一侧暗绿
+  F(ball, 0, ch * 1.5 - 1, cw * 3, 2, G, 0, 4)
+  for i = -6, 6 do
+    if i ~= 0 then
+      local y = ch * 1.5 - i * 5 * (ch / 50)
+      local w = (i % 2 == 0) and cw * 0.30 or cw * 0.16
+      F(ball, cw * 1.5 - w / 2, y, w, 1, G, (i < 0) and 0.35 or 0, 4)
+      if i % 2 == 0 then Tx(ball, tostring(math.abs(i * 5)), cw * 1.5 + w / 2 + 2, y - 6, 26, 12, 10, G, nil, FONT, 5) end
+    end
+  end
+  F(clip, cw * 0.30, ch / 2 - 1, cw * 0.14, 2, G, 0, 8)
+  F(clip, cw * 0.56, ch / 2 - 1, cw * 0.14, 2, G, 0, 8)
+  F(clip, cw / 2 - 2, ch / 2 - 2, 4, 4, G, 0, 8)
+  for y = 0, H, 4 do F(R, 0, y, W, 1, RGB(0, 0, 0), 0.85, 9) end
+  local bot = Tx(R, "", 4, H * 0.82, W - 8, H * 0.16, 11, G, Enum.TextXAlignment.Center, FONT, 9)
+  return function(d)
+    local pitch, roll = d.pitch or 0, d.roll or 0
+    local py = pitch * (ch / 50)
+    ball.Rotation = -roll
+    ball.Position = UD2(0, cw / 2 - cw * 1.5 + math.sin(math.rad(roll)) * py, 0, ch / 2 - ch * 1.5 + math.cos(math.rad(roll)) * py)
+    bot.Text = string.format("%d KT   %d FT   %03d", math.floor(d.kt or 0), math.floor((d.altM or 0) * 3.281), math.floor((d.hdg or 0) % 360))
+  end
+end
+
+-- F-14 后座的战术信息显示器 TID（9 英寸圆屏，RIO 看的空情）：本机在中间、机头朝上，距离环，每个目标一个航迹号
+--   （敌机 ∧、友机半圆、地面 / 海上目标菱形），锁定的那个加方框；RNG 键 50 / 100 / 200 公里
+P.tid = function(s, env, zh)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  R.ClipsDescendants = true
+  local G = RGB(120, 240, 150)
+  local cx, cy, r = W / 2, H / 2, math.min(W, H) * 0.46
+  local cr = Instance.new("UICorner")
+  cr.CornerRadius = UDim.new(0.5, 0)
+  cr.Parent = R
+  for i = 1, 4 do Ring(R, cx, cy, r * i / 4, 1, (i == 4) and G or RGB(40, 110, 60), 2) end
+  for a = 0, 330, 30 do
+    local ra = math.rad(a)
+    Ln(R, cx + math.sin(ra) * r * 0.94, cy - math.cos(ra) * r * 0.94, cx + math.sin(ra) * r, cy - math.cos(ra) * r, 1, G, 2)
+  end
+  F(R, cx - 1, cy - 7, 2, 14, G, 0, 4)   -- 本机
+  F(R, cx - 7, cy - 1, 14, 2, G, 0, 4)
+  local title = Tx(R, "", cx - r * 0.7, cy + r * 0.66, r * 1.4, 14, 11, G, Enum.TextXAlignment.Center, FONTB, 6)
+  local st = { rng = 100 }
+  s.onKey = function(k) if k == "RNG" then st.rng = (st.rng == 100) and 200 or ((st.rng == 200) and 50 or 100) end end
+  local pool = {}
+  local lockB = Box(R, 0, 0, 22, 22, 2, RGB(255, 230, 90), 7)
+  lockB.Visible = false
+  return function(d)
+    local n = 0
+    lockB.Visible = false
+    for i, c in ipairs(d.contacts or {}) do
+      if c.km < st.rng then
+        n += 1
+        local t = pool[n] or Tx(R, "", 0, 0, 40, 14, 11, G, Enum.TextXAlignment.Center, FONTB, 5)
+        pool[n] = t
+        t.Visible = true
+        local k = c.km / st.rng * r
+        local x, y = cx + math.sin(math.rad(c.az)) * k, cy - math.cos(math.rad(c.az)) * k
+        t.Position = UD2(0, x - 20, 0, y - 7)
+        t.Text = (c.friend and "◠" or ((c.kind == "air") and "∧" or "◆")) .. string.format("%02d", (i * 7) % 100)
+        t.TextColor3 = c.friend and RGB(110, 200, 255) or RGB(255, 120, 90)
+        if c.locked then
+          lockB.Visible = true
+          lockB.Position = UD2(0, x - 11, 0, y - 11)
+        end
+      end
+    end
+    for i = n + 1, #pool do pool[i].Visible = false end
+    title.Text = string.format("TID  RNG %d  TRK %d", st.rng, n)
+  end
+end
+
 P.ppi = function(s, env, zh)
   local W, H = s.px.X, s.px.Y
   local R = s.root

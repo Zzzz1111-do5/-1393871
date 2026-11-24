@@ -173,7 +173,7 @@ function Interior.init(G)
     local b = Kit.new(m)
     -- piv：炮塔座圈中心（车体坐标，格）——跟 frames 用的一样（导入的原模型按模型自己的座圈位置，不一定等于 VehDefs 写的）
     local ok, spec = pcall(fn, b, { def = v.def, piv = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero,
-      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
+      gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero, imp = v.M and v.M.imp })
     if not ok then
       m:Destroy()
       if G.showError then G.showError("local 内饰 " .. key .. "：" .. tostring(spec)) end
@@ -2108,7 +2108,8 @@ function Interior.init(G)
     local e = c.eyeBody
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and it.tag ~= "pilot" then
+      -- 原模型自带的座舱（F-16，spec.modelPit）：座舱件（pit == "Pit"）就是内饰本身，不藏；原模型的平显（PitHud，玻璃上画死了符号）照旧藏
+      if p and p:IsA("BasePart") and it.tag ~= "pilot" and not (c.spec.modelPit and it.pit == "Pit") then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         local glassy = p.Material == Enum.Material.Glass or (p.Transparency > 0.15 and p.Transparency < 1)
         local dist = cf and (cf.Position - e).Magnitude or math.huge
@@ -2177,7 +2178,7 @@ function Interior.init(G)
     local big = 0.5 * math.max(v.def.L or 0, v.def.W or 0)
     for _, it in ipairs(M.items) do
       local p = it.p
-      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
+      if p and p:IsA("BasePart") and not have[p] and it.tag ~= "pilot" and not it.pit and p.Transparency < 0.5 and p.Material ~= Enum.Material.Glass then
         local cf = it.cf0 or (it.H and it.off and it.H * it.off)
         if cf and math.max(p.Size.X, p.Size.Y, p.Size.Z) < big then
           local half = p.Size / 2
