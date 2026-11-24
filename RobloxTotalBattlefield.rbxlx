@@ -957,7 +957,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 17:58 b2a2cf6"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 18:00 62d9e24"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -76784,7 +76784,11 @@ function WtAir.init(G)
     if not wp or em:GetAttribute("Wreck") then gui.Enabled = false koSince = nil return end
     gui.Enabled = true
     local vp = workspace.CurrentCamera.ViewportSize
-    scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.8, 1.25)
+    -- 手机：左下是摇杆和油门键，挪到右上小地图下面；开着光电吊舱时左下是吊舱的读数，先收起
+    local touch = game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+    if touch then DI.AnchorPoint, DI.Position = V2(1, 0), UD2(1, -12, 0, 236) end
+    scale.Scale = touch and 0.8 or math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.8, 1.25)
+    DI.Visible = not st.eo
     local heli = st.d and st.d.kind == "heli"
     local order = heli and ORDER_HELI or ORDER_JET
     PL.wingL.f.Visible, PL.wingR.f.Visible, PL.rotor.f.Visible = not heli, not heli, heli
