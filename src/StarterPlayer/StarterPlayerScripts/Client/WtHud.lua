@@ -98,6 +98,29 @@ function WtHud.init(G)
     hitUntil = os.clock() + (m.kill and 3.6 or 2.6)
   end
 
+  -- 飞机（WtAir.lua）：打中了哪块、断翼 / 起火 / 漏油 / 飞行员昏迷
+  local function airBits(m)
+    local bits, seen = {}, {}
+    for _, ev in ipairs(m.ev or {}) do
+      if not seen[ev] then seen[ev] = true table.insert(bits, T("wta.e." .. ev)) end
+    end
+    if #bits == 0 then
+      for _, k in ipairs(m.parts or {}) do
+        if not seen[k] then seen[k] = true table.insert(bits, T("wta.p." .. k)) end
+      end
+    end
+    return table.concat(bits, " · ")
+  end
+  local function showAirHit(m)
+    local big = false
+    for _, ev in ipairs(m.ev or {}) do if ev ~= "leak" then big = true end end
+    hitTop.Text = T(big and "wta.crit" or "wt.hit")
+    hitTop.TextColor3 = big and KILL or PEN
+    hitSub.Text = airBits(m)
+    hitBox.Visible = true
+    hitUntil = os.clock() + (big and 3 or 1.6)
+  end
+
   ---------------------------------------------------------------- X 光命中回放
 
   local XW, XH = mobile and 240 or 320, mobile and 150 or 196
@@ -368,6 +391,12 @@ function WtHud.init(G)
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
     elseif op == "wtFixed" then
       say(T("wt.fixed"), OK, 2)
+    elseif op == "wtaHit" then
+      showAirHit(m)
+    elseif op == "wtaHurt" then
+      local only = #(m.ev or {}) == 1 and m.ev[1] == "fireOut"
+      if only then say(T("wta.e.fireOut"), OK, 2)
+      else say(T("wta.hurt") .. "：" .. airBits(m), DEAD, 3) end
     end
   end)
 

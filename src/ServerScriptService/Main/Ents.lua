@@ -87,6 +87,11 @@ function Ents.init(G)
     if e.invuln then return end
     local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
     if dk then amt *= dk end
+    -- 战雷式飞机（WtAir.lua）：按打在哪伤机翼、尾翼、发动机、油箱、飞行员（机身血照扣）
+    if e.wta and not G.wtRaw and G.wtaHit then
+      local ok, err = pcall(G.wtaHit, e, amt, src, G.wtPos)
+      if not ok then warn("[战雷飞机] " .. tostring(err)) end
+    end
     -- 战雷式伤害的车（Wt.lua）：不直接扣血，按这一下的大小分到车外的履带炮管、里面的乘员模块；
     --   炮弹 / 火箭弹直接打中的那一下已经按穿深算过（G.wtSkip：同一发的溅射不再算它）；G.wtRaw 是 Wt.lua 自己判了击毁
     if e.wt and not G.wtRaw and G.wtGeneric then
@@ -129,7 +134,10 @@ function Ents.init(G)
       local hb = e.hit or e.root   -- 小兵的命中零件随姿势变（Bots.lua）
       local head = e.headTop ~= nil and hitPos ~= nil and hitPos.Y > hb.CFrame.Position.Y + hb.Size.Y / 2 - e.headTop
       if head then k = headMul or 1 end
+      local p0 = G.wtPos
+      G.wtPos = hitPos or p0   -- 战雷式：打在哪（飞机的机翼 / 尾翼、坦克的零件）
       G.damageEnt(e, dmg * mult(w, e.cat) * k, src, head and (headMul or 1) > 1)
+      G.wtPos = p0
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")

@@ -1361,6 +1361,12 @@ function Fly.init(G)
     -- 副油箱的阻力：最大速度、加速度都少几成；油多就重：加速慢（满内油 + 两个副油箱比一半内油重三成多）
     tgt *= 1 - (st.drag or 0)
     acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
+    -- 战雷式受伤（WtAir.lua）：发动机受损推力打折、打坏了没推力只能滑翔
+    local wa = G.wtaFlight and G.wtaFlight(st.em)
+    if wa then
+      tgt *= wa.eng
+      acc *= math.max(0.12, wa.eng)
+    end
     if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
     -- 进近自动油门（真飞机的速度保护 / 迎角地板）：起落架放着在天上，速度不掉到 1.2 倍失速以下——
     --   油门收太多也不至于失速、掉在跑道前面的海里（收起落架就没有这个保护）
@@ -1381,6 +1387,7 @@ function Fly.init(G)
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.4) / d.stall, 0.12, 1)   -- 舵效：慢了舵不灵
+    if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
     --   自动压坡度让准心落到升力方向上、按偏差要过载（拉杆）转过去；按着 A / D 时滚转听键盘，俯仰照旧往准心拉
     --   飞机本身按升力物理飞（用户：操作感像玩具）：教官给的是「要几个 g」，飞控找迎角、升力带着航迹转，机头先抬、航迹慢半拍，拉得狠掉速；
@@ -1487,6 +1494,14 @@ function Fly.init(G)
       local bankK = clamp(1 - math.abs(bank) / rad(40), 0, 1)
       yc = clamp(psi * 2.2, -rad(d.yaw) * 0.6, rad(d.yaw) * 0.6) * (1 - Map.smooth(rad(6), rad(12), off)) * bankK
       if rollIn ~= 0 then rc = rollIn * ROLL end
+    end
+    if wa and not st.ground then
+      if wa.ko then rc, yc, nCmd = 0, 0, 0.55 end   -- 飞行员昏迷：松了杆，机头慢慢掉下去
+      if wa.wing then   -- 断翼：往断的那边滚、升力少一大半
+        rc = rc * 0.2 + ((wa.wing == "L") and -1 or 1) * ROLL * 0.85
+        nCmd = math.min(nCmd, 0.45)
+      end
+      if wa.tail then nCmd = nCmd * 0.5 + 0.35 + 0.5 * math.sin(os.clock() * 2.3) end   -- 没了平尾：俯仰不受控、上下乱晃
     end
     st.nCmd = clamp(nCmd, -2, GMAX / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
     st.yawCmd = yc * q
@@ -1794,6 +1809,13 @@ function Fly.init(G)
     if auto then Tm = GS * (0.74 + 0.3 * math.max(upIn, 0))
     elseif not lift then Tm = GS * (st.rpm / 100) * 0.8
     else Tm = GS * (1 + st.col * k) * etl * ige end
+    -- 战雷式受伤（WtAir.lua）：发动机受损拉力打折、旋翼打断没有拉力；尾桨打断机身打转
+    local wa = G.wtaFlight and G.wtaFlight(st.em)
+    if wa and not st.ground then
+      Tm *= (wa.lift or 1) * (0.35 + 0.65 * wa.eng)
+      if wa.tail then st.yaw += 1.7 * dt end
+      if wa.ko then Tm = math.min(Tm, GS * 0.8) end   -- 飞行员昏迷：没人拉总距，往下掉
+    end
     local cfA = CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.tiltP, 0, -st.tiltR)
     local up = cfA.UpVector
     -- 阻力（按机身方向分开算）：前后流线——桨盘前倾到底、拉力托住重量时正好飞到型号表的 vMax；侧面大得多，侧飞四十几格每秒就到头；

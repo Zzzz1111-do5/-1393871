@@ -323,6 +323,7 @@ function Air.init(G)
     e.model:SetAttribute("Gear", onGround and 1 or 0)
     e.model:SetAttribute("Thr", onGround and 0 or 80)
     e.model:SetAttribute("Rpm", onGround and 0 or 100)
+    if G.wtaSetup then G.try("战雷飞机", G.wtaSetup, e) end   -- 战雷式受伤：机翼、尾翼、发动机、油箱、飞行员各一份血（WtAir.lua）
     e.onDeath = function(self, src)
       G.try("飞机被毁", function()
         self.alive = false
@@ -569,7 +570,7 @@ function Air.init(G)
     else
       return
     end
-    local use = r * dt
+    local use = r * dt + ((G.wtaLeak and G.wtaLeak(e)) or 0) * dt   -- 油箱被打漏了（WtAir.lua）：多漏掉的
     if (e.fuelX or 0) > 0 then
       local take = math.min(e.fuelX, use)
       e.fuelX -= take
