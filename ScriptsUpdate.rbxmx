@@ -44188,9 +44188,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         end
       end
     end
-    -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：内饰函数返回 lock = "gunner"——
-    --   一进车里就是炮长位，F2～F5 都停在炮长位，C 再按一下直接出车（乘员位只有这一个）；
-    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）挪到炮长位的 T（第三个），车外按 T 也是开它（原来要先坐到车长位）
+    -- 坦克一进车里默认是炮长位（内饰函数返回 lock = "gunner"，原来 11-23「就只锁定开炮手」锁死在炮长位；
+    --   用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」——不锁了：F2 驾驶员、F3 炮长、F4 车长、F5 装填手照常换）；
+    --   车长的主观瞄（99A 周视镜 / M1A2 CITV）也挂在炮长位的 T（第三个）上，车外按 T 也是开它
     if spec.lock and spec.stations and spec.stations[spec.lock] then
       local sp = spec.stations[spec.lock]
       local cm = spec.stations.commander
@@ -44198,7 +44198,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if cm and cm.optics and cm.optics.primary and cm.optics.primary.kind ~= "gps" and not sp.optics.third then
         sp.optics.third = cm.optics.primary
       end
-      spec.order = { spec.lock }
+      local o = { spec.lock }   -- 默认的乘员位排第一个，别的照原来的顺序
+      for _, k in ipairs(spec.order or {}) do if k ~= spec.lock and spec.stations[k] then table.insert(o, k) end end
+      spec.order = o
     end
     -- carved：坐在乘员位上外壳照样画——挖出来的内壁（v.M.carve.cav），或者用原模型自带车内的（spec.modelInt：M1A1 原模型的炮塔内饰，
     --   InteriorAbrams.lua；外模型里伸进乘员舱的块照 spec.crewBox 不画，见 extHide）
@@ -45257,7 +45259,6 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   end
 
   local function enterStation(c, k)
-    if c.spec.lock then k = c.spec.lock end   -- 坦克：不管要换哪个位置，都是炮长位
     if not c.spec.stations[k] then return end
     station = k
     mode = "seat"
@@ -45446,14 +45447,11 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     else
       local LB = { driver = { "驾驶员", "driver" }, gunner = { "炮长", "gunner" }, commander = { "车长", "commander" }, loader = { "装填手", "loader" }, troop = { "载员", "troop" } }
       local fk = {}
-      if c.spec.lock then   -- 坦克锁在炮长位：不列换位键
-        local lb = LB[c.spec.lock] or { c.spec.lock, c.spec.lock }
-        table.insert(fk, T(lb[1] .. "位", lb[2] .. " seat"))
-      else
-        for i, k2 in ipairs(c.spec.order) do
-          local lb = LB[k2] or { k2, k2 }
-          table.insert(fk, "F" .. (i + 1) .. " " .. T(lb[1], lb[2]))
-        end
+      local FN = { driver = 2, gunner = 3, commander = 4, loader = 5 }
+      local named = c.spec.lock ~= nil   -- 坦克：F2～F5 按名字（驾驶员 / 炮长 / 车长 / 装填手）；别的车按乘员位顺序
+      for i, k2 in ipairs(c.spec.order) do
+        local lb = LB[k2] or { k2, k2 }
+        table.insert(fk, "F" .. ((named and FN[k2]) or (i + 1)) .. " " .. T(lb[1], lb[2]))
       end
       local tk = (st and st.d and st.d.turret) and T("方向键转炮塔、抬压炮 · WASD 开车 · ", "arrows traverse / elevate · WASD drive · ") or ""
       hint.Text = tk .. T("C 车外 · " .. table.concat(fk, "  ") .. " · Shift / G / T 观瞄设备 · B 导演镜头 · L 车内灯 · U 藏界面 · 滚轮变焦",
@@ -46694,7 +46692,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     elseif KEYST[k] then
       local want = KEYST[k]
-      if cur then   -- 按这型车的乘员位顺序（F2 第一个、F3 第二个……；坦克正好是驾驶员 / 炮长 / 车长 / 装填手）
+      if cur and not (cur.spec.lock and cur.spec.stations[want]) then   -- 坦克有这个名字的乘员位就去它（F2 驾驶员、F3 炮长、F4 车长、F5 装填手）；别的车按这型车的乘员位顺序
         local idx = ({ [Enum.KeyCode.F2] = 1, [Enum.KeyCode.F3] = 2, [Enum.KeyCode.F4] = 3, [Enum.KeyCode.F5] = 4 })[k]
         want = cur.spec.order[idx] or want
       end
@@ -47832,6 +47830,42 @@ return function(Defs, Hp)
       loader = { g = T, eye = lEye, look = V(0.45, -0.20, -1), yaw = 170, up = 70, down = 75, crew = "loader",
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     }
+    -- 驾驶员位（用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」）：挖了内腔的 A2 才有——车体内腔就是驾驶舱
+    --   （挖出来的驾驶舱很矮：顶在座圈下 0.31～0.45 米、地板 0.91～1.06 米、两边墙 ±0.66 米，驾驶员半躺）；M1A1 原模型只做了炮塔里面，A1 没有驾驶员位
+    local order = { "gunner", "commander", "loader" }
+    if cav then
+      local H = "hull"
+      local eyeD = V(0, -0.46, -1.85)
+      local function lookAt(p, at) return CFrame.lookAt(p, at) end
+      -- 三具潜望镜（前面一具正对，两边各斜 32°）、正前方驾驶员视觉增强器 DVE 的显示器
+      for i = -1, 1 do
+        local a = rad(i * 32)
+        local q = V(math.sin(a) * 0.22, -0.40, -2.05 - math.cos(a) * 0.05)
+        b:periscope(H, lookAt(q, q + V(math.sin(a), 0, -math.cos(a))), 0.17, 0.07, 0.08, { model = true })
+      end
+      b:screen(H, 0.16, 0.12, lookAt(V(0, -0.50, -2.16), eyeD), "dve", { lightColor = RGB(200, 200, 200), lightK = 0.25 })
+      -- 半躺的座椅、T 形操纵把（两端拧把油门、中间换挡，跟着转向转）、刹车踏板
+      b:seat(H, CF(0, -0.86, -2.22) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.55, recline = 40, head = true, col = RGB(52, 50, 44) })
+      b:group("tbar", H, CF(0, -0.60, -2.62))
+      b:tube("tbar", V(-0.24, 0, 0), V(0.24, 0, 0), 0.035, C.dark, MAT.Metal)
+      b:cyl("tbar", 0.11, 0.05, CF(-0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:cyl("tbar", 0.11, 0.05, CF(0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:box("tbar", V(0.10, 0.06, 0.08), CF(0, 0.02, 0), C.black)
+      b:box("tbar", V(0.03, 0.08, 0.03), CF(0.04, 0.07, 0), RGB(200, 40, 30))   -- 换挡杆
+      b:tube(H, V(0, -0.60, -2.62), V(0, -0.90, -2.80), 0.06, C.gray, MAT.Metal)
+      b:box(H, V(0.18, 0.04, 0.12), CF(0.10, -0.90, -2.85) * ANG(rad(-25), 0, 0), C.dark, MAT.DiamondPlate)
+      -- 驾驶员综合显示器 DID（左前）：主菜单、状态、告警、导航、维护；起动、熄火、战术怠速、灯检、确认告警
+      b:screen(H, 0.18, 0.135, lookAt(V(-0.36, -0.58, -2.36), eyeD), "did",
+        { keys = { top = { "MAIN MENU", "STATUS", "W/C/A", "NAV", "MAINT" }, bottom = { "PUSH TO START", "SHUT OFF", "TAC IDLE", "LAMP TEST", "ALARM ACK" } }, lightK = 0.3 })
+      -- 灭火瓶（哈龙，驾驶员后面两瓶）、顶灯
+      b:extinguisher(H, CF(-0.40, -0.78, -1.30), 0.45, 0.14)
+      b:extinguisher(H, CF(0.40, -0.78, -1.30), 0.45, 0.14)
+      b:light(H, CF(0, -0.42, -1.55), "dome", RGB(255, 240, 220), 2.4, 0.9)
+      stations.driver = { g = H, eye = eyeD, look = V(0, 0.10, -1), yaw = 110, up = 30, down = 55, crew = "driver",
+        optics = { primary = { kind = "dve", name = "DVE  AN/VAS-5", g = H, pos = V(0, 0.06, -2.25), dir = "hull", fovs = { 40 }, ret = "dve", look = "bhot", shape = "rect" },
+          alt = { kind = "rear", name = "RVSS  REAR", g = H, pos = V(1.25, 0.10, 3.45), dir = "rear", fovs = { 52 }, ret = "rear", look = "whot", shape = "rect" } } }
+      order = { "driver", "gunner", "commander", "loader" }
+    end
     -- 坐在车里时外模型里伸进乘员舱的块不画（Interior 的 extHide）：炮塔壳的框（炮塔坐标，格）往里收 0.3 格
     local sh = D.parts.Int_Shell.p
     local box = { c = v3(sh.c) - D.tur, s = v3(sh.s) - V(0.6, 0.6, 0.6) }
@@ -47840,8 +47874,8 @@ return function(Defs, Hp)
       loader = "m256",
       modelInt = true, carved = true, crewBox = box,
       stations = stations,
-      order = { "gunner", "commander", "loader" },
-      lock = "gunner",
+      order = order,
+      lock = "gunner",   -- 一进车默认炮长位，F2 驾驶员（挖了内腔才有）、F3 炮长、F4 车长、F5 装填手
       crew = {},
       abrams = variant,
     }
@@ -48721,7 +48755,7 @@ function Defs.m1a2(b, ctx)
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     },
     order = { "driver", "gunner", "commander", "loader" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     crew = {
       driver = { dress = "tank_us", g = H, eye = eyeD, lean = 34, yaw = 0, look = V(0, 0.1, -1),
         hands = { l = { "tbar", V(-0.27, 0.0, 0) }, r = { "tbar", V(0.27, 0.0, 0) } },
@@ -49154,7 +49188,7 @@ function Defs.ztz99a(b, ctx)
           alt = { kind = "gps" } } },
     },
     order = { "driver", "gunner", "commander" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     carved = carved,   -- 挖了内腔的那套：坐在车里外壳照样画（从里面看不见外壳的背面），显示内壁
     crew = {
       driver = { dress = "tank_cn", g = H, eye = eyeD, lean = dRoof and 40 or 32, yaw = 0, look = V(0, 0.1, -1),
