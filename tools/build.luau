@@ -10,6 +10,20 @@ local process = require("@lune/process")
 local Instance = roblox.Instance
 local out = process.args[1] or "RobloxTotalBattlefield.rbxlx"
 
+-- 构建标记（用户 11-22：不知道新脚本换没换上）：Config.lua 里的 Config.Build = "dev" 换成「月-日 时:分 提交号」
+local stamp = os.date("%m-%d %H:%M")
+do
+	local ok, r = pcall(process.exec or process.spawn, "git", { "rev-parse", "--short", "HEAD" })   -- Lune 0.9 起 spawn 改名 exec
+	if ok and r and r.ok then stamp = stamp .. " " .. (string.gsub(r.stdout, "%s+", "")) end
+end
+local function stampSource(path, src)
+	if string.match(path, "ReplicatedStorage/Config%.lua$") then
+		local s2, n = string.gsub(src, 'Config%.Build = "dev"', 'Config.Build = "' .. stamp .. '"', 1)
+		if n == 1 then return s2 end
+	end
+	return src
+end
+
 local game = Instance.new("DataModel")
 local count = { Script = 0, LocalScript = 0, ModuleScript = 0, Folder = 0 }
 
@@ -53,7 +67,7 @@ local function build(dir, parent)
 			if cls then
 				local s = Instance.new(cls)
 				s.Name = base
-				s.Source = fs.readFile(path)
+				s.Source = stampSource(path, fs.readFile(path))
 				s.Parent = parent
 				count[cls] += 1
 			end
@@ -166,4 +180,4 @@ count = count0
 local packXml = protectSource(roblox.serializeModel({ pack }, true))
 local packOut = string.gsub(out, "[^/\\]+$", "ScriptsUpdate.rbxmx")
 fs.writeFile(packOut, packXml)
-print("写好了 " .. packOut .. "（只换脚本的更新包）")
+print("写好了 " .. packOut .. "（只换脚本的更新包）；构建标记 " .. stamp)

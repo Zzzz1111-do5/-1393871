@@ -325,6 +325,14 @@ Map.ROADS = ROADS
 do
   local ok, data = false, nil
   local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  -- 客户端要等它复制过来（用户 11-22：无数个 AI 修不好坦克半截身子卡在地里）：客户端一进游戏头一件事就 require Map，
+  --   这时 ReplicatedStorage 里几千块导入的网格还在往下传，MapRoads 常常还没到——原来 FindFirstChild 查一下没有就当没有路，
+  --   这个客户端的地面高度就少了路的挖填（路堤、路堑最多差 6 格），可地形是服务器按有路写的：自己开的车按客户端的高度摆，
+  --   路堤上整车矮下去半截、陷在看得见的路面里（位置再报给服务器，别人看着也陷着）。服务器开服时什么都在，等不着
+  if not mod and script and script.Parent and script.Parent.WaitForChild then
+    mod = script.Parent:WaitForChild("MapRoads", 60)
+    if not mod then warn("[地图] 等了 60 秒还没有 ReplicatedStorage.MapRoads：这边的地面高度没有路，车会和地形对不上（脚本没换全？）") end
+  end
   if mod then ok, data = pcall(require, mod) end
   if ok and type(data) == "table" then
     for _, r in ipairs(data) do

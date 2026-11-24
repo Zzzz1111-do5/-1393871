@@ -241,6 +241,21 @@ function Drive.init(G)
     return nil
   end
 
+  -- 真画出来的地形有多高（用户 11-22：坦克半截身子卡在地里）：从公式算的高度上面 12 格往下打一条只认地形、穿过水的射线——
+  --   车底贴着看得见的地面，不管公式和地形因为什么对不上（路的数据、体素圆角、弹坑：坑里车跟着下去）；
+  --   没打着（这一块地形还没传过来、起点在地里面）或者打着的地方离公式太远（打到了旁边的崖顶）就用公式
+  local terrParams = RaycastParams.new()
+  terrParams.FilterType = Enum.RaycastFilterType.Include
+  terrParams.FilterDescendantsInstances = { workspace.Terrain }
+  terrParams.IgnoreWater = true
+  local function terrainHeight(x, z)
+    local h = Map.height(x, z)
+    local res = workspace:Raycast(V(x, h + 12, z), V(0, -32, 0), terrParams)
+    if res and math.abs(res.Position.Y - h) < 10 then return res.Position.Y end
+    return h
+  end
+  G.terrainHeight = terrainHeight   -- 测试用
+
   -- 车底 CFrame：按四个角的地面高度定俯仰、侧倾；在水里（两栖）浮着
   local function baseAt(d, pos, yaw, carried)
     local face = V(-math.sin(yaw), 0, -math.cos(yaw))
@@ -258,8 +273,9 @@ function Drive.init(G)
     --   不会在水深 1.5 格那一下从吃水线弹到海面上
     local draft = d.amphib and d.hullH * 0.55 or nil
     local function gh(p)
-      if draft then return math.max(Map.height(p.X, p.Z), -draft) end
-      return Map.ground(p.X, p.Z)
+      local h = terrainHeight(p.X, p.Z)
+      if draft then return math.max(h, -draft) end
+      return math.max(h, 0)
     end
     local c = V(pos.X, 0, pos.Z)
     local f, b = c + face * d.L * 0.4, c - face * d.L * 0.4

@@ -26,6 +26,7 @@ srv.listen(0, '127.0.0.1', async () => {
   p.on('pageerror', e => console.log('页面出错', e.message));
   let url = `http://127.0.0.1:${port}/interior_view.html?json=/data.json${process.env.DAY ? '&day=1' : ''}`;   // DAY=1：白天的光（看车外）
   if (glb) url += `&glb=/repo/${glb}&glbop=${process.env.GLBOP || 0.18}`;   // GLBOP=1：原模型不透明（看车外加装的零件）
+  if (glb && process.env.GLBOFF) url += `&glboff=${process.env.GLBOFF}`;   // GLBOFF=x,y,z：原模型挪多少格（飞机：负的眼位，座舱原点在飞行员眼睛）
   await p.goto(url);
   await p.waitForFunction('window.ready === true', null, { timeout: 180000 });
   const D = await p.evaluate('window.D');

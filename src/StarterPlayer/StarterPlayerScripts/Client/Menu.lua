@@ -288,7 +288,7 @@ function Menu.init(G)
     cards[2].subtag.Text = (S.rAtk or 0) .. " : " .. (S.rDef or 0)
     gTitle.Text = T("game.title")
     gSub.Text = T("menu.beta")
-    gVer.Text = tostring(Config.Version or "")
+    gVer.Text = tostring(Config.Version or "") .. ((Config.Build and Config.Build ~= "dev") and ("  ·  " .. Config.Build) or "")
   end
   -- 部署界面右上角「菜单」
   function G.showMenu()

@@ -134,7 +134,11 @@ fetch(P.get('json')).then(r => r.json()).then(async D => {
   }
   if (P.get('glb')) {
     await new Promise(res => new GLTFLoader().load(P.get('glb'), g => {
-      g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) { m.transparent = true; m.opacity = +(P.get('glbop') || 0.25); m.depthWrite = false; } } });
+      const op = +(P.get('glbop') || 0.25);
+      g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material];
+        // GLBOP=1：照游戏里座舱视角——外模型不透明、只画正面，玻璃（半透明材质，座舱里藏起来的）不画
+        if (op >= 1) { if (ms.some(m => m.transparent || m.opacity < 1)) o.visible = false; return; }
+        for (const m of ms) { m.transparent = true; m.opacity = op; m.depthWrite = false; } } });
       const off = (P.get('glboff') || '0,0,0').split(',').map(Number);
       g.scene.position.set(...off);
       scene.add(g.scene);
