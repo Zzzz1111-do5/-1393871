@@ -730,7 +730,10 @@ function View.init(G)
       -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
       if d.turret and not v.toss then
         local seed = tonumber(v.id) or 0
-        if d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+        local why = em:GetAttribute("WtWhy")   -- 战雷式伤害（服务器 Wt.lua）：只有弹药殉爆才掀炮塔，乘员打光、烧毁的车炮塔留着
+        if why ~= nil then
+          if why == "ammo" then startToss(v) end
+        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
       end
       M.fire.Rate, M.black.Rate = 30, 12
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）

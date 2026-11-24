@@ -87,6 +87,13 @@ function Ents.init(G)
     if e.invuln then return end
     local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
     if dk then amt *= dk end
+    -- 战雷式伤害的车（Wt.lua）：不直接扣血，按这一下的大小分到车外的履带炮管、里面的乘员模块；
+    --   炮弹 / 火箭弹直接打中的那一下已经按穿深算过（G.wtSkip：同一发的溅射不再算它）；G.wtRaw 是 Wt.lua 自己判了击毁
+    if e.wt and not G.wtRaw and G.wtGeneric then
+      if G.wtSkip == e then return end
+      G.wtGeneric(e, amt, src, G.wtPos)
+      return
+    end
     e.hp -= amt
     e.lastHitBy = src
     e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
@@ -182,7 +189,11 @@ function Ents.init(G)
         else
           d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
         end
-        if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
+        if d < r then
+          G.wtPos = pos   -- 战雷式伤害按炸点离哪个零件近（Wt.lua）
+          G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src)
+          G.wtPos = nil
+        end
       end
     end
     if G.onExplode then G.onExplode(pos, w, src) end
@@ -200,6 +211,7 @@ function Ents.init(G)
   local shotN = 0
   function G.launch(s)
     s.t = 0
+    s.p0 = s.p0 or s.pos   -- 出膛点：战雷式伤害按飞了多远算穿深（Wt.lua）
     shotN += 1
     s.id = shotN
     table.insert(shots, s)
@@ -249,6 +261,45 @@ function Ents.init(G)
         local ricE = res and s.kind == "shell" and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
         local RIC = G.Config.Ricochet
         local bounced = false
+        -- 战雷式伤害的车（Wt.lua）：炮弹、火箭弹、导弹直接打中——按穿深、角度判跳弹 / 未击穿 / 击穿，里面伤哪个乘员模块
+        local wtE = res and (s.kind == "shell" or s.kind == "rocket" or s.kind == "missile") and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
+        if wtE and not (wtE.wt and wtE.alive and G.wtShellHit) then wtE = nil end
+        if wtE and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then wtE, done = nil, true end   -- 栅栏装甲卡住火箭弹的引信：哑火（Kit.lua）
+        local wtR = nil
+        if wtE then
+          ricE = nil
+          local ok, r = pcall(G.wtShellHit, wtE, s, res)
+          if not ok then G.reportError("战雷伤害", r) else wtR = r end
+        end
+        if wtR == "ric" then
+          local vd = s.vel.Unit
+          local n = res.Normal
+          local refl = vd - 2 * vd:Dot(n) * n
+          refl = (refl + V((math.random() - 0.5) * 0.16, math.random() * 0.08, (math.random() - 0.5) * 0.16)).Unit
+          s.vel = refl * s.vel.Magnitude * ((RIC and RIC.keep) or 0.5)
+          s.pos = res.Position + n * 0.5
+          s.ricocheted = true
+          s.life = s.t + ((RIC and RIC.life) or 1.2)
+          G.fx({ k = "ricochet", id = s.id, p = s.pos, v = s.vel, n = n })
+          G.ricochets = (G.ricochets or 0) + 1
+          bounced = true
+        elseif wtR then
+          -- 这一发打在车上算完了：钢甲上一团火花，溅射照样伤周围的人（不再算这辆车）
+          local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
+          if hs and HitSurf.METAL[hs] then
+            G.fx({ k = "spark", p = res.Position, n = res.Normal, h = hs, s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+          end
+          G.wtSkip = wtE
+          if s.kind == "shell" then
+            s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
+              boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }
+            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          else
+            G.explode(res.Position, s.w, s.src)
+          end
+          G.wtSkip = nil
+          done = true
+        end
         if ricE and RIC and ricE.alive and RIC.a0[ricE.cat] then
           -- 跳弹（用户：跳弹也做出来）：炮弹打在坦克、装甲车上，入射方向和装甲面的法线夹角越大越容易滑开（a0 度起有可能、a1 度一定）
           local vd = s.vel.Unit
@@ -272,8 +323,8 @@ function Ents.init(G)
             bounced = true
           end
         end
-        if bounced then
-          -- 刚跳开：位置、速度上面已经改好了
+        if bounced or done then
+          -- 刚跳开：位置、速度上面已经改好了（或者战雷式伤害那边已经算完了这一发）
         elseif res and s.ricocheted then   -- 跳开过的弹：再碰到东西就没了（不炸、不伤），碰的地方迸一点火星
           G.fx({ k = "spark", p = res.Position, n = res.Normal, h = "m", s = 1 })
           done = true

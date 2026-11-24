@@ -253,6 +253,7 @@ function Armor.init(G)
     if G.eraSetup then G.try("爆反", G.eraSetup, e) end   -- Era.lua：原模型上的爆反块
     if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
+    if G.wtSetup then G.try("战雷伤害", G.wtSetup, e) end   -- Wt.lua：乘员、模块各自的血（战雷式伤害）
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -424,6 +425,7 @@ function Armor.init(G)
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
     local maxD = math.max((G.kitSpeedCap and G.kitSpeedCap(e)) or e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6   -- 扫雷犁放着：限 15 公里 / 时
+    if e.wt and e.wt.mob == false then maxD = math.min(maxD, 3 * dt + 1.2) end   -- 战雷式伤害：驾驶员没了、发动机 / 传动 / 履带坏了，只能滑一点
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
@@ -473,6 +475,7 @@ function Armor.init(G)
     if G.round.phase ~= "battle" or e.locked then return end
     local d = e.def
     if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
+    if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害（Wt.lua）：炮长没了、炮闩 / 炮管坏了、正在修车
     local w = VD.W[wid]
     local st = e.wst[wid]
     local t = now()
@@ -537,11 +540,12 @@ function Armor.init(G)
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = "arty", id = e.id })
     end
     st.mag -= 1
-    st.next = t + w.rate
+    local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：别人凑合装填，慢六成
+    st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
       local n = math.min(w.mag, st.reserve)
       st.mag, st.reserve = n, st.reserve - n
-      st.next = t + math.max(w.rate, w.reload or 0)
+      st.next = t + math.max(w.rate, w.reload or 0) * rk
     end
   end
 

@@ -253,6 +253,7 @@ function AIVeh.init(G)
     local to = flat(goalPos - p)
     local dist = to.Magnitude
     if dist < 4 then e.model:SetAttribute("Sp", 0) return 0 end
+    if e.wt and e.wt.mob == false then e.model:SetAttribute("Sp", 0) return 0 end   -- 战雷式伤害：开不动了（Wt.lua）
     local want = to.Unit
     local ang = math.atan2(look:Cross(want).Y, look:Dot(want))
     local maxT = math.rad(d.turn or 36) * dt
@@ -355,6 +356,7 @@ function AIVeh.init(G)
     local d, w, st = e.def, VD.W[wid], e.wst[wid]
     local t = now()
     if not st or t < st.next then return end
+    if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害：炮长没了、炮闩坏了
     if st.mag <= 0 then
       if st.reserve <= 0 then return end
       local n = math.min(w.mag, st.reserve)
@@ -380,11 +382,12 @@ function AIVeh.init(G)
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6) * (w.range or 600), w, S, { e.model }, 0)
     end
     st.mag -= 1
-    st.next = t + w.rate
+    local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：装填慢（Wt.lua）
+    st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then
       local n = math.min(w.mag, st.reserve)
       st.mag, st.reserve = n, st.reserve - n
-      st.next = t + math.max(w.rate, w.reload or 0)
+      st.next = t + math.max(w.rate, w.reload or 0) * rk
     end
   end
 

@@ -786,6 +786,7 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
+    if st.em and st.em:GetAttribute("WtMob") == false then thr, str = 0, 0 end   -- 战雷式伤害（服务器 Wt.lua）：驾驶员没了、发动机 / 传动 / 履带坏了
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
     local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：开的是艇
     if carried then
@@ -1110,7 +1111,7 @@ function Drive.init(G)
     end
     -- 手动方式：炮塔动力关了，手摇方向机、高低机（每秒十来度、几度）
     local manual = f.mode == 3
-    local trav = d.turret.trav * (manual and 0.22 or 1)
+    local trav = d.turret.trav * (manual and 0.22 or 1) * ((st.em and st.em:GetAttribute("WtTrav")) or 1)   -- 炮塔驱动坏了 / 炮长没了：转得慢（Wt.lua）
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
@@ -1319,6 +1320,14 @@ function Drive.init(G)
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
     if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
+    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
+      local t0 = os.clock()
+      if t0 > (st.wtGunMsg or 0) and G.toast then
+        st.wtGunMsg = t0 + 1.5
+        G.toast(T((st.em:GetAttribute("WtFix") ~= nil) and "wt.fixing" or "wt.noGun"), "bad")
+      end
+      return
+    end
     local t = os.clock()
     if t < (st.next[wid] or 0) then return end
     local ammo = G.S and G.S.veh and G.S.veh.ammo and G.S.veh.ammo[wid]
@@ -1437,6 +1446,8 @@ function Drive.init(G)
       if st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
       smoke()
+    elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
+      G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
