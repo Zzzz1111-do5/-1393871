@@ -45,6 +45,8 @@
   ① 两边各一座集中的主基地（营区 + 机场 + 车场 + 直升机坪连在一起，FOB：HESCO 围墙、检查站、岗楼、集装箱宿舍、指挥中心、油料库、弹药库……），红方在南、蓝方在北；
      两边只在自己基地的出生广场固定出生（MapSands、World、Round、Bots、Depots 要动——**这几处 B 在改，要动先在这里说一声**）；
   ② 开服先只写两边基地一带的地形就能进，其余后台写、离人近的先写；③ 全图加细节（掩体、村子、残骸、石头……）；④ 云。
+  - **已做**（①②）：FOB.lua、MapSands 的 BASES / FOB / baseW / HOTS、World 的地形顺序和地壳厚度、Round 的固定出生（base / baseAir）、Depots、Bots、
+    AIVeh、Air、Fly、FortDefs。**动出生、车位、地形写法的先看一眼这几处**。还在做 ③④
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

@@ -136,7 +136,19 @@ local function layoutDesert(Map)
   add("aaa", P.C.x + 95, P.C.z - 55, P.C.x, P.C.z + 400, "C", "town")
   add("aaa", P.A.x + 55, P.A.z - 40, P.A.x, P.A.z + 400, "A", "outpost")
   add("aaa", P.B.x - 60, P.B.z - 55, P.B.x, P.B.z + 400, "B", "oil")
-  add("aaa", Map.CAMP.x - 95, Map.CAMP.z + 15, Map.CAMP.x, Map.CAMP.z + 400, nil, "camp")
+  if Map.BASES then
+    -- 两边主基地（FOB.lua）：营区两侧、机场两头各一门高炮，炮口朝战场；home 写明是哪边的（Forts.lua 按它定归属，据点丢了也不换）
+    for side, HB in pairs(Map.BASES) do
+      for _, o in ipairs({ { -500, -100 }, { 500, 0 }, { -1500, 900 }, { 1500, 900 } }) do
+        local x, z = Map.baseW(HB, o[1], o[2])
+        local tx, tz = Map.baseW(HB, o[1], o[2] - 2000)
+        add("aaa", x, z, tx, tz, nil, "base_" .. side)
+        out[#out].home = side
+      end
+    end
+  else
+    add("aaa", Map.CAMP.x - 95, Map.CAMP.z + 15, Map.CAMP.x, Map.CAMP.z + 400, nil, "camp")
+  end
   -- M777：A、C、E 北边各两门，炮口朝南
   for _, id in ipairs({ "A", "C", "E" }) do
     local p = P[id]

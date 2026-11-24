@@ -152,7 +152,7 @@ function AIVeh.init(G)
     local id = pickModel(team)
     if not id then return nil end
     local d = VD.get(id)
-    if G.conquest and G.conquest() then   -- 征服：从自己基地车场的空车位出车
+    if (G.conquest and G.conquest()) or Map.BASES then   -- 征服、沙海（固定在主基地出生）：从自己基地车场的空车位出车
       for _, p in ipairs(G.pads or {}) do
         if p.team == team and p.kind == "veh" and not p.sea and clearAt(p.base.Position, 16) then
           local e = G.newVehicle(team, id, G.vehBaseAt(d, p.base.Position.X, p.base.Position.Z, p.base.LookVector))

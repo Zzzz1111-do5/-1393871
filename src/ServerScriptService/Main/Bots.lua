@@ -459,6 +459,10 @@ function Bots.init(G)
   local function atkPlan()
     local tg0 = pickAtkTarget(nil)
     if not tg0 then return nil end
+    if Map.BASES then   -- 沙海：只在自己主基地的出生广场出生（用户 11-24「固定两边都在双方各自固定位置出生」）
+      local HB = Map.BASES.atk
+      return { mode = "land", tg = tg0, at = spotNear(HB.spawn.x, HB.spawn.z, 0, 24) }
+    end
     -- 攻击出发阵地能用（第二阶段起、守方没压过来，Round.lua）：八成在那里出生，直接上前线
     local st = G.stagingOk and G.stagingOk(tg0.id)
     if st and math.random() < 0.8 then return { mode = "land", tg = tg0, at = spotNear(st.x, st.z, 0, 35) } end
@@ -513,6 +517,10 @@ function Bots.init(G)
 
   local function defPlan()
     local p = pickDefPoint(nil)
+    if Map.BASES then   -- 沙海：守方也只在自己主基地出生，走过去守
+      local HB = Map.BASES.def
+      return { p = p, at = spotNear(HB.spawn.x, HB.spawn.z, 0, 24), face = V(0, 0, HB.face) }
+    end
     if not p then return { at = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60), face = V(0, 0, 1) } end
     local s = pointState(p.id)
     local hot = s and (s.pressed or (G.countAt and select(1, G.countAt(p.x, p.z, Map.ground(p.x, p.z), 160)) > 0))   -- 攻方到了 160 格以内：不在点里刷
