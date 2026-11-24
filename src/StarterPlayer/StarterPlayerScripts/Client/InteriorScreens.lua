@@ -1671,6 +1671,62 @@ P.gunsight = function(s, env)
   end
 end
 
+-- 布雷德利炮长的综合瞄准具显示器（IBAS；用户 11-24 发来的 M3 车内截图：目镜右下一块四周一圈方键的显示器，绿色热像、括号形分划）
+--   四周的键都真起作用：上排 视场、极性、增益、电平、符号亮度；下排 昼光 / 热像、激光测距、首 / 末回波、分划亮度、自检；
+--   左边 射速（高 / 低 / 单发）、武器（25 毫米炮 / 并列机枪）、武器保险；右边 战斗瞄准、稳定器、屏幕亮度
+P.ibas = function(s, env)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local th = Screens.thermal(R, W, H, { cols = 26 })
+  local G = RGB(190, 255, 190)
+  local cx, cy = W / 2, H / 2
+  local bw, bh = W * 0.17, H * 0.14
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do   -- 四个直角（截图里两个括号）
+    local x0, y0 = cx + c[1] * bw, cy + c[2] * bh
+    F(R, math.min(x0, x0 - c[1] * bw * 0.4), y0 - 1, bw * 0.4, 2, G, 0, 6)
+    F(R, x0 - 1, math.min(y0, y0 - c[2] * bh * 0.5), 2, bh * 0.5, G, 0, 6)
+  end
+  F(R, cx - 2, cy - 2, 4, 4, G, 0, 6)
+  local top = Tx(R, "", 6, 4, W - 12, 14, 12, G, nil, FONTB, 8)
+  local rng = Tx(R, "", W - 112, 4, 106, 14, 12, G, Enum.TextXAlignment.Right, FONTB, 8)
+  local info = Tx(R, "", 6, H - 18, W - 12, 14, 12, G, nil, FONTB, 8)
+  local msg = Tx(R, "", 6, H - 34, W - 12, 14, 12, G, nil, FONTB, 8)
+  local dim = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 9)
+  local st = { brt = 0, msgT = 0 }
+  local function say(m) msg.Text, st.msgT = m, os.clock() end
+  s.onKey = function(k, act)
+    local d = st.d or {}
+    local sy = (act.sync and act.sync()) or {}
+    if k == "FOV" then act.zoom() say("FIELD OF VIEW")
+    elseif k == "POL" then act.polarity() say("POLARITY")
+    elseif k == "GAIN" and act.gain then act.gain(((d.thGain or 2) + 1) % 5) say("GAIN " .. (((d.thGain or 2) + 1) % 5 - 2))
+    elseif k == "LVL" and act.level then act.level(((d.thLevel or 2) + 1) % 5) say("LEVEL " .. (((d.thLevel or 2) + 1) % 5 - 2))
+    elseif k == "SYM" and act.symb then act.symb(((d.symLvl or 0) + 1) % 4) say("SYMBOLOGY")
+    elseif k == "TIS" and act.thermalSet then act.thermalSet((sy.vis == 1) and 0 or 1) say((sy.vis == 1) and "DAY TV" or "FLIR")
+    elseif k == "LRF" and act.lase then act.lase()
+    elseif k == "F/L" and act.lrfToggle then act.lrfToggle() say("LRF RETURN")
+    elseif k == "RET" and act.reticle then act.reticle(((d.retLvl or 0) + 1) % 4) say("RETICLE")
+    elseif k == "TEST" and act.bit then act.bit() say("BIT")
+    elseif k == "ROF" and act.rof then act.rof(((sy.rof or 0) + 1) % 3) say("RATE " .. ({ "HI", "LO", "SS" })[((sy.rof or 0) + 1) % 3 + 1])
+    elseif k == "WPN" and act.weapon then act.weapon(((sy.wpn or 0) + 1) % 2) say((((sy.wpn or 0) + 1) % 2 == 0) and "25MM" or "COAX")
+    elseif k == "ARM" and act.armGun then act.armGun((sy.armg == 1) and 0 or 1) say((sy.armg == 1) and "ARMED" or "SAFE")
+    elseif k == "BSGT" and act.battlesight then act.battlesight() say("BATTLESIGHT")
+    elseif k == "STAB" and act.stab then act.stab((sy.stab == 1) and 0 or 1) say((sy.stab == 1) and "STAB ON" or "STAB OFF")
+    elseif k == "BRT" then st.brt = (st.brt + 1) % 3 end
+  end
+  return function(d)
+    st.d = d
+    if d.gunEye then
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or 17, pal = (d.pol == "BLK") and PAL.GRNB or PAL.GRN, ents = d.ents, Map = env.Map, range = 4000 })
+    end
+    top.Text = string.format("IBAS  FLIR  %s  %s", (d.pol == "BLK") and "BLK" or "WHT", d.zoomTxt or "")
+    rng.Text = d.range and string.format("%04d M", math.floor(d.range)) or "---- M"
+    info.Text = string.format("%s  %s  %s  %s", d.rof or "HI", (d.wpn == 2) and "COAX" or "25MM", d.armSafe and "SAFE" or "ARMED", (d.lrf == "FIRST") and "FIRST" or "LAST")
+    if os.clock() - st.msgT > 2 then msg.Text = "" end
+    dim.BackgroundTransparency = ({ 1, 0.35, 0.6 })[st.brt + 1]
+  end
+end
+
 ---------------------------------------------------------------- 飞机座舱的页面（数据见 Interior.lua 的 gatherAir）
 
 -- 姿态（主飞行显示）：天地线跟着俯仰、滚转，左边空速、右边高度、上面航向

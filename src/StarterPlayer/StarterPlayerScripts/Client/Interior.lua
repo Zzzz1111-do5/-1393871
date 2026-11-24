@@ -868,6 +868,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     d.bore = fc and fc.bore or { 0, 0 }
     d.bsR = fc and fc.am and fc.bsR and fc.bsR[fc.am] or nil
     d.retLvl, d.symLvl, d.retNight, d.thGain, d.thLevel = st.retLvl or 0, st.symLvl or 0, st.retNight == true, st.thGain or 2, st.thLevel or 2
+    d.rof, d.wpn, d.armSafe = st.rof or "HI", st.wi or 1, st.safe == true   -- 布雷德利：射速、武器、保险（IBAS 显示器下沿）
     d.bitT, d.mrsT = c.bitT, c.mrsT
     d.citvRange, d.citvRT = c.citvR, c.citvRT
     d.cant = -math.deg(math.asin(clamp(hullW.RightVector.Y, -1, 1)))   -- 车体侧倾（耳轴倾斜）：右边低是正

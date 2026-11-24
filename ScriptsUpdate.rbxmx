@@ -44831,6 +44831,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     d.bore = fc and fc.bore or { 0, 0 }
     d.bsR = fc and fc.am and fc.bsR and fc.bsR[fc.am] or nil
     d.retLvl, d.symLvl, d.retNight, d.thGain, d.thLevel = st.retLvl or 0, st.symLvl or 0, st.retNight == true, st.thGain or 2, st.thLevel or 2
+    d.rof, d.wpn, d.armSafe = st.rof or "HI", st.wi or 1, st.safe == true   -- 布雷德利：射速、武器、保险（IBAS 显示器下沿）
     d.bitT, d.mrsT = c.bitT, c.mrsT
     d.citvRange, d.citvRT = c.citvR, c.citvRT
     d.cant = -math.deg(math.asin(clamp(hullW.RightVector.Y, -1, 1)))   -- 车体侧倾（耳轴倾斜）：右边低是正
@@ -46804,8 +46805,8 @@ return function(Defs, Hp)
     local T, H, G = "turret", "hull", "gun"
     local piv = ctx.piv or d.turret.pivot   -- 座圈中心（同 Interior 的 frames）
     local cn = L.cn
-    local WALL = cn and RGB(178, 196, 178) or RGB(222, 222, 212)
-    local WALL2 = cn and RGB(152, 170, 152) or RGB(196, 196, 186)
+    local WALL = (L.paint and L.paint[1]) or (cn and RGB(178, 196, 178) or RGB(222, 222, 212))
+    local WALL2 = (L.paint and L.paint[2]) or (cn and RGB(152, 170, 152) or RGB(196, 196, 186))
     local OD = cn and RGB(74, 92, 70) or RGB(84, 90, 66)
     local FLOOR = RGB(56, 58, 56)
     local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
@@ -46936,13 +46937,15 @@ return function(Defs, Hp)
       bx("recoil", cal * 1.3, cal * 1.3, blen, 0, 0, blen / 2 + 0.10, C.gun, MAT.Metal)
       bx("recoil", cal * 1.5, cal * 0.5, blen * 0.4, 0, -cal * 0.85, blen * 0.55, C.dark, MAT.Metal)   -- 反后坐装置
       if tur ~= "spaag" then   -- 炮尾防护栏（黄色钢管框：后坐时人别站在里面）
+        -- 布雷德利（用户 11-24 的 M3 截图）：25 毫米炮的炮尾窄，护栏收到 ±0.95 倍口径格数，给炮长目镜旁的 IBAS 显示器腾地方
+        local gk = (tur == "ifv" and L.donor) and 0.95 or 1.2
         for _, s in ipairs({ -1, 1 }) do
-          local x = s * cal * 1.2
+          local x = s * cal * gk
           b:tube(G, V(x, cal * 0.9, 0.15), V(x, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, -cal * 0.9, 0.15), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, cal * 0.9, blen + 0.45), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
         end
-        b:tube(G, V(-cal * 1.2, cal * 0.9, blen + 0.45), V(cal * 1.2, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
+        b:tube(G, V(-cal * gk, cal * 0.9, blen + 0.45), V(cal * gk, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
       end
       if tur == "ifv" then   -- 机关炮：两边的弹箱、供弹槽（双向供弹）
         for _, s in ipairs({ -1, 1 }) do
@@ -46972,7 +46975,9 @@ return function(Defs, Hp)
       local wallIn = tw - 0.16
       local function inX(x) return math.clamp(x, -wallIn, wallIn) end
       local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
-      b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      if not dn then   -- 有原模型件的布雷德利：炮长那块是 IBAS 显示器（InteriorAbrams 的 donorIfv）
+        b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      end
       if not dn then
         b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
         bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
@@ -47442,7 +47447,8 @@ return function(Defs, Hp)
     if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
     return Defs.cab(b, ctx, o)
   end end
-  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
+  -- 布雷德利：车内漆成用户 11-24 发来的 M3 车内截图那样的浅橄榄绿
+  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, paint = { RGB(158, 168, 128), RGB(132, 142, 106) }, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
   Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })
@@ -47746,7 +47752,7 @@ return function(Defs, Hp)
     local hubM = P(PT.hub)
     -- 原模型的块
     for _, name in ipairs({ "Int_Shell", "Int_Loader", "Int_GpsEye", "Int_GPanel", "Int_GHousing", "Int_GSeat", "Int_Ccp", "Int_Gpse", "Int_Cdu", "Int_Cch", "Int_CBox", "Int_CSeat" }) do
-      put(b, D, name, T, inT)
+      if not (sep and name == "Int_Cdu") then put(b, D, name, T, inT) end   -- SEPv2 的车长显示单元换成钢铁猛兽那台（下面）
     end
     b:group("gch", T, CF(hubM))
     put(b, D, "Int_Gch", "gch", function(c) return P(c) - hubM end)
@@ -47786,8 +47792,18 @@ return function(Defs, Hp)
 
     -- 车长那两块屏
     if sep then
-      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）；键排在两屏之间、右边、下边（同钢铁猛兽 SEP 车长显示单元的功能）
-      cduBuild(b, T, Pl, "CITV")
+      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）——
+      --   用户 11-24 又发来钢铁猛兽 M1A2 车长位的截图（11-23 那套「严格按照这个图」）：左边一列蓝键、两屏之间一排蓝键、右边橙色字母数字键盘、
+      --   下边橙色横杠键、左下橙色方向键。用零件拼的 M1A2 那台（Defs.sbCdu：ip_cdus 机壳 + CdusLayout 版面，功能一样），
+      --   摆在原模型机壳正面的位置，往车长那边转 15°
+      local front = P(V(2.28, 6.047, PT.housingZ))   -- 原机壳中心 x 2.483：这台窄一点、转过来，右边会插进炮塔壁，往左挪 7 厘米
+      local th = rad(-15)
+      if Defs.sbCdu then
+        Defs.sbCdu(b, T, CFrame.lookAt(front, front + V(math.sin(th), 0, math.cos(th))))
+      else
+        put(b, D, "Int_Cdu", T, inT)
+        cduBuild(b, T, Pl, "CITV")
+      end
       cchButtons(b, T, Pl)
     else
       -- A1：原模型这两块屏的版面（FLIR、PWR、CITV、SGF、CEU、FCEU、CCHA 七格）是车长的状态显示器
@@ -47879,6 +47895,20 @@ return function(Defs, Hp)
     putM("Int_GPanel", T, XP, rotP, kG)
     knobsBuild(b, T, placer(XP, rotP, kG), IFV_PANEL, false)
     b:led(T, CF(XP(V(2.680, 4.746, -2.633))), RGB(90, 255, 120), 0.007, "tis")
+    -- 炮长的综合瞄准具显示器（用户 11-24 发来的 M3 车内截图：目镜右下一块四周一圈方键的显示器，绿色热像、括号分划）：
+    --   夹在目镜和炮尾护栏之间（护栏已经收窄到 25 毫米炮的宽度），正对炮长的眼睛；上下两排键是屏幕自带的，左右各三个方键
+    local eyeG = gScope + V(0, 0.06, 0.26)
+    local dp = V(gScope.X - gs * 0.16, gScope.Y - 0.068, gScope.Z - 0.11)   -- 左边离目镜块、右边离护栏都留几毫米
+    local dcf = CFrame.lookAt(dp, eyeG)
+    local IW, IH, IB = 0.13, 0.10, 0.018
+    local ibas = b:screen(T, IW, IH, dcf, "ibas", { keys = { top = { "FOV", "POL", "GAIN", "LVL", "SYM" }, bottom = { "TIS", "LRF", "F/L", "RET", "TEST" } },
+      bezel = IB, lightK = 0.25, lightColor = RGB(110, 230, 130) })
+    for i, nm in ipairs({ "ROF", "WPN", "ARM" }) do   -- 人看过去的左边是屏幕的 +X
+      b:keyCap(T, ibas, dcf * CF(IW / 2 + IB * 0.6, 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "left", idx = i })
+    end
+    for i, nm in ipairs({ "BSGT", "STAB", "BRT" }) do
+      b:keyCap(T, ibas, dcf * CF(-(IW / 2 + IB * 0.6), 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "right", idx = i })
+    end
     -- 车长：延伸目镜（看炮长综合瞄准具的画面）
     --   人（连目镜、座椅）往炮那边挪 6 厘米：右前方给两块屏的机壳腾地方，不然机壳贴着炮塔壁也躲不开目镜的护额垫
     local kC = 0.8
@@ -47887,6 +47917,22 @@ return function(Defs, Hp)
     local XC = mapper(PT.gpse, cScope, CF(), kC)
     putM("Int_Gpse", T, XC, CF(), kC)
     b:lens(T, CF(XC(PT.gpse + V(0, 0, -0.06))), 0.055 * kC, { face = 1 })
+    -- 延伸目镜两边（用户 11-24 的 M3 截图）：右边一个圆表盘，左边一块小面板——两个红灯（电源、热像），两个旋钮（视野选择、极性，跟炮长那边同步）
+    local gpE = XC(PT.gpse)
+    local dialC = gpE + V(0.115, -0.025, -0.06)
+    b:cylZ(T, 0.03, 0.078, CF(dialC), RGB(30, 32, 34), MAT.Metal)
+    b:cylZ(T, 0.004, 0.062, CF(dialC + V(0, 0, 0.016)), RGB(10, 12, 12), MAT.Glass)
+    b:box(T, V(0.003, 0.026, 0.002), CF(dialC + V(0, 0.005, 0.019)) * ANG(0, 0, rad(-35)), RGB(232, 232, 226))
+    local pc = gpE + V(-0.125, -0.03, -0.06)
+    b:box(T, V(0.07, 0.09, 0.022), CF(pc), RGB(34, 36, 36), MAT.SmoothPlastic)
+    b:led(T, CF(pc + V(-0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008)
+    b:led(T, CF(pc + V(0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008, "tis")
+    for i, K in ipairs({
+      { id = "CVIS", dia = 0.024, style = "round", n = 2, step = 60, on = "thermalSet", sync = "vis", label = { "延伸目镜：视野选择", "SIGHT EXT  DAY / TIS" }, pos = { "昼光", "热像" }, posEn = { "DAY", "TIS" } },
+      { id = "CPOL", dia = 0.024, style = "bar", n = 2, step = 60, on = "polaritySet", sync = "pol", label = { "延伸目镜：极性", "SIGHT EXT  POLARITY" }, pos = { "白热", "黑热" }, posEn = { "WHT", "BLK" } } }) do
+      local kp = pc + V((i == 1) and -0.016 or 0.016, -0.012, 0.011)
+      control(b, T, CFrame.lookAt(kp, kp + V(0, 0, 1)), K, false)
+    end
     -- 两块屏的机壳：车长右前方（看过去偏右 52°）、比眼睛略低，转过来对着车长——
     --   延伸目镜就在眼前（护额垫左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；屏的左边要在 ~30° 以外；外边贴着炮塔壁（壁内面 tw − 0.02）
     local cE = cScope + V(0, 0.05, 0.24)   -- 车长位的眼睛（InteriorAFV 的 stations.commander.eye）
@@ -48181,6 +48227,65 @@ local function scr(b, g, key, k, w, h, cf, page, opt)
   return s or b:screen(g, w, h, cf, page, opt)
 end
 Defs.PSCR, Defs.scr = PSCR, scr
+
+-- 钢铁猛兽 M1A2 SEP 车长显示单元（用户 11-23 截图「严格按照这个图」、11-24 又发来同一套截图）：机壳网格 ip_cdus + 版面表 CdusLayout 现做的屏幕、键、灯；
+--   uCF 是机壳正面中心（−Z 对着车长）；零件拼的 M1A2 和原模型版的 A2（InteriorAbrams）都用它
+local function sbCdu(b, T, uCF)
+  local LY = CDUS
+    local function uAt(x, y, z) return uCF * CF(-x, y, -(z or 0)) end   -- 版面坐标（米，X 人看过去向右、Z 朝人）→ 炮塔里
+    if not b:prop(T, "ip_cdus", uCF * ANG(0, PI, 0), 1) then   -- 网格还没生成好：先拼个方壳子、四条框（Interior 等它好了重建一次）
+      local U0 = LY.unit
+      b:box(T, V(U0.w, U0.h, U0.d), uAt(0, 0, -U0.d / 2), RGB(44, 48, 66))
+      for _, Q in ipairs({ LY.up, LY.low }) do
+        local fw, fh = (Q.ow - Q.gw) / 2, (Q.oh - Q.gh) / 2
+        b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy + Q.oh / 2 - fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy - Q.oh / 2 + fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx - Q.ow / 2 + fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx + Q.ow / 2 - fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(Q.gw, Q.gh, 0.0035), uAt(Q.cx, Q.cy, 0.00175), RGB(7, 8, 10))
+      end
+    end
+    -- 两块屏的显示面：贴在黑玻璃前面 1.5 毫米，比玻璃小一圈（圆角那里不露出方角）
+    local zF = LY.zGlass + 0.0015
+    local sUp = b:screen(T, LY.up.gw - 0.008, LY.up.gh - 0.008, uAt(LY.up.cx, LY.up.cy, zF), "citv",
+      { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.07, lightK = 0.3, lightColor = RGB(110, 230, 130) })
+    local DASH = { "MAP", "NAV", "POS", "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" }   -- 下屏下边 8 个橙色横杠键（功能名写在屏幕下沿）
+    local lw = LY.low.gw - 0.008
+    local dash = {}
+    for i, nm in ipairs(DASH) do dash[i] = { nm, (LY.bot.x0 + (i - 1) * LY.bot.dx - (LY.low.cx - lw / 2)) / lw } end
+    local sLow = b:screen(T, lw, LY.low.gh - 0.008, uAt(LY.low.cx, LY.low.cy, zF), "cid",
+      { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.16, paper = true, dash = dash, lightK = 0.3, lightColor = RGB(220, 226, 232) })
+    -- 键：键帽正面在键槽上面 4 毫米（键槽顶 1.5 毫米）
+    local KZ = 0.0055
+    local LED = RGB(70, 255, 110)
+    local UPL = { "BRT+", "BRT-", "SCAN L", "SCAN R", "STOW" }   -- 上屏左边一列
+    for i, q in ipairs(LY.upL) do b:keyCap(T, sUp, uAt(q[1], q[2], KZ), LY.upLw, LY.upLh, UPL[i], "blue", { side = "left", idx = i }) end
+    local ROW = { "SYM", "DESIG", "WHT", "BLK", "WFOV", "NFOV", "MAN", "AUTO", "GUN LOS", "GPS LOS" }   -- 两屏之间一排（管上屏）：单、单、双、双、双、双（最右一对深色）
+    for i, q in ipairs(LY.row) do
+      b:keyCap(T, sUp, uAt(q[1], LY.rowY, KZ), q[2], LY.rowH, ROW[i], (i >= 9) and "dark" or "blue", { side = "row", idx = i })
+      b:led(T, uAt(q[1] - q[2] / 2 + 0.0045, LY.rowY - LY.rowH / 2 + 0.0045, KZ + 0.0008), LED, 0.004, "key", { s = sUp, k = ROW[i] })   -- 键左下角的绿灯：选中的亮
+    end
+    for i, q in ipairs(LY.leds) do b:led(T, uAt(q[1], q[2], 0.0035), LED, 0.005, "key", { s = sUp, k = ({ "_PWR", "_SCAN", "_DES" })[i] }) end   -- 灯条：电源、自动扫描、指示
+    local LOWL = { "VEH SYS", "C3" }   -- 下屏左边：本车状态、消息
+    for i, q in ipairs(LY.lowL) do b:keyCap(T, sLow, uAt(q[1], q[2], KZ), LY.lowLw, LY.lowLh, LOWL[i], "orange", { side = "left", idx = i }) end
+    b:led(T, uAt(LY.lowL[2][1] - 0.008, LY.lowL[2][2] - 0.011, KZ + 0.0008), LED, 0.004, "key", { s = sLow, k = "_MSG" })
+    local A = LY.arrows   -- 左下四个方向键：挪地图
+    for _, q in ipairs({ { "UP", 0, 0, 1 }, { "DOWN", 180, 0, -1 }, { "LEFT", 270, -1, 0 }, { "RIGHT", 90, 1, 0 } }) do
+      b:keyCap(T, sLow, uAt(A.cx + q[3] * A.d, A.cy + q[4] * A.d, KZ), A.s, A.s, q[1], "arrow", { dir = q[2], side = "arrow" })
+    end
+    for i, nm in ipairs(DASH) do b:keyCap(T, sLow, uAt(LY.bot.x0 + (i - 1) * LY.bot.dx, LY.bot.y, KZ), LY.bot.w, LY.bot.h, nm, "dash", { side = "bot", idx = i }) end
+    -- 字母数字键盘（截图：ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、▶ / •、0、—、ENT）
+    local PAD = { { "1", "ABC" }, { "2", "DEF" }, { "3", "GHI" }, { "CLR" }, { "4", "JKL" }, { "5", "MNO" }, { "6", "PQR" }, { "LTR" },
+      { "7", "STU" }, { "8", "VWX" }, { "9", "YZ" }, { "NEXT", nil, ">" }, { "." }, { "0" }, { "-" }, { "ENT" } }
+    local KP = LY.pad
+    for i, q in ipairs(PAD) do
+      local cI, rI = (i - 1) % 4, math.floor((i - 1) / 4)
+      b:keyCap(T, sLow, uAt(KP.x0 + cI * KP.dx, KP.y0 + rI * KP.dy, KZ), KP.w, KP.h, q[1], "pad", { sub = q[2], text = q[3], side = "pad", idx = i })
+    end
+    b:led(T, uAt(LY.ledLow[1], LY.ledLow[2], 0.002), LED, 0.004, "key", { s = sLow, k = "_PWR" })
+  return sUp, sLow
+end
+Defs.sbCdu = sbCdu
 
 function Defs.m1a2(b, ctx)
   local T, H, G = "turret", "hull", "gun"
@@ -48501,61 +48606,10 @@ function Defs.m1a2(b, ctx)
   --   下屏指挥地图（白底、红色道路），左边 VEH SYS、C3 两个键，左下四个方向键，下边 8 个橙色横杠键，右边 4 × 4 橙色字母数字键盘；三根把手
   --   机壳、银色倒角屏框是本项目照截图做的网格（ip_cdus，tools/weapons/gen_cdus.mjs——Sketchfab 上搜不到能下载的 CITV / 车长显示器模型），
   --   键、屏幕、指示灯按同一张版面表（ReplicatedStorage.CdusLayout）现做
-  local LY = CDUS
   -- 机壳正面中心（−Z 对着车长）：在主瞄准镜延伸目镜右边，从车长眼睛看过去不被护眼罩挡（截图里也是挨着）；
   --   用户 11-23 再对截图：原来在 (0.88, 0.42, −0.46)，离眼睛 0.6 米、偏右 34°、上屏比眼睛低，显得又小又远——挪近、抬高、往中间靠
   local uCF = look(V(0.80, 0.44, -0.40), cEye)
-  local function uAt(x, y, z) return uCF * CF(-x, y, -(z or 0)) end   -- 版面坐标（米，X 人看过去向右、Z 朝人）→ 炮塔里
-  if not b:prop(T, "ip_cdus", uCF * ANG(0, PI, 0), 1) then   -- 网格还没生成好：先拼个方壳子、四条框（Interior 等它好了重建一次）
-    local U0 = LY.unit
-    b:box(T, V(U0.w, U0.h, U0.d), uAt(0, 0, -U0.d / 2), RGB(44, 48, 66))
-    for _, Q in ipairs({ LY.up, LY.low }) do
-      local fw, fh = (Q.ow - Q.gw) / 2, (Q.oh - Q.gh) / 2
-      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy + Q.oh / 2 - fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy - Q.oh / 2 + fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx - Q.ow / 2 + fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx + Q.ow / 2 - fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(Q.gw, Q.gh, 0.0035), uAt(Q.cx, Q.cy, 0.00175), RGB(7, 8, 10))
-    end
-  end
-  -- 两块屏的显示面：贴在黑玻璃前面 1.5 毫米，比玻璃小一圈（圆角那里不露出方角）
-  local zF = LY.zGlass + 0.0015
-  local sUp = b:screen(T, LY.up.gw - 0.008, LY.up.gh - 0.008, uAt(LY.up.cx, LY.up.cy, zF), "citv",
-    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.07, lightK = 0.3, lightColor = RGB(110, 230, 130) })
-  local DASH = { "MAP", "NAV", "POS", "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" }   -- 下屏下边 8 个橙色横杠键（功能名写在屏幕下沿）
-  local lw = LY.low.gw - 0.008
-  local dash = {}
-  for i, nm in ipairs(DASH) do dash[i] = { nm, (LY.bot.x0 + (i - 1) * LY.bot.dx - (LY.low.cx - lw / 2)) / lw } end
-  local sLow = b:screen(T, lw, LY.low.gh - 0.008, uAt(LY.low.cx, LY.low.cy, zF), "cid",
-    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.16, paper = true, dash = dash, lightK = 0.3, lightColor = RGB(220, 226, 232) })
-  -- 键：键帽正面在键槽上面 4 毫米（键槽顶 1.5 毫米）
-  local KZ = 0.0055
-  local LED = RGB(70, 255, 110)
-  local UPL = { "BRT+", "BRT-", "SCAN L", "SCAN R", "STOW" }   -- 上屏左边一列
-  for i, q in ipairs(LY.upL) do b:keyCap(T, sUp, uAt(q[1], q[2], KZ), LY.upLw, LY.upLh, UPL[i], "blue", { side = "left", idx = i }) end
-  local ROW = { "SYM", "DESIG", "WHT", "BLK", "WFOV", "NFOV", "MAN", "AUTO", "GUN LOS", "GPS LOS" }   -- 两屏之间一排（管上屏）：单、单、双、双、双、双（最右一对深色）
-  for i, q in ipairs(LY.row) do
-    b:keyCap(T, sUp, uAt(q[1], LY.rowY, KZ), q[2], LY.rowH, ROW[i], (i >= 9) and "dark" or "blue", { side = "row", idx = i })
-    b:led(T, uAt(q[1] - q[2] / 2 + 0.0045, LY.rowY - LY.rowH / 2 + 0.0045, KZ + 0.0008), LED, 0.004, "key", { s = sUp, k = ROW[i] })   -- 键左下角的绿灯：选中的亮
-  end
-  for i, q in ipairs(LY.leds) do b:led(T, uAt(q[1], q[2], 0.0035), LED, 0.005, "key", { s = sUp, k = ({ "_PWR", "_SCAN", "_DES" })[i] }) end   -- 灯条：电源、自动扫描、指示
-  local LOWL = { "VEH SYS", "C3" }   -- 下屏左边：本车状态、消息
-  for i, q in ipairs(LY.lowL) do b:keyCap(T, sLow, uAt(q[1], q[2], KZ), LY.lowLw, LY.lowLh, LOWL[i], "orange", { side = "left", idx = i }) end
-  b:led(T, uAt(LY.lowL[2][1] - 0.008, LY.lowL[2][2] - 0.011, KZ + 0.0008), LED, 0.004, "key", { s = sLow, k = "_MSG" })
-  local A = LY.arrows   -- 左下四个方向键：挪地图
-  for _, q in ipairs({ { "UP", 0, 0, 1 }, { "DOWN", 180, 0, -1 }, { "LEFT", 270, -1, 0 }, { "RIGHT", 90, 1, 0 } }) do
-    b:keyCap(T, sLow, uAt(A.cx + q[3] * A.d, A.cy + q[4] * A.d, KZ), A.s, A.s, q[1], "arrow", { dir = q[2], side = "arrow" })
-  end
-  for i, nm in ipairs(DASH) do b:keyCap(T, sLow, uAt(LY.bot.x0 + (i - 1) * LY.bot.dx, LY.bot.y, KZ), LY.bot.w, LY.bot.h, nm, "dash", { side = "bot", idx = i }) end
-  -- 字母数字键盘（截图：ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、▶ / •、0、—、ENT）
-  local PAD = { { "1", "ABC" }, { "2", "DEF" }, { "3", "GHI" }, { "CLR" }, { "4", "JKL" }, { "5", "MNO" }, { "6", "PQR" }, { "LTR" },
-    { "7", "STU" }, { "8", "VWX" }, { "9", "YZ" }, { "NEXT", nil, ">" }, { "." }, { "0" }, { "-" }, { "ENT" } }
-  local KP = LY.pad
-  for i, q in ipairs(PAD) do
-    local cI, rI = (i - 1) % 4, math.floor((i - 1) / 4)
-    b:keyCap(T, sLow, uAt(KP.x0 + cI * KP.dx, KP.y0 + rI * KP.dy, KZ), KP.w, KP.h, q[1], "pad", { sub = q[2], text = q[3], side = "pad", idx = i })
-  end
-  b:led(T, uAt(LY.ledLow[1], LY.ledLow[2], 0.002), LED, 0.004, "key", { s = sLow, k = "_PWR" })
+  sbCdu(b, T, uCF)
   -- 显示单元下面：CROWS 遥控武器站的显示控制单元（真模型是带边键和键盘的显示控制单元 ip_cdu），挪到右下、不挡大显示单元
   scr(b, T, "ip_cdu", 0.95, 0.17, 0.13, look(V(0.92, -0.04, -0.30), cEye + V(0, 0.25, 0)), "crows", { keys = { top = { "ARM", "SAFE", "THERM" }, bottom = { "ZOOM", "LASE", "SLAVE" } }, lightK = 0.25 })
   -- 车长操纵握把（插图右下：白色机箱上一根黑色、带红色扳机和按钮的握杆）：
@@ -52746,6 +52800,62 @@ P.gunsight = function(s, env)
     end
     info.Text = string.format("热像  %s  %s", (d.pol == "BLK") and "黑热" or "白热", (d.zoomTxt == "10X") and "10倍" or "3.5倍")
     rng.Text = d.range and string.format("距离 %04d", math.floor(d.range)) or ""
+  end
+end
+
+-- 布雷德利炮长的综合瞄准具显示器（IBAS；用户 11-24 发来的 M3 车内截图：目镜右下一块四周一圈方键的显示器，绿色热像、括号形分划）
+--   四周的键都真起作用：上排 视场、极性、增益、电平、符号亮度；下排 昼光 / 热像、激光测距、首 / 末回波、分划亮度、自检；
+--   左边 射速（高 / 低 / 单发）、武器（25 毫米炮 / 并列机枪）、武器保险；右边 战斗瞄准、稳定器、屏幕亮度
+P.ibas = function(s, env)
+  local W, H = s.px.X, s.px.Y
+  local R = s.root
+  local th = Screens.thermal(R, W, H, { cols = 26 })
+  local G = RGB(190, 255, 190)
+  local cx, cy = W / 2, H / 2
+  local bw, bh = W * 0.17, H * 0.14
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do   -- 四个直角（截图里两个括号）
+    local x0, y0 = cx + c[1] * bw, cy + c[2] * bh
+    F(R, math.min(x0, x0 - c[1] * bw * 0.4), y0 - 1, bw * 0.4, 2, G, 0, 6)
+    F(R, x0 - 1, math.min(y0, y0 - c[2] * bh * 0.5), 2, bh * 0.5, G, 0, 6)
+  end
+  F(R, cx - 2, cy - 2, 4, 4, G, 0, 6)
+  local top = Tx(R, "", 6, 4, W - 12, 14, 12, G, nil, FONTB, 8)
+  local rng = Tx(R, "", W - 112, 4, 106, 14, 12, G, Enum.TextXAlignment.Right, FONTB, 8)
+  local info = Tx(R, "", 6, H - 18, W - 12, 14, 12, G, nil, FONTB, 8)
+  local msg = Tx(R, "", 6, H - 34, W - 12, 14, 12, G, nil, FONTB, 8)
+  local dim = F(R, 0, 0, W, H, RGB(0, 0, 0), 1, 9)
+  local st = { brt = 0, msgT = 0 }
+  local function say(m) msg.Text, st.msgT = m, os.clock() end
+  s.onKey = function(k, act)
+    local d = st.d or {}
+    local sy = (act.sync and act.sync()) or {}
+    if k == "FOV" then act.zoom() say("FIELD OF VIEW")
+    elseif k == "POL" then act.polarity() say("POLARITY")
+    elseif k == "GAIN" and act.gain then act.gain(((d.thGain or 2) + 1) % 5) say("GAIN " .. (((d.thGain or 2) + 1) % 5 - 2))
+    elseif k == "LVL" and act.level then act.level(((d.thLevel or 2) + 1) % 5) say("LEVEL " .. (((d.thLevel or 2) + 1) % 5 - 2))
+    elseif k == "SYM" and act.symb then act.symb(((d.symLvl or 0) + 1) % 4) say("SYMBOLOGY")
+    elseif k == "TIS" and act.thermalSet then act.thermalSet((sy.vis == 1) and 0 or 1) say((sy.vis == 1) and "DAY TV" or "FLIR")
+    elseif k == "LRF" and act.lase then act.lase()
+    elseif k == "F/L" and act.lrfToggle then act.lrfToggle() say("LRF RETURN")
+    elseif k == "RET" and act.reticle then act.reticle(((d.retLvl or 0) + 1) % 4) say("RETICLE")
+    elseif k == "TEST" and act.bit then act.bit() say("BIT")
+    elseif k == "ROF" and act.rof then act.rof(((sy.rof or 0) + 1) % 3) say("RATE " .. ({ "HI", "LO", "SS" })[((sy.rof or 0) + 1) % 3 + 1])
+    elseif k == "WPN" and act.weapon then act.weapon(((sy.wpn or 0) + 1) % 2) say((((sy.wpn or 0) + 1) % 2 == 0) and "25MM" or "COAX")
+    elseif k == "ARM" and act.armGun then act.armGun((sy.armg == 1) and 0 or 1) say((sy.armg == 1) and "ARMED" or "SAFE")
+    elseif k == "BSGT" and act.battlesight then act.battlesight() say("BATTLESIGHT")
+    elseif k == "STAB" and act.stab then act.stab((sy.stab == 1) and 0 or 1) say((sy.stab == 1) and "STAB ON" or "STAB OFF")
+    elseif k == "BRT" then st.brt = (st.brt + 1) % 3 end
+  end
+  return function(d)
+    st.d = d
+    if d.gunEye then
+      th.render({ eye = d.gunEye, f = d.gunF, r = d.gunR, u = d.gunU, hfov = d.zoomFov or 17, pal = (d.pol == "BLK") and PAL.GRNB or PAL.GRN, ents = d.ents, Map = env.Map, range = 4000 })
+    end
+    top.Text = string.format("IBAS  FLIR  %s  %s", (d.pol == "BLK") and "BLK" or "WHT", d.zoomTxt or "")
+    rng.Text = d.range and string.format("%04d M", math.floor(d.range)) or "---- M"
+    info.Text = string.format("%s  %s  %s  %s", d.rof or "HI", (d.wpn == 2) and "COAX" or "25MM", d.armSafe and "SAFE" or "ARMED", (d.lrf == "FIRST") and "FIRST" or "LAST")
+    if os.clock() - st.msgT > 2 then msg.Text = "" end
+    dim.BackgroundTransparency = ({ 1, 0.35, 0.6 })[st.brt + 1]
   end
 end
 

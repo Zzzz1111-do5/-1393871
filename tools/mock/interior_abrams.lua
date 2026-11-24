@@ -105,7 +105,9 @@ for nm in pairs(NEW) do
   want = want + 1
   if blocks[nm] and nm ~= "Int_1" and nm ~= "Int_3" then nb = nb + 1 end
 end
-check(nb == want - 2, string.format("原模型的块都克隆进来了（%d / %d，车长那两块屏的面换成动态显示面）", nb, want - 2))
+-- SEPv2 的车长显示单元换成钢铁猛兽那台（用户 11-24 截图）：原模型的机壳 Int_Cdu 不克隆
+local wantN = want - 2 - (SEP and 1 or 0)
+check(nb == wantN and (not SEP or not blocks.Int_Cdu), string.format("原模型的块都克隆进来了（%d / %d，车长那两块屏的面换成动态显示面%s）", nb, wantN, SEP and "；SEPv2 的车长显示单元换成钢铁猛兽那台" or ""))
 check(inGroup.Int_Breech == "recoil" and inGroup.Int_Gun == "gun" and inGroup.Int_Gch == "gch" and inGroup.Int_Shell == "turret",
   string.format("组：炮尾 %s、摇架 %s、双握把 %s、炮塔壳 %s", tostring(inGroup.Int_Breech), tostring(inGroup.Int_Gun), tostring(inGroup.Int_Gch), tostring(inGroup.Int_Shell)))
 local pages = {}

@@ -274,7 +274,7 @@ return function(Defs, Hp)
     local hubM = P(PT.hub)
     -- 原模型的块
     for _, name in ipairs({ "Int_Shell", "Int_Loader", "Int_GpsEye", "Int_GPanel", "Int_GHousing", "Int_GSeat", "Int_Ccp", "Int_Gpse", "Int_Cdu", "Int_Cch", "Int_CBox", "Int_CSeat" }) do
-      put(b, D, name, T, inT)
+      if not (sep and name == "Int_Cdu") then put(b, D, name, T, inT) end   -- SEPv2 的车长显示单元换成钢铁猛兽那台（下面）
     end
     b:group("gch", T, CF(hubM))
     put(b, D, "Int_Gch", "gch", function(c) return P(c) - hubM end)
@@ -314,8 +314,18 @@ return function(Defs, Hp)
 
     -- 车长那两块屏
     if sep then
-      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）；键排在两屏之间、右边、下边（同钢铁猛兽 SEP 车长显示单元的功能）
-      cduBuild(b, T, Pl, "CITV")
+      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）——
+      --   用户 11-24 又发来钢铁猛兽 M1A2 车长位的截图（11-23 那套「严格按照这个图」）：左边一列蓝键、两屏之间一排蓝键、右边橙色字母数字键盘、
+      --   下边橙色横杠键、左下橙色方向键。用零件拼的 M1A2 那台（Defs.sbCdu：ip_cdus 机壳 + CdusLayout 版面，功能一样），
+      --   摆在原模型机壳正面的位置，往车长那边转 15°
+      local front = P(V(2.28, 6.047, PT.housingZ))   -- 原机壳中心 x 2.483：这台窄一点、转过来，右边会插进炮塔壁，往左挪 7 厘米
+      local th = rad(-15)
+      if Defs.sbCdu then
+        Defs.sbCdu(b, T, CFrame.lookAt(front, front + V(math.sin(th), 0, math.cos(th))))
+      else
+        put(b, D, "Int_Cdu", T, inT)
+        cduBuild(b, T, Pl, "CITV")
+      end
       cchButtons(b, T, Pl)
     else
       -- A1：原模型这两块屏的版面（FLIR、PWR、CITV、SGF、CEU、FCEU、CCHA 七格）是车长的状态显示器
@@ -407,6 +417,20 @@ return function(Defs, Hp)
     putM("Int_GPanel", T, XP, rotP, kG)
     knobsBuild(b, T, placer(XP, rotP, kG), IFV_PANEL, false)
     b:led(T, CF(XP(V(2.680, 4.746, -2.633))), RGB(90, 255, 120), 0.007, "tis")
+    -- 炮长的综合瞄准具显示器（用户 11-24 发来的 M3 车内截图：目镜右下一块四周一圈方键的显示器，绿色热像、括号分划）：
+    --   夹在目镜和炮尾护栏之间（护栏已经收窄到 25 毫米炮的宽度），正对炮长的眼睛；上下两排键是屏幕自带的，左右各三个方键
+    local eyeG = gScope + V(0, 0.06, 0.26)
+    local dp = V(gScope.X - gs * 0.16, gScope.Y - 0.068, gScope.Z - 0.11)   -- 左边离目镜块、右边离护栏都留几毫米
+    local dcf = CFrame.lookAt(dp, eyeG)
+    local IW, IH, IB = 0.13, 0.10, 0.018
+    local ibas = b:screen(T, IW, IH, dcf, "ibas", { keys = { top = { "FOV", "POL", "GAIN", "LVL", "SYM" }, bottom = { "TIS", "LRF", "F/L", "RET", "TEST" } },
+      bezel = IB, lightK = 0.25, lightColor = RGB(110, 230, 130) })
+    for i, nm in ipairs({ "ROF", "WPN", "ARM" }) do   -- 人看过去的左边是屏幕的 +X
+      b:keyCap(T, ibas, dcf * CF(IW / 2 + IB * 0.6, 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "left", idx = i })
+    end
+    for i, nm in ipairs({ "BSGT", "STAB", "BRT" }) do
+      b:keyCap(T, ibas, dcf * CF(-(IW / 2 + IB * 0.6), 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "right", idx = i })
+    end
     -- 车长：延伸目镜（看炮长综合瞄准具的画面）
     --   人（连目镜、座椅）往炮那边挪 6 厘米：右前方给两块屏的机壳腾地方，不然机壳贴着炮塔壁也躲不开目镜的护额垫
     local kC = 0.8
@@ -415,6 +439,22 @@ return function(Defs, Hp)
     local XC = mapper(PT.gpse, cScope, CF(), kC)
     putM("Int_Gpse", T, XC, CF(), kC)
     b:lens(T, CF(XC(PT.gpse + V(0, 0, -0.06))), 0.055 * kC, { face = 1 })
+    -- 延伸目镜两边（用户 11-24 的 M3 截图）：右边一个圆表盘，左边一块小面板——两个红灯（电源、热像），两个旋钮（视野选择、极性，跟炮长那边同步）
+    local gpE = XC(PT.gpse)
+    local dialC = gpE + V(0.115, -0.025, -0.06)
+    b:cylZ(T, 0.03, 0.078, CF(dialC), RGB(30, 32, 34), MAT.Metal)
+    b:cylZ(T, 0.004, 0.062, CF(dialC + V(0, 0, 0.016)), RGB(10, 12, 12), MAT.Glass)
+    b:box(T, V(0.003, 0.026, 0.002), CF(dialC + V(0, 0.005, 0.019)) * ANG(0, 0, rad(-35)), RGB(232, 232, 226))
+    local pc = gpE + V(-0.125, -0.03, -0.06)
+    b:box(T, V(0.07, 0.09, 0.022), CF(pc), RGB(34, 36, 36), MAT.SmoothPlastic)
+    b:led(T, CF(pc + V(-0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008)
+    b:led(T, CF(pc + V(0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008, "tis")
+    for i, K in ipairs({
+      { id = "CVIS", dia = 0.024, style = "round", n = 2, step = 60, on = "thermalSet", sync = "vis", label = { "延伸目镜：视野选择", "SIGHT EXT  DAY / TIS" }, pos = { "昼光", "热像" }, posEn = { "DAY", "TIS" } },
+      { id = "CPOL", dia = 0.024, style = "bar", n = 2, step = 60, on = "polaritySet", sync = "pol", label = { "延伸目镜：极性", "SIGHT EXT  POLARITY" }, pos = { "白热", "黑热" }, posEn = { "WHT", "BLK" } } }) do
+      local kp = pc + V((i == 1) and -0.016 or 0.016, -0.012, 0.011)
+      control(b, T, CFrame.lookAt(kp, kp + V(0, 0, 1)), K, false)
+    end
     -- 两块屏的机壳：车长右前方（看过去偏右 52°）、比眼睛略低，转过来对着车长——
     --   延伸目镜就在眼前（护额垫左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；屏的左边要在 ~30° 以外；外边贴着炮塔壁（壁内面 tw − 0.02）
     local cE = cScope + V(0, 0.05, 0.24)   -- 车长位的眼睛（InteriorAFV 的 stations.commander.eye）
