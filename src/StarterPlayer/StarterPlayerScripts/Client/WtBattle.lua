@@ -231,7 +231,9 @@ function WtBattle.init(G)
       local free = w.free and S.phase == "battle"
       chipT.Text = string.format('<font color="%s">%s</font>   ·   %s%s', hex(GOLD), T("wtm.sp", w.sp or 0), T("wtm.lineup", #(w.order or {}), w.max or 5),
         free and ("   ·   " .. T("wtm.firstFree")) or "")
-      chip.Size = UD2(0, math.clamp(chipT.TextBounds.X + 24, 200, 460), 0, 26)
+      local okB, tw = pcall(function() return chipT.TextBounds.X end)   -- 测试用的模拟器里没有 TextBounds：按字数估
+      if not okB then tw = (utf8.len((string.gsub(chipT.Text, "<[^>]+>", ""))) or 30) * 8 end
+      chip.Size = UD2(0, math.clamp(tw + 24, 200, 460), 0, 26)
       gainT.Position = UD2(0.5, 0, 0, y + 30)
     end
     gainT.Visible = show and t < gainUntil

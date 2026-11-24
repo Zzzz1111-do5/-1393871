@@ -27,7 +27,7 @@ G.pushOne(P)
 R.run(1)
 local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
-T.actAs(me, "deploy", "rifle", "camp")
+T.actAs(me, "deploy", "rifle", "base")   -- 11-24 B：只在自己主基地出生（base / baseAir）
 R.run(1.5)
 local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 local Map = G.Map
