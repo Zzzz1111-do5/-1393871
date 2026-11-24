@@ -44,7 +44,11 @@
      乘客藏进车里跟车走、不能开枪、F / E / 空格从车尾下车、车被打爆乘客阵亡；vehState 多了 pass / seats / np / drv；
      客户端 Ride.lua（乘客镜头、提示、手机下车键），Drive.lua 见 vs.pass 不接管，FortView 的上车键在有人开时写「坐后面 n / m」；测试 ia_ride.luau。
      **谁改 enterVeh / unseat 注意乘客**（e.pass 里的人 P.vehicle 也是这辆车，但不是 e.driver）
-  ③ 飞机舱门 / 座舱盖、坦克舱盖开合动画，进载具的动画；
+  ③ **已做**：坦克舱盖、步战车尾门 / 跳板照真车开合（ReplicatedStorage/HatchDefs.lua：每个原模型量好的位置、动法、转轴；客户端 Hatch.lua），
+     上车动画（坦克：走过去、爬上车体、钻进驾驶员舱口；步战车：顺着跳板 / 跨尾门进去；飞机：座舱左边靠登机梯、爬上去坐进座舱，直升机踩踏板钻舱门），
+     车长探出舱口的 R15 小人（开炮 / 挨打缩回去）。战斗机座舱盖原来就有动画（AirModels 的 canopy，停机打开）；A-10、歼-15T、直升机的原模型座舱玻璃和
+     风挡 / 机身是一整块，掀不起来（要重切模型，没做）。测试 tools/test/ia_hatch.luau；预览 tools/mock/hatch_view.cjs。
+     **改 View.lua 的 v.hullF / v.tF / v.recoil / v.shots、Armor / Air 的 seat（人挪到车根零件上）注意 Hatch.lua 在读**
   ④ 坦克车组小人（车外看得见：车长探出舱口等）、玩家第一人称是炮手但能开车（B 的车内饰那边 E 先读再动，改 Interior* 前在这里写一笔）；
   ⑤ 各兵种配不同武器、改枪；⑥ 往战雷做（乘员 / 模块伤害、命中回放之类，A 在做飞机那块的照旧归 A）。
 

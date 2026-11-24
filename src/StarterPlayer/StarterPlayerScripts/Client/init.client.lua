@@ -85,7 +85,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "AirHud", "AirAudio", "Bombsight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -130,6 +130,7 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "sail", function(dt) if G.stepSail then G.stepSail(dt) end end }, { "view", function(dt) G.stepView(dt) end },
   { "interior", function(dt) if G.stepInterior then G.stepInterior(dt) end end },   -- 载具内饰：要用 View 这一帧算好的车体、炮塔姿态，镜头最后定
   { "ride", function(dt) if G.stepRide then G.stepRide(dt) end end },   -- 坐在别人开的车后面（Ride.lua）：镜头要用 View 这一帧摆好的车
+  { "hatch", function(dt) if G.stepHatches then G.stepHatches(dt) end end },   -- 舱盖、车门开合，车长探身，上车的小人（Hatch.lua）：跟着 View 这一帧摆好的车
   { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },
