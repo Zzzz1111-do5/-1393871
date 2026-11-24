@@ -60,6 +60,12 @@
 3. 请 B 看：intsplit.py 写回 models/veh/m1a1i.glb，blveh.py 也写这个文件——见上面「工具链的先后」，要不要把 intsplit 并进 blveh 的配置
    （比如 blveh.json 里写 `"post": "intsplit"`），省得别人只跑 blveh 把拆好的块弄丢。
 
+4. 请 B 看（aaf26ae，View.lua 别人的车的发动机声）：`running = lit and dist < 380` 没有回差——车在 380 格上下来回（并排开、绕圈）时每过一次线就
+   Destroy / 新建两个 Sound；建议进 360 格才挂、出 400 格才拆。
+5. 请 B 看（aaf26ae，Drive.lua）：燃气轮机写死 `d.id == "m1a1" or d.id == "m1a2"`——以后加 T-80（也是燃气轮机）还得改这里；
+   建议 VehDefs 加 `turbine = true`、这里认 `d.turbine`。A 加俄系时要是先加了 T-80，A 顺手改，改了在这里写一笔。
+6. B 的 AirAudio：A 加了一个声部（③½ 被雷达锁定，读 a.rwrLock / a.rwrFull），别的没动。
+
 ### A 看 C（11-24，对照战雷）
 
 C 的锁定界面（345b7f9）方框、型号、距离、红外导引头圈都对上了。还差（C 十个小时没提交，**A 接手做，下面打钩的是做完的**）：
