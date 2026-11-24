@@ -475,6 +475,7 @@ function Air.init(G)
     end
     return false
   end
+  G.airGuideMissile = guideMissile   -- 地面车的地空导弹也按这套飞（Armor.lua：铠甲-S1 的 57E6）
   -- 炸弹：真实重力；制导炸弹算还要多久落地，往目标方向改水平速度（带翼的滑得远）
   local function guideBomb(s, dt)
     s.age += dt

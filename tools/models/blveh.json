@@ -906,5 +906,77 @@
     },
     "gunBack": 0.2,
     "tur": [0.01, 0.363, 0.2]
+  },
+  "pantsir": {
+    "_说明": "铠甲-S1 弹炮合一防空车（SanderWolf_，Sketchfab 3cb67b0bae10418190e7ce32142231e4，CC-BY-4.0，作者自己建的：KamAZ-6560 8×8 底盘 + 后部战斗模块，一种材质）；用户 11-24「找俄系」。原模型车头朝 −Z（不用转），全长 16.28 → 真车约 10.3 米（× 0.633）；战斗模块整块在 Object_13（驾驶室顶上两小块也在里面，拆回车体），12 个导弹筒、两门 2A38M 的炮管和炮尾按框挑出来跟炮一起俯仰；后三排车轮左右两个在一块里，按 x 拆开，8 个轮子各自一组（前两排转向）；顶上的搜索雷达天线单独成块（label Radar、k radar：游戏里一直转）",
+    "uid": "3cb67b0bae10418190e7ce32142231e4",
+    "credit": "铠甲-S1 防空车：Pantsir-S1，作者 SanderWolf_（https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+    "title": "铠甲-S1 防空车",
+    "creditEn": "This work is based on \"Pantsir-S1\" (https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4) by SanderWolf_ licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按框把战斗模块（炮塔）和导弹筒 / 炮挑出来、车轮左右拆开、减面",
+    "alias": ["pantsir"],
+    "rotZ": 0,
+    "scale": 0.633,
+    "texMax": 1024,
+    "dedupe": true,
+    "split": [
+      {
+        "from": ["Object_13"],
+        "to": "Body",
+        "box": [-3, 3, 2.0, 4.2, -3, 1.5]
+      },
+      {
+        "from": ["Object_13"],
+        "to": "Turret",
+        "label": "Radar",
+        "box": [-1.3, 1.3, 6.05, 8.1, 10.2, 11.6]
+      },
+      {
+        "from": ["Object_13"],
+        "to": "Gun",
+        "box": [-2.35, 2.35, 4.38, 5.6, 4.3, 10.5]
+      },
+      {
+        "from": ["Object_6"],
+        "to": "L",
+        "box": [-2.0, 0.0, -0.2, 2.2, 1.7, 4.0]
+      },
+      {
+        "from": ["Object_5"],
+        "to": "L",
+        "box": [-2.0, 0.0, -0.2, 2.2, 7.8, 10.1]
+      },
+      {
+        "from": ["Object_4"],
+        "to": "L",
+        "box": [-2.0, 0.0, -0.2, 2.2, 10.0, 12.3]
+      }
+    ],
+    "groups": {
+      "Turret": ["Object_13"]
+    },
+    "wheels": [["Object_12"], ["Object_7"], ["Object_6.L"], ["Object_6"], ["Object_5.L"], ["Object_5"], ["Object_4.L"], ["Object_4"]],
+    "decimate": {
+      "Object_4": 0.35,
+      "Object_5": 0.35,
+      "Object_6": 0.35,
+      "Object_7": 0.35,
+      "Object_12": 0.35,
+      "Object_10": 0.65,
+      "Object_8": 0.6,
+      "Object_3": 0.5,
+      "Object_2": 0.5,
+      "Object_9": 0.5,
+      "Object_11": 0.5,
+      "Object_14": 0.6
+    },
+    "tur": [0.0, 4.25, 9.0],
+    "gun": [0.0, 5.0, 9.3],
+    "points": {
+      "sight": [0.0, 6.0, 7.45]
+    },
+    "kinds": {
+      "Radar": "radar"
+    }
   }
 }

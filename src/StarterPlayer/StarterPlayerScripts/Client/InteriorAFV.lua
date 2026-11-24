@@ -709,6 +709,7 @@ return function(Defs, Hp)
   Defs.m1117 = cab({ cn = US, seats = 2, armored = true, gunnerTurret = true, hood = 1.10 })
   Defs.pgl625 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })
   Defs.ld2000 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })
+  Defs.pantsir = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })   -- 铠甲-S1（用户 11-24 找的俄系）：KamAZ 驾驶室，平头、雷达屏控制台
   Defs.cram = cab({ cn = US, seats = 2, console = "ppi", hood = 0.30 })
   Defs.patriot = cab({ cn = US, seats = 2, console = "ppi", hood = 0.30 })
   Defs.m270 = cab({ cn = US, seats = 2, console = "afcs", armored = true, hood = 0.25 })

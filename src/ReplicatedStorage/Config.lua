@@ -185,7 +185,7 @@ Config.Vehicles = {
   atk = {
     tank = { "ztz96", "ztz99a", "t90m" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
     apc = { "ztd05", "zbd05", "zsl92b", "ptl02", "bmp3" },
-    aa = { "pgz07", "pgl625", "ld2000" },
+    aa = { "pgz07", "pgl625", "ld2000", "pantsir" },
     arty = { "plz07" },
     heli = { "z10", "z20" },
     jet = { "j15t", "j35", "j20", "j36", "j16", "j11", "j10", "h6k", "gj11", "gj2" },   -- 歼-50 11-22 删掉了（用户：j50 删掉）
@@ -231,7 +231,7 @@ Config.Economy = {
     -- 装甲车
     ztd05 = 0, m1117 = 0, hmmwv = 0, zsl92b = 600, jltv = 600, zbd05 = 900, stryker = 1000, ptl02 = 1200, m2a3 = 1200, m1150 = 1500, bmp3 = 1300,
     -- 防空
-    pgz07 = 0, m163 = 0, pgl625 = 1200, mshorad = 1500, ld2000 = 1800, cram = 1800, patriot = 3500,
+    pgz07 = 0, m163 = 0, pgl625 = 1200, mshorad = 1500, ld2000 = 1800, cram = 1800, pantsir = 2600, patriot = 3500,
     -- 火炮
     plz07 = 0, m109a7 = 0, m270 = 2500,
     -- 直升机

@@ -234,6 +234,8 @@ function VehModels.build(d, team, mods)
           table.insert(carve.glass, mp)
         elseif p.k == "inside" then
           table.insert(carve.inside, mp)
+        elseif p.k == "radar" then   -- 原模型拆出来的搜索雷达天线（铠甲-S1，blveh.json 的 label Radar）：View.lua 让带 Radar 的块一直转
+          mp:SetAttribute("Radar", true)
         end
         mp.Parent = m
         table.insert(parts, { mp, grp, off, wi })

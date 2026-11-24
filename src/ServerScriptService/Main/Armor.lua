@@ -11,6 +11,7 @@ function Armor.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local FD = require(RS:WaitForChild("FortDefs"))
   local BAL = require(RS:WaitForChild("Ballistics"))
+  local AD = require(RS:WaitForChild("AirDefs"))   -- 地空导弹（铠甲-S1 的 57E6）的飞行参数、外形
   -- 坦克炮按弹种的一份武器表（伤害倍数、爆炸半径按弹种改；Ballistics.AMMO 的 vs / splash）
   local ammoW = {}
   local function weaponOf(wid, w, key)
@@ -474,6 +475,19 @@ function Armor.init(G)
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
+    elseif w.kind == "sam" then
+      -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），
+      --   从炮两边的发射筒出去（左右轮流），按飞机导弹那套导引追（Air.lua 的 G.airGuideMissile，飞行参数 AirDefs.W）；被打的那架响导弹来袭告警
+      local tg = (type(msg) == "table" and type(msg.tgt) == "string") and G.entById[msg.tgt] or nil
+      local aw = AD.W[wid]
+      if not tg or not tg.alive or not tg.air or tg.team == e.team or not aw or not G.airGuideMissile then return end
+      if (tg.root.CFrame.Position - mz.Position).Magnitude > (w.range or 6000) then G.msg(P.pl, "bad", "ui.outOfRange") return end
+      e.samSide = -(e.samSide or 1)
+      local lp = (mz * CF(e.samSide * 1.3, 0.2, 2.0)).Position
+      local sh = G.launch({ kind = "missile", pos = lp, vel = gdir * 80 + V(0, 12, 0), w = aw, src = S, ignore = { e.model, P.char }, life = aw.life or 13,
+        step = G.airGuideMissile, age = 0, tgt = tg, tgId = tg.id, byEnt = e.id })
+      if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
+      G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
     elseif w.kind == "arty" then
       if typeof(aim) ~= "Vector3" then return end
       local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)

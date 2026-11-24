@@ -1328,9 +1328,20 @@ function Drive.init(G)
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
+    -- 地空导弹（铠甲-S1 的 57E6）：要先用防空火控 Q 雷达锁住一架飞机（AaFcs.lua），锁住的那架就是目标
+    local samTgt = nil
+    if w.kind == "sam" then
+      local fs = G.aaFcsState and G.aaFcsState()
+      samTgt = fs and fs.lockId
+      if not samTgt then
+        st.next[wid] = t + 0.4
+        if G.toast then G.toast(T("veh.samNeedLock"), "info") end
+        return
+      end
+    end
     -- 开火这一刻的炮塔、炮管、机枪塔角度一起发过去：服务器按它摆好炮管再算炮口（用户：弹道顺着枪管和炮管、开火位置和枪口对上）
     G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp,
-      am = BAL.GUN[wid] and st.fcs.am or nil })   -- 坦克炮：这一发是什么弹（服务器按它的初速、阻力打出去）
+      am = BAL.GUN[wid] and st.fcs.am or nil, tgt = samTgt })   -- am 坦克炮这一发是什么弹（服务器按它的初速、阻力打出去）；tgt 地空导弹的目标
     if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
       local dir = mz.LookVector
       local ex = { G.viewFolder, ownBox, st.em }
@@ -1593,11 +1604,13 @@ function Drive.init(G)
     st.aimNoDrop = nil
     do
       local wa = VD.W[weaponId() or ""]
-      if d.cat == "aa" and wa and wa.kind == "shell" and d.turret and d.gun and G.aaFcs then
+      if d.cat == "aa" and wa and (wa.kind == "shell" or wa.kind == "sam") and d.turret and d.gun and G.aaFcs then
         local base = st.root * CF(0, -d.H / 2, 0)
         local piv = (base * CF(d.turret.pivot) * CF(d.gun.pivot)).Position
         local gl = VD.gunCF(d, base, st.ty, st.gp).LookVector
-        local r = G.aaFcs({ origin = piv, speed = wa.speed, g = workspace.Gravity * (wa.drop or 0.55), range = wa.range or 2000,
+        -- 地空导弹（铠甲-S1）：导弹自己追，火控不算提前量（当成飞得极快、不下坠的弹：炮塔对着飞机），Q 锁住的那架就是导弹的目标
+        local sam = wa.kind == "sam"
+        local r = G.aaFcs({ origin = piv, speed = sam and 1e6 or wa.speed, g = sam and 0 or workspace.Gravity * (wa.drop or 0.55), range = wa.range or 2000,
           look = cam.CFrame.LookVector, side = me:GetAttribute("Side"), hullYaw = st.yaw, gunYaw = math.atan2(-gl.X, -gl.Z) })
         if r.aimPt then st.aimPt, st.aimNoDrop = r.aimPt, true end
       end

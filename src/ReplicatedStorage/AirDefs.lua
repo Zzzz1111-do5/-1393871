@@ -49,6 +49,11 @@ AirDefs.W = {
   aim92 = { kind = "aam", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 4.5, d = 0.2, fin = 0.5 } },
 
+  -- 铠甲-S1 的 57E6 地空导弹（地面车发射；车上的弹药数在 VehDefs.W.s57e6，服务器 Armor.lua 按这里的速度、转弯飞；客户端照 shape 画）：
+  --   弹长 3.2 米、助推器直径 0.17 米，两级、无线电指令制导（kind sam：热诱弹不骗它）
+  s57e6 = { kind = "sam", dmg = 520, splash = 18, speed = 900, range = 6000, turn = 50, burn = 5, life = 13, vs = VS_AAM,
+    shape = { L = 9.0, d = 0.48, fin = 0.8 } },
+
   akd10 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },
   agm114 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,

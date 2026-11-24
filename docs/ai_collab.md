@@ -25,6 +25,10 @@
 
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
+  - 铠甲-S1（pantsir，SanderWolf_ 的原模型）：车辆新武器种类 **sam**（地面车的地空导弹）——客户端 Drive.lua 要 AaFcs 的 Q 锁定（lockId）才发、消息带 tgt；
+    服务器 Armor.lua fire 的 sam 分支按 Air.lua 导出的 `G.airGuideMissile` 飞，飞行参数 / 外形在 AirDefs.W.s57e6（kind sam：热诱弹不骗），车上弹药在 VehDefs.W.s57e6。
+    以后加道尔-M2 之类直接用 kind = "sam"。blveh.py：split 加 label（拆出来单独成块、组不变；铠甲的搜索雷达 k = radar，VehModels 打 Radar 属性让它转）；
+    装箱改成按原块装（原来全合成一块再按连通块拆，零件多的车 Blender 要跑十几分钟）
   - PvE 关卡 8 → 16 关（Config.Pve 每关加 ai 编成：def / atk 的 max、tank、ids；AIVeh.lua 照它挑车），每关简报 pve.b<n>，关卡页可滚动；测试 tools/mock/pve_ai.lua
   - blveh.py 修了：算转轴前没刷新视图层，matrix_world 是旧的（以前没给 tur 的车，炮塔转轴都算错了）；拆出来的块照原块减面
   - 候选（都查过描述、不是扒的）：BMP-3（lampilamp / scout.）、BTR-82A（cloudhub）、Pantsir-S1（SanderWolf_）、Tor-M2（Chenzoss）、TOS-1A（L_elo）、BMPT（maks_modeller）；飞机 Su-35（mansoorsajidp）、Su-57（andertan）、Ka-52（maddex88）、Mi-28（cloudhub）
