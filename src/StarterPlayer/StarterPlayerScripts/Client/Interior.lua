@@ -44,17 +44,8 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   G.interiorShowCrew = function(on) SHOW_CREW = on == true end   -- 测试、拍片用
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m1a2", ztz99a = "ztz99a", ztz96 = "ztz99a" }   -- M10 布克轻坦：火控、乘员位照 M1A2（四人、手动装填）
-  -- 用原模型自带车内的（M1A1：tools/models/blveh.py 转的 m1a1i，块的 k = "int"）：那个模型没导入（Studio 里还是旧的 m1a1）就照旧借这型的内饰
-  local NEED_INT = { m1a1 = "m1a2" }
-  local IMETA = nil   -- ImportedMeta（原模型的元数据：src 换算矩阵、量好的点）
-  local function imeta(key)
-    if IMETA == nil then
-      local ok, r = pcall(function() return require(RS:WaitForChild("ImportedMeta", 3)) end)
-      IMETA = (ok and type(r) == "table") and r or false
-    end
-    return IMETA and IMETA.m and IMETA.m[key] or nil
-  end
+  -- M1A1 / M1A2：M1A1 原模型自带的炮塔内饰（InteriorAbrams.lua：没导入拆好的 m1a1i 就照旧零件拼的）；M10 布克借零件拼的 M1A2（四人、手动装填）
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a" }
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -143,9 +134,20 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local v = G.viewById and G.viewById(c.id)
     if not v or not v.M then return end
     local cv = c.carved and v.M.carve
+    -- 用原模型自带炮塔内饰的（spec.crewBox，InteriorAbrams）：坐在车里时外模型的炮、车体、车轮不画（从炮塔里看不见，炮尾那截还伸进乘员舱），
+    --   炮塔的块中心在乘员舱的框里的也不画（M1A2 外模型炮塔里面那块实心的「炮塔底」、炮盾后面）；炮塔顶、舱盖、指挥塔照画——内饰顶上的开口从里面看是它们
+    local box = c.spec and c.spec.crewBox
+    local function cut(it)
+      if not box then return false end
+      local grp = it[2]
+      if grp == "gun" or grp == "hull" or grp == "wheel" then return true end
+      if grp ~= "turret" then return false end
+      local q = it[3].Position - box.c
+      return math.abs(q.X) < box.s.X / 2 and math.abs(q.Y) < box.s.Y / 2 and math.abs(q.Z) < box.s.Z / 2
+    end
     for _, it in ipairs(v.M.parts) do
       local p = it[1]
-      if p:IsA("BasePart") then p.LocalTransparencyModifier = (key == "all") and 1 or 0 end
+      if p:IsA("BasePart") then p.LocalTransparencyModifier = ((key == "all") or (key == "seat" and cut(it))) and 1 or 0 end
     end
     if cv then
       for _, p in ipairs(cv.inside) do p.LocalTransparencyModifier = (key == "off") and 0 or 1 end
@@ -186,8 +188,6 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
 
   local function build(st, v)
     local key = ALIAS[v.def.id] or v.def.id
-    local modelInt = v.M and v.M.carve and v.M.carve.model and v.M.imported and imeta(v.M.imported)   -- 原模型自带车内
-    if NEED_INT[key] and not (modelInt and Defs[key]) then key = NEED_INT[key] end
     local fn = Defs[key]
     if not fn then return nil end
     local m = Instance.new("Model")
@@ -197,7 +197,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     -- 挖了内腔的原车（重新导入过 carve.py 改过的 GLB）：内饰不画自己的车壳，按内腔摆（ctx.cav 查地板、顶、墙、窗户、乘员位）
     local piv0 = (v.M and v.M.tpiv) or (v.def.turret and v.def.turret.pivot) or Vector3.zero
     local cav = (v.M and v.M.carve and v.M.imported) and Cav.get(v.M.imported, piv0) or nil
-    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav, meta = modelInt or nil,
+    local ok, spec = pcall(fn, b, { def = v.def, piv = piv0, cav = cav,
       gpiv = (v.M and v.M.gpiv) or (v.def.gun and v.def.gun.pivot) or Vector3.zero })
     if not ok then
       m:Destroy()
@@ -236,9 +236,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
       spec.order = { spec.lock }
     end
-    -- carved：坐在乘员位上外壳照样画、显示 v.M.carve.cav——挖出来的内壁，或者原模型自带的车内（spec.modelInt：M1A1）
-    local carvedOk = cav ~= nil or (spec.modelInt == true and modelInt ~= nil)
-    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = carvedOk and spec.carved == true,
+    -- carved：坐在乘员位上外壳照样画——挖出来的内壁（v.M.carve.cav），或者用原模型自带车内的（spec.modelInt：M1A1 原模型的炮塔内饰，
+    --   InteriorAbrams.lua；外模型里伸进乘员舱的块照 spec.crewBox 不画，见 extHide）
+    local carvedOk = (cav ~= nil and spec.carved == true) or spec.modelInt == true
+    local c = { key = key, id = st.id, b = b, spec = spec, model = m, crew = {}, data = {}, plist = {}, clist = {}, carved = carvedOk,
       env = { Map = G.Map }, recoilT = 99, loaded = true, loadT = nil, door = { L = 0, R = 0 }, lastRecoil = 0, hp0 = nil,
       dty = 0, dgp = 0, lastTy = v.ty or 0, lastGp = v.gp or 0, hitT = 99, citvA = 0, stub = {} }
     for i, it in ipairs(b.parts) do c.plist[i] = it[1] end
@@ -812,8 +813,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     d.turretDeg, d.gunDeg = d.ty, d.gp   -- 火控计算机：方位、射角
     d.ammo = ammo and ((ammo[1] or 0) + (ammo[2] or 0)) or 0
     d.ammoName = wid and string.upper(tostring(wid)) or "--"
-    d.pol = (st.mode == 4) and "BLK" or "WHT"
-    d.zoomTxt = (st.zoom == 2) and "10X" or "3X"
+    d.pol = (st.mode == 4 or (st.mode ~= 3 and st.pol == "BLK")) and "BLK" or "WHT"
+    -- 视场：Drive 的倍率档（SEPv2 热像 3 / 6 / 13 / 25 / 50 倍……）
+    local Z, zi = nil, st.zoom or 1
+    if G.driveZooms then Z, zi = G.driveZooms() end
+    d.zoomFov = (Z and Z[zi or 1]) or ((st.zoom == 2) and 7 or 20)
+    d.zoomTxt = string.format("%dX", math.floor(70 / d.zoomFov + 0.5))
+    if d.zoomTxt == "4X" then d.zoomTxt = "3X" end   -- 默认两档（20°、7°）照旧叫 3X / 10X
     -- 热像的视线：驾驶员（车头）、主瞄准镜（炮）、独立热像仪（车长看的方向）、遥控武器站
     local hE = hullW * CF(V(0, 0.10, -2.4) * S)
     d.hullEye, d.hullF, d.hullR, d.hullU = basis(hE)
@@ -852,6 +858,18 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     d.fcsMan, d.fcsNoRet = fc and fc.man, fc and fc.noRet   -- 手动装定的距离、没回波
     d.fcsAim, d.fcsSE = st.fcsAim, st.fcsSE   -- 弹道计算机正在用的距离、飞行时间、超高角（弧度）
     d.sightMode, d.zoom = st.mode, st.zoom
+    -- 炮长面板上的开关（Drive 的火控状态）：激光首 / 末回波、多回波、保险，火控方式，稳定器，炮管热弯曲没修正的量，校炮偏差，战斗瞄准距离，
+    --   分划 / 符号亮度、分划照明、热像增益 / 电平；自检、炮口基准更新、车长热像仪测距的时刻
+    d.lrf, d.multi, d.arm = fc and fc.lrf or "LAST", fc and fc.multi or false, not (fc and fc.arm == false)
+    d.fcsMode = fc and fc.mode or 1
+    d.stab = st.stab ~= false
+    d.droopErr = fc and ((fc.droop or 0) - (fc.mrs or 0)) or 0
+    d.droop = fc and fc.droop or 0
+    d.bore = fc and fc.bore or { 0, 0 }
+    d.bsR = fc and fc.am and fc.bsR and fc.bsR[fc.am] or nil
+    d.retLvl, d.symLvl, d.retNight, d.thGain, d.thLevel = st.retLvl or 0, st.symLvl or 0, st.retNight == true, st.thGain or 2, st.thLevel or 2
+    d.bitT, d.mrsT = c.bitT, c.mrsT
+    d.citvRange, d.citvRT = c.citvR, c.citvRT
     d.cant = -math.deg(math.asin(clamp(hullW.RightVector.Y, -1, 1)))   -- 车体侧倾（耳轴倾斜）：右边低是正
     d.ammoAll = G.S and G.S.veh and G.S.veh.ammo or {}
     d.ammoKind = c.ammoKind
@@ -894,11 +912,15 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     end
     function A.polarity()
       local st = G.drive
-      if st then st.mode = (st.mode == 4) and 3 or 4 end
+      if not st then return end
+      st.mode = (st.mode == 4) and 3 or 4
+      st.pol = (st.mode == 4) and "BLK" or "WHT"
+      if G.driveApplySight then G.driveApplySight() end
     end
-    function A.zoom()
+    function A.zoom()   -- 视场下一档（SEPv2 热像 3 / 6 / 13 / 25 / 50 倍，昼光 3 / 10 倍；别的车两档）
       local st = G.drive
-      if st then st.zoom = (st.zoom == 2) and 1 or 2 end
+      if not st then return end
+      if G.driveZoomStep then G.driveZoomStep() else st.zoom = (st.zoom == 2) and 1 or 2 end
     end
     -- 昼光 / 热像（M1A1 主瞄准镜的视野选择：白天的光学通道、热像仪通道）：从昼光、微光换到热像（白热），热像换回昼光；下次开镜生效
     function A.thermal()
@@ -909,7 +931,91 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     end
     function A.lase() if G.driveLase then G.driveLase() end end   -- 激光测距（同 R 键：瞄准线打到哪、多远）
     function A.range(m) if G.driveRange then G.driveRange(m) end end   -- 手动装定距离（米；nil 回到战斗瞄准距离）：弹道计算机就按它算超高角
-    function A.fcsMode(k) c.fcsMode = k end
+    function A.fcsMode(k)   -- 火控方式 1 正常 / 2 应急 / 3 手动（Drive.lua：应急没有提前量，手动没有弹道计算机、没有稳定、手摇）
+      c.fcsMode = k
+      if G.driveSetFcs then G.driveSetFcs(k) end
+    end
+    ---------------- 炮长面板上的旋钮、开关、按钮（InteriorAbrams 的 KNOBS：B:mov 的 on）——都接到 Drive.lua 的火控上
+    local AMMO4 = { "SABOT", "HEAT", "MPAT", "CAN" }
+    local function set(f, v) if G.driveSet then G.driveSet(f, v) end end
+    function A.reticle(i) set("retLvl", i) end          -- 分划亮度 0 最亮 … 3 最暗
+    function A.symb(i) set("symLvl", i) end             -- 符号亮度 0 最亮 … 3 关
+    function A.gain(i) set("thGain", i) end             -- 热像增益（对比度）0～4
+    function A.level(i) set("thLevel", i) end           -- 热像电平（亮度）0～4
+    function A.retNight(i) set("retNight", i == 1) end  -- 分划照明：白天黑分划 / 夜里红分划
+    function A.stab(i) set("stab", i == 0) end          -- 稳定器开 / 关
+    function A.lrfArm(i) set("arm", i == 0) end         -- 激光测距机待命 / 保险
+    function A.lrf(i) set("lrf", (i == 1) and "FIRST" or "LAST") end   -- 末回波 / 首回波
+    function A.lrfToggle()
+      local st = G.drive
+      if st then set("lrf", (st.fcs.lrf == "FIRST") and "LAST" or "FIRST") end
+    end
+    function A.polaritySet(i)   -- 极性开关：白热 / 黑热（昼光通道开着时先记下，换热像时用）
+      local st = G.drive
+      if not st then return end
+      st.pol = (i == 1) and "BLK" or "WHT"
+      if st.mode == 3 or st.mode == 4 then st.mode = (i == 1) and 4 or 3 end
+      if G.driveApplySight then G.driveApplySight() end
+    end
+    function A.thermalSet(i)   -- 视野选择：昼光 / 热像（极性照极性开关）
+      local st = G.drive
+      if not st then return end
+      st.mode = (i == 1) and ((st.pol == "BLK") and 4 or 3) or 1
+      if G.sightPref then G.sightPref[(G.isNight and G.isNight()) and "night" or "day"] = st.mode end
+      if G.driveApplySight then G.driveApplySight() end
+    end
+    function A.zoomSet() A.zoom() end
+    function A.ammoIdx(i) A.ammo(AMMO4[(i or 0) + 1] or "SABOT") end
+    function A.fcsSet(i) A.fcsMode((i or 0) + 1) end
+    function A.battlesight() if G.driveBattlesight then G.driveBattlesight() end end
+    function A.mrs()
+      if G.driveMrs then G.driveMrs() end
+      c.mrsT = os.clock()
+    end
+    function A.bore(daz, del) if G.driveBore then G.driveBore(daz, del) end end   -- 校炮偏差（密位）；都给 nil 归零
+    function A.bsRange(key, m) if G.driveBsRange then G.driveBsRange(key, m) end end
+    function A.bit()   -- 火控自检：计算机 / 炮长控制显示面板跑一遍自检页，所有指示灯亮一遍
+      c.bitT = os.clock()
+      c.lampT = os.clock() + 3
+    end
+    -- 车长热像仪激光测距 + 敌情报告：测到的距离写在 CITV 屏上；打到的那一点附近看得见的敌人标给全队（Weapons.lua 的 ACT.vspot）
+    function A.citvLase()
+      local d = c.data
+      if not (d.citvEye and d.citvF) then return end
+      local rp = RaycastParams.new()
+      rp.FilterType = Enum.RaycastFilterType.Exclude
+      local ex = { c.model }
+      if G.viewFolder then table.insert(ex, G.viewFolder) end
+      local v = G.viewById and G.viewById(c.id)
+      if v and v.model then table.insert(ex, v.model) end
+      rp.FilterDescendantsInstances = ex
+      local res = workspace:Raycast(d.citvEye, d.citvF * (5000 * S), rp)
+      c.citvRT = os.clock()
+      if res then
+        local m = (res.Position - d.citvEye).Magnitude / S
+        c.citvR = (m >= 50) and math.floor(m / 5 + 0.5) * 5 or nil
+        local st = G.drive
+        local from = (st and st.root and st.root.Position) or d.citvEye
+        if c.citvR then pcall(function() G.R.Act:FireServer("vspot", from, res.Position) end) end
+      else
+        c.citvR = nil
+      end
+      if G.sfx then pcall(G.sfx, "uiClick") end
+    end
+    -- 可动部件的档位跟着系统状态（Interior 的 stepMovs 每帧问一次）
+    function A.sync()
+      local st = G.drive
+      if not st or not st.fcs then return nil end
+      local f = st.fcs
+      local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
+      local sym = f.am and BAL.AMMO[f.am] and BAL.AMMO[f.am].sym
+      local ai = 0
+      for i, a in ipairs(AMMO4) do if a == sym then ai = i - 1 end end
+      local zi = st.zoom or 1
+      return { pol = ((st.mode == 4) or (st.mode ~= 3 and st.pol == "BLK")) and 1 or 0, zoom = zi - 1, vis = ((st.mode or 1) >= 3) and 1 or 0,
+        ammo = ai, lrf = (f.lrf == "FIRST") and 1 or 0, fcs = (f.mode or 1) - 1, stab = (st.stab == false) and 1 or 0,
+        arm = (f.arm == false) and 1 or 0, retn = st.retNight and 1 or 0 }
+    end
     function A.engine(on)
       G.interiorEngineOff = not on
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
@@ -937,7 +1043,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   local function pickKey(c)
     local o = cam.CFrame.Position
     local dir = cam.CFrame.LookVector
-    local best, bs = nil, math.huge
+    local best, bs, bt = nil, math.huge, math.huge
     for _, k in ipairs(c.b.softkeys) do
       local cf, sz = k.part.CFrame, k.part.Size * 0.5
       local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
@@ -948,12 +1054,121 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           local mx, my = sz.X + 0.006 * S, sz.Y + 0.010 * S
           if math.abs(px) <= mx and math.abs(py) <= my then
             local score = (px / mx) ^ 2 + (py / my) ^ 2
-            if score < bs then best, bs = k, score end
+            if score < bs then best, bs, bt = k, score, t end
           end
         end
       end
     end
-    return best
+    return best, bt
+  end
+  -- 可动部件（InteriorKit 的 B:mov：旋钮、拨动开关、按钮、握把上的按钮……用户 11-22「所有可动部件都要能动，我准心移动到哪点一下就能动」；
+  --   11-24「按钮什么的实现功能」）：视线穿过它的点选盒（hit：组里的盒子，米）就算对准，挑最近的
+  local function movBox(mv)
+    return mv.g.world * Kit.toS(mv.hit.cf), mv.hit.size * (S / 2)
+  end
+  local function pickMov(c)
+    local o = cam.CFrame.Position
+    local dir = cam.CFrame.LookVector
+    local best, bt = nil, math.huge
+    for _, mv in ipairs(c.b.movs or {}) do
+      if mv.hit and mv.g.world then
+        local cf, h = movBox(mv)
+        local lo, ld = cf:PointToObjectSpace(o), cf:VectorToObjectSpace(dir)
+        local t0, t1 = -math.huge, math.huge
+        local ok = true
+        for _, ax in ipairs({ "X", "Y", "Z" }) do
+          local a, dd, e = lo[ax], ld[ax], h[ax]
+          if math.abs(dd) < 1e-6 then
+            if math.abs(a) > e then ok = false break end
+          else
+            local ta, tb = (-e - a) / dd, (e - a) / dd
+            if ta > tb then ta, tb = tb, ta end
+            t0, t1 = math.max(t0, ta), math.min(t1, tb)
+            if t0 > t1 then ok = false break end
+          end
+        end
+        if ok and t1 > 0 and t0 < 1.6 * S and t0 < bt then best, bt = mv, math.max(t0, 0) end
+      end
+    end
+    return best, bt
+  end
+  -- 可动部件的零件（高亮用）：在它的组或者子组里的
+  local function movParts(c, mv)
+    if mv.parts then return mv.parts end
+    mv.parts = {}
+    for _, it in ipairs(c.b.parts) do
+      local g = it[2]
+      while g do
+        if g == mv.g or (mv.g.parent and g == mv.g.parent and mv.kind == "hinge") then table.insert(mv.parts, it[1]) break end
+        g = g.parent
+      end
+    end
+    return mv.parts
+  end
+  local function movHover(c, mv, on)
+    for _, p in ipairs(movParts(c, mv)) do
+      if on then
+        p:SetAttribute("C0", p:GetAttribute("C0") or p.Color)
+        p.Color = RGB(255, 190, 60)
+      elseif p:GetAttribute("C0") then
+        p.Color = p:GetAttribute("C0")
+        p:SetAttribute("C0", nil)
+      end
+    end
+  end
+  local function movText(mv)
+    local lb = mv.label and T(mv.label[1], mv.label[2]) or T("开关", "switch")
+    local names = mv.posNames
+    if names and names[mv.state + 1] then lb = lb .. "：" .. names[mv.state + 1] end
+    return lb
+  end
+  -- 按一下：转一档 / 拨一下 / 按下去，再调它的动作（act[on](新的档位, 这一件)）
+  local function movPress(c, mv)
+    if mv.kind == "knob" then mv.state = (mv.state + 1) % math.max(1, mv.n or 2)
+    elseif mv.kind == "hinge" or mv.kind == "slide" then mv.state = 1 - mv.state
+    elseif mv.kind == "push" then mv.pt = 0 end
+    mv.held = os.clock() + 0.6   -- 刚拨过：这一会儿不按系统状态回拨（动作还没生效的那一帧）
+    if G.sfx then pcall(G.sfx, (mv.kind == "push") and "uiClick" or "dry") end
+    local f = mv.on and c.env.act[mv.on]
+    if f then
+      local ok, err = pcall(f, mv.state, mv)
+      if not ok then warn("[内饰] " .. tostring(mv.on) .. "：" .. tostring(err)) end
+    end
+    for _, s2 in ipairs(c.b.screens) do s2.nextT = 0 end
+  end
+  -- 每帧：档位跟着系统状态（同一个功能别处也能改：V 键换热像、面板上的键……）、动画走到档位上
+  local function stepMovs(c, dt)
+    local list = c.b.movs
+    if not list then return end
+    local sy = c.env.act.sync and c.env.act.sync() or nil
+    for _, mv in ipairs(list) do
+      if sy and mv.sync and sy[mv.sync] ~= nil and not (mv.held and os.clock() < mv.held) then
+        local v = sy[mv.sync]
+        if mv.kind == "knob" then mv.state = v % math.max(1, mv.n or 2) else mv.state = v end
+      end
+      local u
+      if mv.kind == "push" then
+        if mv.pt then
+          mv.pt += dt
+          local k = mv.pt / mv.t
+          u = (k < 0.5) and (k * 2) or math.max(0, 2 - k * 2)
+          if k >= 1 then mv.pt, u = nil, 0 end
+        else u = 0 end
+        c.b:setAnim(mv.name, CF(mv.axis * ((mv.d or 0.004) * u)))
+      else
+        mv.p = mv.p or mv.state
+        mv.p += (mv.state - mv.p) * math.min(1, dt / math.max(mv.t, 0.02) * 2.5)
+        if mv.kind == "knob" then
+          c.b:setAnim(mv.name, CFrame.fromAxisAngle(mv.axis, -rad((mv.step or 40) * mv.p)))
+        elseif mv.kind == "hinge" then
+          c.b:setAnim(mv.name, CFrame.fromAxisAngle(mv.axis, rad((mv.a0 or 0) + ((mv.a1 or -60) - (mv.a0 or 0)) * mv.p)))
+        elseif mv.kind == "slide" then
+          c.b:setAnim(mv.name, CF(mv.axis * ((mv.d or 0.05) * mv.p)))
+        elseif mv.kind == "fn" and mv.fn then
+          c.b:setAnim(mv.name, mv.fn(mv.p))
+        end
+      end
+    end
   end
   -- 准心对着的有按键的屏幕（显示面 + 外面一圈边框、按键、按键下面印的字）：左键当成在操作屏幕，不开炮
   --   （用户 11-22：「我操控显示屏的时候坦克会开炮，因为我点了鼠标左键」——原来只有小点正好落在某个键上才不开炮，
@@ -982,6 +1197,15 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   -- 开着观瞄设备（武器站左键就是开火）、瞄准镜的时候不算：hover 停在进镜前那一帧的值
   G.interiorHover = function() return (hover ~= nil or hoverScr ~= nil) and mode == "seat" and optic == nil and not (G.drive and G.drive.sight) end
   G.interiorHoverKey = function() return hover end   -- 测试用
+  -- 测试用：可动部件（旋钮、开关、按钮）的列表；按 id（InteriorAbrams 的 KNOBS：POL、VIS、FCS……）拨一下，走跟左键一样的路
+  G.interiorMovs = function() return cur and cur.b.movs or {} end
+  G.interiorMovPress = function(id)
+    if not cur then return false end
+    for _, mv in ipairs(cur.b.movs or {}) do
+      if mv.id == id then movPress(cur, mv) return true end
+    end
+    return false
+  end
   local dot = Instance.new("Frame")
   dot.AnchorPoint = Vector2.new(0.5, 0.5)
   dot.Position = UDim2.fromScale(0.5, 0.5)
@@ -1009,12 +1233,30 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   tip.Visible = false
   tip.Parent = gui
   local function stepKeys(c)
-    local k = (mode == "seat" and not scopePhase()) and pickKey(c) or nil
-    if hover and hover ~= k then hover.part.Color = hover.col end
-    hover = k
-    hoverScr = (mode == "seat" and not scopePhase() and not k) and pickScreen(c) or nil
+    local k, kt = nil, math.huge
+    local mv, mt = nil, math.huge
+    if mode == "seat" and not scopePhase() then
+      k, kt = pickKey(c)
+      mv, mt = pickMov(c)
+      kt = kt or math.huge
+      if k and mv then   -- 键和可动部件都对得上：挑近的
+        if mt < kt - 0.01 * S then k = nil else mv = nil end
+      end
+    end
+    if hover and hover ~= k and not hover.mov then hover.part.Color = hover.col end
+    if hover and hover.mov and (not mv or hover.mov ~= mv) then movHover(c, hover.mov, false) end
+    if mv then
+      if not (hover and hover.mov == mv) then movHover(c, mv, true) end
+      hover = { mov = mv }
+    else
+      hover = k
+    end
+    hoverScr = (mode == "seat" and not scopePhase() and not k and not mv) and pickScreen(c) or nil
     dot.Visible = mode == "seat" and not hideUI
-    if k then
+    if mv then
+      tip.Text = movText(mv) .. "  ——  " .. T("左键：", "click: ") .. ((mv.kind == "knob") and T("转一档", "next position") or ((mv.kind == "push") and T("按下", "press") or T("拨动", "flip")))
+      tip.Visible = not hideUI
+    elseif k then
       k.part.Color = RGB(255, 190, 60)
       local id = Screens.canon(k.label)
       tip.Text = k.label .. "  ——  " .. (Screens.KEYDESC[id] or "")
@@ -1191,6 +1433,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     if not c.model.Parent then c.model.Parent = workspace end
     frames(c, v)            -- 先按上一帧的动画算一遍（动画里要用到各组的位置）
     stepAnim(c, v, st, dt)
+    stepMovs(c, dt)         -- 旋钮、开关、按钮
     frames(c, v)            -- 动画改了子组，再算一遍
     stepRound(c)
     pose(c)
@@ -2393,6 +2636,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
+        if hover.mov then movPress(cur, hover.mov) return end
         local s2 = hover.screen
         if s2 and s2.onKey then pcall(s2.onKey, hover.label, cur.env.act) s2.nextT = 0 end
         hover.part.Color = RGB(255, 255, 255)
@@ -2425,6 +2669,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     end
     local st = G.drive
     if not st or not st.d or G.myVeh ~= st then return end
+    if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and hover.mov and mode == "seat" and cur then   -- 拨对准的那个旋钮 / 开关 / 按钮
+      movPress(cur, hover.mov)
+      return
+    end
     if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then   -- 按下对准的那个键
       local s2 = hover.screen
       if s2 and s2.onKey then
