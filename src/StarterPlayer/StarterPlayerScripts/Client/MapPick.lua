@@ -18,7 +18,7 @@ function MapPick.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local Map = G.Map
   local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), RGB(156, 162, 168), RGB(104, 110, 116)
-  local ACCENT = { island = RGB(70, 160, 200), sands = RGB(222, 116, 70) }
+  local ACCENT = { sands = RGB(222, 116, 70) }
   local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- 手机：整体缩到一半多，字放大一点
 
   local gui = Instance.new("ScreenGui")

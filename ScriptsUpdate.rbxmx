@@ -961,13 +961,14 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 16:54 b040fb4"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "dev"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
-Config.Map = "island"
+Config.Map = "sands"   -- 只剩沙海（用户 11-24：「全部默认沙海地图吧，登岛那个也删了」）
+Config.MapDefault = "sands"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
 Config.MapVote = { time = 25, grace = 3 }
@@ -1007,9 +1008,10 @@ Config.StagesByMap = {
   },
 }
 function Config.useMap(id)
-  Config.Map = id or "island"
-  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.island
+  Config.Map = id or "sands"
+  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.sands
 end
+Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
@@ -1248,18 +1250,19 @@ Config.Pve = {
   -- ai（用户 11-24：「做关卡 越多越逼真越好」）：这一关电脑开的地面载具——def 敌方、atk 友军：max 同时几辆、tank 坦克占几成（其余步战车）、
   --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
   levels = {
-    { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+    { map = "sands", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "sands", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "sands", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
       ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
     -- 第 4、6、8、10、13、16 关原来在沙漠风暴（打光兵力）；11-24 那张图删了，改到沙海、按据点算（沙海 A～E 五个阶段各一个据点）
+    -- 11-24 用户「全部默认沙海地图吧，登岛那个也删了」：原来在岛屿突击的几关也都挪到沙海（合并 A 的 16 关和 B 的只留沙海，C 合的）
     { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
       ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
-    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+    { map = "sands", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
     { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
       ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
-    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+    { map = "sands", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
       ai = { def = { max = 3 }, atk = { max = 2 } } },
     { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "bmp3" } } } },
@@ -1267,13 +1270,13 @@ Config.Pve = {
     { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
       ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "stryker", "m1a1" } }, atk = { max = 2, tank = 0, ids = { "bmp3", "zbd05" } } } },
     { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
-    { map = "island", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+    { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
       ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "m1150" } }, atk = { max = 2, ids = { "t90m", "bmp3" } } } },
     { map = "sands", caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
     { map = "sands", caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
       ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
-    { map = "island", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
       ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
     { map = "sands", caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "bmp3", "ztz99a" } } } },
@@ -5274,18 +5277,18 @@ add("pve.tabPve", "关卡 PVE", "PVE MISSIONS")
 add("pve.title", "关卡", "MISSIONS")
 add("pve.sub", "跟电脑打，一关一关解锁；打通拿金币（第一次翻倍），金币解锁载具和配件", "Fight the AI and unlock missions one by one; clears pay coins (double the first time) for vehicles and attachments")
 add("pve.level", "第 {1} 关", "MISSION {1}")
-add("pve.n1", "滩头阵地", "Beachhead")
-add("pve.n2", "港口突袭", "Harbour Raid")
-add("pve.n3", "夜袭机场", "Airfield Night Strike")
+add("pve.n1", "越过沙墙", "Over the Berm")
+add("pve.n2", "边境哨所", "Border Post")
+add("pve.n3", "夜袭油田", "Oilfield Night Raid")
 add("pve.n4", "沙海遭遇", "Desert Encounter")
-add("pve.n5", "纵深突破", "Breakthrough")
+add("pve.n5", "镇子巷战", "Street Fight")
 add("pve.n6", "钢铁洪流", "Steel Tide")
-add("pve.n7", "全岛攻略", "Island Sweep")
+add("pve.n7", "空军基地", "Air Base")
 add("pve.n8", "沙漠风暴", "Desert Storm")
 -- 第 9～16 关（用户 11-24：「做关卡 越多越逼真越好」）
 add("pve.n9", "沙海突破", "Breaching the Sand Sea")
 add("pve.n10", "无车之战", "Infantry Only")
-add("pve.n11", "海岸防线", "Coastal Line")
+add("pve.n11", "沙墙防线", "Berm Line")
 add("pve.n12", "沙海纵深", "Deep in the Sand Sea")
 add("pve.n13", "夜幕坦克战", "Night Tank Battle")
 add("pve.n14", "铁锤行动", "Operation Hammer")
@@ -5315,20 +5318,20 @@ add("air.ccrpRel", "投弹！", "BOMBS AWAY")
 add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
 add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
 add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
-add("pve.b1", "敌一个加强排守前哨岛滩头，没有装甲。任务：抢滩、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the outpost beach, no armour. Seize objective A and hold the beachhead.")
-add("pve.b2", "敌两个排守港区和仓库，有机枪阵地。任务：拿下两个据点，清剿码头，给后续部队打开登陆通道。", "Two enemy platoons hold the harbour with MG nests. Take two objectives and clear the docks for the follow-on landing.")
-add("pve.b3", "敌机械化连守机场，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the airfield with Bradleys, Strykers and JLTVs. Take three objectives under darkness; bring AT weapons.")
+add("pve.b1", "敌一个加强排守边境沙墙，没有装甲。任务：越过沙墙、拿下 A 点，站稳脚跟。", "An enemy reinforced platoon holds the border berm, no armour. Cross the berm, seize objective A and hold on.")
+add("pve.b2", "敌两个排守边境哨所和仓库，有机枪阵地。任务：拿下两个据点，给后续部队打开通道。", "Two enemy platoons hold the border post and depots with MG nests. Take two objectives and open the way for the follow-on forces.")
+add("pve.b3", "敌机械化连守油田，布雷德利、斯特赖克、JLTV 巡逻。任务：夜色掩护下拿下三个据点；带上反坦克武器。", "A mechanised company guards the oilfield with Bradleys, Strykers and JLTVs. Take three objectives under cover of night; bring anti-tank weapons.")
 add("pve.b4", "两军在沙海遭遇，双方都有少量坦克和步战车。任务：突破边境沙墙、拿下油田，两个据点。", "Meeting engagement in the Sand Sea, a few tanks and IFVs on both sides. Break the border berm and take the oilfield: two objectives.")
 add("pve.b5", "敌防御纵深有 M1A1 坦克和布雷德利步战车。任务：连续拿下四个据点，撕开防线。", "M1A1 tanks and Bradleys defend in depth. Take four objectives in a row and tear the line open.")
 add("pve.b6", "坦克对决：敌 M1A1、M1A2 坦克连，我方 T-90M、99A。任务：在沙海连续拿下三个据点。", "Tank duel: an M1A1/M1A2 company against our T-90Ms and Type 99As. Take three objectives in a row across the Sand Sea.")
-add("pve.b7", "敌主力退守全岛，五个据点层层设防。任务：拿下全部五个据点。", "The enemy main body falls back across the island, five objectives in layered defence. Take all five.")
+add("pve.b7", "敌主力退守沙海纵深，五个据点层层设防。任务：拿下全部五个据点。", "The enemy main body falls back into the depth of the Sand Sea, five objectives in layered defence. Take all five.")
 add("pve.b8", "敌重兵集团：M1A2、M1A1、布雷德利；我方 T-90M、99A、BMP-3 协同。任务：打通沙海全部五个阶段。", "Heavy enemy group of M1A2s, M1A1s and Bradleys; our T-90Ms, Type 99As and BMP-3s attack together. Break through all five stages of the Sand Sea.")
 add("pve.b9", "沙海前沿：敌摩步连有布雷德利、斯特赖克和少量 M1A1。任务：BMP-3 机步营突破两道沙墙阵地。", "Sand Sea front: a motorised company with Bradleys, Strykers and a few M1A1s. Our BMP-3 battalion breaches two berm lines.")
 add("pve.b10", "敌方是精锐步兵，没有车辆支援；地形开阔、狙击手多。任务：拿下沙海前三个据点。", "Elite enemy infantry with no vehicles; open ground and many snipers. Take the first three objectives of the Sand Sea.")
-add("pve.b11", "敌在海岸构筑防线：M1A2、布雷德利、M1150 扫雷车。任务：T-90M、BMP-3 掩护步兵拿下三个据点。", "A coastal defence line with M1A2s, Bradleys and M1150 breachers. T-90Ms and BMP-3s cover the infantry onto three objectives.")
+add("pve.b11", "敌在沙墙后构筑防线：M1A2、布雷德利、M1150 扫雷车。任务：T-90M、BMP-3 掩护步兵拿下三个据点。", "A defence line behind the berms with M1A2s, Bradleys and M1150 breachers. T-90Ms and BMP-3s cover the infantry onto three objectives.")
 add("pve.b12", "突破以后向纵深发展，敌坦克、步战车混编反冲击。任务：连续拿下四个阶段的据点。", "Exploit the breach: enemy tanks and IFVs counter-attack together. Take the objectives of four stages in a row.")
 add("pve.b13", "夜里沙海坦克战：敌 5 辆 M1A2、M1A1，我方 4 辆 T-90M、99A、96 式。用热像，先敌开火。任务：拿下四个阶段的据点。", "Night tank battle in the Sand Sea: five M1A2/M1A1s against our four T-90Ms, Type 99As and Type 96s. Use thermals and shoot first. Take the objectives of four stages.")
-add("pve.b14", "全岛总攻：敌 30 人、4 辆装甲车顽抗。任务：拿下全部五个据点。", "All-out assault on the island: 30 enemies and 4 armoured vehicles hold out. Take all five objectives.")
+add("pve.b14", "全线总攻：敌 30 人、4 辆装甲车顽抗。任务：拿下全部五个据点。", "All-out assault: 30 enemies and 4 armoured vehicles hold out. Take all five objectives.")
 add("pve.b15", "敌最后的装甲预备队：M1A2、M1A1、布雷德利。任务：打通沙海全部五个阶段。", "The enemy's last armoured reserve of M1A2s, M1A1s and Bradleys. Break through all five stages of the Sand Sea.")
 add("pve.b16", "敌全部兵力 36 人、5 辆装甲车最后一搏。任务：打通沙海全部五个阶段，拿下岭上指挥部。", "Everything the enemy has left: 36 troops and 5 armoured vehicles. Break through all five stages of the Sand Sea and take the ridge command post.")
 add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
@@ -5996,9 +5999,6 @@ add("map.cat", "开始游戏", "PLAY")
 add("map.title", "投票选地图", "VOTE FOR A MAP")
 add("map.sub", "大家投票选这个服务器打哪张（能改票），票最多的开；后进来的直接加入", "Everyone votes for this server's map (you can change your vote) — most votes wins; later players join it")
 add("map.back", "返回", "BACK")
-add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
-add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
-add("map.island.desc", "登陆联军从海上抢滩，岛屿守备军守住岛上的据点 · 舰队、登陆艇、机场岛 · 夜战", "The coalition storms the beaches from the sea; the garrison holds the island · fleet, landing craft, island airfield · night")
 add("map.sands.name", "沙海", "SEA OF SAND")
 add("map.sands.mode", "突破", "BREAKTHROUGH")
 add("map.sands.desc", "海湾战争式的纯陆地沙漠（约 28 公里见方）：从南边的前进基地北上，五个阶段一个一个打 · 沙墙、油田、镇子、空军基地、岭上指挥部", "A Gulf War desert with no sea (about 28 km across): push north from the forward base through five stages · border berm, oilfield, town, airbase, ridge command")
@@ -7062,10 +7062,9 @@ end
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
 --   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
 Map.id = "island"
-Map.ids = { "island", "sands" }   -- 原来还有「沙漠风暴」（MapDesert，征服）：用户 11-24「沙漠风暴删掉」
+Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
-  island = { km = 8.8, mode = "assault", sea = true },
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
 local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
@@ -7074,7 +7073,7 @@ for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
 end
 function Map.profile(id)
-  if id ~= "island" and not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的「沙漠风暴」：只换脚本的地点里 MapDesert 模块可能还在）
+  if not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
@@ -7098,6 +7097,9 @@ function Map.use(id)
   Map.id = id
   return true
 end
+
+-- 只剩沙海（用户 11-24）：一载入就换成沙海——各模块 require 到的 Map 一开始就是沙海（上面岛图的数学还在 PROFILES.island 里，不再用）
+Map.use("sands")
 
 return Map
 ]]></ProtectedString>
@@ -12875,6 +12877,7 @@ local function waitMap()
     pcall(function() forced = workspace:GetAttribute("MapName") end)
     if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
   end
+  if not G.mapId and #Map.ids == 1 then G.mapId = Map.ids[1] end   -- 只剩一张（沙海）：不用投票，开服就建（进来的人点「开始游戏」时地图多半已经好了）
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
@@ -12894,18 +12897,18 @@ local function waitMap()
         allInAt = allInAt or os.clock()
         voteEnds = math.min(voteEnds, allInAt + grace)
       end
-      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "island" end
+      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "sands" end
     end
     if not G.mapId and ((not anyone and not voteEnds and waited > emptyWait) or waited > (Config.MapWaitMax or 900)) then
-      G.mapId = voteWinner() or Config.MapDefault or "island"
+      G.mapId = voteWinner() or Config.MapDefault or "sands"
     end
     task.wait(0.1)
   end
   if G.pushAll then pcall(G.pushAll) end   -- 选地图界面马上看到定了哪张
   if not Map.use(G.mapId) then
-    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
-    G.mapId = "island"
-    Map.use("island")
+    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用沙海")
+    G.mapId = "sands"
+    Map.use("sands")
   end
   Config.useMap(G.mapId)   -- 跟着地图变的数（沙海的五个阶段……）
   local okL, Lang = pcall(function() return require(RS:WaitForChild("Lang")) end)
@@ -56308,7 +56311,7 @@ function MapPick.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local Map = G.Map
   local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), RGB(156, 162, 168), RGB(104, 110, 116)
-  local ACCENT = { island = RGB(70, 160, 200), sands = RGB(222, 116, 70) }
+  local ACCENT = { sands = RGB(222, 116, 70) }
   local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- 手机：整体缩到一半多，字放大一点
 
   local gui = Instance.new("ScreenGui")

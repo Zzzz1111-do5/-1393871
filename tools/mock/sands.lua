@@ -15,7 +15,7 @@ G.fortsHold = true
 local p1 = T.join("P1", 5101, true)
 local C = T.C
 R.run(4)
-check(G.mapId == nil, "有人在：等他选")
+check(G.mapId == "sands", "只剩沙海：开服就定了（" .. tostring(G.mapId) .. "）")
 R.as("client", function() C.menuPlay() end)
 R.run(0.3)
 check(C.mapPickShown(), "点「开始游戏」打开选地图")
@@ -24,7 +24,7 @@ for _, d in ipairs(p1.PlayerGui:GetDescendants()) do
   local id = d.Name:match("^Map_(%w+)$")
   if id then cards[id] = d end
 end
-check(cards.island and cards.sands and not cards.desert, "两张地图的卡片（岛、沙海；沙漠风暴 11-24 删了）")
+check(cards.sands and not cards.island and not cards.desert, "只有沙海一张卡（岛、沙漠风暴 11-24 删了）")
 check(#T.texts(C.T("map.sands.name")) > 0, "卡片上写「" .. C.T("map.sands.name") .. "」")
 
 print("② 点沙海 → 服务器按沙海建")
