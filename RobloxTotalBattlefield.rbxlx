@@ -957,7 +957,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 17:57 ceb10fc"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 17:58 b2a2cf6"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -30082,12 +30082,12 @@ function WtAir.init(G)
     if heli then
       if l.Y > (d.H or 10) * 0.25 then return { { "rotor", 1 }, { "ctrl", 0.3 } } end
       if v > 0.45 then return { { "tail", 1 } } end
-      if v < -0.45 then return { { "pilot", 0.7 }, { "ctrl", 0.3 } } end
+      if v < -0.45 then return { { "pilot", 1.6 }, { "ctrl", 0.3 } } end   -- 人比铝皮脆：座舱挨一发炮弹基本就昏了
       return { { "eng", 0.8 }, { "fuel", 0.6 } }
     end
     if math.abs(u) > 0.3 then return { { (u < 0) and "wingL" or "wingR", 1 }, { "ctrl", 0.3 }, { "fuel", 0.15 } } end
     if v > 0.55 then return { { "tail", 1 }, { "ctrl", 0.4 } } end
-    if v < -0.5 then return { { "pilot", 0.7 }, { "ctrl", 0.3 } } end
+    if v < -0.5 then return { { "pilot", 1.6 }, { "ctrl", 0.3 } } end   -- 人比铝皮脆：座舱挨一发炮弹基本就昏了
     if v > 0.1 then return { { "eng", 1 }, { "fuel", 0.3 } } end
     return { { "fuel", 1 }, { "eng", 0.25 } }
   end
