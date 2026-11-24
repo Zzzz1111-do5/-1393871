@@ -24,8 +24,8 @@ for _, d in ipairs(p1.PlayerGui:GetDescendants()) do
   local id = d.Name:match("^Map_(%w+)$")
   if id then cards[id] = d end
 end
-check(cards.island and cards.desert and cards.sands, "三张地图的卡片都在（岛、沙漠风暴、沙海）")
-check(#T.texts(C.T("map.sands.name")) > 0 and #T.texts(C.T("map.desert.name")) > 0, "卡片上写「" .. C.T("map.sands.name") .. "」「" .. C.T("map.desert.name") .. "」")
+check(cards.island and cards.sands and not cards.desert, "两张地图的卡片（岛、沙海；沙漠风暴 11-24 删了）")
+check(#T.texts(C.T("map.sands.name")) > 0, "卡片上写「" .. C.T("map.sands.name") .. "」")
 
 print("② 点沙海 → 服务器按沙海建")
 T.press(cards.sands)

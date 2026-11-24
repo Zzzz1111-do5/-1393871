@@ -1,4 +1,4 @@
--- 瞄准镜画中画在没有海的地图上（模拟器）：python3 tools/mock/run.py tools/mock/pipdesert.lua [map=desert|sands]
+-- 瞄准镜画中画在没有海的地图上（模拟器）：python3 tools/mock/run.py tools/mock/pipdesert.lua [map=sands]（原来还能选 desert：沙漠风暴 11-24 删了）
 --   用户 11-24：「开镜有bug你修一下 屏幕有一块色斑」——沙漠图里开镜，镜里的盐碱地、砂岩画成草绿（颜色表只有岛上那几种），
 --   戈壁平原（开服 FillBlock 铺的平地，画中画「全岛」那级只铺有起伏的块）透出底下垫的蓝绿海面
 --   ① 选沙漠开服、建好；② 端 M4 开镜，画中画准备好；③ 镜里没有海、没有深海底，垫底的是沙地颜色的平地，高度贴着地面；
@@ -7,7 +7,7 @@ local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local RS = R.services.ReplicatedStorage
-local MAPID = TEST_ARGS:match("map=(%w+)") or "desert"
+local MAPID = TEST_ARGS:match("map=(%w+)") or "sands"
 
 print("① 选" .. MAPID .. "开服")
 local G = T.boot()

@@ -845,8 +845,17 @@ function UI.init(G)
   miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
   miniBox.BackgroundColor3, miniBox.BackgroundTransparency, miniBox.BorderSizePixel = PANEL, 1, 0
   miniBox.Parent = hud
+  -- 地图真正挂在框里这一层（ClipsDescendants 的普通 Frame）：CanvasGroup 的裁边有时不起作用（用户 11-24 截图：开坦克瞄准镜、
+  --   小地图挪到 RadarTop 那层以后，2000 多像素的整张图没裁、深蓝的海盖住半个镜子）——这一层再按方框裁一次，怎么都不会漏出来
+  local miniClip = Instance.new("Frame")
+  miniClip.Name = "MapClip"
+  miniClip.Size = UDim2.fromScale(1, 1)
+  miniClip.BackgroundTransparency = 1
+  miniClip.BorderSizePixel = 0
+  miniClip.ClipsDescendants = true
+  miniClip.Parent = miniBox
   -- 战斗中的界面换成《坠落》那种风格（Hud.lua）：旧的顶栏、血条、兵种字交给它收起来，小地图框挪到左下
-  G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, help = help }
+  G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, miniClip = miniClip, help = help }
 
   ---------------------------------------------------------------- 消息
 
@@ -1061,7 +1070,7 @@ function UI.init(G)
     hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end"
     -- 地图放在部署界面或小地图里
-    local want = showDeploy and mapHolder or miniBox
+    local want = showDeploy and mapHolder or miniClip
     if mapMountedIn ~= want then
       mapMountedIn = want
       local _, marks = G.mapMount(want, UDim2.fromScale(1, 1))

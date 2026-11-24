@@ -172,7 +172,7 @@ function Hud.init(G)
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
   box.Position = mobile and UDim2.new(0, 16, 0, 118) or UDim2.new(1, -18, 0, 18)
   box.Size = UDim2.fromOffset(MS, MS)
-  local function boxBg() box.BackgroundColor3 = (Map.desert or Map.DESERT) and RGB(86, 70, 50) or RGB(22, 36, 50) end   -- 地图外面：海岛是深海的蓝，沙漠是暗沙色
+  local function boxBg() box.BackgroundColor3 = Map.DESERT and RGB(86, 70, 50) or RGB(22, 36, 50) end   -- 地图外面：海岛是深海的蓝，沙漠是暗沙色
   boxBg()
   if G.onMap then G.onMap(boxBg) end
   box.BackgroundTransparency = 0.12
@@ -603,7 +603,7 @@ function Hud.init(G)
     rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
     -- 整张图多宽按 MapUI 现在的范围（G.mapSpan）：沙漠 ±EXT 比海岛宽两倍多，原来按海岛的 6100 × K 算，沙漠的小地图比雷达范围小了一截、亮点和地图对不上
     local ZOOM = (G.mapSpan or MAPW) * (MS / 2) / curR
-    if root and root.Parent == box and G.mapUV then
+    if root and (root.Parent == box or (P.miniClip ~= nil and root.Parent == P.miniClip)) and G.mapUV then
       if G.mapTheme then G.mapTheme("mini") end
       if G.mapFocus then G.mapFocus(pos.X, pos.Z, curR) end   -- 身边画细节块（MapUI 的卫星图）
       local u, v = G.mapUV(pos.X, pos.Z)

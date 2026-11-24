@@ -101,7 +101,7 @@ local function faceCF(Map, x, z, tx, tz)
   return CFrame.lookAt(p, p + look.Unit)
 end
 
--- 沙漠图（MapDesert，没有海）：攻方从南边来（+Z），工事都朝南。边境沙墙开口（据点 A 南边）两侧碉堡交叉火力，
+-- 沙漠图（沙海，没有海）：攻方从南边来（+Z），工事都朝南。边境沙墙开口（据点 A 南边）两侧碉堡交叉火力，
 --   各据点南面碉堡、高炮；没有岸防炮；三处 M777 阵地各在一个据点北边约 600 格（够得着自己据点南面的攻击出发阵地，又在最小射程外）
 local function layoutDesert(Map)
   local out = {}
@@ -204,19 +204,6 @@ function FortDefs.layout(Map)
     n += 1
     table.insert(out, { id = "f" .. n, kind = kind, cf = faceCF(Map, sx, sz, tx, tz), pt = pt, tag = tag })
   end
-  if Map.desert then   -- 沙漠（征服）：两边基地各四门高炮（跑道两头、营地两边）、两座朝外的碉堡；中立据点上不放（谁占了算谁的，工事归守方的机器人管，不公平）
-    for side, B in pairs(Map.BASES or {}) do
-      local A = B.airfield
-      for _, o in ipairs({ { -1400, -260 }, { 1400, -260 }, { -600, 520 }, { 600, 520 } }) do
-        add("aaa", A.x + o[1], A.z + o[2] + 1500 * 0, B.x + B.face * 4000, 0, nil, side)
-      end
-      for _, dz in ipairs({ -700, 900 }) do
-        add("bunker", B.x + B.face * 1650, dz, B.x + B.face * 5000, dz, nil, side)
-      end
-    end
-    for _, f in ipairs(out) do f.home = f.tag end
-    return out
-  end
   -- 南岸四处海滩：每处两座机枪碉堡，在滩后高处、离岸约 100 格，射孔斜对着滩中间（交叉火力）
   for _, b in ipairs(Map.BEACHES) do
     if not b.north then
@@ -287,7 +274,6 @@ end
 
 -- 滩头障碍：钢刺猬（水线一带两排，留出通道和缺口）、铁丝网（两道、隔段留缺口）、雷区（滩的两翼各一片）；用固定种子，每局一样
 function FortDefs.obstacles(Map)
-  if Map.desert then return { hog = {}, wire = {}, mines = {}, signs = {} } end   -- 沙漠风暴（征服）：没有滩头障碍
   if Map.LANDONLY then return obstaclesDesert(Map) end   -- 沙海：边境沙墙前的钢刺猬、铁丝网、雷区
   local rng = Random.new(20240611)
   local L = FortDefs.LANE

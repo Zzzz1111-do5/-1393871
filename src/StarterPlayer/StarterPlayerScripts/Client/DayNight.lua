@@ -44,7 +44,7 @@ function DayNight.init(G)
   -- 夜视增亮多少档曝光（用户 11-22：「夜视仪视角沙漠的地面全是白色的」）：海岛的地面是草（亮度约 0.23），沙漠全是沙（约 0.5，亮一倍多），
   --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）；沙漠少加 1.2 档，沙地落在跟海岛草地差不多的亮度
   local Map = require(RS:WaitForChild("Map"))
-  local function isDesert() return Map.desert or Map.DESERT end   -- 沙漠风暴（MapDesert）、沙海（MapSands）
+  local function isDesert() return Map.DESERT end   -- 沙海（MapSands）
   local function nvEv() return isDesert() and 1.5 or 2.7 end
   local DUSK = { top = RGB(255, 168, 108), fog = RGB(206, 150, 120), acol = RGB(228, 160, 120), adec = RGB(170, 86, 58) }
   -- 沙漠图：夜里的天光、雾偏暖褐（沙尘），白天是发白的黄沙天、看得没那么远。地图是开服后第一个玩家选的：进服时还没定、

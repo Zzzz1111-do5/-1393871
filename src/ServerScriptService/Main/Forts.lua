@@ -1166,7 +1166,6 @@ function Forts.init(G)
 
   -- 据点被攻方拿下：挨着它的工事归攻方（还能用的）
   G.on("captured", function(s)
-    if Map.desert then return end   -- 征服：工事都在两边基地里，不跟据点走
     for _, e in ipairs(forts) do
       if e.alive and e.pt == s.id and e.team ~= "atk" then
         if e.gunner then unman(e, true) end

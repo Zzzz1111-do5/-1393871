@@ -181,46 +181,6 @@ function Depots.init(G)
     end
   end
 
-  -- 沙漠地图（征服，MapDesert.lua）：两边基地一样——车场一排地面车位（并排、车头朝战场）、三个直升机坪、跑道上四个飞机召唤位（顺着跑道朝战场那头）；
-  --   舰载机也停在陆上跑道（没有航母）
-  local function layoutDesert()
-    for _, team in ipairs({ "atk", "def" }) do
-      local B = Map.BASES[team]
-      local face = V(B.face, 0, 0)
-      local list = groundIds(team)
-      local gL, gW = biggest(list)
-      local n = math.min(GROUND_PADS, #list)
-      local gap = math.max(22, gW + 10)
-      for i = 1, n do
-        local x, z = B.motor.x, B.motor.z + (i - (n + 1) / 2) * gap
-        local pos = V(x, surface(x, z), z)
-        addPad({ team = team, vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(pos, pos + face),
-          term = V(x - B.face * (gL / 2 + 4), 0, z - 4), r = 12, size = V(gW + 2, 0, gL + 2) })
-      end
-      local dh = models(team, "heli")
-      for k = 1, math.min(3, #dh) do
-        local x, z = B.heli.x + (k - 2) * 60, B.heli.z
-        local pos = V(x, surface(x, z), z)
-        addPad({ team = team, vid = dh[1], vids = dh, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + face),
-          term = V(x - 22, 0, z + 18), r = 24, size = V(30, 0, 30), heli = true })
-      end
-      local A = B.airfield
-      local ids = models(team, "jet")
-      if #ids > 0 then
-        local L, W = biggest(ids)
-        local x = A.x - B.face * 420
-        for i = 1, 4 do   -- 顺着跑道朝战场那头一个接一个排、左右错开（后面的照样直接起飞）
-          x += B.face * L / 2
-          local z = A.z + ((i % 2 == 0) and 1 or -1) * A.wid * 0.2
-          local pos = V(x, surface(x, z), z)
-          addPad({ team = team, vid = ids[1], vids = ids, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + face),
-            term = V(x, 0, A.z - A.wid / 2 - 10), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
-          x += B.face * (L / 2 + 30)
-        end
-      end
-    end
-  end
-
   ---------------------------------------------------------------- 模型
 
   local function part(parent, size, cf, color, mat, solid)
@@ -364,12 +324,8 @@ function Depots.init(G)
     local root = workspace:FindFirstChild("Map") or workspace
     local f = Instance.new("Folder")
     f.Name = "Pads"
-    if Map.desert then
-      layoutDesert()
-    else
-      G.try("登陆平台", buildBarge, f)
-      layout()
-    end
+    G.try("登陆平台", buildBarge, f)
+    layout()
     for _, p in ipairs(pads) do G.try("生成点 " .. p.vid, buildPad, f, p) end
     f.Parent = root
   end

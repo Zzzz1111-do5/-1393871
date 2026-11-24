@@ -13,14 +13,11 @@ function MapUI.init(G)
   local RGB = Color3.fromRGB
 
   -- 地图范围（世界坐标）：所有岛和舰队都在里面
-  -- 范围按当前地图（换了地图以后 rebuild 重算）：沙漠风暴 ±EXT；沙海按 Map.UIBOX（战区那一片，整张图太大，看不清据点）
+  -- 范围按当前地图（换了地图以后 rebuild 重算）：沙海按 Map.UIBOX（战区那一片，整张图太大，看不清据点）
   local X0, X1, Z0, Z1, SPAN
   local function extent()
     local K = Map.K or 1   -- 地图放大的倍数（Map.lua）
-    if Map.desert then
-      local E = Map.EXT or 15500
-      X0, X1, Z0, Z1 = -E, E, -E, E
-    elseif Map.UIBOX then
+    if Map.UIBOX then
       X0, X1, Z0, Z1 = Map.UIBOX.x0, Map.UIBOX.x1, Map.UIBOX.z0, Map.UIBOX.z1
     else
       X0, X1, Z0, Z1 = -3000 * K, 3000 * K, -2500 * K, 3600 * K
@@ -105,16 +102,10 @@ function MapUI.init(G)
   local landBand = {}   -- 陆地块 → 档（换配色用）
   local roads = {}
   local fleetMarks = {}   -- 舰队、机场岛的小灰块：雷达里换成暗绿
-  -- 沙漠（没有海）：按材质分档——沙、夯土、砂岩、岩石、盐碱地；地图外面也是沙
-  local DES = { map = { RGB(122, 108, 84), RGB(104, 90, 70), RGB(116, 94, 72), RGB(96, 88, 80), RGB(136, 132, 120) },
-    mini = { RGB(150, 132, 100), RGB(128, 110, 84), RGB(140, 112, 84), RGB(116, 106, 96), RGB(162, 158, 146) } }
-  local DES_BG = { map = RGB(122, 108, 84), mini = RGB(150, 132, 100), radar = RGB(22, 66, 38) }
-  local DES_BAND = { Sand = 1, Ground = 2, Sandstone = 3, Rock = 4, Salt = 5 }
   local function landCol(b)
-    if Map.desert then return (DES[theme] or DES.map)[b] or DES.map[1] end
     return ((theme == "radar" and RADAR) or (theme == "mini" and MINI) or BAND)[b]
   end
-  local function bgCol(t) return Map.desert and (DES_BG[t] or DES_BG.map) or (SEA[t] or SEA.map) end
+  local function bgCol(t) return SEA[t] or SEA.map end
   local gen = 0   -- 换地图重画：旧的那轮画到一半就停
   local function drawBase()
     gen += 1
@@ -135,12 +126,7 @@ function MapUI.init(G)
         if i < N then
           local x = X0 + (i + 0.5) * cell
           local h = Map.height(x, z)
-          if Map.desert then
-            local m = Map.material(x, z, h, 0)
-            b = DES_BAND[m and m.Name or "Sand"] or 1
-          else
-            b = band(h)
-          end
+          b = band(h)
           -- （树林删掉了，地图上不再画深绿的林子）
         end
         if b ~= runB then
@@ -220,33 +206,8 @@ function MapUI.init(G)
   table.clear(fleetMarks)
   for _, p in ipairs(Map.POINTS) do
     local u, v = toUV(p.x, p.z)
-    pointDots[p.id] = dot(marks, u, v, 18, Map.desert and RGB(200, 200, 200) or Config.Teams.def.color, p.id, 5)
+    pointDots[p.id] = dot(marks, u, v, 18, Config.Teams.def.color, p.id, 5)
     table.insert(mapMarks, pointDots[p.id])
-  end
-  -- 沙漠：两边的基地（队伍色的方块）、跑道（深灰条）
-  for side, B in pairs(Map.BASES or {}) do
-    local u, v = toUV(B.x, B.z)
-    local f = Instance.new("Frame")
-    f.AnchorPoint = Vector2.new(0.5, 0.5)
-    f.Position = UDim2.fromScale(u, v)
-    f.Size = UDim2.fromScale(4300 / SPAN, 4750 / SPAN)
-    f.BackgroundColor3 = Config.Teams[side].color
-    f.BackgroundTransparency = 0.72
-    f.BorderSizePixel = 0
-    f.ZIndex = 2
-    f.Parent = marks
-    table.insert(mapMarks, f)
-    local A = B.airfield
-    local ua, va = toUV(A.x, A.z)
-    local r = Instance.new("Frame")
-    r.AnchorPoint = Vector2.new(0.5, 0.5)
-    r.Position = UDim2.fromScale(ua, va)
-    r.Size = UDim2.fromScale(A.len / SPAN, math.max(A.wid * 3, 200) / SPAN)
-    r.BackgroundColor3 = RGB(54, 56, 60)
-    r.BorderSizePixel = 0
-    r.ZIndex = 2
-    r.Parent = marks
-    table.insert(mapMarks, r)
   end
   -- 舰队、机场岛（小灰块）
   for _, s in ipairs(Map.FLEET) do

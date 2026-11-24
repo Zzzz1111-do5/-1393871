@@ -1148,6 +1148,14 @@
     材质取最多的那种）、深海底不画，并多一级 64 格一点、6400 格见方的网格（不算进「准备好了」）；换地图（`G.onMap`）扔掉旧图的网格重算。
     新测试 `tools/mock/pipdesert.lua [map=desert|sands]`：沙漠 83 块网格里 32 块是盐碱地 / 砂岩（原来都是绿的），现在颜色都对、镜里没有海。
     ⑤ 进行中（0570128）：歼-8II、F-16C 原模型（F-16 坐进原模型自带的座舱，`Defs.modelPit`：屏幕贴在原模型的显示器上），F-15C / F-14A 数据；显示屏清晰度提高。
+  - 11-24：开坦克瞄准镜时小地图的整张图没裁边（CanvasGroup 挪到 RadarTop 那层以后不裁），深蓝的海盖住半个镜子：地图改挂在框里一层
+    ClipsDescendants 的 MapClip（UI.lua），TacPad、Hud 跟着认它。
+  - 11-24：用户「沙漠风暴删掉」：删了 `MapDesert.lua`（地图 id `desert`，征服）和只给它用的代码——World 的建图（基地、据点、路、电线杆）、
+    Depots 的基地车位、Air / Fly 的「只落自己基地跑道」、FortDefs 的基地高炮、Nav 的网格范围、MapUI 的沙漠色块和基地方块、选图卡片、测试（mock/desert.lua、
+    navslice.lua）；`Map.profile` 只认 `Map.ids` 里的图（只换脚本的地点里旧的 MapDesert 模块还在也不会被载）。PvE 原来在沙漠风暴的第 4、6、8 关改到沙海
+    （拿下 2 / 3 / 5 个据点赢）。Round / Bots / AIVeh 的征服规则留着（现在没有图用）。
+  - 11-24 合并（E）：A 把 PvE 加到 16 关以后，原来在沙漠风暴的还有第 10、13、16 关——六关（4、6、8、10、13、16）都改到沙海，按据点赢
+    （拿下 2 / 3 / 5 / 3 / 4 / 5 个），简报里的「打光敌人 N 兵力」跟着改；D 的 `tools/mock/pipdesert.lua` 默认改成 `map=sands`。
 
 ## 协作（几个会话一起改这个仓库）
 

@@ -15,15 +15,11 @@ function Nav.init(G)
     G.navCell = CELL
   end
   local NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
-  -- 选了地图以后（navBuild）按那张图重新定范围：沙漠 ±EXT、100 格一格（地图大了五六倍，格子数跟岛差不多）
+  -- 选了地图以后（navBuild）按那张图重新定范围（沙海给了 NAVBOX、NAVCELL）
   local function setGrid()
     if Map.NAVBOX then   -- 沙海：自己给了范围、格子大小（原来只在开服时看——那时地图还没定、是岛，沙海的网格盖不住南边的红方基地）
       X0, Z0, X1, Z1 = Map.NAVBOX.x0, Map.NAVBOX.z0, Map.NAVBOX.x1, Map.NAVBOX.z1
       CELL = Map.NAVCELL or CELL
-    elseif Map.desert then
-      local E = Map.EXT or 15500
-      CELL = 100
-      X0, Z0, X1, Z1 = -E, -E, E, E
     end
     NX, NZ = math.ceil((X1 - X0) / CELL), math.ceil((Z1 - Z0) / CELL)
     G.navCell = CELL

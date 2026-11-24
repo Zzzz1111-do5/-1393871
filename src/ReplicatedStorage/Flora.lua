@@ -90,7 +90,7 @@ local BUSH = { "cshrub", "dshrub", "holly", "sapling" }
 
 local function pick(list, r) return list[floor(r * #list) + 1] end
 
--- 沙漠图（MapDesert）：不长树、草、花；平原上零星几丛枯灌木，岩坡、方山脚下多石头
+-- 沙漠图（沙海）：不长树、草、花；平原上零星几丛枯灌木，岩坡、方山脚下多石头
 local function desertCell(cx, cz, layer)
   local out = {}
   if layer ~= "bush" and layer ~= "rock" then return out end
