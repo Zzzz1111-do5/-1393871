@@ -1038,7 +1038,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-24 23:30 a58d7b8"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-24 23:36 547e307"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -5700,8 +5700,8 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · 空格 下车",
-  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · G scout · K artillery · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
@@ -6691,6 +6691,23 @@ add("wtm.cK", "击杀", "Kills")
 add("wtm.cC", "占点", "Caps")
 add("wtm.cD", "阵亡", "Deaths")
 add("wtm.rewards", "本局：得分 {1}  ·  经验 +{2}  ·  攒了 {3} SP  ·  击毁地面 {4}  ·  击落 {5}", "This battle: score {1}  ·  XP +{2}  ·  {3} SP earned  ·  ground kills {4}  ·  air kills {5}")
+-- 战雷式侦察、火炮支援、击杀信息（WtMatch.lua / WtBattle.lua / WtTank.lua）
+add("wt.noScout", "只有轻型车（步战车、装甲车、防空车）能侦察", "Only light vehicles (IFVs, APCs, SPAA) can scout")
+add("wt.scoutNone", "准星附近没有看得见的敌方车辆", "No visible enemy vehicle near your crosshair")
+add("wt.scoutAgain", "这辆车刚被侦察过（{1} 秒后才能再侦察）", "That vehicle was just scouted (again in {1}s)")
+add("wt.scouted", "{1} 侦察到了 {2}", "{1} scouted a {2}")
+add("wt.scoutKill", "侦察助攻：你侦察的 {1} 被击毁（多一次火炮支援）", "Scout assist: the {1} you scouted was destroyed (+1 artillery strike)")
+add("wt.artyNo", "防空车不能呼叫火炮支援", "SPAA cannot call artillery")
+add("wt.artyFar", "太远了（最远 {1} 米）", "Too far (max {1} m)")
+add("wt.artyCd", "火炮支援还要 {1} 秒", "Artillery ready in {1}s")
+add("wt.artyCalled", "{1} 呼叫了火炮支援", "{1} called in artillery")
+add("wt.killedBy", "被 {1} 的 {2} 击毁", "Destroyed by {1}'s {2}")
+add("wt.killedBy2", "被 {1} 击毁", "Destroyed by {1}")
+add("wtm.ai", "AI", "AI")
+add("wtm.destroyed", "击毁", "destroyed")
+add("wtm.shotDown", "击落", "shot down")
+add("wtm.ammoRack", "打爆弹药架", "ammo-racked")
+add("wtm.burned", "烧毁", "burned")
 -- 战雷式飞机受伤（WtAir.lua）
 add("wta.crit", "重创", "CRITICAL HIT")
 add("wta.hurt", "被击中", "You were hit")
@@ -30116,6 +30133,8 @@ function Wt.init(G)
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       G.fx({ k = "boom", p = (base * CF(tp)).Position, s = 4.2, c = "wreck" })
     end
+    e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
+    e.wtLastPass = e.pass and table.clone(e.pass) or nil
     G.wtRaw = true
     G.damageEnt(e, 1e9, src)
     G.wtRaw = false
@@ -30264,6 +30283,13 @@ function Wt.init(G)
     if P and P.pl and G.P[P.pl] == P then G.R.Drive:FireClient(P.pl, payload) end
     if not res.kill then
       msgTo(e, { op = "wtHurt", r = res.r, parts = out, fire = res.fire, from = s.src and s.src.name, xr = extra })
+    else   -- 被击毁的那一发：车里的人看「被 XX 的 YY 击毁」和这一发的 X 光（战雷的击毁回放）
+      local kveh = P and P.vehicle and P.vehicle.def and P.vehicle.def.id or nil
+      local kill = table.clone(payload)
+      kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
+      for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
+        if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
+      end
     end
     G.wtHits = (G.wtHits or 0) + 1   -- 测试用
     G.wtLast = payload
@@ -30772,7 +30798,104 @@ function WtMatch.init(G)
     s.earned += s.sp - before
   end
 
-  -- 车被打掉：车主那一型记一笔「已毁」；打掉它的人记击毁地面 / 击落空中
+  ---------------------------------------------------------------- 侦察（战雷：轻型车对着准星下的敌车按键，全队看得见它 30 秒）
+  --   用户 11-24 夜「完全弄成战雷」：照战雷 wiki 的侦察——轻型车（步战车、装甲车、防空车）才能侦察；准星附近、看得见的敌方车辆；
+  --   全队在屏幕上、小地图上看得见它 30 秒（Weapons.lua 的 spotted，同 Z 键标记）；同一个目标 30 秒里只能被侦察一次；
+  --   侦察到的车 30 秒里被别人打掉：侦察的人「侦察助攻」加分、多一次火炮支援（战雷街机就是这样）
+  local now = os.clock
+  local SC = W.scout or { range = 4200, cone = 2.5, time = 30, relock = 30, cd = 2, kill = 60 }
+  local SCOUT_CAT = { apc = true, aa = true }
+  local function myVeh(P)
+    local e = P and P.vehicle
+    if not P or not P.alive or not e or not e.alive or not e.root or e == P.remote or not e.def then return nil end
+    if e.air or e.cat == "ship" then return nil end
+    return e
+  end
+  local rp = RaycastParams.new()
+  rp.FilterType = Enum.RaycastFilterType.Exclude
+  G.ACT.wtScout = function(P, from, aim)
+    if typeof(aim) ~= "Vector3" or typeof(from) ~= "Vector3" or aim.X ~= aim.X or from.X ~= from.X then return end
+    local e = myVeh(P)
+    if not e or not G.round or G.round.phase ~= "battle" then return end
+    if not SCOUT_CAT[e.def.cat] then G.msg(P.pl, "bad", "wt.noScout") return end
+    if (from - e.root.Position).Magnitude > 40 then from = e.root.Position + Vector3.new(0, (e.def.H or 6), 0) end
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.wtScout or 0) then return end
+    P.cd.wtScout = t + SC.cd
+    local look = (aim - from)
+    if look.Magnitude < 1 then return end
+    look = look.Unit
+    local cosC = math.cos(math.rad(SC.cone))
+    local best, bestDot = nil, cosC
+    for _, x in ipairs(G.ents) do
+      if x.alive and x.team and x.team ~= P.team and x.root and (x.cat == "armor" or x.cat == "light") then
+        local to = x.root.CFrame.Position - from
+        local d = to.Magnitude
+        if d > 4 and d < SC.range then
+          local dot = to.Unit:Dot(look)
+          if dot > bestDot then
+            rp.FilterDescendantsInstances = { e.model, P.char }
+            local hit = workspace:Raycast(from, to * 0.98, rp)
+            local hitE = hit and G.entOf and G.entOf(hit.Instance)
+            if not hit or hitE == x then best, bestDot = x, dot end
+          end
+        end
+      end
+    end
+    if not best then G.msg(P.pl, "bad", "wt.scoutNone") return end
+    if best.wtScoutT and t - best.wtScoutT < SC.relock then
+      G.msg(P.pl, "bad", "wt.scoutAgain", math.ceil(SC.relock - (t - best.wtScoutT)))
+      return
+    end
+    best.wtScoutT = t
+    best.wtScout = { P = P, till = t + SC.time }
+    if G.spotted and G.spotted[P.team] then G.spotted[P.team][best.id] = t + SC.time end
+    G.addScore(P, Config.Score.spot or 15)
+    G.msgTeam(P.team, "info", "wt.scouted", P.pl.DisplayName, { k = "veh." .. best.def.id })
+  end
+
+  ---------------------------------------------------------------- 火炮支援（战雷：坦克按键，准星下那块地延迟几秒落一轮炮弹，敌我都炸）
+  --   防空车不能叫；冷却 cd 秒（侦察助攻多给一次，不用等冷却）；先落几发、再一阵覆盖，半径 r 格
+  local AR = W.arty or { cd = 120, delay = 4, n = 12, r = 70, spread = 6, range = 11200,
+    w = { id = "wtarty", dmg = 300, splash = 22, vs = { inf = 1, light = 1, armor = 0.6, air = 0, ship = 0.5, fort = 1.2 } } }
+  local function artyReady(P)
+    local t = now()
+    return (P.wtArtyBonus or 0) > 0 or t >= (P.wtArtyT or 0)
+  end
+  local function pushArty(P)
+    if not P.pl then return end
+    local left = math.max(0, (P.wtArtyT or 0) - now())
+    P.pl:SetAttribute("WtArtyCd", (left > 0 and (P.wtArtyBonus or 0) <= 0) and (workspace:GetServerTimeNow() + left) or nil)
+    P.pl:SetAttribute("WtArtyBonus", (P.wtArtyBonus or 0) > 0 and P.wtArtyBonus or nil)
+  end
+  G.ACT.wtArty = function(P, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local e = myVeh(P)
+    if not e or not G.round or G.round.phase ~= "battle" then return end
+    if e.def.cat == "aa" then G.msg(P.pl, "bad", "wt.artyNo") return end
+    local d = (Vector3.new(aim.X, 0, aim.Z) - Vector3.new(e.root.Position.X, 0, e.root.Position.Z)).Magnitude
+    if d > AR.range then G.msg(P.pl, "bad", "wt.artyFar", math.floor(AR.range / 2.8)) return end
+    if not artyReady(P) then G.msg(P.pl, "bad", "wt.artyCd", math.ceil((P.wtArtyT or 0) - now())) return end
+    if (P.wtArtyBonus or 0) > 0 then P.wtArtyBonus -= 1 else P.wtArtyT = now() + AR.cd end
+    pushArty(P)
+    local Map = G.Map
+    local x0, z0 = aim.X, aim.Z
+    local src = { P = P, team = P.team, name = P.pl.DisplayName }
+    G.msgTeam(P.team, "info", "wt.artyCalled", P.pl.DisplayName)
+    G.fx({ k = "artyMark", p = Vector3.new(x0, Map.ground(x0, z0), z0), r = AR.r, t = AR.delay + AR.spread + 1, team = P.team })
+    for i = 1, AR.n do
+      task.delay(AR.delay - 1.2 + (i - 1) * AR.spread / AR.n, function()
+        local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * AR.r
+        local x, z = x0 + math.cos(a) * r, z0 + math.sin(a) * r
+        G.shell(Vector3.new(x, Map.ground(x, z), z), AR.w, src, 1.2)
+      end)
+    end
+  end
+
+  ---------------------------------------------------------------- 车被打掉
+  --   车主那一型记一笔「已毁」；打掉它的人记击毁地面 / 击落空中；侦察到的车被打掉，侦察的人有助攻；
+  --   全服一条战雷式击杀信息（左边那一栏，客户端 WtBattle.lua）
   G.on("entDied", function(e, src)
     local P = e.wtOwner
     if P and e.wtVid then
@@ -30783,6 +30906,21 @@ function WtMatch.init(G)
     if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team then
       local s = S(K)
       if e.cat == "air" then s.ak += 1 else s.vk += 1 end
+    end
+    local sc = e.wtScout
+    if sc and sc.P and sc.P ~= K and now() < sc.till and G.P[sc.P.pl] == sc.P then
+      G.addScore(sc.P, SC.kill)
+      sc.P.wtArtyBonus = math.min(2, (sc.P.wtArtyBonus or 0) + 1)
+      pushArty(sc.P)
+      G.msg(sc.P.pl, "good", "wt.scoutKill", { k = "veh." .. (e.def and e.def.id or "") })
+    end
+    if e.cat ~= "inf" and e.cat ~= "fort" and e.def and e.def.id then
+      local D = e.driver or e.wtLastDriver
+      local kname = (K and K.pl and K.pl.DisplayName) or (src and src.name) or nil
+      local kveh = K and K.vehicle and K.vehicle.def and K.vehicle.def.id or (src and src.veh) or nil
+      G.R.Drive:FireAllClients({ op = "wtFeed", k = kname, kt = src and src.team or nil, kv = kveh,
+        v = D and D.pl and D.pl.DisplayName or nil, vt = e.team, vv = e.def.id, air = e.cat == "air" or nil, why = e.wtWhy,
+        vid = D and D.pl and D.pl.UserId or nil })
     end
   end)
 
@@ -38489,6 +38627,12 @@ function Drive.init(G)
       smoke()
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
+    elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
+      local aim = st.aimPt or (workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 1000)
+      local from = (st.sight and workspace.CurrentCamera.CFrame.Position) or (st.root.Position + V(0, st.d.H or 6, 0))
+      G.R.Act:FireServer("wtScout", from, aim)
+    elseif k == Enum.KeyCode.K and not (G.interiorOn and G.interiorOn()) then   -- 战雷式火炮支援：准星下那块地落一轮炮弹（冷却 2 分钟）
+      if st.aimPt then G.R.Act:FireServer("wtArty", st.aimPt) end
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
@@ -78263,8 +78407,83 @@ function WtBattle.init(G)
     nextT.Text = T("ui.nextRound", S.left or 0)
   end
 
+  ---------------------------------------------------------------- 击杀信息（战雷左边那一栏）：「玩家A [豹 2A6] 击毁 玩家B [T-72B3]」
+  --   服务器 WtMatch.lua 车被打掉时发 { op = "wtFeed", k 打的人, kt 他那队, kv 他开的车, v 车里的人, vt 那队, vv 那辆车, air 打下来的是飞机, why 殉爆 / 起火 }；
+  --   我方蓝、敌方红；最多 7 行，8 秒后淡掉；自己相关的那行底色亮一点
+  local FEED_N = 7
+  local feedBox = frame(gui, UD2(0, 460, 0, FEED_N * 22), UD2(0, 16, 0.36, 0), INK, 1)
+  feedBox.Name = "WtKillFeed"
+  local feedRows, feedList = {}, {}
+  for i = 1, FEED_N do
+    local r = frame(feedBox, UD2(1, 0, 0, 20), UD2(0, 0, 0, (i - 1) * 22), INK, 0.6)
+    local l = label(r, "", UD2(1, -12, 1, 0), UD2(0, 6, 0, 0), 13, WHITE, BOLD, nil, LEFT)
+    l.RichText = true
+    r.Visible = false
+    feedRows[i] = { f = r, l = l }
+  end
+  local BLUE, RED = RGB(110, 170, 255), RGB(255, 96, 80)
+  local function vehName(id) return id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or nil end
+  local function feedLine(m)
+    local side = me:GetAttribute("Side")
+    local function who(name, team, veh)
+      local col = (team == side) and BLUE or RED
+      local nm = name or T("wtm.ai")
+      local v = vehName(veh)
+      return string.format('<font color="%s">%s</font>%s', hex(col), nm, v and string.format(' <font color="#C8CDD0">[%s]</font>', v) or "")
+    end
+    local verb = T(m.air and "wtm.shotDown" or ((m.why == "ammo") and "wtm.ammoRack" or ((m.why == "fire") and "wtm.burned" or "wtm.destroyed")))
+    if not m.k then return who(m.v, m.vt, m.vv) .. "  " .. verb end
+    return who(m.k, m.kt, m.kv) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv)
+  end
+  local function redrawFeed()
+    local t = os.clock()
+    for i = #feedList, 1, -1 do if t - feedList[i].t > 9 then table.remove(feedList, i) end end
+    for i, R in ipairs(feedRows) do
+      local e = feedList[i]
+      R.f.Visible = e ~= nil
+      if e then
+        R.l.Text = e.txt
+        local a = math.clamp((t - e.t - 7.5) / 1.5, 0, 1)
+        R.l.TextTransparency = a
+        R.f.BackgroundTransparency = (e.mine and 0.35 or 0.6) + a * 0.4
+      end
+    end
+  end
+  -- 火炮支援的落点：地上一圈红（本队看得见；敌人只看得见炮弹落下来）
+  local artyMarks = {}
+  local function artyMark(e)
+    if typeof(e.p) ~= "Vector3" or e.team ~= me:GetAttribute("Side") then return end
+    local p = Instance.new("Part")
+    p.Name = "WtArtyMark"
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Shape = Enum.PartType.Cylinder
+    p.Size = Vector3.new(0.3, (e.r or 70) * 2, (e.r or 70) * 2)
+    p.CFrame = CFrame.new(e.p + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+    p.Material, p.Color, p.Transparency = Enum.Material.Neon, RGB(255, 70, 50), 0.82
+    p.Parent = workspace
+    table.insert(artyMarks, { p = p, till = os.clock() + (e.t or 10) })
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
+    end
+  end)
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) ~= "table" or m.op ~= "wtFeed" then return end
+    table.insert(feedList, 1, { txt = feedLine(m), t = os.clock(), mine = m.vid == me.UserId or m.k == me.DisplayName })
+    while #feedList > FEED_N do table.remove(feedList) end
+    redrawFeed()
+  end)
+  G.wtFeedRows = function() return feedList end   -- 测试用
+
   ---------------------------------------------------------------- 每帧
   G.frameConn("WtBattle", function()
+    if #feedList > 0 then G.try_(redrawFeed) end
+    for i = #artyMarks, 1, -1 do
+      local a = artyMarks[i]
+      if os.clock() > a.till then a.p:Destroy() table.remove(artyMarks, i) end
+    end
     local S = G.S
     local w = S and S.wt
     if S then G.try_(stepResults, S) end
@@ -79240,6 +79459,10 @@ function WtHud.init(G)
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
     elseif op == "wtFixed" then
       say(T("wt.fixed"), OK, 2)
+    elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
+      local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
+      say(kv and T("wt.killedBy", m.from or "?", kv) or T("wt.killedBy2", m.from or "?"), DEAD, 5)
+      if m.xr then G.try_(showXray, m) end
     elseif op == "wtaHit" then
       showAirHit(m)
     elseif op == "wtaHurt" then
@@ -79494,6 +79717,19 @@ function WtTank.init(G)
       b(-5, 17, 7, 3, RGB(60, 62, 58), 0)
       b(5, 18, 12, 12, RGB(200, 204, 204), 0.25, true)
       b(10, 24, 9, 9, RGB(220, 224, 224), 0.35, true)
+    elseif kind == "scout" then   -- 侦察：望远镜
+      for i = -1, 1, 2 do
+        local f = b(i * 6, 6, 11, 11, WHITE, 1, true)
+        stroke(f, RGB(214, 220, 222), 2.4, 0)
+        b(i * 6, 15, 7, 6, RGB(170, 176, 178), 0, 2)
+      end
+      b(0, 12, 4, 4, RGB(170, 176, 178), 0)
+    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 往下落的炮弹
+      local f = b(0, 2, 22, 22, WHITE, 1, true)
+      stroke(f, RGB(255, 120, 90), 2, 0)
+      b(0, 12, 2, 26, RGB(255, 120, 90), 0.2)
+      b(0, 12, 26, 2, RGB(255, 120, 90), 0.2)
+      b(7, 18, 5, 11, RGB(150, 150, 140), 0, 2)
     elseif kind == "ext" then   -- 灭火器
       b(0, 0, 11, 20, RGB(220, 42, 32), 0, 3)
       b(0, 19, 6, 4, RGB(60, 60, 60), 0)
@@ -79550,6 +79786,8 @@ function WtTank.init(G)
     for i, sd in ipairs(slotDef) do sd.num = (i <= 6) and i or nil end
     table.insert(slotDef, { k = "smoke", icon = "smoke", keyTxt = "X" })
     table.insert(slotDef, { k = "fix", icon = "fix", keyTxt = "Y" })
+    if d.cat == "apc" or d.cat == "aa" then table.insert(slotDef, { k = "scout", icon = "scout", keyTxt = "G" }) end   -- 轻型车才能侦察（战雷）
+    if d.cat ~= "aa" then table.insert(slotDef, { k = "arty", icon = "arty", keyTxt = "K" }) end   -- 防空车不能叫火炮
     for i = #slots + 1, #slotDef do newSlot(i) end
     for i, s in ipairs(slots) do
       local sd = slotDef[i]
@@ -79608,6 +79846,14 @@ function WtTank.init(G)
       elseif sd.k == "smoke" then
         local n = vs and vs.smoke or 0
         cnt, empty = tostring(n), n <= 0
+      elseif sd.k == "arty" then   -- 火炮支援：冷却（服务器时间）；侦察助攻多给的次数写在右下
+        local cd = me:GetAttribute("WtArtyCd")
+        local left = cd and (cd - workspace:GetServerTimeNow()) or 0
+        local bonus = me:GetAttribute("WtArtyBonus")
+        if left > 0 and not bonus then fillK, timeTxt = 1 - left / 120, string.format("%d", math.ceil(left)) end
+        cnt = bonus and ("+" .. bonus) or ""
+      elseif sd.k == "scout" then
+        cnt = ""
       else
         if fire then ic = "ext" end
         if fix then fillK = fix end
