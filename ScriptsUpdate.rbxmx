@@ -47514,16 +47514,18 @@ return function(Defs, Hp)
     knobsBuild(b, T, placer(XP, rotP, kG), IFV_PANEL, false)
     b:led(T, CF(XP(V(2.680, 4.746, -2.633))), RGB(90, 255, 120), 0.007, "tis")
     -- 车长：延伸目镜（看炮长综合瞄准具的画面）
+    --   人（连目镜、座椅）往炮那边挪 6 厘米：右前方给两块屏的机壳腾地方，不然机壳贴着炮塔壁也躲不开目镜的护额垫
     local kC = 0.8
-    local cScope = V(geo.cxp, geo.TH - 0.20, geo.cEye.Z - 0.14)
+    local cx = geo.cxp + gs * 0.06
+    local cScope = V(cx, geo.TH - 0.20, geo.cEye.Z - 0.14)
     local XC = mapper(PT.gpse, cScope, CF(), kC)
     putM("Int_Gpse", T, XC, CF(), kC)
     b:lens(T, CF(XC(PT.gpse + V(0, 0, -0.06))), 0.055 * kC, { face = 1 })
-    -- 两块屏的机壳：车长右前方（看过去偏右 48°）、比眼睛略低，转过来对着车长——
-    --   延伸目镜就在眼前（左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；外边贴着炮塔壁（壁内面 tw − 0.02）
+    -- 两块屏的机壳：车长右前方（看过去偏右 52°）、比眼睛略低，转过来对着车长——
+    --   延伸目镜就在眼前（护额垫左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；屏的左边要在 ~30° 以外；外边贴着炮塔壁（壁内面 tw − 0.02）
     local cE = cScope + V(0, 0.05, 0.24)   -- 车长位的眼睛（InteriorAFV 的 stations.commander.eye）
     local kD = 0.52
-    local aD, rD = rad(48), 0.34
+    local aD, rD = rad(52), 0.34
     local lim = geo.tw - 0.19
     local dc = V(math.clamp(cE.X - gs * rD * math.sin(aD), -lim, lim), cE.Y - 0.05, cE.Z - rD * math.cos(aD))
     local rotD = ANG(0, math.atan2(cE.X - dc.X, cE.Z - dc.Z), 0)
@@ -47535,7 +47537,7 @@ return function(Defs, Hp)
     local XH = mapper(PT.cch, V(-gs * (geo.tw - 0.20), geo.cEye.Y - 0.48, geo.cEye.Z + 0.02), CF(), kH)
     putM("Int_Cch", T, XH, CF(), kH)
     cchButtons(b, T, placer(XH, CF(), kH))
-    putM("Int_CSeat", T, mapper(V(1.46, 4.03, 1.05), V(geo.cxp, geo.cEye.Y - 0.78, geo.cEye.Z + 0.12), CF(), 0.8), CF(), 0.8)
+    putM("Int_CSeat", T, mapper(V(1.46, 4.03, 1.05), V(cx, geo.cEye.Y - 0.78, geo.cEye.Z + 0.12), CF(), 0.8), CF(), 0.8)
     return { gScope = gScope, cScope = cScope }
   end
 

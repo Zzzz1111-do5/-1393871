@@ -168,7 +168,7 @@ if dumpDir then
     gunner_left = at(ge, ge + V3(-1, -0.2, -0.3)),
     commander = at(ce, ce + V3(0.3, -0.25, -1)),
     commander_right = at(ce, ce + V3(0.9, -0.3, -0.6)),
-    commander_cdu = at(ce, ce + V3(0.74, -0.14, -0.67)),
+    commander_cdu = at(ce, ce + V3(0.79, -0.14, -0.62)),
     overview = at(V3(0.0, 0.45, 0.75), V3(0.0, 0.05, -0.6)),
   }
   dofile(MOCK_DIR .. "/interior_dump.lua")(cur, tw, cams, dumpDir .. "/interior_m2a3_donor.json", R.workspace.CurrentCamera, Enum)
