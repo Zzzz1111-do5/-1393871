@@ -348,19 +348,31 @@ return function(Defs, Hp)
     if cav and sep then
       -- 车长指挥塔：挖出来的那口八边形的井（从挖好的内壁量的：中心 1.40, 1.00 格，内切半径 0.27 米，井壁 6.55～6.95 格高），
       --   井壁上一圈八具观察镜（用户 11-23 的插图：浅蓝玻璃、细黑框、两道斜的反光，下面一条防撞垫）
-      local CUP = V(0.50, 0.811, 0.845)
-      local AP = 0.272
-      local fw = 2 * AP * math.tan(PI / 8) * 0.86
+      -- 井的剖面（从挖好的内壁打射线量的，座圈上，米）：中心 (0.511, 0.840)；井壁 0.757～0.829 高这一段是竖直的，
+      --   各方向（正前起、顺时针每 45°）离中心的距离不一样（后面两个斜角收得最紧），往上是舱盖的穹顶
+      local CUP = V(0.511, 0, 0.840)
+      local RW = { 0.3236, 0.3275, 0.2775, 0.2564, 0.3482, 0.2754, 0.2871, 0.3339 }   -- 0.793 高
+      local RB = { 0.3236, 0.3275, 0.2782, 0.2564, 0.3543, 0.2768, 0.2871, 0.3339 }   -- 0.757 高（下沿）
+      local RT = { 0.3161, 0.3211, 0.2707, 0.2507, 0.3443, 0.2675, 0.2796, 0.3279 }   -- 0.829 高（上沿）
+      local RIM, FR = RGB(196, 198, 194), RGB(46, 48, 50)
+      local tn = math.tan(PI / 8)
       for i = 0, 7 do
         local a = rad(i * 45)
         local dv = V(math.sin(a), 0, -math.cos(a))   -- 这块壁朝外的方向（第一块朝正前）
-        local q = CUP + dv * AP
-        local vb = CFrame.lookAt(q, q + dv)
-        local gw, gh = fw, 0.07
-        local gl = b:box(T, V(gw, gh, 0.006), vb, RGB(166, 220, 236), MAT.Glass)
+        local function at(r, y)
+          local q = V(CUP.X, y, CUP.Z) + dv * r
+          return CFrame.lookAt(q, q + dv)   -- 局部 +Z 朝井的中心（朝人）
+        end
+        -- 上下两圈八边形的边框（用户 11-24：「边框过于粗糙」）：浅灰金属条压住井壁上下两道毛边，两头稍搭接、角上不露缝
+        b:box(T, V(2 * RB[i + 1] * tn * 1.12, 0.012, 0.012), at(RB[i + 1] - 0.005, 0.757), RIM, MAT.Metal)
+        b:box(T, V(2 * RT[i + 1] * tn * 1.12, 0.012, 0.012), at(RT[i + 1] - 0.005, 0.829), RIM, MAT.Metal)
+        -- 观察镜：浅蓝玻璃 + 一圈 4 毫米宽的深灰金属细框（贴在玻璃前面），夹在两圈边框中间
+        local gw, gh = 2 * RW[i + 1] * tn * 0.80, 0.058
+        local vb = at(RW[i + 1] - 0.003, 0.793)
+        local gl = b:box(T, V(gw, gh, 0.004), vb, RGB(166, 220, 236), MAT.Glass)
         gl.Transparency, gl.CastShadow = 0.12, false
-        for _, e in ipairs({ { 0, gh / 2 + 0.003, gw + 0.012, 0.006 }, { 0, -gh / 2 - 0.003, gw + 0.012, 0.006 }, { gw / 2 + 0.003, 0, 0.006, gh }, { -gw / 2 - 0.003, 0, 0.006, gh } }) do
-          b:box(T, V(e[3], e[4], 0.012), vb * CF(e[1], e[2], 0), C.black)
+        for _, e2 in ipairs({ { 0, gh / 2 + 0.002, gw + 0.008, 0.004 }, { 0, -gh / 2 - 0.002, gw + 0.008, 0.004 }, { gw / 2 + 0.002, 0, 0.004, gh }, { -gw / 2 - 0.002, 0, 0.004, gh } }) do
+          b:box(T, V(e2[3], e2[4], 0.003), vb * CF(e2[1], e2[2], 0.0015), FR, MAT.Metal)
         end
         local sg = Kit.gui(gl, Enum.NormalId.Back, 900)
         for _, r in ipairs({ { 0.36, 0.09 }, { 0.50, 0.04 } }) do   -- 两道斜的反光
@@ -371,9 +383,8 @@ return function(Defs, Hp)
           f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = RGB(255, 255, 255), 0.35, 0
           f.Parent = sg
         end
-        b:box(T, V(gw * 0.7, 0.018, 0.024), vb * CF(0, -gh / 2 - 0.022, 0.006), C.rubber, MAT.Fabric)   -- 防撞垫
       end
-      b:light(T, CF(CUP + V(0, 0.04, 0)), "dome", RGB(255, 244, 228), 0.9, 0.5)
+      b:light(T, CF(CUP + V(0, 0.80, 0)), "dome", RGB(255, 244, 228), 0.9, 0.5)
     end
     local lEye = P(V(-1.720, 6.200, 0.400))
     local gas = PT.gasEnd

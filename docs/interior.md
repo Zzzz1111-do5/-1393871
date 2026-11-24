@@ -202,6 +202,10 @@
   预览：`python3 tools/mock/run.py tools/mock/interior_abrams.lua veh=m1a2 imp=m1a2dc dump=<目录>`，
   `CARVE=1 GLBOFF=0,-4.48,1.291 AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_abrams.json <前缀> models/veh/m1a2dc.glb`
   （GLBOFF：炮塔座圈中心在模型坐标里的位置取负，dump 是炮塔坐标）
+- 用户 11-24：「边框过于粗糙」（挖出来的内壁、指挥塔、显示屏边框）——M1A2、99A 体素 0.06 → 0.05 格、每个空间 1.6～2 万个三角形（每块 MeshPart 不超过 2 万）、
+  Taubin 磨 24 遍；悍马、JLTV 1.6 / 1.8 万个三角形、磨 24 遍（四个 GLB 都要重导）。指挥塔井不是正八边形：`python3 -I tools/models/cavrays.py m1a2dc CavTurWall_1 1.43 1.06 6.6,6.7,6.8`
+  从井中心往 8 个方向打射线量井壁，每块观察镜、每段边框按自己那个方向的距离摆（InteriorAbrams 的 RW / RB / RT 表）；观察镜 4 毫米细框，
+  井壁上下沿各压一圈浅灰金属边框。Kit 的屏幕机壳改成圆角，玻璃四周凸起一圈边框、贴玻璃一道细亮边（有实体键的屏幕不凸，免得盖住键名）
 
 ## 各型坦克真实的乘员布局（用户 11-23：「他每个坦克驾驶员应该都是坐在方向机上面的吧」「现实中是怎么安排的我不了解你去查一下每个坦克的结构」，附 M1A2 炮塔内部结构图）
 
