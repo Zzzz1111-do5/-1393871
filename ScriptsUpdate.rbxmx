@@ -847,7 +847,8 @@ Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、�
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
-Config.Map = "island"
+Config.Map = "sands"   -- 只剩沙海（用户 11-24：「全部默认沙海地图吧，登岛那个也删了」）
+Config.MapDefault = "sands"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
 Config.MapVote = { time = 25, grace = 3 }
@@ -887,9 +888,10 @@ Config.StagesByMap = {
   },
 }
 function Config.useMap(id)
-  Config.Map = id or "island"
-  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.island
+  Config.Map = id or "sands"
+  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.sands
 end
+Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
@@ -1086,14 +1088,14 @@ Config.Economy = {
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
-  levels = {
-    { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
-    { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },   -- 原来这三关在沙漠风暴（11-24 删了）：改到沙海
-    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
-    { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
-    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
+  levels = {   -- 用户 11-24 只留沙海：八关都在沙海（拿下前 caps 个阶段的据点就赢）
+    { map = "sands", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "sands", caps = 1, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "sands", caps = 2, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
+    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 800, aiVeh = true },
+    { map = "sands", caps = 3, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
+    { map = "sands", caps = 3, enemies = 24, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
+    { map = "sands", caps = 4, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
     { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
   },
 }
@@ -4759,13 +4761,13 @@ add("pve.tabPve", "关卡 PVE", "PVE MISSIONS")
 add("pve.title", "关卡", "MISSIONS")
 add("pve.sub", "跟电脑打，一关一关解锁；打通拿金币（第一次翻倍），金币解锁载具和配件", "Fight the AI and unlock missions one by one; clears pay coins (double the first time) for vehicles and attachments")
 add("pve.level", "第 {1} 关", "MISSION {1}")
-add("pve.n1", "滩头阵地", "Beachhead")
-add("pve.n2", "港口突袭", "Harbour Raid")
-add("pve.n3", "夜袭机场", "Airfield Night Strike")
+add("pve.n1", "越过沙墙", "Over the Berm")
+add("pve.n2", "边境哨所", "Border Post")
+add("pve.n3", "夜袭油田", "Oilfield Night Raid")
 add("pve.n4", "沙海遭遇", "Desert Encounter")
-add("pve.n5", "纵深突破", "Breakthrough")
+add("pve.n5", "镇子巷战", "Street Fight")
 add("pve.n6", "钢铁洪流", "Steel Tide")
-add("pve.n7", "全岛攻略", "Island Sweep")
+add("pve.n7", "空军基地", "Air Base")
 add("pve.n8", "沙漠风暴", "Desert Storm")
 add("pve.goalCaps", "拿下 {1} 个据点", "Capture {1} objectives")
 add("pve.goalTickets", "打光敌人的 {1} 兵力", "Deplete the enemy's {1} tickets")
@@ -5397,9 +5399,6 @@ add("map.cat", "开始游戏", "PLAY")
 add("map.title", "投票选地图", "VOTE FOR A MAP")
 add("map.sub", "大家投票选这个服务器打哪张（能改票），票最多的开；后进来的直接加入", "Everyone votes for this server's map (you can change your vote) — most votes wins; later players join it")
 add("map.back", "返回", "BACK")
-add("map.island.name", "岛屿突击", "ISLAND ASSAULT")
-add("map.island.mode", "登陆战", "AMPHIBIOUS ASSAULT")
-add("map.island.desc", "登陆联军从海上抢滩，岛屿守备军守住岛上的据点 · 舰队、登陆艇、机场岛 · 夜战", "The coalition storms the beaches from the sea; the garrison holds the island · fleet, landing craft, island airfield · night")
 add("map.sands.name", "沙海", "SEA OF SAND")
 add("map.sands.mode", "突破", "BREAKTHROUGH")
 add("map.sands.desc", "海湾战争式的纯陆地沙漠（约 28 公里见方）：从南边的前进基地北上，五个阶段一个一个打 · 沙墙、油田、镇子、空军基地、岭上指挥部", "A Gulf War desert with no sea (about 28 km across): push north from the forward base through five stages · border berm, oilfield, town, airbase, ridge command")
@@ -6446,10 +6445,9 @@ end
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
 --   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
 Map.id = "island"
-Map.ids = { "island", "sands" }   -- 原来还有「沙漠风暴」（MapDesert，征服）：用户 11-24「沙漠风暴删掉」
+Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
-  island = { km = 8.8, mode = "assault", sea = true },
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
 local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
@@ -6458,7 +6456,7 @@ for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
 end
 function Map.profile(id)
-  if id ~= "island" and not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的「沙漠风暴」：只换脚本的地点里 MapDesert 模块可能还在）
+  if not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
@@ -6482,6 +6480,9 @@ function Map.use(id)
   Map.id = id
   return true
 end
+
+-- 只剩沙海（用户 11-24）：一载入就换成沙海——各模块 require 到的 Map 一开始就是沙海（上面岛图的数学还在 PROFILES.island 里，不再用）
+Map.use("sands")
 
 return Map
 ]]></ProtectedString>
@@ -11694,6 +11695,7 @@ local function waitMap()
     pcall(function() forced = workspace:GetAttribute("MapName") end)
     if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
   end
+  if not G.mapId and #Map.ids == 1 then G.mapId = Map.ids[1] end   -- 只剩一张（沙海）：不用投票，开服就建（进来的人点「开始游戏」时地图多半已经好了）
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
@@ -11713,18 +11715,18 @@ local function waitMap()
         allInAt = allInAt or os.clock()
         voteEnds = math.min(voteEnds, allInAt + grace)
       end
-      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "island" end
+      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "sands" end
     end
     if not G.mapId and ((not anyone and not voteEnds and waited > emptyWait) or waited > (Config.MapWaitMax or 900)) then
-      G.mapId = voteWinner() or Config.MapDefault or "island"
+      G.mapId = voteWinner() or Config.MapDefault or "sands"
     end
     task.wait(0.1)
   end
   if G.pushAll then pcall(G.pushAll) end   -- 选地图界面马上看到定了哪张
   if not Map.use(G.mapId) then
-    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
-    G.mapId = "island"
-    Map.use("island")
+    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用沙海")
+    G.mapId = "sands"
+    Map.use("sands")
   end
   Config.useMap(G.mapId)   -- 跟着地图变的数（沙海的五个阶段……）
   local okL, Lang = pcall(function() return require(RS:WaitForChild("Lang")) end)
@@ -53410,7 +53412,7 @@ function MapPick.init(G)
   local function T(k, ...) return G.T(k, ...) end
   local Map = G.Map
   local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), RGB(156, 162, 168), RGB(104, 110, 116)
-  local ACCENT = { island = RGB(70, 160, 200), sands = RGB(222, 116, 70) }
+  local ACCENT = { sands = RGB(222, 116, 70) }
   local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- 手机：整体缩到一半多，字放大一点
 
   local gui = Instance.new("ScreenGui")

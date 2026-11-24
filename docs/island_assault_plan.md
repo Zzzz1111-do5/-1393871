@@ -1111,6 +1111,10 @@
     Depots 的基地车位、Air / Fly 的「只落自己基地跑道」、FortDefs 的基地高炮、Nav 的网格范围、MapUI 的沙漠色块和基地方块、选图卡片、测试（mock/desert.lua、
     navslice.lua）；`Map.profile` 只认 `Map.ids` 里的图（只换脚本的地点里旧的 MapDesert 模块还在也不会被载）。PvE 原来在沙漠风暴的第 4、6、8 关改到沙海
     （拿下 2 / 3 / 5 个据点赢）。Round / Bots / AIVeh 的征服规则留着（现在没有图用）。
+  - 11-24：用户「全部默认沙海地图吧，登岛那个也删了」：`Map.ids` 只剩 `sands`，Map.lua 载入时就 `Map.use("sands")`（各模块拿到的 Map 一开始就是沙海；
+    岛图的数学留在 PROFILES.island 里不再用）、`Config.Map` / `Config.MapDefault` / `Config.useMap` 默认沙海；只剩一张图不用投票：开服就建
+    （init.server.lua），进来的人看到的是生成进度，好了才是主菜单；「开始游戏」还是选地图界面（一张沙海卡 + 关卡 PVE 页）。PvE 八关都在沙海
+    （拿下前 1～5 个阶段的据点）、关卡名换成沙漠的。岛图专用的测试（海滩、舰艇、航母、登陆艇……）不再适用。
 
 ## 协作（几个会话一起改这个仓库）
 

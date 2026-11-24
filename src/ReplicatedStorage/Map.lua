@@ -518,10 +518,9 @@ end
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
 --   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
 Map.id = "island"
-Map.ids = { "island", "sands" }   -- 原来还有「沙漠风暴」（MapDesert，征服）：用户 11-24「沙漠风暴删掉」
+Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
-  island = { km = 8.8, mode = "assault", sea = true },
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
 local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true }
@@ -530,7 +529,7 @@ for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
 end
 function Map.profile(id)
-  if id ~= "island" and not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的「沙漠风暴」：只换脚本的地点里 MapDesert 模块可能还在）
+  if not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
@@ -554,5 +553,8 @@ function Map.use(id)
   Map.id = id
   return true
 end
+
+-- 只剩沙海（用户 11-24）：一载入就换成沙海——各模块 require 到的 Map 一开始就是沙海（上面岛图的数学还在 PROFILES.island 里，不再用）
+Map.use("sands")
 
 return Map

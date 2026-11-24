@@ -8,7 +8,8 @@ Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、�
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
-Config.Map = "island"
+Config.Map = "sands"   -- 只剩沙海（用户 11-24：「全部默认沙海地图吧，登岛那个也删了」）
+Config.MapDefault = "sands"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
 Config.MapVote = { time = 25, grace = 3 }
@@ -48,9 +49,10 @@ Config.StagesByMap = {
   },
 }
 function Config.useMap(id)
-  Config.Map = id or "island"
-  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.island
+  Config.Map = id or "sands"
+  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.sands
 end
+Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
@@ -247,14 +249,14 @@ Config.Economy = {
 --   （多一个真人敌人多 perPlayer 个、友军少一个）；skill 电脑的枪法和反应（1 是对战里的水平）；aiVeh 敌方开不开坦克、飞机；reward 打通的金币（第一次 × firstBonus）
 Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
-  levels = {
-    { map = "island", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "island", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "island", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
-    { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true },   -- 原来这三关在沙漠风暴（11-24 删了）：改到沙海
-    { map = "island", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
-    { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
-    { map = "island", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
+  levels = {   -- 用户 11-24 只留沙海：八关都在沙海（拿下前 caps 个阶段的据点就赢）
+    { map = "sands", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "sands", caps = 1, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "sands", caps = 2, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true },
+    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 800, aiVeh = true },
+    { map = "sands", caps = 3, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true },
+    { map = "sands", caps = 3, enemies = 24, allies = 6, skill = 1.1, reward = 1300, aiVeh = true },
+    { map = "sands", caps = 4, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true },
     { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true },
   },
 }

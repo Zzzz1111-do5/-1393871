@@ -184,6 +184,7 @@ local function waitMap()
     pcall(function() forced = workspace:GetAttribute("MapName") end)
     if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
   end
+  if not G.mapId and #Map.ids == 1 then G.mapId = Map.ids[1] end   -- 只剩一张（沙海）：不用投票，开服就建（进来的人点「开始游戏」时地图多半已经好了）
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
@@ -203,18 +204,18 @@ local function waitMap()
         allInAt = allInAt or os.clock()
         voteEnds = math.min(voteEnds, allInAt + grace)
       end
-      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "island" end
+      if os.clock() >= voteEnds then G.mapId = voteWinner() or Config.MapDefault or "sands" end
     end
     if not G.mapId and ((not anyone and not voteEnds and waited > emptyWait) or waited > (Config.MapWaitMax or 900)) then
-      G.mapId = voteWinner() or Config.MapDefault or "island"
+      G.mapId = voteWinner() or Config.MapDefault or "sands"
     end
     task.wait(0.1)
   end
   if G.pushAll then pcall(G.pushAll) end   -- 选地图界面马上看到定了哪张
   if not Map.use(G.mapId) then
-    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用岛")
-    G.mapId = "island"
-    Map.use("island")
+    bootError("地图 " .. tostring(G.mapId) .. " ", "加载不了，改用沙海")
+    G.mapId = "sands"
+    Map.use("sands")
   end
   Config.useMap(G.mapId)   -- 跟着地图变的数（沙海的五个阶段……）
   local okL, Lang = pcall(function() return require(RS:WaitForChild("Lang")) end)
