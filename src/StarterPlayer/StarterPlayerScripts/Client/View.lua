@@ -165,11 +165,18 @@ function View.init(G)
 
   -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
   local dying = {}
+  local function engSndOff(v)   -- 别人的车的发动机、履带声（stepVeh 里挂的）
+    if v.engS then
+      for _, s in pairs(v.engS) do s:Destroy() end
+      v.engS = nil
+    end
+  end
   local function remove(em)
     local v = views[em]
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     local hp = em:GetAttribute("Hp") or 1
     if v.ext and v.ext.remove then
       local ok, keep = pcall(v.ext.remove, v)
@@ -658,6 +665,43 @@ function View.init(G)
       local erate = far and 0 or (2 + math.clamp(acc * 0.9, 0, 26) + math.clamp(math.abs(v.speed or 0) * 0.05, 0, 3))
       for _, pe in ipairs(M.exhaust) do if math.abs(pe.Rate - erate) > 0.4 then pe.Rate = erate end end
     end
+    -- 别人的车的发动机、履带声（用户 11-24：坦克的发动机声音做成战雷那样）：3D 的，挂在车的根部件上；380 格以内、有人开、没被毁才响；
+    --   车速越快越尖越响、往前加速时更响（像在踩油门），履带车还有履带的哗啦声
+    if not own then
+      local dist = (pos - camPos).Magnitude
+      local running = lit and dist < 380 and v.root ~= nil and v.root.Parent ~= nil
+      if running and not v.engS and G.realLoop then
+        local tracked = d.arch == "tracked"
+        local e1 = G.realLoop(tracked and "tankDrive" or "tankEngine", v.root)
+        local e2 = tracked and G.realLoop("tankTracks", v.root) or nil
+        for i, s in ipairs({ e1 or false, e2 or false }) do
+          if s then
+            s.Volume = 0
+            s.RollOffMode = Enum.RollOffMode.InverseTapered
+            s.RollOffMinDistance, s.RollOffMaxDistance = (i == 1) and 14 or 10, (i == 1) and 380 or 220
+            pcall(function() s.TimePosition = math.random() * 2.5 end)   -- 几辆车别齐着响
+          end
+        end
+        v.engS = { e1, e2 }
+      end
+      if v.engS then
+        if not running then
+          engSndOff(v)
+        else
+          local sp = math.clamp(math.abs(v.speed or 0) / math.max(d.speed or 30, 1), 0, 1)
+          local acc = math.clamp(math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1)) / 8, 0, 1)
+          local e1, e2 = v.engS[1], v.engS[2]
+          if e1 then
+            e1.PlaybackSpeed = 0.72 + 0.5 * sp + 0.08 * acc
+            e1.Volume = 0.35 + 0.5 * sp + 0.4 * acc
+          end
+          if e2 then
+            e2.PlaybackSpeed = 0.55 + 0.75 * sp
+            e2.Volume = math.clamp((sp - 0.02) * 4, 0, 1) * (0.25 + 0.5 * sp)
+          end
+        end
+      end
+    end
     -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
     --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
     if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
@@ -727,6 +771,7 @@ function View.init(G)
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
     if v.model then v.model:Destroy() end
     add(em)   -- 新建的 solidOn 是空的：下一帧离得近就重新挑实心零件

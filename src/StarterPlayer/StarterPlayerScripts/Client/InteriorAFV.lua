@@ -47,8 +47,8 @@ return function(Defs, Hp)
     local T, H, G = "turret", "hull", "gun"
     local piv = ctx.piv or d.turret.pivot   -- 座圈中心（同 Interior 的 frames）
     local cn = L.cn
-    local WALL = cn and RGB(178, 196, 178) or RGB(222, 222, 212)
-    local WALL2 = cn and RGB(152, 170, 152) or RGB(196, 196, 186)
+    local WALL = (L.paint and L.paint[1]) or (cn and RGB(178, 196, 178) or RGB(222, 222, 212))
+    local WALL2 = (L.paint and L.paint[2]) or (cn and RGB(152, 170, 152) or RGB(196, 196, 186))
     local OD = cn and RGB(74, 92, 70) or RGB(84, 90, 66)
     local FLOOR = RGB(56, 58, 56)
     local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
@@ -179,13 +179,15 @@ return function(Defs, Hp)
       bx("recoil", cal * 1.3, cal * 1.3, blen, 0, 0, blen / 2 + 0.10, C.gun, MAT.Metal)
       bx("recoil", cal * 1.5, cal * 0.5, blen * 0.4, 0, -cal * 0.85, blen * 0.55, C.dark, MAT.Metal)   -- 反后坐装置
       if tur ~= "spaag" then   -- 炮尾防护栏（黄色钢管框：后坐时人别站在里面）
+        -- 布雷德利（用户 11-24 的 M3 截图）：25 毫米炮的炮尾窄，护栏收到 ±0.95 倍口径格数，给炮长目镜旁的 IBAS 显示器腾地方
+        local gk = (tur == "ifv" and L.donor) and 0.95 or 1.2
         for _, s in ipairs({ -1, 1 }) do
-          local x = s * cal * 1.2
+          local x = s * cal * gk
           b:tube(G, V(x, cal * 0.9, 0.15), V(x, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, -cal * 0.9, 0.15), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
           b:tube(G, V(x, cal * 0.9, blen + 0.45), V(x, -cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
         end
-        b:tube(G, V(-cal * 1.2, cal * 0.9, blen + 0.45), V(cal * 1.2, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
+        b:tube(G, V(-cal * gk, cal * 0.9, blen + 0.45), V(cal * gk, cal * 0.9, blen + 0.45), 0.035, C.yellow, MAT.Metal)
       end
       if tur == "ifv" then   -- 机关炮：两边的弹箱、供弹槽（双向供弹）
         for _, s in ipairs({ -1, 1 }) do
@@ -215,7 +217,9 @@ return function(Defs, Hp)
       local wallIn = tw - 0.16
       local function inX(x) return math.clamp(x, -wallIn, wallIn) end
       local gsx = big and gs * math.max(0.20, railX + 0.14) or (gx - gs * 0.20)
-      b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      if not dn then   -- 有原模型件的布雷德利：炮长那块是 IBAS 显示器（InteriorAbrams 的 donorIfv）
+        b:screen(T, 0.16, 0.12, look(V(inX(gsx), gEye.Y - 0.18, gEye.Z - 0.30), gEye), big and "afcs" or "gunsight", { lightK = 0.25 })
+      end
       if not dn then
         b:group("gch", T, CF(gx, gEye.Y - 0.40, gEye.Z - 0.28))
         bx("gch", 0.30, 0.04, 0.05, 0, 0, 0, C.dark, MAT.Metal)
@@ -685,7 +689,8 @@ return function(Defs, Hp)
     if ctx.cav and ctx.cav.anchors and ctx.cav.anchors.drv then return Defs.cabCarved(b, ctx, o) end
     return Defs.cab(b, ctx, o)
   end end
-  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
+  -- 布雷德利：车内漆成用户 11-24 发来的 M3 车内截图那样的浅橄榄绿
+  Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, paint = { RGB(158, 168, 128), RGB(132, 142, 106) }, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
   Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
   Defs.bmp3 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.6, gunK = 0.12, gunCal = 0.20, drv = { z = 0.90 } })   -- BMP-3：炮长左车长右、后门下车（用户 11-24 找的俄系）

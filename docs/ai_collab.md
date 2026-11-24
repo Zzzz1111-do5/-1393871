@@ -43,6 +43,11 @@
   InteriorAbrams 重复了——B 的更完整（拆块、炮尾后坐、握把摆、可动旋钮、M1A2 / 布雷德利都能借），**用 B 的**，A 那版和它的测试删了。
   A 原来那版里有、B 已经有的：镜片、ccp / m1stat 页面、数字键盘手动装定距离（B 就是在 A 的提交上接着做的）。
 
+- 11-24 A 合 B（aaf26ae…dca4d36：AirAudio、坦克分层发动机声、M1A2 挖内腔、坦克能换位）：B 的 AirAudio.lua 和 A 的锁定音（d4db3c0，Fly.lua 里拿
+  UI 提示音截一段循环）重复了——**用 B 的**（SoundLib 的 1000 赫兹纯音调音高，声音干净，还有失速、拉起、油少、熄火、起落架、命中），A 那段删了；
+  tools/mock/hud.lua 的锁定音检查改成查 AirAudio 的声部（模拟器里纯音没载上就跳过）。合并后跑过 hud、bombsight、tankkeys、interior_abrams，都过。
+  import_guide 里两边都叫「第几包」，改成「A 第几包」「B 第几包」
+
 ## 挑刺
 
 ### A 看 B（11-24）

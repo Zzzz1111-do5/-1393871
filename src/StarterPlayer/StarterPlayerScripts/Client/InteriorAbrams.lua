@@ -121,7 +121,7 @@ local KNOBS = {
   { id = "ARM", c = V(1.848, 4.492, -2.675), dia = 0.014, style = "toggle", on = "lrfArm", sync = "arm",
     label = { "激光测距机", "LRF" }, pos = { "待命", "保险" }, posEn = { "ARMED", "SAFE" } },
   { id = "RETN", c = V(1.566, 5.454, -2.645), dia = 0.034, style = "round", n = 2, step = 60, on = "retNight", sync = "retn",
-    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（黑分划）", "夜间（红分划）" }, posEn = { "DAY", "NIGHT" } },
+    label = { "分划照明", "RETICLE ILLUMINATION" }, pos = { "白天（亮红）", "夜间（暗红）" }, posEn = { "DAY", "NIGHT" } },
   { id = "BIT", c = V(1.566, 5.576, -2.665), dia = 0.020, style = "push", on = "bit",
     label = { "火控自检", "FCS BIT" } },
 }
@@ -269,6 +269,9 @@ return function(Defs, Hp)
     if not D or not D.split then return nil end   -- 没导入拆好的新块：照旧零件拼
     local T, G = "turret", "gun"
     local sep = variant == "sep2"
+    -- 挖了内腔的原车（用户 11-24：「你的 m1a2 是在车内挖的建模吗」「如果是的话抬头是看得见八边形天窗的」）：重新导入 carve.py 挖过的 m1a2dc.glb 以后
+    --   ctx.cav 有值——炮塔、车体的内壁就是原车自己的里面（抬头是 M1A2 那口八边形的指挥塔），M1A1 的炮塔壳不要了，别的件照摆
+    local cav = ctx.cav
     local zh = false
     local gpM = (ctx.gpiv or Vector3.zero) / S   -- 炮耳轴（炮塔坐标，米）
     local function P(p) return (p - D.tur) / S end   -- 供体的格 → 炮塔坐标的米（座圈中心对座圈中心，真实尺寸 1:1）
@@ -277,7 +280,7 @@ return function(Defs, Hp)
     local hubM = P(PT.hub)
     -- 原模型的块
     for _, name in ipairs({ "Int_Shell", "Int_Loader", "Int_GpsEye", "Int_GPanel", "Int_GHousing", "Int_GSeat", "Int_Ccp", "Int_Gpse", "Int_Cdu", "Int_Cch", "Int_CBox", "Int_CSeat" }) do
-      put(b, D, name, T, inT)
+      if not (cav and name == "Int_Shell") then put(b, D, name, T, inT) end   -- 挖了内腔不要 M1A1 的炮塔壳
     end
     b:group("gch", T, CF(hubM))
     put(b, D, "Int_Gch", "gch", function(c) return P(c) - hubM end)
@@ -317,7 +320,8 @@ return function(Defs, Hp)
 
     -- 车长那两块屏
     if sep then
-      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）；键排在两屏之间、右边、下边（同钢铁猛兽 SEP 车长显示单元的功能）
+      -- SEPv2：上屏独立热像仪 CITV、下屏战术显示器（蓝军跟踪 / 指挥通信 / 本车状态）——就做在 M1A1 原内饰自己的那台机壳上
+      --   （用户 11-24：「m1a1 那个模型不是自带内饰，你直接给原内饰的显示屏加上功能就行了啊」）：屏幕贴在原来两块屏的位置，键盖在原来的键上
       cduBuild(b, T, Pl, "CITV")
       cchButtons(b, T, Pl)
     else
@@ -334,7 +338,12 @@ return function(Defs, Hp)
 
     -- 乘员位（坦克锁在炮长位：Interior 按 lock 锁；车长的主观瞄挪到炮长位的 T）
     local gEye = P(V(1.653, 5.330, -1.720))
-    local cEye = P(V(1.352, 6.150, 0.300))
+    local cEye = P(V(1.352, 6.150, cav and 0.750 or 0.300))   -- 挖了内腔：往后挪到指挥塔底下（抬头就是八边形的井）
+    if cav and sep then
+      -- 车长指挥塔：原模型自带一圈八块观察镜（用户 11-24：「我记得 m1a2 模型自带八边形镜子啊，你只需要把那个镜子的玻璃做透明然后抬头能看见就行了」）——
+      --   carve.json 的 glass 把它们拆成透明的 Glass 块、后面的内壁挖开；关着的舱盖、镜子靠里那层挪进 Inside（坐进车里藏起来）。这里只补一盏小灯
+      b:light(T, CF(0.50, 0.90, 0.80), "dome", RGB(255, 244, 228), 0.9, 0.5)
+    end
     local lEye = P(V(-1.720, 6.200, 0.400))
     local gas = PT.gasEnd
     local stations = {
@@ -347,6 +356,42 @@ return function(Defs, Hp)
       loader = { g = T, eye = lEye, look = V(0.45, -0.20, -1), yaw = 170, up = 70, down = 75, crew = "loader",
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     }
+    -- 驾驶员位（用户 11-24：「为什么给我默认炮长位控不了，我要能开别的位置」）：挖了内腔的 A2 才有——车体内腔就是驾驶舱
+    --   （挖出来的驾驶舱很矮：顶在座圈下 0.31～0.45 米、地板 0.91～1.06 米、两边墙 ±0.66 米，驾驶员半躺）；M1A1 原模型只做了炮塔里面，A1 没有驾驶员位
+    local order = { "gunner", "commander", "loader" }
+    if cav then
+      local H = "hull"
+      local eyeD = V(0, -0.46, -1.85)
+      local function lookAt(p, at) return CFrame.lookAt(p, at) end
+      -- 三具潜望镜（前面一具正对，两边各斜 32°）、正前方驾驶员视觉增强器 DVE 的显示器
+      for i = -1, 1 do
+        local a = rad(i * 32)
+        local q = V(math.sin(a) * 0.22, -0.40, -2.05 - math.cos(a) * 0.05)
+        b:periscope(H, lookAt(q, q + V(math.sin(a), 0, -math.cos(a))), 0.17, 0.07, 0.08, { model = true })
+      end
+      b:screen(H, 0.16, 0.12, lookAt(V(0, -0.50, -2.16), eyeD), "dve", { lightColor = RGB(200, 200, 200), lightK = 0.25 })
+      -- 半躺的座椅、T 形操纵把（两端拧把油门、中间换挡，跟着转向转）、刹车踏板
+      b:seat(H, CF(0, -0.86, -2.22) * ANG(rad(6), 0, 0), { w = 0.44, d = 0.40, back = 0.55, recline = 40, head = true, col = RGB(52, 50, 44) })
+      b:group("tbar", H, CF(0, -0.60, -2.62))
+      b:tube("tbar", V(-0.24, 0, 0), V(0.24, 0, 0), 0.035, C.dark, MAT.Metal)
+      b:cyl("tbar", 0.11, 0.05, CF(-0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:cyl("tbar", 0.11, 0.05, CF(0.25, 0, 0), C.rubber, MAT.Fabric)
+      b:box("tbar", V(0.10, 0.06, 0.08), CF(0, 0.02, 0), C.black)
+      b:box("tbar", V(0.03, 0.08, 0.03), CF(0.04, 0.07, 0), RGB(200, 40, 30))   -- 换挡杆
+      b:tube(H, V(0, -0.60, -2.62), V(0, -0.90, -2.80), 0.06, C.gray, MAT.Metal)
+      b:box(H, V(0.18, 0.04, 0.12), CF(0.10, -0.90, -2.85) * ANG(rad(-25), 0, 0), C.dark, MAT.DiamondPlate)
+      -- 驾驶员综合显示器 DID（左前）：主菜单、状态、告警、导航、维护；起动、熄火、战术怠速、灯检、确认告警
+      b:screen(H, 0.18, 0.135, lookAt(V(-0.36, -0.58, -2.36), eyeD), "did",
+        { keys = { top = { "MAIN MENU", "STATUS", "W/C/A", "NAV", "MAINT" }, bottom = { "PUSH TO START", "SHUT OFF", "TAC IDLE", "LAMP TEST", "ALARM ACK" } }, lightK = 0.3 })
+      -- 灭火瓶（哈龙，驾驶员后面两瓶）、顶灯
+      b:extinguisher(H, CF(-0.40, -0.78, -1.30), 0.45, 0.14)
+      b:extinguisher(H, CF(0.40, -0.78, -1.30), 0.45, 0.14)
+      b:light(H, CF(0, -0.42, -1.55), "dome", RGB(255, 240, 220), 2.4, 0.9)
+      stations.driver = { g = H, eye = eyeD, look = V(0, 0.10, -1), yaw = 110, up = 30, down = 55, crew = "driver",
+        optics = { primary = { kind = "dve", name = "DVE  AN/VAS-5", g = H, pos = V(0, 0.06, -2.25), dir = "hull", fovs = { 40 }, ret = "dve", look = "bhot", shape = "rect" },
+          alt = { kind = "rear", name = "RVSS  REAR", g = H, pos = V(1.25, 0.10, 3.45), dir = "rear", fovs = { 52 }, ret = "rear", look = "whot", shape = "rect" } } }
+      order = { "driver", "gunner", "commander", "loader" }
+    end
     -- 坐在车里时外模型里伸进乘员舱的块不画（Interior 的 extHide）：炮塔壳的框（炮塔坐标，格）往里收 0.3 格
     local sh = D.parts.Int_Shell.p
     local box = { c = v3(sh.c) - D.tur, s = v3(sh.s) - V(0.6, 0.6, 0.6) }
@@ -355,8 +400,8 @@ return function(Defs, Hp)
       loader = "m256",
       modelInt = true, carved = true, crewBox = box,
       stations = stations,
-      order = { "gunner", "commander", "loader" },
-      lock = "gunner",
+      order = order,
+      lock = "gunner",   -- 一进车默认炮长位，F2 驾驶员（挖了内腔才有）、F3 炮长、F4 车长、F5 装填手
       crew = {},
       abrams = variant,
     }
@@ -410,6 +455,20 @@ return function(Defs, Hp)
     putM("Int_GPanel", T, XP, rotP, kG)
     knobsBuild(b, T, placer(XP, rotP, kG), IFV_PANEL, false)
     b:led(T, CF(XP(V(2.680, 4.746, -2.633))), RGB(90, 255, 120), 0.007, "tis")
+    -- 炮长的综合瞄准具显示器（用户 11-24 发来的 M3 车内截图：目镜右下一块四周一圈方键的显示器，绿色热像、括号分划）：
+    --   夹在目镜和炮尾护栏之间（护栏已经收窄到 25 毫米炮的宽度），正对炮长的眼睛；上下两排键是屏幕自带的，左右各三个方键
+    local eyeG = gScope + V(0, 0.06, 0.26)
+    local dp = V(gScope.X - gs * 0.16, gScope.Y - 0.068, gScope.Z - 0.11)   -- 左边离目镜块、右边离护栏都留几毫米
+    local dcf = CFrame.lookAt(dp, eyeG)
+    local IW, IH, IB = 0.13, 0.10, 0.018
+    local ibas = b:screen(T, IW, IH, dcf, "ibas", { keys = { top = { "FOV", "POL", "GAIN", "LVL", "SYM" }, bottom = { "TIS", "LRF", "F/L", "RET", "TEST" } },
+      bezel = IB, lightK = 0.25, lightColor = RGB(110, 230, 130) })
+    for i, nm in ipairs({ "ROF", "WPN", "ARM" }) do   -- 人看过去的左边是屏幕的 +X
+      b:keyCap(T, ibas, dcf * CF(IW / 2 + IB * 0.6, 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "left", idx = i })
+    end
+    for i, nm in ipairs({ "BSGT", "STAB", "BRT" }) do
+      b:keyCap(T, ibas, dcf * CF(-(IW / 2 + IB * 0.6), 0.03 - (i - 1) * 0.03, -0.004), 0.014, 0.014, nm, "dark", { side = "right", idx = i })
+    end
     -- 车长：延伸目镜（看炮长综合瞄准具的画面）
     --   人（连目镜、座椅）往炮那边挪 6 厘米：右前方给两块屏的机壳腾地方，不然机壳贴着炮塔壁也躲不开目镜的护额垫
     local kC = 0.8
@@ -418,6 +477,22 @@ return function(Defs, Hp)
     local XC = mapper(PT.gpse, cScope, CF(), kC)
     putM("Int_Gpse", T, XC, CF(), kC)
     b:lens(T, CF(XC(PT.gpse + V(0, 0, -0.06))), 0.055 * kC, { face = 1 })
+    -- 延伸目镜两边（用户 11-24 的 M3 截图）：右边一个圆表盘，左边一块小面板——两个红灯（电源、热像），两个旋钮（视野选择、极性，跟炮长那边同步）
+    local gpE = XC(PT.gpse)
+    local dialC = gpE + V(0.115, -0.025, -0.06)
+    b:cylZ(T, 0.03, 0.078, CF(dialC), RGB(30, 32, 34), MAT.Metal)
+    b:cylZ(T, 0.004, 0.062, CF(dialC + V(0, 0, 0.016)), RGB(10, 12, 12), MAT.Glass)
+    b:box(T, V(0.003, 0.026, 0.002), CF(dialC + V(0, 0.005, 0.019)) * ANG(0, 0, rad(-35)), RGB(232, 232, 226))
+    local pc = gpE + V(-0.125, -0.03, -0.06)
+    b:box(T, V(0.07, 0.09, 0.022), CF(pc), RGB(34, 36, 36), MAT.SmoothPlastic)
+    b:led(T, CF(pc + V(-0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008)
+    b:led(T, CF(pc + V(0.016, 0.03, 0.012)), RGB(255, 40, 30), 0.008, "tis")
+    for i, K in ipairs({
+      { id = "CVIS", dia = 0.024, style = "round", n = 2, step = 60, on = "thermalSet", sync = "vis", label = { "延伸目镜：视野选择", "SIGHT EXT  DAY / TIS" }, pos = { "昼光", "热像" }, posEn = { "DAY", "TIS" } },
+      { id = "CPOL", dia = 0.024, style = "bar", n = 2, step = 60, on = "polaritySet", sync = "pol", label = { "延伸目镜：极性", "SIGHT EXT  POLARITY" }, pos = { "白热", "黑热" }, posEn = { "WHT", "BLK" } } }) do
+      local kp = pc + V((i == 1) and -0.016 or 0.016, -0.012, 0.011)
+      control(b, T, CFrame.lookAt(kp, kp + V(0, 0, 1)), K, false)
+    end
     -- 两块屏的机壳：车长右前方（看过去偏右 52°）、比眼睛略低，转过来对着车长——
     --   延伸目镜就在眼前（护额垫左右各挡 ~23°），机壳放在它正后面会把上面那块 CIV 屏挡掉；屏的左边要在 ~30° 以外；外边贴着炮塔壁（壁内面 tw − 0.02）
     local cE = cScope + V(0, 0.05, 0.24)   -- 车长位的眼睛（InteriorAFV 的 stations.commander.eye）

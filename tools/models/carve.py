@@ -315,6 +315,9 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     ignore 盒子里的三角形（原模型自带的简易座椅、方向盘）不挡水，跟内腔里面的三角形一起挪到 Inside 块"""
     src = np.concatenate([tris_by_group[g] for g in sp['from'] if g in tris_by_group])
     ign = in_boxes(src.mean(axis=1), sp.get('ignore', []))
+    for cy in sp.get('ignoreCyl', []):   # 竖着的圆柱里的三角形不挡水（c 圆心 x / z、r 半径、y 上下）：圆形的指挥塔里关着的舱盖、观察镜靠里那层
+        cc = src.mean(axis=1)
+        ign |= (np.hypot(cc[:, 0] - cy['c'][0], cc[:, 2] - cy['c'][1]) < cy['r']) & (cc[:, 1] > cy['y'][0]) & (cc[:, 1] < cy['y'][1])
     so = [tris_by_group[g] for g in sp.get('solidOnly', []) + ['__ign__'] if g in tris_by_group]   # 只封实体、不挡水的组（会动的炮：炮尾伸进炮塔，按 0° 挖会挖出一个炮形的坑；玻璃块里的简易内饰）
     if so:
         src = np.concatenate([src] + so)
@@ -329,8 +332,9 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     shape = tuple(int(x) for x in np.ceil((hi - lo) / h))
     log('  %s：体素 %.3f 格（%d × %d × %d），三角形 %d（不挡水 %d）' % (sp['name'], h, shape[0], shape[1], shape[2], len(src), int(ign.sum())))
     allT = srcB if not len(glass_tris) else np.concatenate([srcB, glass_tris])
-    for b in sp.get('seal', []):   # 补盖：敞口的地方（敞篷、敞开的炮塔顶）先盖一块平板
-        allT = np.concatenate([allT, seal_tris(b)])
+    sealT = [seal_tris(b) for b in sp.get('seal', [])]
+    for s_ in sealT:   # 补盖：敞口的地方（敞篷、敞开的炮塔顶）先盖一块平板
+        allT = np.concatenate([allT, s_])
     surf = raster(allT, lo, h, shape)
     gvox = raster(glass_tris, lo, h, shape) if len(glass_tris) else None
     close = int(sp.get('close', 3))
@@ -338,7 +342,8 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     solid = solidify(surf | raster(src[ign], lo, h, shape), close) if ign.any() else solidify(surf, close)
     r = int(sp.get('gap', 2))   # 内壁离原模型的面几格（同时封住面上的小缝）
     st = ndimage.generate_binary_structure(3, 1)
-    surfNG = raster(allT[:len(srcB)], lo, h, shape) if gvox is not None else surf   # 不含玻璃
+    # 不含玻璃（补盖的平板要算上：原来只取了 srcB，配了玻璃的车补盖不挡水，车体 / 炮塔内腔从座圈那里漏成一片——11-24 挖 M1A2 指挥塔时发现）
+    surfNG = raster(np.concatenate([srcB] + sealT) if sealT else srcB, lo, h, shape) if gvox is not None else surf
     wall = ndimage.binary_dilation(surfNG, structure=st, iterations=r) if r > 0 else surfNG
     if gvox is not None:   # 玻璃只挡它自己那一层：水一直灌到玻璃跟前，窗框（其余的面）往里让 r 格——挖开后窗口四周是窗框的厚度
         wall |= gvox
@@ -360,6 +365,12 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     del X, Y, Z
     free = solid & ~wall & (C > 0)
     lab, nl = ndimage.label(free, structure=st)
+    dbg = []
+    for dp in sp.get('debug', []):   # 查问题用：这几个点算不算实体 / 墙 / 可灌 / 哪个连通块
+        q = np.clip(np.floor((np.array(dp) - lo) / h).astype(int), 0, np.array(shape) - 1)
+        dbg.append((dp, q))
+        log('    debug %s：实体 %s、墙 %s、约束 %.2f、可灌 %s、块 %d' % (dp, bool(solid[q[0], q[1], q[2]]), bool(wall[q[0], q[1], q[2]]), float(C[q[0], q[1], q[2]]),
+                                                       bool(free[q[0], q[1], q[2]]), int(lab[q[0], q[1], q[2]])))
     keep = set()
     for sd in sp.get('seeds', []):
         q = np.floor((np.array(sd) - lo) / h).astype(int)
@@ -399,6 +410,8 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
     if sp.get('fill', 0):   # 小东西留下的窟窿（细杆子、扶手）补上：先胀再缩
         k = int(sp['fill'])
         region = ndimage.binary_erosion(ndimage.binary_dilation(region, structure=st, iterations=k), structure=st, iterations=k) & solid & (C > 0)
+    for dp, q in dbg:
+        log('    debug %s：最后在内腔里 %s' % (dp, bool(region[q[0], q[1], q[2]])))
     vol_cav = float(region.sum()) * h ** 3
     t2 = float(sp.get('t', 0.0))
     D = ndimage.distance_transform_edt(region) * h - t2 - 0.5 * h   # 面在内腔体素和墙体素正中间（正好落在格点上会出一堆零面积三角形）
@@ -427,6 +440,17 @@ def carve_space(key, sp, tris_by_group, glass_tris, wheels, parts, tracked, M):
         behind = (dd < 2.6 * h + t2 + float(sp.get('winPad', 0.03))) & par
         keepf &= ~behind
         log('    窗户后面挖开 %d 个三角形' % int(behind.sum()))
+        if sp.get('winDepth'):   # 窗洞：按每块玻璃的矩形往里打穿 winDepth 格，正对玻璃的内壁都删（弯的内壁只删平行的面会删得七零八落——11-24 M1A2 指挥塔）
+            wd, wm = float(sp['winDepth']), float(sp.get('winMargin', 0.0))
+            ncut = 0
+            for wr in win_rects(glass_tris):
+                c0, nrm, up = np.array(wr['c']), np.array(wr['n']), np.array(wr['up'])
+                rt = np.cross(up, nrm)
+                rel = ctr - c0
+                cut = (np.abs(rel @ rt) < wr['w'] / 2 + wm) & (np.abs(rel @ up) < wr['h'] / 2 + wm) & (np.abs(rel @ nrm) < wd)
+                ncut += int((cut & keepf).sum())
+                keepf &= ~cut
+            log('    窗洞（按玻璃的矩形打穿 %.2f 格）挖开 %d 个三角形' % (wd, ncut))
     ring = sp.get('ring')
     if ring:   # 座圈：车体内腔的顶 / 炮塔内腔的底挖开
         tc = M['tur']

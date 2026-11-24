@@ -917,6 +917,7 @@ function Fly.init(G)
     st = nil
     G.fly = nil
     G.hitMarkerAt = nil
+    if G.airAudioOff then G.airAudioOff() end
     if G.drive == old then G.drive = nil end
     cam.CameraType = Enum.CameraType.Custom
     cam.FieldOfView = 70
@@ -931,7 +932,6 @@ function Fly.init(G)
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
     if old and old.buffetSnd then old.buffetSnd:Destroy() end
-    if old and old.toneSnd then old.toneSnd:Destroy() end   -- 锁定音
     if old and old.engSnd then old.engSnd:Destroy() end
     if G.vehCamReset then G.vehCamReset("heli") end
   end
@@ -1863,6 +1863,7 @@ function Fly.init(G)
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
         st.flareNext = os.clock() + 0.3
         G.R.Drive:FireServer({ op = "flare" })
+        if G.airAudioEvent then G.airAudioEvent("flare") end
       end
     elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
       mouseAim = not mouseAim
@@ -1937,7 +1938,10 @@ function Fly.init(G)
 
   -- 打中了（服务器发来的命中标记）：开着飞机时镜头猛跳一下、准星变红放大（Play.lua 的 G.hitMarker 调）
   function G.onHitMarker(kind)
-    if st and st.pilot then st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45)) end
+    if st and st.pilot then
+      st.hitKick = math.min(1.3, (st.hitKick or 0) + ((kind == "kill") and 1.0 or 0.45))
+      if G.airAudioEvent then G.airAudioEvent((kind == "kill") and "kill" or "hit") end   -- 战雷式命中「叮」、击落两声
+    end
   end
   -- 吊舱页面每帧（用户给的 TGP 参考）：模式、视场、跟踪框、斜距、高度、指北、TTI、右栏
   -- 平显：俯仰梯、速度矢量、G / α / M（固定翼、飞行员、不在吊舱里）
@@ -2582,6 +2586,7 @@ function Fly.init(G)
     if st.pilot and (st.flareHold or (touch and touch.flare)) and os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then
       st.flareNext = os.clock() + 0.3
       G.R.Drive:FireServer({ op = "flare" })
+      if G.airAudioEvent then G.airAudioEvent("flare") end
     end
     st.sendT -= dt
     if st.sendT <= 0 and st.pilot and not st.crashed then
@@ -2695,6 +2700,16 @@ function Fly.init(G)
       elseif not st.ground and st.fuel + st.fuelX < 0.12 then warn = ((os.clock() * 2) % 1 < 0.6) and T("air.bingo") or "" end   -- 油不多了：该回去了
       warnText.Text = warn or ""
       warnText.Visible = warn ~= nil
+      -- 提示音、告警音（AirAudio.lua，用户 11-24：「把开飞机的各种 ui 声音做成战雷」）：导引头声、雷达弹锁定、导弹来袭、失速、拉起、油少、熄火、起落架
+      if G.airAudioStep then
+        local lk = st.lock
+        G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
+          locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
+          pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
+          gear = (d.kind == "jet") and st.gear or nil, hp = hp / math.max(mx, 1) })
+      end
       -- 落地补给（用户：降落回去可以回血、补武器）：服务器 Rest 属性——1～5 停稳倒计时、10 在自己的机场还在滑、
       --   −1 补完了正在修、−2 全好了、−3 这里不是自己的机场 / 甲板
       local rest = st.ground and em:GetAttribute("Rest") or 0
@@ -2756,33 +2771,7 @@ function Fly.init(G)
       else
         lockBox.Visible, lockText.Visible = false, false
       end
-      -- 锁定音（战雷，用户 11-24：「飞机锁定敌目标改成战雷一模一样的」）：红外弹的导引头看到热源——低沉、一颤一颤的「嗡嗡」声，
-      --   锁上了——又高又稳的一声长音；雷达弹锁定中「嘀、嘀」，锁上了快的「嘀嘀嘀」。用 UI 那段短提示音截一小段循环成连续音
-      do
-        local ir = w and w.seeker == "ir"
-        local radar = w and w.seeker == "radar"
-        local want, sp, vol = false, 1, 0
-        if st.lock and (ir or radar) then
-          local locked2 = st.lockT >= (w.lockTime or 1)
-          local t2 = os.clock()
-          if ir then
-            want = true
-            if locked2 then sp, vol = 1.05, 0.55
-            else sp, vol = 0.52 + 0.06 * math.min(1, st.lockT / (w.lockTime or 1)), 0.22 + 0.3 * (0.5 + 0.5 * math.sin(t2 * math.pi * 2 * 13)) end
-          else   -- 雷达：嘀声（一会儿响一会儿停）
-            local per = locked2 and 0.16 or 0.5
-            want = true
-            sp, vol = locked2 and 1.6 or 1.3, ((t2 % per) < per * 0.45) and 0.42 or 0
-          end
-        end
-        if want and not st.toneSnd then
-          st.toneSnd = G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0.012, 0.034 }, eq = { -6, 4, -4 } }, cam, {})
-        end
-        if st.toneSnd then
-          st.toneSnd.PlaybackSpeed = sp
-          st.toneSnd.Volume = want and vol or 0
-        end
-      end
+      -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
         local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）

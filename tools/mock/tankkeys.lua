@@ -163,14 +163,19 @@ T.tap(Enum.KeyCode.B)
 R.run(0.3)
 check(C.interiorState().mode == "seat", "再按 B：回到乘员位")
 
-print("⑦½ 坦克锁在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：F2～F5 都停在炮长位；Shift 进主瞄准镜、T 是车长的主观瞄")
+print("⑦½ 坦克默认炮长位，F2～F5 换驾驶员 / 炮长 / 车长 / 装填手（用户 11-24：「我要能开别的位置」）；回到炮长位 Shift 进主瞄准镜、T 是车长的主观瞄")
+local FK = { [Enum.KeyCode.F2] = "driver", [Enum.KeyCode.F4] = "commander", [Enum.KeyCode.F5] = "loader" }
 for _, k in ipairs({ Enum.KeyCode.F2, Enum.KeyCode.F4, Enum.KeyCode.F5 }) do
   T.tap(k)
   R.run(0.3)
-  check(C.interiorState().station == "gunner", k.Name .. "：还是炮长位（" .. tostring(C.interiorState().station) .. "）")
+  local want = C.interiorState().cur.spec.stations[FK[k]] and FK[k]
+  if want then check(C.interiorState().station == want, k.Name .. "：换到 " .. want .. "（" .. tostring(C.interiorState().station) .. "）") end
 end
+T.tap(Enum.KeyCode.F3)
+R.run(0.3)
+check(C.interiorState().station == "gunner", "F3：回到炮长位（" .. tostring(C.interiorState().station) .. "）")
 local gsp = C.interiorState().cur.spec.stations.gunner
-check(#C.interiorState().cur.spec.order == 1, "乘员位只有炮长一个")
+check(C.interiorState().cur.spec.order[1] == "gunner", "炮长位排第一个（一进车默认）")
 check(gsp.optics and gsp.optics.third ~= nil and gsp.optics.third.kind ~= "gps",
   "车长的主观瞄挪到炮长位的 T（" .. tostring(gsp.optics and gsp.optics.third and (gsp.optics.third.name or gsp.optics.third.kind)) .. "）")
 T.tap(Enum.KeyCode.LeftShift)

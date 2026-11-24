@@ -89,15 +89,32 @@ function Drive.init(G)
   ss.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   ss.Parent = screenBox
   -- 分划：中心十字、两边的横线、测距刻度（照截图的样子）
-  local RET = RGB(235, 235, 235)
+  --   用户 11-24：「坦克开镜视角……带着光晕的红色准心，像钢铁猛兽一样」——LED 照明的红分划：每条线后面垫两层更宽、更透明的红色（光晕），
+  --   数字也带一圈红色的发光描边；昼光、夜视、热像都是红的（车里的分划照明旋钮：白天亮红、夜间暗红）
+  local RET = RGB(255, 46, 32)
+  local RET_DIM = RGB(190, 34, 24)
   local reticle = Instance.new("Frame")
   reticle.Size = UDim2.fromOffset(300, 120)
   reticle.AnchorPoint = Vector2.new(0.5, 0.5)
   reticle.Position = UDim2.fromScale(0.5, 0.5)
   reticle.BackgroundTransparency = 1
   reticle.Parent = sight
-  local retParts = {}
-  local function rl(size, pos) local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5)) table.insert(retParts, f) return f end
+  local retParts, retHalo = {}, {}
+  local function halo(size, pos, grow, tr)
+    local h = ui.frame(reticle, UDim2.new(size.X.Scale, size.X.Offset + grow, size.Y.Scale, size.Y.Offset + grow), pos, RET, tr, Vector2.new(0.5, 0.5))
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, math.ceil(grow / 2) + 1)
+    c.Parent = h
+    table.insert(retHalo, { f = h, t = tr })
+    return h
+  end
+  local function rl(size, pos)
+    halo(size, pos, 12, 0.9)
+    halo(size, pos, 5, 0.68)
+    local f = ui.frame(reticle, size, pos, RET, 0, Vector2.new(0.5, 0.5))
+    table.insert(retParts, f)
+    return f
+  end
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, -110, 0.5, 0))
   rl(UDim2.fromOffset(40, 2), UDim2.new(0.5, 110, 0.5, 0))
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, -56, 0.5, -10))
@@ -106,8 +123,18 @@ function Drive.init(G)
   rl(UDim2.fromOffset(26, 2), UDim2.new(0.5, 56, 0.5, 10))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, -26))
   rl(UDim2.fromOffset(2, 26), UDim2.new(0.5, 0, 0.5, 26))
-  local dot = rl(UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5))
-  dot.BackgroundTransparency = 1
+  -- 中心的小圈：一圈细线 + 外面一圈更粗、更透明的（光晕），圈里面不填（别挡住瞄的东西）
+  local dotHalo = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  local dhs = Instance.new("UIStroke")
+  dhs.Color = RET
+  dhs.Thickness = 5
+  dhs.Transparency = 0.75
+  dhs.Parent = dotHalo
+  local dhc = Instance.new("UICorner")
+  dhc.CornerRadius = UDim.new(0.5, 0)
+  dhc.Parent = dotHalo
+  local dot = ui.frame(reticle, UDim2.fromOffset(10, 10), UDim2.fromScale(0.5, 0.5), RET, 1, Vector2.new(0.5, 0.5))
+  table.insert(retParts, dot)
   local dotStroke = Instance.new("UIStroke")
   dotStroke.Color = RET
   dotStroke.Thickness = 1.5
@@ -231,20 +258,18 @@ function Drive.init(G)
     screenBox.Visible = thermal
     grain.Visible = m ~= "day"
     cc.Enabled = true
-    local retCol = RET
+    local retCol = st.retNight and RET_DIM or RET   -- 红分划（钢铁猛兽那样）：分划照明旋钮白天亮红、夜间暗红
     if m == "day" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -0.1, 0.08, 0, Color3.new(1, 1, 1)
       clearHl()
     elseif m == "nv" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.35, 0.06, RGB(120, 255, 140)
-      retCol = RGB(190, 255, 190)
       clearHl()
     elseif m == "whot" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
       refreshHl(Color3.new(1, 1, 1))
     else
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
-      retCol = RGB(20, 20, 20)
       refreshHl(Color3.new(0, 0, 0))
     end
     -- 热像仪的增益（对比度）、电平（亮度）：炮长控制面板上的两个旋钮（车里 Interior：st.thGain / st.thLevel，0～4，2 是中间）
@@ -253,12 +278,22 @@ function Drive.init(G)
       cc.Brightness += ((st.thLevel or 2) - 2) * 0.07
     end
     -- 分划照明（白天的光学通道：夜里拨到红色照明）、分划亮度、符号亮度（面板上的旋钮：0 最亮 … 3 最暗 / 关）
-    if m == "day" and st.retNight then retCol = RGB(255, 70, 50) end
     local RB = ({ 0, 0.25, 0.5, 0.75 })[(st.retLvl or 0) + 1] or 0
     local SB = ({ 0, 0.3, 0.6, 1 })[(st.symLvl or 0) + 1] or 0
     for _, f in ipairs(retParts) do f.BackgroundColor3 = retCol f.BackgroundTransparency = (f == dot) and 1 or RB end
+    -- 光晕跟着分划亮度：调暗了光晕也淡；夜间照明（暗红）光晕再淡一点
+    local hk = (1 - RB) * (st.retNight and 0.7 or 1)
+    for _, h in ipairs(retHalo) do
+      h.f.BackgroundColor3 = retCol
+      h.f.BackgroundTransparency = 1 - (1 - h.t) * hk
+    end
+    dhs.Color, dhs.Transparency = retCol, 1 - 0.25 * hk
     dotStroke.Color = retCol
     dotStroke.Transparency = RB
+    for _, l in ipairs({ rangeText, modeText, zoomText, ammoText, fcsText }) do   -- 字也带一圈红色的光
+      l.TextStrokeColor3 = retCol
+      l.TextStrokeTransparency = 1 - (1 - SB) * 0.45 * (st.retNight and 0.7 or 1)
+    end
     rangeText.TextColor3, modeText.TextColor3, zoomText.TextColor3, ammoText.TextColor3 = retCol, retCol, retCol, retCol
     rangeText.TextTransparency, modeText.TextTransparency, zoomText.TextTransparency, ammoText.TextTransparency, fcsText.TextTransparency = SB, SB, SB, SB, SB
     fcsText.TextColor3, multiBar.BackgroundColor3, multiBar.BackgroundTransparency = retCol, retCol, SB
@@ -386,9 +421,24 @@ function Drive.init(G)
   -- 发动机声（开车的人自己听）：低沉的轰鸣（爆炸声起爆那一小段放慢循环、削掉高音）+ 涡轮 / 履带的呜呜声（风声循环），
   --   油门越大、开得越快音调越高、越响；坦克沉一点，轮式车尖一点
   local engine = nil
+  -- 一次性的真录音（起动、熄火、加速）：放在 SoundService，播完自己删
+  local function realOnce(key, vol, speed)
+    local id, cfg = nil, nil
+    if G.realSound then id, cfg = G.realSound(key) end
+    if not id then return nil end
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = (cfg and cfg.vol or 1) * (vol or 1)
+    s.PlaybackSpeed = speed or 1
+    s.Parent = game:GetService("SoundService")
+    s:Play()
+    game:GetService("Debris"):AddItem(s, ((cfg and cfg.len) or 4) / (speed or 1) + 0.5)
+    return s
+  end
   local function engineStop()
     if engine then
       for _, snd in pairs(engine.s) do if snd then snd:Destroy() end end
+      if engine.layered and not engine.layered.turb then realOnce("tankStop", 0.9) end   -- 柴油机熄火一声
       engine = nil
     end
   end
@@ -406,6 +456,33 @@ function Drive.init(G)
     local clank = heavy and G.makeSound({ id = "rbxasset://sounds/volume_slider.ogg", vol = 0, s = { 1, 1 }, loop = { 0, 0.07 }, eq = { 6, 2, -6 } }, SS, {}) or nil
     local skid = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 0, s = { 1.6, 1.6 }, loop = { 2, 6 }, eq = { -14, 4, 6 } }, SS, {})
     engine = { s = { rumble, whine, clank, skid }, rumble = rumble, whine = whine, clank = clank, skid = skid, heavy = heavy, rpm = 0.2, realEng = realEng ~= nil }
+    -- 战雷式分层（用户 11-24：「坦克的发动机声音、加速声音」）：有行驶循环的录音就分层——
+    --   柴油机：怠速层（转速低为主）和行驶层（转速上去、负载大更响更沉）交叉淡入淡出，上车先一声起动、下车一声熄火，猛踩油门叠一声加速；
+    --   M1 系列（AGT1500 燃气轮机）：喷气发动机录音放慢当轰鸣、1000 赫兹纯音升调当尖啸，上车 2.5 秒从低转速爬上来，底下垫一层放慢的行驶录音；
+    --   履带：真录音循环，车速越快越密越响；车里 / 镜里每层削掉高音（闷）
+    if realEng and G.realLoop then
+      local drive = G.realLoop("tankDrive", SS)
+      if drive then
+        local turb = d.id == "m1a1" or d.id == "m1a2"
+        local jet = turb and G.realLoop("jetEngine", SS) or nil
+        local tone = (turb and jet) and G.realLoop("toneSine", SS) or nil
+        local tracks = G.realLoop("tankTracks", SS)
+        local L = { drive = drive, jet = jet, tone = tone, tracks = tracks, turb = turb and jet ~= nil and tone ~= nil, load = 0, t0 = os.clock() }
+        for _, snd in pairs({ realEng, drive, jet, tone, tracks }) do
+          snd.Volume = 0
+          local e = Instance.new("EqualizerSoundEffect")
+          e.Name = "Muffle"
+          e.Parent = snd
+          table.insert(engine.s, snd)
+        end
+        if not L.turb then
+          if jet then jet:Destroy() L.jet = nil end
+          if tone then tone:Destroy() L.tone = nil end
+          realOnce("tankStart", 0.85)
+        end
+        engine.layered = L
+      end
+    end
   end
   -- 变速箱（用户：坦克驾驶参考战雷）：前进 5 档、倒挡 1 档；每档里转速随车速往上走，到顶换上一档、转速掉下来（听得出一档一档换），
   --   换挡那一下动力断一下（声音一沉）；st.gearN 给仪表显示档位
@@ -428,6 +505,58 @@ function Drive.init(G)
     if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
+    local L = engine.layered
+    if L then
+      local function smooth(a, b, x)
+        local k = math.clamp((x - a) / (b - a), 0, 1)
+        return k * k * (3 - 2 * k)
+      end
+      -- 负载：踩着油门、车还没跑起来（加速中）大；松油门、匀速小——大负载更响、音色更沉
+      local want2 = math.abs(thr) * math.clamp(1 - spd * 0.85, 0.15, 1)
+      L.load += (want2 - L.load) * math.min(1, dt * 4)
+      local load = L.load
+      local now = os.clock()
+      if L.turb then
+        local spool = math.clamp((now - L.t0) / 2.5, 0, 1)   -- 起动：转速从低往上爬
+        local rr = r * spool
+        L.jet.PlaybackSpeed = 0.30 + 0.22 * spool + rr * 0.42 + load * 0.05
+        L.jet.Volume = (0.30 + 0.45 * rr + 0.25 * load) * (0.4 + 0.6 * spool)
+        L.tone.PlaybackSpeed = 1.35 + rr * 1.35 + load * 0.08   -- 尖啸 1350～2800 赫兹
+        L.tone.Volume = (0.018 + 0.03 * rr + 0.02 * load) * spool
+        engine.rumble.Volume = 0
+        L.drive.PlaybackSpeed = 0.55 + r * 0.25
+        L.drive.Volume = (0.12 + 0.25 * r) * smooth(0.02, 0.2, spd + load * 0.3)
+      else
+        local fadeIn = math.clamp((now - L.t0 - 1.1) / 1.0, 0, 1)   -- 起动声放完才进怠速
+        local idleW = 1 - smooth(0.25, 0.62, r)
+        engine.rumble.PlaybackSpeed = 0.9 + r * 0.35
+        engine.rumble.Volume = (0.25 + 0.55 * idleW) * (0.35 + 0.65 * fadeIn)
+        L.drive.PlaybackSpeed = 0.72 + r * 0.52 + load * 0.04
+        L.drive.Volume = (smooth(0.12, 0.5, r) * (0.45 + 0.55 * load) + 0.12 * r) * 1.15 * fadeIn
+        -- 猛踩油门（起步、刹停再走）：叠一声加速（3 秒内不重复）
+        if math.abs(thr) > 0.7 and (L.prevThr or 0) < 0.35 and now - (L.accT or -9) > 3 and fadeIn >= 1 then
+          L.accT = now
+          realOnce("tankAccel", 0.75 + 0.25 * (1 - spd))
+        end
+      end
+      L.prevThr = math.abs(thr)
+      local airL = st and st.airS ~= nil
+      if L.tracks then
+        L.tracks.PlaybackSpeed = 0.55 + spd * 0.75
+        L.tracks.Volume = airL and 0 or smooth(0.01, 0.18, spd) * (0.25 + 0.5 * spd)
+      end
+      if engine.clank then engine.clank.Volume = 0 end
+      -- 车里 / 镜里：闷（削高音、低音厚一点）
+      local inside = (st and st.sight) or (G.interiorOn and G.interiorOn())
+      for _, snd in pairs({ engine.rumble, L.drive, L.jet, L.tone, L.tracks }) do
+        local e = snd and snd:FindFirstChild("Muffle")
+        if e then e.LowGain, e.MidGain, e.HighGain = inside and 3 or 0, inside and -4 or 0, inside and -16 or 0 end
+      end
+      local slip = (st and not airL) and math.abs(math.sin(st.slipA or 0)) * math.clamp(math.abs(st.speed or 0) / 20, 0, 1) or 0
+      engine.skid.Volume = math.clamp((slip - 0.08) * 9, 0, 2.2)
+      engine.skid.PlaybackSpeed = 1.4 + slip * 1.2
+      return
+    end
     if engine.realEng then   -- 真录音：转速高了放快一点、响一点；叠出来的涡轮尖啸压低（别盖住真录音）
       engine.rumble.PlaybackSpeed = 0.8 + r * 0.55
       engine.rumble.Volume = 0.5 + 0.6 * r

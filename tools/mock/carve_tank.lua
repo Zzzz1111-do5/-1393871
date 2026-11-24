@@ -2,7 +2,7 @@
 --   python3 tools/mock/run.py tools/mock/carve_tank.lua [veh=ztz99a] [dump=<目录>]
 --   假装 Studio 里重新导入了 carve.py 改过的 GLB（照 ImportedMeta 摆一套同名的块，含 Cav 内壁、Inside 原模型自带的简易内饰），开一辆坦克：
 --   ① 车外：内壁藏着；② C 进车里：走挖了内腔的那套（不再摆车体、炮塔的壳板），内壁显示、简易内饰藏起来、外壳照画；
---      舱盖在原车外面看得见的那个位置（炮塔顶），地板高度是内腔量的；③ 锁在炮长位（F2～F5 都不换）；④ C 出来：内壁又藏起来
+--      舱盖在原车外面看得见的那个位置（炮塔顶），地板高度是内腔量的；③ 默认炮长位（F2～F5 换驾驶员 / 炮长 / 车长 / 装填手）；④ C 出来：内壁又藏起来
 --   dump=：写 interior_<型号>_carve.json（CARVE=1 node tools/mock/interior_view.cjs 叠原车 GLB 画成图）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
@@ -135,13 +135,16 @@ local function snap(name) dumpCams[name] = cam.CFrame end
 snap(tostring(I.station))
 local seen = { [tostring(I.station)] = true }
 
-print("③ 坦克锁在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：F2～F5 都停在炮长位")
+print("③ 坦克一进车里默认炮长位；F2 驾驶员、F3 炮长、F4 车长、F5 装填手（用户 11-24：「我要能开别的位置」），这型车没有的位置不换")
 check(tostring(I.station) == "gunner", "一进车里就是炮长位（" .. tostring(I.station) .. "）")
+local FK = { [Enum.KeyCode.F2] = "driver", [Enum.KeyCode.F3] = "gunner", [Enum.KeyCode.F4] = "commander", [Enum.KeyCode.F5] = "loader" }
 for _, k in ipairs({ Enum.KeyCode.F2, Enum.KeyCode.F3, Enum.KeyCode.F4, Enum.KeyCode.F5 }) do
+  local before = C.interiorState().station
   T.tap(k)
   R.run(0.4)
   local st = C.interiorState().station
-  check(st == "gunner", k.Name .. "：还是炮长位（" .. tostring(st) .. "）")
+  local want = C.interiorState().cur.spec.stations[FK[k]] and FK[k] or nil
+  check((want and st == want) or (not want and st ~= nil), k.Name .. "：" .. tostring(want or ("没有 " .. FK[k] .. "，停在 " .. tostring(before))) .. "（" .. tostring(st) .. "）")
   if st and not seen[st] then
     seen[st] = true
     snap(st)

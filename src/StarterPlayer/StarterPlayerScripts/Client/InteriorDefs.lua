@@ -110,6 +110,65 @@ local function scr(b, g, key, k, w, h, cf, page, opt)
 end
 Defs.PSCR, Defs.scr = PSCR, scr
 
+-- 钢铁猛兽 M1A2 SEP 车长显示单元（用户 11-23 截图「严格按照这个图」、11-24 又发来同一套截图）：机壳网格 ip_cdus + 版面表 CdusLayout 现做的屏幕、键、灯；
+--   uCF 是机壳正面中心（−Z 对着车长）；零件拼的 M1A2 和原模型版的 A2（InteriorAbrams）都用它
+local function sbCdu(b, T, uCF)
+  local LY = CDUS
+    local function uAt(x, y, z) return uCF * CF(-x, y, -(z or 0)) end   -- 版面坐标（米，X 人看过去向右、Z 朝人）→ 炮塔里
+    if not b:prop(T, "ip_cdus", uCF * ANG(0, PI, 0), 1) then   -- 网格还没生成好：先拼个方壳子、四条框（Interior 等它好了重建一次）
+      local U0 = LY.unit
+      b:box(T, V(U0.w, U0.h, U0.d), uAt(0, 0, -U0.d / 2), RGB(44, 48, 66))
+      for _, Q in ipairs({ LY.up, LY.low }) do
+        local fw, fh = (Q.ow - Q.gw) / 2, (Q.oh - Q.gh) / 2
+        b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy + Q.oh / 2 - fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy - Q.oh / 2 + fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx - Q.ow / 2 + fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx + Q.ow / 2 - fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
+        b:box(T, V(Q.gw, Q.gh, 0.0035), uAt(Q.cx, Q.cy, 0.00175), RGB(7, 8, 10))
+      end
+    end
+    -- 两块屏的显示面：贴在黑玻璃前面 1.5 毫米，比玻璃小一圈（圆角那里不露出方角）
+    local zF = LY.zGlass + 0.0015
+    local sUp = b:screen(T, LY.up.gw - 0.008, LY.up.gh - 0.008, uAt(LY.up.cx, LY.up.cy, zF), "citv",
+      { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.07, lightK = 0.3, lightColor = RGB(110, 230, 130) })
+    local DASH = { "MAP", "NAV", "POS", "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" }   -- 下屏下边 8 个橙色横杠键（功能名写在屏幕下沿）
+    local lw = LY.low.gw - 0.008
+    local dash = {}
+    for i, nm in ipairs(DASH) do dash[i] = { nm, (LY.bot.x0 + (i - 1) * LY.bot.dx - (LY.low.cx - lw / 2)) / lw } end
+    local sLow = b:screen(T, lw, LY.low.gh - 0.008, uAt(LY.low.cx, LY.low.cy, zF), "cid",
+      { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.16, paper = true, dash = dash, lightK = 0.3, lightColor = RGB(220, 226, 232) })
+    -- 键：键帽正面在键槽上面 4 毫米（键槽顶 1.5 毫米）
+    local KZ = 0.0055
+    local LED = RGB(70, 255, 110)
+    local UPL = { "BRT+", "BRT-", "SCAN L", "SCAN R", "STOW" }   -- 上屏左边一列
+    for i, q in ipairs(LY.upL) do b:keyCap(T, sUp, uAt(q[1], q[2], KZ), LY.upLw, LY.upLh, UPL[i], "blue", { side = "left", idx = i }) end
+    local ROW = { "SYM", "DESIG", "WHT", "BLK", "WFOV", "NFOV", "MAN", "AUTO", "GUN LOS", "GPS LOS" }   -- 两屏之间一排（管上屏）：单、单、双、双、双、双（最右一对深色）
+    for i, q in ipairs(LY.row) do
+      b:keyCap(T, sUp, uAt(q[1], LY.rowY, KZ), q[2], LY.rowH, ROW[i], (i >= 9) and "dark" or "blue", { side = "row", idx = i })
+      b:led(T, uAt(q[1] - q[2] / 2 + 0.0045, LY.rowY - LY.rowH / 2 + 0.0045, KZ + 0.0008), LED, 0.004, "key", { s = sUp, k = ROW[i] })   -- 键左下角的绿灯：选中的亮
+    end
+    for i, q in ipairs(LY.leds) do b:led(T, uAt(q[1], q[2], 0.0035), LED, 0.005, "key", { s = sUp, k = ({ "_PWR", "_SCAN", "_DES" })[i] }) end   -- 灯条：电源、自动扫描、指示
+    local LOWL = { "VEH SYS", "C3" }   -- 下屏左边：本车状态、消息
+    for i, q in ipairs(LY.lowL) do b:keyCap(T, sLow, uAt(q[1], q[2], KZ), LY.lowLw, LY.lowLh, LOWL[i], "orange", { side = "left", idx = i }) end
+    b:led(T, uAt(LY.lowL[2][1] - 0.008, LY.lowL[2][2] - 0.011, KZ + 0.0008), LED, 0.004, "key", { s = sLow, k = "_MSG" })
+    local A = LY.arrows   -- 左下四个方向键：挪地图
+    for _, q in ipairs({ { "UP", 0, 0, 1 }, { "DOWN", 180, 0, -1 }, { "LEFT", 270, -1, 0 }, { "RIGHT", 90, 1, 0 } }) do
+      b:keyCap(T, sLow, uAt(A.cx + q[3] * A.d, A.cy + q[4] * A.d, KZ), A.s, A.s, q[1], "arrow", { dir = q[2], side = "arrow" })
+    end
+    for i, nm in ipairs(DASH) do b:keyCap(T, sLow, uAt(LY.bot.x0 + (i - 1) * LY.bot.dx, LY.bot.y, KZ), LY.bot.w, LY.bot.h, nm, "dash", { side = "bot", idx = i }) end
+    -- 字母数字键盘（截图：ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、▶ / •、0、—、ENT）
+    local PAD = { { "1", "ABC" }, { "2", "DEF" }, { "3", "GHI" }, { "CLR" }, { "4", "JKL" }, { "5", "MNO" }, { "6", "PQR" }, { "LTR" },
+      { "7", "STU" }, { "8", "VWX" }, { "9", "YZ" }, { "NEXT", nil, ">" }, { "." }, { "0" }, { "-" }, { "ENT" } }
+    local KP = LY.pad
+    for i, q in ipairs(PAD) do
+      local cI, rI = (i - 1) % 4, math.floor((i - 1) / 4)
+      b:keyCap(T, sLow, uAt(KP.x0 + cI * KP.dx, KP.y0 + rI * KP.dy, KZ), KP.w, KP.h, q[1], "pad", { sub = q[2], text = q[3], side = "pad", idx = i })
+    end
+    b:led(T, uAt(LY.ledLow[1], LY.ledLow[2], 0.002), LED, 0.004, "key", { s = sLow, k = "_PWR" })
+  return sUp, sLow
+end
+Defs.sbCdu = sbCdu
+
 function Defs.m1a2(b, ctx)
   local T, H, G = "turret", "hull", "gun"
   local function bx(g, sx, sy, sz, x, y, z, col, mat, rx, ry, rz)
@@ -429,61 +488,10 @@ function Defs.m1a2(b, ctx)
   --   下屏指挥地图（白底、红色道路），左边 VEH SYS、C3 两个键，左下四个方向键，下边 8 个橙色横杠键，右边 4 × 4 橙色字母数字键盘；三根把手
   --   机壳、银色倒角屏框是本项目照截图做的网格（ip_cdus，tools/weapons/gen_cdus.mjs——Sketchfab 上搜不到能下载的 CITV / 车长显示器模型），
   --   键、屏幕、指示灯按同一张版面表（ReplicatedStorage.CdusLayout）现做
-  local LY = CDUS
   -- 机壳正面中心（−Z 对着车长）：在主瞄准镜延伸目镜右边，从车长眼睛看过去不被护眼罩挡（截图里也是挨着）；
   --   用户 11-23 再对截图：原来在 (0.88, 0.42, −0.46)，离眼睛 0.6 米、偏右 34°、上屏比眼睛低，显得又小又远——挪近、抬高、往中间靠
   local uCF = look(V(0.80, 0.44, -0.40), cEye)
-  local function uAt(x, y, z) return uCF * CF(-x, y, -(z or 0)) end   -- 版面坐标（米，X 人看过去向右、Z 朝人）→ 炮塔里
-  if not b:prop(T, "ip_cdus", uCF * ANG(0, PI, 0), 1) then   -- 网格还没生成好：先拼个方壳子、四条框（Interior 等它好了重建一次）
-    local U0 = LY.unit
-    b:box(T, V(U0.w, U0.h, U0.d), uAt(0, 0, -U0.d / 2), RGB(44, 48, 66))
-    for _, Q in ipairs({ LY.up, LY.low }) do
-      local fw, fh = (Q.ow - Q.gw) / 2, (Q.oh - Q.gh) / 2
-      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy + Q.oh / 2 - fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(Q.ow, fh, 0.012), uAt(Q.cx, Q.cy - Q.oh / 2 + fh / 2, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx - Q.ow / 2 + fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(fw, Q.gh, 0.012), uAt(Q.cx + Q.ow / 2 - fw / 2, Q.cy, 0.006), RGB(170, 172, 180), MAT.Metal)
-      b:box(T, V(Q.gw, Q.gh, 0.0035), uAt(Q.cx, Q.cy, 0.00175), RGB(7, 8, 10))
-    end
-  end
-  -- 两块屏的显示面：贴在黑玻璃前面 1.5 毫米，比玻璃小一圈（圆角那里不露出方角）
-  local zF = LY.zGlass + 0.0015
-  local sUp = b:screen(T, LY.up.gw - 0.008, LY.up.gh - 0.008, uAt(LY.up.cx, LY.up.cy, zF), "citv",
-    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.07, lightK = 0.3, lightColor = RGB(110, 230, 130) })
-  local DASH = { "MAP", "NAV", "POS", "ZOOM+", "ZOOM-", "OVLY", "BRT+", "BRT-" }   -- 下屏下边 8 个橙色横杠键（功能名写在屏幕下沿）
-  local lw = LY.low.gw - 0.008
-  local dash = {}
-  for i, nm in ipairs(DASH) do dash[i] = { nm, (LY.bot.x0 + (i - 1) * LY.bot.dx - (LY.low.cx - lw / 2)) / lw } end
-  local sLow = b:screen(T, lw, LY.low.gh - 0.008, uAt(LY.low.cx, LY.low.cy, zF), "cid",
-    { noBack = true, propShell = true, bezel = 0.006, keys = {}, pickM = 0.16, paper = true, dash = dash, lightK = 0.3, lightColor = RGB(220, 226, 232) })
-  -- 键：键帽正面在键槽上面 4 毫米（键槽顶 1.5 毫米）
-  local KZ = 0.0055
-  local LED = RGB(70, 255, 110)
-  local UPL = { "BRT+", "BRT-", "SCAN L", "SCAN R", "STOW" }   -- 上屏左边一列
-  for i, q in ipairs(LY.upL) do b:keyCap(T, sUp, uAt(q[1], q[2], KZ), LY.upLw, LY.upLh, UPL[i], "blue", { side = "left", idx = i }) end
-  local ROW = { "SYM", "DESIG", "WHT", "BLK", "WFOV", "NFOV", "MAN", "AUTO", "GUN LOS", "GPS LOS" }   -- 两屏之间一排（管上屏）：单、单、双、双、双、双（最右一对深色）
-  for i, q in ipairs(LY.row) do
-    b:keyCap(T, sUp, uAt(q[1], LY.rowY, KZ), q[2], LY.rowH, ROW[i], (i >= 9) and "dark" or "blue", { side = "row", idx = i })
-    b:led(T, uAt(q[1] - q[2] / 2 + 0.0045, LY.rowY - LY.rowH / 2 + 0.0045, KZ + 0.0008), LED, 0.004, "key", { s = sUp, k = ROW[i] })   -- 键左下角的绿灯：选中的亮
-  end
-  for i, q in ipairs(LY.leds) do b:led(T, uAt(q[1], q[2], 0.0035), LED, 0.005, "key", { s = sUp, k = ({ "_PWR", "_SCAN", "_DES" })[i] }) end   -- 灯条：电源、自动扫描、指示
-  local LOWL = { "VEH SYS", "C3" }   -- 下屏左边：本车状态、消息
-  for i, q in ipairs(LY.lowL) do b:keyCap(T, sLow, uAt(q[1], q[2], KZ), LY.lowLw, LY.lowLh, LOWL[i], "orange", { side = "left", idx = i }) end
-  b:led(T, uAt(LY.lowL[2][1] - 0.008, LY.lowL[2][2] - 0.011, KZ + 0.0008), LED, 0.004, "key", { s = sLow, k = "_MSG" })
-  local A = LY.arrows   -- 左下四个方向键：挪地图
-  for _, q in ipairs({ { "UP", 0, 0, 1 }, { "DOWN", 180, 0, -1 }, { "LEFT", 270, -1, 0 }, { "RIGHT", 90, 1, 0 } }) do
-    b:keyCap(T, sLow, uAt(A.cx + q[3] * A.d, A.cy + q[4] * A.d, KZ), A.s, A.s, q[1], "arrow", { dir = q[2], side = "arrow" })
-  end
-  for i, nm in ipairs(DASH) do b:keyCap(T, sLow, uAt(LY.bot.x0 + (i - 1) * LY.bot.dx, LY.bot.y, KZ), LY.bot.w, LY.bot.h, nm, "dash", { side = "bot", idx = i }) end
-  -- 字母数字键盘（截图：ABC 1、DEF 2、GHI 3、CLR / JKL 4、MNO 5、PQR 6、LTR / STU 7、VWX 8、YZ 9、▶ / •、0、—、ENT）
-  local PAD = { { "1", "ABC" }, { "2", "DEF" }, { "3", "GHI" }, { "CLR" }, { "4", "JKL" }, { "5", "MNO" }, { "6", "PQR" }, { "LTR" },
-    { "7", "STU" }, { "8", "VWX" }, { "9", "YZ" }, { "NEXT", nil, ">" }, { "." }, { "0" }, { "-" }, { "ENT" } }
-  local KP = LY.pad
-  for i, q in ipairs(PAD) do
-    local cI, rI = (i - 1) % 4, math.floor((i - 1) / 4)
-    b:keyCap(T, sLow, uAt(KP.x0 + cI * KP.dx, KP.y0 + rI * KP.dy, KZ), KP.w, KP.h, q[1], "pad", { sub = q[2], text = q[3], side = "pad", idx = i })
-  end
-  b:led(T, uAt(LY.ledLow[1], LY.ledLow[2], 0.002), LED, 0.004, "key", { s = sLow, k = "_PWR" })
+  sbCdu(b, T, uCF)
   -- 显示单元下面：CROWS 遥控武器站的显示控制单元（真模型是带边键和键盘的显示控制单元 ip_cdu），挪到右下、不挡大显示单元
   scr(b, T, "ip_cdu", 0.95, 0.17, 0.13, look(V(0.92, -0.04, -0.30), cEye + V(0, 0.25, 0)), "crows", { keys = { top = { "ARM", "SAFE", "THERM" }, bottom = { "ZOOM", "LASE", "SLAVE" } }, lightK = 0.25 })
   -- 车长操纵握把（插图右下：白色机箱上一根黑色、带红色扳机和按钮的握杆）：
@@ -595,7 +603,7 @@ function Defs.m1a2(b, ctx)
         optics = { primary = { kind = "lscope", name = "LOADER'S PERISCOPE", g = T, pos = V(-0.62, 0.92, -0.12), dir = "free360", fovs = { 38 }, ret = "none", look = "day", shape = "slot" } } },
     },
     order = { "driver", "gunner", "commander", "loader" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     crew = {
       driver = { dress = "tank_us", g = H, eye = eyeD, lean = 34, yaw = 0, look = V(0, 0.1, -1),
         hands = { l = { "tbar", V(-0.27, 0.0, 0) }, r = { "tbar", V(0.27, 0.0, 0) } },
@@ -1028,7 +1036,7 @@ function Defs.ztz99a(b, ctx)
           alt = { kind = "gps" } } },
     },
     order = { "driver", "gunner", "commander" },
-    lock = "gunner",   -- 坦克只锁定在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」；Interior.lua 按它锁）
+    lock = "gunner",   -- 坦克一进车默认炮长位（11-23 原来锁死在炮长位；用户 11-24：「我要能开别的位置」——F2～F5 照常换，Interior.lua）
     carved = carved,   -- 挖了内腔的那套：坐在车里外壳照样画（从里面看不见外壳的背面），显示内壁
     crew = {
       driver = { dress = "tank_cn", g = H, eye = eyeD, lean = dRoof and 40 or 32, yaw = 0, look = V(0, 0.1, -1),

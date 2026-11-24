@@ -205,7 +205,36 @@ function B:screen(g, w, h, cf, page, opt)
   local bez = opt.bezel or (touch and 0.012) or ((type(opt.keys) == "table") and 0.036 or 0.02)
   local d = opt.depth or 0.05
   -- 屏幕后面的边框底板；平显组合玻璃（noBack）不要：原来平显也垫了一块不透明黑底板，游戏里是一块黑方块上画绿字、挡住正前方（用户 11-21：光学显示屏不够还原）
-  if not opt.noBack then self:box(g, V(w + bez * 2, h + bez * 2, d), cf * CF(0, 0, d / 2 + 0.002), opt.frame or K.C.black, MAT.SmoothPlastic) end
+  if not opt.noBack then
+    -- 机壳（用户 11-24：「边框过于粗糙」——原来是一整块方方正正的黑板子）：圆角的机壳（中间一块、上下两条、四个角的圆柱），
+    --   玻璃四周凸起一圈边框（比机壳亮一点；屏幕上下有实体键时不凸，免得盖住印在边框上的键名）、贴着玻璃一道细亮边（倒角的反光）
+    local col = opt.frame or RGB(38, 40, 44)
+    local W2, H2 = w + bez * 2, h + bez * 2
+    local r = math.max(0.002, math.min(bez * 0.8, W2 * 0.1, H2 * 0.1, 0.018))
+    local zc = d / 2 + 0.002
+    self:box(g, V(W2, H2 - 2 * r, d), cf * CF(0, 0, zc), col, MAT.SmoothPlastic)
+    self:box(g, V(W2 - 2 * r, r, d), cf * CF(0, H2 / 2 - r / 2, zc), col, MAT.SmoothPlastic)
+    self:box(g, V(W2 - 2 * r, r, d), cf * CF(0, -H2 / 2 + r / 2, zc), col, MAT.SmoothPlastic)
+    for _, sx in ipairs({ -1, 1 }) do
+      for _, sy in ipairs({ -1, 1 }) do
+        self:cylZ(g, d, 2 * r, cf * CF(sx * (W2 / 2 - r), sy * (H2 / 2 - r), zc), col, MAT.SmoothPlastic)
+      end
+    end
+    local keyed = type(opt.keys) == "table" and not touch
+    if not keyed then
+      local fw = math.min(bez * 0.55, 0.012)
+      local FC = col:Lerp(RGB(255, 255, 255), 0.1)
+      for _, e in ipairs({ { 0, h / 2 + fw / 2, w + fw * 2, fw }, { 0, -h / 2 - fw / 2, w + fw * 2, fw }, { w / 2 + fw / 2, 0, fw, h }, { -w / 2 - fw / 2, 0, fw, h } }) do
+        local p = self:box(g, V(e[3], e[4], 0.006), cf * CF(e[1], e[2], -0.001), FC, MAT.SmoothPlastic)
+        p.CastShadow = false
+      end
+    end
+    local hw = 0.0016
+    for _, e in ipairs({ { 0, h / 2 + hw / 2, w + hw * 2, hw }, { 0, -h / 2 - hw / 2, w + hw * 2, hw }, { w / 2 + hw / 2, 0, hw, h }, { -w / 2 - hw / 2, 0, hw, h } }) do
+      local p = self:box(g, V(e[3], e[4], 0.0065), cf * CF(e[1], e[2], -0.0012), RGB(118, 122, 128), MAT.Metal)
+      p.CastShadow = false
+    end
+  end
   -- 显示面（用户 11-21：坐在车里看内饰，坦克屏幕有一块地方反光、看不清）：原来是 Glass 材质 + 一点反射、字的亮度 1.6——
   --   Glass 在 Roblox 里另外一遍画，车内灯的高光会叠在字上面；亮度又超过夜里泛光（Bloom）的门槛 1.05，亮的地方晕成一片。
   --   真车的显示器有防眩光涂层：改成哑光、不反射，亮度 1.0（不泛光）；平显的组合玻璃照旧自己给材质和亮度

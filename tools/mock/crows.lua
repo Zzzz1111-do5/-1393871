@@ -125,8 +125,8 @@ T.runUntil(function() return G.round.phase == "battle" end, 60)
 T.tap(Enum.KeyCode.C)
 R.run(0.6)
 local I = C.interiorState()
--- 坦克锁在炮长位（用户 11-23：「不要更新坦克驾驶员视角 就只锁定开炮手就完事了」）：T 是车长的主观瞄（CITV），不是 CROWS
-check(I.station == "gunner" and I.cur ~= nil and #I.cur.spec.order == 1, "坐进车里就是炮长位（锁定）")
+-- 坦克默认炮长位（用户 11-24 起 F2～F5 能换别的位置）：炮长位的 T 是车长的主观瞄（CITV），不是 CROWS
+check(I.station == "gunner" and I.cur ~= nil and I.cur.spec.order[1] == "gunner", "坐进车里就是炮长位（默认）")
 local wi0 = st.wi
 T.tap(Enum.KeyCode.T)
 R.run(0.8)
