@@ -266,6 +266,9 @@ return function(Defs, Hp)
     if not D or not D.split then return nil end   -- 没导入拆好的新块：照旧零件拼
     local T, G = "turret", "gun"
     local sep = variant == "sep2"
+    -- 挖了内腔的原车（用户 11-24：「你的 m1a2 是在车内挖的建模吗」「如果是的话抬头是看得见八边形天窗的」）：重新导入 carve.py 挖过的 m1a2dc.glb 以后
+    --   ctx.cav 有值——炮塔、车体的内壁就是原车自己的里面（抬头是 M1A2 那口八边形的指挥塔），M1A1 的炮塔壳不要了，别的件照摆
+    local cav = ctx.cav
     local zh = false
     local gpM = (ctx.gpiv or Vector3.zero) / S   -- 炮耳轴（炮塔坐标，米）
     local function P(p) return (p - D.tur) / S end   -- 供体的格 → 炮塔坐标的米（座圈中心对座圈中心，真实尺寸 1:1）
@@ -274,7 +277,7 @@ return function(Defs, Hp)
     local hubM = P(PT.hub)
     -- 原模型的块
     for _, name in ipairs({ "Int_Shell", "Int_Loader", "Int_GpsEye", "Int_GPanel", "Int_GHousing", "Int_GSeat", "Int_Ccp", "Int_Gpse", "Int_Cdu", "Int_Cch", "Int_CBox", "Int_CSeat" }) do
-      if not (sep and name == "Int_Cdu") then put(b, D, name, T, inT) end   -- SEPv2 的车长显示单元换成钢铁猛兽那台（下面）
+      if not (sep and name == "Int_Cdu") and not (cav and name == "Int_Shell") then put(b, D, name, T, inT) end   -- SEPv2 的车长显示单元换成钢铁猛兽那台（下面）；挖了内腔不要 M1A1 的炮塔壳
     end
     b:group("gch", T, CF(hubM))
     put(b, D, "Int_Gch", "gch", function(c) return P(c) - hubM end)
@@ -341,7 +344,37 @@ return function(Defs, Hp)
 
     -- 乘员位（坦克锁在炮长位：Interior 按 lock 锁；车长的主观瞄挪到炮长位的 T）
     local gEye = P(V(1.653, 5.330, -1.720))
-    local cEye = P(V(1.352, 6.150, 0.300))
+    local cEye = P(V(1.352, 6.150, cav and 0.750 or 0.300))   -- 挖了内腔：往后挪到指挥塔底下（抬头就是八边形的井）
+    if cav and sep then
+      -- 车长指挥塔：挖出来的那口八边形的井（从挖好的内壁量的：中心 1.40, 1.00 格，内切半径 0.27 米，井壁 6.55～6.95 格高），
+      --   井壁上一圈八具观察镜（用户 11-23 的插图：浅蓝玻璃、细黑框、两道斜的反光，下面一条防撞垫）
+      local CUP = V(0.50, 0.811, 0.845)
+      local AP = 0.272
+      local fw = 2 * AP * math.tan(PI / 8) * 0.86
+      for i = 0, 7 do
+        local a = rad(i * 45)
+        local dv = V(math.sin(a), 0, -math.cos(a))   -- 这块壁朝外的方向（第一块朝正前）
+        local q = CUP + dv * AP
+        local vb = CFrame.lookAt(q, q + dv)
+        local gw, gh = fw, 0.07
+        local gl = b:box(T, V(gw, gh, 0.006), vb, RGB(166, 220, 236), MAT.Glass)
+        gl.Transparency, gl.CastShadow = 0.12, false
+        for _, e in ipairs({ { 0, gh / 2 + 0.003, gw + 0.012, 0.006 }, { 0, -gh / 2 - 0.003, gw + 0.012, 0.006 }, { gw / 2 + 0.003, 0, 0.006, gh }, { -gw / 2 - 0.003, 0, 0.006, gh } }) do
+          b:box(T, V(e[3], e[4], 0.012), vb * CF(e[1], e[2], 0), C.black)
+        end
+        local sg = Kit.gui(gl, Enum.NormalId.Back, 900)
+        for _, r in ipairs({ { 0.36, 0.09 }, { 0.50, 0.04 } }) do   -- 两道斜的反光
+          local f = Instance.new("Frame")
+          f.AnchorPoint = Vector2.new(0.5, 0.5)
+          f.Position, f.Size = UDim2.fromScale(r[1], 0.5), UDim2.fromScale(r[2], 1.8)
+          f.Rotation = 35
+          f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = RGB(255, 255, 255), 0.35, 0
+          f.Parent = sg
+        end
+        b:box(T, V(gw * 0.7, 0.018, 0.024), vb * CF(0, -gh / 2 - 0.022, 0.006), C.rubber, MAT.Fabric)   -- 防撞垫
+      end
+      b:light(T, CF(CUP + V(0, 0.04, 0)), "dome", RGB(255, 244, 228), 0.9, 0.5)
+    end
     local lEye = P(V(-1.720, 6.200, 0.400))
     local gas = PT.gasEnd
     local stations = {

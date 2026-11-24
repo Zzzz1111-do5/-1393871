@@ -40,6 +40,8 @@ local VD = R.require(RS:FindFirstChild("VehDefs"))
 local IM = R.require(RS:FindFirstChild("ImportedMeta"))
 local Map = G.Map
 local def = VD.get(VEH)
+-- imp=<模型键>：再假装导入别的原模型（比如 carve.py 挖过的 m1a2dc：车体、炮塔的内壁，看抬头的八边形指挥塔）
+for k in TEST_ARGS:gmatch("imp=(%w+)") do check(T.fakeImport(k) > 0, "假装导入了 " .. k) end
 local info = IM.m.m1a1i
 check(info ~= nil and info.parts.Int_Shell ~= nil and info.parts.Int_Breech ~= nil, "ImportedMeta 里有拆好的 M1A1 炮塔内饰（Int_Shell、Int_Breech……）")
 
@@ -106,9 +108,10 @@ for nm in pairs(NEW) do
   if blocks[nm] and nm ~= "Int_1" and nm ~= "Int_3" then nb = nb + 1 end
 end
 -- SEPv2 的车长显示单元换成钢铁猛兽那台（用户 11-24 截图）：原模型的机壳 Int_Cdu 不克隆
-local wantN = want - 2 - (SEP and 1 or 0)
+local CAV = cur.spec and cur.b and TEST_ARGS:match("imp=m1a2dc") ~= nil   -- 挖了内腔（假装导入了 carve.py 挖过的 m1a2dc）：M1A1 的炮塔壳不要了
+local wantN = want - 2 - (SEP and 1 or 0) - (CAV and 1 or 0)
 check(nb == wantN and (not SEP or not blocks.Int_Cdu), string.format("原模型的块都克隆进来了（%d / %d，车长那两块屏的面换成动态显示面%s）", nb, wantN, SEP and "；SEPv2 的车长显示单元换成钢铁猛兽那台" or ""))
-check(inGroup.Int_Breech == "recoil" and inGroup.Int_Gun == "gun" and inGroup.Int_Gch == "gch" and inGroup.Int_Shell == "turret",
+check(inGroup.Int_Breech == "recoil" and inGroup.Int_Gun == "gun" and inGroup.Int_Gch == "gch" and (CAV or inGroup.Int_Shell == "turret"),
   string.format("组：炮尾 %s、摇架 %s、双握把 %s、炮塔壳 %s", tostring(inGroup.Int_Breech), tostring(inGroup.Int_Gun), tostring(inGroup.Int_Gch), tostring(inGroup.Int_Shell)))
 local pages = {}
 for _, s in ipairs(cur.b.screens) do pages[s.page] = (pages[s.page] or 0) + 1 end
@@ -331,6 +334,7 @@ if dumpDir then
     gunner_up = at(ge, ge + V3(0.3, 0.8, 0.6)),
     commander = at(ce, ce + V3(0.55, -0.25, -1)),
     commander_cdu = at(ce + V3(0.25, 0, 0.1), ce + V3(0.25, -0.05, -1)),
+    commander_up = at(ce, ce + V3(0.05, 1, 0.45)),   -- 抬头看指挥塔（挖了内腔：八边形的井和观察镜）
     breech = at(V3(-0.6, 0.45, 0.6), V3(0.0, 0.0, -0.9)),
   }
   dofile(MOCK_DIR .. "/interior_dump.lua")(cur, tw, cams, dumpDir .. "/interior_" .. VEH .. "_abrams.json", R.workspace.CurrentCamera, Enum)

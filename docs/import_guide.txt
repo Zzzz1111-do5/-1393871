@@ -23,6 +23,14 @@
 
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
+  11 月 24 日第三包（M1A2 从原车挖内腔、抬头是八边形指挥塔；战雷式提示音和发动机声；红色发光分划）：换游戏文件（或者「三、只换脚本」）；再重导 veh/m1a2dc.glb 一个文件：
+    - 用户：「你的 m1a2 是在车内挖的建模吗」「如果是的话抬头是看得见八边形天窗的」——M1A2 用 carve.py 从原车挖了车体、炮塔的内腔（同悍马、JLTV、99A），
+      车里的内壁就是这辆车自己的里面，抬头是八边形的指挥塔、一圈八具观察镜；M1A1 原模型搬来的瞄准镜、面板、炮尾、座椅照旧摆在里面。
+      新导入的块叫 V_m1a2dc__CavHullFloor_1 / CavTurWall_1……、Inside_*，改过的炮塔块换了新名字（Turret_16～19），旧块不用删，有新块就用新块
+    - 车长显示单元照钢铁猛兽截图（左边蓝键一列、橙色字母数字键盘、橙色横杠键）；布雷德利炮长目镜旁一块 IBAS 显示器、车内绿漆
+    - 开飞机：战雷式的导引头声（嗡嗡 → 锁上尖音）、雷达弹锁定「嘀嘀」、导弹来袭「嘀嘀嘀」、失速喇叭、拉起、油少、熄火、诱饵弹、命中 / 击落、起落架；
+      开坦克：柴油机怠速 / 行驶分层、加速、起动熄火，M1 燃气轮机尖啸，履带声；别人的车也有 3D 发动机声；开镜分划是带光晕的红色
+
   11 月 24 日第二包（M1A1 的炮塔内饰搬进 M1A2 SEPv2 和 M2A3 布雷德利、车里的按钮旋钮都能用）：换游戏文件（或者「三、只换脚本」）；再重导 veh/m1a1i.glb 一个文件：
     - 用户：「把 m1a1 内饰部分插件搬到 a2 和 m3 布雷德利里」「m1a2sepv2……应该和目前 a1 大差不差，按钮什么的实现功能，实现现实中那几块屏幕所有的功能」
     - m1a1i.glb 里炮塔内饰原来是一整块（V_m1a1i__Int_2），现在拆成 15 块（V_m1a1i__Int_Shell、Int_Breech、Int_GpsEye……）：

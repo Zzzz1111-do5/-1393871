@@ -83,7 +83,8 @@
         },
         "tris": 4000,
         "seal": [[-3.6, 3.6, 4.56, 4.56, -4.6, 2.6]],
-        "solidOnly": ["Gun", "Rws", "RwsGun"]
+        "solidOnly": ["Gun", "Rws", "RwsGun"],
+        "ignore": [[1.45, 3.4, 5.2, 6.62, -1.85, -0.15]]
       }
     ],
     "eyes": [
@@ -116,7 +117,8 @@
     "paint": {
       "wall": [226, 226, 218],
       "floor": [56, 58, 56]
-    }
+    },
+    "orig": "a3e95f766af8aa15667ee05dbf868378ba21bd1f"
   },
   "jltv": {
     "glass": {

@@ -194,6 +194,14 @@
   转盘半径收到 0.93 米以内（弹丸、药筒不缩）；瞄准镜镜体、线束、顶灯按那一点的顶截；电台、面板、灭火瓶贴着量出来的侧壁（`q:walls`）；
   座圈那一圈车顶装甲的厚度（−0.17～+0.09）用一圈钢圈封上（carve.py 只挖开了上下两层面，中间是空的，隔着缝能看见车外）
   剖面看法：`python3 -I tools/models/cavprof.py src/ReplicatedStorage/CavityMeta.lua ztz99a2 0,4.34,-0.536 Hull`（tur 是 ImportedMeta 的 tur）
+- M1A2（用户 11-24：「你的 m1a2 是在车内挖的建模吗」「如果是的话抬头是看得见八边形天窗的」）：carve.json 的 m1a2dc（车体 Hull、炮塔 Tur 两个空间）。
+  炮塔右边一块竖板（Turret_4）和炮塔块里一片垂到 5.3 格的面伸进了车长显示单元前面，当成实心会鼓出两大块——`ignore` 盒子 [1.45, 3.4, 5.2, 6.62, −1.85, −0.15]
+  让它们不挡水（伸进内腔的那截挪到 Inside_*，坐进车里藏起来）。挖出来炮塔内腔顶在 6.0～6.5 格（座圈上 0.72 米），车长指挥塔是顶上一口八边形的井
+  （中心 1.40, 1.07 格，内切半径 0.27 米，6.55～6.95 格高）。InteriorAbrams 有 ctx.cav 时：M1A1 的炮塔壳（Int_Shell）不摆，别的件照摆；
+  井壁上贴一圈八具观察镜（浅蓝玻璃、细黑框、反光、防撞垫，同 11-23 的插图）；车长眼位往后挪到指挥塔底下。要重导 models/veh/m1a2dc.glb
+  预览：`python3 tools/mock/run.py tools/mock/interior_abrams.lua veh=m1a2 imp=m1a2dc dump=<目录>`，
+  `CARVE=1 GLBOFF=0,-4.48,1.291 AMB=1.0 NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2_abrams.json <前缀> models/veh/m1a2dc.glb`
+  （GLBOFF：炮塔座圈中心在模型坐标里的位置取负，dump 是炮塔坐标）
 
 ## 各型坦克真实的乘员布局（用户 11-23：「他每个坦克驾驶员应该都是坐在方向机上面的吧」「现实中是怎么安排的我不了解你去查一下每个坦克的结构」，附 M1A2 炮塔内部结构图）
 
