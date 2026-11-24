@@ -75,7 +75,12 @@
   - ② **已做**（d056c6d）：WtTank.lua（电脑上开坦克：穿深指示准星、装填弧、底部弹药栏、左下俯视损伤图），VehHud 有它就不画 MWT 那套；
     **数字键改成战雷那样先选主炮弹种**（Drive.lua 先问 G.wtKeySlot：M1A2 是 1～4 四种弹、没有别的武器格），改 Drive 数字键的注意。测试 tools/mock/wttank.lua。
   - C 打包改用 tools/build.luau（带构建标记、地形草叶设置），不再用 build_rbxlx.py。
-  - ③ 在做：对局玩法（SP、出击阵容、战后结算）——会改 Depots.lua 的 spawnAt（出车前查 SP / 阵容）、Round.lua 的 personal（推 SP 状态）、UI.lua 的结算页。
+  - ③ **已做**（e5206f4）：WtMatch.lua（服务器：SP——第一辆免费、得分每分 0.5 SP、出车按 Config.WtCost 花；出击阵容 5 种、每种一次备用；
+    记击毁地面 / 击落空中）、WtBattle.lua（客户端：比分条下 SP 那一块、召唤卡片上的 SP、「任务完成 / 任务失败」结算页）。
+    **Depots.spawnAt 出车前问 G.wtSpawnOk、出了车 G.wtSpawned；G.addScore 被 WtMatch 包了一层（攒 SP）；Ents 车被毁 G.emit("entDied")**。测试 tools/mock/wtmatch.lua。
+  - ④ **已做**（8a23aa8）：WtAir.lua（服务器：飞机机翼 / 尾翼 / 发动机 / 油箱 / 飞行员 / 操纵面各自的血，断翼、起火、漏油、昏迷）、
+    WtAir.lua（客户端：起火 / 漏油特效、左下飞机损伤图、昏迷黑屏），Fly.lua 的 jetPhysics / 直升机按 G.wtaFlight 打折推力、舵效、断翼滚。
+    **Ents.damageEnt 里飞机先过 G.wtaHit（机身血照扣）；hitThing 把命中点给 G.wtPos**。测试 tools/mock/wtair.lua。
 
 ## 工具链的先后（别互相覆盖）
 
@@ -85,6 +90,8 @@
 - EraMeta：`eralayout.py <键>` 可以只重算几型，其余照旧（A 改的）。
 
 ## 合并记录
+
+- 11-24 C 合 B（c09069b：沙海全图掩体、积云）→ ceb10fc：冲突只有 island_assault_plan 一处（两段都留）。
 
 - 11-24 C 合 B（6970502：沙海两边主基地 FOB、只在自己基地出生、开服只写基地一带地形）→ 53793b0：冲突只有 PvE 第 11 关名字、几关简报
   （用 B 按新地图写的）、Config 一行注释、island_assault_plan 一段（B 的段落在前、C 的合并记录接后面），地点文件合完重新打包。
