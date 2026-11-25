@@ -606,7 +606,10 @@ function WtTank.init(G)
       for _, tk in ipairs(AIM.ticks) do tk.BackgroundColor3 = col end
       -- 装填：弧走着（琥珀），装好那一下圈涨一下
       local ready = I.ready ~= false
-      if ready and not wasReady then readyT = t end
+      if ready and not wasReady then
+        readyT = t
+        if G.wtVoice and wasReady == false then G.wtVoice("loaded") end   -- 车组语音：装填完毕（⑬）
+      end
       wasReady = ready
       AIM.rel.root.Visible = not ready
       AIM.track.Transparency = ready and 1 or 0.7

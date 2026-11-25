@@ -341,6 +341,10 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 -- 战斗等级配对（Tech.lua，用户 11-25「都要做」）：一局的战斗等级 = 准备阶段在线真人出击阵容里最高的那辆（没人按 br0）；
 --   能出的车最高到这一局 + brUp（战雷：最多碰到比自己高 1.0 的）；电脑开的车从科技树里挑 [这一局 − brUp, 这一局]；
 --   真人不够一队 teamSize 个，电脑车补（每队最多 aiMax 辆，AIVeh.lua）
+-- 车组语音（客户端 WtVoice.lua，用户 11-25「全部都做」⑬）：每一句可以配自己上传的录音（rbxassetid://…）；没配的用 Roblox 的文字转语音读英文；
+--   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
+--   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
+Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、

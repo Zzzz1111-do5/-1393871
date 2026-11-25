@@ -724,24 +724,40 @@ function WtHud.init(G)
     local op = m.op
     if op == "wtHit" then
       showHit(m)
+      if G.wtVoice then   -- 车组语音（⑬，WtVoice.lua）
+        G.wtVoice(m.kill and ((m.why == "ammo") and "killAmmo" or "kill") or ((m.r == "pen") and "pen" or ((m.r == "ric") and "ric" or ((m.r == "np") and "np" or "hit"))))
+      end
       if m.xr and (m.r == "pen" or m.kill) then G.try_(showXray, m) end
     elseif op == "wtHurt" then
       flashUntil = os.clock() + 1.2
+      if G.wtVoice then   -- 车组语音（⑬）：被击穿 / 跳弹、着火、谁阵亡、哪个模块坏了
+        if m.r == "pen" then G.wtVoice("hurtPen") elseif m.r == "ric" then G.wtVoice("hurtRic") end
+        if m.fire then G.wtVoice("fire") end
+        for _, p in ipairs(m.parts or {}) do
+          if p.kind == "crew" and p.s == 0 then G.wtVoice(p.seat or p.k)
+          elseif p.s == 0 and (p.k == "engine" or p.k == "barrel" or p.k == "breech") then G.wtVoice(p.k)
+          elseif p.s == 0 and (p.k == "trackL" or p.k == "trackR") then G.wtVoice("track") end
+        end
+      end
       local head = T((m.r == "pen") and "wt.youPen" or ((m.r == "fire") and "wt.youFire" or ((m.r == "ric") and "wt.youRic" or ((m.r == "np") and "wt.youNp" or "wt.youHit"))))
       local sub = details(m)
       say(head .. ((sub ~= "") and ("：" .. sub) or ""), (m.r == "ric" or m.r == "np") and GREY or DEAD, 3.2)
     elseif op == "wtSwap" then
+      if G.wtVoice then G.wtVoice("swap") end
       say(T("wt.swap", T("wt.r." .. m.from), T("wt.r." .. m.role), m.t or 6), HURT, 3)
     elseif op == "wtSwapped" then
       say(T("wt.swapped", T("wt.r." .. m.from), T("wt.r." .. m.role)), OK, 2.5)
     elseif op == "wtFireOut" then
+      if G.wtVoice then G.wtVoice("fireOut") end
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
-    elseif op == "wtSupply" then   -- 停在自己的据点里补给（服务器 Wt.lua supplyStep）
+    elseif op == "wtSupply" then
+      if G.wtVoice then G.wtVoice("resupply") end   -- 停在自己的据点里补给（服务器 Wt.lua supplyStep）
       local bits = {}
       if m.ammo then table.insert(bits, T("wt.supAmmo")) end
       if m.crew then table.insert(bits, T("wt.supCrew", T("wt.r." .. m.crew))) end
       say(table.concat(bits, " · "), OK, 2)
     elseif op == "wtFixed" then
+      if G.wtVoice then G.wtVoice("fixed") end
       say(T("wt.fixed"), OK, 2)
     elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
       local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
