@@ -21,6 +21,7 @@ S.EMB = {
 }
 function S.natOf(treeKey, team)
   local n = type(treeKey) == "string" and string.match(treeKey, "^(%a%a)_") or nil
+  if n == "de" then return nil end   -- 德系车不贴（也不退回成别国的星）
   if n and S.EMB[n] then return n end
   return (team == "def") and "us" or "cn"
 end
