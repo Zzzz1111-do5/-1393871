@@ -32,6 +32,14 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11 月 25 日 C 第十一包（C 把 B、D 的都合进来了：科技树、机库、昼夜更替、射流弹 X 光动画……）：换游戏文件（或者「三、只换脚本」）；模型这样导：
+    - 先删旧的豹 2A6、T-80U 零件（C 11-24 夜那版和 D 这版同名、形状不一样，不删会用错）：命令栏（编辑状态下）粘这一行
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^V_leo2a6__") or d.Name:match("^V_t80u__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 / T-80U 零件")
+    - 再导 veh/ 里：leo2a6.glb、t80u.glb（D 那版）、leo1.glb、m60a3.glb、bmp1.glb（D 第八包的新模型）；stryker.glb 没导过的也导（M-SHORAD 防空车的车体）；
+      t64.glb、type74.glb 还没接进游戏，导不导都行
+    - 科技树里借已经删掉的九辆车的那些（59 式、T-55A、M551、BMP-2、ZBD-04、斯特赖克……）改借还在的真模型车：T-55 一类借 M60A1、79 / 88B 借 M60A3、
+      轻坦和歼击车借豹 1 / 1A5、水陆和 BMP 一族借 BMP-1、轮式车和导弹车借布雷德利（科技树里都写着「暂用」）
+    - 击杀栏：「谁 [车] 击毁 / 殉爆 / 烧毁 谁 [车]」，车名写科技树里的；X 光回放、「被谁击毁」也写科技树里的名字；射流弹打穿时 X 光窗口里慢放（弹飞进来、白闪、射流钻进去……）
   11 月 25 日 D 第八包（科技树暂用车换真模型，第一批五型）：换游戏文件（或者「三、只换脚本」）+ 导入 5 个新模型（veh/ 里，新模型包里就这 5 个）：
     t80u.glb（T-80U）、leo2a6.glb（豹 2A6）、leo1.glb（豹 1）、m60a3.glb（M60A3）、bmp1.glb（BMP-1）——都是 Sketchfab 上 CC-BY-4.0 的模型，署名在 veh/credits.txt
     - 科技树里这几族原来借别的车（T-80 借 T-90M、豹 2 借 M1A2、豹 1 和 M60 借 M10、BMP-1 借 BMP-3），现在开的是自己的真模型：
