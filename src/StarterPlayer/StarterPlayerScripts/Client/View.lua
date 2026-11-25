@@ -17,6 +17,7 @@ function View.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local TT = require(RS:WaitForChild("TechTree"))   -- 科技树暂用车的真车涂装（TreeKey 属性）
+  local SK = require(RS:WaitForChild("WtSkins"))   -- 涂装、贴花（⑯，机库里选的：属性 Camo / TacNo / Emb）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -181,10 +182,56 @@ function View.init(G)
       -- 科技树出的车（TreeKey）：还没有原模型、用零件拼的按真车涂装上色（TechTree.paint；用户 11-25「很多车涂装纯米黄」），不按阵营刷沙色
       local tk = em:GetAttribute("TreeKey")
       local tit = (type(tk) == "string") and TT.get(tk) or nil
-      local M = VM.build(d, team, em:GetAttribute("Mods"), tit and TT.paint(tit) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 涂装（⑯）：机库里选了的（属性 Camo）——零件拼的车按它上色，原模型整体乘个色调
+      local camo = em:GetAttribute("Camo")
+      local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
+      if cm and not cm.base then cm = nil end
+      local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
+      v.camo, v.tacNo, v.emb = camo, em:GetAttribute("TacNo"), em:GetAttribute("Emb")
+      if cm and cm.tint then
+        for _, it in ipairs(M.parts) do
+          local sa = it[1]:FindFirstChildOfClass("SurfaceAppearance")
+          if sa then pcall(function() sa.Color = cm.tint end) end
+        end
+      end
+      -- 贴花（⑯）：战术号码（炮塔两侧白字）、国徽（车体两侧）——接到零件表后面，跟着炮塔 / 车体走
+      local function decal(grp, off, txt, col, w, h)
+        local p = Instance.new("Part")
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+        p.Transparency, p.Size = 1, V(w, h, 0.05)
+        p.Parent = M.model
+        local sg = Instance.new("SurfaceGui")
+        sg.Face = Enum.NormalId.Front
+        sg.CanvasSize = Vector2.new(w * 60, h * 60)
+        sg.LightInfluence = 1
+        sg.Parent = p
+        local l = Instance.new("TextLabel")
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.fromScale(1, 1)
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.GothamBlack
+        l.TextColor3, l.TextTransparency = col, 0.08
+        l.Parent = sg
+        table.insert(M.parts, { p, grp, off })
+      end
+      local tacNo = em:GetAttribute("TacNo")
+      if type(tacNo) == "number" and d.turret then
+        local ts, tp = d.turret.size, M.tpiv or d.turret.pivot
+        for side = -1, 1, 2 do   -- 正面朝外（Front 面 −Z 转到 ±X）
+          decal("turret", CFrame.new(side * (ts.X / 2 * 0.98 + 0.06), ts.Y * 0.5, 0.2) * CFrame.Angles(0, -side * math.pi / 2, 0),
+            string.format("%03d", math.clamp(math.floor(tacNo), 0, 999)), Color3.fromRGB(236, 236, 230), 3.0, 1.3)
+        end
+      end
+      local emb = em:GetAttribute("Emb")
+      local E = (type(emb) == "string") and SK.EMB[emb] or nil
+      if E then
+        local hh = d.hullH or (d.H * 0.55)
+        for side = -1, 1, 2 do
+          decal("hull", CFrame.new(side * (d.W / 2 + 0.06), hh * 0.62, -d.L * 0.22) * CFrame.Angles(0, -side * math.pi / 2, 0), E[1], E[2], 1.6, 1.6)
+        end
+      end
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -888,7 +935,8 @@ function View.init(G)
       local ok = false
       if v.kind == "veh" then
         ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
-        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
+        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end
+        if em:GetAttribute("Camo") ~= v.camo or em:GetAttribute("TacNo") ~= v.tacNo or em:GetAttribute("Emb") ~= v.emb then ok = true end   -- 涂装、贴花晚到了（⑯）   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end
