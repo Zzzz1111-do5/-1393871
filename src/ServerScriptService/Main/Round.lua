@@ -1121,7 +1121,7 @@ function Round.init(G)
     R.prepEnds = now() + RC.prep
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
-    pcall(function() workspace:SetAttribute("DayT0", workspace:GetServerTimeNow()) end)   -- 昼夜：每局从早上开始（客户端 DayNight.lua 按这个算）
+    -- 昼夜：跨局接着走（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0，PvE 关卡开局按自己的钟点改，Pve.lua）
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets

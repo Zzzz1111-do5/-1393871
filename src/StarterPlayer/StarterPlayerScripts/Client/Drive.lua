@@ -1049,8 +1049,11 @@ function Drive.init(G)
         st.sus = S
       end
       S.x, S.z = st.pos.X, st.pos.Z
-      local n = (dt > 1 / 45) and 3 or 1   -- 掉帧时分几步算，免得弹簧算飞
-      local h = dt / n
+      -- 掉帧时分几步算，免得弹簧算飞：每步不超过 1/120 秒（用户 11-25「坦克一直在抽搐」——原来一帧超过 1/45 秒才分 3 步，
+      --   卡到一帧 0.3 秒时每步 0.1 秒，车身弹簧照样算飞；一帧最多按 0.12 秒算，卡一下不会把车弹上天）
+      local dtS = math.min(dt, 0.12)
+      local n = math.max(1, math.ceil(dtS * 120 - 1e-6))
+      local h = dtS / n
       for _ = 1, n do
         local function spring(x, vx, target, k, z)
           vx += (k * (target - x) - 2 * math.sqrt(k) * z * vx) * h

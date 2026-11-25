@@ -1,6 +1,7 @@
--- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight）
---   每局从早上 7:30 开始，一圈 24 分钟（Config.DayNight.period）：白天长（7:30～17:30 约 13 分钟）、黄昏 / 清晨各一分多钟、夜里不到 6 分钟；
---   时间按服务器开局时记下的 workspace 属性 DayT0 和服务器时钟算，所有人看到的一样
+-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight；
+--   11-25：「给沙漠地图做个昼夜更替」——又打开了）
+--   钟点在 ReplicatedStorage/DayClock.lua（服务器、客户端同一套：照明弹只在夜里打也看它）：一圈 32 分钟——白天 7:00～17:00 十四分钟、
+--   黄昏三分钟、夜里 19:30～4:30 十二分钟、清晨三分钟；跨局接着走；PvE 关卡按自己的钟点开局（夜战关卡钉在夜里）
 --   跟着太阳高度渐变：亮度、环境光、天空光的颜色（黄昏偏橙）、雾、大气（白天通透、看得远）、泛光和调色（夜里冷蓝、白天中性）；
 --   开飞机飞得越高大气越淡（用户：飞机视野有点近）。夜视仪（Night.lua）开着时在这上面加亮、变绿，白天开夜视只亮一点点
 --   G.dayK()：0 夜里 ～ 1 白天；G.isNight()：天黑了（出生自动开夜视看这个）
@@ -11,26 +12,12 @@ local DayNight = {}
 
 function DayNight.init(G)
   local Config = require(RS:WaitForChild("Config"))
-  local DN = Config.DayNight or {}
-  local PERIOD = DN.period or 24 * 60
+  local DC = require(RS:WaitForChild("DayClock"))
   local RGB = Color3.fromRGB
   local function lerp(a, b, t) return a + (b - a) * t end
   local function lc(a, b, t) return a:Lerp(b, t) end
   local function smooth(a, b, v) local t = math.clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
 
-  -- 一圈里的真实时间比例 → 钟点（单调增，超过 24 的取余）
-  local KEY = { { 0, 7.5 }, { 0.55, 17.5 }, { 0.62, 19.3 }, { 0.86, 28.7 }, { 0.93, 30.3 }, { 1, 31.5 } }
-  local function clockAt(f)
-    for i = 1, #KEY - 1 do
-      local a, b = KEY[i], KEY[i + 1]
-      if f <= b[1] then return (a[2] + (b[2] - a[2]) * (f - a[1]) / (b[1] - a[1])) % 24 end
-    end
-    return KEY[#KEY][2] % 24
-  end
-  local function serverNow()
-    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
-    return ok and t or os.clock()
-  end
 
   -- 夜里 / 白天两套（夜里照 World.lighting 原来那套）
   -- 大气（用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：原来夜里 0.21、白天 0.17，几公里外就灰成一片；
@@ -46,7 +33,8 @@ function DayNight.init(G)
   local Map = require(RS:WaitForChild("Map"))
   local function isDesert() return Map.DESERT end   -- 沙海（MapSands）
   local function nvEv() return isDesert() and 1.5 or 2.7 end
-  local DUSK = { top = RGB(255, 168, 108), fog = RGB(206, 150, 120), acol = RGB(228, 160, 120), adec = RGB(170, 86, 58) }
+  local DUSK = { top = RGB(255, 162, 98), fog = RGB(212, 146, 110), acol = RGB(236, 154, 104), adec = RGB(166, 74, 46) }
+  local DAWN = { top = RGB(255, 196, 160), fog = RGB(196, 164, 156), acol = RGB(218, 176, 160), adec = RGB(122, 86, 84) }   -- 清晨：偏粉、淡一点
   -- 沙漠图：夜里的天光、雾偏暖褐（沙尘），白天是发白的黄沙天、看得没那么远。地图是开服后第一个玩家选的：进服时还没定、
   --   选了沙漠才换过来（init.client.lua 的 G.onMap），所以这里换地图时再套一次（服务器一局里不会从沙漠换回海岛，套一次就够）
   local desertSet = false
@@ -55,8 +43,12 @@ function DayNight.init(G)
     desertSet = true
     NIGHT.fog, NIGHT.acol, NIGHT.adec, NIGHT.oamb = RGB(26, 22, 20), RGB(70, 60, 54), RGB(22, 17, 14), RGB(50, 46, 48)
     NIGHT.ccTint = RGB(240, 234, 236)
-    DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze = RGB(214, 196, 168), RGB(222, 206, 178), RGB(168, 132, 96), 0.22, 1.4
-    DAY.ccTint, DAY.ccSat = RGB(255, 246, 232), 0
+    -- 沙海白天（用户 11-25 昼夜更替）：原来这套是给删掉的「沙漠风暴」调的（大气 0.22、霾 1.4，几公里外就黄成一片）；
+    --   沙海坦克一两公里对射、飞机十几公里外交战：淡一点的暖黄沙尘霾，太阳刺眼一点，沙地反光把暗处抬暖
+    DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze = RGB(214, 198, 172), RGB(226, 212, 186), RGB(170, 138, 104), 0.11, 0.9
+    DAY.glare, DAY.amb, DAY.oamb, DAY.bot = 0.4, RGB(86, 80, 72), RGB(150, 140, 124), RGB(64, 50, 34)
+    DAY.top, DAY.exp = RGB(255, 244, 222), -0.1
+    DAY.ccTint, DAY.ccSat = RGB(255, 247, 236), 0
   end
   desertPalette()
   if G.onMap then G.onMap(desertPalette) end
@@ -80,16 +72,10 @@ function DayNight.init(G)
     acc += dt
     if acc < 0.1 then return end   -- 一秒十次就够顺
     acc = 0
-    if DN.lockNight then   -- 锁定晚上（用户：把白天模式去掉）：钟点停在半夜，太阳高度在地平线下面，灯光就是夜里那一套
-      clock = DN.clock or 2.3
-    else
-      local t0 = workspace:GetAttribute("DayT0")
-      if type(t0) ~= "number" then t0 = 0 end
-      local f = ((serverNow() - t0) / PERIOD) % 1
-      clock = clockAt(f)
-    end
-    local alt = math.sin((clock - 6) / 12 * math.pi)   -- 太阳高度（−1 半夜 ～ 1 正午）
-    dayK = smooth(-0.08, 0.22, alt)
+    clock = DC.clock()   -- 锁定晚上（lockNight）、PvE 钉住的钟点（DayFix）、跨局走的（DayT0）都在 DayClock 里
+    local alt = DC.sunAlt(clock)   -- 太阳高度（−1 半夜 ～ 1 正午）
+    dayK = DC.dayK(clock)
+    local tw = (clock < 12) and DAWN or DUSK   -- 地平线上那一段：上午是清晨的颜色，下午是黄昏的
     local dusk = (alt > -0.18 and alt < 0.3) and (1 - math.abs(alt - 0.05) / 0.25) or 0
     dusk = math.clamp(dusk, 0, 1) * 0.85
     -- 开飞机飞得越高大气越淡、雾越远（用户：飞机视野有点近）
@@ -99,7 +85,9 @@ function DayNight.init(G)
     local nv = G.nvLight == true or G.sightNv == true or G.opticNv == true
     local nk = 1 - dayK
     pcall(function()
-      put(Lighting, "ClockTime", clock)
+      -- 太阳 / 月亮的位置分步挪：每格 0.02 小时（游戏里 1.2 分钟，现实里一两秒一格，影子挪 0.3°，看不出跳）——
+      --   太阳一动整张阴影图都要重算，原来每 0.1 秒挪一下（用户 11-18「一卡一卡的」；11-25「特别卡」）
+      put(Lighting, "ClockTime", math.floor(clock / 0.02 + 0.5) * 0.02)
       put(Lighting, "Brightness", lerp(NIGHT.bright, DAY.bright, dayK))
       local amb, oamb = lc(NIGHT.amb, DAY.amb, dayK), lc(NIGHT.oamb, DAY.oamb, dayK)
       local exp = lerp(NIGHT.exp, DAY.exp, dayK)
@@ -118,11 +106,11 @@ function DayNight.init(G)
       put(Lighting, "Ambient", amb)
       put(Lighting, "OutdoorAmbient", oamb)
       put(Lighting, "ExposureCompensation", exp)
-      put(Lighting, "ColorShift_Top", lc(lc(NIGHT.top, DAY.top, dayK), DUSK.top, dusk))
+      put(Lighting, "ColorShift_Top", lc(lc(NIGHT.top, DAY.top, dayK), tw.top, dusk))
       put(Lighting, "ColorShift_Bottom", lc(NIGHT.bot, DAY.bot, dayK))
       put(Lighting, "EnvironmentDiffuseScale", lerp(NIGHT.diff, DAY.diff, dayK))
       put(Lighting, "EnvironmentSpecularScale", lerp(NIGHT.spec, DAY.spec, dayK))
-      put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), DUSK.fog, dusk))
+      put(Lighting, "FogColor", lc(lc(NIGHT.fog, DAY.fog, dayK), tw.fog, dusk))
       local wk = G.weather and G.weather.k or 0   -- 暴风雨（Warfx.lua）：雾变近、大气变浑
       -- 老式的雾放到十万格（有 Atmosphere 时 Roblox 按大气算远处，这个基本不起作用；没有大气的时候也别挡）
       put(Lighting, "FogEnd", 100000 * (1 - 0.7 * wk))
@@ -131,8 +119,8 @@ function DayNight.init(G)
         local dens = lerp(NIGHT.dens, DAY.dens, dayK) * (1 - 0.5 * hk)
         if nv then dens = math.max(0.035, dens * 0.6) end
         put(atm, "Density", dens + 0.12 * wk)
-        put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), DUSK.acol, dusk))
-        put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), DUSK.adec, dusk))
+        put(atm, "Color", lc(lc(NIGHT.acol, DAY.acol, dayK), tw.acol, dusk))
+        put(atm, "Decay", lc(lc(NIGHT.adec, DAY.adec, dayK), tw.adec, dusk))
         put(atm, "Glare", lerp(NIGHT.glare, DAY.glare, dayK) + 0.6 * dusk)
         put(atm, "Haze", lerp(NIGHT.haze, DAY.haze, dayK) * (1 - 0.5 * hk) + 1.2 * wk)
       end

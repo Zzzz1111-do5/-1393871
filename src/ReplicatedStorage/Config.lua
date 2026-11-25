@@ -57,9 +57,11 @@ Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
--- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
---   lockNight = false 才按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替
-Config.DayNight = { lockNight = true, clock = 2.3, period = 24 * 60 }
+-- 昼夜（客户端 DayNight.lua 画）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight = true 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
+--   用户 11-25「给沙漠地图做个昼夜更替」：lockNight 关掉。钟点在 ReplicatedStorage/DayClock.lua（服务器、客户端同一套）：
+--   一圈 day + dusk + night + dawn 分钟（白天 7:00～17:00、黄昏 17:00～19:30、夜里 19:30～次日 4:30、清晨 4:30～7:00），跨局接着走；
+--   start 开服时几点（下午：进去两分钟就能看到日落、五分钟入夜）；PvE 关卡按自己的 clock 开局，fixed 的钉死（夜战关卡）
+Config.DayNight = { lockNight = false, clock = 2.3, day = 14, dusk = 3, night = 12, dawn = 3, start = 15.5 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
@@ -291,38 +293,39 @@ Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
   -- ai（用户 11-24：「做关卡 越多越逼真越好」）：这一关电脑开的地面载具——def 敌方、atk 友军：max 同时几辆、tank 坦克占几成（其余步战车）、
   --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
+  -- clock 开局几点（用户 11-25 要了昼夜更替：每关自己定时间，像战雷的任务那样；DayClock.lua）、fixed 钉死不走（夜袭镇子、夜幕坦克战一直是夜里）
   levels = {
-    { map = "sands", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "sands", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "sands", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+    { map = "sands", clock = 8.5, caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "sands", clock = 10.0, caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "sands", clock = 23.5, fixed = true, caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
       ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
     -- 第 4、6、8 关原来在沙漠风暴（打光兵力）、第 1、2、3、5、7、11、14 关原来在岛上；11-24 用户把两张图都删了（「全部默认沙海地图吧，登岛那个也删了」）：
     --   十六关都在沙海、按据点算（沙海 A～E 五个阶段各一个据点，caps 最多 5）
-    { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
+    { map = "sands", clock = 6.0, caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
       ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
-    { map = "sands", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+    { map = "sands", clock = 14.5, caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
-    { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
+    { map = "sands", clock = 11.5, caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
       ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
-    { map = "sands", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+    { map = "sands", clock = 16.2, caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
       ai = { def = { max = 3 }, atk = { max = 2 } } },
-    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
+    { map = "sands", clock = 13.0, caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "bmp3" } } } },
     -- 第 9～16 关（11-24 加）：沙海（突破，五个阶段）也有关卡；坦克战、机械化步兵、海岸防线、夜幕坦克战……
-    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
+    { map = "sands", clock = 5.2, caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
       ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "stryker", "m1a1" } }, atk = { max = 2, tank = 0, ids = { "bmp3", "zbd05" } } } },
-    { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
-    { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+    { map = "sands", clock = 9.0, caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
+    { map = "sands", clock = 17.2, caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
       ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "m1150" } }, atk = { max = 2, ids = { "t90m", "bmp3" } } } },
-    { map = "sands", caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
+    { map = "sands", clock = 7.5, caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
-    { map = "sands", caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
+    { map = "sands", clock = 1.0, fixed = true, caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
       ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
-    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+    { map = "sands", clock = 4.8, caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
       ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
-    { map = "sands", caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
+    { map = "sands", clock = 15.0, caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "bmp3", "ztz99a" } } } },
-    { map = "sands", caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
+    { map = "sands", clock = 18.2, caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
       ai = { def = { max = 5, tank = 0.7 }, atk = { max = 4, tank = 0.7 } } },
   },
 }

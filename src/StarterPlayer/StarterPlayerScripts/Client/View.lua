@@ -441,6 +441,20 @@ function View.init(G)
     return a.LookVector:Dot(b.LookVector) > 0.9999998 and a.UpVector:Dot(b.UpVector) > 0.9999998
   end
 
+  -- 弹簧阻尼（负重轮、车体上下 / 俯仰 / 侧倾）：拆成不超过 1/120 秒的小步算（同 VehCam），一帧最多按 0.12 秒算——
+  --   用户 11-25：「然后现在特别卡」「坦克一直在抽搐」：原来一帧一步 v += a·dt，负重轮（k 420、c 26）一帧超过 54 毫秒（不到 18 帧）
+  --   就停不下来、在上下两个极限之间来回打，车体跟着轮子抽；车体（k 160）不到 10 帧直接算飞。游戏一卡，坦克就抽
+  local function spring(x, vel, tgt, k, c, dt)
+    dt = math.min(dt, 0.12)
+    local n = math.max(1, math.ceil(dt * 120 - 1e-6))
+    local h = dt / n
+    for _ = 1, n do
+      vel += ((tgt - x) * k - vel * c) * h
+      x += vel * h
+    end
+    return x, vel
+  end
+
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
     -- 车灯：有人开、没被打爆才亮
@@ -531,9 +545,9 @@ function View.init(G)
         local trv = M.travel or d.travel   -- 原模型的履带车：履带是死的，负重轮只能动一点
         if gy < -0.5 and onWater then tgt = -trv   -- 在水里：轮子垂下去
         else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -trv, trv) end
-        local a = (tgt - w.dy) * 420 - w.vy * 26
-        w.vy += a * dt
-        w.dy = math.clamp(w.dy + w.vy * dt, -trv * 1.2, trv * 1.2)
+        local dy
+        dy, w.vy = spring(w.dy, w.vy, tgt, 420, 26, dt)
+        w.dy = math.clamp(dy, -trv * 1.2, trv * 1.2)
         w.spin -= v.speed * dt / (w.rad or w.r)
         sum += w.dy
         if w.z < 0 then sF += w.dy nF += 1 else sB += w.dy nB += 1 end
@@ -548,12 +562,9 @@ function View.init(G)
     -- 起步抬头、刹车点头（战雷那样明显一点）
     local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
-    v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
-    v.bob += v.bobV * dt
-    v.pitchV += ((tPitch - v.pitch) * 120 - v.pitchV * 12) * dt
-    v.pitch += v.pitchV * dt
-    v.rollV += ((tRoll - v.roll) * 120 - v.rollV * 12) * dt
-    v.roll += v.rollV * dt
+    v.bob, v.bobV = spring(v.bob, v.bobV, tBob, 160, 14, dt)
+    v.pitch, v.pitchV = spring(v.pitch, v.pitchV, tPitch, 120, 12, dt)
+    v.roll, v.rollV = spring(v.roll, v.rollV, tRoll, 120, 12, dt)
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)

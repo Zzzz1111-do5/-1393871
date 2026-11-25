@@ -7,6 +7,8 @@ local check = T.check
 local side = TEST_ARGS:match("atk") and "atk" or "def"
 
 local G = T.boot()
+-- 用户 11-25 打开了昼夜更替（DayClock.lua）：这里测夜视、夜里的灯，钟点钉在半夜
+R.services.Workspace:SetAttribute("DayFix", 2.3)
 G.fortsHold = true   -- 这里测的不是工事：工事不开火
 G.navyNoAI = true   -- 也不要 AI 舰艇（同 tools/test/ia_veh.luau）
 G.Config.Bots.minPerTeam = 0
@@ -87,7 +89,7 @@ if side == "def" then
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
   -- 锁定晚上（用户 11-18：把白天模式去掉）：一直是半夜；出生自动开夜视（全屏调色、没有镜筒框），开着就不提示「按 N」；按 N 关掉、再按又开
-  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("锁定晚上（钟点 %.1f）", lighting.ClockTime or -1))
+  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("夜里（测试把钟点钉在半夜：%.1f）", lighting.ClockTime or -1))
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生自动开夜视：全屏调色、没有镜筒框、不提示「按 N」")
   T.tap(Enum.KeyCode.N)
   R.run(1)

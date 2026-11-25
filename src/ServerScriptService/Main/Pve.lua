@@ -35,6 +35,14 @@ function Pve.init(G)
     BC.spreadPer = base.spreadPer / k
     G.aiVehOff = not L.aiVeh
     pcall(function() workspace:SetAttribute("Pve", n) end)
+    -- 这一关几点开打（Config.Pve 的 clock；fixed 的一直停在那：夜袭镇子、夜幕坦克战）——DayClock.lua 按这两个属性算钟点
+    if L.clock then
+      pcall(function()
+        local DC = require(game:GetService("ReplicatedStorage"):WaitForChild("DayClock"))
+        workspace:SetAttribute("DayFix", L.fixed and L.clock or nil)
+        workspace:SetAttribute("DayT0", DC.t0For(L.clock))
+      end)
+    end
     -- 电脑人数：敌方按关卡 + 每多一个真人多几个；友军补到 allies（真人也算友军）
     G.botWanted = function()
       local P = G.pve
@@ -57,6 +65,7 @@ function Pve.init(G)
     G.botWanted = nil
     G.aiVehOff = base.aiVehOff
     pcall(function() workspace:SetAttribute("Pve", nil) end)
+    pcall(function() workspace:SetAttribute("DayFix", nil) end)   -- 夜战关卡钉住的钟点松开，接着走
     return true
   end
   G.pveRealN = realN
