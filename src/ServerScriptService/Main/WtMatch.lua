@@ -71,10 +71,32 @@ function WtMatch.init(G)
     end
     return true
   end
+  local SKS = require(RS:WaitForChild("WtSkins"))
+  -- 机库里选涂装、贴花（客户端 WtSkin.lua）：key 科技树的键，c 涂装、n 战术号码（0～999 或没有）、e 贴不贴国徽；这一局里记着
+  function G.ACT.wtSkinSet(P, key, c, n, emb)
+    if type(key) ~= "string" or #key > 40 then return end
+    if type(c) ~= "string" or not SKS.CAMO[c] then c = "std" end
+    n = tonumber(n)
+    if n then n = math.clamp(math.floor(n), 0, 999) end
+    P.wtSkin = P.wtSkin or {}
+    P.wtSkin[key] = { c = (c ~= "std") and c or nil, n = n, e = emb == true }
+  end
   function G.wtSpawned(P, vid, kind, e)
     if not P or not P.pl or not vid then return end
     -- ④ 配弹：按他在机库里配的再配一遍（等 Tech.lua 写完改装 e.wtFx、科技树的键 e.treeKey 再配）
     if e and G.wtAmmoInit then task.defer(function() pcall(G.wtAmmoInit, e, P) end) end
+    -- ⑯ 涂装、贴花：他在机库里选的（G.ACT.wtSkinSet）写成车上的属性，客户端 View.lua 按它画
+    if e then
+      task.defer(function()
+        if not e.model or not e.model.Parent then return end
+        local key = e.treeKey or vid
+        local sk = P.wtSkin and P.wtSkin[key]
+        if not sk then return end
+        e.model:SetAttribute("Camo", sk.c)
+        e.model:SetAttribute("TacNo", sk.n)
+        if sk.e then e.model:SetAttribute("Emb", SKS.natOf(e.treeKey, P.team)) end
+      end)
+    end
     local lk = keyOf(P, vid)
     if e then e.wtOwner, e.wtVid = P, lk end
     if not on() then return end

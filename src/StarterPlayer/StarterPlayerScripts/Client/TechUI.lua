@@ -331,9 +331,16 @@ function TechUI.init(G)
         cb.TextSize = 12
         local slotI = i
         cb.MouseButton1Click:Connect(function() openCrew(tree.nat, slotI, key) end)
+        -- 涂装、贴花（C：用户 11-25「全部都做」⑯，WtSkin.lua）
+        if it.branch ~= "air" and G.openSkin then
+          local sb = button(card, L("涂装", "Paint"), UDim2.new(0, 64, 0, 19), UDim2.new(1, -72, 0, 83))
+          sb.Name = "SkinBtn"
+          sb.TextSize = 12
+          sb.MouseButton1Click:Connect(function() G.openSkin(key) end)
+        end
         -- 配弹（C：用户 11-25「全部都做」④，WtAmmo.lua）：地面车的主炮每种弹带几发
         if it.branch ~= "air" and G.openAmmo then
-          local ab = button(card, L("弹药", "Ammo"), UDim2.new(0, 64, 0, 22), UDim2.new(1, -72, 0, 66))   -- 「乘员」上面那一格（改装数那一行右边是空的）
+          local ab = button(card, L("弹药", "Ammo"), UDim2.new(0, 64, 0, 19), UDim2.new(1, -72, 0, 62))   -- 「乘员」上面两格（改装数那几行右边是空的）
           ab.Name = "AmmoBtn"
           ab.TextSize = 12
           ab.MouseButton1Click:Connect(function()
