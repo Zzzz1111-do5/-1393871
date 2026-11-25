@@ -159,7 +159,14 @@ local tc = e2.root.CFrame.Position + V3(0, 0.6, 0)
 for _ = 1, 12 do aimAt(tc) R.run(0.4) end
 local c2 = ringColor()
 print("  对着敌车时游戏里的准星：" .. (c2 and string.format("%d,%d,%d", math.floor(c2.R * 255 + 0.5), math.floor(c2.G * 255 + 0.5), math.floor(c2.B * 255 + 0.5)) or "?"))
-R.as("client", function() C.driveTryFire() end)
+-- 换了弹种要装完这一发才打得出去：一直扣扳机直到真打出去（T-80U 的炮 6.5 秒一发，原来扣一下正好卡在装填完之前）
+local f0 = st.fireT
+for _ = 1, 300 do
+  R.as("client", function() C.driveTryFire() end)
+  if st.fireT ~= f0 then break end
+  R.run(1 / 30)
+end
+check(st.fireT ~= f0, "开了炮")
 for _ = 1, 240 do
   R.run(1 / 60)
   if (G.wtHits or 0) > h0 then break end
