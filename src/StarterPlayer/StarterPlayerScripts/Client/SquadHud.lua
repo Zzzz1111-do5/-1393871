@@ -10,7 +10,7 @@ function SquadHud.init(G)
   local T = G.T or function(k) return k end
   local player = Players.LocalPlayer
   local RGB, V = Color3.fromRGB, Vector3.new
-  local GREEN = RGB(116, 232, 120)
+  local GREEN = G.Theme.C.GOOD
   local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 
   local gui = Instance.new("ScreenGui")
@@ -29,7 +29,7 @@ function SquadHud.init(G)
   local title = Instance.new("TextLabel")
   title.BackgroundTransparency = 1
   title.Size = UDim2.new(1, 0, 0, 18)
-  title.Font = Enum.Font.GothamBold
+  title.Font = Enum.Font.BuilderSansBold
   title.TextSize = 13
   title.TextColor3 = GREEN
   title.TextXAlignment = Enum.TextXAlignment.Left
@@ -54,7 +54,7 @@ function SquadHud.init(G)
     name.BackgroundTransparency = 1
     name.Position = UDim2.fromOffset(8, 2)
     name.Size = UDim2.new(1, -70, 0, 16)
-    name.Font = Enum.Font.GothamMedium
+    name.Font = Enum.Font.BuilderSansMedium
     name.TextSize = 13
     name.TextColor3 = RGB(236, 240, 236)
     name.TextXAlignment = Enum.TextXAlignment.Left
@@ -65,7 +65,7 @@ function SquadHud.init(G)
     info.AnchorPoint = Vector2.new(1, 0)
     info.Position = UDim2.new(1, -6, 0, 2)
     info.Size = UDim2.fromOffset(64, 16)
-    info.Font = Enum.Font.GothamBold
+    info.Font = Enum.Font.BuilderSansBold
     info.TextSize = 11
     info.TextColor3 = RGB(190, 196, 190)
     info.TextXAlignment = Enum.TextXAlignment.Right
@@ -108,7 +108,7 @@ function SquadHud.init(G)
     local nm = Instance.new("TextLabel")
     nm.BackgroundTransparency = 1
     nm.Size = UDim2.new(1, 0, 0, 14)
-    nm.Font = Enum.Font.GothamBold
+    nm.Font = Enum.Font.BuilderSansBold
     nm.TextSize = 12
     nm.TextColor3 = GREEN
     nm.TextStrokeTransparency = 0.45
@@ -118,7 +118,7 @@ function SquadHud.init(G)
     tri.BackgroundTransparency = 1
     tri.Position = UDim2.fromOffset(0, 13)
     tri.Size = UDim2.new(1, 0, 0, 16)
-    tri.Font = Enum.Font.GothamBold
+    tri.Font = Enum.Font.BuilderSansBold
     tri.TextSize = 14
     tri.TextColor3 = GREEN
     tri.TextStrokeTransparency = 0.45
@@ -155,7 +155,9 @@ function SquadHud.init(G)
     local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
     -- 开飞机、战雷式界面（WtFlight.lua）开着时左上是参数表：小队名单先收起来
     local flying = G.wtFlightOn and G.fly ~= nil and G.fly.pilot == true
-    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying
+    -- 只开车的对局（机库）：没有步兵小队这回事，「等队友加入」那一块不画（统一外观：左上是击杀栏 / 飞行参数）
+    local vehOnly = G.hangarActive ~= nil and G.hangarActive() == true
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying and not vehOnly
     title.Text = sq and T("squad.title", sq) or ""
     local seen = {}
     for i, pl in ipairs(list) do

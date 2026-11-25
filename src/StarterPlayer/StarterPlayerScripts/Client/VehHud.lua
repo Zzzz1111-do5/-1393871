@@ -36,9 +36,10 @@ function VehHud.init(G)
     GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(updateMotion)
   end)
 
-  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
-  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(132, 236, 152)
-  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local INK, TXT, MUTE = TH.C.BG, TH.C.TEXT, TH.C.MUTE
+  local AMBER, OK, BAD, CYAN = TH.C.WARN, TH.C.GOOD, TH.C.BAD, TH.C.HUD
+  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
   local WHITE = Color3.new(1, 1, 1)
 
   local function frame(parent, size, pos, color, alpha, anchor)
@@ -250,7 +251,7 @@ function VehHud.init(G)
   --   准星（下面 placeTank）：镜头准心一个小圈里「+」、左右两道短刻度；准心左边弹药数、下面「已就绪 / 装填」，右边测距；
   --   炮现在指的地方一个「∧」（颜色 = 打不打得穿）。电脑上开坦克时原来右下两块面板、顶上的罗盘收起（触屏照旧用紧凑读数面板）
   local MW = {}
-  local HOLO = RGB(118, 240, 140)
+  local HOLO = TH.C.HUD
   MW.root = frame(hud, UD2(1, 0, 1, 0), nil, INK, 1)
   MW.root.Name = "MWT"
   MW.root.Visible = false
@@ -637,7 +638,7 @@ function VehHud.init(G)
     end
     return segs
   end
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(176, 255, 84), RGB(255, 214, 72), RGB(255, 72, 60)   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
+  local PEN_OK, PEN_MAYBE, PEN_NO = TH.C.GOOD, TH.C.WARN, TH.C.BAD   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
 
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
@@ -1450,7 +1451,9 @@ function VehHud.init(G)
       local tint = (cc and cc.Enabled) and cc.TintColor or Color3.fromRGB(255, 255, 255)
       SG.haze.BackgroundColor3 = Color3.fromRGB(168, 156, 136):Lerp(tint, 0.55)
     end
-    SG.ringStroke.Color = ready and OK or AMBER
+    -- 装填（用户 11-25「装弹是顺时针从红色变成绿色」）：颜色跟着进度红 → 琥珀 → 绿
+    local rk = math.clamp(relK, 0, 1)
+    SG.ringStroke.Color = ready and OK or ((rk < 0.5) and TH.C.BAD:Lerp(AMBER, rk / 0.5) or AMBER:Lerp(OK, (rk - 0.5) / 0.5))
     SG.ringStroke.Transparency = ready and 0.3 or (0.8 - 0.5 * relK)
     SG.ammo.Text = wid and T("vw." .. wid) or ""
     SG.count.Text = wid and (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞") or ""

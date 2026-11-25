@@ -6011,7 +6011,10 @@
   "title": "T-72B3 主战坦克",
   "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
   "alias": [
-   "t72b3"
+   "t72b3",
+   "t72ural",
+   "t72a",
+   "t72b"
   ],
   "rotZ": 0,
   "length": 6.95,
@@ -6047,5 +6050,582 @@
    0.98,
    -0.55
   ]
+ },
+ "m551": {
+  "_说明": "M551 谢里登轻型坦克（MirzaArrafiERV_45，Sketchfab bc61470bf6f34716a223f45a6b9e8df1，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 M551 原来借豹 1。原模型单位是米，车头朝 −Y（Blender）转半圈；部件都分好了：车体 hull、炮塔 g_turret（连 Gear、玻璃、两根天线）、炮盾 g_cannonbase、炮管 g_cannon；14 个轮子各是一块；炮塔转轴直接给（自动找的炮塔最低一圈偏到炮盾下面去了），按炮塔中线、座圈高度",
+  "uid": "bc61470bf6f34716a223f45a6b9e8df1",
+  "title": "M551 谢里登轻型坦克",
+  "credit": "M551 谢里登轻型坦克：M551 Sheridan Light Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/m551-sheridan-light-tank-bc61470bf6f34716a223f45a6b9e8df1），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"M551 Sheridan Light Tank\" (https://sketchfab.com/3d-models/m551-sheridan-light-tank-bc61470bf6f34716a223f45a6b9e8df1) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、按部件分组（炮塔、炮管）、车轮各自成组、贴图缩到 1024",
+  "alias": [
+   "m551"
+  ],
+  "rotZ": 180,
+  "scale": 1.0,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "g_turret_m551_Turret_641_0",
+    "g_turret_m551_Gear_642_0",
+    "g_turret_m551_Glass_588_0",
+    "antenna011_Gear_566_0",
+    "antenna01_Gear_566_0"
+   ],
+   "Gun": [
+    "g_cannonbase_m551_m81_Cannon_587_0",
+    "g_cannonbase_m551_m81_Glass_588_0",
+    "g_cannon_m81_Cannon_587_0"
+   ]
+  },
+  "wheels": [
+   [
+    "wheel1_Wheels_746_0"
+   ],
+   [
+    "wheel2_Wheels_746_0"
+   ],
+   [
+    "wheel3_Wheels_746_0"
+   ],
+   [
+    "wheel4_Wheels_746_0"
+   ],
+   [
+    "wheel5_Wheels_746_0"
+   ],
+   [
+    "wheel6_Wheels_746_0"
+   ],
+   [
+    "wheel7_Wheels_746_0"
+   ],
+   [
+    "wheel8_Wheels_746_0"
+   ],
+   [
+    "wheel9_Wheels_746_0"
+   ],
+   [
+    "wheel10_Wheels_746_0"
+   ],
+   [
+    "wheel11_Wheels_746_0"
+   ],
+   [
+    "wheel12_Wheels_746_0"
+   ],
+   [
+    "wheel13_Wheels_746_0"
+   ],
+   [
+    "wheel14_Wheels_746_0"
+   ]
+  ],
+  "tur": [
+   0.0,
+   1.619,
+   0.02
+  ]
+ },
+ "leo2a7v": {
+  "_说明": "豹 2A7V 主战坦克（MirzaArrafiERV_45，Sketchfab 659654c78dba4df1b80664afc42cbab2，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树豹 2A7V 原来借 2A6。原模型按材质分五块，车头朝 −Y（Blender）转半圈；炮塔连炮在 Object_4，按连通块中心把炮管、抽烟装置、炮口环拆出来；车体 Object_3 按真车车体长 7.72 米缩；Object_3 里高过车体甲板、在炮塔投影里的零件（尾舱吊篮、车顶瞄准镜、天线）归炮塔",
+  "uid": "659654c78dba4df1b80664afc42cbab2",
+  "title": "豹 2A7V 主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按连通块把炮管拆出来、减面、贴图缩到 1024",
+  "alias": [
+   "leo2a7v"
+  ],
+  "rotZ": 180,
+  "length": 7.72,
+  "lengthRef": [
+   "Object_3"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_4"
+   ]
+  },
+  "split": [
+   {
+    "from": [
+     "Object_4"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.2,
+     0.2,
+     0.25,
+     0.6,
+     1.85,
+     4.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_3"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.3,
+     1.3,
+     0.32,
+     3.0,
+     -2.6,
+     1.95
+    ],
+    "center": true
+   }
+  ],
+  "decimate": {
+   "Object_5": 0.5,
+   "Object_6": 0.6
+  },
+  "credit": "豹 2A7V 主战坦克：Leopard 2A7V Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/leopard-2a7v-main-battle-tank-659654c78dba4df1b80664afc42cbab2），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"Leopard 2A7V Main Battle Tank\" (https://sketchfab.com/3d-models/leopard-2a7v-main-battle-tank-659654c78dba4df1b80664afc42cbab2) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)"
+ },
+ "type10": {
+  "_说明": "10 式主战坦克（MirzaArrafiERV_45，Sketchfab 7d14267918e7441b92ccc9f77869cb37，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 10 式原来借 M1A2。原模型按材质分五块，车头朝 −Y（Blender）转半圈；炮塔连炮在 Object_6，按连通块中心把炮管、炮口拆出来；车体 Object_3 按真车车体长 7.5 米缩；Object_5 里高过车体甲板、在炮塔投影里的零件（尾舱吊篮、车长瞄准镜、机枪、天线）归炮塔",
+  "uid": "7d14267918e7441b92ccc9f77869cb37",
+  "title": "10 式主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按连通块把炮管拆出来、减面、贴图缩到 1024",
+  "alias": [
+   "type10"
+  ],
+  "rotZ": 180,
+  "length": 7.5,
+  "lengthRef": [
+   "Object_3"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_6"
+   ]
+  },
+  "split": [
+   {
+    "from": [
+     "Object_6"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.2,
+     0.2,
+     0.35,
+     0.75,
+     2.4,
+     4.8
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.4,
+     1.4,
+     0.33,
+     3.0,
+     -3.2,
+     2.4
+    ],
+    "center": true
+   }
+  ],
+  "decimate": {
+   "Object_3": 0.6,
+   "Object_2": 0.6
+  },
+  "credit": "10 式主战坦克：TYPE-10 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/type-10-main-battle-tank-7d14267918e7441b92ccc9f77869cb37），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"TYPE-10 Main Battle Tank\" (https://sketchfab.com/3d-models/type-10-main-battle-tank-7d14267918e7441b92ccc9f77869cb37) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)"
+ },
+ "gepard": {
+  "_说明": "猎豹自行高炮（Scout，Sketchfab 43746c9ec4a64f8d9a30db81b82843bd，CC-BY-4.0）；用户 11-25「还有很多没有建模」：科技树猎豹 1A1 / 1A2 原来借 PGZ-07，换成真猎豹。原模型分好节点：炮塔（bone_turret、两部雷达、车长瞄准镜、舱盖）、两边的炮舱连炮管（bone_gun、gun_barrel）、每个负重轮 / 诱导轮 / 主动轮 / 托带轮单独一块；单位约 2.4 厘米（全高 167.7 → 真车雷达竖起 4.03 米）；车头朝 +Z（主动轮在 −Z）转半圈；炮耳轴给的是炮舱中间（自动量会量到炮舱最后端）；负重轮、炮管、车体大块减面",
+  "uid": "43746c9ec4a64f8d9a30db81b82843bd",
+  "credit": "猎豹自行高炮：Flakpanzer Gepard | High-Quality model，作者 Scout（https://sketchfab.com/3d-models/flakpanzer-gepard-high-quality-model-43746c9ec4a64f8d9a30db81b82843bd），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "猎豹自行高炮",
+  "creditEn": "This work is based on \"Flakpanzer Gepard | High-Quality model\" (https://sketchfab.com/3d-models/flakpanzer-gepard-high-quality-model-43746c9ec4a64f8d9a30db81b82843bd) by Scout licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转成 Roblox 坐标和尺寸，分出炮塔、炮、车轮几组，贴图缩到 1024",
+  "alias": [
+   "gepard1a1",
+   "gepard1a2"
+  ],
+  "rotZ": 180,
+  "scale": 0.024,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "bone_turret_bone_turret_0_flakpz_i_gepard_turret_c_0",
+    "bone_turret_bone_turret_0.001_flakpz_i_gepard_turret_c_0",
+    "bone_turret_bone_turret_0.002_flakpz_i_gepard_turret_c_0",
+    "bone_turret_bone_turret_0.003_flakpz_i_gepard_turret_c_0",
+    "antenna_02_antenna_02_0_flakpz_i_gepard_turret_c_0",
+    "antenna_01_antenna_01_0_flakpz_i_gepard_turret_c_0",
+    "hatch_01_hatch_01_0_flakpz_i_gepard_turret_c_0",
+    "antenna_target_tagging_mount_antenna_target_tagging_mount_0_flakpz_i_gepard_turret_c_0",
+    "antenna_target_tagging_antenna_target_tagging_0_flakpz_i_gepard_turret_c_0",
+    "antenna_target_location_mount_antenna_target_location_mount_0_flakpz_i_gepard_turret_c_0",
+    "antenna_target_location_antenna_target_location_0_flakpz_i_gepard_turret_c_0",
+    "bone_commander_sight_h_bone_commander_sight_h_0_flakpz_i_gepard_turret_c_0"
+   ],
+   "Gun": [
+    "bone_gun_bone_gun_0_flakpz_i_gepard_gun_c_0",
+    "bone_gun_bone_gun_0.001_flakpz_i_gepard_gun_c_0",
+    "gun_barrel_02_gun_barrel_02_0_flakpz_i_gepard_gun_c_0",
+    "gun_barrel_01_gun_barrel_01_0_flakpz_i_gepard_gun_c_0"
+   ]
+  },
+  "wheels": [
+   "wheel_l_01_wheel_l_01_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_02_wheel_l_02_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_03_wheel_l_03_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_04_wheel_l_04_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_05_wheel_l_05_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_06_wheel_l_06_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_07_wheel_l_07_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_front_wheel_l_front_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_drive_wheel_l_drive_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_top_01_wheel_l_top_01_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_top_02_wheel_l_top_02_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_top_03_wheel_l_top_03_0_flakpz_i_gepard_body_c_0",
+   "wheel_l_top_04_wheel_l_top_04_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_01_wheel_r_01_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_02_wheel_r_02_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_03_wheel_r_03_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_04_wheel_r_04_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_05_wheel_r_05_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_06_wheel_r_06_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_07_wheel_r_07_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_front_wheel_r_front_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_drive_wheel_r_drive_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_top_01_wheel_r_top_01_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_top_02_wheel_r_top_02_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_top_03_wheel_r_top_03_0_flakpz_i_gepard_body_c_0",
+   "wheel_r_top_04_wheel_r_top_04_0_flakpz_i_gepard_body_c_0"
+  ],
+  "decimate": {
+   "wheel_l_01_wheel_l_01_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_02_wheel_l_02_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_03_wheel_l_03_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_04_wheel_l_04_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_05_wheel_l_05_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_06_wheel_l_06_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_07_wheel_l_07_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_front_wheel_l_front_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_drive_wheel_l_drive_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_top_01_wheel_l_top_01_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_top_02_wheel_l_top_02_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_top_03_wheel_l_top_03_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_l_top_04_wheel_l_top_04_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_01_wheel_r_01_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_02_wheel_r_02_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_03_wheel_r_03_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_04_wheel_r_04_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_05_wheel_r_05_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_06_wheel_r_06_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_07_wheel_r_07_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_front_wheel_r_front_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_drive_wheel_r_drive_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_top_01_wheel_r_top_01_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_top_02_wheel_r_top_02_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_top_03_wheel_r_top_03_0_flakpz_i_gepard_body_c_0": 0.45,
+   "wheel_r_top_04_wheel_r_top_04_0_flakpz_i_gepard_body_c_0": 0.45,
+   "gun_barrel_02_gun_barrel_02_0_flakpz_i_gepard_gun_c_0": 0.5,
+   "gun_barrel_01_gun_barrel_01_0_flakpz_i_gepard_gun_c_0": 0.5,
+   "x_root_x_root_0_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_1_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_2_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_0.001_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_0.002_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_0.003_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_1.001_flakpz_i_gepard_body_c_0": 0.65,
+   "x_root_x_root_1.002_flakpz_i_gepard_body_c_0": 0.65,
+   "track_left_ger_flakpz_i_gepard_track_c_left_0": 0.65,
+   "track_right_ger_flakpz_i_gepard_track_c_right_0": 0.65,
+   "bone_turret_bone_turret_0.001_flakpz_i_gepard_turret_c_0": 0.7,
+   "bone_turret_bone_turret_0.002_flakpz_i_gepard_turret_c_0": 0.7,
+   "antenna_target_location_antenna_target_location_0_flakpz_i_gepard_turret_c_0": 0.7
+  },
+  "gun": [
+   0,
+   96,
+   5
+  ]
+ },
+ "bmp2": {
+  "_说明": "BMP-2 步兵战车（Scout，Sketchfab 8c45ad27d76843d9abfad56a60b65935，CC-BY-4.0）；用户 11-25「还有很多没有建模」：科技树 BMP-2 / BMP-2M 原来借 BMP-1，换成真 BMP-2。原模型分好节点：炮塔（bone_turret、炮塔顶上的「竞技」导弹架和 9M113 导弹、各块附加件）、炮（2A42 炮、PKT 并列机枪）；负重轮三个一块（wheel_x_01 / 04）——按每个轮子的框拆开（RWnn，再当车轮转）；BMP-2D 的附加装甲（bmp2d_*、ex_armor_body_05 / 13）去掉；单位约 2.49 厘米（宽 125 → 真车 3.15 米、长 271 → 6.73 米）；车头朝 +Z（主动轮在前、诱导轮在 −Z）转半圈；炮耳轴给在防盾里（自动量会量到炮塔里面）",
+  "uid": "8c45ad27d76843d9abfad56a60b65935",
+  "credit": "BMP-2 步兵战车：BMP-2 | High-Quality model，作者 Scout（https://sketchfab.com/3d-models/bmp-2-high-quality-model-8c45ad27d76843d9abfad56a60b65935），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "BMP-2 步兵战车",
+  "creditEn": "This work is based on \"BMP-2 | High-Quality model\" (https://sketchfab.com/3d-models/bmp-2-high-quality-model-8c45ad27d76843d9abfad56a60b65935) by Scout licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转成 Roblox 坐标和尺寸，分出炮塔、炮、车轮几组，去掉 BMP-2D 的附加装甲，贴图缩到 1024",
+  "alias": [
+   "bmp2",
+   "bmp2m"
+  ],
+  "rotZ": 180,
+  "scale": 0.0249,
+  "texMax": 1024,
+  "dedupe": true,
+  "drop": [
+   "bmp2d_turret_armor_bmp_2d_turret_addarmor_c_0",
+   "bmp2d_armor_side_top_r_bmp_2d_body_addarmor_c_0",
+   "bmp2d_armor_side_r_bmp_2d_body_addarmor_c_0",
+   "bmp2d_armor_side_top_l_bmp_2d_body_addarmor_c_0",
+   "bmp2d_armor_side_l_bmp_2d_body_addarmor_c_0",
+   "bmp2d_armor_mounts_bmp_2d_body_addarmor_c_0",
+   "ex_armor_body_05_bmp_2d_body_addarmor_c_0",
+   "ex_armor_13_bmp_2d_body_addarmor_c_0"
+  ],
+  "groups": {
+   "Turret": [
+    "bone_turret_bmp_2_turret_c_0",
+    "bone_turret.001_bmp_2_turret_c_0",
+    "bone_turret.002_bmp_2_turret_c_0",
+    "bone_turret_us_turret_glass_c_0",
+    "roll_01_bmp_2_turret_c_0",
+    "ex_armor_02_bmp_2_turret_c_0",
+    "ex_armor_03_bmp_2_turret_c_0",
+    "ex_armor_04_bmp_2_turret_c_0",
+    "ex_armor_05_bmp_2_turret_c_0",
+    "ex_armor_06_bmp_2_turret_c_0",
+    "ex_armor_07_bmp_2_turret_c_0",
+    "ex_armor_08_bmp_2_turret_c_0",
+    "ex_armor_09_bmp_2_turret_c_0",
+    "ex_armor_10_bmp_2_turret_c_0",
+    "ex_armor_l_07_bmp_2_turret_c_0",
+    "ex_lantern_03_bmp_2_turret_c_0",
+    "ex_lantern_01_bmp_2_turret_c_0",
+    "ex_lantern_01_us_turret_glass_c_0",
+    "ex_lantern_01_headlight_glass_c_0",
+    "hatch_05_bmp_2_turret_c_0",
+    "hatch_04_bmp_2_turret_c_0",
+    "rocket_mount_01_bmp_2_turret_c_0",
+    "ex_decor_05_bmp_2_turret_c_0",
+    "bone_commander_sight_h_bmp_2_turret_c_0",
+    "bone_rocket_02_9m113_rocket_c_0"
+   ],
+   "Gun": [
+    "bone_gun_bmp_2_gun_c_0",
+    "gun_barrel_bmp_2_gun_c_0",
+    "gun_barrel_rifled_barrel_b_c_0",
+    "bone_mg_gun_twin_01_mg_pkt_c_0"
+   ]
+  },
+  "split": [
+   {
+    "from": [
+     "wheel_r_01_bmp_2_body_c_0"
+    ],
+    "to": "RW01",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     43.95,
+     69.95
+    ]
+   },
+   {
+    "from": [
+     "wheel_r_01_bmp_2_body_c_0"
+    ],
+    "to": "RW02",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     17.85,
+     43.85
+    ]
+   },
+   {
+    "from": [
+     "wheel_r_01_bmp_2_body_c_0"
+    ],
+    "to": "RW03",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     -7.87,
+     18.13
+    ]
+   },
+   {
+    "from": [
+     "wheel_r_04_bmp_2_body_c_0"
+    ],
+    "to": "RW04",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     -33.59,
+     -7.59
+    ]
+   },
+   {
+    "from": [
+     "wheel_r_04_bmp_2_body_c_0"
+    ],
+    "to": "RW05",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     -62.85,
+     -36.85
+    ]
+   },
+   {
+    "from": [
+     "wheel_r_04_bmp_2_body_c_0"
+    ],
+    "to": "RW06",
+    "box": [
+     -57,
+     -46,
+     -1,
+     25,
+     -92.11,
+     -66.11
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_01_bmp_2_body_c_0"
+    ],
+    "to": "RW07",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     40.4,
+     66.4
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_01_bmp_2_body_c_0"
+    ],
+    "to": "RW08",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     14.3,
+     40.3
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_01_bmp_2_body_c_0"
+    ],
+    "to": "RW09",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     -11.42,
+     14.58
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_04_bmp_2_body_c_0"
+    ],
+    "to": "RW10",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     -37.14,
+     -11.14
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_04_bmp_2_body_c_0"
+    ],
+    "to": "RW11",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     -66.4,
+     -40.4
+    ]
+   },
+   {
+    "from": [
+     "wheel_l_04_bmp_2_body_c_0"
+    ],
+    "to": "RW12",
+    "box": [
+     46,
+     57,
+     -1,
+     25,
+     -95.66,
+     -69.66
+    ]
+   }
+  ],
+  "wheels": [
+   "wheel_r_drive_bmp_2_body_c_0",
+   "wheel_r_back_bmp_2_body_c_0",
+   "wheel_r_top_01_bmp_2_body_c_0",
+   "wheel_r_top_02_bmp_2_body_c_0",
+   "wheel_r_top_03_bmp_2_body_c_0",
+   "wheel_l_drive_bmp_2_body_c_0",
+   "wheel_l_back_bmp_2_body_c_0",
+   "wheel_l_top_01_bmp_2_body_c_0",
+   "wheel_l_top_02_bmp_2_body_c_0",
+   "wheel_l_top_03_bmp_2_body_c_0",
+   "wheel_r_01_bmp_2_body_c_0.RW01",
+   "wheel_r_01_bmp_2_body_c_0.RW02",
+   "wheel_r_01_bmp_2_body_c_0.RW03",
+   "wheel_r_04_bmp_2_body_c_0.RW04",
+   "wheel_r_04_bmp_2_body_c_0.RW05",
+   "wheel_r_04_bmp_2_body_c_0.RW06",
+   "wheel_l_01_bmp_2_body_c_0.RW07",
+   "wheel_l_01_bmp_2_body_c_0.RW08",
+   "wheel_l_01_bmp_2_body_c_0.RW09",
+   "wheel_l_04_bmp_2_body_c_0.RW10",
+   "wheel_l_04_bmp_2_body_c_0.RW11",
+   "wheel_l_04_bmp_2_body_c_0.RW12"
+  ],
+  "gun": [
+   -1.1,
+   75.8,
+   2
+  ],
+  "decimate": {
+   "wheel_r_drive_bmp_2_body_c_0": 0.4,
+   "wheel_l_drive_bmp_2_body_c_0": 0.4,
+   "wheel_r_back_bmp_2_body_c_0": 0.5,
+   "wheel_l_back_bmp_2_body_c_0": 0.5,
+   "bone_rocket_02_9m113_rocket_c_0": 0.4
+  }
  }
 }

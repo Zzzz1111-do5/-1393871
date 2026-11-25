@@ -7,7 +7,7 @@
 `Client/InteriorKit.lua`（零件库、屏幕、乘员小人和反向运动学）、`Client/InteriorScreens.lua`（屏幕页面、按键的真实功能）。
 测试：`python3 tools/mock/run.py tools/mock/interior.lua veh=m1a2|ztz99a [dump=<目录>]`（坦克）、
 `python3 tools/mock/run.py tools/mock/interior_all.lua veh=<型号>`（其他地面载具，21 型）、
-`python3 tools/mock/run.py tools/mock/cockpit.lua air=j20|j35|j50|j16|j15t|f35|f22|a10c|z10|ah64e|uh60|z20|ch47|h6k|b2 [dump=<目录>]`（飞机）；预览图：
+`python3 tools/mock/run.py tools/mock/cockpit.lua air=j20|j35|j16|j15t|f35|f22|a10c|z10|ah64e|uh60|z20|ch47|h6k|b2 [dump=<目录>]`（飞机）；预览图：
 `NODE_PATH=$(npm root -g) node tools/mock/interior_view.cjs <目录>/interior_m1a2.json <输出前缀>`（three.js 用 tools/trailer 的，`cd tools/trailer && npm ci`）。
 
 ## 按键（开坦克时）

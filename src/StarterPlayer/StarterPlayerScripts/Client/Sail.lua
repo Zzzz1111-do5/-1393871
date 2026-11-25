@@ -33,19 +33,19 @@ function Sail.init(G)
 
   local panel = ui.frame(gui, UDim2.fromOffset(470, 96), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))
   panel.Visible = false
-  local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local info1 = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 39), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local info2 = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 59), 14, RGB(222, 226, 230), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local info1 = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 39), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local info2 = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 59), 14, RGB(222, 226, 230), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 83), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
   ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = vName })   -- 跟新界面一个样子（UI.lua）
 
-  local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
-  local gunMark = ui.label(gui, "+", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 26, RGB(255, 210, 80), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  local gunMark = ui.label(gui, "+", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 26, RGB(255, 210, 80), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   gunMark.TextStrokeTransparency = 0.3
   gunMark.Visible = false
   -- 导弹的锁定框（四角）
@@ -59,10 +59,10 @@ function Sail.init(G)
   lockStroke.Color = RGB(255, 80, 60)
   lockStroke.Thickness = 2
   lockStroke.Parent = lockBox
-  local lockText = ui.label(gui, "", UDim2.fromOffset(360, 20), UDim2.new(0.5, 0, 0.5, 46), 14, RGB(255, 120, 100), Enum.Font.GothamBold, Vector2.new(0.5, 0))
+  local lockText = ui.label(gui, "", UDim2.fromOffset(360, 20), UDim2.new(0.5, 0, 0.5, 46), 14, RGB(255, 120, 100), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
   lockText.TextStrokeTransparency = 0.4
   lockText.Visible = false
-  local warn = ui.label(gui, "", UDim2.fromOffset(400, 30), UDim2.new(0.5, 0, 0, 120), 24, RGB(255, 90, 70), Enum.Font.GothamBlack, Vector2.new(0.5, 0))
+  local warn = ui.label(gui, "", UDim2.fromOffset(400, 30), UDim2.new(0.5, 0, 0, 120), 24, RGB(255, 90, 70), Enum.Font.BuilderSansExtraBold, Vector2.new(0.5, 0))
   warn.TextStrokeTransparency = 0.3
   warn.Visible = false
   -- 望远镜：四周压暗的框、倍率
@@ -78,7 +78,7 @@ function Sail.init(G)
   bs.Transparency = 0.25
   bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   bs.Parent = binoIn
-  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
 
   ---------------------------------------------------------------- 开船
 
@@ -468,7 +468,7 @@ function Sail.init(G)
     local d = st.d
     -- 镜头转动
     UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
-    local md = UIS:GetMouseDelta()
+    local md = G.mouseDelta and G.mouseDelta(st.bino) or UIS:GetMouseDelta()
     local sens = SENS * (st.bino and (ZOOMS[st.zoom] / 70) or 1)
     st.camYaw -= md.X * sens
     st.camPitch = math.clamp(st.camPitch - md.Y * sens, -0.8, 0.5)
@@ -490,7 +490,7 @@ function Sail.init(G)
       st.lastP3 = st.pos
       local frac = math.clamp(math.abs(st.speed) / math.max(d.speed, 1), 0, 1.2)
       local camCF, camShake, fov = G.vehCam({ key = "sail", pivot = center, dir = dirCam, dist = dist, up = d.H * 0.5, vel = st.vel3, dt = dt,
-        rough = 0.35, speedK = frac, up3 = live.UpVector, params = nil, fov0 = 70, fovK = 4, pushK = 0.04, maxPush = 3, follow = 6, maxLag = 4 })
+        rough = 0.35, speedK = frac, up3 = live.UpVector, params = nil, fov0 = G.fov3 or 70, fovK = 4, pushK = 0.04, maxPush = 3, follow = 6, maxLag = 4 })
       if camCF.Position.Y < 3 then camCF = camCF + V(0, 3 - camCF.Position.Y, 0) end
       cam.CFrame = camCF
       cam.FieldOfView = fov

@@ -324,7 +324,7 @@ function Scope.init(G)
     local l = Instance.new("TextLabel")
     l.AnchorPoint = V2(0.5, 0.5)
     l.BackgroundTransparency = 1
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextColor3 = color
     l.TextSize = size
     l.ZIndex = z
@@ -353,7 +353,7 @@ function Scope.init(G)
       b.Text = text
       b.TextColor3 = RGB(220, 224, 220)
       b.TextSize = 24
-      b.Font = Enum.Font.GothamMedium
+      b.Font = Enum.Font.BuilderSansMedium
       b.ZIndex = 9
       b.Parent = root
       round(b)

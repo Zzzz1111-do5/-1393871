@@ -2,6 +2,7 @@
 --   用户 11-21：所有载具都要有内饰、所有观瞄设备都要实现。每型：坐上、C 进车内（零件、乘员、屏幕都起来了，没报错）→ F2～F5 换遍乘员位（镜头在车里）→
 --   每个乘员位的观瞄设备（Shift 主镜、G 备用、T 第三个）开了再关 → 开一炮 / 打一梭 → 开着走、打方向（方向盘 / T 形把跟着转）→ C 出去
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "m2a3"

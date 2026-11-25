@@ -103,6 +103,80 @@ function HudArt.init(G)
     if ok then label:SetAttribute("Icon", name) end   -- 测试的截图工具（tools/mock/hudshot.lua）认图用
     return ok
   end
+
+  ---------------------------------------------------------------- 写实车图（用户 11-25「主页和科技树的载具图用实拍图吧 然后角度要像战雷那样」）
+  --   ReplicatedStorage.VehPics（tools/models/vehpics.py）：原模型按战雷科技树那个角度拍的彩色图，每张自己的调色板（带透明度），透明串只记个数；
+  --   G.vehPic(图名) → { content, w, h }；G.vehPicOn(ImageLabel, 树枝, 型号……)：按型号找图（地面车查 veh 表，飞机、直升机查 air 表），
+  --   装上就把 ImageColor3 还成白（不染色）；没有图、EditableImage 用不了返回 false（调用的地方退回白色剪影）
+  local picData, picCache = nil, {}
+  local function picDecode(t, W, H)
+    local pal = unb64(t.p)
+    local raw = unb64(t.d)
+    local buf = buffer.create(W * H * 4)
+    local o, i, n = 0, 1, #raw
+    while i <= n do
+      local b = string.byte(raw, i)
+      if b == 0 then
+        o += string.byte(raw, i + 1)
+        i += 2
+      else
+        local q = (b - 1) * 4 + 1
+        local r, g, bl, a = string.byte(pal, q, q + 3)
+        local p = o * 4
+        buffer.writeu8(buf, p, r or 0)
+        buffer.writeu8(buf, p + 1, g or 0)
+        buffer.writeu8(buf, p + 2, bl or 0)
+        buffer.writeu8(buf, p + 3, a or 255)
+        o += 1
+        i += 1
+      end
+    end
+    local img = AS:CreateEditableImage({ Size = Vector2.new(W, H) })
+    img:WritePixelsBuffer(Vector2.zero, Vector2.new(W, H), buf)
+    return { img = img, content = Content.fromObject(img), w = W, h = H }
+  end
+  function G.vehPic(name)
+    local c = picCache[name]
+    if c ~= nil then return c or nil end
+    if broken then return nil end
+    if not picData then
+      local ok, d = pcall(function() return require(RS:WaitForChild("VehPics", 5)) end)
+      picData = (ok and type(d) == "table") and d or { pics = {} }
+    end
+    local t = picData.pics and picData.pics[name]
+    if not t then
+      picCache[name] = false
+      return nil
+    end
+    local ok, res = pcall(picDecode, t, picData.w or 240, picData.h or 120)
+    if not ok then
+      picCache[name] = false
+      return nil
+    end
+    picCache[name] = res
+    return res
+  end
+  -- 型号 → 图名（地面车 veh、飞机 / 直升机 air）
+  function G.vehPicName(air, id)
+    if not picData then G.vehPic("") end
+    local tb = picData and (air and picData.air or picData.veh)
+    return tb and tb[id] or nil
+  end
+  function G.vehPicOn(label, air, ...)
+    for _, id in ipairs({ ... }) do
+      local name = id and G.vehPicName(air, id)
+      local pc = name and G.vehPic(name)
+      if pc then
+        local ok = pcall(function() label.ImageContent = pc.content end)
+        if ok then
+          label.ImageColor3 = Color3.new(1, 1, 1)
+          label:SetAttribute("Icon", "pic_" .. name)
+          return true
+        end
+      end
+    end
+    return false
+  end
 end
 
 return HudArt

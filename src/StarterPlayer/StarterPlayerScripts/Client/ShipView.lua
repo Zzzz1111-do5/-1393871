@@ -128,7 +128,7 @@ function ShipView.init(G)
       l.BackgroundTransparency = 1
       l.Text = text
       l.TextScaled = true
-      l.Font = Enum.Font.GothamBlack
+      l.Font = Enum.Font.BuilderSansExtraBold
       l.TextColor3 = RGB(236, 238, 236)
       l.TextStrokeColor3 = RGB(10, 10, 10)
       l.TextStrokeTransparency = 0.25

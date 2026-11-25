@@ -1,5 +1,5 @@
 -- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
---   进服先到这里（还没定阵营时），盖在选阵营界面上面：左上玩家名、军衔、经验条；左边一列大卡片（只有字：用户嫌卡片里放坦克、战斗机这些模型奇怪）——
+--   进服先到这里（还没定阵营时；只开车的机库模式 11-25 起不先出，直接进机库），盖在选阵营界面上面：左上玩家名、军衔、经验条；左边一列大卡片（只有字：用户嫌卡片里放坦克、战斗机这些模型奇怪）——
 --   进入战斗（→ 选阵营 / 部署）· 选择阵营 · 操作说明 · 模型与授权（Sketchfab 作者署名，CC-BY 要求的）；右下游戏名、测试版、版本号
 --   部署界面右上角「菜单」能回来
 local Players = game:GetService("Players")
@@ -14,7 +14,8 @@ function Menu.init(G)
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
-  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
   local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
@@ -37,7 +38,7 @@ function Menu.init(G)
     local l = Instance.new("TextLabel")
     l.Size, l.Position = size, pos or UDim2.new()
     l.BackgroundTransparency = 1
-    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.GothamMedium
+    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.BuilderSansMedium
     l.TextXAlignment = xa or Enum.TextXAlignment.Left
     l.TextTruncate = Enum.TextTruncate.AtEnd
     if anchor then l.AnchorPoint = anchor end
@@ -81,9 +82,9 @@ function Menu.init(G)
 
   -- 左上：玩家名、军衔、经验条
   local X0, CW = 48, 440
-  local who = text(content, "", UDim2.fromOffset(CW, 26), UDim2.fromOffset(X0, 92), 22, WHITE, Enum.Font.GothamBold)
-  local rankLine = text(content, "", UDim2.fromOffset(CW - 140, 14), UDim2.fromOffset(X0, 122), 11, MUTE, Enum.Font.GothamMedium)
-  local xpLine = text(content, "", UDim2.fromOffset(160, 14), UDim2.fromOffset(X0 + CW, 122), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local who = text(content, "", UDim2.fromOffset(CW, 26), UDim2.fromOffset(X0, 92), 22, WHITE, Enum.Font.BuilderSansBold)
+  local rankLine = text(content, "", UDim2.fromOffset(CW - 140, 14), UDim2.fromOffset(X0, 122), 11, MUTE, Enum.Font.BuilderSansMedium)
+  local xpLine = text(content, "", UDim2.fromOffset(160, 14), UDim2.fromOffset(X0 + CW, 122), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
   local xpBg = frame(content, UDim2.fromOffset(CW, 2), UDim2.fromOffset(X0, 142), WHITE, 0.85)
   local xpFill = frame(xpBg, UDim2.fromScale(0, 1), nil, WHITE, 0)
 
@@ -112,11 +113,11 @@ function Menu.init(G)
     b.Parent = content
     local st = stroke(b, 0.88)
     local K = { b = b, st = st }
-    K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.GothamMedium)
-    K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.GothamBold)
-    K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.GothamMedium)
-    K.tag = text(b, "", UDim2.fromOffset(180, 16), UDim2.new(1, -18, 0, 36), 13, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Right)
-    K.subtag = text(b, "", UDim2.fromOffset(180, 12), UDim2.new(1, -18, 0, 56), 10, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+    K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.BuilderSansMedium)
+    K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.BuilderSansBold)
+    K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.BuilderSansMedium)
+    K.tag = text(b, "", UDim2.fromOffset(180, 16), UDim2.new(1, -18, 0, 36), 13, WHITE, Enum.Font.BuilderSansBold, V2(1, 0), Enum.TextXAlignment.Right)
+    K.subtag = text(b, "", UDim2.fromOffset(180, 12), UDim2.new(1, -18, 0, 56), 10, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
     for _, l in ipairs({ K.tag, K.subtag, K.title }) do
       l.TextStrokeTransparency = 0.6
       l.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -132,11 +133,11 @@ function Menu.init(G)
   local panel = frame(content, UDim2.fromOffset(560, 560), UDim2.fromOffset(1232, 92), RGB(8, 10, 12), 0.08, V2(1, 0))
   panel.Visible = false
   stroke(panel, 0.86)
-  local pTitle = text(panel, "", UDim2.new(1, -120, 0, 24), UDim2.fromOffset(24, 20), 18, WHITE, Enum.Font.GothamBold)
+  local pTitle = text(panel, "", UDim2.new(1, -120, 0, 24), UDim2.fromOffset(24, 20), 18, WHITE, Enum.Font.BuilderSansBold)
   local pClose = Instance.new("TextButton")
   pClose.Size, pClose.Position, pClose.AnchorPoint = UDim2.fromOffset(80, 24), UDim2.new(1, -20, 0, 20), V2(1, 0)
   pClose.BackgroundTransparency = 1
-  pClose.TextColor3, pClose.TextSize, pClose.Font = MUTE, 12, Enum.Font.GothamMedium
+  pClose.TextColor3, pClose.TextSize, pClose.Font = MUTE, 12, Enum.Font.BuilderSansMedium
   pClose.TextXAlignment = Enum.TextXAlignment.Right
   pClose.Parent = panel
   frame(panel, UDim2.new(1, -48, 0, 1), UDim2.fromOffset(24, 56), WHITE, 0.88)
@@ -161,7 +162,7 @@ function Menu.init(G)
   pBody.TextSize = 13
   pBody.LineHeight = 1.25
   pBody.TextColor3 = TEXT
-  pBody.Font = Enum.Font.GothamMedium
+  pBody.Font = Enum.Font.BuilderSansMedium
   pBody.Parent = pScroll
   local panelKind = nil
   local function head(s) return '<font color="#FFFFFF" size="14"><b>' .. s .. "</b></font>" end
@@ -220,6 +221,7 @@ function Menu.init(G)
   -- 第一张卡「快速加入」（用户：没法快速进入战局）：点一下自动分队、默认装备，直接出生在离当前目标最近的出生点（Round.lua ACT.quickJoin）
   local function quick()
     enter()
+    if G.hangarActive and G.hangarActive() then return end   -- 只开车的对局：进机库挑车（服务器已经分好队；不发 quickJoin，免得当步兵出生被拒、弹一条提示）
     G.quickAt = os.clock()   -- 等服务器出生的这一会儿别弹选阵营界面（Faction.lua）
     G.R.Act:FireServer("quickJoin")
   end
@@ -241,16 +243,19 @@ function Menu.init(G)
   end)
 
   -- 右下：游戏名、测试版、版本号
-  local gTitle = text(content, "", UDim2.fromOffset(400, 24), UDim2.fromOffset(1232, 624), 20, WHITE, Enum.Font.GothamBold, V2(1, 0), Enum.TextXAlignment.Right)
-  local gSub = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(1232, 652), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
-  local gVer = text(content, "", UDim2.fromOffset(400, 12), UDim2.fromOffset(1232, 668), 10, FAINT, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local gTitle = text(content, "", UDim2.fromOffset(400, 24), UDim2.fromOffset(1232, 624), 20, WHITE, Enum.Font.BuilderSansBold, V2(1, 0), Enum.TextXAlignment.Right)
+  local gSub = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(1232, 652), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local gVer = text(content, "", UDim2.fromOffset(400, 12), UDim2.fromOffset(1232, 668), 10, FAINT, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
 
   ---------------------------------------------------------------- 刷新
 
   function G.stepMenu(dt) if stageOn then Stage.step(dt) end end
   function G.refreshMenu(S)
     if not S then return end
-    local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (S.progress or 1) >= 1)
+    -- 只开车的对局（机库）：服务器进服就自动分好队（S.picked 一开始就是真）。用户 11-25「把游戏界面开头那个 play 啥的界面删了 进去直接到那个工厂吧」：
+    --   进服不再先出这个主菜单（「开始游戏」→ 选地图），直接进机库的厂房；主菜单（操作说明、模型署名）还能从机库顶栏的「主菜单」打开（G.showMenu）
+    local vehOnly = G.hangarActive ~= nil and G.hangarActive() == true
+    local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (not vehOnly) and (S.progress or 1) >= 1)
     gui.Enabled = show
     -- 背后的场景：开着主菜单时镜头对着它，关了收起来、镜头还给游戏
     if show ~= stageOn then

@@ -232,6 +232,9 @@ function Fly.init(G)
         v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4)   -- 折翼：服务器按 0.1 一档推过来，这边平滑成动画
         c.fold = v.foldS
       end
+      -- 发动机打坏了（WtAir WtaEng = 0）、油烧干了（Fuel = 0）、成了残骸：喷口里不再发亮、没有尾焰（原来照着油门一直喷）
+      local engK = em:GetAttribute("WtaEng")
+      if (engK ~= nil and engK <= 0) or em:GetAttribute("Fuel") == 0 or em:GetAttribute("Wreck") == true then c.thr = 0 end
       v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
       c.can = v.canS
       v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4.5)   -- 折叠机翼（用户：折叠机翼没有动画）：也是 0 / 1，显示时四秒多慢慢折起、展开
@@ -312,7 +315,7 @@ function Fly.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
   local HUD = RGB(118, 240, 140)   -- 绿色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色，那时是青色；用户 11-21：蓝色全部改成绿色）
   local function hud(text, size, pos, ts, anchor, align)
-    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
+    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.RobotoMono, anchor, align)
     l.TextStrokeTransparency = 0.5
     l.TextStrokeColor3 = RGB(0, 24, 10)
     l.Visible = false
@@ -326,11 +329,11 @@ function Fly.init(G)
   dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
-  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
@@ -364,7 +367,7 @@ function Fly.init(G)
       segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
-    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)) }
     for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 24, 10) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
@@ -430,7 +433,7 @@ function Fly.init(G)
     l.Parent, l.Size, l.Position, l.AnchorPoint = it[2], UDim2.new(1, -8, 1, 0), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5)
     l.TextSize, l.TextXAlignment, l.Visible = 30, Enum.TextXAlignment.Center, true
   end
-  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.Code)
+  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.RobotoMono)
   local spdCap = hud(T("hud.spd"), UDim2.fromOffset(120, 16), UDim2.new(0.5, -420, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   local altCap = hud(T("hud.alt"), UDim2.fromOffset(120, 16), UDim2.new(0.5, 300, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   thrText.Position, vsText.Position, fuelText.Position = UDim2.new(0.5, -300, 0.5, 36), UDim2.new(0.5, 300, 0.5, 36), UDim2.new(0.5, -300, 0.5, 56)
@@ -514,7 +517,7 @@ function Fly.init(G)
     ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
   end
   local function mfd(text, pos, anchor, size, col, align)
-    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.Code, anchor or Vector2.new(0.5, 0.5), align)
+    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
     l.ZIndex = 12
     return l
@@ -585,7 +588,7 @@ function Fly.init(G)
   TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
   TG.track.Name = "TrackMode"
   -- 指北箭头
-  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   TG.north.ZIndex = 12
   TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
   -- 右边一栏（显示器外面的黑边上）
@@ -593,14 +596,14 @@ function Fly.init(G)
   side.Name = "TgpSide"
   side.ZIndex = 12
   local function sl(text, y, size, col, font)
-    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
     l.ZIndex = 12
     l.TextWrapped = true
     return l
   end
   TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
-  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.Code, nil, Enum.TextXAlignment.Left).ZIndex = 12
-  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left).ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
   TG.ttiBig.ZIndex = 12
   local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
   barBg.ZIndex = 12
@@ -610,7 +613,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.Garamond)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSansMedium)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -719,15 +722,15 @@ function Fly.init(G)
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
       ui.stroke(kb, HUD, 1, 0.2)
-      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.Code)
+      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.RobotoMono)
       kl.Name = "Key"
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
       drawIcon(ic, it)
-      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
-      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)
       cnt.Name = "Count"
       wRows[i] = { f = f, s = sk, cnt = cnt, nm = nm, it = it }
     end
@@ -1397,7 +1400,7 @@ function Fly.init(G)
     elseif st.ground then
       -- 地上减速：B 刹车 70；油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）；带着点油门滑行只有轮子阻力 22
       if tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt)
-      else st.spd -= math.min(st.spd - tgt, ((key(Enum.KeyCode.B) and 70) or (st.thr < 5 and 36) or 22) * dt) end
+      else st.spd -= math.min(st.spd - tgt, (((key(Enum.KeyCode.B) or key(Enum.KeyCode.Space)) and 70) or (st.thr < 5 and 36) or 22) * dt) end   -- 空格也是机轮刹车
     else
       -- 天上：战雷式能量（用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」）——原来是「油门给目标速度、按固定加速度追过去」，
       --   军推推力折算 1.6 g（军推就能一直竖着往上爬，转弯、爬升几乎不掉速）。现在按力算：
@@ -1948,7 +1951,8 @@ function Fly.init(G)
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
     local k = io.KeyCode
-    if k == Enum.KeyCode.Space then G.R.Drive:FireServer({ op = "exit" }) return end   -- 用户：空格键脱离载具（在天上就跳伞）
+    -- 用户：空格键脱离载具（在天上就跳伞）；战雷式（不当步兵）没有跳伞、下飞机——空格是机轮刹车（地上），回机库长按 H（Hud.lua）
+    if k == Enum.KeyCode.Space and not (G.hangarActive and G.hangarActive()) then G.R.Drive:FireServer({ op = "exit" }) return end
     if not st.pilot then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
@@ -2306,7 +2310,7 @@ function Fly.init(G)
     end
     -- 镜头转动
     if not G.mobile then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
-    local md = UIS:GetMouseDelta()
+    local md = G.mouseDelta and G.mouseDelta(st.eo or st.uav) or UIS:GetMouseDelta()   -- 设置里的灵敏度、反转 Y（Settings.lua）
     -- 平板前视光电变焦：倍率越大鼠标越慢（准星在画面上走得一样快）
     st.zoomS = st.zoomS + ((((st.uav and st.dcam == "nose") or st.eo) and st.zoom or 1) - st.zoomS) * math.min(1, dt * 8)
     if st.uav or st.eo then md = md / st.zoomS end
@@ -2396,10 +2400,15 @@ function Fly.init(G)
     end
     -- 发动机声跟着油门（固定翼：加力更尖更响）、总距（直升机：拉得越狠越沉）
     if st.engSnd then
+      -- 发动机打坏了 / 油烧干（用户 11-25「发动机各种状态 冒烟什么的都要做出来」）：转速慢慢掉下去、声音没了，只剩风声；受伤的转得发涩（音高低一点、一抖一抖）
+      local wae = G.wtaFlight and G.wtaFlight(st.em)
+      local dead = st.out == true or (wae ~= nil and wae.eng <= 0)
+      st.engDie = approach(st.engDie or 0, dead and 1 or 0, dt / (dead and 3.5 or 1.5))
       if d.kind == "jet" then
         local tq = math.clamp((st.thrE or st.thr or 0) / 100, 0, 1.3)
-        st.engSnd.PlaybackSpeed = 0.75 + 0.45 * tq
-        st.engSnd.Volume = 0.3 + 0.6 * tq
+        local rough = (wae and wae.eng < 1 and wae.eng > 0) and (1 - wae.eng) or 0
+        st.engSnd.PlaybackSpeed = (0.75 + 0.45 * tq) * (1 - 0.45 * st.engDie) * (1 - 0.12 * rough + 0.05 * rough * math.sin(os.clock() * 23))
+        st.engSnd.Volume = (0.3 + 0.6 * tq) * (1 - st.engDie)
       else
         local load = math.clamp(math.abs((st.c and st.c.col) or 0), 0, 1)
         st.engSnd.PlaybackSpeed = 0.95 + 0.12 * load
@@ -2536,8 +2545,8 @@ function Fly.init(G)
       local load = math.clamp(math.abs(st.c.col or 0), 0, 1)
       local camCF, camShake, fov = G.vehCam({ key = "heli", pivot = pos + V(0, d.H * 0.45, 0), dir = dirCam, dist = d.L * 0.62 + 7, up = 0, vel = st.vel, dt = dt,
         rough = 0.45 + 0.6 * load, speedK = math.clamp(0.35 + st.vel.Magnitude / math.max(d.vMax, 1) * 0.65, 0, 1.2), up3 = st.cf.UpVector, params = heliCamParams,
-        fov0 = 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })
-      cam.CFrame = camCF * camShake
+        fov0 = G.fov3Air or G.fov3 or 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })   -- 设置：空战第三人称视野
+      cam.CFrame = G.noShake and camCF or (camCF * camShake)   -- 设置里能关镜头晃动
     end
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70
@@ -2846,7 +2855,7 @@ function Fly.init(G)
         local lk = st.lock
         G.airAudioStep(dt, { on = st.pilot == true and not st.crashed and not st.uav, w = w, hasTgt = lk ~= nil, lockT = st.lockT or 0,
           locked = lk ~= nil and w ~= nil and (st.lockT or 0) >= (w.lockTime or 1), out = lk ~= nil and lk.out == true,
-          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = st.out == true and not st.ground,
+          rwr = st.rwrT ~= nil and os.clock() < st.rwrT, flameout = (st.out == true or (G.wtaFlight and (G.wtaFlight(st.em) or {}).eng == 0)) and not st.ground,   -- 发动机打坏了也报熄火
           rwrLock = st.rwrLockT ~= nil and os.clock() < st.rwrLockT, rwrFull = st.rwrLockFull == true,   -- 被敌机雷达锁着（A 加的，服务器转告）
           stall = d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05,
           pullup = not st.ground and agl < 60 and st.vel.Y < -25, bingo = not st.ground and st.fuel + st.fuelX < 0.12,
@@ -2859,7 +2868,7 @@ function Fly.init(G)
       if type(rest) ~= "number" or rest == 0 then rtx = nil
       elseif rest > 0 and rest <= 5 then rtx = T("air.restWait", math.floor(rest))
       elseif rest == 10 then rtx = T("air.restRoll")
-      elseif rest == -1 then rtx = T("air.restFix", math.floor(clamp(hp / mx, 0, 1) * 100))
+      elseif rest == -1 then rtx = T("air.restFix", math.floor(clamp(tonumber(em:GetAttribute("RestK")) or (hp / mx), 0, 1) * 100))   -- 服务器的补给进度（油、弹、部件、机身血里最慢的那样）
       elseif rest == -2 then rtx = T("air.restDone")
       elseif rest == -3 and math.abs(st.spd) < 30 then rtx, rcol = T("air.restNo"), RGB(255, 200, 90) end
       restText.Text, restText.TextColor3, restText.Visible = rtx or "", rcol, rtx ~= nil

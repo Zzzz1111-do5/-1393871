@@ -40,7 +40,7 @@ function Bombsight.init(G)
     return f
   end
   local function text(parent, name, size, pos, ts, anchor, align)
-    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.Code, anchor, align)
+    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.RobotoMono, anchor, align)
     l.Name = name
     l.TextStrokeTransparency = 0.25
     l.TextStrokeColor3 = INK
@@ -105,7 +105,7 @@ function Bombsight.init(G)
   arrow.Name = "PoiArrow"
   local shaft = ui.frame(arrow, U2.fromOffset(2, 44), U2.new(0.5, 0, 0, 16), LIGHT, 0, V2(0.5, 0))
   shaft.Name = "Shaft"
-  local head = ui.label(arrow, "▲", U2.fromOffset(24, 18), U2.new(0.5, 0, 0, 0), 16, LIGHT, Enum.Font.GothamBold, V2(0.5, 0))
+  local head = ui.label(arrow, "▲", U2.fromOffset(24, 18), U2.new(0.5, 0, 0, 0), 16, LIGHT, Enum.Font.BuilderSansBold, V2(0.5, 0))
   head.Name = "Head"
   head.TextStrokeTransparency = 0.3
   local cInfo = text(cgui, "PoiText", U2.fromOffset(170, 36), U2.new(), 15, V2(0, 0.5), Enum.TextXAlignment.Left)

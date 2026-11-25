@@ -29,7 +29,7 @@ CHUNKK = {'j20': 15000}
 # 游戏里的型号（AirDefs）→ 网页版的模型；后面带 ~ 的去掉原机涂装（我方没有模型的用外形最接近的美军机代，原机的国籍标志、舷号都在底色贴图里），游戏里按我方涂色
 ALIAS = {
     'z10': 'z10w', 'ah64e': 'ah64', 'z20': 'uh60~', 'uh60': 'uh60', 'ch47': 'ch47',
-    'j20': 'j20', 'j35': 'j31', 'j15t': 'j15t', 'j16': 'j16', 'j50': 'j50', 'h6k': 'h6k', 'gj11': 'x47b~', 'gj2': 'mq9~',
+    'j20': 'j20', 'j35': 'j31', 'j15t': 'j15t', 'j16': 'j16', 'h6k': 'h6k', 'gj11': 'x47b~', 'gj2': 'mq9~',
     'a10c': 'a10', 'f35': 'f35', 'f22': 'f22a', 'mq9': 'mq9', 'b2': 'b2',
 }
 FLIP = {'h6k', 'x47b'}
@@ -216,13 +216,16 @@ def segment(key):
             if n == 'gear':
                 g = 'Gear'
             elif n == 'rotor':
-                # 支奴干两副旋翼都叫 rotor：前面那副是 Rotor，后面那副是 Rotor2
+                # 支奴干两副旋翼都叫 rotor：前面那副是 Rotor，后面那副是 Rotor2；sf_air.py 的直升机写明了 g（卡-52 共轴：下面那副 Rotor、上面那副 Rotor2，反着转）
                 others = [q for q in parts if q.get('n') == 'rotor']
-                g = 'Rotor2' if len(others) > 1 and P['p'][0] < max(q['p'][0] for q in others) else 'Rotor'
+                g = P.get('g') or ('Rotor2' if len(others) > 1 and P['p'][0] < max(q['p'][0] for q in others) else 'Rotor')
                 rot_piv[g] = (P['p'], P.get('a', [0, 0, 1]))
             elif n == 'trotor':
                 g = 'TRotor'
                 rot_piv[g] = (P['p'], P.get('a', [0, 1, 0]))
+            elif n in ('Gun', 'GunY'):   # sf_air.py 按连通块分好的机头炮塔（炮塔座只转方位）
+                g = n
+                rot_piv[g] = (P['p'], [0, 0, 1])
             elif n in kfs:
                 g = n
             elif n in ('Pit', 'PitHud'):   # 原模型自带的座舱（sf_air.py 的 pitmat / pitnode）、原模型的平显（pithud）

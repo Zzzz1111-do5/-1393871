@@ -97,9 +97,12 @@ function Imports.init(G)
     table.sort(ids)
     for _, id in ipairs(ids) do
       local keys = {}
-      if IA.alias and IA.alias[id] then table.insert(keys, IA.alias[id]) end
-      local old = IA.old and IA.old[id]
-      if type(old) == "string" then table.insert(keys, old) elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(keys, k) end end
+      local like = AD.D[id] and AD.D[id].like   -- 借同族原模型的（AH-64DJ → AH-64E）
+      for _, k0 in ipairs({ id, like }) do
+        if IA.alias and IA.alias[k0] then table.insert(keys, IA.alias[k0]) end
+        local old = IA.old and IA.old[k0]
+        if type(old) == "string" then table.insert(keys, old) elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(keys, k) end end
+      end
       local best = nil
       for _, k in ipairs(keys) do
         k = string.gsub(k, "~$", "")

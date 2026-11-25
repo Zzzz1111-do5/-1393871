@@ -1,4 +1,8 @@
--- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
+-- Roblox全面大战场（客户端）——导弹视角
+--   用户 11-25「我发射导弹就不要加那个导弹视角小窗了 而是按一个键可以第三人称看跟踪我的导弹就像战雷那样」：
+--   发射以后不再自动弹小窗，屏幕下方提示「L 跟踪导弹」；按 L 镜头切到导弹后上方跟着飞（第三人称，追尾），
+--   命中 / 没打中以后在落点停一秒半再回到原来的镜头，飞的时候再按一次 L 马上回来。下面原来的小窗代码留着（不再打开）
+-- 原注释（用户：继续做导弹视角小窗）：
 --   自己开飞机打出去的导弹 / 制导炸弹：右上角开一个小窗，从弹上往目标看——导引头的画面：暗灰的底、目标白热、十字线、
 --   目标多远、还剩几秒；导引头视场跟着距离缩（目标在画面里大小差不多，越近越大）
 --   Roblox 的小窗（ViewportFrame）画不了地形和别的东西，只把目标的模型复制进去（一次，之后只挪小窗里的镜头）：
@@ -70,7 +74,7 @@ function MslCam.init(G)
     l.BackgroundTransparency = 1
     l.Size = UDim2.fromOffset(150, 18)
     l.Position, l.AnchorPoint = pos, anchor
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextSize = size or 13
     l.TextColor3 = color or GREEN
     l.TextXAlignment = align
@@ -83,7 +87,7 @@ function MslCam.init(G)
   local info = label("Info", UDim2.new(1, -8, 1, -4), Vector2.new(1, 1), Enum.TextXAlignment.Right)
   local result = label("Result", UDim2.new(0.5, 0, 0.5, -14), Vector2.new(0.5, 0.5), Enum.TextXAlignment.Center, 22, RGB(255, 240, 200))
   result.Size = UDim2.fromOffset(280, 30)
-  result.Font = Enum.Font.GothamBlack
+  result.Font = Enum.Font.BuilderSansExtraBold
 
   local cur = nil   -- { id, w, tgt = { em, anchor, cl0 }, clone, ground, t0, done, endAt }
 
@@ -161,7 +165,8 @@ function MslCam.init(G)
     if not cur.tgt then groundPlane(e.p) end
     local L = G.hudLayout   -- 右上是小地图（Hud.lua）：镜头框放到它左边
     box.Position = (L and L.radarRight) and UDim2.new(1, -(L.radarX + L.radarSize + 12), 0, L.radarY) or UDim2.new(1, -20, 0, 92)
-    gui.Enabled = true
+    -- 11-25：小窗不再自动打开（gui.Enabled 一直关着），只提示按 L 跟踪
+    if G.mslFollowHint then G.mslFollowHint() end
   end
 
   function G.onShotEnd(id, s)
@@ -174,6 +179,71 @@ function MslCam.init(G)
     result.TextColor3 = hit and RGB(255, 236, 170) or RGB(200, 210, 210)
   end
   G.mslCamState = function() return cur end   -- 测试用
+
+  ---------------------------------------------------------------- 按 L 跟踪自己的导弹（第三人称追尾）
+  local UIS = game:GetService("UserInputService")
+  local RunService = game:GetService("RunService")
+  local hintGui = Instance.new("ScreenGui")
+  hintGui.Name = "MslFollow"
+  hintGui.ResetOnSpawn = false
+  hintGui.IgnoreGuiInset = true
+  hintGui.DisplayOrder = 9
+  hintGui.Parent = pg
+  local TH = G.Theme
+  local hint = Instance.new("TextLabel")
+  hint.Name = "Hint"
+  hint.AnchorPoint = Vector2.new(0.5, 1)
+  hint.Position = UDim2.new(0.5, 0, 1, -150)
+  hint.Size = UDim2.fromOffset(260, 26)
+  hint.BackgroundColor3, hint.BackgroundTransparency, hint.BorderSizePixel = RGB(8, 10, 12), 0.35, 0
+  hint.Font = (TH and TH.F.bold) or Enum.Font.BuilderSansBold
+  hint.TextSize = 15
+  hint.TextColor3 = RGB(236, 238, 236)
+  hint.TextStrokeTransparency = 0.5
+  hint.Visible = false
+  hint.Parent = hintGui
+  local follow = nil   -- { id, sm 平滑后的镜头位置, look, endAt }
+  local hintUntil = 0
+  function G.mslFollowHint()
+    hintUntil = os.clock() + 4
+    hint.Text = T("mcam.followHint")
+    hint.Visible = true
+  end
+  local function liveShot() return cur and not cur.done and G.flyingShots and G.flyingShots[cur.id] end
+  G.mslFollowAvail = function() return liveShot() ~= nil or follow ~= nil end   -- Interior.lua：座舱里 L 是灯光，有弹在飞时让给这里
+  G.mslFollowing = function() return follow ~= nil end
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or io.KeyCode ~= Enum.KeyCode.L then return end
+    if follow then follow = nil return end
+    local s = liveShot()
+    if s then
+      follow = { id = cur.id, last = s.p, dir = (s.v and s.v.Magnitude > 1) and s.v.Unit or Vector3.new(0, 0, -1) }
+      hint.Visible = false
+    end
+  end)
+  pcall(function()
+    RunService:BindToRenderStep("IAMslFollow", Enum.RenderPriority.Last.Value + 5, function(dt)
+      if hint.Visible and os.clock() > hintUntil then hint.Visible = false end
+      if not follow then return end
+      local s = G.flyingShots and G.flyingShots[follow.id]
+      local tNow = os.clock()
+      if s then
+        follow.last = s.p
+        if s.v and s.v.Magnitude > 1 then follow.dir = follow.dir:Lerp(s.v.Unit, math.min(1, dt * 6)).Unit end
+      elseif not follow.endAt then
+        follow.endAt = tNow + 1.5   -- 弹没了：在落点停一秒半
+      end
+      if follow.endAt and tNow >= follow.endAt then follow = nil return end
+      local cam = workspace.CurrentCamera
+      if not cam then return end
+      local dir = follow.dir
+      local want = follow.last - dir * 26 + Vector3.new(0, 7, 0)
+      follow.sm = follow.sm and follow.sm:Lerp(want, math.min(1, dt * 10)) or want
+      cam.CameraType = Enum.CameraType.Scriptable
+      cam.CFrame = CFrame.lookAt(follow.sm, follow.last + dir * 30)
+      cam.FieldOfView = 62
+    end)
+  end)
 
   function G.stepMslCam()
     if not cur then return end

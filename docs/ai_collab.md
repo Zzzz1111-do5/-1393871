@@ -25,6 +25,104 @@
 
 ## 正在做
 
+- D（11-25 末，用户：「然后科技树里面根据年代给有火控计算机的坦克……更新火控计算机 可以有不同等级进行升级」「坦克履带也要能动」「画面缩放……先往后 再往上……参考坦克世界」
+  「部分远火高射形载具……坦克世界那种 可以把视角放到射程范围内的任何位置 但是对于敌载具的视野是要受限于我方信息的……3d的散步圈……移动很快的话 这个圈会变大 然后慢慢变小」
+  「第一辆必须是地面车，飞机要攒点数才能出」「载具科技树不同等级的载具背景颜色要有区别」「烟幕改成m x改成透视自己的坦克」「炮弹和导弹 子弹击中地面……」；前面还有「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：
+  · 火控计算机（WtMods）：`M.FCS` 五代（光学瞄准 → 光学测距 + 机械计算机 → 激光 + 模拟计算机 → 数字火控 → 猎歼式自动跟踪），`M.fcsGen(it)` 按年份 + 有没有激光（VehDefs `lrf`）定原厂哪一代；
+    改装树「火力」多三项 fcs1 / fcs2 / fcs3（`M.list(it)` 按车加，说明按原厂那一代写），`M.fcsParams(gen, lvl)` 给客户端：测距多久、误差、解算多久、提前量（0 / 测距那一下 / 动态）、
+    残余散布（密位）、自动跟踪。Tech.lua 出车写 `FcsGen` / `ModFcs`；Drive.lua 测距按它延时（激光按下那一刻量、计算机算完才用）、开火加残余散布、动态提前量、
+    猎歼式测距打到车就锁住（`st.fcs.trk`，瞄准线按炮塔转速自己跟，动鼠标解除），镜下写 CALC / RANGING / TRACK。没写属性的车（沙盒）照旧。
+  · 履带会转：tools/models/trackfit.py 从原模型量履带（贴地那层定内外边；逐层占满比例找上面一段；上沿一半以下的凸包取下半条链）→ ReplicatedStorage/TrackLoops.lua（24 辆，
+    核对图里上面一段量到挡泥板的 5 辆只画下面一段）；Client/Tracks.lua 在原履带外贴一串履带板，按车身每帧位移算车速、转向角速度，左右分开走；220 格内、最多 8 辆；View.lua 算完车身调 `G.tracksStep`。
+  · 第三人称滚轮（Drive.lua）：`G.tpZoom` 0～1，前六成往后拉（臂长 0.62 → 1.62 倍）、后四成转点往上抬（头顶有东西就抬到下面）；最近再往前滚进瞄准镜，瞄准镜最低倍再往后滚退出（坦克世界）。
+  · 炮兵视角（新模块 Client/ArtyView.lua）：当前武器是 arty 时 Shift 进出；俯视镜头、鼠标挪瞄准点（限在 minR～maxR）、滚轮升降；地上贴地的散布圈（挪得快 / 车在开就胀、
+    1.3 秒时间常数收小，绿 → 黄）、射程圈、弹道弧线；屏幕写飞行时间、距离、装填。敌车只画全队看得见的（Hud.lua 导出 `G.teamSeenId` / `G.teamSeenFresh`；
+    WtMatch 的 teamSeen 现在街机也发）。开火带 `disp`，Armor.lua 散布圈 = 基础 ×（0.5 + 1.5 × disp），圈里均匀落。
+  · 首发地面车（WtMatch）：飞机、直升机一直要 SP（准备阶段、第一辆都不免费），这一局没出过地面车不让出飞机（`wt.groundFirst`）；机库「加入战斗」同样灰掉写原因。
+  · 科技树等级底色：Theme.RANK（七级，不用蓝）+ `Theme.rankGrad`，等级横条、车卡底板、阵容卡、详情大图；空等级收成窄条；锁定提示的「要几辆」按 `TT.rankNeed`（同服务器规则）。
+  · 导弹抛射（AirDefs.EJ：tube 筒射往前推、drop 弹射往下、cruise 涡喷投放）：弹标 `eject`（毒刺、针-V、天燕-90、91 式、突击、攻击、陶式、不死鸟、鹰击-91、KD-88、鹰击-83K），
+    挂点标 `ej`（F-15 机身、F-14 通道、苏-27 一族进气道 / 中线），主弹舱一律弹射下落；Air.lua guideMissile 先只受重力掉 ejT 秒再点火（发 shotIgn），Fx.lua 点火前不喷火不拖烟不出声。
+  · 按键（用户 11-25「烟幕改成m x改成透视自己的坦克」）：Drive.lua M 烟幕、X 透视自己的车（新模块 Client/XrayOwn.lua：自己的车 LocalTransparencyModifier 0.78，
+    WtDamage.layout 的乘员 / 模块按 WtC / WtM 上色、跟车身和炮塔走）；大地图页（新模块 Client/WtMap.lua）B 开关，观战 / 直升机 M 也行，喷气机不开（B 是刹车、M 是鼠标瞄准）；
+    地图挂到页里、关的时候挂回 G.hudParts.miniClip；`G.mapGridRef(x, z)` 给格子坐标。
+  · 弹着点（用户 11-25「然后炮弹和导弹 子弹击中地面 不同角度不同材质不同弹种有不同效果 但是都要效果强一点」）：服务器 G.explode 多一个 info
+    `{ h = HitSurf 代号, d = 来弹方向, am = 弹种 }`，没给的往脚下探（`G.groundInfo`，来向取 G.blastDir；G.shell 的炮兵炮弹按炮位给来向、am = he）；
+    炮弹带 `cls`（Armor / AIVeh 发射时写），穿甲弹（ap）打在地上不炸：发 `gimp`（客户端 Fx.lua kineticHit：土泉、土块、扬尘、擦地犁沟、硬地火星闪光、跳弹曳光），
+    溅射照算（splashQ 带 noFx）。Fx.lua：GPAL 材质配色（`G.groundPal`）、`tiltUp` 按来向把土柱往前倒、boom(p, s, c, hs, dv, am) 榴弹 / 破甲弹两样、
+    航炮弹也按材质；子弹弹着点按入射角（擦地前面再一道）、整体 1.5 倍。
+  · 测试：tools/mock/groundhit.lua（新：gimp、爆炸材质 / 来向 / 弹种、炮兵来向、各材质颜色、擦地犁沟、水面）、tools/mock/arty.lua（新，含 X 透视、B 大地图）、tracks.lua（新）、missiles.lua ⑥、wtmods（改装格数含火控）、wtmode / helitree（首发地面车）、wttest（靶车匀速往返）。
+
+- D（11-25 深夜，用户：「然后直升机也做一下各个国家的哈 包括很多战机不是其原本的模样」「内容还不齐，风格不统一」「找不到的你可以直接删掉」）：
+  · 科技树第三棵树 heli（TechTree `BRANCHES = { "ground", "air", "heli" }`，`TT.BRANCH.heli.need` 每级要研究 1 架）：五国 17 架，每国打头的运输直升机写 `free = true`；
+    `TT.rankOpen` 上一级一辆都没有就再往上看（树车少不锁死）；一棵树一项白送的都没有时最低那一级各列打头的白送。出击：Tech.lua `padFor(team, air, heli)` 停本队直升机坪。
+  · 科技树只留有原模型的：借别的型号模型的（狂风借 F-14、苏-25 借 A-10、59 式借 M60……）、零件拼的一共删了 116 项，剩 103 项；德国固定翼空着（TechUI 写「还没有找到」）。
+    同族、外形几乎一样的照样借（`base` / `model`：M1 借 M1A1、苏-27 借歼-11、F-15A 借 F-15C、F-2A 借 F-16）。读档时阵容里的车全删了就按默认阵容（Tech.lua）。
+  · 新模型（tools/models/sf_air.py）：直升机 10 架 + F-15（mgg8 CC0，杜克斯福德展机：起落架拆成 Gear、副油箱去掉）+ F-14（Novia556，没放起落架：lift 0.9）。
+    sf_air 新选项：`scale`（按旋翼直径量的缩放）、`yoff`（桨叶不对称时把机身中线挪回 0）、`dropmat`（按材质去掉：FlightGear 公用仪表贴图）、
+    nodes / comp 的动法 `rotor` / `trotor`（转轴按桨叶面积加权法线、支点按重心，主旋翼轴只留前后倾）、`gun` / `gunyaw`（整块网格的炮塔在这里先分好）、
+    `gunsplit` / `stub`（交给 air2glb 的 GUNSPLIT / HELI_STUB）、inbox 的 `y`（带正负）。air2glb：part 的 `g` 写明 Rotor / Rotor2（卡-52 共轴）、`Gun` / `GunY` 部件。
+    AirDefs 的 `like`：AH-64DJ / CH-47J / UH-60JA 借同族的原模型和挂点（AirModels.importedFor、Imports.lua 都认）。
+    没收的（不是作者本人做的）：42manako 的卡-52 / UH-1Y / OH-1 / 直-8（《武装突袭》贴图命名、Ninja Ripper 贴图名、SketchUp 3D 仓库材质），B4_Cobra、duckbillcore 的 UH-1Y。
+    美国那两格换成模型对应的型号：AH-1Z → AH-1W（模型是两片桨的超级眼镜蛇）、UH-1Y → UH-1N（helijah 的双休伊）。
+  · 车被打爆（用户 11-25「载具爆炸效果不够猛画风不够战雷」）：新模块 Client/WreckFx.lua，View.lua 车变残骸那一帧调 `G.wreckFx(v, WtWhy, 车底 CFrame)`——
+    殉爆：闪光、三层火球（白热芯 / 橙红火 / 煤黑烟）、冲击波圈和一圈土、真钢板碎块（`G.wreckChunks`，CorrodedMetal 零件，会落地，最多同时 40 块）、
+    舱口火柱、八九发接连殉爆（`pop` 声音）、残骸的 fire / black 发射器调粗调黑顺风、地面焦斑（烟贴图染黑的 Decal，挂在残骸模型里）；
+    烧毁：发动机舱窜火；乘员打光：一缕烟。Ents.lua：车有 `e.wtWhy`（战雷式伤害打死的）就不再放通用的那一下爆炸；Fx.boom 的 wreck 类用真碎块代替方块贴图；
+    炮塔顶飞：往上 27～35 格 / 秒（原来 20～27）、翻得快一点。测试 tools/mock/wreckfx.lua。
+
+- D（11-25 夜，用户：「游戏地图不要有载具召唤点了 在车上按空格也不要自动阵亡了 然后召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」
+  「包括死亡也别再用之前那个gta的动画了」「飞机很多起落架都很假 而且尾喷焰火也假」「飞机如果断了机翼 那机翼应该要能掉下去」「然后发动机各种状态 冒烟什么的都要做出来」「j50删掉」）：
+  · 召唤点：战雷式（`G.wtGroundOnly()`）地图上不摆召唤柱、停放框（Depots.lua 每个召唤位的模型收掉，出车位置数据照旧给 Tech.lua padFor 用）。
+  · 空格：车里、飞机里不再发「下车」（下车 = treeLeave 判毁阵亡）——坦克空格是刹车，飞机地上空格是机轮刹车；回机库长按 H 1.2 秒（Hud.lua，屏幕下方进度条）；
+    服务器只认 `{ op = "exit", hangar = true }`，别的 exit 吞掉。回机库不放阵亡：车收走、人回机库（同 Round.lua redeploy）；10 秒内挨过打（Ents `e.lastHitT`）照老办法判毁。
+  · 阵亡画面（DeathFx.lua）：GTA 的「WASTED」整套去掉（黑白、模糊、四边压暗、横条红字、心跳、声音发闷、慢动作）——颜色照旧，镜头退开一点、转去看凶手，下方一块 Theme 牌子写「被击毁 / 阵亡」和凶手、距离。
+  · 飞机出生：机库出飞机不再空中出生（C ⑫ 那段删了），停在自己机场跑道上的出车位（Depots runwayPads），起落架放着、慢车，自己推油门起飞。
+    落地补给（Air.lua）：停稳 3 秒地勤上来，油按 15 秒（`Config.Wt.airSupT`）加满、到时挂回全部弹药 / 热诱弹 / 副油箱，机身每秒修一成，
+    WtAir 部件每秒修 8 点多（`G.wtaRepair`：灭火、堵漏、修起落架、断翼修回来），`Rest` / `RestK` 给平显写进度。测部件伤害的测试设 `G.wtaNoRepair`。
+  · 发动机状态（WtAir.lua 客户端）：按 WtaP 里发动机那一位，从每个喷口（`AirModels.nozzles`）出烟：轻伤淡灰、重伤深灰、打坏了黑烟；起火的火苗一闪一闪；
+    发动机打坏 / 没油：喷口不亮、没有尾焰（Fly.lua 把 c.thr 置 0），发动机声音降下去，平显报熄火。
+  · 断翼：`tools/models/wingcut.py` 把 17 个固定翼原模型的外翼在半翼展（歼-15T 在折叠线）切成单独的块（元数据 `w = "L"/"R"`、`wcut` 断口截面），
+    版本号加一（j20_v6、j6_v2……），要用户重导；客户端 WtaWing 一变，`AirModels.breakWing` 藏掉那边外翼（连挂在上面的弹、翼尖灯）、补一块烧黑的断口，
+    复制出来的那截翼带着速度甩出去翻滚着掉（WtAir.lua）。零件拼的飞机按位置（翼展一半以外）。
+  · 起落架（零件拼的那种）：圆支柱浅灰白漆、镀铬活塞杆、扭力臂、斜撑、轮叉、轮胎 / 轮毂 / 刹车盘、轮舱；尾焰加了一股锁在喷口上的火焰粒子（焰身有体积，不再是正对镜头的扁光带）。
+  · 歼-50：model/air/j50.glb、ImportedAir 里 j50*、着色、图标都删了（游戏里 11-22 就不出了）。
+  · 顺手：WtMatch 战场奖章没跳过试驾靶车（打靶首杀加 80 分）；WtDamage 的 M551 炮弹（m409）补进 AMMO；deathfx 测试的出生点名改成 base。
+
+- E（11-25 晚，**正在做**；用户：「现在整个游戏风格极其割裂 我需要完全还原战雷 现在这游戏就是一个四不像」——
+  E 说明了不照搬别的游戏的样子，用户选「全游戏统一成一套自己的写实军事风格」，**分工：E 管外观，C 管玩法**）：
+  · **新：`ReplicatedStorage/Theme.lua` + `docs/style.md`**——颜色、字体、字号、面板都从 `G.Theme`（客户端 init 里挂的）取，新界面也一样；
+    颜色只表示意思（绿 = 自己人 / 完好、红 = 敌人 / 危险、琥珀 = 注意 / 进行中 / 金币、亮绿 HUD = 瞄准和飞行符号），**不用蓝**；
+    敌我颜色按看的人算（`Theme.side(side)`：自己这边绿、对面红）——UI / Hud / WtBattle 的 teamColor、MapUI 的据点颜色都改了，
+    不再攻方一律红、守方一律绿；Code、Jura、Garamond 字体全换成 RobotoMono / GothamMedium。
+  · 各模块顶上的颜色常量换成 Theme 的（UI、Menu、TechUI、WtBattle、WtTank、WtHud、WtAmmo、WtComms、WtAir、TankHud、VehHud、AirHud、WtFlight、
+    Radar、Hud、SquadHud、MapPick、Faction）；**C 改这些文件时颜色请用 `TH.C.*`**。
+  · 屏幕中间打掉车时原来叠着四套提示（金色圆章奖章、28 号「+200」、黄条提示框、红字「已击毁！」）：奖章改成一条细条（WtBattle），
+    加分字缩小（Juice），只开车的对局里 Juice 的连杀横幅不弹（奖章已经报了），击杀不再弹提示框（UI.lua），
+    WtHud 报了「已击毁」Hud.lua 的 G.pop 就不再弹第二行（G.wtKillShownAt）；提示语去掉感叹号。
+  · 只开车的对局（Config.Wt.noInfantry）：进服自动分队、不弹「选择阵营」页（它原来叠在机库、结算页后面透出来）；SquadHud 的小队面板不画；
+    「观战队友」挪到机库右下角（WtCam，顺手修了开局 Visible 赋 nil 的报错）。
+  · **第一人称只留 M1A1、M1A2**（用户 11-25「除了m1a1和a2 其他载具不要做第一人称模式」）：`Config.FirstPerson.only` 白名单，
+    Interior.lua 的 build / 飞机座舱都先问 `G.interiorAllowed(id)`；测别的车内饰的老测试在 join 前设 `T.fpAll = true`；新测试 tools/mock/fponly.lua。
+  · 测试工具：tools/mock/uidump.lua（hudshot 的排版、写 JSON 拆出来共用）、tools/mock/uishots.lua（一次开服连拍主菜单、机库、科技树、坦克、计分板、结算）。
+  · **机库、科技树重排（用户 11-25：「全部按照这个风格做科技树」+ 截图；「这个界面很难看 很奇怪 就是 这个操作逻辑非常怪」）**——TechUI.lua：
+    机库：顶上一条（「机库 / 科技树 / 观战」导航、阶段时间、金币 / 自由研究点 / SP），左边一列国旗选系（色块拼的真国旗，`Nat_<系>`），
+    中间选中那辆车的 3D 模型（ViewportFrame「Preview」，慢慢转、拖动转）+ 名字、等级、资料卡 / 改装 / 弹药 / 乘员四个按钮，
+    底下一排出击阵容（`Line_<key>` 是可点的卡片：点了选中，卡上是 HudIcons 的侧面剪影、名字、BR、状态字 `Sp`），
+    右下一个大「出击」（`HangarGo`，出选中的那一辆；超出 BR、备用用完、SP 不够时灰掉写原因），模式切换（`Mode_ab/rb/sb`）在它上面。
+    **原来每张卡上的「出击」（`Go`）、「弹药」「乘员」按钮没有了**（测试 techtree / wtbr / uishots 已改）；WtCam 的「观战」并进机库顶上（`G.wtSpecStart`），
+    WtBattle 的 SP 小条在机库开着时不画。
+    科技树：盖在机库上的窗口（底下的阵容还看得见），左边国旗、等级 I～VII 横着一列一列排、每列里按车种分行、同一行前后连线，
+    没开的等级整列盖一层（`Locked_<级>`：一把锁、「再研究 N 辆 X 级车」、进度），卡片是剪影；右边详情照旧（研究 / 购买 / 放进阵容 / 试驾 / 资料卡）。
+  · 修第一批的回归：服务器进服就自动分队以后 S.picked 一开始就是真，主菜单（只在没选阵营时出来）被跳过了——Menu.lua 只开车的对局照样先出主菜单，
+    点「开始游戏」只进机库，不再发 quickJoin（当步兵出生会被拒、弹一条提示）。
+  · **科技树暂用车逐型换真模型（用户 11-25：「然后坦克单独找建模很多坦克没有建模」「不用拒 大胆用」）**——E 第一批：
+    M551 谢里登（veh m551，152 毫米炮 gun152 + M409 破甲弹）、豹 2A7V（leo2a7v）、10 式（type10）三个新 glb（Sketchfab CC-BY，署名 models/veh/credits.txt），
+    T-72「乌拉尔」/ T-72A / T-72B 改成自己的型号（t72ural / t72a / t72b，性能照真车，模型借 t72b3，ImportedMeta 的 alias）。
+    转换照 D 的流程（tools/models/blveh.py + blveh.json + blveh_meta.py），炮塔、炮管按包围盒 split 切出来。
+    只不收简介里写明从别的游戏扒的（最后一炮的 59 / 69 / 79、战雷 / 坦克世界那些）；**D 列表里的（T-64、74 式、黄鼠狼……）E 不碰**。
+    下一批：T-90A、PTL-02（WZ-551 车体）、T-55（顺带 59 / 69 / 79 借它）、M1128、90 式、豹 2A4。
+  · C：wttest 里「试驾不加分、不记击毁」那条现在挂了（得分 0 → 80），像是试驾时也发了奖章，C 看一下。
+
 - C（11-25 下午，**正在做**，用户对 C 说「全部都做」——B 挑刺 15 条 + C 查出来的几条，一共 18 条）：
   ①敌人标记照历史模式（名牌、小地图只给看得见 / 被侦察的）②残骸整局留着 ③炮弹飞到落地 ④出车前配弹 + 待发弹架 ⑤测距按键（有激光测距的才准）
   ⑥步战车反坦克导弹 + 炮射导弹 ⑦车速、加速照真车 ⑧据点里补弹、补乘员 ⑨弹孔、烧黑 ⑩空战速度射程照真（A 的飞行手感那块，C 只改速度 / 射程 / 空域的数）
@@ -118,6 +216,23 @@
      节点名是乱码的 glTF 先用 tools/models/gltf_rename.py 改名（BMP-1）。测试 tools/mock/wtreal.lua（数据、科技树、逐型试驾、开炮走战雷伤害）
      **第二批在做**：models/veh/t64.glb、type74.glb 已经转好（blveh.json 里有配置、署名进了 credits.txt），还没接进游戏（ImportedMeta 没写、VehDefs 没有型号）；
      下一步黄鼠狼 1A3、猎豹、BMP-2、通古斯卡、石勒喀、15 式、T-62M（Sketchfab 都核对过是 CC-BY）
+  ⑧ **11-25 机库照用户的两张截图再改一版（合了 E 的 2b89190 以后做的；跑过 techtree / wtbr / wtmode + uishots 截图）**——
+     用户看了 E 重排的机库，又对 D 发了两张别的游戏的机库截图：「看最新提交 一进入游戏的界面给我改成这样」「然后点研究就跳科技树」
+     「界面做到这样 然后其他全部做成战雷」。（D 第一版 41d6614 是在自己的旧分支上做的、没合 E，用户拿到的那一包缺 E / C 的东西——已经合并重做。）
+     - 新模块 Client/HangarStage.lua：机库背后的 3D 厂房（零件搭的，只在本机，搭在 (−9000, 900, 9000)），机库界面开着时镜头在里面对着停在正中的车
+       （Stage.show / put / drag / zoom / step）；TechUI 把出击阵容里选中的那一辆摆进来（VehModels.build + pose，飞机 AirModels.build + pose）——
+       **E 的 ViewportFrame「Preview」换成了这个**。镜头：机库显示时 CameraType = Scriptable，关的时候还给游戏
+       （开着主菜单一点不动；坐进了车 G.drive / G.fly、WtCam 观战时只把视场角还回 70）
+     - TechUI.lua 以 E 的版本为底（Theme、picOn、科技树窗口、测试钩子都留着），机库换成截图的布局：顶上一排（等级圈 + 经验条、
+       主菜单 `NavMenu` / 技能树 `NavCrew` / 研究 `NavTree` / 观战 `NavSpec` 四个括号角按钮、改装 `ModsBtn` / 弹药 `AmmoBtn` / 帮助 `HelpBtn` / 资料卡 `InfoBtn` 四个方图标键、
+       `SpChip`、金币 `Coins`）、左边国旗 `Flags`、右边「乘员」框 `CrewBtn` + 选中这一辆的资料 `Selected`（试驾 `HangarTest`、只看车 `ViewBtn`）、
+       底下五个槽位 `Lineup`（`Line_<键>` 点了选中、里面 `Pic` / `Sp`）、右下这一局的信息 `Match`（`Phase`、`BrLine`、`ModeBar` 的 `Mode_ab/rb/sb`、`ModeT`）
+       和琥珀色括号角的「战斗」（**还叫 `HangarGo`**，`GoSub`；`G.hangarSelect(i)` 照旧）。
+       整套界面放在一个带 UIScale 的 `Root` 里（按 1280 × 720 画，手机按 1000 × 500）；ScreenGui 改成 ZIndexBehavior.Sibling
+       （原来默认 Global：乘员 / 改装 / 资料卡三个面板 ZIndex 10，内容其实被自己的暗底盖着）；乘员、改装、资料卡、科技树窗口都挪进 Root。
+       科技树窗口还是 E 的（标题改成「研究 · 系名」，开着的时候机库中间那一层 `Mid` 让开、顶上「研究」亮着；再点一下「研究」或 × 关）。
+     - 颜色、字体照 docs/style.md 从 Theme 取（经验条用绿、不用截图里的蓝）；「战斗」是黑底琥珀字带括号角——这一处没按「主按钮白底黑字」，是用户截图要的样子
+     - 截图里第四个大键是 LOOTBOXES：游戏里没有补给箱，放的是「观战」；用户要的话再做
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

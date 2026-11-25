@@ -31,6 +31,44 @@ function Store.init(G)
     seenAttr(P)
   end
 
+  -- 设置（客户端 Settings.lua，用户 11-25「那个设置界面不好看 重做」）：灵敏度、反转 Y、视野、镜头晃动、音量、车组语音——
+  --   只收认得的键、数字夹在范围里；存在 P.data.prefs，给客户端写玩家属性 Prefs（JSON）；改了 10 秒后存一次档（连着拖滑块只存一次）
+  local Http = game:GetService("HttpService")
+  local PREFS = { sens = { 0.25, 2.5 }, aim = { 0.25, 2.0 }, fov = { 60, 90 }, fovAir = { 60, 90 }, vol = { 0, 1 }, ui = { 0.85, 1.3 }, gamma = { -0.1, 0.1 },
+    invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } } }
+  local function prefsAttr(P)
+    local t = (P.data and P.data.prefs) or P.prefsEarly or {}
+    local ok, js = pcall(function() return Http:JSONEncode(t) end)
+    if ok then pcall(function() P.pl:SetAttribute("Prefs", js) end) end
+  end
+  local function cleanPrefs(src)
+    local out = {}
+    if type(src) ~= "table" then return out end
+    for k, rule in pairs(PREFS) do
+      local v = src[k]
+      if rule == true then
+        if type(v) == "boolean" then out[k] = v end
+      elseif rule.s then   -- 几个字里挑一个
+        if type(v) == "string" and rule.s[v] then out[k] = v end
+      elseif type(v) == "number" and v == v then
+        out[k] = math.clamp(v, rule[1], rule[2])
+      end
+    end
+    return out
+  end
+  G.ACT.prefs = function(P, t)
+    local c = cleanPrefs(t)
+    if P.data then P.data.prefs = c else P.prefsEarly = c end
+    prefsAttr(P)
+    if P.data and not P.prefsSaveQ then
+      P.prefsSaveQ = true
+      task.delay(10, function()
+        P.prefsSaveQ = nil
+        if G.P[P.pl] == P then G.saveData(P) end
+      end)
+    end
+  end
+
   function G.loadData(P)
     local raw, ok = nil, false
     if store then
@@ -58,6 +96,9 @@ function Store.init(G)
     end
     for k in pairs(P.seenEarly or {}) do P.data.seen[k] = true end
     P.seenEarly = nil
+    P.data.prefs = P.prefsEarly or cleanPrefs(d.prefs)   -- 设置：读档前这一次进服已经改过的为准
+    P.prefsEarly = nil
+    prefsAttr(P)
     if G.econFromSave then G.econFromSave(P, d) end   -- 金币、买过的载具和配件、PvE 打到第几关（Economy.lua）
     seenAttr(P)
     P.canSave = ok and store ~= nil

@@ -78,5 +78,93 @@ window.renderParts = (parts, flip) => {
   }
   return shoot(root, flip);
 };
+// 写实图（用户 11-25「主页和科技树的载具图用实拍图吧 然后角度要像战雷那样」）：原模型自己的贴图、PBR 材质，
+//   房间环境光（RoomEnvironment）+ 左前上方的太阳（投影）+ 天光，ACES 色调；透视镜头从车的左前方三分之四、俯视约 22° 拍（车头朝画面左下），
+//   透明背景；opts：{ yaw 镜头偏离正左侧多少度（默认 35）, pitch 俯视多少度（默认 22）, fov, hide 不拍的节点名正则, tint 没贴图时的涂装色 }
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+window.renderPhoto = async (url, opts) => {
+  opts = opts || {};
+  const PW = opts.w || 960, PH = opts.h || 480;
+  renderer.setSize(PW, PH);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = opts.exposure || 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const gltf = await new GLTFLoader().loadAsync(url);
+  const root = gltf.scene;
+  if (opts.hide) {
+    const re = new RegExp(opts.hide), drop = [];
+    root.traverse(o => { if (o !== root && re.test(o.name)) drop.push(o); });
+    for (const o of drop) if (o.parent) o.parent.remove(o);
+  }
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) {
+      if (!m) continue;
+      if (opts.tint && !m.map && m.color) m.color.setStyle(opts.tint);   // 没贴图的模型：按真车涂装上色（同游戏里 ImportedTint）
+      if (m.envMapIntensity !== undefined) m.envMapIntensity = 0.9;
+      m.side = THREE.DoubleSide;
+    }
+  });
+  if (opts.flip) root.rotation.y = Math.PI;
+  const scene = new THREE.Scene();
+  scene.environment = envTex;
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x6b5a44, 0.55));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+  const R = Math.max(s.x, s.y, s.z);
+  // 太阳：左前上方（镜头这一侧、偏车头），车身左侧亮、炮塔在车体上投下影子
+  sun.position.set(c.x - R * 1.2, c.y + R * 1.6, c.z - R * 0.9);
+  sun.target.position.copy(c);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.02;
+  const sc = sun.shadow.camera;
+  sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 0.1; sc.far = R * 6;
+  scene.add(sun); scene.add(sun.target);
+  const yaw = (opts.yaw ?? 35) * Math.PI / 180, pitch = (opts.pitch ?? 22) * Math.PI / 180;
+  // 车头是 −Z、左边是 −X（Roblox 朝向）：镜头在左侧偏前 yaw 度、往上 pitch 度
+  const dir = new THREE.Vector3(-Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.sin(yaw) * Math.cos(pitch));
+  const fov = opts.fov || 24;
+  const cam = new THREE.PerspectiveCamera(fov, PW / PH, 0.1, R * 40);
+  // 先放远一点，再按投影出来的外包框把车摆满画面（留 6% 边）
+  let dist = R * 3;
+  cam.position.copy(c).addScaledVector(dir, dist);
+  cam.lookAt(c);
+  cam.updateMatrixWorld(true);
+  const corners = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+  for (let it = 0; it < 3; it++) {
+    let mx = 0, my = 0, cx = 0, cy = 0, x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+    for (const p of corners) { const q = p.clone().project(cam); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+    mx = (x1 - x0) / 2; my = (y1 - y0) / 2; cx = (x0 + x1) / 2; cy = (y0 + y1) / 2;
+    const k = Math.max(mx / 0.94, my / 0.9);
+    // 平移镜头让外包框居中（屏幕坐标 → 世界：沿镜头的右、上方向）
+    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+    const halfH = Math.tan(fov * Math.PI / 360) * dist, halfW = halfH * PW / PH;
+    cam.position.addScaledVector(right, cx * halfW).addScaledVector(up, cy * halfH);
+    const tgt = cam.position.clone().sub(dir.clone().multiplyScalar(dist));
+    dist *= k;
+    cam.position.copy(tgt).addScaledVector(dir, dist);
+    cam.lookAt(tgt);
+    cam.updateMatrixWorld(true);
+  }
+  renderer.setClearColor(0x000000, 0);
+  renderer.render(scene, cam);
+  const png = renderer.domElement.toDataURL('image/png');
+  renderer.setSize(W, H);
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.shadowMap.enabled = false;
+  return { png, size: [s.x, s.y, s.z] };
+};
 window.ready = true;
 </script></body></html>

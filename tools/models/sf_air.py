@@ -174,15 +174,152 @@ SPEC = {
             r'^nose_gear_hatch_l$': ('GDoorNL', 'gdh', {'A': 1.4}), r'^nose_gear_hatch_r$': ('GDoorNR', 'gdh', {'A': 1.4}),
         },
     },
+    # 歼-6（andertan 的「Shenyang J-6 "Farmer"」，CC-BY；同一作者的歼-10C 也是这么做的）——用户 11-25 看机库截图：「这个j6很奇怪」
+    #   （原来科技树的歼-6 借歼-8II 的模型和性能，卡片上是通用的俯视飞机符号）。原模型按材质合成了几大块，舵面没分开、没有起落架（飞行状态）：
+    #   Object_4 / 5 机翼 + 全动平尾（平尾、翼尖防颤振配重各自是单独的连通块）、翼刀、翼根炮管整流罩；Object_7 / 12 机身左右两半（12 带垂尾、背鳍）；
+    #   Object_8～11 进气道和尾喷管里面；Object_13 座舱盖（中间那块能掀的、后面固定的、前风挡左右两块）；Object_15～17 座舱里面
+    #   下面的切法是网页版坐标（地面 z = 0 是翼刀最低点，没加 lift）；comp 的 sel 是原模型坐标（z 没减地面：机身中线 z = 0）
+    'j6': {
+        'ids': ['j6'],
+        'credit': credit('歼-6', 'Shenyang J-6 "Farmer"', 'andertan', '9c349a6f5df24b839508bc4045d09665', 'shenyang-j-6-farmer')
+                  + '（改动：转成 Roblox 坐标，襟翼、副翼、全动平尾、方向舵、座舱盖切成会动的块）',
+        'fwd': '+x', 'up': '+y', 'len': 12.54, 'lift': 0.9,   # 真机全长 12.54 米（不算空速管）、全高 3.89 米（模型 3.0 米）：机腹离地约 0.9 米
+        'comp': [
+            # 全动平尾：两边各一块（连同翼尖的防颤振配重），绕翼根弦长 35% 处转
+            {'node': r'^Object_[45]$', 'sel': {'x': [-6.0, -2.0], 'ay': [0.3, 2.4], 'z': [0.0, 0.6]}, 'g': 'Stab', 'k': 'stab', 'split': 'y'},
+            # 座舱盖：中间那块（前风挡、后面的固定玻璃不动）
+            {'node': r'^Object_13$', 'sel': {'x': [2.6, 3.9]}, 'g': 'Canopy', 'k': 'canopy', 'extra': {'A': 0.75}},
+        ],
+        # 后缘：翼刀（|y| 2.43～2.49）里面是襟翼、外面是副翼；垂尾后缘是方向舵
+        'surf': [
+            # 翼根后缘（|y| < 1.3）被全动平尾挡着（平尾在后面高一点）：襟翼从 1.3 起，窗口压在机翼的高度（z 0.25～0.75，平尾在 0.9 以上）
+            {'g': 'Flp', 'k': 'flap', 't': 'te', 'r': [1.3, 2.36], 'x': [-2.1, -0.2], 'w': [0.25, 0.75], 'c': 0.62},
+            {'g': 'Ail', 'k': 'ail', 't': 'te', 'r': [2.56, 4.15], 'x': [-3.6, -0.9], 'w': [0.1, 0.65], 'c': 0.48},
+            {'g': 'Rud', 'k': 'rud', 't': 'te', 'sp': 'z', 'mir': False, 'r': [1.6, 2.92], 'x': [-6.45, -4.3], 'w': [-0.15, 0.15], 'c': 0.42},
+        ],
+        # 两台涡喷-6 并排（原模型尾部是一整圈喷管，按两个喷口算尾焰）
+        'noz': [[-4.56, 0.15, 0.74, 0.15]],
+    },
     'f15': {
         'ids': ['f15'],
         'credit': 'F-15C：F-15A Eagle — USAF 76-0020, Duxford，作者 mgg8（https://sketchfab.com/3d-models/f-15a-eagle-usaf-76-0020-duxford-524f9394057e46ec8424d4a356f794b7），CC0 公共领域（不用署名，照样写上出处）',
         'fwd': '+z', 'up': '+y', 'len': 19.43,
+        # 杜克斯福德博物馆的展机：起落架放着（做成收放时藏起来的 Gear）、机腹挂着副油箱（去掉）
+        'comp': [{'node': '.', 'sel': {'x': [2.8, 3.9], 'ay': [0, 0.3], 'z': [0.0, 1.4]}, 'gear': True},
+                 {'node': '.', 'sel': {'x': [-2.8, -1.4], 'ay': [1.3, 1.9], 'z': [0.0, 1.45]}, 'gear': True},
+                 {'node': '.', 'sel': {'x': [-1.2, -0.6], 'ay': [0, 0.3], 'z': [0.5, 1.2]}, 'drop': True},
+                 {'node': '.', 'sel': {'x': [-3.2, -2.2], 'ay': [2.7, 3.3], 'z': [1.2, 2.15]}, 'drop': True}],   # 翼下副油箱
     },
     'f14': {
         'ids': ['f14'],
         'credit': credit('F-14A', 'F-14A Tomcat', 'Novia556', '8df51512f1af4415bd547e5ed5936ea2', 'f-14a-tomcat'),
         'fwd': '+z', 'up': '+y', 'len': 19.1, 'drop': [r'^Object_2$'],
+        'lift': 0.9,   # 飞行状态的模型（没放起落架）：腹鳍下沿离地 0.9 米，游戏里用零件拼的起落架
+        'comp': [{'node': '.', 'sel': {'x': [-1.6, -0.5], 'ay': [1.2, 1.6], 'z': [1.9, 2.2]}, 'drop': True}],   # 进气道下的两个副油箱
+    },
+    # ———— 直升机（用户 11-25「直升机也做一下各个国家的」）：旋翼、尾桨做成会转的部件（nodes / comp 的动法 rotor / trotor，
+    #   转轴按桨叶面的法线、支点按桨叶的重心自动算，见 rotor_part）；scale 按真机旋翼直径或机身长量的（桨叶伸出机身，不能按全长）；
+    #   模型自带的外挂（火箭巢、导弹）去掉，游戏按选的挂载另画；机头炮塔 gunsplit 拆出来跟着瞄准转（同 air2glb.GUNSPLIT）
+    #   没收的（不是作者本人做的）：42manako 的卡-52（《武装突袭》的贴图命名）、UH-1Y（贴图是扒游戏工具 Ninja Ripper 的命名）、OH-1 和直-8（SketchUp 3D 仓库的材质名），
+    #   B4_Cobra 的 UH-1Y（和 42manako 那个同一份）、duckbillcore 的 UH-1Y（在 Stormworks 里用方块拼的）
+    'mi24': {
+        'ids': ['mi24'],
+        'credit': credit('米-24V', 'Mi24', 'manilov.ap', '5d0b5d8dc985401685f217a775deadad', 'mi24'),
+        'fwd': '+z', 'up': '+y', 'scale': 1.0138,   # 旋翼直径 17.3 米
+        'level': [(r'^kr1$', r'^kr02$')],   # 原模型整架偏航了约 33°：按左右短翼摆正
+        'dropmat': [r'^Tube01-FACES$', r'^Cylinder63-FACES$', r'^Box10-FACES$', r'^Cylinder75-FACES$'],   # UB-32 火箭巢、导弹发射筒
+        'nodes': {r'^Line2[5-9]$': ('Rotor', 'rotor'), r'^Cylinder(48|49|50|52|53|54|55|56|57)$': ('TRotor', 'trotor')},
+        # 机头 USPU-24 炮塔（YakB-12.7 四管机枪）：炮管、弹匣、观察窗跟着瞄准转
+        'gunsplit': {'gun': {'x': [7.2, 8.5], 'y': 0.25, 'z': [0.5, 0.85]}, 'p': [7.45, 0.0, 0.66]},
+    },
+    'mi28': {
+        'ids': ['mi28'],
+        'credit': credit('米-28N', 'Mi-28N Havoc', 'Rukh3D', '3e80c95bbadf46abbafba9d9a08afc68', 'mi-28n-havoc'),
+        'fwd': '+y', 'up': '-z', 'scale': 2.557, 'yoff': -0.76,   # 旋翼直径 17.2 米（机身 16.8 米，真机 17.01）
+        'nodes': {r'^Object_16$': ('Rotor', 'rotor'), r'^Object_18$': ('TRotor', 'trotor')},
+        'gunsplit': {'gun': {'x': [4.3, 7.7], 'y': 0.6, 'z': [0.6, 1.5]}, 'p': [4.91, 0.0, 1.13]},   # 机头 2A42 30 毫米炮塔
+    },
+    'ka52': {
+        'ids': ['ka52'],
+        'credit': credit('卡-52', '[PBR] Kamov Ka-52', 'Immersive3D', '6f29175ef23940fcb4c5364240e169f7', 'pbr-kamov-ka-52'),
+        'fwd': '-z', 'up': '+y', 'scale': 0.515, 'yoff': 0.12,   # 旋翼直径 14.5 米、机身 13.5 米（原模型两样的比例差 7%，取中间）
+        'drop': [r'^Object_4$', r'^Object_6$'],   # 短翼下的导弹、火箭巢
+        # 共轴双旋翼都和机身在一个网格里：按连通块的高度分——下面那副 Rotor、上面那副 Rotor2（反着转，AirDefs 的 dir）；
+        #   两副之间的轴（中心高 3.78 米）不转；垂尾（x −7.4）不算
+        'comp': [{'node': r'^Object_10$', 'sel': {'x': [-7.1, 8.3], 'z': [3.85, 5.2]}, 'g': 'Rotor2', 'k': 'rotor'},
+                 {'node': r'^Object_10$', 'sel': {'x': [-7.1, 8.3], 'z': [2.95, 3.65]}, 'g': 'Rotor', 'k': 'rotor'}],
+    },
+    'tiger': {
+        'ids': ['tiger'],
+        'credit': credit('虎式', 'Eurocopter EC665 "Tigre"', 'helijah', '71a9db4048f6488fbad922812041d0e6', 'eurocopter-ec665-tigre'),
+        'fwd': '-x', 'up': '+y', 'scale': 0.975,
+        'dropmat': [r'^DefaultWhite_(?!texture|interior)'],   # 座舱仪表（FlightGear 公用的仪表贴图，不是模型作者画的）
+        # 主旋翼、尾桨（三片，在右边）都在白色那一个网格里：按连通块分
+        # 机头的 30 毫米炮塔是法国 HAP / 西班牙 HAD 型的，德国 UHT 没有：去掉
+        'comp': [{'node': r'^Object_14$', 'sel': {'x': [-7.8, -5.4]}, 'g': 'TRotor', 'k': 'trotor'},
+                 {'node': r'^Object_14$', 'sel': {'z': [1.3, 2.1]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': r'^Object_38$', 'sel': {'x': [5.3, 7.3], 'z': [-1.4, -0.7]}, 'drop': True},
+                 {'node': r'^Object_39$', 'sel': {'x': [5.5, 6.0], 'z': [-0.9, -0.7]}, 'drop': True}],
+    },
+    'ah1w': {
+        'ids': ['ah1w'],
+        'credit': credit('AH-1W', 'Bell AH-1 SuperCobra', 'drcrazzie', '6ee99382b2764fa6a3d761c3d4caec43', 'bell-ah-1-supercobra'),
+        'fwd': '+z', 'up': '+y', 'scale': 0.01024,   # 两片桨的 AH-1W（标题写 SuperCobra）；旋翼直径 14.63 米
+        'drop': [r'^CobraRocket_Low'],
+        'nodes': {r'^CobraRotorMain(Blade|Parts|Rod)': ('Rotor', 'rotor'), r'^CobraRotorTail(Blade|Rod)': ('TRotor', 'trotor')},
+        # 机头 M197 三管炮：炮塔座只转方位（GunY），炮管、炮身方位 + 俯仰（耳轴在两侧圆盘中间）
+        'gunsplit': {'gun': {'x': [4.5, 6.9], 'y': 0.35, 'z': [0.55, 0.79]}, 'yaw': {'x': [4.5, 5.3], 'y': 0.3, 'z': [0.79, 0.95]},
+                     'p': [4.88, 0.0, 0.71], 'py': [4.88, 0.0, 0.81]},
+    },
+    'mi8': {
+        'ids': ['mi8'],
+        'credit': credit('米-8MT', 'Mi-8', 'tiunov.se', '5e5e57ef66994c6196a5f5d6b9f50403', 'mi-8'),
+        'fwd': '+z', 'up': '+y', 'scale': 0.903, 'yoff': 0.55,   # 旋翼直径 21.29 米
+        'nodes': {r'^lopocty$': ('Rotor', 'rotor'), r'^zad\.vint$': ('TRotor', 'trotor')},
+    },
+    'uh1n': {
+        'ids': ['uh1n'],
+        'credit': credit('UH-1N', 'Bell UH-1N Twin Huey', 'helijah', '90bf99ba20f948a9838623311bd83da3', 'bell-uh-1n-twin-huey'),
+        'fwd': '-x', 'up': '+y', 'scale': 1.03,   # 机身 12.9 米
+        'dropmat': [r'^DefaultWhite_(Fuelflow|ai|alt|asi|bigpanel|buttons|chronograph|fuellbs|rad-alt|screen|torque|vsi|weight|panel212|vents)'],
+        'drop': [r'^Object_26$'],   # 座舱里 3.5 万个三角形的仪表台细节（从外面看不见）
+        'nodes': {r'^Object_13$': ('Rotor', 'rotor'), r'^Object_20$': ('TRotor', 'trotor')},
+    },
+    'nh90': {
+        'ids': ['nh90'],
+        'credit': credit('NH90', 'NH90 BundesHeer Gear out', 'davidmarton1987', '637145c56b2841a79c5ddc6a0548b794', 'nh90-bundesheer-gear-out'),
+        'fwd': '-x', 'up': '+y', 'scale': 0.84,   # 旋翼直径 16.3 米、机身 16.1 米（原模型两样差 9%，取中间）
+        'dropmat': [r'^HeliSim_EC225_cockpit$'],   # 座舱仪表贴图是别的模拟器的
+        # SketchUp 导出的：桨叶按颜色散在好几个网格里，按连通块的位置挑——尾桨在左边（y 0.36～0.52 那一片薄的），
+        #   桨毂在 (1.84, 0) 上面（机背整流罩中心高 3.28，不算），四片桨叶各一个盒子（离桨毂 1.3 米以外）
+        'comp': [{'node': '.', 'sel': {'x': [-9.0, -6.6], 'y': [0.36, 0.52], 'z': [2.3, 5.3]}, 'g': 'TRotor', 'k': 'trotor'},
+                 {'node': '.', 'sel': {'x': [0.4, 3.3], 'ay': [0, 1.2], 'z': [3.36, 4.2]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': '.', 'sel': {'x': [3.3, 9.6], 'ay': [0, 0.8], 'z': [3.12, 3.85]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': '.', 'sel': {'x': [-6.0, 0.4], 'y': [-0.2, 0.8], 'z': [3.3, 3.85]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': '.', 'sel': {'x': [0.8, 3.0], 'y': [1.3, 7.6], 'z': [3.1, 3.85]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': '.', 'sel': {'x': [0.8, 3.0], 'y': [-7.6, -1.3], 'z': [3.1, 3.85]}, 'g': 'Rotor', 'k': 'rotor'}],
+    },
+    # AH-1S（陆上自卫队）：3D 打印用的整块网格（STL，没有贴图）——按连通块分；涂成陆自的橄榄绿
+    'ah1s': {
+        'ids': ['ah1s'],
+        'credit': credit('AH-1S', 'Ah-1s', 'Gorgytz', 'ad49c4e81546469d9d36d8e58f72fd33', 'ah-1s'),
+        'fwd': '+z', 'up': '+y', 'scale': 0.03465,   # 旋翼直径 13.41 米（机身 13.5 米）
+        'matfix': {'Scene_-_Root': {'c': [0.26, 0.28, 0.19, 1.0], 'mr': [0.0, 0.72]}},
+        'comp': [{'node': '.', 'sel': {'x': [0.5, 2.3], 'ay': [0, 0.3], 'z': [3.0, 3.6]}, 'g': 'Rotor', 'k': 'rotor'},
+                 {'node': '.', 'sel': {'x': [-7.6, -6.0], 'y': [-0.6, -0.1], 'z': [2.5, 3.4]}, 'g': 'TRotor', 'k': 'trotor'},
+                 {'node': '.', 'sel': {'x': [0.6, 2.6], 'ay': [0.7, 1.3], 'z': [0.8, 1.9]}, 'drop': True},   # 短翼下的陶式发射架
+                 {'node': '.', 'sel': {'x': [0.2, 2.2], 'ay': [1.3, 1.8], 'z': [0.7, 1.5]}, 'drop': True},   # 火箭巢、挂架上的小件
+                 {'node': '.', 'sel': {'x': [0.3, 2.2], 'ay': [1.9, 2.5], 'z': [0.6, 1.3]}, 'drop': True},   # 外侧挂点的发射筒
+        # 机头 M197 三管炮：炮塔座只转方位（GunY），炮管方位 + 俯仰（Gun）；p 是网页版坐标（减了地面）
+                 {'node': '.', 'sel': {'x': [4.6, 6.2], 'ay': [0, 0.35], 'z': [0.35, 0.7]}, 'g': 'Gun', 'k': 'gun', 'extra': {'p': [4.49, 0.0, 0.52]}},
+                 {'node': '.', 'sel': {'x': [4.1, 4.6], 'ay': [0, 0.35], 'z': [0.62, 0.9]}, 'g': 'GunY', 'k': 'gunyaw', 'extra': {'p': [4.49, 0.0, 0.69]}}],
+    },
+    'z8': {
+        'ids': ['z8'],
+        'credit': credit('直-8（超黄蜂）', 'Aérospatiale SA 321 Super Frelon', 'helijah', '941cbf9f814f460aa97d653f7d637378', 'aerospatiale-sa-321-super-frelon'),
+        'fwd': '-x', 'up': '+y', 'scale': 0.958,   # 机身 19.4 米（直-8 就是国产的超黄蜂）
+        'dropmat': [r'^DefaultWhite_(adi|alt|asi|ils|oil-temp|panel|pedestal|rpm|torque|vsi)'],
+        'nodes': {r'^Object_1[0-5]$': ('Rotor', 'rotor'), r'^Object_21$': ('TRotor', 'trotor')},
     },
 }
 
@@ -345,13 +482,16 @@ def frame(prims, S):
         Rm = Rp @ Rm
     allP = np.concatenate([p['P'] for p in keep]) @ Rm.T
     lo, hi = allP.min(0), allP.max(0)
-    s = S['len'] / (hi[0] - lo[0])
+    # 直升机：桨叶伸到机身前后，按全长量不准——SPEC 直接给 scale（原模型单位 → 米，按机身长、旋翼直径量的）
+    s = S['scale'] if S.get('scale') else S['len'] / (hi[0] - lo[0])
     if not pairs:
         ymid = float((lo[1] + hi[1]) / 2)
     else:
         L = [p for p in keep]
         ymid = float((lo[1] + hi[1]) / 2) if S.get('ymid') == 'box' else ymid
     t = np.array([-(lo[0] + hi[0]) / 2, -ymid, 0.0])
+    # 直升机：包围盒算进了桨叶（停着的桨叶左右不对称），机身中线偏了——yoff（米）把中线挪回 y = 0（GUNSPLIT 的范围按中线左右对称量）
+    t[1] -= S.get('yoff', 0.0) / s
     return Rm, t, s
 
 
@@ -382,6 +522,8 @@ def inbox(lo, hi, sel):
     if 'x' in sel and not (sel['x'][0] <= c[0] <= sel['x'][1]):
         return False
     if 'ay' in sel and not (sel['ay'][0] <= abs(c[1]) <= sel['ay'][1]):
+        return False
+    if 'y' in sel and not (sel['y'][0] <= c[1] <= sel['y'][1]):   # 分左右（y 左正）
         return False
     if 'z' in sel and not (sel['z'][0] <= c[2] <= sel['z'][1]):
         return False
@@ -554,9 +696,12 @@ def build(key, path):
     surfspec = {}
     nv = 0
     groups = {}
+    dropmat = S.get('dropmat', [])
     for p in prims:
         if match(p['path'], S.get('drop', [])):
             continue
+        if dropmat and 0 <= p['mat'] < len(mnames) and any(re.search(r_, mnames[p['mat']]) for r_ in dropmat):
+            continue   # 按材质去掉（FlightGear 公用仪表的贴图：不是模型作者本人画的；起落架上挂的外挂……）
         if glassnode and match(p['path'], glassnode) and p['mat'] >= 0:
             p = dict(p)
             p['mat'] = clone_of(p['mat'])
@@ -765,11 +910,49 @@ def build(key, path):
     tri_pi = np.concatenate([np.full(cnt // 3, pi) for (mi, pi, s0, cnt) in lod])
     for g, spec in surfspec.items():
         sel = np.where(tri_pi == pidx[g])[0]
+        if spec[1] in ('rotor', 'trotor'):   # 直升机旋翼、尾桨：不是舵面，算转轴（air2glb 做成 Rotor / Rotor2 / TRotor 部件）
+            parts[pidx[g]] = rotor_part(g, spec, VBa[:, 0:3].astype(np.float64), T3[sel], toweb, todir)
+            continue
+        if spec[1] in ('gun', 'gunyaw'):   # 机头炮塔（同 air2glb.GUNSPLIT，但在这里按连通块先分好：整块网格的模型炮和机身挨着，air2glb 按 1 厘米焊会连成一块）
+            parts[pidx[g]] = {'n': g, 'p': list((spec[2] if len(spec) > 2 else {})['p'])}
+            continue
         Q = VBa[np.unique(T3[sel].reshape(-1)), 0:3].astype(np.float64)
         surf[g] = hinge(g, spec, Q)
     print('  %s：%d 个三角形、%d 种材质、%d 张贴图；全长 %.2f 米、翼展 %.2f 米、高 %.2f 米；节点活动部件 %s' % (
         key, len(T3), len(mats), len(imgs), np.ptp(allP[:, 0]), np.ptp(allP[:, 1]), float(allP[:, 2].max() - z0), ', '.join(sorted(surf))))
     return meta, binb, S['credit'], surf
+
+
+def rotor_part(g, spec, P, T, toweb, todir):
+    """旋翼 / 尾桨部件：转轴 a = 桨叶面的法线（按三角形面积加权的法线协方差，最大的那个方向——桨叶上下表面占了面积的大头，
+    两片桨的也算得准；不能用顶点的主成分：桨毂、桨毂罩竖着比桨叶的弦还高），支点 p = 面积加权的重心（几片桨对称，重心就在桨毂上）。
+    主旋翼轴朝上、尾桨轴朝左（+y）；量不准的在 SPEC 里给 p / a（原模型坐标）"""
+    extra = spec[2] if len(spec) > 2 else {}
+    A_ = P[T[:, 0]]
+    nrm = np.cross(P[T[:, 1]] - A_, P[T[:, 2]] - A_)
+    area = np.linalg.norm(nrm, axis=1)
+    ok = area > 1e-12
+    n = nrm[ok] / area[ok][:, None]
+    w = area[ok]
+    C = (n * w[:, None]).T @ n
+    ev, evec = np.linalg.eigh(C)
+    a = evec[:, -1]
+    if spec[1] == 'rotor' and a[2] < 0:
+        a = -a
+    if spec[1] == 'rotor':   # 主旋翼轴只前后倾（真机桨轴前倾 3～5°），不往左右歪：桨叶静止下垂量得不准的横向分量去掉
+        a = np.array([a[0], 0.0, a[2]])
+        a /= np.linalg.norm(a)
+    if spec[1] == 'trotor' and a[1] < 0:
+        a = -a
+    cen = (P[T].mean(axis=1) * area[:, None]).sum(0) / max(area.sum(), 1e-12)
+    if extra.get('a') is not None:
+        a = todir(extra['a'])
+    if extra.get('p') is not None:
+        cen = toweb(extra['p'])
+    d_ = P[np.unique(T.reshape(-1))] - cen
+    rad = float(np.linalg.norm(d_ - np.outer(d_ @ a, a), axis=1).max())
+    print('  %s：支点 %s、转轴 %s、半径 %.2f 米（%d 个三角形）' % (g, np.round(cen, 3), np.round(a, 3), rad, len(T)))
+    return {'n': spec[1], 'g': g, 'p': [round(float(x), 4) for x in cen], 'a': [round(float(x), 4) for x in a]}
 
 
 def hinge(g, spec, Q):
@@ -902,6 +1085,10 @@ def main(argv):
         X.ALIAS[i] = key
     if S.get('lift'):   # 没有放下的起落架：机腹最低点离地多高（米），游戏里用零件拼的起落架
         X.LIFT[key] = S['lift']
+    if S.get('gunsplit'):   # 直升机机头炮塔：按连通块拆出来跟着瞄准转（同 air2glb.GUNSPLIT，网页版坐标）
+        X.GUNSPLIT[key] = S['gunsplit']
+    if S.get('stub'):   # 直升机短翼：挂点挂在这里（同 air2glb.HELI_STUB，游戏坐标：格）
+        X.HELI_STUB[key] = S['stub']
     meta2, binb2, info, out = X.convert(key, AD, S['ids'])
     if 'pit' not in info and 'Canopy' in (info.get('surf') or {}):   # 没量座舱：头在座舱盖最高处往下 0.3 米、盖子长度的四成处
         cp = [p for n, p in info['parts'].items() if p['g'] == 'Canopy']

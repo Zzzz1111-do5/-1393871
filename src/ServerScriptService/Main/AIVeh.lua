@@ -360,7 +360,7 @@ function AIVeh.init(G)
       end
     end
     for _, x in ipairs(G.ents) do
-      if x.alive and x.team ~= e.team and x ~= e and not x.air and not x.ship and not x.sea then
+      if x.alive and x.team ~= e.team and x ~= e and not x.air and not x.ship and not x.sea and not x.testDummy then   -- 试驾场的靶车不打（Tech.lua）
         local kind = (x.kind == "bot") and "inf" or ((x.kind == "veh") and "veh") or (x.fort and "fort") or nil
         if kind then consider(x.root.CFrame.Position, kind, x) end
       end
@@ -401,7 +401,7 @@ function AIVeh.init(G)
       if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
         local v0, drag, gs = BAL.launchArgs(a)
-        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model },
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },

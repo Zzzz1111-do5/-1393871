@@ -20,6 +20,11 @@ function Tech.init(G)
   local WC = require(RS:WaitForChild("WtCrew"))   -- 乘员（阵容每个位置一组，攒经验、点技能）
   local W = Config.Wt or {}
   local LINEUP = W.lineup or 5
+  -- 用户 11-25「5 个槽位限制只能带两个飞行单位」「最多两个飞行单位」：阵容里飞机 + 直升机加起来最多 AIR_MAX 个
+  local AIR_MAX = W.lineupAir or 2
+  local function isAir(k) local it = TT.byKey[k] return it ~= nil and (it.branch == "air" or it.branch == "heli") end
+  local function airIn(L) local n = 0 for _, k in ipairs(L) do if isAir(k) then n += 1 end end return n end
+  G.treeAirMax = AIR_MAX
 
   local function save(P) if G.saveData then task.spawn(G.saveData, P) end end
   -- mods[车] = { done = { 改装 = true }, cur = 正在研究的改装, rp = 攒在它上面的研究点 }
@@ -32,14 +37,25 @@ function Tech.init(G)
     return d.tree
   end
   G.treeOf = T
-  -- 第一次玩（阵容空着）：每棵树白送的那几辆放进阵容
+  -- 第一次玩（阵容空着）：白送的放进阵容——先每棵树各一辆（坦克、飞机、直升机都能马上试），再补其余白送的坦克；
+  --   留一个空位：第一辆买下的车自动放进去（不然直升机树也白送一架以后阵容一开始就满了）。按树、按树里的顺序排（坦克在前）
   local function defaultLineup(t, nat)
-    local out = {}
-    for _, br in ipairs(TT.BRANCHES) do
-      for _, it in ipairs(TT.list[nat][br]) do
-        if it.free and #out < LINEUP then table.insert(out, it.key) end
+    local pick, n, cap, na = {}, 0, LINEUP - 1, 0
+    for pass = 1, 2 do
+      for bi, br in ipairs(TT.BRANCHES) do
+        for i, it in ipairs(TT.list[nat][br]) do
+          local air = br == "air" or br == "heli"
+          if it.free and not pick[it.key] and n < cap and not (air and na >= AIR_MAX) then
+            if air then na += 1 end
+            pick[it.key], n = bi * 1000 + i, n + 1
+            if pass == 1 then break end
+          end
+        end
       end
     end
+    local out = {}
+    for k in pairs(pick) do table.insert(out, k) end
+    table.sort(out, function(a, b) return pick[a] < pick[b] end)
     t.lineup[nat] = out
     return out
   end
@@ -74,9 +90,9 @@ function Tech.init(G)
       if type(L) == "table" then
         local out = {}
         for _, k in ipairs(L) do
-          if TT.byKey[k] and TT.byKey[k].nat == nat and TT.owned(t, k) and #out < LINEUP then table.insert(out, k) end
+          if TT.byKey[k] and TT.byKey[k].nat == nat and TT.owned(t, k) and #out < LINEUP and not (isAir(k) and airIn(out) >= AIR_MAX) then table.insert(out, k) end
         end
-        t.lineup[nat] = out
+        t.lineup[nat] = #out > 0 and out or nil   -- 阵容里的车都删了（11-25 没有原模型的删掉）：按默认阵容重新排
       end
     end
     for k, m in pairs(type(src.mods) == "table" and src.mods or {}) do   -- 改装：只留认得的车、认得的改装
@@ -262,7 +278,7 @@ function Tech.init(G)
     local L = t.lineup[it.nat] or defaultLineup(t, it.nat)
     local inL = false
     for _, k in ipairs(L) do if k == key then inL = true end end
-    if not inL and #L < LINEUP then table.insert(L, key) end
+    if not inL and #L < LINEUP and not (isAir(key) and airIn(L) >= AIR_MAX) then table.insert(L, key) end   -- 飞行单位满两个了不顺手放
     G.msg(P.pl, "good", "tree.bought", it.name, it.cost)
     publish(P)
     save(P)
@@ -275,8 +291,12 @@ function Tech.init(G)
     for _, k in ipairs(keys) do
       local it = type(k) == "string" and TT.byKey[k]
       if it and it.nat == nat and TT.owned(t, k) and not seen[k] and #out < LINEUP then
-        seen[k] = true
-        table.insert(out, k)
+        if isAir(k) and airIn(out) >= AIR_MAX then
+          G.msg(P.pl, "bad", "tree.airMax", AIR_MAX)
+        else
+          seen[k] = true
+          table.insert(out, k)
+        end
       end
     end
     t.lineup[nat] = out
@@ -291,6 +311,44 @@ function Tech.init(G)
     publish(P)
     save(P)
   end
+  ---------------------------------------------------------------- 兑换码（用户 11-25「设置一个兑换码 在设置里」「兑换码 Zhengyongshuo 直接解锁所有载具」）
+  --   码只放在服务器脚本里（客户端看不到）；不分大小写、去掉首尾空格；兑了就把科技树每一辆都记成研究完 + 买下（以后加了新车再兑一次也行）；
+  --   结果写在玩家属性 Redeem（「状态|数目|序号」）给设置界面显示，另外弹一条提示；试得太快（2 秒内）不理
+  local CODES = { zhengyongshuo = { all = true } }
+  local redeemAt, redeemN = {}, 0
+  G.ACT.redeem = function(P, code)
+    if type(code) ~= "string" or #code > 64 or not P.pl then return end
+    local t = T(P)
+    local tNow = now()
+    local function reply(st, n)
+      redeemN += 1
+      pcall(function() P.pl:SetAttribute("Redeem", st .. "|" .. tostring(n or 0) .. "|" .. redeemN) end)
+    end
+    if not t then reply("wait") return end
+    if (redeemAt[P] or -99) > tNow - 2 then reply("wait") return end
+    redeemAt[P] = tNow
+    local c = string.lower((string.gsub(string.gsub(code, "^%s+", ""), "%s+$", "")))
+    local R = CODES[c]
+    if not R then
+      G.msg(P.pl, "bad", "redeem.bad")
+      reply("bad")
+      return
+    end
+    local n = 0
+    if R.all then
+      for key in pairs(TT.byKey) do
+        if not (t.res[key] == true and t.own[key] == true) then n += 1 end
+        t.res[key] = true
+        t.own[key] = true
+      end
+    end
+    if n > 0 then G.msg(P.pl, "good", "redeem.ok", n) else G.msg(P.pl, "info", "redeem.none") end
+    reply(n > 0 and "ok" or "none", n)
+    publish(P)
+    save(P)
+  end
+  G.on("left", function(P) redeemAt[P] = nil end)
+
   -- 现在的阵容（没有就给默认的）
   function G.treeLineup(P)
     local t = T(P)
@@ -448,11 +506,11 @@ function Tech.init(G)
 
   ---------------------------------------------------------------- 出击：直接坐进车里 / 飞机里
 
-  -- 本队这一类（地面 / 空中）的召唤位：在自己基地里、开着的、空着的先
-  local function padFor(team, air)
+  -- 本队这一类（地面 / 固定翼 / 直升机）的出车位：在自己基地里、开着的、空着的先（直升机停直升机坪，用户 11-25「直升机也做一下各个国家的」）
+  local function padFor(team, air, heli)
     local best, free
     for _, p in ipairs(G.pads or {}) do
-      local okKind = air and (p.kind == "air" and not p.heli) or (not air and p.kind == "veh")
+      local okKind = (heli and p.kind == "air" and p.heli) or (air and not heli and p.kind == "air" and not p.heli) or (not air and p.kind == "veh")
       if okKind and p.team == team and (not G.padOpen or G.padOpen(p, team)) then
         local busy = G.padBusy and G.padBusy(p)   -- 上面停着刚出来的车（电脑车也从这里出）：先挑空着的
         if not busy and p.summon then return p end
@@ -464,11 +522,27 @@ function Tech.init(G)
   end
   G.treePadFor = padFor
 
-  -- 「下车」= 回机库（战雷：离开载具就是这辆没了）：车留下变残骸，人阵亡回出击界面；PvE、测试里的步兵（G.allowInfantry）照旧能下车
-  function G.treeLeave(P)
+  -- 「下车」= 回机库（战雷：离开载具就是这辆没了）；PvE、测试里的步兵（G.allowInfantry）照旧能下车。
+  --   用户 11-25「在车上按空格也不要自动阵亡了」：只认长按 H 的「回机库」（hangar = true），别的下车请求吞掉（返回 true，不让下车）；
+  --   回机库：车收走、人回机库，不放阵亡（同 Round.lua 的 redeploy）；10 秒内挨过打的照老办法判毁（打的人拿分，不能拿来躲击杀）
+  function G.treeLeave(P, hangar)
     if not (W.noInfantry and not G.allowInfantry) then return false end
     local e = P.vehicle
-    if not e or not e.alive or e.driver ~= P then return false end
+    if not e or not e.alive or e.driver ~= P then return not hangar and e ~= nil end
+    if not hangar then return true end
+    if e.testDrive or not e.lastHitT or now() - e.lastHitT > 10 then
+      local char = P.char
+      P.char, P.alive, P.vehicle = nil, false, nil   -- 先断开：角色的 Died 不再算阵亡（Round.lua onDied 只认 P.char）
+      P.canDeployAt = now()
+      P.dmgLog = {}
+      if e.testDrive and G.testClean then pcall(G.testClean, P) end
+      pcall(G.removeEnt, e)
+      if char and char.Parent then char:Destroy() end
+      pcall(function() P.pl.Character = nil end)
+      G.msg(P.pl, "info", "tree.backHangar")
+      if G.pushOne then G.pushOne(P) end
+      return true
+    end
     local hum = P.char and P.char:FindFirstChildOfClass("Humanoid")
     -- 直接判毁（G.wtRaw：不走战雷的乘员 / 模块伤害，Ents.damageEnt 照老办法扣血；车被毁，里面的人跟着阵亡）
     G.wtRaw = true
@@ -504,6 +578,8 @@ function Tech.init(G)
       m:SetAttribute("ModTurn", fx.turn * cf.drive)
       m:SetAttribute("ModTrav", fx.trav * cf.trav)
       m:SetAttribute("ModAmmo", fx.ammo)
+      m:SetAttribute("FcsGen", fx.gen)   -- 火控（WtMods.FCS）：原厂是哪一代、升级了几级——客户端 Drive.lua 开镜瞄准按它
+      m:SetAttribute("ModFcs", fx.gen and fx.fcs or nil)
       m:SetAttribute("CrewRel", cf.rel)   -- 装填（服务器 Armor.lua、客户端 Drive.lua 都乘）
       e.crewRel = cf.rel
       if not fx.smoke then e.smokeLeft = 0 end
@@ -517,11 +593,25 @@ function Tech.init(G)
     end
   end
 
-  ---------------------------------------------------------------- 试驾（用户 11-25「都要做」）：机库 / 科技树里点「试驾」——
-  --   人和车放到地图东边远离战场的一块平地（每人一块），车头前 300 / 600 / 1000 米摆三辆不动的靶车（打掉 10 秒后再摆一辆）；
-  --   科技树里随便哪一辆都能试（没研究、没买的也行），改装全装上；不花 SP、不进阵容、不给分、阵亡不扣兵力；下车回机库
-  local tests = {}   -- [P] = { veh, dummies, base, dir }
-  local DUMMY = { "t90m", "m1a2", "ztz96", "m1a1" }
+  ---------------------------------------------------------------- 试驾（用户 11-25「都要做」；又「试驾的时候 飞机就从地面机场开始 然后做几个机器人飞机 我可以去打他们
+  --   不会还手 也做几个地面的 然后开坦克 和防空车的时候试驾场也多一点坦克和天上的飞机」）：
+  --   · 坦克、步战车、防空车：人和车放到地图东边远离战场的一块平地（每人一块），车头前 300～2000 米七辆靶车（两辆横着来回开），
+  --     天上三架靶机绕圈（两架固定翼、一架直升机）
+  --   · 飞机、直升机：停在自己机场的跑道上（同出击），自己滑跑起飞；基地后面几公里外三架靶机绕圈、地上一排靶车
+  --   靶车、靶机都是对面那一队的（界面按队伍上色），没人开、不还手（电脑车也不把它们当目标：testDummy），不给分、不记击毁；
+  --     打掉 10 秒后原处再来一个；靶机借无人机断链后的自动盘旋（Air.lua loiterStep）绕圈飞
+  --   科技树里随便哪一辆都能试（没研究、没买的也行），改装全装上；不花 SP、不进阵容、阵亡不扣兵力；下车回机库
+  local tests = {}   -- [P] = { veh, dummies = { [i] = 实体 }, drones = { [i] = 实体 }, base, dir, foe, air }
+  local DUMMY = { "t90m", "m1a2", "ztz96", "m1a1", "leo2a6", "t72b3", "bmp2", "type10" }
+  local DRONE_JET = { "f16", "j10", "f15", "a10c", "j8" }
+  local DRONE_HELI = { "ah64e", "z10", "mi28", "mi24" }
+  -- 地面试驾的靶车：射击方向多少米、往右多少米、横着来回开的半程（米，没有就不动）
+  local RANGE = { { 300, -40 }, { 500, 70 }, { 700, -90, 110 }, { 1000, 30 }, { 1300, 150, 150 }, { 1600, -130 }, { 2000, 60 } }
+  -- 靶机：绕哪儿转（射击方向多少米、往右多少米）、半径（米）、离地多高（米）、速度（米 / 秒）、直升机
+  local SKY = { { 1300, -400, 900, 420, 170 }, { 1800, 500, 1300, 650, 210 }, { 900, 250, 450, 70, 32, true } }
+  -- 飞机试驾的地面靶：离靶机中心多少米（往前、往右）
+  local AIRGROUND = { { 0, -150 }, { 40, -50 }, { -30, 60 }, { 60, 160 }, { 500, 0 }, { 520, 120 } }
+  local M = 2.8   -- 一米多少格
   local function flatOk(x, z)
     local Map = G.Map
     return Map.height(x, z) > 2 and (not Map.slope or Map.slope(x, z) < 0.3)
@@ -536,60 +626,140 @@ function Tech.init(G)
     for k = 0, 30 do   -- 一块块往外找，靶车的位置都平
       local x, z = x0 - (k % 6) * 900, (i - 2) * 3600 + math.floor(k / 6) * 900
       local ok = flatOk(x, z)
-      for _, m in ipairs({ 300, 600, 1000 }) do
-        if ok and not flatOk(x + dir.X * m * 2.8, z + dir.Z * m * 2.8) then ok = false end
+      for _, m in ipairs({ 300, 600, 1000, 1600, 2000 }) do
+        if ok and not flatOk(x + dir.X * m * M, z + dir.Z * m * M) then ok = false end
       end
       if ok then return Vector3.new(x, Map.height(x, z), z), dir end
     end
     return Vector3.new(x0, Map.height(x0, 0), 0), dir
+  end
+  local function pick(list, i, get)
+    for k = 0, #list - 1 do
+      local id = list[((i - 1 + k) % #list) + 1]
+      if get(id) then return id end
+    end
+    return nil
   end
   local function testClean(P)
     local s = tests[P]
     if not s then return end
     tests[P] = nil
     P.inTest = nil
-    for _, d in ipairs(s.dummies) do if d.alive then pcall(G.removeEnt, d) end end
+    for _, d in pairs(s.dummies) do if d.alive then pcall(G.removeEnt, d) end end
+    for _, d in pairs(s.drones) do if d.alive then pcall(G.removeEnt, d) end end
     if s.veh and s.veh.alive and s.veh.driver ~= P then pcall(G.removeEnt, s.veh) end
   end
   G.testClean = testClean
-  local function dummyAt(s, i)
-    local m = ({ 300, 600, 1000 })[i]
-    local pos = s.base + s.dir * m * 2.8 + Vector3.new(((i % 2) == 0 and 1 or -1) * 30, 0, 0)
-    local id = DUMMY[((i - 1) % #DUMMY) + 1]
-    if not VD.get(id) then id = "m1a1" end   -- 11-25 C：M10 删了（用户 11-24），兜底换 M1A1
-    local ok, d = pcall(G.spawnGroundVeh, s.foe, id, CFrame.lookAt(pos, pos - s.dir), false, nil, nil)   -- 对面那一队（界面按队伍上色）；不给分、不记击毁
-    if not ok or not d then return end
-    d.noScore, d.testDummy = true, true   -- 不给分、不记击毁（Ents.lua / WtMatch.lua 跳过）
+  local function markDummy(d)
+    d.noScore, d.testDummy = true, true   -- 不给分、不记击毁（Ents.lua / WtMatch.lua 跳过）；电脑车不打它（AIVeh.lua）
+    d.emptyAt = nil   -- 没人开的车 / 飞机 90 秒收走（Armor.lua、Air.lua）：靶子不收（原来三辆靶车一分半以后就没了）
     d.model:SetAttribute("Driver", -1)
     d.model:SetAttribute("TestDummy", true)
-    s.dummies[i] = d
-    local onDeath = d.onDeath
+  end
+  local function onDeathAgain(s, d, respawn)
+    local od = d.onDeath
     d.onDeath = function(self, src)
-      if onDeath then onDeath(self, src) end
-      task.delay(10, function() if tests[s.P] == s then dummyAt(s, i) end end)   -- 打掉 10 秒后再摆一辆
+      if od then od(self, src) end
+      task.delay(10, function() if tests[s.P] == s then respawn() end end)   -- 打掉 10 秒后再来一个
     end
   end
+  -- 地上的靶车：第 i 辆摆在 pos、车头朝 face；swing 有值就横着来回开
+  local function dummyAt(s, i, pos, face, swing)
+    local id = pick(DUMMY, i, VD.get) or "m1a1"
+    local ok, d = pcall(G.spawnGroundVeh, s.foe, id, CFrame.lookAt(pos, pos + face), false, nil, nil)
+    if not ok or not d then return end
+    markDummy(d)
+    s.dummies[i] = d
+    if swing then d.testSwing = { c = pos, amp = swing * M, v = 5 * M, t0 = now(), sg = (i % 2 == 0) and 1 or -1 } end   -- 5 米 / 秒来回：从摆的地方起步（不瞬移），两辆往两边开
+    onDeathAgain(s, d, function() dummyAt(s, i, pos, face, swing) end)
+  end
+  -- 天上的靶机：绕 c 转（半径 r 米、离地 h 米、速度 v 米 / 秒）
+  local function droneAt(s, i, c, r, h, v, heli)
+    local id = pick(heli and DRONE_HELI or DRONE_JET, i, AD.get)
+    if not id or not G.spawnAircraftAir then return end
+    local R = r * M
+    local a = (i * 2.1) % (2 * math.pi)
+    local p = Vector3.new(c.X + math.cos(a) * R, G.Map.height(c.X, c.Z) + h * M, c.Z + math.sin(a) * R)
+    local tang = Vector3.new(-math.sin(a), 0, math.cos(a))
+    local ok, e = pcall(G.spawnAircraftAir, s.foe, id, CFrame.lookAt(p, p + tang), nil, nil, nil, v * M)
+    if not ok or not e then return end
+    markDummy(e)
+    e.emptyAt = nil   -- 没人开的飞机 90 秒收走：靶机不收
+    e.fuel = 1
+    e.loit = { c = Vector3.new(c.X, 0, c.Z), r = R, a = a, v = v * M, y = p.Y, T = math.huge }   -- 借无人机断链后的自动盘旋（Air.lua loiterStep）
+    pcall(function()
+      e.model:SetAttribute("Thr", 85)
+      e.model:SetAttribute("Gear", 0)
+      if heli then e.model:SetAttribute("Rpm", 100) e.model:SetAttribute("Col", 0.6) end
+    end)
+    s.drones[i] = e
+    onDeathAgain(s, e, function() droneAt(s, i, c, r, h, v, heli) end)
+  end
+  -- 横着来回开的靶车、靶机加油（每 0.1 秒）
+  task.spawn(function()
+    while true do
+      task.wait(0.1)
+      local t = now()
+      for _, s in pairs(tests) do
+        local right = Vector3.new(-s.dir.Z, 0, s.dir.X)
+        for _, d in pairs(s.dummies) do   -- 来回开的那两辆
+          local W = d.alive and d.testSwing
+          if W then
+            -- 匀速往返（正弦那样两头慢吞吞的时间太长，看起来像停着）：开到头前 15% 那段减速到停、再倒回来；车头不掉头（靶车前进、倒车）
+            local u = ((t - W.t0) * W.v / W.amp) % 4
+            local k = (u < 1) and u or ((u < 3) and (2 - u) or (u - 4))
+            local a = math.abs(k)
+            if a > 0.85 then
+              local x = (a - 0.85) / 0.15
+              k = math.sign(k) * (0.85 + 0.15 * (x - 0.5 * x * x))
+            end
+            local p = W.c + right * (W.amp * k * W.sg)
+            local ok, err = pcall(function() G.moveEnt(d, G.vehBaseAt(d.def, p.X, p.Z, right)) end)
+            if not ok then G.testSwingErr = tostring(err) end
+          end
+        end
+        for _, e in pairs(s.drones) do if e.alive then e.fuel = 1 end end
+      end
+    end
+  end)
   G.ACT.testDrive = function(P, key)
     local it = type(key) == "string" and TT.byKey[key]
     if not it or P.alive or G.pve or not G.ACT.deploy then return end
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
-    local air = it.branch == "air"
+    local air = it.branch == "air" or it.branch == "heli"
+    local heli = it.branch == "heli"
+    local pad = air and padFor(P.team, true, heli) or nil
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
-      local base, dir = testSpot(P)
-      local s = { P = P, base = base, dir = dir, dummies = {}, foe = (P.team == "atk") and "def" or "atk" }
-      tests[P] = s
-      P.inTest = true
+      local s = { P = P, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
       local e
       if air then
-        local pos = base + Vector3.new(0, W.airSpawnH or 1200, 0)
-        local d = AD.get(it.play)
-        e = G.spawnAircraftAir and G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(pos, pos + dir), nil, P, nil, ((d and d.vMil) or 200) * 0.8)
+        -- 飞机：停在自己机场的跑道上（同出击：Depots.lua 的跑道停机位），自己滑跑起飞；靶场在基地后面（离开战场的那一边）
+        local B = G.Map.BASES and G.Map.BASES[P.team]
+        local face = (B and B.face) or ((P.team == "atk") and -1 or 1)   -- 基地朝战场是世界的 ±Z
+        local bx, bz = (B and B.camp.x) or 0, (B and B.camp.z) or 0
+        s.dir = Vector3.new(0, 0, -face)    -- 背着战场
+        s.base = Vector3.new(bx + 5200 * M * 0.35, 0, bz - face * 3200 * M)
+        if pad and pad.base and G.spawnAircraft then   -- 不走 Depots 的召唤（那边要人站在终端旁边、扣 SP、记阵容）：直接摆在这个停机位上
+          local c = pad.base.Position
+          local d = AD.get(it.play)
+          local pos = Vector3.new(c.X, math.max(G.Map.height(c.X, c.Z), 0) + ((d and d.gearH) or 5), c.Z)
+          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + pad.base.LookVector), nil, P, nil)
+          if okS then e = ee end
+        end
+        if not e then   -- 没有跑道停机位（老地图）：照旧在靶场上空出来
+          local d = AD.get(it.play)
+          local pos = s.base + Vector3.new(0, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), 0)
+          e = G.spawnAircraftAir and G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(pos, pos + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
+        end
       else
-        e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(base, base + dir), false, P, nil)
+        s.base, s.dir = testSpot(P)
+        e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(s.base, s.base + s.dir), false, P, nil)
       end
-      if not e then testClean(P) return end
+      if not e then return end
+      tests[P] = s
+      P.inTest = true
       s.veh = e
       e.testDrive, e.noScore, e.treeKey = true, true, key
       e.model:SetAttribute("TreeKey", key)
@@ -597,10 +767,27 @@ function Tech.init(G)
       local all = {}
       for _, m in ipairs(WM.list(it)) do all[m.key] = true end
       applyFx(e, air, WM.fx(it, all), nil)   -- 试驾：改装全装上
-      for i = 1, 3 do dummyAt(s, i) end
+      local right = Vector3.new(-s.dir.Z, 0, s.dir.X)
+      local function at(fwd, side) return s.base + s.dir * (fwd * M) + right * (side * M) end
+      if air then
+        local c = s.base
+        droneAt(s, 1, c, 1100, 450, 180)
+        droneAt(s, 2, c, 1600, 800, 220)
+        droneAt(s, 3, at(300, 200), 500, 90, 35, true)
+        for i, g in ipairs(AIRGROUND) do
+          local p = at(g[1], g[2])
+          dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), s.dir, nil)
+        end
+      else
+        for i, r in ipairs(RANGE) do
+          local p = at(r[1], r[2])
+          dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), -s.dir, r[3])
+        end
+        for i, k in ipairs(SKY) do droneAt(s, i, at(k[1], k[2]), k[3], k[4], k[5], k[6]) end
+      end
       P.char:PivotTo(e.root.CFrame * CFrame.new(0, 2, 0))
       if G.ACT.enterVeh then G.ACT.enterVeh(P, e.id) end
-      G.msg(P.pl, "info", "tree.testOn", it.name)
+      G.msg(P.pl, "info", air and "tree.testOnAir" or "tree.testOn", it.name)
     end
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
   end
@@ -624,13 +811,14 @@ function Tech.init(G)
     local inL = false
     for _, k in ipairs(G.treeLineup(P)) do if k == key then inL = true end end
     if not inL then G.msg(P.pl, "bad", "tree.notInLineup") return end
-    local air = it.branch == "air"
+    local air = it.branch == "air" or it.branch == "heli"
+    local heli = it.branch == "heli"
     -- 战斗等级：这一局最高能出 BR + brUp（战雷：最多碰到比自己高 1.0 的）
     if not G.pve and it.br > G.treeBrCap() + 0.05 then
       G.msg(P.pl, "bad", "tree.brHigh", TT.brText(it.br), TT.brText(G.treeRoundBr()), TT.brText(G.treeBrCap()))
       return
     end
-    local p = padFor(P.team, air)
+    local p = padFor(P.team, air, heli)
     if not p then G.msg(P.pl, "bad", "ui.padLocked") return end
     local vid = it.play
     local kind = air and "air" or "veh"
@@ -646,29 +834,10 @@ function Tech.init(G)
       P.padT = 0
       P.treeSpawn, P.wtKey = true, key
       local okS, e
-      -- 空中出生：街机（D）；C 11-25「全部都做」⑫：历史、全真也是（战雷陆战的固定翼都在空中出生，直升机才在停机坪）——
-      --   历史 / 全真高一半、往本队后方退 1500 格（离战场远一点，爬升、找目标要时间）
-      local adef = air and AD.get(vid) or nil
-      local mode = G.wtModeNow and G.wtModeNow() or "ab"
-      if air and G.spawnAircraftAir and not (adef and adef.kind == "heli") then
-        okS, e = pcall(function()
-          local c = p.base.Position
-          local mx, mz, n = 0, 0, 0
-          for _, pt in ipairs((G.Map and G.Map.POINTS) or {}) do mx += pt.x mz += pt.z n += 1 end
-          local look = (n > 0) and Vector3.new(mx / n - c.X, 0, mz / n - c.Z) or Vector3.new(p.base.LookVector.X, 0, p.base.LookVector.Z)
-          if look.Magnitude < 1 then look = Vector3.new(0, 0, -1) end
-          local far = (mode == "ab") and 0 or 1500
-          local hK = (mode == "ab") and 1 or 1.5
-          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200) * hK, c.Z) - look.Unit * far
-          if G.wtSpawnOk and not G.wtSpawnOk(P, vid, "air") then return nil end
-          local d = AD.get(vid)
-          local ee = G.spawnAircraftAir(P.team, vid, CFrame.lookAt(pos, pos + look.Unit), nil, P, nil, ((d and d.vMil) or 200) * 0.8)
-          if ee and G.wtSpawned then G.wtSpawned(P, vid, "air", ee) end
-          return ee
-        end)
-      else
-        okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
-      end
+      -- 飞机（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：不再空中出生（原来街机在机场上空、
+      --   历史 / 全真退后 1500 格再高一半，C 11-25 ⑫）——停在自己机场的跑道上（Depots.lua runwayPads：顺着跑道、机头朝起飞方向），
+      --   起落架放着、发动机慢车，自己推油门滑跑起飞；落回自己的跑道停稳就加油、补弹、维修（Air.lua 落地补给）
+      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
       P.treeSpawn, P.wtKey = nil, nil
       if not okS then warn("[科技树] 出击出错：" .. tostring(e)) e = nil end
       if not e then return end

@@ -10,7 +10,7 @@ function WtCam.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V3 = Color3.fromRGB, UDim2.new, Vector3.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD = Enum.Font.GothamBold
+  local BOLD = Enum.Font.BuilderSansBold
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtCam"
@@ -21,20 +21,26 @@ function WtCam.init(G)
   local function btn(text, pos)
     local b = Instance.new("TextButton")
     b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), pos, Vector2.new(0.5, 0)
-    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(30, 40, 46), 0.15, 0
-    b.Text, b.TextSize, b.Font, b.TextColor3 = text, 14, BOLD, RGB(236, 240, 242)
+    local TH = G.Theme   -- 统一外观：灰底白字、细边、2 像素圆角（docs/style.md）
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = TH.C.RAISE, 0.1, 0
+    b.Text, b.TextSize, b.Font, b.TextColor3 = text, TH.S.body, TH.F.bold, TH.C.TEXT
+    TH.corner(b)
+    TH.stroke(b)
     b.Visible = false
     b.Parent = gui
     return b
   end
-  local specBtn = btn(T("wt.spec"), UD2(0.5, 0, 0, 58))
+  -- 「观战队友」放在机库右下角（原来在屏幕上方正中，压着机库、科技树的标题）
+  local specBtn = btn(T("wt.spec"), UD2(1, -40, 1, -45))
+  specBtn.AnchorPoint = Vector2.new(1, 1)
+  specBtn.Size = UDim2.fromOffset(170, 36)
   specBtn.Name = "SpecBtn"
   local backBtn = btn(T("wt.specBack"), UD2(0.5, 0, 0, 92))
   backBtn.Name = "SpecBack"
   local info = Instance.new("TextLabel")
   info.BackgroundTransparency = 1
   info.Size, info.Position, info.AnchorPoint = UDim2.fromOffset(600, 24), UD2(0.5, 0, 0, 60), Vector2.new(0.5, 0)
-  info.TextSize, info.Font, info.TextColor3 = 16, BOLD, RGB(255, 214, 120)
+  info.TextSize, info.Font, info.TextColor3 = 16, BOLD, G.Theme.C.TEXT
   info.TextStrokeTransparency = 0.35
   info.Visible = false
   info.Parent = gui
@@ -74,6 +80,7 @@ function WtCam.init(G)
     if G.hangarSet then pcall(G.hangarSet, false) end
   end
   specBtn.MouseButton1Click:Connect(start)
+  G.wtSpecStart = start   -- 机库顶上的「观战」（TechUI.lua）调这个
   backBtn.MouseButton1Click:Connect(stop)
   UIS.InputBegan:Connect(function(io, gp)
     if not on or gp then return end
@@ -88,7 +95,7 @@ function WtCam.init(G)
     local hangar = G.hangarActive and G.hangarActive() and not alive and S and (S.phase == "battle" or S.phase == "prep")
       and not (G.deathFxOn and G.deathFxOn())
     if on and (alive or not hangar) then stop() end
-    specBtn.Visible = hangar and not on
+    specBtn.Visible = (hangar and not on and not G.hangarHasSpec) == true   -- 开局还没有 S 时 hangar 是 nil（给 Visible 赋 nil 会报错）；机库顶上有「观战」就不画这个
     backBtn.Visible = on
     info.Visible = on
     if not on then return end

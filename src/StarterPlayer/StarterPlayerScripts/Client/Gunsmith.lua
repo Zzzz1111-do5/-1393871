@@ -28,7 +28,7 @@ function Gunsmith.init(G)
   local TEXT, MUTE, FAINT = RGB(236, 238, 236), RGB(150, 156, 158), RGB(90, 96, 100)
   local ACC, ACC2 = RGB(206, 255, 72), RGB(18, 22, 8)
   local UP, DOWN = RGB(108, 232, 126), RGB(255, 98, 86)
-  local F_B, F_M, F_K = Enum.Font.GothamBold, Enum.Font.GothamMedium, Enum.Font.GothamBlack
+  local F_B, F_M, F_K = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium, Enum.Font.BuilderSansExtraBold
 
   ---------------------------------------------------------------- 装着配件的枪（改枪界面、部署界面的大图）
 
@@ -222,7 +222,7 @@ function Gunsmith.init(G)
   local codeBox = Instance.new("TextBox")
   codeBox.Size, codeBox.Position = UD2(0, 186, 0, 34), UD2(0, 640, 0, 48)
   codeBox.BackgroundColor3, codeBox.BackgroundTransparency, codeBox.BorderSizePixel = RGB(4, 5, 6), 0.1, 0
-  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.Code
+  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.RobotoMono
   codeBox.ClearTextOnFocus = false
   codeBox.TextEditable = true
   codeBox.PlaceholderText = "M4A1-XXXXXX"

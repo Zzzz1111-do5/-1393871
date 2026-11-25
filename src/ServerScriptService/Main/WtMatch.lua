@@ -38,12 +38,17 @@ function WtMatch.init(G)
     d = VD.get(vid)
     return d and d.cat or "tank"
   end
-  -- 这辆车现在出要多少 SP（准备阶段、第一辆、PvE：0）
+  -- 飞机、直升机（用户 11-25「第一辆必须是地面车，飞机要攒点数才能出」，同战雷）：准备阶段、第一辆都不免费，一直按价钱要 SP——
+  --   开局 SP 是 0，所以得先开地面车打出分来（击毁、占点）攒够了才能出飞机
+  local function isAir(vid, kind) return kind == "air" or AD.get(vid) ~= nil end
+  G.wtIsAir = isAir
+  -- 这辆车现在出要多少 SP（地面车：准备阶段、第一辆、PvE：0）
   function G.wtCost(P, vid, kind)
     if not on() then return 0 end
+    local s = S(P)
+    if isAir(vid, kind) then return Config.WtCost(vid, catOf(vid, kind), s.paid) end
     local R = G.round
     if not R or R.phase ~= "battle" then return 0 end
-    local s = S(P)
     if s.free then return 0 end
     return Config.WtCost(vid, catOf(vid, kind), s.paid)
   end
@@ -62,6 +67,10 @@ function WtMatch.init(G)
     end
     if n >= 1 + (W.backup or 1) then
       G.msg(P.pl, "bad", "wt.noBackup", nameOf(P, vid), n)
+      return false
+    end
+    if isAir(vid, kind) and not s.ground then   -- 这一局还没出过地面车：飞机不让出
+      G.msg(P.pl, "bad", "wt.groundFirst")
       return false
     end
     local c = G.wtCost(P, vid, kind)
@@ -104,10 +113,15 @@ function WtMatch.init(G)
     local c = G.wtCost(P, vid, kind)
     if (s.ln[lk] or 0) == 0 then table.insert(s.order, lk) end
     s.ln[lk] = (s.ln[lk] or 0) + 1
+    local air = isAir(vid, kind)
     if G.round and G.round.phase == "battle" then
-      if s.free then s.free = false else s.paid += 1 end
+      if s.free and not air then s.free = false else s.paid += 1 end
       s.sp = math.max(0, s.sp - c)
+    elseif air then   -- 准备阶段出飞机也要花 SP（地面车不花）
+      s.sp = math.max(0, s.sp - c)
+      s.paid += 1
     end
+    if not air then s.ground = true end   -- 出过地面车了：以后能出飞机（SP 够的话）
     G.pushOne(P)
   end
 
@@ -287,7 +301,7 @@ function WtMatch.init(G)
       G.msg(sc.P.pl, "good", "wt.scoutKill", { k = "veh." .. (e.def and e.def.id or "") })
     end
     -- 战场奖章（战雷屏幕上方弹出来的那种）：首杀、双杀 / 三杀、坦克狂暴者（不死连杀 5 辆）、复仇者、神射手（1.5 公里外）
-    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team then
+    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team and not e.noScore then   -- 试驾场的靶车不发奖章（原来首杀奖章照发 80 分）
       local t = now()
       local s = S(K)
       local aw = {}
@@ -335,7 +349,7 @@ function WtMatch.init(G)
   function G.wtPersonal(P)
     if not on() then return nil end
     local s = S(P)
-    return { sp = math.floor(s.sp), free = s.free, paid = s.paid, order = s.order, ln = s.ln, lost = s.lost,
+    return { sp = math.floor(s.sp), free = s.free, paid = s.paid, order = s.order, ln = s.ln, lost = s.lost, ground = s.ground == true,
       max = W.lineup or 5, backup = W.backup or 1, earned = math.floor(s.earned), vk = s.vk, ak = s.ak }
   end
   -- 战况表、结算页的一行（Round.lua boardState）
@@ -353,10 +367,6 @@ function WtMatch.init(G)
   sightP.FilterType = Enum.RaycastFilterType.Exclude
   sightP.IgnoreWater = true
   local VIEW_CAT = { armor = true, light = true, air = true, ship = true, inf = true }
-  local function strictMode()
-    local m = workspace:GetAttribute("WtMode")
-    return m == "rb" or m == "sb"
-  end
   local function sightOf(team)
     local obs, tgts = {}, {}
     for _, Q in pairs(G.P) do
@@ -404,9 +414,13 @@ function WtMatch.init(G)
     local S = G.spotted and G.spotted[team]
     if S then
       local tt = now()
+      -- 实体编号是 "e33" 这样的字符串（玩家是 "p<UserId>"，不算）：原来只认数字，被侦察 / 标记的车一直进不了这张单子
       for key, till in pairs(S) do
-        if till > tt and type(key) ~= "string" then table.insert(seen, key)
-        elseif till > tt and type(key) == "string" and tonumber(key) then table.insert(seen, tonumber(key)) end
+        if till > tt then
+          if G.entById[key] then table.insert(seen, key)
+          elseif type(key) ~= "string" then table.insert(seen, key)
+          elseif tonumber(key) then table.insert(seen, tonumber(key)) end
+        end
       end
     end
     return seen
@@ -416,7 +430,8 @@ function WtMatch.init(G)
     while true do
       task.wait(0.25)
       turn += 1
-      if on() and strictMode() and G.round and (G.round.phase == "battle" or G.round.phase == "prep") then
+      -- 历史 / 全真：小地图只画这些；街机也发（炮兵视角 ArtyView.lua 只画全队看得见的敌车，用户 11-25）
+      if on() and G.round and (G.round.phase == "battle" or G.round.phase == "prep") then
         local team = (turn % 2 == 0) and "atk" or "def"
         local okS, seen = pcall(sightOf, team)
         if okS then

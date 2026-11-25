@@ -32,10 +32,10 @@ for key, it in pairs(TT.byKey) do
   end
 end
 check(#bad == 0, "每辆车都有改装表、价钱、说明" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(6, #bad))) or ""))
-local it59 = TT.get("cn_59")
-check(WM.nextKey(it59, {}) == "tracks", "原厂车先研究第一级的机动（履带）：" .. tostring(WM.nextKey(it59, {})))
-check(not WM.tierOpen(it59, { tracks = true }, 2) and WM.tierOpen(it59, { tracks = true, parts = true }, 2), "第一级研究完两项才开第二级")
-local fx0 = WM.fx(it59, {})
+local it96 = TT.get("cn_96")
+check(WM.nextKey(it96, {}) == "tracks", "原厂车先研究第一级的机动（履带）：" .. tostring(WM.nextKey(it96, {})))
+check(not WM.tierOpen(it96, { tracks = true }, 2) and WM.tierOpen(it96, { tracks = true, parts = true }, 2), "第一级研究完两项才开第二级")
+local fx0 = WM.fx(it96, {})
 check(fx0.speed == 1 and not fx0.repair and not fx0.ext and not fx0.smoke and fx0.ammo == 1, "原厂：倍率 1、不能修、没灭火器、没烟幕、一种弹")
 
 print("② 原厂车出击")
@@ -58,7 +58,7 @@ local function deploy(key)
   T.runUntil(function() return P.alive and P.vehicle ~= nil end, 20)
   return P.vehicle
 end
-local e = deploy("cn_59")
+local e = deploy("cn_96")
 check(e ~= nil and e.wtFx ~= nil, "出击了，车上记着改装效果")
 if e then
   local m = e.model
@@ -82,14 +82,14 @@ print("③ 一局结束：改装拿研究点")
 local t = G.treeOf(P)
 P.score, P.kills = 500, 2
 P.treeUsedKeys = P.treeUsedKeys or {}
-check(P.treeUsedKeys.cn_59 == true, "记着这一局开过 59 式")
+check(P.treeUsedKeys.cn_96 == true, "记着这一局开过 96 式")
 msgs = {}
 local rp = G.treeAward(P, true)
-local md = t.mods and t.mods.cn_59
-local nDone = md and WM.count(it59, md.done) or 0
+local md = t.mods and t.mods.cn_96
+local nDone = md and WM.count(it96, md.done) or 0
 local said = false
 for _, k in ipairs(msgs) do if k == "tree.modDone" then said = true end end
-check(rp > 0 and nDone >= 2 and said, string.format("挣了 %d 研究点：59 式研究完 %d 项改装、提示了（%s）", rp, nDone, table.concat(msgs, " ")))
+check(rp > 0 and nDone >= 2 and said, string.format("挣了 %d 研究点：96 式研究完 %d 项改装、提示了（%s）", rp, nDone, table.concat(msgs, " ")))
 
 -- 结算页明细（TechUI G.treeResultText；WtBattle 结算页那一行）
 R.run(0.5)
@@ -98,12 +98,12 @@ R.as("client", function() txt = T.C.treeResultText and T.C.treeResultText() or "
 check(txt:find("研究点 %+") ~= nil and txt:find("改装 %+") ~= nil and txt:find("乘员经验 %+") ~= nil, "结算页明细：" .. txt)
 
 print("⑦ 乘员（先点技能，下面重新出车一起查）")
-local cr = G.treeCrewOf(P, "cn_59")
-check(cr ~= nil and (cr.xp or 0) > 0 and (P.treeCrewGain or {}).cn_59 ~= nil, "一局结束：59 式那一位的乘员攒了经验（" .. tostring(cr and cr.xp) .. "）")
+local cr = G.treeCrewOf(P, "cn_96")
+check(cr ~= nil and (cr.xp or 0) > 0 and (P.treeCrewGain or {}).cn_96 ~= nil, "一局结束：96 式那一位的乘员攒了经验（" .. tostring(cr and cr.xp) .. "）")
 if cr then
   cr.xp = WC.xpFor(3)   -- 3 级：9 点
   local slot
-  for i, k in ipairs(G.treeLineup(P)) do if k == "cn_59" then slot = i end end
+  for i, k in ipairs(G.treeLineup(P)) do if k == "cn_96" then slot = i end end
   for _ = 1, 3 do G.ACT.crewUp(P, "cn", slot, "load") end   -- 1 + 2 + 3 = 6 点
   check(cr.sk.load == 3 and WC.free(cr) == 3, "点了三级「装填」（剩 " .. WC.free(cr) .. " 点）")
   msgs = {}
@@ -117,10 +117,10 @@ print("④ 装上以后重新出击")
 md.done.parts, md.done.tracks, md.done.susp, md.done.fpe, md.done.engine, md.done.smoke = true, true, true, true, true, true
 G.treePublish(P)
 if G.wtState then G.wtState(P).sp = 5000 end   -- 第二次出车要 SP（第一辆才免费）
-if P.vehicle then T.remoteAs(me, "Drive", { op = "exit" }) end
+if P.vehicle then T.remoteAs(me, "Drive", { op = "exit", hangar = true }) end
 T.runUntil(function() return not P.alive end, 15)
 R.run(3)
-local e2 = deploy("cn_59")
+local e2 = deploy("cn_96")
 if e2 then
   local m = e2.model
   check((m:GetAttribute("ModSpd") or 1) > 1.05 and (m:GetAttribute("ModAcc") or 1) > 1.1, string.format("发动机、悬挂装上了：车速 ×%.2f、加速 ×%.2f", m:GetAttribute("ModSpd") or 0, m:GetAttribute("ModAcc") or 0))
@@ -138,19 +138,19 @@ end
 
 print("⑤ 选研究目标")
 msgs = {}
-G.ACT.treeMod(P, "cn_59", "tools")   -- 第四级：第三级还没研究完两项
+G.ACT.treeMod(P, "cn_96", "tools")   -- 第四级：第三级还没研究完两项
 local locked = false
 for _, k in ipairs(msgs) do if k == "tree.modLocked" then locked = true end end
 check(locked and md.cur ~= "tools", "没开的级别被拒（" .. table.concat(msgs, " ") .. "）")
 local pick
-for _, m in ipairs(WM.GROUND) do if WM.canResearch(it59, md.done, m.key) and m.key ~= "filter" then pick = m.key break end end
-G.ACT.treeMod(P, "cn_59", pick)
+for _, m in ipairs(WM.GROUND) do if WM.canResearch(it96, md.done, m.key) and m.key ~= "filter" then pick = m.key break end end
+G.ACT.treeMod(P, "cn_96", pick)
 check(pick ~= nil and md.cur == pick, "选了「" .. tostring(pick) .. "」做研究目标")
 
 print("⑥ 改装界面")
 local C = T.C
 R.run(0.5)
-R.as("client", function() C.openMods(it59) end)
+R.as("client", function() C.openMods(it96) end)
 R.run(0.5)
 local mp = C.modsGui
 local cells, cell = 0, nil
@@ -158,7 +158,8 @@ for _, c in ipairs(mp and mp:GetDescendants() or {}) do
   if c.Name:match("^Mod_") then cells = cells + 1 end
   if c.Name == "Mod_filter" then cell = c end
 end
-check(mp and mp.Visible and cells == #WM.GROUND, "改装面板开着：" .. cells .. " 格")
+-- 96 式（1997 年，数字火控那一代）：十二项改装 + 三级火控升级（用户 11-25「在坦克细分具体小科技的树里面更新火控计算机」）
+check(mp and mp.Visible and cells == #WM.list(it96) and #WM.list(it96) == #WM.GROUND + 3, "改装面板开着：" .. cells .. " 格（含三级火控）")
 if cell then T.press(cell) end
 R.run(0.5)
 check(md.cur == "filter", "点一格「空滤」成了研究目标（" .. tostring(md.cur) .. "）")

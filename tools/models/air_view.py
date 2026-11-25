@@ -10,7 +10,7 @@ import mdl2glb as B   # noqa: E402
 
 B.WEB = sys.argv[1]
 OUT = sys.argv[2]
-KEYS = sys.argv[3:] or ['j20', 'j31', 'j15', 'j16', 'j50', 'h6k', 'x47b', 'a10', 'f35', 'f22', 'mq9', 'b2']
+KEYS = sys.argv[3:] or ['j20', 'j31', 'j15', 'j16', 'h6k', 'x47b', 'a10', 'f35', 'f22', 'mq9', 'b2']
 FLIP = {'h6k', 'x47b'}
 os.makedirs(OUT, exist_ok=True)
 

@@ -80,8 +80,8 @@ function Depot.init(G)
       l.Parent = f
       return l
     end
-    local name = txt(6, 20, 17, RGB(240, 242, 244), Enum.Font.GothamBold)
-    local info = txt(28, 16, 12, RGB(150, 156, 162), Enum.Font.GothamMedium)
+    local name = txt(6, 20, 17, RGB(240, 242, 244), Enum.Font.BuilderSansBold)
+    local info = txt(28, 16, 12, RGB(150, 156, 162), Enum.Font.BuilderSansMedium)
     local icon = iconAt(f, nil, UDim2.new(1, -24, 0, 44), UDim2.fromOffset(12, 28), RGB(220, 228, 234))   -- 名字下面的侧影（refresh 里按型号装上）
     icon.Visible = false
     return bb, name, info, bar, icon
@@ -170,7 +170,7 @@ function Depot.init(G)
   ---------------------------------------------------------------- 召唤位：选机型
 
   -- 机型的用途（卡片上的一行字）
-  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", j8 = "intercept",
+  local ROLE = { j20 = "fighter", j35 = "fighter", j15t = "fighter", f22 = "fighter", f35 = "fighter", j16 = "strike", j11 = "fighter", j10 = "fighter", j36 = "fighter", j8 = "intercept", j6 = "fighter",
     f16 = "fighter", f15 = "fighter", f14 = "intercept", a10c = "attack",
     h6k = "bomber", b2 = "bomber", gj11 = "uav", gj2 = "uav", mq9 = "uav", z10 = "aheli", ah64e = "aheli", z20 = "uheli", uh60 = "uheli", ch47 = "theli" }
   local pick = Instance.new("ScreenGui")
@@ -222,8 +222,8 @@ function Depot.init(G)
     l.Parent = parent
     return l
   end
-  local pTitle = label(panel, "", UDim2.new(1, -40, 0, 28), UDim2.fromOffset(24, 18), 22, RGB(240, 242, 244), Enum.Font.GothamBlack)
-  local pSub = label(panel, "", UDim2.new(1, -40, 0, 16), UDim2.fromOffset(24, 50), 12, RGB(150, 156, 162), Enum.Font.GothamMedium)
+  local pTitle = label(panel, "", UDim2.new(1, -40, 0, 28), UDim2.fromOffset(24, 18), 22, RGB(240, 242, 244), Enum.Font.BuilderSansExtraBold)
+  local pSub = label(panel, "", UDim2.new(1, -40, 0, 16), UDim2.fromOffset(24, 50), 12, RGB(150, 156, 162), Enum.Font.BuilderSansMedium)
   local grid = Instance.new("ScrollingFrame")   -- 守方地面载具 15 型、攻方喷气机 10 型：一屏放不下的往下滚
   grid.Size, grid.Position = UDim2.new(1, -40, 1, -140), UDim2.fromOffset(24, 80)
   grid.BackgroundTransparency, grid.BorderSizePixel = 1, 0
@@ -241,7 +241,7 @@ function Depot.init(G)
   cancel.Name = "Cancel"
   cancel.Size, cancel.Position = UDim2.fromOffset(140, 38), UDim2.new(0, 24, 1, -54)
   cancel.BackgroundColor3, cancel.BackgroundTransparency, cancel.BorderSizePixel = RGB(255, 255, 255), 0.9, 0
-  cancel.Font, cancel.TextSize, cancel.TextColor3 = Enum.Font.GothamBold, 15, RGB(240, 242, 244)
+  cancel.Font, cancel.TextSize, cancel.TextColor3 = Enum.Font.BuilderSansBold, 15, RGB(240, 242, 244)
   cancel.Parent = panel
   local cards = {}
   local pickPad = nil
@@ -297,7 +297,7 @@ function Depot.init(G)
   local function coinTag(b, stroke, id, w)
     local price = lockedCoin(id)
     if not price then return end
-    local pt = label(b, "◉ " .. T("eco.lockVeh", price), UDim2.fromOffset(w or 140, 16), UDim2.new(1, -(w or 140) - 10, 0, 9), 11, RGB(255, 206, 96), Enum.Font.GothamBlack,
+    local pt = label(b, "◉ " .. T("eco.lockVeh", price), UDim2.fromOffset(w or 140, 16), UDim2.new(1, -(w or 140) - 10, 0, 9), 11, RGB(255, 206, 96), Enum.Font.BuilderSansExtraBold,
       Enum.TextXAlignment.Right)
     pt.Name = "CoinTag"
     b.BackgroundTransparency = 0.3
@@ -378,15 +378,15 @@ function Depot.init(G)
       stroke.Parent = b
       b.MouseEnter:Connect(function() stroke.Transparency = ok and 0.4 or 0.8 end)
       b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
-      label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.GothamBlack)
+      label(b, T("veh." .. id), UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 7), 15, ok and RGB(240, 242, 244) or RGB(130, 134, 138), Enum.Font.BuilderSansExtraBold)
       coinTag(b, stroke, id, 96)
       iconAt(b, id, UDim2.new(1, -20, 0, 42), UDim2.fromOffset(10, 29), ok and RGB(226, 232, 238) or RGB(110, 114, 118))   -- 名字下面的侧影
-      local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 74), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.GothamBold)
+      local cl = label(b, T("vcat." .. d.cat) .. "   " .. why, UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 74), 11, ok and RGB(214, 190, 120) or RGB(214, 120, 96), Enum.Font.BuilderSansBold)
       cl.Name = "Quota"
       local tags = { T((d.arch == "wheeled") and "pick.wheeled" or "pick.tracked") }
       if d.weapons and d.weapons[1] then table.insert(tags, T("vw." .. d.weapons[1])) end
       if d.amphib then table.insert(tags, T("pick.amphib")) end
-      label(b, table.concat(tags, " · "), UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 93), 11, RGB(170, 176, 182), Enum.Font.GothamMedium)
+      label(b, table.concat(tags, " · "), UDim2.new(1, -20, 0, 14), UDim2.fromOffset(10, 93), 11, RGB(170, 176, 182), Enum.Font.BuilderSansMedium)
       if G.wtCardTag then G.wtCardTag(b, id, d.cat, 74) end   -- 战雷式：这辆现在要多少 SP、阵容 / 备用（WtBattle.lua）
       b.Activated:Connect(function() choose(id) end)
       table.insert(cards, b)
@@ -429,12 +429,12 @@ function Depot.init(G)
         stroke.Parent = b
         b.MouseEnter:Connect(function() stroke.Transparency = 0.4 end)
         b.MouseLeave:Connect(function() stroke.Transparency = 0.9 end)
-        label(b, T("veh." .. id), UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 10), 18, RGB(240, 242, 244), Enum.Font.GothamBlack)
+        label(b, T("veh." .. id), UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 10), 18, RGB(240, 242, 244), Enum.Font.BuilderSansExtraBold)
         local ic = iconAt(b, id, UDim2.new(1, -24, 0, 50), UDim2.fromOffset(12, 36))   -- 名字下面的侧影
-        label(b, T("arole." .. (ROLE[id] or (d.kind == "heli" and "uheli" or "fighter"))), UDim2.new(1, -24, 0, 16), UDim2.fromOffset(12, 88), 12, RGB(214, 190, 120), Enum.Font.GothamBold)
+        label(b, T("arole." .. (ROLE[id] or (d.kind == "heli" and "uheli" or "fighter"))), UDim2.new(1, -24, 0, 16), UDim2.fromOffset(12, 88), 12, RGB(214, 190, 120), Enum.Font.BuilderSansBold)
         local lp = lockedPass(id)
         if lp then   -- 右上角：解锁 R$ 价钱（琥珀色），卡片暗一点
-          local pt = label(b, T("pass.lockTag", G.Config.Passes[lp].price), UDim2.fromOffset(120, 18), UDim2.new(1, -132, 0, 12), 12, RGB(255, 196, 92), Enum.Font.GothamBlack,
+          local pt = label(b, T("pass.lockTag", G.Config.Passes[lp].price), UDim2.fromOffset(120, 18), UDim2.new(1, -132, 0, 12), 12, RGB(255, 196, 92), Enum.Font.BuilderSansExtraBold,
             Enum.TextXAlignment.Right)
           pt.Name = "PassTag"
           b.BackgroundTransparency = 0.3
@@ -449,7 +449,7 @@ function Depot.init(G)
         if d.gun then table.insert(tags, T("pick.gun")) end
         if d.st and #d.st > 0 then table.insert(tags, T("pick.st", #d.st)) end
         if AD.fuelMin then table.insert(tags, T("pick.fuel", AD.fuelMin(d))) end
-        local tl = label(b, table.concat(tags, " · "), UDim2.new(1, -24, 0, 32), UDim2.fromOffset(12, 108), 12, RGB(170, 176, 182), Enum.Font.GothamMedium)
+        local tl = label(b, table.concat(tags, " · "), UDim2.new(1, -24, 0, 32), UDim2.fromOffset(12, 108), 12, RGB(170, 176, 182), Enum.Font.BuilderSansMedium)
         tl.TextWrapped = true
         tl.TextTruncate = Enum.TextTruncate.None
         tl.TextYAlignment = Enum.TextYAlignment.Top

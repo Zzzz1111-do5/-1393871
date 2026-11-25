@@ -27,12 +27,17 @@ const GLB = {
   t90m: 't90m', bmp3: 'bmp3', pantsir: 'pantsir',   // 俄系（用户 11-24）：blveh.py 转的原模型
   // 科技树暂用车换的真模型（用户 11-25）：同族的老 / 新型号拍同一个模型
   t80u: 't80u', t80b: 't80u', t80bvm: 't80u', bmp1: 'bmp1', leo2a6: 'leo2a6', leo2a4: 'leo2a6', leo1: 'leo1', leo1a5: 'leo1', m60a3: 'm60a3', m60a1: 'm60a3',
+  t64a: 't64', t64b: 't64', type74: 'type74', type74g: 'type74', gepard1a1: 'gepard', gepard1a2: 'gepard', bmp2: 'bmp2', bmp2m: 'bmp2',   // 11-25 D 第二批
+  m551: 'm551', leo2a7v: 'leo2a7v', type10: 'type10', leclerc: 'leclerc', t72b3: 't72b3', t72ural: 't72b3', t72a: 't72b3', t72b: 't72b3',   // E、C 的（11-24 / 11-25）
 };
 // 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
 const AIR = {
-  j20: 'j20', j35: 'j31', j15t: 'j15t', j16: 'j16', j50: 'j50', h6k: 'h6k', gj11: 'x47b', gj2: 'mq9', a10c: 'a10', f35: 'f35', f22: 'f22a',
+  j20: 'j20', j35: 'j31', j15t: 'j15t', j16: 'j16', h6k: 'h6k', gj11: 'x47b', gj2: 'mq9', a10c: 'a10', f35: 'f35', f22: 'f22a',
   mq9: 'mq9', b2: 'b2', z10: 'z10w', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
   j10: 'j10', j11: 'j11', j36: 'j36',   // 11-22 加的歼-10C、歼-11B、歼-36（sf_air.py 转的）
+  j8: 'j8', f16: 'f16', j6: 'j6',   // 11-23 的歼-8II、F-16C，11-25 的歼-6（科技树里原来借歼-8II 的模型）
+  f15: 'f15', f14: 'f14',   // 11-25 的 F-15C、F-14A
+  mi24: 'mi24', mi28: 'mi28', ka52: 'ka52', mi8: 'mi8', tiger: 'tiger', nh90: 'nh90', ah1w: 'ah1w', ah1s: 'ah1s', uh1n: 'uh1n', z8: 'z8',   // 11-25 各国直升机
 };
 // 舰艇（ShipDefs 的型号）→ models/ship 的原模型（文件名同型号）
 const SHIP = { t055: 't055', t054a: 't054a', t022: 't022', ddg125: 'ddg125', cg47: 'cg47', lcs2: 'lcs2', pbr: 'pbr' };
@@ -75,6 +80,30 @@ if (SET === 'air') {
     save('air_' + id, r);
   }
 }
+// SET=photo：写实图（用户 11-25「主页和科技树的载具图用实拍图吧 然后角度要像战雷那样」）——地面车按 GLB、飞机按 AIR 各拍一张，
+//   存成 pic_veh_<型号>.png / pic_air_<型号>.png（960 × 480，透明背景），tools/models/vehpics.py 缩小、压进 src/ReplicatedStorage/VehPics.lua
+//   TINT=<json>：没贴图的模型按真车涂装上色 { 型号: "#rrggbb" }
+if (SET === 'photo') {
+  const TINT = process.env.TINT ? JSON.parse(fs.readFileSync(process.env.TINT, 'utf8')) : {};
+  const done = new Set();
+  for (const [id, key] of Object.entries(GLB)) {
+    if (!want(id) || done.has('veh/' + key)) continue;
+    done.add('veh/' + key);
+    if (!fs.existsSync(path.join(ROOT, 'models', 'veh', key + '.glb'))) continue;   // 删掉的、没在仓库里的模型
+    if (fs.existsSync(path.join(outDir, 'pic_veh_' + key + '.png')) && process.env.REDO !== '1') continue;
+    const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/veh/${key}.glb`, { flip: FLIP.has(id), tint: TINT[key] }]);
+    save('pic_veh_' + key, r);
+  }
+  for (const [id, key] of Object.entries(AIR)) {
+    if (!want(id) || done.has('air/' + key)) continue;
+    done.add('air/' + key);
+    if (!fs.existsSync(path.join(ROOT, 'models', 'air', key + '.glb'))) continue;
+    if (fs.existsSync(path.join(outDir, 'pic_air_' + key + '.png')) && process.env.REDO !== '1') continue;
+    const hide = (id === 'z10') ? '__TRotor' : '';
+    const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/air/${key}.glb`, { flip: FLIP.has(id), hide, pitch: 18, yaw: 38, tint: TINT[key] }]);
+    save('pic_air_' + key, r);
+  }
+}
 if (SET === 'ship') {
   for (const [id, key] of Object.entries(SHIP)) {
     if (!want(id)) continue;
@@ -82,12 +111,12 @@ if (SET === 'ship') {
     save('ship_' + id, r);
   }
 }
-for (const [id, key] of Object.entries((SET === 'air' || SET === 'ship') ? {} : GLB)) {
+for (const [id, key] of Object.entries((SET === 'air' || SET === 'ship' || SET === 'photo') ? {} : GLB)) {
   if (!want(id)) continue;
   const r = await page.evaluate(async ([u, fl]) => window.renderGLB(u, fl), [`/veh/${key}.glb`, FLIP.has(id)]);
   save(id, r);
 }
-if (partsJson && SET !== 'air') {
+if (partsJson && SET !== 'air' && SET !== 'photo') {
   const all = JSON.parse(fs.readFileSync(partsJson, 'utf8'));
   for (const [id, v] of Object.entries(all)) {
     if (GLB[id] || !want(id)) continue;

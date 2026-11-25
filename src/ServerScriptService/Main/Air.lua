@@ -26,6 +26,8 @@ function Air.init(G)
 
   -- (x, z) 处能落地的面多高：地形、甲板
   local function surface(x, z) return AD.ground(Map, x, z) end
+  local REST_WAIT = 3   -- 落地补给：停稳几秒地勤上来
+  local SUP_T = ((Config.Wt or {}).airSupT) or 15   -- 加油、挂弹要多久（秒）
   G.airSurface = surface
 
   ---------------------------------------------------------------- 名额
@@ -493,6 +495,20 @@ function Air.init(G)
   G.airArhStep = arhStep   -- 测试用
 
   local function guideMissile(s, dt)
+    -- 抛射（用户 11-25「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：弹舱、机身半埋挂点的中距弹被弹射器推出去，
+    --   直升机的筒射防空弹（毒刺、天燕-90、针-V、西北风）先被抛射药推出发射筒——往下掉 ejT 秒、离开飞机，发动机才点火、开始制导
+    if s.ejT and (s.ejAge or 0) < s.ejT then
+      s.ejAge = (s.ejAge or 0) + dt
+      s.vel += V(0, -GRAV, 0) * dt
+      s.vel = s.vel * (1 - 0.04 * dt)
+      if s.ejAge >= s.ejT then G.fx({ k = "shotIgn", id = s.id }) end   -- 客户端：这时候才喷火、拖烟
+      s.fixT = (s.fixT or 0) + dt
+      if s.fixT > 0.15 then
+        s.fixT = 0
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel })
+      end
+      return false
+    end
     s.age += dt
     local w = s.w
     if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
@@ -708,8 +724,13 @@ function Air.init(G)
       e.nextStore = t + 1
     elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
-      local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
-        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
+      -- 抛射（AirDefs.EJ）：弹本身标了 eject（筒射的、投放的、只用弹射挂架的），或者挂在主弹舱、弹射挂点（挂点标了 ej）；
+      --   其余的（响尾蛇、霹雳-10 的导轨、侧弹舱伸出去的导轨、地狱火）照旧：在导轨上点火冲出去
+      local ej = w.eject or ((s.ej or s.bay == "main") and "drop") or nil
+      local E = ej and (type(ej) == "table" and ej or AD.EJ[ej]) or nil
+      local sh = G.launch({ kind = "missile", pos = launch, vel = E and (base + fwd * E.f - scf.UpVector * E.d) or (base + fwd * 60 - scf.UpVector * 6),
+        w = w, src = S, ignore = ignoreOf(e), life = (w.life or 8) + (E and E.t or 0),
+        step = guideMissile, age = 0, ejT = E and E.t or nil, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
         ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
@@ -1063,40 +1084,57 @@ function Air.init(G)
           G.removeEnt(e)
         end
       end
-      -- 落在自己的地方停稳：5 秒后加油、补满弹药和热诱弹，接着修（每秒一成，十秒修满）
-      --   Rest 属性给平显看（Fly.lua）：1～5 停稳倒计时、10 在自己的机场 / 甲板上还在滑、−1 修理中、−2 全好了、−3 这里补不了
-      local rest = 0
+      -- 落地补给（用户 11-25「回跑道降落补给也做出来」，照战雷）：落在自己的机场 / 甲板上停稳 3 秒，地勤开始干活——
+      --   油按时间加（SUP_T 秒加到出发时选的油量），弹药、热诱弹、副油箱到时候一起挂上；同时修：机身血每秒一成，
+      --   战雷式部件（WtAir.lua wtaRepair：发动机、机翼、尾翼、油箱、操纵面、飞行员，灭火、堵漏、修起落架）每秒修 8 点多；
+      --   Rest 属性给平显看（Fly.lua）：1～3 停稳倒计时、10 在自己的机场 / 甲板上还在滑、−1 补给 / 维修中（RestK 进度 0～1）、−2 全好了、−3 这里补不了
+      local rest, restK = 0, nil
       if e.alive and e.onGround then
+        local fixed0 = (not G.wtaFixK or G.wtaFixK(e) >= 1) and e.hp >= e.maxHp
         if not landedHome(e) then
           rest = -3
-          e.restT, e.rearmed = 0, false
+          e.restT = 0
         elseif e.vel and e.vel.Magnitude < 4 then
           e.restT = (e.restT or 0) + dt
-          if e.restT > 5 then
+          if e.restT > REST_WAIT then
             if not e.rearmed then
-              e.rearmed = true
-              e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
-              fillStores(e)
-              if e.driver then
-                G.msg(e.driver.pl, "good", "ui.rearmed")
-                G.pushOne(e.driver)
+              if not e.supK then e.supK, e.fuel0 = 0, e.fuel or 0 end
+              e.supK = math.min(1, e.supK + dt / SUP_T)
+              e.fuel = e.fuel0 + math.max(0, (e.fuelSel or 1) - e.fuel0) * e.supK
+              pushFuel(e)
+              if e.supK >= 1 then
+                e.rearmed, e.supK = true, nil
+                e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
+                fillStores(e)
+                if e.driver then
+                  G.msg(e.driver.pl, "good", "ui.rearmed")
+                  G.pushOne(e.driver)
+                end
               end
             end
+            local partsOk = true
+            if G.wtaRepair and not G.wtaNoRepair then partsOk = G.wtaRepair(e, dt) end   -- G.wtaNoRepair：测部件伤害的测试（停在自己营地边上挨打）
             if e.hp < e.maxHp then
               e.hp = math.min(e.maxHp, e.hp + e.maxHp * 0.1 * dt)
               e.model:SetAttribute("Hp", math.floor(e.hp))
             end
-            rest = (e.hp < e.maxHp) and -1 or -2
+            local done = e.rearmed and partsOk and e.hp >= e.maxHp
+            rest = done and -2 or -1
+            if not done then
+              restK = math.min(e.rearmed and 1 or (e.supK or 0), e.hp / math.max(1, e.maxHp), (G.wtaFixK and G.wtaFixK(e)) or 1)
+              restK = math.floor(restK * 100) / 100
+            end
           else
-            rest = math.max(1, math.ceil(5 - e.restT))
+            rest = math.max(1, math.ceil(REST_WAIT - e.restT))
           end
         else
-          rest = 10
-          e.restT, e.rearmed = 0, false
+          rest = (e.rearmed and fixed0) and 0 or 10   -- 补好了的在跑道上滑（起飞滑跑）：不写字
+          e.restT = 0
         end
       else
-        e.restT, e.rearmed = 0, false
+        e.restT, e.rearmed, e.supK = 0, false, nil   -- 飞起来了：下次落地再补
       end
+      if e.alive and e.model and e.model:GetAttribute("RestK") ~= restK then e.model:SetAttribute("RestK", restK) end
       if e.alive and e.model and e.model:GetAttribute("Rest") ~= rest then e.model:SetAttribute("Rest", rest) end
     end
   end)

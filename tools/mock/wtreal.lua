@@ -26,7 +26,12 @@ local Lang = R.require(RS:FindFirstChild("Lang"))
 
 print("① 数据")
 local MODEL = { t80u = "t80u", t80b = "t80u", t80bvm = "t80u", bmp1 = "bmp1", leo2a6 = "leo2a6", leo2a4 = "leo2a6",
-  leo1 = "leo1", leo1a5 = "leo1", m60a3 = "m60a3", m60a1 = "m60a3" }
+  leo1 = "leo1", leo1a5 = "leo1", m60a3 = "m60a3", m60a1 = "m60a3",
+  -- E 11-25（用户「坦克单独找建模很多坦克没有建模」）：M551 换真模型，T-72 乌拉尔 / A / B 改借 T-72B3 的模型
+  m551 = "m551", t72ural = "t72b3", t72a = "t72b3", t72b = "t72b3", leo2a7v = "leo2a7v", type10 = "type10",
+  -- D 第二批（用户 11-25「还有很多没有建模」）：T-64A / T-64B、74 式 / 74 式改
+  t64a = "t64", t64b = "t64", type74 = "type74", type74g = "type74",
+  gepard1a1 = "gepard", gepard1a2 = "gepard", bmp2 = "bmp2", bmp2m = "bmp2" }
 local bad = {}
 local function near(a, b) return a and b and (a - b).Magnitude < 0.02 end
 for id, key in pairs(MODEL) do
@@ -54,7 +59,7 @@ for id, key in pairs(MODEL) do
     if not (Lang.zh["veh." .. id] and Lang.en["veh." .. id]) then table.insert(bad, id .. " 名字") end
   end
 end
-check(#bad == 0, "十型的炮、弹、装甲、名字、原模型元数据齐全" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(10, #bad))) or ""))
+check(#bad == 0, "这几型的炮、弹、装甲、名字、原模型元数据齐全" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(10, #bad))) or ""))
 local L = TM.eraOf("t80u")
 check(L ~= nil and L.b ~= nil and #L.b >= 10, "T-80U 原模型上量了爆反块（" .. tostring(L and L.b and #L.b) .. " 块）")
 -- 同一族的两型不共用嵌套的表（variant 深拷）：改一型的武器表不会改到另一型
@@ -69,6 +74,8 @@ print("② 科技树")
 local want = {
   ru_t80u = { "t80u" }, ru_bmp1 = { "bmp1" }, de_leo2a6 = { "leo2a6" }, de_leo1 = { "leo1" }, us_m60a3 = { "m60a3" },
   ru_t80b = { "t80b", "t80u" }, ru_t80bvm = { "t80bvm", "t80u" }, de_leo2a4 = { "leo2a4", "leo2a6" }, de_leo1a5 = { "leo1a5", "leo1" }, us_m60a1 = { "m60a1", "m60a3" },
+  ru_t64a = { "t64a" }, ru_t64b = { "t64b" }, jp_type74 = { "type74" }, jp_type74g = { "type74g" }, de_leo2a7v = { "leo2a7v" },
+  de_gepard = { "gepard1a1" }, de_gepard1a2 = { "gepard1a2" }, ru_bmp2 = { "bmp2" }, ru_bmp2m = { "bmp2m", "bmp2" },
 }
 local tb = {}
 for k, w in pairs(want) do
@@ -77,12 +84,14 @@ for k, w in pairs(want) do
 end
 check(#tb == 0, "这几族开的是自己的型号（同族老型号借同族的模型）" .. (#tb > 0 and ("：" .. table.concat(tb, " ")) or ""))
 local st = {}
-for _, k in ipairs({ "cn_86", "ru_t64a", "de_leo2a7v", "us_m60", "jp_type74" }) do
+for _, k in ipairs({ "cn_86", "us_m60", "us_m1" }) do
   local it = TT.get(k)
   if not (it and it.stand) then table.insert(st, k) end
 end
-check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("ru_t64a").play == "t80b" and TT.get("jp_type74").play == "leo1",
-  "别的还写「暂用」，改借这几型（86 式借 BMP-1、T-64 借 T-80B、74 式借豹 1）" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
+check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("us_m60").play == "m60a1" and TT.get("us_m1").play == "m1a1" and TT.get("cn_59") == nil,
+  "同族的照样借（86 式借 BMP-1、M60 借 M60A1、M1 借 M1A1）；没有原模型的（59 式借 M60）删了" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
+check(VD.get("t64a").weapons[1] == "gun125a" and B.GUN.gun125a[1] == "bm15" and WD.AMMO.bm15 ~= nil and not VD.get("t64a").lrf and VD.get("t64b").lrf,
+  "T-64A 打 3BM15、没有激光测距；T-64B 有")
 
 print("③ 试驾每一型")
 local me = T.join("P1", 9601, true)
@@ -103,7 +112,7 @@ local function drive(key)
   return P.vehicle
 end
 local function leave()
-  if P.vehicle then T.remoteAs(me, "Drive", { op = "exit" }) end
+  if P.vehicle then T.remoteAs(me, "Drive", { op = "exit", hangar = true }) end
   T.runUntil(function() return not P.alive end, 15)
   R.run(1.5)
 end
@@ -143,8 +152,8 @@ local function fireAt(e)
   R.run(0.5)
   return (G.wtHits or 0) > h0, G.wtLast
 end
-local KEYS = { "ru_bmp1", "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3" }   -- BMP-1 放最前：后面几型打过靶车以后靶车位置会变
-local FIRE = { ru_t80u = true, ru_bmp1 = true, us_m60a3 = true }
+local KEYS = { "ru_bmp1", "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3", "ru_t64a", "jp_type74" }   -- BMP-1 放最前：后面几型打过靶车以后靶车位置会变
+local FIRE = { ru_t80u = true, ru_bmp1 = true, us_m60a3 = true, ru_t64a = true }
 -- 只跑一型（排查用）：python3 tools/mock/run.py tools/mock/wtreal.lua only=ru_bmp1
 local ONLY = TEST_ARGS:match("only=([%w_]+)")
 if ONLY then KEYS, FIRE = { ONLY }, { [ONLY] = true } end
@@ -170,5 +179,31 @@ for _, key in ipairs(KEYS) do
   leave()
   check(not P.alive and not P.inTest, it.name .. "：下车回机库")
 end
+print("⑤ 歼-6（11-25 用户：「这个j6很奇怪」——原来借歼-8II 的模型和性能）")
+local AD = R.require(RS:FindFirstChild("AirDefs"))
+local IA = R.require(RS:FindFirstChild("ImportedAir"))
+local Hud = R.require(RS:FindFirstChild("HudIcons"))
+local j6 = AD.get("j6")
+check(j6 ~= nil and j6.gun == "nr30" and AD.W.nr30 ~= nil and AD.W.pl2 ~= nil, "歼-6 型号、三门 30 毫米炮、霹雳-2 都有")
+local j6k = IA.alias.j6   -- 11-25 断翼：外翼切成单独的块，版本号加一（j6 → j6_v2），老版本留在 old 里
+local j6m = j6k and IA.m[j6k]
+check(j6k ~= nil and j6k:match("^j6") ~= nil and j6m ~= nil and j6m.credit ~= nil and j6m.surf and j6m.surf.StabL and j6m.surf.Rud and j6m.wcut ~= nil,
+  "原模型元数据：alias（" .. tostring(j6k) .. "）、署名、全动平尾和方向舵的铰链、外翼切面")
+local oldj6 = IA.old and IA.old.j6
+check(type(oldj6) == "table" and table.concat(oldj6, ","):find("j6", 1, true) ~= nil and IA.m.j6 ~= nil, "老版本 j6 留着（没重导的照旧用）")
+local itj6 = TT.get("cn_j6")
+check(itj6.play == "j6" and not itj6.stand, "科技树的歼-6 开自己的型号（不再写「暂用」）")
+check(Lang.zh["veh.j6"] == "歼-6" and Lang.zh["aw.nr30"] ~= nil and Lang.zh["aw.pl2"] ~= nil, "名字：型号、炮、导弹")
+check(Hud.air_j6 ~= nil and Hud.air_j8 ~= nil and Hud.air_f16 ~= nil, "侧影图标：歼-6（还有原来缺的歼-8II、F-16C）")
+local ej = drive("cn_j6")
+check(ej ~= nil and ej.def and ej.def.id == "j6" and ej.model:GetAttribute("TreeKey") == "cn_j6", "试驾歼-6：坐进去的是 " .. tostring(ej and ej.def and ej.def.id))
+if ej then
+  R.run(2)
+  local v = ej.vel and ej.vel.Magnitude or 0
+  check(v > 100, string.format("在天上飞着（%.0f 格/秒）", v))
+end
+leave()
+check(not P.alive and not P.inTest, "歼-6：下飞机回机库")
+
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 800))
 T.summary()

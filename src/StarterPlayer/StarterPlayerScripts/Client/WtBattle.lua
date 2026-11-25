@@ -18,10 +18,11 @@ function WtBattle.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED, BLACK = Enum.Font.GothamBold, Enum.Font.GothamMedium, Enum.Font.GothamBlack
+  local BOLD, MED, BLACK = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium, Enum.Font.BuilderSansExtraBold
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, MUTE, INK = RGB(238, 242, 244), RGB(170, 176, 182), RGB(0, 0, 0)
-  local GOOD, BAD, GOLD = RGB(120, 230, 120), RGB(255, 96, 80), RGB(255, 206, 96)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, MUTE, INK = TH.C.TEXT, TH.C.MUTE, TH.C.INK
+  local GOOD, BAD, GOLD = TH.C.GOOD, TH.C.BAD, TH.C.WARN
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtBattle"
@@ -49,8 +50,9 @@ function WtBattle.init(G)
   end
   local function hex(c) return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local function teamColor(t)
-    local T0 = Config.Teams and Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
 
   ---------------------------------------------------------------- SP 那一块
@@ -304,7 +306,7 @@ function WtBattle.init(G)
     r.Visible = false
     feedRows[i] = { f = r, l = l }
   end
-  local BLUE, RED = RGB(110, 170, 255), RGB(255, 96, 80)
+  local BLUE, RED = TH.C.FRIEND, TH.C.FOE   -- 自己这边绿、对面红（统一外观，不用蓝）
   local function vehName(id, tk)   -- tk：科技树的键（科技树出的车写科技树里的名字）
     if tk then
       local nm = T("tree." .. tk)
@@ -358,22 +360,14 @@ function WtBattle.init(G)
       if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
     end
   end)
-  -- 战场奖章（战雷屏幕上方弹出来的那种）：一枚金色的章 + 名字 + 加了多少分，几个一起来就排队
-  local award = frame(gui, UD2(0, 300, 0, 64), UD2(0.5, 0, 0, 150), INK, 1, V2(0.5, 0))
+  -- 战场奖章：屏幕上方一条——左边一道琥珀细条 + 名字 + 加了多少分，几个一起来就排队
+  --   （统一外观 docs/style.md：不再画金色圆章、星星、22 号金字；用户 11-25「四不像」）
+  local award = frame(gui, UD2(0, 260, 0, 44), UD2(0.5, 0, 0, 150), TH.C.PANEL, TH.A.panel, V2(0.5, 0))
   award.Name = "WtAward"
   award.Visible = false
-  local medal = frame(award, UD2(0, 44, 0, 44), UD2(0, 0, 0.5, 0), GOLD, 0.05, V2(0, 0.5))
-  do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.5, 0)
-    c.Parent = medal
-    local st = Instance.new("UIStroke")
-    st.Color, st.Thickness, st.Transparency = RGB(120, 80, 20), 3, 0.1
-    st.Parent = medal
-  end
-  local medalT = label(medal, "★", UD2(1, 0, 1, 0), nil, 24, RGB(120, 70, 10), BLACK)
-  local awName = label(award, "", UD2(1, -54, 0, 28), UD2(0, 54, 0, 6), 22, GOLD, BLACK, nil, LEFT)
-  local awPts = label(award, "", UD2(1, -54, 0, 18), UD2(0, 54, 0, 36), 14, WHITE, BOLD, nil, LEFT)
+  frame(award, UD2(0, 3, 1, 0), UD2(0, 0, 0, 0), GOLD, 0)
+  local awName = label(award, "", UD2(1, -18, 0, 22), UD2(0, 14, 0, 3), 16, WHITE, BOLD, nil, LEFT)
+  local awPts = label(award, "", UD2(1, -18, 0, 16), UD2(0, 14, 0, 24), 13, GOLD, TH.F.mono, nil, LEFT)
   local awQueue, awUntil = {}, 0
   local function nextAward()
     local a = table.remove(awQueue, 1)
@@ -395,7 +389,7 @@ function WtBattle.init(G)
       local t = os.clock()
       local k = math.clamp(1 - (awUntil - t) / 0.25, 0, 1)   -- 刚出来的 0.25 秒：从大缩到正常
       local pop = 1 - math.clamp((t - (awUntil - 2.6)) / 0.25, 0, 1)
-      award.Size = UD2(0, 300 * (1 + 0.25 * pop), 0, 64 * (1 + 0.25 * pop))
+      award.Size = UD2(0, 260 * (1 + 0.06 * pop), 0, 44 * (1 + 0.06 * pop))
       if t > awUntil then nextAward() end
       local _ = k
     end
@@ -421,6 +415,7 @@ function WtBattle.init(G)
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen
     local driving = G.drive ~= nil or G.myVeh ~= nil
     local show = w ~= nil and not covered and not driving and (S.phase == "battle" or S.phase == "prep") and S.picked ~= false
+      and not (G.hangarGui and G.hangarGui.Visible)   -- 机库顶上自己写了 SP（TechUI.lua），这一块不再叠在 3D 车上
     chip.Visible = show
     local t = os.clock()
     if w then

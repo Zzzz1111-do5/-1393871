@@ -34,7 +34,7 @@ function Juice.init(G)
     l.Text = text
     l.TextSize = ts
     l.TextColor3 = color
-    l.Font = font or Enum.Font.GothamBold
+    l.Font = font or Enum.Font.BuilderSansBold
     l.TextXAlignment = align or Enum.TextXAlignment.Left
     l.TextStrokeTransparency = 0.45
     l.Parent = parent
@@ -47,9 +47,10 @@ function Juice.init(G)
   ticker.Name = "Ticker"
   ticker.BackgroundTransparency = 1
   ticker.Size = UDim2.fromOffset(260, 150)
-  ticker.Position = UDim2.new(0.5, 64, 0.5, -42)
+  ticker.Position = UDim2.new(0.5, 120, 0.5, -76)   -- 准星右上：让开准星右边坦克的测距字（WtTank「R 测距」）
   ticker.Parent = gui
-  local total = label(ticker, "", UDim2.fromOffset(240, 34), UDim2.fromOffset(0, 16), 28, RGB(255, 222, 120), Enum.Font.GothamBlack)
+  local TH = G.Theme   -- 统一外观（docs/style.md）：加分数字琥珀、说明白字，字号不再 28 号黑体大字
+  local total = label(ticker, "", UDim2.fromOffset(240, 26), UDim2.fromOffset(0, 18), 20, TH.C.WARN, TH.F.bold)
   total.Name = "Total"
   local tScale = Instance.new("UIScale")
   tScale.Parent = total
@@ -60,7 +61,7 @@ function Juice.init(G)
     end
   end
   local function addLine(text, color)
-    local l = label(ticker, text, UDim2.fromOffset(240, 20), UDim2.fromOffset(2, 40), 16, color or Color3.new(1, 1, 1))
+    local l = label(ticker, text, UDim2.fromOffset(240, 20), UDim2.fromOffset(2, 40), 14, color or TH.C.TEXT, TH.F.body)
     l.Name = "Line"
     table.insert(lines, 1, l)
     while #lines > 4 do table.remove(lines):Destroy() end
@@ -73,28 +74,30 @@ function Juice.init(G)
     lastT = now()
     total.Text = (sum > 0) and ("+" .. sum) or ""
     total.TextTransparency, total.TextStrokeTransparency = 0, 0.45
-    tScale.Scale = 1.35
+    tScale.Scale = 1.12
     TweenService:Create(tScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
     addLine(((pts or 0) > 0 and ("+" .. pts .. "  ") or "") .. text, color)
   end
 
   ---------------------------------------------------------------- ③ 连杀横幅
 
-  local banner = label(gui, "", UDim2.fromOffset(700, 60), UDim2.fromScale(0.5, 0.24), 44, RGB(255, 236, 170), Enum.Font.GothamBlack, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+  local banner = label(gui, "", UDim2.fromOffset(700, 40), UDim2.fromScale(0.5, 0.24), 28, TH.C.TEXT, TH.F.bold, V2(0.5, 0.5), Enum.TextXAlignment.Center)
   banner.Name = "Banner"
   banner.TextStrokeTransparency = 0.2
   banner.TextTransparency = 1
-  local sub = label(gui, "", UDim2.fromOffset(500, 26), UDim2.new(0.5, 0, 0.24, 38), 18, RGB(255, 200, 120), Enum.Font.GothamBold, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+  local sub = label(gui, "", UDim2.fromOffset(500, 22), UDim2.new(0.5, 0, 0.24, 30), 14, TH.C.MUTE, TH.F.body, V2(0.5, 0.5), Enum.TextXAlignment.Center)
   sub.Name = "BannerSub"
   sub.TextTransparency = 1
   local bScale = Instance.new("UIScale")
   bScale.Parent = banner
   local bannerT = -1e9
   local function showBanner(text, small)
+    -- 只开车的对局（机库）：连杀由 WtBattle 的战场奖章报，这里不再弹第二条（用户 11-25：「四不像」——屏幕中间叠了四套击杀提示）
+    if G.hangarActive and G.hangarActive() then return end
     banner.Text, sub.Text = text, small or ""
     banner.TextTransparency, banner.TextStrokeTransparency = 0, 0.2
     sub.TextTransparency, sub.TextStrokeTransparency = 0, 0.5
-    bScale.Scale = 1.6
+    bScale.Scale = 1.2
     TweenService:Create(bScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
     bannerT = now()
     if G.sfx then G.sfx("streak", nil, { vol = 0.9 }) end
@@ -116,7 +119,7 @@ function Juice.init(G)
     elseif kind == "vkill" then pts, what = SC.vehicleKill, T("juice.vkill")
     elseif kind == "fkill" then pts, what = SC.fortKill, T("juice.fkill") end
     G.juiceScore(pts, what)
-    if head then G.juiceScore(0, T("juice.head"), RGB(255, 205, 80)) end
+    if head then G.juiceScore(0, T("juice.head"), TH.C.WARN) end
     -- 连杀：4.5 秒内接着打死的算一串
     local t = now()
     for i = #kills, 1, -1 do if t - kills[i] > 4.5 then table.remove(kills, i) end end

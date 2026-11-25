@@ -21,10 +21,12 @@ function WtHud.init(G)
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
+  local BOLD, MONO = Enum.Font.BuilderSansBold, Enum.Font.RobotoMono
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local OK, HURT, DEAD, GREY = RGB(96, 230, 110), RGB(255, 206, 64), RGB(255, 70, 56), RGB(170, 176, 180)
-  local PEN, RIC, KILL = RGB(255, 150, 60), RGB(255, 214, 90), RGB(255, 64, 52)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local OK, HURT, DEAD, GREY = TH.C.GOOD, TH.C.WARN, TH.C.BAD, TH.C.MUTE
+  -- 打中的结果（站在开炮的人这边说）：击毁白、击穿琥珀、跳弹 / 没击穿灰（统一外观：红只留给「敌人、危险」）
+  local PEN, RIC, KILL = TH.C.WARN, TH.C.MUTE, TH.C.TEXT
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtHud"
@@ -76,9 +78,9 @@ function WtHud.init(G)
 
   local hitBox = frame(gui, UDim2.fromOffset(640, 52), UD2(0.5, 0, 0.5, 70), RGB(0, 0, 0), 1, V2(0.5, 0))
   hitBox.Name = "WtHitText"
-  local hitTop = label(hitBox, "", UD2(1, 0, 0, 24), UD2(0, 0, 0, 0), 20, PEN)
+  local hitTop = label(hitBox, "", UD2(1, 0, 0, 24), UD2(0, 0, 0, 0), 20, PEN, TH.F.bold)
   hitTop.Name = "Result"
-  local hitSub = label(hitBox, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 26), 14, Color3.new(1, 1, 1))
+  local hitSub = label(hitBox, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 26), 14, TH.C.TEXT)
   hitSub.Name = "Detail"
   hitBox.Visible = false
   local hitUntil = 0
@@ -91,6 +93,7 @@ function WtHud.init(G)
     elseif m.r == "np" then top, col = T("wt.np"), GREY
     else top, col = T("wt.hit"), PEN end
     hitTop.Text, hitTop.TextColor3 = top, col
+    if m.kill then G.wtKillShownAt = os.clock() end   -- Hud.lua 的 G.pop 看到就不再弹第二条「击毁 XX」（屏幕中间只留一处）
     local sub = details(m)
     if (m.r == "np" or m.r == "ric") and m.pen and m.arm then sub = T("wt.mm", m.arm, m.pen) .. ((sub ~= "") and ("   " .. sub) or "") end
     hitSub.Text = sub
@@ -198,7 +201,7 @@ function WtHud.init(G)
   xSlow.Name = "XrSlow"
   xSlow.ZIndex = 3
   local xStroke = xr:FindFirstChildOfClass("UIStroke")
-  local VP_BG, XR_LINE, INFO = RGB(14, 22, 30), RGB(120, 200, 140), RGB(200, 236, 255)
+  local VP_BG, XR_LINE, INFO = TH.C.BG, TH.C.HUD, TH.C.TEXT
   local TI, JD = 0.7, 0.95   -- 弹飞进来 0.7 秒；射流钻进去 0.95 秒（都是慢放的）
   local xa = nil
   local function ease(q) q = math.clamp(q, 0, 1) return 1 - (1 - q) ^ 2.4 end

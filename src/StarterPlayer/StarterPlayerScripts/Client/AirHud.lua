@@ -28,10 +28,11 @@ function AirHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local HOLO, TXT, MUTE, INK = RGB(118, 240, 140), RGB(238, 243, 245), RGB(156, 176, 160), RGB(6, 9, 12)   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
-  local YEL, BAD = RGB(255, 204, 58), RGB(255, 64, 52)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local HOLO, TXT, MUTE, INK = TH.C.HUD, TH.C.TEXT, TH.C.MUTE, TH.C.BG   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
+  local YEL, BAD = TH.C.WARN, TH.C.BAD
   local METAL, METAL_EDGE, METAL_ICON = RGB(138, 146, 152), RGB(200, 206, 210), RGB(226, 230, 232)
-  local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
+  local BOLD, MONO = Enum.Font.BuilderSansBold, Enum.Font.RobotoMono
   local WHITE = Color3.new(1, 1, 1)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -250,7 +251,7 @@ function AirHud.init(G)
     A.ret = { frame = ret, ring = rs, glow = gs, ticks = ticks, dot = dot }
   end
   A.holoPart, A.holoGui = holoPart, hsg
-  A.boreFall = label(gui, "+", UDim2.fromOffset(40, 40), UD2(0.5, 0, 0.5, 0), 34, HOLO, Enum.Font.Code, V2(0.5, 0.5))   -- 用不了 EditableImage
+  A.boreFall = label(gui, "+", UDim2.fromOffset(40, 40), UD2(0.5, 0, 0.5, 0), 34, HOLO, Enum.Font.RobotoMono, V2(0.5, 0.5))   -- 用不了 EditableImage
   A.boreFall.Name = "BoreMark"
   A.boreFall.Visible = false
 
@@ -284,7 +285,7 @@ function AirHud.init(G)
   A.leadT.Name = "LeadRange"
   A.leadT.BackgroundTransparency = 1
   A.leadT.Size, A.leadT.Position, A.leadT.AnchorPoint = UDim2.fromOffset(80, 14), UD2(1, 4, 0.5, 0), V2(0, 0.5)
-  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.Code, 12, Enum.TextXAlignment.Left
+  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.RobotoMono, 12, Enum.TextXAlignment.Left
   A.leadT.TextColor3, A.leadT.TextStrokeTransparency = Color3.fromRGB(255, 214, 110), 0.4
   A.leadT.Parent = A.lead
   A.lead.Visible = false
@@ -293,7 +294,7 @@ function AirHud.init(G)
   A.leadLine.Visible = false
 
   ---------------------------------------------------------------- 锁定（战雷式）：细的绿方框、框上型号、右边距离和接近速度；红外弹的导引头圈
-  local WT = RGB(86, 255, 118)   -- 战雷平显的绿（比全息绿更亮、更纯）
+  local WT = TH.C.HUD   -- 战雷平显的绿（比全息绿更亮、更纯）
   local LK = 40
   A.lock = frame(gui, UDim2.fromOffset(LK, LK), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.lock.Name = "LockMark"

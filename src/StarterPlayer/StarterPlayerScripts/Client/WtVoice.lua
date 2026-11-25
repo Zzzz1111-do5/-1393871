@@ -78,7 +78,7 @@ function WtVoice.init(G)
   end
 
   function G.wtVoice(key)
-    if VCFG.off or not LINES[key] then return end
+    if VCFG.off or G.voiceOff or not LINES[key] then return end   -- 设置里关了车组语音
     local t = os.clock()
     if t - (lastSaid[key] or -9) < 3 then return end
     lastSaid[key] = t

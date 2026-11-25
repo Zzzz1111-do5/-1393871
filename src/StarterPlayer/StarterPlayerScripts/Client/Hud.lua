@@ -22,14 +22,16 @@ function Hud.init(G)
   local V2 = Vector2.new
   local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local WHITE = Color3.new(1, 1, 1)
-  local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
-  local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local TEXT, MUTE, FAINT = TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
+  local NUM = Enum.Font.RobotoMono   -- 数字（弹药、距离、朝向）：统一用等宽（docs/style.md）
   local M_PER = 2.8            -- 1 米多少格（同 AirDefs.M）
   local function T(k, ...) return G.T(k, ...) end
-  local NEUTRAL = Color3.fromRGB(200, 200, 200)   -- 征服模式的中立据点
+  local NEUTRAL = TH.C.NEUTRAL   -- 征服模式的中立据点
   local function teamColor(t)
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or NEUTRAL
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return NEUTRAL end
+    return TH.side(t)
   end
   local function other(t) return (t == "atk") and "def" or "atk" end
   local function hex(c) return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
@@ -74,20 +76,20 @@ function Hud.init(G)
   for _, sx in ipairs({ -1, 1 }) do
     local left = sx < 0
     local s = {}
-    s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.GothamMedium, V2(left and 0 or 1, 0.5),
+    s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.BuilderSansMedium, V2(left and 0 or 1, 0.5),
       left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right)
     s.name.TextTruncate = Enum.TextTruncate.AtEnd
-    s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
+    s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5))
     local lw = mobile and 70 or 120
     s.barBg = line(top, UDim2.fromOffset(lw, 1), UDim2.new(0.5, sx * (46 + lw / 2), 0, 17), WHITE, 0.82, V2(0.5, 0.5))
     s.bar = line(s.barBg, UDim2.new(0, 0, 0, 2), UDim2.fromScale(left and 1 or 0, 0.5), WHITE, 0, V2(left and 1 or 0, 0.5))   -- 从时间那头往外长
     sides[sx] = s
   end
-  local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5))
-  local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.GothamMedium, V2(0.5, 0.5))
+  local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5))
+  local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5))
   mode.TextTruncate = Enum.TextTruncate.AtEnd
   -- 比分条下面一行：现在该干什么（进攻 / 防守哪个据点，用户：玩法不够清晰）
-  local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)
   goal.RichText = true
   goal.Size = UDim2.new(1, -8, 0, 18)
   goal.TextTruncate = Enum.TextTruncate.AtEnd
@@ -103,7 +105,7 @@ function Hud.init(G)
       local d = ui.frame(top, UDim2.fromOffset(13, 13), UDim2.new(0.5, cx, 0, BH - 20), WHITE, 1, V2(0.5, 0.5))
       d.Rotation = 45
       local st = ui.stroke(d, WHITE, 1, 0.15)
-      local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 1)
+      local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 1)
       local pb = line(top, UDim2.fromOffset(18, 1), UDim2.new(0.5, cx, 0, BH - 8), WHITE, 0.82, V2(0.5, 0))
       local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
       diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
@@ -137,8 +139,8 @@ function Hud.init(G)
     bb.Size = UDim2.fromOffset(80, 56)
     bb.ResetOnSpawn = false
     bb.Parent = pg
-    local verb = txt(bb, "", UDim2.fromOffset(80, 13), UDim2.fromScale(0.5, 0), 10, TEXT, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)   -- 进攻 / 防守
-    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.new(0.5, 0, 0, 13), 20, WHITE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.55)
+    local verb = txt(bb, "", UDim2.fromOffset(80, 13), UDim2.fromScale(0.5, 0), 10, TEXT, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)   -- 进攻 / 防守
+    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.new(0.5, 0, 0, 13), 20, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.55)
     local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 37), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
     marks[p.id] = { part = a, bb = bb, l = l, dist = dist, verb = verb, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
   end
@@ -166,7 +168,7 @@ function Hud.init(G)
 
   local RC = Config.Radar or { range = 520, ping = 3 }
   local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
-  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
+  local FRIEND, FOE = TH.C.FRIEND, TH.C.FOE
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
@@ -253,9 +255,9 @@ function Hud.init(G)
   end
   local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
   blipLayer.ZIndex = 20
-  local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.3)
+  local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 22
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.GothamBold, V2(0.5, 0), nil, 0.5)
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)
   north.ZIndex = 22
   local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, LINE, NUM, V2(0.5, 1), nil, 0.4)
   heading.ZIndex = 22
@@ -310,12 +312,17 @@ function Hud.init(G)
   -- 历史 / 全真模式（workspace 属性 WtMode = rb / sb，用户 11-25「全部都做」①）：小地图上的敌人只画自己看得见的、
   --   队友看得见的、被侦察标记的——服务器 WtMatch.lua 每 0.5 秒发一次这一队看得见的实体号（fx teamSeen）
   local teamSeen = {}      -- 实体号 → 到什么时候还算看得见
+  local teamSeenAt = -99   -- 最近一次收到的时刻
+  -- 炮兵视角（ArtyView.lua）问：这辆敌车全队看不看得见；最近 3 秒有没有收到过（PvE 不发）
+  G.teamSeenId = function(id) return (teamSeen[id] or 0) > os.clock() end
+  G.teamSeenFresh = function() return os.clock() - teamSeenAt < 3 end
   G.R.Fx.OnClientEvent:Connect(function(list)
     if type(list) ~= "table" then return end
     for _, e in ipairs(list) do
       if type(e) == "table" and e.k == "teamSeen" and type(e.ids) == "table" then
         local till = os.clock() + 1.6
         for _, id in ipairs(e.ids) do teamSeen[id] = till end
+        teamSeenAt = os.clock()
       end
     end
   end)
@@ -378,17 +385,17 @@ function Hud.init(G)
   local squad = ui.frame(P.hud, UDim2.fromOffset(250, 150), UDim2.new(0, 22, 1, -18), RGB(0, 0, 0), 1, V2(0, 1))   -- 左下角（小地图搬到右上了）
   squad.Name = "Squad"
   squad.Visible = not mobile
-  local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 0.6)
+  local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 0.6)
   local rows = {}
   for i = 1, 5 do
     local y = 24 + (i - 1) * 25
     local mark = ui.frame(squad, UDim2.fromOffset(6, 6), UDim2.fromOffset(4, y + 7), teamColor("atk"), 0, V2(0.5, 0.5))
     mark.Rotation = 45
-    local nm = txt(squad, "", UDim2.fromOffset(200, 16), UDim2.fromOffset(16, y), 13, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left, 0.7)
+    local nm = txt(squad, "", UDim2.fromOffset(200, 16), UDim2.fromOffset(16, y), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left, 0.7)
     nm.TextTruncate = Enum.TextTruncate.AtEnd
     local hb = line(squad, UDim2.fromOffset(170, 1), UDim2.fromOffset(16, y + 18), WHITE, 0.82)
     local hf = line(hb, UDim2.new(1, 0, 0, 2), UDim2.fromScale(0, 0.5), WHITE, 0, V2(0, 0.5))
-    local dead = txt(squad, "", UDim2.fromOffset(60, 16), UDim2.fromOffset(196, y), 11, RGB(230, 96, 84), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 0.7)
+    local dead = txt(squad, "", UDim2.fromOffset(60, 16), UDim2.fromOffset(196, y), 11, RGB(230, 96, 84), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 0.7)
     rows[i] = { mark = mark, nm = nm, hb = hb, hf = hf, dead = dead }
   end
 
@@ -406,14 +413,14 @@ function Hud.init(G)
   local tip = ui.frame(P.hud, UDim2.fromOffset(tipW, 168), UDim2.new(mobile and 0.42 or 0.5, 0, 0, BH + (mobile and 10 or 24)), RGB(8, 10, 12), 0.12, V2(0.5, 0))   -- 手机：让开右边的按钮
   tip.Name = "Tips"
   tip.Visible = false
-  local tipTitle = txt(tip, "", UDim2.new(1, -120, 0, 20), UDim2.fromOffset(20, 16), 16, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left, 1)
-  local tipPage = txt(tip, "", UDim2.fromOffset(80, 16), UDim2.new(1, -20, 0, 18), 11, MUTE, Enum.Font.GothamMedium, V2(1, 0), Enum.TextXAlignment.Right, 1)
+  local tipTitle = txt(tip, "", UDim2.new(1, -120, 0, 20), UDim2.fromOffset(20, 16), 16, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 1)
+  local tipPage = txt(tip, "", UDim2.fromOffset(80, 16), UDim2.new(1, -20, 0, 18), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right, 1)
   local NT = 4
   local segs = {}
   for k = 1, NT do
     segs[k] = line(tip, UDim2.new(1 / NT, -3, 0, 2), UDim2.new((k - 1) / NT, 0, 0, 48), WHITE, 0.8)
   end
-  local tipBody = ui.label(tip, "", UDim2.new(1, -40, 0, 54), UDim2.fromOffset(20, 60), 13, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local tipBody = ui.label(tip, "", UDim2.new(1, -40, 0, 54), UDim2.fromOffset(20, 60), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   tipBody.TextYAlignment = Enum.TextYAlignment.Top
   line(tip, UDim2.new(1, -40, 0, 1), UDim2.new(0, 20, 1, -46), WHITE, 0.88)
   local function keyChip(parent, x, anchorX)
@@ -425,8 +432,8 @@ function Hud.init(G)
     b.Text = ""
     b.Parent = parent
     local k = ui.frame(b, UDim2.fromOffset(46, 20), UDim2.new(anchorX, 0, 0.5, 0), RGB(40, 44, 48), 0.2, V2(anchorX, 0.5))
-    local kl = txt(k, "", UDim2.fromScale(1, 1), nil, 9, TEXT, Enum.Font.GothamBold, nil, nil, 1)
-    local wl = txt(b, "", UDim2.fromOffset(66, 20), UDim2.new(anchorX, (anchorX == 0) and 54 or -54, 0.5, 0), 12, TEXT, Enum.Font.GothamMedium, V2(anchorX, 0.5),
+    local kl = txt(k, "", UDim2.fromScale(1, 1), nil, 9, TEXT, Enum.Font.BuilderSansBold, nil, nil, 1)
+    local wl = txt(b, "", UDim2.fromOffset(66, 20), UDim2.new(anchorX, (anchorX == 0) and 54 or -54, 0.5, 0), 12, TEXT, Enum.Font.BuilderSansMedium, V2(anchorX, 0.5),
       (anchorX == 0) and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, 1)
     return b, kl, wl
   end
@@ -718,7 +725,7 @@ function Hud.init(G)
           local alive = hum ~= nil and hum.Health > 0
           r.nm.Text = string.upper(pl.DisplayName)
           r.nm.TextColor3 = (pl == me) and WHITE or TEXT
-          r.nm.Font = (pl == me) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+          r.nm.Font = (pl == me) and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium
           r.mark.BackgroundColor3 = tc
           r.hb.Visible = alive
           r.hf.Size = UDim2.new(k, 0, 0, 2)
@@ -779,10 +786,46 @@ function Hud.init(G)
     end
     return best
   end
+  -- 战雷式（不当步兵，TechUI.lua G.hangarActive）：在车里 / 飞机里长按 H 1.2 秒 = 回机库（Tech.lua treeLeave：车收走、人回机库，不放阵亡）；
+  --   用户 11-25「在车上按空格也不要自动阵亡了」——原来空格就是下车 = 判毁阵亡，现在只有这一下有意的长按才离开载具
+  local HOLD = 1.2
+  local holdT = nil
+  local holdBox = ui.frame(G.gui, UDim2.fromOffset(220, 34), UDim2.new(0.5, 0, 0.7, 0), TH.C.PANEL, 0.2, Vector2.new(0.5, 0.5))
+  holdBox.Name = "HangarHold"
+  holdBox.Visible = false
+  local holdFill = ui.frame(holdBox, UDim2.new(0, 0, 0, 2), UDim2.new(0, 0, 1, -2), TEXT, 0)
+  local holdT2 = Instance.new("TextLabel")
+  holdT2.BackgroundTransparency = 1
+  holdT2.Size = UDim2.fromScale(1, 1)
+  holdT2.Font = TH.F and TH.F.bold or Enum.Font.BuilderSansBold
+  holdT2.TextSize = 14
+  holdT2.TextColor3 = TEXT
+  holdT2.Text = T("ui.holdHangar")
+  holdT2.Parent = holdBox
+  local function inVehWt() return G.hangarActive and G.hangarActive() and (G.drive ~= nil or G.fly ~= nil) end
   UIS.InputBegan:Connect(function(io, gp)
     if gp or io.KeyCode ~= Enum.KeyCode.H then return end
     local S = G.S
+    if inVehWt() then
+      holdT = os.clock()
+      return
+    end
     if S and S.alive and S.phase == "battle" then G.R.Act:FireServer("redeploy") end
+  end)
+  G.frameConn("HangarHold", function()
+    if not holdT then
+      if holdBox.Visible then holdBox.Visible = false end
+      return
+    end
+    if not UIS:IsKeyDown(Enum.KeyCode.H) or not inVehWt() then holdT = nil holdBox.Visible = false return end
+    local u = (os.clock() - holdT) / HOLD
+    holdBox.Visible = true
+    holdFill.Size = UDim2.new(math.clamp(u, 0, 1), 0, 0, 2)
+    if u >= 1 then
+      holdT = nil
+      holdBox.Visible = false
+      G.R.Drive:FireServer({ op = "exit", hangar = true })
+    end
   end)
 
   ---------------------------------------------------------------- 压制（Fx.lua 子弹擦身时调 G.suppress）：屏幕四边往里渐暗、微微模糊，两三秒退掉；越近、越密越重
@@ -822,8 +865,18 @@ function Hud.init(G)
   ---------------------------------------------------------------- 准星下面弹一行（击杀、占领）：一两秒淡出，新的把旧的往上顶（用户：感受不到激烈对抗）
   local pops = {}
   function G.pop(text, kind)
-    local col = (kind == "kill") and RGB(255, 214, 120) or (kind == "ric") and RGB(255, 178, 64) or (kind == "ricIn") and RGB(200, 220, 255) or RGB(140, 230, 160)
-    local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.45)
+    -- 击毁：WtHud（开车打中的结果）刚报过「击毁」就不再弹这一条（服务器的击杀消息和命中结果几乎同时到，两边都弹就叠成两行）
+    if kind == "kill" and G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6 then return end
+    if kind == "kill" and G.drive ~= nil then   -- 开着车：命中结果可能晚一点到，等 0.25 秒再看
+      task.delay(0.25, function()
+        if not (G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6) then G.pop(text, "killNow") end
+      end)
+      return
+    end
+    if kind == "killNow" then kind = "kill" end
+    -- 统一外观：击杀白、跳弹琥珀、被跳弹灰、其他绿（不用蓝）
+    local col = (kind == "kill") and TEXT or (kind == "ric") and TH.C.WARN or (kind == "ricIn") and MUTE or TH.C.GOOD
+    local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 0.45)
     l.ZIndex = 25
     table.insert(pops, 1, l)
     for i, x in ipairs(pops) do

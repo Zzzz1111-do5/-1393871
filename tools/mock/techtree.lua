@@ -1,6 +1,6 @@
 -- 科技树、机库、只开载具（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
 --   「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」）：python3 tools/mock/run.py tools/mock/techtree.lua
---   ① 数据：五个系 × 两棵树，每一项能开（veh / base 在 VehDefs / AirDefs 里），同一列前置连得上，每棵树第一级有白送的
+--   ① 数据：五个系 × 三棵树（坦克、战机、直升机），每一项能开（veh / base 在 VehDefs / AirDefs 里），同一列前置连得上，每棵树第一级有白送的
 --   ② 机库：没出击时盖住步兵部署页，底下是出击阵容（白送的那几辆）；当步兵出击被拒
 --   ③ 出击：点阵容里一辆坦克的「出击」，人直接坐在这辆车里、出现在自己基地；车上记着科技树的名字
 --   ④ 「下车」= 回机库：车没了、人阵亡，机库又出来
@@ -21,7 +21,7 @@ local TT = R.require(R.services.ReplicatedStorage:FindFirstChild("TechTree"))
 local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 local AD = R.require(R.services.ReplicatedStorage:FindFirstChild("AirDefs"))
 
-print("① 数据：五个系、两棵树")
+print("① 数据：五个系、三棵树")
 local nAll, bad, noFree = 0, {}, {}
 for _, nat in ipairs(TT.NATIONS) do
   for _, br in ipairs(TT.BRANCHES) do
@@ -31,13 +31,14 @@ for _, nat in ipairs(TT.NATIONS) do
       nAll = nAll + 1
       if not (VD.get(it.play) or AD.get(it.play)) then table.insert(bad, it.key .. "→" .. tostring(it.play)) end
       if it.prev and not TT.get(it.prev) then table.insert(bad, it.key .. " 前置 " .. it.prev) end
-      if (br == "air") ~= (AD.get(it.play) ~= nil) then table.insert(bad, it.key .. " 树和型号对不上") end
+      local ad = AD.get(it.play)
+      if (br ~= "ground") ~= (ad ~= nil) or (ad and (ad.kind == "heli") ~= (br == "heli")) then table.insert(bad, it.key .. " 树和型号对不上") end
       if it.free then free = free + 1 end
     end
-    if free == 0 then table.insert(noFree, nat .. ":" .. br) end
+    if free == 0 and #list > 0 then table.insert(noFree, nat .. ":" .. br) end   -- 空着的树（德国固定翼：没找到原模型，都删了）不算
   end
 end
-check(nAll >= 150, "一共 " .. nAll .. " 项（中德美日俄 × 坦克 / 战机，1960 年到现代）")
+check(nAll >= 90, "一共 " .. nAll .. " 项（中德美日俄 × 坦克 / 战机 / 直升机；没有原模型的 11-25 删了）")
 check(#bad == 0, "每一项都开得了（型号在 VehDefs / AirDefs 里）、前置连得上" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(8, #bad))) or ""))
 check(#noFree == 0, "每棵树第一级都有白送的" .. (#noFree > 0 and ("（缺 " .. table.concat(noFree, " ") .. "）") or ""))
 
@@ -85,9 +86,14 @@ R.run(0.5)
 -- 机库每次刷新都重建卡片：等到开战以后再找按钮（旧卡片已经销毁了，按了没反应）
 local goBtn
 for _, c in ipairs(hg and hg:GetDescendants() or {}) do
-  if c.Name == "Line_" .. tostring(groundKey) then goBtn = c:FindFirstChild("Go") end
+  if c.Name == "Line_" .. tostring(groundKey) then goBtn = c end   -- 机库 11-25 重排：点卡片选中，右下一个大「出击」（HangarGo）
 end
-check(goBtn ~= nil, "卡片上有「出击」")
+check(goBtn ~= nil, "阵容里有这张卡")
+if goBtn then T.press(goBtn) R.run(0.2) end
+for _, c in ipairs(hg and hg:GetDescendants() or {}) do
+  if c.Name == "HangarGo" then goBtn = c end
+end
+check(goBtn ~= nil and goBtn.Name == "HangarGo", "右下有大「出击」")
 -- 追踪：出击走到哪一步（失败时打印）
 local trace = {}
 local function tr(s) table.insert(trace, s) end
@@ -162,12 +168,17 @@ check(nTools == 0, "身上没有枪（背包里 " .. nTools .. " 样）")
 R.run(1)
 check(hg and not hg.Visible, "出击了：机库收起来")
 
-print("④ 「下车」= 回机库")
-T.remoteAs(me, "Drive", { op = "exit" })
-R.run(3)
+print("④ 「下车」= 回机库（用户 11-25「在车上按空格也不要自动阵亡了」：空格不下车，长按 H 才回机库，也不放阵亡）")
+T.remoteAs(me, "Drive", { op = "exit" })   -- 空格 / F / E 的老「下车」
+R.run(2)
+check(e ~= nil and e.alive and P.alive and P.vehicle == e, "老的「下车」请求不理：车还在、人还在车里")
+local fxOn = false
+T.remoteAs(me, "Drive", { op = "exit", hangar = true })   -- 长按 H
+T.runUntil(function() if C.deathFxOn and C.deathFxOn() then fxOn = true end return false end, 3)
 check(e ~= nil and not e.alive, "车没了")
 T.runUntil(function() return not P.alive end, 10)
-check(not P.alive, "人阵亡（回出击界面）")
+check(not P.alive, "人回机库")
+check(not fxOn, "回机库不放阵亡效果")
 T.runUntil(function() return hg and hg.Visible end, 15)
 check(hg and hg.Visible, "机库又出来了")
 
@@ -222,7 +233,7 @@ if nxt then
   check(rp > 0 and ((t.rp[nxt.key] or 0) > 0 or TT.researched(t, nxt.key)), string.format("一局结束：挣了 %d 研究点，记在 %s 上（%d / %d）", rp, nxt.name, t.rp[nxt.key] or 0, nxt.rp))
 end
 print("⑦ 资料卡、装甲查看器")
-R.as("client", function() C.openInfo(TT.get("cn_59")) end)
+R.as("client", function() C.openInfo(TT.get("cn_96")) end)
 R.run(0.5)
 local ip = C.infoGui
 local nPart, cols, penRow = 0, {}, false

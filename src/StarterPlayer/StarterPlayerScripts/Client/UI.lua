@@ -28,7 +28,8 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 小工具
 
-  local PANEL, LINE, TEXT, MUTE = RGB(16, 20, 24), RGB(255, 255, 255), RGB(236, 240, 236), RGB(160, 170, 166)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local PANEL, LINE, TEXT, MUTE = TH.C.PANEL, TH.C.LINE, TH.C.TEXT, TH.C.MUTE
   local function frame(parent, size, pos, color, alpha, anchor)
     local f = Instance.new("Frame")
     f.Size = size
@@ -64,7 +65,7 @@ function UI.init(G)
     l.Text = text or ""
     l.TextSize = ts or 16
     l.TextColor3 = color or TEXT
-    l.Font = font or Enum.Font.GothamMedium
+    l.Font = font or Enum.Font.BuilderSansMedium
     l.TextXAlignment = align or Enum.TextXAlignment.Center
     l.TextWrapped = true
     l.Parent = parent
@@ -81,7 +82,7 @@ function UI.init(G)
     b.Text = text or ""
     b.TextColor3 = TEXT
     b.TextSize = 16
-    b.Font = Enum.Font.GothamBold
+    b.Font = Enum.Font.BuilderSansBold
     b.AutoButtonColor = true
     b.Parent = parent
     round(b, 8)
@@ -98,14 +99,15 @@ function UI.init(G)
         bg.BackgroundColor3, bg.BackgroundTransparency = LINE, 0.86
       end
     end
-    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.GothamMedium, TEXT end
+    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.BuilderSansMedium, TEXT end
   end
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
@@ -114,7 +116,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 出错红条、开服进度
 
-  local errBar = label(gui, "", UDim2.new(1, -40, 0, 0), UDim2.new(0.5, 0, 0, 6), 14, RGB(255, 220, 220), Enum.Font.GothamMedium, Vector2.new(0.5, 0))
+  local errBar = label(gui, "", UDim2.new(1, -40, 0, 0), UDim2.new(0.5, 0, 0, 6), 14, RGB(255, 220, 220), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
   errBar.AutomaticSize = Enum.AutomaticSize.Y
   errBar.BackgroundColor3 = RGB(150, 30, 30)
   errBar.BackgroundTransparency = 0.15
@@ -130,7 +132,7 @@ function UI.init(G)
 
   local loading = frame(gui, UDim2.fromScale(1, 1), nil, RGB(10, 14, 18), 0)
   loading.ZIndex = 40
-  local loadText = label(loading, "", UDim2.new(1, 0, 0, 40), UDim2.fromScale(0, 0.5), 22, TEXT, Enum.Font.GothamBold)
+  local loadText = label(loading, "", UDim2.new(1, 0, 0, 40), UDim2.fromScale(0, 0.5), 22, TEXT, Enum.Font.BuilderSansBold)
   loadText.ZIndex = 41
 
   ---------------------------------------------------------------- 部署界面
@@ -139,7 +141,7 @@ function UI.init(G)
   --   要比参考图精致、简洁（用户：现在这个太卡通）：黑底半透明、细线、直角、小字，只有主按钮是白底黑字
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
-  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
   local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
@@ -169,13 +171,13 @@ function UI.init(G)
     b.Text = ""
     b.TextSize = mobile and 16 or 19
     b.TextColor3 = RGB(10, 10, 12)
-    b.Font = Enum.Font.GothamBold
+    b.Font = Enum.Font.BuilderSansBold
     b.TextXAlignment = Enum.TextXAlignment.Left
     b.Parent = parent
     local pad = Instance.new("UIPadding")
     pad.PaddingLeft = UDim.new(0, 22)
     pad.Parent = b
-    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.GothamMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.BuilderSansMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
     return b, b, k
   end
   -- 只有字的按钮（页签、换阵营、语言）
@@ -186,7 +188,7 @@ function UI.init(G)
     b.Text = s
     b.TextSize = ts or 13
     b.TextColor3 = DIM
-    b.Font = Enum.Font.GothamMedium
+    b.Font = Enum.Font.BuilderSansMedium
     b.TextXAlignment = align or Enum.TextXAlignment.Left
     b.AutoButtonColor = false
     b.Parent = parent
@@ -216,7 +218,7 @@ function UI.init(G)
   local tabs = {}
   for i, pg in ipairs({ "kit", "spawn" }) do
     local b = link(deploy, "", UDim2.fromOffset(mobile and 70 or 92, 26), UDim2.fromOffset(M0 + (i - 1) * (mobile and 80 or 104), topY), mobile and 14 or 16)
-    b.Font = Enum.Font.GothamBold
+    b.Font = Enum.Font.BuilderSansBold
     local u = hair(b, UDim2.new(0, 22, 0, 2), UDim2.new(0, 0, 1, 2), 0)
     tabs[pg] = { b = b, u = u }
   end
@@ -234,16 +236,16 @@ function UI.init(G)
   ------------------------------------ 装备页
   local infoY = topY + (mobile and 40 or 66)
   local facDot = frame(kitPage, UDim2.fromOffset(6, 6), UDim2.fromOffset(M0, infoY + 5), WHITE, 0)
-  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local stats = {}
   for k = 1, 4 do
     local y = infoY + (mobile and 84 or 112) + (k - 1) * 24
-    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
     local bg = hair(kitPage, UDim2.fromOffset(180, 2), UDim2.fromOffset(M0 + 86, y + 7), 0.86)
     local fill = frame(bg, UDim2.fromScale(0.5, 1), nil, WHITE, 0.05)
-    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
     stats[k] = { a = a, bg = bg, fill = fill, v = v }
     a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
   end
@@ -253,12 +255,12 @@ function UI.init(G)
   local gsBtn = Instance.new("TextButton")
   gsBtn.Size, gsBtn.Position = UDim2.fromOffset(mobile and 110 or 132, mobile and 30 or 34), UDim2.fromOffset(M0, gsY)
   gsBtn.BackgroundColor3, gsBtn.BackgroundTransparency, gsBtn.BorderSizePixel, gsBtn.AutoButtonColor = RGB(206, 255, 72), 0, 0, true
-  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.GothamBlack, mobile and 13 or 14, RGB(18, 22, 8), ""
+  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.BuilderSansExtraBold, mobile and 13 or 14, RGB(18, 22, 8), ""
   gsBtn.Visible = false
   gsBtn.Parent = kitPage
-  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   gsLine.Visible = false
-  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   gsLv.Visible = false
 
   gsBtn.Activated:Connect(function()
@@ -288,7 +290,7 @@ function UI.init(G)
   local cards = {}
   local picker = frame(kitPage, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   picker.Visible = false
-  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   local pickCards = {}
   local function newCard(parent, w, h)
     local b = Instance.new("TextButton")
@@ -313,10 +315,10 @@ function UI.init(G)
     vp.LightColor = RGB(255, 250, 242)
     vp.LightDirection = Vector3.new(-0.35, -1, -0.55)
     vp.Parent = b
-    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.GothamMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
-    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.BuilderSansMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.BuilderSansBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
     local bar = frame(b, UDim2.new(1, 0, 0, 2), nil, WHITE, 1)   -- 选中的那格顶上一道白线
     return { b = b, st = st, vp = vp, idx = idx, cat = cat, nm = nm, cnt = cnt, bar = bar, item = nil, wait = false }
   end
@@ -346,7 +348,7 @@ function UI.init(G)
   roleLay.SortOrder = Enum.SortOrder.LayoutOrder
   roleLay.VerticalAlignment = Enum.VerticalAlignment.Center
   roleLay.Parent = roleRow
-  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   roleHead.LayoutOrder = 0
   local roleBtns = {}
   for i, r in ipairs(Config.RoleKits or {}) do
@@ -367,7 +369,7 @@ function UI.init(G)
   -- 主按钮：选择生成点
   local CW, CH = mobile and 200 or 270, mobile and 48 or 62
   local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
-  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.GothamMedium, Vector2.new(1, 1), Enum.TextXAlignment.Right)
+  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.BuilderSansMedium, Vector2.new(1, 1), Enum.TextXAlignment.Right)
 
   -- 数量（消耗品：弹匣 + 备弹）
   local function countOf(id)
@@ -436,7 +438,7 @@ function UI.init(G)
   ------------------------------------ 生成点页
   local listW = mobile and 230 or 340
   local listY = topY + (mobile and 40 or 66)
-  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   local list = Instance.new("ScrollingFrame")
   list.Size = UDim2.new(0, listW, 1, -(listY + 24) - (mobile and 80 or 150))
   list.Position = UDim2.fromOffset(M0, listY + 24)
@@ -461,15 +463,15 @@ function UI.init(G)
   local spawnLayer = nil
   local spawnBtns = {}
   -- 装备一行 + 改装备
-  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local editKit = link(spawnPage, "", UDim2.fromOffset(160, 18), UDim2.new(0, M0, 1, slotY), 12, Vector2.new(0, 1))
   editKit.TextColor3 = WHITE
-  editKit.Font = Enum.Font.GothamBold
+  editKit.Font = Enum.Font.BuilderSansBold
   -- 主按钮：出击
   local deployBtn, deployBtnT, deployBtnK = mainButton(spawnPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
 
   -- 键位说明放在部署界面最下面（战斗里第一人称不显示键位）
-  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 14), UDim2.new(0.5, 0, 1, -16), 11, FAINT, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  local deployHelp = label(deploy, "", UDim2.new(1, -40, 0, 14), UDim2.new(0.5, 0, 1, -16), 11, FAINT, Enum.Font.BuilderSans, Vector2.new(0.5, 0))
   deployHelp.Visible = not G.mobile
   -- 开着菜单（挂载编辑器、部署界面）：鼠标要放出来点东西
   function G.menuOpen()
@@ -563,8 +565,8 @@ function UI.init(G)
       row.Text = ""
       row.Parent = list
       frame(row, UDim2.new(0, 2, 1, 0), nil, WHITE, chosen and 0 or 1)
-      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.GothamBold or Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-      local tag = txt(row, s.ok and (s.rec and T("deploy.rec") or "") or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.GothamBold, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+      local tag = txt(row, s.ok and (s.rec and T("deploy.rec") or "") or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.BuilderSansBold, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
       if s.ok and s.rec then tag.TextColor3 = teamColor(S.team or "atk"):Lerp(WHITE, 0.3) end   -- 推荐：离当前目标最近
       row.Activated:Connect(pick)
       table.insert(spawnBtns, row)
@@ -588,7 +590,7 @@ function UI.init(G)
         st.Transparency = 0.3
         st.Parent = b
         if chosen then
-          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
           tip.ZIndex = 8
           tip.TextStrokeTransparency = 0.4
           table.insert(spawnBtns, tip)
@@ -718,7 +720,7 @@ function UI.init(G)
     for id, rb in pairs(roleBtns) do
       rb.b.Text = T("kitrole." .. id)
       rb.b.TextColor3 = (id == cur) and WHITE or DIM
-      rb.b.Font = (id == cur) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      rb.b.Font = (id == cur) and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium
       rb.u.BackgroundTransparency = (id == cur) and 0 or 1
     end
     -- 标题、说明、数据、大图：看的那一格
@@ -815,18 +817,18 @@ function UI.init(G)
   hud.Name = "Hud"
   local topBar = frame(hud, UDim2.fromOffset(460, 74), UDim2.new(0.5, 0, 0, 8), PANEL, 0.35, Vector2.new(0.5, 0))
   round(topBar, 10)
-  local timer = label(topBar, "", UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 20, TEXT, Enum.Font.GothamBlack)
+  local timer = label(topBar, "", UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 20, TEXT, Enum.Font.BuilderSansExtraBold)
   local chips = {}
   for i, p in ipairs(Map.POINTS) do
     local c = frame(topBar, UDim2.fromOffset(80, 38), UDim2.fromOffset(10 + (i - 1) * 89, 30), RGB(30, 40, 60), 0.05)
     round(c, 6)
-    local l = label(c, p.id, UDim2.new(0, 26, 1, 0), UDim2.fromOffset(4, 0), 20, Color3.new(1, 1, 1), Enum.Font.GothamBlack)
-    local n = label(c, "", UDim2.new(1, -32, 0, 18), UDim2.fromOffset(30, 3), 12, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local l = label(c, p.id, UDim2.new(0, 26, 1, 0), UDim2.fromOffset(4, 0), 20, Color3.new(1, 1, 1), Enum.Font.BuilderSansExtraBold)
+    local n = label(c, "", UDim2.new(1, -32, 0, 18), UDim2.fromOffset(30, 3), 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
     local barBg = frame(c, UDim2.new(1, -36, 0, 5), UDim2.new(0, 30, 1, -10), RGB(0, 0, 0), 0.5)
     local bar = frame(barBg, UDim2.fromScale(0, 1), nil, Config.Teams.atk.color, 0)
     chips[p.id] = { f = c, l = l, n = n, bar = bar }
   end
-  local counts = label(hud, "", UDim2.fromOffset(240, 20), UDim2.new(0.5, 0, 0, 84), 14, TEXT, Enum.Font.GothamBold, Vector2.new(0.5, 0))
+  local counts = label(hud, "", UDim2.fromOffset(240, 20), UDim2.new(0.5, 0, 0, 84), 14, TEXT, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
   counts.TextStrokeTransparency = 0.5
 
   -- 血条
@@ -834,10 +836,10 @@ function UI.init(G)
   round(hpBg, 4)
   local hpBar = frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
   round(hpBar, 4)
-  local hpText = label(hpBg, "", UDim2.fromScale(1, 1), nil, 12, Color3.new(1, 1, 1), Enum.Font.GothamBold)
-  local roleText = label(hud, "", UDim2.fromOffset(260, 18), UDim2.new(0, 20, 1, -62), 14, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local hpText = label(hpBg, "", UDim2.fromScale(1, 1), nil, 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold)
+  local roleText = label(hud, "", UDim2.fromOffset(260, 18), UDim2.new(0, 20, 1, -62), 14, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   roleText.TextStrokeTransparency = 0.5
-  local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
+  local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 0))
   help.TextStrokeTransparency = 0.6
 
   -- 小地图容器（Hud.lua 摆到右上、画成方形雷达小地图）：CanvasGroup 才能把里面的地图、亮点按框裁掉
@@ -860,7 +862,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 消息
 
-  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   center.TextStrokeTransparency = 0.3
   center.ZIndex = 30
   local centerT = 0
@@ -879,10 +881,10 @@ function UI.init(G)
   toastList.Parent = toasts
   local order = 0
   -- 跟新界面一个样子（深色、直角、细线）：底是深色，左边一道颜色细条分好消息、坏消息、击杀
-  local KIND_COL = { good = RGB(96, 200, 124), bad = RGB(232, 84, 72), info = RGB(160, 170, 166), kill = RGB(232, 184, 76) }
+  local KIND_COL = { good = TH.C.GOOD, bad = TH.C.BAD, info = TH.C.MUTE, kill = TH.C.WARN }
   function G.toast(text, kind)
     order += 1
-    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.GothamMedium)
+    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.BuilderSansMedium)
     l.BackgroundColor3 = RGB(6, 8, 10)
     l.BackgroundTransparency = 0.2
     l.LayoutOrder = order
@@ -897,7 +899,7 @@ function UI.init(G)
   end
   local function feedAdd(text)
     order += 1
-    local l = label(feed, text, UDim2.fromOffset(340, 22), nil, 14, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Right)
+    local l = label(feed, text, UDim2.fromOffset(340, 22), nil, 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Right)
     l.TextStrokeTransparency = 0.4
     l.LayoutOrder = order
     local kids = {}
@@ -934,6 +936,7 @@ function UI.init(G)
     if G.pop and (kind == "kill" or key == "ui.capturedYou") then G.pop(text, kind) end
     if kind == "center" then G.centerMsg(text)
     elseif kind == "feed" then feedAdd(text)
+    elseif kind == "kill" then   -- 击杀：准星下面那一行（或开车时命中结果的「已击毁」）+ 左边击杀栏已经有了，不再在下面弹第三条（统一外观：一件事只报一处）
     else G.toast(text, kind) end
   end
 
@@ -944,7 +947,7 @@ function UI.init(G)
   board.Visible = false
   board.ZIndex = 20
   stroke(board, LINE, 1, 0.88)
-  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   boardTitle.ZIndex = 21
   local cols = {}
   for i, t in ipairs({ "atk", "def" }) do
@@ -952,7 +955,7 @@ function UI.init(G)
     c.ZIndex = 21
     local tl = frame(c, UDim2.new(1, 0, 0, 2), nil, teamColor(t), 0)   -- 顶上一道队色细线
     tl.ZIndex = 22
-    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
     h.ZIndex = 22
     local list = Instance.new("Frame")
     list.BackgroundTransparency = 1
@@ -979,7 +982,7 @@ function UI.init(G)
       hdr.LayoutOrder = 0
       hdr.ZIndex = 22
       for k, txt in ipairs({ "", T("ui.kills"), T("ui.deaths"), T("ui.captures"), T("ui.score") }) do
-        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.GothamMedium)
+        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.BuilderSansMedium)
         l.ZIndex = 23
       end
       for i, e in ipairs(rows) do
@@ -990,7 +993,7 @@ function UI.init(G)
         local nm = e.n .. (e.bot and (" " .. T("ui.bot")) or "")
         for k, txt in ipairs({ nm, tostring(e.k or 0), tostring(e.d or 0), tostring(e.c or 0), tostring(e.s or 0) }) do
           local l = label(r, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 12, TEXT,
-            Enum.Font.GothamMedium, nil, k == 1 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
+            Enum.Font.BuilderSansMedium, nil, k == 1 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
           l.ZIndex = 23
           l.TextTruncate = Enum.TextTruncate.AtEnd
         end
@@ -1025,21 +1028,21 @@ function UI.init(G)
   results.ZIndex = 25
   stroke(results, LINE, 1, 0.88)
   local resLine = frame(results, UDim2.new(1, 0, 0, 2), nil, LINE, 0)
-  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
-  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local resNums = {}
   for i, k in ipairs({ "ui.kills", "ui.deaths", "ui.captures", "ui.score" }) do
     local x = 28 + (i - 1) * 146
     resNums[i] = {
       k = k,
-      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
-      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left),
+      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left),
+      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left),
     }
   end
   local resSep = frame(results, UDim2.new(1, -56, 0, 1), UDim2.fromOffset(28, 196), LINE, 0.88)
-  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   for _, x in ipairs({ resLine, resCap, resTitle, resSub, resSep, resXp, resNext }) do x.ZIndex = 26 end
   for _, r in ipairs(resNums) do r.n.ZIndex, r.c.ZIndex = 26, 26 end
   if mobile then   -- 手机横屏（844 × 390）：缩一点，别盖住触屏按钮

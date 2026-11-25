@@ -17,8 +17,9 @@ function WtAmmo.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
-  local WHITE, DIM, GOLD, BAD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120), RGB(255, 96, 80)
+  local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, DIM, GOLD, BAD = TH.C.TEXT, TH.C.MUTE, TH.C.WARN, TH.C.BAD
   local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹（同服务器 Wt.lua）
 
   local gui = Instance.new("ScreenGui")
@@ -158,6 +159,12 @@ function WtAmmo.init(G)
       for _, k in ipairs(list) do cur[k] = math.floor((cur[k] or 0) / 2) end
       send()
     end)
+    -- 涂装、贴花（⑯，WtSkin.lua）：机库顶栏的图标键放不下了，从配弹面板进
+    if G.openSkin then
+      local b4 = button(panel, T("wsk.title"), UDim2.fromOffset(110, 32), UD2(0, 216, 0, by))
+      b4.Name = "SkinBtn"
+      b4.MouseButton1Click:Connect(function() close() G.openSkin(key) end)
+    end
     local b3 = button(panel, T("wta2.close"), UDim2.fromOffset(96, 32), UD2(1, -108, 0, by))
     b3.Name = "Close"
     b3.MouseButton1Click:Connect(close)

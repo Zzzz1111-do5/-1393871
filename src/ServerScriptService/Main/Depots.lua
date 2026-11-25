@@ -350,7 +350,8 @@ function Depots.init(G)
       m:SetAttribute("Heli", p.heli == true)
     end
     m.Parent = f
-    p.model, p.prompt = m, pr
+    p.model, p.prompt, p.home = m, pr, f
+    if G.wtGroundOnly and G.wtGroundOnly() then m.Parent = nil end   -- 战雷式：地图上不摆召唤柱（depotsBuild 的 sync）
   end
   G.depotBuildPad = buildPad
 
@@ -363,6 +364,28 @@ function Depots.init(G)
     layout()
     for _, p in ipairs(pads) do G.try("生成点 " .. p.vid, buildPad, f, p) end
     f.Parent = root
+    -- 战雷式纯载具对战（用户 11-25「游戏地图不要有载具召唤点了」）：地图上不摆召唤柱、停放框——人从机库直接坐在车里出来，
+    --   召唤位只剩一个看不见的出车位置（Tech.lua padFor）；测试、PvE 放行步兵时（开服以后才定）再摆回来，所以隔一会儿看一次
+    --   每个召唤位单独收（舰艇码头的召唤位 Navy.lua 摆在 Piers 里，也一样收）
+    local function sync()
+      local hide = G.wtGroundOnly ~= nil and G.wtGroundOnly() == true
+      for _, p in ipairs(pads) do
+        local m = p.model
+        if m then
+          if not hide and m.Parent then p.home = m.Parent end
+          local want = (not hide) and p.home or nil
+          if m.Parent ~= want then m.Parent = want end
+          if p.prompt then p.prompt.Enabled = not hide end
+        end
+      end
+    end
+    sync()
+    task.spawn(function()
+      while true do
+        task.wait(2)
+        G.try("召唤点显隐", sync)
+      end
+    end)
   end
 
   ---------------------------------------------------------------- 生成

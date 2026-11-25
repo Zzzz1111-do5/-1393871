@@ -30,6 +30,7 @@ local D = {
   -- 空空导弹
   -- 霹雳-10 / 霹雳-15 的尾翼照真弹的比例（用户 11-23 核对歼-20 弹舱：原来的尾翼翼展快一米，四枚霹雳-15 塞不进主弹舱、霹雳-10 收不进侧弹舱）：
   --   霹雳-15 歼-20 用的是切短的尾翼，尾翼尖离弹轴约 0.18 米；霹雳-10 的舵面大一点，约 0.2 米
+  pl2 = { nose = "ir", col = LGREY, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.13, s = 2.3 }, can = { at = 0.16, c = 0.07, s = 1.6 } },   -- 霹雳-2：前面四片小舵、后面四片大尾翼（响尾蛇 B 的样子）
   pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 0.75 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
   aim9x = { nose = "ir", col = GREY, bands = { { 0.2, 0.025, YELLOW }, { 0.3, 0.025, BROWN } }, tail = { at = 0.93, c = 0.09, s = 2.4 }, mid = { at = 0.24, c = 0.035, s = 1.2 } },
   pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 0.6 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
@@ -58,8 +59,18 @@ local D = {
   lt2 = { nose = "laser", col = DGREEN, bands = { { 0.32, 0.025, YELLOW } }, kit = "paveway" },
   ls6 = { nose = "jdam", col = LGREY, bands = { { 0.18, 0.025, YELLOW } }, kit = "jdam", wing = { at = 0.42, c = 0.09, span = 3.6 } },
   gbu39 = { nose = "jdam", col = GREY, bands = { { 0.16, 0.03, YELLOW } }, kit = "sdb", wing = { at = 0.4, c = 0.12, span = 4.0 } },
+  -- 直升机的反坦克 / 防空导弹（用户 11-25「直升机也做一下各个国家的」）：攻击、突击装在发射筒里（筒是橄榄绿），旋风是细长的弹，
+  --   HOT、陶式短粗、尾部大翼；针-V、91 式是细细的红外弹
+  ataka = { nose = "laser", col = DGREEN, bands = { { 0.18, 0.03, YELLOW } }, tail = { at = 0.88, c = 0.1, s = 1.4 }, can = { at = 0.15, c = 0.06, s = 1.2 } },
+  shturm = { nose = "laser", col = DGREEN, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.88, c = 0.1, s = 1.4 } },
+  vikhr = { nose = "laser", col = OLIVE2, bands = { { 0.22, 0.025, YELLOW } }, tail = { at = 0.9, c = 0.08, s = 1.6 }, can = { at = 0.1, c = 0.05, s = 1.3 } },
+  hot3 = { nose = "laser", col = OLIVE, bands = { { 0.3, 0.03, YELLOW } }, tail = { at = 0.82, c = 0.16, s = 2.0 } },
+  tow = { nose = "laser", col = OLIVE, bands = { { 0.32, 0.03, YELLOW }, { 0.6, 0.03, BROWN } }, tail = { at = 0.8, c = 0.16, s = 2.1 }, mid = { at = 0.45, c = 0.12, s = 1.8 } },
+  igla = { nose = "ir", col = OLIVE2, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 2.4 }, can = { at = 0.12, c = 0.05, s = 1.4 } },
+  type91 = { nose = "ir", col = GREY, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 2.4 }, can = { at = 0.12, c = 0.05, s = 1.4 } },
   -- 火箭巢
   hydra = { pod = true, col = OLIVE },
+  s8 = { pod = true, col = DGREEN },
   fl90 = { pod = true, col = DGREEN },
   -- 副油箱：浅灰（解放军 800 升，尾部三片小安定面）、美军灰、直升机墨绿 / 橄榄绿
   tk800 = { tank = true, col = LGREY, fins = true },
