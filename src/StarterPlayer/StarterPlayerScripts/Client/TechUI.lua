@@ -951,6 +951,7 @@ function TechUI.init(G)
   end
 
   local function refreshHangar()
+    H.bays = {}   -- 这一次重画的阵容卡片的等级底色（treeShown 开关它们）
     -- 底下一条（同战雷）：「科技树」把手 + 各国页签；点国家换系（机库阵容、科技树一起换）
     clear(H.flags)
     H.handleT.Text = ((G.treeGui and G.treeGui.Visible) and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. ((G.treeGui and G.treeGui.Visible) and "  ︾" or "  ︽")
@@ -995,6 +996,10 @@ function TechUI.init(G)
         bay.Name = "Bay"
         TH.corner(bay, 2)
         TH.rankGrad(bay, it.rank)   -- 等级底色（用户 11-25：不同等级的载具背景颜色要有区别）
+        -- 用户 11-25 晚「主界面不打开科技树 就别显示载具背景颜色了」：只有科技树开着时阵容卡片才画等级底色（treeShown 跟着开关）
+        bay.Visible = H.treeOpen == true
+        H.bays = H.bays or {}
+        table.insert(H.bays, bay)
         -- 车图：写实车图（原模型按战雷那个角度拍的，HudArt G.vehPicOn）；没有才退回白色剪影
         local img = Instance.new("ImageLabel")
         img.Name = "Pic"
@@ -1203,6 +1208,8 @@ function TechUI.init(G)
   TH.corner(detail)
   local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开
     H.mid.Visible = not on
+    H.treeOpen = on
+    for _, b in ipairs(H.bays or {}) do if b.Parent then b.Visible = on end end   -- 阵容卡片的等级底色：只在科技树开着时画
     if H.navTree then
       H.navTree:SetAttribute("Lit", on or nil)
       H.navTree.BackgroundColor3 = on and TH.C.PANEL or TH.C.RAISE
