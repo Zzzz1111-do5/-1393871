@@ -570,7 +570,7 @@ function Armor.init(G)
           life = (a.range or 5000) * BAL.S / vm + 2, step = G.atgmStep, byEnt = e.id, vmax = vm, turn = a.turn or 2.2, age = 0 })
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
-        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },

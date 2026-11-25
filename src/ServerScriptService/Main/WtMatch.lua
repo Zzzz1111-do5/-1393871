@@ -392,9 +392,13 @@ function WtMatch.init(G)
     local S = G.spotted and G.spotted[team]
     if S then
       local tt = now()
+      -- 实体编号是 "e33" 这样的字符串（玩家是 "p<UserId>"，不算）：原来只认数字，被侦察 / 标记的车一直进不了这张单子
       for key, till in pairs(S) do
-        if till > tt and type(key) ~= "string" then table.insert(seen, key)
-        elseif till > tt and type(key) == "string" and tonumber(key) then table.insert(seen, tonumber(key)) end
+        if till > tt then
+          if G.entById[key] then table.insert(seen, key)
+          elseif type(key) ~= "string" then table.insert(seen, key)
+          elseif tonumber(key) then table.insert(seen, tonumber(key)) end
+        end
       end
     end
     return seen

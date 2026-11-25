@@ -27,7 +27,7 @@
 
 - D（11-25 末，用户：「然后科技树里面根据年代给有火控计算机的坦克……更新火控计算机 可以有不同等级进行升级」「坦克履带也要能动」「画面缩放……先往后 再往上……参考坦克世界」
   「部分远火高射形载具……坦克世界那种 可以把视角放到射程范围内的任何位置 但是对于敌载具的视野是要受限于我方信息的……3d的散步圈……移动很快的话 这个圈会变大 然后慢慢变小」
-  「第一辆必须是地面车，飞机要攒点数才能出」「载具科技树不同等级的载具背景颜色要有区别」；前面还有「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：
+  「第一辆必须是地面车，飞机要攒点数才能出」「载具科技树不同等级的载具背景颜色要有区别」「烟幕改成m x改成透视自己的坦克」「炮弹和导弹 子弹击中地面……」；前面还有「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：
   · 火控计算机（WtMods）：`M.FCS` 五代（光学瞄准 → 光学测距 + 机械计算机 → 激光 + 模拟计算机 → 数字火控 → 猎歼式自动跟踪），`M.fcsGen(it)` 按年份 + 有没有激光（VehDefs `lrf`）定原厂哪一代；
     改装树「火力」多三项 fcs1 / fcs2 / fcs3（`M.list(it)` 按车加，说明按原厂那一代写），`M.fcsParams(gen, lvl)` 给客户端：测距多久、误差、解算多久、提前量（0 / 测距那一下 / 动态）、
     残余散布（密位）、自动跟踪。Tech.lua 出车写 `FcsGen` / `ModFcs`；Drive.lua 测距按它延时（激光按下那一刻量、计算机算完才用）、开火加残余散布、动态提前量、
@@ -42,7 +42,15 @@
   · 科技树等级底色：Theme.RANK（七级，不用蓝）+ `Theme.rankGrad`，等级横条、车卡底板、阵容卡、详情大图；空等级收成窄条；锁定提示的「要几辆」按 `TT.rankNeed`（同服务器规则）。
   · 导弹抛射（AirDefs.EJ：tube 筒射往前推、drop 弹射往下、cruise 涡喷投放）：弹标 `eject`（毒刺、针-V、天燕-90、91 式、突击、攻击、陶式、不死鸟、鹰击-91、KD-88、鹰击-83K），
     挂点标 `ej`（F-15 机身、F-14 通道、苏-27 一族进气道 / 中线），主弹舱一律弹射下落；Air.lua guideMissile 先只受重力掉 ejT 秒再点火（发 shotIgn），Fx.lua 点火前不喷火不拖烟不出声。
-  · 测试：tools/mock/arty.lua（新）、missiles.lua ⑥、wtmods（改装格数含火控）、wtmode / helitree（首发地面车）、wttest（靶车匀速往返）。
+  · 按键（用户 11-25「烟幕改成m x改成透视自己的坦克」）：Drive.lua M 烟幕、X 透视自己的车（新模块 Client/XrayOwn.lua：自己的车 LocalTransparencyModifier 0.78，
+    WtDamage.layout 的乘员 / 模块按 WtC / WtM 上色、跟车身和炮塔走）；大地图页（新模块 Client/WtMap.lua）B 开关，观战 / 直升机 M 也行，喷气机不开（B 是刹车、M 是鼠标瞄准）；
+    地图挂到页里、关的时候挂回 G.hudParts.miniClip；`G.mapGridRef(x, z)` 给格子坐标。
+  · 弹着点（用户 11-25「然后炮弹和导弹 子弹击中地面 不同角度不同材质不同弹种有不同效果 但是都要效果强一点」）：服务器 G.explode 多一个 info
+    `{ h = HitSurf 代号, d = 来弹方向, am = 弹种 }`，没给的往脚下探（`G.groundInfo`，来向取 G.blastDir；G.shell 的炮兵炮弹按炮位给来向、am = he）；
+    炮弹带 `cls`（Armor / AIVeh 发射时写），穿甲弹（ap）打在地上不炸：发 `gimp`（客户端 Fx.lua kineticHit：土泉、土块、扬尘、擦地犁沟、硬地火星闪光、跳弹曳光），
+    溅射照算（splashQ 带 noFx）。Fx.lua：GPAL 材质配色（`G.groundPal`）、`tiltUp` 按来向把土柱往前倒、boom(p, s, c, hs, dv, am) 榴弹 / 破甲弹两样、
+    航炮弹也按材质；子弹弹着点按入射角（擦地前面再一道）、整体 1.5 倍。
+  · 测试：tools/mock/groundhit.lua（新：gimp、爆炸材质 / 来向 / 弹种、炮兵来向、各材质颜色、擦地犁沟、水面）、tools/mock/arty.lua（新，含 X 透视、B 大地图）、tracks.lua（新）、missiles.lua ⑥、wtmods（改装格数含火控）、wtmode / helitree（首发地面车）、wttest（靶车匀速往返）。
 
 - D（11-25 深夜，用户：「然后直升机也做一下各个国家的哈 包括很多战机不是其原本的模样」「内容还不齐，风格不统一」「找不到的你可以直接删掉」）：
   · 科技树第三棵树 heli（TechTree `BRANCHES = { "ground", "air", "heli" }`，`TT.BRANCH.heli.need` 每级要研究 1 架）：五国 17 架，每国打头的运输直升机写 `free = true`；

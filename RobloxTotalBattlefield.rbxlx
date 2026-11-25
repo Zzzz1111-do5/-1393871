@@ -7886,8 +7886,8 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
-  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · G scout · K artillery · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · X 透视自己的车 · B 大地图 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · X X-ray own vehicle · B map · Y repair / extinguish · G scout · K artillery · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
@@ -17585,7 +17585,7 @@ function AIVeh.init(G)
       if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
         local v0, drag, gs = BAL.launchArgs(a)
-        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model },
+        G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
@@ -19642,7 +19642,7 @@ function Armor.init(G)
           life = (a.range or 5000) * BAL.S / vm + 2, step = G.atgmStep, byEnt = e.id, vmax = vm, turn = a.turn or 2.2, age = 0 })
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
-        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
+        G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
@@ -22435,8 +22435,23 @@ function Ents.init(G)
   end
   G.boomKind = boomKind
 
+  -- 炸点脚下是什么（没给 info 的：导引弹、炮兵的炮弹、地雷、空袭……）：往下探几格，打在地上 / 房子上才给材质；来向取 G.blastDir
+  local gProbe = RaycastParams.new()
+  gProbe.FilterType = Enum.RaycastFilterType.Exclude
+  local function groundInfo(pos)
+    local res = workspace:Raycast(pos + Vector3.new(0, 2.5, 0), Vector3.new(0, -9, 0), gProbe)
+    if not res then return nil end
+    local hs = HitSurf.of(res.Instance, res.Material)
+    if not hs or HitSurf.METAL[hs] then return nil end
+    local bd = G.blastDir
+    return { h = hs, d = (typeof(bd) == "Vector3" and bd.Magnitude > 1) and bd.Unit or nil }
+  end
+  G.groundInfo = groundInfo
+
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
-  function G.explode(pos, w, src, scale)
+  -- info（可选）：{ h = 地面材质（HitSurf 代号）, d = 来弹方向, am = 炮弹弹种（he / heat / mpat） }——客户端按它画不同颜色的土柱、往哪边掀、
+  --   榴弹 / 破甲弹各是什么样（用户 11-25「不同角度不同材质不同弹种有不同效果」）；没给的往脚下探
+  function G.explode(pos, w, src, scale, info)
     if w and w.nuke and G.nukeAt then return G.nukeAt(pos, w, src) end   -- 核导弹撞到地面 / 房子：照样核爆（Nuke.lua）
     local r = w.splash or 8
     local ownK = false
@@ -22444,7 +22459,10 @@ function Ents.init(G)
       local m = G.eraBlast(pos, w, G.blastDir)
       if m then G.dmgK, ownK = m, true end
     end
-    G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
+    if not w.noFx then   -- noFx：只算伤害（穿甲弹打在地上：客户端画 gimp，不是爆炸）
+      if not info then info = groundInfo(pos) end
+      G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w), h = info and info.h or nil, d = info and info.d or nil, am = info and info.am or nil })
+    end
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -22502,7 +22520,20 @@ function Ents.init(G)
   -- 迫击炮弹、炮弹：flight 秒后落在 pos（落点已经算好散布）
   function G.shell(pos, w, src, flight, from)
     G.fx({ k = "shell", p = pos, t = flight, a = from })
-    task.delay(flight, function() G.explode(pos, w, src) end)
+    task.delay(flight, function()
+      -- 落下来的方向（客户端土柱往前掀）：从炮位那边、五十多度往下砸
+      local bd
+      if typeof(from) == "Vector3" then
+        local hz = Vector3.new(pos.X - from.X, 0, pos.Z - from.Z)
+        if hz.Magnitude > 1 then bd = (hz.Unit + Vector3.new(0, -1.4, 0)).Unit * 100 end
+      end
+      G.blastDir = bd
+      local info = groundInfo(pos)   -- 炮兵、迫击炮的都是榴弹
+      if info then info.am = "he" end
+      local ok, err = pcall(G.explode, pos, w, src, nil, info)
+      G.blastDir = nil
+      if not ok then G.reportError("炮弹落地", err) end
+    end)
   end
 
   local function stepShots(dt)
@@ -22623,7 +22654,21 @@ function Ents.init(G)
           end
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
-          G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          -- 打在地上 / 房子上（不是钢甲）：用户 11-25「炮弹和导弹 子弹击中地面 不同角度不同材质不同弹种有不同效果」——
+          --   穿甲弹（动能弹，s.cls = ap）不炸：客户端 gimp 按材质、入射角掀土 / 迸火星；榴弹、破甲弹照样炸，爆炸带上材质和来向
+          local ground = not (hs and HitSurf.METAL[hs])
+          if ground and s.cls == "ap" then
+            G.fx({ k = "gimp", p = res.Position, n = res.Normal, d = s.vel.Unit, h = hs or "d", c = "ap", s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+            local wq = s.w.splashQ
+            if not wq then
+              wq = table.clone(s.w.splashW)
+              wq.noFx = true
+              s.w.splashQ = wq
+            end
+            G.explode(res.Position, wq, s.src, (s.w.splash or 6) / 10)
+          else
+            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10, ground and { h = hs or "d", d = s.vel.Unit, am = s.cls } or nil)
+          end
           if ek then G.dmgK = nil end
           done = true
         elseif res and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then
@@ -22633,7 +22678,8 @@ function Ents.init(G)
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
-          G.explode(res.Position, s.w, s.src)
+          local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
+          G.explode(res.Position, s.w, s.src, nil, (hs2 and not HitSurf.METAL[hs2]) and { h = hs2, d = s.vel.Unit } or nil)   -- 地上：按材质、来向画
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           if m then G.dmgK = nil end
           done = true
@@ -36078,9 +36124,13 @@ function WtMatch.init(G)
     local S = G.spotted and G.spotted[team]
     if S then
       local tt = now()
+      -- 实体编号是 "e33" 这样的字符串（玩家是 "p<UserId>"，不算）：原来只认数字，被侦察 / 标记的车一直进不了这张单子
       for key, till in pairs(S) do
-        if till > tt and type(key) ~= "string" then table.insert(seen, key)
-        elseif till > tt and type(key) == "string" and tonumber(key) then table.insert(seen, tonumber(key)) end
+        if till > tt then
+          if G.entById[key] then table.insert(seen, key)
+          elseif type(key) ~= "string" then table.insert(seen, key)
+          elseif tonumber(key) then table.insert(seen, tonumber(key)) end
+        end
       end
     end
     return seen
@@ -36240,7 +36290,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtMap", "XrayOwn", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -39957,7 +40007,7 @@ function ArtyView.init(G)
     local ap = st.aimPt
     local flat = ap and V(ap.X - p0.X, 0, ap.Z - p0.Z) or nil
     if not flat or flat.Magnitude < w.minR or flat.Magnitude > w.maxR then
-      local look = st.root.CFrame.LookVector
+      local look = st.root.LookVector   -- st.root 是车身的 CFrame（Drive.lua）
       look = V(look.X, 0, look.Z).Unit
       flat = look * ((w.minR + w.maxR) / 2)
     end
@@ -44417,8 +44467,10 @@ function Drive.init(G)
       local i = NUMK[k]
       -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪
       if not (G.wtKeySlot and G.wtKeySlot(st, i)) and st.d.weapons[i] then st.wi = i end
-    elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
+    elseif k == Enum.KeyCode.M then   -- 烟幕弹（用户 11-25「烟幕改成m」）
       smoke()
+    elseif k == Enum.KeyCode.X then   -- 透视自己的车：乘员、模块按状态上色（XrayOwn.lua，用户 11-25「x改成透视自己的坦克」）
+      if G.ownXrayToggle then G.ownXrayToggle() end
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
     elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
@@ -50066,13 +50118,13 @@ function Fx.init(G)
     tr = nseq(0, 0, 1, 1), col = cseq(RGB(255, 255, 245), RGB(255, 190, 100)), le = 1, bright = 7, z = 1 })
   impEmitter("smoke", { tex = TX.smoke, life = { 0.5, 0.9 }, spd = { 1.5, 4 }, spread = 25, size = nseq(0, 0.5, 1, 2.4),
     tr = nseq(0, 0.55, 1, 1), col = cseq(RGB(150, 150, 146), RGB(118, 118, 116)), acc = V(0, 3, 0), drag = 2, rot = 30 })
-  impEmitter("dirt", { tex = TX.smoke, life = { 0.35, 0.8 }, spd = { 8, 18 }, spread = 22, size = nseq(0, 0.6, 0.4, 1.8, 1, 2.8),
+  impEmitter("dirt", { tex = TX.smoke, life = { 0.5, 1.1 }, spd = { 9, 22 }, spread = 22, size = nseq(0, 0.8, 0.4, 2.5, 1, 4),
     tr = nseq(0, 0.25, 0.6, 0.55, 1, 1), col = cseq(RGB(112, 92, 66), RGB(148, 128, 98)), acc = V(0, -24, 0), drag = 2.5, rot = 40 })
-  impEmitter("sand", { tex = TX.smoke, life = { 0.4, 0.9 }, spd = { 8, 18 }, spread = 24, size = nseq(0, 0.6, 0.4, 1.9, 1, 3),
+  impEmitter("sand", { tex = TX.smoke, life = { 0.6, 1.4 }, spd = { 9, 22 }, spread = 26, size = nseq(0, 0.8, 0.4, 2.7, 1, 4.5),
     tr = nseq(0, 0.25, 0.6, 0.55, 1, 1), col = cseq(RGB(212, 188, 138), RGB(228, 210, 170)), acc = V(0, -22, 0), drag = 2.5, rot = 40 })
-  impEmitter("rock", { tex = TX.smoke, life = { 0.4, 0.85 }, spd = { 6, 15 }, spread = 26, size = nseq(0, 0.5, 0.4, 1.6, 1, 2.6),
+  impEmitter("rock", { tex = TX.smoke, life = { 0.5, 1.1 }, spd = { 7, 18 }, spread = 28, size = nseq(0, 0.7, 0.4, 2.2, 1, 3.6),
     tr = nseq(0, 0.3, 0.6, 0.6, 1, 1), col = cseq(RGB(150, 148, 142), RGB(186, 183, 176)), acc = V(0, -10, 0), drag = 2.5, rot = 40 })
-  impEmitter("chips", { tex = TX.chunk, life = { 0.3, 0.6 }, spd = { 14, 30 }, spread = 35, size = nseq(0, 0.22, 1, 0.12),
+  impEmitter("chips", { tex = TX.chunk, life = { 0.4, 0.8 }, spd = { 16, 36 }, spread = 35, size = nseq(0, 0.3, 1, 0.16),
     tr = nseq(0, 0, 1, 0.4), col = cseq(RGB(72, 64, 54), RGB(72, 64, 54)), acc = V(0, -90, 0), drag = 1, rot = 360 })
   impEmitter("spout", { tex = TX.smoke, life = { 0.35, 0.6 }, spd = { 16, 26 }, spread = 7, size = nseq(0, 0.35, 0.5, 0.8, 1, 1.3),
     tr = nseq(0, 0.15, 0.7, 0.5, 1, 1), col = cseq(RGB(236, 243, 246), RGB(220, 230, 236)), acc = V(0, -75, 0), drag = 1, rot = 20 })
@@ -50165,11 +50217,23 @@ function Fx.init(G)
       fire("spout", upCF(p, V(0, 1, 0)), 7 * k, k)
       fire("mist", upCF(p, V(0, 1, 0)), 2)
     else
-      local cf = upCF(p + nrm * 0.1, (nrm + V(0, 0.35, 0)).Unit)
+      -- 入射角（用户 11-25「不同角度不同材质不同弹种有不同效果 但是都要效果强一点」）：垂直打一股往上，越斜越顺着弹道往前掀；
+      --   擦着地打（入射角大于七十度）前面再拖一道土；材质：沙细、飘得久，土有土块，石头 / 水泥碎石多、迸火星，木头木屑
+      local cosI = math.clamp(-du:Dot(nrm), 0, 1)
+      local refl = du - 2 * du:Dot(nrm) * nrm
+      local up = nrm * (0.35 + cosI) + refl * (1 - cosI) * 0.9
+      up = (up.Magnitude > 1e-3) and up.Unit or nrm
+      local cf = upCF(p + nrm * 0.1, up)
       local name = ((h == "n") and "sand") or ((h == "r" or h == "c" or h == "g") and "rock") or "dirt"
-      fire(name, cf, (h == "f") and 1 or 3 * k, k)
-      if h ~= "f" and d < 250 then fire("chips", cf, ((h == "o") and 7 or 4) * k, k) end
-      if (h == "r" or h == "c") and math.random() < 0.25 then fire("spark", upCF(p + nrm * 0.1, nrm), 3, 0.8) end   -- 打在石头上偶尔迸一两颗火星
+      local kk = k * 1.5
+      fire(name, cf, (h == "f") and 1 or 3.5 * kk, kk)
+      if h ~= "f" and d < 300 then fire("chips", cf, ((h == "o") and 9 or ((h == "r" or h == "c") and 7 or 5)) * kk, kk) end
+      if h ~= "f" and cosI < 0.35 then   -- 擦地：顺着弹道往前再拖一道
+        local fw = (refl * 0.85 + nrm * 0.25)
+        fw = (fw.Magnitude > 1e-3) and fw.Unit or up
+        fire(name, upCF(p + refl * (1.2 + k), fw), 2.5 * kk, kk * 1.4)
+      end
+      if (h == "r" or h == "c") and math.random() < 0.6 then fire("spark", upCF(p + nrm * 0.1, up), 4 * k, k) end   -- 打在石头上迸火星
       if h ~= "f" then impactSound(p, d, "thud") end
     end
   end
@@ -50196,10 +50260,34 @@ function Fx.init(G)
     G.sfx(L, p, { delay = math.max(0, d - 250) / 960, hiCut = -16 * far, rmin = 40 + r * 6, rmax = (c == "bomb") and 9000 or 4500, must = r >= 18 })
   end
 
+  -- 地面材质的颜色（HitSurf 代号；用户 11-25「不同角度不同材质不同弹种有不同效果」）：dust 尘土、dust2 散开以后、clod 土块碎石，
+  --   life 尘土留多久（沙细、飘得久；石头的灰落得快），spark 硬地（炮弹迸火星、跳弹）
+  local GPAL = {
+    n = { dust = RGB(214, 190, 142), dust2 = RGB(232, 216, 180), clod = RGB(184, 158, 112), life = 1.35 },
+    d = { dust = RGB(112, 92, 68), dust2 = RGB(150, 132, 104), clod = RGB(64, 50, 36), life = 1.0 },
+    r = { dust = RGB(146, 144, 138), dust2 = RGB(186, 184, 178), clod = RGB(104, 102, 98), life = 0.8, spark = true },
+    c = { dust = RGB(162, 160, 154), dust2 = RGB(198, 196, 190), clod = RGB(124, 122, 116), life = 0.9, spark = true },
+    o = { dust = RGB(138, 112, 82), dust2 = RGB(170, 146, 114), clod = RGB(156, 116, 72), life = 0.7 },
+    g = { dust = RGB(200, 210, 210), dust2 = RGB(230, 236, 236), clod = RGB(214, 230, 232), life = 0.5, spark = true },
+    f = { dust = RGB(120, 104, 86), dust2 = RGB(150, 136, 116), clod = RGB(70, 58, 46), life = 0.6 },
+  }
+  local function palOf(hs) return GPAL[hs or ""] or GPAL[(MapM.DESERT and "n") or "d"] end   -- 没给材质：沙漠图按沙，别的按土
+  G.groundPal = palOf
   local KF = { nade = 0.5, shell = 0.75, rkt = 0.8, msl = 0.9, bomb = 1, flak = 0.6, wreck = 0.8 }   -- 火球半径 / 杀伤半径
   local RMIN = { shell = 5, rkt = 6, msl = 9, bomb = 24, wreck = 10 }
   local boomT, boomN = 0, 0
-  local function boom(p, s, c)
+  -- 斜着打进地里的弹：土柱往哪边掀（垂直落下的朝天，越斜越顺着来弹方向往前倒）
+  local function tiltUp(dv)
+    if typeof(dv) ~= "Vector3" or dv.Magnitude < 0.5 then return V(0, 1, 0) end
+    local du = dv.Unit
+    local cosI = math.clamp(-du.Y, 0, 1)
+    local fwd = V(du.X, 0, du.Z)
+    local u = V(0, 0.55 + cosI, 0) + ((fwd.Magnitude > 1e-3) and fwd.Unit or V()) * (1 - cosI) * 0.9
+    return u.Unit
+  end
+  -- hs 地面材质、dv 来弹方向（服务器 G.explode 的 info，打在地上才有）；am 炮弹的弹种（Ballistics 的 cls）：
+  --   he 榴弹——土柱高、土块多、黑烟浓；heat 破甲弹——火球小、一道白热的射流闪光、土少、灰烟；mpat / 没给照常
+  local function boom(p, s, c, hs, dv, am)
     s = s or 1
     local r = 12 * s   -- 杀伤半径（格）
     if not c then c = (r < 5 and "gun") or (r < 13 and "shell") or (r < 26 and "msl") or "bomb" end
@@ -50226,9 +50314,18 @@ function Fx.init(G)
     if c == "gun" then   -- 航炮、小口径炮弹：一点火光、几颗火星、一小团土（水里一小柱水）
       burst(h, { tex = TX.glow, n = 1, life = { 0.07, 0.1 }, spd = { 0, 0 }, size = nseq(0, r * 0.9, 1, r * 1.4), tr = nseq(0, 0, 1, 1), col = cseq(RGB(255, 236, 190), RGB(255, 180, 100)), le = 1, z = 2 })
       burst(h, { tex = TX.glow, n = n(5), life = { 0.25, 0.5 }, spd = { 18, 50 }, spread = 70, acc = V(0, -90, 0), size = nseq(0, 0.5, 1, 0), tr = nseq(0, 0, 1, 0.3), col = cseq(RGB(255, 230, 160), RGB(255, 150, 60)), le = 1 })
-      local col = water and RGB(236, 242, 246) or RGB(142, 124, 100)
-      burst(h, { tex = TX.smoke, n = n(3), life = { 0.8, 1.4 }, spd = { r * 1.2, r * 2.6 }, spread = water and 12 or 35, acc = V(0, water and -40 or -10, 0), drag = 2,
-        size = nseq(0, r * 0.5, 1, r * 1.6), tr = nseq(0, 0.2, 1, 1), col = cseq(col, col) })
+      if not air then   -- 打在地上：一股土（按材质上色、斜着打的往前掀）+ 几块碎渣；水里一小柱水
+        local P = palOf(hs)
+        local col = water and RGB(236, 242, 246) or P.dust
+        h.CFrame = upCF(p, water and V(0, 1, 0) or tiltUp(dv))
+        burst(h, { tex = TX.smoke, n = n(5), life = { 0.9 * P.life, 1.6 * P.life }, spd = { r * 1.4, r * 3 }, spread = water and 12 or 28, acc = V(0, water and -40 or -12, 0), drag = 2,
+          size = nseq(0, r * 0.6, 1, r * 2), tr = nseq(0, 0.15, 1, 1), col = cseq(col, water and col or P.dust2) })
+        if not water and d < 600 then
+          burst(h, { tex = TX.chunk, n = n(5), life = { 0.6, 1.1 }, spd = { r * 2.5, r * 5 }, spread = 35, acc = V(0, -100, 0), drag = 0.5,
+            size = nseq(0, 0.35, 1, 0.2), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(P.clod, P.clod), rot = 400 })
+        end
+        h.CFrame = CFrame.new(p)
+      end
       if d < 500 then flash(p + V(0, 2, 0), RGB(255, 190, 110), 12, 3, 0.12) end
       Debris:AddItem(h, 1.6)
       return
@@ -50236,6 +50333,9 @@ function Fx.init(G)
 
     local R = math.max(r * (KF[c] or 0.8), RMIN[c] or 3)   -- 火球半径
     if water and not air then R = R * 0.6 end              -- 水里炸：火小、水柱大
+    if am == "heat" then R = R * 0.85 elseif am == "he" then R = R * 1.1 end
+    local colK = (am == "he" and 1.2) or (am == "heat" and 0.75) or 1     -- 土柱
+    local chK = (am == "he" and 1.3) or (am == "heat" and 0.6) or 1       -- 土块
     -- 白热闪光 + 照亮四周
     burst(h, { tex = TX.glow, n = 1, life = { 0.12, 0.18 }, spd = { 0, 0 }, size = nseq(0, R * 2.4, 1, R * 3.4), tr = nseq(0, 0, 1, 1), col = cseq(RGB(255, 244, 220), RGB(255, 196, 130)), le = 1, z = 3 })
     flash(p + V(0, R * 0.5, 0), RGB(255, 170, 90), math.min(60, 14 + R * 2.5), 8 + R / 4, 0.3 + R / 45)
@@ -50264,28 +50364,51 @@ function Fx.init(G)
       keep = 3
     else
       -- 地上：冲起的尘土柱（车、飞机被打爆没有）、乱飞的碎块、贴地冲击波圈和一圈扬尘、往上飘的烟柱
-      local soil = RGB(116, 98, 74)
+      --   用户 11-25「不同角度不同材质不同弹种有不同效果 但是都要效果强一点」：土柱按地面材质上色（沙浅黄细、飘得久，土深褐，石头灰、迸火星），
+      --   斜着打进来的往前掀（越斜越顺着来弹方向倒），整体大三成多
+      local P = palOf(hs)
+      local soil = P.dust
+      local up = tiltUp(dv)
       if c ~= "wreck" then
-        burst(h, { tex = TX.smoke, n = n(8 + r / 2), life = { 1.2, 2.2 + r / 40 }, spd = { r * 1.4, r * ((c == "bomb") and 4 or 3.2) }, spread = 22, acc = V(0, -r * 2.4, 0), drag = 1.4,
-          size = nseq(0, r * 0.35, 0.3, r * 0.9, 1, r * 1.5), tr = nseq(0, 0.1, 0.6, 0.45, 1, 1), col = cseq(soil, RGB(150, 136, 116)), rot = 30 })
+        h.CFrame = upCF(p, up)
+        burst(h, { tex = TX.smoke, n = n((8 + r / 2) * 1.35 * colK), life = { 1.2 * P.life, (2.2 + r / 40) * P.life }, spd = { r * 1.5, r * ((c == "bomb") and 4.4 or 3.6) * (0.85 + 0.15 * colK) }, spread = 20,
+          acc = V(0, -r * 2.4, 0), drag = 1.4, size = nseq(0, r * 0.42, 0.3, r * 1.1 * colK, 1, r * 1.8 * colK), tr = nseq(0, 0.08, 0.6, 0.42, 1, 1), col = cseq(soil, P.dust2), rot = 30 })
+        if am == "heat" then   -- 破甲弹：聚能射流打进地里那一下，顺着来弹方向一道白热的细光
+          h.CFrame = upCF(p, (typeof(dv) == "Vector3" and dv.Magnitude > 0.5) and -dv.Unit or V(0, 1, 0))
+          burst(h, { tex = TX.glow, n = n(7), life = { 0.07, 0.15 }, spd = { 70, 140 }, spread = 10, size = nseq(0, R * 0.45, 1, 0), tr = nseq(0, 0, 1, 0.5),
+            col = cseq(RGB(255, 255, 250), RGB(255, 214, 150)), le = 1, z = 2 })
+          h.CFrame = upCF(p, up)
+        end
+        if hs == "n" or (not hs and MapM.DESERT) then   -- 沙地：再一团细沙雾，散得大、飘得久
+          burst(h, { tex = TX.smoke, n = n(5 + r / 4), life = { 2.5, 4.5 }, spd = { r * 0.5, r * 1.4 }, spread = 70, drag = 1.2, acc = V(1, 0.6, 0.5),
+            size = nseq(0, r * 0.8, 1, r * 2.8), tr = nseq(0, 0.45, 1, 1), col = cseq(P.dust2, P.dust2), rot = 15 })
+        end
+        if P.spark and d < 1500 then   -- 石头、水泥地：一蓬火星
+          burst(h, { tex = TX.glow, n = n(8 + r / 2), life = { 0.3, 0.8 }, spd = { r * 2.5, r * 5 + 20 }, spread = 60, acc = V(0, -90, 0), drag = 1,
+            size = nseq(0, 0.5, 1, 0), tr = nseq(0, 0, 1, 0.3), col = cseq(RGB(255, 236, 170), RGB(255, 150, 60)), le = 1 })
+        end
+        h.CFrame = CFrame.new(p)
       end
       if c == "wreck" and G.wreckChunks and d < 1500 then   -- 车 / 飞机被打爆：真的钢板碎块（WreckFx.lua，11-25「画风不够战雷」：方块贴图像游戏）
         G.wreckChunks(p, R, lod, 6)
       else
-        local chunk = (c == "wreck") and RGB(52, 52, 50) or RGB(60, 50, 40)
-        burst(h, { tex = TX.chunk, n = n(6 + r / 2), life = { 1, 2.2 }, spd = { r * 1.6, r * 3.6 }, spread = 55, acc = V(0, -110, 0), drag = 0.4,
-          size = nseq(0, 0.5 + r / 30, 1, 0.3 + r / 50), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(chunk, RGB(36, 32, 28)), rot = 400 })
+        local chunk = (c == "wreck") and RGB(52, 52, 50) or P.clod
+        h.CFrame = upCF(p, up)
+        burst(h, { tex = TX.chunk, n = n((6 + r / 2) * 1.5 * chK), life = { 1, 2.4 }, spd = { r * 1.7, r * 3.9 }, spread = 50, acc = V(0, -110, 0), drag = 0.4,
+          size = nseq(0, 0.6 + r / 26, 1, 0.35 + r / 45), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(chunk, chunk:Lerp(RGB(30, 28, 24), 0.5)), rot = 400 })
+        h.CFrame = CFrame.new(p)
       end
       if r >= 7 then
         h.CFrame = CFrame.new(p.X, surf + 1.2, p.Z)
         burst(h, { tex = TX.ring, n = 1, life = { 0.35 + r / 120, 0.4 + r / 100 }, spd = { 0.05, 0.05 }, spread = 0, flat = true,
           size = nseq(0, r * 0.4, 1, r * 4.5), tr = nseq(0, 0.25, 1, 1), col = cseq(RGB(235, 220, 195), RGB(235, 220, 195)) })
-        burst(h, { tex = TX.smoke, n = n(10 + r / 3), radial = true, dir = Enum.NormalId.Front, spread = 8, life = { 1.4, 2.4 + r / 30 }, spd = { r * 1.2, r * 2.2 }, drag = 1.8,
-          acc = V(0, r * 0.15, 0), size = nseq(0, r * 0.4, 1, r * 1.3), tr = nseq(0, 0.35, 1, 1), col = cseq(RGB(170, 154, 128), RGB(190, 180, 160)) })
+        burst(h, { tex = TX.smoke, n = n(12 + r / 3), radial = true, dir = Enum.NormalId.Front, spread = 8, life = { 1.4 * P.life, (2.4 + r / 30) * P.life }, spd = { r * 1.3, r * 2.5 }, drag = 1.8,
+          acc = V(0, r * 0.15, 0), size = nseq(0, r * 0.45, 1, r * 1.5), tr = nseq(0, 0.35, 1, 1), col = cseq(P.dust2, P.dust2:Lerp(RGB(200, 196, 188), 0.4)) })
         h.CFrame = CFrame.new(p)
       end
-      burst(h, { tex = TX.smoke, n = n(5 + r / 4), life = { smokeT * 0.6, smokeT }, spd = { r * 0.4, r * 1.1 }, spread = 60, drag = 1.2, acc = V(1.5, r * 0.35 + 2, 0.8),
-        size = nseq(0, r * 0.6, 0.4, r * 1.6, 1, r * 2.6), tr = nseq(0, 1, 0.08, 0.2, 0.6, 0.45, 1, 1), col = cseq(RGB(58, 54, 50), RGB(128, 124, 118)), rot = 15 })
+      local sm0 = (am == "heat") and RGB(104, 102, 98) or ((am == "he") and RGB(44, 41, 38) or RGB(58, 54, 50))
+      burst(h, { tex = TX.smoke, n = n((5 + r / 4) * ((am == "he") and 1.3 or 1)), life = { smokeT * 0.6, smokeT }, spd = { r * 0.4, r * 1.1 }, spread = 60, drag = 1.2, acc = V(1.5, r * 0.35 + 2, 0.8),
+        size = nseq(0, r * 0.6, 0.4, r * 1.6, 1, r * 2.6), tr = nseq(0, 1, 0.08, 0.2, 0.6, 0.45, 1, 1), col = cseq(sm0, RGB(128, 124, 118)), rot = 15 })
       keep = smokeT
       -- 大的留一会儿余火和黑烟（弹坑、残骸在烧）
       if (c == "bomb" or c == "msl" or c == "wreck") and lod == 1 then
@@ -50301,6 +50424,97 @@ function Fx.init(G)
     Debris:AddItem(h, keep + 0.5)
   end
   G.boom = boom
+
+  -- 穿甲弹（动能弹）打在地上（服务器 Ents.lua 的 gimp；用户 11-25「炮弹和导弹 子弹击中地面 不同角度不同材质不同弹种有不同效果 但是都要效果强一点」）：
+  --   不炸、没有火球——高速的弹芯把土石掀成一股窄而高的喷泉，顺着弹道往前溅；擦着地打（入射角大）犁出一道沟：顺着弹道一串土团，
+  --   弹芯跳起来接着飞（一道曳光）；石头、水泥、玻璃上白热一闪、迸一大把火星；沙地黄沙大团、飘得久；水面一柱细高的水。
+  --   s 口径（坦克炮 2 上下、航炮 1）
+  local kinT, kinN = 0, 0
+  local function kineticHit(p, nrm, dv, hs, s)
+    if typeof(p) ~= "Vector3" then return end
+    s = math.clamp(tonumber(s) or 2, 1, 3)
+    local d = (p - cam.CFrame.Position).Magnitude
+    if d > 3500 then return end
+    local t = os.clock()
+    if t - kinT > 0.25 then kinT, kinN = t, 0 end
+    kinN += 1
+    if kinN > 10 then return end   -- 一齐打过来的太多：后面的不画
+    nrm = (typeof(nrm) == "Vector3" and nrm.Magnitude > 0.5) and nrm.Unit or V(0, 1, 0)
+    local du = (typeof(dv) == "Vector3" and dv.Magnitude > 0.5) and dv.Unit or -nrm
+    local lod = (d > 1500 or kinN > 4 or (G.perfK or 1) < 0.8) and 0.5 or 1
+    local function n(x) return math.max(1, math.floor(x * lod + 0.5)) end
+    local h = part(nil, V(1, 1, 1), CFrame.new(p), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    if hs == "w" then   -- 水面：一柱又细又高的水 + 一圈水雾
+      local wc = RGB(238, 244, 248)
+      h.CFrame = upCF(p, V(0, 1, 0))
+      burst(h, { tex = TX.smoke, n = n(8 + 4 * s), life = { 0.9, 1.6 }, spd = { 22 * s, 40 * s }, spread = 6, acc = V(0, -90, 0), drag = 0.8,
+        size = nseq(0, 0.6 * s, 0.4, 1.8 * s, 1, 3 * s), tr = nseq(0, 0.05, 0.6, 0.35, 1, 1), col = cseq(wc, RGB(214, 226, 232)), rot = 25 })
+      burst(h, { tex = TX.smoke, n = n(6 + 2 * s), radial = true, dir = Enum.NormalId.Front, spread = 10, life = { 0.9, 1.6 }, spd = { 6 * s, 12 * s }, drag = 1.6,
+        size = nseq(0, 0.8 * s, 1, 3.2 * s), tr = nseq(0, 0.3, 1, 1), col = cseq(wc, wc) })
+      Debris:AddItem(h, 2)
+      if d < 700 then G.sfx({ { id = WATER, vol = 0.8, s = { 0.85, 1.05 } } }, p, { rmin = 15, rmax = 700, delay = d / 960 }) end
+      return
+    end
+    local P = palOf(hs)
+    local cosI = math.clamp(-du:Dot(nrm), 0, 1)       -- 1 垂直打下去，0 擦着地
+    local refl = du - 2 * du:Dot(nrm) * nrm            -- 反弹方向
+    local along = du - du:Dot(nrm) * nrm               -- 贴着地面往前
+    if along.Magnitude > 1e-3 then along = along.Unit else along = nil end
+    local up = nrm * (0.45 + cosI) + refl * (1 - cosI) * 1.1
+    up = (up.Magnitude > 1e-3) and up.Unit or nrm
+    -- ① 喷泉：窄、高，往上冲（越斜越往前倒），重力拉回来
+    h.CFrame = upCF(p + nrm * 0.2, up)
+    burst(h, { tex = TX.smoke, n = n(9 + 5 * s), life = { 0.9 * P.life, 1.9 * P.life }, spd = { 16 * s, 34 * s }, spread = 8 + 12 * cosI, acc = V(0, -48, 0), drag = 1.5,
+      size = nseq(0, 0.8 * s, 0.35, 2.4 * s, 1, 4 * s), tr = nseq(0, 0.04, 0.55, 0.4, 1, 1), col = cseq(P.dust, P.dust2), rot = 40 })
+    -- ② 土块、碎石（木头是木屑）：乱飞、落回地上
+    burst(h, { tex = TX.chunk, n = n((P.spark and 14 or 10) * s), life = { 0.8, 1.7 }, spd = { 14 * s, 30 * s }, spread = 26, acc = V(0, -110, 0), drag = 0.4,
+      size = nseq(0, 0.3 + 0.18 * s, 1, 0.18 + 0.1 * s), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(P.clod, P.clod:Lerp(RGB(30, 28, 24), 0.4)), rot = 400 })
+    -- ③ 贴地一圈扬尘（往四周推开、慢慢散），再一团留着随风飘的灰
+    h.CFrame = upCF(p + nrm * 0.8, nrm)
+    burst(h, { tex = TX.smoke, n = n(7 + 3 * s), radial = true, dir = Enum.NormalId.Front, spread = 12, life = { 1.2 * P.life, 2.4 * P.life }, spd = { 6 * s, 13 * s }, drag = 2,
+      acc = V(0, 1.2, 0), size = nseq(0, 1.1 * s, 1, 4.2 * s), tr = nseq(0, 0.35, 1, 1), col = cseq(P.dust2, P.dust2) })
+    burst(h, { tex = TX.smoke, n = n(2 + s), life = { 2.5 * P.life, 4.5 * P.life }, spd = { 1, 3 }, spread = 60, drag = 1, acc = V(1.2, 0.8, 0.6),
+      size = nseq(0, 2 * s, 1, 6 * s), tr = nseq(0, 0.55, 1, 1), col = cseq(P.dust2, P.dust2), rot = 10 })
+    -- ④ 擦着地打：犁出一道沟——顺着弹道往前一串土团，一团比一团小
+    if along and cosI < 0.5 then
+      local L = (6 + 5 * s) * (1 - cosI)
+      local k = math.floor(3 + s)
+      local fw = (along * 0.6 + nrm * 0.8).Unit
+      local pe
+      for i = 1, k do
+        local f = i / k
+        h.CFrame = upCF(p + along * (L * f) + nrm * 0.3, fw)
+        local m = n((4 + 2 * s) * (1.1 - f * 0.6))
+        if not pe then
+          pe = burst(h, { tex = TX.smoke, n = m, life = { 0.8 * P.life, 1.6 * P.life }, spd = { 7 * s, 16 * s }, spread = 18, acc = V(0, -40, 0), drag = 1.6,
+            size = nseq(0, 0.7 * s, 0.4, 1.9 * s, 1, 3 * s), tr = nseq(0, 0.12, 0.6, 0.45, 1, 1), col = cseq(P.dust, P.dust2), rot = 40 })
+        else
+          pe:Emit(m)
+        end
+      end
+    end
+    -- ⑤ 硬地（石头、水泥、玻璃）：白热一闪，一大把火星往反弹方向溅
+    if P.spark then
+      local sd = nrm + refl
+      sd = (sd.Magnitude > 1e-3) and sd.Unit or nrm
+      h.CFrame = upCF(p + nrm * 0.2, sd)
+      burst(h, { tex = TX.glow, n = n(14 * s), life = { 0.2, 0.6 }, spd = { 40, 110 }, spread = 40, acc = V(0, -90, 0), drag = 2.2,
+        size = nseq(0, 0.45, 1, 0), tr = nseq(0, 0, 1, 0.3), col = cseq(RGB(255, 246, 210), RGB(255, 150, 50)), le = 1 })
+      burst(h, { tex = TX.glow, n = 1, life = { 0.07, 0.12 }, spd = { 0, 0 }, spread = 0, size = nseq(0, 2.2 * s, 1, 4 * s), tr = nseq(0, 0, 1, 1),
+        col = cseq(RGB(255, 255, 240), RGB(255, 205, 130)), le = 1, z = 2 })
+      if d < 500 then flash(p + nrm, RGB(255, 222, 165), 10 * s, 3, 0.08) end
+    end
+    -- 弹芯跳起来接着飞（擦着地打的多，硬地上更多）
+    if d < 900 and math.random() < ((P.spark and 0.75 or 0.35) * (1 - cosI)) then ricochet(p + nrm * 0.3, refl, s * 1.3, d) end
+    -- ⑥ 一声闷响（远的晚一点到），打在石头上还有一声跳弹；离得近震一下
+    if d < 700 then
+      G.sfx({ { id = EXP, vol = 0.5, s = { 1.45, 1.7 }, reg = { 0.03, 0.5 } } }, p, { rmin = 15, rmax = 700, delay = d / 960 })
+      if P.spark and d < 300 then G.sfx("shellRic", p, { vol = 0.8, rmax = 500 }) end
+    end
+    if d < 45 then G.shake(0.12 * (1 - d / 45)) end
+    Debris:AddItem(h, 5 * P.life + 0.5)
+  end
+  G.kineticHit = kineticHit
 
   -- 弹掉进海里：一小柱水
   local function splash(p)
@@ -50888,7 +51102,8 @@ function Fx.init(G)
           G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
-      elseif k == "boom" then boom(e.p, e.s, e.c)
+      elseif k == "boom" then boom(e.p, e.s, e.c, e.h, e.d, e.am)
+      elseif k == "gimp" then kineticHit(e.p, e.n, e.d, e.h, e.s)   -- 穿甲弹打在地上（Ents.lua）
       elseif k == "spark" then   -- 炮弹、航炮直接打在车、船、飞机上：钢甲上一大团火花（Ents.lua）
         if typeof(e.p) == "Vector3" then
           local n = (typeof(e.n) == "Vector3" and e.n.Magnitude > 0.5) and e.n.Unit or V(0, 1, 0)
@@ -91009,6 +91224,215 @@ return WtHud
         </Item>
         <Item class="ModuleScript" referent="242">
           <Properties>
+            <string name="Name">WtMap</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——M 键大地图页（用户 11-25：「交战给我改成这样的画面 按m放大地图」「按m打开地图是这样的」——
+--   战雷那张图：左边一栏这一局的情况、出击阵容、任务目标；右边一张带网格坐标的大地图）
+--   · 战斗中按 B 打开 / 关上（开坦克时 M 是烟幕弹——用户 11-25「烟幕改成m」；开喷气机 B 是机轮刹车、M 是鼠标瞄准，不开）；
+--     观战、开直升机时 M 也能开；Esc 关；机库里不开
+--   · 右边：MapUI 那张图（同小地图、部署界面是同一张，挂过来、关的时候挂回小地图），盖 10 × 10 的网格，行 A～J、列 1～10
+--   · 左边：模式和阶段、剩余时间、我的 SP；目标据点（谁的、在不在争夺）；出击阵容出过的车（出了几次、备用还剩几次）
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local WtMap = {}
+
+function WtMap.init(G)
+  local TH = require(RS:WaitForChild("Theme"))
+  local me = Players.LocalPlayer
+  local RGB = Color3.fromRGB
+  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local open = false
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtMap"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 9
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+  local dim = Instance.new("Frame")
+  dim.Size = UDim2.fromScale(1, 1)
+  dim.BackgroundColor3, dim.BackgroundTransparency, dim.BorderSizePixel = RGB(6, 8, 10), 0.25, 0
+  dim.Parent = gui
+  local function frame(parent, size, pos, col, tr)
+    local f = Instance.new("Frame")
+    f.Size, f.Position = size, pos or UDim2.new()
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = col or TH.C.PANEL, tr or 0, 0
+    f.Parent = parent
+    return f
+  end
+  local function text(parent, s, size, pos, ts, col, font, xa)
+    local t = Instance.new("TextLabel")
+    t.BackgroundTransparency = 1
+    t.Text, t.Size, t.Position = s, size, pos or UDim2.new()
+    t.TextSize, t.TextColor3, t.Font = ts or TH.S.body, col or TH.C.TEXT, font or TH.F.body
+    t.TextXAlignment = xa or Enum.TextXAlignment.Left
+    t.TextStrokeTransparency = 0.6
+    t.Parent = parent
+    return t
+  end
+  -- 左栏
+  local LW = 320
+  local left = frame(dim, UDim2.new(0, LW, 1, -120), UDim2.new(0, 28, 0, 60), TH.C.PANEL, 0.12)
+  left.Name = "Side"
+  TH.corner(left)
+  TH.stroke(left)
+  local title = text(left, L("战场地图", "BATTLE MAP"), UDim2.new(1, -24, 0, 30), UDim2.new(0, 12, 0, 8), TH.S.title, TH.C.TEXT, TH.F.title)
+  title.Name = "Title"
+  local info = text(left, "", UDim2.new(1, -24, 0, 60), UDim2.new(0, 12, 0, 42), TH.S.small, TH.C.MUTE, TH.F.bold)
+  info.Name = "Info"
+  info.TextYAlignment = Enum.TextYAlignment.Top
+  info.TextWrapped = true
+  local sec1 = text(left, L("目标", "OBJECTIVES"), UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 108), TH.S.sub, TH.C.TEXT, TH.F.bold)
+  local objList = frame(left, UDim2.new(1, -24, 0, 150), UDim2.new(0, 12, 0, 132), TH.C.BG, 1)
+  objList.Name = "Objectives"
+  local sec2 = text(left, L("出过的车", "SPAWNED"), UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 292), TH.S.sub, TH.C.TEXT, TH.F.bold)
+  local vehList = frame(left, UDim2.new(1, -24, 0, 200), UDim2.new(0, 12, 0, 316), TH.C.BG, 1)
+  vehList.Name = "Spawned"
+  local hint = text(dim, L("B / Esc 关闭", "B / Esc to close"), UDim2.new(0, 300, 0, 20), UDim2.new(0, 28, 1, -50), TH.S.small, TH.C.MUTE, TH.F.bold)
+  hint.Name = "Hint"
+  sec1.Name, sec2.Name = "SecObj", "SecVeh"
+  -- 右边：大地图 + 网格
+  local mapBox = frame(dim, UDim2.fromOffset(600, 600), UDim2.new(0, 28 + LW + 40, 0, 60), RGB(0, 0, 0), 0.2)
+  mapBox.Name = "MapBox"
+  TH.stroke(mapBox)
+  local holder = frame(mapBox, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  holder.Name = "Holder"
+  holder.ClipsDescendants = true
+  local grid = frame(mapBox, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+  grid.Name = "Grid"
+  grid.ZIndex = 20
+  local ROWS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" }
+  for i = 1, 9 do
+    local v = frame(grid, UDim2.new(0, 1, 1, 0), UDim2.fromScale(i / 10, 0), RGB(255, 255, 255), 0.82)
+    v.ZIndex = 20
+    local h = frame(grid, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, i / 10), RGB(255, 255, 255), 0.82)
+    h.ZIndex = 20
+  end
+  for i = 1, 10 do   -- 行 A～J 写在左边、列 1～10 写在上边（战雷那样）
+    local r = text(mapBox, ROWS[i], UDim2.new(0, 20, 0.1, 0), UDim2.new(0, -24, (i - 1) / 10, 0), TH.S.small, TH.C.TEXT, TH.F.bold, Enum.TextXAlignment.Center)
+    r.Name = "Row_" .. ROWS[i]
+    local c = text(mapBox, tostring(i), UDim2.new(0.1, 0, 0, 18), UDim2.new((i - 1) / 10, 0, 0, -20), TH.S.small, TH.C.TEXT, TH.F.bold, Enum.TextXAlignment.Center)
+    c.Name = "Col_" .. i
+  end
+  -- 按屏幕大小摆：地图是正方形，左栏右边能放多大放多大
+  local function layout()
+    local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+    local s = math.max(200, math.min(vs.Y - 110, vs.X - (28 + LW + 40) - 28))
+    mapBox.Size = UDim2.fromOffset(s, s)
+  end
+  -- 格子坐标（小地图、地图上的点说位置用）：世界坐标 → 「C7」
+  function G.mapGridRef(x, z)
+    if not G.mapUV then return "" end
+    local u, v = G.mapUV(x, z)
+    local col = math.clamp(math.floor(u * 10) + 1, 1, 10)
+    local row = math.clamp(math.floor(v * 10) + 1, 1, 10)
+    return ROWS[row] .. col
+  end
+
+  local function sideName(t)
+    local mine = me:GetAttribute("Side")
+    if t == nil or t == "none" or t == "" then return L("中立", "Neutral"), TH.C.MUTE end
+    if t == mine then return L("我方", "Ours"), TH.C.FRIEND end
+    return L("敌方", "Enemy"), TH.C.FOE
+  end
+  local function fill()
+    local S = G.S or {}
+    for _, c in ipairs(objList:GetChildren()) do c:Destroy() end
+    for _, c in ipairs(vehList:GetChildren()) do c:Destroy() end
+    local mode = workspace:GetAttribute("WtMode")
+    local modeName = (mode == "sb" and L("全真", "Simulator")) or (mode == "rb" and L("历史", "Realistic")) or L("街机", "Arcade")
+    local left = S.left and string.format("%d:%02d", math.floor(S.left / 60), math.floor(S.left % 60)) or "--:--"
+    local w = S.wt
+    info.Text = string.format(L("陆战 · %s · %s\n剩余 %s · 我的 SP %d", "Ground · %s · %s\n%s left · SP %d"), modeName,
+      (S.phase == "prep") and L("准备阶段", "Preparation") or L("交战中", "Battle"), left, w and w.sp or 0)
+    -- 目标据点
+    local y = 0
+    for _, p in ipairs(S.points or {}) do
+      if y > 130 then break end
+      local nm, col = sideName(p.owner)
+      local row = frame(objList, UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, y), TH.C.BG, 0.5)
+      row.Name = "Point_" .. tostring(p.id)
+      local badge = frame(row, UDim2.fromOffset(22, 22), UDim2.fromOffset(1, 1), col, 0.15)
+      TH.corner(badge, 2)
+      text(badge, tostring(p.id), UDim2.fromScale(1, 1), nil, TH.S.small, RGB(16, 18, 20), TH.F.title, Enum.TextXAlignment.Center)
+      local st = nm
+      if p.act and (p.prog or 0) > 0 and (p.prog or 0) < 1 then st = st .. L(" · 争夺中 ", " · contested ") .. math.floor((p.prog or 0) * 100) .. "%" end
+      if p.locked then st = st .. L(" · 未开放", " · locked") end
+      local where = ""
+      local MP = G.Map and G.Map.POINTS
+      if MP then
+        for _, q in ipairs(MP) do if q.id == p.id and q.x then where = "  " .. G.mapGridRef(q.x, q.z) end end
+      end
+      text(row, st .. where, UDim2.new(1, -32, 1, 0), UDim2.fromOffset(30, 0), TH.S.small, col, TH.F.bold)
+      y += 26
+    end
+    if y == 0 then text(objList, L("这张图没有据点", "No objectives"), UDim2.new(1, 0, 0, 20), nil, TH.S.small, TH.C.MUTE) end
+    -- 出过的车（WtMatch 推的 S.wt：出了几次、备用还剩几次）
+    y = 0
+    for _, k in ipairs(w and w.order or {}) do
+      if y > 180 then break end
+      local n = (w.ln and w.ln[k]) or 0
+      local left2 = math.max(0, 1 + (w.backup or 1) - n)
+      local nm = (G.T and G.T("tree." .. k)) or k
+      if nm == "tree." .. k then nm = (G.T and G.T("veh." .. k)) or k end
+      local row = text(vehList, string.format(L("%s　出了 %d 次 · 还能出 %d 次", "%s  spawned %d · %d left"), nm, n, left2),
+        UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, y), TH.S.small, (left2 > 0) and TH.C.TEXT or TH.C.MUTE, TH.F.bold)
+      row.Name = "Veh_" .. k
+      y += 24
+    end
+    if y == 0 then text(vehList, L("这一局还没出车", "Nothing spawned yet"), UDim2.new(1, 0, 0, 20), nil, TH.S.small, TH.C.MUTE) end
+  end
+
+  local function setOpen(on)
+    if on == open then return end
+    open = on
+    gui.Enabled = on
+    if on then
+      layout()
+      fill()
+      if G.mapMount then G.mapMount(holder, UDim2.fromScale(1, 1)) end
+    else
+      local P = G.hudParts
+      if G.mapMount and P then G.mapMount(P.miniClip or P.miniBox, UDim2.fromScale(1, 1)) end
+    end
+  end
+  G.wtMapOpen = function() return open end
+  G.wtMapToggle = function(on) if on == nil then on = not open end setOpen(on) end
+  local function canOpen()
+    if G.hangarActive and G.hangarActive() then return false end
+    if G.settingsShown and G.settingsShown() then return false end
+    local S = G.S
+    return S ~= nil and (S.phase == "battle" or S.phase == "prep")
+  end
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp or UIS:GetFocusedTextBox() then return end
+    local k = io.KeyCode
+    if k == Enum.KeyCode.Escape and open then setOpen(false) return end
+    local jet = G.fly ~= nil and G.fly.d and G.fly.d.kind == "jet"
+    local ground = G.drive ~= nil
+    if (k == Enum.KeyCode.B and not jet and not (G.interiorOn and G.interiorOn())) or (k == Enum.KeyCode.M and not jet and not ground) then
+      if open then setOpen(false) elseif canOpen() then setOpen(true) end
+    end
+  end)
+  -- 开着的时候每秒刷新一次左栏；机库开了 / 一局结束就关
+  task.spawn(function()
+    while true do
+      task.wait(1)
+      if open then
+        if not canOpen() then setOpen(false) else fill() layout() end
+      end
+    end
+  end)
+end
+
+return WtMap
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="243">
+          <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
 --   电脑上开坦克时 VehHud 的 stepTank 每帧调 G.wtTankStep，原来 MWT 那套（右下全息车、六边形弹种钮、∧ 准星、车旁的车速牌）收起：
@@ -91670,7 +92094,7 @@ return WtTank
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="243">
+        <Item class="ModuleScript" referent="244">
           <Properties>
             <string name="Name">WtVoice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车组语音（用户 11-25「全部都做」⑬：战雷的「击穿！」「跳弹」「着火了」「炮长阵亡」「装填完毕」）
@@ -91776,10 +92200,135 @@ return WtVoice
 ]]></ProtectedString>
           </Properties>
         </Item>
+        <Item class="ModuleScript" referent="245">
+          <Properties>
+            <string name="Name">XrayOwn</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——透视自己的车（用户 11-25「x改成透视自己的坦克」）
+--   开车时按 X：自己的车变成半透明，车里的乘员（球）和模块（发动机、传动、弹药架、油箱、炮闩、炮塔驱动、履带、炮管……）
+--   按战雷那样上色：乘员绿好、黄伤、红没了；模块灰蓝好、黄伤、红坏了——状态取服务器写在车上的 WtC / WtM（同 X 光回放，WtHud.lua）；
+--   炮塔里的跟着炮塔转。再按 X 关上；下车、换车自动关
+local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local XrayOwn = {}
+
+function XrayOwn.init(G)
+  local W = require(RS:WaitForChild("WtDamage"))
+  local TH = require(RS:WaitForChild("Theme"))
+  local V3 = Vector3.new
+  local CF = CFrame.new
+  local RGB = Color3.fromRGB
+  local OK, HURT, DEAD, MOD = TH.C.GOOD, TH.C.WARN, TH.C.BAD, RGB(120, 150, 170)
+  local on, cur = false, nil   -- cur = { st, folder, items = { { it, p } }, faded = { 零件 } }
+
+  local function clear()
+    if not cur then return end
+    if cur.folder then cur.folder:Destroy() end
+    for _, p in ipairs(cur.faded or {}) do if p.Parent then p.LocalTransparencyModifier = 0 end end
+    cur = nil
+  end
+  local function ownModel(st)
+    local v = G.views and st and st.em and G.views[st.em]
+    return v and v.model or nil
+  end
+  local function build(st)
+    local d = st.d
+    local okL, lay = pcall(W.layout, d)
+    if not okL or not lay then return nil end
+    local folder = Instance.new("Folder")
+    folder.Name = "OwnXray"
+    folder.Parent = workspace
+    local items = {}
+    for _, it in ipairs(lay.list) do
+      local size = it.hi - it.lo
+      local p = Instance.new("Part")
+      p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+      p.Material = Enum.Material.Neon
+      p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      if it.kind == "crew" then
+        p.Shape = Enum.PartType.Ball
+        local s = math.min(size.X, size.Z) * 0.9
+        p.Size = V3(s, s, s)
+      else
+        p.Size = V3(math.max(size.X, 0.1), math.max(size.Y, 0.1), math.max(size.Z, 0.1))
+      end
+      p.Parent = folder
+      table.insert(items, { it = it, p = p, c = (it.lo + it.hi) / 2 })
+    end
+    -- 自己的车变半透明（车里的东西看得见）
+    local faded = {}
+    local m = ownModel(st)
+    if m then
+      for _, q in ipairs(m:GetDescendants()) do
+        if q:IsA("BasePart") and q.Transparency < 0.95 then
+          q.LocalTransparencyModifier = 0.78
+          table.insert(faded, q)
+        end
+      end
+    end
+    return { st = st, folder = folder, items = items, faded = faded }
+  end
+  local function states(em)
+    local cs, ms = {}, {}
+    local wc = em and em:GetAttribute("WtC")
+    local wm = em and em:GetAttribute("WtM")
+    local i = 0
+    for tok in string.gmatch(wc or "", "[^,]+") do i += 1 cs[i] = tonumber(string.sub(tok, 1, 1)) or 2 end
+    for j = 1, #(wm or "") do ms[j] = tonumber(string.sub(wm, j, j)) or 2 end
+    return cs, ms
+  end
+
+  function G.ownXrayOn() return on end
+  function G.ownXrayToggle()
+    on = not on
+    if not on then clear() end
+    if G.sfx then pcall(G.sfx, "uiClick") end
+    return on
+  end
+  RunService.RenderStepped:Connect(function()
+    if not on then return end
+    local st = G.drive
+    if not st or not st.em or not st.em.Parent or not st.root then
+      on = false
+      clear()
+      return
+    end
+    if not cur or cur.st ~= st then
+      clear()
+      cur = build(st)
+      if not cur then on = false return end
+    end
+    local d = st.d
+    local base = st.root * CF(0, -d.H / 2, 0)
+    local cs, ms = states(st.em)
+    local ci, mi = 0, 0
+    local yaw = st.ty or 0
+    for _, x in ipairs(cur.items) do
+      local it = x.it
+      local s
+      if it.kind == "crew" then ci += 1 s = cs[ci] or 2 else mi += 1 s = ms[mi] or 2 end
+      local col
+      if it.kind == "crew" then col = (s == 0) and DEAD or ((s == 1) and HURT or OK)
+      else col = (s == 0) and DEAD or ((s == 1) and HURT or MOD) end
+      x.p.Color = col
+      x.p.Transparency = (it.kind == "crew") and 0.15 or ((s == 2) and 0.55 or 0.2)
+      if it.tur then
+        x.p.CFrame = base * CF(W.fromTur(d, x.c, yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)
+      else
+        x.p.CFrame = base * CF(x.c)
+      end
+    end
+  end)
+end
+
+return XrayOwn
+]]></ProtectedString>
+          </Properties>
+        </Item>
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="244">
+  <Item class="Workspace" referent="246">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">true</bool>
@@ -91790,7 +92339,7 @@ return WtVoice
       <token name="StreamingIntegrityMode">1</token>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="245">
+  <Item class="Lighting" referent="247">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

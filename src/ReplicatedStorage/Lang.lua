@@ -452,8 +452,8 @@ add("ui.lcac", "气垫艇正把你的车送上滩……", "The hovercraft is bri
 add("ui.lcacOn", "{1}  ·  甲板上：{2}", "{1}  ·  carrying {2}")
 add("ui.lcacHelp", "W/S 油门 · A/D 转向（越快越灵，转弯会甩尾）· 鼠标 转炮塔 · 冲上沙滩自动放下车，接着开下去 · 空格 下车",
   "W/S throttle · A/D steer (sharper at speed, the stern slides out) · Mouse turret · Run up the beach to unload, then drive off · Space exit")
-add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
-  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · Y repair / extinguish · G scout · K artillery · Space exit")
+add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹种 / 武器 · Shift 瞄准镜 · V 光电模式（昼光 / 夜视 / 热成像）· M 烟幕弹 · X 透视自己的车 · B 大地图 · Y 维修 / 灭火 · G 侦察 · K 火炮支援 · 空格 下车",
+  "WASD drive · Mouse aim · LMB fire · 1-5 shell / weapon · Shift gunner sight · V optics (day / NV / thermal) · M smoke · X X-ray own vehicle · B map · Y repair / extinguish · G scout · K artillery · Space exit")
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")

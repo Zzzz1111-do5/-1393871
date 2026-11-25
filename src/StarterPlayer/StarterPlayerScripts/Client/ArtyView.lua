@@ -170,7 +170,7 @@ function ArtyView.init(G)
     local ap = st.aimPt
     local flat = ap and V(ap.X - p0.X, 0, ap.Z - p0.Z) or nil
     if not flat or flat.Magnitude < w.minR or flat.Magnitude > w.maxR then
-      local look = st.root.CFrame.LookVector
+      local look = st.root.LookVector   -- st.root 是车身的 CFrame（Drive.lua）
       look = V(look.X, 0, look.Z).Unit
       flat = look * ((w.minR + w.maxR) / 2)
     end

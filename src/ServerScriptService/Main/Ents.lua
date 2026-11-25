@@ -192,8 +192,23 @@ function Ents.init(G)
   end
   G.boomKind = boomKind
 
+  -- 炸点脚下是什么（没给 info 的：导引弹、炮兵的炮弹、地雷、空袭……）：往下探几格，打在地上 / 房子上才给材质；来向取 G.blastDir
+  local gProbe = RaycastParams.new()
+  gProbe.FilterType = Enum.RaycastFilterType.Exclude
+  local function groundInfo(pos)
+    local res = workspace:Raycast(pos + Vector3.new(0, 2.5, 0), Vector3.new(0, -9, 0), gProbe)
+    if not res then return nil end
+    local hs = HitSurf.of(res.Instance, res.Material)
+    if not hs or HitSurf.METAL[hs] then return nil end
+    local bd = G.blastDir
+    return { h = hs, d = (typeof(bd) == "Vector3" and bd.Magnitude > 1) and bd.Unit or nil }
+  end
+  G.groundInfo = groundInfo
+
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
-  function G.explode(pos, w, src, scale)
+  -- info（可选）：{ h = 地面材质（HitSurf 代号）, d = 来弹方向, am = 炮弹弹种（he / heat / mpat） }——客户端按它画不同颜色的土柱、往哪边掀、
+  --   榴弹 / 破甲弹各是什么样（用户 11-25「不同角度不同材质不同弹种有不同效果」）；没给的往脚下探
+  function G.explode(pos, w, src, scale, info)
     if w and w.nuke and G.nukeAt then return G.nukeAt(pos, w, src) end   -- 核导弹撞到地面 / 房子：照样核爆（Nuke.lua）
     local r = w.splash or 8
     local ownK = false
@@ -201,7 +216,10 @@ function Ents.init(G)
       local m = G.eraBlast(pos, w, G.blastDir)
       if m then G.dmgK, ownK = m, true end
     end
-    G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
+    if not w.noFx then   -- noFx：只算伤害（穿甲弹打在地上：客户端画 gimp，不是爆炸）
+      if not info then info = groundInfo(pos) end
+      G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w), h = info and info.h or nil, d = info and info.d or nil, am = info and info.am or nil })
+    end
     for _, P in pairs(G.P) do
       local char = P.char
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -259,7 +277,20 @@ function Ents.init(G)
   -- 迫击炮弹、炮弹：flight 秒后落在 pos（落点已经算好散布）
   function G.shell(pos, w, src, flight, from)
     G.fx({ k = "shell", p = pos, t = flight, a = from })
-    task.delay(flight, function() G.explode(pos, w, src) end)
+    task.delay(flight, function()
+      -- 落下来的方向（客户端土柱往前掀）：从炮位那边、五十多度往下砸
+      local bd
+      if typeof(from) == "Vector3" then
+        local hz = Vector3.new(pos.X - from.X, 0, pos.Z - from.Z)
+        if hz.Magnitude > 1 then bd = (hz.Unit + Vector3.new(0, -1.4, 0)).Unit * 100 end
+      end
+      G.blastDir = bd
+      local info = groundInfo(pos)   -- 炮兵、迫击炮的都是榴弹
+      if info then info.am = "he" end
+      local ok, err = pcall(G.explode, pos, w, src, nil, info)
+      G.blastDir = nil
+      if not ok then G.reportError("炮弹落地", err) end
+    end)
   end
 
   local function stepShots(dt)
@@ -380,7 +411,21 @@ function Ents.init(G)
           end
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
-          G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          -- 打在地上 / 房子上（不是钢甲）：用户 11-25「炮弹和导弹 子弹击中地面 不同角度不同材质不同弹种有不同效果」——
+          --   穿甲弹（动能弹，s.cls = ap）不炸：客户端 gimp 按材质、入射角掀土 / 迸火星；榴弹、破甲弹照样炸，爆炸带上材质和来向
+          local ground = not (hs and HitSurf.METAL[hs])
+          if ground and s.cls == "ap" then
+            G.fx({ k = "gimp", p = res.Position, n = res.Normal, d = s.vel.Unit, h = hs or "d", c = "ap", s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+            local wq = s.w.splashQ
+            if not wq then
+              wq = table.clone(s.w.splashW)
+              wq.noFx = true
+              s.w.splashQ = wq
+            end
+            G.explode(res.Position, wq, s.src, (s.w.splash or 6) / 10)
+          else
+            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10, ground and { h = hs or "d", d = s.vel.Unit, am = s.cls } or nil)
+          end
           if ek then G.dmgK = nil end
           done = true
         elseif res and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then
@@ -390,7 +435,8 @@ function Ents.init(G)
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
-          G.explode(res.Position, s.w, s.src)
+          local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
+          G.explode(res.Position, s.w, s.src, nil, (hs2 and not HitSurf.METAL[hs2]) and { h = hs2, d = s.vel.Unit } or nil)   -- 地上：按材质、来向画
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           if m then G.dmgK = nil end
           done = true

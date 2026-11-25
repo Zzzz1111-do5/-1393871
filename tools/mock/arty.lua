@@ -122,6 +122,23 @@ R.run(0.3)
 check(not C.artyOn() and st.arty ~= true, "Shift 退出炮兵视角")
 check(R.workspace:FindFirstChild("ArtyMarks") == nil, "地上的圈收掉了")
 
+print("⑥ X 透视自己的车、B 大地图（用户 11-25「烟幕改成m x改成透视自己的坦克」「按m放大地图」）")
+R.as("client", function() C.ownXrayToggle() end)
+R.run(0.3)
+local xf = R.workspace:FindFirstChild("OwnXray")
+check(C.ownXrayOn() and xf ~= nil and #xf:GetChildren() >= 5, "X：车里的乘员、模块画出来了（" .. (xf and #xf:GetChildren() or 0) .. " 个）")
+R.as("client", function() C.ownXrayToggle() end)
+R.run(0.2)
+check(not C.ownXrayOn() and R.workspace:FindFirstChild("OwnXray") == nil, "再按 X 关上")
+R.as("client", function() C.wtMapToggle(true) end)
+R.run(0.3)
+local mg = me.PlayerGui:FindFirstChild("WtMap")
+check(mg and mg.Enabled and C.mapRoot and C.mapRoot.Parent and C.mapRoot.Parent.Name == "Holder", "大地图页开着，地图挂在页里")
+check(#T.texts("目标") > 0 and #T.texts("A") > 0, "左边写了目标、右边有网格坐标")
+R.as("client", function() C.wtMapToggle(false) end)
+R.run(0.3)
+check(not mg.Enabled and C.mapRoot.Parent ~= nil and C.mapRoot.Parent.Name ~= "Holder", "关上以后地图挂回小地图")
+
 print("⑤ 火控计算机按年代分代、改装树三级")
 local okGen = 0
 for _, it in pairs(TT.byKey) do

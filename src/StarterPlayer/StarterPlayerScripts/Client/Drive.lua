@@ -1556,8 +1556,10 @@ function Drive.init(G)
       local i = NUMK[k]
       -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪
       if not (G.wtKeySlot and G.wtKeySlot(st, i)) and st.d.weapons[i] then st.wi = i end
-    elseif k == Enum.KeyCode.M or k == Enum.KeyCode.X then
+    elseif k == Enum.KeyCode.M then   -- 烟幕弹（用户 11-25「烟幕改成m」）
       smoke()
+    elseif k == Enum.KeyCode.X then   -- 透视自己的车：乘员、模块按状态上色（XrayOwn.lua，用户 11-25「x改成透视自己的坦克」）
+      if G.ownXrayToggle then G.ownXrayToggle() end
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
     elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
