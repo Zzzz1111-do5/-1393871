@@ -285,7 +285,9 @@ function Armor.init(G)
           G.msg(Q.pl, "bad", "ui.vehLost")
         end
         self.pass = {}
-        if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = "veh." .. self.def.id }) end
+        -- 科技树出的车（Tech.lua 记的 treeKey）写科技树里的名字，借来的型号也写自己的
+        local nk = self.treeKey and ("tree." .. self.treeKey) or ("veh." .. self.def.id)
+        if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = nk }) end
         for i, x in ipairs(vehicles) do
           if x == self then table.remove(vehicles, i) break end
         end
@@ -496,7 +498,15 @@ function Armor.init(G)
     local S = src(P)
     if w.kind == "shell" then
       -- 坦克炮（Ballistics.lua 认得的炮）：按客户端选的弹种（msg.am，这门炮能打的才认）用真实初速、重力、空气阻力，带曳光
-      local ww, a = weaponOf(wid, w, type(msg) == "table" and msg.am or nil)
+      -- 科技树改装：没研究的弹种不认（原厂只有第一种；Tech.lua 写的 e.wtFx.ammo = 能打前几种）
+      local am = type(msg) == "table" and msg.am or nil
+      local nA = e.wtFx and e.wtFx.ammo
+      if nA and am then
+        local list = BAL.GUN[wid]
+        local i = list and table.find(list, am)
+        if i and i > nA then am = list[1] end
+      end
+      local ww, a = weaponOf(wid, w, am)
       if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
         local pw = ww.pelletW
         if not pw then
@@ -541,6 +551,7 @@ function Armor.init(G)
     end
     st.mag -= 1
     local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：别人凑合装填，慢六成
+    if w.kind == "shell" and e.crewRel then rk *= e.crewRel end   -- 乘员技能「装填」（WtCrew，Tech.lua 出车时写的）
     st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
       local n = math.min(w.mag, st.reserve)

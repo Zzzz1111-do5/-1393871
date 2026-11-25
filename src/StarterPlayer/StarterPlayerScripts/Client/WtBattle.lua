@@ -153,7 +153,11 @@ function WtBattle.init(G)
   local GAPX = (TW + 16) / 2 + 12
   local tA, tB = makeTable(-GAPX), makeTable(GAPX)
   local rewards = label(res, "", UD2(0, 900, 0, 22), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 28), 16, GOLD, BOLD, V2(0.5, 0))
-  local nextT = label(res, "", UD2(0, 600, 0, 18), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 56), 13, MUTE, MED, V2(0.5, 0))
+  -- 科技树的明细（TechUI.lua G.treeResultText）：研究点、记在哪辆上、改装、乘员经验
+  local treeT = label(res, "", UD2(0, 1100, 0, 36), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 54), 13, GOLD, MED, V2(0.5, 0))
+  treeT.Name = "TreeResult"
+  treeT.TextWrapped = true
+  local nextT = label(res, "", UD2(0, 600, 0, 18), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 96), 13, MUTE, MED, V2(0.5, 0))
 
   local board = {}
   local baseBoard = G.onBoard
@@ -203,6 +207,7 @@ function WtBattle.init(G)
     fill(tB, (mine == "atk") and "def" or "atk", board, me.DisplayName)
     local m, w = S.me or {}, S.wt or {}
     rewards.Text = T("wtm.rewards", m.s or 0, m.gain or 0, w.earned or 0, w.vk or 0, w.ak or 0)
+    treeT.Text = G.treeResultText and G.treeResultText() or ""
     nextT.Text = T("ui.nextRound", S.left or 0)
   end
 

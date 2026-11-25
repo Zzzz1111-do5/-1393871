@@ -383,6 +383,17 @@ add("ui.roundOver", "本局结束", "ROUND OVER")
 add("ui.xp", "经验 +{1}", "+{1} XP")
 add("ui.rankUp", "晋升：{1}", "Promoted: {1}")
 add("ui.killed", "{1} 击毙了 {2}", "{1} killed {2}")
+add("ui.killedVeh", "{1}（{2}）击毁了 {3}（{4}）", "{1} ({2}) destroyed {3} ({4})")
+add("ui.killedVeh2", "{1} 击毁了 {2}（{3}）", "{1} destroyed {2} ({3})")
+add("tree.brHigh", "这一辆战斗等级 {1}：这一局是 {2}，最高能出 {3}", "This vehicle is BR {1}: this battle is BR {2}, up to {3}")
+add("tree.modDone", "{1}：改装「{2}」研究完了，已经装上", "{1}: modification \"{2}\" researched and installed")
+add("tree.modLocked", "这项改装还没开：上一级先研究完两项", "Locked: research two modifications of the previous tier first")
+add("tree.crewLv", "阵容第 {1} 位的乘员升到 {2} 级：有新的技能点", "Crew in slot {1} reached level {2}: new skill points")
+add("tree.crewNoPts", "技能点不够", "Not enough skill points")
+add("tree.waitDeploy", "{1} 秒后出击", "Deploying in {1} s")
+add("tree.testOn", "试驾：{1}（改装全装上；前面 300 / 600 / 1000 米有靶车；下车回机库）", "Test drive: {1} (all modifications; targets at 300 / 600 / 1000 m; leave the vehicle to return)")
+add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
+add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")
 add("ui.killedBy", "你被 {1} 击毙", "Killed by {1}")
 add("ui.died", "你阵亡了", "You died")
@@ -1478,5 +1489,13 @@ add("wt.radarOn", "雷达开", "RADAR ON")
 add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
 add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
+
+-- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
+do
+  local ok, TT = pcall(function() return require(script.Parent:WaitForChild("TechTree", 3)) end)
+  if ok and type(TT) == "table" and TT.byKey then
+    for k, it in pairs(TT.byKey) do add("tree." .. k, it.name, it.en) end
+  end
+end
 
 return Lang

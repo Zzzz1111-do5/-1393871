@@ -139,6 +139,22 @@ end
 for k, f in pairs(act0) do G.ACT[k] = f end
 G.ACT.deployVeh, G.ACT.deploy, G.padSpawnAt = dv0, dp0, ps0
 check(e ~= nil and e.model:GetAttribute("TreeKey") == groundKey, "车上记着科技树的名字（" .. tostring(e and e.model:GetAttribute("TreeKey")) .. "）")
+-- 暂用车（59 式借 m10，没原模型、零件拼的）按真车涂装上色，不按阵营刷沙色；驾驶界面写科技树里的名字
+R.run(1)
+local it59 = TT.get(groundKey)
+local pb = it59 and TT.paint(it59) and TT.paint(it59).base
+local v = e and C.views and C.views[e.model]
+local hitPaint = false
+for _, x in ipairs(v and v.M and v.M.parts or {}) do
+  local c = x[1].Color
+  if pb and math.abs(c.R * 255 - pb[1]) < 1.5 and math.abs(c.G * 255 - pb[2]) < 1.5 and math.abs(c.B * 255 - pb[3]) < 1.5 then hitPaint = true break end
+end
+check(hitPaint, "暂用车按真车涂装上色（" .. tostring(it59 and it59.name) .. "：" .. (pb and table.concat(pb, ",") or "?") .. "）")
+local nameShown = false
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do
+  if (x:IsA("TextLabel") or x:IsA("TextButton")) and it59 and (x.Text == it59.name or x.Text == it59.en) and x.Visible then nameShown = true break end
+end
+check(nameShown, "驾驶界面写科技树里的名字（" .. tostring(it59 and it59.name) .. "）")
 local bp = me:FindFirstChildOfClass("Backpack")
 local nTools = 0
 for _, c in ipairs(bp and bp:GetChildren() or {}) do if c:IsA("Tool") then nTools = nTools + 1 end end
@@ -205,5 +221,26 @@ if nxt then
   local rp = G.treeAward(P, true)
   check(rp > 0 and ((t.rp[nxt.key] or 0) > 0 or TT.researched(t, nxt.key)), string.format("一局结束：挣了 %d 研究点，记在 %s 上（%d / %d）", rp, nxt.name, t.rp[nxt.key] or 0, nxt.rp))
 end
+print("⑦ 资料卡、装甲查看器")
+R.as("client", function() C.openInfo(TT.get("cn_59")) end)
+R.run(0.5)
+local ip = C.infoGui
+local nPart, cols, penRow = 0, {}, false
+for _, x in ipairs(ip and ip:GetDescendants() or {}) do
+  if x:IsA("BasePart") then
+    nPart = nPart + 1
+    cols[string.format("%d,%d,%d", math.floor(x.Color.R * 255), math.floor(x.Color.G * 255), math.floor(x.Color.B * 255))] = true
+  end
+  if x:IsA("TextLabel") and x.Text:find("穿深") then penRow = true end
+end
+local nCol = 0
+for _ in pairs(cols) do nCol = nCol + 1 end
+check(ip and ip.Visible and nPart > 10 and nCol >= 3, string.format("装甲查看器：车模 %d 块、按装甲上了 %d 种颜色", nPart, nCol))
+check(penRow, "参数里写着每种弹的穿深")
+R.as("client", function() C.openInfo(TT.get("cn_j6")) end)
+R.run(0.5)
+local airRow = false
+for _, x in ipairs(ip:GetDescendants()) do if x:IsA("TextLabel") and x.Text:find("km/h") then airRow = true end end
+check(airRow, "飞机的资料卡写着速度")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
 T.summary()

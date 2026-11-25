@@ -16,6 +16,7 @@ function View.init(G)
   local Debris = game:GetService("Debris")
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
+  local TT = require(RS:WaitForChild("TechTree"))   -- 科技树暂用车的真车涂装（TreeKey 属性）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -126,9 +127,13 @@ function View.init(G)
     if kind == "veh" then
       local d = VD.get(em:GetAttribute("Model") or "")
       if not d then return end
-      local M = VM.build(d, team, em:GetAttribute("Mods"))   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 科技树出的车（TreeKey）：还没有原模型、用零件拼的按真车涂装上色（TechTree.paint；用户 11-25「很多车涂装纯米黄」），不按阵营刷沙色
+      local tk = em:GetAttribute("TreeKey")
+      local tit = (type(tk) == "string") and TT.get(tk) or nil
+      local M = VM.build(d, team, em:GetAttribute("Mods"), tit and TT.paint(tit) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
+      v.treeKey = tk
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -790,7 +795,7 @@ function View.init(G)
       local ok = false
       if v.kind == "veh" then
         ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
-        if em:GetAttribute("Mods") ~= v.modsAttr then ok = true end   -- 改装属性晚到了（或者换了）：按新的重建
+        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end

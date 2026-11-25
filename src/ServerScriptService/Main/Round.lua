@@ -644,7 +644,18 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    if kname then
+      -- 战雷式（Config.Wt.noInfantry）：击杀栏写双方开的车——「玩家（车）击毁了 玩家（车）」，车名是科技树里的（Tech.lua 出击时记 P.treeCur）
+      local vk = (Config.Wt or {}).noInfantry and P.treeCur or nil
+      if vk then
+        local K = killer and killer.by
+        local kv = K and K.vehicle and K.vehicle.treeKey
+        if kv then G.msgAll("feed", "ui.killedVeh", kname, { k = "tree." .. kv }, P.pl.DisplayName, { k = "tree." .. vk })
+        else G.msgAll("feed", "ui.killedVeh2", kname, P.pl.DisplayName, { k = "tree." .. vk }) end
+      else
+        G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName)
+      end
+    end
     return killer, kname
   end
   G.creditDeath = creditDeath
@@ -1174,7 +1185,7 @@ function Round.init(G)
     R.tickets = math.max(0, (R.tickets or 0) - 1)
     if R.tickets == 50 or R.tickets == 20 then G.msgAll("center", "ui.ticketsLow", R.tickets) end
   end
-  G.on("died", function(P) ticketLoss(P.team) end)
+  G.on("died", function(P) if not P.inTest then ticketLoss(P.team) end end)   -- 试驾场（Tech.lua）里阵亡不扣兵力
   G.on("botDied", function(B) ticketLoss(B.team) end)
 
   finish = function(winner)

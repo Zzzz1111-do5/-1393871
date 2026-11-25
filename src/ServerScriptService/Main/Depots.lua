@@ -392,6 +392,7 @@ function Depots.init(G)
     end
     return false
   end
+  G.padBusy = padBusy   -- 科技树出车（Tech.lua padFor）挑空着的召唤位
 
   -- 能不能在这个生成点生成（不能的话给这个人说一声为什么）
   -- anyModel：地面召唤位按 E 时还没选型号，名额（按类别）等选了再查
@@ -405,7 +406,7 @@ function Depots.init(G)
     if not padOpen(p, P.team) then G.msg(P.pl, "bad", "ui.padLocked") return false end
     local d = defOf(vid or p.vid)
     if not d then return false end
-    local av = (not anyModel) and G.vehAvail(P.team)[d.cat] or nil
+    local av = (not anyModel) and not P.treeSpawn and G.vehAvail(P.team)[d.cat] or nil   -- 科技树出车（战雷式）不按每队名额：战雷没有这一说，电脑车也不占玩家的名额
     if av and av.u >= av.cap then
       if av.cd and av.cd > 0 then G.msg(P.pl, "bad", "ui.vehCdMsg", av.cd) else G.msg(P.pl, "bad", "ui.vehFull") end
       return false

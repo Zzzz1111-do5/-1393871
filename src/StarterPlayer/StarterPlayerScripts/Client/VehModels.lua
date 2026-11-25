@@ -53,8 +53,13 @@ local CAMO = {
 }
 local TRACK, RUBBER, STEEL, GLASS = RGB(44, 44, 46), RGB(28, 28, 30), RGB(70, 72, 74), RGB(40, 54, 62)
 
-function VehModels.build(d, team, mods)
+-- paint：科技树暂用车的真车涂装（TechTree.paint，{ base, dark, light } 各是 RGB 三元组）；没给就按阵营
+function VehModels.build(d, team, mods, paint)
   local C = CAMO[team] or CAMO.atk
+  if type(paint) == "table" and paint.base then
+    local function c3(t, dflt) return (type(t) == "table") and RGB(t[1], t[2], t[3]) or dflt end
+    C = { base = c3(paint.base, C.base), dark = c3(paint.dark, C.dark), light = c3(paint.light, C.light) }
+  end
   local m = Instance.new("Model")
   m.Name = d.id
   local parts, wheels = {}, {}
@@ -902,6 +907,31 @@ function VehModels.eraBlown(M, i)
     put(V(0.12, 0.15, 0.15), CF(sx * (w / 2 - 0.2), h / 2 - 0.17, -t / 2 + 0.12), RGB(44, 42, 38), Enum.Material.Metal)
   end
   return out
+end
+
+-- 静止的样子（炮塔朝前、炮平着）：把 build 出来的零件摆到车的底座系（科技树资料卡的装甲查看器用；车库 Garage.lua 里有一份一样的）
+function VehModels.pose(M, d)
+  local tp = M.tpiv or (d.turret and d.turret.pivot) or V()
+  local tF = CF(tp)
+  local gF = tF * CF(M.gpiv or (d.gun and d.gun.pivot) or V())
+  local rF = M.rpiv and (tF * CF(M.rpiv)) or tF
+  local rgF = (M.rpiv and M.rgpiv) and (rF * CF(M.rgpiv)) or rF
+  local kF = M.kpiv and (tF * CF(M.kpiv)) or tF
+  for _, it in ipairs(M.parts) do
+    local p, grp, off, idx = it[1], it[2], it[3], it[4]
+    local cf
+    if grp == "turret" then cf = tF * off
+    elseif grp == "gun" then cf = gF * off
+    elseif grp == "rws" then cf = rF * off
+    elseif grp == "rwg" then cf = rgF * off
+    elseif grp == "kit" then cf = kF * off
+    elseif grp == "wheel" then
+      local w = M.wheels[idx]
+      cf = w and (CF(w.x, w.r, w.z) * off) or off
+    else cf = off end
+    p.CFrame = cf
+  end
+  return tp
 end
 
 return VehModels

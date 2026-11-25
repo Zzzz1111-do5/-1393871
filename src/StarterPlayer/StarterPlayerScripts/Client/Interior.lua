@@ -1359,6 +1359,14 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   ---------------------------------------------------------------- 每帧
 
   G.interiorOn = function() return mode ~= nil and cur ~= nil and cur.model ~= nil and cur.model.Parent ~= nil end
+  -- 全真模式（TechUI.lua 每半秒查一次）：车外的时候直接坐进这辆车的第一个乘员位；这辆车没有内饰返回 false（调用的改开瞄准镜）
+  G.interiorEnterSeat = function()
+    if mode ~= nil then return true end
+    if not cur then return false end
+    mode = "seat"
+    enterStation(cur, lastStation[cur.key] or cur.spec.order[1])
+    return true
+  end
   G.interiorState = function() return { mode = mode, station = station, cur = cur } end   -- 测试用
 
   function G.stepInterior(dt)
@@ -2755,7 +2763,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         local order = cur.spec.order
         local idx = 0
         for i, s in ipairs(order) do if s == station then idx = i end end
-        if idx >= #order then
+        if idx >= #order and workspace:GetAttribute("WtMode") == "sb" then   -- 全真模式（战雷）：只能第一人称，转一圈回第一个乘员位，不回车外
+          enterStation(cur, order[1])
+        elseif idx >= #order then
           mode = nil
           if cur.model.Parent then cur.model.Parent = nil end
           cam.FieldOfView = 70

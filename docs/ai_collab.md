@@ -90,6 +90,18 @@
      （服务器自己调时生出来以后接着做，Tech 用它把人塞进车里）、`Config.Wt.noInfantry` 开着时步兵出击被拒（G.allowInfantry 放行；测试台默认放行）；
      init.server 的 Drive 远程：noInfantry 时 op = exit 交给 G.treeLeave（下车 = 判毁回机库）；Depots spawnAt 认 P.treeSpawn（科技树买下的不再查老的金币解锁）。
      **C 注意**：出击还是走 Depots 的 spawnAt（G.wtSpawnOk / G.wtSpawned 照旧调），WtMatch 的阵容是「这一局出过哪几型」，科技树的阵容是「能出哪几辆」，两样都在
+  ⑥ **11-25 第二批已做**（用户「都要做」）：
+     - 战斗等级配对：G.treeRoundBr（准备阶段按真人阵容最高 BR、开战有真人时锁住，workspace 属性 WtBr）、G.treeBrCap（+ Config.Wt.brUp）；
+       电脑车 AIVeh pickModel 走 G.treePickAi（科技树按 BR、按队里真人用的系挑，车上 TreeKey、e.counts 能占点；战雷式每队补到 Config.Wt.aiMax）；
+       **WtMatch 改了**：阵容按 P.wtKey（科技树的键）记，借同一型号的两辆算两种；Depots 召唤位对 P.treeSpawn 不查每队名额、G.padBusy 公开
+     - 改装 ReplicatedStorage/WtMods.lua、乘员 WtCrew.lua：出车时 Tech.lua applyFx 写车上属性 ModSpd / ModAcc / ModTurn / ModTrav / ModAmmo / CrewRel / ModThr，
+       e.wtFx（repair / ext / repK / ammo）——**Wt.lua wtFix / wtExt 认 e.wtFx**（原厂车没研究零件修不了、没灭火器灭不了火）、Armor.lua 装填乘 e.crewRel、弹种按 e.wtFx.ammo；
+       客户端 Drive.lua（车速、加速、转向、炮塔、换弹、装填预测）、Fly.lua（推力 ModThr、空中出生初速 vs.v）照乘
+     - 三种模式 G.wtModeNow（ab / rb / sb，workspace 属性 WtMode、玩家属性 ModeVote）：TankHud 按模式标敌人，Interior 全真不回车外（G.interiorEnterSeat），
+       Air.lua 新 G.spawnAircraftAir（街机空中出生），结算研究点 × Config.Wt.modeK
+     - 资料卡 / 装甲查看器（TechUI，VehModels.pose 新加）、试驾（Tech.lua ACT.testDrive：东边场地、靶车 noScore、P.inTest 阵亡不扣兵力——Ents / WtMatch / Round 各加了一个判断）、
+       结算明细（t.last → TechUI G.treeResultText → WtBattle 结算页 TreeResult 一行）、暂用车按真车涂装（TechTree.paint → VehModels.build 第 4 个参数）、名字 tree.<键>（Lang）
+     - 测试：tools/mock/techtree.lua、wtbr.lua、wtmods.lua、wtmode.lua、wttest.lua
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

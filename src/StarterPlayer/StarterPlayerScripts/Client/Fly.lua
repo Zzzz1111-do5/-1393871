@@ -864,9 +864,10 @@ function Fly.init(G)
     local look = cf.LookVector
     local yaw = math.atan2(-look.X, -look.Z)
     local onGround = vs.ground == true
-    st = { id = vs.id, em = em, d = d, pilot = vs.pilot == true, cf = cf, vel = V(), spd = 0, sink = 0, pr = 0, rr = 0, yr = 0,
+    local v0 = (not onGround and typeof(vs.v) == "Vector3") and vs.v or nil   -- 空中出生（战雷街机）：接着服务器给的初速飞
+    st = { id = vs.id, em = em, d = d, pilot = vs.pilot == true, cf = cf, vel = v0 or V(), spd = v0 and v0.Magnitude or 0, sink = 0, pr = 0, rr = 0, yr = 0,
       thr = onGround and 0 or 85, ground = onGround, gearWant = onGround and 1 or 0, gear = onGround and 1 or 0, rpm = (d.kind == "heli" and not onGround) and 100 or 0,
-      yaw = yaw, hv = V(), vy = 0, tiltP = 0, tiltR = 0, camYaw = yaw, camPitch = -0.15, aimYaw = yaw, aimPitch = 0, c = {},
+      yaw = yaw, hv = v0 and V(v0.X, 0, v0.Z) or V(), vy = 0, tiltP = 0, tiltR = 0, camYaw = yaw, camPitch = -0.15, aimYaw = yaw, aimPitch = 0, c = {},
       load = vs.load or {}, wl = AD.groups(d, vs.load or {}), wi = 1, firing = false, trig = false, sendT = 0, lock = nil, lockT = 0, nextFire = 0,
       ty = 0, gp = 0, lastHv = V(), crashed = false, bay = 0, bayS = 0 }
     for i, wid in ipairs(st.wl) do   -- 默认选中第一种挂载（机炮一直在鼠标左键上）
@@ -1407,6 +1408,7 @@ function Fly.init(G)
       local T = (thr <= 100) and (0.05 + 0.95 * thr / 100) * Tmil or (Tmil + (Tab - Tmil) * math.min(thr - 100, 30) / 30)
       if st.out then T = 0 end
       if wa then T *= wa.eng end
+      T *= (st.em and st.em:GetAttribute("ModThr")) or 1   -- 科技树改装（WtMods）：散热器、压缩机、发动机
       T /= (st.heavy or 1)
       local brk = not G.mobile and key(Enum.KeyCode.B)
       local Dk = 1 + 2 * (st.drag or 0) + 0.9 * (st.gear or 0) + (brk and 1.6 or 0) + 0.45 * (st.flapK or 0)
@@ -2700,7 +2702,8 @@ function Fly.init(G)
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(clamp(hp / mx, 0, 1), 1)
     hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
-    aName.Text = T("veh." .. d.id) .. (st.pilot and "" or ("   " .. T("air.passenger")))
+    local tk = em:GetAttribute("TreeKey")   -- 科技树出的飞机写科技树里的名字
+    aName.Text = (tk and T("tree." .. tk) or T("veh." .. d.id)) .. (st.pilot and "" or ("   " .. T("air.passenger")))
     local kmh = math.floor(st.vel.Magnitude / AD.M * 3.6 + 0.5)
     local agl = math.floor((pos.Y - ground(pos.X, pos.Z) - d.gearH) / AD.M + 0.5)
     st.aglM, st.kmh = agl, kmh   -- 离地高度（米）、速度（km/h）：Coach.lua 看要不要提示放起落架

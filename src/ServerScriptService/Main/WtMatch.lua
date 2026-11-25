@@ -48,16 +48,20 @@ function WtMatch.init(G)
     return Config.WtCost(vid, catOf(vid, kind), s.paid)
   end
   -- 能不能出这辆：阵容满了、备用用完了、SP 不够都说一声
+  -- 阵容按什么记：科技树出的车（Tech.lua 出车时设 P.wtKey）按科技树的键——借同一型号的两辆算两种；别的按型号
+  local function keyOf(P, vid) return (P and P.wtKey) or vid end
+  local function nameOf(P, vid) return (P and P.wtKey) and { k = "tree." .. P.wtKey } or { k = "veh." .. vid } end
   function G.wtSpawnOk(P, vid, kind)
     if not on() or not P or not P.pl or not vid then return true end
     local s = S(P)
-    local n = s.ln[vid] or 0
+    local lk = keyOf(P, vid)
+    local n = s.ln[lk] or 0
     if n == 0 and #s.order >= (W.lineup or 5) then
       G.msg(P.pl, "bad", "wt.lineupFull", W.lineup or 5)
       return false
     end
     if n >= 1 + (W.backup or 1) then
-      G.msg(P.pl, "bad", "wt.noBackup", { k = "veh." .. vid }, n)
+      G.msg(P.pl, "bad", "wt.noBackup", nameOf(P, vid), n)
       return false
     end
     local c = G.wtCost(P, vid, kind)
@@ -69,12 +73,13 @@ function WtMatch.init(G)
   end
   function G.wtSpawned(P, vid, kind, e)
     if not P or not P.pl or not vid then return end
-    if e then e.wtOwner, e.wtVid = P, vid end
+    local lk = keyOf(P, vid)
+    if e then e.wtOwner, e.wtVid = P, lk end
     if not on() then return end
     local s = S(P)
     local c = G.wtCost(P, vid, kind)
-    if (s.ln[vid] or 0) == 0 then table.insert(s.order, vid) end
-    s.ln[vid] = (s.ln[vid] or 0) + 1
+    if (s.ln[lk] or 0) == 0 then table.insert(s.order, lk) end
+    s.ln[lk] = (s.ln[lk] or 0) + 1
     if G.round and G.round.phase == "battle" then
       if s.free then s.free = false else s.paid += 1 end
       s.sp = math.max(0, s.sp - c)
@@ -103,7 +108,7 @@ function WtMatch.init(G)
       s.lost[e.wtVid] = (s.lost[e.wtVid] or 0) + 1
     end
     local K = src and src.P
-    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team then
+    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team and not e.noScore then   -- 试驾场的靶车不记击毁
       local s = S(K)
       if e.cat == "air" then s.ak += 1 else s.vk += 1 end
     end
