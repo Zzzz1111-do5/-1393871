@@ -26,7 +26,9 @@ local Lang = R.require(RS:FindFirstChild("Lang"))
 
 print("① 数据")
 local MODEL = { t80u = "t80u", t80b = "t80u", t80bvm = "t80u", bmp1 = "bmp1", leo2a6 = "leo2a6", leo2a4 = "leo2a6",
-  leo1 = "leo1", leo1a5 = "leo1", m60a3 = "m60a3", m60a1 = "m60a3" }
+  leo1 = "leo1", leo1a5 = "leo1", m60a3 = "m60a3", m60a1 = "m60a3",
+  -- E 11-25（用户「坦克单独找建模很多坦克没有建模」）：M551 换真模型，T-72 乌拉尔 / A / B 改借 T-72B3 的模型
+  m551 = "m551", t72ural = "t72b3", t72a = "t72b3", t72b = "t72b3", leo2a7v = "leo2a7v", type10 = "type10" }
 local bad = {}
 local function near(a, b) return a and b and (a - b).Magnitude < 0.02 end
 for id, key in pairs(MODEL) do
@@ -54,7 +56,7 @@ for id, key in pairs(MODEL) do
     if not (Lang.zh["veh." .. id] and Lang.en["veh." .. id]) then table.insert(bad, id .. " 名字") end
   end
 end
-check(#bad == 0, "十型的炮、弹、装甲、名字、原模型元数据齐全" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(10, #bad))) or ""))
+check(#bad == 0, "这几型的炮、弹、装甲、名字、原模型元数据齐全" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(10, #bad))) or ""))
 local L = TM.eraOf("t80u")
 check(L ~= nil and L.b ~= nil and #L.b >= 10, "T-80U 原模型上量了爆反块（" .. tostring(L and L.b and #L.b) .. " 块）")
 -- 同一族的两型不共用嵌套的表（variant 深拷）：改一型的武器表不会改到另一型

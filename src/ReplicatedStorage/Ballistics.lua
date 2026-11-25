@@ -77,6 +77,8 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m392 = { cls = "ap", name = "M392A2 APDS", sym = "SABOT", v0 = 1478, k = 7.0e-5, bs = 1000, tr = true,     -- M60A1：105 毫米脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m409 = { cls = "heat", name = "M409 HEAT-MP", sym = "HEAT", v0 = 683, k = 1.4e-4, bs = 700, tr = true, ce = true,   -- M551：152 毫米多用途破甲弹，初速低、弹道弯
+    vs = { inf = 1.1, light = 1.3, armor = 0.9, fort = 1.4 }, splash = 1.3 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -92,6 +94,7 @@ B.GUN = {
   gun105a5 = { "dm33l7", "dm12h", "jet105" },         -- 豹 1A5
   gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
   gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
+  gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

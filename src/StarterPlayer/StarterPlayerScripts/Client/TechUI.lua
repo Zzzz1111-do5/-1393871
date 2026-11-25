@@ -515,7 +515,10 @@ function TechUI.init(G)
   -- 卡片上的车：HudIcons 里这一型的侧面剪影；没有就用通用的（飞机、直升机的符号），地面车没有就空着（写了车种、名字）
   local function picOn(img, it)
     if not G.hudIconOn then return end
-    if G.hudIconOn(img, ((it.branch == "air") and "air_" or "veh_") .. tostring(it.play)) then return end
+    local pre = (it.branch == "air") and "air_" or "veh_"
+    for _, k in ipairs({ it.play, it.model, it.base }) do   -- 同族变体（T-72A 借 T-72B3 的模型）没有自己的图标：用模型那一型的
+      if k and G.hudIconOn(img, pre .. tostring(k)) then return end
+    end
     if it.branch == "air" then
       local d = AD.get(it.play)
       G.hudIconOn(img, (d and d.kind == "heli") and "heliMark" or "planeMark")

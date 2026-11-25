@@ -36,6 +36,8 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A3 的 M68E1：M833 贫铀尾翼稳定脱壳穿甲弹
   gun105m60 = { kind = "shell", dmg = 460, speed = 4138, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 63, range = 2400,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A1 的 M68：M392A2 脱壳穿甲弹
+  gun152 = { kind = "shell", dmg = 520, speed = 1912, drop = 0.3, splash = 8, rate = 7.5, mag = 1, reload = 0, reserve = 29, range = 2000,
+    vs = { inf = 1.0, light = 1.3, armor = 0.9, air = 0.7, ship = 0.8, fort = 1.4 }, fx = "tank", cal = 0.43 },   -- M551 的 M81 152 毫米炮：M409 多用途破甲弹（683 米 / 秒，弹道弯）
   -- BMP-3 的 2A70 100 毫米低膛压线膛炮（用户 11-24 找的俄系）：3OF32 杀伤爆破榴弹，初速 250 米 / 秒、弹道很弯，打步兵、工事、轻装甲（炮射导弹 9M117 游戏里没有）
   gun100 = { kind = "shell", dmg = 330, speed = 700, drop = 0.42, splash = 9, rate = 6.0, mag = 1, reload = 0, reserve = 34, range = 2400,
     vs = { inf = 1.3, light = 1.1, armor = 0.4, air = 0.3, ship = 0.5, fort = 1.4 }, fx = "tank", cal = 0.3 },
@@ -160,6 +162,12 @@ D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, cle
   smoke = { banks = { { at = V(4.2, 2.0, 1.5), yaw = 60 }, { at = V(-4.2, 2.0, 1.5), yaw = -60 } }, n = 8 },
   sightZoom = { day = { 3, 12 }, th = { 3, 12 } },   -- EMES-15 炮长主瞄准镜：昼光 3 / 12 倍，WBG-X 热像 3 / 12 倍
   weapons = { "gun120l55", "coax" } })
+-- 豹 2A7V（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借 2A6，换成真模型，MirzaArrafiERV_45）：66.5 吨、1500 马力、公路 68 公里 / 时；
+--   Rh-120 L/55A1（游戏里按 DM53 算）；炮塔、车体加了新一代模块装甲，车顶有遥控武器站；转轴、炮耳轴照模型量的（ImportedMeta leo2a7v）
+D.leo2a7v = variant(D.leo2a6, { L = 22.0, W = 10.3, H = 8.6, hullH = 4.5, speed = 52.9, accel = 5.0, rev = 24.1,
+  turret = { pivot = V(0.03, 4.5, -1.8), size = V(8.8, 2.6, 10.6), style = "wedge", trav = 40, elev = { -9, 20 }, bustle = 3.0 },
+  gun = { pivot = V(-0.03, 0.88, -5.47), len = 12.3, cal = 0.42 }, coax = V(-1.0, 0.88, -5.2),
+  weapons = { "gun120l55", "coax" } })
 -- 豹 2A4（1985）：55 吨、同一台 1500 马力；Rh-120 L/44 炮、DM33；炮塔是直立的复合装甲（模型是 2A6 的楔形，科技树上写「暂用」）
 D.leo2a4 = variant(D.leo2a6, { speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 豹 1（用户 11-25「需要模型自己找」：原来借 M10）：40 吨、MTU MB 838 830 马力、公路 65 公里 / 时；L7A3 105 毫米线膛炮、DM13 脱壳穿甲弹；
@@ -184,6 +192,26 @@ D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clea
   smoke = { banks = { { at = V(3.8, 1.5, -1.6), yaw = 40 }, { at = V(-3.8, 1.5, -1.6), yaw = -40 } }, n = 6 },
   sightZoom = { day = { 8 }, th = { 4, 12 } },   -- M35E1 昼光 8 倍；AN/VSG-2 热像宽 4、窄 12 倍
   weapons = { "gun105m68", "coax" } })
+-- 10 式（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借 M1A2，换成真模型，MirzaArrafiERV_45）：44 吨、1200 马力、公路 70 公里 / 时，
+--   无级变速，倒车跟前进一样快；120 毫米 L/44 滑膛炮、尾舱自动装弹机，三人车组；模块化复合装甲；转轴、炮耳轴照模型量的（ImportedMeta type10）
+D.type10 = tracked({ cat = "tank", L = 21.7, W = 9.7, H = 7.4, hullH = 4.1, clear = 1.3, speed = 54.4, accel = 6.0, rev = 54.4, turn = 38,
+  rw = { n = 5, r = 1.1, x = 3.8, z0 = -6.4, z1 = 5.4 }, skirt = true,
+  turret = { pivot = V(0.01, 4.14, -0.55), size = V(8.6, 2.4, 10.0), style = "wedge", trav = 40, elev = { -8, 15 }, bustle = 3.2 },
+  gun = { pivot = V(-0.01, 1.09, -7.68), len = 7.8, cal = 0.42 }, coax = V(1.0, 1.0, -7.2),
+  sight = V(1.9, 2.0, -3.0), cupola = V(-1.6, 2.6, 0.6),
+  smoke = { banks = { { at = V(3.4, 1.6, -2.0), yaw = 40 }, { at = V(-3.4, 1.6, -2.0), yaw = -40 } }, n = 4 },
+  sightZoom = { day = { 3, 12 }, th = { 3, 12 } },
+  weapons = { "gun120l44", "coax" } })
+-- M551 谢里登（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借豹 1，换成真模型，MirzaArrafiERV_45）：15.2 吨、6V53T 300 马力、
+--   公路 70 公里 / 时、能浮渡；铝合金车体、钢炮塔，装甲很薄；M81 152 毫米炮 / 导弹发射器（M409 多用途破甲弹；MGM-51 导弹游戏里没有）；四人车组
+D.m551 = tracked({ cat = "tank", L = 18.2, W = 8.0, H = 7.5, hullH = 4.5, clear = 1.3, speed = 54.4, accel = 4.3, rev = 15.6, turn = 42,
+  rw = { n = 5, r = 1.03, x = 3.29, z0 = -6.0, z1 = 3.94 }, skirt = false,
+  turret = { pivot = V(0, 4.54, -0.1), size = V(7.4, 2.9, 9.0), style = "round", trav = 30, elev = { -8, 19 }, bustle = 1.6 },
+  gun = { pivot = V(0, 0.77, -3.74), len = 5.3, cal = 0.43 }, coax = V(0.6, 0.6, -3.6),
+  sight = V(-1.5, 1.7, -2.2), cupola = V(1.5, 2.6, 0.4),
+  smoke = { banks = { { at = V(3.0, 1.3, -1.4), yaw = 40 }, { at = V(-3.0, 1.3, -1.4), yaw = -40 } }, n = 4 },
+  sightZoom = { day = { 8 }, th = { 8 } },   -- M127 / M129 炮长瞄准镜 8 倍（没有热像）
+  weapons = { "gun152", "coax" } })
 -- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）
 D.m60a1 = variant(D.m60a3, { speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
 D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.2, rev = 29.6, turn = 35,
@@ -224,6 +252,13 @@ D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clea
   smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
   sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },
   weapons = { "gun125r", "coax" } })
+-- T-72 一族（用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 T-72 乌拉尔 / A / B 原来借 T-90M，改借同族的 T-72B3 模型，性能各按自己的）
+-- T-72「乌拉尔」（1973）：41 吨、V-46 780 马力、公路 60 公里 / 时；2A26M2 125 毫米炮（游戏里按 2A46 打 3BM22 算）、TPD-2-49 合像测距 8 倍；没有爆反、没有热像
+D.t72ural = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+-- T-72A（1979）：41.5 吨、780 马力；2A46 炮、3BM22，TPD-K1 激光测距；炮塔正面「沙」复合装甲
+D.t72a = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+-- T-72B（1985）：44.5 吨、V-84 840 马力；2A46M 炮打 3BM42「芒果」、9K120 炮射导弹；接触-1 爆反（游戏里没挂爆反块，按装甲算进去）
+D.t72b = variant(D.t72b3, { speed = 46.7, accel = 4.6, rev = 3.9, weapons = { "gun125u", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 
 ---------------------------------------------------------------- 装甲车（履带）
 
