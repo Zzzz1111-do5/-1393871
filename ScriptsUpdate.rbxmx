@@ -959,7 +959,7 @@ function B.panelAmmo(kind, wid)
 end
 B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
-B.MAXR = 5000   -- 激光测距、弹在空中最多飞的距离（米）
+B.MAXR = 8000   -- 激光测距、弹在空中最多飞的距离（米）；11-25 用户「全部都做」③：5 → 8 公里（战雷里炮弹一直飞到落地，沙海 12.7 公里见方）
 
 -- 这门炮的这种弹（不认识的弹给默认那种）
 function B.ammo(wid, key)
@@ -1077,7 +1077,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-25 12:55 200b355"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 13:45 eb28668"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -7444,6 +7444,8 @@ add("wt.extCd", "灭火器冷却中（{1} 秒）", "Extinguisher recharging ({1}
 add("wt.noGun", "主炮打不了：炮长阵亡或炮闩 / 炮管损毁", "Main gun out: gunner KO or breech / barrel destroyed")
 add("wt.fixing", "正在维修，暂时不能开炮", "Repairing — main gun unavailable")
 add("wtt.crew", "车组 {1} / {2}", "Crew {1} / {2}")
+add("wtt.est", "车长估距…", "Estimating…")
+add("wtt.rkey", "R 测距", "R range")
 -- 战雷式对局（WtMatch.lua / WtBattle.lua）：重生点数 SP、出击阵容、结算
 add("wt.lineupFull", "出击阵容已满（这局最多开 {1} 种车）：只能开阵容里的车", "Your lineup is full ({1} vehicle types per battle): only lineup vehicles can spawn")
 add("wt.noBackup", "{1} 这局已经出过 {2} 次，没有备用了", "{1} has already spawned {2} times this battle — no backups left")
@@ -13611,15 +13613,18 @@ local function variant(src, over)
 end
 
 ---------------------------------------------------------------- 坦克
+-- 速度（用户 11-25「全部都做」⑦：原来车慢、加速太猛——M1A2 35 格 / 秒 ≈ 45 公里 / 时，加速 10 格 / 秒² ≈ 3.6 米 / 秒²，比真车快一倍）：
+--   speed / rev 照真车的公路最高速、倒车速度换成格 / 秒（1 米 = 2.8 格：公里 / 时 ÷ 3.6 × 2.8）；accel ≈ 0.22 × 马力 / 吨（格 / 秒²）。
+--   苏俄系倒车慢（T-72B3 约 4 公里 / 时、T-80U 11），北约的快（豹 2 31、M1 约 40）——战雷里也是这样
 
-D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.3, speed = 34, accel = 10, turn = 36,
+D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.3, speed = 54.4, accel = 6.1, rev = 19.4, turn = 36,
   rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
   gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
   sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
-D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
+D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 50.6, accel = 5.2, rev = 14.0, turn = 36,
   rw = { n = 6, r = 1.1, x = 3.85, z0 = -7.0, z1 = 6.7 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.0, 0.4), size = V(6.8, 2.2, 7.0), style = "round", trav = 38, elev = { -6, 16 }, bustle = 1.2 },
   gun = { pivot = V(0, 0.9, -3.0), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.2),
@@ -13628,7 +13633,7 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   weapons = { "gun125", "coax" } })
 -- T-90M「突破-3」（用户 11-24「没事干了就去找俄系」）：46.5 吨、V-92S2F 1130 马力、公路 60 公里 / 时；2A46M-5 125 毫米滑膛炮、转盘式自动装弹机（22 发）；
 --   三人车组：炮长左、车长右（同 99A）；炮塔正面、侧面、首上、侧裙板都是「化石」（Relikt）重型爆反；原模型 mansoorsajidp（带车内）
-D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 32, accel = 9, turn = 36,
+D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 5.3, rev = 4.7, turn = 36,
   rw = { n = 6, r = 1.14, x = 3.93, z0 = -6.7, z1 = 5.4 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.3, 0.34), size = V(7.0, 2.0, 7.4), style = "round", trav = 40, elev = { -6, 14 }, bustle = 1.6 },
   gun = { pivot = V(0, 1.28, -2.31), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.0),
@@ -13639,7 +13644,7 @@ D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear
 -- T-80U（用户 11-25「需要模型自己找」：科技树 T-80 一族原来借 T-90M，换成真 T-80U）：46 吨、GTD-1250 燃气轮机 1250 马力、公路 70 公里 / 时
 --   （起步、加速是苏系里最快的）；2A46M-1 125 毫米滑膛炮、「篮子」式自动装弹机（28 发）、3BM42「芒果」脱壳穿甲弹；炮塔正面、首上挂「接触-5」
 --   重型爆反（原模型上就有，EraMeta）；三人车组：炮长左、车长右；原模型 javanilga
-D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hullH = 3.9, clear = 1.3, speed = 37, accel = 11, turn = 38,
+D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hullH = 3.9, clear = 1.3, speed = 54.4, accel = 6.0, rev = 8.6, turn = 38,
   rw = { n = 6, r = 0.95, x = 3.95, z0 = -6.05, z1 = 5.41 }, era = true, skirt = true,
   turret = { pivot = V(0, 3.73, -0.77), size = V(7.6, 2.0, 7.2), style = "round", trav = 36, elev = { -5, 14 }, bustle = 1.2 },
   gun = { pivot = V(0, 0.65, -2.63), len = 13.7, cal = 0.45, fume = true }, coax = V(1.1, 0.65, -3.0),
@@ -13648,12 +13653,12 @@ D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hu
   sightZoom = { day = { 3.6, 12 }, th = { 5.5 } },   -- 1G46 炮长瞄准镜：昼光 3.6–12 倍；夜视「布兰-PA」5.5 倍
   weapons = { "gun125u", "coax" } })
 -- T-80B（1978）：42.5 吨、GTD-1000TF 1100 马力；2A46-2 炮、3BM22「别针」；还没有爆反（模型是 T-80U，科技树上写「暂用」）；TPD-K1 瞄准镜 8 倍
-D.t80b = variant(D.t80u, { speed = 37, accel = 10, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+D.t80b = variant(D.t80u, { speed = 54.4, accel = 5.7, rev = 8.6, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 -- T-80BVM（2018）：T-80B 的大改，GTD-1250TF 1250 马力、2A46M-4 炮打 3BM60「铅-2」、「化石」重型爆反、「松树-U」热像瞄准镜
 D.t80bvm = variant(D.t80u, { weapons = { "gun125r", "coax" }, sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } } })
 -- 豹 2A6（用户 11-25「需要模型自己找」：原来借 M1A2）：59.9 吨、MTU MB 873 1500 马力、公路 72 公里 / 时；莱茵金属 Rh-120 L/55 120 毫米滑膛炮、
 --   DM53 钨合金尾翼稳定脱壳穿甲弹；炮塔正面楔形附加装甲；四人车组：炮长、车长在右，装填手在左（并列机枪在炮左边）；原模型 mansoorsajidp
-D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, clear = 1.5, speed = 38, accel = 10, turn = 36,
+D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, clear = 1.5, speed = 56.0, accel = 5.3, rev = 24.1, turn = 36,
   rw = { n = 7, r = 1.15, x = 3.78, z0 = -7.28, z1 = 6.93 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.69, -3.08), size = V(8.8, 2.5, 10.0), style = "wedge", trav = 40, elev = { -9, 20 }, bustle = 2.8 },
   gun = { pivot = V(0, 0.87, -3.62), len = 12.1, cal = 0.42 }, coax = V(-1.0, 0.87, -3.6),
@@ -13662,10 +13667,10 @@ D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, cle
   sightZoom = { day = { 3, 12 }, th = { 3, 12 } },   -- EMES-15 炮长主瞄准镜：昼光 3 / 12 倍，WBG-X 热像 3 / 12 倍
   weapons = { "gun120l55", "coax" } })
 -- 豹 2A4（1985）：55 吨、同一台 1500 马力；Rh-120 L/44 炮、DM33；炮塔是直立的复合装甲（模型是 2A6 的楔形，科技树上写「暂用」）
-D.leo2a4 = variant(D.leo2a6, { accel = 11, weapons = { "gun120l44", "coax" } })
+D.leo2a4 = variant(D.leo2a6, { speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 豹 1（用户 11-25「需要模型自己找」：原来借 M10）：40 吨、MTU MB 838 830 马力、公路 65 公里 / 时；L7A3 105 毫米线膛炮、DM13 脱壳穿甲弹；
 --   装甲薄（首上 70 毫米斜置）、跑得快；四人车组：炮长、车长在右；原模型 FlashPoin（原贴图是没上漆的灰，按联邦国防军黄橄榄色调过）
-D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 35, accel = 10, turn = 40,
+D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 50.6, accel = 4.6, rev = 19.4, turn = 40,
   rw = { n = 7, r = 0.91, x = 3.78, z0 = -6.5, z1 = 5.3 }, skirt = true,
   turret = { pivot = V(0, 4.33, -1.73), size = V(7.2, 2.4, 7.6), style = "round", trav = 40, elev = { -9, 20 }, bustle = 1.6 },
   gun = { pivot = V(0, 1.09, -2.84), len = 12.4, cal = 0.36, fume = true }, coax = V(-0.9, 1.0, -3.0),
@@ -13674,10 +13679,10 @@ D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear 
   sightZoom = { day = { 8 }, th = { 8 } },   -- TZF 1A 炮长瞄准镜 8 倍（没有热像，夜里照红外探照灯）
   weapons = { "gun105l7", "coax" } })
 -- 豹 1A5（1987）：42.4 吨；EMES 18 火控、WBG-X 热像，打 DM33（105）尾翼稳定脱壳穿甲弹；炮塔加了间隙装甲
-D.leo1a5 = variant(D.leo1, { accel = 9, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
+D.leo1a5 = variant(D.leo1, { speed = 50.6, accel = 4.3, rev = 19.4, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
 -- M60A3 TTS（用户 11-25「需要模型自己找」：原来借 M10）：52.6 吨、AVDS-1790-2C 750 马力柴油机、公路 48 公里 / 时（慢）；M68E1 105 毫米线膛炮、
 --   M833 贫铀脱壳穿甲弹，激光测距、弹道计算机、AN/VSG-2 坦克热像瞄准镜（TTS）；四人车组：炮长、车长在右；原模型 jonathanto99（按美军森林绿改色）
-D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clear = 1.3, speed = 26, accel = 8, turn = 34,
+D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clear = 1.3, speed = 37.3, accel = 3.1, rev = 13.2, turn = 34,
   rw = { n = 6, r = 0.95, x = 3.92, z0 = -6.03, z1 = 6.32 }, skirt = false,
   turret = { pivot = V(0, 4.48, -1.64), size = V(8.4, 2.6, 9.0), style = "round", trav = 24, elev = { -10, 20 }, bustle = 2.4 },
   gun = { pivot = V(0.1, 1.16, -2.85), len = 11.8, cal = 0.36, fume = true }, coax = V(-0.9, 1.1, -3.0),
@@ -13686,8 +13691,8 @@ D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clea
   sightZoom = { day = { 8 }, th = { 4, 12 } },   -- M35E1 昼光 8 倍；AN/VSG-2 热像宽 4、窄 12 倍
   weapons = { "gun105m68", "coax" } })
 -- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）
-D.m60a1 = variant(D.m60a3, { accel = 8, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
-D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m60a1 = variant(D.m60a3, { speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
+D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.2, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
   gun = { pivot = V(0, 0.95, -4.0), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.1),
@@ -13696,7 +13701,7 @@ D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hull
   sightZoom = { day = { 3, 10 }, th = { 3, 6, 13, 25, 50 } },
   smoke = { banks = { { at = V(3.5, 1.6, -2.4), yaw = 35 }, { at = V(-3.5, 1.6, -2.4), yaw = -35 } }, n = 6 },
   weapons = { "gun120", "coax" } })
-D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.8, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.6, 2.3, 9.0), style = "abrams", trav = 40, elev = { -9, 20 }, bustle = 2.6 },
   gun = { pivot = V(0, 0.95, -3.9), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.0),
@@ -13708,7 +13713,7 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
 -- 11-24 夜 C 从 Sketchfab 找的坦克（用户：「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」——C 没有做车内，按 C 不进车里）：
 --   原模型见 tools/models/blveh.json（leo2a6 / leclerc / t72b3 / t80u）、署名见 models/veh/credits.txt；尺寸、炮塔座圈、炮耳轴照转换报告（格）
 -- 勒克莱尔（法国）：56.5 吨、V8X 1500 马力、72 km/h、120 毫米 CN120-26（炮塔尾舱自动装弹机，三人车组）；HL-60 炮长镜昼光 3.3 / 10 倍
-D.leclerc = tracked({ cat = "tank", L = 19.3, W = 9.7, H = 7.0, hullH = 4.6, clear = 1.3, speed = 37, accel = 11, turn = 37,
+D.leclerc = tracked({ cat = "tank", L = 19.3, W = 9.7, H = 7.0, hullH = 4.6, clear = 1.3, speed = 56.0, accel = 5.8, rev = 29.6, turn = 37,
   rw = { n = 6, r = 1.0, x = 3.6, z0 = -6.6, z1 = 6.6 }, era = false, skirt = true,
   turret = { pivot = V(0, 3.39, -1.89), size = V(8.7, 2.6, 12.3), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 3.5 },
   gun = { pivot = V(0, 1.76, -2.98), len = 12.0, cal = 0.44 }, coax = V(1.0, 1.7, -3.0),
@@ -13717,7 +13722,7 @@ D.leclerc = tracked({ cat = "tank", L = 19.3, W = 9.7, H = 7.0, hullH = 4.6, cle
   sightZoom = { day = { 3.3, 10 }, th = { 3, 10 } },
   weapons = { "gun120", "coax" } })
 -- T-72B3（俄罗斯）：46 吨、V-92S2F 1130 马力、60 km/h、125 毫米 2A46M-5（转盘式自动装弹机 22 发）；「松树-U」炮长镜昼光 4 / 12 倍、热像 3.7 / 12 倍
-D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clear = 1.3, speed = 32, accel = 9, turn = 36,
+D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clear = 1.3, speed = 46.7, accel = 5.4, rev = 3.9, turn = 36,
   rw = { n = 6, r = 1.1, x = 3.9, z0 = -6.6, z1 = 5.6 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.01, -0.09), size = V(8.0, 2.3, 8.5), style = "round", trav = 24, elev = { -6, 14 } },
   gun = { pivot = V(0, 0.85, -3.51), len = 13.85, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.4),
@@ -13731,14 +13736,14 @@ D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clea
 -- BMP-1 步兵战车（用户 11-25「需要模型自己找」：科技树 BMP-1、86 式原来借 BMP-3）：13.3 吨、UTD-20 300 马力、公路 65 公里 / 时、能浮渡；
 --   单人炮塔 2A28「雷」73 毫米低压滑膛炮（PG-15V 火箭增程破甲弹、自动装弹机）+ 并列 PKT（炮塔顶的「婴儿」反坦克导弹游戏里没有）；
 --   后面八名载员从车尾两扇门下车；原模型 buh-late
-D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear = 1.1, speed = 35, accel = 10, turn = 40, amphib = true, boat = true,
+D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear = 1.1, speed = 50.6, accel = 5.0, rev = 7.8, turn = 40, amphib = true, boat = true,
   rw = { n = 6, r = 0.82, x = 3.54, z0 = -4.19, z1 = 5.44 }, skirt = false,
   turret = { pivot = V(0, 4.28, 1.2), size = V(4.4, 1.5, 4.4), style = "ifv", trav = 30, elev = { -4, 33 } },
   gun = { pivot = V(0.1, 0.54, -1.72), len = 4.8, cal = 0.22 }, coax = V(0.6, 0.5, -1.9),
   sight = V(-1.0, 1.3, -0.9),
   sightZoom = { day = { 6 }, th = { 6.7 } },   -- 1PN22M1 炮长瞄准镜：昼光 6 倍、夜视 6.7 倍
   weapons = { "gun73", "coax" }, seats = 8 })
-D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 36, accel = 10, turn = 40,
+D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 51.3, accel = 4.4, rev = 15.6, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
   gun = { pivot = V(0, 0.7, -2.4), len = 6.5, cal = 0.24 }, coax = V(0.9, 0.7, -2.5),
@@ -13749,13 +13754,13 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
 
 ---------------------------------------------------------------- 装甲车（轮式）
 
-D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 58, accel = 15, turn = 60, light = true,
+D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 81.7, accel = 15, rev = 23.3, turn = 60, light = true,
   axles = { -4.0, 4.2 }, steer = 1, wr = 1.3, ww = 0.9, wx = 2.6,
   turret = { pivot = V(0, 4.6, 0.6), size = V(2.4, 0.9, 2.4), style = "ring", trav = 90, elev = { -10, 40 } },
   gun = { pivot = V(0, 0.9, -0.6), len = 4.2, cal = 0.18 }, sight = V(0, 1.7, 0.4),
   smoke = { banks = { { at = V(1.9, 0.3, -2.4), yaw = 35, hull = true }, { at = V(-1.9, 0.3, -2.4), yaw = -35, hull = true } }, n = 2 },
   weapons = { "hmg" }, seats = 4 })
-D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1.6, speed = 56, accel = 14, turn = 56, light = true,
+D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1.6, speed = 77.8, accel = 14, rev = 23.3, turn = 56, light = true,
   axles = { -4.8, 4.8 }, steer = 1, wr = 1.45, ww = 1.0, wx = 2.9,
   turret = { pivot = V(0, 5.2, 0.4), size = V(2.2, 1.0, 2.2), style = "rws", trav = 80, elev = { -10, 50 } },
   gun = { pivot = V(0, 0.6, -0.6), len = 4.4, cal = 0.18 }, sight = V(0, 1.4, -0.8),
@@ -13764,19 +13769,19 @@ D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1
 
 ---------------------------------------------------------------- 防空
 
-D.pgz07 = tracked({ cat = "aa", L = 22, W = 9.6, H = 9.6, hullH = 4.4, clear = 1.3, speed = 34, accel = 9, turn = 36,
+D.pgz07 = tracked({ cat = "aa", L = 22, W = 9.6, H = 9.6, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 5.0, rev = 11.7, turn = 36,
   rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.4, z1 = 7.2 }, skirt = true,
   turret = { pivot = V(0, 4.4, 0.8), size = V(5.6, 2.6, 6.2), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 3.4 },
   gun = { pivot = V(0, 1.3, -1.4), len = 9.5, cal = 0.24 }, sight = V(0, 2.2, -2.6),
   smoke = { banks = { { at = V(2.7, 0.8, -2.8), yaw = 35 }, { at = V(-2.7, 0.8, -2.8), yaw = -35 } }, n = 4 },
   weapons = { "ac35" } })
-D.m163 = tracked({ cat = "aa", L = 15, W = 8.2, H = 8.0, hullH = 5.4, clear = 1.2, speed = 36, accel = 10, turn = 42,
+D.m163 = tracked({ cat = "aa", L = 15, W = 8.2, H = 8.0, hullH = 5.4, clear = 1.2, speed = 52.1, accel = 4.6, rev = 15.6, turn = 42,
   rw = { n = 5, r = 0.95, x = 3.4, z0 = -5.6, z1 = 5.6 },
   turret = { pivot = V(0, 5.4, 1.4), size = V(3.4, 1.4, 3.4), style = "vulcan", trav = 80, elev = { -5, 80 } },
   gun = { pivot = V(0, 0.9, -1.0), len = 5.4, cal = 0.3, gatling = true }, sight = V(-1.0, 1.8, -0.4),
   smoke = { banks = { { at = V(3.2, -1.4, -6.4), yaw = 30, hull = true }, { at = V(-3.2, -1.4, -6.4), yaw = -30, hull = true } }, n = 4 },
   weapons = { "vulcan" } })
-D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 1.8, speed = 44, accel = 11, turn = 40, truck = true,
+D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 1.8, speed = 66.1, accel = 9, rev = 19.4, turn = 40, truck = true,
   axles = { -7.6, -3.8, 5.6 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.4,
   turret = { pivot = V(0, 5.6, 2.4), size = V(4.6, 2.2, 4.6), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 2.8 },
   gun = { pivot = V(0, 1.1, -1.2), len = 7.4, cal = 0.22 }, sight = V(0, 2.0, -2.0),
@@ -13784,25 +13789,25 @@ D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 
   weapons = { "ac35" } })
 -- 铠甲-S1（用户 11-24 找的俄系；SanderWolf_ 的原模型 pantsir）：KamAZ-6560 8×8 底盘、后部战斗模块——两门 2A38M 双管 30 炮 + 12 枚 57E6 地空导弹，
 --   顶上搜索雷达一直转、前面跟踪雷达；尺寸按原模型（全长约 10.3 米）
-D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clear = 1.9, speed = 42, accel = 9, turn = 34, truck = true,
+D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clear = 1.9, speed = 70.0, accel = 8, rev = 19.4, turn = 34, truck = true,
   axles = { -10.6, -4.9, 5.9, 9.8 }, steer = 2, wr = 1.88, ww = 1.06, wx = 2.75,
   turret = { pivot = V(0, 7.64, 5.95), size = V(4.6, 2.4, 11.0), style = "spaag", trav = 90, elev = { -5, 82 }, twin = 4.1 },
   gun = { pivot = V(0, 1.33, 0.53), len = 7.2, cal = 0.2 }, sight = V(0, 3.1, -2.6),
   smoke = { banks = { { at = V(2.4, 0.4, -1.6), yaw = 35 }, { at = V(-2.4, 0.4, -1.6), yaw = -35 } }, n = 4 },
   weapons = { "ac30aa", "s57e6" } })
-D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 40, accel = 9, turn = 34, truck = true,
+D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 66.1, accel = 8, rev = 19.4, turn = 34, truck = true,
   axles = { -10.6, -6.6, 3.4, 7.2 }, steer = 2, wr = 1.65, ww = 1.15, wx = 3.5,
   turret = { pivot = V(0, 5.8, 4.6), size = V(4.0, 2.6, 4.0), style = "vulcan", trav = 90, elev = { -5, 85 }, radar = true },
   gun = { pivot = V(0, 1.3, -1.2), len = 6.0, cal = 0.36, gatling = true }, sight = V(-1.2, 2.2, -1.0),
   smoke = { banks = { { at = V(3.6, -1.6, -11.4), yaw = 30, hull = true }, { at = V(-3.6, -1.6, -11.4), yaw = -30, hull = true } }, n = 4 },
   weapons = { "vulcan" } })
-D.mshorad = wheeled({ cat = "aa", L = 22, W = 8.4, H = 9.0, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
+D.mshorad = wheeled({ cat = "aa", L = 22, W = 8.4, H = 9.0, hullH = 5.8, clear = 1.6, speed = 75.4, accel = 10, rev = 23.3, turn = 44,
   axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
   turret = { pivot = V(0, 5.8, 0.6), size = V(4.0, 1.8, 4.2), style = "ifv", trav = 80, elev = { -8, 70 }, pods = true },
   gun = { pivot = V(0, 0.7, -2.0), len = 6.4, cal = 0.22 }, sight = V(-1.3, 1.6, -1.6),
   smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
   weapons = { "ac30" } })
-D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.6, speed = 30, accel = 7, turn = 30, truck = true,
+D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.6, speed = 46.7, accel = 6, rev = 15.6, turn = 30, truck = true,
   axles = { -5.4, -2.0, 5.4 }, steer = 1, wr = 1.5, ww = 1.0, wx = 3.2,
   turret = { pivot = V(0, 4.4, 3.0), size = V(3.6, 2.4, 3.6), style = "vulcan", trav = 100, elev = { -5, 85 }, dome = true },
   gun = { pivot = V(0, 1.2, -1.2), len = 6.0, cal = 0.3, gatling = true }, sight = V(-1.0, 2.0, -0.6),
@@ -13811,19 +13816,19 @@ D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.
 
 ---------------------------------------------------------------- 火炮
 
-D.plz07 = tracked({ cat = "arty", L = 22, W = 9.6, H = 9.0, hullH = 4.4, clear = 1.3, speed = 32, accel = 8, turn = 34,
+D.plz07 = tracked({ cat = "arty", L = 22, W = 9.6, H = 9.0, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 4.2, rev = 11.7, turn = 34,
   rw = { n = 6, r = 1.0, x = 3.8, z0 = -7.4, z1 = 7.2 },
   turret = { pivot = V(0, 4.4, 2.2), size = V(7.2, 3.0, 8.4), style = "sph", trav = 25, elev = { -3, 65 } },
   gun = { pivot = V(0, 1.4, -4.0), len = 15, cal = 0.42, brake = true, fume = true }, sight = V(-2.4, 2.8, -3.0),
   smoke = { banks = { { at = V(3.4, 1.4, -3.4), yaw = 35 }, { at = V(-3.4, 1.4, -3.4), yaw = -35 } }, n = 4 },
   weapons = { "how155" } })
-D.m109a7 = tracked({ cat = "arty", L = 24, W = 10.2, H = 9.4, hullH = 4.2, clear = 1.4, speed = 30, accel = 8, turn = 32,
+D.m109a7 = tracked({ cat = "arty", L = 24, W = 10.2, H = 9.4, hullH = 4.2, clear = 1.4, speed = 47.4, accel = 4.0, rev = 14.0, turn = 32,
   rw = { n = 7, r = 1.0, x = 4.0, z0 = -7.8, z1 = 7.6 },
   turret = { pivot = V(0, 4.2, 2.8), size = V(8.4, 3.4, 10.4), style = "sph", trav = 22, elev = { -3, 70 } },
   gun = { pivot = V(0, 1.6, -5.0), len = 17, cal = 0.44, brake = true, fume = true }, sight = V(-2.8, 3.0, -3.6),
   smoke = { banks = { { at = V(4.0, 1.6, -4.4), yaw = 35 }, { at = V(-4.0, 1.6, -4.4), yaw = -35 } }, n = 4 },
   weapons = { "how155" } })
-D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 1.4, speed = 32, accel = 8, turn = 34,
+D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 1.4, speed = 49.8, accel = 4.0, rev = 14.0, turn = 34,
   rw = { n = 6, r = 1.0, x = 3.7, z0 = -6.8, z1 = 6.8 }, cab = true,
   turret = { pivot = V(0, 4.4, 2.6), size = V(5.8, 2.6, 9.0), style = "launcher", trav = 30, elev = { 0, 60 } },
   gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.6, -8.6),
@@ -13831,16 +13836,20 @@ D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 
   weapons = { "mlrs" } })
 
 -- 爱国者（只打飞机；在有飞机之前不给选）
-D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 1.8, speed = 34, accel = 8, turn = 32, truck = true, needsAir = true,
+D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 1.8, speed = 54.4, accel = 6, rev = 15.6, turn = 32, truck = true, needsAir = true,
   axles = { -9.6, -5.8, 6.2, 9.6 }, steer = 1, wr = 1.6, ww = 1.1, wx = 3.4,
   turret = { pivot = V(0, 4.4, 3.0), size = V(6.0, 3.0, 11), style = "launcher", trav = 30, elev = { 0, 38 } },
   gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.4, -12),
   smoke = { banks = { { at = V(3.4, -0.4, -13), yaw = 30, hull = true }, { at = V(-3.4, -0.4, -13), yaw = -30, hull = true } }, n = 2 },
   weapons = {} })
 
+-- 没有激光测距机的（用户 11-25「全部都做」⑤：战雷历史模式里这种车按 R 是车长估距——要等两秒、有误差）：
+--   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
+local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true }
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id
+  d.lrf = not NO_LRF[id]
   d.seats = d.seats or 1
   d.travel = d.travel or ((d.arch == "wheeled") and 0.75 or 0.55)   -- 悬架行程（上下各多少格）
   d.rev = d.rev or d.speed * 0.4
@@ -15609,7 +15618,7 @@ function AIVeh.init(G)
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
-          life = w.range / w.speed + 0.5 })
+          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else
@@ -17275,6 +17284,17 @@ function Armor.init(G)
 
   local TM = require(RS:WaitForChild("TankMods"))
   -- mods：改装（TankMods，客户端改装界面选的；AI 的车、没选的用默认）——型号数据按它改一份（车速、武器表），爆反、主动防御按它装
+  -- 残骸（用户 11-25「全部都做」②：战雷里打爆的车整局留在原地，烧黑的车壳能当掩体）：留到这一局结束；
+  --   一局里太多了（Config.Wt.wreckMax，默认 30 辆）最早的那辆先收——几十辆车壳的零件客户端也要画
+  local wrecks = {}
+  local function keepWreck(e)
+    table.insert(wrecks, e)
+    local cap = (Config.Wt and Config.Wt.wreckMax) or 30
+    while #wrecks > cap do
+      local old = table.remove(wrecks, 1)
+      if old then G.removeEnt(old) end
+    end
+  end
   local function newVehicle(team, id, base, P, mods)
     local d = TM.applyDef(VD.get(id), mods)
     local c = CATS[d.cat]
@@ -17340,7 +17360,7 @@ function Armor.init(G)
           if x == self then table.remove(vehicles, i) break end
         end
       end)
-      task.delay(25, function() G.removeEnt(self) end)
+      keepWreck(self)   -- 残骸整局留着（战雷：烧黑的车壳当掩体），不再 25 秒就收走
     end
     table.insert(vehicles, e)
     return e
@@ -17568,7 +17588,7 @@ function Armor.init(G)
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-          life = w.range / w.speed + 0.5 })
+          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
@@ -17736,6 +17756,8 @@ function Armor.init(G)
     if e then unseat(P, e, false) end
   end)
   G.on("roundStart", function()
+    for _, e in ipairs(wrecks) do G.removeEnt(e) end   -- 上一局留下的残骸
+    table.clear(wrecks)
     for _, e in ipairs(vehicles) do G.removeEnt(e) end
     for _, b in ipairs(lcacs) do G.removeEnt(b) end
     vehicles, lcacs = {}, {}
@@ -18348,6 +18370,7 @@ function Bots.init(G)
       local w = G.botWanted()
       if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
     end
+    if G.wtGroundOnly and G.wtGroundOnly() then return { atk = 0, def = 0 } end   -- 纯载具对战（战雷）：不刷电脑步兵（WtMatch.lua）
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then
@@ -22091,6 +22114,7 @@ function Forts.init(G)
       wires[i] = W
     end
     for _, F in pairs(fields) do F.list = {} end
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷没有雷区）：铁丝网当摆设留着，雷不摆
     for i, m0 in ipairs(obst.mines) do
       local m = { x = m0.x, z = m0.z, y = Map.ground(m0.x, m0.z), at = m0.at, alive = true, i = i, known = {} }
       mines[i] = m
@@ -22659,6 +22683,7 @@ function Forts.init(G)
 
   local function stepAI(e, dt)
     if G.fortsHold then return end   -- 测试用：工事不开火
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷：没有会开火的电脑工事，WtMatch.lua）：工事只当掩体
     local t = now()
     if (e.supUntil or 0) > t then   -- 被压制（原来的 Ambience.lua 火力准备会设；用户嫌莫名其妙的炮火怪，已删，留着给以后的真炮火用）：缩着不开火
       e.tgt = nil
@@ -29272,6 +29297,7 @@ function Weapons.init(G)
 
   -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
   KIND.place = function(P, id, w, char, head, tool, pos)
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷）：没有地雷、炸药包
     P.placed[id] = P.placed[id] or {}
     local list = P.placed[id]
     if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
@@ -29316,6 +29342,7 @@ function Weapons.init(G)
   local spotted = { atk = {}, def = {} }
   G.spotted = spotted
   KIND.spot = function(P, id, w, char, head, tool, aim, mode)
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战：步兵望远镜不用（车上的侦察 G、火炮 K 在 WtMatch.lua）
     if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
     local t = now()
     if mode == "strike" then
@@ -33326,6 +33353,12 @@ function WtMatch.init(G)
   end)
 
   G.wtFeedOn = function() return on() end   -- Round.lua：开着战雷式击杀栏时，车毁那一下不再写老的击杀播报（免得一条写两遍）
+  -- 纯载具对战（用户 11-25：「地图上还有不属于战雷的东西：电脑步兵还在、据点工事会自己开火、地雷 C4 望远镜还在——战雷陆战没有步兵，
+  --   也没有会开火的电脑工事」）：战雷式对局开着、玩家不当步兵（Config.Wt.noInfantry）、不是 PvE、不是测试放行步兵（G.allowInfantry）时为真。
+  --   Bots.lua 不刷电脑步兵、Forts.lua 工事不开火也不摆雷区、Weapons.lua 地雷 / C4 / 望远镜用不了（电脑开的车 AIVeh 照旧，战雷里也有）
+  G.wtGroundOnly = function()
+    return on() and (Config.Wt or {}).noInfantry == true and not G.pve and not G.allowInfantry
+  end
 
   -- 推给自己的客户端（Round.lua personal）：SP、阵容（出过几次、毁了几次）、免费那一辆还在不在
   function G.wtPersonal(P)
@@ -33339,6 +33372,93 @@ function WtMatch.init(G)
     local s = P.wtm
     if s and s.round == (G.round and G.round.n) then row.vk, row.ak, row.sp = s.vk, s.ak, math.floor(s.earned) end
   end
+
+  ---------------------------------------------------------------- 敌人标记：历史 / 全真模式（用户 11-25「全部都做」①）
+  --   战雷历史模式：屏幕上不标敌人，小地图上只有自己这队有人看得见的（视线没被地形、房子、烟幕挡住）和被侦察标记的才出来。
+  --   每 0.5 秒（两队错开 0.25 秒）：对每辆敌方车 / 飞机 / 船 / 步兵，从离它最近的几个己方（真人、电脑车、机器人）各打一条线，
+  --   只有地形、房子挡（实体、人都不挡）；看得见的、侦察标记着的实体号发给这一队（fx teamSeen），客户端小地图（Hud.lua）在 rb / sb 只画这些
+  local SIGHT = { ground = 3600, air = 9000, inf = 1500, near = 4 }   -- 格：地面 3600（约 1.3 公里）、飞机 9000、步兵 1500；每个目标最多看 near 个己方
+  local sightP = RaycastParams.new()
+  sightP.FilterType = Enum.RaycastFilterType.Exclude
+  sightP.IgnoreWater = true
+  local VIEW_CAT = { armor = true, light = true, air = true, ship = true, inf = true }
+  local function strictMode()
+    local m = workspace:GetAttribute("WtMode")
+    return m == "rb" or m == "sb"
+  end
+  local function sightOf(team)
+    local obs, tgts = {}, {}
+    for _, Q in pairs(G.P) do
+      if Q.team == team and Q.alive then
+        local e = Q.vehicle
+        local hrp = Q.char and Q.char:FindFirstChild("HumanoidRootPart")
+        local p = (e and e.root and e.root.CFrame.Position) or (hrp and hrp.Position)
+        if p then table.insert(obs, p + Vector3.new(0, 3, 0)) end
+      end
+    end
+    for _, e in ipairs(G.ents) do
+      if e.alive and e.root and VIEW_CAT[e.cat] and not e.testDummy then
+        local p = e.root.CFrame.Position
+        if e.team == team then
+          if not e.driver then table.insert(obs, p + Vector3.new(0, 3, 0)) end   -- 有人开的车上面按真人算过了
+        elseif e.team then
+          table.insert(tgts, { e = e, p = p + Vector3.new(0, 1.5, 0) })
+        end
+      end
+    end
+    local ex = {}
+    local ents = workspace:FindFirstChild("Ents")
+    if ents then table.insert(ex, ents) end
+    for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+    sightP.FilterDescendantsInstances = ex
+    local seen = {}
+    for _, t in ipairs(tgts) do
+      local R = t.e.air and SIGHT.air or ((t.e.cat == "inf") and SIGHT.inf or SIGHT.ground)
+      local near = {}
+      for _, o in ipairs(obs) do
+        local d = (o - t.p).Magnitude
+        if d < R then table.insert(near, { o = o, d = d }) end
+      end
+      table.sort(near, function(a, b) return a.d < b.d end)
+      for i = 1, math.min(#near, SIGHT.near) do
+        local o = near[i].o
+        local hit = workspace:Raycast(o, t.p - o, sightP)
+        if (not hit or (hit.Position - o).Magnitude > near[i].d - 4) and not (G.smokeBlocks and G.smokeBlocks(o, t.p)) then
+          table.insert(seen, t.e.id)
+          break
+        end
+      end
+    end
+    -- 侦察 / 望远镜标记着的（Weapons.lua 的 G.spotted，实体号做键的那些）
+    local S = G.spotted and G.spotted[team]
+    if S then
+      local tt = now()
+      for key, till in pairs(S) do
+        if till > tt and type(key) ~= "string" then table.insert(seen, key)
+        elseif till > tt and type(key) == "string" and tonumber(key) then table.insert(seen, tonumber(key)) end
+      end
+    end
+    return seen
+  end
+  task.spawn(function()
+    local turn = 0
+    while true do
+      task.wait(0.25)
+      turn += 1
+      if on() and strictMode() and G.round and (G.round.phase == "battle" or G.round.phase == "prep") then
+        local team = (turn % 2 == 0) and "atk" or "def"
+        local okS, seen = pcall(sightOf, team)
+        if okS then
+          for pl, Q in pairs(G.P) do
+            if Q.team == team then G.R.Fx:FireClient(pl, { { k = "teamSeen", ids = seen } }) end
+          end
+        else
+          warn("[战雷] 敌人标记出错：" .. tostring(seen))
+        end
+      end
+    end
+  end)
+  G.wtSightOf = sightOf   -- 测试用
 end
 
 return WtMatch
@@ -40793,11 +40913,29 @@ function Drive.init(G)
     local sz = inst.Size
     return math.min(sz.X, sz.Y, sz.Z) < 0.5 and math.max(sz.X, sz.Y, sz.Z) < 12
   end
+  local laseNow
   local function lase()
     local a = fcsAmmo()
     if not a then return end
     local f = st.fcs
-    if f.arm == false then   -- 激光测距机拨在保险上：不出光
+    -- 没有激光测距机的车（VehDefs 的 lrf = false：豹 1、M60A1、BMP-1）：按 R 是车长估距——两秒以后报一个数，差上下 8% 左右（战雷历史模式）
+    if st.d.lrf == false then
+      if f.estT and os.clock() < f.estT then return end
+      f.estT = os.clock() + 2.2
+      f.estimating = true
+      if G.sfx then pcall(G.sfx, "uiClick") end
+      local myF = f
+      task.delay(2.2, function()
+        if not st or st.fcs ~= myF then return end
+        myF.estimating = nil
+        laseNow(myF, true)
+      end)
+      return
+    end
+    laseNow(f, false)
+  end
+  laseNow = function(f, est)
+    if f.arm == false and not est then   -- 激光测距机拨在保险上：不出光
       if G.sfx then pcall(G.sfx, "dry") end
       return
     end
@@ -40824,7 +40962,9 @@ function Drive.init(G)
     f.laseT = os.clock()
     f.multi = #rets > 1
     local m = rets[1] and ((f.lrf == "FIRST") and rets[1] or rets[#rets]) or nil
-    if m then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
+    if est and m then m = m * (1 + (math.random() * 2 - 1) * 0.08) end   -- 车长估的：上下差 8% 以内
+    f.est = est or nil
+    if m then f.R, f.noRet = math.floor(m / (est and 50 or 5) + 0.5) * (est and 50 or 5), false
     else f.R, f.noRet = nil, true end
     f.man = nil
     f.leadY, f.leadP = f.ry or 0, f.rp or 0   -- 测距那一刻跟踪的角速度（弧度 / 秒）：提前量
@@ -51272,6 +51412,18 @@ function Hud.init(G)
   local CAT = { inf = "inf", light = "veh", armor = "veh", ship = "veh", air = "air" }
   local contacts = {}      -- { pos, team, kind, model }
   local seenT = {}         -- 敌人 → 最近一次看见（视线里）的时刻
+  -- 历史 / 全真模式（workspace 属性 WtMode = rb / sb，用户 11-25「全部都做」①）：小地图上的敌人只画自己看得见的、
+  --   队友看得见的、被侦察标记的——服务器 WtMatch.lua 每 0.5 秒发一次这一队看得见的实体号（fx teamSeen）
+  local teamSeen = {}      -- 实体号 → 到什么时候还算看得见
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "teamSeen" and type(e.ids) == "table" then
+        local till = os.clock() + 1.6
+        for _, id in ipairs(e.ids) do teamSeen[id] = till end
+      end
+    end
+  end)
   local losT = {}          -- 敌人 → 下次查视线的时刻
   local pings = {}         -- 敌人开枪的地方：{ pos, t }
   local rayP = RaycastParams.new()
@@ -51604,8 +51756,9 @@ function Hud.init(G)
         for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
         for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
       end
+      local strictM = workspace:GetAttribute("WtMode") == "rb" or workspace:GetAttribute("WtMode") == "sb"
       for _, c in ipairs(contacts) do
-        if c.team ~= mine and c.kind == "inf" and c.model and now >= (losT[c.model] or 0) then
+        if c.team ~= mine and (c.kind == "inf" or strictM) and c.model and now >= (losT[c.model] or 0) then   -- 历史 / 全真：车、飞机也要自己看得见
           losT[c.model] = now + 0.3
           if visible(c, eye) then seenT[c.model] = now end
         end
@@ -51618,9 +51771,17 @@ function Hud.init(G)
       b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
     end
     local pulse = 0.08 + 0.14 * (0.5 + 0.5 * math.sin(now * 5))   -- 敌人的亮点轻轻地一明一暗（不靠扫描线也一眼看得到）
+    local wm = workspace:GetAttribute("WtMode")
+    local strict = wm == "rb" or wm == "sb"
     for _, c in ipairs(contacts) do
       local enemy = c.team ~= mine
-      local show = not enemy or RC.allEnemies or c.kind ~= "inf" or (c.model and now - (seenT[c.model] or -99) < 2)
+      local seenMe = c.model and now - (seenT[c.model] or -99) < 2
+      local show
+      if not enemy then show = true
+      elseif strict then   -- 历史 / 全真：自己看得见、队友看得见（teamSeen）、被侦察的才画
+        local id = c.model and c.model:GetAttribute("EntId")
+        show = seenMe or (id ~= nil and (teamSeen[id] or 0) > now)
+      else show = RC.allEnemies or c.kind ~= "inf" or seenMe end
       if show then
         local b = blip()
         shape(b, c.kind, enemy and FOE or FRIEND, enemy and pulse or 0.12)
@@ -74567,12 +74728,14 @@ function TankHud.init(G)
     -- 敌人：每 0.25 秒重新挑一遍（距离、视线），每帧摆牌子
     -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
     --   全真 sb 一个都不标
+    --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
     local wtMode = workspace:GetAttribute("WtMode")
-    local gR = (wtMode == "ab") and 2500 or ((wtMode == "rb") and 500 or 1100)
+    local gR = (wtMode == "ab") and 2500 or 1100
+    local tagsOn = wtMode ~= "sb" and wtMode ~= "rb"
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}
-      for _, em in ipairs((wtMode ~= "sb") and ents and ents:GetChildren() or {}) do
+      for _, em in ipairs(tagsOn and ents and ents:GetChildren() or {}) do
         local cat = em:GetAttribute("Cat")
         if (air and CATS_AIR or CATS)[cat] and enemy(em, side) then
           local r = em:FindFirstChild("Root")
@@ -80272,6 +80435,7 @@ function View.init(G)
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
+      v.wreckT = os.clock()
       -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
       if d.turret and not v.toss then
         local seed = tonumber(v.id) or 0
@@ -80297,6 +80461,20 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+    end
+    -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
+    if v.wreckT and not v.burnt2 then
+      local age = os.clock() - v.wreckT
+      if age > 40 and not v.burnt1 then
+        v.burnt1 = true
+        if M.fire then M.fire.Rate = 6 end
+        if M.black then M.black.Rate = 5 end
+      elseif age > 70 then
+        v.burnt2 = true
+        if M.fire then M.fire.Rate = 0 end
+        if M.black then M.black.Rate = 1.2 end
+        if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      end
     end
   end
 
@@ -84166,7 +84344,18 @@ function WtTank.init(G)
       AIM.relT.Text = ready and "" or string.format("%.1f", I.left or 0)
       local pop = math.clamp(1 - (t - readyT) / 0.25, 0, 1)
       AIM.scale.Scale = 1 + 0.18 * pop
-      AIM.rng.Text = T("vh.m", math.floor((I.p - I.o).Magnitude / 2.8 / 5 + 0.5) * 5)
+      -- 测距（用户 11-25「全部都做」⑤）：街机照旧一直写到瞄准点多远；历史 / 全真按 R 才有——有激光测距的马上准，
+      --   没有的（豹 1、M60A1、BMP-1）车长估两秒、报个整 50 米的数（≈）；10 秒后作废
+      local wm = workspace:GetAttribute("WtMode")
+      if wm == "rb" or wm == "sb" then
+        local f = st.fcs
+        if f and f.estimating then AIM.rng.Text = T("wtt.est")
+        elseif f and f.R and (f.man or (f.laseT and t - f.laseT < 10)) then AIM.rng.Text = (f.est and "≈" or "") .. T("vh.m", f.R)
+        elseif f and f.noRet and f.laseT and t - f.laseT < 3 then AIM.rng.Text = "----"
+        else AIM.rng.Text = T("wtt.rkey") end
+      else
+        AIM.rng.Text = T("vh.m", math.floor((I.p - I.o).Magnitude / 2.8 / 5 + 0.5) * 5)
+      end
     else
       AIM.root.Visible = false
     end
