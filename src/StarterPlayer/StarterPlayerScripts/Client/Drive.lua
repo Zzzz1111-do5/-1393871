@@ -1221,11 +1221,29 @@ function Drive.init(G)
     local sz = inst.Size
     return math.min(sz.X, sz.Y, sz.Z) < 0.5 and math.max(sz.X, sz.Y, sz.Z) < 12
   end
+  local laseNow
   local function lase()
     local a = fcsAmmo()
     if not a then return end
     local f = st.fcs
-    if f.arm == false then   -- 激光测距机拨在保险上：不出光
+    -- 没有激光测距机的车（VehDefs 的 lrf = false：豹 1、M60A1、BMP-1）：按 R 是车长估距——两秒以后报一个数，差上下 8% 左右（战雷历史模式）
+    if st.d.lrf == false then
+      if f.estT and os.clock() < f.estT then return end
+      f.estT = os.clock() + 2.2
+      f.estimating = true
+      if G.sfx then pcall(G.sfx, "uiClick") end
+      local myF = f
+      task.delay(2.2, function()
+        if not st or st.fcs ~= myF then return end
+        myF.estimating = nil
+        laseNow(myF, true)
+      end)
+      return
+    end
+    laseNow(f, false)
+  end
+  laseNow = function(f, est)
+    if f.arm == false and not est then   -- 激光测距机拨在保险上：不出光
       if G.sfx then pcall(G.sfx, "dry") end
       return
     end
@@ -1252,7 +1270,9 @@ function Drive.init(G)
     f.laseT = os.clock()
     f.multi = #rets > 1
     local m = rets[1] and ((f.lrf == "FIRST") and rets[1] or rets[#rets]) or nil
-    if m then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
+    if est and m then m = m * (1 + (math.random() * 2 - 1) * 0.08) end   -- 车长估的：上下差 8% 以内
+    f.est = est or nil
+    if m then f.R, f.noRet = math.floor(m / (est and 50 or 5) + 0.5) * (est and 50 or 5), false
     else f.R, f.noRet = nil, true end
     f.man = nil
     f.leadY, f.leadP = f.ry or 0, f.rp or 0   -- 测距那一刻跟踪的角速度（弧度 / 秒）：提前量

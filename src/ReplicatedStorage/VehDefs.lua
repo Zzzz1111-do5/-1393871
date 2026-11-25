@@ -332,9 +332,13 @@ D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 
   smoke = { banks = { { at = V(3.4, -0.4, -13), yaw = 30, hull = true }, { at = V(-3.4, -0.4, -13), yaw = -30, hull = true } }, n = 2 },
   weapons = {} })
 
+-- 没有激光测距机的（用户 11-25「全部都做」⑤：战雷历史模式里这种车按 R 是车长估距——要等两秒、有误差）：
+--   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
+local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true }
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id
+  d.lrf = not NO_LRF[id]
   d.seats = d.seats or 1
   d.travel = d.travel or ((d.arch == "wheeled") and 0.75 or 0.55)   -- 悬架行程（上下各多少格）
   d.rev = d.rev or d.speed * 0.4

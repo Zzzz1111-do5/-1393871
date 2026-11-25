@@ -1423,6 +1423,8 @@ add("wt.extCd", "灭火器冷却中（{1} 秒）", "Extinguisher recharging ({1}
 add("wt.noGun", "主炮打不了：炮长阵亡或炮闩 / 炮管损毁", "Main gun out: gunner KO or breech / barrel destroyed")
 add("wt.fixing", "正在维修，暂时不能开炮", "Repairing — main gun unavailable")
 add("wtt.crew", "车组 {1} / {2}", "Crew {1} / {2}")
+add("wtt.est", "车长估距…", "Estimating…")
+add("wtt.rkey", "R 测距", "R range")
 -- 战雷式对局（WtMatch.lua / WtBattle.lua）：重生点数 SP、出击阵容、结算
 add("wt.lineupFull", "出击阵容已满（这局最多开 {1} 种车）：只能开阵容里的车", "Your lineup is full ({1} vehicle types per battle): only lineup vehicles can spawn")
 add("wt.noBackup", "{1} 这局已经出过 {2} 次，没有备用了", "{1} has already spawned {2} times this battle — no backups left")
