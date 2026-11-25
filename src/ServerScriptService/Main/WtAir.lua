@@ -156,6 +156,32 @@ function WtAir.init(G)
     sendMsg(e, src, out)
   end
 
+  -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪）：客户端 Fly.lua 超过极限速度 / 过载门槛 0.8 秒报来——一边机翼撕掉、另一边伤一截；
+  --   起落架放着超速——起落架坏了（属性 WtaGear = false，客户端放不下来）
+  function G.ACT.wtaOver(P, kind)
+    local e = P.vehicle
+    if not e or not e.alive or not e.wta or e.driver ~= P then return end
+    local S = e.wta
+    local t = now()
+    if t < (S.overT or 0) then return end
+    S.overT = t + 2
+    local out = { parts = {}, ev = {} }
+    if (kind == "speed" or kind == "g") and S.p.wingL and S.p.wingR then
+      local k = (math.random() < 0.5) and "wingL" or "wingR"
+      hurtPart(e, k, 9999, nil, out)
+      hurtPart(e, (k == "wingL") and "wingR" or "wingL", 45, nil, out)
+      table.insert(out.ev, 1, (kind == "speed") and "overspeed" or "overG")
+    elseif kind == "gear" and not S.gearBroken then
+      S.gearBroken = true
+      e.model:SetAttribute("WtaGear", false)
+      table.insert(out.ev, "gearOff")
+    else
+      return
+    end
+    push(e)
+    sendMsg(e, nil, out)
+  end
+
   -- 漏油（Air.lua burnFuel 每秒多烧这么多内油）
   function G.wtaLeak(e) return (e.wta and e.wta.leak) or 0 end
 

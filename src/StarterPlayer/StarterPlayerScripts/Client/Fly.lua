@@ -1693,6 +1693,26 @@ function Fly.init(G)
       local n = L / GR
       st.gLoad = n
       st.aoaDeg = math.deg(aoa)
+      -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪：战雷里超过极限速度、过载撕掉机翼）：超过 vne（默认加力最大平飞 vMax 的 1.12 倍，俯冲才到得了）
+      --   或过载门槛（喷气机 12.5 g）连着 0.8 秒——报服务器（WtAir.lua G.ACT.wtaOver，一边机翼撕掉）；快到了屏幕上警告
+      do
+        local vne = d.vne or ((d.vMax or d.vAB or d.vMil or 300) * 1.12)   -- 喷气机的加力最大平飞是 vMax（同上面推力那段）
+        local gLim = d.gLim or 12.5
+        local over = spd > vne or n > gLim
+        if over and not st.ground then
+          st.overT = (st.overT or 0) + dt
+          if st.overT > 0.8 and not st.overSent then
+            st.overSent = true
+            G.R.Act:FireServer("wtaOver", (spd > vne) and "speed" or "g")
+          end
+        else
+          st.overT = math.max(0, (st.overT or 0) - dt * 2)
+        end
+        if (spd > vne * 0.95 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then
+          st.overWarnT = os.clock() + 3
+          G.toast(T((spd > vne * 0.95) and "wta.warnSpeed" or "wta.warnG"), "bad")
+        end
+      end
       st.spd = math.max(0, st.spd - 0.22 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力：拉得越狠、越慢掉得越多（最大过载盘旋几秒掉三四成速度）
       st.sink = 0
       local v0 = st.vel
@@ -1754,6 +1774,17 @@ function Fly.init(G)
         st.gearAuto, st.gearWant = true, 0
         if G.toast then G.toast(T("coach.gearAuto"), "info") end
       end
+    end
+    -- 起落架放着超速（⑪）：超过 vGear（默认不开加力最大平飞的六成）1.2 秒——报服务器，起落架坏了以后放不下来（只能机腹迫降）
+    if st.em and st.em:GetAttribute("WtaGear") == false then st.gearWant = 0 end
+    if st.gear > 0.3 and not st.ground and st.spd > (d.vGear or (d.vMil or 300) * 0.6) and not st.gearSent then
+      st.gearOverT = (st.gearOverT or 0) + dt
+      if st.gearOverT > 1.2 then
+        st.gearSent = true
+        G.R.Act:FireServer("wtaOver", "gear")
+      end
+    else
+      st.gearOverT = 0
     end
     st.gear = approach(st.gear, st.gearWant, dt / 2.5)
     st.c.gear = st.gear
