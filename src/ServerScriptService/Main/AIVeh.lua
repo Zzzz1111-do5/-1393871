@@ -385,6 +385,7 @@ function AIVeh.init(G)
     local d, w, st = e.def, VD.W[wid], e.wst[wid]
     local t = now()
     if not st or t < st.next then return end
+    if w and w.kind == "atgm" then return end   -- 反坦克导弹（⑥）要人一直压着十字线导引：电脑车不用
     if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害：炮长没了、炮闩坏了
     if st.mag <= 0 then
       if st.reserve <= 0 then return end

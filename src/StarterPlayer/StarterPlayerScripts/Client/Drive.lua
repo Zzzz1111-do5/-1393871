@@ -1360,7 +1360,7 @@ function Drive.init(G)
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
     if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
-    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
+    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
       local t0 = os.clock()
       if t0 > (st.wtGunMsg or 0) and G.toast then
         st.wtGunMsg = t0 + 1.5

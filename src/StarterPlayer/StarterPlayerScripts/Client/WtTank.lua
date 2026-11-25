@@ -282,11 +282,12 @@ function WtTank.init(G)
         for _, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流" })[cls] or "" })
+          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = (cls == "atgm") and "sam" or cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流", atgm = "ATGM" })[cls] or "" })
         end
       elseif w then
-        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
-        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic] })
+        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam" or w.kind == "atgm") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
+        local tg = (w.kind == "atgm") and "ATGM" or ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic]
+        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = tg })
       end
     end
     local n = #slotDef

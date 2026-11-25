@@ -120,7 +120,7 @@ function Wt.init(G)
     if not S then return true end
     local VD = require(RS:WaitForChild("VehDefs"))
     local w = VD.W[wid]
-    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") then return S.gun ~= false end
+    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") then return S.gun ~= false end
     return alive(S) > 0 and not S.fixT
   end
   G.wtReloadK = function(e) return (e.wt and e.wt.rel) or 1 end

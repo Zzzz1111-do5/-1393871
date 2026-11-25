@@ -58,6 +58,11 @@ VehDefs.W = {
   -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
   gau8 = { kind = "shell", dmg = 52, speed = 1250, drop = 0.18, splash = 3.5, rate = 0.05, mag = 512, reload = 6, reserve = 1536, range = 2200,
     vs = { inf = 1, light = 1.1, armor = 0.32, air = 1.6, ship = 0.4, fort = 0.9 }, fx = "ac", cal = 0.22 },
+  -- 反坦克导弹（用户 11-25「全部都做」⑥：战雷里步战车都带）：半自动有线制导——炮长十字线压着目标，导弹自己往瞄准线上靠（Armor.lua G.atgmStep）
+  --   陶式 2A（布雷德利，发射箱两枚、车里再带五枚）：280 米 / 秒、3750 米、串联破甲 900 毫米；
+  --   9M14「婴儿」（BMP-1，炮上导轨一枚、车里四枚）：120 米 / 秒、3000 米、400 毫米，又慢又难打
+  tow2 = { kind = "atgm", dmg = 900, speed = 784, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
+  malyutka = { kind = "atgm", dmg = 600, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
     vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
@@ -231,7 +236,7 @@ D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear =
   gun = { pivot = V(0.1, 0.54, -1.72), len = 4.8, cal = 0.22 }, coax = V(0.6, 0.5, -1.9),
   sight = V(-1.0, 1.3, -0.9),
   sightZoom = { day = { 6 }, th = { 6.7 } },   -- 1PN22M1 炮长瞄准镜：昼光 6 倍、夜视 6.7 倍
-  weapons = { "gun73", "coax" }, seats = 8 })
+  weapons = { "gun73", "malyutka", "coax" }, seats = 8 })
 D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 51.3, accel = 4.4, rev = 15.6, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
@@ -239,7 +244,7 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   sight = V(-1.5, 1.7, -1.8),
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
+  weapons = { "ac30", "tow2", "coax" }, seats = 6 })
 
 ---------------------------------------------------------------- 装甲车（轮式）
 

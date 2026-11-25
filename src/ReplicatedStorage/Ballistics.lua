@@ -50,6 +50,10 @@ B.AMMO = {
     vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
   jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
     vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
+  -- 炮射导弹（用户 11-25「全部都做」⑥）：9M119M「反射」——从 125 炮里打出去，激光驾束（这里按炮长瞄准线导引，同 Armor.lua G.atgmStep），
+  --   350 米 / 秒、5 公里、串联破甲约 850 毫米；cls atgm：Armor.lua 开火时发导弹，不按炮弹的弹道
+  refleks = { cls = "atgm", name = "9M119M Refleks", sym = "导弹", v0 = 350, k = 0, bs = 900, tr = false, ce = true, range = 5000, turn = 2.2,
+    vs = { inf = 0.8, light = 1.3, armor = 1.0, fort = 1.2 }, splash = 1.0 },
   -- 科技树换真模型的几型车（用户 11-25「需要模型自己找」）按真车的弹：
   bm42 = { cls = "ap", name = "3BM42 Mango", sym = "穿甲", v0 = 1715, k = 3.6e-5, bs = 1200, tr = true,      -- T-80U：「芒果」钨合金长杆尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
@@ -78,9 +82,9 @@ B.AMMO = {
 B.GUN = {
   gun120 = { "m829a3", "m830", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
   gun125 = { "dtc10", "heat125", "he125", "jet125" },
-  gun125r = { "bm60", "bk31", "of26", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
+  gun125r = { "bm60", "bk31", "of26", "refleks", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
   gun105 = { "m900", "m456", "jet105" },
-  gun125u = { "bm42", "bk18m", "of26", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
+  gun125u = { "bm42", "bk18m", "of26", "refleks", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
   gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B
   gun120l55 = { "dm53", "dm12", "jet120" },           -- 豹 2A6
   gun120l44 = { "dm33", "dm12", "jet120" },           -- 豹 2A4
@@ -125,6 +129,7 @@ end
 -- 超高角（弧度）：打 xm 米远、瞄准线仰角 los（弧度）时炮要比瞄准线高多少（下坠只算垂直瞄准线那一份：× cos los）
 function B.superElev(a, xm, los)
   if xm < 1 then return 0, 0 end
+  if a.cls == "atgm" then return 0, xm / math.max(a.v0, 1) end   -- 炮射导弹（⑥）：顺着瞄准线飞，不抬炮
   local t, drop = B.flight(a, xm)
   return math.atan(drop * math.cos(los or 0) / xm), t
 end

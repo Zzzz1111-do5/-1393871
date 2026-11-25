@@ -81,6 +81,7 @@ end
 -- 坦克炮弹（Ballistics.AMMO 的键）：p0 炮口处、fall 每公里掉多少（脱壳穿甲弹）、t 类型（ke 动能 / ce 聚能 / he 杀爆）、
 --   spall 破片锥半角（度）、n 破片数、core 弹芯 / 射流往里钻多远（米）、tandem 串联装药（爆反挡不住）
 W.AMMO = {
+  refleks = { p0 = 850, t = "ce", spall = 20, n = 14, core = 2.6, tandem = true },   -- 9M119M「反射」炮射导弹
   m829a3 = { p0 = 800, fall = 30, t = "ke", spall = 16, n = 16, core = 3.2 },
   m830 = { p0 = 600, t = "ce", spall = 20, n = 12, core = 2.4 },
   m830a1 = { p0 = 500, t = "ce", spall = 22, n = 12, core = 2.0 },
@@ -117,7 +118,9 @@ W.WPN = {
   vulcan = { p0 = 30, fall = 20, t = "ke", spall = 18, n = 2, core = 0.6 },
   gau8 = { p0 = 75, fall = 25, t = "ke", spall = 18, n = 5, core = 1.4 },      -- A-10 的 30 毫米贫铀穿甲弹
   gun100 = { p0 = 40, t = "he", spall = 40, n = 18, core = 0, blast = 2.2 },    -- BMP-3 的 100 毫米榴弹
-  gun73 = { p0 = 300, t = "ce", spall = 20, n = 10, core = 1.8 },             -- BMP-1 的 73 毫米 PG-15V 破甲弹
+  gun73 = { p0 = 300, t = "ce", spall = 20, n = 10, core = 1.8 },
+  tow2 = { p0 = 900, t = "ce", spall = 20, n = 14, core = 2.6, tandem = true },   -- 陶式 2A 串联破甲（前级引爆爆反）
+  malyutka = { p0 = 400, t = "ce", spall = 20, n = 10, core = 1.8 },              -- 9M14「婴儿」             -- BMP-1 的 73 毫米 PG-15V 破甲弹
   hmg = { p0 = 25, fall = 10, t = "ke", spall = 10, n = 1, core = 0.4 },       -- 12.7 毫米穿甲弹
   rpg = { p0 = 500, t = "ce", spall = 22, n = 10, core = 1.8 },                -- 火箭筒（RPG-7 / PF-98 一类的串联破甲）
   c4 = { p0 = 120, t = "he", spall = 40, n = 14, core = 0, blast = 2.6 },
