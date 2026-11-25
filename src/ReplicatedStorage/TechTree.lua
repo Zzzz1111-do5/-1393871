@@ -35,7 +35,7 @@ TT.RANKS = {
 -- 一级里研究完几辆，才能研究下一级（这棵树的）
 TT.RANK_NEED = { 3, 3, 3, 2, 2, 2 }
 
--- 每一项：{ key, 中文名, 英文名, 年份, 等级, 列, 战斗等级, veh = 能开的型号 | base = 暂借的型号 }
+-- 每一项：{ key, 中文名, 英文名, 年份, 等级, 列, 战斗等级, veh = 能开的型号 | base = 暂借的型号, model = 借同族的模型（性能是自己的） }
 --   同一列按顺序：上一项是下一项的前置
 local G, A = "ground", "air"
 local LIST = {
@@ -59,7 +59,7 @@ local LIST = {
       { "cn_ztd05", "05式两栖突击车", "ZTD-05", 2006, 6, 3, 9.7, veh = "ztd05" },
       { "cn_15", "15式轻型坦克", "Type 15", 2018, 7, 3, 10.3, base = "m10" },
       { "cn_yw531", "63式装甲运输车", "YW531", 1963, 1, 4, 5.0, base = "m2a3" },
-      { "cn_86", "86式步兵战车", "Type 86", 1986, 4, 4, 7.7, base = "bmp3" },
+      { "cn_86", "86式步兵战车", "Type 86", 1986, 4, 4, 7.7, base = "bmp1" },
       { "cn_zsl92b", "92B式轮式步兵战车", "ZSL-92B", 2000, 5, 4, 8.3, veh = "zsl92b" },
       { "cn_zbd04", "04式步兵战车", "ZBD-04", 2004, 5, 4, 9.0, base = "bmp3" },
       { "cn_zbd05", "05式两栖步兵战车", "ZBD-05", 2006, 6, 4, 9.7, veh = "zbd05" },
@@ -96,14 +96,14 @@ local LIST = {
   },
   de = {
     [G] = {
-      { "de_leo1", "豹1", "Leopard 1", 1965, 1, 1, 7.0, base = "m10" },
-      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, base = "m10" },
-      { "de_leo1a5", "豹1A5", "Leopard 1A5", 1987, 4, 1, 8.3, base = "m10" },
-      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, base = "m1a1" },
-      { "de_leo2a4", "豹2A4", "Leopard 2A4", 1985, 4, 2, 9.7, base = "m1a1" },
-      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, base = "m1a1" },
-      { "de_leo2a6", "豹2A6", "Leopard 2A6", 2001, 5, 2, 11.3, base = "m1a2" },
-      { "de_leo2a7v", "豹2A7V", "Leopard 2A7V", 2020, 7, 2, 12.0, base = "m1a2" },
+      { "de_leo1", "豹1", "Leopard 1", 1965, 1, 1, 7.0, veh = "leo1" },
+      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, base = "leo1" },
+      { "de_leo1a5", "豹1A5", "Leopard 1A5", 1987, 4, 1, 8.3, veh = "leo1a5", model = "leo1" },
+      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, base = "leo2a4" },
+      { "de_leo2a4", "豹2A4", "Leopard 2A4", 1985, 4, 2, 9.7, veh = "leo2a4", model = "leo2a6" },
+      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, base = "leo2a6" },
+      { "de_leo2a6", "豹2A6", "Leopard 2A6", 2001, 5, 2, 11.3, veh = "leo2a6" },
+      { "de_leo2a7v", "豹2A7V", "Leopard 2A7V", 2020, 7, 2, 12.0, base = "leo2a6" },
       { "de_kanjpz", "90毫米炮歼击车", "Kanonenjagdpanzer", 1965, 1, 3, 6.3, base = "m10" },
       { "de_jaguar1", "美洲虎1 反坦克导弹车", "Jaguar 1", 1978, 3, 3, 8.3, base = "m10" },
       { "de_wiesel", "鼬鼠1 陶式", "Wiesel 1A2", 1990, 4, 3, 8.7, base = "m10" },
@@ -133,10 +133,10 @@ local LIST = {
   },
   us = {
     [G] = {
-      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, base = "m10" },
-      { "us_m60a1", "M60A1", "M60A1", 1962, 1, 1, 7.3, base = "m10" },
-      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, base = "m10" },
-      { "us_m60a3", "M60A3 TTS", "M60A3 TTS", 1979, 3, 1, 8.0, base = "m10" },
+      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, base = "m60a1" },
+      { "us_m60a1", "M60A1", "M60A1", 1962, 1, 1, 7.3, veh = "m60a1", model = "m60a3" },
+      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, base = "m60a1" },
+      { "us_m60a3", "M60A3 TTS", "M60A3 TTS", 1979, 3, 1, 8.0, veh = "m60a3" },
       { "us_m1", "M1 艾布拉姆斯", "M1 Abrams", 1980, 3, 2, 9.3, base = "m1a1" },
       { "us_m1ip", "M1IP", "IPM1", 1984, 4, 2, 9.7, base = "m1a1" },
       { "us_m1a1", "M1A1", "M1A1", 1985, 4, 2, 10.3, veh = "m1a1" },
@@ -189,8 +189,8 @@ local LIST = {
   jp = {
     [G] = {
       { "jp_type61", "61式主战坦克", "Type 61", 1961, 1, 1, 6.7, base = "m10" },
-      { "jp_type74", "74式主战坦克", "Type 74", 1975, 2, 1, 8.0, base = "m10" },
-      { "jp_type74g", "74式改", "Type 74 (G)", 1993, 4, 1, 8.7, base = "m10" },
+      { "jp_type74", "74式主战坦克", "Type 74", 1975, 2, 1, 8.0, base = "leo1" },
+      { "jp_type74g", "74式改", "Type 74 (G)", 1993, 4, 1, 8.7, base = "leo1a5" },
       { "jp_type90", "90式主战坦克", "Type 90", 1990, 4, 2, 10.3, base = "m1a1" },
       { "jp_type90b", "90式（B）", "Type 90 (B)", 1999, 5, 2, 10.7, base = "m1a1" },
       { "jp_type10", "10式主战坦克", "Type 10", 2012, 6, 2, 11.3, base = "m1a2" },
@@ -227,15 +227,15 @@ local LIST = {
       { "ru_t90a", "T-90A", "T-90A", 2004, 5, 1, 10.7, base = "t90m" },
       { "ru_t72b3", "T-72B3", "T-72B3", 2013, 6, 1, 11.0, base = "t90m" },
       { "ru_t90m", "T-90M 突破-3", "T-90M", 2020, 7, 1, 12.0, veh = "t90m" },
-      { "ru_t64a", "T-64A", "T-64A", 1969, 2, 2, 8.3, base = "t90m" },
-      { "ru_t64b", "T-64B", "T-64B", 1976, 3, 2, 9.3, base = "t90m" },
-      { "ru_t80b", "T-80B", "T-80B", 1978, 3, 2, 9.7, base = "t90m" },
-      { "ru_t80u", "T-80U", "T-80U", 1985, 4, 2, 10.7, base = "t90m" },
-      { "ru_t80bvm", "T-80BVM", "T-80BVM", 2018, 7, 2, 11.7, base = "t90m" },
+      { "ru_t64a", "T-64A", "T-64A", 1969, 2, 2, 8.3, base = "t80b" },
+      { "ru_t64b", "T-64B", "T-64B", 1976, 3, 2, 9.3, base = "t80b" },
+      { "ru_t80b", "T-80B", "T-80B", 1978, 3, 2, 9.7, veh = "t80b", model = "t80u" },
+      { "ru_t80u", "T-80U", "T-80U", 1985, 4, 2, 10.7, veh = "t80u" },
+      { "ru_t80bvm", "T-80BVM", "T-80BVM", 2018, 7, 2, 11.7, veh = "t80bvm", model = "t80u" },
       { "ru_pt76b", "PT-76B 水陆坦克", "PT-76B", 1962, 1, 3, 5.7, base = "ztd05" },
       { "ru_shturm", "强袭-S 反坦克导弹车", "Shturm-S", 1979, 3, 3, 8.3, base = "m10" },
       { "ru_khriz", "菊花-S 反坦克导弹车", "Khrizantema-S", 2005, 5, 3, 10.0, base = "m10" },
-      { "ru_bmp1", "BMP-1", "BMP-1", 1966, 1, 4, 6.7, base = "bmp3" },
+      { "ru_bmp1", "BMP-1", "BMP-1", 1966, 1, 4, 6.7, veh = "bmp1" },
       { "ru_bmp2", "BMP-2", "BMP-2", 1980, 3, 4, 7.7, base = "bmp3" },
       { "ru_bmp3", "BMP-3", "BMP-3", 1987, 4, 4, 8.7, veh = "bmp3" },
       { "ru_bmp2m", "BMP-2M", "BMP-2M", 2000, 5, 4, 9.3, base = "bmp3" },
@@ -280,9 +280,11 @@ for _, nat in ipairs(TT.NATIONS) do
     local out, lastInCol = {}, {}
     for _, row in ipairs(LIST[nat][br]) do
       local it = { key = row[1], name = row[2], en = row[3], year = row[4], rank = row[5], col = row[6], br = row[7],
-        veh = row.veh, base = row.base, nat = nat, branch = br }
+        veh = row.veh, base = row.base, model = row.model, nat = nat, branch = br }
       it.play = it.veh or it.base   -- 出车开哪一型
-      it.stand = it.veh == nil      -- 暂用别的型号
+      it.stand = it.veh == nil      -- 暂用别的型号（模型和性能都借）
+      -- model：性能是这一型自己的（VehDefs 里有它的炮、弹、装甲、机动），只是还没有它自己的模型，借同族那一型的真模型
+      --   （用户 11-25「需要模型自己找」：T-80B 借 T-80U、豹 2A4 借 2A6、M60A1 借 M60A3 的模型；ImportedMeta 的 alias 把它指到那个模型）
       local prev = lastInCol[it.col]
       if prev and prev.rank > it.rank then prev = nil end   -- 写错顺序（上面比下面级别高）就不连
       it.prev = prev and prev.key or nil

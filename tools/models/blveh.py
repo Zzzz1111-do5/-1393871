@@ -7,6 +7,7 @@
 #     scale 原模型单位 → 米直接乘（给了就不按 length 缩）；lengthRef [节点…]：按这几块的前后长度缩到 length（不给按车体 + 车轮）
 #     dedupe true：重合的三角形只留一份（游戏里扒的模型常有两三层一模一样的面，Roblox 里会闪）；dedupeFirst [节点…] 先留谁的
 #     split [{ from: [节点…], to: 组名, box: [x0, x1, y0, y1, z0, z1], label: 块名前缀 }]：整个连通块（按位置焊接 1 毫米）落在框里的面拆出来归 to 组
+#       （给了 center: true：连通块包围盒的中心落在框里就算——车体炮塔混在一块的模型，炮塔外壳的块往下伸到甲板以下，整块框不住）
 #       （给了 label：拆出来的单独成块、块名用这个前缀，比如铠甲的搜索雷达 Radar，kinds 里给它 k）
 #       （炮管和车体烘焙成一块的）；框是原模型 glTF 坐标（Y 上，原模型的车头朝哪就是哪）
 #     labels { 节点名: 块名前缀 }：这些节点单独成块、块名用这个前缀（组照旧），kinds { 前缀: k }：元数据里这些块带 k（int = 原模型自带的车内）
@@ -111,11 +112,15 @@ for rule in CFG.get('split', []):
                 a, b = blo.get(r), bhi.get(r)
                 blo[r] = Vector((min(a.x, c.x), min(a.y, c.y), min(a.z, c.z))) if a else c.copy()
                 bhi[r] = Vector((max(b.x, c.x), max(b.y, c.y), max(b.z, c.z))) if b else c.copy()
-        inside = {r for r in blo if all(lo[i] <= blo[r][i] and bhi[r][i] <= hi[i] for i in range(3))}
+        if rule.get('center'):   # 只看连通块包围盒的中心在不在框里（炮塔外壳往下伸到甲板高度以下、整块框不住；甲板上扁平的零件中心低，框的下沿卡掉）
+            inside = {r for r in blo if all(lo[i] <= (blo[r][i] + bhi[r][i]) / 2 <= hi[i] for i in range(3))}
+        else:
+            inside = {r for r in blo if all(lo[i] <= blo[r][i] and bhi[r][i] <= hi[i] for i in range(3))}
         chosen = {f.index for f, ks in zip(bm.faces, fk) if find(ks[0]) in inside}
         bm.free()
         if not chosen:
-            print('  拆 %s → %s：框里没有整块的零件' % (name, rule['to']))
+            if CFG.get('verbose'):
+                print('  拆 %s → %s：框里没有整块的零件' % (name, rule['to']))
             continue
         new = o.copy()
         new.data = o.data.copy()
@@ -136,6 +141,9 @@ for rule in CFG.get('split', []):
         if name in CFG.get('decimate', {}):   # 拆出来的块照原来那块的比例减面
             CFG['decimate'][new.name] = CFG['decimate'][name]
         print('  拆 %s → %s：%d 个面（%d 个零件）' % (name, rule['to'], len(chosen), len(inside)))
+# 整块都拆走了的原物体（比如两边的主动轮各拆成一个轮子）：删掉，不然导出一块空网格
+for o in [x for x in bpy.data.objects if x.type == 'MESH' and len(x.data.polygons) == 0]:
+    bpy.data.objects.remove(o, do_unlink=True)
 objs = [o for o in bpy.data.objects if o.type == 'MESH']
 
 # 减面（保留 UV）
@@ -196,6 +204,23 @@ for mn, rgb in CFG.get('matColor', {}).items():
     if bsdf:
         lin = [((c / 255 + 0.055) / 1.055) ** 2.4 if c / 255 > 0.04045 else c / 255 / 12.92 for c in rgb]
         bsdf.inputs['Base Color'].default_value = (lin[0], lin[1], lin[2], 1)
+
+# 贴图调色（texTint [{ img: 贴图名里的一段, rgb: [r, g, b] }]：原模型贴图是没上漆的灰色（豹 1），按真车涂装把中位色调到 rgb，
+#   脏污、磨损、阴影这些明暗细节照留——每个通道乘同一个倍数）
+for rule in CFG.get('texTint', []):
+    import numpy as np
+    for im in bpy.data.images:
+        if rule['img'] not in im.name or im.size[0] == 0:
+            continue
+        px = np.empty(im.size[0] * im.size[1] * 4, dtype=np.float32)
+        im.pixels.foreach_get(px)
+        px = px.reshape(-1, 4)
+        med = np.median(px[px[:, 3] > 0.5][:, :3], axis=0)
+        k = np.array(rule['rgb'], dtype=np.float32) / 255.0 / np.maximum(med, 1e-3)
+        px[:, :3] = np.clip(px[:, :3] * k, 0, 1)
+        im.pixels.foreach_set(px.ravel())
+        im.pack()
+        print('  调色 %s：中位色 %s → %s' % (im.name, [int(x * 255) for x in med], rule['rgb']))
 
 # 贴图缩小
 tmax = int(CFG.get('texMax', 1024))

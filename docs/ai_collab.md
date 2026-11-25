@@ -102,6 +102,13 @@
      - 资料卡 / 装甲查看器（TechUI，VehModels.pose 新加）、试驾（Tech.lua ACT.testDrive：东边场地、靶车 noScore、P.inTest 阵亡不扣兵力——Ents / WtMatch / Round 各加了一个判断）、
        结算明细（t.last → TechUI G.treeResultText → WtBattle 结算页 TreeResult 一行）、暂用车按真车涂装（TechTree.paint → VehModels.build 第 4 个参数）、名字 tree.<键>（Lang）
      - 测试：tools/mock/techtree.lua、wtbr.lua、wtmods.lua、wtmode.lua、wttest.lua
+  ⑦ **11-25 科技树暂用车换真模型，第一批已做**（用户「需要模型自己找」，Sketchfab CC-BY-4.0）：models/veh 新加 t80u、leo2a6、leo1、m60a3、bmp1（blveh.py 转，
+     配置在 tools/models/blveh.json，署名 models/veh/credits.txt）；VehDefs 新加 10 型：t80u / t80b / t80bvm、leo2a6 / leo2a4、leo1 / leo1a5、m60a3 / m60a1、bmp1
+     （同族老型号用 VehDefs 里的 variant 深拷，各有自己的炮、弹、装甲、机动；ImportedMeta 的 alias 把它们指到同族的模型）；新炮 gun125u / gun125b / gun120l55 /
+     gun120l44 / gun105l7 / gun105a5 / gun105m68 / gun105m60 / gun73，弹（Ballistics.AMMO + WtDamage.AMMO）bm42、bm22、bk18m、dm53、dm33、dm12、dm13、dm33l7、dm12h、m833、m392；
+     T-80U 的接触-5 在 EraMeta（eralayout.py 量的）。**TechTree 每项多了 model 字段**：性能是这一型自己的、模型借同族的（界面写「同族模型」，it.stand 仍只表示模型和性能都借）。
+     **blveh.py 新能力**：split 拆出来的块可以直接当车轮（wheels 里写 "<原名>.<组名>"）、整块拆空的原物体自动删掉、texTint（按真车涂装给灰贴图调色）；
+     节点名是乱码的 glTF 先用 tools/models/gltf_rename.py 改名（BMP-1）。测试 tools/mock/wtreal.lua（数据、科技树、逐型试驾、开炮走战雷伤害）
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

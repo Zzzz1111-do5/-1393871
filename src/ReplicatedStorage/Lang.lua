@@ -290,6 +290,11 @@ add("vcat.ship", "舰艇", "Ships")
 local VEH = {
   ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" }, bmp3 = { "BMP-3 步兵战车", "BMP-3 IFV" },
   pantsir = { "铠甲-S1 弹炮合一防空车", "Pantsir-S1 SPAAGM" },
+  t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
+  bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" },
+  leo2a6 = { "豹 2A6 主战坦克", "Leopard 2A6 MBT" }, leo2a4 = { "豹 2A4 主战坦克", "Leopard 2A4 MBT" },
+  leo1 = { "豹 1 主战坦克", "Leopard 1 MBT" }, leo1a5 = { "豹 1A5 主战坦克", "Leopard 1A5 MBT" },
+  m60a3 = { "M60A3 TTS 主战坦克", "M60A3 TTS MBT" }, m60a1 = { "M60A1 主战坦克", "M60A1 MBT" },
   m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv2", "M1A2 SEPv2" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
@@ -1006,6 +1011,15 @@ add("veh.samNeedLock", "先按 Q 用雷达锁住一架飞机，再发射导弹",
 add("aw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
+add("vw.gun125u", "125 毫米炮（2A46M-1）", "125 mm 2A46M-1")
+add("vw.gun125b", "125 毫米炮（2A46-2）", "125 mm 2A46-2")
+add("vw.gun120l55", "120 毫米炮（Rh-120 L/55）", "120 mm Rh-120 L/55")
+add("vw.gun120l44", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
+add("vw.gun105l7", "105 毫米炮（L7A3）", "105 mm L7A3")
+add("vw.gun105a5", "105 毫米炮（L7A3）", "105 mm L7A3")
+add("vw.gun105m68", "105 毫米炮（M68E1）", "105 mm M68E1")
+add("vw.gun105m60", "105 毫米炮（M68）", "105 mm M68")
+add("vw.gun73", "73 毫米炮（2A28）", "73 mm 2A28 Grom")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")
 -- 坦克改装、爆反、主动防御（用户 11-19）
 add("aps.hit", "主动防御拦截了来袭弹（剩 {1} 发）", "APS intercepted the threat ({1} left)")

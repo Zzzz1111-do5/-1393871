@@ -604,7 +604,15 @@ function Tech.init(G)
     end
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
   end
-  G.on("died", function(P) if tests[P] then task.defer(testClean, P) end end)
+  -- 试驾下车 / 在试驾场被打掉：回机库不算阵亡，不用等重生倒计时（战雷：试驾完马上能再试驾、能出击）——
+  --   Round 在阵亡时记的 canDeployAt 晚一帧清掉（同一帧里 Round 的阵亡处理可能排在后面）
+  G.on("died", function(P)
+    if not tests[P] then return end
+    task.defer(function()
+      testClean(P)
+      P.canDeployAt = math.min(P.canDeployAt or 0, now())
+    end)
+  end)
   G.on("left", function(P) testClean(P) end)
 
   -- 出击：key 是阵容里的一辆；人还没出生就先按出击把人生出来，生出来以后（Round.lua 的 P.after）摆车、坐进去

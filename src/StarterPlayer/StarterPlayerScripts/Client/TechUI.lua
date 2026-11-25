@@ -27,6 +27,11 @@ function TechUI.init(G)
   local zh = G.lang == "zh"
   local function L(a, b) return zh and a or b end
   local function nm(it) return zh and it.name or it.en end
+  -- 型号的名字（Lang 的 veh.<型号>；没有就写型号）：暂用 / 同族模型那一行写借的是哪一型
+  local function vname(id)
+    local t = id and G.T and G.T("veh." .. id)
+    return (t and t ~= "veh." .. id) and t or string.upper(tostring(id))
+  end
   local RGB = Color3.fromRGB
   local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
   local GOOD, GOLD, BAD = RGB(140, 210, 140), RGB(230, 196, 110), RGB(232, 120, 100)
@@ -314,6 +319,8 @@ function TechUI.init(G)
         text(card, L("改装 ", "Mods ") .. nDone .. " / " .. nAll, UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 70), 11, (nDone == nAll) and GOOD or DIM).Name = "ModCount"
         if it.stand then   -- 还没有自己的模型：借的是哪一型写在科技树详情里
           text(card, L("暂用模型", "stand-in model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(200, 170, 90))
+        elseif it.model then   -- 性能是自己的，模型借同族的
+          text(card, L("同族模型", "family model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(170, 185, 150))
         end
         local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(i)] or { xp = 0 }
         local cfree = WC.free(cs)
@@ -666,7 +673,8 @@ function TechUI.init(G)
     local rows = {}
     local function add(s, col, ts) table.insert(rows, { s, col or DIM, ts or 13 }) end
     local function T2(k) return G.T and G.T(k) or k end
-    if it.stand then add(L("还没有自己的模型：模型和性能暂用 ", "No model yet: model & stats from ") .. string.upper(it.play), GOLD, 12) end
+    if it.stand then add(L("还没有自己的模型：模型和性能暂用 ", "No model yet: model & stats from ") .. vname(it.play), GOLD, 12)
+    elseif it.model then add(L("模型暂用同族的 ", "Model borrowed from ") .. vname(it.model) .. L("（性能是本车的）", " (own stats)"), GOLD, 12) end
     local d = VD.get(it.play)
     if d then
       add(L("机动", "Mobility"), WHITE, 15)
@@ -802,7 +810,9 @@ function TechUI.init(G)
     if stt ~= "own" then line(L("价钱 ", "Cost ") .. it.cost .. L(" 金币", " coins"), 13, DIM) end
     if it.stand then
       local base = it.base and (VD.get(it.base) or AD.get(it.base)) and it.base or "?"
-      line(L("还没有自己的模型：暂用 ", "No model yet: uses ") .. string.upper(base) .. L(" 的模型和性能", "'s model & stats"), 12, RGB(200, 170, 90), 34)
+      line(L("还没有自己的模型：暂用 ", "No model yet: uses ") .. vname(base) .. L(" 的模型和性能", "'s model & stats"), 12, RGB(200, 170, 90), 34)
+    elseif it.model then
+      line(L("模型暂用同族的 ", "Model from ") .. vname(it.model) .. L("；炮、弹、装甲、机动按本车", "; gun, ammo, armour and mobility are its own"), 12, RGB(170, 185, 150), 34)
     end
     y += 8
     local function btn(str, primary, f)
@@ -911,7 +921,7 @@ function TechUI.init(G)
       s.Parent = card
       local n1 = text(card, nm(it), UDim2.new(1, -12, 0, 20), UDim2.new(0, 6, 0, 4), 13, (stt == "lock") and FAINT or WHITE)
       n1.ZIndex = 4
-      local n2 = text(card, "BR " .. TT.brText(it.br) .. "  " .. it.year .. (it.stand and L("  暂用", "  stand-in") or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 0, 24), 11, DIM)
+      local n2 = text(card, "BR " .. TT.brText(it.br) .. "  " .. it.year .. (it.stand and L("  暂用", "  stand-in") or (it.model and L("  同族模型", "  family model")) or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 0, 24), 11, DIM)
       n2.ZIndex = 4
       if stt == "cur" or (tree.rp[it.key] or 0) > 0 then
         local bg = frame(card, UDim2.new(1, -12, 0, 5), UDim2.new(0, 6, 1, -10), RGB(30, 30, 30), 0)
