@@ -438,7 +438,6 @@ function Warfx.init(G)
   -- 废墟（Ruins 文件夹里的 Ruin_ 模型）：冒一阵烟、几点余火（90 秒后烟停）
   local FIRE = "rbxasset://textures/particles/fire_main.dds"
   local THUD = "rbxasset://sounds/action_jump_land.mp3"
-  local bldList, scanAt = {}, 0
   local burning = {}   -- [模型] = { h, light, ph }
   local ruinFx = {}    -- [模型] = true
   local collapses = 0
@@ -478,35 +477,75 @@ function Warfx.init(G)
     task.delay(90, function() sm.Enabled = false em.Enabled = false end)
   end
 
-  local function stepBlds()
-    local t = os.clock()
-    if t >= scanAt then
-      scanAt = t + 15
-      table.clear(bldList)
-      local map = workspace:FindFirstChild("Map")
-      local scenery = map and map:FindFirstChild("Scenery")
-      if scenery then
-        for _, d in ipairs(scenery:GetDescendants()) do
-          if d:IsA("Model") and d:GetAttribute("Bld") then table.insert(bldList, d) end
+  -- 房子（模型属性 Bld）着火（属性 Burning）挂火焰、废墟（workspace.Ruins）冒烟。
+  --   用户 11-25「游戏一阵一阵卡 然后枪 坦克 飞机一阵一阵抽搐」：原来每 15 秒把 Map.Scenery 整个 GetDescendants 一遍找房子——沙海的景物有四五万个实例，
+  --   每 15 秒卡一下（tools/mock/hitch.lua 按行采样：尖峰那几帧三成多的时间在这里，平常的帧里一次都没有）；每秒还把每栋房子的属性读一遍。
+  --   现在：开服后分帧扫一遍（只走文件夹和模型、不进零件，每帧 1500 个），以后靠 DescendantAdded 接新来的（开了 streaming 流进来的也是）；
+  --   每栋房子盯着自己的 Burning 属性，变了才挂 / 撤火焰；废墟靠 ChildAdded
+  local watched = setmetatable({}, { __mode = "k" })
+  local function syncFire(m)
+    local on = m.Parent ~= nil and m:GetAttribute("Burning") == true
+    if on and not burning[m] then
+      decorateFire(m)
+    elseif not on and burning[m] then
+      if burning[m].h.Parent then burning[m].h:Destroy() end
+      burning[m] = nil
+    end
+  end
+  local function watchBld(m)
+    if watched[m] or not m:IsA("Model") or not m:GetAttribute("Bld") then return end
+    watched[m] = true
+    m:GetAttributeChangedSignal("Burning"):Connect(function() pcall(syncFire, m) end)
+    if m:GetAttribute("Burning") == true then syncFire(m) end
+  end
+  G.bldWatched = function() local n = 0 for _ in pairs(watched) do n += 1 end return n end   -- 测试用
+  local sceneryHooked, ruinsHooked = false, false
+  local function hookScenery(scenery)
+    sceneryHooked = true
+    scenery.DescendantAdded:Connect(function(d)
+      if d:IsA("Model") then task.defer(function() if d.Parent then pcall(watchBld, d) end end) end   -- 等属性到了再看
+    end)
+    task.spawn(function()
+      local stack, n = { scenery }, 0
+      while #stack > 0 do
+        local node = table.remove(stack)
+        if node.Parent then
+          for _, c in ipairs(node:GetChildren()) do
+            if c:IsA("Model") then
+              if c:GetAttribute("Bld") then watchBld(c) else table.insert(stack, c) end
+            elseif c:IsA("Folder") then
+              table.insert(stack, c)
+            end
+            n += 1
+            if n % 1500 == 0 then task.wait() end
+          end
         end
       end
+    end)
+  end
+  local function hookRuins(rf)
+    ruinsHooked = true
+    rf.ChildAdded:Connect(function(m)
+      task.defer(function() if m.Parent and m:IsA("Model") and not ruinFx[m] then pcall(decorateRuin, m) end end)
+    end)
+    for _, m in ipairs(rf:GetChildren()) do
+      if m:IsA("Model") and not ruinFx[m] then decorateRuin(m) end
     end
-    for _, m in ipairs(bldList) do
-      local on = m.Parent ~= nil and m:GetAttribute("Burning") == true
-      if on and not burning[m] then
-        decorateFire(m)
-      elseif not on and burning[m] then
+  end
+  local function stepBlds()
+    if not sceneryHooked then
+      local map = workspace:FindFirstChild("Map")
+      local scenery = map and map:FindFirstChild("Scenery")
+      if scenery then hookScenery(scenery) end
+    end
+    if not ruinsHooked then
+      local rf = workspace:FindFirstChild("Ruins")
+      if rf then hookRuins(rf) end
+    end
+    for m in pairs(burning) do   -- 拆掉 / 流出去的房子
+      if not m.Parent then
         if burning[m].h.Parent then burning[m].h:Destroy() end
         burning[m] = nil
-      end
-    end
-    for m in pairs(burning) do
-      if not m.Parent then burning[m] = nil end
-    end
-    local rf = workspace:FindFirstChild("Ruins")
-    if rf then
-      for _, m in ipairs(rf:GetChildren()) do
-        if m:IsA("Model") and not ruinFx[m] then decorateRuin(m) end
       end
     end
     for m in pairs(ruinFx) do

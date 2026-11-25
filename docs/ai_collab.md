@@ -76,6 +76,20 @@
      - 玩家传到远处前 `G.streamAround(pl, 位置)`（Round.lua 出生已经加了）；遥控的东西飞远了 `G.streamFocus(pl, 零件, true/false)`（无人机已经加了）
      - 模拟器 `R.streamSim = 半径` 假装客户端只有这么大一片（rbx.lua）；测试 tools/mock/stream.lua
   ③ 还没做：流畅度（量每帧脚本时间挑热点）、流体效果（风场、尾迹、水柱、旋翼下洗）——用户说先做 streaming，这两样等用户再提
+  ④ **11-25 已做**（用户：「把抽搐bug和昼夜更替弄完」「游戏一阵一阵卡 然后枪 坦克 飞机一阵一阵抽搐」）：
+     - 一阵一阵卡：tools/mock/hitch.lua（逐帧记客户端 / 服务器各花多少、按行采样尖峰那几帧）抓到 Warfx.lua 的房子扫描——每 15 秒 Map.Scenery:GetDescendants()
+       （沙海四五万个实例）；改成分帧扫一遍 + DescendantAdded + 每栋房子盯 Burning 属性。**谁写客户端定时扫整张图的，照这个改**
+     - 沙海后台写地形（E ⑦ 的 terrainDesert）：后台的平地 FillBlock 切成 ≤512 格见方一块（按耗时自适应）、起伏块 16 × 16 列一份、扫描算地貌也分帧（tools/mock/terrainbg.lua）
+     - 昼夜更替打开（Config.DayNight.lockNight = false）：天黑提示开夜视、天亮夜视自己收起、白天地图上的灯和光晕关掉（Night.lua）；开场标题改「拂晓突击」
+     - 客户端逐帧计时多了 G.perfMax（单次最长），F7 性能面板多一行「单次最长」
+  ⑤ **11-25 起在做**（用户：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」「其他的地方你自己了解自己找资源去搞懂战雷啥样」
+     「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」「内饰可以先跳过」）：
+     科技树（ReplicatedStorage/TechTree.lua：五系 × 坦克 / 战机，等级 I～VII、战斗等级 BR、研究点、前置），研究 / 购买 / 存档，科技树界面，
+     出击阵容从买下的车里选（接 C 的 WtMatch：SP、备用），**玩家不再步行**：出击直接坐在车里 / 飞机里，车没了回出击界面。
+     **第一版已做**：TechTree.lua（数据）、Tech.lua（研究 / 购买 / 存档 / 出击）、TechUI.lua（机库、科技树界面）；Round.lua 的 G.ACT.deploy 多了第 4 个参数 after
+     （服务器自己调时生出来以后接着做，Tech 用它把人塞进车里）、`Config.Wt.noInfantry` 开着时步兵出击被拒（G.allowInfantry 放行；测试台默认放行）；
+     init.server 的 Drive 远程：noInfantry 时 op = exit 交给 G.treeLeave（下车 = 判毁回机库）；Depots spawnAt 认 P.treeSpawn（科技树买下的不再查老的金币解锁）。
+     **C 注意**：出击还是走 Depots 的 spawnAt（G.wtSpawnOk / G.wtSpawned 照旧调），WtMatch 的阵容是「这一局出过哪几型」，科技树的阵容是「能出哪几辆」，两样都在
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

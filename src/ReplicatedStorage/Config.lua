@@ -57,9 +57,10 @@ Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
--- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
---   lockNight = false 才按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替
-Config.DayNight = { lockNight = true, clock = 2.3, period = 24 * 60 }
+-- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」锁过一阵；11-25「把抽搐bug和昼夜更替弄完」——又打开：
+--   lockNight = false 按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替：白天约 13 分钟、黄昏 / 清晨各一分多钟、夜里不到 6 分钟；
+--   天黑提示开夜视、天亮夜视自己收起，地图上的灯和光晕只在天黑以后亮（Night.lua）。要再锁晚上把 lockNight 改回 true（clock 是锁定时的钟点）
+Config.DayNight = { lockNight = false, clock = 2.3, period = 24 * 60 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
@@ -91,6 +92,8 @@ Config.Roles = {
   { id = "mortar", hp = 100, speed = 15, weapons = { "m4", "mortar" } },
   { id = "spec", hp = 110, speed = 18, weapons = { "m4", "c4", "grenade" } },
   { id = "spotter", hp = 95, speed = 16, weapons = { "m4", "binoc" } },
+  -- 乘员（用户 11-25「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」）：出击直接坐进车里（Tech.lua deployVeh），身上什么都不带
+  { id = "crew", hp = 100, speed = 16, weapons = {} },
 }
 Config.RoleById = {}
 for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
@@ -330,7 +333,9 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 -- 战雷式对局（WtMatch.lua，用户 11-24 夜「把整个游戏做成战雷」）：重生点数 SP、出击阵容
 --   每局每人 SP 从 sp0 起，第一辆车免费，以后出车按 cost 花（这一局每多出过一辆贵 rise）；得分攒 SP（每分 perScore），封顶 spMax；
 --   一局最多开 lineup 种车，每种出 1 + backup 次；步兵出生不要 SP；PvE 关卡不收
-Config.Wt = { on = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
+-- noInfantry（用户 11-25「就跟战雷完全一样 不要让玩家作为个体活动」）：玩家不步行、不拿枪——出击界面从科技树的出击阵容里挑车，人直接坐在车里出现
+--   （Tech.lua deployVeh）；下车 = 回出击界面（这辆算没了）
+Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
   cost = { tank = 300, apc = 200, aa = 220, arty = 260, jet = 450, bomber = 550, drone = 280, heli = 380, transport = 240, ship = 400 } }
 -- cat：地面车的 VehDefs cat（tank / apc / aa / arty）、飞机的 AirDefs cat（jet / heli）、舰艇 ship；nPaid：这一局已经花 SP 出过几辆
 function Config.WtCost(id, cat, nPaid)

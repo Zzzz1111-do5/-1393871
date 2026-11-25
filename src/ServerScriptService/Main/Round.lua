@@ -744,9 +744,15 @@ function Round.init(G)
   end
 
   -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
-  function G.ACT.deploy(P, choice, spawnId)
+  -- after：生出来以后接着做的（只有服务器自己调的时候给：科技树出击 Tech.lua 用它把人塞进车里；客户端发过来的参数里不会有函数）
+  function G.ACT.deploy(P, choice, spawnId, after)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
+    -- 战雷式（Config.Wt.noInfantry）：不能当步兵出去，只能从机库的出击阵容里挑车（Tech.lua deployVeh 自己调这里、带 after）
+    if (Config.Wt or {}).noInfantry and type(after) ~= "function" and not G.allowInfantry then
+      G.msg(P.pl, "bad", "tree.useHangar")
+      return
+    end
     local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice, P)
     if not kit then return end
     local sp = nil
@@ -762,7 +768,7 @@ function Round.init(G)
     P.kit = kit
     P.spawnId = spawnId
     P.spawnCF = spawnCF(P, sp)
-    P.after = nil
+    P.after = (type(after) == "function") and after or nil
     if sp.kind == "beach" and G.boardBoat then
       P.spawnCF, P.after = G.boardBoat(P, sp.beach)
     elseif sp.kind == "para" and G.paraDrop then
@@ -1182,6 +1188,7 @@ function Round.init(G)
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
       if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
+      if G.treeAward then G.try("结算研究点", G.treeAward, P, P.team == winner) end   -- 科技树研究点（Tech.lua），也在存档前
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil

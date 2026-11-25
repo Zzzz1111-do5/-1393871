@@ -1051,6 +1051,7 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
+    if R.voxelLog then table.insert(R.voxelLog, { n = R.stepNo, v = sx * sy * sz, cols = sx * sz }) end   -- 测试开着才记（第几步、多少体素）
     -- 小块的写入（开服的网格器校准平台）：每一列记下各层的占有率，射线按 R.surfFrac（假装的网格器）算地面在哪
     if sx * sy * sz <= 60000 and region._min._y < -1000 then   -- 只有地图下面很深的试验平台（地图本身的块不记）
       R.voxCols = R.voxCols or {}
@@ -1086,7 +1087,7 @@ def("Terrain", "BasePart", {
   FillBlock = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillBlock(CFrame, Vector3, Material) 参数不对", 2) end
     if size._x > 2048 * 4 or size._z > 2048 * 4 then error("FillBlock 区域太大", 2) end
-    table.insert(R.terrainFills, { k = "block", p = c.Position, size = size, mat = mat.Name })   -- 宣传片录场景用
+    table.insert(R.terrainFills, { k = "block", p = c.Position, size = size, mat = mat.Name, n = R.stepNo })   -- 宣传片录场景用；n 第几步
     if R.voxCols and mat.Name == "Air" then   -- 拆掉校准平台：记的列一起清掉
       local p0 = c.Position
       for key in pairs(R.voxCols) do
@@ -1670,6 +1671,109 @@ R.services.StarterGui = service("StarterGui", {}, { methods = {
   SetCore = function() end,
 } })
 R.services.GuiService = service("GuiService", {}, { methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
+-- HttpService：只有 JSONEncode / JSONDecode（科技树存档写给客户端用，Tech.lua / TechUI.lua）；表里只认字符串 / 数字 / 布尔 / 表
+do
+  local function enc(v, out)
+    local t = type(v)
+    if t == "string" then
+      out[#out + 1] = '"' .. v:gsub('[%c"\\]', function(c) return string.format("\\u%04x", c:byte()) end) .. '"'
+    elseif t == "number" then
+      out[#out + 1] = (v == math.floor(v) and math.abs(v) < 1e15) and string.format("%d", v) or string.format("%.14g", v)
+    elseif t == "boolean" then
+      out[#out + 1] = tostring(v)
+    elseif t == "table" then
+      local n = #v
+      local isArr = n > 0 or next(v) == nil
+      if isArr then for k in pairs(v) do if type(k) ~= "number" then isArr = false break end end end
+      if isArr then
+        out[#out + 1] = "["
+        for i = 1, n do
+          if i > 1 then out[#out + 1] = "," end
+          enc(v[i], out)
+        end
+        out[#out + 1] = "]"
+      else
+        out[#out + 1] = "{"
+        local first = true
+        local keys = {}
+        for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+          local val = v[k]
+          if val == nil then val = v[tonumber(k)] end
+          if not first then out[#out + 1] = "," end
+          first = false
+          enc(k, out)
+          out[#out + 1] = ":"
+          enc(val, out)
+        end
+        out[#out + 1] = "}"
+      end
+    elseif v == nil then
+      out[#out + 1] = "null"
+    else
+      error("JSONEncode：不能编码 " .. t, 3)
+    end
+  end
+  local function dec(s, i)
+    i = s:find("%S", i) or #s + 1
+    local c = s:sub(i, i)
+    if c == "{" then
+      local o = {}
+      i = s:find("%S", i + 1)
+      if s:sub(i, i) == "}" then return o, i + 1 end
+      while true do
+        local k
+        k, i = dec(s, i)
+        i = s:find(":", i) + 1
+        local v
+        v, i = dec(s, i)
+        o[k] = v
+        i = s:find("%S", i)
+        local d = s:sub(i, i)
+        i = i + 1
+        if d == "}" then return o, i end
+      end
+    elseif c == "[" then
+      local a = {}
+      i = s:find("%S", i + 1)
+      if s:sub(i, i) == "]" then return a, i + 1 end
+      while true do
+        local v
+        v, i = dec(s, i)
+        a[#a + 1] = v
+        i = s:find("%S", i)
+        local d = s:sub(i, i)
+        i = i + 1
+        if d == "]" then return a, i end
+      end
+    elseif c == '"' then
+      local j, buf = i + 1, {}
+      while true do
+        local ch = s:sub(j, j)
+        if ch == '"' then return table.concat(buf), j + 1 end
+        if ch == "\\" then
+          local e = s:sub(j + 1, j + 1)
+          if e == "u" then buf[#buf + 1] = utf8.char(tonumber(s:sub(j + 2, j + 5), 16)) j = j + 6
+          else buf[#buf + 1] = ({ n = "\n", t = "\t", r = "\r", b = "\b", f = "\f" })[e] or e j = j + 2 end
+        else
+          buf[#buf + 1] = ch
+          j = j + 1
+        end
+      end
+    elseif s:sub(i, i + 3) == "true" then return true, i + 4
+    elseif s:sub(i, i + 4) == "false" then return false, i + 5
+    elseif s:sub(i, i + 3) == "null" then return nil, i + 4
+    else
+      local num = s:match("^-?%d+%.?%d*[eE]?[-+]?%d*", i)
+      return tonumber(num), i + #num
+    end
+  end
+  R.services.HttpService = service("HttpService", {}, { methods = {
+    JSONEncode = function(_, v) local out = {} enc(v, out) return table.concat(out) end,
+    JSONDecode = function(_, s) if type(s) ~= "string" then error("JSONDecode 要字符串", 2) end return (dec(s, 1)) end,
+  } })
+end
 R.services.ScriptContext = service("ScriptContext", {}, { events = { Error = true } })
 R.services.ProximityPromptService = service("ProximityPromptService", { Enabled = { T.bool, true } }, { events = { PromptTriggered = true } })
 -- EditableMesh / EditableImage（只模拟接口和参数检查；R.noEditable = true 时当成用不了）
@@ -2309,6 +2413,7 @@ end
 
 function R.step(dt)
   clock = clock + dt
+  R.stepNo = (R.stepNo or 0) + 1   -- 第几步（测试按步数地形写入：tools/mock/terrainbg.lua）
   R.frameDelta, R.mouseDelta = R.mouseDelta, nil
   if R.localPlayer then
     local co = newThread(function() R.RenderStepped:Fire(dt) end, "client")

@@ -1160,6 +1160,24 @@
     飞机 HUD 挑一万多格外的敌机时远处没加载的山也挡视线（`G.terrainBlocks`）。⑤ 夜里的闪灯、灯塔、抽油机：走近流进来的照样登记（DescendantAdded），
     流出去的从表里删掉（Night.lua）。⑥ 模拟器 `R.streamSim = 半径`（客户端打到半径外、不在 Persistent 模型里的算没加载）、Add / RemoveReplicationFocus、
     RequestStreamAroundAsync 记账；新测试 `tools/mock/stream.lua`：激光打 1954 格外的山坡，600 格外全卸掉时测到 695 米，和整张图都在时一样。
+  - 11-25（darksword-air-map）：用户「把抽搐bug和昼夜更替弄完」「游戏一阵一阵卡 然后枪 坦克 飞机一阵一阵抽搐」：
+    ① 一阵一阵卡：新测试 `tools/mock/hitch.lua`（逐帧记客户端每个回调、服务器每个 G.xxxStep；参数带 sample 按行采样，尖峰那几帧单独列）——
+    抓到 `Warfx.lua` 找房子：每 15 秒 `Map.Scenery:GetDescendants()`（沙海景物四五万个实例），尖峰那几帧三成多的时间在这；改成开服分帧扫一遍
+    + DescendantAdded + 每栋房子盯 Burning 属性。② 沙海后台写地形（World.lua terrainDesert）：后台的平地 FillBlock 切成 ≤ 512 格见方（按耗时自适应 64～512），
+    起伏块 16 × 16 列一份，插队扫描算地貌也分帧（`tools/mock/terrainbg.lua`）。③ 昼夜更替打开（`Config.DayNight.lockNight = false`）：天黑提示按 N、
+    天亮夜视自己收起、白天地图上的灯和光晕关掉（Night.lua）；开场标题「拂晓突击」。④ 客户端逐帧计时加单次最长（G.perfMax），F7 面板多一行「单次最长」。
+  - 11-25（darksword-air-map）科技树、只开载具（用户：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
+    「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」「其他的地方你自己了解自己找资源去搞懂战雷啥样」「内饰可以先跳过」）：
+    ① `ReplicatedStorage/TechTree.lua`：中、德、美、日、俄五个系 × 坦克 / 战机两棵树，一百八十多项，1960 年到现代，按年代七级（I 1960–1967 …… VII 2016–），
+    每类一列（坦克：两条主战坦克线、轻型 / 歼击车、步战车、自行防空；战机：战斗机、重型 / 多用途、攻击机 / 轰炸机），同一列上一项是前置；
+    战斗等级 br（0.3 / 0.4 一档）；研究点、价钱按等级；一级里研究完 RANK_NEED 辆开下一级；第一级各列打头的白送。游戏里有模型的直接开（veh），
+    还没有的先借最接近的一型（base，界面写「暂用」：比如豹 2 借 M1A1、T-72 借 T-90M、米格-21 借歼-10、狂风借 F-14），以后做了真模型改成 veh。
+    ② 服务器 `Tech.lua`：存档 P.data.tree（研究完、买下、攒的研究点、正在研究的、每系出击阵容、自由研究点），玩家属性 Tree（JSON）给客户端；
+    动作 treeResearch / treeBuy / treeLineup / treeNat / deployVeh；一局结束 `G.treeAward` 按得分发研究点（Round.lua 结算时调）。
+    ③ 只开载具（`Config.Wt.noInfantry`）：步兵出击被拒；机库里点阵容一辆「出击」→ 生出乘员（兵种 crew，身上什么都没有）→ 按自己基地的召唤位摆车 → 直接坐进去；
+    下车 = 回机库（这辆判毁、人阵亡）。测试台默认照旧能当步兵（老测试都是步兵；`tools/mock/common.lua`：T.wtMode = true 才是战雷式）。
+    ④ 客户端 `TechUI.lua`：机库（选系、出击阵容卡、出击）盖住步兵部署页；科技树界面（每级一行、每类一列、连线、颜色分状态、进度条、右边详情和按钮）。
+    测试 `tools/mock/techtree.lua`。**还没做**：BR 分房、改装件研究、乘员技能、修理费、街机 / 历史 / 全真模式、飞机空中出生、德 / 日 / 俄的真模型
   - 11-24：开坦克瞄准镜时小地图的整张图没裁边（CanvasGroup 挪到 RadarTop 那层以后不裁），深蓝的海盖住半个镜子：地图改挂在框里一层
     ClipsDescendants 的 MapClip（UI.lua），TacPad、Hud 跟着认它。
   - 11-24：用户「沙漠风暴删掉」：删了 `MapDesert.lua`（地图 id `desert`，征服）和只给它用的代码——World 的建图（基地、据点、路、电线杆）、

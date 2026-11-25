@@ -422,7 +422,7 @@ function Depots.init(G)
       return
     end
     -- 金币解锁（Economy.lua，用户 11-23）：没买的型号不给生成（客户端卡片上画着锁和价钱，点两下买）
-    if want and G.vehUnlocked and not G.vehUnlocked(P, want) then
+    if want and G.vehUnlocked and not G.vehUnlocked(P, want) and not P.treeSpawn then   -- 科技树买下的（Tech.lua 出击）不再按老的金币解锁查
       G.msg(P.pl, "bad", "eco.needVeh", Config.VehPrice(want) or 0)
       return
     end

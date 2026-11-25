@@ -381,7 +381,7 @@ end
 
 -- 沙漠地图（沙海 MapSands：没有海）：按 2048 格一大块、里面 8 × 8 个 256 格小块看；平地小块按矩形合并成尽量大的一次 FillBlock，
 --   有起伏的小块逐列写体素。
--- 开服前只写两边主基地一带（Map.CORES，出生只在自己基地），写完就让人出生；其余全在后台写（每帧最多 8 毫秒），顺序：
+-- 开服前只写两边主基地一带（Map.CORES，出生只在自己基地），写完就让人出生；其余全在后台一小份一小份写（每帧 4 毫秒左右），顺序：
 --   ① 插队：真人、机器人、车、飞机身边（±6 个小块，约 1500 格）还没写的，先写；② 据点一带（Map.HOTS）写全；
 --   ③ 全图的平地（起伏块先垫一层薄底，不是窟窿）；④ 剩下的起伏块，离据点近的先。
 -- 用户 11-24 晚：「目前游戏的优化没有效果 沙海地图还是加载不出来」——卡在「正在生成地图……%」：原来开服前要把全图平地都铺完
@@ -393,11 +393,21 @@ local function terrainDesert(T, onProgress, G)
   local NT = math.floor(2 * SR / TILE)   -- 一边几个大块
   local PH = (Map.PLAIN or 12) - 8       -- 垫底那层的顶
   local PLAY = Map.PLAY or SR
-  local diag = { fills = 0, vox = 0, fillT = 0, chunks = 0, chunkT = 0 }
+  local diag = { fills = 0, vox = 0, fillT = 0, chunks = 0, chunkT = 0, bgMax = 0, bgFills = 0, bgPieces = 0 }
   local t0 = os.clock()
-  local budget = 0.03   -- 让一帧：开服前 30 毫秒一让，后台 8 毫秒一让（开打以后服务器不卡）
+  local budget = 0.03   -- 让一帧：开服前 30 毫秒一让，后台 4 毫秒一让（开打以后服务器不卡）
   local function pace(b)
     if os.clock() - t0 > (b or budget) then task.wait() t0 = os.clock() end
+  end
+  -- 后台（开打以后）：一次只铺一小份、每份之后看一眼——用户 11-25「把抽搐bug弄完」：11-22 那条「加载地图的时候坦克飞机抽搐」又回来了，
+  --   这回是后台写地形：平地按矩形合并成一次 FillBlock，最大一次 2048 × 2048 × 16 格（一百万体素），Roblox 铺这么一块要几十上百毫秒，
+  --   「每帧 8 毫秒」拦不住单次调用——服务器停一下，车、飞机、人的同步跟着一顿；插队扫描每半秒把所有人身边 ±6 块的地貌一口气算完也是。
+  --   现在后台的平地切成 bgSide 见方一块块铺（量着每次的耗时自己调：超过 6 毫秒减半、不到 1.5 毫秒加倍，64～512 格），起伏块 16 × 16 列一份，
+  --   扫描算地貌也分着算；每份之后超了 4 毫秒就让一帧。测试台的 os.clock 是模拟时钟（同一步里不走），再按份数让（8 份一让）
+  local bg, bgSide, since = false, 256, 0
+  local function step()
+    since += 1
+    if os.clock() - t0 > budget or since >= 8 then task.wait() t0 = os.clock() since = 0 end
   end
   -- Roblox 论坛（2025-02，Roblox 员工）：Terrain 的 SmoothVoxelsUpgraded 是没做完的功能，开着时 FillBlock 慢几千到几万倍，要关着——读得到就查一下
   do
@@ -412,13 +422,37 @@ local function terrainDesert(T, onProgress, G)
     local yb = math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
     while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层（2048 × 2048 × 60 格 ≈ 390 万）
       local h = math.min(60, y - yb)
-      local c0 = os.clock()
-      T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
-      diag.fills += 1
-      diag.vox += (w / 4) * (h / 4) * (d / 4)
-      diag.fillT += os.clock() - c0
+      if not bg then
+        local c0 = os.clock()
+        T:FillBlock(CF(x0 + w / 2, yb + h / 2, z0 + d / 2), V(w, h, d), mat)
+        diag.fills += 1
+        diag.vox += (w / 4) * (h / 4) * (d / 4)
+        diag.fillT += os.clock() - c0
+        pace()
+      else   -- 后台：切成 bgSide 见方一块块铺
+        local xs = 0
+        while xs < w do
+          local ww = math.min(bgSide, w - xs)
+          local zs = 0
+          while zs < d do
+            local dd = math.min(bgSide, d - zs)
+            local c0 = os.clock()
+            T:FillBlock(CF(x0 + xs + ww / 2, yb + h / 2, z0 + zs + dd / 2), V(ww, h, dd), mat)
+            local dt = os.clock() - c0
+            diag.fills += 1
+            diag.bgFills += 1
+            diag.vox += (ww / 4) * (h / 4) * (dd / 4)
+            diag.fillT += dt
+            if dt > diag.bgMax then diag.bgMax = dt end
+            if dt > 0.006 and bgSide > 64 then bgSide //= 2 elseif dt < 0.0015 and bgSide < 512 then bgSide *= 2 end
+            diag.side = bgSide
+            zs += dd
+            step()
+          end
+          xs += ww
+        end
+      end
       yb += h
-      pace()
     end
   end
   local function relief(x0, z0, n)
@@ -427,6 +461,14 @@ local function terrainDesert(T, onProgress, G)
     diag.chunks += 1
     diag.chunkT += os.clock() - c0
     return v
+  end
+  -- 后台的一个起伏小块（256 格见方）：分 16 份写（64 格见方、16 × 16 列），每份之后看一眼
+  local function reliefBg(x0, z0)
+    for q = 0, 15 do
+      relief(x0 + (q % 4) * 64, z0 + (q // 4) * 64, 16)
+      diag.bgPieces += 1
+      step()
+    end
   end
   local function tileOf(x, z) return math.floor((x + SR) / TILE), math.floor((z + SR) / TILE) end
   local function ckey(x0, z0) return x0 * 1048576 + z0 end
@@ -488,7 +530,7 @@ local function terrainDesert(T, onProgress, G)
           if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
             T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
             diag.fills += 1
-            pace()
+            if bg then step() else pace() end
           end
         end
       end
@@ -558,10 +600,11 @@ local function terrainDesert(T, onProgress, G)
     if not reliefDone[ckey(x0, z0)] then table.insert(reliefQ, { x0, z0, distTo(hots, x0 + CH / 2, z0 + CH / 2) }) end
   end
   for _, c in ipairs(laterRelief) do queueRelief(c[1], c[2]) end
-  if G then G.terrainRest = #tilesLeft + #reliefQ end
+  if G then G.terrainRest, G.terrainTilesLeft = #tilesLeft + #reliefQ, #tilesLeft end
   task.spawn(function()
     local Players = game:GetService("Players")
-    budget = 0.008
+    budget = 0.004
+    bg = true
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
     local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
@@ -576,6 +619,7 @@ local function terrainDesert(T, onProgress, G)
             local ix, iz = tileOf(x0 + 1, z0 + 1)
             if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
             local k = ckey(x0, z0)
+            if kindOf[k] == nil then step() end   -- 这块的地貌还没算过（要打 81 个点）：算之前看一眼预算，扫描不再一口气算几千个点
             if not reliefDone[k] and not urgentRelief[k] and kindAt(x0, z0) == false then urgentRelief[k] = { x0, z0, (dx * dx + dz * dz) } end
           end
         end
@@ -608,10 +652,7 @@ local function terrainDesert(T, onProgress, G)
       if best then
         urgentRelief[bk] = nil
         reliefDone[bk] = true
-        for q = 0, 3 do
-          relief(best[1] + (q % 2) * 128, best[2] + (q // 2) * 128, 32)
-          if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
-        end
+        reliefBg(best[1], best[2])
         return true
       end
       return false
@@ -632,10 +673,7 @@ local function terrainDesert(T, onProgress, G)
           local did = tileFlat(t[1], t[2], function(x0, z0)
             if hot and distTo(hots, x0 + CH / 2, z0 + CH / 2) <= 0 then
               reliefDone[ckey(x0, z0)] = true
-              for q = 0, 3 do
-                relief(x0 + (q % 2) * 128, z0 + (q // 2) * 128, 32)
-                if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
-              end
+              reliefBg(x0, z0)
               return true
             end
             queueRelief(x0, z0)
@@ -657,17 +695,18 @@ local function terrainDesert(T, onProgress, G)
           local k = ckey(c[1], c[2])
           if not reliefDone[k] then
             reliefDone[k] = true
-            for q = 0, 3 do
-              relief(c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32)
-              if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
-            end
+            reliefBg(c[1], c[2])
           end
         end
       end
-      if G then G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) end
+      if G then
+        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1)
+        G.terrainTilesLeft = math.max(0, #tilesLeft - ti + 1)   -- 还没铺的大块（只减不增；terrainRest 里的起伏块是铺大块时才排进来的）
+      end
     end
     if G then G.terrainRest = 0 end
-    print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏", diag.fills, diag.vox / 1e8, diag.chunks))
+    print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏；后台单次 FillBlock 最长 %.1f 毫秒，小块边长最后 %d 格",
+      diag.fills, diag.vox / 1e8, diag.chunks, diag.bgMax * 1000, bgSide))
   end)
   return total, #coreRelief + #reliefQ
 end
