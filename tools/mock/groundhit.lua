@@ -31,7 +31,9 @@ local function ground(dx, dz)
 end
 cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
 
+-- 机库的镜头每帧把镜头挪走：画之前把镜头放回旁边（特效离镜头太远不画）
 local function fresh(f)
+  cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
   local before = {}
   for _, c in ipairs(FXF:GetChildren()) do before[c] = true end
   f()
@@ -100,7 +102,7 @@ got = {}
 G.shell(ground(80, -300), { kind = "arty", dmg = 800, splash = 12 }, nil, 0.2, ground(80, -3300))
 R.run(0.6)
 local ab = got[1]
-check(ab and typeof(ab.d) == "Vector3" and ab.d.Y < -0.6 and ab.d.Z < -0.2 and ab.am == "he",
+check(ab and typeof(ab.d) == "Vector3" and ab.d.Y < -0.6 and ab.d.Z > 0.2 and ab.am == "he",
   string.format("炮兵的炮弹：从炮位那边斜着砸下来（来向 %s），榴弹", ab and tostring(ab.d) or "nil"))
 C.onFx = onFx0
 
