@@ -967,7 +967,7 @@ function VehHud.init(G)
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
-    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
+    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
     TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
     TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)

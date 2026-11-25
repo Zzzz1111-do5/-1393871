@@ -907,6 +907,11 @@ function Fly.init(G)
       st.buffetSnd = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 1, s = { 0.34, 0.34 }, loop = { 0.06, 0.5 }, eq = { 10, -4, -18 } },
         game:GetService("SoundService"), {})
       if st.buffetSnd then st.buffetSnd.Volume = 0 end
+      -- 风声（用户 11-25 晚：开飞机要脆但有质量——侧边对话里说的「大过载时有轻微抖动和风声」）：一直低低的一层，越快越响，
+      --   拉大过载时变响、音调往上走；收在机身外面那种持续、低沉、顺滑的呼呼声，不尖
+      st.windSnd = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1, s = { 0.6, 0.6 }, loop = { 1, 9 }, eq = { 4, -2, -14 } },
+        game:GetService("SoundService"), {})
+      if st.windSnd then st.windSnd.Volume = 0 end
     end
     -- 发动机声（用户 11-21：声音要真，SoundLib 的真录音；没载上就没有这一层）：固定翼喷气发动机、直升机休伊的旋翼，坐后面的也听得到
     if G.realLoop then st.engSnd = G.realLoop((d.kind == "jet") and "jetEngine" or "heliRotor", game:GetService("SoundService")) end
@@ -943,6 +948,7 @@ function Fly.init(G)
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
     if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if old and old.windSnd then old.windSnd:Destroy() end
     if old and old.engSnd then old.engSnd:Destroy() end
     if G.vehCamReset then G.vehCamReset("heli") end
   end
@@ -1341,8 +1347,9 @@ function Fly.init(G)
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn, pitchIn = 0, 0   -- 无人机：键盘不管俯仰、方向舵（鼠标给方向）；手机上摇杆当驾驶杆
     if kb then
-      local function ramp(cur, want)   -- 推上去 0.3 秒到头、松开 0.2 秒回中，反着按先回中再推
-        local rate = (want ~= 0 and (cur == 0 or (cur > 0) == (want > 0))) and (1 / 0.3) or (1 / 0.2)
+      -- 推上去 0.12 秒到头、松开 0.08 秒回中，反着按先回中再推（用户 11-25 晚「纸片 / 薯片一样脆」：原来 0.3 / 0.2 秒，按下去要等、松了还在动）
+      local function ramp(cur, want)
+        local rate = (want ~= 0 and (cur == 0 or (cur > 0) == (want > 0))) and (1 / 0.12) or (1 / 0.08)
         return approach(cur, want, rate * dt)
       end
       st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
@@ -1427,7 +1434,10 @@ function Fly.init(G)
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.5) / (d.stall * 1.1), 0.12, 1)   -- 舵效：慢了舵不灵（1.1 倍失速速度只剩一半多，1.6 倍以上才满）
-    local qHi = 1 - 0.3 * Map.smooth(d.vMax * 0.95, d.vMax * 1.25, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
+    local qHi = 1 - 0.35 * Map.smooth(d.vMax * 0.85, d.vMax * 1.2, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
+    -- 滚转响应的时间常数（下面滚转那段用）；教官摆坡度的增益跟它配成阻尼比 0.75 左右——到了就稳稳停住、不来回甩
+    local tauR = 0.085 * W ^ 0.6 / math.max(q, 0.3) ^ 0.5
+    local kRoll = clamp(0.42 / (tauR * math.max(ROLL, 0.3)), 1.4, 3.2)
     if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
     --   自动压坡度让准心落到升力方向上、按偏差要过载（拉杆）转过去；按着 A / D 时滚转听键盘，俯仰照旧往准心拉
@@ -1459,7 +1469,7 @@ function Fly.init(G)
       local w = Map.smooth(rad(2), rad(10), off)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
-      local level = clamp(bank * 2.5, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
+      local level = clamp(bank * kRoll * 0.8, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
       local vd0 = st.vdir or cf.LookVector
       -- 准心相对航迹偏左 / 右多少（世界坐标里水平量，右为正）
       local vdH = V(vd0.X, 0, vd0.Z)
@@ -1515,11 +1525,11 @@ function Fly.init(G)
         local th = math.atan2(vd0:Dot(lh:Cross(lhat)), lh:Dot(lhat))   -- 升力方向要绕航迹转多少（正：往右滚）
         -- 偏得很少（10° 以内，平时打仗修一点点方向）跟原来一样以摆平机翼为主，不为了几度就压个大坡度；拉平时全按升力矢量
         local wg = flare and 1 or w
-        rc = (wg * clamp(th * 2.5, -1, 1) + (1 - wg) * level) * ROLL
+        rc = (wg * clamp(th * kRoll * 0.8, -1, 1) + (1 - wg) * level) * ROLL
         nGentle = math.max(aL:Dot(lh), 0) / GR
         gentleW = wg
       else
-        rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * level) * ROLL
+        rc = (w * clamp(toTarget * kRoll, -1, 1) + (1 - w) * level) * ROLL
       end
       -- 贴着跑道 / 甲板：机翼自动摆平，只留几度坡度对准跑道
       if landAid and rollIn == 0 then rc = clamp((bank + clamp(psi * 1.5, -rad(8), rad(8))) * 2.5, -1, 1) * ROLL end
@@ -1546,7 +1556,11 @@ function Fly.init(G)
     end
     st.nCmd = clamp(nCmd, -2, GMAX / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
     st.yawCmd = yc * q
-    st.rr = approach(st.rr, rc * q * qHi, ROLL * 2.2 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢（2.8 → 2.2：用户说再笨重一点）
+    -- 滚转（用户 11-25 晚：战雷开飞机「像纸片、薯片一样脆，很丝滑，但又不会觉得没有质量」）——机头这一层要脆：
+    --   原来按固定角加速度线性爬（0.45 秒才到最快、松手还要 0.45 秒才停，多滚三十来度、准星来回甩）；
+    --   改成一阶响应：时间常数 0.085 秒（重的按 W 慢一些、慢速舵效差时软一些），按住马上滚起来、松手一两帧就收住，不过冲。
+    --   「有质量」那一层在航迹：下面的升力、迎角、掉速照旧（机头先转、航迹慢半拍跟过去）
+    st.rr += (rc * q * qHi - st.rr) * (1 - math.exp(-dt / tauR))
     if st.ground then st.rr, st.yr = 0, 0 end
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(PITCH, 1e-3), -1, 1), clamp(st.rr / math.max(ROLL, 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
@@ -1674,9 +1688,12 @@ function Fly.init(G)
       local gPerp = gv - vd * vd:Dot(gv)
       local L = liftOf(aoa)
       local aNeed = clamp((st.nCmd or 1) * GR / math.max(ka, 1e-3), -aMax * 0.5, aMax * 0.95)
-      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5
+      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5.5
       pc = clamp(pc, -PITCH * 0.7, PITCH)
-      st.pr = approach(st.pr, pc, PITCH * 3.2 / W ^ 0.8 * dt)   -- 转动惯量：零点几秒角速度才起来，重的更慢（4 → 3.2：再笨重一点）
+      -- 俯仰角速度：一阶响应（时间常数 0.07 秒，重的慢一些）——和上面迎角回路合起来阻尼比约 0.8：一拉杆机头马上跟上、
+      --   过载零点三秒左右起来、不冲过头（原来按固定角加速度线性爬，过载起得慢、松杆还往上带）
+      local tauP = 0.07 * W ^ 0.7 / math.max(q, 0.3) ^ 0.5
+      st.pr += (pc - st.pr) * (1 - math.exp(-dt / tauP))
       st.yr = approach(st.yr, clamp(beta * 3, -rad(d.yaw), rad(d.yaw)) + (st.yawCmd or 0), 1.5 / W ^ 0.6 * dt)   -- 自动协调：侧滑往零收
       local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
       vd = vd + aPerp / spd * dt
@@ -2527,6 +2544,13 @@ function Fly.init(G)
         buf = math.max(aoaK, stallK)
       end
       st.buffet = buf
+      if st.windSnd then   -- 风声：速度给底（0.25 倍极速以上才有），过载 3 g 以上变响、往上走
+        local sk = math.clamp((st.spd - d.vMax * 0.25) / math.max(d.vMax * 0.9, 1), 0, 1.2)
+        local gk = math.clamp(((st.gLoad or 1) - 3) / 5, 0, 1)
+        local want = st.ground and 0 or (0.05 + 0.22 * sk) * (1 + 1.6 * gk)
+        st.windSnd.Volume += (want - st.windSnd.Volume) * math.min(1, dt * 4)
+        st.windSnd.PlaybackSpeed = 0.5 + 0.25 * sk + 0.18 * gk
+      end
       if st.buffetSnd then
         st.buffetSnd.Volume = buf * 1.4
         st.buffetSnd.PlaybackSpeed = 0.32 + buf * 0.12

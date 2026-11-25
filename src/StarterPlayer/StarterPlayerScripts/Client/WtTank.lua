@@ -564,7 +564,7 @@ function WtTank.init(G)
     diSpd.Text = tostring(math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0
-    diGear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
+    diGear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
     diGear.TextColor3 = back and AMBER or WHITE
     local fix = em and em:GetAttribute("WtFix")
     local anyBad = false

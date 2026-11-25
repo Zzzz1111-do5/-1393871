@@ -493,18 +493,28 @@ function Drive.init(G)
     if not engine then return end
     local back = st and (st.speed or 0) < -0.4
     local g = 0
-    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
-    if st then
-      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
-        engine.shiftT = os.clock()
-        if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
-      end
+    local want, shifting
+    local GB = st and st.gb
+    if GB then   -- 实际的变速箱（physics 里那套）：档位、转速、离合断开都照它
+      g = GB.g
       st.gearN = g
+      shifting = GB.cut > 0
+      want = (g == 0) and (0.2 + 0.16 * math.abs(thr)) or math.clamp(0.16 + 0.84 * GB.rpm * (thr ~= 0 and 1 or 0.82), 0, 1)
+      if shifting then want = math.min(want, 0.18 + 0.6 * GB.rpm) end
+    else
+      if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+      if st then
+        if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
+          engine.shiftT = os.clock()
+          if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
+        end
+        st.gearN = g
+      end
+      local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+      want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+      shifting = os.clock() - (engine.shiftT or -9) < 0.25
+      if shifting then want *= 0.75 end
     end
-    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
-    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
-    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
-    if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     local L = engine.layered
@@ -851,13 +861,64 @@ function Drive.init(G)
     --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
     local v = st.speed
     local slope = inWater and 0 or (st.slopeS or 0)
+    -- 变速箱（用户 11-25 晚「那你做战雷手感吧」）：前进几档、倒挡一两档，每档管一段车速，档里有转速——
+    --   转速中段劲最足、快到顶劲小了（得换档）；到顶升档：离合断开 0.3～0.45 秒（没了动力、车身往前一点头、转速掉下来），
+    --   接上下一档再往前一拱；慢下来自动降档；停住松油门挂空档。车的真极速、整体加速快慢照旧（乘在原来那条曲线上）
+    local GB = st.gb
+    if not GB then
+      GB = { nf = (d.gears and d.gears[1]) or (tracked and 5 or 6), nr = (d.gears and d.gears[2]) or (tracked and 2 or 1),
+        g = 0, cut = 0, rpm = 0.2, shiftT = tracked and 0.42 or 0.3 }
+      st.gb = GB
+    end
+    local function bandTop(g)   -- 第 g 档（负的是倒挡）能开到多快：低档管的速度段短
+      if g > 0 then return maxF * (g / GB.nf) ^ 0.8 end
+      return maxR * (-g / GB.nr) ^ 0.8
+    end
+    local av = math.abs(v)
+    if GB.cut > 0 then
+      GB.cut -= dt
+      if GB.cut <= 0 then GB.cut, GB.g = 0, GB.pend or GB.g end   -- 离合接上：下一档
+    end
+    if thr == 0 and av < 0.6 then
+      GB.g, GB.cut = 0, 0   -- 停住、松油门：空档
+    elseif thr ~= 0 and (GB.g == 0 or (GB.g > 0) ~= (thr > 0)) and (av < 1 or (thr > 0) == (v > 0)) then
+      GB.g, GB.cut = (thr > 0) and 1 or -1, 0   -- 起步：挂一档 / 倒一档（停着才换向；开着反推是刹车）
+    end
+    local g = GB.g
+    if g ~= 0 and GB.cut <= 0 then
+      local n = (g > 0) and GB.nf or GB.nr
+      local ga = math.abs(g)
+      if ga < n and thr ~= 0 and (thr > 0) == (g > 0) and av >= bandTop(g) * 0.985 then   -- 到顶：升档
+        GB.cut, GB.pend = GB.shiftT, g + ((g > 0) and 1 or -1)
+        if G.sfx then G.sfx("gearShift", nil, { vol = tracked and 1 or 0.7 }) end
+      elseif ga > 1 and av < bandTop(g - ((g > 0) and 1 or -1)) * 0.8 then   -- 慢下来：降档（不断动力）
+        GB.g = g - ((g > 0) and 1 or -1)
+        g = GB.g
+      end
+    end
+    do   -- 转速：这一档速度段里走到哪了（离合断开时往下一档的转速掉）
+      local gg = (GB.cut > 0 and GB.pend) or g
+      local rpm = 0.2
+      if gg ~= 0 then
+        local top = bandTop(gg)
+        local lo = (math.abs(gg) > 1) and bandTop(gg - ((gg > 0) and 1 or -1)) * 0.85 or 0
+        rpm = 0.38 + 0.62 * math.clamp((av - lo) / math.max(top - lo, 0.1), 0, 1)
+      end
+      GB.rpm += (rpm - GB.rpm) * math.min(1, dt * ((GB.cut > 0) and 10 or 6))
+    end
+    st.rpmP, st.shifting = GB.rpm, GB.cut > 0
     local a
     if st.airS then   -- 在天上：没有抓地，只有一点空气阻力
       a = -v * 0.05
     elseif thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
       local vmax = (thr > 0) and maxF or maxR
       local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
-      a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
+      if GB.cut > 0 then
+        a = -math.sign(v) * accel * 0.12   -- 离合断开：没有动力，只剩一点阻力（战雷换档那一下）
+      else
+        local tq = 0.82 + 0.36 * math.sin(math.pi * math.clamp(GB.rpm, 0, 1)) ^ 0.8   -- 转速中段劲最足
+        a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6) * tq * 1.04
+      end
       if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
       a = thr * accel * 3.2   -- 刹车（反着推油门：干脆停住）
@@ -1473,6 +1534,16 @@ function Drive.init(G)
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+      -- 整车被后坐力推一下（用户 11-25 晚「那你做战雷手感吧」）：炮朝前时车头一扬、车身往后一坐，朝侧面时炮那一侧抬起来；
+      --   炮越大晃得越厉害（120 毫米约 2～3°，小炮只抖一下），悬挂弹簧再把它晃回来
+      local S = st.sus
+      if S then
+        local big = math.clamp((w.dmg or 0) / 600, 0.12, 1.1)
+        local rel = math.rad(st.ty or 0)   -- 炮塔相对车体：正的往右
+        S.vp = (S.vp or 0) + big * 0.95 * math.cos(rel)
+        S.vr = (S.vr or 0) + big * 0.75 * math.sin(rel)
+        if not st.airS then st.speed = (st.speed or 0) - big * 1.1 * math.cos(rel) end   -- 往后一顿（很小）
+      end
       -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
       st.kickA, st.kickT = (w.dmg > 300) and 1 or 0.35, 0
       st.kick = st.kickA * 0.3

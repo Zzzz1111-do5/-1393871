@@ -1288,7 +1288,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-25 22:57 bdca8b7"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 23:08 c445946"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -43469,18 +43469,28 @@ function Drive.init(G)
     if not engine then return end
     local back = st and (st.speed or 0) < -0.4
     local g = 0
-    if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
-    if st then
-      if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
-        engine.shiftT = os.clock()
-        if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
-      end
+    local want, shifting
+    local GB = st and st.gb
+    if GB then   -- 实际的变速箱（physics 里那套）：档位、转速、离合断开都照它
+      g = GB.g
       st.gearN = g
+      shifting = GB.cut > 0
+      want = (g == 0) and (0.2 + 0.16 * math.abs(thr)) or math.clamp(0.16 + 0.84 * GB.rpm * (thr ~= 0 and 1 or 0.82), 0, 1)
+      if shifting then want = math.min(want, 0.18 + 0.6 * GB.rpm) end
+    else
+      if spd > 0.02 then g = back and -1 or math.min(GEARS, math.floor(spd * GEARS * 0.98) + 1) end
+      if st then
+        if st.gearN ~= g and g > (st.gearN or 0) and g > 1 then   -- 升档：动力断一下、咔哒一声
+          engine.shiftT = os.clock()
+          if G.sfx then G.sfx("gearShift", nil, { vol = engine.heavy and 1 or 0.7 }) end
+        end
+        st.gearN = g
+      end
+      local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
+      want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
+      shifting = os.clock() - (engine.shiftT or -9) < 0.25
+      if shifting then want *= 0.75 end
     end
-    local inGear = (g >= 1) and (spd * GEARS - (g - 1)) or spd * 2
-    local want = math.clamp(0.22 + 0.6 * math.clamp(inGear, 0, 1) * (0.55 + 0.45 * math.abs(thr)) + 0.18 * math.abs(thr), 0, 1)
-    local shifting = os.clock() - (engine.shiftT or -9) < 0.25
-    if shifting then want *= 0.75 end
     engine.rpm += (want - engine.rpm) * math.min(1, dt * (shifting and 9 or 3.5))
     local r = engine.rpm
     local L = engine.layered
@@ -43827,13 +43837,64 @@ function Drive.init(G)
     --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
     local v = st.speed
     local slope = inWater and 0 or (st.slopeS or 0)
+    -- 变速箱（用户 11-25 晚「那你做战雷手感吧」）：前进几档、倒挡一两档，每档管一段车速，档里有转速——
+    --   转速中段劲最足、快到顶劲小了（得换档）；到顶升档：离合断开 0.3～0.45 秒（没了动力、车身往前一点头、转速掉下来），
+    --   接上下一档再往前一拱；慢下来自动降档；停住松油门挂空档。车的真极速、整体加速快慢照旧（乘在原来那条曲线上）
+    local GB = st.gb
+    if not GB then
+      GB = { nf = (d.gears and d.gears[1]) or (tracked and 5 or 6), nr = (d.gears and d.gears[2]) or (tracked and 2 or 1),
+        g = 0, cut = 0, rpm = 0.2, shiftT = tracked and 0.42 or 0.3 }
+      st.gb = GB
+    end
+    local function bandTop(g)   -- 第 g 档（负的是倒挡）能开到多快：低档管的速度段短
+      if g > 0 then return maxF * (g / GB.nf) ^ 0.8 end
+      return maxR * (-g / GB.nr) ^ 0.8
+    end
+    local av = math.abs(v)
+    if GB.cut > 0 then
+      GB.cut -= dt
+      if GB.cut <= 0 then GB.cut, GB.g = 0, GB.pend or GB.g end   -- 离合接上：下一档
+    end
+    if thr == 0 and av < 0.6 then
+      GB.g, GB.cut = 0, 0   -- 停住、松油门：空档
+    elseif thr ~= 0 and (GB.g == 0 or (GB.g > 0) ~= (thr > 0)) and (av < 1 or (thr > 0) == (v > 0)) then
+      GB.g, GB.cut = (thr > 0) and 1 or -1, 0   -- 起步：挂一档 / 倒一档（停着才换向；开着反推是刹车）
+    end
+    local g = GB.g
+    if g ~= 0 and GB.cut <= 0 then
+      local n = (g > 0) and GB.nf or GB.nr
+      local ga = math.abs(g)
+      if ga < n and thr ~= 0 and (thr > 0) == (g > 0) and av >= bandTop(g) * 0.985 then   -- 到顶：升档
+        GB.cut, GB.pend = GB.shiftT, g + ((g > 0) and 1 or -1)
+        if G.sfx then G.sfx("gearShift", nil, { vol = tracked and 1 or 0.7 }) end
+      elseif ga > 1 and av < bandTop(g - ((g > 0) and 1 or -1)) * 0.8 then   -- 慢下来：降档（不断动力）
+        GB.g = g - ((g > 0) and 1 or -1)
+        g = GB.g
+      end
+    end
+    do   -- 转速：这一档速度段里走到哪了（离合断开时往下一档的转速掉）
+      local gg = (GB.cut > 0 and GB.pend) or g
+      local rpm = 0.2
+      if gg ~= 0 then
+        local top = bandTop(gg)
+        local lo = (math.abs(gg) > 1) and bandTop(gg - ((gg > 0) and 1 or -1)) * 0.85 or 0
+        rpm = 0.38 + 0.62 * math.clamp((av - lo) / math.max(top - lo, 0.1), 0, 1)
+      end
+      GB.rpm += (rpm - GB.rpm) * math.min(1, dt * ((GB.cut > 0) and 10 or 6))
+    end
+    st.rpmP, st.shifting = GB.rpm, GB.cut > 0
     local a
     if st.airS then   -- 在天上：没有抓地，只有一点空气阻力
       a = -v * 0.05
     elseif thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
       local vmax = (thr > 0) and maxF or maxR
       local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
-      a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
+      if GB.cut > 0 then
+        a = -math.sign(v) * accel * 0.12   -- 离合断开：没有动力，只剩一点阻力（战雷换档那一下）
+      else
+        local tq = 0.82 + 0.36 * math.sin(math.pi * math.clamp(GB.rpm, 0, 1)) ^ 0.8   -- 转速中段劲最足
+        a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6) * tq * 1.04
+      end
       if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
       a = thr * accel * 3.2   -- 刹车（反着推油门：干脆停住）
@@ -44449,6 +44510,16 @@ function Drive.init(G)
     if w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
+      -- 整车被后坐力推一下（用户 11-25 晚「那你做战雷手感吧」）：炮朝前时车头一扬、车身往后一坐，朝侧面时炮那一侧抬起来；
+      --   炮越大晃得越厉害（120 毫米约 2～3°，小炮只抖一下），悬挂弹簧再把它晃回来
+      local S = st.sus
+      if S then
+        local big = math.clamp((w.dmg or 0) / 600, 0.12, 1.1)
+        local rel = math.rad(st.ty or 0)   -- 炮塔相对车体：正的往右
+        S.vp = (S.vp or 0) + big * 0.95 * math.cos(rel)
+        S.vr = (S.vr or 0) + big * 0.75 * math.sin(rel)
+        if not st.airS then st.speed = (st.speed or 0) - big * 1.1 * math.cos(rel) end   -- 往后一顿（很小）
+      end
       -- 镜头跟着后坐一下（追尾镜头往后上方一顿；瞄准镜里往上一跳再晃回来）、镜里一阵炮口烟（VehHud 按 fireT 画）
       st.kickA, st.kickT = (w.dmg > 300) and 1 or 0.35, 0
       st.kick = st.kickA * 0.3
@@ -47042,6 +47113,11 @@ function Fly.init(G)
       st.buffetSnd = G.makeSound({ id = "rbxasset://sounds/impact_explosion_03.mp3", vol = 1, s = { 0.34, 0.34 }, loop = { 0.06, 0.5 }, eq = { 10, -4, -18 } },
         game:GetService("SoundService"), {})
       if st.buffetSnd then st.buffetSnd.Volume = 0 end
+      -- 风声（用户 11-25 晚：开飞机要脆但有质量——侧边对话里说的「大过载时有轻微抖动和风声」）：一直低低的一层，越快越响，
+      --   拉大过载时变响、音调往上走；收在机身外面那种持续、低沉、顺滑的呼呼声，不尖
+      st.windSnd = G.makeSound({ id = "rbxasset://sounds/action_falling.ogg", vol = 1, s = { 0.6, 0.6 }, loop = { 1, 9 }, eq = { 4, -2, -14 } },
+        game:GetService("SoundService"), {})
+      if st.windSnd then st.windSnd.Volume = 0 end
     end
     -- 发动机声（用户 11-21：声音要真，SoundLib 的真录音；没载上就没有这一层）：固定翼喷气发动机、直升机休伊的旋翼，坐后面的也听得到
     if G.realLoop then st.engSnd = G.realLoop((d.kind == "jet") and "jetEngine" or "heliRotor", game:GetService("SoundService")) end
@@ -47078,6 +47154,7 @@ function Fly.init(G)
     panel.Position = UDim2.new(0.5, 0, 1, -24)
     if old and old.uav and G.tabletClose then G.tabletClose() end
     if old and old.buffetSnd then old.buffetSnd:Destroy() end
+    if old and old.windSnd then old.windSnd:Destroy() end
     if old and old.engSnd then old.engSnd:Destroy() end
     if G.vehCamReset then G.vehCamReset("heli") end
   end
@@ -47476,8 +47553,9 @@ function Fly.init(G)
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn, pitchIn = 0, 0   -- 无人机：键盘不管俯仰、方向舵（鼠标给方向）；手机上摇杆当驾驶杆
     if kb then
-      local function ramp(cur, want)   -- 推上去 0.3 秒到头、松开 0.2 秒回中，反着按先回中再推
-        local rate = (want ~= 0 and (cur == 0 or (cur > 0) == (want > 0))) and (1 / 0.3) or (1 / 0.2)
+      -- 推上去 0.12 秒到头、松开 0.08 秒回中，反着按先回中再推（用户 11-25 晚「纸片 / 薯片一样脆」：原来 0.3 / 0.2 秒，按下去要等、松了还在动）
+      local function ramp(cur, want)
+        local rate = (want ~= 0 and (cur == 0 or (cur > 0) == (want > 0))) and (1 / 0.12) or (1 / 0.08)
         return approach(cur, want, rate * dt)
       end
       st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
@@ -47562,7 +47640,10 @@ function Fly.init(G)
     if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
     st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
     local q = clamp((st.spd - d.stall * 0.5) / (d.stall * 1.1), 0.12, 1)   -- 舵效：慢了舵不灵（1.1 倍失速速度只剩一半多，1.6 倍以上才满）
-    local qHi = 1 - 0.3 * Map.smooth(d.vMax * 0.95, d.vMax * 1.25, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
+    local qHi = 1 - 0.35 * Map.smooth(d.vMax * 0.85, d.vMax * 1.2, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
+    -- 滚转响应的时间常数（下面滚转那段用）；教官摆坡度的增益跟它配成阻尼比 0.75 左右——到了就稳稳停住、不来回甩
+    local tauR = 0.085 * W ^ 0.6 / math.max(q, 0.3) ^ 0.5
+    local kRoll = clamp(0.42 / (tauR * math.max(ROLL, 0.3)), 1.4, 3.2)
     if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
     --   自动压坡度让准心落到升力方向上、按偏差要过载（拉杆）转过去；按着 A / D 时滚转听键盘，俯仰照旧往准心拉
@@ -47594,7 +47675,7 @@ function Fly.init(G)
       local w = Map.smooth(rad(2), rad(10), off)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
-      local level = clamp(bank * 2.5, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
+      local level = clamp(bank * kRoll * 0.8, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
       local vd0 = st.vdir or cf.LookVector
       -- 准心相对航迹偏左 / 右多少（世界坐标里水平量，右为正）
       local vdH = V(vd0.X, 0, vd0.Z)
@@ -47650,11 +47731,11 @@ function Fly.init(G)
         local th = math.atan2(vd0:Dot(lh:Cross(lhat)), lh:Dot(lhat))   -- 升力方向要绕航迹转多少（正：往右滚）
         -- 偏得很少（10° 以内，平时打仗修一点点方向）跟原来一样以摆平机翼为主，不为了几度就压个大坡度；拉平时全按升力矢量
         local wg = flare and 1 or w
-        rc = (wg * clamp(th * 2.5, -1, 1) + (1 - wg) * level) * ROLL
+        rc = (wg * clamp(th * kRoll * 0.8, -1, 1) + (1 - wg) * level) * ROLL
         nGentle = math.max(aL:Dot(lh), 0) / GR
         gentleW = wg
       else
-        rc = (w * clamp(toTarget * 3.2, -1, 1) + (1 - w) * level) * ROLL
+        rc = (w * clamp(toTarget * kRoll, -1, 1) + (1 - w) * level) * ROLL
       end
       -- 贴着跑道 / 甲板：机翼自动摆平，只留几度坡度对准跑道
       if landAid and rollIn == 0 then rc = clamp((bank + clamp(psi * 1.5, -rad(8), rad(8))) * 2.5, -1, 1) * ROLL end
@@ -47681,7 +47762,11 @@ function Fly.init(G)
     end
     st.nCmd = clamp(nCmd, -2, GMAX / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
     st.yawCmd = yc * q
-    st.rr = approach(st.rr, rc * q * qHi, ROLL * 2.2 / W ^ 0.5 * dt)   -- 滚转有惯性：重的起来慢（2.8 → 2.2：用户说再笨重一点）
+    -- 滚转（用户 11-25 晚：战雷开飞机「像纸片、薯片一样脆，很丝滑，但又不会觉得没有质量」）——机头这一层要脆：
+    --   原来按固定角加速度线性爬（0.45 秒才到最快、松手还要 0.45 秒才停，多滚三十来度、准星来回甩）；
+    --   改成一阶响应：时间常数 0.085 秒（重的按 W 慢一些、慢速舵效差时软一些），按住马上滚起来、松手一两帧就收住，不过冲。
+    --   「有质量」那一层在航迹：下面的升力、迎角、掉速照旧（机头先转、航迹慢半拍跟过去）
+    st.rr += (rc * q * qHi - st.rr) * (1 - math.exp(-dt / tauR))
     if st.ground then st.rr, st.yr = 0, 0 end
     st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(PITCH, 1e-3), -1, 1), clamp(st.rr / math.max(ROLL, 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
     local pos = cf.Position
@@ -47809,9 +47894,12 @@ function Fly.init(G)
       local gPerp = gv - vd * vd:Dot(gv)
       local L = liftOf(aoa)
       local aNeed = clamp((st.nCmd or 1) * GR / math.max(ka, 1e-3), -aMax * 0.5, aMax * 0.95)
-      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5
+      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5.5
       pc = clamp(pc, -PITCH * 0.7, PITCH)
-      st.pr = approach(st.pr, pc, PITCH * 3.2 / W ^ 0.8 * dt)   -- 转动惯量：零点几秒角速度才起来，重的更慢（4 → 3.2：再笨重一点）
+      -- 俯仰角速度：一阶响应（时间常数 0.07 秒，重的慢一些）——和上面迎角回路合起来阻尼比约 0.8：一拉杆机头马上跟上、
+      --   过载零点三秒左右起来、不冲过头（原来按固定角加速度线性爬，过载起得慢、松杆还往上带）
+      local tauP = 0.07 * W ^ 0.7 / math.max(q, 0.3) ^ 0.5
+      st.pr += (pc - st.pr) * (1 - math.exp(-dt / tauP))
       st.yr = approach(st.yr, clamp(beta * 3, -rad(d.yaw), rad(d.yaw)) + (st.yawCmd or 0), 1.5 / W ^ 0.6 * dt)   -- 自动协调：侧滑往零收
       local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
       vd = vd + aPerp / spd * dt
@@ -48662,6 +48750,13 @@ function Fly.init(G)
         buf = math.max(aoaK, stallK)
       end
       st.buffet = buf
+      if st.windSnd then   -- 风声：速度给底（0.25 倍极速以上才有），过载 3 g 以上变响、往上走
+        local sk = math.clamp((st.spd - d.vMax * 0.25) / math.max(d.vMax * 0.9, 1), 0, 1.2)
+        local gk = math.clamp(((st.gLoad or 1) - 3) / 5, 0, 1)
+        local want = st.ground and 0 or (0.05 + 0.22 * sk) * (1 + 1.6 * gk)
+        st.windSnd.Volume += (want - st.windSnd.Volume) * math.min(1, dt * 4)
+        st.windSnd.PlaybackSpeed = 0.5 + 0.25 * sk + 0.18 * gk
+      end
       if st.buffetSnd then
         st.buffetSnd.Volume = buf * 1.4
         st.buffetSnd.PlaybackSpeed = 0.32 + buf * 0.12
@@ -84613,7 +84708,7 @@ function VehHud.init(G)
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
-    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
+    TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
     TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
     TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
@@ -92291,7 +92386,7 @@ function WtTank.init(G)
     diSpd.Text = tostring(math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0
-    diGear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or (back and "R" or "N"))
+    diGear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
     diGear.TextColor3 = back and AMBER or WHITE
     local fix = em and em:GetAttribute("WtFix")
     local anyBad = false
