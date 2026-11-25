@@ -507,6 +507,86 @@ function Wt.init(G)
     msgTo(e, { op = "wtFireOut", ext = true })
     G.wtPush(e)
   end
+
+  ---------------------------------------------------------------- 据点里补给（用户 11-25「全部都做」⑧）
+  --   战雷：停在自己这队占着的据点里，弹药一发一发补回来、阵亡的乘员一个个补上。这里：车停着（一秒里挪不到 3 格）、
+  --   在己方占着的据点圈里（占领圈的 1.6 倍）——每 4 秒补一发炮弹（机枪、机关炮一次补一个弹匣），每 10 秒补一个阵亡的乘员
+  local SUP = { r = 1.6, ammoT = 4, crewT = 10, still = 3 }
+  local VDs = require(RS:WaitForChild("VehDefs"))
+  local function inOwnPoint(e, p)
+    local CC = Config.Capture or { r = 70, height = 45 }
+    local R2 = (CC.r * SUP.r) ^ 2
+    for _, s in pairs(G.points or {}) do
+      if s.owner == e.team and not s.locked then
+        local dx, dz = p.X - s.x, p.Z - s.z
+        if dx * dx + dz * dz < R2 and math.abs(p.Y - (s.y or p.Y)) < (CC.height or 45) then return true end
+      end
+    end
+    return false
+  end
+  -- 补回来的乘员坐到空着的位子上（之前别人顶上去了的，就补顶上去那个人原来的位子）
+  local function seatFor(S, c)
+    for _, x in ipairs(S.crew) do
+      local r = x.role
+      local cur = S.seat[r]
+      if not cur or cur.hp <= 0 or cur == c then return r end
+    end
+    return c.role
+  end
+  local function supplyStep(e)
+    local p = e.root.CFrame.Position
+    local moved = e.supP and (p - e.supP).Magnitude or 99
+    e.supP = p
+    if moved > SUP.still or not inOwnPoint(e, p) then e.supA, e.supC = nil, nil return end
+    local t = now()
+    e.supA = e.supA or (t + SUP.ammoT)
+    e.supC = e.supC or (t + SUP.crewT)
+    local gotAmmo, gotCrew = false, nil
+    if t >= e.supA then
+      e.supA = t + SUP.ammoT
+      for wid, st in pairs(e.wst or {}) do
+        local w = VDs.W[wid]
+        if w then
+          local full = (w.mag or 0) + (w.reserve or 0)
+          if st.mag + st.reserve < full then
+            local add = (w.kind == "shell" and (w.mag or 1) <= 1) and 1 or (w.mag or 1)   -- 主炮一发一发，机枪 / 机关炮一个弹匣
+            st.reserve = math.min(full - st.mag, st.reserve + add)
+            if G.wtAmmoRefill then G.wtAmmoRefill(e, wid, add) end   -- ④ 配弹：按弹种记的也补
+            gotAmmo = true
+          end
+        end
+      end
+    end
+    local S = e.wt
+    if S and t >= e.supC then
+      e.supC = t + SUP.crewT
+      for _, c in ipairs(S.crew) do
+        if c.hp <= 0 then
+          c.hp = c.max
+          local r = seatFor(S, c)
+          c.seat = r
+          S.seat[r] = c
+          gotCrew = r
+          break
+        end
+      end
+      if gotCrew then G.wtPush(e) end
+    end
+    if gotAmmo or gotCrew then msgTo(e, { op = "wtSupply", ammo = gotAmmo or nil, crew = gotCrew }) end
+  end
+  task.spawn(function()
+    while true do
+      task.wait(1)
+      if G.round and G.round.phase == "battle" and G.points then
+        for _, e in ipairs(G.ents) do
+          if e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+            local okS, err = pcall(supplyStep, e)
+            if not okS then warn("[战雷] 据点补给出错：" .. tostring(err)) end
+          end
+        end
+      end
+    end
+  end)
 end
 
 return Wt

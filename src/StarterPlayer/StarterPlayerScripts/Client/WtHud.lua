@@ -736,6 +736,11 @@ function WtHud.init(G)
       say(T("wt.swapped", T("wt.r." .. m.from), T("wt.r." .. m.role)), OK, 2.5)
     elseif op == "wtFireOut" then
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
+    elseif op == "wtSupply" then   -- 停在自己的据点里补给（服务器 Wt.lua supplyStep）
+      local bits = {}
+      if m.ammo then table.insert(bits, T("wt.supAmmo")) end
+      if m.crew then table.insert(bits, T("wt.supCrew", T("wt.r." .. m.crew))) end
+      say(table.concat(bits, " · "), OK, 2)
     elseif op == "wtFixed" then
       say(T("wt.fixed"), OK, 2)
     elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
