@@ -76,6 +76,11 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^A_j50") then d:Destroy() n+=1 end end end print("删了 "..n.." 块歼-50 零件")
     - veh/ 里新导：gepard.glb（猎豹 1A1 / 1A2 防空车）、bmp2.glb（BMP-2 / BMP-2M）；t64.glb、type74.glb 现在接进游戏了（T-64A/B、74 式），没导过的要导
     - 地图上不再有载具召唤柱（战雷式：从机库直接坐在车里出来）；飞机停在自己机场的跑道上出发，自己滑跑起飞；落回自己跑道停稳 3 秒地勤补给（加油、挂弹、修理）
+  11 月 25 日晚 C 第十二包（Roblox 审核把豹 2A6 贴图上的德军十字判成违规、账号收到警告）：换游戏文件；豹 2A6 重导：
+    - veh/leo2a6.glb 换成去掉十字的那版（只改了那一张贴图，模型一点没动）。先在命令栏（编辑状态下）粘这一行删掉旧的豹 2A6 零件，再导入 veh/leo2a6.glb：
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_leo2a6__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 零件")
+    - 以前上传的那张十字贴图 Roblox 已经删了，旧零件上那一块会是空的；重导以后就是新贴图
+    - 涂装贴花里德国的国徽不贴了（十字同样会被判）
   11 月 25 日 C 第十一包（C 把 B、D 的都合进来了：科技树、机库、昼夜更替、射流弹 X 光动画……）：换游戏文件（或者「三、只换脚本」）；模型这样导：
     - 先删旧的豹 2A6、T-80U 零件（C 11-24 夜那版和 D 这版同名、形状不一样，不删会用错）：命令栏（编辑状态下）粘这一行
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^V_leo2a6__") or d.Name:match("^V_t80u__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 / T-80U 零件")
