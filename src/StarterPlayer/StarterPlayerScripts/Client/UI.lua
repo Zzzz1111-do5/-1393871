@@ -918,6 +918,15 @@ function UI.init(G)
       if G.juiceHurt and typeof(key) == "Vector3" then G.juiceHurt(key) end
       return
     end
+    -- 试驾场里不报主战场的事（用户 11-25 晚「训练场为什么会有missionfailed 还有一堆乱七八糟的据点占领啥的」）：
+    --   占点、阶段、兵力、胜负、任务、击杀栏都不弹；试驾自己的提示（Tech.lua 发的 tech.* / wt.*）照常
+    if G.inTestDrive and G.inTestDrive() then
+      local k = type(key) == "string" and key or ""
+      if kind == "center" or kind == "stage" or kind == "feed" or k:find("^ui%.captur") or k:find("^ui%.flank") or k:find("^ui%.lost")
+        or k:find("^ui%.tickets") or k:find("^ui%.win") or k:find("^ui%.conquest") or k:find("^wtm%.") or k:find("^pve%.") or k:find("^stage%.") then
+        return
+      end
+    end
     if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
     if kind == "ric" then   -- 跳弹（服务器 Ents.lua）：准星下面弹一行黄字（打出去的跳了 / 打过来的被弹开）
       if G.pop then G.pop(T(key, ...), key == "hit.ricIn" and "ricIn" or "ric") end
@@ -1076,6 +1085,7 @@ function UI.init(G)
     deploy.Visible = showDeploy and not menuOn and not (G.hangarActive and G.hangarActive())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end" and not (G.wtResultsOn and G.wtResultsOn())   -- 战雷式结算页（WtBattle.lua）开着就不画这张
+      and not (G.inTestDrive and G.inTestDrive())   -- 还在试驾场里：这一局的结算都不弹
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniClip
     if mapMountedIn ~= want then

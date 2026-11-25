@@ -76,6 +76,15 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^A_j50") then d:Destroy() n+=1 end end end print("删了 "..n.." 块歼-50 零件")
     - veh/ 里新导：gepard.glb（猎豹 1A1 / 1A2 防空车）、bmp2.glb（BMP-2 / BMP-2M）；t64.glb、type74.glb 现在接进游戏了（T-64A/B、74 式），没导过的要导
     - 地图上不再有载具召唤柱（战雷式：从机库直接坐在车里出来）；飞机停在自己机场的跑道上出发，自己滑跑起飞；落回自己跑道停稳 3 秒地勤补给（加油、挂弹、修理）
+  11 月 25 日晚 E 包（用户：「把所有带着二战希特勒德军标识的符号全部去掉」）：换游戏文件；两个模型要重导：
+    - veh/leo2a7v.glb（豹 2A7V）：炮塔两侧贴图上还有两个十字，用旁边的迷彩底纹盖掉了（只换了那一张贴图）
+    - air/nh90.glb（NH90）：机身两侧「78 ✠ 12」、机腹、机顶一共 4 个十字是建模时做的几何片，删掉了，原地补上同样的迷彩（别的零件、名字都没动）
+    - 全部模型都查过（贴图逐张扫 + 德系车、直升机整机渲染看）：别的没有十字；德国国旗（黑红金）、车牌这些不算，留着
+    - 先在命令栏（编辑状态下）粘这一行删掉旧的豹 2A7V、NH90 零件，再导入这两个文件（旧零件上带十字的贴图、几何片才会跟着没了）：
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^V_leo2a7v__") or d.Name:match("^A_nh90__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 个零件")
+    - 机库顶栏：右边那排小图标不再压在「加入战斗」上，左边等级圈不再压着 Roblox 的菜单键；屏幕窄的时候整条顶栏等比缩小
+    - 试驾场里不再弹主战场的结算（任务失败 / 完成）、比分条、据点、作战简报、占点提示
+    - 开车手感：松油门、反推刹车停得更干脆，履带车打方向起转、收住更快；车身悬挂硬一点、晃一下就收住；追尾镜头跟得更紧
   11 月 25 日晚 C 第十二包（Roblox 审核把豹 2A6 贴图上的德军十字判成违规、账号收到警告）：换游戏文件；豹 2A6 重导：
     - veh/leo2a6.glb 换成去掉十字的那版（只改了那一张贴图，模型一点没动）。先在命令栏（编辑状态下）粘这一行删掉旧的豹 2A6 零件，再导入 veh/leo2a6.glb：
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_leo2a6__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 零件")

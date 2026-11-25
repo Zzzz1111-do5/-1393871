@@ -400,13 +400,22 @@ function TechUI.init(G)
   end
 
   do   -- 顶上一排
+    local x0nav
     local TY, THh = mobile and 14 or 28, mobile and 30 or 34
     local LX, XW = mobile and 14 or 24, mobile and 80 or 120   -- 11-25 照战雷重排：正中留给「加入战斗」，等级、大键都往左挪
     local NW, NG = mobile and 76 or 100, mobile and 8 or 12
     local IW, IG = mobile and 30 or 34, mobile and 8 or 14
     H.TY, H.TH = TY, THh
+    -- 顶上一整条装进自己的一层（用户 11-25 截图：右边那排图标压在「加入战斗」上、等级圈压着 Roblox 的菜单键）：
+    --   「加入战斗」按屏幕居中，图标跟着中线排（原来按 1280 宽的屏幕算死了绝对位置，屏幕一宽就压上去）；
+    --   左边那组从 Roblox 自己的按钮右边开始（GuiService.TopbarInset）；屏幕窄到排不下时整条等比缩小（layoutTop）
+    local top = frame(ui, UDim2.fromScale(1, 1), nil, nil, 1)
+    top.Name = "TopRow"
+    local topScale = Instance.new("UIScale")
+    topScale.Parent = top
+    local leftEls = {}   -- { 元素, 相对左边起点的 x }
     -- 经验条（右端斜的）+ 压在它左头上的等级圈
-    local xpBg = frame(ui, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (THh - 18) / 2), INK, 0.1)
+    local xpBg = frame(top, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (THh - 18) / 2), INK, 0.1)
     xpBg.Name = "Xp"
     slant(xpBg, XW, 18)
     local xpFill = frame(xpBg, UDim2.new(0, 0, 1, 0), nil, RGB(58, 150, 76), 0)   -- 绿（不用蓝：docs/style.md）；比 GOOD 暗一点，白字压在上面看得清
@@ -414,8 +423,10 @@ function TechUI.init(G)
     local xpT = text(xpBg, "", UDim2.new(1, -26, 1, 0), UDim2.new(0, 18, 0, 0), TH.S.tiny, TH.C.TEXT)
     xpT.Name = "XpT"
     xpT.Font = TH.F.mono
-    local lv = round(frame(ui, UDim2.new(0, THh, 0, THh), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
+    local lv = round(frame(top, UDim2.new(0, THh, 0, THh), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
     lv.Name = "Level"
+    table.insert(leftEls, { lv, 0 })
+    table.insert(leftEls, { xpBg, 20 })
     edge(lv, TH.C.TEXT, 0, 2)
     local lvT = text(lv, "1", UDim2.fromScale(1, 1), nil, mobile and TH.S.body or TH.S.sub, TH.C.TEXT, Enum.TextXAlignment.Center)
     lvT.Font = TH.F.bold
@@ -431,12 +442,14 @@ function TechUI.init(G)
       { "NavSpec", L("观战", "SPECTATE"), "SPECTATE", function() if G.wtSpecStart then G.wtSpecStart() end end },
     }
     for _, n in ipairs(navs) do
-      local b = navBtn(ui, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
+      local b = navBtn(top, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
       b.Name = n[1]
+      table.insert(leftEls, { b, x - LX })
       b.MouseButton1Click:Connect(n[4])
       if n[1] == "NavTree" then H.navTree = b end
       x += NW + NG
     end
+    x0nav = x - NG - LX   -- 左边那组（等级圈 + 经验条 + 导航键）一共多宽
     G.hangarHasSpec = true   -- WtCam.lua：机库顶上已经有「观战」，它自己那个按钮不画
     -- 四个方图标键（图标是拼的：齿轮、两发炮弹、圈里的 ? 和 i）；鼠标放上去底下出一行字
     local LIGHT = TH.C.TEXT
@@ -486,7 +499,6 @@ function TechUI.init(G)
     }
     -- 正中「加入战斗」（同战雷：主按钮在顶栏正中；名字仍叫 HangarGo）+ 底下这一局：地图、阶段和时间、战斗等级
     local JW, JH = mobile and 150 or 210, mobile and 38 or 46
-    local jx = (mobile and 1000 or 1280) / 2 - JW / 2
     do
       local bb = Instance.new("TextButton")
       bb.Name = "HangarGo"
@@ -495,7 +507,7 @@ function TechUI.init(G)
       -- 11-25「没有那种感觉」：实心琥珀的大主按钮（上亮下暗），一眼就是它
       bb.BackgroundColor3, bb.BackgroundTransparency, bb.BorderSizePixel = AMBER, 0, 0
       bb.Size, bb.Position = UDim2.new(0, JW, 0, JH), UDim2.new(0.5, -JW / 2, 0, TY - (JH - THh) / 2)
-      bb.Parent = ui
+      bb.Parent = top
       TH.corner(bb, 3)
       TH.grad(bb, RGB(255, 214, 120), RGB(200, 132, 30))
       TH.stroke(bb, true, RGB(255, 236, 190)).Transparency = 0.5
@@ -512,7 +524,7 @@ function TechUI.init(G)
       H.goT, H.goSub = bt, bs
       -- 这一局（战雷那块「陆战 · 历史性能」）：地图（点了投下一局的图）、阶段和时间、战斗等级
       local MW = mobile and 260 or 330
-      local card = frame(ui, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
+      local card = frame(top, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
       card.Name = "Match"
       TH.corner(card)
       TH.stroke(card)
@@ -526,7 +538,7 @@ function TechUI.init(G)
       mapT.Font = TH.F.bold
       H.mapT, H.mapB = mapT, mapB
       -- 点地图：下面展开一列可选的图（投下一局的；现在打的那张标着「本局」）
-      local list = frame(ui, UDim2.new(0, MW, 0, 10), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 52 or 60)), TH.C.PANEL, 0.04)
+      local list = frame(top, UDim2.new(0, MW, 0, 10), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 52 or 60)), TH.C.PANEL, 0.04)
       list.Name = "MapList"
       list.Visible = false
       list.ZIndex = 30
@@ -568,15 +580,15 @@ function TechUI.init(G)
       H.phaseT.Font = TH.F.mono
       H.brT = H.phaseT   -- 战斗等级和阶段写在同一行（refreshMode 里拼）
     end
-    x = jx + JW + (mobile and 14 or 22)
+    x = JW / 2 + (mobile and 14 or 22)   -- 相对屏幕中线
     for _, ic in ipairs(icons) do
       local b = Instance.new("TextButton")
       b.Name = ic[1]
       b.AutoButtonColor = false
       b.Text = ""
       b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
-      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0, x, 0, TY + (THh - IW) / 2)
-      b.Parent = ui
+      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0.5, x, 0, TY + (THh - IW) / 2)
+      b.Parent = top
       corners(b, TH.C.TEXT, 7, 2, 3)
       ic[3](b)
       local tip = text(b, ic[2], UDim2.new(0, 140, 0, 16), UDim2.new(0.5, -70, 1, 9), TH.S.tiny, TH.C.TEXT, Enum.TextXAlignment.Center)
@@ -591,20 +603,56 @@ function TechUI.init(G)
     end
     -- 右上：金币（硬币 + 斜头的条），左边一格 SP（这一局的出击点）
     local CWd = mobile and 112 or 134
-    local coin = frame(ui, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (THh - 22) / 2), INK, 0.1)
+    local coin = frame(top, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (THh - 22) / 2), INK, 0.1)
     coin.Name = "Coins"
     slant(coin, CWd, 22)
     local coinT = text(coin, "", UDim2.new(1, -34, 1, 0), UDim2.new(0, 22, 0, 0), TH.S.body, TH.C.TEXT)
     coinT.Font = TH.F.mono
-    local disc = round(frame(ui, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (THh - 26) / 2), RGB(226, 172, 48), 0))
+    local disc = round(frame(top, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (THh - 26) / 2), RGB(226, 172, 48), 0))
     disc.Name = "Coin"
     edge(disc, RGB(140, 96, 18), 0, 1.5)
     edge(round(frame(disc, UDim2.new(0, 16, 0, 16), UDim2.new(0.5, -8, 0.5, -8), RGB(246, 204, 92), 0)), RGB(168, 118, 26), 0.2, 1)
-    local spT = text(ui, "", UDim2.new(0, 96, 0, 22), UDim2.new(1, -M0 - CWd - 12 - 104, 0, TY + (THh - 22) / 2), TH.S.small, TH.C.TEXT, Enum.TextXAlignment.Right)
+    local spT = text(top, "", UDim2.new(0, 96, 0, 22), UDim2.new(1, -M0 - CWd - 12 - 104, 0, TY + (THh - 22) / 2), TH.S.small, TH.C.TEXT, Enum.TextXAlignment.Right)
     spT.Name = "SpChip"
     spT.Font = TH.F.mono
     spT.TextStrokeTransparency = 0.5
     H.coinT, H.spT = coinT, spT
+    -- 顶栏排版：左边那组的宽、中间按钮的半宽、右边（图标 + SP + 金币）的宽，按屏幕宽度定起点和缩放
+    local leftW = (x0nav or 0)
+    local nIcons = #icons
+    local function layoutTop()
+      local W = 0
+      pcall(function() W = ui.AbsoluteSize.X end)
+      if not (W and W > 0) then
+        local cam = workspace.CurrentCamera
+        W = (cam and cam.ViewportSize.X > 0) and cam.ViewportSize.X or 1280
+      end
+      local inset = 0
+      pcall(function()   -- Roblox 左上自己的按钮（菜单、聊天……）占到哪：顶栏这条和它同高，从它右边开始
+        local r = game:GetService("GuiService").TopbarInset
+        if r and r.Max.Y > TY then inset = r.Min.X end
+      end)
+      local half = JW / 2 + (mobile and 14 or 22)
+      local rightW = nIcons * (IW + IG) + (mobile and 10 or 16) + CWd + 12 + 104 + M0
+      local sc = 1
+      for _ = 1, 4 do   -- 缩放影响左边起点（Roblox 按钮的宽是真像素）：迭代几次就定了
+        local lx = math.max(LX, inset / sc + 8)
+        local need = 2 * math.max(lx + leftW + 12 + JW / 2, half + rightW)
+        sc = math.min(1, W / need)
+      end
+      local lx = math.max(LX, inset / sc + 8)
+      topScale.Scale = sc
+      top.Size = UDim2.fromScale(1 / sc, 1 / sc)
+      for _, e in ipairs(leftEls) do
+        e[1].Position = UDim2.new(0, lx + e[2], e[1].Position.Y.Scale, e[1].Position.Y.Offset)
+      end
+      H.topScale = sc
+    end
+    H.layoutTop = layoutTop
+    pcall(function() ui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTop) end)
+    pcall(function() workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutTop) end)
+    pcall(function() game:GetService("GuiService"):GetPropertyChangedSignal("TopbarInset"):Connect(layoutTop) end)
+    task.defer(layoutTop)
     -- 「只看车」以后：右上角留一个键把界面叫回来
     local back = navBtn(hangar, L("显示界面", "SHOW INTERFACE"), nil, UDim2.new(0, 130, 0, THh), UDim2.new(1, -M0 - 130, 0, TY))
     back.Name = "ShowUI"

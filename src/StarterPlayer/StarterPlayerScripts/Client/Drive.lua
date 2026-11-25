@@ -860,9 +860,10 @@ function Drive.init(G)
       a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
       if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
-      a = thr * accel * 2.6   -- 刹车
+      a = thr * accel * 3.2   -- 刹车（反着推油门：干脆停住）
     else
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.1 or 0.55))
+      -- 用户 11-25 晚「没有战雷那种纸片的脆感」：松油门履带车很快收住（原来 1.1 倍加速度，滑得肉）
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.7 or 0.7))
     end
     if not st.airS then
       if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
@@ -884,7 +885,7 @@ function Drive.init(G)
       st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
     elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
-      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.2 or 5.5) * dt)
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 4.6 or 9) * dt)   -- 起转、收住都利落（脆感）
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
@@ -1073,7 +1074,7 @@ function Drive.init(G)
         tr = AS.r0 or tr
       end
       local soft = tracked and 1 or 1.4
-      local dynP = math.clamp(st.accel * 0.0042 * soft, -0.07, 0.07)
+      local dynP = math.clamp(st.accel * 0.0055 * soft, -0.08, 0.08)
       local dynR = math.clamp(v * (st.yr or 0) * 0.0045 * soft, -0.06, 0.06)
       local S = st.sus
       if not S or (V(st.pos.X, 0, st.pos.Z) - V(S.x, 0, S.z)).Magnitude > 30 then   -- 第一次 / 被挪走了：直接贴上
@@ -1091,9 +1092,10 @@ function Drive.init(G)
           vx += (k * (target - x) - 2 * math.sqrt(k) * z * vx) * h
           return x + vx * h, vx
         end
-        S.y, S.vy = spring(S.y, S.vy, base.Position.Y, 160, 0.55)
-        S.p, S.vp = spring(S.p, S.vp, tp + dynP, 90, 0.6)
-        S.r, S.vr = spring(S.r, S.vr, tr + dynR, 90, 0.6)
+        -- 脆感（用户 11-25 晚）：弹簧硬一点、阻尼大一点——起步、刹车一下点头就收住，不再一颤一颤
+        S.y, S.vy = spring(S.y, S.vy, base.Position.Y, 240, 0.72)
+        S.p, S.vp = spring(S.p, S.vp, tp + dynP, 150, 0.74)
+        S.r, S.vr = spring(S.r, S.vr, tr + dynR, 150, 0.74)
       end
       if S.y < base.Position.Y - 0.25 then S.y, S.vy = base.Position.Y - 0.25, math.max(S.vy, 0) end   -- 不陷进地里
       S.y = math.min(S.y, base.Position.Y + 1.5)
@@ -1779,7 +1781,8 @@ function Drive.init(G)
       st.lastP3 = p3
       local rough = (st.surf and st.surf.rough or 0.7) * (st.hv and 0.35 or 1) * (st.airS and 0.2 or 1)
       local camCF, camShake, fov = G.vehCam({ key = "drive", pivot = center, dir = dirCam, dist = dist, up = up, vel = st.vel3, dt = dt,
-        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = G.fov3 or 70, fovK = 7, pushK = 0.055, maxPush = 3 })   -- 第三人称视野：设置里调
+        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = G.fov3 or 70, fovK = 7, pushK = 0.035, maxPush = 2,
+        follow = 14, maxLag = 1.4 })   -- 脆感：镜头跟紧车（原来跟随弹簧 9、最多落后 2.5 格，开起来发飘）   -- 第三人称视野：设置里调
       cam.CFrame = camCF
       cam.FieldOfView = fov
       st.camShake = camShake

@@ -1292,7 +1292,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-25 22:06 fb9ef1a"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 22:50 aa6c363"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -43831,9 +43831,10 @@ function Drive.init(G)
       a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6)
       if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
-      a = thr * accel * 2.6   -- 刹车
+      a = thr * accel * 3.2   -- 刹车（反着推油门：干脆停住）
     else
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.1 or 0.55))
+      -- 用户 11-25 晚「没有战雷那种纸片的脆感」：松油门履带车很快收住（原来 1.1 倍加速度，滑得肉）
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.7 or 0.7))
     end
     if not st.airS then
       if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
@@ -43855,7 +43856,7 @@ function Drive.init(G)
       st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
     elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
-      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.2 or 5.5) * dt)
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 4.6 or 9) * dt)   -- 起转、收住都利落（脆感）
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
@@ -44044,7 +44045,7 @@ function Drive.init(G)
         tr = AS.r0 or tr
       end
       local soft = tracked and 1 or 1.4
-      local dynP = math.clamp(st.accel * 0.0042 * soft, -0.07, 0.07)
+      local dynP = math.clamp(st.accel * 0.0055 * soft, -0.08, 0.08)
       local dynR = math.clamp(v * (st.yr or 0) * 0.0045 * soft, -0.06, 0.06)
       local S = st.sus
       if not S or (V(st.pos.X, 0, st.pos.Z) - V(S.x, 0, S.z)).Magnitude > 30 then   -- 第一次 / 被挪走了：直接贴上
@@ -44062,9 +44063,10 @@ function Drive.init(G)
           vx += (k * (target - x) - 2 * math.sqrt(k) * z * vx) * h
           return x + vx * h, vx
         end
-        S.y, S.vy = spring(S.y, S.vy, base.Position.Y, 160, 0.55)
-        S.p, S.vp = spring(S.p, S.vp, tp + dynP, 90, 0.6)
-        S.r, S.vr = spring(S.r, S.vr, tr + dynR, 90, 0.6)
+        -- 脆感（用户 11-25 晚）：弹簧硬一点、阻尼大一点——起步、刹车一下点头就收住，不再一颤一颤
+        S.y, S.vy = spring(S.y, S.vy, base.Position.Y, 240, 0.72)
+        S.p, S.vp = spring(S.p, S.vp, tp + dynP, 150, 0.74)
+        S.r, S.vr = spring(S.r, S.vr, tr + dynR, 150, 0.74)
       end
       if S.y < base.Position.Y - 0.25 then S.y, S.vy = base.Position.Y - 0.25, math.max(S.vy, 0) end   -- 不陷进地里
       S.y = math.min(S.y, base.Position.Y + 1.5)
@@ -44750,7 +44752,8 @@ function Drive.init(G)
       st.lastP3 = p3
       local rough = (st.surf and st.surf.rough or 0.7) * (st.hv and 0.35 or 1) * (st.airS and 0.2 or 1)
       local camCF, camShake, fov = G.vehCam({ key = "drive", pivot = center, dir = dirCam, dist = dist, up = up, vel = st.vel3, dt = dt,
-        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = G.fov3 or 70, fovK = 7, pushK = 0.055, maxPush = 3 })   -- 第三人称视野：设置里调
+        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = G.fov3 or 70, fovK = 7, pushK = 0.035, maxPush = 2,
+        follow = 14, maxLag = 1.4 })   -- 脆感：镜头跟紧车（原来跟随弹簧 9、最多落后 2.5 格，开起来发飘）   -- 第三人称视野：设置里调
       cam.CFrame = camCF
       cam.FieldOfView = fov
       st.camShake = camShake
@@ -55982,7 +55985,9 @@ function Hud.init(G)
     local S = G.S
     local deployOn = G.menuOpen ~= nil and G.menuOpen() and not (G.hangarOpen and G.hangarOpen())
     -- 比分条：战斗中和部署界面都有；选阵营、结算、开服加载时不显示
-    top.Visible = S ~= nil and S.picked ~= false and not G.factionOpen and S.phase ~= "end" and (S.progress or 1) >= 1 and (P.hud.Visible or deployOn)
+    -- 试驾场（用户 11-25 晚「训练场为什么会有……一堆乱七八糟的据点占领啥的」）：比分条、据点菱形、地图上的据点字母都不画
+    local td = G.inTestDrive and G.inTestDrive()
+    top.Visible = S ~= nil and S.picked ~= false and not G.factionOpen and S.phase ~= "end" and (S.progress or 1) >= 1 and (P.hud.Visible or deployOn) and not td
     if not S or not top.Visible then
       for _, m in pairs(marks) do m.bb.Enabled = false end
       tip.Visible = false
@@ -56074,7 +56079,7 @@ function Hud.init(G)
           m.tries += 1
           ground(m)
         end
-        local on = not s.locked and s.act ~= false and not G.scopeOn   -- 只标当前阶段能占的
+        local on = not s.locked and s.act ~= false and not G.scopeOn and not td   -- 只标当前阶段能占的；试驾场里不标
         m.bb.Enabled = on
         if on then
           m.l.TextColor3 = (s.owner == mine) and WHITE or teamColor(s.owner):Lerp(WHITE, 0.2)
@@ -70834,6 +70839,7 @@ function Operation.init(G)
       and not (G.menuShown and G.menuShown()) and not G.factionOpen
       and not (G.tabletState and G.tabletState.open)
       and not (G.killcamOn and G.killcamOn())
+      and not (G.inTestDrive and G.inTestDrive())   -- 试驾场里不弹主战场的作战简报、占点进度（用户 11-25 晚：训练场一堆据点占领）
     if not canBrief then
       brief.Visible, localPanel.Visible, lastPoint = false, false, nil
       if s and s.phase ~= "battle" then startedAt = nil end
@@ -80466,13 +80472,22 @@ function TechUI.init(G)
   end
 
   do   -- 顶上一排
+    local x0nav
     local TY, THh = mobile and 14 or 28, mobile and 30 or 34
     local LX, XW = mobile and 14 or 24, mobile and 80 or 120   -- 11-25 照战雷重排：正中留给「加入战斗」，等级、大键都往左挪
     local NW, NG = mobile and 76 or 100, mobile and 8 or 12
     local IW, IG = mobile and 30 or 34, mobile and 8 or 14
     H.TY, H.TH = TY, THh
+    -- 顶上一整条装进自己的一层（用户 11-25 截图：右边那排图标压在「加入战斗」上、等级圈压着 Roblox 的菜单键）：
+    --   「加入战斗」按屏幕居中，图标跟着中线排（原来按 1280 宽的屏幕算死了绝对位置，屏幕一宽就压上去）；
+    --   左边那组从 Roblox 自己的按钮右边开始（GuiService.TopbarInset）；屏幕窄到排不下时整条等比缩小（layoutTop）
+    local top = frame(ui, UDim2.fromScale(1, 1), nil, nil, 1)
+    top.Name = "TopRow"
+    local topScale = Instance.new("UIScale")
+    topScale.Parent = top
+    local leftEls = {}   -- { 元素, 相对左边起点的 x }
     -- 经验条（右端斜的）+ 压在它左头上的等级圈
-    local xpBg = frame(ui, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (THh - 18) / 2), INK, 0.1)
+    local xpBg = frame(top, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (THh - 18) / 2), INK, 0.1)
     xpBg.Name = "Xp"
     slant(xpBg, XW, 18)
     local xpFill = frame(xpBg, UDim2.new(0, 0, 1, 0), nil, RGB(58, 150, 76), 0)   -- 绿（不用蓝：docs/style.md）；比 GOOD 暗一点，白字压在上面看得清
@@ -80480,8 +80495,10 @@ function TechUI.init(G)
     local xpT = text(xpBg, "", UDim2.new(1, -26, 1, 0), UDim2.new(0, 18, 0, 0), TH.S.tiny, TH.C.TEXT)
     xpT.Name = "XpT"
     xpT.Font = TH.F.mono
-    local lv = round(frame(ui, UDim2.new(0, THh, 0, THh), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
+    local lv = round(frame(top, UDim2.new(0, THh, 0, THh), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
     lv.Name = "Level"
+    table.insert(leftEls, { lv, 0 })
+    table.insert(leftEls, { xpBg, 20 })
     edge(lv, TH.C.TEXT, 0, 2)
     local lvT = text(lv, "1", UDim2.fromScale(1, 1), nil, mobile and TH.S.body or TH.S.sub, TH.C.TEXT, Enum.TextXAlignment.Center)
     lvT.Font = TH.F.bold
@@ -80497,12 +80514,14 @@ function TechUI.init(G)
       { "NavSpec", L("观战", "SPECTATE"), "SPECTATE", function() if G.wtSpecStart then G.wtSpecStart() end end },
     }
     for _, n in ipairs(navs) do
-      local b = navBtn(ui, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
+      local b = navBtn(top, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
       b.Name = n[1]
+      table.insert(leftEls, { b, x - LX })
       b.MouseButton1Click:Connect(n[4])
       if n[1] == "NavTree" then H.navTree = b end
       x += NW + NG
     end
+    x0nav = x - NG - LX   -- 左边那组（等级圈 + 经验条 + 导航键）一共多宽
     G.hangarHasSpec = true   -- WtCam.lua：机库顶上已经有「观战」，它自己那个按钮不画
     -- 四个方图标键（图标是拼的：齿轮、两发炮弹、圈里的 ? 和 i）；鼠标放上去底下出一行字
     local LIGHT = TH.C.TEXT
@@ -80552,7 +80571,6 @@ function TechUI.init(G)
     }
     -- 正中「加入战斗」（同战雷：主按钮在顶栏正中；名字仍叫 HangarGo）+ 底下这一局：地图、阶段和时间、战斗等级
     local JW, JH = mobile and 150 or 210, mobile and 38 or 46
-    local jx = (mobile and 1000 or 1280) / 2 - JW / 2
     do
       local bb = Instance.new("TextButton")
       bb.Name = "HangarGo"
@@ -80561,7 +80579,7 @@ function TechUI.init(G)
       -- 11-25「没有那种感觉」：实心琥珀的大主按钮（上亮下暗），一眼就是它
       bb.BackgroundColor3, bb.BackgroundTransparency, bb.BorderSizePixel = AMBER, 0, 0
       bb.Size, bb.Position = UDim2.new(0, JW, 0, JH), UDim2.new(0.5, -JW / 2, 0, TY - (JH - THh) / 2)
-      bb.Parent = ui
+      bb.Parent = top
       TH.corner(bb, 3)
       TH.grad(bb, RGB(255, 214, 120), RGB(200, 132, 30))
       TH.stroke(bb, true, RGB(255, 236, 190)).Transparency = 0.5
@@ -80578,7 +80596,7 @@ function TechUI.init(G)
       H.goT, H.goSub = bt, bs
       -- 这一局（战雷那块「陆战 · 历史性能」）：地图（点了投下一局的图）、阶段和时间、战斗等级
       local MW = mobile and 260 or 330
-      local card = frame(ui, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
+      local card = frame(top, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
       card.Name = "Match"
       TH.corner(card)
       TH.stroke(card)
@@ -80592,7 +80610,7 @@ function TechUI.init(G)
       mapT.Font = TH.F.bold
       H.mapT, H.mapB = mapT, mapB
       -- 点地图：下面展开一列可选的图（投下一局的；现在打的那张标着「本局」）
-      local list = frame(ui, UDim2.new(0, MW, 0, 10), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 52 or 60)), TH.C.PANEL, 0.04)
+      local list = frame(top, UDim2.new(0, MW, 0, 10), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 52 or 60)), TH.C.PANEL, 0.04)
       list.Name = "MapList"
       list.Visible = false
       list.ZIndex = 30
@@ -80634,15 +80652,15 @@ function TechUI.init(G)
       H.phaseT.Font = TH.F.mono
       H.brT = H.phaseT   -- 战斗等级和阶段写在同一行（refreshMode 里拼）
     end
-    x = jx + JW + (mobile and 14 or 22)
+    x = JW / 2 + (mobile and 14 or 22)   -- 相对屏幕中线
     for _, ic in ipairs(icons) do
       local b = Instance.new("TextButton")
       b.Name = ic[1]
       b.AutoButtonColor = false
       b.Text = ""
       b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
-      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0, x, 0, TY + (THh - IW) / 2)
-      b.Parent = ui
+      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0.5, x, 0, TY + (THh - IW) / 2)
+      b.Parent = top
       corners(b, TH.C.TEXT, 7, 2, 3)
       ic[3](b)
       local tip = text(b, ic[2], UDim2.new(0, 140, 0, 16), UDim2.new(0.5, -70, 1, 9), TH.S.tiny, TH.C.TEXT, Enum.TextXAlignment.Center)
@@ -80657,20 +80675,56 @@ function TechUI.init(G)
     end
     -- 右上：金币（硬币 + 斜头的条），左边一格 SP（这一局的出击点）
     local CWd = mobile and 112 or 134
-    local coin = frame(ui, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (THh - 22) / 2), INK, 0.1)
+    local coin = frame(top, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (THh - 22) / 2), INK, 0.1)
     coin.Name = "Coins"
     slant(coin, CWd, 22)
     local coinT = text(coin, "", UDim2.new(1, -34, 1, 0), UDim2.new(0, 22, 0, 0), TH.S.body, TH.C.TEXT)
     coinT.Font = TH.F.mono
-    local disc = round(frame(ui, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (THh - 26) / 2), RGB(226, 172, 48), 0))
+    local disc = round(frame(top, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (THh - 26) / 2), RGB(226, 172, 48), 0))
     disc.Name = "Coin"
     edge(disc, RGB(140, 96, 18), 0, 1.5)
     edge(round(frame(disc, UDim2.new(0, 16, 0, 16), UDim2.new(0.5, -8, 0.5, -8), RGB(246, 204, 92), 0)), RGB(168, 118, 26), 0.2, 1)
-    local spT = text(ui, "", UDim2.new(0, 96, 0, 22), UDim2.new(1, -M0 - CWd - 12 - 104, 0, TY + (THh - 22) / 2), TH.S.small, TH.C.TEXT, Enum.TextXAlignment.Right)
+    local spT = text(top, "", UDim2.new(0, 96, 0, 22), UDim2.new(1, -M0 - CWd - 12 - 104, 0, TY + (THh - 22) / 2), TH.S.small, TH.C.TEXT, Enum.TextXAlignment.Right)
     spT.Name = "SpChip"
     spT.Font = TH.F.mono
     spT.TextStrokeTransparency = 0.5
     H.coinT, H.spT = coinT, spT
+    -- 顶栏排版：左边那组的宽、中间按钮的半宽、右边（图标 + SP + 金币）的宽，按屏幕宽度定起点和缩放
+    local leftW = (x0nav or 0)
+    local nIcons = #icons
+    local function layoutTop()
+      local W = 0
+      pcall(function() W = ui.AbsoluteSize.X end)
+      if not (W and W > 0) then
+        local cam = workspace.CurrentCamera
+        W = (cam and cam.ViewportSize.X > 0) and cam.ViewportSize.X or 1280
+      end
+      local inset = 0
+      pcall(function()   -- Roblox 左上自己的按钮（菜单、聊天……）占到哪：顶栏这条和它同高，从它右边开始
+        local r = game:GetService("GuiService").TopbarInset
+        if r and r.Max.Y > TY then inset = r.Min.X end
+      end)
+      local half = JW / 2 + (mobile and 14 or 22)
+      local rightW = nIcons * (IW + IG) + (mobile and 10 or 16) + CWd + 12 + 104 + M0
+      local sc = 1
+      for _ = 1, 4 do   -- 缩放影响左边起点（Roblox 按钮的宽是真像素）：迭代几次就定了
+        local lx = math.max(LX, inset / sc + 8)
+        local need = 2 * math.max(lx + leftW + 12 + JW / 2, half + rightW)
+        sc = math.min(1, W / need)
+      end
+      local lx = math.max(LX, inset / sc + 8)
+      topScale.Scale = sc
+      top.Size = UDim2.fromScale(1 / sc, 1 / sc)
+      for _, e in ipairs(leftEls) do
+        e[1].Position = UDim2.new(0, lx + e[2], e[1].Position.Y.Scale, e[1].Position.Y.Offset)
+      end
+      H.topScale = sc
+    end
+    H.layoutTop = layoutTop
+    pcall(function() ui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTop) end)
+    pcall(function() workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutTop) end)
+    pcall(function() game:GetService("GuiService"):GetPropertyChangedSignal("TopbarInset"):Connect(layoutTop) end)
+    task.defer(layoutTop)
     -- 「只看车」以后：右上角留一个键把界面叫回来
     local back = navBtn(hangar, L("显示界面", "SHOW INTERFACE"), nil, UDim2.new(0, 130, 0, THh), UDim2.new(1, -M0 - 130, 0, TY))
     back.Name = "ShowUI"
@@ -83217,6 +83271,15 @@ function UI.init(G)
       if G.juiceHurt and typeof(key) == "Vector3" then G.juiceHurt(key) end
       return
     end
+    -- 试驾场里不报主战场的事（用户 11-25 晚「训练场为什么会有missionfailed 还有一堆乱七八糟的据点占领啥的」）：
+    --   占点、阶段、兵力、胜负、任务、击杀栏都不弹；试驾自己的提示（Tech.lua 发的 tech.* / wt.*）照常
+    if G.inTestDrive and G.inTestDrive() then
+      local k = type(key) == "string" and key or ""
+      if kind == "center" or kind == "stage" or kind == "feed" or k:find("^ui%.captur") or k:find("^ui%.flank") or k:find("^ui%.lost")
+        or k:find("^ui%.tickets") or k:find("^ui%.win") or k:find("^ui%.conquest") or k:find("^wtm%.") or k:find("^pve%.") or k:find("^stage%.") then
+        return
+      end
+    end
     if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
     if kind == "ric" then   -- 跳弹（服务器 Ents.lua）：准星下面弹一行黄字（打出去的跳了 / 打过来的被弹开）
       if G.pop then G.pop(T(key, ...), key == "hit.ricIn" and "ricIn" or "ric") end
@@ -83375,6 +83438,7 @@ function UI.init(G)
     deploy.Visible = showDeploy and not menuOn and not (G.hangarActive and G.hangarActive())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end" and not (G.wtResultsOn and G.wtResultsOn())   -- 战雷式结算页（WtBattle.lua）开着就不画这张
+      and not (G.inTestDrive and G.inTestDrive())   -- 还在试驾场里：这一局的结算都不弹
     -- 地图放在部署界面或小地图里
     local want = showDeploy and mapHolder or miniClip
     if mapMountedIn ~= want then
@@ -89346,7 +89410,8 @@ function WtBattle.init(G)
   end
   G.wtResultsOn = function()   -- UI.lua 原来的结算卡看这个收起
     local S = G.S
-    return S ~= nil and S.phase == "end" and not S.pve and S.wt ~= nil
+    -- 还在试驾场里：这一局的结算（任务失败 / 完成）不弹（用户 11-25 晚「训练场为什么会有missionfailed」）
+    return S ~= nil and S.phase == "end" and not S.pve and S.wt ~= nil and not (G.inTestDrive and G.inTestDrive())
   end
   local function stepResults(S)
     local on = G.wtResultsOn()

@@ -504,7 +504,9 @@ function Hud.init(G)
     local S = G.S
     local deployOn = G.menuOpen ~= nil and G.menuOpen() and not (G.hangarOpen and G.hangarOpen())
     -- 比分条：战斗中和部署界面都有；选阵营、结算、开服加载时不显示
-    top.Visible = S ~= nil and S.picked ~= false and not G.factionOpen and S.phase ~= "end" and (S.progress or 1) >= 1 and (P.hud.Visible or deployOn)
+    -- 试驾场（用户 11-25 晚「训练场为什么会有……一堆乱七八糟的据点占领啥的」）：比分条、据点菱形、地图上的据点字母都不画
+    local td = G.inTestDrive and G.inTestDrive()
+    top.Visible = S ~= nil and S.picked ~= false and not G.factionOpen and S.phase ~= "end" and (S.progress or 1) >= 1 and (P.hud.Visible or deployOn) and not td
     if not S or not top.Visible then
       for _, m in pairs(marks) do m.bb.Enabled = false end
       tip.Visible = false
@@ -596,7 +598,7 @@ function Hud.init(G)
           m.tries += 1
           ground(m)
         end
-        local on = not s.locked and s.act ~= false and not G.scopeOn   -- 只标当前阶段能占的
+        local on = not s.locked and s.act ~= false and not G.scopeOn and not td   -- 只标当前阶段能占的；试驾场里不标
         m.bb.Enabled = on
         if on then
           m.l.TextColor3 = (s.owner == mine) and WHITE or teamColor(s.owner):Lerp(WHITE, 0.2)

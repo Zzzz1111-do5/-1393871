@@ -229,6 +229,7 @@ function Operation.init(G)
       and not (G.menuShown and G.menuShown()) and not G.factionOpen
       and not (G.tabletState and G.tabletState.open)
       and not (G.killcamOn and G.killcamOn())
+      and not (G.inTestDrive and G.inTestDrive())   -- 试驾场里不弹主战场的作战简报、占点进度（用户 11-25 晚：训练场一堆据点占领）
     if not canBrief then
       brief.Visible, localPanel.Visible, lastPoint = false, false, nil
       if s and s.phase ~= "battle" then startedAt = nil end

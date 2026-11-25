@@ -270,7 +270,8 @@ function WtBattle.init(G)
   end
   G.wtResultsOn = function()   -- UI.lua 原来的结算卡看这个收起
     local S = G.S
-    return S ~= nil and S.phase == "end" and not S.pve and S.wt ~= nil
+    -- 还在试驾场里：这一局的结算（任务失败 / 完成）不弹（用户 11-25 晚「训练场为什么会有missionfailed」）
+    return S ~= nil and S.phase == "end" and not S.pve and S.wt ~= nil and not (G.inTestDrive and G.inTestDrive())
   end
   local function stepResults(S)
     local on = G.wtResultsOn()
