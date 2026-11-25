@@ -101,7 +101,7 @@ function B.panelAmmo(kind, wid)
 end
 B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
-B.MAXR = 5000   -- 激光测距、弹在空中最多飞的距离（米）
+B.MAXR = 8000   -- 激光测距、弹在空中最多飞的距离（米）；11-25 用户「全部都做」③：5 → 8 公里（战雷里炮弹一直飞到落地，沙海 12.7 公里见方）
 
 -- 这门炮的这种弹（不认识的弹给默认那种）
 function B.ammo(wid, key)

@@ -227,6 +227,17 @@ function Armor.init(G)
 
   local TM = require(RS:WaitForChild("TankMods"))
   -- mods：改装（TankMods，客户端改装界面选的；AI 的车、没选的用默认）——型号数据按它改一份（车速、武器表），爆反、主动防御按它装
+  -- 残骸（用户 11-25「全部都做」②：战雷里打爆的车整局留在原地，烧黑的车壳能当掩体）：留到这一局结束；
+  --   一局里太多了（Config.Wt.wreckMax，默认 30 辆）最早的那辆先收——几十辆车壳的零件客户端也要画
+  local wrecks = {}
+  local function keepWreck(e)
+    table.insert(wrecks, e)
+    local cap = (Config.Wt and Config.Wt.wreckMax) or 30
+    while #wrecks > cap do
+      local old = table.remove(wrecks, 1)
+      if old then G.removeEnt(old) end
+    end
+  end
   local function newVehicle(team, id, base, P, mods)
     local d = TM.applyDef(VD.get(id), mods)
     local c = CATS[d.cat]
@@ -292,7 +303,7 @@ function Armor.init(G)
           if x == self then table.remove(vehicles, i) break end
         end
       end)
-      task.delay(25, function() G.removeEnt(self) end)
+      keepWreck(self)   -- 残骸整局留着（战雷：烧黑的车壳当掩体），不再 25 秒就收走
     end
     table.insert(vehicles, e)
     return e
@@ -520,7 +531,7 @@ function Armor.init(G)
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-          life = w.range / w.speed + 0.5 })
+          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
@@ -688,6 +699,8 @@ function Armor.init(G)
     if e then unseat(P, e, false) end
   end)
   G.on("roundStart", function()
+    for _, e in ipairs(wrecks) do G.removeEnt(e) end   -- 上一局留下的残骸
+    table.clear(wrecks)
     for _, e in ipairs(vehicles) do G.removeEnt(e) end
     for _, b in ipairs(lcacs) do G.removeEnt(b) end
     vehicles, lcacs = {}, {}

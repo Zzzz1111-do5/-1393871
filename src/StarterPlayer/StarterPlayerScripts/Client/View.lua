@@ -744,6 +744,7 @@ function View.init(G)
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
+      v.wreckT = os.clock()
       -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
       if d.turret and not v.toss then
         local seed = tonumber(v.id) or 0
@@ -769,6 +770,20 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+    end
+    -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
+    if v.wreckT and not v.burnt2 then
+      local age = os.clock() - v.wreckT
+      if age > 40 and not v.burnt1 then
+        v.burnt1 = true
+        if M.fire then M.fire.Rate = 6 end
+        if M.black then M.black.Rate = 5 end
+      elseif age > 70 then
+        v.burnt2 = true
+        if M.fire then M.fire.Rate = 0 end
+        if M.black then M.black.Rate = 1.2 end
+        if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      end
     end
   end
 
