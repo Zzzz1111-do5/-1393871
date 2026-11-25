@@ -643,6 +643,37 @@ for wid, a in pairs(ARH) do
   if w then w.act, w.notch = a.act, a.notch end
 end
 
+-- 照真实的速度、射程（用户 11-25「全部都做」⑩，B 挑刺 9：原来照 MWT 的尺度——歼-20 开加力最快约 600 公里 / 时、霹雳-15 约 270 米 / 秒、
+--   射程一公里多）：上面的数是原来手调的（各型之间的比例照旧），这里统一放大——喷气机军推 / 加力速度 ×2.25（低空 1300 公里 / 时上下）、失速 ×1.7、
+--   直升机最大平飞 ×2.4（约 290 公里 / 时）；空空、空地导弹速度 ×3.5（雷达弹约 3 马赫）、射程 ×6、能飞多久 ×1.8、发动机烧的时间 ×1.3
+--   （转弯按过载 w.g 限，快了转弯半径自然变大）；火箭弹速度、射程 ×2.5；机载雷达搜索 / 锁定距离、雷达弹开导引头的距离 ×2.5。
+--   作战区 ±Map.PLAY（沙海 3.7 万格，约 ±13 公里）够喷气机按真速度飞；推重比（accel）不变（A 的飞行手感）
+AirDefs.REAL = { jet = 2.25, stall = 1.7, heli = 2.4, mslSpeed = 3.5, mslRange = 6, mslLife = 1.8, mslBurn = 1.3, rkt = 2.5, radar = 2.5 }
+do
+  local K = AirDefs.REAL
+  for _, d in pairs(D) do
+    if d.kind == "jet" then
+      for _, f in ipairs({ "vMil", "vAB" }) do if d[f] then d[f] = d[f] * K.jet end end
+      if d.stall then d.stall = d.stall * K.stall end   -- 失速只放大 1.7 倍（歼-20 约 230 公里 / 时）：再大了进近太快，1.3 公里的跑道停不下
+    elseif d.kind == "heli" then
+      if d.vMax then d.vMax = d.vMax * K.heli end
+    end
+  end
+  for _, w in pairs(AirDefs.W) do
+    if (w.kind == "aam" or w.kind == "agm") and not w.nuke and not w.hyper then
+      w.speed = w.speed * K.mslSpeed
+      w.range = w.range * K.mslRange
+      if w.life then w.life = w.life * K.mslLife end
+      if w.burn then w.burn = w.burn * K.mslBurn end
+      if w.act then w.act = w.act * K.radar end
+    elseif w.kind == "rkt" then
+      w.speed = w.speed * K.rkt
+      w.range = w.range * K.rkt
+    end
+  end
+  for _, r in pairs(RADAR) do r.range, r.lock = r.range * K.radar, r.lock * K.radar end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
@@ -908,6 +939,10 @@ B.AMMO = {
     vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
   jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
     vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
+  -- 炮射导弹（用户 11-25「全部都做」⑥）：9M119M「反射」——从 125 炮里打出去，激光驾束（这里按炮长瞄准线导引，同 Armor.lua G.atgmStep），
+  --   350 米 / 秒、5 公里、串联破甲约 850 毫米；cls atgm：Armor.lua 开火时发导弹，不按炮弹的弹道
+  refleks = { cls = "atgm", name = "9M119M Refleks", sym = "导弹", v0 = 350, k = 0, bs = 900, tr = false, ce = true, range = 5000, turn = 2.2,
+    vs = { inf = 0.8, light = 1.3, armor = 1.0, fort = 1.2 }, splash = 1.0 },
   -- 科技树换真模型的几型车（用户 11-25「需要模型自己找」）按真车的弹：
   bm42 = { cls = "ap", name = "3BM42 Mango", sym = "穿甲", v0 = 1715, k = 3.6e-5, bs = 1200, tr = true,      -- T-80U：「芒果」钨合金长杆尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
@@ -936,9 +971,9 @@ B.AMMO = {
 B.GUN = {
   gun120 = { "m829a3", "m830", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
   gun125 = { "dtc10", "heat125", "he125", "jet125" },
-  gun125r = { "bm60", "bk31", "of26", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
+  gun125r = { "bm60", "bk31", "of26", "refleks", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
   gun105 = { "m900", "m456", "jet105" },
-  gun125u = { "bm42", "bk18m", "of26", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
+  gun125u = { "bm42", "bk18m", "of26", "refleks", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
   gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B
   gun120l55 = { "dm53", "dm12", "jet120" },           -- 豹 2A6
   gun120l44 = { "dm33", "dm12", "jet120" },           -- 豹 2A4
@@ -983,6 +1018,7 @@ end
 -- 超高角（弧度）：打 xm 米远、瞄准线仰角 los（弧度）时炮要比瞄准线高多少（下坠只算垂直瞄准线那一份：× cos los）
 function B.superElev(a, xm, los)
   if xm < 1 then return 0, 0 end
+  if a.cls == "atgm" then return 0, xm / math.max(a.v0, 1) end   -- 炮射导弹（⑥）：顺着瞄准线飞，不抬炮
   local t, drop = B.flight(a, xm)
   return math.atan(drop * math.cos(los or 0) / xm), t
 end
@@ -1077,7 +1113,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-25 13:45 eb28668"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 14:10 b7a3292"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -1415,6 +1451,10 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 -- 战斗等级配对（Tech.lua，用户 11-25「都要做」）：一局的战斗等级 = 准备阶段在线真人出击阵容里最高的那辆（没人按 br0）；
 --   能出的车最高到这一局 + brUp（战雷：最多碰到比自己高 1.0 的）；电脑开的车从科技树里挑 [这一局 − brUp, 这一局]；
 --   真人不够一队 teamSize 个，电脑车补（每队最多 aiMax 辆，AIVeh.lua）
+-- 车组语音（客户端 WtVoice.lua，用户 11-25「全部都做」⑬）：每一句可以配自己上传的录音（rbxassetid://…）；没配的用 Roblox 的文字转语音读英文；
+--   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
+--   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
+Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
@@ -7445,6 +7485,35 @@ add("wt.noGun", "主炮打不了：炮长阵亡或炮闩 / 炮管损毁", "Main 
 add("wt.fixing", "正在维修，暂时不能开炮", "Repairing — main gun unavailable")
 add("wtt.crew", "车组 {1} / {2}", "Crew {1} / {2}")
 add("wtt.est", "车长估距…", "Estimating…")
+add("wt.kcTitle", "被击毁", "DESTROYED")
+add("wt.spec", "观战队友", "Spectate team")
+add("wt.specBack", "回机库", "Back to hangar")
+add("wt.specOn", "观战：{1}（← → 换人，Esc 回机库）", "Spectating {1} (← → switch, Esc back)")
+add("wt.specNone", "没有活着的队友可看", "No teammates to watch")
+add("wtr.menu", "无线电（按数字选，O 关）", "Radio (press a number, O closes)")
+add("wtr.need", "需要支援！{1}", "Need support! {1}")
+add("wtr.follow", "跟我来！", "Follow me!")
+add("wtr.ok", "收到！", "Roger!")
+add("wtr.no", "不行！", "Negative!")
+add("wtr.retreat", "撤退！", "Fall back!")
+add("wtr.enemy", "注意：{1} 有敌人！", "Enemy spotted at {1}!")
+add("wtr.attack", "进攻据点 {1}！", "Attack point {1}!")
+add("wtr.defend", "守住据点 {1}！", "Defend point {1}!")
+add("wtr.line", "【无线电】{1}：{2}", "[Radio] {1}: {2}")
+add("wtr.pinged", "{1} 标记了 {2}", "{1} marked {2}")
+add("wta2.title", "配弹", "Ammo loadout")
+add("wta2.sum", "带 {1} / {2} 发", "{1} / {2} rounds")
+add("wta2.rack", "待发弹架 {1} 发", "ready rack {1}")
+add("wta2.less", "少带弹：弹架不容易殉爆", "fewer rounds: less ammo detonation")
+add("wta2.locked", "没研究", "not researched")
+add("wta2.def", "默认", "Default")
+add("wta2.half", "带一半", "Half")
+add("wta2.close", "好了", "Done")
+add("wta2.noGun", "这辆车没有可配的炮弹", "No shells to configure")
+add("wtt.rack", "待发 {1}/{2}", "Ready {1}/{2}")
+add("wtt.rackOut", "待发弹打空：车体取弹", "Ready rack empty")
+add("wt.supAmmo", "据点补给：弹药 +1", "Resupply: ammo +1")
+add("wt.supCrew", "补充乘员：{1}", "Crew replenished: {1}")
 add("wtt.rkey", "R 测距", "R range")
 -- 战雷式对局（WtMatch.lua / WtBattle.lua）：重生点数 SP、出击阵容、结算
 add("wt.lineupFull", "出击阵容已满（这局最多开 {1} 种车）：只能开阵容里的车", "Your lineup is full ({1} vehicle types per battle): only lineup vehicles can spawn")
@@ -7509,6 +7578,11 @@ add("wta.p.pilot", "飞行员", "pilot")
 add("wta.p.ctrl", "操纵面", "control surfaces")
 add("wta.p.rotor", "旋翼", "main rotor")
 add("wta.e.wingLOff", "左翼断了", "left wing off")
+add("wta.e.overspeed", "超速：机翼撕掉了", "overspeed: wing torn off")
+add("wta.e.overG", "过载过大：机翼断了", "over-G: wing broke")
+add("wta.e.gearOff", "起落架超速：坏了", "gear overspeed: broken")
+add("wta.warnSpeed", "超速！收油门", "OVERSPEED! throttle back")
+add("wta.warnG", "过载过大！松杆", "OVER-G! ease off")
 add("wta.e.wingROff", "右翼断了", "right wing off")
 add("wta.e.tailOff", "尾翼打断", "tail destroyed")
 add("wta.e.engOff", "发动机打坏", "engine destroyed")
@@ -13569,6 +13643,11 @@ VehDefs.W = {
   -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
   gau8 = { kind = "shell", dmg = 52, speed = 1250, drop = 0.18, splash = 3.5, rate = 0.05, mag = 512, reload = 6, reserve = 1536, range = 2200,
     vs = { inf = 1, light = 1.1, armor = 0.32, air = 1.6, ship = 0.4, fort = 0.9 }, fx = "ac", cal = 0.22 },
+  -- 反坦克导弹（用户 11-25「全部都做」⑥：战雷里步战车都带）：半自动有线制导——炮长十字线压着目标，导弹自己往瞄准线上靠（Armor.lua G.atgmStep）
+  --   陶式 2A（布雷德利，发射箱两枚、车里再带五枚）：280 米 / 秒、3750 米、串联破甲 900 毫米；
+  --   9M14「婴儿」（BMP-1，炮上导轨一枚、车里四枚）：120 米 / 秒、3000 米、400 毫米，又慢又难打
+  tow2 = { kind = "atgm", dmg = 900, speed = 784, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
+  malyutka = { kind = "atgm", dmg = 600, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
     vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
@@ -13742,7 +13821,7 @@ D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear =
   gun = { pivot = V(0.1, 0.54, -1.72), len = 4.8, cal = 0.22 }, coax = V(0.6, 0.5, -1.9),
   sight = V(-1.0, 1.3, -0.9),
   sightZoom = { day = { 6 }, th = { 6.7 } },   -- 1PN22M1 炮长瞄准镜：昼光 6 倍、夜视 6.7 倍
-  weapons = { "gun73", "coax" }, seats = 8 })
+  weapons = { "gun73", "malyutka", "coax" }, seats = 8 })
 D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 51.3, accel = 4.4, rev = 15.6, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
@@ -13750,7 +13829,7 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   sight = V(-1.5, 1.7, -1.8),
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
+  weapons = { "ac30", "tow2", "coax" }, seats = 6 })
 
 ---------------------------------------------------------------- 装甲车（轮式）
 
@@ -14437,6 +14516,7 @@ end
 -- 坦克炮弹（Ballistics.AMMO 的键）：p0 炮口处、fall 每公里掉多少（脱壳穿甲弹）、t 类型（ke 动能 / ce 聚能 / he 杀爆）、
 --   spall 破片锥半角（度）、n 破片数、core 弹芯 / 射流往里钻多远（米）、tandem 串联装药（爆反挡不住）
 W.AMMO = {
+  refleks = { p0 = 850, t = "ce", spall = 20, n = 14, core = 2.6, tandem = true },   -- 9M119M「反射」炮射导弹
   m829a3 = { p0 = 800, fall = 30, t = "ke", spall = 16, n = 16, core = 3.2 },
   m830 = { p0 = 600, t = "ce", spall = 20, n = 12, core = 2.4 },
   m830a1 = { p0 = 500, t = "ce", spall = 22, n = 12, core = 2.0 },
@@ -14473,7 +14553,9 @@ W.WPN = {
   vulcan = { p0 = 30, fall = 20, t = "ke", spall = 18, n = 2, core = 0.6 },
   gau8 = { p0 = 75, fall = 25, t = "ke", spall = 18, n = 5, core = 1.4 },      -- A-10 的 30 毫米贫铀穿甲弹
   gun100 = { p0 = 40, t = "he", spall = 40, n = 18, core = 0, blast = 2.2 },    -- BMP-3 的 100 毫米榴弹
-  gun73 = { p0 = 300, t = "ce", spall = 20, n = 10, core = 1.8 },             -- BMP-1 的 73 毫米 PG-15V 破甲弹
+  gun73 = { p0 = 300, t = "ce", spall = 20, n = 10, core = 1.8 },
+  tow2 = { p0 = 900, t = "ce", spall = 20, n = 14, core = 2.6, tandem = true },   -- 陶式 2A 串联破甲（前级引爆爆反）
+  malyutka = { p0 = 400, t = "ce", spall = 20, n = 10, core = 1.8 },              -- 9M14「婴儿」             -- BMP-1 的 73 毫米 PG-15V 破甲弹
   hmg = { p0 = 25, fall = 10, t = "ke", spall = 10, n = 1, core = 0.4 },       -- 12.7 毫米穿甲弹
   rpg = { p0 = 500, t = "ce", spall = 22, n = 10, core = 1.8 },                -- 火箭筒（RPG-7 / PF-98 一类的串联破甲）
   c4 = { p0 = 120, t = "he", spall = 40, n = 14, core = 0, blast = 2.6 },
@@ -14873,12 +14955,46 @@ return M
 ]]></ProtectedString>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="113">
+        <Properties>
+          <string name="Name">WtSkins</string>
+          <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（共用）——涂装、贴花（用户 11-25「全部都做」⑯：战雷里每辆车能换涂装、贴战术号码和国徽）
+--   CAMO：零件拼的车（没导入原模型）直接按 base / dark / light 上色（VehModels.build 的 paint）；导入的原模型有自己的贴图，
+--     只能把贴图整体乘一个色调（SurfaceAppearance.Color）——tint 是那个色调（冬季这种要变白的，乘色调做不到，原模型上看着只是灰一点）
+--   贴花：战术号码（0～999，炮塔两侧白色模板字）、国徽（按系：中俄红星、美军白星、德军铁十字、日本红圆）——客户端 View.lua 贴
+local C = Color3.fromRGB
+local S = {}
+
+S.ORDER = { "std", "desert", "wood", "winter", "urban", "nato" }
+S.CAMO = {
+  std = { zh = "原厂", en = "Factory" },
+  desert = { zh = "沙漠", en = "Desert", base = C(196, 170, 120), dark = C(150, 124, 84), light = C(220, 200, 156), tint = C(255, 232, 186) },
+  wood = { zh = "林地", en = "Woodland", base = C(86, 98, 62), dark = C(52, 60, 38), light = C(120, 112, 80), tint = C(206, 232, 190) },
+  winter = { zh = "冬季", en = "Winter", base = C(220, 224, 226), dark = C(150, 156, 160), light = C(240, 242, 244), tint = C(236, 240, 244) },
+  urban = { zh = "城市灰", en = "Urban grey", base = C(116, 120, 122), dark = C(72, 76, 78), light = C(160, 164, 166), tint = C(206, 210, 214) },
+  nato = { zh = "北约三色", en = "NATO 3-tone", base = C(70, 84, 56), dark = C(36, 38, 34), light = C(94, 78, 56), tint = C(214, 224, 198) },
+}
+-- 国徽（字形；颜色）：按科技树的系（键的前缀）
+S.EMB = {
+  cn = { "★", C(222, 40, 36) }, ru = { "★", C(210, 32, 32) }, us = { "★", C(240, 240, 240) },
+  de = { "✠", C(20, 20, 20) }, jp = { "●", C(214, 32, 40) },
+}
+function S.natOf(treeKey, team)
+  local n = type(treeKey) == "string" and string.match(treeKey, "^(%a%a)_") or nil
+  if n and S.EMB[n] then return n end
+  return (team == "def") and "us" or "cn"
+end
+
+return S
+]]></ProtectedString>
+        </Properties>
+      </Item>
     </Item>
-    <Item class="Folder" referent="113">
+    <Item class="Folder" referent="114">
       <Properties>
         <string name="Name">ServerScriptService</string>
       </Properties>
-      <Item class="Script" referent="114">
+      <Item class="Script" referent="115">
         <Properties>
           <string name="Name">Main</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -15209,7 +15325,7 @@ end)
 print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(Config.Build) .. "）服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="115">
+        <Item class="ModuleScript" referent="116">
           <Properties>
             <string name="Name">AIVeh</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -15599,6 +15715,7 @@ function AIVeh.init(G)
     local d, w, st = e.def, VD.W[wid], e.wst[wid]
     local t = now()
     if not st or t < st.next then return end
+    if w and w.kind == "atgm" then return end   -- 反坦克导弹（⑥）要人一直压着十字线导引：电脑车不用
     if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害：炮长没了、炮闩坏了
     if st.mag <= 0 then
       if st.reserve <= 0 then return end
@@ -15795,7 +15912,7 @@ return AIVeh
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="116">
+        <Item class="ModuleScript" referent="117">
           <Properties>
             <string name="Name">Air</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -16334,9 +16451,15 @@ function Air.init(G)
         dir = nd
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
-      if dist < fuse then
-        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6, c = "msl" }) return true end
-        G.explode(s.pos, w, s.src)
+      -- 这一步里离目标最近是多远（导弹、目标都在动）：C 11-25 ⑩ 导弹按真实速度飞（一步四五十格），只看步头会从近炸圈里穿过去
+      local dvR = dir * spd - tgtVel(t)
+      local rel = s.pos - tp
+      local tt = math.clamp(-rel:Dot(dvR) / math.max(dvR:Dot(dvR), 1e-6), 0, dt)
+      local dmin = (rel + dvR * tt).Magnitude
+      if dist < fuse or dmin < fuse then
+        local bp = (dist < fuse) and s.pos or (s.pos + dir * spd * tt)
+        if t and t.decoy then G.fx({ k = "boom", p = bp, s = 0.6, c = "msl" }) return true end
+        G.explode(bp, w, s.src)
         return true
       end
     end
@@ -16914,7 +17037,7 @@ return Air
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="117">
+        <Item class="ModuleScript" referent="118">
           <Properties>
             <string name="Name">Aps</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防护系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；用户 11-22 晚：改装体系照真实的系统做）
@@ -17052,7 +17175,7 @@ return Aps
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="118">
+        <Item class="ModuleScript" referent="119">
           <Properties>
             <string name="Name">Armor</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -17322,6 +17445,7 @@ function Armor.init(G)
     if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     if G.wtSetup then G.try("战雷伤害", G.wtSetup, e) end   -- Wt.lua：乘员、模块各自的血（战雷式伤害）
+    if G.wtAmmoInit then G.try("配弹", G.wtAmmoInit, e, nil) end   -- Wt.lua ④：每种弹几发（默认配；玩家出车后 WtMatch 按他配的再配一遍）、待发弹架
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -17541,6 +17665,38 @@ function Armor.init(G)
     end
   end
 
+  -- 半自动有线制导（反坦克导弹、炮射导弹，⑥）：导弹往「炮长瞄准线」上靠——线从发射车的炮口顺着现在的炮管方向出去
+  --   （开车的人转炮塔、俯仰炮管，服务器每次同步都收到 e.ty / e.gp）；出筒先加速，离线越远拐得越急（转弯角速度有上限）；
+  --   发射车没了、导线断了（飞出射程）就直着飞。每 0.15 秒把位置、速度发给客户端（shotFix），别人看到的弹道和服务器一样
+  function G.atgmStep(s, dt)
+    s.age = (s.age or 0) + dt
+    local sp = s.vel.Magnitude
+    local vmax = s.vmax or sp
+    sp = math.min(vmax, sp + vmax * 1.2 * dt)
+    local dir = (sp > 0.01 and s.vel.Unit) or Vector3.new(0, 0, -1)
+    local e = s.byEnt and G.entById[s.byEnt]
+    if e and e.alive and e.def and s.age > 0.2 then
+      local d = e.def
+      local mz = VD.muzzle(d, baseOf(e), e.ty, e.gp, nil, e.my, e.mp)
+      local o, ld = mz.Position, mz.LookVector
+      local along = math.max(0, (s.pos - o):Dot(ld))
+      local want = ((o + ld * (along + sp * 0.4)) - s.pos)
+      if want.Magnitude > 0.01 then
+        want = want.Unit
+        local ang = math.acos(math.clamp(dir:Dot(want), -1, 1))
+        local maxA = (s.turn or 2.4) * dt
+        if ang > 1e-4 then dir = dir:Lerp(want, math.min(1, maxA / ang)).Unit end
+      end
+    end
+    s.vel = dir * sp
+    s.fixT = (s.fixT or 0) - dt
+    if s.fixT <= 0 then
+      s.fixT = 0.15
+      G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel })
+    end
+    return false
+  end
+
   local function fire(P, e, wid, dir, aim, msg)
     if G.round.phase ~= "battle" or e.locked then return end
     local d = e.def
@@ -17574,6 +17730,11 @@ function Armor.init(G)
         local i = list and table.find(list, am)
         if i and i > nA then am = list[1] end
       end
+      if G.wtAmmoTake then   -- ④ 配弹：这种弹打光了换还有的那一种；一发都没了就不打
+        local got = G.wtAmmoTake(e, wid, am, nA)
+        if got == false then return end
+        am = got
+      end
       local ww, a = weaponOf(wid, w, am)
       if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
         local pw = ww.pelletW
@@ -17582,6 +17743,10 @@ function Armor.init(G)
           ww.pelletW = pw
         end
         for _ = 1, a.pellets do G.botShot(mz.Position, mz.Position + gdir * pw.range, pw, S, { e.model, P.char }, a.coneDeg) end
+      elseif a and a.cls == "atgm" then   -- 炮射导弹（9M119M「反射」，⑥）：从炮口出去，按炮长瞄准线导引（G.atgmStep）
+        local vm = a.v0 * BAL.S
+        G.launch({ kind = "missile", pos = mz.Position + gdir * 2, vel = gdir * vm * 0.7, w = ww, src = S, ignore = { e.model, P.char },
+          life = (a.range or 5000) * BAL.S / vm + 2, step = G.atgmStep, byEnt = e.id, vmax = vm, turn = a.turn or 2.2, age = 0 })
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
@@ -17606,6 +17771,14 @@ function Armor.init(G)
         step = G.airGuideMissile, age = 0, tgt = tg, tgId = tg.id, byEnt = e.id })
       if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
       G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
+    elseif w.kind == "atgm" then
+      -- 反坦克导弹（用户 11-25「全部都做」⑥：布雷德利的陶式、BMP-1 的「婴儿」）：从炮塔侧面的发射架出去，半自动有线制导——
+      --   炮长的十字线一直压着目标，导弹自己往瞄准线上靠（G.atgmStep）；速度、射程照真弹（VehDefs.W.tow2 / malyutka）
+      e.atgmSide = -(e.atgmSide or 1)
+      local lp = (mz * CF(e.atgmSide * 1.2, 0.6, 1.0)).Position
+      G.launch({ kind = "missile", pos = lp, vel = gdir * w.speed * 0.5, w = w, src = S, ignore = { e.model, P.char }, life = w.range / w.speed + 3,
+        step = G.atgmStep, byEnt = e.id, vmax = w.speed, turn = w.turn or 2.4, age = 0 })
+      G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
     elseif w.kind == "arty" then
       if typeof(aim) ~= "Vector3" then return end
       local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)
@@ -17620,6 +17793,7 @@ function Armor.init(G)
     st.mag -= 1
     local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：别人凑合装填，慢六成
     if w.kind == "shell" and e.crewRel then rk *= e.crewRel end   -- 乘员技能「装填」（WtCrew，Tech.lua 出车时写的）
+    if w.kind == "shell" and BAL.GUN[wid] and G.wtRackK then rk *= G.wtRackK(e) end   -- ④ 待发弹架空了：从车体弹架里拿，装得慢
     st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
       local n = math.min(w.mag, st.reserve)
@@ -17772,7 +17946,7 @@ return Armor
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="119">
+        <Item class="ModuleScript" referent="120">
           <Properties>
             <string name="Name">Battle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -18263,7 +18437,7 @@ return Battle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="120">
+        <Item class="ModuleScript" referent="121">
           <Properties>
             <string name="Name">Bots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -19487,7 +19661,7 @@ return Bots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="121">
+        <Item class="ModuleScript" referent="122">
           <Properties>
             <string name="Name">Depots</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -19994,7 +20168,7 @@ return Depots
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="122">
+        <Item class="ModuleScript" referent="123">
           <Properties>
             <string name="Name">Economy</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——金币（用户 11-23：「把很多坦克飞机直升机搞成金币解锁吧 然后两边都可以用对方的载具 然后金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
@@ -20145,7 +20319,7 @@ return Economy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="123">
+        <Item class="ModuleScript" referent="124">
           <Properties>
             <string name="Name">Ents</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -20591,7 +20765,7 @@ return Ents
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="124">
+        <Item class="ModuleScript" referent="125">
           <Properties>
             <string name="Name">Era</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -20727,7 +20901,7 @@ return Era
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="125">
+        <Item class="ModuleScript" referent="126">
           <Properties>
             <string name="Name">FOB</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——沙海两边的主基地（前进作战基地 FOB + 机场，围在一起）
@@ -21942,7 +22116,7 @@ return FOB
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="126">
+        <Item class="ModuleScript" referent="127">
           <Properties>
             <string name="Name">Forts</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -23170,7 +23344,7 @@ return Forts
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="127">
+        <Item class="ModuleScript" referent="128">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -23377,7 +23551,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="128">
+        <Item class="ModuleScript" referent="129">
           <Properties>
             <string name="Name">Imports</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -23515,7 +23689,7 @@ return Imports
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="129">
+        <Item class="ModuleScript" referent="130">
           <Properties>
             <string name="Name">Kit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克加装件（TankMods 的 slat / belly / eng / ew / cam，用户 11-22 晚：「要能有一整套的坦克改装体系」「用现实中的标准」）
@@ -23669,7 +23843,7 @@ return Kit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="130">
+        <Item class="ModuleScript" referent="131">
           <Properties>
             <string name="Name">Nav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -23901,7 +24075,7 @@ return Nav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="131">
+        <Item class="ModuleScript" referent="132">
           <Properties>
             <string name="Name">Navy</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -24906,7 +25080,7 @@ return Navy
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="132">
+        <Item class="ModuleScript" referent="133">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -25211,7 +25385,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="133">
+        <Item class="ModuleScript" referent="134">
           <Properties>
             <string name="Name">Passes</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -25295,7 +25469,7 @@ return Passes
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="134">
+        <Item class="ModuleScript" referent="135">
           <Properties>
             <string name="Name">Pve</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——PvE 关卡（用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）
@@ -25480,7 +25654,7 @@ return Pve
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="135">
+        <Item class="ModuleScript" referent="136">
           <Properties>
             <string name="Name">Revive</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
@@ -25671,7 +25845,7 @@ return Revive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="136">
+        <Item class="ModuleScript" referent="137">
           <Properties>
             <string name="Name">Rewind</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -25906,7 +26080,7 @@ return Rewind
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="137">
+        <Item class="ModuleScript" referent="138">
           <Properties>
             <string name="Name">Round</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -27269,7 +27443,7 @@ return Round
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="138">
+        <Item class="ModuleScript" referent="139">
           <Properties>
             <string name="Name">Squads</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
@@ -27401,7 +27575,7 @@ return Squads
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="139">
+        <Item class="ModuleScript" referent="140">
           <Properties>
             <string name="Name">Store</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -27508,7 +27682,7 @@ return Store
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="140">
+        <Item class="ModuleScript" referent="141">
           <Properties>
             <string name="Name">Tactical</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -27734,7 +27908,7 @@ return Tactical
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="141">
+        <Item class="ModuleScript" referent="142">
           <Properties>
             <string name="Name">Tech</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（服务器）——科技树：研究、购买、出击阵容、出击（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
@@ -28385,15 +28559,20 @@ function Tech.init(G)
       P.padT = 0
       P.treeSpawn, P.wtKey = true, key
       local okS, e
-      if air and G.wtModeNow and G.wtModeNow() == "ab" and G.spawnAircraftAir then
-        -- 街机：飞机直接在空中出生——本队机场上空 airSpawnH 格，机头朝据点那一片的中间，按军推速度的八成飞
+      -- 空中出生：街机（D）；C 11-25「全部都做」⑫：历史、全真也是（战雷陆战的固定翼都在空中出生，直升机才在停机坪）——
+      --   历史 / 全真高一半、往本队后方退 1500 格（离战场远一点，爬升、找目标要时间）
+      local adef = air and AD.get(vid) or nil
+      local mode = G.wtModeNow and G.wtModeNow() or "ab"
+      if air and G.spawnAircraftAir and not (adef and adef.kind == "heli") then
         okS, e = pcall(function()
           local c = p.base.Position
           local mx, mz, n = 0, 0, 0
           for _, pt in ipairs((G.Map and G.Map.POINTS) or {}) do mx += pt.x mz += pt.z n += 1 end
           local look = (n > 0) and Vector3.new(mx / n - c.X, 0, mz / n - c.Z) or Vector3.new(p.base.LookVector.X, 0, p.base.LookVector.Z)
           if look.Magnitude < 1 then look = Vector3.new(0, 0, -1) end
-          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200), c.Z)
+          local far = (mode == "ab") and 0 or 1500
+          local hK = (mode == "ab") and 1 or 1.5
+          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200) * hK, c.Z) - look.Unit * far
           if G.wtSpawnOk and not G.wtSpawnOk(P, vid, "air") then return nil end
           local d = AD.get(vid)
           local ee = G.spawnAircraftAir(P.team, vid, CFrame.lookAt(pos, pos + look.Unit), nil, P, nil, ((d and d.vMil) or 200) * 0.8)
@@ -28448,7 +28627,7 @@ return Tech
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="142">
+        <Item class="ModuleScript" referent="143">
           <Properties>
             <string name="Name">Vehicles</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -28744,7 +28923,7 @@ return Vehicles
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="143">
+        <Item class="ModuleScript" referent="144">
           <Properties>
             <string name="Name">Weapons</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -29495,7 +29674,7 @@ return Weapons
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="144">
+        <Item class="ModuleScript" referent="145">
           <Properties>
             <string name="Name">World</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -32325,7 +32504,7 @@ return World
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="145">
+        <Item class="ModuleScript" referent="146">
           <Properties>
             <string name="Name">Wt</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——战雷式的车辆伤害（服务器；用户 11-24「把整个游戏做成战雷」，四项全勾：乘员和模块伤害 + X 光回放也要）
@@ -32450,7 +32629,7 @@ function Wt.init(G)
     if not S then return true end
     local VD = require(RS:WaitForChild("VehDefs"))
     local w = VD.W[wid]
-    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") then return S.gun ~= false end
+    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") then return S.gun ~= false end
     return alive(S) > 0 and not S.fixT
   end
   G.wtReloadK = function(e) return (e.wt and e.wt.rel) or 1 end
@@ -32557,6 +32736,9 @@ function Wt.init(G)
           if w and w.kind == "shell" then left += st.mag + st.reserve full += (w.mag or 1) + (w.reserve0 or w.reserve or 30) end
         end
         local frac = (full > 0) and math.clamp(left / full, 0.15, 1) or 1   -- 带的弹越少越不容易殉爆（战雷的「少带弹」）
+        local rl, rf = nil, nil
+        if G.wtRackLeft then rl, rf = G.wtRackLeft(e, c.it.k) end   -- ④ 这一块弹架（待发 / 车体）现在有几发：空了打中也不炸
+        if rl then frac = (rl <= 0) and 0 or math.clamp(rl / rf, 0.15, 1) end
         if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k end
       end
       if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5)) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5)) then
@@ -32627,12 +32809,29 @@ function Wt.init(G)
       local kill = table.clone(payload)
       kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
       kill.kk = P and P.vehicle and P.vehicle.treeKey or nil
+      kill.kid = (P and P.vehicle and P.vehicle.id) or s.byEnt or nil   -- 击杀镜头（⑮，DeathFx.lua）看这辆
       for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
         if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
       end
     end
     G.wtHits = (G.wtHits or 0) + 1   -- 测试用
     G.wtLast = payload
+  end
+
+  -- 弹孔（用户 11-25「全部都做」⑨）：客户端 View.lua 在命中点贴一个焦黑的孔（击穿）/ 灰坑（没击穿）/ 擦痕（跳弹），跟着车体 / 炮塔走
+  --   坐标按车自己的：车体上的按底座系，炮塔上的按炮塔系（W.toTur）——特效晚到零点几秒，车开着也贴得准
+  local function hole(e, res, vel, r, zone)
+    local n = res.Normal
+    if typeof(n) ~= "Vector3" or n.Magnitude < 0.1 then n = -vel end
+    local base = baseOf(e)
+    local lp, ln, ld = base:PointToObjectSpace(res.Position), base:VectorToObjectSpace(n), base:VectorToObjectSpace(vel)
+    local tur = zone == "tur" and e.def.turret ~= nil
+    if tur then
+      local yaw = e.ty or 0
+      lp, ln, ld = W.toTur(e.def, lp, yaw), W.toTurDir(ln, yaw), W.toTurDir(ld, yaw)
+    end
+    local function a3(v3) return { math.floor(v3.X * 100) / 100, math.floor(v3.Y * 100) / 100, math.floor(v3.Z * 100) / 100 } end
+    G.fx({ k = "wtHole", id = e.id, lp = a3(lp), ln = a3(ln), ld = a3(ld), r = r, z = tur or nil })
   end
 
   -- 炮弹、火箭弹、导弹直接打在车上：返回 "ric"（调用方按原来那套弹开）、true（这一发管完了，别再按血量扣）、nil（不是这套管的车）
@@ -32664,6 +32863,7 @@ function Wt.init(G)
       core = 0, zone = zone, face = face }
     local rp = W.ricochet(a.t, ang)
     if rp > 0 and math.random() < rp then
+      hole(e, res, vel, a.t == "ce" and "np" or "ric", zone)
       if a.t == "ce" then   -- 破甲弹太斜：引信不发火 / 射流打不进
         rr.r = "np"
         external(e, p, 30, out, s.src)
@@ -32677,6 +32877,7 @@ function Wt.init(G)
     end
     if pen < eff then
       rr.r = "np"
+      hole(e, res, vel, "np", zone)
       external(e, p, (a.t == "he") and 60 or 45, out, s.src)
       if a.t == "he" and a.blast then   -- 杀爆弹没打穿：冲击波伤车外的零件，装甲很薄时也震伤里面的人
         for _, c in ipairs(S.mods) do
@@ -32693,6 +32894,7 @@ function Wt.init(G)
       return true
     end
     rr.r = "pen"
+    hole(e, res, vel, "pen", zone)
     external(e, p, 60, out, s.src)
     local flags = {}
     inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)
@@ -32837,13 +33039,243 @@ function Wt.init(G)
     msgTo(e, { op = "wtFireOut", ext = true })
     G.wtPush(e)
   end
+
+  ---------------------------------------------------------------- 配弹、待发弹架（用户 11-25「全部都做」④）
+  --   战雷：出车前选每种弹带几发（少带弹 = 少殉爆）；待发弹架（自动装弹机的转盘、西方坦克的炮塔尾舱）里的弹装得快，
+  --   打空了装填手从车体弹架里拿、慢很多；不开炮的时候装填手把待发弹架补满。弹架打空了，打中它也不会殉爆。
+  --   e.amL[wid] = { 弹种 = 几发 }（加起来 = st.mag + st.reserve）；e.rdy / e.rdyCap 待发弹架；属性 AmL、Rdy、RdyCap、RdyK 给客户端
+  local BALs = require(RS:WaitForChild("Ballistics"))
+  local VDa = require(RS:WaitForChild("VehDefs"))
+  local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹：第一种五成多，往后越来越少
+  local function mainGun(e)
+    for _, wid in ipairs(e.def.weapons or {}) do
+      local w = VDa.W[wid]
+      if w and w.kind == "shell" and BALs.GUN[wid] and e.wst and e.wst[wid] then return wid, w, e.wst[wid] end
+    end
+    return nil
+  end
+  local function pushAmmo(e)
+    if not e.model then return end
+    local wid = mainGun(e)
+    local L = wid and e.amL and e.amL[wid]
+    if L then
+      local bits = {}
+      for _, k in ipairs(BALs.GUN[wid]) do table.insert(bits, k .. ":" .. (L[k] or 0)) end
+      e.model:SetAttribute("AmL", table.concat(bits, ","))
+    end
+    if e.rdyCap then
+      e.model:SetAttribute("Rdy", e.rdy)
+      e.model:SetAttribute("RdyCap", e.rdyCap)
+      e.model:SetAttribute("RdyK", (e.rdy > 0) and 1 or e.rdyEmptyK)
+    end
+  end
+  -- P：出车的人（他在机库里配的弹，P.wtAmmo[科技树的键 / 型号]）；nil 按默认配
+  function G.wtAmmoInit(e, P)
+    if not e or not e.alive or not e.wst then return end
+    local wid, w, st = mainGun(e)
+    if not wid then return end
+    local list = BALs.GUN[wid]
+    local cap = (w.mag or 1) + (w.reserve or 0)
+    local nA = e.wtFx and e.wtFx.ammo   -- 科技树改装：原厂只能打前几种
+    local usable = {}
+    for i, k in ipairs(list) do if not nA or i <= nA then table.insert(usable, k) end end
+    local key = e.treeKey or e.def.id
+    local want = P and P.wtAmmo and P.wtAmmo[key]
+    local L = {}
+    local sum = 0
+    if type(want) == "table" then
+      for _, k in ipairs(usable) do
+        local n = math.max(0, math.floor(tonumber(want[k]) or 0))
+        n = math.min(n, cap - sum)
+        L[k] = n
+        sum += n
+      end
+    end
+    if sum <= 0 then   -- 没配过：按默认比例配满
+      local tw = 0
+      for i = 1, #usable do tw += SPLIT[i] or 1 end
+      sum = 0
+      for i, k in ipairs(usable) do
+        L[k] = math.floor(cap * (SPLIT[i] or 1) / tw)
+        sum += L[k]
+      end
+      L[usable[1]] += cap - sum
+      sum = cap
+    end
+    e.amL = e.amL or {}
+    e.amL[wid] = L
+    e.amL0 = table.clone(L)   -- 配好的数（据点补给按它补）
+    st.mag = math.min(w.mag or 1, sum)
+    st.reserve = sum - st.mag
+    local lay = W.prof(e.def).lay
+    if lay == "e3" or lay == "w4" then
+      e.rdyCap = e.def.rdyN or ((lay == "e3") and 22 or 15)   -- 转盘自动装弹机 22 发左右；西方坦克炮塔尾舱的待发弹 15 发左右
+      e.rdyEmptyK = (lay == "e3") and 3 or 1.7                  -- 打空了：自动装弹机的车靠人从车体里拿（很慢）；装填手从车体弹架拿（慢七成）
+      e.rdy = math.min(e.rdyCap, st.reserve)
+    end
+    pushAmmo(e)
+  end
+  -- Armor.lua 开火：这种弹还有吗（打光了换还有的那一种；一发都没有返回 false）
+  function G.wtAmmoTake(e, wid, am, nA)
+    local L = e.amL and e.amL[wid]
+    local list = BALs.GUN[wid]
+    if not L or not list then return am end
+    am = am or list[1]
+    local function usable(k) local i = table.find(list, k) return i ~= nil and (not nA or i <= nA) end
+    if (L[am] or 0) <= 0 or not usable(am) then
+      local alt = nil
+      for _, k in ipairs(list) do if usable(k) and (L[k] or 0) > 0 then alt = k break end end
+      if not alt then return false end
+      am = alt
+    end
+    L[am] -= 1
+    pushAmmo(e)
+    return am
+  end
+  -- Armor.lua 开完一炮：下一发从哪拿——待发弹架还有就照常装，空了慢 rdyEmptyK 倍
+  function G.wtRackK(e)
+    if not e.rdyCap then return 1 end
+    e.lastShot = now()
+    local k = 1
+    if e.rdy > 0 then e.rdy -= 1 else k = e.rdyEmptyK end
+    pushAmmo(e)
+    return k
+  end
+  -- 据点补给补回来的弹（⑧）：补给哪一种——离配好的数差得最多的那种
+  function G.wtAmmoRefill(e, wid, add)
+    local L = e.amL and e.amL[wid]
+    if not L then return end
+    local best, bk = -1, nil
+    for k, n in pairs(L) do
+      local cap0 = (e.amL0 and e.amL0[k]) or 0
+      if cap0 - n > best then best, bk = cap0 - n, k end
+    end
+    bk = bk or BALs.GUN[wid][1]
+    L[bk] = (L[bk] or 0) + add
+    pushAmmo(e)
+  end
+  -- 车体弹架往待发弹架补（不开炮的时候）：据点补给那个每秒的循环里调
+  local function rackStep(e)
+    if not e.rdyCap or e.rdy >= e.rdyCap then return end
+    local wid, w, st = mainGun(e)
+    if not wid then return end
+    local hull = st.reserve - e.rdy
+    local t = now()
+    if hull <= 0 or t - (e.lastShot or -99) < (w.rate or 6) * 1.5 or t < (e.rdyNext or 0) then return end
+    e.rdy += 1
+    e.rdyNext = t + (w.rate or 6) * ((e.rdyEmptyK >= 3) and 2 or 1.2)
+    pushAmmo(e)
+  end
+  -- 这一块弹架里现在有几发、满的时候几发（打中弹架算殉爆用）
+  local function rackLeft(e, k)
+    if not e.rdyCap then return nil end
+    local wid, w, st = mainGun(e)
+    if not wid then return nil end
+    if k == "ammo" then return e.rdy, e.rdyCap end
+    local full = (w.mag or 1) + (w.reserve or 0) - e.rdyCap
+    return math.max(0, st.reserve - e.rdy), math.max(1, full)
+  end
+  G.wtRackLeft = rackLeft
+  -- 机库里配弹（客户端 WtAmmo.lua）：key 科技树的键（或型号），counts = { 弹种 = 几发 }；这一局内记着，下次出这辆车用
+  function G.ACT.wtAmmoSet(P, key, counts)
+    if type(key) ~= "string" or type(counts) ~= "table" then return end
+    local c = {}
+    local n = 0
+    for k, v in pairs(counts) do
+      if type(k) == "string" and BALs.AMMO[k] and type(v) == "number" then c[k] = math.clamp(math.floor(v), 0, 200) n += 1 end
+      if n > 8 then break end
+    end
+    P.wtAmmo = P.wtAmmo or {}
+    P.wtAmmo[key] = c
+  end
+
+  ---------------------------------------------------------------- 据点里补给（用户 11-25「全部都做」⑧）
+  --   战雷：停在自己这队占着的据点里，弹药一发一发补回来、阵亡的乘员一个个补上。这里：车停着（一秒里挪不到 3 格）、
+  --   在己方占着的据点圈里（占领圈的 1.6 倍）——每 4 秒补一发炮弹（机枪、机关炮一次补一个弹匣），每 10 秒补一个阵亡的乘员
+  local SUP = { r = 1.6, ammoT = 4, crewT = 10, still = 3 }
+  local VDs = require(RS:WaitForChild("VehDefs"))
+  local function inOwnPoint(e, p)
+    local CC = Config.Capture or { r = 70, height = 45 }
+    local R2 = (CC.r * SUP.r) ^ 2
+    for _, s in pairs(G.points or {}) do
+      if s.owner == e.team and not s.locked then
+        local dx, dz = p.X - s.x, p.Z - s.z
+        if dx * dx + dz * dz < R2 and math.abs(p.Y - (s.y or p.Y)) < (CC.height or 45) then return true end
+      end
+    end
+    return false
+  end
+  -- 补回来的乘员坐到空着的位子上（之前别人顶上去了的，就补顶上去那个人原来的位子）
+  local function seatFor(S, c)
+    for _, x in ipairs(S.crew) do
+      local r = x.role
+      local cur = S.seat[r]
+      if not cur or cur.hp <= 0 or cur == c then return r end
+    end
+    return c.role
+  end
+  local function supplyStep(e)
+    local p = e.root.CFrame.Position
+    local moved = e.supP and (p - e.supP).Magnitude or 99
+    e.supP = p
+    if moved > SUP.still or not inOwnPoint(e, p) then e.supA, e.supC = nil, nil return end
+    local t = now()
+    e.supA = e.supA or (t + SUP.ammoT)
+    e.supC = e.supC or (t + SUP.crewT)
+    local gotAmmo, gotCrew = false, nil
+    if t >= e.supA then
+      e.supA = t + SUP.ammoT
+      for wid, st in pairs(e.wst or {}) do
+        local w = VDs.W[wid]
+        if w then
+          local full = (w.mag or 0) + (w.reserve or 0)
+          if st.mag + st.reserve < full then
+            local add = (w.kind == "shell" and (w.mag or 1) <= 1) and 1 or (w.mag or 1)   -- 主炮一发一发，机枪 / 机关炮一个弹匣
+            st.reserve = math.min(full - st.mag, st.reserve + add)
+            if G.wtAmmoRefill then G.wtAmmoRefill(e, wid, add) end   -- ④ 配弹：按弹种记的也补
+            gotAmmo = true
+          end
+        end
+      end
+    end
+    local S = e.wt
+    if S and t >= e.supC then
+      e.supC = t + SUP.crewT
+      for _, c in ipairs(S.crew) do
+        if c.hp <= 0 then
+          c.hp = c.max
+          local r = seatFor(S, c)
+          c.seat = r
+          S.seat[r] = c
+          gotCrew = r
+          break
+        end
+      end
+      if gotCrew then G.wtPush(e) end
+    end
+    if gotAmmo or gotCrew then msgTo(e, { op = "wtSupply", ammo = gotAmmo or nil, crew = gotCrew }) end
+  end
+  task.spawn(function()
+    while true do
+      task.wait(1)
+      if G.round and G.round.phase == "battle" and G.points then
+        for _, e in ipairs(G.ents) do
+          if e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+            local okS, err = pcall(supplyStep, e)
+            if not okS then warn("[战雷] 据点补给出错：" .. tostring(err)) end
+            pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
+          end
+        end
+      end
+    end
+  end)
 end
 
 return Wt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="146">
+        <Item class="ModuleScript" referent="147">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④：飞机补齐）
@@ -33004,6 +33436,32 @@ function WtAir.init(G)
     sendMsg(e, src, out)
   end
 
+  -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪）：客户端 Fly.lua 超过极限速度 / 过载门槛 0.8 秒报来——一边机翼撕掉、另一边伤一截；
+  --   起落架放着超速——起落架坏了（属性 WtaGear = false，客户端放不下来）
+  function G.ACT.wtaOver(P, kind)
+    local e = P.vehicle
+    if not e or not e.alive or not e.wta or e.driver ~= P then return end
+    local S = e.wta
+    local t = now()
+    if t < (S.overT or 0) then return end
+    S.overT = t + 2
+    local out = { parts = {}, ev = {} }
+    if (kind == "speed" or kind == "g") and S.p.wingL and S.p.wingR then
+      local k = (math.random() < 0.5) and "wingL" or "wingR"
+      hurtPart(e, k, 9999, nil, out)
+      hurtPart(e, (k == "wingL") and "wingR" or "wingL", 45, nil, out)
+      table.insert(out.ev, 1, (kind == "speed") and "overspeed" or "overG")
+    elseif kind == "gear" and not S.gearBroken then
+      S.gearBroken = true
+      e.model:SetAttribute("WtaGear", false)
+      table.insert(out.ev, "gearOff")
+    else
+      return
+    end
+    push(e)
+    sendMsg(e, nil, out)
+  end
+
   -- 漏油（Air.lua burnFuel 每秒多烧这么多内油）
   function G.wtaLeak(e) return (e.wta and e.wta.leak) or 0 end
 
@@ -33048,7 +33506,7 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="147">
+        <Item class="ModuleScript" referent="148">
           <Properties>
             <string name="Name">WtMatch</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——战雷式对局（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -33126,6 +33584,8 @@ function WtMatch.init(G)
   end
   function G.wtSpawned(P, vid, kind, e)
     if not P or not P.pl or not vid then return end
+    -- ④ 配弹：按他在机库里配的再配一遍（等 Tech.lua 写完改装 e.wtFx、科技树的键 e.treeKey 再配）
+    if e and G.wtAmmoInit then task.defer(function() pcall(G.wtAmmoInit, e, P) end) end
     local lk = keyOf(P, vid)
     if e then e.wtOwner, e.wtVid = P, lk end
     if not on() then return end
@@ -33459,6 +33919,30 @@ function WtMatch.init(G)
     end
   end)
   G.wtSightOf = sightOf   -- 测试用
+
+  ---------------------------------------------------------------- 标点、无线电（用户 11-25「全部都做」⑭，客户端 WtComms.lua）：发给同一队的人
+  local RADIO = { need = true, follow = true, ok = true, no = true, retreat = true, enemy = true, attack = true, defend = true }
+  local function toTeam(P, msg)
+    for pl, Q in pairs(G.P) do
+      if Q.team == P.team then G.R.Drive:FireClient(pl, msg) end
+    end
+  end
+  local function okPos(p) return typeof(p) == "Vector3" and p.X == p.X and math.abs(p.X) < 1e6 and math.abs(p.Z) < 1e6 end
+  function G.ACT.wtPing(P, pos)
+    if not okPos(pos) then return end
+    local t = now()
+    if t < (P.pingT or 0) then return end
+    P.pingT = t + 1.5
+    toTeam(P, { op = "wtPing", p = pos, from = P.pl.DisplayName })
+  end
+  function G.ACT.wtRadio(P, k, arg, pos)
+    if type(k) ~= "string" or not RADIO[k] then return end
+    local t = now()
+    if t < (P.radioT or 0) then return end
+    P.radioT = t + 1.5
+    if type(arg) ~= "string" or #arg > 6 then arg = nil end
+    toTeam(P, { op = "wtRadio", k = k, arg = arg, p = okPos(pos) and pos or nil, from = P.pl.DisplayName })
+  end
 end
 
 return WtMatch
@@ -33467,11 +33951,11 @@ return WtMatch
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="148">
+    <Item class="Folder" referent="149">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="149">
+      <Item class="LocalScript" referent="150">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -33565,7 +34049,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtVoice", "WtComms", "WtCam", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -33638,7 +34122,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="150">
+        <Item class="ModuleScript" referent="151">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -34006,7 +34490,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="151">
+        <Item class="ModuleScript" referent="152">
           <Properties>
             <string name="Name">AirAudio</string>
             <ProtectedString name="Source"><![CDATA[-- 开飞机的提示音、告警音（用户 11-24：「把开飞机的各种 ui 声音做成战雷」）
@@ -34227,7 +34711,7 @@ return M
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -34407,7 +34891,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -35066,7 +35550,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -36685,7 +37169,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -36883,7 +37367,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -37173,7 +37657,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">Bombsight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式轰炸瞄准镜的画面（F7「轰炸机视角」）和 CCRP 目标点的标记
@@ -37392,7 +37876,7 @@ return Bombsight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -37549,7 +38033,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -38132,7 +38616,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -38262,7 +38746,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight；
@@ -38431,7 +38915,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -38599,6 +39083,34 @@ function DeathFx.init(G)
     -- 越来越慢地升高、往后拉（像慢动作）：从死的那一刻的镜头位置出发
     local k = easeOut(u / (S.dur * 0.95))
     local want = S.from:Lerp(f + S.back * (S.dist + 9 * k) + V(0, 3 + 7 * k, 0), smooth(u / 0.9) * 0.35 + 0.65 * k)
+    -- 战雷式击杀镜头（C 11-25「全部都做」⑮）：车被打掉的，先看一秒自己的车，再转去看打你的那辆（WtHud 收到 wtKilled 记下 G.wtKiller）——
+    --   镜头在凶手和你之间、离凶手三十几格、稍高，看着它
+    local K = G.wtKiller
+    if K and os.clock() - K.t < 10 and u > 1.0 and G.viewById then
+      local v = G.viewById(K.id)
+      local km = v and v.model
+      if not km then   -- 飞机、直升机不在 View 里：按实体号在 Ents 里找
+        if not K.em or not K.em.Parent then
+          K.em = nil
+          local ents = workspace:FindFirstChild("Ents")
+          for _, em in ipairs(ents and ents:GetChildren() or {}) do
+            if em:GetAttribute("EntId") == K.id then K.em = em break end
+          end
+        end
+        km = K.em
+      end
+      local okP, kp = false, nil
+      if km and km.Parent then okP, kp = pcall(function() return km:GetPivot().Position end) end
+      if okP and kp then
+        local dir = (focusPoint() - kp)
+        dir = (dir.Magnitude > 1) and dir.Unit or V(0, 0, 1)
+        local kf = kp + V(0, 2, 0)
+        local kwant = kf + dir * 34 + V(0, 9, 0)
+        local blend = smooth((u - 1.0) / 0.6)
+        f = f:Lerp(kf, blend)
+        want = want:Lerp(kwant, blend)
+      end
+    end
     -- 别穿进墙里、地里
     local rp = RaycastParams.new()
     rp.FilterType = Enum.RaycastFilterType.Exclude
@@ -38645,7 +39157,7 @@ function DeathFx.init(G)
     blur.Name = "DeathBlur"
     blur.Size = 0
     blur.Parent = Lighting
-    title.Text = T("death.title")
+    title.Text = (G.hangarActive and G.hangarActive()) and T("wt.kcTitle") or T("death.title")   -- 战雷式（开车、不当步兵）：「被击毁」
     sub.Text = subText()
     gui.Enabled = true
     blackGui.Enabled = true
@@ -38735,7 +39247,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -39233,7 +39745,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -39687,7 +40199,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -41052,7 +41564,7 @@ function Drive.init(G)
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
     if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
-    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
+    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
       local t0 = os.clock()
       if t0 > (st.wtGunMsg or 0) and G.toast then
         st.wtGunMsg = t0 + 1.5
@@ -41067,7 +41579,8 @@ function Drive.init(G)
     -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
     local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
     local crewK = (w.kind == "shell" and st.em and st.em:GetAttribute("CrewRel")) or 1   -- 乘员技能「装填」（服务器同样乘）
-    st.next[wid] = t + w.rate * rofK * crewK
+    local rackK = (w.kind == "shell" and BAL.GUN[wid] and st.em and st.em:GetAttribute("RdyK")) or 1   -- ④ 待发弹架空了装得慢（服务器 Wt.lua 同样乘）
+    st.next[wid] = t + w.rate * rofK * crewK * rackK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
@@ -41176,6 +41689,7 @@ function Drive.init(G)
       lase()
     elseif k == Enum.KeyCode.Q then   -- 换弹种（穿甲 / 破甲 / 多用途……）
       cycleAmmo()
+    elseif NUMK[k] and G.radioOpen and G.radioOpen() then   -- 无线电菜单开着（WtComms.lua，O）：数字键选无线电，不换弹
     elseif NUMK[k] then   -- 3 / 4：车顶重机枪、改装的车顶加特林
       local i = NUMK[k]
       -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪
@@ -41484,7 +41998,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -42498,7 +43012,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -42713,7 +43227,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -44411,6 +44925,26 @@ function Fly.init(G)
       local n = L / GR
       st.gLoad = n
       st.aoaDeg = math.deg(aoa)
+      -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪：战雷里超过极限速度、过载撕掉机翼）：超过 vne（默认加力最大平飞 vMax 的 1.12 倍，俯冲才到得了）
+      --   或过载门槛（喷气机 12.5 g）连着 0.8 秒——报服务器（WtAir.lua G.ACT.wtaOver，一边机翼撕掉）；快到了屏幕上警告
+      do
+        local vne = d.vne or ((d.vMax or d.vAB or d.vMil or 300) * 1.12)   -- 喷气机的加力最大平飞是 vMax（同上面推力那段）
+        local gLim = d.gLim or 12.5
+        local over = spd > vne or n > gLim
+        if over and not st.ground then
+          st.overT = (st.overT or 0) + dt
+          if st.overT > 0.8 and not st.overSent then
+            st.overSent = true
+            G.R.Act:FireServer("wtaOver", (spd > vne) and "speed" or "g")
+          end
+        else
+          st.overT = math.max(0, (st.overT or 0) - dt * 2)
+        end
+        if (spd > vne * 0.95 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then
+          st.overWarnT = os.clock() + 3
+          G.toast(T((spd > vne * 0.95) and "wta.warnSpeed" or "wta.warnG"), "bad")
+        end
+      end
       st.spd = math.max(0, st.spd - 0.22 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力：拉得越狠、越慢掉得越多（最大过载盘旋几秒掉三四成速度）
       st.sink = 0
       local v0 = st.vel
@@ -44472,6 +45006,17 @@ function Fly.init(G)
         st.gearAuto, st.gearWant = true, 0
         if G.toast then G.toast(T("coach.gearAuto"), "info") end
       end
+    end
+    -- 起落架放着超速（⑪）：超过 vGear（默认不开加力最大平飞的六成）1.2 秒——报服务器，起落架坏了以后放不下来（只能机腹迫降）
+    if st.em and st.em:GetAttribute("WtaGear") == false then st.gearWant = 0 end
+    if st.gear > 0.3 and not st.ground and st.spd > (d.vGear or (d.vMil or 300) * 0.6) and not st.gearSent then
+      st.gearOverT = (st.gearOverT or 0) + dt
+      if st.gearOverT > 1.2 then
+        st.gearSent = true
+        G.R.Act:FireServer("wtaOver", "gear")
+      end
+    else
+      st.gearOverT = 0
     end
     st.gear = approach(st.gear, st.gearWant, dt / 2.5)
     st.c.gear = st.gear
@@ -44685,6 +45230,7 @@ function Fly.init(G)
       st.zoom = (st.zoom < 3.9) and 4 or ((st.zoom < 11.9) and 12 or ((st.zoom < 29.9) and 30 or 1))   -- 用户：光电要看得远一点（最大 30 倍）
     else
       local n = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 })[k]
+      if n and G.radioOpen and G.radioOpen() then n = nil end   -- 无线电菜单开着（WtComms.lua）：数字键选无线电
       if n and st.wl[n] then
         st.wi = n
         st.lock, st.lockT = nil, 0
@@ -45672,7 +46218,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -46035,7 +46581,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -47598,7 +48144,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -48008,7 +48554,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -48140,7 +48686,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -48419,7 +48965,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -48973,7 +49519,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -49924,7 +50470,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -50387,7 +50933,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Hatch</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——地面车的舱盖、车门、跳板开合，车长探出舱口，上车的人爬上车钻进舱口 / 从尾门走进去
@@ -51100,7 +51646,7 @@ return Hatch
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -51950,7 +52496,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -52064,7 +52610,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -54906,7 +55452,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -55620,7 +56166,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -56164,7 +56710,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -56316,7 +56862,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -58451,7 +58997,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -59526,7 +60072,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -62263,7 +62809,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -62529,7 +63075,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -62691,7 +63237,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -63185,7 +63731,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -63671,7 +64217,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -63847,7 +64393,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -64160,7 +64706,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -64482,7 +65028,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -64699,7 +65245,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -64833,7 +65379,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -65386,7 +65932,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -66005,7 +66551,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -66292,7 +66838,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="199">
+        <Item class="ModuleScript" referent="200">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -66549,7 +67095,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="200">
+        <Item class="ModuleScript" referent="201">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -66704,7 +67250,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="201">
+        <Item class="ModuleScript" referent="202">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -67410,7 +67956,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="202">
+        <Item class="ModuleScript" referent="203">
           <Properties>
             <string name="Name">Radar</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式机载雷达
@@ -67832,7 +68378,7 @@ return Radar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="203">
+        <Item class="ModuleScript" referent="204">
           <Properties>
             <string name="Name">Ride</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
@@ -67960,7 +68506,7 @@ return Ride
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="204">
+        <Item class="ModuleScript" referent="205">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -68557,7 +69103,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="205">
+        <Item class="ModuleScript" referent="206">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -69059,7 +69605,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="206">
+        <Item class="ModuleScript" referent="207">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -70006,7 +70552,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="207">
+        <Item class="ModuleScript" referent="208">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -70805,7 +71351,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="208">
+        <Item class="ModuleScript" referent="209">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -71557,7 +72103,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="209">
+        <Item class="ModuleScript" referent="210">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -71641,7 +72187,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="210">
+        <Item class="ModuleScript" referent="211">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -72391,7 +72937,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="211">
+        <Item class="ModuleScript" referent="212">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -72603,7 +73149,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="212">
+        <Item class="ModuleScript" referent="213">
           <Properties>
             <string name="Name">Stream</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——流式加载（Workspace.StreamingEnabled）的配套：用户 11-24 晚「streaming 优化」「各种 3A 游戏的那种优化」
@@ -72676,7 +73222,7 @@ return Stream
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="213">
+        <Item class="ModuleScript" referent="214">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -73131,7 +73677,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="214">
+        <Item class="ModuleScript" referent="215">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -74351,7 +74897,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="215">
+        <Item class="ModuleScript" referent="216">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -74871,7 +75417,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="216">
+        <Item class="ModuleScript" referent="217">
           <Properties>
             <string name="Name">TechUI</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库（出击阵容、出击）和科技树界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
@@ -75207,6 +75753,17 @@ function TechUI.init(G)
         cb.TextSize = 12
         local slotI = i
         cb.MouseButton1Click:Connect(function() openCrew(tree.nat, slotI, key) end)
+        -- 配弹（C：用户 11-25「全部都做」④，WtAmmo.lua）：地面车的主炮每种弹带几发
+        if it.branch ~= "air" and G.openAmmo then
+          local ab = button(card, L("弹药", "Ammo"), UDim2.new(0, 64, 0, 22), UDim2.new(1, -72, 0, 66))   -- 「乘员」上面那一格（改装数那一行右边是空的）
+          ab.Name = "AmmoBtn"
+          ab.TextSize = 12
+          ab.MouseButton1Click:Connect(function()
+            local md = tree.mods and tree.mods[key]
+            local fx = WM.fx and WM.fx(it, md and md.done)
+            G.openAmmo(key, fx and fx.ammo)
+          end)
+        end
         local _, cap = brCap()
         local over = cap ~= nil and it.br > cap + 0.05   -- 超出这一局能出的战斗等级：标灰（点了服务器也会说）
         local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or L("出击", "Deploy"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44), not over)
@@ -75232,7 +75789,7 @@ function TechUI.init(G)
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
   function G.hangarSet(show)
-    local want = show and G.hangarActive()
+    local want = show and G.hangarActive() and not (G.wtSpectating and G.wtSpectating())   -- C ⑮：观战的时候机库收起（WtCam.lua）
     if hangar.Visible ~= want then
       hangar.Visible = want
       if want then refreshHangar() end
@@ -75846,7 +76403,7 @@ return TechUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="217">
+        <Item class="ModuleScript" referent="218">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -75959,7 +76516,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="218">
+        <Item class="ModuleScript" referent="219">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -77123,7 +77680,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="219">
+        <Item class="ModuleScript" referent="220">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -77227,7 +77784,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="220">
+        <Item class="ModuleScript" referent="221">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -78744,7 +79301,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="221">
+        <Item class="ModuleScript" referent="222">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source">-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -79686,7 +80243,7 @@ end
 return VehModels</ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="222">
+        <Item class="ModuleScript" referent="223">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -79708,6 +80265,7 @@ function View.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local TT = require(RS:WaitForChild("TechTree"))   -- 科技树暂用车的真车涂装（TreeKey 属性）
+  local SK = require(RS:WaitForChild("WtSkins"))   -- 涂装、贴花（⑯，机库里选的：属性 Camo / TacNo / Emb）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -79787,6 +80345,57 @@ function View.init(G)
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
   G.viewById = function(id) return byId[id] end
+  -- 弹孔、擦痕（用户 11-25「全部都做」⑨）：服务器 Wt.lua 炮弹打中车时发 fx wtHole（命中点、表面法线、来向、pen / np / ric、在不在炮塔上）——
+  --   击穿：焦黑的孔 + 熏黑的一圈；没击穿：灰色的坑；跳弹：顺着来向的一道亮擦痕。零件接到这辆车的零件表后面，跟着车体 / 炮塔走；
+  --   每辆最多 24 个（再多就不贴了）
+  local HOLE_MAX = 24
+  G.viewHole = function(e)
+    local v = byId[e.id]
+    if not v or not v.M or not v.hullF or not v.plist or type(e.lp) ~= "table" then return end
+    if (v.nHoles or 0) >= HOLE_MAX then return end
+    v.nHoles = (v.nHoles or 0) + 1
+    local M = v.M
+    local function v3(t, dflt) return (type(t) == "table" and #t == 3) and Vector3.new(t[1], t[2], t[3]) or dflt end
+    local P = v3(e.lp, Vector3.new())
+    local n = v3(e.ln, Vector3.new(0, 1, 0))
+    n = (n.Magnitude > 0.1) and n.Unit or Vector3.new(0, 1, 0)
+    local grp = (e.z and v.tF) and "turret" or "hull"
+    local frame = (grp == "turret") and v.tF or v.hullF
+    local function put(size, off, color, tr, cyl)   -- off：在车体 / 炮塔坐标系里
+      local p = Instance.new("Part")
+      p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+      p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      if cyl then p.Shape = Enum.PartType.Cylinder end
+      p.Size, p.Color, p.Material, p.Transparency = size, color, Enum.Material.SmoothPlastic, tr or 0
+      p.CFrame = frame * off
+      p.Parent = M.model
+      table.insert(M.parts, { p, grp, off })
+      v.plist[#v.plist + 1] = p
+      v.putH = nil   -- 新接了零件：这一帧一定要摆
+    end
+    local base = CFrame.lookAt(P + n * 0.02, P + n * 1.02) * CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）朝外
+    if e.r == "ric" then
+      local d = v3(e.ld, Vector3.new(0, 0, -1))
+      d = (d.Magnitude > 0.1) and d.Unit or Vector3.new(0, 0, -1)
+      local tg = d - n * d:Dot(n)
+      if tg.Magnitude < 0.05 then tg = n:Cross(Vector3.new(0, 1, 0)) end
+      if tg.Magnitude < 0.05 then tg = Vector3.new(1, 0, 0) end
+      local c0 = P + n * 0.03
+      put(Vector3.new(0.2, 0.03, 1.2), CFrame.lookAt(c0, c0 + tg.Unit, n), Color3.fromRGB(176, 176, 170), 0)   -- 擦掉漆露出的钢
+    elseif e.r == "np" then
+      put(Vector3.new(0.04, 0.62, 0.62), base, Color3.fromRGB(96, 94, 90), 0.1, true)
+      put(Vector3.new(0.05, 0.28, 0.28), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(58, 56, 52), 0, true)
+    else
+      put(Vector3.new(0.04, 1.25, 1.25), base, Color3.fromRGB(36, 32, 28), 0.45, true)   -- 熏黑的一圈
+      put(Vector3.new(0.05, 0.46, 0.46), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(12, 11, 10), 0, true)   -- 孔
+    end
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "wtHole" then G.try_(G.viewHole, e) end
+    end
+  end)
   local function bar(m, adornee, h)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(46, 6)
@@ -79821,10 +80430,56 @@ function View.init(G)
       -- 科技树出的车（TreeKey）：还没有原模型、用零件拼的按真车涂装上色（TechTree.paint；用户 11-25「很多车涂装纯米黄」），不按阵营刷沙色
       local tk = em:GetAttribute("TreeKey")
       local tit = (type(tk) == "string") and TT.get(tk) or nil
-      local M = VM.build(d, team, em:GetAttribute("Mods"), tit and TT.paint(tit) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 涂装（⑯）：机库里选了的（属性 Camo）——零件拼的车按它上色，原模型整体乘个色调
+      local camo = em:GetAttribute("Camo")
+      local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
+      if cm and not cm.base then cm = nil end
+      local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
+      v.camo, v.tacNo, v.emb = camo, em:GetAttribute("TacNo"), em:GetAttribute("Emb")
+      if cm and cm.tint then
+        for _, it in ipairs(M.parts) do
+          local sa = it[1]:FindFirstChildOfClass("SurfaceAppearance")
+          if sa then pcall(function() sa.Color = cm.tint end) end
+        end
+      end
+      -- 贴花（⑯）：战术号码（炮塔两侧白字）、国徽（车体两侧）——接到零件表后面，跟着炮塔 / 车体走
+      local function decal(grp, off, txt, col, w, h)
+        local p = Instance.new("Part")
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+        p.Transparency, p.Size = 1, V(w, h, 0.05)
+        p.Parent = M.model
+        local sg = Instance.new("SurfaceGui")
+        sg.Face = Enum.NormalId.Front
+        sg.CanvasSize = Vector2.new(w * 60, h * 60)
+        sg.LightInfluence = 1
+        sg.Parent = p
+        local l = Instance.new("TextLabel")
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.fromScale(1, 1)
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.GothamBlack
+        l.TextColor3, l.TextTransparency = col, 0.08
+        l.Parent = sg
+        table.insert(M.parts, { p, grp, off })
+      end
+      local tacNo = em:GetAttribute("TacNo")
+      if type(tacNo) == "number" and d.turret then
+        local ts, tp = d.turret.size, M.tpiv or d.turret.pivot
+        for side = -1, 1, 2 do   -- 正面朝外（Front 面 −Z 转到 ±X）
+          decal("turret", CFrame.new(side * (ts.X / 2 * 0.98 + 0.06), ts.Y * 0.5, 0.2) * CFrame.Angles(0, -side * math.pi / 2, 0),
+            string.format("%03d", math.clamp(math.floor(tacNo), 0, 999)), Color3.fromRGB(236, 236, 230), 3.0, 1.3)
+        end
+      end
+      local emb = em:GetAttribute("Emb")
+      local E = (type(emb) == "string") and SK.EMB[emb] or nil
+      if E then
+        local hh = d.hullH or (d.H * 0.55)
+        for side = -1, 1, 2 do
+          decal("hull", CFrame.new(side * (d.W / 2 + 0.06), hh * 0.62, -d.L * 0.22) * CFrame.Angles(0, -side * math.pi / 2, 0), E[1], E[2], 1.6, 1.6)
+        end
+      end
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -80462,6 +81117,22 @@ function View.init(G)
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
     end
+    -- 烧痕（⑨）：着火（服务器属性 WtF）超过 5 秒，车身熏黑一层（只改没贴图的零件；一辆车最多熏两次）
+    if em:GetAttribute("WtF") == true and not v.wrecked then
+      v.fireT0 = v.fireT0 or os.clock()
+      if os.clock() - v.fireT0 > 5 and (v.scorch or 0) < 2 then
+        v.scorch = (v.scorch or 0) + 1
+        v.fireT0 = os.clock()
+        for _, it in ipairs(M.parts) do
+          local part = it[1]
+          if part:IsA("BasePart") and not (part:IsA("MeshPart") and part.TextureID ~= "") and not part:FindFirstChildOfClass("SurfaceAppearance") then
+            part.Color = part.Color:Lerp(Color3.new(0.06, 0.06, 0.06), 0.22)
+          end
+        end
+      end
+    else
+      v.fireT0 = nil
+    end
     -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
     if v.wreckT and not v.burnt2 then
       local age = os.clock() - v.wreckT
@@ -80512,7 +81183,8 @@ function View.init(G)
       local ok = false
       if v.kind == "veh" then
         ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
-        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
+        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end
+        if em:GetAttribute("Camo") ~= v.camo or em:GetAttribute("TacNo") ~= v.tacNo or em:GetAttribute("Emb") ~= v.emb then ok = true end   -- 涂装、贴花晚到了（⑯）   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end
@@ -80747,7 +81419,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="223">
+        <Item class="ModuleScript" referent="224">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -81696,7 +82368,7 @@ return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="224">
+        <Item class="ModuleScript" referent="225">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④）
@@ -81955,7 +82627,187 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="225">
+        <Item class="ModuleScript" referent="226">
+          <Properties>
+            <string name="Name">WtAmmo</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机库里配弹（用户 11-25「全部都做」④：战雷出车前选每种弹带几发）
+--   机库出击阵容卡片上的「弹药」（TechUI.lua 调 G.openAmmo(科技树的键, 能打前几种)）：主炮每种弹一行（名字、0 米穿深、− / +，
+--   按住 Shift 一次 5 发），底下总数 / 满载、待发弹架几发；「默认」「带一半」「满载」；改了就发服务器（Wt.lua G.ACT.wtAmmoSet），
+--   这一局里再出这辆车照这个配。少带弹：打中弹架不容易殉爆（弹架空了根本不炸），但打几发就得回据点补
+--   没研究的弹种（科技树改装「第二种弹」「第三种弹」）灰着、配不了
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+
+local WtAmmo = {}
+
+function WtAmmo.init(G)
+  local VD = require(RS:WaitForChild("VehDefs"))
+  local BAL = require(RS:WaitForChild("Ballistics"))
+  local TT = require(RS:WaitForChild("TechTree"))
+  local WD = require(RS:WaitForChild("WtDamage"))
+  local me = Players.LocalPlayer
+  local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local WHITE, DIM, GOLD, BAD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120), RGB(255, 96, 80)
+  local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹（同服务器 Wt.lua）
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtAmmo"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 14   -- 盖在机库（TechUI 12）上面
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+
+  local function frame(parent, size, pos, col, tr, anchor)
+    local f = Instance.new("Frame")
+    f.Size, f.Position, f.AnchorPoint = size, pos or UD2(), anchor or V2()
+    f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = col or RGB(10, 12, 14), tr or 0, 0
+    f.Parent = parent
+    return f
+  end
+  local function text(parent, s, size, pos, ts, col, font, align)
+    local l = Instance.new("TextLabel")
+    l.Size, l.Position = size, pos or UD2()
+    l.BackgroundTransparency = 1
+    l.Text, l.TextSize, l.TextColor3, l.Font = s or "", ts or 14, col or WHITE, font or BOLD
+    l.TextXAlignment = align or Enum.TextXAlignment.Left
+    l.Parent = parent
+    return l
+  end
+  local function button(parent, s, size, pos, on)
+    local b = Instance.new("TextButton")
+    b.Size, b.Position = size, pos or UD2()
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = (on == false) and RGB(40, 42, 46) or RGB(52, 70, 58), 0.1, 0
+    b.Text, b.TextSize, b.TextColor3, b.Font = s, 14, (on == false) and DIM or WHITE, BOLD
+    b.AutoButtonColor = on ~= false
+    b.Parent = parent
+    return b
+  end
+
+  local saved = {}   -- 科技树的键 → { 弹种 = 几发 }（这一局里记着）
+  local panel = nil
+  local function close()
+    if panel then panel:Destroy() panel = nil end
+    gui.Enabled = false
+  end
+  G.ammoPanelOpen = function() return panel ~= nil end
+
+  function G.openAmmo(key, nA)
+    close()
+    local it = TT.get and TT.get(key)
+    local vid = (it and (it.veh or it.base)) or key
+    local d = VD.get and VD.get(vid) or VD[vid]
+    if not d then return end
+    local wid = nil
+    for _, w in ipairs(d.weapons or {}) do if BAL.GUN[w] then wid = w break end end
+    if not wid then
+      if G.toast then G.toast(T("wta2.noGun"), "info") end
+      return
+    end
+    local w = VD.W[wid]
+    local cap = (w.mag or 1) + (w.reserve or 0)
+    local list = BAL.GUN[wid]
+    local n = math.max(1, math.min(#list, nA or #list))
+    local lay = WD.prof(d).lay
+    local rcap = d.rdyN or ((lay == "e3") and 22 or ((lay == "w4") and 15 or nil))
+    -- 现在的配法：配过的照旧，没配过的按默认比例
+    local cur = {}
+    local prev = saved[key]
+    local function defaults()
+      local tw = 0
+      for i = 1, n do tw += SPLIT[i] or 1 end
+      local sum = 0
+      for i, k in ipairs(list) do
+        cur[k] = (i <= n) and math.floor(cap * (SPLIT[i] or 1) / tw) or 0
+        sum += cur[k]
+      end
+      cur[list[1]] += cap - sum
+    end
+    if prev then for _, k in ipairs(list) do cur[k] = prev[k] or 0 end else defaults() end
+    local function total() local s = 0 for _, k in ipairs(list) do s += cur[k] or 0 end return s end
+
+    gui.Enabled = true
+    local H = 118 + #list * 40
+    panel = frame(gui, UDim2.fromOffset(440, H), UD2(0.5, 0, 0.5, 0), RGB(12, 14, 17), 0.05, V2(0.5, 0.5))
+    panel.Name = "AmmoPanel"
+    do
+      local st = Instance.new("UIStroke")
+      st.Color, st.Transparency = RGB(110, 120, 126), 0.35
+      st.Parent = panel
+    end
+    local nm = (it and G.T and T("tree." .. key)) or T("veh." .. vid)
+    if nm == "tree." .. key then nm = T("veh." .. vid) end
+    text(panel, nm .. "  ·  " .. T("wta2.title"), UD2(1, -24, 0, 24), UD2(0, 12, 0, 10), 16, WHITE)
+    local sumT = text(panel, "", UD2(1, -24, 0, 18), UD2(0, 12, 0, 36), 13, DIM, MED)
+    local rows = {}
+    local function redraw()
+      local s = total()
+      sumT.Text = T("wta2.sum", s, cap) .. (rcap and ("   ·   " .. T("wta2.rack", math.min(rcap, math.max(0, s - 1)))) or "")
+        .. ((s < cap) and ("   ·   " .. T("wta2.less")) or "")
+      for _, r in ipairs(rows) do r.cnt.Text = tostring(cur[r.k] or 0) end
+    end
+    local function send()
+      saved[key] = table.clone(cur)
+      G.R.Act:FireServer("wtAmmoSet", key, cur)
+      redraw()
+    end
+    for i, k in ipairs(list) do
+      local a = BAL.AMMO[k] or {}
+      local wa = WD.AMMO and WD.AMMO[k]
+      local y = 62 + (i - 1) * 40
+      local okType = i <= n
+      local row = frame(panel, UD2(1, -24, 0, 34), UD2(0, 12, 0, y), RGB(22, 25, 29), 0.1)
+      row.Name = "Ammo_" .. k
+      text(row, (a.sym and ("[" .. a.sym .. "] ") or "") .. (a.name or k), UD2(0.6, 0, 1, 0), UD2(0, 8, 0, 0), 13, okType and WHITE or DIM)
+      local pen = wa and wa.p0 and (math.floor(wa.p0) .. " mm") or ""
+      text(row, okType and pen or T("wta2.locked"), UD2(0, 90, 1, 0), UD2(0.6, -40, 0, 0), 12, okType and GOLD or BAD, MED)
+      local minus = button(row, "−", UDim2.fromOffset(30, 26), UD2(1, -112, 0, 4), okType)
+      minus.Name = "Minus"
+      local cnt = text(row, "0", UDim2.fromOffset(40, 34), UD2(1, -78, 0, 0), 15, WHITE, BOLD, Enum.TextXAlignment.Center)
+      cnt.Name = "Count"
+      local plus = button(row, "+", UDim2.fromOffset(30, 26), UD2(1, -36, 0, 4), okType)
+      plus.Name = "Plus"
+      local function step(sgn)
+        if not okType then return end
+        local by = UIS:IsKeyDown(Enum.KeyCode.LeftShift) and 5 or 1
+        if sgn > 0 then by = math.min(by, cap - total()) end
+        cur[k] = math.max(0, (cur[k] or 0) + sgn * by)
+        send()
+      end
+      minus.MouseButton1Click:Connect(function() step(-1) end)
+      plus.MouseButton1Click:Connect(function() step(1) end)
+      table.insert(rows, { k = k, cnt = cnt })
+    end
+    local by = H - 46
+    local b1 = button(panel, T("wta2.def"), UDim2.fromOffset(96, 32), UD2(0, 12, 0, by))
+    b1.MouseButton1Click:Connect(function() defaults() send() end)
+    local b2 = button(panel, T("wta2.half"), UDim2.fromOffset(96, 32), UD2(0, 116, 0, by))
+    b2.MouseButton1Click:Connect(function()
+      defaults()
+      for _, k in ipairs(list) do cur[k] = math.floor((cur[k] or 0) / 2) end
+      send()
+    end)
+    local b3 = button(panel, T("wta2.close"), UDim2.fromOffset(96, 32), UD2(1, -108, 0, by))
+    b3.Name = "Close"
+    b3.MouseButton1Click:Connect(close)
+    redraw()
+    if not prev then send() end   -- 第一次打开：把默认配法也记下（服务器按它配）
+  end
+  G.closeAmmo = close
+  -- 出击了 / 机库关了：面板收起
+  G.frameConn("WtAmmo", function()
+    if panel and G.S and G.S.alive then close() end
+  end)
+end
+
+return WtAmmo
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="227">
           <Properties>
             <string name="Name">WtBattle</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式对局的界面（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -82415,7 +83267,417 @@ return WtBattle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="226">
+        <Item class="ModuleScript" referent="228">
+          <Properties>
+            <string name="Name">WtCam</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——观战（用户 11-25「全部都做」⑮：战雷里被打掉以后能看队友）
+--   机库（TechUI）开着的时候顶上一个「观战队友」：点了机库收起（TechUI 的 G.hangarSet 问 G.wtSpectating），镜头跟着一个
+--   活着、有真人开的队友的车 / 飞机（← → 换人）；Esc 或「回机库」回去；自己出击了自动停。被打掉那一下的击杀镜头在 DeathFx.lua
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local WtCam = {}
+
+function WtCam.init(G)
+  local me = Players.LocalPlayer
+  local RGB, UD2, V3 = Color3.fromRGB, UDim2.new, Vector3.new
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local BOLD = Enum.Font.GothamBold
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtCam"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 15   -- 在机库（12）上面
+  gui.Parent = me:WaitForChild("PlayerGui")
+  local function btn(text, pos)
+    local b = Instance.new("TextButton")
+    b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), pos, Vector2.new(0.5, 0)
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(30, 40, 46), 0.15, 0
+    b.Text, b.TextSize, b.Font, b.TextColor3 = text, 14, BOLD, RGB(236, 240, 242)
+    b.Visible = false
+    b.Parent = gui
+    return b
+  end
+  local specBtn = btn(T("wt.spec"), UD2(0.5, 0, 0, 58))
+  specBtn.Name = "SpecBtn"
+  local backBtn = btn(T("wt.specBack"), UD2(0.5, 0, 0, 92))
+  backBtn.Name = "SpecBack"
+  local info = Instance.new("TextLabel")
+  info.BackgroundTransparency = 1
+  info.Size, info.Position, info.AnchorPoint = UDim2.fromOffset(600, 24), UD2(0.5, 0, 0, 60), Vector2.new(0.5, 0)
+  info.TextSize, info.Font, info.TextColor3 = 16, BOLD, RGB(255, 214, 120)
+  info.TextStrokeTransparency = 0.35
+  info.Visible = false
+  info.Parent = gui
+
+  local on, idx, camType0, smooth = false, 1, nil, nil
+  G.wtSpectating = function() return on end
+  local function mates()
+    local side = me:GetAttribute("Side")
+    local out = {}
+    local ents = workspace:FindFirstChild("Ents")
+    for _, em in ipairs(ents and ents:GetChildren() or {}) do
+      local drv = em:GetAttribute("Driver")
+      if em:GetAttribute("Team") == side and type(drv) == "number" and drv > 0 and drv ~= me.UserId and not em:GetAttribute("Wreck") then
+        table.insert(out, em)
+      end
+    end
+    table.sort(out, function(a, b) return (a:GetAttribute("EntId") or 0) < (b:GetAttribute("EntId") or 0) end)
+    return out
+  end
+  local function stop()
+    if not on then return end
+    on = false
+    local cam = workspace.CurrentCamera
+    if cam and camType0 then pcall(function() cam.CameraType = camType0 end) end
+    smooth = nil
+    if G.hangarSet then pcall(G.hangarSet, true) end   -- 机库马上回来
+  end
+  local function start()
+    if #mates() == 0 then
+      if G.toast then G.toast(T("wt.specNone"), "info") end
+      return
+    end
+    on, idx = true, 1
+    local cam = workspace.CurrentCamera
+    camType0 = cam.CameraType
+    pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
+    if G.hangarSet then pcall(G.hangarSet, false) end
+  end
+  specBtn.MouseButton1Click:Connect(start)
+  backBtn.MouseButton1Click:Connect(stop)
+  UIS.InputBegan:Connect(function(io, gp)
+    if not on or gp then return end
+    if io.KeyCode == Enum.KeyCode.Escape then stop()
+    elseif io.KeyCode == Enum.KeyCode.Left then idx -= 1 smooth = nil
+    elseif io.KeyCode == Enum.KeyCode.Right then idx += 1 smooth = nil end
+  end)
+
+  G.frameConn("WtCam", function(dt)
+    local S = G.S
+    local alive = S and S.alive
+    local hangar = G.hangarActive and G.hangarActive() and not alive and S and (S.phase == "battle" or S.phase == "prep")
+      and not (G.deathFxOn and G.deathFxOn())
+    if on and (alive or not hangar) then stop() end
+    specBtn.Visible = hangar and not on
+    backBtn.Visible = on
+    info.Visible = on
+    if not on then return end
+    local list = mates()
+    if #list == 0 then stop() return end
+    idx = ((idx - 1) % #list) + 1
+    local em = list[idx]
+    local okP, cf = pcall(function() return em:GetPivot() end)
+    if not okP then return end
+    local p = cf.Position
+    local flat = V3(cf.LookVector.X, 0, cf.LookVector.Z)
+    flat = (flat.Magnitude > 0.05) and flat.Unit or V3(0, 0, -1)
+    local air = em:GetAttribute("Kind") == "air"
+    local want = p - flat * (air and 70 or 34) + V3(0, air and 18 or 12, 0)
+    smooth = smooth and smooth:Lerp(want, math.min(1, dt * 4)) or want
+    workspace.CurrentCamera.CFrame = CFrame.lookAt(smooth, p + V3(0, 3, 0))
+    local pl = Players:GetPlayerByUserId(em:GetAttribute("Driver"))
+    local tk = em:GetAttribute("TreeKey")
+    local vn = tk and T("tree." .. tk) or T("veh." .. tostring(em:GetAttribute("Model") or ""))
+    info.Text = T("wt.specOn", ((pl and pl.DisplayName) or "?") .. " · " .. vn)
+  end)
+end
+
+return WtCam
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="229">
+          <Properties>
+            <string name="Name">WtComms</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图方格、标点、无线电（用户 11-25「全部都做」⑭，B 挑刺 13）
+--   · 方格：大地图、小地图（同一张 MapUI 的图）上画 A～J（列）/ 1～10（行）的网格，每格左上角小字「C3」；G.gridRef(x, z) → "C3"
+--   · I 标点：把准星对着的地方标给全队（服务器 WtMatch.lua 的 G.ACT.wtPing 转发）——地图上一个黄圈、三维里一个黄菱形写「C3 · 谁」，10 秒
+--   · O 无线电：小菜单，按数字选一句（需要支援 / 跟我来 / 收到 / 不行 / 撤退 / 这里有敌人 / 进攻、守住最近的据点），全队左边一行字；
+--     「需要支援」「这里有敌人」顺手标点。菜单开着时数字键不换弹（Drive.lua 问 G.radioOpen）
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+
+local WtComms = {}
+
+function WtComms.init(G)
+  local Map = require(RS:WaitForChild("Map"))
+  local me = Players.LocalPlayer
+  local RGB, UD2, V2, V3 = Color3.fromRGB, UDim2.new, Vector2.new, Vector3.new
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local YEL, WHITE, DIM = RGB(255, 214, 90), RGB(236, 240, 242), RGB(160, 166, 170)
+  local COLS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" }
+
+  ---------------------------------------------------------------- 方格
+  local function gridRef(x, z)
+    if not G.mapUV then return "?" end
+    local u, v = G.mapUV(x, z)
+    local c = math.clamp(math.floor(u * 10) + 1, 1, 10)
+    local r = math.clamp(math.floor(v * 10) + 1, 1, 10)
+    return COLS[c] .. r
+  end
+  G.gridRef = gridRef
+  task.spawn(function()
+    for _ = 1, 200 do
+      if G.mapRoot then break end
+      task.wait(0.1)
+    end
+    local root = G.mapRoot
+    if not root then return end
+    local layer = Instance.new("Frame")
+    layer.Name = "WtGrid"
+    layer.Size = UD2(1, 0, 1, 0)
+    layer.BackgroundTransparency = 1
+    layer.ZIndex = 3
+    layer.Parent = root
+    for i = 1, 9 do
+      for _, vert in ipairs({ true, false }) do
+        local l = Instance.new("Frame")
+        l.BorderSizePixel = 0
+        l.BackgroundColor3 = RGB(255, 255, 255)
+        l.BackgroundTransparency = 0.82
+        l.Size = vert and UD2(0, 1, 1, 0) or UD2(1, 0, 0, 1)
+        l.Position = vert and UD2(i / 10, 0, 0, 0) or UD2(0, 0, i / 10, 0)
+        l.ZIndex = 3
+        l.Parent = layer
+      end
+    end
+    for c = 1, 10 do
+      for r = 1, 10 do
+        local t = Instance.new("TextLabel")
+        t.BackgroundTransparency = 1
+        t.Size = UD2(0.1, -4, 0, 12)
+        t.Position = UD2((c - 1) / 10, 3, (r - 1) / 10, 2)
+        t.Text = COLS[c] .. r
+        t.TextSize, t.Font = 10, MED
+        t.TextColor3, t.TextTransparency = WHITE, 0.45
+        t.TextXAlignment = Enum.TextXAlignment.Left
+        t.ZIndex = 3
+        t.Parent = layer
+      end
+    end
+  end)
+
+  ---------------------------------------------------------------- 左边一列：无线电、标点的话（8 秒）
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtComms"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 7
+  gui.Parent = me:WaitForChild("PlayerGui")
+  local lines = {}
+  local box = Instance.new("Frame")
+  box.Name = "RadioLog"
+  box.BackgroundTransparency = 1
+  box.Size = UDim2.fromOffset(420, 5 * 22)
+  box.Position = UD2(0, 16, 0.42, 0)
+  box.Parent = gui
+  local rows = {}
+  for i = 1, 5 do
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Size = UD2(1, 0, 0, 20)
+    l.Position = UD2(0, 0, 0, (i - 1) * 22)
+    l.TextSize, l.Font = 15, BOLD
+    l.TextColor3 = YEL
+    l.TextStrokeTransparency = 0.4
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.RichText = true
+    l.Visible = false
+    l.Parent = box
+    rows[i] = l
+  end
+  local function addLine(txt)
+    table.insert(lines, 1, { txt = txt, t = os.clock() })
+    while #lines > 5 do table.remove(lines) end
+  end
+  G.wtRadioLines = function() return lines end   -- 测试用
+
+  ---------------------------------------------------------------- 标点：地图上的黄圈、三维里的黄菱形
+  local pings = {}
+  local fold = Instance.new("Folder")
+  fold.Name = "WtPings"
+  fold.Parent = workspace
+  local function addPing(p, who, grid)
+    local a = Instance.new("Part")
+    a.Anchored, a.CanCollide, a.CanQuery, a.CanTouch, a.Transparency = true, false, false, false, 1
+    a.Size = V3(0.2, 0.2, 0.2)
+    a.CFrame = CFrame.new(p + V3(0, 8, 0))
+    a.Parent = fold
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(140, 40)
+    bb.AlwaysOnTop = true
+    bb.Parent = a
+    local d = Instance.new("TextLabel")
+    d.BackgroundTransparency = 1
+    d.Size = UD2(1, 0, 0, 20)
+    d.Text = "◆"
+    d.TextScaled = true
+    d.TextColor3 = YEL
+    d.Parent = bb
+    local n = Instance.new("TextLabel")
+    n.BackgroundTransparency = 1
+    n.Size = UD2(1, 0, 0, 16)
+    n.Position = UD2(0, 0, 0, 22)
+    n.Text = grid .. " · " .. (who or "")
+    n.TextSize, n.Font = 12, BOLD
+    n.TextColor3 = YEL
+    n.TextStrokeTransparency = 0.3
+    n.Parent = bb
+    local dot = nil
+    if G.mapDot and G.mapRoot and G.mapUV then
+      local u, v = G.mapUV(p.X, p.Z)
+      local marks = G.mapRoot:FindFirstChild("Marks") or G.mapRoot
+      local ok, dd = pcall(G.mapDot, marks, u, v, 12, YEL, "", 8)
+      if ok then dot = dd end
+    end
+    table.insert(pings, { a = a, dot = dot, t = os.clock() })
+    while #pings > 6 do
+      local old = table.remove(pings, 1)
+      if old.a then old.a:Destroy() end
+      if old.dot then old.dot:Destroy() end
+    end
+  end
+
+  ---------------------------------------------------------------- 无线电菜单（O）
+  local MSG = { "need", "follow", "ok", "no", "retreat", "enemy", "attack", "defend" }
+  local menu = Instance.new("Frame")
+  menu.Name = "RadioMenu"
+  menu.Size = UDim2.fromOffset(260, 24 + #MSG * 24)
+  menu.Position = UD2(0, 16, 0.42, -24 - #MSG * 24 - 10)
+  menu.BackgroundColor3, menu.BackgroundTransparency, menu.BorderSizePixel = RGB(10, 12, 14), 0.25, 0
+  menu.Visible = false
+  menu.Parent = gui
+  do
+    local tl = Instance.new("TextLabel")
+    tl.BackgroundTransparency = 1
+    tl.Size = UD2(1, -12, 0, 22)
+    tl.Position = UD2(0, 8, 0, 2)
+    tl.Text = T("wtr.menu")
+    tl.TextSize, tl.Font, tl.TextColor3 = 13, BOLD, YEL
+    tl.TextXAlignment = Enum.TextXAlignment.Left
+    tl.Parent = menu
+    for i, k in ipairs(MSG) do
+      local l = Instance.new("TextLabel")
+      l.BackgroundTransparency = 1
+      l.Size = UD2(1, -12, 0, 22)
+      l.Position = UD2(0, 8, 0, 2 + i * 24)
+      l.Text = i .. "   " .. T("wtr." .. k, "…")
+      l.TextSize, l.Font, l.TextColor3 = 14, MED, WHITE
+      l.TextXAlignment = Enum.TextXAlignment.Left
+      l.Parent = menu
+    end
+  end
+  local menuT = 0
+  G.radioOpen = function() return menu.Visible end
+
+  -- 准星对着哪（开车：瞄准点；开飞机：镜头前方打到的地面；步行：鼠标指的地方）
+  local function aimPoint()
+    local st = G.drive
+    if st and st.aimPt then return st.aimPt end
+    local cam = workspace.CurrentCamera
+    local o, d = cam.CFrame.Position, cam.CFrame.LookVector
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    local ex = { fold }
+    if me.Character then table.insert(ex, me.Character) end
+    rp.FilterDescendantsInstances = ex
+    local res = workspace:Raycast(o, d * 30000, rp)
+    return res and res.Position or (o + d * 3000)
+  end
+  local function myPos()
+    local st = G.drive
+    if st and st.root then return st.root.Position end
+    local ch = me.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    return hrp and hrp.Position or workspace.CurrentCamera.CFrame.Position
+  end
+  local function nearestPoint(p)
+    local best, bd = nil, math.huge
+    for _, pt in ipairs(Map.POINTS or {}) do
+      local d = (Vector2.new(pt.x, pt.z) - Vector2.new(p.X, p.Z)).Magnitude
+      if d < bd then best, bd = pt, d end
+    end
+    return best and best.id or "?"
+  end
+  local function sendRadio(i)
+    local k = MSG[i]
+    if not k then return end
+    local arg = nil
+    local pos = nil
+    if k == "need" then pos = myPos() arg = gridRef(pos.X, pos.Z)
+    elseif k == "enemy" then pos = aimPoint() arg = gridRef(pos.X, pos.Z)
+    elseif k == "attack" or k == "defend" then arg = nearestPoint(aimPoint()) end
+    G.R.Act:FireServer("wtRadio", k, arg, pos)
+  end
+
+  UIS.InputBegan:Connect(function(io, gp)
+    if gp then return end
+    local k = io.KeyCode
+    if k == Enum.KeyCode.O then
+      menu.Visible = not menu.Visible
+      menuT = os.clock()
+    elseif k == Enum.KeyCode.I then
+      local p = aimPoint()
+      G.R.Act:FireServer("wtPing", p)
+    elseif menu.Visible then
+      local nums = { One = 1, Two = 2, Three = 3, Four = 4, Five = 5, Six = 6, Seven = 7, Eight = 8 }
+      local i = nums[k.Name]
+      if i then
+        menu.Visible = false
+        sendRadio(i)
+      elseif k == Enum.KeyCode.Escape then
+        menu.Visible = false
+      end
+    end
+  end)
+
+  ---------------------------------------------------------------- 服务器转发来的
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) ~= "table" then return end
+    if m.op == "wtPing" and typeof(m.p) == "Vector3" then
+      local grid = gridRef(m.p.X, m.p.Z)
+      addPing(m.p, m.from, grid)
+      addLine(T("wtr.pinged", m.from or "?", grid))
+      if G.sfx then pcall(G.sfx, "uiClick") end
+    elseif m.op == "wtRadio" and type(m.k) == "string" then
+      addLine(T("wtr.line", m.from or "?", T("wtr." .. m.k, m.arg or "")))
+      if typeof(m.p) == "Vector3" then addPing(m.p, m.from, gridRef(m.p.X, m.p.Z)) end
+      if G.sfx then pcall(G.sfx, "uiClick") end
+    end
+  end)
+
+  G.frameConn("WtComms", function()
+    local t = os.clock()
+    for i = #lines, 1, -1 do if t - lines[i].t > 8 then table.remove(lines, i) end end
+    for i, r in ipairs(rows) do
+      local L = lines[i]
+      r.Visible = L ~= nil
+      if L then
+        r.Text = L.txt
+        r.TextTransparency = math.clamp((t - L.t - 6.5) / 1.5, 0, 1)
+      end
+    end
+    for i = #pings, 1, -1 do
+      local P = pings[i]
+      if t - P.t > 10 then
+        if P.a then P.a:Destroy() end
+        if P.dot then P.dot:Destroy() end
+        table.remove(pings, i)
+      end
+    end
+    if menu.Visible and t - menuT > 6 then menu.Visible = false end   -- 开着不选：六秒自己收起
+  end)
+end
+
+return WtComms
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="230">
           <Properties>
             <string name="Name">WtFlight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式的开飞机界面
@@ -82954,7 +84216,7 @@ return WtFlight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="227">
+        <Item class="ModuleScript" referent="231">
           <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
@@ -83683,21 +84945,43 @@ function WtHud.init(G)
     local op = m.op
     if op == "wtHit" then
       showHit(m)
+      if G.wtVoice then   -- 车组语音（⑬，WtVoice.lua）
+        G.wtVoice(m.kill and ((m.why == "ammo") and "killAmmo" or "kill") or ((m.r == "pen") and "pen" or ((m.r == "ric") and "ric" or ((m.r == "np") and "np" or "hit"))))
+      end
       if m.xr and (m.r == "pen" or m.kill) then G.try_(showXray, m) end
     elseif op == "wtHurt" then
       flashUntil = os.clock() + 1.2
+      if G.wtVoice then   -- 车组语音（⑬）：被击穿 / 跳弹、着火、谁阵亡、哪个模块坏了
+        if m.r == "pen" then G.wtVoice("hurtPen") elseif m.r == "ric" then G.wtVoice("hurtRic") end
+        if m.fire then G.wtVoice("fire") end
+        for _, p in ipairs(m.parts or {}) do
+          if p.kind == "crew" and p.s == 0 then G.wtVoice(p.seat or p.k)
+          elseif p.s == 0 and (p.k == "engine" or p.k == "barrel" or p.k == "breech") then G.wtVoice(p.k)
+          elseif p.s == 0 and (p.k == "trackL" or p.k == "trackR") then G.wtVoice("track") end
+        end
+      end
       local head = T((m.r == "pen") and "wt.youPen" or ((m.r == "fire") and "wt.youFire" or ((m.r == "ric") and "wt.youRic" or ((m.r == "np") and "wt.youNp" or "wt.youHit"))))
       local sub = details(m)
       say(head .. ((sub ~= "") and ("：" .. sub) or ""), (m.r == "ric" or m.r == "np") and GREY or DEAD, 3.2)
     elseif op == "wtSwap" then
+      if G.wtVoice then G.wtVoice("swap") end
       say(T("wt.swap", T("wt.r." .. m.from), T("wt.r." .. m.role), m.t or 6), HURT, 3)
     elseif op == "wtSwapped" then
       say(T("wt.swapped", T("wt.r." .. m.from), T("wt.r." .. m.role)), OK, 2.5)
     elseif op == "wtFireOut" then
+      if G.wtVoice then G.wtVoice("fireOut") end
       say(T(m.ext and "wt.extOk" or "wt.fireOut"), OK, 2)
+    elseif op == "wtSupply" then
+      if G.wtVoice then G.wtVoice("resupply") end   -- 停在自己的据点里补给（服务器 Wt.lua supplyStep）
+      local bits = {}
+      if m.ammo then table.insert(bits, T("wt.supAmmo")) end
+      if m.crew then table.insert(bits, T("wt.supCrew", T("wt.r." .. m.crew))) end
+      say(table.concat(bits, " · "), OK, 2)
     elseif op == "wtFixed" then
+      if G.wtVoice then G.wtVoice("fixed") end
       say(T("wt.fixed"), OK, 2)
     elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
+      G.wtKiller = m.kid and { id = m.kid, t = os.clock() } or nil   -- 击杀镜头（⑮）：阵亡效果（DeathFx.lua）的镜头转去看打你的那辆
       local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
       if m.kk and T("tree." .. m.kk) ~= "tree." .. m.kk then kv = T("tree." .. m.kk) end   -- 打你的是科技树出的车：写科技树里的名字
       say(kv and T("wt.killedBy", m.from or "?", kv) or T("wt.killedBy2", m.from or "?"), DEAD, 5)
@@ -83737,7 +85021,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="228">
+        <Item class="ModuleScript" referent="232">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
@@ -84024,11 +85308,12 @@ function WtTank.init(G)
         for _, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流" })[cls] or "" })
+          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = (cls == "atgm") and "sam" or cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流", atgm = "ATGM" })[cls] or "" })
         end
       elseif w then
-        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
-        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic] })
+        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam" or w.kind == "atgm") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
+        local tg = (w.kind == "atgm") and "ATGM" or ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic]
+        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = tg })
       end
     end
     local n = #slotDef
@@ -84083,6 +85368,12 @@ function WtTank.init(G)
       if sd.k == "am" or sd.k == "w" then
         local am = vs and vs.ammo and vs.ammo[sd.wid]
         local tot = am and (am[1] + am[2]) or nil
+        -- ④ 配弹：每种弹各剩几发（服务器 Wt.lua 写 AmL = "m829a3:20,m830:12,…"）
+        if sd.k == "am" and em then
+          local L = em:GetAttribute("AmL")
+          local n = L and string.match("," .. L .. ",", "," .. sd.am .. ":(%d+),")
+          if n then tot = tonumber(n) end
+        end
         cnt = tot and tostring(tot) or "∞"
         empty = tot == 0
         if sd.k == "am" then
@@ -84305,6 +85596,11 @@ function WtTank.init(G)
     fixBg.Visible = fix ~= nil
     fixFill.Size = UD2(math.clamp(fix or 0, 0, 1), 0, 1, 0)
     diCrew.Text = (tot > 0) and T("wtt.crew", alive, tot) or ""
+    -- ④ 待发弹架：还剩几发（空了写红字「车体取弹」——装得慢）
+    local rdy, rcap = em and em:GetAttribute("Rdy"), em and em:GetAttribute("RdyCap")
+    if rdy and rcap then
+      diCrew.Text = diCrew.Text .. "   " .. ((rdy > 0) and T("wtt.rack", rdy, rcap) or T("wtt.rackOut"))
+    end
   end
 
   ---------------------------------------------------------------- 每帧（VehHud.stepTank 调）
@@ -84336,7 +85632,10 @@ function WtTank.init(G)
       for _, tk in ipairs(AIM.ticks) do tk.BackgroundColor3 = col end
       -- 装填：弧走着（琥珀），装好那一下圈涨一下
       local ready = I.ready ~= false
-      if ready and not wasReady then readyT = t end
+      if ready and not wasReady then
+        readyT = t
+        if G.wtVoice and wasReady == false then G.wtVoice("loaded") end   -- 车组语音：装填完毕（⑬）
+      end
       wasReady = ready
       AIM.rel.root.Visible = not ready
       AIM.track.Transparency = ready and 1 or 0.7
@@ -84373,6 +85672,112 @@ function WtTank.init(G)
 end
 
 return WtTank
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="233">
+          <Properties>
+            <string name="Name">WtVoice</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车组语音（用户 11-25「全部都做」⑬：战雷的「击穿！」「跳弹」「着火了」「炮长阵亡」「装填完毕」）
+--   G.wtVoice(键)：一次说一句（排队最多两句，同一句 3 秒内不重复）。声音从哪来，按顺序试：
+--   ① Config.WtVoice[键] 配了音频（rbxassetid://…，自己上传的录音）就放它；
+--   ② 没配：用 Roblox 的文字转语音（AudioTextToSpeech，读英文——战雷默认的英文车组）；第一次用到某句时先加载好存起来
+--   ③ 引擎没有文字转语音（老版本、测试台）：不出声（命中提示、损伤面板照旧写字）
+--   谁调：WtHud（打出去的命中、自己挨打、换位、灭火、修好）、WtTank（装填完毕）
+local RS = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+
+local WtVoice = {}
+
+function WtVoice.init(G)
+  local Config = require(RS:WaitForChild("Config"))
+  -- 每句：英文（文字转语音读）、语速（1 正常）
+  local LINES = {
+    pen = { "Penetration!", 1.1 }, ric = { "Ricochet!", 1.1 }, np = { "Not penetrated!", 1.1 }, kill = { "Target destroyed!", 1.05 },
+    killAmmo = { "Ammo rack! Target destroyed!", 1.1 }, crit = { "Critical hit!", 1.1 }, hit = { "Hit!", 1.1 },
+    hurtPen = { "We've been penetrated!", 1.15 }, hurtRic = { "Ricochet off our armor!", 1.15 }, fire = { "We're on fire!", 1.2 },
+    fireOut = { "Fire's out.", 1 }, fixed = { "Repairs complete.", 1 },
+    gnr = { "Gunner is down!", 1.15 }, drv = { "Driver is down!", 1.15 }, ldr = { "Loader is down!", 1.15 }, cmd = { "Commander is down!", 1.15 },
+    loaded = { "Loaded!", 1.15 }, swap = { "Replacing crew member.", 1.05 }, resupply = { "Resupplying.", 1 },
+    engine = { "Engine damaged!", 1.15 }, track = { "Track is broken!", 1.15 }, barrel = { "Barrel damaged!", 1.15 }, breech = { "Breech damaged!", 1.15 },
+    spotted = { "We've been spotted!", 1.1 }, scout = { "Target spotted.", 1.05 },
+  }
+  local VCFG = (Config.WtVoice or {})
+  local ttsOk = nil   -- nil 还没试、true 能用、false 没有
+  local cache = {}    -- 键 → 已经加载好的 AudioTextToSpeech（或 Sound）
+  local queue, busyTill, lastSaid = {}, 0, {}
+
+  local folder = Instance.new("Folder")
+  folder.Name = "WtVoice"
+  folder.Parent = SoundService
+
+  local function makeTts(key)
+    local L = LINES[key]
+    if not L then return nil end
+    local ok, tts = pcall(function()
+      local t = Instance.new("AudioTextToSpeech")
+      t.Text = L[1]
+      pcall(function() t.VoiceId = tostring(VCFG.voiceId or "1") end)
+      pcall(function() t.Speed = L[2] or 1 end)
+      pcall(function() t.Volume = VCFG.volume or 1.4 end)
+      local out = Instance.new("AudioDeviceOutput")
+      out.Parent = t
+      local wire = Instance.new("Wire")
+      wire.SourceInstance, wire.TargetInstance = t, out
+      wire.Parent = t
+      t.Parent = folder
+      return t
+    end)
+    if not ok or not tts then ttsOk = false return nil end
+    ttsOk = true
+    task.spawn(function() pcall(function() tts:LoadAsync() end) end)
+    return tts
+  end
+  local function makeSound(key)
+    local id = VCFG[key]
+    if type(id) ~= "string" or id == "" then return nil end
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = VCFG.volume or 1.4
+    s.Parent = folder
+    return s
+  end
+  local function get(key)
+    if cache[key] ~= nil then return cache[key] or nil end
+    local v = makeSound(key)
+    if not v and ttsOk ~= false then v = makeTts(key) end
+    cache[key] = v or false
+    return v
+  end
+  local function say(key)
+    local v = get(key)
+    if not v then return end
+    pcall(function()
+      if v:IsA("Sound") then v:Play() else v:Play() end
+    end)
+  end
+
+  function G.wtVoice(key)
+    if VCFG.off or not LINES[key] then return end
+    local t = os.clock()
+    if t - (lastSaid[key] or -9) < 3 then return end
+    lastSaid[key] = t
+    if #queue >= 2 then table.remove(queue, 1) end
+    table.insert(queue, key)
+  end
+  G.wtVoiceTts = function() return ttsOk end   -- 测试用
+
+  -- 一句一句说：一句约 1.3 秒（按字数估），说完再说下一句
+  G.frameConn("WtVoice", function()
+    local t = os.clock()
+    if t < busyTill or #queue == 0 then return end
+    local key = table.remove(queue, 1)
+    G.try_(say, key)
+    busyTill = t + 0.45 + #(LINES[key] and LINES[key][1] or "") * 0.055
+  end)
+end
+
+return WtVoice
 ]]></ProtectedString>
           </Properties>
         </Item>
