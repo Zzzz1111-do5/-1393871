@@ -1292,7 +1292,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "dev"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 21:52 06fba48"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -8888,6 +8888,15 @@ add("wt.noGun", "主炮打不了：炮长阵亡或炮闩 / 炮管损毁", "Main 
 add("wt.fixing", "正在维修，暂时不能开炮", "Repairing — main gun unavailable")
 add("wtt.crew", "车组 {1} / {2}", "Crew {1} / {2}")
 add("wtt.est", "车长估距…", "Estimating…")
+add("wtm.mission", "本局任务：{1}", "Mission: {1}")
+add("wtm.mi.break", "突破（A～E 一个阶段一个阶段打）", "Breakthrough (A to E, stage by stage)")
+add("wtm.mi.dom", "统治（抢 B、C、D 三个据点，据点多的扣对面兵力）", "Domination (hold B, C, D)")
+add("wtm.mi.conq", "征服（抢镇子 C 一个点）", "Conquest (capture C)")
+add("wsk.title", "涂装 · 贴花", "Camouflage · Decals")
+add("wsk.no", "战术号码", "Tactical number")
+add("wsk.embOn", "国徽：贴", "Emblem: on")
+add("wsk.embOff", "国徽：不贴", "Emblem: off")
+add("wsk.note", "零件拼的车整车换颜色；导入的原模型有自己的贴图，只能整体加个色调（冬季这种要变白的，原模型上只是偏灰）", "Part-built vehicles are repainted; imported models keep their texture and only get a tint")
 add("wt.kcTitle", "被击毁", "DESTROYED")
 add("wt.spec", "观战队友", "Spectate team")
 add("wt.specBack", "回机库", "Back to hangar")
@@ -17224,7 +17233,7 @@ function AIVeh.init(G)
   local function eligible(team, p, land)
     local s = G.points and G.points[p.id]
     if G.conquest and G.conquest() then   -- 征服（沙漠）：两边一样——敌人的、中立的据点去打，自己的被压着回去守
-      if not s then return 0 end
+      if not s or s.off then return 0 end   -- ⑱ 这一局不用的据点
       if s.owner == team then return s.pressed and 3 or 0 end
       return (s.owner == "none") and 2 or 2.4
     end
@@ -28109,10 +28118,22 @@ function Round.init(G)
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
   -- 征服模式（原来给「沙漠风暴」用，用户 11-24 把那张图删了，现在没有图用；留着规则以后别的图要用）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
-  local function conquest() return Map.desert == true end
+  -- 每局换任务（用户 11-25「全部都做」⑱：战雷每局换地图 / 换任务）：沙海上三种轮着来——
+  --   break 突破（原来那套：A～E 一个阶段一个阶段打）、dom 统治（中间三个据点 B / C / D，开局中立，两边抢，据点多的那边按差几个扣对面兵力）、
+  --   conq 征服（只有镇子 C 一个点）；统治、征服用下面征服模式那套规则（两边都有兵力、阵亡扣自己的）。
+  --   只在战雷式纯载具对战（WtMatch.lua G.wtGroundOnly）里换；PvE、测试照旧突破。workspace 属性 WtMission 给客户端
+  local MISSIONS = { "break", "dom", "conq" }
+  local MISSION_PTS = { dom = { B = true, C = true, D = true }, conq = { C = true } }
+  R.mission = "break"
+  local function missionOff(id)
+    local set = MISSION_PTS[R.mission]
+    return set ~= nil and not set[id]
+  end
+  local function conquest() return Map.desert == true or MISSION_PTS[R.mission] ~= nil end
   G.conquest = conquest
+  G.wtMission = function() return R.mission end
   local function isActive(s)
-    if conquest() then return s ~= nil end
+    if conquest() then return s ~= nil and not s.off end   -- 统治 / 征服（⑱）：这一局不用的据点不算
     if not s or s.locked then return false end
     local k = stageOf[s.id]
     if not k then return false end
@@ -28956,13 +28977,21 @@ function Round.init(G)
 
   ---------------------------------------------------------------- 据点
 
+  local pointPar = {}   -- 这一局不用的据点（⑱）：模型先摘下来，记着原来挂在哪
   local function resetPoints()
     for k in pairs(points) do points[k] = nil end   -- 换了地图（据点不一样）：旧的清掉
     local own = conquest() and "none" or "def"
     for _, p in ipairs(Map.POINTS) do
-      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = own, prog = 0, cap = 0, locked = false, atk = 0, def = 0, pressed = false }
+      local off = missionOff(p.id)
+      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = off and "none" or own, prog = 0, cap = 0, locked = off, off = off or nil, atk = 0, def = 0, pressed = false }
       local m = G.pointModels and G.pointModels[p.id]
-      if m then m:SetAttribute("Owner", own) m:SetAttribute("Prog", 0) end
+      if m then
+        m:SetAttribute("Owner", off and "none" or own)
+        m:SetAttribute("Prog", 0)
+        m:SetAttribute("Off", off or nil)
+        if off and m.Parent then pointPar[p.id] = m.Parent m.Parent = nil
+        elseif not off and not m.Parent and pointPar[p.id] then m.Parent = pointPar[p.id] end
+      end
     end
   end
   resetPoints()
@@ -29081,7 +29110,7 @@ function Round.init(G)
   local function conqStep(dt)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
-      if s then
+      if s and not s.off then
         local a, d, who, ra, rd = countIn(s)
         s.atk, s.def = a, d
         local effA = ra + (a - ra) * (CC.botW or 1)
@@ -29132,7 +29161,9 @@ function Round.init(G)
   local function conqBleed(dt)
     local nA, nD = 0, 0
     for _, s in pairs(points) do
-      if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+      if not s.off then
+        if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+      end
     end
     local lose = (nA > nD) and "def" or ((nD > nA) and "atk" or nil)
     if not lose then return end
@@ -29196,6 +29227,14 @@ function Round.init(G)
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
     -- 昼夜：跨局接着走（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0，PvE 关卡开局按自己的钟点改，Pve.lua）
+    -- ⑱ 这一局的任务：战雷式纯载具对战、沙海上按 突破 → 统治 → 征服 轮着来
+    if G.wtGroundOnly and G.wtGroundOnly() and Map.id == "sands" then
+      R.missionI = ((R.missionI or 0) % #MISSIONS) + 1
+      R.mission = MISSIONS[R.missionI]
+    else
+      R.mission = "break"
+    end
+    workspace:SetAttribute("WtMission", R.mission)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets
@@ -29206,6 +29245,7 @@ function Round.init(G)
       P.kills, P.deaths, P.score, P.caps, P.roundXp = 0, 0, 0, 0, 0
     end
     G.emit("roundStart")
+    if R.mission ~= "break" or (G.wtGroundOnly and G.wtGroundOnly()) then G.msgAll("info", "wtm.mission", { k = "wtm.mi." .. R.mission }) end
     G.pushAll()
   end
 
@@ -29303,8 +29343,10 @@ function Round.init(G)
     local out = {}
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
+      if s and not s.off then   -- ⑱ 这一局不用的据点不发（比分条、地图上都不画）
       table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, cap = math.floor((s.cap or 0) * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
         act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
+      end
     end
     return out
   end
@@ -35811,10 +35853,32 @@ function WtMatch.init(G)
     end
     return true
   end
+  local SKS = require(RS:WaitForChild("WtSkins"))
+  -- 机库里选涂装、贴花（客户端 WtSkin.lua）：key 科技树的键，c 涂装、n 战术号码（0～999 或没有）、e 贴不贴国徽；这一局里记着
+  function G.ACT.wtSkinSet(P, key, c, n, emb)
+    if type(key) ~= "string" or #key > 40 then return end
+    if type(c) ~= "string" or not SKS.CAMO[c] then c = "std" end
+    n = tonumber(n)
+    if n then n = math.clamp(math.floor(n), 0, 999) end
+    P.wtSkin = P.wtSkin or {}
+    P.wtSkin[key] = { c = (c ~= "std") and c or nil, n = n, e = emb == true }
+  end
   function G.wtSpawned(P, vid, kind, e)
     if not P or not P.pl or not vid then return end
     -- ④ 配弹：按他在机库里配的再配一遍（等 Tech.lua 写完改装 e.wtFx、科技树的键 e.treeKey 再配）
     if e and G.wtAmmoInit then task.defer(function() pcall(G.wtAmmoInit, e, P) end) end
+    -- ⑯ 涂装、贴花：他在机库里选的（G.ACT.wtSkinSet）写成车上的属性，客户端 View.lua 按它画
+    if e then
+      task.defer(function()
+        if not e.model or not e.model.Parent then return end
+        local key = e.treeKey or vid
+        local sk = P.wtSkin and P.wtSkin[key]
+        if not sk then return end
+        e.model:SetAttribute("Camo", sk.c)
+        e.model:SetAttribute("TacNo", sk.n)
+        if sk.e then e.model:SetAttribute("Emb", SKS.natOf(e.treeKey, P.team)) end
+      end)
+    end
     local lk = keyOf(P, vid)
     if e then e.wtOwner, e.wtVid = P, lk end
     if not on() then return end
@@ -36285,7 +36349,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtMap", "XrayOwn", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtSkin", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtMap", "XrayOwn", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -68032,6 +68096,10 @@ function MapUI.init(G)
 
   function G.mapRefresh(S)
     if S and S.points then
+      -- ⑱ 每局换任务：这一局不用的据点服务器不发——地图上的点也藏起来
+      local inS = {}
+      for _, s in ipairs(S.points) do inS[s.id] = true end
+      for id, d in pairs(pointDots) do d.Visible = inS[id] == true end
       for _, s in ipairs(S.points) do
         local d = pointDots[s.id]
         if d then
@@ -85019,7 +85087,7 @@ return VehHud
         <Item class="ModuleScript" referent="229">
           <Properties>
             <string name="Name">VehModels</string>
-            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
+            <ProtectedString name="Source">-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
 --   履带车的负重轮 / 主动轮 / 诱导轮 / 履带（下面一段段跟着负重轮上下）、轮式车的车轮（带轮毂、挡泥板，前轴转向）、
 --   各式炮塔（楔形、圆形、艾布拉姆斯、步战车、遥控武器站、自行高炮、火神炮、自行榴弹炮、发射箱）、炮管（抽烟装置、炮口制退器）、
 --   烟幕弹发射筒（就装在 VehDefs 规定的位置、朝规定的方向）
@@ -85027,7 +85095,7 @@ return VehHud
 --   每帧由 View 按车体、炮塔、炮、各轮的姿态算出零件位置（BulkMoveTo）
 local VehModels = {}
 
--- 原模型（网页版装备模型原样转的 models/veh/<模型键>.glb，Studio 里导入后由 Imports.lua 收进 ReplicatedStorage.Imported.Veh.<模型键>）：
+-- 原模型（网页版装备模型原样转的 models/veh/&lt;模型键&gt;.glb，Studio 里导入后由 Imports.lua 收进 ReplicatedStorage.Imported.Veh.&lt;模型键&gt;）：
 --   有就整辆换成它（真实尺寸，不缩放；车体、炮塔、炮、各个车轮照元数据 ImportedMeta 摆、按各自的转轴动），没有就用下面零件拼的
 local RS = game:GetService("ReplicatedStorage")
 local Tint = require(script.Parent:WaitForChild("Tint"))   -- 导入的贴图没出来时的底色（原贴图的平均色）
@@ -85052,7 +85120,7 @@ local function importedFor(d)
     local f = info and veh and veh:FindFirstChild(key)
     if f then
       local n = f:GetAttribute("N")   -- 服务器记的块数：还没全复制过来就先不用（View 等块齐了再重建）
-      if n and #f:GetChildren() < n then return nil end
+      if n and #f:GetChildren() &lt; n then return nil end
       return key, info, f
     end
   end
@@ -85181,7 +85249,7 @@ function VehModels.build(d, team, mods, paint)
       local w = info.wheels[g]
       local c = v3(w.c)
       local wi = #wheels + 1
-      wheels[wi] = { x = c.X, z = c.Z, r = c.Y, rad = math.max(w.r, 0.3), side = (c.X < 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false }
+      wheels[wi] = { x = c.X, z = c.Z, r = c.Y, rad = math.max(w.r, 0.3), side = (c.X &lt; 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false }
       wix[g] = wi
       table.insert(zs, c.Z)
     end
@@ -85190,7 +85258,7 @@ function VehModels.build(d, team, mods, paint)
       --   车身照样随地面起伏、俯仰、侧倾
       local hb = info.hull or { info.w, info.h, info.len }   -- 车身的宽、高、长
       local kz, kx = hb[3] / math.max(d.L, 1), hb[1] / math.max(d.W, 1)
-      local function spring(x, z, r) wheels[#wheels + 1] = { x = x * kx, z = z * kz, r = r, rad = r, side = (x < 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false } end
+      local function spring(x, z, r) wheels[#wheels + 1] = { x = x * kx, z = z * kz, r = r, rad = r, side = (x &lt; 0) and -1 or 1, dy = 0, vy = 0, spin = 0, steer = false } end
       if d.arch == "tracked" and d.rw then
         local R = d.rw
         for s = -1, 1, 2 do
@@ -85202,14 +85270,14 @@ function VehModels.build(d, team, mods, paint)
         end
       end
     end
-    if d.arch == "wheeled" and #zs > 0 then
+    if d.arch == "wheeled" and #zs &gt; 0 then
       table.sort(zs)
       local axles = {}
       for _, z in ipairs(zs) do
-        if #axles == 0 or z - axles[#axles] > 1.5 then table.insert(axles, z) end
+        if #axles == 0 or z - axles[#axles] &gt; 1.5 then table.insert(axles, z) end
       end
       local lim = axles[math.min(#axles, d.steer or 1)] + 0.75
-      for _, w in ipairs(wheels) do w.steer = w.z <= lim end
+      for _, w in ipairs(wheels) do w.steer = w.z &lt;= lim end
     end
     local carve = { cav = {}, glass = {}, inside = {} }
     -- carve.py 改过的块换了新名字（rep = 它顶替的旧块）：导入了新块就不用旧块；没重新导入的照旧用旧块
@@ -85289,7 +85357,7 @@ function VehModels.build(d, team, mods, paint)
       if info.rws.mk == "manual" then manualMg(rgpiv - rpiv, info.rws.muz or 2.45) else rwsMg(rgpiv - rpiv, info.rws.muz or 2.45) end
     end
     extra = { imported = ikey, tpiv = tpiv, gpiv = gpiv - tpiv, travel = (d.arch == "tracked") and 0.12 or d.travel,
-      rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil, carve = (#carve.cav > 0) and carve or nil }
+      rpiv = rpiv and (rpiv - tpiv) or nil, rgpiv = (rpiv and rgpiv) and (rgpiv - rpiv) or nil, carve = (#carve.cav &gt; 0) and carve or nil }
   end
 
   if not ikey then
@@ -85334,7 +85402,7 @@ function VehModels.build(d, team, mods, paint)
     for ai, z in ipairs(d.axles) do
       for s = -1, 1, 2 do
         local wi = #wheels + 1
-        wheels[wi] = { x = s * wx, z = z, r = wr, side = s, dy = 0, vy = 0, spin = 0, steer = ai <= (d.steer or 1) }
+        wheels[wi] = { x = s * wx, z = z, r = wr, side = s, dy = 0, vy = 0, spin = 0, steer = ai &lt;= (d.steer or 1) }
         add("wheel", V(ww, wr * 2, wr * 2), CF(), RUBBER, MAT.SmoothPlastic, CYL, wi)
         add("wheel", V(ww + 0.06, wr * 1.1, wr * 1.1), CF(), C.dark, MAT.Metal, CYL, wi)
         add("wheel", V(ww + 0.1, wr * 0.45, wr * 0.45), CF(), STEEL, MAT.Metal, CYL, wi)
@@ -85504,7 +85572,7 @@ function VehModels.build(d, team, mods, paint)
         gun(V(s.X / nx * 0.8, s.Y / ny * 0.8, 0.1), CF((i - (nx - 1) / 2) * s.X / nx, 0.4 + (j + 0.5) * s.Y / ny, -s.Z / 2 - 0.02), RGB(26, 26, 28))
       end
     end
-  elseif Gd.len > 0 then
+  elseif Gd.len &gt; 0 then
     if st ~= "rws" and st ~= "ring" then gun(V(math.min(s.X * 0.4, 3.0), Gd.cal * 3.6 + 0.6, 1.6), CF(0, 0, -0.4), C.base) end   -- 防盾
     if Gd.gatling then
       for k = 0, 5 do
@@ -85539,8 +85607,8 @@ function VehModels.build(d, team, mods, paint)
       local frame = b.hull and (CF(0, hh, 0) * CF(b.at)) or CF(b.at)
       fn(V(1.1, 0.5, 0.9), frame * CF(0, -0.3, 0.1), C.dark)   -- 发射架
       for i = 1, S.n do
-        local fan = (S.n > 1) and ((i - 1) / (S.n - 1) - 0.5) or 0
-        local yaw2 = math.rad(b.yaw + fan * 40 * (b.yaw >= 0 and 1 or -1))
+        local fan = (S.n &gt; 1) and ((i - 1) / (S.n - 1) - 0.5) or 0
+        local yaw2 = math.rad(b.yaw + fan * 40 * (b.yaw &gt;= 0 and 1 or -1))
         local cf = frame * CF(fan * 0.9, (i % 2) * 0.35, 0) * CFrame.Angles(0, -yaw2, 0) * CFrame.Angles(math.rad(35), 0, 0)
         fn(V(0.85, 0.34, 0.34), cf * CF(0, 0, -0.3) * ALONG_Z, RGB(54, 58, 50), MAT.Metal, CYL)
         fn(V(0.05, 0.26, 0.26), cf * CF(0, 0, -0.74) * ALONG_Z, RGB(20, 20, 20), MAT.SmoothPlastic, CYL)   -- 管口
@@ -85687,7 +85755,7 @@ function VehModels.build(d, team, mods, paint)
         local function put(size, o, color, mat, shape, tr)
           local p = add(g, size, base * o, color, mat, shape)
           if tr then p.Transparency = tr end
-          p.CastShadow = size.Z > 0.1
+          p.CastShadow = size.Z &gt; 0.1
           table.insert(e.parts, p)
           return p
         end
@@ -85739,7 +85807,7 @@ function VehModels.build(d, team, mods, paint)
     local function frameAt(c, n)
       local up = V(0, 1, 0)
       local rt = up:Cross(n)
-      if rt.Magnitude < 0.1 then rt = V(1, 0, 0) end
+      if rt.Magnitude &lt; 0.1 then rt = V(1, 0, 0) end
       rt = rt.Unit
       return CFrame.fromMatrix(c, rt, n:Cross(rt).Unit, n)   -- Z 朝外
     end
@@ -85805,7 +85873,7 @@ function VehModels.build(d, team, mods, paint)
       grille("hull", CF(0, (y0 + y1) / 2, rz), 1, hb[4] - hb[1] - 0.6, y1 - y0, 1.4)   -- 车尾
       local sl = (hb[6] - hb[3]) * 0.3
       for sx = -1, 1, 2 do   -- 侧面后段（发动机舱外，裙板外面）
-        local x = (sx > 0) and (hb[4] + 1.2) or (hb[1] - 1.2)
+        local x = (sx &gt; 0) and (hb[4] + 1.2) or (hb[1] - 1.2)
         grille("hull", CF(x, (y0 + 1.1 + y1) / 2, hb[6] - sl / 2) * CFrame.Angles(0, math.pi / 2, 0), 1, sl, y1 - y0 - 1.1, 1.2)
       end
       if tb then   -- 炮塔尾部后面
@@ -85853,15 +85921,15 @@ function VehModels.build(d, team, mods, paint)
       local k = 0
       for sx = -1, 1, 2 do
         -- 炮塔侧面后半（错开几片）
-        local x = (sx > 0) and (tb[4] + 0.18) or (tb[1] - 0.18)
+        local x = (sx &gt; 0) and (tb[4] + 0.18) or (tb[1] - 0.18)
         local z0, z1 = tb[3] + (tb[6] - tb[3]) * 0.45, tb[6] - 0.3
         for j = 0, 3 do
           k += 1
           local zc = z0 + (z1 - z0) * (j + 0.5) / 4
-          patch(tur, V(0.08, (roofY - tb[2]) * (0.55 + (j % 2) * 0.2), (z1 - z0) / 3.4), CF(-tp) * CF(x + sx * 0.02 * (j % 2), tb[2] + (roofY - tb[2]) * 0.45, zc), k + (sx > 0 and 1 or 0))
+          patch(tur, V(0.08, (roofY - tb[2]) * (0.55 + (j % 2) * 0.2), (z1 - z0) / 3.4), CF(-tp) * CF(x + sx * 0.02 * (j % 2), tb[2] + (roofY - tb[2]) * 0.45, zc), k + (sx &gt; 0 and 1 or 0))
         end
         -- 车体侧面后段（裙板外）
-        local hx = (sx > 0) and (hb[4] + 0.22) or (hb[1] - 0.22)
+        local hx = (sx &gt; 0) and (hb[4] + 0.22) or (hb[1] - 0.22)
         for j = 0, 4 do
           k += 1
           local zc = hb[3] + (hb[6] - hb[3]) * (0.45 + 0.11 * j)
@@ -85955,7 +86023,7 @@ function VehModels.pose(M, d)
   return tp
 end
 
-return VehModels]]></ProtectedString>
+return VehModels</ProtectedString>
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="230">
@@ -88979,6 +89047,12 @@ function WtAmmo.init(G)
       for _, k in ipairs(list) do cur[k] = math.floor((cur[k] or 0) / 2) end
       send()
     end)
+    -- 涂装、贴花（⑯，WtSkin.lua）：机库顶栏的图标键放不下了，从配弹面板进
+    if G.openSkin then
+      local b4 = button(panel, T("wsk.title"), UDim2.fromOffset(110, 32), UD2(0, 216, 0, by))
+      b4.Name = "SkinBtn"
+      b4.MouseButton1Click:Connect(function() close() G.openSkin(key) end)
+    end
     local b3 = button(panel, T("wta2.close"), UDim2.fromOffset(96, 32), UD2(1, -108, 0, by))
     b3.Name = "Close"
     b3.MouseButton1Click:Connect(close)
@@ -91428,6 +91502,150 @@ return WtMap
         </Item>
         <Item class="ModuleScript" referent="241">
           <Properties>
+            <string name="Name">WtSkin</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机库里选涂装、贴花（用户 11-25「全部都做」⑯）
+--   出击阵容卡片上的「涂装」（TechUI.lua 调 G.openSkin(科技树的键)）：六种涂装（色块）、战术号码（三位数，留空就不贴）、国徽开关；
+--   选了就发服务器（WtMatch.lua G.ACT.wtSkinSet），这一局里出这辆车按它；画法在 View.lua（零件拼的车直接上色，原模型乘色调）
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+
+local WtSkin = {}
+
+function WtSkin.init(G)
+  local SK = require(RS:WaitForChild("WtSkins"))
+  local TT = require(RS:WaitForChild("TechTree"))
+  local me = Players.LocalPlayer
+  local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
+  local function T(k, ...) return G.T and G.T(k, ...) or k end
+  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local WHITE, DIM, GOLD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120)
+  local zh = true
+  pcall(function() zh = not (G.lang and G.lang() == "en") end)
+
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "WtSkin"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.DisplayOrder = 14
+  gui.Enabled = false
+  gui.Parent = me:WaitForChild("PlayerGui")
+
+  local saved = {}   -- 键 → { c, n, e }
+  local panel = nil
+  local function close()
+    if panel then panel:Destroy() panel = nil end
+    gui.Enabled = false
+  end
+  local function label(parent, s, size, pos, ts, col, font)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Size, l.Position = size, pos
+    l.Text, l.TextSize, l.TextColor3, l.Font = s, ts or 14, col or WHITE, font or BOLD
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = parent
+    return l
+  end
+  function G.openSkin(key)
+    close()
+    local it = TT.get and TT.get(key)
+    local cur = saved[key] or { c = "std", n = nil, e = true }
+    gui.Enabled = true
+    panel = Instance.new("Frame")
+    panel.Name = "SkinPanel"
+    panel.Size, panel.Position, panel.AnchorPoint = UDim2.fromOffset(460, 250), UD2(0.5, 0, 0.5, 0), V2(0.5, 0.5)
+    panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = RGB(12, 14, 17), 0.05, 0
+    panel.Parent = gui
+    local st = Instance.new("UIStroke")
+    st.Color, st.Transparency = RGB(110, 120, 126), 0.35
+    st.Parent = panel
+    local nm = it and T("tree." .. key) or key
+    label(panel, nm .. "  ·  " .. T("wsk.title"), UD2(1, -24, 0, 24), UD2(0, 12, 0, 10), 16)
+    -- 涂装：一排色块
+    local sw = {}
+    local function redraw()
+      for k, b in pairs(sw) do
+        local s2 = b:FindFirstChildOfClass("UIStroke")
+        if s2 then s2.Thickness, s2.Color = (cur.c == k) and 3 or 1, (cur.c == k) and GOLD or RGB(90, 96, 100) end
+      end
+    end
+    local function send()
+      saved[key] = { c = cur.c, n = cur.n, e = cur.e }
+      G.R.Act:FireServer("wtSkinSet", key, cur.c, cur.n, cur.e)
+      redraw()
+    end
+    for i, k in ipairs(SK.ORDER) do
+      local C = SK.CAMO[k]
+      local b = Instance.new("TextButton")
+      b.Name = "Camo_" .. k
+      b.Size, b.Position = UDim2.fromOffset(68, 62), UD2(0, 12 + (i - 1) * 73, 0, 44)
+      b.BackgroundColor3, b.BorderSizePixel = C.base or RGB(60, 64, 60), 0
+      b.Text = ""
+      b.Parent = panel
+      local s2 = Instance.new("UIStroke")
+      s2.Parent = b
+      if C.dark then   -- 迷彩的另两种颜色两小块
+        for j, col in ipairs({ C.dark, C.light }) do
+          local f = Instance.new("Frame")
+          f.Size, f.Position = UD2(0.36, 0, 0.3, 0), UD2(0.08 + (j - 1) * 0.46, 0, 0.1, 0)
+          f.BackgroundColor3, f.BorderSizePixel = col, 0
+          f.Parent = b
+        end
+      end
+      local l = label(b, zh and C.zh or C.en, UD2(1, 0, 0, 16), UD2(0, 0, 1, -18), 11, WHITE, MED)
+      l.TextXAlignment = Enum.TextXAlignment.Center
+      l.TextStrokeTransparency = 0.3
+      b.MouseButton1Click:Connect(function() cur.c = k send() end)
+      sw[k] = b
+    end
+    -- 战术号码
+    label(panel, T("wsk.no"), UD2(0, 120, 0, 24), UD2(0, 12, 0, 122), 14)
+    local tb = Instance.new("TextBox")
+    tb.Name = "TacNo"
+    tb.Size, tb.Position = UDim2.fromOffset(90, 28), UD2(0, 130, 0, 120)
+    tb.BackgroundColor3, tb.BorderSizePixel = RGB(28, 32, 36), 0
+    tb.Text, tb.PlaceholderText = cur.n and string.format("%03d", cur.n) or "", "213"
+    tb.TextSize, tb.Font, tb.TextColor3 = 16, BOLD, WHITE
+    tb.ClearTextOnFocus = false
+    tb.Parent = panel
+    tb.FocusLost:Connect(function()
+      local n = tonumber(string.match(tb.Text or "", "%d+") or "")
+      cur.n = n and math.clamp(n, 0, 999) or nil
+      tb.Text = cur.n and string.format("%03d", cur.n) or ""
+      send()
+    end)
+    -- 国徽
+    local eb = Instance.new("TextButton")
+    eb.Name = "Emblem"
+    eb.Size, eb.Position = UDim2.fromOffset(160, 28), UD2(0, 240, 0, 120)
+    eb.BackgroundColor3, eb.BorderSizePixel = RGB(40, 52, 46), 0
+    eb.TextSize, eb.Font, eb.TextColor3 = 14, BOLD, WHITE
+    eb.Parent = panel
+    local function ebTxt() eb.Text = T(cur.e and "wsk.embOn" or "wsk.embOff") end
+    ebTxt()
+    eb.MouseButton1Click:Connect(function() cur.e = not cur.e ebTxt() send() end)
+    label(panel, T("wsk.note"), UD2(1, -24, 0, 34), UD2(0, 12, 0, 160), 11, DIM, MED).TextWrapped = true
+    local ok = Instance.new("TextButton")
+    ok.Name = "Close"
+    ok.Size, ok.Position = UDim2.fromOffset(100, 32), UD2(1, -112, 1, -44)
+    ok.BackgroundColor3, ok.BorderSizePixel = RGB(52, 70, 58), 0
+    ok.Text, ok.TextSize, ok.Font, ok.TextColor3 = T("wta2.close"), 14, BOLD, WHITE
+    ok.Parent = panel
+    ok.MouseButton1Click:Connect(close)
+    redraw()
+    if not saved[key] then send() end
+  end
+  G.closeSkin = close
+  G.frameConn("WtSkin", function()
+    if panel and G.S and G.S.alive then close() end
+  end)
+end
+
+return WtSkin
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="242">
+          <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
 --   电脑上开坦克时 VehHud 的 stepTank 每帧调 G.wtTankStep，原来 MWT 那套（右下全息车、六边形弹种钮、∧ 准星、车旁的车速牌）收起：
@@ -92089,7 +92307,7 @@ return WtTank
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="242">
+        <Item class="ModuleScript" referent="243">
           <Properties>
             <string name="Name">WtVoice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车组语音（用户 11-25「全部都做」⑬：战雷的「击穿！」「跳弹」「着火了」「炮长阵亡」「装填完毕」）
@@ -92195,7 +92413,7 @@ return WtVoice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="243">
+        <Item class="ModuleScript" referent="244">
           <Properties>
             <string name="Name">XrayOwn</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——透视自己的车（用户 11-25「x改成透视自己的坦克」）
