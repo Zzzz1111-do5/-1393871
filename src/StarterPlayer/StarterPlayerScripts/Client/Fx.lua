@@ -891,9 +891,13 @@ function Fx.init(G)
         burst(h, { tex = TX.smoke, n = n(8 + r / 2), life = { 1.2, 2.2 + r / 40 }, spd = { r * 1.4, r * ((c == "bomb") and 4 or 3.2) }, spread = 22, acc = V(0, -r * 2.4, 0), drag = 1.4,
           size = nseq(0, r * 0.35, 0.3, r * 0.9, 1, r * 1.5), tr = nseq(0, 0.1, 0.6, 0.45, 1, 1), col = cseq(soil, RGB(150, 136, 116)), rot = 30 })
       end
-      local chunk = (c == "wreck") and RGB(52, 52, 50) or RGB(60, 50, 40)
-      burst(h, { tex = TX.chunk, n = n(6 + r / 2), life = { 1, 2.2 }, spd = { r * 1.6, r * 3.6 }, spread = 55, acc = V(0, -110, 0), drag = 0.4,
-        size = nseq(0, 0.5 + r / 30, 1, 0.3 + r / 50), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(chunk, RGB(36, 32, 28)), rot = 400 })
+      if c == "wreck" and G.wreckChunks and d < 1500 then   -- 车 / 飞机被打爆：真的钢板碎块（WreckFx.lua，11-25「画风不够战雷」：方块贴图像游戏）
+        G.wreckChunks(p, R, lod, 6)
+      else
+        local chunk = (c == "wreck") and RGB(52, 52, 50) or RGB(60, 50, 40)
+        burst(h, { tex = TX.chunk, n = n(6 + r / 2), life = { 1, 2.2 }, spd = { r * 1.6, r * 3.6 }, spread = 55, acc = V(0, -110, 0), drag = 0.4,
+          size = nseq(0, 0.5 + r / 30, 1, 0.3 + r / 50), tr = nseq(0, 0, 0.8, 0, 1, 1), col = cseq(chunk, RGB(36, 32, 28)), rot = 400 })
+      end
       if r >= 7 then
         h.CFrame = CFrame.new(p.X, surf + 1.2, p.Z)
         burst(h, { tex = TX.ring, n = 1, life = { 0.35 + r / 120, 0.4 + r / 100 }, spd = { 0.05, 0.05 }, spread = 0, flat = true,

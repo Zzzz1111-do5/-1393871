@@ -105,9 +105,33 @@ AirDefs.W = {
   gbu39 = { kind = "bomb", guided = true, dmg = 700, splash = 18, lockTime = 0.8, cone = 70, vs = VS_BOMB, shape = { L = 5.0, d = 0.53, fin = 0.6, wing = 4.0 } },
   lt2 = { kind = "bomb", guided = true, dmg = 1350, splash = 30, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 11, d = 1.04, fin = 1.2 } },
   fl90 = { kind = "rkt", dmg = 260, splash = 13, speed = 720, range = 1800, rate = 0.13, tubes = 12, vs = VS_RKT, shape = { L = 5.0, d = 1.2 } },
+  -- 各国直升机的武器（用户 11-25「直升机也做一下各个国家的」）：底子照相近的那种（反坦克导弹照 AGM-114、火箭照 Hydra / 飞龙-90、
+  --   防空弹照毒刺、炮照 M230 / 直-10 的炮塔），速度、射程、威力按真弹之间的比例调（下面统一按真实尺度放大）
+  a42 = { kind = "gun", rate = 0.11, dmg = 46, speed = 1600, range = 1800, splash = 4, cal = 0.2, turret = true,     -- 2A42 30 毫米（米-28N 机头炮塔、卡-52 右舷）
+    vs = { inf = 1, light = 1.15, armor = 0.3, air = 1.2, ship = 0.3, fort = 0.6 } },
+  yakb = { kind = "gun", rate = 0.03, dmg = 14, speed = 1600, range = 1300, splash = 1, cal = 0.12, turret = true,    -- 米-24V 机头 YakB-12.7 四管机枪
+    vs = { inf = 1, light = 0.6, armor = 0.03, air = 0.9, ship = 0.05, fort = 0.15 } },
+  m197 = { kind = "gun", rate = 0.06, dmg = 30, speed = 1500, range = 1500, splash = 2.5, cal = 0.16, turret = true,  -- AH-1 M197 20 毫米三管炮塔
+    vs = { inf = 1, light = 1.05, armor = 0.18, air = 1.2, ship = 0.25, fort = 0.5 } },
+  ataka = { kind = "agm", dmg = 950, splash = 10, speed = 430, range = 2200, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9M120 攻击（米-28N）：无线电指令
+    shape = { L = 6.1, d = 0.45, fin = 0.7 } },
+  shturm = { kind = "agm", dmg = 800, splash = 9, speed = 350, range = 2000, lockTime = 1.4, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,   -- 9M114 突击（米-24V）
+    shape = { L = 6.0, d = 0.45, fin = 0.7 } },
+  vikhr = { kind = "agm", dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
+    shape = { L = 8.0, d = 0.4, fin = 0.7 } },
+  hot3 = { kind = "agm", dmg = 850, splash = 9, speed = 280, range = 1900, lockTime = 1.3, cone = 25, turn = 35, burn = 5, life = 10, vs = VS_AGM,    -- HOT 3（虎式 UHT）：有线指令
+    shape = { L = 3.6, d = 0.5, fin = 0.8 } },
+  tow = { kind = "agm", dmg = 800, splash = 9, speed = 290, range = 1700, lockTime = 1.3, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,      -- BGM-71 陶式（AH-1S）：有线指令
+    shape = { L = 3.3, d = 0.45, fin = 0.8 } },
+  s8 = { kind = "rkt", dmg = 250, splash = 13, speed = 700, range = 1700, rate = 0.1, tubes = 20, vs = VS_RKT, shape = { L = 4.4, d = 1.2 } },        -- S-8 80 毫米（B-8V20 火箭巢）
+  igla = { kind = "aam", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
+    shape = { L = 4.4, d = 0.2, fin = 0.5 } },
+  type91 = { kind = "aam", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
+    shape = { L = 4.0, d = 0.2, fin = 0.5 } },
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
-local GUIDE = { pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", aim54 = "radar", akd10 = "laser", agm114 = "laser",
+local GUIDE = { igla = "ir", type91 = "ir", ataka = "cmd", shturm = "cmd", hot3 = "cmd", tow = "cmd", vikhr = "laser",
+  pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", aim54 = "radar", akd10 = "laser", agm114 = "laser",
   kd88 = "tv", agm65 = "tv", yj83k = "radar", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
 for id, w in pairs(AirDefs.W) do
   w.id = id
@@ -139,6 +163,13 @@ local MOTOR = {
   s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
   akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
   agm114 = { burn = 3.0, g = 15, bleed = 0.07, smoke = "med" },
+  ataka = { burn = 3.5, g = 14, bleed = 0.06, smoke = "med" },
+  shturm = { burn = 3.0, g = 12, bleed = 0.07, smoke = "med" },
+  vikhr = { burn = 3.5, g = 16, bleed = 0.05, smoke = "med" },
+  hot3 = { burn = 2.5, g = 12, bleed = 0.08, smoke = "heavy" },
+  tow = { burn = 2.0, g = 12, bleed = 0.08, smoke = "heavy" },
+  igla = { burn = 2.2, g = 22, bleed = 0.22, smoke = "med" },
+  type91 = { burn = 2.2, g = 24, bleed = 0.21, smoke = "low" },
   agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
   kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
   yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },
@@ -237,6 +268,114 @@ D.ch47 = { kind = "heli", cat = "heli", L = 44, W = 10.6, H = 16, gearH = 4.8, h
   rotor = { hub = V(0, 9.2, -15.5), r = 25.6, blades = 3, rpm = 225, dir = -1, chord = 1.9 }, rotor2 = { hub = V(0, 13.4, 16.5), r = 25.6, blades = 3, rpm = 225, dir = 1, chord = 1.9 },
   style = "chinook", cabin = { w = 10.6, h = 9.6, len = 44 }, ramp = true,
   st = {}, presets = { preset("none", {}) } }
+
+-- 各国直升机（用户 11-25「直升机也做一下各个国家的」，科技树第三棵树 heli）：机身长、旋翼直径、桨叶数、转速照真机（格 = 米 × 2.8），
+--   最大平飞照真机（这里按公里 / 时 ÷ 3.1 写，下面统一 ×2.4）；dir 1 俯视逆时针（美式）、−1 顺时针（苏俄、法式）
+local function hv(base, over)   -- 同族的变型：照抄一份再改几项
+  local t = {}
+  for k, v in pairs(base) do t[k] = v end
+  for k, v in pairs(over) do t[k] = v end
+  return t
+end
+D.mi24 = { kind = "heli", cat = "heli", L = 49, W = 18, H = 16, gearH = 5.0, hp = 1300, vMax = 108, climb = 26, yaw = 50, tilt = 22, accel = 24,   -- 米-24V：重装甲，带一个能坐 8 人的货舱
+  seats = 2, flares = 40, gun = "yakb", gunAmmo = 1470, gunPos = V(0, -3.6, -19),
+  rotor = { hub = V(0, 7.0, -1.5), r = 24.2, blades = 5, rpm = 240, dir = -1, chord = 1.6 }, tail = { hub = V(1.6, 5.6, 25), r = 5.4, blades = 3, rpm = 1100, axis = "x" },
+  style = "attackheli", tandem = true, tw = 5.0, boom = 18,
+  stub = { x = 4.0, span = 6.0, y = -0.8, z = 0.5 },
+  st = mirror({
+    { name = "tip", pos = V(9.6, -1.4, 0.5), opts = { "shturm", "ataka" }, n = N({ shturm = 2, ataka = 2 }) },
+    { name = "outer", pos = V(7.4, -2.2, 0.5), opts = { "s8", "shturm" }, n = N({ shturm = 2 }) },
+    { name = "inner", pos = V(5.2, -2.2, 0.5), opts = { "s8" } },
+  }),
+  presets = { preset("at", { tip = "shturm", outer = "shturm", inner = "s8" }), preset("rkt", { tip = "shturm", outer = "s8", inner = "s8" }) } }
+D.mi28 = { kind = "heli", cat = "heli", L = 47, W = 13.5, H = 13.5, gearH = 4.6, hp = 1250, vMax = 97, climb = 30, yaw = 60, tilt = 24, accel = 26,   -- 米-28N 浩劫：机头 2A42 炮塔
+  seats = 2, flares = 40, gun = "a42", gunAmmo = 250, gunPos = V(0, -3.4, -16),
+  rotor = { hub = V(0, 6.6, -1.0), r = 24.1, blades = 5, rpm = 242, dir = -1, chord = 1.6 }, tail = { hub = V(1.4, 4.8, 23), r = 5.4, blades = 4, rpm = 1100, axis = "x", scissor = true },
+  style = "attackheli", tandem = true, tw = 4.6, boom = 17,
+  stub = { x = 3.6, span = 5.0, y = -0.6, z = 0.3 },
+  st = mirror({
+    { name = "outer", pos = V(7.6, -2.0, 0.4), opts = { "ataka", "igla", "s8" }, n = N({ ataka = 8, igla = 2 }) },
+    { name = "inner", pos = V(5.0, -2.0, 0.4), opts = { "s8", "ataka" }, n = N({ ataka = 8 }) },
+  }),
+  presets = { preset("at", { outer = "ataka", inner = "s8" }), preset("aa", { outer = "igla", inner = "s8" }), preset("rkt", { outer = "s8", inner = "s8" }) } }
+D.ka52 = { kind = "heli", cat = "heli", L = 38, W = 20.6, H = 13.8, gearH = 4.4, hp = 1150, vMax = 97, climb = 32, yaw = 85, tilt = 26, accel = 28,   -- 卡-52 短吻鳄：共轴双旋翼、没有尾桨，并列双座
+  seats = 2, flares = 40, gun = "a42", gunAmmo = 460, gunPos = V(1.4, -1.6, -6),
+  rotor = { hub = V(0, 6.0, -0.5), r = 20.3, blades = 3, rpm = 270, dir = 1, chord = 1.4 }, rotor2 = { hub = V(0, 8.6, -0.5), r = 20.3, blades = 3, rpm = 270, dir = -1, chord = 1.4 },
+  style = "attackheli", tandem = false, tw = 5.2, boom = 14,
+  stub = { x = 3.4, span = 6.0, y = -0.4, z = 0.2 },
+  st = mirror({
+    { name = "outer", pos = V(8.8, -1.4, 0.3), opts = { "vikhr", "igla" }, n = N({ vikhr = 6, igla = 2 }) },
+    { name = "inner", pos = V(5.6, -1.8, 0.3), opts = { "s8", "vikhr" }, n = N({ vikhr = 6 }) },
+  }),
+  presets = { preset("at", { outer = "vikhr", inner = "s8" }), preset("aa", { outer = "igla", inner = "vikhr" }), preset("rkt", { outer = "vikhr", inner = "s8" }) } }
+D.tiger = { kind = "heli", cat = "heli", L = 39, W = 12.0, H = 11.8, gearH = 4.2, hp = 950, vMax = 94, climb = 32, yaw = 75, tilt = 26, accel = 28,   -- 虎式 UHT（德国陆军）：没有机炮，桅顶瞄准具
+  seats = 2, flares = 40,
+  rotor = { hub = V(0, 5.6, -0.6), r = 18.2, blades = 4, rpm = 350, dir = -1, chord = 1.2 }, tail = { hub = V(1.2, 4.2, 18.6), r = 3.8, blades = 3, rpm = 1650, axis = "x" },
+  style = "attackheli", tandem = true, tw = 4.0, boom = 14, longbow = true,
+  stub = { x = 3.0, span = 4.4, y = -0.4, z = 0.3 },
+  st = mirror({
+    { name = "outer", pos = V(6.6, -1.6, 0.3), opts = { "hot3", "aim92", "hydra" }, n = N({ hot3 = 4, aim92 = 2 }) },
+    { name = "inner", pos = V(4.6, -1.8, 0.3), opts = { "hot3", "hydra" }, n = N({ hot3 = 4 }) },
+  }),
+  presets = { preset("at", { outer = "hot3", inner = "hot3" }), preset("mix", { outer = "aim92", inner = "hot3" }), preset("rkt", { outer = "hydra", inner = "hydra" }) } }
+D.ah1w = { kind = "heli", cat = "heli", L = 39, W = 13.2, H = 12.2, gearH = 4.0, hp = 1000, vMax = 91, climb = 30, yaw = 70, tilt = 26, accel = 28,   -- AH-1W 超级眼镜蛇（美国海军陆战队）：双发、两片桨，M197 三管炮
+  seats = 2, flares = 40, gun = "m197", gunAmmo = 750, gunPos = V(0, -2.8, -13.5),
+  rotor = { hub = V(0, 5.4, -0.5), r = 20.5, blades = 2, rpm = 324, dir = 1, chord = 2.1 }, tail = { hub = V(-1.2, 4.6, 21.5), r = 4.2, blades = 2, rpm = 1660, axis = "x" },
+  style = "attackheli", tandem = true, tw = 3.4, boom = 16,
+  stub = { x = 2.8, span = 5.2, y = -0.4, z = 0.2 },
+  st = mirror({
+    { name = "tip", pos = V(8.2, -0.6, 0.3), opts = { "aim9x", "aim92" }, n = N({ aim9x = 1, aim92 = 2 }) },
+    { name = "outer", pos = V(6.4, -1.6, 0.3), opts = { "agm114", "tow", "hydra" }, n = N({ agm114 = 4, tow = 4 }) },
+    { name = "inner", pos = V(4.0, -1.6, 0.3), opts = { "agm114", "hydra" }, n = N({ agm114 = 4 }) },
+  }),
+  presets = { preset("at", { tip = "aim9x", outer = "agm114", inner = "agm114" }), preset("mix", { tip = "aim9x", outer = "tow", inner = "hydra" }),
+    preset("rkt", { outer = "hydra", inner = "hydra" }) } }
+D.ah1s = hv(D.ah1w, { L = 38, W = 9.0, hp = 820, vMax = 89, yaw = 65,   -- AH-1S（陆上自卫队）：单发、两片桨、陶式
+  gunAmmo = 750, rotor = { hub = V(0, 5.2, -0.5), r = 18.8, blades = 2, rpm = 324, dir = 1, chord = 1.6 },
+  tail = { hub = V(-1.2, 4.4, 21), r = 3.6, blades = 2, rpm = 1660, axis = "x" },
+  stub = { x = 2.6, span = 4.0, y = -0.4, z = 0.2 },
+  st = mirror({
+    { name = "outer", pos = V(5.8, -1.6, 0.3), opts = { "tow", "hydra" }, n = N({ tow = 4 }) },
+    { name = "inner", pos = V(3.8, -1.6, 0.3), opts = { "hydra", "tow" }, n = N({ tow = 4 }) },
+  }),
+  presets = { preset("at", { outer = "tow", inner = "hydra" }), preset("rkt", { outer = "hydra", inner = "hydra" }) } })
+D.oh1 = { kind = "heli", cat = "heli", L = 34, W = 9.0, H = 10.8, gearH = 3.8, hp = 720, vMax = 90, climb = 34, yaw = 85, tilt = 28, accel = 30,   -- OH-1 忍者（川崎）：侦察直升机，涵道尾桨
+  seats = 2, flares = 30,
+  rotor = { hub = V(0, 4.8, -0.4), r = 16.2, blades = 4, rpm = 380, dir = 1, chord = 1.0 }, tail = { hub = V(-0.4, 3.2, 16.4), r = 1.8, blades = 8, rpm = 3000, axis = "x" },
+  style = "attackheli", tandem = true, tw = 3.2, boom = 13,
+  stub = { x = 2.4, span = 3.4, y = -0.4, z = 0.2 },
+  st = mirror({ { name = "stub", pos = V(5.0, -1.2, 0.2), opts = { "type91" }, n = N({ type91 = 2 }) } }),
+  presets = { preset("aa", { stub = "type91" }), preset("none", {}) } }
+D.ah64dj = hv(D.ah64e, { hp = 980, like = "ah64e" })   -- AH-64DJ（陆上自卫队）：长弓阿帕奇，借 AH-64E 的原模型（like：没有自己的模型就用这一型的，挂点也照它）
+D.mi8 = { kind = "heli", cat = "heli", L = 51, W = 9.0, H = 15.8, gearH = 4.8, hp = 1300, vMax = 81, climb = 24, yaw = 45, tilt = 20, accel = 20,   -- 米-8MT：运输，B-8V20 火箭巢
+  seats = 4, transport = true, flares = 40, gun = "m134", gunAmmo = 1500, door = { x = 4.2, y = 0.8, z = -10 },
+  rotor = { hub = V(0, 8.0, -1.5), r = 29.8, blades = 5, rpm = 192, dir = -1, chord = 1.6 }, tail = { hub = V(1.6, 6.4, 29.5), r = 5.4, blades = 3, rpm = 1124, axis = "x" },
+  style = "utility", cabin = { w = 7.8, h = 6.6, len = 26 }, sideDoor = true,
+  stub = { x = 4.4, span = 4.0, y = 0.0, z = -2.0 },
+  st = mirror({ { name = "stub", pos = V(7.2, -0.6, -2.0), opts = { "s8" } } }),
+  presets = { preset("none", {}), preset("rkt", { stub = "s8" }) } }
+D.nh90 = { kind = "heli", cat = "heli", L = 45, W = 9.0, H = 14.6, gearH = 4.6, hp = 1050, vMax = 97, climb = 30, yaw = 55, tilt = 22, accel = 24,   -- NH90 TTH（德国陆军）：运输，舱门机枪
+  seats = 4, transport = true, flares = 40, gun = "m134", gunAmmo = 1500, door = { x = 3.9, y = 0.8, z = -5.5 },
+  rotor = { hub = V(0, 7.4, -1.0), r = 22.8, blades = 4, rpm = 256, dir = -1, chord = 1.6 }, tail = { hub = V(1.6, 6.0, 23.5), r = 4.5, blades = 4, rpm = 1300, axis = "x" },
+  style = "utility", cabin = { w = 7.4, h = 6.4, len = 18 }, sideDoor = true,
+  stub = { x = 4.2, span = 0.1, y = 0.6, z = 0.4 },
+  st = {}, presets = { preset("none", {}) } }
+D.uh1n = { kind = "heli", cat = "heli", L = 36, W = 8.0, H = 12.2, gearH = 4.0, hp = 900, vMax = 71, climb = 26, yaw = 60, tilt = 22, accel = 22,   -- UH-1N 双休伊（美国海军陆战队）：双发、两片桨，运输，舱门机枪、火箭巢
+  seats = 4, transport = true, flares = 30, gun = "m134", gunAmmo = 1500, door = { x = 3.4, y = 0.6, z = -4.0 },
+  rotor = { hub = V(0, 6.4, -1.0), r = 20.6, blades = 2, rpm = 324, dir = 1, chord = 1.6 }, tail = { hub = V(-1.2, 5.4, 21.5), r = 3.6, blades = 2, rpm = 1660, axis = "x" },
+  style = "utility", cabin = { w = 6.8, h = 5.6, len = 14 }, sideDoor = true,
+  stub = { x = 3.6, span = 2.6, y = 0.2, z = 0.0 },
+  st = mirror({ { name = "stub", pos = V(5.8, -0.6, 0.0), opts = { "hydra" } } }),
+  presets = { preset("none", {}), preset("rkt", { stub = "hydra" }) } }
+D.z8 = { kind = "heli", cat = "heli", L = 56, W = 14, H = 18.6, gearH = 5.0, hp = 1350, vMax = 85, climb = 22, yaw = 40, tilt = 18, accel = 18,   -- 直-8（昌河，超黄蜂的路子）：六片桨，大运输舱
+  seats = 4, transport = true, flares = 40, gun = "m134", gunAmmo = 1500, door = { x = 4.6, y = 1.0, z = -12 },
+  rotor = { hub = V(0, 9.4, -2.0), r = 26.5, blades = 6, rpm = 210, dir = -1, chord = 1.8 }, tail = { hub = V(1.8, 8.2, 31.5), r = 5.6, blades = 5, rpm = 990, axis = "x" },
+  style = "utility", cabin = { w = 8.6, h = 7.6, len = 30 }, sideDoor = true,
+  stub = { x = 4.8, span = 2.4, y = -1.6, z = -2.0 },
+  st = mirror({ { name = "stub", pos = V(6.8, -2.2, -2.0), opts = { "fl90" } } }),
+  presets = { preset("none", {}), preset("rkt", { stub = "fl90" }) } }
+D.ch47j = hv(D.ch47, { like = "ch47" })   -- CH-47J（陆上自卫队）：借 CH-47 的原模型
+D.uh60ja = hv(D.uh60, { like = "uh60" })   -- UH-60JA（陆上自卫队）：借 UH-60 的原模型
 
 ---------------------------------------------------------------- 固定翼
 

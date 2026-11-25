@@ -84,12 +84,12 @@ for k, w in pairs(want) do
 end
 check(#tb == 0, "这几族开的是自己的型号（同族老型号借同族的模型）" .. (#tb > 0 and ("：" .. table.concat(tb, " ")) or ""))
 local st = {}
-for _, k in ipairs({ "cn_86", "us_m60", "cn_59" }) do
+for _, k in ipairs({ "cn_86", "us_m60", "us_m1" }) do
   local it = TT.get(k)
   if not (it and it.stand) then table.insert(st, k) end
 end
-check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("us_m60").play == "m60a1" and TT.get("cn_59").play == "m60a1",
-  "别的还写「暂用」，改借这几型（86 式借 BMP-1、M60、59 式借 M60A1）" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
+check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("us_m60").play == "m60a1" and TT.get("us_m1").play == "m1a1" and TT.get("cn_59") == nil,
+  "同族的照样借（86 式借 BMP-1、M60 借 M60A1、M1 借 M1A1）；没有原模型的（59 式借 M60）删了" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
 check(VD.get("t64a").weapons[1] == "gun125a" and B.GUN.gun125a[1] == "bm15" and WD.AMMO.bm15 ~= nil and not VD.get("t64a").lrf and VD.get("t64b").lrf,
   "T-64A 打 3BM15、没有激光测距；T-64B 有")
 

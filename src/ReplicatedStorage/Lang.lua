@@ -311,6 +311,10 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
+  mi24 = { "米-24V 雌鹿", "Mi-24V Hind" }, mi28 = { "米-28N 浩劫", "Mi-28N Havoc" }, ka52 = { "卡-52 短吻鳄", "Ka-52 Alligator" }, mi8 = { "米-8MT", "Mi-8MT" },
+  tiger = { "虎式 UHT", "Tiger UHT" }, nh90 = { "NH90 TTH", "NH90 TTH" }, ah1w = { "AH-1W 超级眼镜蛇", "AH-1W SuperCobra" }, uh1n = { "UH-1N 双休伊", "UH-1N Twin Huey" },
+  ah1s = { "AH-1S 眼镜蛇", "AH-1S Cobra" }, oh1 = { "OH-1 忍者", "OH-1 Ninja" }, ah64dj = { "AH-64DJ 阿帕奇", "AH-64DJ Apache" },
+  ch47j = { "CH-47J 支奴干", "CH-47J Chinook" }, uh60ja = { "UH-60JA 黑鹰", "UH-60JA Black Hawk" }, z8 = { "直-8 运输直升机", "Z-8 Transport Helicopter" },
   j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" }, j8 = { "歼-8II", "J-8II" }, j6 = { "歼-6", "J-6" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
   a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, f16 = { "F-16C 战隼", "F-16C Fighting Falcon" }, f15 = { "F-15C 鹰", "F-15C Eagle" }, f14 = { "F-14A 雄猫", "F-14A Tomcat" },
@@ -493,6 +497,9 @@ for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
   gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, nr30 = { "30 毫米航炮 ×3", "30 mm cannon ×3" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
   m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
+  a42 = { "2A42 30 毫米炮", "2A42 30 mm cannon" }, yakb = { "YakB 12.7 毫米机枪", "YakB 12.7 mm gun" }, m197 = { "M197 20 毫米炮", "M197 20 mm cannon" },
+  ataka = { "攻击（9M120）", "Ataka (9M120)" }, shturm = { "突击（9M114）", "Shturm (9M114)" }, vikhr = { "旋风（9K121）", "Vikhr (9K121)" },
+  hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" }, s8 = { "S-8 火箭", "S-8 rockets" }, igla = { "针-V", "Igla-V" }, type91 = { "91 式防空导弹", "Type 91 SAM" },
   pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
   ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
   kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
@@ -547,6 +554,7 @@ add("guide.gps", "卫星 / 惯性", "GPS / INS")
 add("guide.tv", "电视 / 红外成像", "TV / imaging IR")
 add("guide.arm", "被动雷达（打防空雷达）", "Passive radar (hunts air defenses)")
 add("guide.none", "无制导", "Unguided")
+add("guide.cmd", "指令（有线 / 无线电）", "Command (wire / radio)")
 add("guide.gun", "—", "—")
 add("air.alt", "高度 {1} 米", "Alt {1} m")
 add("air.flares", "热诱弹 {1}", "Flares {1}")

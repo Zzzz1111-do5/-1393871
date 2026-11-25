@@ -139,7 +139,9 @@ function Ents.init(G)
     if e.onHit then G.try("挨打", e.onHit, e, amt, src) end
     if e.hp <= 0 then
       e.alive = false
-      if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2, c = "wreck" }) end   -- 步兵倒下不炸（客户端画倒地）
+      -- 步兵倒下不炸（客户端画倒地）；战雷式伤害的车（Wt.lua 给了 wtWhy）照真车：殉爆那一下 Wt.lua 自己炸（大的），
+      --   乘员打光、烧毁的不炸——客户端 WreckFx 画窜火、冒烟（11-25「载具爆炸效果不够猛画风不够战雷」：不再每辆都一样地炸一下）
+      if e.cat ~= "inf" and not e.wtWhy then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2, c = "wreck" }) end
       if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" and not e.noScore then G.addScore(src.P, Config.Score.vehicleKill) end   -- 试驾场的靶车（Tech.lua）不给分
       G.emit("entDied", e, src)   -- 战雷式对局（WtMatch.lua）：车主的阵容记「已毁」、打掉它的人记击毁 / 击落
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end

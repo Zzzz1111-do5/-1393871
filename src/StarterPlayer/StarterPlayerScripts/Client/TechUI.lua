@@ -468,7 +468,7 @@ function TechUI.init(G)
       { "ModsBtn", L("改装", "Modifications"), gear, function() local it = selIt() if it and G.openMods then G.openMods(it) end end },
       { "AmmoBtn", L("弹药", "Ammo loadout"), shells, function()   -- 配弹（C：WtAmmo.lua）：地面车的主炮每种弹带几发
         local it, key = selIt()
-        if it and it.branch ~= "air" and G.openAmmo then
+        if it and it.branch == "ground" and G.openAmmo then
           local md = tree.mods and tree.mods[key]
           local fx = WM.fx and WM.fx(it, md and md.done)
           G.openAmmo(key, fx and fx.ammo)
@@ -796,11 +796,11 @@ function TechUI.init(G)
   -- 卡片上的车：HudIcons 里这一型的侧面剪影；没有就用通用的（飞机、直升机的符号），地面车没有就空着（写了车种、名字）
   local function picOn(img, it)
     if not G.hudIconOn then return end
-    local pre = (it.branch == "air") and "air_" or "veh_"
+    local pre = (it.branch == "ground") and "veh_" or "air_"   -- 战机、直升机的剪影都在 air_ 下
     for _, k in ipairs({ it.play, it.model, it.base }) do   -- 同族变体（T-72A 借 T-72B3 的模型）没有自己的图标：用模型那一型的
       if k and G.hudIconOn(img, pre .. tostring(k)) then return end
     end
-    if it.branch == "air" then
+    if it.branch ~= "ground" then
       local d = AD.get(it.play)
       G.hudIconOn(img, (d and d.kind == "heli") and "heliMark" or "planeMark")
     end
@@ -920,14 +920,14 @@ function TechUI.init(G)
       else
         H.selNote.Text = ""
       end
-      H.crewBoxT.Text = L("乘员 · ", "CREW · ") .. ((it.branch == "air") and L("战机", "AIRCRAFT") or L("坦克", "TANKS"))
+      H.crewBoxT.Text = L("乘员 · ", "CREW · ") .. ((it.branch == "air") and L("战机", "AIRCRAFT") or (it.branch == "heli") and L("直升机", "HELICOPTERS") or L("坦克", "TANKS"))
     else
       H.selName.Text = L("出击阵容是空的", "Lineup is empty")
       H.selSub.Text = L("点「研究」，买下的车放进阵容", "Open RESEARCH and add owned vehicles")
       H.selCrew.Text, H.selMods.Text, H.selNote.Text = "", "", ""
       H.crewBoxT.Text = L("乘员", "CREW")
     end
-    if H.ammoBtn then H.ammoBtn.BackgroundTransparency = (it and it.branch ~= "air" and G.openAmmo) and 0.06 or 0.5 end   -- 飞机没有配弹：键淡掉
+    if H.ammoBtn then H.ammoBtn.BackgroundTransparency = (it and it.branch == "ground" and G.openAmmo) and 0.06 or 0.5 end   -- 飞机、直升机没有配弹：键淡掉
     -- 右下「战斗」：出选中的那一辆；出不了（超出战斗等级、备用用完、SP 不够）就灰掉、写原因
     local can, why = it ~= nil, nil
     if it then
@@ -1025,7 +1025,7 @@ function TechUI.init(G)
   frame(top, UDim2.new(1, 0, 0, 1), UDim2.new(0, 0, 1, -1), TH.C.LINE, 0.8)
   local tTitle = text(top, "", UDim2.new(0, 250, 1, 0), UDim2.new(0, 16, 0, 0), TH.S.sub, TH.C.TEXT)
   tTitle.Font = TH.F.bold
-  local tBr = frame(top, UDim2.new(0, 230, 0, 30), UDim2.new(0, 270, 0, 7), nil, 1)
+  local tBr = frame(top, UDim2.new(0, 330, 0, 30), UDim2.new(0, 270, 0, 7), nil, 1)   -- 坦克 / 战机 / 直升机三棵树
   local bl = Instance.new("UIListLayout")
   bl.FillDirection = Enum.FillDirection.Horizontal
   bl.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1584,6 +1584,12 @@ function TechUI.init(G)
       yr.Font = TH.F.mono
       yr.ZIndex = 2
     end
+    if #list == 0 then   -- 这棵树一项都没有（11-25 没有原模型的都删了，德国固定翼一架也没找到）
+      local e = text(scroll, L("这棵树还没有找到能用的原模型，找到了再加上", "No vehicles with original models in this tree yet"),
+        UDim2.new(0, 560, 0, 24), UDim2.new(0, 16, 0, HH + 16), TH.S.body, DIM)
+      e.Name = "Empty"
+      e.ZIndex = 5
+    end
     -- 卡片
     local used, pos = {}, {}
     for _, it in ipairs(list) do
@@ -1607,7 +1613,7 @@ function TechUI.init(G)
       local sk = TH.stroke(card, sel, sel and TH.C.TEXT or TH.C.LINE)
       sk.Thickness = sel and 2 or 1
       local cn = B.cols[it.col] or { "", "" }
-      local ty = text(card, (zh and cn[1] or cn[2]) .. (it.stand and L(" · 暂用", " · stand-in") or ""), UDim2.new(1, -50, 0, 14), UDim2.new(0, 6, 0, 3), TH.S.tiny, lock and FAINT or DIM)
+      local ty = text(card, (zh and cn[1] or cn[2]), UDim2.new(1, -50, 0, 14), UDim2.new(0, 6, 0, 3), TH.S.tiny, lock and FAINT or DIM)   -- 留下的都是自己的或同族的原模型，不再标「暂用」
       ty.ZIndex = 4
       local brL = text(card, TT.brText(it.br), UDim2.new(0, 40, 0, 14), UDim2.new(1, -46, 0, 3), TH.S.tiny, lock and FAINT or DIM, Enum.TextXAlignment.Right)
       brL.Font = TH.F.mono

@@ -32,14 +32,23 @@ function Tech.init(G)
     return d.tree
   end
   G.treeOf = T
-  -- 第一次玩（阵容空着）：每棵树白送的那几辆放进阵容
+  -- 第一次玩（阵容空着）：白送的放进阵容——先每棵树各一辆（坦克、飞机、直升机都能马上试），再补其余白送的坦克；
+  --   留一个空位：第一辆买下的车自动放进去（不然直升机树也白送一架以后阵容一开始就满了）。按树、按树里的顺序排（坦克在前）
   local function defaultLineup(t, nat)
-    local out = {}
-    for _, br in ipairs(TT.BRANCHES) do
-      for _, it in ipairs(TT.list[nat][br]) do
-        if it.free and #out < LINEUP then table.insert(out, it.key) end
+    local pick, n, cap = {}, 0, LINEUP - 1
+    for pass = 1, 2 do
+      for bi, br in ipairs(TT.BRANCHES) do
+        for i, it in ipairs(TT.list[nat][br]) do
+          if it.free and not pick[it.key] and n < cap then
+            pick[it.key], n = bi * 1000 + i, n + 1
+            if pass == 1 then break end
+          end
+        end
       end
     end
+    local out = {}
+    for k in pairs(pick) do table.insert(out, k) end
+    table.sort(out, function(a, b) return pick[a] < pick[b] end)
     t.lineup[nat] = out
     return out
   end
@@ -76,7 +85,7 @@ function Tech.init(G)
         for _, k in ipairs(L) do
           if TT.byKey[k] and TT.byKey[k].nat == nat and TT.owned(t, k) and #out < LINEUP then table.insert(out, k) end
         end
-        t.lineup[nat] = out
+        t.lineup[nat] = #out > 0 and out or nil   -- 阵容里的车都删了（11-25 没有原模型的删掉）：按默认阵容重新排
       end
     end
     for k, m in pairs(type(src.mods) == "table" and src.mods or {}) do   -- 改装：只留认得的车、认得的改装
@@ -448,11 +457,11 @@ function Tech.init(G)
 
   ---------------------------------------------------------------- 出击：直接坐进车里 / 飞机里
 
-  -- 本队这一类（地面 / 空中）的召唤位：在自己基地里、开着的、空着的先
-  local function padFor(team, air)
+  -- 本队这一类（地面 / 固定翼 / 直升机）的出车位：在自己基地里、开着的、空着的先（直升机停直升机坪，用户 11-25「直升机也做一下各个国家的」）
+  local function padFor(team, air, heli)
     local best, free
     for _, p in ipairs(G.pads or {}) do
-      local okKind = air and (p.kind == "air" and not p.heli) or (not air and p.kind == "veh")
+      local okKind = (heli and p.kind == "air" and p.heli) or (air and not heli and p.kind == "air" and not p.heli) or (not air and p.kind == "veh")
       if okKind and p.team == team and (not G.padOpen or G.padOpen(p, team)) then
         local busy = G.padBusy and G.padBusy(p)   -- 上面停着刚出来的车（电脑车也从这里出）：先挑空着的
         if not busy and p.summon then return p end
@@ -589,7 +598,8 @@ function Tech.init(G)
     local it = type(key) == "string" and TT.byKey[key]
     if not it or P.alive or G.pve or not G.ACT.deploy then return end
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
-    local air = it.branch == "air"
+    local air = it.branch == "air" or it.branch == "heli"
+    local heli = it.branch == "heli"
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
@@ -599,9 +609,9 @@ function Tech.init(G)
       P.inTest = true
       local e
       if air then
-        local pos = base + Vector3.new(0, W.airSpawnH or 1200, 0)
         local d = AD.get(it.play)
-        e = G.spawnAircraftAir and G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(pos, pos + dir), nil, P, nil, ((d and d.vMil) or 200) * 0.8)
+        local pos = base + Vector3.new(0, heli and 140 or (W.airSpawnH or 1200), 0)   -- 直升机悬停在靶场上空一百多格
+        e = G.spawnAircraftAir and G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(pos, pos + dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
       else
         e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(base, base + dir), false, P, nil)
       end
@@ -640,13 +650,14 @@ function Tech.init(G)
     local inL = false
     for _, k in ipairs(G.treeLineup(P)) do if k == key then inL = true end end
     if not inL then G.msg(P.pl, "bad", "tree.notInLineup") return end
-    local air = it.branch == "air"
+    local air = it.branch == "air" or it.branch == "heli"
+    local heli = it.branch == "heli"
     -- 战斗等级：这一局最高能出 BR + brUp（战雷：最多碰到比自己高 1.0 的）
     if not G.pve and it.br > G.treeBrCap() + 0.05 then
       G.msg(P.pl, "bad", "tree.brHigh", TT.brText(it.br), TT.brText(G.treeRoundBr()), TT.brText(G.treeBrCap()))
       return
     end
-    local p = padFor(P.team, air)
+    local p = padFor(P.team, air, heli)
     if not p then G.msg(P.pl, "bad", "ui.padLocked") return end
     local vid = it.play
     local kind = air and "air" or "veh"

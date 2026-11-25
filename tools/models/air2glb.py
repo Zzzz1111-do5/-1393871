@@ -216,13 +216,16 @@ def segment(key):
             if n == 'gear':
                 g = 'Gear'
             elif n == 'rotor':
-                # 支奴干两副旋翼都叫 rotor：前面那副是 Rotor，后面那副是 Rotor2
+                # 支奴干两副旋翼都叫 rotor：前面那副是 Rotor，后面那副是 Rotor2；sf_air.py 的直升机写明了 g（卡-52 共轴：下面那副 Rotor、上面那副 Rotor2，反着转）
                 others = [q for q in parts if q.get('n') == 'rotor']
-                g = 'Rotor2' if len(others) > 1 and P['p'][0] < max(q['p'][0] for q in others) else 'Rotor'
+                g = P.get('g') or ('Rotor2' if len(others) > 1 and P['p'][0] < max(q['p'][0] for q in others) else 'Rotor')
                 rot_piv[g] = (P['p'], P.get('a', [0, 0, 1]))
             elif n == 'trotor':
                 g = 'TRotor'
                 rot_piv[g] = (P['p'], P.get('a', [0, 1, 0]))
+            elif n in ('Gun', 'GunY'):   # sf_air.py 按连通块分好的机头炮塔（炮塔座只转方位）
+                g = n
+                rot_piv[g] = (P['p'], [0, 0, 1])
             elif n in kfs:
                 g = n
             elif n in ('Pit', 'PitHud'):   # 原模型自带的座舱（sf_air.py 的 pitmat / pitnode）、原模型的平显（pithud）

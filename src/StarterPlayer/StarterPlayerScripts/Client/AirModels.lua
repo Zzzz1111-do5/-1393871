@@ -155,10 +155,13 @@ function AM.importedFor(d)
   local air = imp and imp:FindFirstChild("Air")
   if not (IA and air) then return nil end
   local list = {}
-  if IA.alias and IA.alias[d.id] then table.insert(list, IA.alias[d.id]) end
-  local old = IA.old and IA.old[d.id]
-  if type(old) == "string" then table.insert(list, old)
-  elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(list, k) end end
+  -- 自己的原模型（alias / old）找不到就用同族那一型的（AirDefs 的 like：AH-64DJ 借 AH-64E、CH-47J 借 CH-47）
+  for _, id in ipairs({ d.id, d.like }) do
+    if IA.alias and IA.alias[id] then table.insert(list, IA.alias[id]) end
+    local old = IA.old and IA.old[id]
+    if type(old) == "string" then table.insert(list, old)
+    elseif type(old) == "table" then for _, k in ipairs(old) do table.insert(list, k) end end
+  end
   for _, k in ipairs(list) do
     local plain = string.sub(k, -1) == "~"
     local key = plain and string.sub(k, 1, -2) or k
@@ -367,7 +370,7 @@ function AM.build(d, team, load)
     local AD = require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs"))
     local t0 = TAG
     TAG = "store"
-    local adjs = imp and imp.info.pyl and imp.info.pyl[d.id]
+    local adjs = imp and imp.info.pyl and (imp.info.pyl[d.id] or (d.like and imp.info.pyl[d.like]))
     for i, s in ipairs(d.st or {}) do
       local wid = load and load[i]
       M.stores[i] = {}
@@ -1157,11 +1160,11 @@ function AM.build(d, team, load)
       local tz = 6
       cylZ(d.boom, 2.4, CF(0, 1.6, tz + d.boom / 2), skin)
       cylZ(4, 1.6, CF(0, 1.9, tz + d.boom + 1.5), skin)
-      local T = d.tail
+      local T = d.tail or { hub = V(0, 3.0, tz + d.boom + 1.5) }   -- 共轴双旋翼（卡-52）没有尾桨：只画垂尾、平尾
       quad(V(0, 1.8, T.hub.Z - 3), V(0, 1.8, T.hub.Z + 2.5), V(0, T.hub.Y + 3.5, T.hub.Z + 1.2), V(0, T.hub.Y + 3.5, T.hub.Z - 1.4), 0.5, skin)
       quad(V(0, 1.4, T.hub.Z - 4), V(0, 1.4, T.hub.Z - 1), V(4.4, 1.4, T.hub.Z - 0.6), V(4.4, 1.4, T.hub.Z - 2.6), 0.35, skin)
       quad(V(0, 1.4, T.hub.Z - 4), V(0, 1.4, T.hub.Z - 1), V(-4.4, 1.4, T.hub.Z - 0.6), V(-4.4, 1.4, T.hub.Z - 2.6), 0.35, skin)
-      rotor(T, "r", "spinT", "x")
+      if d.tail then rotor(T, "r", "spinT", "x") end
       -- 短翼
       local S = d.stub
       for s = -1, 1, 2 do
@@ -1170,9 +1173,11 @@ function AM.build(d, team, load)
       end
       -- 机头炮塔、光电转塔
       local gp = d.gunPos
-      ball(V(1.8, 1.6, 1.8), CF(gp), DARK, MAT.Metal, "t", { piv = gp, yawOnly = true })
-      cylZ(5, 0.35, CF(gp) * CF(0, -0.1, -2.6), DARK, MAT.Metal, "t", { piv = gp })
-      cylZ(1.4, 0.7, CF(gp) * CF(0, -0.1, -0.9), DARK, MAT.Metal, "t", { piv = gp })
+      if gp then   -- 没有机炮的（虎式 UHT、OH-1）不画炮塔
+        ball(V(1.8, 1.6, 1.8), CF(gp), DARK, MAT.Metal, "t", { piv = gp, yawOnly = true })
+        cylZ(5, 0.35, CF(gp) * CF(0, -0.1, -2.6), DARK, MAT.Metal, "t", { piv = gp })
+        cylZ(1.4, 0.7, CF(gp) * CF(0, -0.1, -0.9), DARK, MAT.Metal, "t", { piv = gp })
+      end
       if d.tads then
         local tp = V(0, -0.6, -15.4)
         box(V(2.0, 1.6, 1.4), CF(tp), skinD, MAT.Metal, "t", { piv = tp, yawOnly = true })
@@ -1194,6 +1199,10 @@ function AM.build(d, team, load)
         top = V(0, 4.45, 3.8), bottom = V(0, -2.75, -1.5), land = V(0, -2.4, -12.2) })   -- 短翼翼尖航行灯、垂尾顶白灯、主减速器后面 / 机腹防撞灯、机头下着陆灯
       cylY(R.hub.Y - 3.5, 0.9, CF(R.hub.X, (R.hub.Y + 3.5) / 2, R.hub.Z), STEEL, MAT.Metal)   -- 旋翼轴
       rotor(R, "r", "spin1", "y")
+      if d.rotor2 then   -- 共轴双旋翼的上面那副（反着转）
+        cylY(d.rotor2.hub.Y - R.hub.Y, 0.7, CF(R.hub.X, (R.hub.Y + d.rotor2.hub.Y) / 2, R.hub.Z), STEEL, MAT.Metal)
+        rotor(d.rotor2, "r", "spin2", "y")
+      end
     elseif style == "utility" then
       local Cb = d.cabin
       local cw, ch, cl = Cb.w, Cb.h, Cb.len

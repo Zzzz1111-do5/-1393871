@@ -36,6 +36,8 @@ const AIR = {
   mq9: 'mq9', b2: 'b2', z10: 'z10w', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
   j10: 'j10', j11: 'j11', j36: 'j36',   // 11-22 加的歼-10C、歼-11B、歼-36（sf_air.py 转的）
   j8: 'j8', f16: 'f16', j6: 'j6',   // 11-23 的歼-8II、F-16C，11-25 的歼-6（科技树里原来借歼-8II 的模型）
+  f15: 'f15', f14: 'f14',   // 11-25 的 F-15C、F-14A
+  mi24: 'mi24', mi28: 'mi28', ka52: 'ka52', mi8: 'mi8', tiger: 'tiger', nh90: 'nh90', ah1w: 'ah1w', ah1s: 'ah1s', uh1n: 'uh1n', z8: 'z8',   // 11-25 各国直升机
 };
 // 舰艇（ShipDefs 的型号）→ models/ship 的原模型（文件名同型号）
 const SHIP = { t055: 't055', t054a: 't054a', t022: 't022', ddg125: 'ddg125', cg47: 'cg47', lcs2: 'lcs2', pbr: 'pbr' };

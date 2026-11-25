@@ -462,11 +462,12 @@ function View.init(G)
     --   往上 20～27 格 / 秒（顶起三米上下）、往旁边 3～6 格 / 秒，绕一根横着的轴慢慢翻（每秒 1～1.6 弧度），落在车旁边歪着停住
     local ang = rng:NextNumber() * 2 * math.pi
     local side = V(math.cos(ang), 0, math.sin(ang))
-    local hv = side * (3 + rng:NextNumber() * 3)
+    -- 11-25「载具爆炸效果不够猛」：冲得更猛一点（往上 27～35 格 / 秒，顶起五六米）、往旁边甩得远一点、翻得快一点——重力照旧偏重，落得干脆不飘
+    local hv = side * (4 + rng:NextNumber() * 5)
     local axis = V(-side.Z, (rng:NextNumber() - 0.5) * 0.4, side.X).Unit   -- 横轴：往哪边飞就朝哪边翻下去
     v.toss = {
-      cf = tF, vel = V(hv.X, 20 + rng:NextNumber() * 7, hv.Z),
-      w = axis * (1 + rng:NextNumber() * 0.6),   -- 角速度（弧度/秒，世界坐标）
+      cf = tF, vel = V(hv.X, 27 + rng:NextNumber() * 8, hv.Z),
+      w = axis * (1.5 + rng:NextNumber() * 1.0),   -- 角速度（弧度/秒，世界坐标）
       bounce = 0, rest = false,
       restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
     }
@@ -852,6 +853,8 @@ function View.init(G)
         elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
       end
       M.fire.Rate, M.black.Rate = 30, 12
+      -- 殉爆的大火球、钢板碎块、接连殉爆、舱口窜火、浓黑烟柱、地面烧焦（WreckFx.lua，用户 11-25「载具爆炸效果不够猛画风不够战雷」）
+      if G.wreckFx then G.try_(G.wreckFx, v, em:GetAttribute("WtWhy"), v.cf * CF(0, -d.H / 2, 0)) end
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
         local pl = Instance.new("PointLight")
         pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, false   -- 投影子的只留最近的一处（stepFireShadows）

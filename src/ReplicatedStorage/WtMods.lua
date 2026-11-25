@@ -42,7 +42,7 @@ M.AIR = {
   { key = "cover", cls = "pro", tier = 4, zh = "座舱装甲", en = "Cockpit armor", fx = { hp = 1.05 }, dz = "机身血量 +5%", de = "Airframe HP +5%" },
 }
 
-function M.list(it) return (it and it.branch == "air") and M.AIR or M.GROUND end
+function M.list(it) return (it and (it.branch == "air" or it.branch == "heli")) and M.AIR or M.GROUND end   -- 直升机用飞机那套改装
 function M.get(it, key)
   for _, m in ipairs(M.list(it)) do if m.key == key then return m end end
   return nil

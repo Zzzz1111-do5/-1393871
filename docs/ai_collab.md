@@ -25,6 +25,24 @@
 
 ## 正在做
 
+- D（11-25 深夜，用户：「然后直升机也做一下各个国家的哈 包括很多战机不是其原本的模样」「内容还不齐，风格不统一」「找不到的你可以直接删掉」）：
+  · 科技树第三棵树 heli（TechTree `BRANCHES = { "ground", "air", "heli" }`，`TT.BRANCH.heli.need` 每级要研究 1 架）：五国 17 架，每国打头的运输直升机写 `free = true`；
+    `TT.rankOpen` 上一级一辆都没有就再往上看（树车少不锁死）；一棵树一项白送的都没有时最低那一级各列打头的白送。出击：Tech.lua `padFor(team, air, heli)` 停本队直升机坪。
+  · 科技树只留有原模型的：借别的型号模型的（狂风借 F-14、苏-25 借 A-10、59 式借 M60……）、零件拼的一共删了 116 项，剩 103 项；德国固定翼空着（TechUI 写「还没有找到」）。
+    同族、外形几乎一样的照样借（`base` / `model`：M1 借 M1A1、苏-27 借歼-11、F-15A 借 F-15C、F-2A 借 F-16）。读档时阵容里的车全删了就按默认阵容（Tech.lua）。
+  · 新模型（tools/models/sf_air.py）：直升机 10 架 + F-15（mgg8 CC0，杜克斯福德展机：起落架拆成 Gear、副油箱去掉）+ F-14（Novia556，没放起落架：lift 0.9）。
+    sf_air 新选项：`scale`（按旋翼直径量的缩放）、`yoff`（桨叶不对称时把机身中线挪回 0）、`dropmat`（按材质去掉：FlightGear 公用仪表贴图）、
+    nodes / comp 的动法 `rotor` / `trotor`（转轴按桨叶面积加权法线、支点按重心，主旋翼轴只留前后倾）、`gun` / `gunyaw`（整块网格的炮塔在这里先分好）、
+    `gunsplit` / `stub`（交给 air2glb 的 GUNSPLIT / HELI_STUB）、inbox 的 `y`（带正负）。air2glb：part 的 `g` 写明 Rotor / Rotor2（卡-52 共轴）、`Gun` / `GunY` 部件。
+    AirDefs 的 `like`：AH-64DJ / CH-47J / UH-60JA 借同族的原模型和挂点（AirModels.importedFor、Imports.lua 都认）。
+    没收的（不是作者本人做的）：42manako 的卡-52 / UH-1Y / OH-1 / 直-8（《武装突袭》贴图命名、Ninja Ripper 贴图名、SketchUp 3D 仓库材质），B4_Cobra、duckbillcore 的 UH-1Y。
+    美国那两格换成模型对应的型号：AH-1Z → AH-1W（模型是两片桨的超级眼镜蛇）、UH-1Y → UH-1N（helijah 的双休伊）。
+  · 车被打爆（用户 11-25「载具爆炸效果不够猛画风不够战雷」）：新模块 Client/WreckFx.lua，View.lua 车变残骸那一帧调 `G.wreckFx(v, WtWhy, 车底 CFrame)`——
+    殉爆：闪光、三层火球（白热芯 / 橙红火 / 煤黑烟）、冲击波圈和一圈土、真钢板碎块（`G.wreckChunks`，CorrodedMetal 零件，会落地，最多同时 40 块）、
+    舱口火柱、八九发接连殉爆（`pop` 声音）、残骸的 fire / black 发射器调粗调黑顺风、地面焦斑（烟贴图染黑的 Decal，挂在残骸模型里）；
+    烧毁：发动机舱窜火；乘员打光：一缕烟。Ents.lua：车有 `e.wtWhy`（战雷式伤害打死的）就不再放通用的那一下爆炸；Fx.boom 的 wreck 类用真碎块代替方块贴图；
+    炮塔顶飞：往上 27～35 格 / 秒（原来 20～27）、翻得快一点。测试 tools/mock/wreckfx.lua。
+
 - D（11-25 夜，用户：「游戏地图不要有载具召唤点了 在车上按空格也不要自动阵亡了 然后召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」
   「包括死亡也别再用之前那个gta的动画了」「飞机很多起落架都很假 而且尾喷焰火也假」「飞机如果断了机翼 那机翼应该要能掉下去」「然后发动机各种状态 冒烟什么的都要做出来」「j50删掉」）：
   · 召唤点：战雷式（`G.wtGroundOnly()`）地图上不摆召唤柱、停放框（Depots.lua 每个召唤位的模型收掉，出车位置数据照旧给 Tech.lua padFor 用）。
