@@ -65,12 +65,15 @@ end
 
 -- 逐帧回调计时（F7 性能面板 Perf.lua 读）：G.perfT[名字] = 这半秒累计的秒数；各模块自己的 RenderStepped 用 G.frameConn(名字, 函数) 连
 G.perfT = {}
+G.perfMax = {}   -- 这半秒里单次最长（一阵一阵卡的时候看是谁：用户 11-25「游戏一阵一阵卡，枪、坦克、飞机一阵一阵抽搐」）
 function G.perfWrap(name, f)
   return function(...)
     local t0 = os.clock()
     f(...)
-    local T = G.perfT
-    T[name] = (T[name] or 0) + (os.clock() - t0)
+    local d = os.clock() - t0
+    local T, M = G.perfT, G.perfMax
+    T[name] = (T[name] or 0) + d
+    if d > (M[name] or 0) then M[name] = d end
   end
 end
 function G.frameConn(name, f) return RunService.RenderStepped:Connect(G.perfWrap(name, f)) end
@@ -86,7 +89,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -147,11 +150,13 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "airfx", function(dt) if G.stepAirFx then G.stepAirFx(dt) end end },   -- 飞机机动的翼尖涡流、机翼水汽、蒸汽锥、音爆
   { "mslcam", function() if G.stepMslCam then G.stepMslCam() end end } }   -- 导弹视角小窗
 RunService.RenderStepped:Connect(function(dt)
-  local T = G.perfT
+  local T, M = G.perfT, G.perfMax
   for _, s in ipairs(steps) do
     local t0 = os.clock()
     local ok, err = pcall(s[2], dt)
-    T[s[1]] = (T[s[1]] or 0) + (os.clock() - t0)
+    local d = os.clock() - t0
+    T[s[1]] = (T[s[1]] or 0) + d
+    if d > (M[s[1]] or 0) then M[s[1]] = d end
     if not ok then G.showError("local " .. s[1] .. ": " .. tostring(err)) end
   end
 end)

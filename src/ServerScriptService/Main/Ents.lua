@@ -139,7 +139,7 @@ function Ents.init(G)
     if e.hp <= 0 then
       e.alive = false
       if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2, c = "wreck" }) end   -- 步兵倒下不炸（客户端画倒地）
-      if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
+      if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" and not e.noScore then G.addScore(src.P, Config.Score.vehicleKill) end   -- 试驾场的靶车（Tech.lua）不给分
       G.emit("entDied", e, src)   -- 战雷式对局（WtMatch.lua）：车主的阵容记「已毁」、打掉它的人记击毁 / 击落
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
     end

@@ -25,6 +25,8 @@ function Wt.init(G)
   local MOD_DMG = { core = 130, spall = 34, blast = 70 }
   local REPLACE_T = 6     -- 关键位空了多少秒后别人顶上
   local FIX_T = 12        -- 维修要几秒
+  -- 科技树改装（WtMods，Tech.lua 出车时写的 e.wtFx）：工具箱修得快；没研究零件 / 灭火器修不了 / 灭不了
+  local function fixTime(e) return FIX_T * ((e.wtFx and e.wtFx.repK) or 1) end
   local EXT_CD = 20       -- 灭火器冷却
 
   local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end
@@ -105,7 +107,7 @@ function Wt.init(G)
     m:SetAttribute("WtMob", S.mob)
     m:SetAttribute("WtGun", S.gun)
     m:SetAttribute("WtTrav", S.trav)
-    m:SetAttribute("WtFix", S.fixT and math.clamp((now() - S.fixT) / FIX_T, 0, 1) or nil)
+    m:SetAttribute("WtFix", S.fixT and math.clamp((now() - S.fixT) / fixTime(e), 0, 1) or nil)
     -- 原来的血量（界面上的血条、名牌）：按活着的乘员算个比例
     if e.alive and e.wtMaxHp then
       e.hp = math.max(1, e.wtMaxHp * alive(S) / math.max(1, S.total))
@@ -286,7 +288,7 @@ function Wt.init(G)
     local P = s.src and s.src.P
     local payload = { op = "wtHit", id = e.id, veh = e.def.id, r = res.r, kill = res.kill, why = res.why, fire = res.fire, blow = res.blow,
       parts = out, pen = res.pen and math.floor(res.pen) or nil, arm = res.eff and math.floor(res.eff) or nil, ang = res.ang and math.floor(res.ang) or nil,
-      dist = res.dist and math.floor(res.dist) or nil, xr = extra }
+      dist = res.dist and math.floor(res.dist) or nil, xr = extra, tk = e.treeKey }   -- tk：科技树出的车（界面写科技树里的名字）
     if P and P.pl and G.P[P.pl] == P then G.R.Drive:FireClient(P.pl, payload) end
     if not res.kill then
       msgTo(e, { op = "wtHurt", r = res.r, parts = out, fire = res.fire, from = s.src and s.src.name, xr = extra })
@@ -294,6 +296,7 @@ function Wt.init(G)
       local kveh = P and P.vehicle and P.vehicle.def and P.vehicle.def.id or nil
       local kill = table.clone(payload)
       kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
+      kill.kk = P and P.vehicle and P.vehicle.treeKey or nil
       for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
         if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
       end
@@ -448,7 +451,7 @@ function Wt.init(G)
           changed = true
           if alive(S) * 2 < S.total or alive(S) == 0 then destroy(e, e.lastHitBy, "fire") end
         end
-        if S.fixT and t - S.fixT >= FIX_T then   -- 修好：坏了、毁了的模块都修到能用（六成），乘员救不回来
+        if S.fixT and t - S.fixT >= fixTime(e) then   -- 修好：坏了、毁了的模块都修到能用（六成），乘员救不回来
           S.fixT = nil
           for _, c in ipairs(S.mods) do if c.hp < c.max * 0.6 then c.hp = c.max * 0.6 end end
           msgTo(e, { op = "wtFixed" })
@@ -488,6 +491,7 @@ function Wt.init(G)
     local any = false
     for _, c in ipairs(S.mods) do if c.hp < c.max * 0.6 then any = true end end
     if not any then G.msg(P.pl, "info", "wt.noFix") return end
+    if e.wtFx and not e.wtFx.repair then G.msg(P.pl, "bad", "wt.needParts") return end   -- 原厂车：没研究「零件」修不了
     S.fixT = now()
     G.wtPush(e)
   end
@@ -496,6 +500,7 @@ function Wt.init(G)
     if not e then return end
     local S = e.wt
     if not S.fireT then return end
+    if e.wtFx and not e.wtFx.ext then G.msg(P.pl, "bad", "wt.needFpe") return end   -- 原厂车：没研究「灭火器」只能等火烧完
     if now() < (S.extT or 0) then G.msg(P.pl, "bad", "wt.extCd", math.ceil(S.extT - now())) return end
     S.fireT = nil
     S.extT = now() + EXT_CD

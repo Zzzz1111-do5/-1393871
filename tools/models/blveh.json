@@ -1,1077 +1,6051 @@
 {
-  "m3a3": {
-    "_说明": "M3 布雷德利骑兵战车（mansoorsajidp，Sketchfab 99ab5c2396784da49e26adac2626548d，CC-BY-4.0，作者自己用 Blender 做的）；原模型车头朝 +Z，转半圈",
-    "uid": "99ab5c2396784da49e26adac2626548d",
-    "rotZ": 180,
-    "length": 6.55,
-    "texMax": 1024,
-    "gunBack": 0.15,
-    "groups": {
-      "Turret": ["Object_10", "Object_11", "Object_13", "Object_15", "Object_17", "Object_18", "Object_51", "Object_53", "Object_55"],
-      "Gun": ["Object_42", "Object_49"],
-      "Tow": ["Object_20", "Object_21"]
-    },
-    "wheels": [["Object_29", "Object_30"], ["Object_61", "Object_62"], ["Object_66", "Object_67"], ["Object_71", "Object_72"], ["Object_76", "Object_77"], ["Object_81", "Object_82"], ["Object_32"], ["Object_57"], ["Object_96", "Object_97"], ["Object_111", "Object_112"], ["Object_108", "Object_109"], ["Object_105", "Object_106"], ["Object_102", "Object_103"], ["Object_99", "Object_100"], ["Object_36"], ["Object_34"]],
-    "decimate": {
-      "Object_23": 0.12,
-      "Object_38": 0.12,
-      "Object_24": 0.3,
-      "Object_39": 0.3,
-      "Object_25": 0.4,
-      "Object_40": 0.4,
-      "Object_4": 0.45,
-      "Object_5": 0.45,
-      "Object_6": 0.1
-    }
+ "m3a3": {
+  "_说明": "M3 布雷德利骑兵战车（mansoorsajidp，Sketchfab 99ab5c2396784da49e26adac2626548d，CC-BY-4.0，作者自己用 Blender 做的）；原模型车头朝 +Z，转半圈",
+  "uid": "99ab5c2396784da49e26adac2626548d",
+  "rotZ": 180,
+  "length": 6.55,
+  "texMax": 1024,
+  "gunBack": 0.15,
+  "groups": {
+   "Turret": [
+    "Object_10",
+    "Object_11",
+    "Object_13",
+    "Object_15",
+    "Object_17",
+    "Object_18",
+    "Object_51",
+    "Object_53",
+    "Object_55"
+   ],
+   "Gun": [
+    "Object_42",
+    "Object_49"
+   ],
+   "Tow": [
+    "Object_20",
+    "Object_21"
+   ]
   },
-  "m1a1i": {
-    "_说明": "M1A1 艾布拉姆斯（Muhamad Mirza Arrafi / MirzaArrafiERV_45，Sketchfab 1529f5d842cb4f578aa8cb672524f044，CC-BY-4.0，带炮塔内饰）；用户 11-23「你直接用这 m1」「原模型也换成这个」：从原文件直接转（以前的 m1a1 是网页版烘焙过的同一个模型，车内并进了车体、不跟炮塔转）。原模型车头朝 +Z，转半圈；单位就是米（车体 8.1 米），不缩放；原模型好几层一模一样的面（游戏里扒的），去重；炮管、炮盾和车体是一块，按框拆出来；Object_13 是一圈观察镜玻璃：驾驶员的三块在车体上，车长、装填手、炮长镜窗的在炮塔上，按框分开",
-    "uid": "1529f5d842cb4f578aa8cb672524f044",
-    "credit": "M1A1 艾布拉姆斯（带炮塔内饰）：M1A1 Abrams Main Battle Tank，作者 Muhamad Mirza Arrafi（MirzaArrafiERV_45，https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "title": "M1A1 艾布拉姆斯（带炮塔内饰）",
-    "creditEn": "This work is based on \"M1A1 Abrams Main Battle Tank\" (https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "changes": "Blender 从原文件直接转（tools/models/blveh.py）：转半圈朝 −Z、去掉重合的面、炮管和炮盾从车体里拆出来、炮塔内饰归炮塔、贴图缩到 1024、按部件和材质切块",
-    "alias": ["m1a1"],
-    "old": "m1a1",
-    "rotZ": 180,
-    "scale": 1.0,
-    "texMax": 1024,
-    "dedupe": true,
-    "dedupeFirst": ["Object_8", "Object_14", "Object_11", "Object_2", "Object_3", "Object_17"],
-    "split": [
-      {
-        "from": ["Object_8", "Object_9"],
-        "to": "Gun",
-        "box": [-0.6, 0.6, 0.9, 1.8, 0.9, 6.0]
-      },
-      {
-        "from": ["Object_10"],
-        "to": "Gun",
-        "box": [-0.2, 0.2, 1.25, 1.5, 2.9, 3.6]
-      },
-      {
-        "from": ["Object_10"],
-        "to": "Turret",
-        "box": [-1.7, 1.7, 1.0, 1.95, -2.0, 1.9]
-      },
-      {
-        "from": ["Object_13"],
-        "to": "Turret",
-        "box": [-1.2, 1.0, 1.5, 2.3, -1.2, 0.6]
-      }
-    ],
-    "groups": {
-      "Turret": ["Object_14", "Object_15", "Object_6", "Object_2", "Object_16", "Object_4", "Object_17", "Object_3"],
-      "RwsGun": ["Object_5"]
-    },
-    "labels": {
-      "Object_4": "Int",
-      "Object_17": "Int",
-      "Object_3": "Int"
-    },
-    "kinds": {
-      "Int": "int"
-    },
-    "matColor": {
-      "chassis_vlo.4": [34, 44, 50]
-    },
-    "tur": [-0.03, 1.0, -0.15],
-    "gun": [0.0, 1.325, 1.55],
-    "points": {
-      "sight": [-0.55, 2.29, 0.22],
-      "gps": [-0.6045, 1.015, 0.417],
-      "gpse": [-0.498, 1.371, -0.346]
-    }
-  },
-  "t90m": {
-    "_说明": "T-90M「突破-3」（mansoorsajidp，Sketchfab f465e873d8d0468abd5d84b1ecc22f19，CC-BY-4.0，作者自己用 Blender 做的，带车内：炮塔篮、转盘式自动装弹机一圈弹、座椅）；用户 11-24「没事干了就去找俄系」。原模型车头朝 +Z（转半圈）、比真车大约 1.1 倍（宽 4.18 米 → 真车 3.78 米），按 0.905 缩；23 万个三角形太多：履带、车体、负重轮、炮塔、车内按比例减面；炮塔转轴：炮塔节点下面挂着炮塔篮（最低点在车体里），不能按炮塔最低一圈算——按自动装弹机一圈弹拟合的圆心、座圈外沿车顶高度直接给",
-    "uid": "f465e873d8d0468abd5d84b1ecc22f19",
-    "credit": "T-90M 主战坦克：T-90M (With interior) [FREE]，作者 mansoorsajidp（https://sketchfab.com/3d-models/t-90m-with-interior-free-f465e873d8d0468abd5d84b1ecc22f19），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "title": "T-90M 主战坦克（带车内）",
-    "creditEn": "This work is based on \"T-90M (With interior) [FREE]\" (https://sketchfab.com/3d-models/t-90m-with-interior-free-f465e873d8d0468abd5d84b1ecc22f19) by mansoorsajidp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组、减面、车内归炮塔、贴图缩到 1024",
-    "alias": ["t90m"],
-    "rotZ": 180,
-    "scale": 0.905,
-    "texMax": 1024,
-    "dedupe": true,
-    "groups": {
-      "Turret": ["Object_34", "Object_35", "Object_36", "Object_37", "Object_38", "Object_39", "Object_40", "Object_41", "Object_42", "Object_43", "Object_44", "Object_45", "Object_53", "Object_54", "Object_56", "Object_329", "Object_330", "Object_331", "Object_332", "Object_324", "Object_325", "Object_326", "Object_327", "Object_319", "Object_320", "Object_321", "Object_322", "Object_314", "Object_315", "Object_316", "Object_317", "Object_309", "Object_310", "Object_311", "Object_312", "Object_304", "Object_305", "Object_306", "Object_307", "Object_299", "Object_300", "Object_301", "Object_302", "Object_294", "Object_295", "Object_296", "Object_297", "Object_289", "Object_290", "Object_291", "Object_292", "Object_284", "Object_285", "Object_286", "Object_287", "Object_279", "Object_280", "Object_281", "Object_282", "Object_274", "Object_275", "Object_276", "Object_277", "Object_269", "Object_270", "Object_271", "Object_272", "Object_264", "Object_265", "Object_266", "Object_267", "Object_259", "Object_260", "Object_261", "Object_262", "Object_254", "Object_255", "Object_256", "Object_257", "Object_249", "Object_250", "Object_251", "Object_252", "Object_244", "Object_245", "Object_246", "Object_247", "Object_239", "Object_240", "Object_241", "Object_242", "Object_234", "Object_235", "Object_236", "Object_237", "Object_229", "Object_230", "Object_231", "Object_232", "Object_224", "Object_225", "Object_226", "Object_227", "Object_219", "Object_220", "Object_221", "Object_222", "Object_214", "Object_215", "Object_216", "Object_217", "Object_209", "Object_210", "Object_211", "Object_212", "Object_204", "Object_205", "Object_206", "Object_207", "Object_199", "Object_200", "Object_201", "Object_202", "Object_194", "Object_195", "Object_196", "Object_197", "Object_189", "Object_190", "Object_191", "Object_192", "Object_184", "Object_185", "Object_186", "Object_187", "Object_179", "Object_180", "Object_181", "Object_182", "Object_174", "Object_175", "Object_176", "Object_177", "Object_169", "Object_170", "Object_171", "Object_172", "Object_164", "Object_165", "Object_166", "Object_167", "Object_159", "Object_160", "Object_161", "Object_162", "Object_154", "Object_155", "Object_156", "Object_157", "Object_149", "Object_150", "Object_151", "Object_152", "Object_144", "Object_145", "Object_146", "Object_147", "Object_139", "Object_140", "Object_141", "Object_142", "Object_134", "Object_135", "Object_136", "Object_137", "Object_129", "Object_130", "Object_131", "Object_132", "Object_124", "Object_125", "Object_126", "Object_127", "Object_119", "Object_120", "Object_121", "Object_122", "Object_114", "Object_115", "Object_116", "Object_117", "Object_109", "Object_110", "Object_111", "Object_112", "Object_104", "Object_105", "Object_106", "Object_107", "Object_99", "Object_100", "Object_101", "Object_102", "Object_94", "Object_95", "Object_96", "Object_97", "Object_92", "Object_90", "Object_82", "Object_83", "Object_84", "Object_80", "Object_78", "Object_86", "Object_87", "Object_88", "Object_62", "Object_63", "Object_64", "Object_65"],
-      "Gun": ["Object_47", "Object_48"],
-      "RwsGun": ["Object_50", "Object_51"]
-    },
-    "labels": {
-      "Object_329": "Int",
-      "Object_330": "Int",
-      "Object_331": "Int",
-      "Object_332": "Int",
-      "Object_324": "Int",
-      "Object_325": "Int",
-      "Object_326": "Int",
-      "Object_327": "Int",
-      "Object_319": "Int",
-      "Object_320": "Int",
-      "Object_321": "Int",
-      "Object_322": "Int",
-      "Object_314": "Int",
-      "Object_315": "Int",
-      "Object_316": "Int",
-      "Object_317": "Int",
-      "Object_309": "Int",
-      "Object_310": "Int",
-      "Object_311": "Int",
-      "Object_312": "Int",
-      "Object_304": "Int",
-      "Object_305": "Int",
-      "Object_306": "Int",
-      "Object_307": "Int",
-      "Object_299": "Int",
-      "Object_300": "Int",
-      "Object_301": "Int",
-      "Object_302": "Int",
-      "Object_294": "Int",
-      "Object_295": "Int",
-      "Object_296": "Int",
-      "Object_297": "Int",
-      "Object_289": "Int",
-      "Object_290": "Int",
-      "Object_291": "Int",
-      "Object_292": "Int",
-      "Object_284": "Int",
-      "Object_285": "Int",
-      "Object_286": "Int",
-      "Object_287": "Int",
-      "Object_279": "Int",
-      "Object_280": "Int",
-      "Object_281": "Int",
-      "Object_282": "Int",
-      "Object_274": "Int",
-      "Object_275": "Int",
-      "Object_276": "Int",
-      "Object_277": "Int",
-      "Object_269": "Int",
-      "Object_270": "Int",
-      "Object_271": "Int",
-      "Object_272": "Int",
-      "Object_264": "Int",
-      "Object_265": "Int",
-      "Object_266": "Int",
-      "Object_267": "Int",
-      "Object_259": "Int",
-      "Object_260": "Int",
-      "Object_261": "Int",
-      "Object_262": "Int",
-      "Object_254": "Int",
-      "Object_255": "Int",
-      "Object_256": "Int",
-      "Object_257": "Int",
-      "Object_249": "Int",
-      "Object_250": "Int",
-      "Object_251": "Int",
-      "Object_252": "Int",
-      "Object_244": "Int",
-      "Object_245": "Int",
-      "Object_246": "Int",
-      "Object_247": "Int",
-      "Object_239": "Int",
-      "Object_240": "Int",
-      "Object_241": "Int",
-      "Object_242": "Int",
-      "Object_234": "Int",
-      "Object_235": "Int",
-      "Object_236": "Int",
-      "Object_237": "Int",
-      "Object_229": "Int",
-      "Object_230": "Int",
-      "Object_231": "Int",
-      "Object_232": "Int",
-      "Object_224": "Int",
-      "Object_225": "Int",
-      "Object_226": "Int",
-      "Object_227": "Int",
-      "Object_219": "Int",
-      "Object_220": "Int",
-      "Object_221": "Int",
-      "Object_222": "Int",
-      "Object_214": "Int",
-      "Object_215": "Int",
-      "Object_216": "Int",
-      "Object_217": "Int",
-      "Object_209": "Int",
-      "Object_210": "Int",
-      "Object_211": "Int",
-      "Object_212": "Int",
-      "Object_204": "Int",
-      "Object_205": "Int",
-      "Object_206": "Int",
-      "Object_207": "Int",
-      "Object_199": "Int",
-      "Object_200": "Int",
-      "Object_201": "Int",
-      "Object_202": "Int",
-      "Object_194": "Int",
-      "Object_195": "Int",
-      "Object_196": "Int",
-      "Object_197": "Int",
-      "Object_189": "Int",
-      "Object_190": "Int",
-      "Object_191": "Int",
-      "Object_192": "Int",
-      "Object_184": "Int",
-      "Object_185": "Int",
-      "Object_186": "Int",
-      "Object_187": "Int",
-      "Object_179": "Int",
-      "Object_180": "Int",
-      "Object_181": "Int",
-      "Object_182": "Int",
-      "Object_174": "Int",
-      "Object_175": "Int",
-      "Object_176": "Int",
-      "Object_177": "Int",
-      "Object_169": "Int",
-      "Object_170": "Int",
-      "Object_171": "Int",
-      "Object_172": "Int",
-      "Object_164": "Int",
-      "Object_165": "Int",
-      "Object_166": "Int",
-      "Object_167": "Int",
-      "Object_159": "Int",
-      "Object_160": "Int",
-      "Object_161": "Int",
-      "Object_162": "Int",
-      "Object_154": "Int",
-      "Object_155": "Int",
-      "Object_156": "Int",
-      "Object_157": "Int",
-      "Object_149": "Int",
-      "Object_150": "Int",
-      "Object_151": "Int",
-      "Object_152": "Int",
-      "Object_144": "Int",
-      "Object_145": "Int",
-      "Object_146": "Int",
-      "Object_147": "Int",
-      "Object_139": "Int",
-      "Object_140": "Int",
-      "Object_141": "Int",
-      "Object_142": "Int",
-      "Object_134": "Int",
-      "Object_135": "Int",
-      "Object_136": "Int",
-      "Object_137": "Int",
-      "Object_129": "Int",
-      "Object_130": "Int",
-      "Object_131": "Int",
-      "Object_132": "Int",
-      "Object_124": "Int",
-      "Object_125": "Int",
-      "Object_126": "Int",
-      "Object_127": "Int",
-      "Object_119": "Int",
-      "Object_120": "Int",
-      "Object_121": "Int",
-      "Object_122": "Int",
-      "Object_114": "Int",
-      "Object_115": "Int",
-      "Object_116": "Int",
-      "Object_117": "Int",
-      "Object_109": "Int",
-      "Object_110": "Int",
-      "Object_111": "Int",
-      "Object_112": "Int",
-      "Object_104": "Int",
-      "Object_105": "Int",
-      "Object_106": "Int",
-      "Object_107": "Int",
-      "Object_99": "Int",
-      "Object_100": "Int",
-      "Object_101": "Int",
-      "Object_102": "Int",
-      "Object_94": "Int",
-      "Object_95": "Int",
-      "Object_96": "Int",
-      "Object_97": "Int",
-      "Object_92": "Int",
-      "Object_90": "Int",
-      "Object_82": "Int",
-      "Object_83": "Int",
-      "Object_84": "Int",
-      "Object_80": "Int",
-      "Object_78": "Int",
-      "Object_86": "Int",
-      "Object_87": "Int",
-      "Object_88": "Int",
-      "Object_62": "Int",
-      "Object_63": "Int",
-      "Object_64": "Int",
-      "Object_65": "Int"
-    },
-    "kinds": {
-      "Int": "int"
-    },
-    "decimate": {
-      "Object_58": 0.2,
-      "Object_60": 0.2,
-      "Object_67": 0.42,
-      "Object_68": 0.42,
-      "Object_69": 0.42,
-      "Object_70": 0.42,
-      "Object_71": 0.42,
-      "Object_72": 0.42,
-      "Object_73": 0.42,
-      "Object_74": 0.42,
-      "Object_75": 0.42,
-      "Object_76": 0.42,
-      "Object_4": 0.3,
-      "Object_6": 0.3,
-      "Object_7": 0.3,
-      "Object_8": 0.3,
-      "Object_10": 0.3,
-      "Object_11": 0.3,
-      "Object_12": 0.3,
-      "Object_14": 0.3,
-      "Object_15": 0.3,
-      "Object_16": 0.3,
-      "Object_18": 0.3,
-      "Object_19": 0.3,
-      "Object_20": 0.3,
-      "Object_22": 0.3,
-      "Object_23": 0.3,
-      "Object_24": 0.3,
-      "Object_26": 0.3,
-      "Object_27": 0.3,
-      "Object_28": 0.3,
-      "Object_30": 0.3,
-      "Object_32": 0.3,
-      "Object_34": 0.5,
-      "Object_35": 0.5,
-      "Object_36": 0.5,
-      "Object_37": 0.5,
-      "Object_38": 0.5,
-      "Object_39": 0.5,
-      "Object_40": 0.5,
-      "Object_41": 0.5,
-      "Object_42": 0.5,
-      "Object_43": 0.5,
-      "Object_44": 0.5,
-      "Object_45": 0.5,
-      "Object_53": 0.5,
-      "Object_54": 0.5,
-      "Object_56": 0.5,
-      "Object_329": 0.4,
-      "Object_330": 0.4,
-      "Object_331": 0.4,
-      "Object_332": 0.4,
-      "Object_324": 0.4,
-      "Object_325": 0.4,
-      "Object_326": 0.4,
-      "Object_327": 0.4,
-      "Object_319": 0.4,
-      "Object_320": 0.4,
-      "Object_321": 0.4,
-      "Object_322": 0.4,
-      "Object_314": 0.4,
-      "Object_315": 0.4,
-      "Object_316": 0.4,
-      "Object_317": 0.4,
-      "Object_309": 0.4,
-      "Object_310": 0.4,
-      "Object_311": 0.4,
-      "Object_312": 0.4,
-      "Object_304": 0.4,
-      "Object_305": 0.4,
-      "Object_306": 0.4,
-      "Object_307": 0.4,
-      "Object_299": 0.4,
-      "Object_300": 0.4,
-      "Object_301": 0.4,
-      "Object_302": 0.4,
-      "Object_294": 0.4,
-      "Object_295": 0.4,
-      "Object_296": 0.4,
-      "Object_297": 0.4,
-      "Object_289": 0.4,
-      "Object_290": 0.4,
-      "Object_291": 0.4,
-      "Object_292": 0.4,
-      "Object_284": 0.4,
-      "Object_285": 0.4,
-      "Object_286": 0.4,
-      "Object_287": 0.4,
-      "Object_279": 0.4,
-      "Object_280": 0.4,
-      "Object_281": 0.4,
-      "Object_282": 0.4,
-      "Object_274": 0.4,
-      "Object_275": 0.4,
-      "Object_276": 0.4,
-      "Object_277": 0.4,
-      "Object_269": 0.4,
-      "Object_270": 0.4,
-      "Object_271": 0.4,
-      "Object_272": 0.4,
-      "Object_264": 0.4,
-      "Object_265": 0.4,
-      "Object_266": 0.4,
-      "Object_267": 0.4,
-      "Object_259": 0.4,
-      "Object_260": 0.4,
-      "Object_261": 0.4,
-      "Object_262": 0.4,
-      "Object_254": 0.4,
-      "Object_255": 0.4,
-      "Object_256": 0.4,
-      "Object_257": 0.4,
-      "Object_249": 0.4,
-      "Object_250": 0.4,
-      "Object_251": 0.4,
-      "Object_252": 0.4,
-      "Object_244": 0.4,
-      "Object_245": 0.4,
-      "Object_246": 0.4,
-      "Object_247": 0.4,
-      "Object_239": 0.4,
-      "Object_240": 0.4,
-      "Object_241": 0.4,
-      "Object_242": 0.4,
-      "Object_234": 0.4,
-      "Object_235": 0.4,
-      "Object_236": 0.4,
-      "Object_237": 0.4,
-      "Object_229": 0.4,
-      "Object_230": 0.4,
-      "Object_231": 0.4,
-      "Object_232": 0.4,
-      "Object_224": 0.4,
-      "Object_225": 0.4,
-      "Object_226": 0.4,
-      "Object_227": 0.4,
-      "Object_219": 0.4,
-      "Object_220": 0.4,
-      "Object_221": 0.4,
-      "Object_222": 0.4,
-      "Object_214": 0.4,
-      "Object_215": 0.4,
-      "Object_216": 0.4,
-      "Object_217": 0.4,
-      "Object_209": 0.4,
-      "Object_210": 0.4,
-      "Object_211": 0.4,
-      "Object_212": 0.4,
-      "Object_204": 0.4,
-      "Object_205": 0.4,
-      "Object_206": 0.4,
-      "Object_207": 0.4,
-      "Object_199": 0.4,
-      "Object_200": 0.4,
-      "Object_201": 0.4,
-      "Object_202": 0.4,
-      "Object_194": 0.4,
-      "Object_195": 0.4,
-      "Object_196": 0.4,
-      "Object_197": 0.4,
-      "Object_189": 0.4,
-      "Object_190": 0.4,
-      "Object_191": 0.4,
-      "Object_192": 0.4,
-      "Object_184": 0.4,
-      "Object_185": 0.4,
-      "Object_186": 0.4,
-      "Object_187": 0.4,
-      "Object_179": 0.4,
-      "Object_180": 0.4,
-      "Object_181": 0.4,
-      "Object_182": 0.4,
-      "Object_174": 0.4,
-      "Object_175": 0.4,
-      "Object_176": 0.4,
-      "Object_177": 0.4,
-      "Object_169": 0.4,
-      "Object_170": 0.4,
-      "Object_171": 0.4,
-      "Object_172": 0.4,
-      "Object_164": 0.4,
-      "Object_165": 0.4,
-      "Object_166": 0.4,
-      "Object_167": 0.4,
-      "Object_159": 0.4,
-      "Object_160": 0.4,
-      "Object_161": 0.4,
-      "Object_162": 0.4,
-      "Object_154": 0.4,
-      "Object_155": 0.4,
-      "Object_156": 0.4,
-      "Object_157": 0.4,
-      "Object_149": 0.4,
-      "Object_150": 0.4,
-      "Object_151": 0.4,
-      "Object_152": 0.4,
-      "Object_144": 0.4,
-      "Object_145": 0.4,
-      "Object_146": 0.4,
-      "Object_147": 0.4,
-      "Object_139": 0.4,
-      "Object_140": 0.4,
-      "Object_141": 0.4,
-      "Object_142": 0.4,
-      "Object_134": 0.4,
-      "Object_135": 0.4,
-      "Object_136": 0.4,
-      "Object_137": 0.4,
-      "Object_129": 0.4,
-      "Object_130": 0.4,
-      "Object_131": 0.4,
-      "Object_132": 0.4,
-      "Object_124": 0.4,
-      "Object_125": 0.4,
-      "Object_126": 0.4,
-      "Object_127": 0.4,
-      "Object_119": 0.4,
-      "Object_120": 0.4,
-      "Object_121": 0.4,
-      "Object_122": 0.4,
-      "Object_114": 0.4,
-      "Object_115": 0.4,
-      "Object_116": 0.4,
-      "Object_117": 0.4,
-      "Object_109": 0.4,
-      "Object_110": 0.4,
-      "Object_111": 0.4,
-      "Object_112": 0.4,
-      "Object_104": 0.4,
-      "Object_105": 0.4,
-      "Object_106": 0.4,
-      "Object_107": 0.4,
-      "Object_99": 0.4,
-      "Object_100": 0.4,
-      "Object_101": 0.4,
-      "Object_102": 0.4,
-      "Object_94": 0.4,
-      "Object_95": 0.4,
-      "Object_96": 0.4,
-      "Object_97": 0.4,
-      "Object_92": 0.4,
-      "Object_90": 0.4,
-      "Object_82": 0.4,
-      "Object_83": 0.4,
-      "Object_84": 0.4,
-      "Object_80": 0.4,
-      "Object_78": 0.4,
-      "Object_86": 0.4,
-      "Object_87": 0.4,
-      "Object_88": 0.4,
-      "Object_62": 0.4,
-      "Object_63": 0.4,
-      "Object_64": 0.4,
-      "Object_65": 0.4
-    },
-    "gunBack": 0.35,
-    "tur": [-0.008, 0.61, -0.065]
-  },
-  "bmp3": {
-    "_说明": "BMP-3 步兵战车（lampilamp，Sketchfab a45b0e7355634b8c8b7e30af416ace73，CC-BY-4.0，作者自己建的：几百个 Blender 物体，炮塔顶上加了防无人机的网架）；用户 11-24「找俄系」。原模型车头朝 +Z、比真车小（车体 5.2 米 → 真车 7.14 米，× 1.373）；炮塔、炮都没分开：按框挑整块零件",
-    "uid": "a45b0e7355634b8c8b7e30af416ace73",
-    "credit": "BMP-3 步兵战车：BMP-3，作者 lampilamp（https://sketchfab.com/3d-models/bmp-3-a45b0e7355634b8c8b7e30af416ace73），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "title": "BMP-3 步兵战车",
-    "creditEn": "This work is based on \"BMP-3\" (https://sketchfab.com/3d-models/bmp-3-a45b0e7355634b8c8b7e30af416ace73) by lampilamp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮塔和炮挑出来、减面、贴图缩到 1024",
-    "alias": ["bmp3"],
-    "rotZ": 180,
-    "scale": 1.373,
-    "texMax": 1024,
-    "dedupe": true,
-    "split": [
-      {
-        "from": ["Box001_Black_Metall_2_0", "Box001_Material_0", "Cube.001_Glossy_0", "Cube.001_Metall_0", "Cube.002_Glossy_0", "Cube.002_Metall_0", "Cube.003_Metall_0", "Cube.004_Metall_0", "Cube.005_Glossy_0", "Cube.005_Metall_0", "Cube.006_Metall_0", "Cube.007_Metall_0", "Cube.008__0", "Cube.009_Black_Metall_2_0", "Cube.010__0", "Cube.011_Black_Metall_2_0", "Cube.012_Black_Metall_2_0", "Cube.013_Black_Metall_2_0", "Cube.014_Metall_0", "Cube.015_Glossy_0", "Cube.015_Metall_0", "Cube.016_Metall_0", "Cube.017_Metall_0", "Cube.018_Metall_0", "Cube.019_Metall_0", "Cube.020_Metall_0", "Cube.021_Metall_0", "Cube.022_Metall_0", "Cube.023_Metall_0", "Cube.024_Metall_0", "Cube.024_Reshetka_0", "Cube.025_Metall_0", "Cube.026_Black_Metall_2_0", "Cube.026_Material_0", "Cube.027_Black_Metall_2_0", "Cube.027_Metall_0", "Cube.028_Glossy_0", "Cube.028_Metall_0", "Cube.029_Glossy_0", "Cube.029_Metall_0", "Cube.030_Glossy_0", "Cube.030_Metall_0", "Cube.031_Glossy_0", "Cube.031_Metall_0", "Cube.032_Glossy_0", "Cube.032_Metall_0", "Cube.033_Glossy_0", "Cube.033_Metall_0", "Cube.034_Glossy_0", "Cube.034_Metall_0", "Cube.035_Metall_0", "Cube.036_Metall_0", "Cube.037_Metall_0", "Cube.038_Metall_0", "Cube.039_Metall_0", "Cube.040_Metall_0", "Cube.041_Metall_0", "Cube.042_Metall_0", "Cube.043_Metall_0", "Cube.044_Metall_0", "Cube.045_Black_Metall_2_0", "Cube.046_Black_Metall_2_0", "Cube.047_Black_Metall_2_0", "Cube.048_Black_Metall_2_0", "Cube.049_Black_Metall_2_0", "Cube.050_Black_Metall_2_0", "Cube.051_Black_Metall_2_0", "Cube.052_Black_Metall_2_0", "Cube.053_Black_Metall_2_0", "Cube.054_Black_Metall_2_0", "Cube.055_Black_Metall_2_0", "Cube.056_Black_Metall_2_0", "Cube.057_Black_Metall_2_0", "Cube.058_Black_Metall_2_0", "Cube.059_Black_Metall_2_0", "Cube.060_Black_Metall_2_0", "Cube.061_Black_Metall_2_0", "Cube.062_Black_Metall_2_0", "Cube.063_Black_Metall_2_0", "Cube.064_Black_Metall_2_0", "Cube.065_Black_Metall_2_0", "Cube.066_Black_Metall_2_0", "Cube.067_Black_Metall_2_0", "Cube.068_Black_Metall_2_0", "Cube.069_Black_Metall_2_0", "Cube.070_Black_Metall_2_0", "Cube.071_Black_Metall_2_0", "Cube.072_Black_Metall_2_0", "Cube.073_Black_Metall_2_0", "Cube.074_Black_Metall_2_0", "Cube.075_Black_Metall_2_0", "Cube.076_Black_Metall_2_0", "Cube.077_Black_Metall_2_0", "Cube.078_Black_Metall_2_0", "Cube.079_Black_Metall_2_0", "Cube.080_Black_Metall_2_0", "Cube.081_Black_Metall_2_0", "Cube.082_Black_Metall_2_0", "Cube.083_Black_Metall_2_0", "Cube.084_Black_Metall_2_0", "Cube.085_Black_Metall_2_0", "Cube.086_Black_Metall_2_0", "Cube.087_Black_Metall_2_0", "Cube.088_Black_Metall_2_0", "Cube.089_Black_Metall_2_0", "Cube.090_Black_Metall_2_0", "Cube.091_Black_Metall_2_0", "Cube.092_Black_Metall_2_0", "Cube.093_Black_Metall_2_0", "Cube.094_Black_Metall_2_0", "Cube.095_Black_Metall_2_0", "Cube.096_Black_Metall_2_0", "Cube.097_Black_Metall_2_0", "Cube.098_Black_Metall_2_0", "Cube.099_Black_Metall_2_0", "Cube.100_Black_Metall_2_0", "Cube.101_Black_Metall_2_0", "Cube.102_Black_Metall_2_0", "Cube.103_Black_Metall_2_0", "Cube.104_Black_Metall_2_0", "Cube.105_Black_Metall_2_0", "Cube.106_Black_Metall_2_0", "Cube.107_Black_Metall_2_0", "Cube.108_Black_Metall_2_0", "Cube.109_Black_Metall_2_0", "Cube.110_Black_Metall_2_0", "Cube.111_Black_Metall_2_0", "Cube.112_Black_Metall_2_0", "Cube.113_Black_Metall_2_0", "Cube.114_Black_Metall_2_0", "Cube.115_Black_Metall_2_0", "Cube.116_Black_Metall_2_0", "Cube.117_Black_Metall_2_0", "Cube.118_Black_Metall_2_0", "Cube.119_Black_Metall_2_0", "Cube.120_Black_Metall_2_0", "Cube.121_Black_Metall_2_0", "Cube.122_Black_Metall_2_0", "Cube.123_Black_Metall_2_0", "Cube.124_Black_Metall_2_0", "Cube.125_Black_Metall_2_0", "Cube.126_Black_Metall_2_0", "Cube.127_Black_Metall_2_0", "Cube.128_Black_Metall_2_0", "Cube.129_Black_Metall_2_0", "Cube.130_Black_Metall_2_0", "Cube.131_Black_Metall_2_0", "Cube.132_Black_Metall_2_0", "Cube.133_Black_Metall_2_0", "Cube.134_Black_Metall_2_0", "Cube.135_Black_Metall_2_0", "Cube.136_Black_Metall_2_0", "Cube.137_Black_Metall_2_0", "Cube.138_Black_Metall_2_0", "Cube.139_Black_Metall_2_0", "Cube.140_Metall_0", "Cube.141_Metall_0", "Cube.142_Metall_0", "Cube_Glossy_0", "Cube_Metall_0", "Cylinder.001_Glossy_0", "Cylinder.001_Metall_0", "Cylinder.002_Black_Metall_2_0", "Cylinder.002_Metall_0", "Cylinder.003_Black_Metall_0", "Cylinder.003_Metall_0", "Cylinder.004_Black_Metall_0", "Cylinder.004_Metall_0", "Cylinder.005_Black_Metall_0", "Cylinder.005_Metall_0", "Cylinder.006_Metall_0", "Cylinder.007_Black_Metall_2_0", "Cylinder.007_Metall_0", "Cylinder.008_Metall_0", "Cylinder.009_Metall_0", "Cylinder.010_Metall_0", "Cylinder.011_Metall_0", "Cylinder.012_Glossy_0", "Cylinder.012_Metall_0", "Cylinder.013_Glossy_0", "Cylinder.013_Metall_0", "Cylinder.014_Black_Metall_2_0", "Cylinder.014_Metall_0", "Cylinder.015_Black_Metall_2_0", "Cylinder.015_Metall_0", "Cylinder.016_Black_Metall_2_0", "Cylinder.016_Metall_0", "Cylinder.017_Metall_0", "Cylinder.018_Metall_0", "Cylinder.019_Metall_0", "Cylinder.020_Metall_0", "Cylinder.021_Metall_0", "Cylinder.022_Metall_0", "Cylinder.023_Metall_0", "Cylinder.024_Metall_0", "Cylinder.025_Metall_0", "Cylinder.026_Emission_off_0", "Cylinder.026_Metall_0", "Cylinder.027_Emission_off_0", "Cylinder.027_Metall_0", "Cylinder.028_Metall_0", "Cylinder.029_Metall_0", "Cylinder.030_Material_0", "Cylinder.030_Tree_0", "Cylinder.031_Metall_0", "Cylinder.032_Metall_0", "Cylinder.033_Metall_0", "Cylinder.034_Metall_0", "Cylinder.035_Metall_0", "Cylinder.036_Metall_0", "Cylinder.037_Black_Metall_2_0", "Cylinder.038_Black_Metall_2_0", "Cylinder.039_Black_Metall_2_0", "Cylinder.039_Metall_0", "Cylinder.040_Black_Metall_2_0", "Cylinder.040_Metall_0", "Cylinder.041_Black_Metall_2_0", "Cylinder.041_Metall_0", "Cylinder.042_Black_Metall_2_0", "Cylinder.042_Metall_0", "Cylinder.043_Black_Metall_2_0", "Cylinder.043_Metall_0", "Cylinder.044_Black_Metall_2_0", "Cylinder.044_Metall_0", "Cylinder.045_Black_Metall_2_0", "Cylinder.045_Metall_0", "Cylinder.046_Black_Metall_2_0", "Cylinder.046_Metall_0", "Cylinder.047_Black_Metall_2_0", "Cylinder.047_Metall_0", "Cylinder.048_Black_Metall_2_0", "Cylinder.048_Metall_0", "Cylinder.049_Black_Metall_2_0", "Cylinder.049_Metall_0", "Cylinder.050_Black_Metall_2_0", "Cylinder.050_Metall_0", "Cylinder.051_Metall_0", "Cylinder.052_Metall_0", "Cylinder.053_Metall_0", "Cylinder.054_Metall_0", "Cylinder.055_Black_Metall_2_0", "Cylinder.055_Metall_0", "Cylinder.056_Black_Metall_2_0", "Cylinder.056_Metall_0", "Cylinder.057_Black_Metall_2_0", "Cylinder.057_Metall_0", "Cylinder.058_Black_Metall_2_0", "Cylinder.058_Metall_0", "Cylinder.059_Black_Metall_2_0", "Cylinder.059_Metall_0", "Cylinder.060_Black_Metall_2_0", "Cylinder.060_Metall_0", "Cylinder.061_Metall_0", "Cylinder.062_Metall_0", "Cylinder.063_Metall_0", "Cylinder.064_Metall_0", "Cylinder.065_Metall_0", "Cylinder.066_Metall_0", "Cylinder.067_Metall_0", "Cylinder.068_Metall_0", "Cylinder.069_Metall_0", "Cylinder.070_Metall_0", "Cylinder.071_Metall_0", "Cylinder.072_Metall_0", "Cylinder.073_Metall_0", "Cylinder.074_Metall_0", "Cylinder.075_Metall_0", "Cylinder.076_Metall_0", "Cylinder.077_Metall_0", "Cylinder.078_Metall_0", "Cylinder.079_Metall_0", "Cylinder.080_Metall_0", "Cylinder_Metall_0", "Mball.018_Material_0", "NurbsPath.001_Metall_0", "NurbsPath.002_Metall_0", "NurbsPath.003_Metall_0", "NurbsPath.004_Metall_0", "NurbsPath.005_Metall_0", "NurbsPath.006_Metall_0", "NurbsPath.007_Metall_0", "NurbsPath.008_Black_Metall_2_0", "NurbsPath.009_Black_Metall_2_0", "NurbsPath.010_Metall_0", "NurbsPath.011_Metall_0", "NurbsPath.012_Metall_0", "NurbsPath.013_Metall_0", "NurbsPath.014_Metall_0", "NurbsPath.015_Metall_0", "NurbsPath.016_Metall_0", "NurbsPath.017_Metall_0", "NurbsPath.018_Metall_0", "NurbsPath.019_Metall_0", "NurbsPath.020_Metall_0", "NurbsPath.021_Metall_0", "NurbsPath.022_Metall_0", "NurbsPath.023_Metall_0", "NurbsPath.024_Black_Metall_2_0", "NurbsPath.025_Metall_0", "NurbsPath.026_Metall_0", "NurbsPath.027_Metall_0", "NurbsPath.028_Metall_0", "NurbsPath.029_Metall_0", "NurbsPath.030_Metall_0", "NurbsPath_Metall_0", "Plane.001_Material_0", "Plane_Black_Metall_2_0", "Plane_Metall_0"],
-        "to": "Gun",
-        "box": [-0.22, 0.16, 0.42, 0.64, 0.68, 2.7]
-      },
-      {
-        "from": ["Box001_Black_Metall_2_0", "Box001_Material_0", "Cube.001_Glossy_0", "Cube.001_Metall_0", "Cube.002_Glossy_0", "Cube.002_Metall_0", "Cube.003_Metall_0", "Cube.004_Metall_0", "Cube.005_Glossy_0", "Cube.005_Metall_0", "Cube.006_Metall_0", "Cube.007_Metall_0", "Cube.008__0", "Cube.009_Black_Metall_2_0", "Cube.010__0", "Cube.011_Black_Metall_2_0", "Cube.012_Black_Metall_2_0", "Cube.013_Black_Metall_2_0", "Cube.014_Metall_0", "Cube.015_Glossy_0", "Cube.015_Metall_0", "Cube.016_Metall_0", "Cube.017_Metall_0", "Cube.018_Metall_0", "Cube.019_Metall_0", "Cube.020_Metall_0", "Cube.021_Metall_0", "Cube.022_Metall_0", "Cube.023_Metall_0", "Cube.024_Metall_0", "Cube.024_Reshetka_0", "Cube.025_Metall_0", "Cube.026_Black_Metall_2_0", "Cube.026_Material_0", "Cube.027_Black_Metall_2_0", "Cube.027_Metall_0", "Cube.028_Glossy_0", "Cube.028_Metall_0", "Cube.029_Glossy_0", "Cube.029_Metall_0", "Cube.030_Glossy_0", "Cube.030_Metall_0", "Cube.031_Glossy_0", "Cube.031_Metall_0", "Cube.032_Glossy_0", "Cube.032_Metall_0", "Cube.033_Glossy_0", "Cube.033_Metall_0", "Cube.034_Glossy_0", "Cube.034_Metall_0", "Cube.035_Metall_0", "Cube.036_Metall_0", "Cube.037_Metall_0", "Cube.038_Metall_0", "Cube.039_Metall_0", "Cube.040_Metall_0", "Cube.041_Metall_0", "Cube.042_Metall_0", "Cube.043_Metall_0", "Cube.044_Metall_0", "Cube.045_Black_Metall_2_0", "Cube.046_Black_Metall_2_0", "Cube.047_Black_Metall_2_0", "Cube.048_Black_Metall_2_0", "Cube.049_Black_Metall_2_0", "Cube.050_Black_Metall_2_0", "Cube.051_Black_Metall_2_0", "Cube.052_Black_Metall_2_0", "Cube.053_Black_Metall_2_0", "Cube.054_Black_Metall_2_0", "Cube.055_Black_Metall_2_0", "Cube.056_Black_Metall_2_0", "Cube.057_Black_Metall_2_0", "Cube.058_Black_Metall_2_0", "Cube.059_Black_Metall_2_0", "Cube.060_Black_Metall_2_0", "Cube.061_Black_Metall_2_0", "Cube.062_Black_Metall_2_0", "Cube.063_Black_Metall_2_0", "Cube.064_Black_Metall_2_0", "Cube.065_Black_Metall_2_0", "Cube.066_Black_Metall_2_0", "Cube.067_Black_Metall_2_0", "Cube.068_Black_Metall_2_0", "Cube.069_Black_Metall_2_0", "Cube.070_Black_Metall_2_0", "Cube.071_Black_Metall_2_0", "Cube.072_Black_Metall_2_0", "Cube.073_Black_Metall_2_0", "Cube.074_Black_Metall_2_0", "Cube.075_Black_Metall_2_0", "Cube.076_Black_Metall_2_0", "Cube.077_Black_Metall_2_0", "Cube.078_Black_Metall_2_0", "Cube.079_Black_Metall_2_0", "Cube.080_Black_Metall_2_0", "Cube.081_Black_Metall_2_0", "Cube.082_Black_Metall_2_0", "Cube.083_Black_Metall_2_0", "Cube.084_Black_Metall_2_0", "Cube.085_Black_Metall_2_0", "Cube.086_Black_Metall_2_0", "Cube.087_Black_Metall_2_0", "Cube.088_Black_Metall_2_0", "Cube.089_Black_Metall_2_0", "Cube.090_Black_Metall_2_0", "Cube.091_Black_Metall_2_0", "Cube.092_Black_Metall_2_0", "Cube.093_Black_Metall_2_0", "Cube.094_Black_Metall_2_0", "Cube.095_Black_Metall_2_0", "Cube.096_Black_Metall_2_0", "Cube.097_Black_Metall_2_0", "Cube.098_Black_Metall_2_0", "Cube.099_Black_Metall_2_0", "Cube.100_Black_Metall_2_0", "Cube.101_Black_Metall_2_0", "Cube.102_Black_Metall_2_0", "Cube.103_Black_Metall_2_0", "Cube.104_Black_Metall_2_0", "Cube.105_Black_Metall_2_0", "Cube.106_Black_Metall_2_0", "Cube.107_Black_Metall_2_0", "Cube.108_Black_Metall_2_0", "Cube.109_Black_Metall_2_0", "Cube.110_Black_Metall_2_0", "Cube.111_Black_Metall_2_0", "Cube.112_Black_Metall_2_0", "Cube.113_Black_Metall_2_0", "Cube.114_Black_Metall_2_0", "Cube.115_Black_Metall_2_0", "Cube.116_Black_Metall_2_0", "Cube.117_Black_Metall_2_0", "Cube.118_Black_Metall_2_0", "Cube.119_Black_Metall_2_0", "Cube.120_Black_Metall_2_0", "Cube.121_Black_Metall_2_0", "Cube.122_Black_Metall_2_0", "Cube.123_Black_Metall_2_0", "Cube.124_Black_Metall_2_0", "Cube.125_Black_Metall_2_0", "Cube.126_Black_Metall_2_0", "Cube.127_Black_Metall_2_0", "Cube.128_Black_Metall_2_0", "Cube.129_Black_Metall_2_0", "Cube.130_Black_Metall_2_0", "Cube.131_Black_Metall_2_0", "Cube.132_Black_Metall_2_0", "Cube.133_Black_Metall_2_0", "Cube.134_Black_Metall_2_0", "Cube.135_Black_Metall_2_0", "Cube.136_Black_Metall_2_0", "Cube.137_Black_Metall_2_0", "Cube.138_Black_Metall_2_0", "Cube.139_Black_Metall_2_0", "Cube.140_Metall_0", "Cube.141_Metall_0", "Cube.142_Metall_0", "Cube_Glossy_0", "Cube_Metall_0", "Cylinder.001_Glossy_0", "Cylinder.001_Metall_0", "Cylinder.002_Black_Metall_2_0", "Cylinder.002_Metall_0", "Cylinder.003_Black_Metall_0", "Cylinder.003_Metall_0", "Cylinder.004_Black_Metall_0", "Cylinder.004_Metall_0", "Cylinder.005_Black_Metall_0", "Cylinder.005_Metall_0", "Cylinder.006_Metall_0", "Cylinder.007_Black_Metall_2_0", "Cylinder.007_Metall_0", "Cylinder.008_Metall_0", "Cylinder.009_Metall_0", "Cylinder.010_Metall_0", "Cylinder.011_Metall_0", "Cylinder.012_Glossy_0", "Cylinder.012_Metall_0", "Cylinder.013_Glossy_0", "Cylinder.013_Metall_0", "Cylinder.014_Black_Metall_2_0", "Cylinder.014_Metall_0", "Cylinder.015_Black_Metall_2_0", "Cylinder.015_Metall_0", "Cylinder.016_Black_Metall_2_0", "Cylinder.016_Metall_0", "Cylinder.017_Metall_0", "Cylinder.018_Metall_0", "Cylinder.019_Metall_0", "Cylinder.020_Metall_0", "Cylinder.021_Metall_0", "Cylinder.022_Metall_0", "Cylinder.023_Metall_0", "Cylinder.024_Metall_0", "Cylinder.025_Metall_0", "Cylinder.026_Emission_off_0", "Cylinder.026_Metall_0", "Cylinder.027_Emission_off_0", "Cylinder.027_Metall_0", "Cylinder.028_Metall_0", "Cylinder.029_Metall_0", "Cylinder.030_Material_0", "Cylinder.030_Tree_0", "Cylinder.031_Metall_0", "Cylinder.032_Metall_0", "Cylinder.033_Metall_0", "Cylinder.034_Metall_0", "Cylinder.035_Metall_0", "Cylinder.036_Metall_0", "Cylinder.037_Black_Metall_2_0", "Cylinder.038_Black_Metall_2_0", "Cylinder.039_Black_Metall_2_0", "Cylinder.039_Metall_0", "Cylinder.040_Black_Metall_2_0", "Cylinder.040_Metall_0", "Cylinder.041_Black_Metall_2_0", "Cylinder.041_Metall_0", "Cylinder.042_Black_Metall_2_0", "Cylinder.042_Metall_0", "Cylinder.043_Black_Metall_2_0", "Cylinder.043_Metall_0", "Cylinder.044_Black_Metall_2_0", "Cylinder.044_Metall_0", "Cylinder.045_Black_Metall_2_0", "Cylinder.045_Metall_0", "Cylinder.046_Black_Metall_2_0", "Cylinder.046_Metall_0", "Cylinder.047_Black_Metall_2_0", "Cylinder.047_Metall_0", "Cylinder.048_Black_Metall_2_0", "Cylinder.048_Metall_0", "Cylinder.049_Black_Metall_2_0", "Cylinder.049_Metall_0", "Cylinder.050_Black_Metall_2_0", "Cylinder.050_Metall_0", "Cylinder.051_Metall_0", "Cylinder.052_Metall_0", "Cylinder.053_Metall_0", "Cylinder.054_Metall_0", "Cylinder.055_Black_Metall_2_0", "Cylinder.055_Metall_0", "Cylinder.056_Black_Metall_2_0", "Cylinder.056_Metall_0", "Cylinder.057_Black_Metall_2_0", "Cylinder.057_Metall_0", "Cylinder.058_Black_Metall_2_0", "Cylinder.058_Metall_0", "Cylinder.059_Black_Metall_2_0", "Cylinder.059_Metall_0", "Cylinder.060_Black_Metall_2_0", "Cylinder.060_Metall_0", "Cylinder.061_Metall_0", "Cylinder.062_Metall_0", "Cylinder.063_Metall_0", "Cylinder.064_Metall_0", "Cylinder.065_Metall_0", "Cylinder.066_Metall_0", "Cylinder.067_Metall_0", "Cylinder.068_Metall_0", "Cylinder.069_Metall_0", "Cylinder.070_Metall_0", "Cylinder.071_Metall_0", "Cylinder.072_Metall_0", "Cylinder.073_Metall_0", "Cylinder.074_Metall_0", "Cylinder.075_Metall_0", "Cylinder.076_Metall_0", "Cylinder.077_Metall_0", "Cylinder.078_Metall_0", "Cylinder.079_Metall_0", "Cylinder.080_Metall_0", "Cylinder_Metall_0", "Mball.018_Material_0", "NurbsPath.001_Metall_0", "NurbsPath.002_Metall_0", "NurbsPath.003_Metall_0", "NurbsPath.004_Metall_0", "NurbsPath.005_Metall_0", "NurbsPath.006_Metall_0", "NurbsPath.007_Metall_0", "NurbsPath.008_Black_Metall_2_0", "NurbsPath.009_Black_Metall_2_0", "NurbsPath.010_Metall_0", "NurbsPath.011_Metall_0", "NurbsPath.012_Metall_0", "NurbsPath.013_Metall_0", "NurbsPath.014_Metall_0", "NurbsPath.015_Metall_0", "NurbsPath.016_Metall_0", "NurbsPath.017_Metall_0", "NurbsPath.018_Metall_0", "NurbsPath.019_Metall_0", "NurbsPath.020_Metall_0", "NurbsPath.021_Metall_0", "NurbsPath.022_Metall_0", "NurbsPath.023_Metall_0", "NurbsPath.024_Black_Metall_2_0", "NurbsPath.025_Metall_0", "NurbsPath.026_Metall_0", "NurbsPath.027_Metall_0", "NurbsPath.028_Metall_0", "NurbsPath.029_Metall_0", "NurbsPath.030_Metall_0", "NurbsPath_Metall_0", "Plane.001_Material_0", "Plane_Black_Metall_2_0", "Plane_Metall_0"],
-        "to": "Turret",
-        "box": [-0.74, 0.74, 0.34, 1.45, -0.64, 1.32]
-      }
-    ],
-    "decimate": {
-      "Box001_Black_Metall_2_0": 0.3,
-      "Box001_Material_0": 0.3,
-      "Cube.001_Glossy_0": 0.3,
-      "Cube.001_Metall_0": 0.3,
-      "Cube.002_Glossy_0": 0.3,
-      "Cube.002_Metall_0": 0.3,
-      "Cube.003_Metall_0": 0.3,
-      "Cube.004_Metall_0": 0.3,
-      "Cube.005_Glossy_0": 0.3,
-      "Cube.005_Metall_0": 0.3,
-      "Cube.006_Metall_0": 0.3,
-      "Cube.007_Metall_0": 0.3,
-      "Cube.008__0": 0.3,
-      "Cube.009_Black_Metall_2_0": 0.3,
-      "Cube.010__0": 0.3,
-      "Cube.011_Black_Metall_2_0": 0.3,
-      "Cube.012_Black_Metall_2_0": 0.3,
-      "Cube.013_Black_Metall_2_0": 0.3,
-      "Cube.014_Metall_0": 0.3,
-      "Cube.015_Glossy_0": 0.3,
-      "Cube.015_Metall_0": 0.3,
-      "Cube.016_Metall_0": 0.3,
-      "Cube.017_Metall_0": 0.3,
-      "Cube.018_Metall_0": 0.3,
-      "Cube.019_Metall_0": 0.3,
-      "Cube.020_Metall_0": 0.3,
-      "Cube.021_Metall_0": 0.3,
-      "Cube.022_Metall_0": 0.3,
-      "Cube.023_Metall_0": 0.3,
-      "Cube.024_Metall_0": 0.3,
-      "Cube.024_Reshetka_0": 0.3,
-      "Cube.025_Metall_0": 0.3,
-      "Cube.026_Black_Metall_2_0": 0.3,
-      "Cube.026_Material_0": 0.3,
-      "Cube.027_Black_Metall_2_0": 0.3,
-      "Cube.027_Metall_0": 0.3,
-      "Cube.028_Glossy_0": 0.3,
-      "Cube.028_Metall_0": 0.3,
-      "Cube.029_Glossy_0": 0.3,
-      "Cube.029_Metall_0": 0.3,
-      "Cube.030_Glossy_0": 0.3,
-      "Cube.030_Metall_0": 0.3,
-      "Cube.031_Glossy_0": 0.3,
-      "Cube.031_Metall_0": 0.3,
-      "Cube.032_Glossy_0": 0.3,
-      "Cube.032_Metall_0": 0.3,
-      "Cube.033_Glossy_0": 0.3,
-      "Cube.033_Metall_0": 0.3,
-      "Cube.034_Glossy_0": 0.3,
-      "Cube.034_Metall_0": 0.3,
-      "Cube.035_Metall_0": 0.3,
-      "Cube.036_Metall_0": 0.3,
-      "Cube.037_Metall_0": 0.3,
-      "Cube.038_Metall_0": 0.3,
-      "Cube.039_Metall_0": 0.3,
-      "Cube.040_Metall_0": 0.3,
-      "Cube.041_Metall_0": 0.3,
-      "Cube.042_Metall_0": 0.3,
-      "Cube.043_Metall_0": 0.3,
-      "Cube.044_Metall_0": 0.3,
-      "Cube.045_Black_Metall_2_0": 0.3,
-      "Cube.046_Black_Metall_2_0": 0.3,
-      "Cube.047_Black_Metall_2_0": 0.3,
-      "Cube.048_Black_Metall_2_0": 0.3,
-      "Cube.049_Black_Metall_2_0": 0.3,
-      "Cube.050_Black_Metall_2_0": 0.3,
-      "Cube.051_Black_Metall_2_0": 0.3,
-      "Cube.052_Black_Metall_2_0": 0.3,
-      "Cube.053_Black_Metall_2_0": 0.3,
-      "Cube.054_Black_Metall_2_0": 0.3,
-      "Cube.055_Black_Metall_2_0": 0.3,
-      "Cube.056_Black_Metall_2_0": 0.3,
-      "Cube.057_Black_Metall_2_0": 0.3,
-      "Cube.058_Black_Metall_2_0": 0.3,
-      "Cube.059_Black_Metall_2_0": 0.3,
-      "Cube.060_Black_Metall_2_0": 0.3,
-      "Cube.061_Black_Metall_2_0": 0.3,
-      "Cube.062_Black_Metall_2_0": 0.3,
-      "Cube.063_Black_Metall_2_0": 0.3,
-      "Cube.064_Black_Metall_2_0": 0.3,
-      "Cube.065_Black_Metall_2_0": 0.3,
-      "Cube.066_Black_Metall_2_0": 0.3,
-      "Cube.067_Black_Metall_2_0": 0.3,
-      "Cube.068_Black_Metall_2_0": 0.3,
-      "Cube.069_Black_Metall_2_0": 0.3,
-      "Cube.070_Black_Metall_2_0": 0.3,
-      "Cube.071_Black_Metall_2_0": 0.3,
-      "Cube.072_Black_Metall_2_0": 0.3,
-      "Cube.073_Black_Metall_2_0": 0.3,
-      "Cube.074_Black_Metall_2_0": 0.3,
-      "Cube.075_Black_Metall_2_0": 0.3,
-      "Cube.076_Black_Metall_2_0": 0.3,
-      "Cube.077_Black_Metall_2_0": 0.3,
-      "Cube.078_Black_Metall_2_0": 0.3,
-      "Cube.079_Black_Metall_2_0": 0.3,
-      "Cube.080_Black_Metall_2_0": 0.3,
-      "Cube.081_Black_Metall_2_0": 0.3,
-      "Cube.082_Black_Metall_2_0": 0.3,
-      "Cube.083_Black_Metall_2_0": 0.3,
-      "Cube.084_Black_Metall_2_0": 0.3,
-      "Cube.085_Black_Metall_2_0": 0.3,
-      "Cube.086_Black_Metall_2_0": 0.3,
-      "Cube.087_Black_Metall_2_0": 0.3,
-      "Cube.088_Black_Metall_2_0": 0.3,
-      "Cube.089_Black_Metall_2_0": 0.3,
-      "Cube.090_Black_Metall_2_0": 0.3,
-      "Cube.091_Black_Metall_2_0": 0.3,
-      "Cube.092_Black_Metall_2_0": 0.3,
-      "Cube.093_Black_Metall_2_0": 0.3,
-      "Cube.094_Black_Metall_2_0": 0.3,
-      "Cube.095_Black_Metall_2_0": 0.3,
-      "Cube.096_Black_Metall_2_0": 0.3,
-      "Cube.097_Black_Metall_2_0": 0.3,
-      "Cube.098_Black_Metall_2_0": 0.3,
-      "Cube.099_Black_Metall_2_0": 0.3,
-      "Cube.100_Black_Metall_2_0": 0.3,
-      "Cube.101_Black_Metall_2_0": 0.3,
-      "Cube.102_Black_Metall_2_0": 0.3,
-      "Cube.103_Black_Metall_2_0": 0.3,
-      "Cube.104_Black_Metall_2_0": 0.3,
-      "Cube.105_Black_Metall_2_0": 0.3,
-      "Cube.106_Black_Metall_2_0": 0.3,
-      "Cube.107_Black_Metall_2_0": 0.3,
-      "Cube.108_Black_Metall_2_0": 0.3,
-      "Cube.109_Black_Metall_2_0": 0.3,
-      "Cube.110_Black_Metall_2_0": 0.3,
-      "Cube.111_Black_Metall_2_0": 0.3,
-      "Cube.112_Black_Metall_2_0": 0.3,
-      "Cube.113_Black_Metall_2_0": 0.3,
-      "Cube.114_Black_Metall_2_0": 0.3,
-      "Cube.115_Black_Metall_2_0": 0.3,
-      "Cube.116_Black_Metall_2_0": 0.3,
-      "Cube.117_Black_Metall_2_0": 0.3,
-      "Cube.118_Black_Metall_2_0": 0.3,
-      "Cube.119_Black_Metall_2_0": 0.3,
-      "Cube.120_Black_Metall_2_0": 0.3,
-      "Cube.121_Black_Metall_2_0": 0.3,
-      "Cube.122_Black_Metall_2_0": 0.3,
-      "Cube.123_Black_Metall_2_0": 0.3,
-      "Cube.124_Black_Metall_2_0": 0.3,
-      "Cube.125_Black_Metall_2_0": 0.3,
-      "Cube.126_Black_Metall_2_0": 0.3,
-      "Cube.127_Black_Metall_2_0": 0.3,
-      "Cube.128_Black_Metall_2_0": 0.3,
-      "Cube.129_Black_Metall_2_0": 0.3,
-      "Cube.130_Black_Metall_2_0": 0.3,
-      "Cube.131_Black_Metall_2_0": 0.3,
-      "Cube.132_Black_Metall_2_0": 0.3,
-      "Cube.133_Black_Metall_2_0": 0.3,
-      "Cube.134_Black_Metall_2_0": 0.3,
-      "Cube.135_Black_Metall_2_0": 0.3,
-      "Cube.136_Black_Metall_2_0": 0.3,
-      "Cube.137_Black_Metall_2_0": 0.3,
-      "Cube.138_Black_Metall_2_0": 0.3,
-      "Cube.139_Black_Metall_2_0": 0.3,
-      "Cube.140_Metall_0": 0.3,
-      "Cube.141_Metall_0": 0.3,
-      "Cube.142_Metall_0": 0.3,
-      "Cube_Glossy_0": 0.3,
-      "Cube_Metall_0": 0.3,
-      "Cylinder.001_Glossy_0": 0.3,
-      "Cylinder.001_Metall_0": 0.3,
-      "Cylinder.002_Black_Metall_2_0": 0.3,
-      "Cylinder.002_Metall_0": 0.3,
-      "Cylinder.003_Black_Metall_0": 0.3,
-      "Cylinder.003_Metall_0": 0.3,
-      "Cylinder.004_Black_Metall_0": 0.3,
-      "Cylinder.004_Metall_0": 0.3,
-      "Cylinder.005_Black_Metall_0": 0.3,
-      "Cylinder.005_Metall_0": 0.3,
-      "Cylinder.006_Metall_0": 0.3,
-      "Cylinder.007_Black_Metall_2_0": 0.3,
-      "Cylinder.007_Metall_0": 0.3,
-      "Cylinder.008_Metall_0": 0.3,
-      "Cylinder.009_Metall_0": 0.3,
-      "Cylinder.010_Metall_0": 0.3,
-      "Cylinder.011_Metall_0": 0.3,
-      "Cylinder.012_Glossy_0": 0.3,
-      "Cylinder.012_Metall_0": 0.3,
-      "Cylinder.013_Glossy_0": 0.3,
-      "Cylinder.013_Metall_0": 0.3,
-      "Cylinder.014_Black_Metall_2_0": 0.3,
-      "Cylinder.014_Metall_0": 0.3,
-      "Cylinder.015_Black_Metall_2_0": 0.3,
-      "Cylinder.015_Metall_0": 0.3,
-      "Cylinder.016_Black_Metall_2_0": 0.3,
-      "Cylinder.016_Metall_0": 0.3,
-      "Cylinder.017_Metall_0": 0.3,
-      "Cylinder.018_Metall_0": 0.3,
-      "Cylinder.019_Metall_0": 0.3,
-      "Cylinder.020_Metall_0": 0.3,
-      "Cylinder.021_Metall_0": 0.3,
-      "Cylinder.022_Metall_0": 0.3,
-      "Cylinder.023_Metall_0": 0.3,
-      "Cylinder.024_Metall_0": 0.3,
-      "Cylinder.025_Metall_0": 0.3,
-      "Cylinder.026_Emission_off_0": 0.3,
-      "Cylinder.026_Metall_0": 0.3,
-      "Cylinder.027_Emission_off_0": 0.3,
-      "Cylinder.027_Metall_0": 0.3,
-      "Cylinder.028_Metall_0": 0.3,
-      "Cylinder.029_Metall_0": 0.3,
-      "Cylinder.030_Material_0": 0.3,
-      "Cylinder.030_Tree_0": 0.3,
-      "Cylinder.031_Metall_0": 0.3,
-      "Cylinder.032_Metall_0": 0.3,
-      "Cylinder.033_Metall_0": 0.3,
-      "Cylinder.034_Metall_0": 0.3,
-      "Cylinder.035_Metall_0": 0.3,
-      "Cylinder.036_Metall_0": 0.3,
-      "Cylinder.037_Black_Metall_2_0": 0.3,
-      "Cylinder.038_Black_Metall_2_0": 0.3,
-      "Cylinder.039_Black_Metall_2_0": 0.3,
-      "Cylinder.039_Metall_0": 0.3,
-      "Cylinder.040_Black_Metall_2_0": 0.3,
-      "Cylinder.040_Metall_0": 0.3,
-      "Cylinder.041_Black_Metall_2_0": 0.3,
-      "Cylinder.041_Metall_0": 0.3,
-      "Cylinder.042_Black_Metall_2_0": 0.3,
-      "Cylinder.042_Metall_0": 0.3,
-      "Cylinder.043_Black_Metall_2_0": 0.3,
-      "Cylinder.043_Metall_0": 0.3,
-      "Cylinder.044_Black_Metall_2_0": 0.3,
-      "Cylinder.044_Metall_0": 0.3,
-      "Cylinder.045_Black_Metall_2_0": 0.3,
-      "Cylinder.045_Metall_0": 0.3,
-      "Cylinder.046_Black_Metall_2_0": 0.3,
-      "Cylinder.046_Metall_0": 0.3,
-      "Cylinder.047_Black_Metall_2_0": 0.3,
-      "Cylinder.047_Metall_0": 0.3,
-      "Cylinder.048_Black_Metall_2_0": 0.3,
-      "Cylinder.048_Metall_0": 0.3,
-      "Cylinder.049_Black_Metall_2_0": 0.3,
-      "Cylinder.049_Metall_0": 0.3,
-      "Cylinder.050_Black_Metall_2_0": 0.3,
-      "Cylinder.050_Metall_0": 0.3,
-      "Cylinder.051_Metall_0": 0.3,
-      "Cylinder.052_Metall_0": 0.3,
-      "Cylinder.053_Metall_0": 0.3,
-      "Cylinder.054_Metall_0": 0.3,
-      "Cylinder.055_Black_Metall_2_0": 0.3,
-      "Cylinder.055_Metall_0": 0.3,
-      "Cylinder.056_Black_Metall_2_0": 0.3,
-      "Cylinder.056_Metall_0": 0.3,
-      "Cylinder.057_Black_Metall_2_0": 0.3,
-      "Cylinder.057_Metall_0": 0.3,
-      "Cylinder.058_Black_Metall_2_0": 0.3,
-      "Cylinder.058_Metall_0": 0.3,
-      "Cylinder.059_Black_Metall_2_0": 0.3,
-      "Cylinder.059_Metall_0": 0.3,
-      "Cylinder.060_Black_Metall_2_0": 0.3,
-      "Cylinder.060_Metall_0": 0.3,
-      "Cylinder.061_Metall_0": 0.3,
-      "Cylinder.062_Metall_0": 0.3,
-      "Cylinder.063_Metall_0": 0.3,
-      "Cylinder.064_Metall_0": 0.3,
-      "Cylinder.065_Metall_0": 0.3,
-      "Cylinder.066_Metall_0": 0.3,
-      "Cylinder.067_Metall_0": 0.3,
-      "Cylinder.068_Metall_0": 0.3,
-      "Cylinder.069_Metall_0": 0.3,
-      "Cylinder.070_Metall_0": 0.3,
-      "Cylinder.071_Metall_0": 0.3,
-      "Cylinder.072_Metall_0": 0.3,
-      "Cylinder.073_Metall_0": 0.3,
-      "Cylinder.074_Metall_0": 0.3,
-      "Cylinder.075_Metall_0": 0.3,
-      "Cylinder.076_Metall_0": 0.3,
-      "Cylinder.077_Metall_0": 0.3,
-      "Cylinder.078_Metall_0": 0.3,
-      "Cylinder.079_Metall_0": 0.3,
-      "Cylinder.080_Metall_0": 0.3,
-      "Cylinder_Metall_0": 0.3,
-      "Mball.018_Material_0": 0.3,
-      "NurbsPath.001_Metall_0": 0.3,
-      "NurbsPath.002_Metall_0": 0.3,
-      "NurbsPath.003_Metall_0": 0.3,
-      "NurbsPath.004_Metall_0": 0.3,
-      "NurbsPath.005_Metall_0": 0.3,
-      "NurbsPath.006_Metall_0": 0.3,
-      "NurbsPath.007_Metall_0": 0.3,
-      "NurbsPath.008_Black_Metall_2_0": 0.3,
-      "NurbsPath.009_Black_Metall_2_0": 0.3,
-      "NurbsPath.010_Metall_0": 0.3,
-      "NurbsPath.011_Metall_0": 0.3,
-      "NurbsPath.012_Metall_0": 0.3,
-      "NurbsPath.013_Metall_0": 0.3,
-      "NurbsPath.014_Metall_0": 0.3,
-      "NurbsPath.015_Metall_0": 0.3,
-      "NurbsPath.016_Metall_0": 0.3,
-      "NurbsPath.017_Metall_0": 0.3,
-      "NurbsPath.018_Metall_0": 0.3,
-      "NurbsPath.019_Metall_0": 0.3,
-      "NurbsPath.020_Metall_0": 0.3,
-      "NurbsPath.021_Metall_0": 0.3,
-      "NurbsPath.022_Metall_0": 0.3,
-      "NurbsPath.023_Metall_0": 0.3,
-      "NurbsPath.024_Black_Metall_2_0": 0.3,
-      "NurbsPath.025_Metall_0": 0.3,
-      "NurbsPath.026_Metall_0": 0.3,
-      "NurbsPath.027_Metall_0": 0.3,
-      "NurbsPath.028_Metall_0": 0.3,
-      "NurbsPath.029_Metall_0": 0.3,
-      "NurbsPath.030_Metall_0": 0.3,
-      "NurbsPath_Metall_0": 0.3,
-      "Plane.001_Material_0": 0.3,
-      "Plane_Black_Metall_2_0": 0.3,
-      "Plane_Metall_0": 0.3
-    },
-    "gunBack": 0.2,
-    "tur": [0.01, 0.363, 0.2]
-  },
-  "pantsir": {
-    "_说明": "铠甲-S1 弹炮合一防空车（SanderWolf_，Sketchfab 3cb67b0bae10418190e7ce32142231e4，CC-BY-4.0，作者自己建的：KamAZ-6560 8×8 底盘 + 后部战斗模块，一种材质）；用户 11-24「找俄系」。原模型车头朝 −Z（不用转），全长 16.28 → 真车约 10.3 米（× 0.633）；战斗模块整块在 Object_13（驾驶室顶上两小块也在里面，拆回车体），12 个导弹筒、两门 2A38M 的炮管和炮尾按框挑出来跟炮一起俯仰；后三排车轮左右两个在一块里，按 x 拆开，8 个轮子各自一组（前两排转向）；顶上的搜索雷达天线单独成块（label Radar、k radar：游戏里一直转）",
-    "uid": "3cb67b0bae10418190e7ce32142231e4",
-    "credit": "铠甲-S1 防空车：Pantsir-S1，作者 SanderWolf_（https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "title": "铠甲-S1 防空车",
-    "creditEn": "This work is based on \"Pantsir-S1\" (https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4) by SanderWolf_ licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按框把战斗模块（炮塔）和导弹筒 / 炮挑出来、车轮左右拆开、减面",
-    "alias": ["pantsir"],
-    "rotZ": 0,
-    "scale": 0.633,
-    "texMax": 1024,
-    "dedupe": true,
-    "split": [
-      {
-        "from": ["Object_13"],
-        "to": "Body",
-        "box": [-3, 3, 2.0, 4.2, -3, 1.5]
-      },
-      {
-        "from": ["Object_13"],
-        "to": "Turret",
-        "label": "Radar",
-        "box": [-1.3, 1.3, 6.05, 8.1, 10.2, 11.6]
-      },
-      {
-        "from": ["Object_13"],
-        "to": "Gun",
-        "box": [-2.35, 2.35, 4.38, 5.6, 4.3, 10.5]
-      },
-      {
-        "from": ["Object_6"],
-        "to": "L",
-        "box": [-2.0, 0.0, -0.2, 2.2, 1.7, 4.0]
-      },
-      {
-        "from": ["Object_5"],
-        "to": "L",
-        "box": [-2.0, 0.0, -0.2, 2.2, 7.8, 10.1]
-      },
-      {
-        "from": ["Object_4"],
-        "to": "L",
-        "box": [-2.0, 0.0, -0.2, 2.2, 10.0, 12.3]
-      }
-    ],
-    "groups": {
-      "Turret": ["Object_13"]
-    },
-    "wheels": [["Object_12"], ["Object_7"], ["Object_6.L"], ["Object_6"], ["Object_5.L"], ["Object_5"], ["Object_4.L"], ["Object_4"]],
-    "decimate": {
-      "Object_4": 0.35,
-      "Object_5": 0.35,
-      "Object_6": 0.35,
-      "Object_7": 0.35,
-      "Object_12": 0.35,
-      "Object_10": 0.65,
-      "Object_8": 0.6,
-      "Object_3": 0.5,
-      "Object_2": 0.5,
-      "Object_9": 0.5,
-      "Object_11": 0.5,
-      "Object_14": 0.6
-    },
-    "tur": [0.0, 4.25, 9.0],
-    "gun": [0.0, 5.0, 9.3],
-    "points": {
-      "sight": [0.0, 6.0, 7.45]
-    },
-    "kinds": {
-      "Radar": "radar"
-    }
-  },
-  "leo2a6": {
-    "_说明": "豹 2A6（buh-late，Sketchfab 7cb23d5322df4b409a880de635826067，CC-BY-4.0，作者自己做的「为游戏优化」的模型）；用户 11-24 夜「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」。原模型车头朝 −Z（不用转），车体长 7.63 → 真车 7.72 米；车体、炮塔、炮管、两条履带、每个负重轮 / 主动轮 / 诱导轮都是单独节点",
-    "uid": "7cb23d5322df4b409a880de635826067",
-    "title": "豹 2A6 主战坦克",
-    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管、车轮）、减面、贴图缩到 1024",
-    "alias": ["leo2a6"],
-    "rotZ": 0,
-    "length": 7.72,
-    "texMax": 1024,
-    "dedupe": true,
-    "groups": {
-      "Turret": ["turret_0"],
-      "Gun": ["gun_0"]
-    },
-    "wheels": [["l w wheel_0"], ["r w wheel_0"], ["l op wheel.000_0"], ["l op wheel.001_0"], ["l op wheel.002_0"], ["l op wheel.003_0"], ["l op wheel.004_0"], ["l op wheel.005_0"], ["l op wheel.006_0"], ["r op wheel_0"], ["r op wheel.001_0"], ["r op wheel.002_0"], ["r op wheel.003_0"], ["r op wheel.004_0"], ["r op wheel.005_0"], ["r op wheel.006_0"], ["l n wheel.001_0"], ["r n wheel_0"]],
-    "decimate": {
-      "body_0": 0.5,
-      "turret_0": 0.6,
-      "track_0": 0.3,
-      "track.001_0": 0.3
-    },
-    "credit": "豹 2A6 主战坦克：Leopard 2 A6，作者 buh-late（https://sketchfab.com/3d-models/leopard-2-a6-7cb23d5322df4b409a880de635826067），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "creditEn": "This work is based on \"Leopard 2 A6\" (https://sketchfab.com/3d-models/leopard-2-a6-7cb23d5322df4b409a880de635826067) by buh-late licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "gun": [-0.03, 1.0, -2.2]
-  },
-  "leclerc": {
-    "_说明": "勒克莱尔（andertan，Sketchfab 84a0918d2f534c2eb003ab3cb3029c03，CC-BY-4.0，作者自己做的，游戏里的歼-20 / 歼-16 也是他的）；用户 11-24 夜。原模型车头朝 +X（转 90°），车体长 5.92 → 真车 6.88 米；炮塔节点 turret_2 下面是炮塔，Cylinder.086_1 下面是炮管；车轮和车体在一块里",
-    "uid": "84a0918d2f534c2eb003ab3cb3029c03",
-    "title": "勒克莱尔主战坦克",
-    "changes": "Blender 转换（tools/models/blveh.py）：转 90° 朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
-    "alias": ["leclerc"],
-    "rotZ": 90,
-    "length": 6.88,
-    "texMax": 1024,
-    "dedupe": true,
-    "groups": {
-      "Turret": ["Object_25", "Object_29", "Object_30", "Object_28", "Object_27", "Object_26"],
-      "Gun": ["Object_35", "Object_32", "Object_36", "Object_34", "Object_33"]
-    },
-    "decimate": {
-      "Object_5": 0.35,
-      "Object_6": 0.35,
-      "Object_23": 0.55
-    },
-    "credit": "勒克莱尔主战坦克：Char Leclerc，作者 andertan（https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "creditEn": "This work is based on \"Char Leclerc\" (https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03) by andertan licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "gun": [1.8, 1.69, -0.05]
-  },
-  "t72b3": {
-    "_说明": "T-72B3（MirzaArrafiERV_45，Sketchfab dfe130dfce724c30958cec51f2bd86b7，CC-BY-4.0，作者自己做的，游戏里带内饰的 M1A1 也是他的）；用户 11-24 夜。原模型车头朝 −Z（不用转），按材质分块：炮塔 Object_10、炮塔栅栏 Object_15、座圈一圈 Object_6、天线 Object_8，炮管 Object_5；车体装甲 Object_4 长 7.11 → 真车 6.95 米",
-    "uid": "dfe130dfce724c30958cec51f2bd86b7",
-    "title": "T-72B3 主战坦克",
-    "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
-    "alias": ["t72b3"],
-    "rotZ": 0,
-    "length": 6.95,
-    "lengthRef": ["Object_4"],
-    "texMax": 1024,
-    "dedupe": true,
-    "groups": {
-      "Turret": ["Object_10", "Object_15", "Object_6", "Object_8", "Object_7"],
-      "Gun": ["Object_5"]
-    },
-    "decimate": {
-      "Object_10": 0.6,
-      "Object_14": 0.5,
-      "Object_4": 0.6,
-      "Object_15": 0.5,
-      "Object_17": 0.5,
-      "Object_12": 0.5
-    },
-    "credit": "T-72B3 主战坦克：T-72B3 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "creditEn": "This work is based on \"T-72B3 Main Battle Tank\" (https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "gun": [0.0, 0.98, -0.55]
-  },
-  "t80u": {
-    "_说明": "T-80U（javanilga，Sketchfab ebf4b55eeabb421cbf2758a2ec948439，CC-BY-4.0，作者照片对着做的低模）；用户 11-24 夜。原模型车头朝 +Z（转半圈），车体 Object_4 长 7.90（连车尾油桶）→ 7.4 米；炮塔 Object_48 和上面的车长指挥塔、机枪、天线、尾部网，炮管 Object_44；六对负重轮各一块（左右在一块里，一起转）",
-    "uid": "ebf4b55eeabb421cbf2758a2ec948439",
-    "title": "T-80U 主战坦克",
-    "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管、负重轮）、贴图缩到 1024",
-    "alias": ["t80u"],
-    "rotZ": 180,
-    "length": 7.4,
-    "lengthRef": ["Object_4"],
-    "texMax": 1024,
-    "dedupe": true,
-    "groups": {
-      "Turret": ["Object_48", "Object_32", "Object_34", "Object_36", "Object_40", "Object_42", "Object_46", "Object_50", "Object_38", "Object_54", "Object_30", "Object_52"],
-      "Gun": ["Object_44"]
-    },
-    "wheels": [["Object_18"], ["Object_20"], ["Object_22"], ["Object_24"], ["Object_26"], ["Object_28"]],
-    "credit": "T-80U 主战坦克：Tank T-80U，作者 javanilga（https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
-    "creditEn": "This work is based on \"Tank T-80U\" (https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439) by javanilga licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "gun": [-0.08, 1.78, 1.35]
+  "wheels": [
+   [
+    "Object_29",
+    "Object_30"
+   ],
+   [
+    "Object_61",
+    "Object_62"
+   ],
+   [
+    "Object_66",
+    "Object_67"
+   ],
+   [
+    "Object_71",
+    "Object_72"
+   ],
+   [
+    "Object_76",
+    "Object_77"
+   ],
+   [
+    "Object_81",
+    "Object_82"
+   ],
+   [
+    "Object_32"
+   ],
+   [
+    "Object_57"
+   ],
+   [
+    "Object_96",
+    "Object_97"
+   ],
+   [
+    "Object_111",
+    "Object_112"
+   ],
+   [
+    "Object_108",
+    "Object_109"
+   ],
+   [
+    "Object_105",
+    "Object_106"
+   ],
+   [
+    "Object_102",
+    "Object_103"
+   ],
+   [
+    "Object_99",
+    "Object_100"
+   ],
+   [
+    "Object_36"
+   ],
+   [
+    "Object_34"
+   ]
+  ],
+  "decimate": {
+   "Object_23": 0.12,
+   "Object_38": 0.12,
+   "Object_24": 0.3,
+   "Object_39": 0.3,
+   "Object_25": 0.4,
+   "Object_40": 0.4,
+   "Object_4": 0.45,
+   "Object_5": 0.45,
+   "Object_6": 0.1
   }
+ },
+ "m1a1i": {
+  "_说明": "M1A1 艾布拉姆斯（Muhamad Mirza Arrafi / MirzaArrafiERV_45，Sketchfab 1529f5d842cb4f578aa8cb672524f044，CC-BY-4.0，带炮塔内饰）；用户 11-23「你直接用这 m1」「原模型也换成这个」：从原文件直接转（以前的 m1a1 是网页版烘焙过的同一个模型，车内并进了车体、不跟炮塔转）。原模型车头朝 +Z，转半圈；单位就是米（车体 8.1 米），不缩放；原模型好几层一模一样的面（游戏里扒的），去重；炮管、炮盾和车体是一块，按框拆出来；Object_13 是一圈观察镜玻璃：驾驶员的三块在车体上，车长、装填手、炮长镜窗的在炮塔上，按框分开",
+  "uid": "1529f5d842cb4f578aa8cb672524f044",
+  "credit": "M1A1 艾布拉姆斯（带炮塔内饰）：M1A1 Abrams Main Battle Tank，作者 Muhamad Mirza Arrafi（MirzaArrafiERV_45，https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "M1A1 艾布拉姆斯（带炮塔内饰）",
+  "creditEn": "This work is based on \"M1A1 Abrams Main Battle Tank\" (https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 从原文件直接转（tools/models/blveh.py）：转半圈朝 −Z、去掉重合的面、炮管和炮盾从车体里拆出来、炮塔内饰归炮塔、贴图缩到 1024、按部件和材质切块",
+  "alias": [
+   "m1a1"
+  ],
+  "old": "m1a1",
+  "rotZ": 180,
+  "scale": 1.0,
+  "texMax": 1024,
+  "dedupe": true,
+  "dedupeFirst": [
+   "Object_8",
+   "Object_14",
+   "Object_11",
+   "Object_2",
+   "Object_3",
+   "Object_17"
+  ],
+  "split": [
+   {
+    "from": [
+     "Object_8",
+     "Object_9"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.6,
+     0.6,
+     0.9,
+     1.8,
+     0.9,
+     6.0
+    ]
+   },
+   {
+    "from": [
+     "Object_10"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.2,
+     0.2,
+     1.25,
+     1.5,
+     2.9,
+     3.6
+    ]
+   },
+   {
+    "from": [
+     "Object_10"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.7,
+     1.7,
+     1.0,
+     1.95,
+     -2.0,
+     1.9
+    ]
+   },
+   {
+    "from": [
+     "Object_13"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.2,
+     1.0,
+     1.5,
+     2.3,
+     -1.2,
+     0.6
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Object_14",
+    "Object_15",
+    "Object_6",
+    "Object_2",
+    "Object_16",
+    "Object_4",
+    "Object_17",
+    "Object_3"
+   ],
+   "RwsGun": [
+    "Object_5"
+   ]
+  },
+  "labels": {
+   "Object_4": "Int",
+   "Object_17": "Int",
+   "Object_3": "Int"
+  },
+  "kinds": {
+   "Int": "int"
+  },
+  "matColor": {
+   "chassis_vlo.4": [
+    34,
+    44,
+    50
+   ]
+  },
+  "tur": [
+   -0.03,
+   1.0,
+   -0.15
+  ],
+  "gun": [
+   0.0,
+   1.325,
+   1.55
+  ],
+  "points": {
+   "sight": [
+    -0.55,
+    2.29,
+    0.22
+   ],
+   "gps": [
+    -0.6045,
+    1.015,
+    0.417
+   ],
+   "gpse": [
+    -0.498,
+    1.371,
+    -0.346
+   ]
+  }
+ },
+ "t90m": {
+  "_说明": "T-90M「突破-3」（mansoorsajidp，Sketchfab f465e873d8d0468abd5d84b1ecc22f19，CC-BY-4.0，作者自己用 Blender 做的，带车内：炮塔篮、转盘式自动装弹机一圈弹、座椅）；用户 11-24「没事干了就去找俄系」。原模型车头朝 +Z（转半圈）、比真车大约 1.1 倍（宽 4.18 米 → 真车 3.78 米），按 0.905 缩；23 万个三角形太多：履带、车体、负重轮、炮塔、车内按比例减面；炮塔转轴：炮塔节点下面挂着炮塔篮（最低点在车体里），不能按炮塔最低一圈算——按自动装弹机一圈弹拟合的圆心、座圈外沿车顶高度直接给",
+  "uid": "f465e873d8d0468abd5d84b1ecc22f19",
+  "credit": "T-90M 主战坦克：T-90M (With interior) [FREE]，作者 mansoorsajidp（https://sketchfab.com/3d-models/t-90m-with-interior-free-f465e873d8d0468abd5d84b1ecc22f19），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "T-90M 主战坦克（带车内）",
+  "creditEn": "This work is based on \"T-90M (With interior) [FREE]\" (https://sketchfab.com/3d-models/t-90m-with-interior-free-f465e873d8d0468abd5d84b1ecc22f19) by mansoorsajidp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组、减面、车内归炮塔、贴图缩到 1024",
+  "alias": [
+   "t90m"
+  ],
+  "rotZ": 180,
+  "scale": 0.905,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_34",
+    "Object_35",
+    "Object_36",
+    "Object_37",
+    "Object_38",
+    "Object_39",
+    "Object_40",
+    "Object_41",
+    "Object_42",
+    "Object_43",
+    "Object_44",
+    "Object_45",
+    "Object_53",
+    "Object_54",
+    "Object_56",
+    "Object_329",
+    "Object_330",
+    "Object_331",
+    "Object_332",
+    "Object_324",
+    "Object_325",
+    "Object_326",
+    "Object_327",
+    "Object_319",
+    "Object_320",
+    "Object_321",
+    "Object_322",
+    "Object_314",
+    "Object_315",
+    "Object_316",
+    "Object_317",
+    "Object_309",
+    "Object_310",
+    "Object_311",
+    "Object_312",
+    "Object_304",
+    "Object_305",
+    "Object_306",
+    "Object_307",
+    "Object_299",
+    "Object_300",
+    "Object_301",
+    "Object_302",
+    "Object_294",
+    "Object_295",
+    "Object_296",
+    "Object_297",
+    "Object_289",
+    "Object_290",
+    "Object_291",
+    "Object_292",
+    "Object_284",
+    "Object_285",
+    "Object_286",
+    "Object_287",
+    "Object_279",
+    "Object_280",
+    "Object_281",
+    "Object_282",
+    "Object_274",
+    "Object_275",
+    "Object_276",
+    "Object_277",
+    "Object_269",
+    "Object_270",
+    "Object_271",
+    "Object_272",
+    "Object_264",
+    "Object_265",
+    "Object_266",
+    "Object_267",
+    "Object_259",
+    "Object_260",
+    "Object_261",
+    "Object_262",
+    "Object_254",
+    "Object_255",
+    "Object_256",
+    "Object_257",
+    "Object_249",
+    "Object_250",
+    "Object_251",
+    "Object_252",
+    "Object_244",
+    "Object_245",
+    "Object_246",
+    "Object_247",
+    "Object_239",
+    "Object_240",
+    "Object_241",
+    "Object_242",
+    "Object_234",
+    "Object_235",
+    "Object_236",
+    "Object_237",
+    "Object_229",
+    "Object_230",
+    "Object_231",
+    "Object_232",
+    "Object_224",
+    "Object_225",
+    "Object_226",
+    "Object_227",
+    "Object_219",
+    "Object_220",
+    "Object_221",
+    "Object_222",
+    "Object_214",
+    "Object_215",
+    "Object_216",
+    "Object_217",
+    "Object_209",
+    "Object_210",
+    "Object_211",
+    "Object_212",
+    "Object_204",
+    "Object_205",
+    "Object_206",
+    "Object_207",
+    "Object_199",
+    "Object_200",
+    "Object_201",
+    "Object_202",
+    "Object_194",
+    "Object_195",
+    "Object_196",
+    "Object_197",
+    "Object_189",
+    "Object_190",
+    "Object_191",
+    "Object_192",
+    "Object_184",
+    "Object_185",
+    "Object_186",
+    "Object_187",
+    "Object_179",
+    "Object_180",
+    "Object_181",
+    "Object_182",
+    "Object_174",
+    "Object_175",
+    "Object_176",
+    "Object_177",
+    "Object_169",
+    "Object_170",
+    "Object_171",
+    "Object_172",
+    "Object_164",
+    "Object_165",
+    "Object_166",
+    "Object_167",
+    "Object_159",
+    "Object_160",
+    "Object_161",
+    "Object_162",
+    "Object_154",
+    "Object_155",
+    "Object_156",
+    "Object_157",
+    "Object_149",
+    "Object_150",
+    "Object_151",
+    "Object_152",
+    "Object_144",
+    "Object_145",
+    "Object_146",
+    "Object_147",
+    "Object_139",
+    "Object_140",
+    "Object_141",
+    "Object_142",
+    "Object_134",
+    "Object_135",
+    "Object_136",
+    "Object_137",
+    "Object_129",
+    "Object_130",
+    "Object_131",
+    "Object_132",
+    "Object_124",
+    "Object_125",
+    "Object_126",
+    "Object_127",
+    "Object_119",
+    "Object_120",
+    "Object_121",
+    "Object_122",
+    "Object_114",
+    "Object_115",
+    "Object_116",
+    "Object_117",
+    "Object_109",
+    "Object_110",
+    "Object_111",
+    "Object_112",
+    "Object_104",
+    "Object_105",
+    "Object_106",
+    "Object_107",
+    "Object_99",
+    "Object_100",
+    "Object_101",
+    "Object_102",
+    "Object_94",
+    "Object_95",
+    "Object_96",
+    "Object_97",
+    "Object_92",
+    "Object_90",
+    "Object_82",
+    "Object_83",
+    "Object_84",
+    "Object_80",
+    "Object_78",
+    "Object_86",
+    "Object_87",
+    "Object_88",
+    "Object_62",
+    "Object_63",
+    "Object_64",
+    "Object_65"
+   ],
+   "Gun": [
+    "Object_47",
+    "Object_48"
+   ],
+   "RwsGun": [
+    "Object_50",
+    "Object_51"
+   ]
+  },
+  "labels": {
+   "Object_329": "Int",
+   "Object_330": "Int",
+   "Object_331": "Int",
+   "Object_332": "Int",
+   "Object_324": "Int",
+   "Object_325": "Int",
+   "Object_326": "Int",
+   "Object_327": "Int",
+   "Object_319": "Int",
+   "Object_320": "Int",
+   "Object_321": "Int",
+   "Object_322": "Int",
+   "Object_314": "Int",
+   "Object_315": "Int",
+   "Object_316": "Int",
+   "Object_317": "Int",
+   "Object_309": "Int",
+   "Object_310": "Int",
+   "Object_311": "Int",
+   "Object_312": "Int",
+   "Object_304": "Int",
+   "Object_305": "Int",
+   "Object_306": "Int",
+   "Object_307": "Int",
+   "Object_299": "Int",
+   "Object_300": "Int",
+   "Object_301": "Int",
+   "Object_302": "Int",
+   "Object_294": "Int",
+   "Object_295": "Int",
+   "Object_296": "Int",
+   "Object_297": "Int",
+   "Object_289": "Int",
+   "Object_290": "Int",
+   "Object_291": "Int",
+   "Object_292": "Int",
+   "Object_284": "Int",
+   "Object_285": "Int",
+   "Object_286": "Int",
+   "Object_287": "Int",
+   "Object_279": "Int",
+   "Object_280": "Int",
+   "Object_281": "Int",
+   "Object_282": "Int",
+   "Object_274": "Int",
+   "Object_275": "Int",
+   "Object_276": "Int",
+   "Object_277": "Int",
+   "Object_269": "Int",
+   "Object_270": "Int",
+   "Object_271": "Int",
+   "Object_272": "Int",
+   "Object_264": "Int",
+   "Object_265": "Int",
+   "Object_266": "Int",
+   "Object_267": "Int",
+   "Object_259": "Int",
+   "Object_260": "Int",
+   "Object_261": "Int",
+   "Object_262": "Int",
+   "Object_254": "Int",
+   "Object_255": "Int",
+   "Object_256": "Int",
+   "Object_257": "Int",
+   "Object_249": "Int",
+   "Object_250": "Int",
+   "Object_251": "Int",
+   "Object_252": "Int",
+   "Object_244": "Int",
+   "Object_245": "Int",
+   "Object_246": "Int",
+   "Object_247": "Int",
+   "Object_239": "Int",
+   "Object_240": "Int",
+   "Object_241": "Int",
+   "Object_242": "Int",
+   "Object_234": "Int",
+   "Object_235": "Int",
+   "Object_236": "Int",
+   "Object_237": "Int",
+   "Object_229": "Int",
+   "Object_230": "Int",
+   "Object_231": "Int",
+   "Object_232": "Int",
+   "Object_224": "Int",
+   "Object_225": "Int",
+   "Object_226": "Int",
+   "Object_227": "Int",
+   "Object_219": "Int",
+   "Object_220": "Int",
+   "Object_221": "Int",
+   "Object_222": "Int",
+   "Object_214": "Int",
+   "Object_215": "Int",
+   "Object_216": "Int",
+   "Object_217": "Int",
+   "Object_209": "Int",
+   "Object_210": "Int",
+   "Object_211": "Int",
+   "Object_212": "Int",
+   "Object_204": "Int",
+   "Object_205": "Int",
+   "Object_206": "Int",
+   "Object_207": "Int",
+   "Object_199": "Int",
+   "Object_200": "Int",
+   "Object_201": "Int",
+   "Object_202": "Int",
+   "Object_194": "Int",
+   "Object_195": "Int",
+   "Object_196": "Int",
+   "Object_197": "Int",
+   "Object_189": "Int",
+   "Object_190": "Int",
+   "Object_191": "Int",
+   "Object_192": "Int",
+   "Object_184": "Int",
+   "Object_185": "Int",
+   "Object_186": "Int",
+   "Object_187": "Int",
+   "Object_179": "Int",
+   "Object_180": "Int",
+   "Object_181": "Int",
+   "Object_182": "Int",
+   "Object_174": "Int",
+   "Object_175": "Int",
+   "Object_176": "Int",
+   "Object_177": "Int",
+   "Object_169": "Int",
+   "Object_170": "Int",
+   "Object_171": "Int",
+   "Object_172": "Int",
+   "Object_164": "Int",
+   "Object_165": "Int",
+   "Object_166": "Int",
+   "Object_167": "Int",
+   "Object_159": "Int",
+   "Object_160": "Int",
+   "Object_161": "Int",
+   "Object_162": "Int",
+   "Object_154": "Int",
+   "Object_155": "Int",
+   "Object_156": "Int",
+   "Object_157": "Int",
+   "Object_149": "Int",
+   "Object_150": "Int",
+   "Object_151": "Int",
+   "Object_152": "Int",
+   "Object_144": "Int",
+   "Object_145": "Int",
+   "Object_146": "Int",
+   "Object_147": "Int",
+   "Object_139": "Int",
+   "Object_140": "Int",
+   "Object_141": "Int",
+   "Object_142": "Int",
+   "Object_134": "Int",
+   "Object_135": "Int",
+   "Object_136": "Int",
+   "Object_137": "Int",
+   "Object_129": "Int",
+   "Object_130": "Int",
+   "Object_131": "Int",
+   "Object_132": "Int",
+   "Object_124": "Int",
+   "Object_125": "Int",
+   "Object_126": "Int",
+   "Object_127": "Int",
+   "Object_119": "Int",
+   "Object_120": "Int",
+   "Object_121": "Int",
+   "Object_122": "Int",
+   "Object_114": "Int",
+   "Object_115": "Int",
+   "Object_116": "Int",
+   "Object_117": "Int",
+   "Object_109": "Int",
+   "Object_110": "Int",
+   "Object_111": "Int",
+   "Object_112": "Int",
+   "Object_104": "Int",
+   "Object_105": "Int",
+   "Object_106": "Int",
+   "Object_107": "Int",
+   "Object_99": "Int",
+   "Object_100": "Int",
+   "Object_101": "Int",
+   "Object_102": "Int",
+   "Object_94": "Int",
+   "Object_95": "Int",
+   "Object_96": "Int",
+   "Object_97": "Int",
+   "Object_92": "Int",
+   "Object_90": "Int",
+   "Object_82": "Int",
+   "Object_83": "Int",
+   "Object_84": "Int",
+   "Object_80": "Int",
+   "Object_78": "Int",
+   "Object_86": "Int",
+   "Object_87": "Int",
+   "Object_88": "Int",
+   "Object_62": "Int",
+   "Object_63": "Int",
+   "Object_64": "Int",
+   "Object_65": "Int"
+  },
+  "kinds": {
+   "Int": "int"
+  },
+  "decimate": {
+   "Object_58": 0.2,
+   "Object_60": 0.2,
+   "Object_67": 0.42,
+   "Object_68": 0.42,
+   "Object_69": 0.42,
+   "Object_70": 0.42,
+   "Object_71": 0.42,
+   "Object_72": 0.42,
+   "Object_73": 0.42,
+   "Object_74": 0.42,
+   "Object_75": 0.42,
+   "Object_76": 0.42,
+   "Object_4": 0.3,
+   "Object_6": 0.3,
+   "Object_7": 0.3,
+   "Object_8": 0.3,
+   "Object_10": 0.3,
+   "Object_11": 0.3,
+   "Object_12": 0.3,
+   "Object_14": 0.3,
+   "Object_15": 0.3,
+   "Object_16": 0.3,
+   "Object_18": 0.3,
+   "Object_19": 0.3,
+   "Object_20": 0.3,
+   "Object_22": 0.3,
+   "Object_23": 0.3,
+   "Object_24": 0.3,
+   "Object_26": 0.3,
+   "Object_27": 0.3,
+   "Object_28": 0.3,
+   "Object_30": 0.3,
+   "Object_32": 0.3,
+   "Object_34": 0.5,
+   "Object_35": 0.5,
+   "Object_36": 0.5,
+   "Object_37": 0.5,
+   "Object_38": 0.5,
+   "Object_39": 0.5,
+   "Object_40": 0.5,
+   "Object_41": 0.5,
+   "Object_42": 0.5,
+   "Object_43": 0.5,
+   "Object_44": 0.5,
+   "Object_45": 0.5,
+   "Object_53": 0.5,
+   "Object_54": 0.5,
+   "Object_56": 0.5,
+   "Object_329": 0.4,
+   "Object_330": 0.4,
+   "Object_331": 0.4,
+   "Object_332": 0.4,
+   "Object_324": 0.4,
+   "Object_325": 0.4,
+   "Object_326": 0.4,
+   "Object_327": 0.4,
+   "Object_319": 0.4,
+   "Object_320": 0.4,
+   "Object_321": 0.4,
+   "Object_322": 0.4,
+   "Object_314": 0.4,
+   "Object_315": 0.4,
+   "Object_316": 0.4,
+   "Object_317": 0.4,
+   "Object_309": 0.4,
+   "Object_310": 0.4,
+   "Object_311": 0.4,
+   "Object_312": 0.4,
+   "Object_304": 0.4,
+   "Object_305": 0.4,
+   "Object_306": 0.4,
+   "Object_307": 0.4,
+   "Object_299": 0.4,
+   "Object_300": 0.4,
+   "Object_301": 0.4,
+   "Object_302": 0.4,
+   "Object_294": 0.4,
+   "Object_295": 0.4,
+   "Object_296": 0.4,
+   "Object_297": 0.4,
+   "Object_289": 0.4,
+   "Object_290": 0.4,
+   "Object_291": 0.4,
+   "Object_292": 0.4,
+   "Object_284": 0.4,
+   "Object_285": 0.4,
+   "Object_286": 0.4,
+   "Object_287": 0.4,
+   "Object_279": 0.4,
+   "Object_280": 0.4,
+   "Object_281": 0.4,
+   "Object_282": 0.4,
+   "Object_274": 0.4,
+   "Object_275": 0.4,
+   "Object_276": 0.4,
+   "Object_277": 0.4,
+   "Object_269": 0.4,
+   "Object_270": 0.4,
+   "Object_271": 0.4,
+   "Object_272": 0.4,
+   "Object_264": 0.4,
+   "Object_265": 0.4,
+   "Object_266": 0.4,
+   "Object_267": 0.4,
+   "Object_259": 0.4,
+   "Object_260": 0.4,
+   "Object_261": 0.4,
+   "Object_262": 0.4,
+   "Object_254": 0.4,
+   "Object_255": 0.4,
+   "Object_256": 0.4,
+   "Object_257": 0.4,
+   "Object_249": 0.4,
+   "Object_250": 0.4,
+   "Object_251": 0.4,
+   "Object_252": 0.4,
+   "Object_244": 0.4,
+   "Object_245": 0.4,
+   "Object_246": 0.4,
+   "Object_247": 0.4,
+   "Object_239": 0.4,
+   "Object_240": 0.4,
+   "Object_241": 0.4,
+   "Object_242": 0.4,
+   "Object_234": 0.4,
+   "Object_235": 0.4,
+   "Object_236": 0.4,
+   "Object_237": 0.4,
+   "Object_229": 0.4,
+   "Object_230": 0.4,
+   "Object_231": 0.4,
+   "Object_232": 0.4,
+   "Object_224": 0.4,
+   "Object_225": 0.4,
+   "Object_226": 0.4,
+   "Object_227": 0.4,
+   "Object_219": 0.4,
+   "Object_220": 0.4,
+   "Object_221": 0.4,
+   "Object_222": 0.4,
+   "Object_214": 0.4,
+   "Object_215": 0.4,
+   "Object_216": 0.4,
+   "Object_217": 0.4,
+   "Object_209": 0.4,
+   "Object_210": 0.4,
+   "Object_211": 0.4,
+   "Object_212": 0.4,
+   "Object_204": 0.4,
+   "Object_205": 0.4,
+   "Object_206": 0.4,
+   "Object_207": 0.4,
+   "Object_199": 0.4,
+   "Object_200": 0.4,
+   "Object_201": 0.4,
+   "Object_202": 0.4,
+   "Object_194": 0.4,
+   "Object_195": 0.4,
+   "Object_196": 0.4,
+   "Object_197": 0.4,
+   "Object_189": 0.4,
+   "Object_190": 0.4,
+   "Object_191": 0.4,
+   "Object_192": 0.4,
+   "Object_184": 0.4,
+   "Object_185": 0.4,
+   "Object_186": 0.4,
+   "Object_187": 0.4,
+   "Object_179": 0.4,
+   "Object_180": 0.4,
+   "Object_181": 0.4,
+   "Object_182": 0.4,
+   "Object_174": 0.4,
+   "Object_175": 0.4,
+   "Object_176": 0.4,
+   "Object_177": 0.4,
+   "Object_169": 0.4,
+   "Object_170": 0.4,
+   "Object_171": 0.4,
+   "Object_172": 0.4,
+   "Object_164": 0.4,
+   "Object_165": 0.4,
+   "Object_166": 0.4,
+   "Object_167": 0.4,
+   "Object_159": 0.4,
+   "Object_160": 0.4,
+   "Object_161": 0.4,
+   "Object_162": 0.4,
+   "Object_154": 0.4,
+   "Object_155": 0.4,
+   "Object_156": 0.4,
+   "Object_157": 0.4,
+   "Object_149": 0.4,
+   "Object_150": 0.4,
+   "Object_151": 0.4,
+   "Object_152": 0.4,
+   "Object_144": 0.4,
+   "Object_145": 0.4,
+   "Object_146": 0.4,
+   "Object_147": 0.4,
+   "Object_139": 0.4,
+   "Object_140": 0.4,
+   "Object_141": 0.4,
+   "Object_142": 0.4,
+   "Object_134": 0.4,
+   "Object_135": 0.4,
+   "Object_136": 0.4,
+   "Object_137": 0.4,
+   "Object_129": 0.4,
+   "Object_130": 0.4,
+   "Object_131": 0.4,
+   "Object_132": 0.4,
+   "Object_124": 0.4,
+   "Object_125": 0.4,
+   "Object_126": 0.4,
+   "Object_127": 0.4,
+   "Object_119": 0.4,
+   "Object_120": 0.4,
+   "Object_121": 0.4,
+   "Object_122": 0.4,
+   "Object_114": 0.4,
+   "Object_115": 0.4,
+   "Object_116": 0.4,
+   "Object_117": 0.4,
+   "Object_109": 0.4,
+   "Object_110": 0.4,
+   "Object_111": 0.4,
+   "Object_112": 0.4,
+   "Object_104": 0.4,
+   "Object_105": 0.4,
+   "Object_106": 0.4,
+   "Object_107": 0.4,
+   "Object_99": 0.4,
+   "Object_100": 0.4,
+   "Object_101": 0.4,
+   "Object_102": 0.4,
+   "Object_94": 0.4,
+   "Object_95": 0.4,
+   "Object_96": 0.4,
+   "Object_97": 0.4,
+   "Object_92": 0.4,
+   "Object_90": 0.4,
+   "Object_82": 0.4,
+   "Object_83": 0.4,
+   "Object_84": 0.4,
+   "Object_80": 0.4,
+   "Object_78": 0.4,
+   "Object_86": 0.4,
+   "Object_87": 0.4,
+   "Object_88": 0.4,
+   "Object_62": 0.4,
+   "Object_63": 0.4,
+   "Object_64": 0.4,
+   "Object_65": 0.4
+  },
+  "gunBack": 0.35,
+  "tur": [
+   -0.008,
+   0.61,
+   -0.065
+  ]
+ },
+ "bmp3": {
+  "_说明": "BMP-3 步兵战车（lampilamp，Sketchfab a45b0e7355634b8c8b7e30af416ace73，CC-BY-4.0，作者自己建的：几百个 Blender 物体，炮塔顶上加了防无人机的网架）；用户 11-24「找俄系」。原模型车头朝 +Z、比真车小（车体 5.2 米 → 真车 7.14 米，× 1.373）；炮塔、炮都没分开：按框挑整块零件",
+  "uid": "a45b0e7355634b8c8b7e30af416ace73",
+  "credit": "BMP-3 步兵战车：BMP-3，作者 lampilamp（https://sketchfab.com/3d-models/bmp-3-a45b0e7355634b8c8b7e30af416ace73），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "BMP-3 步兵战车",
+  "creditEn": "This work is based on \"BMP-3\" (https://sketchfab.com/3d-models/bmp-3-a45b0e7355634b8c8b7e30af416ace73) by lampilamp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮塔和炮挑出来、减面、贴图缩到 1024",
+  "alias": [
+   "bmp3"
+  ],
+  "rotZ": 180,
+  "scale": 1.373,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Box001_Black_Metall_2_0",
+     "Box001_Material_0",
+     "Cube.001_Glossy_0",
+     "Cube.001_Metall_0",
+     "Cube.002_Glossy_0",
+     "Cube.002_Metall_0",
+     "Cube.003_Metall_0",
+     "Cube.004_Metall_0",
+     "Cube.005_Glossy_0",
+     "Cube.005_Metall_0",
+     "Cube.006_Metall_0",
+     "Cube.007_Metall_0",
+     "Cube.008__0",
+     "Cube.009_Black_Metall_2_0",
+     "Cube.010__0",
+     "Cube.011_Black_Metall_2_0",
+     "Cube.012_Black_Metall_2_0",
+     "Cube.013_Black_Metall_2_0",
+     "Cube.014_Metall_0",
+     "Cube.015_Glossy_0",
+     "Cube.015_Metall_0",
+     "Cube.016_Metall_0",
+     "Cube.017_Metall_0",
+     "Cube.018_Metall_0",
+     "Cube.019_Metall_0",
+     "Cube.020_Metall_0",
+     "Cube.021_Metall_0",
+     "Cube.022_Metall_0",
+     "Cube.023_Metall_0",
+     "Cube.024_Metall_0",
+     "Cube.024_Reshetka_0",
+     "Cube.025_Metall_0",
+     "Cube.026_Black_Metall_2_0",
+     "Cube.026_Material_0",
+     "Cube.027_Black_Metall_2_0",
+     "Cube.027_Metall_0",
+     "Cube.028_Glossy_0",
+     "Cube.028_Metall_0",
+     "Cube.029_Glossy_0",
+     "Cube.029_Metall_0",
+     "Cube.030_Glossy_0",
+     "Cube.030_Metall_0",
+     "Cube.031_Glossy_0",
+     "Cube.031_Metall_0",
+     "Cube.032_Glossy_0",
+     "Cube.032_Metall_0",
+     "Cube.033_Glossy_0",
+     "Cube.033_Metall_0",
+     "Cube.034_Glossy_0",
+     "Cube.034_Metall_0",
+     "Cube.035_Metall_0",
+     "Cube.036_Metall_0",
+     "Cube.037_Metall_0",
+     "Cube.038_Metall_0",
+     "Cube.039_Metall_0",
+     "Cube.040_Metall_0",
+     "Cube.041_Metall_0",
+     "Cube.042_Metall_0",
+     "Cube.043_Metall_0",
+     "Cube.044_Metall_0",
+     "Cube.045_Black_Metall_2_0",
+     "Cube.046_Black_Metall_2_0",
+     "Cube.047_Black_Metall_2_0",
+     "Cube.048_Black_Metall_2_0",
+     "Cube.049_Black_Metall_2_0",
+     "Cube.050_Black_Metall_2_0",
+     "Cube.051_Black_Metall_2_0",
+     "Cube.052_Black_Metall_2_0",
+     "Cube.053_Black_Metall_2_0",
+     "Cube.054_Black_Metall_2_0",
+     "Cube.055_Black_Metall_2_0",
+     "Cube.056_Black_Metall_2_0",
+     "Cube.057_Black_Metall_2_0",
+     "Cube.058_Black_Metall_2_0",
+     "Cube.059_Black_Metall_2_0",
+     "Cube.060_Black_Metall_2_0",
+     "Cube.061_Black_Metall_2_0",
+     "Cube.062_Black_Metall_2_0",
+     "Cube.063_Black_Metall_2_0",
+     "Cube.064_Black_Metall_2_0",
+     "Cube.065_Black_Metall_2_0",
+     "Cube.066_Black_Metall_2_0",
+     "Cube.067_Black_Metall_2_0",
+     "Cube.068_Black_Metall_2_0",
+     "Cube.069_Black_Metall_2_0",
+     "Cube.070_Black_Metall_2_0",
+     "Cube.071_Black_Metall_2_0",
+     "Cube.072_Black_Metall_2_0",
+     "Cube.073_Black_Metall_2_0",
+     "Cube.074_Black_Metall_2_0",
+     "Cube.075_Black_Metall_2_0",
+     "Cube.076_Black_Metall_2_0",
+     "Cube.077_Black_Metall_2_0",
+     "Cube.078_Black_Metall_2_0",
+     "Cube.079_Black_Metall_2_0",
+     "Cube.080_Black_Metall_2_0",
+     "Cube.081_Black_Metall_2_0",
+     "Cube.082_Black_Metall_2_0",
+     "Cube.083_Black_Metall_2_0",
+     "Cube.084_Black_Metall_2_0",
+     "Cube.085_Black_Metall_2_0",
+     "Cube.086_Black_Metall_2_0",
+     "Cube.087_Black_Metall_2_0",
+     "Cube.088_Black_Metall_2_0",
+     "Cube.089_Black_Metall_2_0",
+     "Cube.090_Black_Metall_2_0",
+     "Cube.091_Black_Metall_2_0",
+     "Cube.092_Black_Metall_2_0",
+     "Cube.093_Black_Metall_2_0",
+     "Cube.094_Black_Metall_2_0",
+     "Cube.095_Black_Metall_2_0",
+     "Cube.096_Black_Metall_2_0",
+     "Cube.097_Black_Metall_2_0",
+     "Cube.098_Black_Metall_2_0",
+     "Cube.099_Black_Metall_2_0",
+     "Cube.100_Black_Metall_2_0",
+     "Cube.101_Black_Metall_2_0",
+     "Cube.102_Black_Metall_2_0",
+     "Cube.103_Black_Metall_2_0",
+     "Cube.104_Black_Metall_2_0",
+     "Cube.105_Black_Metall_2_0",
+     "Cube.106_Black_Metall_2_0",
+     "Cube.107_Black_Metall_2_0",
+     "Cube.108_Black_Metall_2_0",
+     "Cube.109_Black_Metall_2_0",
+     "Cube.110_Black_Metall_2_0",
+     "Cube.111_Black_Metall_2_0",
+     "Cube.112_Black_Metall_2_0",
+     "Cube.113_Black_Metall_2_0",
+     "Cube.114_Black_Metall_2_0",
+     "Cube.115_Black_Metall_2_0",
+     "Cube.116_Black_Metall_2_0",
+     "Cube.117_Black_Metall_2_0",
+     "Cube.118_Black_Metall_2_0",
+     "Cube.119_Black_Metall_2_0",
+     "Cube.120_Black_Metall_2_0",
+     "Cube.121_Black_Metall_2_0",
+     "Cube.122_Black_Metall_2_0",
+     "Cube.123_Black_Metall_2_0",
+     "Cube.124_Black_Metall_2_0",
+     "Cube.125_Black_Metall_2_0",
+     "Cube.126_Black_Metall_2_0",
+     "Cube.127_Black_Metall_2_0",
+     "Cube.128_Black_Metall_2_0",
+     "Cube.129_Black_Metall_2_0",
+     "Cube.130_Black_Metall_2_0",
+     "Cube.131_Black_Metall_2_0",
+     "Cube.132_Black_Metall_2_0",
+     "Cube.133_Black_Metall_2_0",
+     "Cube.134_Black_Metall_2_0",
+     "Cube.135_Black_Metall_2_0",
+     "Cube.136_Black_Metall_2_0",
+     "Cube.137_Black_Metall_2_0",
+     "Cube.138_Black_Metall_2_0",
+     "Cube.139_Black_Metall_2_0",
+     "Cube.140_Metall_0",
+     "Cube.141_Metall_0",
+     "Cube.142_Metall_0",
+     "Cube_Glossy_0",
+     "Cube_Metall_0",
+     "Cylinder.001_Glossy_0",
+     "Cylinder.001_Metall_0",
+     "Cylinder.002_Black_Metall_2_0",
+     "Cylinder.002_Metall_0",
+     "Cylinder.003_Black_Metall_0",
+     "Cylinder.003_Metall_0",
+     "Cylinder.004_Black_Metall_0",
+     "Cylinder.004_Metall_0",
+     "Cylinder.005_Black_Metall_0",
+     "Cylinder.005_Metall_0",
+     "Cylinder.006_Metall_0",
+     "Cylinder.007_Black_Metall_2_0",
+     "Cylinder.007_Metall_0",
+     "Cylinder.008_Metall_0",
+     "Cylinder.009_Metall_0",
+     "Cylinder.010_Metall_0",
+     "Cylinder.011_Metall_0",
+     "Cylinder.012_Glossy_0",
+     "Cylinder.012_Metall_0",
+     "Cylinder.013_Glossy_0",
+     "Cylinder.013_Metall_0",
+     "Cylinder.014_Black_Metall_2_0",
+     "Cylinder.014_Metall_0",
+     "Cylinder.015_Black_Metall_2_0",
+     "Cylinder.015_Metall_0",
+     "Cylinder.016_Black_Metall_2_0",
+     "Cylinder.016_Metall_0",
+     "Cylinder.017_Metall_0",
+     "Cylinder.018_Metall_0",
+     "Cylinder.019_Metall_0",
+     "Cylinder.020_Metall_0",
+     "Cylinder.021_Metall_0",
+     "Cylinder.022_Metall_0",
+     "Cylinder.023_Metall_0",
+     "Cylinder.024_Metall_0",
+     "Cylinder.025_Metall_0",
+     "Cylinder.026_Emission_off_0",
+     "Cylinder.026_Metall_0",
+     "Cylinder.027_Emission_off_0",
+     "Cylinder.027_Metall_0",
+     "Cylinder.028_Metall_0",
+     "Cylinder.029_Metall_0",
+     "Cylinder.030_Material_0",
+     "Cylinder.030_Tree_0",
+     "Cylinder.031_Metall_0",
+     "Cylinder.032_Metall_0",
+     "Cylinder.033_Metall_0",
+     "Cylinder.034_Metall_0",
+     "Cylinder.035_Metall_0",
+     "Cylinder.036_Metall_0",
+     "Cylinder.037_Black_Metall_2_0",
+     "Cylinder.038_Black_Metall_2_0",
+     "Cylinder.039_Black_Metall_2_0",
+     "Cylinder.039_Metall_0",
+     "Cylinder.040_Black_Metall_2_0",
+     "Cylinder.040_Metall_0",
+     "Cylinder.041_Black_Metall_2_0",
+     "Cylinder.041_Metall_0",
+     "Cylinder.042_Black_Metall_2_0",
+     "Cylinder.042_Metall_0",
+     "Cylinder.043_Black_Metall_2_0",
+     "Cylinder.043_Metall_0",
+     "Cylinder.044_Black_Metall_2_0",
+     "Cylinder.044_Metall_0",
+     "Cylinder.045_Black_Metall_2_0",
+     "Cylinder.045_Metall_0",
+     "Cylinder.046_Black_Metall_2_0",
+     "Cylinder.046_Metall_0",
+     "Cylinder.047_Black_Metall_2_0",
+     "Cylinder.047_Metall_0",
+     "Cylinder.048_Black_Metall_2_0",
+     "Cylinder.048_Metall_0",
+     "Cylinder.049_Black_Metall_2_0",
+     "Cylinder.049_Metall_0",
+     "Cylinder.050_Black_Metall_2_0",
+     "Cylinder.050_Metall_0",
+     "Cylinder.051_Metall_0",
+     "Cylinder.052_Metall_0",
+     "Cylinder.053_Metall_0",
+     "Cylinder.054_Metall_0",
+     "Cylinder.055_Black_Metall_2_0",
+     "Cylinder.055_Metall_0",
+     "Cylinder.056_Black_Metall_2_0",
+     "Cylinder.056_Metall_0",
+     "Cylinder.057_Black_Metall_2_0",
+     "Cylinder.057_Metall_0",
+     "Cylinder.058_Black_Metall_2_0",
+     "Cylinder.058_Metall_0",
+     "Cylinder.059_Black_Metall_2_0",
+     "Cylinder.059_Metall_0",
+     "Cylinder.060_Black_Metall_2_0",
+     "Cylinder.060_Metall_0",
+     "Cylinder.061_Metall_0",
+     "Cylinder.062_Metall_0",
+     "Cylinder.063_Metall_0",
+     "Cylinder.064_Metall_0",
+     "Cylinder.065_Metall_0",
+     "Cylinder.066_Metall_0",
+     "Cylinder.067_Metall_0",
+     "Cylinder.068_Metall_0",
+     "Cylinder.069_Metall_0",
+     "Cylinder.070_Metall_0",
+     "Cylinder.071_Metall_0",
+     "Cylinder.072_Metall_0",
+     "Cylinder.073_Metall_0",
+     "Cylinder.074_Metall_0",
+     "Cylinder.075_Metall_0",
+     "Cylinder.076_Metall_0",
+     "Cylinder.077_Metall_0",
+     "Cylinder.078_Metall_0",
+     "Cylinder.079_Metall_0",
+     "Cylinder.080_Metall_0",
+     "Cylinder_Metall_0",
+     "Mball.018_Material_0",
+     "NurbsPath.001_Metall_0",
+     "NurbsPath.002_Metall_0",
+     "NurbsPath.003_Metall_0",
+     "NurbsPath.004_Metall_0",
+     "NurbsPath.005_Metall_0",
+     "NurbsPath.006_Metall_0",
+     "NurbsPath.007_Metall_0",
+     "NurbsPath.008_Black_Metall_2_0",
+     "NurbsPath.009_Black_Metall_2_0",
+     "NurbsPath.010_Metall_0",
+     "NurbsPath.011_Metall_0",
+     "NurbsPath.012_Metall_0",
+     "NurbsPath.013_Metall_0",
+     "NurbsPath.014_Metall_0",
+     "NurbsPath.015_Metall_0",
+     "NurbsPath.016_Metall_0",
+     "NurbsPath.017_Metall_0",
+     "NurbsPath.018_Metall_0",
+     "NurbsPath.019_Metall_0",
+     "NurbsPath.020_Metall_0",
+     "NurbsPath.021_Metall_0",
+     "NurbsPath.022_Metall_0",
+     "NurbsPath.023_Metall_0",
+     "NurbsPath.024_Black_Metall_2_0",
+     "NurbsPath.025_Metall_0",
+     "NurbsPath.026_Metall_0",
+     "NurbsPath.027_Metall_0",
+     "NurbsPath.028_Metall_0",
+     "NurbsPath.029_Metall_0",
+     "NurbsPath.030_Metall_0",
+     "NurbsPath_Metall_0",
+     "Plane.001_Material_0",
+     "Plane_Black_Metall_2_0",
+     "Plane_Metall_0"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.22,
+     0.16,
+     0.42,
+     0.64,
+     0.68,
+     2.7
+    ]
+   },
+   {
+    "from": [
+     "Box001_Black_Metall_2_0",
+     "Box001_Material_0",
+     "Cube.001_Glossy_0",
+     "Cube.001_Metall_0",
+     "Cube.002_Glossy_0",
+     "Cube.002_Metall_0",
+     "Cube.003_Metall_0",
+     "Cube.004_Metall_0",
+     "Cube.005_Glossy_0",
+     "Cube.005_Metall_0",
+     "Cube.006_Metall_0",
+     "Cube.007_Metall_0",
+     "Cube.008__0",
+     "Cube.009_Black_Metall_2_0",
+     "Cube.010__0",
+     "Cube.011_Black_Metall_2_0",
+     "Cube.012_Black_Metall_2_0",
+     "Cube.013_Black_Metall_2_0",
+     "Cube.014_Metall_0",
+     "Cube.015_Glossy_0",
+     "Cube.015_Metall_0",
+     "Cube.016_Metall_0",
+     "Cube.017_Metall_0",
+     "Cube.018_Metall_0",
+     "Cube.019_Metall_0",
+     "Cube.020_Metall_0",
+     "Cube.021_Metall_0",
+     "Cube.022_Metall_0",
+     "Cube.023_Metall_0",
+     "Cube.024_Metall_0",
+     "Cube.024_Reshetka_0",
+     "Cube.025_Metall_0",
+     "Cube.026_Black_Metall_2_0",
+     "Cube.026_Material_0",
+     "Cube.027_Black_Metall_2_0",
+     "Cube.027_Metall_0",
+     "Cube.028_Glossy_0",
+     "Cube.028_Metall_0",
+     "Cube.029_Glossy_0",
+     "Cube.029_Metall_0",
+     "Cube.030_Glossy_0",
+     "Cube.030_Metall_0",
+     "Cube.031_Glossy_0",
+     "Cube.031_Metall_0",
+     "Cube.032_Glossy_0",
+     "Cube.032_Metall_0",
+     "Cube.033_Glossy_0",
+     "Cube.033_Metall_0",
+     "Cube.034_Glossy_0",
+     "Cube.034_Metall_0",
+     "Cube.035_Metall_0",
+     "Cube.036_Metall_0",
+     "Cube.037_Metall_0",
+     "Cube.038_Metall_0",
+     "Cube.039_Metall_0",
+     "Cube.040_Metall_0",
+     "Cube.041_Metall_0",
+     "Cube.042_Metall_0",
+     "Cube.043_Metall_0",
+     "Cube.044_Metall_0",
+     "Cube.045_Black_Metall_2_0",
+     "Cube.046_Black_Metall_2_0",
+     "Cube.047_Black_Metall_2_0",
+     "Cube.048_Black_Metall_2_0",
+     "Cube.049_Black_Metall_2_0",
+     "Cube.050_Black_Metall_2_0",
+     "Cube.051_Black_Metall_2_0",
+     "Cube.052_Black_Metall_2_0",
+     "Cube.053_Black_Metall_2_0",
+     "Cube.054_Black_Metall_2_0",
+     "Cube.055_Black_Metall_2_0",
+     "Cube.056_Black_Metall_2_0",
+     "Cube.057_Black_Metall_2_0",
+     "Cube.058_Black_Metall_2_0",
+     "Cube.059_Black_Metall_2_0",
+     "Cube.060_Black_Metall_2_0",
+     "Cube.061_Black_Metall_2_0",
+     "Cube.062_Black_Metall_2_0",
+     "Cube.063_Black_Metall_2_0",
+     "Cube.064_Black_Metall_2_0",
+     "Cube.065_Black_Metall_2_0",
+     "Cube.066_Black_Metall_2_0",
+     "Cube.067_Black_Metall_2_0",
+     "Cube.068_Black_Metall_2_0",
+     "Cube.069_Black_Metall_2_0",
+     "Cube.070_Black_Metall_2_0",
+     "Cube.071_Black_Metall_2_0",
+     "Cube.072_Black_Metall_2_0",
+     "Cube.073_Black_Metall_2_0",
+     "Cube.074_Black_Metall_2_0",
+     "Cube.075_Black_Metall_2_0",
+     "Cube.076_Black_Metall_2_0",
+     "Cube.077_Black_Metall_2_0",
+     "Cube.078_Black_Metall_2_0",
+     "Cube.079_Black_Metall_2_0",
+     "Cube.080_Black_Metall_2_0",
+     "Cube.081_Black_Metall_2_0",
+     "Cube.082_Black_Metall_2_0",
+     "Cube.083_Black_Metall_2_0",
+     "Cube.084_Black_Metall_2_0",
+     "Cube.085_Black_Metall_2_0",
+     "Cube.086_Black_Metall_2_0",
+     "Cube.087_Black_Metall_2_0",
+     "Cube.088_Black_Metall_2_0",
+     "Cube.089_Black_Metall_2_0",
+     "Cube.090_Black_Metall_2_0",
+     "Cube.091_Black_Metall_2_0",
+     "Cube.092_Black_Metall_2_0",
+     "Cube.093_Black_Metall_2_0",
+     "Cube.094_Black_Metall_2_0",
+     "Cube.095_Black_Metall_2_0",
+     "Cube.096_Black_Metall_2_0",
+     "Cube.097_Black_Metall_2_0",
+     "Cube.098_Black_Metall_2_0",
+     "Cube.099_Black_Metall_2_0",
+     "Cube.100_Black_Metall_2_0",
+     "Cube.101_Black_Metall_2_0",
+     "Cube.102_Black_Metall_2_0",
+     "Cube.103_Black_Metall_2_0",
+     "Cube.104_Black_Metall_2_0",
+     "Cube.105_Black_Metall_2_0",
+     "Cube.106_Black_Metall_2_0",
+     "Cube.107_Black_Metall_2_0",
+     "Cube.108_Black_Metall_2_0",
+     "Cube.109_Black_Metall_2_0",
+     "Cube.110_Black_Metall_2_0",
+     "Cube.111_Black_Metall_2_0",
+     "Cube.112_Black_Metall_2_0",
+     "Cube.113_Black_Metall_2_0",
+     "Cube.114_Black_Metall_2_0",
+     "Cube.115_Black_Metall_2_0",
+     "Cube.116_Black_Metall_2_0",
+     "Cube.117_Black_Metall_2_0",
+     "Cube.118_Black_Metall_2_0",
+     "Cube.119_Black_Metall_2_0",
+     "Cube.120_Black_Metall_2_0",
+     "Cube.121_Black_Metall_2_0",
+     "Cube.122_Black_Metall_2_0",
+     "Cube.123_Black_Metall_2_0",
+     "Cube.124_Black_Metall_2_0",
+     "Cube.125_Black_Metall_2_0",
+     "Cube.126_Black_Metall_2_0",
+     "Cube.127_Black_Metall_2_0",
+     "Cube.128_Black_Metall_2_0",
+     "Cube.129_Black_Metall_2_0",
+     "Cube.130_Black_Metall_2_0",
+     "Cube.131_Black_Metall_2_0",
+     "Cube.132_Black_Metall_2_0",
+     "Cube.133_Black_Metall_2_0",
+     "Cube.134_Black_Metall_2_0",
+     "Cube.135_Black_Metall_2_0",
+     "Cube.136_Black_Metall_2_0",
+     "Cube.137_Black_Metall_2_0",
+     "Cube.138_Black_Metall_2_0",
+     "Cube.139_Black_Metall_2_0",
+     "Cube.140_Metall_0",
+     "Cube.141_Metall_0",
+     "Cube.142_Metall_0",
+     "Cube_Glossy_0",
+     "Cube_Metall_0",
+     "Cylinder.001_Glossy_0",
+     "Cylinder.001_Metall_0",
+     "Cylinder.002_Black_Metall_2_0",
+     "Cylinder.002_Metall_0",
+     "Cylinder.003_Black_Metall_0",
+     "Cylinder.003_Metall_0",
+     "Cylinder.004_Black_Metall_0",
+     "Cylinder.004_Metall_0",
+     "Cylinder.005_Black_Metall_0",
+     "Cylinder.005_Metall_0",
+     "Cylinder.006_Metall_0",
+     "Cylinder.007_Black_Metall_2_0",
+     "Cylinder.007_Metall_0",
+     "Cylinder.008_Metall_0",
+     "Cylinder.009_Metall_0",
+     "Cylinder.010_Metall_0",
+     "Cylinder.011_Metall_0",
+     "Cylinder.012_Glossy_0",
+     "Cylinder.012_Metall_0",
+     "Cylinder.013_Glossy_0",
+     "Cylinder.013_Metall_0",
+     "Cylinder.014_Black_Metall_2_0",
+     "Cylinder.014_Metall_0",
+     "Cylinder.015_Black_Metall_2_0",
+     "Cylinder.015_Metall_0",
+     "Cylinder.016_Black_Metall_2_0",
+     "Cylinder.016_Metall_0",
+     "Cylinder.017_Metall_0",
+     "Cylinder.018_Metall_0",
+     "Cylinder.019_Metall_0",
+     "Cylinder.020_Metall_0",
+     "Cylinder.021_Metall_0",
+     "Cylinder.022_Metall_0",
+     "Cylinder.023_Metall_0",
+     "Cylinder.024_Metall_0",
+     "Cylinder.025_Metall_0",
+     "Cylinder.026_Emission_off_0",
+     "Cylinder.026_Metall_0",
+     "Cylinder.027_Emission_off_0",
+     "Cylinder.027_Metall_0",
+     "Cylinder.028_Metall_0",
+     "Cylinder.029_Metall_0",
+     "Cylinder.030_Material_0",
+     "Cylinder.030_Tree_0",
+     "Cylinder.031_Metall_0",
+     "Cylinder.032_Metall_0",
+     "Cylinder.033_Metall_0",
+     "Cylinder.034_Metall_0",
+     "Cylinder.035_Metall_0",
+     "Cylinder.036_Metall_0",
+     "Cylinder.037_Black_Metall_2_0",
+     "Cylinder.038_Black_Metall_2_0",
+     "Cylinder.039_Black_Metall_2_0",
+     "Cylinder.039_Metall_0",
+     "Cylinder.040_Black_Metall_2_0",
+     "Cylinder.040_Metall_0",
+     "Cylinder.041_Black_Metall_2_0",
+     "Cylinder.041_Metall_0",
+     "Cylinder.042_Black_Metall_2_0",
+     "Cylinder.042_Metall_0",
+     "Cylinder.043_Black_Metall_2_0",
+     "Cylinder.043_Metall_0",
+     "Cylinder.044_Black_Metall_2_0",
+     "Cylinder.044_Metall_0",
+     "Cylinder.045_Black_Metall_2_0",
+     "Cylinder.045_Metall_0",
+     "Cylinder.046_Black_Metall_2_0",
+     "Cylinder.046_Metall_0",
+     "Cylinder.047_Black_Metall_2_0",
+     "Cylinder.047_Metall_0",
+     "Cylinder.048_Black_Metall_2_0",
+     "Cylinder.048_Metall_0",
+     "Cylinder.049_Black_Metall_2_0",
+     "Cylinder.049_Metall_0",
+     "Cylinder.050_Black_Metall_2_0",
+     "Cylinder.050_Metall_0",
+     "Cylinder.051_Metall_0",
+     "Cylinder.052_Metall_0",
+     "Cylinder.053_Metall_0",
+     "Cylinder.054_Metall_0",
+     "Cylinder.055_Black_Metall_2_0",
+     "Cylinder.055_Metall_0",
+     "Cylinder.056_Black_Metall_2_0",
+     "Cylinder.056_Metall_0",
+     "Cylinder.057_Black_Metall_2_0",
+     "Cylinder.057_Metall_0",
+     "Cylinder.058_Black_Metall_2_0",
+     "Cylinder.058_Metall_0",
+     "Cylinder.059_Black_Metall_2_0",
+     "Cylinder.059_Metall_0",
+     "Cylinder.060_Black_Metall_2_0",
+     "Cylinder.060_Metall_0",
+     "Cylinder.061_Metall_0",
+     "Cylinder.062_Metall_0",
+     "Cylinder.063_Metall_0",
+     "Cylinder.064_Metall_0",
+     "Cylinder.065_Metall_0",
+     "Cylinder.066_Metall_0",
+     "Cylinder.067_Metall_0",
+     "Cylinder.068_Metall_0",
+     "Cylinder.069_Metall_0",
+     "Cylinder.070_Metall_0",
+     "Cylinder.071_Metall_0",
+     "Cylinder.072_Metall_0",
+     "Cylinder.073_Metall_0",
+     "Cylinder.074_Metall_0",
+     "Cylinder.075_Metall_0",
+     "Cylinder.076_Metall_0",
+     "Cylinder.077_Metall_0",
+     "Cylinder.078_Metall_0",
+     "Cylinder.079_Metall_0",
+     "Cylinder.080_Metall_0",
+     "Cylinder_Metall_0",
+     "Mball.018_Material_0",
+     "NurbsPath.001_Metall_0",
+     "NurbsPath.002_Metall_0",
+     "NurbsPath.003_Metall_0",
+     "NurbsPath.004_Metall_0",
+     "NurbsPath.005_Metall_0",
+     "NurbsPath.006_Metall_0",
+     "NurbsPath.007_Metall_0",
+     "NurbsPath.008_Black_Metall_2_0",
+     "NurbsPath.009_Black_Metall_2_0",
+     "NurbsPath.010_Metall_0",
+     "NurbsPath.011_Metall_0",
+     "NurbsPath.012_Metall_0",
+     "NurbsPath.013_Metall_0",
+     "NurbsPath.014_Metall_0",
+     "NurbsPath.015_Metall_0",
+     "NurbsPath.016_Metall_0",
+     "NurbsPath.017_Metall_0",
+     "NurbsPath.018_Metall_0",
+     "NurbsPath.019_Metall_0",
+     "NurbsPath.020_Metall_0",
+     "NurbsPath.021_Metall_0",
+     "NurbsPath.022_Metall_0",
+     "NurbsPath.023_Metall_0",
+     "NurbsPath.024_Black_Metall_2_0",
+     "NurbsPath.025_Metall_0",
+     "NurbsPath.026_Metall_0",
+     "NurbsPath.027_Metall_0",
+     "NurbsPath.028_Metall_0",
+     "NurbsPath.029_Metall_0",
+     "NurbsPath.030_Metall_0",
+     "NurbsPath_Metall_0",
+     "Plane.001_Material_0",
+     "Plane_Black_Metall_2_0",
+     "Plane_Metall_0"
+    ],
+    "to": "Turret",
+    "box": [
+     -0.74,
+     0.74,
+     0.34,
+     1.45,
+     -0.64,
+     1.32
+    ]
+   }
+  ],
+  "decimate": {
+   "Box001_Black_Metall_2_0": 0.3,
+   "Box001_Material_0": 0.3,
+   "Cube.001_Glossy_0": 0.3,
+   "Cube.001_Metall_0": 0.3,
+   "Cube.002_Glossy_0": 0.3,
+   "Cube.002_Metall_0": 0.3,
+   "Cube.003_Metall_0": 0.3,
+   "Cube.004_Metall_0": 0.3,
+   "Cube.005_Glossy_0": 0.3,
+   "Cube.005_Metall_0": 0.3,
+   "Cube.006_Metall_0": 0.3,
+   "Cube.007_Metall_0": 0.3,
+   "Cube.008__0": 0.3,
+   "Cube.009_Black_Metall_2_0": 0.3,
+   "Cube.010__0": 0.3,
+   "Cube.011_Black_Metall_2_0": 0.3,
+   "Cube.012_Black_Metall_2_0": 0.3,
+   "Cube.013_Black_Metall_2_0": 0.3,
+   "Cube.014_Metall_0": 0.3,
+   "Cube.015_Glossy_0": 0.3,
+   "Cube.015_Metall_0": 0.3,
+   "Cube.016_Metall_0": 0.3,
+   "Cube.017_Metall_0": 0.3,
+   "Cube.018_Metall_0": 0.3,
+   "Cube.019_Metall_0": 0.3,
+   "Cube.020_Metall_0": 0.3,
+   "Cube.021_Metall_0": 0.3,
+   "Cube.022_Metall_0": 0.3,
+   "Cube.023_Metall_0": 0.3,
+   "Cube.024_Metall_0": 0.3,
+   "Cube.024_Reshetka_0": 0.3,
+   "Cube.025_Metall_0": 0.3,
+   "Cube.026_Black_Metall_2_0": 0.3,
+   "Cube.026_Material_0": 0.3,
+   "Cube.027_Black_Metall_2_0": 0.3,
+   "Cube.027_Metall_0": 0.3,
+   "Cube.028_Glossy_0": 0.3,
+   "Cube.028_Metall_0": 0.3,
+   "Cube.029_Glossy_0": 0.3,
+   "Cube.029_Metall_0": 0.3,
+   "Cube.030_Glossy_0": 0.3,
+   "Cube.030_Metall_0": 0.3,
+   "Cube.031_Glossy_0": 0.3,
+   "Cube.031_Metall_0": 0.3,
+   "Cube.032_Glossy_0": 0.3,
+   "Cube.032_Metall_0": 0.3,
+   "Cube.033_Glossy_0": 0.3,
+   "Cube.033_Metall_0": 0.3,
+   "Cube.034_Glossy_0": 0.3,
+   "Cube.034_Metall_0": 0.3,
+   "Cube.035_Metall_0": 0.3,
+   "Cube.036_Metall_0": 0.3,
+   "Cube.037_Metall_0": 0.3,
+   "Cube.038_Metall_0": 0.3,
+   "Cube.039_Metall_0": 0.3,
+   "Cube.040_Metall_0": 0.3,
+   "Cube.041_Metall_0": 0.3,
+   "Cube.042_Metall_0": 0.3,
+   "Cube.043_Metall_0": 0.3,
+   "Cube.044_Metall_0": 0.3,
+   "Cube.045_Black_Metall_2_0": 0.3,
+   "Cube.046_Black_Metall_2_0": 0.3,
+   "Cube.047_Black_Metall_2_0": 0.3,
+   "Cube.048_Black_Metall_2_0": 0.3,
+   "Cube.049_Black_Metall_2_0": 0.3,
+   "Cube.050_Black_Metall_2_0": 0.3,
+   "Cube.051_Black_Metall_2_0": 0.3,
+   "Cube.052_Black_Metall_2_0": 0.3,
+   "Cube.053_Black_Metall_2_0": 0.3,
+   "Cube.054_Black_Metall_2_0": 0.3,
+   "Cube.055_Black_Metall_2_0": 0.3,
+   "Cube.056_Black_Metall_2_0": 0.3,
+   "Cube.057_Black_Metall_2_0": 0.3,
+   "Cube.058_Black_Metall_2_0": 0.3,
+   "Cube.059_Black_Metall_2_0": 0.3,
+   "Cube.060_Black_Metall_2_0": 0.3,
+   "Cube.061_Black_Metall_2_0": 0.3,
+   "Cube.062_Black_Metall_2_0": 0.3,
+   "Cube.063_Black_Metall_2_0": 0.3,
+   "Cube.064_Black_Metall_2_0": 0.3,
+   "Cube.065_Black_Metall_2_0": 0.3,
+   "Cube.066_Black_Metall_2_0": 0.3,
+   "Cube.067_Black_Metall_2_0": 0.3,
+   "Cube.068_Black_Metall_2_0": 0.3,
+   "Cube.069_Black_Metall_2_0": 0.3,
+   "Cube.070_Black_Metall_2_0": 0.3,
+   "Cube.071_Black_Metall_2_0": 0.3,
+   "Cube.072_Black_Metall_2_0": 0.3,
+   "Cube.073_Black_Metall_2_0": 0.3,
+   "Cube.074_Black_Metall_2_0": 0.3,
+   "Cube.075_Black_Metall_2_0": 0.3,
+   "Cube.076_Black_Metall_2_0": 0.3,
+   "Cube.077_Black_Metall_2_0": 0.3,
+   "Cube.078_Black_Metall_2_0": 0.3,
+   "Cube.079_Black_Metall_2_0": 0.3,
+   "Cube.080_Black_Metall_2_0": 0.3,
+   "Cube.081_Black_Metall_2_0": 0.3,
+   "Cube.082_Black_Metall_2_0": 0.3,
+   "Cube.083_Black_Metall_2_0": 0.3,
+   "Cube.084_Black_Metall_2_0": 0.3,
+   "Cube.085_Black_Metall_2_0": 0.3,
+   "Cube.086_Black_Metall_2_0": 0.3,
+   "Cube.087_Black_Metall_2_0": 0.3,
+   "Cube.088_Black_Metall_2_0": 0.3,
+   "Cube.089_Black_Metall_2_0": 0.3,
+   "Cube.090_Black_Metall_2_0": 0.3,
+   "Cube.091_Black_Metall_2_0": 0.3,
+   "Cube.092_Black_Metall_2_0": 0.3,
+   "Cube.093_Black_Metall_2_0": 0.3,
+   "Cube.094_Black_Metall_2_0": 0.3,
+   "Cube.095_Black_Metall_2_0": 0.3,
+   "Cube.096_Black_Metall_2_0": 0.3,
+   "Cube.097_Black_Metall_2_0": 0.3,
+   "Cube.098_Black_Metall_2_0": 0.3,
+   "Cube.099_Black_Metall_2_0": 0.3,
+   "Cube.100_Black_Metall_2_0": 0.3,
+   "Cube.101_Black_Metall_2_0": 0.3,
+   "Cube.102_Black_Metall_2_0": 0.3,
+   "Cube.103_Black_Metall_2_0": 0.3,
+   "Cube.104_Black_Metall_2_0": 0.3,
+   "Cube.105_Black_Metall_2_0": 0.3,
+   "Cube.106_Black_Metall_2_0": 0.3,
+   "Cube.107_Black_Metall_2_0": 0.3,
+   "Cube.108_Black_Metall_2_0": 0.3,
+   "Cube.109_Black_Metall_2_0": 0.3,
+   "Cube.110_Black_Metall_2_0": 0.3,
+   "Cube.111_Black_Metall_2_0": 0.3,
+   "Cube.112_Black_Metall_2_0": 0.3,
+   "Cube.113_Black_Metall_2_0": 0.3,
+   "Cube.114_Black_Metall_2_0": 0.3,
+   "Cube.115_Black_Metall_2_0": 0.3,
+   "Cube.116_Black_Metall_2_0": 0.3,
+   "Cube.117_Black_Metall_2_0": 0.3,
+   "Cube.118_Black_Metall_2_0": 0.3,
+   "Cube.119_Black_Metall_2_0": 0.3,
+   "Cube.120_Black_Metall_2_0": 0.3,
+   "Cube.121_Black_Metall_2_0": 0.3,
+   "Cube.122_Black_Metall_2_0": 0.3,
+   "Cube.123_Black_Metall_2_0": 0.3,
+   "Cube.124_Black_Metall_2_0": 0.3,
+   "Cube.125_Black_Metall_2_0": 0.3,
+   "Cube.126_Black_Metall_2_0": 0.3,
+   "Cube.127_Black_Metall_2_0": 0.3,
+   "Cube.128_Black_Metall_2_0": 0.3,
+   "Cube.129_Black_Metall_2_0": 0.3,
+   "Cube.130_Black_Metall_2_0": 0.3,
+   "Cube.131_Black_Metall_2_0": 0.3,
+   "Cube.132_Black_Metall_2_0": 0.3,
+   "Cube.133_Black_Metall_2_0": 0.3,
+   "Cube.134_Black_Metall_2_0": 0.3,
+   "Cube.135_Black_Metall_2_0": 0.3,
+   "Cube.136_Black_Metall_2_0": 0.3,
+   "Cube.137_Black_Metall_2_0": 0.3,
+   "Cube.138_Black_Metall_2_0": 0.3,
+   "Cube.139_Black_Metall_2_0": 0.3,
+   "Cube.140_Metall_0": 0.3,
+   "Cube.141_Metall_0": 0.3,
+   "Cube.142_Metall_0": 0.3,
+   "Cube_Glossy_0": 0.3,
+   "Cube_Metall_0": 0.3,
+   "Cylinder.001_Glossy_0": 0.3,
+   "Cylinder.001_Metall_0": 0.3,
+   "Cylinder.002_Black_Metall_2_0": 0.3,
+   "Cylinder.002_Metall_0": 0.3,
+   "Cylinder.003_Black_Metall_0": 0.3,
+   "Cylinder.003_Metall_0": 0.3,
+   "Cylinder.004_Black_Metall_0": 0.3,
+   "Cylinder.004_Metall_0": 0.3,
+   "Cylinder.005_Black_Metall_0": 0.3,
+   "Cylinder.005_Metall_0": 0.3,
+   "Cylinder.006_Metall_0": 0.3,
+   "Cylinder.007_Black_Metall_2_0": 0.3,
+   "Cylinder.007_Metall_0": 0.3,
+   "Cylinder.008_Metall_0": 0.3,
+   "Cylinder.009_Metall_0": 0.3,
+   "Cylinder.010_Metall_0": 0.3,
+   "Cylinder.011_Metall_0": 0.3,
+   "Cylinder.012_Glossy_0": 0.3,
+   "Cylinder.012_Metall_0": 0.3,
+   "Cylinder.013_Glossy_0": 0.3,
+   "Cylinder.013_Metall_0": 0.3,
+   "Cylinder.014_Black_Metall_2_0": 0.3,
+   "Cylinder.014_Metall_0": 0.3,
+   "Cylinder.015_Black_Metall_2_0": 0.3,
+   "Cylinder.015_Metall_0": 0.3,
+   "Cylinder.016_Black_Metall_2_0": 0.3,
+   "Cylinder.016_Metall_0": 0.3,
+   "Cylinder.017_Metall_0": 0.3,
+   "Cylinder.018_Metall_0": 0.3,
+   "Cylinder.019_Metall_0": 0.3,
+   "Cylinder.020_Metall_0": 0.3,
+   "Cylinder.021_Metall_0": 0.3,
+   "Cylinder.022_Metall_0": 0.3,
+   "Cylinder.023_Metall_0": 0.3,
+   "Cylinder.024_Metall_0": 0.3,
+   "Cylinder.025_Metall_0": 0.3,
+   "Cylinder.026_Emission_off_0": 0.3,
+   "Cylinder.026_Metall_0": 0.3,
+   "Cylinder.027_Emission_off_0": 0.3,
+   "Cylinder.027_Metall_0": 0.3,
+   "Cylinder.028_Metall_0": 0.3,
+   "Cylinder.029_Metall_0": 0.3,
+   "Cylinder.030_Material_0": 0.3,
+   "Cylinder.030_Tree_0": 0.3,
+   "Cylinder.031_Metall_0": 0.3,
+   "Cylinder.032_Metall_0": 0.3,
+   "Cylinder.033_Metall_0": 0.3,
+   "Cylinder.034_Metall_0": 0.3,
+   "Cylinder.035_Metall_0": 0.3,
+   "Cylinder.036_Metall_0": 0.3,
+   "Cylinder.037_Black_Metall_2_0": 0.3,
+   "Cylinder.038_Black_Metall_2_0": 0.3,
+   "Cylinder.039_Black_Metall_2_0": 0.3,
+   "Cylinder.039_Metall_0": 0.3,
+   "Cylinder.040_Black_Metall_2_0": 0.3,
+   "Cylinder.040_Metall_0": 0.3,
+   "Cylinder.041_Black_Metall_2_0": 0.3,
+   "Cylinder.041_Metall_0": 0.3,
+   "Cylinder.042_Black_Metall_2_0": 0.3,
+   "Cylinder.042_Metall_0": 0.3,
+   "Cylinder.043_Black_Metall_2_0": 0.3,
+   "Cylinder.043_Metall_0": 0.3,
+   "Cylinder.044_Black_Metall_2_0": 0.3,
+   "Cylinder.044_Metall_0": 0.3,
+   "Cylinder.045_Black_Metall_2_0": 0.3,
+   "Cylinder.045_Metall_0": 0.3,
+   "Cylinder.046_Black_Metall_2_0": 0.3,
+   "Cylinder.046_Metall_0": 0.3,
+   "Cylinder.047_Black_Metall_2_0": 0.3,
+   "Cylinder.047_Metall_0": 0.3,
+   "Cylinder.048_Black_Metall_2_0": 0.3,
+   "Cylinder.048_Metall_0": 0.3,
+   "Cylinder.049_Black_Metall_2_0": 0.3,
+   "Cylinder.049_Metall_0": 0.3,
+   "Cylinder.050_Black_Metall_2_0": 0.3,
+   "Cylinder.050_Metall_0": 0.3,
+   "Cylinder.051_Metall_0": 0.3,
+   "Cylinder.052_Metall_0": 0.3,
+   "Cylinder.053_Metall_0": 0.3,
+   "Cylinder.054_Metall_0": 0.3,
+   "Cylinder.055_Black_Metall_2_0": 0.3,
+   "Cylinder.055_Metall_0": 0.3,
+   "Cylinder.056_Black_Metall_2_0": 0.3,
+   "Cylinder.056_Metall_0": 0.3,
+   "Cylinder.057_Black_Metall_2_0": 0.3,
+   "Cylinder.057_Metall_0": 0.3,
+   "Cylinder.058_Black_Metall_2_0": 0.3,
+   "Cylinder.058_Metall_0": 0.3,
+   "Cylinder.059_Black_Metall_2_0": 0.3,
+   "Cylinder.059_Metall_0": 0.3,
+   "Cylinder.060_Black_Metall_2_0": 0.3,
+   "Cylinder.060_Metall_0": 0.3,
+   "Cylinder.061_Metall_0": 0.3,
+   "Cylinder.062_Metall_0": 0.3,
+   "Cylinder.063_Metall_0": 0.3,
+   "Cylinder.064_Metall_0": 0.3,
+   "Cylinder.065_Metall_0": 0.3,
+   "Cylinder.066_Metall_0": 0.3,
+   "Cylinder.067_Metall_0": 0.3,
+   "Cylinder.068_Metall_0": 0.3,
+   "Cylinder.069_Metall_0": 0.3,
+   "Cylinder.070_Metall_0": 0.3,
+   "Cylinder.071_Metall_0": 0.3,
+   "Cylinder.072_Metall_0": 0.3,
+   "Cylinder.073_Metall_0": 0.3,
+   "Cylinder.074_Metall_0": 0.3,
+   "Cylinder.075_Metall_0": 0.3,
+   "Cylinder.076_Metall_0": 0.3,
+   "Cylinder.077_Metall_0": 0.3,
+   "Cylinder.078_Metall_0": 0.3,
+   "Cylinder.079_Metall_0": 0.3,
+   "Cylinder.080_Metall_0": 0.3,
+   "Cylinder_Metall_0": 0.3,
+   "Mball.018_Material_0": 0.3,
+   "NurbsPath.001_Metall_0": 0.3,
+   "NurbsPath.002_Metall_0": 0.3,
+   "NurbsPath.003_Metall_0": 0.3,
+   "NurbsPath.004_Metall_0": 0.3,
+   "NurbsPath.005_Metall_0": 0.3,
+   "NurbsPath.006_Metall_0": 0.3,
+   "NurbsPath.007_Metall_0": 0.3,
+   "NurbsPath.008_Black_Metall_2_0": 0.3,
+   "NurbsPath.009_Black_Metall_2_0": 0.3,
+   "NurbsPath.010_Metall_0": 0.3,
+   "NurbsPath.011_Metall_0": 0.3,
+   "NurbsPath.012_Metall_0": 0.3,
+   "NurbsPath.013_Metall_0": 0.3,
+   "NurbsPath.014_Metall_0": 0.3,
+   "NurbsPath.015_Metall_0": 0.3,
+   "NurbsPath.016_Metall_0": 0.3,
+   "NurbsPath.017_Metall_0": 0.3,
+   "NurbsPath.018_Metall_0": 0.3,
+   "NurbsPath.019_Metall_0": 0.3,
+   "NurbsPath.020_Metall_0": 0.3,
+   "NurbsPath.021_Metall_0": 0.3,
+   "NurbsPath.022_Metall_0": 0.3,
+   "NurbsPath.023_Metall_0": 0.3,
+   "NurbsPath.024_Black_Metall_2_0": 0.3,
+   "NurbsPath.025_Metall_0": 0.3,
+   "NurbsPath.026_Metall_0": 0.3,
+   "NurbsPath.027_Metall_0": 0.3,
+   "NurbsPath.028_Metall_0": 0.3,
+   "NurbsPath.029_Metall_0": 0.3,
+   "NurbsPath.030_Metall_0": 0.3,
+   "NurbsPath_Metall_0": 0.3,
+   "Plane.001_Material_0": 0.3,
+   "Plane_Black_Metall_2_0": 0.3,
+   "Plane_Metall_0": 0.3
+  },
+  "gunBack": 0.2,
+  "tur": [
+   0.01,
+   0.363,
+   0.2
+  ]
+ },
+ "pantsir": {
+  "_说明": "铠甲-S1 弹炮合一防空车（SanderWolf_，Sketchfab 3cb67b0bae10418190e7ce32142231e4，CC-BY-4.0，作者自己建的：KamAZ-6560 8×8 底盘 + 后部战斗模块，一种材质）；用户 11-24「找俄系」。原模型车头朝 −Z（不用转），全长 16.28 → 真车约 10.3 米（× 0.633）；战斗模块整块在 Object_13（驾驶室顶上两小块也在里面，拆回车体），12 个导弹筒、两门 2A38M 的炮管和炮尾按框挑出来跟炮一起俯仰；后三排车轮左右两个在一块里，按 x 拆开，8 个轮子各自一组（前两排转向）；顶上的搜索雷达天线单独成块（label Radar、k radar：游戏里一直转）",
+  "uid": "3cb67b0bae10418190e7ce32142231e4",
+  "credit": "铠甲-S1 防空车：Pantsir-S1，作者 SanderWolf_（https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "铠甲-S1 防空车",
+  "creditEn": "This work is based on \"Pantsir-S1\" (https://sketchfab.com/3d-models/pantsir-s1-3cb67b0bae10418190e7ce32142231e4) by SanderWolf_ licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按框把战斗模块（炮塔）和导弹筒 / 炮挑出来、车轮左右拆开、减面",
+  "alias": [
+   "pantsir"
+  ],
+  "rotZ": 0,
+  "scale": 0.633,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Object_13"
+    ],
+    "to": "Body",
+    "box": [
+     -3,
+     3,
+     2.0,
+     4.2,
+     -3,
+     1.5
+    ]
+   },
+   {
+    "from": [
+     "Object_13"
+    ],
+    "to": "Turret",
+    "label": "Radar",
+    "box": [
+     -1.3,
+     1.3,
+     6.05,
+     8.1,
+     10.2,
+     11.6
+    ]
+   },
+   {
+    "from": [
+     "Object_13"
+    ],
+    "to": "Gun",
+    "box": [
+     -2.35,
+     2.35,
+     4.38,
+     5.6,
+     4.3,
+     10.5
+    ]
+   },
+   {
+    "from": [
+     "Object_6"
+    ],
+    "to": "L",
+    "box": [
+     -2.0,
+     0.0,
+     -0.2,
+     2.2,
+     1.7,
+     4.0
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "L",
+    "box": [
+     -2.0,
+     0.0,
+     -0.2,
+     2.2,
+     7.8,
+     10.1
+    ]
+   },
+   {
+    "from": [
+     "Object_4"
+    ],
+    "to": "L",
+    "box": [
+     -2.0,
+     0.0,
+     -0.2,
+     2.2,
+     10.0,
+     12.3
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Object_13"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_12"
+   ],
+   [
+    "Object_7"
+   ],
+   [
+    "Object_6.L"
+   ],
+   [
+    "Object_6"
+   ],
+   [
+    "Object_5.L"
+   ],
+   [
+    "Object_5"
+   ],
+   [
+    "Object_4.L"
+   ],
+   [
+    "Object_4"
+   ]
+  ],
+  "decimate": {
+   "Object_4": 0.35,
+   "Object_5": 0.35,
+   "Object_6": 0.35,
+   "Object_7": 0.35,
+   "Object_12": 0.35,
+   "Object_10": 0.65,
+   "Object_8": 0.6,
+   "Object_3": 0.5,
+   "Object_2": 0.5,
+   "Object_9": 0.5,
+   "Object_11": 0.5,
+   "Object_14": 0.6
+  },
+  "tur": [
+   0.0,
+   4.25,
+   9.0
+  ],
+  "gun": [
+   0.0,
+   5.0,
+   9.3
+  ],
+  "points": {
+   "sight": [
+    0.0,
+    6.0,
+    7.45
+   ]
+  },
+  "kinds": {
+   "Radar": "radar"
+  }
+ },
+ "t80u": {
+  "_说明": "T-80U 主战坦克（javanilga，Sketchfab ebf4b55eeabb421cbf2758a2ec948439，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树里 T-80 一族原来借 T-90M，换成真 T-80U。原模型车头朝 +Z（转半圈）、比真车大 1.13 倍（连炮全长 10.84 → 真车 9.65 米，宽 4.1 → 3.6 米），按 0.887 缩；2.8 万个三角形，不用减面。Object_44 是炮管连炮盾，炮塔边上几小块（并列机枪、车长 12.7 机枪、指挥塔、天线、尾舱网篮）归炮塔；炮塔转轴、炮耳轴直接给（炮管最后端是炮盾顶上那块，自动找的炮耳轴高了 25 厘米）",
+  "uid": "ebf4b55eeabb421cbf2758a2ec948439",
+  "credit": "T-80U 主战坦克：Tank T-80U，作者 javanilga（https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "T-80U 主战坦克",
+  "creditEn": "This work is based on \"Tank T-80U\" (https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439) by javanilga licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组、贴图缩到 1024",
+  "alias": [
+   "t80u",
+   "t80b",
+   "t80bvm"
+  ],
+  "rotZ": 180,
+  "scale": 0.887,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_48",
+    "Object_32",
+    "Object_34",
+    "Object_36",
+    "Object_40",
+    "Object_50",
+    "Object_54",
+    "Object_42",
+    "Object_30",
+    "Object_38",
+    "Object_52",
+    "Object_46"
+   ],
+   "Gun": [
+    "Object_44"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_16"
+   ],
+   [
+    "Object_18"
+   ],
+   [
+    "Object_20"
+   ],
+   [
+    "Object_22"
+   ],
+   [
+    "Object_24"
+   ],
+   [
+    "Object_26"
+   ],
+   [
+    "Object_28"
+   ],
+   [
+    "Object_10"
+   ],
+   [
+    "Object_12"
+   ]
+  ],
+  "tur": [
+   -0.0069,
+   1.5226,
+   0.1915
+  ],
+  "gun": [
+   -0.0069,
+   1.7847,
+   1.2516
+  ]
+ },
+ "bmp1": {
+  "_说明": "BMP-1 步兵战车（buh-late，Sketchfab 9b00c6b1da094bb3802af5ca6a3081bf，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树里 BMP-1、BMP-2、86 式原来借 BMP-3，换成真 BMP-1。原模型节点名是乱码（U+FFFD），先用 scratchpad 的 gltf_rename.py 改成 n<序号>_…再转；比例对（宽 3.03、高 2.07 米），不缩；55 万个三角形：负重轮、主动轮、诱导轮、托带轮、履带、车体按比例减面",
+  "uid": "9b00c6b1da094bb3802af5ca6a3081bf",
+  "credit": "BMP-1 步兵战车：BMP-1 (outdated)，作者 buh-late（https://sketchfab.com/3d-models/bmp-1-outdated-9b00c6b1da094bb3802af5ca6a3081bf），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "BMP-1 步兵战车",
+  "creditEn": "This work is based on \"BMP-1 (outdated)\" (https://sketchfab.com/3d-models/bmp-1-outdated-9b00c6b1da094bb3802af5ca6a3081bf) by buh-late licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、按部件分组、减面（55 万 → 约 11 万个三角形）、贴图缩到 1024",
+  "alias": [
+   "bmp1"
+  ],
+  "rotZ": 180,
+  "scale": 1.0,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "n88__0"
+   ],
+   "Gun": [
+    "n90_.001_0"
+   ]
+  },
+  "wheels": [
+   [
+    "n22_.002(4)_0"
+   ],
+   [
+    "n34_.002(4).001_0"
+   ],
+   [
+    "n36_.002(4).002_0"
+   ],
+   [
+    "n42_.002(4).003_0"
+   ],
+   [
+    "n44_.002(4).004_0"
+   ],
+   [
+    "n50_.002(4).005_0"
+   ],
+   [
+    "n52_.002(4).006_0"
+   ],
+   [
+    "n58_.002(4).007_0"
+   ],
+   [
+    "n60_.002(4).008_0"
+   ],
+   [
+    "n66_.002(4).009_0"
+   ],
+   [
+    "n68_.002(4).010_0"
+   ],
+   [
+    "n74_.002(4).011_0"
+   ],
+   [
+    "n14_(4)_0"
+   ],
+   [
+    "n28_(4).001_0"
+   ],
+   [
+    "n16_.001 (4)_0"
+   ],
+   [
+    "n30_.001 (4).001_0"
+   ],
+   [
+    "n26_.003 (16)_0"
+   ],
+   [
+    "n76_.003 (16).001_0"
+   ],
+   [
+    "n78_.003 (16).002_0"
+   ],
+   [
+    "n80_.003 (16).003_0"
+   ],
+   [
+    "n82_.003 (16).004_0"
+   ],
+   [
+    "n84_.003 (16).005_0"
+   ]
+  ],
+  "decimate": {
+   "n7_(2)_0": 0.3,
+   "n8_(2)_0": 0.3,
+   "n22_.002(4)_0": 0.08,
+   "n34_.002(4).001_0": 0.08,
+   "n36_.002(4).002_0": 0.08,
+   "n42_.002(4).003_0": 0.08,
+   "n44_.002(4).004_0": 0.08,
+   "n50_.002(4).005_0": 0.08,
+   "n52_.002(4).006_0": 0.08,
+   "n58_.002(4).007_0": 0.08,
+   "n60_.002(4).008_0": 0.08,
+   "n66_.002(4).009_0": 0.08,
+   "n68_.002(4).010_0": 0.08,
+   "n74_.002(4).011_0": 0.08,
+   "n14_(4)_0": 0.06,
+   "n28_(4).001_0": 0.06,
+   "n16_.001 (4)_0": 0.1,
+   "n30_.001 (4).001_0": 0.1,
+   "n26_.003 (16)_0": 0.08,
+   "n76_.003 (16).001_0": 0.08,
+   "n78_.003 (16).002_0": 0.08,
+   "n80_.003 (16).003_0": 0.08,
+   "n82_.003 (16).004_0": 0.08,
+   "n84_.003 (16).005_0": 0.08,
+   "n24_.007 (16)_0": 0.4,
+   "n32_.007 (16).001_0": 0.4,
+   "n38_.007 (16).002_0": 0.4,
+   "n40_.007 (16).003_0": 0.4,
+   "n46_.007 (16).004_0": 0.4,
+   "n48_.007 (16).005_0": 0.4,
+   "n54_.007 (16).006_0": 0.4,
+   "n56_.007 (16).007_0": 0.4,
+   "n62_.007 (16).008_0": 0.4,
+   "n64_.007 (16).009_0": 0.4,
+   "n70_.007 (16).010_0": 0.4,
+   "n72_.007 (16).011_0": 0.4,
+   "Track_1_1_0": 0.5,
+   "Track_1_1.001_0": 0.5,
+   "n88__0": 0.5,
+   "n90_.001_0": 0.7,
+   "n18_.005 (4)_0": 0.5
+  }
+ },
+ "leo2a6": {
+  "_说明": "豹 2A6 主战坦克（mansoorsajidp，Sketchfab b62ba39ae5584b768b53d58803c3cc4b，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树里豹 2A6、2A7V 原来借 M1A2，换成真豹 2。原模型车头朝 +Z（转半圈），单位约 2.27 倍米（车体宽 8.46 → 3.75 米），按 0.44 缩；炮管和炮塔是一块（Up1），按框把炮管、炮盾、抽烟装置拆出来；负重轮、主动轮、诱导轮两边各一大块，按框拆成一个个轮子；42 万个三角形按比例减面；炮塔转轴直接给（炮塔最低一圈的中心，自动找的偏到前面去了），炮耳轴在炮盾后面、炮管轴线高度",
+  "uid": "b62ba39ae5584b768b53d58803c3cc4b",
+  "credit": "豹 2A6 主战坦克：Leopard 2A6 [Free]，作者 mansoorsajidp（https://sketchfab.com/3d-models/leopard-2a6-free-b62ba39ae5584b768b53d58803c3cc4b），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "豹 2A6 主战坦克",
+  "creditEn": "This work is based on \"Leopard 2A6 [Free]\" (https://sketchfab.com/3d-models/leopard-2a6-free-b62ba39ae5584b768b53d58803c3cc4b) by mansoorsajidp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮和每个车轮拆出来、减面（42 万 → 约 10 万个三角形）、贴图缩到 1024",
+  "alias": [
+   "leo2a6",
+   "leo2a4"
+  ],
+  "rotZ": 180,
+  "scale": 0.44,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Up1_Up1_0"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.56,
+     0.56,
+     3.75,
+     5.35,
+     2.3,
+     14.0
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W01",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     3.4550000000000005,
+     5.255000000000001
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W02",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     3.4550000000000005,
+     5.255000000000001
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W03",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     1.5350000000000001,
+     3.335
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W04",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     1.5350000000000001,
+     3.335
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W05",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     -0.385,
+     1.415
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W06",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     -0.385,
+     1.415
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W07",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     -2.305,
+     -0.505
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W08",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     -2.305,
+     -0.505
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W09",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     -4.2250000000000005,
+     -2.4250000000000003
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W10",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     -4.2250000000000005,
+     -2.4250000000000003
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W11",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     -6.1450000000000005,
+     -4.345
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W12",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     -6.1450000000000005,
+     -4.345
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W13",
+    "box": [
+     2.6,
+     3.6,
+     0.15,
+     1.95,
+     -8.065,
+     -6.265
+    ]
+   },
+   {
+    "from": [
+     "Circle.009_Circle.013_Tank_katok_0",
+     "Circle.009_Circle.013_Rubber_katok_0",
+     "Circle.009_Circle.013_wheel_red_0"
+    ],
+    "to": "W14",
+    "box": [
+     -3.6,
+     -2.6,
+     0.15,
+     1.95,
+     -8.065,
+     -6.265
+    ]
+   },
+   {
+    "from": [
+     "Tube02.001_16___Default_0"
+    ],
+    "to": "W15",
+    "box": [
+     2.0,
+     3.9,
+     1.3,
+     2.9,
+     -9.45,
+     -7.8
+    ]
+   },
+   {
+    "from": [
+     "Tube02.001_16___Default_0"
+    ],
+    "to": "W16",
+    "box": [
+     -3.9,
+     -2.0,
+     1.3,
+     2.9,
+     -9.45,
+     -7.8
+    ]
+   },
+   {
+    "from": [
+     "Circle.002_Tank.001_0"
+    ],
+    "to": "W17",
+    "box": [
+     2.55,
+     3.6,
+     1.3,
+     2.7,
+     5.7,
+     7.1
+    ]
+   },
+   {
+    "from": [
+     "Circle.002_Tank.001_0"
+    ],
+    "to": "W18",
+    "box": [
+     -3.6,
+     -2.55,
+     1.3,
+     2.7,
+     5.7,
+     7.1
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Up1_Up1_0",
+    "Up1_BlackGlass_Base_0",
+    "Up1_Crot2_0",
+    "Up2_Up2_0",
+    "Up2_Up2_0.001",
+    "Up3_Up3_0",
+    "Up3_Gun_0",
+    "Up3_BlackGlass_Base_0"
+   ]
+  },
+  "wheels": [
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W01",
+    "Circle.009_Circle.013_Rubber_katok_0.W01",
+    "Circle.009_Circle.013_wheel_red_0.W01"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W02",
+    "Circle.009_Circle.013_Rubber_katok_0.W02",
+    "Circle.009_Circle.013_wheel_red_0.W02"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W03",
+    "Circle.009_Circle.013_Rubber_katok_0.W03",
+    "Circle.009_Circle.013_wheel_red_0.W03"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W04",
+    "Circle.009_Circle.013_Rubber_katok_0.W04",
+    "Circle.009_Circle.013_wheel_red_0.W04"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W05",
+    "Circle.009_Circle.013_Rubber_katok_0.W05",
+    "Circle.009_Circle.013_wheel_red_0.W05"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W06",
+    "Circle.009_Circle.013_Rubber_katok_0.W06",
+    "Circle.009_Circle.013_wheel_red_0.W06"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W07",
+    "Circle.009_Circle.013_Rubber_katok_0.W07",
+    "Circle.009_Circle.013_wheel_red_0.W07"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W08",
+    "Circle.009_Circle.013_Rubber_katok_0.W08",
+    "Circle.009_Circle.013_wheel_red_0.W08"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W09",
+    "Circle.009_Circle.013_Rubber_katok_0.W09",
+    "Circle.009_Circle.013_wheel_red_0.W09"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W10",
+    "Circle.009_Circle.013_Rubber_katok_0.W10",
+    "Circle.009_Circle.013_wheel_red_0.W10"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W11",
+    "Circle.009_Circle.013_Rubber_katok_0.W11",
+    "Circle.009_Circle.013_wheel_red_0.W11"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W12",
+    "Circle.009_Circle.013_Rubber_katok_0.W12",
+    "Circle.009_Circle.013_wheel_red_0.W12"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W13",
+    "Circle.009_Circle.013_Rubber_katok_0.W13",
+    "Circle.009_Circle.013_wheel_red_0.W13"
+   ],
+   [
+    "Circle.009_Circle.013_Tank_katok_0.W14",
+    "Circle.009_Circle.013_Rubber_katok_0.W14",
+    "Circle.009_Circle.013_wheel_red_0.W14"
+   ],
+   [
+    "Tube02.001_16___Default_0.W15"
+   ],
+   [
+    "Tube02.001_16___Default_0.W16"
+   ],
+   [
+    "Circle.002_Tank.001_0.W17"
+   ],
+   [
+    "Circle.002_Tank.001_0.W18"
+   ]
+  ],
+  "decimate": {
+   "Circle.003_Circle.020_Down2_0": 0.25,
+   "Tank_Base_Down1_0": 0.25,
+   "Circle.003_Circle.020_Down2_0.001": 0.25,
+   "Tank_Base_Down1_0.001": 0.25,
+   "Tank_Base_001_0": 0.25,
+   "Box0ewfef_Down3_0": 0.25,
+   "Up2_Up2_0": 0.3,
+   "Up1_Up1_0": 0.3,
+   "Up3_Gun_0": 0.3,
+   "Up3_Up3_0": 0.3,
+   "Cube.000_Cube.000_Rubber_3.001_0": 0.25,
+   "Cube.000_Cube.000_Tank_3.001_0": 0.25,
+   "Cube.000_Cube.000_vida_3.001_0": 0.25,
+   "Circle.009_Circle.013_Tank_katok_0": 0.2,
+   "Circle.009_Circle.013_Rubber_katok_0": 0.2,
+   "Circle.009_Circle.013_wheel_red_0": 0.2,
+   "Tube02.001_16___Default_0": 0.4,
+   "Circle.002_Tank.001_0": 0.5
+  },
+  "gun": [
+   0.0,
+   4.485,
+   3.9
+  ],
+  "tur": [
+   0.0,
+   3.78,
+   0.96
+  ]
+ },
+ "leo1": {
+  "_说明": "豹 1 主战坦克（FlashPoin，Sketchfab b8a64bf4f6ae4811bea84c8d657f0025，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树里豹 1、1A1A1、1A5 原来借 M10，换成真豹 1。原模型单位就是米（连炮全长 9.55 米 = 真车 9.54），车头已经朝 +Y（不转）；两边的行动部分（7 个负重轮、主动轮、诱导轮、4 个托带轮）各是一块，按框拆成一个个轮子；履带减一半面；原贴图是没上漆的灰，按联邦国防军的黄橄榄色（RAL 6014）调色（texTint）；炮塔转轴按座圈量的高度、前后，左右放在车的中线上（自动找的偏左 5 厘米）",
+  "uid": "b8a64bf4f6ae4811bea84c8d657f0025",
+  "credit": "豹 1 主战坦克：Tank_Leopard 1，作者 FlashPoin（https://sketchfab.com/3d-models/tank-leopard-1-b8a64bf4f6ae4811bea84c8d657f0025），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "豹 1 主战坦克",
+  "creditEn": "This work is based on \"Tank_Leopard 1\" (https://sketchfab.com/3d-models/tank-leopard-1-b8a64bf4f6ae4811bea84c8d657f0025) by FlashPoin licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：按部件分组、按框把每个车轮拆出来、履带减面、底色贴图按联邦国防军黄橄榄色（RAL 6014）调色、贴图缩到 1024",
+  "alias": [
+   "leo1",
+   "leo1a5"
+  ],
+  "rotZ": 0,
+  "scale": 1.0,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W01",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     1.6150000000000002,
+     2.335
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W02",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     0.9049999999999999,
+     1.625
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W03",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     0.22499999999999998,
+     0.945
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W04",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     -0.505,
+     0.215
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W05",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     -1.185,
+     -0.46499999999999997
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W06",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     -1.9249999999999998,
+     -1.205
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W07",
+    "box": [
+     -1.55,
+     -1.19,
+     0.05,
+     0.76,
+     -2.605,
+     -1.8850000000000002
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W08",
+    "box": [
+     -1.65,
+     -1.05,
+     0.4,
+     1.12,
+     2.38,
+     3.1
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W09",
+    "box": [
+     -1.55,
+     -1.19,
+     0.42,
+     1.12,
+     -3.26,
+     -2.57
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W10",
+    "box": [
+     -1.56,
+     -1.1,
+     0.8,
+     1.13,
+     -1.335,
+     -1.0350000000000001
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W11",
+    "box": [
+     -1.56,
+     -1.1,
+     0.8,
+     1.13,
+     1.465,
+     1.765
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W12",
+    "box": [
+     -1.56,
+     -1.1,
+     0.8,
+     1.13,
+     -2.035,
+     -1.735
+    ]
+   },
+   {
+    "from": [
+     "exportChassL1_Shape_tank_chassis_01_skinned_0"
+    ],
+    "to": "W13",
+    "box": [
+     -1.56,
+     -1.1,
+     0.8,
+     1.13,
+     0.024999999999999994,
+     0.32499999999999996
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W14",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     -2.475,
+     -1.7550000000000003
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W15",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     -1.775,
+     -1.0550000000000002
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W16",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     -1.045,
+     -0.32500000000000007
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W17",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     -0.365,
+     0.355
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W18",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     0.365,
+     1.085
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W19",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     1.0499999999999998,
+     1.77
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W20",
+    "box": [
+     1.19,
+     1.55,
+     0.05,
+     0.76,
+     1.7600000000000002,
+     2.48
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W21",
+    "box": [
+     1.05,
+     1.65,
+     0.4,
+     1.12,
+     2.38,
+     3.1
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W22",
+    "box": [
+     1.19,
+     1.55,
+     0.42,
+     1.12,
+     -3.26,
+     -2.57
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W23",
+    "box": [
+     1.1,
+     1.56,
+     0.8,
+     1.13,
+     -1.2049999999999998,
+     -0.9049999999999999
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W24",
+    "box": [
+     1.1,
+     1.56,
+     0.8,
+     1.13,
+     1.665,
+     1.9649999999999999
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W25",
+    "box": [
+     1.1,
+     1.56,
+     0.8,
+     1.13,
+     -1.895,
+     -1.5950000000000002
+    ]
+   },
+   {
+    "from": [
+     "exportChassR1_Shape_tank_chassis_01_skinned.001_0"
+    ],
+    "to": "W26",
+    "box": [
+     1.1,
+     1.56,
+     0.8,
+     1.13,
+     0.13499999999999998,
+     0.43499999999999994
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Turret_01_tank_turret_01_0"
+   ],
+   "Gun": [
+    "gun_01_Shape_tank_guns_skinned_0"
+   ]
+  },
+  "wheels": [
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W01"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W02"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W03"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W04"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W05"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W06"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W07"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W08"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W09"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W10"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W11"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W12"
+   ],
+   [
+    "exportChassL1_Shape_tank_chassis_01_skinned_0.W13"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W14"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W15"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W16"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W17"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W18"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W19"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W20"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W21"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W22"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W23"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W24"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W25"
+   ],
+   [
+    "exportChassR1_Shape_tank_chassis_01_skinned.001_0.W26"
+   ]
+  ],
+  "decimate": {
+   "segment1_tank_track_0": 0.5,
+   "segment1.001_tank_track.001_0": 0.5,
+   "segment2_tank_track.002_0": 0.5,
+   "segment2.001_tank_track.003_0": 0.5
+  },
+  "texTint": [
+   {
+    "img": "tank_hull_01_diffuse",
+    "rgb": [
+     92,
+     90,
+     60
+    ]
+   },
+   {
+    "img": "tank_turret_01_diffuse",
+    "rgb": [
+     92,
+     90,
+     60
+    ]
+   },
+   {
+    "img": "tank_guns_skinned_diffuse",
+    "rgb": [
+     92,
+     90,
+     60
+    ]
+   },
+   {
+    "img": "tank_chassis_01_skinned_diffuse",
+    "rgb": [
+     92,
+     90,
+     60
+    ]
+   }
+  ],
+  "tur": [
+   -0.0002,
+   1.5264,
+   -0.4693
+  ]
+ },
+ "m60a3": {
+  "_说明": "M60A3 巴顿（jonathanto99，Sketchfab 3d298af87c2c4a0691e61ab8ee9ad803，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树里 M60、M60A1、M60A1 RISE、M60A3 原来借 M10，换成真 M60A3。原模型单位是毫米、比真车大 1.22 倍（连炮全长 11.41 → 真车 9.44 米、宽 4.39 → 3.63 米），按 0.00082 缩；车头朝 +Z（转半圈）；没有贴图（材质底色就是车色）；网格按材质分块、车体炮塔混在一起：先按框把炮管炮盾拆出来，再把车顶甲板以上、炮塔范围里的整块零件归炮塔；负重轮、托带轮、诱导轮、主动轮散在十几块网格里，按每个轮子的框拆出来合成一个轮；材质底色太浅（发白的灰绿），按美军森林绿（FS 34079 一类）改（matColor）",
+  "uid": "3d298af87c2c4a0691e61ab8ee9ad803",
+  "credit": "M60A3 巴顿主战坦克：M60A3 Patton Medium Tank - Toshueyi，作者 jonathanto99（https://sketchfab.com/3d-models/m60a3-patton-medium-tank-toshueyi-3d298af87c2c4a0691e61ab8ee9ad803），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "M60A3 巴顿主战坦克",
+  "creditEn": "This work is based on \"M60A3 Patton Medium Tank - Toshueyi\" (https://sketchfab.com/3d-models/m60a3-patton-medium-tank-toshueyi-3d298af87c2c4a0691e61ab8ee9ad803) by jonathanto99 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮、炮塔、每个车轮拆出来、材质底色改成美军森林绿",
+  "alias": [
+   "m60a3",
+   "m60a1"
+  ],
+  "rotZ": 180,
+  "scale": 0.00082,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Object_6",
+     "Object_31",
+     "Object_8",
+     "Object_9",
+     "Object_13",
+     "Object_5",
+     "Object_7"
+    ],
+    "to": "Gun",
+    "box": [
+     -1600,
+     -200,
+     1170,
+     2200,
+     1940,
+     7400
+    ]
+   },
+   {
+    "from": [
+     "Object_5",
+     "Object_6",
+     "Object_7",
+     "Object_8",
+     "Object_12",
+     "Object_14",
+     "Object_15",
+     "Object_16",
+     "Object_17",
+     "Object_25",
+     "Object_31"
+    ],
+    "to": "Turret",
+    "box": [
+     -2800,
+     1000,
+     1525,
+     3300,
+     -2400,
+     2850
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W01",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     2395,
+     3235
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W02",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     2395,
+     3235
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W03",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     1321,
+     2161
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W04",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     1321,
+     2161
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W05",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     249,
+     1089
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W06",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     249,
+     1089
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W07",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     -824,
+     16
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W08",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     -824,
+     16
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W09",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     -1899,
+     -1059
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W10",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     -1899,
+     -1059
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W11",
+    "box": [
+     400,
+     1400,
+     -800,
+     80,
+     -2972,
+     -2132
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W12",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -800,
+     80,
+     -2972,
+     -2132
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W13",
+    "box": [
+     400,
+     1400,
+     290,
+     650,
+     2315,
+     2695
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W14",
+    "box": [
+     -3074.0,
+     -2074.0,
+     290,
+     650,
+     2315,
+     2695
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W15",
+    "box": [
+     400,
+     1400,
+     290,
+     650,
+     202,
+     582
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W16",
+    "box": [
+     -3074.0,
+     -2074.0,
+     290,
+     650,
+     202,
+     582
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W17",
+    "box": [
+     400,
+     1400,
+     290,
+     650,
+     -1764,
+     -1384
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W18",
+    "box": [
+     -3074.0,
+     -2074.0,
+     290,
+     650,
+     -1764,
+     -1384
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W19",
+    "box": [
+     400,
+     1400,
+     -160,
+     660,
+     3270,
+     4100
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W20",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -160,
+     660,
+     3270,
+     4100
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W21",
+    "box": [
+     400,
+     1400,
+     -110,
+     745,
+     -3870,
+     -3020
+    ]
+   },
+   {
+    "from": [
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_22",
+     "Object_23",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_28",
+     "Object_32",
+     "Object_33",
+     "Object_34",
+     "Object_35",
+     "Object_36",
+     "Object_37",
+     "Object_38",
+     "Object_39",
+     "Object_40",
+     "Object_41",
+     "Object_42",
+     "Object_10",
+     "Object_11",
+     "Object_14",
+     "Object_5",
+     "Object_6"
+    ],
+    "to": "W22",
+    "box": [
+     -3074.0,
+     -2074.0,
+     -110,
+     745,
+     -3870,
+     -3020
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Object_13",
+    "Object_2",
+    "Object_3",
+    "Object_4",
+    "Object_9",
+    "Object_30"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_18.W01",
+    "Object_19.W01",
+    "Object_20.W01",
+    "Object_21.W01",
+    "Object_22.W01",
+    "Object_23.W01",
+    "Object_24.W01",
+    "Object_26.W01",
+    "Object_27.W01",
+    "Object_28.W01",
+    "Object_32.W01",
+    "Object_33.W01",
+    "Object_34.W01",
+    "Object_35.W01",
+    "Object_36.W01",
+    "Object_37.W01",
+    "Object_38.W01",
+    "Object_39.W01",
+    "Object_40.W01",
+    "Object_41.W01",
+    "Object_42.W01",
+    "Object_10.W01",
+    "Object_11.W01",
+    "Object_14.W01",
+    "Object_5.W01",
+    "Object_6.W01"
+   ],
+   [
+    "Object_18.W02",
+    "Object_19.W02",
+    "Object_20.W02",
+    "Object_21.W02",
+    "Object_22.W02",
+    "Object_23.W02",
+    "Object_24.W02",
+    "Object_26.W02",
+    "Object_27.W02",
+    "Object_28.W02",
+    "Object_32.W02",
+    "Object_33.W02",
+    "Object_34.W02",
+    "Object_35.W02",
+    "Object_36.W02",
+    "Object_37.W02",
+    "Object_38.W02",
+    "Object_39.W02",
+    "Object_40.W02",
+    "Object_41.W02",
+    "Object_42.W02",
+    "Object_10.W02",
+    "Object_11.W02",
+    "Object_14.W02",
+    "Object_5.W02",
+    "Object_6.W02"
+   ],
+   [
+    "Object_18.W03",
+    "Object_19.W03",
+    "Object_20.W03",
+    "Object_21.W03",
+    "Object_22.W03",
+    "Object_23.W03",
+    "Object_24.W03",
+    "Object_26.W03",
+    "Object_27.W03",
+    "Object_28.W03",
+    "Object_32.W03",
+    "Object_33.W03",
+    "Object_34.W03",
+    "Object_35.W03",
+    "Object_36.W03",
+    "Object_37.W03",
+    "Object_38.W03",
+    "Object_39.W03",
+    "Object_40.W03",
+    "Object_41.W03",
+    "Object_42.W03",
+    "Object_10.W03",
+    "Object_11.W03",
+    "Object_14.W03",
+    "Object_5.W03",
+    "Object_6.W03"
+   ],
+   [
+    "Object_18.W04",
+    "Object_19.W04",
+    "Object_20.W04",
+    "Object_21.W04",
+    "Object_22.W04",
+    "Object_23.W04",
+    "Object_24.W04",
+    "Object_26.W04",
+    "Object_27.W04",
+    "Object_28.W04",
+    "Object_32.W04",
+    "Object_33.W04",
+    "Object_34.W04",
+    "Object_35.W04",
+    "Object_36.W04",
+    "Object_37.W04",
+    "Object_38.W04",
+    "Object_39.W04",
+    "Object_40.W04",
+    "Object_41.W04",
+    "Object_42.W04",
+    "Object_10.W04",
+    "Object_11.W04",
+    "Object_14.W04",
+    "Object_5.W04",
+    "Object_6.W04"
+   ],
+   [
+    "Object_18.W05",
+    "Object_19.W05",
+    "Object_20.W05",
+    "Object_21.W05",
+    "Object_22.W05",
+    "Object_23.W05",
+    "Object_24.W05",
+    "Object_26.W05",
+    "Object_27.W05",
+    "Object_28.W05",
+    "Object_32.W05",
+    "Object_33.W05",
+    "Object_34.W05",
+    "Object_35.W05",
+    "Object_36.W05",
+    "Object_37.W05",
+    "Object_38.W05",
+    "Object_39.W05",
+    "Object_40.W05",
+    "Object_41.W05",
+    "Object_42.W05",
+    "Object_10.W05",
+    "Object_11.W05",
+    "Object_14.W05",
+    "Object_5.W05",
+    "Object_6.W05"
+   ],
+   [
+    "Object_18.W06",
+    "Object_19.W06",
+    "Object_20.W06",
+    "Object_21.W06",
+    "Object_22.W06",
+    "Object_23.W06",
+    "Object_24.W06",
+    "Object_26.W06",
+    "Object_27.W06",
+    "Object_28.W06",
+    "Object_32.W06",
+    "Object_33.W06",
+    "Object_34.W06",
+    "Object_35.W06",
+    "Object_36.W06",
+    "Object_37.W06",
+    "Object_38.W06",
+    "Object_39.W06",
+    "Object_40.W06",
+    "Object_41.W06",
+    "Object_42.W06",
+    "Object_10.W06",
+    "Object_11.W06",
+    "Object_14.W06",
+    "Object_5.W06",
+    "Object_6.W06"
+   ],
+   [
+    "Object_18.W07",
+    "Object_19.W07",
+    "Object_20.W07",
+    "Object_21.W07",
+    "Object_22.W07",
+    "Object_23.W07",
+    "Object_24.W07",
+    "Object_26.W07",
+    "Object_27.W07",
+    "Object_28.W07",
+    "Object_32.W07",
+    "Object_33.W07",
+    "Object_34.W07",
+    "Object_35.W07",
+    "Object_36.W07",
+    "Object_37.W07",
+    "Object_38.W07",
+    "Object_39.W07",
+    "Object_40.W07",
+    "Object_41.W07",
+    "Object_42.W07",
+    "Object_10.W07",
+    "Object_11.W07",
+    "Object_14.W07",
+    "Object_5.W07",
+    "Object_6.W07"
+   ],
+   [
+    "Object_18.W08",
+    "Object_19.W08",
+    "Object_20.W08",
+    "Object_21.W08",
+    "Object_22.W08",
+    "Object_23.W08",
+    "Object_24.W08",
+    "Object_26.W08",
+    "Object_27.W08",
+    "Object_28.W08",
+    "Object_32.W08",
+    "Object_33.W08",
+    "Object_34.W08",
+    "Object_35.W08",
+    "Object_36.W08",
+    "Object_37.W08",
+    "Object_38.W08",
+    "Object_39.W08",
+    "Object_40.W08",
+    "Object_41.W08",
+    "Object_42.W08",
+    "Object_10.W08",
+    "Object_11.W08",
+    "Object_14.W08",
+    "Object_5.W08",
+    "Object_6.W08"
+   ],
+   [
+    "Object_18.W09",
+    "Object_19.W09",
+    "Object_20.W09",
+    "Object_21.W09",
+    "Object_22.W09",
+    "Object_23.W09",
+    "Object_24.W09",
+    "Object_26.W09",
+    "Object_27.W09",
+    "Object_28.W09",
+    "Object_32.W09",
+    "Object_33.W09",
+    "Object_34.W09",
+    "Object_35.W09",
+    "Object_36.W09",
+    "Object_37.W09",
+    "Object_38.W09",
+    "Object_39.W09",
+    "Object_40.W09",
+    "Object_41.W09",
+    "Object_42.W09",
+    "Object_10.W09",
+    "Object_11.W09",
+    "Object_14.W09",
+    "Object_5.W09",
+    "Object_6.W09"
+   ],
+   [
+    "Object_18.W10",
+    "Object_19.W10",
+    "Object_20.W10",
+    "Object_21.W10",
+    "Object_22.W10",
+    "Object_23.W10",
+    "Object_24.W10",
+    "Object_26.W10",
+    "Object_27.W10",
+    "Object_28.W10",
+    "Object_32.W10",
+    "Object_33.W10",
+    "Object_34.W10",
+    "Object_35.W10",
+    "Object_36.W10",
+    "Object_37.W10",
+    "Object_38.W10",
+    "Object_39.W10",
+    "Object_40.W10",
+    "Object_41.W10",
+    "Object_42.W10",
+    "Object_10.W10",
+    "Object_11.W10",
+    "Object_14.W10",
+    "Object_5.W10",
+    "Object_6.W10"
+   ],
+   [
+    "Object_18.W11",
+    "Object_19.W11",
+    "Object_20.W11",
+    "Object_21.W11",
+    "Object_22.W11",
+    "Object_23.W11",
+    "Object_24.W11",
+    "Object_26.W11",
+    "Object_27.W11",
+    "Object_28.W11",
+    "Object_32.W11",
+    "Object_33.W11",
+    "Object_34.W11",
+    "Object_35.W11",
+    "Object_36.W11",
+    "Object_37.W11",
+    "Object_38.W11",
+    "Object_39.W11",
+    "Object_40.W11",
+    "Object_41.W11",
+    "Object_42.W11",
+    "Object_10.W11",
+    "Object_11.W11",
+    "Object_14.W11",
+    "Object_5.W11",
+    "Object_6.W11"
+   ],
+   [
+    "Object_18.W12",
+    "Object_19.W12",
+    "Object_20.W12",
+    "Object_21.W12",
+    "Object_22.W12",
+    "Object_23.W12",
+    "Object_24.W12",
+    "Object_26.W12",
+    "Object_27.W12",
+    "Object_28.W12",
+    "Object_32.W12",
+    "Object_33.W12",
+    "Object_34.W12",
+    "Object_35.W12",
+    "Object_36.W12",
+    "Object_37.W12",
+    "Object_38.W12",
+    "Object_39.W12",
+    "Object_40.W12",
+    "Object_41.W12",
+    "Object_42.W12",
+    "Object_10.W12",
+    "Object_11.W12",
+    "Object_14.W12",
+    "Object_5.W12",
+    "Object_6.W12"
+   ],
+   [
+    "Object_18.W13",
+    "Object_19.W13",
+    "Object_20.W13",
+    "Object_21.W13",
+    "Object_22.W13",
+    "Object_23.W13",
+    "Object_24.W13",
+    "Object_26.W13",
+    "Object_27.W13",
+    "Object_28.W13",
+    "Object_32.W13",
+    "Object_33.W13",
+    "Object_34.W13",
+    "Object_35.W13",
+    "Object_36.W13",
+    "Object_37.W13",
+    "Object_38.W13",
+    "Object_39.W13",
+    "Object_40.W13",
+    "Object_41.W13",
+    "Object_42.W13",
+    "Object_10.W13",
+    "Object_11.W13",
+    "Object_14.W13",
+    "Object_5.W13",
+    "Object_6.W13"
+   ],
+   [
+    "Object_18.W14",
+    "Object_19.W14",
+    "Object_20.W14",
+    "Object_21.W14",
+    "Object_22.W14",
+    "Object_23.W14",
+    "Object_24.W14",
+    "Object_26.W14",
+    "Object_27.W14",
+    "Object_28.W14",
+    "Object_32.W14",
+    "Object_33.W14",
+    "Object_34.W14",
+    "Object_35.W14",
+    "Object_36.W14",
+    "Object_37.W14",
+    "Object_38.W14",
+    "Object_39.W14",
+    "Object_40.W14",
+    "Object_41.W14",
+    "Object_42.W14",
+    "Object_10.W14",
+    "Object_11.W14",
+    "Object_14.W14",
+    "Object_5.W14",
+    "Object_6.W14"
+   ],
+   [
+    "Object_18.W15",
+    "Object_19.W15",
+    "Object_20.W15",
+    "Object_21.W15",
+    "Object_22.W15",
+    "Object_23.W15",
+    "Object_24.W15",
+    "Object_26.W15",
+    "Object_27.W15",
+    "Object_28.W15",
+    "Object_32.W15",
+    "Object_33.W15",
+    "Object_34.W15",
+    "Object_35.W15",
+    "Object_36.W15",
+    "Object_37.W15",
+    "Object_38.W15",
+    "Object_39.W15",
+    "Object_40.W15",
+    "Object_41.W15",
+    "Object_42.W15",
+    "Object_10.W15",
+    "Object_11.W15",
+    "Object_14.W15",
+    "Object_5.W15",
+    "Object_6.W15"
+   ],
+   [
+    "Object_18.W16",
+    "Object_19.W16",
+    "Object_20.W16",
+    "Object_21.W16",
+    "Object_22.W16",
+    "Object_23.W16",
+    "Object_24.W16",
+    "Object_26.W16",
+    "Object_27.W16",
+    "Object_28.W16",
+    "Object_32.W16",
+    "Object_33.W16",
+    "Object_34.W16",
+    "Object_35.W16",
+    "Object_36.W16",
+    "Object_37.W16",
+    "Object_38.W16",
+    "Object_39.W16",
+    "Object_40.W16",
+    "Object_41.W16",
+    "Object_42.W16",
+    "Object_10.W16",
+    "Object_11.W16",
+    "Object_14.W16",
+    "Object_5.W16",
+    "Object_6.W16"
+   ],
+   [
+    "Object_18.W17",
+    "Object_19.W17",
+    "Object_20.W17",
+    "Object_21.W17",
+    "Object_22.W17",
+    "Object_23.W17",
+    "Object_24.W17",
+    "Object_26.W17",
+    "Object_27.W17",
+    "Object_28.W17",
+    "Object_32.W17",
+    "Object_33.W17",
+    "Object_34.W17",
+    "Object_35.W17",
+    "Object_36.W17",
+    "Object_37.W17",
+    "Object_38.W17",
+    "Object_39.W17",
+    "Object_40.W17",
+    "Object_41.W17",
+    "Object_42.W17",
+    "Object_10.W17",
+    "Object_11.W17",
+    "Object_14.W17",
+    "Object_5.W17",
+    "Object_6.W17"
+   ],
+   [
+    "Object_18.W18",
+    "Object_19.W18",
+    "Object_20.W18",
+    "Object_21.W18",
+    "Object_22.W18",
+    "Object_23.W18",
+    "Object_24.W18",
+    "Object_26.W18",
+    "Object_27.W18",
+    "Object_28.W18",
+    "Object_32.W18",
+    "Object_33.W18",
+    "Object_34.W18",
+    "Object_35.W18",
+    "Object_36.W18",
+    "Object_37.W18",
+    "Object_38.W18",
+    "Object_39.W18",
+    "Object_40.W18",
+    "Object_41.W18",
+    "Object_42.W18",
+    "Object_10.W18",
+    "Object_11.W18",
+    "Object_14.W18",
+    "Object_5.W18",
+    "Object_6.W18"
+   ],
+   [
+    "Object_18.W19",
+    "Object_19.W19",
+    "Object_20.W19",
+    "Object_21.W19",
+    "Object_22.W19",
+    "Object_23.W19",
+    "Object_24.W19",
+    "Object_26.W19",
+    "Object_27.W19",
+    "Object_28.W19",
+    "Object_32.W19",
+    "Object_33.W19",
+    "Object_34.W19",
+    "Object_35.W19",
+    "Object_36.W19",
+    "Object_37.W19",
+    "Object_38.W19",
+    "Object_39.W19",
+    "Object_40.W19",
+    "Object_41.W19",
+    "Object_42.W19",
+    "Object_10.W19",
+    "Object_11.W19",
+    "Object_14.W19",
+    "Object_5.W19",
+    "Object_6.W19"
+   ],
+   [
+    "Object_18.W20",
+    "Object_19.W20",
+    "Object_20.W20",
+    "Object_21.W20",
+    "Object_22.W20",
+    "Object_23.W20",
+    "Object_24.W20",
+    "Object_26.W20",
+    "Object_27.W20",
+    "Object_28.W20",
+    "Object_32.W20",
+    "Object_33.W20",
+    "Object_34.W20",
+    "Object_35.W20",
+    "Object_36.W20",
+    "Object_37.W20",
+    "Object_38.W20",
+    "Object_39.W20",
+    "Object_40.W20",
+    "Object_41.W20",
+    "Object_42.W20",
+    "Object_10.W20",
+    "Object_11.W20",
+    "Object_14.W20",
+    "Object_5.W20",
+    "Object_6.W20"
+   ],
+   [
+    "Object_18.W21",
+    "Object_19.W21",
+    "Object_20.W21",
+    "Object_21.W21",
+    "Object_22.W21",
+    "Object_23.W21",
+    "Object_24.W21",
+    "Object_26.W21",
+    "Object_27.W21",
+    "Object_28.W21",
+    "Object_32.W21",
+    "Object_33.W21",
+    "Object_34.W21",
+    "Object_35.W21",
+    "Object_36.W21",
+    "Object_37.W21",
+    "Object_38.W21",
+    "Object_39.W21",
+    "Object_40.W21",
+    "Object_41.W21",
+    "Object_42.W21",
+    "Object_10.W21",
+    "Object_11.W21",
+    "Object_14.W21",
+    "Object_5.W21",
+    "Object_6.W21"
+   ],
+   [
+    "Object_18.W22",
+    "Object_19.W22",
+    "Object_20.W22",
+    "Object_21.W22",
+    "Object_22.W22",
+    "Object_23.W22",
+    "Object_24.W22",
+    "Object_26.W22",
+    "Object_27.W22",
+    "Object_28.W22",
+    "Object_32.W22",
+    "Object_33.W22",
+    "Object_34.W22",
+    "Object_35.W22",
+    "Object_36.W22",
+    "Object_37.W22",
+    "Object_38.W22",
+    "Object_39.W22",
+    "Object_40.W22",
+    "Object_41.W22",
+    "Object_42.W22",
+    "Object_10.W22",
+    "Object_11.W22",
+    "Object_14.W22",
+    "Object_5.W22",
+    "Object_6.W22"
+   ]
+  ],
+  "tur": [
+   -850.0,
+   1101.0,
+   908.0
+  ],
+  "gun": [
+   -895.0,
+   1605.0,
+   2150.0
+  ],
+  "matColor": {
+   "M60carc": [
+    76,
+    86,
+    56
+   ],
+   "M60will": [
+    76,
+    86,
+    56
+   ],
+   "M60base": [
+    70,
+    76,
+    54
+   ],
+   "M60tel": [
+    84,
+    82,
+    60
+   ],
+   "M60chan": [
+    54,
+    50,
+    44
+   ],
+   "M60gum": [
+    30,
+    30,
+    30
+   ],
+   "M60reji": [
+    58,
+    60,
+    48
+   ]
+  }
+ },
+ "t64": {
+  "_说明": "T-64 主战坦克（MirzaArrafiERV_45，Sketchfab 58321766e5b64399aa2679ca6f6da297，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树 T-64A / T-64B 原来借 T-90M，换成真 T-64。原模型单位毫米、车头朝 +Z（转半圈）；炮（Object_4，炮盾连炮管）、炮塔（Object_3）是单独的；6 对负重轮、主动轮、诱导轮、4 对托带轮和扭力臂、扭杆在一块（Object_5），按框把每个轮子拆出来；炮塔转轴按炮塔最低一圈量的中心",
+  "uid": "58321766e5b64399aa2679ca6f6da297",
+  "credit": "T-64 主战坦克：T-64 MBT [MAIN BATTLE TANK]，作者 Muhamad Mirza Arrafi（MirzaArrafiERV_45，https://sketchfab.com/3d-models/t-64-mbt-main-battle-tank-58321766e5b64399aa2679ca6f6da297），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "T-64 主战坦克",
+  "creditEn": "This work is based on \"T-64 MBT [MAIN BATTLE TANK]\" (https://sketchfab.com/3d-models/t-64-mbt-main-battle-tank-58321766e5b64399aa2679ca6f6da297) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组、按框把每个车轮拆出来、贴图缩到 1024",
+  "alias": [
+   "t64b",
+   "t64a"
+  ],
+  "rotZ": 180,
+  "scale": 0.001,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W01",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     333,
+     933
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W02",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     333,
+     933
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W03",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     -437,
+     163
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W04",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     -437,
+     163
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W05",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     -1331,
+     -731
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W06",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     -1331,
+     -731
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W07",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     -2076,
+     -1476
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W08",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     -2076,
+     -1476
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W09",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     -2908,
+     -2308
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W10",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     -2908,
+     -2308
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W11",
+    "box": [
+     1140,
+     1395,
+     40,
+     640,
+     -3738.5,
+     -3138.5
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W12",
+    "box": [
+     -1395,
+     -1140,
+     40,
+     640,
+     -3738.5,
+     -3138.5
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W13",
+    "box": [
+     1140,
+     1395,
+     410,
+     1020,
+     1100,
+     1710
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W14",
+    "box": [
+     -1395,
+     -1140,
+     410,
+     1020,
+     1100,
+     1710
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W15",
+    "box": [
+     970,
+     1480,
+     370,
+     1010,
+     -4300,
+     -3680
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W16",
+    "box": [
+     -1480,
+     -970,
+     370,
+     1010,
+     -4300,
+     -3680
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W17",
+    "box": [
+     1200,
+     1320,
+     770,
+     1030,
+     192.5,
+     452.5
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W18",
+    "box": [
+     -1320,
+     -1200,
+     770,
+     1030,
+     192.5,
+     452.5
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W19",
+    "box": [
+     1200,
+     1320,
+     770,
+     1030,
+     -798,
+     -538
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W20",
+    "box": [
+     -1320,
+     -1200,
+     770,
+     1030,
+     -798,
+     -538
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W21",
+    "box": [
+     1200,
+     1320,
+     770,
+     1030,
+     -2207,
+     -1947
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W22",
+    "box": [
+     -1320,
+     -1200,
+     770,
+     1030,
+     -2207,
+     -1947
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W23",
+    "box": [
+     1200,
+     1320,
+     770,
+     1030,
+     -3062,
+     -2802
+    ]
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W24",
+    "box": [
+     -1320,
+     -1200,
+     770,
+     1030,
+     -3062,
+     -2802
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Object_3"
+   ],
+   "Gun": [
+    "Object_4"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_5.W01"
+   ],
+   [
+    "Object_5.W02"
+   ],
+   [
+    "Object_5.W03"
+   ],
+   [
+    "Object_5.W04"
+   ],
+   [
+    "Object_5.W05"
+   ],
+   [
+    "Object_5.W06"
+   ],
+   [
+    "Object_5.W07"
+   ],
+   [
+    "Object_5.W08"
+   ],
+   [
+    "Object_5.W09"
+   ],
+   [
+    "Object_5.W10"
+   ],
+   [
+    "Object_5.W11"
+   ],
+   [
+    "Object_5.W12"
+   ],
+   [
+    "Object_5.W13"
+   ],
+   [
+    "Object_5.W14"
+   ],
+   [
+    "Object_5.W15"
+   ],
+   [
+    "Object_5.W16"
+   ],
+   [
+    "Object_5.W17"
+   ],
+   [
+    "Object_5.W18"
+   ],
+   [
+    "Object_5.W19"
+   ],
+   [
+    "Object_5.W20"
+   ],
+   [
+    "Object_5.W21"
+   ],
+   [
+    "Object_5.W22"
+   ],
+   [
+    "Object_5.W23"
+   ],
+   [
+    "Object_5.W24"
+   ]
+  ],
+  "tur": [
+   2.0,
+   1311.0,
+   -1527.0
+  ],
+  "gun": [
+   0.0,
+   1621.5,
+   -450.0
+  ]
+ },
+ "type74": {
+  "_说明": "74 式主战坦克（jonathanto99，Sketchfab da308db0300c49f1a65ce1104cbc59cc，CC-BY-4.0）；用户 11-25「需要模型自己找」：科技树 74 式、74 式改原来借 M10 / 豹 1，换成真 74 式。原模型单位毫米、比真车大（宽 3.72 → 真车 3.18 米），按 0.00086 缩；车头朝 +Z（转半圈）；没有贴图、网格按材质分块、车体炮塔混在一起：先按框把炮管、炮盾拆出来，再把车顶甲板以上、炮塔范围里的整块零件归炮塔；5 对负重轮、诱导轮、主动轮散在十几块网格里，按每个轮子的框拆出来；车身材质（发白）改成陆上自卫队的橄榄绿，炮塔侧面的国旗贴花改成车身色",
+  "uid": "da308db0300c49f1a65ce1104cbc59cc",
+  "credit": "74 式主战坦克：Type 74 Main Battle Tank - Toshueyi，作者 jonathanto99（https://sketchfab.com/3d-models/type-74-main-battle-tank-toshueyi-da308db0300c49f1a65ce1104cbc59cc），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "74 式主战坦克",
+  "creditEn": "This work is based on \"Type 74 Main Battle Tank - Toshueyi\" (https://sketchfab.com/3d-models/type-74-main-battle-tank-toshueyi-da308db0300c49f1a65ce1104cbc59cc) by jonathanto99 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮、炮塔、每个车轮拆出来、车身材质改成橄榄绿、去掉国旗贴花",
+  "alias": [
+   "type74",
+   "type74g"
+  ],
+  "rotZ": 180,
+  "scale": 0.00086,
+  "texMax": 1024,
+  "dedupe": true,
+  "split": [
+   {
+    "from": [
+     "Object_25",
+     "Object_26",
+     "Object_21",
+     "Object_32",
+     "Object_31",
+     "Object_27",
+     "Object_24",
+     "Object_14",
+     "Object_2",
+     "Object_17",
+     "Object_30"
+    ],
+    "to": "Gun",
+    "box": [
+     -270,
+     20,
+     950,
+     1240,
+     2420,
+     6600
+    ]
+   },
+   {
+    "from": [
+     "Object_14",
+     "Object_17",
+     "Object_18",
+     "Object_21",
+     "Object_22",
+     "Object_24",
+     "Object_26",
+     "Object_27",
+     "Object_30",
+     "Object_31",
+     "Object_32",
+     "Object_33",
+     "Object_3",
+     "Object_4",
+     "Object_6"
+    ],
+    "to": "Turret",
+    "box": [
+     -1560,
+     1460,
+     1060,
+     2300,
+     -2050,
+     2900
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W01",
+    "box": [
+     1140,
+     1440,
+     -800,
+     80,
+     1852.5,
+     2852.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W02",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -800,
+     80,
+     1852.5,
+     2852.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W03",
+    "box": [
+     1140,
+     1440,
+     -800,
+     80,
+     803.5,
+     1803.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W04",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -800,
+     80,
+     803.5,
+     1803.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W05",
+    "box": [
+     1140,
+     1440,
+     -800,
+     80,
+     -245.5,
+     754.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W06",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -800,
+     80,
+     -245.5,
+     754.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W07",
+    "box": [
+     1140,
+     1440,
+     -800,
+     80,
+     -1294.5,
+     -294.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W08",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -800,
+     80,
+     -1294.5,
+     -294.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W09",
+    "box": [
+     1140,
+     1440,
+     -800,
+     80,
+     -2343.5,
+     -1343.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W10",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -800,
+     80,
+     -2343.5,
+     -1343.5
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W11",
+    "box": [
+     1140,
+     1440,
+     -460,
+     230,
+     2990,
+     3700
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W12",
+    "box": [
+     -1757.0,
+     -1457.0,
+     -460,
+     230,
+     2990,
+     3700
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W13",
+    "box": [
+     1000,
+     1180,
+     -560,
+     240,
+     -3020,
+     -2230
+    ]
+   },
+   {
+    "from": [
+     "Object_17",
+     "Object_18",
+     "Object_19",
+     "Object_20",
+     "Object_21",
+     "Object_26",
+     "Object_28",
+     "Object_29",
+     "Object_30",
+     "Object_31",
+     "Object_33",
+     "Object_34"
+    ],
+    "to": "W14",
+    "box": [
+     -1497.0,
+     -1317.0,
+     -560,
+     240,
+     -3020,
+     -2230
+    ]
+   }
+  ],
+  "groups": {
+   "Turret": [
+    "Object_25"
+   ]
+  },
+  "wheels": [
+   [
+    "Object_17.W01",
+    "Object_18.W01",
+    "Object_19.W01",
+    "Object_20.W01",
+    "Object_21.W01",
+    "Object_26.W01",
+    "Object_28.W01",
+    "Object_29.W01",
+    "Object_30.W01",
+    "Object_31.W01",
+    "Object_33.W01",
+    "Object_34.W01"
+   ],
+   [
+    "Object_17.W02",
+    "Object_18.W02",
+    "Object_19.W02",
+    "Object_20.W02",
+    "Object_21.W02",
+    "Object_26.W02",
+    "Object_28.W02",
+    "Object_29.W02",
+    "Object_30.W02",
+    "Object_31.W02",
+    "Object_33.W02",
+    "Object_34.W02"
+   ],
+   [
+    "Object_17.W03",
+    "Object_18.W03",
+    "Object_19.W03",
+    "Object_20.W03",
+    "Object_21.W03",
+    "Object_26.W03",
+    "Object_28.W03",
+    "Object_29.W03",
+    "Object_30.W03",
+    "Object_31.W03",
+    "Object_33.W03",
+    "Object_34.W03"
+   ],
+   [
+    "Object_17.W04",
+    "Object_18.W04",
+    "Object_19.W04",
+    "Object_20.W04",
+    "Object_21.W04",
+    "Object_26.W04",
+    "Object_28.W04",
+    "Object_29.W04",
+    "Object_30.W04",
+    "Object_31.W04",
+    "Object_33.W04",
+    "Object_34.W04"
+   ],
+   [
+    "Object_17.W05",
+    "Object_18.W05",
+    "Object_19.W05",
+    "Object_20.W05",
+    "Object_21.W05",
+    "Object_26.W05",
+    "Object_28.W05",
+    "Object_29.W05",
+    "Object_30.W05",
+    "Object_31.W05",
+    "Object_33.W05",
+    "Object_34.W05"
+   ],
+   [
+    "Object_17.W06",
+    "Object_18.W06",
+    "Object_19.W06",
+    "Object_20.W06",
+    "Object_21.W06",
+    "Object_26.W06",
+    "Object_28.W06",
+    "Object_29.W06",
+    "Object_30.W06",
+    "Object_31.W06",
+    "Object_33.W06",
+    "Object_34.W06"
+   ],
+   [
+    "Object_17.W07",
+    "Object_18.W07",
+    "Object_19.W07",
+    "Object_20.W07",
+    "Object_21.W07",
+    "Object_26.W07",
+    "Object_28.W07",
+    "Object_29.W07",
+    "Object_30.W07",
+    "Object_31.W07",
+    "Object_33.W07",
+    "Object_34.W07"
+   ],
+   [
+    "Object_17.W08",
+    "Object_18.W08",
+    "Object_19.W08",
+    "Object_20.W08",
+    "Object_21.W08",
+    "Object_26.W08",
+    "Object_28.W08",
+    "Object_29.W08",
+    "Object_30.W08",
+    "Object_31.W08",
+    "Object_33.W08",
+    "Object_34.W08"
+   ],
+   [
+    "Object_17.W09",
+    "Object_18.W09",
+    "Object_19.W09",
+    "Object_20.W09",
+    "Object_21.W09",
+    "Object_26.W09",
+    "Object_28.W09",
+    "Object_29.W09",
+    "Object_30.W09",
+    "Object_31.W09",
+    "Object_33.W09",
+    "Object_34.W09"
+   ],
+   [
+    "Object_17.W10",
+    "Object_18.W10",
+    "Object_19.W10",
+    "Object_20.W10",
+    "Object_21.W10",
+    "Object_26.W10",
+    "Object_28.W10",
+    "Object_29.W10",
+    "Object_30.W10",
+    "Object_31.W10",
+    "Object_33.W10",
+    "Object_34.W10"
+   ],
+   [
+    "Object_17.W11",
+    "Object_18.W11",
+    "Object_19.W11",
+    "Object_20.W11",
+    "Object_21.W11",
+    "Object_26.W11",
+    "Object_28.W11",
+    "Object_29.W11",
+    "Object_30.W11",
+    "Object_31.W11",
+    "Object_33.W11",
+    "Object_34.W11"
+   ],
+   [
+    "Object_17.W12",
+    "Object_18.W12",
+    "Object_19.W12",
+    "Object_20.W12",
+    "Object_21.W12",
+    "Object_26.W12",
+    "Object_28.W12",
+    "Object_29.W12",
+    "Object_30.W12",
+    "Object_31.W12",
+    "Object_33.W12",
+    "Object_34.W12"
+   ],
+   [
+    "Object_17.W13",
+    "Object_18.W13",
+    "Object_19.W13",
+    "Object_20.W13",
+    "Object_21.W13",
+    "Object_26.W13",
+    "Object_28.W13",
+    "Object_29.W13",
+    "Object_30.W13",
+    "Object_31.W13",
+    "Object_33.W13",
+    "Object_34.W13"
+   ],
+   [
+    "Object_17.W14",
+    "Object_18.W14",
+    "Object_19.W14",
+    "Object_20.W14",
+    "Object_21.W14",
+    "Object_26.W14",
+    "Object_28.W14",
+    "Object_29.W14",
+    "Object_30.W14",
+    "Object_31.W14",
+    "Object_33.W14",
+    "Object_34.W14"
+   ]
+  ],
+  "matColor": {
+   "t74tanque": [
+    84,
+    88,
+    60
+   ],
+   "t74canion": [
+    84,
+    88,
+    60
+   ],
+   "t74japo2": [
+    84,
+    88,
+    60
+   ],
+   "t74japo3": [
+    84,
+    88,
+    60
+   ]
+  },
+  "tur": [
+   -124.5,
+   927.0,
+   550.0
+  ],
+  "gun": [
+   -124.5,
+   1095.0,
+   2470.0
+  ]
+ },
+ "leclerc": {
+  "_说明": "勒克莱尔（andertan，Sketchfab 84a0918d2f534c2eb003ab3cb3029c03，CC-BY-4.0，作者自己做的，游戏里的歼-20 / 歼-16 也是他的）；用户 11-24 夜。原模型车头朝 +X（转 90°），车体长 5.92 → 真车 6.88 米；炮塔节点 turret_2 下面是炮塔，Cylinder.086_1 下面是炮管；车轮和车体在一块里",
+  "uid": "84a0918d2f534c2eb003ab3cb3029c03",
+  "title": "勒克莱尔主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转 90° 朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+  "alias": [
+   "leclerc"
+  ],
+  "rotZ": 90,
+  "length": 6.88,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_25",
+    "Object_29",
+    "Object_30",
+    "Object_28",
+    "Object_27",
+    "Object_26"
+   ],
+   "Gun": [
+    "Object_35",
+    "Object_32",
+    "Object_36",
+    "Object_34",
+    "Object_33"
+   ]
+  },
+  "decimate": {
+   "Object_5": 0.35,
+   "Object_6": 0.35,
+   "Object_23": 0.55
+  },
+  "credit": "勒克莱尔主战坦克：Char Leclerc，作者 andertan（https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"Char Leclerc\" (https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03) by andertan licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "gun": [
+   1.8,
+   1.69,
+   -0.05
+  ]
+ },
+ "t72b3": {
+  "_说明": "T-72B3（MirzaArrafiERV_45，Sketchfab dfe130dfce724c30958cec51f2bd86b7，CC-BY-4.0，作者自己做的，游戏里带内饰的 M1A1 也是他的）；用户 11-24 夜。原模型车头朝 −Z（不用转），按材质分块：炮塔 Object_10、炮塔栅栏 Object_15、座圈一圈 Object_6、天线 Object_8，炮管 Object_5；车体装甲 Object_4 长 7.11 → 真车 6.95 米",
+  "uid": "dfe130dfce724c30958cec51f2bd86b7",
+  "title": "T-72B3 主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+  "alias": [
+   "t72b3"
+  ],
+  "rotZ": 0,
+  "length": 6.95,
+  "lengthRef": [
+   "Object_4"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_10",
+    "Object_15",
+    "Object_6",
+    "Object_8",
+    "Object_7"
+   ],
+   "Gun": [
+    "Object_5"
+   ]
+  },
+  "decimate": {
+   "Object_10": 0.6,
+   "Object_14": 0.5,
+   "Object_4": 0.6,
+   "Object_15": 0.5,
+   "Object_17": 0.5,
+   "Object_12": 0.5
+  },
+  "credit": "T-72B3 主战坦克：T-72B3 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"T-72B3 Main Battle Tank\" (https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "gun": [
+   0.0,
+   0.98,
+   -0.55
+  ]
+ }
 }

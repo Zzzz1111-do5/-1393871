@@ -644,7 +644,20 @@ function Round.init(G)
       killer.bot.k += 1
       killer.bot.s += Config.Score.kill
     end
-    if kname then G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName) end
+    if kname then
+      -- 战雷式（Config.Wt.noInfantry）：击杀栏写双方开的车——「玩家（车）击毁了 玩家（车）」，车名是科技树里的（Tech.lua 出击时记 P.treeCur）
+      local vk = (Config.Wt or {}).noInfantry and P.treeCur or nil
+      if vk and G.wtFeedOn and G.wtFeedOn() then
+        -- 车被打掉那一下 WtMatch.lua 已经发了战雷式击杀栏（WtBattle：谁 [车] 击毁 / 殉爆 / 烧毁 谁 [车]，车名同样是科技树里的）：这里不再写一遍
+      elseif vk then
+        local K = killer and killer.by
+        local kv = K and K.vehicle and K.vehicle.treeKey
+        if kv then G.msgAll("feed", "ui.killedVeh", kname, { k = "tree." .. kv }, P.pl.DisplayName, { k = "tree." .. vk })
+        else G.msgAll("feed", "ui.killedVeh2", kname, P.pl.DisplayName, { k = "tree." .. vk }) end
+      else
+        G.msgAll("feed", "ui.killed", kname, P.pl.DisplayName)
+      end
+    end
     return killer, kname
   end
   G.creditDeath = creditDeath
@@ -744,9 +757,15 @@ function Round.init(G)
   end
 
   -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
-  function G.ACT.deploy(P, choice, spawnId)
+  -- after：生出来以后接着做的（只有服务器自己调的时候给：科技树出击 Tech.lua 用它把人塞进车里；客户端发过来的参数里不会有函数）
+  function G.ACT.deploy(P, choice, spawnId, after)
     if R.phase ~= "battle" and R.phase ~= "prep" then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
+    -- 战雷式（Config.Wt.noInfantry）：不能当步兵出去，只能从机库的出击阵容里挑车（Tech.lua deployVeh 自己调这里、带 after）
+    if (Config.Wt or {}).noInfantry and type(after) ~= "function" and not G.allowInfantry then
+      G.msg(P.pl, "bad", "tree.useHangar")
+      return
+    end
     local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice, P)
     if not kit then return end
     local sp = nil
@@ -762,7 +781,7 @@ function Round.init(G)
     P.kit = kit
     P.spawnId = spawnId
     P.spawnCF = spawnCF(P, sp)
-    P.after = nil
+    P.after = (type(after) == "function") and after or nil
     if sp.kind == "beach" and G.boardBoat then
       P.spawnCF, P.after = G.boardBoat(P, sp.beach)
     elseif sp.kind == "para" and G.paraDrop then
@@ -1168,7 +1187,7 @@ function Round.init(G)
     R.tickets = math.max(0, (R.tickets or 0) - 1)
     if R.tickets == 50 or R.tickets == 20 then G.msgAll("center", "ui.ticketsLow", R.tickets) end
   end
-  G.on("died", function(P) ticketLoss(P.team) end)
+  G.on("died", function(P) if not P.inTest then ticketLoss(P.team) end end)   -- 试驾场（Tech.lua）里阵亡不扣兵力
   G.on("botDied", function(B) ticketLoss(B.team) end)
 
   finish = function(winner)
@@ -1182,6 +1201,7 @@ function Round.init(G)
       G.addScore(P, (P.team == winner) and Config.Score.win or Config.Score.lose)
       if not best or P.score > best.score then best = P end
       if G.awardCoins then G.try("结算金币", G.awardCoins, P, P.team == winner) end   -- 先发金币再存档（Economy.lua）
+      if G.treeAward then G.try("结算研究点", G.treeAward, P, P.team == winner) end   -- 科技树研究点（Tech.lua），也在存档前
       if G.awardXp then G.try("结算经验", G.awardXp, P, P.team == winner) end
     end
     R.mvp = best and best.pl.DisplayName or nil

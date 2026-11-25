@@ -151,7 +151,24 @@ function Night.init(G)
   me.CharacterAdded:Connect(onChar)
   if me.Character then onChar(me.Character) end
   local wasAir = false
+  local wasNight = nil
   RunService.Heartbeat:Connect(function()
+    -- 昼夜更替（11-25）：活着的时候天黑下来提示按 N；天亮了夜视自己收起（白天开着一片过曝）
+    if G.isNight then
+      local nt = G.isNight()
+      if wasNight ~= nil and nt ~= wasNight then
+        local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+          if nt and not on then
+            showHint(10)
+          elseif not nt and on then
+            setOn(false)
+            if G.toast then G.toast(G.T and G.T("nvg.dawn") or "天亮了：夜视仪收起", "info") end
+          end
+        end
+      end
+      wasNight = nt
+    end
     if on then hideHint()
     elseif hintUntil ~= 0 and os.clock() > hintUntil then hideHint() end
     if hideAt and os.clock() > hideAt then hint.Visible, hideAt = false, nil end
@@ -385,6 +402,9 @@ function Night.init(G)
   --   4000 格内亮四分之一（按黄金分割挑，跑道灯照样连成线，只是稀一点），再远的关掉（霓虹灯块本身和泛光还在）；
   --   画面卡（G.perfK 低）距离一起缩；同时亮着的超过 GLOW_CAP 就再缩一点。闪烁的灯灭的那一下也关着（下面 anim 用 glowDark）
   local GLOW_CAP = 150
+  -- 昼夜更替（11-25）：天亮以后地图上的灯（光晕、点光源、聚光灯）都关掉——白天一圈圈彩色光晕浮在空中很怪，几百盏灯也白费显卡；黄昏再打开
+  local lit = true
+  local function dayNow() return G.dayK ~= nil and G.dayK() > 0.55 end
   local glows, glowSeen, glowDark, glowAllow = {}, {}, {}, {}   -- glowSeen[光晕] = 它的记录
   local glowScale, glowAcc = 1, 0
   local function addGlow(g)
@@ -392,13 +412,25 @@ function Night.init(G)
     local p = g.Parent
     if not (p and p:IsA("BasePart")) then return end
     local i = #glows + 1
-    glows[i] = { g = g, p = p, r = (i * 0.6180339887) % 1, on = g.Enabled }
+    glows[i] = { g = g, p = p, r = (i * 0.6180339887) % 1, on = g.Enabled, blink = p:GetAttribute("Anim") == "blink" }
     glowSeen[g] = glows[i]
+    if not lit then   -- 白天流进来 / 新摆的灯：先关着（闪的灯由下面的 anim 管）
+      local L = p:FindFirstChildWhichIsA("Light")
+      if L and not glows[i].blink then L.Enabled = false end
+    end
   end
   local function stepGlows()
     local cam = workspace.CurrentCamera
     if not cam or #glows == 0 then return end
     local cp = cam.CFrame.Position
+    local day = dayNow()
+    if lit == day then   -- 天亮 / 天黑：灯一起开关（只在变的那一下写）
+      lit = not day
+      for _, x in ipairs(glows) do
+        local L = x.p.Parent and x.p:FindFirstChildWhichIsA("Light")
+        if L and not x.blink then L.Enabled = lit end
+      end
+    end
     local k = math.clamp(G.perfK or 1, 0.55, 1.2) / glowScale
     local d1, d2, d3 = 450 * k, 1100 * k, 4000 * k   -- 最远一档原来 2400（视野改成无限远以后远处的灯一截就没了）；亮着的太多照样按 GLOW_CAP 往回缩
     local n, j = 0, 0
@@ -409,7 +441,7 @@ function Night.init(G)
         glows[j] = x
         local dv = x.p.CFrame.Position - cp   -- CFrame.Position：跟 Position 一样，测试台也认
         local dd = dv:Dot(dv)
-        local allow = dd < d1 * d1 or (dd < d2 * d2 and x.r < 0.5) or (dd < d3 * d3 and x.r < 0.25)
+        local allow = (dd < d1 * d1 or (dd < d2 * d2 and x.r < 0.5) or (dd < d3 * d3 and x.r < 0.25)) and lit
         glowAllow[x.g] = allow
         if allow then n += 1 end
         local want = allow and not glowDark[x.g]
@@ -483,7 +515,7 @@ function Night.init(G)
         anim[#anim] = nil
       else
         if x.a == "blink" then
-          local lit = ((t * x.spd) % 1) < 0.16
+          local lit = lit and ((t * x.spd) % 1) < 0.16   -- 白天不闪（昼夜更替，见 stepGlows）
           if x.lit ~= lit then
             x.lit = lit
             x.p.Transparency = lit and 0 or 0.85

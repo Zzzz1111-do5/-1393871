@@ -354,7 +354,8 @@ function Air.init(G)
         if D then kill(D) end
         for _, Q in ipairs(self.pass) do kill(Q) end
         self.pass = {}
-        if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = "veh." .. self.def.id }) end
+        local nk = self.treeKey and ("tree." .. self.treeKey) or ("veh." .. self.def.id)   -- 科技树出的飞机写科技树里的名字
+        if src and src.P and G.P[src.P.pl] == src.P then G.msg(src.P.pl, "kill", "ui.vehKilled", { k = nk }) end
         for i, x in ipairs(aircraft) do if x == self then table.remove(aircraft, i) break end end
       end)
       task.delay(4, function() G.removeEnt(self) end)
@@ -367,6 +368,16 @@ function Air.init(G)
 
   -- 停在停机位上（cf 是机身中心：地面 / 甲板 + 起落架高），挂载照挂载界面选的（没给就按第一套预设）；
   --   生成的人 30 秒内独占；没人上 90 秒收走（不算冷却）
+  -- 空中出生（战雷街机，Tech.lua）：离地、收起落架、顺机头带 speed 的初速（客户端接管时照这个速度飞，不会一出来就失速）
+  function G.spawnAircraftAir(team, id, cf, load, P, fuel, speed)
+    local d = AD.get(id)
+    if not d then return nil end
+    local e = newAircraft(team, id, cf, nil, (type(load) == "table") and load or AD.presetLoad(d), cf.LookVector * (speed or 0), false, fuel)
+    e.home = "pad"
+    e.emptyAt = now()
+    e.resP, e.resUntil = P, now() + 30
+    return e
+  end
   function G.spawnAircraft(team, id, cf, load, P, fuel)
     local d = AD.get(id)
     if not d then return nil end
@@ -978,7 +989,8 @@ function Air.init(G)
     if e and e.air then
       if not e.alive then return nil end
       return { id = e.id, m = e.def.id, air = true, pilot = e.driver == P, load = e.load, stores = e.stores, gun = e.gunAmmo, flares = e.flares, home = e.home,
-        ground = e.onGround == true, uav = (P.remote == e) or nil, fuel = e.fuel, fuelX = e.fuelX }
+        ground = e.onGround == true, uav = (P.remote == e) or nil, fuel = e.fuel, fuelX = e.fuelX,
+        v = (not e.onGround and e.vel and e.vel.Magnitude > 1) and e.vel or nil }   -- 空中出生的初速（Fly.lua begin 接着这个速度飞）
     end
     if vehState0 then return vehState0(P) end
     return nil

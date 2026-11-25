@@ -44,6 +44,13 @@ R.run(1)
 local P, PO = G.P[me], G.P[other]
 local C = T.C
 check(C ~= nil and C.S ~= nil, "客户端收到了服务器状态")
+-- 昼夜更替（11-25 打开，B 的 DayClock.lua）：测试用 workspace 属性 DayFix 把钟点钉在某一点（2.3 半夜、12.5 正午前后），下面测夜视、天亮收起、灯
+--   （D 原来按 Config.DayNight.period 拨 DayT0；合并后钟点按 DayClock 走，改成钉 DayFix）
+local function setClock(c)
+  R.workspace:SetAttribute("DayFix", c)
+  R.run(0.5)
+end
+setClock(2.3)
 
 if side == "def" then
   print("① 守方在营地出生，走到车场的坦克生成点按 E 生成，再走过去坐上")
@@ -88,8 +95,8 @@ if side == "def" then
   local hint = hintGui and hintGui:FindFirstChild("Hint")
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
-  -- 锁定晚上（用户 11-18：把白天模式去掉）：一直是半夜；出生自动开夜视（全屏调色、没有镜筒框），开着就不提示「按 N」；按 N 关掉、再按又开
-  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("夜里（测试把钟点钉在半夜：%.1f）", lighting.ClockTime or -1))
+  -- 夜里出生（测试把钟点钉在半夜）：出生自动开夜视（全屏调色、没有镜筒框），开着就不提示「按 N」；按 N 关掉、再按又开
+  check(C.isNight and C.isNight() and (lighting.ClockTime < 5 or lighting.ClockTime > 20), string.format("夜里（钟点 %.1f）", lighting.ClockTime or -1))
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生自动开夜视：全屏调色、没有镜筒框、不提示「按 N」")
   T.tap(Enum.KeyCode.N)
   R.run(1)
@@ -97,6 +104,23 @@ if side == "def" then
   T.tap(Enum.KeyCode.N)
   R.run(1)
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 又开了")
+  -- 昼夜更替：天亮了夜视自己收起；天黑下来提示按 N（不自己开）；白天地图上的灯、光晕都关着
+  R.run(0.5)
+  local lit0 = C.glowLit or 0   -- 拨到白天前（夜里）镜头附近亮着几个：附近本来没有灯，天黑回来也不会亮
+  setClock(12.5)
+  check(C.isNight and not C.isNight() and lighting.ClockTime > 10 and lighting.ClockTime < 16, string.format("拨到白天（钟点 %.1f）", lighting.ClockTime or -1))
+  check(C.nvgOn and not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "天亮了：夜视自己收起")
+  R.run(1)
+  check((C.glowLit or 0) == 0, "白天地图上的光晕都关着（亮着 " .. tostring(C.glowLit) .. " 个）")
+  setClock(2.3)
+  R.run(0.5)
+  check(C.isNight() and not C.nvgOn() and hint and hint.Visible, "天黑下来：夜视没自己开，屏幕下方提示按 N")
+  R.run(3)
+  local nGlow = C.glowCount and C.glowCount() or 0
+  check(lit0 == 0 or (C.glowLit or 0) > 0, string.format("天黑了光晕又亮了（%s 个，白天前 %d 个，全图登记 %d 个）", tostring(C.glowLit), lit0, nGlow))
+  T.tap(Enum.KeyCode.N)
+  R.run(1)
+  check(C.nvgOn(), "按 N 打开夜视")
   -- 用户：模型的实体和模型对不上——挡人改成客户端按看得见的零件（离人近的才开）
   local v0
   if C.views and e0 then for em, vv in pairs(C.views) do if em == e0.model then v0 = vv end end end
@@ -153,6 +177,9 @@ if side == "def" then
   check(hi - lo > 0.05, string.format("负重轮各自上下（%.2f ～ %.2f 格）", lo, hi))
 
   print("③ 瞄准镜（用户：Shift 开镜，镜里写着按 V 切换光电模式、按 M 释放烟雾弹）：默认夜视 → 热成像白热 → 黑热 → 昼光")
+  setClock(2.3)   -- 昼夜更替：前面测了天亮、天黑，这一段要在夜里（镜里默认热成像、夜视仪让出画面）
+  R.run(0.5)
+  if C.nvgOn and not C.nvgOn() then T.tap(Enum.KeyCode.N) R.run(1) end   -- 上一段跑了几分钟，钟点可能走过了天亮（夜视自己收起）：像玩家一样再按 N
   T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
   local cc = C.sightCC

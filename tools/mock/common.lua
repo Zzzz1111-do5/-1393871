@@ -19,6 +19,8 @@ function T.boot()
   for _, s in ipairs(T.scripts.server) do R.runScript(s, "server") end
   R.run(0.5)
   T.G = R.Gs.server
+  -- 战雷式「玩家不步行」（Config.Wt.noInfantry，11-25）：老测试都是先当步兵出生再上车，默认照旧能当步兵；测机库、科技树的测试在 boot 前设 T.wtMode = true
+  if not T.wtMode then T.G.allowInfantry = true end
   -- 射线打地形用项目自己的高度函数
   R.terrainHeight = T.G.Map.height
   return T.G
@@ -48,6 +50,7 @@ function T.join(name, uid, client)
   if client then
     T.C = R.Gs.client
     T.C.perfFixed = true   -- 自动画质不调（模拟器的帧率不是真的）
+    if not T.wtMode then T.C.forceInfantry = true end   -- 老测试：照旧是步兵部署页（不盖机库）
     -- 客户端每帧的步骤出错只显示在界面的红条上：也记进报错
     local se = T.C.showError
     if se then T.C.showError = function(m) R.errors[#R.errors + 1] = "客户端：" .. tostring(m) return se(m) end end

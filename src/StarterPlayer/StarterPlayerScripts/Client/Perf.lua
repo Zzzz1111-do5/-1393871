@@ -77,7 +77,9 @@ function Perf.init(G)
     if (dt or 0) > worst then worst = dt end
     if acc < 0.5 then return end
     local T, n, a, w = G.perfT or {}, frames, acc, worst
+    local MX = G.perfMax or {}
     G.perfT = {}
+    G.perfMax = {}
     frames, acc, worst = 0, 0, 0
     local puts = G.viewPuts or 0
     local dPuts = puts - puts0
@@ -103,6 +105,15 @@ function Perf.init(G)
       end
     end
     if #part > 0 then lines[#lines + 1] = "  " .. table.concat(part, " · ") end
+    -- 尖峰：这半秒里单次最长的三个（一阵一阵卡的时候看这一行；用户 11-25）
+    local spikes = {}
+    for k, v in pairs(MX) do spikes[#spikes + 1] = { k = NAMES[k] or k, v = v * 1000 } end
+    table.sort(spikes, function(x, y) return x.v > y.v end)
+    if spikes[1] and spikes[1].v >= 2 then
+      local sp = {}
+      for i = 1, math.min(3, #spikes) do sp[#sp + 1] = spikes[i].k .. " " .. f1(spikes[i].v) end
+      lines[#lines + 1] = L("单次最长 ", "spikes ") .. table.concat(sp, " · ") .. L(" 毫秒", " ms")
+    end
     -- 引擎
     local inst, prim, mov, cont = stat("InstanceCount"), stat("PrimitivesCount"), stat("MovingPrimitivesCount"), stat("ContactsCount")
     if inst then

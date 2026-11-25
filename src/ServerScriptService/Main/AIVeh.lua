@@ -98,16 +98,32 @@ function AIVeh.init(G)
   end
   local function maxFor(team)
     local a = levelAi(team)
-    return (a and a.max) or MAX
+    if a and a.max then return a.max end
+    local W = Config.Wt or {}
+    if W.on and W.aiMax and not G.pve then   -- 战雷式（用户 11-25「都要做」）：真人不够一队 teamSize 个，电脑开车补，每队最多 aiMax 辆
+      local real = 0
+      for _, P in pairs(G.P) do if P.team == team and P.pl then real += 1 end end
+      return math.max(MAX, math.min(W.aiMax, (W.teamSize or 8) - real))
+    end
+    return MAX
   end
   local function usable(id)
     local d = VD.get(id)
     return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
   end
+  local pickTree = nil   -- 这次挑中的科技树那一项（setup 记到车上）
   local function pickModel(team)
     local a = levelAi(team)
     local tankK = (a and a.tank) or 0.67
     local cat = (math.random() < tankK) and "tank" or "apc"
+    pickTree = nil
+    if not a and G.treePickAi and (Config.Wt or {}).on and not G.pve then   -- 战雷式：按这一局的战斗等级从科技树挑，车上写科技树里的名字
+      local it = G.treePickAi(team, cat, usable) or G.treePickAi(team, (cat == "tank") and "apc" or "tank", usable)
+      if it then
+        pickTree = it
+        return it.play
+      end
+    end
     local ids = {}
     if a and a.ids then   -- 关卡点名的型号：先挑这一类的，这一类没有就全挑
       for _, id in ipairs(a.ids) do if usable(id) and VD.get(id).cat == cat then table.insert(ids, id) end end
@@ -141,8 +157,17 @@ function AIVeh.init(G)
 
   local function setup(e, team, goal, home, state)
     serial += 1
+    local tit = pickTree
+    pickTree = nil
+    local nm = string.upper(e.def.id)
+    if tit then   -- 科技树挑的：车上记着科技树的键（名牌、击毁提示、击杀栏写它的名字；借来的型号也写自己的名字）
+      e.treeKey = tit.key
+      e.model:SetAttribute("TreeKey", tit.key)
+      nm = tit.en or nm
+    end
+    e.counts = 1   -- 占点算数（Ents.countAt；跟机器人一样按 botW 折算）
     e.ai = { state = state, goal = goal.id, land = goal.land, home = home, hold = nil, tgt = nil, seekT = 0, aimT = 0, stuckT = 0, lastP = e.root.CFrame.Position,
-      sideT = 0, holdT = 0, crew = { team = team, name = string.upper(e.def.id) .. "-" .. serial, k = 0, d = 0, s = 0, c = 0 } }
+      sideT = 0, holdT = 0, crew = { team = team, name = nm .. "-" .. serial, k = 0, d = 0, s = 0, c = 0 } }
     e.emptyAt, e.resP = nil, nil
     e.model:SetAttribute("Driver", -1)   -- 有人开着：客户端不出「E 上车」、不标「可驾驶」
     e.model:SetAttribute("AI", true)

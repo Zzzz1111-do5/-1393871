@@ -549,7 +549,7 @@ function WtHud.init(G)
     if xrDir.Magnitude < 0.1 then xrDir = V3(0, 0, 1) end
     xrDir = xrDir.Unit
     xrSpin = anim and math.rad(50) or 0
-    local nm = T("veh." .. m.veh)
+    local nm = (m.tk and T("tree." .. m.tk) ~= "tree." .. m.tk) and T("tree." .. m.tk) or T("veh." .. m.veh)   -- 科技树出的车写科技树里的名字
     xTitle.Text = T("wt.xrTitle", nm, m.dist or 0)
     xr.Visible = true
     xrUntil = os.clock() + (anim and (m.kill and 7 or 6.2) or (m.kill and 5.5 or 4.5))
@@ -740,6 +740,7 @@ function WtHud.init(G)
       say(T("wt.fixed"), OK, 2)
     elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
       local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
+      if m.kk and T("tree." .. m.kk) ~= "tree." .. m.kk then kv = T("tree." .. m.kk) end   -- 打你的是科技树出的车：写科技树里的名字
       say(kv and T("wt.killedBy", m.from or "?", kv) or T("wt.killedBy2", m.from or "?"), DEAD, 5)
       if m.xr then G.try_(showXray, m) end
     elseif op == "wtaHit" then

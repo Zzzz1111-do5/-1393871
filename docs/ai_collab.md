@@ -76,6 +76,41 @@
      - 玩家传到远处前 `G.streamAround(pl, 位置)`（Round.lua 出生已经加了）；遥控的东西飞远了 `G.streamFocus(pl, 零件, true/false)`（无人机已经加了）
      - 模拟器 `R.streamSim = 半径` 假装客户端只有这么大一片（rbx.lua）；测试 tools/mock/stream.lua
   ③ 还没做：流畅度（量每帧脚本时间挑热点）、流体效果（风场、尾迹、水柱、旋翼下洗）——用户说先做 streaming，这两样等用户再提
+  ④ **11-25 已做**（用户：「把抽搐bug和昼夜更替弄完」「游戏一阵一阵卡 然后枪 坦克 飞机一阵一阵抽搐」）：
+     - 一阵一阵卡：tools/mock/hitch.lua（逐帧记客户端 / 服务器各花多少、按行采样尖峰那几帧）抓到 Warfx.lua 的房子扫描——每 15 秒 Map.Scenery:GetDescendants()
+       （沙海四五万个实例）；改成分帧扫一遍 + DescendantAdded + 每栋房子盯 Burning 属性。**谁写客户端定时扫整张图的，照这个改**
+     - 沙海后台写地形（E ⑦ 的 terrainDesert）：后台的平地 FillBlock 切成 ≤512 格见方一块（按耗时自适应）、起伏块 16 × 16 列一份、扫描算地貌也分帧（tools/mock/terrainbg.lua）
+     - 昼夜更替打开（Config.DayNight.lockNight = false）：天黑提示开夜视、天亮夜视自己收起、白天地图上的灯和光晕关掉（Night.lua）；开场标题改「拂晓突击」
+     - 客户端逐帧计时多了 G.perfMax（单次最长），F7 性能面板多一行「单次最长」
+  ⑤ **11-25 起在做**（用户：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」「其他的地方你自己了解自己找资源去搞懂战雷啥样」
+     「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」「内饰可以先跳过」）：
+     科技树（ReplicatedStorage/TechTree.lua：五系 × 坦克 / 战机，等级 I～VII、战斗等级 BR、研究点、前置），研究 / 购买 / 存档，科技树界面，
+     出击阵容从买下的车里选（接 C 的 WtMatch：SP、备用），**玩家不再步行**：出击直接坐在车里 / 飞机里，车没了回出击界面。
+     **第一版已做**：TechTree.lua（数据）、Tech.lua（研究 / 购买 / 存档 / 出击）、TechUI.lua（机库、科技树界面）；Round.lua 的 G.ACT.deploy 多了第 4 个参数 after
+     （服务器自己调时生出来以后接着做，Tech 用它把人塞进车里）、`Config.Wt.noInfantry` 开着时步兵出击被拒（G.allowInfantry 放行；测试台默认放行）；
+     init.server 的 Drive 远程：noInfantry 时 op = exit 交给 G.treeLeave（下车 = 判毁回机库）；Depots spawnAt 认 P.treeSpawn（科技树买下的不再查老的金币解锁）。
+     **C 注意**：出击还是走 Depots 的 spawnAt（G.wtSpawnOk / G.wtSpawned 照旧调），WtMatch 的阵容是「这一局出过哪几型」，科技树的阵容是「能出哪几辆」，两样都在
+  ⑥ **11-25 第二批已做**（用户「都要做」）：
+     - 战斗等级配对：G.treeRoundBr（准备阶段按真人阵容最高 BR、开战有真人时锁住，workspace 属性 WtBr）、G.treeBrCap（+ Config.Wt.brUp）；
+       电脑车 AIVeh pickModel 走 G.treePickAi（科技树按 BR、按队里真人用的系挑，车上 TreeKey、e.counts 能占点；战雷式每队补到 Config.Wt.aiMax）；
+       **WtMatch 改了**：阵容按 P.wtKey（科技树的键）记，借同一型号的两辆算两种；Depots 召唤位对 P.treeSpawn 不查每队名额、G.padBusy 公开
+     - 改装 ReplicatedStorage/WtMods.lua、乘员 WtCrew.lua：出车时 Tech.lua applyFx 写车上属性 ModSpd / ModAcc / ModTurn / ModTrav / ModAmmo / CrewRel / ModThr，
+       e.wtFx（repair / ext / repK / ammo）——**Wt.lua wtFix / wtExt 认 e.wtFx**（原厂车没研究零件修不了、没灭火器灭不了火）、Armor.lua 装填乘 e.crewRel、弹种按 e.wtFx.ammo；
+       客户端 Drive.lua（车速、加速、转向、炮塔、换弹、装填预测）、Fly.lua（推力 ModThr、空中出生初速 vs.v）照乘
+     - 三种模式 G.wtModeNow（ab / rb / sb，workspace 属性 WtMode、玩家属性 ModeVote）：TankHud 按模式标敌人，Interior 全真不回车外（G.interiorEnterSeat），
+       Air.lua 新 G.spawnAircraftAir（街机空中出生），结算研究点 × Config.Wt.modeK
+     - 资料卡 / 装甲查看器（TechUI，VehModels.pose 新加）、试驾（Tech.lua ACT.testDrive：东边场地、靶车 noScore、P.inTest 阵亡不扣兵力——Ents / WtMatch / Round 各加了一个判断）、
+       结算明细（t.last → TechUI G.treeResultText → WtBattle 结算页 TreeResult 一行）、暂用车按真车涂装（TechTree.paint → VehModels.build 第 4 个参数）、名字 tree.<键>（Lang）
+     - 测试：tools/mock/techtree.lua、wtbr.lua、wtmods.lua、wtmode.lua、wttest.lua
+  ⑦ **11-25 科技树暂用车换真模型，第一批已做**（用户「需要模型自己找」，Sketchfab CC-BY-4.0）：models/veh 新加 t80u、leo2a6、leo1、m60a3、bmp1（blveh.py 转，
+     配置在 tools/models/blveh.json，署名 models/veh/credits.txt）；VehDefs 新加 10 型：t80u / t80b / t80bvm、leo2a6 / leo2a4、leo1 / leo1a5、m60a3 / m60a1、bmp1
+     （同族老型号用 VehDefs 里的 variant 深拷，各有自己的炮、弹、装甲、机动；ImportedMeta 的 alias 把它们指到同族的模型）；新炮 gun125u / gun125b / gun120l55 /
+     gun120l44 / gun105l7 / gun105a5 / gun105m68 / gun105m60 / gun73，弹（Ballistics.AMMO + WtDamage.AMMO）bm42、bm22、bk18m、dm53、dm33、dm12、dm13、dm33l7、dm12h、m833、m392；
+     T-80U 的接触-5 在 EraMeta（eralayout.py 量的）。**TechTree 每项多了 model 字段**：性能是这一型自己的、模型借同族的（界面写「同族模型」，it.stand 仍只表示模型和性能都借）。
+     **blveh.py 新能力**：split 拆出来的块可以直接当车轮（wheels 里写 "<原名>.<组名>"）、整块拆空的原物体自动删掉、texTint（按真车涂装给灰贴图调色）；
+     节点名是乱码的 glTF 先用 tools/models/gltf_rename.py 改名（BMP-1）。测试 tools/mock/wtreal.lua（数据、科技树、逐型试驾、开炮走战雷伤害）
+     **第二批在做**：models/veh/t64.glb、type74.glb 已经转好（blveh.json 里有配置、署名进了 credits.txt），还没接进游戏（ImportedMeta 没写、VehDefs 没有型号）；
+     下一步黄鼠狼 1A3、猎豹、BMP-2、通古斯卡、石勒喀、15 式、T-62M（Sketchfab 都核对过是 CC-BY）
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

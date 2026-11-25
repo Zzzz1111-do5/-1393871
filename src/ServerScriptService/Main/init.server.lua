@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Economy", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Pve" }) do
+for _, name in ipairs({ "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -119,6 +119,8 @@ end)
 
 G.R.Drive.OnServerEvent:Connect(function(pl, d)
   local P = G.P[pl]
+  -- 战雷式（Config.Wt.noInfantry，用户 11-25「不要让玩家作为个体活动」）：自己开的车不能下车——要「下车」就是回机库（这辆算没了，Tech.lua）
+  if P and type(d) == "table" and d.op == "exit" and G.treeLeave and G.treeLeave(P) then return end
   if P and type(d) == "table" and G.driveInput then G.try("开载具", G.driveInput, P, d) end
 end)
 

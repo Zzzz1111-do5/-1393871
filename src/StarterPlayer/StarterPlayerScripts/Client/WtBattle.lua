@@ -171,7 +171,9 @@ function WtBattle.init(G)
   end
   local function stepStrip(S)
     local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
-    local show = S.wt ~= nil and S.alive == false and (S.phase == "battle" or S.phase == "prep") and not dying
+    -- 机库开着（D 的 TechUI：Config.Wt.noInfantry，玩家不当步兵）就是它管出击——这条出击栏只在还能当步兵的时候出来
+    local hangar = G.hangarActive ~= nil and G.hangarActive() == true
+    local show = S.wt ~= nil and S.alive == false and (S.phase == "battle" or S.phase == "prep") and not dying and not hangar
       and not (G.menuShown and G.menuShown()) and not G.factionOpen and S.picked ~= false
     strip.Visible, stripTitle.Visible = show, show
     if not show then return end
@@ -230,7 +232,11 @@ function WtBattle.init(G)
   local GAPX = (TW + 16) / 2 + 12
   local tA, tB = makeTable(-GAPX), makeTable(GAPX)
   local rewards = label(res, "", UD2(0, 900, 0, 22), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 28), 16, GOLD, BOLD, V2(0.5, 0))
-  local nextT = label(res, "", UD2(0, 600, 0, 18), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 56), 13, MUTE, MED, V2(0.5, 0))
+  -- 科技树的明细（TechUI.lua G.treeResultText）：研究点、记在哪辆上、改装、乘员经验
+  local treeT = label(res, "", UD2(0, 1100, 0, 36), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 54), 13, GOLD, MED, V2(0.5, 0))
+  treeT.Name = "TreeResult"
+  treeT.TextWrapped = true
+  local nextT = label(res, "", UD2(0, 600, 0, 18), UD2(0.5, 0, 0, 196 + 34 + NROW * 24 + 96), 13, MUTE, MED, V2(0.5, 0))
 
   local board = {}
   local baseBoard = G.onBoard
@@ -280,6 +286,7 @@ function WtBattle.init(G)
     fill(tB, (mine == "atk") and "def" or "atk", board, me.DisplayName)
     local m, w = S.me or {}, S.wt or {}
     rewards.Text = T("wtm.rewards", m.s or 0, m.gain or 0, w.earned or 0, w.vk or 0, w.ak or 0)
+    treeT.Text = G.treeResultText and G.treeResultText() or ""
     nextT.Text = T("ui.nextRound", S.left or 0)
   end
 
@@ -298,18 +305,24 @@ function WtBattle.init(G)
     feedRows[i] = { f = r, l = l }
   end
   local BLUE, RED = RGB(110, 170, 255), RGB(255, 96, 80)
-  local function vehName(id) return id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or nil end
+  local function vehName(id, tk)   -- tk：科技树的键（科技树出的车写科技树里的名字）
+    if tk then
+      local nm = T("tree." .. tk)
+      if nm ~= "tree." .. tk then return nm end
+    end
+    return id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or nil
+  end
   local function feedLine(m)
     local side = me:GetAttribute("Side")
-    local function who(name, team, veh)
+    local function who(name, team, veh, tk)
       local col = (team == side) and BLUE or RED
       local nm = name or T("wtm.ai")
-      local v = vehName(veh)
+      local v = vehName(veh, tk)
       return string.format('<font color="%s">%s</font>%s', hex(col), nm, v and string.format(' <font color="#C8CDD0">[%s]</font>', v) or "")
     end
     local verb = T(m.air and "wtm.shotDown" or ((m.why == "ammo") and "wtm.ammoRack" or ((m.why == "fire") and "wtm.burned" or "wtm.destroyed")))
-    if not m.k then return who(m.v, m.vt, m.vv) .. "  " .. verb end
-    return who(m.k, m.kt, m.kv) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv)
+    if not m.k then return who(m.v, m.vt, m.vv, m.vk) .. "  " .. verb end
+    return who(m.k, m.kt, m.kv, m.kk) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv, m.vk)
   end
   local function redrawFeed()
     local t = os.clock()

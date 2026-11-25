@@ -151,6 +151,18 @@ add("eco.round", "这一局 +{1} 金币", "+{1} coins this round")
 add("eco.pve", "关卡奖励 +{1} 金币", "Level reward +{1} coins")
 add("eco.notLoaded", "存档还没读好，稍等一下", "Your profile is still loading")
 add("eco.poor", "金币不够，还差 {1}", "Not enough coins ({1} short)")
+-- 科技树（Tech.lua / TechTree.lua，用户 11-25）
+add("tree.done", "研究完成：{1}", "Research complete: {1}")
+add("tree.bought", "买下了 {1}（{2} 金币）", "Purchased {1} ({2} coins)")
+add("tree.rp", "这一局挣了 {1} 研究点", "Earned {1} research points")
+add("tree.needRes", "先研究完才能买", "Research it first")
+add("tree.notOwned", "还没买下这一辆", "You don't own this vehicle")
+add("tree.notInLineup", "这一辆不在出击阵容里", "Not in your lineup")
+add("tree.useHangar", "从机库的出击阵容里挑一辆车出击", "Deploy a vehicle from your hangar lineup")
+add("tree.walkIn", "车摆好了，走过去按 E 上车", "Vehicle ready — walk over and press E")
+add("tree.cant.done", "已经研究完了", "Already researched")
+add("tree.cant.prev", "先研究完上一辆", "Research the previous vehicle first")
+add("tree.cant.rank", "上一级研究完的还不够", "Research more vehicles of the previous rank first")
 add("eco.boughtVeh", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
 add("eco.boughtAtt", "解锁了 {1}（-{2} 金币）", "Unlocked {1} (-{2} coins)")
 add("eco.lockVeh", "{1} 金币解锁", "{1} coins to unlock")
@@ -278,8 +290,12 @@ add("vcat.ship", "舰艇", "Ships")
 local VEH = {
   ztz96 = { "ZTZ-96 主战坦克", "ZTZ-96 MBT" }, ztz99a = { "ZTZ-99A 主战坦克", "ZTZ-99A MBT" }, t90m = { "T-90M 突破 主战坦克", "T-90M Proryv MBT" }, bmp3 = { "BMP-3 步兵战车", "BMP-3 IFV" },
   pantsir = { "铠甲-S1 弹炮合一防空车", "Pantsir-S1 SPAAGM" },
-  t72b3 = { "T-72B3 主战坦克", "T-72B3 MBT" }, t80u = { "T-80U 主战坦克", "T-80U MBT" },
-  leo2a6 = { "豹 2A6 主战坦克", "Leopard 2A6 MBT" }, leclerc = { "勒克莱尔 主战坦克", "Leclerc MBT" },
+  t72b3 = { "T-72B3 主战坦克", "T-72B3 MBT" }, leclerc = { "勒克莱尔 主战坦克", "Leclerc MBT" },
+  t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
+  bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" },
+  leo2a6 = { "豹 2A6 主战坦克", "Leopard 2A6 MBT" }, leo2a4 = { "豹 2A4 主战坦克", "Leopard 2A4 MBT" },
+  leo1 = { "豹 1 主战坦克", "Leopard 1 MBT" }, leo1a5 = { "豹 1A5 主战坦克", "Leopard 1A5 MBT" },
+  m60a3 = { "M60A3 TTS 主战坦克", "M60A3 TTS MBT" }, m60a1 = { "M60A1 主战坦克", "M60A1 MBT" },
   m10 = { "M10 布克", "M10 Booker" }, m1a1 = { "M1A1 艾布拉姆斯", "M1A1 Abrams" }, m1a2 = { "M1A2 SEPv2", "M1A2 SEPv2" },
   ztd05 = { "ZTD-05 两栖突击车", "ZTD-05 Amphibious Assault Gun" }, zbd05 = { "ZBD-05 两栖步战车", "ZBD-05 Amphibious IFV" },
   zsl92b = { "ZSL-92B 轮式步战车", "ZSL-92B Wheeled IFV" }, ptl02 = { "PTL-02 突击炮", "PTL-02 Assault Gun" },
@@ -373,6 +389,17 @@ add("ui.roundOver", "本局结束", "ROUND OVER")
 add("ui.xp", "经验 +{1}", "+{1} XP")
 add("ui.rankUp", "晋升：{1}", "Promoted: {1}")
 add("ui.killed", "{1} 击毙了 {2}", "{1} killed {2}")
+add("ui.killedVeh", "{1}（{2}）击毁了 {3}（{4}）", "{1} ({2}) destroyed {3} ({4})")
+add("ui.killedVeh2", "{1} 击毁了 {2}（{3}）", "{1} destroyed {2} ({3})")
+add("tree.brHigh", "这一辆战斗等级 {1}：这一局是 {2}，最高能出 {3}", "This vehicle is BR {1}: this battle is BR {2}, up to {3}")
+add("tree.modDone", "{1}：改装「{2}」研究完了，已经装上", "{1}: modification \"{2}\" researched and installed")
+add("tree.modLocked", "这项改装还没开：上一级先研究完两项", "Locked: research two modifications of the previous tier first")
+add("tree.crewLv", "阵容第 {1} 位的乘员升到 {2} 级：有新的技能点", "Crew in slot {1} reached level {2}: new skill points")
+add("tree.crewNoPts", "技能点不够", "Not enough skill points")
+add("tree.waitDeploy", "{1} 秒后出击", "Deploying in {1} s")
+add("tree.testOn", "试驾：{1}（改装全装上；前面 300 / 600 / 1000 米有靶车；下车回机库）", "Test drive: {1} (all modifications; targets at 300 / 600 / 1000 m; leave the vehicle to return)")
+add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
+add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")
 add("ui.killedBy", "你被 {1} 击毙", "Killed by {1}")
 add("ui.died", "你阵亡了", "You died")
@@ -894,6 +921,7 @@ add("sight.day", "昼光", "DAY")
 add("sight.nv", "夜视", "NV")
 add("nvg.hint", "按 N 开启夜视", "Press N for night vision")
 add("nvg.hintTouch", "点 NV 开启夜视", "Tap NV for night vision")
+add("nvg.dawn", "天亮了：夜视仪收起（N 再开）", "Daybreak: NVG stowed (N to use)")
 -- 无人机战术平板（Tablet.lua）
 add("air.helpUav", "鼠标 飞行方向（准心）· W 加速 · S 减速 · A/D 滚转 · 左键 机炮 · F 导弹 · 1-6 选弹 · R 换目标 · 右键/V 切镜头 · Z 变焦（滚轮细调）· G 起落架 · 空格 收起平板",
   "Mouse steer (aim) · W speed up · S slow down · A/D roll · LMB gun · F missile · 1-6 select · R next target · RMB/V switch view · Z zoom (wheel fine-tune) · G gear · Space stow tablet")
@@ -984,6 +1012,15 @@ add("veh.samNeedLock", "先按 Q 用雷达锁住一架飞机，再发射导弹",
 add("aw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
+add("vw.gun125u", "125 毫米炮（2A46M-1）", "125 mm 2A46M-1")
+add("vw.gun125b", "125 毫米炮（2A46-2）", "125 mm 2A46-2")
+add("vw.gun120l55", "120 毫米炮（Rh-120 L/55）", "120 mm Rh-120 L/55")
+add("vw.gun120l44", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
+add("vw.gun105l7", "105 毫米炮（L7A3）", "105 mm L7A3")
+add("vw.gun105a5", "105 毫米炮（L7A3）", "105 mm L7A3")
+add("vw.gun105m68", "105 毫米炮（M68E1）", "105 mm M68E1")
+add("vw.gun105m60", "105 毫米炮（M68）", "105 mm M68")
+add("vw.gun73", "73 毫米炮（2A28）", "73 mm 2A28 Grom")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")
 -- 坦克改装、爆反、主动防御（用户 11-19）
 add("aps.hit", "主动防御拦截了来袭弹（剩 {1} 发）", "APS intercepted the threat ({1} left)")
@@ -1502,5 +1539,13 @@ add("wt.radarOn", "雷达开", "RADAR ON")
 add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
 add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
+
+-- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
+do
+  local ok, TT = pcall(function() return require(script.Parent:WaitForChild("TechTree", 3)) end)
+  if ok and type(TT) == "table" and TT.byKey then
+    for k, it in pairs(TT.byKey) do add("tree." .. k, it.name, it.en) end
+  end
+end
 
 return Lang

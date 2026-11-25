@@ -370,16 +370,20 @@ function TankHud.init(G)
     end
     local ents = workspace:FindFirstChild("Ents")
     -- 敌人：每 0.25 秒重新挑一遍（距离、视线），每帧摆牌子
+    -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
+    --   全真 sb 一个都不标
+    local wtMode = workspace:GetAttribute("WtMode")
+    local gR = (wtMode == "ab") and 2500 or ((wtMode == "rb") and 500 or 1100)
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}
-      for _, em in ipairs(ents and ents:GetChildren() or {}) do
+      for _, em in ipairs((wtMode ~= "sb") and ents and ents:GetChildren() or {}) do
         local cat = em:GetAttribute("Cat")
         if (air and CATS_AIR or CATS)[cat] and enemy(em, side) then
           local r = em:FindFirstChild("Root")
           if r then
             local d = (r.CFrame.Position - myPos).Magnitude   -- CFrame.Position：测试台的零件只认这个
-            if d < (air and 11200 or 1100) and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
+            if d < (air and 11200 or gR) and clear(cam.CFrame.Position, r.CFrame.Position, em, st) then table.insert(cands, { em = em, r = r, d = d }) end
           end
         end
       end
@@ -398,7 +402,8 @@ function TankHud.init(G)
           tg.f.Visible = true
           tg.f.Position = UDim2.fromOffset(sp.X, sp.Y - (air and 34 or 0))
           local id = c.em:GetAttribute("Model")
-          tg.nm.Text = id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or ""   -- 只写型号
+          local tk = c.em:GetAttribute("TreeKey")   -- 科技树出的车：写科技树里的名字（本来就短，整个写）
+          tg.nm.Text = tk and T("tree." .. tk) or (id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or "")   -- 只写型号
           local m = (c.r.CFrame.Position - myPos).Magnitude / 2.8
           tg.dist.Text = (air and m >= 1000) and T("vh.km", string.format("%.1f", m / 1000)) or T("vh.m", math.floor(m + 0.5))
           -- 飞机模式：名字下面一道血条，距离往下挪

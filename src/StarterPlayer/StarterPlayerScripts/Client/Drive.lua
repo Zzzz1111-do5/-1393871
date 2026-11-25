@@ -595,6 +595,10 @@ function Drive.init(G)
   local function toggleSight()
     if not st then return end
     local want = not st.sight
+    -- 全真模式（战雷）：不能退回第三人称——有车内就坐进车里再退镜，没有就留在瞄准镜里
+    if not want and workspace:GetAttribute("WtMode") == "sb" and not (G.interiorOn and G.interiorOn()) then
+      if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end
+    end
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
     setSight(want)
   end
@@ -799,7 +803,10 @@ function Drive.init(G)
       st.dropFrom, st.dropT, st.dropAt = st.root and (st.root * CF(0, -d.H / 2, 0)).Position.Y, 0, st.pos
       st.hv = nil
     end
-    local maxF, maxR = d.speed, d.rev
+    -- 科技树改装（WtMods，服务器出车时写的 ModSpd / ModAcc / ModTurn）：发动机、传动、空滤、悬挂、履带
+    local em0 = st.em
+    local mSpd, mAcc, mTurn = (em0 and em0:GetAttribute("ModSpd")) or 1, (em0 and em0:GetAttribute("ModAcc")) or 1, (em0 and em0:GetAttribute("ModTurn")) or 1
+    local maxF, maxR = d.speed * mSpd, d.rev * mSpd
     -- 扫雷犁放着（或正在升）：车速不超过 15 公里 / 时（Pearson 全宽扫雷犁犁地 1–15 公里 / 时；按这型车真车公路速度的比例换成游戏车速）
     local plowA = st.em and st.em:GetAttribute("Plow")
     if plowA and plowA > 0 then
@@ -817,7 +824,7 @@ function Drive.init(G)
     local kS = tracked and (1 - (1 - sf.speed) * 0.55) or sf.speed
     local kA = tracked and (1 - (1 - sf.accel) * 0.6) or sf.accel
     if not inWater then maxF, maxR = maxF * kS, maxR * kS end
-    local accel = d.accel * (inWater and 1 or kA)
+    local accel = d.accel * (inWater and 1 or kA) * mAcc
     -- 驾驶手感（用户：驾驶手感也做到最好）：
     --   油门——发动机低速劲大、接近极速劲小；反着推是刹车（比加速猛得多）；松油门滚着慢下来（履带阻力大停得快）；
     --   上坡掉速、下坡溜得快（按车身俯仰）；停稳了松油门不溜车（手刹）
@@ -852,7 +859,7 @@ function Drive.init(G)
       st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
     elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
-      st.yr = approach(st.yr or 0, str * math.rad(d.turn) * k, math.rad(d.turn) * ((str ~= 0) and 3.2 or 5.5) * dt)
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.2 or 5.5) * dt)
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
@@ -1115,6 +1122,7 @@ function Drive.init(G)
     -- 手动方式：炮塔动力关了，手摇方向机、高低机（每秒十来度、几度）
     local manual = f.mode == 3
     local trav = d.turret.trav * (manual and 0.22 or 1) * ((st.em and st.em:GetAttribute("WtTrav")) or 1)   -- 炮塔驱动坏了 / 炮长没了：转得慢（Wt.lua）
+      * ((st.em and st.em:GetAttribute("ModTrav")) or 1)   -- 研究了改装「炮塔驱动」：转得快（WtMods）
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
@@ -1183,9 +1191,18 @@ function Drive.init(G)
   --   R 激光测距：瞄准线打到哪、多远（5 米一档；4 公里外、没打到东西是没回波 ----）；Q 换弹种（换了要重新装填）；
   --   没测距时按战斗瞄准距离装定（穿甲弹 1200 米、破甲 / 多用途弹 900 米）——打得比这远的目标就会打低；
   --   测距那一下记下瞄准线跟踪的角速度，乘飞行时间就是提前量（再测一次更新，10 秒后作废）
+  -- 科技树改装（WtMods）：原厂车只有第一种弹，研究了「第二种弹」「第三种弹」才能换（服务器出车时写 ModAmmo）
+  local function ammoList(wid)
+    local list = BAL.GUN[wid]
+    local n = st and st.em and st.em:GetAttribute("ModAmmo")
+    if list and type(n) == "number" and n < #list then return table.move(list, 1, math.max(1, n), 1, {}) end
+    return list
+  end
   local function fcsAmmo()
     local wid = weaponId()
     if not (wid and BAL.GUN[wid]) then return nil end
+    local al = ammoList(wid)
+    if st.fcs.am and not table.find(al, st.fcs.am) then st.fcs.am = al[1] end
     local a, k = BAL.ammo(wid, st.fcs.am)
     st.fcs.am = k
     return a, wid
@@ -1251,7 +1268,7 @@ function Drive.init(G)
   end
   local function cycleAmmo(key)
     local wid = weaponId()
-    local list = wid and BAL.GUN[wid]
+    local list = wid and ammoList(wid)
     if not list then return end
     local k = key
     if not (k and table.find(list, k)) then
@@ -1337,7 +1354,8 @@ function Drive.init(G)
     if ammo and ammo[1] <= 0 and ammo[2] <= 0 then return end
     -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
     local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
-    st.next[wid] = t + w.rate * rofK
+    local crewK = (w.kind == "shell" and st.em and st.em:GetAttribute("CrewRel")) or 1   -- 乘员技能「装填」（服务器同样乘）
+    st.next[wid] = t + w.rate * rofK * crewK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
@@ -1688,7 +1706,9 @@ function Drive.init(G)
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
     hpBar.Size = UDim2.fromScale(math.clamp(hp / mx, 0, 1), 1)
     hpBar.BackgroundColor3 = ui.hpColor(hp / mx)
-    vName.Text = st.hv and T("ui.lcacOn", T("veh.lcac"), T("veh." .. d.id)) or (T("veh." .. d.id) .. (st.locked and ("   " .. T("ui.lcac")) or ""))
+    local tk = em:GetAttribute("TreeKey")   -- 科技树出的车写科技树里的名字（借来的型号也写自己的）
+    local vn = tk and T("tree." .. tk) or T("veh." .. d.id)
+    vName.Text = st.hv and T("ui.lcacOn", T("veh.lcac"), vn) or (vn .. (st.locked and ("   " .. T("ui.lcac")) or ""))
     st.help = st.hv and "ui.lcacHelp" or nil   -- 底部键位说明（UI.lua）：开艇和开车不一样
     local wid = weaponId()
     local ammo = vs.ammo and wid and vs.ammo[wid]

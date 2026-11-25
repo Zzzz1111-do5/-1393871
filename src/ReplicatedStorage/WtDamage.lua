@@ -20,20 +20,36 @@ W.PROF = {
     tur = { f = { 800, 1300 }, sf = { 300, 350 }, s = { 100, 120 }, r = { 60, 60 }, t = { 45, 45 } }, blowout = true },
   m1a1 = { lay = "w4", hull = { f = { 520, 750 }, s = { 65, 80 }, r = { 30, 30 }, t = { 30, 30 } },
     tur = { f = { 650, 1100 }, sf = { 260, 300 }, s = { 90, 110 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
-  leo2a6 = { lay = "w4", hull = { f = { 600, 800 }, s = { 80, 100 }, r = { 30, 30 }, t = { 30, 30 } },
-    tur = { f = { 920, 1450 }, sf = { 320, 420 }, s = { 120, 150 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
   leclerc = { lay = "e3", hull = { f = { 520, 750 }, s = { 70, 90 }, r = { 30, 30 }, t = { 30, 30 } },
     tur = { f = { 800, 1250 }, sf = { 300, 380 }, s = { 100, 130 }, r = { 50, 50 }, t = { 40, 40 } }, blowout = true },
   t72b3 = { lay = "e3", hull = { f = { 520, 900 }, s = { 80, 140 }, r = { 40, 40 }, t = { 35, 35 } },
     tur = { f = { 650, 1150 }, sf = { 280, 400 }, s = { 120, 200 }, r = { 55, 55 }, t = { 40, 50 } } },
-  t80u = { lay = "e3", hull = { f = { 550, 950 }, s = { 80, 140 }, r = { 40, 40 }, t = { 35, 35 } },
-    tur = { f = { 700, 1250 }, sf = { 300, 420 }, s = { 130, 210 }, r = { 55, 55 }, t = { 40, 50 } } },
   t90m = { lay = "e3", hull = { f = { 600, 1000 }, s = { 80, 150 }, r = { 40, 40 }, t = { 40, 40 } },
     tur = { f = { 750, 1300 }, sf = { 300, 450 }, s = { 150, 250 }, r = { 60, 60 }, t = { 45, 60 } } },
   ztz99a = { lay = "e3", hull = { f = { 650, 1000 }, s = { 90, 150 }, r = { 40, 40 }, t = { 40, 40 } },
     tur = { f = { 800, 1350 }, sf = { 320, 450 }, s = { 120, 180 }, r = { 60, 60 }, t = { 45, 50 } } },
   ztz96 = { lay = "e3", hull = { f = { 480, 650 }, s = { 80, 100 }, r = { 40, 40 }, t = { 35, 35 } },
     tur = { f = { 520, 750 }, sf = { 250, 300 }, s = { 100, 130 }, r = { 50, 50 }, t = { 40, 40 } } },
+  -- 科技树换真模型的几型（用户 11-25）：视线方向的等效厚度（毫米，动能 / 化学能），按公开资料估
+  t80u = { lay = "e3", hull = { f = { 540, 850 }, s = { 80, 150 }, r = { 40, 40 }, t = { 30, 40 } },          -- 首上复合装甲 + 接触-5
+    tur = { f = { 650, 1150 }, sf = { 280, 420 }, s = { 120, 200 }, r = { 60, 60 }, t = { 40, 50 } } },
+  t80b = { lay = "e3", hull = { f = { 420, 480 }, s = { 80, 80 }, r = { 40, 40 }, t = { 30, 30 } },          -- 没有爆反
+    tur = { f = { 450, 500 }, sf = { 250, 280 }, s = { 100, 110 }, r = { 60, 60 }, t = { 40, 40 } } },
+  t80bvm = { lay = "e3", hull = { f = { 600, 1000 }, s = { 80, 150 }, r = { 40, 40 }, t = { 30, 40 } },      -- 化石重型爆反
+    tur = { f = { 700, 1250 }, sf = { 300, 450 }, s = { 140, 240 }, r = { 60, 60 }, t = { 40, 55 } } },
+  leo2a6 = { lay = "w4", hull = { f = { 560, 850 }, s = { 70, 90 }, r = { 30, 30 }, t = { 30, 30 } },        -- 炮塔楔形附加装甲；炮塔尾舱的弹有泄压板
+    tur = { f = { 820, 1300 }, sf = { 300, 350 }, s = { 100, 120 }, r = { 60, 60 }, t = { 45, 45 } }, blowout = true },
+  leo2a4 = { lay = "w4", hull = { f = { 450, 620 }, s = { 70, 90 }, r = { 30, 30 }, t = { 30, 30 } },
+    tur = { f = { 600, 950 }, sf = { 260, 300 }, s = { 90, 110 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
+  leo1 = { lay = "w4", hull = { f = { 140, 140 }, s = { 35, 35 }, r = { 25, 25 }, t = { 20, 20 } },          -- 首上 70 毫米斜 60°；没有泄压板
+    tur = { f = { 200, 200 }, sf = { 100, 100 }, s = { 60, 60 }, r = { 60, 60 }, t = { 30, 30 } } },
+  leo1a5 = { lay = "w4", hull = { f = { 140, 140 }, s = { 35, 35 }, r = { 25, 25 }, t = { 20, 20 } },
+    tur = { f = { 300, 350 }, sf = { 140, 160 }, s = { 70, 70 }, r = { 60, 60 }, t = { 30, 30 } } },         -- 炮塔加间隙装甲
+  m60a3 = { lay = "w4", hull = { f = { 250, 250 }, s = { 75, 75 }, r = { 40, 40 }, t = { 35, 35 } },         -- 首上 109 毫米斜 65°、铸造炮塔
+    tur = { f = { 260, 260 }, sf = { 190, 190 }, s = { 120, 120 }, r = { 60, 60 }, t = { 40, 40 } } },
+  m60a1 = { lay = "w4", hull = { f = { 250, 250 }, s = { 75, 75 }, r = { 40, 40 }, t = { 35, 35 } },
+    tur = { f = { 250, 250 }, sf = { 180, 180 }, s = { 115, 115 }, r = { 60, 60 }, t = { 40, 40 } } },
+  bmp1 = { lay = "ifv", hull = { f = { 33, 33 }, s = { 18, 18 }, r = { 16, 16 }, t = { 6, 6 } }, tur = { f = { 23, 23 }, s = { 19, 19 }, r = { 13, 13 }, t = { 6, 6 } } },
   m2a3 = { lay = "ifv", hull = { f = { 80, 120 }, s = { 40, 60 }, r = { 20, 20 }, t = { 20, 20 } }, tur = { f = { 60, 60 }, s = { 30, 30 }, r = { 20, 20 }, t = { 20, 20 } } },
   hmmwv = { lay = "light", hull = { f = { 8, 8 }, s = { 6, 6 }, r = { 5, 5 }, t = { 4, 4 } }, crew = 2 },
   jltv = { lay = "light", hull = { f = { 15, 15 }, s = { 12, 12 }, r = { 10, 10 }, t = { 8, 8 } }, crew = 2 },
@@ -81,6 +97,17 @@ W.AMMO = {
   jet120 = { p0 = 900, t = "ce", spall = 16, n = 18, core = 4.2, tandem = true, jet = true },
   jet125 = { p0 = 950, t = "ce", spall = 16, n = 18, core = 4.4, tandem = true, jet = true },
   jet105 = { p0 = 760, t = "ce", spall = 16, n = 16, core = 3.8, tandem = true, jet = true },
+  bm42 = { p0 = 560, fall = 30, t = "ke", spall = 16, n = 16, core = 3.0 },
+  bm22 = { p0 = 440, fall = 35, t = "ke", spall = 16, n = 14, core = 2.8 },
+  bk18m = { p0 = 550, t = "ce", spall = 20, n = 12, core = 2.2 },
+  dm53 = { p0 = 740, fall = 30, t = "ke", spall = 16, n = 16, core = 3.2 },
+  dm33 = { p0 = 520, fall = 30, t = "ke", spall = 16, n = 16, core = 3.0 },
+  dm12 = { p0 = 480, t = "ce", spall = 22, n = 12, core = 2.0 },
+  dm13 = { p0 = 290, fall = 55, t = "ke", spall = 14, n = 12, core = 2.6 },
+  dm33l7 = { p0 = 420, fall = 35, t = "ke", spall = 16, n = 14, core = 3.0 },
+  dm12h = { p0 = 400, t = "ce", spall = 20, n = 10, core = 2.0 },
+  m833 = { p0 = 440, fall = 35, t = "ke", spall = 16, n = 14, core = 3.0 },
+  m392 = { p0 = 300, fall = 55, t = "ke", spall = 14, n = 12, core = 2.6 },
 }
 -- 别的武器（按武器 id）：机炮的脱壳穿甲弹、反坦克火箭 / 导弹、飞机的弹
 W.WPN = {
@@ -90,6 +117,7 @@ W.WPN = {
   vulcan = { p0 = 30, fall = 20, t = "ke", spall = 18, n = 2, core = 0.6 },
   gau8 = { p0 = 75, fall = 25, t = "ke", spall = 18, n = 5, core = 1.4 },      -- A-10 的 30 毫米贫铀穿甲弹
   gun100 = { p0 = 40, t = "he", spall = 40, n = 18, core = 0, blast = 2.2 },    -- BMP-3 的 100 毫米榴弹
+  gun73 = { p0 = 300, t = "ce", spall = 20, n = 10, core = 1.8 },             -- BMP-1 的 73 毫米 PG-15V 破甲弹
   hmg = { p0 = 25, fall = 10, t = "ke", spall = 10, n = 1, core = 0.4 },       -- 12.7 毫米穿甲弹
   rpg = { p0 = 500, t = "ce", spall = 22, n = 10, core = 1.8 },                -- 火箭筒（RPG-7 / PF-98 一类的串联破甲）
   c4 = { p0 = 120, t = "he", spall = 40, n = 14, core = 0, blast = 2.6 },
@@ -109,9 +137,23 @@ W.KIND = {
   gun = { p0 = 8, fall = 5, t = "ke", spall = 0, n = 0, core = 0 },
 }
 -- 这一发的穿深：返回（毫米，表项）；distM 飞了多少米
+-- 车上的武器表（VehDefs.W）没有 id 字段（飞机、舰艇、工事的有）：按表反查它在 VehDefs.W 里的键，W.WPN 才认得
+--   （原来车载的 30 毫米炮、73 / 100 毫米炮都落到通用的「炮弹」40 毫米榴弹上）
+local vehWid
+local function widOf(w)
+  if not vehWid then
+    vehWid = {}
+    local ok, VD = pcall(function() return require(script.Parent:FindFirstChild("VehDefs")) end)
+    if ok and type(VD) == "table" and VD.W then
+      for k, t in pairs(VD.W) do vehWid[t] = k end
+    end
+  end
+  return w and vehWid[w]
+end
 function W.ammoOf(w)
   if not w then return W.KIND.gun end
-  return (w.ammo and W.AMMO[w.ammo]) or (w.id and W.WPN[w.id]) or (w.base and w.base.id and W.WPN[w.base.id]) or W.KIND[w.kind] or W.KIND.gun
+  return (w.ammo and W.AMMO[w.ammo]) or (w.id and W.WPN[w.id]) or (w.base and w.base.id and W.WPN[w.base.id])
+    or W.WPN[widOf(w) or ""] or W.WPN[widOf(w.base) or ""] or W.KIND[w.kind] or W.KIND.gun
 end
 function W.pen(w, distM)
   local a = W.ammoOf(w)

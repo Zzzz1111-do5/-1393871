@@ -50,6 +50,29 @@ B.AMMO = {
     vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
   jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
     vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
+  -- 科技树换真模型的几型车（用户 11-25「需要模型自己找」）按真车的弹：
+  bm42 = { cls = "ap", name = "3BM42 Mango", sym = "穿甲", v0 = 1715, k = 3.6e-5, bs = 1200, tr = true,      -- T-80U：「芒果」钨合金长杆尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  bm22 = { cls = "ap", name = "3BM22 Zakolka", sym = "穿甲", v0 = 1710, k = 4.0e-5, bs = 1200, tr = true,    -- T-80B：「别针」尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  bk18m = { cls = "heat", name = "3BK18M HEAT", sym = "破甲", v0 = 905, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 125 毫米破甲弹
+    vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
+  dm53 = { cls = "ap", name = "DM53", sym = "KE", v0 = 1750, k = 3.4e-5, bs = 1200, tr = true,               -- 豹 2A6（L/55）：钨合金长杆，德军火控上动能弹记作 KE
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dm33 = { cls = "ap", name = "DM33", sym = "KE", v0 = 1650, k = 3.8e-5, bs = 1200, tr = true,               -- 豹 2A4（L/44）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dm12 = { cls = "heat", name = "DM12 HEAT-MP", sym = "MZ", v0 = 1140, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 120 毫米多用途破甲弹（MZ = 多用途）
+    vs = { inf = 1.0, light = 1.3, armor = 0.85, fort = 1.2 }, splash = 1.1 },
+  dm13 = { cls = "ap", name = "DM13 APDS", sym = "KE", v0 = 1426, k = 7.0e-5, bs = 1000, tr = true,          -- 豹 1：105 毫米脱壳穿甲弹（不是尾翼稳定的，掉速快）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dm33l7 = { cls = "ap", name = "DM33 (105)", sym = "KE", v0 = 1455, k = 4.2e-5, bs = 1200, tr = true,       -- 豹 1A5：105 毫米尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dm12h = { cls = "heat", name = "DM12 HEAT", sym = "HL", v0 = 1173, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 105 毫米破甲弹（M456 的德国版，HL = 空心装药）
+    vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
+  m833 = { cls = "ap", name = "M833", sym = "SABOT", v0 = 1494, k = 4.0e-5, bs = 1200, tr = true,            -- M60A3：105 毫米贫铀尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m392 = { cls = "ap", name = "M392A2 APDS", sym = "SABOT", v0 = 1478, k = 7.0e-5, bs = 1000, tr = true,     -- M60A1：105 毫米脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -57,6 +80,14 @@ B.GUN = {
   gun125 = { "dtc10", "heat125", "he125", "jet125" },
   gun125r = { "bm60", "bk31", "of26", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
   gun105 = { "m900", "m456", "jet105" },
+  gun125u = { "bm42", "bk18m", "of26", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
+  gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B
+  gun120l55 = { "dm53", "dm12", "jet120" },           -- 豹 2A6
+  gun120l44 = { "dm33", "dm12", "jet120" },           -- 豹 2A4
+  gun105l7 = { "dm13", "dm12h", "jet105" },           -- 豹 1
+  gun105a5 = { "dm33l7", "dm12h", "jet105" },         -- 豹 1A5
+  gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
+  gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

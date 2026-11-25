@@ -61,6 +61,7 @@ Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraC
 --   用户 11-25「给沙漠地图做个昼夜更替」：lockNight 关掉。钟点在 ReplicatedStorage/DayClock.lua（服务器、客户端同一套）：
 --   一圈 day + dusk + night + dawn 分钟（白天 7:00～17:00、黄昏 17:00～19:30、夜里 19:30～次日 4:30、清晨 4:30～7:00），跨局接着走；
 --   start 开服时几点（下午：进去两分钟就能看到日落、五分钟入夜）；PvE 关卡按自己的 clock 开局，fixed 的钉死（夜战关卡）
+--   （D 11-25 同时做过一版 period 的，合并时用 B 的 DayClock；D 的 Night.lua 天黑提示开夜视、天亮收起、白天关地图上的灯照样用 G.isNight / G.dayK）
 Config.DayNight = { lockNight = false, clock = 2.3, day = 14, dusk = 3, night = 12, dawn = 3, start = 15.5 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
@@ -93,6 +94,8 @@ Config.Roles = {
   { id = "mortar", hp = 100, speed = 15, weapons = { "m4", "mortar" } },
   { id = "spec", hp = 110, speed = 18, weapons = { "m4", "c4", "grenade" } },
   { id = "spotter", hp = 95, speed = 16, weapons = { "m4", "binoc" } },
+  -- 乘员（用户 11-25「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」）：出击直接坐进车里（Tech.lua deployVeh），身上什么都不带
+  { id = "crew", hp = 100, speed = 16, weapons = {} },
 }
 Config.RoleById = {}
 for _, r in ipairs(Config.Roles) do Config.RoleById[r.id] = r end
@@ -333,7 +336,16 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 -- 战雷式对局（WtMatch.lua，用户 11-24 夜「把整个游戏做成战雷」）：重生点数 SP、出击阵容
 --   每局每人 SP 从 sp0 起，第一辆车免费，以后出车按 cost 花（这一局每多出过一辆贵 rise）；得分攒 SP（每分 perScore），封顶 spMax；
 --   一局最多开 lineup 种车，每种出 1 + backup 次；步兵出生不要 SP；PvE 关卡不收
-Config.Wt = { on = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
+-- noInfantry（用户 11-25「就跟战雷完全一样 不要让玩家作为个体活动」）：玩家不步行、不拿枪——出击界面从科技树的出击阵容里挑车，人直接坐在车里出现
+--   （Tech.lua deployVeh）；下车 = 回出击界面（这辆算没了）
+-- 战斗等级配对（Tech.lua，用户 11-25「都要做」）：一局的战斗等级 = 准备阶段在线真人出击阵容里最高的那辆（没人按 br0）；
+--   能出的车最高到这一局 + brUp（战雷：最多碰到比自己高 1.0 的）；电脑开的车从科技树里挑 [这一局 − brUp, 这一局]；
+--   真人不够一队 teamSize 个，电脑车补（每队最多 aiMax 辆，AIVeh.lua）
+Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
+  br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
+  -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
+  --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘
+  mode0 = "rb", modeK = { ab = 1, rb = 1.3, sb = 1.6 }, airSpawnH = 1200,
   cost = { tank = 300, apc = 200, aa = 220, arty = 260, jet = 450, bomber = 550, drone = 280, heli = 380, transport = 240, ship = 400 } }
 -- cat：地面车的 VehDefs cat（tank / apc / aa / arty）、飞机的 AirDefs cat（jet / heli）、舰艇 ship；nPaid：这一局已经花 SP 出过几辆
 function Config.WtCost(id, cat, nPaid)
