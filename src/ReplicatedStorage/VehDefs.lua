@@ -36,6 +36,8 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A3 的 M68E1：M833 贫铀尾翼稳定脱壳穿甲弹
   gun105m60 = { kind = "shell", dmg = 460, speed = 4138, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 63, range = 2400,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A1 的 M68：M392A2 脱壳穿甲弹
+  gun152 = { kind = "shell", dmg = 520, speed = 1912, drop = 0.3, splash = 8, rate = 7.5, mag = 1, reload = 0, reserve = 29, range = 2000,
+    vs = { inf = 1.0, light = 1.3, armor = 0.9, air = 0.7, ship = 0.8, fort = 1.4 }, fx = "tank", cal = 0.43 },   -- M551 的 M81 152 毫米炮：M409 多用途破甲弹（683 米 / 秒，弹道弯）
   -- BMP-3 的 2A70 100 毫米低膛压线膛炮（用户 11-24 找的俄系）：3OF32 杀伤爆破榴弹，初速 250 米 / 秒、弹道很弯，打步兵、工事、轻装甲（炮射导弹 9M117 游戏里没有）
   gun100 = { kind = "shell", dmg = 330, speed = 700, drop = 0.42, splash = 9, rate = 6.0, mag = 1, reload = 0, reserve = 34, range = 2400,
     vs = { inf = 1.3, light = 1.1, armor = 0.4, air = 0.3, ship = 0.5, fort = 1.4 }, fx = "tank", cal = 0.3 },
@@ -58,6 +60,11 @@ VehDefs.W = {
   -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
   gau8 = { kind = "shell", dmg = 52, speed = 1250, drop = 0.18, splash = 3.5, rate = 0.05, mag = 512, reload = 6, reserve = 1536, range = 2200,
     vs = { inf = 1, light = 1.1, armor = 0.32, air = 1.6, ship = 0.4, fort = 0.9 }, fx = "ac", cal = 0.22 },
+  -- 反坦克导弹（用户 11-25「全部都做」⑥：战雷里步战车都带）：半自动有线制导——炮长十字线压着目标，导弹自己往瞄准线上靠（Armor.lua G.atgmStep）
+  --   陶式 2A（布雷德利，发射箱两枚、车里再带五枚）：280 米 / 秒、3750 米、串联破甲 900 毫米；
+  --   9M14「婴儿」（BMP-1，炮上导轨一枚、车里四枚）：120 米 / 秒、3000 米、400 毫米，又慢又难打
+  tow2 = { kind = "atgm", dmg = 900, speed = 784, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
+  malyutka = { kind = "atgm", dmg = 600, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
     vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
@@ -102,15 +109,18 @@ local function variant(src, over)
 end
 
 ---------------------------------------------------------------- 坦克
+-- 速度（用户 11-25「全部都做」⑦：原来车慢、加速太猛——M1A2 35 格 / 秒 ≈ 45 公里 / 时，加速 10 格 / 秒² ≈ 3.6 米 / 秒²，比真车快一倍）：
+--   speed / rev 照真车的公路最高速、倒车速度换成格 / 秒（1 米 = 2.8 格：公里 / 时 ÷ 3.6 × 2.8）；accel ≈ 0.22 × 马力 / 吨（格 / 秒²）。
+--   苏俄系倒车慢（T-72B3 约 4 公里 / 时、T-80U 11），北约的快（豹 2 31、M1 约 40）——战雷里也是这样
 
-D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.3, speed = 34, accel = 10, turn = 36,
+D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.3, speed = 54.4, accel = 6.1, rev = 19.4, turn = 36,
   rw = { n = 6, r = 1.15, x = 4.0, z0 = -7.6, z1 = 7.2 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.2, 0.6), size = V(7.4, 2.3, 8.2), style = "wedge", trav = 42, elev = { -6, 18 }, bustle = 2.2 },
   gun = { pivot = V(0, 0.9, -3.4), len = 14.5, cal = 0.46, brake = false, fume = true }, coax = V(1.1, 0.9, -3.6),
   sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
-D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 33, accel = 9, turn = 36,
+D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 50.6, accel = 5.2, rev = 14.0, turn = 36,
   rw = { n = 6, r = 1.1, x = 3.85, z0 = -7.0, z1 = 6.7 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.0, 0.4), size = V(6.8, 2.2, 7.0), style = "round", trav = 38, elev = { -6, 16 }, bustle = 1.2 },
   gun = { pivot = V(0, 0.9, -3.0), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.2),
@@ -119,7 +129,7 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   weapons = { "gun125", "coax" } })
 -- T-90M「突破-3」（用户 11-24「没事干了就去找俄系」）：46.5 吨、V-92S2F 1130 马力、公路 60 公里 / 时；2A46M-5 125 毫米滑膛炮、转盘式自动装弹机（22 发）；
 --   三人车组：炮长左、车长右（同 99A）；炮塔正面、侧面、首上、侧裙板都是「化石」（Relikt）重型爆反；原模型 mansoorsajidp（带车内）
-D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 32, accel = 9, turn = 36,
+D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 5.3, rev = 4.7, turn = 36,
   rw = { n = 6, r = 1.14, x = 3.93, z0 = -6.7, z1 = 5.4 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.3, 0.34), size = V(7.0, 2.0, 7.4), style = "round", trav = 40, elev = { -6, 14 }, bustle = 1.6 },
   gun = { pivot = V(0, 1.28, -2.31), len = 14, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.0),
@@ -130,7 +140,7 @@ D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear
 -- T-80U（用户 11-25「需要模型自己找」：科技树 T-80 一族原来借 T-90M，换成真 T-80U）：46 吨、GTD-1250 燃气轮机 1250 马力、公路 70 公里 / 时
 --   （起步、加速是苏系里最快的）；2A46M-1 125 毫米滑膛炮、「篮子」式自动装弹机（28 发）、3BM42「芒果」脱壳穿甲弹；炮塔正面、首上挂「接触-5」
 --   重型爆反（原模型上就有，EraMeta）；三人车组：炮长左、车长右；原模型 javanilga
-D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hullH = 3.9, clear = 1.3, speed = 37, accel = 11, turn = 38,
+D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hullH = 3.9, clear = 1.3, speed = 54.4, accel = 6.0, rev = 8.6, turn = 38,
   rw = { n = 6, r = 0.95, x = 3.95, z0 = -6.05, z1 = 5.41 }, era = true, skirt = true,
   turret = { pivot = V(0, 3.73, -0.77), size = V(7.6, 2.0, 7.2), style = "round", trav = 36, elev = { -5, 14 }, bustle = 1.2 },
   gun = { pivot = V(0, 0.65, -2.63), len = 13.7, cal = 0.45, fume = true }, coax = V(1.1, 0.65, -3.0),
@@ -139,12 +149,12 @@ D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hu
   sightZoom = { day = { 3.6, 12 }, th = { 5.5 } },   -- 1G46 炮长瞄准镜：昼光 3.6–12 倍；夜视「布兰-PA」5.5 倍
   weapons = { "gun125u", "coax" } })
 -- T-80B（1978）：42.5 吨、GTD-1000TF 1100 马力；2A46-2 炮、3BM22「别针」；还没有爆反（模型是 T-80U，科技树上写「暂用」）；TPD-K1 瞄准镜 8 倍
-D.t80b = variant(D.t80u, { speed = 37, accel = 10, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+D.t80b = variant(D.t80u, { speed = 54.4, accel = 5.7, rev = 8.6, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 -- T-80BVM（2018）：T-80B 的大改，GTD-1250TF 1250 马力、2A46M-4 炮打 3BM60「铅-2」、「化石」重型爆反、「松树-U」热像瞄准镜
 D.t80bvm = variant(D.t80u, { weapons = { "gun125r", "coax" }, sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } } })
 -- 豹 2A6（用户 11-25「需要模型自己找」：原来借 M1A2）：59.9 吨、MTU MB 873 1500 马力、公路 72 公里 / 时；莱茵金属 Rh-120 L/55 120 毫米滑膛炮、
 --   DM53 钨合金尾翼稳定脱壳穿甲弹；炮塔正面楔形附加装甲；四人车组：炮长、车长在右，装填手在左（并列机枪在炮左边）；原模型 mansoorsajidp
-D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, clear = 1.5, speed = 38, accel = 10, turn = 36,
+D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, clear = 1.5, speed = 56.0, accel = 5.3, rev = 24.1, turn = 36,
   rw = { n = 7, r = 1.15, x = 3.78, z0 = -7.28, z1 = 6.93 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.69, -3.08), size = V(8.8, 2.5, 10.0), style = "wedge", trav = 40, elev = { -9, 20 }, bustle = 2.8 },
   gun = { pivot = V(0, 0.87, -3.62), len = 12.1, cal = 0.42 }, coax = V(-1.0, 0.87, -3.6),
@@ -152,11 +162,17 @@ D.leo2a6 = tracked({ cat = "tank", L = 22.4, W = 10.5, H = 8.4, hullH = 5.3, cle
   smoke = { banks = { { at = V(4.2, 2.0, 1.5), yaw = 60 }, { at = V(-4.2, 2.0, 1.5), yaw = -60 } }, n = 8 },
   sightZoom = { day = { 3, 12 }, th = { 3, 12 } },   -- EMES-15 炮长主瞄准镜：昼光 3 / 12 倍，WBG-X 热像 3 / 12 倍
   weapons = { "gun120l55", "coax" } })
+-- 豹 2A7V（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借 2A6，换成真模型，MirzaArrafiERV_45）：66.5 吨、1500 马力、公路 68 公里 / 时；
+--   Rh-120 L/55A1（游戏里按 DM53 算）；炮塔、车体加了新一代模块装甲，车顶有遥控武器站；转轴、炮耳轴照模型量的（ImportedMeta leo2a7v）
+D.leo2a7v = variant(D.leo2a6, { L = 22.0, W = 10.3, H = 8.6, hullH = 4.5, speed = 52.9, accel = 5.0, rev = 24.1,
+  turret = { pivot = V(0.03, 4.5, -1.8), size = V(8.8, 2.6, 10.6), style = "wedge", trav = 40, elev = { -9, 20 }, bustle = 3.0 },
+  gun = { pivot = V(-0.03, 0.88, -5.47), len = 12.3, cal = 0.42 }, coax = V(-1.0, 0.88, -5.2),
+  weapons = { "gun120l55", "coax" } })
 -- 豹 2A4（1985）：55 吨、同一台 1500 马力；Rh-120 L/44 炮、DM33；炮塔是直立的复合装甲（模型是 2A6 的楔形，科技树上写「暂用」）
-D.leo2a4 = variant(D.leo2a6, { accel = 11, weapons = { "gun120l44", "coax" } })
+D.leo2a4 = variant(D.leo2a6, { speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 豹 1（用户 11-25「需要模型自己找」：原来借 M10）：40 吨、MTU MB 838 830 马力、公路 65 公里 / 时；L7A3 105 毫米线膛炮、DM13 脱壳穿甲弹；
 --   装甲薄（首上 70 毫米斜置）、跑得快；四人车组：炮长、车长在右；原模型 FlashPoin（原贴图是没上漆的灰，按联邦国防军黄橄榄色调过）
-D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 35, accel = 10, turn = 40,
+D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 50.6, accel = 4.6, rev = 19.4, turn = 40,
   rw = { n = 7, r = 0.91, x = 3.78, z0 = -6.5, z1 = 5.3 }, skirt = true,
   turret = { pivot = V(0, 4.33, -1.73), size = V(7.2, 2.4, 7.6), style = "round", trav = 40, elev = { -9, 20 }, bustle = 1.6 },
   gun = { pivot = V(0, 1.09, -2.84), len = 12.4, cal = 0.36, fume = true }, coax = V(-0.9, 1.0, -3.0),
@@ -165,10 +181,10 @@ D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear 
   sightZoom = { day = { 8 }, th = { 8 } },   -- TZF 1A 炮长瞄准镜 8 倍（没有热像，夜里照红外探照灯）
   weapons = { "gun105l7", "coax" } })
 -- 豹 1A5（1987）：42.4 吨；EMES 18 火控、WBG-X 热像，打 DM33（105）尾翼稳定脱壳穿甲弹；炮塔加了间隙装甲
-D.leo1a5 = variant(D.leo1, { accel = 9, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
+D.leo1a5 = variant(D.leo1, { speed = 50.6, accel = 4.3, rev = 19.4, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
 -- M60A3 TTS（用户 11-25「需要模型自己找」：原来借 M10）：52.6 吨、AVDS-1790-2C 750 马力柴油机、公路 48 公里 / 时（慢）；M68E1 105 毫米线膛炮、
 --   M833 贫铀脱壳穿甲弹，激光测距、弹道计算机、AN/VSG-2 坦克热像瞄准镜（TTS）；四人车组：炮长、车长在右；原模型 jonathanto99（按美军森林绿改色）
-D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clear = 1.3, speed = 26, accel = 8, turn = 34,
+D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clear = 1.3, speed = 37.3, accel = 3.1, rev = 13.2, turn = 34,
   rw = { n = 6, r = 0.95, x = 3.92, z0 = -6.03, z1 = 6.32 }, skirt = false,
   turret = { pivot = V(0, 4.48, -1.64), size = V(8.4, 2.6, 9.0), style = "round", trav = 24, elev = { -10, 20 }, bustle = 2.4 },
   gun = { pivot = V(0.1, 1.16, -2.85), len = 11.8, cal = 0.36, fume = true }, coax = V(-0.9, 1.1, -3.0),
@@ -176,9 +192,29 @@ D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clea
   smoke = { banks = { { at = V(3.8, 1.5, -1.6), yaw = 40 }, { at = V(-3.8, 1.5, -1.6), yaw = -40 } }, n = 6 },
   sightZoom = { day = { 8 }, th = { 4, 12 } },   -- M35E1 昼光 8 倍；AN/VSG-2 热像宽 4、窄 12 倍
   weapons = { "gun105m68", "coax" } })
+-- 10 式（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借 M1A2，换成真模型，MirzaArrafiERV_45）：44 吨、1200 马力、公路 70 公里 / 时，
+--   无级变速，倒车跟前进一样快；120 毫米 L/44 滑膛炮、尾舱自动装弹机，三人车组；模块化复合装甲；转轴、炮耳轴照模型量的（ImportedMeta type10）
+D.type10 = tracked({ cat = "tank", L = 21.7, W = 9.7, H = 7.4, hullH = 4.1, clear = 1.3, speed = 54.4, accel = 6.0, rev = 54.4, turn = 38,
+  rw = { n = 5, r = 1.1, x = 3.8, z0 = -6.4, z1 = 5.4 }, skirt = true,
+  turret = { pivot = V(0.01, 4.14, -0.55), size = V(8.6, 2.4, 10.0), style = "wedge", trav = 40, elev = { -8, 15 }, bustle = 3.2 },
+  gun = { pivot = V(-0.01, 1.09, -7.68), len = 7.8, cal = 0.42 }, coax = V(1.0, 1.0, -7.2),
+  sight = V(1.9, 2.0, -3.0), cupola = V(-1.6, 2.6, 0.6),
+  smoke = { banks = { { at = V(3.4, 1.6, -2.0), yaw = 40 }, { at = V(-3.4, 1.6, -2.0), yaw = -40 } }, n = 4 },
+  sightZoom = { day = { 3, 12 }, th = { 3, 12 } },
+  weapons = { "gun120l44", "coax" } })
+-- M551 谢里登（用户 11-25「坦克单独找建模很多坦克没有建模」：原来借豹 1，换成真模型，MirzaArrafiERV_45）：15.2 吨、6V53T 300 马力、
+--   公路 70 公里 / 时、能浮渡；铝合金车体、钢炮塔，装甲很薄；M81 152 毫米炮 / 导弹发射器（M409 多用途破甲弹；MGM-51 导弹游戏里没有）；四人车组
+D.m551 = tracked({ cat = "tank", L = 18.2, W = 8.0, H = 7.5, hullH = 4.5, clear = 1.3, speed = 54.4, accel = 4.3, rev = 15.6, turn = 42,
+  rw = { n = 5, r = 1.03, x = 3.29, z0 = -6.0, z1 = 3.94 }, skirt = false,
+  turret = { pivot = V(0, 4.54, -0.1), size = V(7.4, 2.9, 9.0), style = "round", trav = 30, elev = { -8, 19 }, bustle = 1.6 },
+  gun = { pivot = V(0, 0.77, -3.74), len = 5.3, cal = 0.43 }, coax = V(0.6, 0.6, -3.6),
+  sight = V(-1.5, 1.7, -2.2), cupola = V(1.5, 2.6, 0.4),
+  smoke = { banks = { { at = V(3.0, 1.3, -1.4), yaw = 40 }, { at = V(-3.0, 1.3, -1.4), yaw = -40 } }, n = 4 },
+  sightZoom = { day = { 8 }, th = { 8 } },   -- M127 / M129 炮长瞄准镜 8 倍（没有热像）
+  weapons = { "gun152", "coax" } })
 -- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）
-D.m60a1 = variant(D.m60a3, { accel = 8, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
-D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m60a1 = variant(D.m60a3, { speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
+D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.2, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
   gun = { pivot = V(0, 0.95, -4.0), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.1),
@@ -187,7 +223,7 @@ D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hull
   sightZoom = { day = { 3, 10 }, th = { 3, 6, 13, 25, 50 } },
   smoke = { banks = { { at = V(3.5, 1.6, -2.4), yaw = 35 }, { at = V(-3.5, 1.6, -2.4), yaw = -35 } }, n = 6 },
   weapons = { "gun120", "coax" } })
-D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 35, accel = 10, turn = 35,
+D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.8, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.6, z1 = 7.4 }, era = false, skirt = true,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.6, 2.3, 9.0), style = "abrams", trav = 40, elev = { -9, 20 }, bustle = 2.6 },
   gun = { pivot = V(0, 0.95, -3.9), len = 14, cal = 0.44 }, coax = V(1.2, 0.95, -4.0),
@@ -195,99 +231,65 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
   smoke = { banks = { { at = V(3.4, 1.5, -2.3), yaw = 35 }, { at = V(-3.4, 1.5, -2.3), yaw = -35 } }, n = 6 },
   sightZoom = { day = { 3, 10 }, th = { 3, 10 } },   -- M1A1 主瞄准镜：昼光 3 / 10 倍，热像（第一代）宽 3 倍、窄 10 倍
   weapons = { "gun120", "coax" } })
-D.m10 = tracked({ cat = "tank", L = 22, W = 9.6, H = 7.4, hullH = 4.3, clear = 1.4, speed = 37, accel = 11, turn = 40,
-  rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.2, z1 = 7.0 }, skirt = true,
-  turret = { pivot = V(0, 4.3, 0.6), size = V(7.0, 2.3, 7.6), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 2.0 },
-  gun = { pivot = V(0, 0.9, -3.4), len = 12, cal = 0.38, brake = true, fume = true }, coax = V(1.1, 0.9, -3.5),
-  sight = V(1.7, 2.1, -2.4), cupola = V(1.7, 2.3, 0.6),
-  smoke = { banks = { { at = V(3.2, 1.5, -1.8), yaw = 35 }, { at = V(-3.2, 1.5, -1.8), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
+
+-- 11-24 夜 C 从 Sketchfab 找的坦克（用户：「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」——C 没有做车内，按 C 不进车里）：
+--   原模型见 tools/models/blveh.json（leo2a6 / leclerc / t72b3 / t80u）、署名见 models/veh/credits.txt；尺寸、炮塔座圈、炮耳轴照转换报告（格）
+-- 勒克莱尔（法国）：56.5 吨、V8X 1500 马力、72 km/h、120 毫米 CN120-26（炮塔尾舱自动装弹机，三人车组）；HL-60 炮长镜昼光 3.3 / 10 倍
+D.leclerc = tracked({ cat = "tank", L = 19.3, W = 9.7, H = 7.0, hullH = 4.6, clear = 1.3, speed = 56.0, accel = 5.8, rev = 29.6, turn = 37,
+  rw = { n = 6, r = 1.0, x = 3.6, z0 = -6.6, z1 = 6.6 }, era = false, skirt = true,
+  turret = { pivot = V(0, 3.39, -1.89), size = V(8.7, 2.6, 12.3), style = "wedge", trav = 40, elev = { -8, 20 }, bustle = 3.5 },
+  gun = { pivot = V(0, 1.76, -2.98), len = 12.0, cal = 0.44 }, coax = V(1.0, 1.7, -3.0),
+  sight = V(1.5, 2.6, -2.2), cupola = V(-1.5, 2.8, 0.6),
+  smoke = { banks = { { at = V(3.4, 2.0, -1.0), yaw = 35 }, { at = V(-3.4, 2.0, -1.0), yaw = -35 } }, n = 6 },
+  sightZoom = { day = { 3.3, 10 }, th = { 3, 10 } },
+  weapons = { "gun120", "coax" } })
+-- T-72B3（俄罗斯）：46 吨、V-92S2F 1130 马力、60 km/h、125 毫米 2A46M-5（转盘式自动装弹机 22 发）；「松树-U」炮长镜昼光 4 / 12 倍、热像 3.7 / 12 倍
+D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clear = 1.3, speed = 46.7, accel = 5.4, rev = 3.9, turn = 36,
+  rw = { n = 6, r = 1.1, x = 3.9, z0 = -6.6, z1 = 5.6 }, era = false, skirt = true,
+  turret = { pivot = V(0, 4.01, -0.09), size = V(8.0, 2.3, 8.5), style = "round", trav = 24, elev = { -6, 14 } },
+  gun = { pivot = V(0, 0.85, -3.51), len = 13.85, cal = 0.45, fume = true }, coax = V(1.0, 0.9, -3.4),
+  sight = V(-1.8, 2.0, -2.0), cupola = V(1.6, 2.1, 0.4),
+  smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
+  sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },
+  weapons = { "gun125r", "coax" } })
+-- T-72 一族（用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 T-72 乌拉尔 / A / B 原来借 T-90M，改借同族的 T-72B3 模型，性能各按自己的）
+-- T-72「乌拉尔」（1973）：41 吨、V-46 780 马力、公路 60 公里 / 时；2A26M2 125 毫米炮（游戏里按 2A46 打 3BM22 算）、TPD-2-49 合像测距 8 倍；没有爆反、没有热像
+D.t72ural = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+-- T-72A（1979）：41.5 吨、780 马力；2A46 炮、3BM22，TPD-K1 激光测距；炮塔正面「沙」复合装甲
+D.t72a = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+-- T-72B（1985）：44.5 吨、V-84 840 马力；2A46M 炮打 3BM42「芒果」、9K120 炮射导弹；接触-1 爆反（游戏里没挂爆反块，按装甲算进去）
+D.t72b = variant(D.t72b3, { speed = 46.7, accel = 4.6, rev = 3.9, weapons = { "gun125u", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 
 ---------------------------------------------------------------- 装甲车（履带）
 
-D.zbd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.0, hullH = 4.6, clear = 1.2, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
-  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 }, skirt = false,
-  turret = { pivot = V(0, 4.6, -1.6), size = V(4.6, 1.6, 4.8), style = "ifv", trav = 60, elev = { -8, 50 } },
-  gun = { pivot = V(0, 0.6, -2.2), len = 7.5, cal = 0.24, brake = true }, coax = V(0.8, 0.6, -2.3),
-  sight = V(-1.4, 1.5, -1.8),
-  smoke = { banks = { { at = V(2.2, 0.9, -1.6), yaw = 30 }, { at = V(-2.2, 0.9, -1.6), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
 -- BMP-1 步兵战车（用户 11-25「需要模型自己找」：科技树 BMP-1、86 式原来借 BMP-3）：13.3 吨、UTD-20 300 马力、公路 65 公里 / 时、能浮渡；
 --   单人炮塔 2A28「雷」73 毫米低压滑膛炮（PG-15V 火箭增程破甲弹、自动装弹机）+ 并列 PKT（炮塔顶的「婴儿」反坦克导弹游戏里没有）；
 --   后面八名载员从车尾两扇门下车；原模型 buh-late
-D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear = 1.1, speed = 35, accel = 10, turn = 40, amphib = true, boat = true,
+D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear = 1.1, speed = 50.6, accel = 5.0, rev = 7.8, turn = 40, amphib = true, boat = true,
   rw = { n = 6, r = 0.82, x = 3.54, z0 = -4.19, z1 = 5.44 }, skirt = false,
   turret = { pivot = V(0, 4.28, 1.2), size = V(4.4, 1.5, 4.4), style = "ifv", trav = 30, elev = { -4, 33 } },
   gun = { pivot = V(0.1, 0.54, -1.72), len = 4.8, cal = 0.22 }, coax = V(0.6, 0.5, -1.9),
   sight = V(-1.0, 1.3, -0.9),
   sightZoom = { day = { 6 }, th = { 6.7 } },   -- 1PN22M1 炮长瞄准镜：昼光 6 倍、夜视 6.7 倍
-  weapons = { "gun73", "coax" }, seats = 8 })
--- BMP-3 步兵战车（用户 11-24「找俄系」）：18.7 吨、UTD-29 500 马力、公路 70 公里 / 时、能浮渡；炮塔里 2A70 100 毫米炮 + 2A72 30 毫米炮并列，
---   炮长左、车长右，后面七名载员从车尾两扇门（门上面是发动机）下车；原模型 lampilamp（炮塔顶上加了防无人机网架）
-D.bmp3 = tracked({ cat = "apc", L = 20, W = 9.0, H = 6.8, hullH = 5.0, clear = 1.4, speed = 40, accel = 11, turn = 40, amphib = true, boat = true,
-  rw = { n = 6, r = 0.95, x = 3.6, z0 = -5.2, z1 = 6.2 }, skirt = false,
-  turret = { pivot = V(0, 5.04, -0.82), size = V(4.8, 1.6, 5.0), style = "ifv", trav = 60, elev = { -6, 60 } },
-  gun = { pivot = V(0.16, 0.63, -1.49), len = 7.8, cal = 0.28 }, coax = V(0.7, 0.6, -2.0),
-  sight = V(-1.2, 1.3, -1.4),
-  smoke = { banks = { { at = V(2.2, 0.9, -1.4), yaw = 30 }, { at = V(-2.2, 0.9, -1.4), yaw = -30 } }, n = 3 },
-  weapons = { "gun100", "ac30", "coax" }, seats = 7 })
-D.ztd05 = tracked({ cat = "apc", L = 26, W = 9.6, H = 7.2, hullH = 4.6, clear = 1.2, speed = 38, accel = 10, turn = 38, amphib = true, boat = true,
-  rw = { n = 7, r = 0.95, x = 3.8, z0 = -9.2, z1 = 9.4 },
-  turret = { pivot = V(0, 4.6, -0.6), size = V(6.0, 2.0, 6.0), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.2 },
-  gun = { pivot = V(0, 0.8, -2.8), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.8, -2.9),
-  sight = V(-1.6, 1.8, -2.0),
-  smoke = { banks = { { at = V(2.8, 1.2, -1.6), yaw = 35 }, { at = V(-2.8, 1.2, -1.6), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
-D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 36, accel = 10, turn = 40,
+  weapons = { "gun73", "malyutka", "coax" }, seats = 8 })
+D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 51.3, accel = 4.4, rev = 15.6, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
   gun = { pivot = V(0, 0.7, -2.4), len = 6.5, cal = 0.24 }, coax = V(0.9, 0.7, -2.5),
   sight = V(-1.5, 1.7, -1.8),
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
-D.m1150 = tracked({ cat = "apc", L = 24, W = 10.2, H = 6.6, hullH = 4.4, clear = 1.4, speed = 32, accel = 9, turn = 34, plow = true,
-  rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, skirt = true,
-  turret = { pivot = V(0, 4.4, 1.6), size = V(2.2, 1.0, 2.2), style = "rws", trav = 70, elev = { -10, 50 } },
-  gun = { pivot = V(0, 0.6, -0.6), len = 4.6, cal = 0.2 }, sight = V(0, 1.4, -0.8),
-  smoke = { banks = { { at = V(1.4, 0.4, -0.6), yaw = 35 }, { at = V(-1.4, 0.4, -0.6), yaw = -35 } }, n = 4 },
-  weapons = { "hmg" } })
+  weapons = { "ac30", "tow2", "coax" }, seats = 6 })
 
 ---------------------------------------------------------------- 装甲车（轮式）
 
-D.zsl92b = wheeled({ cat = "apc", L = 21, W = 8.4, H = 7.6, hullH = 5.2, clear = 1.7, speed = 46, accel = 12, turn = 48, amphib = true, boat = true,
-  axles = { -6.0, -1.6, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.5,
-  turret = { pivot = V(0, 5.2, -0.6), size = V(4.2, 1.5, 4.2), style = "ifv", trav = 60, elev = { -8, 55 } },
-  gun = { pivot = V(0, 0.6, -2.0), len = 7.0, cal = 0.22, brake = true }, coax = V(0.8, 0.6, -2.1),
-  sight = V(-1.3, 1.4, -1.6),
-  smoke = { banks = { { at = V(2.1, 0.9, -1.2), yaw = 35 }, { at = V(-2.1, 0.9, -1.2), yaw = -35 } }, n = 4 },
-  weapons = { "ac30", "coax" }, seats = 6 })
-D.ptl02 = wheeled({ cat = "apc", L = 22, W = 8.6, H = 7.4, hullH = 5.0, clear = 1.7, speed = 46, accel = 12, turn = 46,
-  axles = { -6.4, -2.0, 5.4 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.6,
-  turret = { pivot = V(0, 5.0, 0.4), size = V(5.6, 1.8, 5.8), style = "wedge", trav = 40, elev = { -6, 18 }, bustle = 1.0 },
-  gun = { pivot = V(0, 0.7, -2.6), len = 11.5, cal = 0.36, brake = true, fume = true }, coax = V(0.9, 0.7, -2.7),
-  sight = V(-1.5, 1.6, -2.0),
-  smoke = { banks = { { at = V(2.7, 1.0, -1.6), yaw = 35 }, { at = V(-2.7, 1.0, -1.6), yaw = -35 } }, n = 4 },
-  weapons = { "gun105", "coax" } })
-D.stryker = wheeled({ cat = "apc", L = 22, W = 8.4, H = 7.8, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
-  axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
-  turret = { pivot = V(0, 5.8, 0.4), size = V(2.4, 1.1, 2.4), style = "rws", trav = 70, elev = { -12, 55 } },
-  gun = { pivot = V(0, 0.6, -0.6), len = 5.0, cal = 0.2 }, sight = V(0, 1.4, -0.9),
-  smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
-  weapons = { "hmg" }, seats = 8 })
-D.m1117 = wheeled({ cat = "apc", L = 17, W = 7.6, H = 7.4, hullH = 5.4, clear = 1.6, speed = 50, accel = 13, turn = 52,
-  axles = { -4.8, 4.6 }, steer = 1, wr = 1.6, ww = 1.0, wx = 3.1,
-  turret = { pivot = V(0, 5.4, 0.6), size = V(3.2, 1.4, 3.2), style = "ifv", trav = 70, elev = { -8, 45 } },
-  gun = { pivot = V(0, 0.6, -1.4), len = 4.6, cal = 0.2 }, sight = V(-1.0, 1.3, -1.2),
-  smoke = { banks = { { at = V(1.6, 0.7, -1.4), yaw = 35 }, { at = V(-1.6, 0.7, -1.4), yaw = -35 } }, n = 4 },
-  weapons = { "hmg" }, seats = 4 })
-D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 58, accel = 15, turn = 60, light = true,
+D.hmmwv = wheeled({ cat = "apc", L = 14, W = 6.4, H = 6.4, hullH = 4.6, clear = 1.4, speed = 81.7, accel = 15, rev = 23.3, turn = 60, light = true,
   axles = { -4.0, 4.2 }, steer = 1, wr = 1.3, ww = 0.9, wx = 2.6,
   turret = { pivot = V(0, 4.6, 0.6), size = V(2.4, 0.9, 2.4), style = "ring", trav = 90, elev = { -10, 40 } },
   gun = { pivot = V(0, 0.9, -0.6), len = 4.2, cal = 0.18 }, sight = V(0, 1.7, 0.4),
   smoke = { banks = { { at = V(1.9, 0.3, -2.4), yaw = 35, hull = true }, { at = V(-1.9, 0.3, -2.4), yaw = -35, hull = true } }, n = 2 },
   weapons = { "hmg" }, seats = 4 })
-D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1.6, speed = 56, accel = 14, turn = 56, light = true,
+D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1.6, speed = 77.8, accel = 14, rev = 23.3, turn = 56, light = true,
   axles = { -4.8, 4.8 }, steer = 1, wr = 1.45, ww = 1.0, wx = 2.9,
   turret = { pivot = V(0, 5.2, 0.4), size = V(2.2, 1.0, 2.2), style = "rws", trav = 80, elev = { -10, 50 } },
   gun = { pivot = V(0, 0.6, -0.6), len = 4.4, cal = 0.18 }, sight = V(0, 1.4, -0.8),
@@ -296,19 +298,19 @@ D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1
 
 ---------------------------------------------------------------- 防空
 
-D.pgz07 = tracked({ cat = "aa", L = 22, W = 9.6, H = 9.6, hullH = 4.4, clear = 1.3, speed = 34, accel = 9, turn = 36,
+D.pgz07 = tracked({ cat = "aa", L = 22, W = 9.6, H = 9.6, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 5.0, rev = 11.7, turn = 36,
   rw = { n = 6, r = 1.05, x = 3.8, z0 = -7.4, z1 = 7.2 }, skirt = true,
   turret = { pivot = V(0, 4.4, 0.8), size = V(5.6, 2.6, 6.2), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 3.4 },
   gun = { pivot = V(0, 1.3, -1.4), len = 9.5, cal = 0.24 }, sight = V(0, 2.2, -2.6),
   smoke = { banks = { { at = V(2.7, 0.8, -2.8), yaw = 35 }, { at = V(-2.7, 0.8, -2.8), yaw = -35 } }, n = 4 },
   weapons = { "ac35" } })
-D.m163 = tracked({ cat = "aa", L = 15, W = 8.2, H = 8.0, hullH = 5.4, clear = 1.2, speed = 36, accel = 10, turn = 42,
+D.m163 = tracked({ cat = "aa", L = 15, W = 8.2, H = 8.0, hullH = 5.4, clear = 1.2, speed = 52.1, accel = 4.6, rev = 15.6, turn = 42,
   rw = { n = 5, r = 0.95, x = 3.4, z0 = -5.6, z1 = 5.6 },
   turret = { pivot = V(0, 5.4, 1.4), size = V(3.4, 1.4, 3.4), style = "vulcan", trav = 80, elev = { -5, 80 } },
   gun = { pivot = V(0, 0.9, -1.0), len = 5.4, cal = 0.3, gatling = true }, sight = V(-1.0, 1.8, -0.4),
   smoke = { banks = { { at = V(3.2, -1.4, -6.4), yaw = 30, hull = true }, { at = V(-3.2, -1.4, -6.4), yaw = -30, hull = true } }, n = 4 },
   weapons = { "vulcan" } })
-D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 1.8, speed = 44, accel = 11, turn = 40, truck = true,
+D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 1.8, speed = 66.1, accel = 9, rev = 19.4, turn = 40, truck = true,
   axles = { -7.6, -3.8, 5.6 }, steer = 1, wr = 1.55, ww = 1.1, wx = 3.4,
   turret = { pivot = V(0, 5.6, 2.4), size = V(4.6, 2.2, 4.6), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 2.8 },
   gun = { pivot = V(0, 1.1, -1.2), len = 7.4, cal = 0.22 }, sight = V(0, 2.0, -2.0),
@@ -316,25 +318,25 @@ D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 
   weapons = { "ac35" } })
 -- 铠甲-S1（用户 11-24 找的俄系；SanderWolf_ 的原模型 pantsir）：KamAZ-6560 8×8 底盘、后部战斗模块——两门 2A38M 双管 30 炮 + 12 枚 57E6 地空导弹，
 --   顶上搜索雷达一直转、前面跟踪雷达；尺寸按原模型（全长约 10.3 米）
-D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clear = 1.9, speed = 42, accel = 9, turn = 34, truck = true,
+D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clear = 1.9, speed = 70.0, accel = 8, rev = 19.4, turn = 34, truck = true,
   axles = { -10.6, -4.9, 5.9, 9.8 }, steer = 2, wr = 1.88, ww = 1.06, wx = 2.75,
   turret = { pivot = V(0, 7.64, 5.95), size = V(4.6, 2.4, 11.0), style = "spaag", trav = 90, elev = { -5, 82 }, twin = 4.1 },
   gun = { pivot = V(0, 1.33, 0.53), len = 7.2, cal = 0.2 }, sight = V(0, 3.1, -2.6),
   smoke = { banks = { { at = V(2.4, 0.4, -1.6), yaw = 35 }, { at = V(-2.4, 0.4, -1.6), yaw = -35 } }, n = 4 },
   weapons = { "ac30aa", "s57e6" } })
-D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 40, accel = 9, turn = 34, truck = true,
+D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 66.1, accel = 8, rev = 19.4, turn = 34, truck = true,
   axles = { -10.6, -6.6, 3.4, 7.2 }, steer = 2, wr = 1.65, ww = 1.15, wx = 3.5,
   turret = { pivot = V(0, 5.8, 4.6), size = V(4.0, 2.6, 4.0), style = "vulcan", trav = 90, elev = { -5, 85 }, radar = true },
   gun = { pivot = V(0, 1.3, -1.2), len = 6.0, cal = 0.36, gatling = true }, sight = V(-1.2, 2.2, -1.0),
   smoke = { banks = { { at = V(3.6, -1.6, -11.4), yaw = 30, hull = true }, { at = V(-3.6, -1.6, -11.4), yaw = -30, hull = true } }, n = 4 },
   weapons = { "vulcan" } })
-D.mshorad = wheeled({ cat = "aa", L = 22, W = 8.4, H = 9.0, hullH = 5.8, clear = 1.6, speed = 46, accel = 12, turn = 44,
+D.mshorad = wheeled({ cat = "aa", L = 22, W = 8.4, H = 9.0, hullH = 5.8, clear = 1.6, speed = 75.4, accel = 10, rev = 23.3, turn = 44,
   axles = { -6.8, -3.2, 2.6, 6.2 }, steer = 2, wr = 1.45, ww = 1.0, wx = 3.5,
   turret = { pivot = V(0, 5.8, 0.6), size = V(4.0, 1.8, 4.2), style = "ifv", trav = 80, elev = { -8, 70 }, pods = true },
   gun = { pivot = V(0, 0.7, -2.0), len = 6.4, cal = 0.22 }, sight = V(-1.3, 1.6, -1.6),
   smoke = { banks = { { at = V(3.6, -0.2, -6.0), yaw = 30, hull = true }, { at = V(-3.6, -0.2, -6.0), yaw = -30, hull = true } }, n = 4 },
   weapons = { "ac30" } })
-D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.6, speed = 30, accel = 7, turn = 30, truck = true,
+D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.6, speed = 46.7, accel = 6, rev = 15.6, turn = 30, truck = true,
   axles = { -5.4, -2.0, 5.4 }, steer = 1, wr = 1.5, ww = 1.0, wx = 3.2,
   turret = { pivot = V(0, 4.4, 3.0), size = V(3.6, 2.4, 3.6), style = "vulcan", trav = 100, elev = { -5, 85 }, dome = true },
   gun = { pivot = V(0, 1.2, -1.2), len = 6.0, cal = 0.3, gatling = true }, sight = V(-1.0, 2.0, -0.6),
@@ -343,19 +345,19 @@ D.cram = wheeled({ cat = "aa", L = 19, W = 8.0, H = 9.6, hullH = 4.4, clear = 1.
 
 ---------------------------------------------------------------- 火炮
 
-D.plz07 = tracked({ cat = "arty", L = 22, W = 9.6, H = 9.0, hullH = 4.4, clear = 1.3, speed = 32, accel = 8, turn = 34,
+D.plz07 = tracked({ cat = "arty", L = 22, W = 9.6, H = 9.0, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 4.2, rev = 11.7, turn = 34,
   rw = { n = 6, r = 1.0, x = 3.8, z0 = -7.4, z1 = 7.2 },
   turret = { pivot = V(0, 4.4, 2.2), size = V(7.2, 3.0, 8.4), style = "sph", trav = 25, elev = { -3, 65 } },
   gun = { pivot = V(0, 1.4, -4.0), len = 15, cal = 0.42, brake = true, fume = true }, sight = V(-2.4, 2.8, -3.0),
   smoke = { banks = { { at = V(3.4, 1.4, -3.4), yaw = 35 }, { at = V(-3.4, 1.4, -3.4), yaw = -35 } }, n = 4 },
   weapons = { "how155" } })
-D.m109a7 = tracked({ cat = "arty", L = 24, W = 10.2, H = 9.4, hullH = 4.2, clear = 1.4, speed = 30, accel = 8, turn = 32,
+D.m109a7 = tracked({ cat = "arty", L = 24, W = 10.2, H = 9.4, hullH = 4.2, clear = 1.4, speed = 47.4, accel = 4.0, rev = 14.0, turn = 32,
   rw = { n = 7, r = 1.0, x = 4.0, z0 = -7.8, z1 = 7.6 },
   turret = { pivot = V(0, 4.2, 2.8), size = V(8.4, 3.4, 10.4), style = "sph", trav = 22, elev = { -3, 70 } },
   gun = { pivot = V(0, 1.6, -5.0), len = 17, cal = 0.44, brake = true, fume = true }, sight = V(-2.8, 3.0, -3.6),
   smoke = { banks = { { at = V(4.0, 1.6, -4.4), yaw = 35 }, { at = V(-4.0, 1.6, -4.4), yaw = -35 } }, n = 4 },
   weapons = { "how155" } })
-D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 1.4, speed = 32, accel = 8, turn = 34,
+D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 1.4, speed = 49.8, accel = 4.0, rev = 14.0, turn = 34,
   rw = { n = 6, r = 1.0, x = 3.7, z0 = -6.8, z1 = 6.8 }, cab = true,
   turret = { pivot = V(0, 4.4, 2.6), size = V(5.8, 2.6, 9.0), style = "launcher", trav = 30, elev = { 0, 60 } },
   gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.6, -8.6),
@@ -363,16 +365,20 @@ D.m270 = tracked({ cat = "arty", L = 20, W = 9.4, H = 8.2, hullH = 4.4, clear = 
   weapons = { "mlrs" } })
 
 -- 爱国者（只打飞机；在有飞机之前不给选）
-D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 1.8, speed = 34, accel = 8, turn = 32, truck = true, needsAir = true,
+D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 1.8, speed = 54.4, accel = 6, rev = 15.6, turn = 32, truck = true, needsAir = true,
   axles = { -9.6, -5.8, 6.2, 9.6 }, steer = 1, wr = 1.6, ww = 1.1, wx = 3.4,
   turret = { pivot = V(0, 4.4, 3.0), size = V(6.0, 3.0, 11), style = "launcher", trav = 30, elev = { 0, 38 } },
   gun = { pivot = V(0, 0.4, 0), len = 0, cal = 0 }, sight = V(0, -0.4, -12),
   smoke = { banks = { { at = V(3.4, -0.4, -13), yaw = 30, hull = true }, { at = V(-3.4, -0.4, -13), yaw = -30, hull = true } }, n = 2 },
   weapons = {} })
 
+-- 没有激光测距机的（用户 11-25「全部都做」⑤：战雷历史模式里这种车按 R 是车长估距——要等两秒、有误差）：
+--   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
+local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true }
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id
+  d.lrf = not NO_LRF[id]
   d.seats = d.seats or 1
   d.travel = d.travel or ((d.arch == "wheeled") and 0.75 or 0.55)   -- 悬架行程（上下各多少格）
   d.rev = d.rev or d.speed * 0.4

@@ -20,8 +20,9 @@ function WtBattle.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED, BLACK = Enum.Font.GothamBold, Enum.Font.GothamMedium, Enum.Font.GothamBlack
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, MUTE, INK = RGB(238, 242, 244), RGB(170, 176, 182), RGB(0, 0, 0)
-  local GOOD, BAD, GOLD = RGB(120, 230, 120), RGB(255, 96, 80), RGB(255, 206, 96)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, MUTE, INK = TH.C.TEXT, TH.C.MUTE, TH.C.INK
+  local GOOD, BAD, GOLD = TH.C.GOOD, TH.C.BAD, TH.C.WARN
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtBattle"
@@ -49,8 +50,9 @@ function WtBattle.init(G)
   end
   local function hex(c) return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local function teamColor(t)
-    local T0 = Config.Teams and Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
 
   ---------------------------------------------------------------- SP 那一块
@@ -106,6 +108,85 @@ function WtBattle.init(G)
     local w = S and S.wt
     if not w then return nil end
     return T("wtm.sp", w.sp or 0) .. "  ·  " .. T("wtm.lineup", #(w.order or {}), w.max or 5)
+  end
+
+  ---------------------------------------------------------------- 出击栏（战雷：阵亡以后在出击界面直接选车，人在车里出生）
+  --   部署界面下面一条：本队能开的地面车一排、飞机直升机一排，每张卡写名字、这辆现在要多少 SP（免费 / 够了 / 不够 / 阵容满了 / 备用用完）；
+  --   点一张 → 服务器 WtMatch.lua G.ACT.wtDeployVeh（在主基地出生、出车、坐进去）；装备照部署界面左下选的
+  local strip = Instance.new("ScrollingFrame")
+  strip.Name = "WtLineup"
+  strip.Size, strip.Position, strip.AnchorPoint = UD2(0.62, 0, 0, 76), UD2(0.5, 0, 1, -104), V2(0.5, 1)
+  strip.BackgroundColor3, strip.BackgroundTransparency, strip.BorderSizePixel = RGB(8, 12, 14), 0.35, 0
+  strip.ScrollingDirection = Enum.ScrollingDirection.X
+  strip.ScrollBarThickness = 4
+  strip.CanvasSize = UD2(0, 0, 0, 0)
+  strip.AutomaticCanvasSize = Enum.AutomaticSize.X
+  strip.Visible = false
+  strip.Parent = gui
+  do
+    local l = Instance.new("UIListLayout")
+    l.FillDirection = Enum.FillDirection.Horizontal
+    l.Padding = UDim.new(0, 6)
+    l.VerticalAlignment = Enum.VerticalAlignment.Center
+    l.SortOrder = Enum.SortOrder.LayoutOrder
+    l.Parent = strip
+    local pd = Instance.new("UIPadding")
+    pd.PaddingLeft, pd.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+    pd.Parent = strip
+  end
+  local stripTitle = label(gui, "", UD2(0.62, 0, 0, 18), UD2(0.5, 0, 1, -182), 13, GOLD, BOLD, V2(0.5, 1), LEFT)
+  stripTitle.Visible = false
+  local cards, cardKey = {}, nil
+  local function buildCards(S)
+    local team = S.team or "atk"
+    local key = team .. ":" .. tostring(#(S.wt and S.wt.order or {}))
+    if key == cardKey and #cards > 0 then return end
+    cardKey = key
+    for _, c in ipairs(cards) do c.b:Destroy() end
+    cards = {}
+    local ids = {}
+    for _, cat in ipairs({ "tank", "apc", "aa", "arty", "jet", "heli" }) do
+      for _, id in ipairs(Config.TeamVehicles(team, cat)) do table.insert(ids, { id = id, cat = cat }) end
+    end
+    for i, it in ipairs(ids) do
+      local b = Instance.new("TextButton")
+      b.Name = "Deploy_" .. it.id
+      b.Text = ""
+      b.LayoutOrder = i
+      b.Size = UD2(0, 132, 0, 60)
+      b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(22, 26, 30), 0.1, 0
+      b.AutoButtonColor = true
+      b.Parent = strip
+      local st = Instance.new("UIStroke")
+      st.Color, st.Transparency, st.Thickness = WHITE, 0.85, 1
+      st.Parent = b
+      local nm = string.match(T("veh." .. it.id), "^(%S+)") or T("veh." .. it.id)
+      label(b, nm, UD2(1, -10, 0, 20), UD2(0, 6, 0, 5), 14, WHITE, BLACK, nil, LEFT)
+      label(b, T("vcat." .. it.cat), UD2(1, -10, 0, 14), UD2(0, 6, 0, 24), 11, MUTE, MED, nil, LEFT)
+      local tag = label(b, "", UD2(1, -10, 0, 16), UD2(0, 6, 1, -20), 12, GOLD, BLACK, nil, LEFT)
+      b.Activated:Connect(function()
+        local sel = G.deploySel
+        G.R.Act:FireServer("wtDeployVeh", it.id, sel and sel.kit or nil)
+      end)
+      table.insert(cards, { b = b, tag = tag, id = it.id, cat = it.cat, st = st })
+    end
+  end
+  local function stepStrip(S)
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    -- 机库开着（D 的 TechUI：Config.Wt.noInfantry，玩家不当步兵）就是它管出击——这条出击栏只在还能当步兵的时候出来
+    local hangar = G.hangarActive ~= nil and G.hangarActive() == true
+    local show = S.wt ~= nil and S.alive == false and (S.phase == "battle" or S.phase == "prep") and not dying and not hangar
+      and not (G.menuShown and G.menuShown()) and not G.factionOpen and S.picked ~= false
+    strip.Visible, stripTitle.Visible = show, show
+    if not show then return end
+    buildCards(S)
+    stripTitle.Text = T("wtm.lineupTitle") .. "   ·   " .. (G.wtSpLine() or "")
+    for _, c in ipairs(cards) do
+      local txt, col = tagOf(c.id, c.cat, S.wt, S)
+      c.tag.Text, c.tag.TextColor3 = txt, col
+      local inLine = (S.wt.ln and S.wt.ln[c.id] or 0) > 0
+      c.st.Color, c.st.Transparency = inLine and GOLD or WHITE, inLine and 0.2 or 0.85
+    end
   end
 
   ---------------------------------------------------------------- 结算页
@@ -211,14 +292,130 @@ function WtBattle.init(G)
     nextT.Text = T("ui.nextRound", S.left or 0)
   end
 
+  ---------------------------------------------------------------- 击杀信息（战雷左边那一栏）：「玩家A [豹 2A6] 击毁 玩家B [T-72B3]」
+  --   服务器 WtMatch.lua 车被打掉时发 { op = "wtFeed", k 打的人, kt 他那队, kv 他开的车, v 车里的人, vt 那队, vv 那辆车, air 打下来的是飞机, why 殉爆 / 起火 }；
+  --   我方蓝、敌方红；最多 7 行，8 秒后淡掉；自己相关的那行底色亮一点
+  local FEED_N = 7
+  local feedBox = frame(gui, UD2(0, 460, 0, FEED_N * 22), UD2(0, 16, 0.36, 0), INK, 1)
+  feedBox.Name = "WtKillFeed"
+  local feedRows, feedList = {}, {}
+  for i = 1, FEED_N do
+    local r = frame(feedBox, UD2(1, 0, 0, 20), UD2(0, 0, 0, (i - 1) * 22), INK, 0.6)
+    local l = label(r, "", UD2(1, -12, 1, 0), UD2(0, 6, 0, 0), 13, WHITE, BOLD, nil, LEFT)
+    l.RichText = true
+    r.Visible = false
+    feedRows[i] = { f = r, l = l }
+  end
+  local BLUE, RED = TH.C.FRIEND, TH.C.FOE   -- 自己这边绿、对面红（统一外观，不用蓝）
+  local function vehName(id, tk)   -- tk：科技树的键（科技树出的车写科技树里的名字）
+    if tk then
+      local nm = T("tree." .. tk)
+      if nm ~= "tree." .. tk then return nm end
+    end
+    return id and (string.match(T("veh." .. id), "^(%S+)") or T("veh." .. id)) or nil
+  end
+  local function feedLine(m)
+    local side = me:GetAttribute("Side")
+    local function who(name, team, veh, tk)
+      local col = (team == side) and BLUE or RED
+      local nm = name or T("wtm.ai")
+      local v = vehName(veh, tk)
+      return string.format('<font color="%s">%s</font>%s', hex(col), nm, v and string.format(' <font color="#C8CDD0">[%s]</font>', v) or "")
+    end
+    local verb = T(m.air and "wtm.shotDown" or ((m.why == "ammo") and "wtm.ammoRack" or ((m.why == "fire") and "wtm.burned" or "wtm.destroyed")))
+    if not m.k then return who(m.v, m.vt, m.vv, m.vk) .. "  " .. verb end
+    return who(m.k, m.kt, m.kv, m.kk) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv, m.vk)
+  end
+  local function redrawFeed()
+    local t = os.clock()
+    for i = #feedList, 1, -1 do if t - feedList[i].t > 9 then table.remove(feedList, i) end end
+    for i, R in ipairs(feedRows) do
+      local e = feedList[i]
+      R.f.Visible = e ~= nil
+      if e then
+        R.l.Text = e.txt
+        local a = math.clamp((t - e.t - 7.5) / 1.5, 0, 1)
+        R.l.TextTransparency = a
+        R.f.BackgroundTransparency = (e.mine and 0.35 or 0.6) + a * 0.4
+      end
+    end
+  end
+  -- 火炮支援的落点：地上一圈红（本队看得见；敌人只看得见炮弹落下来）
+  local artyMarks = {}
+  local function artyMark(e)
+    if typeof(e.p) ~= "Vector3" or e.team ~= me:GetAttribute("Side") then return end
+    local p = Instance.new("Part")
+    p.Name = "WtArtyMark"
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Shape = Enum.PartType.Cylinder
+    p.Size = Vector3.new(0.3, (e.r or 70) * 2, (e.r or 70) * 2)
+    p.CFrame = CFrame.new(e.p + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+    p.Material, p.Color, p.Transparency = Enum.Material.Neon, RGB(255, 70, 50), 0.82
+    p.Parent = workspace
+    table.insert(artyMarks, { p = p, till = os.clock() + (e.t or 10) })
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
+    end
+  end)
+  -- 战场奖章：屏幕上方一条——左边一道琥珀细条 + 名字 + 加了多少分，几个一起来就排队
+  --   （统一外观 docs/style.md：不再画金色圆章、星星、22 号金字；用户 11-25「四不像」）
+  local award = frame(gui, UD2(0, 260, 0, 44), UD2(0.5, 0, 0, 150), TH.C.PANEL, TH.A.panel, V2(0.5, 0))
+  award.Name = "WtAward"
+  award.Visible = false
+  frame(award, UD2(0, 3, 1, 0), UD2(0, 0, 0, 0), GOLD, 0)
+  local awName = label(award, "", UD2(1, -18, 0, 22), UD2(0, 14, 0, 3), 16, WHITE, BOLD, nil, LEFT)
+  local awPts = label(award, "", UD2(1, -18, 0, 16), UD2(0, 14, 0, 24), 13, GOLD, TH.F.mono, nil, LEFT)
+  local awQueue, awUntil = {}, 0
+  local function nextAward()
+    local a = table.remove(awQueue, 1)
+    if not a then award.Visible = false return end
+    awName.Text = T("wta.aw." .. a.a)
+    awPts.Text = T("wtm.awardPts", a.pts or 0)
+    award.Visible = true
+    awUntil = os.clock() + 2.6
+    if G.sfx then pcall(G.sfx, "uiClick") end
+  end
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) == "table" and m.op == "wtAward" then
+      table.insert(awQueue, m)
+      if not award.Visible then nextAward() end
+    end
+  end)
+  G.frameConn("WtAward", function()
+    if award.Visible then
+      local t = os.clock()
+      local k = math.clamp(1 - (awUntil - t) / 0.25, 0, 1)   -- 刚出来的 0.25 秒：从大缩到正常
+      local pop = 1 - math.clamp((t - (awUntil - 2.6)) / 0.25, 0, 1)
+      award.Size = UD2(0, 260 * (1 + 0.06 * pop), 0, 44 * (1 + 0.06 * pop))
+      if t > awUntil then nextAward() end
+      local _ = k
+    end
+  end)
+  G.R.Drive.OnClientEvent:Connect(function(m)
+    if type(m) ~= "table" or m.op ~= "wtFeed" then return end
+    table.insert(feedList, 1, { txt = feedLine(m), t = os.clock(), mine = m.vid == me.UserId or m.k == me.DisplayName })
+    while #feedList > FEED_N do table.remove(feedList) end
+    redrawFeed()
+  end)
+  G.wtFeedRows = function() return feedList end   -- 测试用
+
   ---------------------------------------------------------------- 每帧
   G.frameConn("WtBattle", function()
+    if #feedList > 0 then G.try_(redrawFeed) end
+    for i = #artyMarks, 1, -1 do
+      local a = artyMarks[i]
+      if os.clock() > a.till then a.p:Destroy() table.remove(artyMarks, i) end
+    end
     local S = G.S
     local w = S and S.wt
-    if S then G.try_(stepResults, S) end
+    if S then G.try_(stepResults, S) G.try_(stepStrip, S) end
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen
     local driving = G.drive ~= nil or G.myVeh ~= nil
     local show = w ~= nil and not covered and not driving and (S.phase == "battle" or S.phase == "prep") and S.picked ~= false
+      and not (G.hangarGui and G.hangarGui.Visible)   -- 机库顶上自己写了 SP（TechUI.lua），这一块不再叠在 3D 车上
     chip.Visible = show
     local t = os.clock()
     if w then

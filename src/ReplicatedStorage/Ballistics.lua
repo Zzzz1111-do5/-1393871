@@ -42,6 +42,18 @@ B.AMMO = {
     vs = { inf = 0.9, light = 1.3, armor = 0.95, fort = 1.3 }, splash = 1.0 },
   of26 = { cls = "he", name = "3OF26 HE-FRAG", sym = "榴弹", v0 = 850, k = 1.0e-4, bs = 800, tr = false,      -- 杀伤爆破榴弹
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.6 },
+  -- 金属射流弹（用户 11-24 夜「再做一个金属射流弹」）：串联聚能装药破甲弹——前级先把爆反引爆，主装药炸出一股几千米每秒的铜射流
+  --   往装甲里钻（穿深跟距离无关）；打中时客户端画一道白热的射流（WtHud 的 wtJet），X 光里是一道亮青白线
+  jet120 = { cls = "jet", name = "120 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet125 = { cls = "jet", name = "125 金属射流弹", sym = "射流", v0 = 950, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 1.0, fort = 1.3 }, splash = 0.9 },
+  jet105 = { cls = "jet", name = "105 金属射流弹", sym = "射流", v0 = 1180, k = 1.0e-4, bs = 900, tr = true, ce = true,
+    vs = { inf = 0.8, light = 1.35, armor = 0.95, fort = 1.3 }, splash = 0.9 },
+  -- 炮射导弹（用户 11-25「全部都做」⑥）：9M119M「反射」——从 125 炮里打出去，激光驾束（这里按炮长瞄准线导引，同 Armor.lua G.atgmStep），
+  --   350 米 / 秒、5 公里、串联破甲约 850 毫米；cls atgm：Armor.lua 开火时发导弹，不按炮弹的弹道
+  refleks = { cls = "atgm", name = "9M119M Refleks", sym = "导弹", v0 = 350, k = 0, bs = 900, tr = false, ce = true, range = 5000, turn = 2.2,
+    vs = { inf = 0.8, light = 1.3, armor = 1.0, fort = 1.2 }, splash = 1.0 },
   -- 科技树换真模型的几型车（用户 11-25「需要模型自己找」）按真车的弹：
   bm42 = { cls = "ap", name = "3BM42 Mango", sym = "穿甲", v0 = 1715, k = 3.6e-5, bs = 1200, tr = true,      -- T-80U：「芒果」钨合金长杆尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
@@ -65,21 +77,24 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m392 = { cls = "ap", name = "M392A2 APDS", sym = "SABOT", v0 = 1478, k = 7.0e-5, bs = 1000, tr = true,     -- M60A1：105 毫米脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m409 = { cls = "heat", name = "M409 HEAT-MP", sym = "HEAT", v0 = 683, k = 1.4e-4, bs = 700, tr = true, ce = true,   -- M551：152 毫米多用途破甲弹，初速低、弹道弯
+    vs = { inf = 1.1, light = 1.3, armor = 0.9, fort = 1.4 }, splash = 1.3 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
-  gun120 = { "m829a3", "m830", "m830a1", "m1028" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
-  gun125 = { "dtc10", "heat125", "he125" },
-  gun125r = { "bm60", "bk31", "of26" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
-  gun105 = { "m900", "m456" },
-  gun125u = { "bm42", "bk18m", "of26" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
-  gun125b = { "bm22", "bk18m", "of26" },    -- T-80B
-  gun120l55 = { "dm53", "dm12" },           -- 豹 2A6
-  gun120l44 = { "dm33", "dm12" },           -- 豹 2A4
-  gun105l7 = { "dm13", "dm12h" },           -- 豹 1
-  gun105a5 = { "dm33l7", "dm12h" },         -- 豹 1A5
-  gun105m68 = { "m833", "m456" },           -- M60A3
-  gun105m60 = { "m392", "m456" },           -- M60A1
+  gun120 = { "m829a3", "m830", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv2：没有弹药数据链（ADL），打不了 AMP、M829A4（要 SEPv3）
+  gun125 = { "dtc10", "heat125", "he125", "jet125" },
+  gun125r = { "bm60", "bk31", "of26", "refleks", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
+  gun105 = { "m900", "m456", "jet105" },
+  gun125u = { "bm42", "bk18m", "of26", "refleks", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
+  gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B
+  gun120l55 = { "dm53", "dm12", "jet120" },           -- 豹 2A6
+  gun120l44 = { "dm33", "dm12", "jet120" },           -- 豹 2A4
+  gun105l7 = { "dm13", "dm12h", "jet105" },           -- 豹 1
+  gun105a5 = { "dm33l7", "dm12h", "jet105" },         -- 豹 1A5
+  gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
+  gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
+  gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)
@@ -93,7 +108,7 @@ function B.panelAmmo(kind, wid)
 end
 B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
-B.MAXR = 5000   -- 激光测距、弹在空中最多飞的距离（米）
+B.MAXR = 8000   -- 激光测距、弹在空中最多飞的距离（米）；11-25 用户「全部都做」③：5 → 8 公里（战雷里炮弹一直飞到落地，沙海 12.7 公里见方）
 
 -- 这门炮的这种弹（不认识的弹给默认那种）
 function B.ammo(wid, key)
@@ -117,6 +132,7 @@ end
 -- 超高角（弧度）：打 xm 米远、瞄准线仰角 los（弧度）时炮要比瞄准线高多少（下坠只算垂直瞄准线那一份：× cos los）
 function B.superElev(a, xm, los)
   if xm < 1 then return 0, 0 end
+  if a.cls == "atgm" then return 0, xm / math.max(a.v0, 1) end   -- 炮射导弹（⑥）：顺着瞄准线飞，不抬炮
   local t, drop = B.flight(a, xm)
   return math.atan(drop * math.cos(los or 0) / xm), t
 end

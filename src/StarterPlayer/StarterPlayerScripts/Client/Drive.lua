@@ -142,11 +142,11 @@ function Drive.init(G)
   local dc = Instance.new("UICorner")
   dc.CornerRadius = UDim.new(0.5, 0)
   dc.Parent = dot
-  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   -- 火控显示（照钢铁猛兽 / 真车主瞄准镜下沿那一行）：弹种、测距（没测距是战斗瞄准距离，前面写 BS；没回波 ----）、待发方块（装好弹是实心）
-  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   ammoText.Name = "FcsAmmo"
   rangeText.Name = "FcsRange"
   local readyBox = ui.frame(sight, UDim2.fromOffset(15, 15), UDim2.new(0.5, 118, 0.5, 150), RET, 0, Vector2.new(0.5, 0.5))
@@ -156,7 +156,7 @@ function Drive.init(G)
   multiBar.Name = "FcsMulti"
   multiBar.Visible = false
   -- 火控状态（方式不是正常、稳定器关、激光保险、炮口基准该更新了）：分划上方一行
-  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   fcsText.Name = "FcsStatus"
   local readyStroke = Instance.new("UIStroke")
   readyStroke.Color = RET
@@ -1056,8 +1056,11 @@ function Drive.init(G)
         st.sus = S
       end
       S.x, S.z = st.pos.X, st.pos.Z
-      local n = (dt > 1 / 45) and 3 or 1   -- 掉帧时分几步算，免得弹簧算飞
-      local h = dt / n
+      -- 掉帧时分几步算，免得弹簧算飞：每步不超过 1/120 秒（用户 11-25「坦克一直在抽搐」——原来一帧超过 1/45 秒才分 3 步，
+      --   卡到一帧 0.3 秒时每步 0.1 秒，车身弹簧照样算飞；一帧最多按 0.12 秒算，卡一下不会把车弹上天）
+      local dtS = math.min(dt, 0.12)
+      local n = math.max(1, math.ceil(dtS * 120 - 1e-6))
+      local h = dtS / n
       for _ = 1, n do
         local function spring(x, vx, target, k, z)
           vx += (k * (target - x) - 2 * math.sqrt(k) * z * vx) * h
@@ -1218,11 +1221,29 @@ function Drive.init(G)
     local sz = inst.Size
     return math.min(sz.X, sz.Y, sz.Z) < 0.5 and math.max(sz.X, sz.Y, sz.Z) < 12
   end
+  local laseNow
   local function lase()
     local a = fcsAmmo()
     if not a then return end
     local f = st.fcs
-    if f.arm == false then   -- 激光测距机拨在保险上：不出光
+    -- 没有激光测距机的车（VehDefs 的 lrf = false：豹 1、M60A1、BMP-1）：按 R 是车长估距——两秒以后报一个数，差上下 8% 左右（战雷历史模式）
+    if st.d.lrf == false then
+      if f.estT and os.clock() < f.estT then return end
+      f.estT = os.clock() + 2.2
+      f.estimating = true
+      if G.sfx then pcall(G.sfx, "uiClick") end
+      local myF = f
+      task.delay(2.2, function()
+        if not st or st.fcs ~= myF then return end
+        myF.estimating = nil
+        laseNow(myF, true)
+      end)
+      return
+    end
+    laseNow(f, false)
+  end
+  laseNow = function(f, est)
+    if f.arm == false and not est then   -- 激光测距机拨在保险上：不出光
       if G.sfx then pcall(G.sfx, "dry") end
       return
     end
@@ -1249,7 +1270,9 @@ function Drive.init(G)
     f.laseT = os.clock()
     f.multi = #rets > 1
     local m = rets[1] and ((f.lrf == "FIRST") and rets[1] or rets[#rets]) or nil
-    if m then f.R, f.noRet = math.floor(m / 5 + 0.5) * 5, false
+    if est and m then m = m * (1 + (math.random() * 2 - 1) * 0.08) end   -- 车长估的：上下差 8% 以内
+    f.est = est or nil
+    if m then f.R, f.noRet = math.floor(m / (est and 50 or 5) + 0.5) * (est and 50 or 5), false
     else f.R, f.noRet = nil, true end
     f.man = nil
     f.leadY, f.leadP = f.ry or 0, f.rp or 0   -- 测距那一刻跟踪的角速度（弧度 / 秒）：提前量
@@ -1337,7 +1360,7 @@ function Drive.init(G)
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
     if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
-    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
+    if (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") and st.em and st.em:GetAttribute("WtGun") == false then   -- 战雷式伤害：炮长没了、炮闩 / 炮管坏了、正在修
       local t0 = os.clock()
       if t0 > (st.wtGunMsg or 0) and G.toast then
         st.wtGunMsg = t0 + 1.5
@@ -1352,7 +1375,8 @@ function Drive.init(G)
     -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
     local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
     local crewK = (w.kind == "shell" and st.em and st.em:GetAttribute("CrewRel")) or 1   -- 乘员技能「装填」（服务器同样乘）
-    st.next[wid] = t + w.rate * rofK * crewK
+    local rackK = (w.kind == "shell" and BAL.GUN[wid] and st.em and st.em:GetAttribute("RdyK")) or 1   -- ④ 待发弹架空了装得慢（服务器 Wt.lua 同样乘）
+    st.next[wid] = t + w.rate * rofK * crewK * rackK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
@@ -1461,6 +1485,7 @@ function Drive.init(G)
       lase()
     elseif k == Enum.KeyCode.Q then   -- 换弹种（穿甲 / 破甲 / 多用途……）
       cycleAmmo()
+    elseif NUMK[k] and G.radioOpen and G.radioOpen() then   -- 无线电菜单开着（WtComms.lua，O）：数字键选无线电，不换弹
     elseif NUMK[k] then   -- 3 / 4：车顶重机枪、改装的车顶加特林
       local i = NUMK[k]
       -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪
@@ -1469,6 +1494,12 @@ function Drive.init(G)
       smoke()
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
+    elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
+      local aim = st.aimPt or (workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 1000)
+      local from = (st.sight and workspace.CurrentCamera.CFrame.Position) or (st.root.Position + V(0, st.d.H or 6, 0))
+      G.R.Act:FireServer("wtScout", from, aim)
+    elseif k == Enum.KeyCode.K and not (G.interiorOn and G.interiorOn()) then   -- 战雷式火炮支援：准星下那块地落一轮炮弹（冷却 2 分钟）
+      if st.aimPt then G.R.Act:FireServer("wtArty", st.aimPt) end
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
     elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）

@@ -85,9 +85,14 @@ R.run(0.5)
 -- 机库每次刷新都重建卡片：等到开战以后再找按钮（旧卡片已经销毁了，按了没反应）
 local goBtn
 for _, c in ipairs(hg and hg:GetDescendants() or {}) do
-  if c.Name == "Line_" .. tostring(groundKey) then goBtn = c:FindFirstChild("Go") end
+  if c.Name == "Line_" .. tostring(groundKey) then goBtn = c end   -- 机库 11-25 重排：点卡片选中，右下一个大「出击」（HangarGo）
 end
-check(goBtn ~= nil, "卡片上有「出击」")
+check(goBtn ~= nil, "阵容里有这张卡")
+if goBtn then T.press(goBtn) R.run(0.2) end
+for _, c in ipairs(hg and hg:GetDescendants() or {}) do
+  if c.Name == "HangarGo" then goBtn = c end
+end
+check(goBtn ~= nil and goBtn.Name == "HangarGo", "右下有大「出击」")
 -- 追踪：出击走到哪一步（失败时打印）
 local trace = {}
 local function tr(s) table.insert(trace, s) end

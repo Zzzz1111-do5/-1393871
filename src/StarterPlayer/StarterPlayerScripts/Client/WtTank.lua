@@ -26,11 +26,12 @@ function WtTank.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, INK = RGB(240, 244, 244), RGB(0, 0, 0)
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(84, 236, 72), RGB(255, 214, 48), RGB(255, 58, 44)
-  local AMBER = RGB(255, 186, 64)
-  local M_OK, M_HURT, M_DEAD = RGB(196, 204, 208), RGB(255, 196, 40), RGB(232, 48, 36)
-  local C_OK, C_HURT, C_DEAD = RGB(236, 242, 242), RGB(255, 150, 40), RGB(90, 92, 94)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, INK = TH.C.TEXT, TH.C.INK
+  local PEN_OK, PEN_MAYBE, PEN_NO = TH.C.GOOD, TH.C.WARN, TH.C.BAD
+  local AMBER = TH.C.WARN
+  local M_OK, M_HURT, M_DEAD = TH.C.NEUTRAL, TH.C.WARN, TH.C.BAD
+  local C_OK, C_HURT, C_DEAD = TH.C.TEXT, TH.C.WARN, TH.C.FAINT
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtTank"
@@ -187,6 +188,13 @@ function WtTank.init(G)
       b(0, 12, 10, 2, (kind == "mpat") and RGB(96, 176, 255) or RGB(242, 202, 60), 0)
       b(0, 17, 8, 7, RGB(70, 74, 76), 0, 3)
       b(0, 23, 2, 8, RGB(170, 170, 164), 0, 1)
+    elseif kind == "jet" then   -- 金属射流弹：串联破甲弹（前面一截前级装药），弹头前一道青白的射流
+      b(0, 0, 12, 4, RGB(120, 120, 112), 0, 1)
+      b(0, 3, 10, 14, RGB(46, 52, 62), 0, 2)
+      b(0, 10, 10, 2, RGB(110, 210, 255), 0)
+      b(0, 16, 8, 6, RGB(60, 66, 74), 0, 3)
+      b(0, 21, 4, 4, RGB(150, 150, 146), 0, 1)
+      b(0, 24, 2, 9, RGB(170, 232, 255), 0, 1)
     elseif kind == "can" then   -- 霰弹：平头圆筒、一排钨珠
       b(0, 0, 13, 22, RGB(176, 176, 166), 0, 2)
       for i = -1, 1 do b(i * 4, 9, 2, 2, RGB(60, 60, 60), 0, true) end
@@ -217,6 +225,19 @@ function WtTank.init(G)
       b(-5, 17, 7, 3, RGB(60, 62, 58), 0)
       b(5, 18, 12, 12, RGB(200, 204, 204), 0.25, true)
       b(10, 24, 9, 9, RGB(220, 224, 224), 0.35, true)
+    elseif kind == "scout" then   -- 侦察：望远镜
+      for i = -1, 1, 2 do
+        local f = b(i * 6, 6, 11, 11, WHITE, 1, true)
+        stroke(f, RGB(214, 220, 222), 2.4, 0)
+        b(i * 6, 15, 7, 6, RGB(170, 176, 178), 0, 2)
+      end
+      b(0, 12, 4, 4, RGB(170, 176, 178), 0)
+    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 往下落的炮弹
+      local f = b(0, 2, 22, 22, WHITE, 1, true)
+      stroke(f, RGB(255, 120, 90), 2, 0)
+      b(0, 12, 2, 26, RGB(255, 120, 90), 0.2)
+      b(0, 12, 26, 2, RGB(255, 120, 90), 0.2)
+      b(7, 18, 5, 11, RGB(150, 150, 140), 0, 2)
     elseif kind == "ext" then   -- 灭火器
       b(0, 0, 11, 20, RGB(220, 42, 32), 0, 3)
       b(0, 19, 6, 4, RGB(60, 60, 60), 0)
@@ -262,17 +283,20 @@ function WtTank.init(G)
         for _, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE" })[cls] or "" })
+          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = (cls == "atgm") and "sam" or cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流", atgm = "ATGM" })[cls] or "" })
         end
       elseif w then
-        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
-        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic] })
+        local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam" or w.kind == "atgm") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
+        local tg = (w.kind == "atgm") and "ATGM" or ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic]
+        table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = tg })
       end
     end
     local n = #slotDef
     for i, sd in ipairs(slotDef) do sd.num = (i <= 6) and i or nil end
     table.insert(slotDef, { k = "smoke", icon = "smoke", keyTxt = "X" })
     table.insert(slotDef, { k = "fix", icon = "fix", keyTxt = "Y" })
+    if d.cat == "apc" or d.cat == "aa" then table.insert(slotDef, { k = "scout", icon = "scout", keyTxt = "G" }) end   -- 轻型车才能侦察（战雷）
+    if d.cat ~= "aa" then table.insert(slotDef, { k = "arty", icon = "arty", keyTxt = "K" }) end   -- 防空车不能叫火炮
     for i = #slots + 1, #slotDef do newSlot(i) end
     for i, s in ipairs(slots) do
       local sd = slotDef[i]
@@ -319,6 +343,12 @@ function WtTank.init(G)
       if sd.k == "am" or sd.k == "w" then
         local am = vs and vs.ammo and vs.ammo[sd.wid]
         local tot = am and (am[1] + am[2]) or nil
+        -- ④ 配弹：每种弹各剩几发（服务器 Wt.lua 写 AmL = "m829a3:20,m830:12,…"）
+        if sd.k == "am" and em then
+          local L = em:GetAttribute("AmL")
+          local n = L and string.match("," .. L .. ",", "," .. sd.am .. ":(%d+),")
+          if n then tot = tonumber(n) end
+        end
         cnt = tot and tostring(tot) or "∞"
         empty = tot == 0
         if sd.k == "am" then
@@ -331,6 +361,14 @@ function WtTank.init(G)
       elseif sd.k == "smoke" then
         local n = vs and vs.smoke or 0
         cnt, empty = tostring(n), n <= 0
+      elseif sd.k == "arty" then   -- 火炮支援：冷却（服务器时间）；侦察助攻多给的次数写在右下
+        local cd = me:GetAttribute("WtArtyCd")
+        local left = cd and (cd - workspace:GetServerTimeNow()) or 0
+        local bonus = me:GetAttribute("WtArtyBonus")
+        if left > 0 and not bonus then fillK, timeTxt = 1 - left / 120, string.format("%d", math.ceil(left)) end
+        cnt = bonus and ("+" .. bonus) or ""
+      elseif sd.k == "scout" then
+        cnt = ""
       else
         if fire then ic = "ext" end
         if fix then fillK = fix end
@@ -533,6 +571,11 @@ function WtTank.init(G)
     fixBg.Visible = fix ~= nil
     fixFill.Size = UD2(math.clamp(fix or 0, 0, 1), 0, 1, 0)
     diCrew.Text = (tot > 0) and T("wtt.crew", alive, tot) or ""
+    -- ④ 待发弹架：还剩几发（空了写红字「车体取弹」——装得慢）
+    local rdy, rcap = em and em:GetAttribute("Rdy"), em and em:GetAttribute("RdyCap")
+    if rdy and rcap then
+      diCrew.Text = diCrew.Text .. "   " .. ((rdy > 0) and T("wtt.rack", rdy, rcap) or T("wtt.rackOut"))
+    end
   end
 
   ---------------------------------------------------------------- 每帧（VehHud.stepTank 调）
@@ -564,7 +607,10 @@ function WtTank.init(G)
       for _, tk in ipairs(AIM.ticks) do tk.BackgroundColor3 = col end
       -- 装填：弧走着（琥珀），装好那一下圈涨一下
       local ready = I.ready ~= false
-      if ready and not wasReady then readyT = t end
+      if ready and not wasReady then
+        readyT = t
+        if G.wtVoice and wasReady == false then G.wtVoice("loaded") end   -- 车组语音：装填完毕（⑬）
+      end
       wasReady = ready
       AIM.rel.root.Visible = not ready
       AIM.track.Transparency = ready and 1 or 0.7
@@ -572,7 +618,18 @@ function WtTank.init(G)
       AIM.relT.Text = ready and "" or string.format("%.1f", I.left or 0)
       local pop = math.clamp(1 - (t - readyT) / 0.25, 0, 1)
       AIM.scale.Scale = 1 + 0.18 * pop
-      AIM.rng.Text = T("vh.m", math.floor((I.p - I.o).Magnitude / 2.8 / 5 + 0.5) * 5)
+      -- 测距（用户 11-25「全部都做」⑤）：街机照旧一直写到瞄准点多远；历史 / 全真按 R 才有——有激光测距的马上准，
+      --   没有的（豹 1、M60A1、BMP-1）车长估两秒、报个整 50 米的数（≈）；10 秒后作废
+      local wm = workspace:GetAttribute("WtMode")
+      if wm == "rb" or wm == "sb" then
+        local f = st.fcs
+        if f and f.estimating then AIM.rng.Text = T("wtt.est")
+        elseif f and f.R and (f.man or (f.laseT and t - f.laseT < 10)) then AIM.rng.Text = (f.est and "≈" or "") .. T("vh.m", f.R)
+        elseif f and f.noRet and f.laseT and t - f.laseT < 3 then AIM.rng.Text = "----"
+        else AIM.rng.Text = T("wtt.rkey") end
+      else
+        AIM.rng.Text = T("vh.m", math.floor((I.p - I.o).Magnitude / 2.8 / 5 + 0.5) * 5)
+      end
     else
       AIM.root.Visible = false
     end

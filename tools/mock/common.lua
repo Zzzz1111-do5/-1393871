@@ -50,12 +50,19 @@ function T.join(name, uid, client)
   if client then
     T.C = R.Gs.client
     T.C.perfFixed = true   -- 自动画质不调（模拟器的帧率不是真的）
+    if T.fpAll then T.allFirstPerson() end
     if not T.wtMode then T.C.forceInfantry = true end   -- 老测试：照旧是步兵部署页（不盖机库）
     -- 客户端每帧的步骤出错只显示在界面的红条上：也记进报错
     local se = T.C.showError
     if se then T.C.showError = function(m) R.errors[#R.errors + 1] = "客户端：" .. tostring(m) return se(m) end end
   end
   return p
+end
+
+-- 第一人称白名单（Config.FirstPerson.only：用户 11-25 只留 M1A1、M1A2）：测别的车内饰、飞机座舱的老测试在 join 前设 T.fpAll = true（全开）
+function T.allFirstPerson()
+  if T.G and T.G.Config.FirstPerson then T.G.Config.FirstPerson.only = nil end
+  if T.C and T.C.Config.FirstPerson then T.C.Config.FirstPerson.only = nil end
 end
 
 function T.key(code, down)

@@ -5962,5 +5962,289 @@
    1095.0,
    2470.0
   ]
+ },
+ "leclerc": {
+  "_说明": "勒克莱尔（andertan，Sketchfab 84a0918d2f534c2eb003ab3cb3029c03，CC-BY-4.0，作者自己做的，游戏里的歼-20 / 歼-16 也是他的）；用户 11-24 夜。原模型车头朝 +X（转 90°），车体长 5.92 → 真车 6.88 米；炮塔节点 turret_2 下面是炮塔，Cylinder.086_1 下面是炮管；车轮和车体在一块里",
+  "uid": "84a0918d2f534c2eb003ab3cb3029c03",
+  "title": "勒克莱尔主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转 90° 朝 −Z、缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+  "alias": [
+   "leclerc"
+  ],
+  "rotZ": 90,
+  "length": 6.88,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_25",
+    "Object_29",
+    "Object_30",
+    "Object_28",
+    "Object_27",
+    "Object_26"
+   ],
+   "Gun": [
+    "Object_35",
+    "Object_32",
+    "Object_36",
+    "Object_34",
+    "Object_33"
+   ]
+  },
+  "decimate": {
+   "Object_5": 0.35,
+   "Object_6": 0.35,
+   "Object_23": 0.55
+  },
+  "credit": "勒克莱尔主战坦克：Char Leclerc，作者 andertan（https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"Char Leclerc\" (https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03) by andertan licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "gun": [
+   1.8,
+   1.69,
+   -0.05
+  ]
+ },
+ "t72b3": {
+  "_说明": "T-72B3（MirzaArrafiERV_45，Sketchfab dfe130dfce724c30958cec51f2bd86b7，CC-BY-4.0，作者自己做的，游戏里带内饰的 M1A1 也是他的）；用户 11-24 夜。原模型车头朝 −Z（不用转），按材质分块：炮塔 Object_10、炮塔栅栏 Object_15、座圈一圈 Object_6、天线 Object_8，炮管 Object_5；车体装甲 Object_4 长 7.11 → 真车 6.95 米",
+  "uid": "dfe130dfce724c30958cec51f2bd86b7",
+  "title": "T-72B3 主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：缩到真实尺寸、按部件分组（炮塔、炮管）、减面、贴图缩到 1024",
+  "alias": [
+   "t72b3",
+   "t72ural",
+   "t72a",
+   "t72b"
+  ],
+  "rotZ": 0,
+  "length": 6.95,
+  "lengthRef": [
+   "Object_4"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_10",
+    "Object_15",
+    "Object_6",
+    "Object_8",
+    "Object_7"
+   ],
+   "Gun": [
+    "Object_5"
+   ]
+  },
+  "decimate": {
+   "Object_10": 0.6,
+   "Object_14": 0.5,
+   "Object_4": 0.6,
+   "Object_15": 0.5,
+   "Object_17": 0.5,
+   "Object_12": 0.5
+  },
+  "credit": "T-72B3 主战坦克：T-72B3 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"T-72B3 Main Battle Tank\" (https://sketchfab.com/3d-models/t-72b3-main-battle-tank-dfe130dfce724c30958cec51f2bd86b7) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "gun": [
+   0.0,
+   0.98,
+   -0.55
+  ]
+ },
+ "m551": {
+  "_说明": "M551 谢里登轻型坦克（MirzaArrafiERV_45，Sketchfab bc61470bf6f34716a223f45a6b9e8df1，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 M551 原来借豹 1。原模型单位是米，车头朝 −Y（Blender）转半圈；部件都分好了：车体 hull、炮塔 g_turret（连 Gear、玻璃、两根天线）、炮盾 g_cannonbase、炮管 g_cannon；14 个轮子各是一块；炮塔转轴直接给（自动找的炮塔最低一圈偏到炮盾下面去了），按炮塔中线、座圈高度",
+  "uid": "bc61470bf6f34716a223f45a6b9e8df1",
+  "title": "M551 谢里登轻型坦克",
+  "credit": "M551 谢里登轻型坦克：M551 Sheridan Light Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/m551-sheridan-light-tank-bc61470bf6f34716a223f45a6b9e8df1），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"M551 Sheridan Light Tank\" (https://sketchfab.com/3d-models/m551-sheridan-light-tank-bc61470bf6f34716a223f45a6b9e8df1) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、按部件分组（炮塔、炮管）、车轮各自成组、贴图缩到 1024",
+  "alias": [
+   "m551"
+  ],
+  "rotZ": 180,
+  "scale": 1.0,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "g_turret_m551_Turret_641_0",
+    "g_turret_m551_Gear_642_0",
+    "g_turret_m551_Glass_588_0",
+    "antenna011_Gear_566_0",
+    "antenna01_Gear_566_0"
+   ],
+   "Gun": [
+    "g_cannonbase_m551_m81_Cannon_587_0",
+    "g_cannonbase_m551_m81_Glass_588_0",
+    "g_cannon_m81_Cannon_587_0"
+   ]
+  },
+  "wheels": [
+   [
+    "wheel1_Wheels_746_0"
+   ],
+   [
+    "wheel2_Wheels_746_0"
+   ],
+   [
+    "wheel3_Wheels_746_0"
+   ],
+   [
+    "wheel4_Wheels_746_0"
+   ],
+   [
+    "wheel5_Wheels_746_0"
+   ],
+   [
+    "wheel6_Wheels_746_0"
+   ],
+   [
+    "wheel7_Wheels_746_0"
+   ],
+   [
+    "wheel8_Wheels_746_0"
+   ],
+   [
+    "wheel9_Wheels_746_0"
+   ],
+   [
+    "wheel10_Wheels_746_0"
+   ],
+   [
+    "wheel11_Wheels_746_0"
+   ],
+   [
+    "wheel12_Wheels_746_0"
+   ],
+   [
+    "wheel13_Wheels_746_0"
+   ],
+   [
+    "wheel14_Wheels_746_0"
+   ]
+  ],
+  "tur": [
+   0.0,
+   1.619,
+   0.02
+  ]
+ },
+ "leo2a7v": {
+  "_说明": "豹 2A7V 主战坦克（MirzaArrafiERV_45，Sketchfab 659654c78dba4df1b80664afc42cbab2，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树豹 2A7V 原来借 2A6。原模型按材质分五块，车头朝 −Y（Blender）转半圈；炮塔连炮在 Object_4，按连通块中心把炮管、抽烟装置、炮口环拆出来；车体 Object_3 按真车车体长 7.72 米缩；Object_3 里高过车体甲板、在炮塔投影里的零件（尾舱吊篮、车顶瞄准镜、天线）归炮塔",
+  "uid": "659654c78dba4df1b80664afc42cbab2",
+  "title": "豹 2A7V 主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按连通块把炮管拆出来、减面、贴图缩到 1024",
+  "alias": [
+   "leo2a7v"
+  ],
+  "rotZ": 180,
+  "length": 7.72,
+  "lengthRef": [
+   "Object_3"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_4"
+   ]
+  },
+  "split": [
+   {
+    "from": [
+     "Object_4"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.2,
+     0.2,
+     0.25,
+     0.6,
+     1.85,
+     4.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_3"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.3,
+     1.3,
+     0.32,
+     3.0,
+     -2.6,
+     1.95
+    ],
+    "center": true
+   }
+  ],
+  "decimate": {
+   "Object_5": 0.5,
+   "Object_6": 0.6
+  },
+  "credit": "豹 2A7V 主战坦克：Leopard 2A7V Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/leopard-2a7v-main-battle-tank-659654c78dba4df1b80664afc42cbab2），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"Leopard 2A7V Main Battle Tank\" (https://sketchfab.com/3d-models/leopard-2a7v-main-battle-tank-659654c78dba4df1b80664afc42cbab2) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)"
+ },
+ "type10": {
+  "_说明": "10 式主战坦克（MirzaArrafiERV_45，Sketchfab 7d14267918e7441b92ccc9f77869cb37，CC-BY-4.0）；用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 10 式原来借 M1A2。原模型按材质分五块，车头朝 −Y（Blender）转半圈；炮塔连炮在 Object_6，按连通块中心把炮管、炮口拆出来；车体 Object_3 按真车车体长 7.5 米缩；Object_5 里高过车体甲板、在炮塔投影里的零件（尾舱吊篮、车长瞄准镜、机枪、天线）归炮塔",
+  "uid": "7d14267918e7441b92ccc9f77869cb37",
+  "title": "10 式主战坦克",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按连通块把炮管拆出来、减面、贴图缩到 1024",
+  "alias": [
+   "type10"
+  ],
+  "rotZ": 180,
+  "length": 7.5,
+  "lengthRef": [
+   "Object_3"
+  ],
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "Object_6"
+   ]
+  },
+  "split": [
+   {
+    "from": [
+     "Object_6"
+    ],
+    "to": "Gun",
+    "box": [
+     -0.2,
+     0.2,
+     0.35,
+     0.75,
+     2.4,
+     4.8
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "Turret",
+    "box": [
+     -1.4,
+     1.4,
+     0.33,
+     3.0,
+     -3.2,
+     2.4
+    ],
+    "center": true
+   }
+  ],
+  "decimate": {
+   "Object_3": 0.6,
+   "Object_2": 0.6
+  },
+  "credit": "10 式主战坦克：TYPE-10 Main Battle Tank，作者 MirzaArrafiERV_45（https://sketchfab.com/3d-models/type-10-main-battle-tank-7d14267918e7441b92ccc9f77869cb37），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"TYPE-10 Main Battle Tank\" (https://sketchfab.com/3d-models/type-10-main-battle-tank-7d14267918e7441b92ccc9f77869cb37) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)"
  }
 }

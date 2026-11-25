@@ -181,7 +181,12 @@ function Battle.init(G)
     return best
   end
 
+  -- 白天、天还亮着不打（用户 11-25 要了昼夜更替：DayClock 和客户端算的是同一个钟点；太阳落到地平线下面一点才开始打）
+  local DC = require(game:GetService("ReplicatedStorage"):WaitForChild("DayClock"))
+  local function darkNow() return DC.dayK(DC.clock()) < 0.3 end
+  G.illumDark = darkNow   -- 测试用
   local function fireIllum()
+    if not darkNow() then return false end
     local pts = stagePoints()
     if #pts == 0 then return false end
     -- 有人在争夺的（据点里有攻方、或者占领进度不是零）权重大

@@ -692,13 +692,6 @@ return function(Defs, Hp)
   -- 布雷德利：车内漆成用户 11-24 发来的 M3 车内截图那样的浅橄榄绿
   Defs.m2a3 = afv({ cn = US, tur = "ifv", gunL = true, donor = true, paint = { RGB(158, 168, 128), RGB(132, 142, 106) }, troops = 6, door = "ramp", eng = 1.5, gunK = 0.08, drv = { ctrl = "tbar", z = 0.85 },
     opt = { gunnerAlt = { kind = "gas", name = "ISU  DAY  4X", g = "gun", pos = V(0.30, 0.15, 0.30), dir = "gun", fovs = { 18 }, ret = "gas", look = "day", shape = "circle", useSight = true } } })
-  Defs.zbd05 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 8, door = "door", eng = 1.6, gunK = 0.08, drv = { z = 0.90 } })
-  Defs.bmp3 = afv({ cn = CN, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.6, gunK = 0.12, gunCal = 0.20, drv = { z = 0.90 } })   -- BMP-3：炮长左车长右、后门下车（用户 11-24 找的俄系）
-  Defs.zsl92b = afv({ cn = CN, wheeled = true, tur = "ifv", gunL = false, troops = 7, door = "door", eng = 1.5, gunK = 0.08 })
-  Defs.ztd05 = afv({ cn = CN, tur = "wedge", gunL = true, eng = 1.7, gunK = 0.30, gunCal = 0.30 })
-  Defs.ptl02 = afv({ cn = CN, wheeled = true, tur = "wedge", gunL = true, eng = 1.6, gunK = 0.30, gunCal = 0.30 })
-  Defs.stryker = afv({ cn = US, wheeled = true, tur = "rws", troops = 9, door = "ramp", eng = 1.4 })
-  Defs.m1150 = afv({ cn = US, tur = "rws", eng = 0, drv = { ctrl = "tbar", z = 1.05 } })
   Defs.mshorad = afv({ cn = US, wheeled = true, tur = "spaag", gunL = true, eng = 1.4, gunK = 0.06, gunCal = 0.16 })
   Defs.pgz07 = afv({ cn = CN, tur = "spaag", gunL = true, eng = 1.6, gunK = 0.0, gunCal = 0.12 })
   Defs.plz07 = afv({ cn = CN, tur = "sph", gunL = true, eng = 1.7, gunK = 0.55, gunCal = 0.36 })
@@ -706,7 +699,6 @@ return function(Defs, Hp)
   Defs.m163 = afv({ cn = US, tur = "vulcan", eng = 1.5, drv = { ctrl = "tbar" } })
   Defs.hmmwv = cab({ cn = US, seats = 4, ring = true, hood = 1.25, analog = true })
   Defs.jltv = cab({ cn = US, seats = 4, rws = true, armored = true, hood = 1.35 })
-  Defs.m1117 = cab({ cn = US, seats = 2, armored = true, gunnerTurret = true, hood = 1.10 })
   Defs.pgl625 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })
   Defs.ld2000 = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })
   Defs.pantsir = cab({ cn = CN, seats = 2, console = "ppi", hood = 0.30 })   -- 铠甲-S1（用户 11-24 找的俄系）：KamAZ 驾驶室，平头、雷达屏控制台

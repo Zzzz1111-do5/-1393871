@@ -92,7 +92,7 @@ function Bodycam.init(G)
     text.BackgroundTransparency = 1
     text.Position = UDim2.fromOffset(0, offset)
     text.Size = UDim2.new(1, 0, 0, 18)
-    text.Font = Enum.Font.Code
+    text.Font = Enum.Font.RobotoMono
     text.TextSize = size
     text.TextColor3 = color
     text.TextStrokeTransparency = 0.36

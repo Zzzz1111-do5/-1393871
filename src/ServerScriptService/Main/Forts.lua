@@ -71,6 +71,7 @@ function Forts.init(G)
     local board = part(f, V(3.2, 2.2, 0.2), base * CF(0, 3.6, 0.25), RGB(196, 40, 36), MAT.SmoothPlastic, false)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Back
+    sg.CanvasSize = Vector2.new(64, 44)   -- 只画一个骷髅：原来没设，按默认 800 × 600 画（八块牌子占三百多万像素，挤掉车里、座舱屏幕的分辨率）
     sg.Parent = board
     local t = Instance.new("TextLabel")
     t.Size = UDim2.fromScale(1, 1)
@@ -166,6 +167,7 @@ function Forts.init(G)
       wires[i] = W
     end
     for _, F in pairs(fields) do F.list = {} end
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷没有雷区）：铁丝网当摆设留着，雷不摆
     for i, m0 in ipairs(obst.mines) do
       local m = { x = m0.x, z = m0.z, y = Map.ground(m0.x, m0.z), at = m0.at, alive = true, i = i, known = {} }
       mines[i] = m
@@ -734,6 +736,7 @@ function Forts.init(G)
 
   local function stepAI(e, dt)
     if G.fortsHold then return end   -- 测试用：工事不开火
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷：没有会开火的电脑工事，WtMatch.lua）：工事只当掩体
     local t = now()
     if (e.supUntil or 0) > t then   -- 被压制（原来的 Ambience.lua 火力准备会设；用户嫌莫名其妙的炮火怪，已删，留着给以后的真炮火用）：缩着不开火
       e.tgt = nil

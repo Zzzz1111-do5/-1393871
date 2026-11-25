@@ -6,6 +6,7 @@
 --      镜头在 carve.json 量的驾驶员眼位上
 --   ③ 换到车长位、后座；④ C 出来：内壁又藏起来、简易内饰回来
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "hmmwv"

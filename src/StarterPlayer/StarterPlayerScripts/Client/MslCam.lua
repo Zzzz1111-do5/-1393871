@@ -70,7 +70,7 @@ function MslCam.init(G)
     l.BackgroundTransparency = 1
     l.Size = UDim2.fromOffset(150, 18)
     l.Position, l.AnchorPoint = pos, anchor
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextSize = size or 13
     l.TextColor3 = color or GREEN
     l.TextXAlignment = align

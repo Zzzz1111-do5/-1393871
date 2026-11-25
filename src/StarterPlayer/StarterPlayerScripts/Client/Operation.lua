@@ -160,7 +160,13 @@ function Operation.init(G)
     local accent = s.team == "atk" and AMBER or TEAL
     local key = "stage." .. stage.id
     rail.BackgroundColor3, header.TextColor3 = accent, accent
-    header.Text = s.stage == 1 and T("operation.opening") or T("faction." .. s.team .. ".name")
+    -- 开场的名字跟着钟点（用户 11-25 昼夜更替：原来锁着晚上，一直写「夜间突击」）
+    local opening = "operation.opening"
+    if G.clockNow and G.Map and G.Map.DESERT then
+      local c = G.clockNow()
+      opening = (c >= 4.5 and c < 7.5) and "operation.dawn" or ((c >= 7.5 and c < 17) and "operation.day" or ((c >= 17 and c < 19.5) and "operation.dusk" or "operation.night"))
+    end
+    header.Text = s.stage == 1 and T(opening) or T("faction." .. s.team .. ".name")
     sector.Text = T("hud.stageN", s.stage, s.stages or #stages)
     title.Text, description.Text = T(key), T(key .. "." .. s.team)
     for i, stop in ipairs(stops) do

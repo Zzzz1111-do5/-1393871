@@ -8,10 +8,13 @@
   另外「新模型_<日期>.zip」只装上次发模型以后新加的，已经导过全套的只导这一包就行。每个包里都有这份说明。
   models/ 最外面那些 aa.glb、tank.glb、all_units.glb……是更早的一套，零件没有 V_ / A_ 前缀，游戏不认，不用导）
 游戏本身：RobloxTotalBattlefield.rbxlx（最新的游戏，用 Roblox Studio 打开）；只想换脚本、不动自己地点里导入的模型：ScriptsUpdate.rbxmx（见下面「三、只换脚本」）
-模型一共 136 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
-  1. 地面载具                  veh/      30 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了；m1a1i.glb 是 11-24 换的带炮塔内饰的 M1A1；
-                                         t90m.glb / bmp3.glb / pantsir.glb 是 11-24 加的 T-90M、BMP-3、铠甲-S1；
-                                         t80u.glb / leo2a6.glb / leo1.glb / m60a3.glb / bmp1.glb 是 11-25 加的 T-80U、豹 2A6、豹 1、M60A3、BMP-1）
+模型一共 137 个 .glb（压缩包里在 models/ 下面；包里还有游戏文件、这份说明、载具内饰按键说明），按文件夹分：
+  1. 地面载具                  veh/      31 个（坦克、步战车、自行火炮、防空车……；kitera.glb 是坦克上补贴的爆反砖；15 式轻坦 11-19 删了；m1a1i.glb 是 11-24 换的带炮塔内饰的 M1A1；
+                                         t90m.glb / pantsir.glb 是 11-24 加的 T-90M、铠甲-S1；leclerc / t72b3 是 11-24 夜加的勒克莱尔、T-72B3；
+                                         t80u.glb / leo2a6.glb / leo1.glb / m60a3.glb / bmp1.glb 是 11-25 加的 T-80U、豹 2A6、豹 1、M60A3、BMP-1（D）；
+                                         t64.glb / type74.glb 是 11-25 D 先放进来的 T-64、74 式（还没接进游戏，导不导都行）；stryker.glb 是 M-SHORAD 防空车的车体；
+                                         m551.glb / leo2a7v.glb / type10.glb 是 11-25 晚加的 M551 谢里登、豹 2A7V、10 式（E，科技树里原来「暂用」的车）；
+                                         11-24 夜删了九辆车，bmp3、matv、m1150、ptl02、zbd97、lav25 六个文件没了）
   2. 飞机直升机                air/      24 个（f16.glb、j8.glb 是 11-24 加的 F-16C、歼-8II；文件名不带版本号，里面的零件是最新版：j20.glb 里是 A_j20_v5__…、ah64.glb / z10w.glb 里是 A_ah64_v2__… / A_z10w_v2__…、别的固定翼是 A_<键>_v3__…；
                                          f22a.glb 是新换的 F-22、j15t.glb 是歼-15T、j11.glb / j10.glb / j36.glb 是 11-22 加的歼-11B / 歼-10C / 歼-36（11-23 起 j36.glb 里是 A_j36_v2__…）、tvc.glb 是战斗机尾喷口上的推力矢量喷口）
      导弹炸弹                  wpn/      missiles.glb 一个文件（GBU-31/32/38、GBU-12、AGM-65、AIM-9X、天燕-90、地狱火、AKD-10）
@@ -30,6 +33,14 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11 月 25 日 C 第十一包（C 把 B、D 的都合进来了：科技树、机库、昼夜更替、射流弹 X 光动画……）：换游戏文件（或者「三、只换脚本」）；模型这样导：
+    - 先删旧的豹 2A6、T-80U 零件（C 11-24 夜那版和 D 这版同名、形状不一样，不删会用错）：命令栏（编辑状态下）粘这一行
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^V_leo2a6__") or d.Name:match("^V_t80u__")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 / T-80U 零件")
+    - 再导 veh/ 里：leo2a6.glb、t80u.glb（D 那版）、leo1.glb、m60a3.glb、bmp1.glb（D 第八包的新模型）；stryker.glb 没导过的也导（M-SHORAD 防空车的车体）；
+      t64.glb、type74.glb 还没接进游戏，导不导都行
+    - 科技树里借已经删掉的九辆车的那些（59 式、T-55A、M551、BMP-2、ZBD-04、斯特赖克……）改借还在的真模型车：T-55 一类借 M60A1、79 / 88B 借 M60A3、
+      轻坦和歼击车借豹 1 / 1A5、水陆和 BMP 一族借 BMP-1、轮式车和导弹车借布雷德利（科技树里都写着「暂用」）
+    - 击杀栏：「谁 [车] 击毁 / 殉爆 / 烧毁 谁 [车]」，车名写科技树里的；X 光回放、「被谁击毁」也写科技树里的名字；射流弹打穿时 X 光窗口里慢放（弹飞进来、白闪、射流钻进去……）
   11 月 25 日 D 第八包（科技树暂用车换真模型，第一批五型）：换游戏文件（或者「三、只换脚本」）+ 导入 5 个新模型（veh/ 里，新模型包里就这 5 个）：
     t80u.glb（T-80U）、leo2a6.glb（豹 2A6）、leo1.glb（豹 1）、m60a3.glb（M60A3）、bmp1.glb（BMP-1）——都是 Sketchfab 上 CC-BY-4.0 的模型，署名在 veh/credits.txt
     - 科技树里这几族原来借别的车（T-80 借 T-90M、豹 2 借 M1A2、豹 1 和 M60 借 M10、BMP-1 借 BMP-3），现在开的是自己的真模型：
@@ -65,6 +76,12 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
     - 科技树（机库右上「科技树」）：五个系各一棵坦克树、一棵战机树，从 1960 年到现在，共 200 辆，按年代分七级，每类一列、上下连线；
       打仗挣研究点 → 研究 → 花金币买 → 放进出击阵容。每棵树第一级各列打头的那辆白送。
       游戏里已经有模型的直接开；还没有模型的（比如豹 2、T-72、米格-21、狂风）先借最像的一型的模型和性能，科技树里写着「暂用」，以后一辆辆做真模型
+  11 月 24 日 C 第十包（删九辆车内粗糙的车；新坦克豹 2A6、勒克莱尔、T-72B3、T-80U）：换游戏文件（或者「三、只换脚本」）；再导入 veh/ 里四个新文件：
+      leclerc.glb（勒克莱尔，andertan）、t72b3.glb（T-72B3，MirzaArrafi）；豹 2A6、T-80U 11-25 换成了 D 那一版（见上面 C 第十一包）
+    （新名字 V_leclerc__… / V_t72b3__…，不用删旧的；不导也能开，是零件拼的样子）
+    - 删掉的车：M10 布克、ZBD-05、BMP-3、ZSL-92B、ZTD-05、PTL-02、斯特赖克、M1117、M1150（用户：车内是零件拼的，粗糙）；
+      veh/ 里 bmp3、matv、m1150、ptl02、zbd97、lav25 这六个文件没了（stryker.glb 还要：M-SHORAD 防空车用它）（以前导进来的零件留着也不碍事，想清爽就删 V_bmp3__… 这些）
+    - 新坦克没有车内（用户：「新弄的坦克不搞内饰了」），按 C 不进车里；炮塔、炮管、负重轮会动；红方 T-72B3、T-80U，蓝方豹 2A6、勒克莱尔
   11 月 24 日 E 第七包（开飞机的界面换成战雷式；尾喷重做）：换游戏文件（或者「三、只换脚本」）；模型都不用重导：
     - 照你发的战雷截图：左上一列小字——节流阀（开加力红字「加力」）、表速、速度、马赫数、海拔高、雷达高；挂的弹一种一行（剩几发、下一发左 / 右挂架、型号，
       选中的前面「>」，红外导引头追踪时变红字「追踪」）、热焰弹、干扰箔、机炮、燃油量（还能飞多久）；每台发动机的油温、引擎温度（开久了加力油温变橙色）

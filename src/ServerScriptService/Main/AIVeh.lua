@@ -131,6 +131,10 @@ function AIVeh.init(G)
     else
       local V0 = Config.Vehicles[team] or {}
       for _, id in ipairs(V0[cat] or {}) do if usable(id) then table.insert(ids, id) end end
+      -- 这一类本队没有车了（11-24 红方的步战车全删了）：换另一类挑，不至于这一轮不出车
+      if #ids == 0 then
+        for _, id in ipairs(V0[(cat == "tank") and "apc" or "tank"] or {}) do if usable(id) then table.insert(ids, id) end end
+      end
     end
     if #ids == 0 then return nil end
     return ids[math.random(#ids)]
@@ -381,6 +385,7 @@ function AIVeh.init(G)
     local d, w, st = e.def, VD.W[wid], e.wst[wid]
     local t = now()
     if not st or t < st.next then return end
+    if w and w.kind == "atgm" then return end   -- 反坦克导弹（⑥）要人一直压着十字线导引：电脑车不用
     if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害：炮长没了、炮闩坏了
     if st.mag <= 0 then
       if st.reserve <= 0 then return end
@@ -400,7 +405,7 @@ function AIVeh.init(G)
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
-          life = w.range / w.speed + 0.5 })
+          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else

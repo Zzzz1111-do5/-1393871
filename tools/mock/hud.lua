@@ -208,6 +208,11 @@ if js and foe then
   local ahead = js.cf:PointToObjectSpace(A2.holoPart.CFrame.Position)
   check(-ahead.Z > 250 and math.abs(ahead.X) < 1 and math.abs(ahead.Y) < 1, string.format("在机头正前方 %.0f 格", -ahead.Z))
   local w = AD.W[js.wl[js.wi]]
+  -- 雷达屏是扫描的（E 11-24 战雷式雷达屏）：波束扫过目标才截获，最多一个扫描周期；等的时候敌机一直摆在正前方
+  T.runUntil(function()
+    foe.root.CFrame = js.cf * CF(60, 20, -700)
+    return js.lock ~= nil
+  end, 4)
   check(js.lock ~= nil and w and w.kind == "aam", "锁着前方的 A-10（" .. tostring(js.wl[js.wi]) .. "）")
   local lm = find("LockMark")
   if js.lock and lm then   -- 战雷式锁定（用户 11-23）：细的绿方框、框上型号、右边距离和接近速度

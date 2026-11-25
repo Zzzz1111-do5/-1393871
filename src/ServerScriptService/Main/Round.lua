@@ -647,7 +647,9 @@ function Round.init(G)
     if kname then
       -- 战雷式（Config.Wt.noInfantry）：击杀栏写双方开的车——「玩家（车）击毁了 玩家（车）」，车名是科技树里的（Tech.lua 出击时记 P.treeCur）
       local vk = (Config.Wt or {}).noInfantry and P.treeCur or nil
-      if vk then
+      if vk and G.wtFeedOn and G.wtFeedOn() then
+        -- 车被打掉那一下 WtMatch.lua 已经发了战雷式击杀栏（WtBattle：谁 [车] 击毁 / 殉爆 / 烧毁 谁 [车]，车名同样是科技树里的）：这里不再写一遍
+      elseif vk then
         local K = killer and killer.by
         local kv = K and K.vehicle and K.vehicle.treeKey
         if kv then G.msgAll("feed", "ui.killedVeh", kname, { k = "tree." .. kv }, P.pl.DisplayName, { k = "tree." .. vk })
@@ -1138,7 +1140,7 @@ function Round.init(G)
     R.prepEnds = now() + RC.prep
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
-    pcall(function() workspace:SetAttribute("DayT0", workspace:GetServerTimeNow()) end)   -- 昼夜：每局从早上开始（客户端 DayNight.lua 按这个算）
+    -- 昼夜：跨局接着走（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0，PvE 关卡开局按自己的钟点改，Pve.lua）
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets
@@ -1326,6 +1328,9 @@ function Round.init(G)
     local P = { pl = pl, kills = 0, deaths = 0, score = 0, caps = 0, roundXp = 0, alive = false, canDeployAt = 0, dmgLog = {} }
     G.P[pl] = P
     setTeam(P, pickTeam())
+    -- 只开车的对局（Config.Wt.noInfantry）：进服按人数自动分队，不再弹「选择阵营」那一页（两张固定装备的阵营卡跟机库的科技树对不上，
+    --   用户 11-25：「整个游戏风格极其割裂……四不像」）
+    if (Config.Wt or {}).noInfantry and not G.pve then P.picked = true end
     pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
     if G.gunPublish then G.try("改枪属性", G.gunPublish, P) end   -- 改枪（Gunsmith.lua）：读档前先按默认写上，部署界面一进来就有
     if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end

@@ -77,7 +77,8 @@ local list = {}
 for _, sd in ipairs(slots) do table.insert(list, (sd.am or sd.wid or sd.k) .. (sd.num and ("[" .. sd.num .. "]") or "")) end
 print("  弹药栏：" .. table.concat(list, " "))
 local nGun = #(R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics")).GUN[def.weapons[1]] or { 1 })
-check(#slots == nGun + (#def.weapons - 1) + 2, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修（" .. #slots .. "）")
+local extra = ((def.cat == "apc" or def.cat == "aa") and 1 or 0) + ((def.cat ~= "aa") and 1 or 0)   -- 侦察（轻型车）、火炮支援（不是防空车）
+check(#slots == nGun + (#def.weapons - 1) + 2 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 侦察 / 火炮（" .. #slots .. "）")
 local di = find("WtDamageInd")
 local sch = find("Schematic")
 local nSch = sch and #sch:GetDescendants() or 0
@@ -133,6 +134,18 @@ check(cAP ~= "240,244,244", "穿甲弹对着敌车不是白的")
 check(cAP ~= cHE, "穿甲弹、" .. tostring(gl and gl[#gl]) .. " 颜色不一样")
 
 print("④ 开一炮：服务器走战雷伤害、客户端命中提示")
+-- am=jet：先按数字键选金属射流弹（用户 11-24 夜「再做一个金属射流弹」）
+local wantJet = TEST_ARGS:match("am=jet") ~= nil
+if wantJet then
+  local jk = nil
+  for i, sd in ipairs(slots) do if sd.am and string.sub(sd.am, 1, 3) == "jet" then jk = i end end
+  if jk then
+    T.tap(({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six })[jk])
+    R.run(0.3)
+  end
+  check(st.fcs.am and string.sub(st.fcs.am, 1, 3) == "jet", "选了金属射流弹（" .. tostring(st.fcs.am) .. "）")
+  R.run(7)   -- 换弹种要重新装一发
+end
 local h0 = G.wtHits or 0
 -- 镜头（瞄准线）对着敌车车身，等炮塔、炮转过去（同 tankfcs.lua）
 local cam = R.workspace.CurrentCamera
@@ -146,7 +159,14 @@ local tc = e2.root.CFrame.Position + V3(0, 0.6, 0)
 for _ = 1, 12 do aimAt(tc) R.run(0.4) end
 local c2 = ringColor()
 print("  对着敌车时游戏里的准星：" .. (c2 and string.format("%d,%d,%d", math.floor(c2.R * 255 + 0.5), math.floor(c2.G * 255 + 0.5), math.floor(c2.B * 255 + 0.5)) or "?"))
-R.as("client", function() C.driveTryFire() end)
+-- 换了弹种要装完这一发才打得出去：一直扣扳机直到真打出去（T-80U 的炮 6.5 秒一发，原来扣一下正好卡在装填完之前）
+local f0 = st.fireT
+for _ = 1, 300 do
+  R.as("client", function() C.driveTryFire() end)
+  if st.fireT ~= f0 then break end
+  R.run(1 / 30)
+end
+check(st.fireT ~= f0, "开了炮")
 for _ = 1, 240 do
   R.run(1 / 60)
   if (G.wtHits or 0) > h0 then break end
@@ -156,6 +176,9 @@ local h1 = G.wtHits or 0
 local L = G.wtLast
 print("  wtHits " .. h0 .. " → " .. h1 .. (L and ("，结果 " .. tostring(L.r) .. " 穿深 " .. tostring(L.pen and math.floor(L.pen)) .. " 等效 " .. tostring(L.eff and math.floor(L.eff)) .. " 毫米") or ""))
 check(h1 > h0, "炮弹打中敌车走了战雷伤害")
+if wantJet and L then
+  check(L.r ~= "pen" or (L.xr and L.xr.jet == true), "射流弹打穿：X 光数据标了射流（xr.jet）")
+end
 local ht = find("WtHitText")
 check(ht ~= nil, "命中提示框在")
 print("  敌车 WtC " .. tostring(e2.model:GetAttribute("WtC")) .. " WtM " .. tostring(e2.model:GetAttribute("WtM")))

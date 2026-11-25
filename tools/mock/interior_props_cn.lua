@@ -6,6 +6,7 @@
 --   ③ 方向盘跟着转向转（swheel 组绕自己的 Z 轴转，真模型件跟着组走）
 --   dump=<目录>：写 interior_<型号>_props.json（AMB=1.0 node tools/mock/interior_view.cjs 画图，真模型件按 models/optics 的 GLB 画）
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, Enum = T.R, T.V3, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "ztz99a"

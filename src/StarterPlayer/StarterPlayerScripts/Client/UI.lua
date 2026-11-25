@@ -28,7 +28,8 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 小工具
 
-  local PANEL, LINE, TEXT, MUTE = RGB(16, 20, 24), RGB(255, 255, 255), RGB(236, 240, 236), RGB(160, 170, 166)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local PANEL, LINE, TEXT, MUTE = TH.C.PANEL, TH.C.LINE, TH.C.TEXT, TH.C.MUTE
   local function frame(parent, size, pos, color, alpha, anchor)
     local f = Instance.new("Frame")
     f.Size = size
@@ -104,8 +105,9 @@ function UI.init(G)
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
@@ -139,7 +141,7 @@ function UI.init(G)
   --   要比参考图精致、简洁（用户：现在这个太卡通）：黑底半透明、细线、直角、小字，只有主按钮是白底黑字
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
-  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
   local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
@@ -879,7 +881,7 @@ function UI.init(G)
   toastList.Parent = toasts
   local order = 0
   -- 跟新界面一个样子（深色、直角、细线）：底是深色，左边一道颜色细条分好消息、坏消息、击杀
-  local KIND_COL = { good = RGB(96, 200, 124), bad = RGB(232, 84, 72), info = RGB(160, 170, 166), kill = RGB(232, 184, 76) }
+  local KIND_COL = { good = TH.C.GOOD, bad = TH.C.BAD, info = TH.C.MUTE, kill = TH.C.WARN }
   function G.toast(text, kind)
     order += 1
     local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.GothamMedium)
@@ -934,6 +936,7 @@ function UI.init(G)
     if G.pop and (kind == "kill" or key == "ui.capturedYou") then G.pop(text, kind) end
     if kind == "center" then G.centerMsg(text)
     elseif kind == "feed" then feedAdd(text)
+    elseif kind == "kill" then   -- 击杀：准星下面那一行（或开车时命中结果的「已击毁」）+ 左边击杀栏已经有了，不再在下面弹第三条（统一外观：一件事只报一处）
     else G.toast(text, kind) end
   end
 

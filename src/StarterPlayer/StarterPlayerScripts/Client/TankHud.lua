@@ -19,7 +19,8 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED = RGB(118, 240, 140), RGB(255, 78, 64)   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local CYAN, RED = TH.C.HUD, TH.C.BAD   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -68,7 +69,7 @@ function TankHud.init(G)
   -- 「被发现!」：照 MWT 的样子（用户 11-19：和 MWT 的被发现一模一样的效果，换个颜色）——
   --   左边一道白光拖过来、一个发光的小太阳（圆 + 八道光芒、外面一圈光晕）、后面一块实心的小牌子写「被发现!」（深色字）；
   --   MWT 是橙黄的，这里是红的。刚被发现时整块从左边滑进来、光拖得长一点，之后光晕一呼一吸
-  local SPOT = RGB(255, 86, 74)
+  local SPOT = TH.C.BAD
   local spot = Instance.new("Frame")
   spot.Name = "Spotted"
   spot.Size = UDim2.fromOffset(110, 22)
@@ -204,18 +205,18 @@ function TankHud.init(G)
     c.CornerRadius = UDim.new(0.5, 0)
     c.Parent = edge
     local s = Instance.new("UIStroke")
-    s.Color, s.Thickness, s.Transparency = CYAN, 1.5, 0.35
+    s.Color, s.Thickness, s.Transparency = TH.C.TEXT, 1.4, 0.35   -- 小地图的框是导航用的：中性白（统一外观，平显绿只给瞄准、飞行符号）
     s.Parent = edge
     ringStroke = s
     for _, b in ipairs({ { 0, "0" }, { 90, "90" }, { 180, "180" }, { 270, "270" } }) do
       local a = math.rad(b[1])
-      table.insert(ringLabs, label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5)))
+      table.insert(ringLabs, label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, TH.C.MUTE, MONO, V2(0.5, 0.5)))
     end
   end
   local function ringLook(air)
-    ringStroke.Color, ringStroke.Thickness, ringStroke.Transparency = air and Color3.new(1, 1, 1) or CYAN, air and 1.4 or 1.5, air and 0.15 or 0.35
+    ringStroke.Color, ringStroke.Thickness, ringStroke.Transparency = TH.C.TEXT, 1.4, air and 0.15 or 0.35
     for _, l in ipairs(ringLabs) do
-      l.TextColor3, l.TextSize = air and Color3.new(1, 1, 1) or CYAN, air and 10 or 9
+      l.TextColor3, l.TextSize = air and TH.C.TEXT or TH.C.MUTE, air and 10 or 9
     end
   end
 
@@ -372,12 +373,14 @@ function TankHud.init(G)
     -- 敌人：每 0.25 秒重新挑一遍（距离、视线），每帧摆牌子
     -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
     --   全真 sb 一个都不标
+    --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
     local wtMode = workspace:GetAttribute("WtMode")
-    local gR = (wtMode == "ab") and 2500 or ((wtMode == "rb") and 500 or 1100)
+    local gR = (wtMode == "ab") and 2500 or 1100
+    local tagsOn = wtMode ~= "sb" and wtMode ~= "rb"
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}
-      for _, em in ipairs((wtMode ~= "sb") and ents and ents:GetChildren() or {}) do
+      for _, em in ipairs(tagsOn and ents and ents:GetChildren() or {}) do
         local cat = em:GetAttribute("Cat")
         if (air and CATS_AIR or CATS)[cat] and enemy(em, side) then
           local r = em:FindFirstChild("Root")

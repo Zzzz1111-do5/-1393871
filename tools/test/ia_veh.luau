@@ -216,7 +216,7 @@ if et and CA.drive then
 end
 -- 两栖车：在登陆平台生成（也坐气垫艇），上岸后从海里自己游回来（浮着 → 踩着海底 → 上岸，车身高度连续）
 local ea = nil
-local ap = H.pad(G, "zbd05")
+local ap = H.pad(G, "m2a3")
 if ap then ea = H.usePad(G, atk, ap) end
 check(ea ~= nil and ea.lcac ~= nil, "两栖车 ZBD-05 也站在气垫艇上生成")
 if ea then

@@ -17,6 +17,7 @@ function View.init(G)
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local TT = require(RS:WaitForChild("TechTree"))   -- 科技树暂用车的真车涂装（TreeKey 属性）
+  local SK = require(RS:WaitForChild("WtSkins"))   -- 涂装、贴花（⑯，机库里选的：属性 Camo / TacNo / Emb）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -96,6 +97,57 @@ function View.init(G)
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
   G.viewById = function(id) return byId[id] end
+  -- 弹孔、擦痕（用户 11-25「全部都做」⑨）：服务器 Wt.lua 炮弹打中车时发 fx wtHole（命中点、表面法线、来向、pen / np / ric、在不在炮塔上）——
+  --   击穿：焦黑的孔 + 熏黑的一圈；没击穿：灰色的坑；跳弹：顺着来向的一道亮擦痕。零件接到这辆车的零件表后面，跟着车体 / 炮塔走；
+  --   每辆最多 24 个（再多就不贴了）
+  local HOLE_MAX = 24
+  G.viewHole = function(e)
+    local v = byId[e.id]
+    if not v or not v.M or not v.hullF or not v.plist or type(e.lp) ~= "table" then return end
+    if (v.nHoles or 0) >= HOLE_MAX then return end
+    v.nHoles = (v.nHoles or 0) + 1
+    local M = v.M
+    local function v3(t, dflt) return (type(t) == "table" and #t == 3) and Vector3.new(t[1], t[2], t[3]) or dflt end
+    local P = v3(e.lp, Vector3.new())
+    local n = v3(e.ln, Vector3.new(0, 1, 0))
+    n = (n.Magnitude > 0.1) and n.Unit or Vector3.new(0, 1, 0)
+    local grp = (e.z and v.tF) and "turret" or "hull"
+    local frame = (grp == "turret") and v.tF or v.hullF
+    local function put(size, off, color, tr, cyl)   -- off：在车体 / 炮塔坐标系里
+      local p = Instance.new("Part")
+      p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+      p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      if cyl then p.Shape = Enum.PartType.Cylinder end
+      p.Size, p.Color, p.Material, p.Transparency = size, color, Enum.Material.SmoothPlastic, tr or 0
+      p.CFrame = frame * off
+      p.Parent = M.model
+      table.insert(M.parts, { p, grp, off })
+      v.plist[#v.plist + 1] = p
+      v.putH = nil   -- 新接了零件：这一帧一定要摆
+    end
+    local base = CFrame.lookAt(P + n * 0.02, P + n * 1.02) * CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）朝外
+    if e.r == "ric" then
+      local d = v3(e.ld, Vector3.new(0, 0, -1))
+      d = (d.Magnitude > 0.1) and d.Unit or Vector3.new(0, 0, -1)
+      local tg = d - n * d:Dot(n)
+      if tg.Magnitude < 0.05 then tg = n:Cross(Vector3.new(0, 1, 0)) end
+      if tg.Magnitude < 0.05 then tg = Vector3.new(1, 0, 0) end
+      local c0 = P + n * 0.03
+      put(Vector3.new(0.2, 0.03, 1.2), CFrame.lookAt(c0, c0 + tg.Unit, n), Color3.fromRGB(176, 176, 170), 0)   -- 擦掉漆露出的钢
+    elseif e.r == "np" then
+      put(Vector3.new(0.04, 0.62, 0.62), base, Color3.fromRGB(96, 94, 90), 0.1, true)
+      put(Vector3.new(0.05, 0.28, 0.28), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(58, 56, 52), 0, true)
+    else
+      put(Vector3.new(0.04, 1.25, 1.25), base, Color3.fromRGB(36, 32, 28), 0.45, true)   -- 熏黑的一圈
+      put(Vector3.new(0.05, 0.46, 0.46), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(12, 11, 10), 0, true)   -- 孔
+    end
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "wtHole" then G.try_(G.viewHole, e) end
+    end
+  end)
   local function bar(m, adornee, h)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(46, 6)
@@ -130,10 +182,56 @@ function View.init(G)
       -- 科技树出的车（TreeKey）：还没有原模型、用零件拼的按真车涂装上色（TechTree.paint；用户 11-25「很多车涂装纯米黄」），不按阵营刷沙色
       local tk = em:GetAttribute("TreeKey")
       local tit = (type(tk) == "string") and TT.get(tk) or nil
-      local M = VM.build(d, team, em:GetAttribute("Mods"), tit and TT.paint(tit) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 涂装（⑯）：机库里选了的（属性 Camo）——零件拼的车按它上色，原模型整体乘个色调
+      local camo = em:GetAttribute("Camo")
+      local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
+      if cm and not cm.base then cm = nil end
+      local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
+      v.camo, v.tacNo, v.emb = camo, em:GetAttribute("TacNo"), em:GetAttribute("Emb")
+      if cm and cm.tint then
+        for _, it in ipairs(M.parts) do
+          local sa = it[1]:FindFirstChildOfClass("SurfaceAppearance")
+          if sa then pcall(function() sa.Color = cm.tint end) end
+        end
+      end
+      -- 贴花（⑯）：战术号码（炮塔两侧白字）、国徽（车体两侧）——接到零件表后面，跟着炮塔 / 车体走
+      local function decal(grp, off, txt, col, w, h)
+        local p = Instance.new("Part")
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+        p.Transparency, p.Size = 1, V(w, h, 0.05)
+        p.Parent = M.model
+        local sg = Instance.new("SurfaceGui")
+        sg.Face = Enum.NormalId.Front
+        sg.CanvasSize = Vector2.new(w * 60, h * 60)
+        sg.LightInfluence = 1
+        sg.Parent = p
+        local l = Instance.new("TextLabel")
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.fromScale(1, 1)
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.GothamBlack
+        l.TextColor3, l.TextTransparency = col, 0.08
+        l.Parent = sg
+        table.insert(M.parts, { p, grp, off })
+      end
+      local tacNo = em:GetAttribute("TacNo")
+      if type(tacNo) == "number" and d.turret then
+        local ts, tp = d.turret.size, M.tpiv or d.turret.pivot
+        for side = -1, 1, 2 do   -- 正面朝外（Front 面 −Z 转到 ±X）
+          decal("turret", CFrame.new(side * (ts.X / 2 * 0.98 + 0.06), ts.Y * 0.5, 0.2) * CFrame.Angles(0, -side * math.pi / 2, 0),
+            string.format("%03d", math.clamp(math.floor(tacNo), 0, 999)), Color3.fromRGB(236, 236, 230), 3.0, 1.3)
+        end
+      end
+      local emb = em:GetAttribute("Emb")
+      local E = (type(emb) == "string") and SK.EMB[emb] or nil
+      if E then
+        local hh = d.hullH or (d.H * 0.55)
+        for side = -1, 1, 2 do
+          decal("hull", CFrame.new(side * (d.W / 2 + 0.06), hh * 0.62, -d.L * 0.22) * CFrame.Angles(0, -side * math.pi / 2, 0), E[1], E[2], 1.6, 1.6)
+        end
+      end
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -446,6 +544,20 @@ function View.init(G)
     return a.LookVector:Dot(b.LookVector) > 0.9999998 and a.UpVector:Dot(b.UpVector) > 0.9999998
   end
 
+  -- 弹簧阻尼（负重轮、车体上下 / 俯仰 / 侧倾）：拆成不超过 1/120 秒的小步算（同 VehCam），一帧最多按 0.12 秒算——
+  --   用户 11-25：「然后现在特别卡」「坦克一直在抽搐」：原来一帧一步 v += a·dt，负重轮（k 420、c 26）一帧超过 54 毫秒（不到 18 帧）
+  --   就停不下来、在上下两个极限之间来回打，车体跟着轮子抽；车体（k 160）不到 10 帧直接算飞。游戏一卡，坦克就抽
+  local function spring(x, vel, tgt, k, c, dt)
+    dt = math.min(dt, 0.12)
+    local n = math.max(1, math.ceil(dt * 120 - 1e-6))
+    local h = dt / n
+    for _ = 1, n do
+      vel += ((tgt - x) * k - vel * c) * h
+      x += vel * h
+    end
+    return x, vel
+  end
+
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
     -- 车灯：有人开、没被打爆才亮
@@ -536,9 +648,9 @@ function View.init(G)
         local trv = M.travel or d.travel   -- 原模型的履带车：履带是死的，负重轮只能动一点
         if gy < -0.5 and onWater then tgt = -trv   -- 在水里：轮子垂下去
         else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -trv, trv) end
-        local a = (tgt - w.dy) * 420 - w.vy * 26
-        w.vy += a * dt
-        w.dy = math.clamp(w.dy + w.vy * dt, -trv * 1.2, trv * 1.2)
+        local dy
+        dy, w.vy = spring(w.dy, w.vy, tgt, 420, 26, dt)
+        w.dy = math.clamp(dy, -trv * 1.2, trv * 1.2)
         w.spin -= v.speed * dt / (w.rad or w.r)
         sum += w.dy
         if w.z < 0 then sF += w.dy nF += 1 else sB += w.dy nB += 1 end
@@ -553,12 +665,9 @@ function View.init(G)
     -- 起步抬头、刹车点头（战雷那样明显一点）
     local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
-    v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
-    v.bob += v.bobV * dt
-    v.pitchV += ((tPitch - v.pitch) * 120 - v.pitchV * 12) * dt
-    v.pitch += v.pitchV * dt
-    v.rollV += ((tRoll - v.roll) * 120 - v.rollV * 12) * dt
-    v.roll += v.rollV * dt
+    v.bob, v.bobV = spring(v.bob, v.bobV, tBob, 160, 14, dt)
+    v.pitch, v.pitchV = spring(v.pitch, v.pitchV, tPitch, 120, 12, dt)
+    v.roll, v.rollV = spring(v.roll, v.rollV, tRoll, 120, 12, dt)
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
@@ -733,6 +842,7 @@ function View.init(G)
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
+      v.wreckT = os.clock()
       -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
       if d.turret and not v.toss then
         local seed = tonumber(v.id) or 0
@@ -758,6 +868,36 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+    end
+    -- 烧痕（⑨）：着火（服务器属性 WtF）超过 5 秒，车身熏黑一层（只改没贴图的零件；一辆车最多熏两次）
+    if em:GetAttribute("WtF") == true and not v.wrecked then
+      v.fireT0 = v.fireT0 or os.clock()
+      if os.clock() - v.fireT0 > 5 and (v.scorch or 0) < 2 then
+        v.scorch = (v.scorch or 0) + 1
+        v.fireT0 = os.clock()
+        for _, it in ipairs(M.parts) do
+          local part = it[1]
+          if part:IsA("BasePart") and not (part:IsA("MeshPart") and part.TextureID ~= "") and not part:FindFirstChildOfClass("SurfaceAppearance") then
+            part.Color = part.Color:Lerp(Color3.new(0.06, 0.06, 0.06), 0.22)
+          end
+        end
+      end
+    else
+      v.fireT0 = nil
+    end
+    -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
+    if v.wreckT and not v.burnt2 then
+      local age = os.clock() - v.wreckT
+      if age > 40 and not v.burnt1 then
+        v.burnt1 = true
+        if M.fire then M.fire.Rate = 6 end
+        if M.black then M.black.Rate = 5 end
+      elseif age > 70 then
+        v.burnt2 = true
+        if M.fire then M.fire.Rate = 0 end
+        if M.black then M.black.Rate = 1.2 end
+        if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      end
     end
   end
 
@@ -795,7 +935,8 @@ function View.init(G)
       local ok = false
       if v.kind == "veh" then
         ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
-        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
+        if em:GetAttribute("Mods") ~= v.modsAttr or em:GetAttribute("TreeKey") ~= v.treeKey then ok = true end
+        if em:GetAttribute("Camo") ~= v.camo or em:GetAttribute("TacNo") ~= v.tacNo or em:GetAttribute("Emb") ~= v.emb then ok = true end   -- 涂装、贴花晚到了（⑯）   -- 改装属性、科技树名字晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end

@@ -227,6 +227,17 @@ function Armor.init(G)
 
   local TM = require(RS:WaitForChild("TankMods"))
   -- mods：改装（TankMods，客户端改装界面选的；AI 的车、没选的用默认）——型号数据按它改一份（车速、武器表），爆反、主动防御按它装
+  -- 残骸（用户 11-25「全部都做」②：战雷里打爆的车整局留在原地，烧黑的车壳能当掩体）：留到这一局结束；
+  --   一局里太多了（Config.Wt.wreckMax，默认 30 辆）最早的那辆先收——几十辆车壳的零件客户端也要画
+  local wrecks = {}
+  local function keepWreck(e)
+    table.insert(wrecks, e)
+    local cap = (Config.Wt and Config.Wt.wreckMax) or 30
+    while #wrecks > cap do
+      local old = table.remove(wrecks, 1)
+      if old then G.removeEnt(old) end
+    end
+  end
   local function newVehicle(team, id, base, P, mods)
     local d = TM.applyDef(VD.get(id), mods)
     local c = CATS[d.cat]
@@ -254,6 +265,7 @@ function Armor.init(G)
     if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     if G.wtSetup then G.try("战雷伤害", G.wtSetup, e) end   -- Wt.lua：乘员、模块各自的血（战雷式伤害）
+    if G.wtAmmoInit then G.try("配弹", G.wtAmmoInit, e, nil) end   -- Wt.lua ④：每种弹几发（默认配；玩家出车后 WtMatch 按他配的再配一遍）、待发弹架
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -292,7 +304,7 @@ function Armor.init(G)
           if x == self then table.remove(vehicles, i) break end
         end
       end)
-      task.delay(25, function() G.removeEnt(self) end)
+      keepWreck(self)   -- 残骸整局留着（战雷：烧黑的车壳当掩体），不再 25 秒就收走
     end
     table.insert(vehicles, e)
     return e
@@ -473,6 +485,38 @@ function Armor.init(G)
     end
   end
 
+  -- 半自动有线制导（反坦克导弹、炮射导弹，⑥）：导弹往「炮长瞄准线」上靠——线从发射车的炮口顺着现在的炮管方向出去
+  --   （开车的人转炮塔、俯仰炮管，服务器每次同步都收到 e.ty / e.gp）；出筒先加速，离线越远拐得越急（转弯角速度有上限）；
+  --   发射车没了、导线断了（飞出射程）就直着飞。每 0.15 秒把位置、速度发给客户端（shotFix），别人看到的弹道和服务器一样
+  function G.atgmStep(s, dt)
+    s.age = (s.age or 0) + dt
+    local sp = s.vel.Magnitude
+    local vmax = s.vmax or sp
+    sp = math.min(vmax, sp + vmax * 1.2 * dt)
+    local dir = (sp > 0.01 and s.vel.Unit) or Vector3.new(0, 0, -1)
+    local e = s.byEnt and G.entById[s.byEnt]
+    if e and e.alive and e.def and s.age > 0.2 then
+      local d = e.def
+      local mz = VD.muzzle(d, baseOf(e), e.ty, e.gp, nil, e.my, e.mp)
+      local o, ld = mz.Position, mz.LookVector
+      local along = math.max(0, (s.pos - o):Dot(ld))
+      local want = ((o + ld * (along + sp * 0.4)) - s.pos)
+      if want.Magnitude > 0.01 then
+        want = want.Unit
+        local ang = math.acos(math.clamp(dir:Dot(want), -1, 1))
+        local maxA = (s.turn or 2.4) * dt
+        if ang > 1e-4 then dir = dir:Lerp(want, math.min(1, maxA / ang)).Unit end
+      end
+    end
+    s.vel = dir * sp
+    s.fixT = (s.fixT or 0) - dt
+    if s.fixT <= 0 then
+      s.fixT = 0.15
+      G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel })
+    end
+    return false
+  end
+
   local function fire(P, e, wid, dir, aim, msg)
     if G.round.phase ~= "battle" or e.locked then return end
     local d = e.def
@@ -506,6 +550,11 @@ function Armor.init(G)
         local i = list and table.find(list, am)
         if i and i > nA then am = list[1] end
       end
+      if G.wtAmmoTake then   -- ④ 配弹：这种弹打光了换还有的那一种；一发都没了就不打
+        local got = G.wtAmmoTake(e, wid, am, nA)
+        if got == false then return end
+        am = got
+      end
       local ww, a = weaponOf(wid, w, am)
       if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
         local pw = ww.pelletW
@@ -514,13 +563,17 @@ function Armor.init(G)
           ww.pelletW = pw
         end
         for _ = 1, a.pellets do G.botShot(mz.Position, mz.Position + gdir * pw.range, pw, S, { e.model, P.char }, a.coneDeg) end
+      elseif a and a.cls == "atgm" then   -- 炮射导弹（9M119M「反射」，⑥）：从炮口出去，按炮长瞄准线导引（G.atgmStep）
+        local vm = a.v0 * BAL.S
+        G.launch({ kind = "missile", pos = mz.Position + gdir * 2, vel = gdir * vm * 0.7, w = ww, src = S, ignore = { e.model, P.char },
+          life = (a.range or 5000) * BAL.S / vm + 2, step = G.atgmStep, byEnt = e.id, vmax = vm, turn = a.turn or 2.2, age = 0 })
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, w = ww, src = S, ignore = { e.model, P.char },
           life = BAL.MAXR * BAL.S / v0 + 1.5 })
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-          life = w.range / w.speed + 0.5 })
+          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then
@@ -538,6 +591,14 @@ function Armor.init(G)
         step = G.airGuideMissile, age = 0, tgt = tg, tgId = tg.id, byEnt = e.id })
       if tg.driver and tg.driver.pl then G.R.Drive:FireClient(tg.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
       G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
+    elseif w.kind == "atgm" then
+      -- 反坦克导弹（用户 11-25「全部都做」⑥：布雷德利的陶式、BMP-1 的「婴儿」）：从炮塔侧面的发射架出去，半自动有线制导——
+      --   炮长的十字线一直压着目标，导弹自己往瞄准线上靠（G.atgmStep）；速度、射程照真弹（VehDefs.W.tow2 / malyutka）
+      e.atgmSide = -(e.atgmSide or 1)
+      local lp = (mz * CF(e.atgmSide * 1.2, 0.6, 1.0)).Position
+      G.launch({ kind = "missile", pos = lp, vel = gdir * w.speed * 0.5, w = w, src = S, ignore = { e.model, P.char }, life = w.range / w.speed + 3,
+        step = G.atgmStep, byEnt = e.id, vmax = w.speed, turn = w.turn or 2.4, age = 0 })
+      G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
     elseif w.kind == "arty" then
       if typeof(aim) ~= "Vector3" then return end
       local flat = V(aim.X - mz.Position.X, 0, aim.Z - mz.Position.Z)
@@ -552,6 +613,7 @@ function Armor.init(G)
     st.mag -= 1
     local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：别人凑合装填，慢六成
     if w.kind == "shell" and e.crewRel then rk *= e.crewRel end   -- 乘员技能「装填」（WtCrew，Tech.lua 出车时写的）
+    if w.kind == "shell" and BAL.GUN[wid] and G.wtRackK then rk *= G.wtRackK(e) end   -- ④ 待发弹架空了：从车体弹架里拿，装得慢
     st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
       local n = math.min(w.mag, st.reserve)
@@ -688,6 +750,8 @@ function Armor.init(G)
     if e then unseat(P, e, false) end
   end)
   G.on("roundStart", function()
+    for _, e in ipairs(wrecks) do G.removeEnt(e) end   -- 上一局留下的残骸
+    table.clear(wrecks)
     for _, e in ipairs(vehicles) do G.removeEnt(e) end
     for _, b in ipairs(lcacs) do G.removeEnt(b) end
     vehicles, lcacs = {}, {}

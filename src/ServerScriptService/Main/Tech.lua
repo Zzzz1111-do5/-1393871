@@ -556,7 +556,7 @@ function Tech.init(G)
     local m = ({ 300, 600, 1000 })[i]
     local pos = s.base + s.dir * m * 2.8 + Vector3.new(((i % 2) == 0 and 1 or -1) * 30, 0, 0)
     local id = DUMMY[((i - 1) % #DUMMY) + 1]
-    if not VD.get(id) then id = "m10" end
+    if not VD.get(id) then id = "m1a1" end   -- 11-25 C：M10 删了（用户 11-24），兜底换 M1A1
     local ok, d = pcall(G.spawnGroundVeh, s.foe, id, CFrame.lookAt(pos, pos - s.dir), false, nil, nil)   -- 对面那一队（界面按队伍上色）；不给分、不记击毁
     if not ok or not d then return end
     d.noScore, d.testDummy = true, true   -- 不给分、不记击毁（Ents.lua / WtMatch.lua 跳过）
@@ -646,15 +646,20 @@ function Tech.init(G)
       P.padT = 0
       P.treeSpawn, P.wtKey = true, key
       local okS, e
-      if air and G.wtModeNow and G.wtModeNow() == "ab" and G.spawnAircraftAir then
-        -- 街机：飞机直接在空中出生——本队机场上空 airSpawnH 格，机头朝据点那一片的中间，按军推速度的八成飞
+      -- 空中出生：街机（D）；C 11-25「全部都做」⑫：历史、全真也是（战雷陆战的固定翼都在空中出生，直升机才在停机坪）——
+      --   历史 / 全真高一半、往本队后方退 1500 格（离战场远一点，爬升、找目标要时间）
+      local adef = air and AD.get(vid) or nil
+      local mode = G.wtModeNow and G.wtModeNow() or "ab"
+      if air and G.spawnAircraftAir and not (adef and adef.kind == "heli") then
         okS, e = pcall(function()
           local c = p.base.Position
           local mx, mz, n = 0, 0, 0
           for _, pt in ipairs((G.Map and G.Map.POINTS) or {}) do mx += pt.x mz += pt.z n += 1 end
           local look = (n > 0) and Vector3.new(mx / n - c.X, 0, mz / n - c.Z) or Vector3.new(p.base.LookVector.X, 0, p.base.LookVector.Z)
           if look.Magnitude < 1 then look = Vector3.new(0, 0, -1) end
-          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200), c.Z)
+          local far = (mode == "ab") and 0 or 1500
+          local hK = (mode == "ab") and 1 or 1.5
+          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200) * hK, c.Z) - look.Unit * far
           if G.wtSpawnOk and not G.wtSpawnOk(P, vid, "air") then return nil end
           local d = AD.get(vid)
           local ee = G.spawnAircraftAir(P.team, vid, CFrame.lookAt(pos, pos + look.Unit), nil, P, nil, ((d and d.vMil) or 200) * 0.8)

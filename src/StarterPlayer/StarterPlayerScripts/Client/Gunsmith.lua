@@ -222,7 +222,7 @@ function Gunsmith.init(G)
   local codeBox = Instance.new("TextBox")
   codeBox.Size, codeBox.Position = UD2(0, 186, 0, 34), UD2(0, 640, 0, 48)
   codeBox.BackgroundColor3, codeBox.BackgroundTransparency, codeBox.BorderSizePixel = RGB(4, 5, 6), 0.1, 0
-  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.Code
+  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.RobotoMono
   codeBox.ClearTextOnFocus = false
   codeBox.TextEditable = true
   codeBox.PlaceholderText = "M4A1-XXXXXX"

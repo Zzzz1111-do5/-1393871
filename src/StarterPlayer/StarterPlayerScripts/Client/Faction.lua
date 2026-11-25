@@ -9,7 +9,8 @@ function Faction.init(G)
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
-  local TEXT, MUTE, LINE = RGB(238, 240, 242), RGB(138, 146, 154), RGB(255, 255, 255)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local TEXT, MUTE, LINE = TH.C.TEXT, TH.C.MUTE, TH.C.LINE
   local COL = { atk = RGB(214, 58, 46), def = RGB(64, 186, 92) }   -- 守方：绿（用户 11-21 蓝色全改绿，同 Config.Teams.def）
 
   local gui = Instance.new("ScreenGui")
@@ -163,6 +164,7 @@ function Faction.init(G)
   function G.refreshFaction(S)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
+      and not (G.hangarActive and G.hangarActive())   -- 机库（只开车的对局）：自动分队，不显示选阵营页（E 11-25 统一外观）
       and not (G.quickAt and os.clock() - G.quickAt < 4 and G.factionOpen ~= true)   -- 主菜单点了「快速加入」：服务器正在分队、出生，别闪出来
       and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
     gui.Enabled = show and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：先不画，免得透上来

@@ -535,8 +535,9 @@ end
 -- 车摆在哪（底座系：原点在地面正中，车头朝 −Z）
 function Stage.floorCF() return ORIGIN end
 
--- 打开 / 关上。keepCam：镜头已经有人接手了（坐进了车、开了主菜单），关的时候别动镜头
-function Stage.show(on, keepCam)
+-- 打开 / 关上。keep：关的时候镜头已经有人接手了——"all" 一点不动（开了主菜单：它有自己的场景和视场角）；
+--   "type" 镜头类型不动、只把视场角还回去（坐进了车 / 飞机、在观战）；不给就整个还给游戏
+function Stage.show(on, keep)
   local cam = workspace.CurrentCamera
   if on then
     if not model then
@@ -555,8 +556,8 @@ function Stage.show(on, keepCam)
     end
   else
     if model then model.Parent = nil end
-    if shown and not keepCam and cam then
-      cam.CameraType = Enum.CameraType.Custom
+    if shown and cam and keep ~= "all" then
+      if keep ~= "type" then cam.CameraType = Enum.CameraType.Custom end
       cam.FieldOfView = 70
     end
     shown = false

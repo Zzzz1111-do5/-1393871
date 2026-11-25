@@ -14,7 +14,8 @@ function Menu.init(G)
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
-  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
   local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
@@ -220,6 +221,7 @@ function Menu.init(G)
   -- 第一张卡「快速加入」（用户：没法快速进入战局）：点一下自动分队、默认装备，直接出生在离当前目标最近的出生点（Round.lua ACT.quickJoin）
   local function quick()
     enter()
+    if G.hangarActive and G.hangarActive() then return end   -- 只开车的对局：进机库挑车（服务器已经分好队；不发 quickJoin，免得当步兵出生被拒、弹一条提示）
     G.quickAt = os.clock()   -- 等服务器出生的这一会儿别弹选阵营界面（Faction.lua）
     G.R.Act:FireServer("quickJoin")
   end
@@ -250,7 +252,9 @@ function Menu.init(G)
   function G.stepMenu(dt) if stageOn then Stage.step(dt) end end
   function G.refreshMenu(S)
     if not S then return end
-    local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and (not S.picked) and (S.progress or 1) >= 1)
+    -- 只开车的对局（机库）：服务器进服就自动分好队（S.picked 一开始就是真），主菜单照样先出来，点「开始游戏」之前一直在
+    local vehOnly = G.hangarActive ~= nil and G.hangarActive() == true
+    local show = (G.menuOpenNow == true) or ((not entered) and (not S.alive) and ((not S.picked) or vehOnly) and (S.progress or 1) >= 1)
     gui.Enabled = show
     -- 背后的场景：开着主菜单时镜头对着它，关了收起来、镜头还给游戏
     if show ~= stageOn then

@@ -301,8 +301,10 @@ function Warfx.init(G)
   banks.Name = "CloudBanks"
   banks.Parent = FXF
   G.cloudBanks = banks   -- 测试用
+  local cloudParts = {}   -- { 零件, 上下位置 0 云底 ～ 1 云顶 }：昼夜更替跟着时间重新上色（stepCloudTint）
   local function cloudBanks()
     banks:ClearAllChildren()
+    table.clear(cloudParts)
     local rng = Random.new(91124)
     local span = (MapM.PLAY or 20000) * 0.9
     local LOW, HIGH = RGB(70, 78, 94), RGB(122, 130, 146)
@@ -315,6 +317,7 @@ function Warfx.init(G)
       base.Size = Vector3.new(size * 0.22, size * 2.2, size * 2.2)
       base.CFrame = CFrame.new(cx, cy, cz) * CFrame.Angles(0, 0, math.pi / 2)
       base.Color, base.Transparency = LOW, 0.62
+      table.insert(cloudParts, { base, 0 })
       for _, b in ipairs({ base }) do
         b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
         b.Material = Enum.Material.SmoothPlastic
@@ -328,6 +331,7 @@ function Warfx.init(G)
         b.Size = Vector3.new(r * 2, r * 2, r * 2)
         b.CFrame = CFrame.new(cx + rng:NextNumber(-1, 1) * size * 0.9, cy + r * 0.35 + up * size * 0.32, cz + rng:NextNumber(-0.7, 0.7) * size * 0.9)
         b.Color = LOW:Lerp(HIGH, up)
+        table.insert(cloudParts, { b, up })
         b.Transparency = rng:NextNumber(0.5, 0.68)
         b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch, b.CastShadow = true, false, false, false, false
         b.Material = Enum.Material.SmoothPlastic
@@ -336,7 +340,27 @@ function Warfx.init(G)
     end
   end
   pcall(cloudBanks)
-  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end   -- 换地图（作战区大小变了）重摆
+  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end
+  -- 云跟着时间变色（用户 11-25「给沙漠地图做个昼夜更替」）：夜里月光照着的灰蓝、白天白、日出日落染一层橙粉；
+  --   地形的那层云（clouds）也一样。亮度变了 0.02 以上才重新上色（几秒一次）
+  local tintK = -1
+  local C_NLOW, C_NHIGH = RGB(70, 78, 94), RGB(122, 130, 146)
+  local C_DLOW, C_DHIGH = RGB(198, 200, 206), RGB(248, 248, 246)
+  local C_TW = RGB(250, 178, 140)
+  local function stepCloudTint()
+    local dk = G.dayK and G.dayK() or 0
+    local c = G.clockNow and G.clockNow() or 2.3
+    local alt = math.sin((c - 6) / 12 * math.pi)
+    local tw = math.clamp(1 - math.abs(alt - 0.05) / 0.25, 0, 1) * 0.55
+    local key = dk + tw * 3
+    if math.abs(key - tintK) < 0.02 then return end
+    tintK = key
+    local lo, hi = C_NLOW:Lerp(C_DLOW, dk):Lerp(C_TW, tw), C_NHIGH:Lerp(C_DHIGH, dk):Lerp(C_TW, tw * 0.8)
+    for _, it in ipairs(cloudParts) do
+      if it[1].Parent then it[1].Color = lo:Lerp(hi, it[2]) end
+    end
+    if clouds then clouds.Color = RGB(66, 72, 88):Lerp(RGB(244, 242, 238), dk):Lerp(C_TW, tw) end
+  end   -- 换地图（作战区大小变了）重摆
 
   ---------------------------------------------------------------- 探照灯
   -- 守方几处要地（指挥部、机场、港口、营地）各两盏对空探照灯：灰绿色的灯筒架在矮杆上，一道淡蓝白的光柱斜着照上天，慢慢来回扫
@@ -391,7 +415,7 @@ function Warfx.init(G)
     local t = reducedMotion and 0 or serverNow()
     local cp = camPos()
     for _, L in ipairs(LIGHTS) do
-      local near = (L.base - cp).Magnitude < 9000
+      local near = (L.base - cp).Magnitude < 9000 and not (G.dayK and G.dayK() > 0.45)   -- 白天不开（昼夜更替，用户 11-25）
       if L.near ~= near then
         L.near = near
         for _, b in ipairs(L.beams) do b.Enabled = near end
@@ -907,8 +931,9 @@ function Warfx.init(G)
       if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
     end
     bAcc += dt or 1 / 60
-    if bAcc >= 1 then   -- 房子着火、废墟：一秒查一次
+    if bAcc >= 1 then   -- 房子着火、废墟、云的颜色：一秒查一次
       bAcc = 0
+      pcall(stepCloudTint)
       local ok3, err3 = pcall(stepBlds)
       if not ok3 and G.showError then G.showError("房子：" .. tostring(err3)) end
     end

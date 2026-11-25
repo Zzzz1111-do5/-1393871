@@ -57,10 +57,12 @@ Config.useMap("sands")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
--- 昼夜（客户端 DayNight.lua）：用户 11-18「把白天模式去掉，就锁定晚上」锁过一阵；11-25「把抽搐bug和昼夜更替弄完」——又打开：
---   lockNight = false 按 period（一圈多少秒，每局从早上 7:30 开始）昼夜更替：白天约 13 分钟、黄昏 / 清晨各一分多钟、夜里不到 6 分钟；
---   天黑提示开夜视、天亮夜视自己收起，地图上的灯和光晕只在天黑以后亮（Night.lua）。要再锁晚上把 lockNight 改回 true（clock 是锁定时的钟点）
-Config.DayNight = { lockNight = false, clock = 2.3, period = 24 * 60 }
+-- 昼夜（客户端 DayNight.lua 画）：用户 11-18「把白天模式去掉，就锁定晚上」——lockNight = true 一直停在半夜 clock 点（夜里那套灯光、出生自动开夜视）；
+--   用户 11-25「给沙漠地图做个昼夜更替」：lockNight 关掉。钟点在 ReplicatedStorage/DayClock.lua（服务器、客户端同一套）：
+--   一圈 day + dusk + night + dawn 分钟（白天 7:00～17:00、黄昏 17:00～19:30、夜里 19:30～次日 4:30、清晨 4:30～7:00），跨局接着走；
+--   start 开服时几点（下午：进去两分钟就能看到日落、五分钟入夜）；PvE 关卡按自己的 clock 开局，fixed 的钉死（夜战关卡）
+--   （D 11-25 同时做过一版 period 的，合并时用 B 的 DayClock；D 的 Night.lua 天黑提示开夜视、天亮收起、白天关地图上的灯照样用 G.isNight / G.dayK）
+Config.DayNight = { lockNight = false, clock = 2.3, day = 14, dusk = 3, night = 12, dawn = 3, start = 15.5 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
@@ -225,8 +227,8 @@ Config.Ricochet = { a0 = { armor = 62, light = 70 }, a1 = { armor = 80, light = 
 -- 型号：每队每类可选的型号（编号对应 Lang 里的名字和模型名）；mod 按型号微调（hp 倍数、速度倍数、主炮伤害倍数）
 Config.Vehicles = {
   atk = {
-    tank = { "ztz96", "ztz99a", "t90m" },   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
-    apc = { "ztd05", "zbd05", "zsl92b", "ptl02", "bmp3" },
+    tank = { "ztz96", "ztz99a", "t90m", "t72b3", "t80u" },   -- T-72B3、T-80U 11-24 夜 C 从 Sketchfab 找的   -- ZTQ-15 轻坦 11-19 删掉了（用户：建模非常粗糙）
+    apc = {},   -- 11-24 删掉了 ZTD-05 / ZBD-05 / ZSL-92B / PTL-02 / BMP-3（用户：车内是零件拼的，粗糙）；两边能开对方的车（CrossVehicles），红方照样有悍马、JLTV、M2A3
     aa = { "pgz07", "pgl625", "ld2000", "pantsir" },
     arty = { "plz07" },
     heli = { "z10", "z20" },
@@ -234,8 +236,8 @@ Config.Vehicles = {
     ship = { "t055", "t054a", "t022" },
   },
   def = {
-    tank = { "m10", "m1a1", "m1a2" },
-    apc = { "m1117", "hmmwv", "jltv", "m2a3", "stryker", "m1150" },
+    tank = { "m1a1", "m1a2", "leo2a6", "leclerc" },   -- M10 布克 11-24 删掉了（车内粗糙）；豹 2A6、勒克莱尔 11-24 夜 C 从 Sketchfab 找的（不做车内）
+    apc = { "hmmwv", "jltv", "m2a3" },   -- M1117、斯特赖克、M1150 11-24 删掉了（车内粗糙）
     aa = { "m163", "mshorad", "cram", "patriot" },
     arty = { "m109a7", "m270" },   -- M777 是地图自带的炮位（Forts），走过去就能用
     heli = { "ah64e", "uh60", "ch47" },
@@ -272,9 +274,9 @@ Config.Economy = {
   perScore = 0.1, win = 200, lose = 60,
   veh = {
     -- 坦克
-    ztz96 = 0, m10 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000, t90m = 2800,
+    ztz96 = 0, m1a1 = 1500, ztz99a = 3000, m1a2 = 3000, t90m = 2800, t72b3 = 1600, t80u = 2200, leo2a6 = 2800, leclerc = 2600,
     -- 装甲车
-    ztd05 = 0, m1117 = 0, hmmwv = 0, zsl92b = 600, jltv = 600, zbd05 = 900, stryker = 1000, ptl02 = 1200, m2a3 = 1200, m1150 = 1500, bmp3 = 1300,
+    hmmwv = 0, jltv = 600, m2a3 = 1200,
     -- 防空
     pgz07 = 0, m163 = 0, pgl625 = 1200, mshorad = 1500, ld2000 = 1800, cram = 1800, pantsir = 2600, patriot = 3500,
     -- 火炮
@@ -294,38 +296,39 @@ Config.Pve = {
   firstBonus = 2, replay = 0.5, perPlayer = 2,   -- 第一次打通奖励 ×2、再打 ×0.5；每多一个真人敌方多 2 个电脑
   -- ai（用户 11-24：「做关卡 越多越逼真越好」）：这一关电脑开的地面载具——def 敌方、atk 友军：max 同时几辆、tank 坦克占几成（其余步战车）、
   --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
+  -- clock 开局几点（用户 11-25 要了昼夜更替：每关自己定时间，像战雷的任务那样；DayClock.lua）、fixed 钉死不走（夜袭镇子、夜幕坦克战一直是夜里）
   levels = {
-    { map = "sands", caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "sands", caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "sands", caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
-      ai = { def = { max = 2, tank = 0, ids = { "m2a3", "stryker", "jltv" } }, atk = { max = 1, tank = 0 } } },
+    { map = "sands", clock = 8.5, caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "sands", clock = 10.0, caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "sands", clock = 23.5, fixed = true, caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+      ai = { def = { max = 2, tank = 0, ids = { "m2a3", "jltv", "hmmwv" } }, atk = { max = 1, tank = 0 } } },
     -- 第 4、6、8 关原来在沙漠风暴（打光兵力）、第 1、2、3、5、7、11、14 关原来在岛上；11-24 用户把两张图都删了（「全部默认沙海地图吧，登岛那个也删了」）：
     --   十六关都在沙海、按据点算（沙海 A～E 五个阶段各一个据点，caps 最多 5）
-    { map = "sands", caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
+    { map = "sands", clock = 6.0, caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
       ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
-    { map = "sands", caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+    { map = "sands", clock = 14.5, caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
-    { map = "sands", caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
+    { map = "sands", clock = 11.5, caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
       ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
-    { map = "sands", caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+    { map = "sands", clock = 16.2, caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
       ai = { def = { max = 3 }, atk = { max = 2 } } },
-    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
-      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "bmp3" } } } },
+    { map = "sands", clock = 13.0, caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "ztz96" } } } },
     -- 第 9～16 关（11-24 加）：沙海（突破，五个阶段）也有关卡；坦克战、机械化步兵、海岸防线、夜幕坦克战……
-    { map = "sands", caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
-      ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "stryker", "m1a1" } }, atk = { max = 2, tank = 0, ids = { "bmp3", "zbd05" } } } },
-    { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
-    { map = "sands", caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
-      ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "m1150" } }, atk = { max = 2, ids = { "t90m", "bmp3" } } } },
-    { map = "sands", caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
+    { map = "sands", clock = 5.2, caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
+      ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "jltv", "m1a1" } }, atk = { max = 2, tank = 0.5, ids = { "ztz96", "m2a3" } } } },
+    { map = "sands", clock = 9.0, caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
+    { map = "sands", clock = 17.2, caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+      ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "jltv" } }, atk = { max = 2, ids = { "t90m", "ztz99a" } } } },
+    { map = "sands", clock = 7.5, caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
-    { map = "sands", caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
+    { map = "sands", clock = 1.0, fixed = true, caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
       ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
-    { map = "sands", caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+    { map = "sands", clock = 4.8, caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
       ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
-    { map = "sands", caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
-      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "bmp3", "ztz99a" } } } },
-    { map = "sands", caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
+    { map = "sands", clock = 15.0, caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
+      ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz96", "ztz99a" } } } },
+    { map = "sands", clock = 18.2, caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
       ai = { def = { max = 5, tank = 0.7 }, atk = { max = 4, tank = 0.7 } } },
   },
 }
@@ -338,6 +341,13 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 -- 战斗等级配对（Tech.lua，用户 11-25「都要做」）：一局的战斗等级 = 准备阶段在线真人出击阵容里最高的那辆（没人按 br0）；
 --   能出的车最高到这一局 + brUp（战雷：最多碰到比自己高 1.0 的）；电脑开的车从科技树里挑 [这一局 − brUp, 这一局]；
 --   真人不够一队 teamSize 个，电脑车补（每队最多 aiMax 辆，AIVeh.lua）
+-- 车组语音（客户端 WtVoice.lua，用户 11-25「全部都做」⑬）：每一句可以配自己上传的录音（rbxassetid://…）；没配的用 Roblox 的文字转语音读英文；
+--   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
+--   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
+Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
+-- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
+--   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
+Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
@@ -358,10 +368,10 @@ function Config.AttPrice(lv)
   return Config.Economy.attBase + Config.Economy.attPerLv * lv
 end
 Config.VehicleMod = {
-  m10 = { hp = 0.8, speed = 1.1, gun = 0.85 },
   ztz96 = { hp = 0.9 }, m1a1 = { hp = 0.95 }, ztz99a = { hp = 1.1, gun = 1.1 }, m1a2 = { hp = 1.1, gun = 1.1 }, t90m = { hp = 1.05, gun = 1.05 },
-  zbd05 = { amphib = true }, bmp3 = { amphib = true }, ztd05 = { amphib = true, gun = 1.6 }, hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
-  m1150 = { hp = 1.4, speed = 0.8 }, m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
+  leo2a6 = { hp = 1.1, gun = 1.1 }, leclerc = { hp = 1.0, gun = 1.05, speed = 1.05 }, t72b3 = { hp = 0.95 }, t80u = { hp = 1.0, speed = 1.08 },
+  hmmwv = { hp = 0.5, speed = 1.25 }, jltv = { hp = 0.65, speed = 1.2 },
+  m270 = { rocket = true }, patriot = { sam = true }, cram = { ciws = true },
   z20 = { transport = true }, uh60 = { transport = true }, ch47 = { transport = true, hp = 1.3 },
   h6k = { bomber = true, hp = 1.6, speed = 0.75 }, b2 = { bomber = true, hp = 1.5, speed = 0.8 }, a10c = { hp = 1.4, speed = 0.7 },
   gj11 = { drone = true, hp = 0.6 }, gj2 = { drone = true, hp = 0.6 }, mq9 = { drone = true, hp = 0.6, speed = 0.55 },
@@ -401,7 +411,7 @@ Config.TacPad = {
   teamCd = 20,
   order = { "vdrop", "supply", "pgm", "gunrun", "cluster" },
   items = {
-    vdrop = { kind = "drop", n = 1, cd = 240, flight = 10, veh = { atk = "zsl92b", def = "m2a3" }, vmax = 3 },   -- 空投步战车（用户：平板能召唤步战车）：92B 轮式步战车 / M2A3 布雷德利
+    vdrop = { kind = "drop", n = 1, cd = 240, flight = 10, veh = { atk = "m2a3", def = "m2a3" }, vmax = 3 },   -- 空投步战车（用户：平板能召唤步战车）：M2A3 布雷德利（92B 11-24 删掉了）
     supply = { kind = "supply", n = 2, cd = 90, flight = 8, r = 20, life = 75, heal = 8 },
     pgm = { kind = "pgm", n = 2, cd = 90, flight = 6, w = { id = "pgm", dmg = 420, splash = 26, vs = { inf = 1, light = 3, armor = 2.4, air = 0.3, ship = 1.6, fort = 3 } } },
     gunrun = { kind = "gunrun", n = 1, cd = 150, flight = 6, len = 170, hits = 24, w = { id = "gunrun", dmg = 60, splash = 7, vs = { inf = 1, light = 1.5, armor = 0.35, air = 0.5, ship = 0.4, fort = 0.6 } } },

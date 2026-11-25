@@ -49,6 +49,7 @@ end
 print("① 开服：生成地图")
 H.run(0.5)
 local G = H.Gs.server
+H.game:GetService("Workspace"):SetAttribute("DayFix", 2.3)   -- 用户 11-25 打开了昼夜更替（DayClock.lua）：这里测夜战那一套，钟点钉在半夜
 G.fortsHold = true   -- 这里测的不是工事：工事不开火（同 tools/mock/*.lua；不然岸防炮会把测试里的登陆艇打沉）
 check(G ~= nil, "服务器模块起来了")
 G.Config.Bots.minPerTeam = 0   -- 这个测试不要机器人（机器人另有 ia_bots）
@@ -142,7 +143,7 @@ end
 -- 夜战：夜晚的光照；头盔、夜视仪、红外频闪；按 N 开夜视（画面调色、镜筒框、服务器那边镜筒翻下来），再按关掉、恢复
 local Lighting = H.game:GetService("Lighting")
 local Enum = roblox.Enum
-check(Lighting.ClockTime < 5 or Lighting.ClockTime > 20, string.format("锁定晚上（用户 11-18：把白天模式去掉）：钟点 %.1f", Lighting.ClockTime))
+check(Lighting.ClockTime < 5 or Lighting.ClockTime > 20, string.format("夜里（测试把钟点钉在半夜；用户 11-25 打开了昼夜更替）：钟点 %.1f", Lighting.ClockTime))
 check(Lighting:FindFirstChild("NightBloom") ~= nil and Lighting:FindFirstChildOfClass("Sky") ~= nil, "泛光、天空（夜里有星空）")
 if a1.Character then
 	local ch = a1.Character

@@ -548,6 +548,7 @@ function Weapons.init(G)
 
   -- 放东西：炸药包（再用一次引爆）、反坦克地雷（敌方车辆压上去就炸）
   KIND.place = function(P, id, w, char, head, tool, pos)
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷）：没有地雷、炸药包
     P.placed[id] = P.placed[id] or {}
     local list = P.placed[id]
     if id == "c4" and (pos == "det" or (typeof(pos) ~= "Vector3" and #list > 0)) then
@@ -592,6 +593,7 @@ function Weapons.init(G)
   local spotted = { atk = {}, def = {} }
   G.spotted = spotted
   KIND.spot = function(P, id, w, char, head, tool, aim, mode)
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战：步兵望远镜不用（车上的侦察 G、火炮 K 在 WtMatch.lua）
     if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
     local t = now()
     if mode == "strike" then

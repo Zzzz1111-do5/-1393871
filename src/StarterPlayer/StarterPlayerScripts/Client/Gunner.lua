@@ -52,7 +52,7 @@ function Gunner.init(G)
   local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   leadMark.TextStrokeTransparency = 0.3
   leadMark.Visible = false
-  local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.Code, Vector2.new(0.5, 0))
+  local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.RobotoMono, Vector2.new(0.5, 0))
   rangeText.TextStrokeTransparency = 0.4
   rangeText.Visible = false
   local scopeBox = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)

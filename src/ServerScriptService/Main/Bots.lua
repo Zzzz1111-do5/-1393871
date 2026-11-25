@@ -102,6 +102,7 @@ function Bots.init(G)
       local w = G.botWanted()
       if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
     end
+    if G.wtGroundOnly and G.wtGroundOnly() then return { atk = 0, def = 0 } end   -- 纯载具对战（战雷）：不刷电脑步兵（WtMatch.lua）
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then

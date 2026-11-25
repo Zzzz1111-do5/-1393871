@@ -120,7 +120,7 @@ function Wt.init(G)
     if not S then return true end
     local VD = require(RS:WaitForChild("VehDefs"))
     local w = VD.W[wid]
-    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam") then return S.gun ~= false end
+    if w and (w.kind == "shell" or w.kind == "arty" or w.kind == "sam" or w.kind == "atgm") then return S.gun ~= false end
     return alive(S) > 0 and not S.fixT
   end
   G.wtReloadK = function(e) return (e.wt and e.wt.rel) or 1 end
@@ -142,6 +142,8 @@ function Wt.init(G)
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       G.fx({ k = "boom", p = (base * CF(tp)).Position, s = 4.2, c = "wreck" })
     end
+    e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
+    e.wtLastPass = e.pass and table.clone(e.pass) or nil
     G.wtRaw = true
     G.damageEnt(e, 1e9, src)
     G.wtRaw = false
@@ -225,6 +227,9 @@ function Wt.init(G)
           if w and w.kind == "shell" then left += st.mag + st.reserve full += (w.mag or 1) + (w.reserve0 or w.reserve or 30) end
         end
         local frac = (full > 0) and math.clamp(left / full, 0.15, 1) or 1   -- 带的弹越少越不容易殉爆（战雷的「少带弹」）
+        local rl, rf = nil, nil
+        if G.wtRackLeft then rl, rf = G.wtRackLeft(e, c.it.k) end   -- ④ 这一块弹架（待发 / 车体）现在有几发：空了打中也不炸
+        if rl then frac = (rl <= 0) and 0 or math.clamp(rl / rf, 0.15, 1) end
         if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k end
       end
       if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5)) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5)) then
@@ -286,13 +291,38 @@ function Wt.init(G)
     local P = s.src and s.src.P
     local payload = { op = "wtHit", id = e.id, veh = e.def.id, r = res.r, kill = res.kill, why = res.why, fire = res.fire, blow = res.blow,
       parts = out, pen = res.pen and math.floor(res.pen) or nil, arm = res.eff and math.floor(res.eff) or nil, ang = res.ang and math.floor(res.ang) or nil,
-      dist = res.dist and math.floor(res.dist) or nil, xr = extra }
+      dist = res.dist and math.floor(res.dist) or nil, xr = extra, tk = e.treeKey }   -- tk：科技树出的车（界面写科技树里的名字）
     if P and P.pl and G.P[P.pl] == P then G.R.Drive:FireClient(P.pl, payload) end
     if not res.kill then
       msgTo(e, { op = "wtHurt", r = res.r, parts = out, fire = res.fire, from = s.src and s.src.name, xr = extra })
+    else   -- 被击毁的那一发：车里的人看「被 XX 的 YY 击毁」和这一发的 X 光（战雷的击毁回放）
+      local kveh = P and P.vehicle and P.vehicle.def and P.vehicle.def.id or nil
+      local kill = table.clone(payload)
+      kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
+      kill.kk = P and P.vehicle and P.vehicle.treeKey or nil
+      kill.kid = (P and P.vehicle and P.vehicle.id) or s.byEnt or nil   -- 击杀镜头（⑮，DeathFx.lua）看这辆
+      for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
+        if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
+      end
     end
     G.wtHits = (G.wtHits or 0) + 1   -- 测试用
     G.wtLast = payload
+  end
+
+  -- 弹孔（用户 11-25「全部都做」⑨）：客户端 View.lua 在命中点贴一个焦黑的孔（击穿）/ 灰坑（没击穿）/ 擦痕（跳弹），跟着车体 / 炮塔走
+  --   坐标按车自己的：车体上的按底座系，炮塔上的按炮塔系（W.toTur）——特效晚到零点几秒，车开着也贴得准
+  local function hole(e, res, vel, r, zone)
+    local n = res.Normal
+    if typeof(n) ~= "Vector3" or n.Magnitude < 0.1 then n = -vel end
+    local base = baseOf(e)
+    local lp, ln, ld = base:PointToObjectSpace(res.Position), base:VectorToObjectSpace(n), base:VectorToObjectSpace(vel)
+    local tur = zone == "tur" and e.def.turret ~= nil
+    if tur then
+      local yaw = e.ty or 0
+      lp, ln, ld = W.toTur(e.def, lp, yaw), W.toTurDir(ln, yaw), W.toTurDir(ld, yaw)
+    end
+    local function a3(v3) return { math.floor(v3.X * 100) / 100, math.floor(v3.Y * 100) / 100, math.floor(v3.Z * 100) / 100 } end
+    G.fx({ k = "wtHole", id = e.id, lp = a3(lp), ln = a3(ln), ld = a3(ld), r = r, z = tur or nil })
   end
 
   -- 炮弹、火箭弹、导弹直接打在车上：返回 "ric"（调用方按原来那套弹开）、true（这一发管完了，别再按血量扣）、nil（不是这套管的车）
@@ -324,6 +354,7 @@ function Wt.init(G)
       core = 0, zone = zone, face = face }
     local rp = W.ricochet(a.t, ang)
     if rp > 0 and math.random() < rp then
+      hole(e, res, vel, a.t == "ce" and "np" or "ric", zone)
       if a.t == "ce" then   -- 破甲弹太斜：引信不发火 / 射流打不进
         rr.r = "np"
         external(e, p, 30, out, s.src)
@@ -337,6 +368,7 @@ function Wt.init(G)
     end
     if pen < eff then
       rr.r = "np"
+      hole(e, res, vel, "np", zone)
       external(e, p, (a.t == "he") and 60 or 45, out, s.src)
       if a.t == "he" and a.blast then   -- 杀爆弹没打穿：冲击波伤车外的零件，装甲很薄时也震伤里面的人
         for _, c in ipairs(S.mods) do
@@ -345,15 +377,24 @@ function Wt.init(G)
         if mm < 20 then for _, c in ipairs(S.crew) do if (W.center(d, yaw, c.it) - p).Magnitude < a.blast * M * 0.5 then hurt(e, c, 35, out, s.src) end end end
       end
       local flags = {}
+      if a.t == "ce" then   -- 破甲 / 射流弹没打穿：射流钻进装甲里一小截就没劲了（客户端画一小段亮光、一团火花）
+        G.fx({ k = "wtJet", p = res.Position, d = vel, len = 0.5 * M, pen = false, big = a.jet or nil })
+      end
       sendHit(e, s, rr, out, xr)
       after(e, s.src, rr, flags)
       return true
     end
     rr.r = "pen"
+    hole(e, res, vel, "pen", zone)
     external(e, p, 60, out, s.src)
     local flags = {}
     inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)
     xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5)
+    if a.t == "ce" then   -- 金属射流：从命中点顺着来向钻进车里（客户端 WtHud 画一道白热的射流、一圈火花；X 光里画成亮青白线）
+      xr.jet = true
+      xr.big = a.jet or nil   -- 专门的金属射流弹：X 光动画里射流更粗、熔珠更多
+      G.fx({ k = "wtJet", p = res.Position, d = vel, len = xr.core * M, pen = true, big = a.jet or nil })
+    end
     rr.wp = res.Position
     after(e, s.src, rr, flags)
     sendHit(e, s, rr, out, xr)
@@ -489,6 +530,236 @@ function Wt.init(G)
     msgTo(e, { op = "wtFireOut", ext = true })
     G.wtPush(e)
   end
+
+  ---------------------------------------------------------------- 配弹、待发弹架（用户 11-25「全部都做」④）
+  --   战雷：出车前选每种弹带几发（少带弹 = 少殉爆）；待发弹架（自动装弹机的转盘、西方坦克的炮塔尾舱）里的弹装得快，
+  --   打空了装填手从车体弹架里拿、慢很多；不开炮的时候装填手把待发弹架补满。弹架打空了，打中它也不会殉爆。
+  --   e.amL[wid] = { 弹种 = 几发 }（加起来 = st.mag + st.reserve）；e.rdy / e.rdyCap 待发弹架；属性 AmL、Rdy、RdyCap、RdyK 给客户端
+  local BALs = require(RS:WaitForChild("Ballistics"))
+  local VDa = require(RS:WaitForChild("VehDefs"))
+  local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹：第一种五成多，往后越来越少
+  local function mainGun(e)
+    for _, wid in ipairs(e.def.weapons or {}) do
+      local w = VDa.W[wid]
+      if w and w.kind == "shell" and BALs.GUN[wid] and e.wst and e.wst[wid] then return wid, w, e.wst[wid] end
+    end
+    return nil
+  end
+  local function pushAmmo(e)
+    if not e.model then return end
+    local wid = mainGun(e)
+    local L = wid and e.amL and e.amL[wid]
+    if L then
+      local bits = {}
+      for _, k in ipairs(BALs.GUN[wid]) do table.insert(bits, k .. ":" .. (L[k] or 0)) end
+      e.model:SetAttribute("AmL", table.concat(bits, ","))
+    end
+    if e.rdyCap then
+      e.model:SetAttribute("Rdy", e.rdy)
+      e.model:SetAttribute("RdyCap", e.rdyCap)
+      e.model:SetAttribute("RdyK", (e.rdy > 0) and 1 or e.rdyEmptyK)
+    end
+  end
+  -- P：出车的人（他在机库里配的弹，P.wtAmmo[科技树的键 / 型号]）；nil 按默认配
+  function G.wtAmmoInit(e, P)
+    if not e or not e.alive or not e.wst then return end
+    local wid, w, st = mainGun(e)
+    if not wid then return end
+    local list = BALs.GUN[wid]
+    local cap = (w.mag or 1) + (w.reserve or 0)
+    local nA = e.wtFx and e.wtFx.ammo   -- 科技树改装：原厂只能打前几种
+    local usable = {}
+    for i, k in ipairs(list) do if not nA or i <= nA then table.insert(usable, k) end end
+    local key = e.treeKey or e.def.id
+    local want = P and P.wtAmmo and P.wtAmmo[key]
+    local L = {}
+    local sum = 0
+    if type(want) == "table" then
+      for _, k in ipairs(usable) do
+        local n = math.max(0, math.floor(tonumber(want[k]) or 0))
+        n = math.min(n, cap - sum)
+        L[k] = n
+        sum += n
+      end
+    end
+    if sum <= 0 then   -- 没配过：按默认比例配满
+      local tw = 0
+      for i = 1, #usable do tw += SPLIT[i] or 1 end
+      sum = 0
+      for i, k in ipairs(usable) do
+        L[k] = math.floor(cap * (SPLIT[i] or 1) / tw)
+        sum += L[k]
+      end
+      L[usable[1]] += cap - sum
+      sum = cap
+    end
+    e.amL = e.amL or {}
+    e.amL[wid] = L
+    e.amL0 = table.clone(L)   -- 配好的数（据点补给按它补）
+    st.mag = math.min(w.mag or 1, sum)
+    st.reserve = sum - st.mag
+    local lay = W.prof(e.def).lay
+    if lay == "e3" or lay == "w4" then
+      e.rdyCap = e.def.rdyN or ((lay == "e3") and 22 or 15)   -- 转盘自动装弹机 22 发左右；西方坦克炮塔尾舱的待发弹 15 发左右
+      e.rdyEmptyK = (lay == "e3") and 3 or 1.7                  -- 打空了：自动装弹机的车靠人从车体里拿（很慢）；装填手从车体弹架拿（慢七成）
+      e.rdy = math.min(e.rdyCap, st.reserve)
+    end
+    pushAmmo(e)
+  end
+  -- Armor.lua 开火：这种弹还有吗（打光了换还有的那一种；一发都没有返回 false）
+  function G.wtAmmoTake(e, wid, am, nA)
+    local L = e.amL and e.amL[wid]
+    local list = BALs.GUN[wid]
+    if not L or not list then return am end
+    am = am or list[1]
+    local function usable(k) local i = table.find(list, k) return i ~= nil and (not nA or i <= nA) end
+    if (L[am] or 0) <= 0 or not usable(am) then
+      local alt = nil
+      for _, k in ipairs(list) do if usable(k) and (L[k] or 0) > 0 then alt = k break end end
+      if not alt then return false end
+      am = alt
+    end
+    L[am] -= 1
+    pushAmmo(e)
+    return am
+  end
+  -- Armor.lua 开完一炮：下一发从哪拿——待发弹架还有就照常装，空了慢 rdyEmptyK 倍
+  function G.wtRackK(e)
+    if not e.rdyCap then return 1 end
+    e.lastShot = now()
+    local k = 1
+    if e.rdy > 0 then e.rdy -= 1 else k = e.rdyEmptyK end
+    pushAmmo(e)
+    return k
+  end
+  -- 据点补给补回来的弹（⑧）：补给哪一种——离配好的数差得最多的那种
+  function G.wtAmmoRefill(e, wid, add)
+    local L = e.amL and e.amL[wid]
+    if not L then return end
+    local best, bk = -1, nil
+    for k, n in pairs(L) do
+      local cap0 = (e.amL0 and e.amL0[k]) or 0
+      if cap0 - n > best then best, bk = cap0 - n, k end
+    end
+    bk = bk or BALs.GUN[wid][1]
+    L[bk] = (L[bk] or 0) + add
+    pushAmmo(e)
+  end
+  -- 车体弹架往待发弹架补（不开炮的时候）：据点补给那个每秒的循环里调
+  local function rackStep(e)
+    if not e.rdyCap or e.rdy >= e.rdyCap then return end
+    local wid, w, st = mainGun(e)
+    if not wid then return end
+    local hull = st.reserve - e.rdy
+    local t = now()
+    if hull <= 0 or t - (e.lastShot or -99) < (w.rate or 6) * 1.5 or t < (e.rdyNext or 0) then return end
+    e.rdy += 1
+    e.rdyNext = t + (w.rate or 6) * ((e.rdyEmptyK >= 3) and 2 or 1.2)
+    pushAmmo(e)
+  end
+  -- 这一块弹架里现在有几发、满的时候几发（打中弹架算殉爆用）
+  local function rackLeft(e, k)
+    if not e.rdyCap then return nil end
+    local wid, w, st = mainGun(e)
+    if not wid then return nil end
+    if k == "ammo" then return e.rdy, e.rdyCap end
+    local full = (w.mag or 1) + (w.reserve or 0) - e.rdyCap
+    return math.max(0, st.reserve - e.rdy), math.max(1, full)
+  end
+  G.wtRackLeft = rackLeft
+  -- 机库里配弹（客户端 WtAmmo.lua）：key 科技树的键（或型号），counts = { 弹种 = 几发 }；这一局内记着，下次出这辆车用
+  function G.ACT.wtAmmoSet(P, key, counts)
+    if type(key) ~= "string" or type(counts) ~= "table" then return end
+    local c = {}
+    local n = 0
+    for k, v in pairs(counts) do
+      if type(k) == "string" and BALs.AMMO[k] and type(v) == "number" then c[k] = math.clamp(math.floor(v), 0, 200) n += 1 end
+      if n > 8 then break end
+    end
+    P.wtAmmo = P.wtAmmo or {}
+    P.wtAmmo[key] = c
+  end
+
+  ---------------------------------------------------------------- 据点里补给（用户 11-25「全部都做」⑧）
+  --   战雷：停在自己这队占着的据点里，弹药一发一发补回来、阵亡的乘员一个个补上。这里：车停着（一秒里挪不到 3 格）、
+  --   在己方占着的据点圈里（占领圈的 1.6 倍）——每 4 秒补一发炮弹（机枪、机关炮一次补一个弹匣），每 10 秒补一个阵亡的乘员
+  local SUP = { r = 1.6, ammoT = 4, crewT = 10, still = 3 }
+  local VDs = require(RS:WaitForChild("VehDefs"))
+  local function inOwnPoint(e, p)
+    local CC = Config.Capture or { r = 70, height = 45 }
+    local R2 = (CC.r * SUP.r) ^ 2
+    for _, s in pairs(G.points or {}) do
+      if s.owner == e.team and not s.locked then
+        local dx, dz = p.X - s.x, p.Z - s.z
+        if dx * dx + dz * dz < R2 and math.abs(p.Y - (s.y or p.Y)) < (CC.height or 45) then return true end
+      end
+    end
+    return false
+  end
+  -- 补回来的乘员坐到空着的位子上（之前别人顶上去了的，就补顶上去那个人原来的位子）
+  local function seatFor(S, c)
+    for _, x in ipairs(S.crew) do
+      local r = x.role
+      local cur = S.seat[r]
+      if not cur or cur.hp <= 0 or cur == c then return r end
+    end
+    return c.role
+  end
+  local function supplyStep(e)
+    local p = e.root.CFrame.Position
+    local moved = e.supP and (p - e.supP).Magnitude or 99
+    e.supP = p
+    if moved > SUP.still or not inOwnPoint(e, p) then e.supA, e.supC = nil, nil return end
+    local t = now()
+    e.supA = e.supA or (t + SUP.ammoT)
+    e.supC = e.supC or (t + SUP.crewT)
+    local gotAmmo, gotCrew = false, nil
+    if t >= e.supA then
+      e.supA = t + SUP.ammoT
+      for wid, st in pairs(e.wst or {}) do
+        local w = VDs.W[wid]
+        if w then
+          local full = (w.mag or 0) + (w.reserve or 0)
+          if st.mag + st.reserve < full then
+            local add = (w.kind == "shell" and (w.mag or 1) <= 1) and 1 or (w.mag or 1)   -- 主炮一发一发，机枪 / 机关炮一个弹匣
+            st.reserve = math.min(full - st.mag, st.reserve + add)
+            if G.wtAmmoRefill then G.wtAmmoRefill(e, wid, add) end   -- ④ 配弹：按弹种记的也补
+            gotAmmo = true
+          end
+        end
+      end
+    end
+    local S = e.wt
+    if S and t >= e.supC then
+      e.supC = t + SUP.crewT
+      for _, c in ipairs(S.crew) do
+        if c.hp <= 0 then
+          c.hp = c.max
+          local r = seatFor(S, c)
+          c.seat = r
+          S.seat[r] = c
+          gotCrew = r
+          break
+        end
+      end
+      if gotCrew then G.wtPush(e) end
+    end
+    if gotAmmo or gotCrew then msgTo(e, { op = "wtSupply", ammo = gotAmmo or nil, crew = gotCrew }) end
+  end
+  task.spawn(function()
+    while true do
+      task.wait(1)
+      if G.round and G.round.phase == "battle" and G.points then
+        for _, e in ipairs(G.ents) do
+          if e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+            local okS, err = pcall(supplyStep, e)
+            if not okS then warn("[战雷] 据点补给出错：" .. tostring(err)) end
+            pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
+          end
+        end
+      end
+    end
+  end)
 end
 
 return Wt

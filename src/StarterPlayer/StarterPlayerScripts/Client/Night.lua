@@ -282,7 +282,7 @@ function Night.init(G)
   virTag.BackgroundTransparency = 1
   virTag.Position = UDim2.fromOffset(18, 64)
   virTag.Size = UDim2.fromOffset(160, 18)
-  virTag.Font = Enum.Font.Code
+  virTag.Font = Enum.Font.RobotoMono
   virTag.TextSize = 14
   virTag.TextXAlignment = Enum.TextXAlignment.Left
   virTag.TextColor3 = RGB(235, 238, 238)

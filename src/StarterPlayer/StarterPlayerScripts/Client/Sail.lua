@@ -78,7 +78,7 @@ function Sail.init(G)
   bs.Transparency = 0.25
   bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   bs.Parent = binoIn
-  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
 
   ---------------------------------------------------------------- 开船
 

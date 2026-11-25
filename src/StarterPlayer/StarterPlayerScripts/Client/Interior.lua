@@ -47,7 +47,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
 
   -- 型号 → 内饰（没有专门做的先用最接近的同类车）
   -- M1A1 / M1A2：M1A1 原模型自带的炮塔内饰（InteriorAbrams.lua：没导入拆好的 m1a1i 就照旧零件拼的）；M10 布克借零件拼的 M1A2（四人、手动装填）
-  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", m10 = "m10", ztz99a = "ztz99a", ztz96 = "ztz99a", t90m = "ztz99a" }
+  local ALIAS = { m1a2 = "m1a2", m1a1 = "m1a1", ztz99a = "ztz99a", ztz96 = "ztz99a", t90m = "ztz99a" }
   G.interiorDefs = Defs   -- 测试用
 
   local cur = nil          -- 正在用的内饰：{ key, id, b, spec, model, crew, ... }
@@ -188,7 +188,17 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     c._rot, c._chest, c._eyeOff = rot, chest, eyeInLT
   end
 
+  -- 第一人称只给白名单里的型号（Config.FirstPerson.only：用户 11-25 只留 M1A1、M1A2；nil = 全开）
+  local function fpAllowed(id)
+    local FP = G.Config.FirstPerson
+    local only = FP and FP.only
+    if not only then return true end
+    return only[id] == true
+  end
+  G.interiorAllowed = fpAllowed
+
   local function build(st, v)
+    if not fpAllowed(v.def.id) then return nil end
     local key = ALIAS[v.def.id] or v.def.id
     local fn = Defs[key]
     if not fn then return nil end
@@ -1373,7 +1383,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local fst = G.fly
     if fst and fst.d then   -- 开飞机：座舱（下面 stepAir）；坐后座不开飞机的、遥控无人机的没有
       if cur and not cur.spec.air then teardown() end
-      if fst.pilot and not fst.uav and Defs[fst.d.id] then return stepAir(dt, fst) end
+      if fst.pilot and not fst.uav and Defs[fst.d.id] and fpAllowed(fst.d.id) then return stepAir(dt, fst) end
       if cur then teardown() end
       return
     end
@@ -1705,7 +1715,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   ret.Parent = og
   local oName = Instance.new("TextLabel")
   oName.BackgroundTransparency = 1
-  oName.Font = Enum.Font.Code
+  oName.Font = Enum.Font.RobotoMono
   oName.TextSize = 16
   oName.TextXAlignment = Enum.TextXAlignment.Left
   oName.Parent = og
@@ -1782,7 +1792,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     l.Text = txt
     l.TextSize = size
     l.TextColor3 = col
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextXAlignment = (align == "r") and Enum.TextXAlignment.Right or ((align == "l") and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
     l.Parent = ret
     return l
@@ -2691,7 +2701,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] and fpAllowed(fst.d.id) then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
         if hover.mov then movPress(cur, hover.mov) return end

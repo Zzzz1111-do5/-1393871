@@ -5,6 +5,7 @@
 --      舱盖在原车外面看得见的那个位置（炮塔顶），地板高度是内腔量的；③ 默认炮长位（F2～F5 换驾驶员 / 炮长 / 车长 / 装填手）；④ C 出来：内壁又藏起来
 --   dump=：写 interior_<型号>_carve.json（CARVE=1 node tools/mock/interior_view.cjs 叠原车 GLB 画成图）
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "ztz99a"
