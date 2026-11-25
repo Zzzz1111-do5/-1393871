@@ -111,6 +111,18 @@
      节点名是乱码的 glTF 先用 tools/models/gltf_rename.py 改名（BMP-1）。测试 tools/mock/wtreal.lua（数据、科技树、逐型试驾、开炮走战雷伤害）
      **第二批在做**：models/veh/t64.glb、type74.glb 已经转好（blveh.json 里有配置、署名进了 credits.txt），还没接进游戏（ImportedMeta 没写、VehDefs 没有型号）；
      下一步黄鼠狼 1A3、猎豹、BMP-2、通古斯卡、石勒喀、15 式、T-62M（Sketchfab 都核对过是 CC-BY）
+  ⑧ **11-25 机库和研究界面照用户的两张截图重做（没跑模拟测试：用户说「弄完了不要测试直接发我」，只过了语法检查）**——
+     用户：「一进入游戏的界面给我改成这样」「然后点研究就跳科技树」「界面做到这样 然后其他全部做成战雷」。
+     - 新模块 Client/HangarStage.lua：机库背后的 3D 厂房（零件搭的，只在本机，搭在 (−9000, 900, 9000)），机库界面开着时镜头在里面对着停在正中的车
+       （Stage.show / put / drag / zoom / step）；TechUI 把出击阵容里选中的那一辆摆进来（VehModels.build + pose，飞机 AirModels.build + pose）。
+       **镜头**：机库显示时 CameraType = Scriptable，关的时候还给游戏（坐进了车 G.drive / G.fly、开着主菜单时不动镜头）
+     - TechUI.lua：整套界面按 1280 × 720 画、放在一个带 UIScale 的 Root 里（手机按 1000 × 500）；ScreenGui 改成 ZIndexBehavior.Sibling
+       （原来默认 Global：乘员 / 改装 / 资料卡三个面板 ZIndex 10，内容其实被自己的暗底盖着）；乘员、改装、资料卡面板也挪进 Root。
+       机库：顶上一排（等级圈 + 经验条、主菜单 / 技能树 / 研究 / 试驾、四个图标键：改装、只看车、帮助、资料卡、右上金币）、左边国旗选系、
+       右边「乘员」框 + 选中这一辆的资料、底下五个槽位（Line_<键>，里面的 Go 还在；点卡片是选中）、右下这一局的信息（Mode_ab / rb / sb、ModeT）和「战斗」（出选中的那一辆）。
+       研究：窗口压在机库上，等级横着排（原来是竖着排），格子还叫 Card_<键>、国旗键还叫 Nat_<系>、详情里的 Research / Buy / LineupIn / LineupOut / ModsBtn / TestBtn / InfoBtn 没改名；
+       没开的等级盖暗板（Locked_<级>）。**测试里按名字找零件的都没改名，但布局变了、没重跑**：techtree / wttest / wtbr / wtmode / wtmods / wtreal 谁先跑到有问题请告诉 D
+     - 截图里第四个大键是 LOOTBOXES：游戏里没有补给箱，先放「试驾」；用户要的话再做
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、

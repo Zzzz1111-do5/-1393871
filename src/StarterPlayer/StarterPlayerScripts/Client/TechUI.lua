@@ -1,9 +1,11 @@
--- 全面大战场（客户端）——机库（出击阵容、出击）和科技树界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
---   「不要让玩家拿枪之类的了 就跟战雷完全一样」）
---   机库：没出击的时候（Config.Wt.noInfantry 开着）盖住原来的步兵部署页——上面选系（中 德 美 日 俄）、开科技树，底下一排出击阵容（最多 5 辆），
---     每张卡点「出击」直接坐在车里 / 飞机里出现在自己基地（服务器 Tech.lua deployVeh）
---   科技树：一棵树一张格子——每级一行（I～VII，左边写年代），每类一列，同一列上下连线；格子的颜色：买下的绿、研究完没买的蓝、正在研究的黄（带进度条）、
---     能研究的灰、还没开的暗；点一格右边出详情：年份、战斗等级、研究点、价钱，「研究」「购买」「放进出击阵容」；暂借别的型号的写「暂用 某某」
+-- 全面大战场（客户端）——机库（出击阵容、出击）和研究（科技树）界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
+--   「不要让玩家拿枪之类的了 就跟战雷完全一样」；同一天给了两张截图：「一进入游戏的界面给我改成这样」「然后点研究就跳科技树」）
+--   机库：没出击的时候（Config.Wt.noInfantry 开着）盖住原来的步兵部署页。背后是 3D 厂房（HangarStage.lua），出击阵容里选中的那一辆停在正中；
+--     界面照截图的布局：顶上一排（等级圈 + 经验条、主菜单 / 技能树 / 研究 / 试驾四个括号角按钮、四个方图标键、右上金币）、左边一列国旗选系、
+--     右边「乘员」框、底下五个槽位（出击阵容，最多 5 辆）、右下这一局的信息和橙色括号角的「战斗」——出的是选中的那一辆（服务器 Tech.lua deployVeh）
+--   研究：一个窗口压在机库上——左边一列国旗，中间横着滚的等级列（I～VII），每条线一行，横线连着前置；格子底边的颜色：买下的绿、研究完没买的蓝、
+--     正在研究的黄（带进度）、能研究的白、还没开的暗；没开的等级盖一块暗板（锁、要先研究完上一级的几辆）；点一格右边出详情：
+--     年份、战斗等级、研究点、价钱，「研究」「购买」「放进出击阵容」「试驾」「资料卡」；暂借别的型号的写「暂用 某某」
 --   存档在服务器（玩家属性 Tree，JSON）；动作发 Act：treeNat / treeResearch / treeBuy / treeLineup / deployVeh
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -75,6 +77,7 @@ function TechUI.init(G)
   gui.ResetOnSpawn = false
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 12
+  gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling   -- 子零件叠在父零件上面、同级的按 ZIndex（默认的 Global 下，ZIndex 高的面板会盖住自己的内容）
   gui.Parent = me:WaitForChild("PlayerGui")
   local function frame(parent, size, pos, col, tr)
     local f = Instance.new("Frame")
@@ -116,29 +119,211 @@ function TechUI.init(G)
   end
   local function clear(f) for _, c in ipairs(f:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end end
 
-  ---------------------------------------------------------------- 机库
-  local hangar = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  ---------------------------------------------------------------- 机库（用户 11-25 的两张截图：「一进入游戏的界面给我改成这样」）
+  --   背后是 3D 厂房（HangarStage.lua），出击阵容里选中的那一辆停在正中；界面压在上面：
+  --   顶上一排：等级圈 + 经验条 · 主菜单 / 技能树 / 研究 / 试驾（黑底，左上、右下两个括号角）· 四个方图标键（改装、只看车、帮助、资料卡）· 右上金币
+  --   左边一列国旗选系；右边「乘员」框和选中这一辆的资料；底下五个槽位（出击阵容）；右下这一局的信息（阶段、战斗等级、三种模式）和橙色括号角的「战斗」
+  -- 整套按 1280 × 720 画，窗口大了小了整体缩放（手机按 1000 × 500）
+  local H = { modeBtns = {}, vw = 1280, vh = 720 }   -- 机库界面上要改字、要重排的那些零件；vw × vh 是缩放以后的画布
+  local root = frame(gui, UDim2.fromScale(1, 1), nil, nil, 1)
+  root.Name = "Root"
+  do
+    local sc = Instance.new("UIScale")
+    sc.Parent = root
+    local function fit()
+      local c = workspace.CurrentCamera
+      local vp = c and c.ViewportSize or Vector2.new(1280, 720)
+      local s = math.clamp(math.min(vp.X / (mobile and 1000 or 1280), vp.Y / (mobile and 500 or 720)), 0.4, 2.2)
+      sc.Scale = s
+      root.Size = UDim2.fromScale(1 / s, 1 / s)
+      H.vw, H.vh = vp.X / s, vp.Y / s
+    end
+    fit()
+    local c = workspace.CurrentCamera
+    if c then c:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+  end
+  local hangar = frame(root, UDim2.fromScale(1, 1), nil, nil, 1)
   hangar.Name = "Hangar"
   hangar.Visible = false
-  local M0 = mobile and 16 or 40
-  local title = text(hangar, L("机库", "HANGAR"), UDim2.new(0, 300, 0, 34), UDim2.new(0, M0, 0, 20), 26)
-  title.Font = Enum.Font.GothamBold
-  local phaseT = text(hangar, "", UDim2.new(0, 360, 0, 20), UDim2.new(0, M0, 0, 56), 14, DIM)
-  local natBar = frame(hangar, UDim2.new(1, -2 * M0, 0, 34), UDim2.new(0, M0, 0, 86), nil, 1)
-  local natLayout = Instance.new("UIListLayout")
-  natLayout.FillDirection = Enum.FillDirection.Horizontal
-  natLayout.Padding = UDim.new(0, 6)
-  natLayout.Parent = natBar
-  local treeBtn = button(hangar, L("科技树", "Tech tree"), UDim2.new(0, 140, 0, 34), UDim2.new(1, -M0 - 140, 0, 86))
-  local brT = text(hangar, "", UDim2.new(1, -2 * M0, 0, 24), UDim2.new(0, M0, 1, -262), 16, WHITE)
-  local row = frame(hangar, UDim2.new(1, -2 * M0, 0, 182), UDim2.new(0, M0, 1, -228), nil, 1)
-  local rowLayout = Instance.new("UIListLayout")
-  rowLayout.FillDirection = Enum.FillDirection.Horizontal
-  rowLayout.Padding = UDim.new(0, 10)
-  rowLayout.Parent = row
-  local hint = text(hangar, L("选一辆出击：直接坐在车里 / 飞机里出现在自己基地。车没了回到这里。", "Pick a vehicle: you spawn inside it at your base. Lose it and you come back here."),
-    UDim2.new(1, -2 * M0, 0, 20), UDim2.new(0, M0, 1, -40), 13, FAINT)
   G.hangarGui = hangar   -- 测试用
+  local M0 = mobile and 14 or 24
+  local AMBER = RGB(255, 158, 44)
+  local INK = RGB(8, 9, 10)
+  local sel = { key = nil }     -- 阵容里选中的那一辆（厂房里停的、「战斗」出的）
+  local function round(f)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(1, 0)
+    c.Parent = f
+    return f
+  end
+  local function stroke(f, col, tr, th)
+    local s = Instance.new("UIStroke")
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Color, s.Transparency, s.Thickness = col, tr or 0, th or 1
+    s.Parent = f
+    return s
+  end
+  -- 括号角：左上、右下各一个「L」（len 长、th 粗、往外探 off）
+  local function corners(b, col, len, th, off)
+    for i = 1, 2 do
+      local tl = i == 1
+      local s = tl and 0 or 1
+      local h = frame(b, UDim2.new(0, len, 0, th), UDim2.new(s, tl and -off or (off - len), s, tl and -off or (off - th)), col, 0)
+      local v = frame(b, UDim2.new(0, th, 0, len), UDim2.new(s, tl and -off or (off - th), s, tl and -off or (off - len)), col, 0)
+      h.Name, v.Name = "Corner", "Corner"
+    end
+  end
+  -- 右端斜着切一刀（经验条、金币条）：横向渐变转 25°，到头那一段透明；w × h 是这一条的像素大小
+  local function slant(f, w, h)
+    local g = f:FindFirstChild("Slant")
+    if not g then
+      g = Instance.new("UIGradient")
+      g.Name = "Slant"
+      g.Rotation = 25
+      g.Parent = f
+    end
+    local a, b = w * 0.906, h * 0.423
+    local t0 = math.clamp(a / math.max(a + b, 1), 0.03, 0.995)
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(t0 - 0.012, 0),
+      NumberSequenceKeypoint.new(t0, 1), NumberSequenceKeypoint.new(1, 1) })
+  end
+  local function fmtNum(n)
+    local s = tostring(math.floor(n or 0))
+    local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+    if out:sub(1, 1) == "," then out = out:sub(2) end
+    return out
+  end
+  -- 黑底括号角按钮：一行字，或者大字底下一行小的英文
+  local function navBtn(parent, label, sub, size, pos, col)
+    local b = Instance.new("TextButton")
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Size, b.Position = size, pos
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
+    b.Parent = parent
+    corners(b, col or WHITE, 9, 2, 4)
+    local two = sub ~= nil and sub ~= ""
+    local t1 = text(b, label, UDim2.new(1, -8, two and 0.56 or 1, 0), UDim2.new(0, 4, two and 0.08 or 0, 0), mobile and 13 or 15, col or WHITE, Enum.TextXAlignment.Center)
+    t1.Name = "Label"
+    t1.Font = Enum.Font.GothamBold
+    if two then
+      local t2 = text(b, sub, UDim2.new(1, -8, 0.3, 0), UDim2.new(0, 4, 0.62, 0), 8, DIM, Enum.TextXAlignment.Center)
+      t2.Name = "Sub"
+    end
+    b.MouseEnter:Connect(function() b.BackgroundColor3 = RGB(40, 44, 48) end)
+    b.MouseLeave:Connect(function() b.BackgroundColor3 = INK end)
+    return b, t1
+  end
+  -- 国旗（画的：条纹、圆、星），w × h 像素
+  local function flag(parent, nat, w, h)
+    local f = frame(parent, UDim2.new(0, w, 0, h), nil, RGB(242, 242, 242), 0)
+    f.Name = "Flag"
+    f.ClipsDescendants = true
+    local function stripes(cols)
+      for i, c in ipairs(cols) do frame(f, UDim2.new(1, 0, 1 / #cols, 1), UDim2.new(0, 0, (i - 1) / #cols, 0), c, 0) end
+    end
+    local function star(sz, x, y)
+      local t = text(f, "★", UDim2.new(0, sz * 1.3, 0, sz * 1.3), UDim2.new(0, x - sz * 0.65, 0, y - sz * 0.65), sz, RGB(255, 214, 0), Enum.TextXAlignment.Center)
+      t.TextTruncate = Enum.TextTruncate.None
+    end
+    if nat == "de" then
+      stripes({ RGB(18, 18, 18), RGB(206, 32, 38), RGB(248, 198, 0) })
+    elseif nat == "ru" then
+      stripes({ RGB(244, 244, 244), RGB(0, 58, 166), RGB(214, 44, 32) })
+    elseif nat == "jp" then
+      local d = math.floor(h * 0.58)
+      round(frame(f, UDim2.new(0, d, 0, d), UDim2.new(0.5, -d / 2, 0.5, -d / 2), RGB(190, 0, 40), 0))
+    elseif nat == "us" then
+      local cols = {}
+      for i = 1, 7 do cols[i] = (i % 2 == 1) and RGB(180, 36, 52) or RGB(244, 244, 244) end
+      stripes(cols)
+      local canton = frame(f, UDim2.new(0, math.floor(w * 0.44), 0, math.floor(h * 4 / 7) + 1), nil, RGB(42, 58, 116), 0)
+      for r = 0, 2 do
+        for c = 0, 3 do round(frame(canton, UDim2.new(0, 2, 0, 2), UDim2.new((c + 0.5) / 4, -1, (r + 0.5) / 3, -1), WHITE, 0)) end
+      end
+    else   -- cn
+      f.BackgroundColor3 = RGB(208, 44, 34)
+      star(math.floor(h * 0.44), w * 0.2, h * 0.3)
+      for _, p in ipairs({ { 0.38, 0.12 }, { 0.46, 0.26 }, { 0.46, 0.44 }, { 0.38, 0.58 } }) do star(math.max(6, math.floor(h * 0.16)), w * p[1], h * p[2]) end
+    end
+    return f
+  end
+  -- 一列国旗（选系）：选中的带括号角，别的压暗；names：旁边写国名
+  local function natTiles(col, w, h, gap, cur, onPick, names)
+    clear(col)
+    for i, nat in ipairs(TT.NATIONS) do
+      local N = TT.NAT[nat]
+      local on = nat == cur
+      local b = Instance.new("TextButton")
+      b.Name = "Nat_" .. nat
+      b.AutoButtonColor = false
+      b.Text = ""
+      b.BackgroundTransparency, b.BorderSizePixel = 1, 0
+      b.Size, b.Position = UDim2.new(0, w, 0, h), UDim2.new(0, 0, 0, (i - 1) * (h + gap))
+      b.Parent = col
+      flag(b, nat, w, h)
+      if on then
+        corners(b, WHITE, 8, 2, 4)
+      else
+        frame(b, UDim2.fromScale(1, 1), nil, Color3.new(0, 0, 0), 0.5).Name = "Dim"
+      end
+      if names then
+        local t = text(b, zh and N.name or N.en, UDim2.new(0, 110, 0, 16), UDim2.new(1, 10, 0.5, -8), 12, on and WHITE or RGB(186, 190, 194))
+        t.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+        t.TextStrokeTransparency = 0.6
+      end
+      b.MouseButton1Click:Connect(function() onPick(nat) end)
+    end
+  end
+
+  -- 机库背后的厂房（HangarStage.lua）：按住空白处拖动转着看车、滚轮拉近拉远
+  local Stage = nil
+  do
+    local ok, S2 = pcall(function() return require(script.Parent:WaitForChild("HangarStage", 3)) end)
+    if ok and type(S2) == "table" then Stage = S2 end
+    -- 点在空白处（没点到按钮、上面也没开着别的窗口）才算拖车；位移自己拿位置算（鼠标没锁定时 Delta 不一定有）
+    local dragIo, last = nil, nil
+    local function free()
+      return hangar.Visible and not ((G.crewGui and G.crewGui.Visible) or (G.modsGui and G.modsGui.Visible)
+        or (G.infoGui and G.infoGui.Visible) or (G.treeGui and G.treeGui.Visible))
+    end
+    UIS.InputBegan:Connect(function(io, gp)
+      if gp or not Stage or not free() then return end
+      if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
+        dragIo, last = io, io.Position
+      end
+    end)
+    UIS.InputEnded:Connect(function(io)
+      if io == dragIo or io.UserInputType == Enum.UserInputType.MouseButton1 then dragIo, last = nil, nil end
+    end)
+    UIS.InputChanged:Connect(function(io, gp)
+      if not (Stage and hangar.Visible) then return end
+      if io.UserInputType == Enum.UserInputType.MouseWheel then
+        if not gp and free() then Stage.zoom(io.Position.Z) end
+      elseif last and dragIo and (io == dragIo
+        or (io.UserInputType == Enum.UserInputType.MouseMovement and dragIo.UserInputType == Enum.UserInputType.MouseButton1)) then
+        local p = io.Position
+        Stage.drag(p.X - last.X, p.Y - last.Y)
+        last = p
+      end
+    end)
+    -- 上下两条压暗的渐变：字压在 3D 画面上也看得清
+    for i = 1, 2 do
+      local top = i == 1
+      local sh = frame(hangar, UDim2.new(1, 0, 0, top and 150 or 230), UDim2.new(0, 0, top and 0 or 1, top and 0 or -230), Color3.new(0, 0, 0), 0)
+      sh.Name = "Shade"
+      sh.ZIndex = 0
+      local g = Instance.new("UIGradient")
+      g.Rotation = 90
+      g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, top and 0.35 or 1), NumberSequenceKeypoint.new(1, top and 1 or 0.3) })
+      g.Parent = sh
+    end
+  end
+  local ui = frame(hangar, UDim2.fromScale(1, 1), nil, nil, 1)    -- 整套界面（「只看车」时整个藏起来）
+  ui.Name = "UI"
+  local mid = frame(ui, UDim2.fromScale(1, 1), nil, nil, 1)       -- 中间那一层（国旗、乘员、这一局的信息）：开着研究窗口时让开
+  mid.Name = "Mid"
+  H.mid = mid
 
   -- 三种模式（服务器 Tech.lua：准备阶段按票数，开战定住，workspace 属性 WtMode；每人投的票是玩家属性 ModeVote）
   local MODE_NAME = { ab = L("街机", "Arcade"), rb = L("历史", "Realistic"), sb = L("全真", "Simulator") }
@@ -147,20 +332,243 @@ function TechUI.init(G)
     rb = L("只标近处看得见的敌人，飞机从跑道起飞 · 奖励 ×1.3", "Only nearby visible enemies marked, aircraft take off from the runway · rewards ×1.3"),
     sb = L("不标敌人，只能第一人称（瞄准镜、车内、座舱）· 奖励 ×1.6", "No markers, first person only (sights, interior, cockpit) · rewards ×1.6"),
   }
-  local modeBar = frame(hangar, UDim2.new(0, mobile and 300 or 420, 0, 30), UDim2.new(1, -M0 - (mobile and 300 or 420), 0, 128), nil, 1)
-  local mlay = Instance.new("UIListLayout")
-  mlay.FillDirection = Enum.FillDirection.Horizontal
-  mlay.HorizontalAlignment = Enum.HorizontalAlignment.Right
-  mlay.Padding = UDim.new(0, 6)
-  mlay.Parent = modeBar
-  local modeT = text(hangar, "", UDim2.new(0, mobile and 300 or 520, 0, 18), UDim2.new(1, -M0 - (mobile and 300 or 520), 0, 164), 12, DIM, Enum.TextXAlignment.Right)
-  modeT.Name = "ModeT"
-  local modeBtns = {}
-  for _, m in ipairs({ "ab", "rb", "sb" }) do
-    local b = button(modeBar, MODE_NAME[m], UDim2.new(0, mobile and 96 or 132, 1, 0))
-    b.Name = "Mode_" .. m
-    b.MouseButton1Click:Connect(function() act("wtModeVote", m) end)
-    modeBtns[m] = b
+  -- 选中这一辆的乘员（顶上「技能树」、右边「乘员」框）
+  local function crewOfSel()
+    local keys = lineupOf(tree.nat)
+    local i = sel.key and table.find(keys, sel.key)
+    if i and G.openCrew then G.openCrew(tree.nat, i, sel.key) end
+  end
+  -- 「帮助」：怎么玩
+  local function toggleHelp()
+    if H.help then
+      H.help.Visible = not H.help.Visible
+      return
+    end
+    local p = frame(hangar, UDim2.new(0, 560, 0, 306), UDim2.new(0.5, -280, 0.5, -170), RGB(10, 11, 13), 0.04)
+    p.Name = "Help"
+    p.ZIndex = 20
+    p.Active = true
+    stroke(p, RGB(110, 114, 118), 0.4, 1)
+    corners(p, WHITE, 12, 2, 5)
+    local t = text(p, L("怎么玩", "HOW TO PLAY"), UDim2.new(1, -80, 0, 26), UDim2.new(0, 18, 0, 12), 18)
+    t.Font = Enum.Font.GothamBold
+    local x = button(p, "×", UDim2.new(0, 32, 0, 28), UDim2.new(1, -44, 0, 10))
+    x.MouseButton1Click:Connect(function() p.Visible = false end)
+    local lines = {
+      L("「研究」开科技树：打仗挣研究点，研究完用金币买下，再放进出击阵容（最多 5 辆）。", "RESEARCH opens the tech tree: earn research points in battle, buy researched vehicles with coins, then add them to your lineup (up to 5)."),
+      L("底下选一辆，点「战斗」（或卡片上的「出击」）：直接坐在车里 / 飞机里出现在自己基地；车没了回到这里。", "Pick a slot and press TO BATTLE (or Deploy on the card): you spawn inside it at your base. Lose it and you come back here."),
+      L("准备阶段第一辆免费；开战以后出车要出击点（SP），打得好挣得多。每辆车有一次备用。", "The first vehicle is free during preparation; after that deploying costs spawn points (SP) earned in battle. Each vehicle has one backup."),
+      L("「技能树」给这一位的乘员加点；齿轮是这辆车的改装；「试驾」随便哪一辆都能开出去试；「i」看资料卡和装甲。", "CREW spends crew skill points; the gear opens this vehicle's modifications; TEST DRIVE works for any vehicle; \"i\" shows stats and armor."),
+      L("右下选这一局的模式：街机 / 历史 / 全真（准备阶段按票数定）。左边的国旗换系。", "Bottom right: vote for the mode — Arcade / Realistic / Simulator (decided by votes during preparation). Flags on the left switch nation."),
+      L("按住空白处拖动转着看车，滚轮拉近拉远；眼睛图标把界面藏起来只看车。进了车按 F1 看全部按键。", "Drag on empty space to orbit the vehicle, wheel to zoom; the eye icon hides the interface. Press F1 in a vehicle for all keys."),
+    }
+    for i, s in ipairs(lines) do
+      local l = text(p, s, UDim2.new(1, -36, 0, 36), UDim2.new(0, 18, 0, 48 + (i - 1) * 42), 13, RGB(214, 218, 222))
+      l.TextWrapped, l.TextTruncate, l.TextYAlignment = true, Enum.TextTruncate.None, Enum.TextYAlignment.Top
+    end
+    H.help = p
+  end
+
+  do   -- 顶上一排
+    local TY, TH = mobile and 14 or 28, mobile and 30 or 34
+    local LX, XW = mobile and 132 or 176, mobile and 96 or 120
+    local NW, NG = mobile and 88 or 106, mobile and 10 or 14
+    local IW, IG = mobile and 30 or 34, mobile and 8 or 14
+    H.TY, H.TH = TY, TH
+    -- 经验条（右端斜的）+ 压在它左头上的等级圈
+    local xpBg = frame(ui, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (TH - 18) / 2), INK, 0.1)
+    xpBg.Name = "Xp"
+    slant(xpBg, XW, 18)
+    local xpFill = frame(xpBg, UDim2.new(0, 0, 1, 0), nil, RGB(44, 146, 246), 0)
+    xpFill.Name = "Fill"
+    local xpT = text(xpBg, "", UDim2.new(1, -26, 1, 0), UDim2.new(0, 18, 0, 0), 11, WHITE)
+    xpT.Name = "XpT"
+    local lv = round(frame(ui, UDim2.new(0, TH, 0, TH), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
+    lv.Name = "Level"
+    stroke(lv, WHITE, 0, 2)
+    local lvT = text(lv, "1", UDim2.fromScale(1, 1), nil, mobile and 15 or 18, WHITE, Enum.TextXAlignment.Center)
+    lvT.Font = Enum.Font.GothamBold
+    H.xpW, H.xpFill, H.xpT, H.lvT = XW, xpFill, xpT, lvT
+    -- 四个大键
+    local x = LX + 20 + XW + 14
+    local navs = {
+      { "NavMenu", L("主菜单", "MAIN MENU"), "MENU", function() if G.showMenu then G.showMenu() end end },
+      { "NavCrew", L("技能树", "CREW SKILLS"), "CREW", crewOfSel },
+      { "NavResearch", L("研究", "RESEARCH"), "RESEARCH", function() if G.openTechTree then G.openTechTree() end end },
+      { "NavTest", L("试驾", "TEST DRIVE"), "TEST DRIVE", function() if sel.key then act("testDrive", sel.key) end end },
+    }
+    for _, n in ipairs(navs) do
+      local b = navBtn(ui, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, TH), UDim2.new(0, x, 0, TY))
+      b.Name = n[1]
+      b.MouseButton1Click:Connect(n[4])
+      x += NW + NG
+    end
+    -- 四个方图标键（图标是拼的：齿轮、眼睛、圈里的 ? 和 i）；鼠标放上去底下出一行字
+    local LIGHT = RGB(222, 224, 226)
+    local function gear(b)
+      local c = frame(b, UDim2.new(0, 20, 0, 20), UDim2.new(0.5, -10, 0.5, -10), nil, 1)
+      for i = 0, 3 do frame(c, UDim2.new(0, 4, 0, 20), UDim2.new(0.5, -2, 0, 0), LIGHT, 0).Rotation = i * 45 end
+      round(frame(c, UDim2.new(0, 14, 0, 14), UDim2.new(0.5, -7, 0.5, -7), LIGHT, 0))
+      round(frame(c, UDim2.new(0, 6, 0, 6), UDim2.new(0.5, -3, 0.5, -3), INK, 0))
+    end
+    local function eye(b)
+      local c = round(frame(b, UDim2.new(0, 22, 0, 13), UDim2.new(0.5, -11, 0.5, -6.5), nil, 1))
+      stroke(c, LIGHT, 0, 2)
+      round(frame(c, UDim2.new(0, 7, 0, 7), UDim2.new(0.5, -3.5, 0.5, -3.5), LIGHT, 0))
+    end
+    local function letter(ch)
+      return function(b)
+        local c = round(frame(b, UDim2.new(0, 20, 0, 20), UDim2.new(0.5, -10, 0.5, -10), nil, 1))
+        stroke(c, LIGHT, 0, 2)
+        text(c, ch, UDim2.fromScale(1, 1), nil, 14, LIGHT, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+      end
+    end
+    local function selIt() return sel.key and TT.get(sel.key) end
+    local icons = {
+      { "IcoMods", L("改装", "Modifications"), gear, function() local it = selIt() if it and G.openMods then G.openMods(it) end end },
+      { "IcoView", L("只看车", "Hide interface"), eye, function() ui.Visible = false if H.back then H.back.Visible = true end end },
+      { "IcoHelp", L("帮助", "Help"), letter("?"), toggleHelp },
+      { "IcoInfo", L("资料卡 · 装甲", "Stats · armor"), letter("i"), function() local it = selIt() if it and G.openInfo then G.openInfo(it) end end },
+    }
+    x += mobile and 2 or 6
+    for _, ic in ipairs(icons) do
+      local b = Instance.new("TextButton")
+      b.Name = ic[1]
+      b.AutoButtonColor = false
+      b.Text = ""
+      b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
+      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0, x, 0, TY + (TH - IW) / 2)
+      b.Parent = ui
+      corners(b, WHITE, 7, 2, 3)
+      ic[3](b)
+      local tip = text(b, ic[2], UDim2.new(0, 140, 0, 16), UDim2.new(0.5, -70, 1, 9), 11, WHITE, Enum.TextXAlignment.Center)
+      tip.Name = "Tip"
+      tip.TextStrokeTransparency = 0.4
+      tip.Visible = false
+      b.MouseEnter:Connect(function() b.BackgroundColor3 = RGB(40, 44, 48) tip.Visible = true end)
+      b.MouseLeave:Connect(function() b.BackgroundColor3 = INK tip.Visible = false end)
+      b.MouseButton1Click:Connect(ic[4])
+      x += IW + IG
+    end
+    -- 右上：金币
+    local CWd = mobile and 112 or 134
+    local coin = frame(ui, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (TH - 22) / 2), INK, 0.1)
+    coin.Name = "CoinBar"
+    slant(coin, CWd, 22)
+    local coinT = text(coin, "", UDim2.new(1, -34, 1, 0), UDim2.new(0, 22, 0, 0), 14, WHITE)
+    coinT.Name = "Coins"
+    local disc = round(frame(ui, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (TH - 26) / 2), RGB(226, 172, 48), 0))
+    disc.Name = "Coin"
+    stroke(disc, RGB(140, 96, 18), 0, 1.5)
+    stroke(round(frame(disc, UDim2.new(0, 16, 0, 16), UDim2.new(0.5, -8, 0.5, -8), RGB(246, 204, 92), 0)), RGB(168, 118, 26), 0.2, 1)
+    local function coins()
+      local c = me:GetAttribute("Coins")
+      coinT.Text = (me:GetAttribute("CoinsInf") == true) and "∞" or ((type(c) == "number") and fmtNum(c) or "—")
+    end
+    me:GetAttributeChangedSignal("Coins"):Connect(coins)
+    me:GetAttributeChangedSignal("CoinsInf"):Connect(coins)
+    coins()
+    -- 「只看车」以后：右上角留一个键把界面叫回来
+    local back = navBtn(hangar, L("显示界面", "SHOW INTERFACE"), nil, UDim2.new(0, 130, 0, TH), UDim2.new(1, -M0 - 130, 0, TY))
+    back.Name = "Back"
+    back.Visible = false
+    back.MouseButton1Click:Connect(function() ui.Visible = true back.Visible = false end)
+    H.back = back
+
+    -- 左边一列国旗
+    local FW, FH, FG = mobile and 44 or 58, mobile and 29 or 38, mobile and 6 or 8
+    local FY = TY + TH + (mobile and 16 or 54)
+    local natCol = frame(mid, UDim2.new(0, FW, 0, 5 * (FH + FG)), UDim2.new(0, M0, 0, FY), nil, 1)
+    natCol.Name = "Nations"
+    H.natCol, H.FW, H.FH, H.FG = natCol, FW, FH, FG
+    -- 右边：「乘员」框（点开这一位乘员的技能）+ 选中这一辆的名字、等级、乘员、改装
+    local cw = mobile and 136 or 160
+    local cb = Instance.new("TextButton")
+    cb.Name = "CrewBox"
+    cb.AutoButtonColor = false
+    cb.Text = ""
+    cb.BackgroundColor3, cb.BackgroundTransparency, cb.BorderSizePixel = INK, 0.06, 0
+    cb.Size, cb.Position = UDim2.new(0, cw, 0, 32), UDim2.new(1, -M0 - cw, 0, FY)
+    cb.Parent = mid
+    corners(cb, WHITE, 8, 2, 4)
+    local cbT = text(cb, "", UDim2.new(1, -40, 1, 0), UDim2.new(0, 12, 0, 0), 13, AMBER)
+    cbT.Font = Enum.Font.GothamBlack
+    text(cb, "+", UDim2.new(0, 20, 1, 0), UDim2.new(1, -26, 0, 0), 16, WHITE, Enum.TextXAlignment.Center)
+    cb.MouseEnter:Connect(function() cb.BackgroundColor3 = RGB(40, 44, 48) end)
+    cb.MouseLeave:Connect(function() cb.BackgroundColor3 = INK end)
+    cb.MouseButton1Click:Connect(crewOfSel)
+    H.crewBoxT = cbT
+    local function right(y, ts, col, h)
+      local t = text(mid, "", UDim2.new(0, 380, 0, h or 16), UDim2.new(1, -M0 - 380, 0, FY + y), ts, col, Enum.TextXAlignment.Right)
+      t.TextStrokeTransparency = 0.55
+      return t
+    end
+    H.selName = right(42, mobile and 18 or 24, WHITE, 28)
+    H.selName.Name = "SelName"
+    H.selName.Font = Enum.Font.GothamBold
+    H.selSub = right(72, 12, RGB(200, 204, 208))
+    H.selCrew = right(90, 12, DIM)
+    H.selCrew.Name = "CrewT"
+    H.selMods = right(107, 12, DIM)
+    H.selMods.Name = "ModCount"
+    H.selNote = right(124, 11, DIM)
+  end
+
+  do   -- 底下：五个槽位（refreshHangar 里填）；右下：这一局的信息 + 「战斗」
+    local SW, SG, SH, BM = mobile and 148 or 172, mobile and 8 or 9, mobile and 92 or 104, mobile and 12 or 20
+    H.SW, H.SG, H.SH = SW, SG, SH
+    local row = frame(ui, UDim2.new(0, 5 * SW + 4 * SG, 0, SH), UDim2.new(0, M0, 1, -BM - SH), nil, 1)
+    row.Name = "Slots"
+    H.row = row
+    H.winBottom = BM + SH + 12   -- 研究窗口的下沿离屏幕底多远（留出这一排槽位）
+    local hint = text(mid, L("选一辆点「战斗」：直接坐在车里 / 飞机里出现在自己基地，车没了回到这里。按住空白处拖动转着看车，滚轮缩放。",
+      "Pick a slot and press TO BATTLE: you spawn inside it at your base. Drag on empty space to orbit the vehicle, wheel to zoom."),
+      UDim2.new(0, 5 * SW + 4 * SG, 0, 16), UDim2.new(0, M0, 1, -BM - SH - 22), 11, RGB(196, 200, 204))
+    hint.Name = "Hint"
+    hint.TextStrokeTransparency = 0.6
+    local BW, BH = mobile and 190 or 250, mobile and 50 or 62
+    local bb = Instance.new("TextButton")
+    bb.Name = "Battle"
+    bb.AutoButtonColor = false
+    bb.Text = ""
+    bb.BackgroundColor3, bb.BackgroundTransparency, bb.BorderSizePixel = RGB(9, 9, 10), 0.04, 0
+    bb.Size, bb.Position = UDim2.new(0, BW, 0, BH), UDim2.new(1, -M0 - BW, 1, -BM - 4 - BH)
+    bb.Parent = ui
+    corners(bb, AMBER, mobile and 20 or 26, 4, 5)
+    local bt = text(bb, L("战斗", "TO BATTLE"), UDim2.new(1, 0, 0, math.floor(BH * 0.6)), UDim2.new(0, 0, 0, math.floor(BH * 0.08)), mobile and 22 or 28, AMBER, Enum.TextXAlignment.Center)
+    bt.Font = Enum.Font.GothamBold
+    local bs = text(bb, "", UDim2.new(1, -16, 0, 14), UDim2.new(0, 8, 1, -19), 10, DIM, Enum.TextXAlignment.Center)
+    bs.Name = "Sub"
+    bb.MouseEnter:Connect(function() bb.BackgroundColor3 = RGB(34, 26, 14) end)
+    bb.MouseLeave:Connect(function() bb.BackgroundColor3 = RGB(9, 9, 10) end)
+    bb.MouseButton1Click:Connect(function()
+      if sel.key then act("deployVeh", sel.key) elseif G.openTechTree then G.openTechTree() end
+    end)
+    H.battleT, H.battleS = bt, bs
+    -- 这一局：阶段和时间、战斗等级、三种模式
+    local IH = mobile and 76 or 104
+    local card = frame(mid, UDim2.new(0, BW, 0, IH), UDim2.new(1, -M0 - BW, 1, -BM - 4 - BH - 14 - IH), RGB(10, 11, 13), 0.2)
+    card.Name = "Match"
+    stroke(card, RGB(96, 100, 104), 0.6, 1)
+    H.phaseT = text(card, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 6), 13, WHITE)
+    H.phaseT.Name = "Phase"
+    H.phaseT.Font = Enum.Font.GothamBold
+    H.brT = text(card, "", UDim2.new(1, -16, 0, 14), UDim2.new(0, 8, 0, 26), 11, RGB(186, 190, 194))
+    H.brT.Name = "Br"
+    local bar = frame(card, UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 46), nil, 1)
+    bar.Name = "Modes"
+    for i, m in ipairs({ "ab", "rb", "sb" }) do
+      local b = button(bar, MODE_NAME[m], UDim2.new(1 / 3, -4, 1, 0), UDim2.new((i - 1) / 3, 2, 0, 0))
+      b.Name = "Mode_" .. m
+      b.TextSize = 11
+      b.MouseButton1Click:Connect(function() act("wtModeVote", m) end)
+      H.modeBtns[m] = b
+    end
+    local mt = text(card, "", UDim2.new(1, -16, 0, 26), UDim2.new(0, 8, 0, 73), 10, RGB(160, 166, 170))
+    mt.Name = "ModeT"
+    mt.TextWrapped, mt.TextYAlignment = true, Enum.TextYAlignment.Top
+    mt.Visible = not mobile
+    H.modeT = mt
   end
   local function refreshMode()
     local cur = workspace:GetAttribute("WtMode") or "rb"
@@ -171,13 +579,58 @@ function TechUI.init(G)
       if cnt[v] then cnt[v] += 1 end
     end
     local mine = me:GetAttribute("ModeVote")
-    for m, b in pairs(modeBtns) do
+    for m, b in pairs(H.modeBtns) do
       local on = m == cur
       b.BackgroundColor3 = on and WHITE or RGB(30, 34, 38)
       b.TextColor3 = on and RGB(10, 10, 10) or WHITE
       b.Text = MODE_NAME[m] .. ((cnt[m] > 0) and ("  " .. cnt[m]) or "") .. ((mine == m) and "  ✓" or "")
     end
-    modeT.Text = L("本局模式：", "Mode: ") .. MODE_NAME[cur] .. "  ·  " .. MODE_DESC[cur]
+    H.modeT.Text = L("本局模式：", "Mode: ") .. MODE_NAME[cur] .. "  ·  " .. MODE_DESC[cur]
+  end
+
+  -- 厂房里停哪一辆：出击阵容里选中的（按真车涂装；有原模型的就是原模型）
+  local shownKey = nil
+  local function showVehicle(it)
+    if not (Stage and Stage.active()) then return end
+    local key = it and it.key or ""
+    if shownKey == key then return end
+    shownKey = key
+    if not it then
+      Stage.put(nil)
+      return
+    end
+    local base = Stage.floorCF()
+    local side = (me:GetAttribute("Side") == "def") and "def" or "atk"
+    local d = VD.get(it.play)
+    if d then
+      local ok, M = pcall(VM.build, d, side, nil, TT.paint(it))
+      if ok and M and M.model then
+        pcall(function()
+          VM.pose(M, d)
+          for _, x in ipairs(M.parts) do
+            local p = x[1]
+            if p:IsA("BasePart") then
+              p.CFrame = base * p.CFrame
+              p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+            end
+          end
+        end)
+        Stage.put(M.model, { L = d.L or 26, W = d.W or 12, H = d.H or 9 })
+        return
+      end
+    else
+      local a = AD.get(it.play)
+      local okA, AM = pcall(function() return require(script.Parent:WaitForChild("AirModels", 2)) end)
+      if a and okA and AM then
+        local ok, M = pcall(AM.build, a, side, AD.presetLoad(a))
+        if ok and M and M.model then
+          pcall(AM.pose, M, base * CFrame.new(0, a.gearH or 6, 0), { gear = 1, thr = 0 }, os.clock())
+          Stage.put(M.model, { L = a.L or 50, W = a.W or 36, H = (a.H or 13) + (a.gearH or 0) * 0.5 })
+          return
+        end
+      end
+    end
+    Stage.put(nil)
   end
 
   -- 全真模式：只能第一人称——车外的时候坐进车里（这辆车没有内饰就开瞄准镜）；飞机有座舱的坐进座舱
@@ -194,18 +647,7 @@ function TechUI.init(G)
     end
   end)
 
-  local openTree   -- 下面定义
-  local function natTabs(bar, onPick)
-    clear(bar)
-    for _, nat in ipairs(TT.NATIONS) do
-      local N = TT.NAT[nat]
-      local b = button(bar, zh and N.name or N.en, UDim2.new(0, mobile and 64 or 92, 1, 0), nil, nat == tree.nat)
-      b.Name = "Nat_" .. nat
-      local stripe = frame(b, UDim2.new(1, 0, 0, 3), UDim2.new(0, 0, 1, -3), N.col, 0)
-      stripe.Name = "Stripe"
-      b.MouseButton1Click:Connect(function() onPick(nat) end)
-    end
-  end
+  local openTree, closeTree   -- 下面定义
   -- 这一辆这一局出车要什么（照服务器 WtMatch 推的 S.wt：准备阶段、第一辆免费；出过一次的是备用；备用用完、阵容满了不能出）
   local function spState(it)
     local d = defOf(it)
@@ -236,7 +678,7 @@ function TechUI.init(G)
     return rb, rb + ((Config.Wt or {}).brUp or 1.0)
   end
   ---------------------------------------------------------------- 乘员（WtCrew）：阵容每一位一组乘员，升级给技能点，点技能
-  local crewP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local crewP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   crewP.Name = "Crew"
   crewP.Visible = false
   crewP.ZIndex = 10
@@ -296,62 +738,136 @@ function TechUI.init(G)
   end
   G.openCrew = openCrew
 
+  -- 顶上的等级圈、经验条（服务器每次推状态都刷；金币自己听属性）
+  local function refreshTop()
+    local mine = (G.S and G.S.me) or {}
+    local R = Config.Ranks or { 0 }
+    local rk = math.clamp(mine.rank or 1, 1, #R)
+    local xp = mine.xp or 0
+    local frac = 1
+    if rk < #R then
+      frac = math.clamp((xp - R[rk]) / math.max(1, R[rk + 1] - R[rk]), 0, 1)
+      H.xpT.Text = fmtNum(xp) .. " / " .. fmtNum(R[rk + 1]) .. L(" 经验", " XP")
+    else
+      H.xpT.Text = fmtNum(xp) .. L(" 经验", " XP")
+    end
+    H.lvT.Text = tostring(rk)
+    local w = math.floor(H.xpW * frac + 0.5)
+    H.xpFill.Visible = w >= 6
+    if w >= 6 then
+      H.xpFill.Size = UDim2.new(0, w, 1, 0)
+      slant(H.xpFill, w, 18)
+    end
+  end
+
   local function refreshHangar()
-    natTabs(natBar, function(nat) tree.nat = nat act("treeNat", nat) refreshHangar() end)
-    clear(row)
+    natTiles(H.natCol, H.FW, H.FH, H.FG, tree.nat, function(nat)
+      tree.nat = nat
+      sel.key = nil
+      act("treeNat", nat)
+      refreshHangar()
+    end, true)
+    clear(H.row)
     local keys = lineupOf(tree.nat)
+    if not (sel.key and table.find(keys, sel.key)) then sel.key = keys[1] end
+    local rb, cap = brCap()
+    local SW, SG, SH = H.SW, H.SG, H.SH
     for i = 1, 5 do
       local key = keys[i]
       local it = key and TT.get(key)
-      local card = frame(row, UDim2.new(0, mobile and 150 or 190, 1, 0), nil, RGB(14, 16, 19), 0.1)
+      local on = it ~= nil and key == sel.key
+      local card = Instance.new("TextButton")
       card.Name = it and ("Line_" .. key) or ("Empty_" .. i)
-      local st = Instance.new("UIStroke")
-      st.Color, st.Transparency = RGB(90, 96, 100), 0.4
-      st.Parent = card
+      card.AutoButtonColor = false
+      card.Text = ""
+      card.Size, card.Position = UDim2.new(0, SW, 1, 0), UDim2.new(0, (i - 1) * (SW + SG), 0, 0)
+      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = RGB(13, 14, 16), on and 0.06 or 0.26, 0
+      card.Parent = H.row
+      stroke(card, on and WHITE or RGB(92, 96, 100), on and 0.2 or 0.6, 1)
       if it then
-        text(card, nm(it), UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 8), 15)
-        text(card, (it.branch == "air" and L("战机", "Aircraft") or L("地面", "Ground")) .. " · " .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br),
-          UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 32), 12, DIM)
-        local spT, spC = spState(it)
-        if spT then text(card, spT, UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 52), 12, spC or FAINT).Name = "Sp" end
-        local md = tree.mods and tree.mods[key]
-        local nDone, nAll = WM.count(it, md and md.done)
-        text(card, L("改装 ", "Mods ") .. nDone .. " / " .. nAll, UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 70), 11, (nDone == nAll) and GOOD or DIM).Name = "ModCount"
-        if it.stand then   -- 还没有自己的模型：借的是哪一型写在科技树详情里
-          text(card, L("暂用模型", "stand-in model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(200, 170, 90))
-        elseif it.model then   -- 性能是自己的，模型借同族的
-          text(card, L("同族模型", "family model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(170, 185, 150))
-        end
-        local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(i)] or { xp = 0 }
-        local cfree = WC.free(cs)
-        text(card, L("乘员 ", "Crew ") .. WC.level(cs.xp) .. L(" 级", "") .. (cfree > 0 and (L(" · ", " · ") .. cfree .. L(" 点", " pts")) or ""),
-          UDim2.new(1, -86, 0, 16), UDim2.new(0, 8, 0, 108), 11, cfree > 0 and GOLD or DIM).Name = "CrewT"
-        local cb = button(card, L("乘员", "Crew"), UDim2.new(0, 64, 0, 22), UDim2.new(1, -72, 0, 104))
-        cb.Name = "CrewBtn"
-        cb.TextSize = 12
-        local slotI = i
-        cb.MouseButton1Click:Connect(function() openCrew(tree.nat, slotI, key) end)
-        local _, cap = brCap()
         local over = cap ~= nil and it.br > cap + 0.05   -- 超出这一局能出的战斗等级：标灰（点了服务器也会说）
-        local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or L("出击", "Deploy"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44), not over)
+        if on then corners(card, WHITE, 10, 2, 4) end
+        -- 侧影（HudIcons：原模型正侧面拍的；这一型没有图、或者游戏设置里没开 Image API 就空着）
+        local im = Instance.new("ImageLabel")
+        im.Name = "Icon"
+        im.BackgroundTransparency = 1
+        im.Size, im.Position = UDim2.new(1, -28, 0, SH - 62), UDim2.new(0, 14, 0, 12)
+        im.ScaleType = Enum.ScaleType.Fit
+        im.ImageColor3 = on and RGB(244, 246, 248) or RGB(170, 176, 182)
+        im.ImageTransparency = over and 0.55 or 0
+        im.Parent = card
+        if G.hudIconOn then pcall(G.hudIconOn, im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end
+        text(card, tostring(i), UDim2.new(0, 14, 0, 14), UDim2.new(0, 7, 0, 4), 11, FAINT)
+        if it.stand then   -- 还没有自己的模型：借的是哪一型写在科技树详情里
+          text(card, L("暂用模型", "stand-in"), UDim2.new(0, 70, 0, 14), UDim2.new(0, 20, 0, 4), 10, RGB(200, 170, 90))
+        elseif it.model then   -- 性能是自己的，模型借同族的
+          text(card, L("同族模型", "family model"), UDim2.new(0, 70, 0, 14), UDim2.new(0, 20, 0, 4), 10, RGB(170, 185, 150))
+        end
+        local brL = text(card, TT.brText(it.br), UDim2.new(0, 40, 0, 14), UDim2.new(1, -47, 0, 4), 12, over and BAD or (on and WHITE or DIM), Enum.TextXAlignment.Right)
+        brL.Name = "Br"
+        brL.Font = Enum.Font.GothamBold
+        local nmL = text(card, nm(it), UDim2.new(1, -12, 0, 18), UDim2.new(0, 6, 1, -50), mobile and 12 or 14, over and FAINT or WHITE, Enum.TextXAlignment.Center)
+        nmL.Name = "VehName"
+        nmL.Font = Enum.Font.GothamBold
+        local spT, spC = spState(it)
+        local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or (L("出击", "Deploy") .. (spT and (" · " .. spT) or "")),
+          UDim2.new(1, -12, 0, 24), UDim2.new(0, 6, 1, -30), on and not over)
         go.Name = "Go"
+        go.TextSize = 11
+        go.TextTruncate = Enum.TextTruncate.AtEnd
         if over then
           go.TextColor3 = BAD
-          card.BackgroundTransparency = 0.45
+        elseif on then
+          go.BackgroundColor3 = AMBER
+        elseif spC and spC ~= FAINT then
+          go.TextColor3 = spC
         end
         go.MouseButton1Click:Connect(function() act("deployVeh", key) end)
+        card.MouseButton1Click:Connect(function()
+          if sel.key ~= key then
+            sel.key = key
+            refreshHangar()
+          end
+        end)
       else
-        text(card, L("空位", "Empty"), UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 8), 15, FAINT)
-        local add = button(card, L("从科技树里放进来", "Add from tech tree"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44))
-        add.MouseButton1Click:Connect(function() if openTree then openTree() end end)
+        text(card, "+", UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.5, -26), 20, FAINT, Enum.TextXAlignment.Center)
+        text(card, L("研究载具", "Research vehicles"), UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0.5, 0), 11, FAINT, Enum.TextXAlignment.Center)
+        card.MouseButton1Click:Connect(function() if openTree then openTree() end end)
       end
     end
-    local rb, cap = brCap()
-    brT.Text = L("阵容战斗等级 ", "Lineup BR ") .. TT.brText(TT.lineupBr(keys))
-      .. (rb and (L("   ·   本局战斗等级 ", "   ·   Battle BR ") .. TT.brText(rb) .. L("（能出到 ", " (up to ") .. TT.brText(cap) .. L("）", ")")) or "")
+    -- 右边：选中这一辆
+    local it = sel.key and TT.get(sel.key)
+    local slotI = it and table.find(keys, sel.key)
+    if it then
+      local N = TT.NAT[it.nat]
+      H.selName.Text = nm(it)
+      H.selSub.Text = (zh and N.name or N.en) .. " · " .. L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br) .. " · " .. it.year
+      local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(slotI)] or { xp = 0 }
+      local cfree = WC.free(cs)
+      H.selCrew.Text = L("乘员 ", "Crew level ") .. WC.level(cs.xp) .. L(" 级", "") .. ((cfree > 0) and (" · " .. L("技能点 ", "points ") .. cfree) or "")
+      H.selCrew.TextColor3 = (cfree > 0) and GOLD or RGB(186, 190, 194)
+      local md = tree.mods and tree.mods[sel.key]
+      local nDone, nAll = WM.count(it, md and md.done)
+      H.selMods.Text = L("改装 ", "Mods ") .. nDone .. " / " .. nAll
+      H.selMods.TextColor3 = (nDone == nAll) and GOOD or RGB(186, 190, 194)
+      H.selNote.Text = it.stand and L("暂用模型（借的哪一型见科技树详情）", "stand-in model (see the tech tree)") or (it.model and L("模型暂用同族的，性能是本车的", "family model, own stats") or "")
+      H.selNote.TextColor3 = it.stand and RGB(200, 170, 90) or RGB(170, 185, 150)
+      H.crewBoxT.Text = L("乘员 · ", "CREW · ") .. ((it.branch == "air") and L("战机", "AIRCRAFT") or L("坦克", "TANKS"))
+    else
+      H.selName.Text, H.selSub.Text, H.selCrew.Text, H.selMods.Text, H.selNote.Text = "", "", "", "", ""
+      H.crewBoxT.Text = L("乘员", "CREW")
+    end
+    -- 右下：「战斗」出的就是选中的这一辆
+    local over = it ~= nil and cap ~= nil and it.br > cap + 0.05
+    local spT = it and spState(it)
+    H.battleT.TextColor3 = (it and not over) and AMBER or FAINT
+    H.battleS.Text = it and (over and L("超出本局战斗等级", "Above battle BR") or (nm(it) .. (spT and ("  ·  " .. spT) or ""))) or L("先去研究一辆车", "Research a vehicle first")
+    H.battleS.TextColor3 = over and BAD or DIM
+    H.brT.Text = L("阵容战斗等级 ", "Lineup BR ") .. TT.brText(TT.lineupBr(keys))
+      .. (rb and (L(" · 本局 ", " · battle ") .. TT.brText(rb) .. L("（能出到 ", " (up to ") .. TT.brText(cap) .. L("）", ")")) or "")
+    showVehicle(it)
   end
   G.refreshLineup = refreshHangar   -- 不叫 G.refreshHangar：Hangar.lua（改挂载）的刷新函数叫这个名字，顶掉了它就坏了
-  treeBtn.MouseButton1Click:Connect(function() if openTree then openTree() end end)
 
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
@@ -359,14 +875,29 @@ function TechUI.init(G)
     local want = show and G.hangarActive()
     if hangar.Visible ~= want then
       hangar.Visible = want
-      if want then refreshHangar() end
+      if Stage then
+        shownKey = nil
+        if want then
+          Stage.show(true)
+        else
+          -- 镜头已经有人接手了（坐进了车 / 飞机、开了主菜单）：别动它
+          Stage.show(false, G.drive ~= nil or G.fly ~= nil or (G.menuShown ~= nil and G.menuShown() == true))
+          Stage.put(nil)
+        end
+      end
+      if want then
+        refreshHangar()
+      elseif closeTree then
+        closeTree()
+      end
     end
     if want then
       refreshMode()
+      refreshTop()
       local S = G.S
       if S then
         local fmt = function(s) s = math.max(0, math.floor(s or 0)) return string.format("%d:%02d", s // 60, s % 60) end
-        phaseT.Text = (S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left))
+        H.phaseT.Text = (S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left))
         -- 这一局的账（SP、免费那一辆、出过几次）、战斗等级变了：卡片上的「免费 / SP / 备用 / 用完」跟着刷新
         local w = S.wt or {}
         local sig = table.concat({ tostring(S.phase), tostring(w.sp), tostring(w.free), tostring(w.paid), tostring(#(w.order or {})), tostring(workspace:GetAttribute("WtBr")) }, "|")
@@ -377,40 +908,89 @@ function TechUI.init(G)
       end
     end
   end
+  -- 厂房的镜头每帧摆（坐进车以后镜头归驾驶的）
+  do
+    local function stepStage(dt)
+      if Stage and hangar.Visible and not G.drive then Stage.step(dt or 0.016) end
+    end
+    if G.frameConn then G.frameConn("hangarStage", stepStage) else RunService.RenderStepped:Connect(stepStage) end
+  end
 
-  ---------------------------------------------------------------- 科技树
-  local panel = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0.04)
+  ---------------------------------------------------------------- 研究（科技树）：用户 11-25 第二张截图——「然后点研究就跳科技树」
+  --   一个窗口压在机库上（顶上一排、底下的槽位和「战斗」还露着）：标题「研究 · 国名」、坦克 / 战机、RP、右上 ×；
+  --   左边一列国旗换系；中间横着滚的等级列（I～VII），每条线一行，同一级里从左到右是研究顺序，横线连着前置；
+  --   格子：类型小字、侧影、名字、战斗等级，底边的颜色是状态（买下的绿、研究完没买的蓝、正在研究的黄带进度、能研究的白、没开的暗）；
+  --   还没开的等级盖一块暗板：锁、「先研究 X 级的载具」、已经几辆 / 要几辆；点一格右边出详情（研究、购买、放进阵容、试驾、资料卡）
+  local panel = frame(root, UDim2.new(1, -2 * M0, 1, -(H.TY + H.TH + 14) - H.winBottom), UDim2.new(0, M0, 0, H.TY + H.TH + 14), RGB(11, 12, 14), 0.04)
   panel.Name = "TechTree"
   panel.Visible = false
   panel.ZIndex = 5
+  panel.Active = true   -- 挡住底下的拖动
   G.treeGui = panel   -- 测试用
+  stroke(panel, RGB(100, 104, 108), 0.5, 1)
   local view = { nat = tree.nat, branch = "ground", sel = nil }
-  local top = frame(panel, UDim2.new(1, 0, 0, 92), nil, RGB(10, 12, 14), 0.1)
-  text(top, L("科技树", "TECH TREE"), UDim2.new(0, 200, 0, 30), UDim2.new(0, M0, 0, 8), 22).Font = Enum.Font.GothamBold
-  local closeB = button(top, "×", UDim2.new(0, 40, 0, 34), UDim2.new(1, -M0 - 40, 0, 8))
-  closeB.Name = "Close"
-  closeB.MouseButton1Click:Connect(function() panel.Visible = false end)
-  local tNat = frame(top, UDim2.new(0, 520, 0, 32), UDim2.new(0, M0, 0, 50), nil, 1)
-  local tl = Instance.new("UIListLayout")
-  tl.FillDirection = Enum.FillDirection.Horizontal
-  tl.Padding = UDim.new(0, 6)
-  tl.Parent = tNat
-  local tBr = frame(top, UDim2.new(0, 220, 0, 32), UDim2.new(0, M0 + 540, 0, 50), nil, 1)
-  local bl = Instance.new("UIListLayout")
-  bl.FillDirection = Enum.FillDirection.Horizontal
-  bl.Padding = UDim.new(0, 6)
-  bl.Parent = tBr
-  local freeT = text(top, "", UDim2.new(0, 300, 0, 20), UDim2.new(1, -M0 - 360, 0, 58), 13, DIM, Enum.TextXAlignment.Right)
+  local TV = {}   -- 窗口里要改的零件
+  local DW = mobile and 230 or 280   -- 右边详情多宽
+  do
+    local title = text(panel, L("研究", "RESEARCH"), UDim2.new(0, 110, 0, 26), UDim2.new(0, 16, 0, 8), 18)
+    title.Font = Enum.Font.GothamBold
+    if zh then text(panel, "RESEARCH", UDim2.new(0, 70, 0, 12), UDim2.new(0, 58, 0, 17), 9, FAINT) end
+    TV.natT = text(panel, "", UDim2.new(0, 120, 0, 26), UDim2.new(0, 136, 0, 8), 14, RGB(214, 218, 222))
+    TV.natT.Name = "Nation"
+    TV.tabs = frame(panel, UDim2.new(0, 180, 0, 26), UDim2.new(0, 262, 0, 8), nil, 1)
+    TV.tabs.Name = "Branches"
+    local close = Instance.new("TextButton")
+    close.Name = "Close"
+    close.AutoButtonColor = false
+    close.BackgroundTransparency, close.BorderSizePixel = 1, 0
+    close.Size, close.Position = UDim2.new(0, 34, 0, 30), UDim2.new(1, -44, 0, 6)
+    close.Font = Enum.Font.GothamBold
+    close.TextSize = 24
+    close.TextColor3 = WHITE
+    close.Text = "×"
+    close.Parent = panel
+    close.MouseEnter:Connect(function() close.TextColor3 = AMBER end)
+    close.MouseLeave:Connect(function() close.TextColor3 = WHITE end)
+    TV.close = close
+    -- RP：圆牌子 + 一格数字（这一系的自由研究点）+ 正在研究哪一辆、攒到多少
+    local rx = mobile and 500 or 560
+    local badge = round(frame(panel, UDim2.new(0, 22, 0, 22), UDim2.new(1, -rx, 0, 10), nil, 1))
+    stroke(badge, WHITE, 0.1, 1.5)
+    text(badge, "RP", UDim2.fromScale(1, 1), nil, 9, WHITE, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+    local box = frame(panel, UDim2.new(0, 110, 0, 20), UDim2.new(1, -rx + 30, 0, 11), RGB(4, 5, 6), 0.1)
+    TV.rpT = text(box, "0", UDim2.new(1, -12, 1, 0), UDim2.new(0, 8, 0, 0), 12, WHITE)
+    TV.rpT.Name = "FreeRP"
+    TV.curT = text(panel, "", UDim2.new(0, rx - 210, 0, 20), UDim2.new(1, -rx + 150, 0, 11), 12, RGB(190, 194, 198))
+    TV.curT.Name = "Current"
+    frame(panel, UDim2.new(1, -24, 0, 1), UDim2.new(0, 12, 0, 42), RGB(120, 124, 128), 0.5)
+    TV.flags = frame(panel, UDim2.new(0, 60, 0, 240), UDim2.new(0, 12, 0, 54), nil, 1)
+    TV.flags.Name = "Nations"
+  end
   local scroll = Instance.new("ScrollingFrame")
-  scroll.Size, scroll.Position = UDim2.new(1, -330, 1, -100), UDim2.new(0, 0, 0, 96)
-  scroll.BackgroundTransparency, scroll.BorderSizePixel = 1, 0
+  scroll.Name = "Tree"
+  scroll.Size, scroll.Position = UDim2.new(1, -84 - DW - 24, 1, -64), UDim2.new(0, 84, 0, 52)
+  scroll.BackgroundColor3, scroll.BackgroundTransparency, scroll.BorderSizePixel = RGB(6, 7, 8), 0.35, 0
   scroll.ScrollBarThickness = 6
+  scroll.ScrollBarImageColor3 = RGB(200, 204, 208)
   scroll.CanvasSize = UDim2.new()
   scroll.Parent = panel
-  local detail = frame(panel, UDim2.new(0, 316, 1, -100), UDim2.new(1, -320, 0, 96), RGB(12, 14, 17), 0.05)
+  scroll.InputChanged:Connect(function(io)   -- 只有横向能滚的时候：滚轮横着滚
+    if io.UserInputType == Enum.UserInputType.MouseWheel and TV.hOnly then
+      scroll.CanvasPosition = Vector2.new(math.max(0, scroll.CanvasPosition.X - io.Position.Z * 90), 0)
+    end
+  end)
+  local detail = Instance.new("ScrollingFrame")
   detail.Name = "Detail"
+  detail.Size, detail.Position = UDim2.new(0, DW, 1, -64), UDim2.new(1, -DW - 12, 0, 52)
+  detail.BackgroundColor3, detail.BackgroundTransparency, detail.BorderSizePixel = RGB(16, 17, 20), 0.1, 0
+  detail.ScrollBarThickness = 4
+  detail.ScrollBarImageColor3 = RGB(200, 204, 208)
+  detail.CanvasSize = UDim2.new()
+  detail.Parent = panel
 
-  local CW, CH, GAP, LW, HH = 176, 58, 10, 92, 30   -- 格宽、格高、间距、左边等级栏宽、表头高
+  local CW, CH = mobile and 116 or 128, mobile and 44 or 50   -- 格宽、格高
+  local LBL, PRG, GAPX, PADX, HEADH = 12, 12, 14, 16, 28      -- 格子上面的类型小字、下面的进度字、同一级里两格的间距、每一级两边留的、表头高
+  local ROWH = LBL + CH + PRG + 6                              -- 一条线占多高
   local refreshTree
   local function status(it)
     if TT.owned(tree, it.key) then return "own" end
@@ -419,10 +999,11 @@ function TechUI.init(G)
     if TT.canResearch(tree, it.key) then return "can" end
     return "lock"
   end
-  local COL = { own = RGB(46, 86, 58), res = RGB(46, 72, 110), cur = RGB(120, 98, 34), can = RGB(44, 48, 54), lock = RGB(22, 24, 27) }
+  local COL = { own = RGB(28, 46, 34), res = RGB(26, 40, 60), cur = RGB(60, 48, 18), can = RGB(30, 32, 36), lock = RGB(17, 18, 20) }          -- 格子的底色
+  local EDGE = { own = RGB(110, 200, 120), res = RGB(96, 156, 232), cur = AMBER, can = RGB(214, 218, 222), lock = RGB(58, 62, 66) }   -- 底边那一道
 
   ---------------------------------------------------------------- 改装（WtMods）：三列（机动 / 防护 / 火力）× 四级，点一项设成研究目标
-  local modsP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local modsP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   modsP.Name = "Mods"
   modsP.Visible = false
   modsP.ZIndex = 10
@@ -527,7 +1108,7 @@ function TechUI.init(G)
 
   ---------------------------------------------------------------- 资料卡、装甲查看器（详情里「资料卡」）：左边 3D 车模按装甲厚度上色（拖动转、滚轮缩放），
   --   右边性能：极速、炮塔转速 / 俯仰、各处装甲（动能 / 破甲毫米）、主炮每种弹的初速和 0 / 500 / 1000 / 2000 米穿深；飞机写速度、挂载
-  local infoP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local infoP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   infoP.Name = "Info"
   infoP.Visible = false
   infoP.ZIndex = 10
@@ -791,23 +1372,48 @@ function TechUI.init(G)
 
   local function showDetail(it)
     clear(detail)
-    if not it then return end
     local y = 12
     local function line(str, ts, col, h)
-      text(detail, str, UDim2.new(1, -24, 0, h or 20), UDim2.new(0, 12, 0, y), ts or 13, col or DIM).TextWrapped = true
+      local t = text(detail, str, UDim2.new(1, -24, 0, h or 20), UDim2.new(0, 12, 0, y), ts or 13, col or DIM)
+      t.TextWrapped = true
       y += (h or 20) + 4
+      return t
     end
-    line(nm(it), 20, WHITE, 26)
+    if not it then   -- 没点哪一格：写怎么用、颜色是什么意思
+      line(L("点一辆车看详情", "Click a vehicle for details"), 15, WHITE, 22)
+      line(L("研究、购买、放进出击阵容、试驾、资料卡都在这里。", "Research, buy, add to lineup, test drive and the stat card are all here."), 12, DIM, 34)
+      y += 6
+      for _, s in ipairs({ { "own", L("已买下", "Owned") }, { "res", L("已研究，可以买", "Researched — can buy") }, { "cur", L("正在研究", "Researching") },
+        { "can", L("可以研究", "Can research") }, { "lock", L("还没开", "Locked") } }) do
+        local sw = frame(detail, UDim2.new(0, 26, 0, 14), UDim2.new(0, 12, 0, y + 2), COL[s[1]], 0)
+        frame(sw, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), EDGE[s[1]], 0)
+        text(detail, s[2], UDim2.new(1, -60, 0, 18), UDim2.new(0, 48, 0, y), 12, RGB(200, 204, 208))
+        y += 22
+      end
+      detail.CanvasSize = UDim2.new(0, 0, 0, y + 8)
+      return
+    end
+    -- 侧影（有图才占地方）
+    local im = Instance.new("ImageLabel")
+    im.Name = "Icon"
+    im.BackgroundTransparency = 1
+    im.Size, im.Position = UDim2.new(1, -40, 0, 54), UDim2.new(0, 20, 0, y)
+    im.ScaleType = Enum.ScaleType.Fit
+    im.ImageColor3 = RGB(232, 236, 240)
+    im.Parent = detail
+    local okI, got = pcall(function() return G.hudIconOn and G.hudIconOn(im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end)
+    if okI and got then y += 60 else im:Destroy() end
+    line(nm(it), 20, WHITE, 26).Font = Enum.Font.GothamBold
     line((zh and it.en or it.name) .. " · " .. it.year, 13, DIM)
     line(L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. "（" .. TT.RANKS[it.rank].years .. "）· " .. L("战斗等级 ", "BR ") .. TT.brText(it.br), 13, DIM)
     local stt = status(it)
     local stName = ({ own = L("已买下", "Owned"), res = L("已研究，可以买", "Researched"), cur = L("正在研究", "Researching"),
       can = L("可以研究", "Can research"), lock = L("还没开（先研究前一辆 / 上一级）", "Locked") })[stt]
-    line(stName, 14, WHITE)
+    line(stName, 14, EDGE[stt] or WHITE)
     if stt ~= "own" and stt ~= "res" then
-      line(L("研究点 ", "RP ") .. tostring(tree.rp[it.key] or 0) .. " / " .. it.rp, 13, DIM)
+      line(L("研究点 ", "RP ") .. fmtNum(tree.rp[it.key] or 0) .. " / " .. fmtNum(it.rp), 13, DIM)
     end
-    if stt ~= "own" then line(L("价钱 ", "Cost ") .. it.cost .. L(" 金币", " coins"), 13, DIM) end
+    if stt ~= "own" then line(L("价钱 ", "Cost ") .. fmtNum(it.cost) .. L(" 金币", " coins"), 13, DIM) end
     if it.stand then
       local base = it.base and (VD.get(it.base) or AD.get(it.base)) and it.base or "?"
       line(L("还没有自己的模型：暂用 ", "No model yet: uses ") .. vname(base) .. L(" 的模型和性能", "'s model & stats"), 12, RGB(200, 170, 90), 34)
@@ -815,26 +1421,18 @@ function TechUI.init(G)
       line(L("模型暂用同族的 ", "Model from ") .. vname(it.model) .. L("；炮、弹、装甲、机动按本车", "; gun, ammo, armour and mobility are its own"), 12, RGB(170, 185, 150), 34)
     end
     y += 8
+    local bh = mobile and 32 or 36
     local function btn(str, primary, f)
-      local b = button(detail, str, UDim2.new(1, -24, 0, 38), UDim2.new(0, 12, 0, y), primary)
+      local b = button(detail, str, UDim2.new(1, -24, 0, bh), UDim2.new(0, 12, 0, y), primary)
       b.MouseButton1Click:Connect(f)
-      y += 46
+      y += bh + 8
       return b
     end
-    btn(L("资料卡 · 装甲", "Stats · armor"), false, function() openInfo(it) end).Name = "InfoBtn"
-    -- 试驾：随便哪一辆都能试（服务器 Tech.lua testDrive：东边单独一块场地、三辆靶车、改装全装；下车回机库）
-    btn(L("试驾", "Test drive"), false, function()
-      panel.Visible = false
-      act("testDrive", it.key)
-    end).Name = "TestBtn"
     if stt == "can" then
       btn(L("研究这一辆", "Research"), true, function() act("treeResearch", it.key) end).Name = "Research"
     elseif stt == "res" then
-      btn(L("购买（", "Buy (") .. it.cost .. ")", true, function() act("treeBuy", it.key) end).Name = "Buy"
+      btn(L("购买（", "Buy (") .. fmtNum(it.cost) .. ")", true, function() act("treeBuy", it.key) end).Name = "Buy"
     elseif stt == "own" then
-      local md = tree.mods and tree.mods[it.key]
-      local nDone, nAll = WM.count(it, md and md.done)
-      btn(L("改装（", "Modifications (") .. nDone .. " / " .. nAll .. L("）", ")"), false, function() openMods(it) end).Name = "ModsBtn"
       local L0 = table.clone(lineupOf(it.nat))
       local idx = table.find(L0, it.key)
       if idx then
@@ -850,51 +1448,70 @@ function TechUI.init(G)
       else
         line(L("出击阵容满了（5 辆）：先移出一辆", "Lineup full (5)"), 12, DIM)
       end
+      local md = tree.mods and tree.mods[it.key]
+      local nDone, nAll = WM.count(it, md and md.done)
+      btn(L("改装（", "Modifications (") .. nDone .. " / " .. nAll .. L("）", ")"), false, function() openMods(it) end).Name = "ModsBtn"
     end
+    -- 试驾：随便哪一辆都能试（服务器 Tech.lua testDrive：东边单独一块场地、三辆靶车、改装全装；下车回机库）
+    btn(L("试驾", "Test drive"), false, function()
+      if closeTree then closeTree() end
+      act("testDrive", it.key)
+    end).Name = "TestBtn"
+    btn(L("资料卡 · 装甲", "Stats · armor"), false, function() openInfo(it) end).Name = "InfoBtn"
+    detail.CanvasSize = UDim2.new(0, 0, 0, y + 8)
   end
   refreshTree = function()
-    natTabs(tNat, function(nat) view.nat = nat view.sel = nil refreshTree() end)
-    for _, c in ipairs(tNat:GetChildren()) do
-      if c:IsA("TextButton") then
-        local on = c.Name == "Nat_" .. view.nat
-        c.BackgroundColor3 = on and WHITE or RGB(30, 34, 38)
-        c.TextColor3 = on and RGB(10, 10, 10) or WHITE
-      end
-    end
-    clear(tBr)
-    for _, br in ipairs(TT.BRANCHES) do
-      local B = TT.BRANCH[br]
-      local b = button(tBr, zh and B.name or B.en, UDim2.new(0, 100, 1, 0), nil, br == view.branch)
+    natTiles(TV.flags, 60, 40, 8, view.nat, function(nat)
+      view.nat = nat
+      view.sel = nil
+      scroll.CanvasPosition = Vector2.new(0, 0)
+      refreshTree()
+    end, false)
+    TV.natT.Text = zh and TT.NAT[view.nat].name or TT.NAT[view.nat].en
+    clear(TV.tabs)
+    for i, br in ipairs(TT.BRANCHES) do
+      local Bn = TT.BRANCH[br]
+      local b = button(TV.tabs, zh and Bn.name or Bn.en, UDim2.new(0, 84, 1, 0), UDim2.new(0, (i - 1) * 90, 0, 0), br == view.branch)
       b.Name = "Br_" .. br
-      b.MouseButton1Click:Connect(function() view.branch = br view.sel = nil refreshTree() end)
+      b.TextSize = 13
+      b.MouseButton1Click:Connect(function()
+        view.branch = br
+        view.sel = nil
+        scroll.CanvasPosition = Vector2.new(0, 0)
+        refreshTree()
+      end)
     end
-    freeT.Text = L("自由研究点 ", "Free RP ") .. tostring(tree.free[view.nat] or 0)
+    TV.rpT.Text = fmtNum(tree.free[view.nat] or 0)
+    local curKey = tree.cur[view.nat .. ":" .. view.branch]
+    local curIt = curKey and TT.get(curKey)
+    TV.curT.Text = curIt and (L("正在研究 ", "Researching ") .. nm(curIt) .. "   " .. fmtNum(tree.rp[curKey] or 0) .. " / " .. fmtNum(curIt.rp))
+      or L("还没选研究目标：点一辆「可以研究」的", "No research target: pick one you can research")
     clear(scroll)
     local B = TT.BRANCH[view.branch]
     local list = TT.list[view.nat][view.branch]
-    -- 每级一行：这一行的高度 = 这一级里同一列最多几辆
-    local per = {}
+    -- 每一级多宽：这一级里同一条线最多几辆
+    local cnt = {}
     for _, it in ipairs(list) do
-      per[it.rank] = per[it.rank] or {}
-      per[it.rank][it.col] = (per[it.rank][it.col] or 0) + 1
+      cnt[it.rank] = cnt[it.rank] or {}
+      cnt[it.rank][it.col] = (cnt[it.rank][it.col] or 0) + 1
     end
-    local rowY, y = {}, HH
+    local colX, colW, x = {}, {}, 0
     for r = 1, #TT.RANKS do
       local m = 1
-      for _, n in pairs(per[r] or {}) do if n > m then m = n end end
-      rowY[r] = y
-      local band = frame(scroll, UDim2.new(0, LW + #B.cols * (CW + GAP), 0, m * (CH + GAP)), UDim2.new(0, 0, 0, y), (r % 2 == 0) and RGB(14, 16, 18) or RGB(10, 12, 14), 0.3)
-      band.ZIndex = 1
-      local lab = text(band, TT.RANKS[r].roman, UDim2.new(0, LW - 8, 0, 22), UDim2.new(0, 10, 0, 6), 18, WHITE)
-      lab.Font = Enum.Font.GothamBold
-      text(band, TT.RANKS[r].years, UDim2.new(0, LW - 8, 0, 16), UDim2.new(0, 10, 0, 28), 11, FAINT)
-      if not TT.rankOpen(tree, view.nat, view.branch, r) then
-        text(band, L("未开", "locked"), UDim2.new(0, LW - 8, 0, 16), UDim2.new(0, 10, 0, 42), 11, RGB(170, 90, 80))
-      end
-      y += m * (CH + GAP)
+      for _, n in pairs(cnt[r] or {}) do if n > m then m = n end end
+      colX[r], colW[r] = x, 2 * PADX + m * CW + (m - 1) * GAPX
+      x += colW[r]
     end
-    for ci, c in ipairs(B.cols) do
-      text(scroll, zh and c[1] or c[2], UDim2.new(0, CW, 0, HH - 6), UDim2.new(0, LW + (ci - 1) * (CW + GAP), 0, 4), 12, DIM, Enum.TextXAlignment.Center)
+    local rowsH = #B.cols * ROWH
+    local totalH = HEADH + rowsH + 6
+    -- 表头：等级、年代；每一级之间一道竖线
+    for r = 1, #TT.RANKS do
+      local open = TT.rankOpen(tree, view.nat, view.branch, r)
+      local hd = text(scroll, L("等级 ", "Rank ") .. TT.RANKS[r].roman .. "   " .. TT.RANKS[r].years, UDim2.new(0, colW[r], 0, HEADH - 8), UDim2.new(0, colX[r], 0, 2), 12,
+        open and WHITE or DIM, Enum.TextXAlignment.Center)
+      hd.Name = "Rank_" .. r
+      frame(scroll, UDim2.new(0, colW[r] - 10, 0, 1), UDim2.new(0, colX[r] + 5, 0, HEADH - 5), RGB(120, 124, 128), 0.55)
+      if r > 1 then frame(scroll, UDim2.new(0, 1, 0, totalH - 6), UDim2.new(0, colX[r], 0, 3), RGB(120, 124, 128), 0.6) end
     end
     -- 格子
     local used, pos = {}, {}
@@ -902,58 +1519,116 @@ function TechUI.init(G)
       used[it.rank] = used[it.rank] or {}
       local k = used[it.rank][it.col] or 0
       used[it.rank][it.col] = k + 1
-      local x = LW + (it.col - 1) * (CW + GAP)
-      local cy = rowY[it.rank] + k * (CH + GAP) + GAP / 2
-      pos[it.key] = { x = x, y = cy }
+      local cx = colX[it.rank] + PADX + k * (CW + GAPX)
+      local cy = HEADH + (it.col - 1) * ROWH + LBL
+      pos[it.key] = { x = cx, y = cy }
       local stt = status(it)
+      local lock = stt == "lock"
+      local on = view.sel == it.key
+      local ct = B.cols[it.col]
+      text(scroll, ct and (zh and ct[1] or ct[2]) or "", UDim2.new(0, CW, 0, LBL), UDim2.new(0, cx, 0, cy - LBL), 9, FAINT).Name = "Type"
       local card = Instance.new("TextButton")
       card.Name = "Card_" .. it.key
-      card.AutoButtonColor = true
+      card.AutoButtonColor = false
       card.Text = ""
-      card.Size, card.Position = UDim2.new(0, CW, 0, CH), UDim2.new(0, x, 0, cy)
-      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = COL[stt], 0.05, 0
-      card.ZIndex = 3
+      card.Size, card.Position = UDim2.new(0, CW, 0, CH), UDim2.new(0, cx, 0, cy)
+      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = COL[stt], 0.04, 0
+      card.ZIndex = 2
       card.Parent = scroll
-      local s = Instance.new("UIStroke")
-      s.Color = (view.sel == it.key) and WHITE or RGB(70, 76, 80)
-      s.Thickness = (view.sel == it.key) and 2 or 1
-      s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-      s.Parent = card
-      local n1 = text(card, nm(it), UDim2.new(1, -12, 0, 20), UDim2.new(0, 6, 0, 4), 13, (stt == "lock") and FAINT or WHITE)
-      n1.ZIndex = 4
-      local n2 = text(card, "BR " .. TT.brText(it.br) .. "  " .. it.year .. (it.stand and L("  暂用", "  stand-in") or (it.model and L("  同族模型", "  family model")) or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 0, 24), 11, DIM)
-      n2.ZIndex = 4
-      if stt == "cur" or (tree.rp[it.key] or 0) > 0 then
-        local bg = frame(card, UDim2.new(1, -12, 0, 5), UDim2.new(0, 6, 1, -10), RGB(30, 30, 30), 0)
-        bg.ZIndex = 4
-        local fill = frame(bg, UDim2.new(math.clamp((tree.rp[it.key] or 0) / it.rp, 0, 1), 0, 1, 0), nil, RGB(230, 196, 80), 0)
-        fill.ZIndex = 5
+      stroke(card, on and WHITE or RGB(78, 82, 86), on and 0 or 0.5, on and 2 or 1)
+      local im = Instance.new("ImageLabel")
+      im.Name = "Icon"
+      im.BackgroundTransparency = 1
+      im.Size, im.Position = UDim2.new(1, -16, 1, -22), UDim2.new(0, 8, 0, 3)
+      im.ScaleType = Enum.ScaleType.Fit
+      im.ImageColor3 = lock and RGB(124, 128, 132) or RGB(228, 232, 236)
+      im.ImageTransparency = lock and 0.5 or 0.05
+      im.Parent = card
+      if G.hudIconOn then pcall(G.hudIconOn, im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end
+      local n1 = text(card, nm(it), UDim2.new(1, -8, 0, 15), UDim2.new(0, 4, 1, -19), 11, lock and RGB(146, 150, 154) or WHITE, Enum.TextXAlignment.Center)
+      n1.Font = Enum.Font.GothamBold
+      text(card, TT.brText(it.br), UDim2.new(0, 30, 0, 11), UDim2.new(1, -33, 0, 2), 9, DIM, Enum.TextXAlignment.Right)
+      if it.stand then
+        text(card, L("暂用", "stand-in"), UDim2.new(0, 44, 0, 11), UDim2.new(0, 4, 0, 2), 8, RGB(200, 170, 90))
+      elseif it.model then
+        text(card, L("同族", "family"), UDim2.new(0, 44, 0, 11), UDim2.new(0, 4, 0, 2), 8, RGB(170, 185, 150))
+      end
+      -- 底边：状态的颜色；正在研究 / 攒了研究点的是进度条，格子下面写攒了多少
+      local rp = tree.rp[it.key] or 0
+      local bar = frame(card, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), EDGE[stt], (stt == "cur" or (rp > 0 and stt ~= "own" and stt ~= "res")) and 0.75 or 0)
+      bar.Name = "Edge"
+      if stt == "cur" or (rp > 0 and stt ~= "own" and stt ~= "res") then
+        frame(bar, UDim2.new(math.clamp(rp / math.max(it.rp, 1), 0, 1), 0, 1, 0), nil, AMBER, 0).Name = "Fill"
+        text(scroll, fmtNum(rp) .. " / " .. fmtNum(it.rp), UDim2.new(0, CW, 0, PRG), UDim2.new(0, cx, 0, cy + CH + 2), 9, (stt == "cur") and GOLD or DIM, Enum.TextXAlignment.Center).Name = "Rp"
       end
       card.MouseButton1Click:Connect(function()
         view.sel = it.key
         refreshTree()
       end)
     end
-    -- 同一列的连线：前置那一格的底边 → 这一格的顶边
+    -- 前置的连线：前一格的右边 → 这一格的左边（同一条线在同一行，横着连；跨着等级的也是一条直线）
     for _, it in ipairs(list) do
       local a, b = it.prev and pos[it.prev], pos[it.key]
-      if a and b then
-        local x = b.x + CW / 2 - 1
-        local y0, y1 = a.y + CH, b.y
-        if y1 > y0 then
-          local ln = frame(scroll, UDim2.new(0, 2, 0, y1 - y0), UDim2.new(0, x, 0, y0), TT.researched(tree, it.prev) and RGB(150, 156, 160) or RGB(60, 64, 68), 0)
-          ln.ZIndex = 2
+      if a and b and b.x > a.x + CW then
+        local col = TT.researched(tree, it.prev) and RGB(176, 182, 186) or RGB(72, 76, 80)
+        local x0, x1, y0, y1 = a.x + CW, b.x, a.y + CH / 2, b.y + CH / 2
+        if math.abs(y1 - y0) < 1 then
+          frame(scroll, UDim2.new(0, x1 - x0, 0, 2), UDim2.new(0, x0, 0, y0 - 1), col, 0)
+        else   -- 不在同一行：折一下
+          local xm = math.floor((x0 + x1) / 2)
+          frame(scroll, UDim2.new(0, xm - x0, 0, 2), UDim2.new(0, x0, 0, y0 - 1), col, 0)
+          frame(scroll, UDim2.new(0, 2, 0, math.abs(y1 - y0) + 2), UDim2.new(0, xm, 0, math.min(y0, y1) - 1), col, 0)
+          frame(scroll, UDim2.new(0, x1 - xm, 0, 2), UDim2.new(0, xm, 0, y1 - 1), col, 0)
         end
       end
     end
-    scroll.CanvasSize = UDim2.new(0, LW + #B.cols * (CW + GAP) + 20, 0, y + 20)
+    -- 还没开的等级：盖一块暗板，写要先研究完上一级的几辆（底下的格子照样点得到：看详情、试驾）
+    for r = 2, #TT.RANKS do
+      if not TT.rankOpen(tree, view.nat, view.branch, r) then
+        local need = TT.RANK_NEED[r - 1] or 2
+        local have = 0
+        for _, it in ipairs(list) do
+          if it.rank == r - 1 and TT.researched(tree, it.key) then have += 1 end
+        end
+        local w, h = colW[r] - 12, rowsH - 4
+        local ov = frame(scroll, UDim2.new(0, w, 0, h), UDim2.new(0, colX[r] + 6, 0, HEADH + 1), RGB(7, 8, 10), 0.2)
+        ov.Name = "Locked_" .. r
+        ov.ZIndex = 3
+        local mx, my = w / 2, math.max(44, h / 2 - 40)
+        local GREY = RGB(96, 100, 106)
+        local sh = frame(ov, UDim2.new(0, 30, 0, 40), UDim2.new(0, mx - 15, 0, my - 24), nil, 1)   -- 锁梁
+        local shc = Instance.new("UICorner")
+        shc.CornerRadius = UDim.new(0, 15)
+        shc.Parent = sh
+        stroke(sh, GREY, 0, 6)
+        local body = frame(ov, UDim2.new(0, 48, 0, 36), UDim2.new(0, mx - 24, 0, my), GREY, 0)   -- 锁体
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 5)
+        bc.Parent = body
+        round(frame(body, UDim2.new(0, 9, 0, 9), UDim2.new(0.5, -4.5, 0, 9), RGB(14, 15, 17), 0))
+        frame(body, UDim2.new(0, 4, 0, 10), UDim2.new(0.5, -2, 0, 15), RGB(14, 15, 17), 0)
+        local t = text(ov, L("先研究 ", "Research more rank ") .. TT.RANKS[r - 1].roman .. L(" 级的载具", " vehicles"), UDim2.new(1, -12, 0, 32), UDim2.new(0, 6, 0, my + 46), 12, WHITE, Enum.TextXAlignment.Center)
+        t.TextWrapped, t.TextTruncate = true, Enum.TextTruncate.None
+        local cb = frame(ov, UDim2.new(0, 64, 0, 26), UDim2.new(0, mx - 32, 0, my + 82), RGB(30, 33, 38), 0)
+        cb.Name = "Count"
+        text(cb, have .. " / " .. need, UDim2.fromScale(1, 1), nil, 16, WHITE, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+      end
+    end
+    scroll.CanvasSize = UDim2.new(0, x + 8, 0, totalH)
+    TV.hOnly = totalH <= (H.vh or 720) - (H.TY + H.TH + 14) - H.winBottom - 64   -- 竖着不用滚：滚轮横着滚
     showDetail(view.sel and TT.get(view.sel))
   end
   openTree = function()
     view.nat = tree.nat
     panel.Visible = true
+    H.mid.Visible = false   -- 机库中间那一层（国旗、乘员、这一局的信息）让开
     refreshTree()
   end
+  closeTree = function()
+    panel.Visible = false
+    H.mid.Visible = true
+  end
+  TV.close.MouseButton1Click:Connect(closeTree)
   G.openTechTree = openTree
   G.refreshTechTree = function() if panel.Visible then refreshTree() end end
 

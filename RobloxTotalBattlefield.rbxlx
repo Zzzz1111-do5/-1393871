@@ -49888,6 +49888,624 @@ return Hangar
         </Item>
         <Item class="ModuleScript" referent="178">
           <Properties>
+            <string name="Name">HangarStage</string>
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库背后的厂房（用户 11-25 给了两张截图：「一进入游戏的界面给我改成这样」）
+--   截图里界面背后是一间修理厂房：水泥地、黄线、地沟、吊灯一排排打下来的光、红油桶、轮胎、黄色的检修梯。这里用零件搭一间自己的：
+--   长 280 格、宽 192 格、檐口 62 格的钢结构厂房——水泥地（分缝、黄色引导线、停车框、排水篦子、检修地沟）、下半截水泥上半截钢板的墙、
+--   立柱（底下黄黑警示带）、桁架、屋面和采光板、两头的推拉大门、侧墙的窗、桥式起重机（吊钩垂着）、两排吊灯（带光柱）、
+--   靠墙的杂物（油桶、木箱、轮胎、工作台、工具柜、检修梯、货架、地上盘着的电缆、路锥）、空气里飘的灰。
+--   只在本机：搭在地图外很高的地方，机库界面开着时镜头在里面对着停在正中的那辆车（TechUI.lua 把出击阵容里选中的那一辆摆进来），
+--   按住拖动转着看、滚轮拉近拉远；关了机库收起来、镜头还给游戏。
+local Stage = {}
+
+local RGB = Color3.fromRGB
+local V = Vector3.new
+local CF = CFrame.new
+local ANG = CFrame.Angles
+local MAT = Enum.Material
+local UP = ANG(0, 0, math.pi / 2)   -- 圆柱的轴（X）竖起来
+local ORIGIN = CF(-9000, 900, 9000)   -- 地图外、半空里：周围什么都没有（主菜单的场景在另一个角上，同一个高度）
+local HX, Z0, Z1, HY, RISE = 96, -124, 156, 62, 15   -- 半宽、近端墙、远端墙、檐口高、屋脊比檐口高多少
+local FOV = 40
+
+local model = nil    -- 整间厂房
+local slot = nil     -- 停在正中的那辆车（TechUI 给的模型）
+local shown = false
+-- 镜头：yaw / pitch / dist 是要去的，s* 是现在的（慢慢跟过去）；h 看向离地多高；base 这辆车合适的距离
+local view = { yaw = math.pi - 0.62, pitch = 0.15, dist = 58, base = 58, h = 3, t = 0, sy = math.pi - 0.62, sp = 0.15, sd = 58, sh = 3 }
+
+local function part(parent, name, size, cf, color, mat, shape)
+  local p = Instance.new("Part")
+  p.Name = name
+  if shape then p.Shape = shape end
+  p.Size = size
+  p.CFrame = ORIGIN * cf
+  p.Color = color
+  p.Material = mat or MAT.SmoothPlastic
+  p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+  p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+  p.Parent = parent
+  return p
+end
+
+local CONC, CONC2, CONC3 = RGB(126, 122, 112), RGB(100, 97, 90), RGB(138, 133, 122)
+local STEEL, SIDING, ROOF = RGB(52, 56, 58), RGB(86, 94, 92), RGB(56, 60, 60)
+local YEL, BLACK, RED, OLIVE = RGB(206, 164, 44), RGB(22, 22, 24), RGB(152, 40, 34), RGB(74, 84, 56)
+local WARM = RGB(255, 232, 184)
+
+---------------------------------------------------------------- 厂房本体
+
+local function shell(m)
+  local function W(name, size, cf, color, mat, shape) return part(m, name, size, cf, color, mat, shape) end
+  local LEN, ZC = Z1 - Z0, (Z0 + Z1) / 2
+  -- 地面：四块水泥板围着检修地沟（车右边一条 10 × 64 的沟，7 格深）
+  local PX0, PX1, PZ0, PZ1, PD = 36, 46, -6, 58, 7
+  W("Floor", V(PX0 + HX, 2, LEN), CF((PX0 - HX) / 2, -1, ZC), CONC, MAT.Concrete)
+  W("Floor", V(HX - PX1, 2, LEN), CF((PX1 + HX) / 2, -1, ZC), CONC, MAT.Concrete)
+  W("Floor", V(PX1 - PX0, 2, PZ0 - Z0), CF((PX0 + PX1) / 2, -1, (Z0 + PZ0) / 2), CONC, MAT.Concrete)
+  W("Floor", V(PX1 - PX0, 2, Z1 - PZ1), CF((PX0 + PX1) / 2, -1, (PZ1 + Z1) / 2), CONC, MAT.Concrete)
+  local pcx, pcz, pw, pl = (PX0 + PX1) / 2, (PZ0 + PZ1) / 2, PX1 - PX0, PZ1 - PZ0
+  W("PitFloor", V(pw + 1.2, 1, pl + 1.2), CF(pcx, -PD - 0.5, pcz), RGB(66, 64, 60), MAT.Concrete)
+  W("PitWall", V(0.6, PD - 2, pl + 1.2), CF(PX0 - 0.3, -2 - (PD - 2) / 2, pcz), CONC2, MAT.Concrete)
+  W("PitWall", V(0.6, PD - 2, pl + 1.2), CF(PX1 + 0.3, -2 - (PD - 2) / 2, pcz), CONC2, MAT.Concrete)
+  W("PitWall", V(pw, PD - 2, 0.6), CF(pcx, -2 - (PD - 2) / 2, PZ0 - 0.3), CONC2, MAT.Concrete)
+  W("PitWall", V(pw, PD - 2, 0.6), CF(pcx, -2 - (PD - 2) / 2, PZ1 + 0.3), CONC2, MAT.Concrete)
+  for i = 0, 5 do   -- 沟里的台阶（靠近端）
+    W("PitStep", V(pw - 1, 1.1, 1.6), CF(pcx, -0.6 - i * 1.15, PZ0 + 1 + i * 1.6), CONC2, MAT.Concrete)
+  end
+  for _, e in ipairs({ { PX0 - 0.6, pcz, 0.7, pl + 2.6 }, { PX1 + 0.6, pcz, 0.7, pl + 2.6 }, { pcx, PZ0 - 0.6, pw + 0.5, 0.7 }, { pcx, PZ1 + 0.6, pw + 0.5, 0.7 } }) do
+    W("PitEdge", V(e[3], 0.08, e[4]), CF(e[1], 0.04, e[2]), YEL)   -- 沟边一圈黄线
+  end
+  -- 分缝：每 31 格一道（地沟那一段断开）；纵向四道
+  local SEAM = RGB(74, 71, 65)
+  for z = Z0 + 31, Z1 - 1, 31 do
+    if z > PZ0 - 1 and z < PZ1 + 1 then
+      W("Seam", V(PX0 + HX, 0.06, 0.3), CF((PX0 - HX) / 2, 0.02, z), SEAM, MAT.Concrete)
+      W("Seam", V(HX - PX1, 0.06, 0.3), CF((PX1 + HX) / 2, 0.02, z), SEAM, MAT.Concrete)
+    else
+      W("Seam", V(2 * HX, 0.06, 0.3), CF(0, 0.02, z), SEAM, MAT.Concrete)
+    end
+  end
+  for _, x in ipairs({ -64, -32, 0, 32, 64 }) do W("Seam", V(0.3, 0.06, LEN), CF(x, 0.02, ZC), SEAM, MAT.Concrete) end
+  -- 黄线：两条通长的引导线、正中的停车框（四角加粗）、门口的横线
+  local function line(x, z, sx, sz, tr, lift)
+    local p = W("Line", V(sx, 0.08, sz), CF(x, 0.045 + (lift or 0), z), YEL)
+    p.Transparency = tr or 0.12
+    return p
+  end
+  line(-27, ZC, 0.8, LEN - 30)
+  line(27, ZC, 0.8, LEN - 30)
+  for _, s in ipairs({ -1, 1 }) do
+    line(s * 21, 0, 0.6, 62, 0.2)
+    line(0, s * 31, 42.6, 0.6, 0.2)
+    for _, t in ipairs({ -1, 1 }) do
+      line(s * 19, t * 31, 4.6, 1.2, 0, 0.012)
+      line(s * 21, t * 29, 1.2, 4.6, 0, 0.012)
+    end
+  end
+  line(0, Z1 - 12, 120, 1.2)
+  line(0, Z0 + 12, 76, 1.2)
+  -- 油渍、轮胎印：几块发暗的地方
+  local rnd = Random.new(11)
+  for i = 1, 9 do
+    local d = rnd:NextNumber(5, 13)
+    local st = W("Stain", V(0.05, d, d * rnd:NextNumber(0.6, 1)), CF(rnd:NextNumber(-24, 24), 0.032 + i * 0.0015, rnd:NextNumber(-34, 40)) * ANG(0, rnd:NextNumber(0, 3), 0) * UP,
+      RGB(46, 44, 40), MAT.SmoothPlastic, Enum.PartType.Cylinder)
+    st.Transparency = rnd:NextNumber(0.55, 0.78)
+    st.CastShadow = false
+  end
+  for _, x in ipairs({ -6.2, 6.2 }) do
+    local tr = W("Tread", V(3.2, 0.04, 96), CF(x, 0.052, 56), RGB(52, 50, 46))
+    tr.Transparency = 0.72
+    tr.CastShadow = false
+  end
+  -- 排水篦子：左边一条
+  W("Drain", V(5, 0.1, LEN - 40), CF(-47, 0.02, ZC), RGB(30, 31, 32), MAT.Metal)
+  W("DrainEdge", V(0.5, 0.16, LEN - 40), CF(-49.7, 0.05, ZC), RGB(70, 72, 74), MAT.Metal)
+  W("DrainEdge", V(0.5, 0.16, LEN - 40), CF(-44.3, 0.05, ZC), RGB(70, 72, 74), MAT.Metal)
+  for z = Z0 + 24, Z1 - 24, 4.4 do
+    local b = W("DrainBar", V(4.8, 0.18, 1.5), CF(-47, 0.06, z), RGB(62, 64, 66), MAT.DiamondPlate)
+    b.CastShadow = false
+  end
+
+  -- 侧墙：下半截水泥（凸出半格）、上半截钢板，两道横檩，檐口下一条采光带
+  for _, s in ipairs({ -1, 1 }) do
+    W("WallBase", V(3, 16, LEN + 6), CF(s * (HX + 1), 8, ZC), CONC2, MAT.Concrete)
+    W("WallSiding", V(1.2, HY - 16 + RISE, LEN + 6), CF(s * (HX + 0.6), 16 + (HY - 16 + RISE) / 2, ZC), SIDING, MAT.Metal)
+    W("WallCap", V(3.6, 0.8, LEN + 6), CF(s * (HX + 0.8), 16.4, ZC), CONC3, MAT.Concrete)
+    for _, y in ipairs({ 25, 49 }) do W("Girt", V(0.9, 0.9, LEN), CF(s * (HX - 0.4), y, ZC), STEEL, MAT.Metal) end
+    local strip = W("Clerestory", V(0.4, 4.6, LEN - 12), CF(s * (HX - 0.15), HY - 5, ZC), RGB(232, 230, 214), MAT.Neon)
+    strip.Transparency = 0.35
+    strip.CastShadow = false
+  end
+  -- 立柱：两侧各七根（底下黄黑警示带、上面托吊车梁的牛腿、挂着的灭火器）
+  local COLS = {}
+  for k = 0, 6 do table.insert(COLS, Z0 + 20 + k * 40) end
+  for ci, z in ipairs(COLS) do
+    for _, s in ipairs({ -1, 1 }) do
+      local x = s * (HX - 3.5)
+      W("Column", V(6, HY, 6), CF(x, HY / 2, z), CONC3, MAT.Concrete)
+      W("ColBand", V(6.3, 5, 6.3), CF(x, 2.5, z), YEL)
+      W("ColBandK", V(6.4, 0.9, 6.4), CF(x, 1.3, z), BLACK)
+      W("ColBandK", V(6.4, 0.9, 6.4), CF(x, 3.7, z), BLACK)
+      W("Corbel", V(8, 2.2, 6), CF(s * (HX - 6.5), HY - 12.2, z), STEEL, MAT.Metal)
+      if ci % 2 == 0 then   -- 隔一根柱子挂一只灭火器
+        W("Extinguisher", V(2.3, 0.95, 0.95), CF(s * (HX - 7), 5.2, z) * UP, RGB(190, 36, 30), MAT.Metal, Enum.PartType.Cylinder)
+        W("ExtSign", V(0.2, 1.8, 1.8), CF(s * (HX - 6.55), 8.2, z), RGB(196, 40, 32))
+      end
+    end
+  end
+  -- 侧墙的窗：两根柱子之间一樘（深蓝的玻璃、窗框、三根竖梃一根横梃）
+  local wr = Random.new(5)
+  for i = 1, #COLS - 1 do
+    local zc = (COLS[i] + COLS[i + 1]) / 2
+    for _, s in ipairs({ -1, 1 }) do
+      local x = s * (HX - 0.2)
+      local lit = wr:NextNumber() < 0.34
+      local pane = W("Window", V(0.5, 15, 26), CF(x, 36, zc), lit and RGB(104, 136, 158) or RGB(48, 74, 98), MAT.Glass)
+      pane.Reflectance = 0.18
+      W("WinFrame", V(0.8, 0.8, 27.4), CF(x - s * 0.1, 43.9, zc), STEEL, MAT.Metal)
+      W("WinFrame", V(0.8, 0.8, 27.4), CF(x - s * 0.1, 28.1, zc), STEEL, MAT.Metal)
+      W("WinFrame", V(0.8, 15, 0.8), CF(x - s * 0.1, 36, zc - 13.3), STEEL, MAT.Metal)
+      W("WinFrame", V(0.8, 15, 0.8), CF(x - s * 0.1, 36, zc + 13.3), STEEL, MAT.Metal)
+      for _, dz in ipairs({ -6.6, 0, 6.6 }) do W("WinBar", V(0.7, 15, 0.45), CF(x - s * 0.1, 36, zc + dz), STEEL, MAT.Metal) end
+      W("WinBar", V(0.7, 0.45, 26), CF(x - s * 0.1, 36, zc), STEEL, MAT.Metal)
+    end
+  end
+
+  -- 两头的墙：大门（两扇推拉门，竖筋、横档、门上的编号）、门两边的墙垛、门上面的墙和一排高窗
+  local function endWall(z, dir, dw, dh, num)
+    local zo = z + dir * 0.6
+    local side = HX - dw / 2
+    for _, s in ipairs({ -1, 1 }) do
+      local cx = s * (dw / 2 + side / 2)
+      W("EndBase", V(side + 2, 16, 3), CF(cx, 8, z + dir * 1), CONC2, MAT.Concrete)
+      W("EndSiding", V(side + 2, dh - 16, 1.2), CF(cx, 16 + (dh - 16) / 2, zo), SIDING, MAT.Metal)
+      W("EndCap", V(side + 2, 0.8, 3.6), CF(cx, 16.4, z + dir * 0.8), CONC3, MAT.Concrete)
+    end
+    W("EndTop", V(2 * HX + 4, HY - dh + RISE, 1.2), CF(0, dh + (HY - dh + RISE) / 2, zo), SIDING, MAT.Metal)
+    W("DoorTrack", V(dw + 10, 2.2, 2.6), CF(0, dh + 1.1, z - dir * 0.6), STEEL, MAT.Metal)
+    local DOOR = RGB(58, 72, 62)
+    for _, s in ipairs({ -1, 1 }) do
+      local cx = s * dw / 4
+      local leaf = W("Door", V(dw / 2 - 0.3, dh, 1.2), CF(cx, dh / 2, z + dir * 0.3), DOOR, MAT.Metal)
+      for k = -3, 3 do W("DoorRib", V(0.9, dh - 1, 0.5), CF(cx + k * (dw / 2 - 4) / 7, dh / 2, z - dir * 0.45), RGB(48, 60, 52), MAT.Metal) end
+      for _, y in ipairs({ 1.2, dh * 0.5, dh - 1.2 }) do W("DoorRail", V(dw / 2 - 0.6, 1, 0.6), CF(cx, y, z - dir * 0.5), RGB(46, 56, 50), MAT.Metal) end
+      -- 门上的编号（喷的白字，旧了）
+      local sg = Instance.new("SurfaceGui")
+      sg.Face = (dir > 0) and Enum.NormalId.Front or Enum.NormalId.Back   -- 朝厂房里面的那一面
+      sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+      sg.PixelsPerStud = 12
+      sg.LightInfluence = 1
+      sg.Parent = leaf
+      local t = Instance.new("TextLabel")
+      t.BackgroundTransparency = 1
+      t.Size, t.Position = UDim2.fromScale(0.5, 0.36), UDim2.fromScale(0.25, 0.3)
+      t.Font = Enum.Font.GothamBlack
+      t.TextScaled = true
+      t.TextColor3 = RGB(214, 214, 204)
+      t.TextTransparency = 0.45
+      t.Text = (s * dir > 0) and string.sub(num, 1, 1) or string.sub(num, 2, 2)   -- 从里面看，左边那扇是第一个数字
+      t.Parent = sg
+    end
+    W("DoorGap", V(0.5, dh, 0.5), CF(0, dh / 2, z - dir * 0.36), BLACK, MAT.Metal)
+    -- 高窗：门上面一排（泛着外面的天光）
+    local wy = (dh + HY) / 2 + 1.5
+    local wh = math.max(6, HY - dh - 7)
+    local hw = W("HighWindow", V(2 * HX - 36, wh, 0.4), CF(0, wy, z - dir * 0.45), RGB(118, 152, 172), MAT.Neon)
+    hw.Transparency = 0.5
+    hw.CastShadow = false
+    W("HighBack", V(2 * HX - 36, wh, 0.3), CF(0, wy, z - dir * 0.05), RGB(40, 60, 78))
+    for x = -(HX - 18), HX - 18, 12 do W("HighBar", V(0.6, wh, 0.7), CF(x, wy, z - dir * 0.6), STEEL, MAT.Metal) end
+    W("HighBar", V(2 * HX - 36, 0.6, 0.7), CF(0, wy + wh / 2, z - dir * 0.6), STEEL, MAT.Metal)
+    W("HighBar", V(2 * HX - 36, 0.6, 0.7), CF(0, wy - wh / 2, z - dir * 0.6), STEEL, MAT.Metal)
+  end
+  endWall(Z1, 1, 116, 46, "07")
+  endWall(Z0, -1, 72, 38, "12")
+
+  -- 屋面：两坡，底下檩条、采光板；每根柱子上一榀桁架（下弦、上弦、竖杆、斜杆）
+  local s = math.sqrt(HX * HX + RISE * RISE)
+  local a = math.atan2(RISE, HX)
+  for _, sd in ipairs({ -1, 1 }) do
+    local base = CF(sd * HX / 2, HY + RISE / 2 + 1.2, ZC) * ANG(0, 0, -sd * a)
+    W("Roof", V(s + 3, 1.2, LEN + 8), base, ROOF, MAT.Metal)
+    for _, dx in ipairs({ -34, -6, 22 }) do W("Purlin", V(1, 1.1, LEN), base * CF(sd * dx, -1.1, 0), STEEL, MAT.Metal) end
+    for i = 1, #COLS - 1 do
+      local zc = (COLS[i] + COLS[i + 1]) / 2 - ZC
+      local sky = W("Skylight", V(30, 0.3, 24), base * CF(-sd * 10, -0.72, zc), RGB(246, 240, 216), MAT.Neon)
+      sky.Transparency = 0.12
+      sky.CastShadow = false
+      W("SkyBar", V(30, 0.5, 0.6), base * CF(-sd * 10, -0.95, zc - 6), STEEL, MAT.Metal)
+      W("SkyBar", V(30, 0.5, 0.6), base * CF(-sd * 10, -0.95, zc + 6), STEEL, MAT.Metal)
+      W("SkyBar", V(0.6, 0.5, 24), base * CF(-sd * 10, -0.95, zc), STEEL, MAT.Metal)
+    end
+  end
+  local function beam(p0, p1, w)
+    local d = (p1 - p0).Magnitude
+    return W("Web", V(w, w, d), CFrame.lookAt((p0 + p1) / 2, p1), STEEL, MAT.Metal)
+  end
+  local function hAt(x) return RISE * (1 - math.abs(x) / HX) end
+  for _, z in ipairs(COLS) do
+    W("Chord", V(2 * HX - 12, 1.6, 1.6), CF(0, HY, z), STEEL, MAT.Metal)
+    for _, sd in ipairs({ -1, 1 }) do
+      W("Rafter", V(s - 4, 1.4, 1.4), CF(sd * HX / 2, HY + RISE / 2 - 0.4, z) * ANG(0, 0, -sd * a), STEEL, MAT.Metal)
+      for k = 1, 3 do
+        local x = sd * k * HX / 4
+        local h = hAt(x) - 0.4
+        W("Post", V(1, h, 1), CF(x, HY + h / 2, z), STEEL, MAT.Metal)
+        local xi = sd * (k - 1) * HX / 4
+        beam(V(x, HY, z), V(xi, HY + hAt(xi) - 0.6, z), 0.9)
+      end
+    end
+    W("Post", V(1.2, RISE - 0.4, 1.2), CF(0, HY + (RISE - 0.4) / 2, z), STEEL, MAT.Metal)
+  end
+
+  -- 桥式起重机：两条轨道梁搁在牛腿上，一座黄色的桥、小车、垂下来的钢丝绳和吊钩
+  local RX, RY = HX - 8.5, HY - 10
+  for _, sd in ipairs({ -1, 1 }) do W("CraneRail", V(2, 2.4, LEN - 16), CF(sd * RX, RY, ZC), STEEL, MAT.Metal) end
+  local CZ = 74
+  for _, dz in ipairs({ -3.6, 3.6 }) do W("CraneBridge", V(2 * RX + 2, 4.4, 2.2), CF(0, RY + 3.6, CZ + dz), RGB(206, 160, 36), MAT.Metal) end
+  for _, sd in ipairs({ -1, 1 }) do
+    W("CraneTruck", V(3.2, 3, 13), CF(sd * RX, RY + 2.7, CZ), RGB(60, 62, 64), MAT.Metal)
+    for _, dz in ipairs({ -3.6, 3.6 }) do
+      local st = W("CraneStripe", V(8, 4.5, 0.2), CF(sd * (RX - 8), RY + 3.6, CZ + dz + ((dz > 0) and 1.2 or -1.2)), BLACK)
+      st.Transparency = 0.25
+    end
+  end
+  W("Trolley", V(9, 3, 9.6), CF(-24, RY + 6.6, CZ), RGB(64, 66, 70), MAT.Metal)
+  W("TrolleyDrum", V(6, 2.6, 2.6), CF(-24, RY + 4.4, CZ), RGB(40, 42, 44), MAT.Metal, Enum.PartType.Cylinder)
+  W("Cable", V(19, 0.3, 0.3), CF(-24, RY - 6.4, CZ) * UP, RGB(30, 30, 32), MAT.Metal, Enum.PartType.Cylinder)
+  W("HookBlock", V(2.6, 3.4, 1.8), CF(-24, RY - 17.4, CZ), RGB(206, 160, 36), MAT.Metal)
+  W("HookBlockK", V(2.7, 0.7, 1.9), CF(-24, RY - 17.4, CZ), BLACK)
+  W("Hook", V(0.6, 2.2, 0.6), CF(-24, RY - 20.1, CZ), RGB(36, 36, 38), MAT.Metal)
+  W("Hook", V(1.8, 0.6, 0.6), CF(-23.4, RY - 21.2, CZ), RGB(36, 36, 38), MAT.Metal)
+  W("Hook", V(0.6, 1.2, 0.6), CF(-22.8, RY - 20.6, CZ), RGB(36, 36, 38), MAT.Metal)
+end
+
+---------------------------------------------------------------- 灯
+
+local function lights(m)
+  local function W(name, size, cf, color, mat, shape) return part(m, name, size, cf, color, mat, shape) end
+  local LY = 37   -- 灯口离地
+  local function lamp(x, z, shadow, bright)
+    W("LampRod", V(0.3, HY - LY - 1.8, 0.3), CF(x, LY + 1.8 + (HY - LY - 1.8) / 2, z), BLACK, MAT.Metal)
+    W("LampShade", V(1.8, 6.6, 6.6), CF(x, LY + 0.9, z) * UP, RGB(38, 42, 42), MAT.Metal, Enum.PartType.Cylinder)
+    local bulb = W("LampBulb", V(0.3, 4.6, 4.6), CF(x, LY - 0.05, z) * UP, WARM, MAT.Neon, Enum.PartType.Cylinder)
+    bulb.CastShadow = false
+    local h = W("LampLight", V(1, 1, 1), CF(x, LY - 0.6, z), BLACK)
+    h.Transparency = 1
+    h.CastShadow = false
+    local sl = Instance.new("SpotLight")
+    sl.Face = Enum.NormalId.Bottom
+    sl.Angle, sl.Range, sl.Brightness = 112, 60, bright or 2.6
+    sl.Color = WARM
+    sl.Shadows = shadow == true
+    sl.Parent = h
+    -- 光柱：一条朝镜头的光带，从灯口到地面越来越宽、越来越淡
+    local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+    a0.Position, a1.Position = V(0, 0, 0), V(0, -LY + 0.8, 0)
+    a0.Parent, a1.Parent = h, h
+    local b = Instance.new("Beam")
+    b.Attachment0, b.Attachment1 = a0, a1
+    b.Width0, b.Width1 = 4, 34
+    b.FaceCamera = true
+    b.Segments = 1
+    b.LightEmission, b.LightInfluence = 1, 0
+    b.Color = ColorSequence.new(WARM)
+    b.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.86), NumberSequenceKeypoint.new(0.6, 0.94), NumberSequenceKeypoint.new(1, 1) })
+    b.Parent = h
+  end
+  for k = 0, 6 do
+    local z = Z0 + 20 + k * 40
+    lamp(-44, z, false)
+    lamp(44, z, false)
+  end
+  lamp(0, -24, true, 3)   -- 车头、车尾上方各一盏：带影子
+  lamp(0, 16, true, 2.6)
+  -- 补光：车两侧低处各两盏看不见的灯（夜里外面全黑，车身也得看得清）
+  for _, p in ipairs({ { -30, 15, -26 }, { 30, 15, -26 }, { -32, 17, 30 }, { 32, 17, 30 } }) do
+    local h = W("Fill", V(1, 1, 1), CF(p[1], p[2], p[3]), BLACK)
+    h.Transparency = 1
+    h.CastShadow = false
+    local pl = Instance.new("PointLight")
+    pl.Range, pl.Brightness = 46, 0.7
+    pl.Color = RGB(236, 232, 220)
+    pl.Parent = h
+  end
+  -- 空气里的灰：慢慢飘、被灯照亮
+  local src = W("Dust", V(150, 1, 200), CF(0, 34, 16), BLACK)
+  src.Transparency = 1
+  src.CastShadow = false
+  local em = Instance.new("ParticleEmitter")
+  em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+  em.Color = ColorSequence.new(RGB(255, 244, 220))
+  em.LightEmission = 0.7
+  em.LightInfluence = 0
+  em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.16), NumberSequenceKeypoint.new(1, 0.08) })
+  em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.72), NumberSequenceKeypoint.new(0.8, 0.78), NumberSequenceKeypoint.new(1, 1) })
+  em.Lifetime = NumberRange.new(12, 18)
+  em.Rate = 10
+  em.Speed = NumberRange.new(0.3, 0.9)
+  em.SpreadAngle = Vector2.new(180, 180)
+  em.Acceleration = V(0.05, -0.03, 0.04)
+  em.RotSpeed = NumberRange.new(-20, 20)
+  em.EmissionDirection = Enum.NormalId.Bottom
+  em.Parent = src
+end
+
+---------------------------------------------------------------- 杂物
+
+local function props(m)
+  local function W(name, size, cf, color, mat, shape) return part(m, name, size, cf, color, mat, shape) end
+  -- 油桶：立着的（两道箍、桶盖）、躺着的
+  local function barrel(x, z, col, lying, yaw)
+    if lying then
+      local c = CF(x, 2.15, z) * ANG(0, yaw or 0, 0)
+      W("Barrel", V(6.2, 4.3, 4.3), c, col, MAT.Metal, Enum.PartType.Cylinder)
+      W("BarrelRing", V(0.3, 4.5, 4.5), c * CF(-1.4, 0, 0), RGB(40, 36, 32), MAT.Metal, Enum.PartType.Cylinder)
+      W("BarrelRing", V(0.3, 4.5, 4.5), c * CF(1.4, 0, 0), RGB(40, 36, 32), MAT.Metal, Enum.PartType.Cylinder)
+      return
+    end
+    W("Barrel", V(6.2, 4.3, 4.3), CF(x, 3.1, z) * UP, col, MAT.Metal, Enum.PartType.Cylinder)
+    W("BarrelRing", V(0.3, 4.5, 4.5), CF(x, 1.9, z) * UP, RGB(40, 36, 32), MAT.Metal, Enum.PartType.Cylinder)
+    W("BarrelRing", V(0.3, 4.5, 4.5), CF(x, 4.3, z) * UP, RGB(40, 36, 32), MAT.Metal, Enum.PartType.Cylinder)
+    W("BarrelLid", V(0.12, 3.9, 3.9), CF(x, 6.16, z) * UP, RGB(60, 56, 52), MAT.Metal, Enum.PartType.Cylinder)
+  end
+  barrel(-60, 44, RED)
+  barrel(-55.2, 46.6, RED)
+  barrel(-58.6, 50.4, RGB(138, 36, 30))
+  barrel(-63.5, 49, RGB(34, 34, 36))
+  barrel(-68, 38, RGB(104, 78, 48), true, 0.5)
+  barrel(70, -52, OLIVE)
+  barrel(74.6, -50, OLIVE)
+  barrel(66, 118, RED)
+  barrel(61.4, 120.6, RGB(34, 34, 36))
+  barrel(-74, -84, RGB(60, 86, 120))
+  barrel(-78.8, -81, RGB(60, 86, 120))
+  -- 木箱、弹药箱：几堆
+  local function crate(x, y, z, sx, sy, sz, yaw, col, mat)
+    local c = CF(x, y + sy / 2, z) * ANG(0, yaw or 0, 0)
+    W("Crate", V(sx, sy, sz), c, col or RGB(122, 98, 62), mat or MAT.WoodPlanks)
+    W("CrateBand", V(sx + 0.15, 0.5, sz + 0.15), c * CF(0, sy / 2 - 0.6, 0), RGB(86, 68, 44), MAT.Wood)
+    W("CrateBand", V(sx + 0.15, 0.5, sz + 0.15), c * CF(0, -sy / 2 + 0.6, 0), RGB(86, 68, 44), MAT.Wood)
+  end
+  crate(62, 0, 18, 7, 6, 7, 0.1)
+  crate(69.5, 0, 20, 6, 5, 6, -0.2)
+  crate(63, 6, 18.5, 5.5, 4.5, 5.5, 0.4)
+  crate(66, 0, 27, 9, 3.4, 4.4, 0.05, OLIVE, MAT.Wood)
+  crate(66.4, 3.4, 27.2, 9, 3.4, 4.4, 0.12, OLIVE, MAT.Wood)
+  crate(-70, 0, 100, 8, 7, 8, 0.2)
+  crate(-61, 0, 104, 6, 5, 6, -0.3)
+  crate(-70.6, 7, 100.4, 6, 5, 6, 0.5)
+  crate(-78, 0, 92, 9, 3.4, 4.4, 1.5, OLIVE, MAT.Wood)
+  crate(30, 0, 128, 7, 6, 7, 0.3)
+  crate(38, 0, 131, 6, 4.6, 6, -0.1)
+  -- 托盘上码的弹药箱
+  for i = 0, 1 do
+    local px, pz = -40 + i * 15, 122
+    W("Pallet", V(12, 0.7, 10), CF(px, 0.35, pz), RGB(134, 108, 70), MAT.WoodPlanks)
+    for r = 0, 2 do
+      for c = 0, 1 do
+        W("AmmoBox", V(5.4, 1.9, 4.2), CF(px - 2.9 + c * 5.8, 1.7 + r * 1.95, pz + ((r % 2 == 0) and -2.3 or 2.2)), OLIVE, MAT.Metal)
+        W("AmmoBox", V(5.4, 1.9, 4.2), CF(px - 2.9 + c * 5.8, 1.7 + r * 1.95, pz + ((r % 2 == 0) and 2.3 or -2.2)), RGB(66, 76, 50), MAT.Metal)
+      end
+    end
+  end
+  -- 轮胎：摞着的、靠墙立着的
+  local function tires(x, z, n)
+    for i = 0, n - 1 do
+      W("Tire", V(2.1, 7, 7), CF(x + (i % 2) * 0.4, 1.05 + i * 2.12, z) * UP, RGB(24, 24, 26), MAT.Rubber, Enum.PartType.Cylinder)
+      W("TireHub", V(2.16, 3.2, 3.2), CF(x + (i % 2) * 0.4, 1.05 + i * 2.12, z) * UP, RGB(58, 60, 58), MAT.Metal, Enum.PartType.Cylinder)
+    end
+  end
+  tires(66, -22, 4)
+  tires(74, -17, 3)
+  tires(72, -27, 2)
+  for i = 0, 2 do
+    W("Tire", V(2.1, 7, 7), CF(88.6, 3.5, -40 + i * 2.5) * ANG(0, math.pi / 2 + 0.12, 0), RGB(24, 24, 26), MAT.Rubber, Enum.PartType.Cylinder)
+  end
+  -- 工作台（台面、腿、台钳、一只红工具箱、一盏台灯）、工具柜、靠墙的货架
+  do
+    local c = CF(-91, 0, -44)
+    W("BenchTop", V(7, 0.7, 22), c * CF(0, 5.4, 0), RGB(112, 88, 56), MAT.WoodPlanks)
+    for _, d in ipairs({ { -3, -10.4 }, { 3, -10.4 }, { -3, 10.4 }, { 3, 10.4 } }) do W("BenchLeg", V(0.6, 5.1, 0.6), c * CF(d[1], 2.55, d[2]), STEEL, MAT.Metal) end
+    W("BenchShelf", V(6.4, 0.4, 20.6), c * CF(0, 1.6, 0), RGB(70, 72, 74), MAT.Metal)
+    W("Vice", V(1.6, 1.4, 2.2), c * CF(1.6, 6.45, -7), RGB(40, 60, 96), MAT.Metal)
+    W("ViceJaw", V(1.8, 1, 0.5), c * CF(1.6, 7.3, -7.9), RGB(60, 62, 64), MAT.Metal)
+    W("Toolbox", V(3, 2, 5.4), c * CF(-0.6, 6.75, 3), RED, MAT.Metal)
+    W("ToolboxLid", V(3.1, 0.3, 5.5), c * CF(-0.6, 7.9, 3), RGB(120, 30, 26), MAT.Metal)
+    W("Board", V(0.4, 9, 20), c * CF(-3.4, 11, 0), RGB(96, 76, 50), MAT.Wood)   -- 挂工具的板
+    for i = 0, 6 do W("Tool", V(0.3, 2.2 + (i % 3) * 0.7, 0.5), c * CF(-3.1, 11.4 - (i % 2) * 1.6, -8 + i * 2.6), RGB(150, 152, 156), MAT.Metal) end
+  end
+  do
+    local c = CF(-91.5, 0, -4)
+    W("Cabinet", V(4.4, 9.4, 7.6), c * CF(0, 4.9, 0), RED, MAT.Metal)
+    for i = 0, 4 do W("Drawer", V(0.2, 0.2, 7), c * CF(2.25, 1.6 + i * 1.7, 0), RGB(100, 26, 22), MAT.Metal) end
+    for i = 0, 4 do W("Handle", V(0.3, 0.3, 3), c * CF(2.4, 2.3 + i * 1.7, 0), RGB(170, 172, 176), MAT.Metal) end
+    for _, d in ipairs({ { -1.6, -3.2 }, { 1.6, -3.2 }, { -1.6, 3.2 }, { 1.6, 3.2 } }) do W("Caster", V(0.5, 0.9, 0.9), c * CF(d[1], 0.45, d[2]), BLACK, MAT.Rubber, Enum.PartType.Cylinder) end
+  end
+  do
+    local c = CF(89, 0, 116)
+    for _, dz in ipairs({ -14, 0, 14 }) do
+      W("RackPost", V(0.7, 24, 0.7), c * CF(-3, 12, dz), RGB(40, 70, 110), MAT.Metal)
+      W("RackPost", V(0.7, 24, 0.7), c * CF(3, 12, dz), RGB(40, 70, 110), MAT.Metal)
+    end
+    local rr = Random.new(23)
+    for lv = 0, 3 do
+      W("RackShelf", V(6.6, 0.5, 28.6), c * CF(0, 1 + lv * 7, 0), RGB(190, 110, 40), MAT.Metal)
+      for i = 0, 3 do
+        if rr:NextNumber() < 0.8 then
+          local h = rr:NextNumber(2.4, 5)
+          W("RackBox", V(5, h, rr:NextNumber(4, 6)), c * CF(0, 1.25 + lv * 7 + h / 2, -10.5 + i * 7), (rr:NextNumber() < 0.5) and RGB(150, 122, 82) or OLIVE, MAT.Cardboard)
+        end
+      end
+    end
+  end
+  -- 黄色的检修梯台：四条腿、平台、栏杆、一跑斜梯
+  do
+    local c = CF(60, 0, 76) * ANG(0, -0.2, 0)
+    local Y = RGB(204, 160, 40)
+    for _, d in ipairs({ { -5, -3.4 }, { 5, -3.4 }, { -5, 3.4 }, { 5, 3.4 } }) do W("StandLeg", V(0.6, 11, 0.6), c * CF(d[1], 5.5, d[2]), Y, MAT.Metal) end
+    W("StandDeck", V(11, 0.5, 7.6), c * CF(0, 11, 0), RGB(72, 74, 76), MAT.DiamondPlate)
+    for _, d in ipairs({ { -5, -3.4 }, { 5, -3.4 }, { -5, 3.4 }, { 5, 3.4 } }) do W("StandPost", V(0.4, 4.4, 0.4), c * CF(d[1], 13.4, d[2]), Y, MAT.Metal) end
+    W("StandRail", V(10.4, 0.4, 0.4), c * CF(0, 15.5, -3.4), Y, MAT.Metal)
+    W("StandRail", V(10.4, 0.4, 0.4), c * CF(0, 13.4, -3.4), Y, MAT.Metal)
+    W("StandRail", V(0.4, 0.4, 7.2), c * CF(5, 15.5, 0), Y, MAT.Metal)
+    W("StandRail", V(0.4, 0.4, 7.2), c * CF(5, 13.4, 0), Y, MAT.Metal)
+    W("StandBrace", V(10.2, 0.4, 0.4), c * CF(0, 4, -3.4) * ANG(0, 0, 0.5), Y, MAT.Metal)
+    W("StandBrace", V(10.2, 0.4, 0.4), c * CF(0, 4, 3.4) * ANG(0, 0, -0.5), Y, MAT.Metal)
+    for i = 0, 8 do W("StandStep", V(1.9, 0.3, 6.4), c * CF(-6.4 - i * 1.5, 10.4 - i * 1.22, 0), RGB(72, 74, 76), MAT.DiamondPlate) end
+    for _, dz in ipairs({ -3.3, 3.3 }) do
+      W("StandStringer", V(18, 0.5, 0.4), c * CF(-12.4, 5.5, dz) * ANG(0, 0, 0.683), Y, MAT.Metal)
+      W("StandHand", V(18, 0.35, 0.35), c * CF(-12.4, 9.6, dz) * ANG(0, 0, 0.683), Y, MAT.Metal)
+    end
+  end
+  -- 地上盘着的电缆：十二段拼一圈，拖出去一截
+  local function coil(x, z, r, tailYaw)
+    local n = 14
+    for i = 0, n - 1 do
+      local a0 = i / n * math.pi * 2
+      local seg = W("Cable", V(0.36, 0.36, 2 * r * math.sin(math.pi / n) + 0.2), CF(x + math.cos(a0) * r, 0.2, z + math.sin(a0) * r) * ANG(0, -a0, 0), RGB(20, 20, 22), MAT.Rubber)
+      seg.CastShadow = false
+    end
+    local t = W("Cable", V(0.36, 0.36, r * 3.4), CF(x, 0.2, z) * ANG(0, tailYaw, 0) * CF(0, 0, -r * 2.6), RGB(20, 20, 22), MAT.Rubber)
+    t.CastShadow = false
+  end
+  coil(-33, 47, 6.5, 0.7)
+  coil(31, -47, 5, 2.4)
+  coil(-52, -30, 4, -0.5)
+  -- 路锥：地沟四角；油壶、千斤顶小车
+  local function cone(x, z)
+    W("ConeBase", V(0.3, 2.6, 2.6), CF(x, 0.15, z) * UP, RGB(30, 30, 32), MAT.Rubber, Enum.PartType.Cylinder)
+    W("Cone", V(1.4, 1.9, 1.9), CF(x, 1, z) * UP, RGB(226, 104, 30), MAT.Plastic, Enum.PartType.Cylinder)
+    W("ConeBand", V(0.5, 1.5, 1.5), CF(x, 1.9, z) * UP, RGB(236, 236, 230), MAT.Plastic, Enum.PartType.Cylinder)
+    W("Cone", V(1.1, 1, 1), CF(x, 2.7, z) * UP, RGB(226, 104, 30), MAT.Plastic, Enum.PartType.Cylinder)
+  end
+  cone(33, -9)
+  cone(49, -9)
+  cone(33, 61)
+  cone(49, 61)
+  for i = 0, 2 do
+    W("JerryCan", V(1.2, 3, 2.3), CF(-51 + i * 1.6, 1.5, 53.5 + (i % 2) * 0.5) * ANG(0, 0.3 * i, 0), (i == 1) and RGB(60, 70, 48) or OLIVE, MAT.Metal)
+    W("JerryCap", V(0.5, 0.4, 0.5), CF(-51 + i * 1.6, 3.2, 54.2 + (i % 2) * 0.5), RGB(30, 30, 30), MAT.Metal)
+  end
+  do
+    local c = CF(-31, 0, 12) * ANG(0, 0.5, 0)
+    W("Jack", V(3, 1, 7), c * CF(0, 0.9, 0), RED, MAT.Metal)
+    W("JackArm", V(1.6, 0.8, 4.4), c * CF(0, 1.9, -0.6) * ANG(0.28, 0, 0), RGB(120, 30, 26), MAT.Metal)
+    W("JackPad", V(0.4, 1.6, 1.6), c * CF(0, 2.7, -2.8) * UP, RGB(60, 62, 64), MAT.Metal, Enum.PartType.Cylinder)
+    W("JackHandle", V(0.3, 0.3, 7.5), c * CF(0, 3.2, 5.4) * ANG(0.6, 0, 0), RGB(40, 40, 42), MAT.Metal)
+    for _, d in ipairs({ { -1.7, -3 }, { 1.7, -3 }, { -1.7, 3 }, { 1.7, 3 } }) do W("JackWheel", V(0.5, 1, 1), c * CF(d[1], 0.5, d[2]), BLACK, MAT.Rubber, Enum.PartType.Cylinder) end
+  end
+end
+
+local function build()
+  local m = Instance.new("Model")
+  m.Name = "HangarStage"
+  shell(m)
+  lights(m)
+  props(m)
+  model = m
+end
+
+---------------------------------------------------------------- 镜头
+
+local function camCF()
+  local v = view
+  local yaw = v.sy + math.sin(v.t * 0.11) * 0.03   -- 不动的时候也微微晃
+  local pitch = v.sp + math.sin(v.t * 0.17) * 0.006
+  local cp = math.cos(pitch)
+  local tgt = V(0, v.sh, 0)
+  local eye = tgt + V(math.sin(yaw) * cp, math.sin(pitch), math.cos(yaw) * cp) * v.sd
+  eye = V(math.clamp(eye.X, -HX + 8, HX - 8), math.clamp(eye.Y, 2.4, HY - 10), math.clamp(eye.Z, Z0 + 8, Z1 - 8))   -- 别钻到墙外面
+  return ORIGIN * CFrame.lookAt(eye, tgt) * ANG(math.rad(-3.5), 0, 0)   -- 镜头压低一点：车在画面里偏上（底下是阵容卡片）
+end
+
+---------------------------------------------------------------- 给 TechUI 的
+
+-- 车摆在哪（底座系：原点在地面正中，车头朝 −Z）
+function Stage.floorCF() return ORIGIN end
+
+-- 打开 / 关上。keepCam：镜头已经有人接手了（坐进了车、开了主菜单），关的时候别动镜头
+function Stage.show(on, keepCam)
+  local cam = workspace.CurrentCamera
+  if on then
+    if not model then
+      local ok, err = pcall(build)
+      if not ok then
+        warn("[全面大战场] 机库厂房没搭好：" .. tostring(err))
+        return false
+      end
+    end
+    model.Parent = workspace
+    shown = true
+    if cam then
+      cam.CameraType = Enum.CameraType.Scriptable
+      cam.FieldOfView = FOV
+      cam.CFrame = camCF()
+    end
+  else
+    if model then model.Parent = nil end
+    if shown and not keepCam and cam then
+      cam.CameraType = Enum.CameraType.Custom
+      cam.FieldOfView = 70
+    end
+    shown = false
+  end
+  return shown
+end
+
+function Stage.active() return shown end
+
+-- 把一辆车（已经摆在 floorCF 上的模型）停进来；dims = { L, W, H }：镜头按车的大小退到合适的距离
+function Stage.put(m, dims)
+  if slot then
+    slot:Destroy()
+    slot = nil
+  end
+  if not (m and model) then
+    if m then m:Destroy() end
+    return
+  end
+  m.Parent = model
+  slot = m
+  local L, Wd, H = (dims and dims.L) or 26, (dims and dims.W) or 12, (dims and dims.H) or 9
+  view.base = math.clamp(math.max(L * 1.5, Wd * 2, H * 3.2) + 12, 40, 118)
+  view.dist = view.base
+  view.h = math.clamp(H * 0.3, 2, 6)
+end
+
+function Stage.drag(dx, dy)
+  view.yaw -= dx * 0.006
+  view.pitch = math.clamp(view.pitch + dy * 0.004, 0.03, 0.8)
+end
+
+function Stage.zoom(k)
+  view.dist = math.clamp(view.dist * (1 - 0.1 * k), view.base * 0.55, view.base * 1.5)
+end
+
+function Stage.step(dt)
+  if not shown then return end
+  local cam = workspace.CurrentCamera
+  if not cam then return end
+  local v = view
+  v.t += dt
+  local k = 1 - math.exp(-dt * 7)
+  v.sy += (v.yaw - v.sy) * k
+  v.sp += (v.pitch - v.sp) * k
+  v.sd += (v.dist - v.sd) * k
+  v.sh += (v.h - v.sh) * k
+  if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
+  if cam.FieldOfView ~= FOV then cam.FieldOfView = FOV end
+  cam.CFrame = camCF()
+end
+
+return Stage
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="179">
+          <Properties>
             <string name="Name">Hatch</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——地面车的舱盖、车门、跳板开合，车长探出舱口，上车的人爬上车钻进舱口 / 从尾门走进去
 --   （用户 11-24：「坦克舱门开合动画」「进入载具的动画」「坦克要有精细的roblox人物有不同的动画来负责干不同的活」
@@ -50599,7 +51217,7 @@ return Hatch
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -51428,7 +52046,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -51542,7 +52160,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -54384,7 +55002,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -55106,7 +55724,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -55651,7 +56269,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -55803,7 +56421,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -57938,7 +58556,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -59013,7 +59631,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -61750,7 +62368,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -62016,7 +62634,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -62178,7 +62796,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -62672,7 +63290,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -63158,7 +63776,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -63334,7 +63952,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -63647,7 +64265,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -63969,7 +64587,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -64186,7 +64804,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -64320,7 +64938,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -64873,7 +65491,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -65492,7 +66110,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="199">
+        <Item class="ModuleScript" referent="200">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -65773,7 +66391,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="200">
+        <Item class="ModuleScript" referent="201">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -66030,7 +66648,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="201">
+        <Item class="ModuleScript" referent="202">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -66185,7 +66803,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="202">
+        <Item class="ModuleScript" referent="203">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -66891,7 +67509,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="203">
+        <Item class="ModuleScript" referent="204">
           <Properties>
             <string name="Name">Radar</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式机载雷达
@@ -67313,7 +67931,7 @@ return Radar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="204">
+        <Item class="ModuleScript" referent="205">
           <Properties>
             <string name="Name">Ride</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
@@ -67441,7 +68059,7 @@ return Ride
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="205">
+        <Item class="ModuleScript" referent="206">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -68038,7 +68656,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="206">
+        <Item class="ModuleScript" referent="207">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -68540,7 +69158,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="207">
+        <Item class="ModuleScript" referent="208">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -69487,7 +70105,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="208">
+        <Item class="ModuleScript" referent="209">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -70286,7 +70904,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="209">
+        <Item class="ModuleScript" referent="210">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -71038,7 +71656,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="210">
+        <Item class="ModuleScript" referent="211">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -71122,7 +71740,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="211">
+        <Item class="ModuleScript" referent="212">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -71872,7 +72490,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="212">
+        <Item class="ModuleScript" referent="213">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -72084,7 +72702,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="213">
+        <Item class="ModuleScript" referent="214">
           <Properties>
             <string name="Name">Stream</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——流式加载（Workspace.StreamingEnabled）的配套：用户 11-24 晚「streaming 优化」「各种 3A 游戏的那种优化」
@@ -72149,7 +72767,7 @@ return Stream
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="214">
+        <Item class="ModuleScript" referent="215">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -72604,7 +73222,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="215">
+        <Item class="ModuleScript" referent="216">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -73824,7 +74442,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="216">
+        <Item class="ModuleScript" referent="217">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -74342,15 +74960,17 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="217">
+        <Item class="ModuleScript" referent="218">
           <Properties>
             <string name="Name">TechUI</string>
-            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库（出击阵容、出击）和科技树界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
---   「不要让玩家拿枪之类的了 就跟战雷完全一样」）
---   机库：没出击的时候（Config.Wt.noInfantry 开着）盖住原来的步兵部署页——上面选系（中 德 美 日 俄）、开科技树，底下一排出击阵容（最多 5 辆），
---     每张卡点「出击」直接坐在车里 / 飞机里出现在自己基地（服务器 Tech.lua deployVeh）
---   科技树：一棵树一张格子——每级一行（I～VII，左边写年代），每类一列，同一列上下连线；格子的颜色：买下的绿、研究完没买的蓝、正在研究的黄（带进度条）、
---     能研究的灰、还没开的暗；点一格右边出详情：年份、战斗等级、研究点、价钱，「研究」「购买」「放进出击阵容」；暂借别的型号的写「暂用 某某」
+            <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库（出击阵容、出击）和研究（科技树）界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
+--   「不要让玩家拿枪之类的了 就跟战雷完全一样」；同一天给了两张截图：「一进入游戏的界面给我改成这样」「然后点研究就跳科技树」）
+--   机库：没出击的时候（Config.Wt.noInfantry 开着）盖住原来的步兵部署页。背后是 3D 厂房（HangarStage.lua），出击阵容里选中的那一辆停在正中；
+--     界面照截图的布局：顶上一排（等级圈 + 经验条、主菜单 / 技能树 / 研究 / 试驾四个括号角按钮、四个方图标键、右上金币）、左边一列国旗选系、
+--     右边「乘员」框、底下五个槽位（出击阵容，最多 5 辆）、右下这一局的信息和橙色括号角的「战斗」——出的是选中的那一辆（服务器 Tech.lua deployVeh）
+--   研究：一个窗口压在机库上——左边一列国旗，中间横着滚的等级列（I～VII），每条线一行，横线连着前置；格子底边的颜色：买下的绿、研究完没买的蓝、
+--     正在研究的黄（带进度）、能研究的白、还没开的暗；没开的等级盖一块暗板（锁、要先研究完上一级的几辆）；点一格右边出详情：
+--     年份、战斗等级、研究点、价钱，「研究」「购买」「放进出击阵容」「试驾」「资料卡」；暂借别的型号的写「暂用 某某」
 --   存档在服务器（玩家属性 Tree，JSON）；动作发 Act：treeNat / treeResearch / treeBuy / treeLineup / deployVeh
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -74422,6 +75042,7 @@ function TechUI.init(G)
   gui.ResetOnSpawn = false
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 12
+  gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling   -- 子零件叠在父零件上面、同级的按 ZIndex（默认的 Global 下，ZIndex 高的面板会盖住自己的内容）
   gui.Parent = me:WaitForChild("PlayerGui")
   local function frame(parent, size, pos, col, tr)
     local f = Instance.new("Frame")
@@ -74463,29 +75084,211 @@ function TechUI.init(G)
   end
   local function clear(f) for _, c in ipairs(f:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end end
 
-  ---------------------------------------------------------------- 机库
-  local hangar = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  ---------------------------------------------------------------- 机库（用户 11-25 的两张截图：「一进入游戏的界面给我改成这样」）
+  --   背后是 3D 厂房（HangarStage.lua），出击阵容里选中的那一辆停在正中；界面压在上面：
+  --   顶上一排：等级圈 + 经验条 · 主菜单 / 技能树 / 研究 / 试驾（黑底，左上、右下两个括号角）· 四个方图标键（改装、只看车、帮助、资料卡）· 右上金币
+  --   左边一列国旗选系；右边「乘员」框和选中这一辆的资料；底下五个槽位（出击阵容）；右下这一局的信息（阶段、战斗等级、三种模式）和橙色括号角的「战斗」
+  -- 整套按 1280 × 720 画，窗口大了小了整体缩放（手机按 1000 × 500）
+  local H = { modeBtns = {}, vw = 1280, vh = 720 }   -- 机库界面上要改字、要重排的那些零件；vw × vh 是缩放以后的画布
+  local root = frame(gui, UDim2.fromScale(1, 1), nil, nil, 1)
+  root.Name = "Root"
+  do
+    local sc = Instance.new("UIScale")
+    sc.Parent = root
+    local function fit()
+      local c = workspace.CurrentCamera
+      local vp = c and c.ViewportSize or Vector2.new(1280, 720)
+      local s = math.clamp(math.min(vp.X / (mobile and 1000 or 1280), vp.Y / (mobile and 500 or 720)), 0.4, 2.2)
+      sc.Scale = s
+      root.Size = UDim2.fromScale(1 / s, 1 / s)
+      H.vw, H.vh = vp.X / s, vp.Y / s
+    end
+    fit()
+    local c = workspace.CurrentCamera
+    if c then c:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+  end
+  local hangar = frame(root, UDim2.fromScale(1, 1), nil, nil, 1)
   hangar.Name = "Hangar"
   hangar.Visible = false
-  local M0 = mobile and 16 or 40
-  local title = text(hangar, L("机库", "HANGAR"), UDim2.new(0, 300, 0, 34), UDim2.new(0, M0, 0, 20), 26)
-  title.Font = Enum.Font.GothamBold
-  local phaseT = text(hangar, "", UDim2.new(0, 360, 0, 20), UDim2.new(0, M0, 0, 56), 14, DIM)
-  local natBar = frame(hangar, UDim2.new(1, -2 * M0, 0, 34), UDim2.new(0, M0, 0, 86), nil, 1)
-  local natLayout = Instance.new("UIListLayout")
-  natLayout.FillDirection = Enum.FillDirection.Horizontal
-  natLayout.Padding = UDim.new(0, 6)
-  natLayout.Parent = natBar
-  local treeBtn = button(hangar, L("科技树", "Tech tree"), UDim2.new(0, 140, 0, 34), UDim2.new(1, -M0 - 140, 0, 86))
-  local brT = text(hangar, "", UDim2.new(1, -2 * M0, 0, 24), UDim2.new(0, M0, 1, -262), 16, WHITE)
-  local row = frame(hangar, UDim2.new(1, -2 * M0, 0, 182), UDim2.new(0, M0, 1, -228), nil, 1)
-  local rowLayout = Instance.new("UIListLayout")
-  rowLayout.FillDirection = Enum.FillDirection.Horizontal
-  rowLayout.Padding = UDim.new(0, 10)
-  rowLayout.Parent = row
-  local hint = text(hangar, L("选一辆出击：直接坐在车里 / 飞机里出现在自己基地。车没了回到这里。", "Pick a vehicle: you spawn inside it at your base. Lose it and you come back here."),
-    UDim2.new(1, -2 * M0, 0, 20), UDim2.new(0, M0, 1, -40), 13, FAINT)
   G.hangarGui = hangar   -- 测试用
+  local M0 = mobile and 14 or 24
+  local AMBER = RGB(255, 158, 44)
+  local INK = RGB(8, 9, 10)
+  local sel = { key = nil }     -- 阵容里选中的那一辆（厂房里停的、「战斗」出的）
+  local function round(f)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(1, 0)
+    c.Parent = f
+    return f
+  end
+  local function stroke(f, col, tr, th)
+    local s = Instance.new("UIStroke")
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Color, s.Transparency, s.Thickness = col, tr or 0, th or 1
+    s.Parent = f
+    return s
+  end
+  -- 括号角：左上、右下各一个「L」（len 长、th 粗、往外探 off）
+  local function corners(b, col, len, th, off)
+    for i = 1, 2 do
+      local tl = i == 1
+      local s = tl and 0 or 1
+      local h = frame(b, UDim2.new(0, len, 0, th), UDim2.new(s, tl and -off or (off - len), s, tl and -off or (off - th)), col, 0)
+      local v = frame(b, UDim2.new(0, th, 0, len), UDim2.new(s, tl and -off or (off - th), s, tl and -off or (off - len)), col, 0)
+      h.Name, v.Name = "Corner", "Corner"
+    end
+  end
+  -- 右端斜着切一刀（经验条、金币条）：横向渐变转 25°，到头那一段透明；w × h 是这一条的像素大小
+  local function slant(f, w, h)
+    local g = f:FindFirstChild("Slant")
+    if not g then
+      g = Instance.new("UIGradient")
+      g.Name = "Slant"
+      g.Rotation = 25
+      g.Parent = f
+    end
+    local a, b = w * 0.906, h * 0.423
+    local t0 = math.clamp(a / math.max(a + b, 1), 0.03, 0.995)
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(t0 - 0.012, 0),
+      NumberSequenceKeypoint.new(t0, 1), NumberSequenceKeypoint.new(1, 1) })
+  end
+  local function fmtNum(n)
+    local s = tostring(math.floor(n or 0))
+    local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+    if out:sub(1, 1) == "," then out = out:sub(2) end
+    return out
+  end
+  -- 黑底括号角按钮：一行字，或者大字底下一行小的英文
+  local function navBtn(parent, label, sub, size, pos, col)
+    local b = Instance.new("TextButton")
+    b.AutoButtonColor = false
+    b.Text = ""
+    b.Size, b.Position = size, pos
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
+    b.Parent = parent
+    corners(b, col or WHITE, 9, 2, 4)
+    local two = sub ~= nil and sub ~= ""
+    local t1 = text(b, label, UDim2.new(1, -8, two and 0.56 or 1, 0), UDim2.new(0, 4, two and 0.08 or 0, 0), mobile and 13 or 15, col or WHITE, Enum.TextXAlignment.Center)
+    t1.Name = "Label"
+    t1.Font = Enum.Font.GothamBold
+    if two then
+      local t2 = text(b, sub, UDim2.new(1, -8, 0.3, 0), UDim2.new(0, 4, 0.62, 0), 8, DIM, Enum.TextXAlignment.Center)
+      t2.Name = "Sub"
+    end
+    b.MouseEnter:Connect(function() b.BackgroundColor3 = RGB(40, 44, 48) end)
+    b.MouseLeave:Connect(function() b.BackgroundColor3 = INK end)
+    return b, t1
+  end
+  -- 国旗（画的：条纹、圆、星），w × h 像素
+  local function flag(parent, nat, w, h)
+    local f = frame(parent, UDim2.new(0, w, 0, h), nil, RGB(242, 242, 242), 0)
+    f.Name = "Flag"
+    f.ClipsDescendants = true
+    local function stripes(cols)
+      for i, c in ipairs(cols) do frame(f, UDim2.new(1, 0, 1 / #cols, 1), UDim2.new(0, 0, (i - 1) / #cols, 0), c, 0) end
+    end
+    local function star(sz, x, y)
+      local t = text(f, "★", UDim2.new(0, sz * 1.3, 0, sz * 1.3), UDim2.new(0, x - sz * 0.65, 0, y - sz * 0.65), sz, RGB(255, 214, 0), Enum.TextXAlignment.Center)
+      t.TextTruncate = Enum.TextTruncate.None
+    end
+    if nat == "de" then
+      stripes({ RGB(18, 18, 18), RGB(206, 32, 38), RGB(248, 198, 0) })
+    elseif nat == "ru" then
+      stripes({ RGB(244, 244, 244), RGB(0, 58, 166), RGB(214, 44, 32) })
+    elseif nat == "jp" then
+      local d = math.floor(h * 0.58)
+      round(frame(f, UDim2.new(0, d, 0, d), UDim2.new(0.5, -d / 2, 0.5, -d / 2), RGB(190, 0, 40), 0))
+    elseif nat == "us" then
+      local cols = {}
+      for i = 1, 7 do cols[i] = (i % 2 == 1) and RGB(180, 36, 52) or RGB(244, 244, 244) end
+      stripes(cols)
+      local canton = frame(f, UDim2.new(0, math.floor(w * 0.44), 0, math.floor(h * 4 / 7) + 1), nil, RGB(42, 58, 116), 0)
+      for r = 0, 2 do
+        for c = 0, 3 do round(frame(canton, UDim2.new(0, 2, 0, 2), UDim2.new((c + 0.5) / 4, -1, (r + 0.5) / 3, -1), WHITE, 0)) end
+      end
+    else   -- cn
+      f.BackgroundColor3 = RGB(208, 44, 34)
+      star(math.floor(h * 0.44), w * 0.2, h * 0.3)
+      for _, p in ipairs({ { 0.38, 0.12 }, { 0.46, 0.26 }, { 0.46, 0.44 }, { 0.38, 0.58 } }) do star(math.max(6, math.floor(h * 0.16)), w * p[1], h * p[2]) end
+    end
+    return f
+  end
+  -- 一列国旗（选系）：选中的带括号角，别的压暗；names：旁边写国名
+  local function natTiles(col, w, h, gap, cur, onPick, names)
+    clear(col)
+    for i, nat in ipairs(TT.NATIONS) do
+      local N = TT.NAT[nat]
+      local on = nat == cur
+      local b = Instance.new("TextButton")
+      b.Name = "Nat_" .. nat
+      b.AutoButtonColor = false
+      b.Text = ""
+      b.BackgroundTransparency, b.BorderSizePixel = 1, 0
+      b.Size, b.Position = UDim2.new(0, w, 0, h), UDim2.new(0, 0, 0, (i - 1) * (h + gap))
+      b.Parent = col
+      flag(b, nat, w, h)
+      if on then
+        corners(b, WHITE, 8, 2, 4)
+      else
+        frame(b, UDim2.fromScale(1, 1), nil, Color3.new(0, 0, 0), 0.5).Name = "Dim"
+      end
+      if names then
+        local t = text(b, zh and N.name or N.en, UDim2.new(0, 110, 0, 16), UDim2.new(1, 10, 0.5, -8), 12, on and WHITE or RGB(186, 190, 194))
+        t.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+        t.TextStrokeTransparency = 0.6
+      end
+      b.MouseButton1Click:Connect(function() onPick(nat) end)
+    end
+  end
+
+  -- 机库背后的厂房（HangarStage.lua）：按住空白处拖动转着看车、滚轮拉近拉远
+  local Stage = nil
+  do
+    local ok, S2 = pcall(function() return require(script.Parent:WaitForChild("HangarStage", 3)) end)
+    if ok and type(S2) == "table" then Stage = S2 end
+    -- 点在空白处（没点到按钮、上面也没开着别的窗口）才算拖车；位移自己拿位置算（鼠标没锁定时 Delta 不一定有）
+    local dragIo, last = nil, nil
+    local function free()
+      return hangar.Visible and not ((G.crewGui and G.crewGui.Visible) or (G.modsGui and G.modsGui.Visible)
+        or (G.infoGui and G.infoGui.Visible) or (G.treeGui and G.treeGui.Visible))
+    end
+    UIS.InputBegan:Connect(function(io, gp)
+      if gp or not Stage or not free() then return end
+      if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
+        dragIo, last = io, io.Position
+      end
+    end)
+    UIS.InputEnded:Connect(function(io)
+      if io == dragIo or io.UserInputType == Enum.UserInputType.MouseButton1 then dragIo, last = nil, nil end
+    end)
+    UIS.InputChanged:Connect(function(io, gp)
+      if not (Stage and hangar.Visible) then return end
+      if io.UserInputType == Enum.UserInputType.MouseWheel then
+        if not gp and free() then Stage.zoom(io.Position.Z) end
+      elseif last and dragIo and (io == dragIo
+        or (io.UserInputType == Enum.UserInputType.MouseMovement and dragIo.UserInputType == Enum.UserInputType.MouseButton1)) then
+        local p = io.Position
+        Stage.drag(p.X - last.X, p.Y - last.Y)
+        last = p
+      end
+    end)
+    -- 上下两条压暗的渐变：字压在 3D 画面上也看得清
+    for i = 1, 2 do
+      local top = i == 1
+      local sh = frame(hangar, UDim2.new(1, 0, 0, top and 150 or 230), UDim2.new(0, 0, top and 0 or 1, top and 0 or -230), Color3.new(0, 0, 0), 0)
+      sh.Name = "Shade"
+      sh.ZIndex = 0
+      local g = Instance.new("UIGradient")
+      g.Rotation = 90
+      g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, top and 0.35 or 1), NumberSequenceKeypoint.new(1, top and 1 or 0.3) })
+      g.Parent = sh
+    end
+  end
+  local ui = frame(hangar, UDim2.fromScale(1, 1), nil, nil, 1)    -- 整套界面（「只看车」时整个藏起来）
+  ui.Name = "UI"
+  local mid = frame(ui, UDim2.fromScale(1, 1), nil, nil, 1)       -- 中间那一层（国旗、乘员、这一局的信息）：开着研究窗口时让开
+  mid.Name = "Mid"
+  H.mid = mid
 
   -- 三种模式（服务器 Tech.lua：准备阶段按票数，开战定住，workspace 属性 WtMode；每人投的票是玩家属性 ModeVote）
   local MODE_NAME = { ab = L("街机", "Arcade"), rb = L("历史", "Realistic"), sb = L("全真", "Simulator") }
@@ -74494,20 +75297,243 @@ function TechUI.init(G)
     rb = L("只标近处看得见的敌人，飞机从跑道起飞 · 奖励 ×1.3", "Only nearby visible enemies marked, aircraft take off from the runway · rewards ×1.3"),
     sb = L("不标敌人，只能第一人称（瞄准镜、车内、座舱）· 奖励 ×1.6", "No markers, first person only (sights, interior, cockpit) · rewards ×1.6"),
   }
-  local modeBar = frame(hangar, UDim2.new(0, mobile and 300 or 420, 0, 30), UDim2.new(1, -M0 - (mobile and 300 or 420), 0, 128), nil, 1)
-  local mlay = Instance.new("UIListLayout")
-  mlay.FillDirection = Enum.FillDirection.Horizontal
-  mlay.HorizontalAlignment = Enum.HorizontalAlignment.Right
-  mlay.Padding = UDim.new(0, 6)
-  mlay.Parent = modeBar
-  local modeT = text(hangar, "", UDim2.new(0, mobile and 300 or 520, 0, 18), UDim2.new(1, -M0 - (mobile and 300 or 520), 0, 164), 12, DIM, Enum.TextXAlignment.Right)
-  modeT.Name = "ModeT"
-  local modeBtns = {}
-  for _, m in ipairs({ "ab", "rb", "sb" }) do
-    local b = button(modeBar, MODE_NAME[m], UDim2.new(0, mobile and 96 or 132, 1, 0))
-    b.Name = "Mode_" .. m
-    b.MouseButton1Click:Connect(function() act("wtModeVote", m) end)
-    modeBtns[m] = b
+  -- 选中这一辆的乘员（顶上「技能树」、右边「乘员」框）
+  local function crewOfSel()
+    local keys = lineupOf(tree.nat)
+    local i = sel.key and table.find(keys, sel.key)
+    if i and G.openCrew then G.openCrew(tree.nat, i, sel.key) end
+  end
+  -- 「帮助」：怎么玩
+  local function toggleHelp()
+    if H.help then
+      H.help.Visible = not H.help.Visible
+      return
+    end
+    local p = frame(hangar, UDim2.new(0, 560, 0, 306), UDim2.new(0.5, -280, 0.5, -170), RGB(10, 11, 13), 0.04)
+    p.Name = "Help"
+    p.ZIndex = 20
+    p.Active = true
+    stroke(p, RGB(110, 114, 118), 0.4, 1)
+    corners(p, WHITE, 12, 2, 5)
+    local t = text(p, L("怎么玩", "HOW TO PLAY"), UDim2.new(1, -80, 0, 26), UDim2.new(0, 18, 0, 12), 18)
+    t.Font = Enum.Font.GothamBold
+    local x = button(p, "×", UDim2.new(0, 32, 0, 28), UDim2.new(1, -44, 0, 10))
+    x.MouseButton1Click:Connect(function() p.Visible = false end)
+    local lines = {
+      L("「研究」开科技树：打仗挣研究点，研究完用金币买下，再放进出击阵容（最多 5 辆）。", "RESEARCH opens the tech tree: earn research points in battle, buy researched vehicles with coins, then add them to your lineup (up to 5)."),
+      L("底下选一辆，点「战斗」（或卡片上的「出击」）：直接坐在车里 / 飞机里出现在自己基地；车没了回到这里。", "Pick a slot and press TO BATTLE (or Deploy on the card): you spawn inside it at your base. Lose it and you come back here."),
+      L("准备阶段第一辆免费；开战以后出车要出击点（SP），打得好挣得多。每辆车有一次备用。", "The first vehicle is free during preparation; after that deploying costs spawn points (SP) earned in battle. Each vehicle has one backup."),
+      L("「技能树」给这一位的乘员加点；齿轮是这辆车的改装；「试驾」随便哪一辆都能开出去试；「i」看资料卡和装甲。", "CREW spends crew skill points; the gear opens this vehicle's modifications; TEST DRIVE works for any vehicle; \"i\" shows stats and armor."),
+      L("右下选这一局的模式：街机 / 历史 / 全真（准备阶段按票数定）。左边的国旗换系。", "Bottom right: vote for the mode — Arcade / Realistic / Simulator (decided by votes during preparation). Flags on the left switch nation."),
+      L("按住空白处拖动转着看车，滚轮拉近拉远；眼睛图标把界面藏起来只看车。进了车按 F1 看全部按键。", "Drag on empty space to orbit the vehicle, wheel to zoom; the eye icon hides the interface. Press F1 in a vehicle for all keys."),
+    }
+    for i, s in ipairs(lines) do
+      local l = text(p, s, UDim2.new(1, -36, 0, 36), UDim2.new(0, 18, 0, 48 + (i - 1) * 42), 13, RGB(214, 218, 222))
+      l.TextWrapped, l.TextTruncate, l.TextYAlignment = true, Enum.TextTruncate.None, Enum.TextYAlignment.Top
+    end
+    H.help = p
+  end
+
+  do   -- 顶上一排
+    local TY, TH = mobile and 14 or 28, mobile and 30 or 34
+    local LX, XW = mobile and 132 or 176, mobile and 96 or 120
+    local NW, NG = mobile and 88 or 106, mobile and 10 or 14
+    local IW, IG = mobile and 30 or 34, mobile and 8 or 14
+    H.TY, H.TH = TY, TH
+    -- 经验条（右端斜的）+ 压在它左头上的等级圈
+    local xpBg = frame(ui, UDim2.new(0, XW, 0, 18), UDim2.new(0, LX + 20, 0, TY + (TH - 18) / 2), INK, 0.1)
+    xpBg.Name = "Xp"
+    slant(xpBg, XW, 18)
+    local xpFill = frame(xpBg, UDim2.new(0, 0, 1, 0), nil, RGB(44, 146, 246), 0)
+    xpFill.Name = "Fill"
+    local xpT = text(xpBg, "", UDim2.new(1, -26, 1, 0), UDim2.new(0, 18, 0, 0), 11, WHITE)
+    xpT.Name = "XpT"
+    local lv = round(frame(ui, UDim2.new(0, TH, 0, TH), UDim2.new(0, LX, 0, TY), RGB(6, 7, 8), 0))
+    lv.Name = "Level"
+    stroke(lv, WHITE, 0, 2)
+    local lvT = text(lv, "1", UDim2.fromScale(1, 1), nil, mobile and 15 or 18, WHITE, Enum.TextXAlignment.Center)
+    lvT.Font = Enum.Font.GothamBold
+    H.xpW, H.xpFill, H.xpT, H.lvT = XW, xpFill, xpT, lvT
+    -- 四个大键
+    local x = LX + 20 + XW + 14
+    local navs = {
+      { "NavMenu", L("主菜单", "MAIN MENU"), "MENU", function() if G.showMenu then G.showMenu() end end },
+      { "NavCrew", L("技能树", "CREW SKILLS"), "CREW", crewOfSel },
+      { "NavResearch", L("研究", "RESEARCH"), "RESEARCH", function() if G.openTechTree then G.openTechTree() end end },
+      { "NavTest", L("试驾", "TEST DRIVE"), "TEST DRIVE", function() if sel.key then act("testDrive", sel.key) end end },
+    }
+    for _, n in ipairs(navs) do
+      local b = navBtn(ui, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, TH), UDim2.new(0, x, 0, TY))
+      b.Name = n[1]
+      b.MouseButton1Click:Connect(n[4])
+      x += NW + NG
+    end
+    -- 四个方图标键（图标是拼的：齿轮、眼睛、圈里的 ? 和 i）；鼠标放上去底下出一行字
+    local LIGHT = RGB(222, 224, 226)
+    local function gear(b)
+      local c = frame(b, UDim2.new(0, 20, 0, 20), UDim2.new(0.5, -10, 0.5, -10), nil, 1)
+      for i = 0, 3 do frame(c, UDim2.new(0, 4, 0, 20), UDim2.new(0.5, -2, 0, 0), LIGHT, 0).Rotation = i * 45 end
+      round(frame(c, UDim2.new(0, 14, 0, 14), UDim2.new(0.5, -7, 0.5, -7), LIGHT, 0))
+      round(frame(c, UDim2.new(0, 6, 0, 6), UDim2.new(0.5, -3, 0.5, -3), INK, 0))
+    end
+    local function eye(b)
+      local c = round(frame(b, UDim2.new(0, 22, 0, 13), UDim2.new(0.5, -11, 0.5, -6.5), nil, 1))
+      stroke(c, LIGHT, 0, 2)
+      round(frame(c, UDim2.new(0, 7, 0, 7), UDim2.new(0.5, -3.5, 0.5, -3.5), LIGHT, 0))
+    end
+    local function letter(ch)
+      return function(b)
+        local c = round(frame(b, UDim2.new(0, 20, 0, 20), UDim2.new(0.5, -10, 0.5, -10), nil, 1))
+        stroke(c, LIGHT, 0, 2)
+        text(c, ch, UDim2.fromScale(1, 1), nil, 14, LIGHT, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+      end
+    end
+    local function selIt() return sel.key and TT.get(sel.key) end
+    local icons = {
+      { "IcoMods", L("改装", "Modifications"), gear, function() local it = selIt() if it and G.openMods then G.openMods(it) end end },
+      { "IcoView", L("只看车", "Hide interface"), eye, function() ui.Visible = false if H.back then H.back.Visible = true end end },
+      { "IcoHelp", L("帮助", "Help"), letter("?"), toggleHelp },
+      { "IcoInfo", L("资料卡 · 装甲", "Stats · armor"), letter("i"), function() local it = selIt() if it and G.openInfo then G.openInfo(it) end end },
+    }
+    x += mobile and 2 or 6
+    for _, ic in ipairs(icons) do
+      local b = Instance.new("TextButton")
+      b.Name = ic[1]
+      b.AutoButtonColor = false
+      b.Text = ""
+      b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = INK, 0.06, 0
+      b.Size, b.Position = UDim2.new(0, IW, 0, IW), UDim2.new(0, x, 0, TY + (TH - IW) / 2)
+      b.Parent = ui
+      corners(b, WHITE, 7, 2, 3)
+      ic[3](b)
+      local tip = text(b, ic[2], UDim2.new(0, 140, 0, 16), UDim2.new(0.5, -70, 1, 9), 11, WHITE, Enum.TextXAlignment.Center)
+      tip.Name = "Tip"
+      tip.TextStrokeTransparency = 0.4
+      tip.Visible = false
+      b.MouseEnter:Connect(function() b.BackgroundColor3 = RGB(40, 44, 48) tip.Visible = true end)
+      b.MouseLeave:Connect(function() b.BackgroundColor3 = INK tip.Visible = false end)
+      b.MouseButton1Click:Connect(ic[4])
+      x += IW + IG
+    end
+    -- 右上：金币
+    local CWd = mobile and 112 or 134
+    local coin = frame(ui, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (TH - 22) / 2), INK, 0.1)
+    coin.Name = "CoinBar"
+    slant(coin, CWd, 22)
+    local coinT = text(coin, "", UDim2.new(1, -34, 1, 0), UDim2.new(0, 22, 0, 0), 14, WHITE)
+    coinT.Name = "Coins"
+    local disc = round(frame(ui, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (TH - 26) / 2), RGB(226, 172, 48), 0))
+    disc.Name = "Coin"
+    stroke(disc, RGB(140, 96, 18), 0, 1.5)
+    stroke(round(frame(disc, UDim2.new(0, 16, 0, 16), UDim2.new(0.5, -8, 0.5, -8), RGB(246, 204, 92), 0)), RGB(168, 118, 26), 0.2, 1)
+    local function coins()
+      local c = me:GetAttribute("Coins")
+      coinT.Text = (me:GetAttribute("CoinsInf") == true) and "∞" or ((type(c) == "number") and fmtNum(c) or "—")
+    end
+    me:GetAttributeChangedSignal("Coins"):Connect(coins)
+    me:GetAttributeChangedSignal("CoinsInf"):Connect(coins)
+    coins()
+    -- 「只看车」以后：右上角留一个键把界面叫回来
+    local back = navBtn(hangar, L("显示界面", "SHOW INTERFACE"), nil, UDim2.new(0, 130, 0, TH), UDim2.new(1, -M0 - 130, 0, TY))
+    back.Name = "Back"
+    back.Visible = false
+    back.MouseButton1Click:Connect(function() ui.Visible = true back.Visible = false end)
+    H.back = back
+
+    -- 左边一列国旗
+    local FW, FH, FG = mobile and 44 or 58, mobile and 29 or 38, mobile and 6 or 8
+    local FY = TY + TH + (mobile and 16 or 54)
+    local natCol = frame(mid, UDim2.new(0, FW, 0, 5 * (FH + FG)), UDim2.new(0, M0, 0, FY), nil, 1)
+    natCol.Name = "Nations"
+    H.natCol, H.FW, H.FH, H.FG = natCol, FW, FH, FG
+    -- 右边：「乘员」框（点开这一位乘员的技能）+ 选中这一辆的名字、等级、乘员、改装
+    local cw = mobile and 136 or 160
+    local cb = Instance.new("TextButton")
+    cb.Name = "CrewBox"
+    cb.AutoButtonColor = false
+    cb.Text = ""
+    cb.BackgroundColor3, cb.BackgroundTransparency, cb.BorderSizePixel = INK, 0.06, 0
+    cb.Size, cb.Position = UDim2.new(0, cw, 0, 32), UDim2.new(1, -M0 - cw, 0, FY)
+    cb.Parent = mid
+    corners(cb, WHITE, 8, 2, 4)
+    local cbT = text(cb, "", UDim2.new(1, -40, 1, 0), UDim2.new(0, 12, 0, 0), 13, AMBER)
+    cbT.Font = Enum.Font.GothamBlack
+    text(cb, "+", UDim2.new(0, 20, 1, 0), UDim2.new(1, -26, 0, 0), 16, WHITE, Enum.TextXAlignment.Center)
+    cb.MouseEnter:Connect(function() cb.BackgroundColor3 = RGB(40, 44, 48) end)
+    cb.MouseLeave:Connect(function() cb.BackgroundColor3 = INK end)
+    cb.MouseButton1Click:Connect(crewOfSel)
+    H.crewBoxT = cbT
+    local function right(y, ts, col, h)
+      local t = text(mid, "", UDim2.new(0, 380, 0, h or 16), UDim2.new(1, -M0 - 380, 0, FY + y), ts, col, Enum.TextXAlignment.Right)
+      t.TextStrokeTransparency = 0.55
+      return t
+    end
+    H.selName = right(42, mobile and 18 or 24, WHITE, 28)
+    H.selName.Name = "SelName"
+    H.selName.Font = Enum.Font.GothamBold
+    H.selSub = right(72, 12, RGB(200, 204, 208))
+    H.selCrew = right(90, 12, DIM)
+    H.selCrew.Name = "CrewT"
+    H.selMods = right(107, 12, DIM)
+    H.selMods.Name = "ModCount"
+    H.selNote = right(124, 11, DIM)
+  end
+
+  do   -- 底下：五个槽位（refreshHangar 里填）；右下：这一局的信息 + 「战斗」
+    local SW, SG, SH, BM = mobile and 148 or 172, mobile and 8 or 9, mobile and 92 or 104, mobile and 12 or 20
+    H.SW, H.SG, H.SH = SW, SG, SH
+    local row = frame(ui, UDim2.new(0, 5 * SW + 4 * SG, 0, SH), UDim2.new(0, M0, 1, -BM - SH), nil, 1)
+    row.Name = "Slots"
+    H.row = row
+    H.winBottom = BM + SH + 12   -- 研究窗口的下沿离屏幕底多远（留出这一排槽位）
+    local hint = text(mid, L("选一辆点「战斗」：直接坐在车里 / 飞机里出现在自己基地，车没了回到这里。按住空白处拖动转着看车，滚轮缩放。",
+      "Pick a slot and press TO BATTLE: you spawn inside it at your base. Drag on empty space to orbit the vehicle, wheel to zoom."),
+      UDim2.new(0, 5 * SW + 4 * SG, 0, 16), UDim2.new(0, M0, 1, -BM - SH - 22), 11, RGB(196, 200, 204))
+    hint.Name = "Hint"
+    hint.TextStrokeTransparency = 0.6
+    local BW, BH = mobile and 190 or 250, mobile and 50 or 62
+    local bb = Instance.new("TextButton")
+    bb.Name = "Battle"
+    bb.AutoButtonColor = false
+    bb.Text = ""
+    bb.BackgroundColor3, bb.BackgroundTransparency, bb.BorderSizePixel = RGB(9, 9, 10), 0.04, 0
+    bb.Size, bb.Position = UDim2.new(0, BW, 0, BH), UDim2.new(1, -M0 - BW, 1, -BM - 4 - BH)
+    bb.Parent = ui
+    corners(bb, AMBER, mobile and 20 or 26, 4, 5)
+    local bt = text(bb, L("战斗", "TO BATTLE"), UDim2.new(1, 0, 0, math.floor(BH * 0.6)), UDim2.new(0, 0, 0, math.floor(BH * 0.08)), mobile and 22 or 28, AMBER, Enum.TextXAlignment.Center)
+    bt.Font = Enum.Font.GothamBold
+    local bs = text(bb, "", UDim2.new(1, -16, 0, 14), UDim2.new(0, 8, 1, -19), 10, DIM, Enum.TextXAlignment.Center)
+    bs.Name = "Sub"
+    bb.MouseEnter:Connect(function() bb.BackgroundColor3 = RGB(34, 26, 14) end)
+    bb.MouseLeave:Connect(function() bb.BackgroundColor3 = RGB(9, 9, 10) end)
+    bb.MouseButton1Click:Connect(function()
+      if sel.key then act("deployVeh", sel.key) elseif G.openTechTree then G.openTechTree() end
+    end)
+    H.battleT, H.battleS = bt, bs
+    -- 这一局：阶段和时间、战斗等级、三种模式
+    local IH = mobile and 76 or 104
+    local card = frame(mid, UDim2.new(0, BW, 0, IH), UDim2.new(1, -M0 - BW, 1, -BM - 4 - BH - 14 - IH), RGB(10, 11, 13), 0.2)
+    card.Name = "Match"
+    stroke(card, RGB(96, 100, 104), 0.6, 1)
+    H.phaseT = text(card, "", UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 6), 13, WHITE)
+    H.phaseT.Name = "Phase"
+    H.phaseT.Font = Enum.Font.GothamBold
+    H.brT = text(card, "", UDim2.new(1, -16, 0, 14), UDim2.new(0, 8, 0, 26), 11, RGB(186, 190, 194))
+    H.brT.Name = "Br"
+    local bar = frame(card, UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 46), nil, 1)
+    bar.Name = "Modes"
+    for i, m in ipairs({ "ab", "rb", "sb" }) do
+      local b = button(bar, MODE_NAME[m], UDim2.new(1 / 3, -4, 1, 0), UDim2.new((i - 1) / 3, 2, 0, 0))
+      b.Name = "Mode_" .. m
+      b.TextSize = 11
+      b.MouseButton1Click:Connect(function() act("wtModeVote", m) end)
+      H.modeBtns[m] = b
+    end
+    local mt = text(card, "", UDim2.new(1, -16, 0, 26), UDim2.new(0, 8, 0, 73), 10, RGB(160, 166, 170))
+    mt.Name = "ModeT"
+    mt.TextWrapped, mt.TextYAlignment = true, Enum.TextYAlignment.Top
+    mt.Visible = not mobile
+    H.modeT = mt
   end
   local function refreshMode()
     local cur = workspace:GetAttribute("WtMode") or "rb"
@@ -74518,13 +75544,58 @@ function TechUI.init(G)
       if cnt[v] then cnt[v] += 1 end
     end
     local mine = me:GetAttribute("ModeVote")
-    for m, b in pairs(modeBtns) do
+    for m, b in pairs(H.modeBtns) do
       local on = m == cur
       b.BackgroundColor3 = on and WHITE or RGB(30, 34, 38)
       b.TextColor3 = on and RGB(10, 10, 10) or WHITE
       b.Text = MODE_NAME[m] .. ((cnt[m] > 0) and ("  " .. cnt[m]) or "") .. ((mine == m) and "  ✓" or "")
     end
-    modeT.Text = L("本局模式：", "Mode: ") .. MODE_NAME[cur] .. "  ·  " .. MODE_DESC[cur]
+    H.modeT.Text = L("本局模式：", "Mode: ") .. MODE_NAME[cur] .. "  ·  " .. MODE_DESC[cur]
+  end
+
+  -- 厂房里停哪一辆：出击阵容里选中的（按真车涂装；有原模型的就是原模型）
+  local shownKey = nil
+  local function showVehicle(it)
+    if not (Stage and Stage.active()) then return end
+    local key = it and it.key or ""
+    if shownKey == key then return end
+    shownKey = key
+    if not it then
+      Stage.put(nil)
+      return
+    end
+    local base = Stage.floorCF()
+    local side = (me:GetAttribute("Side") == "def") and "def" or "atk"
+    local d = VD.get(it.play)
+    if d then
+      local ok, M = pcall(VM.build, d, side, nil, TT.paint(it))
+      if ok and M and M.model then
+        pcall(function()
+          VM.pose(M, d)
+          for _, x in ipairs(M.parts) do
+            local p = x[1]
+            if p:IsA("BasePart") then
+              p.CFrame = base * p.CFrame
+              p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+            end
+          end
+        end)
+        Stage.put(M.model, { L = d.L or 26, W = d.W or 12, H = d.H or 9 })
+        return
+      end
+    else
+      local a = AD.get(it.play)
+      local okA, AM = pcall(function() return require(script.Parent:WaitForChild("AirModels", 2)) end)
+      if a and okA and AM then
+        local ok, M = pcall(AM.build, a, side, AD.presetLoad(a))
+        if ok and M and M.model then
+          pcall(AM.pose, M, base * CFrame.new(0, a.gearH or 6, 0), { gear = 1, thr = 0 }, os.clock())
+          Stage.put(M.model, { L = a.L or 50, W = a.W or 36, H = (a.H or 13) + (a.gearH or 0) * 0.5 })
+          return
+        end
+      end
+    end
+    Stage.put(nil)
   end
 
   -- 全真模式：只能第一人称——车外的时候坐进车里（这辆车没有内饰就开瞄准镜）；飞机有座舱的坐进座舱
@@ -74541,18 +75612,7 @@ function TechUI.init(G)
     end
   end)
 
-  local openTree   -- 下面定义
-  local function natTabs(bar, onPick)
-    clear(bar)
-    for _, nat in ipairs(TT.NATIONS) do
-      local N = TT.NAT[nat]
-      local b = button(bar, zh and N.name or N.en, UDim2.new(0, mobile and 64 or 92, 1, 0), nil, nat == tree.nat)
-      b.Name = "Nat_" .. nat
-      local stripe = frame(b, UDim2.new(1, 0, 0, 3), UDim2.new(0, 0, 1, -3), N.col, 0)
-      stripe.Name = "Stripe"
-      b.MouseButton1Click:Connect(function() onPick(nat) end)
-    end
-  end
+  local openTree, closeTree   -- 下面定义
   -- 这一辆这一局出车要什么（照服务器 WtMatch 推的 S.wt：准备阶段、第一辆免费；出过一次的是备用；备用用完、阵容满了不能出）
   local function spState(it)
     local d = defOf(it)
@@ -74583,7 +75643,7 @@ function TechUI.init(G)
     return rb, rb + ((Config.Wt or {}).brUp or 1.0)
   end
   ---------------------------------------------------------------- 乘员（WtCrew）：阵容每一位一组乘员，升级给技能点，点技能
-  local crewP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local crewP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   crewP.Name = "Crew"
   crewP.Visible = false
   crewP.ZIndex = 10
@@ -74643,62 +75703,136 @@ function TechUI.init(G)
   end
   G.openCrew = openCrew
 
+  -- 顶上的等级圈、经验条（服务器每次推状态都刷；金币自己听属性）
+  local function refreshTop()
+    local mine = (G.S and G.S.me) or {}
+    local R = Config.Ranks or { 0 }
+    local rk = math.clamp(mine.rank or 1, 1, #R)
+    local xp = mine.xp or 0
+    local frac = 1
+    if rk < #R then
+      frac = math.clamp((xp - R[rk]) / math.max(1, R[rk + 1] - R[rk]), 0, 1)
+      H.xpT.Text = fmtNum(xp) .. " / " .. fmtNum(R[rk + 1]) .. L(" 经验", " XP")
+    else
+      H.xpT.Text = fmtNum(xp) .. L(" 经验", " XP")
+    end
+    H.lvT.Text = tostring(rk)
+    local w = math.floor(H.xpW * frac + 0.5)
+    H.xpFill.Visible = w >= 6
+    if w >= 6 then
+      H.xpFill.Size = UDim2.new(0, w, 1, 0)
+      slant(H.xpFill, w, 18)
+    end
+  end
+
   local function refreshHangar()
-    natTabs(natBar, function(nat) tree.nat = nat act("treeNat", nat) refreshHangar() end)
-    clear(row)
+    natTiles(H.natCol, H.FW, H.FH, H.FG, tree.nat, function(nat)
+      tree.nat = nat
+      sel.key = nil
+      act("treeNat", nat)
+      refreshHangar()
+    end, true)
+    clear(H.row)
     local keys = lineupOf(tree.nat)
+    if not (sel.key and table.find(keys, sel.key)) then sel.key = keys[1] end
+    local rb, cap = brCap()
+    local SW, SG, SH = H.SW, H.SG, H.SH
     for i = 1, 5 do
       local key = keys[i]
       local it = key and TT.get(key)
-      local card = frame(row, UDim2.new(0, mobile and 150 or 190, 1, 0), nil, RGB(14, 16, 19), 0.1)
+      local on = it ~= nil and key == sel.key
+      local card = Instance.new("TextButton")
       card.Name = it and ("Line_" .. key) or ("Empty_" .. i)
-      local st = Instance.new("UIStroke")
-      st.Color, st.Transparency = RGB(90, 96, 100), 0.4
-      st.Parent = card
+      card.AutoButtonColor = false
+      card.Text = ""
+      card.Size, card.Position = UDim2.new(0, SW, 1, 0), UDim2.new(0, (i - 1) * (SW + SG), 0, 0)
+      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = RGB(13, 14, 16), on and 0.06 or 0.26, 0
+      card.Parent = H.row
+      stroke(card, on and WHITE or RGB(92, 96, 100), on and 0.2 or 0.6, 1)
       if it then
-        text(card, nm(it), UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 8), 15)
-        text(card, (it.branch == "air" and L("战机", "Aircraft") or L("地面", "Ground")) .. " · " .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br),
-          UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 32), 12, DIM)
-        local spT, spC = spState(it)
-        if spT then text(card, spT, UDim2.new(1, -16, 0, 18), UDim2.new(0, 8, 0, 52), 12, spC or FAINT).Name = "Sp" end
-        local md = tree.mods and tree.mods[key]
-        local nDone, nAll = WM.count(it, md and md.done)
-        text(card, L("改装 ", "Mods ") .. nDone .. " / " .. nAll, UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 70), 11, (nDone == nAll) and GOOD or DIM).Name = "ModCount"
-        if it.stand then   -- 还没有自己的模型：借的是哪一型写在科技树详情里
-          text(card, L("暂用模型", "stand-in model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(200, 170, 90))
-        elseif it.model then   -- 性能是自己的，模型借同族的
-          text(card, L("同族模型", "family model"), UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, 86), 11, RGB(170, 185, 150))
-        end
-        local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(i)] or { xp = 0 }
-        local cfree = WC.free(cs)
-        text(card, L("乘员 ", "Crew ") .. WC.level(cs.xp) .. L(" 级", "") .. (cfree > 0 and (L(" · ", " · ") .. cfree .. L(" 点", " pts")) or ""),
-          UDim2.new(1, -86, 0, 16), UDim2.new(0, 8, 0, 108), 11, cfree > 0 and GOLD or DIM).Name = "CrewT"
-        local cb = button(card, L("乘员", "Crew"), UDim2.new(0, 64, 0, 22), UDim2.new(1, -72, 0, 104))
-        cb.Name = "CrewBtn"
-        cb.TextSize = 12
-        local slotI = i
-        cb.MouseButton1Click:Connect(function() openCrew(tree.nat, slotI, key) end)
-        local _, cap = brCap()
         local over = cap ~= nil and it.br > cap + 0.05   -- 超出这一局能出的战斗等级：标灰（点了服务器也会说）
-        local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or L("出击", "Deploy"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44), not over)
+        if on then corners(card, WHITE, 10, 2, 4) end
+        -- 侧影（HudIcons：原模型正侧面拍的；这一型没有图、或者游戏设置里没开 Image API 就空着）
+        local im = Instance.new("ImageLabel")
+        im.Name = "Icon"
+        im.BackgroundTransparency = 1
+        im.Size, im.Position = UDim2.new(1, -28, 0, SH - 62), UDim2.new(0, 14, 0, 12)
+        im.ScaleType = Enum.ScaleType.Fit
+        im.ImageColor3 = on and RGB(244, 246, 248) or RGB(170, 176, 182)
+        im.ImageTransparency = over and 0.55 or 0
+        im.Parent = card
+        if G.hudIconOn then pcall(G.hudIconOn, im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end
+        text(card, tostring(i), UDim2.new(0, 14, 0, 14), UDim2.new(0, 7, 0, 4), 11, FAINT)
+        if it.stand then   -- 还没有自己的模型：借的是哪一型写在科技树详情里
+          text(card, L("暂用模型", "stand-in"), UDim2.new(0, 70, 0, 14), UDim2.new(0, 20, 0, 4), 10, RGB(200, 170, 90))
+        elseif it.model then   -- 性能是自己的，模型借同族的
+          text(card, L("同族模型", "family model"), UDim2.new(0, 70, 0, 14), UDim2.new(0, 20, 0, 4), 10, RGB(170, 185, 150))
+        end
+        local brL = text(card, TT.brText(it.br), UDim2.new(0, 40, 0, 14), UDim2.new(1, -47, 0, 4), 12, over and BAD or (on and WHITE or DIM), Enum.TextXAlignment.Right)
+        brL.Name = "Br"
+        brL.Font = Enum.Font.GothamBold
+        local nmL = text(card, nm(it), UDim2.new(1, -12, 0, 18), UDim2.new(0, 6, 1, -50), mobile and 12 or 14, over and FAINT or WHITE, Enum.TextXAlignment.Center)
+        nmL.Name = "VehName"
+        nmL.Font = Enum.Font.GothamBold
+        local spT, spC = spState(it)
+        local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or (L("出击", "Deploy") .. (spT and (" · " .. spT) or "")),
+          UDim2.new(1, -12, 0, 24), UDim2.new(0, 6, 1, -30), on and not over)
         go.Name = "Go"
+        go.TextSize = 11
+        go.TextTruncate = Enum.TextTruncate.AtEnd
         if over then
           go.TextColor3 = BAD
-          card.BackgroundTransparency = 0.45
+        elseif on then
+          go.BackgroundColor3 = AMBER
+        elseif spC and spC ~= FAINT then
+          go.TextColor3 = spC
         end
         go.MouseButton1Click:Connect(function() act("deployVeh", key) end)
+        card.MouseButton1Click:Connect(function()
+          if sel.key ~= key then
+            sel.key = key
+            refreshHangar()
+          end
+        end)
       else
-        text(card, L("空位", "Empty"), UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 8), 15, FAINT)
-        local add = button(card, L("从科技树里放进来", "Add from tech tree"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44))
-        add.MouseButton1Click:Connect(function() if openTree then openTree() end end)
+        text(card, "+", UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.5, -26), 20, FAINT, Enum.TextXAlignment.Center)
+        text(card, L("研究载具", "Research vehicles"), UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0.5, 0), 11, FAINT, Enum.TextXAlignment.Center)
+        card.MouseButton1Click:Connect(function() if openTree then openTree() end end)
       end
     end
-    local rb, cap = brCap()
-    brT.Text = L("阵容战斗等级 ", "Lineup BR ") .. TT.brText(TT.lineupBr(keys))
-      .. (rb and (L("   ·   本局战斗等级 ", "   ·   Battle BR ") .. TT.brText(rb) .. L("（能出到 ", " (up to ") .. TT.brText(cap) .. L("）", ")")) or "")
+    -- 右边：选中这一辆
+    local it = sel.key and TT.get(sel.key)
+    local slotI = it and table.find(keys, sel.key)
+    if it then
+      local N = TT.NAT[it.nat]
+      H.selName.Text = nm(it)
+      H.selSub.Text = (zh and N.name or N.en) .. " · " .. L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br) .. " · " .. it.year
+      local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(slotI)] or { xp = 0 }
+      local cfree = WC.free(cs)
+      H.selCrew.Text = L("乘员 ", "Crew level ") .. WC.level(cs.xp) .. L(" 级", "") .. ((cfree > 0) and (" · " .. L("技能点 ", "points ") .. cfree) or "")
+      H.selCrew.TextColor3 = (cfree > 0) and GOLD or RGB(186, 190, 194)
+      local md = tree.mods and tree.mods[sel.key]
+      local nDone, nAll = WM.count(it, md and md.done)
+      H.selMods.Text = L("改装 ", "Mods ") .. nDone .. " / " .. nAll
+      H.selMods.TextColor3 = (nDone == nAll) and GOOD or RGB(186, 190, 194)
+      H.selNote.Text = it.stand and L("暂用模型（借的哪一型见科技树详情）", "stand-in model (see the tech tree)") or (it.model and L("模型暂用同族的，性能是本车的", "family model, own stats") or "")
+      H.selNote.TextColor3 = it.stand and RGB(200, 170, 90) or RGB(170, 185, 150)
+      H.crewBoxT.Text = L("乘员 · ", "CREW · ") .. ((it.branch == "air") and L("战机", "AIRCRAFT") or L("坦克", "TANKS"))
+    else
+      H.selName.Text, H.selSub.Text, H.selCrew.Text, H.selMods.Text, H.selNote.Text = "", "", "", "", ""
+      H.crewBoxT.Text = L("乘员", "CREW")
+    end
+    -- 右下：「战斗」出的就是选中的这一辆
+    local over = it ~= nil and cap ~= nil and it.br > cap + 0.05
+    local spT = it and spState(it)
+    H.battleT.TextColor3 = (it and not over) and AMBER or FAINT
+    H.battleS.Text = it and (over and L("超出本局战斗等级", "Above battle BR") or (nm(it) .. (spT and ("  ·  " .. spT) or ""))) or L("先去研究一辆车", "Research a vehicle first")
+    H.battleS.TextColor3 = over and BAD or DIM
+    H.brT.Text = L("阵容战斗等级 ", "Lineup BR ") .. TT.brText(TT.lineupBr(keys))
+      .. (rb and (L(" · 本局 ", " · battle ") .. TT.brText(rb) .. L("（能出到 ", " (up to ") .. TT.brText(cap) .. L("）", ")")) or "")
+    showVehicle(it)
   end
   G.refreshLineup = refreshHangar   -- 不叫 G.refreshHangar：Hangar.lua（改挂载）的刷新函数叫这个名字，顶掉了它就坏了
-  treeBtn.MouseButton1Click:Connect(function() if openTree then openTree() end end)
 
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
@@ -74706,14 +75840,29 @@ function TechUI.init(G)
     local want = show and G.hangarActive()
     if hangar.Visible ~= want then
       hangar.Visible = want
-      if want then refreshHangar() end
+      if Stage then
+        shownKey = nil
+        if want then
+          Stage.show(true)
+        else
+          -- 镜头已经有人接手了（坐进了车 / 飞机、开了主菜单）：别动它
+          Stage.show(false, G.drive ~= nil or G.fly ~= nil or (G.menuShown ~= nil and G.menuShown() == true))
+          Stage.put(nil)
+        end
+      end
+      if want then
+        refreshHangar()
+      elseif closeTree then
+        closeTree()
+      end
     end
     if want then
       refreshMode()
+      refreshTop()
       local S = G.S
       if S then
         local fmt = function(s) s = math.max(0, math.floor(s or 0)) return string.format("%d:%02d", s // 60, s % 60) end
-        phaseT.Text = (S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left))
+        H.phaseT.Text = (S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left))
         -- 这一局的账（SP、免费那一辆、出过几次）、战斗等级变了：卡片上的「免费 / SP / 备用 / 用完」跟着刷新
         local w = S.wt or {}
         local sig = table.concat({ tostring(S.phase), tostring(w.sp), tostring(w.free), tostring(w.paid), tostring(#(w.order or {})), tostring(workspace:GetAttribute("WtBr")) }, "|")
@@ -74724,40 +75873,89 @@ function TechUI.init(G)
       end
     end
   end
+  -- 厂房的镜头每帧摆（坐进车以后镜头归驾驶的）
+  do
+    local function stepStage(dt)
+      if Stage and hangar.Visible and not G.drive then Stage.step(dt or 0.016) end
+    end
+    if G.frameConn then G.frameConn("hangarStage", stepStage) else RunService.RenderStepped:Connect(stepStage) end
+  end
 
-  ---------------------------------------------------------------- 科技树
-  local panel = frame(gui, UDim2.fromScale(1, 1), nil, RGB(6, 8, 10), 0.04)
+  ---------------------------------------------------------------- 研究（科技树）：用户 11-25 第二张截图——「然后点研究就跳科技树」
+  --   一个窗口压在机库上（顶上一排、底下的槽位和「战斗」还露着）：标题「研究 · 国名」、坦克 / 战机、RP、右上 ×；
+  --   左边一列国旗换系；中间横着滚的等级列（I～VII），每条线一行，同一级里从左到右是研究顺序，横线连着前置；
+  --   格子：类型小字、侧影、名字、战斗等级，底边的颜色是状态（买下的绿、研究完没买的蓝、正在研究的黄带进度、能研究的白、没开的暗）；
+  --   还没开的等级盖一块暗板：锁、「先研究 X 级的载具」、已经几辆 / 要几辆；点一格右边出详情（研究、购买、放进阵容、试驾、资料卡）
+  local panel = frame(root, UDim2.new(1, -2 * M0, 1, -(H.TY + H.TH + 14) - H.winBottom), UDim2.new(0, M0, 0, H.TY + H.TH + 14), RGB(11, 12, 14), 0.04)
   panel.Name = "TechTree"
   panel.Visible = false
   panel.ZIndex = 5
+  panel.Active = true   -- 挡住底下的拖动
   G.treeGui = panel   -- 测试用
+  stroke(panel, RGB(100, 104, 108), 0.5, 1)
   local view = { nat = tree.nat, branch = "ground", sel = nil }
-  local top = frame(panel, UDim2.new(1, 0, 0, 92), nil, RGB(10, 12, 14), 0.1)
-  text(top, L("科技树", "TECH TREE"), UDim2.new(0, 200, 0, 30), UDim2.new(0, M0, 0, 8), 22).Font = Enum.Font.GothamBold
-  local closeB = button(top, "×", UDim2.new(0, 40, 0, 34), UDim2.new(1, -M0 - 40, 0, 8))
-  closeB.Name = "Close"
-  closeB.MouseButton1Click:Connect(function() panel.Visible = false end)
-  local tNat = frame(top, UDim2.new(0, 520, 0, 32), UDim2.new(0, M0, 0, 50), nil, 1)
-  local tl = Instance.new("UIListLayout")
-  tl.FillDirection = Enum.FillDirection.Horizontal
-  tl.Padding = UDim.new(0, 6)
-  tl.Parent = tNat
-  local tBr = frame(top, UDim2.new(0, 220, 0, 32), UDim2.new(0, M0 + 540, 0, 50), nil, 1)
-  local bl = Instance.new("UIListLayout")
-  bl.FillDirection = Enum.FillDirection.Horizontal
-  bl.Padding = UDim.new(0, 6)
-  bl.Parent = tBr
-  local freeT = text(top, "", UDim2.new(0, 300, 0, 20), UDim2.new(1, -M0 - 360, 0, 58), 13, DIM, Enum.TextXAlignment.Right)
+  local TV = {}   -- 窗口里要改的零件
+  local DW = mobile and 230 or 280   -- 右边详情多宽
+  do
+    local title = text(panel, L("研究", "RESEARCH"), UDim2.new(0, 110, 0, 26), UDim2.new(0, 16, 0, 8), 18)
+    title.Font = Enum.Font.GothamBold
+    if zh then text(panel, "RESEARCH", UDim2.new(0, 70, 0, 12), UDim2.new(0, 58, 0, 17), 9, FAINT) end
+    TV.natT = text(panel, "", UDim2.new(0, 120, 0, 26), UDim2.new(0, 136, 0, 8), 14, RGB(214, 218, 222))
+    TV.natT.Name = "Nation"
+    TV.tabs = frame(panel, UDim2.new(0, 180, 0, 26), UDim2.new(0, 262, 0, 8), nil, 1)
+    TV.tabs.Name = "Branches"
+    local close = Instance.new("TextButton")
+    close.Name = "Close"
+    close.AutoButtonColor = false
+    close.BackgroundTransparency, close.BorderSizePixel = 1, 0
+    close.Size, close.Position = UDim2.new(0, 34, 0, 30), UDim2.new(1, -44, 0, 6)
+    close.Font = Enum.Font.GothamBold
+    close.TextSize = 24
+    close.TextColor3 = WHITE
+    close.Text = "×"
+    close.Parent = panel
+    close.MouseEnter:Connect(function() close.TextColor3 = AMBER end)
+    close.MouseLeave:Connect(function() close.TextColor3 = WHITE end)
+    TV.close = close
+    -- RP：圆牌子 + 一格数字（这一系的自由研究点）+ 正在研究哪一辆、攒到多少
+    local rx = mobile and 500 or 560
+    local badge = round(frame(panel, UDim2.new(0, 22, 0, 22), UDim2.new(1, -rx, 0, 10), nil, 1))
+    stroke(badge, WHITE, 0.1, 1.5)
+    text(badge, "RP", UDim2.fromScale(1, 1), nil, 9, WHITE, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+    local box = frame(panel, UDim2.new(0, 110, 0, 20), UDim2.new(1, -rx + 30, 0, 11), RGB(4, 5, 6), 0.1)
+    TV.rpT = text(box, "0", UDim2.new(1, -12, 1, 0), UDim2.new(0, 8, 0, 0), 12, WHITE)
+    TV.rpT.Name = "FreeRP"
+    TV.curT = text(panel, "", UDim2.new(0, rx - 210, 0, 20), UDim2.new(1, -rx + 150, 0, 11), 12, RGB(190, 194, 198))
+    TV.curT.Name = "Current"
+    frame(panel, UDim2.new(1, -24, 0, 1), UDim2.new(0, 12, 0, 42), RGB(120, 124, 128), 0.5)
+    TV.flags = frame(panel, UDim2.new(0, 60, 0, 240), UDim2.new(0, 12, 0, 54), nil, 1)
+    TV.flags.Name = "Nations"
+  end
   local scroll = Instance.new("ScrollingFrame")
-  scroll.Size, scroll.Position = UDim2.new(1, -330, 1, -100), UDim2.new(0, 0, 0, 96)
-  scroll.BackgroundTransparency, scroll.BorderSizePixel = 1, 0
+  scroll.Name = "Tree"
+  scroll.Size, scroll.Position = UDim2.new(1, -84 - DW - 24, 1, -64), UDim2.new(0, 84, 0, 52)
+  scroll.BackgroundColor3, scroll.BackgroundTransparency, scroll.BorderSizePixel = RGB(6, 7, 8), 0.35, 0
   scroll.ScrollBarThickness = 6
+  scroll.ScrollBarImageColor3 = RGB(200, 204, 208)
   scroll.CanvasSize = UDim2.new()
   scroll.Parent = panel
-  local detail = frame(panel, UDim2.new(0, 316, 1, -100), UDim2.new(1, -320, 0, 96), RGB(12, 14, 17), 0.05)
+  scroll.InputChanged:Connect(function(io)   -- 只有横向能滚的时候：滚轮横着滚
+    if io.UserInputType == Enum.UserInputType.MouseWheel and TV.hOnly then
+      scroll.CanvasPosition = Vector2.new(math.max(0, scroll.CanvasPosition.X - io.Position.Z * 90), 0)
+    end
+  end)
+  local detail = Instance.new("ScrollingFrame")
   detail.Name = "Detail"
+  detail.Size, detail.Position = UDim2.new(0, DW, 1, -64), UDim2.new(1, -DW - 12, 0, 52)
+  detail.BackgroundColor3, detail.BackgroundTransparency, detail.BorderSizePixel = RGB(16, 17, 20), 0.1, 0
+  detail.ScrollBarThickness = 4
+  detail.ScrollBarImageColor3 = RGB(200, 204, 208)
+  detail.CanvasSize = UDim2.new()
+  detail.Parent = panel
 
-  local CW, CH, GAP, LW, HH = 176, 58, 10, 92, 30   -- 格宽、格高、间距、左边等级栏宽、表头高
+  local CW, CH = mobile and 116 or 128, mobile and 44 or 50   -- 格宽、格高
+  local LBL, PRG, GAPX, PADX, HEADH = 12, 12, 14, 16, 28      -- 格子上面的类型小字、下面的进度字、同一级里两格的间距、每一级两边留的、表头高
+  local ROWH = LBL + CH + PRG + 6                              -- 一条线占多高
   local refreshTree
   local function status(it)
     if TT.owned(tree, it.key) then return "own" end
@@ -74766,10 +75964,11 @@ function TechUI.init(G)
     if TT.canResearch(tree, it.key) then return "can" end
     return "lock"
   end
-  local COL = { own = RGB(46, 86, 58), res = RGB(46, 72, 110), cur = RGB(120, 98, 34), can = RGB(44, 48, 54), lock = RGB(22, 24, 27) }
+  local COL = { own = RGB(28, 46, 34), res = RGB(26, 40, 60), cur = RGB(60, 48, 18), can = RGB(30, 32, 36), lock = RGB(17, 18, 20) }          -- 格子的底色
+  local EDGE = { own = RGB(110, 200, 120), res = RGB(96, 156, 232), cur = AMBER, can = RGB(214, 218, 222), lock = RGB(58, 62, 66) }   -- 底边那一道
 
   ---------------------------------------------------------------- 改装（WtMods）：三列（机动 / 防护 / 火力）× 四级，点一项设成研究目标
-  local modsP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local modsP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   modsP.Name = "Mods"
   modsP.Visible = false
   modsP.ZIndex = 10
@@ -74874,7 +76073,7 @@ function TechUI.init(G)
 
   ---------------------------------------------------------------- 资料卡、装甲查看器（详情里「资料卡」）：左边 3D 车模按装甲厚度上色（拖动转、滚轮缩放），
   --   右边性能：极速、炮塔转速 / 俯仰、各处装甲（动能 / 破甲毫米）、主炮每种弹的初速和 0 / 500 / 1000 / 2000 米穿深；飞机写速度、挂载
-  local infoP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
+  local infoP = frame(root, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
   infoP.Name = "Info"
   infoP.Visible = false
   infoP.ZIndex = 10
@@ -75138,23 +76337,48 @@ function TechUI.init(G)
 
   local function showDetail(it)
     clear(detail)
-    if not it then return end
     local y = 12
     local function line(str, ts, col, h)
-      text(detail, str, UDim2.new(1, -24, 0, h or 20), UDim2.new(0, 12, 0, y), ts or 13, col or DIM).TextWrapped = true
+      local t = text(detail, str, UDim2.new(1, -24, 0, h or 20), UDim2.new(0, 12, 0, y), ts or 13, col or DIM)
+      t.TextWrapped = true
       y += (h or 20) + 4
+      return t
     end
-    line(nm(it), 20, WHITE, 26)
+    if not it then   -- 没点哪一格：写怎么用、颜色是什么意思
+      line(L("点一辆车看详情", "Click a vehicle for details"), 15, WHITE, 22)
+      line(L("研究、购买、放进出击阵容、试驾、资料卡都在这里。", "Research, buy, add to lineup, test drive and the stat card are all here."), 12, DIM, 34)
+      y += 6
+      for _, s in ipairs({ { "own", L("已买下", "Owned") }, { "res", L("已研究，可以买", "Researched — can buy") }, { "cur", L("正在研究", "Researching") },
+        { "can", L("可以研究", "Can research") }, { "lock", L("还没开", "Locked") } }) do
+        local sw = frame(detail, UDim2.new(0, 26, 0, 14), UDim2.new(0, 12, 0, y + 2), COL[s[1]], 0)
+        frame(sw, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), EDGE[s[1]], 0)
+        text(detail, s[2], UDim2.new(1, -60, 0, 18), UDim2.new(0, 48, 0, y), 12, RGB(200, 204, 208))
+        y += 22
+      end
+      detail.CanvasSize = UDim2.new(0, 0, 0, y + 8)
+      return
+    end
+    -- 侧影（有图才占地方）
+    local im = Instance.new("ImageLabel")
+    im.Name = "Icon"
+    im.BackgroundTransparency = 1
+    im.Size, im.Position = UDim2.new(1, -40, 0, 54), UDim2.new(0, 20, 0, y)
+    im.ScaleType = Enum.ScaleType.Fit
+    im.ImageColor3 = RGB(232, 236, 240)
+    im.Parent = detail
+    local okI, got = pcall(function() return G.hudIconOn and G.hudIconOn(im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end)
+    if okI and got then y += 60 else im:Destroy() end
+    line(nm(it), 20, WHITE, 26).Font = Enum.Font.GothamBold
     line((zh and it.en or it.name) .. " · " .. it.year, 13, DIM)
     line(L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. "（" .. TT.RANKS[it.rank].years .. "）· " .. L("战斗等级 ", "BR ") .. TT.brText(it.br), 13, DIM)
     local stt = status(it)
     local stName = ({ own = L("已买下", "Owned"), res = L("已研究，可以买", "Researched"), cur = L("正在研究", "Researching"),
       can = L("可以研究", "Can research"), lock = L("还没开（先研究前一辆 / 上一级）", "Locked") })[stt]
-    line(stName, 14, WHITE)
+    line(stName, 14, EDGE[stt] or WHITE)
     if stt ~= "own" and stt ~= "res" then
-      line(L("研究点 ", "RP ") .. tostring(tree.rp[it.key] or 0) .. " / " .. it.rp, 13, DIM)
+      line(L("研究点 ", "RP ") .. fmtNum(tree.rp[it.key] or 0) .. " / " .. fmtNum(it.rp), 13, DIM)
     end
-    if stt ~= "own" then line(L("价钱 ", "Cost ") .. it.cost .. L(" 金币", " coins"), 13, DIM) end
+    if stt ~= "own" then line(L("价钱 ", "Cost ") .. fmtNum(it.cost) .. L(" 金币", " coins"), 13, DIM) end
     if it.stand then
       local base = it.base and (VD.get(it.base) or AD.get(it.base)) and it.base or "?"
       line(L("还没有自己的模型：暂用 ", "No model yet: uses ") .. vname(base) .. L(" 的模型和性能", "'s model & stats"), 12, RGB(200, 170, 90), 34)
@@ -75162,26 +76386,18 @@ function TechUI.init(G)
       line(L("模型暂用同族的 ", "Model from ") .. vname(it.model) .. L("；炮、弹、装甲、机动按本车", "; gun, ammo, armour and mobility are its own"), 12, RGB(170, 185, 150), 34)
     end
     y += 8
+    local bh = mobile and 32 or 36
     local function btn(str, primary, f)
-      local b = button(detail, str, UDim2.new(1, -24, 0, 38), UDim2.new(0, 12, 0, y), primary)
+      local b = button(detail, str, UDim2.new(1, -24, 0, bh), UDim2.new(0, 12, 0, y), primary)
       b.MouseButton1Click:Connect(f)
-      y += 46
+      y += bh + 8
       return b
     end
-    btn(L("资料卡 · 装甲", "Stats · armor"), false, function() openInfo(it) end).Name = "InfoBtn"
-    -- 试驾：随便哪一辆都能试（服务器 Tech.lua testDrive：东边单独一块场地、三辆靶车、改装全装；下车回机库）
-    btn(L("试驾", "Test drive"), false, function()
-      panel.Visible = false
-      act("testDrive", it.key)
-    end).Name = "TestBtn"
     if stt == "can" then
       btn(L("研究这一辆", "Research"), true, function() act("treeResearch", it.key) end).Name = "Research"
     elseif stt == "res" then
-      btn(L("购买（", "Buy (") .. it.cost .. ")", true, function() act("treeBuy", it.key) end).Name = "Buy"
+      btn(L("购买（", "Buy (") .. fmtNum(it.cost) .. ")", true, function() act("treeBuy", it.key) end).Name = "Buy"
     elseif stt == "own" then
-      local md = tree.mods and tree.mods[it.key]
-      local nDone, nAll = WM.count(it, md and md.done)
-      btn(L("改装（", "Modifications (") .. nDone .. " / " .. nAll .. L("）", ")"), false, function() openMods(it) end).Name = "ModsBtn"
       local L0 = table.clone(lineupOf(it.nat))
       local idx = table.find(L0, it.key)
       if idx then
@@ -75197,51 +76413,70 @@ function TechUI.init(G)
       else
         line(L("出击阵容满了（5 辆）：先移出一辆", "Lineup full (5)"), 12, DIM)
       end
+      local md = tree.mods and tree.mods[it.key]
+      local nDone, nAll = WM.count(it, md and md.done)
+      btn(L("改装（", "Modifications (") .. nDone .. " / " .. nAll .. L("）", ")"), false, function() openMods(it) end).Name = "ModsBtn"
     end
+    -- 试驾：随便哪一辆都能试（服务器 Tech.lua testDrive：东边单独一块场地、三辆靶车、改装全装；下车回机库）
+    btn(L("试驾", "Test drive"), false, function()
+      if closeTree then closeTree() end
+      act("testDrive", it.key)
+    end).Name = "TestBtn"
+    btn(L("资料卡 · 装甲", "Stats · armor"), false, function() openInfo(it) end).Name = "InfoBtn"
+    detail.CanvasSize = UDim2.new(0, 0, 0, y + 8)
   end
   refreshTree = function()
-    natTabs(tNat, function(nat) view.nat = nat view.sel = nil refreshTree() end)
-    for _, c in ipairs(tNat:GetChildren()) do
-      if c:IsA("TextButton") then
-        local on = c.Name == "Nat_" .. view.nat
-        c.BackgroundColor3 = on and WHITE or RGB(30, 34, 38)
-        c.TextColor3 = on and RGB(10, 10, 10) or WHITE
-      end
-    end
-    clear(tBr)
-    for _, br in ipairs(TT.BRANCHES) do
-      local B = TT.BRANCH[br]
-      local b = button(tBr, zh and B.name or B.en, UDim2.new(0, 100, 1, 0), nil, br == view.branch)
+    natTiles(TV.flags, 60, 40, 8, view.nat, function(nat)
+      view.nat = nat
+      view.sel = nil
+      scroll.CanvasPosition = Vector2.new(0, 0)
+      refreshTree()
+    end, false)
+    TV.natT.Text = zh and TT.NAT[view.nat].name or TT.NAT[view.nat].en
+    clear(TV.tabs)
+    for i, br in ipairs(TT.BRANCHES) do
+      local Bn = TT.BRANCH[br]
+      local b = button(TV.tabs, zh and Bn.name or Bn.en, UDim2.new(0, 84, 1, 0), UDim2.new(0, (i - 1) * 90, 0, 0), br == view.branch)
       b.Name = "Br_" .. br
-      b.MouseButton1Click:Connect(function() view.branch = br view.sel = nil refreshTree() end)
+      b.TextSize = 13
+      b.MouseButton1Click:Connect(function()
+        view.branch = br
+        view.sel = nil
+        scroll.CanvasPosition = Vector2.new(0, 0)
+        refreshTree()
+      end)
     end
-    freeT.Text = L("自由研究点 ", "Free RP ") .. tostring(tree.free[view.nat] or 0)
+    TV.rpT.Text = fmtNum(tree.free[view.nat] or 0)
+    local curKey = tree.cur[view.nat .. ":" .. view.branch]
+    local curIt = curKey and TT.get(curKey)
+    TV.curT.Text = curIt and (L("正在研究 ", "Researching ") .. nm(curIt) .. "   " .. fmtNum(tree.rp[curKey] or 0) .. " / " .. fmtNum(curIt.rp))
+      or L("还没选研究目标：点一辆「可以研究」的", "No research target: pick one you can research")
     clear(scroll)
     local B = TT.BRANCH[view.branch]
     local list = TT.list[view.nat][view.branch]
-    -- 每级一行：这一行的高度 = 这一级里同一列最多几辆
-    local per = {}
+    -- 每一级多宽：这一级里同一条线最多几辆
+    local cnt = {}
     for _, it in ipairs(list) do
-      per[it.rank] = per[it.rank] or {}
-      per[it.rank][it.col] = (per[it.rank][it.col] or 0) + 1
+      cnt[it.rank] = cnt[it.rank] or {}
+      cnt[it.rank][it.col] = (cnt[it.rank][it.col] or 0) + 1
     end
-    local rowY, y = {}, HH
+    local colX, colW, x = {}, {}, 0
     for r = 1, #TT.RANKS do
       local m = 1
-      for _, n in pairs(per[r] or {}) do if n > m then m = n end end
-      rowY[r] = y
-      local band = frame(scroll, UDim2.new(0, LW + #B.cols * (CW + GAP), 0, m * (CH + GAP)), UDim2.new(0, 0, 0, y), (r % 2 == 0) and RGB(14, 16, 18) or RGB(10, 12, 14), 0.3)
-      band.ZIndex = 1
-      local lab = text(band, TT.RANKS[r].roman, UDim2.new(0, LW - 8, 0, 22), UDim2.new(0, 10, 0, 6), 18, WHITE)
-      lab.Font = Enum.Font.GothamBold
-      text(band, TT.RANKS[r].years, UDim2.new(0, LW - 8, 0, 16), UDim2.new(0, 10, 0, 28), 11, FAINT)
-      if not TT.rankOpen(tree, view.nat, view.branch, r) then
-        text(band, L("未开", "locked"), UDim2.new(0, LW - 8, 0, 16), UDim2.new(0, 10, 0, 42), 11, RGB(170, 90, 80))
-      end
-      y += m * (CH + GAP)
+      for _, n in pairs(cnt[r] or {}) do if n > m then m = n end end
+      colX[r], colW[r] = x, 2 * PADX + m * CW + (m - 1) * GAPX
+      x += colW[r]
     end
-    for ci, c in ipairs(B.cols) do
-      text(scroll, zh and c[1] or c[2], UDim2.new(0, CW, 0, HH - 6), UDim2.new(0, LW + (ci - 1) * (CW + GAP), 0, 4), 12, DIM, Enum.TextXAlignment.Center)
+    local rowsH = #B.cols * ROWH
+    local totalH = HEADH + rowsH + 6
+    -- 表头：等级、年代；每一级之间一道竖线
+    for r = 1, #TT.RANKS do
+      local open = TT.rankOpen(tree, view.nat, view.branch, r)
+      local hd = text(scroll, L("等级 ", "Rank ") .. TT.RANKS[r].roman .. "   " .. TT.RANKS[r].years, UDim2.new(0, colW[r], 0, HEADH - 8), UDim2.new(0, colX[r], 0, 2), 12,
+        open and WHITE or DIM, Enum.TextXAlignment.Center)
+      hd.Name = "Rank_" .. r
+      frame(scroll, UDim2.new(0, colW[r] - 10, 0, 1), UDim2.new(0, colX[r] + 5, 0, HEADH - 5), RGB(120, 124, 128), 0.55)
+      if r > 1 then frame(scroll, UDim2.new(0, 1, 0, totalH - 6), UDim2.new(0, colX[r], 0, 3), RGB(120, 124, 128), 0.6) end
     end
     -- 格子
     local used, pos = {}, {}
@@ -75249,58 +76484,116 @@ function TechUI.init(G)
       used[it.rank] = used[it.rank] or {}
       local k = used[it.rank][it.col] or 0
       used[it.rank][it.col] = k + 1
-      local x = LW + (it.col - 1) * (CW + GAP)
-      local cy = rowY[it.rank] + k * (CH + GAP) + GAP / 2
-      pos[it.key] = { x = x, y = cy }
+      local cx = colX[it.rank] + PADX + k * (CW + GAPX)
+      local cy = HEADH + (it.col - 1) * ROWH + LBL
+      pos[it.key] = { x = cx, y = cy }
       local stt = status(it)
+      local lock = stt == "lock"
+      local on = view.sel == it.key
+      local ct = B.cols[it.col]
+      text(scroll, ct and (zh and ct[1] or ct[2]) or "", UDim2.new(0, CW, 0, LBL), UDim2.new(0, cx, 0, cy - LBL), 9, FAINT).Name = "Type"
       local card = Instance.new("TextButton")
       card.Name = "Card_" .. it.key
-      card.AutoButtonColor = true
+      card.AutoButtonColor = false
       card.Text = ""
-      card.Size, card.Position = UDim2.new(0, CW, 0, CH), UDim2.new(0, x, 0, cy)
-      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = COL[stt], 0.05, 0
-      card.ZIndex = 3
+      card.Size, card.Position = UDim2.new(0, CW, 0, CH), UDim2.new(0, cx, 0, cy)
+      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = COL[stt], 0.04, 0
+      card.ZIndex = 2
       card.Parent = scroll
-      local s = Instance.new("UIStroke")
-      s.Color = (view.sel == it.key) and WHITE or RGB(70, 76, 80)
-      s.Thickness = (view.sel == it.key) and 2 or 1
-      s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-      s.Parent = card
-      local n1 = text(card, nm(it), UDim2.new(1, -12, 0, 20), UDim2.new(0, 6, 0, 4), 13, (stt == "lock") and FAINT or WHITE)
-      n1.ZIndex = 4
-      local n2 = text(card, "BR " .. TT.brText(it.br) .. "  " .. it.year .. (it.stand and L("  暂用", "  stand-in") or (it.model and L("  同族模型", "  family model")) or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 0, 24), 11, DIM)
-      n2.ZIndex = 4
-      if stt == "cur" or (tree.rp[it.key] or 0) > 0 then
-        local bg = frame(card, UDim2.new(1, -12, 0, 5), UDim2.new(0, 6, 1, -10), RGB(30, 30, 30), 0)
-        bg.ZIndex = 4
-        local fill = frame(bg, UDim2.new(math.clamp((tree.rp[it.key] or 0) / it.rp, 0, 1), 0, 1, 0), nil, RGB(230, 196, 80), 0)
-        fill.ZIndex = 5
+      stroke(card, on and WHITE or RGB(78, 82, 86), on and 0 or 0.5, on and 2 or 1)
+      local im = Instance.new("ImageLabel")
+      im.Name = "Icon"
+      im.BackgroundTransparency = 1
+      im.Size, im.Position = UDim2.new(1, -16, 1, -22), UDim2.new(0, 8, 0, 3)
+      im.ScaleType = Enum.ScaleType.Fit
+      im.ImageColor3 = lock and RGB(124, 128, 132) or RGB(228, 232, 236)
+      im.ImageTransparency = lock and 0.5 or 0.05
+      im.Parent = card
+      if G.hudIconOn then pcall(G.hudIconOn, im, (VD.get(it.play) and "veh_" or "air_") .. it.play) end
+      local n1 = text(card, nm(it), UDim2.new(1, -8, 0, 15), UDim2.new(0, 4, 1, -19), 11, lock and RGB(146, 150, 154) or WHITE, Enum.TextXAlignment.Center)
+      n1.Font = Enum.Font.GothamBold
+      text(card, TT.brText(it.br), UDim2.new(0, 30, 0, 11), UDim2.new(1, -33, 0, 2), 9, DIM, Enum.TextXAlignment.Right)
+      if it.stand then
+        text(card, L("暂用", "stand-in"), UDim2.new(0, 44, 0, 11), UDim2.new(0, 4, 0, 2), 8, RGB(200, 170, 90))
+      elseif it.model then
+        text(card, L("同族", "family"), UDim2.new(0, 44, 0, 11), UDim2.new(0, 4, 0, 2), 8, RGB(170, 185, 150))
+      end
+      -- 底边：状态的颜色；正在研究 / 攒了研究点的是进度条，格子下面写攒了多少
+      local rp = tree.rp[it.key] or 0
+      local bar = frame(card, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), EDGE[stt], (stt == "cur" or (rp > 0 and stt ~= "own" and stt ~= "res")) and 0.75 or 0)
+      bar.Name = "Edge"
+      if stt == "cur" or (rp > 0 and stt ~= "own" and stt ~= "res") then
+        frame(bar, UDim2.new(math.clamp(rp / math.max(it.rp, 1), 0, 1), 0, 1, 0), nil, AMBER, 0).Name = "Fill"
+        text(scroll, fmtNum(rp) .. " / " .. fmtNum(it.rp), UDim2.new(0, CW, 0, PRG), UDim2.new(0, cx, 0, cy + CH + 2), 9, (stt == "cur") and GOLD or DIM, Enum.TextXAlignment.Center).Name = "Rp"
       end
       card.MouseButton1Click:Connect(function()
         view.sel = it.key
         refreshTree()
       end)
     end
-    -- 同一列的连线：前置那一格的底边 → 这一格的顶边
+    -- 前置的连线：前一格的右边 → 这一格的左边（同一条线在同一行，横着连；跨着等级的也是一条直线）
     for _, it in ipairs(list) do
       local a, b = it.prev and pos[it.prev], pos[it.key]
-      if a and b then
-        local x = b.x + CW / 2 - 1
-        local y0, y1 = a.y + CH, b.y
-        if y1 > y0 then
-          local ln = frame(scroll, UDim2.new(0, 2, 0, y1 - y0), UDim2.new(0, x, 0, y0), TT.researched(tree, it.prev) and RGB(150, 156, 160) or RGB(60, 64, 68), 0)
-          ln.ZIndex = 2
+      if a and b and b.x > a.x + CW then
+        local col = TT.researched(tree, it.prev) and RGB(176, 182, 186) or RGB(72, 76, 80)
+        local x0, x1, y0, y1 = a.x + CW, b.x, a.y + CH / 2, b.y + CH / 2
+        if math.abs(y1 - y0) < 1 then
+          frame(scroll, UDim2.new(0, x1 - x0, 0, 2), UDim2.new(0, x0, 0, y0 - 1), col, 0)
+        else   -- 不在同一行：折一下
+          local xm = math.floor((x0 + x1) / 2)
+          frame(scroll, UDim2.new(0, xm - x0, 0, 2), UDim2.new(0, x0, 0, y0 - 1), col, 0)
+          frame(scroll, UDim2.new(0, 2, 0, math.abs(y1 - y0) + 2), UDim2.new(0, xm, 0, math.min(y0, y1) - 1), col, 0)
+          frame(scroll, UDim2.new(0, x1 - xm, 0, 2), UDim2.new(0, xm, 0, y1 - 1), col, 0)
         end
       end
     end
-    scroll.CanvasSize = UDim2.new(0, LW + #B.cols * (CW + GAP) + 20, 0, y + 20)
+    -- 还没开的等级：盖一块暗板，写要先研究完上一级的几辆（底下的格子照样点得到：看详情、试驾）
+    for r = 2, #TT.RANKS do
+      if not TT.rankOpen(tree, view.nat, view.branch, r) then
+        local need = TT.RANK_NEED[r - 1] or 2
+        local have = 0
+        for _, it in ipairs(list) do
+          if it.rank == r - 1 and TT.researched(tree, it.key) then have += 1 end
+        end
+        local w, h = colW[r] - 12, rowsH - 4
+        local ov = frame(scroll, UDim2.new(0, w, 0, h), UDim2.new(0, colX[r] + 6, 0, HEADH + 1), RGB(7, 8, 10), 0.2)
+        ov.Name = "Locked_" .. r
+        ov.ZIndex = 3
+        local mx, my = w / 2, math.max(44, h / 2 - 40)
+        local GREY = RGB(96, 100, 106)
+        local sh = frame(ov, UDim2.new(0, 30, 0, 40), UDim2.new(0, mx - 15, 0, my - 24), nil, 1)   -- 锁梁
+        local shc = Instance.new("UICorner")
+        shc.CornerRadius = UDim.new(0, 15)
+        shc.Parent = sh
+        stroke(sh, GREY, 0, 6)
+        local body = frame(ov, UDim2.new(0, 48, 0, 36), UDim2.new(0, mx - 24, 0, my), GREY, 0)   -- 锁体
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 5)
+        bc.Parent = body
+        round(frame(body, UDim2.new(0, 9, 0, 9), UDim2.new(0.5, -4.5, 0, 9), RGB(14, 15, 17), 0))
+        frame(body, UDim2.new(0, 4, 0, 10), UDim2.new(0.5, -2, 0, 15), RGB(14, 15, 17), 0)
+        local t = text(ov, L("先研究 ", "Research more rank ") .. TT.RANKS[r - 1].roman .. L(" 级的载具", " vehicles"), UDim2.new(1, -12, 0, 32), UDim2.new(0, 6, 0, my + 46), 12, WHITE, Enum.TextXAlignment.Center)
+        t.TextWrapped, t.TextTruncate = true, Enum.TextTruncate.None
+        local cb = frame(ov, UDim2.new(0, 64, 0, 26), UDim2.new(0, mx - 32, 0, my + 82), RGB(30, 33, 38), 0)
+        cb.Name = "Count"
+        text(cb, have .. " / " .. need, UDim2.fromScale(1, 1), nil, 16, WHITE, Enum.TextXAlignment.Center).Font = Enum.Font.GothamBold
+      end
+    end
+    scroll.CanvasSize = UDim2.new(0, x + 8, 0, totalH)
+    TV.hOnly = totalH <= (H.vh or 720) - (H.TY + H.TH + 14) - H.winBottom - 64   -- 竖着不用滚：滚轮横着滚
     showDetail(view.sel and TT.get(view.sel))
   end
   openTree = function()
     view.nat = tree.nat
     panel.Visible = true
+    H.mid.Visible = false   -- 机库中间那一层（国旗、乘员、这一局的信息）让开
     refreshTree()
   end
+  closeTree = function()
+    panel.Visible = false
+    H.mid.Visible = true
+  end
+  TV.close.MouseButton1Click:Connect(closeTree)
   G.openTechTree = openTree
   G.refreshTechTree = function() if panel.Visible then refreshTree() end end
 
@@ -75317,7 +76610,7 @@ return TechUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="218">
+        <Item class="ModuleScript" referent="219">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -75430,7 +76723,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="219">
+        <Item class="ModuleScript" referent="220">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -76594,7 +77887,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="220">
+        <Item class="ModuleScript" referent="221">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -76698,7 +77991,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="221">
+        <Item class="ModuleScript" referent="222">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -78215,7 +79508,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="222">
+        <Item class="ModuleScript" referent="223">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -79157,7 +80450,7 @@ end
 return VehModels]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="223">
+        <Item class="ModuleScript" referent="224">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -80192,7 +81485,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="224">
+        <Item class="ModuleScript" referent="225">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -81116,7 +82409,7 @@ return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="225">
+        <Item class="ModuleScript" referent="226">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④）
@@ -81375,7 +82668,7 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="226">
+        <Item class="ModuleScript" referent="227">
           <Properties>
             <string name="Name">WtBattle</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式对局的界面（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -81633,7 +82926,7 @@ return WtBattle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="227">
+        <Item class="ModuleScript" referent="228">
           <Properties>
             <string name="Name">WtFlight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式的开飞机界面
@@ -82172,7 +83465,7 @@ return WtFlight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="228">
+        <Item class="ModuleScript" referent="229">
           <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
@@ -82600,7 +83893,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="229">
+        <Item class="ModuleScript" referent="230">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
@@ -83201,7 +84494,7 @@ return WtTank
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="230">
+  <Item class="Workspace" referent="231">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="StreamingEnabled">true</bool>
@@ -83212,7 +84505,7 @@ return WtTank
       <token name="StreamingIntegrityMode">1</token>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="231">
+  <Item class="Lighting" referent="232">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>
