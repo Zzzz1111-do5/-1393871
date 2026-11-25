@@ -6,6 +6,7 @@
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
+local function clamp(x, a, b) if x < a then return a elseif x > b then return b end return x end
 
 T.wtMode = true
 local G = T.boot()
@@ -55,7 +56,7 @@ levelOff()
 R.run(1)
 levelOff()
 R.run(0.3)
-local function bankDeg() return math.deg(math.asin(math.clamp(st.cf.RightVector.Y, -1, 1))) end
+local function bankDeg() return math.deg(math.asin(clamp(st.cf.RightVector.Y, -1, 1))) end
 local function rollRateDeg() return math.deg(st.rr) end
 local ROLLmax = math.deg(math.rad(d.roll) * 0.75)
 
