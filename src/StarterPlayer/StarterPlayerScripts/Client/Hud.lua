@@ -307,6 +307,18 @@ function Hud.init(G)
   local CAT = { inf = "inf", light = "veh", armor = "veh", ship = "veh", air = "air" }
   local contacts = {}      -- { pos, team, kind, model }
   local seenT = {}         -- 敌人 → 最近一次看见（视线里）的时刻
+  -- 历史 / 全真模式（workspace 属性 WtMode = rb / sb，用户 11-25「全部都做」①）：小地图上的敌人只画自己看得见的、
+  --   队友看得见的、被侦察标记的——服务器 WtMatch.lua 每 0.5 秒发一次这一队看得见的实体号（fx teamSeen）
+  local teamSeen = {}      -- 实体号 → 到什么时候还算看得见
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "teamSeen" and type(e.ids) == "table" then
+        local till = os.clock() + 1.6
+        for _, id in ipairs(e.ids) do teamSeen[id] = till end
+      end
+    end
+  end)
   local losT = {}          -- 敌人 → 下次查视线的时刻
   local pings = {}         -- 敌人开枪的地方：{ pos, t }
   local rayP = RaycastParams.new()
@@ -639,8 +651,9 @@ function Hud.init(G)
         for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
         for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
       end
+      local strictM = workspace:GetAttribute("WtMode") == "rb" or workspace:GetAttribute("WtMode") == "sb"
       for _, c in ipairs(contacts) do
-        if c.team ~= mine and c.kind == "inf" and c.model and now >= (losT[c.model] or 0) then
+        if c.team ~= mine and (c.kind == "inf" or strictM) and c.model and now >= (losT[c.model] or 0) then   -- 历史 / 全真：车、飞机也要自己看得见
           losT[c.model] = now + 0.3
           if visible(c, eye) then seenT[c.model] = now end
         end
@@ -653,9 +666,17 @@ function Hud.init(G)
       b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
     end
     local pulse = 0.08 + 0.14 * (0.5 + 0.5 * math.sin(now * 5))   -- 敌人的亮点轻轻地一明一暗（不靠扫描线也一眼看得到）
+    local wm = workspace:GetAttribute("WtMode")
+    local strict = wm == "rb" or wm == "sb"
     for _, c in ipairs(contacts) do
       local enemy = c.team ~= mine
-      local show = not enemy or RC.allEnemies or c.kind ~= "inf" or (c.model and now - (seenT[c.model] or -99) < 2)
+      local seenMe = c.model and now - (seenT[c.model] or -99) < 2
+      local show
+      if not enemy then show = true
+      elseif strict then   -- 历史 / 全真：自己看得见、队友看得见（teamSeen）、被侦察的才画
+        local id = c.model and c.model:GetAttribute("EntId")
+        show = seenMe or (id ~= nil and (teamSeen[id] or 0) > now)
+      else show = RC.allEnemies or c.kind ~= "inf" or seenMe end
       if show then
         local b = blip()
         shape(b, c.kind, enemy and FOE or FRIEND, enemy and pulse or 0.12)

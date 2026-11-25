@@ -372,12 +372,14 @@ function TankHud.init(G)
     -- 敌人：每 0.25 秒重新挑一遍（距离、视线），每帧摆牌子
     -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
     --   全真 sb 一个都不标
+    --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
     local wtMode = workspace:GetAttribute("WtMode")
-    local gR = (wtMode == "ab") and 2500 or ((wtMode == "rb") and 500 or 1100)
+    local gR = (wtMode == "ab") and 2500 or 1100
+    local tagsOn = wtMode ~= "sb" and wtMode ~= "rb"
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}
-      for _, em in ipairs((wtMode ~= "sb") and ents and ents:GetChildren() or {}) do
+      for _, em in ipairs(tagsOn and ents and ents:GetChildren() or {}) do
         local cat = em:GetAttribute("Cat")
         if (air and CATS_AIR or CATS)[cat] and enemy(em, side) then
           local r = em:FindFirstChild("Root")

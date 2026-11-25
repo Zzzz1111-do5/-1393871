@@ -313,6 +313,93 @@ function WtMatch.init(G)
     local s = P.wtm
     if s and s.round == (G.round and G.round.n) then row.vk, row.ak, row.sp = s.vk, s.ak, math.floor(s.earned) end
   end
+
+  ---------------------------------------------------------------- 敌人标记：历史 / 全真模式（用户 11-25「全部都做」①）
+  --   战雷历史模式：屏幕上不标敌人，小地图上只有自己这队有人看得见的（视线没被地形、房子、烟幕挡住）和被侦察标记的才出来。
+  --   每 0.5 秒（两队错开 0.25 秒）：对每辆敌方车 / 飞机 / 船 / 步兵，从离它最近的几个己方（真人、电脑车、机器人）各打一条线，
+  --   只有地形、房子挡（实体、人都不挡）；看得见的、侦察标记着的实体号发给这一队（fx teamSeen），客户端小地图（Hud.lua）在 rb / sb 只画这些
+  local SIGHT = { ground = 3600, air = 9000, inf = 1500, near = 4 }   -- 格：地面 3600（约 1.3 公里）、飞机 9000、步兵 1500；每个目标最多看 near 个己方
+  local sightP = RaycastParams.new()
+  sightP.FilterType = Enum.RaycastFilterType.Exclude
+  sightP.IgnoreWater = true
+  local VIEW_CAT = { armor = true, light = true, air = true, ship = true, inf = true }
+  local function strictMode()
+    local m = workspace:GetAttribute("WtMode")
+    return m == "rb" or m == "sb"
+  end
+  local function sightOf(team)
+    local obs, tgts = {}, {}
+    for _, Q in pairs(G.P) do
+      if Q.team == team and Q.alive then
+        local e = Q.vehicle
+        local hrp = Q.char and Q.char:FindFirstChild("HumanoidRootPart")
+        local p = (e and e.root and e.root.CFrame.Position) or (hrp and hrp.Position)
+        if p then table.insert(obs, p + Vector3.new(0, 3, 0)) end
+      end
+    end
+    for _, e in ipairs(G.ents) do
+      if e.alive and e.root and VIEW_CAT[e.cat] and not e.testDummy then
+        local p = e.root.CFrame.Position
+        if e.team == team then
+          if not e.driver then table.insert(obs, p + Vector3.new(0, 3, 0)) end   -- 有人开的车上面按真人算过了
+        elseif e.team then
+          table.insert(tgts, { e = e, p = p + Vector3.new(0, 1.5, 0) })
+        end
+      end
+    end
+    local ex = {}
+    local ents = workspace:FindFirstChild("Ents")
+    if ents then table.insert(ex, ents) end
+    for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+    sightP.FilterDescendantsInstances = ex
+    local seen = {}
+    for _, t in ipairs(tgts) do
+      local R = t.e.air and SIGHT.air or ((t.e.cat == "inf") and SIGHT.inf or SIGHT.ground)
+      local near = {}
+      for _, o in ipairs(obs) do
+        local d = (o - t.p).Magnitude
+        if d < R then table.insert(near, { o = o, d = d }) end
+      end
+      table.sort(near, function(a, b) return a.d < b.d end)
+      for i = 1, math.min(#near, SIGHT.near) do
+        local o = near[i].o
+        local hit = workspace:Raycast(o, t.p - o, sightP)
+        if (not hit or (hit.Position - o).Magnitude > near[i].d - 4) and not (G.smokeBlocks and G.smokeBlocks(o, t.p)) then
+          table.insert(seen, t.e.id)
+          break
+        end
+      end
+    end
+    -- 侦察 / 望远镜标记着的（Weapons.lua 的 G.spotted，实体号做键的那些）
+    local S = G.spotted and G.spotted[team]
+    if S then
+      local tt = now()
+      for key, till in pairs(S) do
+        if till > tt and type(key) ~= "string" then table.insert(seen, key)
+        elseif till > tt and type(key) == "string" and tonumber(key) then table.insert(seen, tonumber(key)) end
+      end
+    end
+    return seen
+  end
+  task.spawn(function()
+    local turn = 0
+    while true do
+      task.wait(0.25)
+      turn += 1
+      if on() and strictMode() and G.round and (G.round.phase == "battle" or G.round.phase == "prep") then
+        local team = (turn % 2 == 0) and "atk" or "def"
+        local okS, seen = pcall(sightOf, team)
+        if okS then
+          for pl, Q in pairs(G.P) do
+            if Q.team == team then G.R.Fx:FireClient(pl, { { k = "teamSeen", ids = seen } }) end
+          end
+        else
+          warn("[战雷] 敌人标记出错：" .. tostring(seen))
+        end
+      end
+    end
+  end)
+  G.wtSightOf = sightOf   -- 测试用
 end
 
 return WtMatch
