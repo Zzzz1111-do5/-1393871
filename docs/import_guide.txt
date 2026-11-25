@@ -85,6 +85,10 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
     - 机库顶栏：右边那排小图标不再压在「加入战斗」上，左边等级圈不再压着 Roblox 的菜单键；屏幕窄的时候整条顶栏等比缩小
     - 试驾场里不再弹主战场的结算（任务失败 / 完成）、比分条、据点、作战简报、占点提示
     - 开车手感：松油门、反推刹车停得更干脆，履带车打方向起转、收住更快；车身悬挂硬一点、晃一下就收住；追尾镜头跟得更紧
+  11 月 25 日晚 C 第十三包：换游戏文件；豹 2A7V 也重导（它的贴图上同样有两个十字，还没被审核点名，先去掉）——E 包里也换了这个文件，导 E 包（或全套包）里那个就行，不用导两次：
+    - veh/leo2a7v.glb 换成去掉十字的那版（同样只改了一张贴图）。先在命令栏（编辑状态下）粘这一行删掉旧的豹 2A7V 零件，再导入 veh/leo2a7v.glb：
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_leo2a7v__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A7V 零件")
+    - 机库：不开科技树时出击阵容卡片不画等级底色（只开着科技树时才有）
   11 月 25 日晚 C 第十二包（Roblox 审核把豹 2A6 贴图上的德军十字判成违规、账号收到警告）：换游戏文件；豹 2A6 重导：
     - veh/leo2a6.glb 换成去掉十字的那版（只改了那一张贴图，模型一点没动）。先在命令栏（编辑状态下）粘这一行删掉旧的豹 2A6 零件，再导入 veh/leo2a6.glb：
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^V_leo2a6__") then d:Destroy() n+=1 end end end print("删了 "..n.." 块旧的豹 2A6 零件")
