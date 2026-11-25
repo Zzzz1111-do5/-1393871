@@ -73,6 +73,8 @@ function WtMatch.init(G)
   end
   function G.wtSpawned(P, vid, kind, e)
     if not P or not P.pl or not vid then return end
+    -- ④ 配弹：按他在机库里配的再配一遍（等 Tech.lua 写完改装 e.wtFx、科技树的键 e.treeKey 再配）
+    if e and G.wtAmmoInit then task.defer(function() pcall(G.wtAmmoInit, e, P) end) end
     local lk = keyOf(P, vid)
     if e then e.wtOwner, e.wtVid = P, lk end
     if not on() then return end

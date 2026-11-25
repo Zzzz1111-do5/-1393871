@@ -341,6 +341,12 @@ function WtTank.init(G)
       if sd.k == "am" or sd.k == "w" then
         local am = vs and vs.ammo and vs.ammo[sd.wid]
         local tot = am and (am[1] + am[2]) or nil
+        -- ④ 配弹：每种弹各剩几发（服务器 Wt.lua 写 AmL = "m829a3:20,m830:12,…"）
+        if sd.k == "am" and em then
+          local L = em:GetAttribute("AmL")
+          local n = L and string.match("," .. L .. ",", "," .. sd.am .. ":(%d+),")
+          if n then tot = tonumber(n) end
+        end
         cnt = tot and tostring(tot) or "∞"
         empty = tot == 0
         if sd.k == "am" then
@@ -563,6 +569,11 @@ function WtTank.init(G)
     fixBg.Visible = fix ~= nil
     fixFill.Size = UD2(math.clamp(fix or 0, 0, 1), 0, 1, 0)
     diCrew.Text = (tot > 0) and T("wtt.crew", alive, tot) or ""
+    -- ④ 待发弹架：还剩几发（空了写红字「车体取弹」——装得慢）
+    local rdy, rcap = em and em:GetAttribute("Rdy"), em and em:GetAttribute("RdyCap")
+    if rdy and rcap then
+      diCrew.Text = diCrew.Text .. "   " .. ((rdy > 0) and T("wtt.rack", rdy, rcap) or T("wtt.rackOut"))
+    end
   end
 
   ---------------------------------------------------------------- 每帧（VehHud.stepTank 调）

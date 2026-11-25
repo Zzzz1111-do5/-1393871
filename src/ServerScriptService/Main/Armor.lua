@@ -265,6 +265,7 @@ function Armor.init(G)
     if d.kit and d.kit.plow then e.model:SetAttribute("Plow", 0) end   -- 扫雷犁（Kit.lua）：0 收着、1 放下、0.5 正在升
     if G.apsSetup then G.try("主动防御", G.apsSetup, e) end   -- Aps.lua
     if G.wtSetup then G.try("战雷伤害", G.wtSetup, e) end   -- Wt.lua：乘员、模块各自的血（战雷式伤害）
+    if G.wtAmmoInit then G.try("配弹", G.wtAmmoInit, e, nil) end   -- Wt.lua ④：每种弹几发（默认配；玩家出车后 WtMatch 按他配的再配一遍）、待发弹架
     e.onDeath = function(self, src)
       G.try("载具被毁", function()
         self.alive = false
@@ -517,6 +518,11 @@ function Armor.init(G)
         local i = list and table.find(list, am)
         if i and i > nA then am = list[1] end
       end
+      if G.wtAmmoTake then   -- ④ 配弹：这种弹打光了换还有的那一种；一发都没了就不打
+        local got = G.wtAmmoTake(e, wid, am, nA)
+        if got == false then return end
+        am = got
+      end
       local ww, a = weaponOf(wid, w, am)
       if a and a.pellets then   -- 霰弹（M1028）：出了炮口一锥钨珠——按弹丸射线打（每道一小把），不飞炮弹
         local pw = ww.pelletW
@@ -563,6 +569,7 @@ function Armor.init(G)
     st.mag -= 1
     local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：别人凑合装填，慢六成
     if w.kind == "shell" and e.crewRel then rk *= e.crewRel end   -- 乘员技能「装填」（WtCrew，Tech.lua 出车时写的）
+    if w.kind == "shell" and BAL.GUN[wid] and G.wtRackK then rk *= G.wtRackK(e) end   -- ④ 待发弹架空了：从车体弹架里拿，装得慢
     st.next = t + w.rate * rk
     if st.mag <= 0 and st.reserve > 0 then   -- 弹匣打空：换弹
       local n = math.min(w.mag, st.reserve)

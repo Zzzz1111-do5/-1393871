@@ -331,6 +331,17 @@ function TechUI.init(G)
         cb.TextSize = 12
         local slotI = i
         cb.MouseButton1Click:Connect(function() openCrew(tree.nat, slotI, key) end)
+        -- 配弹（C：用户 11-25「全部都做」④，WtAmmo.lua）：地面车的主炮每种弹带几发
+        if it.branch ~= "air" and G.openAmmo then
+          local ab = button(card, L("弹药", "Ammo"), UDim2.new(0, 64, 0, 22), UDim2.new(1, -72, 0, 66))   -- 「乘员」上面那一格（改装数那一行右边是空的）
+          ab.Name = "AmmoBtn"
+          ab.TextSize = 12
+          ab.MouseButton1Click:Connect(function()
+            local md = tree.mods and tree.mods[key]
+            local fx = WM.fx and WM.fx(it, md and md.done)
+            G.openAmmo(key, fx and fx.ammo)
+          end)
+        end
         local _, cap = brCap()
         local over = cap ~= nil and it.br > cap + 0.05   -- 超出这一局能出的战斗等级：标灰（点了服务器也会说）
         local go = button(card, over and L("超出本局战斗等级", "Above battle BR") or L("出击", "Deploy"), UDim2.new(1, -16, 0, 36), UDim2.new(0, 8, 1, -44), not over)

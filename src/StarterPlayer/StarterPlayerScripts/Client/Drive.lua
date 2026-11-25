@@ -1375,7 +1375,8 @@ function Drive.init(G)
     -- 射速选择（布雷德利 M242：HI 高速 / LO 低速一半 / SS 单发：扳一下打一发）：只管机关炮（射速快于半秒一发的炮）
     local rofK = (w.kind == "shell" and w.rate < 0.5 and st.rof == "LO") and 2 or 1
     local crewK = (w.kind == "shell" and st.em and st.em:GetAttribute("CrewRel")) or 1   -- 乘员技能「装填」（服务器同样乘）
-    st.next[wid] = t + w.rate * rofK * crewK
+    local rackK = (w.kind == "shell" and BAL.GUN[wid] and st.em and st.em:GetAttribute("RdyK")) or 1   -- ④ 待发弹架空了装得慢（服务器 Wt.lua 同样乘）
+    st.next[wid] = t + w.rate * rofK * crewK * rackK
     if BAL.GUN[wid] then st.fcs.droop = math.min(0.9, st.fcs.droop + 0.07) end   -- 每打一发炮管热一点、往下弯一点（毫弧度）
     local base = st.root * CF(0, -st.d.H / 2, 0)
     local mz = VD.muzzle(st.d, base, st.ty, st.gp, VD.mgWhich(st.d, wid), st.my, st.mp)
